@@ -207,7 +207,7 @@ class installer(object):
     # is necessary.
 
     # Do not overwrite an existing installation.
-    self.dest_dir = op.join(self.options.prefix, "%s-%s"%(self.dest_dir_prefix, self.version))
+    self.dest_dir = op.abspath(op.join(self.options.prefix, "%s-%s"%(self.dest_dir_prefix, self.version)))
     if os.path.exists(self.dest_dir):
       raise InstallerError("""
   Installation directory already exists:
