@@ -118,7 +118,8 @@ class installer (object) :
     elif options.with_system_python:
       self.python_exe = sys.executable
 
-    assert self.python_exe
+    assert self.python_exe, \
+      os.path.join(self.build_dir, 'base', 'bin', 'python')
 
     print >> log, "Using Python interpreter: %s" % self.python_exe
 
