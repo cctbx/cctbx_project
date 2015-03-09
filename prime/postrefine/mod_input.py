@@ -17,6 +17,10 @@ title = None
   .type = str
   .help = Title of the run.
   .multiple = False
+averaging_engine = both *python cpp
+  .type = choice
+  .help = Which avearging engine to use, python or cpp.  If both, then both are \
+    used and the results are compared to each other to verify binary identity
 scale
   .help = "Parameters used to generate mean-intensity scaled reference set."
 {
@@ -348,4 +352,3 @@ def process_input(argv=None):
     txt_out += one_output + '\n'
 
   return params, txt_out
-
