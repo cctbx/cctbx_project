@@ -109,13 +109,18 @@ class installer (object) :
         os.makedirs(dir_name)
 
     # Which Python interpreter:
+    # FIXME GW 2015/03/09 should be if/then/else?
     self.python_exe = None
     if os.path.exists(os.path.join(self.build_dir, 'base', 'bin', 'python')):
       self.python_exe = os.path.join(self.build_dir, 'base', 'bin', 'python')
-    if options.with_python:
+    elif options.with_python:
       self.python_exe = options.with_python
-    if options.with_system_python:
+    elif options.with_system_python:
       self.python_exe = sys.executable
+
+    assert self.python_exe
+
+    print >> log, "Using Python interpreter: %s" % self.python_exe
 
     # Configure package download
     self.fetch_package = fetch_packages(
