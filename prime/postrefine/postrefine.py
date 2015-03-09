@@ -501,7 +501,7 @@ def prepare_output(results,
         avg_mode):
 
   #results is a list of postref_results objects
-  #lenght of this list equals to number of input frames
+  #length of this list equals to number of input frames
 
   inten_scaler = intensities_scaler()
   prep_output = inten_scaler.prepare_output(results, iparams, avg_mode)
@@ -511,9 +511,20 @@ def calc_avg_I(group_no, miller_index, miller_indices_ori, I, sigI, G, B, p_set,
                sin_theta_over_lambda_sq, SE, avg_mode, iparams, pickle_filename):
 
   #results is a list of postref_results objects
-  #lenght of this list equals to number of input frames
+  #length of this list equals to number of input frames
   inten_scaler = intensities_scaler()
   avg_I_result = inten_scaler.calc_avg_I(group_no, miller_index, miller_indices_ori, I, sigI, G, B,
+                     p_set, rs_set, wavelength_set, sin_theta_over_lambda_sq, SE, avg_mode,
+                     iparams, pickle_filename)
+  return avg_I_result
+
+def calc_avg_I_cpp(group_no, group_id_list, miller_index, miller_indices_ori, I, sigI, G, B, p_set, rs_set, wavelength_set,
+               sin_theta_over_lambda_sq, SE, avg_mode, iparams, pickle_filename):
+
+  #results is a list of postref_results objects
+  #length of this list equals to number of input frames
+  inten_scaler = intensities_scaler()
+  avg_I_result = inten_scaler.calc_avg_I_cpp(group_no, group_id_list, miller_index, miller_indices_ori, I, sigI, G, B,
                      p_set, rs_set, wavelength_set, sin_theta_over_lambda_sq, SE, avg_mode,
                      iparams, pickle_filename)
   return avg_I_result
@@ -523,7 +534,7 @@ def write_output(miller_indices_merge, I_merge, sigI_merge, stat_all,
                    output_mtz_file_prefix, avg_mode):
 
   #results is a list of postref_results objects
-  #lenght of this list equals to number of input frames
+  #length of this list equals to number of input frames
   inten_scaler = intensities_scaler()
   miller_array_merge, txt_out, csv_out = inten_scaler.write_output(miller_indices_merge, \
                                             I_merge, sigI_merge, stat_all, \

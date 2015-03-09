@@ -10,6 +10,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab
+from libtbx.utils import Sorry
 
 class intensities_scaler(object):
   '''
@@ -29,6 +30,8 @@ class intensities_scaler(object):
   def calc_avg_I(self, group_no, miller_index, miller_indices_ori, I, sigI, G, B,
                      p_set, rs_set, wavelength_set, sin_theta_over_lambda_sq, SE, avg_mode,
                      iparams, pickle_filename_set):
+
+    print "Averaging", miller_index
 
     if avg_mode == 'average':
       sigma_max = 99
@@ -113,12 +116,12 @@ class intensities_scaler(object):
 
     #Rmeas, Rmeas_w, multiplicity
     multiplicity = len(I_full)
-    r_meas_w_top = 0
-    r_meas_w_btm = 0
-    r_meas_top = 0
-    r_meas_btm = 0
-    r_meas = 0
-    r_meas_w = 0
+    r_meas_w_top = 0.0
+    r_meas_w_btm = 0.0
+    r_meas_top = 0.0
+    r_meas_btm = 0.0
+    r_meas = 0.0
+    r_meas_w = 0.0
     if multiplicity > 1:
       n_obs = multiplicity
       r_meas_w_top = flex.sum(((I_full - I_avg)*SE_norm)**2)*math.sqrt(n_obs/(n_obs-1))
@@ -130,8 +133,8 @@ class intensities_scaler(object):
 
     #for calculattion of cc1/2
     #sepearte the observations into two groups
-    I_avg_even = 0
-    I_avg_odd = 0
+    I_avg_even = 0.0
+    I_avg_odd = 0.0
     if multiplicity > 1:
       i_even = range(0,len(I_full),2)
       i_odd = range(1,len(I_full),2)
@@ -167,6 +170,31 @@ class intensities_scaler(object):
       txt_obs_out += txt_reject_out
 
     return miller_index, I_avg, sigI_avg, (r_meas_w_top, r_meas_w_btm, r_meas_top, r_meas_btm, multiplicity), I_avg_even, I_avg_odd, txt_obs_out, txt_reject_out
+
+  def calc_avg_I_cpp(self, group_no, group_id_list, miller_index, miller_indices_ori, I, sigI, G, B,
+                     p_set, rs_set, wavelength_set, sin_theta_over_lambda_sq, SE, avg_mode,
+                     iparams, pickle_filename_set):
+    from prime import Average_Mode, averaging_engine
+    if avg_mode == 'average': avg_mode_cpp = Average_Mode.Average
+    elif avg_mode == 'weighted': avg_mode_cpp = Average_Mode.Weighted
+    elif avg_mode == 'final': avg_mode_cpp = Average_Mode.Final
+    else: raise Sorry("Bad averaging mode selected: %s"%avg_mode)
+
+    if avg_mode == 'average' or iparams.sigma_rejection is None:
+      sigma_max = 99
+    else:
+      sigma_max = iparams.sigma_rejection
+
+    engine = averaging_engine(group_no, group_id_list, miller_index, miller_indices_ori, I, sigI, G, B,p_set, rs_set, wavelength_set, sin_theta_over_lambda_sq, SE)
+    engine.avg_mode = avg_mode_cpp
+    engine.sigma_max = sigma_max
+    engine.flag_volume_correction = iparams.flag_volume_correction
+    engine.n_rejection_cycle = iparams.n_rejection_cycle
+    engine.flag_output_verbose = iparams.flag_output_verbose
+
+    results = engine.calc_avg_I()
+
+    return results.miller_index, results.I_avg, results.sigI_avg, (results.r_meas_w_top, results.r_meas_w_btm, results.r_meas_top, results.r_meas_btm, results.multiplicity), results.I_avg_even, results.I_avg_odd, results.txt_obs_out, results.txt_reject_out
 
 
   def calc_mean_unit_cell(self, results):
