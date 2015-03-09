@@ -83,6 +83,7 @@ class Chains_info(object):
     self.atom_selection = []
     self.chains_atom_number = 0
     self.no_altloc = []
+    self.center_of_coordinates = None
 
 def find_ncs_in_hierarchy(ph,
                           min_contig_length=10,
@@ -931,7 +932,7 @@ def search_ncs_relations(ph=None,
 
   Args:
     ph (object): hierarchy
-    chains_info : object containing
+    chains_info (dict): values are object containing
       chains (str): chain IDs OR selections string
       res_name (list of str): list of residues names
       resid (list of str): list of residues sequence number, resid
@@ -969,13 +970,20 @@ def search_ncs_relations(ph=None,
   # collect all chain IDs
   chain_match_list = []
   msg = ''
-  sorted_ch = sorted(chains_info)
+  if use_minimal_master_ncs:
+    sorted_ch = sorted(chains_info)
+  else:
+    sorted_ch = sort_by_dist(chains_info)
   n_chains = len(sorted_ch)
   chains_in_copies = set()
   # loop over all chains
   for i in xrange(n_chains-1):
+    if use_minimal_master_ncs:
+      if (sorted_ch[i] in chains_in_copies): continue
+      # update sorted_ch list according to distance between master copies
+      sorted_ch = update_chain_ids_search_order(
+        chains_info,sorted_ch,chains_in_copies,i)
     m_ch_id = sorted_ch[i]
-    if use_minimal_master_ncs and (m_ch_id in chains_in_copies): continue
     master_n_res = len(chains_info[m_ch_id].res_names)
     seq_m = chains_info[m_ch_id].res_names
     if master_n_res == 0: continue
@@ -1275,7 +1283,7 @@ def get_chains_info(ph,selection_list=None,exclude_water=True,
     ignore_chains (set of str): set of chain IDs to exclude
 
   Returns:
-    chains_info : object containing
+    chains_info (dict): values are object containing
       chains (str): chain IDs OR selections string
       res_name (list of str): list of residues names
       resid (list of str): list of residues sequence number, resid
@@ -1288,6 +1296,7 @@ def get_chains_info(ph,selection_list=None,exclude_water=True,
   if not ignore_chains: ignore_chains = set()
   #
   chains_info =  {}
+  cache = ph.atom_selection_cache().selection
   if use_chains:
     model  = ph.models()[0]
     # build chains_info from hierarchy
@@ -1295,6 +1304,9 @@ def get_chains_info(ph,selection_list=None,exclude_water=True,
       if ch.id in ignore_chains: continue
       if not chains_info.has_key(ch.id):
         chains_info[ch.id] = Chains_info()
+        ph_sel = ph.select(cache('chain ' + ch.id))
+        coc = flex.vec3_double([ph_sel.atoms().extract_xyz().mean()])
+        chains_info[ch.id].center_of_coordinates = coc
       chains_info[ch.id].chains_atom_number += ch.atoms().size()
       resids = chains_info[ch.id].resid
       res_names = chains_info[ch.id].res_names
@@ -1338,7 +1350,7 @@ def get_chains_info(ph,selection_list=None,exclude_water=True,
     l = ph.atoms().size()
     selection_test = flex.bool([False,] * l)
     chain_ids = sorted(selection_list)
-    cache = ph.atom_selection_cache().selection
+
     for sel_str in chain_ids:
       ph_sel = ph.select(cache(sel_str))
       model =  ph_sel.models()
@@ -1458,3 +1470,86 @@ def is_same_transform(r1,t1,r2,t2):
       return False, False
   else:
     return False, False
+
+def sort_by_dist(chains_info):
+  """
+  The process of grouping chains is not exhaustive, meaning that is does not
+  consider every possible chains grouping, due to potential computation time
+  such a search might take. To improve the the probability of getting
+  preferred grouping, instead of searching using the order of the chain
+  names, we arrange chains by distance.
+  Starting from the first chain look for the closest chain to it, then
+  the closest to the second chain, and so one.
+
+  Note that this only improve but does not guarantee optimal grouping
+
+  This function is used only when minimizing number of NCS operators
+
+  Args:
+    chains_info (obj): Chain_info object
+
+  Return:
+    ch_id_list (lst): ordered list of chain IDs
+  """
+  sorted_list = sorted(chains_info)
+  if sorted_list:
+    ch_id_list = [sorted_list.pop(0)]
+    while sorted_list:
+      coc1 = chains_info[ch_id_list[-1]].center_of_coordinates
+      min_d = 10000000
+      min_ch_id = ''
+      min_indx = None
+      for i,ch_id in enumerate(sorted_list):
+        coc2 = chains_info[ch_id].center_of_coordinates
+        d = coc1.max_distance(coc2)
+        if d < min_d:
+          min_d = d
+          min_ch_id = ch_id
+          min_indx = i
+      if min_ch_id:
+        ch_id_list.append(sorted_list.pop(min_indx))
+    return ch_id_list
+  else:
+    return []
+
+
+def  update_chain_ids_search_order(chains_info,sorted_ch,chains_in_copies,i):
+  """
+  This function is used only when minimizing number of chains in master NCS.
+  It design to improve grouping by choosing masters that are near by.
+
+  Replace chain ID i in the list sorted_ch with the closest chain i-1 in
+  sorted_ch, ignoring chains that are already in NCS groups
+
+  Args:
+    chains_info (obj): Chain_info object
+    sorted_ch (list): chain IDs list
+    chains_in_copies (set): chain already in NCS groups
+    i (int): position in the list
+
+
+  Return:
+    ch_id_list (list): ordered list of chain IDs
+  """
+  if i == 0:
+    return sorted_ch
+  else:
+    ref = chains_info[sorted_ch[i-1]].center_of_coordinates
+    min_d = 10000000
+    min_ch_id = None
+    # use only potential masters
+    test_list = list(set(sorted_ch[i:]) - chains_in_copies)
+    while test_list:
+      ch_id = test_list.pop(0)
+      c_of_c = chains_info[ch_id].center_of_coordinates
+      d = ref.max_distance(c_of_c)
+      if d < min_d:
+        min_d = d
+        min_ch_id = ch_id
+    # flip the i position with the min_indx position
+    min_indx = sorted_ch.index(min_ch_id)
+    sorted_ch[i], sorted_ch[min_indx] = sorted_ch[min_indx], sorted_ch[i]
+    return sorted_ch
+
+
+
