@@ -821,6 +821,20 @@ Installation of Python packages may fail.
       "--disable-cups",
       "--without-libjpeg",
     ]
+
+    # cups breaks the install; --disable-cups not respected; kludge by renaming
+    # the cups thing (why are we including printer drivers here anyway?)
+
+    import shutil
+    shutil.copyfile('configure', 'configure.save')
+
+    configure = open('configure.save', 'r').read().replace(
+      'cups-config', 'junk-config')
+    open('configure', 'w').write(configure)
+    os.system('chmod +x ./configure')
+
+    # end kludge
+    
     self.call("./configure %s" % " ".join(gtk_config_args), log=pkg_log)
     self.call("make -j %d SRC_SUBDIRS='gdk-pixbuf gdk gtk modules'" %
       self.nproc, log=pkg_log)
