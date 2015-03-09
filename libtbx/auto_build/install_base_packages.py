@@ -369,7 +369,7 @@ Installation of Python packages may fail.
       'Ubuntu' in platform.platform():
       if os.path.exists(os.path.join('/', 'usr', 'bin', 'libtool')):
         self.log.write('Removing xrender libtool; replace with system')
-        os.path.remove('libtool')
+        os.remove('libtool')
         os.symlink(os.path.join('/', 'usr', 'bin', 'libtool'), 'libtool')
       else:
         self.log.write('Cannot removing xrender libtool; not installed')
