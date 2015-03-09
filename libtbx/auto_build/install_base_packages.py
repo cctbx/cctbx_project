@@ -13,6 +13,7 @@ from package_defs import *
 from optparse import OptionParser
 import os.path as op
 import sys
+
 # XXX HACK
 libtbx_path = op.abspath(op.dirname(op.dirname(__file__)))
 if (not libtbx_path in sys.path) :
@@ -118,7 +119,18 @@ class installer (object) :
     elif options.with_system_python:
       self.python_exe = sys.executable
 
-    print >> log, "Using Python interpreter: %s" % self.python_exe
+    if self.python_exe:
+      print >> log, "Using Python interpreter: %s" % self.python_exe
+
+    import platform
+
+    if not self.python_exe and 'SuSE' in platform.platform():
+      if 'CONFIG_SITE' in os.environ:
+        print >> log, 'SuSE detected; clobbering CONFIG_SITE in environ'
+        try:
+          del(os.environ['CONFIG_SITE'])
+        except: # deliberate
+          pass
 
     # Configure package download
     self.fetch_package = fetch_packages(
@@ -314,7 +326,7 @@ Found Python version:
     import tempfile
     site_packages = check_output([self.python_exe, '-c', 'from distutils.sysconfig import get_python_lib; print(get_python_lib())'])
     site_packages = site_packages.strip()
-    # print >> self.log,  "Checking for write permissions:", site_packages
+    print >> self.log,  "Checking for write permissions:", site_packages
     try:
       f = tempfile.TemporaryFile(dir=site_packages)
     except (OSError, RuntimeError), e:
@@ -373,9 +385,9 @@ Installation of Python packages may fail.
         os.symlink(os.path.join('/', 'usr', 'bin', 'libtool'), 'libtool')
       else:
         self.log.write('Cannot removing xrender libtool; not installed')
-
+      
     return
-
+  
   def configure_and_build (self, config_args=(), log=None, make_args=()) :
     self.workarounds()
     self.call("./configure %s" % " ".join(list(config_args)), log=log)
