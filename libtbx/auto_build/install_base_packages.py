@@ -385,9 +385,9 @@ Installation of Python packages may fail.
         os.symlink(os.path.join('/', 'usr', 'bin', 'libtool'), 'libtool')
       else:
         self.log.write('Cannot removing xrender libtool; not installed')
-      
+
     return
-  
+
   def configure_and_build (self, config_args=(), log=None, make_args=()) :
     self.workarounds()
     self.call("./configure %s" % " ".join(list(config_args)), log=log)
