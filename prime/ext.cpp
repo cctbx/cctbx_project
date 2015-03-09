@@ -103,9 +103,9 @@ namespace prime {
       flag_output_verbose_ = false;
     }
 
-    const double CONST_SE_MIN_WEIGHT = 0.17;
-    const double CONST_SE_MAX_WEIGHT = 1.0;
-    const double CONST_SIG_I_FACTOR = 5.0;
+    static const double CONST_SE_MIN_WEIGHT = 0.17;
+    static const double CONST_SE_MAX_WEIGHT = 1.0;
+    static const double CONST_SIG_I_FACTOR = 5.0;
 
     public: average_result_store
     calc_avg_I() {
