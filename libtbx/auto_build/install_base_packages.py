@@ -834,7 +834,7 @@ Installation of Python packages may fail.
     os.system('chmod +x ./configure')
 
     # end kludge
-    
+
     self.call("./configure %s" % " ".join(gtk_config_args), log=pkg_log)
     self.call("make -j %d SRC_SUBDIRS='gdk-pixbuf gdk gtk modules'" %
       self.nproc, log=pkg_log)
