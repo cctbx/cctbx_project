@@ -7,6 +7,7 @@ import mmtbx.maps.correlation
 from scitbx import matrix
 import scitbx.rigid_body
 from cctbx import xray
+import string
 import random
 import math
 import sys
@@ -979,7 +980,6 @@ def make_unique_chain_names(unique_chain_names,number_of_names=1):
     new_names_list (list): sorted list on new names
   """
   # check availability of one letter chain names
-  import string
   chr_list1 = list(set(string.ascii_uppercase) - set(unique_chain_names))
   chr_list2 = list(set(string.ascii_lowercase) - set(unique_chain_names))
   chr_list1.sort()

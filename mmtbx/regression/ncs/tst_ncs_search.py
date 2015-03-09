@@ -477,7 +477,22 @@ class TestSimpleAlignment(unittest.TestCase):
     ncs_obj = ncs.input(pdb_string=test_pdb_6)
     ncs_obj.get_ncs_restraints_group_list()
     # x = ncs_obj.get_ncs_info_as_spec(write=True,show_ncs_phil=True)
-    pass
+
+  def test_ncs_search_order(self):
+    """
+    verify correct order of chains are selected for the NCS search
+    """
+    pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_9)
+    ph = pdb_inp.hierarchy
+    chains_info = ncs_search.get_chains_info(ph)
+    chains_in_copies = {'B','E'}
+    i = 1
+    sorted_ch = sorted(chains_info)
+    self.assertEqual(sorted_ch,['A', 'B', 'C', 'D', 'E', 'F'])
+    sorted_ch = ncs_search.update_chain_ids_search_order(
+        chains_info,sorted_ch,chains_in_copies,i)
+    self.assertEqual(sorted_ch,['A', 'D', 'C', 'B', 'E', 'F'])
+
 
 test_pdb_1 = '''\
 CRYST1  577.812  448.715  468.790  90.00  90.00  90.00 P 1
@@ -1408,6 +1423,21 @@ ATOM   4544  CA  ALA B  96      54.531 -89.280 -13.126  1.00  2.34           C
 ATOM   4549  CA  GLN B  97      54.795 -87.269  -9.909  1.00  2.02           C
 ATOM   4558  CA  ALA B  98      53.272 -90.229  -8.089  1.00  2.64           C
 ATOM   4563  CA  ILE B  99      55.515 -92.921  -9.376  1.00  2.00           C
+'''
+
+test_pdb_9 = '''\
+ATOM      1  CA  ASP A   1       0.000   0.000   0.000  1.00 78.04           C
+TER
+ATOM      1  CA  ASP B   1      10.000  10.000  10.000  1.00 78.04           C
+TER
+ATOM      1  CA  ASP C   1      11.000  11.000  11.000  1.00 78.04           C
+TER
+ATOM      1  CA  ASP E   1      20.000  20.000  20.000  1.00 78.04           C
+TER
+ATOM      1  CA  ASP F   1      21.000  21.000  21.000  1.00 78.04           C
+TER
+ATOM      1  CA  ASP D   1       1.000   1.000   1.000  1.00 78.04           C
+TER
 '''
 
 def run_selected_tests():
