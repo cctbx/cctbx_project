@@ -380,11 +380,11 @@ Installation of Python packages may fail.
     if 'xrender' in os.path.split(os.getcwd())[-1] and \
       'Ubuntu' in platform.platform() and os.path.exists('libtool'):
       if os.path.exists(os.path.join('/', 'usr', 'bin', 'libtool')):
-        self.log.write('Removing xrender libtool; replace with system')
+        self.log.write('Removing xrender libtool; replace with system\n')
         os.remove('libtool')
         os.symlink(os.path.join('/', 'usr', 'bin', 'libtool'), 'libtool')
       else:
-        self.log.write('Cannot removing xrender libtool; not installed')
+        self.log.write('Cannot removing xrender libtool; not installed\n')
 
     return
 
