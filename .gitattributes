@@ -2228,6 +2228,7 @@ prime/iota/double_gauss.py -text
 prime/iota/iota_gridsearch.py -text
 prime/iota/iota_input.py -text
 prime/iota/iota_select.py -text
+prime/iota/iota_vis_integration.py -text
 prime/iota/visualize_integration.py -text
 prime/libtbx_config -text
 prime/postrefine/__init__.py -text
