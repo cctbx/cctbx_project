@@ -128,7 +128,7 @@ def best_file_selection(gs_params, output_entry, log_dir, n_int):
                          'results'.format(input_file, len(acceptable_results))
 
 
-      mosaicities = []
+      mqs = []
       for acc in acceptable_results:
         cell = '{:>8.2f}, {:>8.2f}, {:>8.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}'\
                ''.format(acc[4], acc[5], acc[6], acc[7], acc[8], acc[9])
@@ -136,9 +136,10 @@ def best_file_selection(gs_params, output_entry, log_dir, n_int):
                     ''.format(acc[1], acc[2], acc[11], acc[3], cell,
                               acc[10], acc[12], acc[13])
         ps_log_output.append(info_line)
-        mosaicities.append(float(acc[12]))
+        #mosaicities.append(float(acc[12]))
+        mqs.append(float(acc[13]))
 
-      best = acceptable_results[mosaicities.index(min(mosaicities))]
+      best = acceptable_results[mqs.index(min(mqs))]
       with open('{}/selected.lst'.format(os.path.abspath(gs_params.output)), \
                                                             'a') as sel_int:
         sel_int.write('{}\n'.format(input_file))
