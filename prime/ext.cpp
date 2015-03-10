@@ -62,6 +62,7 @@ namespace prime {
     const scitbx::af::shared<double> wavelength_set_;
     const scitbx::af::shared<double> sin_theta_over_lambda_sq_;
     const scitbx::af::shared<double> SE_;
+    const scitbx::af::shared<std::string> pickle_filename_set_;
     public:
     Average_Mode avg_mode_;
     double sigma_max_;
@@ -84,7 +85,8 @@ namespace prime {
       const scitbx::af::shared<double>& rs_set,
       const scitbx::af::shared<double>& wavelength_set,
       const scitbx::af::shared<double>& sin_theta_over_lambda_sq,
-      const scitbx::af::shared<double>& SE
+      const scitbx::af::shared<double>& SE,
+      const scitbx::af::shared<std::string>& pickle_filename_set
       ):
         group_no_(group_no),
         group_id_list_(group_id_list),
@@ -94,7 +96,8 @@ namespace prime {
         rs_set_(rs_set),
         wavelength_set_(wavelength_set),
         sin_theta_over_lambda_sq_(sin_theta_over_lambda_sq),
-        SE_(SE)
+        SE_(SE),
+        pickle_filename_set_(pickle_filename_set)
     {
       avg_mode_ = Average;
       sigma_max_ = 99.0;
@@ -123,7 +126,7 @@ namespace prime {
       std::ostringstream txt_obs_out;
       std::ostringstream txt_reject_out;
 
-      // convert to the full intensity and calculate mosaic spread FIXTHIS mosaic spread unused? maybe just logged?
+      // convert to the full intensity and calculate mosaic spread (currently only logged)
       scitbx::af::shared<double> I_full;
       scitbx::af::shared<double> mosaic_radian_set;
       for(int x = 0; x < G_.size(); x++) {
@@ -150,10 +153,9 @@ namespace prime {
         scitbx::af::shared<double> sigI_group;
         scitbx::af::shared<double> I_full_group;
         scitbx::af::shared<double> SE_group;
-        scitbx::af::shared<double> SE_norm;
-        scitbx::af::shared<double> SE_std_norm;
         cctbx::miller::index<int> current_index;
         shared_miller current_index_ori;
+        scitbx::af::shared<std::string>pickle_filename_set_group;
         std::ostringstream txt_reject_out_group;
 
         bool found_one = false;
@@ -174,6 +176,7 @@ namespace prime {
           I_full_group.push_back(I_full[obs_ptr]);
           SE_group.push_back(SE_[obs_ptr]);
           current_index_ori.push_back(miller_index_ori_[obs_ptr]);
+          pickle_filename_set_group.push_back(pickle_filename_set_[obs_ptr]);
           obs_ptr++;
         }
         SCITBX_ASSERT(found_one);
@@ -200,12 +203,17 @@ namespace prime {
         if (I_full_group.size() > 2) {
           for (int i_rejection = 0; i_rejection < n_rejection_cycle_; i_rejection++) {
             scitbx::af::shared<double> I_full_group_copy;
-            scitbx::af::shared<double> I_full_group_filtered;
-            scitbx::af::shared<double> SE_group_filtered;
             for (int i = 0; i < I_full_group.size(); i++)
               I_full_group_copy.push_back(I_full_group[i]);
             scitbx::math::basic_statistics<double> basic_stat(I_full_group_copy.const_ref());
             scitbx::math::median_functor mf;
+
+            scitbx::af::shared<double> I_group_filtered;
+            scitbx::af::shared<double> sigI_group_filtered;
+            scitbx::af::shared<double> I_full_group_filtered;
+            scitbx::af::shared<double> SE_group_filtered;
+            shared_miller current_index_ori_filtered;
+            scitbx::af::shared<std::string> pickle_filename_set_group_filtered;
 
             double median_I = mf(I_full_group_copy.ref());
             double mean_I = basic_stat.mean;
@@ -214,20 +222,26 @@ namespace prime {
             for (int i = 0; i < I_full_group.size(); i++) {
               double I_full_as_sigma = (I_full_group[i] - median_I) / std_I;
               if (I_full_as_sigma > sigma_max_) {
-                SCITBX_ASSERT(false);
-
                 char buf[512];
-                sprintf(buf, "filename %3.0f %3.0f %3.0f %10.2f %10.2f\n", // note, not using pickle_filename_set
+                sprintf(buf, "%s %3.0f %3.0f %3.0f %10.2f %10.2f\n", pickle_filename_set_group[i].c_str(),
                   double(current_index_ori[i][0]), double(current_index_ori[i][1]), double(current_index_ori[i][2]), I_group[i], sigI_group[i]);
                 txt_reject_out_group << buf;
               }
               else {
+                I_group_filtered.push_back(I_group[i]);
+                sigI_group_filtered.push_back(sigI_group[i]);
                 I_full_group_filtered.push_back(I_full_group[i]);
                 SE_group_filtered.push_back(SE_group[i]);
+                current_index_ori_filtered.push_back(current_index_ori[i]);
+                pickle_filename_set_group_filtered.push_back(pickle_filename_set_group[i]);
               }
             }
+            I_group = I_group_filtered;
+            sigI_group = sigI_group_filtered;
             I_full_group = I_full_group_filtered;
             SE_group = SE_group_filtered;
+            current_index_ori = current_index_ori_filtered;
+            pickle_filename_set_group = pickle_filename_set_group_filtered;
 
             char buf[512];
             sprintf(buf, "%6.2f %6.2f %8.2f %8.0f\n", mean_I, median_I, std_I, double(I_full_group.size()));
@@ -242,6 +256,8 @@ namespace prime {
           }
         }
         // normalize the SE
+        scitbx::af::shared<double> SE_norm;
+        scitbx::af::shared<double> SE_std_norm;
         double se_max = scitbx::af::max(SE_group.ref());
         double se_min = scitbx::af::min(SE_group.ref());
         double SE_norm_val, SE_std_norm_val;
@@ -419,12 +435,14 @@ namespace boost_python { namespace {
         const scitbx::af::shared<double>&,
         const scitbx::af::shared<double>&,
         const scitbx::af::shared<double>&,
-        const scitbx::af::shared<double>&
+        const scitbx::af::shared<double>&,
+        const scitbx::af::shared<std::string>&
         >(
         (arg("group_no"),arg("group_id_list"),
         arg("miller_list"),arg("miller_list_ori"),arg("I"),arg("sigI"),
         arg("G"),arg("B"),arg("p_set"),arg("rs_set"),
-        arg("wavelength_set"),arg("sin_theta_over_lambda_sq"),arg("SE")
+        arg("wavelength_set"),arg("sin_theta_over_lambda_sq"),arg("SE"),
+        arg("pickle_filename_set")
         )))
       .def("calc_avg_I", &averaging_engine::calc_avg_I)
       .add_property("avg_mode",
