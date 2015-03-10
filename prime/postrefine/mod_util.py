@@ -185,7 +185,7 @@ class intensities_scaler(object):
     else:
       sigma_max = iparams.sigma_rejection
 
-    engine = averaging_engine(group_no, group_id_list, miller_index, miller_indices_ori, I, sigI, G, B,p_set, rs_set, wavelength_set, sin_theta_over_lambda_sq, SE)
+    engine = averaging_engine(group_no, group_id_list, miller_index, miller_indices_ori, I, sigI, G, B,p_set, rs_set, wavelength_set, sin_theta_over_lambda_sq, SE, pickle_filename_set)
     engine.avg_mode = avg_mode_cpp
     engine.sigma_max = sigma_max
     engine.flag_volume_correction = iparams.flag_volume_correction
