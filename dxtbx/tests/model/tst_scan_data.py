@@ -39,6 +39,7 @@ def tst_scan_oscillation_recycle(scan):
     oscillation = scan.get_oscillation(deg=deg)
     scan.set_oscillation(oscillation, deg=deg)
     assert scan.get_oscillation(deg=deg) == oscillation
+  print 'OK'
 
 def tst_scan_360_append():
 
@@ -64,6 +65,17 @@ def tst_scan_360_append():
   assert(scan.get_image_range() == (1, 720))
   print 'OK'
 
+def tst_swap():
+
+  scan1 = Scan((1, 20), (0.0, 1.0))
+  scan2 = Scan((40, 60), (10.0, 2.0))
+  scan1.swap(scan2)
+  assert(scan2.get_image_range() == (1, 20))
+  assert(scan1.get_image_range() == (40, 60))
+  assert(scan2.get_oscillation() == (0.0, 1.0))
+  assert(scan1.get_oscillation() == (10.0, 2.0))
+  print 'OK'
+
 def run():
   image_range = (0, 1000)
   oscillation = (0, 0.1)
@@ -75,6 +87,7 @@ def run():
   tst_get_frame_from_angle(scan)
   tst_get_frames_with_angle(scan)
   tst_scan_360_append()
+  tst_swap()
 
 if __name__ == '__main__':
   run()
