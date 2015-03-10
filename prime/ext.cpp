@@ -158,6 +158,8 @@ namespace prime {
         scitbx::af::shared<std::string>pickle_filename_set_group;
         std::ostringstream txt_reject_out_group;
 
+        scitbx::af::shared<int> valid_ptrs;
+
         bool found_one = false;
         while (obs_ptr < I_.size()) {
           if (group_id_list_[obs_ptr] != g) {
@@ -177,10 +179,10 @@ namespace prime {
           SE_group.push_back(SE_[obs_ptr]);
           current_index_ori.push_back(miller_index_ori_[obs_ptr]);
           pickle_filename_set_group.push_back(pickle_filename_set_[obs_ptr]);
+          valid_ptrs.push_back(obs_ptr);
           obs_ptr++;
         }
         SCITBX_ASSERT(found_one);
-
 
         // log
         char buf[512];
@@ -194,7 +196,9 @@ namespace prime {
 
         double median_I = mf(I_full_group_copy.ref());
         double mean_I = basic_stat.mean;
-        double std_I = basic_stat.mean_absolute_deviation_from_mean; // based on what I think numpy is doing compared to basic_statistics
+        double std_I = 0;
+        //if (I_full_group.size() > 1)
+        std_I = basic_stat.biased_standard_deviation; // based on what I think numpy is doing compared to basic_statistics
 
         sprintf(buf, "%6.2f %6.2f %8.2f %8.0f\n", mean_I, median_I, std_I, double(I_full_group.size()));
         txt_obs_out << buf;
@@ -215,15 +219,17 @@ namespace prime {
             shared_miller current_index_ori_filtered;
             scitbx::af::shared<std::string> pickle_filename_set_group_filtered;
 
+            scitbx::af::shared<int> valid_ptrs_filtered;
+
             double median_I = mf(I_full_group_copy.ref());
             double mean_I = basic_stat.mean;
-            double std_I = basic_stat.mean_absolute_deviation_from_mean; // based on what I think numpy is doing compared to basic_statistics
+            double std_I = basic_stat.biased_standard_deviation; // based on what I think numpy is doing compared to basic_statistics
 
             for (int i = 0; i < I_full_group.size(); i++) {
               double I_full_as_sigma = (I_full_group[i] - median_I) / std_I;
-              if (I_full_as_sigma > sigma_max_) {
+              if (std::abs(I_full_as_sigma) > sigma_max_) {
                 char buf[512];
-                sprintf(buf, "%s %3.0f %3.0f %3.0f %10.2f %10.2f\n", pickle_filename_set_group[i].c_str(),
+                sprintf(buf, "%s%3.0f %3.0f %3.0f %10.2f %10.2f\n", pickle_filename_set_group[i].c_str(),
                   double(current_index_ori[i][0]), double(current_index_ori[i][1]), double(current_index_ori[i][2]), I_group[i], sigI_group[i]);
                 txt_reject_out_group << buf;
               }
@@ -234,6 +240,7 @@ namespace prime {
                 SE_group_filtered.push_back(SE_group[i]);
                 current_index_ori_filtered.push_back(current_index_ori[i]);
                 pickle_filename_set_group_filtered.push_back(pickle_filename_set_group[i]);
+                valid_ptrs_filtered.push_back(valid_ptrs[i]);
               }
             }
             I_group = I_group_filtered;
@@ -242,6 +249,7 @@ namespace prime {
             SE_group = SE_group_filtered;
             current_index_ori = current_index_ori_filtered;
             pickle_filename_set_group = pickle_filename_set_group_filtered;
+            valid_ptrs = valid_ptrs_filtered;
 
             char buf[512];
             sprintf(buf, "%6.2f %6.2f %8.2f %8.0f\n", mean_I, median_I, std_I, double(I_full_group.size()));
@@ -304,23 +312,21 @@ namespace prime {
         double r_meas = 0;
         double r_meas_w = 0;
         if (multiplicity > 1) {
-          int n_obs = multiplicity;
-          double w_top_sum = 0;
-          double w_btm_sum = 0;
-          double top_sum = 0;
+          double n_obs = (double)multiplicity;
+          double r_meas_w_top_sum = 0;
+          double r_meas_top_sum = 0;
 
-          for (int i = 0; i < n_obs; i++) {
-            w_top_sum += std::pow(((I_full_group[i] - I_avg)*SE_norm[i]),2);
+          for (int i = 0; i < multiplicity; i++) {
+            r_meas_w_top_sum += std::pow(((I_full_group[i] - I_avg)*SE_norm[i]),2);
             r_meas_w_btm += std::pow(I_full_group[i]*SE_norm[i],2);
-            top_sum += std::abs(((I_full_group[i] - I_avg)*SE_norm[i]));
+            r_meas_top_sum += std::abs(((I_full_group[i] - I_avg)*SE_norm[i]));
             r_meas_btm += std::abs(I_full_group[i]*SE_norm[i]);
-
           }
 
-          r_meas_w_top = w_top_sum*std::sqrt(n_obs/(n_obs-1));
-          r_meas_top = top_sum*std::sqrt(n_obs/(n_obs-1));
-          r_meas = r_meas_top/r_meas_btm;
+          r_meas_w_top = r_meas_w_top_sum*std::sqrt(n_obs/(n_obs-1));
           r_meas_w = r_meas_w_top/r_meas_w_btm;
+          r_meas_top = r_meas_top_sum*std::sqrt(n_obs/(n_obs-1));
+          r_meas = r_meas_top/r_meas_btm;
         }
 
         //for calculation of cc1/2
@@ -387,8 +393,8 @@ namespace prime {
           for (int i = 0; i < I_full_group.size(); i++) {
             char buf[512];
             sprintf(buf, "%10.2f %10.2f %6.2f %6.2f %6.2f %8.5f %8.5f %8.5f %6.2f %6.2f %10.2f %10.2f\n",
-              I_group[i],sigI_group[i],1/G_[obs_ptr_start+i],B_[obs_ptr_start+i],p_set_[obs_ptr_start+i],rs_set_[obs_ptr_start+i],
-              wavelength_set_[obs_ptr_start+i],mosaic_radian_set[obs_ptr_start+i]*180/scitbx::constants::pi,SE_norm[i],SE_std_norm[i],
+              I_group[i],sigI_group[i],1/G_[valid_ptrs[i]],B_[valid_ptrs[i]],p_set_[valid_ptrs[i]],rs_set_[valid_ptrs[i]],
+              wavelength_set_[valid_ptrs[i]],mosaic_radian_set[valid_ptrs[i]]*180/scitbx::constants::pi,SE_norm[i],SE_std_norm[i],
               I_full_group[i],sigI_full[i]);
             txt_obs_out << buf;
           }
