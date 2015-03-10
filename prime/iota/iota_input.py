@@ -178,7 +178,7 @@ def make_input_list (gs_params):
           pickle_file = os.path.join(root, filename)
           input_list.append(pickle_file)
 
-  if gs_params.random_sample.flag_on == True:
+  if gs_params.advanced.random_sample.flag_on == True:
     random_inp_list = []
     for i in range(gs_params.random_sample.number):
       random_number = random.randrange(0, len(input_list))
