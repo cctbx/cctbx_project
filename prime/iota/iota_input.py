@@ -226,7 +226,7 @@ def make_mp_input(input_list, gs_params):
   mp_input = []
   mp_output = []
 
-  if gs_params.random_sample.flag_on == True:
+  if gs_params.advanced.random_sample.flag_on == True:
     print "Selecting {0} samples from {1} images in {2}:"\
           "".format(gs_params.random_sample.number, len(input_list),
                     gs_params.input)
@@ -287,13 +287,13 @@ def make_dirs (input_list, gs_params):
     if os.path.relpath(path, os.path.abspath(gs_params.input)) == '.':
       output_dir = os.path.abspath(gs_params.output)
     else:
-      output_dir = '{0}/{1}'.format(os.path.abspath(gs_params.output),
-                                    os.path.relpath(path,
-                                    os.path.abspath(gs_params.input)))
+      output_dir = os.path.normpath('{0}/{1}'\
+                                    ''.format(os.path.abspath(gs_params.output),
+                                              os.path.relpath(path,
+                                              os.path.abspath(gs_params.input))))
 
-    current_output_dir = "{0}/tmp_{1}".format(output_dir,
-                                              img_filename.split('.')[0])
-
+    current_output_dir = os.path.normpath("{0}/tmp_{1}".format(output_dir,
+                                              img_filename.split('.')[0]))
 
 #     # Make directories for output / log file for the image being integrated
     if not os.path.exists(current_output_dir):
