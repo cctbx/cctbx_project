@@ -103,9 +103,9 @@ namespace prime {
       flag_output_verbose_ = false;
     }
 
-    static const double CONST_SE_MIN_WEIGHT = 0.17;
-    static const double CONST_SE_MAX_WEIGHT = 1.0;
-    static const double CONST_SIG_I_FACTOR = 5.0;
+    static const double CONST_SE_MIN_WEIGHT;
+    static const double CONST_SE_MAX_WEIGHT;
+    static const double CONST_SIG_I_FACTOR;
 
     public: average_result_store
     calc_avg_I() {
@@ -394,6 +394,11 @@ namespace prime {
       return results;
     }
   };
+
+
+const double averaging_engine::CONST_SE_MIN_WEIGHT = 0.17;
+const double averaging_engine::CONST_SE_MAX_WEIGHT = 1.0;
+const double averaging_engine::CONST_SIG_I_FACTOR = 5.0;
 
 namespace boost_python { namespace {
   void
