@@ -326,6 +326,10 @@ namespace dxtbx { namespace model { namespace boost_python {
       new_exposure_times, new_epochs);
   }
 
+  void scan_swap(Scan &lhs, Scan &rhs) {
+    std::swap(lhs, rhs);
+  }
+
   void export_scan()
   {
     // Export ScanBase
@@ -436,6 +440,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def(self + self)
       .def("__len__", &Scan::get_num_images)
       .def("__str__", &scan_to_string)
+      .def("swap", &scan_swap)
       .def("to_dict", &to_dict<Scan>)
       .def("from_dict", &from_dict<Scan>,
         return_value_policy<manage_new_object>())
