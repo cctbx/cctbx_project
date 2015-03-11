@@ -40,7 +40,7 @@ VIRTUALENV_PKG = "virtualenv-12.0.6.tar.gz" # virtualenv
 #H5PY_PKG = "h5py-2.0.1-edit.tar.gz"  # dxtbx
 
 H5PY_PKG = "h5py-2.4.0.tar.gz" # dxtbx
-HDF5_PKG = "hdf5-1.8.14.tar" # dxtbx
+HDF5_PKG = "hdf5-1.8.14.tar.bz2" # dxtbx
 CYTHON_PKG = "cython-0.22.tar.gz"
 
 # GUI dependencies
