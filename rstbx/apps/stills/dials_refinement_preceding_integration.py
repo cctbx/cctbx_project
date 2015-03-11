@@ -153,8 +153,8 @@ class integrate_one_frame(IntegrationMetaProcedure):
               float(self.inputpd["size1"])/2.,float(self.inputpd["size2"])/2.,
               self.inputai.xbeam()/pxlsz[0], self.inputai.ybeam()/pxlsz[1]),
             print "OBSSPOT %7.2f %7.2f PREDSPOT %7.2f %7.2f"%(
-              spots[indexed_pairs[-1]["spot"]].ctr_mass_x(),
-              spots[indexed_pairs[-1]["spot"]].ctr_mass_y(),
+              reflections[indexed_pairs[-1]["spot"]]['xyzobs.px.value'][0],
+              reflections[indexed_pairs[-1]["spot"]]['xyzobs.px.value'][1],
               self.predicted[indexed_pairs[-1]["pred"]][0]/pxlsz[0],
               self.predicted[indexed_pairs[-1]["pred"]][1]/pxlsz[1]),
             the_hkl = self.hkllist[indexed_pairs[-1]["pred"]]
@@ -171,8 +171,8 @@ class integrate_one_frame(IntegrationMetaProcedure):
                           float(self.inputpd['size2']) / 2),
                refinedcenter=(self.inputai.xbeam() / pxlsz[0],
                               self.inputai.ybeam() / pxlsz[1]),
-               obsspot=(spots[indexed_pairs[-1]['spot']].ctr_mass_x(),
-                        spots[indexed_pairs[-1]['spot']].ctr_mass_y()),
+               obsspot=(reflections[indexed_pairs[-1]['spot']]['xyzobs.px.value'][0],
+                        reflections[indexed_pairs[-1]['spot']]['xyzobs.px.value'][1]),
                predspot=(self.predicted[indexed_pairs[-1]['pred']][0] / pxlsz[0],
                          self.predicted[indexed_pairs[-1]['pred']][1] / pxlsz[1]),
                hkl=(self.hkllist[indexed_pairs[-1]['pred']][0],
