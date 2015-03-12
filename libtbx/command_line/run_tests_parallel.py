@@ -54,8 +54,8 @@ def run (args) :
   params = master_phil.fetch(sources=user_phil).extract()
 
   if params.run_in_tmp_dir:
-    import tempfile
-    run_dir = tempfile.mkdtemp(suffix='', prefix='cctbxtst')
+    from libtbx.test_utils import open_tmp_directory
+    run_dir = open_tmp_directory()
     print 'Running tests in %s' % run_dir
     os.chdir(run_dir)
   else:
