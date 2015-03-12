@@ -84,28 +84,18 @@ grid_search
   flag_on = True
     .type = bool
     .help = Set to False to run selection of pickles only.
-  a_min = 1
+  a_avg = 5
     .type = int
     .help = Minimum spot area.
-  a_max = 10
+  a_std = 4
     .type = int
     .help = Maximum spot area.
-  h_min = 1
+  h_avg = 5
     .type = int
     .help = Minimum spot height.
-  h_max = 10
+  h_std = 4
     .type = int
     .help = Maximum spot height.
-}
-selection_res_limit
-  .help = "Resolution limit for pickle selection."
-{
-  d_min = 6.0
-    .type = float
-    .help = Highest resolution limit.
-  d_max = 15.0
-    .type = float
-    .help = Lowest resolution limit.
 }
 flag_prefilter = True
   .type = bool
@@ -122,9 +112,6 @@ target_pointgroup = P 4
 target_uc_tolerance = 0.05
   .type = float
   .help = Maximum allowed unit cell deviation from target
-min_sigma = 5.0
-  .type = float
-  .help = Minimum sigma for "strong" reflections
 n_processors = 32
   .type = int
   .help = No. of processing units
@@ -220,7 +207,7 @@ def make_dir_lists(input_list, gs_params):
   return input_dir_list, output_dir_list
 
 # Generates input list for MP grid seach
-def make_mp_input(input_list, gs_params):
+def make_mp_input(input_list, gs_params, gs_range):
 
   mp_item = []
   mp_input = []
@@ -237,10 +224,10 @@ def make_mp_input(input_list, gs_params):
       random_inp_list.append(input_list[random_number])
 
     gs_params.grid_search.flag_on = True
-    gs_params.grid_search.h_min = 1
-    gs_params.grid_search.h_max = 10
-    gs_params.grid_search.a_min = 1
-    gs_params.grid_search.a_max = 10
+    gs_params.grid_search.h_avg = 5
+    gs_params.grid_search.h_std = 4
+    gs_params.grid_search.a_avg = 5
+    gs_params.grid_search.a_std = 4
 
     inp_list = random_inp_list
   else:
@@ -265,11 +252,14 @@ def make_mp_input(input_list, gs_params):
                        "int_{}.lst".format(img_filename.split('.')[0])]
     mp_output.append(mp_output_entry)
 
+    h_min = gs_range[0]
+    h_max = gs_range[1]
+    a_min = gs_range[2]
+    a_max = gs_range[3]
+
     # Create input list w/ filename and spot-finding params
-    for sig_height in range(gs_params.grid_search.h_min,
-                          gs_params.grid_search.h_max + 1):
-      for spot_area in range (gs_params.grid_search.a_min,
-                              gs_params.grid_search.a_max + 1):
+    for sig_height in range(h_min, h_max + 1):
+      for spot_area in range (a_min, a_max + 1):
         mp_item = [current_img, sig_height, sig_height, spot_area,
                    current_output_dir]
         mp_input.append(mp_item)
