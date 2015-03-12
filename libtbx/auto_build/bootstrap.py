@@ -279,6 +279,10 @@ class elbow_module(SourceModule):
   module = 'elbow'
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/elbow/trunk']
 
+class amber_module(SourceModule):
+  module = 'amber_adaptbx'
+  authenticated = ['svn', 'svn+ssh://pawelrc@cci.lbl.gov/amber_adaptbx/trunk']
+
 class ksdssp_module(SourceModule):
   module = 'ksdssp'
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/ksdssp/trunk']
@@ -755,6 +759,7 @@ class PhenixBuilder(CCIBuilder):
     'Plex',
     'PyQuante',
     'elbow',
+    'amber_adaptbx',
     'ksdssp',
     'pex',
     'pulchra',
@@ -784,6 +789,7 @@ class PhenixBuilder(CCIBuilder):
     'phaser_regression',
     'labelit',
     'elbow',
+    'amber_adaptbx',
     'reduce',
     'probe',
   ]
