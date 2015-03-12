@@ -8,8 +8,9 @@ Description : IOTA pickle selection module. Selects the best integration results
               set of pickles derived from a single image.
 '''
 
-import os
+import os, sys
 from prime.iota.iota_input import main_log
+import numpy as np
 
 import os,cPickle as pickle
 import dials.util.command_line as cmd
@@ -128,18 +129,60 @@ def best_file_selection(gs_params, output_entry, log_dir, n_int):
                          'results'.format(input_file, len(acceptable_results))
 
 
-      mqs = []
       for acc in acceptable_results:
         cell = '{:>8.2f}, {:>8.2f}, {:>8.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}'\
                ''.format(acc[4], acc[5], acc[6], acc[7], acc[8], acc[9])
-        info_line = '{:^4}{:^4}{:^9.2f}{:^8}{:^55}{:^12}{:^12.2f}{:^12.2f}'\
+        info_line = '{:^4}{:^4}{:^9.2f}{:^8}{:^55}{:^12}{:^12.4f}{:^12.2f}'\
                     ''.format(acc[1], acc[2], acc[11], acc[3], cell,
                               acc[10], acc[12], acc[13])
         ps_log_output.append(info_line)
-        #mosaicities.append(float(acc[12]))
-        mqs.append(float(acc[13]))
 
-      best = acceptable_results[mqs.index(min(mqs))]
+      # Compute average values
+      avg_res = np.mean([item[11] for item in acceptable_results])
+      avg_spots = np.mean([item[10] for item in acceptable_results])
+      avg_mos = np.mean([item[12] for item in acceptable_results])
+      avg_mq = np.mean([item[13] for item in acceptable_results])
+      avg_cell = '{:>8.2f}, {:>8.2f}, {:>8.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}'\
+               ''.format(np.mean([item[4] for item in acceptable_results]),
+                         np.mean([item[5] for item in acceptable_results]),
+                         np.mean([item[6] for item in acceptable_results]),
+                         np.mean([item[7] for item in acceptable_results]),
+                         np.mean([item[8] for item in acceptable_results]),
+                         np.mean([item[9] for item in acceptable_results]))
+
+      info_line = '\nAVG:    {:^9.2f}{:^8}{:^55}{:^12.2}{:^12.4f}{:^12.2f}'\
+                    ''.format(avg_res, '', avg_cell, avg_spots, avg_mos, avg_mq)
+      ps_log_output.append(info_line)
+
+      # Compute standard deviations
+      std_res = np.std([item[11] for item in acceptable_results])
+      std_spots = np.std([item[10] for item in acceptable_results])
+      std_mos = np.std([item[12] for item in acceptable_results])
+      std_mq = np.std([item[13] for item in acceptable_results])
+      std_cell = '{:>8.2f}, {:>8.2f}, {:>8.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}'\
+               ''.format(np.std([item[4] for item in acceptable_results]),
+                         np.std([item[5] for item in acceptable_results]),
+                         np.std([item[6] for item in acceptable_results]),
+                         np.std([item[7] for item in acceptable_results]),
+                         np.std([item[8] for item in acceptable_results]),
+                         np.std([item[9] for item in acceptable_results]))
+
+      info_line = 'STD:    {:^9.2f}{:^8}{:^55}{:^12.2}{:^12.4f}{:^12.2f}'\
+                    ''.format(std_res, '', std_cell, std_spots, std_mos, std_mq)
+      ps_log_output.append(info_line)
+
+      #mos_cutoff = np.nanmin([m[12] for m in acceptable_results]) + std_mos
+      #subset = [entry for entry in acceptable_results \
+      #          if entry[12] <= mos_cutoff]
+
+      # Select the 25% with lowest mosaicities, then select for most spots
+      sorted_entries = sorted(acceptable_results, key=lambda i: i[12])
+      subset = [j[1] for j in enumerate(sorted_entries) \
+                if j[0] <= len(sorted_entries) * 0.25]
+      sub_spots = [sp[10] for sp in subset]
+      
+      best = subset[np.argmax(sub_spots)]
+     
       with open('{}/selected.lst'.format(os.path.abspath(gs_params.output)), \
                                                             'a') as sel_int:
         sel_int.write('{}\n'.format(input_file))
@@ -151,7 +194,7 @@ def best_file_selection(gs_params, output_entry, log_dir, n_int):
 
       cell = '{:>8.2f}, {:>8.2f}, {:>8.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}'\
              ''.format(best[4], best[5], best[6], best[7], best[8], best[9])
-      info_line = '{:^4}{:^4}{:^9.2f}{:^8}{:^55}{:^12}{:^12.2f}{:^12.2f}'\
+      info_line = '{:^4}{:^4}{:^9.2f}{:^8}{:^55}{:^12}{:^12.4f}{:^12.2f}'\
                   ''.format(best[1], best[2], best[11], best[3], cell,
                             best[10], best[12], best[13])
       ps_log_output.append(info_line)
