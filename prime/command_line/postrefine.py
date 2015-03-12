@@ -32,7 +32,7 @@ def scale_frame_by_mean_I_mproc(frame_no, frame_files, iparams, mean_of_mean_I, 
 def postrefine_by_frame_mproc(frame_no, frame_files, iparams, miller_array_ref, pres_results, avg_mode):
   from prime.postrefine import postref_handler
   prh = postref_handler()
-  if pres_results is None:
+  if len(pres_results) == 0:
     pres_in = None
   else:
     pres_in = pres_results[frame_no]
@@ -298,7 +298,7 @@ if (__name__ == "__main__"):
   n_iters = iparams.n_postref_cycle
   txt_merge_postref = ''
   postrefine_by_frame_result = None
-  postrefine_by_frame_pres_list = None
+  postrefine_by_frame_pres_list = []
   for i in range(n_iters):
     miller_array_ref = miller_array_ref.generate_bijvoet_mates()
     if i == (n_iters-1):
@@ -323,14 +323,16 @@ if (__name__ == "__main__"):
             func=postrefine_by_frame_mproc_wrapper,
             processes=iparams.n_processors)
 
-    postrefine_by_frame_pres_list = [postrefine_by_frame_tuple[0] for postrefine_by_frame_tuple in postrefine_by_frame_result]
-
     postrefine_by_frame_good = []
+    postrefine_by_frame_pres_list = []
     for results in postrefine_by_frame_result:
       if results is not None:
         pres, txt_out_result = results
+        postrefine_by_frame_pres_list.append(pres)
         if pres is not None:
           postrefine_by_frame_good.append(pres)
+      else:
+        postrefine_by_frame_pres_list.append(None)
 
     if len(postrefine_by_frame_good) > 0:
 
