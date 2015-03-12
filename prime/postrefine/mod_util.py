@@ -31,8 +31,6 @@ class intensities_scaler(object):
                      p_set, rs_set, wavelength_set, sin_theta_over_lambda_sq, SE, avg_mode,
                      iparams, pickle_filename_set):
 
-    print "Averaging", miller_index
-
     if avg_mode == 'average':
       sigma_max = 99
     else:
@@ -60,7 +58,7 @@ class intensities_scaler(object):
 
         I_full_as_sigma = (I_full -median_I)/ std_I
 
-        i_seq = flex.int([i for i in range(len(I_full))])
+        i_seq = flex.int(range(len(I_full)))
         i_sel_inv = (flex.abs(I_full_as_sigma) > sigma_max)
         i_seq_sel_inv = i_seq.select(i_sel_inv)
         for _i in i_seq_sel_inv:
@@ -78,6 +76,10 @@ class intensities_scaler(object):
         I = I.select(i_sel)
         sigI = sigI.select(i_sel)
         miller_indices_ori = miller_indices_ori.select(i_sel)
+
+        #update list of pickle files
+        pickle_filename_set_tmp = [pickle_filename_set[_i] for _i in i_seq.select(i_sel)]
+        pickle_filename_set = pickle_filename_set_tmp
 
         txt_obs_out += '%6.2f %6.2f %8.2f %8.0f\n'%(mean_I, median_I, std_I, len(I))
 
@@ -508,6 +510,23 @@ class intensities_scaler(object):
     miller_array_merge = miller_set_merge.array(data=I_merge,
               sigmas=sigI_merge).set_observation_type_xray_intensity()
 
+    #do another resolution filter here
+    i_sel_res = miller_array_merge.resolution_filter_selection(d_min=iparams.merge.d_min, d_max=iparams.merge.d_max)
+    miller_indices_merge = miller_array_merge.indices().select(i_sel_res)
+    I_merge = I_merge.select(i_sel_res)
+    sigI_merge = sigI_merge.select(i_sel_res)
+    miller_array_merge = miller_array_merge.customized_copy(indices=miller_indices_merge,
+        data=I_merge,
+        sigmas=sigI_merge)
+    i_seq=flex.int(range(0,len(i_sel_res)))
+    i_sel_seq=i_seq.select(i_sel_res == True)
+    stat_all_tmp = [stat_all[j] for j in i_seq.select(i_sel_res == True)]
+    stat_all = stat_all_tmp
+    I_even = I_even.select(i_sel_res)
+    I_odd = I_odd.select(i_sel_res)
+
+    print 'N_refl after resolution fitler', len(miller_indices_merge)
+
     #get iso if given
     flag_hklisoin_found = False
     if iparams.hklisoin is not None:
@@ -545,7 +564,7 @@ class intensities_scaler(object):
       stat_filter = []
       i_seq = flex.int([j for j in range(len(binner_merge_indices))])
       print 'Outlier rejection cycle %3.0f'%(i+1)
-      print 'N_refl before filter', len(miller_array_merge.indices())
+      print 'N_refl before outlier rejection', len(miller_array_merge.indices())
       print 'Bin  Nrefl  Nrefl_filtered      <I>       Median(I)       STD(I)       MIN(I)       MAX(I)'
       for i in range(1,iparams.n_bins+1):
         i_binner = (binner_merge_indices == i)
@@ -618,7 +637,7 @@ class intensities_scaler(object):
 
 
 
-      print 'N_refl after filter', len(miller_array_merge.indices())
+      print 'N_refl after outlier rejection', len(miller_array_merge.indices())
 
     if output_mtz_file_prefix != '':
       #write as mtz file
