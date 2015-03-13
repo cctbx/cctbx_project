@@ -480,6 +480,7 @@ dxtbx/format/FormatCBFMiniPilatusDLS6MSN119.py -text
 dxtbx/format/FormatCBFMiniPilatusHelpers.py -text
 dxtbx/format/FormatCBFMiniPilatusSOLEILPX16MSN106.py -text
 dxtbx/format/FormatCBFMiniPilatusSPring8_6MSN125.py -text
+dxtbx/format/FormatCBFMiniPilatusXXX.py -text
 dxtbx/format/FormatDIP2030b.py -text
 dxtbx/format/FormatHDF5.py -text
 dxtbx/format/FormatHDF5Dectris.py -text
