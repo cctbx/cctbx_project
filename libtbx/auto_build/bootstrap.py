@@ -281,7 +281,7 @@ class elbow_module(SourceModule):
 
 class amber_module(SourceModule):
   module = 'amber_adaptbx'
-  authenticated = ['svn', 'svn+ssh://pawelrc@cci.lbl.gov/amber_adaptbx/trunk']
+  authenticated = ['svn', 'svn+ssh://%(cciuser)@cci.lbl.gov/amber_adaptbx/trunk']
 
 class ksdssp_module(SourceModule):
   module = 'ksdssp'
