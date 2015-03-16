@@ -87,7 +87,7 @@ def get_Eoc_corrected_observations(pickle_filename, iparams):
   roty = 0
 
   #calc partiality
-  partiality_init, delta_xy_init, rs_init, rh_init = calc_partiality_anisotropy_set(crystal_init_orientation.unit_cell(), rotx, roty, observations_original.indices(), ry, rz, spot_radius, re, two_theta, alpha_angle, wavelength, crystal_init_orientation, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm, iparams.partiality_model)
+  partiality_init, delta_xy_init, rs_init, rh_init = calc_partiality_anisotropy_set(crystal_init_orientation.unit_cell(), rotx, roty, observations_original.indices(), ry, rz, spot_radius, re, two_theta, alpha_angle, wavelength, crystal_init_orientation, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm, iparams.partiality_model, iparams.flag_beam_divergence)
 
   from prime.postrefine.mod_leastsqr import calc_full_refl
   I_full = calc_full_refl(observations_original.data(), sin_theta_over_lambda_sq,
