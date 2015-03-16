@@ -448,6 +448,7 @@ dxtbx/boost_python/to_ewald_sphere_helpers.cc -text
 dxtbx/command_line/display_parallax_correction.py -text
 dxtbx/command_line/export_bitmaps.py -text
 dxtbx/command_line/import_datablock.py -text
+dxtbx/command_line/install_format.py -text
 dxtbx/command_line/overload.py -text
 dxtbx/command_line/print_header.py -text
 dxtbx/command_line/print_matching_images.py -text
