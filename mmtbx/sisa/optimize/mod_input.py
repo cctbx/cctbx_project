@@ -18,6 +18,12 @@ title = None
 flag_log_verbose_on = False
     .type = bool
     .help = Turn this flag on to output more information.
+flag_auto_dm = True
+    .type = bool
+    .help = Turn this flag to False to disable automatic density modification.
+seq_file = None
+    .type = str
+    .help = Sequence file is needed for automatic density modification.
 hkl
   .help = Parameters related to hkl input file.
 {
@@ -86,7 +92,7 @@ ga
   n_processors = 32
     .type = int
     .help = No. processors.
-  percent_f_squared = 10
+  percent_f_squared = 25
     .type = float
     .help = Percent of F^2 used in selecting no. of reflections in each stack.
   flag_excl_centric = False
@@ -168,6 +174,7 @@ def process_input(argv=None):
       user_phil.append(iotbx.phil.parse(open(arg).read()))
     else :
       try :
+        print arg
         user_phil.append(iotbx.phil.parse(arg))
       except RuntimeError, e :
         raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
@@ -175,12 +182,14 @@ def process_input(argv=None):
   working_phil = master_phil.fetch(sources=user_phil)
   params = working_phil.extract()
 
-  #generate run_no folder
+  if params.flag_auto_dm:
+    if params.seq_file is None:
+      raise Sorry("Sequence file is needed for automatic density modification. You can turn flag_auto_dm to False to disable this step.")
+
+  #generate run_no folder only if the folder does not exist.
   project_run_path = params.project_name + '/' + params.run_name
   if os.path.exists(project_run_path):
-    import shutil
-    shutil.rmtree(project_run_path)
-    print 'Folder :', project_run_path, ' exists. This folder will be removed'
+    raise Sorry("The run number %s already exists."%project_run_path)
 
   os.makedirs(project_run_path)
 
@@ -198,7 +207,7 @@ def process_input(argv=None):
   with Capturing() as output:
     working_phil.show()
 
-  txt_out = 'sisa.optimize input:\n'
+  txt_out = 'sisa.optimize (v.0 150315a) input:\n'
   for one_output in output:
     txt_out += one_output + '\n'
 

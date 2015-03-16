@@ -8,7 +8,7 @@ Description : Commands linked to sisa libraries.
 from cctbx.array_family import flex
 from libtbx.easy_mp import pool_map
 import math
-import sys
+import sys,os
 
 def read_input(args):
   from mmtbx.sisa.optimize.mod_input import process_input
@@ -118,3 +118,12 @@ if __name__=="__main__":
   f = open(iparams.project_name + '/' + iparams.run_name +'/log.txt', 'w')
   f.write(txt_out)
   f.close()
+
+  print 'Sisa done.'
+
+  if iparams.flag_auto_dm:
+    print 'Proceed with automatic density modification...(your density-modified map will be AutoBuild_run_n_/overall_best_denmod_map_coeffs.mtz.'
+    cmd='phenix.autobuild data=' + file_name_out + ' seq_file=' + iparams.seq_file + \
+        ' maps_only=True n_cycle_build_max=1 n_cycle_rebuild_max=0'
+    print 'Running: '+cmd
+    os.system(cmd)
