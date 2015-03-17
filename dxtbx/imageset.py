@@ -85,7 +85,7 @@ class NullReader(ReaderBase):
   def get_path(self, index=None):
     ''' Get an image path. '''
     if index == None:
-      return self._path[0]
+      return self._filenames[0]
     return self._filenames[index]
 
   def is_valid(self, indices=None):
