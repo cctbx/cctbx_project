@@ -438,7 +438,7 @@ class Builder(object):
 
     # Cleanup
     if cleanup:
-      self.cleanup(['dist', 'tests', 'doc', 'tmp', 'build'])
+      self.cleanup(['dist', 'tests', 'doc', 'tmp', 'base', 'build'])
     else:
       self.cleanup(['dist', 'tests', 'doc', 'tmp'])
 
