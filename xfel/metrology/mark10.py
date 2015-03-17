@@ -833,9 +833,9 @@ class fit_translation4(mark5_iteration,fit_translation2):
 
         parameters = parameters_bp3(
            indices=indices, orientation=effective_orientation,
-           incident_beam=col((0.,0.,-1.)),
+           incident_beam=col(correction_vectors.INCIDENT_BEAM),
            packed_tophat=col((1.,1.,0.)),
-           detector_normal=col((0.,0.,-1.)),
+           detector_normal=col(correction_vectors.DETECTOR_NORMAL),
            detector_fast=col((0.,1.,0.)),detector_slow=col((1.,0.,0.)),
            pixel_size=col((PIXEL_SZ,PIXEL_SZ,0)),
            pixel_offset=col((0.,0.,0.0)),
