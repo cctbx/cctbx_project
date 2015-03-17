@@ -176,6 +176,94 @@ class correction_vectors(correction_vector_store):
    self.last_functional = delrsq
    return delrsq
 
+ INCIDENT_BEAM = (0.,0.,-1.)
+ DETECTOR_NORMAL = (0.,0.,-1.)
+
+ @staticmethod
+ def standalone_check(self,setting_id,entry,d):
+
+    wavelength = (d['wavelength'])
+    beam_x = (d['xbeam'])
+    beam_y = (d['ybeam'])
+    distance = (d['distance'])
+    orientation = (d['current_orientation'][0])
+
+    print "testing frame....................",entry
+
+    for cv in d['correction_vectors'][0]:
+
+      from rstbx.bandpass import use_case_bp3, parameters_bp3
+      from scitbx.matrix import col
+      from math import hypot, pi
+      indices = flex.miller_index()
+      indices.append(cv['hkl'])
+      parameters = parameters_bp3(
+        indices=indices,
+        orientation=orientation,
+        incident_beam=col(self.INCIDENT_BEAM),
+        packed_tophat=col((1.,1.,0.)),
+        detector_normal=col(self.DETECTOR_NORMAL),
+        detector_fast=col((0.,1.,0.)),detector_slow=col((1.,0.,0.)),
+        pixel_size=col((0.11,0.11,0)), # XXX hardcoded, twice!
+        pixel_offset=col((0.,0.,0.0)),
+        distance=distance,
+        detector_origin=col((-beam_x,-beam_y,0))
+      )
+      ucbp3 = use_case_bp3(parameters=parameters)
+      ucbp3.set_active_areas(self.tiles)
+      integration_signal_penetration=0.5
+      ucbp3.set_sensor_model(thickness_mm=0.5,
+                             mu_rho=8.36644, # CS_PAD detector at 1.3 Angstrom
+                             signal_penetration=integration_signal_penetration)
+
+      ucbp3.set_mosaicity(0.)
+      ucbp3.set_bandpass(wavelength,
+                         wavelength)
+      ucbp3.set_orientation(orientation)
+      ucbp3.set_domain_size(5000.)
+
+      ucbp3.picture_fast_slow_force()
+
+      ucbp3_prediction = 0.5 * (ucbp3.hi_E_limit + ucbp3.lo_E_limit)
+      diff = hypot(ucbp3_prediction[0][0] - cv['predspot'][1],
+                   ucbp3_prediction[0][1] - cv['predspot'][0])
+
+      if diff > 5:
+        print "HATTNE INDEXING SLIPUP"
+        return False
+
+      # For some reason, the setting_id is recorded for each
+      # correction vector as well--assert that it is consistent.
+      #if cv['setting_id'] != setting_id:
+      #  print "HATTNE BIG SLIPUP 2"
+      if not cv['setting_id'] == setting_id: return False
+
+      # For each observed spot, figure out what tile it is on, and
+      # store in itile.  XXX This is probably not necessary here, as
+      # correction_vector_store::register_line() does the same thing.
+      obstile = None
+      for i in range(0, len(self.tiles), 4):
+        if     cv['obsspot'][0] >= self.tiles[i + 0] \
+           and cv['obsspot'][0] <= self.tiles[i + 2] \
+           and cv['obsspot'][1] >= self.tiles[i + 1] \
+           and cv['obsspot'][1] <= self.tiles[i + 3]:
+          obstile = i
+          break
+      if obstile is None: return False
+
+      spotfx = (cv['obsspot'][0])
+      spotfy = (cv['obsspot'][1])
+      spotcx = (cv['predspot'][0])
+      spotcy = (cv['predspot'][1])
+      correction_vector_x = spotcx - spotfx
+      correction_vector_y = spotcy - spotfy
+      length = hypot(correction_vector_x, correction_vector_y)
+      if length > 8:
+        print "LENGTH SLIPUP",length
+        return False
+
+    return True
+
  def read_data(self,params):
   from os import listdir, path
   from libtbx import easy_pickle
@@ -270,6 +358,8 @@ class correction_vectors(correction_vector_store):
         and  len(d['effective_tiling']) % 8 == 0
       self.tiles = d['effective_tiling']
 
+    if not self.standalone_check(self,setting_id,entry,d): continue
+
     # Reading the frame data.  The frame ID is just the index of the
     # image.
     self.FRAMES['frame_id'].append(len(self.FRAMES['frame_id']) + 1) # XXX try zero-based here
@@ -308,9 +398,9 @@ class correction_vectors(correction_vector_store):
       parameters = parameters_bp3(
         indices=indices,
         orientation=self.FRAMES['orientation'][-1],
-        incident_beam=col((0.,0.,-1.)),
+        incident_beam=col(self.INCIDENT_BEAM),
         packed_tophat=col((1.,1.,0.)),
-        detector_normal=col((0.,0.,-1.)),
+        detector_normal=col(self.DETECTOR_NORMAL),
         detector_fast=col((0.,1.,0.)),detector_slow=col((1.,0.,0.)),
         pixel_size=col((0.11,0.11,0)), # XXX hardcoded, twice!
         pixel_offset=col((0.,0.,0.0)),
