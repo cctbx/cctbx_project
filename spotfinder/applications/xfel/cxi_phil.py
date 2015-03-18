@@ -135,6 +135,8 @@ def cxi_versioned_extract_detail(args):
     #TT = [0]*128
     working_extract.distl.tile_translations = TT
 
+    print "IN CXI %>! WITH ",working_extract.distl.tile_translations
+
     # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y
     working_extract.distl.quad_translations = [-3,-1,-1,-5,-13,2,-7,-4]
     return working_extract
@@ -564,28 +566,27 @@ def cxi_versioned_extract_detail(args):
     working_extract = working_phil.command_extractor
 
     from scitbx.array_family import flex
+    # Based on the LD91 experiment, runs 95-114, redetermined 3/17/15 NKS
+    corrected_auxiliary_translations = flex.int([
+       0,  8,  0,  8, -1, -1, -1, -1,
+       8,  2,  8,  2,  3,  2,  3,  2,
+       5, -6,  5, -6,  3, -1,  3, -1,
+       2, -1,  2, -1, -2,  1, -2,  1,
 
-    # FIXME figure out why the sign flip was needed
-    corrected_auxiliary_translations = -flex.int([
-       0, -8,  0, -8,  1,  1,  1,  1,
-      -8, -2, -8, -2, -3, -3, -3, -3,
-      -5,  5, -5,  5, -3,  1, -3,  1,
-      -2,  1, -2,  1,  2, -1,  2, -1,
+       4,  1,  4,  1,  1,  1,  1,  1,
+       0, -7,  0, -7,  2, -2,  2, -2,
+      -1, -4, -1, -4,  8, -4,  8, -4,
+       7, -7,  7, -7,  7, -1,  7, -1,
 
-      -4, -1, -4, -1, -1, -1, -1, -1,
-       0,  8,  0,  8, -2,  2, -2,  2,
-       1,  4,  1,  4, -8,  5, -8,  5,
-      -7,  7, -7,  7, -7,  1, -7,  1,
+       1, -5,  1, -5,  2, -1,  2, -1,
+      -8, -3, -8, -3, -1, -5, -1, -5,
+      -4,  6, -4,  6, -7, -3, -7, -3,
+      -7,  1, -7,  1,  1, -1,  1, -1,
 
-      -1,  5, -1,  5, -2,  0, -2,  0,
-       8,  3,  8,  3,  1,  5,  1,  5,
-       4, -6,  4, -6,  8,  3,  8,  3,
-       7, -2,  7, -2, -1,  1, -1,  1,
-
-       8, -3,  8, -3,  0, -2,  0, -2,
-       3, -9,  3, -9,  4, -2,  4, -2,
-       0, -6,  0, -6,  7, -8,  7, -8,
-       3, -2,  3, -2,  2, -3,  2, -3])
+      -8,  3, -8,  3,  0,  1,  0,  1,
+      -3,  8, -3,  8, -4,  1, -4,  1,
+       0,  6,  0,  6, -7,  7, -7,  7,
+      -3,  2, -3,  2, -3,  3, -3,  3])
 
     working_extract.distl.tile_translations = list(corrected_auxiliary_translations)
 
