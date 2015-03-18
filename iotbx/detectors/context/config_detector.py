@@ -38,7 +38,7 @@ def known_als_detectors(iobj):
   if sn == 447 and ADSC447_at_ALS(iobj): return [sn]
   else: return []
 
-known_als831_detectors = [907,442]
+known_als831_detectors = [907,442,926]
 
 def als_beam_rules(iobj): #take an ADSC image object
 
