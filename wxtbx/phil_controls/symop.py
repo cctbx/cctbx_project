@@ -11,6 +11,7 @@ class SymopCtrl (ValidatedTextCtrl) :
     return SymopValidator()
 
   def SetSymop (self, value) :
+    if type(value)==type(u'abc'): value = value.encode("ascii", "ignore")
     if (value is None) or (value is Auto) :
       ValidatedTextCtrl.SetValue(self, "")
     elif (isinstance(value, str)) :
@@ -19,7 +20,7 @@ class SymopCtrl (ValidatedTextCtrl) :
         rt_mx = sgtbx.rt_mx(symbol=value)
       except ValueError :
         raise Sorry("Inappropriate value '%s' for %s." % (value,
-          sself.GetName()))
+          self.GetName()))
       else :
         ValidatedTextCtrl.SetValue(self, str(value))
     else :
@@ -40,6 +41,7 @@ class SymopCtrl (ValidatedTextCtrl) :
 
 class SymopValidator (TextCtrlValidator) :
   def CheckFormat (self, value) :
+    if type(value)==type(u'abc'): value = value.encode("ascii", "ignore")
     from cctbx import sgtbx
     rt_mx = sgtbx.rt_mx(symbol=value)
     return value
