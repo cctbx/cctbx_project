@@ -138,18 +138,14 @@ struct graph_export
   boost::python::object
   vertex_label(Graph const& graph, typename converter::type vertex)
   {
-    typedef typename boost::property_map< Graph, boost::vertex_name_t>::const_type property_map_t;
-    property_map_t property_map =  boost::get( boost::vertex_name_t(), graph );
-    return boost::get( property_map, converter::backward( vertex ) );
+    return boost::get( boost::vertex_name_t(), graph, converter::backward( vertex ) );
   }
 
   static
   boost::python::object
   edge_weight(Graph const& graph, edge_descriptor edge)
   {
-    typedef typename boost::property_map< Graph, boost::edge_weight_t>::const_type property_map_t;
-    property_map_t property_map =  boost::get( boost::edge_weight_t(), graph );
-    return boost::get( property_map, edge );
+    return boost::get( boost::edge_weight_t(), graph, edge );
   }
 
 
@@ -180,14 +176,14 @@ struct graph_export
   std::size_t
   num_vertices(Graph &graph)
   {
-        return boost::num_vertices(graph);
+    return boost::num_vertices(graph);
   }
 
   static
   std::size_t
   num_edges(Graph &graph)
   {
-        return boost::num_edges(graph);
+    return boost::num_edges(graph);
   }
 
   static
@@ -212,8 +208,8 @@ struct graph_export
         ( arg( "vertex1" ), arg( "vertex2" ), arg( "weight" ) = object() )
         )
       .def( "remove_vertex", remove_vertex, arg( "vertex" ) )
-          .def("num_vertices", num_vertices)
-          .def("num_edges", num_edges)
+      .def("num_vertices", num_vertices )
+      .def("num_edges", num_edges )
       ;
   }
 };

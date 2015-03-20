@@ -1,5 +1,6 @@
 #include <boost_adaptbx/graph/graph_type.hpp>
 #include <boost_adaptbx/graph/graph_export_adaptor.hpp>
+#include <boost_adaptbx/graph/vertex_map.hpp>
 
 #include <boost_adaptbx/exporting.hpp>
 
@@ -14,7 +15,6 @@
 
 #include <map>
 #include <iterator>
-#include <iostream>
 
 namespace boost_adaptbx
 {
@@ -127,81 +127,7 @@ struct mcgregor_common_subgraphs_unique_export
   typedef boost::graph_traits< Graph > graph_traits;
   typedef typename graph_traits::vertex_descriptor vertex_descriptor;
   typedef typename graph_traits::vertices_size_type vertices_size_type;
-
-  static
-  void
-  mcgregor_common_subgraphs_unique(
-    graph_type const& graph1,
-    graph_type  const& graph2,
-    boost::python::object vertex_equality,
-    boost::python::object edge_equality,
-    boost::python::object callback
-    )
-  {
-    // Vertex equality
-    typedef typename boost::property_map< graph_type, boost::vertex_name_t>::const_type vertex_name_map_t;
-    typedef python_property_equivalent< vertex_name_map_t > vertex_comp_t;
-    vertex_comp_t vertex_comp = make_python_property_equivalent(
-      boost::get( boost::vertex_name_t(), graph1 ),
-      boost::get( boost::vertex_name_t(), graph2 ),
-      vertex_equality
-      );
-
-    // Edge equality
-    typedef typename boost::property_map< graph_type, boost::edge_weight_t >::const_type edge_weight_map_t;
-    typedef python_property_equivalent< edge_weight_map_t > edge_comp_t;
-    edge_comp_t edge_comp = make_python_property_equivalent(
-      boost::get( boost::edge_weight_t(), graph1 ),
-      boost::get( boost::edge_weight_t(), graph2 ),
-      edge_equality
-      );
-
-    // Callback
-    mcg_python_callback_adaptor< graph_type > mcg_callback( graph1, graph2, callback );
-    typedef std::map< vertex_descriptor, vertices_size_type > index_map_type;
-    index_map_type index_map1, index_map2;
-    graph_export_adaptor::fill_vertex_index_map(
-      boost::vertices( graph1 ),
-      std::inserter( index_map1, index_map1.begin() )
-      );
-    graph_export_adaptor::fill_vertex_index_map(
-      boost::vertices( graph2 ),
-      std::inserter( index_map2, index_map2.begin() )
-      );
-
-    typedef boost::associative_property_map< index_map_type >
-      index_property_map_type;
-    boost::mcgregor_common_subgraphs_unique(
-      graph1,
-      graph2,
-      index_property_map_type( index_map1 ),
-      index_property_map_type( index_map2 ),
-      edge_comp,
-      vertex_comp,
-      true,
-      mcg_callback
-      );
-  }
-
-  static void process()
-  {
-    using namespace boost::python;
-
-    def(
-      "mcgregor_common_subgraphs_unique",
-      mcgregor_common_subgraphs_unique,
-      ( arg( "graph1" ), arg( "graph2" ), arg( "vertex_equality" ),
-        arg( "edge_equality" ), arg( "callback" ) )
-      );
-  }
-};
-
-template< typename EdgeList, typename VertexProperty, typename EdgeProperty >
-struct mcgregor_common_subgraphs_unique_export<
-  boost::adjacency_list< EdgeList, boost::vecS, boost::undirectedS, VertexProperty, EdgeProperty >
-  >
-{
-  typedef boost::adjacency_list< EdgeList, boost::vecS, boost::undirectedS, VertexProperty, EdgeProperty > graph_type;
+  typedef vertex_map::index_map< graph_type > index_map_type;
 
   static
   void
@@ -234,11 +160,13 @@ struct mcgregor_common_subgraphs_unique_export<
     // Callback
     mcg_python_callback_adaptor< graph_type > mcg_callback( graph1, graph2, callback );
 
+    // Call
+    index_map_type index_map1( graph1 ), index_map2( graph2 );
     boost::mcgregor_common_subgraphs_unique(
       graph1,
       graph2,
-      boost::get( boost::vertex_index_t(), graph1 ),
-      boost::get( boost::vertex_index_t(), graph2 ),
+      index_map1.get(),
+      index_map2.get(),
       edge_comp,
       vertex_comp,
       true,

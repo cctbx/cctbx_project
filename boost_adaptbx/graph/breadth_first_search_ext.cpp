@@ -1,5 +1,6 @@
 #include <boost_adaptbx/graph/graph_type.hpp>
 #include <boost_adaptbx/graph/graph_export_adaptor.hpp>
+#include <boost_adaptbx/graph/vertex_map.hpp>
 
 #include <boost_adaptbx/exporting.hpp>
 
@@ -99,10 +100,8 @@ struct breadth_first_search_export
   typedef Graph graph_type;
   typedef boost::graph_traits< graph_type > graph_traits;
   typedef typename graph_traits::vertex_descriptor vertex_descriptor;
-  typedef std::map< vertex_descriptor, boost::default_color_type > color_map_type;
-  typedef boost::associative_property_map< color_map_type >
-    color_property_map_type;
   typedef graph_export_adaptor::vertex_descriptor_converter< vertex_descriptor > converter;
+  typedef vertex_map::index_map< Graph > index_map_type;
 
   static void breadth_first_search(
     graph_type const& graph,
@@ -111,47 +110,12 @@ struct breadth_first_search_export
     )
   {
     using namespace boost;
-    color_map_type color_map;
+    index_map_type index_map( graph );
     boost::breadth_first_search(
       graph,
       converter::backward( vertex ),
       visitor( bfs_visitor_adaptor< graph_type >( vis ) ).
-      color_map( color_property_map_type( color_map ) )
-      );
-  }
-
-  static void process()
-  {
-    using namespace boost::python;
-
-    def(
-      "breadth_first_search",
-      breadth_first_search,
-      ( arg( "graph" ), arg( "vertex" ), arg( "visitor" ) )
-      );
-  }
-};
-
-template< typename EdgeList, typename VertexProperty, typename EdgeProperty >
-struct breadth_first_search_export<
-  boost::adjacency_list< EdgeList, boost::vecS, boost::undirectedS, VertexProperty, EdgeProperty >
-  >
-{
-  typedef boost::adjacency_list< EdgeList, boost::vecS, boost::undirectedS, VertexProperty, EdgeProperty > graph_type;
-  typedef boost::graph_traits< graph_type > graph_traits;
-  typedef typename graph_traits::vertex_descriptor vertex_descriptor;
-
-  static void breadth_first_search(
-    graph_type const& graph,
-    vertex_descriptor vertex,
-    boost::python::object vis
-    )
-  {
-    using namespace boost;
-    boost::breadth_first_search(
-      graph,
-      vertex,
-      visitor( bfs_visitor_adaptor< graph_type >( vis ) )
+      vertex_index_map( index_map.get() )
       );
   }
 
