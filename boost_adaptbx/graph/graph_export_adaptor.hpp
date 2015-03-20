@@ -74,18 +74,6 @@ struct vertex_descriptor_backconverter
   }
 };
 
-template< typename VertexRange, typename OutputIterator >
-void
-fill_vertex_index_map(VertexRange range, OutputIterator out)
-{
-  std::size_t index = 0;
-
-  for (;range.first != range.second; ++range.first)
-  {
-    *(out++) = std::make_pair( *range.first, index++ );
-  }
-}
-
 } // namespace graph_export_adaptor
 } // namespace boost_adaptbx
 

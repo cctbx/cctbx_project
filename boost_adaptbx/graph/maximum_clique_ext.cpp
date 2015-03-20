@@ -19,7 +19,6 @@
 #include <boost/mpl/if.hpp>
 #include <boost/type_traits.hpp>
 
-#include <map>
 #include <vector>
 
 namespace boost_adaptbx
@@ -142,12 +141,6 @@ struct maximum_clique_rascal_export
   typedef boost::graph_traits< Graph > graph_traits;
   typedef typename graph_traits::vertex_descriptor vertex_descriptor;
   typedef typename graph_traits::vertices_size_type vertices_size_type;
-  typedef std::map< vertex_descriptor, vertices_size_type > component_map_type;
-  typedef boost::associative_property_map< component_map_type >
-    component_property_map_type;
-  typedef std::map< vertex_descriptor, boost::default_color_type > color_map_type;
-  typedef boost::associative_property_map< color_map_type >
-    color_property_map_type;
   typedef graph_export_adaptor::vertex_descriptor_converter< vertex_descriptor > converter;
   typedef graph_export_adaptor::vertex_descriptor_backconverter< vertex_descriptor > backconverter;
   typedef boost::python::stl_input_iterator< typename converter::result_type > py_vertex_descriptor_iterator;

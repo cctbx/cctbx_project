@@ -1,13 +1,14 @@
 #ifndef BOOST_ADAPTBX_GRAPH_MAXIMUM_CLIQUE_GREEDY_H
 #define BOOST_ADAPTBX_GRAPH_MAXIMUM_CLIQUE_GREEDY_H
 
+#include <boost_adaptbx/graph/vertex_map.hpp>
+
 #include <boost/graph/graph_traits.hpp>
 #include <boost/tuple/tuple.hpp>
 
 #include <vector>
 #include <set>
 #include <queue>
-#include <map>
 #include <algorithm>
 #include <iterator>
 #include <utility>
@@ -166,9 +167,10 @@ struct exdegree_scorer_cached
   typedef typename graph_traits::vertex_descriptor vertex_descriptor;
   typedef typename graph_traits::vertex_iterator vertex_iterator;
 
-  typedef std::map< vertex_descriptor, vertices_size_type > vertex_exdegree_mapping_type;
-  typedef typename vertex_exdegree_mapping_type::const_iterator
-    vertex_exdegree_mapping_iterator;
+  typedef vertex_map::generic_vertex_map< graph_type, vertices_size_type >
+    vertex_exdegree_mapping_type;
+  typedef typename vertex_exdegree_mapping_type::vertex_map_type
+    vertex_exdegree_property_map_type;
 
   typedef Partition partition_type;
   typedef typename partition_type::vertex_set_type vertex_set_type;
@@ -180,23 +182,24 @@ private:
   vertex_exdegree_mapping_type exdegree_for_;
 
 public:
-  exdegree_scorer_cached(graph_type const& graph)
+  exdegree_scorer_cached(graph_type const& graph) : exdegree_for_( graph )
   {
     vertex_iterator v, vend;
     adjacency_iterator av, avend;
+    vertex_exdegree_property_map_type ve_propmap( exdegree_for_.get() );
 
     for ( boost::tie( v, vend ) = boost::vertices( graph ); v != vend; ++v )
     {
       boost::tie( av, avend ) = boost::adjacent_vertices( *v, graph );
-      exdegree_for_[ *v ] =  std::distance( av, avend );
+      boost::put( ve_propmap, *v, std::distance( av, avend ) );
     }
   }
 
   result_type operator ()(partition_type const& partition) const
   {
     vertices_size_type vertices_count( 0 );
-    vertex_exdegree_mapping_iterator pos;
     vertex_set_type const& neighbours = partition.neighbours();
+    vertex_exdegree_property_map_type ve_propmap( exdegree_for_.get() );
 
     for (
       vertices_set_const_iterator it = neighbours.begin();
@@ -204,9 +207,7 @@ public:
       ++it
       )
     {
-      pos = exdegree_for_.find( *it );
-      assert ( pos != exdegree_for_.end() );
-      vertices_count += pos->second;
+      vertices_count += boost::get( ve_propmap, *it );
     }
 
     result_type( neighbours.size(), vertices_count );

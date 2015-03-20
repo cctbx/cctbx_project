@@ -35,6 +35,7 @@ boost_adaptbx/graph/tests/tst_graph_breadth_first_search.py -text
 boost_adaptbx/graph/tests/tst_graph_connected_component_algorithm.py -text
 boost_adaptbx/graph/tests/tst_graph_graph_structure_comparison.py -text
 boost_adaptbx/graph/tests/tst_graph_maximum_clique.py -text
+boost_adaptbx/graph/vertex_map.hpp -text
 boost_adaptbx/hash.h -text
 boost_adaptbx/libtbx_config -text
 boost_adaptbx/libtbx_refresh.py -text

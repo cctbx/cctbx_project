@@ -1,6 +1,8 @@
 #ifndef BOOST_ADAPTBX_GRAPH_MAXIMUM_CLIQUE_RASCAL_H
 #define BOOST_ADAPTBX_GRAPH_MAXIMUM_CLIQUE_RASCAL_H
 
+#include <boost_adaptbx/graph/vertex_map.hpp>
+
 #include <boost/graph/sequential_vertex_coloring.hpp>
 #include <boost/graph/filtered_graph.hpp>
 #include <boost/graph/copy.hpp>
@@ -10,7 +12,6 @@
 #include <boost/tuple/tuple.hpp>
 #include <boost/shared_ptr.hpp>
 
-#include <map>
 #include <vector>
 #include <set>
 #include <stack>
@@ -104,16 +105,20 @@ struct initial_partition_by_vertex_coloring
     typedef typename graph_traits::vertex_descriptor vertex_descriptor;
     typedef typename graph_traits::vertex_iterator vertex_iterator;
     typedef typename graph_traits::vertices_size_type vertices_size_type;
-    typedef std::map< vertex_descriptor, vertices_size_type  > map_type;
-    typedef boost::associative_property_map< map_type > property_map_type;
+
+    typedef vertex_map::generic_vertex_map< VertexListGraph, vertices_size_type >
+      color_map_type;
+    typedef typename color_map_type::vertex_map_type color_property_map_type;
+
     typedef rascal_state< vertex_descriptor, vertices_size_type > state_type;
     typedef typename state_type::vertex_group_type vertex_group_type;
     typedef typename state_type::vertex_partition_type vertex_partition_type;
 
-    map_type color_map;
+    color_map_type color_map( g );
+    color_property_map_type color_property_map( color_map.get() );
     vertices_size_type color_count = boost::sequential_vertex_coloring(
       g,
-      property_map_type( color_map )
+      color_property_map
       );
 
     state_type result( color_count );
@@ -124,7 +129,7 @@ struct initial_partition_by_vertex_coloring
     for( boost::tie( v, vend ) = boost::vertices( g ); v != vend; ++v )
     {
       vertex_descriptor const& vertex = *v;
-      partition[ color_map[ vertex ] ].insert( vertex );
+      partition[ boost::get( color_property_map, vertex ) ].insert( vertex );
     }
 
     std::stable_sort( partition.begin(), partition.end(), size_sort_predicate() );
@@ -186,11 +191,7 @@ selected_subgraph(Graph1 const& graph, Graph2& subgraph, InputIterator begin, In
 
   typedef boost::filtered_graph< graph_type, edge_predicate_type, vertex_predicate_type >
     filtered_graph_type;
-  typedef boost::graph_traits< filtered_graph_type > filtered_graph_traits;
-  typedef typename filtered_graph_traits::vertex_descriptor filtered_vertex_descriptor;
-  typedef typename filtered_graph_traits::vertices_size_type filtered_vertices_size_type;
-  typedef std::map< filtered_vertex_descriptor, filtered_vertices_size_type > index_map_type;
-  typedef boost::associative_property_map< index_map_type > index_property_map_type;
+  typedef vertex_map::index_map< filtered_graph_type > index_map_type;
 
   vertex_predicate_type keep_vertices_pred( begin, end );
   vertex_descriptor_set_type const& keep_vertices_set = keep_vertices_pred.selection();
@@ -221,17 +222,12 @@ selected_subgraph(Graph1 const& graph, Graph2& subgraph, InputIterator begin, In
     keep_vertices_pred
     );
 
-  index_map_type index_map;
-  graph_export_adaptor::fill_vertex_index_map(
-    boost::vertices( filtgraph ),
-    std::inserter( index_map, index_map.begin() )
-    );
-
+  index_map_type index_map( filtgraph );
 
   boost::copy_graph(
     filtgraph,
     subgraph,
-    boost::vertex_index_map( index_property_map_type( index_map ) )
+    boost::vertex_index_map( index_map.get() )
     );
 }
 
@@ -246,8 +242,8 @@ struct upper_bound_by_chromatic_number
     typedef typename graph_traits::vertex_descriptor vertex_descriptor;
     typedef typename graph_traits::vertices_size_type vertices_size_type;
 
-    typedef std::map< vertex_descriptor, vertices_size_type  > map_type;
-    typedef boost::associative_property_map< map_type > property_map_type;
+    typedef vertex_map::generic_vertex_map< VertexListGraph, vertices_size_type >
+      color_map_type;
 
     std::vector< vertex_descriptor > vertices;
 
@@ -263,8 +259,8 @@ struct upper_bound_by_chromatic_number
     graph_type subgraph;
     selected_subgraph( graph, subgraph, vertices.begin(), vertices.end() );
 
-    map_type color_map;
-    return boost::sequential_vertex_coloring( subgraph, property_map_type( color_map ) );
+    color_map_type color_map( graph );
+    return boost::sequential_vertex_coloring( subgraph, color_map.get() );
   }
 
 };
