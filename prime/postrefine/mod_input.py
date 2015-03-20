@@ -21,6 +21,19 @@ averaging_engine = both *python cpp
   .type = choice
   .help = Which avearging engine to use, python or cpp.  If both, then both are \
     used and the results are compared to each other to verify binary identity
+icering
+  .help = "Allowing exclusion of icering."
+{
+  flag_on = False
+    .type = bool
+    .help = Turn this flag on to allow exclusion of icering.
+  d_upper = 3.9
+    .type = float
+    .help = Minimum resolution.
+  d_lower = 3.85
+    .type = float
+    .help = Maximum resolution.
+}
 scale
   .help = "Parameters used to generate mean-intensity scaled reference set."
 {
@@ -165,6 +178,9 @@ target_unit_cell = None
   .type = unit_cell
   .help = Target unit-cell parameters are used to discard outlier cells.
   .optional = False
+flag_override_unit_cell = False
+  .type = bool
+  .help = Set to True to overide unit cell in observations with the target cell.
 target_space_group = None
   .type = str
   .help = Target space group.
