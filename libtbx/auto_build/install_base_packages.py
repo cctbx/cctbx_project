@@ -952,7 +952,7 @@ Installation of Python packages may fail.
         "--mac_framework_prefix=%s " \
         "--osx_cocoa " \
         "%s " \
-        %(self.python_exe, self.base_dir, 6, self.base_dir, debug_flag)
+        %(self.python_exe, self.base_dir, self.nproc, self.base_dir, debug_flag)
       print >> self.log, macbuildstr
       self.call(macbuildstr, log=pkg_log)
     else:
