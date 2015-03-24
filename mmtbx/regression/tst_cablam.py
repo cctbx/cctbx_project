@@ -5,7 +5,7 @@ from iotbx import pdb
 import libtbx.load_env
 import os
 
-ref_cablam_give_text = """residue : outlier_type : contour_level : ca_contour_level : sec struc recommendation : alpha score : beta score : threeten score
+ref_cablam_give_text = """residue : outlier_type : contour_level : ca_contour_level : sec struc recommendation : alpha score : beta score : three-ten score
      3  ILE:                    :0.52764:0.49162:                 :0.06929:0.00000:0.00000
      4  PHE:                    :0.83948:0.80426: try alpha helix :0.34122:0.00000:0.00936
      5  GLU:                    :0.81271:0.79155: try alpha helix :0.31550:0.00000:0.00445
@@ -20,7 +20,7 @@ ref_cablam_give_text = """residue : outlier_type : contour_level : ca_contour_le
     14  ARG:                    :0.41594:0.41432: try beta sheet  :0.00000:0.15626:0.00000
     15  LEU:                    :0.37150:0.44845: try beta sheet  :0.01142:0.00202:0.00000
     16  LYS:                    :0.14341:0.12064: try beta sheet  :0.00034:0.00045:0.00000
-    17  ILE: Peptide Outlier    :0.00777:0.25439: try beta sheet  :0.00000:0.00123:0.00000
+    17  ILE: CaBLAM Outlier     :0.00777:0.25439: try beta sheet  :0.00000:0.00123:0.00000
     18  TYR:                    :0.38403:0.26228: try beta sheet  :0.00000:0.00048:0.00000
     19  LYS:                    :0.23229:0.31769:                 :0.00000:0.00601:0.00000
     20  ASP:                    :0.24246:0.15915:                 :0.00000:0.00000:0.00000
@@ -32,7 +32,7 @@ ref_cablam_give_text = """residue : outlier_type : contour_level : ca_contour_le
     26  THR:                    :0.26444:0.16084:                 :0.00000:0.04956:0.00000
     27  ILE:                    :0.13051:0.05851:                 :0.00003:0.00000:0.00000
     28  GLY:                    :0.57593:0.34210:                 :0.00218:0.00000:0.00000
-    29  ILE: Peptide Outlier    :0.00287:0.02229:                 :0.00006:0.00000:0.00000
+    29  ILE: CaBLAM Outlier     :0.00287:0.02229:                 :0.00006:0.00000:0.00000
     30  GLY:                    :0.27781:0.21754:                 :0.00000:0.00000:0.00000
     31  HIS:                    :0.38269:0.14269:                 :0.00000:0.05822:0.00000
     32  LEU:                    :0.34286:0.57402:                 :0.00000:0.07717:0.00000
@@ -51,7 +51,7 @@ ref_cablam_give_text = """residue : outlier_type : contour_level : ca_contour_le
     52  ARG:                    :0.11630:0.07344:                 :0.00000:0.00736:0.00000
     53  ASN:                    :0.11365:0.08824: try beta sheet  :0.00000:0.00088:0.00000
     54  THR:                    :0.05756:0.15570:                 :0.00000:0.07997:0.00000
-    55  ASN: Peptide Disfavored :0.02086:0.00975:                 :0.00010:0.00000:0.00000
+    55  ASN: CaBLAM Disfavored  :0.02086:0.00975:                 :0.00010:0.00000:0.00000
     56  GLY:                    :0.64275:0.61690:                 :0.00000:0.00000:0.00000
     57  VAL:                    :0.26151:0.15786:                 :0.00000:0.00000:0.00000
     58  ILE:                    :0.44409:0.45268:                 :0.00000:0.00268:0.00000
@@ -81,18 +81,18 @@ ref_cablam_give_text = """residue : outlier_type : contour_level : ca_contour_le
     82  ALA:                    :0.29269:0.38361:                 :0.02096:0.00000:0.00000
     83  LYS:                    :0.58211:0.71041: try alpha helix :0.14248:0.00000:0.00001
     84  LEU:                    :0.41959:0.32368: try alpha helix :0.05148:0.00000:0.00626
-    85  LYS:                    :0.66986:0.51927: try threeten    :0.09610:0.00000:0.21238
+    85  LYS:                    :0.66986:0.51927: try three-ten   :0.09610:0.00000:0.21238
     86  PRO:                    :0.99026:0.99635: try alpha helix :0.86833:0.00000:0.01204
     87  VAL:                    :0.75880:0.95367: try alpha helix :0.78186:0.00000:0.00912
     88  TYR:                    :0.91356:0.90539: try alpha helix :0.58192:0.00000:0.02264
     89  ASP:                    :0.73904:0.80679: try alpha helix :0.35668:0.00000:0.05555
-    90  SER:                    :0.55972:0.60595: try threeten    :0.00733:0.00000:0.01601
+    90  SER:                    :0.55972:0.60595: try three-ten   :0.00733:0.00000:0.01601
     91  LEU:                    :0.27769:0.22558:                 :0.00000:0.00107:0.00000
     92  ASP:                    :0.42270:0.36276:                 :0.00000:0.00000:0.00000
     93  ALA:                    :0.45818:0.40113:                 :0.07442:0.00000:0.00000
     94  VAL:                    :0.77606:0.76480: try alpha helix :0.51294:0.00000:0.00679
     95  ARG:                    :0.73578:0.72447: try alpha helix :0.16465:0.00000:0.02319
-    96  ARG:                    :0.73291:0.70074: try threeten    :0.14308:0.00000:0.15348
+    96  ARG:                    :0.73291:0.70074: try three-ten   :0.14308:0.00000:0.15348
     97  ALA:                    :0.83719:0.80947: try alpha helix :0.32626:0.00000:0.05371
     98  ALA:                    :0.86385:0.88142: try alpha helix :0.53840:0.00000:0.04449
     99  LEU:                    :0.97900:0.93347: try alpha helix :0.84827:0.00000:0.01657
@@ -108,9 +108,9 @@ ref_cablam_give_text = """residue : outlier_type : contour_level : ca_contour_le
    109  THR:                    :0.92592:0.77315: try alpha helix :0.79332:0.00000:0.03679
    110  GLY:                    :0.94492:0.92742: try alpha helix :0.34326:0.00000:0.00675
    111  VAL:                    :0.65875:0.68327: try alpha helix :0.11230:0.00000:0.01439
-   112  ALA:                    :0.68953:0.69294: try threeten    :0.05884:0.00000:0.37750
-   113  GLY:                    :0.35710:0.61555: try threeten    :0.00122:0.00000:0.06679
-   114  PHE: Peptide Disfavored :0.02716:0.02012:                 :0.00000:0.00000:0.00000
+   112  ALA:                    :0.68953:0.69294: try three-ten   :0.05884:0.00000:0.37750
+   113  GLY:                    :0.35710:0.61555: try three-ten   :0.00122:0.00000:0.06679
+   114  PHE: CaBLAM Disfavored  :0.02716:0.02012:                 :0.00000:0.00000:0.00000
    115  THR:                    :0.21716:0.25651:                 :0.02337:0.00038:0.00000
    116  ASN:                    :0.93064:0.87429: try alpha helix :0.62433:0.00000:0.00578
    117  SER:                    :0.84801:0.85414: try alpha helix :0.42589:0.00000:0.02916
@@ -129,9 +129,9 @@ ref_cablam_give_text = """residue : outlier_type : contour_level : ca_contour_le
    130  ALA:                    :0.83281:0.80403: try alpha helix :0.35091:0.00000:0.04734
    131  VAL:                    :0.89150:0.84481: try alpha helix :0.42877:0.00000:0.00505
    132  ASN:                    :0.84250:0.79163: try alpha helix :0.36966:0.00000:0.01480
-   133  LEU:                    :0.72732:0.71627: try threeten    :0.12666:0.00000:0.12935
-   134  ALA:                    :0.58761:0.61900: try threeten    :0.00324:0.00000:0.37544
-   135  LYS: Peptide Disfavored :0.04655:0.16709: try threeten    :0.00000:0.00000:0.02864
+   133  LEU:                    :0.72732:0.71627: try three-ten   :0.12666:0.00000:0.12935
+   134  ALA:                    :0.58761:0.61900: try three-ten   :0.00324:0.00000:0.37544
+   135  LYS: CaBLAM Disfavored  :0.04655:0.16709: try three-ten   :0.00000:0.00000:0.02864
    136  SER:                    :0.21418:0.10964:                 :0.00000:0.00275:0.00000
    137  ARG:                    :0.44964:0.57604:                 :0.05596:0.00000:0.00000
    138  TRP:                    :0.72494:0.72727: try alpha helix :0.15493:0.00000:0.07705
