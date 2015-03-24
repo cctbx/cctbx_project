@@ -538,7 +538,7 @@ def assign_sec_struc(residues):
     if res.loose_threeten >= threeten_cutoff and res.loose_threeten > res.loose_alpha:
       try:
         if residues[res.residue.prevres.resid].loose_threeten >= threeten_cutoff or residues[res.residue.nextres.resid].loose_threeten >= threeten_cutoff:
-          res.suggestion = ' try threeten    '
+          res.suggestion = ' try three-ten   '
       except KeyError:
         pass
 #}}}
@@ -700,20 +700,23 @@ def check_prolines(hierarchy,pdbid='pdbid'):
         cablam_point = [residue.measures['CA_d_in'],residue.measures['CA_d_out']]
         cislevel = pro_contour['cis'].valueAt(cablam_point)
         translevel = pro_contour['trans'].valueAt(cablam_point)
-        if (omega >= -60) and (omega <= 60): #modeled as cis
+        if (omega >= -30) and (omega <= 30): #modeled as cis
           if cislevel < cis_cutoff:
             print "bad CIS at ", pdbid, residue.id_with_resname(), "value:%.3f" %cislevel
             if translevel >= 0.1:#trans_cutoff:
               print "  try TRANS. value:%.3f" %translevel
             else:
               print "  no suggestion. trans value:%.3f" %translevel
-        elif (omega >=120) or (omega <= -120): #modeled as trans
+        elif (omega >=150) or (omega <= -150): #modeled as trans
           if translevel < trans_cutoff:
             print "bad TRANS at ", pdbid, residue.id_with_resname(), "value:%.3f" %translevel
             if cislevel >= 0.1:#cis_cutoff:
               print "  try CIS. value:%.3f" %cislevel
             else:
               print "  no suggestion. cis value:%.3f" %cislevel
+        else: #modeled as twisted
+          print "TWISTED peptide at ", pdbid, residue.id_with_resname()
+          print "  TRANS score: %.3f" %translevel, " CIS score: %.3f" %cislevel 
 #}}}
 
 #{{{ print_helix_sheet_records function
@@ -836,7 +839,7 @@ def give_kin(outliers, outlier_cutoff, color='purple', writeto=sys.stdout):
 
     midpoint = [ (pseudoC_1[0]+pseudoC_2[0])/2.0 , (pseudoC_1[1]+pseudoC_2[1])/2.0 , (pseudoC_1[2]+pseudoC_2[2])/2.0 ]
 
-    stats = ' '.join(['%.5f' %outlier.outlier_level, 'a'+'%.5f' %outlier.loose_alpha, 'rega'+'%.5f' %outlier.regular_alpha, 'b'+'%.5f' %outlier.loose_beta, 'regb'+'%.5f' %outlier.regular_beta])
+    stats = ' '.join(['%.5f' %outlier.outlier_level, 'alpha'+'%.5f' %outlier.loose_alpha, 'beta'+'%.5f' %outlier.regular_beta])
 
     writeto.write('\n{'+stats+'} P '+ str(O_1[0]) +' '+ str(O_1[1]) +' '+ str(O_1[2]))
     writeto.write('\n{'+stats+'} '+ str(pseudoC_1[0]) +' '+ str(pseudoC_1[1]) +' '+ str(pseudoC_1[2]))
@@ -862,7 +865,7 @@ def give_ca_kin(outliers, outlier_cutoff, writeto=sys.stdout):
     CA_3 = nextres.getatomxyz('CA')
 
     #Note: 'stats' should be simplified after I'm certain that the cutoffs are in the right places
-    stats = ' '.join(['%.5f' %outlier.outlier_level, 'a'+'%.5f' %outlier.loose_alpha, 'rega'+'%.5f' %outlier.regular_alpha, 'b'+'%.5f' %outlier.loose_beta, 'regb'+'%.5f' %outlier.regular_beta])
+    stats = ' '.join(['%.5f' %outlier.outlier_level, 'alpha'+'%.5f' %outlier.loose_alpha, 'beta'+'%.5f' %outlier.regular_beta])
 
     #CA_2[0]+(CA_2[0]-CA_1[0])*0.9
 
@@ -897,17 +900,17 @@ def give_text(outliers, writeto=sys.stdout):
   #This prints a comma-separated line of data for each outlier residue
   #Intended for easy machine readability
   #writeto.write('\nresidue,contour_level,loose_alpha,regular_alpha,loose_beta,regular_beta,threeten')
-  writeto.write('residue : outlier_type : contour_level : ca_contour_level : sec struc recommendation : alpha score : beta score : threeten score')
+  writeto.write('residue : outlier_type : contour_level : ca_contour_level : sec struc recommendation : alpha score : beta score : three-ten score')
   reskeys = outliers.keys()
   reskeys.sort()
   for resid in reskeys:
     outlier = outliers[resid]
     if outlier.ca_geom_outlier_level < 0.005:
-      outlier_type = ' CA Geo Outlier     '
+      outlier_type = ' CA Geom Outlier    '
     elif outlier.outlier_level < 0.01:
-      outlier_type = ' Peptide Outlier    '
+      outlier_type = ' CaBLAM Outlier     '
     elif outlier.outlier_level < 0.05:
-      outlier_type = ' Peptide Disfavored '
+      outlier_type = ' CaBLAM Disfavored  '
     else:
       outlier_type =   '                    '
     #outlist = [outlier.residue.mp_id(), '%.5f' %outlier.outlier_level, '%.5f' %outlier.loose_alpha, '%.5f' %outlier.regular_alpha, '%.5f' %outlier.loose_beta, '%.5f' %outlier.regular_beta, '%.5f' %outlier.loose_threeten]
@@ -928,7 +931,7 @@ def give_text(outliers, writeto=sys.stdout):
 #  outliers and annotation.
 def oneline_header(writeto=sys.stdout):
   #Write column labels for oneline output
-  writeto.write('pdbid:residues:peptide_outlier_percent:peptide_bad_outlier_percent:ca_outlier_percent\n')
+  writeto.write('pdbid:residues:cablam_disfavored_percent:cablam_outlier_percent:ca_geom_outlier_percent\n')
 
 def oneline(hierarchy, peptide_cutoff=0.05, peptide_bad_cutoff=0.01, ca_cutoff=0.005, pdbid='pdbid', writeto=sys.stdout):
   resdata=setup(hierarchy,pdbid)

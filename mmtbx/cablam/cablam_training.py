@@ -449,9 +449,9 @@ def fails_cis_check(residue,cis_or_trans):
       doskip = True
     else:
       omega = residue.measures['omega']
-      if cis_or_trans == 'cis' and (omega >= -60 and omega <= 60):
+      if cis_or_trans == 'cis' and (omega >= -30 and omega <= 30):
         doskip = False
-      if cis_or_trans == 'trans' and (omega >= 120 or omega <= -120):
+      if cis_or_trans == 'trans' and (omega >= 150 or omega <= -150):
         doskip = False
 
   return doskip
@@ -814,12 +814,13 @@ def kin_print_by_instance(motif_instances, motif_list, kinorder, outfiles):
         continue
       indices = instance.names.keys()
       indices.sort()
+      #print indices
       residue = instance.residues[indices[0]]
       outfiles[motif_name].write(
         '@group {'+residue.pdbid.rstrip('.pdb')+' '+str(residue.resnum)+
         '} dominant animate\n@vectorlist {'+motif_name+
         '} dimension='+str(len(kinorder))+'\n')
-      for index in instance.names:
+      for index in indices:#instance.names:
         residue = instance.residues[index]
         name = instance.names[index]
         outline = ['{'+residue.id_with_resname()+'_'+name+'}']
@@ -984,6 +985,25 @@ def run(args):
   else:
     pass
 
+  if params.caa:
+    kinorder.append('CA_a_in'),  kinranges.append('0 180')
+    kinorder.append('CA_a'),     kinranges.append('0 180')
+    kinorder.append('CA_a_out'), kinranges.append('0 180')
+  else:
+    pass
+
+  if params.cablam:
+    if 'CA_d_in' not in kinorder:
+      kinorder.append('CA_d_in'),  kinranges.append('-180 180')
+    if 'CA_d_out' not in kinorder:
+      kinorder.append('CA_d_out'),  kinranges.append('-180 180')
+    if 'CO_d_in' not in kinorder:
+      kinorder.append('CO_d_in'),  kinranges.append('-180 180')
+    if 'CA_a' not in kinorder:
+      kinorder.append('CA_a'), kinranges.append('0, 180')
+  else:
+    pass
+
   if params.rama or params.exrama:
     if params.exrama:
       kinorder.append('psi-1'), kinranges.append('-180 180')
@@ -996,13 +1016,6 @@ def run(args):
   else:
     pass
 
-  if params.caa:
-    kinorder.append('CA_a_in'),  kinranges.append('0 180')
-    kinorder.append('CA_a'),     kinranges.append('0 180')
-    kinorder.append('CA_a_out'), kinranges.append('0 180')
-  else:
-    pass
-
   if params.tau:
     kinorder.append('tau'), kinranges.append('0 180')
   else:
@@ -1010,16 +1023,6 @@ def run(args):
 
   if params.omega:
     kinorder.append('omega'), kinranges.append('-180 180')
-  else:
-    pass
-
-  if params.cablam:
-    if 'CA_d_in' not in kinorder:
-      kinorder.append('CA_d_in'),  kinranges.append('-180 180')
-    if 'CA_d_out' not in kinorder:
-      kinorder.append('CA_d_out'),  kinranges.append('-180 180')
-    if 'CO_d_in' not in kinorder:
-      kinorder.append('CO_d_in'),  kinranges.append('-180 180')
   else:
     pass
 
