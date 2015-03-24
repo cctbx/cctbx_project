@@ -3,18 +3,23 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 03/06/2015
-Description : IOTA I/O module. Reads PHIL input, creates output directories, etc.
+Last Changed: 03/24/2015
+Description : IOTA I/O module. Reads PHIL input, creates output directories,
+              creates input lists and organizes starting parameters
 '''
 
 
 import sys
 import os
+import shutil
 import random
+from cStringIO import StringIO
 
-import iotbx.phil
 
-master_phil = iotbx.phil.parse("""
+import iotbx.phil as ip
+import dials.util.command_line as cmd
+
+master_phil = ip.parse("""
 description = Integration optimization and transfer app (IOTA) input file
   .type = str
   .help = Run description (optional).
@@ -112,31 +117,38 @@ target_pointgroup = P 4
 target_uc_tolerance = 0.05
   .type = float
   .help = Maximum allowed unit cell deviation from target
+min_sigma = 5
+  .type = int
+  .help = minimum sigma cutoff for "strong spots"
 n_processors = 32
   .type = int
   .help = No. of processing units
 """)
 
-def process_input(input_file_list):
+class Capturing(list):
+  def __enter__(self):
+    self._stdout = sys.stdout
+    sys.stdout = self._stringio = StringIO()
+    return self
+  def __exit__(self, *args):
+    self.extend(self._stringio.getvalue().splitlines())
+    sys.stdout = self._stdout
 
-  user_phil = []
-  for input_file in input_file_list:
-    user_phil.append(iotbx.phil.parse(open(input_file).read()))
+def process_input(input_file_list):
+  """ Read and parse parameter file
+
+      input: input_file_list - PHIL-format files w/ parameters
+
+      output: params - PHIL-formatted parameters
+              txt_output - plain text-formatted parameters
+  """
+
+  user_phil = [ip.parse(open(inp).read()) for inp in input_file_list]
 
   working_phil = master_phil.fetch(sources=user_phil)
   params = working_phil.extract()
 
   #capture input read out by phil
-  from cStringIO import StringIO
-  class Capturing(list):
-    def __enter__(self):
-      self._stdout = sys.stdout
-      sys.stdout = self._stringio = StringIO()
-      return self
-    def __exit__(self, *args):
-      self.extend(self._stringio.getvalue().splitlines())
-      sys.stdout = self._stdout
-
   with Capturing() as output:
     working_phil.show()
 
@@ -146,16 +158,25 @@ def process_input(input_file_list):
 
   return params, txt_out
 
-# Read input directory tree (if any) and make lists of input folder, output folder and
-# input files for use in everything
+
 def make_input_list (gs_params):
+  """ Reads input directory or directory tree and makes lists of input images
+      (in pickle format) using absolute path for each file. If a separate file
+      with list of images is provided, parses that file and uses that as the
+      input list. If random input option is selected, pulls a specified number
+      of random images from the list and outputs that subset as the input list.
+
+      input: gs_params - parameters in PHIL format
+      output: inp_list - list of input files
+  """
+
   input_list = []
   abs_inp_path = os.path.abspath(gs_params.input)
 
   if gs_params.input_list != None:
     with open(gs_params.input_list, 'r') as listfile:
       listfile_contents = listfile.read()
-      input_list = listfile_contents.splitlines()
+    input_list = listfile_contents.splitlines()
   else:
   # search for *.pickle files within the tree and record in a list w/
   # full absolute path and filanames
@@ -167,7 +188,7 @@ def make_input_list (gs_params):
 
   if gs_params.advanced.random_sample.flag_on == True:
     random_inp_list = []
-    for i in range(gs_params.random_sample.number):
+    for i in range(gs_params.advanced.random_sample.number):
       random_number = random.randrange(0, len(input_list))
       random_inp_list.append(input_list[random_number])
 
@@ -177,7 +198,18 @@ def make_input_list (gs_params):
 
   return inp_list
 
+
 def make_dir_lists(input_list, gs_params):
+  """ From the input list, makes a list of input and output folders, such that
+      the output directory structure mirrors the input directory structure, in
+      case of duplication of image filenames.
+
+      input: input_list - list of input files (w/ absolute paths)
+             gs_params - parameters in PHIL format
+
+      output: input_dir_list - list of input folders
+              output_dir_list - list of output folders
+  """
 
   input_dir_list = []
   output_dir_list = []
@@ -201,41 +233,36 @@ def make_dir_lists(input_list, gs_params):
     if output_dir not in output_dir_list:
       output_dir_list.append(os.path.normpath(output_dir))
 
-    #with open('{}/input_files.lst'.format(abs_out_path), 'a') as inp_list_file:
-    #  inp_list_file.write('{0}, {1}\n'.format(input_entry, output_dir))
-
   return input_dir_list, output_dir_list
 
-# Generates input list for MP grid seach
+
 def make_mp_input(input_list, gs_params, gs_range):
+  """ Generates input for multiprocessor grid search and selection.
+
+      input: input_list - list of input images (w/ absolute paths)
+             gs_params - list of parameters in PHIL format
+             gs_range - grid search limits
+
+      output: mp_input - list of input entries for MP grid search:
+                1. raw image file (absolute path)
+                2-4. signal height, spot height & spot area parameters
+                5. output folder for integration result (absolute path)
+              mp_output - list of entries for MP selection
+                1. output folder for integration result (absolute path)
+                2. raw image file (absolute path)
+                3. integration result file (filename only)
+
+              (The reason for duplication of items in the two lists has to do
+              with the user being able to run selection / re-integration witout
+              repeating the time-consuming grid search.)
+  """
 
   mp_item = []
   mp_input = []
   mp_output = []
 
-  if gs_params.advanced.random_sample.flag_on == True:
-    print "Selecting {0} samples from {1} images in {2}:"\
-          "".format(gs_params.random_sample.number, len(input_list),
-                    gs_params.input)
-    random_inp_list = []
-    for i in range(gs_params.random_sample.number):
-      random_number = random.randrange(0, len(input_list))
-      print input_list[random_number]
-      random_inp_list.append(input_list[random_number])
-
-    gs_params.grid_search.flag_on = True
-    gs_params.grid_search.h_avg = 5
-    gs_params.grid_search.h_std = 4
-    gs_params.grid_search.a_avg = 5
-    gs_params.grid_search.a_std = 4
-
-    inp_list = random_inp_list
-  else:
-    inp_list = input_list
-
-
-  for current_img in inp_list:
-    # generate filenames, etc.
+  for current_img in input_list:
+    # generate output folder tree
     path = os.path.dirname(current_img)
     img_filename = os.path.basename(current_img)
 
@@ -252,12 +279,12 @@ def make_mp_input(input_list, gs_params, gs_range):
                        "int_{}.lst".format(img_filename.split('.')[0])]
     mp_output.append(mp_output_entry)
 
+    # Create input list w/ filename and spot-finding params
     h_min = gs_range[0]
     h_max = gs_range[1]
     a_min = gs_range[2]
     a_max = gs_range[3]
 
-    # Create input list w/ filename and spot-finding params
     for sig_height in range(h_min, h_max + 1):
       for spot_area in range (a_min, a_max + 1):
         mp_item = [current_img, sig_height, sig_height, spot_area,
@@ -266,33 +293,34 @@ def make_mp_input(input_list, gs_params, gs_range):
 
   return mp_input, mp_output
 
-# Make output directories preserving the tree structure
-def make_dirs (input_list, gs_params):
+def make_dirs (mp_output_list, gs_params):
 
-  for current_img in input_list:
-    # generate filenames, etc.
-    path = os.path.dirname(current_img)
-    img_filename = os.path.basename(current_img)
+  # If grid-search turned on, check for existing output directory and remove
+  if os.path.exists(os.path.abspath(gs_params.output)):
+    cmd.Command.start("Deleting old folder {}".format(gs_params.output))
+    shutil.rmtree(os.path.abspath(gs_params.output))
+    cmd.Command.end("Deleting old folder {} -- DONE".format(gs_params.output))
 
-    if os.path.relpath(path, os.path.abspath(gs_params.input)) == '.':
-      output_dir = os.path.abspath(gs_params.output)
-    else:
-      output_dir = os.path.normpath('{0}/{1}'\
-                                    ''.format(os.path.abspath(gs_params.output),
-                                              os.path.relpath(path,
-                                              os.path.abspath(gs_params.input))))
+  # Make main output directory and log directory
+  os.makedirs(os.path.abspath(gs_params.output))
+  os.makedirs("{}/logs".format(os.path.abspath(gs_params.output)))
 
-    current_output_dir = os.path.normpath("{0}/tmp_{1}".format(output_dir,
-                                              img_filename.split('.')[0]))
+  # Make per-image output folders. ***May not be necessary!!
+  cmd.Command.start("Generating output directory tree")
 
-#     # Make directories for output / log file for the image being integrated
-    if not os.path.exists(current_output_dir):
-      os.makedirs(current_output_dir)
+  output_folders = [op[0] for op in mp_output_list]
 
-# Save log from previous run and initiate a new log (run once)
-# This is only necessary if re-running selection after grid-search
-# Will likely be deprecated soon
+  for folder in output_folders:
+    if not os.path.exists(folder):
+      os.makedirs(folder)
+
+  cmd.Command.end("Generating output directory tree -- DONE")
+
+
 def main_log_init(logfile):
+  """ Save log from previous run and initiate a new log (run once). This is only
+      necessary if re-running selection after grid-search
+  """
 
   log_count = 0
   log_dir = os.path.dirname(logfile)
@@ -310,9 +338,65 @@ def main_log_init(logfile):
     logfile.write("IOTA LOG\n\n")
 
 
-# Write main log (so that I don't have to repeat this every time)
 def main_log(logfile, entry):
+  """ Write main log (so that I don't have to repeat this every time). All this
+      is necessary so that I don't have to use the Python logger module, which
+      creates a lot of annoying crosstalk with other cctbx.xfel modules.
+  """
 
   with open(logfile, 'a') as logfile:
     logfile.write('{}\n'.format(entry))
+
+def generate_input(gs_params):
+  """ This section generates input for grid search and/or pickle selection.
+
+      parameters: gs_params - list of parameters from *.param file (in
+      PHIL format)
+
+      output: gs_range - grid search range from avg and std-dev
+              input_list - list of absolute paths to input files
+              input_dir_list - list of absolute paths to input folder(s)
+              output_dir_list - same for output folder(s)
+              log_dir - log directory
+              logfile - the log filename
+              mp_input_list - for multiprocessing: filename + spotfinding params
+              mp_output_list - same for output
+  """
+
+  # Determine grid search range from average and std. deviation params
+  gs_range = [gs_params.grid_search.h_avg - gs_params.grid_search.h_std,
+              gs_params.grid_search.h_avg + gs_params.grid_search.h_std,
+              gs_params.grid_search.a_avg - gs_params.grid_search.a_std,
+              gs_params.grid_search.a_avg + gs_params.grid_search.a_std
+             ]
+
+  # Make input list
+  input_list = make_input_list(gs_params)
+
+  # Make log directory and input/output directory lists
+  log_dir = "{}/logs".format(os.path.abspath(gs_params.output))
+  cmd.Command.start("Reading data folder(s)")
+  input_dir_list, output_dir_list = make_dir_lists(input_list, gs_params)
+  cmd.Command.end("Reading data folder(s) -- DONE")
+
+  # Make input/output lists for multiprocessing
+  cmd.Command.start("Generating multiprocessing input")
+  mp_input_list, mp_output_list = make_mp_input(input_list, gs_params, gs_range)
+  cmd.Command.end("Generating multiprocessing input -- DONE")
+
+  # If grid-search turned on, check for existing output directory and remove
+  if gs_params.grid_search.flag_on == True:
+    make_dirs(mp_output_list, gs_params)
+  else:
+    if not os.path.exists(os.path.abspath(gs_params.output)):
+      print "ERROR: No grid search results detected in"\
+          "{}".format(os.path.abspath(gs_params.output))
+      sys.exit()
+
+  # Initiate log file
+  logfile = '{}/iota.log'.format(log_dir)
+  main_log_init(logfile)
+
+  return gs_range, input_list, input_dir_list, output_dir_list, log_dir,\
+         logfile, mp_input_list, mp_output_list
 
