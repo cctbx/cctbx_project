@@ -567,11 +567,11 @@ def write_output(miller_indices_merge, I_merge, sigI_merge, stat_all,
   #results is a list of postref_results objects
   #length of this list equals to number of input frames
   inten_scaler = intensities_scaler()
-  miller_array_merge, txt_out, csv_out = inten_scaler.write_output(miller_indices_merge, \
+  miller_array_merge, txt_out = inten_scaler.write_output(miller_indices_merge, \
                                             I_merge, sigI_merge, stat_all, \
                                             I_even, I_odd, iparams, uc_mean, \
                                             wavelength_mean, output_mtz_file_prefix, avg_mode)
-  return miller_array_merge, txt_out, csv_out
+  return miller_array_merge, txt_out
 
 def read_input(args):
   from mod_input import process_input
