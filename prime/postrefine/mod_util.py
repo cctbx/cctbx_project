@@ -23,7 +23,7 @@ class intensities_scaler(object):
     '''
     Constructor
     '''
-    self.CONST_SE_MIN_WEIGHT = 0.17
+    self.CONST_SE_MIN_WEIGHT = 0.5
     self.CONST_SE_MAX_WEIGHT = 1.0
     self.CONST_SIG_I_FACTOR = 1.5
 
@@ -96,16 +96,18 @@ class intensities_scaler(object):
     #normalize the SE
     max_w = self.CONST_SE_MAX_WEIGHT
     min_w = math.sqrt(self.CONST_SE_MIN_WEIGHT)
-    if len(SE) == 1 or ((flex.max(SE)-flex.min(SE)) < 0.1) or avg_mode == 'average':
-      SE_norm = flex.double([min_w+((max_w - min_w)/2)]*len(SE))
-      SE_std_norm = flex.double([1.0+((self.CONST_SIG_I_FACTOR - 1.0)/2)]*len(SE))
+    SE_max = iparams.reserved.SE_max
+    SE_min = iparams.reserved.SE_min
+    if len(SE) == 1 or (SE_max - SE_min < 0.1) or avg_mode == 'average':
+      SE_norm = flex.double([1]*len(SE))
+      SE_std_norm = flex.double([1]*len(SE))
     else:
-      m = (max_w - min_w)/(flex.min(SE)-flex.max(SE))
-      b = max_w - (m*flex.min(SE))
-      SE_norm = (m*SE) + b
-      m_std = (self.CONST_SIG_I_FACTOR - 1.0)/(flex.min(SE)-flex.max(SE))
-      b_std = self.CONST_SIG_I_FACTOR - (m_std*flex.min(SE))
-      SE_std_norm = (m_std*SE) + b_std
+      m = (max_w - min_w)/(SE_min - SE_max)
+      b = max_w - (m * SE_min)
+      SE_norm = (m * SE) + b
+      m_std = (self.CONST_SIG_I_FACTOR - 1.0)/(SE_max - SE_min)
+      b_std = 1 - (m_std * SE_min)
+      SE_std_norm = (m_std * SE) + b_std
 
     I_avg = flex.sum(SE_norm * I_full)/flex.sum(SE_norm)
     if math.isnan(I_avg):
@@ -116,8 +118,8 @@ class intensities_scaler(object):
       print
 
     #test calculation of sigI
-    #sigI_full = flex.sqrt(I_full) * SE_std_norm
-    sigI_avg = np.mean(sigI_full)
+    #sigI_avg = np.mean(sigI_full * SE_std_norm)
+    sigI_avg = flex.sum(SE_std_norm * sigI_full)/flex.sum(SE_std_norm)
 
     #Rmerge, Rmerge_w, multiplicity
     multiplicity = len(I_full)
@@ -193,6 +195,8 @@ class intensities_scaler(object):
     engine = averaging_engine(group_no, group_id_list, miller_index, miller_indices_ori, I, sigI, G, B,p_set, rs_set, wavelength_set, sin_theta_over_lambda_sq, SE, pickle_filename_set)
     engine.avg_mode = avg_mode_cpp
     engine.sigma_max = sigma_max
+    engine.SE_max = iparams.reserved.SE_max
+    engine.SE_min = iparams.reserved.SE_min
     engine.flag_volume_correction = iparams.flag_volume_correction
     engine.n_rejection_cycle = iparams.n_rejection_cycle
     engine.flag_output_verbose = iparams.flag_output_verbose
@@ -400,6 +404,9 @@ class intensities_scaler(object):
     #plot stats
     self.plot_stats(filtered_results, iparams)
 
+    #update iparams.SE_min and max
+    iparams.reserved.SE_min = flex.min(SE_all)
+    iparams.reserved.SE_max = flex.max(SE_all)
 
     #calculate average unit cell
     uc_mean, uc_med, uc_std = self.calc_mean_unit_cell(filtered_results)
@@ -660,11 +667,9 @@ class intensities_scaler(object):
     avg_I_by_bin = flex.double()
     one_dsqr_by_bin = flex.double()
 
-    csv_out = ""
-    csv_out +='Bin, Low, High, Completeness, <N_obs>, Rmerge,Qw, CC1/2, N_ind, CCiso, N_ind, CCanoma, N_ind, CCanomc, N_ind, <I/sigI>\n'
     txt_out = '\n'
     txt_out += 'Summary for '+output_mtz_file_prefix+'_merge.mtz\n'
-    txt_out += 'Bin Resolution Range     Completeness      <N_obs>  |Rmerge   Qw     CC1/2   N_ind |CCiso   N_ind|CCanoma  N_ind CCanomc  N_ind| <I/sigI>   <I>\n'
+    txt_out += 'Bin Resolution Range     Completeness      <N_obs>  |Rmerge  Rsplit  CC1/2   N_ind |CCiso   N_ind|CCanoma  N_ind CCanomc  N_ind| <I/sigI>   <I>\n'
     txt_out += '--------------------------------------------------------------------------------------------------------------------------------------------------\n'
     sum_r_meas_w_top = 0
     sum_r_meas_w_btm = 0
@@ -725,6 +730,7 @@ class intensities_scaler(object):
         r_meas_bin = 0
         cc12_bin = 0
         n_refl_cc12_bin = 0
+        r_split_bin = 0
       else:
         mean_i_over_sigi_bin = flex.mean(I_bin/sigI_bin)
         stat_bin = [stat_all[pair[1]] for pair in matches_template.pairs()]
@@ -764,8 +770,10 @@ class intensities_scaler(object):
         i_even_filter_sel = (I_even_bin > 0)
         n_refl_cc12_bin = len(I_even_bin.select(i_even_filter_sel))
         cc12_bin = 0
+        r_split_bin = 0
         if n_refl_cc12_bin > 0:
           cc12_bin = np.corrcoef(I_even_bin.select(i_even_filter_sel), I_odd_bin.select(i_even_filter_sel))[0,1]
+          r_split_bin = (1/math.sqrt(2))*(flex.sum(flex.abs(I_even_bin - I_odd_bin))/(flex.sum(I_even_bin + I_odd_bin)*0.5))
 
       completeness = len(miller_indices_obs_bin)/len(miller_indices_bin)
       sum_refl_obs += len(miller_indices_obs_bin)
@@ -799,7 +807,7 @@ class intensities_scaler(object):
       txt_out += '%02d %7.2f - %7.2f %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %8.2f %10.2f' \
           %(i, binner_template_asu.bin_d_range(i)[0], binner_template_asu.bin_d_range(i)[1], completeness*100, \
           len(miller_indices_obs_bin), len(miller_indices_bin),\
-          multiplicity_bin, r_meas_bin*100, r_meas_w_bin*100, cc12_bin*100, n_refl_cc12_bin, cc_iso_bin*100, n_refl_cciso_bin, \
+          multiplicity_bin, r_meas_bin*100, r_split_bin*100, cc12_bin*100, n_refl_cc12_bin, cc_iso_bin*100, n_refl_cciso_bin, \
           cc_anom_bin_acentric, nrefl_anom_bin_acentric, \
           cc_anom_bin_centric, nrefl_anom_bin_acentric, \
           mean_i_over_sigi_bin, np.mean(I_bin))
@@ -843,9 +851,13 @@ class intensities_scaler(object):
     #calculate cc12
     i_even_filter_sel = (I_even > 0)
     try:
-      cc12 = np.corrcoef(I_even.select(i_even_filter_sel), I_odd.select(i_even_filter_sel))[0,1]
+      I_even_filter = I_even.select(i_even_filter_sel)
+      I_odd_filter = I_odd.select(i_even_filter_sel)
+      cc12 = np.corrcoef(I_even_filter, I_odd_filter)[0,1]
+      r_split = (1/math.sqrt(2))*(flex.sum(flex.abs(I_even_filter - I_odd_filter))/(flex.sum(I_even_filter + I_odd_filter)*0.5))
     except Exception:
       cc12  = 0
+      r_split = 0
 
     #calculate Qmeas and Qw
     if sum_r_meas_w_btm > 0:
@@ -862,14 +874,14 @@ class intensities_scaler(object):
     txt_out += '        TOTAL        %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %8.2f %10.2f\n' \
     %((sum_refl_obs/sum_refl_complete)*100, sum_refl_obs, \
      sum_refl_complete, n_refl_obs_total/sum_refl_obs, \
-     r_meas*100, r_meas_w*100, cc12*100, len(I_even.select(i_even_filter_sel)), \
+     r_meas*100, r_split*100, cc12*100, len(I_even.select(i_even_filter_sel)), \
      cc_iso*100, n_refl_iso, \
      cc_anom_acentric, nrefl_anom_acentric, \
      cc_anom_centric, nrefl_anom_centric, \
      np.mean(miller_array_merge.data()/miller_array_merge.sigmas()), np.mean(miller_array_merge.data()))
     txt_out += '--------------------------------------------------------------------------------------------------------------------------------------------------\n'
 
-    return miller_array_merge, txt_out, csv_out
+    return miller_array_merge, txt_out
 
   def plot_stats(self, results, iparams):
     #retrieve stats from results and plot them
@@ -1165,4 +1177,3 @@ class svd_handler(object):
 
 
       return R, t
-

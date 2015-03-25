@@ -317,6 +317,16 @@ iotacc
     .help = Percent of best cc.
     .optional = True
 }
+reserved
+  .help = Parameters used in prime system (mod_util:prepare_output).
+{
+  SE_min = 0
+    .type = float
+    .help = Minimum standard error.
+  SE_max = 0
+    .type = float
+    .help = Maximum standard error.
+}
 """)
 
 

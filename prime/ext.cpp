@@ -66,6 +66,8 @@ namespace prime {
     public:
     Average_Mode avg_mode_;
     double sigma_max_;
+    double SE_max_;
+    double SE_min_;
     bool flag_volume_correction_;
     int n_rejection_cycle_;
     bool flag_output_verbose_;
@@ -101,6 +103,8 @@ namespace prime {
     {
       avg_mode_ = Average;
       sigma_max_ = 99.0;
+      SE_max_ = 0;
+      SE_min_ = 0;
       flag_volume_correction_ = true;
       n_rejection_cycle_ = 1;
       flag_output_verbose_ = false;
@@ -128,6 +132,7 @@ namespace prime {
 
       // convert to the full intensity and calculate mosaic spread (currently only logged)
       scitbx::af::shared<double> I_full;
+      scitbx::af::shared<double> sigI_full;
       scitbx::af::shared<double> mosaic_radian_set;
       for(int x = 0; x < G_.size(); x++) {
         double tmp1 = G_[x] *std::exp(-2*B_[x]*sin_theta_over_lambda_sq_[x]);
@@ -137,13 +142,15 @@ namespace prime {
           printf("Workaround tmp1*tmp2: %70.70f\n",tmp1*tmp2); // Without this printf, I_full comes out differently between
                                                                // python and cpp in the highest significant digits. No idea why.
         I_full.push_back((tmp1*tmp2)/tmp3);
+        sigI_full.push_back(((G_[x] * std::exp(-2*B_[x]*sin_theta_over_lambda_sq_[x]) * sigI_[x])/p_set_[x]));
         mosaic_radian_set.push_back(2 * rs_set_[x] * wavelength_set_[x]);
       }
 
       if (flag_volume_correction_)
-        for (int x = 0; x < I_full.size(); x++)
+        for (int x = 0; x < I_full.size(); x++){
           I_full[x] *= (4.0/3.0) * (rs_set_[x]);
-
+          sigI_full[x] *= (4.0/3.0) * (rs_set_[x]);
+        }
 
       // Iterate over each group of intensites. They will match a single miller_index each
       int obs_ptr = 0; // this will track along the intensites array as each group is processed
@@ -158,6 +165,7 @@ namespace prime {
         scitbx::af::shared<double> I_group;
         scitbx::af::shared<double> sigI_group;
         scitbx::af::shared<double> I_full_group;
+        scitbx::af::shared<double> sigI_full_group;
         scitbx::af::shared<double> SE_group;
         cctbx::miller::index<int> current_index;
         shared_miller current_index_ori;
@@ -182,6 +190,7 @@ namespace prime {
           I_group.push_back(I_[obs_ptr]);
           sigI_group.push_back(sigI_[obs_ptr]);
           I_full_group.push_back(I_full[obs_ptr]);
+          sigI_full_group.push_back(sigI_full[obs_ptr]);
           SE_group.push_back(SE_[obs_ptr]);
           current_index_ori.push_back(miller_index_ori_[obs_ptr]);
           pickle_filename_set_group.push_back(pickle_filename_set_[obs_ptr]);
@@ -221,6 +230,7 @@ namespace prime {
             scitbx::af::shared<double> I_group_filtered;
             scitbx::af::shared<double> sigI_group_filtered;
             scitbx::af::shared<double> I_full_group_filtered;
+            scitbx::af::shared<double> sigI_full_group_filtered;
             scitbx::af::shared<double> SE_group_filtered;
             shared_miller current_index_ori_filtered;
             scitbx::af::shared<std::string> pickle_filename_set_group_filtered;
@@ -243,6 +253,7 @@ namespace prime {
                 I_group_filtered.push_back(I_group[i]);
                 sigI_group_filtered.push_back(sigI_group[i]);
                 I_full_group_filtered.push_back(I_full_group[i]);
+                sigI_full_group_filtered.push_back(sigI_full_group[i]);
                 SE_group_filtered.push_back(SE_group[i]);
                 current_index_ori_filtered.push_back(current_index_ori[i]);
                 pickle_filename_set_group_filtered.push_back(pickle_filename_set_group[i]);
@@ -252,6 +263,7 @@ namespace prime {
             I_group = I_group_filtered;
             sigI_group = sigI_group_filtered;
             I_full_group = I_full_group_filtered;
+            sigI_full_group = sigI_full_group_filtered;
             SE_group = SE_group_filtered;
             current_index_ori = current_index_ori_filtered;
             pickle_filename_set_group = pickle_filename_set_group_filtered;
@@ -272,22 +284,20 @@ namespace prime {
         // normalize the SE
         scitbx::af::shared<double> SE_norm;
         scitbx::af::shared<double> SE_std_norm;
-        double se_max = scitbx::af::max(SE_group.ref());
-        double se_min = scitbx::af::min(SE_group.ref());
         double SE_norm_val, SE_std_norm_val;
-        if (SE_group.size() == 1 or ((se_max-se_min) < 0.1) or avg_mode_ == Average) {
-          SE_norm_val = min_w+((max_w - min_w)/2);
-          SE_std_norm_val = (1.0+((CONST_SIG_I_FACTOR - 1.0)/2));
+        if (SE_group.size() == 1 or ((SE_max_-SE_min_) < 0.1) or avg_mode_ == Average) {
+          SE_norm_val = 1;
+          SE_std_norm_val = 1;
           for (int i = 0; i < SE_group.size(); i++) {
             SE_norm.push_back(SE_norm_val);
             SE_std_norm.push_back(SE_std_norm_val);
           }
         }
         else {
-          double m = (max_w - min_w)/(se_min-se_max);
-          double b = max_w - (m*se_min);
-          double m_std = (CONST_SIG_I_FACTOR - 1.0)/(se_min-se_max);
-          double b_std = CONST_SIG_I_FACTOR - (m_std*se_min);
+          double m = (max_w - min_w)/(SE_min_-SE_max_);
+          double b = max_w - (m*SE_min_);
+          double m_std = (CONST_SIG_I_FACTOR - 1.0)/(SE_max_-SE_min_);
+          double b_std = 1 - (m_std*SE_min_);
 
           for (int i = 0; i < SE_group.size(); i++) {
             SE_norm.push_back( (m*SE_group[i]) + b);
@@ -296,6 +306,7 @@ namespace prime {
         }
 
         double SE_norm_sum = scitbx::af::sum(SE_norm.const_ref());
+        double SE_std_norm_sum = scitbx::af::sum(SE_std_norm.const_ref());
         SCITBX_ASSERT(SE_norm_sum != 0);
         scitbx::af::shared<double> avg_tmp;
         scitbx::af::shared<double> sigI_full;
@@ -303,11 +314,11 @@ namespace prime {
           avg_tmp.push_back(SE_norm[i] * I_full_group[i]);
 
           //test calculation of sigI
-          sigI_full.push_back(std::sqrt(I_full_group[i]) * SE_std_norm[i]);
+          sigI_full.push_back(SE_std_norm[i] * sigI_full_group[i]);
         }
 
         double I_avg = scitbx::af::sum(avg_tmp.const_ref())/SE_norm_sum;
-        double sigI_avg = scitbx::af::mean(sigI_full.const_ref());
+        double sigI_avg = scitbx::af::sum(sigI_full.const_ref())/SE_std_norm_sum;
 
         //Rmeas, Rmeas_w, multiplicity
         int multiplicity = I_full_group.size();
@@ -323,15 +334,12 @@ namespace prime {
           double r_meas_top_sum = 0;
 
           for (int i = 0; i < multiplicity; i++) {
-            r_meas_w_top_sum += std::pow(((I_full_group[i] - I_avg)*SE_norm[i]),2);
+            r_meas_w_top += std::pow(((I_full_group[i] - I_avg)*SE_norm[i]),2);
             r_meas_w_btm += std::pow(I_full_group[i]*SE_norm[i],2);
-            r_meas_top_sum += std::abs(((I_full_group[i] - I_avg)*SE_norm[i]));
+            r_meas_top += std::abs(((I_full_group[i] - I_avg)*SE_norm[i]));
             r_meas_btm += std::abs(I_full_group[i]*SE_norm[i]);
           }
-
-          r_meas_w_top = r_meas_w_top_sum*std::sqrt(n_obs/(n_obs-1));
           r_meas_w = r_meas_w_top/r_meas_w_btm;
-          r_meas_top = r_meas_top_sum*std::sqrt(n_obs/(n_obs-1));
           r_meas = r_meas_top/r_meas_btm;
         }
 
@@ -424,9 +432,9 @@ namespace prime {
   };
 
 
-const double averaging_engine::CONST_SE_MIN_WEIGHT = 0.17;
+const double averaging_engine::CONST_SE_MIN_WEIGHT = 0.5;
 const double averaging_engine::CONST_SE_MAX_WEIGHT = 1.0;
-const double averaging_engine::CONST_SIG_I_FACTOR = 5.0;
+const double averaging_engine::CONST_SIG_I_FACTOR = 1.5;
 
 namespace boost_python { namespace {
   void
@@ -463,6 +471,12 @@ namespace boost_python { namespace {
       .add_property("sigma_max",
         make_getter(&averaging_engine::sigma_max_, rbv()),
         make_setter(&averaging_engine::sigma_max_, dcp()))
+      .add_property("SE_max",
+        make_getter(&averaging_engine::SE_max_, rbv()),
+        make_setter(&averaging_engine::SE_max_, dcp()))
+      .add_property("SE_min",
+        make_getter(&averaging_engine::SE_min_, rbv()),
+        make_setter(&averaging_engine::SE_min_, dcp()))
       .add_property("flag_volume_correction",
         make_getter(&averaging_engine::flag_volume_correction_, rbv()),
         make_setter(&averaging_engine::flag_volume_correction_, dcp()))
