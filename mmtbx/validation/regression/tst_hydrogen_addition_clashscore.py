@@ -1,5 +1,6 @@
 from __future__ import division
 from mmtbx.validation.clashscore import check_and_add_hydrogen
+import libtbx.load_env
 import iotbx.pdb
 import unittest
 import os
@@ -191,21 +192,26 @@ class MyTestCase(unittest.TestCase):
 
   def test_identifying_and_addition_of_hydrogen(self):
     """ test identifying and addition of hydrogen """
-    pdb_inp = iotbx.pdb.input(file_name=self.file_name)
-    pdb_hierarchy = pdb_inp.construct_hierarchy()
-    elements = pdb_hierarchy.atoms().extract_element()
-    h_count_0 = elements.count(' H') + elements.count(' D')
-    new_pdb_str,_ = check_and_add_hydrogen(
-      file_name=self.file_name,
-      verbose=False)
+    has_reduce = libtbx.env.has_module(name="reduce")
+    if has_reduce:
+      pdb_inp = iotbx.pdb.input(file_name=self.file_name)
+      pdb_hierarchy = pdb_inp.construct_hierarchy()
+      elements = pdb_hierarchy.atoms().extract_element()
+      h_count_0 = elements.count(' H') + elements.count(' D')
+      new_pdb_str,_ = check_and_add_hydrogen(
+        file_name=self.file_name,
+        verbose=False)
 
-    pdb_inp = iotbx.pdb.input(source_info=None, lines=new_pdb_str)
-    pdb_hierarchy = pdb_inp.construct_hierarchy()
-    elements = pdb_hierarchy.atoms().extract_element()
-    h_count_1 = elements.count(' H') + elements.count(' D')
+      pdb_inp = iotbx.pdb.input(source_info=None, lines=new_pdb_str)
+      pdb_hierarchy = pdb_inp.construct_hierarchy()
+      elements = pdb_hierarchy.atoms().extract_element()
+      h_count_1 = elements.count(' H') + elements.count(' D')
 
-    self.assertEqual(h_count_0,0)
-    self.assertTrue(h_count_1>0)
+      self.assertEqual(h_count_0,0)
+      self.assertTrue(h_count_1>0)
+    else:
+      # Skip test if reduce is not present
+      pass
 
   def tearDown(self):
     """ delete files created in during testing"""
