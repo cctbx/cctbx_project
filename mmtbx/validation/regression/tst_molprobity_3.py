@@ -1,5 +1,6 @@
 from __future__ import division
 from libtbx import easy_run
+import libtbx.load_env
 
 pdb_str_1 = """
 CRYST1   69.982  108.450  152.761 106.22 101.81  98.32 P 1
@@ -82,6 +83,7 @@ def exercise_01(prefix="tst_molprobity_3_exercise_01"):
   assert r.stderr_lines[0]=="Sorry: Crystal symmetry is missing or cannot be extracted."
 
 if (__name__ == "__main__") :
-  exercise_00()
-  exercise_01()
+  if libtbx.env.has_module("phenix"):
+    exercise_00()
+    exercise_01()
   print "OK"
