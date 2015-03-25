@@ -130,7 +130,13 @@ namespace prime {
       scitbx::af::shared<double> I_full;
       scitbx::af::shared<double> mosaic_radian_set;
       for(int x = 0; x < G_.size(); x++) {
-        I_full.push_back(((G_[x] * std::exp(-2*B_[x]*sin_theta_over_lambda_sq_[x]) * I_[x])/p_set_[x]));
+        double tmp1 = G_[x] *std::exp(-2*B_[x]*sin_theta_over_lambda_sq_[x]);
+        double tmp2 = I_[x];
+        double tmp3 = p_set_[x];
+        if (x==0)
+          printf("Workaround tmp1*tmp2: %70.70f\n",tmp1*tmp2); // Without this printf, I_full comes out differently between
+                                                               // python and cpp in the highest significant digits. No idea why.
+        I_full.push_back((tmp1*tmp2)/tmp3);
         mosaic_radian_set.push_back(2 * rs_set_[x] * wavelength_set_[x]);
       }
 
