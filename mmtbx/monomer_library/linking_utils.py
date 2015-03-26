@@ -9,7 +9,6 @@ from mmtbx.monomer_library.linking_setup import ad_hoc_non_linking_elements
 from mmtbx.monomer_library.linking_setup import ad_hoc_first_row
 
 get_class = iotbx.pdb.common_residue_names_get_class
-from iotbx.pdb import get_one_letter_rna_dna_name
 
 sugar_types = ["SACCHARIDE",
                "D-SACCHARIDE",
@@ -364,63 +363,6 @@ def is_atom_group_pair_linked(atom_group1,
     return mon_lib_srv.link_link_id_dict[simple_key], True, simple_key
   return None, None, None
 
-def is_linked_basepairs(
-        atom1,
-        atom2,
-        rna_dna_bond_cutoff=3.4,
-        rna_dna_angle_cutoff=35):
-  def final_link_direction_check():
-    import math
-    a1p = atom1.parent().get_atom('C4')
-    a2p = atom1.parent().get_atom('C5')
-    a3p = atom1.parent().get_atom('C6')
-    v1p = flex.vec3_double([(a1p.xyz)]) - flex.vec3_double([(a2p.xyz)])
-    v2p = flex.vec3_double([(a2p.xyz)]) - flex.vec3_double([(a3p.xyz)])
-    vn = v1p.cross(v2p)
-    vl = flex.vec3_double([(atom2.xyz)]) - flex.vec3_double([(atom1.xyz)])
-    cos_phi = vn.dot(vl)/vn.norm()/vl.norm()
-    #print "cos_phi:", cos_phi[0], "phi:", math.acos(cos_phi[0])*360/math.pi, abs(cos_phi[0]) < 0.55
-    # we have cosine between normal to plane group and link, and want this angle
-    # to be around 90 degrees
-    return 90 - math.degrees(math.acos(abs(cos_phi[0]))) < rna_dna_angle_cutoff
-  def get_distance_atoms(name1, name2):
-    return atom1.parent().get_atom(name1).distance(atom2.parent().get_atom(name2))
-
-  if atom1.distance(atom2) > rna_dna_bond_cutoff:
-    return None
-  from bondlength_defaults import basepairs_lengths
-  if atom1.parent().resname.strip()[-1] > atom2.parent().resname.strip()[-1]:
-    t = atom1
-    atom1 = atom2
-    atom2 = t
-  rn1 = get_one_letter_rna_dna_name(atom1.parent().resname)
-  rn2 = get_one_letter_rna_dna_name(atom2.parent().resname)
-  atom1_idstr = atom1.id_str()
-  atom2_idstr = atom2.id_str()
-  # Don't link two consecutive residues in the same chain
-  try:
-    if ((atom1_idstr[14:15] == atom2_idstr[14:15]) and
-        abs(int(atom1_idstr[16:19]) - int(atom2_idstr[16:19])) < 2 ):
-      return None
-  except ValueError:
-    pass
-  if rn1 == 'T': rn1 = 'U'
-  if rn2 == 'T': rn2 = 'U'
-  an1 = atom1.name.strip()
-  an2 = atom2.name.strip()
-  # first round of filtration
-  possible_classes = []
-  for k,v in basepairs_lengths.iteritems():
-    if v[0] == (rn1, rn2):
-      arr_to_check = [(x[0],x[1]) for x in v[1:]]
-      if (an1, an2) in arr_to_check or (an2, an1) in arr_to_check:
-        possible_classes.append(k)
-  if len(possible_classes) == 0:
-    return None
-  elif len(possible_classes) >= 1:
-    return possible_classes[0] if final_link_direction_check() else None
-  return None
-
 def is_atom_pair_linked(atom1,
                         atom2,
                         distance=None,
@@ -490,18 +432,6 @@ def is_atom_pair_linked(atom1,
     return True
   if "other" in lookup and "common_small_molecule" in lookup:
     return True
-  #
-  # DNA base-pairs
-  #
-  if lookup.count("common_rna_dna")+lookup.count("ccp4_mon_lib_rna_dna") == 2:
-    link_class = is_linked_basepairs(
-        atom1,
-        atom2,
-        rna_dna_bond_cutoff=rna_dna_bond_cutoff,
-        rna_dna_angle_cutoff=rna_dna_angle_cutoff)
-    if link_class is not None:
-      # print "DO LINKING, class = ", link_class, atom1.id_str(), atom2.id_str()
-      return True
   #
   # sulfur bridge
   #

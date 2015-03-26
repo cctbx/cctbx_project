@@ -2,7 +2,6 @@
 
 from __future__ import division
 import mmtbx.refinement.geometry_minimization
-from mmtbx import monomer_library
 import mmtbx.utils
 from iotbx.pdb import combine_unique_pdb_files
 import iotbx.phil
@@ -10,12 +9,10 @@ from cctbx.array_family import flex
 from libtbx.utils import user_plus_sys_time, Sorry
 from libtbx import runtime_utils
 import os
-import mmtbx.secondary_structure
 import sys
 from cStringIO import StringIO
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.rotamer.rotamer_eval import RotamerEval
-from mmtbx.secondary_structure.build import substitute_ss
 
 base_params_str = """\
 silent = False
@@ -63,14 +60,6 @@ stop_for_unknowns = True
   .short_caption = Stop for unknown residues
   .style = noauto
 include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
-secondary_structure_restraints = False
-  .type = bool
-  .short_caption = Secondary structure restraints
-secondary_structure
-  .alias = refinement.secondary_structure
-{
-  include scope mmtbx.secondary_structure.sec_str_master_phil
-}
 """
 
 master_params_str = """
@@ -209,8 +198,11 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure, params,
     sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()
     has_hd = "H" in sctr_keys or "D" in sctr_keys
   hbond_params = None
-  id_params = params.secondary_structure.idealization
   reference_torsion_proxies = None
+  # disabled temporarily due to architecture changes
+  """
+  id_params = params.secondary_structure.idealization
+  from mmtbx.secondary_structure.build import substitute_ss
   if id_params.enabled:
     print >> log, "Substituting secondary structure elements with ideal ones:"
     annot = None
@@ -247,19 +239,7 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure, params,
     else:
       print >> log, "No secondary structure definition found in phil"+\
           "or HELIX/SHEET records. No substitution done."
-
-  if(params.secondary_structure_restraints):
-    sec_str = mmtbx.secondary_structure.process_structure(
-      params             = params.secondary_structure,
-      processed_pdb_file = processed_pdb_file,
-      tmp_dir            = os.getcwd(),
-      log                = log,
-      assume_hydrogens_all_missing=(not has_hd))
-    sec_str.initialize(log=log)
-    build_proxies = sec_str.create_hbond_proxies(
-      log          = log,
-      hbond_params = None)
-    hbond_params = build_proxies.proxies
+  """
   geometry = processed_pdb_file.geometry_restraints_manager(
     show_energies                = False,
     params_edits                 = params.geometry_restraints.edits,

@@ -33,8 +33,8 @@ from __future__ import division
 from libtbx.utils import Sorry, Usage
 from libtbx import smart_open
 import libtbx.phil
-from libtbx import adopt_init_args, group_args
-import string, sys, os
+from libtbx import adopt_init_args
+import sys, os
 
 ss_input_params_str = """
   file_name = None
@@ -347,7 +347,7 @@ class pdb_helix (structure_base) :
     if prefix_scope != "" and not prefix_scope.endswith(".") :
       prefix_scope += "."
     rg = """\
-%shelix {
+%sprotein.helix {
   selection = "%s"
   helix_type = %s
 }""" % (prefix_scope, sele, self.helix_class_to_str(self.helix_class))
@@ -724,7 +724,7 @@ class pdb_sheet(structure_base):
     if prefix_scope != "" and not prefix_scope.endswith(".") :
       prefix_scope += "."
     phil_str = """
-%ssheet {
+%sprotein.sheet {
   first_strand = "%s"
 %s
 }""" % (prefix_scope, first_strand, "\n".join(strands))
@@ -838,7 +838,6 @@ def process_records (records=None, pdb_files=None, allow_none=True) :
   return secondary_structure
 
 def run (args, out=sys.stdout, log=sys.stderr, cmd_params_str="") :
-  import iotbx.pdb
   master_phil = libtbx.phil.parse("""%s
   echo_pdb_records = False
     .type = bool
@@ -879,7 +878,6 @@ def run (args, out=sys.stdout, log=sys.stderr, cmd_params_str="") :
 #-----------------------------------------------------------------------
 def exercise_hbonds():
   """ Disabled"""
-  from iotbx import file_reader
   from scitbx.array_family import flex
   from libtbx import test_utils
   # XXX: the PDB's annotation for 1ywf is simply wrong - the registers for the

@@ -1,10 +1,6 @@
-
 from __future__ import division
-#import iotbx.pdb.secondary_structure
 import iotbx.phil
-#import libtbx.object_oriented_patterns as oop
 from libtbx.utils import Sorry
-#from libtbx import group_args
 from math import sqrt
 import sys
 
@@ -14,6 +10,9 @@ helix
   .optional = True
   .style = noauto
 {
+  enabled = True
+    .type = bool
+    .help = Restrain this particular helix
   selection = None
     .type = atom_selection
     .style = bold
@@ -22,14 +21,12 @@ helix
     .help = Type of helix, defaults to alpha.  Only alpha, pi, and 3_10 \
       helices are used for hydrogen-bond restraints.
     .style = bold
-  restraint_sigma = None
+  sigma = 0.05
     .type = float
-  restraint_slack = None
+  slack = 0
     .type = float
-  backbone_only = False
+  top_out = False
     .type = bool
-    .help = Only applies to rigid-body groupings, and not H-bond restraints \
-      which are already backbone-only.
 }"""
 
 sheet_group_params_str = """
@@ -38,6 +35,9 @@ sheet
   .optional = True
   .style = noauto
 {
+  enabled = True
+    .type = bool
+    .help = Restrain this particular sheet
   first_strand = None
     .type = atom_selection
     .style = bold
@@ -60,16 +60,20 @@ sheet
       .type = atom_selection
       .style = bold
   }
-  restraint_sigma = None
+  sigma = 0.05
     .type = float
-  restraint_slack = None
+  slack = 0
     .type = float
+  top_out = False
+    .type = bool
   backbone_only = False
     .type = bool
     .help = Only applies to rigid-body groupings, and not H-bond restraints \
       which are already backbone-only.
 }
 """
+
+master_helix_phil = iotbx.phil.parse(helix_group_params_str)
 
 def _create_hbond_proxy (
     acceptor_atoms,
@@ -78,12 +82,12 @@ def _create_hbond_proxy (
     hbond_counts,
     distance_ideal,
     distance_cut,
-    hbond_params,
     remove_outliers,
     use_hydrogens,
     weight=1.0,
     sigma=None,
     slack=None,
+    top_out=False,
     log=sys.stdout) :
   donor_labels = None
   acceptor_labels = None
@@ -128,12 +132,12 @@ def _create_hbond_proxy (
       donor = hydrogen
     sigma_ = sigma
     if (sigma is None) :
-      sigma_ = hbond_params.sigma
+      sigma_ = sigma
     slack_ = slack
     if (slack is None) :
-      slack_ = hbond_params.slack
+      slack_ = slack
     limit = -1
-    if (hbond_params.top_out) :
+    if (top_out) :
       limit = (distance_cut - distance_ideal)**2 * weight/(sigma_**2)
       print "limit: %.2f" % limit
     build_proxies.add_proxy(
@@ -143,7 +147,7 @@ def _create_hbond_proxy (
       weight=weight/(sigma_ ** 2),
       slack=slack_,
       limit=limit,
-      top_out=hbond_params.top_out)
+      top_out=top_out)
     build_proxies.add_nonbonded_exclusion(donor.i_seq, acceptor.i_seq)
     return 1
   else :
@@ -156,7 +160,6 @@ def create_helix_hydrogen_bond_proxies (
     selection_cache,
     build_proxies,
     weight,
-    hbond_params,
     hbond_counts,
     distance_ideal,
     distance_cut,
@@ -233,12 +236,12 @@ def create_helix_hydrogen_bond_proxies (
                 hbond_counts=hbond_counts,
                 distance_ideal=distance_ideal,
                 distance_cut=distance_cut,
-                hbond_params=hbond_params,
+                # hbond_params=hbond_params,
                 remove_outliers=remove_outliers,
                 use_hydrogens=use_hydrogens,
                 weight=weight,
-                sigma=params.restraint_sigma,
-                slack=params.restraint_slack,
+                sigma=params.sigma,
+                slack=params.slack,
                 log=log)
           j_seq += 1
   return n_proxies
@@ -248,7 +251,6 @@ def create_sheet_hydrogen_bond_proxies (
     pdb_hierarchy,
     build_proxies,
     weight,
-    hbond_params,
     hbond_counts,
     distance_ideal,
     distance_cut,
@@ -332,12 +334,13 @@ insertion codes or alternative conformations for one of these residues.""" \
                   hbond_counts=hbond_counts,
                   distance_ideal=distance_ideal,
                   distance_cut=distance_cut,
-                  hbond_params=hbond_params,
+                  # hbond_params=hbond_params,
                   remove_outliers=remove_outliers,
                   use_hydrogens=use_hydrogens,
                   weight=weight,
-                  sigma=sheet_params.restraint_sigma,
-                  slack=sheet_params.restraint_slack,
+                  sigma=sheet_params.sigma,
+                  slack=sheet_params.slack,
+                  top_out=sheet_params.top_out,
                   log=log)
         elif (curr_strand.sense == "antiparallel") :
           while(i < len_prev_residues and j >= 0):
@@ -349,12 +352,13 @@ insertion codes or alternative conformations for one of these residues.""" \
                 hbond_counts=hbond_counts,
                 distance_ideal=distance_ideal,
                 distance_cut=distance_cut,
-                hbond_params=hbond_params,
+                # hbond_params=hbond_params,
                 remove_outliers=remove_outliers,
                 use_hydrogens=use_hydrogens,
                 weight=weight,
-                sigma=sheet_params.restraint_sigma,
-                slack=sheet_params.restraint_slack,
+                sigma=sheet_params.sigma,
+                slack=sheet_params.slack,
+                top_out=sheet_params.top_out,
                 log=log)
             if (curr_residues[j].resname.strip() != "PRO") :
               n_proxies += _create_hbond_proxy(
@@ -364,12 +368,13 @@ insertion codes or alternative conformations for one of these residues.""" \
                 hbond_counts=hbond_counts,
                 distance_ideal=distance_ideal,
                 distance_cut=distance_cut,
-                hbond_params=hbond_params,
+                # hbond_params=hbond_params,
                 remove_outliers=remove_outliers,
                 use_hydrogens=use_hydrogens,
                 weight=weight,
-                sigma=sheet_params.restraint_sigma,
-                slack=sheet_params.restraint_slack,
+                sigma=sheet_params.sigma,
+                slack=sheet_params.slack,
+                top_out=sheet_params.top_out,
                 log=log)
             i += 2;
             j -= 2;

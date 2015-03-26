@@ -5,7 +5,6 @@ from mmtbx.tls import tools
 from mmtbx.refinement import print_statistics
 import mmtbx.secondary_structure
 import iotbx.pdb
-from cctbx import adptbx
 from scitbx.array_family import flex
 import scitbx.linalg
 import libtbx.phil
@@ -736,8 +735,7 @@ def find_tls (params,
     pdb_hierarchy                = pdb_hierarchy,
     sec_str_from_pdb_file        = None,
     params                       = None,
-    assume_hydrogens_all_missing = None,
-    tmp_dir                      = None)
+    assume_hydrogens_all_missing = None)
   ssm.find_automatically(log=out)
   alpha_h_selection = ssm.alpha_selection()
   secondary_structure_selection = ssm.alpha_selection() | \

@@ -69,7 +69,33 @@ ATOM     10  CB  ALA A   2      32.232   3.483   1.399  1.00  0.00           C
 
 helix_class_to_pdb_str = {1:alpha_helix_str, 3:pi_helix_str, 5: a310_helix_str}
 
-
+ss_idealization_master_phil_str = """
+idealization
+{
+  enabled = False
+    .type = bool
+  restrain_torsion_angles = False
+    .type = bool
+  sigma_on_reference_non_ss = 1
+    .type = float
+  sigma_on_reference_helix = 1
+    .type = float
+  sigma_on_reference_sheet = 0.5
+    .type = float
+  sigma_on_torsion_ss = 5
+    .type = float
+  sigma_on_torsion_nonss = 5
+    .type = float
+  sigma_on_ramachandran = 1
+    .type = float
+  sigma_on_cbeta = 2.5
+    .type = float
+  n_macro=3
+    .type = int
+  n_iter=300
+    .type = int
+}
+"""
 
 def get_expected_n_hbonds_from_helix(helix):
   # assess helix length

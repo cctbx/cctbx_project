@@ -1,168 +1,98 @@
 
 from __future__ import division
-from mmtbx.secondary_structure import base_pairing, proteins
+from mmtbx.secondary_structure import proteins, nucleic_acids
+from cctbx import geometry_restraints
 import iotbx.pdb
 import iotbx.pdb.secondary_structure
 import iotbx.phil
 from scitbx.array_family import flex
 from libtbx.utils import null_out
 from libtbx import easy_run
-from libtbx import adopt_init_args
 import libtbx.load_env
 import cStringIO
 from math import sqrt
 import sys, os
 
-ss_restraint_params_str = """
-  verbose = False
-    .type = bool
-  substitute_n_for_h = None
-    .type = bool
-    .short_caption = Substitute N for H atoms
-    .style = tribool
-  restrain_helices = True
-    .type = bool
-  alpha_only = False
-    .type = bool
-    .short_caption = Use alpha helices only
-  restrain_sheets = True
-    .type = bool
-  restrain_base_pairs = True
-    .type = bool
-  remove_outliers = True
-    .type = bool
-    .short_caption = Filter bond outliers
-    .style = tribool
-  distance_ideal_n_o = 2.9
-    .type = float
-    .short_caption = Ideal N-O distance
-  distance_cut_n_o = 3.5
-    .type = float
-    .short_caption = N-O distance cutoff
-  distance_ideal_h_o = 1.975
-    .type = float
-    .short_caption = Ideal H-O distance
-  distance_cut_h_o = 2.5
-    .type = float
-    .short_caption = H-O distance cutoff
-  sigma = 0.05
-    .type = float
-  slack = 0.0
-    .type = float
-  top_out = False
-    .type = bool
-"""
-
-ss_tardy_params_str = """\
-  group_helix_backbone = False
-    .style = bool
-"""
-
-ss_group_params_str = """%s\n%s""" % (proteins.helix_group_params_str,
-  proteins.sheet_group_params_str)
-ss_tardy_params_str = "" # XXX: remove this later
-
 sec_str_master_phil_str = """
-idealization
-{
-  enabled = False
-    .type = bool
-  restrain_torsion_angles = False
-    .type = bool
-  sigma_on_reference_non_ss = 1
-    .type = float
-  sigma_on_reference_helix = 1
-    .type = float
-  sigma_on_reference_sheet = 0.5
-    .type = float
-  sigma_on_torsion_ss = 5
-    .type = float
-  sigma_on_torsion_nonss = 5
-    .type = float
-  sigma_on_ramachandran = 1
-    .type = float
-  sigma_on_cbeta = 2.5
-    .type = float
-  n_macro=3
-    .type = int
-  n_iter=300
-    .type = int
-}
-input
+secondary_structure
   .style = box auto_align
 {
-%s
-  find_automatically = None
+  enabled = False
+    .short_caption = Secondary structure restraints
+    .type = bool
+  find_automatically = True
     .type = bool
     .style = bold tribool
-  helices_from_phi_psi = False
-    .type = bool
-    .short_caption = Use phi/psi angles to identify helices
-    .expert_level = 2
-  force_nucleic_acids = False
-    .type = bool
-    .short_caption = Force base pair detection
-    .help = This will ignore the automatic chain type detection and run \
-      the base pair detection using PROBE even if no nucleic acids are found. \
-      Useful for tRNAs which have a large number of modified bases.
   use_ksdssp = True
     .type = bool
     .help = Use KSDSSP program to annotate secondary structure.  If False, a \
       built-in DSSP method will be used instead.
     .expert_level = 3
-}
-h_bond_restraints
-  .short_caption = Hydrogen bonding restraints
-  .style = box auto_align
-{
-%s
-}
-%s
-nucleic_acids
-  .caption = If sigma and slack are not defined for nucleic acids, the \
-    overall default settings for protein hydrogen bonds will be used \
-    instead.
-  .style = box auto_align noauto
-{
-  sigma = None
-    .type = float
-    .short_caption = Sigma for nucleic acid H-bonds
-    .help = Defaults to global setting
-  slack = None
-    .type = float
-    .short_caption = Slack for nucleic acid H-bonds
-    .help = Defaults to global setting
-  use_db_values = True
+  helices_from_phi_psi = False
     .type = bool
-    .short_caption = Use distances from Rutgers BPS database
-#  planar = False
-#    .type = bool
-#    .short_caption = Use planar restraints by default
-#    .style = noauto
-  %s
+    .short_caption = Use phi/psi angles to identify helices
+    .expert_level = 2
+  protein
+    .style = box auto_align noauto
+  {
+    enabled = True
+      .type = bool
+    distance_ideal_n_o = 2.9
+      .type = float
+      .short_caption = Ideal N-O distance
+    distance_cut_n_o = 3.5
+      .type = float
+      .short_caption = N-O distance cutoff
+    distance_ideal_h_o = 1.975
+      .type = float
+      .short_caption = Ideal H-O distance
+    distance_cut_h_o = 2.5
+      .type = float
+      .short_caption = H-O distance cutoff
+    remove_outliers = True
+      .type = bool
+      .short_caption = Filter bond outliers
+      .style = tribool
+    substitute_n_for_h = None
+      .type = bool
+      .short_caption = Substitute N for H atoms
+      .style = tribool
+    %s
+    %s
+  }
+  nucleic_acid
+    .caption = If sigma and slack are not defined for nucleic acids, the \
+      overall default settings for protein hydrogen bonds will be used \
+      instead.
+    .style = box auto_align noauto
+  {
+    enabled = True
+      .type = bool
+    %s
+  }
 }
-""" % (iotbx.pdb.secondary_structure.ss_input_params_str,
-       ss_restraint_params_str, ss_group_params_str,
-       base_pairing.dna_rna_params_str)
+""" % (
+       proteins.helix_group_params_str,
+       proteins.sheet_group_params_str,
+       nucleic_acids.dna_rna_params_str)
 
 sec_str_master_phil = iotbx.phil.parse(sec_str_master_phil_str)
 default_params = sec_str_master_phil.fetch().extract()
 
 def sec_str_from_phil (phil_str) :
+  # Used in wxGUI2/Programs/SecondaryStructure.py line 564, in update_from_strand_list
   ss_phil = iotbx.phil.parse(phil_str)
-  return sec_str_master_phil.fetch(source=ss_phil).extract()
+  ss_phil_fetched = sec_str_master_phil.fetch(source=ss_phil)
+  # ss_phil_fetched.show()
+  return ss_phil_fetched.extract()
 
 def analyze_distances (self, params, pdb_hierarchy=None, log=sys.stdout) :
+  assert 0 # Not used anywhere?
   atoms = None
   if params.verbose :
     assert pdb_hierarchy is not None
     atoms = pdb_hierarchy.atoms()
-  remove_outliers = params.remove_outliers
-  distance_max = params.h_o_distance_max
-  distance_ideal = params.h_o_distance_ideal
-  if params.substitute_n_for_h :
-    distance_max = params.n_o_distance_max
-    distance_ideal = params.n_o_distance_ideal
+  remove_outliers = params.secondary_structure.protein.remove_outliers
   atoms = pdb_hierarchy.atoms()
   hist =  flex.histogram(self.bond_lengths, 10)
   print >> log, "  Distribution of hydrogen bond lengths without filtering:"
@@ -203,66 +133,65 @@ def hydrogen_bond_proxies_from_selections(
     master_selection = flex.bool(atoms.size(), True)
   elif (isinstance(master_selection, str)) :
     master_selection = selection_cache.seletion(master_selection)
-  hbond_params = params.h_bond_restraints
-  restrain_helices = params.h_bond_restraints.restrain_helices
-  restrain_sheets = params.h_bond_restraints.restrain_sheets
-  restrain_base_pairs = params.h_bond_restraints.restrain_base_pairs
+  hbond_params = hbond.master_phil
+  restrain_sheets = restrain_helices = params.secondary_structure.protein.enabled
+  restrain_base_pairs = params.secondary_structure.nucleic_acid.enabled
   weight = 1.0
-  distance_ideal = distance_cut = None
+  # ??? Need to think about
   if (use_hydrogens) :
-    distance_ideal = hbond_params.distance_ideal_h_o
-    distance_cut = hbond_params.distance_cut_h_o
+    distance_ideal = params.secondary_structure.protein.distance_ideal_h_o
+    distance_cut = params.secondary_structure.protein.distance_cut_h_o
   else :
-    distance_ideal = hbond_params.distance_ideal_n_o
-    distance_cut = hbond_params.distance_cut_n_o
+    distance_ideal = params.secondary_structure.protein.distance_ideal_n_o
+    distance_cut = params.secondary_structure.protein.distance_cut_n_o
   build_proxies = hbond.build_simple_hbond_proxies()
   if (as_python_objects) :
     build_proxies = hbond.build_distance_proxies()
   if (distance_cut is None) :
     distance_cut = -1
   if (restrain_helices) :
-    for helix in params.helix :
-      helix_class = helix.helix_type
-      if helix_class != "alpha" and params.h_bond_restraints.alpha_only :
-        print >> log, "  Skipping non-alpha helix (class %s):" % helix_class
-        print >> log, "    %s" % helix.selection
-        continue
-      n_proxies = proteins.create_helix_hydrogen_bond_proxies(
-        params=helix,
-        pdb_hierarchy=pdb_hierarchy,
-        selection_cache=selection_cache,
-        build_proxies=build_proxies,
-        weight=1.0,
-        hbond_params=hbond_params,
-        hbond_counts=hbond_counts,
-        distance_ideal=distance_ideal,
-        distance_cut=distance_cut,
-        remove_outliers=remove_outliers,
-        use_hydrogens=use_hydrogens,
-        master_selection=master_selection,
-        log=log)
-      if (n_proxies == 0) :
-        print >> log, "  No H-bonds generated for '%s'" % helix.selection
-        continue
+    for helix in params.secondary_structure.protein.helix :
+      if helix.selection is not None:
+        n_proxies = proteins.create_helix_hydrogen_bond_proxies(
+          params=helix,
+          pdb_hierarchy=pdb_hierarchy,
+          selection_cache=selection_cache,
+          build_proxies=build_proxies,
+          weight=1.0,
+          hbond_counts=hbond_counts,
+          distance_ideal=distance_ideal,
+          distance_cut=distance_cut,
+          remove_outliers=remove_outliers,
+          use_hydrogens=use_hydrogens,
+          master_selection=master_selection,
+          log=log)
+        if (n_proxies == 0) :
+          print >> log, "  No H-bonds generated for '%s'" % helix.selection
+          continue
   if (restrain_sheets) :
-    for k, sheet in enumerate(params.sheet) :
-      n_proxies = proteins.create_sheet_hydrogen_bond_proxies(
-        sheet_params=sheet,
-        pdb_hierarchy=pdb_hierarchy,
-        build_proxies=build_proxies,
-        weight=1.0,
-        hbond_params=hbond_params,
-        hbond_counts=hbond_counts,
-        distance_ideal=distance_ideal,
-        distance_cut=distance_cut,
-        remove_outliers=remove_outliers,
-        use_hydrogens=use_hydrogens,
-        master_selection=master_selection,
-        log=log)
-      if (n_proxies == 0) :
-        print >> log, "  No H-bonds generated for sheet #%d" % k
-        continue
-  if (restrain_base_pairs) and (len(params.nucleic_acids.base_pair) > 0) :
+    for k, sheet in enumerate(params.secondary_structure.protein.sheet) :
+      if sheet.first_strand is not None:
+        n_proxies = proteins.create_sheet_hydrogen_bond_proxies(
+          sheet_params=sheet,
+          pdb_hierarchy=pdb_hierarchy,
+          build_proxies=build_proxies,
+          weight=1.0,
+          hbond_counts=hbond_counts,
+          distance_ideal=distance_ideal,
+          distance_cut=distance_cut,
+          remove_outliers=remove_outliers,
+          use_hydrogens=use_hydrogens,
+          master_selection=master_selection,
+          log=log)
+        if (n_proxies == 0) :
+          print >> log, "  No H-bonds generated for sheet #%d" % k
+          continue
+  # !!! Should be rewritten or removed. Doesn't make any sense to construct
+  # h-bond restraints separately form other NA restraints.
+  """
+  if (restrain_base_pairs and 
+      len(params.secondary_structure.nucleic_acid.base_pair) + \
+      len(params.secondary_structure.nucleic_acid.stacking_pair) > 0):
     sigma = params.nucleic_acids.sigma
     if (sigma is None) :
       sigma = hbond_params.sigma
@@ -290,6 +219,7 @@ def hydrogen_bond_proxies_from_selections(
       log=log)
     if (n_proxies == 0) :
       print >> log, "  No H-bonds generated for nucleic acids"
+  """
   return build_proxies
 
 def _get_distances (bonds, sites_cart) :
@@ -310,12 +240,24 @@ def get_pdb_hierarchy (file_names) :
 class manager (object) :
   def __init__ (self,
                 pdb_hierarchy,
+                geometry_restraints_manager=None,
                 sec_str_from_pdb_file=None,
                 params=None,
                 assume_hydrogens_all_missing=None,
-                tmp_dir=None,
                 verbose=-1) :
-    adopt_init_args(self, locals())
+    # adopt_init_args(self, locals())
+    self.pdb_hierarchy = pdb_hierarchy
+    self.grm = geometry_restraints_manager
+    self.sec_str_from_pdb_file = sec_str_from_pdb_file
+    self.params = sec_str_master_phil.extract()
+    if params is not None:
+      self.params.secondary_structure = params
+    self.assume_hydrogens_all_missing = assume_hydrogens_all_missing
+    self.verbose = verbose
+    self.def_params = sec_str_master_phil.extract()
+    self.stats = {'n_protein_hbonds':0, 'n_na_hbonds':0, 'n_na_hbond_angles':0,
+        'n_na_basepairs':0, 'n_na_stacking_pairs':0}
+
     atoms = pdb_hierarchy.atoms()
     i_seqs = atoms.extract_i_seq()
     if (i_seqs.all_eq(0)) :
@@ -323,10 +265,6 @@ class manager (object) :
       i_seqs = atoms.extract_i_seq()
     self.n_atoms = atoms.size()
     self._was_initialized = False
-    if self.params is None :
-      self.params = sec_str_master_phil.fetch().extract()
-    if self.tmp_dir is None :
-      self.tmp_dir = os.getcwd()
     if self.assume_hydrogens_all_missing is None :
       elements = atoms.extract_element().strip()
       self.assume_hydrogens_all_missing = not ("H" in elements or
@@ -344,21 +282,32 @@ class manager (object) :
       self._was_initialized = True
 
   def find_automatically (self, log=sys.stdout) :
-    params = self.params
-    find_automatically = params.input.find_automatically
+    find_automatically = self.params.secondary_structure.find_automatically
     atom_labels = list(self.pdb_hierarchy.atoms_with_labels())
     segids = flex.std_string([ a.segid for a in atom_labels ])
     use_segid = not segids.all_eq('    ')
     # XXX: check for presence of protein first?
-    if len(params.helix) == 0 and len(params.sheet) == 0 :
+    protein_ss_definition_present = False
+    if (len(self.params.secondary_structure.protein.helix) > 1 or
+        len(self.params.secondary_structure.protein.sheet) > 1):
+      protein_ss_definition_present = True
+    elif (len(self.params.secondary_structure.protein.helix) > 0 and
+        self.params.secondary_structure.protein.helix[0].selection is not None):
+      protein_ss_definition_present = True
+    elif (len(self.params.secondary_structure.protein.sheet) > 0 and
+        self.params.secondary_structure.protein.sheet[0].first_strand is not None):
+      protein_ss_definition_present = True
+
+    if (not protein_ss_definition_present and
+        self.sec_str_from_pdb_file is None):
       if(self.verbose>0):
-        print >> log, "No existing secondary structure definitions found."
-      if (self.sec_str_from_pdb_file is None) and (find_automatically!=False) :
-        if(self.verbose>0):
-          print >> log, "No HELIX or SHEET records found in PDB file."
-        find_automatically = True
-    if find_automatically :
-      if (use_segid) :
+        print >> log, "No existing secondary structure definitions found" + \
+        "in .pdb file or phil parameters."
+      find_automatically = True
+    else:
+      find_automatically = False
+    if find_automatically:
+      if use_segid:
         self.sec_str_from_pdb_file = self.find_sec_str_with_segids(log=log)
       else :
         self.sec_str_from_pdb_file = self.find_sec_str(log=log)
@@ -369,7 +318,7 @@ class manager (object) :
         ss_params = []
         for annotation, segid in self.sec_str_from_pdb_file :
           ss_phil = annotation.as_restraint_groups(log=log,
-            prefix_scope="",
+            prefix_scope="secondary_structure",
             add_segid=segid)
           ss_params.append(ss_phil)
         ss_params_str = "\n".join(ss_params)
@@ -377,34 +326,45 @@ class manager (object) :
         if(self.verbose>0):
           print >> log, "  Interpreting HELIX and SHEET records from PDB file"
         ss_params_str = self.sec_str_from_pdb_file.as_restraint_groups(log=log,
-          prefix_scope="")
+          prefix_scope="secondary_structure")
       self.apply_phil_str(ss_params_str, log=log)
-    if (find_automatically) and (self.params.input.helices_from_phi_psi) :
+    if (find_automatically and 
+        self.params.secondary_structure.helices_from_phi_psi):
       restraint_groups = self.find_approximate_helices(log=log)
-      if (restraint_groups is not None) :
+      if restraint_groups is not None:
         self.params.helix = restraint_groups.helix
     # Step 2: nucleic acids
-    if ((find_nucleic_acids(self.pdb_hierarchy) or
-         params.input.force_nucleic_acids) and
-        (params.h_bond_restraints.restrain_base_pairs)) :
-      find_automatically = params.input.find_automatically
-      if (len(params.nucleic_acids.base_pair) == 0) :
-        if (find_automatically != False) :
-          find_automatically = True
-      if find_automatically :
-        if (use_segid) :
-          base_pairs = self.find_base_pairs_with_segids(log=log,
-            force=params.input.force_nucleic_acids)
-        else :
-          base_pairs = self.find_base_pairs(log=log)
-        if base_pairs is not None :
-          bp_phil = iotbx.phil.parse(base_pairs)
-          bp_params = sec_str_master_phil.fetch(source=bp_phil).extract()
-          self.params.nucleic_acids.base_pair = \
-            bp_params.nucleic_acids.base_pair
+    na_ss_definition_present = False
+    if (len(self.params.secondary_structure.nucleic_acid.base_pair) > 1 or
+        len(self.params.secondary_structure.nucleic_acid.stacking_pair) > 1):
+      na_ss_definition_present = True
+    elif (len(self.params.secondary_structure.nucleic_acid.base_pair) > 0 and
+        self.params.secondary_structure.nucleic_acid.base_pair[0].base1 is not None):
+      na_ss_definition_present = True
+    elif (len(self.params.secondary_structure.nucleic_acid.stacking_pair) > 0 and
+        self.params.secondary_structure.nucleic_acid.stacking_pair[0].base1 is not None):
+      na_ss_definition_present = True
+
+    find_automatically = self.params.secondary_structure.find_automatically
+
+    if na_ss_definition_present:
+      find_automatically = False
+
+    if find_automatically :
+      if use_segid:
+        pairs = self.find_base_pairs_with_segids(log=log)
+      else :
+        pairs = self.find_base_pairs(log=log)
+      if len(pairs) > 1:
+        bp_phil = iotbx.phil.parse(pairs)
+        bp_params = sec_str_master_phil.fetch(source=bp_phil).extract()
+        self.params.secondary_structure.nucleic_acid.base_pair = \
+          bp_params.secondary_structure.nucleic_acid.base_pair
+        self.params.secondary_structure.nucleic_acid.stacking_pair = \
+          bp_params.secondary_structure.nucleic_acid.stacking_pair
 
   def find_sec_str (self, log=sys.stdout) :
-    if (self.params.input.use_ksdssp) :
+    if (self.params.secondary_structure.use_ksdssp) :
       pdb_str = self.pdb_hierarchy.as_pdb_string()
       (records, stderr) = run_ksdssp_direct(pdb_str)
       return iotbx.pdb.secondary_structure.process_records(
@@ -442,12 +402,22 @@ class manager (object) :
     restraint_groups = find_helices.as_restraint_groups()
     return restraint_groups
 
-  def find_base_pairs (self, log=sys.stdout) :
-    base_pairs = base_pairing.get_phil_base_pairs(
+  def find_base_pairs (self, log=sys.stdout):
+    stacking_pairs = nucleic_acids.get_phil_stacking_pairs(
       pdb_hierarchy=self.pdb_hierarchy,
-      prefix=None,
+      prefix="secondary_structure.nucleic_acid",
+      # params=self.params.secondary_structure.nucleic_acid.stacking_pair,
+      params=self.params.secondary_structure.nucleic_acid,
       log=log)
-    return base_pairs
+    base_pairs = ""
+    if self.grm is not None:
+      base_pairs = nucleic_acids.get_phil_base_pairs(
+        pdb_hierarchy=self.pdb_hierarchy,
+        nonbonded_proxies=self.grm.pair_proxies().nonbonded_proxies,
+        prefix="secondary_structure.nucleic_acid",
+        params=self.params.secondary_structure.nucleic_acid,
+        log=log)
+    return "\n".join([base_pairs, stacking_pairs])
 
   def find_base_pairs_with_segids (self, log=sys.stdout, force=False) :
     annotations = []
@@ -456,14 +426,20 @@ class manager (object) :
         continue
       segid = chain.atoms()[0].segid
       detached_hierarchy = iotbx.pdb.hierarchy.new_hierarchy_from_chain(chain)
-      pdb_str = detached_hierarchy.as_pdb_string()
-      base_pairs = base_pairing.get_phil_base_pairs(
+      stacking_pairs = nucleic_acids.get_phil_stacking_pairs(
+        pdb_hierarchy=self.pdb_hierarchy,
+        prefix="secondary_structure.nucleic_acid",
+        log=log)
+      base_pairs = nucleic_acids.get_phil_base_pairs(
         pdb_hierarchy=detached_hierarchy,
-        prefix=None,
+        nonbonded_proxies=self.grm.pair_proxies().nonbonded_proxies,
+        prefix="secondary_structure.nucleic_acid",
         log=log,
         add_segid=segid)
       if (base_pairs is not None) :
         annotations.append(base_pairs)
+      if (stacking_pairs is not None) :
+        annotations.append(stacking_pairs)
     return "\n".join(annotations)
 
   def apply_phil_str (self, phil_string, log=sys.stdout, verbose=False) :
@@ -471,8 +447,10 @@ class manager (object) :
     if verbose :
       ss_phil.show(out=log, prefix="    ")
     new_ss_params = ss_phil.extract()
-    self.params.helix = new_ss_params.helix
-    self.params.sheet = new_ss_params.sheet
+    self.params.secondary_structure.protein.helix = \
+        new_ss_params.secondary_structure.protein.helix
+    self.params.secondary_structure.protein.sheet = \
+        new_ss_params.secondary_structure.protein.sheet
 
   def apply_params (self, params) :
     self.params.helix = params.helix
@@ -480,23 +458,22 @@ class manager (object) :
 
   def create_hbond_proxies (self,
                             log=sys.stdout,
-                            hbond_params=None,
                             as_python_objects=False,
-                            master_selection=None) :
-    params = self.params
-    remove_outliers = self.params.h_bond_restraints.remove_outliers
+                            master_selection=None,
+                            as_regular_bond_proxies=True):
+    remove_outliers = self.params.secondary_structure.protein.remove_outliers
     # choice of atoms to restraint is a three-way option: default is to guess
     # based on whether hydrogens are present in the model, but this can be
     # misleading in some cases.
-    if (self.params.h_bond_restraints.substitute_n_for_h is None) :
+    if (self.params.secondary_structure.protein.substitute_n_for_h is None) :
       use_hydrogens = (not self.assume_hydrogens_all_missing)
-    elif (self.params.h_bond_restraints.substitute_n_for_h) :
+    elif (self.params.secondary_structure.protein.substitute_n_for_h) :
       use_hydrogens = False
     else :
       use_hydrogens = True
     build_proxies = hydrogen_bond_proxies_from_selections(
       pdb_hierarchy=self.pdb_hierarchy,
-      params=params,
+      params=self.params,
       use_hydrogens=use_hydrogens,
       as_python_objects=as_python_objects,
       remove_outliers=remove_outliers,
@@ -508,12 +485,51 @@ class manager (object) :
       n_proxies = build_proxies.proxies.size()
     print >> log, ""
     if (n_proxies == 0) :
-      print >> log, "  No hydrogen bonds defined."
+      print >> log, "  No hydrogen bonds defined for protein."
     else :
-      print >> log, "  %d hydrogen bonds defined." % n_proxies
+      print >> log, "  %d hydrogen bonds defined for protein." % n_proxies
+    if as_regular_bond_proxies:
+      reg_proxies = []
+      for hb_p in build_proxies.proxies:
+        reg_proxy = geometry_restraints.bond_simple_proxy(
+          i_seqs=hb_p.i_seqs,
+          distance_ideal=hb_p.distance_ideal,
+          weight=hb_p.weight,
+          slack=hb_p.slack,
+          top_out=hb_p.top_out,
+          limit=hb_p.limit)
+        reg_proxies.append(reg_proxy)
+      return reg_proxies
     return build_proxies
 
+  def create_all_new_restraints(self,
+      pdb_hierarchy,
+      grm,
+      log=sys.stdout):
+    proteins_hbonds = self.create_hbond_proxies(
+        log=log,
+        as_python_objects=True,
+        master_selection=None,
+        as_regular_bond_proxies=True)
+    stacking_proxies = nucleic_acids.get_stacking_proxies(
+        pdb_hierarchy=pdb_hierarchy, 
+        stacking_phil_params=self.params.secondary_structure.nucleic_acid.stacking_pair, 
+        grm=grm)
+    planarity_bp_proxies, parallelity_bp_proxies = nucleic_acids.get_basepair_plane_proxies(
+        pdb_hierarchy=pdb_hierarchy, 
+        bp_phil_params=self.params.secondary_structure.nucleic_acid.base_pair, 
+        grm=grm)
+    hb_bond_proxies, hb_angle_proxies = nucleic_acids.get_basepair_hbond_proxies(
+        pdb_hierarchy=pdb_hierarchy, 
+        bp_phil_params=self.params.secondary_structure.nucleic_acid.base_pair)
+    self.stats = {'n_protein_hbonds':0, 'n_na_hbonds':0, 'n_na_hbond_angles':0,
+        'n_na_basepairs':0, 'n_na_stacking_pairs':0}
+    print >> log, "  %d hydrogen bonds for nucleic acids defined." % len(hb_bond_proxies)
+    return (proteins_hbonds+hb_bond_proxies, hb_angle_proxies, 
+        planarity_bp_proxies, parallelity_bp_proxies+stacking_proxies)
+
   def get_simple_bonds (self, selection_phil=None) :
+    # assert 0 # not tested and changed, used in GUI to draw bonds
     if (selection_phil is not None) :
       if isinstance(selection_phil, str) :
         selection_phil = iotbx.phil.parse(selection_phil)
@@ -526,7 +542,7 @@ class manager (object) :
       params=params,
       use_hydrogens=(not self.assume_hydrogens_all_missing),
       as_python_objects=True,
-      remove_outliers=self.params.h_bond_restraints.remove_outliers,
+      remove_outliers=self.params.secondary_structure.protein.remove_outliers,
       master_selection=None,
       log=cStringIO.StringIO())
     bonds = hbond.get_simple_bonds(build_proxies.proxies)
@@ -545,17 +561,32 @@ class manager (object) :
 
   def show_summary (self, out=sys.stdout) :
     (frac_alpha, frac_beta) = self.calculate_structure_content()
-    n_helices = len(self.params.helix)
-    n_sheets  = len(self.params.sheet)
+    n_helices = len(self.params.secondary_structure.protein.helix)
+    if n_helices == 1:
+      if self.params.secondary_structure.protein.helix[0].selection is None:
+        n_helices = 0
+    n_sheets  = len(self.params.secondary_structure.protein.sheet)
+    if n_sheets == 1:
+      if self.params.secondary_structure.protein.sheet[0].first_strand is None:
+        n_sheets = 0
+    n_base_pairs = len(self.params.secondary_structure.nucleic_acid.base_pair)
+    if n_base_pairs == 1:
+      if self.params.secondary_structure.nucleic_acid.base_pair[0].base1 is None:
+        n_base_pairs = 0
+    n_stacking_pairs = len(self.params.secondary_structure.nucleic_acid.stacking_pair)
+    if n_stacking_pairs == 1:
+      if self.params.secondary_structure.nucleic_acid.stacking_pair[0].base1 is None:
+        n_stacking_pairs = 0
     print >> out, "Secondary structure from input PDB file:"
     print >> out, "  %d helices and %d sheets defined" % (n_helices,n_sheets)
     print >> out, "  %.1f%% alpha, %.1f%% beta" %(frac_alpha*100,frac_beta*100)
+    print >> out, "  %d base pairs and %d stacking pairs defined." % (n_base_pairs,n_stacking_pairs)
 
   def helix_selections (self, limit=None, main_conf_only=False,
       alpha_only=False) :
     sele = self.selection_cache.selection
     all_selections = []
-    for helix in self.params.helix :
+    for helix in self.params.secondary_structure.protein.helix :
       if (helix.selection is not None) :
         if (alpha_only) and (helix.helix_type != "alpha") :
           continue
@@ -570,7 +601,7 @@ class manager (object) :
     return all_selections
 
   def get_helix_types (self) :
-    return [ helix.helix_type for helix in self.params.helix ]
+    return [ helix.helix_type for helix in self.params.secondary_structure.protein.helix ]
 
   def helix_selection (self, **kwds) :
     whole_selection = flex.bool(self.n_atoms)
@@ -588,7 +619,7 @@ class manager (object) :
   def beta_selections (self, limit=None, main_conf_only=False) :
     sele = self.selection_cache.selection
     all_selections = []
-    for sheet in self.params.sheet :
+    for sheet in self.params.secondary_structure.protein.sheet :
       sheet_selection = flex.bool(self.n_atoms)
       clauses = []
       if (limit is not None) :
@@ -615,7 +646,7 @@ class manager (object) :
   def base_pair_selections (self, limit=None, main_conf_only=False) :
     sele = self.selection_cache.selection
     all_selections = []
-    for bp in self.params.nucleic_acids.base_pair :
+    for bp in self.params.secondary_structure.nucleic_acid.base_pair :
       if (bp.base1 is not None) and (bp.base2 is not None) :
         clauses = [ "((%s) or (%s))" % (bp.base1, bp.base2) ]
         if (limit is not None) :
@@ -642,20 +673,19 @@ class manager (object) :
     sec_str.set_selected(sheets, all_beta.select(sheets))
     return sec_str
 
-def process_structure (params, processed_pdb_file, tmp_dir, log,
+def process_structure (params, processed_pdb_file, grm, log,
     assume_hydrogens_all_missing=None) :
   acp = processed_pdb_file.all_chain_proxies
   try :
     sec_str_from_pdb_file = acp.extract_secondary_structure()
   except Exception :
     sec_str_from_pdb_file = None
-  pdb_hierarchy = acp.pdb_hierarchy
   structure_manager = manager(
-    pdb_hierarchy=pdb_hierarchy,
+    pdb_hierarchy=acp.pdb_hierarchy,
+    geometry_restraints_manager=grm,
     sec_str_from_pdb_file=sec_str_from_pdb_file,
     params=params,
-    assume_hydrogens_all_missing=assume_hydrogens_all_missing,
-    tmp_dir=tmp_dir)
+    assume_hydrogens_all_missing=assume_hydrogens_all_missing)
   return structure_manager
 
 def find_nucleic_acids (pdb_hierarchy) :

@@ -247,7 +247,7 @@ def exercise_2 (verbose=False) :
   import iotbx.phil
   from time import time
   phil_str = """
-refinement.secondary_structure {
+refinement.pdb_interpretation.secondary_structure.protein {
   helix {
     selection = "chain A and resseq 10:20"
   }
@@ -261,7 +261,7 @@ refinement.secondary_structure {
 """
 
   phil_str_2 = """
-refinement.secondary_structure {
+refinement.pdb_interpretation.secondary_structure.protein {
   helix {
     selection = "chain B and resseq 10:20"
   }
@@ -293,18 +293,18 @@ refinement.ncs.restraint_group {
   i.merge_phil(phil_string=phil_str)
   t2 = time()
   params = i.get_python_object()
-  assert (params.refinement.secondary_structure.helix[0].selection ==
-    "chain A and resseq 10:20")
+  assert (params.refinement.pdb_interpretation.secondary_structure.\
+      protein.helix[0].selection == "chain A and resseq 10:20")
   t3 = time()
   i.merge_phil(phil_string=phil_str_2,
-    only_scope="refinement.secondary_structure")
+    only_scope="refinement.pdb_interpretation.secondary_structure")
   t4 = time()
   params = i.get_python_object()
-  assert (params.refinement.secondary_structure.helix[0].selection ==
-    "chain B and resseq 10:20")
-  scope = i.get_scope_by_name("refinement.secondary_structure")
+  assert (params.refinement.pdb_interpretation.secondary_structure.\
+      protein.helix[0].selection == "chain B and resseq 10:20")
+  scope = i.get_scope_by_name("refinement.pdb_interpretation.secondary_structure")
   params2 = scope.extract()
-  assert (params2.helix[0].selection == "chain B and resseq 10:20")
+  assert (params2.protein.helix[0].selection == "chain B and resseq 10:20")
   if verbose :
     print "Merge with global fetch: %6.1fms" % ((t2-t1) * 1000)
     print "Merge with local fetch:  %6.1fms" % ((t4-t3) * 1000)

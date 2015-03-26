@@ -2025,8 +2025,10 @@ secondary_structure {
   master_phil = mmtbx.command_line.geometry_minimization.master_params()
   helix_phil = iotbx.phil.parse(phil_str)
   working_params = master_phil.fetch(source=helix_phil).extract()
-  phil_helices = working_params.secondary_structure.helix
-  phil_sheets = working_params.secondary_structure.sheet
+  phil_helices = working_params.pdb_interpretation.secondary_structure.\
+      protein.helix
+  phil_sheets = working_params.pdb_interpretation.secondary_structure.\
+      protein.sheet
   annot = ss.annotation.from_phil(phil_helices, phil_sheets, pdb_h)
   ss_from_phil = annot.as_pdb_str()
   assert ss_from_file == ss_from_phil
