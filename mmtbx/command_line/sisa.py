@@ -107,8 +107,8 @@ if __name__=="__main__":
                                            phis_averaged, foms_averaged)
 
       #output mtz for optimized stack n
-      file_name_out = iparams.project_name + '/' + iparams.run_name + '/' + iparams.project_name + \
-        '_sisa_cycle_'+str(i+1)+'_stack_'+str(j+1)+'.mtz'
+      file_name_out = iparams.project_name + '/' + iparams.run_name + '/' + \
+        'sisa_cycle_'+str(i+1)+'_stack_'+str(j+1)+'.mtz'
       mtzh.write_mtz(miller_arrays, file_name_out)
 
   f = open(iparams.project_name + '/' + iparams.run_name +'/log.txt', 'w')
