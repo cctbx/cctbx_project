@@ -368,7 +368,8 @@ namespace cctbx {
       bool
       is_similar_to(unit_cell const& other,
                     double relative_length_tolerance=0.01,
-                    double absolute_angle_tolerance=1.) const;
+                    double absolute_angle_tolerance=1.,
+                    double absolute_length_tolerance=-9999.) const;
 
       //! Array of c_inv_r matrices compatible with change_basis.
       af::shared<scitbx::mat3<int> >

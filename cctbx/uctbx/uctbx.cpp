@@ -390,15 +390,25 @@ namespace cctbx { namespace uctbx {
   bool
   unit_cell::is_similar_to(unit_cell const& other,
                            double relative_length_tolerance,
-                           double absolute_angle_tolerance) const
+                           double absolute_angle_tolerance,
+                           double absolute_length_tolerance) const
   {
     using scitbx::fn::absolute;
     const double* l1 = params_.begin();
     const double* l2 = other.params_.begin();
-    for(std::size_t i=0;i<3;i++) {
-      if (absolute(std::min(l1[i], l2[i]) / std::max(l1[i], l2[i]) - 1)
-          > relative_length_tolerance) {
-        return false;
+    if (absolute_length_tolerance > 0.) {
+      for(std::size_t i=0;i<3;i++) {
+        if (absolute(l1[i] - l2[i]) > absolute_length_tolerance) {
+          return false;
+        }
+      }
+    }
+    else {
+      for(std::size_t i=0;i<3;i++) {
+        if (absolute(std::min(l1[i], l2[i]) / std::max(l1[i], l2[i]) - 1)
+            > relative_length_tolerance) {
+          return false;
+        }
       }
     }
     const double* a1 = l1 + 3;

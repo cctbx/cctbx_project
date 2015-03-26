@@ -86,7 +86,8 @@ namespace {
           &w_t::is_similar_to, (
             arg("other"),
             arg("relative_length_tolerance")=0.01,
-            arg("absolute_angle_tolerance")=1.))
+            arg("absolute_angle_tolerance")=1.,
+            arg("absolute_length_tolerance")=-9999.))
         .def("similarity_transformations",
           &w_t::similarity_transformations, (
             arg("other"),

@@ -471,7 +471,7 @@ class manager(object):
 
   def add_angles_in_place(self, additional_angle_proxies):
     self.angle_proxies.extend(additional_angle_proxies)
-  
+
   def remove_angles_in_place(self, selection):
     self.angle_proxies = self.angle_proxies.proxy_remove(
       selection=selection)
@@ -614,9 +614,9 @@ class manager(object):
             weight=1).distance_model
         if distance_model > max_p_distance:
           max_p_distance = distance_model
-      bonded_distance_cutoff = max(bonded_distance_cutoff, 
+      bonded_distance_cutoff = max(bonded_distance_cutoff,
           max_p_distance)
-    bonded_distance_cutoff += 0.1 
+    bonded_distance_cutoff += 0.1
     # make asu mappings
     all_asu_mappings = self.crystal_symmetry.special_position_settings().\
         asu_mappings(buffer_thickness=bonded_distance_cutoff)
