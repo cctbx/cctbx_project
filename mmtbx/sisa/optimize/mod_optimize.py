@@ -64,7 +64,7 @@ class sisa_optimizer(object):
   def calcskew(self, map_coeff, iparams):
     real_map = map_coeff.fft_map().real_map()
 
-    ed_limit = iparams.ga.fit_params.ed_sigma_thres*real_map.sample_standard_deviation()
+    ed_limit = iparams.fit_params.ed_sigma_thres*real_map.sample_standard_deviation()
 
     ed_limit_up=ed_limit
     ed_limit_dn=ed_limit*-1
@@ -105,7 +105,7 @@ class sisa_optimizer(object):
 
     mpe_phi = 0
     mapcc_phi = 0
-    if iparams.hkl.refin is not None and \
+    if iparams.hklrefin is not None and \
       np.sum(phic_selected) > 0:
       from mod_util import util_handler
       uth = util_handler()
@@ -131,7 +131,7 @@ class sisa_optimizer(object):
 
     #initial fist population and calculate their fitness
     ga_idv_length = len(indices_selected)
-    cur_pop=gah.initialse(iparams.ga.ga_params.pop_size, ga_idv_length, cdf_set, self.phi_for_hl)
+    cur_pop=gah.initialse(iparams.ga_params.pop_size, ga_idv_length, cdf_set, self.phi_for_hl)
     cur_fit=[0]*len(cur_pop)
 
     #setup new fp, phic (if given), fom, and new fom
@@ -166,24 +166,24 @@ class sisa_optimizer(object):
     #[[7,1,5],
     #[2,3,0],
     #[4,6,9]]
-    map_width=int(math.sqrt(iparams.ga.ga_params.pop_size))
-    map_1D=random.sample(range(iparams.ga.ga_params.pop_size), iparams.ga.ga_params.pop_size)
+    map_width=int(math.sqrt(iparams.ga_params.pop_size))
+    map_1D=random.sample(range(iparams.ga_params.pop_size), iparams.ga_params.pop_size)
 
     map_2D=[]
     for i_width in range(map_width):
       map_2D.append(map_1D[int(map_width*i_width):int(map_width*(i_width+1))])
 
-    map_visit_order=random.sample(range(iparams.ga.ga_params.pop_size), iparams.ga.ga_params.pop_size)
+    map_visit_order=random.sample(range(iparams.ga_params.pop_size), iparams.ga_params.pop_size)
 
     #start a generation
-    conv_gen = iparams.ga.ga_params.max_gen
-    for i_gen in range(iparams.ga.ga_params.max_gen):
+    conv_gen = iparams.ga_params.max_gen
+    for i_gen in range(iparams.ga_params.max_gen):
       time_gen_start=datetime.now()
 
       #calculate crossover rate for this generation
-      ga_ratio_cross=iparams.ga.ga_params.crossover_start_rate + \
-        (math.pow(i_gen/iparams.ga.ga_params.max_gen, iparams.ga.ga_params.crossover_slope) * \
-        (iparams.ga.ga_params.crossover_end_rate-iparams.ga.ga_params.crossover_start_rate))
+      ga_ratio_cross=iparams.ga_params.crossover_start_rate + \
+        (math.pow(i_gen/iparams.ga_params.max_gen, iparams.ga_params.crossover_slope) * \
+        (iparams.ga_params.crossover_end_rate-iparams.ga_params.crossover_start_rate))
 
       num_point_cross=int(round(ga_ratio_cross * ga_idv_length))
       for i_idv in range(len(map_visit_order)):
@@ -196,11 +196,11 @@ class sisa_optimizer(object):
 
         #draw an xmap around mom and grab the idv_id stored in map_2D
         mate_candidate_id=[]
-        xmap_width = (iparams.ga.ga_params.xmap_radius * 2) + 1
+        xmap_width = (iparams.ga_params.xmap_radius * 2) + 1
         for i_xmap_y in range(xmap_width):
           for i_xmap_x in range(xmap_width):
-            i_xmap_tmp_x=mom_x+i_xmap_x-iparams.ga.ga_params.xmap_radius
-            i_xmap_tmp_y=mom_y+i_xmap_y-iparams.ga.ga_params.xmap_radius
+            i_xmap_tmp_x=mom_x+i_xmap_x-iparams.ga_params.xmap_radius
+            i_xmap_tmp_y=mom_y+i_xmap_y-iparams.ga_params.xmap_radius
             if i_xmap_tmp_x >= xmap_width:
               i_xmap_tmp_x-= xmap_width
             if i_xmap_tmp_y >= xmap_width:
@@ -208,10 +208,10 @@ class sisa_optimizer(object):
             if ~(map_2D[i_xmap_tmp_x][i_xmap_tmp_y]==mom_id):
               mate_candidate_id.append(map_2D[i_xmap_tmp_x][i_xmap_tmp_y])
 
-        mate_candiate_id_random_order=random.sample(range(len(mate_candidate_id)), iparams.ga.ga_params.num_sel_mate)
+        mate_candiate_id_random_order=random.sample(range(len(mate_candidate_id)), iparams.ga_params.num_sel_mate)
 
         tmp_mate_fit_set=[]
-        for i_mate in range(iparams.ga.ga_params.num_sel_mate):
+        for i_mate in range(iparams.ga_params.num_sel_mate):
           tmp_mate_fit_set.append(
                 [mate_candidate_id[mate_candiate_id_random_order[i_mate]],
                 cur_fit[mate_candidate_id[mate_candiate_id_random_order[i_mate]]]])
@@ -223,18 +223,18 @@ class sisa_optimizer(object):
 
         #perform ga operator - perform under probability
         #otherwise keeps the mom
-        if random.random() < iparams.ga.ga_params.prob_of_cross:
+        if random.random() < iparams.ga_params.prob_of_cross:
           child1,child2,cross_template = gah.crossover(mom, dad, ga_ratio_cross)
           child1 = gah.mutation(
                   child1,
-                  iparams.ga.ga_params.prob_of_mut,
-                  iparams.ga.ga_params.num_point_mut,
+                  iparams.ga_params.prob_of_mut,
+                  iparams.ga_params.num_point_mut,
                   cdf_set,
                   self.phi_for_hl)
           child2 = gah.mutation(
                   child2,
-                  iparams.ga.ga_params.prob_of_mut,
-                  iparams.ga.ga_params.num_point_mut,
+                  iparams.ga_params.prob_of_mut,
+                  iparams.ga_params.num_point_mut,
                   cdf_set,
                   self.phi_for_hl)
 
@@ -266,15 +266,15 @@ class sisa_optimizer(object):
 
 
       #2. mapcc and mpe among population
-      n_idv_pick=int(round(0.05*iparams.ga.ga_params.pop_size))
+      n_idv_pick=int(round(0.05*iparams.ga_params.pop_size))
       mpe_idv_pick=[0]*n_idv_pick
       mapcc_idv_pick=[0]*n_idv_pick
-      id_idv_pick=random.sample(xrange(iparams.ga.ga_params.pop_size), n_idv_pick)
+      id_idv_pick=random.sample(xrange(iparams.ga_params.pop_size), n_idv_pick)
       for i in range(n_idv_pick):
         i_idv_pick = id_idv_pick[i]
-        mpe_to_others = [0] * iparams.ga.ga_params.pop_size
-        mapcc_to_others = [0] * iparams.ga.ga_params.pop_size
-        for j in range(iparams.ga.ga_params.pop_size):
+        mpe_to_others = [0] * iparams.ga_params.pop_size
+        mapcc_to_others = [0] * iparams.ga_params.pop_size
+        for j in range(iparams.ga_params.pop_size):
           mapcc_to_others[j], mpe_to_others[j] = uth.calcphicc(
                 fp_selected,
                 fom_selected_new,
@@ -283,8 +283,8 @@ class sisa_optimizer(object):
                 cur_pop[j],
                 True)
 
-        mpe_idv_pick[i]=sum(mpe_to_others)/iparams.ga.ga_params.pop_size
-        mapcc_idv_pick[i]=sum(mapcc_to_others)/iparams.ga.ga_params.pop_size
+        mpe_idv_pick[i]=sum(mpe_to_others)/iparams.ga_params.pop_size
+        mapcc_idv_pick[i]=sum(mapcc_to_others)/iparams.ga_params.pop_size
 
       mpe_avg_gen = sum(mpe_idv_pick)/len(mpe_idv_pick)
       mapcc_avg_gen = sum(mapcc_idv_pick)/len(mapcc_idv_pick)
@@ -302,8 +302,8 @@ class sisa_optimizer(object):
       num_good_idv_intcycle = self.pickbestidv(
                                 list_phis_intcycle,
                                 list_fit_intcycle,
-                                iparams.ga.ga_params.skew_sigma_sel_lo,
-                                iparams.ga.ga_params.skew_sigma_sel_hi)
+                                iparams.ga_params.skew_sigma_sel_lo,
+                                iparams.ga_params.skew_sigma_sel_hi)
 
       flex_phis_fit_intcycle, mapcc_phis_intcycle, mpe_phis_intcycle = self.calc_stats(\
               miller_arrays, indices_selected, flex_phis_intcycle, fom_selected_new, iparams)

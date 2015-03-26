@@ -41,19 +41,15 @@ if __name__=="__main__":
   txt_out = ''
 
   iparams, txt_out_input = read_input(sys.argv[:1])
-  print txt_out_input
   txt_out += txt_out_input
 
-  if iparams.hkl.phibin is None:
-    print 'MTZ file with amplitudes, HL coefficients, and PHIB is required.'
-    exit()
   from mmtbx.sisa.optimize.mod_mtz import mtz_handler
   mtzh = mtz_handler()
   miller_arrays, fp_sort_index_stacks, txt_out_format = mtzh.format_miller_arrays(iparams)
   print txt_out_format
   txt_out += txt_out_format
 
-  for i in range(iparams.ga.n_macro_cycles):
+  for i in range(iparams.n_macro_cycles):
     txt_out += 'Macrocycle no. %4.0f\n'%(i+1)
     print 'Macrocycle no. %4.0f\n'%(i+1)
     for j in range(len(fp_sort_index_stacks)):
@@ -70,9 +66,9 @@ if __name__=="__main__":
         return sisa_optimize_mproc(arg, j, miller_arrays, i_sel, cdf_set, iparams)
 
       sisa_optimize_results = pool_map(
-              args=range(iparams.ga.n_micro_cycles),
+              args=range(iparams.n_micro_cycles),
               func=sisa_optimize_mproc_wrapper,
-              processes=iparams.ga.n_processors)
+              processes=iparams.n_processors)
 
       list_phis = []
       foms_sum = None
@@ -121,9 +117,10 @@ if __name__=="__main__":
 
   print 'Sisa done.'
 
-  if iparams.flag_auto_dm:
+  if iparams.autodm:
     print 'Proceed with automatic density modification...(your density-modified map will be AutoBuild_run_n_/overall_best_denmod_map_coeffs.mtz.'
-    cmd='phenix.autobuild data=' + file_name_out + ' seq_file=' + iparams.seq_file + \
-        ' maps_only=True n_cycle_build_max=1 n_cycle_rebuild_max=0'
+    cmd='phenix.autobuild data=' + file_name_out + ' seq_file=' + str(iparams.seq_file) + \
+        ' maps_only=True n_cycle_build_max=1 n_cycle_rebuild_max=0' + \
+        ' input_ha_file=' + str(iparams.ha_file) + ' model=' + str(iparams.model_file)
     print 'Running: '+cmd
     os.system(cmd)
