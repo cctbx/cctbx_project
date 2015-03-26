@@ -143,18 +143,6 @@ class mtz_handler(object):
 
     print 'No. reflections after format - indices:%6.0f fp:%6.0f phib:%6.0f fom:%6.0f HL:%6.0f)'%( \
           len(miller_indices), len(flex_fp), len(flex_phib), len(flex_fom), len(flex_hl))
-    #get wilson_plot
-    from mmtbx.scaling import xtriage
-    from libtbx.utils import null_out
-    xtriage_args = [
-      iparams.data,
-      "",
-      "",
-      "log=tst_xtriage_1.log"
-    ]
-    result = xtriage.run(args=xtriage_args, out=null_out())
-    ws = result.wilson_scaling
-
 
     flex_hla = flex.double()
     flex_hlb = flex.double()
@@ -203,14 +191,28 @@ class mtz_handler(object):
             sigmas=flex_sigmas).set_observation_type_xray_amplitude()
 
     #check if Wilson B-factor is applied
+    flex_fp_for_sort = flex_fp[:]
     if iparams.flag_apply_b_factor:
-      print 'Wilson K=%6.2f B=%6.2f'%(ws.iso_p_scale, ws.iso_b_wilson)
-      sin_theta_over_lambda_sq = miller_array_out.two_theta(wavelength=iparams.wavelength) \
-                                  .sin_theta_over_lambda_sq().data()
-      wilson_expect = flex.exp(-2 * ws.iso_b_wilson * sin_theta_over_lambda_sq)
-      flex_fp_for_sort = wilson_expect * flex_fp
-    else:
-      flex_fp_for_sort = flex_fp
+      try:
+        #get wilson_plot
+        from mmtbx.scaling import xtriage
+        from libtbx.utils import null_out
+        xtriage_args = [
+          iparams.data,
+          "",
+          "",
+          "log=tst_xtriage_1.log"
+        ]
+        result = xtriage.run(args=xtriage_args, out=null_out())
+        ws = result.wilson_scaling
+
+        print 'Wilson K=%6.2f B=%6.2f'%(ws.iso_p_scale, ws.iso_b_wilson)
+        sin_theta_over_lambda_sq = miller_array_out.two_theta(wavelength=iparams.wavelength) \
+                                    .sin_theta_over_lambda_sq().data()
+        wilson_expect = flex.exp(-2 * ws.iso_b_wilson * sin_theta_over_lambda_sq)
+        flex_fp_for_sort = wilson_expect * flex_fp
+      except Exception:
+        print 'Error calculating Wilson scale factors. Continue without applying B-factor.'
 
 
     flex_d_spacings = miller_array_out.d_spacings().data()
