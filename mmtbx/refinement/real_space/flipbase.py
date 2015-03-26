@@ -3,7 +3,6 @@ import os,sys
 from iotbx import pdb
 from iotbx import reflection_file_reader
 from iotbx import file_reader
-from mmtbx.secondary_structure import base_pairing
 from mmtbx.refinement.real_space import individual_sites
 import mmtbx
 import libtbx.phil.command_line
@@ -63,6 +62,36 @@ Options :
   if msg != '' :
     s = '*'*79 + '\n\n!!!!!  %s  !!!!!\n' % msg + s
   print s;sys.exit()
+
+def flip_base (atom_group, angle=180) :
+  import scitbx.matrix
+  axis_point_1 = axis_point_2 = None
+  rotateable_atoms = []
+  base_name = atom_group.resname.strip()
+  if ("r" in base_name) :
+    base_name = base_name.replace("r")
+  elif (base_name.startswith("D") and len(base_name) == 2) :
+    base_name = base_name[1]
+  assert base_name in base_rotation_axes.keys(), base_name
+  for atom in atom_group.atoms() :
+    atom_name = atom.name.strip()
+    if (atom_name == base_rotation_axes[base_name][0]) :
+      axis_point_1 = atom.xyz
+    elif (atom_name == base_rotation_axes[base_name][1]) :
+      axis_point_2 = atom.xyz
+    elif (atom_name in base_rotatable_atoms[base_name]) :
+      rotateable_atoms.append(atom)
+  if (None in [axis_point_1, axis_point_2]) :
+    raise RuntimeError("Missing atom(s) for rotateable axis.")
+  elif (len(rotateable_atoms) == 0) :
+    raise RuntimeError("Missing nucleotide base.")
+  for atom in rotateable_atoms :
+    atom.xyz = scitbx.matrix.rotate_point_around_axis(
+      axis_point_1=axis_point_1,
+      axis_point_2=axis_point_2,
+      point=atom.xyz,
+      angle=angle,
+      deg=True)
 
 def get_target_map(reflection_file_name,  log=sys.stderr) :
   miller_arrays = reflection_file_reader.any_reflection_file(file_name =

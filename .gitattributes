@@ -2109,7 +2109,6 @@ mmtbx/scaling/tst_xtriage_twin_analyses.py -text
 mmtbx/secondary_structure/SConscript -text
 mmtbx/secondary_structure/__init__.py -text
 mmtbx/secondary_structure/base_pairing.data -text
-mmtbx/secondary_structure/base_pairing.py -text
 mmtbx/secondary_structure/build/__init__.py -text
 mmtbx/secondary_structure/build/tst_1.py -text
 mmtbx/secondary_structure/build/tst_2.py -text

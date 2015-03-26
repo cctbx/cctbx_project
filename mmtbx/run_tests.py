@@ -114,6 +114,7 @@ tst_list = (
   "$D/refinement/real_space/tst_monitor.py",
   "$D/refinement/real_space/tst_rigid_body.py",
   "$D/refinement/real_space/tst_fit_water.py",
+  "$D/refinement/real_space/tst_flipbase.py",
   #
   "$D/regression/tst_dssp.py",
   "$D/building/tst.py",
