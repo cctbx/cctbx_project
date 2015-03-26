@@ -1,7 +1,6 @@
 from __future__ import division
 from scitbx.array_family import flex
 from libtbx import group_args
-from mmtbx.secondary_structure import base_pairing
 from libtbx.utils import user_plus_sys_time
 from mmtbx.refinement.real_space import individual_sites
 import mmtbx
