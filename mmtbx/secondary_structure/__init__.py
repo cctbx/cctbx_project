@@ -189,7 +189,7 @@ def hydrogen_bond_proxies_from_selections(
   # !!! Should be rewritten or removed. Doesn't make any sense to construct
   # h-bond restraints separately form other NA restraints.
   """
-  if (restrain_base_pairs and 
+  if (restrain_base_pairs and
       len(params.secondary_structure.nucleic_acid.base_pair) + \
       len(params.secondary_structure.nucleic_acid.stacking_pair) > 0):
     sigma = params.nucleic_acids.sigma
@@ -328,7 +328,7 @@ class manager (object) :
         ss_params_str = self.sec_str_from_pdb_file.as_restraint_groups(log=log,
           prefix_scope="secondary_structure")
       self.apply_phil_str(ss_params_str, log=log)
-    if (find_automatically and 
+    if (find_automatically and
         self.params.secondary_structure.helices_from_phi_psi):
       restraint_groups = self.find_approximate_helices(log=log)
       if restraint_groups is not None:
@@ -512,20 +512,20 @@ class manager (object) :
         master_selection=None,
         as_regular_bond_proxies=True)
     stacking_proxies = nucleic_acids.get_stacking_proxies(
-        pdb_hierarchy=pdb_hierarchy, 
-        stacking_phil_params=self.params.secondary_structure.nucleic_acid.stacking_pair, 
+        pdb_hierarchy=pdb_hierarchy,
+        stacking_phil_params=self.params.secondary_structure.nucleic_acid.stacking_pair,
         grm=grm)
     planarity_bp_proxies, parallelity_bp_proxies = nucleic_acids.get_basepair_plane_proxies(
-        pdb_hierarchy=pdb_hierarchy, 
-        bp_phil_params=self.params.secondary_structure.nucleic_acid.base_pair, 
+        pdb_hierarchy=pdb_hierarchy,
+        bp_phil_params=self.params.secondary_structure.nucleic_acid.base_pair,
         grm=grm)
     hb_bond_proxies, hb_angle_proxies = nucleic_acids.get_basepair_hbond_proxies(
-        pdb_hierarchy=pdb_hierarchy, 
+        pdb_hierarchy=pdb_hierarchy,
         bp_phil_params=self.params.secondary_structure.nucleic_acid.base_pair)
     self.stats = {'n_protein_hbonds':0, 'n_na_hbonds':0, 'n_na_hbond_angles':0,
         'n_na_basepairs':0, 'n_na_stacking_pairs':0}
     print >> log, "  %d hydrogen bonds for nucleic acids defined." % len(hb_bond_proxies)
-    return (proteins_hbonds+hb_bond_proxies, hb_angle_proxies, 
+    return (proteins_hbonds+hb_bond_proxies, hb_angle_proxies,
         planarity_bp_proxies, parallelity_bp_proxies+stacking_proxies)
 
   def get_simple_bonds (self, selection_phil=None) :

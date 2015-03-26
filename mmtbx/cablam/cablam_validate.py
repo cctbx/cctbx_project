@@ -716,7 +716,7 @@ def check_prolines(hierarchy,pdbid='pdbid'):
               print "  no suggestion. cis value:%.3f" %cislevel
         else: #modeled as twisted
           print "TWISTED peptide at ", pdbid, residue.id_with_resname()
-          print "  TRANS score: %.3f" %translevel, " CIS score: %.3f" %cislevel 
+          print "  TRANS score: %.3f" %translevel, " CIS score: %.3f" %cislevel
 #}}}
 
 #{{{ print_helix_sheet_records function

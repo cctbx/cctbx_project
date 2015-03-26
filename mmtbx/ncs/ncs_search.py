@@ -1550,6 +1550,3 @@ def  update_chain_ids_search_order(chains_info,sorted_ch,chains_in_copies,i):
     min_indx = sorted_ch.index(min_ch_id)
     sorted_ch[i], sorted_ch[min_indx] = sorted_ch[min_indx], sorted_ch[i]
     return sorted_ch
-
-
-

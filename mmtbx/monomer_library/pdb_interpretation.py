@@ -4938,7 +4938,7 @@ class process(object):
             grm=self._geometry_restraints_manager,
             log=self.log)
         ss_manager.initialize(log=self.log)
-        (hb_proxies, hb_angle_proxies, planarity_proxies, 
+        (hb_proxies, hb_angle_proxies, planarity_proxies,
         parallelity_proxies) = ss_manager.create_all_new_restraints(
             pdb_hierarchy=self.all_chain_proxies.pdb_hierarchy,
             grm=self._geometry_restraints_manager,

@@ -3,7 +3,6 @@ from libtbx import easy_pickle as ep
 import scipy as sp
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib as mpl
 
 def make_png(image_pickle, integration_pickle, file_name=None, res=600,
              show_spots=True):
@@ -151,5 +150,3 @@ def cv_png(image_pickle, integration_pickle, file_name=None, res=600,
   plt.title("Unit cell: {} ({}) \nNominal mosaicity: {}" \
             .format(point_group, unit_cell, mosaicity))
   plt.savefig(file_name, dpi=res, format='png')
-
-
