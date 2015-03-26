@@ -469,6 +469,9 @@ class manager(object):
       plain_pairs_radius=self.plain_pairs_radius,
       hbonds_in_bond_list=self.hbonds_in_bond_list)
 
+  def add_angles_in_place(self, additional_angle_proxies):
+    self.angle_proxies.extend(additional_angle_proxies)
+  
   def remove_angles_in_place(self, selection):
     self.angle_proxies = self.angle_proxies.proxy_remove(
       selection=selection)
@@ -489,9 +492,15 @@ class manager(object):
     self.chirality_proxies = self.chirality_proxies.proxy_remove(
       selection=selection)
 
+  def add_planarities_in_place(self, additional_planarity_proxies):
+    self.planarity_proxies.extend(additional_planarity_proxies)
+
   def remove_planarities_in_place(self, selection):
     self.planarity_proxies = self.planarity_proxies.proxy_remove(
       selection=selection)
+
+  def add_parallelities_in_place(self, additional_parallelity_proxies):
+    self.parallelity_proxies.extend(additional_parallelity_proxies)
 
   def remove_parallelities_in_place(self, selection):
     self.parallelity_proxies = self.parallelity_proxies.proxy_remove(
@@ -504,7 +513,10 @@ class manager(object):
     self.external_energy_function = energy_function
 
   def new_included_bonded_atoms(self, proxies, sites_cart,
-      site_symmetry_table, nonbonded_types, nonbonded_charges):
+      site_symmetry_table, nonbonded_types, nonbonded_charges,
+      max_distance_between_connecting_atoms=5,
+      skip_max_proxy_distance_calculation=False):
+
     """ Produce new geometry_restraints_manager object that will
     include new atoms each with exactly one bond to the existing atom.
     proxies - list of bond_proxy objects. Symmetry operation will be determined
@@ -552,11 +564,27 @@ class manager(object):
     sites_frac = self.crystal_symmetry.unit_cell().\
         fractionalize(sites_cart=sites_cart)
     new_grm.update_plain_pair_sym_table(sites_frac)
-    new_grm.add_new_bond_restraints_in_place(proxies, sites_cart)
+    new_grm.add_new_bond_restraints_in_place(proxies, sites_cart,
+      max_distance_between_connecting_atoms=max_distance_between_connecting_atoms,
+      skip_max_proxy_distance_calculation=skip_max_proxy_distance_calculation)
     return new_grm
 
+  def add_new_hbond_restraints_in_place(self, proxies, sites_cart,
+      max_distance_between_connecting_atoms=5,
+      skip_max_proxy_distance_calculation=False):
+    self.add_new_bond_restraints_in_place(proxies, sites_cart,
+        max_distance_between_connecting_atoms,
+        skip_max_proxy_distance_calculation)
+    if self.hbonds_in_bond_list is None:
+      self.hbonds_in_bond_list = []
+    for p in proxies:
+      self.hbonds_in_bond_list.append(tuple(sorted(p.i_seqs)))
+
+
+
   def add_new_bond_restraints_in_place(self, proxies, sites_cart,
-      max_distance_between_connecting_atoms=5):
+      max_distance_between_connecting_atoms=5,
+      skip_max_proxy_distance_calculation=False):
     """ Add new bond restraints for list of proxies to this
     geometry restraints manager, _in_place_! Returns nothing.
     proxies - list of bond_proxy objects. The symmetry operation for the
@@ -564,7 +592,7 @@ class manager(object):
     anything."""
 
     # Get current max bond distance, copied from pair_proxies()
-    bonded_distance_cutoff = 0
+    bonded_distance_cutoff = max_distance_between_connecting_atoms
     sites_frac = self.crystal_symmetry.unit_cell().\
         fractionalize(sites_cart=sites_cart)
     for shell_sym_table in self.shell_sym_tables:
@@ -577,6 +605,18 @@ class manager(object):
                   sites_frac=sites_frac),
               default=0)
           )
+    max_p_distance=0
+    if not skip_max_proxy_distance_calculation:
+      for p in proxies:
+        distance_model = geometry_restraints.bond(
+            [sites_cart[p.i_seqs[0]],sites_cart[p.i_seqs[1]]],
+            distance_ideal=0,
+            weight=1).distance_model
+        if distance_model > max_p_distance:
+          max_p_distance = distance_model
+      bonded_distance_cutoff = max(bonded_distance_cutoff, 
+          max_p_distance)
+    bonded_distance_cutoff += 0.1 
     # make asu mappings
     all_asu_mappings = self.crystal_symmetry.special_position_settings().\
         asu_mappings(buffer_thickness=bonded_distance_cutoff)
@@ -601,10 +641,10 @@ class manager(object):
     # Generate pairs for connecting atoms only - should be much faster then
     # doing the same for all atoms in geometry_restraints_manager.
     # Note, that this will generate not only useful pairs but all pairs
-    # within max_distance_between_connecting_atoms cutoff. Therefore
+    # within bonded_distance_cutoff cutoff. Therefore
     # later we will filter them.
     conn_asu_mappings = self.crystal_symmetry.special_position_settings().\
-      asu_mappings(buffer_thickness=max_distance_between_connecting_atoms)
+      asu_mappings(buffer_thickness=bonded_distance_cutoff)
     connecting_sites_cart = sites_cart.select(proxies_iselection)
     conn_site_symmetry_table = self.site_symmetry_table.select(
         proxies_iselection)
@@ -614,13 +654,14 @@ class manager(object):
     conn_pair_asu_table = crystal.pair_asu_table(
         asu_mappings=conn_asu_mappings)
     conn_pair_asu_table.add_all_pairs(
-        distance_cutoff=max_distance_between_connecting_atoms)
+        distance_cutoff=bonded_distance_cutoff)
     pair_generator = crystal.neighbors_fast_pair_generator(
         conn_asu_mappings,
-        distance_cutoff=max_distance_between_connecting_atoms)
+        distance_cutoff=bonded_distance_cutoff)
 
     # r_a connects i_seqs in pair_generator with original i_seqs
     r_a = list(reindexing_array(len(sites_cart), proxies_iselection.as_int()))
+    n_added_proxies = 0
     for pair in pair_generator:
       pair_in_origninal_indeces = (r_a.index(pair.i_seq), r_a.index(pair.j_seq))
       n_proxy = None
@@ -652,6 +693,7 @@ class manager(object):
                 limit=proxies[n_proxy].limit,
                 top_out=proxies[n_proxy].top_out)
             )
+        n_added_proxies += 1
     # update self.shell_sym_tables with new bonds
     shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
       pair_asu_table=all_bonds_asu_table,

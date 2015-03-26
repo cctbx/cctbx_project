@@ -903,8 +903,11 @@ def exercise_00():
   # using custom bonds
   params = monomer_library.pdb_interpretation.master_params.extract()
   params.automatic_linking.link_all=True
-  params.nucleic_acid_restraints.enabled=True
-  params.nucleic_acid_restraints.stacking.enabled=True
+  # bad hookup
+  params.secondary_structure.enabled=True
+  # this does not work:
+  params.secondary_structure.nucleic_acid.base_pair[0].restrain_hbonds=True
+  params.secondary_structure.nucleic_acid.base_pair[0].restrain_hb_angles=False
   a2,b2 = get_ab(params=params)
   #
   assert approx_equal(a1,a2)

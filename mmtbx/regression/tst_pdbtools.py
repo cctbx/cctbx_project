@@ -56,57 +56,57 @@ def exercise_basic(pdb_dir, verbose):
     else:
       assert selection.size() == 36 and selection.count(True) == 24
     #
-    cmd = base + 'adp.randomize=true selection="%s"'%str(selection_str)
+    cmd = base + 'adp.randomize=true modify.selection="%s"'%str(selection_str)
     check_adp_rand(
       cmd, xrsp_init, output, selection, selection_str, verbose)
     #
-    cmd = base + 'adp.set_b_iso=10.0 selection="%s"'%str(selection_str)
+    cmd = base + 'adp.set_b_iso=10.0 modify.selection="%s"'%str(selection_str)
     check_adp_set_b_iso(
       cmd, xrsp_init, output, selection, selection_str, verbose)
     #
-    cmd = base + 'adp.shift_b_iso=20.0 selection="%s"'%str(selection_str)
+    cmd = base + 'adp.shift_b_iso=20.0 modify.selection="%s"'%str(selection_str)
     check_adp_rand(
       cmd, xrsp_init, output, selection, selection_str, verbose)
     #
-    cmd = base + 'adp.scale_adp=2.0 selection="%s"'%str(selection_str)
+    cmd = base + 'adp.scale_adp=2.0 modify.selection="%s"'%str(selection_str)
     check_adp_rand(
       cmd, xrsp_init, output, selection, selection_str, verbose)
     #
-    cmd = base + 'adp.convert_to_iso=true selection="%s"'%str(selection_str)
+    cmd = base + 'adp.convert_to_iso=true modify.selection="%s"'%str(selection_str)
     check_adp_to_iso(
       cmd, xrsp_init, output, selection, selection_str, verbose)
     #
-    cmd = base + 'adp.convert_to_aniso=true selection="%s"'%str(selection_str)
+    cmd = base + 'adp.convert_to_aniso=true modify.selection="%s"'%str(selection_str)
     check_adp_to_aniso(
       cmd, xrsp_init, output, selection, selection_str, verbose)
     #
     shake = 1.5
-    cmd = base+'sites.shake=%s selection="%s"'%(str(shake), str(selection_str))
+    cmd = base+'sites.shake=%s modify.selection="%s"'%(str(shake), str(selection_str))
     check_sites_shake(
       cmd, xrsp_init, output, selection, selection_str, shake, verbose)
     #
-    cmd = base+'sites.rotate="1,2,3" sites.translate="4,5,6" selection="%s"'%(
+    cmd = base+'sites.rotate="1,2,3" sites.translate="4,5,6" modify.selection="%s"'%(
                                                             str(selection_str))
     check_sites_rt(
       cmd, xrsp_init, output, selection, selection_str, verbose)
     #
-    cmd = base+'occupancies.randomize=true selection="%s"'%(str(selection_str))
+    cmd = base+'occupancies.randomize=true modify.selection="%s"'%(str(selection_str))
     check_occ_randomize(
       cmd, xrsp_init, output, selection, selection_str, verbose)
     #
-    cmd = base+'occupancies.set=0.75 selection="%s"'%(str(selection_str))
+    cmd = base+'occupancies.set=0.75 modify.selection="%s"'%(str(selection_str))
     check_occ_set(
       cmd, xrsp_init, output, selection, selection_str, verbose)
     #
     remove_selection_str = "element C"
-    cmd = base+'remove="%s" selection="%s"'%(
+    cmd = base+'remove="%s" modify.selection="%s"'%(
       str(remove_selection_str), str(selection_str))
     check_remove_selection(
       cmd, xrsp_init, output, selection, selection_str,
       remove_selection_str, verbose)
     #
     keep_selection_str = "element C"
-    cmd = base+'keep="%s" selection="%s"'%(
+    cmd = base+'keep="%s" modify.selection="%s"'%(
       str(keep_selection_str), str(selection_str))
     check_keep_selection(
       cmd, xrsp_init, output, selection, selection_str,
@@ -395,7 +395,6 @@ occupancies
   assert file_name.find('"') < 0
   cmd = 'phenix.pdbtools "%s" modify.output.file_name=modified.pdb params' % (
     file_name)
-  print cmd
   result = run_command(command=cmd, verbose=verbose)
   lines = result.stdout_lines
   for i,line in enumerate(lines):
@@ -550,11 +549,11 @@ TER
 ATOM     12  O   LEU C   0       5.613  12.448   6.864  1.00  7.32           O
 TER
 """
-  easy_run.fully_buffered("phenix.pdbtools \"%s\" renumber_residues=true selection=\"chain B\"" % ifn).raise_if_errors()
+  easy_run.fully_buffered("phenix.pdbtools \"%s\" renumber_residues=true modify.selection=\"chain B\"" % ifn).raise_if_errors()
   new_lines = open(ifn+"_modified.pdb").readlines()
   for line1, line2 in zip(new_lines, expected_output_pdb_2.splitlines()):
     assert (line1.strip() == line2.strip())
-  easy_run.fully_buffered("phenix.pdbtools \"%s\" increment_resseq=10 selection=\"chain B\"" % ifn).raise_if_errors()
+  easy_run.fully_buffered("phenix.pdbtools \"%s\" increment_resseq=10 modify.selection=\"chain B\"" % ifn).raise_if_errors()
   pdb_new = open(ifn+"_modified.pdb").read()
   expected_output_pdb_3 = """\
 ATOM      1  O   GLY A   3       1.434   1.460   2.496  1.00  6.04           O
@@ -852,7 +851,7 @@ ATOM     20  O  BHOH B   4       4.132   9.963   7.800  0.40 15.00           O
 ATOM     21 ZN   ZN  C   5       8.000  12.124  11.900  0.75 20.00          ZN
 """
   open("tst_pdbtools_norm_occ.pdb", "w").write(pdb_in)
-  cmd = 'phenix.pdbtools tst_pdbtools_norm_occ.pdb occupancies.normalize=True selection="not element ZN"'
+  cmd = 'phenix.pdbtools tst_pdbtools_norm_occ.pdb occupancies.normalize=True modify.selection="not element ZN"'
   run_command(command=cmd, verbose=False)
   pdb_new = open("tst_pdbtools_norm_occ.pdb_modified.pdb").read()
   assert (pdb_new == """\

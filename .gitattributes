@@ -2118,6 +2118,7 @@ mmtbx/secondary_structure/dssp.py -text
 mmtbx/secondary_structure/dssp_ext.cpp -text
 mmtbx/secondary_structure/ext.cpp -text
 mmtbx/secondary_structure/identify.hpp -text
+mmtbx/secondary_structure/nucleic_acids.py -text
 mmtbx/secondary_structure/proteins.py -text
 mmtbx/secondary_structure/tst.py -text
 mmtbx/secondary_structure/tst_base_pairing.py -text

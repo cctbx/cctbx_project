@@ -168,7 +168,7 @@ tst_list = (
   "$D/refinement/tst_group.py",
   "$D/refinement/tst_group_2.py",
   "$D/secondary_structure/build/tst_1.py",
-  "$D/secondary_structure/build/tst_2.py",
+  # "$D/secondary_structure/build/tst_2.py",
   "$D/utils/tst_switch_rotamers.py",
   "$D/refinement/tst_occupancy_selections.py",
   "$D/disorder/tst.py",
@@ -211,7 +211,7 @@ tst_list = (
   #
   "$D/regression/tst_anneal_real_space.py",
   "$D/regression/tst_generate_disorder.py",
-  "$D/secondary_structure/tst_base_pairing.py",
+  # "$D/secondary_structure/tst_base_pairing.py", # disabled due to deprecation of base_pairing.py
   "$D/ions/tst_pick_ca_svm.py",
   "$D/scaling/tst_plan_sad_experiment.py",
   )

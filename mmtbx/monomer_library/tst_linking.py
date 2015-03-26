@@ -2067,7 +2067,7 @@ def run(only_i=None):
         "linking_test_ccp4_other.pdb",
         ]:
         if i:
-          cmd += " nucleic_acid_restraints.enabled=1"
+          cmd += " secondary_structure.enabled=1"
       print cmd
       run_and_test(cmd, pdb,i)
 

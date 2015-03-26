@@ -84,15 +84,6 @@ def show_sorted_geometry(geometry, xrs, file_name):
 def exercise_add_new_bond_restraint_in_place(mon_lib_srv, ener_lib):
   geometry, xrs = make_initial_grm(mon_lib_srv, ener_lib, raw_records4)
 
-  # Initial state, need to initialize with sites_cart to make pair_proxies
-  # avaliable, otherwise AssertionError: pair_proxies not defined already.
-  # geometry.pair_proxies(xrs.sites_cart())
-  # print geometry.pair_proxies().bond_proxies.simple.size() # 7
-  # print geometry.pair_proxies().bond_proxies.asu.size()    # 0
-  # print geometry.pair_proxies().nonbonded_proxies.simple.size() # 9
-  # print geometry.pair_proxies().nonbonded_proxies.asu.size()  # 0
-  # print "="*20
-
   proxy = geometry_restraints.bond_simple_proxy(
     i_seqs=(0,3),
     distance_ideal=2.0,
@@ -124,10 +115,12 @@ def exercise_single_atom(mon_lib_srv, ener_lib):
       sites_cart=all_sites_cart,
       site_symmetry_table=xrs_add.site_symmetry_table(),
       nonbonded_types=flex.std_string(["OH2"]*number_of_new_atoms),
-      nonbonded_charges=flex.int(number_of_new_atoms, 0))
+      nonbonded_charges=flex.int(number_of_new_atoms, 0),
+      skip_max_proxy_distance_calculation=True)
   # output for debugging!!!
   # show_sorted_geometry(new_geometry, new_xrs,
-  #     'after_exersice_multiple_atoms.geo')
+      # 'after_exersice_multiple_atoms.geo')
+
   assert new_geometry.pair_proxies().bond_proxies.simple.size() == 8
   assert new_geometry.pair_proxies().bond_proxies.asu.size() == 1
   assert new_geometry.pair_proxies().nonbonded_proxies.simple.size() == 10
@@ -158,10 +151,12 @@ def exercise_multiple_atoms(mon_lib_srv, ener_lib):
       sites_cart=all_sites_cart,
       site_symmetry_table=xrs_add.site_symmetry_table(),
       nonbonded_types=flex.std_string(["OH2"]*number_of_new_atoms),
-      nonbonded_charges=flex.int(number_of_new_atoms, 0))
+      nonbonded_charges=flex.int(number_of_new_atoms, 0),
+      skip_max_proxy_distance_calculation=True)
   # output for debugging!!!
   # show_sorted_geometry(new_geometry, new_xrs,
   #     'after_exersice_multiple_atoms.geo')
+
   assert new_geometry.pair_proxies().bond_proxies.simple.size() == 8
   assert new_geometry.pair_proxies().bond_proxies.asu.size() == 2
   assert new_geometry.pair_proxies().nonbonded_proxies.simple.size() == 11

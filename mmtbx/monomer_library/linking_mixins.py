@@ -436,7 +436,6 @@ class linking_mixins(object):
                                   bond_params_table,
                                   bond_asu_table,
                                   geometry_proxy_registries,
-                                  na_params,
                                   link_metals                 = True,
                                   link_residues               = True,
                                   link_carbohydrates          = True,
@@ -453,7 +452,6 @@ class linking_mixins(object):
     if max_bonded_cutoff is None:
       max_bonded_cutoff = max(metal_coordination_cutoff,
                               amino_acid_bond_cutoff,
-                              na_params.bonds.bond_distance_cutoff,
                               carbohydrate_bond_cutoff,
                               inter_residue_bond_cutoff+second_row_buffer,
                               )
@@ -468,13 +466,11 @@ class linking_mixins(object):
       print >> log,"""
       metal_coordination_cutoff %s
       amino_acid_bond_cutoff    %s
-      rna_dna_bond_cutoff       %s
       carbohydrate_bond_cutoff  %s
       inter_residue_bond_cutoff %s
       second_row_buffer         %s
       """ % ( metal_coordination_cutoff,
               amino_acid_bond_cutoff,
-              na_params.bonds.bond_distance_cutoff,
               carbohydrate_bond_cutoff,
               inter_residue_bond_cutoff,
               second_row_buffer,
@@ -566,14 +562,11 @@ class linking_mixins(object):
       Linking & cutoffs
         Metal        : %-5s - %0.2f
         Amimo acid   : %-5s - %0.2f
-        RNA/DNA      : %-5s - %0.2f
         Carbohydrate : %-5s - %0.2f
       """ % (link_metals,
              metal_coordination_cutoff,
              link_residues,
              amino_acid_bond_cutoff,
-             (na_params.enabled and na_params.bonds.enabled),
-             na_params.bonds.bond_distance_cutoff,
              link_carbohydrates,
              carbohydrate_bond_cutoff,
              )
@@ -643,12 +636,6 @@ Residue classes
         #  - beta, delta ???
         if possible_cyclic_peptide(atom1, atom2): # first & last peptide
           use_only_bond_cutoff = True
-      if ((classes1.common_rna_dna or classes1.ccp4_mon_lib_rna_dna)
-          and (classes2.common_rna_dna or classes2.ccp4_mon_lib_rna_dna)):
-        if not na_params.enabled or not na_params.bonds.find_automatically:
-          continue
-      #else:
-      #  continue # Hard hookup to disable all but DNA/RNA basepair linking
       if sym_op:
         if classes1.common_amino_acid and classes2.common_saccharide: continue
         if classes2.common_amino_acid and classes1.common_saccharide: continue
@@ -685,9 +672,6 @@ Residue classes
           distance=distance,
           max_bonded_cutoff=max_bonded_cutoff,
           amino_acid_bond_cutoff=amino_acid_bond_cutoff,
-          rna_dna_bond_cutoff=na_params.bonds.bond_distance_cutoff,
-          rna_dna_angle_cutoff=na_params.bonds.\
-              angle_between_bond_and_nucleobase_cutoff,
           inter_residue_bond_cutoff=inter_residue_bond_cutoff,
           second_row_buffer=second_row_buffer,
           saccharide_bond_cutoff=carbohydrate_bond_cutoff,
@@ -707,11 +691,6 @@ Residue classes
           print >> log, "  Atom %s rejected from bonding due to valence issues." % atom2.quote()
           continue
       # got a link....
-      if ((classes1.common_rna_dna or classes1.ccp4_mon_lib_rna_dna)
-          and (classes2.common_rna_dna or classes2.ccp4_mon_lib_rna_dna)):
-        hbonds_in_bond_list.append(tuple(sorted([atom1.i_seq, atom2.i_seq])))
-        # we will create proxies elsewhere (pdb_interpretation:5000)
-        continue
 
       class1 = linking_utils.get_classes(atom1, #_group1.resname,
                                          important_only=True,
@@ -725,9 +704,6 @@ Residue classes
       if verbose: print 'class_key',class_key
       #
       if not link_metals and "metal" in class_key: continue
-      if (not na_params.enabled and na_params.bonds.enabled
-          and ("common_rna_dna" in class_key
-          or "ccp4_mon_lib_rna_dna" in class_key)): continue
       if not link_residues:
         if class_key in [
             ("common_amino_acid", "common_amino_acid"),
@@ -788,14 +764,11 @@ Residue classes
           ij_seqs.append(tuple(tmp))
 
       # !!! For every possible link we are looping over _all_ bond proxies?
-      # Impossible for DNA/RNA links due to enormous runtime (hundreds links).
       link_found = False
-      if not ((classes1.common_rna_dna or classes1.ccp4_mon_lib_rna_dna)
-          and (classes2.common_rna_dna or classes2.ccp4_mon_lib_rna_dna)):
-        for bond_simple_proxy in geometry_proxy_registries.bond_simple.proxies:
-          if bond_simple_proxy.i_seqs in ij_seqs:
-            link_found = True
-            break
+      for bond_simple_proxy in geometry_proxy_registries.bond_simple.proxies:
+        if bond_simple_proxy.i_seqs in ij_seqs:
+          link_found = True
+          break
       if link_found: continue
       # get predefined link
       link, swap, key = linking_utils.is_atom_group_pair_linked(
@@ -983,13 +956,7 @@ Residue classes
       # check for NA linkage
       classes1 = linking_utils.get_classes(atom1)
       classes2 = linking_utils.get_classes(atom2)
-      if ((classes1.common_rna_dna or classes1.ccp4_mon_lib_rna_dna) and
-          (classes2.common_rna_dna or classes2.ccp4_mon_lib_rna_dna)
-          and na_params.enabled and na_params.bonds.enabled):
-        ans = [na_params.bonds.target_value,
-               na_params.bonds.sigma, na_params.bonds.slack]
-      else:
-        ans = bondlength_defaults.run(atom1, atom2)
+      ans = bondlength_defaults.run(atom1, atom2)
       equil = 2.3
       weight = 0.02
       slack = 0.

@@ -1,5 +1,6 @@
-
 from __future__ import division
+assert 0 # Whole module is deprecated
+
 from mmtbx import utils
 import libtbx.load_env
 from libtbx import easy_run
@@ -13,22 +14,46 @@ base_pair
   .optional = True
   .style = noauto
 {
+  enabled = True
+    .type = bool
   base1 = None
-    .type = str
+    .type = atom_selection
   base2 = None
-    .type = str
-  saenger_class = None
-    .type = str
+    .type = atom_selection
+  saenger_class = 0
+    .type = int
     .optional = True
-    .caption = Saenger number if applicable
+    .caption = Saenger number of basepairing type, 0 if unknown
     .help = reference
-  leontis_westhof_class = *Auto wwt
-    .type = choice
-    .caption = Automatic Watson-Crick
-    .help = reference
-# TODO
-#  planar = False
-#    .type = bool
+  restrain_planarity = False
+    .type = bool
+  planarity_sigma = 0.176
+    .type = float
+  restrain_hbonds = True
+    .type = bool
+  restrain_parallelity = True
+    .type = bool
+  parallelity_target = 0
+    .type = float
+  parallelity_sigma = 0.0335
+    .type = float
+}
+stacking_pair
+  .multiple = True
+  .optional = True
+  .style = noauto
+{
+  base1 = None
+    .type = atom_selection
+  base2 = None
+    .type = atom_selection
+  enabled = True
+    .type = bool
+  stacking_angle = 0
+    .type = float
+  stacking_sigma = 0.027
+    .type = float
+
 }
 """
 
@@ -217,49 +242,49 @@ def get_distances(residues,
     raise Sorry("Base pair type not specified.")
   return db.get_distances(base_pair, pair_type, use_hydrogens)
 
-def run_probe(pdb_hierarchy, flags=None, add_hydrogens=True):
-  assert (libtbx.env.has_module(name="probe"))
-  bare_chains = utils.find_bare_chains_with_segids(
-                  pdb_hierarchy=pdb_hierarchy)
-  if bare_chains:
-    tmp_pdb_hierarchy = pdb_hierarchy.deep_copy()
-    tmp_pdb_hierarchy.atoms().reset_i_seq()
-    seg_dict = \
-      utils.seg_id_to_chain_id(pdb_hierarchy=tmp_pdb_hierarchy)
-    rename_txt = utils.assign_chain_ids(pdb_hierarchy=tmp_pdb_hierarchy,
-                                        seg_dict=seg_dict)
-  else:
-    tmp_pdb_hierarchy = pdb_hierarchy
-  reduce_output = run_reduce(tmp_pdb_hierarchy,
-                             remove_hydrogens=False).stdout_lines
-  if bare_chains:
-    reverted_reduce_output = ""
-    for line in reduce_output:
-      if line.startswith("ATOM"):
-        segid = line[72:76]
-        tmp_line = ""
-        if seg_dict.get(segid):
-          tmp_line = line[0:20] + "  " + line[22:]
-          reverted_reduce_output += tmp_line+'\n'
-        else:
-          reverted_reduce_output += line+'\n'
-      else:
-        reverted_reduce_output += line+'\n'
-  else:
-    reverted_reduce_output = reduce_output
-  cmd =  "phenix.probe " + flags + " -"
-  probe_output = easy_run.fully_buffered(cmd,
-           stdin_lines=reverted_reduce_output)
-  return probe_output
+# def run_probe(pdb_hierarchy, flags=None, add_hydrogens=True):
+#   assert (libtbx.env.has_module(name="probe"))
+#   bare_chains = utils.find_bare_chains_with_segids(
+#                   pdb_hierarchy=pdb_hierarchy)
+#   if bare_chains:
+#     tmp_pdb_hierarchy = pdb_hierarchy.deep_copy()
+#     tmp_pdb_hierarchy.atoms().reset_i_seq()
+#     seg_dict = \
+#       utils.seg_id_to_chain_id(pdb_hierarchy=tmp_pdb_hierarchy)
+#     rename_txt = utils.assign_chain_ids(pdb_hierarchy=tmp_pdb_hierarchy,
+#                                         seg_dict=seg_dict)
+#   else:
+#     tmp_pdb_hierarchy = pdb_hierarchy
+#   reduce_output = run_reduce(tmp_pdb_hierarchy,
+#                              remove_hydrogens=False).stdout_lines
+#   if bare_chains:
+#     reverted_reduce_output = ""
+#     for line in reduce_output:
+#       if line.startswith("ATOM"):
+#         segid = line[72:76]
+#         tmp_line = ""
+#         if seg_dict.get(segid):
+#           tmp_line = line[0:20] + "  " + line[22:]
+#           reverted_reduce_output += tmp_line+'\n'
+#         else:
+#           reverted_reduce_output += line+'\n'
+#       else:
+#         reverted_reduce_output += line+'\n'
+#   else:
+#     reverted_reduce_output = reduce_output
+#   cmd =  "phenix.probe " + flags + " -"
+#   probe_output = easy_run.fully_buffered(cmd,
+#            stdin_lines=reverted_reduce_output)
+#   return probe_output
 
-def clean_base_names(pdb_line):
-  clean_line = pdb_line
-  #clean RNA lines
-  clean_line = re.sub(r'^((ATOM  |HETATM).{11}) ([ACGU])([Rr])',r'\1  \3',clean_line)
-  clean_line = re.sub(r'^((ATOM  |HETATM).{11})([ACGU])  ',r'\1  \3',clean_line)
-  #clean DNA lines
-  clean_line = re.sub(r'^((ATOM  |HETATM).{11}) ([ACGT])([Dd])',r'\1 D\3',clean_line)
-  return clean_line
+# def clean_base_names(pdb_line):
+#   clean_line = pdb_line
+#   #clean RNA lines
+#   clean_line = re.sub(r'^((ATOM  |HETATM).{11}) ([ACGU])([Rr])',r'\1  \3',clean_line)
+#   clean_line = re.sub(r'^((ATOM  |HETATM).{11})([ACGU])  ',r'\1  \3',clean_line)
+#   #clean DNA lines
+#   clean_line = re.sub(r'^((ATOM  |HETATM).{11}) ([ACGT])([Dd])',r'\1 D\3',clean_line)
+#   return clean_line
 
 def clean_single_base_name(base):
   clean_base = base
@@ -270,121 +295,123 @@ def clean_single_base_name(base):
   clean_base = re.sub(r' ([ACGT])([Dd])',r' D\1',clean_base)
   return clean_base
 
-def run_reduce(hierarchy, remove_hydrogens=True, debug=False):
-  #log = sys.stderr
-  trim = "phenix.reduce -quiet -trim -"
-  build = "phenix.reduce -quiet -build -allalt -"
-  input_str = ""
-  pdb_string = hierarchy.as_pdb_string()
-  clean_lines = []
-  for line in pdb_string.splitlines() :
-    # XXX for some reason the ANISOU records are confusing Reduce - maybe
-    # because residue names aren't being capitalized there?  fortunately we
-    # don't need ANISOUs here anyway.
-    if not line.startswith("ANISOU") :
-      # *'s in atom names don't impact base, so leaving alone for now
-      #line = re.sub(r'^((ATOM  |HETATM).{9})\*',r'\1'+"\'",line)
-      line = clean_base_names(line)
-      clean_lines.append(line)
-  clean_pdb_string = "\n".join(clean_lines)
-  if(remove_hydrogens):
-    clean = easy_run.fully_buffered(trim,
-                                    stdin_lines=clean_pdb_string)
-    input_str = clean.stdout_lines
-  else:
-    input_str = clean_pdb_string
-  output = easy_run.fully_buffered(build,
-                                   stdin_lines=input_str)
-  if (debug) :
-    open("allatom.pdb", "w").write("\n".join(output.stdout_lines))
-  return output
+# def run_reduce(hierarchy, remove_hydrogens=True, debug=False):
+#   #log = sys.stderr
+#   trim = "phenix.reduce -quiet -trim -"
+#   build = "phenix.reduce -quiet -build -allalt -"
+#   input_str = ""
+#   pdb_string = hierarchy.as_pdb_string()
+#   clean_lines = []
+#   for line in pdb_string.splitlines() :
+#     # XXX for some reason the ANISOU records are confusing Reduce - maybe
+#     # because residue names aren't being capitalized there?  fortunately we
+#     # don't need ANISOUs here anyway.
+#     if not line.startswith("ANISOU") :
+#       # *'s in atom names don't impact base, so leaving alone for now
+#       #line = re.sub(r'^((ATOM  |HETATM).{9})\*',r'\1'+"\'",line)
+#       line = clean_base_names(line)
+#       clean_lines.append(line)
+#   clean_pdb_string = "\n".join(clean_lines)
+#   if(remove_hydrogens):
+#     clean = easy_run.fully_buffered(trim,
+#                                     stdin_lines=clean_pdb_string)
+#     input_str = clean.stdout_lines
+#   else:
+#     input_str = clean_pdb_string
+#   output = easy_run.fully_buffered(build,
+#                                    stdin_lines=input_str)
+#   if (debug) :
+#     open("allatom.pdb", "w").write("\n".join(output.stdout_lines))
+#   return output
 
-def get_base_pairs(pdb_hierarchy, probe_flags=None):
-  #db = mmtbx.base_pairing.pair_database()
-  if probe_flags is None:
-    probe_flags = "-Both -Unformated -NOCLASHOUT -NOVDWOUT \"BASE\" \"BASE\""
-  probe_out = run_probe(pdb_hierarchy=pdb_hierarchy,
-                                  flags=probe_flags)
-  hbond_hash={}
-  pair_hash={}
-  reduced_pair_hash={}
-  probe_iter = iter(probe_out.stdout_lines)
-  for line in probe_iter:
-    temp = line.split(":")
-    bases = [temp[3], temp[4]]
-    #sort so C before G, A before U
-    bases.sort(key=get_resname)
-    base1 = bases[0][0:10]
-    base2 = bases[1][0:10]
-    atom1 = bases[0][11:15]
-    atom2 = bases[1][11:15]
-    base_key = base1+base2
-    bond_key = atom1.strip()+','+atom2.strip()
-    #filter out carbon weak h-bonds for the time being
-    if atom1.strip()[0] == 'C' or atom2.strip()[0] == 'C':
-      continue
-    if (not base_key in hbond_hash):
-      hbond_hash[base_key] = {}
-    if (not bond_key in hbond_hash[base_key]) :
-      hbond_hash[base_key][bond_key] = 0
-    hbond_hash[base_key][bond_key]+=1
+# def get_base_pairs(pdb_hierarchy, probe_flags=None):
+#   assert 0 # Using new basepair search procedure
+#   #db = mmtbx.base_pairing.pair_database()
+#   if probe_flags is None:
+#     probe_flags = "-Both -Unformated -NOCLASHOUT -NOVDWOUT \"BASE\" \"BASE\""
+#   probe_out = run_probe(pdb_hierarchy=pdb_hierarchy,
+#                                   flags=probe_flags)
+#   hbond_hash={}
+#   pair_hash={}
+#   reduced_pair_hash={}
+#   probe_iter = iter(probe_out.stdout_lines)
+#   for line in probe_iter:
+#     temp = line.split(":")
+#     bases = [temp[3], temp[4]]
+#     #sort so C before G, A before U
+#     bases.sort(key=get_resname)
+#     base1 = bases[0][0:10]
+#     base2 = bases[1][0:10]
+#     atom1 = bases[0][11:15]
+#     atom2 = bases[1][11:15]
+#     base_key = base1+base2
+#     bond_key = atom1.strip()+','+atom2.strip()
+#     #filter out carbon weak h-bonds for the time being
+#     if atom1.strip()[0] == 'C' or atom2.strip()[0] == 'C':
+#       continue
+#     if (not base_key in hbond_hash):
+#       hbond_hash[base_key] = {}
+#     if (not bond_key in hbond_hash[base_key]) :
+#       hbond_hash[base_key][bond_key] = 0
+#     hbond_hash[base_key][bond_key]+=1
 
-  for key in hbond_hash:
-    counter = 0
-    pair_hash[key]=[]
-    for bond in hbond_hash[key] :
-      if (hbond_hash[key][bond] > 0) :
-        pair_hash[key].append(tuple(bond.split(',')))
-    if (len(pair_hash[key]) >= 2) :
-      pair_hash[key].sort(key=sort_tuple)
-      reduced_pair_hash[key] = pair_hash[key]
-  base_pair_list = []
-  for pair in reduced_pair_hash :
-    bases = (pair[:10], pair[10:])
-    base_pair = pair[7:10].strip() + '-' + pair[17:20].strip()
-    pair_type = db.get_pair_type(base_pair, reduced_pair_hash[pair], use_hydrogens=True)
-    if (pair_type is not None) :
-      base_pair_list.append([bases, pair_type])
-  return base_pair_list
+#   for key in hbond_hash:
+#     counter = 0
+#     pair_hash[key]=[]
+#     for bond in hbond_hash[key] :
+#       if (hbond_hash[key][bond] > 0) :
+#         pair_hash[key].append(tuple(bond.split(',')))
+#     if (len(pair_hash[key]) >= 2) :
+#       pair_hash[key].sort(key=sort_tuple)
+#       reduced_pair_hash[key] = pair_hash[key]
+#   base_pair_list = []
+#   for pair in reduced_pair_hash :
+#     bases = (pair[:10], pair[10:])
+#     base_pair = pair[7:10].strip() + '-' + pair[17:20].strip()
+#     pair_type = db.get_pair_type(base_pair, reduced_pair_hash[pair], use_hydrogens=True)
+#     if (pair_type is not None) :
+#       base_pair_list.append([bases, pair_type])
+#   return base_pair_list
 
-def get_resname(probe_field):
-  resname = probe_field[6:10]
-  return resname
+# def get_resname(probe_field):
+#   resname = probe_field[6:10]
+#   return resname
 
-def get_phil_base_pairs (pdb_hierarchy, probe_flags=None, prefix=None,
-    log=sys.stdout, add_segid=None) :
-  print >> log, "  Running PROBE to identify base pairs"
-  base_pair_list = get_base_pairs(pdb_hierarchy, probe_flags)
-  if len(base_pair_list) == 0 :
-    return None
-  phil_strings = []
-  segid_extra = ""
-  if add_segid is not None :
-    segid_extra = """and segid "%s" """ % add_segid
-  for (bases, pair_type) in base_pair_list :
-    chains = []
-    for base in bases :
-      chain = base[0:2].strip()
-      if (chain == "") :
-        chain = " "
-      chains.append(chain)
-    if (is_saenger(pair_type)):
-      type_key = "saenger_class"
-    else:
-      type_key = "leontis_westhof_class"
-    distances = db.get_distances(bases[0][-3:].strip()+'-'+bases[1][-3:].strip(),
-                                 pair_type,
-                                 use_hydrogens=False)
-    phil_strings.append("""base_pair {
-  base1 = \"\"\"chain "%s" %sand resseq %s\"\"\"
-  base2 = \"\"\"chain "%s" %sand resseq %s\"\"\"
-  %s = %s
-}""" % (chains[0], segid_extra, bases[0][2:6], chains[1], segid_extra,
-        bases[1][2:6], type_key, pair_type))
-  phil_str = """nucleic_acids {\n%s\n}""" % ("\n".join(phil_strings))
-  if prefix is not None :
-    return """%s {\n%s\n}""" % (prefix, phil_str)
-  return phil_str
+# def get_phil_base_pairs (pdb_hierarchy, probe_flags=None, prefix=None,
+#     log=sys.stdout, add_segid=None) :
+#   assert 0 # Using new basepair search procedure
+#   print >> log, "  Running PROBE to identify base pairs"
+#   base_pair_list = get_base_pairs(pdb_hierarchy, probe_flags)
+#   if len(base_pair_list) == 0 :
+#     return None
+#   phil_strings = []
+#   segid_extra = ""
+#   if add_segid is not None :
+#     segid_extra = """and segid "%s" """ % add_segid
+#   for (bases, pair_type) in base_pair_list :
+#     chains = []
+#     for base in bases :
+#       chain = base[0:2].strip()
+#       if (chain == "") :
+#         chain = " "
+#       chains.append(chain)
+#     if (is_saenger(pair_type)):
+#       type_key = "saenger_class"
+#     else:
+#       type_key = "leontis_westhof_class"
+#     distances = db.get_distances(bases[0][-3:].strip()+'-'+bases[1][-3:].strip(),
+#                                  pair_type,
+#                                  use_hydrogens=False)
+#     phil_strings.append("""secondary_structure.nucleic_acid.base_pair {
+#   base1 = \"\"\"chain "%s" %sand resseq %s\"\"\"
+#   base2 = \"\"\"chain "%s" %sand resseq %s\"\"\"
+# }""" % (chains[0], segid_extra, bases[0][2:6], chains[1], segid_extra,
+#         bases[1][2:6], ))
+#   # phil_str = """nucleic_acids {\n%s\n}""" % ("\n".join(phil_strings))
+#   phil_str = "\n".join(phil_strings)
+#   if prefix is not None :
+#     return """%s {\n%s\n}""" % (prefix, phil_str)
+#   return phil_str
 
 def create_hbond_proxies (
     build_proxies,
