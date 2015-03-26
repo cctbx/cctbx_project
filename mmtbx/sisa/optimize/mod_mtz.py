@@ -30,11 +30,11 @@ class mtz_handler(object):
     index[4] --> optional PHIC
     '''
     #readin reflection file
-    reflection_file = reflection_file_reader.any_reflection_file(iparams.hkl.phibin)
+    reflection_file = reflection_file_reader.any_reflection_file(iparams.data)
 
     file_content=reflection_file.file_content()
     column_labels=file_content.column_labels()
-    col_name=iparams.hkl.column_names.split(',')
+    col_name=iparams.column_names.split(',')
 
     miller_arrays=reflection_file.as_miller_arrays()
     flex_centric_flags = miller_arrays[0].centric_flags().data()
@@ -147,7 +147,7 @@ class mtz_handler(object):
     from mmtbx.scaling import xtriage
     from libtbx.utils import null_out
     xtriage_args = [
-      iparams.hkl.phibin,
+      iparams.data,
       "",
       "",
       "log=tst_xtriage_1.log"
@@ -170,15 +170,15 @@ class mtz_handler(object):
     Read benchmark MTZ (PHICalc) for MPE calculation
     '''
     flex_phic = flex.double([0]*len(flex_fp))
-    if iparams.hkl.refin is not None:
-      reflection_file = reflection_file_reader.any_reflection_file(iparams.hkl.refin)
+    if iparams.hklrefin is not None:
+      reflection_file = reflection_file_reader.any_reflection_file(iparams.hklrefin)
       miller_arrays_bench=reflection_file.as_miller_arrays()
       flex_phic_raw = None
       for i in range(len(miller_arrays_bench)):
         label_string = miller_arrays_bench[i].info().label_string()
         labels=label_string.split(',')
         #only look at first index string
-        if labels[0] == iparams.hkl.column_phic:
+        if labels[0] == iparams.column_phic:
           #grab PHIC
           if miller_arrays_bench[i].is_complex_array():
             flex_phic_raw = miller_arrays_bench[i].phases(deg=True).data()
@@ -203,9 +203,9 @@ class mtz_handler(object):
             sigmas=flex_sigmas).set_observation_type_xray_amplitude()
 
     #check if Wilson B-factor is applied
-    if iparams.ga.flag_apply_b_factor:
+    if iparams.flag_apply_b_factor:
       print 'Wilson K=%6.2f B=%6.2f'%(ws.iso_p_scale, ws.iso_b_wilson)
-      sin_theta_over_lambda_sq = miller_array_out.two_theta(wavelength=iparams.ga.wavelength) \
+      sin_theta_over_lambda_sq = miller_array_out.two_theta(wavelength=iparams.wavelength) \
                                   .sin_theta_over_lambda_sq().data()
       wilson_expect = flex.exp(-2 * ws.iso_b_wilson * sin_theta_over_lambda_sq)
       flex_fp_for_sort = wilson_expect * flex_fp
@@ -247,7 +247,7 @@ class mtz_handler(object):
 
     #calculate sum of fp^2 from percent_f_squared
     flex_fp_squared = flex_fp ** 2
-    f_squared_per_stack = (iparams.ga.percent_f_squared * np.sum(flex_fp_squared))/100
+    f_squared_per_stack = (iparams.percent_f_squared * np.sum(flex_fp_squared))/100
     fp_sort_index_stacks = []
     sum_fp_now, i_start = (0,0)
     for i in range(len(fp_sort_index)):
@@ -256,7 +256,7 @@ class mtz_handler(object):
       if sum_fp_now >= f_squared_per_stack:
         fp_sort_index_stacks.append(fp_sort_index[i_start:i+1])
         i_start = i+1
-        if len(fp_sort_index_stacks) == iparams.ga.n_stacks:
+        if len(fp_sort_index_stacks) == iparams.n_stacks:
           break
 
     txt_out = 'stack_no sum(f_squared) %total  n_refl\n'
