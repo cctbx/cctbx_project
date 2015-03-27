@@ -69,53 +69,54 @@ stacking_pair
 def create_user_defined_NA_basepair_restraints(self, log):
   # temporarily transfered from pdb_interpretation, just in case
   # user-defined
-  na_params = self.params.nucleic_acid_restraints
-  sel_cache = self.pdb_hierarchy.atom_selection_cache()
-  new_hbond_proxies = []
-  new_hbonds = []
-  max_distance = na_params.bonds.bond_distance_cutoff
-  planarity_proxies = []
-  parallelity_proxies = []
-  if na_params.basepair_planarity.sigma < 1e-5:
-    raise Sorry("Sigma for basepair planarity should be > 1e-5")
-  if na_params.basepair_parallelity.sigma < 1e-5:
-    raise Sorry("Sigma for basepair parallelity should be > 1e-5")
-  weight = 1./na_params.basepair_planarity.sigma**2
-  for bp in na_params.base_pair:
-    if bp.base1 is not None and bp.base2 is not None:
-      a1 = self.pdb_atoms[sel_cache.iselection(bp.base1)[0]]
-      a2 = self.pdb_atoms[sel_cache.iselection(bp.base2)[0]]
-      r1 = a1.parent()
-      r2 = a2.parent()
-      if na_params.basepair_planarity.enabled:
-        seqs = self.get_i_seqs_from_na_planes(r1, r2)
-        for i_seqs, j_seqs in seqs:
-          planarity_proxies.append(geometry_restraints.planarity_proxy(
-            i_seqs=i_seqs+j_seqs,
-            weights=[weight]*len(i_seqs+j_seqs)))
-      if na_params.basepair_parallelity.enabled:
-        seqs = self.get_i_seqs_from_na_planes(r1, r2)
-        for i_seqs, j_seqs in seqs:
-          parallelity_proxies.append(geometry_restraints.parallelity_proxy(
-            i_seqs=i_seqs,
-            j_seqs=j_seqs,
-            weight=1./na_params.basepair_parallelity.sigma**2))
-      if na_params.bonds.enabled:
-        bonds = self.get_h_bonds_for_basepair(a1,a2)
-        for b in bonds:
-          a1 = self.pdb_atoms[b[0]]
-          a2 = self.pdb_atoms[b[1]]
-          if a1 is not None and a2 is not None:
-            dist = a1.distance(a2)
-            if dist <= na_params.bonds.bond_distance_cutoff:
-              new_hbonds.append(b)
-              max_distance = max(max_distance, dist)
-            else:
-              print >> log, "    Bond between", a1.id_str(), "and", a2.id_str(),
-              print >> log, "length=%4.2f" % dist, "is rejected because of",
-              print >> log, "nucleic_acid_restraints.bonds.bond_distance_cutoff=",
-              print >> log, na_params.bonds.bond_distance_cutoff
-  return new_hbonds, planarity_proxies, parallelity_proxies, max_distance
+  assert 0
+  # na_params = self.params.nucleic_acid_restraints
+  # sel_cache = self.pdb_hierarchy.atom_selection_cache()
+  # new_hbond_proxies = []
+  # new_hbonds = []
+  # max_distance = na_params.bonds.bond_distance_cutoff
+  # planarity_proxies = []
+  # parallelity_proxies = []
+  # if na_params.basepair_planarity.sigma < 1e-5:
+  #   raise Sorry("Sigma for basepair planarity should be > 1e-5")
+  # if na_params.basepair_parallelity.sigma < 1e-5:
+  #   raise Sorry("Sigma for basepair parallelity should be > 1e-5")
+  # weight = 1./na_params.basepair_planarity.sigma**2
+  # for bp in na_params.base_pair:
+  #   if bp.base1 is not None and bp.base2 is not None:
+  #     a1 = self.pdb_atoms[sel_cache.iselection(bp.base1)[0]]
+  #     a2 = self.pdb_atoms[sel_cache.iselection(bp.base2)[0]]
+  #     r1 = a1.parent()
+  #     r2 = a2.parent()
+  #     if na_params.basepair_planarity.enabled:
+  #       seqs = self.get_i_seqs_from_na_planes(r1, r2)
+  #       for i_seqs, j_seqs in seqs:
+  #         planarity_proxies.append(geometry_restraints.planarity_proxy(
+  #           i_seqs=i_seqs+j_seqs,
+  #           weights=[weight]*len(i_seqs+j_seqs)))
+  #     if na_params.basepair_parallelity.enabled:
+  #       seqs = self.get_i_seqs_from_na_planes(r1, r2)
+  #       for i_seqs, j_seqs in seqs:
+  #         parallelity_proxies.append(geometry_restraints.parallelity_proxy(
+  #           i_seqs=i_seqs,
+  #           j_seqs=j_seqs,
+  #           weight=1./na_params.basepair_parallelity.sigma**2))
+  #     if na_params.bonds.enabled:
+  #       bonds = self.get_h_bonds_for_basepair(a1,a2)
+  #       for b in bonds:
+  #         a1 = self.pdb_atoms[b[0]]
+  #         a2 = self.pdb_atoms[b[1]]
+  #         if a1 is not None and a2 is not None:
+  #           dist = a1.distance(a2)
+  #           if dist <= na_params.bonds.bond_distance_cutoff:
+  #             new_hbonds.append(b)
+  #             max_distance = max(max_distance, dist)
+  #           else:
+  #             print >> log, "    Bond between", a1.id_str(), "and", a2.id_str(),
+  #             print >> log, "length=%4.2f" % dist, "is rejected because of",
+  #             print >> log, "nucleic_acid_restraints.bonds.bond_distance_cutoff=",
+  #             print >> log, na_params.bonds.bond_distance_cutoff
+  # return new_hbonds, planarity_proxies, parallelity_proxies, max_distance
 
 
 

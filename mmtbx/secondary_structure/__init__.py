@@ -301,8 +301,8 @@ class manager (object) :
     if (not protein_ss_definition_present and
         self.sec_str_from_pdb_file is None):
       if(self.verbose>0):
-        print >> log, "No existing secondary structure definitions found" + \
-        "in .pdb file or phil parameters."
+        print >> log, "No existing protein secondary structure definitions " + \
+        "found in .pdb file or phil parameters."
       find_automatically = True
     else:
       find_automatically = False
@@ -513,18 +513,26 @@ class manager (object) :
         as_regular_bond_proxies=True)
     stacking_proxies = nucleic_acids.get_stacking_proxies(
         pdb_hierarchy=pdb_hierarchy,
-        stacking_phil_params=self.params.secondary_structure.nucleic_acid.stacking_pair,
+        stacking_phil_params=self.params.secondary_structure.\
+            nucleic_acid.stacking_pair,
         grm=grm)
-    planarity_bp_proxies, parallelity_bp_proxies = nucleic_acids.get_basepair_plane_proxies(
+    planarity_bp_proxies, parallelity_bp_proxies = nucleic_acids.\
+        get_basepair_plane_proxies(
         pdb_hierarchy=pdb_hierarchy,
         bp_phil_params=self.params.secondary_structure.nucleic_acid.base_pair,
         grm=grm)
-    hb_bond_proxies, hb_angle_proxies = nucleic_acids.get_basepair_hbond_proxies(
+    hb_bond_proxies, hb_angle_proxies = nucleic_acids.\
+        get_basepair_hbond_proxies(
         pdb_hierarchy=pdb_hierarchy,
         bp_phil_params=self.params.secondary_structure.nucleic_acid.base_pair)
     self.stats = {'n_protein_hbonds':0, 'n_na_hbonds':0, 'n_na_hbond_angles':0,
         'n_na_basepairs':0, 'n_na_stacking_pairs':0}
-    print >> log, "  %d hydrogen bonds for nucleic acids defined." % len(hb_bond_proxies)
+    print >> log, "  Restraints generated for nucleic acids:"
+    print >> log, "    %d hydrogen bonds" % len(hb_bond_proxies)
+    print >> log, "    %d hydrogen bond angles" % len(hb_angle_proxies)
+    print >> log, "    %d basepair planarities" % len(planarity_bp_proxies)
+    print >> log, "    %d basepair parallelities" % len(parallelity_bp_proxies)
+    print >> log, "    %d stacking parallelities" % len(stacking_proxies)
     return (proteins_hbonds+hb_bond_proxies, hb_angle_proxies,
         planarity_bp_proxies, parallelity_bp_proxies+stacking_proxies)
 

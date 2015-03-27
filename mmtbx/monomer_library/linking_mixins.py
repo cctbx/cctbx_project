@@ -461,7 +461,6 @@ class linking_mixins(object):
           "inter_residue_bond_cutoff, \ncarbohydrate_bond_cutoff,"
           "bonds.bond_distance_cutoff \nis greater than 15A. Please check and"+
           " correct these parameters.")
-    hbonds_in_bond_list = []
     if verbose and log is not None:
       print >> log,"""
       metal_coordination_cutoff %s
@@ -1050,4 +1049,3 @@ Residue classes
     if(log is not None):
       print >> log, '  Time building additional restraints: %0.2f' % (
         time.time()-t0)
-    return hbonds_in_bond_list
