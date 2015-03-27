@@ -1909,6 +1909,7 @@ mmtbx/monomer_library/tst_geo_reduce_for_tardy.py svneol=native#text/x-python
 mmtbx/monomer_library/tst_idealized_aa.py -text
 mmtbx/monomer_library/tst_linking.py -text
 mmtbx/monomer_library/tst_neutron_distance.py -text
+mmtbx/monomer_library/tst_pdb_interpretation_ncs_processing.py -text
 mmtbx/monomer_library/tst_protein_interpretation.py -text
 mmtbx/monomer_library/tst_rna_dna_interpretation.py -text
 mmtbx/monomer_library/tst_rna_sugar_pucker_analysis.py svneol=native#text/x-python

@@ -1,6 +1,6 @@
 from __future__ import division
-import sys
 import ncs_preprocess
+import sys
 
 simple_ncs_phil_params = """\
 simple_ncs_from_pdb

@@ -1,6 +1,7 @@
 from __future__ import division
 from iotbx import pdb
 import iotbx.phil
+import iotbx.ncs
 from mmtbx.monomer_library import server
 from mmtbx.monomer_library import cif_types
 from mmtbx.monomer_library import rna_sugar_pucker_analysis
@@ -362,6 +363,14 @@ master_params_str = """\
       .type=int
     fatal_problem_max_lines = 10
       .type=int
+  }
+  ncs_search = False
+    .type = bool
+    .short_caption = Search for NCS relations
+  ncs_search_params
+  {
+     include scope iotbx.ncs.simple_ncs_phil_params
+     include scope iotbx.ncs.ncs_search_options
   }
   %(clash_guard_params_str)s
 """ % vars()
@@ -4882,6 +4891,8 @@ class process(object):
 
     self._geometry_restraints_manager = None
     self._xray_structure = None
+    if self.all_chain_proxies.params.ncs_search:
+      self.ncs_obj = self.search_for_ncs(file_name=file_name)
 
   def geometry_restraints_manager(self,
         plain_pairs_radius=None,
@@ -5182,6 +5193,32 @@ class process(object):
 
     def clash_score(self):
       return 'Clash Score'
+
+  def search_for_ncs(self,file_name):
+    """
+    Search for NCS relations in the PDB
+
+    Args:
+      file_name (str): PDB file name
+    """
+    params = self.all_chain_proxies.params.ncs_search_params
+    simple_params = params.simple_ncs_from_pdb
+    find_param = simple_params.domain_finding_parameters
+    ncs_obj = iotbx.ncs.input(
+      file_name=file_name,
+      chain_similarity_limit=find_param.similarity_threshold,
+      min_contig_length=find_param.min_contig_length,
+      min_percent=simple_params.min_percent,
+      max_rmsd=simple_params.max_rmsd,
+      max_dist_diff=find_param.match_radius,
+      use_minimal_master_ncs=params.use_minimal_master_ncs,
+      process_similar_chains=params.process_similar_chains,
+      allow_different_size_res=params.allow_different_size_res,
+      exclude_misaligned_residues=params.exclude_misaligned_residues,
+      check_atom_order=params.check_atom_order,
+      write_messages=False,
+      log=self.log)
+    return ncs_obj
 
 def run(
       args,
