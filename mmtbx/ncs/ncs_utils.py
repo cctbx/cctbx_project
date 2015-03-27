@@ -1,9 +1,6 @@
 from __future__ import division
 from scitbx.array_family import flex
-import mmtbx.monomer_library.server
-from mmtbx import monomer_library
 from libtbx.utils import Sorry
-import mmtbx.maps.correlation
 from scitbx import matrix
 import scitbx.rigid_body
 from cctbx import xray
@@ -493,6 +490,8 @@ def get_restraints_manager(pdb_file_name=None,pdb_string=None,
   Args:
     return_data_num (bool): when True, return the number of restraints
   """
+  import mmtbx.monomer_library.server
+  from mmtbx import monomer_library
   assert [pdb_file_name,pdb_string].count(None)==1
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
@@ -879,6 +878,7 @@ def get_list_of_best_ncs_copy_map_correlation(
     best_list (list of int): list of the copy with the best map correlation.
       (the master copy is 0)
   """
+  import mmtbx.maps.correlation
   best_list = []
   mp = mmtbx.maps.correlation.from_map_and_xray_structure_or_fmodel(
     xray_structure = xray_structure,

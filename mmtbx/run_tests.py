@@ -65,6 +65,7 @@ tst_list = (
   "$D/monomer_library/tst_pdb_interpretation.py",
   "$D/monomer_library/tst_rna_dna_interpretation.py",
   "$D/monomer_library/tst_protein_interpretation.py",
+  "$D/monomer_library/tst_pdb_interpretation_ncs_processing.py",
   "$D/monomer_library/tst_geo_reduce_for_tardy.py",
   "$D/monomer_library/tst_chg.py",
   "$D/monomer_library/tst_neutron_distance.py",
