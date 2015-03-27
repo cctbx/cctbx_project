@@ -63,6 +63,24 @@ Options :
     s = '*'*79 + '\n\n!!!!!  %s  !!!!!\n' % msg + s
   print s;sys.exit()
 
+base_rotation_axes = {
+  "A" : ["C1'", "N9"],
+  "G" : ["C1'", "N9"],
+  "C" : ["C1'", "N1"],
+  "T" : ["C1'", "N1"],
+  "U" : ["C1'", "N1"],
+}
+base_rotatable_atoms = {
+  "A" : ["N1", "C2", "H2", "N3", "C4", "C5", "C6", "N6", "H61", "H62", "N7",
+         "C8", "H8"],
+  "G" : ["N1", "H1", "C2", "N2", "H21", "H22", "N3", "C4", "C5", "C6", "O6",
+         "N7", "C8", "H8"],
+  "C" : ["C2", "O2", "N3", "C4", "N4", "H41", "H42", "C5", "H5", "C6", "H6"],
+  "T" : ["C2", "O2", "N3", "H3", "C4", "O4", "C5", "C7", "H71", "H72", "H73",
+         "C6", "H6"],
+  "U" : ["C2", "O2", "N3", "H3", "C4", "O4", "C5", "H5", "C6", "H6"],
+}
+
 def flip_base (atom_group, angle=180) :
   import scitbx.matrix
   axis_point_1 = axis_point_2 = None
