@@ -136,6 +136,29 @@ class Downloader(object):
 
     return received
 
+class cleanup_ext_class(object):
+  def __init__(self, filename_ext, workdir=None):
+    self.filename_ext = filename_ext
+    self.workdir = workdir
+
+  def remove_ext_files(self):
+    cwd=os.getcwd()
+    if self.workdir is not None:
+      if os.path.exists(self.workdir):
+        os.chdir(self.workdir)
+      else:
+        return
+    for root, dirs, files in os.walk(".", topdown=False):
+      for name in files:
+        if name.endswith(self.filename_ext):
+          print 'removing',os.path.join(root, name)
+          os.remove(os.path.join(root, name))
+    os.chdir(cwd)
+  
+  def run(self):
+    self.remove_ext_files()
+
+
 ##### Modules #####
 
 class SourceModule(object):
@@ -442,7 +465,7 @@ class Builder(object):
     else:
       self.cleanup(['dist', 'tests', 'doc', 'tmp'])
     # always remove .pyc files
-    self.remove_pyc_files("modules")
+    cleanup_ext_class(".pyc", "modules").run()
 
     # Add 'hot' sources
     if hot:
@@ -515,20 +538,6 @@ class Builder(object):
       workdir=['.']
     ))
 
-  def remove_pyc_files(self, workdir=None):
-    cwd=os.getcwd()
-    if workdir is not None:
-      if os.path.exists(workdir):
-        os.chdir(workdir)
-      else:
-        return
-    for root, dirs, files in os.walk(".", topdown=False):
-      for name in files:
-        if name.endswith(".pyc"):
-          if 0: print 'removing',os.path.join(root, name)
-          os.remove(os.path.join(root, name))
-    os.chdir(cwd)
-      
   def add_step(self, step):
     """Add a step."""
     self.steps.append(step)
@@ -718,6 +727,7 @@ class CCIBuilder(Builder):
 class CCTBXBuilder(CCIBuilder):
   BASE_PACKAGES = 'cctbx'
   def add_tests(self):
+    self.add_step(cleanup_ext_class(".pyc", "modules"))
     self.add_test_command('libtbx.import_all_ext')
     self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
     self.add_test_command('cctbx_regression.test_nightly')
