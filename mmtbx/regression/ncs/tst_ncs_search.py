@@ -434,6 +434,7 @@ class TestSimpleAlignment(unittest.TestCase):
         pdb_string=test_pdb_8,
         max_rmsd=10,
         min_percent=0.50,
+        exclude_misaligned_residues=False,
         min_contig_length=10)
     self.assertEqual(ncs_obj.number_of_ncs_groups,1)
     n_atoms_in_copy = ncs_obj.common_res_dict.values()[0][0][1].size()
@@ -448,6 +449,7 @@ class TestSimpleAlignment(unittest.TestCase):
 
     ncs_obj = ncs.input(
         pdb_string=test_pdb_8,
+        exclude_misaligned_residues=False,
         max_rmsd=10,
         min_percent=0.50,
         min_contig_length=1)

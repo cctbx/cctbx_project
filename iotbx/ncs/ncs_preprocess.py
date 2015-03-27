@@ -117,7 +117,7 @@ class ncs_group_object(object):
                          log=None,
                          check_atom_order=False,
                          allow_different_size_res=True,
-                         exclude_misaligned_residues=False,
+                         exclude_misaligned_residues=True,
                          max_dist_diff=4.0,
                          ignore_chains=None):
     """
@@ -1953,8 +1953,6 @@ def sensible_unit_cell_volume(
 
   Returns:
     (bool): False indicates that the complete ASU does not fit in the unit cell
-
-
   """
   # fixme : finish function and add test
   if  [bool(pdb_hierarchy_inp),bool(pdb_inp)].count(True) == 0:
