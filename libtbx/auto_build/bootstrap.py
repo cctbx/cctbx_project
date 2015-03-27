@@ -441,6 +441,8 @@ class Builder(object):
       self.cleanup(['dist', 'tests', 'doc', 'tmp', 'base', 'base_tmp', 'build'])
     else:
       self.cleanup(['dist', 'tests', 'doc', 'tmp'])
+    # always remove .pyc files
+    self.remove_pyc_files("modules")
 
     # Add 'hot' sources
     if hot:
@@ -513,6 +515,20 @@ class Builder(object):
       workdir=['.']
     ))
 
+  def remove_pyc_files(self, workdir=None):
+    cwd=os.getcwd()
+    if workdir is not None:
+      if os.path.exists(workdir):
+        os.chdir(workdir)
+      else:
+        return
+    for root, dirs, files in os.walk(".", topdown=False):
+      for name in files:
+        if name.endswith(".pyc"):
+          if 0: print 'removing',os.path.join(root, name)
+          os.remove(os.path.join(root, name))
+    os.chdir(cwd)
+      
   def add_step(self, step):
     """Add a step."""
     self.steps.append(step)
