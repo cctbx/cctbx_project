@@ -4,6 +4,8 @@ from libtbx import group_args
 from libtbx.utils import user_plus_sys_time
 from mmtbx.refinement.real_space import individual_sites, flipbase
 import mmtbx
+import iotbx
+from libtbx.test_utils import approx_equal
 
 pdb_str_answer = """\
 CRYST1   23.136   23.980   28.180  90.00  90.00  90.00 P 1
@@ -144,10 +146,41 @@ def exercise():
   ero.pdb_hierarchy.write_pdb_file(file_name="refined.pdb",
     crystal_symmetry=xrs_good.crystal_symmetry())
 
-
+def exercise2():
+  pdb_in = iotbx.pdb.hierarchy.input(pdb_string="""\
+ATOM   3988  P    DA G  10       2.095 -23.407  14.671  1.00 24.76           P
+ATOM   3989  OP1  DA G  10       2.702 -22.768  13.479  1.00 24.54           O
+ATOM   3990  OP2  DA G  10       1.098 -22.688  15.497  1.00 26.02           O
+ATOM   3991  O5'  DA G  10       3.272 -23.890  15.629  1.00 22.57           O
+ATOM   3992  C5'  DA G  10       2.981 -24.494  16.871  1.00 21.71           C
+ATOM   3993  C4'  DA G  10       4.289 -24.903  17.501  1.00 21.29           C
+ATOM   3994  O4'  DA G  10       4.850 -25.979  16.721  1.00 20.23           O
+ATOM   3995  C3'  DA G  10       5.340 -23.803  17.483  1.00 20.46           C
+ATOM   3996  O3'  DA G  10       5.492 -23.313  18.807  1.00 20.49           O
+ATOM   3997  C2'  DA G  10       6.602 -24.471  16.925  1.00 18.76           C
+ATOM   3998  C1'  DA G  10       6.243 -25.951  16.910  1.00 17.49           C
+ATOM   3999  N9   DA G  10       6.839 -26.749  15.842  1.00 14.88           N
+ATOM   4000  C8   DA G  10       6.713 -26.565  14.492  1.00 15.01           C
+ATOM   4001  N7   DA G  10       7.363 -27.452  13.774  1.00 15.05           N
+ATOM   4002  C5   DA G  10       7.945 -28.283  14.718  1.00 13.74           C
+ATOM   4003  C6   DA G  10       8.766 -29.426  14.610  1.00 12.94           C
+ATOM   4004  N6   DA G  10       9.149 -29.944  13.443  1.00 13.28           N
+ATOM   4005  N1   DA G  10       9.181 -30.024  15.746  1.00 12.16           N
+ATOM   4006  C2   DA G  10       8.797 -29.503  16.921  1.00 14.06           C
+ATOM   4007  N3   DA G  10       8.029 -28.435  17.152  1.00 13.57           N
+ATOM   4008  C4   DA G  10       7.629 -27.865  15.998  1.00 13.67           C
+""")
+  #open("tmp1.pdb", "w").write(pdb_in.hierarchy.as_pdb_string())
+  base = pdb_in.hierarchy.only_atom_group()
+  xyz = base.atoms().extract_xyz().deep_copy()
+  flipbase.flip_base(base, angle=180)
+  xyz_new = base.atoms().extract_xyz()
+  assert approx_equal(xyz_new.rms_difference(xyz), 2.45942)
+  #open("tmp2.pdb", "w").write(pdb_in.hierarchy.as_pdb_string())
 
 if(__name__ == "__main__"):
   timer = user_plus_sys_time()
   exercise()
+  exercise2()
   print "Time: %6.2f" % timer.elapsed()
   print "OK"

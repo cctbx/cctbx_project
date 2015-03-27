@@ -197,7 +197,6 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure, params,
   if(xray_structure is not None):
     sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()
     has_hd = "H" in sctr_keys or "D" in sctr_keys
-  hbond_params = None
   reference_torsion_proxies = None
   # disabled temporarily due to architecture changes
   """
@@ -244,7 +243,7 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure, params,
     show_energies                = False,
     params_edits                 = params.geometry_restraints.edits,
     plain_pairs_radius           = 5,
-    hydrogen_bond_proxies        = hbond_params,
+    hydrogen_bond_proxies        = None,
     assume_hydrogens_all_missing = not has_hd)
   restraints_manager = mmtbx.restraints.manager(
     geometry      = geometry,
