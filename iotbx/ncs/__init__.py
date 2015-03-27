@@ -104,6 +104,35 @@ simple_ncs_from_pdb
     }
 """
 
+ncs_search_options = """\
+  check_atom_order = False
+   .type = bool
+   .help = '''check atom order in matching residues'''
+   .style = noauto
+  use_minimal_master_ncs = True
+   .type = bool
+   .help = '''Minimize number of chains in master ncs groups'''
+   .style = noauto
+  exclude_misaligned_residues = True
+   .type = bool
+   .help = '''check and exclude individual residues
+        alignment quality'''
+   .style = noauto
+  allow_different_size_res = True
+   .type = bool
+   .help = '''keep matching residue with different
+        number of atoms'''
+   .style = noauto
+  process_similar_chains = True
+   .type = bool
+   .help = '''When True, process chains that are close
+       in length without raising errors'''
+   .style = noauto
+  quiet = True
+   .type = bool
+   .help = '''quiet output when processing files'''
+   .style = noauto
+"""
 
 def input(pdb_hierarchy_inp=None,
           pdb_inp=None,
@@ -131,7 +160,7 @@ def input(pdb_hierarchy_inp=None,
           min_contig_length=10,
           check_atom_order=False,
           allow_different_size_res=True,
-          exclude_misaligned_residues=False,
+          exclude_misaligned_residues=True,
           max_dist_diff=4.0,
           ignore_chains=None):
     """
