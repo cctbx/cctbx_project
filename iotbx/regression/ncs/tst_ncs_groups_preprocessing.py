@@ -16,7 +16,7 @@ import libtbx.load_env
 have_phenix = False
 if libtbx.env.has_module(name="phenix"):
   from phenix.command_line.simple_ncs_from_pdb import simple_ncs_from_pdb
-  from phenix.command_line.simple_ncs_from_pdb import ncs_master_params
+  from phenix.command_line.simple_ncs_from_pdb import master_params
   have_phenix = True
 
 
@@ -157,7 +157,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     if have_phenix:
       # print sys._getframe().f_code.co_name
       # creating a spec file
-      params = ncs_master_params.extract()
+      params = master_params.extract()
       xrs = self.pdb_inp.xray_structure_simple()
       xrs_unit_cell = xrs.orthorhombic_unit_cell_around_centered_scatterers(
         buffer_size=8)
