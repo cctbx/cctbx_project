@@ -218,9 +218,9 @@ class decompose_tls(object):
     """
     # check input matrices T_M>=0 and L_M>=0:
     if(not self.is_pd(self.T_M.as_sym_mat3())):
-      raise Sorry("Step A: Input T_M must be positive definite.")
+      raise Sorry("Step A: Input matrix T[M] is not positive semidefinite.")
     if(not self.is_pd(self.L_M.as_sym_mat3())):
-      raise Sorry("Step A: Input L_M must be positive definite.")
+      raise Sorry("Step A: Input matrix L[M] is not positive semidefinite.")
     print_step("Step A:", self.log)
     es = self.eigen_system_default_handler(m=self.L_M, suffix="L_M")
     self.l_x, self.l_y, self.l_z = es.x, es.y, es.z
@@ -231,15 +231,15 @@ class decompose_tls(object):
       [self.l_x[0], self.l_y[0], self.l_z[0],
        self.l_x[1], self.l_y[1], self.l_z[1],
        self.l_x[2], self.l_y[2], self.l_z[2]])
-    self.show_matrix(x=self.R_ML, title="Matrix R_ML, (12)")
+    self.show_matrix(x=self.R_ML, title="Matrix R_ML, eq.(14)")
     R_ML_transpose = self.R_ML.transpose()
     assert approx_equal(R_ML_transpose, self.R_ML.inverse(), 1.e-5)
     self.T_L = truncate(m=R_ML_transpose*self.T_M*self.R_ML)
     self.L_L = truncate(m=R_ML_transpose*self.L_M*self.R_ML)
     self.S_L = truncate(m=R_ML_transpose*self.S_M*self.R_ML)
-    self.show_matrix(x=self.T_L, title="T_L, (13)")
-    self.show_matrix(x=self.L_L, title="L_L, (13)")
-    self.show_matrix(x=self.S_L, title="S_L, (13)")
+    self.show_matrix(x=self.T_L, title="T_L, eq.(13)")
+    self.show_matrix(x=self.L_L, title="L_L, eq.(13)")
+    self.show_matrix(x=self.S_L, title="S_L, eq.(13)")
     L_ = self.L_L.as_sym_mat3()
     self.Lxx, self.Lyy, self.Lzz = L_[0], L_[1], L_[2]
     self.Sxx, self.Syy, self.Szz = self.S_L[0], self.S_L[4], self.S_L[8]
@@ -257,19 +257,19 @@ class decompose_tls(object):
     wy_lz=0
     if(self.is_zero(self.Lxx)):
       if(not (self.is_zero(self.S_L[2]) and self.is_zero(self.S_L[1]))):
-        raise Sorry("Step B: incompatible L_L and S_L matrices.")
+        raise Sorry("Step B: Non-zero off-diagonal S[L] and zero L[L] elements.")
     else:
       wy_lx =-self.S_L[2]/self.Lxx
       wz_lx = self.S_L[1]/self.Lxx
     if(self.is_zero(self.Lyy)):
       if(not (self.is_zero(self.S_L[5]) and self.is_zero(self.S_L[3]))):
-        raise Sorry("Step B: incompatible L_L and S_L matrices.")
+        raise Sorry("Step B: Non-zero off-diagonal S[L] and zero L[L] elements.")
     else:
       wx_ly = self.S_L[5]/self.Lyy
       wz_ly =-self.S_L[3]/self.Lyy
     if(self.is_zero(self.Lzz)):
       if(not (self.is_zero(self.S_L[7]) and self.is_zero(self.S_L[6]))):
-        raise Sorry("Step B: incompatible L_L and S_L matrices.")
+        raise Sorry("Step B: Non-zero off-diagonal S[L] and zero L[L] elements.")
     else:
       wx_lz =-self.S_L[7]/self.Lzz
       wy_lz = self.S_L[6]/self.Lzz
@@ -286,9 +286,9 @@ class decompose_tls(object):
       w_lx = w_lx,
       w_ly = w_ly,
       w_lz = w_lz)
-    self.show_vector(x=w_lx, title="w_lx, (15)")
-    self.show_vector(x=w_ly, title="w_ly, (15)")
-    self.show_vector(x=w_lz, title="w_lz, (15)")
+    self.show_vector(x=w_lx, title="w_lx, eq.(15)")
+    self.show_vector(x=w_ly, title="w_ly, eq.(15)")
+    self.show_vector(x=w_lz, title="w_lz, eq.(15)")
     d11 = wz_ly**2*self.Lyy + wy_lz**2*self.Lzz
     d22 = wz_lx**2*self.Lxx + wx_lz**2*self.Lzz
     d33 = wy_lx**2*self.Lxx + wx_ly**2*self.Lyy
@@ -299,12 +299,12 @@ class decompose_tls(object):
       [d11, d12, d13,
        d12, d22, d23,
        d13, d23, d33])
-    self.show_matrix(x=self.D_WL, title="D_WL, (17)")
+    self.show_matrix(x=self.D_WL, title="D_WL, eq.(10)")
     self.T_CL = self.T_L - self.D_WL
     self.T_CL = truncate(m=matrix.sqr(self.T_CL), eps_string="%.5f")
     self.show_matrix(x=self.T_CL, title="T_CL")
     if(not self.is_pd(self.T_CL.as_sym_mat3())):
-      raise Sorry("Step B: T_CL must be positive definite.")
+      raise Sorry("Step B: Matrix T_C[L] is not positive semidefinite.")
 
   def step_C(self):
     """
@@ -316,27 +316,13 @@ class decompose_tls(object):
     tlxx = self.T_CLxx*self.Lxx
     tlyy = self.T_CLyy*self.Lyy
     tlzz = self.T_CLzz*self.Lzz
-    #
-    c1 = tlxx-self.Sxx**2
-    c2 = tlyy-self.Syy**2
-    c3 = tlzz-self.Szz**2
-    if(self.force_t_S is not None):
-      if(not ((c1 > 0 or self.is_zero(c1)) and
-              (c2 > 0 or self.is_zero(c2)) and
-              (c3 > 0 or self.is_zero(c3)))):
-        raise Sorry("Step C: Cauchy conditions broken (23).")
-    #
     if(tlxx < 0 or tlyy < 0 or tlzz < 0):
-      raise Sorry("Step C: Cannot evaluate (25).")
-    t_min_C = truncate(m=max(
-      self.Sxx-math.sqrt(tlxx),
-      self.Syy-math.sqrt(tlyy),
-      self.Szz-math.sqrt(tlzz)))
-    t_max_C = truncate(m=min(
-      self.Sxx+math.sqrt(tlxx),
-      self.Syy+math.sqrt(tlyy),
-      self.Szz+math.sqrt(tlzz)))
-    self.show_number(x=[t_min_C, t_max_C], title="t_min_C, t_max_C (25):")
+      raise Sorry("Step C: Arguments in eq.(24) must be non-negative.")
+    rx, ry, rz = math.sqrt(tlxx), math.sqrt(tlyy), math.sqrt(tlzz)
+    #
+    t_min_C = truncate(m=max(self.Sxx-rx, self.Syy-ry, self.Szz-rz))
+    t_max_C = truncate(m=min(self.Sxx+rx, self.Syy+ry, self.Szz+rz))
+    self.show_number(x=[t_min_C, t_max_C], title="t_min_C,t_max_C eq.(24):")
     t11, t22, t33 = tlxx, tlyy, tlzz
     t12 = self.T_CL[1] * math.sqrt(self.Lxx*self.Lyy)
     t13 = self.T_CL[2] * math.sqrt(self.Lxx*self.Lzz)
@@ -347,43 +333,49 @@ class decompose_tls(object):
     if(not (self.is_zero(self.Lxx) or
             self.is_zero(self.Lyy) or
             self.is_zero(self.Lzz))):
+      if(t_min_C > t_max_C):
+        raise Sorry("Step C (left branch): Empty (tmin_c,tmax_c) interval.")
       t_0 = self.S_L.trace()/3.
-      self.show_number(x=t_0, title="t_0 (21):")
+      self.show_number(x=t_0, title="t_0 eq.(20):")
       # compose T_lambda and find tau_max (30)
       T_lambda = truncate( m=matrix.sqr(
         [t11, t12, t13,
          t12, t22, t23,
          t13, t23, t33]) )
-      self.show_matrix(x=T_lambda, title="T_lambda")
+      self.show_matrix(x=T_lambda, title="T_lambda eq.(29)")
       es = eigensystem.real_symmetric(T_lambda.as_sym_mat3())
       vals = es.values()
       assert vals[0]>=vals[1]>=vals[2]
       tau_max = vals[0]
-      # (32)
+      #
       if(tau_max < 0):
-        raise Sorry("Step C (left branch): Cannot evaluate (32): tau_max<0.")
+        raise Sorry("Step C (left branch): Eq.(32): tau_max<0.")
       t_min_tau = max(self.Sxx,self.Syy,self.Szz)-math.sqrt(tau_max)
       t_max_tau = min(self.Sxx,self.Syy,self.Szz)+math.sqrt(tau_max)
-      self.show_number(x=[t_min_tau, t_max_tau], title="t_min_tau, t_max_tau (32):")
-      # (40-41):
+      self.show_number(x=[t_min_tau, t_max_tau],
+        title="t_min_tau, t_max_tau eq.(31):")
+      if(t_min_tau > t_max_tau):
+        raise Sorry("Step C (left branch): Empty (tmin_t,tmax_t) interval.")
+      # (38):
       arg = t_0**2 + (t11+t22+t33)/3. - (self.Sxx**2+self.Syy**2+self.Szz**2)/3.
       if(arg < 0):
-        raise Sorry("Step C (left branch): Cannot evaluate (41): arg<0.")
+        raise Sorry("Step C (left branch): Negative argument when estimating tmin_a.")
       t_a = math.sqrt(arg)
-      self.show_number(x=t_a, title="t_a (41):")
+      self.show_number(x=t_a, title="t_a eq.(38):")
       t_min_a = t_0-t_a
       t_max_a = t_0+t_a
-      self.show_number(x=[t_min_a, t_max_a], title="t_min_a, t_max_a (40):")
+      self.show_number(x=[t_min_a, t_max_a], title="t_min_a, t_max_a eq.(37):")
       # compute t_min, t_max - this is step b)
       t_min = truncate(m=max(t_min_C, t_min_tau, t_min_a))
       t_max = truncate(m=min(t_max_C, t_max_tau, t_max_a))
-      if  (t_min > t_max):
-        raise Sorry("Step C (left branch): No solution at step b.")
+      if(t_min > t_max):
+        raise Sorry("Step C (left branch): Intersection of the intervals for t_S is empty.")
       elif(self.is_zero(t_min-t_max)):
         _, b_s, c_s = self.as_bs_cs(t=t_min, txx=t11,tyy=t22,tzz=t33,
           txy=t12,tyz=t23,tzx=t13)
         if(b_s >= 0 and c_s <= 0): self.t_S = t_min
-        else: raise Sorry("Step C (left branch): No solution at step c.")
+        else:
+          raise Sorry("Step C (left branch): t_min=t_max gives non positive semidefinite V_lambda.")
       elif(t_min < t_max):
         step = (t_max-t_min)/100000.
         target = 1.e+9
@@ -399,7 +391,7 @@ class decompose_tls(object):
           t_S_best += step
         assert self.t_S <= t_max
         if(self.t_S is None):
-          raise Sorry("Step C (left branch): No solution at step d.")
+          raise Sorry("Step C (left branch): Interval (t_min,t_max) has no t giving positive semidefinite V.")
         self.t_S = truncate(self.t_S)
     #
     # Right branch, Section 4.4
@@ -409,14 +401,14 @@ class decompose_tls(object):
       def cauchy_conditions(i,j,k, tSs): # diagonals: 0,4,8; 4,0,8; 8,0,4
         if(self.is_zero(self.L_L[i])):
           t_S = self.S_L[i]
-          cp1 = (self.S_L[j] - t_S)**2 - self.T_CL[j]*self.L_L[j]
-          cp2 = (self.S_L[k] - t_S)**2 - self.T_CL[k]*self.L_L[k]
+          cp1 = (self.S_L[j] - t_S)**2 - self.T_CL[j]*self.L_L[j] # *0.5 is missing!!! ?
+          cp2 = (self.S_L[k] - t_S)**2 - self.T_CL[k]*self.L_L[k] # *0.5 is missing!!! ?
           if( not ((cp1 < 0 or self.is_zero(cp1)) and
                    (cp2 < 0 or self.is_zero(cp2))) ):
             raise Sorry("Step C (right branch): Cauchy condition failed (23).")
           a_s, b_s, c_s = self.as_bs_cs(t=t_S, txx=t11,tyy=t22,tzz=t33,
             txy=t12,tyz=t23,tzx=t13)
-          self.check_37_38_39(a_s=a_s, b_s=b_s, c_s=c_s)
+          self.check_33_34_35(a_s=a_s, b_s=b_s, c_s=c_s)
           tSs.append(t_S)
       #
       tSs = []
@@ -424,7 +416,7 @@ class decompose_tls(object):
       cauchy_conditions(i=4,j=0,k=8, tSs=tSs)
       cauchy_conditions(i=8,j=0,k=4, tSs=tSs)
       if(len(tSs)==1): self.t_S = tSs[0]
-      elif(len(tSs)==0): raise Sorry("Step C (right branch): no solution.")
+      elif(len(tSs)==0): raise RuntimeError
       else:
         self.t_S = tSs[0]
         for tSs_ in tSs[1:]:
@@ -432,7 +424,7 @@ class decompose_tls(object):
             assert 0
     # end-of-procedure check, then truncate
     if(self.t_S is None):
-      raise Sorry("Step C (overall): no solution.")
+      raise RuntimeError
     self.t_S = truncate(m=self.t_S)
     # override with provided value
     if(self.force_t_S is not None):
@@ -476,7 +468,7 @@ class decompose_tls(object):
     self.V_L = truncate(m=matrix.sqr(self.T_CL - self.C_L_t_S))
     self.show_matrix(x=self.V_L, title="V_L (26-27)")
     if(not self.is_pd(self.V_L.as_sym_mat3())):
-      raise Sorry("Step C: V_L (26-27) must be positive.")
+      raise Sorry("Step C: Matrix V[L] is not positive semidefinite.")
 
   def step_D(self):
     """
@@ -489,8 +481,7 @@ class decompose_tls(object):
     self.show_vector(x=self.v_x, title="v_x")
     self.show_vector(x=self.v_y, title="v_y")
     self.show_vector(x=self.v_z, title="v_z")
-    if(min(es.vals)<0):
-      raise Sorry("Step D: all eigenvalues of V_L must be nonnegative.")
+    if(min(es.vals)<0): raise RuntimeError # checked with Sorry at Step C.
     R = matrix.sqr(
       [self.v_x[0], self.v_y[0], self.v_z[0],
        self.v_x[1], self.v_y[1], self.v_z[1],
@@ -505,11 +496,11 @@ class decompose_tls(object):
        v_x_M[1], v_y_M[1], v_z_M[1],
        v_x_M[2], v_y_M[2], v_z_M[2]])
 
-  def check_37_38_39(self, a_s, b_s, c_s):
+  def check_33_34_35(self, a_s, b_s, c_s):
     if(not ((a_s<0 or self.is_zero(a_s)) and
             (b_s>0 or self.is_zero(a_s)) and
             (c_s<0 or self.is_zero(c_s)))):
-      raise Sorry("Step C (right branch): Conditions 37-39 failed.")
+      raise Sorry("Step C (right branch): Conditions 33-35 failed.")
 
   def as_bs_cs(self, t, txx,tyy,tzz, txy,tyz,tzx):
     xx = (t-self.Sxx)**2-txx
@@ -628,11 +619,11 @@ class decompose_tls(object):
   def show_summary(self):
     print_step("SUMMARY:", self.log)
     r = self.result
-    self.show_number(x=r.l_x, title="Libration rms around L-axes")
+    self.show_number(x=[r.dx, r.dy, r.dz], title="Libration rms around L-axes")
     #
+    self.show_vector(x=r.l_x, title="Unit vectors defining three Libration axes")
     self.show_vector(x=r.l_y, title="Unit vectors defining three Libration axes")
     self.show_vector(x=r.l_z, title="Unit vectors defining three Libration axes")
-    self.show_vector(x=r.l_x, title="Unit vectors defining three Libration axes")
     #
     self.show_vector(x=r.w_L_lx, title="Rotation axes pass through the points in the L base")
     self.show_vector(x=r.w_L_ly, title="Rotation axes pass through the points in the L base")
