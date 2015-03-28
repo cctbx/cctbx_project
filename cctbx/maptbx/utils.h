@@ -429,6 +429,21 @@ void set_box(
 }
 
 template <typename DataType1, typename DataType2>
+void combine_1(
+       af::ref<DataType2, af::c_grid<3> > map_data,
+       af::ref<DataType1, af::c_grid<3> > diff_map)
+{
+  af::tiny<int, 3> a = map_data.accessor();
+  for(int i = 0; i < a[0]; i++) {
+    for(int j = 0; j < a[1]; j++) {
+      for(int k = 0; k < a[2]; k++) {
+         DataType1 m1 = map_data(i,j,k);
+         DataType2 m2 = diff_map(i,j,k);
+         if(m1<=1.0) map_data(i,j,k) = m1+m2;
+  }}}
+}
+
+template <typename DataType1, typename DataType2>
 void truncate_special(
        af::ref<DataType2, af::c_grid<3> > mask,
        af::ref<DataType1, af::c_grid<3> > map_data)
@@ -585,6 +600,47 @@ void reset(
            }
          }
   }}}
+}
+
+template <typename DataType>
+void negate_selected_in_place(
+       af::ref<DataType, af::c_grid<3> > map_data,
+       af::const_ref<bool, af::c_grid<3> > const& selection)
+{
+  int nx = map_data.accessor()[0];
+  int ny = map_data.accessor()[1];
+  int nz = map_data.accessor()[2];
+  for(int i = 0; i < nx; i++) {
+    for(int j = 0; j < ny; j++) {
+      for(int k = 0; k < nz; k++) {
+        if(selection(i,j,k)) {
+          map_data(i,j,k) = -1.*map_data(i,j,k);
+        }
+  }}}
+}
+
+template <typename DataType, typename GridType>
+af::versa<DataType, GridType>
+negate_selected_in_place(
+  af::const_ref<DataType, GridType> const& map_data,
+  std::vector<unsigned> const& selection)
+{
+  af::c_grid_padded<3> a = map_data.accessor();
+  int nx = map_data.accessor().all()[0];
+  int ny = map_data.accessor().all()[1];
+  int nz = map_data.accessor().all()[2];
+  af::versa<DataType, af::c_grid_padded<3> > result_map(a,
+    af::init_functor_null<DataType>());
+  af::ref<DataType, af::c_grid_padded<3> > result_map_ref = result_map.ref();
+  for(int i = 0; i < nx; i++) {
+    for(int j = 0; j < ny; j++) {
+      for(int k = 0; k < nz; k++) {
+          result_map_ref(i,j,k) = map_data(i,j,k);
+    }}}
+  for(int i = 0; i < selection.size(); i++) {
+     result_map[selection[i]] = -1.*map_data[selection[i]];
+  }
+  return result_map;
 }
 
 template <typename DataType>
