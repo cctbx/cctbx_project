@@ -6,7 +6,9 @@ import time
 from mmtbx import monomer_library
 import mmtbx.refinement.real_space.fit_residue
 import iotbx.pdb
-from mmtbx.rotamer.rotamer_eval import RotamerEval
+import math
+import scitbx.math
+import mmtbx.idealized_aa_residues.rotamer_manager
 
 pdb_answer = """\
 CRYST1   14.074   16.834   17.360  90.00  90.00  90.00 P 1
@@ -25,6 +27,24 @@ TER
 HETATM    1  U   ION B   1       9.074   7.848   5.000  1.00 10.00           U
 TER
 END
+"""
+
+pdb_poor0 = """\
+CRYST1   14.074   16.834   17.360  90.00  90.00  90.00 P 1
+ATOM      1  N   ARG A  21       8.318  11.834   9.960  1.00 10.00           N
+ATOM      2  CA  ARG A  21       7.146  11.154   9.422  1.00 10.00           C
+ATOM      3  C   ARG A  21       6.012  11.120  10.440  1.00 10.00           C
+ATOM      4  O   ARG A  21       5.000  10.449  10.235  1.00 10.00           O
+ATOM      5  CB  ARG A  21       7.505   9.732   8.987  1.00 10.00           C
+ATOM      6  CG  ARG A  21       6.612   8.656   9.584  0.70 20.00           C
+ATOM      7  CD  ARG A  21       6.020   7.767   8.502  0.70 20.00           C
+ATOM      8  NE  ARG A  21       4.569   7.657   8.617  0.70 20.00           N
+ATOM      9  CZ  ARG A  21       3.771   7.248   7.637  0.70 20.00           C
+ATOM     10  NH1 ARG A  21       4.282   6.909   6.460  0.70 20.00           N
+ATOM     11  NH2 ARG A  21       2.461   7.180   7.830  0.70 20.00           N
+TER
+HETATM    1  U   ION B   1       9.074   7.848   5.000  1.00 10.00           U
+TER
 """
 
 pdb_poor1 = """\
@@ -84,14 +104,14 @@ TER      14      ION B   1
 END
 """
 
-def exercise(use_slope, use_torsion_search, use_rotamer_iterator, pdb_poor_str,
-             d_min = 1.0, resolution_factor = 0.1):
+def exercise(pdb_poor_str, rotamer_manager, sin_cos_table, i_pdb, d_min = 1.0,
+             resolution_factor = 0.1):
   # Fit one residue. There is a huge heavy atom nearby that overlaps with a
   # plausible rotamer.
   #
   # answer
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_answer)
-  pdb_inp.write_pdb_file(file_name = "answer.pdb")
+  pdb_inp.write_pdb_file(file_name = "answer_%s.pdb"%str(i_pdb))
   xrs_answer = pdb_inp.xray_structure_simple()
   f_calc = xrs_answer.structure_factors(d_min = d_min).f_calc()
   fft_map = f_calc.fft_map(resolution_factor=resolution_factor)
@@ -99,7 +119,7 @@ def exercise(use_slope, use_torsion_search, use_rotamer_iterator, pdb_poor_str,
   target_map = fft_map.real_map_unpadded()
   mtz_dataset = f_calc.as_mtz_dataset(column_root_label = "FCmap")
   mtz_object = mtz_dataset.mtz_object()
-  mtz_object.write(file_name = "answer.mtz")
+  mtz_object.write(file_name = "answer_%s.mtz"%str(i_pdb))
   # poor
   mon_lib_srv = monomer_library.server.server()
   processed_pdb_file = monomer_library.pdb_interpretation.process(
@@ -112,11 +132,9 @@ def exercise(use_slope, use_torsion_search, use_rotamer_iterator, pdb_poor_str,
   pdb_hierarchy_poor = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   xrs_poor = processed_pdb_file.xray_structure()
   sites_cart_poor = xrs_poor.sites_cart()
-  pdb_hierarchy_poor.write_pdb_file(file_name = "poor.pdb")
+  pdb_hierarchy_poor.write_pdb_file(file_name = "poor_%s.pdb"%str(i_pdb))
   #
-  rotamer_manager = RotamerEval()
   get_class = iotbx.pdb.common_residue_names_get_class
-  residue_poor = None
   for model in pdb_hierarchy_poor.models():
     for chain in model.chains():
       for residue in chain.only_conformer().residues():
@@ -135,34 +153,35 @@ def exercise(use_slope, use_torsion_search, use_rotamer_iterator, pdb_poor_str,
               atom_radius      = 4)
           print "  time (negate map): %6.4f" % (time.time()-t0)
           # refine
-          mmtbx.refinement.real_space.fit_residue.manager(
-            target_map           = target_map_,
-            mon_lib_srv          = mon_lib_srv,
-            special_position_settings = xrs_poor.special_position_settings(),
-            residue              = residue,
-            rotamer_manager      = rotamer_manager,
-            use_slope            = use_slope,
-            use_torsion_search   = use_torsion_search,
-            use_rotamer_iterator = use_rotamer_iterator)
+          mmtbx.refinement.real_space.fit_residue.run(
+            residue         = residue,
+            unit_cell       = xrs_poor.unit_cell(),
+            target_map      = target_map_,
+            mon_lib_srv     = mon_lib_srv,
+            rotamer_manager = rotamer_manager,
+            sin_cos_table   = sin_cos_table)
+
           sites_cart_poor.set_selected(residue.atoms().extract_i_seq(),
             residue.atoms().extract_xyz())
           print "  time (refine): %6.4f" % (time.time()-t0)
   xrs_poor = xrs_poor.replace_sites_cart(sites_cart_poor)
   pdb_hierarchy_poor.adopt_xray_structure(xrs_poor)
-  pdb_hierarchy_poor.write_pdb_file(file_name = "refined.pdb")
+  pdb_hierarchy_poor.write_pdb_file(file_name = "refined_%s.pdb"%str(i_pdb))
   dist = xrs_answer.max_distance(other = xrs_poor)
-  assert dist < 0.0035, dist
+  if(i_pdb==2): assert dist < 1.e-6, dist
+  else:         assert dist < 0.22,  dist
 
 if(__name__ == "__main__"):
   t0 = time.time()
-  for i_pdb, pdb_poor_str in enumerate([pdb_poor1, pdb_poor2, pdb_poor3]):
-    for use_slope in [True,False]:
-      for use_torsion_search in [True,]: # False will fail the test due to lack of backrub fit
-        for use_rotamer_iterator in [True,False]:
-          print i_pdb, use_slope, use_torsion_search, use_rotamer_iterator
-          exercise(
-            pdb_poor_str         = pdb_poor_str,
-            use_slope            = use_slope,
-            use_torsion_search   = use_torsion_search,
-            use_rotamer_iterator = use_rotamer_iterator)
+  # load rotamer manager
+  rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load()
+  # pre-compute sin and cos tables
+  sin_cos_table = scitbx.math.sin_cos_table(n=10000)
+  for i_pdb, pdb_poor_str in enumerate(
+                               [pdb_poor0, pdb_poor1, pdb_poor2, pdb_poor3]):
+    exercise(
+      pdb_poor_str    = pdb_poor_str,
+      rotamer_manager = rotamer_manager,
+      sin_cos_table   = sin_cos_table,
+      i_pdb           = i_pdb)
   print "Time: %6.4f"%(time.time()-t0)

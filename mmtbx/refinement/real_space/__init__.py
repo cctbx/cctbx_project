@@ -6,20 +6,23 @@ import time, sys
 from cctbx import maptbx
 import mmtbx.utils
 from mmtbx.rotamer.rotamer_eval import RotamerEval
-from libtbx.utils import user_plus_sys_time
 import iotbx.pdb
 from cctbx import miller
 from libtbx.str_utils import format_value
-from cctbx import crystal
 from mmtbx import model_statistics
 import libtbx.load_env
 from mmtbx.utils import rotatable_bonds
 from cctbx.eltbx import tiny_pse
 from cctbx import eltbx
+from libtbx.test_utils import approx_equal
 
+def flatten(l):
+  if l is None: return None
+  return sum(([x] if not (isinstance(x, list) or isinstance(x, flex.size_t)) else flatten(x) for x in l), [])
 
 def need_sidechain_fit(
       residue,
+      rotamer_evaluator,
       mon_lib_srv,
       unit_cell,
       f_map,
@@ -30,6 +33,7 @@ def need_sidechain_fit(
   """
   get_class = iotbx.pdb.common_residue_names_get_class
   assert get_class(residue.resname) == "common_amino_acid"
+  if(residue.resname.strip().upper() in ["ALA", "GLY"]): return False
   cl = mmtbx.refinement.real_space.aa_residue_axes_and_clusters(
     residue         = residue,
     mon_lib_srv     = mon_lib_srv,
@@ -37,7 +41,6 @@ def need_sidechain_fit(
   if(len(cl)==0): return False
   # service functions
   def anal(x):
-    #print "x",x
     for i,e in enumerate(x):
       if(e<0): return True
       r=None
@@ -50,7 +53,6 @@ def need_sidechain_fit(
         else:
           if(e1!=0):
             r = e2/e1
-        #print e1, e2, r
       if(r is not None and r>3): return True
     return False
   def anal2(x):
@@ -58,8 +60,6 @@ def need_sidechain_fit(
       if(e<-3.0): return True
     return False
   def anal3(x): return (flex.double(x)>=small_f_map).count(True)==len(x)
-  def flatten(l):
-           return sum(([x] if not isinstance(x, list) else flatten(x) for x in l), [])
   #
   last = cl[0].vector[len(cl[0].vector)-1]
   vector = flatten(cl[0].vector)
@@ -80,6 +80,14 @@ def need_sidechain_fit(
       main_chain_sel.append(i_seq)
   #
   sites_frac = unit_cell.fractionalize(residue.atoms().extract_xyz())
+  ### If it is rotamer OUTLIER
+  if(rotamer_evaluator.evaluate_residue(residue)=="OUTLIER"):
+    map_values = flex.double()
+    for i in side_chain_sel:
+      map_values.append(f_map.eight_point_interpolation(sites_frac[i]))
+    valid_outlier = map_values.all_gt(1.0)
+    return not valid_outlier
+  ###
   mv = []
   mv_orig = []
   if(fdiff_map is not None): diff_mv = []
@@ -93,32 +101,17 @@ def need_sidechain_fit(
     if(fdiff_map is not None):
       diff_mv.append(fdiff_map.value_at_closest_grid_point(sf))
   f  = anal(mv)
-  #anal(list(mv2))
-  #anal(list(mv_orig))
   if(fdiff_map is not None): f2 = anal2(diff_mv)
   f3 = anal3(mv_orig)
   # main vs side chain
   mvbb = flex.double()
   mvbb_orig = flex.double()
   for mcs in main_chain_sel:
-    #print list(residue.atoms())[mcs].name
     sf = sites_frac[mcs]
     f_map_epi = f_map.eight_point_interpolation(sf)
     mvbb.append(     f_map_epi/weights[mcs])
     mvbb_orig.append(f_map_epi)
   f4 = flex.min(mvbb_orig)<small_f_map or flex.mean(mvbb)<flex.mean(mv2)
-  #print ["%3.2f"%mv for mv in mv_orig]
-  #print residue.resid(),residue.resname, f, f2, f3, f4, ["%3.2f"%mv for mv in mv_orig]
-  # last ??? Do we need it? see L7 in 1f8t
-  #mv_last = flex.double()
-  #if(len(last)==2):
-  #  for l in last:
-  #    mv_last.append(f_map.eight_point_interpolation(sites_frac[l]))
-  #  print "   ", residue.resname, residue.resid()
-  #  print dir(residue.parent().parent())
-  #
-  #  print residue.parent().parent().id
-  #  STOP()
   c_id = "none"
   if(residue.parent() is not None):
     c_id = residue.parent().parent().id.strip()
@@ -131,20 +124,33 @@ def need_sidechain_fit(
   else:
     if((f       and not f3) and not f4): result = True
     else: result = False
-  #if(result):
-  #  print id_str, ["%3.2f"%mv for mv in mv_orig]
   return result
 
 class cluster(object):
   def __init__(self,
                axis,
                atoms_to_rotate,
+               atom_names=None,
                vector=None,
-               selection=None,
-               start=None,
-               stop=None,
-               step=None):
+               selection=None):
     adopt_init_args(self, locals())
+    self.vector_flat = None
+
+  def get_vector_flat(self):
+    if(self.vector is not None):
+      if(self.vector_flat is None):
+        self.vector_flat = flex.size_t(flatten(self.vector))
+    return self.vector_flat
+
+  def show(self):
+    if(self.atom_names is None): return
+    cl = self
+    an = self.atom_names
+    print cl.axis, ",".join([an[i].strip() for i in cl.axis]), \
+        cl.atoms_to_rotate, \
+        ",".join([an[i].strip() for i in cl.atoms_to_rotate]), "<>",\
+        ",".join([an[i].strip() for i in cl.selection]), "<>",\
+        ",".join([an[i].strip() for i in cl.get_vector_flat()])
 
 class aa_residue_axes_and_clusters(object):
   def __init__(self,
@@ -158,6 +164,7 @@ class aa_residue_axes_and_clusters(object):
                torsion_search_sidechain_stop=None,
                torsion_search_sidechain_step=None):
     self.clusters = []
+    atom_names = residue.atoms().extract_name()
     if(backbone_sample):
       backrub_axis  = []
       backrub_atoms_to_rotate = []
@@ -173,12 +180,10 @@ class aa_residue_axes_and_clusters(object):
         counter += 1
       if(len(backrub_axis)==2 and len(backrub_atoms_to_evaluate)>0):
         self.clusters.append(cluster(
-          axis            = backrub_axis,
-          atoms_to_rotate = backrub_atoms_to_rotate,
-          selection       = backrub_atoms_to_evaluate,
-          start           = torsion_search_backbone_start,
-          stop            = torsion_search_backbone_stop,
-          step            = torsion_search_backbone_step))
+          axis            = flex.size_t(backrub_axis),
+          atom_names      = atom_names,
+          atoms_to_rotate = flex.size_t(backrub_atoms_to_rotate),
+          selection       = flex.size_t(backrub_atoms_to_evaluate)))
     self.axes_and_atoms_aa_specific = \
       rotatable_bonds.axes_and_atoms_aa_specific(
         residue = residue, mon_lib_srv = mon_lib_srv)
@@ -189,12 +194,10 @@ class aa_residue_axes_and_clusters(object):
         else:
           selection = flex.size_t([aa[1][0]])
         self.clusters.append(cluster(
-          axis            = aa[0],
-          atoms_to_rotate = aa[1],
-          selection       = selection,
-          start           = torsion_search_sidechain_start,
-          stop            = torsion_search_sidechain_stop,
-          step            = torsion_search_sidechain_step))
+          axis            = flex.size_t(aa[0]),
+          atom_names      = atom_names,
+          atoms_to_rotate = flex.size_t(aa[1]),
+          selection       = flex.size_t(selection)))
       vector_selections = []
       if(len(self.clusters)>0):
         for i_aa, aa in enumerate(self.axes_and_atoms_aa_specific):
@@ -218,28 +221,23 @@ class residue_monitor(object):
                map_cc_sidechain=None,
                map_cc_backbone=None,
                map_cc_all=None,
-               rotamer_status=None,
-               clashes_with_resseqs=None):
+               rotamer_status=None):
     adopt_init_args(self, locals())
 
   def format_info_string(self):
-    if(self.clashes_with_resseqs is None): cw = "none"
-    else: cw = str(self.clashes_with_resseqs)
-    return "%7s %6s    %6s     %6s %9s %7s"%(
+    return "%7s %6s    %6s     %6s %9s"%(
       self.id_str,
       format_value("%6.3f",self.map_cc_all),
       format_value("%6.3f",self.map_cc_backbone),
       format_value("%6.3f",self.map_cc_sidechain),
-      self.rotamer_status,
-      cw)
+      self.rotamer_status)
 
 class structure_monitor(object):
   def __init__(self,
                pdb_hierarchy,
                xray_structure,
                target_map_object,
-               geometry_restraints_manager=None,
-               clash_threshold=1.0):
+               geometry_restraints_manager=None):
     adopt_init_args(self, locals())
     self.unit_cell = self.xray_structure.unit_cell()
     self.xray_structure = xray_structure.deep_copy_scatterers()
@@ -249,6 +247,7 @@ class structure_monitor(object):
       xray_structure = self.xray_structure)
     self.states_collector.add(sites_cart = self.xray_structure.sites_cart())
     self.rotamer_manager = RotamerEval()
+    self.assert_pdb_hierarchy_xray_structure_sync()
     #
     self.map_cc_whole_unit_cell = None
     self.map_cc_around_atoms = None
@@ -259,13 +258,17 @@ class structure_monitor(object):
     self.dist_from_previous = 0
     self.number_of_rotamer_outliers = 0
     self.residue_monitors = None
-    self.clashing_residue_i_seqs = None
     #
     self.initialize()
 
+  def assert_pdb_hierarchy_xray_structure_sync(self):
+    return #XXX
+    sc1 = self.xray_structure.sites_cart()
+    sc2 = self.pdb_hierarchy.atoms().extract_xyz()
+    assert approx_equal(sc1, sc2, 1.e-3)
+
   def initialize(self):
-    #global time_initialize_structure_monitor
-    #timer = user_plus_sys_time()
+    self.assert_pdb_hierarchy_xray_structure_sync()
     # residue monitors
     self.residue_monitors = []
     backbone_atoms = ["N","CA","C","O","CB"]
@@ -336,62 +339,60 @@ class structure_monitor(object):
       self.rmsd_b = es.bond_deviations()[2]
     self.dist_from_start = flex.mean(self.xray_structure_start.distances(
       other = self.xray_structure))
-    #assert self.dist_from_start < 1.e-6
     self.number_of_rotamer_outliers = 0
     for r in self.residue_monitors:
       if(r.rotamer_status == "OUTLIER"):
         self.number_of_rotamer_outliers += 1
-    # get clashes
-    self.clashing_residue_i_seqs = self.find_sidechain_clashes()
-    #
-    #time_initialize_structure_monitor += timer.elapsed()
+    self.assert_pdb_hierarchy_xray_structure_sync()
 
   def compute_map(self, xray_structure):
-    #global time_compute_map
-    #timer = user_plus_sys_time()
+    self.assert_pdb_hierarchy_xray_structure_sync()
     mc = self.target_map_object.miller_array.structure_factors_from_scatterers(
       xray_structure = xray_structure).f_calc()
     fft_map = miller.fft_map(
       crystal_gridding     = self.target_map_object.crystal_gridding,
       fourier_coefficients = mc)
     fft_map.apply_sigma_scaling()
-    #time_compute_map += timer.elapsed()
     return fft_map.real_map_unpadded()
 
+  def map_cc_histogram_per_atom(self, radius=2, n_slots=10):
+    self.assert_pdb_hierarchy_xray_structure_sync()
+    from mmtbx.maps import correlation
+    current_map = self.compute_map(xray_structure = self.xray_structure)
+    return correlation.histogram_per_atom(
+      map_1      = current_map,
+      map_2      = self.target_map_object.data,
+      sites_cart = self.xray_structure.sites_cart(),
+      unit_cell  = self.xray_structure.unit_cell(),
+      radius     = radius,
+      n_slots    = n_slots)
+
   def map_cc(self, other_map, sites_cart=None, atom_radius=2, per_atom=False):
-    #global time_map_cc
-    #timer = user_plus_sys_time()
+    self.assert_pdb_hierarchy_xray_structure_sync()
+    from mmtbx.maps import correlation
     if(sites_cart is not None):
       if(per_atom):
-        result = flex.double()
-        for site_cart in sites_cart:
-          sel = maptbx.grid_indices_around_sites(
-            unit_cell  = self.unit_cell,
-            fft_n_real = other_map.focus(),
-            fft_m_real = other_map.all(),
-            sites_cart = flex.vec3_double([site_cart]),
-            site_radii = flex.double(1, atom_radius))
-          result.append(flex.linear_correlation(
-            x=other_map.select(sel).as_1d(),
-            y=self.target_map_object.data.select(sel).as_1d()).coefficient())
-      else:
-        sel = maptbx.grid_indices_around_sites(
-          unit_cell  = self.unit_cell,
-          fft_n_real = other_map.focus(),
-          fft_m_real = other_map.all(),
+        result = correlation.from_map_map_atoms_per_atom(
+          map_1      = other_map,
+          map_2      = self.target_map_object.data,
           sites_cart = sites_cart,
-          site_radii = flex.double(sites_cart.size(), atom_radius))
-        result = flex.linear_correlation(
-          x=other_map.select(sel).as_1d(),
-          y=self.target_map_object.data.select(sel).as_1d()).coefficient()
+          unit_cell  = self.xray_structure.unit_cell(),
+          radius     = atom_radius)
+      else:
+        result = correlation.from_map_map_atoms(
+          map_1      = other_map,
+          map_2      = self.target_map_object.data,
+          sites_cart = sites_cart,
+          unit_cell  = self.xray_structure.unit_cell(),
+          radius     = atom_radius)
     else:
-      result = flex.linear_correlation(
-        x=other_map.as_1d(),
-        y=self.target_map_object.data.as_1d()).coefficient()
-    #time_map_cc += timer.elapsed()
+      result = correlation.from_map_map(
+        map_1 = other_map,
+        map_2 = self.target_map_object.data)
     return result
 
   def show(self, prefix="", log=None):
+    self.assert_pdb_hierarchy_xray_structure_sync()
     if(log is None): log = sys.stdout
     fmt = """%s Map CC (whole unit cell):  %-6.3f
 %s Map CC (around atoms):     %-6.3f
@@ -443,17 +444,17 @@ class structure_monitor(object):
         prefix, "None")
 
   def show_residues(self, map_cc_all=0.8, map_cc_sidechain=0.8, log=None):
+    self.assert_pdb_hierarchy_xray_structure_sync()
     if(log is None): log = sys.stdout
     header_printed = True
     for r in self.residue_monitors:
       i1=r.map_cc_all < map_cc_all
       i2=r.rotamer_status == "OUTLIER"
-      i3=r.clashes_with_resseqs is not None
       i4=r.map_cc_sidechain is not None and r.map_cc_sidechain<map_cc_sidechain
-      if([i1,i2,i3,i4].count(True)>0):
+      if([i1,i2,i4].count(True)>0):
         if(header_printed):
-          print >> log, "Residue     CC        CC         CC   Rotamer Clashes"
-          print >> log, "     id    all  backbone  sidechain        id    with"
+          print >> log, "Residue     CC        CC         CC   Rotamer"
+          print >> log, "     id    all  backbone  sidechain        id"
           header_printed = False
         print >> log, r.format_info_string()
 
@@ -484,41 +485,7 @@ class structure_monitor(object):
     self.pdb_hierarchy.adopt_xray_structure(xray_structure)
     self.initialize()
     self.states_collector.add(sites_cart = xray_structure.sites_cart())
-
-  def find_sidechain_clashes(self):
-    result = flex.size_t()
-    if(self.geometry_restraints_manager is None): return result
-    # find nonbonded clashing pairs of atoms
-    bond_proxies_simple = self.geometry_restraints_manager.pair_proxies(
-      sites_cart = self.xray_structure.sites_cart()).bond_proxies.simple
-    bonded_i_seqs = []
-    for bp in bond_proxies_simple:
-      bonded_i_seqs.append(bp.i_seqs)
-    pair_asu_table = self.xray_structure.pair_asu_table(
-      distance_cutoff=self.clash_threshold)
-    pair_sym_table = pair_asu_table.extract_pair_sym_table()
-    atom_pairs_i_seqs = pair_sym_table.simple_edge_list()
-    nonbonded_pairs = list(set(atom_pairs_i_seqs).difference(set(bonded_i_seqs)))
-    # match into residue i_seqs
-    residue_i_seqs = []
-    for pair in nonbonded_pairs:
-      residue_pair_i_seqs = []
-      residue_pair_resseqs = []
-      for i_res, r in enumerate(self.residue_monitors):
-        if(pair[0] in r.selection_all or pair[1] in r.selection_all):
-          residue_pair_i_seqs.append(i_res)
-          residue_pair_resseqs.append(r.id_str)
-      if(len(residue_pair_i_seqs)==2): # XXX this means not handling alt conformations
-        self.residue_monitors[residue_pair_i_seqs[0]].clashes_with_resseqs=residue_pair_resseqs[1]
-        self.residue_monitors[residue_pair_i_seqs[1]].clashes_with_resseqs=residue_pair_resseqs[0]
-        if(self.residue_monitors[residue_pair_i_seqs[0]].map_cc_all <
-           self.residue_monitors[residue_pair_i_seqs[1]].map_cc_all):
-          if(not residue_pair_i_seqs[0] in result):
-            result.append(residue_pair_i_seqs[0])
-        else:
-          if(not residue_pair_i_seqs[1] in result):
-            result.append(residue_pair_i_seqs[1])
-    return result
+    self.assert_pdb_hierarchy_xray_structure_sync()
 
 def selection_around_to_negate(
       xray_structure,
@@ -528,7 +495,7 @@ def selection_around_to_negate(
       iselection_backbone=None,
       iselection_n_external=None,
       iselection_c_external=None):
-  # XXX time and memory inefficient
+  # takes ~0.002 seconds
   if([selection_good,iselection_backbone].count(None)==0):
     selection_backbone = flex.bool(selection_good.size(), iselection_backbone)
     selection_good = selection_good.set_selected(selection_backbone, True)
@@ -558,120 +525,114 @@ def negate_map_around_selected_atoms_except_selected_atoms(
       atom_radius):
   # XXX time and memory inefficient
   sites_cart_p1 = xray_structure.select(negate_selection).expand_to_p1(
-      sites_mod_positive=True).sites_cart()
+    sites_mod_positive=True).sites_cart()
   around_atoms_selections = maptbx.grid_indices_around_sites(
     unit_cell  = xray_structure.unit_cell(),
     fft_n_real = map_data.focus(),
     fft_m_real = map_data.all(),
     sites_cart = sites_cart_p1,
     site_radii = flex.double(sites_cart_p1.size(), atom_radius))
-  sel_ = flex.bool(size=map_data.size(), iselection=around_atoms_selections)
-  sel_.reshape(map_data.accessor())
-  md = map_data.deep_copy().set_selected(sel_,-1) #XXX better to negate not set!
-  md = md.set_selected(~sel_, 1)
-  return map_data*md
+  return maptbx.negate_selected_in_place(map_data=map_data,
+    selection=around_atoms_selections)
 
-class score(object):
+class score2(object):
   def __init__(self,
-               special_position_settings,
-               sites_cart_all,
+               unit_cell,
                target_map,
                residue,
-               rotamer_eval = None,
                vector = None,
-               slope_decrease_factor = 3,
-               tmp = None,
-               use_binary = False,
-               use_clash_filter = False,
-               clash_radius = 1):
+               selection=None):
     adopt_init_args(self, locals())
     self.target = None
     self.sites_cart = None
-    self.unit_cell = special_position_settings.unit_cell()
+    self.i_seqs = []
+    self.weights = flex.double()
+    for el in self.residue.atoms().extract_element():
+      std_lbl = eltbx.xray_scattering.get_standard_label(
+        label=el, exact=True, optional=True)
+      self.weights.append(tiny_pse.table(std_lbl).weight())
+    self.occ = self.residue.atoms().extract_occ()
+    self.vector_flat = None
+    if(vector is not None):
+      self.vector_flat = flex.size_t(flatten(self.vector))
+    self.sites_cart = self.residue.atoms().extract_xyz()
+    if(selection is None): selection = self.vector_flat
+    self.target = maptbx.real_space_target_simple(
+      unit_cell   = self.unit_cell,
+      density_map = self.target_map,
+      sites_cart  = self.sites_cart,
+      selection   = selection)
+
+  def update(self, sites_cart, selection=None):
+    if(selection is None): selection = self.vector_flat
+    target = maptbx.real_space_target_simple(
+      unit_cell   = self.unit_cell,
+      density_map = self.target_map,
+      sites_cart  = sites_cart,
+      selection   = selection)
+    if(target > self.target):
+      self.sites_cart = sites_cart
+      self.target = target
+
+class score(object):
+  def __init__(self,
+               unit_cell,
+               target_map,
+               residue,
+               rotamer_eval = None,
+               vector = None):
+    adopt_init_args(self, locals())
+    self.target = None
+    self.sites_cart = None
+    self.i_seqs = []
+    self.weights = flex.double()
+    for el in self.residue.atoms().extract_element():
+      std_lbl = eltbx.xray_scattering.get_standard_label(
+        label=el, exact=True, optional=True)
+      self.weights.append(tiny_pse.table(std_lbl).weight())
+    self.occ = self.residue.atoms().extract_occ()
+    self.vector_flat = flatten(self.vector)
 
   def compute_target(self, sites_cart, selection=None):
     sites_frac = self.unit_cell.fractionalize(sites_cart)
     result = 0
-    if(selection is None):
-      for site_frac in sites_frac:
-        epi = self.target_map.eight_point_interpolation(site_frac)
-        result += epi
-        if(self.use_binary and epi>1.0): result += 1
-    else:
-      for sel in selection:
-        epi = self.target_map.eight_point_interpolation(sites_frac[sel])
-        result += epi
-        if(self.use_binary and epi>1.0): result += 1
-    return result
-
-  def find_clashes(self, sites_cart):
-    iselection = self.residue.atoms().extract_i_seq()
-    sites_cart_all_ = self.sites_cart_all.deep_copy().set_selected(
-      iselection, sites_cart)
-    selection = flex.bool(size=self.sites_cart_all.size(),iselection=iselection)
-    selection_around = crystal.neighbors_fast_pair_generator(
-      asu_mappings=self.special_position_settings.asu_mappings(
-        buffer_thickness=self.clash_radius,
-        sites_cart=sites_cart_all_),
-      distance_cutoff=self.clash_radius).neighbors_of(
-        primary_selection=selection).iselection()
-    return flex.size_t(tuple(set(selection_around).difference(set(iselection))))
+    vals = []
+    if(selection is None): i_seqs = self.vector_flat
+    else:                  i_seqs = selection
+    for i_seq in i_seqs:
+      vals.append(self.target_map.eight_point_interpolation(sites_frac[i_seq])/
+        self.weights[i_seq]/self.occ[i_seq])
+    #
+    sz = len(vals)
+    if(sz>3):
+      deltas = []
+      for i in xrange(sz):
+        if(i+1<sz and i>1):
+          e1=abs(vals[i])
+          e2=abs(vals[i+1])
+          r=e1/e2
+          deltas.append(r)
+      if(max(deltas)>5 or min(deltas)<1./5):
+        return 0
+    return sum(vals)
 
   def update(self, sites_cart, selection=None, tmp=None):
     target = self.compute_target(sites_cart = sites_cart, selection=selection)
     assert self.target is not None
-    slope = None
-    if(self.vector is not None):
-      slope = self.get_slope(sites_cart = sites_cart)
-    if(target > self.target and (slope is None or (slope is not None and slope))):
+    if(target > self.target):
       self.residue.atoms().set_xyz(sites_cart)
       fl = self.rotamer_eval is None or \
         self.rotamer_eval.evaluate_residue(residue = self.residue) != "OUTLIER"
       if(fl):
-        clash_list=flex.size_t()
-        if(self.use_clash_filter):
-          clash_list = self.find_clashes(sites_cart=sites_cart)
-          if(clash_list.size()!=0): return
         self.target = target
         self.sites_cart = sites_cart
-        self.tmp = tmp,slope
-
-  def get_slope(self, sites_cart):
-    sites_frac = self.unit_cell.fractionalize(sites_cart)
-    y = flex.double()
-    for v in self.vector:
-      if(type(v) == type(1)):
-        y.append(self.target_map.eight_point_interpolation(sites_frac[v]))
-      else:
-        tmp = flex.double()
-        for v_ in v:
-          tmp.append(self.target_map.eight_point_interpolation(sites_frac[v_]))
-        y.append(flex.mean(tmp))
-    result = True
-    # smooth-average along vector to avoide false-negatives due to oscillations
-    for i, y_ in enumerate(y):
-      if(i==0): continue
-      if(i>0 and i+1<y.size()):
-        y[i] = (y[i-1]+y[i]+y[i+1])/3
-      else: y[i] = (y[i-1]+y[i])/2
-    #
-    ynew = flex.double()
-    for y_ in y:
-      if(y_<1): ynew.append(0)
-      else:     ynew.append(1)
-    found = False
-    for y_ in ynew:
-      if(not found and y_==0): found=True
-      if(found and y_==1): return False#,list(y),list(ynew)
-    return True#,list(y),list(ynew)
 
   def reset_with(self, sites_cart, selection=None):
-    #assert self.target is None
     self.target = self.compute_target(sites_cart = sites_cart,
       selection = selection)
     self.sites_cart = sites_cart
 
-def torsion_search(clusters, scorer, sites_cart):
+def torsion_search(clusters, scorer, sites_cart, start, stop, step):
   def generate_range(start, stop, step):
     assert abs(start) <= abs(stop)
     inc = start
@@ -681,14 +642,11 @@ def torsion_search(clusters, scorer, sites_cart):
       inc += step
     return result
   for i_cl, cl in enumerate(clusters):
-    if(i_cl == 0):
-      scorer.reset_with(sites_cart=sites_cart.deep_copy(),
-        selection=cl.selection)
-    else:
-      scorer.reset_with(sites_cart=scorer.sites_cart.deep_copy(),
-        selection=cl.selection)
+    if(i_cl == 0): sites_cart_start = sites_cart.deep_copy()
+    else:          sites_cart_start = scorer.sites_cart.deep_copy()
+    scorer.reset_with(sites_cart=sites_cart_start, selection=cl.selection)
     sites_cart_ = scorer.sites_cart.deep_copy()
-    for angle_deg in generate_range(start=cl.start, stop=cl.stop, step=cl.step):
+    for angle_deg in generate_range(start=start, stop=stop, step=step):
       xyz_moved = sites_cart_.deep_copy()
       for atom in cl.atoms_to_rotate:
         new_xyz = rotate_point_around_axis(

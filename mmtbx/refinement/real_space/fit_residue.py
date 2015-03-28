@@ -1,15 +1,127 @@
 from __future__ import division
 from cctbx.array_family import flex
-import scitbx.rigid_body
-import scitbx.lbfgs
 from libtbx import adopt_init_args
-import iotbx.pdb
 import mmtbx.refinement.real_space
-import cctbx.geometry_restraints.flags
 from mmtbx.refinement.real_space import individual_sites
-import sys
+import math
+from cctbx import maptbx
+import scitbx.math
+import mmtbx.idealized_aa_residues.rotamer_manager
+
+import boost.python
+ext = boost.python.import_ext("mmtbx_rotamer_fit_ext")
+
+def flatten(l):
+  if l is None: return None
+  return sum(([x] if not (isinstance(x, list) or isinstance(x, flex.size_t))
+    else flatten(x) for x in l), [])
 
 class run(object):
+  def __init__(self,
+               residue,
+               unit_cell,
+               target_map,
+               mon_lib_srv,
+               rotamer_manager,
+               sin_cos_table,
+               backbone_sample=True):
+    adopt_init_args(self, locals())
+    # Initial state
+    rotamer_start = rotamer_manager.rotamer(residue=self.residue)
+    sites_cart_start=self.residue.atoms().extract_xyz()
+    target_start = self.get_target_value(sites_cart=sites_cart_start)
+    # Actual calculations
+    self.chi_angles = self.rotamer_manager.get_chi_angles(
+      resname=self.residue.resname)
+    co = mmtbx.refinement.real_space.aa_residue_axes_and_clusters(
+      residue         = self.residue,
+      mon_lib_srv     = self.mon_lib_srv,
+      backbone_sample = True)
+    if(backbone_sample):
+      self.fit_c_beta(c_beta_rotation_cluster = co.clusters[0])
+    self.fit_side_chain(clusters = co.clusters[1:])
+    # Final state
+    rotamer_final = rotamer_manager.rotamer(residue=self.residue)
+    target_final = self.get_target_value(
+      sites_cart=self.residue.atoms().extract_xyz())
+    # Sanity and consistency check
+    #XXX not always hold due to approx fast math assert rotamer_final != "OUTLIER"
+    # Potentially this will keep an OUTLIER if no better fit found
+    if(target_start > target_final):
+      self.residue.atoms().set_xyz(sites_cart_start)
+
+  def get_target_value(self, sites_cart, selection=None):
+    if(selection is None):
+      return maptbx.real_space_target_simple(
+        unit_cell   = self.unit_cell,
+        density_map = self.target_map,
+        sites_cart  = sites_cart)
+    else:
+      return maptbx.real_space_target_simple(
+        unit_cell   = self.unit_cell,
+        density_map = self.target_map,
+        sites_cart  = sites_cart,
+        selection   = selection)
+
+  def fit_side_chain(self, clusters):
+    rotamer_iterator = \
+      mmtbx.refinement.real_space.fit_residue.get_rotamer_iterator(
+        mon_lib_srv = self.mon_lib_srv,
+        residue     = self.residue)
+    if(rotamer_iterator is None): return
+    selection = flex.size_t(flatten(clusters[0].vector))
+    start_target_value = self.get_target_value(
+      sites_cart = self.residue.atoms().extract_xyz(),
+      selection  = selection)
+    sites_cart_first_rotamer = list(rotamer_iterator)[0][1]
+    self.residue.atoms().set_xyz(sites_cart_first_rotamer)
+    axes = []
+    atr = []
+    for i, angle in enumerate(self.chi_angles[0]):
+      cl = clusters[i]
+      axes.append(flex.size_t(cl.axis))
+      atr.append(flex.size_t(cl.atoms_to_rotate))
+    ro = ext.fit(
+      target_value             = start_target_value,
+      axes                     = axes,
+      rotatable_points_indices = atr,
+      angles_array             = self.chi_angles,
+      density_map              = self.target_map,
+      all_points               = self.residue.atoms().extract_xyz(),
+      unit_cell                = self.unit_cell,
+      selection                = selection,
+      sin_table                = self.sin_cos_table.sin_table,
+      cos_table                = self.sin_cos_table.cos_table,
+      step                     = self.sin_cos_table.step,
+      n                        = self.sin_cos_table.n)
+    sites_cart_result = ro.result()
+    if(sites_cart_result.size()>0):
+      self.residue.atoms().set_xyz(sites_cart_result)
+
+  def fit_c_beta(self, c_beta_rotation_cluster):
+    selection = flex.size_t(c_beta_rotation_cluster.selection)
+    sites_cart = self.residue.atoms().extract_xyz()
+    start_target_value = self.get_target_value(
+      sites_cart = sites_cart,
+      selection  = selection)
+    ro = ext.fit(
+      target_value             = start_target_value,
+      axes                     = [c_beta_rotation_cluster.axis],
+      rotatable_points_indices = [c_beta_rotation_cluster.atoms_to_rotate],
+      angles_array             = [[i*math.pi/180] for i in range(-20,21,1)],
+      density_map              = self.target_map,
+      all_points               = sites_cart,
+      unit_cell                = self.unit_cell,
+      selection                = selection,
+      sin_table                = self.sin_cos_table.sin_table,
+      cos_table                = self.sin_cos_table.cos_table,
+      step                     = self.sin_cos_table.step,
+      n                        = self.sin_cos_table.n)
+    sites_cart_result = ro.result()
+    if(sites_cart_result.size()>0):
+      self.residue.atoms().set_xyz(sites_cart_result)
+
+class run_with_minimization(object):
   def __init__(self,
                target_map,
                residue,
@@ -27,6 +139,10 @@ class run(object):
                backbone_sample_angle=None,
                allow_modified_residues=False):
     adopt_init_args(self, locals())
+    # load rotamer manager
+    self.rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load()
+    # pre-compute sin and cos tables
+    self.sin_cos_table = scitbx.math.sin_cos_table(n=10000)
     self.backbone_atom_names = ["N", "CA", "O", "CB", "C"]
     self.residue_iselection = self.residue.atoms().extract_i_seq()
     assert (not self.residue_iselection.all_eq(0))
@@ -64,15 +180,13 @@ class run(object):
 
   def fit_rotamers(self):
     sps = self.xray_structure.special_position_settings()
-    mmtbx.refinement.real_space.fit_residue.manager(
-      target_map                = self.target_map_work,
-      mon_lib_srv               = self.mon_lib_srv,
-      special_position_settings = sps,
-      residue                   = self.residue,
-      use_clash_filter          = True,
-      sites_cart_all            = self.xray_structure.sites_cart(),
-      rotamer_manager           = self.rotamer_manager,
-      allow_modified_residues   = self.allow_modified_residues)
+    mmtbx.refinement.real_space.fit_residue.run(
+      target_map      = self.target_map_work,
+      mon_lib_srv     = self.mon_lib_srv,
+      unit_cell       = self.xray_structure.unit_cell(),
+      residue         = self.residue,
+      sin_cos_table   = self.sin_cos_table,
+      rotamer_manager = self.rotamer_manager)
     sites_cart_poor = self.xray_structure.sites_cart()
     sites_cart_poor.set_selected(self.residue_iselection,
       self.residue.atoms().extract_xyz())
@@ -81,10 +195,9 @@ class run(object):
   def grid_sample_around_c_n_axis(self):
     sps = self.xray_structure.special_position_settings()
     scorer = mmtbx.refinement.real_space.score(
-      target_map                = self.target_map_work,
-      sites_cart_all            = self.xray_structure.sites_cart(),
-      residue                   = self.residue,
-      special_position_settings = sps)
+      target_map = self.target_map_work,
+      residue    = self.residue,
+      unit_cell  = self.xray_structure.unit_cell())
     def get_cluster(self):
       axis=[]
       atoms_to_rotate=[]
@@ -101,10 +214,7 @@ class run(object):
       return mmtbx.refinement.real_space.cluster(
         axis            = axis,
         atoms_to_rotate = atoms_to_rotate,
-        selection       = use_in_target_selection,
-        start = 0,
-        stop = 360,
-        step=1)
+        selection       = use_in_target_selection)
     cl = get_cluster(self)
     residue_sites_cart = self.residue.atoms().extract_xyz()
     scorer.reset_with(
@@ -119,7 +229,10 @@ class run(object):
     mmtbx.refinement.real_space.torsion_search(
       clusters   = [cl],
       sites_cart = residue_sites_cart,
-      scorer     = scorer)
+      scorer     = scorer,
+      start      = 0,
+      stop       = 360,
+      step       = 1)
     self.residue.atoms().set_xyz(new_xyz=scorer.sites_cart)
     selection = self.residue.atoms().extract_i_seq()
     sites_cart_poor = self.xray_structure.sites_cart()
@@ -158,149 +271,3 @@ def get_rotamer_iterator(mon_lib_srv, residue):
   if (rotamer_iterator.rotamer_info is None):
     return None
   return rotamer_iterator
-
-class manager(object):
-  def __init__(self,
-               target_map,
-               residue,
-               special_position_settings,
-               mon_lib_srv,
-               rotamer_manager,
-               sites_cart_all=None,
-               use_clash_filter = False,
-               use_slope=True,
-               debug=False,
-               use_torsion_search=True,
-               use_rotamer_iterator=True,
-               torsion_search_backrub_start =-25,
-               torsion_search_backrub_stop  = 25,
-               torsion_search_backrub_step  = 5,
-               torsion_search_all_start = 0,
-               torsion_search_all_stop  = 360,
-               torsion_search_all_step  = 1,
-               torsion_search_local_start = -50,
-               torsion_search_local_stop  = 50,
-               torsion_search_local_step  = 5,
-               allow_modified_residues    =  False,
-               backbone_sample            = True,
-               log                        = None):
-    adopt_init_args(self, locals())
-    if(self.log is None): self.log = sys.stdout
-    if(not allow_modified_residues):
-      get_class = iotbx.pdb.common_residue_names_get_class
-      assert get_class(residue.resname) == "common_amino_acid", residue.resname
-    if(self.use_torsion_search):
-      start = self.torsion_search_all_start
-      stop  = self.torsion_search_all_stop
-      step  = self.torsion_search_all_step
-    else:
-      start = self.torsion_search_local_start
-      stop  = self.torsion_search_local_stop
-      step  = self.torsion_search_local_step
-    self.clusters = mmtbx.refinement.real_space.aa_residue_axes_and_clusters(
-      residue         = self.residue,
-      mon_lib_srv     = self.mon_lib_srv,
-      backbone_sample = self.backbone_sample,
-      torsion_search_backbone_start  = torsion_search_backrub_start,
-      torsion_search_backbone_stop   = torsion_search_backrub_stop,
-      torsion_search_backbone_step   = torsion_search_backrub_step,
-      torsion_search_sidechain_start = start,
-      torsion_search_sidechain_stop  = stop,
-      torsion_search_sidechain_step  = step).clusters
-    self.vector_selections = self.clusters[0].vector
-    self.fit(debug=debug)
-
-  def get_scorer(self, vector=None, use_binary=False, use_clash_filter=False):
-    return mmtbx.refinement.real_space.score(
-      target_map                = self.target_map,
-      sites_cart_all            = self.sites_cart_all,
-      special_position_settings = self.special_position_settings,
-      residue                   = self.residue,
-      vector                    = vector,
-      use_binary                = use_binary,
-      use_clash_filter          = use_clash_filter,
-      rotamer_eval              = self.rotamer_manager)
-
-  def fit(self, debug=True):
-    if(self.use_rotamer_iterator):
-      rotamer_iterator = get_rotamer_iterator(
-        mon_lib_srv = self.mon_lib_srv,
-        residue     = self.residue)
-      if(rotamer_iterator is not None):
-        score_rotamers = self.get_scorer(
-          vector           = self.vector_selections,
-          use_clash_filter = self.use_clash_filter,
-          use_binary       = True)
-        cntr=0
-        for rotamer, rotamer_sites_cart in rotamer_iterator:
-          if(debug): print rotamer.id,"-"*50
-          if(cntr==0):
-            score_rotamers.reset_with(sites_cart = rotamer_sites_cart.deep_copy())
-            if(debug): print score_rotamers.target, 0, rotamer.id
-          else:
-            score_rotamers.update(sites_cart = rotamer_sites_cart.deep_copy())
-            if(debug): print score_rotamers.target, 0, rotamer.id
-          cntr+=1
-          if(self.use_torsion_search):
-            score_rotamer = self.get_scorer()
-            score_rotamers.update(sites_cart = rotamer_sites_cart.deep_copy())
-            mmtbx.refinement.real_space.torsion_search(
-              clusters   = self.clusters,
-              sites_cart = rotamer_sites_cart.deep_copy(),
-              scorer     = score_rotamer)
-            if(debug): print score_rotamers.target, 1
-            score_rotamers.update(
-              sites_cart = score_rotamer.sites_cart.deep_copy(), tmp=rotamer.id)
-            if(debug): print score_rotamers.target, 2
-          else:
-            if(debug): print score_rotamers.target, 3
-            score_rotamers.update(sites_cart = rotamer_sites_cart.deep_copy())
-            if(debug): print score_rotamers.target, 4
-          if(debug): print rotamer.id, score_rotamers.target, score_rotamers.tmp
-        if(debug): print "final:", score_rotamers.target, score_rotamers.tmp
-        if(score_rotamers.sites_cart is not None):
-          self.residue.atoms().set_xyz(new_xyz = score_rotamers.sites_cart)
-          if(self.sites_cart_all is not None):
-            self.sites_cart_all = self.sites_cart_all.set_selected(
-              self.residue.atoms().extract_i_seq(), score_rotamers.sites_cart)
-    elif(self.use_torsion_search):
-      score_residue = self.get_scorer()
-      mmtbx.refinement.real_space.torsion_search(
-        clusters   = self.clusters,
-        sites_cart = self.residue.atoms().extract_xyz(),
-        scorer     = score_residue)
-      self.residue.atoms().set_xyz(new_xyz=score_residue.sites_cart)
-
-  def rigid_body_refine(self, max_iterations = 250):
-    import mmtbx.geometry_restraints
-    import cctbx.geometry_restraints.manager
-    import mmtbx.refinement.real_space.rigid_body
-    reference_sites = flex.vec3_double()
-    reference_selection = flex.size_t()
-    cntr = 0
-    for atom in self.residue.atoms():
-      if(atom.name.strip().upper() in ["N", "C"]):
-        reference_sites.append(atom.xyz)
-        reference_selection.append(cntr)
-        cntr += 1
-    generic_restraints_manager = mmtbx.geometry_restraints.manager()
-    restraints_manager = cctbx.geometry_restraints.manager.manager(
-      generic_restraints_manager = generic_restraints_manager)
-    restraints_manager.generic_restraints_manager.reference_manager.\
-      add_coordinate_restraints(
-        sites_cart = reference_sites,
-        selection  = reference_selection,
-        sigma      = 0.5)
-    flags = cctbx.geometry_restraints.flags.flags(generic_restraints=True)
-    lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-      max_iterations = max_iterations)
-    minimized = mmtbx.refinement.real_space.rigid_body.refine(
-      residue                     = self.residue,
-      density_map                 = self.target_map,
-      geometry_restraints_manager = restraints_manager,
-      real_space_target_weight    = 1,
-      real_space_gradients_delta  = 2.0*0.25,
-      lbfgs_termination_params    = lbfgs_termination_params,
-      unit_cell                   = self.unit_cell,
-      cctbx_geometry_restraints_flags = flags)
-    return minimized.sites_cart_residue

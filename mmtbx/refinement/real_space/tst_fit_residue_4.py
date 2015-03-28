@@ -5,7 +5,8 @@ from cctbx.array_family import flex
 import time
 from mmtbx import monomer_library
 import mmtbx.refinement.real_space.fit_residue
-from mmtbx.rotamer.rotamer_eval import RotamerEval
+import scitbx.math
+import mmtbx.idealized_aa_residues.rotamer_manager
 
 pdb_answer = """\
 CRYST1   14.074   16.834   17.360  90.00  90.00  90.00 P 1
@@ -49,11 +50,10 @@ TER
 END
 """
 
-def exercise(use_slope, use_torsion_search, use_rotamer_iterator, cntr,
-             d_min = 1.0, resolution_factor = 0.1):
+def exercise(rotamer_manager, sin_cos_table, d_min = 1.0,
+             resolution_factor = 0.1):
   # Fit one residue having weak side chain density. There is a blob nearby that
   # overlaps with a plausible rotamer.
-  # Exercise 'slope' functionality.
   #
   # answer PDB
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_answer)
@@ -83,7 +83,6 @@ def exercise(use_slope, use_torsion_search, use_rotamer_iterator, cntr,
   sites_cart_poor = xrs_poor.sites_cart()
   pdb_hierarchy_poor.write_pdb_file(file_name = "poor.pdb")
   #
-  rotamer_manager = RotamerEval()
   get_class = iotbx.pdb.common_residue_names_get_class
   residue_poor = None
   for model in pdb_hierarchy_poor.models():
@@ -104,15 +103,13 @@ def exercise(use_slope, use_torsion_search, use_rotamer_iterator, cntr,
               atom_radius      = 4)
           print "  time (negate map): %6.4f" % (time.time()-t0)
           # refine
-          mmtbx.refinement.real_space.fit_residue.manager(
-            target_map           = target_map_,
-            mon_lib_srv          = mon_lib_srv,
-            special_position_settings = xrs_poor.special_position_settings(),
-            residue              = residue,
-            rotamer_manager      = rotamer_manager,
-            use_slope            = use_slope,
-            use_torsion_search   = use_torsion_search,
-            use_rotamer_iterator = use_rotamer_iterator)
+          mmtbx.refinement.real_space.fit_residue.run(
+            residue         = residue,
+            unit_cell       = xrs_poor.unit_cell(),
+            target_map      = target_map_,
+            mon_lib_srv     = mon_lib_srv,
+            rotamer_manager = rotamer_manager,
+            sin_cos_table   = sin_cos_table)
           sites_cart_poor.set_selected(residue.atoms().extract_i_seq(),
             residue.atoms().extract_xyz())
           print "time (refine): %6.4f" % (time.time()-t0)
@@ -120,19 +117,15 @@ def exercise(use_slope, use_torsion_search, use_rotamer_iterator, cntr,
   pdb_hierarchy_poor.adopt_xray_structure(xrs_poor)
   pdb_hierarchy_poor.write_pdb_file(file_name = "refined.pdb")
   dist = xrs_answer.max_distance(other = xrs_poor)
-  assert dist < 0.24, dist
+  assert dist < 0.2, dist
 
 if(__name__ == "__main__"):
   t0 = time.time()
-  cntr = 0
-  for use_slope in [True,False]:
-    for use_torsion_search in [True,]: # False will fail the test due to lack of backrub fit
-      for use_rotamer_iterator in [True,False]:
-        print use_slope, use_torsion_search, use_rotamer_iterator
-        exercise(
-          use_slope            = use_slope,
-          use_torsion_search   = use_torsion_search,
-          use_rotamer_iterator = use_rotamer_iterator,
-          cntr                 = cntr)
-        cntr += 1
+  # load rotamer manager
+  rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load()
+  # pre-compute sin and cos tables
+  sin_cos_table = scitbx.math.sin_cos_table(n=10000)
+  exercise(
+    rotamer_manager = rotamer_manager,
+    sin_cos_table   = sin_cos_table)
   print "Time: %6.4f"%(time.time()-t0)

@@ -35,8 +35,8 @@ class easy(object):
     self.rmsd_bonds_start  = es.bond_deviations()[2]
     self.w = w
     if(self.w is None):
-      from mmtbx.refinement.real_space import weight
-      self.weight = weight.run(
+      import mmtbx.refinement.real_space.weight
+      self.weight = mmtbx.refinement.real_space.weight.run(
         map_data                    = map_data,
         xray_structure              = self.xray_structure,
         pdb_hierarchy               = self.pdb_hierarchy,
