@@ -2120,6 +2120,9 @@ mmtbx/regression/tst_validation_summary.py -text
 mmtbx/resolve_resources.py -text
 mmtbx/ringer/__init__.py -text
 mmtbx/ringer/em_scoring.py -text
+mmtbx/rotamer/SConscript -text
+mmtbx/rotamer/fit.h -text
+mmtbx/rotamer/fit_ext.cpp -text
 mmtbx/rotamer/graphics.py -text
 mmtbx/rotamer/rotamer_names.props -text
 mmtbx/rotamer/sidechain_angles.props -text
