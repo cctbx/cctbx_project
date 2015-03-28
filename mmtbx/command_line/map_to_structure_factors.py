@@ -141,12 +141,14 @@ def run(args, log=None, ccp4_map=None, return_as_miller_arrays=False, nohl=False
     return f_obs_cmpl
 
   mtz_dataset = f_obs_cmpl.as_mtz_dataset(column_root_label="F")
+  f_obs = abs(f_obs_cmpl)
+  f_obs.set_sigmas(sigmas=flex.double(f_obs_cmpl.data().size(),1))
   mtz_dataset.add_miller_array(
-    miller_array      = abs(f_obs_cmpl),
-    column_root_label = "F_ampl")
+    miller_array      = f_obs,
+    column_root_label = "F-obs")
   mtz_dataset.add_miller_array(
-    miller_array      = f_obs_cmpl.customized_copy(data=flex.double(f_obs_cmpl.data().size(),1)),
-    column_root_label = "SIGF_ampl")
+    miller_array      = f_obs.generate_r_free_flags(),
+    column_root_label = "R-free-flags")
   # convert phases into HL coefficeints
   broadcast(m="Convert phases into HL coefficeints:", log=log)
   hl = get_hl(f_obs_cmpl=f_obs_cmpl, k_blur=params.k_blur, b_blur=params.b_blur)
