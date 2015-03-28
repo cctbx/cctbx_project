@@ -1,0 +1,13 @@
+REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "met_noH.pdb"
+REMARK Date 2015-02-18 Time 16:53:44 PST -0800 (1424307224.74 s)
+CRYST1   13.775   12.351   15.645  90.00  90.00  90.00 P 1
+ATOM   2006  N   MET B  37       7.525   5.296   6.399  1.00 10.00           N
+ATOM   2007  CA  MET B  37       6.533   6.338   6.634  1.00 10.00           C
+ATOM   2008  C   MET B  37       6.175   7.044   5.330  1.00 10.00           C
+ATOM   2009  O   MET B  37       5.000   7.200   5.000  1.00 10.00           O
+ATOM   2010  CB  MET B  37       7.051   7.351   7.655  1.00 10.00           C
+ATOM   2011  CG  MET B  37       7.377   6.750   9.013  1.00 10.00           C
+ATOM   2012  SD  MET B  37       8.647   5.473   8.922  1.00 10.00           S
+ATOM   2013  CE  MET B  37       8.775   5.000  10.645  1.00 10.00           C
+TER
+END

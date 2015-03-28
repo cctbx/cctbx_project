@@ -1,0 +1,12 @@
+REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "pro_noH.pdb"
+REMARK Date 2015-02-18 Time 16:53:44 PST -0800 (1424307224.84 s)
+CRYST1   12.293   14.006   12.486  90.00  90.00  90.00 P 1
+ATOM     41  N   PRO A   4       5.000   7.338   6.593  1.00 10.00           N
+ATOM     42  CA  PRO A   4       6.199   6.990   5.823  1.00 10.00           C
+ATOM     43  C   PRO A   4       6.541   5.505   5.900  1.00 10.00           C
+ATOM     44  O   PRO A   4       7.212   5.000   5.000  1.00 10.00           O
+ATOM     45  CB  PRO A   4       7.293   7.837   6.479  1.00 10.00           C
+ATOM     46  CG  PRO A   4       6.570   9.006   7.045  1.00 10.00           C
+ATOM     47  CD  PRO A   4       5.232   8.487   7.486  1.00 10.00           C
+TER
+END

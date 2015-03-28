@@ -1,0 +1,12 @@
+REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "val_noH.pdb"
+REMARK Date 2015-02-18 Time 16:53:44 PST -0800 (1424307224.86 s)
+CRYST1   12.396   13.122   13.130  90.00  90.00  90.00 P 1
+ATOM   2639  N   VAL B  78       5.000   5.381   7.808  1.00 10.00           N
+ATOM   2640  CA  VAL B  78       6.233   5.918   7.249  1.00 10.00           C
+ATOM   2641  C   VAL B  78       6.645   7.168   8.019  1.00 10.00           C
+ATOM   2642  O   VAL B  78       5.875   8.122   8.130  1.00 10.00           O
+ATOM   2643  CB  VAL B  78       6.078   6.229   5.749  1.00 10.00           C
+ATOM   2644  CG1 VAL B  78       5.582   5.000   5.000  1.00 10.00           C
+ATOM   2645  CG2 VAL B  78       7.396   6.722   5.167  1.00 10.00           C
+TER
+END

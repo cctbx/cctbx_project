@@ -1,0 +1,15 @@
+REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "his_noH.pdb"
+REMARK Date 2015-02-18 Time 16:53:44 PST -0800 (1424307224.79 s)
+CRYST1   12.286   14.857   15.512  90.00  90.00  90.00 P 1
+ATOM     20  N   HIS A  34       7.286   7.805   8.874  1.00 10.00           N
+ATOM     21  CA  HIS A  34       6.293   8.719   8.323  1.00 10.00           C
+ATOM     22  C   HIS A  34       6.006   9.857   9.296  1.00 10.00           C
+ATOM     23  O   HIS A  34       6.059   9.675  10.512  1.00 10.00           O
+ATOM     24  CB  HIS A  34       5.000   7.970   7.994  1.00 10.00           C
+ATOM     25  CG  HIS A  34       5.178   6.871   6.992  1.00 10.00           C
+ATOM     26  ND1 HIS A  34       5.051   7.074   5.635  1.00 10.00           N
+ATOM     27  CD2 HIS A  34       5.472   5.559   7.150  1.00 10.00           C
+ATOM     28  CE1 HIS A  34       5.259   5.935   5.000  1.00 10.00           C
+ATOM     29  NE2 HIS A  34       5.517   5.000   5.897  1.00 10.00           N
+TER
+END

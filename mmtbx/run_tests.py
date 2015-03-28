@@ -102,6 +102,7 @@ tst_list = (
   "$D/regression/tst_examples.py",
   "$D/regression/tst_sort_hetatms.py",
   # real-space tools
+  "$D/refinement/real_space/tst_fit_residue_0.py",
   "$D/refinement/real_space/tst_fit_residue_1.py",
   "$D/refinement/real_space/tst_fit_residue_2.py",
   "$D/refinement/real_space/tst_fit_residue_3.py",
@@ -109,6 +110,8 @@ tst_list = (
   "$D/refinement/real_space/tst_fit_residue_5.py",
   "$D/refinement/real_space/tst_fit_residues_1.py",
   "$D/refinement/real_space/tst_fit_residues_2.py",
+  "$D/refinement/real_space/tst_fit_residues_3.py",
+  "$D/refinement/real_space/tst_fit_residues_4.py",
   "$D/refinement/real_space/tst_individual_sites_1.py",
   "$D/refinement/real_space/tst_individual_sites_2.py",
   "$D/refinement/real_space/tst_individual_sites_3.py",
@@ -116,6 +119,8 @@ tst_list = (
   "$D/refinement/real_space/tst_rigid_body.py",
   "$D/refinement/real_space/tst_fit_water.py",
   "$D/refinement/real_space/tst_flipbase.py",
+  "$D/refinement/real_space/tst_aa_residue_axes_and_clusters.py",
+  "$D/refinement/real_space/tst_weight.py",
   #
   "$D/regression/tst_dssp.py",
   "$D/building/tst.py",

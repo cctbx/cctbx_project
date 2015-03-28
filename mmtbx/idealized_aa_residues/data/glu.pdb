@@ -1,0 +1,14 @@
+REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "glu_noH.pdb"
+REMARK Date 2015-02-18 Time 16:53:44 PST -0800 (1424307224.72 s)
+CRYST1   15.127   14.767   13.161  90.00  90.00  90.00 P 1
+ATOM    357  N   GLU A  24       8.858   8.135   5.000  1.00 10.00           N
+ATOM    358  CA  GLU A  24       8.677   8.376   6.426  1.00 10.00           C
+ATOM    359  C   GLU A  24      10.005   8.730   7.087  1.00 10.00           C
+ATOM    360  O   GLU A  24      10.127   9.767   7.740  1.00 10.00           O
+ATOM    361  CB  GLU A  24       8.064   7.148   7.103  1.00 10.00           C
+ATOM    362  CG  GLU A  24       6.700   6.758   6.558  1.00 10.00           C
+ATOM    363  CD  GLU A  24       6.121   5.541   7.252  1.00 10.00           C
+ATOM    364  OE1 GLU A  24       5.000   5.125   6.890  1.00 10.00           O
+ATOM    365  OE2 GLU A  24       6.786   5.000   8.161  1.00 10.00           O
+TER
+END

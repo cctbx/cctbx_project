@@ -1,0 +1,13 @@
+REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "ile_noH.pdb"
+REMARK Date 2015-02-18 Time 16:53:44 PST -0800 (1424307224.89 s)
+CRYST1   14.040   13.236   13.685  90.00  90.00  90.00 P 1
+ATOM   2675  N   ILE B  81       6.871   6.617   8.685  1.00 10.00           N
+ATOM   2676  CA  ILE B  81       6.257   7.032   7.431  1.00 10.00           C
+ATOM   2677  C   ILE B  81       5.144   6.063   7.049  1.00 10.00           C
+ATOM   2678  O   ILE B  81       5.000   5.000   7.653  1.00 10.00           O
+ATOM   2679  CB  ILE B  81       7.304   7.133   6.307  1.00 10.00           C
+ATOM   2680  CG1 ILE B  81       8.026   5.794   6.125  1.00 10.00           C
+ATOM   2681  CG2 ILE B  81       8.305   8.236   6.617  1.00 10.00           C
+ATOM   2682  CD1 ILE B  81       9.040   5.792   5.000  1.00 10.00           C
+TER
+END

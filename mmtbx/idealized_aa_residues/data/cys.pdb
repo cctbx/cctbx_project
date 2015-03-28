@@ -1,0 +1,11 @@
+REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "cys_noH.pdb"
+REMARK Date 2015-02-18 Time 16:53:44 PST -0800 (1424307224.56 s)
+CRYST1   12.081   11.399   14.639  90.00  90.00  90.00 P 1
+ATOM    669  N   CYS A  96       5.000   5.223   7.579  1.00 10.00           N
+ATOM    670  CA  CYS A  96       6.447   5.080   7.478  1.00 10.00           C
+ATOM    671  C   CYS A  96       7.081   5.000   8.862  1.00 10.00           C
+ATOM    672  O   CYS A  96       7.020   5.953   9.639  1.00 10.00           O
+ATOM    673  CB  CYS A  96       7.047   6.247   6.691  1.00 10.00           C
+ATOM    674  SG  CYS A  96       6.427   6.399   5.000  1.00 10.00           S
+TER
+END

@@ -1,0 +1,19 @@
+REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "trp_noH.pdb"
+REMARK Date 2015-02-18 Time 16:53:44 PST -0800 (1424307224.90 s)
+CRYST1   12.502   12.982   18.312  90.00  90.00  90.00 P 1
+ATOM    681  N   TRP A  49       7.214   6.056   6.816  1.00 10.00           N
+ATOM    682  CA  TRP A  49       5.897   5.619   7.264  1.00 10.00           C
+ATOM    683  C   TRP A  49       5.000   5.299   6.073  1.00 10.00           C
+ATOM    684  O   TRP A  49       5.144   5.884   5.000  1.00 10.00           O
+ATOM    685  CB  TRP A  49       5.246   6.692   8.139  1.00 10.00           C
+ATOM    686  CG  TRP A  49       6.036   7.020   9.369  1.00 10.00           C
+ATOM    687  CD1 TRP A  49       7.003   7.975   9.491  1.00 10.00           C
+ATOM    688  CD2 TRP A  49       5.926   6.394  10.653  1.00 10.00           C
+ATOM    689  NE1 TRP A  49       7.502   7.982  10.771  1.00 10.00           N
+ATOM    690  CE2 TRP A  49       6.857   7.021  11.504  1.00 10.00           C
+ATOM    691  CE3 TRP A  49       5.130   5.365  11.165  1.00 10.00           C
+ATOM    692  CZ2 TRP A  49       7.015   6.652  12.839  1.00 10.00           C
+ATOM    693  CZ3 TRP A  49       5.288   5.000  12.490  1.00 10.00           C
+ATOM    694  CH2 TRP A  49       6.223   5.642  13.312  1.00 10.00           C
+TER
+END

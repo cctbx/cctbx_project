@@ -1,0 +1,9 @@
+REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "gly_noH.pdb"
+REMARK Date 2015-02-18 Time 16:53:44 PST -0800 (1424307224.64 s)
+CRYST1   13.147   11.167   10.709  90.00  90.00  90.00 P 1
+ATOM   2871  N   GLY B  93       8.147   6.167   5.653  1.00 10.00           N
+ATOM   2872  CA  GLY B  93       7.287   5.000   5.709  1.00 10.00           C
+ATOM   2873  C   GLY B  93       5.964   5.213   5.000  1.00 10.00           C
+ATOM   2874  O   GLY B  93       5.000   5.695   5.596  1.00 10.00           O
+TER
+END

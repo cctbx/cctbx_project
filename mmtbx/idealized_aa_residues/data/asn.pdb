@@ -1,0 +1,13 @@
+REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "asn_noH.pdb"
+REMARK Date 2015-02-18 Time 16:53:44 PST -0800 (1424307224.61 s)
+CRYST1   13.889   13.738   13.126  90.00  90.00  90.00 P 1
+ATOM    525  N   ASN A  35       5.000   6.652   6.853  1.00 10.00           N
+ATOM    526  CA  ASN A  35       6.183   7.495   6.981  1.00 10.00           C
+ATOM    527  C   ASN A  35       6.057   8.738   6.107  1.00 10.00           C
+ATOM    528  O   ASN A  35       5.523   8.679   5.000  1.00 10.00           O
+ATOM    529  CB  ASN A  35       7.442   6.712   6.605  1.00 10.00           C
+ATOM    530  CG  ASN A  35       7.657   5.496   7.484  1.00 10.00           C
+ATOM    531  OD1 ASN A  35       6.727   5.007   8.126  1.00 10.00           O
+ATOM    532  ND2 ASN A  35       8.889   5.000   7.518  1.00 10.00           N
+TER
+END
