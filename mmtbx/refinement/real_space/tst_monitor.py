@@ -214,11 +214,9 @@ def exercise(d_min=1.5, resolution_factor = 0.25):
     pdb_hierarchy               = pdb_hierarchy_poor,
     xray_structure              = xrs_poor,
     target_map_object           = target_map_object,
-    geometry_restraints_manager = grm.geometry,
-    clash_threshold             = 1.5)
+    geometry_restraints_manager = grm.geometry)
   sm.show(prefix="start")
   sm.show_residues(map_cc_all=2) # XXX assert printed output table:
-  assert list(sm.clashing_residue_i_seqs) == [2]
 
 if(__name__ == "__main__"):
   t0 = time.time()

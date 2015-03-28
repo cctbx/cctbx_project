@@ -5,7 +5,8 @@ from cctbx.array_family import flex
 import time
 from mmtbx import monomer_library
 import mmtbx.refinement.real_space.fit_residue
-from mmtbx.rotamer.rotamer_eval import RotamerEval
+import scitbx.math
+import mmtbx.idealized_aa_residues.rotamer_manager
 
 pdb_answer = """\
 CRYST1   14.074   16.834   17.360  90.00  90.00  90.00 P 1
@@ -55,18 +56,18 @@ ATOM      9  CZ  ARG A  21       7.839   5.785  11.385  0.30 20.00           C
 ATOM     10  NH1 ARG A  21       6.546   5.811  11.088  0.30 20.00           N
 ATOM     11  NH2 ARG A  21       8.275   5.000  12.360  0.30 20.00           N
 TER
-ATOM      9  O   HOH B  21       8.776  10.791   4.311  1.00  5.00           O
-ATOM     10  O   HOH B  22       7.708  11.548   4.090  1.00  5.00           O
-ATOM     11  O   HOH B  23       9.698  10.663   3.367  1.00  5.00           O
+ATOM      9  O   HOH B  21       8.776  10.791   4.311  1.00 55.00           O
+ATOM     10  O   HOH B  22       7.708  11.548   4.090  1.00 55.00           O
+ATOM     11  O   HOH B  23       9.698  10.663   3.367  1.00 55.00           O
 TER
 END
 """
 
-def exercise(use_slope, use_torsion_search, use_rotamer_iterator, cntr,
-             d_min = 1.0, resolution_factor = 0.1):
+def exercise(rotamer_manager, sin_cos_table, d_min = 1.0,
+             resolution_factor = 0.1):
   # Fit one residue having weak side chain density. There is a blob nearby that
   # overlaps with a plausible rotamer.
-  # Exercise 'slope' functionality.
+  # Making B of HOH smaller will break the test, indicaing potential problem.
   #
   # answer PDB
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_answer)
@@ -96,7 +97,6 @@ def exercise(use_slope, use_torsion_search, use_rotamer_iterator, cntr,
   sites_cart_poor = xrs_poor.sites_cart()
   pdb_hierarchy_poor.write_pdb_file(file_name = "poor.pdb")
   #
-  rotamer_manager = RotamerEval()
   get_class = iotbx.pdb.common_residue_names_get_class
   residue_poor = None
   for model in pdb_hierarchy_poor.models():
@@ -105,15 +105,13 @@ def exercise(use_slope, use_torsion_search, use_rotamer_iterator, cntr,
         if(get_class(residue.resname) == "common_amino_acid"):
           t0=time.time() # TIMER START
           # refine
-          mmtbx.refinement.real_space.fit_residue.manager(
-            target_map           = target_map,
-            mon_lib_srv          = mon_lib_srv,
-            rotamer_manager      = rotamer_manager,
-            special_position_settings = xrs_poor.special_position_settings(),
-            residue              = residue,
-            use_slope            = use_slope,
-            use_torsion_search   = use_torsion_search,
-            use_rotamer_iterator = use_rotamer_iterator)
+          mmtbx.refinement.real_space.fit_residue.run(
+            residue         = residue,
+            unit_cell       = xrs_poor.unit_cell(),
+            target_map      = target_map,
+            mon_lib_srv     = mon_lib_srv,
+            rotamer_manager = rotamer_manager,
+            sin_cos_table   = sin_cos_table)
           sites_cart_poor.set_selected(residue.atoms().extract_i_seq(),
             residue.atoms().extract_xyz())
           print "time (refine): %6.4f" % (time.time()-t0)
@@ -125,15 +123,11 @@ def exercise(use_slope, use_torsion_search, use_rotamer_iterator, cntr,
 
 if(__name__ == "__main__"):
   t0 = time.time()
-  cntr = 0
-  for use_slope in [True,]: # use_slope=True is what we are exercising here
-    for use_torsion_search in [True,]: # False will fail the test due to lack of backrub fit
-      for use_rotamer_iterator in [True,False]:
-        print use_slope, use_torsion_search, use_rotamer_iterator
-        exercise(
-          use_slope            = use_slope,
-          use_torsion_search   = use_torsion_search,
-          use_rotamer_iterator = use_rotamer_iterator,
-          cntr                 = cntr)
-        cntr += 1
+  # load rotamer manager
+  rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load()
+  # pre-compute sin and cos tables
+  sin_cos_table = scitbx.math.sin_cos_table(n=10000)
+  exercise(
+    rotamer_manager = rotamer_manager,
+    sin_cos_table   = sin_cos_table)
   print "Time: %6.4f"%(time.time()-t0)

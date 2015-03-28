@@ -1945,6 +1945,7 @@ mmtbx/refinement/real_space/flipbase.py -text
 mmtbx/refinement/real_space/individual_sites.py -text
 mmtbx/refinement/real_space/rigid_body.py -text
 mmtbx/refinement/real_space/tst_aa_residue_axes_and_clusters.py -text
+mmtbx/refinement/real_space/tst_fit_residue_0.py -text
 mmtbx/refinement/real_space/tst_fit_residue_1.py -text
 mmtbx/refinement/real_space/tst_fit_residue_2.py -text
 mmtbx/refinement/real_space/tst_fit_residue_3.py -text
@@ -1952,6 +1953,8 @@ mmtbx/refinement/real_space/tst_fit_residue_4.py -text
 mmtbx/refinement/real_space/tst_fit_residue_5.py -text
 mmtbx/refinement/real_space/tst_fit_residues_1.py -text
 mmtbx/refinement/real_space/tst_fit_residues_2.py -text
+mmtbx/refinement/real_space/tst_fit_residues_3.py -text
+mmtbx/refinement/real_space/tst_fit_residues_4.py -text
 mmtbx/refinement/real_space/tst_fit_water.py -text
 mmtbx/refinement/real_space/tst_flipbase.py -text
 mmtbx/refinement/real_space/tst_individual_sites_1.py -text

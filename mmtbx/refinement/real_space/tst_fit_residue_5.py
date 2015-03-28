@@ -20,10 +20,10 @@ ATOM     49  C   TYR A   9       8.787   6.527   9.918  1.00  8.00           C
 ATOM     50  O   TYR A   9       9.205   7.585  10.387  1.00  9.95           O
 ATOM     51  CB  TYR A   9       8.410   6.945   7.478  1.00  8.02           C
 ATOM     52  CG  TYR A   9       7.484   6.880   6.284  1.00  8.02           C
-ATOM     53  CD1 TYR A   9       7.345   5.709   5.552  1.00  8.16           C
-ATOM     54  CD2 TYR A   9       6.750   7.991   5.889  1.00  8.88           C
-ATOM     55  CE1 TYR A   9       6.500   5.645   4.459  1.00  8.74           C
-ATOM     56  CE2 TYR A   9       5.903   7.937   4.798  1.00  9.46           C
+ATOM     54  CD1 TYR A   9       6.750   7.991   5.889  1.00  8.88           C
+ATOM     53  CD2 TYR A   9       7.345   5.709   5.552  1.00  8.16           C
+ATOM     56  CE1 TYR A   9       5.903   7.937   4.798  1.00  9.46           C
+ATOM     55  CE2 TYR A   9       6.500   5.645   4.459  1.00  8.74           C
 ATOM     57  CZ  TYR A   9       5.782   6.761   4.087  1.00  9.31           C
 ATOM     58  OH  TYR A   9       4.940   6.702   3.000  1.00 11.26           O
 ATOM     59  N   ASN A  10       9.193   5.336  10.345  1.00  7.07           N
@@ -115,7 +115,7 @@ def exercise(pdb_poor_str, d_min = 1.0, resolution_factor = 0.25):
         if(get_class(residue.resname) == "common_amino_acid" and
            int(residue.resseq)==9): # take TYR9
           t0 = time.time()
-          ro = mmtbx.refinement.real_space.fit_residue.run(
+          ro = mmtbx.refinement.real_space.fit_residue.run_with_minimization(
             target_map      = target_map,
             residue         = residue,
             xray_structure  = xrs_poor,
@@ -128,9 +128,7 @@ def exercise(pdb_poor_str, d_min = 1.0, resolution_factor = 0.25):
   pdb_hierarchy_poor.adopt_xray_structure(ro.xray_structure)
   pdb_hierarchy_poor.write_pdb_file(file_name = "refined.pdb")
   dist = flex.mean(flex.sqrt((sites_answer - sites_final).dot()))
-  return dist, t1
+  assert dist < 0.15
 
 if(__name__ == "__main__"):
-  dist, t = exercise(pdb_poor_str = pdb_poor, resolution_factor=0.2)
-  print dist, t
-  assert dist < 0.128, dist
+  exercise(pdb_poor_str = pdb_poor, resolution_factor=0.2)

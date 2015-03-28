@@ -2,7 +2,6 @@ from __future__ import division
 from scitbx.array_family import flex
 from libtbx import group_args
 from libtbx.utils import user_plus_sys_time
-import sys
 from mmtbx.refinement.real_space import individual_sites
 from mmtbx.refinement.real_space import weight
 import mmtbx
@@ -1741,8 +1740,7 @@ def exercise():
       map_data                    = map_data,
       xray_structure              = pi.xrs,
       pdb_hierarchy               = pi.ph,
-      geometry_restraints_manager = pi.grm,
-      log                         = sys.stdout)
+      geometry_restraints_manager = pi.grm).weight
     ro = individual_sites.simple(
       target_map = map_data,
       selection  = flex.bool(pi.xrs.scatterers().size(), True),

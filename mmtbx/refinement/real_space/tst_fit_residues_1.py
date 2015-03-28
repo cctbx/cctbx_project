@@ -7,6 +7,8 @@ from mmtbx import monomer_library
 import mmtbx.refinement.real_space.fit_residues
 import iotbx.pdb
 from libtbx import group_args
+import scitbx.math
+import mmtbx.idealized_aa_residues.rotamer_manager
 
 pdb_str_answer_1="""\n
 CRYST1   41.392   28.519   38.664  90.00  90.00  90.00 P 1
@@ -1509,8 +1511,8 @@ END
 """
 
 
-def exercise(pdb_str_answer, pdb_str_poor, d_min, prefix, cntr,
-             resolution_factor = 0.25):
+def exercise(pdb_str_answer, pdb_str_poor, rotamer_manager, sin_cos_table,
+             d_min, prefix, resolution_factor = 0.25):
   # answer
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_answer)
   pdb_inp.write_pdb_file(file_name = "answer_%s.pdb"%prefix)
@@ -1556,8 +1558,9 @@ def exercise(pdb_str_answer, pdb_str_poor, d_min, prefix, cntr,
   for i in [1]:
     result = mmtbx.refinement.real_space.fit_residues.manager(
       structure_monitor    = sm,
-      mon_lib_srv          = mon_lib_srv,
-      map_cc_all_threshold = 1.0)
+      rotamer_manager      = rotamer_manager,
+      sin_cos_table        = sin_cos_table,
+      mon_lib_srv          = mon_lib_srv)
     print
     sm.show(prefix="MC %s"%str(i))
     print
@@ -1565,18 +1568,22 @@ def exercise(pdb_str_answer, pdb_str_poor, d_min, prefix, cntr,
   #
   sm.pdb_hierarchy.write_pdb_file(file_name = "refined_%s.pdb"%prefix)
   dist = xrs_answer.mean_distance(other = sm.xray_structure)
-  print "final:", dist
-  if(cntr==0): assert dist < 0.085, dist
-  else: assert dist < 0.0085, dist
-  assert list(sm.find_sidechain_clashes()) == []
+  assert dist < 0.18, dist
 
 if(__name__ == "__main__"):
   t0 = time.time()
+  # load rotamer manager
+  rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load()
+  # pre-compute sin and cos tables
+  sin_cos_table = scitbx.math.sin_cos_table(n=10000)
   inputs = [(pdb_str_answer_1,pdb_str_poor_1),(pdb_str_answer_2,pdb_str_poor_2)]
-  cntr = 0
   for i_test, inp in enumerate(inputs):
     print "Test ", i_test, "*"*60
-    exercise(pdb_str_answer=inp[0],pdb_str_poor=inp[1],d_min=1.0,
-      prefix=str(i_test), cntr = cntr)
-    cntr += 1
+    exercise(
+      pdb_str_answer  = inp[0],
+      pdb_str_poor    = inp[1],
+      rotamer_manager = rotamer_manager,
+      sin_cos_table   = sin_cos_table,
+      d_min           = 1.0,
+      prefix          = str(i_test))
   print "Time: %6.4f"%(time.time()-t0)
