@@ -465,7 +465,8 @@ class Builder(object):
     else:
       self.cleanup(['dist', 'tests', 'doc', 'tmp'])
     # always remove .pyc files
-    cleanup_ext_class(".pyc", "modules").run()
+    # cleanup_ext_class(".pyc", "modules").run()
+    self.add_step(cleanup_ext_class(".pyc", "modules"))
 
     # Add 'hot' sources
     if hot:
@@ -541,7 +542,7 @@ class Builder(object):
   def add_step(self, step):
     """Add a step."""
     self.steps.append(step)
-    if 0:
+    if 1:
       print "commands "*8
       for step in self.steps:
         print " ".join(step.get_command())
