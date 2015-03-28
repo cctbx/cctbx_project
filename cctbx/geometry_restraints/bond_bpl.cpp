@@ -25,7 +25,7 @@ namespace scitbx { namespace af { namespace boost_python {
     get()
     {
       return bond_simple_proxy(
-        af::tiny<unsigned, 2>(0, 0), 0., 0., 0.);
+        af::tiny<unsigned, 2>(0, 0), 0., 0., 0., false, 0);
     }
   };
 
@@ -48,18 +48,21 @@ namespace {
           double,
           double,
           double,
-          bool >((
+          bool,
+          unsigned char >((
             arg("distance_ideal"),
             arg("weight"),
             arg("slack")=0,
             arg("limit")=-1.0,
-            arg("top_out")=false)))
+            arg("top_out")=false,
+            arg("origin_id")=0)))
         .def("scale_weight", &w_t::scale_weight, (arg("factor")))
         .def_readwrite("distance_ideal", &w_t::distance_ideal)
         .def_readwrite("weight", &w_t::weight)
         .def_readwrite("slack", &w_t::slack)
         .def_readwrite("limit", &w_t::limit)
         .def_readwrite("top_out", &w_t::top_out)
+        .def_readwrite("origin_id", &w_t::origin_id)
       ;
     }
   };
@@ -148,13 +151,15 @@ namespace {
           double,
           double,
           double,
-          bool >((
+          bool,
+          unsigned char >((
             arg("i_seqs"),
             arg("distance_ideal"),
             arg("weight"),
             arg("slack")=0,
             arg("limit")=-1.0,
-            arg("top_out")=false)))
+            arg("top_out")=false,
+            arg("origin_id")=0)))
         .def(init<
           af::tiny<unsigned, 2> const&, double, double, double >((
             arg("i_seqs"),
@@ -168,14 +173,16 @@ namespace {
           double,
           double,
           double,
-          bool >((
+          bool,
+          unsigned char >((
             arg("i_seqs"),
             arg("rt_mx_ji"),
             arg("distance_ideal"),
             arg("weight"),
             arg("slack")=0,
             arg("limit")=-1.0,
-            arg("top_out")=false)))
+            arg("top_out")=false,
+            arg("origin_id")=0)))
         .def(init<
           af::tiny<unsigned, 2> const&,
           sgtbx::rt_mx const&,
@@ -212,14 +219,16 @@ namespace {
           double,
           double,
           double,
-          bool >((
+          bool,
+          unsigned char >((
             arg("i_seqs"),
             arg("rt_mx_ji"),
             arg("distance_ideal"),
             arg("weight"),
             arg("slack")=0,
             arg("limit")=-1.0,
-            arg("top_out")=false)))
+            arg("top_out")=false,
+            arg("origin_id")=0)))
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .def_readonly("rt_mx_ji", &w_t::rt_mx_ji)
       ;
@@ -242,13 +251,15 @@ namespace {
           double,
           double,
           double,
-          bool >((
+          bool,
+          unsigned char >((
             arg("pair"),
             arg("distance_ideal"),
             arg("weight"),
             arg("slack")=0,
             arg("limit")=-1.0,
-            arg("top_out")=false)))
+            arg("top_out")=false,
+            arg("origin_id")=0)))
         .def(init<asu_mapping_index_pair const&, bond_params const&>(
           (arg("pair"), arg("params"))))
         .def("as_simple_proxy", &w_t::as_simple_proxy)
@@ -278,13 +289,15 @@ namespace {
           double,
           double,
           double,
-          bool >((
+          bool,
+          unsigned char >((
             arg("sites"),
             arg("distance_ideal"),
             arg("weight"),
             arg("slack")=0,
             arg("limit")=-1.0,
-            arg("top_out")=false)))
+            arg("top_out")=false,
+            arg("origin_id")=0)))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   bond_simple_proxy const&>(
           (arg("sites_cart"), arg("proxy"))))

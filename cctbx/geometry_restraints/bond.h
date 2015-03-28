@@ -23,20 +23,23 @@ namespace cctbx { namespace geometry_restraints {
       double weight_,
       double slack_=0,
       double limit_=-1.0,
-      bool top_out_=false)
+      bool top_out_=false,
+      unsigned char origin_id_=0)
     :
       distance_ideal(distance_ideal_),
       weight(weight_),
       slack(slack_),
       limit(limit_),
-      top_out(top_out_)
+      top_out(top_out_),
+      origin_id(origin_id_)
     {}
 
     bond_params
     scale_weight(
       double factor) const
     {
-      return bond_params(distance_ideal, weight*factor, slack);
+      return bond_params(distance_ideal, weight*factor, slack,
+          limit, top_out, origin_id);
     }
 
     //! Parameter.
@@ -49,6 +52,9 @@ namespace cctbx { namespace geometry_restraints {
     double limit;
     //! Parameter.
     bool top_out;
+    //! Parameter - to distinguish nature of the restraint, e.g.
+    //! covalent geometry, h-bond, ...
+    unsigned char origin_id;
   };
 
   //! Dictionary of bond parameters for a given index i_seq.
@@ -71,9 +77,11 @@ namespace cctbx { namespace geometry_restraints {
       double weight_,
       double slack_=0,
       double limit_=-1.0,
-      bool top_out_=false)
+      bool top_out_=false,
+      unsigned char origin_id_=0)
     :
-      bond_params(distance_ideal_, weight_, slack_, limit_, top_out_),
+      bond_params(distance_ideal_, weight_, slack_, limit_,
+          top_out_, origin_id_),
       i_seqs(i_seqs_)
     {}
 
@@ -85,9 +93,11 @@ namespace cctbx { namespace geometry_restraints {
       double weight_,
       double slack_=0,
       double limit_=-1.0,
-      bool top_out_=false)
+      bool top_out_=false,
+      unsigned char origin_id_=0)
     :
-      bond_params(distance_ideal_, weight_, slack_, limit_, top_out_),
+      bond_params(distance_ideal_, weight_, slack_, limit_,
+          top_out_, origin_id_),
       i_seqs(i_seqs_),
       rt_mx_ji(rt_mx_ji_)
     {}
@@ -146,9 +156,11 @@ namespace cctbx { namespace geometry_restraints {
       double weight_,
       double slack_=0,
       double limit_=-1.0,
-      bool top_out_=false)
+      bool top_out_=false,
+      unsigned char origin_id_=0)
     :
-      bond_params(distance_ideal_, weight_, slack_, limit_, top_out_),
+      bond_params(distance_ideal_, weight_, slack_, limit_,
+          top_out_, origin_id_),
       i_seqs(i_seqs_),
       rt_mx_ji(rt_mx_ji_)
     {}
@@ -189,9 +201,11 @@ namespace cctbx { namespace geometry_restraints {
       double weight_,
       double slack_=0,
       double limit_=-1.0,
-      bool top_out_=false)
+      bool top_out_=false,
+      unsigned char origin_id_=0)
     :
-      bond_params(distance_ideal_, weight_, slack_, limit_, top_out_),
+      bond_params(distance_ideal_, weight_, slack_, limit_,
+          top_out_, origin_id_),
       asu_mapping_index_pair(pair_)
     {}
 
@@ -212,7 +226,10 @@ namespace cctbx { namespace geometry_restraints {
         bond_simple_proxy::i_seqs_type(i_seq, j_seq),
         distance_ideal,
         weight,
-        slack);
+        slack,
+        limit,
+        top_out,
+        origin_id);
     }
   };
 
@@ -233,10 +250,12 @@ namespace cctbx { namespace geometry_restraints {
         double weight_,
         double slack_=0,
         double limit_=-1.0,
-        bool top_out_=false)
+        bool top_out_=false,
+        unsigned char origin_id_=0)
       :
         cctbx::geometry::distance<double>(sites_),
-        bond_params(distance_ideal_, weight_, slack_, limit_, top_out_)
+        bond_params(distance_ideal_, weight_, slack_, limit_,
+            top_out_, origin_id_)
       {
         init_deltas();
       }
@@ -249,7 +268,7 @@ namespace cctbx { namespace geometry_restraints {
         bond_simple_proxy const& proxy)
       :
         bond_params(proxy.distance_ideal, proxy.weight, proxy.slack,
-          proxy.limit, proxy.top_out)
+          proxy.limit, proxy.top_out, proxy.origin_id)
       {
         CCTBX_ASSERT(!proxy.rt_mx_ji || proxy.rt_mx_ji->is_unit_mx());
         for(int i=0;i<2;i++) {
@@ -270,7 +289,7 @@ namespace cctbx { namespace geometry_restraints {
         bond_simple_proxy const& proxy)
       :
         bond_params(proxy.distance_ideal, proxy.weight, proxy.slack,
-          proxy.limit, proxy.top_out)
+          proxy.limit, proxy.top_out, proxy.origin_id)
       {
         for(int i=0;i<2;i++) {
           std::size_t i_seq = proxy.i_seqs[i];
@@ -295,7 +314,7 @@ namespace cctbx { namespace geometry_restraints {
         bond_sym_proxy const& proxy)
       :
         bond_params(proxy.distance_ideal, proxy.weight, proxy.slack,
-          proxy.limit, proxy.top_out)
+          proxy.limit, proxy.top_out, proxy.origin_id)
       {
         for(int i=0;i<2;i++) {
           std::size_t i_seq = proxy.i_seqs[i];
@@ -317,7 +336,7 @@ namespace cctbx { namespace geometry_restraints {
         bond_asu_proxy const& proxy)
       :
         bond_params(proxy.distance_ideal, proxy.weight, proxy.slack,
-          proxy.limit, proxy.top_out)
+          proxy.limit, proxy.top_out, proxy.origin_id)
       {
         sites[0] = asu_mappings.map_moved_site_to_asu(
           sites_cart[proxy.i_seq], proxy.i_seq, 0);
@@ -333,7 +352,7 @@ namespace cctbx { namespace geometry_restraints {
         bond_asu_proxy const& proxy)
       :
         bond_params(proxy.distance_ideal, proxy.weight, proxy.slack,
-          proxy.limit, proxy.top_out)
+          proxy.limit, proxy.top_out, proxy.origin_id)
       {
         sites[0] = cache.sites[proxy.i_seq][0];
         sites[1] = cache.sites[proxy.j_seq][proxy.j_sym];
