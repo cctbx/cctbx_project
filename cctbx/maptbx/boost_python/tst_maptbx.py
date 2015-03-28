@@ -1334,9 +1334,9 @@ def exercise_gamma_compression():
 def run(args):
   assert args in [[], ["--timing"]]
   timing = len(args) != 0
+  exercise_map_accumulator()
   exercise_gamma_compression()
   exercise_cc_peak()
-  exercise_map_accumulator()
   exercise_binarize()
   exercise_intersection()
   exercise_boxing()

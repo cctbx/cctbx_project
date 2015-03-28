@@ -232,7 +232,6 @@ namespace {
       ;
     }
 
-
     def("copy",
       (af::versa<float, af::flex_grid<> >(*)
         (af::const_ref<float, af::flex_grid<> > const&,
@@ -454,6 +453,13 @@ namespace {
       arg("data"),
       arg("mask")));
 
+    def("negate_selected_in_place",
+      (af::versa<double, af::c_grid_padded<3> >(*)
+        (af::const_ref<double, af::c_grid_padded<3> > const&,
+         std::vector<unsigned> const&)) negate_selected_in_place, (
+      arg("map_data"),
+      arg("selection")));
+
     def("reset",
       (void(*)
         (af::ref<double, af::c_grid<3> >,
@@ -555,6 +561,13 @@ namespace {
          af::ref<double, af::c_grid<3> >)) truncate_special, (
       arg("mask"),
       arg("map_data")));
+
+    def("combine_1",
+      (void(*)
+        (af::ref<double, af::c_grid<3> >,
+         af::ref<double, af::c_grid<3> >)) combine_1, (
+      arg("map_data"),
+      arg("diff_map")));
 
     def("truncate_between_min_max",
       (void(*)
@@ -721,6 +734,29 @@ namespace {
              arg("density_map"),
              arg("sites_cart"),
              arg("selection")));
+
+    def("real_space_target_simple",
+      (double(*)
+        (uctbx::unit_cell const&,
+         af::const_ref<double, af::c_grid_padded<3> > const&,
+         af::const_ref<scitbx::vec3<double> > const&))
+           real_space_target_simple, (
+             arg("unit_cell"),
+             arg("density_map"),
+             arg("sites_cart")));
+
+    def("real_space_target_simple",
+      (double(*)
+        (uctbx::unit_cell const&,
+         af::const_ref<double, af::c_grid_padded<3> > const&,
+         af::const_ref<scitbx::vec3<double> > const&,
+         af::const_ref<std::size_t> const&))
+           real_space_target_simple, (
+             arg("unit_cell"),
+             arg("density_map"),
+             arg("sites_cart"),
+             arg("selection")));
+
     def("real_space_target_simple",
       (double(*)
         (af::const_ref<double, af::c_grid<3> > const&,

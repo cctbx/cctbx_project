@@ -31,6 +31,43 @@ namespace cctbx { namespace maptbx {
     typename SiteFloatType>
   MapFloatType
   real_space_target_simple(
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<MapFloatType, af::c_grid_padded<3> > const& density_map,
+    af::const_ref<scitbx::vec3<SiteFloatType> > const& sites_cart)
+  {
+    MapFloatType result = 0;
+    for(std::size_t i_site=0;i_site<sites_cart.size();i_site++) {
+        result += eight_point_interpolation(
+          density_map,
+          unit_cell.fractionalize(sites_cart[i_site]));
+    }
+    return result;
+  }
+
+  template <
+    typename MapFloatType,
+    typename SiteFloatType>
+  MapFloatType
+  real_space_target_simple(
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<MapFloatType, af::c_grid_padded<3> > const& density_map,
+    af::const_ref<scitbx::vec3<SiteFloatType> > const& sites_cart,
+    af::const_ref<std::size_t> const& selection)
+  {
+    MapFloatType result = 0;
+    for(std::size_t i_site=0;i_site<selection.size();i_site++) {
+      result += eight_point_interpolation(
+        density_map,
+        unit_cell.fractionalize(sites_cart[selection[i_site]]));
+    }
+    return result;
+  }
+
+  template <
+    typename MapFloatType,
+    typename SiteFloatType>
+  MapFloatType
+  real_space_target_simple(
     af::const_ref<MapFloatType, af::c_grid<3> > const& density_map,
     af::const_ref<scitbx::vec3<SiteFloatType> > const& sites_frac)
   {
