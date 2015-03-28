@@ -5,13 +5,83 @@ import mmtbx.map_tools
 from cctbx import maptbx
 from cctbx import miller
 
+def assert_same_gridding(map_1, map_2):
+  assert map_1.focus()==map_2.focus()
+  assert map_1.origin()==map_2.origin()
+  assert map_1.all()==map_2.all()
+
+def from_map_map(map_1, map_2):
+  assert_same_gridding(map_1, map_2)
+  return flex.linear_correlation(
+    x=map_1.as_1d(),
+    y=map_2.as_1d()).coefficient()
+
+def from_map_map_atom(map_1, map_2, site_cart, unit_cell, radius):
+  assert_same_gridding(map_1, map_2)
+  sel = maptbx.grid_indices_around_sites(
+    unit_cell  = unit_cell,
+    fft_n_real = map_1.focus(),
+    fft_m_real = map_1.all(),
+    sites_cart = flex.vec3_double([site_cart]),
+    site_radii = flex.double(1, radius))
+  return flex.linear_correlation(
+    x=map_1.select(sel).as_1d(),
+    y=map_2.select(sel).as_1d()).coefficient()
+
+def from_map_map_atoms(map_1, map_2, sites_cart, unit_cell, radius):
+  assert_same_gridding(map_1, map_2)
+  sel = maptbx.grid_indices_around_sites(
+    unit_cell  = unit_cell,
+    fft_n_real = map_1.focus(),
+    fft_m_real = map_1.all(),
+    sites_cart = sites_cart,
+    site_radii = flex.double(sites_cart.size(), radius))
+  return flex.linear_correlation(
+    x=map_1.select(sel).as_1d(),
+    y=map_2.select(sel).as_1d()).coefficient()
+
+def from_map_map_atoms_per_atom(map_1, map_2, sites_cart, unit_cell, radius):
+  assert_same_gridding(map_1, map_2)
+  result = flex.double()
+  for site_cart in sites_cart:
+    cc = from_map_map_atom(map_1=map_1, map_2=map_2, site_cart=site_cart,
+      unit_cell=unit_cell, radius=radius)
+    result.append(cc)
+  return result
+
+class histogram_per_atom(object):
+  def __init__(self, map_1, map_2, sites_cart, unit_cell, radius, n_slots):
+    assert_same_gridding(map_1, map_2)
+    self.ccs = from_map_map_atoms_per_atom(
+      map_1      = map_1,
+      map_2      = map_2,
+      sites_cart = sites_cart,
+      unit_cell  = unit_cell,
+      radius     = radius)
+    self.hist = flex.histogram(data = self.ccs, n_slots = n_slots)
+
+  def format(self, prefix=""):
+    h = self.hist
+    lc_1 = h.data_min()
+    s_1 = enumerate(h.slots())
+    lines = []
+    for (i_1,n_1) in s_1:
+      hc_1 = h.data_min() + h.slot_width() * (i_1+1)
+      line = "%s %7.4f - %-7.4f: %6.2f %s" % (prefix, lc_1, hc_1,
+        n_1/self.ccs.size()*100, "%")
+      lines.append(line)
+      lc_1 = hc_1
+    return "\n".join(lines)
+
 class from_map_and_xray_structure_or_fmodel(object):
 
   def __init__(self,
-        xray_structure=None,
-        fmodel=None,
-        map_data=None,
-        d_min=None):
+        xray_structure    = None,
+        fmodel            = None,
+        map_data          = None,
+        d_min             = None,
+        resolution_factor = 0.25,
+        map_type          = "2mFo-DFc"):
     """
     Utility to calculate correlation between two maps:
       CC(xray_structure, map_data), xray_structure are map_data inputs
@@ -27,12 +97,12 @@ class from_map_and_xray_structure_or_fmodel(object):
     if(self.fmodel is not None):
       mc = mmtbx.map_tools.electron_density_map(
         fmodel=self.fmodel).map_coefficients(
-          map_type         = "2mFo-DFc",
+          map_type         = map_type,
           isotropize       = True,
           fill_missing     = False)
       crystal_gridding = self.fmodel.f_obs().crystal_gridding(
         d_min              = self.fmodel.f_obs().d_min(),
-        resolution_factor  = 1./3)
+        resolution_factor  = resolution_factor)
       fft_map = miller.fft_map(
         crystal_gridding     = crystal_gridding,
         fourier_coefficients = mc)
@@ -64,41 +134,32 @@ class from_map_and_xray_structure_or_fmodel(object):
       self.sites_cart = self.xray_structure.sites_cart()
       self.sites_frac = self.xray_structure.sites_frac()
       self.weights    = self.xray_structure.atomic_weights()
-    #
 
-  def cc(self, selections=None, selection=None, atom_radius=2.0):
-    assert [selections, selection].count(None) == 1
+  def cc(self, selections=None, selection=None, atom_radius=2.0, per_atom=None):
     def compute(sites_cart):
-      sel = maptbx.grid_indices_around_sites(
-        unit_cell  = self.xray_structure.unit_cell(),
-        fft_n_real = self.map_data.focus(),
-        fft_m_real = self.map_data.all(),
+      return from_map_map_atoms(
+        map_1      = self.map_data,
+        map_2      = self.map_model,
         sites_cart = sites_cart,
-        site_radii = flex.double(sites_cart.size(),atom_radius))
-      return flex.linear_correlation(
-        x=self.map_data.select(sel).as_1d(),
-        y=self.map_model.select(sel).as_1d()).coefficient()
+        unit_cell  = self.xray_structure.unit_cell(),
+        radius     = atom_radius)
     if(selections is not None):
       result = []
       for s in selections:
         result.append(compute(sites_cart=self.sites_cart.select(s)))
       return result
-    else:
+    elif(selection is not None):
       return compute(sites_cart=self.sites_cart.select(selection))
-
-  def map_value(self, selections=None, selection=None):
-    assert [selections, selection].count(None) == 1
-    def compute(sites_frac, weights):
-      result = 0
-      for sf, w in zip(sites_frac, weights):
-        result += self.map_data.eight_point_interpolation(sf)*w
-      return result/flex.sum(weights)
-    if(selections is not None):
-      result = []
-      for s in selections:
-        result.append(compute(sites_frac=self.sites_frac.select(s),
-          weights = self.weights.select(s)))
-      return result
+    elif(per_atom):
+      return from_map_map_atoms_per_atom(
+        map_1      = self.map_data,
+        map_2      = self.map_model,
+        sites_cart = self.sites_cart,
+        unit_cell  = self.xray_structure.unit_cell(),
+        radius     = atom_radius)
+    elif([selection, selections].count(None)==2):
+      return from_map_map(
+        map_1 = self.map_data,
+        map_2 = self.map_model)
     else:
-      return compute(sites_frac=self.sites_frac.select(selection),
-        weights = self.weights.select(selection))
+      raise RuntimeError
