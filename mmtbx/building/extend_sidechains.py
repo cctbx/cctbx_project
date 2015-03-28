@@ -167,7 +167,8 @@ def extend_residue (residue,
     mmtbx.refinement.real_space.torsion_search(
       scorer=scorer,
       clusters=clusters,
-      sites_cart=new_residue.atoms().extract_xyz())
+      sites_cart=new_residue.atoms().extract_xyz(),
+      start=0, stop=360, step=1)
     scorer.apply_final()
   return new_residue
 
@@ -320,7 +321,7 @@ def refit_residues (
           return sum / n_atoms
         sites_start = atoms.extract_xyz().deep_copy()
         two_fofc_mean_start = get_two_fofc_mean(residue)
-        refit = fit_residue.run(
+        refit = fit_residue.run_with_minimization(
           target_map=target_map,
           residue=residue,
           xray_structure=xrs,

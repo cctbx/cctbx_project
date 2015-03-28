@@ -592,7 +592,7 @@ class box_build_refine_base (object) :
       selection=self.others_in_box,
       reference_sigma=0.1)
     self.real_space_refine()
-    mmtbx.refinement.real_space.fit_residue.run(
+    mmtbx.refinement.real_space.fit_residue.run_with_minimization(
       target_map=self.target_map_box,
       residue=residue,
       xray_structure=self.box.xray_structure_box,
@@ -794,17 +794,11 @@ def generate_sidechain_clusters (residue, mon_lib_srv) :
           axis=aa[0],
           atoms_to_rotate=aa[1],
           selection=flex.size_t(aa[1]),
-          start=0,
-          stop=355,
-          step=5,
           vector=None)) # XXX
       else:
         result.append(mmtbx.refinement.real_space.cluster(
           axis=aa[0],
           atoms_to_rotate=aa[1],
           selection=flex.size_t([aa[1][0]]),
-          start=0,
-          stop=355,
-          step=5,
           vector=None)) # XXX
   return result
