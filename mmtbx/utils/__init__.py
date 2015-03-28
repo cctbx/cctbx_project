@@ -2894,7 +2894,7 @@ class experimental_data_target_and_gradients(object):
     return result
 
 class states(object):
-  def __init__(self, xray_structure, pdb_hierarchy):
+  def __init__(self, pdb_hierarchy, xray_structure=None):
     adopt_init_args(self, locals())
     self.counter = 0
     self.root = iotbx.pdb.hierarchy.root()
@@ -2903,8 +2903,11 @@ class states(object):
   def add(self, sites_cart):
     self.sites_carts.append(sites_cart)
     ph = self.pdb_hierarchy.deep_copy()
-    xrs = self.xray_structure.replace_sites_cart(new_sites = sites_cart)
-    ph.adopt_xray_structure(xrs)
+    if(self.xray_structure is not None):
+      xrs = self.xray_structure.replace_sites_cart(new_sites = sites_cart)
+      ph.adopt_xray_structure(xrs)
+    else:
+      ph.atoms().set_xyz(sites_cart)
     models = ph.models()
     md = models[0].detached_copy()
     md.id = str(self.counter)
