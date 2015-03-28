@@ -406,3 +406,16 @@ def five_number_summary(data):
     lhinge = (lower[n//2] + lower[n//2 - 1]) / 2
     uhinge = (upper[n//2] + upper[n//2 - 1]) / 2
   return sorts[0], lhinge, med, uhinge, sorts[-1]
+
+class sin_cos_table(object):
+  """
+  Always evaludate performance when it is important!
+  """
+  def __init__(self, n):
+    self.n = n
+    self.step = 2*math.pi/self.n
+    self.sin_table = flex.double()
+    self.cos_table = flex.double()
+    for i in xrange(self.n):
+      self.sin_table.append(math.sin(i*self.step))
+      self.cos_table.append(math.cos(i*self.step))
