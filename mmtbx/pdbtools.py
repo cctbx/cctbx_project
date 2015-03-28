@@ -1067,9 +1067,14 @@ class interpreter:
         source_info = None,
         lines       = flex.std_string(pdb_combined.raw_records),
         raise_sorry_if_format_error = True)
-      self.crystal_symmetry = pdb_inp.xray_structure_simple().\
-        cubic_unit_cell_around_centered_scatterers(
-        buffer_size = 10).crystal_symmetry()
+      #XXXself.crystal_symmetry = pdb_inp.xray_structure_simple().\
+      #XXX  cubic_unit_cell_around_centered_scatterers(
+      #XXX  buffer_size = 10).crystal_symmetry()
+      from cctbx import uctbx
+      self.crystal_symmetry = \
+        uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
+          sites_cart=pdb_inp.atoms().extract_xyz(),
+          buffer_layer=5).crystal_symmetry()
     print >> self.log, "Working crystal symmetry after inspecting all inputs:"
     self.crystal_symmetry.show_summary(f = self.log, prefix="  ")
     self.params.input.crystal_symmetry.unit_cell = \
