@@ -1959,7 +1959,6 @@ mmtbx/refinement/real_space/tst_individual_sites_2.py -text
 mmtbx/refinement/real_space/tst_individual_sites_3.py -text
 mmtbx/refinement/real_space/tst_monitor.py -text
 mmtbx/refinement/real_space/tst_rigid_body.py -text
-mmtbx/refinement/real_space/tst_sample_rotamers.py -text
 mmtbx/refinement/real_space/tst_weight.py -text
 mmtbx/refinement/real_space/weight.py -text
 mmtbx/refinement/refinement_flags.py -text
