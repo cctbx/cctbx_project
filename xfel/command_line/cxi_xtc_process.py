@@ -55,6 +55,13 @@ phil_scope = parse('''
     run_num = None
       .type = int
       .help = "Run number or run range to process"
+    use_ffb = False
+      .type = bool
+      .help = "Run on the ffb if possible. Only for active users!"
+    xtc_dir = None
+      .type = str
+      .help = "Optional path to data directory if it's non-standard. Only needed if xtc"
+      .help = "streams are not in the standard location for your PSDM installation."
   }
   output {
     output_dir = "."
@@ -115,6 +122,13 @@ class Script(object):
     # set up psana
     setConfigFile(params.input.cfg)
     dataset_name = "exp=%s:run=%s:idx"%(params.input.experiment,params.input.run_num)
+    if params.input.xtc_dir is not None:
+      if params.input.use_ffb:
+        raise Sorry("Cannot specify the xtc_dir and use SLAC's ffb system")
+      dataset_name += ":dir=%s"%params.input.xtc_dir
+    elif params.input.use_ffb:
+      # as ffb is only at SLAC, ok to hardcode /reg/d here
+      dataset_name += ":dir=/reg/d/ffb/%s/%s/xtc"%(params.input.experiment[0:3],params.input.experiment)
     ds = DataSource(dataset_name)
 
     # set this to sys.maxint to analyze all events
