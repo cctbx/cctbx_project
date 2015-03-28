@@ -1,0 +1,13 @@
+REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "mse_noH.pdb"
+REMARK Date 2015-02-18 Time 16:53:44 PST -0800 (1424307224.88 s)
+CRYST1   13.282   14.906   15.145  90.00  90.00  90.00 P 1
+ATOM   2006  N   MSE B  37       8.282   9.046   6.190  1.00 10.00           N
+ATOM   2007  CA  MSE B  37       6.863   8.719   6.123  1.00 10.00           C
+ATOM   2008  C   MSE B  37       6.057   9.906   5.608  1.00 10.00           C
+ATOM   2009  O   MSE B  37       5.000   9.734   5.000  1.00 10.00           O
+ATOM   2010  CB  MSE B  37       6.347   8.291   7.498  1.00 10.00           C
+ATOM   2011  CG  MSE B  37       7.044   7.066   8.067  1.00 10.00           C
+ATOM   2012  SE  MSE B  37       6.355   6.551   9.817  1.00 10.00          Se
+ATOM   2013  CE  MSE B  37       7.491   5.000  10.145  1.00 10.00           C
+TER
+END

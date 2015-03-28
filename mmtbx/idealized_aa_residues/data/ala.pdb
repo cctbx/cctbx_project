@@ -1,0 +1,10 @@
+REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "ala_noH.pdb"
+REMARK Date 2015-02-18 Time 16:53:44 PST -0800 (1424307224.63 s)
+CRYST1   11.863   12.347   12.550  90.00  90.00  90.00 P 1
+ATOM   2719  N   ALA B  84       6.863   5.000   7.484  1.00 10.00           N
+ATOM   2720  CA  ALA B  84       5.724   5.906   7.389  1.00 10.00           C
+ATOM   2721  C   ALA B  84       5.000   5.722   6.060  1.00 10.00           C
+ATOM   2722  O   ALA B  84       5.625   5.695   5.000  1.00 10.00           O
+ATOM   2723  CB  ALA B  84       6.180   7.347   7.550  1.00 10.00           C
+TER
+END

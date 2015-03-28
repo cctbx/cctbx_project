@@ -1,0 +1,16 @@
+REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "phe_noH.pdb"
+REMARK Date 2015-02-18 Time 16:53:44 PST -0800 (1424307224.89 s)
+CRYST1   11.802   16.578   13.976  90.00  90.00  90.00 P 1
+ATOM   1035  N   PHE A  63       6.270   9.933   7.412  1.00 10.00           N
+ATOM   1036  CA  PHE A  63       6.473   9.348   6.092  1.00 10.00           C
+ATOM   1037  C   PHE A  63       6.255  10.390   5.000  1.00 10.00           C
+ATOM   1038  O   PHE A  63       6.502  11.578   5.205  1.00 10.00           O
+ATOM   1039  CB  PHE A  63       5.530   8.161   5.882  1.00 10.00           C
+ATOM   1040  CG  PHE A  63       5.722   7.052   6.877  1.00 10.00           C
+ATOM   1041  CD1 PHE A  63       6.623   6.031   6.630  1.00 10.00           C
+ATOM   1042  CD2 PHE A  63       5.000   7.031   8.059  1.00 10.00           C
+ATOM   1043  CE1 PHE A  63       6.802   5.009   7.544  1.00 10.00           C
+ATOM   1044  CE2 PHE A  63       5.174   6.012   8.976  1.00 10.00           C
+ATOM   1045  CZ  PHE A  63       6.076   5.000   8.718  1.00 10.00           C
+TER
+END

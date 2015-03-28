@@ -1,0 +1,14 @@
+REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "lys_noH.pdb"
+REMARK Date 2015-02-18 Time 16:53:44 PST -0800 (1424307224.84 s)
+CRYST1   14.470   17.497   11.416  90.00  90.00  90.00 P 1
+ATOM   1179  N   LYS A  76       5.000   9.976   5.000  1.00 10.00           N
+ATOM   1180  CA  LYS A  76       5.908  10.198   6.119  1.00 10.00           C
+ATOM   1181  C   LYS A  76       6.200  11.685   6.291  1.00 10.00           C
+ATOM   1182  O   LYS A  76       5.284  12.497   6.416  1.00 10.00           O
+ATOM   1183  CB  LYS A  76       7.212   9.426   5.911  1.00 10.00           C
+ATOM   1184  CG  LYS A  76       7.029   7.922   5.799  1.00 10.00           C
+ATOM   1185  CD  LYS A  76       8.359   7.213   5.598  1.00 10.00           C
+ATOM   1186  CE  LYS A  76       8.176   5.708   5.486  1.00 10.00           C
+ATOM   1187  NZ  LYS A  76       9.470   5.000   5.289  1.00 10.00           N
+TER
+END

@@ -1,0 +1,13 @@
+REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "asp_noH.pdb"
+REMARK Date 2015-02-18 Time 16:53:44 PST -0800 (1424307224.47 s)
+CRYST1   14.178   13.514   11.978  90.00  90.00  90.00 P 1
+ATOM   1892  N   ASP A 121       5.000   6.529   5.000  1.00 10.00           N
+ATOM   1893  CA  ASP A 121       6.112   6.354   5.926  1.00 10.00           C
+ATOM   1894  C   ASP A 121       6.119   7.458   6.978  1.00 10.00           C
+ATOM   1895  O   ASP A 121       5.517   8.514   6.787  1.00 10.00           O
+ATOM   1896  CB  ASP A 121       7.442   6.340   5.170  1.00 10.00           C
+ATOM   1897  CG  ASP A 121       8.633   6.160   6.089  1.00 10.00           C
+ATOM   1898  OD1 ASP A 121       9.026   5.000   6.336  1.00 10.00           O
+ATOM   1899  OD2 ASP A 121       9.178   7.178   6.565  1.00 10.00           O
+TER
+END

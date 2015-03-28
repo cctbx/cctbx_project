@@ -1,0 +1,12 @@
+REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "thr_noH.pdb"
+REMARK Date 2015-02-18 Time 16:53:44 PST -0800 (1424307224.91 s)
+CRYST1   11.909   12.199   14.459  90.00  90.00  90.00 P 1
+ATOM   1055  N   THR A  68       6.909   7.199   7.510  1.00 10.00           N
+ATOM   1056  CA  THR A  68       5.467   6.987   7.511  1.00 10.00           C
+ATOM   1057  C   THR A  68       5.043   6.160   8.719  1.00 10.00           C
+ATOM   1058  O   THR A  68       5.883   5.647   9.459  1.00 10.00           O
+ATOM   1059  CB  THR A  68       5.000   6.279   6.226  1.00 10.00           C
+ATOM   1060  OG1 THR A  68       5.639   5.000   6.120  1.00 10.00           O
+ATOM   1061  CG2 THR A  68       5.335   7.116   5.000  1.00 10.00           C
+TER
+END

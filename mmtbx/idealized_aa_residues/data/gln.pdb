@@ -1,0 +1,14 @@
+REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "gln_noH.pdb"
+REMARK Date 2015-02-18 Time 16:53:44 PST -0800 (1424307224.53 s)
+CRYST1   14.547   13.375   15.374  90.00  90.00  90.00 P 1
+ATOM   1081  N   GLN A  70       6.466   6.968   5.000  1.00 10.00           N
+ATOM   1082  CA  GLN A  70       6.720   6.319   6.281  1.00 10.00           C
+ATOM   1083  C   GLN A  70       5.419   6.128   7.054  1.00 10.00           C
+ATOM   1084  O   GLN A  70       5.000   5.000   7.313  1.00 10.00           O
+ATOM   1085  CB  GLN A  70       7.712   7.139   7.110  1.00 10.00           C
+ATOM   1086  CG  GLN A  70       8.093   6.499   8.436  1.00 10.00           C
+ATOM   1087  CD  GLN A  70       9.114   7.315   9.204  1.00 10.00           C
+ATOM   1088  OE1 GLN A  70       9.547   8.375   8.751  1.00 10.00           O
+ATOM   1089  NE2 GLN A  70       9.505   6.824  10.374  1.00 10.00           N
+TER
+END

@@ -1,0 +1,11 @@
+REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "ser_noH.pdb"
+REMARK Date 2015-02-18 Time 16:53:44 PST -0800 (1424307224.77 s)
+CRYST1   12.893   12.708   12.721  90.00  90.00  90.00 P 1
+ATOM   1133  N   SER A  73       5.511   5.802   5.000  1.00 10.00           N
+ATOM   1134  CA  SER A  73       6.006   5.718   6.368  1.00 10.00           C
+ATOM   1135  C   SER A  73       6.042   7.098   7.016  1.00 10.00           C
+ATOM   1136  O   SER A  73       5.000   7.708   7.257  1.00 10.00           O
+ATOM   1137  CB  SER A  73       7.400   5.088   6.396  1.00 10.00           C
+ATOM   1138  OG  SER A  73       7.893   5.000   7.721  1.00 10.00           O
+TER
+END

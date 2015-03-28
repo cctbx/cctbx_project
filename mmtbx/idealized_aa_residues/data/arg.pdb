@@ -1,0 +1,16 @@
+REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "arg_noH.pdb"
+REMARK Date 2015-02-18 Time 16:53:44 PST -0800 (1424307224.41 s)
+CRYST1   14.446   16.451   11.913  90.00  90.00  90.00 P 1
+ATOM    778  N   ARG A  50       6.768  11.451   6.650  1.00 10.00           N
+ATOM    779  CA  ARG A  50       7.376  10.131   6.538  1.00 10.00           C
+ATOM    780  C   ARG A  50       8.891  10.220   6.686  1.00 10.00           C
+ATOM    781  O   ARG A  50       9.446  11.307   6.850  1.00 10.00           O
+ATOM    782  CB  ARG A  50       7.016   9.486   5.198  1.00 10.00           C
+ATOM    783  CG  ARG A  50       5.525   9.247   5.000  1.00 10.00           C
+ATOM    784  CD  ARG A  50       5.000   8.113   5.873  1.00 10.00           C
+ATOM    785  NE  ARG A  50       5.493   6.805   5.441  1.00 10.00           N
+ATOM    786  CZ  ARG A  50       6.560   6.188   5.943  1.00 10.00           C
+ATOM    787  NH1 ARG A  50       7.275   6.745   6.913  1.00 10.00           N
+ATOM    788  NH2 ARG A  50       6.915   5.000   5.472  1.00 10.00           N
+TER
+END

@@ -1,0 +1,13 @@
+REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "leu_noH.pdb"
+REMARK Date 2015-02-18 Time 16:53:44 PST -0800 (1424307224.77 s)
+CRYST1   13.550   15.138   12.702  90.00  90.00  90.00 P 1
+ATOM   2878  N   LEU B  94       6.323   6.484   5.000  1.00 10.00           N
+ATOM   2879  CA  LEU B  94       7.473   7.145   5.604  1.00 10.00           C
+ATOM   2880  C   LEU B  94       8.500   6.119   6.070  1.00 10.00           C
+ATOM   2881  O   LEU B  94       8.550   5.000   5.559  1.00 10.00           O
+ATOM   2882  CB  LEU B  94       7.037   8.023   6.780  1.00 10.00           C
+ATOM   2883  CG  LEU B  94       6.310   9.327   6.439  1.00 10.00           C
+ATOM   2884  CD1 LEU B  94       6.061  10.138   7.702  1.00 10.00           C
+ATOM   2885  CD2 LEU B  94       5.000   9.062   5.711  1.00 10.00           C
+TER
+END
