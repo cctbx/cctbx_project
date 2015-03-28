@@ -21,14 +21,12 @@
 #include <scitbx/math/gaussian_fit_1d_analytical.h>
 #include <scitbx/math/cubic_equation.h>
 #include <scitbx/math/distance_difference.h>
-
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
+#include <scitbx/math/fast_approx_math.h>
 
-#include <boost/python/return_value_policy.hpp>
-#include <boost/python/return_by_value.hpp>
 
 namespace scitbx { namespace math {
 namespace boost_python {
@@ -467,6 +465,30 @@ namespace {
       arg("az1"), arg("ay"), arg("az3")));
     def( "euler_angles_zyz_angles", euler_angles_zyz_angles, (
       arg("m"), arg("eps")=1e-12));
+
+    def("approx_sqrt", math::approx_sqrt);
+
+    def("cos_table",
+      (double(*)(
+         af::const_ref<double> const&,
+         double,
+         double const& ,
+         int const& ,
+         bool))
+           math::cos_table, (
+             arg("table"), arg("arg"), arg("step"), arg("n"),
+             arg("interpolate")));
+
+    def("sin_table",
+      (double(*)(
+         af::const_ref<double> const&,
+         double,
+         double const& ,
+         int const& ,
+         bool))
+           math::sin_table, (
+             arg("table"), arg("arg"), arg("step"), arg("n"),
+             arg("interpolate")));
 
     def("signed_phase_error",
       (double(*)(

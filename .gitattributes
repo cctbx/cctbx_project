@@ -2618,6 +2618,7 @@ scitbx/math/dihedral.h svneol=native#text/plain
 scitbx/math/distance_difference.h -text
 scitbx/math/euler_angles.h -text
 scitbx/math/farey.py -text
+scitbx/math/fast_approx_math.h -text
 scitbx/math/fit_peak.py -text
 scitbx/math/fliege_mayer_400.py -text
 scitbx/math/fliege_mayer_900.py -text
@@ -2635,6 +2636,7 @@ scitbx/math/modulo.h -text
 scitbx/math/numeric_limits.h -text
 scitbx/math/parabolic_cylinder_d.h -text
 scitbx/math/polygon_intersection.h -text
+scitbx/math/rotate_around_axis.h -text
 scitbx/math/rotation.h -text
 scitbx/math/scale_curves.py -text
 scitbx/math/so3_lie_algebra.py -text

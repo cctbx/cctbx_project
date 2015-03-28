@@ -1967,7 +1967,45 @@ def exercise_parabolic_cylinder_d():
     x_  = x_*scale2
     print "Dv(%.6g,%.6g)=%.6g"%(va_, x_, parabolic_cylinder_d(va_, x_))
 
+def exercise_fast_approx_math(n=1000):
+  # SIN, COS tables
+  def run(func, func_table):
+    step = 2*math.pi/n;
+    table = flex.double()
+    for i in xrange(n):
+      table.append(func(i*step));
+    for interpolate in [True, False]:
+      r1 = flex.double()
+      r2 = flex.double()
+      for a in range(-360, 360):
+        arg = a*math.pi/180
+        v1 = func(arg)
+        v2 = func_table(table=table, arg=arg, step=step, n=n,
+          interpolate=interpolate)
+        r1.append(v1)
+        r2.append(v2)
+      print (r1-r2).min_max_mean().as_tuple(), interpolate
+  run(func=math.cos, func_table=scitbx.math.cos_table)
+  run(func=math.sin, func_table=scitbx.math.sin_table)
+  # SQRT
+  args = list(flex.random_double(100)/1000)+ \
+         list(flex.random_double(100)/100) + \
+         list(flex.random_double(100)/10)  + \
+         list(flex.random_double(100))     + \
+         list(flex.random_double(100)*10)  + \
+         list(flex.random_double(100)*100) + \
+         list(flex.random_double(100)*1000)
+  diff = flex.double()
+  for a in args:
+    v1=math.sqrt(a)
+    v2 = scitbx.math.approx_sqrt(a)
+    diff.append(v1-v2)
+    #if(abs(v1-v2)>1.):
+    #  print a, v1, v2
+  print diff.min_max_mean().as_tuple()
+
 def run():
+  exercise_fast_approx_math()
   exercise_parabolic_cylinder_d()
   exercise_equally_spaced_points_on_vector()
   exercise_weighted_covariance()
