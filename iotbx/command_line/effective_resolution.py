@@ -117,9 +117,10 @@ def run(args):
   if(miller_arrays is None):
     raise Sorry("Warning: unknown file format:", file_name)
   for ma in miller_arrays:
-    print "Processing data array with labels:", ma.info().label_string()
-    compute(miller_array=ma)
-    print
+    if(type(ma.data()) == type(flex.double())):
+      print "Processing data array with labels:", ma.info().label_string()
+      compute(miller_array=ma)
+      print
 
 
 if (__name__ == "__main__"):
