@@ -542,7 +542,7 @@ class Builder(object):
   def add_step(self, step):
     """Add a step."""
     self.steps.append(step)
-    if 1:
+    if 0:
       print "commands "*8
       for step in self.steps:
         print " ".join(step.get_command())
