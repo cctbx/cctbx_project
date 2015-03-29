@@ -466,7 +466,7 @@ class Builder(object):
       self.cleanup(['dist', 'tests', 'doc', 'tmp'])
     # always remove .pyc files
     # cleanup_ext_class(".pyc", "modules").run()
-    self.add_step(cleanup_ext_class(".pyc", "modules"))
+    # self.add_step(cleanup_ext_class(".pyc", "modules"))
 
     # Add 'hot' sources
     if hot:
