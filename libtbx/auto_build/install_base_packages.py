@@ -897,26 +897,27 @@ Installation of Python packages may fail.
     # Stage 1: build wxWidgets libraries
     config_opts = [
       self.prefix,
-      "--disable-mediactrl",
       "--with-opengl",
-      "--without-liblzma",
+      "--enable-unicode"
     ]
     if (self.options.debug) :
-      config_opts.extend(["--disable-optimize", "--enable-debug"])
+      config_opts.extend(["--disable-optimize",
+                          "--enable-debug"])
       if (self.flag_is_linux) :
         config_opts.append("--disable-debug_gdb")
     else :
-      config_opts.extend(["--enable-optimize", "--disable-debugreport"])
+      config_opts.extend(["--enable-optimize",
+                          "--disable-debugreport"])
 
     # if (cocoa) :
     if (self.flag_is_mac) :
       config_opts.extend([
         "--with-osx_cocoa",
-        "--enable-monolithic",
         "--with-macosx-version-min=10.6",
-        "--enable-unicode"
         "--with-mac",
-        "--enable-monolithic"
+        "--enable-monolithic",
+        "--disable-mediactrl",
+        "--without-liblzma"
       ])
     elif (self.flag_is_linux) :
       config_opts.extend([
@@ -924,6 +925,8 @@ Installation of Python packages may fail.
         "--with-gtk-prefix=\"%s\"" % self.base_dir,
         "--with-gtk-exec-prefix=\"%s\"" % op.join(self.base_dir, "lib"),
         "--enable-graphics_ctx",
+        "--enable-mediactrl",
+        "--enable-display",
       ])
 
     print >> self.log, "  building wxWidgets with options:"
@@ -933,19 +936,27 @@ Installation of Python packages may fail.
     self.call("make -j %d" % self.nproc, log=pkg_log)
     if (not self.flag_is_mac) : # XXX ???
       self.call("make -j %d -C contrib/src/stc" % self.nproc, log=pkg_log)
+      self.call("make -j %d -C contrib/src/gizmos" % self.nproc, log=pkg_log)
     self.call("make install", log=pkg_log)
+    if (not self.flag_is_mac) : # XXX ???
+      self.call("make -C contrib/src/stc install", log=pkg_log)
+      self.call("make -C contrib/src/gizmos install", log=pkg_log)
 
     # Stage 2: build wxPython itself
     wxpy_build_opts = [
       "BUILD_GLCANVAS=1",
-      "BUILD_GIZMOS=0",
+      "BUILD_GIZMOS=1",
       "BUILD_DLLWIDGET=0",
+      "UNICODE=1"
     ]
     if self.flag_is_mac:
       os.environ['CFLAGS'] = os.environ.get('CFLAGS', '') + " -arch x86_64"
-      wxpy_build_opts.extend(["UNICODE=1", "BUILD_STC=1", "WXPORT=osx_cocoa"])
+      wxpy_build_opts.extend(["BUILD_STC=1",
+                              "WXPORT=osx_cocoa"])
     else :
-      wxpy_build_opts.extend(["UNICODE=0", "BUILD_STC=0", "BUILD_OGL=0", ])
+      wxpy_build_opts.extend(["BUILD_STC=0",
+                              "BUILD_OGL=0",
+                              "WX_CONFIG=%s/bin/wx-config" %self.base_dir])
     self.chdir("wxPython", log=pkg_log)
     debug_flag = ""
     if (self.options.debug) :
@@ -953,7 +964,7 @@ Installation of Python packages may fail.
     print >> self.log, "  building wxPython with options:"
     for opt in wxpy_build_opts :
       print >> self.log, "    %s" % opt
-    self.call("%s setup.py %s build %s" % (self.python_exe,
+    self.call("%s setup.py %s build_ext %s" % (self.python_exe,
       " ".join(wxpy_build_opts), debug_flag), log=pkg_log)
     self.call("%s setup.py %s install" % (self.python_exe,
       " ".join(wxpy_build_opts)), log=pkg_log)
@@ -1015,6 +1026,7 @@ Installation of Python packages may fail.
       '--install'
       ], log=pkg_log)
     self.verify_python_module("wxPython", "wx")
+
 
   def build_matplotlib(self):
     def patch_matplotlib_src (out) :
