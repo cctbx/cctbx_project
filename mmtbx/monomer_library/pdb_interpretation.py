@@ -4892,7 +4892,13 @@ class process(object):
     self._geometry_restraints_manager = None
     self._xray_structure = None
     if self.all_chain_proxies.params.ncs_search:
-      self.ncs_obj = self.search_for_ncs(file_name=file_name)
+      if file_name:
+        self.ncs_obj = self.search_for_ncs(file_name=file_name)
+      elif self.all_chain_proxies.pdb_hierarchy:
+        self.ncs_obj = self.search_for_ncs(
+          hierarchy=self.all_chain_proxies.pdb_hierarchy)
+      else:
+        raise Sorry('Need file name or hierarchy to search for NCS')
 
   def geometry_restraints_manager(self,
         plain_pairs_radius=None,
@@ -5194,18 +5200,20 @@ class process(object):
     def clash_score(self):
       return 'Clash Score'
 
-  def search_for_ncs(self,file_name):
+  def search_for_ncs(self,file_name=None,hierarchy=None):
     """
     Search for NCS relations in the PDB
 
     Args:
       file_name (str): PDB file name
+      hierarchy (obj): pdb hierarchy
     """
     params = self.all_chain_proxies.params.ncs_search_params
     simple_params = params.simple_ncs_from_pdb
     find_param = simple_params.domain_finding_parameters
     ncs_obj = iotbx.ncs.input(
       file_name=file_name,
+      hierarchy=hierarchy,
       chain_similarity_limit=find_param.similarity_threshold,
       min_contig_length=find_param.min_contig_length,
       min_percent=simple_params.min_percent,
