@@ -133,9 +133,11 @@ class manager(object):
                      ias_manager = None,
                      wilson_b = None,
                      tls_groups = None,
+                     ncs_groups = None,
                      anomalous_scatterer_groups = None,
                      log = None):
     self.log = log
+    self.ncs_groups = ncs_groups
     self.processed_pdb_files_srv = processed_pdb_files_srv
     self.reference_sites_cart = reference_sites_cart
     self.selection_moving = selection_moving

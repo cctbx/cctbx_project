@@ -141,7 +141,7 @@ class from_map_and_xray_structure_or_fmodel(object):
         map_1      = self.map_data,
         map_2      = self.map_model,
         sites_cart = sites_cart,
-        unit_cell  = self.xray_structure.unit_cell(),
+        unit_cell  = self.fmodel.xray_structure.unit_cell(),
         radius     = atom_radius)
     if(selections is not None):
       result = []
@@ -155,7 +155,7 @@ class from_map_and_xray_structure_or_fmodel(object):
         map_1      = self.map_data,
         map_2      = self.map_model,
         sites_cart = self.sites_cart,
-        unit_cell  = self.xray_structure.unit_cell(),
+        unit_cell  = self.fmodel.xray_structure.unit_cell(),
         radius     = atom_radius)
     elif([selection, selections].count(None)==2):
       return from_map_map(

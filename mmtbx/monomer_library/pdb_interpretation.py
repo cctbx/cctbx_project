@@ -4891,6 +4891,7 @@ class process(object):
 
     self._geometry_restraints_manager = None
     self._xray_structure = None
+    self.ncs_obj = None
     if self.all_chain_proxies.params.ncs_search:
       if file_name:
         self.ncs_obj = self.search_for_ncs(file_name=file_name)
