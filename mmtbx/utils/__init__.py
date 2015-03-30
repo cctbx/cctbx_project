@@ -1662,6 +1662,12 @@ class process_command_line_args(object):
     parsed_params = []
     command_line_params = []
     for arg in args:
+      #
+      is_ccp4_map = [
+        arg.endswith(".mrc"),
+        arg.endswith(".ccp4"),
+        arg.endswith(".map")].count(True)>0
+      #
       arg_is_processed = False
       arg_file = arg
       is_parameter = False
@@ -1670,8 +1676,9 @@ class process_command_line_args(object):
         is_parameter = True
       try:
         if(not suppress_symmetry_related_errors):
-          crystal_symmetries.append(
-            [arg_file, crystal_symmetry_from_any.extract_from(arg_file)])
+          if(not is_ccp4_map):
+            crystal_symmetries.append(
+              [arg_file, crystal_symmetry_from_any.extract_from(arg_file)])
       except KeyboardInterrupt: raise
       except RuntimeError: pass
       if(os.path.isfile(arg_file)):
@@ -1690,9 +1697,7 @@ class process_command_line_args(object):
              pdb.is_pdb_mmcif_file(file_name=arg_file)):
           self.pdb_file_names.append(arg_file)
           arg_is_processed = True
-        elif([arg_file.endswith(".mrc"),
-              arg_file.endswith(".ccp4"),
-              arg_file.endswith(".map")].count(True)>0):
+        elif(is_ccp4_map):
           assert [self.ccp4_map, self.ccp4_map_file_name].count(None)==2
           from iotbx import ccp4_map
           self.ccp4_map = iotbx.ccp4_map.map_reader(file_name=arg_file)
@@ -1706,6 +1711,7 @@ class process_command_line_args(object):
               crystal_symmetries.append([arg_file, cs])
           except KeyboardInterrupt: raise
           except RuntimeError: pass
+          arg_is_processed = True
         else:
           try:
             cif_object = []
