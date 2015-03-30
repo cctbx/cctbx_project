@@ -80,6 +80,9 @@ phil_scope = parse('''
       .help = "Directory for output files"
   }
   mp {
+    method = *mpi sge
+      .type = choice
+      .help = "Muliprocessing method"
     nproc = 1
       .type = int
       .help = "Number of processes"
@@ -217,17 +220,44 @@ class Script(object):
       f.write(line)
     f.close()
 
-    command = "bsub -a mympi -n %d -o %s -q %s cxi.xtc_process input.cfg=%s input.experiment=%s input.run_num=%d"%( \
-      params.mp.nproc, os.path.join(stdoutdir, "log.out"), params.mp.queue, config_path,
-      params.input.experiment, params.input.run_num)
-
-    # Write out a script for submitting this job exactly (even though it isn't used here)
+    # Write out a script for submitting this job and submit it
     submit_path = os.path.join(trialdir, "submit.sh")
-    f = open(submit_path, 'w')
-    f.write("#! /bin/sh\n")
-    f.write("\n")
-    f.write("%s\n"%command)
-    f.close()
+
+    if params.mp.method == "mpi":
+      command = "bsub -a mympi -n %d -o %s -q %s cxi.xtc_process input.cfg=%s input.experiment=%s input.run_num=%d"%( \
+        params.mp.nproc, os.path.join(stdoutdir, "log.out"), params.mp.queue, config_path,
+        params.input.experiment, params.input.run_num)
+
+      f = open(submit_path, 'w')
+      f.write("#! /bin/sh\n")
+      f.write("\n")
+      f.write("%s\n"%command)
+      f.close()
+    elif params.mp.method == "sge":
+      command = "qsub -cwd -t 1-%d -o %s -q %s %s"%( \
+        params.mp.nproc, os.path.join(stdoutdir, "log.out"), params.mp.queue, submit_path)
+
+      import libtbx.load_env
+      setpaths_path = os.path.join(abs(libtbx.env.build_path), "setpaths.sh")
+      psdmenv_path = os.path.join(os.environ.get("SIT_ROOT", ""), "etc", "ana_env.sh")
+      assert os.path.exists(setpaths_path)
+      assert os.path.exists(psdmenv_path)
+
+      f = open(submit_path, 'w')
+      f.write("#!/bin/bash\n")
+      f.write("#$ -S /bin/bash\n")
+      f.write("#$ -l mem=4g\n")
+      f.write("\n")
+      f.write(". %s\n"%psdmenv_path)
+      f.write(". %s\n"%setpaths_path)
+      f.write("\n")
+
+      f.write("cxi.xtc_process input.cfg=%s input.experiment=%s input.run_num=%d mp.method=sge 1> %s 2> %s\n"%( \
+        config_path, params.input.experiment, params.input.run_num,
+        os.path.join(stdoutdir, "log_$SGE_TASK_ID.out"), os.path.join(stdoutdir, "log_$SGE_TASK_ID.err")))
+    else:
+      raise Sorry("Multiprocessing method %s not recognized"%params.mp.method)
+
 
     try:
       result = easy_run.fully_buffered(command=command).raise_if_errors()

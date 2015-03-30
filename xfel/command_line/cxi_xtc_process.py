@@ -68,6 +68,11 @@ phil_scope = parse('''
       .type = str
       .help = "Directory for output files"
   }
+  mp {
+    method = *mpi sge
+      .type = choice
+      .help = "Muliprocessing method"
+  }
   debug {
     write_debug_files = False
       .type = bool
@@ -114,10 +119,26 @@ class Script(object):
 
     print "Processing run %d of experiment %s using config file %s"%(params.input.run_num, params.input.experiment, params.input.cfg)
 
-    from mpi4py import MPI
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank() # each process in MPI has a unique id, 0-indexed
-    size = comm.Get_size() # size: number of processes running in this job
+    if params.mp.method == "mpi":
+      from mpi4py import MPI
+      comm = MPI.COMM_WORLD
+      rank = comm.Get_rank() # each process in MPI has a unique id, 0-indexed
+      size = comm.Get_size() # size: number of processes running in this job
+    elif params.mp.method == "sge" and \
+        'SGE_TASK_ID'    in os.environ and \
+        'SGE_TASK_FIRST' in os.environ and \
+        'SGE_TASK_LAST'  in os.environ:
+      if 'SGE_STEP_SIZE' in os.environ:
+        assert int(os.environ['SGE_STEP_SIZE']) == 1
+      if os.environ['SGE_TASK_ID'] == 'undefined' or os.environ['SGE_TASK_ID'] == 'undefined' or os.environ['SGE_TASK_ID'] == 'undefined':
+        rank = 0
+        size = 1
+      else:
+        rank = int(os.environ['SGE_TASK_ID']) - int(os.environ['SGE_TASK_FIRST'])
+        size = int(os.environ['SGE_TASK_LAST']) - int(os.environ['SGE_TASK_FIRST']) + 1
+    else:
+      rank = 0
+      size = 1
 
     # set up psana
     setConfigFile(params.input.cfg)
