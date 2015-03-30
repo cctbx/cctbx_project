@@ -238,8 +238,6 @@ class installer (object) :
 
   def call (self, args, log=None, **kwargs) :
     if (log is None) : log = self.log
-    if self.verbose:
-      print "Running external process: %s" % args if isinstance(args, basestring) else " ".join(args)
     return call(args, log=log, verbose=self.verbose, **kwargs)
 
   def chdir (self, dir_name, log=None) :
