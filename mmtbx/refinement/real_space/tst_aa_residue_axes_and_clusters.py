@@ -2,6 +2,7 @@ import iotbx.pdb
 import mmtbx.monomer_library.server
 import time
 import mmtbx.refinement.real_space
+from scitbx.array_family import flex
 
 arg = """
 ATOM      0  N   ARG A   1       8.883   8.163   7.325  1.00 11.00           N
@@ -49,13 +50,13 @@ def get_object(pdb_str, backbone_sample):
 def exercise_00():
   #
   aa = get_object(pdb_str = arg, backbone_sample=True)
-  assert aa[0].vector == [1, 4, 5, 6, 7, [8, 9, 10]]
+  assert aa[0].vector == [1, 4, 5, 6, 7, flex.size_t([8, 9, 10])], aa[0].vector
   #
   aa = get_object(pdb_str = arg, backbone_sample=False)
-  assert aa[0].vector == [1, 4, 5, 6, 7, [8, 9, 10]]
+  assert aa[0].vector == [1, 4, 5, 6, 7, flex.size_t([8, 9, 10])], aa[0].vector
   #
   aa = get_object(pdb_str = arg_different_order, backbone_sample=True)
-  assert aa[0].vector == [7, 2, 3, 4, 5, [0, 8, 9]]
+  assert aa[0].vector == [7, 2, 3, 4, 5, flex.size_t([0, 8, 9])]
 
 
 if (__name__ == "__main__"):
