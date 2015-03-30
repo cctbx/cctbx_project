@@ -141,6 +141,9 @@ class cleanup_ext_class(object):
     self.filename_ext = filename_ext
     self.workdir = workdir
 
+  def get_command(self):
+    return "delete *%s in %s" % (self.filename_ext, self.workdir).split()
+
   def remove_ext_files(self):
     cwd=os.getcwd()
     if self.workdir is not None:
@@ -148,16 +151,18 @@ class cleanup_ext_class(object):
         os.chdir(self.workdir)
       else:
         return
+    print "\n  removing %s files in %s" % (self.filename_ext, os.getcwd())
+    i=0
     for root, dirs, files in os.walk(".", topdown=False):
       for name in files:
         if name.endswith(self.filename_ext):
-          print 'removing',os.path.join(root, name)
           os.remove(os.path.join(root, name))
+          i+=1
     os.chdir(cwd)
+    print "  removed %d files" % i
   
   def run(self):
     self.remove_ext_files()
-
 
 ##### Modules #####
 
@@ -464,9 +469,6 @@ class Builder(object):
       self.cleanup(['dist', 'tests', 'doc', 'tmp', 'base', 'base_tmp', 'build'])
     else:
       self.cleanup(['dist', 'tests', 'doc', 'tmp'])
-    # always remove .pyc files
-    # cleanup_ext_class(".pyc", "modules").run()
-    # self.add_step(cleanup_ext_class(".pyc", "modules"))
 
     # Add 'hot' sources
     if hot:
@@ -475,6 +477,9 @@ class Builder(object):
     # Add svn sources.
     if update:
       map(self.add_module, self.get_codebases())
+
+    # always remove .pyc files
+    self.remove_pyc()
 
     # Build base packages
     if base:
@@ -502,6 +507,9 @@ class Builder(object):
 
   def get_auth(self):
     return self.auth
+
+  def remove_pyc(self):
+    self.add_step(cleanup_ext_class(".pyc", "modules"))
 
   def shell(self, **kwargs):
     # Convenience for ShellCommand
@@ -545,7 +553,9 @@ class Builder(object):
     if 0:
       print "commands "*8
       for step in self.steps:
-        print " ".join(step.get_command())
+        print step
+        try:    print " ".join(step.get_command())
+        except: print '????'
       print "commands "*8
 
   def add_module(self, module):
