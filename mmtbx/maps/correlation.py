@@ -93,6 +93,7 @@ class from_map_and_xray_structure_or_fmodel(object):
     assert [fmodel, xray_structure].count(None) == 1
     assert [d_min, fmodel].count(None) == 1
     adopt_init_args(self, locals())
+    if(fmodel is not None): self.xray_structure = fmodel.xray_structure
     # get map_data defined
     if(self.fmodel is not None):
       mc = mmtbx.map_tools.electron_density_map(
@@ -141,7 +142,7 @@ class from_map_and_xray_structure_or_fmodel(object):
         map_1      = self.map_data,
         map_2      = self.map_model,
         sites_cart = sites_cart,
-        unit_cell  = self.fmodel.xray_structure.unit_cell(),
+        unit_cell  = self.xray_structure.unit_cell(),
         radius     = atom_radius)
     if(selections is not None):
       result = []

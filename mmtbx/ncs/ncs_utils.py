@@ -889,7 +889,6 @@ def get_list_of_best_ncs_copy_map_correlation(
   else:
     mp = mmtbx.maps.correlation.from_map_and_xray_structure_or_fmodel(
       fmodel = fmodel)
-
   for nrg in ncs_restraints_group_list:
     selections = [nrg.master_iselection]
     for ncs in nrg.copies:
