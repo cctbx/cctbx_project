@@ -684,7 +684,7 @@ class Builder(object):
 
   def add_install(self):
     """Run after compile, before tests."""
-    pass
+    self.add_command('mmtbx.rebuild_rotarama_cache')
 
   def add_tests(self):
     """Run the unit tests."""
@@ -831,7 +831,7 @@ class PhenixBuilder(CCIBuilder):
     'probe',
   ]
   def add_install(self):
-    self.add_command('mmtbx.rebuild_rotarama_cache')
+    Builder.add_install(self)
     self.add_command('phenix_html.rebuild_docs')
 
   def add_tests(self):
