@@ -211,61 +211,60 @@ def exercise_bond_similarity():
   assert approx_equal(residual_sum, restraint_sym.residual() + restraint_no_sym.residual())
 
 def exercise_bond():
+  def check_bpar(p, distance_ideal=3.5, weight=1, slack=0, limit=-1, 
+      top_out=False, origin_id=0):
+    assert approx_equal(p.distance_ideal, distance_ideal)
+    assert approx_equal(p.weight, weight)
+    assert approx_equal(p.slack, slack)
+    assert approx_equal(p.limit, limit)
+    assert p.top_out == top_out
+    assert p.origin_id == origin_id
+
+  def check_bproxy(p, i_seqs=(0,1), sym_op=None, distance_ideal=3.5, 
+      weight=1, slack=0, limit=-1, top_out=False, origin_id=0):
+    assert p.i_seqs == i_seqs
+    if p.rt_mx_ji is not None:
+      assert p.rt_mx_ji.as_double_array == sym_op.as_double_array
+    else:
+      assert sym_op is None
+    assert approx_equal(p.distance_ideal, distance_ideal)
+    assert approx_equal(p.weight, weight)
+    assert approx_equal(p.slack, slack)
+    assert approx_equal(p.limit, limit)
+    assert p.top_out == top_out
+    assert p.origin_id == origin_id
+
   p = geometry_restraints.bond_params(
     distance_ideal=3.5,
-    weight=1,
+    weight=2,
     slack=2,
     limit=1,
     top_out=True,
     origin_id=2)
-  assert approx_equal(p.distance_ideal, 3.5)
-  assert approx_equal(p.weight, 1)
-  assert approx_equal(p.slack, 2)
-  assert approx_equal(p.limit, 1)
-  assert p.top_out
-  assert approx_equal(p.origin_id, 2)
+  check_bpar(p, weight=2, slack=2, limit=1, top_out=True, origin_id=2)
   p = geometry_restraints.bond_params(
     distance_ideal=3.5,
     weight=1)
-  assert approx_equal(p.distance_ideal, 3.5)
-  assert approx_equal(p.weight, 1)
-  assert approx_equal(p.slack, 0)
-  assert approx_equal(p.limit, -1.0)
-  assert p.top_out == False
-  assert approx_equal(p.origin_id, 0)
-
+  check_bpar(p)
   p.distance_ideal = 35
-  assert approx_equal(p.distance_ideal, 35)
-  p.distance_ideal = 3.5
-  assert approx_equal(p.distance_ideal, 3.5)
   p.weight = 10
-  assert approx_equal(p.weight, 10)
-  p.weight = 1
-  assert approx_equal(p.weight, 1)
   p.slack = 3
-  assert approx_equal(p.slack, 3)
-  p.slack = 0
-  assert approx_equal(p.slack, 0)
   p.limit = 3
-  assert approx_equal(p.limit, 3)
-  p.limit = -1.0
-  assert approx_equal(p.limit, -1)
   p.top_out = True
-  assert p.top_out
+  p.origin_id = 3
+  check_bpar(p, distance_ideal=35, weight=10, slack=3, limit=3, 
+      top_out=True, origin_id=3)
+  p.distance_ideal = 3.5
+  p.weight = 1
+  p.slack = 0
+  p.limit = -1.0
   p.top_out = False
-  assert not p.top_out
-  p.origin = 3
-  assert approx_equal(p.origin, 3)
-  p.origin = 0
-  assert approx_equal(p.origin, 0)
+  p.origin_id = 0
+  check_bpar(p)
   #
   c = p.scale_weight(factor=2)
-  assert c.distance_ideal == p.distance_ideal
-  assert approx_equal(c.weight, 2)
-  assert c.slack == p.slack
-  assert c.limit == p.limit
-  assert c.top_out == p.top_out
-  assert c.origin_id == p.origin_id
+  check_bpar(p)
+  check_bpar(c, weight=2)
   #
   t = geometry_restraints.bond_params_table()
   assert t.size() == 0
@@ -273,30 +272,26 @@ def exercise_bond():
   assert len(d) == 0
   p = geometry_restraints.bond_params(distance_ideal=3, weight=2)
   d[10] = p
-  assert approx_equal(d[10].distance_ideal, 3)
+  check_bpar(d[10], distance_ideal=3, weight=2)
   t.append(d)
   t.append(d)
-  assert approx_equal(t[1][10].distance_ideal, 3)
+  check_bpar(t[1][10], distance_ideal=3, weight=2)
   t[0][13] = p
-  assert approx_equal(t[0][13].distance_ideal, 3)
+  check_bpar(t[0][13], distance_ideal=3, weight=2)
   t[0][13].distance_ideal = 5
-  assert approx_equal(t[0][13].distance_ideal, 5)
-  assert approx_equal(t[1][10].distance_ideal, 3)
+  check_bpar(t[0][13], distance_ideal=5, weight=2)
+  check_bpar(t[1][10], distance_ideal=3, weight=2)
   t[1][1] = geometry_restraints.bond_params(distance_ideal=4, weight=5,
       slack=2, limit=1, top_out=True, origin_id=2)
   while (t.size() < 14):
     t.append(geometry_restraints.bond_params_dict())
   s = t.proxy_select(iselection=flex.size_t([1]))
-  assert approx_equal(s[0][0].distance_ideal, 4)
-  assert approx_equal(s[0][0].weight, 5)
-  assert approx_equal(s[0][0].slack, 2)
-  assert approx_equal(s[0][0].limit, 1)
-  assert s[0][0].top_out
-  assert approx_equal(s[0][0].origin_id, 2)
+  check_bpar(s[0][0], distance_ideal=4, weight=5, slack=2, limit=1, 
+      top_out=True, origin_id=2)
   #
-  assert approx_equal(t.lookup(13, 0).weight, 2)
+  check_bpar(t.lookup(13, 0), distance_ideal=5, weight=2)
   t.lookup(0, 13).weight = 48
-  assert approx_equal(t.lookup(0, 13).weight, 48)
+  check_bpar(t.lookup(0, 13), distance_ideal=5, weight=48)
   t.lookup(13, 0).weight = 2
   #
   rest = t.proxy_remove(selection=flex.bool([True]*14))
@@ -317,12 +312,8 @@ def exercise_bond():
   assert t[3].size() == 0
   t.update(i_seq=4, j_seq=3, params=p)
   assert t[3].size() == 1
-  assert approx_equal(t[3][4].distance_ideal, 2.8)
-  assert approx_equal(t[3][4].weight, 2)
-  assert approx_equal(t[3][4].slack, 2)
-  assert approx_equal(t[3][4].limit, 1)
-  assert t[3][4].top_out
-  assert approx_equal(t[3][4].origin_id, 2)
+  check_bpar(t[3][4], distance_ideal=2.8, weight=2, slack=2, limit=1, 
+      top_out=True, origin_id=2)
   p = geometry_restraints.bond_params(distance_ideal=3.8, weight=3)
   t.update(i_seq=3, j_seq=5, params=p)
   assert t[3].size() == 2
@@ -330,7 +321,7 @@ def exercise_bond():
   p = geometry_restraints.bond_params(distance_ideal=1.8, weight=4)
   t.update(i_seq=3, j_seq=4, params=p)
   assert t[3].size() == 2
-  assert approx_equal(t[3][4].distance_ideal, 1.8)
+  check_bpar(t[3][4], distance_ideal=1.8, weight=4)
   #
   assert geometry_restraints.bond_params_table().mean_residual(1) == 0
   assert t.mean_residual(bond_stretch_factor=0) == 0
@@ -340,13 +331,7 @@ def exercise_bond():
   #
   p = geometry_restraints.bond_simple_proxy(
       i_seqs=[1,0], distance_ideal=3.5, weight=1)
-  assert p.i_seqs == (1,0)
-  assert approx_equal(p.distance_ideal, 3.5)
-  assert approx_equal(p.weight, 1)
-  assert approx_equal(p.slack, 0)
-  assert approx_equal(p.limit, -1)
-  assert not p.top_out
-  assert approx_equal(p.origin_id, 0)
+  check_bproxy(p, i_seqs=(1,0))
   p = geometry_restraints.bond_simple_proxy(
       i_seqs=[1,0],
       distance_ideal=3.5,
@@ -355,45 +340,26 @@ def exercise_bond():
       limit=1,
       top_out=True,
       origin_id=2)
-  assert p.i_seqs == (1,0)
-  assert approx_equal(p.distance_ideal, 3.5)
-  assert approx_equal(p.weight, 1)
-  assert approx_equal(p.slack, 2)
-  assert approx_equal(p.limit, 1)
-  assert p.top_out
-  assert approx_equal(p.origin_id, 2)
+  check_bproxy(p, i_seqs=(1,0), distance_ideal=3.5, weight=1, slack=2, limit=1, 
+      top_out=True, origin_id=2)
   p = p.sort_i_seqs()
-  assert p.i_seqs == (0,1)
-  assert approx_equal(p.distance_ideal, 3.5)
-  assert approx_equal(p.weight, 1)
-  assert approx_equal(p.slack, 2)
-  assert approx_equal(p.limit, 1)
-  assert p.top_out
-  assert approx_equal(p.origin_id, 2)
+  check_bproxy(p, i_seqs=(0,1), distance_ideal=3.5, weight=1, slack=2, limit=1, 
+      top_out=True, origin_id=2)
   p.distance_ideal = 35
-  assert approx_equal(p.distance_ideal, 35)
-  p.distance_ideal = 3.5
-  assert approx_equal(p.distance_ideal, 3.5)
   p.weight = 10
-  assert approx_equal(p.weight, 10)
-  p.weight = 1
-  assert approx_equal(p.weight, 1)
   p.slack = 3
-  assert approx_equal(p.slack, 3)
-  p.slack = 0
-  assert approx_equal(p.slack, 0)
   p.limit = 3
-  assert approx_equal(p.limit, 3)
-  p.limit = -1.0
-  assert approx_equal(p.limit, -1)
   p.top_out = True
-  assert p.top_out
-  p.top_out = False
-  assert not p.top_out
   p.origin_id = 3
-  assert approx_equal(p.origin_id, 3)
+  check_bproxy(p, i_seqs=(0,1), distance_ideal=35, weight=10, slack=3, limit=3, 
+      top_out=True, origin_id=3)
+  p.distance_ideal = 3.5
+  p.weight = 1
+  p.slack = 0
+  p.limit = -1.0
+  p.top_out = False
   p.origin_id = 0
-  assert approx_equal(p.origin_id, 0)
+  check_bproxy(p, i_seqs=(0,1))
   b = geometry_restraints.bond(
     sites=[(1,2,3),(2,4,6)],
     distance_ideal=3.5,
@@ -489,6 +455,7 @@ def exercise_bond():
         i_seqs=[1,0],
         distance_ideal=3.5,
         weight=1)
+      check_bproxy(p, i_seqs=(1,0), sym_op=sym_op)
     else:
       for proxy_t in (geometry_restraints.bond_simple_proxy,
                       geometry_restraints.bond_sym_proxy):
@@ -497,17 +464,8 @@ def exercise_bond():
           rt_mx_ji=sgtbx.rt_mx("-y,z,x"),
           distance_ideal=3.5,
           weight=1, slack=2, limit=1, top_out=True, origin_id=2)
-        assert p.rt_mx_ji == sym_op
-        assert p.i_seqs == (1,0)
-        assert approx_equal(p.distance_ideal, 3.5)
-        assert approx_equal(p.weight, 1)
-        assert approx_equal(p.slack, 2)
-        assert approx_equal(p.limit, 1)
-        assert p.top_out
-        assert approx_equal(p.origin_id, 2)
-    assert p.i_seqs == (1,0)
-    assert approx_equal(p.distance_ideal, 3.5)
-    assert approx_equal(p.weight, 1)
+        check_bproxy(p, i_seqs=(1,0), sym_op=sym_op, slack=2, limit=1,
+            top_out=True, origin_id=2)
   unit_cell = uctbx.unit_cell([15,25,30,90,90,90])
   sites_cart = flex.vec3_double([[1,2,3],[2,3,4]])
   b = geometry_restraints.bond(
@@ -1240,26 +1198,33 @@ def exercise_nonbonded():
 
 def exercise_angle():
   # test without symmetry operations
+  def check(p, i_seqs=(2,1,0), sym_ops=None, angle_ideal=95, 
+      weight=1, slack=0.0, origin_id=0):
+    assert p.i_seqs == i_seqs
+    if p.sym_ops is not None:
+      for i in range(len(sym_ops)):
+        assert p.sym_ops[i].as_double_array == sym_ops[i].as_double_array
+    else:
+      assert sym_ops is None # while p.sym_ops IS None
+    assert approx_equal(p.angle_ideal, angle_ideal)
+    assert approx_equal(p.weight, weight)
+    assert p.slack == slack
+    assert p.origin_id == origin_id
+
   p = geometry_restraints.angle_proxy(
     i_seqs=[2,1,0],
     angle_ideal=95,
     weight=1)
-  def check(p):
-    assert p.i_seqs == (2,1,0)
-    assert p.sym_ops is None
-    assert approx_equal(p.angle_ideal, 95)
-    assert approx_equal(p.weight, 1)
-    assert p.slack == 0.0
   check(p)
   p.angle_ideal = 86
   p.weight = 78
   p.slack = 12
-  assert approx_equal(p.angle_ideal, 86)
-  assert approx_equal(p.weight, 78)
-  assert approx_equal(p.slack, 12)
+  p.origin_id = 3
+  check(p, angle_ideal=86, weight=78, slack=12, origin_id=3)
   p.angle_ideal = 95
   p.weight = 1
   p.slack = 0
+  p.origin_id = 0
   check(p)
   p = geometry_restraints.angle_proxy(
     i_seqs=[2,1,0],
@@ -1268,19 +1233,14 @@ def exercise_angle():
     weight=1)
   check(p)
   p = p.sort_i_seqs()
-  assert p.i_seqs == (0,1,2)
+  check(p, i_seqs=(0,1,2))
   c = geometry_restraints.angle_proxy(
     i_seqs=[3,4,5],
     proxy=p)
-  assert c.i_seqs == (3,4,5)
-  assert c.sym_ops is None
-  assert approx_equal(c.angle_ideal, 95)
-  assert approx_equal(c.weight, 1)
+  check(c, i_seqs=(3,4,5))
   c = p.scale_weight(factor=3.14)
-  assert c.i_seqs == (0,1,2)
-  assert c.sym_ops is None
-  assert approx_equal(c.angle_ideal, 95)
-  assert approx_equal(c.weight, 3.14)
+  check(c, i_seqs=(0,1,2), weight=3.14)
+
   a = geometry_restraints.angle(
     sites=[(1,0,0),(0,0,0),(0,1,0)],
     angle_ideal=95,
@@ -1288,6 +1248,7 @@ def exercise_angle():
   assert approx_equal(a.sites, [(1,0,0),(0,0,0),(0,1,0)])
   assert approx_equal(a.angle_ideal, 95)
   assert approx_equal(a.weight, 1)
+  assert a.origin_id == 0
   assert a.have_angle_model
   assert approx_equal(a.angle_model, 90)
   assert approx_equal(a.delta, 5)
@@ -1298,12 +1259,14 @@ def exercise_angle():
      (572.95779513082323, 0.0, 0.0)))
   assert a.slack == 0.0
   sites_cart = flex.vec3_double([(1,0,0),(0,0,0),(0,1,0)])
+  p.origin_id = 3
   a = geometry_restraints.angle(
     sites_cart=sites_cart,
     proxy=p)
   assert approx_equal(a.sites, [(1,0,0),(0,0,0),(0,1,0)])
   assert approx_equal(a.angle_ideal, 95)
   assert approx_equal(a.weight, 1)
+  assert a.origin_id == 3
   assert a.have_angle_model
   assert approx_equal(a.angle_model, 90)
   proxies = geometry_restraints.shared_angle_proxy([p,p])
@@ -1320,6 +1283,7 @@ def exercise_angle():
     proxies=proxies,
     gradient_array=None)
   assert approx_equal(residual_sum, 2*25)
+
   # test with symmetry operations
   sym_ops = (sgtbx.rt_mx('-1+x,+y,+z'),sgtbx.rt_mx(),sgtbx.rt_mx())
   p = geometry_restraints.angle_proxy(
@@ -1327,25 +1291,20 @@ def exercise_angle():
     sym_ops=sym_ops,
     angle_ideal=95,
     weight=1)
-  assert p.i_seqs == (2,1,0)
-  assert p.sym_ops == sym_ops
+  check(p, sym_ops=sym_ops)
   c = geometry_restraints.angle_proxy(
     i_seqs=[3,4,5],
     proxy=p)
-  assert c.i_seqs == (3,4,5)
-  assert c.sym_ops == sym_ops
-  assert approx_equal(c.angle_ideal, 95)
-  assert approx_equal(c.weight, 1)
+  check(c, i_seqs=(3,4,5), sym_ops=sym_ops)
   c = p.scale_weight(factor=5.82)
-  assert c.sym_ops == sym_ops
-  assert approx_equal(c.weight, 5.82)
+  check(c, sym_ops=sym_ops, weight=5.82)
   p = p.sort_i_seqs()
-  assert p.i_seqs == (0,1,2)
-  assert p.sym_ops == (sgtbx.rt_mx(),sgtbx.rt_mx(),sgtbx.rt_mx('-1+x,+y,+z'))
-  assert approx_equal(p.angle_ideal, 95)
-  assert approx_equal(p.weight, 1)
+  check(p, 
+      i_seqs=(0,1,2), 
+      sym_ops=(sgtbx.rt_mx(),sgtbx.rt_mx(),sgtbx.rt_mx('-1+x,+y,+z')))
   unit_cell = uctbx.unit_cell([15,25,30,90,90,90])
   sites_cart = flex.vec3_double([(1,0,0),(0,1,0),(14,0,0)])
+  p.origin_id = 3
   a = geometry_restraints.angle(
     unit_cell=unit_cell,
     sites_cart=sites_cart,
@@ -1353,10 +1312,12 @@ def exercise_angle():
   assert approx_equal(a.sites, [(1,0,0),(0,1,0),(-1,0,0)])
   assert approx_equal(a.angle_ideal, 95)
   assert approx_equal(a.weight, 1)
+  assert a.origin_id == 3
   assert a.have_angle_model
   assert approx_equal(a.angle_model, 90)
   assert approx_equal(a.delta, 5)
   assert approx_equal(a.residual(), a.weight*a.delta**2)
+  p.origin_ud = 0
   proxies = geometry_restraints.shared_angle_proxy()
   for i in range(10): proxies.append(p)
   assert approx_equal(geometry_restraints.angle_deltas(
@@ -1380,7 +1341,7 @@ def exercise_angle():
     sym_ops=sym_ops,
     angle_ideal=95,
     weight=1)
-  assert p_sym.sym_ops == sym_ops
+  check(p_sym, sym_ops=sym_ops)
   angle_sym = geometry_restraints.angle(
     unit_cell=unit_cell,
     sites_cart=sites_cart,
@@ -1388,8 +1349,9 @@ def exercise_angle():
   p_no_sym = geometry_restraints.angle_proxy(
     i_seqs=[2,1,0],
     angle_ideal=95,
-    weight=1)
-  assert p_no_sym.sym_ops == None
+    weight=1,
+    origin_id=3)
+  check(p_no_sym, origin_id=3)
   angle_no_sym = geometry_restraints.angle(
     sites_cart=sites_cart,
     proxy=p_no_sym)
@@ -1410,26 +1372,22 @@ def exercise_angle():
   assert approx_equal(residual_sum, angle_sym.residual() + angle_no_sym.residual())
   #
   proxies = geometry_restraints.shared_angle_proxy([
-    geometry_restraints.angle_proxy([0,1,2], 1, 2),
-    geometry_restraints.angle_proxy([1,2,3], 2, 3),
-    geometry_restraints.angle_proxy([2,3,0], 3, 4),
-    geometry_restraints.angle_proxy([3,1,2], 4, 5)])
+    geometry_restraints.angle_proxy([0,1,2], 1, 2, 0, 0),
+    geometry_restraints.angle_proxy([1,2,3], 2, 3, 0, 1),
+    geometry_restraints.angle_proxy([2,3,0], 3, 4, 0, 2),
+    geometry_restraints.angle_proxy([3,1,2], 4, 5, 0, 3)])
   selected = proxies.proxy_select(n_seq=4, iselection=flex.size_t([0,2]))
   assert selected.size() == 0
   selected = proxies.proxy_select(n_seq=4, iselection=flex.size_t([0,1,2]))
   assert selected.size() == 1
-  assert selected[0].i_seqs == (0,1,2)
+  check(selected[0], i_seqs=(0,1,2), angle_ideal=1, weight=2)
   selected = proxies.proxy_select(n_seq=4, iselection=flex.size_t([0,2,3]))
   assert selected.size() == 1
-  assert selected[0].i_seqs == (1,2,0)
+  check(selected[0], i_seqs=(1,2,0), angle_ideal=3, weight=4, origin_id=2)
   selected = proxies.proxy_select(n_seq=4, iselection=flex.size_t([1,2,3]))
   assert selected.size() == 2
-  assert selected[0].i_seqs == (0,1,2)
-  assert selected[1].i_seqs == (2,0,1)
-  assert approx_equal(selected[0].angle_ideal, 2)
-  assert approx_equal(selected[1].angle_ideal, 4)
-  assert approx_equal(selected[0].weight, 3)
-  assert approx_equal(selected[1].weight, 5)
+  check(selected[0], i_seqs=(0,1,2), angle_ideal=2, weight=3, origin_id=1)
+  check(selected[1], i_seqs=(2,0,1), angle_ideal=4, weight=5, origin_id=3)
   selected = proxies.proxy_select(n_seq=4, iselection=flex.size_t([0,1,2,3]))
   assert selected.size() == 4
   #
@@ -1437,8 +1395,8 @@ def exercise_angle():
   assert rest.size() == 0
   rest = proxies.proxy_remove(selection=flex.bool([False,True,True,True]))
   assert rest.size() == 2
-  assert rest[0].i_seqs == (0,1,2)
-  assert rest[1].i_seqs == (2,3,0)
+  check(rest[0], i_seqs=(0,1,2), angle_ideal=1, weight=2, origin_id=0)
+  check(rest[1], i_seqs=(2,3,0), angle_ideal=3, weight=4, origin_id=2)
   rest = proxies.proxy_remove(selection=flex.bool([True,True,True,False]))
   assert rest.size() == 3
   #
@@ -1499,51 +1457,22 @@ def exercise_angle():
     proxy=a_proxy)
   for g,e in zip(a_gradient_array, fd_grads):
     assert approx_equal(g, e)
+
   #exercise slack parameter
-  a = geometry_restraints.angle(
-    sites=[(1,0,0),(0,0,0),(0,1,0)],
-    angle_ideal=95,
-    weight=1,
-    slack=0)
-  assert approx_equal(a.angle_model, 90)
-  assert approx_equal(a.delta, 5)
-  assert approx_equal(a.delta_slack, 5)
-  assert approx_equal(a.residual(), 25)
-  a = geometry_restraints.angle(
-    sites=[(1,0,0),(0,0,0),(0,1,0)],
-    angle_ideal=95,
-    weight=1,
-    slack=3)
-  assert approx_equal(a.delta, 5)
-  assert approx_equal(a.delta_slack, 2)
-  a = geometry_restraints.angle(
-    sites=[(1,0,0),(0,0,0),(0,1,0)],
-    angle_ideal=95,
-    weight=1,
-    slack=5)
-  assert approx_equal(a.delta, 5)
-  assert approx_equal(a.delta_slack, 0)
-  a = geometry_restraints.angle(
-    sites=[(1,0,0),(0,0,0),(0,1,0)],
-    angle_ideal=95,
-    weight=1,
-    slack=7)
-  assert approx_equal(a.delta, 5)
-  assert approx_equal(a.delta_slack, 0)
-  a = geometry_restraints.angle(
-    sites=[(1,0,0),(0,0,0),(0,1,0)],
-    angle_ideal=85,
-    weight=1,
-    slack=3)
-  assert approx_equal(a.delta, -5)
-  assert approx_equal(a.delta_slack, -2)
-  a = geometry_restraints.angle(
-    sites=[(1,0,0),(0,0,0),(0,1,0)],
-    angle_ideal=85,
-    weight=1,
-    slack=0)
-  assert approx_equal(a.delta, -5)
-  assert approx_equal(a.delta_slack, -5)
+  # ans: delta, delta_slack, residual
+  ans = [(5,5,25),(5,2,4), (5,0,0), (5,0,0), (-5,-2,4), (-5,-5,25)]
+  for i, vals in enumerate(
+      [(95,0),(95,3),(95,5),(95,7),(85,3),(85,0)]):
+    a = geometry_restraints.angle(
+      sites=[(1,0,0),(0,0,0),(0,1,0)],
+      angle_ideal=vals[0],
+      weight=1,
+      slack=vals[1])
+    # print i, vals, a.residual()
+    assert approx_equal(a.angle_model, 90)
+    assert approx_equal(a.delta, ans[i][0])
+    assert approx_equal(a.delta_slack, ans[i][1])
+    assert approx_equal(a.residual(), ans[i][2])
 
 def exercise_dihedral():
   u_mx = sgtbx.rt_mx() # unit matrix
@@ -2400,12 +2329,17 @@ def exercise_proxy_show():
   sorted_asu_proxies = geometry_restraints.bond_sorted_asu_proxies(
     asu_mappings=asu_mappings)
   sio = StringIO()
+  print "====="
+  print sio.getvalue()
+  print "====="
   sorted_asu_proxies.show_sorted(
     by_value="residual",
     sites_cart=sites_cart_cry,
     f=sio)
+  print(sio.getvalue())
   assert not show_diff(sio.getvalue(), """\
 Bond restraints: 0
+Sorted by residual:
 """)
   sorted_asu_proxies = geometry_restraints.bond_sorted_asu_proxies(
     pair_asu_table=pair_asu_table)
