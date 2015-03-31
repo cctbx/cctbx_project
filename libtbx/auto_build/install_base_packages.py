@@ -163,7 +163,7 @@ class installer (object) :
     # On Mac OS X all of the Python-related executables located in base/bin
     # are actually symlinks to absolute paths inside the Python.framework, so
     # we replace them with symlinks to relative paths.
-    if self.flag_is_mac:
+    if self.flag_is_mac and not self.options.download_only:
       print >> log, "Regenerating symlinks with relative paths..."
       regenerate_relative_symlinks(op.join(self.base_dir, "bin"), log=log)
 
