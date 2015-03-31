@@ -23,12 +23,14 @@ namespace cctbx { namespace geometry_restraints {
       i_seqs_type const& i_seqs_,
       double angle_ideal_,
       double weight_,
-      double slack_=0)
+      double slack_=0,
+      unsigned char origin_id_=0)
     :
       i_seqs(i_seqs_),
       angle_ideal(angle_ideal_),
       weight(weight_),
-      slack(slack_)
+      slack(slack_),
+      origin_id(origin_id_)
     {}
 
     //! Constructor.
@@ -37,13 +39,15 @@ namespace cctbx { namespace geometry_restraints {
       optional_container<af::shared<sgtbx::rt_mx> > const& sym_ops_,
       double angle_ideal_,
       double weight_,
-      double slack_=0)
+      double slack_=0,
+      unsigned char origin_id_=0)
     :
       i_seqs(i_seqs_),
       sym_ops(sym_ops_),
       angle_ideal(angle_ideal_),
       weight(weight_),
-      slack(slack_)
+      slack(slack_),
+      origin_id(origin_id_)
     {
       if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
@@ -59,7 +63,8 @@ namespace cctbx { namespace geometry_restraints {
       sym_ops(proxy.sym_ops),
       angle_ideal(proxy.angle_ideal),
       weight(proxy.weight),
-      slack(proxy.slack)
+      slack(proxy.slack),
+      origin_id(proxy.origin_id)
     {
       if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
@@ -70,7 +75,8 @@ namespace cctbx { namespace geometry_restraints {
     scale_weight(
       double factor) const
     {
-      return angle_proxy(i_seqs, sym_ops, angle_ideal, weight*factor, slack);
+      return angle_proxy(i_seqs, sym_ops, angle_ideal, weight*factor, slack,
+          origin_id);
     }
 
     //! Sorts i_seqs such that i_seq[0] < i_seq[2].
@@ -97,6 +103,8 @@ namespace cctbx { namespace geometry_restraints {
     double weight;
     //! Parameter.
     double slack;
+    //! Parameter.
+    unsigned char origin_id;
   };
 
   //! Residual and gradient calculations for angle restraint.
@@ -111,12 +119,14 @@ namespace cctbx { namespace geometry_restraints {
         af::tiny<scitbx::vec3<double>, 3> const& sites_,
         double angle_ideal_,
         double weight_,
-        double slack_=0)
+        double slack_=0,
+        unsigned char origin_id_=0)
       :
         cctbx::geometry::angle<double>(sites_),
         angle_ideal(angle_ideal_),
         weight(weight_),
-        slack(slack_)
+        slack(slack_),
+        origin_id(origin_id_)
       {
         init_deltas();
       }
@@ -132,7 +142,8 @@ namespace cctbx { namespace geometry_restraints {
       :
         angle_ideal(proxy.angle_ideal),
         weight(proxy.weight),
-        slack(proxy.slack)
+        slack(proxy.slack),
+        origin_id(proxy.origin_id)
       {
         for(int i=0;i<3;i++) {
           std::size_t i_seq = proxy.i_seqs[i];
@@ -154,7 +165,8 @@ namespace cctbx { namespace geometry_restraints {
       :
         angle_ideal(proxy.angle_ideal),
         weight(proxy.weight),
-        slack(proxy.slack)
+        slack(proxy.slack),
+        origin_id(proxy.origin_id)
       {
         for(int i=0;i<3;i++) {
           std::size_t i_seq = proxy.i_seqs[i];
@@ -384,6 +396,7 @@ namespace cctbx { namespace geometry_restraints {
        */
       double delta;
       double delta_slack;
+      unsigned char origin_id;
 
     protected:
       void

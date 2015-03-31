@@ -27,20 +27,24 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("angle_proxy", no_init)
-        .def(init<af::tiny<unsigned, 3> const&, double, double, double>((
+        .def(init<
+          af::tiny<unsigned, 3> const&, double, double, 
+          double, unsigned char>((
           arg("i_seqs"), arg("angle_ideal"), arg("weight"),
-          arg("slack")=0)))
+          arg("slack")=0, arg("origin_id")=0)))
         .def(init<
           af::tiny<unsigned, 3> const&,
           optional_container<af::shared<sgtbx::rt_mx> > const&,
           double,
           double,
-          double>((
+          double,
+          unsigned char>((
             arg("i_seqs"),
             arg("sym_ops"),
             arg("angle_ideal"),
             arg("weight"),
-            arg("slack")=0)))
+            arg("slack")=0,
+            arg("origin_id")=0)))
         .def(init<af::tiny<unsigned, 3> const&, w_t const&>((
           arg("i_seqs"), arg("proxy"))))
         .def("scale_weight", &w_t::scale_weight, (arg("factor")))
@@ -50,6 +54,7 @@ namespace {
         .def_readwrite("angle_ideal", &w_t::angle_ideal)
         .def_readwrite("weight", &w_t::weight)
         .def_readwrite("slack", &w_t::slack)
+        .def_readwrite("origin_id", &w_t::origin_id)
       ;
       {
         typedef return_internal_reference<> rir;
@@ -86,9 +91,10 @@ namespace {
         .def(init<af::tiny<scitbx::vec3<double>, 3> const&,
           double,
           double,
-          double>(
+          double,
+          unsigned char>(
           (arg("sites"), arg("angle_ideal"), arg("weight"),
-          arg("slack")=0)))
+          arg("slack")=0, arg("origin_id")=0)))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   angle_proxy const&>(
           (arg("sites_cart"), arg("proxy"))))
@@ -104,6 +110,7 @@ namespace {
         .def_readonly("angle_model", &w_t::angle_model)
         .def_readonly("delta", &w_t::delta)
         .def_readonly("delta_slack", &w_t::delta_slack)
+        .def_readonly("origin_id", &w_t::origin_id)
         .def("residual", &w_t::residual)
         .def("grads_and_curvs", &w_t::grads_and_curvs, (
           arg("epsilon")=1e-100))
