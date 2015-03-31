@@ -89,7 +89,7 @@ copy_phil() {
 
 args=`getopt c:i:o:p:q:r:st:x: $*`
 if test $? -ne 0; then
-    echo "Usage: lsf.sh -c config -r run-num [-i input] [-o output] [-p num-cpu] [-q queue] [-t trial] [-x exp]" > /dev/stderr
+    echo "Usage: lsf.sh -c config -r run-num [-i data_dir] [-o output] [-p num-cpu] [-q queue] [-t trial] [-x exp]" > /dev/stderr
     cleanup_and_exit 1
 fi
 
