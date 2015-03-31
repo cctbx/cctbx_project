@@ -225,13 +225,13 @@ def make_mp_input(input_list, gs_params, gs_range):
 #       random_number = random.randrange(0, len(input_list))
 #       print input_list[random_number]
 #       random_inp_list.append(input_list[random_number])
-# 
+#
 #     gs_params.grid_search.flag_on = True
 #     gs_params.grid_search.h_avg = 5
 #     gs_params.grid_search.h_std = 4
 #     gs_params.grid_search.a_avg = 5
 #     gs_params.grid_search.a_std = 4
-# 
+#
 #     inp_list = random_inp_list
 #   else:
 #     inp_list = input_list
@@ -318,4 +318,3 @@ def main_log(logfile, entry):
 
   with open(logfile, 'a') as logfile:
     logfile.write('{}\n'.format(entry))
-

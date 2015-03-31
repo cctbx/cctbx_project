@@ -11,7 +11,7 @@
 
 from __future__ import division
 
-from scitbx import matrix
+#from scitbx import matrix
 
 from dxtbx.format.FormatSMVRigakuA200 import FormatSMVRigakuA200
 

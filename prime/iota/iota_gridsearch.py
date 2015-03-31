@@ -133,7 +133,7 @@ def integrate_one_image(mp_entry, n_int, log_dir, save_pickle, gs_params):
     uc = int_final['cell'].split()
     sg = int_final['spacegroup']
     res = int_final['resolution']
-    
+
     Is = int_final['I_Observations'].data()
     sigmas = int_final['I_Observations'].sigmas()
     I_over_sigI = Is / sigmas
@@ -343,12 +343,12 @@ def final_integrate_one(mp_entry, log_dir, n_int, gs_params):
     spots = len(Is)
     strong_spots = len([i for i in I_over_sigI if i >= gs_params.min_sigma])
 
-    results = [img_filename, spot_height, spot_area, resol, strong_spots, 
+    results = [img_filename, spot_height, spot_area, resol, strong_spots,
               dom_size, mosaicity, pos_rmsd, uc]
 
     int_status = 'RES: {:>4.2f} SPOTS: {:>5} DOM: {:>8.2f} '\
                  'MOS: {:>6.4f} MQ:{:>6.2f} RMSD: {:>4.2f}'\
-                 ''.format(resol, strong_spots, dom_size, mosaicity, 
+                 ''.format(resol, strong_spots, dom_size, mosaicity,
                            mos_quality, pos_rmsd)
 
     if gs_params.advanced.pred_img.flag == True:
@@ -392,8 +392,8 @@ def final_integrate_one(mp_entry, log_dir, n_int, gs_params):
     gs_prog.update(prog_count * prog_step)
 
   return results
-  
-  
+
+
 def int_single_image(mp_entry, log_dir, n_int, gs_params):
   """ Performs grid search of spotfinding parameters. Set aside for single-image
       mode ONLY. Need to clean this up later such that have only one integration
@@ -515,7 +515,7 @@ def int_single_image(mp_entry, log_dir, n_int, gs_params):
     uc = int_final['cell'].split()
     sg = int_final['spacegroup']
     res = int_final['resolution']
-    
+
     Is = int_final['I_Observations'].data()
     sigmas = int_final['I_Observations'].sigmas()
     I_over_sigI = Is / sigmas
@@ -536,8 +536,8 @@ def int_single_image(mp_entry, log_dir, n_int, gs_params):
                      float(uc[3]), float(uc[4]), float(uc[5]))
     int_status = 'RES: {:>4.2f} SG: {:^{wsg}}  CELL: {}'\
                  ''.format(init_res, sg, cell, wsg = len(str(sg)))
-# 
-# 
+#
+#
 #     int_status = 'RES: {:>4.2f} SPOTS: {:>5} DOM: {:>8.2f} '\
 #                  'MOS: {:>6.4f} MQ:{:>6.2f} RMSD: {:>4.2f}'\
 #                  ''.format(resol, num_spots, dom_size, mosaicity, mos_quality,
@@ -569,7 +569,7 @@ def int_single_image(mp_entry, log_dir, n_int, gs_params):
   print grid_search_output
 
   return results
-  
+
 # ============================================================================ #
 # =========================== EXPERIMENTAL SECTION =========================== #
 
@@ -686,7 +686,7 @@ def exp_integrate_one(mp_entry, log_dir, n_int, gs_params):
       int_final = info.organizer.info['best_integration']['integration']
       int_results = info.organizer.info['best_integration']['integration']['AD14_parameters']
 
-      
+
       with open('{}/integrated.lst'.format(os.path.abspath(gs_params.output)), \
                                                             'a') as final_int:
         final_int.write('{}\n'.format(current_file))
@@ -720,7 +720,7 @@ def exp_integrate_one(mp_entry, log_dir, n_int, gs_params):
     spacegroup =  info.organizer.info['best_integration']['integration']['spacegroup']
     observations = results_one_image.get_obs(spacegroup)
     number_of_reflections = len(observations)
-    
+
     print "results_one_image = {}".format(results_one_image)
     print "spacegroup = {}".format(spacegroup)
     print "observations = {}".format(observations)

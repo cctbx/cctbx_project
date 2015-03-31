@@ -10,7 +10,7 @@
 
 from __future__ import division
 
-import time
+#import time
 from scitbx import matrix
 
 from dxtbx.format.FormatSMVRigaku import FormatSMVRigaku
@@ -180,7 +180,7 @@ class FormatSMVRigakuSaturnNoTS(FormatSMVRigaku):
 
   def _scan(self):
     '''Return the scan information for this image.'''
-    import calendar
+    #import calendar
 
     rotation = map(float, self._header_dictionary['ROTATION'].split())
 

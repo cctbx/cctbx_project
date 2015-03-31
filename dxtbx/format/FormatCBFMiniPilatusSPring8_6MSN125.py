@@ -12,8 +12,8 @@
 from __future__ import division
 
 from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
-from dxtbx.model import ParallaxCorrectedPxMmStrategy
-from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
+#from dxtbx.model import ParallaxCorrectedPxMmStrategy
+#from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
 
 class FormatCBFMiniPilatusSPring8_6MSN125(FormatCBFMiniPilatus):
   '''A class for reading mini CBF format Pilatus images for 6M SN 125, normally

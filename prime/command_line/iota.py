@@ -115,7 +115,7 @@ def generate_input(gs_params):
 
   # Make input/output lists for multiprocessing
   cmd.Command.start("Generating multiprocessing input")
-  mp_input_list, mp_output_list = inp.make_mp_input(input_list, gs_params, 
+  mp_input_list, mp_output_list = inp.make_mp_input(input_list, gs_params,
                                                        gs_range)
   cmd.Command.end("Generating multiprocessing input -- DONE")
 
@@ -158,7 +158,7 @@ def advanced_input(gs_range, gs_params):
   print "END OF RUN"
 # ============================================================================ #
 
-def run_grid_search(txt_out, gs_params, gs_range, input_dir_list, 
+def run_grid_search(txt_out, gs_params, gs_range, input_dir_list,
                     input_list, mp_input_list):
   """ Runs grid search in multiprocessing mode.
 
@@ -496,7 +496,7 @@ if __name__ == "__main__":
 
   #run grid search
   if gs_params.grid_search.flag_on:
-    run_grid_search(txt_out, gs_params, gs_range, input_dir_list, 
+    run_grid_search(txt_out, gs_params, gs_range, input_dir_list,
                     input_list, mp_input_list)
 
   #run pickle selection
