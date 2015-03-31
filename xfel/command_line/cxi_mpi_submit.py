@@ -73,6 +73,10 @@ phil_scope = parse('''
     trial = None
       .type = int
       .help = "Trial number for this job.  Leave blank to auto determine."
+    xtc_dir = None
+      .type = str
+      .help = "Optional path to data directory if it's non-standard. Only needed if xtc"
+      .help = "streams are not in the standard location for your PSDM installation."
   }
   output {
     output_dir = "."
@@ -228,6 +232,9 @@ class Script(object):
         params.mp.nproc, os.path.join(stdoutdir, "log.out"), params.mp.queue, config_path,
         params.input.experiment, params.input.run_num)
 
+      if params.input.xtc_dir is not None:
+        command += " input.xtc_dir=%s"%params.input.xtc_dir
+
       f = open(submit_path, 'w')
       f.write("#! /bin/sh\n")
       f.write("\n")
@@ -252,8 +259,13 @@ class Script(object):
       f.write(". %s\n"%setpaths_path)
       f.write("\n")
 
-      f.write("cxi.xtc_process input.cfg=%s input.experiment=%s input.run_num=%d mp.method=sge 1> %s 2> %s\n"%( \
-        config_path, params.input.experiment, params.input.run_num,
+      if params.input.xtc_dir is None:
+        extra_str = ""
+      else:
+        extra_str = "input.xtc_dir=%s"%params.input.xtc_dir
+
+      f.write("cxi.xtc_process input.cfg=%s input.experiment=%s input.run_num=%d mp.method=sge %s 1> %s 2> %s\n"%( \
+        config_path, params.input.experiment, params.input.run_num, extra_str,
         os.path.join(stdoutdir, "log_$SGE_TASK_ID.out"), os.path.join(stdoutdir, "log_$SGE_TASK_ID.err")))
     else:
       raise Sorry("Multiprocessing method %s not recognized"%params.mp.method)
