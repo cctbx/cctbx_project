@@ -371,6 +371,7 @@ master_params_str = """\
   {
      include scope iotbx.ncs.simple_ncs_phil_params
      include scope iotbx.ncs.ncs_search_options
+     include scope iotbx.ncs.ncs_groups
   }
   %(clash_guard_params_str)s
 """ % vars()
