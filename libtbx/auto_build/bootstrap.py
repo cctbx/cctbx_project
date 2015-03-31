@@ -674,7 +674,8 @@ class Builder(object):
         self.python_base,
         self.opjoin('..', 'modules', 'cctbx_project', 'libtbx', 'configure.py')
         ] + self.get_libtbx_configure(),
-      workdir=['build']
+      workdir=['build'],
+      description="run configure.py",
     ))
 
   def add_make(self, nproc=4):
