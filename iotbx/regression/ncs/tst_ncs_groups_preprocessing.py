@@ -6,6 +6,7 @@ from datetime import datetime
 from scitbx import matrix
 import iotbx.ncs as ncs
 from iotbx import pdb
+import iotbx.phil
 import unittest
 import shutil
 import os
@@ -396,6 +397,31 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     test = ['ncs.constraint_group' in x for x in file_data]
     self.assertTrue(test.count(True)==1)
 
+  def test_ncs_phil_format(self):
+    """ test ncs phil group format """
+    params_str = """\
+    include scope iotbx.ncs.ncs_groups
+    """
+    params = iotbx.phil.parse(params_str,process_includes=True)
+    phil_str = params.as_str()
+    phil_list = phil_str.splitlines()
+    answer = [
+      'refinement {',
+      '  ncs {',
+      '    restraint_group {',
+      '      reference = None',
+      '      selection = None',
+      '    }',
+      '    constraint_group {',
+      '      reference = None',
+      '      selection = None',
+      '    }',
+      '  }',
+      '}']
+    phil_list = map(str.strip,phil_list)
+    answer = map(str.strip,answer)
+    self.assertEqual(phil_list,answer)
+
   def tearDown(self):
     """ remove temp files and folder """
     os.chdir(self.currnet_dir)
@@ -778,7 +804,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_spec_reading']
+  tests = ['test_ncs_phil_format']
   suite = unittest.TestSuite(map(TestNcsGroupPreprocessing,tests))
   return suite
 
