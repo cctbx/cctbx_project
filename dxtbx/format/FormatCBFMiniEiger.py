@@ -13,7 +13,7 @@ from __future__ import division
 from dxtbx.format.FormatCBFMini import FormatCBFMini
 from dxtbx.format.FormatCBFMiniPilatusHelpers import \
      get_pilatus_timestamp
-from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
+#from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
 from dxtbx.model import ParallaxCorrectedPxMmStrategy
 
 class FormatCBFMiniEiger(FormatCBFMini):

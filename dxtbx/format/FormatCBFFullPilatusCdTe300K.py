@@ -9,10 +9,10 @@
 
 from __future__ import division
 
-import pycbf
+#import pycbf
 
 from dxtbx.format.FormatCBFFullPilatus import FormatCBFFullPilatus
-from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
+#from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
 
 class FormatCBFFullPilatusCdTe300K(FormatCBFFullPilatus):
   '''An image reading class for full CBF format images from Pilatus

@@ -179,9 +179,9 @@ def best_file_selection(gs_params, output_entry, log_dir, n_int):
       subset = [j[1] for j in enumerate(sorted_entries) \
                 if j[0] <= len(sorted_entries) * 0.25]
       sub_spots = [sp[10] for sp in subset]
-      
+
       best = subset[np.argmax(sub_spots)]
-     
+
       with open('{}/selected.lst'.format(os.path.abspath(gs_params.output)), \
                                                             'a') as sel_int:
         sel_int.write('{}\n'.format(input_file))

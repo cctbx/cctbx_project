@@ -31,7 +31,7 @@ def read_mask():
   if not __mask:
     import os
     import cPickle as pickle
-    from scitbx.array_family import flex
+    #from scitbx.array_family import flex
     source_dir = os.path.split(__file__)[0]
     mask_file = os.path.join(source_dir, 'FormatCBFMiniPilatusDLS12M.pickle')
     __mask = pickle.load(open(mask_file, 'rb'))

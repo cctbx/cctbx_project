@@ -1,3 +1,4 @@
+from __future__ import division
 from iotbx.pdb import common_residue_names_get_class
 import sys
 from scitbx.array_family import flex
