@@ -514,7 +514,6 @@ class _(boost.python.injector, shared_bond_simple_proxy):
     i_proxies_sorted = flex.sort_permutation(data=data_to_sort, reverse=True)
     if (max_items is not None):
       i_proxies_sorted = i_proxies_sorted[:max_items]
-    # smallest_distance_model = None # not used
     sorted_table = []
     for i_proxy in i_proxies_sorted:
       proxy = self[i_proxy]
@@ -541,9 +540,6 @@ class _(boost.python.injector, shared_bond_simple_proxy):
          restraint.slack, restraint.delta,
          weight_as_sigma(weight=restraint.weight), restraint.weight,
          restraint.residual(), sym_op_j, rt_mx))
-      # if (smallest_distance_model is None # not used
-      #     or smallest_distance_model > restraint.distance_model):
-      #   smallest_distance_model = restraint.distance_model
     n_not_shown = data_to_sort.size() - i_proxies_sorted.size()
     return sorted_table, n_not_shown
 
@@ -554,7 +550,8 @@ class _(boost.python.injector, shared_bond_simple_proxy):
                   unit_cell=None,
                   f=None,
                   prefix="",
-                  max_items=None):
+                  max_items=None,
+                  origin_id=None):
     if f is None: f = sys.stdout
     # print >> f, "%sBond restraints: %d" % (prefix, self.size())
     _bond_show_sorted_impl(self, by_value,
@@ -563,7 +560,8 @@ class _(boost.python.injector, shared_bond_simple_proxy):
                            unit_cell=unit_cell,
                            f=f,
                            prefix=prefix,
-                           max_items=max_items)
+                           max_items=max_items,
+                           origin_id=origin_id)
 
   def deltas(self, sites_cart, unit_cell=None):
     if unit_cell is None:
@@ -692,7 +690,6 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
       asu_mappings = None
     else:
       asu_mappings = self.asu_mappings()
-    # smallest_distance_model = None # is not used anywhere
     n_simple = self.simple.size()
     sorted_table = []
     n = 0
@@ -731,9 +728,6 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
         n_outputted += 1
       else:
         n_excluded += 1
-      # if (smallest_distance_model is None # is not used anywhere
-      #     or smallest_distance_model > restraint.distance_model):
-      #   smallest_distance_model = restraint.distance_model
       n += 1
     n_not_shown = correct_id_proxies - n_outputted
     return sorted_table, n_not_shown
@@ -783,7 +777,6 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
         max_items=None,
         origin_id=None):
     if f is None: f = sys.stdout
-    # print "origin_id", origin_id
     # print >> f, "%sBond restraints: %d" % (prefix, self.n_total())
     _bond_show_sorted_impl(self, by_value,
                           sites_cart=sites_cart,
@@ -1013,17 +1006,42 @@ class _(boost.python.injector, shared_angle_proxy):
       return angle_residuals(
         unit_cell=unit_cell, sites_cart=sites_cart, proxies=self)
 
+  def get_filtered_deltas(self,
+      sites_cart,
+      origin_id=None):
+    # ANGLE
+    n_proxies = self.size()
+    if (n_proxies == 0): return None
+    if origin_id is None:
+      if unit_cell is None:
+        result = flex.abs(O.deltas(sites_cart=sites_cart))
+      else:
+        result = flex.abs(
+          O.deltas(unit_cell=unit_cell, sites_cart=sites_cart))
+    else:
+      result = flex.double()
+      for i in range(n_proxies):
+        proxy = self[i]
+        if proxy.origin_id == origin_id:
+          restraint = angle(
+            sites_cart=sites_cart,
+            proxy=proxy)
+          result.append(restraint.delta)
+    return result if len(result) > 0 else None
+
   def show_histogram_of_deltas(self,
         sites_cart,
         unit_cell=None,
         n_slots=5,
         f=None,
-        prefix=""):
+        prefix="",
+        origin_id=None):
     return _show_histogram_of_deltas_impl(O=self,
       proxy_label="bond angle",
       format_cutoffs="%8.2f",
       unit_cell=unit_cell,
-      sites_cart=sites_cart, n_slots=n_slots, f=f, prefix=prefix)
+      sites_cart=sites_cart, n_slots=n_slots, f=f, prefix=prefix,
+      origin_id=origin_id)
 
   def show_sorted(self,
         by_value,
@@ -1032,25 +1050,30 @@ class _(boost.python.injector, shared_angle_proxy):
         unit_cell=None,
         f=None,
         prefix="",
-        max_items=None):
+        max_items=None,
+        origin_id=None):
     _show_sorted_impl(O=self,
         proxy_type=angle,
         proxy_label="Bond angle",
         item_label="angle",
         by_value=by_value, unit_cell=unit_cell, sites_cart=sites_cart,
-        site_labels=site_labels, f=f, prefix=prefix, max_items=max_items)
+        site_labels=site_labels, f=f, prefix=prefix, max_items=max_items,
+        origin_id=origin_id)
 
   def get_sorted (self,
         by_value,
         sites_cart,
         site_labels=None,
         unit_cell=None,
-        max_items=None):
+        max_items=None,
+        origin_id=None):
     return _get_sorted_impl(O=self,
         proxy_type=angle,
         by_value=by_value, unit_cell=unit_cell, sites_cart=sites_cart,
         site_labels=site_labels, max_items=max_items,
-        get_restraints_only=False)
+        get_restraints_only=False, origin_id=origin_id)
+
+
 
 class _(boost.python.injector, dihedral):
   def _show_sorted_item(O, f, prefix):
@@ -1515,16 +1538,25 @@ def _show_histogram_of_deltas_impl(O,
         sites_cart,
         n_slots,
         f,
-        prefix):
+        prefix,
+        origin_id=None):
     if (O.size() == 0): return
     if (f is None): f = sys.stdout
     print >> f, "%sHistogram of %s deviations from ideal:" % (
       prefix, proxy_label)
-    if unit_cell is None:
-      data = flex.abs(O.deltas(sites_cart=sites_cart))
+    if origin_id is not None:
+      sorted_table, n_not_shown = self.get_sorted(
+                        by_value="delta",
+                        sites_cart=sites_cart,
+                        origin_id=origin_id)
+      hd = [x[2] for x in sorted_table]
+      hdata = flex.double(hd)
     else:
-      data = flex.abs(
-        O.deltas(unit_cell=unit_cell, sites_cart=sites_cart))
+      if unit_cell is None:
+        data = flex.abs(O.deltas(sites_cart=sites_cart))
+      else:
+        data = flex.abs(
+          O.deltas(unit_cell=unit_cell, sites_cart=sites_cart))
     histogram = flex.histogram(
       data=data,
       n_slots=n_slots)
@@ -1543,7 +1575,8 @@ def _get_sorted_impl(O,
         sites_cart,
         site_labels,
         max_items,
-        get_restraints_only=True):
+        get_restraints_only=True,
+        origin_id=None):
   assert by_value in ["residual", "delta"]
   assert site_labels is None or len(site_labels) == sites_cart.size()
   if (O.size() == 0): return None, None
@@ -1562,46 +1595,57 @@ def _get_sorted_impl(O,
   else:
     raise AssertionError
   i_proxies_sorted = flex.sort_permutation(data=data_to_sort, reverse=True)
-  if (max_items is not None):
-    i_proxies_sorted = i_proxies_sorted[:max_items]
+  n_total_proxies = len(i_proxies_sorted)
+  if max_items is None:
+    max_items = n_total_proxies
   sorted_table = []
-  for i_proxy in i_proxies_sorted:
-    proxy = O[i_proxy]
-    labels = []
-    labels_j = []
-    for n, i_seq in enumerate(proxy.i_seqs):
-      if (site_labels is None): l = str(i_seq)
-      else:                     l = site_labels[i_seq]
-      if unit_cell and proxy.sym_ops:
-        sym_op = proxy.sym_ops[n]
-        if not sym_op.is_unit_mx():
-          l += "  %s" %sym_op.as_xyz()
-      labels.append(l)
-    if proxy_type==parallelity:
-      for n, i_seq in enumerate(proxy.j_seqs):
+  n_wrong_origin_id = 0
+  n_added_proxies = 0
+  i = 0
+  while i < n_total_proxies and n_added_proxies < max_items:
+    proxy = O[i_proxies_sorted[i]]
+    if (origin_id is None or
+       (origin_id is not None and hasattr(proxy, origin_id)
+        and proxy.origin_id==origin_id)):
+      labels = []
+      labels_j = []
+      for n, i_seq in enumerate(proxy.i_seqs):
         if (site_labels is None): l = str(i_seq)
         else:                     l = site_labels[i_seq]
         if unit_cell and proxy.sym_ops:
           sym_op = proxy.sym_ops[n]
           if not sym_op.is_unit_mx():
             l += "  %s" %sym_op.as_xyz()
-        labels_j.append(l)
-      labels = [labels,labels_j]
-    if unit_cell is None:
-      restraint = proxy_type(
-        sites_cart=sites_cart,
-        proxy=proxy)
+        labels.append(l)
+      if proxy_type==parallelity:
+        for n, i_seq in enumerate(proxy.j_seqs):
+          if (site_labels is None): l = str(i_seq)
+          else:                     l = site_labels[i_seq]
+          if unit_cell and proxy.sym_ops:
+            sym_op = proxy.sym_ops[n]
+            if not sym_op.is_unit_mx():
+              l += "  %s" %sym_op.as_xyz()
+          labels_j.append(l)
+        labels = [labels,labels_j]
+      if unit_cell is None:
+        restraint = proxy_type(
+          sites_cart=sites_cart,
+          proxy=proxy)
+      else:
+        restraint = proxy_type(
+          unit_cell=unit_cell,
+          sites_cart=sites_cart,
+          proxy=proxy)
+      if get_restraints_only :
+        sorted_table.append((labels, restraint))
+      else :
+        restraint_info = restraint._get_sorted_item()
+        sorted_table.append([labels] + restraint_info)
+      n_added_proxies += 1
     else:
-      restraint = proxy_type(
-        unit_cell=unit_cell,
-        sites_cart=sites_cart,
-        proxy=proxy)
-    if get_restraints_only :
-      sorted_table.append((labels, restraint))
-    else :
-      restraint_info = restraint._get_sorted_item()
-      sorted_table.append([labels] + restraint_info)
-  n_not_shown = O.size() - i_proxies_sorted.size()
+      n_wrong_origin_id += 1
+    i += 1
+  n_not_shown = n_total_proxies - n_added_proxies - n_wrong_origin_id
   return sorted_table, n_not_shown
 
 def _show_sorted_impl(O,
@@ -1614,7 +1658,8 @@ def _show_sorted_impl(O,
         site_labels,
         f,
         prefix,
-        max_items):
+        max_items,
+        origin_id=None):
   if (f is None): f = sys.stdout
   sorted_table, n_not_shown = _get_sorted_impl(O,
         proxy_type=proxy_type,
@@ -1623,7 +1668,8 @@ def _show_sorted_impl(O,
         sites_cart=sites_cart,
         site_labels=site_labels,
         max_items=max_items,
-        get_restraints_only=True)
+        get_restraints_only=True,
+        origin_id=origin_id)
   print >> f, "%s%s restraints: %d" % (prefix, proxy_label, O.size())
   if (O.size() == 0): return
   if (proxy_type is dihedral):
