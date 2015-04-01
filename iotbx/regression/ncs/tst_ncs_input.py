@@ -569,6 +569,55 @@ ATOM      5  OG  SER H  26      48.013 -61.937  68.570  1.00 21.58           O
 ENDMDL
 """
 
+pdb_str_13 = """\
+ATOM      1  P    DG A 101      29.431  -7.266  16.571  1.00 20.00           P
+ATOM      2  OP1  DG A 101      28.043  -6.752  16.549  1.00 20.00           O
+ATOM      3  OP2  DG A 101      30.364  -6.133  16.806  1.00 20.00           O
+ATOM      4  O5'  DG A 101      29.574  -8.346  17.739  1.00 20.00           O
+ATOM      5  C5'  DG A 101      30.631  -9.289  17.729  1.00 20.00           C
+ATOM      6  C4'  DG A 101      31.914  -8.737  18.342  1.00 20.00           C
+ATOM      7  O4'  DG A 101      32.710  -7.950  17.421  1.00 20.00           O
+ATOM      8  C3'  DG A 101      31.833  -7.757  19.494  1.00 20.00           C
+ATOM      9  O3'  DG A 101      31.252  -8.345  20.643  1.00 20.00           O
+ATOM     10  C2'  DG A 101      33.328  -7.516  19.649  1.00 20.00           C
+ATOM     11  C1'  DG A 101      33.752  -7.367  18.191  1.00 20.00           C
+ATOM     12  P    DA A 102      30.972  -7.472  21.954  1.00 20.00           P
+ATOM     13  OP1  DA A 102      30.002  -8.227  22.777  1.00 20.00           O
+ATOM     14  OP2  DA A 102      30.635  -6.106  21.501  1.00 20.00           O
+ATOM     15  O5'  DA A 102      32.406  -7.509  22.679  1.00 20.00           O
+ATOM     16  C5'  DA A 102      32.679  -7.422  24.091  1.00 20.00           C
+ATOM     17  C4'  DA A 102      33.179  -6.028  24.456  1.00 20.00           C
+ATOM     18  O4'  DA A 102      33.463  -5.302  23.221  1.00 20.00           O
+ATOM     19  C3'  DA A 102      32.175  -5.184  25.252  1.00 20.00           C
+ATOM     20  O3'  DA A 102      32.792  -4.407  26.338  1.00 20.00           O
+ATOM     21  C2'  DA A 102      31.466  -4.398  24.138  1.00 20.00           C
+ATOM     22  C1'  DA A 102      32.655  -4.152  23.209  1.00 20.00           C
+TER
+ATOM    298  P    DGaA 101      49.431  12.734  36.571  1.00 20.00           P
+ATOM    299  OP1  DGaA 101      48.043  13.248  36.549  1.00 20.00           O
+ATOM    300  OP2  DGaA 101      50.364  13.867  36.806  1.00 20.00           O
+ATOM    301  O5'  DGaA 101      49.574  11.654  37.739  1.00 20.00           O
+ATOM    302  C5'  DGaA 101      50.631  10.711  37.729  1.00 20.00           C
+ATOM    303  C4'  DGaA 101      51.914  11.263  38.342  1.00 20.00           C
+ATOM    304  O4'  DGaA 101      52.710  12.050  37.421  1.00 20.00           O
+ATOM    305  C3'  DGaA 101      51.833  12.243  39.494  1.00 20.00           C
+ATOM    306  O3'  DGaA 101      51.252  11.655  40.643  1.00 20.00           O
+ATOM    307  C2'  DGaA 101      53.328  12.484  39.649  1.00 20.00           C
+ATOM    308  C1'  DGaA 101      53.752  12.633  38.191  1.00 20.00           C
+ATOM    309  P    DAaA 102      50.972  12.528  41.954  1.00 20.00           P
+ATOM    310  OP1  DAaA 102      50.002  11.773  42.777  1.00 20.00           O
+ATOM    311  OP2  DAaA 102      50.635  13.894  41.501  1.00 20.00           O
+ATOM    312  O5'  DAaA 102      52.406  12.491  42.679  1.00 20.00           O
+ATOM    313  C5'  DAaA 102      52.679  12.578  44.091  1.00 20.00           C
+ATOM    314  C4'  DAaA 102      53.179  13.972  44.456  1.00 20.00           C
+ATOM    315  O4'  DAaA 102      53.463  14.698  43.221  1.00 20.00           O
+ATOM    316  C3'  DAaA 102      52.175  14.816  45.252  1.00 20.00           C
+ATOM    317  O3'  DAaA 102      52.792  15.593  46.338  1.00 20.00           O
+ATOM    318  C2'  DAaA 102      51.466  15.602  44.138  1.00 20.00           C
+ATOM    319  C1'  DAaA 102      52.655  15.848  43.209  1.00 20.00           C
+END
+"""
+
 pdb_AB = '''\
 ATOM      1  CB  MET B   1      52.886   1.976   9.011  1.00 41.44           C
 ATOM      2  CG  MET B   1      53.271   0.996  10.102  1.00 47.36           C
@@ -1043,6 +1092,22 @@ def exercise_15():
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
   ### CHECK FOR SORRY HERE
 
+def exercise_16():
+  """
+  PDB file with nucleic acids.
+  """
+  asc = iotbx.pdb.input(source_info=None,
+    lines=pdb_str_13).construct_hierarchy().atom_selection_cache()
+  ncs_inp = ncs.input(pdb_string = pdb_str_13)
+  ncs_groups = ncs_inp.get_ncs_restraints_group_list()
+  assert len(ncs_groups)==1
+  assert ncs_groups[0].master_iselection.all_eq(asc.selection(
+    string = "chain A").iselection())
+  g1_c = ncs_groups[0].copies
+  assert len(g1_c)==1
+  assert g1_c[0].iselection.all_eq(asc.selection(
+    string = "chain aA").iselection())
+
 def clean_temp_files(file_list):
   """ delete files in the file_list """
   for fn in file_list:
@@ -1066,3 +1131,4 @@ if (__name__ == "__main__"):
   exercise_13()
   exercise_14()
   exercise_15()
+  exercise_16()
