@@ -637,6 +637,27 @@ ATOM     12  K   XXX C  34     189.986 271.004 173.508  1.00  0.00           K
 TER
 """
 
+pdb_str_15 = """
+ATOM      1  N1  XXX A  34     125.208 211.886 175.417  1.00  0.00           N
+ATOM      2  CT  XXX A  34     125.035 211.123 174.168  1.00  0.00           C
+ATOM      3  C   XXX A  34     126.386 210.806 173.507  1.00  0.00           C
+ATOM      4  K   XXX A  34     127.304 211.628 173.503  1.00  0.00           K
+ATOM      1  O   HOH A  34     135.208 211.886 175.417  1.00  0.00           O
+ATOM      2  O   HOH A  34     135.035 211.123 174.168  1.00  0.00           O
+ATOM      3  O   HOH A  34     136.386 210.806 173.507  1.00  0.00           O
+ATOM      4  O   HOH A  34     137.304 211.628 173.503  1.00  0.00           O
+TER
+ATOM      5  N1  XXX B  34     251.532 143.432 175.422  1.00  0.00           N
+ATOM      6  CT  XXX B  34     252.120 143.948 174.173  1.00  0.00           C
+ATOM      7  C   XXX B  34     251.212 144.998 173.512  1.00  0.00           C
+ATOM      8  K   XXX B  34     249.986 144.872 173.510  1.00  0.00           K
+ATOM      5  O   HOH B  34     271.532 143.432 175.422  1.00  0.00           O
+ATOM      6  O   HOH B  34     272.120 143.948 174.173  1.00  0.00           O
+ATOM      7  O   HOH B  34     271.212 144.998 173.512  1.00  0.00           O
+ATOM      8  O   HOH B  34     279.986 144.872 173.510  1.00  0.00           O
+TER
+"""
+
 pdb_AB = '''\
 ATOM      1  CB  MET B   1      52.886   1.976   9.011  1.00 41.44           C
 ATOM      2  CG  MET B   1      53.271   0.996  10.102  1.00 47.36           C
@@ -1145,6 +1166,30 @@ def exercise_17():
   assert g1_c[1].iselection.all_eq(asc.selection(
     string = "chain C").iselection())
 
+def exercise_18():
+  """
+  Include water if requested by user
+  """
+  phil_str="""
+ncs_group {
+  master_selection = chain A
+  copy_selection = chain B
+}
+"""
+  asc = iotbx.pdb.input(source_info=None,
+    lines=pdb_str_15).construct_hierarchy().atom_selection_cache()
+  ### user-supplied
+  ncs_inp = ncs.input(pdb_string = pdb_str_15, ncs_phil_string = phil_str)
+  ncs_groups = ncs_inp.get_ncs_restraints_group_list()
+  assert len(ncs_groups)==1
+  # group 1
+  assert ncs_groups[0].master_iselection.all_eq(
+    asc.selection(string = "chain A").iselection())
+  g1_c = ncs_groups[0].copies
+  assert len(g1_c)==1
+  assert g1_c[0].iselection.all_eq(
+    asc.selection(string = "chain B").iselection())
+
 def clean_temp_files(file_list):
   """ delete files in the file_list """
   for fn in file_list:
@@ -1170,3 +1215,4 @@ if (__name__ == "__main__"):
   exercise_15()
   exercise_16()
   exercise_17()
+  exercise_18()
