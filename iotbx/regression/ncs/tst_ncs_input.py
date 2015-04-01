@@ -542,6 +542,33 @@ ATOM     35  OD1 ASN H  28      37.703 -46.732  66.359  1.00 19.98           O
 ATOM     36  ND2 ASN H  28      37.498 -45.726  64.364  1.00 21.69           N
 """
 
+pdb_str_12 = """\
+MODEL        1
+ATOM    181  CA  SER L  26      43.792 -65.179  67.649  1.00 22.76           C
+ATOM    182  C   SER L  26      43.921 -63.740  68.152  1.00 25.79           C
+ATOM    183  O   SER L  26      44.600 -63.476  69.148  1.00 27.95           O
+ATOM    184  CB  SER L  26      45.023 -65.575  66.834  1.00 23.39           C
+ATOM    185  OG  SER L  26      45.013 -64.937  65.570  1.00 21.58           O
+ATOM      1  CA  SER H  26      46.792 -62.179  70.649  1.00 22.76           C
+ATOM      2  C   SER H  26      46.921 -60.740  71.152  1.00 25.79           C
+ATOM      3  O   SER H  26      47.600 -60.476  72.148  1.00 27.95           O
+ATOM      4  CB  SER H  26      48.023 -62.575  69.834  1.00 23.39           C
+ATOM      5  OG  SER H  26      48.013 -61.937  68.570  1.00 21.58           O
+ENDMDL
+MODEL        2
+ATOM    181  CA  SER L  26      43.792 -65.179  67.649  1.00 22.76           C
+ATOM    182  C   SER L  26      43.921 -63.740  68.152  1.00 25.79           C
+ATOM    183  O   SER L  26      44.600 -63.476  69.148  1.00 27.95           O
+ATOM    184  CB  SER L  26      45.023 -65.575  66.834  1.00 23.39           C
+ATOM    185  OG  SER L  26      45.013 -64.937  65.570  1.00 21.58           O
+ATOM      1  CA  SER H  26      46.792 -62.179  70.649  1.00 22.76           C
+ATOM      2  C   SER H  26      46.921 -60.740  71.152  1.00 25.79           C
+ATOM      3  O   SER H  26      47.600 -60.476  72.148  1.00 27.95           O
+ATOM      4  CB  SER H  26      48.023 -62.575  69.834  1.00 23.39           C
+ATOM      5  OG  SER H  26      48.013 -61.937  68.570  1.00 21.58           O
+ENDMDL
+"""
+
 pdb_AB = '''\
 ATOM      1  CB  MET B   1      52.886   1.976   9.011  1.00 41.44           C
 ATOM      2  CG  MET B   1      53.271   0.996  10.102  1.00 47.36           C
@@ -1008,6 +1035,14 @@ def exercise_14():
   assert g1_c[0].iselection.all_eq(asc.selection(
     string = "chain L and not (altloc A or altloc B)").iselection())
 
+def exercise_15():
+  """
+  PDB file with MODEL-ENDMDL.
+  """
+  ncs_inp = ncs.input(pdb_string = pdb_str_12)
+  ncs_groups = ncs_inp.get_ncs_restraints_group_list()
+  ### CHECK FOR SORRY HERE
+
 def clean_temp_files(file_list):
   """ delete files in the file_list """
   for fn in file_list:
@@ -1030,3 +1065,4 @@ if (__name__ == "__main__"):
   exercise_12()
   exercise_13()
   exercise_14()
+  exercise_15()
