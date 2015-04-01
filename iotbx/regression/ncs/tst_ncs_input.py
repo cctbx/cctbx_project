@@ -618,6 +618,25 @@ ATOM    319  C1'  DAaA 102      52.655  15.848  43.209  1.00 20.00           C
 END
 """
 
+pdb_str_14 = """
+CRYST1  399.000  399.000  399.000  90.00  90.00  90.00 P 1
+ATOM      1  N1  XXX A  34     125.208 211.886 175.417  1.00  0.00           N
+ATOM      2  CT  XXX A  34     125.035 211.123 174.168  1.00  0.00           C
+ATOM      3  C   XXX A  34     126.386 210.806 173.507  1.00  0.00           C
+ATOM      4  K   XXX A  34     127.304 211.628 173.503  1.00  0.00           K
+TER
+ATOM      5  N1  XXX B  34     251.532 143.432 175.422  1.00  0.00           N
+ATOM      6  CT  XXX B  34     252.120 143.948 174.173  1.00  0.00           C
+ATOM      7  C   XXX B  34     251.212 144.998 173.512  1.00  0.00           C
+ATOM      8  K   XXX B  34     249.986 144.872 173.510  1.00  0.00           K
+TER
+ATOM      9  N1  XXX C  34     189.583 273.076 175.423  1.00  0.00           N
+ATOM     10  CT  XXX C  34     188.804 273.006 174.173  1.00  0.00           C
+ATOM     11  C   XXX C  34     188.920 271.622 173.510  1.00  0.00           C
+ATOM     12  K   XXX C  34     189.986 271.004 173.508  1.00  0.00           K
+TER
+"""
+
 pdb_AB = '''\
 ATOM      1  CB  MET B   1      52.886   1.976   9.011  1.00 41.44           C
 ATOM      2  CG  MET B   1      53.271   0.996  10.102  1.00 47.36           C
@@ -1108,6 +1127,24 @@ def exercise_16():
   assert g1_c[0].iselection.all_eq(asc.selection(
     string = "chain aA").iselection())
 
+def exercise_17():
+  """
+  PDB file with ligands.
+  """
+  asc = iotbx.pdb.input(source_info=None,
+    lines=pdb_str_14).construct_hierarchy().atom_selection_cache()
+  ncs_inp = ncs.input(pdb_string = pdb_str_14)
+  ncs_groups = ncs_inp.get_ncs_restraints_group_list()
+  assert len(ncs_groups)==1
+  assert ncs_groups[0].master_iselection.all_eq(asc.selection(
+    string = "chain A").iselection())
+  g1_c = ncs_groups[0].copies
+  assert len(g1_c)==2
+  assert g1_c[0].iselection.all_eq(asc.selection(
+    string = "chain B").iselection())
+  assert g1_c[1].iselection.all_eq(asc.selection(
+    string = "chain C").iselection())
+
 def clean_temp_files(file_list):
   """ delete files in the file_list """
   for fn in file_list:
@@ -1132,3 +1169,4 @@ if (__name__ == "__main__"):
   exercise_14()
   exercise_15()
   exercise_16()
+  exercise_17()
