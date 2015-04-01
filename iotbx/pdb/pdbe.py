@@ -123,7 +123,7 @@ PDB_ENTRYFILE_CIF = FTPService(
   namer = identifier_to_cif_entry_name,
   )
 
-PDBE_API_BASE = "http://wwwdev.ebi.ac.uk/pdbe/api/"
+PDBE_API_BASE = "http://www.ebi.ac.uk/pdbe/api/"
 
 PDB_ENTRY_STATUS = RESTService(
   url = PDBE_API_BASE + "pdb/entry/status/",
@@ -158,45 +158,68 @@ class Redirections(object):
 
   def obsoleted(self, identifier):
 
-    std = self._insert( identifier = identifier )
+    std = self._check_and_fetch( identifier = identifier )
     return std in self._replaced_by
 
 
   def replacement_for(self, identifier):
 
-    std = self._insert( identifier = identifier )
+    std = self._check_and_fetch( identifier = identifier )
     return self._replaced_by[ std ]
 
 
   def retracted(self, identifier):
 
-    std = self._insert( identifier = identifier )
+    std = self._check_and_fetch( identifier = identifier )
     return std in self._retracteds
 
 
-  def _insert(self, identifier):
+  def seed(self, identifiers):
 
-    std = identifier.lower()
+    import itertools
+
+    blocks = PDB_ENTRY_STATUS.multiple( identifiers = identifiers )
+
+    for ( code, data ) in itertools.izip( identifiers, blocks ):
+      if not data:
+        continue
+
+      self._insert( code = self._standardize( identifier = code ), data = data )
+
+
+  def _standardize(self, identifier):
+
+    return identifier.lower()
+
+
+  def _check_and_fetch(self, identifier):
+
+    std = self._standardize( identifier = identifier )
 
     if std in self._currents or std in self._retracteds or std in self._replaced_by:
       return std
 
-    result = PDB_ENTRY_STATUS.single( identifier = std )
-    status = result[0][ "status_code" ]
+    data = PDB_ENTRY_STATUS.single( identifier = std )
+    self._insert( code = std, data = data )
+    return std
+
+
+  def _insert(self, code, data):
+
+    status = data[0][ "status_code" ]
 
     if status == "REL":
-      self._currents.add( std )
+      self._currents.add( code )
 
     elif status == "OBS":
-      successor = result[0][ "superceded_by" ][0]
+      successor = data[0][ "superceded_by" ][0]
 
       if successor is None:
-        self._retracteds.add( std )
+        self._retracteds.add( code )
 
       else:
-        self._replaced_by[ std ] = successor
+        self._replaced_by[ code ] = successor
 
-    return std
 
 from libtbx.object_oriented_patterns import lazy_initialization
 redirection = lazy_initialization( func = Redirections )
