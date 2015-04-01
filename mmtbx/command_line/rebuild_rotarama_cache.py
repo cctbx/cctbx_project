@@ -13,6 +13,7 @@ def run():
   rotamer_data_dir = rotamer_eval.find_rotarama_data_dir(optional=True)
   if rotamer_data_dir is None:
     print 'Quitting : rotamer library not installed'
+    return
   target_db = rotamer_eval.open_rotarama_dlite(
     rotarama_data_dir=rotamer_data_dir)
   rebuild_pickle_files(data_dir=rotamer_data_dir,
