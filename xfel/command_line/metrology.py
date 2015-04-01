@@ -44,6 +44,9 @@ effective_tile_boundaries = None
   .type = ints
   .help = Effective integer tile boundaries applied to convert xtc stream to pickled image files. Must be 64 * 4 integers.
   .help = Boundaries should not be under user control, they are provided by the input data (pickle files).
+diff_cutoff = 5
+  .type = float
+  .help = throw out image if any correction vector exceeds this length in pixels
 """
 
 def get_phil(args):
