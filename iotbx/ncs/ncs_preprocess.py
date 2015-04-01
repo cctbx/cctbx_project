@@ -428,6 +428,8 @@ class ncs_group_object(object):
     Args::
       pdb_hierarchy_inp : iotbx.pdb.hierarchy.input
     """
+    if len(pdb_hierarchy_inp.hierarchy.models()) > 1:
+      raise Sorry('More than one model in pdb hierarchy')
     min_contig_length = self.min_contig_length
     min_percent = self.min_percent
     if not self.process_similar_chains:
@@ -775,6 +777,8 @@ class ncs_group_object(object):
     Build chain selection string and collect chains IDs from pdb
     Consider that chains can be not continuous
     """
+    if len(pdb_hierarchy_inp.hierarchy.models()) > 1:
+      raise Sorry('More than one model in pdb hierarchy')
     if pdb_hierarchy_inp:
       model  = pdb_hierarchy_inp.hierarchy.models()[0]
       chain_ids = {x.id for x in model.chains()}
@@ -1494,6 +1498,8 @@ class ncs_group_object(object):
     Return:
     ASU hierarchy
     """
+    if len(pdb_hierarchy.models()) > 1:
+      raise Sorry('More than one model in pdb hierarchy')
     # Build only for PDB when there is a single NCS group
     assert self.number_of_ncs_groups < 2
     new_ph = pdb_hierarchy.deep_copy()
