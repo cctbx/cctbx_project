@@ -658,6 +658,66 @@ ATOM      8  O   HOH B  38     279.986 144.872 173.510  1.00  0.00           O
 TER
 """
 
+pdb_str_16 = """\
+ATOM    181  CA  SER L  26      43.792 -65.179  67.649  1.00 22.76           C
+ATOM    182  C   SER L  26      43.921 -63.740  68.152  1.00 25.79           C
+ATOM    183  O   SER L  26      44.600 -63.476  69.148  1.00 27.95           O
+ATOM    184  CB  SER L  26      45.023 -65.575  66.834  1.00 23.39           C
+ATOM    185  OG  SER L  26      45.013 -64.937  65.570  1.00 21.58           O
+ATOM    186  N  AGLN L  27      43.266 -62.813  67.460  0.50 23.64           N
+ATOM    187  CA AGLN L  27      43.289 -61.405  67.832  0.50 24.84           C
+ATOM    188  C  AGLN L  27      41.869 -60.863  67.858  0.50 25.95           C
+ATOM    189  O  AGLN L  27      40.987 -61.380  67.172  0.50 26.41           O
+ATOM    190  CB AGLN L  27      44.108 -60.589  66.830  0.50 27.09           C
+ATOM    191  CG AGLN L  27      45.602 -60.618  67.048  0.50 35.67           C
+ATOM    192  CD AGLN L  27      46.338 -59.767  66.033  0.50 38.53           C
+ATOM    193  OE1AGLN L  27      46.675 -60.228  64.942  0.50 43.32           O
+ATOM    194  NE2AGLN L  27      46.572 -58.507  66.380  0.50 40.19           N
+ATOM    195  N  BSER L  27      41.653 -59.819  68.651  0.50 21.30           N
+ATOM    196  CA BSER L  27      40.340 -59.209  68.744  0.50 23.38           C
+ATOM    197  C  BSER L  27      39.920 -58.676  67.377  0.50 22.05           C
+ATOM    198  O  BSER L  27      40.712 -58.050  66.678  0.50 19.83           O
+ATOM    199  CB BSER L  27      40.362 -58.057  69.745  0.50 20.17           C
+ATOM    200  OG BSER L  27      39.122 -57.376  69.738  0.50 24.39           O
+ATOM    235  N   ASN L  28      36.659 -48.175  64.751  1.00 23.50           N
+ATOM    236  CA  ASN L  28      35.418 -47.408  64.733  1.00 19.92           C
+ATOM    237  C   ASN L  28      34.411 -48.040  65.685  1.00 22.34           C
+ATOM    238  O   ASN L  28      33.274 -47.586  65.794  1.00 25.95           O
+ATOM    239  CB  ASN L  28      34.831 -47.338  63.321  1.00 19.19           C
+ATOM    240  CG  ASN L  28      34.676 -48.707  62.680  1.00 22.32           C
+ATOM    241  OD1 ASN L  28      34.703 -49.732  63.359  1.00 19.98           O
+ATOM    242  ND2 ASN L  28      34.498 -48.726  61.364  1.00 21.69           N
+TER
+ATOM      1  CA  SER H  -1      46.792 -62.179  70.649  1.00 22.76           C
+ATOM      2  C   SER H  -1      46.921 -60.740  71.152  1.00 25.79           C
+ATOM      3  O   SER H  -1      47.600 -60.476  72.148  1.00 27.95           O
+ATOM      4  CB  SER H  -1      48.023 -62.575  69.834  1.00 23.39           C
+ATOM      5  OG  SER H  -1      48.013 -61.937  68.570  1.00 21.58           O
+ATOM      6  N  AGLN H   0      46.266 -59.813  70.460  0.50 23.64           N
+ATOM      7  CA AGLN H   0      46.289 -58.405  70.832  0.50 24.84           C
+ATOM      8  C  AGLN H   0      44.869 -57.863  70.858  0.50 25.95           C
+ATOM      9  O  AGLN H   0      43.987 -58.380  70.172  0.50 26.41           O
+ATOM     10  CB AGLN H   0      47.108 -57.589  69.830  0.50 27.09           C
+ATOM     11  CG AGLN H   0      48.602 -57.618  70.048  0.50 35.67           C
+ATOM     12  CD AGLN H   0      49.338 -56.767  69.033  0.50 38.53           C
+ATOM     13  OE1AGLN H   0      49.675 -57.228  67.942  0.50 43.32           O
+ATOM     14  NE2AGLN H   0      49.572 -55.507  69.380  0.50 40.19           N
+ATOM     15  N  BSER H   0      44.653 -56.819  71.651  0.50 21.30           N
+ATOM     16  CA BSER H   0      43.340 -56.209  71.744  0.50 23.38           C
+ATOM     17  C  BSER H   0      42.920 -55.676  70.377  0.50 22.05           C
+ATOM     18  O  BSER H   0      43.712 -55.050  69.678  0.50 19.83           O
+ATOM     19  CB BSER H   0      43.362 -55.057  72.745  0.50 20.17           C
+ATOM     20  OG BSER H   0      42.122 -54.376  72.738  0.50 24.39           O
+ATOM     29  N   ASN H   9      39.659 -45.175  67.751  1.00 23.50           N
+ATOM     30  CA  ASN H   9      38.418 -44.408  67.733  1.00 19.92           C
+ATOM     31  C   ASN H   9      37.411 -45.040  68.685  1.00 22.34           C
+ATOM     32  O   ASN H   9      36.274 -44.586  68.794  1.00 25.95           O
+ATOM     33  CB  ASN H   9      37.831 -44.338  66.321  1.00 19.19           C
+ATOM     34  CG  ASN H   9      37.676 -45.707  65.680  1.00 22.32           C
+ATOM     35  OD1 ASN H   9      37.703 -46.732  66.359  1.00 19.98           O
+ATOM     36  ND2 ASN H   9      37.498 -45.726  64.364  1.00 21.69           N
+"""
+
 pdb_AB = '''\
 ATOM      1  CB  MET B   1      52.886   1.976   9.011  1.00 41.44           C
 ATOM      2  CG  MET B   1      53.271   0.996  10.102  1.00 47.36           C
@@ -1189,6 +1249,22 @@ ncs_group {
   assert len(g1_c)==1
   assert g1_c[0].iselection.all_eq(
     asc.selection(string = "chain B").iselection())
+  
+def exercise_19():
+  """
+  PDB file with insertion codes, resseqs are different.
+  """
+  asc = iotbx.pdb.input(source_info=None,
+    lines=pdb_str_16).construct_hierarchy().atom_selection_cache()
+  ncs_inp = ncs.input(pdb_string = pdb_str_16)
+  ncs_groups = ncs_inp.get_ncs_restraints_group_list()
+  assert len(ncs_groups)==1
+  assert ncs_groups[0].master_iselection.all_eq(asc.selection(
+    string = "chain H and not (altloc A or altloc B)").iselection())
+  g1_c = ncs_groups[0].copies
+  assert len(g1_c)==1
+  assert g1_c[0].iselection.all_eq(asc.selection(
+    string = "chain L and not (altloc A or altloc B)").iselection())
 
 def clean_temp_files(file_list):
   """ delete files in the file_list """
@@ -1216,3 +1292,4 @@ if (__name__ == "__main__"):
   exercise_16()
   exercise_17()
   exercise_18()
+  exercise_19()
