@@ -718,6 +718,89 @@ ATOM     35  OD1 ASN H   9      37.703 -46.732  66.359  1.00 19.98           O
 ATOM     36  ND2 ASN H   9      37.498 -45.726  64.364  1.00 21.69           N
 """
 
+pdb_str_17 = """
+ATOM      1  N   ASP B   1      51.626 -66.543  62.314  1.00 34.60           N
+ATOM      2  CA  ASP B   1      50.334 -66.083  61.819  1.00 33.86           C
+ATOM      3  C   ASP B   1      49.224 -66.387  62.821  1.00 34.02           C
+ATOM      4  O   ASP B   1      49.488 -66.629  63.999  1.00 32.23           O
+ATOM      5  CB  ASP B   1      50.015 -66.728  60.469  1.00 33.99           C
+ATOM      6  CG  ASP B   1      51.047 -66.399  59.408  1.00 36.93           C
+ATOM      7  OD1 ASP B   1      51.647 -65.306  59.480  1.00 36.67           O
+ATOM      8  OD2 ASP B   1      51.258 -67.233  58.503  1.00 38.81           O
+ATOM      9  N   VAL B   2      47.984 -66.373  62.345  1.00 31.94           N
+ATOM     10  CA  VAL B   2      46.833 -66.647  63.196  1.00 29.81           C
+ATOM     11  C   VAL B   2      46.674 -68.151  63.403  1.00 28.28           C
+ATOM     12  O   VAL B   2      46.672 -68.925  62.445  1.00 27.24           O
+ATOM     13  CB  VAL B   2      45.547 -66.026  62.609  1.00 30.66           C
+ATOM     14  CG1 VAL B   2      44.320 -66.509  63.370  1.00 29.42           C
+ATOM     15  CG2 VAL B   2      45.429 -66.333  61.122  1.00 31.43           C
+ATOM     16  N   GLN B   3      46.550 -68.560  64.661  1.00 25.93           N
+ATOM     17  CA  GLN B   3      46.391 -69.970  64.997  1.00 24.46           C
+ATOM     18  C   GLN B   3      44.959 -70.433  64.750  1.00 23.33           C
+ATOM     19  O   GLN B   3      44.010 -69.863  65.287  1.00 20.10           O
+ATOM     20  CB  GLN B   3      46.782 -70.222  66.455  1.00 29.74           C
+ATOM     21  CG  GLN B   3      46.646 -71.671  66.893  1.00 39.72           C
+ATOM     22  CD  GLN B   3      47.041 -71.883  68.341  1.00 51.31           C
+ATOM     23  OE1 GLN B   3      47.031 -73.007  68.841  1.00 57.11           O
+ATOM     24  NE2 GLN B   3      47.393 -70.799  69.023  1.00 54.00           N
+ATOM     25  N   MET B   4      44.812 -71.472  63.933  1.00 24.27           N
+ATOM     26  CA  MET B   4      43.496 -72.013  63.613  1.00 22.89           C
+ATOM     27  C   MET B   4      42.969 -72.880  64.752  1.00 21.48           C
+ATOM     28  O   MET B   4      43.379 -74.029  64.912  1.00 23.73           O
+ATOM     29  CB  MET B   4      43.551 -72.824  62.316  1.00 22.77           C
+ATOM     30  CG  MET B   4      43.996 -72.024  61.103  1.00 20.45           C
+ATOM     31  SD  MET B   4      42.904 -70.635  60.747  1.00 23.95           S
+ATOM     32  CE  MET B   4      41.353 -71.486  60.468  1.00 24.76           C
+ATOM     33  N   THR B   5      42.057 -72.320  65.541  1.00 20.55           N
+ATOM     34  CA  THR B   5      41.472 -73.040  66.666  1.00 20.64           C
+ATOM     35  C   THR B   5      40.063 -73.521  66.335  1.00 20.08           C
+ATOM     36  O   THR B   5      39.176 -72.720  66.042  1.00 20.87           O
+ATOM     37  CB  THR B   5      41.422 -72.165  67.932  1.00 23.39           C
+ATOM     38  OG1 THR B   5      42.751 -71.766  68.293  1.00 30.91           O
+ATOM     39  CG2 THR B   5      40.798 -72.934  69.087  1.00 26.97           C
+TER
+ATOM      1  N   ASP A   1      46.675 -60.355  58.113  1.00 34.60           N
+ATOM      2  CA  ASP A   1      46.807 -61.464  59.051  1.00 33.86           C
+ATOM      3  C   ASP A   1      45.597 -61.546  59.975  1.00 34.02           C
+ATOM      4  O   ASP A   1      45.693 -62.048  61.095  1.00 32.23           O
+ATOM      5  CB  ASP A   1      48.090 -61.322  59.873  1.00 33.99           C
+ATOM      6  CG  ASP A   1      49.337 -61.310  59.010  1.00 36.93           C
+ATOM      7  OD1 ASP A   1      49.255 -60.851  57.851  1.00 36.67           O
+ATOM      8  OD2 ASP A   1      50.398 -61.759  59.491  1.00 38.81           O
+ATOM      9  N   VAL A   2      44.460 -61.050  59.499  1.00 31.94           N
+ATOM     10  CA  VAL A   2      43.231 -61.067  60.281  1.00 29.81           C
+ATOM     11  C   VAL A   2      42.306 -62.174  59.789  1.00 28.28           C
+ATOM     12  O   VAL A   2      41.817 -62.132  58.660  1.00 27.24           O
+ATOM     13  CB  VAL A   2      42.520 -59.704  60.230  1.00 30.66           C
+ATOM     14  CG1 VAL A   2      41.241 -59.742  61.052  1.00 29.42           C
+ATOM     15  CG2 VAL A   2      43.447 -58.604  60.725  1.00 31.43           C
+ATOM     16  N   GLN A   3      42.071 -63.165  60.643  1.00 25.93           N
+ATOM     17  CA  GLN A   3      41.205 -64.286  60.296  1.00 24.46           C
+ATOM     18  C   GLN A   3      40.490 -64.827  61.530  1.00 23.33           C
+ATOM     19  O   GLN A   3      41.120 -65.383  62.430  1.00 20.10           O
+ATOM     20  CB  GLN A   3      42.011 -65.399  59.624  1.00 29.74           C
+ATOM     21  CG  GLN A   3      41.185 -66.611  59.227  1.00 39.72           C
+ATOM     22  CD  GLN A   3      42.016 -67.692  58.564  1.00 51.31           C
+ATOM     23  OE1 GLN A   3      43.226 -67.542  58.391  1.00 57.11           O
+ATOM     24  NE2 GLN A   3      41.370 -68.790  58.190  1.00 54.00           N
+ATOM     25  N   MET A   4      39.172 -64.662  61.564  1.00 24.27           N
+ATOM     26  CA  MET A   4      38.369 -65.133  62.686  1.00 22.89           C
+ATOM     27  C   MET A   4      37.658 -66.437  62.341  1.00 21.48           C
+ATOM     28  O   MET A   4      37.275 -67.196  63.233  1.00 23.73           O
+ATOM     29  CB  MET A   4      37.349 -64.070  63.100  1.00 22.77           C
+ATOM     30  CG  MET A   4      37.968 -62.752  63.535  1.00 20.45           C
+ATOM     31  SD  MET A   4      39.065 -62.933  64.954  1.00 23.95           S
+ATOM     32  CE  MET A   4      37.932 -63.588  66.177  1.00 24.76           C
+ATOM     33  N   THR A   5      37.492 -66.682  61.043  1.00 20.55           N
+ATOM     34  CA  THR A   5      36.832 -67.882  60.528  1.00 20.64           C
+ATOM     35  C   THR A   5      35.420 -68.037  61.091  1.00 20.08           C
+ATOM     36  O   THR A   5      35.211 -68.701  62.108  1.00 20.87           O
+ATOM     37  CB  THR A   5      37.647 -69.156  60.837  1.00 23.39           C
+ATOM     38  OG1 THR A   5      39.009 -68.964  60.435  1.00 30.91           O
+ATOM     39  CG2 THR A   5      37.073 -70.352  60.091  1.00 26.97           C
+TER
+"""
+
 pdb_AB = '''\
 ATOM      1  CB  MET B   1      52.886   1.976   9.011  1.00 41.44           C
 ATOM      2  CG  MET B   1      53.271   0.996  10.102  1.00 47.36           C
@@ -1270,6 +1353,35 @@ def exercise_19():
   assert g1_c[0].iselection.all_eq(asc.selection(
     string = "chain L and not (altloc A or altloc B)").iselection())
 
+def exercise_20():
+  """
+  Identical chains, too large rms difference. No NCS by default, use user
+  siupplied NCS.
+  """
+  phil_str="""
+ncs_group {
+  master_selection = chain A
+  copy_selection = chain B
+}
+"""
+  asc = iotbx.pdb.input(source_info=None,
+    lines=pdb_str_17).construct_hierarchy().atom_selection_cache()
+  ### user-supplied
+  ncs_inp = ncs.input(pdb_string = pdb_str_17, ncs_phil_string = phil_str)
+  ncs_groups = ncs_inp.get_ncs_restraints_group_list()
+  assert len(ncs_groups)==1
+  # group 1
+  assert ncs_groups[0].master_iselection.all_eq(
+    asc.selection(string = "chain A").iselection())
+  g1_c = ncs_groups[0].copies
+  assert len(g1_c)==1
+  assert g1_c[0].iselection.all_eq(
+    asc.selection(string = "chain B").iselection())
+  ### default
+  ncs_inp = ncs.input(pdb_string = pdb_str_17)
+  ncs_groups = ncs_inp.get_ncs_restraints_group_list()
+  assert len(ncs_groups)==0
+
 def clean_temp_files(file_list):
   """ delete files in the file_list """
   for fn in file_list:
@@ -1297,3 +1409,4 @@ if (__name__ == "__main__"):
   exercise_17()
   exercise_18()
   exercise_19()
+  exercise_20()
