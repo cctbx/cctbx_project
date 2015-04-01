@@ -1043,16 +1043,16 @@ def convert_phil_format(phil_str,to_type='ncs'):
   ----------
   refinement.ncs.restraint_group {
     reference = chain I
-    selection   = chain K
-    selection   = chain M
+    selection = chain K
+    selection = chain M
   }
 
   constraints
   -----------
   refinement.ncs.constraint_group {
     reference = chain I
-    selection   = chain K
-    selection   = chain M
+    selection = chain K
+    selection = chain M
   }
 
   Args:
@@ -1093,4 +1093,6 @@ def convert_phil_format(phil_str,to_type='ncs'):
   out_phil_str = out_phil_str.replace(from_group_str,to_group_str)
   out_phil_str = out_phil_str.replace(from_copy_str,to_copy_str)
   out_phil_str = out_phil_str.replace(from_master_str,to_master_str)
+  # remove extra spaces
+  out_phil_str = out_phil_str.replace('selection   =','selection =')
   return out_phil_str
