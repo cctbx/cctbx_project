@@ -250,21 +250,9 @@ class energies(scitbx.restraints.energies):
     correct_id_proxies = [i.origin_id for i in self.bond_proxies.simple].count(0)
     return correct_id_proxies
 
-  def get_filtered_bond_deltas(self):
-    if self.n_bond_proxies is not None:
-      if self.n_bond_proxies > 0:
-        sorted_table, n_not_shown = self.bond_proxies.get_sorted(
-            by_value="residual",
-            sites_cart=self.sites_cart,
-            site_labels=None,
-            max_items=None,
-            origin_id=0)
-        assert n_not_shown == 0
-        return flex.double([x[4] for x in sorted_table])
-      else:
-        return None
-    else:
-      return None
+  def get_filtered_n_angle_proxies(self):
+    correct_id_proxies = [i.origin_id for i in self.angle_proxies].count(0)
+    return correct_id_proxies
 
   def bond_deviations_z(self):
     '''
@@ -336,26 +324,32 @@ class energies(scitbx.restraints.energies):
     a_z_min/max: min/max values of z-scors
     '''
     if(self.n_angle_proxies is not None):
-      angle_deltas = geometry_restraints.angle_deltas(
+      angle_deltas = self.angle_proxies.get_filtered_deltas(
         sites_cart = self.sites_cart,
-        proxies    = self.angle_proxies)
-      sigmas = [geometry_restraints.weight_as_sigma(x.weight) for x in self.angle_proxies]
-      z_scores = flex.double([(angle_delta/sigma) for angle_delta,sigma in zip(angle_deltas,sigmas)])
-      a_rmsz = math.sqrt(flex.mean_default(z_scores*z_scores,0))
-      a_z_max = flex.max_default(flex.abs(z_scores), 0)
-      a_z_min = flex.min_default(flex.abs(z_scores), 0)
-      return a_z_min, a_z_max, a_rmsz
+        origin_id = 0)
+      if angle_deltas is not None:
+        sigmas = [geometry_restraints.weight_as_sigma(x.weight) for x in self.angle_proxies]
+        z_scores = flex.double([(angle_delta/sigma) for angle_delta,sigma in zip(angle_deltas,sigmas)])
+        a_rmsz = math.sqrt(flex.mean_default(z_scores*z_scores,0))
+        a_z_max = flex.max_default(flex.abs(z_scores), 0)
+        a_z_min = flex.min_default(flex.abs(z_scores), 0)
+        return a_z_min, a_z_max, a_rmsz
+      else:
+        return 0,0,0
 
   def angle_deviations(self):
     if(self.n_angle_proxies is not None):
-      angle_deltas = geometry_restraints.angle_deltas(
+      angle_deltas = self.angle_proxies.get_filtered_deltas(
         sites_cart = self.sites_cart,
-        proxies    = self.angle_proxies)
-      a_sq  = angle_deltas * angle_deltas
-      a_ave = math.sqrt(flex.mean_default(a_sq, 0))
-      a_max = math.sqrt(flex.max_default(a_sq, 0))
-      a_min = math.sqrt(flex.min_default(a_sq, 0))
-      return a_min, a_max, a_ave
+        origin_id = 0)
+      if angle_deltas is not None:
+        a_sq  = angle_deltas * angle_deltas
+        a_ave = math.sqrt(flex.mean_default(a_sq, 0))
+        a_max = math.sqrt(flex.max_default(a_sq, 0))
+        a_min = math.sqrt(flex.min_default(a_sq, 0))
+        return a_min, a_max, a_ave
+      else:
+        return 0,0,0
 
   def nonbonded_distances(self):
     return geometry_restraints.nonbonded_deltas(

@@ -85,7 +85,7 @@ class geometry(object):
       return
     self.a = esg.angle_deviations()
     self.b = esg.bond_deviations()
-    self.a_number = esg.n_angle_proxies
+    self.a_number = esg.get_filtered_n_angle_proxies()
     self.b_number = esg.get_filtered_n_bond_proxies()
     self.c = esg.chirality_deviations()
     self.d = esg.dihedral_deviations()
