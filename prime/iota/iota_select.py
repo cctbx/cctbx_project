@@ -8,7 +8,7 @@ Description : IOTA pickle selection module. Selects the best integration results
               set of pickles derived from a single image.
 '''
 
-import os, sys
+import os
 from prime.iota.iota_input import main_log
 import numpy as np
 

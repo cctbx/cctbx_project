@@ -3,7 +3,7 @@ from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 from cctbx.array_family import flex
-import libtbx.load_env
+#import libtbx.load_env
 from cctbx import geometry_restraints
 import iotbx
 

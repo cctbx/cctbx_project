@@ -1,12 +1,12 @@
 # -*- python -*-
 from __future__ import division
-import os
-import sys
-import subprocess
-import optparse
-import getpass
-import urllib
-import urlparse
+#import os
+#import sys
+#import subprocess
+#import optparse
+#import getpass
+#import urllib
+#import urlparse
 
 # A reworked base dependency installer.
 # This is a work in progress!
