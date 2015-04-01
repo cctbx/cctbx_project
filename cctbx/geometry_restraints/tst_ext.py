@@ -211,7 +211,7 @@ def exercise_bond_similarity():
   assert approx_equal(residual_sum, restraint_sym.residual() + restraint_no_sym.residual())
 
 def exercise_bond():
-  def check_bpar(p, distance_ideal=3.5, weight=1, slack=0, limit=-1, 
+  def check_bpar(p, distance_ideal=3.5, weight=1, slack=0, limit=-1,
       top_out=False, origin_id=0):
     assert approx_equal(p.distance_ideal, distance_ideal)
     assert approx_equal(p.weight, weight)
@@ -220,7 +220,7 @@ def exercise_bond():
     assert p.top_out == top_out
     assert p.origin_id == origin_id
 
-  def check_bproxy(p, i_seqs=(0,1), sym_op=None, distance_ideal=3.5, 
+  def check_bproxy(p, i_seqs=(0,1), sym_op=None, distance_ideal=3.5,
       weight=1, slack=0, limit=-1, top_out=False, origin_id=0):
     assert p.i_seqs == i_seqs
     if p.rt_mx_ji is not None:
@@ -252,7 +252,7 @@ def exercise_bond():
   p.limit = 3
   p.top_out = True
   p.origin_id = 3
-  check_bpar(p, distance_ideal=35, weight=10, slack=3, limit=3, 
+  check_bpar(p, distance_ideal=35, weight=10, slack=3, limit=3,
       top_out=True, origin_id=3)
   p.distance_ideal = 3.5
   p.weight = 1
@@ -286,7 +286,7 @@ def exercise_bond():
   while (t.size() < 14):
     t.append(geometry_restraints.bond_params_dict())
   s = t.proxy_select(iselection=flex.size_t([1]))
-  check_bpar(s[0][0], distance_ideal=4, weight=5, slack=2, limit=1, 
+  check_bpar(s[0][0], distance_ideal=4, weight=5, slack=2, limit=1,
       top_out=True, origin_id=2)
   #
   check_bpar(t.lookup(13, 0), distance_ideal=5, weight=2)
@@ -312,7 +312,7 @@ def exercise_bond():
   assert t[3].size() == 0
   t.update(i_seq=4, j_seq=3, params=p)
   assert t[3].size() == 1
-  check_bpar(t[3][4], distance_ideal=2.8, weight=2, slack=2, limit=1, 
+  check_bpar(t[3][4], distance_ideal=2.8, weight=2, slack=2, limit=1,
       top_out=True, origin_id=2)
   p = geometry_restraints.bond_params(distance_ideal=3.8, weight=3)
   t.update(i_seq=3, j_seq=5, params=p)
@@ -340,10 +340,10 @@ def exercise_bond():
       limit=1,
       top_out=True,
       origin_id=2)
-  check_bproxy(p, i_seqs=(1,0), distance_ideal=3.5, weight=1, slack=2, limit=1, 
+  check_bproxy(p, i_seqs=(1,0), distance_ideal=3.5, weight=1, slack=2, limit=1,
       top_out=True, origin_id=2)
   p = p.sort_i_seqs()
-  check_bproxy(p, i_seqs=(0,1), distance_ideal=3.5, weight=1, slack=2, limit=1, 
+  check_bproxy(p, i_seqs=(0,1), distance_ideal=3.5, weight=1, slack=2, limit=1,
       top_out=True, origin_id=2)
   p.distance_ideal = 35
   p.weight = 10
@@ -351,7 +351,7 @@ def exercise_bond():
   p.limit = 3
   p.top_out = True
   p.origin_id = 3
-  check_bproxy(p, i_seqs=(0,1), distance_ideal=35, weight=10, slack=3, limit=3, 
+  check_bproxy(p, i_seqs=(0,1), distance_ideal=35, weight=10, slack=3, limit=3,
       top_out=True, origin_id=3)
   p.distance_ideal = 3.5
   p.weight = 1
@@ -1198,7 +1198,7 @@ def exercise_nonbonded():
 
 def exercise_angle():
   # test without symmetry operations
-  def check(p, i_seqs=(2,1,0), sym_ops=None, angle_ideal=95, 
+  def check(p, i_seqs=(2,1,0), sym_ops=None, angle_ideal=95,
       weight=1, slack=0.0, origin_id=0):
     assert p.i_seqs == i_seqs
     if p.sym_ops is not None:
@@ -1299,8 +1299,8 @@ def exercise_angle():
   c = p.scale_weight(factor=5.82)
   check(c, sym_ops=sym_ops, weight=5.82)
   p = p.sort_i_seqs()
-  check(p, 
-      i_seqs=(0,1,2), 
+  check(p,
+      i_seqs=(0,1,2),
       sym_ops=(sgtbx.rt_mx(),sgtbx.rt_mx(),sgtbx.rt_mx('-1+x,+y,+z')))
   unit_cell = uctbx.unit_cell([15,25,30,90,90,90])
   sites_cart = flex.vec3_double([(1,0,0),(0,1,0),(14,0,0)])
@@ -2329,14 +2329,10 @@ def exercise_proxy_show():
   sorted_asu_proxies = geometry_restraints.bond_sorted_asu_proxies(
     asu_mappings=asu_mappings)
   sio = StringIO()
-  print "====="
-  print sio.getvalue()
-  print "====="
   sorted_asu_proxies.show_sorted(
     by_value="residual",
     sites_cart=sites_cart_cry,
     f=sio)
-  print(sio.getvalue())
   assert not show_diff(sio.getvalue(), """\
 Bond restraints: 0
 Sorted by residual:
@@ -2398,8 +2394,11 @@ bond Si2
     f=sio,
     prefix="*",
     max_items=0)
+  gv = sio.getvalue()
   assert not show_diff(sio.getvalue(), """\
 *Bond restraints: 3
+*Sorted by residual:
+*... (remaining 3 not shown)
 """)
   #
   for unit_cell in [None, uctbx.unit_cell([15,11.5,16.25,90,99.5,90])]:

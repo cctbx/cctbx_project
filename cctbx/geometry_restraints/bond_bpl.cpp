@@ -317,6 +317,7 @@ namespace {
         .def_readonly("distance_model", &w_t::distance_model)
         .def_readonly("delta", &w_t::delta)
         .def_readonly("delta_slack", &w_t::delta_slack)
+        .def_readonly("origin_id", &w_t::origin_id)
         .def("residual", &w_t::residual)
         .def("gradients", &w_t::gradients)
       ;

@@ -581,7 +581,8 @@ def get_angle_proxies_for_bond(atoms):
         p = geometry_restraints.angle_proxy(
           i_seqs=i_seqs_for_angle,
           angle_ideal=vals[i][0],
-          weight=1./vals[i][1]**2)
+          weight=1./vals[i][1]**2,
+          origin_id=1)
       proxies.append(p)
   return proxies
 
@@ -658,7 +659,8 @@ def get_basepair_hbond_proxies(
             weight=1.0/hb_sigma**2,
             slack=0,
             top_out=False,
-            limit=1)
+            limit=1,
+            origin_id=1)
           bond_proxies_result.append(p)
           # print "bond:", hb[0].id_str(), hb[1].id_str(), "(%4.2f, %4.2f)" % (hb_target, hb_sigma)
         # s1 = pdb_atoms[hb[0].i_seq].id_str()
