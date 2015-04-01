@@ -364,10 +364,10 @@ master_params_str = """\
     fatal_problem_max_lines = 10
       .type=int
   }
-  ncs_search = False
+  find_ncs = False
     .type = bool
     .short_caption = Search for NCS relations
-  ncs_search_params
+  ncs
   {
      include scope iotbx.ncs.simple_ncs_phil_params
      include scope iotbx.ncs.ncs_search_options
@@ -4886,7 +4886,7 @@ class process(object):
     self._geometry_restraints_manager = None
     self._xray_structure = None
     self.ncs_obj = None
-    if self.all_chain_proxies.params.ncs_search:
+    if self.all_chain_proxies.params.find_ncs:
       if file_name:
         self.ncs_obj = self.search_for_ncs(file_name=file_name)
       elif self.all_chain_proxies.pdb_hierarchy:
@@ -5203,7 +5203,7 @@ class process(object):
       file_name (str): PDB file name
       hierarchy (obj): pdb hierarchy
     """
-    params = self.all_chain_proxies.params.ncs_search_params
+    params = self.all_chain_proxies.params.ncs
     simple_params = params.simple_ncs_from_pdb
     find_param = simple_params.domain_finding_parameters
     ncs_obj = iotbx.ncs.input(

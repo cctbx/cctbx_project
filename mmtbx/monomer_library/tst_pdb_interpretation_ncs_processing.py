@@ -99,8 +99,8 @@ class TestPDBinterpretationNCSSearch(unittest.TestCase):
       process_includes=True)
     params = params_phil.extract()
     # Turn on NCS search and adjust one of the parameters
-    params.ncs_search = True
-    params.ncs_search_params.check_atom_order = True
+    params.find_ncs = True
+    params.ncs.check_atom_order = True
     pdb_processed_file = pdb_inter.run(
     args=['test.pdb'],
     params=params,

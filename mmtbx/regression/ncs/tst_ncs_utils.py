@@ -130,24 +130,24 @@ ncs_group {
 ncs_phil = '''\
 ncs_group {
   master_selection = chain I
-  copy_selection   = chain K
-  copy_selection   = chain M
+  copy_selection = chain K
+  copy_selection = chain M
 }
 '''
 
 restraints_phil = '''\
 refinement.ncs.restraint_group {
   reference = chain I
-  selection   = chain K
-  selection   = chain M
+  selection = chain K
+  selection = chain M
 }
 '''
 
 constraints_phil = '''\
 refinement.ncs.constraint_group {
   reference = chain I
-  selection   = chain K
-  selection   = chain M
+  selection = chain K
+  selection = chain M
 }
 '''
 
