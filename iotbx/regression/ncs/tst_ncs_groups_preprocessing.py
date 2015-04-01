@@ -422,14 +422,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     answer = map(str.strip,answer)
     self.assertEqual(phil_list,answer)
 
-  def test_multi_model_sorry(self):
-    """
-    Check that Sorry is raised when processing file with several models
-
-    PDB file with MODEL-ENDMDL.
-    """
-    self.assertRaises(Sorry,ncs.input,pdb_string=pdb_str_4)
-
   def tearDown(self):
     """ remove temp files and folder """
     os.chdir(self.currnet_dir)
@@ -804,33 +796,6 @@ ATOM   6663  CA  ARGAf   6     312.124 232.379 110.143  1.00 50.00           C
 ATOM   6664  C   ARGAf   6     311.048 233.405 110.399  1.00 50.00           C
 ATOM   6665  O   ARGAf   6     310.909 234.383 109.665  1.00 50.00           O
 '''
-
-pdb_str_4 = """\
-MODEL        1
-ATOM    181  CA  SER L  26      43.792 -65.179  67.649  1.00 22.76           C
-ATOM    182  C   SER L  26      43.921 -63.740  68.152  1.00 25.79           C
-ATOM    183  O   SER L  26      44.600 -63.476  69.148  1.00 27.95           O
-ATOM    184  CB  SER L  26      45.023 -65.575  66.834  1.00 23.39           C
-ATOM    185  OG  SER L  26      45.013 -64.937  65.570  1.00 21.58           O
-ATOM      1  CA  SER H  26      46.792 -62.179  70.649  1.00 22.76           C
-ATOM      2  C   SER H  26      46.921 -60.740  71.152  1.00 25.79           C
-ATOM      3  O   SER H  26      47.600 -60.476  72.148  1.00 27.95           O
-ATOM      4  CB  SER H  26      48.023 -62.575  69.834  1.00 23.39           C
-ATOM      5  OG  SER H  26      48.013 -61.937  68.570  1.00 21.58           O
-ENDMDL
-MODEL        2
-ATOM    181  CA  SER L  26      43.792 -65.179  67.649  1.00 22.76           C
-ATOM    182  C   SER L  26      43.921 -63.740  68.152  1.00 25.79           C
-ATOM    183  O   SER L  26      44.600 -63.476  69.148  1.00 27.95           O
-ATOM    184  CB  SER L  26      45.023 -65.575  66.834  1.00 23.39           C
-ATOM    185  OG  SER L  26      45.013 -64.937  65.570  1.00 21.58           O
-ATOM      1  CA  SER H  26      46.792 -62.179  70.649  1.00 22.76           C
-ATOM      2  C   SER H  26      46.921 -60.740  71.152  1.00 25.79           C
-ATOM      3  O   SER H  26      47.600 -60.476  72.148  1.00 27.95           O
-ATOM      4  CB  SER H  26      48.023 -62.575  69.834  1.00 23.39           C
-ATOM      5  OG  SER H  26      48.013 -61.937  68.570  1.00 21.58           O
-ENDMDL
-"""
 
 def run_selected_tests():
   """  Run selected tests
