@@ -1188,9 +1188,13 @@ def exercise_15():
   """
   PDB file with MODEL-ENDMDL.
   """
-  ncs_inp = ncs.input(pdb_string = pdb_str_12)
-  ncs_groups = ncs_inp.get_ncs_restraints_group_list()
-  ### CHECK FOR SORRY HERE
+  exc = None
+  try:
+    ncs_inp = ncs.input(pdb_string = pdb_str_12)
+    ncs_groups = ncs_inp.get_ncs_restraints_group_list()
+  except Exception, e:
+    exc = e
+  assert str(exc)=="More than one model in pdb hierarchy"
 
 def exercise_16():
   """
@@ -1249,7 +1253,7 @@ ncs_group {
   assert len(g1_c)==1
   assert g1_c[0].iselection.all_eq(
     asc.selection(string = "chain B").iselection())
-  
+
 def exercise_19():
   """
   PDB file with insertion codes, resseqs are different.
