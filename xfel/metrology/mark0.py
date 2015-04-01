@@ -180,7 +180,7 @@ class correction_vectors(correction_vector_store):
  DETECTOR_NORMAL = (0.,0.,-1.)
 
  @staticmethod
- def standalone_check(self,setting_id,entry,d):
+ def standalone_check(self,setting_id,entry,d,cutoff):
 
     wavelength = (d['wavelength'])
     beam_x = (d['xbeam'])
@@ -228,8 +228,8 @@ class correction_vectors(correction_vector_store):
       diff = hypot(ucbp3_prediction[0][0] - cv['predspot'][1],
                    ucbp3_prediction[0][1] - cv['predspot'][0])
 
-      if diff > 5:
-        print "HATTNE INDEXING SLIPUP"
+      if diff > cutoff:
+        print "Correction vector too long: %6.2f pixels; ignore image or increase diff_cutoff (current value=%5.1f)"%(diff,cutoff)
         return False
 
       # For some reason, the setting_id is recorded for each
@@ -358,7 +358,7 @@ class correction_vectors(correction_vector_store):
         and  len(d['effective_tiling']) % 8 == 0
       self.tiles = d['effective_tiling']
 
-    if not self.standalone_check(self,setting_id,entry,d): continue
+    if not self.standalone_check(self,setting_id,entry,d,params.diff_cutoff): continue
 
     # Reading the frame data.  The frame ID is just the index of the
     # image.
@@ -428,7 +428,7 @@ class correction_vectors(correction_vector_store):
       diff = hypot(ucbp3_prediction[0][0] - cv['predspot'][1],
                    ucbp3_prediction[0][1] - cv['predspot'][0])
 
-      if diff > 5:
+      if diff > self.params.diff_cutoff:
         print "HATTNE INDEXING SLIPUP"
         continue
 
