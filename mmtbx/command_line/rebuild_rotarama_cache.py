@@ -10,7 +10,9 @@ import sys, os
 # NB:  this can be run from the command line as "mmtbx.rebuild_rotarama_cache"
 def run():
   initial_current_working_directory = os.getcwd()
-  rotamer_data_dir = rotamer_eval.find_rotarama_data_dir()
+  rotamer_data_dir = rotamer_eval.find_rotarama_data_dir(optional=True)
+  if rotamer_data_dir is None:
+    print 'Quitting : rotamer library not installed'
   target_db = rotamer_eval.open_rotarama_dlite(
     rotarama_data_dir=rotamer_data_dir)
   rebuild_pickle_files(data_dir=rotamer_data_dir,
