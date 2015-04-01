@@ -27,8 +27,7 @@ class energies(scitbx.restraints.energies):
                gradients=None,
                disable_asu_cache=False,
                normalization=False,
-               extension_objects=[],
-               hbonds_in_bond_list=None):
+               extension_objects=[]):
     adopt_init_args(self, locals())
     scitbx.restraints.energies.__init__(self,
                                         compute_gradients=compute_gradients,
@@ -246,29 +245,22 @@ class energies(scitbx.restraints.energies):
       extension_obj.energies_add(energies_obj=self)
     self.finalize_target_and_gradients()
 
+  # Not used anymore? -- used in model_statistics.py
   def get_filtered_n_bond_proxies(self):
-    if self.hbonds_in_bond_list is not None:
-      return self.n_bond_proxies - len(self.hbonds_in_bond_list)
-    else:
-      return self.n_bond_proxies
+    correct_id_proxies = [i.origin_id for i in self.bond_proxies.simple].count(0)
+    return correct_id_proxies
 
   def get_filtered_bond_deltas(self):
     if self.n_bond_proxies is not None:
       if self.n_bond_proxies > 0:
-        if self.hbonds_in_bond_list is not None:
-          sorted_table, n_not_shown = self.bond_proxies.get_sorted(
-              by_value="residual",
-              sites_cart=self.sites_cart,
-              site_labels=None,
-              max_items=None,
-              exclude=self.hbonds_in_bond_list)
-          assert n_not_shown == 0
-          return flex.double([x[4] for x in sorted_table])
-        else:
-          bond_deltas = geometry_restraints.bond_deltas(
-            sites_cart         = self.sites_cart,
-            sorted_asu_proxies = self.bond_proxies)
-          return bond_deltas
+        sorted_table, n_not_shown = self.bond_proxies.get_sorted(
+            by_value="residual",
+            sites_cart=self.sites_cart,
+            site_labels=None,
+            max_items=None,
+            origin_id=0)
+        assert n_not_shown == 0
+        return flex.double([x[4] for x in sorted_table])
       else:
         return None
     else:
@@ -294,13 +286,9 @@ class energies(scitbx.restraints.energies):
     b_z_min/max: min/max abolute values of z-scors
     '''
     if(self.n_bond_proxies is not None):
-      #bond_deltas = geometry_restraints.bond_deltas(
-      #  sites_cart         = self.sites_cart,
-      #  sorted_asu_proxies = self.bond_proxies)
-      #bond_deltas = self.get_filtered_bond_deltas()
       bond_deltas = self.bond_proxies.get_filtered_deltas(
           sites_cart=self.sites_cart,
-          exclude=self.hbonds_in_bond_list)
+          origin_id=0)
       if bond_deltas is not None:
         sigmas = [geometry_restraints.weight_as_sigma(x.weight) for x in self.bond_proxies.simple]
         z_scores = flex.double([(bond_delta/sigma) for bond_delta,sigma in zip(bond_deltas,sigmas)])
@@ -313,13 +301,9 @@ class energies(scitbx.restraints.energies):
 
   def bond_deviations(self):
     if(self.n_bond_proxies is not None):
-      #bond_deltas = geometry_restraints.bond_deltas(
-      #  sites_cart         = self.sites_cart,
-      #  sorted_asu_proxies = self.bond_proxies)
-      #bond_deltas = self.get_filtered_bond_deltas()
       bond_deltas = self.bond_proxies.get_filtered_deltas(
           sites_cart=self.sites_cart,
-          exclude=self.hbonds_in_bond_list)
+          origin_id=0)
       if bond_deltas is not None:
         b_sq  = bond_deltas * bond_deltas
         b_ave = math.sqrt(flex.mean_default(b_sq, 0))

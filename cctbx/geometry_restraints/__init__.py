@@ -444,16 +444,14 @@ def _bond_show_sorted_impl(self,
                            f=None,
                            prefix="",
                            max_items=None,
-                           exclude=None,
-                           exclude_output_only=False):
+                           origin_id=None):
   if unit_cell is None:
     sorted_table, n_not_shown = self.get_sorted(
       by_value=by_value,
       sites_cart=sites_cart,
       site_labels=site_labels,
       max_items=max_items,
-      exclude=exclude,
-      exclude_output_only=exclude_output_only)
+      origin_id=origin_id)
   else:
     sorted_table, n_not_shown = self.get_sorted(
       by_value=by_value,
@@ -461,35 +459,34 @@ def _bond_show_sorted_impl(self,
       unit_cell=unit_cell,
       site_labels=site_labels,
       max_items=max_items,
-      exclude=exclude,
-      exclude_output_only=exclude_output_only)
-  if sorted_table is None :
-    return
-  if exclude is not None:
-    print >> f, "%sBond restraints: %d" % (prefix, len(sorted_table)+n_not_shown)
+      origin_id=origin_id)
+  len_sorted_table = 0 if sorted_table is None else len(sorted_table)
+  if n_not_shown is None: n_not_shown = 0
+  print >> f, "%sBond restraints: %d" % (prefix, len_sorted_table+n_not_shown)
   if (f is None): f = sys.stdout
   print >> f, "%sSorted by %s:" % (prefix, by_value)
-  for restraint_info in sorted_table :
-    (labels, distance_ideal, distance_model, slack, delta, sigma, weight,
-     residual, sym_op_j, rt_mx) = restraint_info
-    s = "bond"
-    for label in labels :
-      print >> f, "%s%4s %s" % (prefix, s, label)
-      s = ""
-    if (slack == 0):
-      l = ""
-      v = ""
-    else:
-      l = "  slack"
-      v = " %6.3f" % slack
-    print >> f, "%s  ideal  model%s  delta    sigma   weight residual%s" % (
-      prefix, l, sym_op_j)
-    print >> f, "%s  %5.3f %6.3f%s %6.3f %6.2e %6.2e %6.2e" % (
-      prefix, distance_ideal, distance_model, v, delta,
-      sigma, weight, residual),
-    if (rt_mx is not None):
-      print >> f, rt_mx,
-    print >> f
+  if sorted_table is not None:
+    for restraint_info in sorted_table :
+      (labels, distance_ideal, distance_model, slack, delta, sigma, weight,
+       residual, sym_op_j, rt_mx) = restraint_info
+      s = "bond"
+      for label in labels :
+        print >> f, "%s%4s %s" % (prefix, s, label)
+        s = ""
+      if (slack == 0):
+        l = ""
+        v = ""
+      else:
+        l = "  slack"
+        v = " %6.3f" % slack
+      print >> f, "%s  ideal  model%s  delta    sigma   weight residual%s" % (
+        prefix, l, sym_op_j)
+      print >> f, "%s  %5.3f %6.3f%s %6.3f %6.2e %6.2e %6.2e" % (
+        prefix, distance_ideal, distance_model, v, delta,
+        sigma, weight, residual),
+      if (rt_mx is not None):
+        print >> f, rt_mx,
+      print >> f
   if (n_not_shown != 0):
     print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
 
@@ -501,9 +498,8 @@ class _(boost.python.injector, shared_bond_simple_proxy):
         site_labels=None,
         unit_cell=None,
         max_items=None,
-        exclude=None,
-        exclude_output_only=False):
-    assert exclude==None # not implemented
+        origin_id=None):
+    assert origin_id is None # not implemented
     assert by_value in ["residual", "delta"]
     assert site_labels is None or len(site_labels) == sites_cart.size()
     if (self.size() == 0): return None, None
@@ -518,7 +514,7 @@ class _(boost.python.injector, shared_bond_simple_proxy):
     i_proxies_sorted = flex.sort_permutation(data=data_to_sort, reverse=True)
     if (max_items is not None):
       i_proxies_sorted = i_proxies_sorted[:max_items]
-    smallest_distance_model = None
+    # smallest_distance_model = None # not used
     sorted_table = []
     for i_proxy in i_proxies_sorted:
       proxy = self[i_proxy]
@@ -545,9 +541,9 @@ class _(boost.python.injector, shared_bond_simple_proxy):
          restraint.slack, restraint.delta,
          weight_as_sigma(weight=restraint.weight), restraint.weight,
          restraint.residual(), sym_op_j, rt_mx))
-      if (smallest_distance_model is None
-          or smallest_distance_model > restraint.distance_model):
-        smallest_distance_model = restraint.distance_model
+      # if (smallest_distance_model is None # not used
+      #     or smallest_distance_model > restraint.distance_model):
+      #   smallest_distance_model = restraint.distance_model
     n_not_shown = data_to_sort.size() - i_proxies_sorted.size()
     return sorted_table, n_not_shown
 
@@ -560,7 +556,7 @@ class _(boost.python.injector, shared_bond_simple_proxy):
                   prefix="",
                   max_items=None):
     if f is None: f = sys.stdout
-    print >> f, "%sBond restraints: %d" % (prefix, self.size())
+    # print >> f, "%sBond restraints: %d" % (prefix, self.size())
     _bond_show_sorted_impl(self, by_value,
                            sites_cart=sites_cart,
                            site_labels=site_labels,
@@ -594,24 +590,22 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
         cutoff_warn_extreme=20,
         f=None,
         prefix="",
-        exclude=None,
-        exclude_output_only=False):
+        origin_id=None):
     if (self.n_total() == 0): return None
     if (f is None): f = sys.stdout
     print >> f, "%sHistogram of bond lengths:" % prefix
     hdata = None
-    if exclude is None:
+    if origin_id is None:
       hdata = bond_distances_model(
         sites_cart=sites_cart,
         sorted_asu_proxies=self)
     else:
       sorted_table, n_not_shown = self.get_sorted(
-                         by_value="delta",
-                         sites_cart=sites_cart,
-                         exclude=exclude,
-                         exclude_output_only=exclude_output_only)
-      hdata = [x[2] for x in sorted_table]
-
+                        by_value="delta",
+                        sites_cart=sites_cart,
+                        origin_id=origin_id)
+      hd = [x[2] for x in sorted_table]
+      hdata = flex.double(hd)
     histogram = flex.histogram(
       data=flex.double(hdata),
       n_slots=n_slots)
@@ -643,22 +637,22 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
         n_slots=5,
         f=None,
         prefix="",
-        exclude=None,
-        exclude_output_only=False):
-    assert not exclude_output_only, "Not implemented"
+        origin_id=None):
     if (self.n_total() == 0): return
     if (f is None): f = sys.stdout
     print >> f, "%sHistogram of bond deltas:" % prefix
     hdata = None
-    if exclude is None:
-      hdata = self.deltas(sites_cart=sites_cart)
+    if origin_id is None:
+      hdata = bond_deltas(
+        sites_cart=sites_cart,
+        sorted_asu_proxies=self)
     else:
       sorted_table, n_not_shown = self.get_sorted(
-                         by_value="delta",
-                         sites_cart=sites_cart,
-                         exclude=exclude,
-                         exclude_output_only=exclude_output_only)
-      hdata = [x[4] for x in sorted_table]
+                        by_value="delta",
+                        sites_cart=sites_cart,
+                        origin_id=origin_id)
+      hd = [x[4] for x in sorted_table]
+      hdata = flex.double(hd)
     histogram = flex.histogram(
       data=flex.abs(hdata),
       n_slots=n_slots)
@@ -675,12 +669,11 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
         sites_cart,
         site_labels=None,
         max_items=None,
-        exclude=None,
-        exclude_output_only=False):
+        origin_id=None):
     assert by_value in ["residual", "delta"]
     assert site_labels is None or len(site_labels) == sites_cart.size()
     if (self.n_total() == 0): return None, None
-    if (max_items is not None and max_items <= 0): return None, None
+    if (max_items is not None and max_items <0): return None, None
     if (by_value == "residual"):
       data_to_sort = self.residuals(sites_cart=sites_cart)
     elif (by_value == "delta"):
@@ -688,22 +681,24 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
     else:
       raise AssertionError
     i_proxies_sorted = flex.sort_permutation(data=data_to_sort, reverse=True)
+    total_proxies = len(i_proxies_sorted)
+    correct_id_proxies = total_proxies
+    if origin_id is not None:
+      correct_id_proxies = [i.origin_id for i in self.simple].count(origin_id)
+      correct_id_proxies += [i.origin_id for i in self.asu].count(origin_id)
     if max_items is None:
-      max_items = len(i_proxies_sorted)
+      max_items = correct_id_proxies
     if (self.asu.size() == 0):
       asu_mappings = None
     else:
       asu_mappings = self.asu_mappings()
-    smallest_distance_model = None
+    # smallest_distance_model = None # is not used anywhere
     n_simple = self.simple.size()
     sorted_table = []
-    if exclude is None:
-      exclude = []
     n = 0
     n_outputted = 0
-    n_proxies = len(i_proxies_sorted)
     n_excluded = 0
-    while n < n_proxies and n_outputted < max_items:
+    while n < total_proxies and n_outputted < max_items:
       i_proxy = i_proxies_sorted[n]
       if (i_proxy < n_simple):
         proxy = self.simple[i_proxy]
@@ -722,14 +717,12 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
           sites_cart=sites_cart,
           asu_mappings=asu_mappings,
           proxy=proxy)
-      labels = []
-      for i in [i_seq, j_seq]:
-        if (site_labels is None): l = str(i)
-        else:                     l = site_labels[i]
-        labels.append(l)
-      if (((i_seq,j_seq) not in exclude and not exclude_output_only) or
-          ((i_seq,j_seq)     in exclude and     exclude_output_only)):
-
+      if origin_id is None or origin_id == proxy.origin_id:
+        labels = []
+        for i in [i_seq, j_seq]:
+          if (site_labels is None): l = str(i)
+          else:                     l = site_labels[i]
+          labels.append(l)
         sorted_table.append(
           (labels, restraint.distance_ideal, restraint.distance_model,
            restraint.slack, restraint.delta,
@@ -738,31 +731,30 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
         n_outputted += 1
       else:
         n_excluded += 1
-      if (smallest_distance_model is None
-          or smallest_distance_model > restraint.distance_model):
-        smallest_distance_model = restraint.distance_model
+      # if (smallest_distance_model is None # is not used anywhere
+      #     or smallest_distance_model > restraint.distance_model):
+      #   smallest_distance_model = restraint.distance_model
       n += 1
-    n_not_shown = n_proxies - n_outputted - n_excluded
+    n_not_shown = correct_id_proxies - n_outputted
     return sorted_table, n_not_shown
 
   def get_filtered_deltas(self,
       sites_cart,
-      exclude=None):
+      origin_id=None):
     n_proxies = self.n_total()
     if (n_proxies == 0): return None
     if (self.asu.size() == 0):
       asu_mappings = None
     else:
       asu_mappings = self.asu_mappings()
-    if exclude is None:
+    if origin_id is None:
       return self.deltas(sites_cart=sites_cart)
     else:
       result = flex.double()
       n_simple = self.simple.size()
       for i in range(n_simple):
         proxy = self.simple[i]
-        i_seq,j_seq = proxy.i_seqs
-        if (i_seq,j_seq) not in exclude:
+        if proxy.origin_id == origin_id:
           rt_mx = None
           sym_op_j = ""
           restraint = bond(
@@ -771,8 +763,7 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
           result.append(restraint.delta)
       for i in range(n_simple, n_proxies):
         proxy = self.asu[i-n_simple]
-        i_seq,j_seq = proxy.i_seq, proxy.j_seq
-        if (i_seq,j_seq) not in exclude:
+        if proxy.origin_id == origin_id:
           rt_mx = asu_mappings.get_rt_mx_ji(pair=proxy)
           sym_op_j = " sym.op."
           restraint = bond(
@@ -790,19 +781,17 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
         f=None,
         prefix="",
         max_items=None,
-        exclude=None,
-        exclude_output_only=False):
+        origin_id=None):
     if f is None: f = sys.stdout
-    if exclude is None:
-      print >> f, "%sBond restraints: %d" % (prefix, self.n_total())
+    # print "origin_id", origin_id
+    # print >> f, "%sBond restraints: %d" % (prefix, self.n_total())
     _bond_show_sorted_impl(self, by_value,
-                           sites_cart=sites_cart,
-                           site_labels=site_labels,
-                           f=f,
-                           prefix=prefix,
-                           max_items=max_items,
-                           exclude=exclude,
-                           exclude_output_only=exclude_output_only)
+                          sites_cart=sites_cart,
+                          site_labels=site_labels,
+                          f=f,
+                          prefix=prefix,
+                          max_items=max_items,
+                          origin_id=origin_id)
 
 class _(boost.python.injector, nonbonded_sorted_asu_proxies):
 

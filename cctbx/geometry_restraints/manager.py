@@ -45,8 +45,7 @@ class manager(object):
         external_energy_function=None,
         plain_pairs_radius=None,
         max_reasonable_bond_distance=None,
-        min_cubicle_edge=5,
-        hbonds_in_bond_list=None):
+        min_cubicle_edge=5):
     if (site_symmetry_table is not None): assert crystal_symmetry is not None
     if (bond_params_table is not None and site_symmetry_table is not None):
       assert bond_params_table.size() == site_symmetry_table.indices().size()
@@ -198,8 +197,7 @@ class manager(object):
         shell_sym_tables=reduced_shell_sym_tables,
         angle_proxies=reduced_angle_proxies,
         dihedral_proxies=reduced_dihedral_proxies,
-        ncs_dihedral_proxies=self.ncs_dihedral_proxies,
-        hbonds_in_bond_list=self.hbonds_in_bond_list)
+        ncs_dihedral_proxies=self.ncs_dihedral_proxies)
     else:
       return manager(
         crystal_symmetry=self.crystal_symmetry,
@@ -209,8 +207,7 @@ class manager(object):
         angle_proxies=reduced_angle_proxies,
         dihedral_proxies=reduced_dihedral_proxies,
         ncs_dihedral_proxies=self.ncs_dihedral_proxies,
-        generic_restraints_manager=self.generic_restraints_manager,
-        hbonds_in_bond_list=self.hbonds_in_bond_list)
+        generic_restraints_manager=self.generic_restraints_manager)
 
   def sites_cart_used_for_pair_proxies(self):
     return self._sites_cart_used_for_pair_proxies
@@ -302,8 +299,7 @@ class manager(object):
       chirality_proxies=self.chirality_proxies,
       planarity_proxies=self.planarity_proxies,
       parallelity_proxies=self.parallelity_proxies,
-      plain_pairs_radius=self.plain_pairs_radius,
-      hbonds_in_bond_list=self.hbonds_in_bond_list)
+      plain_pairs_radius=self.plain_pairs_radius)
 
   def select(self, selection=None, iselection=None):
     assert [selection, iselection].count(None) == 1
@@ -403,15 +399,6 @@ class manager(object):
     if (self.generic_restraints_manager is not None) :
       generic_restraints_manager = self.generic_restraints_manager.select(
         n_seq, iselection)
-    selected_hbonds_in_list=[]
-    if self.hbonds_in_bond_list is not None:
-      r_a = reindexing_array(n_seq, iselection.as_int())
-      for pair in self.hbonds_in_bond_list:
-        if pair[0] in iselection and pair[1] in iselection:
-          reindexed_pair = (r_a[pair[0]], r_a[pair[1]])
-          selected_hbonds_in_list.append(reindexed_pair)
-      if len(selected_hbonds_in_list) == 0:
-        selected_hbonds_in_list = None
     return manager(
       crystal_symmetry=self.crystal_symmetry,
       model_indices=selected_model_indices,
@@ -435,8 +422,7 @@ class manager(object):
       chirality_proxies=selected_chirality_proxies,
       planarity_proxies=selected_planarity_proxies,
       parallelity_proxies=selected_parallelity_proxies,
-      plain_pairs_radius=self.plain_pairs_radius,
-      hbonds_in_bond_list=selected_hbonds_in_list)
+      plain_pairs_radius=self.plain_pairs_radius)
 
   def discard_symmetry(self, new_unit_cell):
     assert self.site_symmetry_table is not None #XXX lazy
@@ -466,8 +452,7 @@ class manager(object):
       chirality_proxies=self.chirality_proxies,
       planarity_proxies=self.planarity_proxies,
       parallelity_proxies=self.parallelity_proxies,
-      plain_pairs_radius=self.plain_pairs_radius,
-      hbonds_in_bond_list=self.hbonds_in_bond_list)
+      plain_pairs_radius=self.plain_pairs_radius)
 
   def add_angles_in_place(self, additional_angle_proxies):
     self.angle_proxies.extend(additional_angle_proxies)
@@ -575,12 +560,6 @@ class manager(object):
     self.add_new_bond_restraints_in_place(proxies, sites_cart,
         max_distance_between_connecting_atoms,
         skip_max_proxy_distance_calculation)
-    if self.hbonds_in_bond_list is None:
-      self.hbonds_in_bond_list = []
-    for p in proxies:
-      self.hbonds_in_bond_list.append(tuple(sorted(p.i_seqs)))
-
-
 
   def add_new_bond_restraints_in_place(self, proxies, sites_cart,
       max_distance_between_connecting_atoms=5,
@@ -691,7 +670,8 @@ class manager(object):
                 weight=proxies[n_proxy].weight,
                 slack=proxies[n_proxy].slack,
                 limit=proxies[n_proxy].limit,
-                top_out=proxies[n_proxy].top_out)
+                top_out=proxies[n_proxy].top_out,
+                origin_id=proxies[n_proxy].origin_id)
             )
         n_added_proxies += 1
     # update self.shell_sym_tables with new bonds
@@ -1000,8 +980,7 @@ class manager(object):
       gradients=gradients,
       disable_asu_cache=disable_asu_cache,
       normalization=normalization,
-      extension_objects=extension_objects,
-      hbonds_in_bond_list=self.hbonds_in_bond_list)
+      extension_objects=extension_objects)
 
   def harmonic_restraints(self, variables, type_indices, type_weights):
     assert self.shell_sym_tables is not None
@@ -1255,19 +1234,17 @@ class manager(object):
           sites_cart=sites_cart,
           site_labels=site_labels,
           f=f,
-          exclude=self.hbonds_in_bond_list)
+          origin_id=0)
       print >> f
       tempbuffer = StringIO.StringIO()
-      if self.hbonds_in_bond_list is not None:
-        pair_proxies.bond_proxies.show_sorted(
-            by_value="residual",
-            sites_cart=sites_cart,
-            site_labels=site_labels,
-            f=tempbuffer,
-            prefix="",
-            exclude=self.hbonds_in_bond_list,
-            exclude_output_only=True)
-        print >> f, "Bond-like", tempbuffer.getvalue()[5:]
+      pair_proxies.bond_proxies.show_sorted(
+          by_value="residual",
+          sites_cart=sites_cart,
+          site_labels=site_labels,
+          f=tempbuffer,
+          prefix="",
+          origin_id=1)
+      print >> f, "Bond-like", tempbuffer.getvalue()[5:]
     if (self.angle_proxies is not None):
       self.angle_proxies.show_sorted(
         by_value="residual",

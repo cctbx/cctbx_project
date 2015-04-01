@@ -253,6 +253,8 @@ bond asu: (0, 0)
     sys.stdout.write(out.getvalue())
   assert not show_diff(out.getvalue(), """\
 =+Bond restraints: 48
+=+Sorted by residual:
+=+... (remaining 48 not shown)
 """)
   #
   sites_cart = si_structure.sites_cart()
@@ -653,6 +655,9 @@ bond 0
      2
   ideal  model  delta    sigma   weight residual
   2.453  2.462 -0.009 1.41e-01 5.00e+01 3.92e-03
+
+Bond-like restraints: 0
+Sorted by residual:
 
 """
   assert not show_diff(sio.getvalue(), expected_first_part + """\

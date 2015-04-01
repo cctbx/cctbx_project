@@ -4308,13 +4308,6 @@ class build_all_chain_proxies(linking_mixins):
     if (have_header):
       print >> log
 
-  def output_hbonds_in_bond_list(self, hbonds_in_bond_list, log):
-    if hbonds_in_bond_list is not None:
-      print >> log, "  Nucleic acid basepair bonds (%d):" % len(hbonds_in_bond_list)
-      for hb in hbonds_in_bond_list:
-        print >> log, "    %s - %s" % (self.pdb_atoms[hb[0]].id_str(),
-            self.pdb_atoms[hb[1]].id_str())
-
   def construct_geometry_restraints_manager(self,
         ener_lib,
         disulfide_link,
@@ -4996,7 +4989,7 @@ class process(object):
           n_slots=params.show_histogram_slots.bond_lengths,
           f=self.log,
           prefix="  ",
-          exclude=self._geometry_restraints_manager.hbonds_in_bond_list)
+          origin_id=0)
         smallest_distance_model = \
           pair_proxies.bond_proxies.show_sorted(
             by_value="residual",
@@ -5005,7 +4998,7 @@ class process(object):
             f=self.log,
             prefix="  ",
             max_items=params.show_max_items.bond_restraints_sorted_by_residual,
-            exclude=self._geometry_restraints_manager.hbonds_in_bond_list)
+            origin_id=0)
         if (    smallest_distance_model is not None
             and hard_minimum_bond_distance_model is not None
             and smallest_distance_model < hard_minimum_bond_distance_model):
