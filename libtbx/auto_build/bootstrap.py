@@ -160,7 +160,7 @@ class cleanup_ext_class(object):
           i+=1
     os.chdir(cwd)
     print "  removed %d files" % i
-  
+
   def run(self):
     self.remove_ext_files()
 

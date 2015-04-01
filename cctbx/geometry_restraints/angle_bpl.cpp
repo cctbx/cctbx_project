@@ -28,7 +28,7 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("angle_proxy", no_init)
         .def(init<
-          af::tiny<unsigned, 3> const&, double, double, 
+          af::tiny<unsigned, 3> const&, double, double,
           double, unsigned char>((
           arg("i_seqs"), arg("angle_ideal"), arg("weight"),
           arg("slack")=0, arg("origin_id")=0)))
