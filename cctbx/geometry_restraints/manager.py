@@ -1248,8 +1248,15 @@ class manager(object):
     if (self.angle_proxies is not None):
       self.angle_proxies.show_sorted(
         by_value="residual",
-        sites_cart=sites_cart, site_labels=site_labels, f=f)
+        sites_cart=sites_cart, site_labels=site_labels, f=f,
+        origin_id=0)
       print >> f
+      tempbuffer = StringIO.StringIO()
+      self.angle_proxies.show_sorted(
+        by_value="residual",
+        sites_cart=sites_cart, site_labels=site_labels, f=tempbuffer,
+        origin_id=1)
+      print >> f, "Noncovalent b%s" % tempbuffer.getvalue()[1:]
     if (self.dihedral_proxies is not None):
       self.dihedral_proxies.show_sorted(
         by_value="residual",

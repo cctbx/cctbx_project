@@ -5012,7 +5012,8 @@ class process(object):
             n_slots=params.show_histogram_slots
               .bond_angle_deviations_from_ideal,
             f=self.log,
-            prefix="  ")
+            prefix="  ",
+            origin_id=0)
         self._geometry_restraints_manager.angle_proxies \
           .show_sorted(
             by_value="residual",
@@ -5021,7 +5022,8 @@ class process(object):
             f=self.log,
             prefix="  ",
             max_items=params.show_max_items
-              .bond_angle_restraints_sorted_by_residual)
+              .bond_angle_restraints_sorted_by_residual,
+            origin_id=0)
         print >> self.log
         self._geometry_restraints_manager.dihedral_proxies \
           .show_histogram_of_deltas(
