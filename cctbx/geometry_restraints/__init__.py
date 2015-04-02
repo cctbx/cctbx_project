@@ -1545,12 +1545,12 @@ def _show_histogram_of_deltas_impl(O,
     print >> f, "%sHistogram of %s deviations from ideal:" % (
       prefix, proxy_label)
     if origin_id is not None:
-      sorted_table, n_not_shown = self.get_sorted(
+      sorted_table, n_not_shown = O.get_sorted(
                         by_value="delta",
                         sites_cart=sites_cart,
                         origin_id=origin_id)
       hd = [x[2] for x in sorted_table]
-      hdata = flex.double(hd)
+      data = flex.double(hd)
     else:
       if unit_cell is None:
         data = flex.abs(O.deltas(sites_cart=sites_cart))
@@ -1580,7 +1580,7 @@ def _get_sorted_impl(O,
   assert by_value in ["residual", "delta"]
   assert site_labels is None or len(site_labels) == sites_cart.size()
   if (O.size() == 0): return None, None
-  if (max_items is not None and max_items <= 0): return None, None
+  if (max_items is not None and max_items < 0): return None, None
   if (by_value == "residual"):
     if unit_cell is None:
       data_to_sort = O.residuals(sites_cart=sites_cart)
@@ -1599,13 +1599,16 @@ def _get_sorted_impl(O,
   if max_items is None:
     max_items = n_total_proxies
   sorted_table = []
-  n_wrong_origin_id = 0
   n_added_proxies = 0
+  correct_id_proxies = n_total_proxies
+  if origin_id is not None:
+    correct_id_proxies = [i.origin_id for i in O].count(origin_id)
+
   i = 0
   while i < n_total_proxies and n_added_proxies < max_items:
     proxy = O[i_proxies_sorted[i]]
     if (origin_id is None or
-       (origin_id is not None and hasattr(proxy, origin_id)
+       (origin_id is not None and hasattr(proxy, "origin_id")
         and proxy.origin_id==origin_id)):
       labels = []
       labels_j = []
@@ -1642,10 +1645,8 @@ def _get_sorted_impl(O,
         restraint_info = restraint._get_sorted_item()
         sorted_table.append([labels] + restraint_info)
       n_added_proxies += 1
-    else:
-      n_wrong_origin_id += 1
     i += 1
-  n_not_shown = n_total_proxies - n_added_proxies - n_wrong_origin_id
+  n_not_shown = correct_id_proxies - n_added_proxies
   return sorted_table, n_not_shown
 
 def _show_sorted_impl(O,
@@ -1670,7 +1671,9 @@ def _show_sorted_impl(O,
         max_items=max_items,
         get_restraints_only=True,
         origin_id=origin_id)
-  print >> f, "%s%s restraints: %d" % (prefix, proxy_label, O.size())
+  len_sorted_table = 0 if sorted_table is None else len(sorted_table)
+  if n_not_shown is None: n_not_shown = 0
+  print >> f, "%s%s restraints: %d" % (prefix, proxy_label, len_sorted_table+n_not_shown)
   if (O.size() == 0): return
   if (proxy_type is dihedral):
     n_harmonic = O.count_harmonic()
