@@ -3,14 +3,15 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 03/06/2015
-Description : IOTA pickle selection module. Selects the best integration results from a
-              set of pickles derived from a single image.
+Last Changed: 04/01/2015
+Description : IOTA pickle selection module. Selects the best integration results
+              from grid search output.
 '''
 
-import os
+import os, sys, traceback
 from prime.iota.iota_input import main_log
 import numpy as np
+import csv
 
 import dials.util.command_line as cmd
 
@@ -21,37 +22,35 @@ def prefilter(gs_params, int_list):
 
   acceptable_results = []
   if gs_params.flag_prefilter == True:
-    for int_entry in int_list:
+    for i in int_list:
+      try:
+        tmp_pickle_name = os.path.basename(i['img'])
+        uc_tol = gs_params.target_uc_tolerance
+        user_uc = [prm for prm in gs_params.target_unit_cell.parameters()]
 
-      tmp_pickle_name = os.path.basename(int_entry[0])
-      uc_tol = gs_params.target_uc_tolerance
-      user_uc = []
+        # read integration info and determine uc differences
+        p_pg = i['sg'].replace(" ","")
 
-      for prm in gs_params.target_unit_cell.parameters():
-        user_uc.append(prm)
 
-      # read integration info and determine uc differences
-      p_pg = int_entry[3].replace(" ","")
-      p_uc = int_entry[4], int_entry[5], int_entry[6],\
-             int_entry[7], int_entry[8], int_entry[9]
+        delta_a = abs(i['a'] - user_uc[0])
+        delta_b = abs(i['b'] - user_uc[1])
+        delta_c = abs(i['c'] - user_uc[2])
+        delta_alpha = abs(i['alpha'] - user_uc[3])
+        delta_beta = abs(i['beta'] - user_uc[4])
+        delta_gamma = abs(i['gamma'] - user_uc[5])
 
-      delta_a = abs(p_uc[0] - user_uc[0])
-      delta_b = abs(p_uc[1] - user_uc[1])
-      delta_c = abs(p_uc[2] - user_uc[2])
-      delta_alpha = abs(p_uc[3] - user_uc[3])
-      delta_beta = abs(p_uc[4] - user_uc[4])
-      delta_gamma = abs(p_uc[5] - user_uc[5])
-
-      # Determine if pickle satisfies sg / uc parameters within given
-      # tolerance and low resolution cutoff
-      if p_pg == gs_params.target_pointgroup.replace(" ",""):
-        if  (delta_a <= user_uc[0] * uc_tol and
-              delta_b <= user_uc[1] * uc_tol and
-              delta_c <= user_uc[2] * uc_tol and
-              delta_alpha <= user_uc[3] * uc_tol and
-              delta_beta <= user_uc[4] * uc_tol and
-              delta_gamma <= user_uc[5] * uc_tol):
-          acceptable_results.append(int_entry)
+        # Determine if pickle satisfies sg / uc parameters within given
+        # tolerance and low resolution cutoff
+        if p_pg == gs_params.target_pointgroup.replace(" ",""):
+          if  (delta_a <= user_uc[0] * uc_tol and
+                delta_b <= user_uc[1] * uc_tol and
+                delta_c <= user_uc[2] * uc_tol and
+                delta_alpha <= user_uc[3] * uc_tol and
+                delta_beta <= user_uc[4] * uc_tol and
+                delta_gamma <= user_uc[5] * uc_tol):
+            acceptable_results.append(i)
+      except TypeError:
+        raise Exception("".join(traceback.format_exception(*sys.exc_info())))
   else:
     acceptable_results = int_list
 
@@ -71,24 +70,6 @@ def best_file_selection(gs_params, output_entry, log_dir, n_int):
   ps_log_output = []
   selection_result = []
 
-  if not os.path.isfile(result_file):
-    return
-
-# Read integration record file and convert to list
-  with open(result_file, 'r') as int_results:
-    int_content = int_results.read()
-
-  prelim_int_list = [int_res.split(',') for int_res in int_content.splitlines()]
-  int_list = []
-  for item in prelim_int_list:
-    result_line = [item[0], int(item[1]), int(item[2]), item[3],
-                   float(item[4]), float(item[5]), float(item[6]),
-                   float(item[7]), float(item[8]), float(item[9]),
-                   int(item[10]), float(item[11]), float(item[12]),
-                   float(item[13])]
-    int_list.append(result_line)
-
-
 # apply prefilter if specified and make a list of acceptable pickles
   if not os.path.isfile(result_file):
     ps_log_output.append('No integrated images found ' \
@@ -96,19 +77,35 @@ def best_file_selection(gs_params, output_entry, log_dir, n_int):
     acceptable_results = []
     int_summary ='{} --     not integrated'.format(input_file)
 
-    with open('{}/not_integrated.lst'.format(os.path.abspath(gs_params.output)), 'a') as no_int:
+    with open('{}/not_integrated.lst'\
+              ''.format(os.path.abspath(gs_params.output)), 'a') as no_int:
       no_int.write('{}\n'.format(input_file))
 
   else:
+
+    with open(result_file, 'rb') as rf:
+      reader = csv.DictReader(rf)
+      int_list = [i for i in list(reader) if i['img'] != '' and i['a'] != None]
+
+    types = [('img', str), ('sih', int), ('sph', int), ('spa', int),\
+             ('sg', str), ('a', float), ('b', float), ('c', float),\
+             ('alpha', float), ('beta', float), ('gamma', float),\
+             ('strong', int), ('res', float), ('mos', float), ('mq', float)]
+
+    for i in int_list:
+      try:
+        i.update((key, conv(i[key])) for (key, conv) in types)
+      except ValueError:
+        raise Exception("".join(traceback.format_exception(*sys.exc_info())))
+
+
     acceptable_results = prefilter(gs_params, int_list)
     if len(acceptable_results) == 0:
-      ps_log_output.append('Discarded all {0} integrated pickles ' \
-                      'in {1}:\n'.format(len(int_list), abs_tmp_dir))
+      ps_log_output.append('All {0} entries in {1} failed prefilter' \
+                           '\n'.format(len(int_list), result_file))
       with open('{}/prefilter_fail.lst'.format(os.path.abspath(gs_params.output)), 'a') as bad_int:
         bad_int.write('{}\n'.format(input_file))
-
       int_summary ='{} --     failed prefilter'.format(input_file)
-
 
     else:
       # Selection and copying of pickles, output of stats to log file
@@ -130,55 +127,53 @@ def best_file_selection(gs_params, output_entry, log_dir, n_int):
 
       for acc in acceptable_results:
         cell = '{:>8.2f}, {:>8.2f}, {:>8.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}'\
-               ''.format(acc[4], acc[5], acc[6], acc[7], acc[8], acc[9])
+               ''.format(acc['a'], acc['b'], acc['c'],
+                         acc['alpha'], acc['beta'], acc['gamma'])
         info_line = '{:^4}{:^4}{:^9.2f}{:^8}{:^55}{:^12}{:^12.4f}{:^12.2f}'\
-                    ''.format(acc[1], acc[2], acc[11], acc[3], cell,
-                              acc[10], acc[12], acc[13])
+                    ''.format(acc['sph'], acc['spa'], acc['res'], acc['sg'],
+                              cell, acc['strong'], acc['mos'], acc['mq'])
         ps_log_output.append(info_line)
 
       # Compute average values
-      avg_res = np.mean([item[11] for item in acceptable_results])
-      avg_spots = np.mean([item[10] for item in acceptable_results])
-      avg_mos = np.mean([item[12] for item in acceptable_results])
-      avg_mq = np.mean([item[13] for item in acceptable_results])
+      avg_res = np.mean([item['res'] for item in acceptable_results])
+      avg_spots = np.mean([item['strong'] for item in acceptable_results])
+      avg_mos = np.mean([item['mos'] for item in acceptable_results])
+      avg_mq = np.mean([item['mq'] for item in acceptable_results])
       avg_cell = '{:>8.2f}, {:>8.2f}, {:>8.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}'\
-               ''.format(np.mean([item[4] for item in acceptable_results]),
-                         np.mean([item[5] for item in acceptable_results]),
-                         np.mean([item[6] for item in acceptable_results]),
-                         np.mean([item[7] for item in acceptable_results]),
-                         np.mean([item[8] for item in acceptable_results]),
-                         np.mean([item[9] for item in acceptable_results]))
+              ''.format(np.mean([item['a'] for item in acceptable_results]),
+                        np.mean([item['b'] for item in acceptable_results]),
+                        np.mean([item['c'] for item in acceptable_results]),
+                        np.mean([item['alpha'] for item in acceptable_results]),
+                        np.mean([item['beta'] for item in acceptable_results]),
+                        np.mean([item['gamma'] for item in acceptable_results]))
 
       info_line = '\nAVG:    {:^9.2f}{:^8}{:^55}{:^12.2}{:^12.4f}{:^12.2f}'\
                     ''.format(avg_res, '', avg_cell, avg_spots, avg_mos, avg_mq)
       ps_log_output.append(info_line)
 
       # Compute standard deviations
-      std_res = np.std([item[11] for item in acceptable_results])
-      std_spots = np.std([item[10] for item in acceptable_results])
-      std_mos = np.std([item[12] for item in acceptable_results])
-      std_mq = np.std([item[13] for item in acceptable_results])
+      std_res = np.std([item['res'] for item in acceptable_results])
+      std_spots = np.std([item['strong'] for item in acceptable_results])
+      std_mos = np.std([item['mos'] for item in acceptable_results])
+      std_mq = np.std([item['mq'] for item in acceptable_results])
       std_cell = '{:>8.2f}, {:>8.2f}, {:>8.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}'\
-               ''.format(np.std([item[4] for item in acceptable_results]),
-                         np.std([item[5] for item in acceptable_results]),
-                         np.std([item[6] for item in acceptable_results]),
-                         np.std([item[7] for item in acceptable_results]),
-                         np.std([item[8] for item in acceptable_results]),
-                         np.std([item[9] for item in acceptable_results]))
+              ''.format(np.std([item['a'] for item in acceptable_results]),
+                        np.std([item['b'] for item in acceptable_results]),
+                        np.std([item['c'] for item in acceptable_results]),
+                        np.std([item['alpha'] for item in acceptable_results]),
+                        np.std([item['beta'] for item in acceptable_results]),
+                        np.std([item['gamma'] for item in acceptable_results]))
 
       info_line = 'STD:    {:^9.2f}{:^8}{:^55}{:^12.2}{:^12.4f}{:^12.2f}'\
                     ''.format(std_res, '', std_cell, std_spots, std_mos, std_mq)
       ps_log_output.append(info_line)
 
-      #mos_cutoff = np.nanmin([m[12] for m in acceptable_results]) + std_mos
-      #subset = [entry for entry in acceptable_results \
-      #          if entry[12] <= mos_cutoff]
 
       # Select the 25% with lowest mosaicities, then select for most spots
-      sorted_entries = sorted(acceptable_results, key=lambda i: i[12])
+      sorted_entries = sorted(acceptable_results, key=lambda i: i['mos'])
       subset = [j[1] for j in enumerate(sorted_entries) \
                 if j[0] <= len(sorted_entries) * 0.25]
-      sub_spots = [sp[10] for sp in subset]
+      sub_spots = [sp['strong'] for sp in subset]
 
       best = subset[np.argmax(sub_spots)]
 
@@ -186,16 +181,17 @@ def best_file_selection(gs_params, output_entry, log_dir, n_int):
                                                             'a') as sel_int:
         sel_int.write('{}\n'.format(input_file))
 
-      selection_result = [input_file, best[1], best[1], best[2]]
+      selection_result = [input_file, best['sih'], best['sph'], best['spa'],
+                          abs_tmp_dir]
 
       # Output selected file information
       ps_log_output.append('\nSelected:')
-
       cell = '{:>8.2f}, {:>8.2f}, {:>8.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}'\
-             ''.format(best[4], best[5], best[6], best[7], best[8], best[9])
+             ''.format(best['a'], best['b'], best['c'],
+                       best['alpha'], best['beta'], best['gamma'])
       info_line = '{:^4}{:^4}{:^9.2f}{:^8}{:^55}{:^12}{:^12.4f}{:^12.2f}'\
-                  ''.format(best[1], best[2], best[11], best[3], cell,
-                            best[10], best[12], best[13])
+                  ''.format(best['sph'], best['spa'], best['res'], best['sg'],
+                            cell, best['strong'], best['mos'], best['mq'])
       ps_log_output.append(info_line)
 
     ps_log_output.append('\n')
@@ -210,7 +206,7 @@ def best_file_selection(gs_params, output_entry, log_dir, n_int):
     prog_count = len(prog_content.splitlines())
 
   gs_prog = cmd.ProgressBar(title='PICKLE SELECTION', estimate_time=False, spinner=False)
-  if prog_count >= n_int:
+  if prog_count == n_int:
     gs_prog.finished()
   else:
     prog_step = 100 / n_int
