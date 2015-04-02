@@ -122,6 +122,8 @@ HINT:
     import something.related # implicit import
     import wingdbstub # special import
 """
+    return (1)
+  return (0)
 
 if (__name__ == "__main__"):
   import sys

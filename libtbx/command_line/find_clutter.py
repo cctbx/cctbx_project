@@ -8,6 +8,7 @@ def run(args):
   flag_dos_format = True
   flag_indentation = False
   verbose = False
+  only_whitespace = False
   paths = []
   for arg in args:
     if (arg == "-x"):
@@ -20,6 +21,8 @@ def run(args):
       verbose = True
     elif (arg == "--indentation") :
       flag_indentation = True
+    elif (arg == "--only_whitespace") :
+      only_whitespace = True
     else:
       paths.append(arg)
   if (len(paths) == 0): paths = ["."]
@@ -53,26 +56,32 @@ def run(args):
   please_use = []
   if (n_is_cluttered != 0):
     please_use.append("libtbx.clean_clutter")
-  if (n_has_unused_imports != 0):
-    please_use.append("libtbx.find_unused_imports_crude")
-  if n_missing_from_future_import_division:
-    please_use.append('libtbx.add_from_future_import_division')
-  if (len(please_use) != 0):
-    message_lines.append("")
-    message_lines.append(
-      "*** To clean up please use: %s ***" % ", ".join(please_use))
-  if (n_bare_excepts > 0):
-    message_lines.append("")
-    message_lines.extend("""\
-*** Please change bare excepts: ***
-      Usually best:
-        except Exception:
-      Rarely necessary:
-        except: # intentional
-""".splitlines())
-  if (n_bad_indentation != 0) :
-    message_lines.append("")
-    message_lines.append("*** Please fix indentation in a text editor ***")
+  if only_whitespace:
+    def _is_whitespace(s):
+      if s.find("tabs or trailing")>-1: return True
+      return False
+    message_lines = filter(_is_whitespace, message_lines)
+  else:
+    if (n_has_unused_imports != 0):
+      please_use.append("libtbx.find_unused_imports_crude")
+    if n_missing_from_future_import_division:
+      please_use.append('libtbx.add_from_future_import_division')
+    if (len(please_use) != 0):
+      message_lines.append("")
+      message_lines.append(
+        "*** To clean up please use: %s ***" % ", ".join(please_use))
+    if (n_bare_excepts > 0):
+      message_lines.append("")
+      message_lines.extend("""\
+  *** Please change bare excepts: ***
+        Usually best:
+          except Exception:
+        Rarely necessary:
+          except: # intentional
+  """.splitlines())
+    if (n_bad_indentation != 0) :
+      message_lines.append("")
+      message_lines.append("*** Please fix indentation in a text editor ***")
   if (len(message_lines) != 0):
     print
     print "\n".join(message_lines)
