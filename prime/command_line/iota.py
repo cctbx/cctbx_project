@@ -3,16 +3,15 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 03/06/2015
-Description : IOTA command-line module. Version 0.9
+Last Changed: 04/01/2015
+Description : IOTA command-line module. Version 1.21
 '''
 
 import os
 import sys
-import shutil
-import random
 from datetime import datetime
 import numpy as np
+from collections import Counter
 
 from libtbx.easy_mp import parallel_map
 import dials.util.command_line as cmd
@@ -20,13 +19,10 @@ import dials.util.command_line as cmd
 import prime.iota.iota_input as inp
 import prime.iota.iota_gridsearch as gs
 import prime.iota.iota_select as ps
-from prime.iota.iota_select import best_file_selection
-
 
 # Multiprocessor wrapper for grid search module
 def index_mproc_wrapper(current_img):
-  return gs.integrate_one_image(current_img, len(mp_input_list), log_dir,
-                                False, gs_params)
+  return gs.gs_integration(current_img, len(mp_input_list), log_dir, gs_params)
 
 # Multiprocessor wrapper for selection module
 def selection_mproc_wrapper(output_entry):
@@ -34,128 +30,9 @@ def selection_mproc_wrapper(output_entry):
 
 # Multiprocessor wrapper for final integration module
 def final_mproc_wrapper(current_img):
-  return gs.final_integrate_one(current_img, log_dir, len(sel_clean), gs_params)
+  return gs.final_integration(current_img, len(sel_clean), log_dir, gs_params)
 
-# Multiprocessor wrapper for single image integration module
-def single_mproc_wrapper(current_img):
-  return gs.int_single_image(current_img, log_dir, n_int, gs_params)
 
-def experimental_mproc_wrapper(single_entry):
-  return gs.exp_integrate_one(single_entry, log_dir, n_int, gs_params)
-
-def generate_input(gs_params):
-  """ This section generates input for grid search and/or pickle selection.
-
-      parameters: gs_params - list of parameters from *.param file (in
-      PHIL format)
-
-      output: input_list - list of absolute paths to input files
-              input_dir_list - list of absolute paths to input folder(s)
-              output_dir_list - same for output folder(s)
-              mp_input_list - for multiprocessing: filename + spotfinding paarams
-              mp_output_list - same for output
-  """
-
-  # If no parameter file specified, output blank parameter file
-  if gs_params.input == None:
-    print '{:-^100}\n\n'.format('IOTA Dry Run')
-    print txt_out
-    with open('iota.param', 'w') as default_settings_file:
-      default_settings_file.write(txt_out)
-    sys.exit()
-
-  # Check for list of files; if exists, use as input list. If doesn't exist,
-  # generate list from input directory
-  if gs_params.input_list == None:
-    input_list = inp.make_input_list(gs_params)
-  else:
-    with open(gs_params.input_list, 'r') as listfile:
-      listfile_contents = listfile.read()
-    input_list = listfile_contents.splitlines()
-
-  h_min = gs_params.grid_search.h_avg - gs_params.grid_search.h_std
-  h_max = gs_params.grid_search.h_avg + gs_params.grid_search.h_std
-  a_min = gs_params.grid_search.a_avg - gs_params.grid_search.a_std
-  a_max = gs_params.grid_search.a_avg + gs_params.grid_search.a_std
-  gs_range = [h_min, h_max, a_min, a_max]
-
-  # If grid-search turned on, check for existing output directory and remove
-  if gs_params.grid_search.flag_on == True:
-
-    # Remove old output if found
-    if os.path.exists(os.path.abspath(gs_params.output)):
-      cmd.Command.start("Found old folder {}... deleting...".format(gs_params.output))
-      shutil.rmtree(os.path.abspath(gs_params.output))
-      cmd.Command.end("Deleted old folder {} -- DONE".format(gs_params.output))
-
-    # Make main output directory and log directory
-    os.makedirs(os.path.abspath(gs_params.output))
-    os.makedirs("{}/logs".format(os.path.abspath(gs_params.output)))
-
-    # Make per-image output folders. ***May not be necessary!!
-    cmd.Command.start("Generating output directory tree")
-    inp.make_dirs(input_list, gs_params)
-    cmd.Command.end("Generating output directory tree -- DONE")
-
-  # If grid-search turned off, check that output directory exists, so that the
-  # selection module has input
-  else:
-    if not os.path.exists(os.path.abspath(gs_params.output)):
-      print "ERROR: No grid search results detected in"\
-          "{}".format(os.path.abspath(gs_params.output))
-      sys.exit()
-
-  # Make log directory and input/output directory lists
-  log_dir = "{}/logs".format(os.path.abspath(gs_params.output))
-  input_dir_list, output_dir_list = inp.make_dir_lists(input_list, gs_params)
-
-  # Initiate log file
-  logfile = '{}/iota.log'.format(log_dir)
-  inp.main_log_init(logfile)
-
-  # Make input/output lists for multiprocessing
-  cmd.Command.start("Generating multiprocessing input")
-  mp_input_list, mp_output_list = inp.make_mp_input(input_list, gs_params,
-                                                       gs_range)
-  cmd.Command.end("Generating multiprocessing input -- DONE")
-
-  return gs_range, input_list, input_dir_list, output_dir_list, log_dir, logfile,\
-         mp_input_list, mp_output_list
-
-# =========================== EXPERIMENTAL SECTION =========================== #
-
-def advanced_input(gs_range, gs_params):
-  """This is for various debugging / experimental stuff. Runs one image only.
-  """
-  print "EXPERIMENTAL / DEBUG MODE:"
-  print "Trying out extracting relevant parameters from an image..."
-
-  trial_list = []
-  if gs_params.advanced.single_img:
-    random_number = random.randrange(0, len(input_list))
-    trial_list.append(input_list[random_number])
-  elif gs_params.advanced.random_sample.flag_on:
-    for i in range (0, gs_params.random_sample.number + 1):
-      random_number = random.randrange(0, len(input_list))
-      trial_list.append(input_list[random_number])
-  else:
-    trial_list = input_list
-
-  log_dir = "{}/logs".format(os.path.abspath(gs_params.output))
-  input_dir_list, output_dir_list = inp.make_dir_lists(trial_list, gs_params)
-  mp_trial_list, mp_trial_output_list = inp.make_mp_input(trial_list, gs_params,
-                                                          gs_range)
-
-  #gs.debug_integrate_one(mp_trial_list[0], log_dir, gs_params)
-  gs.exp_integrate_one(mp_trial_list[0], log_dir, 1, gs_params)
-
-  # run grid search on multiple processes
-#   parallel_map(iterable=mp_trial_list,
-#                func=experimental_mproc_wrapper,
-#                processes=gs_params.n_processors,
-#                preserve_exception_message=False)
-
-  print "END OF RUN"
 # ============================================================================ #
 
 def run_grid_search(txt_out, gs_params, gs_range, input_dir_list,
@@ -240,8 +117,7 @@ def run_pickle_selection(gs_params, mp_output_list):
   cmd.Command.start("Starting Pickle Selection")
   selection_results = parallel_map(iterable=mp_output_list,
                                    func=selection_mproc_wrapper,
-                                   processes=gs_params.n_processors,
-                                   preserve_exception_message=True)
+                                   processes=gs_params.n_processors)
   cmd.Command.end("Finished Pickle Selection")
 
   return selection_results
@@ -251,60 +127,54 @@ def final_integration(sel_clean, gs_params):
   if os.path.isfile("{0}/logs/progress.log".format(gs_params.output)):
     os.remove("{0}/logs/progress.log".format(gs_params.output))
 
-  if gs_params.advanced.charts:
-    inp.main_log(logfile, "\n\n{:-^80}\n".format('FINAL INTEGRATION WITH ALL PLOT PDFS'))
-  elif gs_params.advanced.mosaicity_plot:
-    inp.main_log(logfile, "\n\n{:-^80}\n".format('FINAL INTEGRATION WITH MOSAICITY PLOT PDFS'))
-  else:
-    inp.main_log(logfile, "\n\n{:-^80}\n".format('FINAL INTEGRATION, NO PLOTS'))
+  inp.main_log(logfile, "\n\n{:-^80}\n".format(' FINAL INTEGRATION '))
 
   cmd.Command.start("Integrating with selected spotfinding parameters")
   result_objects = parallel_map(iterable=sel_clean,
-               func=final_mproc_wrapper,
-               processes=gs_params.n_processors,
-               preserve_exception_message=True)
+                                func=final_mproc_wrapper,
+                                processes=gs_params.n_processors,
+                                preserve_exception_message=True)
   cmd.Command.end("Integrating with selected spotfinding parameters -- DONE ")
 
   clean_results = [results for results in result_objects if results != []]
 
   return clean_results
 
-def print_results(clean_results):
+def print_results(clean_results, gs_range):
 
-  images = [results[0] for results in clean_results]
-  spot_heights = [int(results[1]) for results in clean_results]
-  spot_areas = [int(results[2]) for results in clean_results]
-  resolutions = [float(results[3]) for results in clean_results]
-  num_spots = [int(results[4]) for results in clean_results]
-  dom_sizes = [float(results[5]) for results in clean_results]
-  mosaicities = [float(results[6]) for results in clean_results]
-  rmsds = [float(results[7]) for results in clean_results]
+  images = [results['img'] for results in clean_results]
+  spot_heights = [results['sph'] for results in clean_results]
+  spot_areas = [results['spa'] for results in clean_results]
+  resolutions = [results['res'] for results in clean_results]
+  num_spots = [results['strong'] for results in clean_results]
+  mosaicities = [results['mos'] for results in clean_results]
 
-  a = [results[8][0] for results in clean_results]
-  b = [results[8][1] for results in clean_results]
-  c = [results[8][2] for results in clean_results]
-  alpha = [results[8][3] for results in clean_results]
-  beta = [results[8][4] for results in clean_results]
-  gamma = [results[8][5] for results in clean_results]
+  a = [results['a'] for results in clean_results]
+  b = [results['b'] for results in clean_results]
+  c = [results['c'] for results in clean_results]
+  alpha = [results['alpha'] for results in clean_results]
+  beta = [results['beta'] for results in clean_results]
+  gamma = [results['gamma'] for results in clean_results]
 
+  cons_h = Counter(spot_heights).most_common(1)[0][0]
+  cons_a = Counter(spot_areas).most_common(1)[0][0]
 
   final_table = []
   final_table.append("\n\n{:-^80}\n".format('ANALYSIS OF RESULTS'))
   final_table.append("Total images:          {}".format(len(images)))
   final_table.append("Avg. spot height:      {:<8.3f}  std. dev:    {:<6.2f}"\
-                     "  max: {:<3}  min: {:<3}".format(np.mean(spot_heights),
-                     np.std(spot_heights), max(spot_heights), min(spot_heights)))
+                     "  max: {:<3}  min: {:<3}  consensus: {:<3}"\
+                     "".format(np.mean(spot_heights), np.std(spot_heights),
+                               max(spot_heights), min(spot_heights), cons_h))
   final_table.append("Avg. spot areas:       {:<8.3f}  std. dev:    {:<6.2f}"\
-                    "  max: {:<3}  min: {:<3}".format(np.mean(spot_areas),
-                    np.std(spot_areas), max(spot_areas), min(spot_areas)))
+                    "  max: {:<3}  min: {:<3}  consensus: {:<3}"\
+                    "".format(np.mean(spot_areas), np.std(spot_areas),
+                              max(spot_areas), min(spot_areas), cons_a))
   final_table.append("Avg. number of spots:  {:<8.3f}  std. dev:    {:<6.2f}"\
                     "".format(np.mean(num_spots), np.std(num_spots)))
-  final_table.append("Avg. domain size:      {:<8.3f}  std. dev:    {:<6.2f}"\
-                     "".format(np.mean(dom_sizes), np.std(dom_sizes)))
+
   final_table.append("Avg. mosaicity:        {:<8.3f}  std. dev:    {:<6.2f}"\
                     "".format(np.mean(mosaicities), np.std(mosaicities)))
-  final_table.append("Avg. positional RMSD:  {:<8.3f}  std. dev:    {:<6.2f}"
-                    "".format(np.mean(rmsds), np.std(rmsds)))
   final_table.append("Avg. unit cell:        "\
                      "{:<6.2f} ({:>4.2f}), {:<6.2f} ({:>4.2f}), "\
                      "{:<6.2f} ({:>4.2f}), {:<6.2f} ({:>4.2f}), "\
@@ -316,30 +186,8 @@ def print_results(clean_results):
                               np.mean(beta), np.std(beta),
                               np.mean(gamma), np.std(gamma)))
 
-  bad_mos_list = [item for item in clean_results if float(item[6]) -\
+  bad_mos_list = [item for item in clean_results if float(item['mos']) -\
                    np.mean(mosaicities) > np.std(mosaicities) * 2]
-
-  if len(bad_mos_list) != 0:
-    final_table.append("\nImages with poor mosaicity (> 2-sigma over mean):")
-    for entry in bad_mos_list:
-      final_table.append('{:<3}  {}: H = {:<3} A = {:<3}  RES = {:<4.2F}  SPOTS = {:<6}'\
-                         ' DOM = {:<8.2f}  MOS = {:<6.4f}  RMSD = {:<6.2f}'\
-                         ''.format(bad_mos_list.index(entry), entry[0],
-                                   entry[1], entry[2], entry[3], entry[4],
-                                   entry[5], entry[6], entry[7]))
-
-  bad_rmsd_list = [item for item in clean_results if float(item[7]) - \
-                     np.mean(rmsds) > np.std(rmsds) * 2]
-
-  if len(bad_rmsd_list) != 0:
-    i = 0
-    final_table.append("\nImages with poor positional rmsd (> 2-sigma over mean):")
-    for entry in bad_rmsd_list:
-      final_table.append('{:<3}  {}: H = {:<3} A = {:<3}  RES = {:<4.2F}  SPOTS = {:<6} '\
-                         'DOM = {:<8.2f}  MOS = {:<6.4f}  RMSD = {:<6.2f}'\
-                         ''.format(bad_rmsd_list.index(entry), entry[0],
-                                   entry[1], entry[2], entry[3], entry[4],
-                                   entry[5], entry[6], entry[7]))
 
   for item in final_table:
       print item
@@ -365,11 +213,12 @@ def print_summary(gs_params):
   print "\n\n{:-^80}\n".format('SUMMARY')
   inp.main_log(logfile, "\n\n{:-^80}\n".format('SUMMARY'))
 
-  with (open ('{0}/logs/progress.log'.format(gs_params.output), 'r')) as prog_log:
-    prog_content = prog_log.read()
+  with (open ('{0}/logs/progress.log'.format(gs_params.output), 'r')) as plog:
+    prog_content = plog.read()
 
   if gs_params.advanced.random_sample.flag_on == True:
-    summary.append('raw images processed:         {}'.format(gs_params.advanced.random_sample.number))
+    summary.append('raw images processed:         {}'\
+                   ''.format(gs_params.advanced.random_sample.number))
   else:
     summary.append('raw images processed:         {}'.format(len(input_list)))
 
@@ -409,59 +258,11 @@ def print_summary(gs_params):
 
   inp.main_log(logfile, "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now()))
 
-
-def single_image_mode(gs_params):
-
-  current_img = gs_params.advanced.single_img
-  img_filename = os.path.basename(current_img).split('.')[0]
-
-  # Remove old output if found
-  if os.path.exists(os.path.abspath(gs_params.output)):
-    cmd.Command.start("Found old folder {}... deleting...".format(gs_params.output))
-    shutil.rmtree(os.path.abspath(gs_params.output))
-    cmd.Command.end("Deleted old folder {} -- DONE".format(gs_params.output))
-
-  # Make main output directory and log directory
-  os.makedirs(os.path.abspath(gs_params.output))
-  os.makedirs("{}/logs".format(os.path.abspath(gs_params.output)))
-
-  output_dir = os.path.abspath(gs_params.output)
-  tmp_output_dir = os.path.abspath("{0}/tmp_{1}"\
-                                   "".format(output_dir, img_filename))
-  if not os.path.exists(tmp_output_dir):
-    os.makedirs(tmp_output_dir)
-  print tmp_output_dir
-
-  single_mp_list = []
-
-  h_min = gs_params.grid_search.h_avg - gs_params.grid_search.h_std
-  h_max = gs_params.grid_search.h_avg + gs_params.grid_search.h_std
-  a_min = gs_params.grid_search.a_avg - gs_params.grid_search.a_std
-  a_max = gs_params.grid_search.a_avg + gs_params.grid_search.a_std
-
-  for sig_height in range(h_min, h_max + 1):
-    for spot_area in range (a_min, a_max + 1):
-      mp_item = [current_img, sig_height, sig_height, spot_area,
-                 output_dir]
-      mp_entry = [current_img, sig_height, sig_height, spot_area]
-      single_mp_list.append(mp_entry)
-
-  cmd.Command.start("Processing single image ")
-  int_results = parallel_map(iterable=single_mp_list,
-                                func=single_mproc_wrapper,
-                                processes=gs_params.n_processors)
-  cmd.Command.end("Processing single image -- DONE ")
-
-  single_img_results = [entry for entry in int_results if entry != []]
-
-  return single_img_results
-
-
 # ============================================================================ #
 
 if __name__ == "__main__":
 
-  iota_version = '1.11'
+  iota_version = '1.21'
 
   print "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now())
   print 'Starting IOTA ... \n\n'
@@ -469,41 +270,35 @@ if __name__ == "__main__":
   # read parameters from *.param file
   gs_params, txt_out = inp.process_input(sys.argv[1:])
 
-  if gs_params.advanced.single_img != None:
-    log_dir = '{}/logs'.format(gs_params.output)
-    logfile = '{}/iota.log'.format(log_dir)
-    h_std = gs_params.grid_search.h_std
-    a_std = gs_params.grid_search.a_std
-    n_int = (h_std * 2 + 1) * (a_std * 2 + 1)
-    single_img_results = single_image_mode(gs_params)
-
-
-    #print_results(single_img_results)
+  # If no parameter file specified, output blank parameter file
+  if gs_params.input == None:
+    print '{:-^100}\n\n'.format('IOTA Dry Run')
+    print txt_out
+    with open('iota.param', 'w') as default_settings_file:
+      default_settings_file.write(txt_out)
     sys.exit()
 
   # generate input
-  gs_range, input_list, input_dir_list, output_dir_list, log_dir, logfile, \
-  mp_input_list, mp_output_list = generate_input(gs_params)
+  gs_range, input_list, input_dir_list, output_dir_list, log_dir, logfile,\
+  mp_input_list, mp_output_list = inp.generate_input(gs_params)
 
   # debugging/experimental section - anything goes here
   if gs_params.advanced.debug:
-    h_std = gs_params.grid_search.h_std
-    a_std = gs_params.grid_search.a_std
-    n_int = (h_std * 2 + 1) * (a_std * 2 + 1)
-    advanced_input(gs_range, gs_params)
-    sys.exit()
     sys.exit()
 
-  #run grid search
+  # run grid search
   if gs_params.grid_search.flag_on:
     run_grid_search(txt_out, gs_params, gs_range, input_dir_list,
                     input_list, mp_input_list)
 
-  #run pickle selection
+  # run pickle selection
   selection_results = run_pickle_selection(gs_params, mp_output_list)
   sel_clean = [entry for entry in selection_results \
                      if entry != None and entry != []]
 
-  final_int = final_integration(sel_clean, gs_params)       # final integration
-  print_results(final_int)
-  print_summary(gs_params)                                  # print summary
+  # run final integration
+  final_int = final_integration(sel_clean, gs_params)
+
+  # print final integration results and summary
+  print_results(final_int, gs_range)
+  print_summary(gs_params)
