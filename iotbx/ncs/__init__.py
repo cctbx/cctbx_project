@@ -101,6 +101,14 @@ simple_ncs_from_pdb
    groups.
    transforms : minimize the number of NCS operations'''
    .style = noauto
+ exclude_misaligned_residues = True
+   .type = bool
+   .help = "check and exclude individual residues alignment quality"
+   .style = noauto
+ check_atom_order = False
+   .type = bool
+   .help = "check atom order in matching residues"
+   .style = noauto
     }
 """
 
