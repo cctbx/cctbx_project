@@ -389,7 +389,9 @@ def precision_approx_equal(self,other,precision=24):
   val2 = (significand+1)/(2**Np) # next-nearest
   return abs(T-abs(other)) <= abs(val1-val2)
 
-def show_diff(a, b, selections=None, expected_number_of_lines=None, strip_trailing_whitespace=False):
+def show_diff(a, b, out=sys.stdout,
+    selections=None, expected_number_of_lines=None,
+    strip_trailing_whitespace=False):
   if (not isinstance(a, str)):
     a = "\n".join(a)+"\n"
   if (selections is None):
@@ -411,11 +413,11 @@ def show_diff(a, b, selections=None, expected_number_of_lines=None, strip_traili
     if (not a.endswith("\n") or not b.endswith("\n")):
       a += "\n"
       b += "\n"
-    print "".join(diff_function(b.splitlines(1), a.splitlines(1)))
+    print >> out, "".join(diff_function(b.splitlines(1), a.splitlines(1)))
     return True
   if (    expected_number_of_lines is not None
       and len(a_lines) != expected_number_of_lines):
-    print \
+    print >> out, \
       "show_diff: expected_number_of_lines != len(a.splitlines()): %d != %d" \
         % (expected_number_of_lines, len(a_lines))
     return True
