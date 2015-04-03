@@ -18,20 +18,21 @@ import sys
 
 
 # parameters for manual specification of NCS - ASU mapping
-master_phil = parse("""
-  ncs_group
+basic_phil_str = '''\
+ncs_group
+  .multiple = True
+  {
+  reference = ''
+    .type = str
+    .help = 'Residue selection string for the complete master NCS copy'
+  selection = ''
+    .type = str
+    .help = 'Residue selection string for each NCS copy location in ASU'
     .multiple = True
-    {
-    master_selection = ''
-      .type = str
-      .help = 'Residue selection string for the complete master NCS copy'
-    copy_selection = ''
-      .type = str
-      .help = 'Residue selection string for each NCS copy location in ASU'
-      .multiple = True
   }
-  """)
+'''
 
+master_phil = parse(basic_phil_str)
 
 class ncs_group_object(object):
 
@@ -142,8 +143,8 @@ class ncs_group_object(object):
         Phil structure
            ncs_group (multiple)
            {
-             master_selection = ''
-             copy_selection = ''   (multiple)
+             reference = ''
+             selection = ''   (multiple)
            }
       ncs_phil_groups: a list of ncs_groups_container object, containing
         master NCS selection and a list of NCS copies selection
@@ -332,8 +333,8 @@ class ncs_group_object(object):
     Phil structure
     ncs_group (multiple)
     {
-      master_selection = ''
-      copy_selection = ''   (multiple)
+      reference = ''
+      selection = ''   (multiple)
     }
     """
     ncs_phil_string = nu.convert_phil_format(ncs_phil_string)
@@ -357,7 +358,7 @@ class ncs_group_object(object):
     ncs_group_id = 0
     # populate ncs selection and ncs to copies location
     for group in ncs_phil_groups:
-      gns = group.master_selection
+      gns = group.reference
       self.ncs_chain_selection.append(gns)
       unique_selections = uniqueness_test(unique_selections,gns)
       ncs_group_id += 1
@@ -372,7 +373,7 @@ class ncs_group_object(object):
             masters = gns,copies = gns, tr_id = key)
       self.update_tr_id_to_selection(gns,gns,key)
       asu_locations = []
-      for asu_select in group.copy_selection:
+      for asu_select in group.selection:
         unique_selections = uniqueness_test(unique_selections,asu_select)
         r, t, rmsd, msg = get_rot_trans(
           ph=pdb_hierarchy_inp,
@@ -1411,14 +1412,14 @@ class ncs_group_object(object):
 
     Phil structure example:
       ncs_group {
-        master_selection = 'chain A'
-        copy_selection = 'chain C'
-        copy_selection = 'chain E'
+        reference = 'chain A'
+        selection = 'chain C'
+        selection = 'chain E'
       }
       ncs_group {
-        master_selection = 'chain B'
-        copy_selection = 'chain D'
-        copy_selection = 'chain F'
+        reference = 'chain B'
+        selection = 'chain D'
+        selection = 'chain F'
       }
 
     Args:
@@ -1433,10 +1434,10 @@ class ncs_group_object(object):
     for master, copies in self.ncs_to_asu_selection.iteritems():
       master = format_80(master)
       groups.append('ncs_group {')
-      groups.append("  master_selection = {}".format(master))
+      groups.append("  reference = {}".format(master))
       for cp in copies:
         cp = format_80(cp)
-        groups.append("  copy_selection = {}".format(cp))
+        groups.append("  selection = {}".format(cp))
       groups.append('}')
     gr = '\n'.join(groups)
     gr += '\n'
@@ -1603,9 +1604,9 @@ class ncs_group_object(object):
     master_sel_str = sorted(self.ncs_to_asu_selection)
     for m_str in master_sel_str:
       gr = self.ncs_to_asu_selection[m_str]
-      str_gr = [str_line.format('master_selection',m_str)]
+      str_gr = [str_line.format('reference',m_str)]
       for c_str in gr:
-        str_gr.append(str_line.format('copy_selection',c_str))
+        str_gr.append(str_line.format('selection',c_str))
       str_gr = '\n'.join(str_gr)
       str_out.append(str_ncs_group%str_gr)
     str_out = '\n'.join(str_out)

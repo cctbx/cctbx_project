@@ -115,23 +115,23 @@ END
 
 phil_str = '''\
 ncs_group {
-  master_selection = chain 'Aa'
-  copy_selection = chain 'Ac'
-  copy_selection = chain 'Ae'
+  reference = chain 'Aa'
+  selection = chain 'Ac'
+  selection = chain 'Ae'
 }
 
 ncs_group {
-  master_selection = chain 'Ab'
-  copy_selection = chain 'Ad'
-  copy_selection = chain 'Af'
+  reference = chain 'Ab'
+  selection = chain 'Ad'
+  selection = chain 'Af'
 }
 '''
 
 ncs_phil = '''\
 ncs_group {
-  master_selection = chain I
-  copy_selection = chain K
-  copy_selection = chain M
+  reference = chain I
+  selection = chain K
+  selection = chain M
 }
 '''
 

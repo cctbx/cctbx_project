@@ -184,17 +184,17 @@ END
 
 ncs_params_str_0 = """
 ncs_group {
-  master_selection = chain A
-  copy_selection = chain B
-  copy_selection = chain C
+  reference = chain A
+  selection = chain B
+  selection = chain C
 }
 """
 
 ncs_params_str_1 = """
 ncs_group {
-  master_selection = chain B
-  copy_selection = chain C
-  copy_selection = chain A
+  reference = chain B
+  selection = chain C
+  selection = chain A
 }
 """
 

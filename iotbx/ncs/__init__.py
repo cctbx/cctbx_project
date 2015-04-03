@@ -229,8 +229,8 @@ def input(pdb_hierarchy_inp=None,
         Phil structure
            ncs_group (multiple)
            {
-             master_selection = ''
-             copy_selection = ''   (multiple)
+             reference = ''
+             selection = ''   (multiple)
            }
       ncs_phil_groups: a list of ncs_groups_container object, containing
         master NCS selection and a list of NCS copies selection

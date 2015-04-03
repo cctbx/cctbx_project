@@ -367,11 +367,11 @@ master_params_str = """\
   find_ncs = False
     .type = bool
     .short_caption = Search for NCS relations
+  include scope iotbx.ncs.simple_ncs_phil_params
+  include scope iotbx.ncs.ncs_preprocess.basic_phil_str
   ncs
   {
-     include scope iotbx.ncs.simple_ncs_phil_params
      include scope iotbx.ncs.ncs_search_options
-     include scope iotbx.ncs.ncs_groups
   }
   %(clash_guard_params_str)s
 """ % vars()
@@ -5206,7 +5206,7 @@ class process(object):
       hierarchy (obj): pdb hierarchy
     """
     params = self.all_chain_proxies.params.ncs
-    simple_params = params.simple_ncs_from_pdb
+    simple_params = self.all_chain_proxies.params.simple_ncs_from_pdb
     find_param = simple_params.domain_finding_parameters
     ncs_obj = iotbx.ncs.input(
       file_name=file_name,

@@ -16,8 +16,8 @@ class Phil_NCS(object):
 
   def __init__(self):
     self.group = 'ncs_group'
-    self.master = 'master_selection'
-    self.copy = 'copy_selection'
+    self.master = 'reference'
+    self.copy = 'selection'
 
 class Phil_restraints(object):
   """ restraints Phil strings """
@@ -554,10 +554,10 @@ def apply_transforms(ncs_coordinates,
   for nrg in ncs_restraints_group_list:
     master_ncs_selection = flex.bool(total_asu_length,nrg.master_iselection)
     for ncs_copy in nrg.copies:
-      copy_selection = flex.bool(total_asu_length,ncs_copy.iselection)
+      selection = flex.bool(total_asu_length,ncs_copy.iselection)
       ncs_xyz = asu_xyz.select(master_ncs_selection)
       new_sites = ncs_copy.r.elems * ncs_xyz + ncs_copy.t
-      asu_xyz.set_selected(copy_selection,new_sites)
+      asu_xyz.set_selected(selection,new_sites)
   if round_coordinates:
     return flex.vec3_double(asu_xyz).round(3)
   else:
@@ -1034,9 +1034,9 @@ def convert_phil_format(phil_str,to_type='ncs'):
   ncs
   ---
   ncs_group {
-    master_selection = chain I
-    copy_selection   = chain K
-    copy_selection   = chain M
+    reference = chain I
+    selection   = chain K
+    selection   = chain M
   }
 
   restraints

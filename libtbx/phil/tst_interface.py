@@ -324,9 +324,10 @@ refinement.input.monomers.file_name = ligand.cif
 refinement.output.title = Test refinement run
 """)
   names = i.search_phil_text("CIF")
+  print names
   assert (set(names) == {
     'refinement.output.write_model_cif_file',
-    'refinement.pdb_interpretation.ncs.simple_ncs_from_pdb.max_rmsd_user',
+    'refinement.pdb_interpretation.simple_ncs_from_pdb.max_rmsd_user',
     'refinement.ncs.simple_ncs_from_pdb.max_rmsd_user',
     'refinement.output.write_reflection_cif_file',
     'refinement.input.monomers.file_name',}

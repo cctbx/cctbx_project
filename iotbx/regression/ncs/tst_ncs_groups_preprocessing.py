@@ -493,14 +493,14 @@ END
 
 pdb_test_data1_phil = '''\
 ncs_group {
-  master_selection = 'chain A'
-  copy_selection = 'chain C'
-  copy_selection = 'chain E'
+  reference = 'chain A'
+  selection = 'chain C'
+  selection = 'chain E'
 }
 ncs_group {
-  master_selection = 'chain B'
-  copy_selection = 'chain D'
-  copy_selection = 'chain F'
+  reference = 'chain B'
+  selection = 'chain D'
+  selection = 'chain F'
 }
 '''
 
@@ -522,96 +522,96 @@ TER
 
 pdb_test_data2_phil = '''\
 ncs_group {
-  master_selection = chain A
-  copy_selection = chain D
-  copy_selection = chain G
+  reference = chain A
+  selection = chain D
+  selection = chain G
 }
 ncs_group {
-  master_selection = chain B or chain C
-  copy_selection = chain E or chain F
-  copy_selection = chain H or chain I
+  reference = chain B or chain C
+  selection = chain E or chain F
+  selection = chain H or chain I
 }
 '''
 
 pdb_test_data2_phil_reverse = '''\
 ncs_group {
-  master_selection = chain B or chain C
-  copy_selection = chain E or chain F
-  copy_selection = chain H or chain I
+  reference = chain B or chain C
+  selection = chain E or chain F
+  selection = chain H or chain I
 }
 ncs_group {
-  master_selection = chain A
-  copy_selection = chain D
-  copy_selection = chain G
+  reference = chain A
+  selection = chain D
+  selection = chain G
 }
 '''
 
 test_phil_3 = '''\
 ncs_group {
-  master_selection = chain D and (resseq 1:7)
-  copy_selection = chain E and (resseq 1:7)
+  reference = chain D and (resseq 1:7)
+  selection = chain E and (resseq 1:7)
 }
 ncs_group {
-  master_selection = chain A and (resseq 151:159)
-  copy_selection = chain B and (resseq 151:159)
-  copy_selection = chain C and (resseq 151:159)
+  reference = chain A and (resseq 151:159)
+  selection = chain B and (resseq 151:159)
+  selection = chain C and (resseq 151:159)
 }
 '''
 
 user_phil1 = '''\
 ncs_group {
-  master_selection = 'chain A'
-  copy_selection = 'chain B'
-  copy_selection = 'chain C'
+  reference = 'chain A'
+  selection = 'chain B'
+  selection = 'chain C'
 }
 '''
 
 user_phil2 = '''\
 ncs_group {
-  master_selection = 'chain A'
-  copy_selection = 'chain C'
-  copy_selection = 'chain E'
+  reference = 'chain A'
+  selection = 'chain C'
+  selection = 'chain E'
 }
 ncs_group {
-  master_selection = 'chain B'
-  copy_selection = 'chain D'
-  copy_selection = 'chain F'
+  reference = 'chain B'
+  selection = 'chain D'
+  selection = 'chain F'
 }
 '''
 
 user_phil3 = '''\
 ncs_group {
-  master_selection = 'chain A'
-  copy_selection = 'chain B'
-  copy_selection = 'chain C'
+  reference = 'chain A'
+  selection = 'chain B'
+  selection = 'chain C'
 }
 ncs_group {
-  master_selection = 'chain B'
-  copy_selection = 'chain D'
+  reference = 'chain B'
+  selection = 'chain D'
 }
 '''
 
 user_phil4 = '''\
 ncs_group {
-  master_selection = 'chain A'
-  copy_selection = 'chain C'
-  copy_selection = 'chain D'
+  reference = 'chain A'
+  selection = 'chain C'
+  selection = 'chain D'
 }
 ncs_group {
-  master_selection = 'chain B'
-  copy_selection = 'chain D'
+  reference = 'chain B'
+  selection = 'chain D'
 }
 '''
 
 user_phil5 = '''\
 ncs_group {
-  master_selection = 'chain A'
-  copy_selection = 'chain C'
-  copy_selection = 'chain D'
+  reference = 'chain A'
+  selection = 'chain C'
+  selection = 'chain D'
 }
 ncs_group {
-  master_selection = 'chain C'
-  copy_selection = 'chain E'
+  reference = 'chain C'
+  selection = 'chain E'
 }
 '''
 
