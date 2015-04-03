@@ -885,9 +885,9 @@ def exercise_00(prefix="iotbx_ncs_exercise_00",debug=False):
   pdb_file_name = "%s.pdb"%prefix
   ncs_params_str = """
 ncs_group {
-  master_selection = chain A
-  copy_selection = chain B
-  copy_selection = chain C
+  reference = chain A
+  selection = chain B
+  selection = chain C
 }
   """
   def check_result(ncs_inp, test_i):
@@ -943,8 +943,8 @@ def exercise_01(prefix="iotbx_ncs_exercise_01", debug=False):
   pdb_file_name = "%s.pdb"%prefix
   ncs_params_str = """
 ncs_group {
-  master_selection = chain C
-  copy_selection = chain A
+  reference = chain C
+  selection = chain A
 }
   """
   def check_result(ncs_inp, test_i):
@@ -988,8 +988,8 @@ def exercise_02(prefix="iotbx_ncs_exercise_02", debug=False):
   pdb_file_name = "%s.pdb"%prefix
   ncs_params_str = """
 ncs_group {
-  master_selection = chain C
-  copy_selection = chain A
+  reference = chain C
+  selection = chain A
 }
   """
   files_to_delete = []
@@ -1050,12 +1050,12 @@ def exercise_05():
   """
   phil_str = """\
 ncs_group {
-  master_selection = chain A
-  copy_selection = chain C
+  reference = chain A
+  selection = chain C
 }
 ncs_group {
-  master_selection = chain B
-  copy_selection = chain D
+  reference = chain B
+  selection = chain D
 }
 """
   ncs_inp = ncs.input(
@@ -1182,12 +1182,12 @@ def exercise_11():
   """
   phil_str="""
 ncs_group {
-  master_selection = chain 'Aa' and (resseq 6:9 )
-  copy_selection = chain 'Ac' and (resseq 6:9 )
+  reference = chain 'Aa' and (resseq 6:9 )
+  selection = chain 'Ac' and (resseq 6:9 )
 }
 ncs_group {
-  master_selection = chain 'Ab' and (resseq 1:4 )
-  copy_selection = chain 'Ad' and (resseq 1:4 )
+  reference = chain 'Ab' and (resseq 1:4 )
+  selection = chain 'Ad' and (resseq 1:4 )
 }
 """
   asc = iotbx.pdb.input(source_info=None,
@@ -1319,8 +1319,8 @@ def exercise_18():
   """
   phil_str="""
 ncs_group {
-  master_selection = chain A
-  copy_selection = chain B
+  reference = chain A
+  selection = chain B
 }
 """
   asc = iotbx.pdb.input(source_info=None,
@@ -1360,8 +1360,8 @@ def exercise_20():
   """
   phil_str="""
 ncs_group {
-  master_selection = chain A
-  copy_selection = chain B
+  reference = chain A
+  selection = chain B
 }
 """
   asc = iotbx.pdb.input(source_info=None,
