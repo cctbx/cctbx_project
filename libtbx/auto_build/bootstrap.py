@@ -631,10 +631,12 @@ class Builder(object):
     ))
 
   def add_test_command(self, command, name=None, workdir=None, args=None, **kwargs):
+    if name is None: name='test %s'%command
     self.add_command(
       command,
-      name='test %s'%command,
+      name=name,
       workdir=(workdir or ['tests', command]),
+      args=args,
       haltOnFailure=False,
       **kwargs
     )
@@ -685,7 +687,9 @@ class Builder(object):
 
   def add_install(self):
     """Run after compile, before tests."""
-    self.add_command('mmtbx.rebuild_rotarama_cache')
+    self.add_command('mmtbx.rebuild_rotarama_cache',
+                     name="rebuild rotarama",
+    )
 
   def add_tests(self):
     """Run the unit tests."""
