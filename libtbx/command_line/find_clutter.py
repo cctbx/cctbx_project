@@ -8,7 +8,10 @@ def run(args):
   flag_dos_format = True
   flag_indentation = False
   verbose = False
+  #
   only_whitespace = False
+  only_dos = False
+  #
   paths = []
   for arg in args:
     if (arg == "-x"):
