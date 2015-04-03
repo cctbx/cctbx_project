@@ -127,4 +127,4 @@ HINT:
 
 if (__name__ == "__main__"):
   import sys
-  run(args=sys.argv[1:])
+  sys.exit(run(args=sys.argv[1:]))
