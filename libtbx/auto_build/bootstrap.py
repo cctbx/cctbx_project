@@ -630,16 +630,23 @@ class Builder(object):
       **kwargs
     ))
 
-  def add_test_command(self, command, name=None, workdir=None, args=None, **kwargs):
+  def add_test_command(self,
+                       command,
+                       name=None,
+                       workdir=None,
+                       args=None,
+                       haltOnFailure=False,
+                       **kwargs
+                       ):
     if name is None: name='test %s'%command
     self.add_command(
       command,
       name=name,
       workdir=(workdir or ['tests', command]),
       args=args,
-      haltOnFailure=False,
+      haltOnFailure=haltOnFailure,
       **kwargs
-    )
+      )
 
   def add_test_parallel(self, module=None):
     self.add_command(
