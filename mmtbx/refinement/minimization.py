@@ -10,6 +10,7 @@ from libtbx.utils import user_plus_sys_time
 from cctbx import adptbx
 from libtbx.str_utils import format_value
 from libtbx.utils import Sorry
+import mmtbx.refinement.minimization_ncs_constraints
 
 class lbfgs(object):
 
@@ -369,3 +370,38 @@ class monitor(object):
       self.er[i_seq].strip())
     line = line + " "*(78 - len(line))+"|"
     return line
+
+class run_constrained(object):
+  def __init__(self,
+               model,
+               fmodel,
+               target_weight,
+               log,
+               params,
+               prefix,
+               refine_sites           = False,
+               refine_u_iso           = False,
+               refine_transformations = False):
+    tg_object = mmtbx.refinement.minimization_ncs_constraints.\
+      target_function_and_grads_reciprocal_space(
+        fmodel                    = fmodel,
+        ncs_restraints_group_list = model.ncs_groups,
+        refine_selection          = None,
+        restraints_manager        = model.restraints_manager,
+        iso_restraints            = params.adp_restraints.iso,
+        data_weight               = target_weight,
+        refine_sites              = refine_sites,
+        refine_u_iso              = refine_u_iso,
+        refine_transformations    = refine_transformations)
+    self.minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
+       target_and_grads_object      = tg_object,
+       xray_structure               = fmodel.xray_structure,
+       ncs_restraints_group_list    = model.ncs_groups,
+       refine_selection             = None,
+       finite_grad_differences_test = False,
+       max_iterations               = params.main.max_number_of_iterations,
+       refine_sites                 = refine_sites,
+        refine_u_iso                = refine_u_iso,
+        refine_transformations      = refine_transformations)
+    fmodel.update_xray_structure(update_f_calc=True)
+    model.xray_structure = fmodel.xray_structure

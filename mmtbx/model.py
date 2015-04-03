@@ -1549,9 +1549,11 @@ class manager(object):
   def set_refine_individual_sites(self, selection = None):
     self.xray_structure.scatterers().flags_set_grads(state=False)
     if(selection is None):
-      selection = self.refinement_flags.sites_individual
-    self.xray_structure.scatterers().flags_set_grad_site(
-      iselection = selection.iselection())
+      if(self.refinement_flags is not None):
+        selection = self.refinement_flags.sites_individual
+    if(selection is not None):
+      self.xray_structure.scatterers().flags_set_grad_site(
+        iselection = selection.iselection())
 
   def set_refine_individual_adp(self, selection_iso = None,
                                       selection_aniso = None):

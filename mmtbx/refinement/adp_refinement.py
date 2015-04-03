@@ -490,28 +490,53 @@ class refine_adp(object):
       x1 = self.fmodels.fmodel_xray().xray_structure,
       x2 = self.model.xray_structure)
     self.model.set_refine_individual_adp()
-    lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
-      max_iterations = self.individual_adp_params.iso.max_number_of_iterations)
-    is_neutron_scat_table = False
-    if(self.all_params.main.scattering_table == "neutron"):
-      is_neutron_scat_table = True
-    minimized = minimization.lbfgs(
-      restraints_manager       = self.model.restraints_manager,
-      fmodels                  = self.fmodels,
-      model                    = self.model,
-      refine_adp               = True,
-      is_neutron_scat_table    = is_neutron_scat_table,
-      lbfgs_termination_params = lbfgs_termination_params,
-      iso_restraints           = self.adp_restraints_params.iso,
-      verbose                  = 0,
-      target_weights           = self.target_weights,
-      h_params                 = self.h_params)
+    self.run_lbfgs()
     self.model.xray_structure = self.fmodels.fmodel_xray().xray_structure
-    assert minimized.xray_structure is self.model.xray_structure
-    utils.assert_xray_structures_equal(
-      x1 = minimized.xray_structure,
-      x2 = self.model.xray_structure)
-    return minimized
+    #assert minimized.xray_structure is self.model.xray_structure
+    #utils.assert_xray_structures_equal(
+    #  x1 = minimized.xray_structure,
+    #  x2 = self.model.xray_structure)
+    #return minimized
+
+  def run_lbfgs(self):
+    if(self.model.ncs_groups is None):
+      lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
+        max_iterations = self.individual_adp_params.iso.max_number_of_iterations)
+      is_neutron_scat_table = False
+      if(self.all_params.main.scattering_table == "neutron"):
+        is_neutron_scat_table = True
+      minimized = minimization.lbfgs(
+        restraints_manager       = self.model.restraints_manager,
+        fmodels                  = self.fmodels,
+        model                    = self.model,
+        refine_adp               = True,
+        is_neutron_scat_table    = is_neutron_scat_table,
+        lbfgs_termination_params = lbfgs_termination_params,
+        iso_restraints           = self.adp_restraints_params.iso,
+        verbose                  = 0,
+        target_weights           = self.target_weights,
+        h_params                 = self.h_params)
+    else:
+      fmodel = self.fmodels.fmodel_xray()
+      # update NCS groups
+      import mmtbx.ncs.ncs_utils as nu
+      best_list = nu.get_list_of_best_ncs_copy_map_correlation(
+        ncs_restraints_group_list = self.model.ncs_groups,
+        xray_structure            = fmodel.xray_structure,
+        fmodel                    = fmodel)
+      self.model.ncs_groups = nu.change_ncs_groups_master(
+        ncs_restraints_group_list = self.model.ncs_groups,
+        new_masters               = best_list)
+      assert "individual_adp" in self.all_params.refine.strategy
+      minimized = minimization.run_constrained(
+        model         = self.model,
+        fmodel        = fmodel,
+        target_weight = self.target_weights.xyz_weights_result.wx,
+        log           = self.log,
+        params        = self.all_params,
+        refine_u_iso  = True,
+        prefix        = "NCS constrained ADP refinement").minimized
+      self.model.xray_structure = fmodel.xray_structure
 
 class weight_result (object) :
   def __init__ (self, r_work, r_free, delta_b, mean_b, weight, xray_target,
