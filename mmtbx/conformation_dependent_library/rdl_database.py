@@ -1,5 +1,5 @@
 from __future__ import division
-import os, sys
+import sys
  
 
 rdl_database = {
