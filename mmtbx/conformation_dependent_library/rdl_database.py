@@ -1,6 +1,5 @@
 from __future__ import division
 import sys
- 
 
 rdl_database = {
   "ARG" : {
