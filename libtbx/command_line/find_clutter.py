@@ -23,6 +23,8 @@ def run(args):
       flag_indentation = True
     elif (arg == "--only_whitespace") :
       only_whitespace = True
+    elif (arg == "--only_dos") :
+      only_dos = True
     else:
       paths.append(arg)
   if (len(paths) == 0): paths = ["."]
@@ -61,6 +63,11 @@ def run(args):
       if s.find("tabs or trailing")>-1: return True
       return False
     message_lines = filter(_is_whitespace, message_lines)
+  elif only_dos:
+    def _is_dos(s):
+      if s.find("dos format")>-1: return True
+      return False
+    message_lines = filter(_is_dos, message_lines)
   else:
     if (n_has_unused_imports != 0):
       please_use.append("libtbx.find_unused_imports_crude")
