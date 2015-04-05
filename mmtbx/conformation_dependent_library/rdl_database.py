@@ -1,4 +1,4 @@
-import os, sys
+import sys
 
 rdl_database = {
   "ARG" : {
