@@ -3,9 +3,10 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 03/24/2015
+Last Changed: 04/06/2015
 Description : IOTA I/O module. Reads PHIL input, creates output directories,
-              creates input lists and organizes starting parameters
+              creates input lists and organizes starting parameters, also
+              creates reasonable IOTA and PHIL defaults if selected
 '''
 
 
@@ -44,6 +45,46 @@ target = target.phil
   .multiple = False
   .help = Target (.phil) file with integration parameters
   .optional = False
+grid_search
+  .help = "Parameters for the grid search."
+{
+  flag_on = True
+    .type = bool
+    .help = Set to False to run selection of pickles only.
+  a_avg = 5
+    .type = int
+    .help = Minimum spot area.
+  a_std = 4
+    .type = int
+    .help = Maximum spot area.
+  h_avg = 5
+    .type = int
+    .help = Minimum spot height.
+  h_std = 4
+    .type = int
+    .help = Maximum spot height.
+}
+flag_prefilter = False
+  .type = bool
+  .help = Activate space group / unit cell pre-filter.
+target_unit_cell = 79.4, 79.4, 38.1, 90.0, 90.0, 90.0
+  .type = unit_cell
+  .help = Target unit-cell parameters are used to discard outlier cells.
+target_space_group = P 43 21 2
+  .type = str
+  .help = Target space group.
+target_pointgroup = P 4
+  .type = str
+  .help = Target point group.
+target_uc_tolerance = 0.05
+  .type = float
+  .help = Maximum allowed unit cell deviation from target
+min_sigma = 5
+  .type = int
+  .help = minimum sigma cutoff for "strong spots"
+n_processors = 32
+  .type = int
+  .help = No. of processing units
 advanced
   .help = "Advanced options, mostly for debugging."
 {
@@ -83,46 +124,6 @@ advanced
       .help = Number of random samples.
   }
 }
-grid_search
-  .help = "Parameters for the grid search."
-{
-  flag_on = True
-    .type = bool
-    .help = Set to False to run selection of pickles only.
-  a_avg = 5
-    .type = int
-    .help = Minimum spot area.
-  a_std = 4
-    .type = int
-    .help = Maximum spot area.
-  h_avg = 5
-    .type = int
-    .help = Minimum spot height.
-  h_std = 4
-    .type = int
-    .help = Maximum spot height.
-}
-flag_prefilter = True
-  .type = bool
-  .help = Activate space group / unit cell pre-filter.
-target_unit_cell = 79.4, 79.4, 38.1, 90.0, 90.0, 90.0
-  .type = unit_cell
-  .help = Target unit-cell parameters are used to discard outlier cells.
-target_space_group = P 43 21 2
-  .type = str
-  .help = Target space group.
-target_pointgroup = P 4
-  .type = str
-  .help = Target point group.
-target_uc_tolerance = 0.05
-  .type = float
-  .help = Maximum allowed unit cell deviation from target
-min_sigma = 5
-  .type = int
-  .help = minimum sigma cutoff for "strong spots"
-n_processors = 32
-  .type = int
-  .help = No. of processing units
 """)
 
 class Capturing(list):
@@ -186,11 +187,32 @@ def make_input_list (gs_params):
           pickle_file = os.path.join(root, filename)
           input_list.append(pickle_file)
 
+    if len(input_list) == 0:
+      print "\nERROR: No data found!"
+      sys.exit()
+
+  # Pick a randomized subset of images
   if gs_params.advanced.random_sample.flag_on == True:
     random_inp_list = []
-    for i in range(gs_params.advanced.random_sample.number):
+
+    if gs_params.advanced.random_sample.number == 0:
+      if len(input_list) <= 5:
+        random_sample_number = len(input_list)
+      elif len(input_list) <= 50:
+        random_sample_number = 5
+      else:
+        random_sample_number = int(len(input_list) * 0.1)
+    else:
+      random_sample_number = gs_params.advanced.random_sample.number
+
+    for i in range(random_sample_number):
       random_number = random.randrange(0, len(input_list))
-      random_inp_list.append(input_list[random_number])
+      if input_list[random_number] in random_inp_list:
+        while input_list[random_number] in random_inp_list:
+          random_number = random.randrange(0, len(input_list))
+        random_inp_list.append(input_list[random_number])
+      else:
+        random_inp_list.append(input_list[random_number])
 
     inp_list = random_inp_list
   else:
@@ -367,8 +389,7 @@ def generate_input(gs_params):
   gs_range = [gs_params.grid_search.h_avg - gs_params.grid_search.h_std,
               gs_params.grid_search.h_avg + gs_params.grid_search.h_std,
               gs_params.grid_search.a_avg - gs_params.grid_search.a_std,
-              gs_params.grid_search.a_avg + gs_params.grid_search.a_std
-             ]
+              gs_params.grid_search.a_avg + gs_params.grid_search.a_std]
 
   # Make input list
   input_list = make_input_list(gs_params)
@@ -400,3 +421,87 @@ def generate_input(gs_params):
   return gs_range, input_list, input_dir_list, output_dir_list, log_dir,\
          logfile, mp_input_list, mp_output_list
 
+def auto_mode(current_path, data_path, now):
+  """ Automatically builds the IOTA parameter file and the target PHIL file and
+      begins processing using reasonable default parameters.
+
+      input:  current_path - absolute path to current directory
+              data_path - provided path to folder with raw images
+              now - current date and time
+
+      output: gs_params - full list of parameters for IOTA
+              txt_out - same but in text format suitable for printing
+  """
+
+  # List of default parameters for a reasonable target file (target.phil) which
+  # will be created in the folder from which IOTA is being run
+
+  def_target_file = '{}/target.phil'.format(current_path)
+  default_target = ['# -*- mode: conf -*-',
+                    '# target_cell = 79.4 79.4 38.1 90 90 90  # insert your own target cell once known',
+                    '# known_setting = 5                      # likewise known setting',
+                    '# target_cell_centring_type = P          # likewise centring type',
+                    'difflimit_sigma_cutoff = 0.01',
+                    'force_method2_resolution_limit = 2.5',
+                    'distl_highres_limit = 2.5',
+                    'distl_lowres_limit=50.0',
+                    'distl{',
+                    '  #verbose=True',
+                    '  res.outer=2.5',
+                    '  res.inner=50.0',
+                    '  peak_intensity_maximum_factor=1000',
+                    '  spot_area_maximum_factor=20',
+                    '  compactness_filter=False',
+                    '  method2_cutoff_percentage=2.5',
+                    '}',
+                    'integration {',
+                    '  background_factor=2',
+                    '  model=user_supplied',
+                    '  spotfinder_subset=spots_non-ice',
+                    '  mask_pixel_value=-2',
+                    '  detector_gain=0.32',
+                    '  greedy_integration_limit=True',
+                    '  combine_sym_constraints_and_3D_target=True',
+                    '  mosaic {',
+                    '    refinement_target=ML',
+                    '    kludge1=1.0 #normally 1.0, but sometimes set to 2.0 to increase indexing rate',
+                    '    domain_size_lower_limit=4.',
+                    '    enable_rotational_target_highsym=False',
+                    '  }',
+                    '}',
+                    'mosaicity_limit=2.0',
+                    'dist_permit_binning=False',
+                    'distl_minimum_number_spots_for_indexing=16'
+                    ]
+  with open(def_target_file, 'w') as targ:
+    for line in default_target:
+      targ.write('{}\n'.format(line))
+
+  # Modify list of default IOTA parameters to include the absolute path to data
+  # folder and a description with a time-stamp
+
+  gs_params = master_phil.extract()
+  gs_params.description = 'IOTA parameters auto-generated on {}'.format(now)
+  gs_params.input = data_path
+  gs_params.advanced.random_sample.flag_on = True
+  gs_params.advanced.random_sample.number = 0
+
+  mod_phil = master_phil.format(python_object=gs_params)
+
+  #capture input read out by phil
+  with Capturing() as output:
+    mod_phil.show()
+
+  txt_out = ''
+  for one_output in output:
+    txt_out += one_output + '\n'
+
+  #capture input read out by phil
+  with Capturing() as output:
+    mod_phil.show()
+
+  txt_out = ''
+  for one_output in output:
+    txt_out += one_output + '\n'
+
+  return gs_params, txt_out
