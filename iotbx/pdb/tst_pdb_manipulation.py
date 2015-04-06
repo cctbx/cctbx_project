@@ -304,8 +304,8 @@ class TestMultimerReconstruction(unittest.TestCase):
     self.assertEqual(len(trans_obj.ncs_transform),len(trans_obj2.ncs_transform))
 
     t1 = trans_obj.ncs_to_asu_selection
-    t1_expected = {'chain A': ['chain C', 'chain E'],
-                   'chain B': ['chain D', 'chain F']}
+    t1_expected = {'chain A or chain B':
+                     ['chain E or chain F', 'chain C or chain D']}
     self.assertEqual(t1,t1_expected)
     t2 = trans_obj2.ncs_to_asu_selection
     t2_expected = {
