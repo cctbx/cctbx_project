@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 04/01/2015
+Last Changed: 04/06/2015
 Description : Runs cctbx.xfel integration module within a signal/spot height and
               area grid search. Also contains a final integration module, which
               outputs an integration pickle file.
@@ -122,8 +122,6 @@ def integrate_image(mp_entry, current_log_file, arguments, ptitle, n_int,
             "indexing.verbose_cv=True",
             "indexing.open_wx_viewer=False"
             ] + list(arguments[1:])
-      #print args
-      #sys.exit()
 
       horizons_phil = load_cxi_phil(gs_params.target, args)
       info = run_one_index_core(horizons_phil)
@@ -153,7 +151,7 @@ def integrate_image(mp_entry, current_log_file, arguments, ptitle, n_int,
       cell = (float(uc[0]), float(uc[1]), float(uc[2]),
               float(uc[3]), float(uc[4]), float(uc[5]))
       sg = int_final['spacegroup']
-      res = round(int_final['resolution'], 4)
+      res = round(int_final['I_Observations'].d_min(), 4)
 
       # Calculate number of spots w/ high I / sigmaI
       Is = int_final['I_Observations'].data()
