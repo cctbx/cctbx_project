@@ -358,7 +358,7 @@ def run_single_structure (params,
     "maps=False",
     "probe_dots=False",
     "use_pdb_header_resolution_cutoffs=True",
-    "--quiet",
+    "output.quiet=True"
   ] + [ "monomers.file_name=\"%s\"" % cif for cif in params.cif_file ]
   if (ligand_selection is not None) :
     molprobity_args.append("ligand_selection=\"%s\"" % ligand_selection)
