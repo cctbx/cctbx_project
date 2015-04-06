@@ -422,6 +422,17 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     answer = map(str.strip,answer)
     self.assertEqual(phil_list,answer)
 
+  def test_correct_grouping(self):
+    """ test correct representation of groups in .ncs file"""
+    ncs_obj = iotbx.ncs.input(pdb_string=pdb_str_4)
+    self.assertEqual(ncs_obj.number_of_ncs_groups,1)
+    gr = ncs_obj.print_ncs_phil_param()
+    self.assertEqual(gr,answer_4)
+    ncs_obj = iotbx.ncs.input(ncs_phil_string=answer_4)
+    self.assertEqual(ncs_obj.number_of_ncs_groups,1)
+    gr = ncs_obj.print_ncs_phil_param()
+    self.assertEqual(gr,answer_4)
+
   def tearDown(self):
     """ remove temp files and folder """
     os.chdir(self.currnet_dir)
@@ -797,6 +808,56 @@ ATOM   6664  C   ARGAf   6     311.048 233.405 110.399  1.00 50.00           C
 ATOM   6665  O   ARGAf   6     310.909 234.383 109.665  1.00 50.00           O
 '''
 
+pdb_str_4 = '''\
+CRYST1  528.530  366.470  540.070  90.00 104.83  90.00 C 1 2 1      16
+MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
+MTRIX2   1  0.000000  1.000000  0.000000        0.00000    1
+MTRIX3   1  0.000000  0.000000  1.000000        0.00000    1
+MTRIX1   2  0.559015 -0.422900  0.713158      -50.81488
+MTRIX2   2  0.810743  0.459314 -0.363308      -31.21577
+MTRIX3   2 -0.173835  0.780974  0.599701       69.57587
+ATOM   3482  N   MET A   1     205.179  29.038 232.768  1.00281.58           N
+ATOM   3483  CA  MET A   1     205.862  29.128 231.445  1.00281.58           C
+ATOM   3484  C   MET A   1     205.412  30.352 230.651  1.00281.58           C
+ATOM   3485  O   MET A   1     205.535  31.485 231.120  1.00281.58           O
+ATOM   3486  CB  MET A   1     205.598  27.863 230.623  1.00 94.42           C
+ATOM   3487  CG  MET A   1     204.127  27.515 230.456  1.00 94.42           C
+ATOM   3488  SD  MET A   1     203.838  26.529 228.978  1.00 94.42           S
+ATOM   3489  CE  MET A   1     204.921  25.148 229.294  1.00 94.42           C
+ATOM   3490  N   ASP A   2     204.893  30.116 229.448  1.00131.63           N
+ATOM   3491  CA  ASP A   2     204.431  31.194 228.579  1.00131.63           C
+ATOM   3492  C   ASP A   2     202.940  31.095 228.260  1.00131.63           C
+ATOM   3493  O   ASP A   2     202.503  30.175 227.571  1.00131.63           O
+ATOM   3494  CB  ASP A   2     205.231  31.193 227.274  1.00298.52           C
+ATOM   3495  CG  ASP A   2     204.788  32.283 226.318  1.00298.52           C
+ATOM   3496  OD1 ASP A   2     204.860  33.472 226.692  1.00298.52           O
+ATOM   3497  OD2 ASP A   2     204.367  31.951 225.190  1.00298.52           O
+TER
+ATOM   2314  N   MET B   1     184.057  37.254 249.800  1.00217.84           N
+ATOM   2315  CA  MET B   1     182.786  36.695 250.341  1.00217.84           C
+ATOM   2316  C   MET B   1     182.679  35.187 250.118  1.00217.84           C
+ATOM   2317  O   MET B   1     183.590  34.436 250.468  1.00217.84           O
+ATOM   2318  CB  MET B   1     181.587  37.403 249.704  1.00197.97           C
+ATOM   2319  CG  MET B   1     181.620  37.447 248.188  1.00197.97           C
+ATOM   2320  SD  MET B   1     180.083  38.072 247.490  1.00197.97           S
+ATOM   2321  CE  MET B   1     180.296  39.836 247.698  1.00197.97           C
+ATOM   2322  N   ASP B   2     181.568  34.748 249.531  1.00251.85           N
+ATOM   2323  CA  ASP B   2     181.339  33.327 249.283  1.00251.85           C
+ATOM   2324  C   ASP B   2     181.005  33.031 247.821  1.00251.85           C
+ATOM   2325  O   ASP B   2     179.919  33.354 247.354  1.00251.85           O
+ATOM   2326  CB  ASP B   2     180.199  32.831 250.182  1.00300.00           C
+ATOM   2327  CG  ASP B   2     180.001  31.329 250.106  1.00300.00           C
+ATOM   2328  OD1 ASP B   2     180.986  30.590 250.318  1.00300.00           O
+ATOM   2329  OD2 ASP B   2     178.862  30.886 249.846  1.00300.00           O
+'''
+
+answer_4 = '''\
+ncs_group {
+  reference = chain A or chain B
+  selection = chain C or chain D
+}
+'''
+
 def run_selected_tests():
   """  Run selected tests
 
@@ -804,7 +865,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_ncs_phil_format']
+  tests = ['test_correct_grouping']
   suite = unittest.TestSuite(map(TestNcsGroupPreprocessing,tests))
   return suite
 

@@ -299,12 +299,26 @@ class ncs_group_object(object):
         transform_assignment=self.transform_chain_assignment,
         unique_chain_names = self.model_unique_chains_ids)
       # build self.ncs_to_asu_selection
+      group_by_tr = {}
       for k in self.transform_chain_assignment:
         selection_str = 'chain ' + self.ncs_copies_chains_names[k]
-        key =  k.split('_')[0]
+        key,tr_id =  k.split('_')
+        # build master and copies selections
         self.tr_id_to_selection[k] = (key,selection_str)
-        self.ncs_to_asu_selection = add_to_dict(
-          d=self.ncs_to_asu_selection,k=key,v=selection_str)
+        r = self.ncs_transform[tr_id].r
+        t = self.ncs_transform[tr_id].t
+        if not is_identity(r,t):
+          if group_by_tr.has_key(tr_id):
+            if not(key in group_by_tr[tr_id][0]):
+              group_by_tr[tr_id][0].append(key)
+              group_by_tr[tr_id][1].append(selection_str)
+          else:
+            group_by_tr[tr_id] = [[key],[selection_str]]
+      group_key = set([' or '.join(group_by_tr[x][0]) for x in group_by_tr])
+      group_val = [' or '.join(group_by_tr[x][1]) for x in group_by_tr]
+      assert len(group_key) == 1
+      gk = list(group_key)[0]
+      self.ncs_to_asu_selection[gk] = group_val
       # add the identity case to tr_id_to_selection
       for key in  self.ncs_copies_chains_names.iterkeys():
         if not self.tr_id_to_selection.has_key(key):
