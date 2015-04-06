@@ -11,6 +11,7 @@ def run(args):
   #
   only_whitespace = False
   only_dos = False
+  only_future = False
   #
   paths = []
   for arg in args:
@@ -28,6 +29,8 @@ def run(args):
       only_whitespace = True
     elif (arg == "--only_dos") :
       only_dos = True
+    elif (arg == "--only_future") :
+      only_future = True
     else:
       paths.append(arg)
   if (len(paths) == 0): paths = ["."]
@@ -71,6 +74,11 @@ def run(args):
       if s.find("dos format")>-1: return True
       return False
     message_lines = filter(_is_dos, message_lines)
+  elif only_future:
+    def _is_future(s):
+      if s.find("from __future__ import division")>-1: return True
+      return False
+    message_lines = filter(_is_future, message_lines)
   else:
     if (n_has_unused_imports != 0):
       please_use.append("libtbx.find_unused_imports_crude")
