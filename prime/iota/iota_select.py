@@ -206,10 +206,10 @@ def best_file_selection(gs_params, output_entry, log_dir, n_int):
     prog_count = len(prog_content.splitlines())
 
   gs_prog = cmd.ProgressBar(title='PICKLE SELECTION', estimate_time=False, spinner=False)
-  if prog_count == n_int:
-    gs_prog.finished()
-  else:
+  if prog_count < n_int:
     prog_step = 100 / n_int
     gs_prog.update(prog_count * prog_step)
+  else:
+    gs_prog.finished()
 
   return selection_result

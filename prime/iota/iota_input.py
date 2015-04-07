@@ -421,20 +421,14 @@ def generate_input(gs_params):
   return gs_range, input_list, input_dir_list, output_dir_list, log_dir,\
          logfile, mp_input_list, mp_output_list
 
-def auto_mode(current_path, data_path, now):
-  """ Automatically builds the IOTA parameter file and the target PHIL file and
-      begins processing using reasonable default parameters.
+def write_defaults(current_path, txt_out):
+  """ Generates list of default parameters for a reasonable target file
+      (target.phil), which will be created in the folder from which IOTA is
+      being run. Also writes out the IOTA parameter file.
 
-      input:  current_path - absolute path to current directory
-              data_path - provided path to folder with raw images
-              now - current date and time
-
-      output: gs_params - full list of parameters for IOTA
-              txt_out - same but in text format suitable for printing
+      input: current_path - absolute path to current folder
+             txt_out - IOTA parameters in text format
   """
-
-  # List of default parameters for a reasonable target file (target.phil) which
-  # will be created in the folder from which IOTA is being run
 
   def_target_file = '{}/target.phil'.format(current_path)
   default_target = ['# -*- mode: conf -*-',
@@ -477,6 +471,21 @@ def auto_mode(current_path, data_path, now):
     for line in default_target:
       targ.write('{}\n'.format(line))
 
+  with open('{}/iota.param'.format(current_path), 'w') as default_settings_file:
+    default_settings_file.write(txt_out)
+
+def auto_mode(current_path, data_path, now):
+  """ Automatically builds the IOTA parameter file and the target PHIL file and
+      begins processing using reasonable default parameters.
+
+      input:  current_path - absolute path to current directory
+              data_path - provided path to folder with raw images
+              now - current date and time
+
+      output: gs_params - full list of parameters for IOTA
+              txt_out - same but in text format suitable for printing
+  """
+
   # Modify list of default IOTA parameters to include the absolute path to data
   # folder and a description with a time-stamp
 
@@ -503,5 +512,8 @@ def auto_mode(current_path, data_path, now):
   txt_out = ''
   for one_output in output:
     txt_out += one_output + '\n'
+
+  # Write default parameter and target files
+  write_defaults(current_path, txt_out)
 
   return gs_params, txt_out
