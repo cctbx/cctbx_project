@@ -1623,6 +1623,7 @@ mmtbx/cablam/fingerprints/parallel_beta.py -text
 mmtbx/cablam/fingerprints/parallel_beta_bridge.pickle -text
 mmtbx/cablam/fingerprints/regular_helix_definitions.py -text
 mmtbx/cablam/fingerprints/threeten_general.pickle -text
+mmtbx/cablam/rebuild_cablam_cache.py -text
 mmtbx/chemical_components/__init__.py -text
 mmtbx/chemical_components/cif_parser.py -text
 mmtbx/chemical_components/tst.py -text
