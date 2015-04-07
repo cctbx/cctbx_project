@@ -4,14 +4,12 @@ from __future__ import division
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
 Last Changed: 04/06/2015
-Description : IOTA command-line module. Version 1.22
+Description : IOTA command-line module. Version 1.23
 '''
 
 import os
 import sys
 from datetime import datetime
-import numpy as np
-from collections import Counter
 
 from libtbx.easy_mp import parallel_map
 import dials.util.command_line as cmd
@@ -19,6 +17,7 @@ import dials.util.command_line as cmd
 import prime.iota.iota_input as inp
 import prime.iota.iota_gridsearch as gs
 import prime.iota.iota_select as ps
+import prime.iota.iota_analysis as ia
 
 # Multiprocessor wrapper for grid search module
 def index_mproc_wrapper(current_img):
@@ -70,11 +69,11 @@ def run_grid_search(txt_out, gs_params, gs_range, input_dir_list,
     os.remove("{0}/logs/progress.log".format(gs_params.output))
 
   # run grid search on multiple processes
-  cmd.Command.start("Starting Grid Search")
+  cmd.Command.start("Spotfinding Grid Search")
   parallel_map(iterable=mp_input_list,
                func=index_mproc_wrapper,
                processes=gs_params.n_processors)
-  cmd.Command.end("Finished Grid Search")
+  cmd.Command.end("Spotfinding Grid Search -- DONE")
 
 def run_pickle_selection(gs_params, mp_output_list):
   """ Runs pickle_selection in multiprocessing mode.
@@ -116,11 +115,11 @@ def run_pickle_selection(gs_params, mp_output_list):
   inp.main_log(logfile, '{:-^100} \n'.format(' STARTING SELECTION '))
 
   # run pickle selection on multiple processes
-  cmd.Command.start("Starting Pickle Selection")
+  cmd.Command.start("Spotfinding Combination Selection")
   selection_results = parallel_map(iterable=mp_output_list,
                                    func=selection_mproc_wrapper,
                                    processes=gs_params.n_processors)
-  cmd.Command.end("Finished Pickle Selection")
+  cmd.Command.end("Spotfinding Combination Selection -- DONE")
 
   return selection_results
 
@@ -150,174 +149,59 @@ def final_integration(sel_clean, gs_params):
 
   return clean_results
 
-def print_results(clean_results, gs_range):
-  """ Prints diagnostics from the final integration run.
+def dry_run():
+    gs_params, txt_out = inp.process_input([])
+    print '\n{:-^70}\n'.format('IOTA Usage')
 
-      input: clean_results - list of integrated pickles w/ integration data
-             gs_range - range of the grid search
+    print 'Dry run mode'
+    print 'Usage: prime.iota'
+    print 'Generates default parameter file for IOTA (iota.param) and '
+    print 'target file for cctbx.xfel (target.phil).\n'
 
-  """
+    print 'Auto mode'
+    print 'Usage: prime.iota path/to/raw/images'
+    print 'Generates two files, parameter file for IOTA (iota.param) and'
+    print 'target file for cctbx.xfel (target.phil). Integrates a random'
+    print 'subset of images without target cell. Outputs basic analysis.'
+    print 'The input files currently MUST be in pickle format. Modify by'
+    print 'running cxi.image2pickle.\n'
 
-  images = [results['img'] for results in clean_results]
-  spot_heights = [results['sph'] for results in clean_results]
-  spot_areas = [results['spa'] for results in clean_results]
-  resolutions = [results['res'] for results in clean_results]
-  num_spots = [results['strong'] for results in clean_results]
-  mosaicities = [results['mos'] for results in clean_results]
+    print 'Script mode'
+    print 'Usage: prime.iota <script>.param'
+    print 'Run using IOTA parameter file and target PHIL file generated from'
+    print 'the dry run or auto mode. Make sure that IOTA parameter file has'
+    print 'the path to the input image folder under "input". The input files'
+    print 'currently MUST be in pickle format. Modify by running'
+    print 'cxi.image2pickle.\n'
 
-  a = [results['a'] for results in clean_results]
-  b = [results['b'] for results in clean_results]
-  c = [results['c'] for results in clean_results]
-  alpha = [results['alpha'] for results in clean_results]
-  beta = [results['beta'] for results in clean_results]
-  gamma = [results['gamma'] for results in clean_results]
-
-  cons_h = Counter(spot_heights).most_common(1)[0][0]
-  cons_a = Counter(spot_areas).most_common(1)[0][0]
-
-  final_table = []
-  final_table.append("\n\n{:-^80}\n".format('ANALYSIS OF RESULTS'))
-  final_table.append("Total images:          {}".format(len(images)))
-  final_table.append("Avg. spot height:      {:<8.3f}  std. dev:    {:<6.2f}"\
-                     "  max: {:<3}  min: {:<3}  consensus: {:<3}"\
-                     "".format(np.mean(spot_heights), np.std(spot_heights),
-                               max(spot_heights), min(spot_heights), cons_h))
-  final_table.append("Avg. spot areas:       {:<8.3f}  std. dev:    {:<6.2f}"\
-                    "  max: {:<3}  min: {:<3}  consensus: {:<3}"\
-                    "".format(np.mean(spot_areas), np.std(spot_areas),
-                              max(spot_areas), min(spot_areas), cons_a))
-  final_table.append("Avg. resolution:       {:<8.3f}  std. dev:    {:<6.2f}"\
-                    "".format(np.mean(resolutions), np.std(resolutions)))
-  final_table.append("Avg. number of spots:  {:<8.3f}  std. dev:    {:<6.2f}"\
-                    "".format(np.mean(num_spots), np.std(num_spots)))
-
-  final_table.append("Avg. mosaicity:        {:<8.3f}  std. dev:    {:<6.2f}"\
-                    "".format(np.mean(mosaicities), np.std(mosaicities)))
-  final_table.append("Avg. unit cell:        "\
-                     "{:<6.2f} ({:>4.2f}), {:<6.2f} ({:>4.2f}), "\
-                     "{:<6.2f} ({:>4.2f}), {:<6.2f} ({:>4.2f}), "\
-                     "{:<6.2f} ({:>4.2f}), {:<6.2f} ({:>4.2f})"
-                    "".format(np.mean(a), np.std(a),
-                              np.mean(b), np.std(b),
-                              np.mean(c), np.std(c),
-                              np.mean(alpha), np.std(alpha),
-                              np.mean(beta), np.std(beta),
-                              np.mean(gamma), np.std(gamma)))
-  uc_check = np.std(a) >= np.mean(a) * 0.1 or \
-             np.std(b) >= np.mean(b) * 0.1 or \
-             np.std(c) >= np.mean(c) * 0.1 or \
-             np.std(alpha) >= np.mean(alpha) * 0.1 or \
-             np.std(beta) >= np.mean(beta) * 0.1 or \
-             np.std(gamma) >= np.mean(gamma) * 0.1
-
-  if uc_check:
-    final_table.append("\n                       WARNING: "\
-                       "Unit cell too variable")
-
-  bad_mos_list = [item for item in clean_results if float(item['mos']) -\
-                   np.mean(mosaicities) > np.std(mosaicities) * 2]
-
-  for item in final_table:
-      print item
-      inp.main_log(logfile, item)
-
-def print_summary(gs_params, n_img):
-  """ Prints summary by reading contents of files listing
-      a) images not integrated
-      b) images that failed unit cell filter
-      c) total images input
-      d) final images successfully processed
-
-      Appends summary to general log file. Also outputs some of it on stdout.
-
-      input: gs_params - parameters from *.param file in PHIL format
-  """
-
-  summary = []
-  int_fail_count = 0
-  bad_int_count = 0
-  final_count = 0
-
-  print "\n\n{:-^80}\n".format('SUMMARY')
-  inp.main_log(logfile, "\n\n{:-^80}\n".format('SUMMARY'))
-
-  with (open ('{0}/logs/progress.log'.format(gs_params.output), 'r')) as plog:
-    prog_content = plog.read()
-
-  summary.append('raw images processed:         {}'.format(n_img))
-
-  if os.path.isfile('{0}/not_integrated.lst'.format(os.path.abspath(gs_params.output))):
-    with open('{0}/not_integrated.lst'.format(os.path.abspath(gs_params.output)),
-              'r') as int_fail_list:
-      int_fail_list_contents = int_fail_list.read()
-      int_fail_count = len(int_fail_list_contents.splitlines())
-
-  if os.path.isfile('{0}/prefilter_fail.lst'.format(os.path.abspath(gs_params.output))):
-    with open('{0}/prefilter_fail.lst'.format(os.path.abspath(gs_params.output)),
-            'r') as bad_int_list:
-      bad_int_list_contents = bad_int_list.read()
-      bad_int_count = len(bad_int_list_contents.splitlines())
-
-  if os.path.isfile('{0}/selected.lst'.format(os.path.abspath(gs_params.output))):
-    with open('{0}/selected.lst'.format(os.path.abspath(gs_params.output)),
-              'r') as sel_list:
-      sel_list_contents = sel_list.read()
-      sel_count = len(sel_list_contents.splitlines())
-
-  if os.path.isfile('{0}/integrated.lst'.format(os.path.abspath(gs_params.output))):
-    with open('{0}/integrated.lst'.format(os.path.abspath(gs_params.output)),
-              'r') as final_list:
-      final_list_contents = final_list.read()
-      final_count = len(final_list_contents.splitlines())
-
-  summary.append('raw images not integrated:    {}'.format(int_fail_count))
-
-  if gs_params.flag_prefilter == True:
-    summary.append('images failed prefilter:      {}'.format(bad_int_count))
-
-  summary.append('images in selection:          {}'.format(sel_count))
-  summary.append('final integrated pickles:     {}'.format(final_count))
-  summary.append('\n\nIOTA version {0}'.format(iota_version))
-
-  for item in summary:
-    print item
-    inp.main_log(logfile, "{}".format(item))
-
-  inp.main_log(logfile, "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now()))
+    inp.write_defaults(os.path.abspath(os.path.curdir), txt_out)
 
 # ============================================================================ #
 
 if __name__ == "__main__":
 
-  iota_version = '1.22'
+  iota_version = '1.23'
 
   print "\n\n"
-  print " IIIIII          OOOO         TTTTTTTTTT           A"
-  print "   II           O    O            TT              A A"
-  print "   II           O    O            TT             A   A"
-  print ">==Integration==Optimization==and=Triage========App=AAA=>"
-  print "   II           O    O            TT           A       A"
-  print "   II           O    O            TT          A         A"
-  print " IIIIII          OOOO             TT         A           A v{}"\
+  print "     IIIIII          OOOO         TTTTTTTTTT           A              "
+  print "       II           O    O            TT              A A             "
+  print "       II           O    O            TT             A   A            "
+  print ">------INTEGRATION--OPTIMIZATION------TRIAGE--------ANALYSIS--------->"
+  print "       II           O    O            TT           A       A          "
+  print "       II           O    O            TT          A         A         "
+  print "     IIIIII          OOOO             TT         A           A   v{}"\
         "".format(iota_version)
-
-  print
-  now = "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now())
-  print now
-  print
 
   # read parameters from *.param file
   arg = sys.argv[1:]
+  now = "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now())
 
   # If no parameter file specified, output blank parameter file
   if arg == []:
-    gs_params, txt_out = inp.process_input(arg)
-    print '{:-^100}\n\n'.format('IOTA Dry Run')
-    print txt_out
-    with open('iota.param', 'w') as default_settings_file:
-      default_settings_file.write(txt_out)
+    dry_run()
     sys.exit()
   else:
+    print '\n{}\n'.format(now)
     carg = arg[0]
     if os.path.exists(os.path.abspath(carg)):
 
@@ -337,6 +221,8 @@ if __name__ == "__main__":
     else:
       print "ERROR: Incorrect input! Need parameter filename or data folder."
       sys.exit()
+
+
 
   # generate input
   gs_range, input_list, input_dir_list, output_dir_list, log_dir, logfile,\
@@ -360,5 +246,5 @@ if __name__ == "__main__":
   final_int = final_integration(sel_clean, gs_params)
 
   # print final integration results and summary
-  print_results(final_int, gs_range)
-  print_summary(gs_params, len(input_list))
+  ia.print_results(final_int, gs_range, logfile)
+  ia.print_summary(gs_params, len(input_list), logfile, iota_version, now)
