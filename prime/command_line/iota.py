@@ -150,7 +150,7 @@ def final_integration(sel_clean, gs_params):
   return clean_results
 
 def dry_run():
-    gs_params, txt_out = inp.process_input([])
+
     print '\n{:-^70}\n'.format('IOTA Usage')
 
     print 'Dry run mode'
@@ -172,7 +172,12 @@ def dry_run():
     print 'the dry run or auto mode. Make sure that IOTA parameter file has'
     print 'the path to the input image folder under "input". The input files'
     print 'currently MUST be in pickle format. Modify by running'
-    print 'cxi.image2pickle.\n'
+    print 'cxi.image2pickle.\n\n'
+
+    help_out, txt_out = inp.print_params()
+
+    print '\n{:-^70}\n'.format('IOTA Parameters')
+    print help_out
 
     inp.write_defaults(os.path.abspath(os.path.curdir), txt_out)
 

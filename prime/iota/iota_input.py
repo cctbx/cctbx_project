@@ -50,7 +50,7 @@ grid_search
 {
   flag_on = True
     .type = bool
-    .help = Set to False to run selection of pickles only.
+    .help = Set to False to run selection and final integration only. (Requires grid search results to be present!)
   a_avg = 5
     .type = int
     .help = Minimum spot area.
@@ -96,22 +96,22 @@ advanced
     .help = If True, outputs PDF files w/ charts of mosaicity, rmsd, etc.
   mosaicity_plot = False
     .type = bool
-    .help = If True, outputs PDF files w/ charts of mosaicity, rmsd, etc.
+    .help = If True, outputs PDF files w/ charts of mosaicity only.
   debug = False
     .type = bool
-    .help = If True, activates the iPython command wherever it is.
+    .help = Used for various debugging purposes.
   save_tmp_pickles = False
     .type = bool
-    .help = If True, saves pickle for each integration attempt.
+    .help = If True, saves pickle for each integration attempt in grid search.
   pred_img
-    .help = "Visualize spotfinding / integration results."
+    .help = "Visualize spotfinding and integration results."
   {
     flag = False
       .type = bool
-      .help = Choose to visualize the results of final integration
-    cv_vectors = True
+      .help = Visualize the results of final integration
+    cv_vectors = False
       .type = bool
-      .help = Include x,y offset information
+      .help = Visualize x,y offset information
   }
   random_sample
     .help = "Random grid search."
@@ -121,7 +121,7 @@ advanced
       .help = Set to run grid search on a random set of images.
     number = 5
       .type = int
-      .help = Number of random samples.
+      .help = Number of random samples. Set to zero to select 10% of input.
   }
 }
 """)
@@ -517,3 +517,23 @@ def auto_mode(current_path, data_path, now):
   write_defaults(current_path, txt_out)
 
   return gs_params, txt_out
+
+def print_params():
+
+  #capture input read out by phil
+  with Capturing() as output:
+    master_phil.show(attributes_level=1)
+
+  help_out = ''
+  for one_output in output:
+    help_out += one_output + '\n'
+
+  #capture input read out by phil
+  with Capturing() as output:
+    master_phil.show()
+
+  txt_out = ''
+  for one_output in output:
+    txt_out += one_output + '\n'
+
+  return help_out, txt_out
