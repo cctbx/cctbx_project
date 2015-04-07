@@ -244,11 +244,7 @@ def print_summary(gs_params, n_img):
   with (open ('{0}/logs/progress.log'.format(gs_params.output), 'r')) as plog:
     prog_content = plog.read()
 
-  if gs_params.advanced.random_sample.flag_on == True:
-    summary.append('raw images processed:         {}'\
-                   ''.format(gs_params.advanced.random_sample.number))
-  else:
-    summary.append('raw images processed:         {}'.format(n_img))
+  summary.append('raw images processed:         {}'.format(n_img))
 
   if os.path.isfile('{0}/not_integrated.lst'.format(os.path.abspath(gs_params.output))):
     with open('{0}/not_integrated.lst'.format(os.path.abspath(gs_params.output)),
@@ -295,10 +291,20 @@ if __name__ == "__main__":
 
   iota_version = '1.22'
 
+  print "\n\n"
+  print " IIIIII          OOOO         TTTTTTTTTT           A"
+  print "   II           O    O            TT              A A"
+  print "   II           O    O            TT             A   A"
+  print ">==Integration==Optimization==and=Triage========App=AAA=>"
+  print "   II           O    O            TT           A       A"
+  print "   II           O    O            TT          A         A"
+  print " IIIIII          OOOO             TT         A           A v{}"\
+        "".format(iota_version)
+
+  print
   now = "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now())
   print now
-  print 'Starting IOTA ... \n\n'
-
+  print
 
   # read parameters from *.param file
   arg = sys.argv[1:]
