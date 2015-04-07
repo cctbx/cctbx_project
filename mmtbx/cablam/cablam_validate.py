@@ -314,6 +314,7 @@ def setup(hierarchy,pdbid='pdbid'):
   resdata=cablam_res.construct_linked_residues(hierarchy,
     targetatoms=['CA','C','N','O'],pdbid=pdbid)
   cablam_math.cablam_measures(resdata)
+  cablam_math.omegacalc(resdata)
   return resdata
 #-------------------------------------------------------------------------------
 #}}}
@@ -325,7 +326,7 @@ def setup(hierarchy,pdbid='pdbid'):
 #The return object is a dict keyed by residue type: 'general','gly','pro'
 #One set of contours defines peptide behavior (CA_d_in,CA_d_out,peptide):
 def fetch_peptide_expectations():
-  categories = ['general','gly','pro']
+  categories = ['general','gly','transpro','cispro']
   unpickled = {}
   for category in categories:
     picklefile = libtbx.env.find_in_repositories(
@@ -342,7 +343,7 @@ def fetch_peptide_expectations():
 
 #One set of contours defines CA trace (CA_d_in,CA_d_out,CA_a):
 def fetch_ca_expectations():
-  categories = ['general','gly','pro']
+  categories = ['general','gly','transpro','cispro']
   unpickled = {}
   for category in categories:
     picklefile = libtbx.env.find_in_repositories(
@@ -426,7 +427,14 @@ def find_peptide_outliers(resdata,expectations,cutoff=0.05):
       if resname.upper() == 'GLY':
         percentile = expectations['gly'].valueAt(cablam_point)
       elif resname.upper() == 'PRO':
-        percentile = expectations['pro'].valueAt(cablam_point)
+        #Splitting cis vs trans at 90, rather than having a twisted category
+        #  This way, no residues are left out of cablam analysis
+        #  Use omegalyze for nontrans peptide validation
+        if ('omega' not in residue.measures) or (residue.measures['omega'] >= 90) or (residue.measures['omega'] <= -90):
+          percentile = expectations['transpro'].valueAt(cablam_point)
+        else:
+          percentile = expectations['cispro'].valueAt(cablam_point)
+        #percentile = expectations['pro'].valueAt(cablam_point)
       else:
         percentile = expectations['general'].valueAt(cablam_point)
 
@@ -446,7 +454,11 @@ def find_ca_outliers(resdata,expectations,cutoff=0.005):
       if resname.upper() == 'GLY':
         percentile = expectations['gly'].valueAt(cablam_point)
       elif resname.upper() == 'PRO':
-        percentile = expectations['pro'].valueAt(cablam_point)
+        if ('omega' not in residue.measures) or (residue.measures['omega'] >= 90) or (residue.measures['omega'] <= -90):
+          percentile = expectations['transpro'].valueAt(cablam_point)
+        else:
+          percentile = expectations['cispro'].valueAt(cablam_point)
+        #percentile = expectations['pro'].valueAt(cablam_point)
       else:
         percentile = expectations['general'].valueAt(cablam_point)
 
@@ -468,8 +480,12 @@ def find_all_residue_stats(resdata,peptide_expectations,ca_geom_expectations):
         peptide_percentile = peptide_expectations['gly'].valueAt(peptide_point)
         ca_geom_percentile = ca_geom_expectations['gly'].valueAt(ca_geom_point)
       elif resname.upper() == 'PRO':
-        peptide_percentile = peptide_expectations['pro'].valueAt(peptide_point)
-        ca_geom_percentile = ca_geom_expectations['pro'].valueAt(ca_geom_point)
+        if ('omega' not in residue.measures) or (residue.measures['omega'] >= 90) or (residue.measures['omega'] <= -90):
+          peptide_percentile = peptide_expectations['transpro'].valueAt(peptide_point)
+          ca_geom_percentile = ca_geom_expectations['transpro'].valueAt(ca_geom_point)
+        else:
+          peptide_percentile = peptide_expectations['cispro'].valueAt(peptide_point)
+          ca_geom_percentile = ca_geom_expectations['cispro'].valueAt(ca_geom_point)
       else:
         peptide_percentile = peptide_expectations['general'].valueAt(peptide_point)
         ca_geom_percentile = ca_geom_expectations['general'].valueAt(ca_geom_point)
@@ -688,7 +704,7 @@ def check_prolines(hierarchy,pdbid='pdbid'):
   cis_cutoff   = 0.005
   trans_cutoff = 0.005
   resdata = setup(hierarchy,pdbid)
-  cablam_math.omegacalc(resdata)
+  #cablam_math.omegacalc(resdata)
   pro_contour = fetch_cis_trans_proline()
   reskeys = resdata.keys()
   reskeys.sort()
@@ -956,8 +972,15 @@ def oneline(hierarchy, peptide_cutoff=0.05, peptide_bad_cutoff=0.01, ca_cutoff=0
         peptide_percentile = peptide_expectations['gly'].valueAt(peptide_point)
         ca_percentile = ca_expectations['gly'].valueAt(ca_point)
       elif resname.upper() == 'PRO':
-        peptide_percentile = peptide_expectations['pro'].valueAt(peptide_point)
-        ca_percentile = ca_expectations['pro'].valueAt(ca_point)
+        if ('omega' not in residue.measures) or (residue.measures['omega'] >= 90) or (residue.measures['omega'] <= -90):
+          peptide_percentile = peptide_expectations['transpro'].valueAt(peptide_point)
+          ca_geom_percentile = ca_expectations['transpro'].valueAt(ca_point)
+        else:
+          peptide_percentile = peptide_expectations['cispro'].valueAt(peptide_point)
+          ca_geom_percentile = ca_expectations['cispro'].valueAt(ca_point)
+      #elif resname.upper() == 'PRO':
+      #  peptide_percentile = peptide_expectations['pro'].valueAt(peptide_point)
+      #  ca_percentile = ca_expectations['pro'].valueAt(ca_point)
       else:
         peptide_percentile = peptide_expectations['general'].valueAt(peptide_point)
         ca_percentile = ca_expectations['general'].valueAt(ca_point)
