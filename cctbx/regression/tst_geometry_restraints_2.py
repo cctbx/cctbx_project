@@ -797,6 +797,7 @@ ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
   open("tst_cctbx_geometry_restraints_2_na.pdb", "w").write(pdb_str_1dpl_cutted)
   out1 = StringIO()
   out2 = StringIO()
+  from mmtbx.monomer_library.server import MonomerLibraryServerError
   try:
     processed_pdb_file = pdb_interpretation.run(
       args=["tst_cctbx_geometry_restraints_2_na.pdb"],
