@@ -110,7 +110,6 @@ class installer (object) :
         os.makedirs(dir_name)
 
     # Which Python interpreter:
-    # FIXME GW 2015/03/09 should be if/then/else?
     self.python_exe = None
     if os.path.exists(os.path.join(self.build_dir, 'base', 'bin', 'python')):
       self.python_exe = os.path.join(self.build_dir, 'base', 'bin', 'python')
@@ -305,14 +304,14 @@ class installer (object) :
     # Just an arbitrary import (with .so)
     self.verify_python_module("Python", "socket")
 
-    # Check python version >= 2.5.
+    # Check python version >= 2.6.
     python_version = check_output([self.python_exe, '-c', 'import sys; print "%s.%s.%s"%(sys.version_info[0], sys.version_info[1], sys.version_info[2])'])
     python_version = python_version.strip()
     try:
-      check_output([self.python_exe, '-c', 'import sys; assert sys.version_info[0] == 2; assert sys.version_info[1] >= 5'])
+      check_output([self.python_exe, '-c', 'import sys; assert sys.version_info[0] == 2; assert sys.version_info[1] >= 6'])
     except (OSError, RuntimeError), e:
       print >> self.log, """
-Error: Python 2.5 or higher required. Python 3 is not supported.
+Error: Python 2.6 or higher required. Python 3 is not supported.
 Found Python version:
   %s
 """%python_version
