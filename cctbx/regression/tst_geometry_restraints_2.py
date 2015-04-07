@@ -797,10 +797,15 @@ ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
   open("tst_cctbx_geometry_restraints_2_na.pdb", "w").write(pdb_str_1dpl_cutted)
   out1 = StringIO()
   out2 = StringIO()
-  processed_pdb_file = pdb_interpretation.run(
-    args=["tst_cctbx_geometry_restraints_2_na.pdb"],
-    strict_conflict_handling=False,
-    log=out1)
+  try:
+    processed_pdb_file = pdb_interpretation.run(
+      args=["tst_cctbx_geometry_restraints_2_na.pdb"],
+      strict_conflict_handling=False,
+      log=out1)
+  except MonomerLibraryServerError:
+    print "Skipping exercise_na_restraints_output_to_geo(): Encountered MonomerLibraryServerError.\n"
+    print "Is the CCP4 monomer library installed and made available through environment variables MMTBX_CCP4_MONOMER_LIB or CLIBD_MON?"
+    return
   geo1 = processed_pdb_file.geometry_restraints_manager()
   from mmtbx import monomer_library
   params = monomer_library.pdb_interpretation.master_params.extract()
