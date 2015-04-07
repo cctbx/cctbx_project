@@ -750,7 +750,6 @@ class CCIBuilder(Builder):
 class CCTBXBuilder(CCIBuilder):
   BASE_PACKAGES = 'cctbx'
   def add_tests(self):
-#    self.add_step(cleanup_ext_class(".pyc", "modules"))
     self.add_test_command('libtbx.import_all_ext')
     self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
     self.add_test_command('cctbx_regression.test_nightly')
@@ -953,6 +952,7 @@ def run(root=None):
     base=('base' in actions),
     build=('build' in actions),
     tests=('tests' in actions),
+    cleanup=("cleanup" in actions),
     nproc=options.nproc,
     verbose=options.verbose,
     download_only=options.download_only,
