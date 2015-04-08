@@ -267,6 +267,7 @@ class Script(object):
       f.write("cxi.xtc_process input.cfg=%s input.experiment=%s input.run_num=%d mp.method=sge %s 1> %s 2> %s\n"%( \
         config_path, params.input.experiment, params.input.run_num, extra_str,
         os.path.join(stdoutdir, "log_$SGE_TASK_ID.out"), os.path.join(stdoutdir, "log_$SGE_TASK_ID.err")))
+      f.close()
     else:
       raise Sorry("Multiprocessing method %s not recognized"%params.mp.method)
 
