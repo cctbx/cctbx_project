@@ -459,7 +459,7 @@ def predict_ion(chem_env, scatter_env, elements=None, svm_name=None):
 
   # Convert our data into a format that libsvm will accept
   vector = ion_vector(chem_env, scatter_env, **vector_options)
-  vector = utils.scale_to(vector, scaling[0], scaling[1])
+  vector = utils.scale_to([vector], scaling[0], scaling[1])[0]
 
   assert len(vector) == len(features)
 
