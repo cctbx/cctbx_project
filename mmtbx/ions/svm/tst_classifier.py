@@ -1,10 +1,6 @@
  # -*- coding: utf-8; py-indent-offset: 2 -*-
+
 from __future__ import division
-
-import os
-import sys
-
-import libtbx
 from mmtbx.command_line.water_screen import master_phil
 from mmtbx.ions.environment import ChemicalEnvironment, ScatteringEnvironment
 from mmtbx import ions
@@ -13,6 +9,10 @@ from mmtbx.ions.svm import ion_class, predict_ion
 from mmtbx.regression.make_fake_anomalous_data import generate_zinc_inputs, \
      generate_calcium_inputs
 import mmtbx.command_line
+import libtbx.load_env
+import warnings
+import os
+import sys
 
 def exercise () :
   fns = [generate_calcium_inputs, generate_zinc_inputs]
@@ -103,4 +103,12 @@ def exercise () :
   print "OK"
 
 if __name__ == "__main__":
-  exercise()
+  if (not libtbx.env.find_in_repositories("chem_data")) :
+    warnings.warn("chem_data not available, skipping this test")
+  else :
+    try :
+      import svm
+    except ImportError :
+      warnings.warn("libsvm not available, skipping this test")
+    else :
+      exercise()

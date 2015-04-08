@@ -139,6 +139,11 @@ tst_list = (
   "$D/ions/tst_validate_mg.py",
   #"$D/ions/tst_validate_zn.py", # FIXME
   "$D/ions/tst_symmetry_axis.py",
+  # ions SVM
+  "$D/ions/svm/tst_classifier.py",
+  "$D/ions/svm/tst_vector.py",
+  "$D/ions/svm/tst_utils.py",
+  "$D/ions/tst_pick_ca_svm.py",
   #
   "$D/regression/tst_ringer.py",
   "$D/regression/tst_fmodel_no_cryst1.py",
