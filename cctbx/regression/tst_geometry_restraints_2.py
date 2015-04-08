@@ -694,6 +694,11 @@ nonbonded 1
 """)
 
 def exercise_na_restraints_output_to_geo(verbose=False):
+  for dependency in ("chem_data", "ksdssp"):
+    if not libtbx.env.has_module(dependency):
+      print "Skipping exercise_na_restraints_output_to_geo(): %s not available" %(
+        dependency)
+      return
   pdb_str_1dpl_cutted="""\
 CRYST1   24.627   42.717   46.906  90.00  90.00  90.00 P 21 21 21    8
 ATOM    184  P    DG A   9       9.587  13.026  19.037  1.00  6.28           P
