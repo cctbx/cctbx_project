@@ -957,6 +957,7 @@ def run(root=None):
     verbose=options.verbose,
     download_only=options.download_only,
   ).run()
+  print "\nBootstrap success: %s" % ", ".join(actions)
 
 if __name__ == "__main__":
   run()
