@@ -18,9 +18,8 @@ else :
   svm_params = """
 use_svm = False
   .type = bool
-  .short_caption = Experimental feature: use SVM-based classification of \
-    candidate ions.
-  .expert_level  =3
+  .short_caption = Use Support Vector Machine to classify candidate ions
+  .expert_level = 1
 include scope mmtbx.ions.svm.svm_phil_str
 """
 
@@ -132,6 +131,9 @@ def find_and_build_ions (
     manager_class = None
     if (use_svm) :
       manager_class = mmtbx.ions.svm.manager
+      if params.svm.svm_name == "merged_high_res" :
+        params.find_anomalous_substructure = False
+        params.use_phaser = False
     manager = mmtbx.ions.identify.create_manager(
       pdb_hierarchy=pdb_hierarchy,
       geometry_restraints_manager=model.restraints_manager.geometry,

@@ -97,7 +97,7 @@ def _get_classifier(svm_name=None):
   assert (svmutil is not None)
   global _CLASSIFIER, _CLASSIFIER_OPTIONS
 
-  if not svm_name or svm_name is Auto:
+  if not svm_name or str(svm_name) == "Auto" :
     svm_name = _DEFAULT_SVM_NAME
 
   if svm_name not in _CLASSIFIER:
@@ -537,8 +537,8 @@ svm_phil_str = """
 svm
   .expert_level = 3
 {
-  svm_name = Auto
-    .type = str
+  svm_name = *Auto heavy merged_high_res
+    .type = choice
     .help = "Name of SVM classifier to use"
   filtered_outputs = True
     .type = bool
@@ -612,7 +612,8 @@ class svm_prediction (slots_getstate_setstate_default_initializer) :
        self.map_stats.two_fofc, self.map_stats.fofc)
 
 class manager (mmtbx.ions.identify.manager) :
-  def analyze_water (self, i_seq, debug=True, candidates=Auto) :
+  def analyze_water (self, i_seq, debug=True, candidates=Auto,
+      filter_outputs=True) :
     """
     Analyzes a single water site using a SVM to decide whether to re-assign it
     as an ion.
@@ -656,12 +657,16 @@ class manager (mmtbx.ions.identify.manager) :
       fo_density=self.get_map_gaussian_fit("mFo", i_seq),
       fofc_density=self.get_map_gaussian_fit("mFo-DFc", i_seq),
       anom_density=self.get_map_gaussian_fit("anom", i_seq))
-    ### XXX: filter_svm_outputs?
     predictions = predict_ion(
       chem_env, scatter_env,
-      elements=candidates, svm_name=self.params.svm.svm_name,
-      )
-    if predictions is not None:
+      elements=candidates,
+      svm_name=self.params.svm.svm_name)
+    if (predictions is not None) and filter_outputs :
+      predictions = utils.filter_svm_outputs(
+        chem_env=chem_env,
+        scatter_env=scatter_env,
+        predictions=predictions)
+    if (predictions is not None) and (len(predictions) > 0) :
       final_choice = None
       predictions.sort(key=lambda x: -x[1])
       best_guess, best_score = predictions[0]
@@ -711,7 +716,8 @@ class manager (mmtbx.ions.identify.manager) :
       prediction = self.analyze_water(
         i_seq=i_seq,
         debug=debug,
-        candidates=candidates)
+        candidates=candidates,
+        filter_outputs=self.params.svm.filtered_outputs)
       if (prediction is not None) :
         predictions.append(prediction)
     filtered = []

@@ -148,7 +148,7 @@ def _is_favorable_halide_environment(
       return False
   return binds_amide_hydrogen or near_cation or near_lys
 
-def filter_svm_outputs(chem_env, scatter_env, elements):
+def filter_svm_outputs(chem_env, scatter_env, predictions):
   """
   Applies a simple set of filters to the accepted ions that might match a given
   chemical and scattering environment to help catch corner cases where the SVM
@@ -167,7 +167,7 @@ def filter_svm_outputs(chem_env, scatter_env, elements):
   bvs_ratio = 0.5
   vecsum_cutoff = 0.6
   ok_elements = []
-  for element in elements:
+  for element, score in predictions:
     if element != "HOH":
       if scatter_env.fo_density[0] < 1:
         continue
@@ -195,7 +195,7 @@ def filter_svm_outputs(chem_env, scatter_env, elements):
         continue
       if any(abs(i.vector) < 1.8 for i in chem_env.contacts):
         continue
-    ok_elements.append(element)
+    ok_elements.append((element, score))
   return ok_elements
 
 def scale_to(matrix, source, target):
