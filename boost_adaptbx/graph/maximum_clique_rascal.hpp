@@ -108,7 +108,7 @@ struct initial_partition_by_vertex_coloring
 
     typedef vertex_map::generic_vertex_map< VertexListGraph, vertices_size_type >
       color_map_type;
-    typedef typename color_map_type::vertex_map_type color_property_map_type;
+    typedef typename color_map_type::property_map_type color_property_map_type;
 
     typedef rascal_state< vertex_descriptor, vertices_size_type > state_type;
     typedef typename state_type::vertex_group_type vertex_group_type;

@@ -4,8 +4,22 @@
 #include <boost/mpl/identity.hpp>
 #include <boost/mpl/for_each.hpp>
 #include <boost/mpl/placeholders.hpp>
+#include <boost/mpl/fold.hpp>
+#include <boost/mpl/insert.hpp>
+#include <boost/mpl/or.hpp>
+#include <boost/mpl/copy_if.hpp>
+
+#include <boost/mpl/set.hpp>
+#include <boost/mpl/string.hpp>
+#include <boost/mpl/vector.hpp>
+
+#include <boost/python/class.hpp>
+#include <boost/python/operators.hpp>
 
 #include <boost/bind.hpp>
+#include <boost/type_traits.hpp>
+
+#include <string>
 
 namespace boost_adaptbx
 {
@@ -36,6 +50,101 @@ struct method_list
       ExportList,
       boost::mpl::make_identity< boost::mpl::placeholders::_ >
       >( boost::bind( export_spec, myclass, _1 ) );
+  }
+};
+
+template< typename TypeList >
+struct unique_type_set
+{
+  typedef typename boost::mpl::fold<
+    TypeList,
+    boost::mpl::set<>,
+    boost::mpl::insert< boost::mpl::placeholders::_1, boost::mpl::placeholders::_2 >
+    >::type type;
+};
+
+template< typename TypeList >
+struct novel_python_type
+{
+  typedef typename boost::mpl::copy_if<
+    TypeList,
+    boost::mpl::or_<
+      boost::is_class< boost::mpl::placeholders::_1 >,
+      boost::is_union< boost::mpl::placeholders::_1 >
+      >,
+    boost::mpl::back_inserter< boost::mpl::vector<> >
+    >::type type;
+};
+
+struct no_extra_functionality
+{
+  template< typename Type >
+  void operator ()(boost::python::class_< Type > myclass) const
+  {}
+};
+
+template< typename Prefix, typename Extra = no_extra_functionality >
+struct python_type_export
+{
+  bool m_enable_equality;
+  bool m_enable_comparison;
+  Extra m_extra_functionality;
+
+  python_type_export(Extra const& extra_functionality = Extra())
+    : m_enable_equality( false ),
+      m_enable_comparison( false ),
+      m_extra_functionality( extra_functionality )
+  {}
+
+  python_type_export& enable_equality_operators()
+  {
+    m_enable_equality = true;
+    return *this;
+  }
+
+  python_type_export& enable_comparison_operators()
+  {
+    m_enable_comparison = true;
+    return *this;
+  }
+
+  template< typename Type >
+  void operator ()(boost::mpl::identity< Type > mytype) const
+  {
+    std::string prefix( boost::mpl::c_str< Prefix >::value );
+    boost::python::class_< Type > myclass( ( prefix + typeid( Type ).name() ).c_str() );
+
+    if ( m_enable_equality )
+    {
+      enable_equality_operators( myclass );
+    }
+
+    if ( m_enable_comparison )
+    {
+      enable_comparison_operators( myclass );
+    }
+
+    m_extra_functionality( myclass );
+  }
+
+  template< typename Type >
+  void enable_equality_operators(boost::python::class_< Type >& myclass) const
+  {
+    using namespace boost::python;
+    myclass.def( self == self )
+      .def( self != self )
+      ;
+  }
+
+  template< typename Type >
+  void enable_comparison_operators(boost::python::class_< Type >& myclass) const
+  {
+    using namespace boost::python;
+    myclass.def( self < self )
+      .def( self <= self )
+      .def( self > self )
+      .def( self >= self )
+      ;
   }
 };
 

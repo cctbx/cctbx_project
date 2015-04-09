@@ -11,13 +11,9 @@
 
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/connected_components.hpp>
-#include <boost/property_map/property_map.hpp>
 
 #include <boost/mpl/if.hpp>
 #include <boost/type_traits.hpp>
-
-#include <map>
-#include <vector>
 
 namespace boost_adaptbx
 {
@@ -33,7 +29,7 @@ struct connected_components_export
   typedef typename graph_traits::vertices_size_type vertex_index_type;
   typedef graph_export_adaptor::vertex_descriptor_converter< vertex_descriptor > converter;
   typedef vertex_map::generic_vertex_map< Graph, vertex_index_type > component_map_type;
-  typedef typename component_map_type::vertex_map_type component_property_map_type;
+  typedef typename component_map_type::property_map_type component_property_map_type;
   typedef vertex_map::index_map< Graph > index_map_type;
 
   static boost::python::list connected_components(Graph const& graph)

@@ -27,3 +27,11 @@ if not env_etc.no_boost_python:
     target="#lib/boost_adaptbx_graph_maximum_clique_ext",
     source="maximum_clique_ext.cpp",
     )
+  env.SharedLibrary(
+    target="#lib/boost_adaptbx_graph_min_cut_max_flow_ext",
+    source="min_cut_max_flow_ext.cpp",
+    )
+  env.SharedLibrary(
+    target="#lib/boost_adaptbx_graph_utility_ext",
+    source="utility_ext.cpp",
+    )
