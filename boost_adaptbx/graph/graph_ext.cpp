@@ -281,24 +281,6 @@ struct graph_exporter
   }
 };
 
-struct graph_edge_hash_function
-{
-  template< typename Type >
-  static
-  std::size_t edge_descriptor_hash_value(Type const& edge)
-  {
-    return boost::hash_value( edge.get_property() );
-  }
-
-  template< typename Type >
-  void operator ()(boost::python::class_< Type >& myclass) const
-  {
-    typedef std::size_t (*hashfun)(Type const&);
-    hashfun myhash = &edge_descriptor_hash_value< Type >;
-    myclass.def( "__hash__", myhash );
-  }
-};
-
 struct get_graph_vertex_descriptor_type
 {
   template< class Export >
@@ -320,6 +302,32 @@ struct get_graph_edge_descriptor_type
 };
 
 } // namespace <anonymous>
+
+namespace exporting
+{
+
+template< typename DirectedCatg, typename VertexDesc >
+struct python_type_export_traits<
+  boost::detail::edge_desc_impl< DirectedCatg, VertexDesc >
+  >
+{
+  typedef boost::detail::edge_desc_impl< DirectedCatg, VertexDesc > edge_descriptor;
+
+  static
+  std::size_t edge_descriptor_hash_value(edge_descriptor const& edge)
+  {
+    return boost::hash_value( edge.get_property() );
+  }
+
+  static
+  void process(boost::python::class_< edge_descriptor >& myclass)
+  {
+    myclass.def( "__hash__", edge_descriptor_hash_value );
+  }
+};
+
+} // namespace exporting
+
 } // namespace boost_adaptbx
 
 BOOST_PYTHON_MODULE(boost_adaptbx_graph_ext)
@@ -361,8 +369,7 @@ BOOST_PYTHON_MODULE(boost_adaptbx_graph_ext)
 
   boost_adaptbx::exporting::class_list< unique_graph_edge_descriptor_types >::process(
     boost_adaptbx::exporting::python_type_export<
-      boost::mpl::string< 'edge', '_' >,
-      boost_adaptbx::graph_edge_hash_function
+      boost::mpl::string< 'edge', '_' >
       >().enable_equality_operators()
     );
 

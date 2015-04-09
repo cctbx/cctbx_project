@@ -76,24 +76,21 @@ struct novel_python_type
     >::type type;
 };
 
-struct no_extra_functionality
+template< typename Type >
+struct python_type_export_traits
 {
-  template< typename Type >
-  void operator ()(boost::python::class_< Type > myclass) const
+  static void process(boost::python::class_< Type > myclass)
   {}
 };
 
-template< typename Prefix, typename Extra = no_extra_functionality >
+template< typename Prefix >
 struct python_type_export
 {
   bool m_enable_equality;
   bool m_enable_comparison;
-  Extra m_extra_functionality;
 
-  python_type_export(Extra const& extra_functionality = Extra())
-    : m_enable_equality( false ),
-      m_enable_comparison( false ),
-      m_extra_functionality( extra_functionality )
+  python_type_export()
+    : m_enable_equality( false ), m_enable_comparison( false )
   {}
 
   python_type_export& enable_equality_operators()
@@ -124,7 +121,7 @@ struct python_type_export
       enable_comparison_operators( myclass );
     }
 
-    m_extra_functionality( myclass );
+    python_type_export_traits< Type >::process( myclass );
   }
 
   template< typename Type >
