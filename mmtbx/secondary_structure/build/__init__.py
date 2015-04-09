@@ -12,8 +12,6 @@ import mmtbx.utils
 #from mmtbx.command_line.geometry_minimization import master_params
 from mmtbx import secondary_structure
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
-import os
-
 
 alpha_helix_str = """
 ATOM      1  N   ALA A   1      -5.606  -2.251 -12.878  1.00  0.00           N
