@@ -682,7 +682,7 @@ class Builder(object):
         'python',
         self.opjoin('modules', 'cctbx_project', 'libtbx', 'auto_build', 'install_base_packages.py'),
         '--python-shared',
-        '--skip-if-exists',
+        #'--skip-if-exists',
         '--%s'%self.BASE_PACKAGES
       ] + extra_opts,
       workdir=['.']
