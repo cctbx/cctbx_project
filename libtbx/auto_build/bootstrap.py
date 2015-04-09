@@ -40,12 +40,22 @@ class ShellCommand(object):
       Downloader().download_to_file(command[1], os.path.join(workdir, command[3]))
       return
 
-    p = subprocess.Popen(
-      args=command,
-      cwd=workdir,
-      stdout=sys.stdout,
-      stderr=sys.stderr
-    )
+    try:
+      p = subprocess.Popen(
+        args=command,
+        cwd=workdir,
+        stdout=sys.stdout,
+        stderr=sys.stderr
+      )
+    except Exception, e:
+      if isinstance(e, OSError):
+        if e.errno == 2:
+          executable = os.path.normpath(os.path.join(workdir, command[0]))
+          raise RuntimeError("Could not run %s: File not found" % executable)
+      if 'child_traceback' in dir(e):
+        print "Calling subprocess resulted in error; ", e.child_traceback
+      raise e
+
     p.wait()
     if p.returncode != 0 and self.kwargs.get('haltOnFailure'):
       raise RuntimeError, "Process failed with return code %s"%(p.returncode)
