@@ -286,7 +286,7 @@ def substitute_ss(real_h,
                     sigma_on_reference_sheet = 0.5,
                     sigma_on_torsion_ss = 5,
                     sigma_on_torsion_nonss = 5,
-                    sigma_on_ramachandran = 1, # default was 1
+                    sigma_on_ramachandran = 1,
                     sigma_on_cbeta = 2.5,
                     n_macro=3,
                     n_iter=300,
@@ -303,8 +303,7 @@ def substitute_ss(real_h,
   xray_structure - xray_structure - needed to get crystal symmetry (to
       construct processed_pdb_file and xray_structure is needed to call
       get_geometry_restraints_manager for no obvious reason).
-  helices - list with HELIX records. Types supported:
-      1:alpha_pdb_str, 3:alpha_pi_pdb_str, 5: alpha310_pdb_str
+  ss_annotation - annotation records.
 
   Weights (bigger number gives lighter restraints):
   sigma_on_reference_non_ss - weight on original model coordinates restraints
@@ -433,11 +432,13 @@ def substitute_ss(real_h,
   params_line += "secondary_structure {%s}" % secondary_structure.sec_str_master_phil_str
   params = iotbx.phil.parse(input_string=params_line, process_includes=True)
   custom_pars = params.fetch(source = iotbx.phil.parse("\n".join([
-      "secondary_structure {h_bond_restraints.remove_outliers = False\n%s}" \
+      "pdb_interpretation.secondary_structure {h_bond_restraints.remove_outliers = False\n%s}" \
           % phil_str,
       "pdb_interpretation.peptide_link.ramachandran_restraints = True",
       "c_beta_restraints = True",
-      "secondary_structure_restraints=True"]))).extract()
+      "pdb_interpretation.secondary_structure.enabled=True",
+      "pdb_interpretation.secondary_structure.find_automatically=False"]))).extract()
+
   processed_pdb_files_srv = mmtbx.utils.\
       process_pdb_file_srv(
           crystal_symmetry= xray_structure.crystal_symmetry(),
@@ -449,22 +450,10 @@ def substitute_ss(real_h,
   if(xray_structure is not None):
     sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()
     has_hd = "H" in sctr_keys or "D" in sctr_keys
-  sec_str = mmtbx.secondary_structure.process_structure(
-    params             = custom_pars.secondary_structure,
-    processed_pdb_file = processed_pdb_file,
-    tmp_dir            = os.getcwd(),
-    log                = null_out(),
-    assume_hydrogens_all_missing=(not has_hd))
-  sec_str.initialize(log=null_out())
-  build_proxies = sec_str.create_hbond_proxies(
-    log          = null_out(),
-    hbond_params = None)
-  hbond_params = build_proxies.proxies
   geometry = processed_pdb_file.geometry_restraints_manager(
     show_energies                = False,
     params_edits                 = custom_pars.geometry_restraints.edits,
     plain_pairs_radius           = 5,
-    hydrogen_bond_proxies        = hbond_params,
     assume_hydrogens_all_missing = not has_hd)
   restraints_manager = mmtbx.restraints.manager(
     geometry      = geometry,

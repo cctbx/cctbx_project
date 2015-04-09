@@ -874,7 +874,7 @@ def exercise_pure_polyala_alpha(prefix="tst_2_ex_ppa"):
 HELIX    1   1 ALA A    1  ALA A   20  1                                  20
 """
   h = ssb.secondary_structure_from_sequence(ssb.alpha_helix_str,"A"*20)
-  #h.write_pdb_file(file_name=prefix+'h0.pdb')
+  # h.write_pdb_file(file_name=prefix+'h0.pdb')
   d1 = get_distances(h)
   ann = ioss.annotation.from_records(records=h_records.split('\n'))
   pdb_inp = iotbx.pdb.input(source_info=None,
@@ -885,11 +885,11 @@ HELIX    1   1 ALA A    1  ALA A   20  1                                  20
       real_h=test_h,
       xray_structure=pdb_inp.xray_structure_simple(),
       ss_annotation=ann)
-  #test_h.write_pdb_file(file_name=prefix+'h1.pdb')
+  # test_h.write_pdb_file(file_name=prefix+'h1.pdb')
   d2 = get_distances(test_h)
   dist = abs(d2-d1)
   dmmm = abs(d2-d1).min_max_mean().as_tuple()
-  #print "minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample()
+  # print "minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample()
   assert dmmm[1] < 0.5
   assert dmmm[2] < 0.05
   assert dist.standard_deviation_of_the_sample() < 0.05
@@ -907,17 +907,17 @@ HELIX    2   2 ARG A   23  GLN A   44  1                                  22
   ann = ioss.annotation.from_records(records=h_records.split('\n'))
   h = pdb_inp.construct_hierarchy()
   d1 = get_distances(h)
-  #h.write_pdb_file(file_name=prefix+'_initial.pdb')
+  # h.write_pdb_file(file_name=prefix+'_initial.pdb')
   for i in range(1):
     rm = ssb.substitute_ss(
       real_h=h,
       xray_structure=pdb_inp.xray_structure_simple(),
       ss_annotation=ann)
   d2 = get_distances(h)
-  #h.write_pdb_file(file_name=prefix+'_result.pdb')
+  # h.write_pdb_file(file_name=prefix+'_result.pdb')
   dist = abs(d2-d1)
   dmmm = abs(d2-d1).min_max_mean().as_tuple()
-  #print "minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample()
+  # print "minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample()
   assert dmmm[1] < 0.8
   assert dmmm[2] < 0.2
   assert dist.standard_deviation_of_the_sample() < 0.2
@@ -935,18 +935,18 @@ HELIX    2   2 ARG A   23  GLN A   44  1                                  22
   ann = ioss.annotation.from_records(records=h_records.split('\n'))
   h = pdb_inp.construct_hierarchy()
   d1 = get_distances(h, n_neighbours=20)
-  #h.write_pdb_file(file_name=prefix+'_initial.pdb')
+  # h.write_pdb_file(file_name=prefix+'_initial.pdb')
   for i in range(1):
     rm = ssb.substitute_ss(
       real_h=h,
       xray_structure=pdb_inp.xray_structure_simple(),
       ss_annotation=ann)
   d2 = get_distances(h, n_neighbours=20)
-  #h.write_pdb_file(file_name=prefix+'_result.pdb')
+  # h.write_pdb_file(file_name=prefix+'_result.pdb')
   dist = abs(d2-d1)
   dmmm = abs(d2-d1).min_max_mean().as_tuple()
-  #print "minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample()
-  #assert dmmm[1] < 0.8
+  # print "minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample()
+  # assert dmmm[1] < 0.8
   assert dmmm[2] < 0.2
   assert dist.standard_deviation_of_the_sample() < 0.2
 
@@ -964,17 +964,17 @@ SHEET    2  AA 2 CYS A  52  GLY A  57 -1  O  LYS A  53   N  TYR A  46
   ann = ioss.annotation.from_records(records=h_records.split('\n'))
   h = pdb_inp.construct_hierarchy()
   d1 = get_distances(h, n_neighbours=20)
-  #h.write_pdb_file(file_name=prefix+'_initial.pdb')
+  # h.write_pdb_file(file_name=prefix+'_initial.pdb')
   for i in range(3):
     rm = ssb.substitute_ss(
       real_h=h,
       xray_structure=pdb_inp.xray_structure_simple(),
       ss_annotation=ann)
   d2 = get_distances(h, n_neighbours=20)
-  #h.write_pdb_file(file_name=prefix+'_result.pdb')
+  # h.write_pdb_file(file_name=prefix+'_result.pdb')
   dist = abs(d2-d1)
   dmmm = abs(d2-d1).min_max_mean().as_tuple()
-  #print "minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample()
+  # print "minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample()
   #assert dmmm[1] < 0.8
   assert dmmm[2] < 0.1
   assert dist.standard_deviation_of_the_sample() < 0.1
