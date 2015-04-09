@@ -169,7 +169,7 @@ struct exdegree_scorer_cached
 
   typedef vertex_map::generic_vertex_map< graph_type, vertices_size_type >
     vertex_exdegree_mapping_type;
-  typedef typename vertex_exdegree_mapping_type::vertex_map_type
+  typedef typename vertex_exdegree_mapping_type::property_map_type
     vertex_exdegree_property_map_type;
 
   typedef Partition partition_type;

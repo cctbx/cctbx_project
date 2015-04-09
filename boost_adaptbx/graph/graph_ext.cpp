@@ -10,18 +10,13 @@
 
 #include <boost/graph/graph_traits.hpp>
 
-#include <boost/mpl/set.hpp>
-#include <boost/mpl/fold.hpp>
-#include <boost/mpl/insert.hpp>
-#include <boost/mpl/copy_if.hpp>
-#include <boost/mpl/or.hpp>
-#include <boost/mpl/placeholders.hpp>
+#include <boost/mpl/transform.hpp>
+#include <boost/mpl/string.hpp>
 
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/bind.hpp>
 #include <boost/ref.hpp>
-
-#include <boost/type_traits.hpp>
+#include <boost/functional/hash.hpp>
 
 #include <string>
 
@@ -39,6 +34,7 @@ struct graph_export
   typedef typename graph_traits::vertex_iterator vertex_iterator;
   typedef typename graph_traits::adjacency_iterator adjacency_iterator;
   typedef typename graph_traits::edge_iterator edge_iterator;
+  typedef typename graph_traits::out_edge_iterator out_edge_iterator;
   typedef graph_export_adaptor::vertex_descriptor_converter< vertex_descriptor > converter;
   typedef boost::transform_iterator< converter, vertex_iterator > transformed_vertex_iterator;
   typedef boost::transform_iterator< converter, adjacency_iterator > transformed_adjacency_iterator;
@@ -142,10 +138,32 @@ struct graph_export
   }
 
   static
+  void
+  set_vertex_label(
+    Graph& graph,
+    typename converter::type vertex,
+    boost::python::object label
+    )
+  {
+    boost::put( boost::vertex_name_t(), graph, converter::backward( vertex ), label );
+  }
+
+  static
   boost::python::object
   edge_weight(Graph const& graph, edge_descriptor edge)
   {
     return boost::get( boost::edge_weight_t(), graph, edge );
+  }
+
+  static
+  void
+  set_edge_weight(
+    Graph& graph,
+    edge_descriptor edge,
+    boost::python::object weight
+    )
+  {
+    boost::put( boost::edge_weight_t(), graph, edge, weight );
   }
 
 
@@ -164,6 +182,30 @@ struct graph_export
   }
 
   static
+  out_edge_iterator
+  out_edge_iterator_begin(Graph const& graph, typename converter::type vertex)
+  {
+    return boost::out_edges( converter::backward( vertex ), graph ).first;
+  }
+
+  static
+  out_edge_iterator
+  out_edge_iterator_end(Graph const& graph, typename converter::type vertex)
+  {
+    return boost::out_edges( converter::backward( vertex ), graph ).second;
+  }
+
+  static
+  boost::python::object
+  out_edges(Graph const& graph, typename converter::type vertex)
+  {
+    return boost::python::range< boost::python::default_call_policies, Graph const>(
+      boost::bind( &graph_export< Graph >::out_edge_iterator_begin, _1, vertex ),
+      boost::bind( &graph_export< Graph >::out_edge_iterator_end, _1, vertex )
+      )( boost::cref( graph ) );
+  }
+
+  static
   void
   remove_vertex(Graph& graph, typename converter::type vertex)
   {
@@ -174,16 +216,23 @@ struct graph_export
 
   static
   std::size_t
-  num_vertices(Graph &graph)
+  num_vertices(Graph const& graph)
   {
-    return boost::num_vertices(graph);
+    return boost::num_vertices( graph );
   }
 
   static
   std::size_t
-  num_edges(Graph &graph)
+  num_edges(Graph const& graph)
   {
-    return boost::num_edges(graph);
+    return boost::num_edges( graph );
+  }
+
+  static
+  void
+  remove_edge(Graph& graph, edge_descriptor edge)
+  {
+    boost::remove_edge( edge, graph );
   }
 
   static
@@ -199,8 +248,11 @@ struct graph_export
       .def( "target", target_vertex, arg( "edge" ) )
       .def( "adjacent_vertices", adjacent_vertices, arg( "vertex" ) )
       .def( "edges", boost::python::range( edge_iterator_begin, edge_iterator_end ) )
+      .def( "out_edges", out_edges, arg( "vertex" ) )
       .def( "vertex_label", vertex_label, arg( "vertex" ) )
+      .def( "set_vertex_label", set_vertex_label, ( arg( "vertex" ), arg( "label" ) ) )
       .def( "edge_weight", edge_weight, arg( "edge" ) )
+      .def( "set_edge_weight", set_edge_weight, ( arg( "edge" ), arg( "weight" ) ) )
       .def( "add_vertex", add_vertex, arg( "label" ) = object() )
       .def(
         "add_edge",
@@ -208,8 +260,9 @@ struct graph_export
         ( arg( "vertex1" ), arg( "vertex2" ), arg( "weight" ) = object() )
         )
       .def( "remove_vertex", remove_vertex, arg( "vertex" ) )
-      .def("num_vertices", num_vertices )
-      .def("num_edges", num_edges )
+      .def( "remove_edge", remove_edge, arg( "edge" ) )
+      .def( "num_vertices", num_vertices )
+      .def( "num_edges", num_edges )
       ;
   }
 };
@@ -228,40 +281,22 @@ struct graph_exporter
   }
 };
 
-template< typename Prefix >
-struct undefined_type_export
+struct graph_edge_hash_function
 {
   template< typename Type >
-  void operator ()(boost::mpl::identity< Type > mytype) const
+  static
+  std::size_t edge_descriptor_hash_value(Type const& edge)
   {
-    std::string prefix( boost::mpl::c_str< Prefix >::value );
-    boost::python::class_< Type >( ( prefix + typeid( Type ).name() ).c_str() )
-      ;
-  }
-};
-
-template< typename TypeList, typename Transformation, typename Prefix >
-struct python_not_builtin_type_exporter
-{
-  static void process()
-  {
-    using namespace boost::mpl;
-    typedef typename transform< TypeList, Transformation >::type types;
-    typedef typename fold<
-      types,
-      set<>,
-      insert< placeholders::_1, placeholders::_2 >
-      >::type unique_types;
-    typedef typename copy_if<
-      unique_types,
-      or_< boost::is_class< placeholders::_1 >, boost::is_union< placeholders::_1 > >,
-      back_inserter< vector<> >
-      >::type filtered_unique_types;
-    boost_adaptbx::exporting::class_list< filtered_unique_types >::process(
-      undefined_type_export< Prefix >()
-      );
+    return boost::hash_value( edge.get_property() );
   }
 
+  template< typename Type >
+  void operator ()(boost::python::class_< Type >& myclass) const
+  {
+    typedef std::size_t (*hashfun)(Type const&);
+    hashfun myhash = &edge_descriptor_hash_value< Type >;
+    myclass.def( "__hash__", myhash );
+  }
 };
 
 struct get_graph_vertex_descriptor_type
@@ -292,17 +327,44 @@ BOOST_PYTHON_MODULE(boost_adaptbx_graph_ext)
   boost_adaptbx::exporting::class_list< boost_adaptbx::graph_type::exports >::process(
     boost_adaptbx::graph_exporter()
     );
+
+  //
+  // Dependent types
+  //
   #pragma clang diagnostic push
   #pragma clang diagnostic ignored "-Wmultichar"
-  boost_adaptbx::python_not_builtin_type_exporter<
+
+  // Vertex descriptors
+  typedef typename boost::mpl::transform<
     boost_adaptbx::graph_type::exports,
-    boost_adaptbx::get_graph_vertex_descriptor_type,
-    boost::mpl::string< 'vert', 'ex_' >
-    >::process();
-  boost_adaptbx::python_not_builtin_type_exporter<
+    boost_adaptbx::get_graph_vertex_descriptor_type
+    >::type graph_vertex_descriptor_types;
+  typedef typename boost_adaptbx::exporting::unique_type_set<
+    graph_vertex_descriptor_types
+    >::type unique_graph_vertex_descriptor_types;
+  typedef typename boost_adaptbx::exporting::novel_python_type<
+     unique_graph_vertex_descriptor_types
+     >::type novel_unique_graph_vertex_descriptor_types;
+
+  boost_adaptbx::exporting::class_list< novel_unique_graph_vertex_descriptor_types >::process(
+    boost_adaptbx::exporting::python_type_export< boost::mpl::string< 'vert', 'ex_' > >()
+    );
+
+  // Edge descriptors
+  typedef typename boost::mpl::transform<
     boost_adaptbx::graph_type::exports,
-    boost_adaptbx::get_graph_edge_descriptor_type,
-    boost::mpl::string< 'edge', '_' >
-    >::process();
+    boost_adaptbx::get_graph_edge_descriptor_type
+    >::type graph_edge_descriptor_types;
+  typedef typename boost_adaptbx::exporting::unique_type_set<
+    graph_edge_descriptor_types
+    >::type unique_graph_edge_descriptor_types;
+
+  boost_adaptbx::exporting::class_list< unique_graph_edge_descriptor_types >::process(
+    boost_adaptbx::exporting::python_type_export<
+      boost::mpl::string< 'edge', '_' >,
+      boost_adaptbx::graph_edge_hash_function
+      >().enable_equality_operators()
+    );
+
   #pragma clang diagnostic pop
 }

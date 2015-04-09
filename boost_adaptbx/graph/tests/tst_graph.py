@@ -29,7 +29,7 @@ class TestGraph(unittest.TestCase):
       self.assertFalse( res[1] )
 
     self.assertEqual( set( g.vertices() ), set( [ vd1, vd2, vd3 ] ) )
-    self.assertEqual( len( list( g.edges() ) ), len( [ ed1, ed2 ] ) )
+    self.assertEqual( set( g.edges() ), set( [ ed1, ed2 ] ) )
 
     self.assertEqual( set( g.adjacent_vertices( vertex = vd1 ) ), set( [ vd2 ] ) )
     self.assertEqual(
@@ -39,6 +39,16 @@ class TestGraph(unittest.TestCase):
     self.assertEqual(
       set( g.adjacent_vertices( vertex = vd3 ) ),
       set() if directed else set( [ vd2 ] ),
+      )
+
+    self.assertEqual( set( g.out_edges( vertex = vd1 ) ), set( [ ed1 ] ) )
+    self.assertEqual(
+      set( g.out_edges( vertex = vd2 ) ),
+      set( [ ed2 ] ) if directed else set( [ ed1, ed2 ] ),
+      )
+    self.assertEqual(
+      set( g.out_edges( vertex = vd3 ) ),
+      set() if directed else set( [ ed2 ] ),
       )
 
     self.assertEqual( g.vertex_label( vertex = vd1 ), "CA" )
@@ -51,6 +61,21 @@ class TestGraph(unittest.TestCase):
     self.assertEqual( g.source( edge = ed2 ), vd2 )
     self.assertEqual( g.target( edge = ed1 ), vd2 )
     self.assertEqual( g.target( edge = ed2 ), vd3 )
+
+    g.set_vertex_label( vertex = vd1, label = "CD" )
+    self.assertEqual( g.vertex_label( vertex = vd1 ), "CD" )
+    g.set_vertex_label( vertex = vd1, label = None )
+    self.assertEqual( g.vertex_label( vertex = vd1 ), None )
+
+    g.set_edge_weight( edge = ed1, weight = "FOO" )
+    self.assertEqual( g.edge_weight( edge = ed1 ), "FOO" )
+
+    g.remove_edge( edge = ed2 )
+    self.assertEqual( len( list( g.edges() ) ), 1 )
+    self.assertEqual( g.edge_weight( edge = ed1 ), "FOO" )
+
+    g.remove_vertex( vertex = vd3 )
+    self.assertEqual( set( g.vertices() ), set( [ vd1, vd2 ] ) )
 
 
   def test_adjacency_list_undirected_vector_set(self):
