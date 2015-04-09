@@ -189,7 +189,7 @@ class installer (object) :
 
     # Always build hdf5 and numpy.
     packages += ['cython', 'hdf5', 'numpy', 'setuptools', 'pip', 'docutils']
-
+    packages += ["libsvm"]
     # GUI packages.
     if options.build_gui or options.build_all:
       packages += [
@@ -455,6 +455,7 @@ Installation of Python packages may fail.
       'cython',
       'hdf5',
       'setuptools',
+      'libsvm',
       'pip',
       'biopython',
       'reportlab',
@@ -499,6 +500,11 @@ Installation of Python packages may fail.
       self.print_sep()
       if (i == 'wxpython' and self.options.use_wxpython3):
         i = 'wxpython3'
+      if ( hasattr(self, "built_%s" % i) and
+           getattr(self, "built_%s" % i)()
+         ):
+        print >> self.log, "Installation of %s is OK - skipping" % i
+        continue
       getattr(self, 'build_%s'%i)()
 
     if self.options.download_only:
@@ -552,11 +558,26 @@ Installation of Python packages may fail.
     self.set_python(op.abspath(python_exe))
     log.close()
 
+  def simple_log_parse_test(self, log_filename, line): 
+    if not os.path.exists(log_filename): return False
+    f = file(log_filename, "rb")
+    log_lines = f.read()
+    f.close()
+    if log_lines.find(line)>-1:
+      return True
+    return False
+
   def build_setuptools(self):
     self.build_python_module_simple(
       pkg_url=BASE_CCI_PKG_URL,
       pkg_name=SETUPTOOLS_PKG,
       pkg_name_label="setuptools")
+
+  def build_libsvm(self):
+    self.build_python_module_simple(
+      pkg_url=BASE_CCI_PKG_URL,
+      pkg_name=LIBSVM_PKG,
+      pkg_name_label="libsvm")
 
   def build_pip(self):
     self.build_python_module_simple(
@@ -654,6 +675,11 @@ Installation of Python packages may fail.
         pkg_name_label="pyopengl",
         confirm_import_module="OpenGL")
 
+  def built_cython(self):
+    log_filename = "cython_install_log"
+    line = "Finished processing dependencies for Cython"
+    return self.simple_log_parse_test(log_filename, line)
+    
   def build_cython(self):
     self.build_python_module_simple(
       pkg_url=BASE_CYTHON_PKG_URL,
@@ -661,13 +687,19 @@ Installation of Python packages may fail.
       pkg_name_label="cython",
       confirm_import_module="Cython")
 
+  def built_hdf5(self):
+    log_filename = "HDF5_install_log"
+    line = "Finished processing dependencies for h5py"
+    return self.simple_log_parse_test(log_filename, line)
+
   def build_hdf5 (self):
     pkg_log = self.start_building_package("HDF5")
     hdf5pkg = self.fetch_package(pkg_name=HDF5_PKG, pkg_url=BASE_HDF5_PKG_URL)
     h5pypkg = self.fetch_package(pkg_name=H5PY_PKG, pkg_url=BASE_H5PY_PKG_URL)
-    if self.check_download_only(HDF5_PKG) and self.check_download_only(H5PY_PKG):
+    if ( self.check_download_only(HDF5_PKG) and 
+         self.check_download_only(H5PY_PKG)
+         ):
       return
-
     self.untar_and_chdir(pkg=hdf5pkg, log=pkg_log)
     print >> pkg_log, "Building base HDF5 library..."
     make_args = []

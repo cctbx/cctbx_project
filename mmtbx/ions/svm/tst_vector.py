@@ -12,6 +12,8 @@ from mmtbx.ions.svm import ion_class, ion_vector
 from mmtbx.regression.make_fake_anomalous_data import generate_zinc_inputs
 import mmtbx.command_line
 
+import libtbx.load_env
+
 def exercise():
   wavelength = 1.025
   mtz_file, pdb_file = generate_zinc_inputs(anonymize = False)
@@ -75,5 +77,9 @@ def exercise():
 
   print "OK"
 
+
 if __name__ == "__main__":
-  exercise()
+  if (libtbx.env.find_in_repositories(relative_path="chem_data") is None):
+    print "Skipping tst_vector exercise(): chem_data directory not available"
+  else:
+    exercise()

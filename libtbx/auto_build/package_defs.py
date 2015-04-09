@@ -34,6 +34,7 @@ DOCUTILS_PKG = "docutils-0.12.tar.gz"    # docutils
 SETUPTOOLS_PKG = "setuptools-12.0.5.tar.gz" # setuptools
 PIP_PKG = "pip-6.0.7.tar.gz"             # PIP
 VIRTUALENV_PKG = "virtualenv-12.0.6.tar.gz" # virtualenv
+LIBSVM_PKG = "libsvm-3.17_cci.tar.gz"
 
 ## from xia2 page
 #HDF5_PKG = "hdf5-1.8.8.tar.bz2"      # dxtbx
