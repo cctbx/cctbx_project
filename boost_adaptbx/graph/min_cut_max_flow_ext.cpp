@@ -146,7 +146,8 @@ struct maximum_flow_export
 
     for( tie( ei, ej ) = edges( graph ); ei != ej; ++ei )
     {
-      boost::put( cappropmap, *ei, extract< double >( get( edge_weight, graph, *ei ) ) );
+      double weight( extract< double >( get( edge_weight, graph, *ei ) ) );
+      boost::put( cappropmap, *ei, weight );
     }
 
     reverse_edge_map_type revmap( graph );

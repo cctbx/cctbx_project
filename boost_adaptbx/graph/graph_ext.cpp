@@ -335,14 +335,14 @@ BOOST_PYTHON_MODULE(boost_adaptbx_graph_ext)
   #pragma clang diagnostic ignored "-Wmultichar"
 
   // Vertex descriptors
-  typedef typename boost::mpl::transform<
+  typedef boost::mpl::transform<
     boost_adaptbx::graph_type::exports,
     boost_adaptbx::get_graph_vertex_descriptor_type
     >::type graph_vertex_descriptor_types;
-  typedef typename boost_adaptbx::exporting::unique_type_set<
+  typedef boost_adaptbx::exporting::unique_type_set<
     graph_vertex_descriptor_types
     >::type unique_graph_vertex_descriptor_types;
-  typedef typename boost_adaptbx::exporting::novel_python_type<
+  typedef boost_adaptbx::exporting::novel_python_type<
      unique_graph_vertex_descriptor_types
      >::type novel_unique_graph_vertex_descriptor_types;
 
@@ -351,11 +351,11 @@ BOOST_PYTHON_MODULE(boost_adaptbx_graph_ext)
     );
 
   // Edge descriptors
-  typedef typename boost::mpl::transform<
+  typedef boost::mpl::transform<
     boost_adaptbx::graph_type::exports,
     boost_adaptbx::get_graph_edge_descriptor_type
     >::type graph_edge_descriptor_types;
-  typedef typename boost_adaptbx::exporting::unique_type_set<
+  typedef boost_adaptbx::exporting::unique_type_set<
     graph_edge_descriptor_types
     >::type unique_graph_edge_descriptor_types;
 
