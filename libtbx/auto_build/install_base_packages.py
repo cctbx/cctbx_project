@@ -558,7 +558,7 @@ Installation of Python packages may fail.
     self.set_python(op.abspath(python_exe))
     log.close()
 
-  def simple_log_parse_test(self, log_filename, line): 
+  def simple_log_parse_test(self, log_filename, line):
     if not os.path.exists(log_filename): return False
     f = file(log_filename, "rb")
     log_lines = f.read()
@@ -679,7 +679,7 @@ Installation of Python packages may fail.
     log_filename = "cython_install_log"
     line = "Finished processing dependencies for Cython"
     return self.simple_log_parse_test(log_filename, line)
-    
+
   def build_cython(self):
     self.build_python_module_simple(
       pkg_url=BASE_CYTHON_PKG_URL,
@@ -696,7 +696,7 @@ Installation of Python packages may fail.
     pkg_log = self.start_building_package("HDF5")
     hdf5pkg = self.fetch_package(pkg_name=HDF5_PKG, pkg_url=BASE_HDF5_PKG_URL)
     h5pypkg = self.fetch_package(pkg_name=H5PY_PKG, pkg_url=BASE_H5PY_PKG_URL)
-    if ( self.check_download_only(HDF5_PKG) and 
+    if ( self.check_download_only(HDF5_PKG) and
          self.check_download_only(H5PY_PKG)
          ):
       return
