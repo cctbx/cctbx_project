@@ -180,7 +180,7 @@ tst_list = (
   "$D/refinement/tst_group.py",
   "$D/refinement/tst_group_2.py",
   "$D/secondary_structure/build/tst_1.py",
-  # "$D/secondary_structure/build/tst_2.py",
+  "$D/secondary_structure/build/tst_2.py",
   "$D/utils/tst_switch_rotamers.py",
   "$D/refinement/tst_occupancy_selections.py",
   "$D/disorder/tst.py",
