@@ -1,8 +1,14 @@
 from __future__ import division
 prios = ["boost", "scitbx", "cctbx", "rstbx", "labelit"]
 prios = dict(zip(prios, range(len(prios))))
+priority_modules = ['dials_algorithms_profile_model_modeller_ext']
 
 def cmp_so(a, b):
+  if a in priority_modules:
+    return -1
+  elif b in priority_modules:
+    return 1
+
   def prio(s):
     k = s.split("_")[0]
     return prios.get(k, len(prios))
