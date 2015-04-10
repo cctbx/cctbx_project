@@ -147,7 +147,7 @@ def best_file_selection(gs_params, output_entry, log_dir, n_int):
                         np.mean([item['beta'] for item in acceptable_results]),
                         np.mean([item['gamma'] for item in acceptable_results]))
 
-      info_line = '\nAVG:    {:^9.2f}{:^8}{:^55}{:^12.2}{:^12.4f}{:^12.2f}'\
+      info_line = '\nAVG:    {:^9.2f}{:^8}{:^55}{:^12}{:^12.4f}{:^12.2f}'\
                     ''.format(avg_res, '', avg_cell, avg_spots, avg_mos, avg_mq)
       ps_log_output.append(info_line)
 
@@ -164,7 +164,7 @@ def best_file_selection(gs_params, output_entry, log_dir, n_int):
                         np.std([item['beta'] for item in acceptable_results]),
                         np.std([item['gamma'] for item in acceptable_results]))
 
-      info_line = 'STD:    {:^9.2f}{:^8}{:^55}{:^12.2}{:^12.4f}{:^12.2f}'\
+      info_line = 'STD:    {:^9.2f}{:^8}{:^55}{:^12}{:^12.4f}{:^12.2f}'\
                     ''.format(std_res, '', std_cell, std_spots, std_mos, std_mq)
       ps_log_output.append(info_line)
 
