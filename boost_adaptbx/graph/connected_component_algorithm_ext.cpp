@@ -46,10 +46,9 @@ struct connected_components_export
       );
 
     vertex_iterator di, dj;
-    boost::tie( di, dj ) = boost::vertices( graph );
     boost::python::list result;
 
-    for( di; di != dj; ++di )
+    for( boost::tie( di, dj ) = boost::vertices( graph ); di != dj; ++di )
     {
       result.append(
         boost::python::make_tuple(
