@@ -3,8 +3,8 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 04/06/2015
-Description : IOTA command-line module. Version 1.23
+Last Changed: 04/10/2015
+Description : IOTA command-line module. Version 1.24
 '''
 
 import os
@@ -185,7 +185,7 @@ def dry_run():
 
 if __name__ == "__main__":
 
-  iota_version = '1.23'
+  iota_version = '1.24'
 
   print "\n\n"
   print "     IIIIII          OOOO         TTTTTTTTTT           A              "
