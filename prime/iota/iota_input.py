@@ -57,10 +57,10 @@ grid_search
   a_std = 4
     .type = int
     .help = Maximum spot area.
-  h_avg = 5
+  h_avg = 6
     .type = int
     .help = Minimum spot height.
-  h_std = 4
+  h_std = 3
     .type = int
     .help = Maximum spot height.
 }
@@ -456,6 +456,8 @@ def write_defaults(current_path, txt_out):
                     '  detector_gain=0.32',
                     '  greedy_integration_limit=True',
                     '  combine_sym_constraints_and_3D_target=True',
+                    '  spot_prediction=dials',
+                    '  integration.guard_width_sq=4.',
                     '  mosaic {',
                     '    refinement_target=ML',
                     '    kludge1=1.0 #normally 1.0, but sometimes set to 2.0 to increase indexing rate',

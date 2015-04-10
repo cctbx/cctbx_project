@@ -267,8 +267,21 @@ def gs_integration(mp_entry, n_int, log_dir, gs_params):
                  ] + list(advanced_args[1:])
 
   # run integration
+
+  if gs_params.advanced.debug:
+    debug_file = '{}/h{}_a{}_{}.debug'.format(gs_params.output, spot_height,
+                                                  spot_area, img_no_ext)
+    with open(debug_file, 'w') as f:
+      f.write('')
+
   results, int_status = integrate_image(mp_entry, current_log_file, arguments,
                                        'GRID SEARCH', n_int, gs_params)
+
+  if gs_params.advanced.debug:
+    debug_file = '{}/h{}_a{}_{}.debug'.format(gs_params.output, spot_height,
+                                                  spot_area, img_no_ext)
+    with open(debug_file, 'a') as f:
+      f.write('PROCESSED: {}, H = {}, A = {}'.format(current_img, spot_height, spot_area))
 
   # output results to log file
   if results != {}:

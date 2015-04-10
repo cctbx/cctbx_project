@@ -234,8 +234,8 @@ if __name__ == "__main__":
   mp_input_list, mp_output_list = inp.generate_input(gs_params)
 
   # debugging/experimental section - anything goes here
-  if gs_params.advanced.debug:
-    sys.exit()
+  #if gs_params.advanced.debug:
+  #  sys.exit()
 
   # run grid search
   if gs_params.grid_search.flag_on:
