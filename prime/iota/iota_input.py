@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 04/06/2015
+Last Changed: 04/10/2015
 Description : IOTA I/O module. Reads PHIL input, creates output directories,
               creates input lists and organizes starting parameters, also
               creates reasonable IOTA and PHIL defaults if selected
@@ -21,7 +21,7 @@ import iotbx.phil as ip
 import dials.util.command_line as cmd
 
 master_phil = ip.parse("""
-description = Integration optimization and transfer app (IOTA) input file
+description = Integration Optimization, Transfer and Analysis (IOTA)
   .type = str
   .help = Run description (optional).
   .multiple = False

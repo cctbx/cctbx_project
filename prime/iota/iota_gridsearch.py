@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 04/06/2015
+Last Changed: 04/10/2015
 Description : Runs cctbx.xfel integration module within a signal/spot height and
               area grid search. Also contains a final integration module, which
               outputs an integration pickle file.
