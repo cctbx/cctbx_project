@@ -244,6 +244,60 @@ def calib2tensor3(dirname, component):
   stream.close()
   return (T)
 
+def v2calib2sections(filename):
+  """The v2calib2sections() function reads calibration information
+  stored in new style SLAC calibration file and returns a
+  two-dimensional array of Section objects.  The first index in the
+  returned array identifies the quadrant, and the second index
+  identifies the section within the quadrant.
+
+  @param dirname Directory with calibration information
+  @return        Section objects
+  """
+
+  from xfel.cftbx.detector.cspad_cbf_tbx import read_slac_metrology
+  from scitbx.matrix import sqr
+  from xfel.cxi.cspad_ana.cspad_tbx import pixel_size
+
+  # metro is a dictionary where the keys are levels in the detector
+  # hierarchy and the values are 'basis' objects
+  metro = read_slac_metrology(filename)
+
+  d = 0
+  d_basis = metro[(d,)]
+
+  sections = []
+  for q in xrange(4):
+    sections.append([])
+    q_basis = metro[(d,q)]
+    for s in xrange(8):
+      if not (d,q,s) in metro:
+        continue
+
+      s_basis = metro[(d,q,s)]
+
+      # collapse the transformations from the detector center to the quadrant center
+      # to the sensor center
+      transform = d_basis.as_homogenous_transformation() * \
+                  q_basis.as_homogenous_transformation() * \
+                  s_basis.as_homogenous_transformation()
+
+      # an homologous transformation is a 4x4 matrix, with a 3x3 rotation in the
+      # upper left corner and the translation in the right-most column. The last
+      # row is 0,0,0,1
+      ori = sqr((transform[0],transform[1],transform[2],
+                 transform[4],transform[5],transform[6],
+                 transform[8],transform[9],transform[10]))
+      angle = ori.r3_rotation_matrix_as_x_y_z_angles(deg=True)[2]
+
+      # move the reference of the sensor so its relative to the upper left of the
+      # detector instead of the center of the detector
+      center = ((transform[3])/pixel_size)+1765/2,(transform[7]/pixel_size)+1765/2
+
+      sections[q].append(Section(angle, center))
+
+  return sections
+
 
 def calib2sections(dirname):
   """The calib2sections() function reads calibration information
@@ -255,6 +309,9 @@ def calib2sections(dirname):
   @param dirname Directory with calibration information
   @return        Section objects
   """
+
+  if os.path.isfile(dirname):
+    return v2calib2sections(dirname)
 
   # Get centres of the sections, and apply corrections.
   s_cen = calib2tensor3(dirname, "center") \
