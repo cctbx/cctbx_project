@@ -3,7 +3,7 @@
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT
 
 """
-Implementation of the EMRinger method, with plots, for use with the 
+Implementation of the EMRinger method, with plots, for use with the
 EMRinger workflow.
 
 References:
@@ -17,21 +17,16 @@ References:
   Manuscript in preparation.
 """
 
-# Any software that wants to use the pkl output of this tool 
+# Any software that wants to use the pkl output of this tool
 # should import ringer_residue and ringer_chi from it.
 from __future__ import division
 import libtbx.phil
-import numpy
 from libtbx import easy_pickle
-from libtbx import easy_mp
 from libtbx.str_utils import make_header
-from libtbx.utils import Sorry, Usage
-from libtbx import adopt_init_args, Auto
-from cStringIO import StringIO
+from libtbx.utils import Sorry
 import time
 import os
 import sys
-import sqlite3
 
 master_phil = libtbx.phil.parse("""
 pdb_file = None
@@ -66,7 +61,6 @@ output_base = None
 def run (args, out=None, verbose=True) :
   t0 = time.time()
   if (out is None) : out = sys.stdout
-  from iotbx import file_reader
   import iotbx.phil
   cmdline = iotbx.phil.process_command_line_with_files(
     args=args,
