@@ -357,7 +357,7 @@ namespace scitbx { namespace matrix { namespace eigensystem {
     boost::scoped_array<FloatType> diagonal_elements(new FloatType[n]);
     const FloatType* v = values_.begin();
     for(unsigned i=0;i<n;i++) {
-      FloatType const& vi = v[i];
+      FloatType const vi = v[i];
       if ((-min_abs_pivot_ < vi && vi < min_abs_pivot_) || vi == 0) {
         diagonal_elements[i] = 0;
       }
