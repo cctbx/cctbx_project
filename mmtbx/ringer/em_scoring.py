@@ -73,13 +73,13 @@ def calculate_peaks(ringer,threshold, args):
   return new_peaks
 
 
-def parse_pickle(filename, args):
+def parse_pickle(filename):
   """
   All processes that require reading the pickle. Involves reading out the
   angles and calculating the thresholds.
   """
   print "===== Loading Pickle: %s =====" % filename
-  chi = args.chi_angle
+  chi = 1
   waves=[]
   averages=[]
   maxima=[]
