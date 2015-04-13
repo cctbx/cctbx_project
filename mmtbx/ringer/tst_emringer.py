@@ -2,11 +2,9 @@
 from __future__ import division
 from mmtbx.command_line import emringer
 from mmtbx.ringer import em_scoring as score
-from libtbx.test_utils import approx_equal, show_diff
-from libtbx.easy_pickle import loads, dumps
+from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 import libtbx.load_env
-import time
 import os.path
 
 def exercise_emringer_residue_scan():
