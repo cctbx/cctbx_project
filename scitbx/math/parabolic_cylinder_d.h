@@ -26,7 +26,7 @@ double dv(double va, double x)
    va = order of the parabolic cylinder function Dv
    x  = argument
 */
-  double ax(abs(x));
+  double ax(std::abs(x));
   double pd;
   if (ax <= 5.8)
     pd = dvsa(va,x);
