@@ -1857,6 +1857,7 @@ class build_options:
       self.env_cxxflags = ""
       self.env_cflags = ""
       self.env_cppflags = ""
+      self.env_ldflags = ""
       flg = os.environ.get("CXXFLAGS")
       if flg is not None:
         self.env_cxxflags = flg
@@ -1866,6 +1867,9 @@ class build_options:
       flg = os.environ.get("CPPFLAGS")
       if flg is not None:
         self.env_cppflags = flg
+      flg = os.environ.get("LDFLAGS")
+      if flg is not None:
+        self.env_ldflags = flg
 
   def report(self, f=None):
     if (f is None): f = sys.stdout
@@ -1893,6 +1897,7 @@ class build_options:
       print >>f, "  CXXFLAGS = ", self.env_cxxflags
       print >>f, "  CFLAGS = ", self.env_cflags
       print >>f, "  CPPFLAGS = ", self.env_cppflags
+      print >>f, "  LDFLAGS = ", self.env_ldflags
 
 class include_registry:
 
@@ -2029,7 +2034,7 @@ class pre_process_args:
         action="store_true",
         default=False,
         help="add compiler flags from environment variables: CXXFLAGS, CFLAGS,"
-             " CPPFLAGS")
+             " CPPFLAGS, LDFLAGS")
       parser.option(None, "--force_32bit",
         action="store_true",
         default=False,
@@ -2236,6 +2241,7 @@ def unpickle():
     env.build_options.env_cxxflags = ""
     env.build_options.env_cflags = ""
     env.build_options.env_cppflags = ""
+    env.build_options.env_ldflags = ""
   # XXX backward compatibility 2009-10-11
   if (not hasattr(env.build_options, "force_32bit")) :
     env.build_options.force_32bit = False
