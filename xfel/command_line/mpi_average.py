@@ -25,7 +25,7 @@ def average(argv=None):
 
   command_line = (libtbx.option_parser.option_parser(
     usage="""
-%s [-p] -c config -x experiment -a address -r run -d detz_offset [-o outputdir] [-A averagepath] [-S stddevpath] [-M maxpath] [-n numevents] [-s skipnevents] [-v]
+%s [-p] -c config -x experiment -a address -r run -d detz_offset [-o outputdir] [-A averagepath] [-S stddevpath] [-M maxpath] [-n numevents] [-s skipnevents] [-v] [-m]
 
 To write image pickles use -p, otherwise the program writes CSPAD CBFs.
 Writing CBFs requires the geometry to be already deployed.
@@ -115,6 +115,11 @@ the output images in the folder cxi49812.
                         default=False,
                         dest="verbose",
                         help="Print more information about progress")
+                .option(None, "--pickle-optical-metrology", "-m",
+                        action="store_true",
+                        default=False,
+                        dest="pickle_optical_metrology",
+                        help="If writing pickle files, use the optical metrology in the experiment's calib directory")
                 ).process(args=argv)
 
 
@@ -127,7 +132,8 @@ the output images in the folder cxi49812.
       command_line.options.detz_offset is None or \
       command_line.options.averagepath is None or \
       command_line.options.stddevpath is None or \
-      command_line.options.maxpath is None:
+      command_line.options.maxpath is None or \
+      command_line.options.pickle_optical_metrology is None:
     command_line.parser.show_help()
     return
 
@@ -270,7 +276,12 @@ the output images in the folder cxi49812.
     dest_paths = [os.path.join(command_line.options.outputdir, path) for path in dest_paths]
 
     if command_line.options.as_pickle:
-      sections = parse_calib.calib2sections(libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0"))
+      if command_line.options.pickle_optical_metrology:
+        from xfel.cftbx.detector.cspad_cbf_tbx import get_calib_file_path
+        metro_path = get_calib_file_path(run.env(), src)
+      else:
+        metro_path = libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0")
+      sections = parse_calib.calib2sections(metro_path)
       beam_center, active_areas = cspad_tbx.cbcaa(
         cspad_tbx.getConfig(address, ds.env()), sections)
 
