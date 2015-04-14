@@ -1974,6 +1974,34 @@ HETATM  146  O5  NAG C 751     -21.747  14.436  38.578  1.00 88.86           O
 HETATM  147  O6  NAG C 751     -22.602  16.781  36.649  1.00 88.86           O
 HETATM  148  O7  NAG C 751     -24.791   9.842  39.102  1.00 88.86           O
 """,
+  "linking_test_SER_C.pdb" : """
+ATOM      1  P   C     643     -75.543  -1.303 308.744  1.00 91.01      D16S P
+ATOM      2  C5' C     643     -77.315  -3.206 308.385  1.00 99.83      D16S C
+ATOM      3  O5' C     643     -75.992  -2.834 308.736  1.00 92.18      D16S O
+ATOM      4  C4' C     643     -77.466  -4.699 308.231  1.00 91.83      D16S C
+ATOM      5  O4' C     643     -76.541  -5.198 307.222  1.00 86.11      D16S O
+ATOM      6  C3' C     643     -77.142  -5.522 309.466  1.00 83.89      D16S C
+ATOM      7  O3' C     643     -78.192  -5.550 310.411  1.00 90.22      D16S O
+ATOM      8  C2' C     643     -76.796  -6.877 308.870  1.00 75.13      D16S C
+ATOM      9  O2' C     643     -77.966  -7.558 308.435  1.00 66.17      D16S O
+ATOM     10  C1' C     643     -76.015  -6.448 307.629  1.00 71.55      D16S C
+ATOM     11  N1  C     643     -74.568  -6.277 307.938  1.00 72.53      D16S N
+ATOM     12  C2  C     643     -73.785  -7.404 308.299  1.00 72.36      D16S C
+ATOM     13  O2  C     643     -74.298  -8.549 308.341  1.00 82.06      D16S O
+ATOM     14  N3  C     643     -72.467  -7.201 308.589  1.00 67.68      D16S N
+ATOM     15  C4  C     643     -71.937  -5.966 308.532  1.00 71.55      D16S C
+ATOM     16  N4  C     643     -70.646  -5.814 308.832  1.00 68.18      D16S N
+ATOM     17  C5  C     643     -72.701  -4.825 308.168  1.00 79.88      D16S C
+ATOM     18  C6  C     643     -73.988  -5.025 307.883  1.00 75.82      D16S C
+ATOM     19  OP1 C     643     -76.597  -0.455 309.339  1.00 76.88      D16S O
+ATOM     20  OP2 C     643     -74.175  -1.305 309.279  1.00 82.47      D16S O1-
+ATOM      1  N   SER   115     -76.499  -0.597 309.288  1.00 76.74      DS08 N
+ATOM      2  CA  SER   115     -75.220   0.093 309.453  1.00 83.12      DS08 C
+ATOM      3  C   SER   115     -75.112   1.417 308.701  1.00 78.72      DS08 C
+ATOM      4  O   SER   115     -74.545   2.372 309.209  1.00 72.36      DS08 O
+ATOM      5  CB  SER   115     -74.096  -0.829 309.007  1.00 81.98      DS08 C
+ATOM      6  OG  SER   115     -74.613  -2.114 308.687  1.00 93.10      DS08 O
+""",
         }
 
 links = {
@@ -2006,6 +2034,7 @@ links = {
   "linking_test_over_valence.pdb" : [6,6],
   "linking_test_c2_c6.pdb" : [21,22],
   "linking_test_ccp4_other.pdb" : [71,71],
+  "linking_test_SER_C.pdb" : [26,27],
   #
   "linking_test_two_ASN-NAG.pdb" : [28,29,29,29],
   }
@@ -2056,7 +2085,7 @@ def run(only_i=None):
         "linking_test_CD_GHE_A_B.pdb",
         "linking_test_NAG-FU4.pdb", # get_alpha_beta seems to be broken
         ]: continue
-    #if pdb.find("ccp4")==-1: continue
+    #if pdb.find("SER_C")==-1: continue
     j+=1
     if only_i is not None and only_i!=j: continue
     for i in range(2):

@@ -158,6 +158,8 @@ master_params_str = """\
       .type = bool
     link_residues = False
       .type = bool
+    link_amino_acid_rna_dna = False
+      .type = bool
     link_carbohydrates = True
       .type = bool
     metal_coordination_cutoff = 3.5
@@ -4572,6 +4574,7 @@ class build_all_chain_proxies(linking_mixins):
     link_attrs = ["link_metals",
                   "link_residues",
                   "link_carbohydrates",
+                  "link_amino_acid_rna_dna",
                   ]
     if al_params.link_all:
       for attr in link_attrs:
@@ -4589,6 +4592,7 @@ class build_all_chain_proxies(linking_mixins):
         link_metals               = al_params.link_metals,
         link_residues             = al_params.link_residues,
         link_carbohydrates        = al_params.link_carbohydrates,
+        link_amino_acid_rna_dna   = al_params.link_amino_acid_rna_dna,
         amino_acid_bond_cutoff    = al_params.amino_acid_bond_cutoff,
         metal_coordination_cutoff = al_params.metal_coordination_cutoff,
         carbohydrate_bond_cutoff  = al_params.carbohydrate_bond_cutoff,

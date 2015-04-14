@@ -259,179 +259,18 @@ def check_for_peptide_links(atom1,
       return key, True
   return False
 
+def check_all_classes(pdb_hierarchy, class_type):
+  found = False
+  for residue_group in pdb_hierarchy.residue_groups():
+    for atom in residue_group.atoms():
+      classes = linking_utils.get_classes(atom)
+      if getattr(classes, class_type):
+        found = True
+      break
+    if found: break
+  return found
+
 class linking_mixins(object):
-  # def process_intra_chain_links(self,
-  #                               model,
-  #                               mon_lib_srv,
-  #                               log,
-  #                               residue_group_cutoff2=400.,
-  #                               #bond_cutoff=2.75,
-  #                               amino_acid_bond_cutoff=1.9,
-  #                               rna_dna_bond_cutoff=3.5,
-  #                               intra_residue_bond_cutoff=1.99,
-  #                               verbose=False,
-  #                               ):
-  #   assert 0
-  #   t0 = time.time()
-  #   ########################################
-  #   # must be after process_apply_cif_link #
-  #   ########################################
-  #   import linking_utils
-  #   #
-  #   def generate_first_atom_of_residue_groups(model, chain_id, verbose=False):
-  #     assert 0
-  #     for i_chain, chain in enumerate(model.chains()):
-  #       if chain.id!=chain_id: continue
-  #       for i_residue_group, residue_group in enumerate(chain.residue_groups()):
-  #         if verbose: print '  residue_group: resseq="%s" icode="%s"' % (
-  #           residue_group.resseq, residue_group.icode)
-  #         yield residue_group.atoms()[0]
-  #   #
-  #   chain_ids = []
-  #   outls = {}
-  #   for chain in model.chains():
-  #     if chain.id not in chain_ids: chain_ids.append(chain.id)
-  #   for chain_id in chain_ids:
-  #     for i_atom, atom1 in enumerate(
-  #       generate_first_atom_of_residue_groups(model, chain_id, verbose=verbose)
-  #       ):
-  #       classes1 = linking_utils.get_classes(atom1)
-  #       for j_atom, atom2 in enumerate(
-  #         generate_first_atom_of_residue_groups(model, chain_id, verbose=False)
-  #         ):
-  #         if i_atom>=j_atom: continue
-  #         classes2 = linking_utils.get_classes(atom2)
-  #         # what about gamma linking?
-  #         if classes1.common_water: continue
-  #         if classes2.common_water: continue
-  #         if classes1.common_amino_acid and classes2.common_amino_acid: continue
-  #         if classes1.common_rna_dna and classes2.common_rna_dna: continue
-  #         d2 = linking_utils.get_distance2(atom1, atom2)
-  #         if d2>residue_group_cutoff2: continue
-  #         if verbose:
-  #           print atom1.quote(), atom2.quote(), d2,residue_group_cutoff2
-  #         #
-  #         rc = linking_utils.process_atom_groups_for_linking(
-  #           self.pdb_hierarchy,
-  #           atom1,
-  #           atom2,
-  #           classes1,
-  #           classes2,
-  #           #bond_cutoff=bond_cutoff,
-  #           amino_acid_bond_cutoff=amino_acid_bond_cutoff,
-  #           rna_dna_bond_cutoff=rna_dna_bond_cutoff,
-  #           intra_residue_bond_cutoff=intra_residue_bond_cutoff,
-  #           verbose=verbose,
-  #           )
-  #         if rc is None: continue
-  #         pdbres_pairs, data_links, atomss = rc
-  #         for pdbres_pair, data_link, atoms in zip(pdbres_pairs,
-  #                                                  data_links,
-  #                                                  atomss,
-  #                                                  ):
-  #           if verbose:
-  #             print '-'*80
-  #             print pdbres_pairs
-  #             print "data_link",data_link
-  #             for atom in atoms:
-  #               print atom.quote()
-  #           outls.setdefault(data_link, "")
-  #           tmp = self.process_custom_links(mon_lib_srv,
-  #                                           pdbres_pair,
-  #                                           data_link,
-  #                                           atoms,
-  #                                           verbose=verbose,
-  #                                           )
-  #           if verbose:
-  #             print "rc :%s:" % tmp
-  #           outls[data_link] = tmp
-  #   # log output about detection
-  #   remove=[]
-  #   if self.apply_cif_links:
-  #     outl = ""
-  #     for i, apply in enumerate(self.apply_cif_links):
-  #       if(not getattr(apply, "automatic", False)): continue
-  #       if apply.data_link in mon_lib_srv.link_link_id_dict:
-  #         outl += "%sLinking %s to %s using %s\n" % (
-  #           " "*8,
-  #           apply.pdbres_pair[0][7:],
-  #           apply.pdbres_pair[1][7:],
-  #           apply.data_link,
-  #           )
-  #       else:
-  #         if getattr(apply, "possible_peptide_link", False):
-  #           if 1:
-  #             pass
-  #           else:
-  #             print >> log, "%sPossible peptide link %s to %s" % (
-  #               " "*8,
-  #               apply.pdbres_pair[0][7:],
-  #               apply.pdbres_pair[1][7:],
-  #               )
-  #         elif getattr(apply, "possible_rna_dna_link", False):
-  #           pass
-  #         else:
-  #           outl += "%sLinking %s to %s\n" % (
-  #             " "*8,
-  #             apply.pdbres_pair[0][7:],
-  #             apply.pdbres_pair[1][7:],
-  #             )
-  #           outl += '%sCreating link for "%s"\n' % (" "*10, apply.data_link)
-  #           mon_lib_srv.link_link_id_dict[apply.data_link] = None
-  #       if outls.get(apply.data_link, ""):
-  #         outl += outls[apply.data_link]
-  #     if outl:
-  #       print >> log, "%sAdding automatically detected intra-chain links" % (
-  #         " "*6,
-  #         )
-  #       print >> log, outl[:-1]
-  #   if remove:
-  #     remove.sort()
-  #     remove.reverse()
-  #     for r in remove: del self.apply_cif_links[r]
-  #   print >> log, "%sTime to detect intra-chain links : %0.1fs" % (
-  #     " "*6,
-  #     time.time()-t0)
-
-  # def process_nonbonded_for_linking(pdb_inp,
-  #                                   pdb_hierarchy,
-  #                                   geometry_restaints_manager,
-  #                                   verbose=False,
-  #                                   ):
-  #   assert 0
-  #   sorted_nonbonded_proxies = get_nonbonded(pdb_inp,
-  #                                            pdb_hierarchy,
-  #                                            geometry_restaints_manager,
-  #     )
-  #   atoms = pdb_hierarchy.atoms()
-  #   result = []
-  #   for item in sorted_nonbonded_proxies:
-  #     labels, i_seq, j_seq, distance, vdw_distance, sym_op, rt_mx_ji = item
-  #     item = empty()
-  #     item.labels = labels
-  #     item.i_seq = i_seq
-  #     item.j_seq = j_seq
-  #     item.distance = distance
-  #     if item.distance>2.75: break
-  #     item.sym_op = sym_op
-  #     item.rt_mx_ji = rt_mx_ji
-  #     atom1 = atoms[i_seq]
-  #     atom2 = atoms[j_seq]
-  #     if verbose:
-  #       print " Nonbonded: %s %s %0.3f %s %s" % (atoms[item.i_seq].id_str(),
-  #                                                atoms[item.j_seq].id_str(),
-  #                                                item.distance,
-  #                                                item.sym_op,
-  #                                                item.rt_mx_ji,
-  #                                                ),
-  #
-  #     if is_atom_pair_linked(atom1, atom2):
-  #       print " Linking?"
-  #       result.append(item)
-  #     else:
-  #       print
-  #   return result
-
   def process_nonbonded_for_links(self,
                                   bond_params_table,
                                   bond_asu_table,
@@ -439,6 +278,7 @@ class linking_mixins(object):
                                   link_metals                 = True,
                                   link_residues               = True,
                                   link_carbohydrates          = True,
+                                  link_amino_acid_rna_dna     = False,
                                   max_bonded_cutoff           = None,
                                   metal_coordination_cutoff   = 3.,
                                   amino_acid_bond_cutoff      = 2.,
@@ -455,6 +295,19 @@ class linking_mixins(object):
                               carbohydrate_bond_cutoff,
                               inter_residue_bond_cutoff+second_row_buffer,
                               )
+    # check that linking required
+    ## has_checks = []
+    ## for i, link_boolean in enumerate([link_carbohydrates,
+    ##                                   ]
+    ##                                   ):
+    ##   if i==0:   ct = "common_saccharide"
+    ##   rc = False
+    ##   if link_boolean:
+    ##     rc = check_all_classes(self.pdb_hierarchy, ct)
+    ##   has_checks.append(rc)
+    ## has_checks.append(link_amino_acid_rna_dna)
+    ## if not filter(None, has_checks): return
+    #
     if max_bonded_cutoff > 15:
       raise Sorry("One of the following parameters: \nmetal_coordination_"+
           "cutoff, amino_acid_bond_cutoff,"+
@@ -477,26 +330,6 @@ class linking_mixins(object):
     from cctbx import crystal
     from cctbx.array_family import flex
     #
-    # def _nonbonded_pair_generator_from_pair_asu_table(max_bonded_cutoff=3.):
-    #   assert 0
-    #   xray_structure_simple=self.pdb_inp.xray_structure_simple()
-    #   pair_asu_table = xray_structure_simple.pair_asu_table(
-    #     distance_cutoff=10, #max_bonded_cutoff,
-    #     ) #self.clash_threshold)
-    #   bonded_i_seqs = []
-    #   for bp in self.geometry_proxy_registries.bond_simple.proxies:
-    #     bonded_i_seqs.append(bp.i_seqs)
-    #   pair_sym_table = pair_asu_table.extract_pair_sym_table()
-    #   atom_pairs_i_seqs, sym_atom_pairs_i_seqs = pair_sym_table.both_edge_list()
-    #   nonbonded_pairs = list(set(atom_pairs_i_seqs).difference(set(bonded_i_seqs)))
-    #   for ii, (i_seq, j_seq) in enumerate(nonbonded_pairs):
-    #     yield (i_seq, j_seq, None)
-    #     if ii>5: break
-    #   nonbonded_pairs = list(set(sym_atom_pairs_i_seqs).difference(set(bonded_i_seqs)))
-    #   for ii, (i_seq, j_seq, sym) in enumerate(nonbonded_pairs):
-    #     yield (i_seq, j_seq, sym)
-    #     if ii>5: break
-    # #
     def _nonbonded_pair_objects(max_bonded_cutoff=3.,
                                 i_seqs=None,
                                 ):
@@ -542,17 +375,6 @@ class linking_mixins(object):
       rc, junk = rc
       for item in rc:
         yield item
-    #
-    # def _nonbonded_proxies_generator_geometry_restraints_sort(
-    #     nonbonded_proxies,
-    #     max_bonded_cutoff=3.,
-    #     ):
-    #   assert 0
-    #   rc = nonbonded_proxies.get_sorted_proxies(by_value="delta",
-    #                                             sites_cart=sites_cart,
-    #     )
-    #   for item in rc:
-    #     yield item
     #
     if(log is not None):
       print >> log, """
@@ -676,6 +498,7 @@ Residue classes
           saccharide_bond_cutoff=carbohydrate_bond_cutoff,
           metal_coordination_cutoff=metal_coordination_cutoff,
           use_only_bond_cutoff=use_only_bond_cutoff,
+          link_metals=link_metals,
           verbose=verbose,
           ):
         if verbose:
@@ -709,6 +532,9 @@ Residue classes
             ("common_amino_acid", "other"),
            ]: continue
       if not link_carbohydrates and "common_saccharide" in class_key: continue
+      if not link_amino_acid_rna_dna:
+        if "common_amino_acid" in class_key and "common_rna_dna" in class_key:
+          continue
       #
       names = [atom1.name, atom2.name]
       if verbose: print 'names',names
@@ -761,9 +587,10 @@ Residue classes
           tmp = [i,j]
           tmp.sort()
           ij_seqs.append(tuple(tmp))
-
-      # !!! For every possible link we are looping over _all_ bond proxies?
+      #
       link_found = False
+      if verbose:
+        print 'len simple bond proxies',len(geometry_proxy_registries.bond_simple.proxies)
       for bond_simple_proxy in geometry_proxy_registries.bond_simple.proxies:
         if bond_simple_proxy.i_seqs in ij_seqs:
           link_found = True
