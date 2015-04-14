@@ -16,7 +16,7 @@ def exercise_emringer_residue_scan():
     test=os.path.isfile)
   assert (not None in [pdb_file, map_file])
   results = emringer.run([pdb_file, map_file], out=null_out())
-  # Make sure the right number of residues (22 out of 28) get scanned 
+  # Make sure the right number of residues (22 out of 28) get scanned
   assert len(results)==22
   modelled_list = [290.742121792,192.844056257,45.4781110306,294.247825632,303.618891108,58.7694040824,331.70068496,46.7136045049,290.167261226,304.261231829,282.651244586,268.729721112,195.972333785,305.321933311,314.81066224,286.028424514,311.180807466,313.004918133,296.67781565,296.949191638,169.644245088,192.496265164]
   peak_list = [270,180,260,75,305,30,310,90,265,270,270,240,280,260,310,285,295,100,260,165,155,200]
@@ -44,14 +44,14 @@ def exercise_emringer_peakfinding(waves):
   assert len(list) == 6
   print list
   assert [i.chi_value*5 for i in list.get_peaks()] == [305, 270, 270, 240, 310, 285]
-    
+
 
 def exercise_emringer_statistics():
   # Test statistic calculation
   peak_list = [5]+[0]*5+[50]+[0]*12+[25]+[0]*10+[10]+[0]*12+[5]+[0]*10+[10]+[0]*17
   binned_peaks = score.calculate_binned_counts(peak_list)
   assert binned_peaks==[50,25,10,5,10,5]
-  
+
   zscore, rotamer_ratio = score.statistic(binned_peaks)
   assert approx_equal(rotamer_ratio, 2.0/3)
   assert approx_equal(zscore, 2.570679)

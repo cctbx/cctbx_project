@@ -216,7 +216,6 @@ def get_classes(atom, important_only=False, verbose=False):
     "uncommon_amino_acid",
     "unknown",
     ]
-#  elif get_type(atom1.parent().resname).upper() in amino_types:
   atom_group = atom.parent()
   classes = empty()
   for attr in attrs:
@@ -242,105 +241,6 @@ def get_classes(atom, important_only=False, verbose=False):
       if important_only: return _filter_for_metal(atom, rc)
       setattr(classes, attr, True)
   return classes
-
-# def get_closest_atoms(atom_group1,
-#                       atom_group2,
-#                       ignore_hydrogens=True,
-#                       ignore_atom_names_in_atom_group1=None,
-#                       ignore_atom_names_in_atom_group2=None,
-#                       ignore_atom_name_pairs=None,
-#                       ):
-#   assert 0
-#   if ignore_atom_names_in_atom_group1 is None:
-#     ignore_atom_names_in_atom_group1 = []
-#   if ignore_atom_names_in_atom_group2 is None:
-#     ignore_atom_names_in_atom_group2 = []
-#   if ignore_atom_name_pairs is None: ignore_atom_name_pairs=[]
-#   min_d2 = 1e5
-#   min_atom1 = None
-#   min_atom2 = None
-#   for i, atom1 in enumerate(atom_group1.atoms()):
-#     if atom1.name in ignore_atom_names_in_atom_group1: continue
-#     if ignore_hydrogens:
-#       if atom1.element.strip() in ad_hoc_non_linking_elements: continue
-#     else:
-#       if atom1.element.strip() in ad_hoc_non_linking_elements[2:]: continue
-#     altloc1 = atom1.parent().altloc.strip()
-#     for j, atom2 in enumerate(atom_group2.atoms()):
-#       if ignore_hydrogens:
-#         if atom2.element.strip() in ad_hoc_non_linking_elements: continue
-#       else:
-#         if atom2.element.strip() in ad_hoc_non_linking_elements[2:]: continue
-#       if atom2.name in ignore_atom_names_in_atom_group2: continue
-#       pair = [atom1.name, atom2.name]
-#       pair.sort()
-#       if pair in ignore_atom_name_pairs: continue
-#       altloc2 = atom2.parent().altloc.strip()
-#       if altloc1 and altloc2:
-#         if altloc1!=altloc2: continue
-#       d2 = get_distance2(atom1, atom2)
-#       if d2<min_d2:
-#         min_atom1 = atom1
-#         min_atom2 = atom2
-#         min_d2 = d2
-#   return min_atom1, min_atom2
-
-# def get_link_atoms(atom_group1,
-#                    atom_group2,
-#                    bond_cutoff=2.75,
-#                    ignore_hydrogens=True,
-#                    ):
-#   assert 0
-#   bond_cutoff *= bond_cutoff
-#   link_atoms = []
-#   for i, atom1 in enumerate(atom_group1.atoms()):
-#     if ignore_hydrogens:
-#       if atom1.element.strip() in ad_hoc_non_linking_elements: continue
-#     for j, atom2 in enumerate(atom_group2.atoms()):
-#       if ignore_hydrogens:
-#         if atom2.element.strip() in ad_hoc_non_linking_elements: continue
-#       #if i>=j: continue
-#       d2 = get_distance2(atom1, atom2)
-#       if d2<bond_cutoff:
-#         link_atoms.append([atom1, atom2])
-#   return link_atoms
-
-# def get_nonbonded(pdb_inp,
-#                   pdb_hierarchy,
-#                   geometry_restraints_manager,
-#                   ):
-#   assert 0
-#   site_labels = [atom.id_str()
-#      for atom in pdb_hierarchy.atoms()]
-#   pair_proxies = geometry_restraints_manager.pair_proxies(
-#      sites_cart=pdb_inp.xray_structure_simple().sites_cart(),
-#      site_labels=site_labels,
-#      )
-#   sites_cart = geometry_restraints_manager.sites_cart_used_for_pair_proxies()
-#   #pair_proxies.nonbonded_proxies.show_sorted(
-#   #  by_value="delta",
-#   #  sites_cart=sites_cart,
-#   #  )
-#   site_labels = [atom.id_str()
-#      for atom in pdb_hierarchy.atoms()]
-#   sorted_nonbonded_proxies, not_shown = pair_proxies.nonbonded_proxies.get_sorted(
-#     by_value="delta",
-#     sites_cart=sites_cart,
-#     site_labels=site_labels,
-#     #f=sio,
-#     #prefix="*",
-#     #max_items=0,
-#     )
-#   if 0:
-#     pair_proxies.nonbonded_proxies.show_sorted(
-#       by_value="delta",
-#       sites_cart=sites_cart,
-#       site_labels=site_labels,
-#       #f=sio,
-#       #prefix="*",
-#       #max_items=0,
-#       )
-#   return sorted_nonbonded_proxies
 
 def is_atom_group_pair_linked(atom_group1,
                               atom_group2,
@@ -377,6 +277,7 @@ def is_atom_pair_linked(atom1,
                         sulfur_bond_cutoff=2.5,
                         other_bond_cutoff=2., # this is the ligand distance
                         use_only_bond_cutoff=False,
+                        link_metals=True,
                         verbose=False,
                         ):
   if atom1.element.strip().upper() in ad_hoc_non_linking_elements:
@@ -466,32 +367,22 @@ def is_atom_pair_linked(atom1,
       print atom1.quote()
       print atom2.quote()
       assert 0
-  if "metal" in lookup: return True
+  if "metal" in lookup:
+    return link_metals
   #
-  #if class1=="common_element" and class2=="common_element":
-  #  assert 0
-  #if class1=="common_element" or class2=="common_element":
-  #  return True
-  #if d2>amino_acid_bond_cutoff: return False
-  #
-  # non-standard amino acids
+  # amino acids
   #
   if class1=="common_amino_acid" and class2=="common_amino_acid":
     if verbose:
       print "AMINO ACIDS",atom1.quote(), atom2.quote()
-  #  assert 0
+  #
+  # other
+  #
   if "other" in lookup:
     if verbose: print 'other returns True'
     return True
   if verbose: print 'drop through '*5
   return False
-
-##   if class1=="common_element" or class2=="common_element":
-##     return True
-##   if d2>amino_acid_bond_cutoff: return False
-##   if class1=="common_amino_acid" and class2=="common_amino_acid":
-##     pass # rint "AMINO ACIDS",atom1.quote(), atom2.quote()
-##   return False
 
 def generate_atoms_from_atom_groups(atom_group1, atom_group2):
   for atom in atom_group1.atoms(): yield atom
