@@ -12,6 +12,7 @@ from scitbx.array_family import flex
 asic_dimension = (194,185)
 asic_gap = 3
 pixel_size = 0.10992
+from xfel.cxi.cspad_ana.cspad_tbx import dynamic_range
 
 from dxtbx.format.FormatCBFMultiTile import cbf_wrapper as dxtbx_cbf_wrapper
 class cbf_wrapper(dxtbx_cbf_wrapper):
@@ -160,9 +161,9 @@ def read_slac_metrology(path, plot=False):
 
   return metro
 
-def env_dxtbx_from_slac_metrology(env, src):
-  """ Loads a dxtbx cspad cbf header only object from the metrology path stored
-      in a psana environment object's calibration store
+def get_calib_file_path(env, src):
+  """ Findes the path to the SLAC metrology file stored in a psana environment
+      object's calibration store
       @param env psana environment object
       @param env psana DataSource
   """
@@ -171,7 +172,18 @@ def env_dxtbx_from_slac_metrology(env, src):
   path_nda = cls.get(ndarray_uint8_1, src, 'geometry-calib')
   if path_nda is None:
     return None
-  metro_path = ''.join(map(chr, path_nda))
+  return ''.join(map(chr, path_nda))
+
+def env_dxtbx_from_slac_metrology(env, src):
+  """ Loads a dxtbx cspad cbf header only object from the metrology path stored
+      in a psana environment object's calibration store
+      @param env psana environment object
+      @param env psana DataSource
+  """
+  metro_path = get_calib_file_path(env, src)
+
+  if metro_path is None:
+    return None
 
   metro = read_slac_metrology(metro_path)
   cbf = get_cspad_cbf_handle(None, metro, 'cbf', None, "test", None, 100, verbose = True, header_only = True)
@@ -192,7 +204,6 @@ def format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, a
   """
   import copy
   import numpy as np
-  from xfel.cxi.cspad_ana.cspad_tbx import dynamic_range
   base_cbf = base_dxtbx._cbf_handle
   base_dxtbx._cbf_handle = None # have to do this because copy.deep_copy fails on
                                 # swig objects, which _cbf_handle is based on
@@ -730,12 +741,6 @@ def get_cspad_cbf_handle(tiles, metro, metro_style, timestamp, cbf_root, wavelen
     metro = metro_phil_to_basis_dict(metro)
 
   # set up the metrology dictionary to include axis names, pixel sizes, and so forth
-  try:
-    from xfel.cxi.cspad_ana.cspad_tbx import dynamic_range as dr
-    dynamic_range = dr
-  except ImportError:
-    dynamic_range = 2**14 - 1
-
   dserial = None
   dname = None
   detector_axes_names = [] # save these for later
