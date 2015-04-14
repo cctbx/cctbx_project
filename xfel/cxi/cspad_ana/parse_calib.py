@@ -263,6 +263,12 @@ def v2calib2sections(filename):
   # hierarchy and the values are 'basis' objects
   metro = read_slac_metrology(filename)
 
+  # 90 degree rotation to get into same frame
+  reference_frame = sqr((0,-1, 0, 0,
+                         1, 0, 0, 0,
+                         0, 0, 1, 0,
+                         0, 0, 0, 1))
+
   d = 0
   d_basis = metro[(d,)]
 
@@ -278,7 +284,8 @@ def v2calib2sections(filename):
 
       # collapse the transformations from the detector center to the quadrant center
       # to the sensor center
-      transform = d_basis.as_homogenous_transformation() * \
+      transform = reference_frame * \
+                  d_basis.as_homogenous_transformation() * \
                   q_basis.as_homogenous_transformation() * \
                   s_basis.as_homogenous_transformation()
 
@@ -292,12 +299,11 @@ def v2calib2sections(filename):
 
       # move the reference of the sensor so its relative to the upper left of the
       # detector instead of the center of the detector
-      center = ((transform[3])/pixel_size)+1765/2,(transform[7]/pixel_size)+1765/2
+      center = (1765/2)+(transform[3]/pixel_size),(1765/2)+(transform[7]/pixel_size)
 
       sections[q].append(Section(angle, center))
 
   return sections
-
 
 def calib2sections(dirname):
   """The calib2sections() function reads calibration information
