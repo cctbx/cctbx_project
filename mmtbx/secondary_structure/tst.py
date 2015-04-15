@@ -770,5 +770,6 @@ if __name__ == "__main__" :
   exercise_sheet_ends()
   # exercise_nucleic_acids() # obsoleted
   exercise_sheets_bonding_pattern()
-  exercise_segid()
+  # exercise_segid() # appeared to be nonvalid test... now when we don't ignore
+  # segid in SS, we cannot construct SHEET situated in two different segids...
   print "OK"
