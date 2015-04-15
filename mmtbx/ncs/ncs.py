@@ -256,14 +256,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
        text+="\n"
     return text
 
-  def format_for_phenix_refine(self,restraint=True):
-    """
-    Args:
-      restraint (bool): control the .ncs file format
-                        when True, "refinement.ncs.restraint_group"
-                        when False,"refinement.ncs.constraint_group"
-    """
-    rec_str = 'restraint'*restraint + 'constraint'*(not restraint)
+  def format_for_phenix_refine(self, prefix="pdb_interpretation.ncs_group"):
     if not self._chain_residue_id or len(self._chain_residue_id)<2:
       return ""
     exclude=""
@@ -275,7 +268,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     for id,residue_ranges in zip (group,residue_range_list):
       count+=1
       if count==1:
-        text.append("refinement.ncs.%s_group {"%rec_str)
+        text.append("%s {"%prefix)
         l = "  reference = chain '{}'".format(id)
       else:
         l = "  selection = chain '{}'".format(id)
@@ -730,36 +723,24 @@ class ncs:
       all_text+="\n"+text
     return all_text
 
-  def format_all_for_phenix_refine(
-          self,log=None,quiet=False,out=None,restraint=True):
+  def format_all_for_phenix_refine(self,log=None,quiet=False,out=None):
     if out==None:
       out=sys.stdout
     if log==None:
       log=sys.stdout
-    else:
-      print>>log,\
-       "NCS operators written in format for phenix.refine to:",out.name
     all_text=""
     for ncs_group in self._ncs_groups:
-      text= ncs_group.format_for_phenix_refine(restraint=restraint)
+      text= ncs_group.format_for_phenix_refine()
       if text:
         if not quiet: out.write(text+'\n')
         all_text+="\n"+text
     return all_text
 
-  def format_phil_for_phenix_refine(
-          self,log=None,quiet=False,out=None,restraint=True):
+  def format_phil_for_phenix_refine(self,log=None,quiet=False,out=None):
     """ Writes NCS phil selection in phenix_refine format """
     if out==None: out=sys.stdout
-    if log==None:
-      log=sys.stdout
-    else:
-      msg = "NCS operators written in format for phenix.refine to:"
-      print>>log,msg,out.name
     phil_str = self._ncs_obj.show(format='phil',log=null_out(),header=False)
-    if restraint: to_type = 'restraints'
-    else: to_type = 'constraints'
-    ncs_str = convert_phil_format(phil_str,to_type=to_type)
+    ncs_str = convert_phil_format(phil_str,to_type="ncs")
     if ncs_str:
       if not quiet: out.write(ncs_str + '\n')
     return ncs_str

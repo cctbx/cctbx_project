@@ -284,7 +284,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
   def test_rotaion_translation_input(self):
     """ Verify correct processing    """
-    # print sys._getframe().f_code.co_name
     r1 = matrix.sqr([-0.955168,0.257340,-0.146391,
                      0.248227,0.426599,-0.869711,
                      -0.161362,-0.867058,-0.471352])
@@ -359,21 +358,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
                       pdb_string=pdb_str,
                       process_similar_chains=False)
 
-  # def test_build_pdb(self):
-  #   """ produce test pdb file """
-  #   from iotbx import pdb
-  #   os.chdir(r'C:\Phenix\Dev\Work\work\junk')
-  #   pdb_inp = pdb.input(source_info=None, lines=test_ncs_spec)
-  #   ph = pdb_inp.construct_hierarchy()
-  #   xrs = pdb_inp.xray_structure_simple()
-  #   xrs_one_ncs = xrs.orthorhombic_unit_cell_around_centered_scatterers(
-  #     buffer_size=8)
-  #   ph.adopt_xray_structure(xrs)
-  #   of = open("test_ncs_spec.pdb", "w")
-  #   print >> of, ph.as_pdb_string(crystal_symmetry=xrs.crystal_symmetry())
-  #   of.close()
-
-
   def test_format_string_longer_than_80(self):
     """ Check that strings longer that 80 characters are split correctly """
     # print sys._getframe().f_code.co_name
@@ -394,7 +378,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       write=True,
       log=null_out())
     file_data = open('simple_ncs_from_pdb.ncs','r').read().splitlines()
-    test = ['ncs.constraint_group' in x for x in file_data]
+    test = ['ncs_group' in x for x in file_data]
     self.assertTrue(test.count(True)==1)
 
   def test_ncs_phil_format(self):
