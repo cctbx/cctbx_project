@@ -569,21 +569,22 @@ class manager(object):
     proxies - list of bond_proxy objects. The symmetry operation for the
     paired atoms is determined here, therefore the proxy.rt_mx_ji may be
     anything."""
-
+    import time
     # Get current max bond distance, copied from pair_proxies()
+    t0 = time.time()
     bonded_distance_cutoff = max_distance_between_connecting_atoms
     sites_frac = self.crystal_symmetry.unit_cell().\
         fractionalize(sites_cart=sites_cart)
+    existing_max_bonded_distance = 0
     for shell_sym_table in self.shell_sym_tables:
-      bonded_distance_cutoff = max(bonded_distance_cutoff,
-          flex.max_default(
+      existing_max_bonded_distance = flex.max_default(
               values=crystal.get_distances(
                   pair_sym_table=shell_sym_table,
                   orthogonalization_matrix=self.crystal_symmetry.unit_cell() \
                       .orthogonalization_matrix(),
                   sites_frac=sites_frac),
               default=0)
-          )
+    t1 = time.time()
     max_p_distance=0
     if not skip_max_proxy_distance_calculation:
       for p in proxies:
@@ -595,7 +596,12 @@ class manager(object):
           max_p_distance = distance_model
       bonded_distance_cutoff = max(bonded_distance_cutoff,
           max_p_distance)
-    bonded_distance_cutoff += 0.1
+    bonded_distance_cutoff = max(
+        [existing_max_bonded_distance,
+         max_p_distance,
+         max_distance_between_connecting_atoms]) + 0.1
+    t2 = time.time()
+    # print "bonded_distance_cutoff:", bonded_distance_cutoff
     # make asu mappings
     all_asu_mappings = self.crystal_symmetry.special_position_settings().\
         asu_mappings(buffer_thickness=bonded_distance_cutoff)
@@ -606,6 +612,7 @@ class manager(object):
     all_bonds_asu_table = crystal.pair_asu_table(asu_mappings=all_asu_mappings)
     all_bonds_asu_table.add_pair_sym_table(self.shell_sym_tables[0])
 
+    t3 = time.time()
     proxies_i_seqs = []
     proxies_iselection = []
     for p in proxies:
@@ -616,6 +623,7 @@ class manager(object):
     # Not sure whether we want to sort it...
     # proxies_iselection = flex.size_t(sorted(proxies_iselection))
     proxies_iselection = flex.size_t(proxies_iselection)
+    t4 = time.time()
 
     # Generate pairs for connecting atoms only - should be much faster then
     # doing the same for all atoms in geometry_restraints_manager.
@@ -638,6 +646,7 @@ class manager(object):
         conn_asu_mappings,
         distance_cutoff=bonded_distance_cutoff)
 
+    t5 = time.time()
     # r_a connects i_seqs in pair_generator with original i_seqs
     r_a = list(reindexing_array(len(sites_cart), proxies_iselection.as_int()))
     n_added_proxies = 0
@@ -674,6 +683,7 @@ class manager(object):
                 origin_id=proxies[n_proxy].origin_id)
             )
         n_added_proxies += 1
+    t6 = time.time()
     # update self.shell_sym_tables with new bonds
     shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
       pair_asu_table=all_bonds_asu_table,
@@ -682,7 +692,19 @@ class manager(object):
       for shell_asu_table in shell_asu_tables]
     self.reset_internals()
     # Run this function so that new pair_proxies are ready to go
+    t61 = time.time()
     self.pair_proxies(sites_cart=sites_cart)
+    t7 = time.time()
+    # print "times in add_new_bond_restraints_in_place:"
+    # print "t1: %f" % (t1-t0)
+    # print "t2: %f" % (t2-t1)
+    # print "t3: %f" % (t3-t2)
+    # print "t4: %f" % (t4-t3)
+    # print "t5: %f" % (t5-t4)
+    # print "t6: %f" % (t6-t5)
+    # print "t61: %f" % (t61-t6)
+    # print "t7: %f" % (t7-t61)
+    # STOP()
 
   def pair_proxies(self,
         sites_cart=None,

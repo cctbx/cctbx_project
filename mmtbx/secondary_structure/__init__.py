@@ -12,6 +12,7 @@ import libtbx.load_env
 import cStringIO
 from math import sqrt
 import sys, os
+import time
 
 sec_str_master_phil_str = """
 secondary_structure
@@ -298,6 +299,7 @@ class manager (object) :
         self.params.secondary_structure.protein.sheet[0].first_strand is not None):
       protein_ss_definition_present = True
 
+    t0 = time.time()
     if (not protein_ss_definition_present and
         self.sec_str_from_pdb_file is None):
       if(self.verbose>0):
@@ -333,6 +335,9 @@ class manager (object) :
       restraint_groups = self.find_approximate_helices(log=log)
       if restraint_groups is not None:
         self.params.helix = restraint_groups.helix
+
+    t1 = time.time()
+    print >> log, "    Time for finding protein SS: %f" % (t1-t0)
     # Step 2: nucleic acids
     na_ss_definition_present = False
     if (len(self.params.secondary_structure.nucleic_acid.base_pair) > 1 or
@@ -362,6 +367,8 @@ class manager (object) :
           bp_params.secondary_structure.nucleic_acid.base_pair
         self.params.secondary_structure.nucleic_acid.stacking_pair = \
           bp_params.secondary_structure.nucleic_acid.stacking_pair
+    t2 = time.time()
+    # print >> log, "    Time for finding NA SS: %f" % (t2-t1)
 
   def find_sec_str (self, log=sys.stdout) :
     if (self.params.secondary_structure.use_ksdssp) :
@@ -381,6 +388,7 @@ class manager (object) :
   def find_sec_str_with_segids (self, log=sys.stdout) :
     annotations = []
     for chain in self.pdb_hierarchy.models()[0].chains() :
+      print "tick"
       if not chain.conformers()[0].is_protein() :
         continue
       segid = chain.atoms()[0].segid
@@ -392,6 +400,9 @@ class manager (object) :
         allow_none=True)
       if sec_str_from_pdb_file is not None :
         annotations.append((sec_str_from_pdb_file, segid))
+        print dir(sec_str_from_pdb_file)
+        print sec_str_from_pdb_file.as_pdb_str()
+        STOP()
     return annotations
 
   def find_approximate_helices (self, log=sys.stdout) :
@@ -421,18 +432,22 @@ class manager (object) :
 
   def find_base_pairs_with_segids (self, log=sys.stdout, force=False) :
     annotations = []
+    cache = self.pdb_hierarchy.atom_selection_cache()
     for chain in self.pdb_hierarchy.models()[0].chains() :
       if not force and not chain.conformers()[0].is_na() :
         continue
       segid = chain.atoms()[0].segid
+      segid_selection = cache.selection("segid %s" % segid)
       detached_hierarchy = iotbx.pdb.hierarchy.new_hierarchy_from_chain(chain)
+      selected_grm = self.grm.select(segid_selection)
       stacking_pairs = nucleic_acids.get_phil_stacking_pairs(
-        pdb_hierarchy=self.pdb_hierarchy,
+        pdb_hierarchy=detached_hierarchy,
         prefix="secondary_structure.nucleic_acid",
-        log=log)
+        log=log,
+        add_segid=segid)
       base_pairs = nucleic_acids.get_phil_base_pairs(
         pdb_hierarchy=detached_hierarchy,
-        nonbonded_proxies=self.grm.pair_proxies().nonbonded_proxies,
+        nonbonded_proxies=self.grm.select(segid_selection).pair_proxies(sites_cart=detached_hierarchy.atoms().extract_xyz()).nonbonded_proxies,
         prefix="secondary_structure.nucleic_acid",
         log=log,
         add_segid=segid)
@@ -497,7 +512,8 @@ class manager (object) :
           weight=hb_p.weight,
           slack=hb_p.slack,
           top_out=hb_p.top_out,
-          limit=hb_p.limit)
+          limit=hb_p.limit,
+          origin_id=1)
         reg_proxies.append(reg_proxy)
       return reg_proxies
     return build_proxies
@@ -506,25 +522,45 @@ class manager (object) :
       pdb_hierarchy,
       grm,
       log=sys.stdout):
+    t0 = time.time()
     proteins_hbonds = self.create_hbond_proxies(
         log=log,
         as_python_objects=True,
         master_selection=None,
         as_regular_bond_proxies=True)
+    t1 = time.time()
+
+    # initialize cache and monomer library server for underlying procedures
+    from mmtbx.monomer_library import server
+    mon_lib_srv = server.server()
+    plane_cache = {}
+
+    # print >> log, "    Time for creating protein proxies:%f" % (t1-t0)
     stacking_proxies = nucleic_acids.get_stacking_proxies(
         pdb_hierarchy=pdb_hierarchy,
         stacking_phil_params=self.params.secondary_structure.\
             nucleic_acid.stacking_pair,
-        grm=grm)
+        grm=grm,
+        mon_lib_srv=mon_lib_srv,
+        plane_cache=plane_cache)
+    t2 = time.time()
+    # print >> log, "    Time for creating stacking proxies:%f" % (t2-t1)
     planarity_bp_proxies, parallelity_bp_proxies = nucleic_acids.\
         get_basepair_plane_proxies(
         pdb_hierarchy=pdb_hierarchy,
         bp_phil_params=self.params.secondary_structure.nucleic_acid.base_pair,
-        grm=grm)
+        grm=grm,
+        mon_lib_srv=mon_lib_srv,
+        plane_cache=plane_cache)
+    t3 = time.time()
+    # print >> log, "    Time for creating planar/parall proxies:%f" % (t3-t2)
     hb_bond_proxies, hb_angle_proxies = nucleic_acids.\
         get_basepair_hbond_proxies(
         pdb_hierarchy=pdb_hierarchy,
-        bp_phil_params=self.params.secondary_structure.nucleic_acid.base_pair)
+        bp_phil_params=self.params.secondary_structure.nucleic_acid.base_pair,
+        hbond_distance_cutoff=self.params.secondary_structure.nucleic_acid.hbond_distance_cutoff)
+    t4 = time.time()
+    # print >> log, "    Time for creating hbond-angle proxies:%f" % (t4-t3)
     self.stats = {'n_protein_hbonds':0, 'n_na_hbonds':0, 'n_na_hbond_angles':0,
         'n_na_basepairs':0, 'n_na_stacking_pairs':0}
     print >> log, "  Restraints generated for nucleic acids:"

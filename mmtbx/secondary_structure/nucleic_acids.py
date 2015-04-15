@@ -175,12 +175,14 @@ def make_phil_stacking_pair_record(residue1, residue2, params=None,
     add_segid=None, nesting_depth=1):
   segid_add = ""
   if add_segid is not None:
-    segid_add = "and %s" % add_segid
+    segid_add = "and segid %s" % add_segid
   res = "%sstacking_pair {\n" % ("  "*nesting_depth)
-  res += "%sbase1 = chain %s and resid %s %s\n" % ("  "*(nesting_depth+1),
-      residue1.parent().parent().id, residue1.resid(), segid_add)
-  res += "%sbase2 = chain %s and resid %s %s\n" % ("  "*(nesting_depth+1),
-      residue2.parent().parent().id, residue2.resid(), segid_add)
+  chain1_add = "chain '%s' and" % residue1.parent().parent().id
+  chain2_add = "chain '%s' and" % residue2.parent().parent().id
+  res += "%sbase1 = %s  resid %s %s\n" % ("  "*(nesting_depth+1),
+      chain1_add, residue1.resid(), segid_add)
+  res += "%sbase2 = %s resid %s %s\n" % ("  "*(nesting_depth+1),
+      chain2_add, residue2.resid(), segid_add)
   if params is not None and len(params.stacking_pair) > 0:
     master_phil = iotbx.phil.parse(dna_rna_params_str)
     actual_params = master_phil.format(params)
@@ -197,12 +199,14 @@ def make_phil_base_pair_record(residue1, residue2, params=None,
     saenger_class=None, add_segid=None, nesting_depth=1):
   segid_add = ""
   if add_segid is not None:
-    segid_add = "and %s" % add_segid
+    segid_add = "and segid %s" % add_segid
   res = "%sbase_pair {\n" % ("  "*nesting_depth)
-  res += "%sbase1 = chain %s and resid %s %s\n" % ("  "*(nesting_depth+1),
-      residue1.parent().parent().id, residue1.parent().resid(), segid_add)
-  res += "%sbase2 = chain %s and resid %s %s\n" % ("  "*(nesting_depth+1),
-      residue2.parent().parent().id, residue2.parent().resid(), segid_add)
+  chain1_add = "chain '%s' and" % residue1.parent().parent().id
+  chain2_add = "chain '%s' and" % residue2.parent().parent().id
+  res += "%sbase1 = %s resid %s %s\n" % ("  "*(nesting_depth+1),
+      chain1_add, residue1.parent().resid(), segid_add)
+  res += "%sbase2 = %s resid %s %s\n" % ("  "*(nesting_depth+1),
+      chain2_add, residue2.parent().resid(), segid_add)
   if saenger_class is not None:
     res += "%ssaenger_class = %d\n" % ("  "*(nesting_depth+1), saenger_class)
   if params is not None and len(params.base_pair) > 0:
@@ -375,7 +379,7 @@ def get_phil_base_pairs(pdb_hierarchy, nonbonded_proxies,
     result = phil_str
   return result
 
-def get_plane_i_seqs_from_residues(r1, r2, grm):
+def get_plane_i_seqs_from_residues(r1, r2, grm,mon_lib_srv, plane_cache):
   # Return [([i_seqA],[j_seqA]),([i_seqB],[j_seqB])] of
   # atoms in planar groups for given atom_group r. Handles up to 2 alternative
   # conformations (the lenght of resulting array will be appropriate: A and B
@@ -384,18 +388,57 @@ def get_plane_i_seqs_from_residues(r1, r2, grm):
   # Uses geometry_restraints_manager that should already have basic planarity
   # restraints to find the largest plane group in residue, which should be the
   # nucleobase in case of nucleic acids.
+  def convert_to_good_name(rn):
+    result = rn
+    if len(rn)>1 and rn[0] == 'D':
+      result = rn[1]+rn[0]
+    return result
   i_seqs = []
   result = []
   r1_i_seqs = {}
   r2_i_seqs = {}
-  for r, r_i_seqs in [(r1, r1_i_seqs), (r2, r2_i_seqs)]:
+  new_r1 = {}
+  new_r2 = {}
+  for r, r_i_seqs, new_r in [(r1, r1_i_seqs, new_r1), (r2, r2_i_seqs, new_r2)]:
     for conf in r.parent().conformers():
+      for c_residue in conf.residues():
+        if c_residue.resseq == r.parent().resseq:
+          new_res = c_residue
+          break
       r_i_seqs[conf.altloc] = []
-      conf_iseqs = set(conf.atoms().extract_i_seq())
-      for p in grm.planarity_proxies:
-        if (conf_iseqs.issuperset(p.i_seqs)
-            and len(p.i_seqs) > len(r_i_seqs[conf.altloc])):
-          r_i_seqs[conf.altloc] = list(p.i_seqs)
+      new_r[conf.altloc] = []
+
+      # new getting i_seqs in plane
+      resname = convert_to_good_name(new_res.resname.strip())
+      if resname not in plane_cache:
+        libdef = mon_lib_srv.get_comp_comp_id_direct(resname)
+        if libdef is None:
+          print resname
+          print r.resname
+          print new_res.resname.strip()
+          raise Sorry('Cannot make NA restraints for %s residue' % resname)
+        planes = libdef.get_planes()
+        if planes is not None and len(planes) > 0:
+          best_index = 0
+          best_len = len(planes[0].plane_atoms)
+          for i in range(1, len(planes)):
+            if len(planes[i].plane_atoms) > best_len:
+              best_len = len(planes[i].plane_atoms)
+              best_index = i
+          plane_cache[resname] = planes[best_index].plane_atoms
+      # now this residue is in cache even if it wasn't before
+      for plane_atom in plane_cache[resname]:
+        good_atom_id = plane_atom.atom_id.replace("*","'")
+        if good_atom_id == "C5M":
+          good_atom_id = "C7"
+        good_atom_id = " %s" % good_atom_id
+        if len(good_atom_id) == 3:
+          good_atom_id += " "
+        a = new_res.find_atom_by(name=good_atom_id)
+        if a is not None:
+          new_r[conf.altloc].append(a.i_seq)
+      new_r[conf.altloc] = sorted(new_r[conf.altloc])
+      r_i_seqs[conf.altloc] = new_r[conf.altloc]
   if len(r1_i_seqs) > len(r2_i_seqs):
     t = r1_i_seqs
     r1_i_seqs = r2_i_seqs
@@ -421,7 +464,8 @@ def get_plane_i_seqs_from_residues(r1, r2, grm):
     return [result[0]]
   return result
 
-def get_stacking_proxies(pdb_hierarchy, stacking_phil_params, grm):
+def get_stacking_proxies(pdb_hierarchy, stacking_phil_params, grm,
+    mon_lib_srv, plane_cache):
   result = []
   assert pdb_hierarchy is not None
   if len(stacking_phil_params) < 1:
@@ -444,7 +488,7 @@ def get_stacking_proxies(pdb_hierarchy, stacking_phil_params, grm):
       a2 = pdb_atoms[selected_atoms_2[0]]
       r1 = a1.parent()
       r2 = a2.parent()
-      seqs = get_plane_i_seqs_from_residues(r1, r2, grm)
+      seqs = get_plane_i_seqs_from_residues(r1, r2, grm, mon_lib_srv, plane_cache)
       for i_seqs, j_seqs in seqs:
         if len(i_seqs) > 2 and len(j_seqs) > 2:
           if stacking_pair.sigma < 1e-5:
@@ -463,7 +507,9 @@ def get_stacking_proxies(pdb_hierarchy, stacking_phil_params, grm):
 def get_basepair_plane_proxies(
     pdb_hierarchy,
     bp_phil_params,
-    grm):
+    grm,
+    mon_lib_srv,
+    plane_cache):
   assert pdb_hierarchy is not None
   result_planarities = []
   result_parallelities = []
@@ -487,7 +533,7 @@ def get_basepair_plane_proxies(
       a2 = pdb_atoms[selected_atoms_2[0]]
       r1 = a1.parent()
       r2 = a2.parent()
-      seqs = get_plane_i_seqs_from_residues(r1, r2, grm)
+      seqs = get_plane_i_seqs_from_residues(r1, r2, grm,mon_lib_srv, plane_cache)
       for i_seqs, j_seqs in seqs:
         if len(i_seqs) > 2 and len(j_seqs) > 2:
           if base_pair.restrain_parallelity:
@@ -617,6 +663,8 @@ def get_h_bonds_for_particular_basepair(atoms, saenger_class=0):
   r2n = 'U' if r2n == "T" else r2n
   from mmtbx.monomer_library import bondlength_defaults
   if bondlength_defaults.basepairs_lengths[saenger_class][0] != (r1n, r2n):
+    print bondlength_defaults.basepairs_lengths[saenger_class][0], r1n, r2n,saenger_class
+    print r1.id_str(), r2.id_str()
     raise Sorry("Saenger class does not match residue names")
   hbonds = []
   for b in bondlength_defaults.basepairs_lengths[saenger_class][1:]:
@@ -627,7 +675,8 @@ def get_h_bonds_for_particular_basepair(atoms, saenger_class=0):
 
 def get_basepair_hbond_proxies(
     pdb_hierarchy,
-    bp_phil_params):
+    bp_phil_params,
+    hbond_distance_cutoff=3.4):
   assert pdb_hierarchy is not None
   bond_proxies_result = []
   angle_proxies_result = []
@@ -651,24 +700,28 @@ def get_basepair_hbond_proxies(
       a2 = pdb_atoms[selected_atoms_2[0]]
       hbonds = get_h_bonds_for_particular_basepair((a1, a2), base_pair.saenger_class)
       for hb in hbonds:
-        if base_pair.restrain_hbonds:
-          hb_target, hb_sigma = get_hb_lenght_targets(hb)
-          p = geometry_restraints.bond_simple_proxy(
-            i_seqs=[hb[0].i_seq, hb[1].i_seq],
-            distance_ideal=hb_target,
-            weight=1.0/hb_sigma**2,
-            slack=0,
-            top_out=False,
-            limit=1,
-            origin_id=1)
-          bond_proxies_result.append(p)
-          # print "bond:", hb[0].id_str(), hb[1].id_str(), "(%4.2f, %4.2f)" % (hb_target, hb_sigma)
-        # s1 = pdb_atoms[hb[0].i_seq].id_str()
-        # s2 = pdb_atoms[hb[1].i_seq].id_str()
-        # ps = "dist chain \"%s\" and resi %s and name %s, chain \"%s\" and resi %s and name %s\n" % (
-        #   s1[14:15], s1[15:19], s1[5:8], s2[14:15], s2[15:19], s2[5:8])
-        # dashes.write(ps)
-        if base_pair.restrain_hb_angles:
-          angle_proxies_result += get_angle_proxies_for_bond(hb)
+        dist = hb[0].distance(hb[1])
+        if dist < hbond_distance_cutoff:
+          if base_pair.restrain_hbonds:
+            hb_target, hb_sigma = get_hb_lenght_targets(hb)
+            p = geometry_restraints.bond_simple_proxy(
+              i_seqs=[hb[0].i_seq, hb[1].i_seq],
+              distance_ideal=hb_target,
+              weight=1.0/hb_sigma**2,
+              slack=0,
+              top_out=False,
+              limit=1,
+              origin_id=1)
+            bond_proxies_result.append(p)
+            # print "bond:", hb[0].id_str(), hb[1].id_str(), "(%4.2f, %4.2f)" % (hb_target, hb_sigma)
+            # s1 = pdb_atoms[hb[0].i_seq].id_str()
+            # s2 = pdb_atoms[hb[1].i_seq].id_str()
+            # ps = "dist chain \"%s\" and resi %s and name %s, chain \"%s\" and resi %s and name %s\n" % (
+            #   s1[14:15], s1[15:19], s1[5:8], s2[14:15], s2[15:19], s2[5:8])
+            # dashes.write(ps)
+          if base_pair.restrain_hb_angles:
+            angle_proxies_result += get_angle_proxies_for_bond(hb)
+        else:
+          print "NA hbond rejected:",hb[0].id_str(), hb[1].id_str(), "distance=",dist
   # dashes.close()
   return bond_proxies_result, angle_proxies_result

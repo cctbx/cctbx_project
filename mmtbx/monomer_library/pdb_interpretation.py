@@ -4713,7 +4713,6 @@ class build_all_chain_proxies(linking_mixins):
     if use_cdl :
       from mmtbx.conformation_dependent_library import setup_restraints
       from mmtbx.conformation_dependent_library import update_restraints
-      import time
       from libtbx import utils
       t0=time.time()
       cdl_proxies=setup_restraints(result)
@@ -4732,7 +4731,6 @@ class build_all_chain_proxies(linking_mixins):
   """ % utils.greek_time(cdl_time)
     if getattr(self.params, "rdl", False):
       from mmtbx.conformation_dependent_library import rotamers
-      import time
       from libtbx import utils
       t0=time.time()
       rdl_proxies=None #rotamers.setup_restraints(result)
@@ -4948,12 +4946,17 @@ class process(object):
       ss_params = self.all_chain_proxies.params.secondary_structure
       if ss_params.enabled:
         from mmtbx.secondary_structure import process_structure
+        t0=time.time()
+        print >> self.log, "  Finding SS restraints..."
         ss_manager = process_structure(
             params=ss_params,
             processed_pdb_file=self,
             grm=self._geometry_restraints_manager,
             log=self.log)
         ss_manager.initialize(log=self.log)
+        t1=time.time()
+        print >> self.log, "  Time for finding SS restraints: %.2f" % (t1-t0)
+        print >> self.log, "  Creating SS restraints..."
         (hb_proxies, hb_angle_proxies, planarity_proxies,
         parallelity_proxies) = ss_manager.create_all_new_restraints(
             pdb_hierarchy=self.all_chain_proxies.pdb_hierarchy,
@@ -4961,15 +4964,35 @@ class process(object):
             log=self.log)
         pdb_h_atoms = self.all_chain_proxies.pdb_hierarchy.atoms()
         # for p in hb_proxies:
-        #   print "H-bond:",p.i_seqs, pdb_h_atoms[p.i_seqs[0]].id_str(),pdb_h_atoms[p.i_seqs[1]].id_str()
+        #   print "H-bond:",p.i_seqs, pdb_h_atoms[p.i_seqs[0]].id_str(),pdb_h_atoms[p.i_seqs[1]].id_str(), p.origin_id
+        # max_hb_dist = 0
+        # for p in hb_proxies:
+        #   d = pdb_h_atoms[p.i_seqs[0]].distance(pdb_h_atoms[p.i_seqs[1]])
+        #   if d > 4.5:
+        #     print "H-bond:",p.i_seqs, pdb_h_atoms[p.i_seqs[0]].id_str(),pdb_h_atoms[p.i_seqs[1]].id_str()
+        #   if d > max_hb_dist:
+        #     max_hb_dist = d
+        t2=time.time()
+        print >> self.log, "  Time for creating SS restraints: %.2f" % (t2-t1)
+        print >> self.log, "  Adding SS restraints..."
         self._geometry_restraints_manager.add_new_hbond_restraints_in_place(
-            hb_proxies,
-            self.all_chain_proxies.sites_cart)
+            proxies=hb_proxies,
+            sites_cart=self.all_chain_proxies.sites_cart)
+        t21 = time.time()
         self._geometry_restraints_manager.add_angles_in_place(hb_angle_proxies)
+        t22 = time.time()
         self._geometry_restraints_manager.add_planarities_in_place(
             planarity_proxies)
+        t23 = time.time()
         self._geometry_restraints_manager.add_parallelities_in_place(
             parallelity_proxies)
+        t3=time.time()
+        print >> self.log, "  Total time for adding SS restraints: %.2f" % (t3-t2)
+        # print >> self.log, "    Bonds : %f" % (t21-t2)
+        # print >> self.log, "    Angles: %f" % (t22-t21)
+        # print >> self.log, "    Planes: %f" % (t23-t22)
+        # print >> self.log, "    Parall: %f" % (t3-t23)
+        # print >> self.log, "Done with SS restraints..."
       if (self.log is not None):
         print >> self.log, \
           "  Time building geometry restraints manager: %.2f seconds" % (
