@@ -1404,8 +1404,7 @@ class ncs_group_object(object):
       f.close()
       fn  = file_name_prefix + "simple_ncs_from_pdb.ncs"
       f=open(fn,'w')
-      spec_object.format_phil_for_phenix_refine(
-        log=log,out=f,restraint=restraint)
+      spec_object.format_phil_for_phenix_refine(log=log,out=f)
       f.close()
       if show_ncs_phil:
         fn = file_name_prefix + 'simple_ncs_from_pdb.phil'
@@ -2322,4 +2321,3 @@ class selections(object):
     self.copy_sel         = copy_sel
     self.not_in_master    = not_in_master
     self.not_in_copy      = not_in_copy
-
