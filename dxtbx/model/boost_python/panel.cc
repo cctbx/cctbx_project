@@ -145,6 +145,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       data["trusted_range"] = p.get_trusted_range();
       data["thickness"] = p.get_thickness();
       data["material"] = p.get_material();
+      data["mu"] = p.get_mu();
       data["mask"] = boost::python::list(p.get_mask());
       data["px_mm_strategy"] = p.get_px_mm_strategy();
       return boost::python::make_tuple(
@@ -178,6 +179,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       p.set_trusted_range(extract< tiny<double,2> >(data["trusted_range"]));
       p.set_thickness(extract<double>(data["thickness"]));
       p.set_material(extract<std::string>(data["material"]));
+      p.set_mu(extract<double>(data["mu"]));
       p.set_px_mm_strategy(extract< shared_ptr<PxMmStrategy> >(data["px_mm_strategy"]));
       scitbx::af::shared<int4> mask =
         boost::python::extract< scitbx::af::shared<int4> >(
@@ -226,7 +228,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     std::string name = obj->name();
     result["type"] = name;
     if (name == "SimplePxMmStrategy") {
-    }else if (name == "ParallaxCorrectedPxMmStrategy") {
+    } else if (name == "ParallaxCorrectedPxMmStrategy") {
       boost::shared_ptr<ParallaxCorrectedPxMmStrategy> d =
         boost::dynamic_pointer_cast<ParallaxCorrectedPxMmStrategy>(obj);
       result["mu"] = d->mu();
@@ -250,6 +252,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     result["trusted_range"] = obj.get_trusted_range();
     result["thickness"] = obj.get_thickness();
     result["material"] = obj.get_material();
+    result["mu"] = obj.get_mu();
     result["mask"] = boost::python::list(obj.get_mask());
     result["px_mm_strategy"] = to_dict(obj.get_px_mm_strategy());
     return result;
@@ -277,6 +280,9 @@ namespace dxtbx { namespace model { namespace boost_python {
     }
     if (obj.has_key("material")) {
       result->set_material(boost::python::extract<std::string>(obj["material"]));
+    }
+    if (obj.has_key("mu")) {
+      result->set_mu(boost::python::extract<double>(obj["mu"]));
     }
     if (obj.has_key("mask")) {
       scitbx::af::shared<int4> mask =
@@ -410,7 +416,8 @@ namespace dxtbx { namespace model { namespace boost_python {
                 tiny<std::size_t,2>,
                 tiny<double,2>,
                 double,
-                std::string>((
+                std::string,
+                double>((
         arg("type"),
         arg("name"),
         arg("fast_axis"),
@@ -420,7 +427,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         arg("image_size"),
         arg("trusted_range"),
         arg("thickness"),
-        arg("material"))))
+        arg("material"),
+        arg("mu")=0.0)))
       .def("get_pixel_size", &PanelData::get_pixel_size)
       .def("set_pixel_size", &PanelData::set_pixel_size)
       .def("get_image_size", &PanelData::get_image_size)
@@ -431,6 +439,8 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("set_thickness", &PanelData::set_thickness)
       .def("get_material", &PanelData::get_material)
       .def("set_material", &PanelData::set_material)
+      .def("get_mu", &PanelData::get_mu)
+      .def("set_mu", &PanelData::set_mu)
       .def("set_mask", &PanelData::set_mask)
       .def("get_mask", &PanelData::get_mask)
       .def("add_mask", &PanelData::add_mask)
@@ -448,28 +458,8 @@ namespace dxtbx { namespace model { namespace boost_python {
                 tiny<std::size_t,2>,
                 tiny<double,2>,
                 double,
-                std::string>((
-        arg("type"),
-        arg("name"),
-        arg("fast_axis"),
-        arg("slow_axis"),
-        arg("origin"),
-        arg("pixel_size"),
-        arg("image_size"),
-        arg("trusted_range"),
-        arg("thickness"),
-        arg("material"))))
-      .def(init<std::string,
                 std::string,
-                tiny<double,3>,
-                tiny<double,3>,
-                tiny<double,3>,
-                tiny<double,2>,
-                tiny<std::size_t,2>,
-                tiny<double,2>,
-                double,
-                std::string,
-                shared_ptr<PxMmStrategy> >((
+                double>((
         arg("type"),
         arg("name"),
         arg("fast_axis"),
@@ -480,7 +470,31 @@ namespace dxtbx { namespace model { namespace boost_python {
         arg("trusted_range"),
         arg("thickness"),
         arg("material"),
-        arg("px_mm"))))
+        arg("mu")=0.0)))
+      .def(init<std::string,
+                std::string,
+                tiny<double,3>,
+                tiny<double,3>,
+                tiny<double,3>,
+                tiny<double,2>,
+                tiny<std::size_t,2>,
+                tiny<double,2>,
+                double,
+                std::string,
+                shared_ptr<PxMmStrategy>,
+                double >((
+        arg("type"),
+        arg("name"),
+        arg("fast_axis"),
+        arg("slow_axis"),
+        arg("origin"),
+        arg("pixel_size"),
+        arg("image_size"),
+        arg("trusted_range"),
+        arg("thickness"),
+        arg("material"),
+        arg("px_mm"),
+        arg("mu")=0.0)))
       .def("get_image_size_mm", &Panel::get_image_size_mm)
       .def("get_px_mm_strategy", &Panel::get_px_mm_strategy)
       .def("set_px_mm_strategy", &Panel::set_px_mm_strategy)

@@ -52,11 +52,12 @@ namespace dxtbx { namespace model {
           tiny<std::size_t,2> image_size,
           tiny<double,2> trusted_range,
           double thickness,
-          std::string material)
+          std::string material,
+          double mu)
       : PanelData(type, name,
           fast_axis, slow_axis, origin,
           pixel_size, image_size,
-          trusted_range, thickness, material),
+                  trusted_range, thickness, material, mu),
         convert_coord_(new SimplePxMmStrategy()) {}
 
     /** Construct with data with px/mm strategy */
@@ -70,11 +71,12 @@ namespace dxtbx { namespace model {
           tiny<double,2> trusted_range,
           double thickness,
           std::string material,
-          shared_ptr<PxMmStrategy> convert_coord)
+          shared_ptr<PxMmStrategy> convert_coord,
+          double mu)
       : PanelData(type, name,
           fast_axis, slow_axis, origin,
           pixel_size, image_size,
-          trusted_range, thickness, material),
+                  trusted_range, thickness, material, mu),
         convert_coord_(convert_coord) {}
 
     virtual ~Panel() {}
@@ -237,6 +239,7 @@ namespace dxtbx { namespace model {
     os << "  trusted_range: " << p.get_trusted_range().const_ref() << std::endl;
     os << "  thickness: " << p.get_thickness() << std::endl;
     os << "  material: " << p.get_material() << std::endl;
+    os << "  mu: " << p.get_mu() << std::endl;
     os << "  fast_axis: " << p.get_fast_axis().const_ref() << std::endl;
     os << "  slow_axis: " << p.get_slow_axis().const_ref() << std::endl;
     os << "  origin: " << p.get_origin().const_ref() << std::endl;

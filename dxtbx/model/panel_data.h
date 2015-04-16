@@ -33,7 +33,8 @@ namespace dxtbx { namespace model {
       : pixel_size_(0.0, 0.0),
         image_size_(0, 0),
         trusted_range_(0.0, 0.0),
-        thickness_(0.0) {}
+        thickness_(0.0),
+        mu_(0.0) {}
 
     /** Construct with data */
     PanelData(std::string type,
@@ -45,12 +46,14 @@ namespace dxtbx { namespace model {
           tiny<std::size_t,2> image_size,
           tiny<double,2> trusted_range,
           double thickness,
-          std::string material)
+          std::string material,
+          double mu)
       : pixel_size_(pixel_size),
         image_size_(image_size),
         trusted_range_(trusted_range),
         thickness_(thickness),
-        material_(material) {
+        material_(material),
+        mu_(mu) {
       set_type(type);
       set_name(name);
       set_local_frame(fast_axis, slow_axis, origin);
@@ -108,6 +111,16 @@ namespace dxtbx { namespace model {
       material_ = material;
     }
 
+    /** Set mu */
+    void set_mu(const double mu) {
+      mu_ = mu;
+    }
+
+    /** Get mu */
+    double get_mu() const {
+      return mu_;
+    }
+
     /** Get the mask array */
     scitbx::af::shared<int4> get_mask() const {
       scitbx::af::shared<int4> result((scitbx::af::reserve(mask_.size())));
@@ -130,7 +143,7 @@ namespace dxtbx { namespace model {
     bool operator==(const PanelData &rhs) const {
       return VirtualPanel::operator==(rhs)
           && image_size_.const_ref().all_eq(rhs.image_size_.const_ref())
-          && pixel_size_.const_ref().all_approx_equal(rhs.pixel_size_.const_ref(), 1e-6)
+          && pixel_size_.const_ref().all_approx_equal(rhs.pixel_size_.const_ref(), 1e-3)
           && trusted_range_.const_ref().all_approx_equal(rhs.trusted_range_.const_ref(), 1e-6);
     }
 
@@ -155,10 +168,10 @@ namespace dxtbx { namespace model {
     tiny<double,2> trusted_range_;
     double thickness_;
     std::string material_;
+    double mu_;
     scitbx::af::shared<int4> mask_;
   };
 
 }} // namespace dxtbx::model
 
 #endif // DXTBX_MODEL_PANEL_H
-
