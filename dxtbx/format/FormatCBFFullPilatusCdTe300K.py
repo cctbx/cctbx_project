@@ -142,6 +142,7 @@ class FormatCBFFullPilatusCdTe300K(FormatCBFFullPilatus):
         mu = table.mu_at_angstrom(wavelength) / 10.0
 
         for panel in detector:
+          panel.set_mu(table.mu_at_angstrom(wavelength))
           panel.set_px_mm_strategy(ParallaxCorrectedPxMmStrategy(mu, thickness))
 
     return detector
