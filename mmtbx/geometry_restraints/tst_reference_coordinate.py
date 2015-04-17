@@ -110,10 +110,8 @@ ATOM     26  C   GLY A  22       5.373   9.358   8.580  1.00 33.22           C
 ATOM     27  O   GLY A  22       5.196  10.531   8.906  1.00 30.06           O
 """
 
-def exercise_1():
+def exercise_1(mon_lib_srv, ener_lib):
   pdb_in = simple_pdb()
-  mon_lib_srv = server.server()
-  ener_lib = server.ener_lib()
   params = pdb_interpretation.master_params.extract()
   processed_pdb_file = pdb_interpretation.process(
     mon_lib_srv=mon_lib_srv,
@@ -189,11 +187,11 @@ def exercise_1():
   assert len(grm.generic_restraints_manager.reference_manager.
              reference_coordinate_proxies) == 0
 
-def exercise_2():
+def exercise_2(mon_lib_srv, ener_lib):
   for use_reference in [True, False, None]:
     processed_pdb_file = pdb_interpretation.process(
-      mon_lib_srv              = server.server(),
-      ener_lib                 = server.ener_lib(),
+      mon_lib_srv              = mon_lib_srv,
+      ener_lib                 = ener_lib,
       raw_records              = flex.std_string(pdb_str_2.splitlines()),
       strict_conflict_handling = True,
       force_symmetry           = True,
@@ -262,12 +260,12 @@ def exercise_2():
       flex.max(flex.sqrt((xrs2.sites_cart().select(~selection_bool) -
                           xrs3.sites_cart().select(~selection_bool)).dot())), 0)
 
-def exercise_3():
+def exercise_3(mon_lib_srv, ener_lib):
   #test torsion restraints
   for use_reference in ['True', 'False', 'top_out', 'None']:
     processed_pdb_file = pdb_interpretation.process(
-      mon_lib_srv              = server.server(),
-      ener_lib                 = server.ener_lib(),
+      mon_lib_srv              = mon_lib_srv,
+      ener_lib                 = ener_lib,
       raw_records              = flex.std_string(pdb_str_2.splitlines()),
       strict_conflict_handling = True,
       force_symmetry           = True,
@@ -400,7 +398,9 @@ def exercise_3():
               reference_torsion_proxies) == 18
 
 if (__name__ == "__main__") :
-  exercise_1()
-  exercise_2()
-  exercise_3()
+  mon_lib_srv = server.server()
+  ener_lib = server.ener_lib()
+  exercise_1(mon_lib_srv, ener_lib)
+  exercise_2(mon_lib_srv, ener_lib)
+  exercise_3(mon_lib_srv, ener_lib)
   print "OK"
