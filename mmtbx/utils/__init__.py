@@ -2309,12 +2309,13 @@ def rms_b_iso_or_b_equiv_bonded(restraints_manager, xray_structure,
     result = math.sqrt(flex.sum(values) / values.size())
   return result
 
-def switch_rotamers(pdb_hierarchy, mode, selection=None):
+def switch_rotamers(pdb_hierarchy, mode, selection=None, mon_lib_srv=None):
   if(mode is None): return pdb_hierarchy
   pdb_hierarchy.reset_i_seq_if_necessary()
   assert mode in ["max_distant","min_distant","exact_match","fix_outliers"],mode
   from mmtbx.command_line import lockit
-  mon_lib_srv = mmtbx.monomer_library.server.server()
+  if mon_lib_srv is None:
+    mon_lib_srv = mmtbx.monomer_library.server.server()
   sites_cart_start = pdb_hierarchy.atoms().extract_xyz()
   sites_cart_result = sites_cart_start.deep_copy()
   if(mode == "fix_outliers"):

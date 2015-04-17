@@ -194,10 +194,12 @@ def collect_sidechain_chi_angles (pdb_hierarchy, atom_selection=None) :
   residue_chis = []
   if atom_selection is not None:
     if (isinstance(atom_selection, flex.bool)):
-      atom_selection = atom_selection.iselection()
+      actual_selection = atom_selection.iselection()
+    elif (isinstance(atom_selection, flex.size_t)):
+      actual_selection = atom_selection
   if atom_selection is None:
-    atom_selection = flex.bool(
-      len(pdb_hierarchy.atoms().extract_xyz()),
+    actual_selection = flex.bool(
+      len(pdb_hierarchy.atoms()),
       True).iselection()
   for model in pdb_hierarchy.models() :
     for chain in model.chains() :
@@ -219,10 +221,11 @@ def collect_sidechain_chi_angles (pdb_hierarchy, atom_selection=None) :
               i_seqs = [ atom.i_seq for atom in atoms ]
               chis.append(group_args(chi_id=i, i_seqs=i_seqs))
           atoms_in_selection = True
-          for i_seq in i_seqs:
-            if i_seq not in atom_selection:
-              atoms_in_selection = False
-              break
+          if atom_selection is not None:
+            for i_seq in i_seqs:
+              if i_seq not in actual_selection:
+                atoms_in_selection = False
+                break
           if (len(chis) > 0) and (atoms_in_selection) :
             residue_info = group_args(
               residue_name=residue.resname,
@@ -248,10 +251,12 @@ def collect_residue_torsion_angles (pdb_hierarchy,
 
   if atom_selection is not None:
     if (isinstance(atom_selection, flex.bool)):
-      atom_selection = atom_selection.iselection()
+      actual_selection = atom_selection.iselection()
+    elif (isinstance(atom_selection, flex.size_t)):
+      actual_selection = atom_selection
   if atom_selection is None:
-    atom_selection = flex.bool(
-      len(pdb_hierarchy.atoms().extract_xyz()),
+    actual_selection = flex.bool(
+      len(pdb_hierarchy.atoms()),
       True).iselection()
   previous_residue = None
   next_residue = None
@@ -290,9 +295,11 @@ def collect_residue_torsion_angles (pdb_hierarchy,
                   prevC = atom
               if prevCA is not None and prevC is not None:
                 atoms_in_selection = True
-                for atom in [prevCA, prevC, curN, curCA]:
-                  if atom.i_seq not in atom_selection:
-                    atoms_in_selection = False
+                if atom_selection is not None:
+                  for atom in [prevCA, prevC, curN, curCA]:
+                    if atom.i_seq not in actual_selection:
+                      atoms_in_selection = False
+                      break
                 if atoms_in_selection:
                   omega = \
                     mmtbx.rotamer.omega_from_atoms(prevCA, prevC, curN, curCA)
@@ -312,9 +319,11 @@ def collect_residue_torsion_angles (pdb_hierarchy,
                   prevC = atom
               if prevC is not None:
                 atoms_in_selection = True
-                for atom in [prevC, curN, curCA, curC]:
-                  if atom.i_seq not in atom_selection:
-                    atoms_in_selection = False
+                if atom_selection is not None:
+                  for atom in [prevC, curN, curCA, curC]:
+                    if atom.i_seq not in actual_selection:
+                      atoms_in_selection = False
+                      break
                 if atoms_in_selection:
                   phi = mmtbx.rotamer.phi_from_atoms(prevC, curN, curCA, curC)
                   if phi is not None:
@@ -333,9 +342,11 @@ def collect_residue_torsion_angles (pdb_hierarchy,
                   nextN = atom
               if nextN is not None:
                 atoms_in_selection = True
-                for atom in [curN, curCA, curC, nextN]:
-                  if atom.i_seq not in atom_selection:
-                    atoms_in_selection = False
+                if atom_selection is not None:
+                  for atom in [curN, curCA, curC, nextN]:
+                    if atom.i_seq not in actual_selection:
+                      atoms_in_selection = False
+                      break
                 if atoms_in_selection:
                   psi = mmtbx.rotamer.psi_from_atoms(curN, curCA, curC, nextN)
                   if psi is not None:
