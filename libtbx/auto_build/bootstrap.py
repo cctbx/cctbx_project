@@ -541,7 +541,7 @@ class Builder(object):
     # Configure, make
     if build and not self.download_only:
       self.add_configure()
-      self.add_make(nproc=nproc)
+      self.add_make()
       self.add_install()
 
     # Tests, tests
