@@ -13,6 +13,7 @@ from package_defs import *
 from optparse import OptionParser
 import os.path as op
 import sys
+import zipfile
 
 # XXX HACK
 libtbx_path = op.abspath(op.dirname(op.dirname(__file__)))
@@ -21,7 +22,7 @@ if (not libtbx_path in sys.path) :
 
 class installer (object) :
   def __init__ (self, args=None, packages=None, log=sys.stdout) :
-    assert (sys.platform in ["linux2", "linux3", "darwin"])
+    #assert (sys.platform in ["linux2", "linux3", "darwin"])
     check_python_version()
     self.log = log
     print >> log, """
@@ -108,6 +109,16 @@ class installer (object) :
       if (not op.isdir(dir_name)) :
         print >> log, "  creating %s" % dir_name
         os.makedirs(dir_name)
+    # Shortcut: Extract python for Windows bundled with all preinstalled modules
+    if sys.platform == "win32":
+      winpython = zipfile.ZipFile(WIN64PYTHON_PKG, 'r') # self.fetch_package(WIN64PYTHON_PKG)
+      members = winpython.namelist()
+      for zipinfo in members:
+        print >> self.log, "extracting", zipinfo
+        winpython.extract(zipinfo, path=os.path.join(self.base_dir,'bin'))
+      winpython.close()
+      # Quit now as all required packages are in the precompiled python package
+      return
 
     # Which Python interpreter:
     self.python_exe = None
