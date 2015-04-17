@@ -1,11 +1,12 @@
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 from __future__ import division
-import os
+import os, os.path, posixpath
 import sys
 import subprocess
 import optparse
 #import getpass
 import urlparse
+import shutil, tarfile
 
 # To download this file:
 # svn export svn://svn.code.sf.net/p/cctbx/code/trunk/libtbx/auto_build/bootstrap.py
@@ -34,13 +35,33 @@ class ShellCommand(object):
       except Exception, e:
         pass
 
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if command[0] == 'curl':
       # XXX Ugly hack: intercept attemps to spawn external curl.
       # There is no need to depend on curl since Python has urllib2.
       Downloader().download_to_file(command[1], os.path.join(workdir, command[3]))
       return
-
+    if command[0] == 'tar':
+      try:
+        # XXX use tarfile rather than unix tar command which is not platform independent
+        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+        tar = tarfile.open(os.path.join(workdir, command[2]))
+        tar.extractall(path=workdir)
+        tar.close()
+      except Exception, e:
+        print "Extracting tar archive resulted in error:\n", e
+      return
+    if command[0] == 'rm' :
+      # XXX use shutil rather than rm which is not platform independent
+      for dir in command[2:]:
+        if os.path.exists(dir):
+          shutil.rmtree(dir)
+        return
     try:
+      #print "workdir, os.getcwd =", workdir, os.getcwd()
+      #if not os.path.isabs(command[0]):
+        # executable path isn't located relative to workdir
+      #  command[0] = os.path.join(workdir, command[0])
       p = subprocess.Popen(
         args=command,
         cwd=workdir,
@@ -48,9 +69,10 @@ class ShellCommand(object):
         stderr=sys.stderr
       )
     except Exception, e:
+      print e
       if isinstance(e, OSError):
         if e.errno == 2:
-          executable = os.path.normpath(os.path.join(workdir, command[0]))
+          executable = os.path.abspath(os.path.join(workdir, command[0]))
           raise RuntimeError("Could not run %s: File not found" % executable)
       if 'child_traceback' in dir(e):
         print "Calling subprocess resulted in error; ", e.child_traceback
@@ -175,11 +197,12 @@ class cleanup_ext_class(object):
     self.remove_ext_files()
 
 ##### Modules #####
-
 class SourceModule(object):
   _modules = {}
   module = None
   authenticated = None
+  authenticatedWindows = None
+  maketarfile = None
   anonymous = None
   def __init__(self):
     if not self._modules:
@@ -200,6 +223,7 @@ class SourceModule(object):
 
   def get_url(self, auth=None):
     repo = None
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     try:
       repo = self.get_authenticated(auth=auth)
     except KeyError, e:
@@ -213,9 +237,17 @@ class SourceModule(object):
 
   def get_authenticated(self, auth=None):
     auth = auth or {}
+    if self.authenticatedWindows and sys.platform == 'win32':
+      return [self.authenticatedWindows[0], self.authenticatedWindows[1]%auth]
     if not self.authenticated:
       return None
     return [self.authenticated[0], self.authenticated[1]%auth]
+
+  def get_tarauthenticated(self, auth=None):
+    auth = auth or {}
+    if self.maketarfile and sys.platform == 'win32':
+      return [self.maketarfile[0]%auth, self.maketarfile[1], self.maketarfile[2]]
+    return None, None, None
 
   def get_anonymous(self):
     return self.anonymous
@@ -223,24 +255,31 @@ class SourceModule(object):
 # Core external repositories
 # The trailing slashes ARE significant.
 # These must all provide anonymous access.
+# On Windows due to absence of rsync we use pscp from the Putty programs.
 class ccp4io_module(SourceModule):
   module = 'ccp4io'
   anonymous = ['curl', 'http://cci.lbl.gov/repositories/ccp4io.gz']
-  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/ccp4io/']
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/ccp4io/trunk']
+  #authenticatedWindows = ['pscp', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/ccp4io/']
 
 class annlib_module(SourceModule):
   module = 'annlib'
   anonymous = ['curl', 'http://cci.lbl.gov/repositories/annlib.gz']
+  authenticatedWindows = anonymous
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/annlib/']
 
 class scons_module(SourceModule):
   module = 'scons'
   anonymous = ['curl', 'http://cci.lbl.gov/repositories/scons.gz']
+  authenticatedWindows = anonymous
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/scons/']
 
 class boost_module(SourceModule):
   module = 'boost'
   anonymous = ['curl', 'http://cci.lbl.gov/repositories/boost.gz']
+  # Compared to rsync pscp is very slow when downloading multiple files
+  # Resort to downloading the compressed archive on Windows
+  authenticatedWindows = anonymous
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/boost_hot/']
 
 # Core CCTBX repositories
@@ -356,10 +395,18 @@ class buildbot_module(SourceModule):
 # Phaser repositories
 class phaser_module(SourceModule):
   module = 'phaser'
+  # Compared to rsync pscp is very slow when downloading multiple files
+  # Resort to downloading a compressed archive on Windows. Must create it first
+  authenticatedWindows = ['pscp', '%(cciuser)s@cci.lbl.gov:phaser.tar.gz']
+  maketarfile = ['%(cciuser)s@cci.lbl.gov', 'phaser.tar.gz', '/net/cci/auto_build/repositories/phaser']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/phaser/']
 
 class phaser_regression_module(SourceModule):
   module = 'phaser_regression'
+  # Compared to rsync pscp is very slow when downloading multiple files
+  # Resort to downloading a compressed archive on Windows. Must create it first
+  authenticatedWindows = ['pscp', '%(cciuser)s@cci.lbl.gov:phaser_regression.tar.gz']
+  maketarfile = ['%(cciuser)s@cci.lbl.gov', 'phaser_regression.tar.gz', '/net/cci/auto_build/repositories/phaser_regression']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/phaser_regression/']
 
 # DIALS repositories
@@ -450,22 +497,22 @@ class Builder(object):
       verbose=False,
       download_only=False,
     ):
-    if nproc is None: nproc=4
+    if nproc is None:
+      self.nproc=4
+    else:
+      self.nproc=nproc
     """Create and add all the steps."""
     # self.cciuser = cciuser or getpass.getuser()
     self.set_auth(auth)
     self.steps = []
     self.category = category
-    self.platform = platform
+    self.platform = sys.platform
     self.name = '%s-%s'%(self.category, self.platform)
-    # Windows convenience hack.
-    if 'windows' in self.platform:
-      base = False
-      sep = sep or '\\'
-      python_base = python_base or self.opjoin(*['..', 'base', 'Python', 'python.exe'])
     # Platform configuration.
-    self.sep = sep or os.sep
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.python_base = self.opjoin(*['..', 'base', 'bin', 'python'])
+    if 'win32'==sys.platform:
+      self.python_base = self.opjoin(*[os.getcwd(), 'base', 'bin', 'python', 'python.exe'])
     self.with_python = with_python
     if self.with_python:
       self.python_base = with_python
@@ -535,7 +582,8 @@ class Builder(object):
       i.run()
 
   def opjoin(self, *args):
-    return self.sep.join(args)
+    #return self.sep.join(args)
+    return os.path.join(*args)
 
   def get_codebases(self):
     return self.CODEBASES + self.CODEBASES_EXTRA
@@ -544,16 +592,20 @@ class Builder(object):
     return self.HOT + self.HOT_EXTRA
 
   def get_libtbx_configure(self):
+    if sys.platform == "win32":
+      return list(set(self.LIBTBX + self.LIBTBX_EXTRA) - set(['cbflib']))
     return self.LIBTBX + self.LIBTBX_EXTRA
+
 
   def add_init(self):
     pass
 
   def cleanup(self, dirs=None):
     dirs = dirs or []
+    cmd=['rm', '-rf'] + dirs
     self.add_step(self.shell(
       name='cleanup',
-      command=['rm', '-rf'] + dirs,
+      command =cmd,
       workdir=['.']
     ))
 
@@ -570,8 +622,18 @@ class Builder(object):
 
   def add_module(self, module):
     method, url = MODULES.get_module(module)().get_url(auth=self.get_auth())
+    if sys.platform == "win32":
+      if module in ["cbflib",]: # we can't currently compile cbflib for Windows
+        return
     if method == 'rsync':
       self._add_rsync(module, url)
+    elif sys.platform == "win32" and method == 'pscp':
+      tarurl, arxname, dirpath = MODULES.get_module(module)().get_tarauthenticated(auth=self.get_auth())
+      if tarurl:
+        self._add_remote_make_tar(module, tarurl, arxname, dirpath)
+      self._add_pscp(module, url)
+      if tarurl:
+        self._add_remote_rm_tar(module, tarurl, arxname)
     elif method == 'curl':
       self._add_curl(module, url)
     elif method == 'svn':
@@ -596,6 +658,59 @@ class Builder(object):
       workdir=['modules']
     ))
 
+  def _add_remote_make_tar(self, module, tarurl, arxname, dirpath):
+    """Add packages not in source control."""
+    # tar up hot packages for quick file transfer to windows since there's no rsync and pscp is painfully slow
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    self.add_step(self.shell(
+      name='hot %s'%module,
+      command=[
+        'plink',
+        tarurl,
+        'cd',
+        posixpath.split(dirpath)[0],
+        '&&',
+        'tar',
+        'cvfz',
+        '~/' + arxname,
+        posixpath.basename(dirpath)
+      ],
+      workdir=['modules']
+    ))
+
+  def _add_remote_rm_tar(self, module, tarurl, arxname):
+    self.add_step(self.shell(
+      name='hot %s'%module,
+      command=[
+        'plink',
+        tarurl,
+        'rm ',
+        arxname,
+      ],
+      workdir=['modules']
+    ))
+    self.add_step(self.shell(
+      command=['tar', 'xzf', arxname],
+      workdir=['modules']
+    ))
+
+  def _add_pscp(self, module, url):
+    """Add packages not in source control."""
+    # pscp the hot packages.
+    url1 = url
+    if url[-1] == '/':
+      url1 = url[:-1]
+    self.add_step(self.shell(
+      name='hot %s'%module,
+      command=[
+        'pscp',
+        '-r',
+        url1,
+        '.',
+      ],
+      workdir=['modules']
+    ))
+
   def _add_curl(self, module, url):
     filename = urlparse.urlparse(url).path.split('/')[-1]
     self.add_step(self.shell(
@@ -603,11 +718,12 @@ class Builder(object):
       workdir=['modules'],
     ))
     self.add_step(self.shell(
-      command=['tar', '-xvz', '-f', filename],
+      command=['tar', 'xvzf', filename],
       workdir=['modules']
     ))
 
   def _add_svn(self, module, url):
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if os.path.exists(self.opjoin(*['modules', module, '.svn'])):
       # print "using update..."
       self.add_step(self.shell(
@@ -627,15 +743,17 @@ class Builder(object):
     pass
 
   def add_command(self, command, name=None, workdir=None, args=None, **kwargs):
+    if sys.platform == 'win32':
+      command = command + '.bat'
     # Relative path to workdir.
     workdir = workdir or ['build']
-    dots = [".."]*len(workdir)
+    dots = [] # [".."]*len(workdir)
     if workdir[0] == '.':
       dots = []
-    dots.extend(['build', 'bin', command])
+    dots.extend([os.getcwd(), 'build', 'bin', command])
     self.add_step(self.shell(
       name=name or command,
-      command=[self.opjoin(*dots)] + (args or []),
+      command=[os.path.abspath(self.opjoin(*dots))] + (args or []),
       workdir=workdir,
       **kwargs
     ))
@@ -656,7 +774,7 @@ class Builder(object):
       args=args,
       haltOnFailure=haltOnFailure,
       **kwargs
-      )
+    )
 
   def add_test_parallel(self, module=None):
     self.add_command(
@@ -671,7 +789,7 @@ class Builder(object):
   def add_base(self, extra_opts=[]):
     """Build the base dependencies, e.g. Python, HDF5, etc."""
     if self.with_python:
-      extra_opts = ['--with-python',self.with_python]
+      extra_opts = ['--with-python', self.with_python]
     if self.verbose:
       extra_opts.append('-v')
     if self.download_only:
@@ -682,7 +800,8 @@ class Builder(object):
         'python',
         self.opjoin('modules', 'cctbx_project', 'libtbx', 'auto_build', 'install_base_packages.py'),
         '--python-shared',
-        #'--skip-if-exists',
+        '--skip-if-exists',
+        '--nproc=%s' %str(self.nproc),
         '--%s'%self.BASE_PACKAGES
       ] + extra_opts,
       workdir=['.']
@@ -690,17 +809,17 @@ class Builder(object):
 
   def add_configure(self):
     self.add_step(self.shell(command=[
-        self.python_base,
+        self.python_base, # default to using our python rather than system python
         self.opjoin('..', 'modules', 'cctbx_project', 'libtbx', 'configure.py')
         ] + self.get_libtbx_configure(),
       workdir=['build'],
       description="run configure.py",
     ))
 
-  def add_make(self, nproc=4):
+  def add_make(self):
     # Todo: nproc=auto
-    assert nproc
-    self.add_command('libtbx.scons', args=['-j', str(nproc)])
+    assert self.nproc
+    self.add_command('libtbx.scons', args=['-j', str(self.nproc)])
 
   def add_install(self):
     """Run after compile, before tests."""
@@ -760,6 +879,7 @@ class CCIBuilder(Builder):
 class CCTBXBuilder(CCIBuilder):
   BASE_PACKAGES = 'cctbx'
   def add_tests(self):
+#    self.add_step(cleanup_ext_class(".pyc", "modules"))
     self.add_test_command('libtbx.import_all_ext')
     self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
     self.add_test_command('cctbx_regression.test_nightly')
@@ -860,7 +980,7 @@ class PhenixBuilder(CCIBuilder):
     self.add_test_command('libtbx.import_all_ext')
     self.add_test_command('cctbx_regression.test_nightly')
     # Windows convenience hack.
-    if 'windows' in self.platform:
+    if 'win32' == self.platform:
       self.add_test_command('phenix_regression.test_nightly_windows')
     else:
       self.add_test_command('phenix_regression.test_nightly')
