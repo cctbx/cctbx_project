@@ -11,8 +11,6 @@
 from __future__ import division
 
 from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
-from dxtbx.model import ParallaxCorrectedPxMmStrategy
-from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
 
 import os
 if 'P6M_60_PANEL' in os.environ:
