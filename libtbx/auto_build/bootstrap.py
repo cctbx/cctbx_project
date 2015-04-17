@@ -35,7 +35,6 @@ class ShellCommand(object):
       except Exception, e:
         pass
 
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if command[0] == 'curl':
       # XXX Ugly hack: intercept attemps to spawn external curl.
       # There is no need to depend on curl since Python has urllib2.
@@ -44,7 +43,6 @@ class ShellCommand(object):
     if command[0] == 'tar':
       try:
         # XXX use tarfile rather than unix tar command which is not platform independent
-        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
         tar = tarfile.open(os.path.join(workdir, command[2]))
         tar.extractall(path=workdir)
         tar.close()
@@ -223,7 +221,6 @@ class SourceModule(object):
 
   def get_url(self, auth=None):
     repo = None
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     try:
       repo = self.get_authenticated(auth=auth)
     except KeyError, e:
@@ -259,8 +256,8 @@ class SourceModule(object):
 class ccp4io_module(SourceModule):
   module = 'ccp4io'
   anonymous = ['curl', 'http://cci.lbl.gov/repositories/ccp4io.gz']
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/ccp4io/trunk']
-  #authenticatedWindows = ['pscp', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/ccp4io/']
+  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/ccp4io/']
+  authenticatedWindows = anonymous # ['pscp', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/ccp4io/']
 
 class annlib_module(SourceModule):
   module = 'annlib'
@@ -509,7 +506,6 @@ class Builder(object):
     self.platform = sys.platform
     self.name = '%s-%s'%(self.category, self.platform)
     # Platform configuration.
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.python_base = self.opjoin(*['..', 'base', 'bin', 'python'])
     if 'win32'==sys.platform:
       self.python_base = self.opjoin(*[os.getcwd(), 'base', 'bin', 'python', 'python.exe'])
@@ -592,7 +588,7 @@ class Builder(object):
     return self.HOT + self.HOT_EXTRA
 
   def get_libtbx_configure(self):
-    if sys.platform == "win32":
+    if sys.platform == "win32": # we can't currently compile cbflib for Windows
       return list(set(self.LIBTBX + self.LIBTBX_EXTRA) - set(['cbflib']))
     return self.LIBTBX + self.LIBTBX_EXTRA
 
@@ -661,7 +657,6 @@ class Builder(object):
   def _add_remote_make_tar(self, module, tarurl, arxname, dirpath):
     """Add packages not in source control."""
     # tar up hot packages for quick file transfer to windows since there's no rsync and pscp is painfully slow
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.add_step(self.shell(
       name='hot %s'%module,
       command=[
@@ -723,7 +718,6 @@ class Builder(object):
     ))
 
   def _add_svn(self, module, url):
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if os.path.exists(self.opjoin(*['modules', module, '.svn'])):
       # print "using update..."
       self.add_step(self.shell(
