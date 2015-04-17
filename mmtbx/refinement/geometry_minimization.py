@@ -155,11 +155,13 @@ def add_rotamer_restraints(
       restraints_manager,
       selection,
       sigma,
-      mode):
+      mode,
+      mon_lib_srv=None):
   pdb_hierarchy = mmtbx.utils.switch_rotamers(
     pdb_hierarchy = pdb_hierarchy,
     mode          = mode,
-    selection     = selection)
+    selection     = selection,
+    mon_lib_srv   = mon_lib_srv)
   restraints_manager.geometry.generic_restraints_manager.\
     reference_manager.remove_chi_angle_restraints(
       pdb_hierarchy = pdb_hierarchy)
