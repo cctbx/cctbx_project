@@ -87,6 +87,20 @@ namespace {
     return new flex<vec2<double> >::type(result, result.size());
   }
 
+  flex<vec2<double> >::type*
+  array_indices_as_double_from_array_focus_dimensions(
+    vec2<int> const& ij)
+  {
+    std::size_t result_size = ij[0] * ij[1];
+    af::shared<vec2<double> > result((af::reserve(result_size)));
+    for(std::size_t i=0;i<ij[0];i++) { //slow
+      for(std::size_t j=0;j<ij[1];j++) { //fast
+        result.push_back(vec2<double>(i,j));
+      }
+    }
+    return new flex<vec2<double> >::type(result, result.size());
+  }
+
   flex_double
   as_double(flex<vec2<double> >::type const& a)
   {
@@ -302,6 +316,7 @@ namespace boost_python {
         2*pickle_size_per_element<double>::value>())
       .def("__init__", make_constructor(join))
       .def("__init__", make_constructor(from_double))
+      .def("__init__", make_constructor(array_indices_as_double_from_array_focus_dimensions))
       .def("as_double", as_double)
       .def("add_selected",
         (object(*)(

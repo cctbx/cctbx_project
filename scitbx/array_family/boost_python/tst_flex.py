@@ -1879,6 +1879,14 @@ def exercise_flex_vec2_double():
   assert a.add_selected(indices=i, values=v) is a
   assert approx_equal(a, [(7,4,-3), (-2,3,4), (-1,13,5)])
 
+  #excercise constructor from 2D array focus to array indices as double:
+  array_focus = (3,4) # 3 slow, 4 fast
+  B = flex.vec2_double(array_focus)
+  assert list(B) == [
+    (0.0, 0.0), (0.0, 1.0), (0.0, 2.0), (0.0, 3.0),
+    (1.0, 0.0), (1.0, 1.0), (1.0, 2.0), (1.0, 3.0),
+    (2.0, 0.0), (2.0, 1.0), (2.0, 2.0), (2.0, 3.0)]
+
 def exercise_flex_vec3_int():
   flex.exercise_triple(flex.vec3_int)
   a = flex.vec3_int(((1,2,5), (-2,3,4), (3,4,3)))
