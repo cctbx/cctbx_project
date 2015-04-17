@@ -75,6 +75,10 @@ PYOPENGL_PKG = "PyOpenGL-3.1.0.tar.gz"
 # https://pypi.python.org/pypi/Send2Trash
 SEND2TRASH_PKG = "Send2Trash-1.3.0.tar.gz"
 
+# Windows precompiled compiled base packages
+WIN64PYTHON_PKG = "python2.7.9_x86_64_plus_relocatable.zip"
+WIN32PYTHON_PKG = "python2.7.9_x86_32_plus_relocatable.zip"
+
 # Various dependencies from external repositories, distributed as static
 # tarballs (since they are not under active development by us or our
 # collaborators)
