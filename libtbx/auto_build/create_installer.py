@@ -20,6 +20,7 @@ import os
 import sys
 import subprocess
 import imp
+import tarfile, zipfile
 
 import libtbx.auto_build.rpath
 
@@ -83,16 +84,28 @@ def archive(source, destination, tarfile=None):
   if not os.path.exists(source):
     print "Warning: source does not exist! Skipping: %s"%source
     return
-  shutil.copytree(
-    source,
-    destination,
-    ignore=shutil.ignore_patterns('*.pyc', '*.pyo', '.svn', '.git', '.swp', '.sconsign', '.o'),
-    symlinks=True
-    )
+  if os.path.basename(source) == 'base': # don't delete lib files from python
+    shutil.copytree(
+      source,
+      destination,
+      ignore=shutil.ignore_patterns('*.pyc', '*.pyo', '.svn', '.git', '.swp', '.sconsign', '.o', '*.obj'),
+      symlinks=True
+      )
+  else:
+    shutil.copytree(
+      source,
+      destination,
+      ignore=shutil.ignore_patterns('*.lib', '*.pyc', '*.pyo', '.svn', '.git', '.swp', '.sconsign', '.o', '*.obj'),
+      symlinks=True
+      )
 
 def tar(source, tarfile, cwd=None):
   assert not os.path.exists(tarfile), "File exists: %s"%tarfile
   print "Archiving: %s -> %s"%(source, tarfile)
+  # TODO: replace system call to tar with platform independent python tarfile module
+  #mytar = tarfile.open(tarfile, mode="r:gz")
+  #mytar.add(source, arcname=tarfile)
+  #tar.close()
   subprocess.check_call([
       'tar',
       '-cz',
@@ -159,11 +172,12 @@ class SetupInstaller(object):
       shutil.copyfile(self.license, os.path.join(self.dest_dir, 'LICENSE'))
     # Actual Python installer script
     shutil.copyfile(self.install_script, os.path.join(self.dest_dir, 'bin', 'install.py'))
-    # Write executable Bash script wrapping Python script
-    with open(os.path.join(self.dest_dir, 'install'), 'w') as f:
-      f.write(INSTALL_SH)
-    st = os.stat(os.path.join(self.dest_dir, "install"))
-    os.chmod(os.path.join(self.dest_dir, "install"), st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    if sys.platform != "win32":
+      # Write executable Bash script wrapping Python script
+      with open(os.path.join(self.dest_dir, 'install'), 'w') as f:
+        f.write(INSTALL_SH)
+      st = os.stat(os.path.join(self.dest_dir, "install"))
+      os.chmod(os.path.join(self.dest_dir, "install"), st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
   def copy_libtbx(self):
     # Copy over libtbx for setup.
@@ -204,6 +218,8 @@ class SetupInstaller(object):
     )
 
   def fix_permissions(self):
+    if sys.platform == "win32":
+      return
     subprocess.check_call([
       'chmod',
       '-R',
@@ -213,6 +229,8 @@ class SetupInstaller(object):
 
   def write_environment_files(self):
     """Generate shell scripts in the top-level installation directory."""
+    if sys.platform == "win32":
+      return
     print "Generating %s environment setup scripts..."%self.installer.product_name
     fmt = {'env_prefix':self.installer.product_name.upper(), 'version':self.version}
     # bash
@@ -224,11 +242,23 @@ class SetupInstaller(object):
 
   def make_dist(self):
     makedirs(self.dist_dir)
-    tar(
-      os.path.basename(self.dest_dir),
-      os.path.join(self.dist_dir, '%s.tar.gz'%os.path.basename(self.dest_dir)),
-      cwd=os.path.join(self.dest_dir, '..')
-    )
+    if sys.platform == "win32":
+      print "Creating zip archive of distribution"
+      myzip = zipfile.ZipFile(os.path.join(self.dist_dir, '%s.zip'%os.path.basename(self.dest_dir)),
+                               'w', zipfile.ZIP_DEFLATED)
+      for dirpath,dirs,files in os.walk(self.dest_dir):
+        for f in files:
+          fname = os.path.join(dirpath, f)
+          relfname = os.path.relpath(fname, os.path.join(os.getcwd(), "tmp"))
+          myzip.write(filename=fname, arcname=relfname)
+      myzip.close()
+    else:
+      print "Creating tar archive of distribution"
+      tar(
+        os.path.basename(self.dest_dir),
+        os.path.join(self.dist_dir, '%s.tar.gz'%os.path.basename(self.dest_dir)),
+        cwd=os.path.join(self.dest_dir, '..')
+      )
 
   def make_dist_pkg(self):
     if (not os.access("/Applications", os.W_OK|os.X_OK)) :
