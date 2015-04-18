@@ -1277,7 +1277,7 @@ def exercise_15():
     ncs_groups = ncs_inp.get_ncs_restraints_group_list()
   except Exception, e:
     exc = e
-  assert str(exc)=="More than one model in pdb hierarchy"
+  assert str(exc)=="Multi-model PDB (with MODEL-ENDMDL) is not supported."
 
 def exercise_16():
   """
