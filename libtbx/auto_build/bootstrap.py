@@ -279,6 +279,11 @@ class boost_module(SourceModule):
   authenticatedWindows = anonymous
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/boost_hot/']
 
+class libsvm_module(SourceModule):
+  module = 'libsvm'
+  anonymous = ['curl', 'http://cci.lbl.gov/repositories/libsvm.gz']
+  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/libsvm/']
+
 # Core CCTBX repositories
 # These must all provide anonymous access.
 class cctbx_module(SourceModule):
@@ -503,7 +508,7 @@ class Builder(object):
     self.set_auth(auth)
     self.steps = []
     self.category = category
-    self.platform = sys.platform
+    self.platform = platform
     self.name = '%s-%s'%(self.category, self.platform)
     # Platform configuration.
     self.python_base = self.opjoin(*['..', 'base', 'bin', 'python'])
@@ -851,6 +856,7 @@ class CCIBuilder(Builder):
     'boost',
     'scons',
     'ccp4io',
+    "libsvm",
   ]
   HOT_EXTRA = []
   # Configure for these cctbx packages
