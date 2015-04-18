@@ -67,10 +67,9 @@ class ShellCommand(object):
         stderr=sys.stderr
       )
     except Exception, e:
-      print e
       if isinstance(e, OSError):
         if e.errno == 2:
-          executable = os.path.abspath(os.path.join(workdir, command[0]))
+          executable = os.path.normpath(os.path.join(workdir, command[0]))
           raise RuntimeError("Could not run %s: File not found" % executable)
       if 'child_traceback' in dir(e):
         print "Calling subprocess resulted in error; ", e.child_traceback
@@ -746,13 +745,13 @@ class Builder(object):
       command = command + '.bat'
     # Relative path to workdir.
     workdir = workdir or ['build']
-    dots = [] # [".."]*len(workdir)
+    dots = [".."]*len(workdir)
     if workdir[0] == '.':
       dots = []
-    dots.extend([os.getcwd(), 'build', 'bin', command])
+    dots.extend(['build', 'bin', command])
     self.add_step(self.shell(
       name=name or command,
-      command=[os.path.abspath(self.opjoin(*dots))] + (args or []),
+      command=[self.opjoin(*dots)] + (args or []),
       workdir=workdir,
       **kwargs
     ))
