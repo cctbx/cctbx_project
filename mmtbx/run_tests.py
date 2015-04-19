@@ -146,7 +146,6 @@ tst_list = (
   "$D/regression/tst_anomalous_substructure.py",
   "$D/regression/tst_map_coeffs_simple.py",
   #
-  "$D/regression/tst_ringer.py",
   "$D/regression/tst_fmodel_no_cryst1.py",
   "$D/regression/tst_fmodel_misc.py",
   "$D/regression/tst_isomorphous_difference_misc.py",
@@ -155,6 +154,10 @@ tst_list = (
   "$D/regression/tst_dynamics_cli.py",
   "$D/ligands/tst_xtal_screens.py",
   "$D/regression/tst_mtz2map.py",
+  # ringer
+  "$D/regression/tst_ringer.py",
+  "$D/ringer/tst_emringer.py",
+  "$D/ringer/tst_em_rscc.py",
   # validation/molprobity
   "$D/validation/regression/tst_waters.py",
   "$D/validation/regression/tst_nqh_minimize.py",
