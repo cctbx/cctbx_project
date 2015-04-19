@@ -9,11 +9,14 @@ def get_c_beta_torsion_proxies(pdb_hierarchy,
                                sigma=2.5):
   if (selection is not None):
     if (isinstance(selection, flex.bool)):
-      actual_iselection = selection.iselection()
+      actual_bselection = selection
     elif (isinstance(selection, flex.size_t)):
-      actual_iselection = selection
+      actual_bselection = flex.bool(pdb_hierarchy.atoms_size(), False)
+      actual_bselection.set_selected(selection, True)
     else:
       raise Sorry("Bad selection supplied for c_beta restraints")
+  if selection is None:
+    actual_bselection = flex.bool(pdb_hierarchy.atoms_size(), True)
   c_beta_dihedral_proxies = \
       cctbx.geometry_restraints.shared_dihedral_proxy()
   for model in pdb_hierarchy.models():
@@ -24,29 +27,16 @@ def get_c_beta_torsion_proxies(pdb_hierarchy,
             for residue in conformer.residues():
               if residue.resname in three_letter_l_given_three_letter_d:
                 continue
-              N_atom = None
-              CA_atom = None
-              C_atom = None
-              CB_atom = None
-              for atom in residue.atoms():
-                if atom.name.strip() == "N":
-                  N_atom = atom
-                elif atom.name.strip() == "CA":
-                  CA_atom = atom
-                elif atom.name.strip() == "C":
-                  C_atom = atom
-                elif atom.name.strip() == "CB":
-                  CB_atom = atom
-              if ( (N_atom is not None) and
-                   (CA_atom is not None) and
-                   (C_atom is not None) and
-                   (CB_atom is not None) ):
-                if selection is not None:
-                  if ( (N_atom.i_seq not in actual_iselection) or
-                       (CA_atom.i_seq not in actual_iselection) or
-                       (C_atom.i_seq not in actual_iselection) or
-                       (CB_atom.i_seq not in actual_iselection) ):
-                    continue
+              N_atom  = residue.find_atom_by(name=" N  ")
+              CA_atom = residue.find_atom_by(name=" CA ")
+              C_atom  = residue.find_atom_by(name=" C  ")
+              CB_atom = residue.find_atom_by(name=" CB ")
+              if [N_atom, CA_atom, C_atom, CB_atom].count(None) == 0:
+                if not (actual_bselection[N_atom.i_seq] and
+                    actual_bselection[CA_atom.i_seq] and
+                    actual_bselection[C_atom.i_seq] and
+                    actual_bselection[CB_atom.i_seq] ):
+                  continue
                 dihedralNCAB, dihedralCNAB = get_cb_target_angle_pair(
                                                resname=residue.resname)
                 #NCAB
