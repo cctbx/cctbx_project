@@ -443,35 +443,38 @@ class ncs_group_object(object):
     Args::
       pdb_hierarchy_inp : iotbx.pdb.hierarchy.input
     """
-    if len(pdb_hierarchy_inp.hierarchy.models()) > 1:
+    ph = pdb_hierarchy_inp.hierarchy
+    if len(ph.models()) > 1:
       raise Sorry('Multi-model PDB (with MODEL-ENDMDL) is not supported.')
-    min_contig_length = self.min_contig_length
-    min_percent = self.min_percent
-    if not self.process_similar_chains:
-      min_percent = 1.0
-      min_contig_length = 100000
-      self.check_atom_order = True
-    group_dict = ncs_search.find_ncs_in_hierarchy(
-      ph=pdb_hierarchy_inp.hierarchy,
-      min_contig_length=min_contig_length,
-      min_percent=min_percent,
-      chain_similarity_limit=self.chain_similarity_limit,
-      use_minimal_master_ncs=self.use_minimal_master_ncs,
-      max_rmsd=self.max_rmsd,
-      write=self.write_messages,
-      log=self.log,
-      check_atom_order=self.check_atom_order,
-      allow_different_size_res=self.allow_different_size_res,
-      exclude_misaligned_residues=self.exclude_misaligned_residues,
-      max_dist_diff=self.max_dist_diff,
-      ignore_chains=self.ignore_chains)
-    # process atom selections
-    self.total_asu_length = pdb_hierarchy_inp.hierarchy.atoms().size()
-    self.build_ncs_obj_from_group_dict(group_dict,pdb_hierarchy_inp)
-    if not self.model_unique_chains_ids:
-      model = pdb_hierarchy_inp.hierarchy.models()[0]
-      chain_ids = {x.id for x in model.chains()}
-      self.model_unique_chains_ids = tuple(sorted(chain_ids))
+    chain_ids = {x.id for x in ph.models()[0].chains()}
+    if len(chain_ids) > 1:
+      min_contig_length = self.min_contig_length
+      min_percent = self.min_percent
+      if not self.process_similar_chains:
+        min_percent = 1.0
+        min_contig_length = 100000
+        self.check_atom_order = True
+      group_dict = ncs_search.find_ncs_in_hierarchy(
+        ph=ph,
+        min_contig_length=min_contig_length,
+        min_percent=min_percent,
+        chain_similarity_limit=self.chain_similarity_limit,
+        use_minimal_master_ncs=self.use_minimal_master_ncs,
+        max_rmsd=self.max_rmsd,
+        write=self.write_messages,
+        log=self.log,
+        check_atom_order=self.check_atom_order,
+        allow_different_size_res=self.allow_different_size_res,
+        exclude_misaligned_residues=self.exclude_misaligned_residues,
+        max_dist_diff=self.max_dist_diff,
+        ignore_chains=self.ignore_chains)
+      # process atom selections
+      self.total_asu_length = ph.atoms().size()
+      self.build_ncs_obj_from_group_dict(group_dict,pdb_hierarchy_inp)
+      if not self.model_unique_chains_ids:
+        model = ph.models()[0]
+        chain_ids = {x.id for x in model.chains()}
+        self.model_unique_chains_ids = tuple(sorted(chain_ids))
 
   def build_ncs_obj_from_group_dict(self,group_dict,pdb_hierarchy_inp):
     """
