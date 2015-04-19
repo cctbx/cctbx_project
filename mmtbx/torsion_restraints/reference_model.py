@@ -943,15 +943,15 @@ def build_torsion_proxies(
       limit=15.0,
       chi_angles_only=False,
       top_out_potential=False):
+  bool_pdbh_selection = flex.bool(pdb_hierarchy.atoms_size(), False)
   if (selection is not None):
     if (isinstance(selection, flex.bool)):
-      actual_selection = selection.iselection()
+      bool_pdbh_selection = selection
     elif (isinstance(selection, flex.size_t)):
-      actual_selection = selection
+      bool_pdbh_selection.set_selected(selection, True)
   if selection is None:
-    actual_selection = flex.bool(
-      len(sites_cart),
-      True).iselection()
+    bool_pdbh_selection = flex.bool(pdb_hierarchy.atoms_size(), True)
+  actual_selection = bool_pdbh_selection.iselection()
   assert len(sites_cart) == len(actual_selection)
   weight = 1.0 / (sigma**2)
   torsion_proxies = cctbx.geometry_restraints.shared_dihedral_proxy()
@@ -960,7 +960,7 @@ def build_torsion_proxies(
                              selection=actual_selection)
   residue_torsions = collect_residue_torsion_angles(
                    pdb_hierarchy=pdb_hierarchy,
-                   atom_selection=None if selection is None else actual_selection,
+                   atom_selection=bool_pdbh_selection,
                    chi_angles_only=chi_angles_only)
   for residue_info in residue_torsions:
     for chi in residue_info.chis:
