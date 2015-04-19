@@ -3,6 +3,21 @@ from libtbx import test_utils
 import libtbx.load_env
 
 tst_list = (
+  # ion picking
+  "$D/ions/tst_parameters.py",
+  "$D/ions/tst_pick_ca.py",
+  "$D/ions/tst_pick_mg.py",
+  "$D/ions/tst_pick_approx_zn.py",
+  "$D/ions/tst_validate_ca.py",
+  "$D/ions/tst_validate_mg.py",
+  #"$D/ions/tst_validate_zn.py", # FIXME
+  "$D/ions/tst_symmetry_axis.py",
+  "$D/ions/tst_utils.py",
+  # ions SVM
+  "$D/ions/svm/tst_classifier.py",
+  "$D/ions/svm/tst_vector.py",
+  "$D/ions/tst_pick_ca_svm.py",
+  #
   "$D/regression/tst_angle.py",
   "$D/rotamer/tst_rotamer_eval.py",
   "$D/monomer_library/tst_idealized_aa.py",
@@ -130,20 +145,6 @@ tst_list = (
   "$D/regression/tst_cablam.py",
   "$D/regression/tst_anomalous_substructure.py",
   "$D/regression/tst_map_coeffs_simple.py",
-  # ion picking
-  "$D/ions/tst_parameters.py",
-  "$D/ions/tst_pick_ca.py",
-  "$D/ions/tst_pick_mg.py",
-  "$D/ions/tst_pick_approx_zn.py",
-  "$D/ions/tst_validate_ca.py",
-  "$D/ions/tst_validate_mg.py",
-  #"$D/ions/tst_validate_zn.py", # FIXME
-  "$D/ions/tst_symmetry_axis.py",
-  "$D/ions/tst_utils.py",
-  # ions SVM
-  "$D/ions/svm/tst_classifier.py",
-  "$D/ions/svm/tst_vector.py",
-  "$D/ions/tst_pick_ca_svm.py",
   #
   "$D/regression/tst_ringer.py",
   "$D/regression/tst_fmodel_no_cryst1.py",
