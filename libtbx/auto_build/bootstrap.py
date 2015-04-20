@@ -855,7 +855,7 @@ class CCIBuilder(Builder):
     'boost',
     'scons',
     'ccp4io',
-    "libsvm",
+    #"libsvm",
   ]
   HOT_EXTRA = []
   # Configure for these cctbx packages
