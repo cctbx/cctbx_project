@@ -95,7 +95,8 @@ def archive(source, destination, tarfile=None):
     shutil.copytree(
       source,
       destination,
-      ignore=shutil.ignore_patterns('*.lib', '*.pyc', '*.pyo', '.svn', '.git', '.swp', '.sconsign', '.o', '*.obj'),
+      #ignore=shutil.ignore_patterns('*.lib', '*.pyc', '*.pyo', '.svn', '.git', '.swp', '.sconsign', '.o', '*.obj'),
+      ignore=shutil.ignore_patterns('*.pyc', '*.pyo', '.svn', '.git', '.swp', '.sconsign', '.o', '*.obj'),
       symlinks=True
       )
 
