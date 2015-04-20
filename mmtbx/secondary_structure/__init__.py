@@ -388,7 +388,6 @@ class manager (object) :
   def find_sec_str_with_segids (self, log=sys.stdout) :
     annotations = []
     for chain in self.pdb_hierarchy.models()[0].chains() :
-      print "tick"
       if not chain.conformers()[0].is_protein() :
         continue
       segid = chain.atoms()[0].segid
@@ -400,9 +399,6 @@ class manager (object) :
         allow_none=True)
       if sec_str_from_pdb_file is not None :
         annotations.append((sec_str_from_pdb_file, segid))
-        print dir(sec_str_from_pdb_file)
-        print sec_str_from_pdb_file.as_pdb_str()
-        STOP()
     return annotations
 
   def find_approximate_helices (self, log=sys.stdout) :
