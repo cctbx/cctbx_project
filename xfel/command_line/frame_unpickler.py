@@ -134,7 +134,7 @@ class construct_reflection_table_and_experiment_list(object):
   def experiments_to_json(self, path_name="auto"):
     if path_name is None:
       return
-    elif path_name == "auto":
+    elif path_name == "auto" or str(path_name) == "Auto":
       loc = os.path.dirname(self.pickle)
     else:
       loc = path_name
@@ -196,11 +196,11 @@ class construct_reflection_table_and_experiment_list(object):
       self.reflections['s1'][idx] = tuple(coords)
 
   def refl_xyzcal_maker(self):
-    self.reflections['xyzcal.px'] = sciflex.vec3_double(self.predictions.parts()[0], self.predictions.parts()[1], sciflex.double(self.length, 0.0))
+    self.reflections['xyzcal.px'] = sciflex.vec3_double(self.predictions.parts()[1], self.predictions.parts()[0], sciflex.double(self.length, 0.0))
     self.reflections['xyzcal.mm'] = self.pixel_size * self.reflections['xyzcal.px']
 
   def refl_xyzobs_maker(self):
-    self.reflections['xyzobs.px.value'] = sciflex.vec3_double(self.predictions.parts()[0], self.predictions.parts()[1], sciflex.double(self.length, 0.5))
+    self.reflections['xyzobs.px.value'] = sciflex.vec3_double(self.predictions.parts()[1], self.predictions.parts()[0], sciflex.double(self.length, 0.5))
     self.reflections['xyzobs.px.variance'] = sciflex.vec3_double(self.length, (0.0,0.0,0.0))
 
   def refl_zeta_maker(self):
@@ -226,7 +226,7 @@ class construct_reflection_table_and_experiment_list(object):
   def reflections_to_pickle(self, path_name="auto"):
     if path_name is None:
       return
-    elif path_name == "auto":
+    elif path_name == "auto" or str(path_name) == 'Auto':
       loc = os.path.dirname(self.pickle)
     else:
       loc = path_name
