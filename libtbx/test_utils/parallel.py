@@ -95,18 +95,29 @@ def evaluate_output (cmd_result) :
   return bad_lines
 
 def reconstruct_test_name (command) :
-  pattern = '^[^"]*"([^"]*)"[^"]*$'
+  pattern = '^[^"]*"([^"]*)"([^"]*)$'
   import re
   m = re.search(pattern, command)
+  # command =  libtbx.python "/file.py" 90000
+  #            \-- ignore --/ \--m1--/ \-m2-/
   if m:
+    filtered_parameter = re.sub(r"[^A-Za-z0-9\-]", '', m.group(2))
+    if filtered_parameter == '':
+      test_name = m.group(1)
+    else:
+      test_name = "%s.%s" % (m.group(1), filtered_parameter)
     pattern2  = '^/?(.*?/(modules/(cctbx\_project/|xia2/Test/)?))?(.*)/([^/&]*?)(.py)?$'
     m2 = re.search(pattern2, m.group(1))
     if m2:
 #     print "M (%s) (%s) (%s) (%s) (%s) (%s)" % (m2.group(1,2,3,4,5,6))
       import string
       dashtodot = string.maketrans('/', '.')
-      return (m2.group(4).translate(dashtodot), m2.group(5).translate(dashtodot))
-    return (m.group(1), m.group(1))
+      test_name = m2.group(5).translate(dashtodot)
+      # append sanitized (filtered) parameter to test name so that each test has again a unique name
+      if filtered_parameter != '':
+        test_name = "%s.%s" % (test_name, filtered_parameter)
+      return (m2.group(4).translate(dashtodot), test_name)
+    return (m.group(1), test_name)
   return (command, command)
 
 class run_command_list (object) :
