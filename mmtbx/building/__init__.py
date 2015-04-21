@@ -54,26 +54,6 @@ def reprocess_pdb (pdb_hierarchy, crystal_symmetry, cif_objects, out) :
     crystal_symmetry=crystal_symmetry,
     log=out)
 
-def get_restraints_manager (processed_pdb_file, xray_structure,
-    log=sys.stdout) :
-  import mmtbx.restraints
-  has_hd = None
-  if(xray_structure is not None):
-    sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()
-    has_hd = "H" in sctr_keys or "D" in sctr_keys
-  geometry = processed_pdb_file.geometry_restraints_manager(
-    show_energies                = False,
-    params_edits                 = None,
-    plain_pairs_radius           = 5,
-    hydrogen_bond_proxies        = None,
-    assume_hydrogens_all_missing = not has_hd)
-  restraints_manager = mmtbx.restraints.manager(
-    geometry      = geometry,
-    normalization = True)
-  if(xray_structure is not None):
-    restraints_manager.crystal_symmetry = xray_structure.crystal_symmetry()
-  return restraints_manager
-
 def get_nearby_water_selection (
     pdb_hierarchy,
     xray_structure,
@@ -598,7 +578,7 @@ class box_build_refine_base (object) :
       xray_structure=self.box.xray_structure_box,
       mon_lib_srv=mon_lib_srv,
       rotamer_manager=rotamer_manager,
-      geometry_restraints_manager=self.box_restraints_manager,
+      geometry_restraints_manager=self.box_restraints_manager.geometry,
       real_space_gradients_delta=self.d_min*self.resolution_factor,
       rms_bonds_limit=0.01,
       rms_angles_limit=1.0,

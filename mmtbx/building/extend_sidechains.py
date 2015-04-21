@@ -287,9 +287,7 @@ def refit_residues (
   print >> ppdb_out, ""
   hierarchy = processed_pdb.all_chain_proxies.pdb_hierarchy
   xrs = processed_pdb.xray_structure()
-  grm = building.get_restraints_manager(
-    processed_pdb_file = processed_pdb,
-    xray_structure     = xrs)
+  grm_geometry = processed_pdb.geometry_restraints_manager()
   make_sub_header("Fitting residues", out=out)
   target_map = fmodel.map_coefficients(
     map_type="2mFo-DFc",
@@ -327,7 +325,7 @@ def refit_residues (
           xray_structure=xrs,
           mon_lib_srv=mon_lib_srv,
           rotamer_manager=rotamer_manager,
-          geometry_restraints_manager=grm,
+          geometry_restraints_manager=grm_geometry,
           real_space_gradients_delta=fmodel.f_obs().d_min()*0.25,
           rms_bonds_limit=0.01,
           rms_angles_limit=1.0,

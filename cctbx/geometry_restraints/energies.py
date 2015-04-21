@@ -217,7 +217,6 @@ class energies(scitbx.restraints.energies):
       self.number_of_restraints += self.n_bond_similarity_proxies
       self.residual_sum += self.bond_similarity_residual_sum
     if (generic_restraints_manager is None) :
-      self.n_hbond_proxies = 0
       self.n_generic_proxies = 0
       self.generic_restraint_residual_sum = 0
     else :
@@ -228,12 +227,6 @@ class energies(scitbx.restraints.energies):
           gradient_array=self.gradients)
       self.number_of_restraints += self.n_generic_proxies
       self.residual_sum += self.generic_restraint_residual_sum
-      self.n_hbond_proxies = self.generic_restraints_manager.get_n_hbonds()
-      if self.n_hbond_proxies > 0:
-        self.hbond_residual_sum = self.generic_restraints_manager.\
-            get_hbonds_residual_sum(
-                sites_cart=sites_cart,
-                gradient_array=self.gradients)
     if (external_energy_function is not None) :
       self.external_energy = external_energy_function(
         sites_cart=sites_cart,
@@ -461,9 +454,6 @@ class energies(scitbx.restraints.energies):
     if (self.n_parallelity_proxies is not None):
       print >> f, prefix+"  parallelity_residual_sum (n=%d): %.6g" % (
         self.n_parallelity_proxies, self.parallelity_residual_sum)
-    if (self.n_hbond_proxies >0):
-      print >> f, prefix+"  hbonds_residual_sum (n=%d): %.6g" % (
-        self.n_hbond_proxies, self.hbond_residual_sum)
     if (self.n_bond_similarity_proxies is not None):
       print >> f, prefix+"  bond_similarity_residual_sum (n=%d): %.6g" % (
         self.n_bond_similarity_proxies, self.bond_similarity_residual_sum)

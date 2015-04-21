@@ -128,9 +128,7 @@ class run_with_minimization(object):
                xray_structure,
                mon_lib_srv,
                rotamer_manager,
-               # FIXME this actually needs to be an mmtbx.restraints.manager
-               # object, not cctbx.geometry_restraints.manager.manager - the
-               # keyword should be changed to reflect this
+               # This is cctbx.geometry_restraints.manager.manager
                geometry_restraints_manager,
                real_space_gradients_delta,
                selection_radius = 5,
@@ -244,7 +242,7 @@ class run_with_minimization(object):
     brm = individual_sites.box_refinement_manager(
       xray_structure              = self.xray_structure,
       target_map                  = self.target_map_work,
-      geometry_restraints_manager = self.geometry_restraints_manager.geometry,
+      geometry_restraints_manager = self.geometry_restraints_manager,
       real_space_gradients_delta  = 1./4,
       max_iterations              = 500)
     brm.refine(

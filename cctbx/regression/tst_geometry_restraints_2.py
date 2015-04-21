@@ -813,6 +813,7 @@ ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
     print "Is the CCP4 monomer library installed and made available through environment variables MMTBX_CCP4_MONOMER_LIB or CLIBD_MON?"
     return
   geo1 = processed_pdb_file.geometry_restraints_manager()
+  hbp = geo1.get_hbond_proxies()
   from mmtbx import monomer_library
   params = monomer_library.pdb_interpretation.master_params.extract()
   params.secondary_structure.enabled=True

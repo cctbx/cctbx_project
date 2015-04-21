@@ -13,6 +13,7 @@ import sys
 from cStringIO import StringIO
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.rotamer.rotamer_eval import RotamerEval
+from mmtbx.monomer_library import pdb_interpretation
 
 base_params_str = """\
 silent = False
@@ -188,8 +189,8 @@ def process_input_files(inputs, params, log):
     is_non_crystallographic_unit_cell # XXX bad hack
   return processed_pdb_file
 
-def get_geometry_restraints_manager(processed_pdb_file, xray_structure, params,
-    log=sys.stdout):
+def get_geometry_restraints_manager(processed_pdb_file, xray_structure,
+    params=None, log=sys.stdout):
   """This function should be transfered to be a member of processed_pdb_file
      class. It should be used in all places where geometry_restraints_manager
      is needed. """
@@ -198,6 +199,8 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure, params,
     sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()
     has_hd = "H" in sctr_keys or "D" in sctr_keys
   reference_torsion_proxies = None
+  if params is None:
+    params = master_params().fetch().extract()
   # disabled temporarily due to architecture changes
   """
   id_params = params.secondary_structure.idealization
@@ -243,7 +246,6 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure, params,
     show_energies                = False,
     params_edits                 = params.geometry_restraints.edits,
     plain_pairs_radius           = 5,
-    hydrogen_bond_proxies        = None,
     assume_hydrogens_all_missing = not has_hd)
   restraints_manager = mmtbx.restraints.manager(
     geometry      = geometry,

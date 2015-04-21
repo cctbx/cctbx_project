@@ -73,7 +73,7 @@ file_name = None
     geometry_restraints_manager=geometry,
     sec_str_from_pdb_file=pdb_structure.extract_secondary_structure(),
     params=work_params.secondary_structure)
-  m.find_automatically(log=log)
+  m.find_automatically(log=out)
 
   # bp_p = nucleic_acids.get_basepair_plane_proxies(
   #     pdb_hierarchy,

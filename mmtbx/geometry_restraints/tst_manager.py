@@ -66,35 +66,36 @@ END
 
 def exercise_geo_out():
   log = null_out()
+  # import sys
+  # log = sys.stdout
   mon_lib_srv = mmtbx.monomer_library.server.server()
   ener_lib = mmtbx.monomer_library.server.ener_lib()
+  pdb_int_pars = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
+  pdb_int_pars.secondary_structure.enabled=True
   processed_pdb_file = mmtbx.monomer_library.pdb_interpretation.process(
     mon_lib_srv=mon_lib_srv,
     ener_lib=ener_lib,
+    params=pdb_int_pars,
     raw_records=pdb_str.split('\n'),
     substitute_non_crystallographic_unit_cell_if_necessary=True,
     log=log)
   acp = processed_pdb_file.all_chain_proxies
   source = acp.pdb_inp.source_info()
-
   defpars = mmtbx.secondary_structure.sec_str_master_phil.fetch()
   custom_pars = defpars.fetch(source = iotbx.phil.parse(
       "h_bond_restraints.remove_outliers=False\n"))
   custom_pars_extr = custom_pars.extract()
   ss_manager = mmtbx.secondary_structure.manager(
-      pdb_hierarchy=acp.pdb_hierarchy, params=custom_pars_extr.secondary_structure)
+      pdb_hierarchy=acp.pdb_hierarchy,
+      params=custom_pars_extr.secondary_structure)
   ss_manager.find_automatically(log=log)
   ss_manager.initialize(log=log)
-  proxies_for_grm = ss_manager.create_hbond_proxies(
-      log          = log,
-      as_python_objects = False,
-      as_regular_bond_proxies=False)
-  custom_nb_excl = proxies_for_grm.exclude_nb_list
   grm = processed_pdb_file.geometry_restraints_manager(
       show_energies                = False,
-      hydrogen_bond_proxies=proxies_for_grm.proxies,
-      custom_nonbonded_exclusions = custom_nb_excl,
-      assume_hydrogens_all_missing = True)
+      assume_hydrogens_all_missing = True,
+      )
+  hbp = grm.get_hbond_proxies()
+  assert len(hbp) == 4
   from mmtbx.geometry_restraints import ramachandran
   params = ramachandran.master_phil.fetch().extract()
   params.rama_potential = "emsley"
@@ -103,41 +104,10 @@ def exercise_geo_out():
   rama_lookup = ramachandran.lookup_manager(params)
   restraints_helper = mmtbx.geometry_restraints.manager(
       ramachandran_proxies=proxies,
-      ramachandran_lookup=rama_lookup,
-      hydrogen_bond_proxies=proxies_for_grm.proxies,
-      hydrogen_bond_params=None)
+      ramachandran_lookup=rama_lookup)
   grm.set_generic_restraints(restraints_helper)
-
   atoms = acp.pdb_hierarchy.atoms()
-  assert grm.generic_restraints_manager.get_n_hbonds() == 4
   import StringIO
-  str_result = StringIO.StringIO()
-  grm.generic_restraints_manager.show_sorted_hbonds(
-      by_value="residual",
-      sites_cart = atoms.extract_xyz(),
-      site_labels= [a.id_str() for a in atoms],
-      f=str_result)
-  assert str_result.getvalue() == """\
-Hydrogen bond restraints: 4
-Sorted by residual:
-hbond pdb=" O   ALA     4 "
-      pdb=" N   ALA     8 "
-  ideal  model  delta     sigma   weight residual
-  2.900  2.904 -0.004  5.00e-02 4.00e+02 4.93e-03
-hbond pdb=" O   ALA     2 "
-      pdb=" N   ALA     6 "
-  ideal  model  delta     sigma   weight residual
-  2.900  2.903 -0.003  5.00e-02 4.00e+02 4.49e-03
-hbond pdb=" O   ALA     3 "
-      pdb=" N   ALA     7 "
-  ideal  model  delta     sigma   weight residual
-  2.900  2.903 -0.003  5.00e-02 4.00e+02 2.92e-03
-hbond pdb=" O   ALA     5 "
-      pdb=" N   ALA     9 "
-  ideal  model  delta     sigma   weight residual
-  2.900  2.902 -0.002  5.00e-02 4.00e+02 1.84e-03
-
-"""
   str_result = StringIO.StringIO()
   grm.generic_restraints_manager.show_sorted_ramachandran(
       by_value="residual",
@@ -200,6 +170,7 @@ phi-psi angles formed by             residual
 
 if (__name__ == "__main__") :
   if libtbx.env.has_module("ksdssp") :
+    # removed check for old h-bond proxies
     exercise_geo_out()
     print "OK"
   else :
