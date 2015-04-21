@@ -1856,8 +1856,6 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
       params_edits                 = \
         params.refinement.geometry_restraints.edits,
       params_remove                = None,
-      hydrogen_bond_proxies        = None,
-      hydrogen_bond_params         = None,
       custom_nonbonded_exclusions  = None,
       external_energy_function     = None,
       assume_hydrogens_all_missing = not has_hd)

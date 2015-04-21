@@ -722,6 +722,6 @@ def get_basepair_hbond_proxies(
           if base_pair.restrain_hb_angles:
             angle_proxies_result += get_angle_proxies_for_bond(hb)
         else:
-          print "NA hbond rejected:",hb[0].id_str(), hb[1].id_str(), "distance=",dist
+          print "NA hbond rejected:",hb[0].id_str(), hb[1].id_str(), "distance=%.2f" % dist
   # dashes.close()
   return bond_proxies_result, angle_proxies_result

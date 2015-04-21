@@ -125,7 +125,7 @@ class manager(object):
   def __init__(self, xray_structure,
                      pdb_hierarchy,
                      processed_pdb_files_srv = None,
-                     reference_sites_cart = None,
+                     # reference_sites_cart = None,
                      restraints_manager = None,
                      ias_xray_structure = None,
                      refinement_flags = None,
@@ -139,7 +139,7 @@ class manager(object):
     self.log = log
     self.ncs_groups = ncs_groups
     self.processed_pdb_files_srv = processed_pdb_files_srv
-    self.reference_sites_cart = reference_sites_cart
+    # self.reference_sites_cart = reference_sites_cart
     self.selection_moving = selection_moving
     self.restraints_manager = restraints_manager
     self.xray_structure = xray_structure
@@ -939,50 +939,6 @@ class manager(object):
       print >> out, "%s  max  = %.3f" % (prefix, flex.max(rbt_array))
       print >> out, "%s  min  = %.3f" % (prefix, flex.min(rbt_array))
 
-  def reference_model_restraints_manager2(self, sites_cart, gradient_array,
-        sigma = 0.5):
-    if(self.reference_sites_cart is None): return None
-    assert [self.reference_sites_cart,self.selection_moving].count(None)==0
-    target = 0
-    sites_cart_moving = sites_cart.select(self.selection_moving)
-    assert self.reference_sites_cart.size() == \
-      sites_cart_moving.size()
-    deltas = sites_cart_moving - self.reference_sites_cart
-    cntr = 0
-    w = 1/(sigma)**2
-    for i_seq, sel in enumerate(self.selection_moving):
-      if(sel):
-        d = deltas[cntr]
-        target += (d[0]**2*w+d[1]**2*w+d[2]**2*w)
-        if(gradient_array is not None):
-          a = (d[0]*2*w, d[1]*2*w, d[2]*2*w)
-          b = gradient_array[i_seq]
-          r = ((a[0]+b[0]), (a[1]+b[1]), (a[2]+b[2]))
-          gradient_array[i_seq] = r
-        cntr += 1
-    return target
-
-  def reference_model_restraints_manager(self, sites_cart, gradient_array,
-        sigma = 0.25):
-    if(not self.reference_sites_cart): return
-    p1,p2 = self.reference_sites_cart
-    target = 0
-    deltas = sites_cart.select(flex.size_t(p1))-sites_cart.select(flex.size_t(p2))
-    w = -1./(sigma)**2
-    for p1_, p2_, d in zip(p1,p2,deltas):
-      target += (d[0]**2*w+d[1]**2*w+d[2]**2*w)
-      if(gradient_array is not None):
-        a = (d[0]*2*w, d[1]*2*w, d[2]*2*w)
-        #
-        b = gradient_array[p1_]
-        r1 = ((a[0]+b[0]), (a[1]+b[1]), (a[2]+b[2]))
-        gradient_array[p1_] = r1
-        ##
-        b = gradient_array[p2_]
-        r2 = ((-1.*a[0]+b[0]), (-1.*a[1]+b[1]), (-1.*a[2]+b[2]))
-        gradient_array[p2_] = r2
-    return target
-
   def restraints_manager_energies_sites(self,
         geometry_flags=None,
         custom_nonbonded_function=None,
@@ -994,12 +950,10 @@ class manager(object):
     if(self.use_ias and self.ias_selection is not None and
        self.ias_selection.count(True) > 0):
       sites_cart = sites_cart.select(~self.ias_selection)
-    ref_m_rm = self.reference_model_restraints_manager
-    if(self.reference_sites_cart is None): ref_m_rm = None
     result = self.restraints_manager.energies_sites(
       sites_cart=sites_cart,
       geometry_flags=geometry_flags,
-      external_energy_function=ref_m_rm,
+      external_energy_function=None,
       custom_nonbonded_function=custom_nonbonded_function,
       compute_gradients=compute_gradients,
       gradients=gradients,

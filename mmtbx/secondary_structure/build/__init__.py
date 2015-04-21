@@ -501,7 +501,6 @@ def substitute_ss(real_h,
           sigma           = sigma_on_torsion_nonss)
 
   real_h.atoms().set_xyz(pre_result_h.atoms().extract_xyz())
-  actual_n_hbonds = grm.geometry.generic_restraints_manager.get_n_hbonds()
   if fname_before_regularization is not None:
     real_h.write_pdb_file(file_name=fname_before_regularization)
 

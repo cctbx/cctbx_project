@@ -458,11 +458,9 @@ parallelity
     .type = choice
   atom_selection_1 = None
     .type = atom_selection
-    .multiple = True
     .input_size = 400
   atom_selection_2 = None
     .type = atom_selection
-    .multiple = True
     .input_size = 400
   sigma = 0.027
     .type = float
@@ -4316,8 +4314,6 @@ class build_all_chain_proxies(linking_mixins):
         plain_pairs_radius=None,
         params_edits=None,
         params_remove=None,
-        hydrogen_bond_proxies=None,
-        hydrogen_bond_params=None,
         custom_nonbonded_exclusions=None,
         assume_hydrogens_all_missing=True,
         external_energy_function=None,
@@ -4642,9 +4638,7 @@ class build_all_chain_proxies(linking_mixins):
     generic_restraints_manager = mmtbx.geometry_restraints.manager(
       ramachandran_proxies=ramachandran_proxies,
       ramachandran_lookup=ramachandran_lookup,
-      hydrogen_bond_proxies=hydrogen_bond_proxies,
       reference_manager=reference_manager,
-      hydrogen_bond_params=hydrogen_bond_params,
       den_manager=den_manager)
     nonbonded_params = ener_lib_as_nonbonded_params(
       ener_lib=ener_lib,
@@ -4901,8 +4895,6 @@ class process(object):
         plain_pairs_radius=None,
         params_edits=None,
         params_remove=None,
-        hydrogen_bond_proxies=None,
-        hydrogen_bond_params=None,
         custom_nonbonded_exclusions=None,
         assume_hydrogens_all_missing=True,
         show_energies=True,
@@ -4923,8 +4915,6 @@ class process(object):
             plain_pairs_radius=plain_pairs_radius,
             params_edits=params_edits,
             params_remove=params_remove,
-            hydrogen_bond_proxies=hydrogen_bond_proxies,
-            hydrogen_bond_params=hydrogen_bond_params,
             custom_nonbonded_exclusions=custom_nonbonded_exclusions,
             assume_hydrogens_all_missing=assume_hydrogens_all_missing,
             external_energy_function=external_energy_function,

@@ -103,9 +103,6 @@ def exercise(pdb_poor_str, d_min = 1.0, resolution_factor = 0.25):
   xrs_poor = processed_pdb_file.xray_structure()
   sites_cart_poor = xrs_poor.sites_cart()
   pdb_hierarchy_poor.write_pdb_file(file_name = "poor.pdb")
-  grm = mmtbx.restraints.manager(
-    geometry=processed_pdb_file.geometry_restraints_manager(show_energies=False),
-    normalization = True)
   #
   rotamer_manager = RotamerEval()
   get_class = iotbx.pdb.common_residue_names_get_class
@@ -122,7 +119,7 @@ def exercise(pdb_poor_str, d_min = 1.0, resolution_factor = 0.25):
             mon_lib_srv     = mon_lib_srv,
             rotamer_manager = rotamer_manager,
             real_space_gradients_delta  = d_min*resolution_factor,
-            geometry_restraints_manager = grm)
+            geometry_restraints_manager = processed_pdb_file.geometry_restraints_manager(show_energies=False))
           sites_final = residue.atoms().extract_xyz()
           t1 = time.time()-t0
   pdb_hierarchy_poor.adopt_xray_structure(ro.xray_structure)

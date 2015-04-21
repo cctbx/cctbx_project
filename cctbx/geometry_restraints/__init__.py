@@ -577,6 +577,12 @@ class _(boost.python.injector, shared_bond_simple_proxy):
       return bond_residuals(
         unit_cell=unit_cell, sites_cart=sites_cart, proxies=self)
 
+  def get_proxies_with_origin_id(self, origin_id=0):
+    result = []
+    for p in self:
+      if p.origin_id == origin_id:
+        result.append(p)
+    return result
 
 class _(boost.python.injector, bond_sorted_asu_proxies):
 
@@ -629,6 +635,16 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
 
   def residuals(self, sites_cart):
     return bond_residuals(sites_cart=sites_cart, sorted_asu_proxies=self)
+
+  def get_proxies_with_origin_id(self, origin_id=0):
+    result = []
+    for p in self.simple:
+      if p.origin_id == origin_id:
+        result.append(p)
+    for p in self.asu:
+      if p.origin_id == origin_id:
+        result.append(p)
+    return result
 
   def show_histogram_of_deltas(self,
         sites_cart,

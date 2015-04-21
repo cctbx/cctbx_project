@@ -3127,6 +3127,48 @@ def exercise_parallelity():
   assert rest[1].limit == 4
   assert rest[0].top_out == selected[1].top_out == True
 
+def exercise_origin_id_selections():
+  p_array = []
+  for i in range(10):
+    p = geometry_restraints.bond_simple_proxy(
+        i_seqs=[i,i+1],
+        distance_ideal=3.5,
+        weight=1,
+        slack=1,
+        limit=1,
+        top_out=False,
+        origin_id=0)
+    p_array.append(p)
+  for i in range(10,20):
+    p = geometry_restraints.bond_simple_proxy(
+        i_seqs=[i,i+1],
+        distance_ideal=3.5,
+        weight=1,
+        slack=1,
+        limit=1,
+        top_out=False,
+        origin_id=1)
+    p_array.append(p)
+  for i in range(20,30):
+    p = geometry_restraints.bond_simple_proxy(
+        i_seqs=[i,i+1],
+        distance_ideal=3.5,
+        weight=1,
+        slack=1,
+        limit=1,
+        top_out=False,
+        origin_id=2)
+    p_array.append(p)
+  proxies = geometry_restraints.shared_bond_simple_proxy(p_array)
+  new_p1 = proxies.get_proxies_with_origin_id()
+  new_p2 = proxies.get_proxies_with_origin_id(origin_id=1)
+  new_p3 = proxies.get_proxies_with_origin_id(origin_id=2)
+  new_p4 = proxies.get_proxies_with_origin_id(origin_id=3)
+  assert len(new_p1) == 10
+  assert len(new_p2) == 10
+  assert len(new_p3) == 10
+  assert len(new_p4) == 0
+
 def exercise():
   exercise_bond_similarity()
   exercise_bond()
@@ -3140,6 +3182,7 @@ def exercise():
   # exercise_planarity_top_out()
   exercise_proxy_show()
   exercise_parallelity()
+  exercise_origin_id_selections()
   print "OK"
 
 if (__name__ == "__main__"):
