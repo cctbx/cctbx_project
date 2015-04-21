@@ -21,6 +21,7 @@ secondary_structure
   enabled = False
     .short_caption = Secondary structure restraints
     .type = bool
+    .style = noauto bold
   find_automatically = True
     .type = bool
     .style = bold tribool

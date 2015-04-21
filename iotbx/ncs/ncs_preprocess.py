@@ -21,14 +21,21 @@ import sys
 basic_phil_str = '''\
 ncs_group
   .multiple = True
+  .short_caption = NCS group definition
+  .style = auto_align
+  .expert_level=0
   {
   reference = ''
     .type = str
+    .short_caption = Reference selection
     .help = 'Residue selection string for the complete master NCS copy'
+    .expert_level=0
   selection = ''
     .type = str
+    .short_caption = NCS related selection
     .help = 'Residue selection string for each NCS copy location in ASU'
     .multiple = True
+    .expert_level=0
   }
 '''
 
