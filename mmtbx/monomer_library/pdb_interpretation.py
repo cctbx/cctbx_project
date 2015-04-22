@@ -5225,21 +5225,39 @@ class process(object):
     params = self.all_chain_proxies.params.ncs
     simple_params = self.all_chain_proxies.params.simple_ncs_from_pdb
     find_param = simple_params.domain_finding_parameters
+    ncs_phil_groups = self.all_chain_proxies.params.ncs_group
+    ### XXX FIXME begin
+    # handle this correctly internally
+    if(len(ncs_phil_groups)==0): ncs_phil_groups=None
+    if(ncs_phil_groups is not None):
+      empty_cntr = 0
+      for ng in ncs_phil_groups:
+        if(len(ng.reference.strip())==0): empty_cntr += 1
+        for s in ng.selection:
+          if(len(s.strip())==0): empty_cntr += 1
+      if(empty_cntr>0): ncs_phil_groups=None
+    # remove the need to pass in deep_copy! Instead, NEVER EVER modify the
+    # hierarchy!!!
+    hierarchy_deep_copy = hierarchy
+    #if(hierarchy_deep_copy is not None):
+    #  hierarchy_deep_copy = hierarchy.deep_copy()
+    ### XXX FIXME end
     ncs_obj = iotbx.ncs.input(
-      file_name=file_name,
-      hierarchy=hierarchy,
-      chain_similarity_limit=find_param.similarity_threshold,
-      min_contig_length=find_param.min_contig_length,
-      min_percent=simple_params.min_percent,
-      max_rmsd=simple_params.max_rmsd,
-      max_dist_diff=find_param.match_radius,
-      use_minimal_master_ncs=params.use_minimal_master_ncs,
-      process_similar_chains=params.process_similar_chains,
-      allow_different_size_res=params.allow_different_size_res,
-      exclude_misaligned_residues=params.exclude_misaligned_residues,
-      check_atom_order=params.check_atom_order,
-      write_messages=False,
-      log=self.log)
+      ncs_phil_groups             = ncs_phil_groups,
+      file_name                   = file_name,
+      hierarchy                   = hierarchy_deep_copy,
+      chain_similarity_limit      = find_param.similarity_threshold,
+      min_contig_length           = find_param.min_contig_length,
+      min_percent                 = simple_params.min_percent,
+      max_rmsd                    = simple_params.max_rmsd,
+      max_dist_diff               = find_param.match_radius,
+      use_minimal_master_ncs      = params.use_minimal_master_ncs,
+      process_similar_chains      = params.process_similar_chains,
+      allow_different_size_res    = params.allow_different_size_res,
+      exclude_misaligned_residues = params.exclude_misaligned_residues,
+      check_atom_order            = params.check_atom_order,
+      write_messages              = False,
+      log                         = self.log)
     return ncs_obj
 
 def run(
