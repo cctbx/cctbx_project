@@ -1683,6 +1683,7 @@ mmtbx/command_line/kinemage.py svneol=native#text/x-python
 mmtbx/command_line/lockit.py svneol=native#text/x-python
 mmtbx/command_line/map_box.py -text
 mmtbx/command_line/map_comparison.py -text
+mmtbx/command_line/map_model_cc.py -text
 mmtbx/command_line/map_to_model_histogram.py -text
 mmtbx/command_line/map_to_structure_factors.py -text
 mmtbx/command_line/map_value_at_point.py -text
@@ -1693,6 +1694,7 @@ mmtbx/command_line/maximum_entropy_map.py -text
 mmtbx/command_line/model_model_distances.py -text
 mmtbx/command_line/model_vs_data.py -text
 mmtbx/command_line/model_vs_sequence.py -text
+mmtbx/command_line/models_as_chains.py -text
 mmtbx/command_line/molprobity.py svneol=native#text/x-python
 mmtbx/command_line/mon_lib_cif_triage.py svneol=native#text/x-python
 mmtbx/command_line/mp_geo.py -text
