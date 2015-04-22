@@ -22,10 +22,12 @@ namespace cctbx { namespace geometry_restraints {
     //! Constructor.
     planarity_proxy(
       i_seqs_type const& i_seqs_,
-      af::shared<double> const& weights_)
+      af::shared<double> const& weights_,
+      unsigned char origin_id_=0)
     :
       i_seqs(i_seqs_),
-      weights(weights_)
+      weights(weights_),
+      origin_id(origin_id_)
     {
       CCTBX_ASSERT(weights.size() == i_seqs.size());
     }
@@ -34,11 +36,13 @@ namespace cctbx { namespace geometry_restraints {
     planarity_proxy(
       i_seqs_type const& i_seqs_,
       optional_container<af::shared<sgtbx::rt_mx> > const& sym_ops_,
-      af::shared<double> const& weights_)
+      af::shared<double> const& weights_,
+      unsigned char origin_id_ = 0)
     :
       i_seqs(i_seqs_),
       sym_ops(sym_ops_),
-      weights(weights_)
+      weights(weights_),
+      origin_id(origin_id_)
     {
       CCTBX_ASSERT(weights.size() == i_seqs.size());
       if ( sym_ops.get() != 0 ) {
@@ -53,7 +57,8 @@ namespace cctbx { namespace geometry_restraints {
     :
       i_seqs(i_seqs_),
       sym_ops(proxy.sym_ops),
-      weights(proxy.weights.begin(), proxy.weights.end())
+      weights(proxy.weights.begin(), proxy.weights.end()),
+      origin_id(proxy.origin_id)
     {
       CCTBX_ASSERT(weights.size() == i_seqs.size());
       if ( sym_ops.get() != 0 ) {
@@ -65,7 +70,7 @@ namespace cctbx { namespace geometry_restraints {
     scale_weights(
       double factor) const
     {
-      return planarity_proxy(i_seqs, sym_ops, weights*factor);
+      return planarity_proxy(i_seqs, sym_ops, weights*factor, origin_id);
     }
 
     //! Sorts i_seqs such that i_seq[0] < i_seq[2].
@@ -96,10 +101,10 @@ namespace cctbx { namespace geometry_restraints {
         return planarity_proxy(
           i_seqs_result,
           optional_container<af::shared<sgtbx::rt_mx> >(sym_ops_result),
-          weights_result);
+          weights_result, origin_id);
       }
       else {
-        return planarity_proxy(i_seqs_result, weights_result);
+        return planarity_proxy(i_seqs_result, weights_result, origin_id);
       }
     }
 
@@ -109,6 +114,7 @@ namespace cctbx { namespace geometry_restraints {
     optional_container<af::shared<sgtbx::rt_mx> > sym_ops;
     //! Array of weights.
     af::shared<double> weights;
+    unsigned char origin_id;
   };
 
   //! Residual and gradient calculations for planarity restraint.
