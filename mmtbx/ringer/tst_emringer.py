@@ -64,7 +64,7 @@ def exercise_emringer_statistics():
 if __name__=='__main__':
   keep_going=True
   try:
-    import wx
+    import wx # special import
   except ImportError:
     print "Required cctbx irrelevant dependencies are missing, skipping test."
     keep_going=False
