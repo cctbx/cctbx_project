@@ -2,7 +2,7 @@
 
 from __future__ import division
 
-import os
+import os, time
 
 import libtbx
 from mmtbx.command_line.water_screen import master_phil
@@ -79,7 +79,18 @@ def exercise():
 
 
 if __name__ == "__main__":
+  keep_going=True
+  try:
+    import numpy as np
+    import svm
+    import svmutil
+  except ImportError:
+    print "Required third-party dependencies are missing, skipping test."
+    keep_going=False
   if (libtbx.env.find_in_repositories(relative_path="chem_data") is None):
     print "Skipping tst_vector exercise(): chem_data directory not available"
   else:
-    exercise()
+    t0 = time.time()
+    if(keep_going):
+      exercise()
+    print "Time: %6.2f"%(time.time()-t0)

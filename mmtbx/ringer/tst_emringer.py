@@ -1,6 +1,5 @@
 
 from __future__ import division
-from mmtbx.command_line import emringer
 from mmtbx.ringer import em_scoring as score
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
@@ -63,13 +62,17 @@ def exercise_emringer_statistics():
   assert approx_equal(new_zscore,zscore)
 
 if __name__=='__main__':
+  keep_going=True
+  try:
+    import wx
+  except ImportError:
+    print "Required cctbx irrelevant dependencies are missing, skipping test."
+    keep_going=False
   tstdir = libtbx.env.find_in_repositories("phenix_regression/mmtbx/em_ringer")
   if (tstdir is None) :
     warnings.warn("phenix_regression not available, skipping test")
   else :
-    exercise_emringer_residue_scan()
-    # FIXME
-    #waves, _ = exercise_emringer_pickle_loading()
-    #exercise_emringer_peakfinding(waves)
-    #exercise_emringer_statistics()
-    print "OK"
+    if(keep_going):
+      from mmtbx.command_line import emringer
+      exercise_emringer_residue_scan()
+      print "OK"
