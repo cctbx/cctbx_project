@@ -27,7 +27,8 @@ namespace cctbx { namespace geometry_restraints {
       double target_angle_deg_ = 0,
       double slack_ = 0,
       double limit_ = 1,
-      bool top_out_ = false)
+      bool top_out_ = false,
+      unsigned char origin_id_ = 0)
     :
       i_seqs(i_seqs_),
       j_seqs(j_seqs_),
@@ -35,7 +36,8 @@ namespace cctbx { namespace geometry_restraints {
       target_angle_deg(target_angle_deg_),
       slack(slack_),
       limit(limit_),
-      top_out(top_out_)
+      top_out(top_out_),
+      origin_id(origin_id_)
     {
       CCTBX_ASSERT(i_seqs.size() > 2);
       CCTBX_ASSERT(j_seqs.size() > 2);
@@ -54,7 +56,8 @@ namespace cctbx { namespace geometry_restraints {
       double target_angle_deg_ = 0,
       double slack_ = 0,
       double limit_ = 1,
-      bool top_out_ = false)
+      bool top_out_ = false,
+      unsigned char origin_id_ = 0)
     :
       i_seqs(i_seqs_),
       j_seqs(j_seqs_),
@@ -63,7 +66,8 @@ namespace cctbx { namespace geometry_restraints {
       target_angle_deg(target_angle_deg_),
       slack(slack_),
       limit(limit_),
-      top_out(top_out_)
+      top_out(top_out_),
+      origin_id(origin_id_)
     {
       CCTBX_ASSERT(i_seqs.size() > 2);
       CCTBX_ASSERT(j_seqs.size() > 2);
@@ -89,7 +93,8 @@ namespace cctbx { namespace geometry_restraints {
       target_angle_deg(proxy.target_angle_deg),
       slack(proxy.slack),
       limit(proxy.limit),
-      top_out(proxy.top_out)
+      top_out(proxy.top_out),
+      origin_id(proxy.origin_id)
     {
       CCTBX_ASSERT(i_seqs.size() > 2);
       CCTBX_ASSERT(j_seqs.size() > 2);
@@ -108,7 +113,7 @@ namespace cctbx { namespace geometry_restraints {
     {
       return parallelity_proxy(
         i_seqs, j_seqs, sym_ops, weight*factor, target_angle_deg,
-        slack, limit,top_out);
+        slack, limit, top_out, origin_id);
     }
 
     //! Sorts i_seqs and j_seqs such that, e.g. i_seq[0] < i_seq[2].
@@ -148,12 +153,13 @@ namespace cctbx { namespace geometry_restraints {
           target_angle_deg,
           slack,
           limit,
-          top_out);
+          top_out,
+          origin_id);
       }
       else {
         return parallelity_proxy(
           i_seqs_result,j_seqs_result, weight, target_angle_deg, slack,
-          limit, top_out);
+          limit, top_out, origin_id);
       }
     }
 
@@ -171,6 +177,7 @@ namespace cctbx { namespace geometry_restraints {
     double limit;
     //! Use top-out potential instead of harmonic
     bool top_out;
+    unsigned char origin_id;
   };
 
 

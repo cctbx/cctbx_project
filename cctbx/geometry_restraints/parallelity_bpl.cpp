@@ -31,14 +31,16 @@ namespace {
           double,
           double,
           double,
-          bool >((
+          bool,
+          unsigned char >((
             arg("i_seqs"),
             arg("j_seqs"),
             arg("weight"),
             arg("target_angle_deg")=0,
             arg("slack")=0,
             arg("limit")=1,
-            arg("top_out")=false)))
+            arg("top_out")=false,
+            arg("origin_id")=0)))
         .def(init<
           af::shared<std::size_t> const&,
           af::shared<std::size_t> const&,
@@ -57,6 +59,7 @@ namespace {
         .add_property("limit", make_getter(&w_t::limit, rbv()))
         .add_property("top_out", make_getter(&w_t::top_out, rbv()))
         .add_property("sym_ops", make_getter(&w_t::sym_ops, rbv()))
+        .def_readwrite("origin_id", &w_t::origin_id)
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
