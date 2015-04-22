@@ -1,7 +1,7 @@
 from __future__ import division
 
 from libtbx import adopt_init_args
-from mmtbx.geometry_restraints import hbond, ramachandran
+from mmtbx.geometry_restraints import ramachandran
 from scitbx.array_family import flex
 
 
