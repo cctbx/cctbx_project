@@ -41,22 +41,6 @@ refinement {
     ias = False
       .type = bool
   }
-  ncs {
-    restraint_group
-      .multiple = True
-      .optional = True
-      .short_caption = Restraint group
-    {
-      reference = None
-        .type = str
-        .help = Reference selection for restraint group
-      selection = None
-        .type = str
-        .multiple = True
-        .optional = False
-        .help = Restrained selection
-    }
-  }
   developer
     .expert_level = 3
   {
@@ -89,14 +73,6 @@ refinement {
     ncs = True
     ordered_solvent = True
   }
-  ncs {
-    restraint_group {
-      reference = "chain A"
-      selection = "chain B"
-      selection = "chain C"
-      selection = "chain D"
-    }
-  }
 }
 """)
   refine_phil2_str = """
@@ -110,33 +86,17 @@ refinement {
     ncs = True
     ordered_solvent = False
   }
-  ncs {
-    restraint_group {
-      reference = "chain A"
-      selection = "chain B"
-    }
-    restraint_group {
-      reference = "chain C"
-      selection = "chain D"
-    }
-  }
 }"""
   refine_phil3 = libtbx.phil.parse("refinement.main.number_of_macro_cycles=5")
   refine_phil4_str = """
 refinement.refine.adp.tls = None
-refinement.ncs.restraint_group {
-  reference = "chain C and resseq 1:100"
-  selection = "chain D and resseq 1:100"
-}"""
+"""
   i = libtbx.phil.interface.index(master_phil=master_phil,
     working_phil=refine_phil1,
     fetch_new=True)
   params = i.get_python_object()
-  assert len(params.refinement.ncs.restraint_group) == 1
   i.update(refine_phil2_str)
   # object retrieval
-  ncs_phil = i.get_scope_by_name("refinement.ncs.restraint_group")
-  assert len(ncs_phil) == 2
   pdb_phil = i.get_scope_by_name("refinement.input.pdb.file_name")
   assert len(pdb_phil) == 1
   os_phil = i.get_scope_by_name("refinement.main.ordered_solvent")
@@ -148,7 +108,6 @@ refinement.ncs.restraint_group {
   # more updating, object extraction
   i.merge_phil(phil_object=refine_phil3)
   params = i.get_python_object()
-  assert len(params.refinement.ncs.restraint_group) == 2
   assert params.refinement.main.ncs == True
   assert params.refinement.main.ordered_solvent == False
   assert params.refinement.main.number_of_macro_cycles == 5
@@ -178,17 +137,8 @@ refinement.ncs.restraint_group {
 
   # text searching (we can assume this will break quickly, but easily checked
   # by uncommenting the print statements)
-  names = i.search_phil_text("Restraint group", match_all=True,
-    labels_only=True)
-  assert len(names) == 0
-  names = i.search_phil_text("Restraint group", match_all=True,
-    labels_only=False)
-  assert len(names) == 3
   names = i.search_phil_text("macro_cycles", phil_name_only=True)
   assert len(names) == 1
-  names = i.search_phil_text("selection group", match_all=True,
-    labels_only=False)
-  assert len(names) == 3
   names = i.search_phil_text("elemental")
   assert (len(names) == 0)
   i.update("refinement.gui.output_dir=/var/tmp")
@@ -274,18 +224,6 @@ refinement.pdb_interpretation.secondary_structure.protein {
 }
 """
 
-  phil_str_3 = """
-refinement.ncs.restraint_group {
-  reference = "chain A"
-  selection = "chain B"
-}
-"""
-  phil_str_4 = """
-refinement.ncs.restraint_group {
-  reference = "chain C"
-  selection = "chain D"
-}"""
-
   master_phil = runtime.master_phil()
   i = interface.index(master_phil=master_phil,
     parse=iotbx.phil.parse)
@@ -308,14 +246,6 @@ refinement.ncs.restraint_group {
   if verbose :
     print "Merge with global fetch: %6.1fms" % ((t2-t1) * 1000)
     print "Merge with local fetch:  %6.1fms" % ((t4-t3) * 1000)
-  i.merge_phil(phil_string=phil_str_3,
-    only_scope="refinement.ncs.restraint_group")
-  params = i.get_python_object()
-  assert (params.refinement.ncs.restraint_group[0].reference == "chain A")
-  i.merge_phil(phil_string=phil_str_4,
-    only_scope="refinement.ncs.restraint_group")
-  params = i.get_python_object()
-  assert (params.refinement.ncs.restraint_group[0].reference == "chain C")
   i.merge_phil(phil_string="""
 refinement.input.pdb.file_name = protein.pdb
 refinement.input.pdb.file_name = ligand.pdb
@@ -328,7 +258,6 @@ refinement.output.title = Test refinement run
   assert (set(names) == {
     'refinement.output.write_model_cif_file',
     'refinement.pdb_interpretation.simple_ncs_from_pdb.max_rmsd_user',
-    'refinement.ncs.simple_ncs_from_pdb.max_rmsd_user',
     'refinement.output.write_reflection_cif_file',
     'refinement.input.monomers.file_name',}
 )
