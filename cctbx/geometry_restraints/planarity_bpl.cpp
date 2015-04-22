@@ -26,13 +26,15 @@ namespace {
       class_<w_t>("planarity_proxy", no_init)
         .def(init<
           af::shared<std::size_t> const&,
-          af::shared<double> const&>((
-            arg("i_seqs"), arg("weights"))))
+          af::shared<double> const&,
+          unsigned char>((
+            arg("i_seqs"), arg("weights"), arg("origin_id")=0)))
         .def(init<
           af::shared<std::size_t> const&,
           optional_container<af::shared<sgtbx::rt_mx> > const&,
-          af::shared<double> const&>((
-            arg("i_seqs"), arg("sym_ops"), arg("weights"))))
+          af::shared<double> const&,
+          unsigned char>((
+            arg("i_seqs"), arg("sym_ops"), arg("weights"), arg("origin_id")=0)))
         .def(init<
           af::shared<std::size_t> const&,
           w_t const&>((
@@ -42,6 +44,7 @@ namespace {
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .add_property("weights", make_getter(&w_t::weights, rbv()))
         .add_property("sym_ops", make_getter(&w_t::sym_ops, rbv()))
+        .def_readwrite("origin_id", &w_t::origin_id)
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(

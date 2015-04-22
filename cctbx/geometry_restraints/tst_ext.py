@@ -2034,6 +2034,19 @@ def exercise_chirality():
       volume_ideal=4, both_signs=False, weight=5, origin_id=3)
 
 def exercise_planarity():
+  def check(p, i_seqs=None, sites=None, sym_ops=None, weights=[1,2,3,4],
+      origin_id=0):
+    assert [i_seqs, sites].count(None) == 1 # check for correct usage of procedure
+    assert approx_equal(p.weights, weights)
+    if i_seqs is not None:
+      assert p.origin_id == origin_id
+      approx_equal(p.i_seqs, i_seqs)
+      if p.sym_ops is not None:
+        for i in range(len(p.sym_ops)):
+          assert p.sym_ops[i].as_double_array == sym_ops[i].as_double_array
+      else:
+        assert sym_ops is None # while p.sym_ops IS None
+
   weights = flex.double([1, 2, 3, 4])
   u_mx = sgtbx.rt_mx()
   sym_ops = (u_mx, sgtbx.rt_mx('1+x,y,z'), u_mx, sgtbx.rt_mx('1+x,1+y,z'))
@@ -2041,22 +2054,22 @@ def exercise_planarity():
     i_seqs=flex.size_t([3,1,0,2]),
     sym_ops=sym_ops,
     weights=weights)
-  assert tuple(p.i_seqs) == (3,1,0,2)
-  assert tuple(p.sym_ops) == sym_ops
-  assert approx_equal(p.weights, weights)
+  check(p, i_seqs=(3,1,0,2), sym_ops=sym_ops, weights=[1, 2, 3, 4])
   c = geometry_restraints.planarity_proxy(
     i_seqs=flex.size_t([8,6,3,1]),
     proxy=p)
-  assert tuple(c.i_seqs) == (8,6,3,1)
-  assert c.sym_ops == sym_ops
+  check(c, i_seqs=[8,6,3,1], sym_ops=sym_ops, weights=[1, 2, 3, 4])
+  p.origin_id=1
   c = p.scale_weights(factor=4.94)
+  check(c, i_seqs=[3,1,0,2], sym_ops=sym_ops,
+      weights=[1*4.94, 2*4.94, 3*4.94, 4*4.94], origin_id=1)
+  p.origin_id=0
   assert c.i_seqs.id() == p.i_seqs.id()
   assert c.weights.id() != p.weights.id()
-  assert approx_equal(c.weights, p.weights*4.94)
   p = p.sort_i_seqs()
-  assert tuple(p.i_seqs) == (0,1,2,3)
-  assert tuple(p.weights) == (3,2,4,1)
-  assert tuple(p.sym_ops) == (u_mx, sgtbx.rt_mx('1+x,y,z'), sgtbx.rt_mx('1+x,1+y,z'), u_mx)
+  check(p, i_seqs=(0,1,2,3),
+      sym_ops=(u_mx, sgtbx.rt_mx('1+x,y,z'), sgtbx.rt_mx('1+x,1+y,z'), u_mx),
+      weights=(3,2,4,1))
   #
   unit_cell = uctbx.unit_cell([15,25,30,90,90,90])
   sites_cart = flex.vec3_double([(1,24,1.1),(1,1,1),(14,1,1),(14,24,0.9)])
@@ -2070,13 +2083,21 @@ def exercise_planarity():
     unit_cell=unit_cell,
     sites_cart=sites_cart,
     proxy=p)
+  check(p, i_seqs=(0,1,2,3),
+      sym_ops=[u_mx, sgtbx.rt_mx('x,y,z'), sgtbx.rt_mx('x,1+y,z'), sgtbx.rt_mx('1-x,y,z')],
+      weights=(2,2,2,2))
+  check(planarity, sites=[(1.0, 24.0, 1.1), (1.0, 1.0, 1.0), (14., 26.0, 1.0), (1., 24.0, 0.9)],
+      sym_ops=[u_mx, sgtbx.rt_mx('x,y,z'), sgtbx.rt_mx('x,1+y,z'), sgtbx.rt_mx('1-x,y,z')],
+      weights=(2,2,2,2))
   assert approx_equal(planarity.deltas(), (0.1, 0, 0, -0.1))
   assert approx_equal(planarity.residual(), 0.04)
   assert approx_equal(planarity.gradients(), expected_gradients)
   #
   proxies = geometry_restraints.shared_planarity_proxy([p,p])
   for proxy in proxies:
-    assert tuple(proxy.i_seqs) == (0,1,2,3)
+    check(p, i_seqs=(0,1,2,3),
+        sym_ops=[u_mx, sgtbx.rt_mx('x,y,z'), sgtbx.rt_mx('x,1+y,z'), sgtbx.rt_mx('1-x,y,z')],
+        weights=(2,2,2,2))
   assert eps_eq(geometry_restraints.planarity_deltas_rms(
     unit_cell=unit_cell,
     sites_cart=sites_cart,
@@ -2177,23 +2198,22 @@ def exercise_planarity():
   for g,e in zip(gradient_array, expected_gradients):
     assert eps_eq(g, matrix.col(e)*2)
   #
-  def make_proxy(i_seqs, weights):
+  def make_proxy(i_seqs, weights, origin_id):
     return geometry_restraints.planarity_proxy(
       flex.size_t(i_seqs),
-      flex.double(weights))
+      flex.double(weights),
+      origin_id)
   proxies = geometry_restraints.shared_planarity_proxy([
-    make_proxy([0,1,2,3], [2,3,4,5]),
-    make_proxy([1,2,3,4], [3,4,5,6]),
-    make_proxy([2,3,0,4], [4,5,6,7]),
-    make_proxy([3,1,2,4], [5,6,7,8])])
+    make_proxy([0,1,2,3], [2,3,4,5], 0),
+    make_proxy([1,2,3,4], [3,4,5,6], 1),
+    make_proxy([2,3,0,4], [4,5,6,7], 2),
+    make_proxy([3,1,2,4], [5,6,7,8], 3)])
   selected = proxies.proxy_select(n_seq=5, iselection=flex.size_t([0,2,4]))
   assert selected.size() == 0
   selected = proxies.proxy_select(n_seq=5, iselection=flex.size_t([1,2,3,4]))
-  assert selected.size() == 2
-  assert list(selected[0].i_seqs) == [0,1,2,3]
-  assert list(selected[1].i_seqs) == [2,0,1,3]
-  assert approx_equal(selected[0].weights, [3,4,5,6])
-  assert approx_equal(selected[1].weights, [5,6,7,8])
+  assert selected.size() == 2 # 2nd, 4th
+  check(selected[0], i_seqs=[0,1,2,3], weights=[3,4,5,6], origin_id=1)
+  check(selected[1], i_seqs=[2,0,1,3], weights=[5,6,7,8], origin_id=3)
   #
   for i_remove in range(10,15):
     sel = flex.size_t(range(10,i_remove)+range(i_remove+1,15))
@@ -2210,9 +2230,9 @@ def exercise_planarity():
   rest = proxies.proxy_remove(selection=flex.bool([True,True,True,True,True]))
   assert rest.size() == 0
   rest = proxies.proxy_remove(selection=flex.bool([False,True,True,True,True]))
-  assert rest.size() == 2
-  assert list(rest[0].i_seqs) == [0,1,2,3]
-  assert list(rest[1].i_seqs) == [2,3,0,4]
+  assert rest.size() == 2 # 1st and 3rd
+  check(rest[0], i_seqs=[0,1,2,3], weights=[2,3,4,5], origin_id=0)
+  check(rest[1], i_seqs=[2,3,0,4], weights=[4,5,6,7], origin_id=2)
   rest = proxies.proxy_remove(selection=flex.bool([True,True,True,True,False]))
   assert rest.size() == 3
   #
