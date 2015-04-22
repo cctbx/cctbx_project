@@ -1924,7 +1924,7 @@ def exercise_dihedral():
   assert approx_equal(d.delta, -2.)
 
 def exercise_chirality():
-  def check(p, i_seqs=None, sites=None, volume_ideal=0, both_signs=False, 
+  def check(p, i_seqs=None, sites=None, volume_ideal=0, both_signs=False,
       weight=0, origin_id=0, volume_model=0, delta_sign=0, delta=0):
     assert [i_seqs, sites].count(None) == 1 # check for correct usage of procedure
     assert approx_equal(p.volume_ideal, volume_ideal)
@@ -1971,7 +1971,7 @@ def exercise_chirality():
     volume_ideal=4,
     both_signs=False,
     weight=1)
-  check(c, sites=[(1,0,0),(0,0,0),(0,1,0),(1,0,1)], volume_ideal=4, 
+  check(c, sites=[(1,0,0),(0,0,0),(0,1,0),(1,0,1)], volume_ideal=4,
       both_signs=False, weight=1, volume_model=-1, delta_sign=-1,
       delta=5)
   assert approx_equal(c.residual(), 25)
@@ -1984,7 +1984,7 @@ def exercise_chirality():
   c = geometry_restraints.chirality(
     sites_cart=sites_cart,
     proxy=p)
-  check(c, sites=[(1,0,0),(0,0,0),(0,1,0),(-1,0,-1)], volume_ideal=4, 
+  check(c, sites=[(1,0,0),(0,0,0),(0,1,0),(-1,0,-1)], volume_ideal=4,
       both_signs=False, weight=1, volume_model=1, delta_sign=-1,
       delta=3)
   proxies = geometry_restraints.shared_chirality_proxy([p,p])
@@ -2011,26 +2011,26 @@ def exercise_chirality():
   assert selected.size() == 0
   selected = proxies.proxy_select(n_seq=5, iselection=flex.size_t([1,2,3,4]))
   assert selected.size() == 2 # 2nd and 4th
-  check(selected[0], i_seqs=(0,1,2,3), 
+  check(selected[0], i_seqs=(0,1,2,3),
       volume_ideal=2, both_signs=True, weight=3, origin_id=1)
-  check(selected[1], i_seqs=(2,0,1,3), 
+  check(selected[1], i_seqs=(2,0,1,3),
       volume_ideal=4, both_signs=False, weight=5, origin_id=3)
   #
   rest = proxies.proxy_remove(selection=flex.bool([True,True,True,True,True]))
   assert rest.size() == 0
   rest = proxies.proxy_remove(selection=flex.bool([False,True,True,True,True]))
   assert rest.size() == 2 # 1st and 3rd
-  check(rest[0], i_seqs=(0,1,2,3), 
+  check(rest[0], i_seqs=(0,1,2,3),
       volume_ideal=1, both_signs=False, weight=2, origin_id=0)
-  check(rest[1], i_seqs=(2,3,0,4), 
+  check(rest[1], i_seqs=(2,3,0,4),
       volume_ideal=3, both_signs=True, weight=4, origin_id=2)
   rest = proxies.proxy_remove(selection=flex.bool([True,True,True,True,False]))
   assert rest.size() == 3 # all but 1st
-  check(rest[0], i_seqs=(1,2,3,4), 
+  check(rest[0], i_seqs=(1,2,3,4),
       volume_ideal=2, both_signs=True, weight=3, origin_id=1)
-  check(rest[1], i_seqs=(2,3,0,4), 
+  check(rest[1], i_seqs=(2,3,0,4),
       volume_ideal=3, both_signs=True, weight=4, origin_id=2)
-  check(rest[2], i_seqs=(3,1,2,4), 
+  check(rest[2], i_seqs=(3,1,2,4),
       volume_ideal=4, both_signs=False, weight=5, origin_id=3)
 
 def exercise_planarity():
@@ -2997,8 +2997,19 @@ x,y,z
   assert approx_equal(grads_ana, grads_fin)
 
 def exercise_parallelity():
+  def check(p, i_seqs=(1,2,3,4,5), j_seqs=(6,7,8,9,10), weight=1,
+      target_angle_deg=0, slack=0, top_out=False, limit=1, origin_id=0):
+    assert approx_equal(p.i_seqs, i_seqs)
+    assert approx_equal(p.j_seqs, j_seqs)
+    assert approx_equal(p.weight, weight)
+    assert approx_equal(p.target_angle_deg, target_angle_deg)
+    assert approx_equal(p.slack, slack)
+    assert p.top_out == top_out
+    assert approx_equal(p.limit, limit)
+    assert p.origin_id == origin_id
+
   def test_exact_values(test_sites, weight, top_out, limit, residual,
-                        delta, eps=1e-6):
+                        delta, origin_id=0, eps=1e-6):
     p = geometry_restraints.parallelity(i_sites=test_sites[0],
                     j_sites=test_sites[1],
                     weight=weight,
@@ -3007,6 +3018,20 @@ def exercise_parallelity():
     assert approx_equal(p.residual(), residual, eps)
     assert approx_equal(p.delta, delta, eps)
 
+  p = geometry_restraints.parallelity_proxy(
+      i_seqs=(1,2,3,4,5),
+      j_seqs=(6,7,8,9,10),
+      weight=1)
+  check(p)
+  p.origin_id = 1
+  check(p, origin_id=1)
+  c = geometry_restraints.parallelity_proxy(
+      i_seqs=(5,4,3,2,1),
+      j_seqs=(10,9,8,7,6),
+      proxy=p)
+  check(c, i_seqs=(5,4,3,2,1), j_seqs=(10,9,8,7,6), weight=1, origin_id=1)
+  c = c.sort_ij_seqs()
+  check(p, origin_id=1)
   # values
   test_sites_1 = ([(1,1,0), (2,3,0), (1,2,0)],
                   [(1,1,1), (2,2,1), (1,2,1)])
@@ -3020,23 +3045,25 @@ def exercise_parallelity():
   test_sites_4 = ([(1,0,0), (2,0,0) ],
                   [(1,0,0), (2,0,0), (1,0,1)])
   # test_data=[(test_sites, weight, top_out, limit, residual, delta)]
-  test_data = [(test_sites_1, 1, False, 1, 0, 0),
-               (test_sites_1, 1, True, 1, 0, 0),
-               (test_sites_1, 1, True, 1000, 0, 0),
-               (test_sites_2, 1, False, 1, 1, 90),
-               (test_sites_2, 1, True, 1, 0.632120558829, 90),
-               (test_sites_2, 1, True, 1000, 0.999999499984, 90),
-               (test_sites_2, 1300, False, 1, 1300, 90),
-               (test_sites_2, 1300, True, 1, 821.756726477, 90),
-               (test_sites_2, 1300, True, 1000, 1299.99934998, 90),
-               (test_sites_21, 1000, False, 1, 500, 60),
-               (test_sites_21, 1000, True, 1, 393.469340287, 60),
-               (test_sites_21, 1000, True, 1000, 499.999874948, 60),
-               (test_sites_3, 1, False, 1, 1, 90),
-               (test_sites_3, 1, True, 1, 0.632120558829, 90),
-               (test_sites_3, 1, True, 1000, 0.999999499984, 90)]
-  for (test_sites, weight, top_out, limit, residual, delta) in test_data:
-    test_exact_values(test_sites, weight, top_out, limit, residual, delta)
+  test_data = [(test_sites_1,    1, False,1,    0,              0 , 0),
+               (test_sites_1,    1, True, 1,    0,              0 , 0),
+               (test_sites_1,    1, True, 1000, 0,              0 , 0),
+               (test_sites_2,    1, False,1,    1,              90, 0),
+               (test_sites_2,    1, True, 1,    0.632120558829, 90, 0),
+               (test_sites_2,    1, True, 1000, 0.999999499984, 90, 1),
+               (test_sites_2, 1300, False,1,    1300,           90, 1),
+               (test_sites_2, 1300, True, 1,    821.756726477,  90, 1),
+               (test_sites_2, 1300, True, 1000, 1299.99934998,  90, 1),
+               (test_sites_21,1000, False,1,    500,            60, 1),
+               (test_sites_21,1000, True, 1,    393.469340287,  60, 2),
+               (test_sites_21,1000, True, 1000, 499.999874948,  60, 2),
+               (test_sites_3,    1, False,1,    1,              90, 2),
+               (test_sites_3,    1, True, 1,    0.632120558829, 90, 2),
+               (test_sites_3,    1, True, 1000, 0.999999499984, 90, 2)]
+  for (test_sites, weight, top_out, limit, residual,
+      delta, origin_id) in test_data:
+    test_exact_values(test_sites, weight, top_out, limit, residual,
+        delta, origin_id)
 
   # gradients
   def make_points(one_d):
@@ -3090,65 +3117,35 @@ def exercise_parallelity():
       sites_fdg = make_points(fin_dif_grad)
       assert approx_equal(grad, sites_fdg, 1.e-6)
   # Proxy selections
-  def make_proxy(i_seqs,
-                 j_seqs,
-                 weight,
-                 target_angle_deg=0,
-                 slack=0,
-                 limit=-1,
-                 top_out=False):
+  def make_proxy(i_seqs, j_seqs, weight, target_angle_deg=0, slack=0,
+                 limit=-1, top_out=False, origin_id=0):
     return geometry_restraints.parallelity_proxy(
-      flex.size_t(i_seqs),
-      flex.size_t(j_seqs),
-      weight,
-      target_angle_deg,
-      slack,
-      limit,
-      top_out)
+        flex.size_t(i_seqs),
+        flex.size_t(j_seqs),
+        weight, target_angle_deg, slack, limit, top_out, origin_id)
   proxies = geometry_restraints.shared_parallelity_proxy([
-    make_proxy([0,1,2,3],   [2,3,4,5],   1, 11, 1, 1, True),
-    make_proxy([1,2,3,4],   [3,4,5,6],   2, 12, 2, 2, True),
-    make_proxy([2,3,10,11], [4,5,12,13], 3, 13, 3, 3, True),
-    make_proxy([3,1,12,14], [5,6,14,15], 4, 14, 4, 4, True)])
+    make_proxy([0,1,2,3],   [2,3,4,5],   1, 11, 1, 1, True, 0),
+    make_proxy([1,2,3,4],   [3,4,5,6],   2, 12, 2, 2, True, 1),
+    make_proxy([2,3,10,11], [4,5,12,13], 3, 13, 3, 3, True, 2),
+    make_proxy([3,1,12,14], [5,6,14,15], 4, 14, 4, 4, True, 3)])
   selected = proxies.proxy_select(n_seq=16, iselection=flex.size_t([0,2,4]))
   assert selected.size() == 0
   selected = proxies.proxy_select(n_seq=16,
                                   iselection=flex.size_t([1,2,3,4,6]))
   assert selected.size() == 2
-  assert list(selected[0].i_seqs) == [0, 1, 2]
-  assert list(selected[0].j_seqs) == [1, 2, 3]
-  assert selected[0].weight == 1
-  assert selected[1].weight == 2
-  assert selected[0].target_angle_deg == 11
-  assert selected[1].target_angle_deg == 12
-  assert selected[0].slack == 1
-  assert selected[1].slack == 2
-  assert selected[0].limit == 1
-  assert selected[1].limit == 2
-  assert selected[0].top_out == selected[1].top_out == True
-  assert list(selected[1].i_seqs) == [0, 1, 2, 3]
-  assert list(selected[1].j_seqs) == [2, 3, 4]
-  assert approx_equal(selected[0].weight, 1)
-  assert approx_equal(selected[1].weight, 2)
-
+  check(selected[0], i_seqs=(0,1,2), j_seqs=(1,2,3), weight=1,
+      target_angle_deg=11, slack=1, top_out=True, limit=1, origin_id=0)
+  check(selected[1], i_seqs=(0, 1, 2, 3), j_seqs=(2, 3, 4), weight=2,
+      target_angle_deg=12, slack=2, top_out=True, limit=2, origin_id=1)
   # - geometry_restraints.remove.parallelities
   rest = proxies.proxy_remove(selection=flex.bool([True]*16))
   assert len(rest) == 0
   rest = proxies.proxy_remove(selection=flex.bool([True]*6+[False]*10))
-  assert len(rest) == 2
-  assert list(rest[0].i_seqs) == [2, 3, 10, 11]
-  assert list(rest[0].j_seqs) == [4, 5, 12, 13]
-  assert list(rest[1].i_seqs) == [3, 1, 12, 14]
-  assert list(rest[1].j_seqs) == [5, 6, 14, 15]
-  assert rest[0].weight == 3
-  assert rest[1].weight == 4
-  assert rest[0].target_angle_deg == 13
-  assert rest[1].target_angle_deg == 14
-  assert rest[0].slack == 3
-  assert rest[1].slack == 4
-  assert rest[0].limit == 3
-  assert rest[1].limit == 4
-  assert rest[0].top_out == selected[1].top_out == True
+  assert len(rest) == 2 # 3rd and 4th
+  check(rest[0], i_seqs=(2, 3, 10, 11), j_seqs=(4, 5, 12, 13), weight=3,
+      target_angle_deg=13, slack=3, top_out=True, limit=3, origin_id=2)
+  check(rest[1], i_seqs=(3, 1, 12, 14), j_seqs=(5, 6, 14, 15), weight=4,
+      target_angle_deg=14, slack=4, top_out=True, limit=4, origin_id=3)
 
 def exercise_origin_id_selections():
   p_array = []
