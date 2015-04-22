@@ -358,7 +358,8 @@ class ncs_group_object(object):
       selection = ''   (multiple)
     }
     """
-    ncs_phil_string = nu.convert_phil_format(ncs_phil_string)
+    if(ncs_phil_string is not None):
+      ncs_phil_string = nu.convert_phil_format(ncs_phil_string)
     min_percent = self.min_percent
     if not self.process_similar_chains:
       min_percent = 1.0
