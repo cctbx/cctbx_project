@@ -1475,56 +1475,80 @@ def exercise_angle():
     assert approx_equal(a.residual(), ans[i][2])
 
 def exercise_dihedral():
+
+  def check(p, i_seqs=None, sites=None, sym_ops=None, angle_ideal=-40,
+      alt_angle_ideals=None, weight=1, periodicity=0, limit=-1, top_out=False,
+      slack=0.0, origin_id=0, angle_model=0, angle_delta=0):
+    assert [i_seqs, sites].count(None) == 1 # check for correct usage of procedure
+    assert approx_equal(p.angle_ideal, angle_ideal)
+    assert p.alt_angle_ideals == alt_angle_ideals
+    assert approx_equal(p.weight, weight)
+    assert approx_equal(p.periodicity, periodicity)
+    assert approx_equal(p.limit, limit)
+    assert p.top_out == top_out
+    assert approx_equal(p.slack, slack)
+    if i_seqs is not None:
+      assert p.origin_id == origin_id
+      assert p.i_seqs == i_seqs
+      if p.sym_ops is not None:
+        for i in range(len(p.sym_ops)):
+          assert p.sym_ops[i].as_double_array == sym_ops[i].as_double_array
+      else:
+        assert sym_ops is None # while p.sym_ops IS None
+    else:
+      assert approx_equal(p.sites, sites)
+      assert p.have_angle_model
+      assert approx_equal(p.angle_model, angle_model)
+      assert approx_equal(p.delta, angle_delta)
+
+  # defaults:
+  p = geometry_restraints.dihedral_proxy(
+      i_seqs=[3,2,1,0],
+      angle_ideal=10,
+      weight=1)
+  check(p, i_seqs=(3,2,1,0), angle_ideal=10)
+
   u_mx = sgtbx.rt_mx() # unit matrix
   sym_ops = (u_mx, sgtbx.rt_mx('1+X,+Y,+Z'), u_mx, sgtbx.rt_mx('+X,-1+Y,2+Z'))
   p = geometry_restraints.dihedral_proxy(
-    i_seqs=[3,2,1,0],
-    sym_ops=sym_ops,
-    angle_ideal=-40,
-    weight=1,
-    periodicity=2,
-    alt_angle_ideals=[180])
-  assert p.i_seqs == (3,2,1,0)
-  assert p.sym_ops == sym_ops
-  assert p.alt_angle_ideals == (180,)
+      i_seqs=[3,2,1,0],
+      sym_ops=sym_ops,
+      angle_ideal=-40,
+      weight=1,
+      periodicity=2,
+      alt_angle_ideals=[180])
+  check(p, i_seqs=(3,2,1,0), sym_ops=sym_ops, alt_angle_ideals=(180,), periodicity=2)
   c = geometry_restraints.dihedral_proxy(
-    i_seqs=[6,8,5,3],
-    proxy=p)
-  assert c.i_seqs == (6,8,5,3)
-  assert c.sym_ops == sym_ops
-  assert approx_equal(c.angle_ideal, -40)
-  assert approx_equal(c.weight, 1)
-  assert c.periodicity == 2
-  assert c.alt_angle_ideals == (180,)
+      i_seqs=[6,8,5,3],
+      proxy=p)
+  check(c, i_seqs=(6,8,5,3), sym_ops=sym_ops, alt_angle_ideals=(180,),
+      periodicity=2)
   c = p.scale_weight(factor=0.37)
-  assert c.i_seqs == (3,2,1,0)
-  assert c.sym_ops == sym_ops
-  assert approx_equal(c.weight, 0.37)
-  assert c.alt_angle_ideals == (180,)
+  check(c, i_seqs=(3,2,1,0), sym_ops=sym_ops, weight=0.37,
+      alt_angle_ideals=(180,), periodicity=2)
   p = p.sort_i_seqs()
-  assert p.i_seqs == (0,1,2,3)
-  assert p.sym_ops == (
-    sgtbx.rt_mx('+X,-1+Y,2+Z'), u_mx, sgtbx.rt_mx('1+X,+Y,+Z'), u_mx)
-  assert approx_equal(p.angle_ideal, -40)
-  assert approx_equal(p.weight, 1)
-  assert p.periodicity == 2
-  assert p.alt_angle_ideals == (180,)
+  check(p, i_seqs=(0,1,2,3),
+      sym_ops=(
+          sgtbx.rt_mx('+X,-1+Y,2+Z'), u_mx, sgtbx.rt_mx('1+X,+Y,+Z'), u_mx),
+      alt_angle_ideals=(180,), periodicity=2)
   p.angle_ideal = 50
   p.weight = 2
   p.periodicity = 3
   p.alt_angle_ideals = None
-  assert approx_equal(p.angle_ideal, 50)
-  assert approx_equal(p.weight, 2)
-  assert p.periodicity == 3
-  assert p.alt_angle_ideals is None
+  p.origin_id = 2
+  check(p, i_seqs=(0,1,2,3), angle_ideal=50,
+      sym_ops=(
+          sgtbx.rt_mx('+X,-1+Y,2+Z'), u_mx, sgtbx.rt_mx('1+X,+Y,+Z'), u_mx),
+      weight=2, periodicity=3, origin_id=2)
   p.angle_ideal = -40
   p.weight = 1
   p.periodicity = 2
   p.alt_angle_ideals = (25,-25)
-  assert approx_equal(p.angle_ideal, -40)
-  assert approx_equal(p.weight, 1)
-  assert p.periodicity == 2
-  assert p.alt_angle_ideals == (25,-25,)
+  p.origin_id=0
+  check(p, i_seqs=(0,1,2,3), angle_ideal=-40,
+      sym_ops=(
+          sgtbx.rt_mx('+X,-1+Y,2+Z'), u_mx, sgtbx.rt_mx('1+X,+Y,+Z'), u_mx),
+      weight=1, periodicity=2, alt_angle_ideals=(25,-25,), origin_id=0)
   #
   u_mx = sgtbx.rt_mx() # unit matrix
   sym_ops = (u_mx, u_mx, sgtbx.rt_mx('+X,1+Y,+Z'), sgtbx.rt_mx('+X,1+Y,+Z'))
@@ -1541,12 +1565,8 @@ def exercise_dihedral():
       unit_cell=unit_cell,
       sites_cart=sites_cart,
       proxy=p)
-    assert approx_equal(d.sites, [(2,24,0),(1,24,0),(1,26,0),(0,26,0)])
-    assert approx_equal(d.angle_ideal, 175)
-    assert approx_equal(d.weight, 1)
-    assert d.have_angle_model
-    assert approx_equal(d.angle_model, 180)
-    assert approx_equal(d.delta, -5)
+    check(d, sites=[(2,24,0),(1,24,0),(1,26,0),(0,26,0)], angle_ideal=175,
+        angle_model=180, angle_delta=-5, periodicity=periodicity)
     if (periodicity <= 0):
       assert approx_equal(d.residual(), 25)
       assert approx_equal(d.gradients(epsilon=1.e-100),
@@ -1590,19 +1610,25 @@ def exercise_dihedral():
     sym_ops=sym_ops,
     angle_ideal=175,
     weight=1)
-  assert p_sym.sym_ops == sym_ops
+  check(p_sym, i_seqs=(0,1,2,3), sym_ops=sym_ops, angle_ideal=175)
   dihedral_sym = geometry_restraints.dihedral(
     unit_cell=unit_cell,
     sites_cart=sites_cart,
     proxy=p_sym)
+  check(dihedral_sym, sites=[(2,24,0),(1,24,0),(1,26,0),(0,26,0)],
+      sym_ops=sym_ops, angle_ideal=175,
+      weight=1, angle_model=180, angle_delta=-5)
   p_no_sym = geometry_restraints.dihedral_proxy(
     i_seqs=[0,1,2,3],
     angle_ideal=175,
     weight=1)
-  assert p_no_sym.sym_ops == None
+  check(p_no_sym, i_seqs=(0,1,2,3), sym_ops=None, angle_ideal=175)
   dihedral_no_sym = geometry_restraints.dihedral(
     sites_cart=sites_cart,
     proxy=p_no_sym)
+  check(dihedral_no_sym, sites=[(2,24,0),(1,24,0),(1,1,0),(0,1,0)],
+      sym_ops=sym_ops, angle_ideal=175,
+      weight=1, angle_model=180, angle_delta=-5)
   proxies = geometry_restraints.shared_dihedral_proxy([p_sym,p_no_sym])
   assert approx_equal(geometry_restraints.dihedral_deltas(
     unit_cell=unit_cell,
@@ -1678,35 +1704,26 @@ def exercise_dihedral():
     weight=1,
     periodicity=-2,
     alt_angle_ideals=None)
-  assert p.i_seqs == (3,2,1,0)
+  check(p, i_seqs=(3,2,1,0), periodicity=-2)
   p = p.sort_i_seqs()
-  assert p.i_seqs == (0,1,2,3)
-  assert approx_equal(p.angle_ideal, -40)
-  assert approx_equal(p.weight, 1)
-  assert p.periodicity == -2
-  assert p.alt_angle_ideals is None
+  check(p, i_seqs=(0,1,2,3), periodicity=-2)
   p.angle_ideal = 50
   p.weight = 2
   p.periodicity = 3
-  assert approx_equal(p.angle_ideal, 50)
-  assert approx_equal(p.weight, 2)
-  assert p.periodicity == 3
+  p.origin_id = 2
+  check(p, i_seqs=(0,1,2,3), angle_ideal=50, weight=2,
+      periodicity=3, origin_id=2)
   p.angle_ideal = -40
   p.weight = 1
   p.periodicity = -2
-  assert approx_equal(p.angle_ideal, -40)
-  assert approx_equal(p.weight, 1)
-  assert p.periodicity == -2
+  p.origin_id = 0
+  check(p, i_seqs=(0,1,2,3), angle_ideal=-40, weight=1, periodicity=-2)
   d = geometry_restraints.dihedral(
     sites=[(1,0,0),(0,0,0),(0,1,0),(1,0,1)],
     angle_ideal=-40,
     weight=1)
-  assert approx_equal(d.sites, [(1,0,0),(0,0,0),(0,1,0),(1,0,1)])
-  assert approx_equal(d.angle_ideal, -40)
-  assert approx_equal(d.weight, 1)
-  assert d.have_angle_model
-  assert approx_equal(d.angle_model, -45)
-  assert approx_equal(d.delta, 5)
+  check(d, sites=[(1,0,0),(0,0,0),(0,1,0),(1,0,1)],
+      angle_ideal=-40, angle_model=-45, angle_delta=5)
   assert approx_equal(d.residual(), 25)
   assert approx_equal(d.gradients(epsilon=1.e-100),
     ((0, 0, -572.95779513082323),
@@ -1717,13 +1734,8 @@ def exercise_dihedral():
   d = geometry_restraints.dihedral(
     sites_cart=sites_cart,
     proxy=p)
-  assert approx_equal(d.sites, [(1,0,0),(0,0,0),(0,1,0),(-1,0,-1)])
-  assert approx_equal(d.angle_ideal, -40)
-  assert approx_equal(d.weight, 1)
-  assert d.periodicity == -2
-  assert d.have_angle_model
-  assert approx_equal(d.angle_model, 135)
-  assert approx_equal(d.delta, 5)
+  check(d, sites=[(1,0,0),(0,0,0),(0,1,0),(-1,0,-1)],
+      angle_ideal=-40, periodicity=-2, angle_model=135, angle_delta=5)
   proxies = geometry_restraints.shared_dihedral_proxy([p,p])
   for proxy in proxies:
     assert proxy.periodicity == -2
@@ -1796,30 +1808,34 @@ def exercise_dihedral():
   #
   proxies = geometry_restraints.shared_dihedral_proxy([
     geometry_restraints.dihedral_proxy([0,1,2,3], 1, 2, 3),
-    geometry_restraints.dihedral_proxy([1,2,3,4], 2, 3, 4),
-    geometry_restraints.dihedral_proxy([2,3,0,4], 3, 4, 5),
-    geometry_restraints.dihedral_proxy([3,1,2,4], 4, 5, 6)])
+    geometry_restraints.dihedral_proxy([1,2,3,4], 2, 3, 4, origin_id=1),
+    geometry_restraints.dihedral_proxy([2,3,0,4], 3, 4, 5, origin_id=2),
+    geometry_restraints.dihedral_proxy([3,1,2,4], 4, 5, 6, origin_id=3)])
   selected = proxies.proxy_select(n_seq=5, iselection=flex.size_t([0,2,4]))
   assert selected.size() == 0
   selected = proxies.proxy_select(n_seq=5, iselection=flex.size_t([1,2,3,4]))
-  assert selected.size() == 2
-  assert selected[0].i_seqs == (0,1,2,3)
-  assert selected[1].i_seqs == (2,0,1,3)
-  assert approx_equal(selected[0].angle_ideal, 2)
-  assert approx_equal(selected[1].angle_ideal, 4)
-  assert approx_equal(selected[0].weight, 3)
-  assert approx_equal(selected[1].weight, 5)
-  assert selected[0].periodicity == 4
-  assert selected[1].periodicity == 6
+  assert selected.size() == 2 # 2nd and 4th
+  check(selected[0],
+      i_seqs=(0,1,2,3), angle_ideal=2, weight=3, periodicity=4, origin_id=1)
+  check(selected[1],
+      i_seqs=(2,0,1,3), angle_ideal=4, weight=5, periodicity=6, origin_id=3)
   #
   rest = proxies.proxy_remove(selection=flex.bool([True,True,True,True,True]))
   assert rest.size() == 0
   rest = proxies.proxy_remove(selection=flex.bool([False,True,True,True,True]))
-  assert rest.size() == 2
-  assert rest[0].i_seqs == (0,1,2,3)
-  assert rest[1].i_seqs == (2,3,0,4)
+  assert rest.size() == 2 # 1st and 3rd
+  check(rest[0],
+      i_seqs=(0,1,2,3), angle_ideal=1, weight=2, periodicity=3, origin_id=0)
+  check(rest[1],
+      i_seqs=(2,3,0,4), angle_ideal=3, weight=4, periodicity=5, origin_id=2)
   rest = proxies.proxy_remove(selection=flex.bool([True,True,True,True,False]))
-  assert rest.size() == 3
+  assert rest.size() == 3 # all but 1st
+  check(rest[0],
+      i_seqs=(1,2,3,4), angle_ideal=2, weight=3, periodicity=4, origin_id=1)
+  check(rest[1],
+      i_seqs=(2,3,0,4), angle_ideal=3, weight=4, periodicity=5, origin_id=2)
+  check(rest[2],
+      i_seqs=(3,1,2,4), angle_ideal=4, weight=5, periodicity=6, origin_id=3)
   #
   def get_d(angle_ideal, angle_model, periodicity, alt_angle_ideals=None):
     a = angle_model * math.pi / 180

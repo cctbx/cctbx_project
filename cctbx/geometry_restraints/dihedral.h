@@ -29,7 +29,8 @@ namespace cctbx { namespace geometry_restraints {
       alt_angle_ideals_type const& alt_angle_ideals_=alt_angle_ideals_type(),
       double limit_=-1.0,
       bool top_out_=false,
-      double slack_=0.0)
+      double slack_=0.0,
+      unsigned char origin_id_=0)
     :
       i_seqs(i_seqs_),
       angle_ideal(angle_ideal_),
@@ -38,7 +39,8 @@ namespace cctbx { namespace geometry_restraints {
       alt_angle_ideals(alt_angle_ideals_),
       limit(limit_),
       top_out(top_out_),
-      slack(slack_)
+      slack(slack_),
+      origin_id(origin_id_)
     {
       if (top_out) {
         CCTBX_ASSERT(limit >= 0.0);
@@ -55,7 +57,8 @@ namespace cctbx { namespace geometry_restraints {
       alt_angle_ideals_type const& alt_angle_ideals_=alt_angle_ideals_type(),
       double limit_=-1.0,
       bool top_out_=false,
-      double slack_=0.0)
+      double slack_=0.0,
+      unsigned char origin_id_=0)
     :
       i_seqs(i_seqs_),
       sym_ops(sym_ops_),
@@ -65,7 +68,8 @@ namespace cctbx { namespace geometry_restraints {
       alt_angle_ideals(alt_angle_ideals_),
       limit(limit_),
       top_out(top_out_),
-      slack(slack_)
+      slack(slack_),
+      origin_id(origin_id_)
     {
       if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
@@ -88,7 +92,8 @@ namespace cctbx { namespace geometry_restraints {
       alt_angle_ideals(proxy.alt_angle_ideals),
       limit(proxy.limit),
       top_out(proxy.top_out),
-      slack(proxy.slack)
+      slack(proxy.slack),
+      origin_id(proxy.origin_id)
     {
       if ( sym_ops.get() != 0 ) {
         CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
@@ -104,7 +109,7 @@ namespace cctbx { namespace geometry_restraints {
     {
       return dihedral_proxy(
         i_seqs, sym_ops, angle_ideal, weight*factor,
-        periodicity, alt_angle_ideals, limit, top_out, slack);
+        periodicity, alt_angle_ideals, limit, top_out, slack, origin_id);
     }
 
     //! Sorts i_seqs such that i_seq[0] < i_seq[3] and i_seq[1] < i_seq[2].
@@ -165,6 +170,7 @@ namespace cctbx { namespace geometry_restraints {
     bool top_out;
     //! Parameter.
     double slack;
+    unsigned char origin_id;
   };
 
   //! Residual and gradient calculations for dihedral %angle restraint.
