@@ -27,11 +27,13 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("chirality_proxy", no_init)
-        .def(init<af::tiny<unsigned, 4> const&, double, bool, double>((
+        .def(init<af::tiny<unsigned, 4> const&, double, bool, double,
+          unsigned char>((
           arg("i_seqs"),
           arg("volume_ideal"),
           arg("both_signs"),
-          arg("weight"))))
+          arg("weight"),
+          arg("origin_id")=0)))
         .def(init<af::tiny<unsigned, 4> const&, w_t const&>((
           arg("i_seqs"),
           arg("proxy"))))
@@ -41,6 +43,7 @@ namespace {
         .def_readonly("volume_ideal", &w_t::volume_ideal)
         .def_readonly("both_signs", &w_t::both_signs)
         .def_readwrite("weight", &w_t::weight)
+        .def_readwrite("origin_id", &w_t::origin_id)
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(

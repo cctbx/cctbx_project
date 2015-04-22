@@ -19,12 +19,14 @@ namespace cctbx { namespace geometry_restraints {
       i_seqs_type const& i_seqs_,
       double volume_ideal_,
       bool both_signs_,
-      double weight_)
+      double weight_,
+      unsigned char origin_id_)
     :
       i_seqs(i_seqs_),
       volume_ideal(volume_ideal_),
       both_signs(both_signs_),
-      weight(weight_)
+      weight(weight_),
+      origin_id(origin_id_)
     {}
 
     //! Support for proxy_select (and similar operations).
@@ -35,14 +37,16 @@ namespace cctbx { namespace geometry_restraints {
       i_seqs(i_seqs_),
       volume_ideal(proxy.volume_ideal),
       both_signs(proxy.both_signs),
-      weight(proxy.weight)
+      weight(proxy.weight),
+      origin_id(proxy.origin_id)
     {}
 
     chirality_proxy
     scale_weight(
       double factor) const
     {
-      return chirality_proxy(i_seqs, volume_ideal, both_signs, weight*factor);
+      return chirality_proxy(i_seqs, volume_ideal, both_signs, weight*factor,
+          origin_id);
     }
 
     //! Sorts i_seqs such that i_seq[1] < i_seq[2] < i_seq[3].
@@ -69,6 +73,7 @@ namespace cctbx { namespace geometry_restraints {
     bool both_signs;
     //! Parameter.
     double weight;
+    unsigned char origin_id;
   };
 
   //! Residual and gradient calculations for chirality restraint.
