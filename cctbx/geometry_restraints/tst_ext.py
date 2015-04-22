@@ -1924,49 +1924,56 @@ def exercise_dihedral():
   assert approx_equal(d.delta, -2.)
 
 def exercise_chirality():
+  def check(p, i_seqs=None, sites=None, volume_ideal=0, both_signs=False, 
+      weight=0, origin_id=0, volume_model=0, delta_sign=0, delta=0):
+    assert [i_seqs, sites].count(None) == 1 # check for correct usage of procedure
+    assert approx_equal(p.volume_ideal, volume_ideal)
+    assert p.both_signs == both_signs
+    assert approx_equal(p.weight, weight)
+    if i_seqs is not None:
+      assert p.origin_id == origin_id
+      assert p.i_seqs == i_seqs
+    else:
+      assert approx_equal(p.sites, sites)
+      assert approx_equal(p.volume_model, volume_model)
+      assert approx_equal(p.delta, delta)
+      assert approx_equal(p.delta_sign, delta_sign)
+
   p = geometry_restraints.chirality_proxy(
     i_seqs=[0,2,3,1],
     volume_ideal=4,
     both_signs=False,
-    weight=1)
-  assert p.i_seqs == (0,2,3,1)
-  assert approx_equal(p.volume_ideal, 4)
-  assert not p.both_signs
-  assert approx_equal(p.weight, 1)
+    weight=1,
+    origin_id=1)
+  check(p, i_seqs=(0,2,3,1), volume_ideal=4, both_signs=False, weight=1,
+      origin_id=1)
   c = geometry_restraints.chirality_proxy(
     i_seqs=[9,0,4,6],
     proxy=p)
-  assert c.i_seqs == (9,0,4,6)
-  assert approx_equal(c.volume_ideal, 4)
-  assert not c.both_signs
-  assert approx_equal(c.weight, 1)
+  check(c, i_seqs=(9,0,4,6), volume_ideal=4, both_signs=False, weight=1,
+      origin_id=1)
   c = p.scale_weight(factor=9.32)
-  assert c.i_seqs == (0,2,3,1)
-  assert approx_equal(c.weight, 9.32)
+  check(c, i_seqs=(0,2,3,1), volume_ideal=4, both_signs=False, weight=9.32,
+      origin_id=1)
   p = p.sort_i_seqs()
-  assert p.i_seqs == (0,1,2,3)
-  assert approx_equal(p.volume_ideal, 4)
+  check(p, i_seqs=(0,1,2,3), volume_ideal=4, both_signs=False, weight=1,
+      origin_id=1)
   p = geometry_restraints.chirality_proxy(
     i_seqs=[0,2,1,3],
     volume_ideal=-4,
     both_signs=False,
     weight=1)
-  assert approx_equal(p.volume_ideal, -4)
+  check(p, i_seqs=(0,2,1,3), volume_ideal=-4, both_signs=False, weight=1)
   p = p.sort_i_seqs()
-  assert p.i_seqs == (0,1,2,3)
-  assert approx_equal(p.volume_ideal, 4)
+  check(p, i_seqs=(0,1,2,3), volume_ideal=4, both_signs=False, weight=1)
   c = geometry_restraints.chirality(
     sites=[(1,0,0),(0,0,0),(0,1,0),(1,0,1)],
     volume_ideal=4,
     both_signs=False,
     weight=1)
-  assert approx_equal(c.sites, [(1,0,0),(0,0,0),(0,1,0),(1,0,1)])
-  assert approx_equal(c.volume_ideal, 4)
-  assert approx_equal(c.weight, 1)
-  assert not c.both_signs
-  assert approx_equal(c.volume_model, -1)
-  assert approx_equal(c.delta_sign, -1)
-  assert approx_equal(c.delta, 5)
+  check(c, sites=[(1,0,0),(0,0,0),(0,1,0),(1,0,1)], volume_ideal=4, 
+      both_signs=False, weight=1, volume_model=-1, delta_sign=-1,
+      delta=5)
   assert approx_equal(c.residual(), 25)
   assert approx_equal(c.gradients(),
     ((10, 0, -10),
@@ -1977,16 +1984,12 @@ def exercise_chirality():
   c = geometry_restraints.chirality(
     sites_cart=sites_cart,
     proxy=p)
-  assert approx_equal(c.sites, [(1,0,0),(0,0,0),(0,1,0),(-1,0,-1)])
-  assert approx_equal(c.volume_ideal, 4)
-  assert approx_equal(c.weight, 1)
-  assert not c.both_signs
-  assert approx_equal(c.volume_model, 1)
-  assert approx_equal(c.delta_sign, -1)
-  assert approx_equal(c.delta, 3)
+  check(c, sites=[(1,0,0),(0,0,0),(0,1,0),(-1,0,-1)], volume_ideal=4, 
+      both_signs=False, weight=1, volume_model=1, delta_sign=-1,
+      delta=3)
   proxies = geometry_restraints.shared_chirality_proxy([p,p])
   for proxy in proxies:
-    assert proxy.volume_ideal == 4
+    check(p, i_seqs=(0,1,2,3), volume_ideal=4, both_signs=False, weight=1)
   assert approx_equal(geometry_restraints.chirality_deltas(
     sites_cart=sites_cart,
     proxies=proxies), [3]*2)
@@ -2000,31 +2003,35 @@ def exercise_chirality():
   assert approx_equal(residual_sum, 2*9)
   #
   proxies = geometry_restraints.shared_chirality_proxy([
-    geometry_restraints.chirality_proxy([0,1,2,3], 1, False, 2),
-    geometry_restraints.chirality_proxy([1,2,3,4], 2, True, 3),
-    geometry_restraints.chirality_proxy([2,3,0,4], 3, True, 4),
-    geometry_restraints.chirality_proxy([3,1,2,4], 4, False, 5)])
+    geometry_restraints.chirality_proxy([0,1,2,3], 1, False, 2, 0),
+    geometry_restraints.chirality_proxy([1,2,3,4], 2, True, 3, 1),
+    geometry_restraints.chirality_proxy([2,3,0,4], 3, True, 4, 2),
+    geometry_restraints.chirality_proxy([3,1,2,4], 4, False, 5, 3)])
   selected = proxies.proxy_select(n_seq=5, iselection=flex.size_t([0,2,4]))
   assert selected.size() == 0
   selected = proxies.proxy_select(n_seq=5, iselection=flex.size_t([1,2,3,4]))
-  assert selected.size() == 2
-  assert selected[0].i_seqs == (0,1,2,3)
-  assert selected[1].i_seqs == (2,0,1,3)
-  assert approx_equal(selected[0].volume_ideal, 2)
-  assert approx_equal(selected[1].volume_ideal, 4)
-  assert selected[0].both_signs
-  assert not selected[1].both_signs
-  assert approx_equal(selected[0].weight, 3)
-  assert approx_equal(selected[1].weight, 5)
+  assert selected.size() == 2 # 2nd and 4th
+  check(selected[0], i_seqs=(0,1,2,3), 
+      volume_ideal=2, both_signs=True, weight=3, origin_id=1)
+  check(selected[1], i_seqs=(2,0,1,3), 
+      volume_ideal=4, both_signs=False, weight=5, origin_id=3)
   #
   rest = proxies.proxy_remove(selection=flex.bool([True,True,True,True,True]))
   assert rest.size() == 0
   rest = proxies.proxy_remove(selection=flex.bool([False,True,True,True,True]))
-  assert rest.size() == 2
-  assert rest[0].i_seqs == (0,1,2,3)
-  assert rest[1].i_seqs == (2,3,0,4)
+  assert rest.size() == 2 # 1st and 3rd
+  check(rest[0], i_seqs=(0,1,2,3), 
+      volume_ideal=1, both_signs=False, weight=2, origin_id=0)
+  check(rest[1], i_seqs=(2,3,0,4), 
+      volume_ideal=3, both_signs=True, weight=4, origin_id=2)
   rest = proxies.proxy_remove(selection=flex.bool([True,True,True,True,False]))
-  assert rest.size() == 3
+  assert rest.size() == 3 # all but 1st
+  check(rest[0], i_seqs=(1,2,3,4), 
+      volume_ideal=2, both_signs=True, weight=3, origin_id=1)
+  check(rest[1], i_seqs=(2,3,0,4), 
+      volume_ideal=3, both_signs=True, weight=4, origin_id=2)
+  check(rest[2], i_seqs=(3,1,2,4), 
+      volume_ideal=4, both_signs=False, weight=5, origin_id=3)
 
 def exercise_planarity():
   weights = flex.double([1, 2, 3, 4])
