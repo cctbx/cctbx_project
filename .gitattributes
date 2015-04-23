@@ -1651,6 +1651,7 @@ mmtbx/command_line/cablam_validate.py -text
 mmtbx/command_line/cbetadev.py -text
 mmtbx/command_line/cc_star.py -text
 mmtbx/command_line/cdl_lookup.py -text
+mmtbx/command_line/chains_as_models.py -text
 mmtbx/command_line/cif_as_mtz.py -text
 mmtbx/command_line/clashscore.py -text
 mmtbx/command_line/compare_ligands.py -text
@@ -2116,6 +2117,7 @@ mmtbx/regression/tst_map_type_parser.py -text
 mmtbx/regression/tst_maps_misc.py -text
 mmtbx/regression/tst_ml_estimate.py -text
 mmtbx/regression/tst_model_2.py -text
+mmtbx/regression/tst_models_to_from_chains.py -text
 mmtbx/regression/tst_msa.py -text
 mmtbx/regression/tst_mtz2map.py -text
 mmtbx/regression/tst_pdbtools.py -text

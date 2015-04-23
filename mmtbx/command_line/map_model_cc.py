@@ -63,8 +63,8 @@ def run(args, log=sys.stdout):
   map_data = inputs.ccp4_map.data.as_double()
   # estimate resolution
   d_min = params.resolution
+  broadcast(m="Map resolution:", log=log)
   if(d_min is None):
-    broadcast(m="Map resolution estimate:", log=log)
     d_min = maptbx.resolution_from_map_and_model(
       map_data=map_data, xray_structure=xrs)
   print >> log, "  d_min: %6.4f"%d_min
@@ -74,60 +74,24 @@ def run(args, log=sys.stdout):
     map_data       = map_data,
     d_min          = d_min)
   broadcast(m="Map-model CC:", log=log)
+  print >> log, "Overall:"
   # entire box
-  print >> log, "      box: %6.4f"%cc_calculator.cc()
+  print >> log, "         box: %6.4f"%cc_calculator.cc()
   # all atoms
-  print >> log, "      all: %6.4f"%cc_calculator.cc(
+  print >> log, "around atoms: %6.4f"%cc_calculator.cc(
     selection=flex.bool(xrs.scatterers().size(),True))
   # per chain
+  print >> log, "Per chain:"
   for chain in h.chains():
     print >> log, "  chain %s: %6.4f"%(chain.id, cc_calculator.cc(
       selection=chain.atoms().extract_i_seq()))
   # per residue
+  print >> log, "Per residue:"
   for rg in h.residue_groups():
     cc = cc_calculator.cc(selection=rg.atoms().extract_i_seq())
-    print >> log, "  resseq %s: %6.4f"%(rg.resseq, cc)
+    print >> log, "  chain id: %s resid %s: %6.4f"%(
+      rg.parent().id, rg.resid(), cc)
   #
-
-  ####
-  #### SPECIAL IDIOTIC CASE:
-  ####
-#  cc1 = []
-#  for i in xrange(160):
-#    f = flex.double()
-#    cc1.append(f)
-#  cc2 = []
-#  for i in xrange(182):
-#    f = flex.double()
-#    cc2.append(f)
-#  #
-#  for chain in h.chains():
-#    n_at = len(chain.atoms())
-#    if(n_at==1243):  # 160 residues
-#      cntr = 0
-#      for r in chain.residues():
-#        sel = r.atoms().extract_i_seq()
-#        cc1[cntr].append(cc_calculator.cc(selection=sel))
-#        cntr+=1
-#    if(n_at==1466):  # 160 residues
-#      cntr = 0
-#      for r in chain.residues():
-#        sel = r.atoms().extract_i_seq()
-#        cc2[cntr].append(cc_calculator.cc(selection=sel))
-#        cntr+=1
-#  #
-#  for i, ccs in enumerate(cc1):
-#    ccs = ccs.set_selected(ccs<0, 0)
-#    v1,v2,v3=ccs.min_max_mean().as_tuple()
-#    v4=ccs.sample_standard_deviation()
-#    print "%3d: %6.4f %6.4f %6.4f %6.4f"%(i+1, v1,v2,v3,v4)
-#  print
-#  for i, ccs in enumerate(cc2):
-#    ccs = ccs.set_selected(ccs<0, 0)
-#    v1,v2,v3=ccs.min_max_mean().as_tuple()
-#    v4=ccs.sample_standard_deviation()
-#    print "%3d: %6.4f %6.4f %6.4f %6.4f"%(i+1, v1,v2,v3,v4)
-
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

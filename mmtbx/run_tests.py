@@ -231,6 +231,8 @@ tst_list = (
   # "$D/secondary_structure/tst_base_pairing.py", # disabled due to deprecation of base_pairing.py
   "$D/ions/tst_pick_ca_svm.py",
   "$D/scaling/tst_plan_sad_experiment.py",
+  #
+  "$D/regression/tst_models_to_from_chains.py",
   )
 
 def run():
