@@ -48,7 +48,9 @@ def run(args):
       c_.id = found
       m.append_chain(c_)
   r.append_model(m)
-  r.write_pdb_file("chains.pdb")
+  r.write_pdb_file(
+    file_name        = "chains_"+args[0],
+    crystal_symmetry = pdb_inp.crystal_symmetry())
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
