@@ -4881,15 +4881,12 @@ class process(object):
 
     self._geometry_restraints_manager = None
     self._xray_structure = None
+    # Find NCS
     self.ncs_obj = None
-    if self.all_chain_proxies.params.find_ncs:
-      if file_name:
-        self.ncs_obj = self.search_for_ncs(file_name=file_name)
-      elif self.all_chain_proxies.pdb_hierarchy:
-        self.ncs_obj = self.search_for_ncs(
-          hierarchy=self.all_chain_proxies.pdb_hierarchy)
-      else:
-        raise Sorry('Need file name or hierarchy to search for NCS')
+    if(len(list(self.all_chain_proxies.pdb_hierarchy.models())) == 1 and
+       self.all_chain_proxies.params.find_ncs):
+      self.ncs_obj = self.search_for_ncs(
+        hierarchy = self.all_chain_proxies.pdb_hierarchy)
 
   def geometry_restraints_manager(self,
         plain_pairs_radius=None,
@@ -5214,20 +5211,12 @@ class process(object):
     def clash_score(self):
       return 'Clash Score'
 
-  def search_for_ncs(self,file_name=None,hierarchy=None):
-    """
-    Search for NCS relations in the PDB
-
-    Args:
-      file_name (str): PDB file name
-      hierarchy (obj): pdb hierarchy
-    """
+  def search_for_ncs(self, hierarchy):
     params = self.all_chain_proxies.params.ncs
     simple_params = self.all_chain_proxies.params.simple_ncs_from_pdb
     find_param = simple_params.domain_finding_parameters
     ncs_phil_groups = self.all_chain_proxies.params.ncs_group
-    ### XXX FIXME begin
-    # handle this correctly internally
+    ### XXX FIXME begin: handle this correctly internally
     if(len(ncs_phil_groups)==0): ncs_phil_groups=None
     if(ncs_phil_groups is not None):
       empty_cntr = 0
@@ -5236,16 +5225,10 @@ class process(object):
         for s in ng.selection:
           if(len(s.strip())==0): empty_cntr += 1
       if(empty_cntr>0): ncs_phil_groups=None
-    # remove the need to pass in deep_copy! Instead, NEVER EVER modify the
-    # hierarchy!!!
-    hierarchy_deep_copy = hierarchy
-    #if(hierarchy_deep_copy is not None):
-    #  hierarchy_deep_copy = hierarchy.deep_copy()
     ### XXX FIXME end
     ncs_obj = iotbx.ncs.input(
       ncs_phil_groups             = ncs_phil_groups,
-      file_name                   = file_name,
-      hierarchy                   = hierarchy_deep_copy,
+      hierarchy                   = hierarchy,
       chain_similarity_limit      = find_param.similarity_threshold,
       min_contig_length           = find_param.min_contig_length,
       min_percent                 = simple_params.min_percent,
