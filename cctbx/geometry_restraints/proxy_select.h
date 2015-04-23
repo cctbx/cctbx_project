@@ -41,6 +41,22 @@ namespace cctbx { namespace geometry_restraints {
     return result;
   }
 
+  template <typename ProxyType>
+  af::shared<ProxyType>
+  shared_proxy_select_origin(
+    af::const_ref<ProxyType> const& self,
+    unsigned char origin_id)
+  {
+    af::shared<ProxyType> result;
+    for(std::size_t i_proxy=0; i_proxy<self.size(); i_proxy++) {
+      ProxyType const& p = self[i_proxy];
+      if (p.origin_id == origin_id) {
+        result.push_back(ProxyType(p));
+      }
+    }
+    return result;
+  }
+
   /*! \brief Applies selection on array of atoms to array of
       planarity proxies.
    */

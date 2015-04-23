@@ -73,6 +73,12 @@ namespace {
               af::const_ref<std::size_t> const&))
               shared_proxy_select, (
             arg("n_seq"), arg("iselection")))
+          .def("proxy_select",
+            (af::shared<w_t>(*)(
+              af::const_ref<w_t> const&,
+              unsigned char))
+                shared_proxy_select_origin, (
+            arg("origin_id")))
           .def("proxy_remove",
             (af::shared<w_t>(*)(
               af::const_ref<w_t> const&,
