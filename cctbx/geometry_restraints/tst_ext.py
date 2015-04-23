@@ -1374,7 +1374,7 @@ def exercise_angle():
   proxies = geometry_restraints.shared_angle_proxy([
     geometry_restraints.angle_proxy([0,1,2], 1, 2, 0, 0),
     geometry_restraints.angle_proxy([1,2,3], 2, 3, 0, 1),
-    geometry_restraints.angle_proxy([2,3,0], 3, 4, 0, 2),
+    geometry_restraints.angle_proxy([2,3,0], 3, 4, 0, 1),
     geometry_restraints.angle_proxy([3,1,2], 4, 5, 0, 3)])
   selected = proxies.proxy_select(n_seq=4, iselection=flex.size_t([0,2]))
   assert selected.size() == 0
@@ -1383,7 +1383,7 @@ def exercise_angle():
   check(selected[0], i_seqs=(0,1,2), angle_ideal=1, weight=2)
   selected = proxies.proxy_select(n_seq=4, iselection=flex.size_t([0,2,3]))
   assert selected.size() == 1
-  check(selected[0], i_seqs=(1,2,0), angle_ideal=3, weight=4, origin_id=2)
+  check(selected[0], i_seqs=(1,2,0), angle_ideal=3, weight=4, origin_id=1)
   selected = proxies.proxy_select(n_seq=4, iselection=flex.size_t([1,2,3]))
   assert selected.size() == 2
   check(selected[0], i_seqs=(0,1,2), angle_ideal=2, weight=3, origin_id=1)
@@ -1396,9 +1396,19 @@ def exercise_angle():
   rest = proxies.proxy_remove(selection=flex.bool([False,True,True,True]))
   assert rest.size() == 2
   check(rest[0], i_seqs=(0,1,2), angle_ideal=1, weight=2, origin_id=0)
-  check(rest[1], i_seqs=(2,3,0), angle_ideal=3, weight=4, origin_id=2)
+  check(rest[1], i_seqs=(2,3,0), angle_ideal=3, weight=4, origin_id=1)
   rest = proxies.proxy_remove(selection=flex.bool([True,True,True,False]))
   assert rest.size() == 3
+  #
+  selected = proxies.proxy_select(origin_id=5)
+  assert selected.size() == 0
+  selected = proxies.proxy_select(origin_id=0)
+  assert selected.size() == 1
+  check(selected[0], i_seqs=(0,1,2), angle_ideal=1, weight=2)
+  selected = proxies.proxy_select(origin_id=1)
+  assert selected.size() == 2
+  check(selected[0], i_seqs=(1,2,3), angle_ideal=2, weight=3, origin_id=1)
+  check(selected[1], i_seqs=(2,3,0), angle_ideal=3, weight=4, origin_id=1)
   #
   unit_cell = uctbx.unit_cell([15,11.5,16.25,90,99.5,90])
   sites_cart = flex.vec3_double(
@@ -1809,7 +1819,7 @@ def exercise_dihedral():
   proxies = geometry_restraints.shared_dihedral_proxy([
     geometry_restraints.dihedral_proxy([0,1,2,3], 1, 2, 3),
     geometry_restraints.dihedral_proxy([1,2,3,4], 2, 3, 4, origin_id=1),
-    geometry_restraints.dihedral_proxy([2,3,0,4], 3, 4, 5, origin_id=2),
+    geometry_restraints.dihedral_proxy([2,3,0,4], 3, 4, 5, origin_id=1),
     geometry_restraints.dihedral_proxy([3,1,2,4], 4, 5, 6, origin_id=3)])
   selected = proxies.proxy_select(n_seq=5, iselection=flex.size_t([0,2,4]))
   assert selected.size() == 0
@@ -1827,15 +1837,28 @@ def exercise_dihedral():
   check(rest[0],
       i_seqs=(0,1,2,3), angle_ideal=1, weight=2, periodicity=3, origin_id=0)
   check(rest[1],
-      i_seqs=(2,3,0,4), angle_ideal=3, weight=4, periodicity=5, origin_id=2)
+      i_seqs=(2,3,0,4), angle_ideal=3, weight=4, periodicity=5, origin_id=1)
   rest = proxies.proxy_remove(selection=flex.bool([True,True,True,True,False]))
   assert rest.size() == 3 # all but 1st
   check(rest[0],
       i_seqs=(1,2,3,4), angle_ideal=2, weight=3, periodicity=4, origin_id=1)
   check(rest[1],
-      i_seqs=(2,3,0,4), angle_ideal=3, weight=4, periodicity=5, origin_id=2)
+      i_seqs=(2,3,0,4), angle_ideal=3, weight=4, periodicity=5, origin_id=1)
   check(rest[2],
       i_seqs=(3,1,2,4), angle_ideal=4, weight=5, periodicity=6, origin_id=3)
+  #
+  selected = proxies.proxy_select(origin_id=5)
+  assert selected.size() == 0
+  selected = proxies.proxy_select(origin_id=0)
+  assert selected.size() == 1
+  check(selected[0],
+      i_seqs=(0,1,2,3), angle_ideal=1, weight=2, periodicity=3, origin_id=0)
+  selected = proxies.proxy_select(origin_id=1)
+  assert selected.size() == 2
+  check(selected[0],
+      i_seqs=(1,2,3,4), angle_ideal=2, weight=3, periodicity=4, origin_id=1)
+  check(selected[1],
+      i_seqs=(2,3,0,4), angle_ideal=3, weight=4, periodicity=5, origin_id=1)
   #
   def get_d(angle_ideal, angle_model, periodicity, alt_angle_ideals=None):
     a = angle_model * math.pi / 180
@@ -2005,7 +2028,7 @@ def exercise_chirality():
   proxies = geometry_restraints.shared_chirality_proxy([
     geometry_restraints.chirality_proxy([0,1,2,3], 1, False, 2, 0),
     geometry_restraints.chirality_proxy([1,2,3,4], 2, True, 3, 1),
-    geometry_restraints.chirality_proxy([2,3,0,4], 3, True, 4, 2),
+    geometry_restraints.chirality_proxy([2,3,0,4], 3, True, 4, 1),
     geometry_restraints.chirality_proxy([3,1,2,4], 4, False, 5, 3)])
   selected = proxies.proxy_select(n_seq=5, iselection=flex.size_t([0,2,4]))
   assert selected.size() == 0
@@ -2016,6 +2039,19 @@ def exercise_chirality():
   check(selected[1], i_seqs=(2,0,1,3),
       volume_ideal=4, both_signs=False, weight=5, origin_id=3)
   #
+  selected = proxies.proxy_select(origin_id=5)
+  assert selected.size() == 0
+  selected = proxies.proxy_select(origin_id=0)
+  assert selected.size() == 1
+  check(selected[0], i_seqs=(0,1,2,3),
+      volume_ideal=1, both_signs=False, weight=2, origin_id=0)
+  selected = proxies.proxy_select(origin_id=1)
+  assert selected.size() == 2
+  check(selected[0], i_seqs=(1,2,3,4),
+      volume_ideal=2, both_signs=True, weight=3, origin_id=1)
+  check(selected[1], i_seqs=(2,3,0,4),
+      volume_ideal=3, both_signs=True, weight=4, origin_id=1)
+  #
   rest = proxies.proxy_remove(selection=flex.bool([True,True,True,True,True]))
   assert rest.size() == 0
   rest = proxies.proxy_remove(selection=flex.bool([False,True,True,True,True]))
@@ -2023,13 +2059,13 @@ def exercise_chirality():
   check(rest[0], i_seqs=(0,1,2,3),
       volume_ideal=1, both_signs=False, weight=2, origin_id=0)
   check(rest[1], i_seqs=(2,3,0,4),
-      volume_ideal=3, both_signs=True, weight=4, origin_id=2)
+      volume_ideal=3, both_signs=True, weight=4, origin_id=1)
   rest = proxies.proxy_remove(selection=flex.bool([True,True,True,True,False]))
   assert rest.size() == 3 # all but 1st
   check(rest[0], i_seqs=(1,2,3,4),
       volume_ideal=2, both_signs=True, weight=3, origin_id=1)
   check(rest[1], i_seqs=(2,3,0,4),
-      volume_ideal=3, both_signs=True, weight=4, origin_id=2)
+      volume_ideal=3, both_signs=True, weight=4, origin_id=1)
   check(rest[2], i_seqs=(3,1,2,4),
       volume_ideal=4, both_signs=False, weight=5, origin_id=3)
 
@@ -2206,7 +2242,7 @@ def exercise_planarity():
   proxies = geometry_restraints.shared_planarity_proxy([
     make_proxy([0,1,2,3], [2,3,4,5], 0),
     make_proxy([1,2,3,4], [3,4,5,6], 1),
-    make_proxy([2,3,0,4], [4,5,6,7], 2),
+    make_proxy([2,3,0,4], [4,5,6,7], 1),
     make_proxy([3,1,2,4], [5,6,7,8], 3)])
   selected = proxies.proxy_select(n_seq=5, iselection=flex.size_t([0,2,4]))
   assert selected.size() == 0
@@ -2214,6 +2250,16 @@ def exercise_planarity():
   assert selected.size() == 2 # 2nd, 4th
   check(selected[0], i_seqs=[0,1,2,3], weights=[3,4,5,6], origin_id=1)
   check(selected[1], i_seqs=[2,0,1,3], weights=[5,6,7,8], origin_id=3)
+  #
+  selected = proxies.proxy_select(origin_id=5)
+  assert selected.size() == 0
+  selected = proxies.proxy_select(origin_id=0)
+  assert selected.size() == 1
+  check(selected[0], i_seqs=[0,1,2,3], weights=[2,3,4,5], origin_id=0)
+  selected = proxies.proxy_select(origin_id=1)
+  assert selected.size() == 2
+  check(selected[0], i_seqs=[1,2,3,4], weights=[3,4,5,6], origin_id=1)
+  check(selected[1], i_seqs=[2,3,0,4], weights=[4,5,6,7], origin_id=1)
   #
   for i_remove in range(10,15):
     sel = flex.size_t(range(10,i_remove)+range(i_remove+1,15))
@@ -2232,7 +2278,7 @@ def exercise_planarity():
   rest = proxies.proxy_remove(selection=flex.bool([False,True,True,True,True]))
   assert rest.size() == 2 # 1st and 3rd
   check(rest[0], i_seqs=[0,1,2,3], weights=[2,3,4,5], origin_id=0)
-  check(rest[1], i_seqs=[2,3,0,4], weights=[4,5,6,7], origin_id=2)
+  check(rest[1], i_seqs=[2,3,0,4], weights=[4,5,6,7], origin_id=1)
   rest = proxies.proxy_remove(selection=flex.bool([True,True,True,True,False]))
   assert rest.size() == 3
   #
@@ -3146,7 +3192,7 @@ def exercise_parallelity():
   proxies = geometry_restraints.shared_parallelity_proxy([
     make_proxy([0,1,2,3],   [2,3,4,5],   1, 11, 1, 1, True, 0),
     make_proxy([1,2,3,4],   [3,4,5,6],   2, 12, 2, 2, True, 1),
-    make_proxy([2,3,10,11], [4,5,12,13], 3, 13, 3, 3, True, 2),
+    make_proxy([2,3,10,11], [4,5,12,13], 3, 13, 3, 3, True, 1),
     make_proxy([3,1,12,14], [5,6,14,15], 4, 14, 4, 4, True, 3)])
   selected = proxies.proxy_select(n_seq=16, iselection=flex.size_t([0,2,4]))
   assert selected.size() == 0
@@ -3157,13 +3203,27 @@ def exercise_parallelity():
       target_angle_deg=11, slack=1, top_out=True, limit=1, origin_id=0)
   check(selected[1], i_seqs=(0, 1, 2, 3), j_seqs=(2, 3, 4), weight=2,
       target_angle_deg=12, slack=2, top_out=True, limit=2, origin_id=1)
+  #
+  selected = proxies.proxy_select(origin_id=5)
+  assert selected.size() == 0
+  selected = proxies.proxy_select(origin_id=0)
+  assert selected.size() == 1
+  check(selected[0], i_seqs=(0,1,2,3), j_seqs=(2,3,4,5), weight=1,
+      target_angle_deg=11, slack=1, top_out=True, limit=1, origin_id=0)
+  selected = proxies.proxy_select(origin_id=1)
+  assert selected.size() == 2
+  check(selected[0], i_seqs=(1,2,3,4), j_seqs=(3,4,5,6), weight=2,
+      target_angle_deg=12, slack=2, top_out=True, limit=2, origin_id=1)
+  check(selected[1], i_seqs=(2,3,10,11), j_seqs=(4,5,12,13), weight=3,
+      target_angle_deg=13, slack=3, top_out=True, limit=3, origin_id=1)
+
   # - geometry_restraints.remove.parallelities
   rest = proxies.proxy_remove(selection=flex.bool([True]*16))
   assert len(rest) == 0
   rest = proxies.proxy_remove(selection=flex.bool([True]*6+[False]*10))
   assert len(rest) == 2 # 3rd and 4th
   check(rest[0], i_seqs=(2, 3, 10, 11), j_seqs=(4, 5, 12, 13), weight=3,
-      target_angle_deg=13, slack=3, top_out=True, limit=3, origin_id=2)
+      target_angle_deg=13, slack=3, top_out=True, limit=3, origin_id=1)
   check(rest[1], i_seqs=(3, 1, 12, 14), j_seqs=(5, 6, 14, 15), weight=4,
       target_angle_deg=14, slack=4, top_out=True, limit=4, origin_id=3)
 
