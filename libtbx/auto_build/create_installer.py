@@ -84,7 +84,7 @@ def archive(source, destination, tarfile=None):
   if not os.path.exists(source):
     print "Warning: source does not exist! Skipping: %s"%source
     return
-  if os.path.basename(source) == 'base': # don't delete lib files from python
+  if os.path.basename(source) != 'build': # don't delete lib files from python or modules
     shutil.copytree(
       source,
       destination,
@@ -95,8 +95,7 @@ def archive(source, destination, tarfile=None):
     shutil.copytree(
       source,
       destination,
-      #ignore=shutil.ignore_patterns('*.lib', '*.pyc', '*.pyo', '.svn', '.git', '.swp', '.sconsign', '.o', '*.obj'),
-      ignore=shutil.ignore_patterns('*.pyc', '*.pyo', '.svn', '.git', '.swp', '.sconsign', '.o', '*.obj'),
+      ignore=shutil.ignore_patterns('*.lib', '*.pyc', '*.pyo', '.svn', '.git', '.swp', '.sconsign', '.o', '*.obj'),
       symlinks=True
       )
 
@@ -159,6 +158,8 @@ class SetupInstaller(object):
     self.make_dist()
     if self.binary and sys.platform == "darwin":
       self.make_dist_pkg()
+    if self.binary and sys.platform == "win32":
+      self.make_windows_installer()
 
   def copy_info(self):
     # Basic setup #
@@ -291,6 +292,11 @@ class SetupInstaller(object):
         #"--no_compress",
         app_root_dir
     ])
+
+
+  def make_windows_installer(self):
+    pass
+
 
 def run(args):
   parser = OptionParser()
