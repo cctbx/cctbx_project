@@ -44,11 +44,13 @@ namespace cctbx { namespace maptbx { namespace boost_python {
              double const&,
              double const&,
              int const&,
+             bool,
              bool >((arg("n_real"),
                      arg("smearing_b"),
                      arg("max_peak_scale"),
                      arg("smearing_span"),
-                     arg("use_exp_table"))))
+                     arg("use_exp_table"),
+                     arg("use_max_map"))))
         .def("as_median_map", &w_t::as_median_map)
         .def("add", &w_t::add, (arg("map_data")))
         .def("at_index", &w_t::at_index, (arg("n")))

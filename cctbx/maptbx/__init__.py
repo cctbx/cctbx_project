@@ -60,15 +60,15 @@ def cc_peak(cutoff, map_1=None,map_2=None, map_coeffs_1=None,map_coeffs_2=None):
   else:
     raise RuntimeError("Combination of inputs not supported.")
 
-def map_accumulator(n_real, smearing_b=5, max_peak_scale=2, smearing_span=10,
-      use_exp_table=True):
+def map_accumulator(n_real, use_max_map, smearing_b=5, max_peak_scale=2,
+                    smearing_span=10, use_exp_table=True):
   """
   Good defaults for 2mFo-DFc type maps:
     smearing_b=1, max_peak_scale=100, smearing_span=5
   """
   return ext.map_accumulator(n_real=n_real, smearing_b=smearing_b,
     max_peak_scale=max_peak_scale, smearing_span=smearing_span,
-      use_exp_table=use_exp_table)
+      use_exp_table=use_exp_table, use_max_map=use_max_map)
 
 def peak_volume_estimate(map_data, sites_cart, crystal_symmetry, cutoff,
       atom_radius=1.5):
