@@ -89,6 +89,7 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
     r_free_flags        = r_free_flags,
     xray_structure      = xray_structure,
     use_resolve         = params.use_resolve,
+    use_omit            = params.omit,
     sharp               = params.sharp,
     use_unsharp_masking = params.use_unsharp_masking,
     resolution_factor   = params.resolution_factor,
