@@ -20,7 +20,7 @@ def get_master_phil () :
     phil_string="""
 random_seed=2679941
   .type = int
-omit = False
+use_omit = True
   .type = bool
   .help = Use composite OMIT protocol
 sharp=True
@@ -32,6 +32,8 @@ resolution_factor = 1./3
 signal_threshold = 0.5
   .type = float
 use_resolve = Auto
+  .type = bool
+use_max_map = True
   .type = bool
 ignore_zero_occupancy_atoms = True
   .type=bool
@@ -89,7 +91,8 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
     r_free_flags        = r_free_flags,
     xray_structure      = xray_structure,
     use_resolve         = params.use_resolve,
-    use_omit            = params.omit,
+    use_omit            = params.use_omit,
+    use_max_map         = params.use_max_map,
     sharp               = params.sharp,
     use_unsharp_masking = params.use_unsharp_masking,
     resolution_factor   = params.resolution_factor,
