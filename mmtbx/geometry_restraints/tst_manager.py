@@ -94,8 +94,8 @@ def exercise_geo_out():
       show_energies                = False,
       assume_hydrogens_all_missing = True,
       )
-  hbp = grm.get_hbond_proxies()
-  assert len(hbp) == 4
+  n_hbp = grm.get_n_hbond_proxies()
+  assert n_hbp == 4
   from mmtbx.geometry_restraints import ramachandran
   params = ramachandran.master_phil.fetch().extract()
   params.rama_potential = "emsley"
