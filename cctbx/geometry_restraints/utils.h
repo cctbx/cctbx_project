@@ -156,6 +156,44 @@ namespace cctbx { namespace geometry_restraints {
         }
         return result;
       }
+
+      static
+      af::shared<double>
+      get(
+        af::const_ref<scitbx::vec3<double> > const& sites_cart,
+        af::const_ref<ProxyType> const& proxies,
+        unsigned char origin_id)
+      {
+        af::shared<double> result((af::reserve(proxies.size())));
+        for(std::size_t i=0;i<proxies.size();i++) {
+          ProxyType const& proxy = proxies[i];
+          if (proxy.origin_id == origin_id) {
+            RestraintType restraint(sites_cart, proxy);
+            result.push_back(restraint.residual());
+          }
+        }
+        return result;
+      }
+
+      static
+      af::shared<double>
+      get(
+        uctbx::unit_cell const& unit_cell,
+        af::const_ref<scitbx::vec3<double> > const& sites_cart,
+        af::const_ref<ProxyType> const& proxies,
+        unsigned char origin_id)
+      {
+        af::shared<double> result((af::reserve(proxies.size())));
+        for(std::size_t i=0;i<proxies.size();i++) {
+          ProxyType const& proxy = proxies[i];
+          if (proxy.origin_id == origin_id) {
+            RestraintType restraint(unit_cell, sites_cart, proxy);
+            result.push_back(restraint.residual());
+          }
+        }
+        return result;
+      }
+
     };
 
     template <typename ProxyType, typename RestraintType>
