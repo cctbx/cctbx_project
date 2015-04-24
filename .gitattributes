@@ -1431,10 +1431,12 @@ libtbx/auto_build/create_installer.py -text
 libtbx/auto_build/create_mac_app.py -text
 libtbx/auto_build/create_mac_pkg.py -text
 libtbx/auto_build/create_windows_exe.py -text
+libtbx/auto_build/create_windows_installer.py -text
 libtbx/auto_build/install -text
 libtbx/auto_build/install_base_packages.py -text
 libtbx/auto_build/install_distribution.py -text
 libtbx/auto_build/installer_utils.py -text
+libtbx/auto_build/mainphenixinstaller.nsi -text
 libtbx/auto_build/make_bundle.py -text
 libtbx/auto_build/package_defs.py -text
 libtbx/auto_build/plus_installer.py svneol=native#text/x-python

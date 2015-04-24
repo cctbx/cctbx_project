@@ -295,7 +295,19 @@ class SetupInstaller(object):
 
 
   def make_windows_installer(self):
-    pass
+    from libtbx.auto_build import create_windows_installer
+
+    mainscript = os.path.join(self.dest_dir, "lib","libtbx",
+                                "auto_build", "mainphenixinstaller.nsi")
+    create_windows_installer.run(args=[
+                      "--productname", Phenix,
+                      "--version", self.version,
+                      "--company", "PHENIX Industrial Consortium",
+                      "--website", "http://www.phenix-online.org/",
+                      "--sourcedir", os.path.basename(self.dest_dir),
+                      "--tmpdir", "tmp", # location of sourcedir
+                      "--mainNSISscript", "mainphenixinstaller.nsi"
+    ])
 
 
 def run(args):
