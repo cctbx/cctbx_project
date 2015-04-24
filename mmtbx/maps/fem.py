@@ -24,6 +24,7 @@ class run(object):
         xray_structure,
         use_resolve,
         use_omit,
+        use_max_map,
         sharp,
         use_unsharp_masking,
         resolution_factor,
@@ -166,7 +167,7 @@ class run(object):
       n1=self.n_inner_loop, n2=self.n_outer_loop, log=self.log)
     map_accumulator = maptbx.map_accumulator(
       n_real = self.crystal_gridding.n_real(), smearing_b=1, max_peak_scale=100,
-      smearing_span=5)
+      smearing_span=5, use_max_map=self.use_max_map)
     for i in xrange(self.n_outer_loop):
       m = inner_loop(
         fmodel           = self.fmodel,
@@ -174,7 +175,8 @@ class run(object):
         missing          = missing,
         crystal_gridding = self.crystal_gridding,
         n                = self.n_inner_loop,
-        progress_counter = progress_counter)
+        progress_counter = progress_counter,
+        use_max_map      = self.use_max_map)
       m = low_volume_density_elimination(m=m, fmodel=self.fmodel,
         selection=self.selection)
       if(self.sharp and self.use_unsharp_masking):
@@ -310,9 +312,10 @@ def good_atoms_selection(
     if(cc<0.7 or hd_sel[i_seq]): sel_exclude[i_seq] = True
   return ~sel_exclude
 
-def inner_loop(fmodel, wam, missing, crystal_gridding, n, progress_counter):
+def inner_loop(fmodel, wam, missing, crystal_gridding, n, progress_counter,
+               use_max_map):
   mac = maptbx.map_accumulator(n_real = crystal_gridding.n_real(),
-    smearing_b=1, max_peak_scale=100, smearing_span=5)
+    smearing_b=1, max_peak_scale=100, smearing_span=5, use_max_map=use_max_map)
   for j in xrange(n):
     mc_w = wam.random_weight_averaged_map_coefficients(
       missing       = missing,

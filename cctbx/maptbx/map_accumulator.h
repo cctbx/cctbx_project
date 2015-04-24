@@ -21,17 +21,19 @@ public:
   FloatType max_peak_scale;
   int smearing_span;
   bool use_exp_table;
+  bool use_max_map;
 
   map_accumulator(
     af::int3 const& n_real_,
     FloatType const& smearing_b_,
     FloatType const& max_peak_scale_,
     int const& smearing_span_,
-    bool use_exp_table_)
+    bool use_exp_table_,
+    bool use_max_map_)
   :
   n_real(n_real_), exp_table_(-100), smearing_b(smearing_b_),
   max_peak_scale(max_peak_scale_), smearing_span(smearing_span_),
-  use_exp_table(use_exp_table_)
+  use_exp_table(use_exp_table_), use_max_map(use_max_map_)
   {
     map_new.resize(GridType(n_real));
     for(std::size_t i=0;i<map_new.size(); i++) map_new[i]=af::shared<uint8_t>();
@@ -152,12 +154,20 @@ public:
     }
     // several similar peaks
     else {
-      int i_result_ = 1.e+9;
+      int i_result_ = 1.e+9; // << BUG ?
       for(int i = 0; i < peaks.size(); i++) {
         FloatType peak = peaks[i];
-        if(peak<=p_max && peak>=p_max_over_2) {
-          FloatType pa = peak_args[i];
-          if(pa<i_result_) i_result_ = pa;
+        if(use_max_map) {
+          if(peak>=p_max) { // Max map
+            FloatType pa = peak_args[i];
+            if(pa<i_result_) i_result_ = pa;
+          }
+        }
+        else {
+          if(peak<=p_max && peak>=p_max_over_2) { // Min map
+            FloatType pa = peak_args[i];
+            if(pa<i_result_) i_result_ = pa;
+          }
         }
       }
       i_result = i_result_;

@@ -1166,7 +1166,7 @@ def exercise_map_accumulator(n1=2, n2=2, n3=2):
     return R
   ### Python prototype END
   def get_ma(n1,n2,n3, points):
-    ma = maptbx.map_accumulator(n_real = (n1,n2,n3))
+    ma = maptbx.map_accumulator(n_real = (n1,n2,n3), use_max_map=False)
     for value in points:
       m = [value for i in xrange(n1*n2*n3)]
       m = flex.double(m)
