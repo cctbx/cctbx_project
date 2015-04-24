@@ -253,6 +253,12 @@ class Format(object):
 
     raise RuntimeError, 'overload me'
 
+  def get_mask(self):
+    '''Overload this method to provide dynamic masks to be used during
+    spotfinding or integration.'''
+
+    return None
+
   ####################################################################
   #                                                                  #
   # Helper functions for dealing with compressed images.             #
