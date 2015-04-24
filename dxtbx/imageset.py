@@ -441,11 +441,16 @@ class ImageSet(object):
   def get_mask(self, index):
     '''
     Get the mask at the given index.
-
-    FIXME placeholder for actual functionality.
-    Currently uses image and trusted range
+    Queries a format object for a dynamic mask if it exists.
+    Otherwise uses image and trusted range.
 
     '''
+    # Check for a dynamic mask
+    fmt = self.reader().get_format(index)
+    mask = fmt.get_mask()
+    if mask is not None:
+      return mask
+
     # Get the image and detector
     image = self.get_image(index)
     detector = self.get_detector(index)

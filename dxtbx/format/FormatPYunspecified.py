@@ -127,6 +127,34 @@ class FormatPYunspecified(FormatPY):
         epochs = {1:self._timesec}
         )
 
+  def get_mask(self):
+    '''Creates a mask merging untrusted pixels with active areas.'''
+    from scitbx.array_family import flex
+    detector_base = self.detectorbase
+    # get effective active area coordinates
+    tile_manager = detector_base.get_tile_manager(detector_base.horizons_phil_cache)
+    tiling = tile_manager.effective_tiling_as_flex_int(reapply_peripheral_margin = True)
+    # get the raw data to get the size of the mask
+    data = self.get_raw_data()
+    if tiling is None or len(tiling) == 0:
+      return None
+
+    # set the mask to the same dimensions as the data
+    mask = flex.bool(flex.grid(data.focus()))
+
+    # set active areas to True so they are not masked
+    for i in xrange(len(tiling)//4):
+      x1,y1,x2,y2=tiling[4*i:(4*i)+4]
+      sub_array = flex.bool(flex.grid(x2-x1,y2-y1),True)
+      mask.matrix_paste_block_in_place(sub_array,x1,y1)
+
+    # create untrusted pixel mask
+    detector = self.get_detector()
+    assert len(detector) == 1
+    trusted_mask = detector[0].get_trusted_range_mask(data)
+
+    # returns merged untrusted pixels and active areas
+    return (mask & trusted_mask,)
 
 if __name__ == '__main__':
 
