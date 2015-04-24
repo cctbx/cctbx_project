@@ -18,7 +18,7 @@ class minimizer:
     self.psi_i = psi_i
     self.Nobs = len(d_i)
     self.escalate = 10. # 10 is a soft switch; 50-100 a hard switch
-    self.x = flex.double([log(1./Deff), log(eta_rad)]) # parameters alpha, eta
+    self.x = flex.double([log(2./Deff), log(eta_rad)]) # parameters alpha, eta
     self.minimizer = run(
       target_evaluator=self,
       core_params=core_parameters(
