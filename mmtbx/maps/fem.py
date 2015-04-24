@@ -13,6 +13,7 @@ from cctbx import adptbx
 from mmtbx import map_tools
 from cctbx import miller
 from libtbx import Auto
+import mmtbx.maps.composite_omit_map
 
 class run(object):
 
@@ -22,6 +23,7 @@ class run(object):
         r_free_flags,
         xray_structure,
         use_resolve,
+        use_omit,
         sharp,
         use_unsharp_masking,
         resolution_factor,
@@ -78,6 +80,38 @@ class run(object):
     # Use Resolve filter
     m_resolve = self.resolve_filter_map()
     if(m_resolve is not None): m = m * m_resolve
+    # Use OMIT
+    if(self.use_omit):
+      comit = mmtbx.maps.composite_omit_map.run(
+        fmodel                           = self.fmodel,
+        crystal_gridding                 = self.crystal_gridding,
+        box_size_as_fraction             = 0.2,
+        max_boxes                        = 2000,
+        neutral_volume_box_cushion_width = 2,
+        full_resolution_map              = True,
+        log                              = self.log)
+      omit_map = comit.as_p1_map()
+      omit_map = low_volume_density_elimination(m=omit_map, fmodel=self.fmodel,
+        selection=self.selection,end=16)
+      #ccp4_map(cg=self.crystal_gridding, file_name="omit.ccp4", map_data=omit_map)
+      sel      = omit_map<1.5
+      omit_map = omit_map.set_selected(sel, 0)
+      sel      = omit_map>=1.5
+      omit_map = omit_map.set_selected(sel, 1)
+      m = m * omit_map
+      #
+      # Extra filter: seems to ne redundant, TBD.
+      #
+      #omit_mc = comit.result_as_sf()
+      #omit_map = get_map(mc=omit_mc, cg=self.crystal_gridding)
+      #omit_map = low_volume_density_elimination(m=omit_map, fmodel=self.fmodel, selection=self.selection)
+      #ccp4_map(cg=self.crystal_gridding, file_name="omit2.ccp4", map_data=omit_map)
+      #sel      = omit_map<0.5
+      #omit_map = omit_map.set_selected(sel, 0)
+      #sel      = omit_map>=0.5
+      #omit_map = omit_map.set_selected(sel, 1)
+      #m = m * omit_map
+
     #
     self.mc_result = self.mc_fill.structure_factors_from_map(
       map            = m,
@@ -227,7 +261,7 @@ def truncate_with_roots(
       cutoff           = cutoff)
   if(average_peak_volume is None or int(average_peak_volume*scale)-1==0):
     return None
-  average_peak_volume = int(average_peak_volume*scale)-1
+  average_peak_volume = int(average_peak_volume*scale/2)-1 # XXX "/2" is ad hoc and I don't know why!
   co1 = maptbx.connectivity(map_data=m, threshold=c1)
   co2 = maptbx.connectivity(map_data=m, threshold=c2)
   result = co2.noise_elimination_two_cutoffs(
