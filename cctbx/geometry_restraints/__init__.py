@@ -630,8 +630,8 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
       print >> f, "%sWarning: very large bond lengths." % prefix
     return histogram
 
-  def deltas(self, sites_cart):
-    return bond_deltas(sites_cart=sites_cart, sorted_asu_proxies=self)
+  def deltas(self, sites_cart, origin_id=0):
+    return bond_deltas(sites_cart=sites_cart, sorted_asu_proxies=self, origin_id=origin_id)
 
   def residuals(self, sites_cart):
     return bond_residuals(sites_cart=sites_cart, sorted_asu_proxies=self)

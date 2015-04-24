@@ -3227,7 +3227,7 @@ def exercise_parallelity():
   check(rest[1], i_seqs=(3, 1, 12, 14), j_seqs=(5, 6, 14, 15), weight=4,
       target_angle_deg=14, slack=4, top_out=True, limit=4, origin_id=3)
 
-def exercise_origin_id_selections():
+def exercise_origin_id_selections_for_bonds():
   p_array = []
   for i in range(10):
     p = geometry_restraints.bond_simple_proxy(
@@ -3260,11 +3260,43 @@ def exercise_origin_id_selections():
         origin_id=2)
     p_array.append(p)
   proxies = geometry_restraints.shared_bond_simple_proxy(p_array)
-  new_p1 = proxies.get_proxies_with_origin_id()
-  new_p2 = proxies.get_proxies_with_origin_id(origin_id=1)
-  new_p3 = proxies.get_proxies_with_origin_id(origin_id=2)
-  new_p4 = proxies.get_proxies_with_origin_id(origin_id=3)
-  assert len(new_p1) == 10
+  new_p2 = proxies.proxy_select(origin_id=1)
+  new_p3 = proxies.proxy_select(origin_id=2)
+  new_p4 = proxies.proxy_select(origin_id=3)
+  assert len(new_p2) == 10
+  assert len(new_p3) == 10
+  assert len(new_p4) == 0
+
+  sites_cart = flex.vec3_double([[1,2,3],[2,3,4]])
+  asu_mappings = direct_space_asu.non_crystallographic_asu_mappings(
+    sites_cart=sites_cart)
+  pair_generator = crystal.neighbors_fast_pair_generator(
+    asu_mappings=asu_mappings,
+    distance_cutoff=5)
+  pgn = pair_generator.next()
+  p_array = []
+  for i in range(10):
+    p = geometry_restraints.bond_asu_proxy(
+      pair=pgn,
+      distance_ideal=2,
+      weight=10, slack=2, limit=1, top_out=True, origin_id=0)
+    p_array.append(p)
+  for i in range(10,20):
+    p = geometry_restraints.bond_asu_proxy(
+      pair=pgn,
+      distance_ideal=2,
+      weight=10, slack=2, limit=1, top_out=True, origin_id=1)
+    p_array.append(p)
+  for i in range(20,30):
+    p = geometry_restraints.bond_asu_proxy(
+      pair=pgn,
+      distance_ideal=2,
+      weight=10, slack=2, limit=1, top_out=True, origin_id=2)
+    p_array.append(p)
+  proxies = geometry_restraints.shared_bond_asu_proxy(p_array)
+  new_p2 = proxies.proxy_select(origin_id=1)
+  new_p3 = proxies.proxy_select(origin_id=2)
+  new_p4 = proxies.proxy_select(origin_id=3)
   assert len(new_p2) == 10
   assert len(new_p3) == 10
   assert len(new_p4) == 0
@@ -3282,7 +3314,7 @@ def exercise():
   # exercise_planarity_top_out()
   exercise_proxy_show()
   exercise_parallelity()
-  exercise_origin_id_selections()
+  exercise_origin_id_selections_for_bonds()
   print "OK"
 
 if (__name__ == "__main__"):

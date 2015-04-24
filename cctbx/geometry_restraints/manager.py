@@ -497,18 +497,24 @@ class manager(object):
   def set_external_energy_function (self, energy_function) :
     self.external_energy_function = energy_function
 
-  def get_hbond_proxies(self):
+  def get_n_hbond_proxies(self):
     pair_proxies = self.pair_proxies()
     if pair_proxies is not None:
       if pair_proxies.bond_proxies is not None:
-        return pair_proxies.bond_proxies.get_proxies_with_origin_id(origin_id=1)
-    return []
+        return len(pair_proxies.bond_proxies.simple.proxy_select(origin_id=1))+\
+            len(pair_proxies.bond_proxies.asu.proxy_select(origin_id=1))
+    return 0
 
   def get_hbond_proxies_iseqs(self):
-    hb_proxies = self.get_hbond_proxies()
     result = []
-    for p in hb_proxies:
-      result.append((p.i_seqs[0], p.i_seqs[1]))
+    pair_proxies = self.pair_proxies()
+    if pair_proxies is not None:
+      if pair_proxies.bond_proxies is not None:
+        simple_p = pair_proxies.bond_proxies.simple.proxy_select(origin_id=1)
+        asu_p = pair_proxies.bond_proxies.asu.proxy_select(origin_id=1)
+        for p_array in [simple_p, asu_p]:
+          for p in p_array:
+            result.append((p.i_seqs[0], p.i_seqs[1]))
     return result
 
   def new_included_bonded_atoms(self, proxies, sites_cart,

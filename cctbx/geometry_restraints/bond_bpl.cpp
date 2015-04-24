@@ -10,6 +10,7 @@
 #include <scitbx/stl/map_wrapper.h>
 #include <scitbx/boost_python/is_polymorphic_workaround.h>
 #include <cctbx/geometry_restraints/bond_misc.h>
+#include <cctbx/geometry_restraints/proxy_select.h>
 
 SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(
   cctbx::geometry_restraints::bond_asu_proxy)
@@ -197,7 +198,14 @@ namespace {
       {
         typedef return_internal_reference<> rir;
         scitbx::af::boost_python::shared_wrapper<bond_simple_proxy, rir>::wrap(
-          "shared_bond_simple_proxy");
+          "shared_bond_simple_proxy")
+          .def("proxy_select",
+            (af::shared<w_t>(*)(
+              af::const_ref<w_t> const&,
+              unsigned char))
+                shared_proxy_select_origin, (
+            arg("origin_id")))
+        ;
       }
     }
   };
@@ -267,7 +275,14 @@ namespace {
       {
         typedef return_internal_reference<> rir;
         scitbx::af::boost_python::shared_wrapper<bond_asu_proxy, rir>::wrap(
-          "shared_bond_asu_proxy");
+          "shared_bond_asu_proxy")
+          .def("proxy_select",
+            (af::shared<w_t>(*)(
+              af::const_ref<w_t> const&,
+              unsigned char))
+                shared_proxy_select_origin, (
+            arg("origin_id")))
+        ;
       }
     }
   };
@@ -348,6 +363,13 @@ namespace {
         af::const_ref<bond_simple_proxy> const&))
       bond_deltas,
       (arg("sites_cart"), arg("proxies")));
+    def("bond_deltas",
+      (af::shared<double>(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<bond_simple_proxy> const&,
+        unsigned char))
+      bond_deltas,
+      (arg("sites_cart"), arg("proxies"), arg("origin_id")));
     def("bond_residuals",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
@@ -379,6 +401,14 @@ namespace {
         af::const_ref<bond_simple_proxy> const&))
       bond_deltas,
       (arg("unit_cell"), arg("sites_cart"), arg("proxies")));
+    def("bond_deltas",
+      (af::shared<double>(*)(
+        uctbx::unit_cell const&,
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<bond_simple_proxy> const&,
+        unsigned char))
+      bond_deltas,
+      (arg("unit_cell"), arg("sites_cart"), arg("proxies"), arg("origin_id")));
     def("bond_residuals",
       (af::shared<double>(*)(
         uctbx::unit_cell const&,
@@ -398,6 +428,13 @@ namespace {
         bond_sorted_asu_proxies_base const&))
       bond_deltas,
       (arg("sites_cart"), arg("sorted_asu_proxies")));
+    def("bond_deltas",
+      (af::shared<double>(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        bond_sorted_asu_proxies_base const&,
+        unsigned char))
+      bond_deltas,
+      (arg("sites_cart"), arg("sorted_asu_proxies"), arg("origin_id")));
     def("bond_residuals",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
