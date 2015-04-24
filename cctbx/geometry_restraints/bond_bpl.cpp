@@ -376,6 +376,13 @@ namespace {
         af::const_ref<bond_simple_proxy> const&))
       bond_residuals,
       (arg("sites_cart"), arg("proxies")));
+    def("bond_residuals",
+      (af::shared<double>(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<bond_simple_proxy> const&,
+        unsigned char origin_id))
+      bond_residuals,
+      (arg("sites_cart"), arg("proxies"), arg("origin_id")));
     def("bond_residual_sum",
       (double(*)(
         af::const_ref<scitbx::vec3<double> > const&,
@@ -416,6 +423,14 @@ namespace {
         af::const_ref<bond_simple_proxy> const&))
       bond_residuals,
       (arg("unit_cell"), arg("sites_cart"), arg("proxies")));
+    def("bond_residuals",
+      (af::shared<double>(*)(
+        uctbx::unit_cell const&,
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<bond_simple_proxy> const&,
+        unsigned char))
+      bond_residuals,
+      (arg("unit_cell"), arg("sites_cart"), arg("proxies"), arg("origin_id")));
     def("bond_distances_model",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
@@ -441,6 +456,13 @@ namespace {
         bond_sorted_asu_proxies_base const&))
       bond_residuals,
       (arg("sites_cart"), arg("sorted_asu_proxies")));
+    def("bond_residuals",
+      (af::shared<double>(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        bond_sorted_asu_proxies_base const&,
+        unsigned char))
+      bond_residuals,
+      (arg("sites_cart"), arg("sorted_asu_proxies"), arg("origin_id")));
     def("bond_residual_sum",
       (double(*)(
         af::const_ref<scitbx::vec3<double> > const&,

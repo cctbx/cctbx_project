@@ -579,6 +579,15 @@ namespace cctbx { namespace geometry_restraints {
   af::shared<double>
   bond_deltas(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<bond_simple_proxy> const& proxies)
+  {
+    return detail::generic_deltas<bond_simple_proxy, bond>::get(
+      sites_cart, proxies);
+  }
+  inline
+  af::shared<double>
+  bond_deltas(
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
     af::const_ref<bond_simple_proxy> const& proxies,
     unsigned char origin_id)
   {
@@ -586,17 +595,17 @@ namespace cctbx { namespace geometry_restraints {
       sites_cart, proxies, origin_id);
   }
 
+  //! Fast computation of bond::delta given an array of bond proxies.
   inline
   af::shared<double>
   bond_deltas(
+    uctbx::unit_cell const& unit_cell,
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     af::const_ref<bond_simple_proxy> const& proxies)
   {
     return detail::generic_deltas<bond_simple_proxy, bond>::get(
-      sites_cart, proxies);
+      unit_cell, sites_cart, proxies);
   }
-
-  //! Fast computation of bond::delta given an array of bond proxies.
   inline
   af::shared<double>
   bond_deltas(
@@ -609,17 +618,6 @@ namespace cctbx { namespace geometry_restraints {
       unit_cell, sites_cart, proxies, origin_id);
   }
 
-  inline
-  af::shared<double>
-  bond_deltas(
-    uctbx::unit_cell const& unit_cell,
-    af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    af::const_ref<bond_simple_proxy> const& proxies)
-  {
-    return detail::generic_deltas<bond_simple_proxy, bond>::get(
-      unit_cell, sites_cart, proxies);
-  }
-
   //! Fast computation of bond::residual() given an array of bond proxies.
   inline
   af::shared<double>
@@ -631,6 +629,17 @@ namespace cctbx { namespace geometry_restraints {
       sites_cart, proxies);
   }
 
+  inline
+  af::shared<double>
+  bond_residuals(
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<bond_simple_proxy> const& proxies,
+    unsigned char origin_id)
+  {
+    return detail::generic_residuals<bond_simple_proxy, bond>::get(
+      sites_cart, proxies, origin_id);
+  }
+
   //! Fast computation of bond::residual() given an array of bond proxies.
   inline
   af::shared<double>
@@ -641,6 +650,17 @@ namespace cctbx { namespace geometry_restraints {
   {
     return detail::generic_residuals<bond_simple_proxy, bond>::get(
       unit_cell, sites_cart, proxies);
+  }
+  inline
+  af::shared<double>
+  bond_residuals(
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<bond_simple_proxy> const& proxies,
+    unsigned char origin_id)
+  {
+    return detail::generic_residuals<bond_simple_proxy, bond>::get(
+      unit_cell, sites_cart, proxies, origin_id);
   }
 
   /*! Fast computation of sum of bond::residual() and gradients
@@ -765,6 +785,30 @@ namespace cctbx { namespace geometry_restraints {
       for(std::size_t i=0;i<sym.size();i++) {
         bond restraint(sites_cart, asu_mappings, sym[i]);
         result.push_back(restraint.residual());
+      }
+    }
+    return result;
+  }
+
+  inline
+  af::shared<double>
+  bond_residuals(
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    bond_sorted_asu_proxies_base const& sorted_asu_proxies,
+    unsigned char origin_id)
+  {
+    af::shared<double> result = bond_residuals(
+      sites_cart, sorted_asu_proxies.simple.const_ref(), origin_id);
+    af::const_ref<bond_asu_proxy> sym = sorted_asu_proxies.asu.const_ref();
+    if (sym.size() > 0) {
+      result.reserve(sorted_asu_proxies.simple.size() + sym.size());
+      direct_space_asu::asu_mappings<> const&
+        asu_mappings = *sorted_asu_proxies.asu_mappings();
+      for(std::size_t i=0;i<sym.size();i++) {
+        if (sym[i].origin_id == origin_id) {
+          bond restraint(sites_cart, asu_mappings, sym[i]);
+          result.push_back(restraint.residual());
+        }
       }
     }
     return result;
