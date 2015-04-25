@@ -80,7 +80,6 @@ FunctionEnd
 
 RequestExecutionLevel user ; everyone should be allowed to install phenix to their home folder at least
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
-OutFile "dist\${PRODUCT_VERSION}\Phenix-${PRODUCT_VERSION}-x${IS_64_BIT_PROGRAM}-Setup.exe"
 ShowInstDetails show
 ShowUnInstDetails show
 AutoCloseWindow false
@@ -100,7 +99,7 @@ DirText $ALL_OR_USER_TEXT
 ; Start menu page
 var ICONS_GROUP
 !define MUI_STARTMENUPAGE_NODISABLE
-!define MUI_STARTMENUPAGE_DEFAULTFOLDER "PHENIX"
+!define MUI_STARTMENUPAGE_DEFAULTFOLDER "${PRODUCT_NAME}"
 !define MUI_STARTMENUPAGE_REGISTRY_ROOT "${PRODUCT_ROOT_KEY}"
 !define MUI_STARTMENUPAGE_REGISTRY_KEY "${PRODUCT_UNINST_KEY}"
 !define MUI_STARTMENUPAGE_REGISTRY_VALUENAME "${PRODUCT_STARTMENU_REGVAL}"
