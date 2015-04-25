@@ -88,14 +88,14 @@ def archive(source, destination, tarfile=None):
     shutil.copytree(
       source,
       destination,
-      ignore=shutil.ignore_patterns('*.pyc', '*.pyo', '.svn', '.git', '.swp', '.sconsign', '.o', '*.obj'),
+      ignore=shutil.ignore_patterns('*.pyc', '*.pyo', '.svn', '.git', '.swp', '.sconsign', '.o', '*.obj', '*.ilk'),
       symlinks=True
       )
   else:
     shutil.copytree(
       source,
       destination,
-      ignore=shutil.ignore_patterns('*.lib', '*.pyc', '*.pyo', '.svn', '.git', '.swp', '.sconsign', '.o', '*.obj'),
+      ignore=shutil.ignore_patterns('*.lib', '*.pyc', '*.pyo', '.svn', '.git', '.swp', '.sconsign', '.o', '*.obj', '*.ilk'),
       symlinks=True
       )
 
@@ -142,6 +142,7 @@ class SetupInstaller(object):
   def run(self):
     # Setup directory structure
     print "Installer will be %s"%self.dest_dir
+    """
     assert not os.path.exists(self.dest_dir), "Installer dir exists: %s"%self.dest_dir
     makedirs(self.dest_dir)
     for i in ['bin', 'lib']:
@@ -158,6 +159,7 @@ class SetupInstaller(object):
     self.make_dist()
     if self.binary and sys.platform == "darwin":
       self.make_dist_pkg()
+    """
     if self.binary and sys.platform == "win32":
       self.make_windows_installer()
 
@@ -295,18 +297,19 @@ class SetupInstaller(object):
 
 
   def make_windows_installer(self):
+    makedirs(self.dist_dir)
     from libtbx.auto_build import create_windows_installer
-
     mainscript = os.path.join(self.dest_dir, "lib","libtbx",
                                 "auto_build", "mainphenixinstaller.nsi")
     create_windows_installer.run(args=[
-                      "--productname", Phenix,
-                      "--version", self.version,
-                      "--company", "PHENIX Industrial Consortium",
-                      "--website", "http://www.phenix-online.org/",
-                      "--sourcedir", os.path.basename(self.dest_dir),
-                      "--tmpdir", "tmp", # location of sourcedir
-                      "--mainNSISscript", "mainphenixinstaller.nsi"
+      "--productname", "Phenix",
+      "--version", self.version,
+      "--company", "PHENIX Industrial Consortium",
+      "--website", "http://www.phenix-online.org/",
+      "--sourcedir", os.path.basename(self.dest_dir),
+      "--tmpdir", os.path.normpath(os.path.join(self.dist_dir, "..", "..","tmp")), # location of sourcedir
+      "--outdir", self.dist_dir,
+      "--mainNSISscript", mainscript
     ])
 
 
@@ -339,6 +342,7 @@ def run(args):
     binary=options.binary,
   )
   setup.run()
+
 
 if (__name__ == "__main__") :
   sys.exit(run(sys.argv[1:]))
