@@ -37,6 +37,8 @@ class run(object):
     self.prepare_f_obs_and_flags()
     self.mc_orig = self.compute_original_map()
     self.b_overall = None
+    print >> self.log, "Create un-sharpened fmodel..."
+    self.fmodel_nosharp = self.create_fmodel(show=True).deep_copy()
     if(self.sharp): self.remove_common_isotropic_adp()
     print >> self.log, "Create fmodel..."
     self.fmodel = self.create_fmodel(show=True)
@@ -84,7 +86,7 @@ class run(object):
     # Use OMIT
     if(self.use_omit):
       comit = mmtbx.maps.composite_omit_map.run(
-        fmodel                           = self.fmodel,
+        fmodel                           = self.fmodel_nosharp,
         crystal_gridding                 = self.crystal_gridding,
         box_size_as_fraction             = 0.2,
         max_boxes                        = 2000,
@@ -92,9 +94,10 @@ class run(object):
         full_resolution_map              = True,
         log                              = self.log)
       omit_map = comit.as_p1_map()
+      #ccp4_map(cg=self.crystal_gridding, file_name="omit1.ccp4", map_data=omit_map)
       omit_map = low_volume_density_elimination(m=omit_map, fmodel=self.fmodel,
         selection=self.selection,end=16)
-      #ccp4_map(cg=self.crystal_gridding, file_name="omit.ccp4", map_data=omit_map)
+      #ccp4_map(cg=self.crystal_gridding, file_name="omit2.ccp4", map_data=omit_map)
       sel      = omit_map<1.5
       omit_map = omit_map.set_selected(sel, 0)
       sel      = omit_map>=1.5
