@@ -142,7 +142,6 @@ class SetupInstaller(object):
   def run(self):
     # Setup directory structure
     print "Installer will be %s"%self.dest_dir
-    """
     assert not os.path.exists(self.dest_dir), "Installer dir exists: %s"%self.dest_dir
     makedirs(self.dest_dir)
     for i in ['bin', 'lib']:
@@ -159,7 +158,6 @@ class SetupInstaller(object):
     self.make_dist()
     if self.binary and sys.platform == "darwin":
       self.make_dist_pkg()
-    """
     if self.binary and sys.platform == "win32":
       self.make_windows_installer()
 
