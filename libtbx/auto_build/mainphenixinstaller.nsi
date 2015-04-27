@@ -84,6 +84,9 @@ ShowInstDetails show
 ShowUnInstDetails show
 AutoCloseWindow false
 
+Function LaunchLink
+  ExecWait "$INSTDIR\${SOURCEDIR}\build\bin\libtbx.py_compile_all.bat"
+FunctionEnd
 
 ; MUI 1.67 compatible ------
 !include "MUI.nsh"
@@ -107,6 +110,10 @@ var ICONS_GROUP
 ; Instfiles page
 !insertmacro MUI_PAGE_INSTFILES
 ; Finish page
+!define MUI_FINISHPAGE_RUN
+!define MUI_FINISHPAGE_RUN_TEXT "Compiling all python scripts..."
+!define MUI_FINISHPAGE_RUN_FUNCTION "LaunchLink"
+
 !define MUI_FINISHPAGE_SHOWREADME_CHECKED
 !define MUI_FINISHPAGE_SHOWREADME "$INSTDIR\${SOURCEDIR}\README"
 !insertmacro MUI_PAGE_FINISH
