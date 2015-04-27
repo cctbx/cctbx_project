@@ -630,11 +630,17 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
       print >> f, "%sWarning: very large bond lengths." % prefix
     return histogram
 
-  def deltas(self, sites_cart, origin_id=0):
-    return bond_deltas(sites_cart=sites_cart, sorted_asu_proxies=self, origin_id=origin_id)
+  def deltas(self, sites_cart, origin_id=None):
+    if origin_id is None:
+      return bond_deltas(sites_cart=sites_cart, sorted_asu_proxies=self)
+    return bond_deltas(sites_cart=sites_cart, sorted_asu_proxies=self,
+        origin_id=origin_id)
 
-  def residuals(self, sites_cart):
-    return bond_residuals(sites_cart=sites_cart, sorted_asu_proxies=self)
+  def residuals(self, sites_cart, origin_id=None):
+    if origin_id is None:
+      return bond_residuals(sites_cart=sites_cart, sorted_asu_proxies=self)
+    return bond_residuals(sites_cart=sites_cart, sorted_asu_proxies=self,
+        origin_id=origin_id)
 
   def get_proxies_with_origin_id(self, origin_id=0):
     result = []

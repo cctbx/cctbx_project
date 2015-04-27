@@ -813,7 +813,7 @@ ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
     print "Is the CCP4 monomer library installed and made available through environment variables MMTBX_CCP4_MONOMER_LIB or CLIBD_MON?"
     return
   geo1 = processed_pdb_file.geometry_restraints_manager()
-  hbp = geo1.get_hbond_proxies()
+  hbp = geo1.get_n_hbond_proxies()
   from mmtbx import monomer_library
   params = monomer_library.pdb_interpretation.master_params.extract()
   params.secondary_structure.enabled=True
@@ -823,7 +823,8 @@ ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
     strict_conflict_handling=False,
     log=out2)
   geo2 = processed_pdb_file.geometry_restraints_manager()
-  v_out1 = out2.getvalue()
+  hbp = geo2.get_n_hbond_proxies()
+  v_out1 = out1.getvalue()
   v_out2 = out2.getvalue()
   assert v_out2.find("""\
   Restraints generated for nucleic acids:
@@ -834,7 +835,9 @@ ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
     2 stacking parallelities""") > 0
   for v in [v_out1, v_out2]:
     for portion in identical_portions:
-      assert v.find(portion) > 0
+      if not v.find(portion) > 0:
+        print "This portion was not found:\n%s\n=====End of portion." % portion
+        assert 0, "the portion above does not match expected portion."
   # check .geo output
   geo_identical_portions = ["Bond restraints: 87",
       "Bond angle restraints: 130", "Dihedral angle restraints: 33",
