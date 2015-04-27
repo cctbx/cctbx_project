@@ -109,15 +109,23 @@ class installer (object) :
       if (not op.isdir(dir_name)) :
         print >> log, "  creating %s" % dir_name
         os.makedirs(dir_name)
+
+    # Configure package download
+    self.fetch_package = fetch_packages(
+      dest_dir=self.tmp_dir,
+      log=log,
+      pkg_dirs=options.pkg_dirs,
+      no_download=options.no_download)
     # Shortcut: Extract python for Windows bundled with all preinstalled modules
     if sys.platform == "win32":
-      winpython = zipfile.ZipFile(WIN64PYTHON_PKG, 'r') # self.fetch_package(WIN64PYTHON_PKG)
+      self.fetch_package(pkg_name=WIN64PYTHON_PKG, pkg_url=BASE_CCI_PKG_URL)
+      winpython = zipfile.ZipFile(os.path.join(self.tmp_dir, WIN64PYTHON_PKG), 'r')
       members = winpython.namelist()
       for zipinfo in members:
         print >> self.log, "extracting", zipinfo
         winpython.extract(zipinfo, path=os.path.join(self.base_dir,'bin'))
       winpython.close()
-      # Quit now as all required packages are in the precompiled python package
+      # Quit now as all required packages are in the precompiled python package. Bless! :-)
       return
 
     # Which Python interpreter:
@@ -141,13 +149,6 @@ class installer (object) :
           del(os.environ['CONFIG_SITE'])
         except: # deliberate
           pass
-
-    # Configure package download
-    self.fetch_package = fetch_packages(
-      dest_dir=self.tmp_dir,
-      log=log,
-      pkg_dirs=options.pkg_dirs,
-      no_download=options.no_download)
 
     # Set package config.
     pkg_config_dir = op.join(self.base_dir, "lib", "pkgconfig")

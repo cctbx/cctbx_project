@@ -61,7 +61,7 @@ class ShellCommand(object):
         # executable path isn't located relative to workdir
       #  command[0] = os.path.join(workdir, command[0])
       p = subprocess.Popen(
-        args=command,
+        args= command,
         cwd=workdir,
         stdout=sys.stdout,
         stderr=sys.stderr
@@ -256,7 +256,7 @@ class ccp4io_module(SourceModule):
   module = 'ccp4io'
   anonymous = ['curl', 'http://cci.lbl.gov/repositories/ccp4io.gz']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/ccp4io/']
-  authenticatedWindows = anonymous # ['pscp', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/ccp4io/']
+  authenticatedWindows = anonymous #['pscp', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/ccp4io/']
 
 class annlib_module(SourceModule):
   module = 'annlib'
@@ -748,7 +748,10 @@ class Builder(object):
     dots = [".."]*len(workdir)
     if workdir[0] == '.':
       dots = []
-    dots.extend(['build', 'bin', command])
+    if sys.platform == 'win32':
+      dots.extend([os.getcwd(), 'build', 'bin', command])
+    else:
+      dots.extend(['build', 'bin', command])
     self.add_step(self.shell(
       name=name or command,
       command=[self.opjoin(*dots)] + (args or []),
@@ -813,6 +816,27 @@ class Builder(object):
       workdir=['build'],
       description="run configure.py",
     ))
+    # Prepare saving configure.py command to file should user want to manually recompile Phenix
+    relpython = os.path.relpath(self.python_base, self.opjoin(os.getcwd(),'build'))
+    if sys.platform != 'win32':
+      relpython = os.path.relpath(self.python_base, os.getcwd())
+    configcmd =[
+        relpython, # default to using our python rather than system python
+        self.opjoin('..', 'modules', 'cctbx_project', 'libtbx', 'configure.py')
+        ] + self.get_libtbx_configure()
+    fname = self.opjoin("config_modules.cmd")
+    confstr = subprocess.list2cmdline(configcmd) + '\n'
+    if sys.platform != 'win32':
+      fname = self.opjoin("config_modules.sh")
+      confstr = '#!/bin/sh\n\n' + confstr
+    # klonky way of writing file later on, but it works
+    self.add_step(self.shell(command=[
+         'python','-c','open(r\"%s\",\"w\").write(r\"\"\"%s\"\"\")' %(fname, confstr)
+         ],
+      workdir=['build'],
+      description="Saving configure.py command to file",
+    ))
+
 
   def add_make(self):
     # Todo: nproc=auto
