@@ -77,7 +77,7 @@ class mod_radial_average(common_mode.common_mode_correction):
     device = cspad_tbx.address_split(self.address)[2]
     if device == 'Cspad':
       pixel_size = cspad_tbx.pixel_size
-      saturated_value = cspad_tbx.dynamic_range
+      saturated_value = cspad_tbx.cspad_saturated_value
     elif device == 'marccd':
       pixel_size = 0.079346
       saturated_value = 2**16 - 1

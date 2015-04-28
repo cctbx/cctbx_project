@@ -181,7 +181,7 @@ class common_mode_correction(mod_event_info):
         cspad_tbx.pathsubst(self._gain_map_path, evt, env))
       self.gain_map = easy_pickle.load(self._gain_map_path)['DATA']
       if self.gain_map_level is not None:
-        cspad_tbx.dynamic_range *= self.gain_map_level
+        cspad_tbx.cspad_saturated_value *= self.gain_map_level
         sel = flex.bool([bool(f) for f in self.gain_map])
         sel.reshape(flex.grid(self.gain_map.focus()))
         self.gain_map = self.gain_map.set_selected(~sel, self.gain_map_level)

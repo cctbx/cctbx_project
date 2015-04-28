@@ -265,7 +265,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     # See r17537 of mod_average.py.
     if device == 'Cspad':
       pixel_size = cspad_tbx.pixel_size
-      saturated_value = cspad_tbx.dynamic_range
+      saturated_value = cspad_tbx.cspad_saturated_value
     elif device == 'marccd':
       pixel_size = evt.get("marccd_pixel_size")
       saturated_value = evt.get("marccd_saturated_value")

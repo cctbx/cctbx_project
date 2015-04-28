@@ -31,12 +31,12 @@ def metrology2phil(calib_dir, verbose):
   # 110 um.  Because cspad_tbx depends on pyana, it may fail to import
   # in which case a hardcoded fallback is provided.
   try:
-    from xfel.cxi.cspad_ana.cspad_tbx import dynamic_range as dr
+    from xfel.cxi.cspad_ana.cspad_tbx import cspad_saturated_value as sv
     from xfel.cxi.cspad_ana.cspad_tbx import pixel_size as ps
-    dynamic_range = dr
+    saturated_value = sv
     pixel_size = ps * 1e-3
   except ImportError:
-    dynamic_range = 2**14 - 1
+    saturated_value = 90000
     pixel_size = 110e-6
 
   # Build the Phil object.  XXX Should have det-z?  Probably not,
@@ -136,7 +136,7 @@ def metrology2phil(calib_dir, verbose):
         metrology_str += "pixel_size = %s, %s\n" % (
           repr(pixel_size), repr(pixel_size))
         metrology_str += "dimension = %d, %d\n" % (194, 185) # XXX hardcoded!
-        metrology_str += "saturation = %s\n" % repr(float(dynamic_range))
+        metrology_str += "saturation = %s\n" % repr(float(saturated_value))
         metrology_str += "}\n"
       metrology_str += "}\n"
     metrology_str += "}\n"

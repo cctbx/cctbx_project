@@ -449,7 +449,7 @@ class mod_view(common_mode.common_mode_correction):
       if device == 'Cspad':
         beam_center = self.beam_center
         pixel_size = cspad_tbx.pixel_size
-        saturated_value = cspad_tbx.dynamic_range
+        saturated_value = cspad_tbx.cspad_saturated_value
 
       elif device == 'marccd':
         beam_center = tuple(t // 2 for t in self.img_sum.focus())

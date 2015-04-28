@@ -132,7 +132,7 @@ class mod_average(average_tbx.average_mixin):
     elif device == 'Cspad' or device == 'Cspad2x2':
       beam_center = self.beam_center
       pixel_size = cspad_tbx.pixel_size
-      saturated_value = cspad_tbx.dynamic_range
+      saturated_value = cspad_tbx.cspad_saturated_value
     elif device == 'marccd':
       beam_center = tuple(t // 2 for t in d['mean_img'].focus())
       pixel_size = 0.079346

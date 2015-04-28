@@ -12,7 +12,7 @@ from scitbx.array_family import flex
 asic_dimension = (194,185)
 asic_gap = 3
 pixel_size = 0.10992
-from xfel.cxi.cspad_ana.cspad_tbx import dynamic_range
+from xfel.cxi.cspad_ana.cspad_tbx import cspad_saturated_value
 
 from dxtbx.format.FormatCBFMultiTile import cbf_wrapper as dxtbx_cbf_wrapper
 class cbf_wrapper(dxtbx_cbf_wrapper):
@@ -217,7 +217,7 @@ def format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, a
 
   n_asics = data.focus()[0] * data.focus()[1]
   add_frame_specific_cbf_tables(cbf, wavelength,timestamp,
-    [dynamic_range]*n_asics)
+    [cspad_saturated_value]*n_asics)
 
   # Set the distance, I.E., the length translated along the Z axis
   cbf.find_category("diffrn_scan_frame_axis")
@@ -768,7 +768,7 @@ def get_cspad_cbf_handle(tiles, metro, metro_style, timestamp, cbf_root, wavelen
       basis.depends_on = "FS_D%dQ%dS%d"%key[0:3]
       basis.pixel_size = (pixel_size,pixel_size)
       basis.dimension = asic_dimension
-      basis.saturation = dynamic_range
+      basis.saturation = cspad_saturated_value
     else:
       assert False # shouldn't be reached as it would indicate more than four levels of hierarchy for this detector
     basis.axis_name = detector_axes_names[-1]

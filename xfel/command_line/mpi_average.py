@@ -260,7 +260,7 @@ the output images in the folder cxi49812.
     wavelength = waveall[0] / totevent[0]
     distance = distall[0] / totevent[0]
     pixel_size = cspad_tbx.pixel_size
-    saturated_value = cspad_tbx.dynamic_range
+    saturated_value = cspad_tbx.cspad_saturated_value
     timestamp = timeall[0] / totevent[0]
     timestamp = (int(timestamp), timestamp % int(timestamp) * 1000)
     timestamp = cspad_tbx.evt_timestamp(timestamp)
