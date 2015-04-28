@@ -565,6 +565,10 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
 
   def OnRedraw(self, event=None):
     wx.ClientDC(self)
+    if (self.context is not None) :
+      self.SetCurrent(self.context)
+    else :
+      self.SetCurrent()
     self.OnRedrawGL(event)
 
   def setup_distances (self) :
