@@ -81,9 +81,9 @@ def exercise():
 if __name__ == "__main__":
   keep_going=True
   try:
-    import numpy as np
-    import svm
-    import svmutil
+    import numpy   # test
+    import svm     # test
+    import svmutil # test
   except ImportError:
     print "Required third-party dependencies are missing, skipping test."
     keep_going=False
