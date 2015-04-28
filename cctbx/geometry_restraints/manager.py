@@ -17,6 +17,26 @@ from scitbx_array_family_flex_ext import reindexing_array
 
 #from mmtbx.geometry_restraints.hbond import get_simple_bonds
 
+# All proxies have attribute "origin_id" which should reflect the origin of
+# corresponding proxy. E.g. origin_id=0 (Default value) will correspond to the
+# most basic proxies, from covalent geometry. origin_id=1 will correspond to
+# h-bonds, h-angles restraints etc. Ideally, only this manager should be
+# aware of this separation. 'Knowledge' about origin_id values and their meaning
+# should NOT be used in any other place except when creating proxies!
+# Everything needed should be implemented as methods of this class.
+# Ideally, nobody should access proxies directly and call any of their methods.
+# So the list of origin_id:
+# bonds: 0 - covalent geometry
+#        1 - hydrogen bonds, both for protein SS and for NA basepairs
+# angles: 0 - covalent geometry
+#         1 - angle restraints associated with NA basepair hydrogen bonds
+# dihedral(torsion): 0 - covalent geometry
+# chirality: 0 - covalent geometry
+# planarity: 0 - covalent geometry
+#            1 - planarity restraints for NA basepairs
+# parallelity: 0 - stacking interaction for NA
+#              1 - restraint for NA basepairs
+
 class manager(object):
 
   def __init__(self,
@@ -497,13 +517,37 @@ class manager(object):
   def set_external_energy_function (self, energy_function) :
     self.external_energy_function = energy_function
 
-  def get_n_hbond_proxies(self):
+  def _get_n_bond_proxies_origin(self, origin_id):
     pair_proxies = self.pair_proxies()
     if pair_proxies is not None:
       if pair_proxies.bond_proxies is not None:
-        return len(pair_proxies.bond_proxies.simple.proxy_select(origin_id=1))+\
-            len(pair_proxies.bond_proxies.asu.proxy_select(origin_id=1))
+        return len(pair_proxies.bond_proxies.simple.proxy_select(origin_id=origin_id))+\
+            len(pair_proxies.bond_proxies.asu.proxy_select(origin_id=origin_id))
     return 0
+
+  def get_n_bond_proxies(self):
+    return self._get_n_bond_proxies_origin(origin_id=0)
+
+  def get_n_hbond_proxies(self):
+    return self._get_n_bond_proxies_origin(origin_id=1)
+
+  def get_n_angle_proxies(self):
+    return len(self.angle_proxies.proxy_select(origin_id=0))
+
+  def get_n_hangle_proxies(self):
+    return len(self.angle_proxies.proxy_select(origin_id=1))
+
+  def get_n_stacking_proxies(self):
+    return len(self.parallelity_proxies.proxy_select(origin_id=0))
+
+  def get_n_parallelity_bp_proxies(self):
+    return len(self.parallelity_proxies.proxy_select(origin_id=1))
+
+  def get_n_planarity_proxies(self):
+    return len(self.planarity_proxies.proxy_select(origin_id=0))
+
+  def get_n_planarity_bp_proxies(self):
+    return len(self.planarity_proxies.proxy_select(origin_id=1))
 
   def get_hbond_proxies_iseqs(self):
     result = []
