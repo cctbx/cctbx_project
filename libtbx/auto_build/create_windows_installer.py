@@ -1,3 +1,4 @@
+from __future__ import division
 # Script for compiling a Windows installer using the NSIS compiler which must be present on the PC.
 # The main body of the script is immutable and stored in the file by the mainNSISscript variable
 # Just a few custom definitions are prepended to this file which is subsequently compiled by as to
