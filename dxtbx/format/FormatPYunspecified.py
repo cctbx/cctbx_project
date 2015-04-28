@@ -82,6 +82,8 @@ class FormatPYunspecified(FormatPY):
 
   def _detector(self):
     '''Return a model for a simple detector'''
+    trusted_range = (self.detectorbase.parameters.get('MIN_TRUSTED_VALUE',0),
+      self.detectorbase.saturation)
 
     return self._detector_factory.simple(
         sensor = 'PAD',
@@ -94,7 +96,7 @@ class FormatPYunspecified(FormatPY):
                       self.detectorbase.pixel_size),
         image_size = (self.detectorbase.size2,
                       self.detectorbase.size1),
-        trusted_range = (0, self.detectorbase.saturation),
+        trusted_range = trusted_range,
         mask = [])  # a list of dead rectangles
 
   def _beam(self):

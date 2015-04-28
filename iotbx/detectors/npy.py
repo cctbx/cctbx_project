@@ -77,6 +77,7 @@ class NpyImage(DetectorImageBase):
       self.parameters['OSC_START']            = 0 # XXX fiction
       self.parameters['PIXEL_SIZE']           = cspad_data['PIXEL_SIZE']
       self.parameters['SATURATED_VALUE']      = cspad_data['SATURATED_VALUE']
+      self.parameters['MIN_TRUSTED_VALUE']    = cspad_data.get('MIN_TRUSTED_VALUE', 0)
       self.parameters['SIZE1']                = cspad_data['SIZE1']
       self.parameters['SIZE2']                = cspad_data['SIZE2']
       self.parameters['TWOTHETA']             = 0 # XXX fiction
@@ -94,6 +95,7 @@ class NpyImage(DetectorImageBase):
       self.parameters['DISTANCE']             = cspad_data.get('DISTANCE',None)
       self.parameters['PIXEL_SIZE']           = cspad_data['PIXEL_SIZE']
       self.parameters['SATURATED_VALUE']      = cspad_data['SATURATED_VALUE']
+      self.parameters['MIN_TRUSTED_VALUE']    = cspad_data.get('MIN_TRUSTED_VALUE', 0)
       self.parameters['SIZE1']                = cspad_data['SIZE1']
       self.parameters['SIZE2']                = cspad_data['SIZE2']
       self.parameters['WAVELENGTH']           = cspad_data['WAVELENGTH']

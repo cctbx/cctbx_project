@@ -24,9 +24,21 @@ __version__ = "$Revision$"
 
 
 # The CAMP and CSpad counters are both 14 bits wide (Strüder et al
-# 2010; Philipp et al., 2007).  XXX Capitalise these constants.  XXX
-# This really has nothing to do with dynamic range.
-dynamic_range = 2**14 - 1
+# 2010; Philipp et al., 2007), which means the physical limit is 2**14 - 1.
+# However, in practice, when the pixels are in the low gain mode, after
+# correcting by a gain value of around 6.87, the pixels tend to saturate
+# around 90000. See xpp experiment xppe0314, run 184 as evidence.
+cspad_saturated_value = 90000
+
+# The dark average for the CSPAD detectors is around 1100-1500. In the
+# worst case, where a pixel goes dead in the middle of the run (I.E. after its
+# pedastal has been collected), the minimum a pixel could be is -1500 ADU.
+# We've included 500 ADUs as wiggle room.
+cspad_min_trusted_value = -2000
+
+# As long as the mask value is outside of the trusted range, the pixel should
+# be ignored by any downstream software.
+cspad_mask_value = -1000000
 
 # The side length of a square quadrant from the old XtcExplorer code.
 # XXX This should be obsoleted!
@@ -421,7 +433,8 @@ def dpack(active_areas=None,
           saturated_value=None,
           timestamp=None,
           wavelength=None,
-          xtal_target=None):
+          xtal_target=None,
+          min_trusted_value=None):
   """XXX Check completeness.  Should fill in sensible defaults."""
 
   # Must have data.
@@ -436,11 +449,15 @@ def dpack(active_areas=None,
   # CCD_IMAGE_SATURATION and SATURATED_VALUE items.
   if ccd_image_saturation is None:
     if saturated_value is None:
-      ccd_image_saturation = dynamic_range
+      ccd_image_saturation = cspad_saturated_value
     else:
       ccd_image_saturation = saturated_value
   if saturated_value is None:
     saturated_value = ccd_image_saturation
+
+  # Use a minimum value if provided for the pixel range
+  if min_trusted_value is None:
+    min_trusted_value = cspad_min_trusted_value
 
   # By default, the beam center is the center of the image.  The slow
   # (vertical) and fast (horizontal) axes correspond to x and y,
@@ -473,6 +490,7 @@ def dpack(active_areas=None,
           'DISTANCE': distance,
           'PIXEL_SIZE': pixel_size,
           'SATURATED_VALUE': saturated_value,
+          'MIN_TRUSTED_VALUE': min_trusted_value,
           'SIZE1': data.focus()[0],
           'SIZE2': data.focus()[1],
           'TIMESTAMP': timestamp,
