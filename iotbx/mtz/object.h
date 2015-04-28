@@ -11,6 +11,7 @@
 #include <ccp4_errno.h>
 #include <cctbx/sgtbx/space_group.h>
 #include <cctbx/hendrickson_lattman.h>
+#include <iotbx/error.h>
 #include <boost/shared_ptr.hpp>
 
 namespace iotbx {
@@ -570,6 +571,18 @@ namespace mtz {
        */
       void
       delete_reflection(const int& iref){ CMtz::MtzDeleteRefl(ptr(),iref); }
+
+      //! Write access. Delete reflections iref.
+      /*! Warning! Assumes the iref are sorted in ascending order
+       */
+      void
+      delete_reflections(af::const_ref<std::size_t> const& iref) {
+        for (std::size_t i=iref.size(); i>0; i--) {
+          // iref must be sorted in ascending order
+          if (i > 1) IOTBX_ASSERT(iref[i-1] > iref[i-2]);
+          CMtz::MtzDeleteRefl(ptr(),iref[i-1]);
+        }
+      }
 
     protected:
       boost::shared_ptr<CMtz::MTZ> ptr_;

@@ -1327,6 +1327,19 @@ min & max values of detector coords (pixels): [86.0, 87.0, 88.0, 89.0, 90.0, 91.
   assert mx in mtz_object.extract_miller_indices()
   mtz_object.delete_reflection(1)
   assert mx not in mtz_object.extract_miller_indices()
+  # test for delete_reflections
+  isel = flex.size_t((1,0))
+  try: mtz_object.delete_reflections(isel)
+  except RuntimeError: pass
+  else: raise Exception_expected
+  isel = flex.size_t((0,2))
+  mx = [mtz_object.extract_miller_indices()[i] for i in isel]
+  for m in mx:
+    assert m in mtz_object.extract_miller_indices()
+  mtz_object.delete_reflections(isel)
+  for m in mx:
+    assert m not in mtz_object.extract_miller_indices()
+
 
 def exercise():
   if (mtz is None):
