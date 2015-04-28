@@ -475,7 +475,8 @@ def get_stacking_proxies(pdb_hierarchy, stacking_phil_params, grm,
   selection_cache = pdb_hierarchy.atom_selection_cache()
   pdb_atoms = pdb_hierarchy.atoms()
   for stacking_pair in stacking_phil_params:
-    if stacking_pair.base1 is not None and stacking_pair.base2 is not None:
+    if (stacking_pair.base1 is not None and stacking_pair.base2 is not None
+        and stacking_pair.enabled):
       selected_atoms_1 = selection_cache.iselection(stacking_pair.base1)
       selected_atoms_2 = selection_cache.iselection(stacking_pair.base2)
       if len(selected_atoms_1) == 0:
@@ -500,7 +501,8 @@ def get_stacking_proxies(pdb_hierarchy, stacking_phil_params, grm,
             target_angle_deg=0,
             slack=0,
             top_out=False,
-            limit=1)
+            limit=1,
+            origin_id=0)
           result.append(proxy)
   return result
 
@@ -520,7 +522,8 @@ def get_basepair_plane_proxies(
   selection_cache = pdb_hierarchy.atom_selection_cache()
   pdb_atoms = pdb_hierarchy.atoms()
   for base_pair in bp_phil_params:
-    if base_pair.base1 is not None and base_pair.base2 is not None:
+    if (base_pair.base1 is not None and base_pair.base2 is not None
+        and base_pair.enabled):
       selected_atoms_1 = selection_cache.iselection(base_pair.base1)
       selected_atoms_2 = selection_cache.iselection(base_pair.base2)
       if len(selected_atoms_1) == 0:
@@ -546,7 +549,8 @@ def get_basepair_plane_proxies(
               target_angle_deg=0,
               slack=0,
               top_out=False,
-              limit=1)
+              limit=1,
+              origin_id=1)
             result_parallelities.append(proxy)
           if base_pair.restrain_planarity:
             if base_pair.planarity_sigma < 1e-5:
@@ -554,7 +558,8 @@ def get_basepair_plane_proxies(
             w = 1./(base_pair.planarity_sigma**2)
             proxy=geometry_restraints.planarity_proxy(
               i_seqs=flex.size_t(i_seqs+j_seqs),
-              weights=[w]*len(i_seqs+j_seqs))
+              weights=[w]*len(i_seqs+j_seqs),
+              origin_id=1)
             result_planarities.append(proxy)
   return result_planarities, result_parallelities
 
@@ -687,7 +692,8 @@ def get_basepair_hbond_proxies(
   # dashes = open('dashes.pml', 'w')
   pdb_atoms = pdb_hierarchy.atoms()
   for base_pair in bp_phil_params:
-    if base_pair.base1 is not None and base_pair.base2 is not None:
+    if (base_pair.base1 is not None and base_pair.base2 is not None
+        and base_pair.enabled):
       selected_atoms_1 = selection_cache.iselection(base_pair.base1)
       selected_atoms_2 = selection_cache.iselection(base_pair.base2)
       if len(selected_atoms_1) == 0:
