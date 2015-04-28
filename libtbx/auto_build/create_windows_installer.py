@@ -1,16 +1,10 @@
-
 # Script for compiling a Windows installer using the NSIS compiler which must be present on the PC.
 # The main body of the script is immutable and stored in the file by the mainNSISscript variable
 # Just a few custom definitions are prepended to this file which is subsequently compiled by as to
 # create the Windows installer.
 
-
-
-import shutil
 import optparse
 import os, sys, subprocess, platform
-
-
 
 def WriteNSISpreamble(productname="Phenix",
                       version="dev-2015",
