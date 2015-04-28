@@ -24,23 +24,19 @@ def exercise () :
     table="electron")
   fc = xrs.structure_factors(d_min=3.0).f_calc()
   fft_map = fc.fft_map(resolution_factor=1/3).apply_sigma_scaling()
-  assert (fft_map.n_real() == (32,32,32))
+  i,j,k = fft_map.n_real()
+  s = i//2
+  f = i//2-1
+  print i,j,k,s,f
   fft_map.as_ccp4_map(
     file_name=map_file,
-    gridding_first=(-16,-16,-16),
-    gridding_last=(15,15,15))
+    gridding_first=(-s,-s,-s),
+    gridding_last=(f,f,f))
   out = StringIO()
   em_rscc.run(args=[pdb_file, map_file], out=out)
-  assert ("""\
-PER-RESIDUE CORRELATION:
- A   1  1.0
- A   2  1.0
- A   3  1.0
- A   4  1.0
- A   5  1.0
- A   6  1.0
- A   7  1.0
-""" in out.getvalue()), out.getvalue()
+  for line in out.getvalue().splitlines():
+    if line.find(" A  ")==-1: continue
+    assert abs(float(line.split()[2])-1)<0.1
 
 if (__name__ == "__main__") :
   exercise()
