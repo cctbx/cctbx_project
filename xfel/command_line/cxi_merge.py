@@ -797,7 +797,9 @@ class scaling_manager (intensity_data) :
       print >> out, str(e)
       return null_data(
         file_name=file_name, log_out=out.getvalue(), wrong_bravais=True)
+    return self.scale_frame_detail(result, file_name, db_mgr)
 
+  def scale_frame_detail(self, result, file_name, db_mgr):
     # If the pickled integration file does not contain a wavelength,
     # fall back on the value given on the command line.  XXX The
     # wavelength parameter should probably be removed from master_phil
@@ -858,9 +860,9 @@ class scaling_manager (intensity_data) :
       crystal_symmetry=self.miller_set.crystal_symmetry()
       )
     print "Step 4. Filter on global resolution and map to asu"
-    print >> out, "Data in reference setting:"
+    print >> self.log, "Data in reference setting:"
     #observations.show_summary(f=out, prefix="  ")
-    show_observations(observations, out=out)
+    show_observations(observations, out=self.log)
 
     if self.params.significance_filter.apply is True: #------------------------------------
       # Apply an I/sigma filter ... accept resolution bins only if they
@@ -876,8 +878,8 @@ class scaling_manager (intensity_data) :
          N_bins_large_set, 1]
       )
       print "Total obs %d Choose n bins = %d"%(N_obs_pre_filter,N_bins)
-      bin_results = show_observations(observations, out=out, n_bins=N_bins)
-      show_observations(observations, out=sys.stdout, n_bins=N_bins)
+      bin_results = show_observations(observations, out=self.log, n_bins=N_bins)
+      #show_observations(observations, out=sys.stdout, n_bins=N_bins)
       acceptable_resolution_bins = [
         bin.mean_I_sigI > self.params.significance_filter.sigma for bin in bin_results]
       acceptable_nested_bin_sequences = [i for i in xrange(len(acceptable_resolution_bins))
@@ -1074,9 +1076,9 @@ class scaling_manager (intensity_data) :
           return getattr(YY,item)
 
          def show(values):
-          print "%10.7f"%values.G,
-          print "%10.7f"%values.BFACTOR, \
-                "%10.7f"%values.RS, \
+          print "G: %10.7f"%values.G,
+          print "B: %10.7f"%values.BFACTOR, \
+                "RS: %10.7f"%values.RS, \
                 "%7.3f deg %7.3f deg"%(
             180.*values.thetax/math.pi,180.*values.thetay/math.pi)
 
@@ -1258,6 +1260,7 @@ class scaling_manager (intensity_data) :
     have_sa_params = ( type(result.get("sa_parameters")[0]) == type(dict()) )
     #have_sa_params = (result.get("sa_parameters")[0].find('None')!=0)
     observations_original_index_indices = observations_original_index.indices()
+    if db_mgr is None: return unpack(MINI.x) # special exit for two-color indexing
 
     #cell_params = data.indexed_cell.parameters()
     #reserve_cell_params = result["sa_parameters"][0]["reserve_orientation"].unit_cell().parameters()
