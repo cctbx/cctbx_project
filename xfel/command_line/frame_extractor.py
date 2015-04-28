@@ -15,9 +15,8 @@ import cctbx, os
 from libtbx import easy_pickle
 
 class ConstructFrame(object):
-  def __init__(self, pickle_name, json_name, pixel_size):
-    # assemble template and unpack files
-    template_pickle = {'current_cb_op_to_primitive': 0,
+  def get_template_pickle(self):
+    return {'current_cb_op_to_primitive': 0,
                        'current_orientation':0,
                        'distance':0,
                        'effective_tiling':0,
@@ -35,7 +34,9 @@ class ConstructFrame(object):
                        'xbeam':0,
                        'ybeam':0}
 
-    self.frame = template_pickle
+  def __init__(self, pickle_name, json_name, pixel_size):
+    # assemble template and unpack files
+    self.frame = self.get_template_pickle()
     self.pixel_size = pixel_size
 
     importer = Importer([pickle_name, json_name], read_experiments=True, read_reflections=True)
