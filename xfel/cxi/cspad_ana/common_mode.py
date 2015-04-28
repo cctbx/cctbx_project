@@ -181,7 +181,6 @@ class common_mode_correction(mod_event_info):
         cspad_tbx.pathsubst(self._gain_map_path, evt, env))
       self.gain_map = easy_pickle.load(self._gain_map_path)['DATA']
       if self.gain_map_level is not None:
-        cspad_tbx.cspad_saturated_value *= self.gain_map_level
         sel = flex.bool([bool(f) for f in self.gain_map])
         sel.reshape(flex.grid(self.gain_map.focus()))
         self.gain_map = self.gain_map.set_selected(~sel, self.gain_map_level)
@@ -482,7 +481,7 @@ class common_mode_correction(mod_event_info):
 
     if (self.mask_img is not None):
       sel = self.mask_img == -2
-      self.cspad_img.set_selected(sel, -2)
+      self.cspad_img.set_selected(sel, cspad_tbx.cspad_mask_value)
 
     if self.cache_image:
       # Store the image in the event.
