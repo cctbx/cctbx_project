@@ -86,9 +86,11 @@ ShowInstDetails show
 ShowUnInstDetails show
 AutoCloseWindow false
 
-Function LaunchLink
-  ExecWait "$INSTDIR\${SOURCEDIR}\build\bin\libtbx.py_compile_all.bat"
+
+Function LaunchProg
+  Exec '"$SYSDIR\notepad.exe" $INSTDIR\${SOURCEDIR}\README'
 FunctionEnd
+
 
 ; MUI 1.67 compatible ------
 !include "MUI.nsh"
@@ -112,12 +114,11 @@ var ICONS_GROUP
 ; Instfiles page
 !insertmacro MUI_PAGE_INSTFILES
 ; Finish page
+!define MUI_FINISHPAGE_NOAUTOCLOSE
 !define MUI_FINISHPAGE_RUN
-!define MUI_FINISHPAGE_RUN_TEXT "Compiling all python scripts..."
-!define MUI_FINISHPAGE_RUN_FUNCTION "LaunchLink"
+!define MUI_FINISHPAGE_RUN_TEXT "Read the README file"
+!define MUI_FINISHPAGE_RUN_FUNCTION "LaunchProg"
 
-!define MUI_FINISHPAGE_SHOWREADME_CHECKED
-!define MUI_FINISHPAGE_SHOWREADME "$INSTDIR\${SOURCEDIR}\README"
 !insertmacro MUI_PAGE_FINISH
 ; Uninstaller pages
 !insertmacro MUI_UNPAGE_INSTFILES
@@ -132,6 +133,7 @@ Section "MainSection" SEC01
   SetOverwrite off
   File /r /x *.cpp /x *.cc /x *.h /x *.hh /x *.hpp /x *.c /x *.f /x .svn ${COPYDIR}\*
 
+  ExecWait '"$INSTDIR\${SOURCEDIR}\base\bin\python\python" -c $\"import compileall; compileall.compile_dir($\'$INSTDIR\${SOURCEDIR}\modules$\', 100)$\"'
   SetAutoClose false
 ; Shortcuts
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
