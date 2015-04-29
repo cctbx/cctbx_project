@@ -8,7 +8,9 @@
 !define PRODUCT_ROOT_KEY SHCTX ; replaced with HKLM or HKCU on runtime according to SetShellVarContext
 !define PRODUCT_STARTMENU_REGVAL "NSIS:StartMenuDir"
 
-InstallDir "$PROGRAMFILES${IS_64_BIT_PROGRAM}\${PRODUCT_NAME}"
+
+OutFile "${PRODUCT_NAME}-${PRODUCT_VERSION}-x${BITNESS}-Setup.exe"
+InstallDir "$PROGRAMFILES${BITNESS}\${PRODUCT_NAME}"
 
 !define MUI_CUSTOMFUNCTION_GUIINIT MyOnGUIinit
 
@@ -52,7 +54,7 @@ var ALL_OR_USER_TEXT
 Function .onInit
   !include x64.nsh
   ${IfNot} ${RunningX64}
-    ${If} ${IS_64_BIT_PROGRAM} > 32
+    ${If} ${BITNESS} > 32
   MessageBox MB_ICONEXCLAMATION|MB_OK "This build of ${PRODUCT_NAME} requires a 64 bit version of Windows. \
 Please install the 32 bit build of ${PRODUCT_NAME} instead."
   Abort
@@ -130,6 +132,7 @@ Section "MainSection" SEC01
   SetOverwrite off
   File /r /x *.cpp /x *.cc /x *.h /x *.hh /x *.hpp /x *.c /x *.f /x .svn ${COPYDIR}\*
 
+  SetAutoClose false
 ; Shortcuts
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
   !insertmacro MUI_STARTMENU_WRITE_END
@@ -145,7 +148,7 @@ Section "Sources" SEC02
   File /nonfatal /r ${COPYDIR}\*.cpp
   File /nonfatal /r ${COPYDIR}\*.cc
   File /nonfatal /r ${COPYDIR}\*.h
-
+  SetAutoClose false
 ; Shortcuts
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
   !insertmacro MUI_STARTMENU_WRITE_END
@@ -165,6 +168,7 @@ Section -AdditionalIcons
   CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\${PRODUCT_NAME}${PRODUCT_VERSION}.lnk" "$INSTDIR\${SOURCEDIR}\build\bin\phenix.bat" "" "${MUI_ICON}"
   CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Documentation.lnk" "$INSTDIR\${SOURCEDIR}\build\bin\phenix.doc.bat" "" "$WINDIR\hh.exe" 0
   CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Phenix.Python.lnk" "$INSTDIR\${SOURCEDIR}\build\bin\phenix.python.bat" "" "$INSTDIR\${SOURCEDIR}\base\bin\python\python.exe"
+  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Phenix Command Prompt.lnk" "$SYSDIR\cmd.exe" "/k $\"$INSTDIR\${SOURCEDIR}\build\setpaths_all.bat$\"" "$SYSDIR\cmd.exe"
   CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Uninstall.lnk" "$INSTDIR\uninst.exe" "" "${MUI_UNICON}"
   CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\PHENIX Website.lnk" "${PRODUCT_WEB_SITE}" "" "$PROGRAMFILES\Internet Explorer\iexplore.exe" 0
   !insertmacro MUI_STARTMENU_WRITE_END
@@ -210,11 +214,9 @@ FunctionEnd
 Section Uninstall
   !insertmacro MUI_STARTMENU_GETFOLDER "Application" $ICONS_GROUP
 
-  ;Delete "$SMPROGRAMS\$ICONS_GROUP\Uninstall.lnk"
-  ;Delete "$SMPROGRAMS\$ICONS_GROUP\Website.lnk"
-
   RMDir /r "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}"
   RMDir /r "$INSTDIR\${SOURCEDIR}"
+  Delete "$INSTDIR\uninst.exe"
 
   DeleteRegKey ${PRODUCT_ROOT_KEY} "${PRODUCT_UNINST_KEY}"
   SetAutoClose false
