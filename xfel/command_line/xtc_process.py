@@ -62,6 +62,9 @@ phil_scope = parse('''
       .type = float
       .help = "If not None, use the input energy for every event instead of the energy"
       .help = "from the XTC stream"
+    format = *cbf pickle
+      .type = choice
+      .help = "File format, either CBF or image pickle"
   }
   output {
     output_dir = .
@@ -181,10 +184,11 @@ class InMemScript(DialsProcessScript):
       max_events = params.dispatch.max_events
 
     for run in ds.runs():
-      # load a header only cspad cbf from the slac metrology
-      base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run.env(), src)
-      if base_dxtbx is None:
-        raise Sorry("Couldn't load calibration file for run %d"%run.run())
+      if params.input.format == "cbf":
+        # load a header only cspad cbf from the slac metrology
+        base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run.env(), src)
+        if base_dxtbx is None:
+          raise Sorry("Couldn't load calibration file for run %d"%run.run())
 
       # list of all events
       times = run.times()
@@ -202,11 +206,17 @@ class InMemScript(DialsProcessScript):
           continue
 
         # the data needs to have already been processed and put into the event by psana
-        data = evt.get(ndarray_float64_3, src, 'image0')
-        if data is None:
-          print "No data"
-          continue
-        data = data.astype(np.int32)
+        if params.input.format == 'cbf':
+          data = evt.get(ndarray_float64_3, src, 'image0')
+          if data is None:
+            print "No data"
+            continue
+          data = data.astype(np.int32)
+          #print "MEAN", np.mean(data)
+          #continue
+        else:
+          image_dict = evt.get('cctbx.xfel.image_dict')
+          data = image_dict['DATA']
 
         distance = cspad_tbx.env_distance(params.input.address, run.env(), params.input.detz_offset)
         if distance is None:
@@ -230,14 +240,15 @@ class InMemScript(DialsProcessScript):
         s = t[0:4] + t[5:7] + t[8:10] + t[11:13] + t[14:16] + t[17:19] + t[20:23]
         print "Processing shot", s
 
-        # stitch together the header, data and metadata into the final dxtbx format object
-        cspad_img = cspad_cbf_tbx.format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, params.input.address)
+        if params.input.format == 'cbf':
+          # stitch together the header, data and metadata into the final dxtbx format object
+          cspad_img = cspad_cbf_tbx.format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, params.input.address)
+        else:
+          from dxtbx.format.FormatPYunspecifiedStill import FormatPYunspecifiedStillInMemory
+          cspad_img = FormatPYunspecifiedStillInMemory(image_dict)
 
         if params.dispatch.dump_all:
-          # save cbf file
-          dest_path = os.path.join(params.output.output_dir, "shot-" + s + ".cbf")
-          cspad_img._cbf_handle.write_widefile(dest_path, pycbf.CBF,\
-            pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)
+          self.save_image(cspad_img, params, os.path.join(params.output.output_dir, "shot-" + s))
 
         imgset = MemImageSet([cspad_img])
         datablock = DataBlockFactory.from_imageset(imgset)[0]
@@ -270,12 +281,7 @@ class InMemScript(DialsProcessScript):
 
         # save cbf file
         if params.dispatch.dump_strong:
-          dest_path = os.path.join(params.output.output_dir, "hit-" + s + ".cbf")
-          try:
-            cspad_img._cbf_handle.write_widefile(dest_path, pycbf.CBF,\
-              pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)
-          except Exception:
-            print "Warning, couldn't save cbf:", dest_path
+          self.save_image(cspad_img, params, os.path.join(params.output.output_dir, "hit-" + s))
 
           # save strong reflections.  self.find_spots() would have done this, but we only
           # want to save data if it is enough to try and index it
@@ -304,12 +310,7 @@ class InMemScript(DialsProcessScript):
           continue
 
         if params.dispatch.dump_indexed:
-          dest_path = os.path.join(params.output.output_dir, "idx-" + s + ".cbf")
-          try:
-            cspad_img._cbf_handle.write_widefile(dest_path, pycbf.CBF,\
-              pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)
-          except Exception:
-            print "Warning, couldn't save cbf:", dest_path
+          self.save_image(cspad_img, params, os.path.join(params.output.output_dir, "idx-" + s))
 
         try:
           experiments = self.refine(experiments, indexed)
@@ -325,6 +326,29 @@ class InMemScript(DialsProcessScript):
           integrated = self.integrate(experiments, indexed)
         except Exception, e:
           print str(e)
+
+  def save_image(self, image, params, root_path):
+    """ Save an image, in either cbf or pickle format.
+    @param image dxtbx format object
+    @param params phil scope object
+    @param root_path output file path without extension
+    """
+
+    if params.input.format == 'cbf':
+      dest_path = root_path + ".cbf"
+    else:
+      dest_path = root_path + ".pickle"
+
+    try:
+      if params.input.format == 'cbf':
+        cspad_img._cbf_handle.write_widefile(dest_path, pycbf.CBF,\
+          pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)
+      else:
+        from libtbx import easy_pickle
+        easy_pickle.dump(dest_path, image._image_file)
+    except Exception:
+      print "Warning, couldn't save image:", dest_path
+
 
 if __name__ == "__main__":
   from dials.util import halraiser
