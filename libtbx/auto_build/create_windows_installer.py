@@ -1,11 +1,12 @@
 from __future__ import division
 # Script for compiling a Windows installer using the NSIS compiler which must be present on the PC.
-# The main body of the script is immutable and stored in the file by the mainNSISscript variable
-# Just a few custom definitions are prepended to this file which is subsequently compiled by as to
+# The main body of the script is immutable and stored in the file named by the mainNSISscript variable
+# Just a few custom definitions are prepended to this file which is subsequently compiled as to
 # create the Windows installer.
 
 import optparse
 import os, sys, subprocess, platform
+
 
 def WriteNSISpreamble(productname="Phenix",
                       version="dev-2015",
@@ -15,15 +16,11 @@ def WriteNSISpreamble(productname="Phenix",
                       tmpdir="tmp", # location of sourcedir
                       mainNSISscript = ""):
 
-  # Makensis can only generate a 32bit installer.
+  # Makensis only generates a 32bit installer.
   # Such an installer defaults all users program folders to "C:\program files (x86)"
   # regardless of architecture. If we have a 64 bit program we must specify all users program
   # folders to be "C:\program files" according to architecture.
   bitness = platform.architecture()[0][0:2]
-  alluserprogfiles = "64"
-  if not platform.architecture()[0] == '64bit':
-    alluserprogfiles = ""
-
   NSIScustomdefs = """
 
   ; Custom definitions begin
@@ -35,13 +32,11 @@ def WriteNSISpreamble(productname="Phenix",
   !define PRODUCT_WEB_SITE \"%s\"
   !define SOURCEDIR \"%s\"
   !define COPYDIR \"%s\"
-  !define IS_64_BIT_PROGRAM %s
-
-  OutFile "${PRODUCT_NAME}-${PRODUCT_VERSION}-x%s-Setup.exe"
+  !define BITNESS %s
 
   ; Custom definitions end
 
-  """ %(productname, version, company, website, sourcedir, tmpdir, alluserprogfiles, bitness)
+  """ %(productname, version, company, website, sourcedir, tmpdir, bitness)
 
   NSISmainbodytext = open(mainNSISscript,"r").read()
   NSISinstallerscript = NSIScustomdefs + NSISmainbodytext
