@@ -31,6 +31,7 @@ from scitbx_array_family_flex_ext import reindexing_array
 # angles: 0 - covalent geometry
 #         1 - angle restraints associated with NA basepair hydrogen bonds
 # dihedral(torsion): 0 - covalent geometry
+#                    1 - C-beta restraints
 # chirality: 0 - covalent geometry
 # planarity: 0 - covalent geometry
 #            1 - planarity restraints for NA basepairs
@@ -481,9 +482,22 @@ class manager(object):
     self.angle_proxies = self.angle_proxies.proxy_remove(
       selection=selection)
 
+  def add_dihedrals_in_place(self, additional_dihedral_proxies):
+    self.dihedral_proxies.extend(additional_dihedral_proxies)
+
   def remove_dihedrals_in_place(self, selection):
     self.dihedral_proxies = self.dihedral_proxies.proxy_remove(
       selection=selection)
+
+  def get_c_beta_torsion_proxies(self):
+    return self.dihedral_proxies.proxy_select(origin_id=1)
+
+  def remove_c_beta_torsion_restraints_in_place(self, selection=None):
+    if selection is None:
+      self.dihedral_proxies = self.dihedral_proxies.proxy_remove(origin_id=1)
+    else:
+      self.dihedral_proxies = self.dihedral_proxies.proxy_select(origin_id=1).\
+          proxy_remove(selection=selection)
 
   def remove_reference_dihedrals_in_place(self, selection):
     self.reference_dihedral_proxies = self.reference_dihedral_proxies.proxy_remove(
@@ -1344,9 +1358,17 @@ class manager(object):
         origin_id=1)
       print >> f, "Noncovalent b%s" % tempbuffer.getvalue()[1:]
     if (self.dihedral_proxies is not None):
-      self.dihedral_proxies.show_sorted(
+      self.dihedral_proxies.proxy_select(origin_id=0).show_sorted(
         by_value="residual",
         sites_cart=sites_cart, site_labels=site_labels, f=f)
+      print >> f
+    c_beta_proxies = self.get_c_beta_torsion_proxies()
+    if len(c_beta_proxies) > 0:
+      c_beta_proxies.show_sorted(
+          by_value="residual",
+          sites_cart=sites_cart,
+          site_labels=site_labels,
+          f=f, is_c_beta=True)
       print >> f
     if (self.reference_dihedral_proxies is not None):
       self.reference_dihedral_proxies.show_sorted(
@@ -1359,14 +1381,6 @@ class manager(object):
         sites_cart=sites_cart, site_labels=site_labels, f=f, is_ncs=True)
       print >> f
     if (self.generic_restraints_manager is not None):
-      if (self.generic_restraints_manager.c_beta_dihedral_proxies is not None):
-        self.generic_restraints_manager.c_beta_dihedral_proxies.\
-          show_sorted(
-            by_value="residual",
-            sites_cart=sites_cart,
-            site_labels=site_labels,
-            f=f, is_c_beta=True)
-        print >> f
       self.generic_restraints_manager.show_sorted_ramachandran(
               by_value="residual",
               sites_cart=sites_cart,

@@ -83,6 +83,12 @@ namespace {
               af::const_ref<bool> const&))
                 shared_proxy_remove, (
             arg("selection")))
+          .def("proxy_remove",
+            (af::shared<w_t>(*)(
+              af::const_ref<w_t> const&,
+              unsigned char))
+                shared_proxy_remove, (
+            arg("origin_id")))
         ;
       }
     }

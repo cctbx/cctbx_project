@@ -15,7 +15,6 @@ import sys, math
 from mmtbx.ncs import restraints
 from libtbx.utils import Sorry
 from mmtbx.torsion_restraints import utils, rotamer_search
-from mmtbx.geometry_restraints import c_beta
 from mmtbx import ncs
 import mmtbx.utils
 from libtbx import Auto
@@ -494,19 +493,6 @@ class torsion_ncs(object):
       print >> self.log, \
         "** WARNING: No torsion NCS found!!" + \
         "  Please check parameters. **"
-
-  def add_c_beta_restraints(self,
-                            geometry,
-                            pdb_hierarchy):
-    if geometry.generic_restraints_manager.c_beta_dihedral_proxies is None:
-      print >> self.log, "Adding C-beta torsion restraints..."
-      c_beta_torsion_proxies = \
-        c_beta.get_c_beta_torsion_proxies(pdb_hierarchy=pdb_hierarchy)
-      geometry.generic_restraints_manager.c_beta_dihedral_proxies = \
-        c_beta_torsion_proxies
-      geometry.generic_restraints_manager.flags.c_beta = True
-      print >> self.log, "num c-beta restraints: ", \
-        len(geometry.generic_restraints_manager.c_beta_dihedral_proxies)
 
   def show_ncs_summary(self, log=None):
     if(log is None): log = sys.stdout

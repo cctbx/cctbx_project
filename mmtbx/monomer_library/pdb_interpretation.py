@@ -4925,6 +4925,20 @@ class process(object):
           sites_cart=self.all_chain_proxies.sites_cart)
 
       # Here we are going to add another needed restraints.
+      # C-beta restraints
+      if self.all_chain_proxies.params.c_beta_restraints:
+        print >> self.log, "  Adding C-beta torsion restraints..."
+        from mmtbx.geometry_restraints import c_beta
+        c_beta_torsion_proxies = c_beta.get_c_beta_torsion_proxies(
+            self.all_chain_proxies.pdb_hierarchy)
+        n_c_beta_restraints = len(c_beta_torsion_proxies)
+        if n_c_beta_restraints > 0:
+          self._geometry_restraints_manager.add_dihedrals_in_place(
+              c_beta_torsion_proxies)
+        print >> self.log, "  Number of C-beta restraints generated: ",\
+           n_c_beta_restraints
+
+      # Secondary structure restraints:
       # Proteins first
       # then nucleic acids restraints.
       # from mmtbx.secondary_structure import sec_str_master_phil

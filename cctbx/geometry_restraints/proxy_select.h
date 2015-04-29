@@ -191,6 +191,22 @@ namespace cctbx { namespace geometry_restraints {
     return result;
   }
 
+  template <typename ProxyType>
+  af::shared<ProxyType>
+  shared_proxy_remove(
+    af::const_ref<ProxyType> const& self,
+    unsigned char origin_id)
+  {
+    af::shared<ProxyType> result;
+    for(std::size_t i_proxy=0; i_proxy<self.size(); i_proxy++) {
+      ProxyType const& p = self[i_proxy];
+      if (p.origin_id != origin_id) {
+        result.push_back(p);
+      }
+    }
+    return result;
+  }
+
 }} // namespace cctbx::geometry_restraints
 
 #endif // CCTBX_GEOMETRY_RESTRAINTS_PROXY_SELECT_H

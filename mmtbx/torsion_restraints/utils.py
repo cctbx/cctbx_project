@@ -2,7 +2,6 @@ from __future__ import division
 from libtbx.utils import format_exception, Sorry
 from libtbx import Auto
 from iotbx.pdb import common_residue_names_get_class
-from mmtbx.geometry_restraints import c_beta
 from iotbx.pdb import amino_acid_codes, input
 from cctbx.array_family import flex
 from libtbx import group_args
@@ -55,54 +54,6 @@ class alignment_manager(object):
       self.sequences[chain_i_str] = chain_seq
       self.padded_sequences[chain_i_str] = chain_seq_padded
       self.structures[chain_i_str] = chain_structures
-
-def add_c_beta_restraints(geometry,
-                          pdb_hierarchy,
-                          log=None):
-  if log is None:
-    log = sys.stdout
-  if geometry.generic_restraints_manager.c_beta_dihedral_proxies is None:
-    print >> log, "Adding C-beta torsion restraints..."
-    c_beta_torsion_proxies = \
-      c_beta.get_c_beta_torsion_proxies(pdb_hierarchy=pdb_hierarchy)
-    geometry.generic_restraints_manager.c_beta_dihedral_proxies = \
-      c_beta_torsion_proxies
-    geometry.generic_restraints_manager.flags.c_beta = True
-    print >> log, "num c-beta restraints: ", \
-      len(geometry.generic_restraints_manager.c_beta_dihedral_proxies)
-
-#def process_dihedral_reference(
-#      file_list,
-#      mon_lib_srv=None,
-#      ener_lib=None,
-#      crystal_symmetry=None,
-#      log=None):
-#  from mmtbx.monomer_library import server, pdb_interpretation
-#  import cStringIO
-#  if log is None:
-#    log = sys.stdout
-#  if mon_lib_srv is None:
-#    mon_lib_srv = server.server()
-#  if ener_lib is None:
-#    ener_lib = server.ener_lib()
-#  processed = []
-#  if mon_lib_srv is None:
-#    mon_lib_srv = server.server()
-#  if ener_lib is None:
-#    ener_lib = server.ener_lib()
-#  for file_name in file_list:
-#    processed_dihedral_reference = pdb_interpretation.process(
-#      mon_lib_srv=mon_lib_srv,
-#      ener_lib=ener_lib,
-#      file_name=file_name,
-#      strict_conflict_handling=False,
-#      crystal_symmetry=crystal_symmetry,
-#      force_symmetry=True,
-#      log=cStringIO.StringIO(),
-#      for_dihedral_reference=True,
-#      substitute_non_crystallographic_unit_cell_if_necessary=True)
-#    processed.append( (file, processed_dihedral_reference) )
-#    return processed
 
 def process_reference_files(
       reference_file_list,

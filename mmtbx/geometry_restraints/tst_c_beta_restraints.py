@@ -1,6 +1,7 @@
 from __future__ import division
 from cctbx.array_family import flex
 from mmtbx.monomer_library import server, pdb_interpretation
+from mmtbx.geometry_restraints import c_beta
 
 pdb_str_1 = """\
 CRYST1   26.960   29.455   29.841  90.00  90.00  90.00 P 21 21 21
@@ -44,14 +45,8 @@ def exercise_1():
   grm = processed_pdb_file.geometry_restraints_manager()
   pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   sites_cart = pdb_hierarchy.atoms().extract_xyz()
-
-  #test adding c-beta restraints
-  grm.generic_restraints_manager.\
-    add_c_beta_torsion_restraints(
-      pdb_hierarchy=pdb_hierarchy,
-      selection=None,
-      sigma=2.5)
-  assert len(grm.generic_restraints_manager.c_beta_dihedral_proxies) == 4
+  # c-beta restraints are added by default!!!
+  assert len(grm.get_c_beta_torsion_proxies()) == 4
 
   #test global selection and removing c-beta restraints
   tst_iselection = flex.size_t()
@@ -64,19 +59,18 @@ def exercise_1():
               tst_iselection.append(atom.i_seq)
   #test global selection
   grm2 = grm.select(iselection=tst_iselection)
-  assert len(grm2.generic_restraints_manager.c_beta_dihedral_proxies) == 2
+  assert len(grm2.get_c_beta_torsion_proxies()) == 2
   #remove a selection
-  grm.generic_restraints_manager.\
-    remove_c_beta_torsion_restraints(selection=tst_iselection)
-  assert len(grm.generic_restraints_manager.c_beta_dihedral_proxies) == 2
+  grm.remove_c_beta_torsion_restraints_in_place(selection=tst_iselection)
+  assert len(grm.get_c_beta_torsion_proxies()) == 2
   #add a selection
-  grm.generic_restraints_manager.c_beta_dihedral_proxies = None
-  grm.generic_restraints_manager.\
-    add_c_beta_torsion_restraints(
-      pdb_hierarchy=pdb_hierarchy,
+  grm.remove_c_beta_torsion_restraints_in_place()
+  assert len(grm.get_c_beta_torsion_proxies()) == 0
+  c_beta_torsion_proxies = c_beta.get_c_beta_torsion_proxies(
+      pdb_hierarchy,
       selection=tst_iselection,
       sigma=2.5)
-  assert len(grm.generic_restraints_manager.c_beta_dihedral_proxies) == 2
+  assert len(c_beta_torsion_proxies) == 2
 
 if (__name__ == "__main__") :
   exercise_1()

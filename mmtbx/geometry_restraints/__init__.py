@@ -15,7 +15,6 @@ class manager (object) :
                 reference_manager=None,
                 den_manager=None,
                 ncs_manager=None,
-                c_beta_dihedral_proxies=None,
                 flags=None) :
     adopt_init_args(self, locals())
     if self.flags is None:
@@ -30,8 +29,7 @@ class manager (object) :
     return self.get_n_ramachandran_proxies() + \
            self.get_n_reference_coordinate_proxies() + \
            self.get_n_reference_torsion_proxies() +\
-           self.get_n_den_proxies() +\
-           self.get_n_c_beta_dihedral_proxies()
+           self.get_n_den_proxies()
 
   def get_n_ramachandran_proxies(self):
     if self.ramachandran_proxies is not None:
@@ -54,12 +52,6 @@ class manager (object) :
     if self.den_manager is not None:
       return len(self.den_manager.den_proxies)
     return 0
-
-  def get_n_c_beta_dihedral_proxies(self):
-    if self.c_beta_dihedral_proxies is not None:
-      return len(self.c_beta_dihedral_proxies)
-    return 0
-
 
   def restraints_residual_sum (self,
                                sites_cart,
@@ -89,14 +81,6 @@ class manager (object) :
         gradient_array=gradient_array)
       #print "DEN target: %.1f" % den_target
       target += den_target
-    if (self.c_beta_dihedral_proxies is not None and
-        self.flags.c_beta) :
-      from mmtbx.geometry_restraints import c_beta
-      c_beta_target = c_beta.target_and_gradients(
-        sites_cart=sites_cart,
-        c_beta_dihedral_proxies=self.c_beta_dihedral_proxies,
-        gradient_array=gradient_array)
-      target += c_beta_target
     return target
 
   def rotamers (self) :
@@ -106,15 +90,12 @@ class manager (object) :
               n_seq,
               iselection) :
     ramachandran_proxies = den_manager = None
-    c_beta_dihedral_proxies = ncs_manager = None
+    ncs_manager = None
     if (self.ramachandran_proxies is not None) :
       ramachandran_proxies = self.ramachandran_proxies.proxy_select(
         n_seq, iselection)
     if (self.den_manager is not None) :
       den_manager = self.den_manager.select(n_seq, iselection)
-    if (self.c_beta_dihedral_proxies is not None) :
-      c_beta_dihedral_proxies = self.c_beta_dihedral_proxies.proxy_select(
-        n_seq, iselection)
     if (self.ncs_manager is not None) :
       ncs_manager = self.ncs_manager.select(n_seq, iselection)
     return manager(
@@ -122,24 +103,7 @@ class manager (object) :
       ramachandran_lookup=self.ramachandran_lookup,
       den_manager=den_manager,
       ncs_manager=ncs_manager,
-      c_beta_dihedral_proxies=c_beta_dihedral_proxies,
       flags=self.flags)
-
-  def add_c_beta_torsion_restraints(self,
-                                    pdb_hierarchy,
-                                    selection=None,
-                                    sigma=2.5):
-    from mmtbx.geometry_restraints import c_beta
-    self.c_beta_dihedral_proxies = \
-      c_beta.get_c_beta_torsion_proxies(
-        pdb_hierarchy=pdb_hierarchy,
-        selection=selection,
-        sigma=2.5)
-
-  def remove_c_beta_torsion_restraints(self, selection):
-    if self.c_beta_dihedral_proxies is not None:
-      self.c_beta_dihedral_proxies = \
-          self.c_beta_dihedral_proxies.proxy_remove(selection=selection)
 
   def remove_ramachandran_restraints(self):
     self.ramachandran_proxies = None
