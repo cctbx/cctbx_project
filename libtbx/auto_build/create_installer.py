@@ -163,15 +163,21 @@ class SetupInstaller(object):
 
   def copy_info(self):
     # Basic setup #
+    def copyfile(src, dest):
+      # Introduce Windows line breaks when on Windows by read/write in ascii mode
+      if sys.platform == "win32":
+        open(dest,'w').write(open(src,'r').read())
+      else:
+        shutil.copyfile(src, dest)
     # Write VERSION
     with open(os.path.join(self.dest_dir, 'VERSION'), 'w') as f:
       f.write(self.version)
     # Write README
     for i in self.readme:
-      shutil.copyfile(i, os.path.join(self.dest_dir, os.path.basename(i)))
+      copyfile(i, os.path.join(self.dest_dir, os.path.basename(i)))
     # Write LICENSE
     if os.path.isfile(self.license):
-      shutil.copyfile(self.license, os.path.join(self.dest_dir, 'LICENSE'))
+      copyfile(self.license, os.path.join(self.dest_dir, 'LICENSE'))
     # Actual Python installer script
     shutil.copyfile(self.install_script, os.path.join(self.dest_dir, 'bin', 'install.py'))
     if sys.platform != "win32":
