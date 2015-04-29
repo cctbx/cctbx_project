@@ -250,20 +250,13 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure,
   restraints_manager = mmtbx.restraints.manager(
     geometry      = geometry,
     normalization = True)
-
   if (reference_torsion_proxies is not None
       and id_params.restrain_torsion_angles):
     geometry.generic_restraints_manager.\
         reference_manager.add_existing_reference_torsion_proxies(
             proxies=reference_torsion_proxies)
-
   if(xray_structure is not None):
     restraints_manager.crystal_symmetry = xray_structure.crystal_symmetry()
-  if(params.pdb_interpretation.c_beta_restraints):
-    mmtbx.torsion_restraints.utils.add_c_beta_restraints(
-      geometry      = restraints_manager.geometry,
-      pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy,
-      log           = log)
   return restraints_manager
 
 def run_minimization(

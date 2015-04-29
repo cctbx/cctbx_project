@@ -47,7 +47,8 @@ def get_c_beta_torsion_proxies(pdb_hierarchy,
                 dp_add = cctbx.geometry_restraints.dihedral_proxy(
                   i_seqs=i_seqs,
                   angle_ideal=dihedralNCAB,
-                  weight=1/sigma**2)
+                  weight=1/sigma**2,
+                  origin_id=1)
                 c_beta_dihedral_proxies.append(dp_add)
                 #CNAB
                 i_seqs = [C_atom.i_seq,
@@ -57,28 +58,10 @@ def get_c_beta_torsion_proxies(pdb_hierarchy,
                 dp_add = cctbx.geometry_restraints.dihedral_proxy(
                   i_seqs=i_seqs,
                   angle_ideal=dihedralCNAB,
-                  weight=1/sigma**2)
+                  weight=1/sigma**2,
+                  origin_id=1)
                 c_beta_dihedral_proxies.append(dp_add)
   return c_beta_dihedral_proxies
-
-def target_and_gradients(
-      sites_cart,
-      c_beta_dihedral_proxies,
-      gradient_array,
-      unit_cell=None):
-  target = 0.0
-  if unit_cell is None:
-    target += cctbx.geometry_restraints.dihedral_residual_sum(
-                sites_cart=sites_cart,
-                proxies=c_beta_dihedral_proxies,
-                gradient_array=gradient_array)
-  else:
-    target += cctbx.geometry_restraints.dihedral_residual_sum(
-                unit_cell=unit_cell,
-                sites_cart=sites_cart,
-                proxies=c_beta_dihedral_proxies,
-                gradient_array=gradient_array)
-  return target
 
 def get_cb_target_angle_pair(resname):
   target_angle_dict = {
