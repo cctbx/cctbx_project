@@ -1681,6 +1681,7 @@ mmtbx/command_line/fobs_minus_fobs_map.py -text
 mmtbx/command_line/generate_disorder.py -text
 mmtbx/command_line/get_related_ensemble.py -text
 mmtbx/command_line/grow_density.py -text
+mmtbx/command_line/helix_sheet_recs_as_pdb_files.py -text
 mmtbx/command_line/interpolate.py -text
 mmtbx/command_line/kinemage.py svneol=native#text/x-python
 mmtbx/command_line/lockit.py svneol=native#text/x-python
