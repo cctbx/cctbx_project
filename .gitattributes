@@ -2112,6 +2112,7 @@ mmtbx/regression/tst_fmodel_misc.py -text
 mmtbx/regression/tst_fmodel_no_cryst1.py -text
 mmtbx/regression/tst_generate_disorder.py -text
 mmtbx/regression/tst_geo_min_restraints_phil.py -text
+mmtbx/regression/tst_helix_sheet_recs_as_pdb_files.py -text
 mmtbx/regression/tst_interpolation.py -text
 mmtbx/regression/tst_isomorphous_difference_misc.py -text
 mmtbx/regression/tst_ligand_ncs.py -text
