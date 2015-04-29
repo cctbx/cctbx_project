@@ -370,6 +370,51 @@ class MultiFileReader(ReaderBase):
     # All images valid
     return True
 
+class MemReader(ReaderBase):
+  '''A reader for data already loaded in memory'''
+
+  def __init__(self, images):
+    self._images = images
+
+  def __cmp__(self, other):
+    return self.get_format_class() == other.get_format_class()
+
+  def get_image_paths(self, indices=None):
+    raise NotImplementedError("MemReader has no image paths")
+
+  def get_image_size(self, panel=0):
+    return self.get_format().get_detector()[panel].get_image_size()
+
+  def get_format(self, index=None):
+    return self._images[index]
+
+  def get_format_class(self, index=None):
+    return self._images[index].__class__
+
+  def get_path(self, index=None):
+    raise NotImplementedError("MemReader has no image paths")
+
+  def is_valid(self, indices=None):
+    return True
+
+  def read(self, index=None):
+    return self._indices[index].get_raw_data()
+
+  def get_detectorbase(self, index=None):
+    return self._indices[index].get_detectorbase()
+
+  def get_detector(self, index=None):
+    return self._indices[index].get_detector()
+
+  def get_goniometer(self, index=None):
+    return self._indices[index].get_goniometer()
+
+  def get_beam(self, index=None):
+    return self._indices[index].get_beam()
+
+  def get_scan(self, index=None):
+    return self._indices[index].get_scan()
+
 
 class ImageSet(object):
   ''' A class exposing the external image set interface. '''
@@ -601,6 +646,9 @@ class MemImageSet(ImageSet):
     if images is None:
       raise ValueError("MemImageSet needs a list of images!")
 
+    # Save a reader
+    self._reader = MemReader(images)
+
     # Save the images
     self._images = images
 
@@ -637,9 +685,26 @@ class MemImageSet(ImageSet):
       # for multiple panels
       assert(npanels > 0)
       if npanels == 1:
-        return img.get_raw_data()
+        return img.get_raw_data(),
       else:
         return tuple([img.get_raw_data(i) for i in xrange(npanels)])
+
+  def get_image(self, index):
+    '''
+    Get the image at the given index
+    '''
+    img = self._images[self._indices[index]]
+
+    # Get the number of panels
+    npanels = len(img.get_detector())
+
+    # Return a flex array for single panels and a tuple of flex arrays
+    # for multiple panels
+    assert(npanels > 0)
+    if npanels == 1:
+      return img.get_raw_data(),
+    else:
+      return tuple([img.get_raw_data(i) for i in xrange(npanels)])
 
   def __len__(self):
     ''' Return the number of images in this image set. '''
@@ -678,8 +743,7 @@ class MemImageSet(ImageSet):
 
   def is_valid(self):
     ''' Validate all the images in the image set. Can take a long time. '''
-    #return self.reader().is_valid(self._indices)
-    return True
+    return self.reader().is_valid(self._indices)
 
   def get_detector(self, index=None):
     ''' Get the detector. '''
@@ -727,7 +791,7 @@ class MemImageSet(ImageSet):
 
   def reader(self):
     ''' Return the image set reader. '''
-    return None #FIXME raise NotImplementedError("MemImageSet has no reader")
+    return self._reader
 
   def _image_index(self, index=None):
     ''' Convert image set index to image index.'''
