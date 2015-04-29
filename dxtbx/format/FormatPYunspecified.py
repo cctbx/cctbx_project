@@ -33,11 +33,15 @@ class FormatPYunspecified(FormatPY):
     FormatPY.__init__(self, image_file)
 
   def _start(self):
+    import os
+    if isinstance(self._image_file, basestring) and os.path.isfile(self._image_file):
+      stream = FormatPYunspecified.open_file(self._image_file, 'rb')
 
-    stream = FormatPYunspecified.open_file(self._image_file, 'rb')
+      import cPickle as pickle
+      data = pickle.load(stream)
+    else:
+      data = self._image_file
 
-    import cPickle as pickle
-    data = pickle.load(stream)
     if not "DETECTOR_ADDRESS" in data:
       # legacy format; try to guess the address
       self.LCLS_detector_address = 'CxiDs1-0|Cspad-0'
@@ -57,7 +61,15 @@ class FormatPYunspecified(FormatPY):
     from spotfinder.applications.xfel import cxi_phil
     from iotbx.detectors.npy import NpyImage
     import os,copy
-    args = [self._image_file,
+
+    is_file = isinstance(self._image_file, basestring) and os.path.isfile(self._image_file)
+
+    if is_file:
+      file_name = self._image_file
+    else:
+      file_name = "inmem"
+
+    args = [file_name,
             version_token,
             "viewer.powder_arcs.show=False",
             "viewer.powder_arcs.code=3n9c",
@@ -65,11 +77,12 @@ class FormatPYunspecified(FormatPY):
 
     params = cxi_phil.cxi_versioned_extract(args)
     horizons_phil = params.persist.commands
-    if isinstance(self._image_file, basestring) and os.path.isfile(self._image_file):
-      I = NpyImage(self._image_file)
+
+    if is_file:
+      I = NpyImage(file_name)
     else:
       print "This is not a file; assume the data are in the defined dictionary format"
-      I = NpyImage(self._image_file, source_data=params.indexing.data)
+      I = NpyImage(file_name, source_data=self._image_file)
     I.readHeader(horizons_phil)
     I.translate_tiles(horizons_phil)
     # necessary to keep the phil parameters for subsequent calls to get_tile_manager()
@@ -157,6 +170,35 @@ class FormatPYunspecified(FormatPY):
 
     # returns merged untrusted pixels and active areas
     return (mask & trusted_mask,)
+
+class FormatPYunspecifiedInMemory(FormatPYunspecified):
+  """ Overrides the Format object's init method to accept an image dictionary
+      instead of a file name. Used with XFELs when it is desirable to never write
+      a file to disk, but to process it only in memory.
+  """
+
+  @staticmethod
+  def understand(image_file):
+    """ If it's an image dictionary, we understand this """
+    try:
+      wanted_header_items = ['SIZE1','SIZE2','TIMESTAMP']
+
+      for header_item in wanted_header_items:
+        if not header_item in image_file.keys():
+          return False
+
+      return True
+
+    except AttributeError:
+      return False
+
+  def __init__(self, data):
+    """ @param data In memory image dictionary, alredy initialized """
+    FormatPYunspecified.__init__(self, data)
+
+    import copy
+    self._image_file = copy.deepcopy(data)
+
 
 if __name__ == '__main__':
 
