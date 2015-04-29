@@ -1399,6 +1399,10 @@ def exercise_angle():
   check(rest[1], i_seqs=(2,3,0), angle_ideal=3, weight=4, origin_id=1)
   rest = proxies.proxy_remove(selection=flex.bool([True,True,True,False]))
   assert rest.size() == 3
+  rest = proxies.proxy_remove(origin_id=1)
+  assert rest.size() == 2
+  check(rest[0], i_seqs=(0,1,2), angle_ideal=1, weight=2, origin_id=0)
+  check(rest[1], i_seqs=(3,1,2), angle_ideal=4, weight=5, origin_id=3)
   #
   selected = proxies.proxy_select(origin_id=5)
   assert selected.size() == 0
@@ -1846,6 +1850,12 @@ def exercise_dihedral():
       i_seqs=(2,3,0,4), angle_ideal=3, weight=4, periodicity=5, origin_id=1)
   check(rest[2],
       i_seqs=(3,1,2,4), angle_ideal=4, weight=5, periodicity=6, origin_id=3)
+  rest = proxies.proxy_remove(origin_id=1)
+  assert rest.size() == 2 # 1st and 4th
+  check(rest[0],
+      i_seqs=(0,1,2,3), angle_ideal=1, weight=2, periodicity=3, origin_id=0)
+  check(rest[1],
+      i_seqs=(3,1,2,4), angle_ideal=4, weight=5, periodicity=6, origin_id=3)
   #
   selected = proxies.proxy_select(origin_id=5)
   assert selected.size() == 0
@@ -2068,6 +2078,12 @@ def exercise_chirality():
       volume_ideal=3, both_signs=True, weight=4, origin_id=1)
   check(rest[2], i_seqs=(3,1,2,4),
       volume_ideal=4, both_signs=False, weight=5, origin_id=3)
+  rest = proxies.proxy_remove(origin_id=1)
+  assert rest.size() == 2 # 1st and 4th
+  check(rest[0], i_seqs=(0,1,2,3),
+      volume_ideal=1, both_signs=False, weight=2, origin_id=0)
+  check(rest[1], i_seqs=(3,1,2,4),
+      volume_ideal=4, both_signs=False, weight=5, origin_id=3)
 
 def exercise_planarity():
   def check(p, i_seqs=None, sites=None, sym_ops=None, weights=[1,2,3,4],
@@ -2281,6 +2297,10 @@ def exercise_planarity():
   check(rest[1], i_seqs=[2,3,0,4], weights=[4,5,6,7], origin_id=1)
   rest = proxies.proxy_remove(selection=flex.bool([True,True,True,True,False]))
   assert rest.size() == 3
+  rest = proxies.proxy_remove(origin_id=1)
+  assert rest.size() == 2 # 1st and 4th
+  check(rest[0], i_seqs=[0,1,2,3], weights=[2,3,4,5], origin_id=0)
+  check(rest[1], i_seqs=[3,1,2,4], weights=[5,6,7,8], origin_id=3)
   #
   unit_cell = uctbx.unit_cell([15,11.5,16.25,90,99.5,90])
   sites_cart = flex.vec3_double(
@@ -3224,6 +3244,12 @@ def exercise_parallelity():
   assert len(rest) == 2 # 3rd and 4th
   check(rest[0], i_seqs=(2, 3, 10, 11), j_seqs=(4, 5, 12, 13), weight=3,
       target_angle_deg=13, slack=3, top_out=True, limit=3, origin_id=1)
+  check(rest[1], i_seqs=(3, 1, 12, 14), j_seqs=(5, 6, 14, 15), weight=4,
+      target_angle_deg=14, slack=4, top_out=True, limit=4, origin_id=3)
+  rest = proxies.proxy_remove(origin_id=1)
+  assert len(rest) == 2 # 1st and 4th
+  check(rest[0], i_seqs=(0,1,2,3), j_seqs=(2,3,4,5), weight=1,
+      target_angle_deg=11, slack=1, top_out=True, limit=1, origin_id=0)
   check(rest[1], i_seqs=(3, 1, 12, 14), j_seqs=(5, 6, 14, 15), weight=4,
       target_angle_deg=14, slack=4, top_out=True, limit=4, origin_id=3)
 
