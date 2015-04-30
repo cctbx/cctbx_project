@@ -68,7 +68,15 @@ phil_scope = parse('''
       .type = float
       .help = "If not None, use the input energy for every event instead of the energy"
       .help = "from the XTC stream"
-    format = *cbf pickle
+   override_trusted_max = None
+    .type = int
+    .help = "During spot finding, override the saturation value for this data."
+    .help = "Overloads will not be integrated, but they can assist with indexing."
+   override_trusted_min = None
+    .type = int
+    .help = "During spot finding and indexing, override the minimum pixel value"
+    .help = "for this data. This does not affect integration."
+  format = *cbf pickle
       .type = choice
       .help = "File format, either CBF or image pickle"
   }
@@ -98,11 +106,6 @@ phil_scope = parse('''
   verbosity = 1
    .type = int(value_min=0)
    .help = "The verbosity level"
-  override_trusted_max = None
-    .type = int
-    .help = "During spot finding and indexing, override the saturation value"
-    .help = "for this data. Overloadls will not be integrated, but they can"
-    .help = "assist with indexing."
   border_mask {
     include scope dials.command_line.generate_mask.phil_scope
   }
@@ -264,8 +267,7 @@ class InMemScript(DialsProcessScript):
         if params.dispatch.dump_all:
           self.save_image(cspad_img, params, os.path.join(params.output.output_dir, "shot-" + s))
 
-        if params.override_trusted_max is not None:
-          self.cache_ranges(cspad_img, params)
+        self.cache_ranges(cspad_img, params)
 
         imgset = MemImageSet([cspad_img])
         datablock = DataBlockFactory.from_imageset(imgset)[0]
@@ -299,8 +301,7 @@ class InMemScript(DialsProcessScript):
           print "Not enough spots to index"
           continue
 
-        if params.override_trusted_max is not None:
-          self.restore_ranges(cspad_img)
+        self.restore_ranges(cspad_img, params)
 
         # save cbf file
         if params.dispatch.dump_strong:
@@ -376,13 +377,33 @@ class InMemScript(DialsProcessScript):
       print "Warning, couldn't save image:", dest_path
 
   def cache_ranges(self, cspad_img, params):
+    """ Save the current trusted ranges, and replace them with the given overrides, if present.
+    @param cspad_image dxtbx format object
+    @param params phil scope
+    """
+    if params.input.override_trusted_max is None and params.input.override_trusted_min is None:
+      return
+
     detector = cspad_img.get_detector()
     self.cached_ranges = []
     for panel in detector:
-      self.cached_ranges.append(panel.get_trusted_range())
-      panel.set_trusted_range((panel.get_trusted_range()[0],params.override_trusted_max))
+      new_range = cached_range = panel.get_trusted_range()
+      self.cached_ranges.append(cached_range)
+      if params.input.override_trusted_max is not None:
+        new_range = new_range[0], params.input.override_trusted_max
+      if params.input.override_trusted_min is not None:
+        new_range = params.input.override_trusted_min, new_range[1]
 
-  def restore_ranges(self, cspad_img):
+      panel.set_trusted_range(new_range)
+
+  def restore_ranges(self, cspad_img, params):
+    """ Restore the previously cached trusted ranges, if present.
+    @param cspad_image dxtbx format object
+    @param params phil scope
+    """
+    if params.input.override_trusted_max is None and params.input.override_trusted_min is None:
+      return
+
     detector = cspad_img.get_detector()
     for cached_range, panel in zip(self.cached_ranges, detector):
       panel.set_trusted_range(cached_range)
