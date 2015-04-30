@@ -480,6 +480,7 @@ _chem_comp_plane_atom.dist_esd
 2MG plan-2    H21 0.020
 """
   import iotbx.cif
+  log = StringIO()
   cif_object = iotbx.cif.reader(input_string=cif_records).model()
   mon_lib_srv.process_cif_object(cif_object=cif_object)
   processed_pdb_file = monomer_library.pdb_interpretation.process(
@@ -487,7 +488,8 @@ _chem_comp_plane_atom.dist_esd
     ener_lib=ener_lib,
     file_name=None,
     raw_records=raw_records,
-    force_symmetry=True)
+    force_symmetry=True,
+    log=log)
   grm = processed_pdb_file.geometry_restraints_manager()
   mod_base_5p_link_op1 = False
   mod_base_5p_link_op2 = False
@@ -1809,6 +1811,7 @@ _chem_comp_chir.volume_sign
 # ------------------------------------------------------
 """
   import iotbx.cif
+  log = StringIO()
   cif_object = iotbx.cif.reader(input_string=cif_records).model()
   mon_lib_srv.process_cif_object(cif_object=cif_object)
   processed_pdb_file = monomer_library.pdb_interpretation.process(
@@ -1817,7 +1820,7 @@ _chem_comp_chir.volume_sign
     file_name=None,
     raw_records=raw_records,
     force_symmetry=False,
-    log = None)
+    log = log)
   # this is to check there is no covalent bonds between two residues
   xrs = processed_pdb_file.xray_structure()
   grm = processed_pdb_file.geometry_restraints_manager()
@@ -2002,7 +2005,7 @@ END
     log=log)
   grm = processed_pdb_file.geometry_restraints_manager()
   assert grm.angle_proxies.size() == 15
-  assert grm.dihedral_proxies.size() == 9
+  assert grm.get_dihedral_proxies().size() == 9
   selected_dihedrals = grm.dihedral_proxies.proxy_select(
     n_seq=13, iselection=flex.size_t([4,5,10,11,12]))
   # select SS dihedrals, 2 in this case because of alternative SG atom

@@ -34,8 +34,8 @@ def exercise_geo_reduce_for_tardy(
     geo.pair_proxies(sites_cart=sites_cart).bond_proxies.n_total(),
     reduced_geo.pair_proxies(sites_cart=sites_cart).bond_proxies.n_total())
   dihedral_counts = (
-    geo.dihedral_proxies.size(),
-    reduced_geo.dihedral_proxies.size())
+    geo.get_dihedral_proxies().size(),
+    reduced_geo.get_dihedral_proxies().size())
   assert approx_equal(bond_counts, expected_bond_counts)
   assert approx_equal(dihedral_counts, expected_dihedral_counts)
   proxy_i_seqs_red = {}
@@ -44,7 +44,7 @@ def exercise_geo_reduce_for_tardy(
   assert len(proxy_i_seqs_red) == dihedral_counts[1]
   awl = list(processed_pdb_file.all_chain_proxies.pdb_hierarchy
     .atoms_with_labels())
-  for proxy in geo.dihedral_proxies:
+  for proxy in geo.get_dihedral_proxies():
     if (not proxy_i_seqs_red.has_key(proxy.i_seqs)):
       sigma = 1/proxy.weight**0.5
       if (sigma > 10):

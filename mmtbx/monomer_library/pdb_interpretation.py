@@ -2699,6 +2699,7 @@ class build_all_chain_proxies(linking_mixins):
     self.params = params
     if for_dihedral_reference:
       self.params.peptide_link.discard_psi_phi=False
+      self.params.c_beta_restraints=False
     timer = user_plus_sys_time()
     self.time_building_chain_proxies = None
     if (log is not None and file_name is not None):
@@ -4848,6 +4849,9 @@ class process(object):
     self.mon_lib_srv = mon_lib_srv
     self.ener_lib = ener_lib
     self.log = log
+    nul = StringIO()
+    if log is None:
+      self.log = nul
     self.for_dihedral_reference=for_dihedral_reference
     self.all_chain_proxies = build_all_chain_proxies(
       mon_lib_srv=mon_lib_srv,
@@ -5123,9 +5127,9 @@ class process(object):
                              " (mainly nonbonded setup): %.2f" % (
             timer.elapsed())
           flush_log(self.log)
-        if not self.for_dihedral_reference:
-          self.clash_guard(hard_minimum_nonbonded_distance=hard_minimum_nonbonded_distance,
-                           nonbonded_distance_threshold=nonbonded_distance_threshold)
+      if not self.for_dihedral_reference:
+        self.clash_guard(hard_minimum_nonbonded_distance=hard_minimum_nonbonded_distance,
+                         nonbonded_distance_threshold=nonbonded_distance_threshold)
     return self._geometry_restraints_manager
 
 

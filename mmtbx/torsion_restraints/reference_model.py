@@ -5,7 +5,7 @@ from libtbx import group_args
 import cctbx.geometry_restraints
 from mmtbx.validation import rotalyze
 from mmtbx.utils import rotatable_bonds
-from mmtbx.rotamer.sidechain_angles import *
+from mmtbx.rotamer.sidechain_angles import collect_residue_torsion_angles, SidechainAngles
 import mmtbx.monomer_library
 from cctbx.array_family import flex
 import iotbx.phil

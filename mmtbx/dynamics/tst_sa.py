@@ -132,6 +132,7 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure):
     show_energies                = False,
     plain_pairs_radius           = 5,
     assume_hydrogens_all_missing = not has_hd)
+  geometry.remove_c_beta_torsion_restraints_in_place()
   restraints_manager = mmtbx.restraints.manager(
     geometry      = geometry,
     normalization = True)

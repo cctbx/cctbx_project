@@ -338,7 +338,7 @@ class manager (object) :
         self.params.helix = restraint_groups.helix
 
     t1 = time.time()
-    print >> log, "    Time for finding protein SS: %f" % (t1-t0)
+    # print >> log, "    Time for finding protein SS: %f" % (t1-t0)
     # Step 2: nucleic acids
     na_ss_definition_present = False
     if (len(self.params.secondary_structure.nucleic_acid.base_pair) > 1 or

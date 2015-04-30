@@ -37,6 +37,7 @@ file_name = None
 
   from mmtbx.secondary_structure import sec_str_master_phil
   work_params = pcl.work.extract()
+  work_params.secondary_structure.enabled=True
   if work_params.quiet :
     out = cStringIO.StringIO()
   pdb_files = work_params.file_name
@@ -57,6 +58,7 @@ file_name = None
   ener_lib = server.ener_lib()
   defpars = mmtbx.command_line.geometry_minimization.master_params().extract()
   defpars.pdb_interpretation.automatic_linking.link_carbohydrates=False
+  defpars.pdb_interpretation.c_beta_restraints=False
   processed_pdb_file = pdb_interpretation.process(
     mon_lib_srv    = mon_lib_srv,
     ener_lib       = ener_lib,
@@ -85,7 +87,7 @@ file_name = None
   #     geometry)
   # hb_b, hb_a = nucleic_acids.get_basepair_hbond_proxies(pdb_hierarchy,
   #     m.params.secondary_structure.nucleic_acid.base_pair)
-
+  result_out = cStringIO.StringIO()
   prefix_scope="refinement.pdb_interpretation"
   if (work_params.format != "phenix") :
     prefix_scope = ""
@@ -95,9 +97,9 @@ file_name = None
   if work_params.format == "phenix_bonds" :
     raise Sorry("Not yet implemented.")
   elif work_params.format in ["pymol", "refmac", "kinemage"] :
-    m.show_summary(out=log)
+    m.show_summary(out=result_out)
     build_proxies = m.create_hbond_proxies(
-      log=log,
+      log=result_out,
       as_python_objects=True)
     if (len(build_proxies.proxies) == 0) :
       pass
@@ -106,30 +108,34 @@ file_name = None
         proxies=build_proxies.proxies,
         pdb_hierarchy=pdb_hierarchy,
         filter=work_params.filter_outliers,
-        out=out)
+        out=result_out)
     elif work_params.format == "kinemage" :
       hbond.as_kinemage(
         proxies=build_proxies.proxies,
         pdb_hierarchy=pdb_hierarchy,
         filter=work_params.filter_outliers,
-        out=out)
+        out=result_out)
     else :
       hbond.as_refmac_restraints(
         proxies=build_proxies.proxies,
         pdb_hierarchy=pdb_hierarchy,
         filter=work_params.filter_outliers,
-        out=out)
+        out=result_out)
   else :
-    print >> out, "# These parameters are suitable for use in phenix.refine."
+    print >> result_out, "# These parameters are suitable for use in phenix.refine."
     if (prefix_scope != "") :
-      print >> out, "%s {" % prefix_scope
+      print >> result_out, "%s {" % prefix_scope
     if work_params.show_all_params :
-      working_phil.show(prefix="  ", out=out)
+      working_phil.show(prefix="  ", out=result_out)
     else :
-      phil_diff.show(prefix="  ", out=out)
+      phil_diff.show(prefix="  ", out=result_out)
     if (prefix_scope != "") :
-      print >> out, "}"
-    return working_phil.as_str()
+      print >> result_out, "}"
+  result = result_out.getvalue()
+  outf = open("%s_ss.eff" %work_params.file_name[0], "w")
+  outf.write(result)
+  outf.close()
+  print >> out, result
 
 if __name__ == "__main__" :
   run(sys.argv[1:])

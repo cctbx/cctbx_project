@@ -137,7 +137,7 @@ def get_complete_dihedral_proxies(
       for_dihedral_reference=True,
       substitute_non_crystallographic_unit_cell_if_necessary=True)
   grm = processed_pdb_file_local.geometry_restraints_manager()
-  return grm.dihedral_proxies
+  return grm.get_dihedral_proxies()
 
 def selection(string, cache):
   return cache.selection(
