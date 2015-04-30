@@ -362,8 +362,10 @@ def get_phil_base_pairs(pdb_hierarchy, nonbonded_proxies,
   # check and define basepairs
   pairs = []
   for hb in hbonds:
-    new_hbonds, class_number = get_h_bonds_for_basepair(atoms[hb[0]],
-        atoms[hb[1]], distance_cutoff=hbond_distance_cutoff)
+    new_hbonds, class_number = get_h_bonds_for_basepair(
+        atoms[hb[0]],
+        atoms[hb[1]],
+        distance_cutoff=hbond_distance_cutoff)
     if len(new_hbonds) > 1:
       p = make_phil_base_pair_record(atoms[hb[0]].parent(), atoms[hb[1]].parent(),
           params, saenger_class=class_number, add_segid=add_segid)
