@@ -44,7 +44,8 @@ phil_scope = parse('''
   debug {
     event_timestamp = None
       .type = str
-      .help = "If set to be a timestamp, will only process the event that matches it"
+      .multiple = True
+      .help = "List of timestamps. If set, will only process the events that matches them"
   }
   input {
     cfg = None
@@ -208,7 +209,7 @@ class InMemScript(DialsProcessScript):
 
       for i in xrange(len(mytimes)):
         ts = cspad_tbx.evt_timestamp((mytimes[i].seconds(),mytimes[i].nanoseconds()/1e6))
-        if params.debug.event_timestamp is not None and params.debug.event_timestamp != ts:
+        if params.debug.event_timestamp is not None and ts not in params.debug.event_timestamp:
           continue
 
         evt = run.event(mytimes[i])
