@@ -1824,7 +1824,6 @@ mmtbx/geometry_restraints/afitt.py -text
 mmtbx/geometry_restraints/boost_python/hbond_ext.cpp -text
 mmtbx/geometry_restraints/boost_python/ramachandran_ext.cpp -text
 mmtbx/geometry_restraints/boost_python/reference_coordinate_ext.cpp svneol=native#text/plain
-mmtbx/geometry_restraints/boost_python/rotamer_ext.cpp svneol=native#text/plain
 mmtbx/geometry_restraints/c_beta.py svneol=native#text/x-python
 mmtbx/geometry_restraints/external.py -text
 mmtbx/geometry_restraints/flags.py svneol=native#text/x-python
@@ -1834,15 +1833,12 @@ mmtbx/geometry_restraints/ramachandran.h -text
 mmtbx/geometry_restraints/ramachandran.py -text
 mmtbx/geometry_restraints/reference.py svneol=native#text/x-python
 mmtbx/geometry_restraints/reference_coordinate.h svneol=native#text/plain
-mmtbx/geometry_restraints/rotamer.h svneol=native#text/plain
-mmtbx/geometry_restraints/rotamer.py svneol=native#text/x-python
 mmtbx/geometry_restraints/tst_c_beta_restraints.py -text
 mmtbx/geometry_restraints/tst_hbond.py -text
 mmtbx/geometry_restraints/tst_manager.py -text
 mmtbx/geometry_restraints/tst_ramachandran.py -text
 mmtbx/geometry_restraints/tst_reference_coordinate.py svneol=native#text/x-python
 mmtbx/geometry_restraints/tst_reference_coordinate2.py -text
-mmtbx/geometry_restraints/tst_rotamer.py svneol=native#text/x-python
 mmtbx/grow_density.py -text
 mmtbx/hydrogens/find.py -text
 mmtbx/hydrogens/tst.py -text
@@ -2194,7 +2190,6 @@ mmtbx/secondary_structure/identify.hpp -text
 mmtbx/secondary_structure/nucleic_acids.py -text
 mmtbx/secondary_structure/proteins.py -text
 mmtbx/secondary_structure/tst.py -text
-mmtbx/secondary_structure/tst_base_pairing.py -text
 mmtbx/secondary_structure/utils.py -text
 mmtbx/sisa/__init__.py -text
 mmtbx/sisa/libtbx_config -text
