@@ -41,6 +41,11 @@ phil_scope = parse('''
       .type = bool
       .help = "All frames will be saved to cbf format if set to True"
   }
+  debug {
+    event_timestamp = None
+      .type = str
+      .help = "If set to be a timestamp, will only process the event that matches it"
+  }
   input {
     cfg = None
       .type = str
@@ -92,7 +97,11 @@ phil_scope = parse('''
   verbosity = 1
    .type = int(value_min=0)
    .help = "The verbosity level"
-
+  override_trusted_max = None
+    .type = int
+    .help = "During spot finding and indexing, override the saturation value"
+    .help = "for this data. Overloadls will not be integrated, but they can"
+    .help = "assist with indexing."
   border_mask {
     include scope dials.command_line.generate_mask.phil_scope
   }
@@ -198,6 +207,10 @@ class InMemScript(DialsProcessScript):
       mytimes = [times[i] for i in xrange(nevents) if (i+rank)%size == 0]
 
       for i in xrange(len(mytimes)):
+        ts = cspad_tbx.evt_timestamp((mytimes[i].seconds(),mytimes[i].nanoseconds()/1e6))
+        if params.debug.event_timestamp is not None and params.debug.event_timestamp != ts:
+          continue
+
         evt = run.event(mytimes[i])
         id = evt.get(EventId)
         print "Event #",i," has id:",id
@@ -250,6 +263,9 @@ class InMemScript(DialsProcessScript):
         if params.dispatch.dump_all:
           self.save_image(cspad_img, params, os.path.join(params.output.output_dir, "shot-" + s))
 
+        if params.override_trusted_max is not None:
+          self.cache_ranges(cspad_img, params)
+
         imgset = MemImageSet([cspad_img])
         datablock = DataBlockFactory.from_imageset(imgset)[0]
 
@@ -272,12 +288,18 @@ class InMemScript(DialsProcessScript):
         try:
           observed = self.find_spots(datablock)
         except Exception, e:
+          import traceback; traceback.print_exc()
           print str(e)
           continue
+
+        print "Found %d bright spots"%len(observed)
 
         if params.dispatch.hit_finder and len(observed) < params.refinement.reflections.minimum_number_of_reflections:
           print "Not enough spots to index"
           continue
+
+        if params.override_trusted_max is not None:
+          self.restore_ranges(cspad_img)
 
         # save cbf file
         if params.dispatch.dump_strong:
@@ -306,6 +328,7 @@ class InMemScript(DialsProcessScript):
         try:
           experiments, indexed = self.index(datablock, observed)
         except Exception, e:
+          import traceback; traceback.print_exc()
           print str(e)
           continue
 
@@ -315,6 +338,7 @@ class InMemScript(DialsProcessScript):
         try:
           experiments = self.refine(experiments, indexed)
         except Exception, e:
+          import traceback; traceback.print_exc()
           print str(e)
           continue
 
@@ -325,6 +349,7 @@ class InMemScript(DialsProcessScript):
         try:
           integrated = self.integrate(experiments, indexed)
         except Exception, e:
+          import traceback; traceback.print_exc()
           print str(e)
 
   def save_image(self, image, params, root_path):
@@ -349,6 +374,17 @@ class InMemScript(DialsProcessScript):
     except Exception:
       print "Warning, couldn't save image:", dest_path
 
+  def cache_ranges(self, cspad_img, params):
+    detector = cspad_img.get_detector()
+    self.cached_ranges = []
+    for panel in detector:
+      self.cached_ranges.append(panel.get_trusted_range())
+      panel.set_trusted_range((panel.get_trusted_range()[0],params.override_trusted_max))
+
+  def restore_ranges(self, cspad_img):
+    detector = cspad_img.get_detector()
+    for cached_range, panel in zip(self.cached_ranges, detector):
+      panel.set_trusted_range(cached_range)
 
 if __name__ == "__main__":
   from dials.util import halraiser
