@@ -4,9 +4,10 @@ import iotbx.pdb
 from cctbx.array_family import flex
 from cctbx import adp_restraints # import dependency
 import random
-import mmtbx.command_line.real_space_refine as rs
+from mmtbx.monomer_library import pdb_interpretation, server
 from libtbx import group_args
-from mmtbx.refinement import real_space
+from mmtbx.refinement.real_space import individual_sites
+from mmtbx.command_line import geometry_minimization
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from cctbx import miller
 from cctbx import maptbx
@@ -94,13 +95,16 @@ END
 """
 
 def get_pdb_inputs(pdb_str):
-  raw_records = flex.std_string(pdb_str.splitlines())
-  processed_pdb_file = rs.get_processed_pdb_object(raw_records=raw_records,
-    rama_potential=None, log = None)
+  processed_pdb_file = pdb_interpretation.process(
+    mon_lib_srv              = server.server(),
+    ener_lib                 = server.ener_lib(),
+    raw_records              = flex.std_string(pdb_str.splitlines()),
+    strict_conflict_handling = True,
+    force_symmetry           = True,
+    log                      = None)
   xrs = processed_pdb_file.xray_structure(show_summary = False)
-  geometry_restraints_manager = rs.get_geometry_restraints_manager(
-    processed_pdb_file = processed_pdb_file,
-    xray_structure     = xrs)
+  geometry_restraints_manager = geometry_minimization.\
+      get_geometry_restraints_manager(processed_pdb_file, xrs)
   pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   return group_args(
     ph  = pdb_hierarchy,
@@ -179,7 +183,11 @@ def exercise(d_min=5, random_seed=1111111):
   xrs_good = inp.xrs.deep_copy_scatterers()
   target_map = get_tmo(inp=inp, d_min = d_min)
   inp.ph.write_pdb_file(file_name="start.pdb")
-  show(prefix="GOOD",pdb_hierarchy = inp.ph, tm=target_map, xrs=xrs_good, grm=inp.grm.geometry)
+  show(prefix="GOOD",
+      pdb_hierarchy = inp.ph,
+      tm=target_map,
+      xrs=xrs_good,
+      grm=inp.grm.geometry)
   #
   sites_cart_reference = []
   selections_reference = []
@@ -252,13 +260,13 @@ def exercise(d_min=5, random_seed=1111111):
           sigma           = 1)
     #
     tmp = xrs_poor.deep_copy_scatterers()
-    rsr_simple_refiner = real_space.simple(
+    rsr_simple_refiner = individual_sites.simple(
       target_map                  = target_map.data,
       selection                   = flex.bool(tmp.scatterers().size(), True),
       real_space_gradients_delta  = d_min/4,
       max_iterations              = 500,
       geometry_restraints_manager = inp.grm.geometry)
-    refined = real_space.refinery(
+    refined = individual_sites.refinery(
       refiner          = rsr_simple_refiner,
       optimize_weight  = True,
       xray_structure   = tmp,

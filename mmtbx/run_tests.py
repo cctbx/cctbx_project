@@ -3,6 +3,10 @@ from libtbx import test_utils
 import libtbx.load_env
 
 tst_list = (
+  # ions SVM
+  "$D/ions/svm/tst_classifier.py",
+  "$D/ions/svm/tst_vector.py",
+  "$D/ions/tst_pick_ca_svm.py",
   # ion picking
   "$D/ions/tst_parameters.py",
   "$D/ions/tst_pick_ca.py",
@@ -13,10 +17,11 @@ tst_list = (
   #"$D/ions/tst_validate_zn.py", # FIXME
   "$D/ions/tst_symmetry_axis.py",
   "$D/ions/tst_utils.py",
-  # ions SVM
-  "$D/ions/svm/tst_classifier.py",
-  "$D/ions/svm/tst_vector.py",
-  "$D/ions/tst_pick_ca_svm.py",
+  # TLS
+  "$D/regression/tls/tst_tls.py",
+  "$D/regression/tls/tst_tls_analysis.py",
+  "$D/regression/tls/tst_get_t_scheme.py",
+  "$D/regression/tls/tst_tls_refinement_fft.py",
   #
   "$D/regression/tst_angle.py",
   "$D/rotamer/tst_rotamer_eval.py",
@@ -95,11 +100,6 @@ tst_list = (
   "$D/max_lik/tst_max_lik.py",
   "$D/dynamics/tst_cartesian_dynamics.py",
   "$D/dynamics/tst_sa.py",
-  # TLS
-  "$D/regression/tls/tst_tls.py",
-  "$D/regression/tls/tst_tls_analysis.py",
-  "$D/regression/tls/tst_get_t_scheme.py",
-  "$D/regression/tls/tst_tls_refinement_fft.py",
   #
   "$D/examples/f_model_manager.py",
   "$D/bulk_solvent/tst_bulk_solvent_and_scaling.py",
@@ -107,9 +107,13 @@ tst_list = (
   "$D/bulk_solvent/tst_scaler.py",
   "$D/alignment.py",
   "$D/invariant_domain.py",
+  # restraints
   "$D/secondary_structure/tst.py",
   "$D/geometry_restraints/tst_hbond.py",
   "$D/geometry_restraints/tst_reference_coordinate.py",
+  "$D/geometry_restraints/tst_reference_coordinate2.py",
+  "$D/geometry_restraints/tst_c_beta_restraints.py",
+  "$D/torsion_restraints/tst_torsion_ncs.py",
   "$D/conformation_dependent_library/test_cdl.py",
   "$D/regression/tst_sequence_validation.py",
   "$D/regression/tst_prune_model.py",
@@ -167,6 +171,7 @@ tst_list = (
   "$D/validation/regression/tst_cbetadev.py",
   "$D/validation/regression/tst_clashscore.py",
   "$D/validation/regression/tst_restraints.py",
+  "$D/validation/regression/tst_omegalyze.py",
   "$D/validation/regression/tst_rna_validate.py",
   "$D/validation/regression/tst_model_properties.py",
   "$D/validation/regression/tst_experimental.py",
@@ -177,6 +182,7 @@ tst_list = (
   #
   "$D/refinement/tst_select_best_starting_model.py",
   "$D/regression/tst_refine_anomalous_substructure.py",
+  "$D/regression/tst_helix_sheet_recs_as_pdb_files.py",
   "$D/regression/tst_command_line_input.py",
   "$D/regression/tst_cif_as_mtz_wavelengths.py",
   "$D/building/tst_extend_sidechains.py",

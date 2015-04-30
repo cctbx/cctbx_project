@@ -47,6 +47,8 @@ tst_list = (
   "$D/geometry_restraints/tst_ext.py",
   "$D/geometry_restraints/tst_proxy_registry.py",
   "$D/geometry_restraints/tst_nonbonded_overlaps.py",
+  "$D/geometry_restraints/tst_angle_derivs.py",
+  "$D/geometry_restraints/tst_motif.py",
   "$D/adp_restraints/tst_ext.py",
   "$D/regression/tst_math_module.py",
   ["$D/regression/tst_krivy_gruber.py", "--Quick"],
