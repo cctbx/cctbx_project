@@ -460,13 +460,6 @@ def substitute_ss(real_h,
     restraints_manager.crystal_symmetry = xray_structure.crystal_symmetry()
   grm = restraints_manager
 
-  # Adding Cbeta restraints
-  grm.geometry.generic_restraints_manager.\
-      add_c_beta_torsion_restraints(
-          pdb_hierarchy=real_h,
-          selection=None,
-          sigma=sigma_on_cbeta)
-
   real_h.reset_i_seq_if_necessary()
   grm.geometry.generic_restraints_manager.reference_manager.\
       add_coordinate_restraints(

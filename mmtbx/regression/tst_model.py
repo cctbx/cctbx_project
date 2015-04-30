@@ -875,10 +875,8 @@ ATOM    858  C6   DT D 108      -7.900  15.710  13.471  1.00 80.00           C
 END
 """
 
-def exercise_00():
+def exercise_00(mon_lib_srv, ener_lib):
   def get_ab(params):
-    mon_lib_srv = monomer_library.server.server()
-    ener_lib = monomer_library.server.ener_lib()
     processed_pdb_file = monomer_library.pdb_interpretation.process(
       mon_lib_srv    = mon_lib_srv,
       ener_lib       = ener_lib,
@@ -911,9 +909,7 @@ def exercise_00():
   assert approx_equal(a1,a2)
   assert approx_equal(b1,b2)
 
-def exercise():
-  mon_lib_srv = monomer_library.server.server()
-  ener_lib = monomer_library.server.ener_lib()
+def exercise(mon_lib_srv, ener_lib):
   pdb_file = libtbx.env.find_in_repositories(
                    relative_path="phenix_regression/pdb/enk.pdb", test=os.path.isfile)
   processed_pdb_file = monomer_library.pdb_interpretation.process(
@@ -991,9 +987,7 @@ def exercise():
   mol_copy.write_pdb_file(out = open("XXXr.pdb","w"))
 
 
-def exercise_2():
-  mon_lib_srv = monomer_library.server.server()
-  ener_lib = monomer_library.server.ener_lib()
+def exercise_2(mon_lib_srv, ener_lib):
   pdb_file = libtbx.env.find_in_repositories(
                    relative_path="phenix_regression/pdb/adp_out_stat.pdb", test=os.path.isfile)
   params = monomer_library.pdb_interpretation.master_params.extract()
@@ -1004,7 +998,8 @@ def exercise_2():
                                        params                    = params,
                                        file_name                 = pdb_file,
                                        raw_records               = None,
-                                       force_symmetry            = True)
+                                       force_symmetry            = True,
+                                       for_dihedral_reference    = True) # disable clash_guard
   geometry = processed_pdb_file.geometry_restraints_manager(
                                                     show_energies      = False,
                                                     plain_pairs_radius = 5.0)
@@ -1286,9 +1281,12 @@ ANISOU 2732  O  BHOH A 380     3169   2234   2532   1183    675   -168       O
   assert len(result)==1
 
 def run():
-  exercise_00()
-  exercise()
-  exercise_2()
+  mon_lib_srv = monomer_library.server.server()
+  ener_lib = monomer_library.server.ener_lib()
+
+  exercise_00(mon_lib_srv, ener_lib)
+  exercise(mon_lib_srv, ener_lib)
+  exercise_2(mon_lib_srv, ener_lib)
   exercise_3()
   exercise_4()
   exercise_convert_atom()

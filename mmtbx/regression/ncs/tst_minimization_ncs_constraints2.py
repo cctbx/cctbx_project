@@ -235,6 +235,7 @@ def get_inputs(prefix, pdb_answer, pdb_poor, ncs_params_str, real_space, d_min):
   restraints_manager = mmtbx.restraints.manager(
     geometry      = ppf.geometry_restraints_manager(show_energies = False),
     normalization = True)
+  restraints_manager.geometry.remove_c_beta_torsion_restraints_in_place()
   #
   ncs_inp = ncs.input(
     pdb_string=pdb_poor, ncs_phil_string=ncs_params_str)

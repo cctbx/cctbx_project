@@ -113,7 +113,7 @@ class manager(object):
     if (self.dihedral_proxies is not None):
       assert constrain_dihedrals_with_sigma_less_than > 0
       weight_limit = 1.0 / constrain_dihedrals_with_sigma_less_than**2
-      for proxy in self.dihedral_proxies:
+      for proxy in self.get_dihedral_proxies():
         if (proxy.weight > weight_limit):
           result.append(proxy.i_seqs)
     if (self.planarity_proxies is not None):
@@ -202,7 +202,7 @@ class manager(object):
     def get():
       result = geometry_restraints.shared_dihedral_proxy()
       ec = tardy_tree.cluster_manager.edge_classifier()
-      for proxy in self.dihedral_proxies:
+      for proxy in self.get_dihedral_proxies():
         if (ec(edge=proxy.i_seqs[1:3]) in ["hinge", "loop"]):
           result.append(proxy)
       if (result.size() == 0):
@@ -483,14 +483,25 @@ class manager(object):
       selection=selection)
 
   def add_dihedrals_in_place(self, additional_dihedral_proxies):
-    self.dihedral_proxies.extend(additional_dihedral_proxies)
+    if self.dihedral_proxies is not None:
+      self.dihedral_proxies.extend(additional_dihedral_proxies)
+    else:
+      self.dihedral_proxies = additional_dihedral_proxies
 
   def remove_dihedrals_in_place(self, selection):
-    self.dihedral_proxies = self.dihedral_proxies.proxy_remove(
-      selection=selection)
+    if self.dihedral_proxies is not None:
+      self.dihedral_proxies = self.dihedral_proxies.proxy_remove(
+        selection=selection)
 
   def get_c_beta_torsion_proxies(self):
-    return self.dihedral_proxies.proxy_select(origin_id=1)
+    if self.dihedral_proxies is not None:
+      return self.dihedral_proxies.proxy_select(origin_id=1)
+    return None
+
+  def get_dihedral_proxies(self):
+    if self.dihedral_proxies is not None:
+      return self.dihedral_proxies.proxy_select(origin_id=0)
+    return None
 
   def remove_c_beta_torsion_restraints_in_place(self, selection=None):
     if selection is None:
@@ -1357,13 +1368,14 @@ class manager(object):
         sites_cart=sites_cart, site_labels=site_labels, f=tempbuffer,
         origin_id=1)
       print >> f, "Noncovalent b%s" % tempbuffer.getvalue()[1:]
-    if (self.dihedral_proxies is not None):
-      self.dihedral_proxies.proxy_select(origin_id=0).show_sorted(
+    dih_prox = self.get_dihedral_proxies()
+    if dih_prox is not None:
+      dih_prox.show_sorted(
         by_value="residual",
         sites_cart=sites_cart, site_labels=site_labels, f=f)
       print >> f
     c_beta_proxies = self.get_c_beta_torsion_proxies()
-    if len(c_beta_proxies) > 0:
+    if c_beta_proxies is not None and len(c_beta_proxies) > 0:
       c_beta_proxies.show_sorted(
           by_value="residual",
           sites_cart=sites_cart,
