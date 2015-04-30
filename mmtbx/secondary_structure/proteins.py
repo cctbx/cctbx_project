@@ -107,14 +107,14 @@ def _create_hbond_proxy (
   if ([donor,acceptor,acceptor_base].count(None) == 0) :
     if (use_hydrogens) and (hydrogen is None) :
       donor_resseq = donor_atoms[0].fetch_labels().resseq_as_int()
-      print >> log, "  Missing hydrogen at %d" % donor_resseq
+      print >> log, "      Missing hydrogen at %d" % donor_resseq
       return 0
     if (hbond_counts[donor.i_seq] > 0) :
-      print >> log, "  WARNING: donor atom is already bonded, skipping"
+      print >> log, "      WARNING: donor atom is already bonded, skipping"
       print >> log, "    %s" % donor_labels.id_str()
       return 0
     elif (hbond_counts[acceptor.i_seq] > 0) :
-      print >> log, "  WARNING: acceptor atom is already bonded, skipping"
+      print >> log, "      WARNING: acceptor atom is already bonded, skipping"
       print >> log, "    %s" % acceptor_labels.id_str()
       return 0
     if (remove_outliers) and (distance_cut > 0) :
@@ -123,10 +123,8 @@ def _create_hbond_proxy (
       else :
         dist = donor.distance(acceptor)
       if (dist > distance_cut) :
-        print >> log, "  removed outlier: %.3fA (cutoff: %.3fA)" % (dist,
-          distance_cut)
-        print >> log, "    %s --> %s" % (donor_labels.id_str(),
-          acceptor_labels.id_str())
+        print >> log, "      removed outlier: %.3fA  %s --> %s (cutoff:%.3fA)"%(
+            dist, donor_labels.id_str(), acceptor_labels.id_str(), distance_cut)
         return 0
     if (use_hydrogens) :
       donor = hydrogen
@@ -215,12 +213,12 @@ def create_helix_hydrogen_bond_proxies (
             bonded_resi = residues[k_seq]
             bonded_resseq = bonded_resi.resseq_as_int()
             if (bonded_resi.resname == "PRO") :
-              print >> log, "  Proline residue at %s %s - end of helix" % \
+              print >> log, "      Proline residue at %s %s - end of helix" % \
                 (chain.id, bonded_resseq)
               j_seq += 3
               continue # XXX is this safe?
             elif (bonded_resseq != (resseq + helix_step)) :
-              print >> log, "  Confusing residue numbering: %s %s -> %s %s" \
+              print >> log, "      Confusing residue numbering: %s %s -> %s %s" \
                 % (chain.id, residue.resid(), chain.id, bonded_resi.resid())
               j_seq += 1
               continue
@@ -279,7 +277,8 @@ def create_sheet_hydrogen_bond_proxies (
 Wrong registration in SHEET record. One of these selections
 "%s" or "%s"
 yielded zero or several atoms. Possible reason for it is the presence of
-insertion codes or alternative conformations for one of these residues.""" \
+insertion codes or alternative conformations for one of these residues or
+the .pdb file was edited without updating SHEET records.""" \
 % (curr_strand.bond_start_current, curr_strand.bond_start_previous)
       raise Sorry(error_msg)
     curr_residues = _get_strand_residues(
