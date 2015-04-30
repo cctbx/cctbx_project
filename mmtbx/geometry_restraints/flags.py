@@ -6,13 +6,11 @@ class flags(object):
 
   def __init__(self,
         ramachandran=None,
-        hydrogen_bond=None,
         rotamer=None,
         reference=None,
         den=None,
         default=False):
     if (ramachandran is None): ramachandran = default
-    if (hydrogen_bond is None): hydrogen_bond = default
     if (rotamer is None): rotamer = default
     if (reference is None): reference = default
     if (den is None): den = False #always off by default
@@ -22,7 +20,6 @@ class flags(object):
     if (f is None): f = sys.stdout
     print >> f, "generic_restraints_manager.flags:"
     print >> f, "  ramachandran:", self.ramachandran
-    print >> f, "  hydrogen_bond:", self.hydrogen_bond
     print >> f, "  rotamer:", self.rotamer
     print >> f, "  reference:", self.reference
     print >> f, "  den:", self.den

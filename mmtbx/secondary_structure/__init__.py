@@ -154,6 +154,7 @@ def hydrogen_bond_proxies_from_selections(
   if (restrain_helices) :
     for helix in params.secondary_structure.protein.helix :
       if helix.selection is not None:
+        print >> log, "    Processing helix ", helix.selection
         n_proxies = proteins.create_helix_hydrogen_bond_proxies(
           params=helix,
           pdb_hierarchy=pdb_hierarchy,
@@ -168,10 +169,12 @@ def hydrogen_bond_proxies_from_selections(
           master_selection=master_selection,
           log=log)
         if (n_proxies == 0) :
-          print >> log, "  No H-bonds generated for '%s'" % helix.selection
+          print >> log, "      No H-bonds generated for '%s'" % helix.selection
           continue
   if (restrain_sheets) :
     for k, sheet in enumerate(params.secondary_structure.protein.sheet) :
+      print >> log, "    Processing sheet with id=%s, first strand: %s" % (
+          sheet.sheet_id, sheet.first_strand)
       if sheet.first_strand is not None:
         n_proxies = proteins.create_sheet_hydrogen_bond_proxies(
           sheet_params=sheet,
