@@ -45,6 +45,13 @@ class ShellCommand(object):
         # XXX use tarfile rather than unix tar command which is not platform independent
         tar = tarfile.open(os.path.join(workdir, command[2]))
         tar.extractall(path=workdir)
+        if command[3]: # rename to expected folder name, e.g. boost_hot -> boost
+          module = os.path.join(workdir, command[3])
+          tarfoldername = os.path.join(workdir, os.path.commonprefix(tar.getnames()).split('/')[0])
+          # only rename if folder names differ
+          if module != tarfoldername and os.path.exists(module):
+            shutil.rmtree(module)
+          os.rename(tarfoldername, module)
         tar.close()
       except Exception, e:
         print "Extracting tar archive resulted in error:\n", e
@@ -199,7 +206,7 @@ class SourceModule(object):
   module = None
   authenticated = None
   authenticatedWindows = None
-  maketarfile = None
+  authentarfile = None
   anonymous = None
   def __init__(self):
     if not self._modules:
@@ -241,8 +248,8 @@ class SourceModule(object):
 
   def get_tarauthenticated(self, auth=None):
     auth = auth or {}
-    if self.maketarfile and sys.platform == 'win32':
-      return [self.maketarfile[0]%auth, self.maketarfile[1], self.maketarfile[2]]
+    if self.authentarfile and sys.platform == 'win32':
+      return [self.authentarfile[0]%auth, self.authentarfile[1], self.authentarfile[2]]
     return None, None, None
 
   def get_anonymous(self):
@@ -255,19 +262,21 @@ class SourceModule(object):
 class ccp4io_module(SourceModule):
   module = 'ccp4io'
   anonymous = ['curl', 'http://cci.lbl.gov/repositories/ccp4io.gz']
+  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'ccp4io.tar.gz', '/net/cci/auto_build/repositories/ccp4io']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/ccp4io/']
-  authenticatedWindows = anonymous #['pscp', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/ccp4io/']
 
 class annlib_module(SourceModule):
   module = 'annlib'
   anonymous = ['curl', 'http://cci.lbl.gov/repositories/annlib.gz']
-  authenticatedWindows = anonymous
+  #authenticatedWindows = anonymous
+  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'annlib.tar.gz', '/net/cci/auto_build/repositories/annlib']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/annlib/']
 
 class scons_module(SourceModule):
   module = 'scons'
   anonymous = ['curl', 'http://cci.lbl.gov/repositories/scons.gz']
-  authenticatedWindows = anonymous
+  #authenticatedWindows = anonymous
+  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'scons.tar.gz', '/net/cci/auto_build/repositories/scons']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/scons/']
 
 class boost_module(SourceModule):
@@ -275,7 +284,8 @@ class boost_module(SourceModule):
   anonymous = ['curl', 'http://cci.lbl.gov/repositories/boost.gz']
   # Compared to rsync pscp is very slow when downloading multiple files
   # Resort to downloading the compressed archive on Windows
-  authenticatedWindows = anonymous
+  #authenticatedWindows = anonymous
+  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'boost_hot.tar.gz', '/net/cci/auto_build/repositories/boost_hot/']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/boost_hot/']
 
 class libsvm_module(SourceModule):
@@ -398,16 +408,14 @@ class phaser_module(SourceModule):
   module = 'phaser'
   # Compared to rsync pscp is very slow when downloading multiple files
   # Resort to downloading a compressed archive on Windows. Must create it first
-  authenticatedWindows = ['pscp', '%(cciuser)s@cci.lbl.gov:phaser.tar.gz']
-  maketarfile = ['%(cciuser)s@cci.lbl.gov', 'phaser.tar.gz', '/net/cci/auto_build/repositories/phaser']
+  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'phaser.tar.gz', '/net/cci/auto_build/repositories/phaser']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/phaser/']
 
 class phaser_regression_module(SourceModule):
   module = 'phaser_regression'
   # Compared to rsync pscp is very slow when downloading multiple files
   # Resort to downloading a compressed archive on Windows. Must create it first
-  authenticatedWindows = ['pscp', '%(cciuser)s@cci.lbl.gov:phaser_regression.tar.gz']
-  maketarfile = ['%(cciuser)s@cci.lbl.gov', 'phaser_regression.tar.gz', '/net/cci/auto_build/repositories/phaser_regression']
+  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'phaser_regression.tar.gz', '/net/cci/auto_build/repositories/phaser_regression']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/phaser_regression/']
 
 # DIALS repositories
@@ -622,17 +630,17 @@ class Builder(object):
 
   def add_module(self, module):
     method, url = MODULES.get_module(module)().get_url(auth=self.get_auth())
+    tarurl, arxname, dirpath = MODULES.get_module(module)().get_tarauthenticated(auth=self.get_auth())
     if sys.platform == "win32":
-      if module in ["cbflib",]: # we can't currently compile cbflib for Windows
+      if module in ["cbflib",]: # can't currently compile cbflib for Windows due to lack of HDF5 component
         return
-    if method == 'rsync':
+    if method == 'rsync' and sys.platform != "win32":
       self._add_rsync(module, url)
     elif sys.platform == "win32" and method == 'pscp':
-      tarurl, arxname, dirpath = MODULES.get_module(module)().get_tarauthenticated(auth=self.get_auth())
-      if tarurl:
-        self._add_remote_make_tar(module, tarurl, arxname, dirpath)
       self._add_pscp(module, url)
-      if tarurl:
+    elif sys.platform == "win32" and tarurl:
+        self._add_remote_make_tar(module, tarurl, arxname, dirpath)
+        self._add_pscp(module, tarurl + ':' + arxname)
         self._add_remote_rm_tar(module, tarurl, arxname)
     elif method == 'curl':
       self._add_curl(module, url)
@@ -661,7 +669,10 @@ class Builder(object):
   def _add_remote_make_tar(self, module, tarurl, arxname, dirpath):
     """Add packages not in source control."""
     # tar up hot packages for quick file transfer to windows since there's no rsync and pscp is painfully slow
-    self.add_step(self.shell(
+    if dirpath[-1] == '/':
+      dirpath = dirpath[:-1]
+    basename = posixpath.basename(dirpath)
+    self.add_step(self.shell( # pack directory with tar on remote system but exclude all svn files
       name='hot %s'%module,
       command=[
         'plink',
@@ -670,36 +681,37 @@ class Builder(object):
         posixpath.split(dirpath)[0],
         '&&',
         'tar',
-        'cvfz',
+        'cfz',
         '~/' + arxname,
-        posixpath.basename(dirpath)
+        basename + '/*',
+        '--exclude',
+        '*.svn'
       ],
       workdir=['modules']
     ))
 
   def _add_remote_rm_tar(self, module, tarurl, arxname):
-    self.add_step(self.shell(
+    self.add_step(self.shell( # delete the tarfile on remote system
       name='hot %s'%module,
       command=[
         'plink',
         tarurl,
         'rm ',
-        arxname,
+        arxname
       ],
       workdir=['modules']
     ))
-    self.add_step(self.shell(
-      command=['tar', 'xzf', arxname],
+    self.add_step(self.shell( # extract the tarfile on our system
+      command=['tar', 'xzf', arxname, module],
       workdir=['modules']
     ))
 
   def _add_pscp(self, module, url):
     """Add packages not in source control."""
-    # pscp the hot packages.
     url1 = url
     if url[-1] == '/':
       url1 = url[:-1]
-    self.add_step(self.shell(
+    self.add_step(self.shell( # copy files/directory recursively from remote system
       name='hot %s'%module,
       command=[
         'pscp',
@@ -717,7 +729,7 @@ class Builder(object):
       workdir=['modules'],
     ))
     self.add_step(self.shell(
-      command=['tar', 'xvzf', filename],
+      command=['tar', 'xzf', filename, None],
       workdir=['modules']
     ))
 
