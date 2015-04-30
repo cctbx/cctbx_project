@@ -787,7 +787,7 @@ class MemImageSet(ImageSet):
     ''' Get the detector base instance for the given index. '''
     if index is None:
       index = self._indices[0]
-    return self._images[index].get_detector_base()
+    return self._images[index].get_detectorbase()
 
   def reader(self):
     ''' Return the image set reader. '''
