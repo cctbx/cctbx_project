@@ -4318,7 +4318,6 @@ class build_all_chain_proxies(linking_mixins):
         custom_nonbonded_exclusions=None,
         assume_hydrogens_all_missing=True,
         external_energy_function=None,
-        ramachandran_atom_selection=None,
         den_manager=None,
         reference_manager=None,
         log=None):
@@ -4624,21 +4623,7 @@ class build_all_chain_proxies(linking_mixins):
         shell_asu_tables=shell_asu_tables)
     shell_sym_tables = [shell_asu_table.extract_pair_sym_table()
       for shell_asu_table in shell_asu_tables]
-    #
-    ramachandran_proxies = None
-    ramachandran_lookup = None
-    if self.params.peptide_link.ramachandran_restraints :
-      if (not self.params.peptide_link.discard_psi_phi) :
-        raise Sorry("You may not use Ramachandran restraints when "+
-          "discard_phi_psi=False.")
-      ramachandran_proxies = ramachandran.extract_proxies(self.pdb_hierarchy,
-        atom_selection=ramachandran_atom_selection,
-        log=log)
-      ramachandran_lookup = ramachandran.lookup_manager(
-        params=self.params.peptide_link)
     generic_restraints_manager = mmtbx.geometry_restraints.manager(
-      ramachandran_proxies=ramachandran_proxies,
-      ramachandran_lookup=ramachandran_lookup,
       reference_manager=reference_manager,
       den_manager=den_manager)
     nonbonded_params = ener_lib_as_nonbonded_params(
@@ -4677,6 +4662,7 @@ class build_all_chain_proxies(linking_mixins):
       planarity_proxies=self.geometry_proxy_registries.planarity.proxies,
       parallelity_proxies=self.geometry_proxy_registries.parallelity.proxies,
       generic_restraints_manager=generic_restraints_manager,
+      ramachandran_manager=None,
       external_energy_function=external_energy_function,
       max_reasonable_bond_distance=self.params.max_reasonable_bond_distance,
       plain_pairs_radius=plain_pairs_radius)
@@ -4903,7 +4889,6 @@ class process(object):
         hard_minimum_nonbonded_distance=0.001,
         nonbonded_distance_threshold=0.5,
         external_energy_function=None,
-        ramachandran_atom_selection=None,
         den_manager=None,
         reference_manager=None):
     if (    self.all_chain_proxies.sites_cart is not None
@@ -4919,7 +4904,6 @@ class process(object):
             custom_nonbonded_exclusions=custom_nonbonded_exclusions,
             assume_hydrogens_all_missing=assume_hydrogens_all_missing,
             external_energy_function=external_energy_function,
-            ramachandran_atom_selection=ramachandran_atom_selection,
             den_manager=den_manager,
             reference_manager=reference_manager,
             log=self.log)
@@ -4929,6 +4913,21 @@ class process(object):
           sites_cart=self.all_chain_proxies.sites_cart)
 
       # Here we are going to add another needed restraints.
+      # Ramachandran restraints
+      ramachandran_manager = None
+      pep_link_params = self.all_chain_proxies.params.peptide_link
+      if pep_link_params.ramachandran_restraints :
+        if (not pep_link_params.discard_psi_phi) :
+          raise Sorry("You may not use Ramachandran restraints when "+
+            "discard_phi_psi=False.")
+        ramachandran_manager = ramachandran.ramachandran_manager(
+            self.all_chain_proxies.pdb_hierarchy,
+            pep_link_params.rama_selection,
+            pep_link_params,
+            self.log)
+        self._geometry_restraints_manager.set_ramachandran_restraints(
+            ramachandran_manager)
+
       # C-beta restraints
       if self.all_chain_proxies.params.c_beta_restraints:
         print >> self.log, "  Adding C-beta torsion restraints..."

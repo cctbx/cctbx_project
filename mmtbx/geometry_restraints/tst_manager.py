@@ -100,16 +100,18 @@ def exercise_geo_out():
   params = ramachandran.master_phil.fetch().extract()
   params.rama_potential = "emsley"
   #params.rama_weight = sigma_on_ramachandran
-  proxies = ramachandran.extract_proxies(acp.pdb_hierarchy, log=log)
-  rama_lookup = ramachandran.lookup_manager(params)
-  restraints_helper = mmtbx.geometry_restraints.manager(
-      ramachandran_proxies=proxies,
-      ramachandran_lookup=rama_lookup)
-  grm.set_generic_restraints(restraints_helper)
+  rama_manager = ramachandran.ramachandran_manager(
+      acp.pdb_hierarchy, None, params, log)
+  # proxies = ramachandran.extract_proxies(acp.pdb_hierarchy, log=log)
+  # rama_lookup = ramachandran.lookup_manager(params)
+  # restraints_helper = mmtbx.geometry_restraints.manager(
+  #     ramachandran_proxies=proxies,
+  #     ramachandran_lookup=rama_lookup)
+  grm.set_ramachandran_restraints(rama_manager)
   atoms = acp.pdb_hierarchy.atoms()
   import StringIO
   str_result = StringIO.StringIO()
-  grm.generic_restraints_manager.show_sorted_ramachandran(
+  grm.ramachandran_manager.show_sorted(
       by_value="residual",
       sites_cart = atoms.extract_xyz(),
       site_labels= [a.id_str() for a in atoms],

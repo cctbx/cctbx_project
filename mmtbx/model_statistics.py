@@ -131,7 +131,8 @@ class geometry(object):
       esg.parallelity_residual_sum+
       esg.reference_dihedral_residual_sum+
       esg.ncs_dihedral_residual_sum+
-      esg.generic_restraint_residual_sum)
+      esg.generic_restraint_residual_sum+
+      esg.ramachandran_restraints_residual_sum)
     del energies_sites, esg # we accumulate this object, so make it clean asap
 
   def show(self, out=None, prefix="", pdb_deposition=False, message = ""):

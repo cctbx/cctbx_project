@@ -155,7 +155,6 @@ END
     pdb_in = iotbx.pdb.input(source_info="peptide",
       lines=flex.split_lines(peptide))
     params = pdb_interpretation.master_params.extract()
-    #params.peptide_link_params.ramachandran_restraints = True
     processed_pdb_file = pdb_interpretation.process(
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
@@ -165,16 +164,15 @@ END
     log = StringIO()
     pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
     atoms = pdb_hierarchy.atoms()
-    proxies = ramachandran.extract_proxies(pdb_hierarchy, log=log)
-    assert (len(proxies) == 1)
     sites_cart_1 = atoms.extract_xyz().deep_copy()
     gradients_fd = flex.vec3_double(sites_cart_1.size(), (0,0,0))
     gradients_an = flex.vec3_double(sites_cart_1.size(), (0,0,0))
     params = ramachandran.master_phil.fetch().extract()
-    restraints_helper = ramachandran.lookup_manager(params)
-    residual_an = restraints_helper.restraints_residual_sum(
+    rama_manager = ramachandran.ramachandran_manager(
+        pdb_hierarchy, None, params, log)
+    assert rama_manager.get_n_proxies() == 1
+    residual_an = rama_manager.restraints_residual_sum(
       sites_cart=sites_cart_1,
-      proxies=proxies,
       gradient_array=gradients_an)
     assert approx_equal(residual_an, residuals[i], eps=0.00001)
   if verbose :
@@ -237,7 +235,6 @@ def benchmark_structure (pdb_in, mon_lib_srv, ener_lib, verbose=False, w=1.0) :
   atoms = pdb_hierarchy.atoms()
   sites_cart_1 = atoms.extract_xyz().deep_copy()
   sites_cart_2 = sites_cart_1.deep_copy()
-  proxies = ramachandran.extract_proxies(pdb_hierarchy, log=log)
   grm = processed_pdb_file.geometry_restraints_manager()
   assert (grm is not None)
   e = grm.energies_sites(sites_cart=sites_cart_1)
@@ -254,12 +251,10 @@ def benchmark_structure (pdb_in, mon_lib_srv, ener_lib, verbose=False, w=1.0) :
   b1 = lbfgs.rmsd_bonds
   atoms.set_xyz(sites_cart_1)
   r1 = ramalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
-  params = ramachandran.master_phil.fetch().extract()
-  rama_lookup = ramachandran.lookup_manager(params)
-  restraints_helper = mmtbx.geometry_restraints.manager(
-    ramachandran_proxies=proxies,
-    ramachandran_lookup=rama_lookup)
-  grm.set_generic_restraints(restraints_helper)
+  rama_params = ramachandran.master_phil.fetch().extract()
+  rama_manager = ramachandran.ramachandran_manager(
+      pdb_hierarchy, None, rama_params, log)
+  grm.set_ramachandran_restraints(rama_manager)
   lbfgs = geometry_minimization.lbfgs(
     sites_cart=sites_cart_2,
     geometry_restraints_manager=grm,

@@ -16,6 +16,7 @@ class flags(object):
         parallelity=None,
         bond_similarity=None,
         generic_restraints=None,
+        ramachandran_restraints=None,
         default=False):
     if (bond is None): bond = default
     if (nonbonded is None): nonbonded = default
@@ -28,6 +29,7 @@ class flags(object):
     if (parallelity is None): parallelity = default
     if (bond_similarity is None): bond_similarity = default
     if (generic_restraints is None) : generic_restraints = default
+    if ramachandran_restraints is None: ramachandran_restraints = default
     adopt_init_args(self, locals())
 
   def show(self, f=None):
@@ -43,3 +45,4 @@ class flags(object):
     print >> f, "  parallelity:", self.parallelity
     print >> f, "  bond similarity:", self.bond_similarity
     print >> f, "  other (generic):", self.generic_restraints
+    print >> f, "  ramachandran:", self.ramachandran_restraints

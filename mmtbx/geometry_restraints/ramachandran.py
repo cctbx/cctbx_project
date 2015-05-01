@@ -7,6 +7,10 @@ from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 import sys
 import os
+import mmtbx.rotamer
+import boost.python
+from scitbx.array_family import flex
+
 
 if libtbx.env.has_module("rosetta_adaptbx") :
   potential_phil = """\
@@ -58,6 +62,179 @@ master_phil = iotbx.phil.parse("""
     .short_caption = Exclude secondary structure from Ramachandran restraints
 """ % potential_phil)
 
+class ramachandran_manager(object):
+  def __init__ (self, pdb_hierarchy, atom_selection, params, log=sys.stdout,
+      proxies=None, tables=None, initialize=True):
+    assert pdb_hierarchy is not None
+    assert params is not None
+    adopt_init_args(self, locals())
+    if initialize:
+      if(self.params.rama_potential == "oldfield"):
+        self.tables = ramachandran_plot_data()
+      elif (self.params.rama_potential == "rosetta") :
+        import rosetta_adaptbx
+        rosetta_adaptbx.init()
+        self.tables = rosetta_adaptbx.ext.ramachandran()
+      else :
+        self.tables = load_tables(params)
+      # get proxies
+      self.extract_proxies()
+    else:
+      assert proxies is not None
+
+  def select(self, n_seq, iselection):
+    result_proxies = self.proxies.proxy_select(n_seq, iselection)
+    return ramachandran_manager(
+        pdb_hierarchy=self.pdb_hierarchy,
+        atom_selection=self.atom_selection,
+        params=self.params,
+        log=self.log,
+        proxies=result_proxies,
+        tables=self.tables,
+        initialize=False)
+
+  def extract_proxies(self):
+    assert [a.i_seq for a in self.pdb_hierarchy.atoms()].count(0) == 1 ,\
+        "Probably all atoms have i_seq = 0 which is wrong"
+    ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
+    angles = mmtbx.rotamer.extract_phi_psi(
+      pdb_hierarchy=self.pdb_hierarchy,
+      atom_selection=self.atom_selection)
+    self.proxies = ext.shared_phi_psi_proxy()
+    for angle in angles :
+      residue_name = angle.residue_name
+      if (residue_name == "MSE") :
+        residue_name = "MET"
+      proxy = ext.phi_psi_proxy(
+        residue_name=residue_name,
+        residue_type=angle.residue_type,
+        i_seqs=angle.i_seqs)
+      self.proxies.append(proxy)
+    print >> self.log, ""
+    print >> self.log, "  %d Ramachandran restraints generated." % self.get_n_proxies()
+
+  def restraints_residual_sum (self,
+                               sites_cart,
+                               gradient_array=None,
+                               residuals_array=None) :
+    from scitbx.array_family import flex
+    assert self.proxies is not None
+    ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
+    from mmtbx_ramachandran_restraints_ext import rama_target_and_gradients, \
+      target_phi_psi
+    if(gradient_array is None) :
+      gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
+    if residuals_array is None:
+      residuals_array = flex.double()
+    residuals_array.clear()
+    target = 0
+    if(self.params.rama_potential == "oldfield"):
+      op = self.params.oldfield
+      for proxy in self.proxies:
+        if(proxy.residue_type=="gly"):    rama_table = self.tables.gly
+        if(proxy.residue_type=="pro"):    rama_table = self.tables.pro
+        if(proxy.residue_type=="prepro"): rama_table = self.tables.prepro
+        if(proxy.residue_type=="ala"):    rama_table = self.tables.general
+        r = target_phi_psi(
+          rama_table     = rama_table,
+          sites_cart     = sites_cart,
+          proxy          = proxy)
+        if(op.weight is None):
+          weight = 1./(op.esd**2)*min(r[2],op.dist_weight_max)*op.weight_scale
+        else: weight = op.weight
+        tg = rama_target_and_gradients(
+           gradient_array = gradient_array,
+           phi_target     = r[0],
+           psi_target     = r[1],
+           weight         = weight,
+           rama_table     = rama_table,
+           sites_cart     = sites_cart,
+           proxy          = proxy)
+        residuals_array.append(tg.target())
+    elif (self.params.rama_potential == "rosetta") :
+      for proxy in self.proxies :
+        residuals_array.append(self.tables.residue_target_and_gradients(
+          gradient_array=gradient_array,
+          sites_cart=sites_cart,
+          proxy=proxy,
+          weight=self.params.rama_weight))
+    else:
+      assert (self.params.rama_weight >= 0.0)
+      for proxy in self.proxies :
+        rama_table = self.tables[proxy.residue_type]
+        residuals_array.append(rama_table.compute_gradients(
+          gradient_array=gradient_array,
+          sites_cart=sites_cart,
+          proxy=proxy,
+          weight=self.params.rama_weight,
+          epsilon=0.001))
+    return flex.sum(residuals_array)
+
+  def get_n_proxies(self):
+    if self.proxies is not None:
+      return self.proxies.size()
+    else:
+      return 0
+
+  def _get_sorted_proxies_for_show(self,
+      by_value,
+      sites_cart,
+      site_labels=None):
+    class rama_for_show:
+      def __init__(self,
+          labels,
+          residual):
+        adopt_init_args(self, locals())
+    assert by_value in ["residual", "delta"]
+    assert site_labels is None or len(site_labels) == sites_cart.size()
+    if self.get_n_proxies() == 0:
+      return
+    residuals_array = flex.double()
+    self.restraints_residual_sum(
+        sites_cart,
+        residuals_array=residuals_array)
+    result = []
+    labels = site_labels if site_labels is not None \
+        else [str(i) for i in range(sites_cart.size())]
+    for i, pr in enumerate(self.proxies):
+      i_seqs = pr.get_i_seqs()
+      result.append(rama_for_show(
+          [labels[i_seqs[0]],
+           labels[i_seqs[1]],
+           labels[i_seqs[2]],
+           labels[i_seqs[3]],
+           labels[i_seqs[4]]],
+          residuals_array[i]))
+    if by_value == "residual":
+      result.sort(key=lambda x: x.residual, reverse=True)
+    return result
+
+  def show_sorted(self,
+      by_value,
+      sites_cart,
+      site_labels=None,
+      f=None,
+      prefix="",
+      max_items=None):
+    if self.get_n_proxies() == 0:
+      return
+    if (f is None): f = sys.stdout
+    if by_value != "residual":
+      by_value = "residual"
+    sorted_proxies_for_show = self._get_sorted_proxies_for_show(
+      by_value=by_value,
+      sites_cart=sites_cart,
+      site_labels=site_labels)
+    print >> f, "Ramachandran plot restraints: %d" % len(sorted_proxies_for_show)
+    print >> f, "Sorted by %s:" % by_value
+    for p in sorted_proxies_for_show:
+      print >> f, "phi-psi angles formed by             residual"
+      print >> f, "    %s            %5.2e" % (p.labels[0], p.residual)
+      for i in range(1,5):
+        print >> f, "    %s" % p.labels[i]
+    print >> f, ""
+
+
 def load_tables (params=None) :
   import boost.python
   if (params is None) :
@@ -83,17 +260,6 @@ def load_tables (params=None) :
     t = lookup_table(data, 180, params.scale_allowed)
     tables[residue_type] = t
   return tables
-
-def show_histogram(data, n_slots, log):
-  from scitbx.array_family import flex
-  hm = flex.histogram(data = data, n_slots = n_slots)
-  lc_1 = hm.data_min()
-  s_1 = enumerate(hm.slots())
-  print >> log, "      Map Values          Number of points"
-  for (i_1,n_1) in s_1:
-    hc_1 = hm.data_min() + hm.slot_width() * (i_1+1)
-    print >> log, "%10.3f - %-10.3f : %d" % (lc_1, hc_1, n_1)
-    lc_1 = hc_1
 
 class ramachandran_plot_data(object):
   def __init__(self):
@@ -234,134 +400,38 @@ class ramachandran_plot_data(object):
     d1.extend(d6)
     return self.thin_data(d1)
 
-class lookup_manager (object) :
-  def __init__ (self, params) :
-    adopt_init_args(self, locals())
-    if(self.params.rama_potential == "oldfield"):
-      self.tables = ramachandran_plot_data()
-    elif (self.params.rama_potential == "rosetta") :
-      import rosetta_adaptbx
-      rosetta_adaptbx.init()
-      self.tables = rosetta_adaptbx.ext.ramachandran()
-    else :
-      self.tables = load_tables(params)
 
-  def restraints_residual_sum (self,
-                               sites_cart,
-                               proxies,
-                               gradient_array=None,
-                               unit_cell=None,
-                               residuals_array=None) :
-    from scitbx.array_family import flex
-    assert proxies is not None
-    import boost.python
-    ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
-    from mmtbx_ramachandran_restraints_ext import rama_target_and_gradients, \
-      target_phi_psi
-    if(gradient_array is None) :
-      gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
-    if residuals_array is None:
-      residuals_array = flex.double()
-    residuals_array.clear()
-    target = 0
-    if(self.params.rama_potential == "oldfield"):
-      op = self.params.oldfield
-      for proxy in proxies:
-        if(proxy.residue_type=="gly"):    rama_table = self.tables.gly
-        if(proxy.residue_type=="pro"):    rama_table = self.tables.pro
-        if(proxy.residue_type=="prepro"): rama_table = self.tables.prepro
-        if(proxy.residue_type=="ala"):    rama_table = self.tables.general
-        r = target_phi_psi(
-          rama_table     = rama_table,
-          sites_cart     = sites_cart,
-          proxy          = proxy)
-        if(op.weight is None):
-          weight = 1./(op.esd**2)*min(r[2],op.dist_weight_max)*op.weight_scale
-        else: weight = op.weight
-        tg = rama_target_and_gradients(
-           gradient_array = gradient_array,
-           phi_target     = r[0],
-           psi_target     = r[1],
-           weight         = weight,
-           rama_table     = rama_table,
-           sites_cart     = sites_cart,
-           proxy          = proxy)
-        residuals_array.append(tg.target())
-    elif (self.params.rama_potential == "rosetta") :
-      for proxy in proxies :
-        residuals_array.append(self.tables.residue_target_and_gradients(
-          gradient_array=gradient_array,
-          sites_cart=sites_cart,
-          proxy=proxy,
-          weight=self.params.rama_weight))
-    else:
-      assert (self.params.rama_weight >= 0.0)
-      for proxy in proxies :
-        rama_table = self.tables[proxy.residue_type]
-        residuals_array.append(rama_table.compute_gradients(
-          gradient_array=gradient_array,
-          sites_cart=sites_cart,
-          proxy=proxy,
-          weight=self.params.rama_weight,
-          epsilon=0.001))
-    return flex.sum(residuals_array)
-
-
-def extract_proxies (pdb_hierarchy,
-                     atom_selection=None,
-                     log=sys.stdout) :
-  import mmtbx.rotamer
-  import boost.python
-  assert [a.i_seq for a in pdb_hierarchy.atoms()].count(0) == 1 ,\
-      "Probably all atoms have i_seq = 0 which is wrong"
-  ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
-  angles = mmtbx.rotamer.extract_phi_psi(
-    pdb_hierarchy=pdb_hierarchy,
-    atom_selection=atom_selection)
-  proxies = ext.shared_phi_psi_proxy()
-  for angle in angles :
-    residue_name = angle.residue_name
-    if (residue_name == "MSE") :
-      residue_name = "MET"
-    proxy = ext.phi_psi_proxy(
-      residue_name=residue_name,
-      residue_type=angle.residue_type,
-      i_seqs=angle.i_seqs)
-    proxies.append(proxy)
-  print >> log, ""
-  print >> log, "  %d Ramachandran restraints generated." % proxies.size()
-  return proxies
-
-def process_refinement_settings (
-    params,
-    pdb_hierarchy,
-    secondary_structure_manager,
-    d_min=None,
-    log=sys.stdout,
-    scope_name="refinement.pdb_interpretation.peptide_link") :
-  make_header("Extracting atoms for Ramachandran restraints", out=log)
-  from scitbx.array_family import flex
-  if (params.rama_selection is None) :
-    atom_selection = flex.bool(pdb_hierarchy.atoms().size(), True)
-  else :
-    cache = pdb_hierarchy.atom_selection_cache()
-    try :
-      sele = cache.selection(params.rama_selection)
-    except Exception, e :
-      raise Sorry("""Atom selection error:
-  %s
-Selection string resulting in error:
-  %s""" % (str(e), params.rama_selection))
-    else :
-      if (sele.count(True) == 0) :
-        raise Sorry("""Empty atom selection for %s.rama_selection.
-Current selection string:
-  %s""" % (scope_name, params.rama_selection))
-      atom_selection = sele
-  if params.rama_exclude_sec_str :
-    secondary_structure_manager.initialize(log=log)
-    alpha_sele = secondary_structure_manager.alpha_selection()
-    beta_sele = secondary_structure_manager.beta_selection()
-    ss_sele = alpha_sele | beta_sele
-    atom_selection &= ~ss_sele
-  return atom_selection
+# def process_refinement_settings (
+#     params,
+#     pdb_hierarchy,
+#     secondary_structure_manager,
+#     d_min=None,
+#     log=sys.stdout,
+#     scope_name="refinement.pdb_interpretation.peptide_link") :
+#   # seems that it is never used except in the test (which is not run...)
+#   make_header("Extracting atoms for Ramachandran restraints", out=log)
+#   from scitbx.array_family import flex
+#   if (params.rama_selection is None) :
+#     atom_selection = flex.bool(pdb_hierarchy.atoms().size(), True)
+#   else :
+#     cache = pdb_hierarchy.atom_selection_cache()
+#     try :
+#       sele = cache.selection(params.rama_selection)
+#     except Exception, e :
+#       raise Sorry("""Atom selection error:
+#   %s
+# Selection string resulting in error:
+#   %s""" % (str(e), params.rama_selection))
+#     else :
+#       if (sele.count(True) == 0) :
+#         raise Sorry("""Empty atom selection for %s.rama_selection.
+# Current selection string:
+#   %s""" % (scope_name, params.rama_selection))
+#       atom_selection = sele
+#   if params.rama_exclude_sec_str :
+#     secondary_structure_manager.initialize(log=log)
+#     alpha_sele = secondary_structure_manager.alpha_selection()
+#     beta_sele = secondary_structure_manager.beta_selection()
+#     ss_sele = alpha_sele | beta_sele
+#     atom_selection &= ~ss_sele
+#   return atom_selection
