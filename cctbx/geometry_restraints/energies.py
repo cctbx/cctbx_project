@@ -22,6 +22,7 @@ class energies(scitbx.restraints.energies):
                parallelity_proxies=None,
                bond_similarity_proxies=None,
                generic_restraints_manager=None,
+               ramachandran_manager=None,
                external_energy_function=None,
                compute_gradients=True,
                gradients=None,
@@ -35,6 +36,8 @@ class energies(scitbx.restraints.energies):
                                         gradients_size=sites_cart.size(),
                                         gradients_factory=flex.vec3_double,
                                         normalization=normalization)
+    # print "NORMALIZARION", normalization
+    # STOP()
     self.n_dihedral_restraints = None
     self.dihedral_restraints_residual_sum = 0
     if (nonbonded_proxies is not None): assert nonbonded_function is not None
@@ -216,6 +219,7 @@ class energies(scitbx.restraints.energies):
             gradient_array=self.gradients)
       self.number_of_restraints += self.n_bond_similarity_proxies
       self.residual_sum += self.bond_similarity_residual_sum
+
     if (generic_restraints_manager is None) :
       self.n_generic_proxies = 0
       self.generic_restraint_residual_sum = 0
@@ -227,6 +231,18 @@ class energies(scitbx.restraints.energies):
           gradient_array=self.gradients)
       self.number_of_restraints += self.n_generic_proxies
       self.residual_sum += self.generic_restraint_residual_sum
+
+    if ramachandran_manager is None:
+      self.n_ramachandran_proxies = 0
+      self.ramachandran_restraints_residual_sum = 0
+    else:
+      self.n_ramachandran_proxies = self.ramachandran_manager.get_n_proxies()
+      self.ramachandran_restraints_residual_sum = self.ramachandran_manager.restraints_residual_sum(
+          sites_cart=sites_cart,
+          gradient_array=self.gradients)
+      self.number_of_restraints += self.n_ramachandran_proxies
+      self.residual_sum += self.ramachandran_restraints_residual_sum
+      # print "RAMACHANDRAN residual sum:", self.ramachandran_restraints_residual_sum
     if (external_energy_function is not None) :
       self.external_energy = external_energy_function(
         sites_cart=sites_cart,
@@ -450,6 +466,9 @@ class energies(scitbx.restraints.energies):
     if (self.n_parallelity_proxies is not None):
       print >> f, prefix+"  parallelity_residual_sum (n=%d): %.6g" % (
         self.n_parallelity_proxies, self.parallelity_residual_sum)
+    if (self.n_ramachandran_proxies is not None):
+      print >> f, prefix+"  ramachandran_residual_sum (n=%d): %.6g" % (
+        self.n_ramachandran_proxies, self.ramachandran_restraints_residual_sum)
     if (self.n_bond_similarity_proxies is not None):
       print >> f, prefix+"  bond_similarity_residual_sum (n=%d): %.6g" % (
         self.n_bond_similarity_proxies, self.bond_similarity_residual_sum)

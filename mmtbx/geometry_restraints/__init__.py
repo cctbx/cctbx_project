@@ -1,7 +1,6 @@
 from __future__ import division
 
 from libtbx import adopt_init_args
-from mmtbx.geometry_restraints import ramachandran
 from scitbx.array_family import flex
 
 
@@ -10,8 +9,6 @@ from scitbx.array_family import flex
 
 class manager (object) :
   def __init__ (self,
-                ramachandran_proxies=None,
-                ramachandran_lookup=None,
                 reference_manager=None,
                 den_manager=None,
                 ncs_manager=None,
@@ -20,21 +17,14 @@ class manager (object) :
     if self.flags is None:
       import mmtbx.geometry_restraints.flags
       self.flags = mmtbx.geometry_restraints.flags.flags(default=True)
-    assert (ramachandran_proxies is None) or (ramachandran_lookup is not None)
     if (self.reference_manager is None) :
       from mmtbx.geometry_restraints import reference
       self.reference_manager = reference.manager()
 
   def get_n_proxies(self):
-    return self.get_n_ramachandran_proxies() + \
-           self.get_n_reference_coordinate_proxies() + \
+    return self.get_n_reference_coordinate_proxies() + \
            self.get_n_reference_torsion_proxies() +\
            self.get_n_den_proxies()
-
-  def get_n_ramachandran_proxies(self):
-    if self.ramachandran_proxies is not None:
-      return len(self.ramachandran_proxies)
-    return 0
 
   def get_n_reference_coordinate_proxies(self):
     if self.reference_manager is not None:
@@ -60,12 +50,6 @@ class manager (object) :
       from scitbx.array_family import flex
       gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
     target = 0
-    if (self.ramachandran_proxies is not None and
-        self.flags.ramachandran) :
-      target += self.ramachandran_lookup.restraints_residual_sum(
-        sites_cart=sites_cart,
-        proxies=self.ramachandran_proxies,
-        gradient_array=gradient_array)
     if (self.reference_manager is not None and
         self.flags.reference) :
       if (self.reference_manager.reference_coordinate_proxies is not None or
@@ -89,82 +73,13 @@ class manager (object) :
   def select (self,
               n_seq,
               iselection) :
-    ramachandran_proxies = den_manager = None
+    den_manager = None
     ncs_manager = None
-    if (self.ramachandran_proxies is not None) :
-      ramachandran_proxies = self.ramachandran_proxies.proxy_select(
-        n_seq, iselection)
     if (self.den_manager is not None) :
       den_manager = self.den_manager.select(n_seq, iselection)
     if (self.ncs_manager is not None) :
       ncs_manager = self.ncs_manager.select(n_seq, iselection)
     return manager(
-      ramachandran_proxies=ramachandran_proxies,
-      ramachandran_lookup=self.ramachandran_lookup,
       den_manager=den_manager,
       ncs_manager=ncs_manager,
       flags=self.flags)
-
-  def remove_ramachandran_restraints(self):
-    self.ramachandran_proxies = None
-    self.ramachandran_lookup = None
-
-  def _get_sorted_ramachandran_proxies_for_show(self,
-      by_value,
-      sites_cart,
-      site_labels=None):
-    class rama_for_show:
-      def __init__(self,
-          labels,
-          residual):
-        adopt_init_args(self, locals())
-    assert by_value in ["residual", "delta"]
-    assert site_labels is None or len(site_labels) == sites_cart.size()
-    if self.get_n_ramachandran_proxies() == 0 or \
-        self.ramachandran_lookup is None:
-      return
-    residuals_array = flex.double()
-    self.ramachandran_lookup.restraints_residual_sum(
-        sites_cart,
-        self.ramachandran_proxies,
-        residuals_array=residuals_array)
-    result = []
-    labels = site_labels if site_labels is not None \
-        else [str(i) for i in range(sites_cart.size())]
-    for i, pr in enumerate(self.ramachandran_proxies):
-      i_seqs = pr.get_i_seqs()
-      result.append(rama_for_show(
-          [labels[i_seqs[0]],
-           labels[i_seqs[1]],
-           labels[i_seqs[2]],
-           labels[i_seqs[3]],
-           labels[i_seqs[4]]],
-          residuals_array[i]))
-    if by_value == "residual":
-      result.sort(key=lambda x: x.residual, reverse=True)
-    return result
-
-  def show_sorted_ramachandran(self,
-      by_value,
-      sites_cart,
-      site_labels=None,
-      f=None,
-      prefix="",
-      max_items=None):
-    if self.get_n_ramachandran_proxies() == 0:
-      return
-    if (f is None): f = sys.stdout
-    if by_value != "residual":
-      by_value = "residual"
-    sorted_proxies_for_show = self._get_sorted_ramachandran_proxies_for_show(
-      by_value=by_value,
-      sites_cart=sites_cart,
-      site_labels=site_labels)
-    print >> f, "Ramachandran plot restraints: %d" % len(sorted_proxies_for_show)
-    print >> f, "Sorted by %s:" % by_value
-    for p in sorted_proxies_for_show:
-      print >> f, "phi-psi angles formed by             residual"
-      print >> f, "    %s            %5.2e" % (p.labels[0], p.residual)
-      for i in range(1,5):
-        print >> f, "    %s" % p.labels[i]
-    print >> f, ""

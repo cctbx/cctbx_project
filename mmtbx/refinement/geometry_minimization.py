@@ -227,7 +227,8 @@ class run2(object):
       parallelity        = parallelity,
       reference_dihedral = True,
       bond_similarity    = True,
-      generic_restraints = True)
+      generic_restraints = True,
+      ramachandran_restraints = True)
     self.update_cdl_restraints()
     self.show()
     for i_macro_cycle in xrange(number_of_macro_cycles):

@@ -63,6 +63,7 @@ class manager(object):
         planarity_proxies=None,
         parallelity_proxies=None,
         generic_restraints_manager=None,
+        ramachandran_manager=None,
         external_energy_function=None,
         plain_pairs_radius=None,
         max_reasonable_bond_distance=None,
@@ -228,7 +229,8 @@ class manager(object):
         angle_proxies=reduced_angle_proxies,
         dihedral_proxies=reduced_dihedral_proxies,
         ncs_dihedral_proxies=self.ncs_dihedral_proxies,
-        generic_restraints_manager=self.generic_restraints_manager)
+        generic_restraints_manager=self.generic_restraints_manager,
+        ramachandran_manager=self.ramachandran_manager)
 
   def sites_cart_used_for_pair_proxies(self):
     return self._sites_cart_used_for_pair_proxies
@@ -316,6 +318,7 @@ class manager(object):
       dihedral_proxies=self.dihedral_proxies,
       reference_dihedral_proxies=self.reference_dihedral_proxies,
       generic_restraints_manager=self.generic_restraints_manager,
+      ramachandran_manager=self.ramachandran_manager,
       ncs_dihedral_proxies=self.ncs_dihedral_proxies,
       chirality_proxies=self.chirality_proxies,
       planarity_proxies=self.planarity_proxies,
@@ -420,6 +423,10 @@ class manager(object):
     if (self.generic_restraints_manager is not None) :
       generic_restraints_manager = self.generic_restraints_manager.select(
         n_seq, iselection)
+    ramachandran_manager = None
+    if self.ramachandran_manager is not None:
+      ramachandran_manager = self.ramachandran_manager.select(
+          n_seq, iselection)
     return manager(
       crystal_symmetry=self.crystal_symmetry,
       model_indices=selected_model_indices,
@@ -439,6 +446,7 @@ class manager(object):
       dihedral_proxies=selected_dihedral_proxies,
       reference_dihedral_proxies=selected_reference_dihedral_proxies,
       generic_restraints_manager=generic_restraints_manager,
+      ramachandran_manager=ramachandran_manager,
       ncs_dihedral_proxies=selected_ncs_dihedral_proxies,
       chirality_proxies=selected_chirality_proxies,
       planarity_proxies=selected_planarity_proxies,
@@ -469,6 +477,7 @@ class manager(object):
       dihedral_proxies=self.dihedral_proxies,
       reference_dihedral_proxies=self.reference_dihedral_proxies,
       generic_restraints_manager=self.generic_restraints_manager,
+      ramachandran_manager=self.ramachandran_manager,
       ncs_dihedral_proxies=self.ncs_dihedral_proxies,
       chirality_proxies=self.chirality_proxies,
       planarity_proxies=self.planarity_proxies,
@@ -538,6 +547,17 @@ class manager(object):
 
   def set_generic_restraints (self, manager) :
     self.generic_restraints_manager = manager
+
+  def set_ramachandran_restraints(self, manager):
+    self.ramachandran_manager=manager
+
+  def remove_ramachandran_in_place(self):
+    self.ramachandran_manager = None
+
+  def get_n_ramachandran_proxies(self):
+    if self.ramachandran_manager is not None:
+      return self.ramachandran_manager.get_n_proixes()
+    return 0
 
   def set_external_energy_function (self, energy_function) :
     self.external_energy_function = energy_function
@@ -1052,7 +1072,8 @@ class manager(object):
      chirality_proxies,
      planarity_proxies,
      parallelity_proxies,
-     generic_restraints) = [None]*11
+     generic_restraints,
+     ramachandran_manager) = [None]*12
     if (flags.bond):
       assert pair_proxies.bond_proxies is not None
       bond_proxies = pair_proxies.bond_proxies
@@ -1073,6 +1094,8 @@ class manager(object):
     if (flags.parallelity): parallelity_proxies = self.parallelity_proxies
     if (flags.generic_restraints) :
       generic_restraints = self.generic_restraints_manager
+    if flags.ramachandran_restraints:
+      ramachandran_manager = self.ramachandran_manager
     return geometry_restraints.energies.energies(
       sites_cart=sites_cart,
       bond_proxies=bond_proxies,
@@ -1086,6 +1109,7 @@ class manager(object):
       planarity_proxies=planarity_proxies,
       parallelity_proxies=parallelity_proxies,
       generic_restraints_manager=generic_restraints,
+      ramachandran_manager = ramachandran_manager,
       external_energy_function=external_energy_function,
       compute_gradients=compute_gradients,
       gradients=gradients,
@@ -1392,12 +1416,12 @@ class manager(object):
         by_value="residual",
         sites_cart=sites_cart, site_labels=site_labels, f=f, is_ncs=True)
       print >> f
-    if (self.generic_restraints_manager is not None):
-      self.generic_restraints_manager.show_sorted_ramachandran(
-              by_value="residual",
-              sites_cart=sites_cart,
-              site_labels=site_labels,
-              f=f)
+    if self.ramachandran_manager is not None:
+      self.ramachandran_manager.show_sorted(
+          by_value="residual",
+          sites_cart=sites_cart,
+          site_labels=site_labels,
+          f=f)
     if (self.chirality_proxies is not None):
       self.chirality_proxies.show_sorted(
         by_value="residual",
