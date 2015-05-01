@@ -51,7 +51,7 @@ def exercise_basic () :
     iselection=flex.size_t(range(9)))
   assert (selected.size() == 2)
 
-def exercise_lbfgs_simple (verbose=False) :
+def exercise_lbfgs_simple (mon_lib_srv, ener_lib, verbose=False) :
   # three peptides:
   #  1 = poly-ALA, favored
   #  2 = poly-ALA, outlier
@@ -154,8 +154,6 @@ END
   for i, peptide in enumerate([pdb1, pdb2, pdb3]) :
     pdb_in = iotbx.pdb.input(source_info="peptide",
       lines=flex.split_lines(peptide))
-    mon_lib_srv = server.server()
-    ener_lib = server.ener_lib()
     params = pdb_interpretation.master_params.extract()
     #params.peptide_link_params.ramachandran_restraints = True
     processed_pdb_file = pdb_interpretation.process(
@@ -184,7 +182,7 @@ END
   for i, peptide in enumerate([pdb1, pdb2, pdb3]) :
     pdb_in = iotbx.pdb.input(source_info="peptide",
       lines=flex.split_lines(peptide))
-    o = benchmark_structure(pdb_in, verbose)
+    o = benchmark_structure(pdb_in, mon_lib_srv, ener_lib, verbose)
     phi0, psi0 = o.r0.results[0].phi, o.r0.results[0].psi
     phi1, psi1 = o.r1.results[0].phi, o.r1.results[0].psi
     phi2, psi2 = o.r2.results[0].phi, o.r2.results[0].psi
@@ -208,7 +206,9 @@ def exercise_lbfgs_big (verbose=False) :
   if (file_name is None) :
     print "Skipping big test."
     return
-  pdb_in = file_reader.any_file(file_name).file_object
+  # pdb_in = file_reader.any_file(file_name).file_object
+  pdb_in = iotbx.pdb.input(source_info="peptide",
+    file_name=file_name)
   o = benchmark_structure(pdb_in, verbose, 1.0)
   if verbose :
     show_results(o, "3mhk")
@@ -223,9 +223,7 @@ def show_results (o, structure_name) :
     % (o.b2, o.a2, o.r2.percent_outliers, o.r2.percent_favored)
   print ""
 
-def benchmark_structure (pdb_in, verbose=False, w=1.0) :
-  mon_lib_srv = server.server()
-  ener_lib = server.ener_lib()
+def benchmark_structure (pdb_in, mon_lib_srv, ener_lib, verbose=False, w=1.0) :
   params = pdb_interpretation.master_params.extract()
   processed_pdb_file = pdb_interpretation.process(
     mon_lib_srv=mon_lib_srv,
@@ -283,15 +281,13 @@ def benchmark_structure (pdb_in, verbose=False, w=1.0) :
     r1=r1,
     r2=r2)
 
-def exercise_other () :
+def exercise_other (mon_lib_srv, ener_lib) :
   file_name = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/3mku.pdb",
     test=os.path.isfile)
   if (file_name is None) :
     print "Skipping test."
     return
-    mon_lib_srv = server.server()
-  ener_lib = server.ener_lib()
   params = pdb_interpretation.master_params.fetch().extract()
   params.peptide_link.ramachandran_restraints = True
   processed_pdb_file = pdb_interpretation.process(
@@ -311,8 +307,20 @@ def exercise_other () :
     log=StringIO())
 
 if __name__ == "__main__" :
+  import time
+  mon_lib_srv = server.server()
+  ener_lib = server.ener_lib()
+
+  t0 = time.time()
   exercise_basic()
-  exercise_lbfgs_simple(("--verbose" in sys.argv) or ("-v" in sys.argv))
+  t1 = time.time()
+  exercise_lbfgs_simple(mon_lib_srv, ener_lib,
+      ("--verbose" in sys.argv) or ("-v" in sys.argv))
+  t2 = time.time()
   if ("--full" in sys.argv) :
-    exercise_lbfgs_big(("--verbose" in sys.argv) or ("-v" in sys.argv))
+    exercise_lbfgs_big(mon_lib_srv, ener_lib, 
+        ("--verbose" in sys.argv) or ("-v" in sys.argv))
+  t3 = time.time()
+  print "Times: %.3f, %.3f, %.3f. Total: %.3f" % (
+      t1-t0, t2-t1, t3-t2, t3-t0)
   print "OK"
