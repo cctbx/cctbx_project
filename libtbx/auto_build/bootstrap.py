@@ -729,7 +729,7 @@ class Builder(object):
       workdir=['modules'],
     ))
     self.add_step(self.shell(
-      command=['tar', 'xzf', filename, None],
+      command=['tar', 'xzf', filename],
       workdir=['modules']
     ))
 
