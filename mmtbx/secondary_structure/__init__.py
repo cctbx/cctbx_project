@@ -360,10 +360,7 @@ class manager (object) :
       find_automatically = False
 
     if find_automatically :
-      if use_segid:
-        pairs = self.find_base_pairs_with_segids(log=log)
-      else :
-        pairs = self.find_base_pairs(log=log)
+      pairs = self.find_base_pairs(log=log, use_segid=use_segid)
       if len(pairs) > 1:
         bp_phil = iotbx.phil.parse(pairs)
         bp_params = sec_str_master_phil.fetch(source=bp_phil).extract()
@@ -413,49 +410,50 @@ class manager (object) :
     restraint_groups = find_helices.as_restraint_groups()
     return restraint_groups
 
-  def find_base_pairs (self, log=sys.stdout):
-    stacking_pairs = nucleic_acids.get_phil_stacking_pairs(
-      pdb_hierarchy=self.pdb_hierarchy,
-      prefix="secondary_structure.nucleic_acid",
-      # params=self.params.secondary_structure.nucleic_acid.stacking_pair,
-      params=self.params.secondary_structure.nucleic_acid,
-      log=log)
-    base_pairs = ""
-    if self.grm is not None:
-      base_pairs = nucleic_acids.get_phil_base_pairs(
+  def find_base_pairs (self, log=sys.stdout, use_segid=False):
+    if not use_segid:
+      stacking_pairs = nucleic_acids.get_phil_stacking_pairs(
         pdb_hierarchy=self.pdb_hierarchy,
-        nonbonded_proxies=self.grm.pair_proxies().nonbonded_proxies,
         prefix="secondary_structure.nucleic_acid",
         params=self.params.secondary_structure.nucleic_acid,
         log=log)
-    return "\n".join([base_pairs, stacking_pairs])
-
-  def find_base_pairs_with_segids (self, log=sys.stdout, force=False) :
-    annotations = []
-    cache = self.pdb_hierarchy.atom_selection_cache()
-    for chain in self.pdb_hierarchy.models()[0].chains() :
-      if not force and not chain.conformers()[0].is_na() :
-        continue
-      segid = chain.atoms()[0].segid
-      segid_selection = cache.selection("segid %s" % segid)
-      detached_hierarchy = iotbx.pdb.hierarchy.new_hierarchy_from_chain(chain)
-      selected_grm = self.grm.select(segid_selection)
-      stacking_pairs = nucleic_acids.get_phil_stacking_pairs(
-        pdb_hierarchy=detached_hierarchy,
-        prefix="secondary_structure.nucleic_acid",
-        log=log,
-        add_segid=segid)
-      base_pairs = nucleic_acids.get_phil_base_pairs(
-        pdb_hierarchy=detached_hierarchy,
-        nonbonded_proxies=self.grm.select(segid_selection).pair_proxies(sites_cart=detached_hierarchy.atoms().extract_xyz()).nonbonded_proxies,
-        prefix="secondary_structure.nucleic_acid",
-        log=log,
-        add_segid=segid)
-      if (base_pairs is not None) :
-        annotations.append(base_pairs)
-      if (stacking_pairs is not None) :
-        annotations.append(stacking_pairs)
-    return "\n".join(annotations)
+      base_pairs = ""
+      if self.grm is not None:
+        base_pairs = nucleic_acids.get_phil_base_pairs(
+          pdb_hierarchy=self.pdb_hierarchy,
+          nonbonded_proxies=self.grm.pair_proxies().nonbonded_proxies,
+          prefix="secondary_structure.nucleic_acid",
+          params=self.params.secondary_structure.nucleic_acid,
+          log=log,
+          verbose = self.verbose)
+      return "\n".join([base_pairs, stacking_pairs])
+    else:
+      annotations = []
+      cache = self.pdb_hierarchy.atom_selection_cache()
+      for chain in self.pdb_hierarchy.models()[0].chains() :
+        if not chain.conformers()[0].is_na() :
+          continue
+        segid = chain.atoms()[0].segid
+        segid_selection = cache.selection("segid %s" % segid)
+        detached_hierarchy = iotbx.pdb.hierarchy.new_hierarchy_from_chain(chain)
+        selected_grm = self.grm.select(segid_selection)
+        stacking_pairs = nucleic_acids.get_phil_stacking_pairs(
+          pdb_hierarchy=detached_hierarchy,
+          prefix="secondary_structure.nucleic_acid",
+          log=log,
+          add_segid=segid)
+        base_pairs = nucleic_acids.get_phil_base_pairs(
+          pdb_hierarchy=detached_hierarchy,
+          nonbonded_proxies=self.grm.select(segid_selection).pair_proxies(sites_cart=detached_hierarchy.atoms().extract_xyz()).nonbonded_proxies,
+          prefix="secondary_structure.nucleic_acid",
+          log=log,
+          add_segid=segid,
+          verbose = self.verbose)
+        if (base_pairs is not None) :
+          annotations.append(base_pairs)
+        if (stacking_pairs is not None) :
+          annotations.append(stacking_pairs)
+      return "\n".join(annotations)
 
   def apply_phil_str (self, phil_string, log=sys.stdout, verbose=False) :
     ss_phil = sec_str_master_phil.fetch(source=iotbx.phil.parse(phil_string))
