@@ -239,6 +239,7 @@ tst_list = (
   "$D/scaling/tst_plan_sad_experiment.py",
   #
   "$D/regression/tst_models_to_from_chains.py",
+  "$D/regression/tst_helix_sheet_recs_as_pdb_files.py",
   )
 
 def run():
