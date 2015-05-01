@@ -36,8 +36,6 @@ class energies(scitbx.restraints.energies):
                                         gradients_size=sites_cart.size(),
                                         gradients_factory=flex.vec3_double,
                                         normalization=normalization)
-    # print "NORMALIZARION", normalization
-    # STOP()
     self.n_dihedral_restraints = None
     self.dihedral_restraints_residual_sum = 0
     if (nonbonded_proxies is not None): assert nonbonded_function is not None
@@ -177,7 +175,6 @@ class energies(scitbx.restraints.energies):
             gradient_array=self.gradients)
       self.number_of_restraints += self.n_planarity_proxies
       self.residual_sum += self.planarity_residual_sum
-
     if parallelity_proxies is None:
       self.n_parallelity_proxies = None
       self.parallelity_residual_sum = 0
@@ -242,7 +239,6 @@ class energies(scitbx.restraints.energies):
           gradient_array=self.gradients)
       self.number_of_restraints += self.n_ramachandran_proxies
       self.residual_sum += self.ramachandran_restraints_residual_sum
-      # print "RAMACHANDRAN residual sum:", self.ramachandran_restraints_residual_sum
     if (external_energy_function is not None) :
       self.external_energy = external_energy_function(
         sites_cart=sites_cart,
