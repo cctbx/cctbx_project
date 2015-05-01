@@ -258,7 +258,7 @@ def consecutive_residues(atom1, atom2):
     pass
   return False
 
-def get_h_bonds_for_basepair(a1, a2, distance_cutoff=100):
+def get_h_bonds_for_basepair(a1, a2, distance_cutoff=100, log=sys.stdout, verbose=-1):
   # a1, a2.parent().atom_group_size have to  == 1
   new_hbonds = []
   r1 = a1.parent()
@@ -299,6 +299,8 @@ def get_h_bonds_for_basepair(a1, a2, distance_cutoff=100):
       if n_links_in_data < 1:
         raise Sorry("Corrupted dictionary in bondlength_defaults.py")
       d1 /=n_links_in_data
+      if verbose > 2:
+        print >> log, "  Class %d penalty=%.3f" % (class_number, d1)
       if best_score > d1:
         best_possible_link_list = [(x[:2]) for x in data[1:]]
         best_score = d1
@@ -306,6 +308,9 @@ def get_h_bonds_for_basepair(a1, a2, distance_cutoff=100):
   for n1, n2 in best_possible_link_list:
     a1 = r1.get_atom(n1)
     a2 = r2.get_atom(n2)
+    if verbose > 2:
+      print >> log, "    %s --> %s distance = %.3f" % (
+          a1.id_str(), a2.id_str(), a1.distance(a2))
     if a1 is not None and a2 is not None and a1.distance(a2)<distance_cutoff:
       new_hbonds.append(tuple(sorted([a1.i_seq, a2.i_seq])))
   return new_hbonds, best_class_number
@@ -326,8 +331,11 @@ def final_link_direction_check(atom1, atom2, rna_dna_angle_cutoff=35):
   return 90 - math.degrees(math.acos(abs(cos_phi[0]))) < rna_dna_angle_cutoff
 
 def get_phil_base_pairs(pdb_hierarchy, nonbonded_proxies,
-    hbond_distance_cutoff=3.4, prefix=None, params=None,
-    log=sys.stdout, add_segid=None):
+    prefix=None, params=None,
+    log=sys.stdout, add_segid=None, verbose=-1):
+  hbond_distance_cutoff = 3.4
+  if params is not None:
+    hbond_distance_cutoff = params.hbond_distance_cutoff
   hbonds = []
   result = ""
   atoms = pdb_hierarchy.atoms()
@@ -339,7 +347,6 @@ def get_phil_base_pairs(pdb_hierarchy, nonbonded_proxies,
     return result
   sorted_nonb, n_not_shown = get_sorted_result
 
-  # print "n_not_shown", n_not_shown
   # Get potential hbonds
   n_nonb = len(sorted_nonb)
   i = 0
@@ -362,14 +369,29 @@ def get_phil_base_pairs(pdb_hierarchy, nonbonded_proxies,
   # check and define basepairs
   pairs = []
   for hb in hbonds:
+    if verbose > 1:
+      print >> log, "Making pair with", atoms[hb[0]].id_str(), atoms[hb[1]].id_str()
     new_hbonds, class_number = get_h_bonds_for_basepair(
         atoms[hb[0]],
         atoms[hb[1]],
-        distance_cutoff=hbond_distance_cutoff)
+        distance_cutoff=hbond_distance_cutoff,
+        log=log,
+        verbose=verbose)
+    if verbose > 1:
+      print >> log, "  Picked class: %d, number of h-bonds under cutoff:%d" % (class_number, len(new_hbonds)),
     if len(new_hbonds) > 1:
       p = make_phil_base_pair_record(atoms[hb[0]].parent(), atoms[hb[1]].parent(),
           params, saenger_class=class_number, add_segid=add_segid)
+      if verbose > 1:
+        print >> log, "  OK"
       pairs.append(p)
+    else:
+      if verbose > 0:
+        s = " ".join(["Basepairing for residues '%s' and '%s'" % (
+            atoms[hb[0]].id_str()[10:-1], atoms[hb[1]].id_str()[10:-1]),
+          "was rejected because only 1 h-bond was found"])
+        if verbose > 1:
+          print >> log, "Rejected"
 
   phil_str = ""
   # print "N basepairs:", len(pairs)

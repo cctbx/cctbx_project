@@ -1,7 +1,7 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.secondary_structure_restraints
 
-# from mmtbx.secondary_structure import *
+from mmtbx.secondary_structure import sec_str_master_phil_str, manager
 from mmtbx.geometry_restraints import hbond
 import iotbx.pdb
 import iotbx.phil
@@ -23,6 +23,8 @@ format = *phenix phenix_bonds pymol refmac kinemage
   .type = choice
 quiet = False
   .type = bool
+verbose = -1
+  .type = int
 file_name = None
   .type = path
   .multiple = True
@@ -74,7 +76,8 @@ file_name = None
   m = manager(pdb_hierarchy=pdb_hierarchy,
     geometry_restraints_manager=geometry,
     sec_str_from_pdb_file=pdb_structure.extract_secondary_structure(),
-    params=work_params.secondary_structure)
+    params=work_params.secondary_structure,
+    verbose=work_params.verbose)
   m.find_automatically(log=out)
 
   # bp_p = nucleic_acids.get_basepair_plane_proxies(
