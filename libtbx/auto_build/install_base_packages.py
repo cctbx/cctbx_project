@@ -119,11 +119,10 @@ class installer (object) :
     # Shortcut: Extract python for Windows bundled with all preinstalled modules
     if sys.platform == "win32":
       import platform
-      if
-        platform.architecture()[0] = '64bit':
-          self.fetch_package(pkg_name=WIN64PYTHON_PKG, pkg_url=BASE_CCI_PKG_URL)
-        else:
-          self.fetch_package(pkg_name=WIN32PYTHON_PKG, pkg_url=BASE_CCI_PKG_URL)
+      if platform.architecture()[0] = '64bit':
+        self.fetch_package(pkg_name=WIN64PYTHON_PKG, pkg_url=BASE_CCI_PKG_URL)
+      else:
+        self.fetch_package(pkg_name=WIN32PYTHON_PKG, pkg_url=BASE_CCI_PKG_URL)
       winpython = zipfile.ZipFile(os.path.join(self.tmp_dir, WIN64PYTHON_PKG), 'r')
       members = winpython.namelist()
       for zipinfo in members:
