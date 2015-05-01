@@ -99,14 +99,8 @@ def exercise_geo_out():
   from mmtbx.geometry_restraints import ramachandran
   params = ramachandran.master_phil.fetch().extract()
   params.rama_potential = "emsley"
-  #params.rama_weight = sigma_on_ramachandran
   rama_manager = ramachandran.ramachandran_manager(
       acp.pdb_hierarchy, None, params, log)
-  # proxies = ramachandran.extract_proxies(acp.pdb_hierarchy, log=log)
-  # rama_lookup = ramachandran.lookup_manager(params)
-  # restraints_helper = mmtbx.geometry_restraints.manager(
-  #     ramachandran_proxies=proxies,
-  #     ramachandran_lookup=rama_lookup)
   grm.set_ramachandran_restraints(rama_manager)
   atoms = acp.pdb_hierarchy.atoms()
   import StringIO
