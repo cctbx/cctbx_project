@@ -62,9 +62,12 @@ def uaniso_from_tls_and_back():
                                    l = ([0.0,0.0,0.0,0.0,0.0,0.0]),
                                    s = ([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]),
                                    origin = input_tls_data_.origin))
-  tls_from_uanisos = tools.tls_from_uanisos(xray_structure = xray_structure,
-                                            selections     = selections,
-                                            tlsos_initial  = tlsos_initial)
+  tls_from_uanisos = tools.tls_from_uanisos(
+    number_of_macro_cycles       = 300,
+    max_iterations               = 1000,
+    xray_structure = xray_structure,
+    selections     = selections,
+    tlsos_initial  = tlsos_initial)
   print "\nTLS from Uaniso:\n"
   tools.show_tls(tlsos = tls_from_uanisos)
 
