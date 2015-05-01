@@ -318,7 +318,7 @@ if __name__ == "__main__" :
       ("--verbose" in sys.argv) or ("-v" in sys.argv))
   t2 = time.time()
   if ("--full" in sys.argv) :
-    exercise_lbfgs_big(mon_lib_srv, ener_lib, 
+    exercise_lbfgs_big(mon_lib_srv, ener_lib,
         ("--verbose" in sys.argv) or ("-v" in sys.argv))
   t3 = time.time()
   print "Times: %.3f, %.3f, %.3f. Total: %.3f" % (
