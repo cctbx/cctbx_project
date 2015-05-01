@@ -120,10 +120,11 @@ class installer (object) :
     if sys.platform == "win32":
       import platform
       if platform.architecture()[0] = '64bit':
-        self.fetch_package(pkg_name=WIN64PYTHON_PKG, pkg_url=BASE_CCI_PKG_URL)
+        winpythonpkg = WIN64PYTHON_PKG
       else:
-        self.fetch_package(pkg_name=WIN32PYTHON_PKG, pkg_url=BASE_CCI_PKG_URL)
-      winpython = zipfile.ZipFile(os.path.join(self.tmp_dir, WIN64PYTHON_PKG), 'r')
+        winpythonpkg = WIN32PYTHON_PKG
+      self.fetch_package(pkg_name=winpythonpkg, pkg_url=BASE_CCI_PKG_URL)
+      winpython = zipfile.ZipFile(os.path.join(self.tmp_dir, winpythonpkg), 'r')
       members = winpython.namelist()
       for zipinfo in members:
         print >> self.log, "extracting", zipinfo
