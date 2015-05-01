@@ -119,7 +119,7 @@ class installer (object) :
     # Shortcut: Extract python for Windows bundled with all preinstalled modules
     if sys.platform == "win32":
       import platform
-      if platform.architecture()[0] = '64bit':
+      if platform.architecture()[0] == '64bit':
         winpythonpkg = WIN64PYTHON_PKG
       else:
         winpythonpkg = WIN32PYTHON_PKG
