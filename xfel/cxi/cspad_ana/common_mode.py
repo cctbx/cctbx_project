@@ -11,7 +11,6 @@ from __future__ import division
 __version__ = "$Revision$"
 
 import numpy
-from pypdsdata import xtc
 from parse_calib         import Section
 from parse_calib         import calib2sections
 
@@ -353,6 +352,7 @@ class common_mode_correction(mod_event_info):
         self.cspad_img = evt.getFrameValue(self.address).data()
     elif self.address=='NoDetector-0|Cspad2x2-0':
         import numpy as np
+        from pypdsdata import xtc
         test=[]
         self.cspad_img = evt.get(xtc.TypeId.Type.Id_Cspad2x2Element,self.address).data()
         self.cspad_img=np.reshape(self.cspad_img,(370, 388))
