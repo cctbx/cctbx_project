@@ -1610,7 +1610,7 @@ class ncs_group_object(object):
       print >> log, out_str
     return out_str
 
-  def show_phil_format(self,prefix='',header=True):
+  def show_phil_format(self,prefix='',header=True,group_prefix=''):
     """
     Returns a string of NCS groups phil parameters
 
@@ -1618,13 +1618,14 @@ class ncs_group_object(object):
       prefix (str): a string to be added, padding the output, at the left of
         each line
       header (bool): When True, include header
+      group_prefix (str): prefix for the group only
     """
     str_out = []
     if header:
       msg = '\n{}NCS phil parameters:'
       str_out = [msg.format(prefix),'-'*len(msg)]
     str_line = prefix + '  {:<16s} = {}'
-    str_ncs_group =  prefix + 'ncs_group {\n%s' + prefix + '\n}'
+    str_ncs_group =  prefix + group_prefix + 'ncs_group {\n%s' + prefix + '\n}'
     master_sel_str = sorted(self.ncs_to_asu_selection)
     for m_str in master_sel_str:
       gr = self.ncs_to_asu_selection[m_str]
