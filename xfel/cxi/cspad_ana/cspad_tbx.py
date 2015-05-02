@@ -218,9 +218,13 @@ def cbcaa(config, sections):
 
     # XXX Make up section mask for the emission detector.  Needs to be
     # checked!
-    import _pdsdata
-    if len(sections) == 1 and type(config) in (
-      _pdsdata.cspad2x2.ConfigV1, _pdsdata.cspad2x2.ConfigV2):
+    try:
+      import _pdsdata
+      types = _pdsdata.cspad2x2.ConfigV1, _pdsdata.cspad2x2.ConfigV2
+    except ImportError:
+      import psana
+      types = psana.CsPad2x2.ConfigV1, psana.CsPad2x2.ConfigV2
+    if len(sections) == 1 and type(config) in types:
       s_mask = config.roiMask()
     else:
       s_mask = config.roiMask(q)
@@ -297,15 +301,12 @@ def CsPadDetector(address, evt, env, sections, right=True, quads=None):
   @return         Assembled detector image
   """
 
-  from pypdsdata.xtc import TypeId
-
   device = address_split(address)[2]
   if device is None or device != 'Cspad':
     return None
 
-  # Get a current configure object for the detector, see
-  # cspad_tbx.getConfig().
-  config = env.getConfig(TypeId.Type.Id_CspadConfig, address)
+  # Get a current configure object for the detector
+  config = getConfig(address, env)
   if config is None:
     return None
 
@@ -1236,35 +1237,31 @@ def evt_wavelength(evt, delta_k=0):
     return L / (2 * gamma**2) * (1 + K**2 / 2)
   return None
 
+def old_address_to_new_address(address):
+  """ Change between old and new style detector addresses.
+  I.E. CxiDs1-0|Cspad-0 becomes CxiDs1.0:Cspad.0
+  @param address detector address to convert
+  """
+  return address.replace('-','.').replace('|',':')
 
 def getConfig(address, env):
-  """XXX Documentation XXX I have the sneaky suspicion that code like
-  this already exists somewhere in pyana.
-  """
+  """ Given a detector address, find the config object in an env object
+  that goes with it.
+  @param address detector address
+  @param env environment object to search"""
 
-  from pypdsdata.xtc import TypeId
+  address = old_address_to_new_address(address)
 
-  device = address_split(address)[2]
-  if device is None:
+  good_key = None
+  for key in env.configStore().keys():
+    if address in str(key.src()):
+      good_key = key
+      break
+
+  if good_key is None:
     return None
 
-  elif device == 'Andor':
-    return env.getConfig(TypeId.Type.Id_AndorConfig, address)
-
-  elif device == 'Cspad':
-    return env.getConfig(TypeId.Type.Id_CspadConfig, address)
-
-  elif device == 'Cspad2x2':
-    config = env.getConfig(TypeId.Type.Id_Cspad2x2Config, address)
-    if config is None:
-      config = env.getConfig(TypeId.Type.Id_CspadConfig, address)
-    return config
-
-  elif device == 'pnCCD':
-    return env.getConfig(TypeId.Type.Id_pnCCDconfig, address)
-
-  return None
-
+  return env.configStore().get(good_key.type(),good_key.src())
 
 def getOptBool(s):
   if s is None: return False
@@ -1371,8 +1368,6 @@ def image(address, config, evt, env, sections=None):
   @return         XXX
   """
 
-  from pypdsdata.xtc import TypeId
-
   device = address_split(address)[2]
   if device is None:
     return None
@@ -1380,6 +1375,7 @@ def image(address, config, evt, env, sections=None):
   elif device == 'Andor':
     # XXX There is no proper getter for Andor frames yet, and
     # evt.getFrameValue(address) does not appear to work.
+    from pypdsdata.xtc import TypeId
     value = evt.get(TypeId.Type.Id_AndorFrame, address)
     if value is not None:
       img = value.data()
@@ -1401,6 +1397,7 @@ def image(address, config, evt, env, sections=None):
                            numpy.hstack((qimages[3], qimages[2]))))
 
   elif device == 'Cspad2x2':
+    from pypdsdata.xtc import TypeId
     quads = evt.get(TypeId.Type.Id_Cspad2x2Element, address)
     if quads is not None:
       return CsPad2x2Image(quads.data(), config, sections)
@@ -1438,9 +1435,8 @@ def image_xpp(address, evt, env, aa):
   if address != 'XppGon-0|Cspad-0':
     return None
 
-  # Get a current configure object for the detector, see
-  # cspad_tbx.getConfig().
-  config = env.getConfig(TypeId.Type.Id_CspadConfig, address)
+  # Get a current configure object for the detector
+  config = getConfig(address, env)
   if config is None:
     return None
 
