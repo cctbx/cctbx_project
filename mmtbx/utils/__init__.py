@@ -2669,7 +2669,9 @@ class extract_box_around_model_and_map(object):
       # the input xray_structure
       assert_xray_structures_equal(
         x1 = xrs,
-        x2 = xray_structure)
+        x2 = xray_structure,
+        scattering_types=False,
+        eps = 1.e-3)
     # Make sure map has origin at (0,0,0), that is zero_based. Otherwise shift
     # origin.
     shift_needed = not \
