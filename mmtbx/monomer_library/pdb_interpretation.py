@@ -4839,6 +4839,7 @@ class process(object):
     if log is None:
       self.log = nul
     self.for_dihedral_reference=for_dihedral_reference
+    self.ss_manager = None
     self.all_chain_proxies = build_all_chain_proxies(
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
@@ -4952,17 +4953,17 @@ class process(object):
         from mmtbx.secondary_structure import process_structure
         t0=time.time()
         print >> self.log, "  Finding SS restraints..."
-        ss_manager = process_structure(
+        self.ss_manager = process_structure(
             params=ss_params,
             processed_pdb_file=self,
             grm=self._geometry_restraints_manager,
             log=self.log)
-        ss_manager.initialize(log=self.log)
+        self.ss_manager.initialize(log=self.log)
         t1=time.time()
         print >> self.log, "  Time for finding SS restraints: %.2f" % (t1-t0)
         print >> self.log, "  Creating SS restraints..."
         (hb_proxies, hb_angle_proxies, planarity_proxies,
-        parallelity_proxies) = ss_manager.create_all_new_restraints(
+        parallelity_proxies) = self.ss_manager.create_all_new_restraints(
             pdb_hierarchy=self.all_chain_proxies.pdb_hierarchy,
             grm=self._geometry_restraints_manager,
             log=self.log)
