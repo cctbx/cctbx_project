@@ -1295,6 +1295,8 @@ class ncs_group_object(object):
           exclude_h=None,
           exclude_d=None,
           restraint=True,
+          create_ncs_domain_pdb=False,
+          stem='', 
           log = None,
           show_ncs_phil=False):
     """
@@ -1345,7 +1347,23 @@ class ncs_group_object(object):
       xyz = pdb_hierarchy_asu.atoms().extract_xyz()
     # break groups with more than one chain in master
     ncs_groups_by_chains = {}
-    for gr in self.ncs_group_map.itervalues():
+
+    # for gr in self.ncs_group_map.itervalues(): old method 2015-05-03 TT
+    # run in same order as get_ncs_restraints_group_list() 
+    group_number = -1
+    self.ncs_domain_pdb_file_name_dict={} # 2015-05-03 TT
+    if not stem : stem =''
+    else: stem += '_'
+
+    for k in sort_dict_keys(self.ncs_group_map):
+      group_number += 1
+      gr = self.ncs_group_map[k]
+      if create_ncs_domain_pdb:
+        ncs_domain_pdb = stem+'group_'+str(group_number)+'.pdb' # 2015-05-03 TT
+        self.ncs_domain_pdb_file_name_dict[group_number]=ncs_domain_pdb # 2015-05-03 TT
+      else:
+        ncs_domain_pdb=None
+
       for gr_chains in gr[0]:
         # the same chain be be part of the master NCS in several groups
         if ncs_groups_by_chains.has_key(gr_chains):
@@ -1365,7 +1383,6 @@ class ncs_group_object(object):
             if not (new_chain_id in chains_in_copies):
               gr_dict[gr_key] = new_chain_id
               chains_in_copies.add(new_chain_id)
-    #
     sorted_group_keys = sorted(ncs_groups_by_chains)
     for gr_dict_key in sorted_group_keys:
       gr_dict = ncs_groups_by_chains[gr_dict_key]
@@ -1402,7 +1419,7 @@ class ncs_group_object(object):
         rmsd_list = rmsd_list,
         chain_residue_id = [chain_residue_id_list,chain_residue_range_list],
         residues_in_common_list = residues_in_common_list,
-        ncs_domain_pdb = None)
+        ncs_domain_pdb = ncs_domain_pdb)
     spec_object._ncs_obj = self
     if write:
       if file_name_prefix: file_name_prefix += '_'
@@ -1471,7 +1488,6 @@ class ncs_group_object(object):
 
   def create_ncs_domain_pdb_files(
           self,
-          stem,
           hierarchy=None,
           exclude_chains=None,
           temp_dir=''):
@@ -1481,20 +1497,24 @@ class ncs_group_object(object):
 
     Args:
       hierarchy: PDB hierarchy object
-      stem (str): NCS domains will be written to
-                  ncs_domain_pdb_stem + "group_" + nn
       exclude_chains (list): list of chain IDs to ignore when writing NCS to pdb
       temp_dir (str): temp directory path
     """
     if not hierarchy: hierarchy = self.hierarchy
     if not hierarchy: return None
     if self.number_of_ncs_groups == 0: return None
-    if not stem : stem =''
-    else: stem += '_'
     nrgl = self.get_ncs_restraints_group_list()
+
+    # 2015-05-03 save pdb file names in ncs objects
+    group_id_list = sort_dict_keys(self.ncs_group_map)
+    # for k in group_id_list:
+    #    v = self.ncs_group_map[k]
+
     for group_number in range(len(nrgl)):
       group_isel = nu.ncs_group_iselection(nrgl,group_number)
-      file_name = stem+'group_'+str(group_number)+'.pdb'
+      file_name=self.ncs_domain_pdb_file_name_dict[group_number] # 2015-05-03 TT
+      assert file_name # make sure we set it earlier 
+
       full_file_name=os.path.join(temp_dir,file_name)
       f=open(full_file_name,'w')
       ph = hierarchy.select(group_isel)
