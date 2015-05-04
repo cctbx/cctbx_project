@@ -50,6 +50,12 @@ def exercise_basic () :
   selected = proxies.proxy_select(n_seq=13,
     iselection=flex.size_t(range(9)))
   assert (selected.size() == 2)
+  assert list(selected[0].get_i_seqs()) == [0,1,2,3,4]
+  assert selected[0].residue_name == "ALA"
+  assert selected[0].residue_type == "general"
+  assert list(selected[1].get_i_seqs()) == [4,5,6,7,8]
+  assert selected[1].residue_name == "ALA"
+  assert selected[1].residue_type == "prepro"
 
 def exercise_lbfgs_simple (mon_lib_srv, ener_lib, verbose=False) :
   # three peptides:
@@ -204,7 +210,6 @@ def exercise_lbfgs_big (verbose=False) :
   if (file_name is None) :
     print "Skipping big test."
     return
-  # pdb_in = file_reader.any_file(file_name).file_object
   pdb_in = iotbx.pdb.input(source_info="peptide",
     file_name=file_name)
   o = benchmark_structure(pdb_in, verbose, 1.0)
