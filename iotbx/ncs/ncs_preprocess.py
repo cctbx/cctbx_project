@@ -1296,7 +1296,7 @@ class ncs_group_object(object):
           exclude_d=None,
           restraint=True,
           create_ncs_domain_pdb=False,
-          stem='', 
+          stem='',
           log = None,
           show_ncs_phil=False):
     """
@@ -1349,7 +1349,7 @@ class ncs_group_object(object):
     ncs_groups_by_chains = {}
 
     # for gr in self.ncs_group_map.itervalues(): old method 2015-05-03 TT
-    # run in same order as get_ncs_restraints_group_list() 
+    # run in same order as get_ncs_restraints_group_list()
     group_number = -1
     self.ncs_domain_pdb_file_name_dict={} # 2015-05-03 TT
     if not stem : stem =''
@@ -1513,7 +1513,7 @@ class ncs_group_object(object):
     for group_number in range(len(nrgl)):
       group_isel = nu.ncs_group_iselection(nrgl,group_number)
       file_name=self.ncs_domain_pdb_file_name_dict[group_number] # 2015-05-03 TT
-      assert file_name # make sure we set it earlier 
+      assert file_name # make sure we set it earlier
 
       full_file_name=os.path.join(temp_dir,file_name)
       f=open(full_file_name,'w')
