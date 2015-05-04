@@ -1359,7 +1359,7 @@ class ncs_group_object(object):
       group_number += 1
       gr = self.ncs_group_map[k]
       if create_ncs_domain_pdb:
-        ncs_domain_pdb = stem+'group_'+str(group_number)+'.pdb' # 2015-05-03 TT
+        ncs_domain_pdb = stem+'group_'+str(group_number+1)+'.pdb'# 2015-05-04 TT
         self.ncs_domain_pdb_file_name_dict[group_number]=ncs_domain_pdb # 2015-05-03 TT
       else:
         ncs_domain_pdb=None
