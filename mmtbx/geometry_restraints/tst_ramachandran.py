@@ -5,7 +5,6 @@ import mmtbx.geometry_restraints
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.monomer_library import server, pdb_interpretation
 from mmtbx.refinement import geometry_minimization
-from iotbx import file_reader
 import iotbx.pdb
 import cctbx.geometry_restraints
 import scitbx.lbfgs
