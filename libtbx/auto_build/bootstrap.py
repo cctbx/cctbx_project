@@ -1016,7 +1016,7 @@ class PhenixBuilder(CCIBuilder):
     self.add_test_command('libtbx.import_all_ext')
     self.add_test_command('cctbx_regression.test_nightly')
     # Windows convenience hack.
-    if 'win32' == self.platform:
+    if 'win32' == sys.platform:
       self.add_test_command('phenix_regression.test_nightly_windows')
     else:
       self.add_test_command('phenix_regression.test_nightly')
