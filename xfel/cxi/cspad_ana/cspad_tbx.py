@@ -825,7 +825,10 @@ def env_laser_status(env, laser_id):
     else:
       laser_on = pv_out
 
-    assert not (laser_on and laser_off)
+    if laser_on and laser_off:
+      print "WARNING: cannot determine state of laser %d, assuming it is off"%laser_id
+      return False
+
     return bool(laser_on)
 
 
