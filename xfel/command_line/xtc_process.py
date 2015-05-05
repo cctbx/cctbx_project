@@ -212,7 +212,7 @@ class InMemScript(DialsProcessScript):
 
       for i in xrange(len(mytimes)):
         ts = cspad_tbx.evt_timestamp((mytimes[i].seconds(),mytimes[i].nanoseconds()/1e6))
-        if params.debug.event_timestamp is not None and ts not in params.debug.event_timestamp:
+        if len(params.debug.event_timestamp) > 0 and ts not in params.debug.event_timestamp:
           continue
 
         evt = run.event(mytimes[i])
