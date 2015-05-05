@@ -141,7 +141,7 @@ other_params = iotbx.phil.parse("""
        .help = number of residues included on ends of segments
        .short_caption = buffer residues for other structure
 
-     standard_length = 5
+     standard_length = 8
        .type = int
        .help = standard length for other structure
        .short_caption = Standard length for other structure

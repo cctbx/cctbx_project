@@ -198,7 +198,7 @@ master_phil = iotbx.phil.parse("""
   other {
      include scope mmtbx.secondary_structure.find_ss_from_ca_params.other_params
 
-     library = 'others.pdb'
+     library = 'lib8.pdb'
        .type = path
        .help = Other library
        .short_caption = Other library
@@ -316,7 +316,18 @@ class segment_library:
     self.index_length=None
 
     # get the segments as model_info objects
-    if params.library is None: params.library=""
+    if params.library is None: 
+      params.library=""
+    elif not os.path.isfile(params.library):
+      import libtbx.load_env 
+      name=os.path.join('cctbx_project','mmtbx',
+         'secondary_structure','regularize_from_pdb_lib',params.library)
+      full_name=libtbx.env.find_in_repositories(
+         relative_path=name, test=os.path.exists)
+      if not full_name:
+        raise Sorry("Cannot find the library file %s" %(params.library))
+      params.library=full_name 
+
     self.models=get_and_split_model(pdb_in=params.library,out=out)
 
     # get information about the segments, if available
