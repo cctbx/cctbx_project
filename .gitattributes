@@ -2182,6 +2182,7 @@ mmtbx/secondary_structure/base_pairing.data -text
 mmtbx/secondary_structure/build/__init__.py -text
 mmtbx/secondary_structure/build/tst_1.py -text
 mmtbx/secondary_structure/build/tst_2.py -text
+mmtbx/secondary_structure/build/tst_3.py -text
 mmtbx/secondary_structure/dssp.hpp -text
 mmtbx/secondary_structure/dssp.py -text
 mmtbx/secondary_structure/dssp_ext.cpp -text
