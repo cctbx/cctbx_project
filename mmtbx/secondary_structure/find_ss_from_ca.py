@@ -7,7 +7,7 @@ from __future__ import division
 from iotbx.pdb import resseq_encode
 import iotbx.phil
 import os,sys
-from libtbx.utils import Sorry,null_out
+from libtbx.utils import Sorry
 from scitbx.matrix import col
 from scitbx.math import superpose, matrix
 from scitbx.array_family import flex
@@ -299,7 +299,7 @@ class model_info: # mostly just a holder
 
   def last_residue(self):
     return get_last_resno(self.hierarchy)
-  
+
   def length(self):
     return self.last_residue()-self.first_residue()+1
 
@@ -339,7 +339,7 @@ class segment:  # object for holding a helix or a strand or other
     self.diffs_single=None
     self.span=span # 3.5 for helices, 2 for strands, 0 for other
     self.target_rise=target_rise # 1.54 for helices, 3.3 strands
-    self.optimal_delta_length=optimal_delta_length # target change 
+    self.optimal_delta_length=optimal_delta_length # target change
         # in number of residues for this
         # segment (based on segment type and end-to-end distance)
     self.hierarchy=hierarchy # optional full hierarchy of this segment
@@ -383,7 +383,7 @@ class segment:  # object for holding a helix or a strand or other
     self.hierarchy=apply_atom_selection(atom_selection,hierarchy=self.hierarchy)
     self.start_resno=self.start_resno+start_pos
     self.get_sites_from_hierarchy()
-    if self.optimal_delta_length:  
+    if self.optimal_delta_length:
       self.optimal_delta_length=0 # we no longer know how long it should be
 
   def contains_ends(self,first_resno_of_chain=None,last_resno_of_chain=None):
@@ -874,7 +874,7 @@ class find_segment: # class to look for a type of segment
       # add to self.segments
       # cut into pieces of size self.standard_length
       if overall_length<=self.standard_length or \
-          self.extract_segments_from_pdb is not None: 
+          self.extract_segments_from_pdb is not None:
         start_end_list.append([overall_start_res,overall_end_res])
       else:
         for start_res_use in xrange(
@@ -1235,7 +1235,7 @@ class find_secondary_structure: # class to look for secondary structure
         hierarchy=get_pdb_hierarchy(text=open(params.input_files.pdb_in).read())
       else: # make a copy as we are going to modify hierarchy
         hierarchy=hierarchy.deep_copy()
-   
+
       # remove alt conformers
       from mmtbx.pdbtools import remove_alt_confs
       remove_alt_confs(hierarchy,always_keep_one_conformer=True)
@@ -1313,8 +1313,8 @@ class find_secondary_structure: # class to look for secondary structure
         start_resno=s.get_start_resno()
         first_pos=start_resno-first_res
         last_pos=s.get_end_resno()-first_res
-	already_used=is_used_list[first_pos:last_pos+1]
-        
+        already_used=is_used_list[first_pos:last_pos+1]
+
         if not True in already_used:  # cross of used ones
            new_start=0
            new_end=len(already_used)-1
@@ -1330,7 +1330,7 @@ class find_secondary_structure: # class to look for secondary structure
         # mark used residues
         for i in xrange(first_pos+new_start,first_pos+new_end+1):
           is_used_list[i]=True
-          
+
         #save it
         new_segment_list.append(s) # keep it if we get this far
       fg.segments=new_segment_list
@@ -1339,9 +1339,9 @@ class find_secondary_structure: # class to look for secondary structure
   def get_start_end(self,already_used=None):
     # goes from first available to end of available (not necessarily optimal)
     new_start=None
-    new_end=None 
+    new_end=None
     for i in xrange(len(already_used)):
-      if already_used[i]: 
+      if already_used[i]:
         if new_end is not None:
           return new_start,new_end
         else:
