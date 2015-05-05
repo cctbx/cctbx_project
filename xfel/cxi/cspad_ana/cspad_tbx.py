@@ -826,7 +826,7 @@ def env_laser_status(env, laser_id):
       laser_on = pv_out
 
     if laser_on and laser_off:
-      print "WARNING: cannot determine state of laser %d, assuming it is off"%laser_id
+      # According to LCLS staff, this means the laser is not plugged in
       return False
 
     return bool(laser_on)
