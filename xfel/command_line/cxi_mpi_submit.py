@@ -84,7 +84,7 @@ phil_scope = parse('''
       .help = "Directory for output files"
   }
   mp {
-    method = *mpi sge
+    method = *mpi sge pbs
       .type = choice
       .help = "Muliprocessing method"
     nproc = 1
@@ -93,6 +93,20 @@ phil_scope = parse('''
     queue = "psanacsq"
       .type = str
       .help = "Queue to submit MPI job to"
+    sge {
+      memory = 4g
+      .type = str
+      .help = "How much memory to request for an SGE job"
+    }
+    pbs {
+      env_script = None
+      .type = str
+      .help = "Path to bash script with extra environment settings. Ran after PSDM"
+      .help = "and cctbx are sourced."
+      walltime = "00:00:30"
+      .type = str
+      .help = "Maximum time this job will be scheduled to run for."
+    }
   }
 ''', process_includes=True)
 
@@ -241,8 +255,13 @@ class Script(object):
       f.write("%s\n"%command)
       f.close()
     elif params.mp.method == "sge":
-      command = "qsub -cwd -t 1-%d -o %s -q %s %s"%( \
-        params.mp.nproc, os.path.join(stdoutdir, "log.out"), params.mp.queue, submit_path)
+      if params.mp.nproc > 1:
+        nproc_str = "-t 1-%d"%params.mp.nproc
+      else:
+        nproc_str = ""
+
+      command = "qsub -cwd -N run%d %s -o %s -q %s %s"%( \
+        params.input.run_num, nproc_str, os.path.join(stdoutdir, "log.out"), params.mp.queue, submit_path)
 
       import libtbx.load_env
       setpaths_path = os.path.join(abs(libtbx.env.build_path), "setpaths.sh")
@@ -253,7 +272,7 @@ class Script(object):
       f = open(submit_path, 'w')
       f.write("#!/bin/bash\n")
       f.write("#$ -S /bin/bash\n")
-      f.write("#$ -l mem=4g\n")
+      f.write("#$ -l mem=%s\n"%params.mp.sge.memory)
       f.write("\n")
       f.write(". %s\n"%psdmenv_path)
       f.write(". %s\n"%setpaths_path)
@@ -267,6 +286,40 @@ class Script(object):
       f.write("cxi.xtc_process input.cfg=%s input.experiment=%s input.run_num=%d mp.method=sge %s 1> %s 2> %s\n"%( \
         config_path, params.input.experiment, params.input.run_num, extra_str,
         os.path.join(stdoutdir, "log_$SGE_TASK_ID.out"), os.path.join(stdoutdir, "log_$SGE_TASK_ID.err")))
+      f.close()
+    elif params.mp.method == "pbs":
+      command = "qsub -o %s %s"%(os.path.join(stdoutdir, "log.out"), submit_path)
+
+      import libtbx.load_env
+      setpaths_path = os.path.join(abs(libtbx.env.build_path), "setpaths.csh")
+      psdmenv_path = os.path.join(os.environ.get("SIT_ROOT", ""), "etc", "ana_env.csh")
+      assert os.path.exists(setpaths_path)
+      assert os.path.exists(psdmenv_path)
+
+      f = open(submit_path, 'w')
+      f.write("#!/bin/csh\n")
+      f.write("#PBS -q %s\n"%params.mp.queue)
+      f.write("#PBS -l mppwidth=%d\n"%params.mp.nproc)
+      f.write("#PBS -l walltime=%s\n"%params.mp.pbs.walltime)
+      f.write("#PBS -N run%d\n"%params.input.run_num)
+      f.write("#PBS -j oe\n")
+      f.write("\n")
+      f.write("cd $PBS_O_WORKDIR\n")
+      f.write("\n")
+      f.write("source %s\n"%psdmenv_path)
+      f.write("source %s\n"%setpaths_path)
+      f.write("sit_setup\n")
+      if params.mp.pbs.env_script is not None:
+        f.write("source %s\n"%params.mp.pbs.env_script)
+      f.write("\n")
+
+      if params.input.xtc_dir is None:
+        extra_str = ""
+      else:
+        extra_str = "input.xtc_dir=%s"%params.input.xtc_dir
+
+      f.write("aprun -n %d cxi.xtc_process input.cfg=%s input.experiment=%s input.run_num=%d mp.method=mpi %s\n"%( \
+        params.mp.nproc, config_path, params.input.experiment, params.input.run_num, extra_str))
       f.close()
     else:
       raise Sorry("Multiprocessing method %s not recognized"%params.mp.method)

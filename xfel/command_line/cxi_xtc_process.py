@@ -4,7 +4,7 @@ from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME cxi.xtc_process
 #
 from psana import *
-import os, sys
+import os, sys, socket
 from libtbx.utils import Sorry
 from libtbx.phil import parse
 from xfel.cxi.cspad_ana import cspad_tbx
@@ -187,7 +187,7 @@ class Script(object):
 
         if params.debug.write_debug_files:
           f = open(ts_path, "w")
-          f.write("about to process " + ts + "\n")
+          f.write("%s about to process %s\n"%(socket.gethostname(), ts))
           f.close()
 
         # load the event.  This will cause any modules to be run.
