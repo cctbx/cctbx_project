@@ -1261,7 +1261,7 @@ class find_secondary_structure: # class to look for secondary structure
           model.find_beta.show_summary(out=out)
         if model.find_other:
           model.find_other.show_summary(out=out)
- 
+
   def find_ss_in_model(self,params=None,model=None,out=sys.stdout):
     if params.find_ss_structure.find_alpha:
       model.find_alpha=find_alpha_helix(params=params.alpha,
