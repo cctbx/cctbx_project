@@ -3,10 +3,9 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 04/10/2015
-Description : Runs cctbx.xfel integration module within a signal/spot height and
-              area grid search. Also contains a final integration module, which
-              outputs an integration pickle file.
+Last Changed: 05/05/2015
+Description : Runs cctbx.xfel integration module either in grid-search or final
+              integration mode. Has options to output diagnostic visualizations
 '''
 
 import os
@@ -33,15 +32,27 @@ class Capturing(list):
     sys.stdout = self._stdout
 
 
-def organize_parameters(current_output_dir, spot_height, spot_area, gs_params):
+def organize_parameters(int_type, mp_entry, gs_params):
   """ Generates a list of additional arguments for integration per user input.
 
-      input: gs_params - user-defined parameters in PHIL format
-             current_output_dir - output folder for this integration run
-             spot_height, spot_area - spotfinding parameters
+      input: int_type - grid search, mosaicity scan or final
+             mp_entry - list of parameters for integration
+             gs_params - user-defined parameters in PHIL format
+
 
       output: advanced_args - list of additional arguments for integration
   """
+
+  current_img = mp_entry[0]
+  current_output_dir = mp_entry[1]
+  img_filename = os.path.basename(current_img)
+
+  sig_height = mp_entry[2]
+  spot_height = mp_entry[3]
+  spot_area = mp_entry[4]
+
+  current_file = os.path.normpath("{0}/int_h{1}_a{2}_{3}"\
+            "".format(current_output_dir, sig_height, spot_area, img_filename))
 
   # Generate additional parameters for chart output
   # for all charts
@@ -76,7 +87,30 @@ def organize_parameters(current_output_dir, spot_height, spot_area, gs_params):
   else:
     advanced_args = []
 
-  return advanced_args
+  if int_type == "grid":
+    if gs_params.advanced.save_tmp_pickles:
+      arguments = ["target={0}".format(gs_params.target),
+                   "distl.minimum_signal_height={0}".format(str(sig_height)),
+                   "distl.minimum_spot_height={0}".format(str(spot_height)),
+                   "distl.minimum_spot_area={0}".format(str(spot_area)),
+                   "indexing.completeness_pickle={0}".format(current_file)
+                   ] + list(advanced_args[1:])
+    else:
+      arguments = ["target={0}".format(gs_params.target),
+                   "distl.minimum_signal_height={0}".format(str(sig_height)),
+                   "distl.minimum_spot_height={0}".format(str(spot_height)),
+                   "distl.minimum_spot_area={0}".format(str(spot_area))
+                   ] + list(advanced_args[1:])
+  elif int_type == "final":
+    arguments = ["target={0}".format(gs_params.target),
+                 "distl.minimum_signal_height={0}".format(str(sig_height)),
+                 "distl.minimum_spot_height={0}".format(str(spot_height)),
+                 "distl.minimum_spot_area={0}".format(str(spot_area)),
+                 "indexing.completeness_pickle={0}".format(current_file),
+                 ] + list(advanced_args[1:])
+
+
+  return arguments
 
 
 def integrate_image(mp_entry, current_log_file, arguments, ptitle, n_int,
@@ -85,8 +119,6 @@ def integrate_image(mp_entry, current_log_file, arguments, ptitle, n_int,
       final integration function.
 
       input: mp_entry - list of parameters for integration
-               a. image used for integration
-               b. spotfinding parameters
              current_log_file - verbose integration log output by cctbx.xfel
              arguments - list of additional arguments for integration
              ptitle - title of the integration run, for progress bar
@@ -101,9 +133,9 @@ def integrate_image(mp_entry, current_log_file, arguments, ptitle, n_int,
   from xfel.cxi.display_spots import run_one_index_core
 
   current_img = mp_entry[0]
-  sig_height = mp_entry[1]
-  spot_height = mp_entry[2]
-  spot_area = mp_entry[3]
+  sig_height = mp_entry[2]
+  spot_height = mp_entry[3]
+  spot_area = mp_entry[4]
   int_final = None
   int_results = {}
 
@@ -214,12 +246,14 @@ def integrate_image(mp_entry, current_log_file, arguments, ptitle, n_int,
 
   return int_results, int_status
 
-def gs_integration(mp_entry, n_int, log_dir, gs_params):
-  """ Grid search unit. Calls on integrate_image() and saves the results in a
-      CSV-formatted file for the selection module. Optionally saves each
-      integrated pickle.
+def integration(int_type, mp_entry, n_int, log_dir, gs_params):
+  """ Integration unit. Calls on integrate_image(). For grid search and
+      mosaicity scan integration, saves the results in a CSV-formatted file for
+      the selection step. For final integration, outputs the integration result
+      in pickle format
 
-      input: mp_entry - list of parameters for integration
+      input: int_type - grid search, mosaicity scan, or final
+             mp_entry - list of parameters for integration
                a.   current_img - raw image to integrate
                b-d. signal height (b), spot height (c) and spot area (d)
                e.   current_output_dir - folder to output results
@@ -233,71 +267,61 @@ def gs_integration(mp_entry, n_int, log_dir, gs_params):
   logfile = '{}/iota.log'.format(log_dir)
 
   current_img = mp_entry[0]
+  current_output_dir = mp_entry[1]
   img_filename = os.path.basename(current_img)
   img_no_ext = img_filename.split('.')[0]
-  current_log_file = os.path.normpath("{0}/{1}.log".format(log_dir, img_no_ext))
 
-  sig_height = mp_entry[1]
-  spot_height = mp_entry[2]
-  spot_area = mp_entry[3]
-  current_output_dir = mp_entry[4]
+  sig_height = mp_entry[2]
+  spot_height = mp_entry[3]
+  spot_area = mp_entry[4]
   target = gs_params.target
 
   current_file = os.path.normpath("{0}/int_h{1}_a{2}_{3}"\
             "".format(current_output_dir, sig_height, spot_area, img_filename))
-  result_file = os.path.normpath("{0}/int_{1}.lst"\
-                                "".format(current_output_dir, img_no_ext))
+  current_log_file = os.path.normpath("{0}/{1}.log".format(log_dir, img_no_ext))
 
-  advanced_args = organize_parameters(current_output_dir, spot_height,
-                                      spot_area, gs_params)
+  if int_type == "grid":
+    prog_label = "GRID SEARCH"
+    result_file = os.path.normpath("{0}/int_gs_{1}.lst"\
+                                  "".format(current_output_dir, img_no_ext))
+  elif int_type == "final":
+    prog_label = "INTEGRATING"
 
-  # Add signal/spot height and spot area arguments, w/ target file
-  if gs_params.advanced.save_tmp_pickles:
-    arguments = ["target={0}".format(gs_params.target),
-                 "distl.minimum_signal_height={0}".format(str(sig_height)),
-                 "distl.minimum_spot_height={0}".format(str(spot_height)),
-                 "distl.minimum_spot_area={0}".format(str(spot_area)),
-                 "indexing.completeness_pickle={0}".format(current_file)
-                 ] + list(advanced_args[1:])
-  else:
-    arguments = ["target={0}".format(gs_params.target),
-                 "distl.minimum_signal_height={0}".format(str(sig_height)),
-                 "distl.minimum_spot_height={0}".format(str(spot_height)),
-                 "distl.minimum_spot_area={0}".format(str(spot_area))
-                 ] + list(advanced_args[1:])
-
-  # run integration
+  arguments = organize_parameters(int_type, mp_entry, gs_params)
 
   if gs_params.advanced.debug:
     debug_file = '{}/h{}_a{}_{}.debug'.format(gs_params.output, spot_height,
-                                                  spot_area, img_no_ext)
+                                              spot_area, img_no_ext)
     with open(debug_file, 'w') as f:
       f.write('')
 
+  # run integration
   results, int_status = integrate_image(mp_entry, current_log_file, arguments,
-                                       'GRID SEARCH', n_int, gs_params)
+                                        prog_label, n_int, gs_params)
 
   if gs_params.advanced.debug:
     debug_file = '{}/h{}_a{}_{}.debug'.format(gs_params.output, spot_height,
-                                                  spot_area, img_no_ext)
+                                              spot_area, img_no_ext)
     with open(debug_file, 'a') as f:
-      f.write('PROCESSED: {}, H = {}, A = {}'.format(current_img, spot_height, spot_area))
+      f.write('PROCESSED: {}, H = {}, A = {}'.format(current_img, spot_height,
+                                                     spot_area))
 
   # output results to log file
-  if results != {}:
-    if os.path.isfile(result_file):
-      with open(result_file, 'ab') as res_file:
-        fn = ['img', 'sih', 'sph', 'spa', 'sg', 'a', 'b', 'c', 'alpha', 'beta',
-              'gamma', 'strong', 'res', 'mos', 'mq']
-        writer = csv.DictWriter(res_file, fieldnames=fn)
-        writer.writerow(results)
-    else:
-      with open(result_file, 'wb') as res_file:
-        fn = ['img', 'sih', 'sph', 'spa', 'sg', 'a', 'b', 'c', 'alpha', 'beta',
-              'gamma', 'strong', 'res', 'mos', 'mq']
-        writer = csv.DictWriter(res_file, fieldnames=fn)
-        writer.writeheader()
-        writer.writerow(results)
+  if int_type == "grid":
+    if results != {}:
+      if os.path.isfile(result_file):
+        with open(result_file, 'ab') as res_file:
+          fn = ['img', 'sih', 'sph', 'spa', 'sg', 'a', 'b', 'c', 'alpha', 'beta',
+                'gamma', 'strong', 'res', 'mos', 'mq']
+          writer = csv.DictWriter(res_file, fieldnames=fn)
+          writer.writerow(results)
+      else:
+        with open(result_file, 'wb') as res_file:
+          fn = ['img', 'sih', 'sph', 'spa', 'sg', 'a', 'b', 'c', 'alpha', 'beta',
+                'gamma', 'strong', 'res', 'mos', 'mq']
+          writer = csv.DictWriter(res_file, fieldnames=fn)
+          writer.writeheader()
+          writer.writerow(results)
 
 
   grid_search_output = '{:^{width}}: H = {:<3}, ' \
@@ -307,69 +331,15 @@ def gs_integration(mp_entry, n_int, log_dir, gs_params):
 
   main_log(logfile, grid_search_output)
 
+  if int_type == "final":
+    if int_status != 'not integrated':
+      with open('{}/integrated.lst'.format(os.path.abspath(gs_params.output)),\
+                                                              'a') as f_int:
+          f_int.write('{}\n'.format(current_file))
 
-def final_integration(mp_entry, n_int, log_dir, gs_params):
-  """ Final integration unit. Calls on integrate_image() and saves integrated
-      pickle file. (May combine this with gs_integration, use an if statement.)
+    if gs_params.advanced.pred_img.flag == True:
+      viz.make_png(current_img, current_file)
+      if gs_params.advanced.pred_img.cv_vectors == True:
+        viz.cv_png(current_img, current_file)
 
-      input: mp_entry - list of parameters for integration
-               a.   current_img - raw image to integrate
-               b-d. signal height (b), spot height (c) and spot area (d)
-               e.   current_output_dir - folder to output results
-             n_int - total integration operations for progress bar
-             log_dir - general log folder
-             gs-params - general parameters in PHIL format
-
-      output: results - dictionary of integrated results
-              integration pickle
-  """
-
-  logfile = '{}/iota.log'.format(log_dir)
-
-  current_img = mp_entry[0]
-  img_filename = os.path.basename(current_img)
-  img_no_ext = img_filename.split('.')[0]
-
-  sig_height = mp_entry[1]
-  spot_height = mp_entry[2]
-  spot_area = mp_entry[3]
-  current_output_dir = mp_entry[4]
-  target = gs_params.target
-
-  current_file = os.path.normpath("{0}/int_h{1}_a{2}_{3}"\
-            "".format(current_output_dir, sig_height, spot_area, img_filename))
-  current_log_file = os.path.normpath("{0}/{1}.log".format(log_dir, img_no_ext))
-
-  advanced_args = organize_parameters(current_output_dir, spot_height,
-                                      spot_area, gs_params)
-
-  # Add signal/spot height and spot area arguments, w/ target file
-  arguments = ["target={0}".format(gs_params.target),
-               "distl.minimum_signal_height={0}".format(str(sig_height)),
-               "distl.minimum_spot_height={0}".format(str(spot_height)),
-               "distl.minimum_spot_area={0}".format(str(spot_area)),
-               "indexing.completeness_pickle={0}".format(current_file)
-               ] + list(advanced_args[1:])
-
-  # run integration
-  results, int_status = integrate_image(mp_entry, current_log_file, arguments,
-                                       'INTEGRATING', n_int, gs_params)
-
-  grid_search_output = '{:^{width}}: H = {:<3}, ' \
-                       'A = {:<3} ---> {}'.format(img_filename,
-                        sig_height, spot_area, int_status,
-                        width = len(img_filename) + 2)
-
-  if int_status != 'not integrated':
-    with open('{}/integrated.lst'.format(os.path.abspath(gs_params.output)),\
-                                                            'a') as f_int:
-        f_int.write('{}\n'.format(current_file))
-
-  if gs_params.advanced.pred_img.flag == True:
-    viz.make_png(current_img, current_file)
-    if gs_params.advanced.pred_img.cv_vectors == True:
-      viz.cv_png(current_img, current_file)
-
-  main_log(logfile, grid_search_output)
-
-  return results
+    return results
