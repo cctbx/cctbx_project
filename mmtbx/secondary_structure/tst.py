@@ -37,7 +37,6 @@ def exercise_protein () :
     sec_str_from_pdb_file = pdb_in.input.extract_secondary_structure()
     m = manager(pdb_hierarchy=pdb_hierarchy,
         sec_str_from_pdb_file=sec_str_from_pdb_file)
-    m.find_automatically(log=log)
     m.params.secondary_structure.protein.remove_outliers = False
     hbond_params = hbond.master_phil.extract()
     # build_proxies = m.create_hbond_proxies(hbond_params=hbond_params,
@@ -68,7 +67,6 @@ def exercise_protein () :
     if (run_ksdssp) :
       m = manager(pdb_hierarchy=pdb_hierarchy,
           sec_str_from_pdb_file=None)
-      m.find_automatically(log=log)
       m.params.secondary_structure.protein.remove_outliers = False
       hbond_params.restraint_type = "simple"
       build_proxies = m.create_hbond_proxies(
@@ -94,7 +92,6 @@ def exercise_nucleic_acids () :
     m = manager(pdb_hierarchy=pdb_hierarchy,
       sec_str_from_pdb_file=sec_str_from_pdb_file)
     log = null_out()
-    m.find_automatically(log=log)
     build_proxies = m.create_hbond_proxies(log=log)
     assert (build_proxies.proxies.size() == 70)
     db = pair_database()
@@ -115,7 +112,6 @@ def exercise_nucleic_acids () :
     m = manager(pdb_hierarchy=pdb_hierarchy,
       sec_str_from_pdb_file=sec_str_from_pdb_file)
     log = null_out()
-    m.find_automatically(log=log)
     assert (len(m.params.nucleic_acids.base_pair) == 4)
   else:
     print "Skipping base-pairing tests: reduce or probe module not available."
@@ -252,7 +248,6 @@ ATOM    123  CB  ALA A  98      -1.627   2.343  20.021  1.00 20.00           C
   m = manager(pdb_hierarchy=pdb_hierarchy,
     sec_str_from_pdb_file=None)
   m.params.secondary_structure.use_ksdssp = False
-  m.find_automatically(log=null_out())
   m.params.secondary_structure.protein.remove_outliers = False
   build_proxies = m.create_hbond_proxies(
     log=null_out(),

@@ -88,8 +88,6 @@ def exercise_geo_out():
   ss_manager = mmtbx.secondary_structure.manager(
       pdb_hierarchy=acp.pdb_hierarchy,
       params=custom_pars_extr.secondary_structure)
-  ss_manager.find_automatically(log=log)
-  ss_manager.initialize(log=log)
   grm = processed_pdb_file.geometry_restraints_manager(
       show_energies                = False,
       assume_hydrogens_all_missing = True,

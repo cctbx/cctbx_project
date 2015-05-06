@@ -109,6 +109,7 @@ tst_list = (
   "$D/invariant_domain.py",
   # restraints
   "$D/secondary_structure/tst.py",
+  "$D/secondary_structure/tst_segid.py",
   "$D/geometry_restraints/tst_hbond.py",
   "$D/geometry_restraints/tst_reference_coordinate.py",
   "$D/geometry_restraints/tst_reference_coordinate2.py",

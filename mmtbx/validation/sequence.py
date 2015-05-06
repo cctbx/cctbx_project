@@ -2,7 +2,7 @@ from __future__ import division
 from libtbx import easy_mp
 from libtbx import str_utils
 import libtbx.phil
-from libtbx.utils import Sorry, null_out
+from libtbx.utils import Sorry
 from libtbx import adopt_init_args, Auto
 import sys
 
@@ -302,7 +302,6 @@ class validation (object) :
         pdb_hierarchy=pdb_hierarchy,
         sec_str_from_pdb_file=None,
         assume_hydrogens_all_missing=None)
-      ssm.find_automatically(log=null_out())
       helix_selection = ssm.alpha_selection()
       sheet_selection = ssm.beta_selection()
     pdb_chains = []

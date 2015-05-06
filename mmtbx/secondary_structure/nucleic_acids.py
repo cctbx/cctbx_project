@@ -171,25 +171,30 @@ def additional_check_Gendron_2001(r_i, r_j):
     angle_d_ni_degrees < 40)
   return result
 
+def format_base_string(base_str, residue, segid=None):
+  segid_add = "and segid '%s'" % segid if segid is not None else ""
+  resid = "%s" % (
+      residue.resid() if hasattr(residue, "resid") else residue.parent().resid())
+  chain_add = "chain '%s' and " % residue.parent().parent().id
+  base = "%s = %s resid %s %s\n" % (base_str, chain_add,
+      resid, segid_add)
+  return base
+
 def make_phil_stacking_pair_record(residue1, residue2, params=None,
     add_segid=None, nesting_depth=1):
-  segid_add = ""
-  if add_segid is not None:
-    segid_add = "and segid %s" % add_segid
   res = "%sstacking_pair {\n" % ("  "*nesting_depth)
-  chain1_add = "chain '%s' and" % residue1.parent().parent().id
-  chain2_add = "chain '%s' and" % residue2.parent().parent().id
-  res += "%sbase1 = %s  resid %s %s\n" % ("  "*(nesting_depth+1),
-      chain1_add, residue1.resid(), segid_add)
-  res += "%sbase2 = %s resid %s %s\n" % ("  "*(nesting_depth+1),
-      chain2_add, residue2.resid(), segid_add)
+  res += "%s%s" % ("  "*(nesting_depth+1), format_base_string(
+      "base1", residue1, add_segid))
+  res += "%s%s" % ("  "*(nesting_depth+1), format_base_string(
+      "base2", residue2, add_segid))
+  # add defaults???
   if params is not None and len(params.stacking_pair) > 0:
     master_phil = iotbx.phil.parse(dna_rna_params_str)
     actual_params = master_phil.format(params)
-    w_phil = master_phil.fetch_diff(actual_params)
-    w_phil_ex = w_phil.extract()
-    if hasattr(w_phil_ex, 'stacking_pair'):
-      for k, v in w_phil_ex.stacking_pair[0].__dict__.iteritems():
+    w_phil = master_phil.fetch_diff(actual_params).extract()
+    # w_phil_ex = w_phil.extract()
+    if hasattr(w_phil, 'stacking_pair'):
+      for k, v in w_phil.stacking_pair[0].__dict__.iteritems():
         if not k.startswith('_'):
           res += "%s%s = %s\n" % ("  "*(nesting_depth+1), k, str(v))
   res += "%s}\n" % ("  "*nesting_depth)
@@ -197,18 +202,14 @@ def make_phil_stacking_pair_record(residue1, residue2, params=None,
 
 def make_phil_base_pair_record(residue1, residue2, params=None,
     saenger_class=None, add_segid=None, nesting_depth=1):
-  segid_add = ""
-  if add_segid is not None:
-    segid_add = "and segid %s" % add_segid
   res = "%sbase_pair {\n" % ("  "*nesting_depth)
-  chain1_add = "chain '%s' and" % residue1.parent().parent().id
-  chain2_add = "chain '%s' and" % residue2.parent().parent().id
-  res += "%sbase1 = %s resid %s %s\n" % ("  "*(nesting_depth+1),
-      chain1_add, residue1.parent().resid(), segid_add)
-  res += "%sbase2 = %s resid %s %s\n" % ("  "*(nesting_depth+1),
-      chain2_add, residue2.parent().resid(), segid_add)
+  res += "%s%s" % ("  "*(nesting_depth+1), format_base_string(
+      "base1", residue1, add_segid))
+  res += "%s%s" % ("  "*(nesting_depth+1), format_base_string(
+      "base2", residue2, add_segid))
   if saenger_class is not None:
     res += "%ssaenger_class = %d\n" % ("  "*(nesting_depth+1), saenger_class)
+  # add defaults???
   if params is not None and len(params.base_pair) > 0:
     master_phil = iotbx.phil.parse(dna_rna_params_str)
     actual_params = master_phil.format(params)

@@ -63,11 +63,13 @@ master_phil = iotbx.phil.parse("""
 """ % potential_phil)
 
 class ramachandran_manager(object):
-  def __init__ (self, pdb_hierarchy, atom_selection, params, log=sys.stdout,
+  def __init__ (self, pdb_hierarchy, atom_selection, params=None, log=sys.stdout,
       proxies=None, tables=None, initialize=True):
     assert pdb_hierarchy is not None
-    assert params is not None
     adopt_init_args(self, locals())
+    if params is None:
+      params = master_phil.fetch().extract()
+    self.params = params
     if initialize:
       if(self.params.rama_potential == "oldfield"):
         self.tables = ramachandran_plot_data()

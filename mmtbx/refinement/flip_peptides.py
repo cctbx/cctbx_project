@@ -5,7 +5,6 @@ from __future__ import division
 
 from mmtbx.refinement import fit_rotamers
 import libtbx.phil
-import cStringIO
 import sys
 
 local_fix_params_str = fit_rotamers.local_fix_params_str
@@ -402,7 +401,6 @@ def run(fmodel,
       real_space_gradients_delta=fmodel.f_obs().d_min()/4,
       max_iterations=params.residue_iteration.real_space_refine_max_iterations)
     secondary_structure.pdb_hierarchy = pdb_hierarchy
-    secondary_structure.find_automatically(log=cStringIO.StringIO())
     alpha_selection = secondary_structure.helix_selection(alpha_only=True)
     if (params.skip_approximate_helices) :
       cache = pdb_hierarchy.atom_selection_cache()
