@@ -61,15 +61,16 @@ class ShellCommand(object):
       # XXX use shutil rather than rm which is not platform independent
       for dir in command[2:]:
         if os.path.exists(dir):
+          print 'Deleting directory : %s' % dir
           shutil.rmtree(dir)
-        return
+      return
     try:
       #print "workdir, os.getcwd =", workdir, os.getcwd()
       #if not os.path.isabs(command[0]):
         # executable path isn't located relative to workdir
       #  command[0] = os.path.join(workdir, command[0])
       p = subprocess.Popen(
-        args= command,
+        args=command,
         cwd=workdir,
         stdout=sys.stdout,
         stderr=sys.stderr
@@ -614,7 +615,6 @@ class Builder(object):
     if sys.platform == "win32": # we can't currently compile cbflib for Windows
       return list(set(self.LIBTBX + self.LIBTBX_EXTRA) - set(['cbflib']))
     return self.LIBTBX + self.LIBTBX_EXTRA
-
 
   def add_init(self):
     pass
