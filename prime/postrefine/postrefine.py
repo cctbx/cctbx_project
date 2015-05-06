@@ -182,7 +182,7 @@ class postref_handler(object):
       try:
         asu_contents = {}
         if iparams.n_residues is None:
-          asu_volume = iparams.target_unit_cell.volume()/float(observations.space_group().order_z())
+          asu_volume = observations.unit_cell().volume()/float(observations.space_group().order_z())
           number_carbons = asu_volume/18.0
         else:
           number_carbons = iparams.n_residues * 5.35
@@ -193,27 +193,28 @@ class postref_handler(object):
         if wp.wilson_b < 0:
           return None, 'Image rejected from scaling'
 
-        normalised = observations_as_f.normalised_amplitudes(asu_contents, wilson_plot=wp)
-        normalised_f_obs = normalised.array()
-        centric_flags = normalised_f_obs.centric_flags()
-        select_flags = flex.bool([False]*len(normalised_f_obs.indices()))
-        i_f_obs = 0
-        for centric_flag in centric_flags.data():
-          if centric_flag:
-            e_thres = 4.89
-          else:
-            e_thres = 3.72
-          if normalised_f_obs.data()[i_f_obs] < e_thres:
-            select_flags[i_f_obs] = True
-          i_f_obs += 1
+        if iparams.flag_outlier_rejection:
+          normalised = observations_as_f.normalised_amplitudes(asu_contents, wilson_plot=wp)
+          normalised_f_obs = normalised.array()
+          centric_flags = normalised_f_obs.centric_flags()
+          select_flags = flex.bool([False]*len(normalised_f_obs.indices()))
+          i_f_obs = 0
+          for centric_flag in centric_flags.data():
+            if centric_flag:
+              e_thres = 4.89
+            else:
+              e_thres = 3.72
+            if normalised_f_obs.data()[i_f_obs] < e_thres:
+              select_flags[i_f_obs] = True
+            i_f_obs += 1
 
-        if len(select_flags.select(select_flags == True)) < len(observations.indices()) \
-        and iparams.flag_output_verbose:
-          print 'Outliers detected: ', len(observations.indices())-len(select_flags.select(select_flags == True)), ' reflections rejected.'
-        observations = observations.select(select_flags)
-        alpha_angle_obs = alpha_angle_obs.select(select_flags)
-        spot_pred_x_mm = spot_pred_x_mm.select(select_flags)
-        spot_pred_y_mm = spot_pred_y_mm.select(select_flags)
+          if len(select_flags.select(select_flags == True)) < len(observations.indices()) \
+          and iparams.flag_output_verbose:
+            print 'Outliers detected: ', len(observations.indices())-len(select_flags.select(select_flags == True)), ' reflections rejected.'
+          observations = observations.select(select_flags)
+          alpha_angle_obs = alpha_angle_obs.select(select_flags)
+          spot_pred_x_mm = spot_pred_x_mm.select(select_flags)
+          spot_pred_y_mm = spot_pred_y_mm.select(select_flags)
 
       except Exception:
         return None, 'Warning: problem with Wilson B-factor - continue.'
@@ -652,4 +653,3 @@ def read_input(args):
   from mod_input import process_input
   iparams, txt_out_input = process_input(args)
   return iparams, txt_out_input
-
