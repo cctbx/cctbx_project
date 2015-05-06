@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 04/07/2015
+Last Changed: 05/05/2015
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes warnings in case of detected non-isomorphism
               and other anomalies that require a more careful processing
@@ -76,7 +76,6 @@ def print_results(clean_results, gs_range, logfile):
              gs_range - range of the grid search
 
   """
-
   images = [results['img'] for results in clean_results]
   spot_heights = [results['sph'] for results in clean_results]
   spot_areas = [results['spa'] for results in clean_results]
@@ -145,39 +144,36 @@ def print_summary(gs_params, n_img, logfile, iota_version, now):
   with (open ('{0}/logs/progress.log'.format(gs_params.output), 'r')) as plog:
     prog_content = plog.read()
 
-  summary.append('raw images processed:         {}'.format(n_img))
+  summary.append('raw images processed:                     {}'.format(n_img))
 
   if os.path.isfile('{0}/not_integrated.lst'.format(os.path.abspath(gs_params.output))):
     with open('{0}/not_integrated.lst'.format(os.path.abspath(gs_params.output)),
               'r') as int_fail_list:
       int_fail_list_contents = int_fail_list.read()
       int_fail_count = len(int_fail_list_contents.splitlines())
+    summary.append('raw images not integrated:                {}'.format(int_fail_count))
 
   if os.path.isfile('{0}/prefilter_fail.lst'.format(os.path.abspath(gs_params.output))):
     with open('{0}/prefilter_fail.lst'.format(os.path.abspath(gs_params.output)),
             'r') as bad_int_list:
       bad_int_list_contents = bad_int_list.read()
       bad_int_count = len(bad_int_list_contents.splitlines())
+    summary.append('images failed prefilter:                 {}'.format(bad_int_count))
 
-  if os.path.isfile('{0}/selected.lst'.format(os.path.abspath(gs_params.output))):
-    with open('{0}/selected.lst'.format(os.path.abspath(gs_params.output)),
+  if os.path.isfile('{0}/gs_selected.lst'.format(os.path.abspath(gs_params.output))):
+    with open('{0}/gs_selected.lst'.format(os.path.abspath(gs_params.output)),
               'r') as sel_list:
       sel_list_contents = sel_list.read()
-      sel_count = len(sel_list_contents.splitlines())
+      sel_gs_count = len(sel_list_contents.splitlines())
+    summary.append('images in grid search selection:          {}'.format(sel_gs_count))
 
   if os.path.isfile('{0}/integrated.lst'.format(os.path.abspath(gs_params.output))):
     with open('{0}/integrated.lst'.format(os.path.abspath(gs_params.output)),
               'r') as final_list:
       final_list_contents = final_list.read()
       final_count = len(final_list_contents.splitlines())
+    summary.append('final integrated pickles:                 {}'.format(final_count))
 
-  summary.append('raw images not integrated:    {}'.format(int_fail_count))
-
-  if gs_params.flag_prefilter == True:
-    summary.append('images failed prefilter:      {}'.format(bad_int_count))
-
-  summary.append('images in selection:          {}'.format(sel_count))
-  summary.append('final integrated pickles:     {}'.format(final_count))
   summary.append('\n\nIOTA version {0}'.format(iota_version))
 
   for item in summary:
