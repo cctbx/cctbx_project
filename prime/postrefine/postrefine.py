@@ -9,6 +9,7 @@ from mod_results import postref_results
 from cctbx.crystal import symmetry
 import math
 from scitbx.matrix import sqr
+from cctbx import statistics
 
 class postref_handler(object):
   '''
@@ -60,7 +61,7 @@ class postref_handler(object):
           (fy*((np.cos(phi_angle_obs)**2)+((np.sin(phi_angle_obs)**2)*np.cos(bragg_angle_obs)**2))))
         I_prime = observations.data()/P
         sigI_prime =observations.sigmas()/P
-        observations_LP_corrected = observations.customized_copy(data=flex.double(I_prime),
+        observations = observations.customized_copy(data=flex.double(I_prime),
                                                     sigmas=flex.double(sigI_prime))
 
     #set observations with target space group - !!! required for correct
@@ -172,9 +173,50 @@ class postref_handler(object):
 
       observations = observations.customized_copy(indices=miller_indices,
           data=I_set, sigmas=sigI_set)
-      alpha_angle_obs = alpha_angle_obs_set
-      spot_pred_x_mm = spot_pred_x_mm_set
-      spot_pred_y_mm = spot_pred_y_mm_set
+      alpha_angle_obs = alpha_angle_obs_set[:]
+      spot_pred_x_mm = spot_pred_x_mm_set[:]
+      spot_pred_y_mm = spot_pred_y_mm_set[:]
+
+
+    if iparams.flag_apply_b_by_frame:
+      try:
+        asu_contents = {}
+        if iparams.n_residues is None:
+          asu_volume = iparams.target_unit_cell.volume()/float(observations.space_group().order_z())
+          number_carbons = asu_volume/18.0
+        else:
+          number_carbons = iparams.n_residues * 5.35
+        asu_contents.setdefault('C', number_carbons)
+        observations_as_f = observations.as_amplitude_array()
+        binner_template_asu = observations_as_f.setup_binner(auto_binning=True)
+        wp = statistics.wilson_plot(observations_as_f, asu_contents, e_statistics=True)
+        if wp.wilson_b < 0:
+          return None, 'Image rejected from scaling'
+
+        normalised = observations_as_f.normalised_amplitudes(asu_contents, wilson_plot=wp)
+        normalised_f_obs = normalised.array()
+        centric_flags = normalised_f_obs.centric_flags()
+        select_flags = flex.bool([False]*len(normalised_f_obs.indices()))
+        i_f_obs = 0
+        for centric_flag in centric_flags.data():
+          if centric_flag:
+            e_thres = 4.89
+          else:
+            e_thres = 3.72
+          if normalised_f_obs.data()[i_f_obs] < e_thres:
+            select_flags[i_f_obs] = True
+          i_f_obs += 1
+
+        if len(select_flags.select(select_flags == True)) < len(observations.indices()) \
+        and iparams.flag_output_verbose:
+          print 'Outliers detected: ', len(observations.indices())-len(select_flags.select(select_flags == True)), ' reflections rejected.'
+        observations = observations.select(select_flags)
+        alpha_angle_obs = alpha_angle_obs.select(select_flags)
+        spot_pred_x_mm = spot_pred_x_mm.select(select_flags)
+        spot_pred_y_mm = spot_pred_y_mm.select(select_flags)
+
+      except Exception:
+        return None, 'Warning: problem with Wilson B-factor - continue.'
 
     if iparams.flag_replace_sigI:
       observations = observations.customized_copy(sigmas=flex.sqrt(observations.data()))
@@ -478,14 +520,33 @@ class postref_handler(object):
     observations_non_polar_sel = self.get_observations_non_polar(observations_original_sel,
                                                                  polar_hkl)
     observations_non_polar = self.get_observations_non_polar(observations_original, polar_hkl)
+
     uc_params = observations_original.unit_cell().parameters()
     from mod_leastsqr import calc_spot_radius
     r0 = calc_spot_radius(sqr(crystal_init_orientation.reciprocal_matrix()),
                                           observations_original_sel.indices(), wavelength)
 
+    #calculate first G
     G = mean_of_mean_I/np.median(observations_original_sel.data())
     B = 0
     stats = (0,0,0,0,0,0,0,0,0,0)
+    if iparams.flag_apply_b_by_frame:
+      try:
+        asu_contents = {}
+        if iparams.n_residues is None:
+          asu_volume = iparams.target_unit_cell.volume()/float(observations_non_polar.space_group().order_z())
+          number_carbons = asu_volume/18.0
+        else:
+          number_carbons = iparams.n_residues * 5.35
+        asu_contents.setdefault('C', number_carbons)
+        observations_as_f = observations_non_polar.as_amplitude_array()
+        binner_template_asu = observations_as_f.setup_binner(auto_binning=True)
+        wp = statistics.wilson_plot(observations_as_f, asu_contents, e_statistics=True)
+        G = wp.wilson_intensity_scale_factor
+        B = wp.wilson_b
+      except Exception:
+        print 'Error'
+        return None, 'Warning: problem in mean scaling - continue.'
 
 
     from mod_leastsqr import calc_partiality_anisotropy_set
@@ -502,6 +563,20 @@ class postref_handler(object):
                                                           crystal_init_orientation, spot_pred_x_mm, spot_pred_y_mm,
                                                           detector_distance_mm, iparams.partiality_model,
                                                           iparams.flag_beam_divergence)
+
+    if iparams.flag_plot_expert:
+      n_bins = 20
+      binner = observations_original.setup_binner(n_bins=n_bins)
+      binner_indices = binner.bin_indices()
+      avg_partiality_init = flex.double()
+      avg_rs_init = flex.double()
+      avg_rh_init = flex.double()
+      one_dsqr_bin = flex.double()
+      for i in range(1,n_bins+1):
+        i_binner = (binner_indices == i)
+        if len(observations_original.data().select(i_binner)) > 0:
+          print binner.bin_d_range(i)[1], np.mean(partiality_init.select(i_binner)), np.mean(rs_init.select(i_binner)), np.mean(rh_init.select(i_binner)), len(partiality_init.select(i_binner))
+
 
     refined_params = np.array([G,B,rotx,roty,ry,rz,r0,re,uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5]])
 
@@ -561,7 +636,7 @@ def calc_avg_I_cpp(group_no, group_id_list, miller_index, miller_indices_ori, I,
   return avg_I_result
 
 def write_output(miller_indices_merge, I_merge, sigI_merge, stat_all,
-                   I_even, I_odd, iparams, uc_mean, wavelength_mean,
+                   I_two_halves_tuple, iparams, uc_mean, wavelength_mean,
                    output_mtz_file_prefix, avg_mode):
 
   #results is a list of postref_results objects
@@ -569,7 +644,7 @@ def write_output(miller_indices_merge, I_merge, sigI_merge, stat_all,
   inten_scaler = intensities_scaler()
   miller_array_merge, txt_out = inten_scaler.write_output(miller_indices_merge, \
                                             I_merge, sigI_merge, stat_all, \
-                                            I_even, I_odd, iparams, uc_mean, \
+                                            I_two_halves_tuple, iparams, uc_mean, \
                                             wavelength_mean, output_mtz_file_prefix, avg_mode)
   return miller_array_merge, txt_out
 
@@ -577,3 +652,4 @@ def read_input(args):
   from mod_input import process_input
   iparams, txt_out_input = process_input(args)
   return iparams, txt_out_input
+

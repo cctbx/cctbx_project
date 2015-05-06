@@ -31,7 +31,7 @@ from cctbx.crystal_orientation import crystal_orientation, basis_type
 
 def calc_full_refl(I_o_p_set, sin_theta_over_lambda_sq_set,
                    G, B, p_set, rs_set, flag_volume_correction):
-  I_o_full_set = ((G * np.exp(-2*B*sin_theta_over_lambda_sq_set) * I_o_p_set)/p_set)
+  I_o_full_set = I_o_p_set/(G * np.exp(-2*B*sin_theta_over_lambda_sq_set) * p_set)
   if flag_volume_correction:
     I_o_full_set = I_o_full_set * (4/3) * (rs_set)
 
@@ -51,8 +51,7 @@ def calc_spot_radius(a_star_matrix, miller_indices, wavelength):
     delta_S_all.append(delta_S)
 
   #spot_radius = math.sqrt(flex.mean(delta_S_all*delta_S_all))
-  spot_radius = np.std(delta_S_all)*1
-
+  spot_radius = np.std(delta_S_all)
   return spot_radius
 
 def coefficient_of_determination(y, y_model):
@@ -85,9 +84,9 @@ def calc_partiality_anisotropy_set(my_uc, rotx, roty, miller_indices, ry, rz, r0
           spot_pred_x_mm_set, spot_pred_y_mm_set):
     if flag_beam_divergence:
       rs = math.sqrt((ry * math.cos(alpha_angle))**2 + (rz * math.sin(alpha_angle))**2) + \
-        (abs(r0) + (abs(re)*math.tan(bragg_angle)))
+        (r0 + (re*math.tan(bragg_angle)))
     else:
-      rs = abs(r0) + (abs(re)*math.tan(bragg_angle))
+      rs = r0 + (re*math.tan(bragg_angle))
     h = col(miller_index)
     x = A_star * h
     S = x + S0
@@ -849,6 +848,7 @@ class leastsqr_handler(object):
       print 'CCref = %.4g'%(CC_final)
       print 'CCiso = %.4g'%(CC_iso_final)
 
+      """
       plt.subplot(221)
       plt.scatter(I_r_flex, I_o_init,s=10, marker='x', c='r')
       plt.title('CCinit=%5.2f Rinit=%5.2f'%(CC_init, R_init))
@@ -958,7 +958,8 @@ class leastsqr_handler(object):
       plt.xlabel('1/(d^2)')
       plt.ylabel('1/Angstrom')
       plt.show()
-
+      """
     xopt = (G, B, rotx, roty, ry, rz, r0, re,a,b,c,alpha,beta,gamma)
 
     return xopt, (SE_of_the_estimate, R_sq, CC_init, CC_final, R_init, R_final, R_xy_init, R_xy_final, CC_iso_init, CC_iso_final), len(I_ref_sel)
+

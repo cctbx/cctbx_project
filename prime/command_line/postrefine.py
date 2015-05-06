@@ -35,32 +35,6 @@ def postrefine_by_frame_mproc(frame_no, frame_files, iparams, miller_array_ref, 
   pres = prh.postrefine_by_frame(frame_no, frame_files[frame_no], iparams, miller_array_ref, pres_in, avg_mode)
   return pres
 
-def calc_average_I_mproc(group_no, group_id_list, miller_indices_all, miller_indices_ori_all,
-                     I_all, sigI_all, G_all, B_all, p_all, rs_all, wavelength_all,
-                     sin_theta_over_lambda_sq_all, SE_all, avg_mode,
-                     iparams, pickle_filename_all):
-  #select only this group
-  i_sel = (group_id_list == group_no)
-
-  i_seq = flex.int([i for i in range(len(I_all))])
-  i_seq_sel = i_seq.select(i_sel)
-  miller_indices = miller_indices_all.select(i_sel)
-  miller_indices_ori = miller_indices_ori_all.select(i_sel)
-  I = I_all.select(i_sel)
-  sigI = sigI_all.select(i_sel)
-  G = G_all.select(i_sel)
-  B = B_all.select(i_sel)
-  p_set = p_all.select(i_sel)
-  rs_set = rs_all.select(i_sel)
-  wavelength_set = wavelength_all.select(i_sel)
-  sin_theta_over_lambda_sq = sin_theta_over_lambda_sq_all.select(i_sel)
-  SE = SE_all.select(i_sel)
-  pickle_filename_set = [pickle_filename_all[i] for i in i_seq_sel]
-
-  from prime.postrefine import calc_avg_I
-  result = calc_avg_I(group_no, miller_indices[0], miller_indices_ori, I, sigI, G, B, p_set, rs_set, wavelength_set, sin_theta_over_lambda_sq, SE, avg_mode, iparams, pickle_filename_set)
-  return result
-
 def read_pickles(data):
   frame_files = []
   for p in data:
@@ -91,15 +65,13 @@ if (__name__ == "__main__"):
   #0 .read input parameters and frames (pickle files)
   from prime.postrefine import read_input
   iparams, txt_out_input = read_input(sys.argv[:1])
-  iparams.n_min_frames = 1
+  iparams.flag_volume_correction = False
+  iparams.flag_apply_b_by_frame = True
   print txt_out_input
   txt_out_verbose = 'Log verbose\n'+txt_out_input
 
   frame_files = read_pickles(iparams.data)
   frames = range(len(frame_files))
-
-  if len(frames) > iparams.n_min_frames:
-    iparams.flag_volume_correction = False
 
   #1. prepare reference miller array
   print 'Generating a reference set (will not be used if hklrefin is set)'
@@ -108,23 +80,26 @@ if (__name__ == "__main__"):
   miller_array_ref = None
   avg_mode = 'average'
   #Always generate the mean-intensity scaled set.
-  #Calculate <I> for each frame
-  def determine_mean_I_mproc_wrapper(arg):
-    return determine_mean_I_mproc(arg, frame_files, iparams, avg_mode)
 
-  determine_mean_I_result = pool_map(
-          iterable=frames,
-          func=determine_mean_I_mproc_wrapper,
-          processes=iparams.n_processors)
+  if iparams.flag_apply_b_by_frame:
+    mean_of_mean_I = 0
+  else:
+    #Calculate <I> for each frame
+    def determine_mean_I_mproc_wrapper(arg):
+      return determine_mean_I_mproc(arg, frame_files, iparams, avg_mode)
 
-  frames_mean_I = flex.double()
-  for result in determine_mean_I_result:
-    if result is not None:
-      mean_I, txt_out_result = result
-      if mean_I is not None:
-        frames_mean_I.append(mean_I)
+    determine_mean_I_result = pool_map(
+            iterable=frames,
+            func=determine_mean_I_mproc_wrapper,
+            processes=iparams.n_processors)
 
-  mean_of_mean_I = np.median(frames_mean_I)
+    frames_mean_I = flex.double()
+    for result in determine_mean_I_result:
+      if result is not None:
+        mean_I, txt_out_result = result
+        if mean_I is not None:
+          frames_mean_I.append(mean_I)
+    mean_of_mean_I = np.median(frames_mean_I)
 
   #use the calculate <mean_I> to scale each frame
   def scale_frame_by_mean_I_mproc_wrapper(arg):
@@ -151,45 +126,7 @@ if (__name__ == "__main__"):
       sigI_obs_all_sort, G_all_sort, B_all_sort, p_all_sort, rs_all_sort, wavelength_all_sort, \
       sin_sq_all_sort, SE_all_sort, uc_mean, wavelength_mean, pickle_filename_all_sort, txt_prep_out = prep_output
 
-      if iparams.averaging_engine == 'python' or iparams.averaging_engine == 'both':
-        def calc_average_I_mproc_wrapper(arg):
-          return calc_average_I_mproc(arg, group_id_list, miller_indices_all_sort, miller_indices_ori_all_sort, \
-                                      I_obs_all_sort, sigI_obs_all_sort, \
-                                      G_all_sort, B_all_sort, p_all_sort, rs_all_sort, wavelength_all_sort,\
-                                      sin_sq_all_sort, SE_all_sort, avg_mode, iparams, pickle_filename_all_sort)
-
-        print "About to average %d hkls"%cn_group
-
-        calc_average_I_result = pool_map(
-              iterable=range(cn_group),
-              func=calc_average_I_mproc_wrapper,
-              processes=iparams.n_processors)
-
-        miller_indices_merge = flex.miller_index()
-        I_merge = flex.double()
-        sigI_merge = flex.double()
-        stat_all = []
-        I_even = flex.double()
-        I_odd = flex.double()
-        txt_out_verbose += 'Mean-scaled partiality-corrected set\n'
-        txt_out_rejection = ''
-        for results in calc_average_I_result:
-          if results is not None:
-            miller_index, I_avg, sigI_avg, stat, I_avg_even, I_avg_odd, txt_obs_out, txt_reject_out = results
-            txt_out_verbose += txt_obs_out
-            txt_out_rejection += txt_reject_out
-
-            if math.isnan(stat[0]) or math.isinf(stat[0]) or math.isnan(stat[1]) or math.isinf(stat[1]):
-              dummy = 0
-            else:
-              miller_indices_merge.append(miller_index)
-              I_merge.append(I_avg)
-              sigI_merge.append(sigI_avg)
-              stat_all.append(stat)
-              I_even.append(I_avg_even)
-              I_odd.append(I_avg_odd)
-
-      if iparams.averaging_engine == 'cpp' or iparams.averaging_engine == 'both':
+      if True:
         from prime.postrefine import calc_avg_I_cpp
         calc_average_I_result = calc_avg_I_cpp(cn_group, group_id_list, miller_indices_all_sort,
                                                  miller_indices_ori_all_sort, I_obs_all_sort,
@@ -197,49 +134,39 @@ if (__name__ == "__main__"):
                                                  rs_all_sort, wavelength_all_sort, sin_sq_all_sort,
                                                  SE_all_sort, avg_mode, iparams, pickle_filename_all_sort)
 
-        miller_index, I_avg, sigI_avg, stat, I_avg_even, I_avg_odd, txt_obs_out, txt_reject_out = calc_average_I_result
-        miller_indices_merge2 = flex.miller_index()
-        I_merge2 = flex.double()
-        sigI_merge2 = flex.double()
-        stat_all2 = []
-        I_even2 = flex.double()
-        I_odd2 = flex.double()
-        if iparams.averaging_engine == 'cpp': # don't save the log twice if using 'both'
-          txt_out_verbose += 'Mean-scaled partiality-corrected set\n' + txt_obs_out
-          txt_out_rejection = txt_reject_out
+        miller_index, I_avg, sigI_avg, stat, I_avg_two_halves_tuple, txt_obs_out, txt_reject_out = calc_average_I_result
+        I_avg_even, I_avg_odd, I_avg_even_h, I_avg_odd_h, I_avg_even_k, I_avg_odd_k, I_avg_even_l, I_avg_odd_l = I_avg_two_halves_tuple
+        miller_indices_merge = flex.miller_index()
+        I_merge = flex.double()
+        sigI_merge = flex.double()
+        stat_all = []
+        I_even = flex.double()
+        I_odd = flex.double()
+        I_even_h = flex.double()
+        I_odd_h = flex.double()
+        I_even_k = flex.double()
+        I_odd_k = flex.double()
+        I_even_l = flex.double()
+        I_odd_l = flex.double()
+
+        txt_out_verbose += 'Mean-scaled partiality-corrected set\n' + txt_obs_out
+        txt_out_rejection = txt_reject_out
         for _i in xrange(len(miller_index)):
           if math.isnan(stat[0][_i]) or math.isinf(stat[0][_i]) or math.isnan(stat[1][_i]) or math.isinf(stat[1][_i]):
             dummy = 0
           else:
-            miller_indices_merge2.append(miller_index[_i])
-            I_merge2.append(I_avg[_i])
-            sigI_merge2.append(sigI_avg[_i])
-            stat_all2.append((stat[0][_i],stat[1][_i],stat[2][_i],stat[3][_i],stat[4][_i]))
-            I_even2.append(I_avg_even[_i])
-            I_odd2.append(I_avg_odd[_i])
-
-
-      if iparams.averaging_engine == 'both':
-        from libtbx.test_utils import approx_equal
-        assert [approx_equal(a,b,1e-20,out=None) for a, b in zip(miller_indices_merge, miller_indices_merge2)].count(True) == len(miller_indices_merge)
-        assert [approx_equal(a,b,1e-20,out=None) for a, b in zip(I_merge, I_merge2)].count(True) == len(I_merge)
-        assert [approx_equal(a,b,1e-20,out=None) for a, b in zip(sigI_merge, sigI_merge2)].count(True) == len(sigI_merge)
-        assert [approx_equal(a,b,1e-20,out=None) for a, b in zip(I_even, I_even2)].count(True) == len(I_even)
-        assert [approx_equal(a,b,1e-20,out=None) for a, b in zip(I_odd, I_odd2)].count(True) == len(I_odd)
-        assert [approx_equal(a,b,1e-20,out=None) for a, b in zip(stat_all[0], stat_all2[0])].count(True) == len(stat_all[0])
-        assert [approx_equal(a,b,1e-20,out=None) for a, b in zip(stat_all[1], stat_all2[1])].count(True) == len(stat_all[1])
-        assert [approx_equal(a,b,1e-20,out=None) for a, b in zip(stat_all[2], stat_all2[2])].count(True) == len(stat_all[2])
-        assert [approx_equal(a,b,1e-20,out=None) for a, b in zip(stat_all[3], stat_all2[3])].count(True) == len(stat_all[3])
-        assert [approx_equal(a,b,1e-20,out=None) for a, b in zip(stat_all[4], stat_all2[4])].count(True) == len(stat_all[4])
-        print "Averaging engines binary identical"
-
-      if iparams.averaging_engine == 'cpp':
-        miller_indices_merge = miller_indices_merge2
-        I_merge = I_merge2
-        sigI_merge = sigI_merge2
-        stat_all = stat_all2
-        I_even = I_even2
-        I_odd = I_odd2
+            miller_indices_merge.append(miller_index[i])
+            I_merge.append(I_avg[i])
+            sigI_merge.append(sigI_avg[i])
+            stat_all.append((stat[0][i],stat[1][i],stat[2][i],stat[3][i],stat[4][i]))
+            I_even.append(I_avg_even[i])
+            I_odd.append(I_avg_odd[i])
+            I_even_h.append(I_avg_even_h[i])
+            I_odd_h.append(I_avg_odd_h[i])
+            I_even_k.append(I_avg_even_k[i])
+            I_odd_k.append(I_avg_odd_k[i])
+            I_even_l.append(I_avg_even_l[i])
+            I_odd_l.append(I_avg_odd_l[i])
 
 
       f = open(iparams.run_no+'/rejections.txt', 'w')
@@ -249,7 +176,8 @@ if (__name__ == "__main__"):
       from prime.postrefine import write_output
       miller_array_ref, txt_merge_mean = write_output(miller_indices_merge,
                                                                       I_merge, sigI_merge,
-                                                                      stat_all, I_even, I_odd,
+                                                                      stat_all, (I_even, I_odd, I_even_h, I_odd_h,
+                                                                      I_even_k, I_odd_k, I_even_l, I_odd_l),
                                                                       iparams, uc_mean,
                                                                       wavelength_mean,
                                                                       iparams.run_no+'/mean_scaled',
@@ -293,17 +221,17 @@ if (__name__ == "__main__"):
   txt_merge_postref = ''
   postrefine_by_frame_result = None
   postrefine_by_frame_pres_list = []
-  for i in range(n_iters):
+  for i_iter in range(n_iters):
     miller_array_ref = miller_array_ref.generate_bijvoet_mates()
-    if i == (n_iters-1):
+    if i_iter == (n_iters-1):
       avg_mode = 'final'
     else:
       avg_mode = 'weighted'
 
-    if i > 0:
+    if i_iter > 0:
       iparams.b_refine_d_min = 0.5
 
-    _txt_merge_postref = 'Start post-refinement cycle '+str(i+1)+'\n'
+    _txt_merge_postref = 'Start post-refinement cycle '+str(i_iter+1)+'\n'
     _txt_merge_postref += 'Average mode: '+avg_mode+'\n'
     txt_merge_postref += _txt_merge_postref
     print _txt_merge_postref
@@ -338,46 +266,7 @@ if (__name__ == "__main__"):
         sigI_obs_all_sort, G_all_sort, B_all_sort, p_all_sort, rs_all_sort, wavelength_all_sort, \
         sin_sq_all_sort, SE_all_sort, uc_mean, wavelength_mean, pickle_filename_all_sort, txt_prep_out = prep_output
 
-        def calc_average_I_mproc_wrapper(arg):
-          return calc_average_I_mproc(arg, group_id_list, miller_indices_all_sort, miller_indices_ori_all_sort, \
-                                      I_obs_all_sort, sigI_obs_all_sort, \
-                                      G_all_sort, B_all_sort, p_all_sort, rs_all_sort, wavelength_all_sort, \
-                                      sin_sq_all_sort, SE_all_sort, avg_mode, iparams, pickle_filename_all_sort)
-        if iparams.averaging_engine == 'python' or iparams.averaging_engine == 'both':
-
-          print "About to average %d hkls"%cn_group
-
-          calc_average_I_result = pool_map(
-                iterable=range(cn_group),
-                func=calc_average_I_mproc_wrapper,
-                processes=iparams.n_processors)
-
-          miller_indices_merge = flex.miller_index()
-          I_merge = flex.double()
-          sigI_merge = flex.double()
-          stat_all = []
-          I_even = flex.double()
-          I_odd = flex.double()
-          txt_out_verbose += 'Post-refined merged set (cycle '+str(i+1)+')\n'
-          txt_out_rejection = ''
-          for results in calc_average_I_result:
-            if results is not None:
-              miller_index, I_avg, sigI_avg, stat, I_avg_even, I_avg_odd, txt_obs_out, txt_reject_out = results
-              txt_out_verbose += txt_obs_out
-              txt_out_rejection += txt_reject_out
-              if iparams.flag_output_verbose:
-                print txt_obs_out
-              if math.isnan(stat[0]) or math.isinf(stat[0]) or math.isnan(stat[1]) or math.isinf(stat[1]):
-                dummy = 0
-              else:
-                miller_indices_merge.append(miller_index)
-                I_merge.append(I_avg)
-                sigI_merge.append(sigI_avg)
-                stat_all.append(stat)
-                I_even.append(I_avg_even)
-                I_odd.append(I_avg_odd)
-
-        if iparams.averaging_engine == 'cpp' or iparams.averaging_engine == 'both':
+        if True:
           from prime.postrefine import calc_avg_I_cpp
           calc_average_I_result = calc_avg_I_cpp(cn_group, group_id_list, miller_indices_all_sort,
                                                    miller_indices_ori_all_sort, I_obs_all_sort,
@@ -385,50 +274,39 @@ if (__name__ == "__main__"):
                                                    rs_all_sort, wavelength_all_sort, sin_sq_all_sort,
                                                    SE_all_sort, avg_mode, iparams, pickle_filename_all_sort)
 
-          miller_index, I_avg, sigI_avg, stat, I_avg_even, I_avg_odd, txt_obs_out, txt_reject_out = calc_average_I_result
-          miller_indices_merge2 = flex.miller_index()
-          I_merge2 = flex.double()
-          sigI_merge2 = flex.double()
-          stat_all2 = []
-          I_even2 = flex.double()
-          I_odd2 = flex.double()
-          if iparams.averaging_engine == 'cpp': # don't save the log twice if using 'both'
-            txt_out_verbose += 'Post-refined merged set (cycle '+str(i+1)+')\n' + txt_obs_out
-            txt_out_rejection = txt_reject_out
+          miller_index, I_avg, sigI_avg, stat, I_avg_two_halves_tuple, txt_obs_out, txt_reject_out = calc_average_I_result
+          I_avg_even, I_avg_odd, I_avg_even_h, I_avg_odd_h, I_avg_even_k, I_avg_odd_k, I_avg_even_l, I_avg_odd_l = I_avg_two_halves_tuple
+          miller_indices_merge = flex.miller_index()
+          I_merge = flex.double()
+          sigI_merge = flex.double()
+          stat_all = []
+          I_even = flex.double()
+          I_odd = flex.double()
+          I_even_h = flex.double()
+          I_odd_h = flex.double()
+          I_even_k = flex.double()
+          I_odd_k = flex.double()
+          I_even_l = flex.double()
+          I_odd_l = flex.double()
+
+          txt_out_verbose += 'Post-refined merged set (cycle '+str(i_iter+1)+')\n' + txt_obs_out
+          txt_out_rejection = txt_reject_out
           for _i in xrange(len(miller_index)):
             if math.isnan(stat[0][_i]) or math.isinf(stat[0][_i]) or math.isnan(stat[1][_i]) or math.isinf(stat[1][_i]):
               dummy = 0
             else:
-              miller_indices_merge2.append(miller_index[_i])
-              I_merge2.append(I_avg[_i])
-              sigI_merge2.append(sigI_avg[_i])
-              stat_all2.append((stat[0][_i],stat[1][_i],stat[2][_i],stat[3][_i],stat[4][_i]))
-              I_even2.append(I_avg_even[_i])
-              I_odd2.append(I_avg_odd[_i])
-
-
-        if iparams.averaging_engine == 'both':
-          from libtbx.test_utils import approx_equal
-          assert [approx_equal(a,b,1e-20,out=None) for a, b in zip(miller_indices_merge, miller_indices_merge2)].count(True) == len(miller_indices_merge)
-          assert [approx_equal(a,b,1e-20,out=None) for a, b in zip(I_merge, I_merge2)].count(True) == len(I_merge)
-          assert [approx_equal(a,b,1e-20,out=None) for a, b in zip(sigI_merge, sigI_merge2)].count(True) == len(sigI_merge)
-          assert [approx_equal(a,b,1e-20,out=None) for a, b in zip(I_even, I_even2)].count(True) == len(I_even)
-          assert [approx_equal(a,b,1e-20,out=None) for a, b in zip(I_odd, I_odd2)].count(True) == len(I_odd)
-          assert [approx_equal(a,b,1e-20,out=None) for a, b in zip(stat_all[0], stat_all2[0])].count(True) == len(stat_all[0])
-          assert [approx_equal(a,b,1e-20,out=None) for a, b in zip(stat_all[1], stat_all2[1])].count(True) == len(stat_all[1])
-          assert [approx_equal(a,b,1e-20,out=None) for a, b in zip(stat_all[2], stat_all2[2])].count(True) == len(stat_all[2])
-          assert [approx_equal(a,b,1e-20,out=None) for a, b in zip(stat_all[3], stat_all2[3])].count(True) == len(stat_all[3])
-          assert [approx_equal(a,b,1e-20,out=None) for a, b in zip(stat_all[4], stat_all2[4])].count(True) == len(stat_all[4])
-          print "Averaging engines binary identical"
-
-        if iparams.averaging_engine == 'cpp':
-          miller_indices_merge = miller_indices_merge2
-          I_merge = I_merge2
-          sigI_merge = sigI_merge2
-          stat_all = stat_all2
-          I_even = I_even2
-          I_odd = I_odd2
-
+              miller_indices_merge.append(miller_index[i])
+              I_merge.append(I_avg[i])
+              sigI_merge.append(sigI_avg[i])
+              stat_all.append((stat[0][i],stat[1][i],stat[2][i],stat[3][i],stat[4][i]))
+              I_even.append(I_avg_even[i])
+              I_odd.append(I_avg_odd[i])
+              I_even_h.append(I_avg_even_h[i])
+              I_odd_h.append(I_avg_odd_h[i])
+              I_even_k.append(I_avg_even_k[i])
+              I_odd_k.append(I_avg_odd_k[i])
+              I_even_l.append(I_avg_even_l[i])
+              I_odd_l.append(I_avg_odd_l[i])
 
 
         f = open(iparams.run_no+'/rejections.txt', 'a')
@@ -438,9 +316,10 @@ if (__name__ == "__main__"):
         from prime.postrefine import write_output
         miller_array_pr, txt_merge_out = write_output(miller_indices_merge,
                                                                I_merge, sigI_merge, stat_all,
-                                                               I_even, I_odd, iparams, uc_mean,
+                                                               (I_even, I_odd, I_even_h, I_odd_h,
+                                                               I_even_k, I_odd_k, I_even_l, I_odd_l), iparams, uc_mean,
                                                                wavelength_mean,
-                                                               iparams.run_no+'/postref_cycle_'+str(i+1), avg_mode)
+                                                               iparams.run_no+'/postref_cycle_'+str(i_iter+1), avg_mode)
 
         miller_array_ref = miller_array_pr.deep_copy()
 
@@ -466,3 +345,4 @@ if (__name__ == "__main__"):
     f = open(iparams.run_no+'/log_verbose.txt', 'w')
     f.write(txt_out_verbose)
     f.close()
+
