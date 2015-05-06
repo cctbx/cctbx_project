@@ -8,6 +8,7 @@ import re
 import os.path as op
 import os
 import sys
+import tarfile
 
 # XXX CCTBX itself requires at least Python 2.5 (and some packages such as
 # Phenix require 2.7+), but this script is intended to bootstrap an
@@ -94,7 +95,11 @@ def untar (pkg_name, log=sys.stdout, verbose=False, change_ownership=False,
   elif (pkg_name.endswith("bz2")) :
     cmd = ["tar", "jx%s%sf" % (owner_flag, verbose_flag) ]
   args = cmd + [pkg_name]
-  call(" ".join(args), log)
+  #call(" ".join(args), log)
+  tar = tarfile.open(pkg_name)
+  tar.extractall()
+  tar.close()
+
   dir_name = re.sub(".tar", "",
                re.sub(".tgz", "",
                  re.sub(".tar.gz", "",
@@ -265,7 +270,11 @@ def archive_dist (dir_name, create_tarfile=True, use_shutil=True) :
   find_and_delete_files(local_path, file_name=".git")
   find_and_delete_files(local_path, file_name=".sconsign")
   if (create_tarfile) :
-    call("tar -czf %s.tar.gz %s" % (module_name, module_name), log=sys.stdout)
+    #call("tar -czf %s.tar.gz %s" % (module_name, module_name), log=sys.stdout)
+    tar = tarfile.open("%s.tar.gz" %module_name, "w:gz")
+    tar.add(module_name)
+    tar.close()
+
     tar_file = op.join(os.getcwd(), module_name + ".tar.gz")
     assert op.isfile(tar_file)
     shutil.rmtree(local_path)
