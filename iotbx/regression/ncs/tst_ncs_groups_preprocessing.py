@@ -50,8 +50,8 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
         write_ncs_domain_pdb=True,
         ncs_domain_pdb_stem=prefix)
 
-      fn_gr0 = prefix + '_group_0.pdb'
-      fn_gr1 = prefix + '_group_1.pdb'
+      fn_gr0 = prefix + '_group_1.pdb'
+      fn_gr1 = prefix + '_group_2.pdb'
 
       self.assertEqual(obj.ncs_obj.number_of_ncs_groups,2)
       pdb_inp_0 = pdb.input(file_name=fn_gr0)
