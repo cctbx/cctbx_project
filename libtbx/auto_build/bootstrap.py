@@ -89,7 +89,8 @@ class ShellCommand(object):
 
 # Download URL to local file
 class Downloader(object):
-  def download_to_file(self, url, file, log=sys.stdout, status=True):
+  def download_to_file(self, url, file, log=sys.stdout, status=True,
+                        buffer_until_file_downloaded=True):
     """Downloads a URL to file. Returns the file size.
        Returns -1 if the downloaded file size does not match the expected file
        size
@@ -133,11 +134,18 @@ class Downloader(object):
     received = 0
     block_size = 8192
     progress = 1
+    if not buffer_until_file_downloaded:
+      # Buffering a large file is very inefficient and python is likely to crash
+      # Allow for writing the file immediately so we can empty the buffer
+      f2 = open(file, "wb")
     data = ""
     while 1:
       block = socket.read(block_size)
       received += len(block)
       data += block
+      if not buffer_until_file_downloaded:
+        f2.write(data)
+        data = ""
       if status and (file_size > 0):
         while (100 * received / file_size) > progress:
           progress += 1
@@ -153,13 +161,15 @@ class Downloader(object):
     else:
       log.write("%d kB\n" % (received / 1024))
     log.flush()
-
+    if not buffer_until_file_downloaded:
+      f2.close()
     socket.close()
     # Do not write out file during the download. If a download temporarily fails we
     # may still have a clean, working (yet older) copy of the file.
-    f = open(file, "wb")
-    f.write(data)
-    f.close()
+    if buffer_until_file_downloaded:
+      f = open(file, "wb")
+      f.write(data)
+      f.close()
 
     if (file_size > 0) and (file_size != received):
       return -1

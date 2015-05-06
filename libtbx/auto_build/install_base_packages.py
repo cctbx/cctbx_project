@@ -123,7 +123,11 @@ class installer (object) :
         winpythonpkg = WIN64PYTHON_PKG
       else:
         winpythonpkg = WIN32PYTHON_PKG
+      # Buffering this quite large file is very inefficient and python may crash
+      # so write the file immediately
+      self.fetch_package.buffer_until_file_downloaded=False
       self.fetch_package(pkg_name=winpythonpkg, pkg_url=BASE_CCI_PKG_URL)
+      self.fetch_package.buffer_until_file_downloaded=True
       winpython = zipfile.ZipFile(os.path.join(self.tmp_dir, winpythonpkg), 'r')
       members = winpython.namelist()
       for zipinfo in members:
