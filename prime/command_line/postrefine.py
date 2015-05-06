@@ -151,8 +151,8 @@ if (__name__ == "__main__"):
 
         txt_out_verbose += 'Mean-scaled partiality-corrected set\n' + txt_obs_out
         txt_out_rejection = txt_reject_out
-        for _i in xrange(len(miller_index)):
-          if math.isnan(stat[0][_i]) or math.isinf(stat[0][_i]) or math.isnan(stat[1][_i]) or math.isinf(stat[1][_i]):
+        for i in xrange(len(miller_index)):
+          if math.isnan(stat[0][i]) or math.isinf(stat[0][i]) or math.isnan(stat[1][i]) or math.isinf(stat[1][i]):
             dummy = 0
           else:
             miller_indices_merge.append(miller_index[i])
@@ -291,8 +291,8 @@ if (__name__ == "__main__"):
 
           txt_out_verbose += 'Post-refined merged set (cycle '+str(i_iter+1)+')\n' + txt_obs_out
           txt_out_rejection = txt_reject_out
-          for _i in xrange(len(miller_index)):
-            if math.isnan(stat[0][_i]) or math.isinf(stat[0][_i]) or math.isnan(stat[1][_i]) or math.isinf(stat[1][_i]):
+          for i in xrange(len(miller_index)):
+            if math.isnan(stat[0][i]) or math.isinf(stat[0][i]) or math.isnan(stat[1][i]) or math.isinf(stat[1][i]):
               dummy = 0
             else:
               miller_indices_merge.append(miller_index[i])
