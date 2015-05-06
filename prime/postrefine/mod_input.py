@@ -17,10 +17,6 @@ title = None
   .type = str
   .help = Title of the run.
   .multiple = False
-averaging_engine = both *python cpp
-  .type = choice
-  .help = Which avearging engine to use, python or cpp.  If both, then both are \
-    used and the results are compared to each other to verify binary identity
 icering
   .help = "Allowing exclusion of icering."
 {
@@ -193,6 +189,9 @@ target_crystal_system = None
   .type = str
   .help = Target crystal system
   .optional = True
+n_residues = None
+  .type = int
+  .help = No. of amino acid residues.
 indexing_ambiguity
   .help = "Parameters used in resolving indexing ambiguity"
 {
@@ -245,16 +244,9 @@ pixel_size_mm = None
 frame_accept_min_cc = 0.25
   .type = float
   .help = CC cut-off for the rejection of frames before merging.
-n_residues = None
-  .type = int
-  .help = No. of residues in asymmetric unit.
-  .optional = False
-flag_apply_b_by_frame = False
+flag_apply_b_by_frame = True
   .type = bool
-  .help = Set to True to apply B-factor on each frame.
-wilson_b_max = 999
-  .type = float
-  .help = Maximum B-factor (calculated on each still) allowed.
+  .help = Set to False to dismiss B-factor checking.
 b_refine_d_min = 99
   .type = float
   .help = Minimum resolution.
@@ -263,7 +255,7 @@ partiality_model = Lorentzian
   .help = Your choice of partiality model: Lorentzian (default), Disc, Kabsch, or Rossmann.
 flag_LP_correction = True
   .type = bool
-  .help = Do Lorentz-factor and polarization correction.
+  .help = Do polarization correction.
 flag_volume_correction = True
   .type = bool
   .help = Do volume correction.
@@ -286,8 +278,11 @@ flag_output_verbose = False
 flag_replace_sigI = False
   .type = bool
   .help = Replace to experimental errors I with sqrt(I).
+percent_cone_fraction = 5.0
+  .type = float
+  .help = Perent used to select reflections inside a cone centering on each crystal axis.
 iotacc
-  .help = "Parameters used in iotacc selection."
+  .help = "Parameters used in prime.iotacc selection."
 {
   set_id = None
     .type = str
@@ -319,6 +314,26 @@ iotacc
 }
 """)
 
+txt_help = """**************************************************************************************************
+
+Prime: post-refinement and merging.
+
+For more detail and citation, see Enabling X-ray free electron laser crystallography
+for challenging biological systems from a limited number of crystals
+"DOI: http://dx.doi.org/10.7554/eLife.05421".
+
+Usage: prime.postrefine parameter.phil
+
+With this command, you can specify all parameters required by prime in your parameter.phil file.
+To obtain the template of these parameters, you can perform a dry run (simply run prime.postrefine).
+You can then change the values of the parameters.
+
+For feedback, please contact monarin@stanford.edu.
+
+**************************************************************************************************
+
+List of available parameters:
+"""
 
 def process_input(argv=None):
   if argv == None:
@@ -327,10 +342,16 @@ def process_input(argv=None):
   user_phil = []
   for arg in sys.argv[1:]:
     if os.path.isfile(arg):
+
       user_phil.append(iotbx.phil.parse(open(arg).read()))
     elif (os.path.isdir(arg)) :
       user_phil.append(iotbx.phil.parse("""data=\"%s\"""" % arg))
     else :
+      print arg
+      if arg == '--help' or arg == '-h':
+        print txt_help
+        master_phil.show(attributes_level=1)
+        exit()
       try :
         user_phil.append(iotbx.phil.parse(arg))
       except RuntimeError, e :
@@ -341,7 +362,7 @@ def process_input(argv=None):
 
   if (len(params.data) == 0):
     master_phil.show()
-    raise Usage("No data")
+    raise Usage("Use the above list of parameters to generate your input file (.phil). For more information, run prime.postrefine -h.")
 
   #generate run_no folder
   if os.path.exists(params.run_no):

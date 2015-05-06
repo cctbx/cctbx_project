@@ -43,6 +43,12 @@ namespace prime {
     scitbx::af::shared<int> multiplicity;
     scitbx::af::shared<double> I_avg_even;
     scitbx::af::shared<double> I_avg_odd;
+    scitbx::af::shared<double> I_avg_even_h;
+    scitbx::af::shared<double> I_avg_odd_h;
+    scitbx::af::shared<double> I_avg_even_k;
+    scitbx::af::shared<double> I_avg_odd_k;
+    scitbx::af::shared<double> I_avg_even_l;
+    scitbx::af::shared<double> I_avg_odd_l;
     std::string txt_obs_out;
     std::string txt_reject_out;
   };
@@ -106,6 +112,59 @@ namespace prime {
       flag_output_verbose_ = false;
     }
 
+    void calc_avg_two_halves(
+      const scitbx::af::shared<double>& I_full_group,
+      const scitbx::af::shared<double>& SE_norm,
+      const Average_Mode& avg_mode_,
+      double& I_avg_even,
+      double& I_avg_odd
+      )
+    {
+      double I_even_sum = 0;
+      double I_odd_sum = 0;
+      double I_even_weighted_sum = 0;
+      double I_odd_weighted_sum = 0;
+      double SE_norm_even_sum = 0;
+      double SE_norm_odd_sum = 0;
+      I_avg_even = 0;
+      I_avg_odd = 0;
+      if (I_full_group.size() > 2) {
+        for (int i = 0; i < I_full_group.size(); i++) {
+          if (i % 2 == 0) {
+            I_even_sum += I_full_group[i];
+            I_even_weighted_sum += I_full_group[i] * SE_norm[i];
+            SE_norm_even_sum += SE_norm[i];
+          }
+          else {
+            I_odd_sum += I_full_group[i];
+            I_odd_weighted_sum += I_full_group[i] * SE_norm[i];
+            SE_norm_odd_sum += SE_norm[i];
+          }
+        }
+
+        if (I_full_group.size() % 2 == 1) {
+          I_odd_sum += I_full_group[I_full_group.size()-1];
+          I_odd_weighted_sum += I_full_group[I_full_group.size()-1] * SE_norm[SE_norm.size()-1];
+          SE_norm_odd_sum += SE_norm[SE_norm.size()-1];
+        }
+
+        if (avg_mode_ == Weighted || avg_mode_ == Final) {
+          I_avg_even = I_even_weighted_sum/SE_norm_even_sum;
+          I_avg_odd = I_odd_weighted_sum/SE_norm_odd_sum;
+        }
+        else {
+          SCITBX_ASSERT(avg_mode_ == Average);
+          int size;
+          if(I_full_group.size() % 2 == 1)
+            size = (I_full_group.size()+1)/2;
+          else
+            size = I_full_group.size()/2;
+          I_avg_even = I_even_sum/size;
+          I_avg_odd = I_odd_sum/size;
+        }
+      }
+    }
+
     static const double CONST_SE_MIN_WEIGHT;
     static const double CONST_SE_MAX_WEIGHT;
     static const double CONST_SIG_I_FACTOR;
@@ -135,10 +194,10 @@ namespace prime {
         double tmp2 = I_[x];
         double tmp3 = p_set_[x];
         if (x==0)
-          printf("Workaround tmp1*tmp2: %70.70f\n",tmp1*tmp2); // Without this printf, I_full comes out differently between
+          printf("c++ check overflow: %70.70f\n",tmp1*tmp2); // Without this printf, I_full comes out differently between
                                                                // python and cpp in the highest significant digits. No idea why.
-        I_full.push_back((tmp1*tmp2)/tmp3);
-        sigI_full.push_back(((G_[x] * std::exp(-2*B_[x]*sin_theta_over_lambda_sq_[x]) * sigI_[x])/p_set_[x]));
+        I_full.push_back(tmp2/(tmp1*tmp3));
+        sigI_full.push_back(sigI_[x]/(G_[x] * std::exp(-2*B_[x]*sin_theta_over_lambda_sq_[x]) * p_set_[x]));
         mosaic_radian_set.push_back(2 * rs_set_[x] * wavelength_set_[x]);
       }
 
@@ -334,48 +393,44 @@ namespace prime {
         //separate the observations into two groups
         double I_avg_even = 0;
         double I_avg_odd = 0;
-        double I_even_sum = 0;
-        double I_odd_sum = 0;
-        double I_even_weighted_sum = 0;
-        double I_odd_weighted_sum = 0;
-        double SE_norm_even_sum = 0;
-        double SE_norm_odd_sum = 0;
+        double I_avg_even_h = 0;
+        double I_avg_odd_h = 0;
+        double I_avg_even_k = 0;
+        double I_avg_odd_k = 0;
+        double I_avg_even_l = 0;
+        double I_avg_odd_l = 0;
 
-        if (multiplicity > 1) {
-          for (int i = 0; i < I_full_group.size(); i++) {
-            if (i % 2 == 0) {
-              I_even_sum += I_full_group[i];
-              I_even_weighted_sum += I_full_group[i] * SE_norm[i];
-              SE_norm_even_sum += SE_norm[i];
-            }
-            else {
-              I_odd_sum += I_full_group[i];
-              I_odd_weighted_sum += I_full_group[i] * SE_norm[i];
-              SE_norm_odd_sum += SE_norm[i];
-            }
+        calc_avg_two_halves(I_full_group, SE_norm, avg_mode_, I_avg_even, I_avg_odd);
+
+        //select reflections on h axis
+        scitbx::af::shared<double> I_full_group_h;
+        scitbx::af::shared<double> SE_norm_h;
+        scitbx::af::shared<double> I_full_group_k;
+        scitbx::af::shared<double> SE_norm_k;
+        scitbx::af::shared<double> I_full_group_l;
+        scitbx::af::shared<double> SE_norm_l;
+        for (int i = 0; i < I_full_group.size(); i++) {
+          if (current_index_ori[i][0] == 0) {
+            I_full_group_h.push_back(I_full_group[i]);
+            SE_norm_h.push_back(SE_norm[i]);
           }
 
-          if (I_full_group.size() % 2 == 1) {
-            I_odd_sum += I_full_group[I_full_group.size()-1];
-            I_odd_weighted_sum += I_full_group[I_full_group.size()-1] * SE_norm[SE_norm.size()-1];
-            SE_norm_odd_sum += SE_norm[SE_norm.size()-1];
+          if (current_index_ori[i][1] == 0) {
+            I_full_group_k.push_back(I_full_group[i]);
+            SE_norm_k.push_back(SE_norm[i]);
           }
 
-          if (avg_mode_ == Weighted || avg_mode_ == Final) {
-            I_avg_even = I_even_weighted_sum/SE_norm_even_sum;
-            I_avg_odd = I_odd_weighted_sum/SE_norm_odd_sum;
-          }
-          else {
-            SCITBX_ASSERT(avg_mode_ == Average);
-            int size;
-            if(I_full_group.size() % 2 == 1)
-              size = (I_full_group.size()+1)/2;
-            else
-              size = I_full_group.size()/2;
-            I_avg_even = I_even_sum/size;
-            I_avg_odd = I_odd_sum/size;
+          if (current_index_ori[i][2] == 0) {
+            I_full_group_l.push_back(I_full_group[i]);
+            SE_norm_l.push_back(SE_norm[i]);
           }
         }
+
+
+        calc_avg_two_halves(I_full_group_h, SE_norm_h, avg_mode_, I_avg_even_h, I_avg_odd_h);
+        calc_avg_two_halves(I_full_group_k, SE_norm_k, avg_mode_, I_avg_even_k, I_avg_odd_k);
+        calc_avg_two_halves(I_full_group_l, SE_norm_l, avg_mode_, I_avg_even_l, I_avg_odd_l);
+
 
         // save the results for this group
         results.miller_index.push_back(current_index);
@@ -388,6 +443,12 @@ namespace prime {
         results.multiplicity.push_back(multiplicity);
         results.I_avg_even.push_back(I_avg_even);
         results.I_avg_odd.push_back(I_avg_odd);
+        results.I_avg_even_h.push_back(I_avg_even_h);
+        results.I_avg_odd_h.push_back(I_avg_odd_h);
+        results.I_avg_even_k.push_back(I_avg_even_k);
+        results.I_avg_odd_k.push_back(I_avg_odd_k);
+        results.I_avg_even_l.push_back(I_avg_even_l);
+        results.I_avg_odd_l.push_back(I_avg_odd_l);
 
         if (flag_output_verbose_) {
           txt_obs_out << "    I_o        sigI_o    G      B     Eoc      rs    lambda rocking(deg) W     I_full     sigI_full\n";
@@ -500,6 +561,24 @@ namespace boost_python { namespace {
       .add_property("I_avg_odd",
         make_getter(&average_result_store::I_avg_odd, rbv()),
         make_setter(&average_result_store::I_avg_odd, dcp()))
+      .add_property("I_avg_even_h",
+        make_getter(&average_result_store::I_avg_even_h, rbv()),
+        make_setter(&average_result_store::I_avg_even_h, dcp()))
+      .add_property("I_avg_odd_h",
+        make_getter(&average_result_store::I_avg_odd_h, rbv()),
+        make_setter(&average_result_store::I_avg_odd_h, dcp()))
+      .add_property("I_avg_even_k",
+        make_getter(&average_result_store::I_avg_even_k, rbv()),
+        make_setter(&average_result_store::I_avg_even_k, dcp()))
+      .add_property("I_avg_odd_k",
+        make_getter(&average_result_store::I_avg_odd_k, rbv()),
+        make_setter(&average_result_store::I_avg_odd_k, dcp()))
+      .add_property("I_avg_even_l",
+        make_getter(&average_result_store::I_avg_even_l, rbv()),
+        make_setter(&average_result_store::I_avg_even_l, dcp()))
+      .add_property("I_avg_odd_l",
+        make_getter(&average_result_store::I_avg_odd_l, rbv()),
+        make_setter(&average_result_store::I_avg_odd_l, dcp()))
       .add_property("txt_obs_out",
         make_getter(&average_result_store::txt_obs_out, rbv()),
         make_setter(&average_result_store::txt_obs_out, dcp()))
