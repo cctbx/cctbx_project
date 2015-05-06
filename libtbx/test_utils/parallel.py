@@ -101,23 +101,35 @@ def reconstruct_test_name (command) :
   # command =  libtbx.python "/file.py" 90000
   #            \-- ignore --/ \--m1--/ \-m2-/
   if m:
-    filtered_parameter = re.sub(r"[^A-Za-z0-9\-]", '', m.group(2))
+    file = m.group(1)
+    parameter = m.group(2).lstrip()
+    filtered_parameter = re.sub(r"[^A-Za-z0-9\-]", '', parameter)
     if filtered_parameter == '':
-      test_name = m.group(1)
+      test_name = file
     else:
-      test_name = "%s.%s" % (m.group(1), filtered_parameter)
+      test_name = "%s.%s" % (file, filtered_parameter)
+
     pattern2  = '^/?(.*?/(modules/(cctbx\_project/|xia2/Test/)?))?(.*)/([^/&]*?)(.py)?$'
-    m2 = re.search(pattern2, m.group(1))
+    m2 = re.search(pattern2, file)
     if m2:
 #     print "M (%s) (%s) (%s) (%s) (%s) (%s)" % (m2.group(1,2,3,4,5,6))
-      import string
-      dashtodot = string.maketrans('/', '.')
-      test_name = m2.group(5).translate(dashtodot)
-      # append sanitized (filtered) parameter to test name so that each test has again a unique name
-      if filtered_parameter != '':
+      test_name = m2.group(5).replace('/', '.')
+      test_class = m2.group(4).replace('/', '.')
+      is_python_dot_identifier = r"^([^\d\W]\w*)\.([^\d\W]\w*)\Z"
+      unittest = re.search(is_python_dot_identifier, parameter)
+      if unittest:
+        # if parameter consists of two joined python identifiers, use it as test name
+        test_class = "%s.%s" % (test_class, test_name)
+        test_name = parameter
+#        alternatively, to bump the class up one level:
+#        test_class = "%s.%s.%s" % (test_class, test_name, unittest.group(1))
+#        test_name = unittest.group(2)
+      elif filtered_parameter != '':
+        # otherwise append sanitized (filtered) parameter to test name
+        # so that each test has again a unique name
         test_name = "%s.%s" % (test_name, filtered_parameter)
-      return (m2.group(4).translate(dashtodot), test_name)
-    return (m.group(1), test_name)
+      return (test_class, test_name)
+    return (file, test_name)
   return (command, command)
 
 class run_command_list (object) :
