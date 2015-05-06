@@ -4950,15 +4950,17 @@ class process(object):
       # def_ss_params.secondary_structure = self.all_chain_proxies.params.secondary_structure
       ss_params = self.all_chain_proxies.params.secondary_structure
       if ss_params.enabled:
-        from mmtbx.secondary_structure import process_structure
+        from mmtbx.secondary_structure import manager
         t0=time.time()
         print >> self.log, "  Finding SS restraints..."
-        self.ss_manager = process_structure(
+        self.ss_manager = manager(
+            pdb_hierarchy=self.all_chain_proxies.pdb_hierarchy,
+            geometry_restraints_manager=self._geometry_restraints_manager,
+            sec_str_from_pdb_file=self.all_chain_proxies.extract_secondary_structure(),
             params=ss_params,
-            processed_pdb_file=self,
-            grm=self._geometry_restraints_manager,
+            assume_hydrogens_all_missing=None,
+            verbose=-1,
             log=self.log)
-        self.ss_manager.initialize(log=self.log)
         t1=time.time()
         print >> self.log, "  Time for finding SS restraints: %.2f" % (t1-t0)
         print >> self.log, "  Creating SS restraints..."

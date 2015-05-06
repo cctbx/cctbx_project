@@ -736,7 +736,6 @@ def find_tls (params,
     sec_str_from_pdb_file        = None,
     params                       = None,
     assume_hydrogens_all_missing = None)
-  ssm.find_automatically(log=out)
   alpha_h_selection = ssm.alpha_selection()
   secondary_structure_selection = ssm.alpha_selection() | \
       ssm.beta_selection() | ssm.base_pair_selection()
@@ -744,7 +743,7 @@ def find_tls (params,
     assert secondary_structure_selection.size() == u_cart.size()
   else:
     assert secondary_structure_selection.size() == u_iso.size()
-  ssm.show_summary(out=out)
+  ssm.show_summary(log=out)
   chains_and_residue_selections, secondary_structure_selection = chains_and_atoms(
     pdb_hierarchy                 = pdb_hierarchy,
     secondary_structure_selection = secondary_structure_selection,
