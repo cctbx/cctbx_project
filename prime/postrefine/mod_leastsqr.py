@@ -848,7 +848,7 @@ class leastsqr_handler(object):
       print 'CCref = %.4g'%(CC_final)
       print 'CCiso = %.4g'%(CC_iso_final)
 
-      """
+
       plt.subplot(221)
       plt.scatter(I_r_flex, I_o_init,s=10, marker='x', c='r')
       plt.title('CCinit=%5.2f Rinit=%5.2f'%(CC_init, R_init))
@@ -958,8 +958,7 @@ class leastsqr_handler(object):
       plt.xlabel('1/(d^2)')
       plt.ylabel('1/Angstrom')
       plt.show()
-      """
+
     xopt = (G, B, rotx, roty, ry, rz, r0, re,a,b,c,alpha,beta,gamma)
 
     return xopt, (SE_of_the_estimate, R_sq, CC_init, CC_final, R_init, R_final, R_xy_init, R_xy_final, CC_iso_init, CC_iso_final), len(I_ref_sel)
-

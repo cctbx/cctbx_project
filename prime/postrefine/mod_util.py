@@ -388,7 +388,7 @@ class intensities_scaler(object):
 
     #remove outliers
     I_bin_sigma_filter = 10
-    n_bin_sigma_filter = 20
+    n_bin_sigma_filter = 200
     n_rejection_iterations = iparams.n_rejection_cycle
 
     for i_rejection in range(n_rejection_iterations):
