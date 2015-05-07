@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 05/05/2015
+Last Changed: 05/06/2015
 Description : Runs cctbx.xfel integration module either in grid-search or final
               integration mode. Has options to output diagnostic visualizations
 '''
@@ -25,11 +25,15 @@ class Capturing(list):
   """
   def __enter__(self):
     self._stdout = sys.stdout
-    sys.stdout = self._stringio = StringIO()
+    self._stderr = sys.stderr
+    sys.stdout = self._stringio_stdout = StringIO()
+    sys.stderr = self._stringio_stderr = StringIO()
     return self
   def __exit__(self, *args):
-    self.extend(self._stringio.getvalue().splitlines())
+    self.extend(self._stringio_stdout.getvalue().splitlines())
     sys.stdout = self._stdout
+    self.extend(self._stringio_stderr.getvalue().splitlines())
+    sys.stderr = self._stderr
 
 
 def organize_parameters(int_type, mp_entry, gs_params):
@@ -222,10 +226,10 @@ def integrate_image(mp_entry, current_log_file, arguments, ptitle, n_int,
     if ptitle == 'INTEGRATING':
         index_logfile.write("{:-^100}\n{:-^100}\n{:-^100}\n"\
                             "".format("", " FINAL INTEGRATION: ", ""\
-                            "H={:>2}, A={:>2} ".format(spot_height, spot_area)))
+                            "H ={:>2}, A ={:>2} ".format(spot_height, spot_area)))
     else:
       index_logfile.write("{:-^100}\n".format(" INTEGRATION: "\
-                        "H={:>2}, A={:>2} ".format(spot_height, spot_area)))
+                        "H ={:>2}, A ={:>2} ".format(spot_height, spot_area)))
     for item in index_log:
       index_logfile.write("{}\n".format(item))
 
