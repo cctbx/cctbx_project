@@ -10,7 +10,7 @@ import sys
 def get_master_phil():
   return iotbx.phil.parse(input_string="""
     include scope mmtbx.validation.molprobity_cmdline_phil_str
-    data_version = 500
+    data_version = 8000
       .type = str
       .help = '''Choose which dataset to use, Top \'8000\' or \'500\' '''
     show_errors = False
@@ -29,7 +29,7 @@ Options:
   model=input_file        input PDB file
   outliers_only=False   only print outliers
   verbose=False         verbose text output
-  data_version=500      Give \'500\' to use the Top500 data and
+  data_version=8000     Give \'500\' to use the Top500 data and
                         \'8000\' to use the Top8000 data.
 
 Example:

@@ -30,10 +30,10 @@ def exercise_rotalyze():
   out = StringIO()
   r.show_old_output(out=out, verbose=False)
   output = out.getvalue()
-  assert output.count("OUTLIER") == 226, output.count("OUTLIER")
-  assert output.count(":") == 904, output.count(":")
+  assert output.count("OUTLIER") == 246, output.count("OUTLIER")
+  assert output.count(":") == 984, output.count(":")
   output_lines = output.splitlines()
-  assert len(output_lines) == 113
+  assert len(output_lines) == 123
   for lines in output_lines:
     assert float(lines[12:15]) <= 1.0
 
@@ -48,17 +48,19 @@ def exercise_rotalyze():
     for outlier in r.results :
       assert (len(outlier.xyz) == 3)
     output = out.getvalue()
-    assert output.count("OUTLIER") == 226
+    assert output.count("OUTLIER") == 246
     assert output.count(":") == 5144, output.count(":")
-    assert output.count("p") == 121
-    assert output.count("m") == 333
-    assert output.count("t") == 495
+    assert output.count("p") == 120
+    assert output.count("m") == 324
+    assert output.count("t") == 486
     output_lines = output.splitlines()
     #for line in output_lines:
     #  print line
     #STOP()
     assert len(output_lines) == 643
     line_indices = [0,1,2,42,43,168,169,450,587,394,641,642]
+
+#    top500 version
     line_values = [
      " A  14  MET:1.00:3.3:29.2:173.3:287.9::Favored:ptm",
      " A  15  SER:1.00:0.1:229.0::::OUTLIER:OUTLIER",
@@ -71,7 +73,21 @@ def exercise_rotalyze():
      " B 316  TYR:1.00:5.4:153.7:68.6:::Favored:t80",
      " B  86  ASP:1.00:2.2:321.4:145.1:::Favored:m-20",
      " B 377  GLU:1.00:45.3:311.7:166.2:160.1::Favored:mt-10",
-     " B 378  THR:1.00:23.5:309.4::::Favored:m",
+     " B 378  THR:1.00:23.5:309.4::::Favored:m"]
+#    top8000 version
+    line_values = [
+     " A  14  MET:1.00:1.3:29.2:173.3:287.9::Allowed:ptm",
+     " A  15  SER:1.00:0.1:229.0::::OUTLIER:OUTLIER",
+     " A  16  SER:1.00:3.0:277.9::::Favored:m",
+     " A  58  ASN:1.00:1.0:252.4:343.6:::Allowed:m-40",
+     " A  59  ILE:1.00:0.5:84.2:186.7:::Allowed:pt",
+     " A 202  GLU:1.00:0.0:272.7:65.9:287.8::OUTLIER:OUTLIER",
+     " A 203  ILE:1.00:1.0:292.9:199.6:::Allowed:mt",
+     " B 154  THR:1.00:0.0:356.0::::OUTLIER:OUTLIER",
+     " B 316  TYR:1.00:4.1:153.7:68.6:::Favored:t80",
+     " B  86  ASP:1.00:0.4:321.4:145.1:::Allowed:m-30",
+     " B 377  GLU:1.00:15.0:311.7:166.2:160.1::Favored:mt-10",
+     " B 378  THR:1.00:17.0:309.4::::Favored:m",
     ]
     for idx, val in zip(line_indices, line_values) :
       assert (output_lines[idx] == val), (idx, output_lines[idx])
@@ -91,7 +107,7 @@ def exercise_rotalyze():
   out = StringIO()
   r.show_old_output(out=out, verbose=False)
   output = out.getvalue().strip()
-  assert output == "A  29 BTYR:0.35:0.3:191.3:322.7:::OUTLIER:OUTLIER"
+  assert output == ""
 
   r = rotalyze.rotalyze(
     pdb_hierarchy=hierarchy,
@@ -103,56 +119,56 @@ def exercise_rotalyze():
     r.show_old_output(out=out, verbose=False)
     output = out.getvalue()
     assert not show_diff(output,"""\
- A   1  THR:1.00:96.6:299.5::::Favored:m
- A   2 ATHR:0.67:55.0:56.1::::Favored:p
- A   2 BTHR:0.33:93.8:298.1::::Favored:m
- A   3  CYS:1.00:28.5:310.5::::Favored:m
- A   4  CYS:1.00:89.0:293.1::::Favored:m
- A   5  PRO:1.00:90.6:30.2::::Favored:Cg_endo
- A   6  SER:1.00:84.6:68.4::::Favored:p
- A   7 AILE:0.45:62.7:290.8:178.2:::Favored:mt
- A   7 BILE:0.55:14.3:284.4:298.4:::Favored:mm
- A   8 AVAL:0.50:3.6:156.7::::Favored:t
- A   8 BVAL:0.30:9.7:71.3::::Favored:p
- A   8 CVAL:0.20:74.3:172.1::::Favored:t
- A  10 AARG:0.65:23.4:176.8:66.5:63.9:180.0:Favored:tpp180
- A  10 BARG:0.35:20.1:176.8:72.8:66.4:171.9:Favored:tpp180
- A  11  SER:1.00:49.6:300.9::::Favored:m
- A  12 AASN:0.50:96.0:286.1:343.8:::Favored:m-20
- A  12 BASN:0.50:99.2:288.4:337.6:::Favored:m-20
- A  13 APHE:0.65:42.3:187.2:276.4:::Favored:t80
- A  13 BPHE:0.35:84.7:179.6:263.1:::Favored:t80
- A  14  ASN:1.00:95.9:289.6:333.0:::Favored:m-20
- A  15  VAL:1.00:47.4:168.2::::Favored:t
- A  16  CYS:1.00:44.7:176.5::::Favored:t
- A  17  ARG:1.00:23.6:289.7:282.8:288.6:158.7:Favored:mmm180
- A  18  LEU:1.00:75.1:287.2:173.3:::Favored:mt
+ A   1  THR:1.00:95.4:299.5::::Favored:m
+ A   2 ATHR:0.67:49.5:56.1::::Favored:p
+ A   2 BTHR:0.33:90.4:298.1::::Favored:m
+ A   3  CYS:1.00:12.9:310.5::::Favored:m
+ A   4  CYS:1.00:91.6:293.1::::Favored:m
+ A   5  PRO:1.00:78.8:30.2::::Favored:Cg_endo
+ A   6  SER:1.00:90.1:68.4::::Favored:p
+ A   7 AILE:0.45:49.6:290.8:178.2:::Favored:mt
+ A   7 BILE:0.55:6.5:284.4:298.4:::Favored:mm
+ A   8 AVAL:0.50:1.1:156.7::::Allowed:t
+ A   8 BVAL:0.30:5.1:71.3::::Favored:p
+ A   8 CVAL:0.20:69.8:172.1::::Favored:t
+ A  10 AARG:0.65:24.7:176.8:66.5:63.9:180.0:Favored:tpp-160
+ A  10 BARG:0.35:17.5:176.8:72.8:66.4:171.9:Favored:tpp-160
+ A  11  SER:1.00:51.6:300.9::::Favored:m
+ A  12 AASN:0.50:93.9:286.1:343.8:::Favored:m-40
+ A  12 BASN:0.50:98.9:288.4:337.6:::Favored:m-40
+ A  13 APHE:0.65:45.1:187.2:276.4:::Favored:t80
+ A  13 BPHE:0.35:86.1:179.6:263.1:::Favored:t80
+ A  14  ASN:1.00:95.2:289.6:333.0:::Favored:m-40
+ A  15  VAL:1.00:42.3:168.2::::Favored:t
+ A  16  CYS:1.00:40.8:176.5::::Favored:t
+ A  17  ARG:1.00:21.4:289.7:282.8:288.6:158.7:Favored:mmm160
+ A  18  LEU:1.00:65.0:287.2:173.3:::Favored:mt
  A  19  PRO:1.00:43.6:24.4::::Favored:Cg_endo
- A  21  THR:1.00:8.5:314.0::::Favored:m
- A  22 APRO:0.55:78.5:333.5::::Favored:Cg_exo
- A  23 AGLU:0.50:92.5:290.9:187.1:341.8::Favored:mt-10
- A  23 BGLU:0.50:94.5:292.0:183.8:339.2::Favored:mt-10
- A  25 ALEU:0.50:96.7:294.4:173.6:::Favored:mt
- A  26  CYS:1.00:92.2:295.0::::Favored:m
- A  28  THR:1.00:37.5:52.9::::Favored:p
- A  29 ATYR:0.65:23.0:161.8:67.8:::Favored:t80
- A  29 BTYR:0.35:0.3:191.3:322.7:::OUTLIER:OUTLIER
- A  30 ATHR:0.70:68.5:57.4::::Favored:p
- A  30 BTHR:0.30:8.8:78.1::::Favored:p
- A  32  CYS:1.00:69.2:301.7::::Favored:m
- A  33  ILE:1.00:37.5:66.5:173.4:::Favored:pt
- A  34 AILE:0.70:66.6:303.6:167.6:::Favored:mt
- A  34 BILE:0.30:33.9:308.5:296.8:::Favored:mm
- A  35  ILE:1.00:48.4:62.4:170.0:::Favored:pt
- A  36  PRO:1.00:36.1:22.5::::Favored:Cg_endo
- A  39 ATHR:0.70:18.3:311.0::::Favored:m
- A  39 BTHR:0.30:17.7:288.8::::Favored:m
- A  40  CYS:1.00:99.0:294.4::::Favored:m
- A  41  PRO:1.00:61.4:34.4::::Favored:Cg_endo
- A  43 AASP:0.75:29.6:56.5:340.3:::Favored:p-10
- A  43 BASP:0.25:45.3:59.6:349.3:::Favored:p-10
- A  44  TYR:1.00:85.6:290.9:85.1:::Favored:m-85
- A  46  ASN:1.00:34.0:301.6:117.9:::Favored:m120
+ A  21  THR:1.00:5.7:314.0::::Favored:m
+ A  22 APRO:0.55:87.5:333.5::::Favored:Cg_exo
+ A  23 AGLU:0.50:86.9:290.9:187.1:341.8::Favored:mt-10
+ A  23 BGLU:0.50:91.7:292.0:183.8:339.2::Favored:mt-10
+ A  25 ALEU:0.50:95.7:294.4:173.6:::Favored:mt
+ A  26  CYS:1.00:83.0:295.0::::Favored:m
+ A  28  THR:1.00:29.6:52.9::::Favored:p
+ A  29 ATYR:0.65:18.5:161.8:67.8:::Favored:t80
+ A  29 BTYR:0.35:0.4:191.3:322.7:::Allowed:t80
+ A  30 ATHR:0.70:60.8:57.4::::Favored:p
+ A  30 BTHR:0.30:6.6:78.1::::Favored:p
+ A  32  CYS:1.00:61.4:301.7::::Favored:m
+ A  33  ILE:1.00:36.6:66.5:173.4:::Favored:pt
+ A  34 AILE:0.70:60.9:303.6:167.6:::Favored:mt
+ A  34 BILE:0.30:31.4:308.5:296.8:::Favored:mm
+ A  35  ILE:1.00:45.6:62.4:170.0:::Favored:pt
+ A  36  PRO:1.00:36.2:22.5::::Favored:Cg_endo
+ A  39 ATHR:0.70:14.0:311.0::::Favored:m
+ A  39 BTHR:0.30:13.1:288.8::::Favored:m
+ A  40  CYS:1.00:81.4:294.4::::Favored:m
+ A  41  PRO:1.00:35.4:34.4::::Favored:Cg_endo
+ A  43 AASP:0.75:24.8:56.5:340.3:::Favored:p0
+ A  43 BASP:0.25:43.2:59.6:349.3:::Favored:p0
+ A  44  TYR:1.00:85.3:290.9:85.1:::Favored:m-80
+ A  46  ASN:1.00:38.7:301.6:117.9:::Favored:m110
 """)
 
 def exercise_2 () :
@@ -239,9 +255,9 @@ ATOM    476  NZ  LYS A  49       0.899   4.110  12.980  1.00 19.97           N
   r.show_old_output(out=out, verbose=False)
   output = out.getvalue()
   assert output == """\
- A  47  PRO:1.00:96.6:329.3::::Favored:Cg_exo
- A  48  MSE:0.70:2.0:287.6:214.8:138.3::Favored:mtt
- A  49  LYS:1.00:0.0:288.6:263.2:251.7:233.0:OUTLIER:OUTLIER
+ A  47  PRO:1.00:86.4:329.3::::Favored:Cg_exo
+ A  48  MSE:0.70:0.3:287.6:214.8:138.3::OUTLIER:OUTLIER
+ A  49  LYS:1.00:0.1:288.6:263.2:251.7:233.0:OUTLIER:OUTLIER
 """, output
 
   r = rotalyze.rotalyze(pdb_hierarchy=hierarchy,
@@ -249,9 +265,9 @@ ATOM    476  NZ  LYS A  49       0.899   4.110  12.980  1.00 19.97           N
   out = StringIO()
   r.show_old_output(out=out, verbose=False)
   assert (out.getvalue() == """\
- A  47  PRO:1.00:96.6:329.3::::Favored:Cg_exo
- A  48  MSE:0.70:2.0:287.6:214.8:138.3::Favored:mtt
- A  49  LYS:1.00:0.0:288.6:263.2:251.7:233.0:OUTLIER:OUTLIER
+ A  47  PRO:1.00:86.4:329.3::::Favored:Cg_exo
+ A  48  MSE:0.70:0.3:287.6:214.8:138.3::OUTLIER:OUTLIER
+ A  49  LYS:1.00:0.1:288.6:263.2:251.7:233.0:OUTLIER:OUTLIER
 """), out.getvalue()
 
   try :
@@ -270,7 +286,7 @@ ATOM    476  NZ  LYS A  49       0.899   4.110  12.980  1.00 19.97           N
       for residue in chain.residues():
         cur_rot = rotamer_manager.evaluate_residue(residue)
         results.append(cur_rot)
-  assert results == ['Cg_exo', 'mtt', 'OUTLIER']
+  assert results == ['Cg_exo', 'OUTLIER', 'OUTLIER']
 
 if (__name__ == "__main__") :
   exercise_rotalyze()

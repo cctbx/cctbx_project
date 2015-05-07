@@ -153,6 +153,6 @@ def run(pdb_str, expected_ids):
   assert result_ids == expected_ids
 
 if(__name__ == "__main__"):
-  run(pdb_str = pdb_str1, expected_ids=['m-85', 'OUTLIER', 'm95', 'OUTLIER', None, 'm-85', 'p'])
+  run(pdb_str = pdb_str1, expected_ids=['m-80', 'OUTLIER', 'm100', 'OUTLIER', None, 'm-80', 'p'])
   run(pdb_str = pdb_str2, expected_ids=['Cg_endo'])
   run(pdb_str = pdb_str3, expected_ids=['Cg_endo', 'EXCEPTION', 't'])
