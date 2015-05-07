@@ -187,12 +187,11 @@ def make_phil_stacking_pair_record(residue1, residue2, params=None,
       "base1", residue1, add_segid))
   res += "%s%s" % ("  "*(nesting_depth+1), format_base_string(
       "base2", residue2, add_segid))
-  # add defaults???
+  # add non-defaults!
   if params is not None and len(params.stacking_pair) > 0:
     master_phil = iotbx.phil.parse(dna_rna_params_str)
     actual_params = master_phil.format(params)
     w_phil = master_phil.fetch_diff(actual_params).extract()
-    # w_phil_ex = w_phil.extract()
     if hasattr(w_phil, 'stacking_pair'):
       for k, v in w_phil.stacking_pair[0].__dict__.iteritems():
         if not k.startswith('_'):
@@ -209,7 +208,7 @@ def make_phil_base_pair_record(residue1, residue2, params=None,
       "base2", residue2, add_segid))
   if saenger_class is not None:
     res += "%ssaenger_class = %d\n" % ("  "*(nesting_depth+1), saenger_class)
-  # add defaults???
+  # add non-defaults!
   if params is not None and len(params.base_pair) > 0:
     master_phil = iotbx.phil.parse(dna_rna_params_str)
     actual_params = master_phil.format(params)
@@ -729,6 +728,11 @@ def get_basepair_hbond_proxies(
             base_pair.base2))
       a1 = pdb_atoms[selected_atoms_1[0]]
       a2 = pdb_atoms[selected_atoms_2[0]]
+      if base_pair.saenger_class == 0:
+        hbonds, saenger_class = get_h_bonds_for_basepair(
+          a1, a2, distance_cutoff=hbond_distance_cutoff,
+          log=sys.stdout, verbose=-1)
+        base_pair.saenger_class = saenger_class
       hbonds = get_h_bonds_for_particular_basepair((a1, a2), base_pair.saenger_class)
       for hb in hbonds:
         dist = hb[0].distance(hb[1])

@@ -90,7 +90,9 @@ file_name = None
   # hb_b, hb_a = nucleic_acids.get_basepair_hbond_proxies(pdb_hierarchy,
   #     m.params.secondary_structure.nucleic_acid.base_pair)
   result_out = cStringIO.StringIO()
-  prefix_scope="refinement.pdb_interpretation"
+  # prefix_scope="refinement.pdb_interpretation"
+  # prefix_scope=""
+  prefix_scope="pdb_interpretation"
   if (work_params.format != "phenix") :
     prefix_scope = ""
   ss_phil = None
@@ -124,7 +126,11 @@ file_name = None
         filter=work_params.filter_outliers,
         out=result_out)
   else :
-    print >> result_out, "# These parameters are suitable for use in phenix.refine."
+    comment = "\n".join([
+      "# These parameters are suitable for use in e.g. phenix.real_space_refine",
+      "# or geometry_minimization. To use theim in phenix.refine add ",
+      "# 'refinement.' if front of secondary_structure."])
+    print >> result_out, comment
     if (prefix_scope != "") :
       print >> result_out, "%s {" % prefix_scope
     if work_params.show_all_params :
