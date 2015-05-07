@@ -71,25 +71,6 @@ namespace boost_python {
         arg("weight")=1.0,
         arg("epsilon")=0.1));
 
-    // QUANTA-style harmonic restraints
-    typedef rama_target_and_gradients w_t;
-    class_<w_t>("rama_target_and_gradients", no_init)
-      .def(init<af::ref<scitbx::vec3<double> > const&,
-                double const&,
-                double const&,
-                double const&,
-                af::const_ref<scitbx::vec3<double> > const&,
-                af::const_ref<scitbx::vec3<double> > const&,
-                phi_psi_proxy const&>((
-        arg("gradient_array"),
-        arg("phi_target"),
-        arg("psi_target"),
-        arg("weight"),
-        arg("rama_table"),
-        arg("sites_cart"),
-        arg("proxy"))))
-      .def("target", &w_t::target)
-      .def("gradients", &w_t::gradients);
     def("target_phi_psi",
          (af::tiny<double, 3>(*)
            (af::const_ref<scitbx::vec3<double> > const&,
@@ -98,6 +79,22 @@ namespace boost_python {
               (arg("rama_table"),
                arg("sites_cart"),
                arg("proxy")));
+    // QUANTA-style harmonic restraints
+    def("ramachandran_residual_sum",
+        (double(*) (
+          af::const_ref<scitbx::vec3<double> > const&,
+          af::const_ref<phi_psi_proxy> const&,
+          af::ref<scitbx::vec3<double> > const&,
+          af::const_ref<scitbx::vec3<double> > const&,
+          af::const_ref<scitbx::vec3<double> > const&,
+          af::const_ref<scitbx::vec3<double> > const&,
+          af::const_ref<scitbx::vec3<double> > const&,
+          af::tiny<double, 4>,
+          af::ref<double> const&))
+        ramachandran_residual_sum,
+        (arg("sites_cart"), arg("proxies"), arg("gradient_array"),
+        arg("gly_table"), arg("pro_table"), arg("prepro_table"),
+        arg("ala_table"), arg("weights"), arg("residuals_array")));  //sites_cart, proxies,gr_arr, 4 tables
   }
 
   void init_module ()

@@ -317,11 +317,6 @@ class manager (object) :
         new_ss_params.secondary_structure.protein.helix
     self.params.secondary_structure.protein.sheet = \
         new_ss_params.secondary_structure.protein.sheet
-    # self.actual_sec_str = iotbx.pdb.secondary_structure.annotation.\
-    #     from_phil(
-    #         phil_helices=self.params.secondary_structure.protein.helix,
-    #         phil_sheets=self.params.secondary_structure.protein.sheet,
-    #         pdb_hierarchy=self.pdb_hierarchy)
 
   def apply_params (self, params) :
     self.params.helix = params.helix
