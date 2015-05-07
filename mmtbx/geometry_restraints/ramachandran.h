@@ -251,49 +251,6 @@ namespace mmtbx { namespace geometry_restraints {
       }
   };
 
-  // QUANTA-like harmonic restraints (rama_potential=oldfield)
-  class rama_target_and_gradients
-  {
-    public:
-      rama_target_and_gradients (
-        af::ref<scitbx::vec3<double> > const& gradient_array,
-        double const& phi_target,
-        double const& psi_target,
-        double const& weight,
-        af::const_ref<scitbx::vec3<double> > const& rama_table,
-        af::const_ref<scitbx::vec3<double> > const& sites_cart,
-        phi_psi_proxy const& proxy)
-      {
-        MMTBX_ASSERT(gradient_array.size() == sites_cart.size());
-        gradients_.resize(sites_cart.size(), scitbx::vec3<double>(0,0,0));
-        af::tiny<scitbx::vec3<double>, 4> phi_sites;
-        af::tiny<scitbx::vec3<double>, 4> psi_sites;
-        af::tiny<unsigned, 5> const i_seqs = proxy.i_seqs;
-        for (unsigned i = 0; i < 4; i++) {
-          phi_sites[i] = sites_cart[i_seqs[i]];
-          psi_sites[i] = sites_cart[i_seqs[i+1]];
-        }
-        dihedral phi(phi_sites, phi_target, weight);
-        dihedral psi(psi_sites, psi_target, weight);
-        target_ = phi.residual()+psi.residual();
-        af::tiny<scitbx::vec3<double>, 4> d_phi_d_xyz = phi.gradients();
-        af::tiny<scitbx::vec3<double>, 4> d_psi_d_xyz = psi.gradients();
-        for (unsigned k = 0; k < 5; k++) {
-          std::size_t i_seq = i_seqs[k];
-          if(k < 4) gradient_array[i_seq] += d_phi_d_xyz[k] ;
-          if(k > 0) gradient_array[i_seq] += d_psi_d_xyz[k-1] ;
-        }
-      }
-
-      double target() { return target_; }
-
-      af::shared<scitbx::vec3<double> > gradients() { return gradients_; }
-
-    private :
-      double target_;
-      af::shared<scitbx::vec3<double> > gradients_;
-  };
-
   template <typename FloatType>
   af::tiny<FloatType, 3>
     target_phi_psi(af::const_ref<scitbx::vec3<double> > const& rama_table,
@@ -340,5 +297,68 @@ namespace mmtbx { namespace geometry_restraints {
     }
     return af::tiny<double, 3> (phi_t,psi_t,dist_to_allowed) ;
   };
+
+  // QUANTA-like harmonic restraints (rama_potential=oldfield)
+  double
+  ramachandran_residual_sum(
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<phi_psi_proxy> const& proxies,
+    af::ref<scitbx::vec3<double> > const& gradient_array,
+    af::const_ref<scitbx::vec3<double> > const& gly_table,
+    af::const_ref<scitbx::vec3<double> > const& pro_table,
+    af::const_ref<scitbx::vec3<double> > const& prepro_table,
+    af::const_ref<scitbx::vec3<double> > const& ala_table,
+    af::tiny<double, 4> weights,
+    af::ref<double > const& residuals_array)
+  {
+    MMTBX_ASSERT(gradient_array.size() == sites_cart.size());
+    MMTBX_ASSERT(residuals_array.size() == proxies.size());
+    double res_sum = 0;
+
+    for (std::size_t i=0; i<proxies.size(); i++) {
+      phi_psi_proxy const& proxy = proxies[i];
+      af::tiny<double, 3> r;
+      if (proxy.residue_type.compare("gly") == 0) {
+        r = target_phi_psi<double>(gly_table, sites_cart, proxy);}
+      else if (proxy.residue_type.compare("pro") == 0) {
+        r = target_phi_psi<double>(pro_table, sites_cart, proxy);}
+      else if (proxy.residue_type.compare("prepro") == 0) {
+        r = target_phi_psi<double>(prepro_table, sites_cart, proxy);}
+      else if (proxy.residue_type.compare("ala") == 0) {
+        r = target_phi_psi<double>(ala_table, sites_cart, proxy);}
+      else {
+        throw error("Wrong proxy_type in Ramachandran proxy.");
+      }
+      double w;
+      if (weights[0] < 0) {
+        w = 1.0/weights[1]/weights[1] *
+            (r[2]<weights[2] ? r[2] : weights[2]) * weights[3];
+      }
+      else w = weights[0];
+      double weight = w;
+
+      af::tiny<scitbx::vec3<double>, 4> phi_sites;
+      af::tiny<scitbx::vec3<double>, 4> psi_sites;
+      af::tiny<unsigned, 5> const i_seqs = proxy.i_seqs;
+      for (unsigned j = 0; j < 4; j++) {
+        phi_sites[j] = sites_cart[i_seqs[j]];
+        psi_sites[j] = sites_cart[i_seqs[j+1]];
+      }
+      dihedral phi(phi_sites, r[0], weight);
+      dihedral psi(psi_sites, r[1], weight);
+      double res = phi.residual()+psi.residual();
+      res_sum += res;
+      residuals_array[i] = res;
+      af::tiny<scitbx::vec3<double>, 4> d_phi_d_xyz = phi.gradients();
+      af::tiny<scitbx::vec3<double>, 4> d_psi_d_xyz = psi.gradients();
+      gradient_array[i_seqs[0]] += d_phi_d_xyz[0];
+      gradient_array[i_seqs[1]] += d_phi_d_xyz[1]+d_psi_d_xyz[0];
+      gradient_array[i_seqs[2]] += d_phi_d_xyz[2]+d_psi_d_xyz[1];
+      gradient_array[i_seqs[3]] += d_phi_d_xyz[3]+d_psi_d_xyz[2];
+      gradient_array[i_seqs[4]] += d_psi_d_xyz[3];
+    }
+    return res_sum;
+  }
+
 
 }} // namespace mmtbx::geometry_restraints

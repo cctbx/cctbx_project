@@ -11,6 +11,10 @@ import mmtbx.rotamer
 import boost.python
 from scitbx.array_family import flex
 
+ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
+from mmtbx_ramachandran_restraints_ext import lookup_table, \
+    ramachandran_residual_sum
+
 
 if libtbx.env.has_module("rosetta_adaptbx") :
   potential_phil = """\
@@ -98,7 +102,6 @@ class ramachandran_manager(object):
   def extract_proxies(self):
     assert [a.i_seq for a in self.pdb_hierarchy.atoms()].count(0) == 1 ,\
         "Probably all atoms have i_seq = 0 which is wrong"
-    ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
     angles = mmtbx.rotamer.extract_phi_psi(
       pdb_hierarchy=self.pdb_hierarchy,
       atom_selection=self.atom_selection)
@@ -119,57 +122,47 @@ class ramachandran_manager(object):
                                sites_cart,
                                gradient_array=None,
                                residuals_array=None) :
-    from scitbx.array_family import flex
     assert self.proxies is not None
-    ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
-    from mmtbx_ramachandran_restraints_ext import rama_target_and_gradients, \
-      target_phi_psi
     if(gradient_array is None) :
       gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
     if residuals_array is None:
-      residuals_array = flex.double()
-    residuals_array.clear()
+      residuals_array = flex.double(self.proxies.size())
     target = 0
     if(self.params.rama_potential == "oldfield"):
       op = self.params.oldfield
-      for proxy in self.proxies:
-        if(proxy.residue_type=="gly"):    rama_table = self.tables.gly
-        if(proxy.residue_type=="pro"):    rama_table = self.tables.pro
-        if(proxy.residue_type=="prepro"): rama_table = self.tables.prepro
-        if(proxy.residue_type=="ala"):    rama_table = self.tables.general
-        r = target_phi_psi(
-          rama_table     = rama_table,
-          sites_cart     = sites_cart,
-          proxy          = proxy)
-        if(op.weight is None):
-          weight = 1./(op.esd**2)*min(r[2],op.dist_weight_max)*op.weight_scale
-        else: weight = op.weight
-        tg = rama_target_and_gradients(
-           gradient_array = gradient_array,
-           phi_target     = r[0],
-           psi_target     = r[1],
-           weight         = weight,
-           rama_table     = rama_table,
-           sites_cart     = sites_cart,
-           proxy          = proxy)
-        residuals_array.append(tg.target())
+      w = op.weight
+      if w is None:
+        w = -1
+      res = ramachandran_residual_sum(
+          sites_cart=sites_cart,
+          proxies=self.proxies,
+          gradient_array=gradient_array,
+          gly_table=self.tables.gly,
+          pro_table=self.tables.pro,
+          prepro_table=self.tables.prepro,
+          ala_table=self.tables.general,
+          weights=(w, op.esd, op.dist_weight_max, op.weight_scale),
+          residuals_array=residuals_array)
+      return res
     elif (self.params.rama_potential == "rosetta") :
-      for proxy in self.proxies :
-        residuals_array.append(self.tables.residue_target_and_gradients(
+      # Moving these cycles to C++ part would speed them up only up to 10%
+      for i, proxy in enumerate(self.proxies):
+        residuals_array[i] = self.tables.residue_target_and_gradients(
           gradient_array=gradient_array,
           sites_cart=sites_cart,
           proxy=proxy,
-          weight=self.params.rama_weight))
+          weight=self.params.rama_weight)
     else:
       assert (self.params.rama_weight >= 0.0)
-      for proxy in self.proxies :
+      # Moving these cycles to C++ part would speed them up only up to 10%
+      for i, proxy in enumerate(self.proxies):
         rama_table = self.tables[proxy.residue_type]
-        residuals_array.append(rama_table.compute_gradients(
+        residuals_array[i] = rama_table.compute_gradients(
           gradient_array=gradient_array,
           sites_cart=sites_cart,
           proxy=proxy,
           weight=self.params.rama_weight,
-          epsilon=0.001))
+          epsilon=0.001)
     return flex.sum(residuals_array)
 
   def get_n_proxies(self):
@@ -191,7 +184,7 @@ class ramachandran_manager(object):
     assert site_labels is None or len(site_labels) == sites_cart.size()
     if self.get_n_proxies() == 0:
       return
-    residuals_array = flex.double()
+    residuals_array = flex.double(self.proxies.size())
     self.restraints_residual_sum(
         sites_cart,
         residuals_array=residuals_array)
@@ -244,9 +237,6 @@ def load_tables (params=None) :
   if (params.scale_allowed <= 0.0) :
     raise Sorry("Ramachandran restraint parameter scale_allowed must be "+
       "a positive number (current value: %g)." % params.scale_allowed)
-  ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
-  from mmtbx_ramachandran_restraints_ext import lookup_table
-  from scitbx.array_family import flex
   tables = {}
   for residue_type in ["ala", "gly", "prepro", "pro"] :
     file_name = libtbx.env.find_in_repositories(
@@ -265,7 +255,6 @@ def load_tables (params=None) :
 
 class ramachandran_plot_data(object):
   def __init__(self):
-    from scitbx.array_family import flex
     self.gly = None
     self.pro = None
     self.prepro = None
@@ -301,17 +290,14 @@ class ramachandran_plot_data(object):
     self.general = self.normalize_general(data=self.general)
 
   def norm_to_max(self, data, val, sel, threshold=0.5):
-    from scitbx.array_family import flex
     vmax = flex.max(val.select(sel))
     sel1 = val > vmax*threshold
     return data.select((sel1&sel))
 
   def thin_data(self, x, step = 1):
-    from scitbx.array_family import flex
     return x.select(flex.size_t(range(0,x.size(),step)))
 
   def split_array(self, data):
-    from scitbx.array_family import flex
     phi = flex.double()
     psi = flex.double()
     val = flex.double()
