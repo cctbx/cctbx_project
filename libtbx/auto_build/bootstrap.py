@@ -1,3 +1,4 @@
+
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 from __future__ import division
 import os, os.path, posixpath
@@ -28,7 +29,8 @@ class ShellCommand(object):
   def run(self):
     command = self.get_command()
     workdir = self.get_workdir()
-    print "===== Running in %s:"%workdir, " ".join(command)
+    if not self.kwargs.get("quiet", False):
+      print "===== Running in %s:"%workdir, " ".join(command)
     if workdir:
       try:
         os.makedirs(workdir)
@@ -517,6 +519,8 @@ class Builder(object):
       nproc=4,
       verbose=False,
       download_only=False,
+      skip_base="",
+      force_base_build=False,
     ):
     if nproc is None:
       self.nproc=4
@@ -538,6 +542,8 @@ class Builder(object):
       self.python_base = with_python
     self.verbose = verbose
     self.download_only = download_only
+    self.skip_base = skip_base
+    self.force_base_build = force_base_build
 
     self.add_init()
 
@@ -751,6 +757,11 @@ class Builder(object):
           command=['svn', 'update', module],
           workdir=['modules']
       ))
+      self.add_step(self.shell(
+          command=['svn', 'status', module],
+          workdir=['modules'],
+          quiet=True,
+      ))
     elif os.path.exists(self.opjoin(*['modules', module])):
       print "Existing non-svn directory -- dont know what to do. skipping: %s"%module
     else:
@@ -818,6 +829,10 @@ class Builder(object):
       extra_opts.append('-v')
     if self.download_only:
       extra_opts.append('--download-only')
+    if self.skip_base:
+      extra_opts.append('--skip-base=%s' % self.skip_base)
+    if not self.force_base_build:
+      extra_opts.append("--skip-if-exists")
     self.add_step(self.shell(
       name='base',
       command=[
@@ -863,7 +878,6 @@ class Builder(object):
 
   def add_make(self):
     # Todo: nproc=auto
-    assert self.nproc
     self.add_command('libtbx.scons', args=['-j', str(self.nproc)])
 
   def add_install(self):
@@ -1080,6 +1094,14 @@ def run(root=None):
   parser.add_option("--nproc", help="# processes in compile step.")
   parser.add_option("--download-only", dest="download_only", action="store_true", help="Do not build, only download prerequisites", default=False)
   parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Verbose output", default=False)
+  parser.add_option("--skip-base-packages",
+                    dest="skip_base",
+                    action="store",
+                    default="")
+  parser.add_option("--force-base-build",
+                    dest="force_base_build",
+                    action="store_true",
+                    default=False)
   options, args = parser.parse_args()
 
   # Root dir
@@ -1132,6 +1154,8 @@ def run(root=None):
     nproc=options.nproc,
     verbose=options.verbose,
     download_only=options.download_only,
+    skip_base=options.skip_base,
+    force_base_build=options.force_base_build,
   ).run()
   print "\nBootstrap success: %s" % ", ".join(actions)
 

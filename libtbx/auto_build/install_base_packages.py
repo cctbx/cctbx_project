@@ -13,6 +13,7 @@ from package_defs import *
 from optparse import OptionParser
 import os.path as op
 import sys
+import time
 import zipfile
 
 # XXX HACK
@@ -51,6 +52,7 @@ class installer (object) :
       help="Use only local packages (no downloads)", default=False)
     parser.add_option("--download-only", dest="download_only", action="store_true",
       help="Only download missing packages, do not compile", default=False)
+    parser.add_option("--skip-base", dest="skip_base", action="store",default="")
     parser.add_option("--python-shared", dest="python_shared",
       action="store_true", default=False,
       help="Compile Python as shared library (Linux only)")
@@ -432,7 +434,11 @@ Installation of Python packages may fail.
       callback_after_build=None,
       confirm_import_module=None) :
     pkg_log = self.start_building_package(pkg_name_label)
-    pkg = self.fetch_package(pkg_name=pkg_name, pkg_url=pkg_url)
+    pkg, size = self.fetch_package(pkg_name=pkg_name,
+                                   pkg_url=pkg_url,
+                                   return_file_and_status=True,
+      )
+    if size==-2: return
     if self.check_download_only(pkg_name): return
     self.untar_and_chdir(pkg=pkg, log=pkg_log)
     if (callback_before_build is not None) :
@@ -505,9 +511,11 @@ Installation of Python packages may fail.
       'fonts',
       'wxpython',
     ]
+    self.options.skip_base = self.options.skip_base.split(",")
     packages_order = []
     for i in order:
       if i in packages:
+        if i in self.options.skip_base: continue
         packages_order.append(i)
 
     if self.options.download_only:
@@ -526,7 +534,12 @@ Installation of Python packages may fail.
          ):
         print >> self.log, "Installation of %s is OK - skipping" % i
         continue
+      t0=time.time()
       getattr(self, 'build_%s'%i)()
+      print >> self.log, "  package %s took %0.1fs to install" % (
+        i,
+        time.time()-t0,
+        )
 
     if self.options.download_only:
       print >> self.log, "Dependencies finished downloading."
@@ -861,7 +874,8 @@ Installation of Python packages may fail.
   def build_gtk(self):
     # gtk+
     pkg_log = self.start_building_package("gtk+")
-    pkg = self.fetch_package(pkg_name=GTK_PKG)
+    pkg, size = self.fetch_package(pkg_name=GTK_PKG, return_file_and_status=True)
+    if size==-2: return
     self.fetch_package(pkg_name=GTK_ENGINE_PKG)
     if self.check_download_only(GTK_PKG) and self.check_download_only(GTK_ENGINE_PKG):
       return
