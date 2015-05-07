@@ -12,7 +12,6 @@
 from __future__ import division
 import wx
 import wx.lib.scrolledpanel
-import cStringIO
 import math, sys, os
 
 WXTBX_SEQ_SELECT_NONE = 1
@@ -888,8 +887,6 @@ class sequence_window (object) :
   def set_pdb_data (self, pdb_hierarchy, ignore_unk=False) :
     from mmtbx import secondary_structure
     sec_str = secondary_structure.manager(pdb_hierarchy)
-    out = cStringIO.StringIO()
-    sec_str.find_automatically(log=out)
     sec_str.show_summary()
     self.set_data(
       pdb_hierarchy=pdb_hierarchy,
