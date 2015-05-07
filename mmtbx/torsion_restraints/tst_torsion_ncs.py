@@ -127,7 +127,7 @@ def exercise_1():
   ncs_manager = torsion_ncs.torsion_ncs(
                   pdb_hierarchy=pdb_hierarchy,
                   log=log)
-  assert len(ncs_manager.ncs_dihedral_proxies) == 46
+  assert len(ncs_manager.ncs_dihedral_proxies) == 40
 
 if (__name__ == "__main__") :
   exercise_1()

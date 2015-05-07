@@ -79,7 +79,7 @@ def exercise_synthetic () :
     out=null_out()).validation
   out = StringIO()
   result.show(outliers_only=False, out=out)
-  assert ("""A   7  TYR              m-85  91.83   299.6,92.0""" in
+  assert ("""A   7  TYR              m-80  91.83   299.6,92.0""" in
           out.getvalue())
   args2 = [
     "tst_molprobity_1.pdb",
@@ -92,7 +92,7 @@ def exercise_synthetic () :
     ignore_missing_modules=True,
     out=null_out()).validation
   result.show(outliers_only=False, out=out)
-  assert ("""   A   7  TYR              m-85  93.10   299.6,92.0""" in
+  assert ("""   A   7  TYR              m-80  93.10   299.6,92.0""" in
     out.getvalue()), out.getvalue()
 
 def exercise_cdl () :

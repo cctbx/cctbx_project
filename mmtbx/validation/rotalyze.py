@@ -96,7 +96,8 @@ class rotalyze (validation) :
   def get_result_class (self) : return rotamer
 
   def __init__ (self, pdb_hierarchy,
-      data_version="500",
+      data_version="8000",
+#     data_version="500",
       outliers_only=False,
       show_errors=False,
       out=sys.stdout,

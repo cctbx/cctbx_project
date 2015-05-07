@@ -188,13 +188,13 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   r2.show_old_output(out=out2)
 
   assert not show_diff(out1.getvalue(), """\
- C 236  ASN:1.00:1.2:227.3:80.2:::Allowed:t30
+ C 236  ASN:1.00:0.2:227.3:80.2:::OUTLIER:OUTLIER
  C 237  LEU:1.00:0.0:209.6:357.2:::OUTLIER:OUTLIER
 """)
 
   assert not show_diff(out2.getvalue(), """\
- C 236  ASN:1.00:41.4:203.2:43.6:::Favored:t30
- C 237  LEU:1.00:52.8:179.1:57.3:::Favored:tp
+ C 236  ASN:1.00:39.1:203.2:43.6:::Favored:t0
+ C 237  LEU:1.00:60.8:179.1:57.3:::Favored:tp
 """)
 
   xray_structure = pdb_hierarchy.extract_xray_structure()
@@ -206,8 +206,8 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   out3 = cStringIO.StringIO()
   r2.show_old_output(out=out3)
   assert not show_diff(out3.getvalue(), """\
- C 236  ASN:1.00:1.2:227.3:80.2:::Allowed:t30
- C 237  LEU:1.00:52.8:179.1:57.3:::Favored:tp
+ C 236  ASN:1.00:39.1:203.2:43.6:::Favored:t0
+ C 237  LEU:1.00:60.8:179.1:57.3:::Favored:tp
 """)
 
   match_map = rm.match_map['ref1']
