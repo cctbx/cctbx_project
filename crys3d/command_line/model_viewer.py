@@ -84,7 +84,6 @@ def run (args, viewer_class=selection_editor_mixin) :
     sec_str = secondary_structure.manager(
       pdb_hierarchy=pdb_hierarchy,
       xray_structure=None)
-    sec_str.find_automatically()
     a.view_objects.set_sec_str(file_name, sec_str.selections_as_ints())
     if show_ss_restraints and acp_selection is not None :
       bonds_table = secondary_structure.process_structure(params=None,

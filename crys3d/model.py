@@ -174,7 +174,6 @@ class model_data (object) :
       manager = secondary_structure.manager(
         pdb_hierarchy=self.pdb_hierarchy,
         xray_structure=None)
-      manager.find_automatically()
       sec_str = manager.selections_as_ints()
     from crys3d import ribbon
     self.ribbon = ribbon.cartoon(pdb_hierarchy=self.pdb_hierarchy,

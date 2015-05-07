@@ -474,7 +474,6 @@ class reference_model(object):
         ref_ss_m[file] = secondary_structure.manager(
           pdb_hierarchy=self.pdb_hierarchy_ref[file],
           sec_str_from_pdb_file=None)
-        ref_ss_m[file].find_automatically()
         pdb_str = self.pdb_hierarchy_ref[file].as_pdb_string()
         (records, stderr) = secondary_structure.run_ksdssp_direct(pdb_str)
         sec_str_from_pdb_file = iotbx.pdb.secondary_structure.process_records(
