@@ -118,7 +118,12 @@ class fetch_packages (object) :
     self.buffer_until_file_downloaded = True
     self.downloader = Downloader()
 
-  def __call__ (self, pkg_name, pkg_url=None, output_file=None) :
+  def __call__ (self,
+                pkg_name,
+                pkg_url=None,
+                output_file=None,
+                return_file_and_status=False,
+                ) :
     if (pkg_url is None) :
       pkg_url = BASE_CCI_PKG_URL
     if (output_file is None) :
@@ -132,12 +137,18 @@ class fetch_packages (object) :
           print >> self.log, "    using %s" % static_file
           if self.copy_files :
             copy_file(static_file, op.join(self.dest_dir, output_file))
+            if return_file_and_status:
+              return op.join(self.dest_dir, output_file), 0
             return op.join(self.dest_dir, output_file)
           else :
+            if return_file_and_status:
+              return static_file, 0
             return static_file
     if (self.no_download) :
       if (op.exists(pkg_name)) :
         print >> self.log, "    using ./%s" % pkg_name
+        if return_file_and_status:
+          return op.join(self.dest_dir, output_file), 0
         return op.join(self.dest_dir, pkg_name)
       else :
         raise RuntimeError(("Package '%s' not found on local filesystems.  ") %
@@ -151,14 +162,20 @@ class fetch_packages (object) :
       print >> self.log, err
       if (op.exists(pkg_name)) :
         print >> self.log, "    using ./%s" % pkg_name
+        if return_file_and_status:
+          return op.join(self.dest_dir, pkg_name), size
         return op.join(self.dest_dir, pkg_name)
       else:
         raise
 
     if (size == -2):
       print >> self.log, "    using ./%s (cached)" % pkg_name
+      if return_file_and_status:
+        return op.join(self.dest_dir, output_file), size
       return op.join(self.dest_dir, output_file)
     assert (size > 0), pkg_name
+    if return_file_and_status:
+      return op.join(self.dest_dir, output_file), size
     return op.join(self.dest_dir, output_file)
 
 def fetch_all_dependencies (dest_dir,
