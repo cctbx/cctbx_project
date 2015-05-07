@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 05/05/2015
+Last Changed: 05/06/2015
 Description : IOTA I/O module. Reads PHIL input, creates output directories,
               creates input lists and organizes starting parameters, also
               creates reasonable IOTA and PHIL defaults if selected
@@ -106,6 +106,9 @@ advanced
   save_tmp_pickles = False
     .type = bool
     .help = If True, saves pickle for each integration attempt in grid search.
+  print_input_list = False
+    .type = bool
+    .help = Print to a file a list of selected images
   pred_img
     .help = "Visualize spotfinding and integration results."
   {
@@ -177,18 +180,26 @@ def make_input_list (gs_params):
   input_list = []
   abs_inp_path = os.path.abspath(gs_params.input)
 
+  if gs_params.advanced.single_img != None:
+    inp_list = [gs_params.advanced.single_img]
+    return inp_list
+
   if gs_params.input_list != None:
+    cmd.Command.start("Reading input list from file")
     with open(gs_params.input_list, 'r') as listfile:
       listfile_contents = listfile.read()
     input_list = listfile_contents.splitlines()
+    cmd.Command.end("Reading input list from file -- DONE")
   else:
   # search for *.pickle files within the tree and record in a list w/
   # full absolute path and filanames
+    cmd.Command.start("Generating input list")
     for root, dirs, files in os.walk(abs_inp_path):
       for filename in files:
         if filename.endswith("pickle"):
           pickle_file = os.path.join(root, filename)
           input_list.append(pickle_file)
+    cmd.Command.end("Generating input list -- DONE")
 
     if len(input_list) == 0:
       print "\nERROR: No data found!"
@@ -218,6 +229,7 @@ def make_input_list (gs_params):
         random_inp_list.append(input_list[random_number])
 
     inp_list = random_inp_list
+
   else:
     inp_list = input_list
 
@@ -417,6 +429,12 @@ def generate_input(gs_params):
           "{}".format(os.path.abspath(gs_params.output))
       sys.exit()
 
+  if gs_params.advanced.print_input_list:
+    list_file = "{}/input.lst".format(gs_params.output)
+    with open(list_file, "a") as lf:
+      for input_file in input_list:
+        lf.write('{}\n'.format(input_file))
+
   # Initiate log file
   logfile = '{}/iota.log'.format(log_dir)
   main_log_init(logfile)
@@ -463,7 +481,6 @@ def write_defaults(current_path, txt_out):
                     '  integration.guard_width_sq=4.',
                     '  mosaic {',
                     '    refinement_target=ML',
-                    '    kludge1=1.0 #normally 1.0, but sometimes set to 2.0 to increase indexing rate',
                     '    domain_size_lower_limit=4.',
                     '    enable_rotational_target_highsym=False',
                     '  }',
