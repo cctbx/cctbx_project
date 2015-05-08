@@ -105,7 +105,7 @@ simple_ncs_from_pdb
    .type = bool
    .help = "check and exclude individual residues alignment quality"
    .style = noauto
- check_atom_order = False
+ check_atom_order = True
    .type = bool
    .help = "check atom order in matching residues"
    .style = noauto
@@ -113,7 +113,7 @@ simple_ncs_from_pdb
 """
 
 ncs_search_options = """\
-  check_atom_order = False
+  check_atom_order = True
    .type = bool
    .help = '''check atom order in matching residues'''
    .style = noauto
@@ -202,7 +202,7 @@ def input(pdb_hierarchy_inp=None,
           min_percent=0.85,
           chain_similarity_limit=0.95,
           min_contig_length=10,
-          check_atom_order=False,
+          check_atom_order=True,
           allow_different_size_res=True,
           exclude_misaligned_residues=True,
           max_dist_diff=4.0,
