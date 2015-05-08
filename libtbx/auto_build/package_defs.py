@@ -108,14 +108,13 @@ class fetch_packages (object) :
   install_base_packages.py but also for setting up installer bundles.
   """
   def __init__ (self, dest_dir, log, pkg_dirs=None, no_download=False,
-      copy_files=False, buffer_until_file_downloaded=True) :
+      copy_files=False) :
     from bootstrap import Downloader
     self.dest_dir = dest_dir
     self.log = log
     self.pkg_dirs = pkg_dirs
     self.no_download = no_download
     self.copy_files = copy_files
-    self.buffer_until_file_downloaded = True
     self.downloader = Downloader()
 
   def __call__ (self,
@@ -156,8 +155,7 @@ class fetch_packages (object) :
     full_url = "%s/%s" % (pkg_url, pkg_name)
     self.log.write("    downloading from %s : " % pkg_url)
     try:
-      size = self.downloader.download_to_file(full_url, output_file,
-         log=self.log, buffer_until_file_downloaded=self.buffer_until_file_downloaded)
+      size = self.downloader.download_to_file(full_url, output_file, log=self.log)
     except urllib2.HTTPError, err:
       print >> self.log, err
       if (op.exists(pkg_name)) :

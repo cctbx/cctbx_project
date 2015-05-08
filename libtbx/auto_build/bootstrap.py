@@ -95,8 +95,7 @@ class ShellCommand(object):
 
 # Download URL to local file
 class Downloader(object):
-  def download_to_file(self, url, file, log=sys.stdout, status=True,
-                        buffer_until_file_downloaded=True):
+  def download_to_file(self, url, file, log=sys.stdout, status=True):
     """Downloads a URL to file. Returns the file size.
        Returns -1 if the downloaded file size does not match the expected file
        size
@@ -139,8 +138,6 @@ class Downloader(object):
     received = 0
     block_size = 8192
     progress = 1
-
-    # Buffering a large file is very inefficient and python is likely to crash
     # Allow for writing the file immediately so we can empty the buffer
     tmpfile = file + '.tmp'
     with open(tmpfile, 'wb') as f:
@@ -1034,7 +1031,7 @@ class PhenixBuilder(CCIBuilder):
     self.add_test_command('libtbx.import_all_ext')
     self.add_test_command('cctbx_regression.test_nightly')
     # Windows convenience hack.
-    if 'win32' == sys.platform:
+    if 'win32' == self.platform:
       self.add_test_command('phenix_regression.test_nightly_windows')
     else:
       self.add_test_command('phenix_regression.test_nightly')
