@@ -6,8 +6,11 @@ import sys
 import subprocess
 import optparse
 #import getpass
+import shutil
+import tarfile
+import time
+import urllib2
 import urlparse
-import shutil, tarfile
 
 # To download this file:
 # svn export svn://svn.code.sf.net/p/cctbx/code/trunk/libtbx/auto_build/bootstrap.py
@@ -101,7 +104,6 @@ class Downloader(object):
        being newer than the local copy (with matching file sizes).
     """
 
-    import os, time, urllib2
     socket = urllib2.urlopen(url)
 
     file_size = int(socket.info().getheader('Content-Length'))
@@ -137,42 +139,35 @@ class Downloader(object):
     received = 0
     block_size = 8192
     progress = 1
-    if not buffer_until_file_downloaded:
-      # Buffering a large file is very inefficient and python is likely to crash
-      # Allow for writing the file immediately so we can empty the buffer
-      f2 = open(file, "wb")
-    data = ""
-    while 1:
-      block = socket.read(block_size)
-      received += len(block)
-      data += block
-      if not buffer_until_file_downloaded:
-        f2.write(data)
-        data = ""
-      if status and (file_size > 0):
-        while (100 * received / file_size) > progress:
-          progress += 1
-          if (progress % 20) == 0:
-            log.write("%d%%" % progress)
-          elif (progress % 2) == 0:
-            log.write(".")
-          log.flush()
 
-      if not block: break
-    if status and (file_size > 0):
-      log.write("]\n")
-    else:
-      log.write("%d kB\n" % (received / 1024))
-    log.flush()
-    if not buffer_until_file_downloaded:
-      f2.close()
+    # Buffering a large file is very inefficient and python is likely to crash
+    # Allow for writing the file immediately so we can empty the buffer
+    tmpfile = file + '.tmp'
+    with open(tmpfile, 'wb') as f:
+      while 1:
+        block = socket.read(block_size)
+        received += len(block)
+        f.write(block)
+        if status and (file_size > 0):
+          while (100 * received / file_size) > progress:
+            progress += 1
+            if (progress % 20) == 0:
+              log.write("%d%%" % progress)
+            elif (progress % 2) == 0:
+              log.write(".")
+            log.flush()
+
+        if not block: break
+      if status and (file_size > 0):
+        log.write("]\n")
+      else:
+        log.write("%d kB\n" % (received / 1024))
+      log.flush()
     socket.close()
-    # Do not write out file during the download. If a download temporarily fails we
+
+    # Do not overwrite file during the download. If a download temporarily fails we
     # may still have a clean, working (yet older) copy of the file.
-    if buffer_until_file_downloaded:
-      f = open(file, "wb")
-      f.write(data)
-      f.close()
+    shutil.move(tmpfile, file)
 
     if (file_size > 0) and (file_size != received):
       return -1
