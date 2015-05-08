@@ -438,7 +438,6 @@ Installation of Python packages may fail.
                                    pkg_url=pkg_url,
                                    return_file_and_status=True,
       )
-    if size==-2: return
     if self.check_download_only(pkg_name): return
     self.untar_and_chdir(pkg=pkg, log=pkg_log)
     if (callback_before_build is not None) :
@@ -875,7 +874,6 @@ Installation of Python packages may fail.
     # gtk+
     pkg_log = self.start_building_package("gtk+")
     pkg, size = self.fetch_package(pkg_name=GTK_PKG, return_file_and_status=True)
-    if size==-2: return
     self.fetch_package(pkg_name=GTK_ENGINE_PKG)
     if self.check_download_only(GTK_PKG) and self.check_download_only(GTK_ENGINE_PKG):
       return
