@@ -839,7 +839,6 @@ class Builder(object):
         'python',
         self.opjoin('modules', 'cctbx_project', 'libtbx', 'auto_build', 'install_base_packages.py'),
         '--python-shared',
-        '--skip-if-exists',
         '--nproc=%s' %str(self.nproc),
         '--%s'%self.BASE_PACKAGES
       ] + extra_opts,
