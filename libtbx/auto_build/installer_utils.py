@@ -13,7 +13,14 @@ import tarfile
 # XXX CCTBX itself requires at least Python 2.5 (and some packages such as
 # Phenix require 2.7+), but this script is intended to bootstrap an
 # installation on older systems as well
-def check_python_version () :
+def check_python_version (major=None, minor=None) :
+  if major and minor:
+    if (not sys.version_info >= (major,minor)) :
+      raise Exception(
+        "Python version %s.%s or greater required to run this script." % (
+          major,
+          minor,
+        ))
   if (not sys.version_info >= (2,3)) :
     raise Exception("Python version 2.3 or greater required to run this "+
       "script.")

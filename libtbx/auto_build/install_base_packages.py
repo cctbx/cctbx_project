@@ -24,7 +24,7 @@ if (not libtbx_path in sys.path) :
 class installer (object) :
   def __init__ (self, args=None, packages=None, log=sys.stdout) :
     #assert (sys.platform in ["linux2", "linux3", "darwin"])
-    check_python_version()
+    check_python_version(2,6)
     self.log = log
     print >> log, """
   ****************************************************************************
@@ -317,17 +317,19 @@ class installer (object) :
     pkg_dir = untar(pkg, log=log)
     os.chdir(pkg_dir)
 
-  def set_python(self, python_exe):
-    print >> self.log, "Using Python: %s"%python_exe
-    self.python_exe = python_exe
-    # Just an arbitrary import (with .so)
-    self.verify_python_module("Python", "socket")
-
-    # Check python version >= 2.6.
-    python_version = check_output([self.python_exe, '-c', 'import sys; print "%s.%s.%s"%(sys.version_info[0], sys.version_info[1], sys.version_info[2])'])
+  def check_python_version(self, major=2, minor=6):
+    python_version = check_output([
+      self.python_exe,
+      '-c',
+      'import sys; print "%s.%s.%s"%(sys.version_info[0], sys.version_info[1], sys.version_info[2])',
+      ])
     python_version = python_version.strip()
     try:
-      check_output([self.python_exe, '-c', 'import sys; assert sys.version_info[0] == 2; assert sys.version_info[1] >= 6'])
+      check_output([
+        self.python_exe,
+        '-c',
+        'import sys; assert sys.version_info[0] == %d; assert sys.version_info[1] >= %d' % (major, minor),
+        ])
     except (OSError, RuntimeError), e:
       print >> self.log, """
 Error: Python 2.6 or higher required. Python 3 is not supported.
@@ -335,6 +337,30 @@ Found Python version:
   %s
 """%python_version
       raise e
+
+  def set_python(self, python_exe):
+    print >> self.log, "Using Python: %s"%python_exe
+    self.python_exe = python_exe
+    # Just an arbitrary import (with .so)
+    self.verify_python_module("Python", "socket")
+    # check that certain modules are avaliable in python
+
+    deps = {"ssl" : "Secure Socket Library",
+            "zlib" : "XCode command line tools"
+      }
+    for module, desc in deps.items():
+      try:
+        self.verify_python_module(module, module)
+      except RuntimeError, e:
+        print '\n\n\n%s\n\nThis python does not have %s installed\n\n%s\n\n\n' % (
+          "*"*80,
+          "%s - %s" % (module, desc),
+          "*"*80,
+          )
+        raise e
+
+    # Check python version >= 2.6.
+    self.check_python_version()
 
     # Check that we have write access to site-packages dir
     # by creating a temporary file with write permissions.
@@ -971,7 +997,7 @@ Installation of Python packages may fail.
     if (self.flag_is_mac) :
       config_opts.extend([
         "--with-osx_cocoa",
-        "--with-macosx-version-min=10.6",
+        "--with-macosx-version-min=10.7", # %s" % get_os_version(),
         "--with-mac",
         "--enable-monolithic",
         "--disable-mediactrl",
@@ -987,6 +1013,7 @@ Installation of Python packages may fail.
         "--enable-display",
       ])
 
+    install_gizmos = True
     print >> self.log, "  building wxWidgets with options:"
     for opt in config_opts :
       print >> self.log, "    %s" % opt
@@ -994,19 +1021,22 @@ Installation of Python packages may fail.
     self.call("make -j %d" % self.nproc, log=pkg_log)
     if (not self.flag_is_mac) : # XXX ???
       self.call("make -j %d -C contrib/src/stc" % self.nproc, log=pkg_log)
-      self.call("make -j %d -C contrib/src/gizmos" % self.nproc, log=pkg_log)
+      if install_gizmos:
+        self.call("make -j %d -C contrib/src/gizmos" % self.nproc, log=pkg_log)
     self.call("make install", log=pkg_log)
     if (not self.flag_is_mac) : # XXX ???
       self.call("make -C contrib/src/stc install", log=pkg_log)
-      self.call("make -C contrib/src/gizmos install", log=pkg_log)
+      if install_gizmos:
+        self.call("make -C contrib/src/gizmos install", log=pkg_log)
 
     # Stage 2: build wxPython itself
     wxpy_build_opts = [
       "BUILD_GLCANVAS=1",
-      "BUILD_GIZMOS=1",
       "BUILD_DLLWIDGET=0",
       "UNICODE=1"
     ]
+    if install_gizmos:
+      wxpy_build_opts.append("BUILD_GIZMOS=1")
     if self.flag_is_mac:
       os.environ['CFLAGS'] = os.environ.get('CFLAGS', '') + " -arch x86_64"
       wxpy_build_opts.extend(["BUILD_STC=1",
@@ -1029,6 +1059,7 @@ Installation of Python packages may fail.
     self.verify_python_module("wxPython", "wx")
 
   def build_wxpython3(self):
+    assert 0
     pkg_log = self.start_building_package("wxPython")
     pkg_name = WXPYTHON_DEV_PKG
     pkg = self.fetch_package(pkg_name)
