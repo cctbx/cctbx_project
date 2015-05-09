@@ -199,7 +199,7 @@ class Script(object):
           f.close()
 
         id = evt.get(EventId)
-        print "Event #",i," has id:",id
+        #print "Event #",i," has id:",id
 
         # nop since the module does all the work.
 
