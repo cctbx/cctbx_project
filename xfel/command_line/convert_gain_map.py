@@ -17,6 +17,11 @@ from xfel.cxi.cspad_ana.cspad_tbx import evt_timestamp
 
 # Fake objects to emulate the minimal functionality so that we can reuse the
 # functions CsPad2x2Image and CsPadDetector in cspad_tbx.py
+def fake_get_config(address, env):
+  return fake_config()
+
+cspad_tbx.getConfig = fake_get_config
+
 class fake_cspad_ElementV2(object):
   def __init__(self, data, quad):
     self._data = data
@@ -81,6 +86,11 @@ def run(args):
                           type="string",
                           help="Detector format version to use for generating active areas and laying out tiles",
                           default=None)
+                  .option("-m", "--optical_metrology_path",
+                          action="store",
+                          type="string",
+                          help="Path to slac optical metrology file. If not set, use Run 4 metrology",
+                          default=None)
                   .option("-d", "--distance",
                           action="store",
                           type="int",
@@ -116,7 +126,7 @@ def run(args):
   elif args[0].endswith('.txt') or args[0].endswith('.gain'):
     raw_data = numpy.loadtxt(args[0])
     assert raw_data.shape in [(5920, 388), (11840, 194)]
-    det, active_areas = convert_detector(raw_data, detector_format_version, address)
+    det, active_areas = convert_detector(raw_data, detector_format_version, address, command_line.options.optical_metrology_path)
   img_diff = det
   img_sel = (img_diff > 0).as_1d()
   gain_map = flex.double(img_diff.accessor(), 0)
@@ -131,13 +141,16 @@ def run(args):
   easy_pickle.dump(output_filename, d)
 
 
-def convert_detector(raw_data, detector_format_version, address):
+def convert_detector(raw_data, detector_format_version, address, optical_metrology_path=None):
   # https://confluence.slac.stanford.edu/display/PCDS/CSPad+metrology+and+calibration+files%2C+links
   data3d = []
   if raw_data.shape == (5920,388):
     asic_start = 0
-    calib_dir = libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0")
-    sections = parse_calib.calib2sections(calib_dir)
+    if optical_metrology_path is None:
+      calib_dir = libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0")
+      sections = parse_calib.calib2sections(calib_dir)
+    else:
+      sections = parse_calib.calib2sections(optical_metrology_path)
     for i_quad in range(4):
       asic_size = 185 * 388
       section_size = asic_size * 2
@@ -170,8 +183,11 @@ def convert_detector(raw_data, detector_format_version, address):
       return det, active_areas
 
     else:
-      calib_dir = libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0")
-      sections = parse_calib.calib2sections(calib_dir)
+      if optical_metrology_path is None:
+        calib_dir = libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0")
+        sections = parse_calib.calib2sections(calib_dir)
+      else:
+        sections = parse_calib.calib2sections(optical_metrology_path)
       for i_quad in range(4):
         asic_size = 185 * 194
         section_size = asic_size * 4
