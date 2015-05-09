@@ -9,8 +9,6 @@ from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana import skip_event_flag
 import numpy as np
 from libtbx import easy_pickle
-import logging
-import re
 from psana import *
 
 class mod_spectrum_filter(object):
