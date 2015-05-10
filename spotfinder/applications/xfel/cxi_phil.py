@@ -702,37 +702,36 @@ def cxi_versioned_extract_detail(args):
 
     from scitbx.array_family import flex
 
+    # Determined from LH80, runs 9-13, trial 011_001
     corrected_auxiliary_translations =flex.int([
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
+       2,  1,  2,  1,  2,  2,  2,  2,
+       3,  0,  3,  0,  2,  1,  2,  1,
+       1,  0,  1,  0,  0,  0,  0,  0,
+       1,  1,  1,  1,  1,  1,  1,  1,
 
        0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0, -1, -1, -1, -1,
+       2, -2,  2, -2,  0,  0,  0,  0,
+       1, -3,  1, -3,  1, -1,  1, -1,
 
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
+       0, -3,  0, -3,  0, -2,  0, -2,
+      -2, -4, -2, -4, -1, -3, -1, -3,
+      -2, -3, -2, -3,  0,  0,  0,  0,
+      -3, -1, -3, -1, -1, -2, -1, -2,
 
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0,
-       0,  0,  0,  0,  0,  0,  0,  0])
-
+      -2,  2, -2,  2, -2,  1, -2,  1,
+      -2,  2, -2,  2, -2,  2, -2,  2,
+      -2,  2, -2,  2,  0,  0,  0,  0,
+      -1,  0, -1,  0, -1,  1, -1,  1])
 
     working_extract.distl.tile_translations = list(corrected_auxiliary_translations)
 
     # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y.
-    # Determined for LG36 run 82. Optimized for 118 mm
-    working_extract.distl.quad_translations = [ 0, 0,
-                                                0, 0,
-                                                0, 0,
-                                                0, 0]
-
+    # Manually determined from LH80 run 12. Optimized for 85 mm
+    working_extract.distl.quad_translations = [-11, 2,
+                                                -8, 2,
+                                                -9, 2,
+                                               -11, 4]
     return working_extract
 
 
