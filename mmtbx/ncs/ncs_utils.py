@@ -1,5 +1,6 @@
 from __future__ import division
 from scitbx.array_family import flex
+from scitbx.math import superpose
 from libtbx.utils import Sorry
 from scitbx import matrix
 import scitbx.rigid_body
@@ -1096,3 +1097,24 @@ def convert_phil_format(phil_str,to_type='ncs'):
   # remove extra spaces
   out_phil_str = out_phil_str.replace('selection   =','selection =')
   return out_phil_str
+
+def recalculate_ncs_transforms(ncs_restraints_group_list,asu_site_cart):
+  """
+  Re-evaluate the rotation and translation in the ncs groups list, base on
+  the ncs groups selection and the atoms location.
+  Updates the ncs_restraints_group_list object
+
+  Args:
+    ncs_restraints_group_list: list of ncs restraints group objects
+    asu_site_cart (flex.vec_3): the complete ASU sites cart (coordinates)
+  """
+  for gr in ncs_restraints_group_list:
+    m_sel = gr.master_iselection
+    for cp in gr.copies:
+      c_sel = cp.iselection
+      # other_sites are the master, reference_sites are the copies
+      lsq_fit_obj = superpose.least_squares_fit(
+          reference_sites = asu_site_cart.select(c_sel),
+          other_sites     = asu_site_cart.select(m_sel))
+      cp.r = lsq_fit_obj.r
+      cp.t = lsq_fit_obj.t
