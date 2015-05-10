@@ -797,9 +797,9 @@ class scaling_manager (intensity_data) :
       print >> out, str(e)
       return null_data(
         file_name=file_name, log_out=out.getvalue(), wrong_bravais=True)
-    return self.scale_frame_detail(result, file_name, db_mgr)
+    return self.scale_frame_detail(result, file_name, db_mgr, out)
 
-  def scale_frame_detail(self, result, file_name, db_mgr):
+  def scale_frame_detail(self, result, file_name, db_mgr, out):
     # If the pickled integration file does not contain a wavelength,
     # fall back on the value given on the command line.  XXX The
     # wavelength parameter should probably be removed from master_phil
@@ -827,6 +827,7 @@ class scaling_manager (intensity_data) :
 
     F_prime = -1.0 # Hard-coded value defines the incident polarization axis
     P_prime = 0.5 * F_prime * cos_two_polar_angle * sin_sq_tt_vec
+    # XXX added as a diagnostic
     prange=P_nought_vec - P_prime
 
     other_F_prime = 1.0
@@ -834,6 +835,7 @@ class scaling_manager (intensity_data) :
     otherprange=P_nought_vec - otherP_prime
     diff2 = flex.abs(prange - otherprange)
     print "mean diff is",flex.mean(diff2), "range",flex.min(diff2), flex.max(diff2)
+    # XXX done
     observations = observations / ( P_nought_vec - P_prime )
     # This corrects observations for polarization assuming 100% polarization on
     # one axis (thus the F_prime = -1.0 rather than the perpendicular axis, 1.0)
@@ -868,9 +870,9 @@ class scaling_manager (intensity_data) :
       crystal_symmetry=self.miller_set.crystal_symmetry()
       )
     print "Step 4. Filter on global resolution and map to asu"
-    print >> self.log, "Data in reference setting:"
+    print >> out, "Data in reference setting:"
     #observations.show_summary(f=out, prefix="  ")
-    show_observations(observations, out=self.log)
+    show_observations(observations, out=out)
 
     if self.params.significance_filter.apply is True: #------------------------------------
       # Apply an I/sigma filter ... accept resolution bins only if they
@@ -886,7 +888,7 @@ class scaling_manager (intensity_data) :
          N_bins_large_set, 1]
       )
       print "Total obs %d Choose n bins = %d"%(N_obs_pre_filter,N_bins)
-      bin_results = show_observations(observations, out=self.log, n_bins=N_bins)
+      bin_results = show_observations(observations, out=out, n_bins=N_bins)
       #show_observations(observations, out=sys.stdout, n_bins=N_bins)
       acceptable_resolution_bins = [
         bin.mean_I_sigI > self.params.significance_filter.sigma for bin in bin_results]
@@ -894,7 +896,7 @@ class scaling_manager (intensity_data) :
                                          if False not in acceptable_resolution_bins[:i+1]]
       if len(acceptable_nested_bin_sequences)==0:
         return null_data(
-          file_name=file_name, log_out=self.log.getvalue(), low_signal=True)
+          file_name=file_name, log_out=out.getvalue(), low_signal=True)
       else:
         N_acceptable_bins = max(acceptable_nested_bin_sequences) + 1
         imposed_res_filter = float(bin_results[N_acceptable_bins-1].d_range.split()[2])
@@ -1008,7 +1010,7 @@ class scaling_manager (intensity_data) :
       if (DELTA) == 0:
         print "Skipping frame with",sum_w,sum_xx,sum_x**2
         return null_data(file_name=file_name,
-                         log_out=self.log.getvalue(),
+                         log_out=out.getvalue(),
                          low_signal=True)
       slope = (sum_w * sum_xy - sum_x * sum_y) / DELTA
       offset = (sum_xx * sum_y - sum_x * sum_xy) / DELTA
@@ -1018,7 +1020,7 @@ class scaling_manager (intensity_data) :
     # Early return if there are no positive reflections on the frame.
     if data.n_obs <= data.n_rejected:
       return null_data(
-        file_name=file_name, log_out=self.log.getvalue(), low_signal=True)
+        file_name=file_name, log_out=out.getvalue(), low_signal=True)
 
     # Update the count for each matched reflection.  This counts
     # reflections with non-positive intensities, too.
@@ -1234,7 +1236,7 @@ class scaling_manager (intensity_data) :
         MINI = c_minimizer( current_x = current )
       except AssertionError: # on exponential overflow
         return null_data(
-               file_name=file_name, log_out=self.log.getvalue(), low_signal=True)
+               file_name=file_name, log_out=out.getvalue(), low_signal=True)
       scaler = scaler_callable(unpack(MINI.x))
       if self.params.postrefinement.algorithm=="rs":
         fat_selection = (lorentz_callable(unpack(MINI.x)) > 0.2)
@@ -1245,7 +1247,7 @@ class scaling_manager (intensity_data) :
       #avoid empty database INSERT, if there are insufficient centrally-located Bragg spots:
       if fat_count < 3:
         return null_data(
-               file_name=file_name, log_out=self.log.getvalue(), low_signal=True)
+               file_name=file_name, log_out=out.getvalue(), low_signal=True)
       print "On total %5d the fat selection is %5d"%(len(observations.indices()), fat_count)
       print "ZZZ",observations.size(), observations_original_index.size(), len(fat_selection), len(scaler)
       observations_original_index = observations_original_index.select(fat_selection)
@@ -1417,7 +1419,7 @@ class scaling_manager (intensity_data) :
         data.summed_N[pair[0]] += 1
         data.summed_wt_I[pair[0]] += Intensity / variance
         data.summed_weight[pair[0]] += 1 / variance
-    data.set_log_out(self.log.getvalue())
+    data.set_log_out(out.getvalue())
     if corr > 0.5:
       print "Selected file %s"%file_name.replace("integration","out").replace("int","idx")
       print "Selected distance %6.2f mm"%float(result["distance"])
