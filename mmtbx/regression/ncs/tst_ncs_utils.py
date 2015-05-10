@@ -1,4 +1,5 @@
 from __future__ import division
+from mmtbx.ncs.ncs_search import is_same_transform
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
 import mmtbx.ncs.ncs_utils as nu
@@ -708,6 +709,32 @@ class Test_ncs_utils(unittest.TestCase):
     out_str = nu.convert_phil_format(restraints_phil,to_type='ncs')
     self.assertEqual(out_str,ncs_phil)
 
+  def test_transform_update(self):
+    """ Test update of rotation and translation using selection """
+    ncs_obj = ncs.input(pdb_string=pdb_answer_0)
+    pdb_inp = pdb.input(lines=pdb_answer_0,source_info=None)
+    nrgl = ncs_obj.get_ncs_restraints_group_list()
+    asu_site_cart = pdb_inp.atoms().extract_xyz()
+    # reference matrices
+    r1 = nrgl[0].copies[0].r
+    t1 = nrgl[0].copies[0].t
+    r2 = nrgl[0].copies[1].r
+    t2 = nrgl[0].copies[1].t
+    # modify matrices in the ncs group list
+    nrgl[0].copies[0].r = r1 + r2
+    nrgl[0].copies[0].t = t1 + t2
+    nrgl[0].copies[1].r = r1 + r2
+    nrgl[0].copies[1].t = t1 + t2
+    nu.recalculate_ncs_transforms(nrgl,asu_site_cart)
+    # Get the updated values
+    r1_n = nrgl[0].copies[0].r
+    t1_n = nrgl[0].copies[0].t
+    r2_n = nrgl[0].copies[1].r
+    t2_n = nrgl[0].copies[1].t
+    #
+    self.assertTrue(is_same_transform(r1,t1,r1_n,t1_n))
+    self.assertTrue(is_same_transform(r2,t2,r2_n,t2_n))
+
 def run_selected_tests():
   """  Run selected tests
 
@@ -715,7 +742,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_convert_phil_format']
+  tests = ['test_transform_update']
   suite = unittest.TestSuite(map(Test_ncs_utils,tests))
   return suite
 
