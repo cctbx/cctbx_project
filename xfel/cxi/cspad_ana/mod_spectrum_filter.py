@@ -21,14 +21,29 @@ class mod_spectrum_filter(object):
                peak_two_width,
                peak_ratio = 0.4,
                normalized_peak_to_noise_ratio = 0.4,
-               spectrometer_dark_path = None):
+               spectrometer_dark_path = None,
+               iron_edge_position = None):
     """The mod_spectrum_filter class constructor stores the parameters passed
     from the psana configuration file in instance variables.
 
     @param address Full data source address of the FEE device
-    @param peak_positions tuple of x coordinate(s) in pixel units
-     of the peak positions on the detector
+    @param peak_one_position_min the minimum x coordinate in pixel units
+     of the first peak position on the detector
+    @param peak_one_position_max the maximum x coordinate in pixel units
+     of the first peak position on the detector
+    @param peak_two_position_min the minimum x coordinate in pixel units
+     of the second peak position on the detector
+    @param peak_two_position_max the maximum x coordinate in pixel units
+     of the second peak position on the detector
+    @param peak_one_width the width in pixels of the first peak
+    @param peak_two_width the width in pixels of the second peak
+    @param peak_ratio the ratio of the two peak heights
+    @param normalized_peak_to_noise_ratio ratio of the normalized integrated
+      peak to the normalized integrated regions between the peaks
     @param spectrometer_dark_path path to pickle file of FEE dark
+      if None then no dark is subtracted from the spectrum
+    @param iron_edge_position the position in pixels of the iron edge if absorbing
+      iron foil is used in the experiment if None this is not used as a filtering parameter
     """
     #self.logger = logging.getLogger(self.__class__.__name__)
     #self.logger.setLevel(logging.INFO)
@@ -47,6 +62,10 @@ class mod_spectrum_filter(object):
     self.peak_two_width = int(peak_two_width)
     self.normalized_peak_to_noise_ratio = float(normalized_peak_to_noise_ratio)
     self.peak_ratio = float(peak_ratio)
+    if iron_edge_position is not None:
+      self.iron_edge_position = int(iron_edge_position)
+    else:
+      self.iron_edge_position = None
 
     self.ntwo_color = 0
     self.nnodata = 0
@@ -66,13 +85,14 @@ class mod_spectrum_filter(object):
     #import pdb; pdb.set_trace()
     if (evt.get("skip_event")):
       return
+    # check if FEE data is one or two dimensional
     data = evt.get(Camera.FrameV1, self.src)
     if data is None:
       one_D = True
       data = evt.get(Bld.BldDataSpectrometerV1, self.src)
     else:
       one_D = False
-
+    # get event timestamp
     timestamp = cspad_tbx.evt_timestamp(cspad_tbx.evt_time(evt)) # human readable format
 
     if data is None:
@@ -87,6 +107,7 @@ class mod_spectrum_filter(object):
 
     elif data is not None:
       self.nshots +=1
+      # get data as array and split into two half to find each peak
       if one_D:
         data = np.array(data.hproj().astype(np.int32))
         spectrum = data
@@ -155,21 +176,21 @@ class mod_spectrum_filter(object):
         print "event(): noisy middle"
         evt.put(skip_event_flag(), "skip_event")
         return
-      #if int_middle_region/int_peak_two > self.normalized_peak_to_noise_ratio:
-        #print "event(): noisy middle"
-       # evt.put(skip_event_flag(), "skip_event")
-       # return
+      if not one_D and (int_middle_region/int_peak_two > self.normalized_peak_to_noise_ratio):
+        print "event(): noisy middle"
+        evt.put(skip_event_flag(), "skip_event")
+        return
       if not one_D and (int_right_region/int_peak_two > self.normalized_peak_to_noise_ratio):
         print "event(): noisy right of high energy peak"
         evt.put(skip_event_flag(), "skip_event")
         return
-
-      if one_D and (spectrum[data.shape[0]//2]>=spectrum[weighted_peak_one_center_position]):
+      #iron edge at 738 pixels on FFE detetor
+      if one_D and (spectrum[self.iron_edge_position]>=spectrum[weighted_peak_one_center_position]):
         print "event(): peak at iron edge"
         evt.put(skip_event_flag(), "skip_event")
         return
 
-      if one_D and (spectrum[data.shape[0]//2]>=spectrum[weighted_peak_two_center_position]):
+      if one_D and (spectrum[self.iron_edge_position]>=spectrum[weighted_peak_two_center_position]):
         print "event(): peak at iron edge"
         evt.put(skip_event_flag(), "skip_event")
         return
