@@ -2197,6 +2197,7 @@ mmtbx/secondary_structure/regularize_from_pdb_lib/helices.pdb -text
 mmtbx/secondary_structure/regularize_from_pdb_lib/lib8.info -text
 mmtbx/secondary_structure/regularize_from_pdb_lib/lib8.pdb -text
 mmtbx/secondary_structure/regularize_from_pdb_lib/strands.pdb -text
+mmtbx/secondary_structure/secondary_structure_params.py -text
 mmtbx/secondary_structure/tst.py -text
 mmtbx/secondary_structure/tst_segid.py -text
 mmtbx/secondary_structure/utils.py -text
