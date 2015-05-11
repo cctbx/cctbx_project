@@ -1324,9 +1324,9 @@ class find_secondary_structure: # class to look for secondary structure
       self.find_ss_in_model(params=params,model=model,out=out)
 
 
-    # save everything as pdb_helix or pdb_sheet objects 
-    self.pdb_helix_list=[] 
-    self.pdb_sheet_list=[] 
+    # save everything as pdb_helix or pdb_sheet objects
+    self.pdb_helix_list=[]
+    self.pdb_sheet_list=[]
     for model in self.models:
       self.pdb_helix_list+=model.find_alpha.pdb_records(
         last_id=len(self.pdb_helix_list))
