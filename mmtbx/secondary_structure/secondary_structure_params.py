@@ -40,7 +40,7 @@ alpha_params=iotbx.phil.parse("""
        .help = Tolerance in rise of helices in input file
        .short_caption = Tolerance in rise of helices
 
-     dot_min_single = 0.5
+     dot_min_single = 0.3
        .type = float
        .help = Target dot product of i->i+1 with overall direction
        .short_caption = Target dot i to i+1
