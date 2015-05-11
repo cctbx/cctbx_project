@@ -259,6 +259,26 @@ def get_atom_list(hierarchy):
             atom_list.append(atom.name)
   return atom_list
 
+def get_first_residue(hierarchy):
+  if not hierarchy:
+    return None
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for conformer in chain.conformers():
+        for residue in conformer.residues():
+          return residue
+
+def get_last_residue(hierarchy):
+  if not hierarchy:
+    return None
+  last_residue=None
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for conformer in chain.conformers():
+        for residue in conformer.residues():
+          last_residue=residue
+  return last_residue
+
 def get_first_resno(hierarchy):
   if not hierarchy:
     return None
@@ -558,11 +578,6 @@ class segment:  # object for holding a helix or a strand or other
 
     asc=hierarchy.atom_selection_cache()
     sel = asc.selection(string = atom_selection)
-    alt_hierarchy = hierarchy.deep_copy().select(sel)
-    str1=sele.as_pdb_string()
-    str2=alt_hierarchy.as_pdb_string()
-    assert str1== str2
-    sele=alt_hierarchy # ZZZ
     assert sele.overall_counts().n_residues  # should not be None
     from cStringIO import StringIO
     f=StringIO()
@@ -902,6 +917,7 @@ class find_segment: # class to look for a type of segment
          ) +" Rise:%5.2f A Dot:%5.2f" %(
           h.get_rise(),h.get_cosine())
 
+
   def get_used_residues_list(self):
     # just return a list of used residues
     used_residues=[]
@@ -1115,6 +1131,33 @@ class find_alpha_helix(find_segment):
      make_unique=make_unique,
      verbose=verbose,out=out)
 
+  def pdb_records(self,last_id=0):
+    from iotbx.pdb import secondary_structure
+
+    records=[]
+    k=last_id
+    for s in self.segments:
+      start=get_first_residue(s.hierarchy)
+      end=get_last_residue(s.hierarchy)
+      chain_id=get_chain_id(s.hierarchy)
+      k=k+1
+      record = secondary_structure.pdb_helix(
+        serial=k,
+        helix_id=k,
+        start_resname=start.resname,
+        start_chain_id=chain_id,
+        start_resseq=start.resseq_as_int(),
+        start_icode=start.icode,
+        end_resname=end.resname,
+        end_chain_id=chain_id,
+        end_resseq=end.resseq_as_int(),
+        end_icode=end.icode,
+        helix_class=1, # alpha helix only
+        comment="",
+        length=s.length())
+      records.append(record)
+    return records
+
 class find_beta_strand(find_segment):
 
   def __init__(self,params=None,model=None,verbose=None,
@@ -1132,6 +1175,38 @@ class find_beta_strand(find_segment):
       make_unique=make_unique,
       verbose=verbose,out=out)
 
+  def pdb_records(self,last_id=0):
+    from iotbx.pdb import secondary_structure
+
+    records=[]
+    k=last_id
+    for s in self.segments:
+      start=get_first_residue(s.hierarchy)
+      end=get_last_residue(s.hierarchy)
+      chain_id=get_chain_id(s.hierarchy)
+      k=k+1
+      current_sheet = secondary_structure.pdb_sheet(
+        sheet_id=k,
+        n_strands=1, # XXX TODO figure out others and registration
+        strands=[],
+        registrations=[])
+      first_strand = secondary_structure.pdb_strand(
+        sheet_id=k,
+        strand_id=1,
+        start_resname=start.resname,
+        start_chain_id=chain_id,
+        start_resseq=start.resseq_as_int(),
+        start_icode=start.icode,
+        end_resname=end.resname,
+        end_chain_id=chain_id,
+        end_resseq=end.resseq_as_int(),
+        end_icode=end.icode,
+        sense=0)
+      current_sheet.add_strand(first_strand)
+      current_sheet.add_registration(None)
+      records.append(current_sheet)
+    return records
+
 class find_other_structure(find_segment):
 
   def __init__(self,find_alpha=None,find_beta=None,
@@ -1147,6 +1222,9 @@ class find_other_structure(find_segment):
       extract_segments_from_pdb=extract_segments_from_pdb,
       make_unique=make_unique,
       verbose=verbose,out=out)
+
+  def pdb_records(self,last_id=0):
+    return []
 
   def get_optimal_lengths(self,segment_dict=None,norms=None):
     # always zero
@@ -1245,7 +1323,24 @@ class find_secondary_structure: # class to look for secondary structure
     for model in self.models:
       self.find_ss_in_model(params=params,model=model,out=out)
 
-    # now each model has a find_alpha, find_beta, find_other object
+
+    # save everything as pdb_helix or pdb_sheet objects 
+    self.pdb_helix_list=[] 
+    self.pdb_sheet_list=[] 
+    for model in self.models:
+      self.pdb_helix_list+=model.find_alpha.pdb_records(
+        last_id=len(self.pdb_helix_list))
+      self.pdb_sheet_list+=model.find_beta.pdb_records(
+        last_id=len(self.pdb_sheet_list))
+
+    from cStringIO import StringIO
+    all_pdb_records=StringIO()
+    for helix in self.pdb_helix_list:
+      print >>all_pdb_records,helix.as_pdb_str()
+    for sheet in self.pdb_sheet_list:
+      print >>all_pdb_records,sheet.as_pdb_str()
+    self.all_pdb_records=all_pdb_records.getvalue()
+
     self.show_summary(verbose=True,out=out)
 
   def show_summary(self,verbose=None,out=sys.stdout):
@@ -1261,6 +1356,12 @@ class find_secondary_structure: # class to look for secondary structure
           model.find_beta.show_summary(out=out)
         if model.find_other:
           model.find_other.show_summary(out=out)
+    if verbose:
+      print >>out,"\nPDB RECORDS:"
+      print >>out,self.all_pdb_records
+
+  def get_all_pdb_records(self):
+    return self.all_pdb_records
 
   def find_ss_in_model(self,params=None,model=None,out=sys.stdout):
     if params.find_ss_structure.find_alpha:
