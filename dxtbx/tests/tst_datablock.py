@@ -137,7 +137,7 @@ class Test(object):
 
     filenames = self.multiple_block_filenames()
     blocks = DataBlockFactory.from_filenames(filenames, verbose=False)
-    assert(len(blocks) == 20)
+    assert(len(blocks) == 21)
 
     # Block 1
     assert(blocks[0].num_images() == 9)
