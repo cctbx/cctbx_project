@@ -703,6 +703,7 @@ def cxi_versioned_extract_detail(args):
     from scitbx.array_family import flex
 
     # Determined from LH80, runs 18-23, trial 014_000
+    """
     corrected_auxiliary_translations =flex.int([
        2,  1,  2,  1,  1,  2,  1,  2,
        3,  0,  3,  0,  2,  0,  2,  0,
@@ -723,15 +724,47 @@ def cxi_versioned_extract_detail(args):
       -2,  2, -2,  2, -3,  2, -3,  2,
       -2,  2, -2,  2,  0,  0,  0,  0,
       -1, -2, -1, -2, -1,  0, -1,  0])
+    """
+    # Determined from LH80, runs 46-51, trial 019_000
+    corrected_auxiliary_translations =flex.int([
+       2,  1,  2,  1,  2,  2,  2,  2,
+       2, -2,  2, -2,  2, -1,  2, -1,
+      -1, -2, -1, -2, -3, -6, -3, -6,
+      -1,  1, -1,  1,  0,  1,  0,  1,
+
+      -2,  1, -2,  1, -1,  0, -1,  0,
+     # row from 014_001
+     # 0,  0,  0,  0, -1, -1, -1, -1,
+     # original row from 019_000
+     #-2,  1, -2,  1, -3,  0, -3,  0,
+     # the minus 2s and 3s above put this sensor off of the edge.
+       0,  1,  0,  1, -1,  0, -1,  0,
+       1, -2,  1, -2,  1, -1,  1, -1,
+       1, -4,  1, -4,  0,  0,  0,  0,
+
+       1, -3,  1, -3,  0, -2,  0, -2,
+      -1, -5, -1, -5,  0, -4,  0, -4,
+      -3, -4, -3, -4, -3, -6, -3, -6,
+      -1, -1, -1, -1,  0, -2,  0, -2,
+
+      -1,  1, -1,  1, -2,  1, -2,  1,
+      -2,  1, -2,  1, -3,  1, -3,  1,
+      -1,  0, -1,  0,  0,  0,  0,  0,
+       0, -3,  0, -3, -1,  0, -1,  0])
 
     working_extract.distl.tile_translations = list(corrected_auxiliary_translations)
 
     # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y.
     # Manually determined from LH80 run 12. Optimized for 85 mm
-    working_extract.distl.quad_translations = [-11, 2,
-                                                -8, 2,
-                                                -9, 2,
-                                               -11, 4]
+    #working_extract.distl.quad_translations = [-11, 2,
+    #                                            -8, 2,
+    #                                            -9, 2,
+    #                                           -11, 4]
+    # Manually determined from LH80 runs 31-37. Optimized for 85 mm. Good for runs 31+
+    working_extract.distl.quad_translations = [-16, 5,
+                                               -11, 5,
+                                               -14, 5,
+                                               -16, 6]
     return working_extract
 
 
