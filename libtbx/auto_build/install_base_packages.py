@@ -24,7 +24,7 @@ if (not libtbx_path in sys.path) :
 class installer (object) :
   def __init__ (self, args=None, packages=None, log=sys.stdout) :
     #assert (sys.platform in ["linux2", "linux3", "darwin"])
-    check_python_version(2,6)
+    check_python_version() # (2,6)
     self.log = log
     print >> log, """
   ****************************************************************************
