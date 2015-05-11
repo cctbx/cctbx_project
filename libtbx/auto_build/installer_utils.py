@@ -15,6 +15,8 @@ import tarfile
 # installation on older systems as well
 def check_python_version (major=None, minor=None) :
   if major and minor:
+    print '\nChecking python version of %s' % sys.executable
+    print '  - %s.%s.%s' % sys.version_info[:3]
     if sys.version_info <= (major,minor) :
       raise Exception(
         "Python version %s.%s or greater required to run this script." % (
