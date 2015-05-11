@@ -275,7 +275,7 @@ class InMemScript(DialsProcessScript):
         datablock = DataBlockFactory.from_imageset(imgset)[0]
 
         # before calling DIALS for processing, set output paths according to the templates
-        if "%s" in indexed_filename_template:
+        if indexed_filename_template is not None and "%s" in indexed_filename_template:
           self.params.output.indexed_filename = os.path.join(self.params.output.output_dir, indexed_filename_template%("idx-" + s))
         if "%s" in refined_experiments_filename_template:
           self.params.output.refined_experiments_filename = os.path.join(self.params.output.output_dir, refined_experiments_filename_template%("idx-" + s))
