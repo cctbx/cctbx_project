@@ -485,6 +485,10 @@ class installer(object):
       dispatcher_opts.append("--ignore_missing_dirs")
     # FIXME this will happen regardless of whether the GUI modules are being
     # distributed or not - will this be problematic?
+    print 'Calling write_gui_dispatcher_include'
+    print '  args %s' % dispatcher_opts
+    print '  prologue %s' % prologue
+    print '  epilogue %s' % epilogue
     write_gui_dispatcher_include.run(
       args=dispatcher_opts,
       prologue=prologue,
