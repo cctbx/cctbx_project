@@ -36,6 +36,9 @@ wavelength = None
 out = circle.gain
   .type = str
   .help = Output file path
+optical_metrology_path = None
+  .type = str
+  .help = Path to slac optical metrology file. If not set, use Run 4 metrology
 """)
 
 if (__name__ == "__main__") :
@@ -47,13 +50,12 @@ if (__name__ == "__main__") :
       raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
 
   params = master_phil.fetch(sources=user_phil).extract()
-  assert params.detector_format_version is not None
   assert params.resolution is not None
   assert params.distance is not None
   assert params.wavelength is not None
 
   print "Generating circular gain mask using %s metrology at %s angstroms, assuming a distance %s mm and wavelength %s angstroms" % \
-    (params.detector_format_version, params.resolution, params.distance, params.wavelength)
+    (str(params.detector_format_version), params.resolution, params.distance, params.wavelength)
 
   from xfel.cxi.cspad_ana.cspad_tbx import dpack, evt_timestamp, cbcaa, pixel_size, CsPadDetector
   from xfel.detector_formats import address_and_timestamp_from_detector_format_version
@@ -62,14 +64,17 @@ if (__name__ == "__main__") :
   timestamp = evt_timestamp((timestamp,0))
 
   raw_data = numpy.zeros((11840,194))
-  if "XPP" in params.detector_format_version:
+  if params.detector_format_version is not None and "XPP" in params.detector_format_version:
     from xfel.cxi.cspad_ana.cspad_tbx import xpp_active_areas
     active_areas = xpp_active_areas[params.detector_format_version]['active_areas']
     data = flex.int(flex.grid((1765,1765)))
     beam_center = (1765 // 2, 1765 // 2)
   else:
-    calib_dir = libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0")
-    sections = calib2sections(calib_dir)
+    if params.optical_metrology_path is None:
+      calib_dir = libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0")
+      sections = calib2sections(calib_dir)
+    else:
+      sections = calib2sections(params.optical_metrology_path)
     asic_start = 0
     data3d = []
     for i_quad in range(4):
