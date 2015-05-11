@@ -2,9 +2,10 @@ from __future__ import division
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.mpi_submit
+# LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.mpi_submit
 #
-# Submit a cxi.xtc_project to the cluster using bsub, after first creating an
-# appropiate trial directory in the requested location and copying and modifying
+# Submit a cctbx.xfel processing job to the cluster using bsub, after first creating
+# an appropiate trial directory in the requested location and copying and modifying
 # the given psana config files and cctbx.xfel phil files
 #
 import os, sys, shutil
@@ -63,49 +64,57 @@ phil_scope = parse('''
   input {
     cfg = None
       .type = str
-      .help = "Path to psana config file"
+      .help = Path to psana config file
     experiment = None
       .type = str
-      .help = "Experiment identifier, e.g. cxi84914"
+      .help = Experiment identifier, e.g. cxi84914
     run_num = None
       .type = int
-      .help = "Run number or run range to process"
+      .help = Run number or run range to process
     trial = None
       .type = int
-      .help = "Trial number for this job.  Leave blank to auto determine."
+      .help = Trial number for this job.  Leave blank to auto determine.
     xtc_dir = None
       .type = str
-      .help = "Optional path to data directory if it's non-standard. Only needed if xtc"
-      .help = "streams are not in the standard location for your PSDM installation."
+      .help = Optional path to data directory if it's non-standard. Only needed if xtc \
+              streams are not in the standard location for your PSDM installation.
+    dispatcher = cxi.xtc_process
+      .type = str
+      .help = Which program to run. cxi.xtc_process is for module only based processing, \
+              such as mod_hitfind. cctbx.xfel.xtc_process uses the DIALS back end.
+    target = None
+      .type = str
+      .help = Optional path to phil file with additional parameters to be run by the \
+              processing program.
   }
   output {
     output_dir = "."
       .type = str
-      .help = "Directory for output files"
+      .help = Directory for output files
   }
   mp {
     method = *mpi sge pbs
       .type = choice
-      .help = "Muliprocessing method"
+      .help = Muliprocessing method
     nproc = 1
       .type = int
-      .help = "Number of processes"
+      .help = Number of processes
     queue = "psanacsq"
       .type = str
-      .help = "Queue to submit MPI job to"
+      .help = Queue to submit MPI job to
     sge {
       memory = 4g
-      .type = str
-      .help = "How much memory to request for an SGE job"
+        .type = str
+        .help = How much memory to request for an SGE job
     }
     pbs {
       env_script = None
-      .type = str
-      .help = "Path to bash script with extra environment settings. Ran after PSDM"
-      .help = "and cctbx are sourced."
+        .type = str
+        .help = Path to bash script with extra environment settings. Ran after PSDM \
+              and cctbx are sourced.
       walltime = "00:00:30"
-      .type = str
-      .help = "Maximum time this job will be scheduled to run for."
+        .type = str
+        .help = Maximum time this job will be scheduled to run for.
     }
   }
 ''', process_includes=True)
@@ -238,16 +247,35 @@ class Script(object):
       f.write(line)
     f.close()
 
+    # If additional phil params are provided, copy them over too
+    if params.input.target is not None:
+      if not os.path.exists(params.input.target):
+        raise Sorry("Target file doesn't exist: %s"%params.input.target)
+      copy_target(params.input.target, trialdir, "params_%d"%target_num)
+      params.input.target = os.path.join(trialdir, "params_%d.phil"%target_num)
+      target_num += 1
+
+    # Some configs files will specify out_dirname. If not, we want to explicitly create one
+    # so the dispatcher will have an output directory.
+    output_dir = os.path.join(trialdir, "out")
+    if not os.path.exists(trialdir):
+      os.makedirs(output_dir)
+
     # Write out a script for submitting this job and submit it
     submit_path = os.path.join(trialdir, "submit.sh")
 
     if params.mp.method == "mpi":
-      command = "bsub -a mympi -n %d -o %s -q %s cxi.xtc_process input.cfg=%s input.experiment=%s input.run_num=%d"%( \
-        params.mp.nproc, os.path.join(stdoutdir, "log.out"), params.mp.queue, config_path,
+      command = "bsub -a mympi -n %d -o %s -q %s %s input.cfg=%s input.experiment=%s input.run_num=%d"%( \
+        params.mp.nproc, os.path.join(stdoutdir, "log.out"), params.mp.queue, params.input.dispatcher, config_path,
         params.input.experiment, params.input.run_num)
+
+      command += " output.output_dir=%s"%output_dir
 
       if params.input.xtc_dir is not None:
         command += " input.xtc_dir=%s"%params.input.xtc_dir
+
+      if params.input.target is not None:
+        command += " %s"%params.input.target
 
       f = open(submit_path, 'w')
       f.write("#! /bin/sh\n")
@@ -283,8 +311,11 @@ class Script(object):
       else:
         extra_str = "input.xtc_dir=%s"%params.input.xtc_dir
 
-      f.write("cxi.xtc_process input.cfg=%s input.experiment=%s input.run_num=%d mp.method=sge %s 1> %s 2> %s\n"%( \
-        config_path, params.input.experiment, params.input.run_num, extra_str,
+      if params.input.target is not None:
+        extra_str += " %s"%params.input.target
+
+      f.write("%s input.cfg=%s input.experiment=%s input.run_num=%d output.output_dir=%s mp.method=sge %s 1> %s 2> %s\n"%( \
+        params.input.dispatcher, config_path, params.input.experiment, params.input.run_num, output_dir, extra_str,
         os.path.join(stdoutdir, "log_$SGE_TASK_ID.out"), os.path.join(stdoutdir, "log_$SGE_TASK_ID.err")))
       f.close()
     elif params.mp.method == "pbs":
@@ -318,8 +349,11 @@ class Script(object):
       else:
         extra_str = "input.xtc_dir=%s"%params.input.xtc_dir
 
-      f.write("aprun -n %d cxi.xtc_process input.cfg=%s input.experiment=%s input.run_num=%d mp.method=mpi %s\n"%( \
-        params.mp.nproc, config_path, params.input.experiment, params.input.run_num, extra_str))
+      if params.input.target is not None:
+        extra_str += " %s"%params.input.target
+
+      f.write("aprun -n %d %s input.cfg=%s input.experiment=%s input.run_num=%d output.output_dir=%s mp.method=mpi %s\n"%( \
+        params.mp.nproc, params.input.dispatcher, config_path, params.input.experiment, params.input.run_num, output_dir, extra_str))
       f.close()
     else:
       raise Sorry("Multiprocessing method %s not recognized"%params.mp.method)
