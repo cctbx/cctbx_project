@@ -83,11 +83,11 @@ namespace scitbx { namespace glmtbx {
       double p3 = poisson::cdf(mu, j1);   // P(Y <= j1)
       double p4 = poisson::pdf(mu, j2+1); // P(Y  = j2 + 1)
       double p5 = poisson::cdf(mu, j2+1); // P(Y <= j2 + 1)
-      double p6 = 1.0 - p5 + p4;         // P(Y >= j2 + 1)
+      double p6 = 1.0 - p5 + p4;          // P(Y >= j2 + 1)
       double p7 = poisson::pdf(mu, j1-1); // P(Y  = j1 - 1)
       double p8 = poisson::pdf(mu, j2-1); // P(Y  = j2 - 1)
       double p9 = poisson::cdf(mu, j2-1); // P(Y <= j2 - 1)
-      double p10 = p9 - p3 + p1;         // P(j1 <= Y <= j2)
+      double p10 = p9 - p3 + p1;          // P(j1 <= Y <= j2)
 
       // Compute expected values
       epsi1 = c*(p6-p3) + (mu/svar)*(p1-p2);
