@@ -1,3 +1,4 @@
+# LIBTBX_SET_DISPATCHER_NAME mmtbx.simple_build_alt_confs
 
 from __future__ import division
 from libtbx.str_utils import make_header
@@ -33,7 +34,14 @@ def run (args, out=None) :
     master_phil=master_phil(),
     process_pdb_file=True,
     create_fmodel=True,
-    out=out)
+    out=out,
+    usage_string="""\
+mmtbx.build_alt_confs_simple model.pdb data.mtz [options]
+
+Simple tool for building alternate conformations by real-space refinement into
+difference density.  Not intended for production use - use the program
+mmtbx.build_alternate_conformations if you want refinement and post-processing.
+""")
   params = cmdline.params
   validate_params(params)
   log = multi_out()
