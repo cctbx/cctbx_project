@@ -1372,12 +1372,29 @@ class find_secondary_structure: # class to look for secondary structure
             i,first_ca_1,last_ca_1,j,first_ca_2,last_ca_2,is_parallel)
 
     # Create sheets from paired strands.
-    self.used_strands=[]
+    self.used_strands=[] # keep track of which ones we have assigned
     self.all_strands=all_strands
+
+    # single_strands are those with no matching strands
     single_strands=self.get_strands_by_pairs(pairs=0)
     pair_strands=self.get_strands_by_pairs(pairs=1)
     triple_strands=self.get_strands_by_pairs(pairs=2)
     multiple_strands=self.get_strands_by_pairs(pairs=None)
+
+    self.used_strands=[] # initialize again
+    self.used_strands+=single_strands
+    # find all sheets with edges (beginning with a paired strand)
+    for i in pair_strands:
+      if i in self.used_strands:continue
+      self.used_strands.append(i)
+      print "Building sheet starting with %d" %(i)
+      strand_list=[i]
+      current_strand=i
+      while current_strand is not None:
+        current_strand=self.get_available_strand(current_strand=current_strand)
+        if current_strand is not None: strand_list.append(current_strand)
+      print "Strand list:",strand_list
+
     print "single strands:",single_strands
     print "pair strands:",pair_strands
     print "triple strands:",triple_strands
@@ -1427,8 +1444,8 @@ class find_secondary_structure: # class to look for secondary structure
             self.pair_dict[j].append(i)
             self.info_dict["%d:%d" %(j,i)]=\
                [first_ca_2,last_ca_2,first_ca_1,last_ca_1,is_parallel]
-  
-  def align_strands(self,s1,s2,tol=None): 
+
+  def align_strands(self,s1,s2,tol=None):
     # figure out best alignment and directions. Require at least 2 residues
     sites1=s1.get_sites()
     sites2=s2.get_sites()
@@ -1484,7 +1501,7 @@ class find_secondary_structure: # class to look for secondary structure
       is_parallel=True
 
     return [first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel]
-    
+
 
   def get_residue_pairs_in_sheet(self,sites1,sites2,
      center1=None,center2=None,tol=None):
@@ -1505,7 +1522,7 @@ class find_secondary_structure: # class to look for secondary structure
           keep2_list.append(i2)
           dd_list.append(dd**0.5)
     return dd_list,keep1_list,keep2_list
- 
+
   def ca_pair_is_close(self,s1,s2,tol=None,
       dist_per_residue=3.5,jump=4):
     best_dist_sq=None
@@ -1525,7 +1542,7 @@ class find_secondary_structure: # class to look for secondary structure
       if best_dist_sq is None or \
          best_dist_sq**0.5 > (jump+1)*dist_per_residue+tol: # no hope
            break
-      if jump==1: 
+      if jump==1:
            break
       jump=max(1,jump//2)  # try finer search
     if best_dist_sq is not None and best_dist_sq <= tol**2:
@@ -1655,7 +1672,7 @@ class find_secondary_structure: # class to look for secondary structure
 
   def get_params(self,args,out=sys.stdout):
     command_line = iotbx.phil.process_command_line_with_files(
-      args=args, 
+      args=args,
       master_phil=master_phil,
       pdb_file_def="input_files.pdb_in")
 
