@@ -140,7 +140,9 @@ class Downloader(object):
     progress = 1
     # Allow for writing the file immediately so we can empty the buffer
     tmpfile = file + '.tmp'
-    with open(tmpfile, 'wb') as f:
+    # removed use of "with" syntax
+    f = open(tmpfile, 'wb')
+    if 'using_ancient_python':
       while 1:
         block = socket.read(block_size)
         received += len(block)
@@ -160,6 +162,7 @@ class Downloader(object):
       else:
         log.write("%d kB\n" % (received / 1024))
       log.flush()
+    f.close()
     socket.close()
 
     # Do not overwrite file during the download. If a download temporarily fails we
