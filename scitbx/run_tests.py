@@ -119,6 +119,7 @@ tst_list = (
   "$D/direct_search_simulated_annealing.py",
   "$D/random/tests/tst_random.py",
   "$D/lstbx/tests/tst_normal_equations.py",
+  "$D/glmtbx/tests/tst.py",
   )
 
 def run () :

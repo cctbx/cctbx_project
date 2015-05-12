@@ -2593,6 +2593,7 @@ scitbx/glmtbx/boost_python/ext.cc -text
 scitbx/glmtbx/family.h -text
 scitbx/glmtbx/glm.h -text
 scitbx/glmtbx/robust_glm.h -text
+scitbx/glmtbx/tests/tst.py -text
 scitbx/golden_section_search.py -text
 scitbx/graph/__init__.py -text
 scitbx/graph/rigidity.py -text
