@@ -89,13 +89,14 @@ namespace scitbx { namespace glmtbx {
           double mu  = family::linkinv(eta);
           double var = family::variance(mu);
           double phi = family::dispersion();
+          double deta_dmu = family::deta_dmu(mu);
+          SCITBX_ASSERT(deta_dmu > 0);
           SCITBX_ASSERT(phi > 0);
           SCITBX_ASSERT(var > 0);
-          double res = (Y[i] - mu) / (phi * var);
 
           // Construct the weight matrix and residual vector
-          double w = P[i] * mu;
-          double z = res;
+          double w = P[i] / (var*deta_dmu*deta_dmu);
+          double z = (Y[i] - mu) * deta_dmu;
 
           // Update the WX = B * X and U matrices
           for (std::size_t j = 0; j < n_cof; ++j) {

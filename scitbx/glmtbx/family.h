@@ -63,6 +63,17 @@ namespace scitbx { namespace glmtbx {
     }
 
     /**
+     * The derivative of eta wrt mu
+     * @param mu
+     * @return The value of the derivative
+     */
+    static
+    double deta_dmu(double mu) {
+      SCITBX_ASSERT(mu > 0);
+      return 1.0 / mu;
+    }
+
+    /**
      * The dispersion
      * @return The dispersion
      */
