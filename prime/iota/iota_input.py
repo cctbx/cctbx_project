@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 05/06/2015
+Last Changed: 05/07/2015
 Description : IOTA I/O module. Reads PHIL input, creates output directories,
               creates input lists and organizes starting parameters, also
               creates reasonable IOTA and PHIL defaults if selected
@@ -88,6 +88,9 @@ n_processors = 32
 advanced
   .help = "Advanced, debugging and experimental options."
 {
+  sig_height_search = False
+    .type = bool
+    .help = scan signal height in addition to spot height
   single_img = None
     .type = str
     .help = Runs grid search on specified single image
@@ -109,6 +112,9 @@ advanced
   print_input_list = False
     .type = bool
     .help = Print to a file a list of selected images
+  clean_up_output = True
+    .type = bool
+    .help = Set to False to leave temporary folders and files in place
   pred_img
     .help = "Visualize spotfinding and integration results."
   {
@@ -150,6 +156,7 @@ def process_input(input_file_list):
               txt_output - plain text-formatted parameters
   """
 
+  global params
   user_phil = [ip.parse(open(inp).read()) for inp in input_file_list]
 
   working_phil = master_phil.fetch(sources=user_phil)
@@ -162,6 +169,8 @@ def process_input(input_file_list):
   txt_out = ''
   for one_output in output:
     txt_out += one_output + '\n'
+
+
 
   return params, txt_out
 
@@ -316,21 +325,38 @@ def make_mp_input(input_list, gs_params, gs_range):
                        img_filename.split('.')[0]]
     mp_output.append(mp_output_entry)
 
-    # Create input list w/ filename and spot-finding params
+    # Generate spotfinding parameter ranges, make input list w/ filenames
     h_min = gs_range[0]
     h_max = gs_range[1]
+    h_avg = gs_params.grid_search.h_avg
+    h_std = gs_params.grid_search.h_std
     a_min = gs_range[2]
     a_max = gs_range[3]
 
-    for sig_height in range(h_min, h_max + 1):
-      for spot_area in range (a_min, a_max + 1):
-        mp_item = [current_img, current_output_dir, sig_height, sig_height,
-                   spot_area]
-        mp_input.append(mp_item)
+    for spot_area in range(a_min, a_max + 1):
+      for spot_height in range (h_min, h_max + 1):
+        if gs_params.advanced.sig_height_search:
+          if spot_height >= 1 + h_std:
+            sigs = range(spot_height - h_std, spot_height + 1)
+          elif spot_height < 1 + h_std:
+            sigs = range(1, spot_height + 1)
+          elif spot_height == 1:
+            sigs = [1]
+          for sig_height in sigs:
+            mp_item = [current_img, current_output_dir, sig_height, spot_height,
+                       spot_area]
+            mp_input.append(mp_item)
+        else:
+          sig_height = spot_height
+          mp_item = [current_img, current_output_dir, sig_height, spot_height,
+                     spot_area]
+          mp_input.append(mp_item)
 
   return mp_input, mp_output
 
 def make_dirs (mp_output_list, gs_params):
+  """ Generates output directory tree, which mirrors the input directory tree
+  """
 
   # If grid-search turned on, check for existing output directory and remove
   if os.path.exists(os.path.abspath(gs_params.output)):

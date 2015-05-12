@@ -4,11 +4,13 @@ from __future__ import division
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
 Last Changed: 05/06/2015
-Description : IOTA command-line module. Version 1.31
+Description : IOTA command-line module. Version 1.41
 '''
 
 import os
 import sys
+import argparse
+import shutil
 from datetime import datetime
 
 from libtbx.easy_mp import parallel_map
@@ -18,21 +20,52 @@ import prime.iota.iota_input as inp
 import prime.iota.iota_gridsearch as gs
 import prime.iota.iota_select as ps
 import prime.iota.iota_analysis as ia
+import prime.iota.iota_cmd as cmd
 
 # Multiprocessor wrapper for grid search module
 def index_mproc_wrapper(current_img):
-  return gs.integration("grid", current_img, len(mp_input_list),
-                        log_dir, gs_params)
+
+  prog_count = mp_input_list.index(current_img)
+  n_int = len(mp_input_list)
+
+  gs_prog = cmd.ProgressBar(title='GRID SEARCH')
+  if prog_count < n_int:
+    prog_step = 100 / n_int
+    gs_prog.update(prog_count * prog_step, prog_count)
+  else:
+    gs_prog.finished()
+
+  return gs.integration("grid", current_img, log_dir, gs_params)
 
 # Multiprocessor wrapper for selection module after grid search
 def sel_grid_mproc_wrapper(output_entry):
-  return ps.best_file_selection("grid", gs_params, output_entry, log_dir,
-                                len(mp_output_list))
+
+  prog_count = mp_output_list.index(output_entry)
+  n_int = len(mp_output_list)
+
+  gs_prog = cmd.ProgressBar(title='GRID SEARCH')
+  if prog_count < n_int:
+    prog_step = 100 / n_int
+    gs_prog.update(prog_count * prog_step, prog_count)
+  else:
+    gs_prog.finished()
+
+  return ps.best_file_selection("grid", gs_params, output_entry, log_dir)
 
 # Multiprocessor wrapper for final integration module
 def final_mproc_wrapper(current_img):
-  return gs.integration("final", current_img, len(sel_clean),
-                        log_dir, gs_params)
+
+  prog_count = sel_clean.index(current_img)
+  n_int = len(sel_clean)
+
+  gs_prog = cmd.ProgressBar(title='GRID SEARCH')
+  if prog_count < n_int:
+    prog_step = 100 / n_int
+    gs_prog.update(prog_count * prog_step, prog_count)
+  else:
+    gs_prog.finished()
+
+  return gs.integration("final", current_img, log_dir, gs_params)
 
 # ============================================================================ #
 
@@ -72,9 +105,6 @@ def run_integration(int_type, gs_params, mp_input_list):
              mp_input_list - as above, but for multiprocessing
   """
 
-  if os.path.isfile("{0}/logs/progress.log".format(gs_params.output)):
-    os.remove("{0}/logs/progress.log".format(gs_params.output))
-
   if int_type == 'grid':
     inp.main_log(logfile, '{:-^100} \n\n'.format(' SPOTFINDING GRID SEARCH '))
 
@@ -82,7 +112,8 @@ def run_integration(int_type, gs_params, mp_input_list):
     cmd.Command.start("Spotfinding Grid Search")
     parallel_map(iterable=mp_input_list,
                  func=index_mproc_wrapper,
-                 processes=gs_params.n_processors)
+                 processes=gs_params.n_processors,
+                 preserve_order = True)
     cmd.Command.end("Spotfinding Grid Search -- DONE")
 
   elif int_type == 'final':
@@ -119,8 +150,6 @@ def run_selection(sel_type, gs_params, mp_output_list):
     os.remove("{}/mos_selected.lst".format(gs_params.output))
   if os.path.isfile("{}/integrated.lst".format(gs_params.output)):
     os.remove("{}/integrated.lst".format(gs_params.output))
-  if os.path.isfile("{0}/logs/progress.log".format(gs_params.output)):
-    os.remove("{0}/logs/progress.log".format(gs_params.output))
 
   if not gs_params.grid_search.flag_on:
     inp.main_log(logfile, '\nSettings for this run:\n')
@@ -148,6 +177,33 @@ def run_selection(sel_type, gs_params, mp_output_list):
     cmd.Command.end("Spotfinding Combination Selection -- DONE")
 
   return selection_results
+
+
+def output_cleanup(gs_params):
+
+  int_list_file = os.path.abspath('{}/integrated.lst'.format(gs_params.output))
+  dest_dir = os.path.abspath("{}/integrated".format(gs_params.output))
+  os.makedirs(dest_dir)
+
+  with open(int_list_file, 'r') as int_file:
+    int_file_contents = int_file.read()
+    int_list = int_file_contents.splitlines()
+
+  for int_file in int_list:
+    filename = os.path.basename(int_file)
+    dest_file = "{}/{}".format(dest_dir, filename)
+    shutil.copyfile(int_file, dest_file)
+
+  for tmp_dir in os.listdir(os.path.abspath(gs_params.output)):
+    if "tmp" in tmp_dir:
+      rmd_dir = os.path.join(os.path.abspath(gs_params.output), tmp_dir)
+      shutil.rmtree(rmd_dir)
+
+  os.remove(int_list_file)
+
+  for int_file in os.listdir(dest_dir):
+    with open(int_list_file, 'a') as f_int:
+        f_int.write('{}\n'.format(int_file))
 
 
 def dry_run():
@@ -183,50 +239,78 @@ def dry_run():
     inp.write_defaults(os.path.abspath(os.path.curdir), txt_out)
 
 
+def check_options(args):
+  """ Checks command-line options and runs anything that is pertinent
+  """
+
+  if args.l:
+    list_file = os.path.abspath("{}/input.lst".format(gs_params.output))
+    print '\nIOTA will run in LIST INPUT ONLY mode'
+    print 'Input list in {} \n\n'.format(list_file)
+    with open(list_file, "a") as lf:
+      for input_file in input_list:
+        print input_file
+        lf.write('{}\n'.format(input_file))
+    print '\nExiting...\n\n'
+    sys.exit()
+
 
 
 def experimental(mp_input_list, gs_params, log_dir):
   """EXPERIMENTAL SECTION: Contains stuff I just want to try out without
      running the whole darn thing
   """
-  pass
+  print "IT WORKS!"
 
 # ============================================================================ #
 
 if __name__ == "__main__":
 
-  iota_version = '1.32'
-
-  print "\n\n"
-  print "     IIIIII          OOOO         TTTTTTTTTT           A              "
-  print "       II           O    O            TT              A A             "
-  print "       II           O    O            TT             A   A            "
-  print ">------INTEGRATION--OPTIMIZATION------TRIAGE--------ANALYSIS--------->"
-  print "       II           O    O            TT           A       A          "
-  print "       II           O    O            TT          A         A         "
-  print "     IIIIII          OOOO             TT         A           A   v{}"\
-        "".format(iota_version)
-
-  # read parameters from *.param file
-  arg = sys.argv[1:]
+  iota_version = '1.41'
   now = "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now())
+  logo = "\n\n"\
+   "     IIIIII          OOOO         TTTTTTTTTT           A              \n"\
+   "       II           O    O            TT              A A             \n"\
+   "       II           O    O            TT             A   A            \n"\
+   ">------INTEGRATION--OPTIMIZATION------TRIAGE--------ANALYSIS--------->\n"\
+   "       II           O    O            TT           A       A          \n"\
+   "       II           O    O            TT          A         A         \n"\
+   "     IIIIII          OOOO             TT         A           A   v{}"\
+   "".format(iota_version)
 
-  # If no parameter file specified, output blank parameter file
-  if arg == []:
+
+
+  # Read arguments
+  parser = argparse.ArgumentParser(prog = 'prime.iota',
+            description=('Integration Optimization, Triage and Analysis'))
+  parser.add_argument('path', type=str, nargs = '?', default = None,
+            help = 'Path to data or file with IOTA parameters (blank = dry run)')
+  parser.add_argument('--version', action = 'version',
+            version = 'IOTA {}'.format(iota_version),
+            help = 'Prints version info of IOTA')
+  parser.add_argument('-l', action = 'store_true',
+            help = 'Use to ONLY make and print to file a list of input images')
+  parser.add_argument('-o', action = 'store_true',
+            help = 'Split output into separate files based on space group')
+
+  args = parser.parse_args()
+  print logo
+
+  if args.path == None:
     dry_run()
     sys.exit()
   else:
     print '\n{}\n'.format(now)
-    carg = arg[0]
-    if os.path.exists(os.path.abspath(carg)):
+    carg = os.path.abspath(args.path)
+    if os.path.exists(carg):
 
       # If user provided a parameter file
-      if os.path.isfile(carg) and carg.endswith('.param'):
-        gs_params, txt_out = inp.process_input(arg)
+      if os.path.isfile(carg) and os.path.basename(carg).endswith('.param'):
+        gs_params, txt_out = inp.process_input([carg])
 
       # If user provided a data folder
       elif os.path.isdir(carg):
-        print "IOTA will run in AUTO mode:\n"
+        print "\nIOTA will run in AUTO mode:\n"
         cmd.Command.start("Generating default parameters")
         gs_params, txt_out = inp.auto_mode(os.path.abspath(os.path.curdir),
                                            os.path.abspath(carg), now)
@@ -237,23 +321,25 @@ if __name__ == "__main__":
       print "ERROR: Invalid input! Need parameter filename or data folder."
       sys.exit()
 
-
-
   # generate input
   gs_range, input_list, input_dir_list, output_dir_list, log_dir, logfile,\
   mp_input_list, mp_output_list = inp.generate_input(gs_params)
+
+  check_options(args)
 
   iota_start(txt_out, gs_params, gs_range, input_dir_list,
                     input_list, mp_input_list)
 
   # debugging/experimental section - anything goes here
   if gs_params.advanced.experimental:
-    print "IOTA will run in EXPERIMENTAL mode:\n"
+    print "\nIOTA will run in EXPERIMENTAL mode:\n"
     experimental(mp_input_list, gs_params, log_dir)
     sys.exit()
 
   # run grid search
   if gs_params.grid_search.flag_on:
+    n_int = len(mp_input_list)
+    prog_count = 0
     run_integration("grid", gs_params, mp_input_list)
 
   # run pickle selection
@@ -267,6 +353,9 @@ if __name__ == "__main__":
 
   # run final integration
   final_int = run_integration("final", gs_params, sel_clean)
+
+  if gs_params.advanced.clean_up_output:
+    output_cleanup(gs_params)
 
   # print final integration results and summary
   ia.print_results(final_int, gs_range, logfile)
