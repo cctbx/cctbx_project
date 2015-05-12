@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 05/06/2015
+Last Changed: 05/07/2015
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes warnings in case of detected non-isomorphism
               and other anomalies that require a more careful processing
@@ -78,17 +78,23 @@ def print_results(clean_results, gs_range, logfile):
   """
   images = [results['img'] for results in clean_results]
   spot_heights = [results['sph'] for results in clean_results]
+  sig_heights = [results['sih'] for results in clean_results]
   spot_areas = [results['spa'] for results in clean_results]
   resolutions = [results['res'] for results in clean_results]
   num_spots = [results['strong'] for results in clean_results]
   mosaicities = [results['mos'] for results in clean_results]
 
+  cons_s = Counter(spot_heights).most_common(1)[0][0]
   cons_h = Counter(spot_heights).most_common(1)[0][0]
   cons_a = Counter(spot_areas).most_common(1)[0][0]
 
   final_table = []
   final_table.append("\n\n{:-^80}\n".format('ANALYSIS OF RESULTS'))
   final_table.append("Total images:          {}".format(len(images)))
+  final_table.append("Avg. signal height:    {:<8.3f}  std. dev:    {:<6.2f}"\
+                     "  max: {:<3}  min: {:<3}  consensus: {:<3}"\
+                     "".format(np.mean(sig_heights), np.std(sig_heights),
+                               max(sig_heights), min(sig_heights), cons_s))
   final_table.append("Avg. spot height:      {:<8.3f}  std. dev:    {:<6.2f}"\
                      "  max: {:<3}  min: {:<3}  consensus: {:<3}"\
                      "".format(np.mean(spot_heights), np.std(spot_heights),
@@ -140,9 +146,6 @@ def print_summary(gs_params, n_img, logfile, iota_version, now):
 
   print "\n\n{:-^80}\n".format('SUMMARY')
   inp.main_log(logfile, "\n\n{:-^80}\n".format('SUMMARY'))
-
-  with (open ('{0}/logs/progress.log'.format(gs_params.output), 'r')) as plog:
-    prog_content = plog.read()
 
   summary.append('raw images processed:                {}'.format(n_img))
 

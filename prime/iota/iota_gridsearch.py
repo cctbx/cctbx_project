@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 05/06/2015
+Last Changed: 05/07/2015
 Description : Runs cctbx.xfel integration module either in grid-search or final
               integration mode. Has options to output diagnostic visualizations
 '''
@@ -11,7 +11,6 @@ Description : Runs cctbx.xfel integration module either in grid-search or final
 import os
 from prime.iota.iota_input import main_log
 
-import dials.util.command_line as cmd
 import iota_vis_integration as viz
 import csv
 
@@ -55,8 +54,9 @@ def organize_parameters(int_type, mp_entry, gs_params):
   spot_height = mp_entry[3]
   spot_area = mp_entry[4]
 
-  current_file = os.path.normpath("{0}/int_h{1}_a{2}_{3}"\
-            "".format(current_output_dir, sig_height, spot_area, img_filename))
+  current_file = os.path.normpath("{}/int_s{}_h{}_a{}_{}"\
+                                  "".format(current_output_dir, sig_height,
+                                     spot_height, spot_area, img_filename))
 
   # Generate additional parameters for chart output
   # for all charts
@@ -66,13 +66,16 @@ def organize_parameters(int_type, mp_entry, gs_params):
                      "integration.enable_residual_scatter=True",
                      "integration.mosaic.enable_AD14F7B=True",
                      "integration.graphics_backend=pdf",
-                     "integration.pdf_output_dir={0}/pdf_h{1}_a{2}"\
-                     "".format(current_output_dir, spot_height, spot_area)
+                     "integration.pdf_output_dir={}/pdf_s{}_h{}_a{}"\
+                     "".format(current_output_dir, sig_height, spot_height,
+                               spot_area)
                      ]
-    if not os.path.exists("{0}/pdf_h{1}_a{2}"\
-                        "".format(current_output_dir, spot_height, spot_area)):
-      os.makedirs("{0}/pdf_h{1}_a{2}"
-                  "".format(current_output_dir, spot_height, spot_area))
+    if not os.path.exists("{}/pdf_s{}_h{}_a{}"\
+                        "".format(current_output_dir, sig_height,
+                                  spot_height, spot_area)):
+      os.makedirs("{}/pdf_s{}_h{}_a{}"
+                  "".format(current_output_dir, sig_height,
+                            spot_height, spot_area))
 
   # for mosaicity chart only
   elif gs_params.advanced.mosaicity_plot:
@@ -81,13 +84,16 @@ def organize_parameters(int_type, mp_entry, gs_params):
                      "integration.enable_residual_scatter=False",
                      "integration.mosaic.enable_AD14F7B=True",
                      "integration.graphics_backend=pdf",
-                     "integration.pdf_output_dir={0}/pdf_h{1}_a{2}"\
-                     "".format(current_output_dir, spot_height, spot_area)
+                     "integration.pdf_output_dir={}/pdf_s{}_h{}_a{}"\
+                     "".format(current_output_dir, sig_height, spot_height,
+                               spot_area)
                      ]
-    if not os.path.exists("{0}/pdf_h{1}_a{2}"\
-                        "".format(current_output_dir, spot_height, spot_area)):
-      os.makedirs("{0}/pdf_h{1}_a{2}"
-                  "".format(current_output_dir, spot_height, spot_area))
+    if not os.path.exists("{}/pdf_s{}_h{}_a{}"\
+                        "".format(current_output_dir, sig_height,
+                                  spot_height, spot_area)):
+      os.makedirs("{}/pdf_s{}_h{}_a{}"
+                  "".format(current_output_dir, sig_height,
+                            spot_height, spot_area))
   else:
     advanced_args = []
 
@@ -117,8 +123,7 @@ def organize_parameters(int_type, mp_entry, gs_params):
   return arguments
 
 
-def integrate_image(mp_entry, current_log_file, arguments, ptitle, n_int,
-                    gs_params):
+def integrate_image(mp_entry, current_log_file, arguments, ptitle, gs_params):
   """ Runs the integration module in cctbx.xfel; used by either grid-search or
       final integration function.
 
@@ -126,7 +131,6 @@ def integrate_image(mp_entry, current_log_file, arguments, ptitle, n_int,
              current_log_file - verbose integration log output by cctbx.xfel
              arguments - list of additional arguments for integration
              ptitle - title of the integration run, for progress bar
-             n_int - total number of integration operations, for progress bar
              gs_params - general parameters in PHIL format
 
       output:  int_results - dictionary of integration results
@@ -226,31 +230,20 @@ def integrate_image(mp_entry, current_log_file, arguments, ptitle, n_int,
     if ptitle == 'INTEGRATING':
         index_logfile.write("{:-^100}\n{:-^100}\n{:-^100}\n"\
                             "".format("", " FINAL INTEGRATION: ", ""\
-                            "H ={:>2}, A ={:>2} ".format(spot_height, spot_area)))
+                            "S = {:>2}, H ={:>2}, A ={:>2} "\
+                            "".format(sig_height, spot_height, spot_area)))
     else:
       index_logfile.write("{:-^100}\n".format(" INTEGRATION: "\
-                        "H ={:>2}, A ={:>2} ".format(spot_height, spot_area)))
+                          "S = {:>2}, H ={:>2}, A ={:>2} "\
+                          "".format(sig_height, spot_height, spot_area)))
     for item in index_log:
       index_logfile.write("{}\n".format(item))
 
     index_logfile.write("\n[ {:^100} ]\n\n".format(int_status))
 
-  # Progress bar for integration
-  with (open ('{0}/logs/progress.log'.format(gs_params.output), 'a')) as prog_log:
-    prog_log.write("{0} -- {1}\n".format(current_img, int_status))
-  with (open ('{0}/logs/progress.log'.format(gs_params.output), 'r')) as prog_log:
-    prog_content = prog_log.read()
-    prog_count = len(prog_content.splitlines())
-  gs_prog = cmd.ProgressBar(title=ptitle, estimate_time=False, spinner=False)
-  if prog_count < n_int:
-    prog_step = 100 / n_int
-    gs_prog.update(prog_count * prog_step)
-  else:
-    gs_prog.finished()
-
   return int_results, int_status
 
-def integration(int_type, mp_entry, n_int, log_dir, gs_params):
+def integration(int_type, mp_entry, log_dir, gs_params):
   """ Integration unit. Calls on integrate_image(). For grid search and
       mosaicity scan integration, saves the results in a CSV-formatted file for
       the selection step. For final integration, outputs the integration result
@@ -261,7 +254,6 @@ def integration(int_type, mp_entry, n_int, log_dir, gs_params):
                a.   current_img - raw image to integrate
                b-d. signal height (b), spot height (c) and spot area (d)
                e.   current_output_dir - folder to output results
-             n_int - total integration operations for progress bar
              log_dir - general log folder
              gs-params - general parameters in PHIL format
 
@@ -280,8 +272,9 @@ def integration(int_type, mp_entry, n_int, log_dir, gs_params):
   spot_area = mp_entry[4]
   target = gs_params.target
 
-  current_file = os.path.normpath("{0}/int_h{1}_a{2}_{3}"\
-            "".format(current_output_dir, sig_height, spot_area, img_filename))
+  current_file = os.path.normpath("{}/int_s{}_h{}_a{}_{}"\
+                                  "".format(current_output_dir, sig_height,
+                                     spot_height, spot_area, img_filename))
   current_log_file = os.path.normpath("{0}/{1}.log".format(log_dir, img_no_ext))
 
   if int_type == "grid":
@@ -293,22 +286,24 @@ def integration(int_type, mp_entry, n_int, log_dir, gs_params):
 
   arguments = organize_parameters(int_type, mp_entry, gs_params)
 
-  if gs_params.advanced.debug:
-    debug_file = '{}/h{}_a{}_{}.debug'.format(gs_params.output, spot_height,
-                                              spot_area, img_no_ext)
+  if int_type == "grid" and gs_params.advanced.debug:
+    debug_file = '{}/s{}_h{}_a{}_{}.debug'.format(gs_params.output, sig_height,
+                                                  spot_height, spot_area,
+                                                  img_no_ext)
     with open(debug_file, 'w') as f:
       f.write('')
 
   # run integration
   results, int_status = integrate_image(mp_entry, current_log_file, arguments,
-                                        prog_label, n_int, gs_params)
+                                        prog_label, gs_params)
 
-  if gs_params.advanced.debug:
-    debug_file = '{}/h{}_a{}_{}.debug'.format(gs_params.output, spot_height,
-                                              spot_area, img_no_ext)
+  if int_type == "grid" and gs_params.advanced.debug:
+    debug_file = '{}/s{}_h{}_a{}_{}.debug'.format(gs_params.output, sig_height,
+                                                  spot_height, spot_area,
+                                                  img_no_ext)
     with open(debug_file, 'a') as f:
-      f.write('PROCESSED: {}, H = {}, A = {}'.format(current_img, spot_height,
-                                                     spot_area))
+      f.write('PROCESSED: {}, S = {}, H = {}, A = {}'\
+              ''.format(current_img, sig_height, spot_height, spot_area))
 
   # output results to log file
   if int_type == "grid":
@@ -328,9 +323,9 @@ def integration(int_type, mp_entry, n_int, log_dir, gs_params):
           writer.writerow(results)
 
 
-  grid_search_output = '{:^{width}}: H = {:<3}, ' \
+  grid_search_output = '{:^{width}}: S = {:<3}, H = {:<3}, ' \
                        'A = {:<3} ---> {}'.format(img_filename,
-                        sig_height, spot_area, int_status,
+                        sig_height, spot_height, spot_area, int_status,
                         width = len(img_filename) + 2)
 
   main_log(logfile, grid_search_output)
