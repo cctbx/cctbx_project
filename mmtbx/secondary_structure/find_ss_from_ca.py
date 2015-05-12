@@ -1400,6 +1400,9 @@ class find_secondary_structure: # class to look for secondary structure
     print "triple strands:",triple_strands
     print "multiple strands:",multiple_strands
 
+  def get_available_strand(self,current_strand=None):
+    return None
+
   def get_strands_by_pairs(self,pairs=None):
     strand_list=[]
     while 1:  # get all single strands
