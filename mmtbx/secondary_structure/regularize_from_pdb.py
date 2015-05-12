@@ -84,7 +84,7 @@ master_phil = iotbx.phil.parse("""
        .help = Sequence as text string. Normally supply a sequence file instead
 
   }
-  find_ss_structure {
+  find_ss_structure { # Note overwrites values in find_ss_structure.py
 
      find_alpha = True
        .type = bool
@@ -115,6 +115,11 @@ master_phil = iotbx.phil.parse("""
        .type = bool
        .help = Assign each residue to a unique type of structure
        .short_caption = Assign residues to unique structure
+
+     write_helix_sheet_records = False
+       .type = bool
+       .help = Write HELIX and SHEET records
+       .short_caption = Write HELIX/SHEET records
 
   }
 
@@ -1542,6 +1547,7 @@ class replace_with_segments_from_pdb:
     command_line = iotbx.phil.process_command_line_with_files(
       reflection_file_def="input_files.map_coeffs_file",
       map_file_def="input_files.map_file",
+      pdb_file_def="input_files.pdb_in",
       args=args,
       master_phil=master_phil)
     params = command_line.work.extract()

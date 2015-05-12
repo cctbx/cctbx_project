@@ -22,7 +22,7 @@ master_phil = iotbx.phil.parse("""
       .short_caption = Input PDB file
   }
 
-  find_ss_structure {
+  find_ss_structure {  # note values from regularize_from_pdb overwrite these
 
      find_alpha = True
        .type = bool
@@ -53,6 +53,11 @@ master_phil = iotbx.phil.parse("""
        .type = bool
        .help = Assign each residue to a unique type of structure
        .short_caption = Assign residues to unique structure
+
+     write_helix_sheet_records = True
+       .type = bool
+       .help = Write HELIX and SHEET records
+       .short_caption = Write HELIX/SHEET records
 
   }
 
@@ -1137,6 +1142,7 @@ class find_alpha_helix(find_segment):
     records=[]
     k=last_id
     for s in self.segments:
+      if not s.hierarchy: continue
       start=get_first_residue(s.hierarchy)
       end=get_last_residue(s.hierarchy)
       chain_id=get_chain_id(s.hierarchy)
@@ -1181,6 +1187,7 @@ class find_beta_strand(find_segment):
     records=[]
     k=last_id
     for s in self.segments:
+      if not s.hierarchy: continue
       start=get_first_residue(s.hierarchy)
       end=get_last_residue(s.hierarchy)
       chain_id=get_chain_id(s.hierarchy)
@@ -1323,7 +1330,210 @@ class find_secondary_structure: # class to look for secondary structure
     for model in self.models:
       self.find_ss_in_model(params=params,model=model,out=out)
 
+    if params.find_ss_structure.write_helix_sheet_records:
+      self.find_sheets(out=out) # organize strands into sheets
+      self.write_pdb_records(out=out)
 
+  def show_summary(self,verbose=None,out=sys.stdout):
+
+    for model in self.models:
+      print >>out,"\nModel %d  N: %d  Start: %d End: %d" %(
+          model.info['chain_number'],
+          model.length(),model.first_residue(),model.last_residue())
+      if verbose:
+        if model.find_alpha:
+          model.find_alpha.show_summary(out=out)
+        if model.find_beta:
+          model.find_beta.show_summary(out=out)
+        if model.find_other:
+          model.find_other.show_summary(out=out)
+    if verbose:
+      print >>out,"\nPDB RECORDS:"
+      print >>out,self.all_pdb_records
+
+  def find_sheets(self,out=sys.stdout,max_sheet_ca_ca_dist=6.):
+    all_strands=[]
+    for model in self.models:
+      all_strands+=model.find_beta.segments
+    if not all_strands: return
+    print >>out,"\nFinding sheets from %d strands" %(len(all_strands))
+    self.get_strand_pairs(all_strands=all_strands,tol=max_sheet_ca_ca_dist)
+    # self.pair_dict is list of all the strands that each strand matches with
+    # self.info_dict is information on a particular pair of strands:
+    #  self.info_dict["%d:%d" %(i,j)]=
+    #     [first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel]
+
+    for i in self.pair_dict.keys():
+      for j in self.pair_dict[i]:
+        key="%d:%d" %(i,j)
+        if key in self.info_dict.keys():
+          [first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel]=self.info_dict[key]
+          print "PAIR:  Seg %d:  %d:%d   Seg %d:  %d:%d  Parallel: %s" %(
+            i,first_ca_1,last_ca_1,j,first_ca_2,last_ca_2,is_parallel)
+
+    # Create sheets from paired strands.
+    self.used_strands=[]
+    self.all_strands=all_strands
+    single_strands=self.get_strands_by_pairs(pairs=0)
+    pair_strands=self.get_strands_by_pairs(pairs=1)
+    triple_strands=self.get_strands_by_pairs(pairs=2)
+    multiple_strands=self.get_strands_by_pairs(pairs=None)
+    print "single strands:",single_strands
+    print "pair strands:",pair_strands
+    print "triple strands:",triple_strands
+    print "multiple strands:",multiple_strands
+
+  def get_strands_by_pairs(self,pairs=None):
+    strand_list=[]
+    while 1:  # get all single strands
+      i=self.get_unused_strand(n=len(self.all_strands),
+         used_strands=self.used_strands,pairs=pairs)
+      if i is None: break
+      self.used_strands.append(i)
+      strand_list.append(i)
+    return strand_list
+
+  def get_unused_strand(self,n=None,used_strands=None,pairs=None):
+    for i in xrange(n):
+      if i in used_strands: continue
+      if pairs is None or len(self.pair_dict.get(i,[]))==pairs:
+        return i
+    return None
+
+  def get_strand_pairs(self,all_strands=None,tol=None):
+    self.info_dict={}
+    self.pair_dict={}
+    for i in xrange(len(all_strands)):
+      self.pair_dict[i]=[]
+    for i in xrange(len(all_strands)):
+      for j in xrange(i+1,len(all_strands)):
+        self.ca1=None
+        self.ca2=None
+        if self.ca_pair_is_close(all_strands[i],all_strands[j],
+            tol=tol):
+
+          # figure out alignment and whether it really is ok
+          first_last_1_and_2=self.align_strands(
+            all_strands[i],all_strands[j],tol=tol)
+
+          if first_last_1_and_2:
+            # we have a match
+            [first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel]=\
+               first_last_1_and_2
+            self.pair_dict[i].append(j)
+            self.info_dict["%d:%d" %(i,j)]=\
+               [first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel]
+            # and make an entry for the other way around
+            self.pair_dict[j].append(i)
+            self.info_dict["%d:%d" %(j,i)]=\
+               [first_ca_2,last_ca_2,first_ca_1,last_ca_1,is_parallel]
+  
+  def align_strands(self,s1,s2,tol=None): 
+    # figure out best alignment and directions. Require at least 2 residues
+    sites1=s1.get_sites()
+    sites2=s2.get_sites()
+    sites2_reversed=sites2.deep_copy().reversed()
+
+    # self.ca1 and self.ca2 are pos of closest residues from ca_pair_is_close
+    best_offset=None
+    best_reverse=None
+    best_keep_1=None
+    best_keep_2=None
+    best_score=None
+    for offset in [-1,0,1]: # just in case an offset from best guess is better
+      if self.ca1+offset < 0 or self.ca1+offset > len(sites1)-1: continue
+      dd_list,keep_1,keep_2=self.get_residue_pairs_in_sheet(sites1,sites2,
+       center1=self.ca1+offset,center2=self.ca2,tol=tol)
+      dd_list_reverse,keep_1_reverse,keep_2_reverse=\
+         self.get_residue_pairs_in_sheet(sites1,sites2_reversed,
+         center1=self.ca1+offset,center2=len(sites2)-self.ca2-1,tol=tol)
+
+      if len(keep_1)<2 and len(keep_1_reverse)<2:
+        continue
+      elif len(keep_1_reverse)>len(keep_1):
+        score=len(keep_1_reverse)-0.001*flex.double(dd_list_reverse).norm()
+        use_reverse=True
+        if best_score is None or score>best_score:
+          best_keep_1=keep_1_reverse
+          best_keep_2=keep_2_reverse
+          best_reverse=True
+          best_offset=offset
+          best_score=score
+      else:
+        score=len(keep_1)-0.001*flex.double(dd_list).norm()
+        use_reverse=False
+        if best_score is None or score>best_score:
+          best_keep_1=keep_1
+          best_keep_2=keep_2
+          best_reverse=False
+          best_offset=offset
+          best_score=score
+
+    if not best_score:
+      return None
+
+    first_ca_1=best_keep_1[0]
+    last_ca_1=best_keep_1[-1]
+    if best_reverse: # reversed
+      first_ca_2=len(sites2)-(best_keep_2[-1]+1)
+      last_ca_2=len(sites2)-(best_keep_2[0]+1)
+      is_parallel=False
+    else:  # forward
+      first_ca_2=best_keep_2[0]
+      last_ca_2=best_keep_2[-1]
+      is_parallel=True
+
+    return [first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel]
+    
+
+  def get_residue_pairs_in_sheet(self,sites1,sites2,
+     center1=None,center2=None,tol=None):
+    # figure out pairs that are within tol. Center pairs are center1-center2
+    dd=(col(sites1[center1])-col(sites2[center2])).norm_sq()
+    keep1_list=[]
+    keep2_list=[]
+    dd_list=[]
+    if dd<=tol**2: # plausible at least
+      start_offset=max(-center1,-center2)
+      end_offset=min(len(sites1)-(center1+1),len(sites2)-(center2+1))
+      for offset in xrange(start_offset,end_offset+1):
+        i1=center1+offset
+        i2=center2+offset
+        dd=(col(sites1[i1])-col(sites2[i2])).norm_sq()
+        if dd <= tol**2:
+          keep1_list.append(i1)
+          keep2_list.append(i2)
+          dd_list.append(dd**0.5)
+    return dd_list,keep1_list,keep2_list
+ 
+  def ca_pair_is_close(self,s1,s2,tol=None,
+      dist_per_residue=3.5,jump=4):
+    best_dist_sq=None
+    self.ca1=None
+    self.ca2=None
+    sites1=s1.get_sites()
+    sites2=s2.get_sites()
+    while jump > 0:
+      # see if it is even close
+      for i in xrange(jump//2,len(sites1),jump):
+        for j in xrange(jump//2,len(sites2),jump):
+          dd=(col(sites1[i])-col(sites2[j])).norm_sq()
+          if best_dist_sq is None or dd < best_dist_sq:
+            best_dist_sq=dd
+            self.ca1=i
+            self.ca2=j
+      if best_dist_sq is None or \
+         best_dist_sq**0.5 > (jump+1)*dist_per_residue+tol: # no hope
+           break
+      if jump==1: 
+           break
+      jump=max(1,jump//2)  # try finer search
+    if best_dist_sq is not None and best_dist_sq <= tol**2:
+      return True
+    else:
+      return False
+
+  def write_pdb_records(self,out=sys.stdout):
     # save everything as pdb_helix or pdb_sheet objects
     self.pdb_helix_list=[]
     self.pdb_sheet_list=[]
@@ -1342,23 +1552,6 @@ class find_secondary_structure: # class to look for secondary structure
     self.all_pdb_records=all_pdb_records.getvalue()
 
     self.show_summary(verbose=True,out=out)
-
-  def show_summary(self,verbose=None,out=sys.stdout):
-
-    for model in self.models:
-      print >>out,"\nModel %d  N: %d  Start: %d End: %d" %(
-          model.info['chain_number'],
-          model.length(),model.first_residue(),model.last_residue())
-      if verbose:
-        if model.find_alpha:
-          model.find_alpha.show_summary(out=out)
-        if model.find_beta:
-          model.find_beta.show_summary(out=out)
-        if model.find_other:
-          model.find_other.show_summary(out=out)
-    if verbose:
-      print >>out,"\nPDB RECORDS:"
-      print >>out,self.all_pdb_records
 
   def get_all_pdb_records(self):
     return self.all_pdb_records
@@ -1462,7 +1655,10 @@ class find_secondary_structure: # class to look for secondary structure
 
   def get_params(self,args,out=sys.stdout):
     command_line = iotbx.phil.process_command_line_with_files(
-      args=args, master_phil=master_phil)
+      args=args, 
+      master_phil=master_phil,
+      pdb_file_def="input_files.pdb_in")
+
     params = command_line.work.extract()
     print >>out,"\nFind secondary structure in hierarchy"
     master_phil.format(python_object=params).show(out=out)
