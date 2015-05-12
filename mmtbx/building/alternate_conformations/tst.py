@@ -92,7 +92,7 @@ ATOM   1658  HZ  PHE A 113      18.093  43.330  49.263  1.00 26.17           H
   assert (fofc_map.tricubic_interpolation(site) > 20)
 
 def exercise_rejoin () :
-  from mmtbx.regression.tst_build_alt_confs import pdb_raw
+  from mmtbx.building.alternate_conformations.tst_build_simple import pdb_raw
   pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_raw)
   hierarchy = pdb_in.hierarchy
   params = alternate_conformations.rejoin_phil.extract()

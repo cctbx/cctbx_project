@@ -1,17 +1,11 @@
 
-# XXX deprecated
-
-"""
-Functionality used for testing alternate conformation-related code and
-similar.  No longer contains actual tests (these have been moved to the
-sub-package mmtbx.building.alternate_conformations).
-"""
-
 from __future__ import division
+from mmtbx.command_line import build_alt_confs_simple
 from mmtbx.command_line import fmodel
 from mmtbx.validation import rotalyze
 from iotbx import file_reader
 from libtbx.utils import null_out
+import libtbx.load_env
 
 # derivative of 1yjp, with alternate conformation Asn3 in different rotamer,
 # plus Asn2/Gln4 split.  the unit cell 'b' edge has been increased to 6A to
@@ -240,3 +234,30 @@ def get_rotamers (file_name) :
   validate = rotalyze.rotalyze(pdb_hierarchy=hierarchy,
     outliers_only=False)
   return [ (r.id_str(), r.rotamer_name) for r in validate.results ]
+
+def exercise () :
+  prepare_inputs()
+  args = [
+    "tst_build_alt_confs_start.pdb",
+    "tst_build_alt_confs.mtz",
+    "selection='chain A and resseq 3'",
+    "output.file_name=tst_build_alt_confs_out.pdb",
+    "expected_occupancy=0.4",
+    "window_size=2",
+    "nproc=1",
+    "rsr_fofc_map_target=False",
+    "--verbose",
+  ]
+  build_alt_confs_simple.run(args=args, out=null_out())
+  rota_in = get_rotamers("tst_build_alt_confs_in.pdb")
+  rota_out = get_rotamers("tst_build_alt_confs_out.pdb")
+  #print rota_in
+  #print rota_out
+  assert (rota_out == rota_in)
+
+if (__name__ == "__main__") :
+  if (not libtbx.env.has_module("probe")) :
+    print "probe not available, skipping this test"
+  else :
+    exercise()
+    print "OK"

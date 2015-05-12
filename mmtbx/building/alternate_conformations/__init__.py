@@ -2,7 +2,7 @@
 from __future__ import division
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import Sorry, null_out
-from libtbx import group_args, Auto, slots_getstate_setstate, \
+from libtbx import group_args, adopt_init_args, Auto, slots_getstate_setstate,\
       slots_getstate_setstate_default_initializer
 import libtbx.phil
 from math import sqrt
@@ -748,3 +748,31 @@ class rsr_fragments_base (object) :
       d_min=self.fmodel.f_obs().d_min(),
       out=null_out())
     return box
+
+def print_trial_header (out, prefix="") :
+  header_1 = """%20s%16s  %8s  %8s  %8s"""%("","  mFo-DFc map ","","","max")
+  header_2 = """%-12s %5s  %7s  %7s  %8s  %8s  %8s""" % ("residue", "trial",
+    "min." ,"mean", "CC", "RMSD", "change")
+  print >> out, prefix + header_1
+  print >> out, prefix + header_2
+  print >> out, prefix + "-" * (len(header_2))
+
+class trial_result (object) :
+  """
+  Container for the results of a fitting run.  The sites_cart attribute
+  should correspond to the iselection being refined.
+  """
+  def __init__ (self, sites_cart, min_fofc, mean_fofc, cc, rmsd, max_dev) :
+    adopt_init_args(self, locals())
+
+  def show_summary (self, prefix="", out=sys.stdout) :
+    print >> out, prefix + ("min. mFo-DFc: %7.2f" % self.min_fofc)
+    print >> out, prefix + ("mean mFo-DFc: %7.2f" % self.mean_fofc)
+    print >> out, prefix + ("map-model CC: %8.3f" % self.cc)
+    print >> out, prefix + ("rmsd:         %8.3f" % self.rmsd)
+    print >> out, prefix + ("max. change:  %8.3f A" % self.max_dev)
+    return self
+
+  def __str__ (self) :
+    return "%7.2f  %7.2f  %8.3f  %8.3f  %8.3f" % \
+      (self.min_fofc, self.mean_fofc, self.cc, self.rmsd, self.max_dev)
