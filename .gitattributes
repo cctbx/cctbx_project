@@ -2587,6 +2587,11 @@ scitbx/examples/rigid_body_refinement_core.py svneol=native#text/x-python
 scitbx/examples/rigid_body_refinement_core.txt svneol=native#text/plain
 scitbx/fftpack/boost_python/threads.d -text
 scitbx/fftpack/complex_to_complex_2d.h -text
+scitbx/glmtbx/SConscript -text
+scitbx/glmtbx/__init__.py -text
+scitbx/glmtbx/boost_python/ext.cc -text
+scitbx/glmtbx/family.h -text
+scitbx/glmtbx/robust_glm.h -text
 scitbx/golden_section_search.py -text
 scitbx/graph/__init__.py -text
 scitbx/graph/rigidity.py -text

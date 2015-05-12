@@ -1,0 +1,15 @@
+
+Import("env_base", "env_etc")
+env = env_base.Clone()
+# TODO env_etc.enable_more_warnings(env=env)
+env_etc.include_registry.append(
+  env=env,
+  paths=["."] + env_etc.scitbx_common_includes)
+
+
+if (not env_etc.no_boost_python):
+  Import("env_scitbx_boost_python_ext")
+  env = env_scitbx_boost_python_ext.Copy()
+  env.SharedLibrary(
+    target='#/lib/scitbx_glmtbx_ext', 
+    source=['boost_python/ext.cc'])
