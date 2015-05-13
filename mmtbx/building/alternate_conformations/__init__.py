@@ -398,7 +398,9 @@ def filter_before_build (
   from scitbx.array_family import flex
   if (selection is None) :
     selection = flex.bool(fmodel.xray_structure.scatterers().size(), True)
-  pdb_hierarchy.atoms().reset_i_seq()
+  pdb_atoms = pdb_hierarchy.atoms()
+  assert (pdb_atoms.size() == fmodel.xray_structure.scatterers().size())
+  pdb_atoms.reset_i_seq()
   full_validation = molprobity.molprobity(
     pdb_hierarchy=pdb_hierarchy,
     fmodel=fmodel,

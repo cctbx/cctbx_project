@@ -765,9 +765,13 @@ def build_cycle (pdb_hierarchy,
   if (n_hydrogen > 0) and (True) : #params.building.delete_hydrogens) :
     print >> out, "WARNING: %d hydrogen atoms will be removed!" % n_hydrogen
     non_hd_sel = ~hd_sel
-    pdb_hierarchy = pdb_hierarchy.select(non_hd_sel)
-    pdb_hierarchy.atoms().reset_i_seq()
+    # XXX it's better to do this in-place for the hierarchy, because calling
+    # pdb_hierarchy.select(non_hd_sel) will not remove parent-child
+    # relationships involving hydrogens, which causes problems when running
+    # the MolProbity validation.
+    pdb_hierarchy.remove_hd(reset_i_seq=True)
     xray_structure = fmodel.xray_structure.select(non_hd_sel)
+    assert (pdb_hierarchy.atoms_size() == xray_structure.scatterers().size())
     fmodel.update_xray_structure(xray_structure)
     geometry_restraints_manager = geometry_restraints_manager.select(non_hd_sel)
   pdb_atoms = pdb_hierarchy.atoms()
