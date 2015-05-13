@@ -390,7 +390,7 @@ def find_alternate_residue (residue,
   trials = []
   sites_start_1d = pdb_hierarchy.atoms().extract_xyz().as_double()
   from mmtbx.rotamer import rotamer_eval
-  rotamer_manager = rotamer_eval.RotamerEval()
+  rotamer_manager = rotamer_eval.RotamerEval(data_version="8000")
   id_str = residue.id_str()
   delete_selection = None
   if (params.omit_waters) :
@@ -523,7 +523,7 @@ def process_results (
   n_alternates = 0
   unit_cell = fmodel.xray_structure.unit_cell()
   two_fofc_map, fofc_map = building.get_difference_maps(fmodel)
-  rot_eval = rotamer_eval.RotamerEval()
+  rot_eval = rotamer_eval.RotamerEval(data_version="8000")
   for main_conf, trials in zip(residues_in, building_trials) :
     if (trials is None) :
       print >> log, "WARNING: error building %s" % main_conf.id_str()

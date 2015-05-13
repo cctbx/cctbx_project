@@ -344,7 +344,7 @@ class residue_conformation_generator (object) :
     from scitbx.array_family import flex
     get_class = iotbx.pdb.common_residue_names_get_class
     assert get_class(residue.resname) == "common_amino_acid", residue.resname
-    self.rotamer_scorer = rotamer_eval.RotamerEval()
+    self.rotamer_scorer = rotamer_eval.RotamerEval(data_version="8000")
     self.ramachandran_scorer = ramachandran_eval.RamachandranEval()
     self.sidechain_clusters = generate_sidechain_clusters(
       residue=residue,

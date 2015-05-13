@@ -65,7 +65,7 @@ class fragment_refinement_driver (object) :
     self.nproc_1 = self.nproc_2 = 1
     two_fofc_map, fofc_map = mmtbx.building.get_difference_maps(fmodel=fmodel)
     windows = []
-    r = rotamer_eval.RotamerEval()
+    r = rotamer_eval.RotamerEval(data_version="8000")
     exclude_resnames = []
     if (params.exclude_resnames is not None) :
       exclude_resnames = [ n.upper() for n in params.exclude_resnames ]

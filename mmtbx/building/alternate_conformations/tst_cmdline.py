@@ -30,6 +30,7 @@ def exercise () :
   pdb_out = file_reader.any_file("tst_altconfs_cmdline_out.pdb")
   hierarchy =  pdb_out.file_object.construct_hierarchy()
   validate = rotalyze.rotalyze(pdb_hierarchy=hierarchy,
+    data_version="8000",
     outliers_only=False)
   rota_out = [ (r.id_str(), r.rotamer_name) for r in validate.results ]
   #print rota_in

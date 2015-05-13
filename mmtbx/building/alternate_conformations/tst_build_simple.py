@@ -232,6 +232,7 @@ def get_rotamers (file_name) :
   pdb_in = file_reader.any_file(file_name)
   hierarchy = pdb_in.file_object.hierarchy
   validate = rotalyze.rotalyze(pdb_hierarchy=hierarchy,
+    data_version="8000",
     outliers_only=False)
   return [ (r.id_str(), r.rotamer_name) for r in validate.results ]
 
