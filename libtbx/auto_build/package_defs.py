@@ -42,6 +42,7 @@ LIBSVM_PKG = "libsvm-3.17_cci.tar.gz"
 
 H5PY_PKG = "h5py-2.4.0.tar.gz" # dxtbx
 HDF5_PKG = "hdf5-1.8.14.tar.bz2" # dxtbx
+HDF5_PKG = "hdf5-1.8.15.tar.bz2" # new version 13th May 2015
 CYTHON_PKG = "cython-0.22.tar.gz"
 
 # GUI dependencies
