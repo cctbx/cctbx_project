@@ -19,93 +19,105 @@ phil_scope = parse('''
   dispatch {
     max_events = None
       .type = int
-      .help = "If not specified, process all events. Otherwise, only process this many"
+      .help = If not specified, process all events. Otherwise, only process this many
     hit_finder = True
       .type = bool
-      .help = "If the number of strong reflections is less than"
-      .help = "refinement.reflections.minimum_number_of_reflections, hit_filter=True"
-      .help = "will discard the image. hit_finder=False: process all images"
+      .help = If the number of strong reflections is less than \
+              refinement.reflections.minimum_number_of_reflections, hit_filter=True \
+              will discard the image. hit_finder=False: process all images
     index = True
       .type = bool
-      .help = "Attempt to index images"
+      .help = Attempt to index images
     integrate = True
       .type = bool
-      .help = "Integrated indexed images. Ignored if index=False"
+      .help = Integrated indexed images. Ignored if index=False
     dump_strong = False
       .type = bool
-      .help = "Save strongly diffracting images to cbf format"
+      .help = Save strongly diffracting images to cbf format
     dump_indexed = True
       .type = bool
-      .help = "Save indexed images to cbf format"
+      .help = Save indexed images to cbf format
     dump_all = False
       .type = bool
-      .help = "All frames will be saved to cbf format if set to True"
+      .help = All frames will be saved to cbf format if set to True
   }
-  debug {
+ debug {
     event_timestamp = None
       .type = str
       .multiple = True
-      .help = "List of timestamps. If set, will only process the events that matches them"
+      .help = List of timestamps. If set, will only process the events that matches them
   }
   input {
     cfg = None
       .type = str
-      .help = "Path to psana config file"
+      .help = Path to psana config file
     experiment = None
       .type = str
-      .help = "Experiment identifier, e.g. cxi84914"
+      .help = Experiment identifier, e.g. cxi84914
     run_num = None
       .type = int
-      .help = "Run number or run range to process"
+      .help = Run number or run range to process
     address = None
       .type = str
-      .help = "Detector address, e.g. CxiDs2.0:Cspad.0"
+      .help = Detector address, e.g. CxiDs2.0:Cspad.0
     detz_offset = None
       .type = int
-      .help = "Distance from back of detector rail to sample interaction region (CXI)"
-      .help = "or actual detector distance (XPP)"
+      .help = Distance from back of detector rail to sample interaction region (CXI) \
+              or actual detector distance (XPP)
     override_energy = None
       .type = float
-      .help = "If not None, use the input energy for every event instead of the energy"
-      .help = "from the XTC stream"
-   override_trusted_max = None
-    .type = int
-    .help = "During spot finding, override the saturation value for this data."
-    .help = "Overloads will not be integrated, but they can assist with indexing."
-   override_trusted_min = None
-    .type = int
-    .help = "During spot finding and indexing, override the minimum pixel value"
-    .help = "for this data. This does not affect integration."
-  format = *cbf pickle
+      .help = If not None, use the input energy for every event instead of the energy \
+              from the XTC stream
+    override_trusted_max = None
+      .type = int
+      .help = During spot finding, override the saturation value for this data. \
+              Overloads will not be integrated, but they can assist with indexing.
+    override_trusted_min = None
+      .type = int
+      .help = During spot finding and indexing, override the minimum pixel value \
+              for this data. This does not affect integration.
+    format = *cbf pickle
       .type = choice
-      .help = "File format, either CBF or image pickle"
-  }
+      .help = File format, either CBF or image pickle
+    use_ffb = False
+      .type = bool
+      .help = Run on the ffb if possible. Only for active users!
+    xtc_dir = None
+      .type = str
+      .help = Optional path to data directory if it's non-standard. Only needed if xtc \
+              streams are not in the standard location for your PSDM installation.
+ }
   output {
     output_dir = .
       .type = str
-      .help = "Directory output files will be placed"
+      .help = Directory output files will be placed
     datablock_filename = %s_datablock.json
       .type = str
-      .help = "The filename for output datablock"
+      .help = The filename for output datablock
     strong_filename = %s_strong.pickle
       .type = str
-      .help = "The filename for strong reflections from spot finder output."
+      .help = The filename for strong reflections from spot finder output.
     indexed_filename = %s_indexed.pickle
       .type = str
-      .help = "The filename for indexed reflections."
+      .help = The filename for indexed reflections.
     refined_experiments_filename = %s_refined_experiments.json
       .type = str
-      .help = "The filename for saving refined experimental models"
+      .help = The filename for saving refined experimental models
     integrated_filename = %s_integrated.pickle
       .type = str
-      .help = "The filename for final integrated reflections."
+      .help = The filename for final integrated reflections.
     profile_filename = None
       .type = str
-      .help = "The filename for output reflection profile parameters"
+      .help = The filename for output reflection profile parameters
+  }
+  mp {
+    method = *mpi sge
+      .type = choice
+      .help = Muliprocessing method
   }
   verbosity = 1
    .type = int(value_min=0)
-   .help = "The verbosity level"
+   .help = The verbosity level
   border_mask {
     include scope dials.command_line.generate_mask.phil_scope
   }
@@ -172,10 +184,26 @@ class InMemScript(DialsProcessScript):
     self.params = copy.deepcopy(params)
     self.options = options
 
-    from mpi4py import MPI
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank() # each process in MPI has a unique id, 0-indexed
-    size = comm.Get_size() # size: number of processes running in this job
+    if params.mp.method == "mpi":
+      from mpi4py import MPI
+      comm = MPI.COMM_WORLD
+      rank = comm.Get_rank() # each process in MPI has a unique id, 0-indexed
+      size = comm.Get_size() # size: number of processes running in this job
+    elif params.mp.method == "sge" and \
+        'SGE_TASK_ID'    in os.environ and \
+        'SGE_TASK_FIRST' in os.environ and \
+        'SGE_TASK_LAST'  in os.environ:
+      if 'SGE_STEP_SIZE' in os.environ:
+        assert int(os.environ['SGE_STEP_SIZE']) == 1
+      if os.environ['SGE_TASK_ID'] == 'undefined' or os.environ['SGE_TASK_ID'] == 'undefined' or os.environ['SGE_TASK_ID'] == 'undefined':
+        rank = 0
+        size = 1
+      else:
+        rank = int(os.environ['SGE_TASK_ID']) - int(os.environ['SGE_TASK_FIRST'])
+        size = int(os.environ['SGE_TASK_LAST']) - int(os.environ['SGE_TASK_FIRST']) + 1
+    else:
+      rank = 0
+      size = 1
 
     #log_path = os.path.join(params.output.output_dir, "log_rank%04d.out"%rank)
     #print "Redirecting stdout to %s"%log_path
@@ -184,6 +212,13 @@ class InMemScript(DialsProcessScript):
     # set up psana
     setConfigFile(self.params.input.cfg)
     dataset_name = "exp=%s:run=%s:idx"%(self.params.input.experiment,self.params.input.run_num)
+    if params.input.xtc_dir is not None:
+      if params.input.use_ffb:
+        raise Sorry("Cannot specify the xtc_dir and use SLAC's ffb system")
+      dataset_name += ":dir=%s"%params.input.xtc_dir
+    elif params.input.use_ffb:
+      # as ffb is only at SLAC, ok to hardcode /reg/d here
+      dataset_name += ":dir=/reg/d/ffb/%s/%s/xtc"%(params.input.experiment[0:3],params.input.experiment)
     ds = DataSource(dataset_name)
     src = Source('DetInfo(%s)'%self.params.input.address)
 

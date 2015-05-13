@@ -319,6 +319,9 @@ class Script(object):
         os.path.join(stdoutdir, "log_$SGE_TASK_ID.out"), os.path.join(stdoutdir, "log_$SGE_TASK_ID.err")))
       f.close()
     elif params.mp.method == "pbs":
+      # Write out a script for submitting this job and submit it
+      submit_path = os.path.join(trialdir, "submit.csh")
+
       command = "qsub -o %s %s"%(os.path.join(stdoutdir, "log.out"), submit_path)
 
       import libtbx.load_env
@@ -337,12 +340,12 @@ class Script(object):
       f.write("\n")
       f.write("cd $PBS_O_WORKDIR\n")
       f.write("\n")
-      f.write("source %s\n"%psdmenv_path)
-      f.write("source %s\n"%setpaths_path)
-      f.write("sit_setup\n")
       if params.mp.pbs.env_script is not None:
         f.write("source %s\n"%params.mp.pbs.env_script)
       f.write("\n")
+      f.write("source %s\n"%psdmenv_path)
+      f.write("source %s\n"%setpaths_path)
+      f.write("sit_setup\n")
 
       if params.input.xtc_dir is None:
         extra_str = ""
