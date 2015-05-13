@@ -57,7 +57,10 @@ def run (args, prologue=None, epilogue=None, out=sys.stdout) :
   if (prologue is not None) :
     f.write(prologue + "\n")
   if (options.prologue is not None) :
-    f.write(open(options.prologue).read() + "\n")
+    if not os.path.exists(options.prologue) and options.prologue.find("\n")>-1:
+      f.write("%s\n" % options.prologue)
+    else:
+      f.write(open(options.prologue).read() + "\n")
   print >> f, """\
 # include at start
 if [ "$LIBTBX_DISPATCHER_NAME" != "libtbx.scons" ] && \
