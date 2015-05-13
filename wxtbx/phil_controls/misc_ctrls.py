@@ -8,7 +8,7 @@ import wx
 WXTBX_ELEMENTS_CTRL_ALLOW_AX = 1
 WXTBX_ELEMENTS_CTRL_ALLOW_CLUSTERS = 2
 
-clusters = set(['TX'])
+clusters = set(['TX', 'XX'])
 
 class ElementCtrl (strctrl.StrCtrl) :
   """"
@@ -49,8 +49,8 @@ class ElementsValidator (strings.StringsValidator) :
     if (self.single_element) and (len(elem_strings) > 1) :
       raise ValueError("Only a single element may be specified here!")
     for elem in elem_strings :
-      elem = elem.upper()
-      if (elem == "AX") and (style & WXTBX_ELEMENTS_CTRL_ALLOW_AX) :
+      elem = elem.upper() # used in Phaser EP
+      if (elem == "AX" or elem == "RX") and (style & WXTBX_ELEMENTS_CTRL_ALLOW_AX) :
         pass
       elif (elem in clusters) and (style & WXTBX_ELEMENTS_CTRL_ALLOW_CLUSTERS):
         pass
