@@ -87,7 +87,7 @@ def score_rotamers (hierarchy, selection) :
   PDB hierarchy.
   """
   from mmtbx.rotamer import rotamer_eval
-  r = rotamer_eval.RotamerEval()
+  r = rotamer_eval.RotamerEval(data_version="8000")
   n_outliers = 0
   sub_hierarchy = hierarchy.select(selection) # XXX probably inefficient
   for rg in sub_hierarchy.only_model().only_chain().residue_groups() :
@@ -405,7 +405,8 @@ def filter_before_build (
     pdb_hierarchy=pdb_hierarchy,
     fmodel=fmodel,
     geometry_restraints_manager=geometry_restraints_manager,
-    outliers_only=False)
+    outliers_only=False,
+    rotamer_library="8000")
   if (verbose) :
     full_validation.show(out=log)
   multi_criterion = full_validation.as_multi_criterion_view()
