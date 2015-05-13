@@ -766,6 +766,7 @@ def build_cycle (pdb_hierarchy,
     print >> out, "WARNING: %d hydrogen atoms will be removed!" % n_hydrogen
     non_hd_sel = ~hd_sel
     pdb_hierarchy = pdb_hierarchy.select(non_hd_sel)
+    pdb_hierarchy.atoms().reset_i_seq()
     xray_structure = fmodel.xray_structure.select(non_hd_sel)
     fmodel.update_xray_structure(xray_structure)
     geometry_restraints_manager = geometry_restraints_manager.select(non_hd_sel)
