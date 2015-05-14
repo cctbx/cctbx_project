@@ -220,5 +220,3 @@ other_params = iotbx.phil.parse("""
        .help = Base score for other
        .short_caption = Base score for other
 """)
-
-

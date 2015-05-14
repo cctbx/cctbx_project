@@ -285,7 +285,7 @@ def get_atom_from_residue(residue=None,atom_name=None):
 def get_indexed_residue(hierarchy,index=0):
   if not hierarchy:
     return None
-  count=0 
+  count=0
   for model in hierarchy.models():
     for chain in model.chains():
       for conformer in chain.conformers():
@@ -1281,14 +1281,14 @@ class find_beta_strand(find_segment):
         first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel,i_index,j_index=\
            first_last_1_and_2
 
-        if start_dict[i] is None or start_dict[i]>first_ca_1: 
+        if start_dict[i] is None or start_dict[i]>first_ca_1:
            start_dict[i]=first_ca_1
-        if end_dict[i] is None or end_dict[i]<last_ca_1: 
+        if end_dict[i] is None or end_dict[i]<last_ca_1:
            end_dict[i]=last_ca_1
 
-        if start_dict[j] is None or start_dict[j]>first_ca_2: 
+        if start_dict[j] is None or start_dict[j]>first_ca_2:
            start_dict[j]=first_ca_2
-        if end_dict[j] is None or end_dict[j]<last_ca_2: 
+        if end_dict[j] is None or end_dict[j]<last_ca_2:
            end_dict[j]=last_ca_2
 
       return start_dict,end_dict
@@ -1304,7 +1304,7 @@ class find_beta_strand(find_segment):
     #  strands
 
     records=[]
-    sheet_id=0 
+    sheet_id=0
     for sheet in sheet_list:
       sheet_id+=1
       strand_id=1
@@ -1314,7 +1314,7 @@ class find_beta_strand(find_segment):
       if not s.hierarchy: continue
       current_sheet = secondary_structure.pdb_sheet(
         sheet_id=sheet_id,
-        n_strands=len(sheet), 
+        n_strands=len(sheet),
         strands=[],
         registrations=[])
 
@@ -1344,7 +1344,7 @@ class find_beta_strand(find_segment):
           current_is_parallel=is_parallel
         else:
           current_is_parallel=(not is_parallel)
-        
+
         if current_is_parallel:
           sense=1
         else:
@@ -1359,7 +1359,7 @@ class find_beta_strand(find_segment):
         previous_s=s
         previous_is_parallel=current_is_parallel
         i=j
-        
+
       records.append(current_sheet)
 
     return records
@@ -1368,18 +1368,18 @@ class find_beta_strand(find_segment):
   def get_pdb_strand_register(self,segment=None,previous_segment=None,
      first_last_1_and_2=None):
 
-    # If n->n+1 strand are parallel and residue i of strand n matches 
-    #   with residue i' of strand n+1, then O of residue i in strand n 
+    # If n->n+1 strand are parallel and residue i of strand n matches
+    #   with residue i' of strand n+1, then O of residue i in strand n
     #   H-bonds to N of residue i'+1 in strand n+1.
 
-    #  if antiparallel, then O of residue i in strand n H-bonds to N of 
+    #  if antiparallel, then O of residue i in strand n H-bonds to N of
     #     residue i' in strand n+1
 
     #  Looking down a strand in direction from N to C...
     #    the CA go up-down-up-down.
-    #    The ones that are up have their O pointing to the right 
+    #    The ones that are up have their O pointing to the right
     #    Those that are down have O pointing to the left
-    #  Consequently if we orient strand n+1 from N to C...if 
+    #  Consequently if we orient strand n+1 from N to C...if
     #    strand n is to the right then choose an "up" residue of strand n+1 for
     #    the matching to strand n.  If strand n is to the left choose a "down"
     #    one.
@@ -1422,7 +1422,7 @@ class find_beta_strand(find_segment):
       prev_icode=prev_residue.icode)
 
     return register
-        
+
 class find_other_structure(find_segment):
 
   def __init__(self,find_alpha=None,find_beta=None,
@@ -1632,7 +1632,7 @@ class find_secondary_structure: # class to look for secondary structure
           self.sheet_list.append([i,j])
           if not i in self.used_strands: self.used_strands.append(i)
           if not j in self.used_strands: self.used_strands.append(j)
-      
+
     # Now we are ready to create sheets from self.sheet_list, self.pair_dict and
     #   self.info_dict
 
@@ -1653,7 +1653,7 @@ class find_secondary_structure: # class to look for secondary structure
       while current_strand is not None:
         current_strand=self.get_available_strand(current_strand=current_strand,
           strand_list=strand_list)
-        if current_strand is not None: 
+        if current_strand is not None:
           strand_list.append(current_strand)
       if len(strand_list)>1: # require an actual sheet
         self.used_strands+=strand_list
@@ -1707,7 +1707,7 @@ class find_secondary_structure: # class to look for secondary structure
 
             # figure out which "O" of strand i should H-bond with which "N" of j
             # it is either going to be first_ca_1 or first_ca_1+1
- 
+
             i_index,j_index=self.get_indices_of_h_bonding_atoms_in_sheet(
               first_last_1_and_2=first_last_1_and_2,i=i,j=j,switch_i_j=False)
 
@@ -1739,12 +1739,12 @@ class find_secondary_structure: # class to look for secondary structure
       j_index=first_ca_2+1
     else:
       j_index=last_ca_2
- 
+
     # View strand i from N to C with strand j to the right.  Every other
     #  residue in strand i has CA up/down/up/down.  Choose either
     #  residue first_ca_1 or first_ca_1+1, whichever is more up in this
     #  reference frame.
-    #  "Up" here is 
+    #  "Up" here is
     # CA(i_index) -> CA(j_index)  X strand_i.segment_average_direction()
     strand_i=self.all_strands[i]
     strand_j=self.all_strands[j]
@@ -1779,7 +1779,7 @@ class find_secondary_structure: # class to look for secondary structure
 
     if i_index+1>len(strand_i.get_sites()) or \
         j_index+1>len(strand_j.get_sites()) or \
-        j_index< 0: 
+        j_index< 0:
       return None,None # give up (could not find a suitable H-bond)
     return i_index,j_index
 
@@ -1861,7 +1861,7 @@ class find_secondary_structure: # class to look for secondary structure
           keep2_list.append(i2)
           dd_list.append(dd**0.5)
         elif offset>0: # passed the middle, so end it
-          break 
+          break
         else: # have a bad one and have not gotten to middle yet. Start over
           keep_1_list=[]
           keep_2_list=[]
@@ -1934,7 +1934,7 @@ class find_secondary_structure: # class to look for secondary structure
       return self.all_pdb_records
 
   def get_all_selection_records(self):
-    if not hasattr(self,'all_selection_records'): 
+    if not hasattr(self,'all_selection_records'):
        return
 
     text='"'
@@ -2062,8 +2062,8 @@ if __name__=="__main__":
 
   """
   # How to get cctbx helix/sheet objects:
-  helices=fss.get_pdb_helix_list() 
-  sheets=fss.get_pdb_sheet_list() 
+  helices=fss.get_pdb_helix_list()
+  sheets=fss.get_pdb_sheet_list()
   print "\nHelix Summary"
   for helix in helices:
     print helix.as_pdb_str()
