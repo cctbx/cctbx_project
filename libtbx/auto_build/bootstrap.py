@@ -508,6 +508,7 @@ class Builder(object):
       base=True,
       build=True,
       tests=True,
+      doc=True,
       distribute=False,
       auth=None,
       with_python=None,
@@ -546,7 +547,7 @@ class Builder(object):
     if cleanup:
       self.cleanup(['dist', 'tests', 'doc', 'tmp', 'base', 'base_tmp', 'build'])
     else:
-      self.cleanup(['dist', 'tests', 'doc', 'tmp'])
+      self.cleanup(['dist', 'tests', 'tmp'])
 
     # Add 'hot' sources
     if hot:
@@ -573,9 +574,18 @@ class Builder(object):
     if tests and not self.download_only:
       self.add_tests()
 
+    # docs
+    if doc:
+      self.rebuild_docs()
+
     # Distribute
     if distribute and not self.download_only:
       self.add_distribute()
+      
+    # Distribute does this but uses correct PHENIX_VERSION
+    if build and not self.download_only:
+      self.add_dispatchers()
+      self.add_refresh()
 
   def add_auth(self, account, username):
     self.auth[account] = username
@@ -815,6 +825,13 @@ class Builder(object):
       haltOnFailure=False
     )
 
+  def add_refresh(self):
+    self.add_command(
+      'libtbx.refresh',
+      name='libtbx.refresh',
+      workdir=['.'],
+    )
+
   # Override these methods.
   def add_base(self, extra_opts=[]):
     """Build the base dependencies, e.g. Python, HDF5, etc."""
@@ -827,7 +844,8 @@ class Builder(object):
     if self.skip_base:
       extra_opts.append('--skip-base=%s' % self.skip_base)
     if not self.force_base_build:
-      extra_opts.append("--skip-if-exists")
+      if "--skip-if-exists" not in extra_opts:
+        extra_opts.append("--skip-if-exists")
     self.add_step(self.shell(
       name='base',
       command=[
@@ -838,6 +856,49 @@ class Builder(object):
         '--%s'%self.BASE_PACKAGES
       ] + extra_opts,
       workdir=['.']
+    ))
+
+  def add_dispatchers(self, product_name="phenix"):
+    """Write dispatcher_include file."""
+    """Generating Phenix environment additions for dispatchers..."""
+    dispatcher = os.path.join("build",
+                              "dispatcher_include_%s.sh" %
+                              product_name)
+    if (os.path.isfile(dispatcher)): os.remove(dispatcher)
+    env_prefix = product_name.upper() # e.g. "Phenix" -> "PHENIX"
+    prologue = "\n".join([
+      "export %s=\"%s\"" % (env_prefix, os.getcwd()),
+      "export %s_VERSION=%s" % (env_prefix, "dev-svn"),
+      "export %s_ENVIRONMENT=1" % env_prefix,
+      #"export %s_MTYPE=%s" % (env_prefix, "none"),
+    ] #+ self.product_specific_dispatcher_prologue())
+                         )
+    #epilogue = "\n".join(self.product_specific_dispatcher_epilogue())
+    dispatcher_opts = [
+      "--build_dir=%s" % ".",
+      "--base_dir=%s"  % "../base",
+      "--suffix=%s"    % "phenix",
+      "--gtk_version=2.10.0", # XXX this can change!
+      #"--quiet",
+    ]
+    #if (not self.flag_build_gui) :
+    #  dispatcher_opts.append("--ignore_missing_dirs")
+    # FIXME this will happen regardless of whether the GUI modules are being
+    # distributed or not - will this be problematic?
+    self.add_step(self.shell(
+      name='gui dispatcher',
+      command=[
+        self.python_base, #'python',
+        self.opjoin("..",
+                    'modules',
+                    'cctbx_project',
+                    'libtbx',
+                    'auto_build',
+                    'write_gui_dispatcher_include.py'),
+        '--prologue=%s' % prologue,
+        #"--epilogue=%s"
+      ] + dispatcher_opts,
+      workdir=['build']
     ))
 
   def add_configure(self):
@@ -866,7 +927,7 @@ class Builder(object):
          'python','-c','open(r\"%s\",\"w\").write(r\"\"\"%s\"\"\")' %(fname, confstr)
          ],
       workdir=['build'],
-      description="Saving configure.py command to file",
+      description="save configure command",
     ))
 
 
@@ -883,6 +944,9 @@ class Builder(object):
   def add_tests(self):
     """Run the unit tests."""
     pass
+
+  def rebuild_docs(self):
+    self.add_command('phenix_html.rebuild_docs')
 
   def add_distribute(self):
     pass
@@ -938,6 +1002,12 @@ class CCTBXBuilder(CCIBuilder):
     self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
     self.add_test_command('cctbx_regression.test_nightly')
 
+  def add_dispatchers(self):
+    pass
+
+  def rebuild_docs(self):
+    pass
+
 class DIALSBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['dials', 'xia2']
   LIBTBX_EXTRA = ['dials', 'xia2']
@@ -952,33 +1022,52 @@ class DIALSBuilder(CCIBuilder):
                   #'--wxpython3'
                  ])
 
+  def add_dispatchers(self):
+    pass
+
+  def rebuild_docs(self):
+    pass
+
 class LABELITBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['labelit', 'labelit_regression']
   LIBTBX_EXTRA = ['labelit', 'labelit_regression']
   def add_tests(self):
     pass
 
+  def add_dispatchers(self):
+    pass
+
+  def rebuild_docs(self):
+    pass
+
 class XFELBuilder(CCIBuilder):
- CODEBASES_EXTRA = [
-   'dials',
-   'labelit',
-   'labelit_regression',
-   'xfel_regression',
-   'cxi_xdr_xes'
- ]
- LIBTBX_EXTRA = [
-   'dials',
-   'labelit',
-   'labelit_regression',
-   'xfel',
-   'xfel_regression',
-   'cxi_xdr_xes',
-   'prime'
- ]
- def add_tests(self):
+  CODEBASES_EXTRA = [
+    'dials',
+    'labelit',
+    'labelit_regression',
+    'xfel_regression',
+    'cxi_xdr_xes'
+  ]
+  LIBTBX_EXTRA = [
+    'dials',
+    'labelit',
+    'labelit_regression',
+    'xfel',
+    'xfel_regression',
+    'cxi_xdr_xes',
+    'prime'
+  ]
+
+  def add_tests(self):
     self.add_test_command('libtbx.import_all_ext')
     self.add_test_command('cctbx_regression.test_nightly')
     self.add_test_parallel('xfel_regression')
+
+  def add_dispatchers(self):
+    pass
+
+  def rebuild_docs(self):
+    pass
 
 class PhenixBuilder(CCIBuilder):
   CODEBASES_EXTRA = [
@@ -1027,6 +1116,9 @@ class PhenixBuilder(CCIBuilder):
   ]
   def add_install(self):
     Builder.add_install(self)
+    #self.rebuild_docs()
+
+  def rebuild_docs(self):
     self.add_command('phenix_html.rebuild_docs')
 
   def add_tests(self):
@@ -1040,7 +1132,7 @@ class PhenixBuilder(CCIBuilder):
       self.add_test_command('phenix_regression.test_nightly')
     # Other Phenix tests.
     self.add_test_parallel(module='elbow')
-    self.add_test_command('phenix_html.rebuild_docs')
+    self.rebuild_docs()
     self.add_test_command('phenix_regression.run_p9_sad_benchmark')
     self.add_test_command('phenix_regression.run_hipip_refine_benchmark')
 
@@ -1053,6 +1145,7 @@ def run(root=None):
     base - Build base dependencies (python, hdf5, wxWidgets, etc.)
     build - Build
     tests - Run tests
+    doc - Build documentation
 
   The default action is to run: hot, update, base, build
 
@@ -1102,7 +1195,7 @@ def run(root=None):
   # options.root = options.root or root
 
   # Check actions
-  allowedargs = ['cleanup', 'hot', 'update', 'base', 'build', 'tests']
+  allowedargs = ['cleanup', 'hot', 'update', 'base', 'build', 'tests', 'doc']
   args = args or ['hot', 'update', 'base', 'build']
   actions = []
   for arg in args:
@@ -1144,6 +1237,7 @@ def run(root=None):
     base=('base' in actions),
     build=('build' in actions),
     tests=('tests' in actions),
+    doc=('doc' in actions),
     cleanup=("cleanup" in actions),
     nproc=options.nproc,
     verbose=options.verbose,

@@ -32,11 +32,13 @@ def run (args, prologue=None, epilogue=None, out=sys.stdout) :
   if (not os.path.isdir(build_path)) :
     raise OSError("The specified build directory (%s) does not exist." %
       build_path)
+  build_path = os.path.abspath(build_path)
   base_path = options.base_dir
   if (base_path is None) :
     base_path = os.path.join(build_path, "base")
   if (not os.path.isdir(base_path)) :
     raise OSError("%s does not exist." % base_path)
+  base_path = os.path.abspath(base_path)
   ld_library_paths = [ os.path.join(base_path, "lib"), ]
   dyld_library_paths = ld_library_paths + [
     os.path.join(base_path,"Python.framework","Versions","Current","lib"), ]
@@ -126,6 +128,23 @@ fi
   if (not options.quiet) :
     print >> out, "Wrote %s" % dispatcher
     print >> out, "You should now run libtbx.refresh to regenerate dispatchers."
+
+missing = """
+> if [ ! -z "$QB_PYTHONPATH" ]; then
+>   export PYTHONPATH=$PYTHONPATH:$QB_PYTHONPATH
+> fi
+> if [ ! -z "$QB_LD_LIBRARY_PATH" ]; then
+>   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$QB_LD_LIBRARY_PATH
+> fi
+> if [ ! -z "$QB_DYLD_LIBRARY_PATH" ]; then
+>   export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$QB_DYLD_LIBRARY_PATH
+> fi
+> if [ "$PHENIX_MTYPE" != "mac-ppc-osx" ] && \
+>    [ "$PHENIX_MTYPE" != "mac-intel-osx" ] && \
+>    [ "$PHENIX_MTYPE" != "mac-intel-osx-x86_64" ]; then
+>   export PYMOL_PATH=$PHENIX/pymol
+> fi
+"""
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
