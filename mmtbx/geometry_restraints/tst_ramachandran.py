@@ -497,6 +497,55 @@ def exercise_other (mon_lib_srv, ener_lib) :
     d_min=2.9,
     log=StringIO())
 
+def exercise_ramachandran_selections(mon_lib_srv, ener_lib):
+  # Just check overall rama proxies
+  file_name = libtbx.env.find_in_repositories(
+    # relative_path="phenix_regression/pdb/3mku.pdb",
+    relative_path="phenix_regression/pdb/fab_a_cut.pdb",
+    test=os.path.isfile)
+  if (file_name is None) :
+    print "Skipping test."
+    return
+  params = pdb_interpretation.master_params.fetch().extract()
+  params.peptide_link.ramachandran_restraints = True
+  processed_pdb_file = pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    params=params,
+    file_name=file_name,
+    log=StringIO())
+  grm = processed_pdb_file.geometry_restraints_manager()
+  # print grm.ramachandran_manager.get_n_proxies() # 47 is wrong here
+
+  # simple selection
+  params = pdb_interpretation.master_params.fetch().extract()
+  params.peptide_link.ramachandran_restraints = True
+  params.peptide_link.rama_selection = "chain A and resid 1:7"
+  processed_pdb_file = pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    params=params,
+    file_name=file_name,
+    log=StringIO())
+  grm = processed_pdb_file.geometry_restraints_manager()
+  nprox = grm.ramachandran_manager.get_n_proxies()
+  assert nprox == 5, ""+\
+      "Want to get 5 rama proxies, got %d" % nprox
+
+  # 7 residues: there are insertion codes
+  params = pdb_interpretation.master_params.fetch().extract()
+  params.peptide_link.ramachandran_restraints = True
+  params.peptide_link.rama_selection = "chain A and resid 27:28"
+  processed_pdb_file = pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    params=params,
+    file_name=file_name,
+    log=StringIO())
+  grm = processed_pdb_file.geometry_restraints_manager()
+  # print grm.ramachandran_manager.get_n_proxies() 0 is wrong here
+
+
 if __name__ == "__main__" :
   import time
   mon_lib_srv = server.server()
@@ -508,12 +557,19 @@ if __name__ == "__main__" :
   exercise_lbfgs_simple(mon_lib_srv, ener_lib,
       ("--verbose" in sys.argv) or ("-v" in sys.argv))
   t2 = time.time()
-  if ("--full" in sys.argv) :
+  if ("--full" in sys.argv):
     exercise_lbfgs_big(mon_lib_srv, ener_lib,
         ("--verbose" in sys.argv) or ("-v" in sys.argv))
   t3 = time.time()
   exercise_geo_output(mon_lib_srv, ener_lib)
   t4 = time.time()
-  print "Times: %.3f, %.3f, %.3f, %.3f. Total: %.3f" % (
-      t1-t0, t2-t1, t3-t2, t4-t3, t4-t0)
+  #
+  # XXX FIXME!!! Ramachandran selections does not work properly with insertion
+  # codes. Actually, those are not getting restrained due to flawed logic in
+  # mmtbx/rotamer/__init__.py: extract_phi_psi function.
+  #
+  exercise_ramachandran_selections(mon_lib_srv, ener_lib)
+  t5 = time.time()
+  print "Times: %.3f, %.3f, %.3f, %.3f, %.3f. Total: %.3f" % (
+      t1-t0, t2-t1, t3-t2, t4-t3, t5-t4, t5-t0)
   print "OK"
