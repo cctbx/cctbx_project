@@ -21,6 +21,10 @@ libtbx_path = op.abspath(op.dirname(op.dirname(__file__)))
 if (not libtbx_path in sys.path) :
   sys.path.append(libtbx_path)
 
+python_dependencies = {"ssl" : "Secure Socket Library",
+                       "zlib" : "XCode command line tools",
+                     }
+
 class installer (object) :
   def __init__ (self, args=None, packages=None, log=sys.stdout) :
     #assert (sys.platform in ["linux2", "linux3", "darwin"])
@@ -106,6 +110,7 @@ class installer (object) :
     if options.skip_if_exists and os.path.exists(self.base_dir):
       print >> log, "Base directory already exists and --skip-if-exists set; exiting."
       return
+    self.check_python_dependencies()
     print >> log, "Setting up directories..."
     for dir_name in [self.tmp_dir,self.build_dir,self.base_dir]:
       if (not op.isdir(dir_name)) :
@@ -338,17 +343,8 @@ Found Python version:
 """%python_version
       raise e
 
-  def set_python(self, python_exe):
-    print >> self.log, "Using Python: %s"%python_exe
-    self.python_exe = python_exe
-    # Just an arbitrary import (with .so)
-    self.verify_python_module("Python", "socket")
-    # check that certain modules are avaliable in python
-
-    deps = {"ssl" : "Secure Socket Library",
-            "zlib" : "XCode command line tools"
-      }
-    for module, desc in deps.items():
+  def check_python_dependencies(self):
+    for module, desc in python_dependencies.items():
       try:
         self.verify_python_module(module, module)
       except RuntimeError, e:
@@ -356,9 +352,16 @@ Found Python version:
           "*"*80,
           "%s - %s" % (module, desc),
           "*"*80,
-          )
+        )
         raise e
 
+  def set_python(self, python_exe):
+    print >> self.log, "Using Python: %s"%python_exe
+    self.python_exe = python_exe
+    # Just an arbitrary import (with .so)
+    self.verify_python_module("Python", "socket")
+    # check that certain modules are avaliable in python
+    self.check_python_dependencies()
     # Check python version >= 2.6.
     self.check_python_version()
 
@@ -405,8 +408,14 @@ Installation of Python packages may fail.
 
   def verify_python_module (self, pkg_name_label, module_name) :
     os.chdir(self.tmp_dir) # very important for import to work!
-    self.log.write("  verifying %s installation..." % pkg_name_label)
-    self.call("%s -c 'import %s'" % (self.python_exe, module_name))
+    if hasattr(self, "python_exe"): python_exe = self.python_exe
+    else: 
+      python_exe = sys.executable
+    self.log.write("  verifying %s installation in %s" % (
+      pkg_name_label,
+      python_exe,
+    ))
+    self.call("%s -c 'import %s'" % (python_exe, module_name))
     print >> self.log, " OK"
 
   def workarounds(self):
@@ -997,7 +1006,7 @@ Installation of Python packages may fail.
     if (self.flag_is_mac) :
       config_opts.extend([
         "--with-osx_cocoa",
-        "--with-macosx-version-min=10.7", # %s" % get_os_version(),
+        "--with-macosx-version-min=10.6", #%s" % get_os_version(),
         "--with-mac",
         "--enable-monolithic",
         "--disable-mediactrl",
