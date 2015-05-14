@@ -581,7 +581,7 @@ class Builder(object):
     # Distribute
     if distribute and not self.download_only:
       self.add_distribute()
-      
+
     # Distribute does this but uses correct PHENIX_VERSION
     if build and not self.download_only:
       self.add_dispatchers()
