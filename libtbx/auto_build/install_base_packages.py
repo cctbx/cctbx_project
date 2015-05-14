@@ -110,12 +110,12 @@ class installer (object) :
     if options.skip_if_exists and os.path.exists(self.base_dir):
       print >> log, "Base directory already exists and --skip-if-exists set; exiting."
       return
-    self.check_python_dependencies()
     print >> log, "Setting up directories..."
     for dir_name in [self.tmp_dir,self.build_dir,self.base_dir]:
       if (not op.isdir(dir_name)) :
         print >> log, "  creating %s" % dir_name
         os.makedirs(dir_name)
+    self.check_python_dependencies()
 
     # Configure package download
     self.fetch_package = fetch_packages(
@@ -409,7 +409,7 @@ Installation of Python packages may fail.
   def verify_python_module (self, pkg_name_label, module_name) :
     os.chdir(self.tmp_dir) # very important for import to work!
     if hasattr(self, "python_exe"): python_exe = self.python_exe
-    else: 
+    else:
       python_exe = sys.executable
     self.log.write("  verifying %s installation in %s" % (
       pkg_name_label,
