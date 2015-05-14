@@ -116,6 +116,7 @@ tst_list = (
   "$D/geometry_restraints/tst_c_beta_restraints.py",
   "$D/torsion_restraints/tst_torsion_ncs.py",
   "$D/conformation_dependent_library/test_cdl.py",
+  "$D/regression/tst_find_ss_structure.py",
   "$D/regression/tst_sequence_validation.py",
   "$D/regression/tst_prune_model.py",
   "$D/regression/tst_real_space_correlation.py",
