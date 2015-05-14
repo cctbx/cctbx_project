@@ -861,6 +861,8 @@ class Builder(object):
   def add_dispatchers(self, product_name="phenix"):
     """Write dispatcher_include file."""
     """Generating Phenix environment additions for dispatchers..."""
+    if sys.platform == "win32":
+      return
     dispatcher = os.path.join("build",
                               "dispatcher_include_%s.sh" %
                               product_name)
