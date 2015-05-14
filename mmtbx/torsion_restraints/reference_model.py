@@ -305,8 +305,8 @@ class reference_model(object):
       sel_atoms_ref = (utils.phil_atom_selections_as_i_seqs_multiple(
                     cache=sel_cache_ref[file],
                     string_list=[rg.reference]))
-      sel = utils.selection(rg.selection, sel_cache)
-      sel_ref = utils.selection(rg.reference, sel_cache_ref[file])
+      sel = sel_cache.selection(string=rg.selection)
+      sel_ref = sel_cache_ref[file].selection(string=rg.reference)
       mod_h = utils.hierarchy_from_selection(
                 pdb_hierarchy=pdb_hierarchy,
                 selection = sel,
@@ -894,7 +894,6 @@ def get_matching_chains(pdb_hierarchy,
                        am_ref.structures[chain_j_str])
         residue_match_map = \
           utils._alignment(
-            params=params,
             sequences=seq_pair,
             padded_sequences=seq_pair_padded,
             structures=struct_pair,
