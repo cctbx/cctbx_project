@@ -40,6 +40,16 @@ alpha_params=iotbx.phil.parse("""
        .help = Tolerance in rise of helices in input file
        .short_caption = Tolerance in rise of helices
 
+     target_i_ip3 = None
+       .type = float
+       .help = None (target i->i+3 distance)
+       .short_caption = none
+
+     tol_i_ip3 = None
+       .type = float
+       .help = None (tolerance in target i->i+3 distance)
+       .short_caption = none
+
      dot_min_single = 0.3
        .type = float
        .help = Target dot product of i->i+1 with overall direction
@@ -103,6 +113,16 @@ beta_params=iotbx.phil.parse("""
        .help = Tolerance in rise for beta structure in input file
        .short_caption = Tolerance in rise for beta structure
 
+     target_i_ip3 = 10.
+       .type = float
+       .help = Target i->i+3 distance
+       .short_caption = Target i to i+3 distance
+
+     tol_i_ip3 = 1.5
+       .type = float
+       .help = Tolerance in target i->i+3 distance
+       .short_caption = Tolerance in target i to i+3 distance
+
      dot_min_single = 0.5
        .type = float
        .help = Target dot product of i->i+1 with overall direction
@@ -141,7 +161,7 @@ other_params = iotbx.phil.parse("""
        .help = number of residues included on ends of segments
        .short_caption = buffer residues for other structure
 
-     standard_length = 5
+     standard_length = 8
        .type = int
        .help = standard length for other structure
        .short_caption = Standard length for other structure
@@ -165,6 +185,16 @@ other_params = iotbx.phil.parse("""
        .type = float
        .help = None
        .short_caption = None
+
+     target_i_ip3 = None
+       .type = float
+       .help = None (target i->i+3 distance)
+       .short_caption = none
+
+     tol_i_ip3 = None
+       .type = float
+       .help = None (tolerance in target i->i+3 distance)
+       .short_caption = none
 
      dot_min_single = None
        .type = float

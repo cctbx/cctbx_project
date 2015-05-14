@@ -59,7 +59,7 @@ ATOM     44  O   GLY U  21      -0.196  -4.136  -6.539  1.00 52.86           O
   from cctbx.array_family import flex
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(text)).construct_hierarchy()
-  fss=find_secondary_structure(hierarchy=hierarchy,out=null_out())
+  fss=find_secondary_structure(args=['include_single=True'],hierarchy=hierarchy,out=null_out())
 
   expected_text="""
 Model 1  N: 11  Start: 11 End: 21
@@ -69,6 +69,10 @@ Class: strand  N: 5 Start: 17 End: 21  Rise: 3.35 A Dot: 0.96
 PDB RECORDS:
 SHEET    1   1 1 GLY U  12  GLY U  15  0
 SHEET    1   2 1 GLY U  17  GLY U  21  0
+
+PDB Selections:
+" ( chain 'U' and resseq 12:15 and icode ' ')  or  ( chain 'U' and resseq 17:21 and icode ' ') "
+
 """
   f=StringIO()
   fss.show_summary(out=f,verbose=True)
@@ -284,6 +288,10 @@ Class:  helix  N: 16 Start: 11 End: 26  Rise: 1.58 A Dot: 0.98
 PDB RECORDS:
 HELIX    1   1 GLY A    1  VAL A    8  1                                   8
 HELIX    2   2 THR A   11  GLN A   26  1                                  16
+
+PDB Selections:
+" ( chain 'A' and resseq 1:8 and icode ' ')  or  ( chain 'A' and resseq 11:26 and icode ' ') "
+
 """
   f=StringIO()
   fss.show_summary(out=f,verbose=True)

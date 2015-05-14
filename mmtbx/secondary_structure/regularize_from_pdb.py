@@ -121,6 +121,16 @@ master_phil = iotbx.phil.parse("""
        .help = Write HELIX and SHEET records
        .short_caption = Write HELIX/SHEET records
 
+     set_up_helices_sheets = False
+       .type = bool
+       .help = Set up HELIX and SHEET records
+       .short_caption = Set up HELIX/SHEET records
+
+     include_single_strands = False
+       .type = bool
+       .help = Write SHEET records that contain a single strand
+       .short_caption = Write single strands
+
   }
 
   extract_segments_from_pdb {
@@ -131,7 +141,7 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Extract segments from PDB
   }
   alpha {
-     include scope mmtbx.secondary_structure.find_ss_from_ca_params.alpha_params
+     include scope mmtbx.secondary_structure.secondary_structure_params.alpha_params
 
      library = 'helices.pdb'
        .type = path
@@ -165,7 +175,7 @@ master_phil = iotbx.phil.parse("""
 
   }
   beta {
-     include scope mmtbx.secondary_structure.find_ss_from_ca_params.beta_params
+     include scope mmtbx.secondary_structure.secondary_structure_params.beta_params
 
      library = 'strands.pdb'
        .type = path
@@ -199,7 +209,7 @@ master_phil = iotbx.phil.parse("""
 
   }
   other {
-     include scope mmtbx.secondary_structure.find_ss_from_ca_params.other_params
+     include scope mmtbx.secondary_structure.secondary_structure_params.other_params
 
      library = 'lib8.pdb'
        .type = path
