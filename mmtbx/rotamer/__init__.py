@@ -113,6 +113,11 @@ def phi_psi_from_sites (i_seqs, sites_cart) :
   return (phi, psi)
 
 def extract_phi_psi (pdb_hierarchy, atom_selection=None) :
+  #
+  # FIXME: does not work properly with insertion codes due to
+  # this statements:
+  # if (resseq2 != (resseq1 + 1)) : continue
+  #
   from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
   from scitbx.array_family import flex
   from cctbx import geometry_restraints
