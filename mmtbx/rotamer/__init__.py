@@ -114,10 +114,13 @@ def phi_psi_from_sites (i_seqs, sites_cart) :
 
 def extract_phi_psi (pdb_hierarchy, atom_selection=None) :
   from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
+  from scitbx.array_family import flex
   from cctbx import geometry_restraints
   if (atom_selection is None) :
-    from scitbx.array_family import flex
     atom_selection = flex.bool(pdb_hierarchy.atoms().size(), True)
+  else:
+    assert isinstance(atom_selection, flex.bool)
+    assert atom_selection.size() == pdb_hierarchy.atoms().size()
   rama_angles = []
   for model in pdb_hierarchy.models() :
     for chain in model.chains() :

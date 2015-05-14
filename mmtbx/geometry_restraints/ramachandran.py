@@ -71,6 +71,12 @@ class ramachandran_manager(object):
       proxies=None, tables=None, initialize=True):
     assert pdb_hierarchy is not None
     adopt_init_args(self, locals())
+    self.bool_atom_selection = None
+    if self.atom_selection is None:
+      self.bool_atom_selection = flex.bool(pdb_hierarchy.atoms().size(), True)
+    else:
+      cache = pdb_hierarchy.atom_selection_cache()
+      self.bool_atom_selection = cache.selection(atom_selection)
     if params is None:
       params = master_phil.fetch().extract()
     self.params = params
@@ -100,11 +106,11 @@ class ramachandran_manager(object):
         initialize=False)
 
   def extract_proxies(self):
-    assert [a.i_seq for a in self.pdb_hierarchy.atoms()].count(0) == 1 ,\
+    assert [a.i_seq for a in self.pdb_hierarchy.atoms()].count(0) == 1 , ""+\
         "Probably all atoms have i_seq = 0 which is wrong"
     angles = mmtbx.rotamer.extract_phi_psi(
       pdb_hierarchy=self.pdb_hierarchy,
-      atom_selection=self.atom_selection)
+      atom_selection=self.bool_atom_selection)
     self.proxies = ext.shared_phi_psi_proxy()
     for angle in angles :
       residue_name = angle.residue_name
