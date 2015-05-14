@@ -1486,6 +1486,21 @@ class ncs_group_object(object):
       print >> log,gr
     return gr
 
+  def get_array_of_selections(self):
+    """
+    Returns array of phil selection strings e.g. for the exapmle above in
+    print_ncs_phil_param:
+    [['(Chain A)','(chain C)','(chain E)'],['(chain B)','(chain D)','(chain F)']]
+    """
+    result = []
+    for master, copies in self.ncs_to_asu_selection.iteritems():
+      group = [master]
+      for cp in copies:
+        group.append(cp)
+      result.append(group)
+    return result
+
+
   def create_ncs_domain_pdb_files(
           self,
           hierarchy=None,

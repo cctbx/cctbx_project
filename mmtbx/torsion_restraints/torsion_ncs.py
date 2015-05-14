@@ -19,6 +19,12 @@ from mmtbx import ncs
 import mmtbx.utils
 from libtbx import Auto
 
+# Refactoring notes 11 May 2015
+# Torsion NCS restraints should use the same procedure to find NCS groups
+# as other NCS restraints. Therefore all search code will be avoided and
+# NCS groups should be provided via ncs_obj which is instance of
+# cctbx_project.iotbx.ncs.ncs_preprocess.ncs_group_object
+
 TOP_OUT_FLAG = True
 
 torsion_ncs_params = iotbx.phil.parse("""
@@ -48,9 +54,6 @@ torsion_ncs_params = iotbx.phil.parse("""
  verbose = True
    .type = bool
  filter_phi_psi_outliers = True
-   .type = bool
-   .expert_level = 4
- remove_conflicting_torsion_restraints = False
    .type = bool
    .expert_level = 4
  restrain_to_master_chain = False
@@ -89,10 +92,11 @@ class torsion_ncs(object):
                pdb_hierarchy=None,
                fmodel=None,
                params=None,
-               b_factor_weight=None,
+               b_factor_weight=None, # should not be used
                coordinate_sigma=None,
                selection=None,
                ncs_groups=None,
+               ncs_obj = None,
                alignments=None,
                ncs_dihedral_proxies=None,
                log=None):
@@ -105,112 +109,82 @@ class torsion_ncs(object):
     self.sigma = params.sigma
     if params.limit is None or params.limit < 0:
       raise Sorry("torsion NCS limit parameter must be >= 0.0")
+    assert ncs_obj is not None
     self.limit = params.limit
     self.selection = selection
     #slack is not a user parameter for now
     self.slack = 0.0
     self.filter_phi_psi_outliers = params.filter_phi_psi_outliers
-    self.remove_conflicting_torsion_restraints = \
-      params.remove_conflicting_torsion_restraints
     self.restrain_to_master_chain = params.restrain_to_master_chain
     self.b_factor_weight = b_factor_weight
     self.coordinate_sigma = coordinate_sigma
     self.fmodel = fmodel
-    self.ncs_groups = ncs_groups
+    self.ncs_groups = ncs_obj.get_array_of_selections()
+    self.ncs_obj = ncs_obj
     self.log = log
     self.params = params
     self.dp_ncs = None
     self.rotamer_search_manager = None
     self.ncs_dihedral_proxies = ncs_dihedral_proxies
-    self.ncs_groups = ncs_groups
     self.alignments = alignments
     self.sa = SidechainAngles(False)
     self.rotamer_id = rotamer_eval.RotamerID()
     self.rotamer_evaluator = rotamer_eval.RotamerEval()
-
+    self.cache = None
     #sanity check
     if pdb_hierarchy is not None:
       pdb_hierarchy.reset_i_seq_if_necessary()
-    if self.ncs_groups is None or self.alignments is None:
+      self.cache = pdb_hierarchy.atom_selection_cache()
+    if self.alignments is None:
       self.find_ncs_groups(pdb_hierarchy=pdb_hierarchy)
     if pdb_hierarchy is not None:
       self.find_ncs_matches_from_hierarchy(pdb_hierarchy=pdb_hierarchy)
 
   def find_ncs_groups(self, pdb_hierarchy):
     print >> self.log, "Determining NCS matches..."
-    self.ncs_groups = []
-    self.found_ncs = None
     self.use_segid = False
     chains = pdb_hierarchy.models()[0].chains()
-    n_ncs_groups = 0
-    for i_seq, group in enumerate(self.params.restraint_group):
-      n_selections = 0
-      for selection in group.selection:
-        if(selection is not None):
-          n_selections += 1
-      if n_selections == 1:
-        raise Sorry(
-          "Torsion NCS restraint_groups require at least 2 selections")
-      elif n_selections > 1:
-        n_ncs_groups += 1
+    n_ncs_groups = self.ncs_obj.number_of_ncs_groups
     if n_ncs_groups > 0:
       sequences = {}
       padded_sequences = {}
       structures = {}
       alignments = {}
-      restraint_group_check = [True]*len(self.params.restraint_group)
-      for i, restraint_group in enumerate(self.params.restraint_group):
-        for selection_i in restraint_group.selection:
-          sel_atoms_i = (utils.phil_atom_selections_as_i_seqs_multiple(
-                           cache=pdb_hierarchy.atom_selection_cache(),
-                           string_list=[selection_i]))
+
+      for group in self.ncs_groups:
+        for s in group:
+          sel = self.cache.selection(string=s)
+          key = s
           sel_seq, sel_seq_padded, sel_structures = \
-            utils.extract_sequence_and_sites(
-            pdb_hierarchy=pdb_hierarchy,
-            selection=sel_atoms_i)
-          if len(sel_seq) == 0:
-            print >> self.log
-            print >> self.log, "*** WARNING ***"
-            print >> self.log, 'selection = %s' % selection_i
-            print >> self.log, 'specifies no protein or nucleic acid torsions'
-            print >> self.log, 'REMOVED RESTRAINT GROUP!!!'
-            print >> self.log, "***************"
-            print >> self.log
-            restraint_group_check[i] = False
-            break
-          sequences[selection_i] = sel_seq
-          padded_sequences[selection_i] = sel_seq_padded
-          structures[selection_i] = sel_structures
-      cleaned_restraint_groups = []
-      for i, check in enumerate(restraint_group_check):
-        if check:
-          cleaned_restraint_groups.append(self.params.restraint_group[i])
-      self.params.restraint_group = cleaned_restraint_groups
-      for restraint_group in self.params.restraint_group:
-        ncs_set = []
-        for selection_i in restraint_group.selection:
-          ncs_set.append(selection_i)
-          for selection_j in restraint_group.selection:
-            if selection_i == selection_j:
+              utils.extract_sequence_and_sites(
+                  pdb_hierarchy=pdb_hierarchy,
+                  selection=sel)
+          sequences[key] = sel_seq
+          padded_sequences[key] = sel_seq_padded
+          structures[key] = sel_structures
+      for group in self.ncs_groups:
+        for i in group:
+          for j in group:
+            if i == j:
               continue
-            seq_pair = (sequences[selection_i],
-                        sequences[selection_j])
-            seq_pair_padded = (padded_sequences[selection_i],
-                               padded_sequences[selection_j])
-            struct_pair = (structures[selection_i],
-                           structures[selection_j])
-            residue_match_map = \
-              utils._alignment(
-                params=self.params,
+            seq_pair = (sequences[i], sequences[j])
+            seq_pair_padded = (padded_sequences[i], padded_sequences[j])
+            struct_pair = (structures[i], structures[j])
+            residue_match_map = utils._alignment(
                 sequences=seq_pair,
                 padded_sequences=seq_pair_padded,
                 structures=struct_pair,
                 log=self.log)
-            key = (selection_i, selection_j)
+            key = (i, j)
             alignments[key] = residue_match_map
-        self.ncs_groups.append(ncs_set)
       self.alignments = alignments
+      return
     else:
+      # ================================================
+      # Should never be executed because I'm disabling search functionality
+      # in this module
+      # ================================================
+      assert 0
       atom_labels = list(pdb_hierarchy.atoms_with_labels())
       segids = flex.std_string([ a.segid for a in atom_labels ])
       self.use_segid = not segids.all_eq('    ')
@@ -269,8 +243,14 @@ class torsion_ncs(object):
     sites_cart = pdb_hierarchy.atoms().extract_xyz()
     if self.selection is None:
       self.selection = flex.bool(len(sites_cart), True)
+
+    #
+    #
+    # TODO: should be rewritten!!! Constructing new pdb_interpretation.process:
     complete_dihedral_proxies = utils.get_complete_dihedral_proxies(
                                   pdb_hierarchy=pdb_hierarchy)
+    if self.cache is None:
+      self.cache = pdb_hierarchy.atom_selection_cache()
     if len(self.ncs_groups) > 0:
       element_hash = utils.build_element_hash(pdb_hierarchy)
       i_seq_hash = utils.build_i_seq_hash(pdb_hierarchy)
@@ -293,16 +273,13 @@ class torsion_ncs(object):
       res_to_selection_hash = {}
       for i, group in enumerate(self.ncs_groups):
         for chain_i in group:
-          selection = utils.selection(
-                       string=chain_i,
-                       cache=pdb_hierarchy.atom_selection_cache())
+          selection = self.cache.selection(chain_i)
           c_atoms = pdb_hierarchy.select(selection).atoms()
           for atom in c_atoms:
             for chain_j in group:
               if chain_i == chain_j:
                 continue
               res_key = self.name_hash[atom.i_seq][4:]
-              #print res_key
               atom_key = self.name_hash[atom.i_seq][0:4]
               j_match = None
               key = (chain_i, chain_j)
@@ -329,6 +306,7 @@ class torsion_ncs(object):
                   res_match_master[j_match].append(res_key)
                 res_to_selection_hash[res_key] = chain_i
                 res_to_selection_hash[j_match] = chain_j
+
       self.res_match_master = res_match_master
       resname = None
       atoms_key = None
@@ -490,6 +468,10 @@ class torsion_ncs(object):
         pdb_hierarchy=pdb_hierarchy,
         log=self.log)
     elif(not self.params.silence_warnings):
+      # ================================================
+      # Should never be executed
+      # ================================================
+      assert 0
       print >> self.log, \
         "** WARNING: No torsion NCS found!!" + \
         "  Please check parameters. **"
@@ -686,11 +668,6 @@ class torsion_ncs(object):
           rotamer_state.append(split_rotamer_list)
           if which_chi is not None:
             chi_ids.append(which_chi)
-      #if angle_id is not None:
-      #  print >> self.log, angle_id
-      #  print rotamer_state
-      #else:
-      #  print >> self.log, is_rama_outlier, is_omega_outlier
       target_angles = self.get_target_angles(
                         angles=angles,
                         #cc_s=cc_s,
@@ -747,30 +724,6 @@ class torsion_ncs(object):
         "Number of torsion NCS restraints: %d\n" \
           % len(self.ncs_dihedral_proxies)
 
-  def sync_dihedral_restraints(self,
-                               geometry):
-    pass
-    #if self.dihedral_proxies_backup is None:
-    #  self.dihedral_proxies_backup = geometry.dihedral_proxies.deep_copy()
-    #updated_dihedral_proxies = \
-    #  cctbx.geometry_restraints.shared_dihedral_proxy()
-    #dp_i_seq_list = []
-    #geo_dp_i_seq_list = []
-    #print >> self.log, "dihedral length before = ", len(geometry.dihedral_proxies)
-    #for dp in self.ncs_dihedral_proxies:
-    #  dp_i_seq_list.append(dp.i_seqs)
-    #for dp in geometry.dihedral_proxies:
-    #  if dp.i_seqs not in dp_i_seq_list:
-    #    updated_dihedral_proxies.append(dp)
-    #for dp in updated_dihedral_proxies:
-    #  geo_dp_i_seq_list.append(dp.i_seqs)
-    #for dp in self.dihedral_proxies_backup:
-    #  if ( (dp.i_seqs not in dp_i_seq_list) and
-    #       (dp.i_seqs not in geo_dp_i_seq_list) ):
-    #    updated_dihedral_proxies.append(dp)
-    #geometry.dihedral_proxies = updated_dihedral_proxies
-    #print >> self.log, "dihedral length after = ", len(geometry.dihedral_proxies)
-
   def update_dihedral_ncs_restraints(self,
                                      geometry,
                                      sites_cart,
@@ -788,8 +741,6 @@ class torsion_ncs(object):
                                             pdb_hierarchy=pdb_hierarchy,
                                             log=log)
     self.add_ncs_dihedral_proxies(geometry=geometry)
-    if self.remove_conflicting_torsion_restraints:
-      self.sync_dihedral_restraints(geometry=geometry)
 
   def is_symmetric_torsion(self, dp):
     i_seqs = dp.i_seqs
@@ -1347,6 +1298,7 @@ class torsion_ncs(object):
                   assert rotamer == model_rot
 
   def process_ncs_restraint_groups(self, model, processed_pdb_file):
+    assert 0, "who is using this?"
     log = self.log
     ncs_groups = ncs.restraints.groups()
     sites_cart = None
@@ -1411,13 +1363,11 @@ class torsion_ncs(object):
     sel_cache = pdb_hierarchy.atom_selection_cache()
     for group in self.ncs_groups:
       for selection in group:
-        sel_atoms_i = (utils.phil_atom_selections_as_i_seqs_multiple(
-                         cache=sel_cache,
-                         string_list=[selection]))
-        torsion_counts[selection] = 0
-        for dp in self.ncs_dihedral_proxies:
-          if dp.i_seqs[0] in sel_atoms_i:
-            torsion_counts[selection] += 1
+        one_group_selection = sel_cache.iselection(selection)
+        torsion_counts[selection] = self.ncs_dihedral_proxies.\
+            proxy_select(n_seq=len(pdb_hierarchy.atoms()),
+                         iselection=one_group_selection).\
+                size()
     return torsion_counts
 
   def get_torsion_rmsd(self, sites_cart):
@@ -1482,10 +1432,14 @@ class torsion_ncs(object):
              coordinate_sigma=self.coordinate_sigma,
              selection=None, #not sure here
              ncs_groups=self.ncs_groups,
+             ncs_obj=self.ncs_obj,
              alignments=self.alignments,
              ncs_dihedral_proxies= \
                self.ncs_dihedral_proxies.proxy_select(nseq, iselection),
              log=self.log)
+
+  def get_n_proxies(self):
+    return self.ncs_dihedral_proxies.size()
 
 #split out functions
 class get_ncs_groups(object):
@@ -1545,7 +1499,6 @@ class get_ncs_groups(object):
           continue
         residue_match_map = \
           utils._alignment(
-            params=params,
             sequences=seq_pair,
             padded_sequences=seq_pair_padded,
             structures=struct_pair,

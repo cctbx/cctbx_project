@@ -108,6 +108,15 @@ def get_complete_dihedral_proxies(
       ener_lib=None,
       crystal_symmetry=None,
       log=None):
+  # assert 0, "This should not be used due to ill architecture: never process" +\
+  #   "pdb file again!!! Probably this is first time for reference dihedrals," +\
+  #   "need to check later."
+  # ============================================
+  # Investigation revealed that in this round of processing pdb file specific
+  # options are enforsed, such as for_dihedral_reference=True resulting in
+  # peptide_link.discard_psi_phi=False and c_beta_restraints=False
+  # discard_psi_phi=False in turn produces extra dihedral restraints compared
+  # to standard processing
   assert [pdb_hierarchy,
           file_name,
           raw_records].count(None) == 2
@@ -139,13 +148,6 @@ def get_complete_dihedral_proxies(
   grm = processed_pdb_file_local.geometry_restraints_manager()
   return grm.get_dihedral_proxies()
 
-def selection(string, cache):
-  return cache.selection(
-    string=string)
-
-def iselection(string, cache=None):
-  return selection(string=string, cache=cache).iselection()
-
 def phil_atom_selection_multiple(
       cache,
       string_list,
@@ -161,7 +163,7 @@ def phil_atom_selection_multiple(
       if (allow_auto): return Auto
       raise Sorry('Atom selection cannot be Auto:\n  %s=Auto')
     try:
-        result.append(selection(string=string, cache=cache).iselection())
+        result.append(cache.selection(string=string).iselection())
     except KeyboardInterrupt: raise
     except Exception, e: # keep e alive to avoid traceback
       fe = format_exception()
@@ -185,12 +187,6 @@ def phil_atom_selections_as_i_seqs_multiple(cache,
     for atom in i:
       result.append(atom)
   return result
-
-def is_residue_in_selection(i_seqs, selection):
-  for i_seq in i_seqs:
-    if i_seq not in selection:
-      return False
-  return True
 
 def get_i_seqs(atoms):
   i_seqs = []
@@ -363,8 +359,7 @@ def _ssm_align(reference_chain,
   ssm_alignment = ccp4io_adaptbx.SSMAlignment.residue_groups(match=ssm)
   return ssm, ssm_alignment
 
-def _alignment(params,
-               sequences,
+def _alignment(sequences,
                padded_sequences,
                structures,
                log=None):
@@ -476,7 +471,21 @@ def hierarchy_from_selection(pdb_hierarchy, selection, log):
   hierarchy.append_model(model)
   return hierarchy
 
+def is_residue_in_selection(i_seqs, selection):
+  if isinstance(selection, flex.bool):
+    for i_seq in i_seqs:
+      if not selection[i_seq]:
+        return False
+    return True
+  for i_seq in i_seqs:
+    if i_seq not in selection:
+      return False
+  return True
+
 def extract_sequence_and_sites(pdb_hierarchy, selection):
+  # FIXME: rewrite the code in this module and all related to work only with
+  # bool selections, then enable the following assert.
+  # assert isinstance(selection, flex.bool)
   seq = []
   result = []
   padded_seq = []

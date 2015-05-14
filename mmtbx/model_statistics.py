@@ -612,7 +612,6 @@ class model(object):
       "_struct_ncs_ens_gen.oper_id"))
 
     oper_id = 0
-
     if self.ncs_groups is not None:
       for i_group, ncs_group in enumerate(self.ncs_groups):
         ncs_ens_loop.add_row((i_group+1, "?"))
@@ -635,19 +634,16 @@ class model(object):
             ncs_oper_loop.add_row(row)
             ncs_ens_gen_loop.add_row((1, i_domain+1, i_group+1, oper_id))
     elif self.ncs_manager is not None:
-      restraint_group_params = self.ncs_manager.params.restraint_group
       for i_group, ncs_group in enumerate(self.ncs_manager.ncs_groups):
         ncs_ens_loop.add_row((i_group+1, "?"))
-        selection_strings = restraint_group_params[i_group].selection
         for i_domain, ncs_domain in enumerate(ncs_group):
-          selection = selection_strings[i_domain]
           ncs_dom_loop.add_row((i_domain+1, i_group+1, "?"))
           segments = self.ncs_manager.master_ranges[ncs_domain]
           asym_id = ncs_domain.split("and")[0].split()[1].strip()
           for i_segment, segment_range in enumerate(segments):
             ncs_dom_lim_loop.add_row(
               (i_group+1, i_domain+1, asym_id, segment_range[0],
-               asym_id, segment_range[1], selection))
+               asym_id, segment_range[1], ncs_domain))
     cif_block.add_loop(ncs_ens_loop)
     cif_block.add_loop(ncs_dom_loop)
     cif_block.add_loop(ncs_dom_lim_loop)
@@ -658,7 +654,7 @@ class model(object):
 
   def show_torsion_ncs_groups(self, out = None):
     if(out is None): out = sys.stdout
-    restraint_groups = self.ncs_manager.params.restraint_group
+    restraint_groups = self.ncs_manager.ncs_groups
     torsion_counts=self.ncs_manager.get_number_of_restraints_per_group(
       pdb_hierarchy=self.pdb_hierarchy)
     sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
@@ -669,7 +665,7 @@ class model(object):
     for i_group, ncs_group in enumerate(restraint_groups):
       count = 0
       print >>out,pr+" NCS GROUP : %-6d"%(i_group+1)
-      selection_strings = ncs_group.selection
+      selection_strings = ncs_group
       for selection in selection_strings:
         lines = line_breaker(selection, width=34)
         for i_line, line in enumerate(lines):
