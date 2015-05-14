@@ -6,6 +6,8 @@ import os.path
 import sys
 
 def run (args, prologue=None, epilogue=None, out=sys.stdout) :
+  if sys.platform == "win32":
+    return
   parser = OptionParser(
     description="Generate the dispatcher include file for using "+
       "locally installed GUI (and related) libraries.  (Used in Phenix "+
