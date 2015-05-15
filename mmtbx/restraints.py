@@ -11,6 +11,7 @@ from cctbx.array_family import flex
 import scitbx.restraints
 from cctbx import adptbx
 from libtbx.utils import Sorry
+import sys
 
 class manager(object):
   """
@@ -310,3 +311,75 @@ class manager(object):
        if(result.gradients_iso is not None):
           result.gradients_iso *= normalization_scale
     return result
+
+  def write_geo_file(self, 
+      sites_cart=None, 
+      site_labels=None, 
+      file_name=None,
+      file_descriptor=sys.stdout,
+      header="# Geometry restraints\n",
+      # Stuff for outputting ncs_groups
+      excessive_distance_limit = 1.5,
+      xray_structure=None,
+      processed_pdb_file=None):
+    """
+    This should make complete .geo file with geometry and NCS if present.
+    Instead of sites_cart and site_labels one may pass xray_structure and they
+    will be extracted from it.
+    Content of header will be outputted before restraints in the file.
+    If file_name is not specified, everything will be outputted to 
+    file_descriptor which is stdout by default. Instead of file_name one may
+    directly pass file_descriptor and it will be used for output. The caller
+    will have take care of saving, closing or flushing it separately.
+    """
+
+    outf_descriptor = None
+    if file_name is None:
+      outf_descriptor = file_descriptor
+    else:
+      outf_descriptor = open(file_name, "w")
+    if xray_structure is not None:
+      if sites_cart is None:
+        sites_cart = xray_structure.sites_cart()
+      if site_labels is None:
+        site_labels = xray_structure.scatterers().extract_labels()
+    self.geometry.write_geo_file(
+      sites_cart=sites_cart,
+      site_labels=site_labels,
+      header=header,
+      file_descriptor=outf_descriptor)
+    n_excessive = 0
+    if [self.ncs_groups, xray_structure, processed_pdb_file].count(None) == 0:
+      n_excessive = self.ncs_groups.show_sites_distances_to_average(
+          sites_cart=sites_cart,
+          site_labels=site_labels,
+          excessive_distance_limit=excessive_distance_limit,
+          out=outf_descriptor)
+      print >> outf_descriptor
+      self.ncs_groups.show_adp_iso_differences_to_average(
+          u_isos=xray_structure.extract_u_iso_or_u_equiv(),
+          site_labels=site_labels,
+          out=outf_descriptor)
+      print >> outf_descriptor
+      processed_pdb_file.show_atoms_without_ncs_restraints(
+        ncs_restraints_groups=self.ncs_groups,
+        out=outf_descriptor)
+      print >> outf_descriptor
+    if file_name is not None:
+      outf_descriptor.close()
+    if (n_excessive != 0):
+      raise Sorry("Excessive distances to NCS averages:\n"
+        + "  Please inspect the file\n"
+        + "    %s\n" % show_string(f.name)
+        + "  for a full listing of the distances to the NCS averages.\n"
+        + '  Look for the word "EXCESSIVE".\n'
+        + "  The current limit is:\n"
+        + "    refinement.ncs.excessive_distance_limit=%.6g\n"
+            % self.params.ncs.excessive_distance_limit
+        + "  The number of distances exceeding this limit is: %d\n"
+            % n_excessive
+        + "  Please correct your model or redefine the limit, e.g. with:\n"
+        + "    refinement.ncs.excessive_distance_limit=%.2g\n"
+            % abs(2*self.params.ncs.excessive_distance_limit)
+        + "  To disable this message completely define:\n"
+        + "    refinement.ncs.excessive_distance_limit=None")

@@ -87,15 +87,15 @@ def run(args):
       sites_cart = acp.sites_cart_exact()
       site_labels = [atom.id_str() for atom in acp.pdb_atoms]
       def write_geo(label, geo, geo_file_name):
-        f = open(geo_file_name, "w")
-        print >> f, "# %sgeometry restraints for file:" % label
-        print >> f, "#   %s" % show_string(pdb_file_name)
         from libtbx.utils import date_and_time
-        print >> f, "#", date_and_time()
-        print >> f
-        geo.show_sorted(
-          sites_cart=sites_cart, site_labels=site_labels, f=f)
-        f.close()
+        header = "# %sgeometry restraints for file:\n" % label
+        header += "#   %s\n# %s\n" % (show_string(pdb_file_name),
+            date_and_time())
+        geo.write_geo_file(
+            sites_cart=sites_cart,
+            site_labels=site_labels,
+            file_name=geo_file_name,
+            header=header)
       geo = processed_pdb_file.geometry_restraints_manager()
       if (work_params.write_geo_files):
         geo_file_name = op.basename(pdb_file_name) + ".geo"

@@ -1354,6 +1354,25 @@ class manager(object):
               print >> f, "  distance_model: %.6g" % deltas[i_proxy]
             print >> f, "  vdw_distance: %.6g" % proxy.vdw_distance
 
+  def write_geo_file(self,
+      sites_cart=None,
+      site_labels=None,
+      file_name=None,
+      file_descriptor=sys.stdout,
+      header="# Geometry restraints\n"):
+    outf_descriptor = None
+    if file_name is None:
+      outf_descriptor = file_descriptor
+    else:
+      outf_descriptor = open(file_name, "w")
+    print >> outf_descriptor, header
+    self.show_sorted(
+      sites_cart=sites_cart,
+      site_labels=site_labels,
+      f=outf_descriptor)
+    if file_name is not None:
+      outf_descriptor.close()
+
   def show_sorted(self,
         flags=None,
         sites_cart=None,
