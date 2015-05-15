@@ -803,7 +803,7 @@ int main() {
     env_etc.static_libraries = 1
     env_etc.static_bpl = 0
 
-    link_flags = ["-w", "-mmacosx-version-min=10.8"] # suppress "source/lib does not exist" warning
+    link_flags = ["-w"] # suppress "source/lib does not exist" warning
     if libtbx.env.build_options.force_32bit:
       if (env_etc.gcc_version and env_etc.gcc_version >= 40201) or env_etc.clang_version:
         link_flags.extend(["-arch", "i386"])
@@ -811,8 +811,7 @@ int main() {
     env_etc.c_link = "cc"
     env_etc.ccflags_base = [
       "-fPIC",
-      "-fno-strict-aliasing",
-      "-mmacosx-version-min=10.8"]
+      "-fno-strict-aliasing"]
     if env_etc.clang_version:
       setup_clang_warning(env_etc, libtbx.env.build_options.warning_level)
     else:
@@ -828,7 +827,7 @@ int main() {
       env_etc.ccflags_base.extend(["-no-cpp-precomp"])
       if (env_etc.gcc_version < 40201):
         env_etc.ccflags_base.append("-Wno-long-double")
-    env_etc.cxxflags_base = ["-mmacosx-version-min=10.8"]
+    env_etc.cxxflags_base = []
     if env_etc.clang_version is None and env_etc.gcc_version < 40000:
       env_etc.cxxflags_base.append("-fcoalesce-templates")
     env_etc.cxxflags_base.append("-DBOOST_ALL_NO_LIB")
@@ -861,11 +860,10 @@ int main() {
         if env_etc.apple_gcc_builds.gcc < 5646:
           # fixed on 10.6 (Snow Leopard) whose Dev Tools start with that build
           opts.insert(0, "-gstabs+")
-    env_etc.shlinkflags = ["-mmacosx-version-min=10.8"]
+    env_etc.shlinkflags = []
     env_etc.shlinkflags_bpl = [
       "-w", # suppress "source/lib does not exist" warning
-      "-bundle", "-mmacosx-version-min=10.8",
-      "-undefined", "dynamic_lookup"]
+      "-bundle", "-undefined", "dynamic_lookup"]
     if libtbx.env.build_options.force_32bit:
       if (env_etc.gcc_version and env_etc.gcc_version >= 40201) or env_etc.clang_version:
         env_etc.ccflags_base.extend(["-arch", "i386"])
