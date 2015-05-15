@@ -50,8 +50,16 @@ file_name = None
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_files)
   pdb_structure = iotbx.pdb.input(source_info=None,
     lines=flex.std_string(pdb_combined.raw_records))
-
-  # processing pdb
+  cs = pdb_structure.crystal_symmetry()
+  if cs is None:
+    print >> out, "Symmetry information was not found, putting molecule in P1 box."
+    from cctbx import uctbx
+    atoms = pdb_structure.atoms()
+    box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
+      sites_cart=atoms.extract_xyz(),
+      buffer_layer=3)
+    atoms.set_xyz(new_xyz=box.sites_cart)
+    cs = box.crystal_symmetry()
   from mmtbx.monomer_library import pdb_interpretation, server
   import mmtbx
   import mmtbx.command_line.geometry_minimization
@@ -65,6 +73,7 @@ file_name = None
     mon_lib_srv    = mon_lib_srv,
     ener_lib       = ener_lib,
     pdb_inp        = pdb_structure,
+    crystal_symmetry = cs,
     params         = defpars.pdb_interpretation,
     force_symmetry = True)
   pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
