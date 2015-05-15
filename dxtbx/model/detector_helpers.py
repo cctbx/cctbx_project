@@ -126,8 +126,50 @@ class detector_helper_sensors:
             detector_helper_sensors.SENSOR_PAD,
             detector_helper_sensors.SENSOR_IMAGE_PLATE]
 
-
 def set_mosflm_beam_centre(detector, beam, mosflm_beam_centre):
+  """ detector and beam are dxtbx objects,
+      mosflm_beam_centre is a tuple of mm coordinates.
+      supports 2-theta offset detectors, assumes correct centre provided
+      for 2-theta=0
+  """
+  mosflm_y, mosflm_x = mosflm_beam_centre
+  from scitbx import matrix
+  import math
+  s0 = matrix.col(beam.get_s0()).normalize()
+  for panel in detector:
+    f = matrix.col(panel.get_fast_axis())
+    s = matrix.col(panel.get_slow_axis())
+    n = matrix.col(panel.get_normal())
+    o = matrix.col(panel.get_origin())
+    # find axis of 2theta shift
+    if abs(f.dot(s0)) > abs(s.dot(s0)):
+      r = n.cross(s0)
+      a = n.angle(s0)
+    else:
+      r = n.cross(s0)
+      a = n.angle(s0)
+    # if no two_theta offset use old method
+    if abs(a) < 5.0 * math.pi / 180.0:
+      return set_mosflm_beam_centre_old(detector, beam, mosflm_beam_centre)
+    # apply matrix
+    R = r.axis_and_angle_as_r3_rotation_matrix(a)
+    # compute beam centre
+    Ro = R * o
+    Rn = R * n
+    b = - Ro + Ro.dot(s0) * s0
+    beam_x = b.dot(R * f)
+    beam_y = b.dot(R * s)
+    distance = Ro.dot(R * n)
+    # recompute origin, return to original frame
+    o_new = distance * s0 - mosflm_x * R * f - mosflm_y * R * s
+    new_origin = R.inverse() * o_new
+
+    panel.set_local_frame(fast_axis=panel.get_fast_axis(),
+                          slow_axis=panel.get_slow_axis(),
+                          origin=new_origin)
+  return
+
+def set_mosflm_beam_centre_old(detector, beam, mosflm_beam_centre):
   """ detector and beam are dxtbx objects,
       mosflm_beam_centre is a tuple of mm coordinates.
   """
