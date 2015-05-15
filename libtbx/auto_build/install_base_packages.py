@@ -415,7 +415,10 @@ Installation of Python packages may fail.
       pkg_name_label,
       python_exe,
     ))
-    self.call("%s -c 'import %s'" % (python_exe, module_name))
+    if sys.platform == "win32": # Windows is picky about using double quotes rather than single quotes
+      self.call('%s -c "import %s"' % (python_exe, module_name))
+    else:
+      self.call("%s -c 'import %s'" % (python_exe, module_name))
     print >> self.log, " OK"
 
   def workarounds(self):
