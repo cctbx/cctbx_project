@@ -22,7 +22,7 @@ class manager(object):
             log=None):
     if log is None:
       log = sys.stdout
-    self.ncs_manager = ncs_manager
+    # self.ncs_manager = ncs_manager
     self.nproc = params.main.nproc
     if self.nproc is Auto:
       self.nproc = 1
@@ -147,9 +147,7 @@ class manager(object):
       x2 = model.xray_structure)
     model.restraints_manager.geometry.generic_restraints_manager.\
       den_manager.import_eq_distances(eq_distances=best_eq_distances)
-    if self.ncs_manager is not None:
-      self.ncs_manager.update_dihedral_ncs_restraints(
-        geometry=self.model.restraints_manager.geometry,
+    self.model.restraints_manager.geometry.update_dihedral_ncs_restraints(
         sites_cart=self.model.xray_structure.sites_cart(),
         pdb_hierarchy=self.model.pdb_hierarchy(sync_with_xray_structure=True),
         log=self.log)
@@ -226,9 +224,7 @@ class manager(object):
         self.fmodels.fmodel_xray().xray_structure = self.model.xray_structure
       if self.params.den.refine_adp:
         self.adp_refinement(log=local_log)
-      if self.ncs_manager is not None:
-        self.ncs_manager.update_dihedral_ncs_restraints(
-          geometry=self.model.restraints_manager.geometry,
+      self.model.restraints_manager.geometry.update_dihedral_ncs_restraints(
           sites_cart=self.model.xray_structure.sites_cart(),
           pdb_hierarchy=self.model.pdb_hierarchy(sync_with_xray_structure=True),
           log=local_log)
@@ -305,9 +301,7 @@ class manager(object):
         self.bulk_solvent_and_scale(log=local_log)
       if self.params.den.refine_adp:
         self.adp_refinement(log=local_log)
-      if self.ncs_manager is not None:
-        self.ncs_manager.update_dihedral_ncs_restraints(
-          geometry=self.model.restraints_manager.geometry,
+      self.model.restraints_manager.geometry.update_dihedral_ncs_restraints(
           sites_cart=self.model.xray_structure.sites_cart(),
           pdb_hierarchy=self.model.pdb_hierarchy(sync_with_xray_structure=True),
           log=local_log)

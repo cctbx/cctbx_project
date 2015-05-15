@@ -725,7 +725,6 @@ class torsion_ncs(object):
           % len(self.ncs_dihedral_proxies)
 
   def update_dihedral_ncs_restraints(self,
-                                     geometry,
                                      sites_cart,
                                      pdb_hierarchy,
                                      log=None):
@@ -740,7 +739,7 @@ class torsion_ncs(object):
       self.generate_dihedral_ncs_restraints(sites_cart=sites_cart,
                                             pdb_hierarchy=pdb_hierarchy,
                                             log=log)
-    self.add_ncs_dihedral_proxies(geometry=geometry)
+    # self.add_ncs_dihedral_proxies(geometry=geometry)
 
   def is_symmetric_torsion(self, dp):
     i_seqs = dp.i_seqs
@@ -927,9 +926,9 @@ class torsion_ncs(object):
                 target_angles[c] = angles[cluster[0]]
     return target_angles
 
-  def add_ncs_dihedral_proxies(self, geometry):
-    geometry.ncs_dihedral_proxies= \
-      self.ncs_dihedral_proxies
+  # def add_ncs_dihedral_proxies(self, geometry):
+  #   geometry.ncs_dihedral_proxies= \
+  #     self.ncs_dihedral_proxies
 
   def get_ramachandran_outliers(self, pdb_hierarchy):
     rama_outliers = []
@@ -1438,8 +1437,14 @@ class torsion_ncs(object):
                self.ncs_dihedral_proxies.proxy_select(nseq, iselection),
              log=self.log)
 
+  def remove_reference_dihedrals_in_place(self):
+    self.ncs_dihedral_proxies = None
+
   def get_n_proxies(self):
-    return self.ncs_dihedral_proxies.size()
+    if self.ncs_dihedral_proxies is not None:
+      return self.ncs_dihedral_proxies.size()
+    else:
+      return 0
 
 #split out functions
 class get_ncs_groups(object):

@@ -16,7 +16,7 @@ class energies(scitbx.restraints.energies):
                angle_proxies=None,
                dihedral_proxies=None,
                reference_dihedral_proxies=None,
-               ncs_dihedral_proxies=None,
+               ncs_dihedral_manager=None,
                chirality_proxies=None,
                planarity_proxies=None,
                parallelity_proxies=None,
@@ -125,21 +125,21 @@ class energies(scitbx.restraints.energies):
       self.number_of_restraints += self.n_reference_dihedral_proxies
       self.residual_sum += self.reference_dihedral_residual_sum
 
-    if (ncs_dihedral_proxies is None):
+    if (ncs_dihedral_manager is None):
       self.n_ncs_dihedral_proxies = None
       self.ncs_dihedral_residual_sum = 0
     else:
-      self.n_ncs_dihedral_proxies = len(ncs_dihedral_proxies)
+      self.n_ncs_dihedral_proxies = ncs_dihedral_manager.get_n_proxies()
       if unit_cell is None: # ignore proxy.i_seqs
         self.ncs_dihedral_residual_sum = geometry_restraints.dihedral_residual_sum(
           sites_cart=sites_cart,
-          proxies=ncs_dihedral_proxies,
+          proxies=ncs_dihedral_manager.ncs_dihedral_proxies,
           gradient_array=self.gradients)
       else:
         self.ncs_dihedral_residual_sum = geometry_restraints.dihedral_residual_sum(
           unit_cell=unit_cell,
           sites_cart=sites_cart,
-          proxies=ncs_dihedral_proxies,
+          proxies=ncs_dihedral_manager.ncs_dihedral_proxies,
           gradient_array=self.gradients)
       self.number_of_restraints += self.n_ncs_dihedral_proxies
       self.residual_sum += self.ncs_dihedral_residual_sum
@@ -392,7 +392,7 @@ class energies(scitbx.restraints.energies):
     if(self.n_ncs_dihedral_proxies is not None):
       ncs_dihedral_deltas = geometry_restraints.ncs_dihedral_deltas(
         sites_cart = self.sites_cart,
-        proxies    = self.ncs_dihedral_proxies)
+        proxies    = self.ncs_dihedral_manager.ncs_dihedral_proxies)
       d_sq  = ncs_dihedral_deltas * ncs_dihedral_deltas
       d_ave = math.sqrt(flex.mean_default(d_sq, 0))
       d_max = math.sqrt(flex.max_default(d_sq, 0))

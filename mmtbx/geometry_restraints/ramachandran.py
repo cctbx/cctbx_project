@@ -70,6 +70,8 @@ class ramachandran_manager(object):
   def __init__ (self, pdb_hierarchy, atom_selection, params=None, log=sys.stdout,
       proxies=None, tables=None, initialize=True):
     assert pdb_hierarchy is not None
+    assert not pdb_hierarchy.atoms().extract_i_seq().all_eq(0), ""+\
+        "Probably all atoms have i_seq = 0 which is wrong"
     adopt_init_args(self, locals())
     self.bool_atom_selection = None
     if self.atom_selection is None:
@@ -106,8 +108,6 @@ class ramachandran_manager(object):
         initialize=False)
 
   def extract_proxies(self):
-    assert [a.i_seq for a in self.pdb_hierarchy.atoms()].count(0) == 1 , ""+\
-        "Probably all atoms have i_seq = 0 which is wrong"
     angles = mmtbx.rotamer.extract_phi_psi(
       pdb_hierarchy=self.pdb_hierarchy,
       atom_selection=self.bool_atom_selection)

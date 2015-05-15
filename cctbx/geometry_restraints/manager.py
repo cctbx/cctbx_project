@@ -58,7 +58,7 @@ class manager(object):
         angle_proxies=None,
         dihedral_proxies=None,
         reference_dihedral_proxies=None,
-        ncs_dihedral_proxies=None,
+        ncs_dihedral_manager=None,
         chirality_proxies=None,
         planarity_proxies=None,
         parallelity_proxies=None,
@@ -219,7 +219,7 @@ class manager(object):
         shell_sym_tables=reduced_shell_sym_tables,
         angle_proxies=reduced_angle_proxies,
         dihedral_proxies=reduced_dihedral_proxies,
-        ncs_dihedral_proxies=self.ncs_dihedral_proxies)
+        ncs_dihedral_manager=self.ncs_dihedral_manager)
     else:
       return manager(
         crystal_symmetry=self.crystal_symmetry,
@@ -228,7 +228,7 @@ class manager(object):
         shell_sym_tables=reduced_shell_sym_tables,
         angle_proxies=reduced_angle_proxies,
         dihedral_proxies=reduced_dihedral_proxies,
-        ncs_dihedral_proxies=self.ncs_dihedral_proxies,
+        ncs_dihedral_manager=self.ncs_dihedral_manager,
         generic_restraints_manager=self.generic_restraints_manager,
         ramachandran_manager=self.ramachandran_manager)
 
@@ -319,7 +319,7 @@ class manager(object):
       reference_dihedral_proxies=self.reference_dihedral_proxies,
       generic_restraints_manager=self.generic_restraints_manager,
       ramachandran_manager=self.ramachandran_manager,
-      ncs_dihedral_proxies=self.ncs_dihedral_proxies,
+      ncs_dihedral_manager=self.ncs_dihedral_manager,
       chirality_proxies=self.chirality_proxies,
       planarity_proxies=self.planarity_proxies,
       parallelity_proxies=self.parallelity_proxies,
@@ -399,10 +399,10 @@ class manager(object):
       if (n_seq is None): n_seq = get_n_seq()
       selected_reference_dihedral_proxies = self.reference_dihedral_proxies.proxy_select(
         n_seq, iselection)
-    selected_ncs_dihedral_proxies = None
-    if (self.ncs_dihedral_proxies is not None):
+    selected_ncs_dihedral_manager = None
+    if (self.ncs_dihedral_manager is not None):
       if (n_seq is None): n_seq = get_n_seq()
-      selected_ncs_dihedral_proxies = self.ncs_dihedral_proxies.proxy_select(
+      selected_ncs_dihedral_manager = self.ncs_dihedral_manager.select(
         n_seq, iselection)
     selected_chirality_proxies = None
     if (self.chirality_proxies is not None):
@@ -447,7 +447,7 @@ class manager(object):
       reference_dihedral_proxies=selected_reference_dihedral_proxies,
       generic_restraints_manager=generic_restraints_manager,
       ramachandran_manager=ramachandran_manager,
-      ncs_dihedral_proxies=selected_ncs_dihedral_proxies,
+      ncs_dihedral_manager=selected_ncs_dihedral_manager,
       chirality_proxies=selected_chirality_proxies,
       planarity_proxies=selected_planarity_proxies,
       parallelity_proxies=selected_parallelity_proxies,
@@ -478,7 +478,7 @@ class manager(object):
       reference_dihedral_proxies=self.reference_dihedral_proxies,
       generic_restraints_manager=self.generic_restraints_manager,
       ramachandran_manager=self.ramachandran_manager,
-      ncs_dihedral_proxies=self.ncs_dihedral_proxies,
+      ncs_dihedral_manager=self.ncs_dihedral_manager,
       chirality_proxies=self.chirality_proxies,
       planarity_proxies=self.planarity_proxies,
       parallelity_proxies=self.parallelity_proxies,
@@ -523,9 +523,16 @@ class manager(object):
     self.reference_dihedral_proxies = self.reference_dihedral_proxies.proxy_remove(
       selection=selection)
 
-  def remove_ncs_dihedrals_in_place(self, selection):
-    self.ncs_dihedral_proxies = self.ncs_dihedral_proxies.proxy_remove(
-      selection=selection)
+  def remove_ncs_dihedrals_in_place(self):
+    if self.ncs_dihedral_manager is not None:
+      self.ncs_dihedral_manager.remove_ncs_dihedrals_in_place()
+
+  def update_dihedral_ncs_restraints(self, sites_cart, pdb_hierarchy, log):
+    if self.ncs_dihedral_manager is not None:
+      self.ncs_dihedral_manager.update_dihedral_ncs_restraints(
+          sites_cart=sites_cart,
+          pdb_hierarchy=pdb_hierarchy,
+          log=log)
 
   def remove_chiralities_in_place(self, selection):
     self.chirality_proxies = self.chirality_proxies.proxy_remove(
@@ -1068,7 +1075,7 @@ class manager(object):
      angle_proxies,
      dihedral_proxies,
      reference_dihedral_proxies,
-     ncs_dihedral_proxies,
+     ncs_dihedral_manager,
      chirality_proxies,
      planarity_proxies,
      parallelity_proxies,
@@ -1088,7 +1095,7 @@ class manager(object):
     if (flags.dihedral):  dihedral_proxies = self.dihedral_proxies
     if (flags.reference_dihedral):  \
       reference_dihedral_proxies = self.reference_dihedral_proxies
-    if (flags.ncs_dihedral): ncs_dihedral_proxies = self.ncs_dihedral_proxies
+    if (flags.ncs_dihedral): ncs_dihedral_manager = self.ncs_dihedral_manager
     if (flags.chirality): chirality_proxies = self.chirality_proxies
     if (flags.planarity): planarity_proxies = self.planarity_proxies
     if (flags.parallelity): parallelity_proxies = self.parallelity_proxies
@@ -1104,7 +1111,7 @@ class manager(object):
       angle_proxies=angle_proxies,
       dihedral_proxies=dihedral_proxies,
       reference_dihedral_proxies=reference_dihedral_proxies,
-      ncs_dihedral_proxies=ncs_dihedral_proxies,
+      ncs_dihedral_manager=ncs_dihedral_manager,
       chirality_proxies=chirality_proxies,
       planarity_proxies=planarity_proxies,
       parallelity_proxies=parallelity_proxies,
@@ -1271,8 +1278,8 @@ class manager(object):
           print >> f, "  angle_ideal: %.6g" % proxy.angle_ideal
           print >> f, "  weight: %.6g" % proxy.weight
           print >> f, "  limit: %.6g" % proxy.limit
-    if (self.ncs_dihedral_proxies is not None):
-      for proxy in self.ncs_dihedral_proxies:
+    if (self.ncs_dihedral_manager is not None):
+      for proxy in self.ncs_dihedral_manager.ncs_dihedral_proxies:
         if (i_seq is None or i_seq in proxy.i_seqs):
           print >> f, "NCS dihedral:", proxy.i_seqs
           if (site_labels is not None):
@@ -1430,8 +1437,8 @@ class manager(object):
         by_value="residual",
         sites_cart=sites_cart, site_labels=site_labels, f=f, is_reference=True)
       print >> f
-    if (self.ncs_dihedral_proxies is not None):
-      self.ncs_dihedral_proxies.show_sorted(
+    if (self.ncs_dihedral_manager is not None):
+      self.ncs_dihedral_manager.ncs_dihedral_proxies.show_sorted(
         by_value="residual",
         sites_cart=sites_cart, site_labels=site_labels, f=f, is_ncs=True)
       print >> f
