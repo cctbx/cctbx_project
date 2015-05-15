@@ -286,7 +286,7 @@ beta_params=iotbx.phil.parse("""
        .help = number of residues included on ends of segments
        .short_caption = buffer residues for beta structure
 
-     n_link_min = 4
+     n_link_min = 3
        .type = int
        .help = Minimum number of residues linking adjacent segments \
            in H-bonded structure (i.e., HELIX/SHEET records)
@@ -351,6 +351,17 @@ beta_params=iotbx.phil.parse("""
        .type = float
        .help = Base score for strands
        .short_caption = Base score for strands
+
+     max_sheet_ca_ca_dist = 6.
+       .type = float
+       .help = Maximum CA-CA distance between paired strands in sheets
+       .short_caption = Max CA-CA distance between strands in sheets
+
+      min_sheet_length = 4
+       .type = int
+       .help = Minimum H-bonded segment to include in a sheet
+       .short_caption = Min length of segment in a sheet
+
 
 """)
 
