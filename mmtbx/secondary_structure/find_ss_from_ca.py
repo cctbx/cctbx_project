@@ -30,6 +30,16 @@ master_phil = iotbx.phil.parse("""
        .help = Find alpha helices
        .short_caption = Find alpha helices
 
+     find_three_ten = True
+       .type = bool
+       .help = Find three_ten helices
+       .short_caption = Find three_ten helices
+
+     find_pi = True
+       .type = bool
+       .help = Find pi helices
+       .short_caption = Find pi helices
+
      find_beta = True
        .type = bool
        .help = Find beta structure
@@ -40,20 +50,22 @@ master_phil = iotbx.phil.parse("""
        .help = Find other structure
        .short_caption = Find other structure
 
-     exclude_alpha_in_beta  = True
+     exclude_alpha_in_beta  = False
        .type = bool
-       .help = Exclude regions already identified as alpha
-       .short_caption = Exclude alpha regions from beta
-
-     exclude_alpha_beta_in_other  = True
-       .type = bool
-       .help = Exclude regions already identified as alpha or beta
-       .short_caption = Exclude alpha and beta regions from other
+       .help = Exclude regions already identified as alpha from three_ten, pi,\
+               and beta
+       .short_caption = Exclude alpha from beta
 
      make_unique = True
        .type = bool
        .help = Assign each residue to a unique type of structure
        .short_caption = Assign residues to unique structure
+
+     cut_up_segments = False
+       .type = bool
+       .help = Cut up segments (make short segments of secondary structure)
+       .short_caption = Cut up segments
+
 
      set_up_helices_sheets = True
        .type = bool
@@ -74,6 +86,14 @@ master_phil = iotbx.phil.parse("""
 
   alpha {
     include scope mmtbx.secondary_structure.secondary_structure_params.alpha_params
+  }
+
+  three_ten {
+    include scope mmtbx.secondary_structure.secondary_structure_params.three_ten_params
+  }
+
+  pi {
+    include scope mmtbx.secondary_structure.secondary_structure_params.pi_params
   }
 
   beta {
@@ -334,11 +354,14 @@ def get_last_resno(hierarchy):
 
 class model_info: # mostly just a holder
   def __init__(self,hierarchy=None,id=0,info={},
-      find_alpha=None,find_beta=None,find_other=None):
+      find_alpha=None,find_beta=None,find_other=None,
+      find_three_ten=None,find_pi=None):
     self.hierarchy=hierarchy
     self.info=info
     self.id=id
     self.find_alpha=find_alpha
+    self.find_three_ten=find_three_ten
+    self.find_pi=find_pi
     self.find_beta=find_beta
     self.find_other=find_other
 
@@ -361,8 +384,8 @@ class model_info: # mostly just a holder
 class segment:  # object for holding a helix or a strand or other
 
   def setup(self,sites=None,start_resno=None,hierarchy=None,
-     segment_type='None',
-     span=None,target_rise=None,
+     segment_type='None',name=None,
+     span=None,target_rise=None,residues_per_turn=None,
      rise_tolerance=None,dot_min=None,dot_min_single=None,
      target_i_ip3=None,tol_i_ip3=None,
      minimum_length=None,
@@ -395,8 +418,10 @@ class segment:  # object for holding a helix or a strand or other
     self.dot_min=dot_min
     self.dot_min_single=dot_min_single
     self.diffs_single=None
+    self.name=name # alpha helix, etc
     self.span=span # 3.5 for helices, 2 for strands, 0 for other
     self.target_rise=target_rise # 1.54 for helices, 3.3 strands
+    self.residues_per_turn=residues_per_turn #3.6 alpha, 3 3-10, 4 pi, strand na
     self.optimal_delta_length=optimal_delta_length # target change
         # in number of residues for this
         # segment (based on segment type and end-to-end distance)
@@ -579,7 +604,6 @@ class segment:  # object for holding a helix or a strand or other
     rise=self.get_rise()
     dot=self.get_cosine()
     dot_single=self.mean_dot_single # set by get_cosine()
-
     min_diff_i_i3=self.get_min_diff_i_i3()
     if self.minimum_length is not None and self.length()<self.minimum_length:
       return False
@@ -684,8 +708,10 @@ class helix(segment): # Methods specific to helices
      base_score=params.base_score,
      is_n_terminus=is_n_terminus,
      is_c_terminus=is_c_terminus,
+     name=params.name,
      span=params.span,
      target_rise=params.rise,
+     residues_per_turn=params.residues_per_turn,
      rise_tolerance=params.rise_tolerance,
      target_i_ip3=params.target_i_ip3,
      tol_i_ip3=params.tol_i_ip3,
@@ -696,12 +722,16 @@ class helix(segment): # Methods specific to helices
      out=out)
 
   def get_diffs_and_norms(self):
-    assert self.span==3.5
     # report distances between i and average of i+3,i+4
     if not hasattr(self,'diffs'):
       sites_offset_3=self.sites[3:-1]
       sites_offset_4=self.sites[4:]
-      average_offset=0.5*(sites_offset_3+sites_offset_4)
+      if self.residues_per_turn<=3:
+        average_offset=sites_offset_3
+      elif self.residues_per_turn>=4:
+        average_offset=sites_offset_4
+      else: # alpha helix, take average
+        average_offset=0.5*(sites_offset_3+sites_offset_4)
       self.diffs=average_offset-self.sites[:-4]
       self.norms=self.diffs.norms()
       self.diffs=self.diffs/self.diffs.norms()
@@ -750,6 +780,7 @@ class strand(segment):
 
     self.setup(sites=sites,start_resno=start_resno,hierarchy=hierarchy,
       segment_type='strand',
+      name=params.name,
       span=params.span,
       minimum_length=params.minimum_length,
       buffer_residues=params.buffer_residues,
@@ -821,6 +852,7 @@ class other(segment):
 
     self.setup(sites=sites,start_resno=start_resno,hierarchy=hierarchy,
       segment_type='other',
+      name=params.name,
       span=params.span,
       minimum_length=params.minimum_length,
       buffer_residues=params.buffer_residues,
@@ -865,6 +897,7 @@ class find_segment: # class to look for a type of segment
   def setup(self,params=None,model=None,segment_type='helix',
       extract_segments_from_pdb=None,
       make_unique=None,
+      cut_up_segments=None,
       verbose=None,
       out=sys.stdout):
     # Assumes model is just 1 chain of sequential residues
@@ -873,9 +906,11 @@ class find_segment: # class to look for a type of segment
     self.out=out
     self.extract_segments_from_pdb=extract_segments_from_pdb
     self.make_unique=make_unique
+    self.cut_up_segments=cut_up_segments
     self.verbose=verbose
     self.params=params
     self.model=model
+    self.name=params.name
 
     self.segment_type=segment_type
     if self.segment_type=='helix':
@@ -956,8 +991,7 @@ class find_segment: # class to look for a type of segment
         optimal_delta_length=0
       # add to self.segments
       # cut into pieces of size self.standard_length
-      if overall_length<=self.standard_length or \
-          self.extract_segments_from_pdb is not None:
+      if (not self.cut_up_segments) or overall_length<=self.standard_length:
         start_end_list.append([overall_start_res,overall_end_res])
       else:
         for start_res_use in xrange(
@@ -979,26 +1013,21 @@ class find_segment: # class to look for a type of segment
     if not out: out=self.out
     for h in self.segments:
       print >>out,\
-       "Class: %6s  N: %d Start: %d End: %d " %(
-          self.segment_type,h.get_end_resno()-h.get_start_resno()+1,
+       "Class: %12s  N: %d Start: %d End: %d " %(
+          self.name,h.get_end_resno()-h.get_start_resno()+1,
            h.get_start_resno(),h.get_end_resno(),
          ) +" Rise:%5.2f A Dot:%5.2f" %(
           h.get_rise(),h.get_cosine())
 
-
   def get_used_residues_list(self):
     # just return a list of used residues
     used_residues=[]
-    for i in self.segment_dict.keys():
-      for j in xrange(i,self.segment_dict[i]):
-        if not j in used_residues:
-          used_residues.append(j)
-    return used_residues
-
-  def set_used_residues(self,used_residues):
-    for i in self.segment_dict.keys():
-      for j in xrange(i,self.segment_dict[i]+1):
-        used_residues[j]=True
+    if hasattr(self,'segment_dict'):
+      for i in self.segment_dict.keys():
+        for j in xrange(i,self.segment_dict[i]+1+self.last_residue_offset):
+          # 2015-05-14 changed to add the +1+self.last_residue_offset
+          if not j in used_residues:
+            used_residues.append(j)
     return used_residues
 
   def extract_segment(self,params=None,start_res=None,end_res=None,sites=None,
@@ -1075,14 +1104,10 @@ class find_segment: # class to look for a type of segment
     segment_dict={}
     used_residues=[]
 
-    if self.find_alpha:  # a find_alpha object is here if we want to exclude
-      previously_used_residues=self.find_alpha.get_used_residues_list()
-    else:
-      previously_used_residues=[]
 
     for i in xrange(n):
       if i in used_residues or abs(norms[i]-target)>tol: continue
-      if i in previously_used_residues: continue
+      if i in self.previously_used_residues: continue
       # i is start of segment
       segment_dict[i]=i  # lists end of segment
       used_residues.append(i)
@@ -1090,7 +1115,7 @@ class find_segment: # class to look for a type of segment
         if abs(norms[j]-target)>tol: break
         if target_i_ip3 is not None and tol_i_ip3 is not None and \
            j<len(norms_3) and abs(norms_3[j]-target_i_ip3)>tol_i_ip3: break
-        if j in previously_used_residues: break
+        if j in self.previously_used_residues: break
         dot=col(diffs[j]).dot(col(diffs[j-1]))
         if dot < dot_min: break
         segment_dict[i]=j
@@ -1102,7 +1127,6 @@ class find_segment: # class to look for a type of segment
         del segment_dict[i]
 
     # prune out anything not really in this segment type based on direction
-
     still_changing=True
     n_cycles=0
     max_cycles=2
@@ -1184,21 +1208,23 @@ class find_segment: # class to look for a type of segment
 
     return optimal_delta_length_dict,norm_dict
 
-class find_alpha_helix(find_segment):
+class find_helix(find_segment):
 
   def __init__(self,params=None,model=None,verbose=None,
     extract_segments_from_pdb=None,
     make_unique=None,
+    previously_used_residues=None,
+    cut_up_segments=None,
     out=sys.stdout):
-    self.find_alpha=None
-    self.find_beta=None
+    self.previously_used_residues=previously_used_residues
 
     self.setup(params=params,model=model,segment_type='helix',
      extract_segments_from_pdb=extract_segments_from_pdb,
      make_unique=make_unique,
+     cut_up_segments=cut_up_segments,
      verbose=verbose,out=out)
 
-  def pdb_records(self,segment_list=None,last_id=0): # helix
+  def pdb_records(self,segment_list=None,last_id=0,helix_type='alpha'): # helix
 
     records=[]
     k=last_id
@@ -1219,7 +1245,8 @@ class find_alpha_helix(find_segment):
         end_chain_id=chain_id,
         end_resseq=end.resseq_as_int(),
         end_icode=end.icode,
-        helix_class=1, # alpha helix only
+        helix_class=secondary_structure.pdb_helix.helix_class_to_int(
+           helix_type), # 1=alpha 3=pi  5=3_10
         comment="",
         length=s.length())
       records.append(record)
@@ -1230,16 +1257,17 @@ class find_beta_strand(find_segment):
   def __init__(self,params=None,model=None,verbose=None,
       extract_segments_from_pdb=None,
       make_unique=None,
-      find_alpha=None,
+      cut_up_segments=None,
+      previously_used_residues=None,
       out=sys.stdout):
 
-    self.find_beta=None
-    self.find_alpha=find_alpha
+    self.previously_used_residues=previously_used_residues
 
     self.setup(params=params,
       model=model,segment_type='strand',
       extract_segments_from_pdb=extract_segments_from_pdb,
       make_unique=make_unique,
+      cut_up_segments=cut_up_segments,
       verbose=verbose,out=out)
 
   def get_pdb_strand(self,sheet_id=None,strand_id=1,segment=None,
@@ -1425,18 +1453,19 @@ class find_beta_strand(find_segment):
 
 class find_other_structure(find_segment):
 
-  def __init__(self,find_alpha=None,find_beta=None,
+  def __init__(self,previously_used_residues=None,
       params=None,model=None,
       extract_segments_from_pdb=None,
       make_unique=None,
+      cut_up_segments=None,
       verbose=None,out=sys.stdout):
 
-    self.find_alpha=find_alpha
-    self.find_beta=find_beta
+    self.previously_used_residues=previously_used_residues
 
     self.setup(params=params,model=model,segment_type='other',
       extract_segments_from_pdb=extract_segments_from_pdb,
       make_unique=make_unique,
+      cut_up_segments=cut_up_segments,
       verbose=verbose,out=out)
 
   def pdb_records(self,last_id=0):   #other (nothing)
@@ -1480,12 +1509,13 @@ class find_other_structure(find_segment):
     n_buf=params.buffer_residues
     n=len(sites)
     used_residues=n*[False]
+    used_residues=[]
+    for i in xrange(n+1):
+      if i in self.previously_used_residues:
+        used_residues.append(True)
+      else:
+        used_residues.append(False)
 
-    if self.find_alpha:  # a find_alpha object is here if we want to exclude
-      used_residues=self.find_alpha.set_used_residues(used_residues)
-
-    if self.find_beta:  # a find_beta object is here if we want to exclude
-      used_residues=self.find_beta.set_used_residues(used_residues)
     segment_dict={}
     segment_start=None
     segment_end=None
@@ -1520,9 +1550,13 @@ class find_secondary_structure: # class to look for secondary structure
       params=self.get_params(args,out=out)
 
     self.all_strands=[]
-    self.all_helices=[]
+    self.all_alpha_helices=[]
+    self.all_three_ten_helices=[]
+    self.all_pi_helices=[]
     self.sheet_list=[]
-    self.pdb_helix_list=[]
+    self.pdb_alpha_helix_list=[]
+    self.pdb_three_ten_helix_list=[]
+    self.pdb_pi_helix_list=[]
     self.pdb_sheet_list=[]
 
     if models:
@@ -1549,7 +1583,11 @@ class find_secondary_structure: # class to look for secondary structure
       if model.find_beta:
         self.all_strands+=model.find_beta.segments
       if model.find_alpha:
-        self.all_helices+=model.find_alpha.segments
+        self.all_alpha_helices+=model.find_alpha.segments
+      if model.find_three_ten:
+        self.all_three_ten_helices+=model.find_three_ten.segments
+      if model.find_pi:
+        self.all_pi_helices+=model.find_pi.segments
 
     if params.find_ss_structure.set_up_helices_sheets:
       self.find_sheets(
@@ -1572,11 +1610,15 @@ class find_secondary_structure: # class to look for secondary structure
       if verbose:
         if model.find_alpha:
           model.find_alpha.show_summary(out=out)
+        if model.find_three_ten:
+          model.find_three_ten.show_summary(out=out)
+        if model.find_pi:
+          model.find_pi.show_summary(out=out)
         if model.find_beta:
           model.find_beta.show_summary(out=out)
         if model.find_other:
           model.find_other.show_summary(out=out)
-    if verbose:
+    if verbose and self.get_all_pdb_records():
       print >>out,"\nPDB RECORDS:"
       print >>out,self.get_all_pdb_records()
       print >>out,"\n\nPDB Selections:"
@@ -1898,12 +1940,25 @@ class find_secondary_structure: # class to look for secondary structure
 
   def set_up_pdb_records(self):
 
-    # save everything as pdb_helix or pdb_sheet objects
+    # save everything as pdb_alpha_helix or pdb_sheet objects
     if not self.models:
       return
+
     fa=self.models[0].find_alpha
-    if fa and self.all_helices:
-      self.pdb_helix_list=fa.pdb_records(segment_list=self.all_helices)
+    if fa and self.all_alpha_helices:
+      self.pdb_alpha_helix_list=fa.pdb_records(
+         segment_list=self.all_alpha_helices,helix_type='alpha')
+
+    fa=self.models[0].find_three_ten
+    if fa and self.all_three_ten_helices:
+      self.pdb_three_ten_helix_list=fa.pdb_records(
+         segment_list=self.all_three_ten_helices,helix_type='3_10')
+
+    fa=self.models[0].find_pi
+    if fa and self.all_pi_helices:
+      self.pdb_pi_helix_list=fa.pdb_records(
+         segment_list=self.all_pi_helices,helix_type='pi')
+
     fb=self.models[0].find_beta
     if fb and self.sheet_list:
       self.pdb_sheet_list=fb.pdb_records(segment_list=self.all_strands,
@@ -1913,17 +1968,36 @@ class find_secondary_structure: # class to look for secondary structure
     from cStringIO import StringIO
     all_pdb_records=StringIO()
     self.all_selection_records=[]
-    for helix in self.pdb_helix_list:
+
+    for helix in self.pdb_alpha_helix_list:
       print >>all_pdb_records,helix.as_pdb_str()
       self.all_selection_records+=helix.as_atom_selections()
+
+    for helix in self.pdb_three_ten_helix_list:
+      print >>all_pdb_records,helix.as_pdb_str()
+      self.all_selection_records+=helix.as_atom_selections()
+
+    for helix in self.pdb_pi_helix_list:
+      print >>all_pdb_records,helix.as_pdb_str()
+      self.all_selection_records+=helix.as_atom_selections()
+
     for sheet in self.pdb_sheet_list:
       print >>all_pdb_records,sheet.as_pdb_str()
       self.all_selection_records+=sheet.as_atom_selections()
+
     self.all_pdb_records=all_pdb_records.getvalue()
 
-  def get_pdb_helix_list(self):
-    if hasattr(self,'pdb_helix_list'):
-      return self.pdb_helix_list
+  def get_pdb_alpha_helix_list(self):
+    if hasattr(self,'pdb_alpha_helix_list'):
+      return self.pdb_alpha_helix_list
+
+  def get_pdb_three_ten_helix_list(self):
+    if hasattr(self,'pdb_three_ten_helix_list'):
+      return self.pdb_three_ten_helix_list
+
+  def get_pdb_pi_helix_list(self):
+    if hasattr(self,'pdb_pi_helix_list'):
+      return self.pdb_pi_helix_list
 
   def get_pdb_sheet_list(self):
     if hasattr(self,'pdb_sheet_list'):
@@ -1948,42 +2022,64 @@ class find_secondary_structure: # class to look for secondary structure
     return text
 
   def find_ss_in_model(self,params=None,model=None,out=sys.stdout):
+
+    previously_used_residues=[]
     if params.find_ss_structure.find_alpha:
-      model.find_alpha=find_alpha_helix(params=params.alpha,
+      model.find_alpha=find_helix(params=params.alpha,
         model=model,verbose=params.control.verbose,
         make_unique=params.find_ss_structure.make_unique,
         extract_segments_from_pdb=params.extract_segments_from_pdb.extract,
+        cut_up_segments=params.find_ss_structure.cut_up_segments,
+        previously_used_residues=previously_used_residues,
         out=out)
+      previously_used_residues+=model.find_alpha.get_used_residues_list()
+
+    if params.find_ss_structure.find_three_ten:
+      model.find_three_ten=find_helix(params=params.three_ten,
+        model=model,verbose=params.control.verbose,
+        make_unique=params.find_ss_structure.make_unique,
+        extract_segments_from_pdb=params.extract_segments_from_pdb.extract,
+        cut_up_segments=params.find_ss_structure.cut_up_segments,
+        previously_used_residues=previously_used_residues,
+        out=out)
+      if params.find_ss_structure.exclude_alpha_in_beta:
+        previously_used_residues+=model.find_three_ten.get_used_residues_list()
+
+    if params.find_ss_structure.find_pi:
+      model.find_pi=find_helix(params=params.pi,
+        model=model,verbose=params.control.verbose,
+        make_unique=params.find_ss_structure.make_unique,
+        extract_segments_from_pdb=params.extract_segments_from_pdb.extract,
+        cut_up_segments=params.find_ss_structure.cut_up_segments,
+        previously_used_residues=previously_used_residues,
+        out=out)
+      if params.find_ss_structure.exclude_alpha_in_beta:
+        previously_used_residues+=model.find_pi.get_used_residues_list()
 
     self.beta_list_by_model=[]
     if params.find_ss_structure.find_beta:
-      if params.find_ss_structure.exclude_alpha_in_beta:
-        find_alpha=model.find_alpha
-      else:
-        find_alpha=None
+
       model.find_beta=find_beta_strand(params=params.beta,
         model=model,verbose=params.control.verbose,
         make_unique=params.find_ss_structure.make_unique,
         extract_segments_from_pdb=params.extract_segments_from_pdb.extract,
-        find_alpha=find_alpha,
+        cut_up_segments=params.find_ss_structure.cut_up_segments,
+        previously_used_residues=previously_used_residues,
         out=out)
+      if params.find_ss_structure.exclude_alpha_in_beta:
+        previously_used_residues+=model.find_beta.get_used_residues_list()
 
     if params.find_ss_structure.make_unique: # do this before finding other
       # get unique residues in alpha, beta if desired
       self.make_unique(model)
 
     if params.find_ss_structure.find_other:
-      if params.find_ss_structure.exclude_alpha_beta_in_other:
-        find_alpha=model.find_alpha
-        find_beta=model.find_beta
-      else:
-        find_alpha=None
-        find_beta=None
       model.find_other=find_other_structure(params=params.other,
         model=model,verbose=params.control.verbose,
         make_unique=params.find_ss_structure.make_unique,
         extract_segments_from_pdb=params.extract_segments_from_pdb.extract,
-        find_alpha=find_alpha,find_beta=find_beta,
+        cut_up_segments=params.find_ss_structure.cut_up_segments,
+        previously_used_residues=previously_used_residues,
         out=out)
 
   def make_unique(self,model):
@@ -1995,7 +2091,8 @@ class find_secondary_structure: # class to look for secondary structure
     is_used_list=model.length()*[None]
     first_res=model.first_residue()
 
-    for find_group in ['find_alpha','find_beta','find_other']:
+    for find_group in ['find_alpha','find_three_ten','find_pi',
+         'find_beta','find_other']:
       fg=getattr(model,find_group)
       if not fg: continue
       new_segment_list=[]
@@ -2062,10 +2159,10 @@ if __name__=="__main__":
 
   """
   # How to get cctbx helix/sheet objects:
-  helices=fss.get_pdb_helix_list()
+  alpha_helices=fss.get_pdb_alpha_helix_list()
   sheets=fss.get_pdb_sheet_list()
   print "\nHelix Summary"
-  for helix in helices:
+  for helix in alpha_helices:
     print helix.as_pdb_str()
   print "\nSheet Summary"
   for sheet in sheets:

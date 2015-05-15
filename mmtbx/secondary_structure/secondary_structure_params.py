@@ -5,6 +5,11 @@ import iotbx.phil
 # standard input params for find_secondary_structure
 
 alpha_params=iotbx.phil.parse("""
+
+     name = Alpha helix
+       .type = str
+       .help = Secondary structure name (helix)
+
      span = 3.5
        .type = float
        .help = number of residues included in i to i+span vector differences
@@ -24,6 +29,11 @@ alpha_params=iotbx.phil.parse("""
        .type = int
        .help = Minimum length for alpha structure
        .short_caption = Minimum length for alpha structure
+
+     residues_per_turn = 3.6
+       .type = float
+       .help = Alpha helix residues per turn
+       .short_caption = Alpha helix residues per turn
 
      rise = 1.54
        .type = float
@@ -77,7 +87,177 @@ alpha_params=iotbx.phil.parse("""
 
 """)
 
+three_ten_params=iotbx.phil.parse("""
+     name = 3-10 helix
+       .type = str
+       .help = Secondary structure name (alpha helix)
+
+     span = 3
+       .type = float
+       .help = number of residues included in i to i+span vector differences.\
+               This is for three-ten helices
+       .short_caption = span for three-ten structure
+
+     buffer_residues = 0
+       .type = int
+       .help = number of residues included on ends of segments for three-ten
+       .short_caption = buffer residues for three-10 structure
+
+     standard_length = 6
+       .type = int
+       .help = standard length for three_ten structure
+       .short_caption = Standard length for three_ten structure
+
+     minimum_length = 6
+       .type = int
+       .help = Minimum length for three_ten structure
+       .short_caption = Minimum length for three_ten structure
+
+     residues_per_turn = 3
+       .type = float
+       .help = Three-ten helix residues per turn
+       .short_caption = Three-ten helix residues per turn
+
+     rise = 2.0
+       .type = float
+       .help = Three ten helix rise per reside
+       .short_caption = Three ten helix rise
+
+     minimum_overlap = 1
+       .type = int
+       .help = Minimum overlap at ends for three_ten structure
+       .short_caption = Minimum overlap for three_ten structure
+
+     rise_tolerance = 0.5
+       .type = float
+       .help = Tolerance in rise of helices in input file
+       .short_caption = Tolerance in rise of helices
+
+     target_i_ip3 = None
+       .type = float
+       .help = None (target i->i+3 distance)
+       .short_caption = none
+
+     tol_i_ip3 = None
+       .type = float
+       .help = None (tolerance in target i->i+3 distance)
+       .short_caption = none
+
+     dot_min_single = 0.5
+       .type = float
+       .help = Target dot product of i->i+1 with overall direction
+       .short_caption = Target dot i to i+1
+
+     dot_min =  0.9
+       .type = float
+       .help = minimum dot product of directions of average \
+          of i-to-i+3  and i-to i+4 vectors to overall average direction
+
+     allow_insertions = False
+       .type = bool
+       .help = Allow insertions in helices (adding residues)
+       .short_caption= Allow insertions in helices
+
+     allow_deletions = False
+       .type = bool
+       .help = Allow deletions in helices (adding residues)
+       .short_caption= Allow deletions in helices
+
+     base_score = 1.
+       .type = float
+       .help = Base score for 3_10 helices
+       .short_caption = Base score for 3_10 helices
+
+""")
+
+pi_params=iotbx.phil.parse("""
+     name = Pi helix
+       .type = str
+       .help = Secondary structure name (pi helix)
+
+     span = 4.0
+       .type = float
+       .help = number of residues included in i to i+span vector differences
+       .short_caption = span for pi structure
+
+     buffer_residues = 0
+       .type = int
+       .help = number of residues included on ends of segments
+       .short_caption = buffer residues for pi structure
+
+     standard_length = 6
+       .type = int
+       .help = standard length for pi structure
+       .short_caption = Standard length for pi structure
+
+     minimum_length = 6
+       .type = int
+       .help = Minimum length for pi structure
+       .short_caption = Minimum length for pi structure
+
+     residues_per_turn = 4.1
+       .type = float
+       .help = Pi helix residues per turn
+       .short_caption = Pi helix residues per turn
+
+     rise = 0.95
+       .type = float
+       .help = Pi helix rise per reside
+       .short_caption = Pi helix rise
+
+     minimum_overlap = 1
+       .type = int
+       .help = Minimum overlap at ends for pi structure
+       .short_caption = Minimum overlap for pi structure
+
+     rise_tolerance = 0.5
+       .type = float
+       .help = Tolerance in rise of pi helices
+       .short_caption = Tolerance in rise of pi helices
+
+     target_i_ip3 = None
+       .type = float
+       .help = None (target i->i+3 distance)
+       .short_caption = none
+
+     tol_i_ip3 = None
+       .type = float
+       .help = None (tolerance in target i->i+3 distance)
+       .short_caption = none
+
+     dot_min_single = 0.1
+       .type = float
+       .help = Target dot product of i->i+1 with overall direction for pi
+       .short_caption = Target dot i to i+1 for pi
+
+     dot_min =  0.9
+       .type = float
+       .help = minimum dot product of directions of average \
+          of i-to-i+3  and i-to i+4 vectors to overall average direction
+
+     allow_insertions = False
+       .type = bool
+       .help = Allow insertions in helices (adding residues)
+       .short_caption= Allow insertions in helices
+
+     allow_deletions = False
+       .type = bool
+       .help = Allow deletions in helices (adding residues)
+       .short_caption= Allow deletions in helices
+
+     base_score = 1.
+       .type = float
+       .help = Base score for pi helices
+       .short_caption = Base score for pi helices
+
+""")
+
 beta_params=iotbx.phil.parse("""
+
+     name = Beta strand
+       .type = str
+       .help = Secondary structure name (strand)
+
      span = 2
        .type = float
        .help = number of residues included in i to i+span differences
@@ -151,6 +331,10 @@ beta_params=iotbx.phil.parse("""
 """)
 
 other_params = iotbx.phil.parse("""
+     name = Other structure
+       .type = str
+       .help = Secondary structure name (other)
+
      span = None
        .type = float
        .help = None

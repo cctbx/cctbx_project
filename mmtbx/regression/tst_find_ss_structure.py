@@ -63,8 +63,8 @@ ATOM     44  O   GLY U  21      -0.196  -4.136  -6.539  1.00 52.86           O
 
   expected_text="""
 Model 1  N: 11  Start: 11 End: 21
-Class: strand  N: 4 Start: 12 End: 15  Rise: 3.12 A Dot: 1.00
-Class: strand  N: 5 Start: 17 End: 21  Rise: 3.35 A Dot: 0.96
+Class:  Beta strand  N: 4 Start: 12 End: 15  Rise: 3.12 A Dot: 1.00
+Class:  Beta strand  N: 5 Start: 17 End: 21  Rise: 3.35 A Dot: 0.96
 
 PDB RECORDS:
 SHEET    1   1 1 GLY U  12  GLY U  15  0
@@ -280,10 +280,10 @@ ATOM    200  NE2 GLN A  26      14.304  -0.117  15.290  1.00 57.61
 
   expected_text="""
 Model 1  N: 8  Start: 1 End: 8
-Class:  helix  N: 8 Start: 1 End: 8  Rise: 1.56 A Dot: 0.98
+Class:  Alpha helix  N: 8 Start: 1 End: 8  Rise: 1.56 A Dot: 0.98
 
 Model 2  N: 16  Start: 11 End: 26
-Class:  helix  N: 16 Start: 11 End: 26  Rise: 1.58 A Dot: 0.98
+Class:  Alpha helix  N: 16 Start: 11 End: 26  Rise: 1.58 A Dot: 0.98
 
 PDB RECORDS:
 HELIX    1   1 GLY A    1  VAL A    8  1                                   8
