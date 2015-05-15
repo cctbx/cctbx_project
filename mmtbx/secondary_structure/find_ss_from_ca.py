@@ -1498,14 +1498,10 @@ class find_beta_strand(find_segment):
            first_last_1_and_2
 
     prev_residue=get_indexed_residue(
-      previous_segment.hierarchy,index=first_ca_1)
+      previous_segment.hierarchy,index=i_index)
 
-    if is_parallel:
-      index=first_ca_2+1
-    else:
-      index=last_ca_2
     cur_residue=get_indexed_residue(
-      segment.hierarchy,index=index)
+      segment.hierarchy,index=j_index)
     assert cur_residue and prev_residue
 
     prev_chain_id=get_chain_id(previous_segment.hierarchy)
@@ -1672,6 +1668,8 @@ class find_secondary_structure: # class to look for secondary structure
     if params.find_ss_structure.set_up_helices_sheets:
       self.find_sheets(
        include_single_strands=params.find_ss_structure.include_single_strands,
+       max_sheet_ca_ca_dist=params.beta.max_sheet_ca_ca_dist,
+       min_sheet_length=params.beta.min_sheet_length,
        out=out) # organize strands into sheets
 
       self.set_up_pdb_records()
@@ -1704,22 +1702,18 @@ class find_secondary_structure: # class to look for secondary structure
       print >>out,"\n\nPDB Selections:"
       print >>out,self.get_all_selection_records()
 
-  def find_sheets(self,out=sys.stdout,max_sheet_ca_ca_dist=6.,
+  def find_sheets(self,out=sys.stdout,
+     max_sheet_ca_ca_dist=6.,
+     min_sheet_length=4,
      include_single_strands=None):
     if not self.all_strands: return
     print >>out,"\nFinding sheets from %d strands" %(len(self.all_strands))
-    self.get_strand_pairs(tol=max_sheet_ca_ca_dist)
+    self.get_strand_pairs(tol=max_sheet_ca_ca_dist,
+       min_sheet_length=min_sheet_length)
     # self.pair_dict is list of all the strands that each strand matches with
     # self.info_dict is information on a particular pair of strands:
     #  self.info_dict["%d:%d" %(i,j)]=
     #     [first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel]
-
-    for i in self.pair_dict.keys():
-      for j in self.pair_dict[i]:
-        key="%d:%d" %(i,j)
-        if key in self.info_dict.keys():
-          [first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel,
-             i_index,j_index]=self.info_dict[key]
 
     # Create sheets from paired strands.
     self.used_strands=[] # keep track of which ones we have assigned
@@ -1806,7 +1800,7 @@ class find_secondary_structure: # class to look for secondary structure
         return i
     return None
 
-  def get_strand_pairs(self,tol=None):
+  def get_strand_pairs(self,tol=None,min_sheet_length=None):
     self.info_dict={}
     self.pair_dict={}
     for i in xrange(len(self.all_strands)):
@@ -1820,7 +1814,8 @@ class find_secondary_structure: # class to look for secondary structure
 
           # figure out alignment and whether it really is ok
           first_last_1_and_2=self.align_strands(
-            self.all_strands[i],self.all_strands[j],tol=tol)
+            self.all_strands[i],self.all_strands[j],tol=tol,
+            min_sheet_length=min_sheet_length)
 
           if first_last_1_and_2:
             # we have a match
@@ -1875,13 +1870,13 @@ class find_secondary_structure: # class to look for secondary structure
     if inter_strand_vector.is_zero():
       return None,None # give up (could not find a suitable H-bond)
 
-    inter_strand_vector.normalize()
+    inter_strand_vector=inter_strand_vector.normalize()
     up_direction=inter_strand_vector.cross(
       strand_i.segment_average_direction())
     if up_direction.is_zero():
       return None,None # give up (could not find a suitable H-bond)
 
-    up_direction.normalize()
+    up_direction=up_direction.normalize()
     delta=col(strand_i.get_sites()[i_index+1])- \
           col(strand_i.get_sites()[i_index])
     dot=up_direction.dot(delta)
@@ -1890,6 +1885,7 @@ class find_secondary_structure: # class to look for secondary structure
             col(strand_i.get_sites()[i_index+2])
       dot1=up_direction.dot(delta)
       dot=0.5*(dot+dot1)
+
 
     if dot > 0: # i_index is down. (dot is positive). Move 1 residue ahead
 
@@ -1906,7 +1902,8 @@ class find_secondary_structure: # class to look for secondary structure
     return i_index,j_index
 
 
-  def align_strands(self,s1,s2,tol=None):
+  def align_strands(self,s1,s2,tol=None,
+     min_sheet_length=None):
     # figure out best alignment and directions. Require at least 2 residues
     sites1=s1.get_sites()
     sites2=s2.get_sites()
@@ -1918,7 +1915,9 @@ class find_secondary_structure: # class to look for secondary structure
     best_keep_1=None
     best_keep_2=None
     best_score=None
-    for offset in [-1,0,1]: # just in case an offset from best guess is better
+
+
+    for offset in [0]:  # using other offsets did not help and sometimes worse
       if self.ca1+offset < 0 or self.ca1+offset > len(sites1)-1: continue
       dd_list,keep_1,keep_2=self.get_residue_pairs_in_sheet(sites1,sites2,
        center1=self.ca1+offset,center2=self.ca2,tol=tol)
@@ -1926,7 +1925,7 @@ class find_secondary_structure: # class to look for secondary structure
          self.get_residue_pairs_in_sheet(sites1,sites2_reversed,
          center1=self.ca1+offset,center2=len(sites2)-self.ca2-1,tol=tol)
 
-      if len(keep_1)<2 and len(keep_1_reverse)<2:
+      if len(keep_1)<min_sheet_length and len(keep_1_reverse)<min_sheet_length:
         continue
       elif len(keep_1_reverse)>len(keep_1):
         score=len(keep_1_reverse)-0.001*flex.double(dd_list_reverse).norm()
@@ -1938,6 +1937,7 @@ class find_secondary_structure: # class to look for secondary structure
           best_offset=offset
           best_score=score
       else:
+
         score=len(keep_1)-0.001*flex.double(dd_list).norm()
         use_reverse=False
         if best_score is None or score>best_score:
