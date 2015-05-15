@@ -21,7 +21,7 @@ libtbx_path = op.abspath(op.dirname(op.dirname(__file__)))
 if (not libtbx_path in sys.path) :
   sys.path.append(libtbx_path)
 
-python_dependencies = {"ssl" : "Secure Socket Library",
+python_dependencies = {"_ssl" : "Secure Socket Library",
                        "zlib" : "XCode command line tools",
                      }
 
@@ -1006,7 +1006,7 @@ Installation of Python packages may fail.
     if (self.flag_is_mac) :
       config_opts.extend([
         "--with-osx_cocoa",
-        "--with-macosx-version-min=10.6", #%s" % get_os_version(),
+        #"--with-macosx-version-min=%s" % get_os_version(),
         "--with-mac",
         "--enable-monolithic",
         "--disable-mediactrl",
