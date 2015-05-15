@@ -553,18 +553,11 @@ class run(object):
       directory = self.params.directory
       if (self.use_directory_prefix) and (directory is not None) :
         ofn = os.path.join(directory, ofn)
-      f=file(ofn,"wb")
-      print >> self.log, "  output file name:", ofn
-      print >> f, "# Geometry restraints after refinement"
-      print >> f
-      xray_structure = self.xray_structure
-      sites_cart = xray_structure.sites_cart()
-      site_labels = xray_structure.scatterers().extract_labels()
-      self.grm.geometry.show_sorted(
-        sites_cart=sites_cart,
-        site_labels=site_labels,
-        f=f)
-      f.close()
+      # no output of NCS stuff here
+      self.grm.write_geo_file(
+          file_name=ofn,
+          header="# Geometry restraints after refinement\n",
+          xray_structure=self.xray_structure)
 
 class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
