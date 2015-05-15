@@ -738,16 +738,13 @@ class info(object):
                      refinement_params = None,
                      ignore_hd         = True,
                      general_selection = None,
-                     use_molprobity    = True,
-                     ncs_manager       = None):
+                     use_molprobity    = True):
     ref_par = refinement_params
-    if ncs_manager == None and model != None:
+    ncs_manager = None
+    if model != None:
       if model.restraints_manager != None:
         if model.restraints_manager.geometry != None:
-          if model.restraints_manager.geometry.\
-               generic_restraints_manager != None:
-            ncs_manager = model.restraints_manager.geometry.\
-              generic_restraints_manager.ncs_manager
+          ncs_manager = model.restraints_manager.geometry.ncs_dihedral_manager
     self.model = mmtbx.model_statistics.model(
       model = model,
       ignore_hd = ignore_hd,

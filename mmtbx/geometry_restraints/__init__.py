@@ -11,7 +11,6 @@ class manager (object) :
   def __init__ (self,
                 reference_manager=None,
                 den_manager=None,
-                ncs_manager=None,
                 flags=None) :
     adopt_init_args(self, locals())
     if self.flags is None:
@@ -74,12 +73,8 @@ class manager (object) :
               n_seq,
               iselection) :
     den_manager = None
-    ncs_manager = None
     if (self.den_manager is not None) :
       den_manager = self.den_manager.select(n_seq, iselection)
-    if (self.ncs_manager is not None) :
-      ncs_manager = self.ncs_manager.select(n_seq, iselection)
     return manager(
       den_manager=den_manager,
-      ncs_manager=ncs_manager,
       flags=self.flags)
