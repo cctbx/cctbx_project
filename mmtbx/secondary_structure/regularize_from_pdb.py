@@ -13,7 +13,7 @@ from scitbx.matrix import col
 from scitbx.array_family import flex
 from mmtbx.secondary_structure.find_ss_from_ca import \
    find_secondary_structure, \
-   find_alpha_helix,find_beta_strand,find_other_structure,helix,strand,other,\
+   find_helix,find_beta_strand,find_other_structure,helix,strand,other,\
    get_first_resno,get_last_resno,get_sequence,get_chain_id,get_atom_list,\
    apply_atom_selection,model_info,split_model,merge_hierarchies_from_models, \
    get_pdb_hierarchy
@@ -91,6 +91,16 @@ master_phil = iotbx.phil.parse("""
        .help = Find alpha helices
        .short_caption = Find alpha helices
 
+     find_three_ten = False
+       .type = bool
+       .help = Find three_ten helices
+       .short_caption = Find three_ten helices
+
+     find_pi = False
+       .type = bool
+       .help = Find pi helices
+       .short_caption = Find pi helices
+
      find_beta = True
        .type = bool
        .help = Find beta structure
@@ -103,18 +113,19 @@ master_phil = iotbx.phil.parse("""
 
      exclude_alpha_in_beta  = False
        .type = bool
-       .help = Exclude regions already identified as alpha
-       .short_caption = Exclude alpha regions from beta
-
-     exclude_alpha_beta_in_other  = False
-       .type = bool
-       .help = Exclude regions already identified as alpha or beta
-       .short_caption = Exclude alpha and beta regions from other
+       .help = Exclude regions already identified as alpha from three_ten, pi,\
+               and beta
+       .short_caption = Exclude alpha from beta
 
      make_unique = False
        .type = bool
        .help = Assign each residue to a unique type of structure
        .short_caption = Assign residues to unique structure
+
+     cut_up_segments = True
+       .type = bool
+       .help = Cut up segments (make short segments of secondary structure)
+       .short_caption = Cut up segments
 
      write_helix_sheet_records = False
        .type = bool
@@ -1605,7 +1616,7 @@ class replace_with_segments_from_pdb:
         " starting at %d" %(get_first_resno(model.hierarchy))
 
     if params.alpha.find_alpha:
-      find_alpha=find_alpha_helix(params=params.alpha,model=model,
+      find_alpha=find_helix(params=params.alpha,model=model,
        extract_segments_from_pdb=params.extract_segments_from_pdb.extract,
          verbose=params.control.verbose,out=out)
       if params.control.verbose:
