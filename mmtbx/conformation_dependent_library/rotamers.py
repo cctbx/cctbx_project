@@ -254,6 +254,7 @@ def update_restraints(hierarchy,
             )
           if rc is None: continue
           rotamer_name, chis, value = rc
+          #print >> log, "ROT",chain.id, atom_group.resname, residue_group.resseq, rotamer_name, chis, value
           if rotamer_name in ["OUTLIER"]: continue
           if rotamer_name not in rdl_database[atom_group.resname]: continue
           restraints = rdl_database[atom_group.resname][rotamer_name]
@@ -267,7 +268,7 @@ def update_restraints(hierarchy,
                 if name.strip()==atom.name.strip():
                   i_seqs.append(atom.i_seq)
                   break
-            assert len(i_seqs)==len(names), "%s %s" % (i_seqs, names)
+            if len(i_seqs)!=len(names): continue
             i_seqs_restraints[tuple(i_seqs)] = values
             i_seqs.reverse()
             i_seqs_restraints[tuple(i_seqs)] = values
