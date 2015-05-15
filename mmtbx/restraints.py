@@ -312,9 +312,9 @@ class manager(object):
           result.gradients_iso *= normalization_scale
     return result
 
-  def write_geo_file(self, 
-      sites_cart=None, 
-      site_labels=None, 
+  def write_geo_file(self,
+      sites_cart=None,
+      site_labels=None,
       file_name=None,
       file_descriptor=sys.stdout,
       header="# Geometry restraints\n",
@@ -327,7 +327,7 @@ class manager(object):
     Instead of sites_cart and site_labels one may pass xray_structure and they
     will be extracted from it.
     Content of header will be outputted before restraints in the file.
-    If file_name is not specified, everything will be outputted to 
+    If file_name is not specified, everything will be outputted to
     file_descriptor which is stdout by default. Instead of file_name one may
     directly pass file_descriptor and it will be used for output. The caller
     will have take care of saving, closing or flushing it separately.
