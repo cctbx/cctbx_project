@@ -389,6 +389,7 @@ class model_info: # mostly just a holder
 class segment:  # object for holding a helix or a strand or other
 
   def setup(self,sites=None,start_resno=None,hierarchy=None,
+     segment_class=None,
      segment_type='None',name=None,
      span=None,target_rise=None,residues_per_turn=None,
      rise_tolerance=None,dot_min=None,dot_min_single=None,
@@ -404,6 +405,7 @@ class segment:  # object for holding a helix or a strand or other
      verbose=None,
      out=sys.stdout):
 
+    self.segment_class=segment_class
     self.out=out
     self.verbose=verbose
     self.orientation_points=None
@@ -603,7 +605,23 @@ class segment:  # object for holding a helix or a strand or other
     return target,tol,dot_min,minimum_length,target_i_ip3,tol_i_ip3
 
 
-  def is_ok(self):
+  def is_ok(self,check_sub_segments=False,sub_segment_length=8):
+
+    ##########################################
+    # Option to check sub-segments instead of the whole thing (not used)
+    if check_sub_segments and len(self.sites) > sub_segment_length:
+      dd=max(1,sub_segment_length//2)
+      start=0
+      end=len(self.sites)-sub_segment_length
+      for i in xrange(start,end+dd,dd):
+        ii=min(i,end)
+        h=self.segment_class(params=self.params,
+          sites=self.sites[ii:ii+sub_segment_length])
+        if not h.is_ok(check_sub_segments=False):
+          return False
+      return True
+    ##########################################
+
     # check rise and cosine and dot product of single pairs with average
     #  direction and compare to target
     if (self.minimum_length is not None and self.length()<self.minimum_length) \
@@ -705,8 +723,10 @@ class helix(segment): # Methods specific to helices
      optimal_delta_length=None,
      verbose=None,
      out=sys.stdout):
+    self.params=params
     self.setup(sites=sites,start_resno=start_resno,hierarchy=hierarchy,
      segment_type='helix',
+     segment_class=helix,
      minimum_length=params.minimum_length,
      buffer_residues=params.buffer_residues,
      standard_length=params.standard_length,
@@ -783,9 +803,11 @@ class strand(segment):
      optimal_delta_length=None,
      verbose=None,
      out=sys.stdout):
+    self.params=params
 
     self.setup(sites=sites,start_resno=start_resno,hierarchy=hierarchy,
       segment_type='strand',
+      segment_class=strand,
       name=params.name,
       span=params.span,
       minimum_length=params.minimum_length,
@@ -856,8 +878,10 @@ class other(segment):
      verbose=None,
      out=sys.stdout):
 
+    self.params=params
     self.setup(sites=sites,start_resno=start_resno,hierarchy=hierarchy,
       segment_type='other',
+      segment_class=other,
       name=params.name,
       span=params.span,
       minimum_length=params.minimum_length,
