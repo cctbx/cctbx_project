@@ -20,6 +20,12 @@ alpha_params=iotbx.phil.parse("""
        .help = number of residues included on ends of segments
        .short_caption = buffer residues for alpha structure
 
+     n_link_min = 0
+       .type = int
+       .help = Minimum number of residues linking adjacent segments \
+           in H-bonded structure (i.e., HELIX/SHEET records)
+       .short_caption = Minimum link residues between segments
+
      standard_length = 6
        .type = int
        .help = standard length for alpha structure
@@ -103,6 +109,12 @@ three_ten_params=iotbx.phil.parse("""
        .help = number of residues included on ends of segments for three-ten
        .short_caption = buffer residues for three-10 structure
 
+     n_link_min = 0
+       .type = int
+       .help = Minimum number of residues linking adjacent segments \
+           in H-bonded structure (i.e., HELIX/SHEET records)
+       .short_caption = Minimum link residues between segments
+
      standard_length = 6
        .type = int
        .help = standard length for three_ten structure
@@ -184,6 +196,12 @@ pi_params=iotbx.phil.parse("""
        .type = int
        .help = number of residues included on ends of segments
        .short_caption = buffer residues for pi structure
+
+     n_link_min = 0
+       .type = int
+       .help = Minimum number of residues linking adjacent segments \
+           in H-bonded structure (i.e., HELIX/SHEET records)
+       .short_caption = Minimum link residues between segments
 
      standard_length = 6
        .type = int
@@ -268,6 +286,12 @@ beta_params=iotbx.phil.parse("""
        .help = number of residues included on ends of segments
        .short_caption = buffer residues for beta structure
 
+     n_link_min = 4
+       .type = int
+       .help = Minimum number of residues linking adjacent segments \
+           in H-bonded structure (i.e., HELIX/SHEET records)
+       .short_caption = Minimum link residues between segments
+
      standard_length = 4
        .type = int
        .help = standard length for beta structure
@@ -344,6 +368,12 @@ other_params = iotbx.phil.parse("""
        .type = int
        .help = number of residues included on ends of segments
        .short_caption = buffer residues for other structure
+
+     n_link_min = 0
+       .type = int
+       .help = Minimum number of residues linking adjacent segments \
+           in H-bonded structure (i.e., HELIX/SHEET records)
+       .short_caption = Minimum link residues between segments
 
      standard_length = 8
        .type = int

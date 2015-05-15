@@ -1862,7 +1862,7 @@ class replace_with_segments_from_pdb:
     return connection_pairs
 
   def get_model_from_connected_groups(self,connected_groups,
-       model_to_match=None,verbose=None,out=sys.stdout):
+       model_to_match=None,renumber=None,verbose=None,out=sys.stdout):
     models=[]
     for cg,is_left_end,is_right_end in zip(
        connected_groups,
@@ -1873,8 +1873,11 @@ class replace_with_segments_from_pdb:
         model_to_match=model_to_match,verbose=verbose,out=out))
     if not models:
        return None
-    new_model=merge_hierarchies_from_models(models=models,resid_offset=100,
-      first_residue_number=get_first_resno(models[0].hierarchy))
+    if renumber:
+      new_model=merge_hierarchies_from_models(models=models,resid_offset=100,
+        first_residue_number=get_first_resno(models[0].hierarchy))
+    else:
+      new_model=merge_hierarchies_from_models(models=models,renumber=False)
     return new_model
 
   def sort_connection_list(self,connection_list):
@@ -2280,18 +2283,20 @@ class replace_with_segments_from_pdb:
             model.info['chain_number'],
             model.hierarchy.overall_counts().n_residues)+\
             " %d - %d) ..." %(
-           get_first_resno(model.hierarchy),get_last_resno(model.hierarchy)),
+           get_first_resno(model.hierarchy),get_last_resno(model.hierarchy))
 
         connected_groups=self.assemble_segments(params,model=model,
           other_lib=other_lib,
           replacement_segments=replacement_segments,out=out)
         if connected_groups:
-          if len(connected_groups)==1 and connected_groups[0].is_complete():
-            is_complete=True
-          else:
-            is_complete=False
+          is_complete=(
+            len(connected_groups)==1 and connected_groups[0].is_complete())
+          has_insertions_deletions=self.any_cg_has_insertions_deletions(
+            connected_groups)
+
           replacement_model=self.get_model_from_connected_groups(
             connected_groups,
+            renumber=has_insertions_deletions,
             model_to_match=model,verbose=params.control.verbose,out=out)
 
           rss.add_connected_groups(connected_groups)
@@ -2303,7 +2308,7 @@ class replace_with_segments_from_pdb:
           all_replacement_models.append(replacement_model)
           completeness_of_all_replacement_models.append(is_complete)
           insertions_deletions_of_all_replacement_models.append(
-            self.any_cg_has_insertions_deletions(connected_groups))
+            has_insertions_deletions)
           id=model.info['chain_number']
           start_residue=get_first_resno(replacement_model.hierarchy)
           self.model_output_number_of_residues_by_segment[id]=\

@@ -3,6 +3,11 @@ from __future__ import division
 # find_ss_from_ca.py
 # a tool to find helices, strands, non-helices/strands in segments of
 #  structure
+#
+#  Known limitations:  does not find strand pairings (SHEETS) between segments
+#   with chain breaks
+#
+
 
 from iotbx.pdb import resseq_encode
 import iotbx.phil
@@ -601,13 +606,14 @@ class segment:  # object for holding a helix or a strand or other
   def is_ok(self):
     # check rise and cosine and dot product of single pairs with average
     #  direction and compare to target
+    if (self.minimum_length is not None and self.length()<self.minimum_length) \
+      or self.length() <1:
+      return False
     rise=self.get_rise()
     dot=self.get_cosine()
     dot_single=self.mean_dot_single # set by get_cosine()
     min_diff_i_i3=self.get_min_diff_i_i3()
-    if self.minimum_length is not None and self.length()<self.minimum_length:
-      return False
-    elif self.dot_min is not None and dot < self.dot_min:
+    if self.dot_min is not None and dot < self.dot_min:
       return False
     elif self.target_rise is not None and self.rise_tolerance is not None and \
        (rise < self.target_rise-self.rise_tolerance or \
@@ -911,6 +917,7 @@ class find_segment: # class to look for a type of segment
     self.params=params
     self.model=model
     self.name=params.name
+    self.n_link_min=params.n_link_min
 
     self.segment_type=segment_type
     if self.segment_type=='helix':
@@ -951,17 +958,17 @@ class find_segment: # class to look for a type of segment
 
     # get list of difference vectors i
     #  Then get list of segments in segment_dict
-    diffs,norms,self.segment_dict=self.find_segments(params=params,sites=sites)
+    diffs,norms,segment_dict=self.find_segments(params=params,sites=sites)
 
     # NOTE: separate find_segments method for each kind of segment
     # figure out how many residues really should be in these segments
     optimal_delta_length_dict,norm_dict=self.get_optimal_lengths(
-       segment_dict=self.segment_dict,norms=norms)
+       segment_dict=segment_dict,norms=norms)
 
     # create segment object (helix,strand) for each segment
     # If longer than the standard length, make a series of shorter segments
 
-    keys=self.segment_dict.keys()
+    keys=segment_dict.keys()
     keys.sort()
 
     # Specify which residues are in each segment
@@ -981,9 +988,9 @@ class find_segment: # class to look for a type of segment
     start_end_list=[]
     # NOTE: self.segment_class is a substitution for helix/strand classes
     for i in keys:
-      # this segment starts at i and ends at self.segment_dict[i]
+      # this segment starts at i and ends at segment_dict[i]
       overall_start_res=i
-      overall_end_res=self.segment_dict[i]+self.last_residue_offset
+      overall_end_res=segment_dict[i]+self.last_residue_offset
       overall_length=overall_end_res-overall_start_res+1
       optimal_delta_length=optimal_delta_length_dict[overall_start_res]
       if (optimal_delta_length > 0 and not self.allow_insertions) or \
@@ -1000,14 +1007,14 @@ class find_segment: # class to look for a type of segment
           start_end_list.append(
              [start_res_use,start_res_use+self.standard_length-1])
 
-    self.segment_dict={}
+    self.segment_start_end_dict={}
     for start_res_use,end_res_use in start_end_list:
-        self.segment_dict[start_res_use]=end_res_use
+        self.segment_start_end_dict[start_res_use]=end_res_use
         ok=self.extract_segment(params=params,
          start_res=start_res_use,end_res=end_res_use,sites=sites,
          optimal_delta_length=optimal_delta_length)
         if not ok:
-          del self.segment_dict[start_res_use]
+          del self.segment_start_end_dict[start_res_use]
 
   def show_summary(self,out=None):
     if not out: out=self.out
@@ -1019,13 +1026,15 @@ class find_segment: # class to look for a type of segment
          ) +" Rise:%5.2f A Dot:%5.2f" %(
           h.get_rise(),h.get_cosine())
 
-  def get_used_residues_list(self):
+  def get_used_residues_list(self,end_buffer=1):
     # just return a list of used residues
     used_residues=[]
     if hasattr(self,'segment_dict'):
-      for i in self.segment_dict.keys():
-        for j in xrange(i,self.segment_dict[i]+1+self.last_residue_offset):
-          # 2015-05-14 changed to add the +1+self.last_residue_offset
+      for i in self.segment_start_end_dict.keys():
+        for j in xrange(
+             i+end_buffer,self.segment_start_end_dict[i]+1-end_buffer):
+          # Note this segment_start_end_dict lists exact residues used,
+          #  not starting points as in segment_dict
           if not j in used_residues:
             used_residues.append(j)
     return used_residues
@@ -1086,10 +1095,10 @@ class find_segment: # class to look for a type of segment
   def get_segments(self):
     return self.segments
 
-  def find_segments(self,params=None,sites=None,hierarchy=None): # helix/strand
+  def find_segments(self,params=None,sites=None): # helix/strand
     # set up segment class for this kind of segment
     # for example, helix(sites=sites)
-    h=self.segment_class(params=params,sites=sites,hierarchy=hierarchy)
+    h=self.segment_class(params=params,sites=sites)
 
     # get difference vectors i to i+2 (strands) or i to avg of i+3/i+4 (helix)
     diffs,norms=h.get_diffs_and_norms()  # difference vectors and lengths
@@ -1127,6 +1136,49 @@ class find_segment: # class to look for a type of segment
         del segment_dict[i]
 
     # prune out anything not really in this segment type based on direction
+
+    segment_dict=self.remove_bad_residues(segment_dict=segment_dict,
+      diffs=diffs,dot_min=dot_min,minimum_length=minimum_length)
+
+    # merge any segments that can be combined
+
+    segment_dict=self.merge_segments(params=params,
+       segment_dict=segment_dict,sites=sites)
+
+    # trim ends of any segments that are connected by fewer than n_link_min=3
+    #  residues and that go in opposite directions (connected by tight turns).
+
+    segment_dict=self.trim_short_linkages(
+     params=params,segment_dict=segment_dict,sites=sites)
+
+    return diffs,norms,segment_dict
+
+
+  def merge_segments(self,params=None,segment_dict=None,sites=None):
+
+    # merge any segments that can be combined
+    found=True
+    n_cycles=0
+    while found and n_cycles <=len(segment_dict.keys()):
+      found=False
+      n_cycles+=1
+      keys=segment_dict.keys()
+      keys.sort()  # sorted on start
+      for i1,i2 in zip(keys[:-1],keys[1:]):
+        if found: break
+        if i2 <= segment_dict[i1]+self.last_residue_offset+1:
+          # could merge. Test it
+          h=self.segment_class(params=params,
+             sites=sites[i1:segment_dict[i2]+self.last_residue_offset+1],
+             start_resno=i1+self.start_resno)
+          if h.is_ok():
+           found=True
+           segment_dict[i1]=segment_dict[i2]
+           del segment_dict[i2]
+    return segment_dict
+
+  def remove_bad_residues(self,segment_dict=None,diffs=None,dot_min=None,
+    minimum_length=None):
     still_changing=True
     n_cycles=0
     max_cycles=2
@@ -1154,29 +1206,57 @@ class find_segment: # class to look for a type of segment
         if segment_length<minimum_length:
           del segment_dict[i] # not long enough
       n_cycles+=1
+    return segment_dict
 
-    # merge any segments
+  def trim_short_linkages(self,params=None,segment_dict=None,sites=None):
     found=True
     n_cycles=0
-    while found and n_cycles <=10:
+    while found and n_cycles <=len(segment_dict.keys()):
       found=False
       n_cycles+=1
       keys=segment_dict.keys()
       keys.sort()  # sorted on start
       for i1,i2 in zip(keys[:-1],keys[1:]):
         if found: break
-        if i2 <= segment_dict[i1]+self.last_residue_offset+1:
-          # could merge. Test it
-          h=self.segment_class(params=params,
-             sites=sites[i1:segment_dict[i2]+self.last_residue_offset+1],
-             start_resno=i1+self.start_resno,
-             hierarchy=hierarchy)
-          if h.is_ok():
-           found=True
-           segment_dict[i1]=segment_dict[i2]
-           del segment_dict[i2]
+        end_1=segment_dict[i1]+self.last_residue_offset
+        start_2=i2
+        delta=i2-(segment_dict[i1]+self.last_residue_offset)
+        if delta >=self.n_link_min: continue
+        h1=self.segment_class(params=params,
+          sites=sites[i1:segment_dict[i1]+self.last_residue_offset+1],
+             start_resno=i1+self.start_resno)
+        h2=self.segment_class(params=params,
+          sites=sites[i2:segment_dict[i2]+self.last_residue_offset+1],
+             start_resno=i2+self.start_resno)
+        if h1.segment_average_direction().dot(h2.segment_average_direction())>0:
+          continue # (in generally the same direction...ignore)
+        # in opposite direction
+        residues_to_cut=(delta+1)//2
+        found=True
+        segment_dict[i1]=segment_dict[i1]-residues_to_cut
+        ok=False
+        if segment_dict[i1]>=i1: # check and keep
+          h1=self.segment_class(params=params,
+            sites=sites[i1:segment_dict[i1]+self.last_residue_offset+1],
+             start_resno=i1+self.start_resno)
+          ok=h1.is_ok()
+        if not ok:
+            del segment_dict[i1]
 
-    return diffs,norms,segment_dict
+        ok=False
+        new_i2=i2+residues_to_cut
+        if segment_dict[i2]>=new_i2: # check and keep
+          h2=self.segment_class(params=params,
+            sites=sites[new_i2:segment_dict[i2]+self.last_residue_offset+1],
+               start_resno=new_i2+self.start_resno)
+          ok=h2.is_ok()
+        if ok:
+          segment_dict[new_i2]=segment_dict[i2]
+        # remove original
+        del segment_dict[i2]
+
+    return segment_dict
+
 
   def get_optimal_lengths(self,segment_dict=None,norms=None):
 
@@ -1328,8 +1408,8 @@ class find_beta_strand(find_segment):
     #  of the strand in segment_list). Info_dict has the relationship between
     #  pairs of strands, indexed with the key "%d:%d:" %(i,j) where i and j are
     #  the indices of the two strands. The dictionary returns
-    #     [first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel] for the two
-    #  strands
+    #  [first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel,i_index,j_index]
+    #    for the two strands
 
     records=[]
     sheet_id=0
@@ -1497,13 +1577,13 @@ class find_other_structure(find_segment):
     segment_dict[start_pos]=end_pos
     return segment_dict
 
-  def find_segments(self,params=None,sites=None,hierarchy=None): # other
+  def find_segments(self,params=None,sites=None): # other
     # find everything that is not alpha and not beta, put buffer_residues
     #  buffer on the end of each one.
 
     # set up segment class for this kind of segment SPECIFIC FOR OTHER
     # for example, helix(sites=sites)
-    h=self.segment_class(params=params,sites=sites,hierarchy=hierarchy)
+    h=self.segment_class(params=params,sites=sites)
 
     # cross off used residues except for buffer of buffer_residues
     n_buf=params.buffer_residues
@@ -2032,7 +2112,8 @@ class find_secondary_structure: # class to look for secondary structure
         cut_up_segments=params.find_ss_structure.cut_up_segments,
         previously_used_residues=previously_used_residues,
         out=out)
-      previously_used_residues+=model.find_alpha.get_used_residues_list()
+      if params.find_ss_structure.exclude_alpha_in_beta:
+        previously_used_residues+=model.find_alpha.get_used_residues_list()
 
     if params.find_ss_structure.find_three_ten:
       model.find_three_ten=find_helix(params=params.three_ten,
