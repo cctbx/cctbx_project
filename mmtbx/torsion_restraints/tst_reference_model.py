@@ -278,7 +278,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
     for dp in reference_dihedral_proxies:
       if dp.weight == 1.0:
         ss_weight += 1
-    assert ss_weight == 694
+    assert ss_weight == 694, "expecting 694 proxies, got %d" % ss_weight
 
   #test SSM alignment
   pdb_file = libtbx.env.find_in_repositories(

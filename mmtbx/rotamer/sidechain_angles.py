@@ -284,7 +284,8 @@ def collect_residue_torsion_angles (pdb_hierarchy,
 
             # atoms_to_work = [prevCA, prevC, curN, curCA, curC, nextN]
             for i in range(len(atoms_to_work)):
-              if atoms_to_work[i] is not None and not actual_selection[atoms_to_work[i].i_seq]:
+              if (atoms_to_work[i] is not None and
+                  not actual_selection[atoms_to_work[i].i_seq]):
                 atoms_to_work[i] = None
             for i, name in enumerate(["omega", "phi", "psi"]):
               if atoms_to_work[i:i+4].count(None) == 0:
