@@ -1,6 +1,5 @@
 from __future__ import division
-from libtbx.utils import format_exception, Sorry
-from libtbx import Auto
+from libtbx.utils import Sorry
 from iotbx.pdb import common_residue_names_get_class
 from iotbx.pdb import amino_acid_codes, input
 from cctbx.array_family import flex
@@ -42,15 +41,11 @@ class alignment_manager(object):
           (chain_i.id, segid)
       else :
         chain_i_str = "chain '%s'" % chain_i.id
-
-      chain_i_list = [chain_i_str]
-      sel_atoms_i = (phil_atom_selections_as_i_seqs_multiple(
-                       cache=sel_cache,
-                       string_list=chain_i_list))
+      bsel = sel_cache.selection(string=chain_i_str)
       chain_seq, chain_seq_padded, chain_structures = \
         extract_sequence_and_sites(
           pdb_hierarchy=pdb_hierarchy,
-          selection=sel_atoms_i)
+          selection=bsel)
       self.sequences[chain_i_str] = chain_seq
       self.padded_sequences[chain_i_str] = chain_seq_padded
       self.structures[chain_i_str] = chain_structures
@@ -147,52 +142,6 @@ def get_complete_dihedral_proxies(
       substitute_non_crystallographic_unit_cell_if_necessary=True)
   grm = processed_pdb_file_local.geometry_restraints_manager()
   return grm.get_dihedral_proxies()
-
-def phil_atom_selection_multiple(
-      cache,
-      string_list,
-      allow_none=False,
-      allow_auto=False,
-      raise_if_empty_selection=True):
-  result = []
-  for string in string_list:
-    if (string is None):
-      if (allow_none): return None
-      raise Sorry('Atom selection cannot be None:\n  =None')
-    elif (string is Auto):
-      if (allow_auto): return Auto
-      raise Sorry('Atom selection cannot be Auto:\n  %s=Auto')
-    try:
-        result.append(cache.selection(string=string).iselection())
-    except KeyboardInterrupt: raise
-    except Exception, e: # keep e alive to avoid traceback
-      fe = format_exception()
-      raise Sorry('Invalid atom selection:\n  %s=%s\n  (%s)' % (
-        'reference_group', string, fe))
-    if (raise_if_empty_selection and result.count(True) == 0):
-      raise Sorry('Empty atom selection:\n  %s=%s' % (
-        'reference_group', string))
-  return result
-
-def phil_atom_selections_as_i_seqs_multiple(cache,
-                                            string_list):
-  result = []
-  iselection = phil_atom_selection_multiple(
-        cache=cache,
-        string_list=string_list,
-        raise_if_empty_selection=False)
-  for i in iselection:
-    if (i.size() == 0):
-      raise Sorry("No atom selected")
-    for atom in i:
-      result.append(atom)
-  return result
-
-def get_i_seqs(atoms):
-  i_seqs = []
-  for atom in atoms:
-    i_seqs.append(atom.i_seq)
-  return i_seqs
 
 def modernize_rna_resname(resname):
   if common_residue_names_get_class(resname,
@@ -472,20 +421,14 @@ def hierarchy_from_selection(pdb_hierarchy, selection, log):
   return hierarchy
 
 def is_residue_in_selection(i_seqs, selection):
-  if isinstance(selection, flex.bool):
-    for i_seq in i_seqs:
-      if not selection[i_seq]:
-        return False
-    return True
+  assert isinstance(selection, flex.bool)
   for i_seq in i_seqs:
-    if i_seq not in selection:
+    if not selection[i_seq]:
       return False
   return True
 
 def extract_sequence_and_sites(pdb_hierarchy, selection):
-  # FIXME: rewrite the code in this module and all related to work only with
-  # bool selections, then enable the following assert.
-  # assert isinstance(selection, flex.bool)
+  assert isinstance(selection, flex.bool)
   seq = []
   result = []
   padded_seq = []
@@ -506,7 +449,7 @@ def extract_sequence_and_sites(pdb_hierarchy, selection):
             olc= \
             amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
           atoms = rg.atoms()
-          i_seqs = get_i_seqs(atoms)
+          i_seqs = atoms.extract_i_seq()
           if(olc!="X") and is_residue_in_selection(i_seqs, selection):
             seq.append(olc)
             resseq = rg.resseq_as_int()

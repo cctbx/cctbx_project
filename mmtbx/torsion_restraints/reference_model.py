@@ -156,6 +156,7 @@ class reference_model(object):
     return (2*weight*(top - 2*weight*x**2))/top**2*exp(-(weight*x**2)/top)
 
   def extract_sequence_and_sites(self, pdb_hierarchy, selection):
+    assert 0, "Seems that nobody is using this"
     seq = []
     result = []
     counter = 0
@@ -166,7 +167,7 @@ class reference_model(object):
             resname = rg.unique_resnames()[0]
             olc=amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
             atoms = rg.atoms()
-            i_seqs = utils.get_i_seqs(atoms)
+            i_seqs = atoms.extract_i_seq()
             if(olc!="X") and utils.is_residue_in_selection(i_seqs, selection):
               seq.append(olc)
               result.append(group_args(i_seq = counter, rg = rg))
@@ -299,13 +300,8 @@ class reference_model(object):
               and model_res_min is not None and model_res_max is not None)
       #prep for SSM alignment
       file = rg.file_name
-      sel_atoms = (utils.phil_atom_selections_as_i_seqs_multiple(
-                    cache=sel_cache,
-                    string_list=[rg.selection]))
-      sel_atoms_ref = (utils.phil_atom_selections_as_i_seqs_multiple(
-                    cache=sel_cache_ref[file],
-                    string_list=[rg.reference]))
       sel = sel_cache.selection(string=rg.selection)
+      sel_atoms = sel.iselection()
       sel_ref = sel_cache_ref[file].selection(string=rg.reference)
       mod_h = utils.hierarchy_from_selection(
                 pdb_hierarchy=pdb_hierarchy,
@@ -446,7 +442,6 @@ class reference_model(object):
     return dihedral_hash
 
   def get_reference_dihedral_proxies(self):
-    ss_selection = None
     residue_match_hash = {}
     complete_dihedral_proxies = utils.get_complete_dihedral_proxies(
                                   pdb_hierarchy=self.pdb_hierarchy,
@@ -487,10 +482,10 @@ class reference_model(object):
           overall_selection = \
             overall_helix_selection +' or ' + overall_sheet_selection
           sel_cache_ref = self.pdb_hierarchy_ref[file].atom_selection_cache()
-          ss_selection[file] = \
-            (utils.phil_atom_selections_as_i_seqs_multiple(
-               cache=sel_cache_ref,
-               string_list=[overall_selection]))
+          bsel = sel_cache_ref.selection(string=overall_selection)
+          if bsel.all_eq(False):
+            raise Sorry("No atom selected")
+          ss_selection[file] = bsel
     for dp in complete_dihedral_proxies:
       key_work = ""
       complete = True
@@ -537,38 +532,32 @@ class reference_model(object):
           residue_match_hash[key_work[5:14]] = (file_match, key[5:14])
       except Exception:
         continue
-      if self.params.secondary_structure_only and \
-         ss_selection[file_match] != None:
-          if match_map[file_match][dp.i_seqs[0]] \
-               in ss_selection[file_match] and \
-             match_map[file_match][dp.i_seqs[1]] \
-               in ss_selection[file_match] and \
-             match_map[file_match][dp.i_seqs[2]] \
-               in ss_selection[file_match] and \
-             match_map[file_match][dp.i_seqs[3]] \
-               in ss_selection[file_match]:
-            dp_add = cctbx.geometry_restraints.dihedral_proxy(
-              i_seqs=dp.i_seqs,
-              angle_ideal=reference_angle,
-              weight=1/(1.0**2),
-              limit=30.0,
-              top_out=TOP_OUT_FLAG)
-            self.reference_dihedral_proxies.append(dp_add)
-          else:
-            dp_add = cctbx.geometry_restraints.dihedral_proxy(
-              i_seqs=dp.i_seqs,
-              angle_ideal=reference_angle,
-              weight=1/(5.0**2),
-              limit=15.0,
-              top_out=TOP_OUT_FLAG)
-            self.reference_dihedral_proxies.append(dp_add)
+      w_limit = limit
+      w_weight = 1/sigma**2
+      if (self.params.secondary_structure_only and ss_selection is not None
+          and ss_selection[file_match] is not None):
+        limit2 = 15.0
+        w_weight = 0.04
+        if (ss_selection[file_match][match_map[file_match][dp.i_seqs[0]]] and
+           ss_selection[file_match][match_map[file_match][dp.i_seqs[1]]] and
+           ss_selection[file_match][match_map[file_match][dp.i_seqs[2]]] and
+           ss_selection[file_match][match_map[file_match][dp.i_seqs[3]]]):
+          limit2 = 30.0
+          w_weight = 1
+        dp_add = cctbx.geometry_restraints.dihedral_proxy(
+            i_seqs=dp.i_seqs,
+            angle_ideal=reference_angle,
+            weight=w_weight,
+            limit=w_limit,
+            top_out=TOP_OUT_FLAG)
+        self.reference_dihedral_proxies.append(dp_add)
       else:
         dp_add = cctbx.geometry_restraints.dihedral_proxy(
-          i_seqs=dp.i_seqs,
-          angle_ideal=reference_angle,
-          weight=1/sigma**2,
-          limit=limit,
-          top_out=TOP_OUT_FLAG)
+            i_seqs=dp.i_seqs,
+            angle_ideal=reference_angle,
+            weight=1/sigma**2,
+            limit=limit,
+            top_out=TOP_OUT_FLAG)
         self.reference_dihedral_proxies.append(dp_add)
     self.residue_match_hash = residue_match_hash
 
