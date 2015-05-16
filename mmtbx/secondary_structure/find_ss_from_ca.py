@@ -6,6 +6,7 @@ from __future__ import division
 #
 
 
+from libtbx import adopt_init_args
 from iotbx.pdb import resseq_encode
 import iotbx.phil
 import os,sys
@@ -298,11 +299,16 @@ def get_atom_list(hierarchy):
   return atom_list
 
 def get_atom_from_residue(residue=None,
-  atom_name=None,allow_ca_only_model=False):
+  atom_name=None,allow_ca_only_model=False,
+  skip_n_for_pro=False):
   # just make sure that atom_name is there
   for atom in residue.atoms():
     if atom.name.replace(" ","")==atom_name.replace(" ",""):
-      return atom.name,atom.xyz
+      if skip_n_for_pro and atom.name.replace(" ","")=='N' and \
+         residue.resname.replace(" ","").upper()=="PRO":
+        return None,None
+      else:
+        return atom.name,atom.xyz
   if allow_ca_only_model:
     return atom_name,None
   else:
@@ -1491,13 +1497,14 @@ class find_beta_strand(find_segment):
           segment=s,sense=sense,start_index=start_dict[j],end_index=end_dict[j])
 
         current_sheet.add_strand(next_strand)
-        self.list_h_bonds(segment=s,
+        all_h_bonds=self.list_h_bonds(segment=s,
           previous_segment=previous_s,first_last_1_and_2=first_last_1_and_2,
           allow_ca_only_model=allow_ca_only_model,out=out)
 
         register=self.get_pdb_strand_register(segment=s,
           previous_segment=previous_s,first_last_1_and_2=first_last_1_and_2,
-          allow_ca_only_model=allow_ca_only_model)
+          allow_ca_only_model=allow_ca_only_model,
+          all_h_bonds=all_h_bonds)
         current_sheet.add_registration(register)
         previous_s=s
         previous_is_parallel=current_is_parallel
@@ -1513,7 +1520,30 @@ class find_beta_strand(find_segment):
     return False
 
   def get_pdb_strand_register(self,segment=None,previous_segment=None,
-     first_last_1_and_2=None,allow_ca_only_model=None):
+     first_last_1_and_2=None,allow_ca_only_model=None,
+     all_h_bonds=None):
+
+
+    for h_bond in all_h_bonds: # choose first that is ok
+      if not h_bond.is_ok(): continue
+
+      from iotbx.pdb.secondary_structure import pdb_strand_register
+      register=pdb_strand_register(
+             cur_atom=h_bond.cur_atom,
+             cur_resname=h_bond.cur_resname,
+             cur_chain_id=h_bond.cur_chain_id,
+             cur_resseq=h_bond.cur_resseq,
+             cur_icode=h_bond.cur_icode,
+             prev_atom=h_bond.prev_atom,
+             prev_resname=h_bond.prev_resname,
+             prev_chain_id=h_bond.prev_chain_id,
+             prev_resseq=h_bond.prev_resseq,
+             prev_icode=h_bond.prev_icode,)
+      return register
+      # just take the first good one
+
+  def list_h_bonds(self,segment=None,previous_segment=None,
+     first_last_1_and_2=None,allow_ca_only_model=None,out=sys.stdout):
 
     #  Looking down a strand in direction from N to C...
     #    the CA go up-down-up-down.
@@ -1535,44 +1565,6 @@ class find_beta_strand(find_segment):
 
     # Here strand n is previous_segment and n+1 is segment
 
-    first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel,i_index,j_index=\
-           first_last_1_and_2
-
-    prev_residue=get_indexed_residue(
-      previous_segment.hierarchy,index=i_index)
-
-    cur_residue=get_indexed_residue(
-      segment.hierarchy,index=j_index)
-    assert cur_residue and prev_residue
-
-    prev_chain_id=get_chain_id(previous_segment.hierarchy)
-    cur_chain_id=get_chain_id(segment.hierarchy)
-
-    prev_atom,prev_xyz=get_atom_from_residue(residue=prev_residue,
-      atom_name='O',allow_ca_only_model=allow_ca_only_model)
-    cur_atom,cur_xyz=get_atom_from_residue(residue=cur_residue,
-      atom_name='N',allow_ca_only_model=allow_ca_only_model)
-    if not prev_atom or not cur_atom: return None  # does not have N or O
-
-
-    from iotbx.pdb.secondary_structure import pdb_strand_register
-    register=pdb_strand_register(
-      cur_atom=cur_atom,
-      cur_resname=cur_residue.resname,
-      cur_chain_id=get_chain_id(segment.hierarchy),
-      cur_resseq=cur_residue.resseq_as_int(),
-      cur_icode=cur_residue.icode,
-      prev_atom=prev_atom,
-      prev_resname=prev_residue.resname,
-      prev_chain_id=get_chain_id(previous_segment.hierarchy),
-      prev_resseq=prev_residue.resseq_as_int(),
-      prev_icode=prev_residue.icode)
-
-    return register
-
-  def list_h_bonds(self,segment=None,previous_segment=None,
-     first_last_1_and_2=None,allow_ca_only_model=None,out=sys.stdout):
-
     # Get entire list of H-bonded residues between these segments.
     # Residues in previous_segment go from first_ca_1 to last_ca_1.
     # We have already specified that i_index of previous_segment
@@ -1582,6 +1574,8 @@ class find_beta_strand(find_segment):
 
     # Increase i_index by 2 and decrease j_index
     #  by 2 and the same pattern occurs.
+
+    all_h_bonds=[]
 
     first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel,i_index,j_index=\
            first_last_1_and_2
@@ -1595,52 +1589,123 @@ class find_beta_strand(find_segment):
       else:
         local_j_index=j_index-(i-i_index)
 
+      # make sure we are in range
+      if local_i_index<first_ca_1 or local_i_index>last_ca_1: continue
+
       local_prev_residue=get_indexed_residue(
         previous_segment.hierarchy,index=local_i_index)
       for o_to_n in [True,False]:
         if o_to_n:
+          if local_j_index<first_ca_2 or local_j_index>last_ca_2: continue
           local_cur_residue=get_indexed_residue(
             segment.hierarchy,index=local_j_index)
           local_prev_atom,local_prev_xyz=get_atom_from_residue(
             residue=local_prev_residue,
-            atom_name='O',allow_ca_only_model=allow_ca_only_model)
+            atom_name=' O  ',allow_ca_only_model=allow_ca_only_model)
           local_cur_atom,local_cur_xyz=get_atom_from_residue(
             residue=local_cur_residue,
-            atom_name='N',allow_ca_only_model=allow_ca_only_model)
+            atom_name=' N  ',allow_ca_only_model=allow_ca_only_model,
+            skip_n_for_pro=True)
         else:
           if is_parallel:
+            if local_j_index-2<first_ca_2 or local_j_index-2>last_ca_2: continue
             local_cur_residue=get_indexed_residue(
               segment.hierarchy,index=local_j_index-2)
           else:
+            if local_j_index<first_ca_2 or local_j_index>last_ca_2: continue
             local_cur_residue=get_indexed_residue(
               segment.hierarchy,index=local_j_index)
           local_prev_atom,local_prev_xyz=get_atom_from_residue(
             residue=local_prev_residue,
-            atom_name='N',allow_ca_only_model=allow_ca_only_model)
+            atom_name=' N  ',allow_ca_only_model=allow_ca_only_model,
+            skip_n_for_pro=True)
           local_cur_atom,local_cur_xyz=get_atom_from_residue(
             residue=local_cur_residue,
-            atom_name='O',allow_ca_only_model=allow_ca_only_model)
+            atom_name=' O  ',allow_ca_only_model=allow_ca_only_model)
+
+        # skip if there is no atom pair (e.g., if N and PRO )
+        if not local_prev_atom: continue
+        if not local_cur_atom: continue
+
         if local_cur_xyz and local_prev_xyz:
           dd=col(local_cur_xyz)-col(local_prev_xyz)
           dist=dd.length()
+          if dist <=3.5:
+            bad_one=""
+          else:
+            bad_one="**"
         else:
-          dist=0.
-        if dist <=3.5:
-          bad_one=""
-        else:
-          bad_one="**"
-        print >>out," %s %s %s %d%s : %s %s %s %d%s :: %5.2f   %s" %(
-             local_prev_atom,
-             local_prev_residue.resname,
-             get_chain_id(segment.hierarchy),
-             local_prev_residue.resseq_as_int(),
-             local_prev_residue.icode,
-             local_cur_atom,
-             local_cur_residue.resname,
-             get_chain_id(segment.hierarchy),
-             local_cur_residue.resseq_as_int(),
-             local_cur_residue.icode,
-             dist,bad_one)
+          bad_one=None
+          dist=None
+        new_h_bond=h_bond(
+             prev_atom=local_prev_atom,
+             prev_resname=local_prev_residue.resname,
+             prev_chain_id=get_chain_id(segment.hierarchy),
+             prev_resseq=local_prev_residue.resseq_as_int(),
+             prev_icode=local_prev_residue.icode,
+             cur_atom=local_cur_atom,
+             cur_resname=local_cur_residue.resname,
+             cur_chain_id=get_chain_id(segment.hierarchy),
+             cur_resseq=local_cur_residue.resseq_as_int(),
+             cur_icode=local_cur_residue.icode,
+             dist=dist,
+             bad_one=bad_one,
+         )
+        new_h_bond.show_summary(out=out,show_non_existent=False)
+        all_h_bonds.append(new_h_bond)
+    return all_h_bonds
+
+class h_bond:  # holder for a pair of atoms
+  def __init__(self,
+             prev_atom=None,
+             prev_resname=None,
+             prev_chain_id=None,
+             prev_resseq=None,
+             prev_icode=None,
+             cur_atom=None,
+             cur_resname=None,
+             cur_chain_id=None,
+             cur_resseq=None,
+             cur_icode=None,
+             dist=None,
+             bad_one=None):
+    adopt_init_args(self, locals())
+
+  def is_ok(self):
+    if self.dist is None:  # was CA-only so no information
+       return True
+    elif self.dist and not self.bad_one: # was ok H-bond
+       return True
+    else:
+      return False
+
+  def show_summary(self,show_non_existent=False,out=sys.stdout):
+    if self.dist is not None:
+      print >>out," %s %s %s %d%s : %s %s %s %d%s :: %5.2f   %s" %(
+             self.prev_atom,
+             self.prev_resname,
+             self.prev_chain_id,
+             self.prev_resseq,
+             self.prev_icode,
+             self.cur_atom,
+             self.cur_resname,
+             self.cur_chain_id,
+             self.cur_resseq,
+             self.cur_icode,
+             self.dist,
+             self.bad_one)
+    else:
+      print >>out," %s %s %s %d%s : %s %s %s %d%s ::       BAD" %(
+             self.prev_atom,
+             self.prev_resname,
+             self.prev_chain_id,
+             self.prev_resseq,
+             self.prev_icode,
+             self.cur_atom,
+             self.cur_resname,
+             self.cur_chain_id,
+             self.cur_resseq,
+             self.cur_icode,)
 
 
 class find_other_structure(find_segment):
