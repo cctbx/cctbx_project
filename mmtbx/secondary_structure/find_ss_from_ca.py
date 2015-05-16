@@ -297,15 +297,16 @@ def get_atom_list(hierarchy):
             atom_list.append(atom.name)
   return atom_list
 
-def get_atom_from_residue(residue=None,atom_name=None,allow_ca_only_model=False):
+def get_atom_from_residue(residue=None,
+  atom_name=None,allow_ca_only_model=False):
   # just make sure that atom_name is there
   for atom in residue.atoms():
     if atom.name.replace(" ","")==atom_name.replace(" ",""):
-      return atom.name
+      return atom.name,atom.xyz
   if allow_ca_only_model:
-    return atom_name
+    return atom_name,None
   else:
-    return None
+    return None,None
 
 def get_indexed_residue(hierarchy,index=0):
   if not hierarchy:
@@ -1328,7 +1329,8 @@ class find_helix(find_segment):
      cut_up_segments=cut_up_segments,
      verbose=verbose,out=out)
 
-  def pdb_records(self,segment_list=None,last_id=0,helix_type='alpha'): # helix
+  def pdb_records(self,segment_list=None,last_id=0,helix_type='alpha',
+     out=sys.stdout): # helix
 
     records=[]
     k=last_id
@@ -1426,7 +1428,8 @@ class find_beta_strand(find_segment):
       return start_dict,end_dict
 
   def pdb_records(self,segment_list=None,   # sheet
-     sheet_list=None,info_dict=None,allow_ca_only_model=None):
+     sheet_list=None,info_dict=None,allow_ca_only_model=None,
+     out=sys.stdout):
 
     # sheet_list is list of sheets. Each sheet is a list of strands (the index
     #  of the strand in segment_list). Info_dict has the relationship between
@@ -1434,6 +1437,9 @@ class find_beta_strand(find_segment):
     #  the indices of the two strands. The dictionary returns
     #  [first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel,i_index,j_index]
     #    for the two strands
+
+    print >>out,"\nList of H-bonds expected from strand pairings"
+    print >>out,"\n    ATOM 1          ATOM 2       Dist (A)\n"
 
     records=[]
     sheet_id=0
@@ -1485,6 +1491,10 @@ class find_beta_strand(find_segment):
           segment=s,sense=sense,start_index=start_dict[j],end_index=end_dict[j])
 
         current_sheet.add_strand(next_strand)
+        self.list_h_bonds(segment=s,
+          previous_segment=previous_s,first_last_1_and_2=first_last_1_and_2,
+          allow_ca_only_model=allow_ca_only_model,out=out)
+
         register=self.get_pdb_strand_register(segment=s,
           previous_segment=previous_s,first_last_1_and_2=first_last_1_and_2,
           allow_ca_only_model=allow_ca_only_model)
@@ -1498,10 +1508,12 @@ class find_beta_strand(find_segment):
     return records
 
 
+  def is_even(self,i):
+    if 2*(i//2)==i: return True
+    return False
+
   def get_pdb_strand_register(self,segment=None,previous_segment=None,
      first_last_1_and_2=None,allow_ca_only_model=None):
-
-
 
     #  Looking down a strand in direction from N to C...
     #    the CA go up-down-up-down.
@@ -1536,19 +1548,11 @@ class find_beta_strand(find_segment):
     prev_chain_id=get_chain_id(previous_segment.hierarchy)
     cur_chain_id=get_chain_id(segment.hierarchy)
 
-    prev_atom=get_atom_from_residue(residue=prev_residue,
+    prev_atom,prev_xyz=get_atom_from_residue(residue=prev_residue,
       atom_name='O',allow_ca_only_model=allow_ca_only_model)
-    cur_atom=get_atom_from_residue(residue=cur_residue,
+    cur_atom,cur_xyz=get_atom_from_residue(residue=cur_residue,
       atom_name='N',allow_ca_only_model=allow_ca_only_model)
     if not prev_atom or not cur_atom: return None  # does not have N or O
-
-    # Get entire list of H-bonded residues between these segments.
-    # Residues in previous_segment go from first_ca_1 to last_ca_1.
-    # We have already specified that i_index of previous_segment
-    #   atom O H-bonds to j_index of segment atom N.
-    # Implied H-bond is  N of i_index H-bonds to O of j_index as well
-    # For antiparallel sheet, increase i_index by 2 and decrease j_index
-    #  by 2 and the same pattern occurs.
 
 
     from iotbx.pdb.secondary_structure import pdb_strand_register
@@ -1565,6 +1569,79 @@ class find_beta_strand(find_segment):
       prev_icode=prev_residue.icode)
 
     return register
+
+  def list_h_bonds(self,segment=None,previous_segment=None,
+     first_last_1_and_2=None,allow_ca_only_model=None,out=sys.stdout):
+
+    # Get entire list of H-bonded residues between these segments.
+    # Residues in previous_segment go from first_ca_1 to last_ca_1.
+    # We have already specified that i_index of previous_segment
+    #   atom O H-bonds to j_index of segment atom N.
+    # For antiparallel strands, other H-bond is N of i_index with O of j_index
+    # For parallel strands, other H-bond is N of i_index with O of j_index-2
+
+    # Increase i_index by 2 and decrease j_index
+    #  by 2 and the same pattern occurs.
+
+    first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel,i_index,j_index=\
+           first_last_1_and_2
+
+    for i in xrange(first_ca_1,last_ca_1+1):
+      if not self.is_even(i-i_index): continue
+
+      local_i_index=i_index+(i-i_index)
+      if is_parallel:
+        local_j_index=j_index+(i-i_index)
+      else:
+        local_j_index=j_index-(i-i_index)
+
+      local_prev_residue=get_indexed_residue(
+        previous_segment.hierarchy,index=local_i_index)
+      for o_to_n in [True,False]:
+        if o_to_n:
+          local_cur_residue=get_indexed_residue(
+            segment.hierarchy,index=local_j_index)
+          local_prev_atom,local_prev_xyz=get_atom_from_residue(
+            residue=local_prev_residue,
+            atom_name='O',allow_ca_only_model=allow_ca_only_model)
+          local_cur_atom,local_cur_xyz=get_atom_from_residue(
+            residue=local_cur_residue,
+            atom_name='N',allow_ca_only_model=allow_ca_only_model)
+        else:
+          if is_parallel:
+            local_cur_residue=get_indexed_residue(
+              segment.hierarchy,index=local_j_index-2)
+          else:
+            local_cur_residue=get_indexed_residue(
+              segment.hierarchy,index=local_j_index)
+          local_prev_atom,local_prev_xyz=get_atom_from_residue(
+            residue=local_prev_residue,
+            atom_name='N',allow_ca_only_model=allow_ca_only_model)
+          local_cur_atom,local_cur_xyz=get_atom_from_residue(
+            residue=local_cur_residue,
+            atom_name='O',allow_ca_only_model=allow_ca_only_model)
+        if local_cur_xyz and local_prev_xyz:
+          dd=col(local_cur_xyz)-col(local_prev_xyz)
+          dist=dd.length()
+        else:
+          dist=0.
+        if dist <=3.5:
+          bad_one=""
+        else:
+          bad_one="**"
+        print >>out," %s %s %s %d%s : %s %s %s %d%s :: %5.2f   %s" %(
+             local_prev_atom,
+             local_prev_residue.resname,
+             get_chain_id(segment.hierarchy),
+             local_prev_residue.resseq_as_int(),
+             local_prev_residue.icode,
+             local_cur_atom,
+             local_cur_residue.resname,
+             get_chain_id(segment.hierarchy),
+             local_cur_residue.resseq_as_int(),
+             local_cur_residue.icode,
+             dist,bad_one)
+
 
 class find_other_structure(find_segment):
 
@@ -1583,7 +1660,7 @@ class find_other_structure(find_segment):
       cut_up_segments=cut_up_segments,
       verbose=verbose,out=out)
 
-  def pdb_records(self,last_id=0):   #other (nothing)
+  def pdb_records(self,last_id=0,out=sys.stdout):   #other (nothing)
     return []
 
   def get_optimal_lengths(self,segment_dict=None,norms=None):
@@ -1711,7 +1788,8 @@ class find_secondary_structure: # class to look for secondary structure
        min_sheet_length=params.beta.min_sheet_length,
        out=out) # organize strands into sheets
 
-      self.set_up_pdb_records(allow_ca_only_model=params.beta.allow_ca_only_model)
+      self.set_up_pdb_records(
+         allow_ca_only_model=params.beta.allow_ca_only_model,out=out)
 
     if params.find_ss_structure.write_helix_sheet_records:
       self.write_pdb_records(out=out)
@@ -2063,7 +2141,7 @@ class find_secondary_structure: # class to look for secondary structure
     else:
       return False
 
-  def set_up_pdb_records(self,allow_ca_only_model=None):
+  def set_up_pdb_records(self,allow_ca_only_model=None,out=sys.stdout):
 
     # save everything as pdb_alpha_helix or pdb_sheet objects
     if not self.models:
@@ -2072,23 +2150,23 @@ class find_secondary_structure: # class to look for secondary structure
     fa=self.models[0].find_alpha
     if fa and self.all_alpha_helices:
       self.pdb_alpha_helix_list=fa.pdb_records(
-         segment_list=self.all_alpha_helices,helix_type='alpha')
+         segment_list=self.all_alpha_helices,helix_type='alpha',out=out)
 
     fa=self.models[0].find_three_ten
     if fa and self.all_three_ten_helices:
       self.pdb_three_ten_helix_list=fa.pdb_records(
-         segment_list=self.all_three_ten_helices,helix_type='3_10')
+         segment_list=self.all_three_ten_helices,helix_type='3_10',out=out)
 
     fa=self.models[0].find_pi
     if fa and self.all_pi_helices:
       self.pdb_pi_helix_list=fa.pdb_records(
-         segment_list=self.all_pi_helices,helix_type='pi')
+         segment_list=self.all_pi_helices,helix_type='pi',out=out)
 
     fb=self.models[0].find_beta
     if fb and self.sheet_list:
       self.pdb_sheet_list=fb.pdb_records(segment_list=self.all_strands,
        sheet_list=self.sheet_list,info_dict=self.info_dict,
-       allow_ca_only_model=allow_ca_only_model)
+       allow_ca_only_model=allow_ca_only_model,out=out)
 
   def write_pdb_records(self,out=sys.stdout):
     from cStringIO import StringIO
