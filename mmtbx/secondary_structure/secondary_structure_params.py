@@ -357,10 +357,17 @@ beta_params=iotbx.phil.parse("""
        .help = Maximum CA-CA distance between paired strands in sheets
        .short_caption = Max CA-CA distance between strands in sheets
 
-      min_sheet_length = 4
+     min_sheet_length = 4
        .type = int
        .help = Minimum H-bonded segment to include in a sheet
        .short_caption = Min length of segment in a sheet
+
+     allow_ca_only_model = True
+       .type = bool
+       .help = Allow the use of CA-only models, defining H-bonding for \
+               N and O as if they were present
+       .short_caption= Allow CA-only models
+
 
 
 """)

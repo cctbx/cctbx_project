@@ -300,12 +300,15 @@ def get_atom_list(hierarchy):
             atom_list.append(atom.name)
   return atom_list
 
-def get_atom_from_residue(residue=None,atom_name=None):
+def get_atom_from_residue(residue=None,atom_name=None,allow_ca_only_model=False):
   # just make sure that atom_name is there
   for atom in residue.atoms():
     if atom.name.replace(" ","")==atom_name.replace(" ",""):
       return atom.name
-  return None
+  if allow_ca_only_model:
+    return atom_name
+  else:
+    return None
 
 def get_indexed_residue(hierarchy,index=0):
   if not hierarchy:
@@ -1426,7 +1429,7 @@ class find_beta_strand(find_segment):
       return start_dict,end_dict
 
   def pdb_records(self,segment_list=None,   # sheet
-     sheet_list=None,info_dict=None):
+     sheet_list=None,info_dict=None,allow_ca_only_model=None):
 
     # sheet_list is list of sheets. Each sheet is a list of strands (the index
     #  of the strand in segment_list). Info_dict has the relationship between
@@ -1486,7 +1489,8 @@ class find_beta_strand(find_segment):
 
         current_sheet.add_strand(next_strand)
         register=self.get_pdb_strand_register(segment=s,
-          previous_segment=previous_s,first_last_1_and_2=first_last_1_and_2)
+          previous_segment=previous_s,first_last_1_and_2=first_last_1_and_2,
+          allow_ca_only_model=allow_ca_only_model)
         current_sheet.add_registration(register)
         previous_s=s
         previous_is_parallel=current_is_parallel
@@ -1498,7 +1502,7 @@ class find_beta_strand(find_segment):
 
 
   def get_pdb_strand_register(self,segment=None,previous_segment=None,
-     first_last_1_and_2=None):
+     first_last_1_and_2=None,allow_ca_only_model=None):
 
     # If n->n+1 strand are parallel and residue i of strand n matches
     #   with residue i' of strand n+1, then O of residue i in strand n
@@ -1532,9 +1536,9 @@ class find_beta_strand(find_segment):
     cur_chain_id=get_chain_id(segment.hierarchy)
 
     prev_atom=get_atom_from_residue(residue=prev_residue,
-      atom_name='O')
+      atom_name='O',allow_ca_only_model=allow_ca_only_model)
     cur_atom=get_atom_from_residue(residue=cur_residue,
-      atom_name='N')
+      atom_name='N',allow_ca_only_model=allow_ca_only_model)
     if not prev_atom or not cur_atom: return None  # does not have N or O
     from iotbx.pdb.secondary_structure import pdb_strand_register
     register=pdb_strand_register(
@@ -1696,7 +1700,7 @@ class find_secondary_structure: # class to look for secondary structure
        min_sheet_length=params.beta.min_sheet_length,
        out=out) # organize strands into sheets
 
-      self.set_up_pdb_records()
+      self.set_up_pdb_records(allow_ca_only_model=params.beta.allow_ca_only_model)
 
     if params.find_ss_structure.write_helix_sheet_records:
       self.write_pdb_records(out=out)
@@ -2042,7 +2046,7 @@ class find_secondary_structure: # class to look for secondary structure
     else:
       return False
 
-  def set_up_pdb_records(self):
+  def set_up_pdb_records(self,allow_ca_only_model=None):
 
     # save everything as pdb_alpha_helix or pdb_sheet objects
     if not self.models:
@@ -2066,7 +2070,8 @@ class find_secondary_structure: # class to look for secondary structure
     fb=self.models[0].find_beta
     if fb and self.sheet_list:
       self.pdb_sheet_list=fb.pdb_records(segment_list=self.all_strands,
-       sheet_list=self.sheet_list,info_dict=self.info_dict)
+       sheet_list=self.sheet_list,info_dict=self.info_dict,
+       allow_ca_only_model=allow_ca_only_model)
 
   def write_pdb_records(self,out=sys.stdout):
     from cStringIO import StringIO
