@@ -1518,7 +1518,7 @@ class find_beta_strand(find_segment):
     #  O of residue i in strand n H-bonds to N of residue i' in strand n+1
 
     #  For parallel strands:
-    #  O of residue i in strand n H-bonds to N of residue i'+1 in 
+    #  O of residue i in strand n H-bonds to N of residue i'+1 in
     #   strand n+1.
 
     # Here strand n is previous_segment and n+1 is segment
@@ -1544,7 +1544,7 @@ class find_beta_strand(find_segment):
 
     # Get entire list of H-bonded residues between these segments.
     # Residues in previous_segment go from first_ca_1 to last_ca_1.
-    # We have already specified that i_index of previous_segment 
+    # We have already specified that i_index of previous_segment
     #   atom O H-bonds to j_index of segment atom N.
     # Implied H-bond is  N of i_index H-bonds to O of j_index as well
     # For antiparallel sheet, increase i_index by 2 and decrease j_index
