@@ -130,7 +130,7 @@ def exercise_1(mon_lib_srv, ener_lib):
          reference_manager.reference_torsion_proxies is None
 
   grm.generic_restraints_manager.\
-    reference_manager.add_reference_coordinate_proxies(
+    reference_manager.add_coordinate_restraints(
       sites_cart=sites_cart)
   assert grm.generic_restraints_manager.\
          reference_manager.reference_coordinate_proxies is not None

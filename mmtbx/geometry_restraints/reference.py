@@ -19,38 +19,6 @@ class manager(object):
         sigma=0.5,
         limit=1.0,
         top_out_potential=False):
-    self.add_reference_coordinate_proxies(
-      sites_cart=sites_cart,
-      selection=selection,
-      sigma=sigma,
-      limit=limit,
-      top_out_potential=top_out_potential)
-
-  def add_torsion_restraints(
-        self,
-        pdb_hierarchy,
-        sites_cart,
-        selection=None,
-        sigma=2.5,
-        limit=15.0,
-        chi_angles_only=False,
-        top_out_potential=False):
-    self.add_reference_torsion_proxies(
-      pdb_hierarchy=pdb_hierarchy,
-      sites_cart=sites_cart,
-      selection=selection,
-      sigma=sigma,
-      limit=limit,
-      chi_angles_only=chi_angles_only,
-      top_out_potential=top_out_potential)
-
-  def add_reference_coordinate_proxies(
-        self,
-        sites_cart,
-        selection=None,
-        sigma=0.5,
-        limit=1.0,
-        top_out_potential=False):
     import boost.python
     self.ext = boost.python.import_ext("mmtbx_reference_coordinate_ext")
     if self.reference_coordinate_proxies is None:
@@ -76,7 +44,7 @@ class manager(object):
                 top_out=top_out_potential)
       self.reference_coordinate_proxies.append(proxy)
 
-  def add_reference_torsion_proxies(
+  def add_torsion_restraints(
         self,
         pdb_hierarchy,
         sites_cart,

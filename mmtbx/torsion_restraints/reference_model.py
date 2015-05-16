@@ -721,79 +721,55 @@ class reference_model(object):
               reference_rot = reference_hash[file].get(key)
               m_chis = model_chis.get(key)
               r_chis = reference_chis[file].get(key)
+              assert len(m_chis) == len(r_chis)
               if model_rot is not None and reference_rot is not None and \
                  m_chis is not None and r_chis is not None:
                 if (model_hash[key] == 'OUTLIER' and \
                     reference_hash[file][key] != 'OUTLIER'): # or \
                     #atom_group.resname in ["LEU", "VAL", "THR"]:
-                  axis_and_atoms_to_rotate= \
-                    rotatable_bonds.axes_and_atoms_aa_specific(
-                        residue=residue,
-                        mon_lib_srv=mon_lib_srv,
-                        remove_clusters_with_all_h=True,
-                        log=None)
-                  if axis_and_atoms_to_rotate is None:
-                    continue
-                  assert len(m_chis) == len(r_chis)
-                  assert len(m_chis) == len(axis_and_atoms_to_rotate)
-                  counter = 0
-                  residue_iselection = residue.atoms().extract_i_seq()
-                  sites_cart_residue = \
-                    xray_structure.sites_cart().select(residue_iselection)
-                  for aa in axis_and_atoms_to_rotate:
-                    axis = aa[0]
-                    atoms = aa[1]
-                    residue.atoms().set_xyz(new_xyz=sites_cart_residue)
-                    new_xyz = flex.vec3_double()
-                    angle_deg = r_chis[counter] - m_chis[counter]
-                    if angle_deg < 0:
-                      angle_deg += 360.0
-                    for atom in atoms:
-                      new_xyz = rotate_point_around_axis(
-                                  axis_point_1=sites_cart_residue[axis[0]],
-                                  axis_point_2=sites_cart_residue[axis[1]],
-                                  point=sites_cart_residue[atom],
-                                  angle=angle_deg, deg=True)
-                      sites_cart_residue[atom] = new_xyz
-                    sites_cart_start = sites_cart_start.set_selected(
-                          residue_iselection, sites_cart_residue)
-                    counter += 1
+                  self.change_residue_rotamer_in_place(
+                      sites_cart_start,residue, m_chis,r_chis,mon_lib_srv)
                   xray_structure.set_sites_cart(sites_cart_start)
 
                 elif self.params.strict_rotamer_matching and \
                   (model_rot != 'OUTLIER' and reference_rot != 'OUTLIER'):
                   if model_rot != reference_rot:
-                    axis_and_atoms_to_rotate= \
-                      rotatable_bonds.axes_and_atoms_aa_specific(
-                        residue=residue,
-                        mon_lib_srv=mon_lib_srv,
-                        remove_clusters_with_all_h=True,
-                        log=None)
-                    if axis_and_atoms_to_rotate is None:
-                      continue
-                    counter = 0
-                    residue_iselection = residue.atoms().extract_i_seq()
-                    sites_cart_residue = \
-                      xray_structure.sites_cart().select(residue_iselection)
-                    for aa in axis_and_atoms_to_rotate:
-                      axis = aa[0]
-                      atoms = aa[1]
-                      residue.atoms().set_xyz(new_xyz=sites_cart_residue)
-                      new_xyz = flex.vec3_double()
-                      angle_deg = r_chis[counter] - m_chis[counter]
-                      if angle_deg < 0:
-                        angle_deg += 360.0
-                      for atom in atoms:
-                        new_xyz = rotate_point_around_axis(
-                                    axis_point_1=sites_cart_residue[axis[0]],
-                                    axis_point_2=sites_cart_residue[axis[1]],
-                                    point=sites_cart_residue[atom],
-                                    angle=angle_deg, deg=True)
-                        sites_cart_residue[atom] = new_xyz
-                      sites_cart_start = sites_cart_start.set_selected(
-                        residue_iselection, sites_cart_residue)
-                      counter += 1
+                    self.change_residue_rotamer_in_place(
+                        sites_cart_start,residue, m_chis,r_chis,mon_lib_srv)
                     xray_structure.set_sites_cart(sites_cart_start)
+
+  def change_residue_rotamer_in_place(self,sites_cart, residue,
+      m_chis, r_chis, mon_lib_srv):
+    axis_and_atoms_to_rotate= \
+      rotatable_bonds.axes_and_atoms_aa_specific(
+          residue=residue,
+          mon_lib_srv=mon_lib_srv,
+          remove_clusters_with_all_h=True,
+          log=None)
+    if axis_and_atoms_to_rotate is None:
+      return
+    assert len(m_chis) == len(axis_and_atoms_to_rotate)
+    counter = 0
+    residue_iselection = residue.atoms().extract_i_seq()
+    sites_cart_residue = sites_cart.select(residue_iselection)
+    for aa in axis_and_atoms_to_rotate:
+      axis = aa[0]
+      atoms = aa[1]
+      residue.atoms().set_xyz(new_xyz=sites_cart_residue)
+      new_xyz = flex.vec3_double()
+      angle_deg = r_chis[counter] - m_chis[counter]
+      if angle_deg < 0:
+        angle_deg += 360.0
+      for atom in atoms:
+        new_xyz = rotate_point_around_axis(
+                    axis_point_1=sites_cart_residue[axis[0]],
+                    axis_point_2=sites_cart_residue[axis[1]],
+                    point=sites_cart_residue[atom],
+                    angle=angle_deg, deg=True)
+        sites_cart_residue[atom] = new_xyz
+      sites_cart = sites_cart.set_selected(
+            residue_iselection, sites_cart_residue)
+      counter += 1
 
   def remove_restraints_with_ncs_matches(self,
                                          ncs_dihedral_proxies,

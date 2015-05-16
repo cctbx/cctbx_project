@@ -926,10 +926,6 @@ class torsion_ncs(object):
                 target_angles[c] = angles[cluster[0]]
     return target_angles
 
-  # def add_ncs_dihedral_proxies(self, geometry):
-  #   geometry.ncs_dihedral_proxies= \
-  #     self.ncs_dihedral_proxies
-
   def get_ramachandran_outliers(self, pdb_hierarchy):
     rama_outliers = []
     self.rama = ramalyze.ramalyze(pdb_hierarchy=pdb_hierarchy,
