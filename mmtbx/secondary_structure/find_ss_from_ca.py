@@ -4,9 +4,6 @@ from __future__ import division
 # a tool to find helices, strands, non-helices/strands in segments of
 #  structure
 #
-#  Known limitations:  does not find strand pairings (SHEETS) between segments
-#   with chain breaks
-#
 
 
 from iotbx.pdb import resseq_encode
@@ -1504,21 +1501,25 @@ class find_beta_strand(find_segment):
   def get_pdb_strand_register(self,segment=None,previous_segment=None,
      first_last_1_and_2=None,allow_ca_only_model=None):
 
-    # If n->n+1 strand are parallel and residue i of strand n matches
-    #   with residue i' of strand n+1, then O of residue i in strand n
-    #   H-bonds to N of residue i'+1 in strand n+1.
 
-    #  if antiparallel, then O of residue i in strand n H-bonds to N of
-    #     residue i' in strand n+1
 
     #  Looking down a strand in direction from N to C...
     #    the CA go up-down-up-down.
     #    The ones that are up have their O pointing to the right
     #    Those that are down have O pointing to the left
-    #  Consequently if we orient strand n+1 from N to C...if
+    #  So...if we orient strand n+1 from N to C...if
     #    strand n is to the right then choose an "up" residue of strand n+1 for
     #    the matching to strand n.  If strand n is to the left choose a "down"
     #    one.
+
+    #  If CA residue i of strand n matches with residue i' of strand n+1:
+
+    #  For antiparallel strands:
+    #  O of residue i in strand n H-bonds to N of residue i' in strand n+1
+
+    #  For parallel strands:
+    #  O of residue i in strand n H-bonds to N of residue i'+1 in 
+    #   strand n+1.
 
     # Here strand n is previous_segment and n+1 is segment
 
@@ -1540,6 +1541,16 @@ class find_beta_strand(find_segment):
     cur_atom=get_atom_from_residue(residue=cur_residue,
       atom_name='N',allow_ca_only_model=allow_ca_only_model)
     if not prev_atom or not cur_atom: return None  # does not have N or O
+
+    # Get entire list of H-bonded residues between these segments.
+    # Residues in previous_segment go from first_ca_1 to last_ca_1.
+    # We have already specified that i_index of previous_segment 
+    #   atom O H-bonds to j_index of segment atom N.
+    # Implied H-bond is  N of i_index H-bonds to O of j_index as well
+    # For antiparallel sheet, increase i_index by 2 and decrease j_index
+    #  by 2 and the same pattern occurs.
+
+
     from iotbx.pdb.secondary_structure import pdb_strand_register
     register=pdb_strand_register(
       cur_atom=cur_atom,
@@ -1905,15 +1916,21 @@ class find_secondary_structure: # class to look for secondary structure
       return None,None # give up (could not find a suitable H-bond)
 
     up_direction=up_direction.normalize()
-    delta=col(strand_i.get_sites()[i_index+1])- \
-          col(strand_i.get_sites()[i_index])
-    dot=up_direction.dot(delta)
-    if i_index+4 <=len(strand_i.get_sites()): # can get a second one
-      delta=col(strand_i.get_sites()[i_index+3])- \
-            col(strand_i.get_sites()[i_index+2])
-      dot1=up_direction.dot(delta)
-      dot=0.5*(dot+dot1)
 
+    n_dot=0.
+    sum_dot=0.
+    last_offset_index=len(strand_i.get_sites())-i_index-2
+    for i in xrange(last_offset_index//2+1):
+      offset=2*i
+      delta=col(strand_i.get_sites()[i_index+1+offset])- \
+            col(strand_i.get_sites()[i_index+offset])
+      dot=up_direction.dot(delta)
+      n_dot+=1
+      sum_dot+=dot
+    if n_dot:
+      dot=sum_dot/n_dot
+    else:
+      return None,None # give up (could not find a suitable direction
 
     if dot > 0: # i_index is down. (dot is positive). Move 1 residue ahead
 
