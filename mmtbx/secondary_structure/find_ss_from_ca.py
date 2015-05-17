@@ -1445,6 +1445,9 @@ class find_beta_strand(find_segment):
     #    for the two strands
 
     print >>out,"\nList of H-bonds expected from strand pairings"
+    print >>out,"Distances > 3.5 A indicated by **"
+    print >>out,\
+      "H-bonds not included in HELIX/SHEET records marked 'Not included'"
     print >>out,"\n    ATOM 1          ATOM 2       Dist (A)\n"
 
     records=[]
@@ -1575,12 +1578,14 @@ class find_beta_strand(find_segment):
     # Increase i_index by 2 and decrease j_index
     #  by 2 and the same pattern occurs.
 
+    # look at entire segments, not just the part we are including
+
     all_h_bonds=[]
 
     first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel,i_index,j_index=\
            first_last_1_and_2
 
-    for i in xrange(first_ca_1,last_ca_1+1):
+    for i in xrange(previous_segment.length()):
       if not self.is_even(i-i_index): continue
 
       local_i_index=i_index+(i-i_index)
@@ -1590,13 +1595,14 @@ class find_beta_strand(find_segment):
         local_j_index=j_index-(i-i_index)
 
       # make sure we are in range
-      if local_i_index<first_ca_1 or local_i_index>last_ca_1: continue
+      if local_i_index<0 or local_i_index>previous_segment.length()-1: continue
 
       local_prev_residue=get_indexed_residue(
         previous_segment.hierarchy,index=local_i_index)
       for o_to_n in [True,False]:
         if o_to_n:
-          if local_j_index<first_ca_2 or local_j_index>last_ca_2: continue
+          if local_j_index<0 or local_j_index>segment.length()-1: continue
+
           local_cur_residue=get_indexed_residue(
             segment.hierarchy,index=local_j_index)
           local_prev_atom,local_prev_xyz=get_atom_from_residue(
@@ -1608,11 +1614,11 @@ class find_beta_strand(find_segment):
             skip_n_for_pro=True)
         else:
           if is_parallel:
-            if local_j_index-2<first_ca_2 or local_j_index-2>last_ca_2: continue
+            if local_j_index-2<0 or local_j_index-2>segment.length()-1: continue
             local_cur_residue=get_indexed_residue(
               segment.hierarchy,index=local_j_index-2)
           else:
-            if local_j_index<first_ca_2 or local_j_index>last_ca_2: continue
+            if local_j_index<0 or local_j_index> segment.length()-1: continue
             local_cur_residue=get_indexed_residue(
               segment.hierarchy,index=local_j_index)
           local_prev_atom,local_prev_xyz=get_atom_from_residue(
@@ -1624,8 +1630,7 @@ class find_beta_strand(find_segment):
             atom_name=' O  ',allow_ca_only_model=allow_ca_only_model)
 
         # skip if there is no atom pair (e.g., if N and PRO )
-        if not local_prev_atom: continue
-        if not local_cur_atom: continue
+        if not local_prev_atom or not local_cur_atom: continue
 
         if local_cur_xyz and local_prev_xyz:
           dd=col(local_cur_xyz)-col(local_prev_xyz)
@@ -1637,6 +1642,14 @@ class find_beta_strand(find_segment):
         else:
           bad_one=None
           dist=None
+
+        # Save those that are outside range we are keeping only if good:
+        if local_j_index<first_ca_2 or local_j_index>last_ca_2 or \
+           local_i_index<first_ca_1 or local_i_index>last_ca_1:
+          if bad_one!="": continue
+          # and mark as not included
+          bad_one="(Not included) "
+
         new_h_bond=h_bond(
              prev_atom=local_prev_atom,
              prev_resname=local_prev_residue.resname,
@@ -1681,7 +1694,7 @@ class h_bond:  # holder for a pair of atoms
 
   def show_summary(self,show_non_existent=False,out=sys.stdout):
     if self.dist is not None:
-      print >>out," %s %s %s %d%s : %s %s %s %d%s :: %5.2f   %s" %(
+      print >>out," %4s%4s%4s%5d%s : %4s%4s%4s%5d%s :: %5.2f   %s" %(
              self.prev_atom,
              self.prev_resname,
              self.prev_chain_id,
@@ -1695,7 +1708,7 @@ class h_bond:  # holder for a pair of atoms
              self.dist,
              self.bad_one)
     else:
-      print >>out," %s %s %s %d%s : %s %s %s %d%s ::       BAD" %(
+      print >>out," %4s%4s%4s%5d%s : %4s%4s%4s%5d%s" %(
              self.prev_atom,
              self.prev_resname,
              self.prev_chain_id,
