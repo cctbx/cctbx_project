@@ -1336,12 +1336,14 @@ class find_helix(find_segment):
      verbose=verbose,out=out)
 
   def pdb_records(self,segment_list=None,last_id=0,helix_type='alpha',
-     out=sys.stdout): # helix
+     allow_ca_only_model=None,out=sys.stdout): # helix
 
     records=[]
     k=last_id
     for s in segment_list:
       if not s.hierarchy: continue
+      all_h_bonds=self.list_h_bonds(segment=s,helix_type=helix_type,
+          allow_ca_only_model=allow_ca_only_model,out=out)
       start=get_first_residue(s.hierarchy)
       end=get_last_residue(s.hierarchy)
       chain_id=get_chain_id(s.hierarchy)
@@ -1363,6 +1365,67 @@ class find_helix(find_segment):
         length=s.length())
       records.append(record)
     return records
+
+  def list_h_bonds(self,segment=None,helix_type='alpha',
+     allow_ca_only_model=None,out=sys.stdout):
+
+    helix_class=secondary_structure.pdb_helix.helix_class_to_int(
+           helix_type) # 1=alpha 3=pi  5=3_10
+
+
+    # residue that residue i is h-bonded to
+    next_i_dict={
+      1:4,   # alpha:  O of residue i H-bonds to N of residue i+4
+      3:5,   # pi:     O of residue i H-bonds to N of residue i+5
+      5:3,   # 3_10:   O of residue i H-bonds to N of residue i+3
+     }
+    next_i=next_i_dict[helix_class]
+
+    all_h_bonds=[]
+
+    for i in xrange(segment.length()-next_i):
+
+      cur_residue=get_indexed_residue(
+        segment.hierarchy,index=i)
+      cur_atom,cur_xyz=get_atom_from_residue(
+        residue=cur_residue,
+        atom_name=' O  ',allow_ca_only_model=allow_ca_only_model)
+
+      next_residue=get_indexed_residue(
+        segment.hierarchy,index=i+next_i)
+      next_atom,next_xyz=get_atom_from_residue(
+        residue=next_residue,
+        atom_name=' N  ',allow_ca_only_model=allow_ca_only_model,
+        skip_n_for_pro=True)
+
+      if cur_xyz and next_xyz:
+        dd=col(cur_xyz)-col(next_xyz)
+        dist=dd.length()
+        if dist <=3.5:
+          bad_one=""
+        else:
+          bad_one="**"
+      else:
+        bad_one=None
+        dist=None
+
+      new_h_bond=h_bond(
+           prev_atom=cur_atom,
+           prev_resname=cur_residue.resname,
+           prev_chain_id=get_chain_id(segment.hierarchy),
+           prev_resseq=cur_residue.resseq_as_int(),
+           prev_icode=cur_residue.icode,
+           cur_atom=next_atom,
+           cur_resname=next_residue.resname,
+           cur_chain_id=get_chain_id(segment.hierarchy),
+           cur_resseq=next_residue.resseq_as_int(),
+           cur_icode=next_residue.icode,
+           dist=dist,
+           bad_one=bad_one,
+       )
+      new_h_bond.show_summary(out=out,show_non_existent=False)
+      all_h_bonds.append(new_h_bond)
+    return all_h_bonds
 
 class find_beta_strand(find_segment):
 
@@ -2228,17 +2291,20 @@ class find_secondary_structure: # class to look for secondary structure
     fa=self.models[0].find_alpha
     if fa and self.all_alpha_helices:
       self.pdb_alpha_helix_list=fa.pdb_records(
-         segment_list=self.all_alpha_helices,helix_type='alpha',out=out)
+         segment_list=self.all_alpha_helices,helix_type='alpha',
+         allow_ca_only_model=allow_ca_only_model,out=out)
 
     fa=self.models[0].find_three_ten
     if fa and self.all_three_ten_helices:
       self.pdb_three_ten_helix_list=fa.pdb_records(
-         segment_list=self.all_three_ten_helices,helix_type='3_10',out=out)
+         segment_list=self.all_three_ten_helices,helix_type='3_10',
+         allow_ca_only_model=allow_ca_only_model,out=out)
 
     fa=self.models[0].find_pi
     if fa and self.all_pi_helices:
       self.pdb_pi_helix_list=fa.pdb_records(
-         segment_list=self.all_pi_helices,helix_type='pi',out=out)
+        segment_list=self.all_pi_helices,helix_type='pi',
+        allow_ca_only_model=allow_ca_only_model,out=out)
 
     fb=self.models[0].find_beta
     if fb and self.sheet_list:
