@@ -280,6 +280,8 @@ class SetupInstaller(object):
     app_root_dir = os.path.join(pkg_prefix,
                                 '%s-%s'%(self.installer.dest_dir_prefix,
                                          self.version))
+    app_root_dir = os.path.join(pkg_prefix,
+                                '%s '% (self.installer.dest_dir_prefix))
     if os.path.exists(app_root_dir): shutil.rmtree(app_root_dir)
     subprocess.check_call([
       os.path.join(self.dest_dir, 'install'),
