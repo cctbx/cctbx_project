@@ -1,4 +1,4 @@
-import os, sys
+from __future__ import division
 
 omega_database = {
   "All" : {
@@ -2848,7 +2848,7 @@ def run():
   print cdl_database["Pro_nonxpro"][(-180,-170)]
   print cdl_database["Pro_nonxpro"][( -70, 150)]
   for res_group_type in cdl_database:
-    print res_group_type, len(cdl_database[res_group_type])
+    print res_group_type, len(omega_database[res_group_type])
 
 if __name__=="__main__":
   run()
