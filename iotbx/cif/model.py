@@ -631,6 +631,21 @@ class loop(DictMixin):
     self._columns = OrderedDict(
       sorted(self._columns.items(), key=key, reverse=reverse))
 
+  def order(self, order):
+    def _cmp_key(k1, k2):
+      for i, o in enumerate(order):
+        if k1==o: break
+      for j, o in enumerate(order):
+        if k2==o: break
+      if k1<k2: return -1
+      return 1
+    keys = self._columns.keys()
+    keys.sort(_cmp_key)
+    tmp = OrderedDict()
+    for o in order:
+      tmp[o]=self._columns[o]
+    self._columns = tmp
+
   def __eq__(self, other):
     if (len(self) != len(other) or
         self.size() != other.size() or
