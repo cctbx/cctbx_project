@@ -2829,7 +2829,7 @@ omega_database = {
     (-50, 170) : ['B', 5, 173.18, 5.86],
   },
 }
-for res_type_group, res_type_db in sorted(cdl_database.items()):
+for res_type_group, res_type_db in sorted(omega_database.items()):
   default_values = None
   for key in sorted(res_type_db):
     if res_type_db[key][0]=="I":
