@@ -1507,12 +1507,6 @@ class find_beta_strand(find_segment):
     #  [first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel,i_index,j_index]
     #    for the two strands
 
-    print >>out,"\nList of H-bonds expected from strand pairings"
-    print >>out,"Distances > 3.5 A indicated by **"
-    print >>out,\
-      "H-bonds not included in HELIX/SHEET records marked 'Not included'"
-    print >>out,"\n    ATOM 1          ATOM 2       Dist (A)\n"
-
     records=[]
     sheet_id=0
     for sheet in sheet_list:
@@ -2287,6 +2281,13 @@ class find_secondary_structure: # class to look for secondary structure
     # save everything as pdb_alpha_helix or pdb_sheet objects
     if not self.models:
       return
+
+    print >>out,"\nList of H-bonds expected from strand pairings"
+    print >>out,"Distances > 3.5 A indicated by **"
+    print >>out,\
+      "H-bonds not included in HELIX/SHEET records marked 'Not included'"
+    print >>out,"\n      ATOM 1               ATOM 2           Dist (A)\n"
+
 
     fa=self.models[0].find_alpha
     if fa and self.all_alpha_helices:
