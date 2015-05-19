@@ -2723,6 +2723,7 @@ scitbx/math/tests/tst_uniform_rotation_matrix.py -text
 scitbx/math/tests/tst_weighted_correlation.py svneol=native#text/x-python
 scitbx/math/traits.h -text
 scitbx/math/tst_2d_zernike.py -text
+scitbx/math/tst_bessel_zeros.py -text
 scitbx/math/tst_multivariate_moments.py -text
 scitbx/math/tst_so3_lie_algebra.py -text
 scitbx/math/tst_undirected_graph.py -text

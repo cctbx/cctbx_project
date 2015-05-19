@@ -324,6 +324,38 @@ namespace bessel {
   }
 
 
+  template <typename FloatType>
+  scitbx::af::shared< FloatType >
+  bessel_J_zeroes(FloatType const& l, int const& n)
+  {
+    using boost::math::cyl_bessel_j_zero;
+    scitbx::af::shared<FloatType> result;
+    for (int ii=1;ii<=n;ii++){
+      result.push_back( cyl_bessel_j_zero(l,ii) );
+    }
+    return result;
+  }
+
+  template <typename FloatType>
+  scitbx::af::shared< FloatType >
+  sph_bessel_j_zeroes(FloatType const& l, int const& n)
+  {
+    FloatType eps=1e-4;
+    using boost::math::cyl_bessel_j_zero;
+    scitbx::af::shared<FloatType> result;
+    if (std::abs(l-0.0)<eps) {
+      for (int ii=1;ii<=n;ii++){
+        result.push_back(ii*3.14159265359);
+      }
+    } else {
+      for (int ii=1;ii<=n;ii++){
+        result.push_back( cyl_bessel_j_zero(l+0.5,ii) );
+      }
+    }
+    return result;
+  }
+
+
 #endif
 
 }}} // namespace scitbx::math::bessel

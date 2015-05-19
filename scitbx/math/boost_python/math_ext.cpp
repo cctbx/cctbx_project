@@ -381,6 +381,15 @@ namespace {
       (scitbx::af::shared< double> (*)(
         int const&, scitbx::af::shared<double> const&))
           bessel::bessel_J_array);
+    def ("bessel_J_zeroes",
+           (scitbx::af::shared< double> (*)(
+        double const&, int const&))
+        bessel::bessel_J_zeroes);
+    def ("sph_bessel_j_zeroes",
+           (scitbx::af::shared< double> (*)(
+        double const&, int const&))
+        bessel::sph_bessel_j_zeroes);
+
 
 #endif
 
