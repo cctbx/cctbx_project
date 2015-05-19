@@ -1,6 +1,5 @@
+from __future__ import division
 from scitbx import math
-from scitbx.array_family import flex
-from stdlib import math as smath
 
 def tst_sph_zeroes(l,n):
   z = math.sph_bessel_j_zeroes(l,n)
