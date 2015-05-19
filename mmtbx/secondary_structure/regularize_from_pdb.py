@@ -413,7 +413,7 @@ class segment_library:
       if self.index_length is None:
         self.index_length=segment.standard_length
       assert self.index_length==segment.standard_length
-      index_list=self.get_index_list(segment)
+      index_list=self.get_index_list(segment=segment)
       for index in index_list:
         if not index in index_dict.keys():
           index_dict[index]=[]
@@ -425,10 +425,12 @@ class segment_library:
      index_y=int(0.5+y/delta_y)
      return "%d:%d" %(index_x,index_y)
 
-  def get_index_list(self,segment,delta_x=1.,delta_y=1.,only_best=False):
+  def get_index_list(self,segment=None,sites=None,
+      delta_x=1.,delta_y=1.,only_best=False):
      # get list of indices for this segment.  They correspond to the
      # values of dist(1,n) and dist(1,n/2) in this segment
-     sites=segment.get_sites()
+     if sites is None:
+       sites=segment.get_sites()
      if self.index_length!=len(sites):
        return None # the indexing only applies if we have the same length segment
      n=len(sites)-1
