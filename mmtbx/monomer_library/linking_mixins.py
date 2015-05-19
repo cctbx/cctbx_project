@@ -381,15 +381,17 @@ class linking_mixins(object):
   Automatic linking
     Parameters for automatic linking
       Linking & cutoffs
-        Metal        : %-5s - %0.2f
-        Amimo acid   : %-5s - %0.2f
-        Carbohydrate : %-5s - %0.2f
+        Metal                : %-5s - %0.2f
+        Amimo acid           : %-5s - %0.2f
+        Carbohydrate         : %-5s - %0.2f
+        Amino acid - RNA/DNA : %-5s
       """ % (link_metals,
              metal_coordination_cutoff,
              link_residues,
              amino_acid_bond_cutoff,
              link_carbohydrates,
              carbohydrate_bond_cutoff,
+             link_amino_acid_rna_dna,
              )
     t0=time.time()
     atoms = self.pdb_hierarchy.atoms()
@@ -574,7 +576,7 @@ Residue classes
       #
       done[key].append(names)
       done_key = key
-      # check for any link between atom groups based on residue name, eg ASN-NAG
+      # get all possible links
       i_seqs = []
       for atom in atom_group1.atoms():
         i_seqs.append(atom.i_seq)
@@ -587,15 +589,17 @@ Residue classes
           tmp = [i,j]
           tmp.sort()
           ij_seqs.append(tuple(tmp))
-      #
+      # check that a link not already made
       link_found = False
       if verbose:
         print 'len simple bond proxies',len(geometry_proxy_registries.bond_simple.proxies)
+      # VERY SLOW !!!
       for bond_simple_proxy in geometry_proxy_registries.bond_simple.proxies:
         if bond_simple_proxy.i_seqs in ij_seqs:
           link_found = True
           break
       if link_found: continue
+      # check for any link between atom groups based on residue name, eg ASN-NAG
       # get predefined link
       link, swap, key = linking_utils.is_atom_group_pair_linked(
         atom_group1,
