@@ -62,7 +62,7 @@ def load_result (file_name,
   # Pull relevant information from integrated.pickle and refined_experiments.json
   # files to construct the equivalent of a single integration pickle (frame).
   try:
-    frame = frame_extractor.ConstructFrame(eval_ending(file_name)[2], eval_ending(file_name)[1], params.pixel_size).make_frame()
+    frame = frame_extractor.ConstructFrameFromFiles(eval_ending(file_name)[2], eval_ending(file_name)[1]).make_frame()
   except Exception:
     return None
 
