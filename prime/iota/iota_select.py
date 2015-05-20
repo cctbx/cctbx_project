@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 05/07/2015
+Last Changed: 05/19/2015
 Description : IOTA pickle selection module. Selects the best integration results
               from grid search output.
 '''
@@ -205,7 +205,6 @@ def best_file_selection(sel_type, gs_params, output_entry, log_dir):
 
       # Selection by round
       if sel_type == "grid":
-        prog_label = 'SPOTFINDING SELECTION'
         best = selection_grid_search(acceptable_results)
         with open('{}/gs_selected.lst'\
                   ''.format(os.path.abspath(gs_params.output)), 'a') as sel_int:

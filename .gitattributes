@@ -2334,6 +2334,7 @@ prime/iota/__init__.py -text
 prime/iota/double_gauss.py -text
 prime/iota/iota_analysis.py -text
 prime/iota/iota_cmd.py -text
+prime/iota/iota_conversion.py -text
 prime/iota/iota_gridsearch.py -text
 prime/iota/iota_input.py -text
 prime/iota/iota_select.py -text

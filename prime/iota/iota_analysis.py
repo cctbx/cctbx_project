@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 05/07/2015
+Last Changed: 05/19/2015
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes warnings in case of detected non-isomorphism
               and other anomalies that require a more careful processing

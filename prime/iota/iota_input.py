@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 05/07/2015
+Last Changed: 05/19/2015
 Description : IOTA I/O module. Reads PHIL input, creates output directories,
               creates input lists and organizes starting parameters, also
               creates reasonable IOTA and PHIL defaults if selected
@@ -16,9 +16,8 @@ import shutil
 import random
 from cStringIO import StringIO
 
-
 import iotbx.phil as ip
-import dials.util.command_line as cmd
+import iota_cmd as cmd
 
 master_phil = ip.parse("""
 description = Integration Optimization, Transfer and Analysis (IOTA)
@@ -114,7 +113,10 @@ advanced
     .help = Print to a file a list of selected images
   clean_up_output = True
     .type = bool
-    .help = Set to False to leave temporary folders and files in place
+    .help = Set to False to leave temporary folders and files in place'
+  square_mode = None pad crop
+    .type = choice
+    .help = Method to generate square image
   pred_img
     .help = "Visualize spotfinding and integration results."
   {
@@ -139,13 +141,20 @@ advanced
 """)
 
 class Capturing(list):
+  """ Class used to capture stdout from cctbx.xfel objects. Saves output in
+  appendable list for potential logging.
+  """
   def __enter__(self):
     self._stdout = sys.stdout
-    sys.stdout = self._stringio = StringIO()
+    self._stderr = sys.stderr
+    sys.stdout = self._stringio_stdout = StringIO()
+    sys.stderr = self._stringio_stderr = StringIO()
     return self
   def __exit__(self, *args):
-    self.extend(self._stringio.getvalue().splitlines())
+    self.extend(self._stringio_stdout.getvalue().splitlines())
     sys.stdout = self._stdout
+    self.extend(self._stringio_stderr.getvalue().splitlines())
+    sys.stderr = self._stderr
 
 def process_input(input_file_list):
   """ Read and parse parameter file
@@ -170,8 +179,6 @@ def process_input(input_file_list):
   for one_output in output:
     txt_out += one_output + '\n'
 
-
-
   return params, txt_out
 
 
@@ -189,6 +196,15 @@ def make_input_list (gs_params):
   input_list = []
   abs_inp_path = os.path.abspath(gs_params.input)
 
+  if not gs_params.grid_search.flag_on:
+    cmd.Command.start("Reading input list from file")
+    with open('{}/input.lst'\
+              ''.format(os.path.abspath(gs_params.output)), 'r') as listfile:
+      listfile_contents = listfile.read()
+    inp_list = listfile_contents.splitlines()
+    cmd.Command.end("Reading input list from file -- DONE")
+    return inp_list
+
   if gs_params.advanced.single_img != None:
     inp_list = [gs_params.advanced.single_img]
     return inp_list
@@ -200,14 +216,14 @@ def make_input_list (gs_params):
     input_list = listfile_contents.splitlines()
     cmd.Command.end("Reading input list from file -- DONE")
   else:
-  # search for *.pickle files within the tree and record in a list w/
-  # full absolute path and filanames
+  # search for diffraction image files within the tree and record in a list w/
+  # full absolute path and filenames
     cmd.Command.start("Generating input list")
     for root, dirs, files in os.walk(abs_inp_path):
       for filename in files:
-        if filename.endswith("pickle"):
-          pickle_file = os.path.join(root, filename)
-          input_list.append(pickle_file)
+        found_file = os.path.join(root, filename)
+        if os.path.isfile(found_file):
+          input_list.append(found_file)
     cmd.Command.end("Generating input list -- DONE")
 
     if len(input_list) == 0:
@@ -215,7 +231,8 @@ def make_input_list (gs_params):
       sys.exit()
 
   # Pick a randomized subset of images
-  if gs_params.advanced.random_sample.flag_on == True:
+  if gs_params.advanced.random_sample.flag_on and \
+     gs_params.advanced.random_sample.number < len(input_list):
     random_inp_list = []
 
     if gs_params.advanced.random_sample.number == 0:
@@ -228,6 +245,7 @@ def make_input_list (gs_params):
     else:
       random_sample_number = gs_params.advanced.random_sample.number
 
+    cmd.Command.start("Selecting {} random images".format(random_sample_number))
     for i in range(random_sample_number):
       random_number = random.randrange(0, len(input_list))
       if input_list[random_number] in random_inp_list:
@@ -236,16 +254,44 @@ def make_input_list (gs_params):
         random_inp_list.append(input_list[random_number])
       else:
         random_inp_list.append(input_list[random_number])
+    cmd.Command.end("Selecting {} random images -- DONE ".format(random_sample_number))
 
     inp_list = random_inp_list
 
   else:
     inp_list = input_list
-
   return inp_list
 
+def make_raw_input(input_list, gs_params):
 
-def make_dir_lists(input_list, gs_params):
+  raw_input_list = []
+  converted_img_list = []
+
+  conv_input_dir = os.path.abspath("{}/conv_pickles".format(os.curdir))
+
+  if os.path.isdir(conv_input_dir):
+    shutil.rmtree(conv_input_dir)
+  os.makedirs(conv_input_dir)
+
+  for raw_image in input_list:
+    path = os.path.dirname(raw_image)
+    img_filename = os.path.basename(raw_image)
+    filename_no_ext = img_filename.split('.')[0]
+    conv_filename = filename_no_ext + "_prep.pickle"
+
+    if os.path.relpath(path, os.path.abspath(gs_params.input)) == '.':
+      dest_folder = conv_input_dir
+    else:
+      dest_folder = '{0}/{1}'.format(conv_input_dir,
+                                     os.path.relpath(path,
+                                     os.path.abspath(gs_params.input)))
+
+    converted_img_list.append(os.path.join(dest_folder, conv_filename))
+
+  return converted_img_list, conv_input_dir
+
+
+def make_dir_lists(input_list, input_folder, output_folder):
   """ From the input list, makes a list of input and output folders, such that
       the output directory structure mirrors the input directory structure, in
       case of duplication of image filenames.
@@ -260,8 +306,8 @@ def make_dir_lists(input_list, gs_params):
   input_dir_list = []
   output_dir_list = []
 
-  abs_inp_path = os.path.abspath(gs_params.input)
-  abs_out_path = os.path.abspath(gs_params.output)
+  abs_inp_path = os.path.abspath(input_folder)
+  abs_out_path = os.path.abspath(output_folder)
 
   # make lists of input and output directories and files
   for input_entry in input_list:
@@ -273,6 +319,9 @@ def make_dir_lists(input_list, gs_params):
     else:                                           # in case of input in tree
       input_dir = abs_inp_path + '/' + os.path.relpath(path, abs_inp_path)
       output_dir = abs_out_path + '/' + os.path.relpath(path, abs_inp_path)
+
+    input_dir = os.path.normpath(input_dir)
+    output_dir = os.path.normpath(output_dir)
 
     if input_dir not in input_dir_list:
       input_dir_list.append(os.path.normpath(input_dir))
@@ -312,15 +361,19 @@ def make_mp_input(input_list, gs_params, gs_range):
     path = os.path.dirname(current_img)
     img_filename = os.path.basename(current_img)
 
-    if os.path.relpath(path, os.path.abspath(gs_params.input)) == '.':
-      output_dir = os.path.abspath(gs_params.output)
-    else:
-      output_dir = '{0}/{1}'.format(os.path.abspath(gs_params.output),
-                                    os.path.relpath(path,
-                                    os.path.abspath(gs_params.input)))
+    input_folder = os.path.dirname(os.path.commonprefix(input_list))
+    output_folder = os.path.abspath(gs_params.output)
 
-    current_output_dir = "{0}/tmp_{1}".format(output_dir,
-                                              img_filename.split('.')[0])
+    rel_path = os.path.normpath(os.path.relpath(path,
+                                os.path.abspath(input_folder)))
+
+    if rel_path == '.':
+      output_dir = output_folder
+    else:
+      output_dir = os.path.normpath(os.path.join(output_folder, rel_path))
+
+    current_output_dir = os.path.normpath(os.path.join(output_dir,
+                                              img_filename.split('.')[0]))
     mp_output_entry = [current_output_dir, current_img,
                        img_filename.split('.')[0]]
     mp_output.append(mp_output_entry)
@@ -347,8 +400,7 @@ def make_mp_input(input_list, gs_params, gs_range):
                        spot_area]
             mp_input.append(mp_item)
         else:
-          sig_height = spot_height
-          mp_item = [current_img, current_output_dir, sig_height, spot_height,
+          mp_item = [current_img, current_output_dir, spot_height, spot_height,
                      spot_area]
           mp_input.append(mp_item)
 
@@ -376,6 +428,8 @@ def make_dirs (mp_output_list, gs_params):
   for folder in output_folders:
     if not os.path.exists(folder):
       os.makedirs(folder)
+
+
 
   cmd.Command.end("Generating output directory tree -- DONE")
 
@@ -410,7 +464,8 @@ def main_log(logfile, entry):
   with open(logfile, 'a') as logfile:
     logfile.write('{}\n'.format(entry))
 
-def generate_input(gs_params):
+
+def generate_input(gs_params, input_list, input_folder):
   """ This section generates input for grid search and/or pickle selection.
 
       parameters: gs_params - list of parameters from *.param file (in
@@ -432,13 +487,12 @@ def generate_input(gs_params):
               gs_params.grid_search.a_avg - gs_params.grid_search.a_std,
               gs_params.grid_search.a_avg + gs_params.grid_search.a_std]
 
-  # Make input list
-  input_list = make_input_list(gs_params)
 
   # Make log directory and input/output directory lists
   log_dir = "{}/logs".format(os.path.abspath(gs_params.output))
   cmd.Command.start("Reading data folder(s)")
-  input_dir_list, output_dir_list = make_dir_lists(input_list, gs_params)
+  input_dir_list, output_dir_list = make_dir_lists(input_list, input_folder,
+                                                   gs_params.output)
   cmd.Command.end("Reading data folder(s) -- DONE")
 
   # Make input/output lists for multiprocessing
@@ -465,7 +519,7 @@ def generate_input(gs_params):
   logfile = '{}/iota.log'.format(log_dir)
   main_log_init(logfile)
 
-  return gs_range, input_list, input_dir_list, output_dir_list, log_dir,\
+  return gs_range, input_dir_list, output_dir_list, log_dir,\
          logfile, mp_input_list, mp_output_list
 
 def write_defaults(current_path, txt_out):
@@ -513,7 +567,8 @@ def write_defaults(current_path, txt_out):
                     '}',
                     'mosaicity_limit=2.0',
                     'dist_permit_binning=False',
-                    'distl_minimum_number_spots_for_indexing=16'
+                    'distl_minimum_number_spots_for_indexing=16',
+                    'distl_permit_binning=False'
                     ]
   with open(def_target_file, 'w') as targ:
     for line in default_target:
