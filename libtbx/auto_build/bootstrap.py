@@ -816,13 +816,14 @@ class Builder(object):
       **kwargs
     )
 
-  def add_test_parallel(self, module=None):
+  def add_test_parallel(self, module=None, **kwargs):
     self.add_command(
       'libtbx.run_tests_parallel',
       name='test %s'%module,
       workdir=['tests', module],
       args=['module=%s'%module, 'nproc=auto', 'verbosity=1'],
-      haltOnFailure=False
+      haltOnFailure=False,
+      **kwargs
     )
 
   def add_refresh(self):
@@ -1016,7 +1017,7 @@ class DIALSBuilder(CCIBuilder):
   def add_tests(self):
     self.add_test_command('libtbx.import_all_ext')
     self.add_test_command('cctbx_regression.test_nightly')
-    self.add_test_parallel('dials')
+    self.add_test_parallel('dials', flunkOnFailure=False, warnOnFailure=True)
 
   def add_base(self):
     super(DIALSBuilder, self).add_base(
