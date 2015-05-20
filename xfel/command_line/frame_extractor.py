@@ -34,32 +34,23 @@ class ConstructFrame(object):
                        'xbeam':0,
                        'ybeam':0}
 
-  def __init__(self, pickle_name, json_name, pixel_size):
+  def __init__(self, reflections, experiment):
     # assemble template and unpack files
     self.frame = self.get_template_pickle()
-    self.pixel_size = pixel_size
+    self.pixel_size = experiment.detector[0].get_pixel_size()[0]
 
-    importer = Importer([pickle_name, json_name], read_experiments=True, read_reflections=True)
-    if importer.unhandled:
-      print "unable to process:", importer.unhandled
-
-    # load the integration.pickle file (reflection table) into memory
-    self.reflections = flatten_reflections(importer.reflections)[0]
-    if self.reflections.has_key('intensity.prf.value'):
+    if reflections.has_key('intensity.prf.value'):
       self.method = 'prf' # integration by profile fitting
-    elif self.reflections.has_key('intensity.sum.value'):
+    elif reflections.has_key('intensity.sum.value'):
       self.method = 'sum' # integration by simple summation
-    self.reflections = self.reflections.select(self.reflections['intensity.' + self.method + '.variance'] > 0) # keep only spots with sigmas above zero
+    self.reflections = reflections.select(reflections['intensity.' + self.method + '.variance'] > 0) # keep only spots with sigmas above zero
 
-    # load the experiments.json file (json) into memory, piecewise
-    experiments = flatten_experiments(importer.experiments)[0]
-
-    self.xtal = experiments.crystal
-    self.beam_obj = experiments.beam
-    self.det = experiments.detector
-    self.gonio = experiments.goniometer
-    self.scan = experiments.scan
-    self.img_sweep = experiments.imageset
+    self.xtal = experiment.crystal
+    self.beam_obj = experiment.beam
+    self.det = experiment.detector
+    self.gonio = experiment.goniometer
+    self.scan = experiment.scan
+    self.img_sweep = experiment.imageset
 
   # experiment-dependent components ---------------------------------------------------------------------------
 
@@ -183,6 +174,19 @@ class ConstructFrame(object):
     self.populate_residuals()
     return self.frame
 
+class ConstructFrameFromFiles(ConstructFrame):
+  def __init__(self, pickle_name, json_name):
+    # load the integration.pickle file (reflection table) into memory and
+    # load the experiments.json file (json) into memory, piecewise.
+    # check_format=False because we don't wont to load any imagesets in the
+    # experiement list
+    importer = Importer([pickle_name, json_name], read_experiments=True, read_reflections=True, check_format=False)
+    if importer.unhandled:
+      print "unable to process:", importer.unhandled
+
+    ConstructFrame.__init__(self, flatten_reflections(importer.reflections)[0],
+                                  flatten_experiments(importer.experiments)[0])
+
 if __name__ == "__main__":
   master_phil_scope = iotbx.phil.parse("""
     pickle_name = None
@@ -191,16 +195,13 @@ if __name__ == "__main__":
     json_name = None
       .type = path
       .help = path to an experiments.json file
-    pixel_size = 0.11
-      .type = float
-      .help = detector-specific parameter for pixel size in mm
     output_dir = None
       .type = path
       .help = if set, path to directory to save the new pickle file
       """)
   parser = OptionParser(phil=master_phil_scope)
   params, options = parser.parse_args(show_diff_phil=True)
-  frame = ConstructFrame(params.pickle_name, params.json_name, params.pixel_size).make_frame()
+  frame = ConstructFrameFromFiles(params.pickle_name, params.json_name).make_frame()
   if not params.output_dir is None:
     assert os.path.isdir(params.output_dir)
     dest_path = os.path.splitext(params.pickle_name)[0] + "_extracted.pickle"
