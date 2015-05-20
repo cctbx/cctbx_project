@@ -60,7 +60,7 @@ def run (args, out=sys.stdout) :
     print "ERROR: absolute path required"
     return False
   if (not op.isdir(program_dir)) :
-    print "ERROR: '%s' is not a directory"
+    print "ERROR: '%s' is not a directory" % program_dir
     return False
   dest_name = op.dirname(program_dir)
   if (dest_name == "/Applications") :
