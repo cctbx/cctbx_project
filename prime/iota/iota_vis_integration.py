@@ -1,6 +1,6 @@
 from __future__ import division
 from libtbx import easy_pickle as ep
-#import scipy.misc as spm
+import scipy.misc as spm
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
