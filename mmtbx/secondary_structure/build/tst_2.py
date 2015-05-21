@@ -873,6 +873,7 @@ def exercise_pure_polyala_alpha(prefix="tst_2_ex_ppa"):
   h_records = """\
 HELIX    1   1 ALA A    1  ALA A   20  1                                  20
 """
+  import sys # import dependency
   h = ssb.secondary_structure_from_sequence(ssb.alpha_helix_str,"A"*20)
   # h.write_pdb_file(file_name=prefix+'h0.pdb')
   d1 = get_distances(h)
@@ -884,7 +885,10 @@ HELIX    1   1 ALA A    1  ALA A   20  1                                  20
     rm = ssb.substitute_ss(
       real_h=test_h,
       xray_structure=pdb_inp.xray_structure_simple(),
-      ss_annotation=ann)
+      ss_annotation=ann,
+      # log=sys.stdout,
+      # verbose=True
+      )
   # test_h.write_pdb_file(file_name=prefix+'h1.pdb')
   d2 = get_distances(test_h)
   dist = abs(d2-d1)
@@ -985,6 +989,7 @@ def exercise():
   exercise_00()
   exercise_01()
   exercise_02()
+  print "OK"
 
 if (__name__ == "__main__"):
   exercise()

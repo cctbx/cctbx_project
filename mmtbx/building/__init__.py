@@ -407,8 +407,6 @@ class box_build_refine_base (object) :
     self.unit_cell_box = self.box.xray_structure_box.unit_cell()
     self.geo_box = grm.geometry.select(self.box.selection_within
       ).discard_symmetry(new_unit_cell=self.unit_cell_box)
-    self.reference_manager_box = \
-      self.geo_box.generic_restraints_manager.reference_manager
     self.box_restraints_manager = mmtbx.restraints.manager(
       geometry      = self.geo_box,
       normalization = True)
@@ -519,13 +517,13 @@ class box_build_refine_base (object) :
     sites_cart_box = self.box.xray_structure_box.sites_cart()
     reference_sites = sites_cart_box.select(selection)
     if (reset_first) :
-      self.reference_manager_box.remove_coordinate_restraints()
-    self.reference_manager_box.add_coordinate_restraints(
-        sites_cart = reference_sites,
-        selection  = selection,
-        sigma      = reference_sigma,
-        limit      = limit,
-        top_out_potential=top_out_potential)
+      self.geo_box.remove_reference_coordinate_restraints_in_place()
+    self.geo_box.add_reference_coordinate_restraints_in_place(
+        pdb_hierarchy=self.box.pdb_hierarchy_box,
+        selection=selection,
+        sigma=reference_sigma,
+        limit=limit,
+        top_out=top_out_potential)
 
   def real_space_refine (self, selection=None) :
     """

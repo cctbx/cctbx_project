@@ -7,42 +7,69 @@ import iotbx.pdb
 import boost.python
 ext = boost.python.import_ext("mmtbx_reference_coordinate_ext")
 
+
+def add_coordinate_restraints(
+      sites_cart,
+      selection=None,
+      sigma=0.5,
+      limit=1.0,
+      top_out_potential=False):
+  import boost.python
+  ext_rcp = boost.python.import_ext("mmtbx_reference_coordinate_ext")
+  result = ext_rcp.shared_reference_coordinate_proxy()
+  if (selection is not None):
+    if (isinstance(selection, flex.bool)):
+      selection = selection.iselection()
+  if selection is None:
+    selection = flex.bool(
+      len(sites_cart),
+      True).iselection()
+  assert len(sites_cart) == len(selection)
+  weight = 1.0 / (sigma**2)
+  for k, i_seq in enumerate(selection):
+    i_seqs = [i_seq]
+    ref_sites = sites_cart[k]
+    proxy = ext_rcp.reference_coordinate_proxy(
+              i_seqs=i_seqs,
+              ref_sites=ref_sites,
+              weight=weight,
+              limit=limit,
+              top_out=top_out_potential)
+    result.append(proxy)
+  return result
+
+def exclude_outliers_from_reference_restraints_selection(
+    pdb_hierarchy,
+    restraints_selection):
+  from mmtbx.validation.ramalyze import ramalyze
+  # the import below is SLOW!!!
+  from mmtbx.rotamer.rotamer_eval import RotamerEval
+  assert restraints_selection is not None
+  # ramachandran plot outliers
+  rama_outlier_selection = ramalyze(pdb_hierarchy=pdb_hierarchy,
+    outliers_only=False).outlier_selection()
+  rama_outlier_selection = flex.bool(restraints_selection.size(),
+    rama_outlier_selection)
+  # rotamer outliers
+  rota_outlier_selection = flex.size_t()
+  rotamer_manager = RotamerEval() # SLOW!!!
+  for model in pdb_hierarchy.models():
+    for chain in model.chains():
+      for residue_group in chain.residue_groups():
+        conformers = residue_group.conformers()
+        if(len(conformers)>1): continue
+        for conformer in residue_group.conformers():
+          residue = conformer.only_residue()
+          if(rotamer_manager.evaluate_residue(residue)=="OUTLIER"):
+            rota_outlier_selection.extend(residue.atoms().extract_i_seq())
+  rota_outlier_selection = flex.bool(restraints_selection.size(),
+    rota_outlier_selection)
+  outlier_selection = rama_outlier_selection | rota_outlier_selection
+  return restraints_selection & (~outlier_selection)
+
 class manager(object):
   def __init__(self):
-    self.reference_coordinate_proxies = None
     self.reference_torsion_proxies = None
-
-  def add_coordinate_restraints(
-        self,
-        sites_cart,
-        selection=None,
-        sigma=0.5,
-        limit=1.0,
-        top_out_potential=False):
-    import boost.python
-    self.ext = boost.python.import_ext("mmtbx_reference_coordinate_ext")
-    if self.reference_coordinate_proxies is None:
-      self.reference_coordinate_proxies = \
-        self.ext.shared_reference_coordinate_proxy()
-    if (selection is not None):
-      if (isinstance(selection, flex.bool)):
-        selection = selection.iselection()
-    if selection is None:
-      selection = flex.bool(
-        len(sites_cart),
-        True).iselection()
-    assert len(sites_cart) == len(selection)
-    weight = 1.0 / (sigma**2)
-    for k, i_seq in enumerate(selection):
-      i_seqs = [i_seq]
-      ref_sites = sites_cart[k]
-      proxy = self.ext.reference_coordinate_proxy(
-                i_seqs=i_seqs,
-                ref_sites=ref_sites,
-                weight=weight,
-                limit=limit,
-                top_out=top_out_potential)
-      self.reference_coordinate_proxies.append(proxy)
 
   def add_torsion_restraints(
         self,
@@ -76,13 +103,6 @@ class manager(object):
       for dp in proxies:
         self.reference_torsion_proxies.append(dp)
 
-  def remove_coordinate_restraints(self, selection=None):
-    if (selection is not None) :
-      self.reference_coordinate_proxies = \
-        self.reference_coordinate_proxies.proxy_remove(selection=selection)
-    else :
-      self.reference_coordinate_proxies = None
-
   def remove_torsion_restraints(self, selection):
     self.reference_torsion_proxies = \
       self.reference_torsion_proxies.proxy_remove(selection=selection)
@@ -107,11 +127,6 @@ class manager(object):
                            gradient_array,
                            unit_cell=None):
     target = 0.0
-    if self.reference_coordinate_proxies is not None:
-      target += ext.reference_coordinate_residual_sum(
-        sites_cart,
-        self.reference_coordinate_proxies,
-        gradient_array)
     if self.reference_torsion_proxies is not None:
       if unit_cell is None:
         target += geometry_restraints.dihedral_residual_sum(
@@ -125,6 +140,11 @@ class manager(object):
                     proxies=self.reference_torsion_proxies,
                     gradient_array=gradient_array)
     return target
+
+  def select(self, n_seq, iselection):
+    if self.reference_torsion_proxies is not None:
+      self.reference_torsion_proxies = self.reference_torsion_proxies.\
+          proxy_select(n_seq, iselection)
 
 def torsion_is_chi_angle(dp, atoms_with_labels):
   get_class = iotbx.pdb.common_residue_names_get_class

@@ -46,7 +46,7 @@ def run(args):
   selection = "selection = (not (name ' CA ' or name ' N  ' or name ' C  ' " +\
               "or name ' O  ' or name ' HA ' or name ' H  ' " +\
               "or name ' OXT')) and ("
-  restrain = "reference_restraints.restrain_starting_coord_selection = " +\
+  restrain = "pdb_interpretation.reference_coordinate_restraints.selection = " +\
              "(not (name ' CA ' or name ' N  ' or name ' C  ' " +\
              "or name ' O  ' or name ' HA ' or name ' H  ' " +\
              "or name ' OXT')) and ("
@@ -86,13 +86,14 @@ def run(args):
           (flip[0:2], flip[2:6].strip(), flip[7:10], flip[-1:])
   selection += " )"
   restrain += " )"
-  sigma = "reference_restraints.coordinate_sigma=0.05"
+  sigma = "pdb_interpretation.reference_coordinate_restraints.sigma=0.05"
   directory = "directory="+temp_dir
   params = os.path.join(temp_dir, "nqh.params")
   p = file(params, 'w')
   print >> p, selection
   print >> p, restrain
   print >> p, sigma
+  print >> p, "pdb_interpretation.reference_coordinate_restraints.enabled=True"
   print >> p, directory
   print >> p, "stop_for_unknowns=False"
   print >> p, "pdb_interpretation.clash_guard.nonbonded_distance_threshold=None"

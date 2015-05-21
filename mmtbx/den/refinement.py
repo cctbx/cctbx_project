@@ -5,7 +5,6 @@ from mmtbx.refinement import tardy
 from libtbx import easy_mp, Auto
 from mmtbx.refinement import print_statistics
 from mmtbx.refinement import adp_refinement
-from mmtbx.geometry_restraints import reference
 from cctbx.array_family import flex
 from cStringIO import StringIO
 import sys, random
@@ -414,20 +413,13 @@ class manager(object):
     else:
       restraint_sites_cart = self.model.xray_structure.sites_cart().deep_copy()
       restraint_selection = pdb_hierarchy.atoms().extract_i_seq()
-    self.model.restraints_manager.geometry.generic_restraints_manager.\
-      reference_manager.add_coordinate_restraints(
-        sites_cart=restraint_sites_cart,
-        selection=restraint_selection)
-
+    self.model.restraints_manager.geometry.\
+        add_reference_coordinate_restraints_in_place(
+            pdb_hierarchy=pdb_hierarchy,
+            selection=restraint_selection)
     ##### sanity check #####
     assert(self.model.restraints_manager.geometry.
-           generic_restraints_manager.flags.reference==True)
-    assert(self.model.restraints_manager.geometry.
-           generic_restraints_manager.reference_manager.
-           reference_coordinate_proxies is not None)
-    assert(len(self.model.restraints_manager.geometry.
-           generic_restraints_manager.reference_manager.
-           reference_coordinate_proxies) == len(restraint_sites_cart))
+           get_n_reference_coordinate_proxies() >= len(restraint_sites_cart))
     ########################
 
     selection = self.model.selection_moving

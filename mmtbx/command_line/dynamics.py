@@ -78,7 +78,6 @@ Usage examples:
     self.caller(self.process_inputs,       "Processing inputs")
     self.caller(self.atom_selection,       "Atom selection")
     self.caller(self.get_restraints,       "Geometry Restraints")
-    self.caller(self.reference_restraints, "Add reference restraints")
     self.caller(self.dynamics,             "Dynamics")
     self.caller(self.write_pdb_file,       "Write PDB file")
     self.caller(self.write_geo_file,       "Write GEO file")
@@ -88,7 +87,6 @@ Usage examples:
   def atom_selection (self, prefix) :
     self.selection = flex.bool(self.xray_structure.sites_cart().size(), True)
     geometry_minimization.broadcast(m=prefix, log = self.log)
-    self.generate_reference_restraints_selection()
 
   def dynamics (self, prefix) :
     geometry_minimization.broadcast(m=prefix, log = self.log)

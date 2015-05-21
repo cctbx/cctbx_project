@@ -138,6 +138,31 @@ master_params_str = """\
   c_beta_restraints=True
     .type = bool
     .short_caption = Use C-beta deviation restraints
+  reference_coordinate_restraints
+    .short_caption = Reference coordinate restraints
+    .caption = Harmonic restraints on the starting coordinates
+    .help = Restrains coordinates in Cartesian space to stay near their \
+      starting positions.  This is intended for use in generating \
+      simulated annealing omit maps, to prevent refined atoms from \
+      collapsing in on the region missing atoms.  For conserving geometry \
+      quality at low resolution, the more flexible reference model \
+      restraints should be used instead.
+  {
+    enabled = False
+      .type = bool
+    exclude_outliers = True
+      .caption = Exclude ramachandran plot and rotamer outliers from reference \
+        coordinate selection
+      .type = bool
+    selection = all
+      .type = atom_selection
+    sigma = 0.2
+      .type = float
+    limit = 1.0
+      .type = float
+    top_out = False
+      .type = bool
+  }
   automatic_linking
     .style = box auto_align
     .short_caption = Automatic covalent linking
@@ -4665,7 +4690,8 @@ class build_all_chain_proxies(linking_mixins):
       ramachandran_manager=None,
       external_energy_function=external_energy_function,
       max_reasonable_bond_distance=self.params.max_reasonable_bond_distance,
-      plain_pairs_radius=plain_pairs_radius)
+      plain_pairs_radius=plain_pairs_radius,
+      log=log)
     if (params_remove is not None):
       self.process_geometry_restraints_remove(
         params=params_remove, geometry_restraints_manager=result)
@@ -4941,6 +4967,23 @@ class process(object):
               c_beta_torsion_proxies)
         print >> self.log, "  Number of C-beta restraints generated: ",\
            n_c_beta_restraints
+
+      # Reference coordinate restraints
+      if self.all_chain_proxies.params.reference_coordinate_restraints.enabled:
+        rcr = self.all_chain_proxies.params.reference_coordinate_restraints
+        self._geometry_restraints_manager.\
+            add_reference_coordinate_restraints_in_place(
+                all_chain_proxies=self.all_chain_proxies,
+                # pdb_hierarchy=self.all_chain_proxies.pdb_hierarchy,
+                selection=rcr.selection,
+                exclude_outliers=rcr.exclude_outliers,
+                sigma=rcr.sigma,
+                limit=rcr.limit,
+                top_out=rcr.top_out)
+        n_rcr = self._geometry_restraints_manager.\
+            get_n_reference_coordinate_proxies()
+        print >> self.log, "  Number of reference coordinate restraints generated:",\
+           n_rcr
 
       # Secondary structure restraints:
       # Proteins first

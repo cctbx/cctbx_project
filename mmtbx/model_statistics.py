@@ -129,6 +129,7 @@ class geometry(object):
       esg.nonbonded_residual_sum+
       esg.planarity_residual_sum+
       esg.parallelity_residual_sum+
+      esg.reference_coordinate_residual_sum+
       esg.reference_dihedral_residual_sum+
       esg.ncs_dihedral_residual_sum+
       esg.generic_restraint_residual_sum+

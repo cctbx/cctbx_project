@@ -21,15 +21,8 @@ class manager (object) :
       self.reference_manager = reference.manager()
 
   def get_n_proxies(self):
-    return self.get_n_reference_coordinate_proxies() + \
-           self.get_n_reference_torsion_proxies() +\
+    return self.get_n_reference_torsion_proxies() +\
            self.get_n_den_proxies()
-
-  def get_n_reference_coordinate_proxies(self):
-    if self.reference_manager is not None:
-      if self.reference_manager.reference_coordinate_proxies is not None:
-        return len(self.reference_manager.reference_coordinate_proxies)
-    return 0
 
   def get_n_reference_torsion_proxies(self):
     if self.reference_manager is not None:
@@ -46,13 +39,11 @@ class manager (object) :
                                sites_cart,
                                gradient_array=None) :
     if (gradient_array is None) :
-      from scitbx.array_family import flex
       gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
     target = 0
     if (self.reference_manager is not None and
         self.flags.reference) :
-      if (self.reference_manager.reference_coordinate_proxies is not None or
-          self.reference_manager.reference_torsion_proxies is not None):
+      if (self.reference_manager.reference_torsion_proxies is not None):
         target += self.reference_manager.target_and_gradients(
           sites_cart=sites_cart,
           gradient_array=gradient_array)
@@ -75,6 +66,9 @@ class manager (object) :
     den_manager = None
     if (self.den_manager is not None) :
       den_manager = self.den_manager.select(n_seq, iselection)
+    if self.reference_manager is not None:
+      reference_manager = self.reference_manager.select(n_seq, iselection)
     return manager(
       den_manager=den_manager,
+      reference_manager=reference_manager,
       flags=self.flags)
