@@ -23,7 +23,10 @@ namespace boost_python {
     typedef reference_coordinate_proxy w_t;
     class_<w_t>("reference_coordinate_proxy", no_init)
       .def(init<
-        af::tiny<unsigned, 1> const&, scitbx::vec3<double>, double,
+        // This is an array just for compatibility with
+        // cctbx::geometry_restraints::shared_proxy_select function!
+        af::tiny<unsigned, 1> const&,
+        scitbx::vec3<double>, double,
         double, bool>((
           arg("i_seqs"),
           arg("ref_sites"),
