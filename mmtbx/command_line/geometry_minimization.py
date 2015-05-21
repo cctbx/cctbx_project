@@ -11,8 +11,6 @@ from libtbx import runtime_utils
 import os
 import sys
 from cStringIO import StringIO
-from mmtbx.validation.ramalyze import ramalyze
-from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx.monomer_library import pdb_interpretation
 
 base_params_str = """\
