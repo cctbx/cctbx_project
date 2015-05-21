@@ -46,16 +46,6 @@ include scope libtbx.phil.interface.tracking_params
 fix_rotamer_outliers = True
   .type = bool
   .help = Remove outliers
-reference_restraints {
-  restrain_starting_coord_selection = None
-    .type = str
-    .help = Atom selection string: restraint selected to starting position
-    .short_caption = Restrain selection
-    .input_size = 400
-  coordinate_sigma = 0.5
-    .type = float
-    .help = sigma value for coordinates restrained to starting positions
-}
 stop_for_unknowns = True
   .type = bool
   .short_caption = Stop for unknown residues
@@ -351,7 +341,6 @@ class run(object):
     self.caller(self.process_inputs,       "Processing inputs")
     self.caller(self.atom_selection,       "Atom selection")
     self.caller(self.get_restraints,       "Geometry Restraints")
-    self.caller(self.reference_restraints, "Add reference restraints")
     self.caller(self.minimization,         "Minimization")
     self.caller(self.write_pdb_file,       "Write PDB file")
     self.caller(self.write_geo_file,       "Write GEO file")
@@ -422,40 +411,6 @@ class run(object):
       string = self.params.selection)
     print >> self.log, "  selected %s atoms out of total %s"%(
       str(self.selection.count(True)),str(self.selection.size()))
-    self.generate_reference_restraints_selection()
-
-  def generate_reference_restraints_selection(self):
-    if(self.params.reference_restraints.\
-       restrain_starting_coord_selection is not None):
-      self.restrain_selection = mmtbx.utils.atom_selection(
-        all_chain_proxies = self.processed_pdb_file.all_chain_proxies,
-        string =
-          self.params.reference_restraints.restrain_starting_coord_selection)
-      self.exclude_outliers_from_reference_restraints_selection()
-
-  def exclude_outliers_from_reference_restraints_selection(self):
-    if(self.restrain_selection is not None):
-      # ramachandran plot outliers
-      rama_outlier_selection = ramalyze(pdb_hierarchy=self.pdb_hierarchy,
-        outliers_only=False).outlier_selection()
-      rama_outlier_selection = flex.bool(self.restrain_selection.size(),
-        rama_outlier_selection)
-      # rotamer outliers
-      rota_outlier_selection = flex.size_t()
-      rotamer_manager = RotamerEval() # slow!
-      for model in self.pdb_hierarchy.models():
-        for chain in model.chains():
-          for residue_group in chain.residue_groups():
-            conformers = residue_group.conformers()
-            if(len(conformers)>1): continue
-            for conformer in residue_group.conformers():
-              residue = conformer.only_residue()
-              if(rotamer_manager.evaluate_residue(residue)=="OUTLIER"):
-                rota_outlier_selection.extend(residue.atoms().extract_i_seq())
-      rota_outlier_selection = flex.bool(self.restrain_selection.size(),
-        rota_outlier_selection)
-      outlier_selection = rama_outlier_selection | rota_outlier_selection
-      self.restrain_selection = self.restrain_selection & (~outlier_selection)
 
   def get_restraints(self, prefix):
     broadcast(m=prefix, log = self.log)
@@ -464,24 +419,6 @@ class run(object):
       xray_structure     = self.xray_structure,
       params             = self.params,
       log                = self.log)
-
-  def reference_restraints(self, prefix):
-    if(self.restrain_selection is not None):
-      broadcast(m=prefix, log = self.log)
-      restrain_sites_cart = self.xray_structure.sites_cart().deep_copy().\
-        select(self.restrain_selection)
-      self.grm.geometry.generic_restraints_manager.reference_manager.\
-        add_coordinate_restraints(
-          sites_cart = restrain_sites_cart,
-          selection  = self.restrain_selection,
-          #top_out_potential=True,
-          sigma      = self.params.reference_restraints.coordinate_sigma)
-      # sanity check
-      assert self.grm.geometry.generic_restraints_manager.flags.reference is True
-      assert self.grm.geometry.generic_restraints_manager.reference_manager.\
-        reference_coordinate_proxies is not None
-      assert len(self.grm.geometry.generic_restraints_manager.reference_manager.
-        reference_coordinate_proxies) == len(restrain_sites_cart)
 
   def minimization(self, prefix): # XXX USE alternate_nonbonded_off_on etc
     broadcast(m=prefix, log = self.log)

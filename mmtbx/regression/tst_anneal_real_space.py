@@ -15,6 +15,7 @@ def exercise () :
     "map_file_name=tst_anneal_real_space_maps.mtz",
     "include_starting_model=False",
   ]
+  print args
   rmsd = anneal_real_space.run(args=args, out=null_out())
   assert os.path.isfile("tst_anneal_real_space_out.pdb")
   assert (rmsd > 0) and (rmsd < 1)

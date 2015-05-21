@@ -7,6 +7,8 @@ from cctbx import adp_restraints # import dependency
 from mmtbx.monomer_library import server, pdb_interpretation
 from cStringIO import StringIO
 import random
+from mmtbx.geometry_restraints import reference
+
 
 if(1):
   random.seed(0)
@@ -123,69 +125,43 @@ def exercise_1(mon_lib_srv, ener_lib):
   pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   sites_cart = pdb_hierarchy.atoms().extract_xyz()
 
-  assert grm.generic_restraints_manager.reference_manager is not None
-  assert grm.generic_restraints_manager.\
-         reference_manager.reference_coordinate_proxies is None
-  assert grm.generic_restraints_manager.\
-         reference_manager.reference_torsion_proxies is None
-
-  grm.generic_restraints_manager.\
-    reference_manager.add_coordinate_restraints(
-      sites_cart=sites_cart)
-  assert grm.generic_restraints_manager.\
-         reference_manager.reference_coordinate_proxies is not None
-  assert len(grm.generic_restraints_manager.reference_manager.
-             reference_coordinate_proxies) == 29
+  proxies = reference.add_coordinate_restraints(sites_cart=sites_cart)
+  assert proxies.size() == 29, "expected 29, got %d" % proxies.size()
+  import boost.python
+  ext = boost.python.import_ext("mmtbx_reference_coordinate_ext")
   grads = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
-  residual = grm.generic_restraints_manager.reference_manager.\
-               target_and_gradients(
-                 sites_cart=sites_cart,
-                 gradient_array=grads)
+  residual = ext.reference_coordinate_residual_sum(
+      sites_cart=sites_cart,
+      proxies=proxies,
+      gradient_array=grads)
   assert approx_equal(residual, 0.0)
 
   #test selection
-  grm.generic_restraints_manager.reference_manager.\
-    reference_coordinate_proxies = None
   ca_selection = pdb_hierarchy.get_peptide_c_alpha_selection()
   ca_sites_cart = sites_cart.select(ca_selection)
-  grm.generic_restraints_manager.\
-    reference_manager.add_coordinate_restraints(
+  proxies = reference.add_coordinate_restraints(
       sites_cart=ca_sites_cart,
       selection=ca_selection)
-  assert len(grm.generic_restraints_manager.reference_manager.
-             reference_coordinate_proxies) == 3
+  assert proxies.size() == 3, "expected 3, got %d" % proxies.size()
   tst_iselection = flex.size_t()
   for atom in pdb_hierarchy.atoms():
     if atom.name == " CA " or atom.name == " N  ":
       tst_iselection.append(atom.i_seq)
   tst_sites_cart = sites_cart.select(tst_iselection)
-  grm.generic_restraints_manager.reference_manager.\
-    reference_coordinate_proxies = None
-  grm.generic_restraints_manager.\
-    reference_manager.add_coordinate_restraints(
-    sites_cart=tst_sites_cart,
-    selection=tst_iselection)
-  assert len(grm.generic_restraints_manager.reference_manager.
-             reference_coordinate_proxies) == 6
+  proxies = reference.add_coordinate_restraints(
+      sites_cart=tst_sites_cart,
+      selection=tst_iselection)
+  assert proxies.size() == 6, "expected 6, got %d" % proxies.size()
 
   #test remove
   selection = flex.bool([False]*29)
-  grm.generic_restraints_manager.reference_manager.\
-    remove_coordinate_restraints(
-      selection=selection)
-  assert len(grm.generic_restraints_manager.reference_manager.
-             reference_coordinate_proxies) == 6
-  grm.generic_restraints_manager.reference_manager.\
-    remove_coordinate_restraints(
-      selection=ca_selection)
-  assert len(grm.generic_restraints_manager.reference_manager.
-             reference_coordinate_proxies) == 3
+  proxies = proxies.proxy_remove(selection=selection)
+  assert proxies.size() == 6, "expected 6, got %d" % proxies.size()
+  proxies = proxies.proxy_remove(selection=ca_selection)
+  assert proxies.size() == 3, "expected 3, got %d" % proxies.size()
   selection = flex.bool([True]*29)
-  grm.generic_restraints_manager.reference_manager.\
-    remove_coordinate_restraints(
-      selection=selection)
-  assert len(grm.generic_restraints_manager.reference_manager.
-             reference_coordinate_proxies) == 0
+  proxies = proxies.proxy_remove(selection=selection)
+  assert proxies.size() == 0, "expected 0, got %d" % proxies.size()
 
 def exercise_2(mon_lib_srv, ener_lib):
   for use_reference in [True, False, None]:
@@ -217,19 +193,18 @@ def exercise_2(mon_lib_srv, ener_lib):
     assert selection.size() == len(reference_names)
     selection_bool = flex.bool(xrs2.scatterers().size(), selection)
     if(use_reference):
-      grm.generic_restraints_manager.reference_manager.\
-        add_coordinate_restraints(
-          sites_cart = sites_cart_reference,
-          selection = selection,
-          sigma = 0.01)
+      grm.adopt_reference_coordinate_restraints_in_place(
+          reference.add_coordinate_restraints(
+              sites_cart = sites_cart_reference,
+              selection = selection,
+              sigma = 0.01))
     elif(use_reference is None):
-      grm.generic_restraints_manager.reference_manager.\
-        add_coordinate_restraints(
-          sites_cart = sites_cart_reference,
-          selection = selection,
-          sigma = 0.01)
-      grm.generic_restraints_manager.reference_manager.\
-        remove_coordinate_restraints(
+      grm.adopt_reference_coordinate_restraints_in_place(
+          reference.add_coordinate_restraints(
+              sites_cart = sites_cart_reference,
+              selection = selection,
+              sigma = 0.01))
+      grm.remove_reference_coordinate_restraints_in_place(
           selection = selection)
     d1 = flex.mean(flex.sqrt((xrs2.sites_cart().select(selection) -
                               xrs3.sites_cart().select(selection)).dot()))
@@ -254,7 +229,7 @@ def exercise_2(mon_lib_srv, ener_lib):
     d2 = flex.mean(flex.sqrt((xrs2.sites_cart().select(selection) -
                               xrs3.sites_cart().select(selection)).dot()))
     print "distance final (use_reference: %s): %6.4f"%(str(use_reference), d2)
-    if(use_reference): assert d2<0.005
+    if(use_reference): assert d2<0.005, "failed: %f<0.05" % d2
     else: assert d2>4.0, d2
     assert approx_equal(
       flex.max(flex.sqrt((xrs2.sites_cart().select(~selection_bool) -
@@ -345,12 +320,11 @@ def exercise_3(mon_lib_srv, ener_lib):
     d2 = flex.mean(flex.sqrt((xrs2.sites_cart().select(min_selection) -
                               xrs3.sites_cart().select(min_selection)).dot()))
     print "distance final (use_reference: %s): %6.4f"%(str(use_reference), d2)
-    if(use_reference in ['True', 'top_out']): assert d2<0.02
+    if(use_reference in ['True', 'top_out']): assert d2<0.02, d2
     else: assert d2>4.0, d2
     assert approx_equal(
       flex.max(flex.sqrt((xrs2.sites_cart().select(~selection_bool) -
                           xrs3.sites_cart().select(~selection_bool)).dot())), 0)
-
   #test torsion manipulation
   grm.generic_restraints_manager.reference_manager.\
     reference_coordinate_proxies = None

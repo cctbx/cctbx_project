@@ -57,6 +57,7 @@ class manager(object):
         nonbonded_buffer=1,
         angle_proxies=None,
         dihedral_proxies=None,
+        reference_coordinate_proxies=None,
         reference_dihedral_proxies=None,
         ncs_dihedral_manager=None,
         chirality_proxies=None,
@@ -67,7 +68,8 @@ class manager(object):
         external_energy_function=None,
         plain_pairs_radius=None,
         max_reasonable_bond_distance=None,
-        min_cubicle_edge=5):
+        min_cubicle_edge=5,
+        log=StringIO.StringIO()):
     if (site_symmetry_table is not None): assert crystal_symmetry is not None
     if (bond_params_table is not None and site_symmetry_table is not None):
       assert bond_params_table.size() == site_symmetry_table.indices().size()
@@ -316,6 +318,7 @@ class manager(object):
       nonbonded_buffer=self.nonbonded_buffer,
       angle_proxies=self.angle_proxies,
       dihedral_proxies=self.dihedral_proxies,
+      reference_coordinate_proxies=self.reference_coordinate_proxies,
       reference_dihedral_proxies=self.reference_dihedral_proxies,
       generic_restraints_manager=self.generic_restraints_manager,
       ramachandran_manager=self.ramachandran_manager,
@@ -394,6 +397,11 @@ class manager(object):
       if (n_seq is None): n_seq = get_n_seq()
       selected_dihedral_proxies = self.dihedral_proxies.proxy_select(
         n_seq, iselection)
+    selected_reference_coordinate_proxies = None
+    if self.reference_coordinate_proxies is not None:
+      if n_seq is None: n_seq = get_n_seq()
+      selected_reference_coordinate_proxies = self.reference_coordinate_proxies.\
+          proxy_select(n_seq, iselection)
     selected_reference_dihedral_proxies = None
     if (self.reference_dihedral_proxies is not None):
       if (n_seq is None): n_seq = get_n_seq()
@@ -444,6 +452,7 @@ class manager(object):
       nonbonded_buffer=self.nonbonded_buffer,
       angle_proxies=selected_angle_proxies,
       dihedral_proxies=selected_dihedral_proxies,
+      reference_coordinate_proxies=selected_reference_coordinate_proxies,
       reference_dihedral_proxies=selected_reference_dihedral_proxies,
       generic_restraints_manager=generic_restraints_manager,
       ramachandran_manager=ramachandran_manager,
@@ -475,6 +484,7 @@ class manager(object):
       nonbonded_buffer=self.nonbonded_buffer,
       angle_proxies=self.angle_proxies,
       dihedral_proxies=self.dihedral_proxies,
+      reference_coordinate_proxies=self.reference_coordinate_proxies,
       reference_dihedral_proxies=self.reference_dihedral_proxies,
       generic_restraints_manager=self.generic_restraints_manager,
       ramachandran_manager=self.ramachandran_manager,
@@ -496,6 +506,77 @@ class manager(object):
       self.dihedral_proxies.extend(additional_dihedral_proxies)
     else:
       self.dihedral_proxies = additional_dihedral_proxies
+
+  def get_reference_coordinate_proxies(self):
+    return self.reference_coordinate_proxies
+
+  def adopt_reference_coordinate_restraints_in_place(self,
+      reference_coordinate_proxies):
+    self.reference_coordinate_proxies = reference_coordinate_proxies
+
+  def remove_reference_coordinate_restraints_in_place(self,
+      selection=None):
+    if (selection is not None) :
+      self.reference_coordinate_proxies = \
+        self.reference_coordinate_proxies.proxy_remove(selection=selection)
+    else :
+      self.reference_coordinate_proxies = None
+
+  def get_n_reference_coordinate_proxies(self):
+    if self.reference_coordinate_proxies is not None:
+      return self.reference_coordinate_proxies.size()
+    else:
+      return 0
+
+  def append_reference_coordinate_restraints_in_place(self,
+      reference_coordinate_proxies):
+    if self.reference_coordinate_proxies is not None:
+      self.reference_coordinate_proxies.extend(
+          reference_coordinate_proxies)
+    else:
+      self.reference_coordinate_proxies = reference_coordinate_proxies
+
+  def add_reference_coordinate_restraints_in_place(self,
+      all_chain_proxies=None,
+      pdb_hierarchy=None,
+      selection=None,
+      exclude_outliers=True,
+      sigma=0.2,
+      limit=1.0,
+      top_out=False):
+    assert [all_chain_proxies, pdb_hierarchy].count(None) == 1
+    if all_chain_proxies is None:
+      assert isinstance(selection, flex.size_t)
+    from mmtbx.geometry_restraints.reference import add_coordinate_restraints, \
+        exclude_outliers_from_reference_restraints_selection
+
+    if isinstance(selection, flex.size_t):
+      isel = selection
+      sites_cart=pdb_hierarchy.atoms().extract_xyz()
+    else:
+      # should be deleted if all_chain_proxies won't be used
+      sites_cart = all_chain_proxies.pdb_hierarchy.atoms().extract_xyz()
+      new_selection = flex.bool(sites_cart.size(), True)
+      if selection is not None:
+        new_selection = all_chain_proxies.selection(selection)
+        if (new_selection.size() == 0):
+          raise Sorry(("No atoms selected for harmonic restraints (input "+
+            "selection string: %s)") % selection)
+      # print >> self.log, "*** Restraining %d atoms to initial coordinates ***" % \
+      #     new_selection.size()
+      if exclude_outliers:
+        new_selection = exclude_outliers_from_reference_restraints_selection(
+            pdb_hierarchy=all_chain_proxies.pdb_hierarchy,
+            restraints_selection=new_selection)
+      isel = new_selection.iselection()
+    proxies = add_coordinate_restraints(
+        sites_cart=sites_cart.select(isel),
+        selection=isel,
+        sigma=sigma,
+        limit=limit,
+        top_out_potential=top_out)
+    if proxies.size() > 0:
+      self.reference_coordinate_proxies = proxies
 
   def remove_dihedrals_in_place(self, selection):
     if self.dihedral_proxies is not None:
@@ -1074,13 +1155,14 @@ class manager(object):
      nonbonded_function,
      angle_proxies,
      dihedral_proxies,
+     reference_coordinate_proxies,
      reference_dihedral_proxies,
      ncs_dihedral_manager,
      chirality_proxies,
      planarity_proxies,
      parallelity_proxies,
      generic_restraints,
-     ramachandran_manager) = [None]*12
+     ramachandran_manager) = [None]*13
     if (flags.bond):
       assert pair_proxies.bond_proxies is not None
       bond_proxies = pair_proxies.bond_proxies
@@ -1093,7 +1175,9 @@ class manager(object):
         nonbonded_function = custom_nonbonded_function
     if (flags.angle):     angle_proxies = self.angle_proxies
     if (flags.dihedral):  dihedral_proxies = self.dihedral_proxies
-    if (flags.reference_dihedral):  \
+    if flags.reference_coordinate:
+      reference_coordinate_proxies = self.reference_coordinate_proxies
+    if (flags.reference_dihedral):
       reference_dihedral_proxies = self.reference_dihedral_proxies
     if (flags.ncs_dihedral): ncs_dihedral_manager = self.ncs_dihedral_manager
     if (flags.chirality): chirality_proxies = self.chirality_proxies
@@ -1110,6 +1194,7 @@ class manager(object):
       nonbonded_function=nonbonded_function,
       angle_proxies=angle_proxies,
       dihedral_proxies=dihedral_proxies,
+      reference_coordinate_proxies=reference_coordinate_proxies,
       reference_dihedral_proxies=reference_dihedral_proxies,
       ncs_dihedral_manager=ncs_dihedral_manager,
       chirality_proxies=chirality_proxies,

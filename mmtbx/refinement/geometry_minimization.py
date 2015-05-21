@@ -225,6 +225,7 @@ class run2(object):
       chirality          = chirality,
       planarity          = planarity,
       parallelity        = parallelity,
+      reference_coordinate = True,
       reference_dihedral = True,
       bond_similarity    = True,
       generic_restraints = True,

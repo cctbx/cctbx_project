@@ -15,6 +15,7 @@ import cctbx.geometry_restraints.flags
 from cctbx import adp_restraints # import dependency
 import mmtbx.utils
 import scitbx.rigid_body
+import iotbx
 
 
 pdb_str = """\
@@ -36,14 +37,22 @@ END
 """
 
 def exercise(d_min = 2.0, resolution_factor = 0.1):
+  params = iotbx.phil.parse(
+    monomer_library.pdb_interpretation.grand_master_phil_str,
+    process_includes=True).extract()
+  params.pdb_interpretation.reference_coordinate_restraints.enabled = True
+  params.pdb_interpretation.reference_coordinate_restraints.sigma = 1.0
+  params.pdb_interpretation.reference_coordinate_restraints.selection = \
+      "name C or name N"
   processed_pdb_file = monomer_library.pdb_interpretation.process(
     mon_lib_srv              = monomer_library.server.server(),
     ener_lib                 = monomer_library.server.ener_lib(),
+    params                   = params.pdb_interpretation,
     raw_records              = flex.std_string(pdb_str.splitlines()),
     strict_conflict_handling = True,
     force_symmetry           = True,
     log                      = None)
-  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy.deep_copy()
   reference_selection = flex.size_t()
   reference_sites = flex.vec3_double()
   for a in pdb_hierarchy.only_residue().atoms():
@@ -67,20 +76,12 @@ def exercise(d_min = 2.0, resolution_factor = 0.1):
   pdb_hierarchy.adopt_xray_structure(xrs_poor)
   pdb_hierarchy.write_pdb_file(file_name = "poor.pdb")
   #
-  generic_restraints_manager = mmtbx.geometry_restraints.manager()
-  restraints_manager = cctbx.geometry_restraints.manager.manager(
-    generic_restraints_manager = generic_restraints_manager)
-  restraints_manager.generic_restraints_manager.reference_manager.\
-    add_coordinate_restraints(
-      sites_cart = reference_sites,
-      selection  = reference_selection,
-      sigma      = 1.0)
-  #
+  restraints_manager = processed_pdb_file.geometry_restraints_manager()
   residue_poor = pdb_hierarchy.only_residue()
   residue_poor.atoms().set_xyz(xrs_poor.sites_cart())
   lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
     max_iterations = 250)
-  flags = cctbx.geometry_restraints.flags.flags(generic_restraints=True)
+  flags = cctbx.geometry_restraints.flags.flags(reference_coordinate=True, default=True)
   states_collector = mmtbx.utils.states(
     pdb_hierarchy  = pdb_hierarchy,
     xray_structure = xrs_poor)

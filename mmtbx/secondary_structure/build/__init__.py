@@ -323,8 +323,7 @@ def substitute_ss(real_h,
   phil_str = ann.as_restraint_groups()
   for h in ann.helices:
     expected_n_hbonds += get_expected_n_hbonds_from_helix(h)
-  edited_h = iotbx.pdb.input(source_info=None,
-      lines=flex.split_lines(real_h.as_pdb_string())).construct_hierarchy()
+  edited_h = real_h.deep_copy()
   n_atoms_in_real_h = real_h.atoms().size()
   cumm_bsel = flex.bool(n_atoms_in_real_h, False)
   selection_cache = real_h.atom_selection_cache()
@@ -461,21 +460,22 @@ def substitute_ss(real_h,
   grm = restraints_manager
 
   real_h.reset_i_seq_if_necessary()
-  grm.geometry.generic_restraints_manager.reference_manager.\
-      add_coordinate_restraints(
+  from mmtbx.geometry_restraints import reference
+  grm.geometry.append_reference_coordinate_restraints_in_place(
+      reference.add_coordinate_restraints(
           sites_cart = real_h.atoms().extract_xyz().select(helix_selection),
           selection  = helix_selection,
-          sigma      = sigma_on_reference_helix)
-  grm.geometry.generic_restraints_manager.reference_manager.\
-      add_coordinate_restraints(
+          sigma      = sigma_on_reference_helix))
+  grm.geometry.append_reference_coordinate_restraints_in_place(
+      reference.add_coordinate_restraints(
           sites_cart = real_h.atoms().extract_xyz().select(sheet_selection),
           selection  = sheet_selection,
-          sigma      = sigma_on_reference_sheet)
-  grm.geometry.generic_restraints_manager.reference_manager.\
-      add_coordinate_restraints(
+          sigma      = sigma_on_reference_sheet))
+  grm.geometry.append_reference_coordinate_restraints_in_place(
+      reference.add_coordinate_restraints(
           sites_cart = real_h.atoms().extract_xyz().select(other_selection),
           selection  = other_selection,
-          sigma      = sigma_on_reference_non_ss)
+          sigma      = sigma_on_reference_non_ss))
   grm.geometry.generic_restraints_manager.reference_manager.\
       add_torsion_restraints(
           pdb_hierarchy   = pre_result_h,
@@ -500,8 +500,7 @@ def substitute_ss(real_h,
   #testing number of restraints
   assert grm.geometry.generic_restraints_manager.\
              get_n_den_proxies() == 0
-  assert grm.geometry.generic_restraints_manager.\
-             get_n_reference_coordinate_proxies() == n_main_chain_atoms
+  assert grm.geometry.get_n_reference_coordinate_proxies() == n_main_chain_atoms
   refinement_log = null_out()
   if verbose:
     refinement_log = log
