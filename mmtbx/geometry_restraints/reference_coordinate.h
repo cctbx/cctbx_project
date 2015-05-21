@@ -65,47 +65,36 @@ namespace mmtbx { namespace geometry_restraints {
     af::const_ref<reference_coordinate_proxy> const& proxies,
     af::ref<scitbx::vec3<double> > const& gradient_array)
   {
+    CCTBX_ASSERT(   gradient_array.size() == 0
+                 || gradient_array.size() == sites_cart.size());
     double residual_sum = 0, weight, residual, limit, top;
     scitbx::vec3<double> site, ref_site, delta;
     scitbx::vec3<double> gradient;
     for (std::size_t i = 0; i < proxies.size(); i++) {
-      reference_coordinate_proxy proxy = proxies[i];
+      reference_coordinate_proxy const& proxy = proxies[i];
       af::tiny<unsigned, 1> const& i_seqs = proxy.i_seqs;
-      MMTBX_ASSERT(i_seqs[0] < sites_cart.size());
-      site = sites_cart[ i_seqs[0] ];
+      std::size_t i_seq = i_seqs[0];
+      MMTBX_ASSERT(i_seq < sites_cart.size());
+      MMTBX_ASSERT(i_seq >= 0);
+      site = sites_cart[ i_seq ];
       ref_site = proxy.ref_sites;
       weight = proxy.weight;
-      delta[0] = site[0] - ref_site[0];
-      delta[1] = site[1] - ref_site[1];
-      delta[2] = site[2] - ref_site[2];
+      delta = site - ref_site;
       if (proxy.top_out && proxy.limit >= 0.0) {
         limit = proxy.limit;
         top = weight * limit * limit;
-        residual = 0.0;
-        residual += top * (1.0-std::exp(-weight*delta[0]*delta[0]/top));
-        residual += top * (1.0-std::exp(-weight*delta[1]*delta[1]/top));
-        residual += top * (1.0-std::exp(-weight*delta[2]*delta[2]/top));
-        //residual_local = ( (delta[0]*delta[0]*weight)+
-        //                   (delta[1]*delta[1]*weight)+
-        //                   (delta[2]*delta[2]*weight) );
-        //residual = top * (1.0-std::exp(-residual_local/top));
-        gradient[0] = (delta[0]*2.0*weight)
-                      * std::exp(-(weight*delta[0]*delta[0])/top);
-        gradient[1] = (delta[1]*2.0*weight)
-                      * std::exp(-(weight*delta[1]*delta[1])/top);
-        gradient[2] = (delta[2]*2.0*weight)
-                      * std::exp(-(weight*delta[2]*delta[2])/top);
+        residual = top * (1.0-std::exp(-weight*delta*delta/top));
+        gradient = (delta*2.0*weight)
+                      * std::exp(-(weight*delta*delta)/top);
       }
       else {
-        residual = ( (delta[0]*delta[0]*weight)+
-                     (delta[1]*delta[1]*weight)+
-                     (delta[2]*delta[2]*weight) );
-        gradient[0] = delta[0]*2.0*weight;
-        gradient[1] = delta[1]*2.0*weight;
-        gradient[2] = delta[2]*2.0*weight;
+        residual = delta*delta*weight;
+        gradient = delta*2.0*weight;
       }
       residual_sum += residual;
-      gradient_array[ i_seqs[0] ] += gradient;
+      if (gradient_array.size() != 0) {
+        gradient_array[ i_seq ] += gradient;
+      }
     }
     return residual_sum;
   }
