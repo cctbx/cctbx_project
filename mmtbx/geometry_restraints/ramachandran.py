@@ -96,7 +96,7 @@ class ramachandran_manager(object):
     else:
       assert proxies is not None
 
-  def select(self, n_seq, iselection):
+  def proxy_select(self, n_seq, iselection):
     result_proxies = self.proxies.proxy_select(n_seq, iselection)
     return ramachandran_manager(
         pdb_hierarchy=self.pdb_hierarchy,
@@ -214,6 +214,7 @@ class ramachandran_manager(object):
       by_value,
       sites_cart,
       site_labels=None,
+      proxy_label=None, # not used yet
       f=None,
       prefix="",
       max_items=None):

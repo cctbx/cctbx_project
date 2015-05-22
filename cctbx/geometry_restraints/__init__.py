@@ -6,7 +6,6 @@ import cctbx.geometry # import dependency
 
 from libtbx.test_utils import approx_equal
 from libtbx.str_utils import show_string
-from libtbx.utils import Sorry
 
 import boost.python
 ext = boost.python.import_ext("cctbx_geometry_restraints_ext")
@@ -1055,11 +1054,12 @@ class _(boost.python.injector, shared_angle_proxy):
         sites_cart,
         unit_cell=None,
         n_slots=5,
+        proxy_label="bond angle",
         f=None,
         prefix="",
         origin_id=None):
     return _show_histogram_of_deltas_impl(O=self,
-      proxy_label="bond angle",
+      proxy_label=proxy_label,
       format_cutoffs="%8.2f",
       unit_cell=unit_cell,
       sites_cart=sites_cart, n_slots=n_slots, f=f, prefix=prefix,
@@ -1069,6 +1069,7 @@ class _(boost.python.injector, shared_angle_proxy):
         by_value,
         sites_cart,
         site_labels=None,
+        proxy_label="Bond angle",
         unit_cell=None,
         f=None,
         prefix="",
@@ -1076,7 +1077,7 @@ class _(boost.python.injector, shared_angle_proxy):
         origin_id=None):
     _show_sorted_impl(O=self,
         proxy_type=angle,
-        proxy_label="Bond angle",
+        proxy_label=proxy_label,
         item_label="angle",
         by_value=by_value, unit_cell=unit_cell, sites_cart=sites_cart,
         site_labels=site_labels, f=f, prefix=prefix, max_items=max_items,
@@ -1133,10 +1134,11 @@ class _(boost.python.injector, shared_dihedral_proxy):
         sites_cart,
         unit_cell=None,
         n_slots=5,
+        proxy_label="dihedral angle",
         f=None,
         prefix=""):
     return _show_histogram_of_deltas_impl(O=self,
-      proxy_label="dihedral angle",
+      proxy_label=proxy_label,
       format_cutoffs="%8.2f",
       unit_cell=unit_cell,
       sites_cart=sites_cart, n_slots=n_slots, f=f, prefix=prefix)
@@ -1145,27 +1147,12 @@ class _(boost.python.injector, shared_dihedral_proxy):
         by_value,
         sites_cart,
         site_labels=None,
+        proxy_label="Dihedral angle",
         unit_cell=None,
         f=None,
         prefix="",
-        max_items=None,
-        is_reference=False,
-        is_ncs=False,
-        is_c_beta=False):
-    if is_reference:
-      if is_ncs:
-        raise Sorry("torsion restraint assignment conflict")
-      else:
-        proxy_label = "Reference torsion angle"
-    elif is_ncs:
-      if is_reference:
-        raise Sorry("torsion restraint assignment conflict")
-      else:
-        proxy_label = "NCS torsion angle"
-    elif is_c_beta:
-      proxy_label = "C-Beta improper torsion angle"
-    else:
-      proxy_label = "Dihedral angle"
+        max_items=None):
+
     _show_sorted_impl(O=self,
         proxy_type=dihedral,
         proxy_label=proxy_label,
@@ -1210,10 +1197,11 @@ class _(boost.python.injector, shared_chirality_proxy):
   def show_histogram_of_deltas(self,
         sites_cart,
         n_slots=5,
+        proxy_label="chiral volume",
         f=None,
         prefix=""):
     return _show_histogram_of_deltas_impl(O=self,
-      proxy_label="chiral volume",
+      proxy_label=proxy_label,
       format_cutoffs="%8.3f",
       unit_cell=None,
       sites_cart=sites_cart, n_slots=n_slots, f=f, prefix=prefix)
@@ -1222,12 +1210,13 @@ class _(boost.python.injector, shared_chirality_proxy):
         by_value,
         sites_cart,
         site_labels=None,
+        proxy_label="Chirality",
         f=None,
         prefix="",
         max_items=None):
     _show_sorted_impl(O=self,
         proxy_type=chirality,
-        proxy_label="Chirality",
+        proxy_label=proxy_label,
         item_label="chirality",
         by_value=by_value, unit_cell=None, sites_cart=sites_cart,
         site_labels=site_labels, f=f, prefix=prefix, max_items=max_items)
@@ -1317,6 +1306,7 @@ class _(boost.python.injector, shared_planarity_proxy):
         by_value,
         sites_cart,
         site_labels=None,
+        proxy_label=None, # not used yet
         unit_cell=None,
         f=None,
         prefix="",
@@ -1415,6 +1405,7 @@ class _(boost.python.injector, shared_parallelity_proxy):
         by_value,
         sites_cart,
         site_labels=None,
+        proxy_label=None, # not used yet
         f=None,
         prefix="",
         max_items=None):

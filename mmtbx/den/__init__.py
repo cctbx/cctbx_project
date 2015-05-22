@@ -518,7 +518,7 @@ class den_restraints(object):
     #   f.write(vec)
     f.close()
 
-  def select (self, n_seq, selection) :
+  def proxy_select (self, n_seq, selection) :
     assert (self.den_proxies is not None)
     return den_restraints(
       pdb_hierarchy=self.pdb_hierarchy,
