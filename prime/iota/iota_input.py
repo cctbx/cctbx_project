@@ -18,7 +18,6 @@ from cStringIO import StringIO
 
 import iotbx.phil as ip
 import iota_cmd as cmd
-import prime.postrefine.mod_input as mi
 
 master_phil = ip.parse("""
 description = Integration Optimization, Transfer and Analysis (IOTA)
@@ -643,5 +642,3 @@ def print_params():
 
 def make_prime_input(prime_params):
   pass
-
-
