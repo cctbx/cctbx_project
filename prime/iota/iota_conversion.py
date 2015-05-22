@@ -160,7 +160,6 @@ def square_pickle(data, square='crop'):
   if square == 'crop':
     new_half_size = min([right, left, top, bottom])
     new_size = new_half_size * 2
-    new_size_x = new_size_y = new_size
     min_x = beam_x - new_half_size
     min_y = beam_y - new_half_size
     new_beam_x = data['BEAM_CENTER_X'] - min_x * pixel_size
@@ -173,7 +172,6 @@ def square_pickle(data, square='crop'):
   elif square == 'pad':
     new_half_size = max([right, left, top, bottom])
     new_size = new_half_size * 2
-    new_size_x = new_size_y = new_size
     min_x = 0
     min_y = 0
     delta_x = new_half_size - beam_x
@@ -188,14 +186,11 @@ def square_pickle(data, square='crop'):
       for x in xrange(pixels.focus()[1]):
         new_pixels[y + delta_y, x + delta_x] = pixels[y, x]
     assert new_pixels.focus()[0] == new_pixels.focus()[1]
-#   else:
-#     new_size_x = width
-#     new_size_y = height
 
   # save the results
   data['DATA'] = new_pixels
-  data['SIZE1'] = new_size_x
-  data['SIZE2'] = new_size_y
+  data['SIZE1'] = new_size
+  data['SIZE2'] = new_size
   data['BEAM_CENTER_X'] = new_beam_x
   data['BEAM_CENTER_Y'] = new_beam_y
   data['ACTIVE_AREAS'] = flex.int([0 , 0, new_size, new_size])
