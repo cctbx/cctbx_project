@@ -38,7 +38,7 @@ cspad_min_trusted_value = -2000
 
 # As long as the mask value is outside of the trusted range, the pixel should
 # be ignored by any downstream software.
-cspad_mask_value = -1000000
+cspad_mask_value = -100000
 
 # The side length of a square quadrant from the old XtcExplorer code.
 # XXX This should be obsoleted!
@@ -199,7 +199,8 @@ def cbcaa(config, sections):
     # The beam centre is estimated as the centre of the image.
     return ([npix_quad, npix_quad], aa)
 
-  bc     = [0, 0]
+  # Old way of computing beam center, phased out 05/19/15
+  #bc     = [0, 0]
 
   # XXX Make up a quadrant mask for the emission detector.  Needs to
   # be checked!
@@ -212,9 +213,10 @@ def cbcaa(config, sections):
     if (not((1 << q) & q_mask)):
       continue
 
-    corner = sections[q][1].corners(True)[0]
-    bc     = [bc[0] + corner[1] / len(sections),
-              bc[1] + corner[0] / len(sections)]
+    # Old way of computing beam center, phased out 05/19/15
+    #corner = sections[q][1].corners(True)[0]
+    #bc     = [bc[0] + corner[1] / len(sections),
+    #          bc[1] + corner[0] / len(sections)]
 
     # XXX Make up section mask for the emission detector.  Needs to be
     # checked!
@@ -235,7 +237,10 @@ def cbcaa(config, sections):
       aa.extend(flex.int(c[0]))
       aa.extend(flex.int(c[1]))
 
-  return (bc, aa)
+  # The beam center was defined above as the center of the innermost 4 sensors. Recently,
+  # that center has drifted too much from the true image center (Spring 2015). So, here we
+  # use the true image center instead.
+  return [882.5,882.5], aa
 
 
 def CsPad2x2Image(data, config, sections):
@@ -793,7 +798,7 @@ def get_ebeam(evt):
     if ebeam is None:
       ebeam = evt.get(Bld.BldDataEBeamV0, src)
     if ebeam is None:
-      ebeam = evt.get(Bld.BldDataEBeam, src)
+      ebeam = evt.get(Bld.BldDataEBeam, src) # recent version of psana will return a V7 event or higher if this type is asked for
 
   return ebeam
 
