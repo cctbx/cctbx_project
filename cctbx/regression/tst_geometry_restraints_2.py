@@ -7,11 +7,15 @@ from cctbx import crystal
 from cctbx.array_family import flex
 from cStringIO import StringIO
 import libtbx.utils
-from libtbx.test_utils import approx_equal, show_diff, blocks_show_diff
+from libtbx.test_utils import approx_equal, show_diff
 import libtbx.load_env
 import sys, os
 from mmtbx.monomer_library import pdb_interpretation
 
+# ============================================================
+# Edit notes: show_interactions function is obsolete and removed from GRM
+# 5/22/2015
+# ============================================================
 
 def exercise_with_zeolite(verbose):
   if (not libtbx.env.has_module("iotbx")):
@@ -38,86 +42,11 @@ def exercise_with_zeolite(verbose):
     n_macro_cycles=2,
     out=out)
   #
-  out = StringIO()
-  drls.geometry_restraints_manager.show_interactions(f=out)
-  if (verbose):
-    sys.stdout.write(out.getvalue())
-  assert not show_diff(out.getvalue(), """\
-bond simple: (0, 1)
-  distance_model: 3.22437
-  distance_ideal: 3.07097
-  weight: 0.2308
-...
-bond asu: (0, 0) -x+1,y,-z+1
-  distance_model: 3.4233
-  distance_ideal: 3.07097
-  weight: 0.2308
-""",
-    selections=[range(4), range(20,24)])
   nbp = drls.geometry_restraints_manager.pair_proxies().nonbonded_proxies
   assert nbp.n_total() > 50
     # expected is 60, but the exact number depends on the minimizer
   #
   site_labels = drls.minimized_structure.scatterers().extract_labels()
-  out = StringIO()
-  drls.geometry_restraints_manager.show_interactions(
-    site_labels=site_labels, f=out)
-  if (verbose):
-    sys.stdout.write(out.getvalue())
-  assert not show_diff(out.getvalue(), """\
-bond simple: (0, 1)
-  SI1
-  SI2
-  distance_model: 3.22437
-  distance_ideal: 3.07097
-  weight: 0.2308
-...
-bond asu: (0, 0)
-  SI1
-  SI1 -x+1,y,-z+1
-  distance_model: 3.4233
-  distance_ideal: 3.07097
-  weight: 0.2308
-""",
-    selections=[range(6), range(30,36)])
-  #
-  out = StringIO()
-  drls.geometry_restraints_manager._sites_cart_used_for_pair_proxies = None
-  drls.geometry_restraints_manager.show_interactions(f=out)
-  if (verbose):
-    sys.stdout.write(out.getvalue())
-  assert not show_diff(out.getvalue(), """\
-bond simple: (0, 1)
-  distance_ideal: 3.07097
-  weight: 0.2308
-...
-bond asu: (0, 0) -x+1,y,-z+1
-  distance_ideal: 3.07097
-  weight: 0.2308
-""",
-    selections=[range(3), range(15,18)])
-  #
-  site_labels = drls.minimized_structure.scatterers().extract_labels()
-  out = StringIO()
-  drls.geometry_restraints_manager.show_interactions(
-    site_labels=site_labels, f=out)
-  if (verbose):
-    sys.stdout.write(out.getvalue())
-  assert not show_diff(out.getvalue(), """\
-bond simple: (0, 1)
-  SI1
-  SI2
-  distance_ideal: 3.07097
-  weight: 0.2308
-...
-bond asu: (0, 0)
-  SI1
-  SI1 -x+1,y,-z+1
-  distance_ideal: 3.07097
-  weight: 0.2308
-""",
-    selections=[range(5), range(25,30)])
-  #
   sites_cart = drls.start_structure.sites_cart()
   pair_proxies = drls.geometry_restraints_manager.pair_proxies()
   out = StringIO()
@@ -410,183 +339,9 @@ def exercise_with_pdb(verbose):
   site_labels = processed_pdb_file.xray_structure().scatterers() \
     .extract_labels()
   #
-  out = StringIO()
-  geo.show_interactions(f=out)
-  if (verbose):
-    sys.stdout.write(out.getvalue())
-  assert not blocks_show_diff(out.getvalue(), """\
-bond simple: (0, 1)
-  distance_model: 1.53051
-  distance_ideal: 1.53
-  weight: 2500
-...
-angle: (1, 0, 8)
-  angle_model: 110.543
-  angle_ideal: 110.1
-  weight: 0.277008
-...
-dihedral: (2, 0, 1, 11)
-  angle_model: 173.684
-  angle_ideal: -180
-  weight: 0.00444444
-  periodicity: 3
-...
-chirality: (0, 1, 8, 11)
-  volume_model: -2.50215
-  volume_ideal: -2.5104
-  both_signs: 0
-  weight: 25
-...
-planarity: (0, 8, 10, 15)
-  delta: -0.00012, weight: 2500
-  delta:  0.00042, weight: 2500
-  delta: -0.00016, weight: 2500
-  delta: -0.00014, weight: 2500
-...
-nonbonded asu: (36, 46) -x+1,y+1/2,-z+1/2
-  distance_model: 4.89425
-  vdw_distance: 2.8
-nonbonded simple: (0, 23)
-  distance_model: 4.89852
-  vdw_distance: 3.77
-""")
-  #
-  out = StringIO()
-  geo.show_interactions(site_labels=site_labels, f=out)
-  if (verbose):
-    sys.stdout.write(out.getvalue())
-  assert not blocks_show_diff(out.getvalue(), """\
-bond simple: (0, 1)
-  pdb=" CA  TYR A   1 "
-  pdb=" CB  TYR A   1 "
-  distance_model: 1.53051
-  distance_ideal: 1.53
-  weight: 2500
-bond simple: (0, 8)
-...
-angle: (1, 0, 8)
-  pdb=" CB  TYR A   1 "
-  pdb=" CA  TYR A   1 "
-  pdb=" C   TYR A   1 "
-  angle_model: 110.543
-  angle_ideal: 110.1
-  weight: 0.277008
-...
-dihedral: (2, 0, 1, 11)
-  pdb=" CG  TYR A   1 "
-  pdb=" CA  TYR A   1 "
-  pdb=" CB  TYR A   1 "
-  pdb=" N   TYR A   1 "
-  angle_model: 173.684
-  angle_ideal: -180
-  weight: 0.00444444
-  periodicity: 3
-...
-chirality: (0, 1, 8, 11)
-  pdb=" CA  TYR A   1 "
-  pdb=" CB  TYR A   1 "
-  pdb=" C   TYR A   1 "
-  pdb=" N   TYR A   1 "
-  volume_model: -2.50215
-  volume_ideal: -2.5104
-  both_signs: 0
-  weight: 25
-...
-planarity: (0, 8, 10, 15)
-  pdb=" CA  TYR A   1 " delta: -0.00012, weight: 2500
-  pdb=" C   TYR A   1 " delta:  0.00042, weight: 2500
-  pdb=" O   TYR A   1 " delta: -0.00016, weight: 2500
-  pdb=" N   GLY A   2 " delta: -0.00014, weight: 2500
-""")
-  #
   assert approx_equal(flex.min(geo.nonbonded_model_distances()), 0.4777342)
   #
   geo._sites_cart_used_for_pair_proxies = None
-  out = StringIO()
-  geo.show_interactions(f=out)
-  if (verbose):
-    sys.stdout.write(out.getvalue())
-  assert not blocks_show_diff(out.getvalue(), """\
-bond simple: (0, 1)
-  distance_ideal: 1.53
-  weight: 2500
-...
-angle: (1, 0, 8)
-  angle_ideal: 110.1
-  weight: 0.277008
-...
-dihedral: (2, 0, 1, 11)
-  angle_ideal: -180
-  weight: 0.00444444
-  periodicity: 3
-...
-chirality: (0, 1, 8, 11)
-  volume_ideal: -2.5104
-  both_signs: 0
-  weight: 25
-...
-planarity: (0, 8, 10, 15)
-  weight: 2500
-...
-nonbonded simple: (5, 39)
-  vdw_distance: 3.26
-...
-nonbonded asu: (7, 29) x+1,y,z
-  vdw_distance: 3.42
-""")
-  #
-  out = StringIO()
-  geo.show_interactions(site_labels=site_labels, f=out)
-  if (verbose):
-    sys.stdout.write(out.getvalue())
-  assert not blocks_show_diff(out.getvalue(), """\
-bond simple: (0, 1)
-  pdb=" CA  TYR A   1 "
-  pdb=" CB  TYR A   1 "
-  distance_ideal: 1.53
-  weight: 2500
-...
-angle: (1, 0, 8)
-  pdb=" CB  TYR A   1 "
-  pdb=" CA  TYR A   1 "
-  pdb=" C   TYR A   1 "
-  angle_ideal: 110.1
-  weight: 0.277008
-...
-dihedral: (2, 0, 1, 11)
-  pdb=" CG  TYR A   1 "
-  pdb=" CA  TYR A   1 "
-  pdb=" CB  TYR A   1 "
-  pdb=" N   TYR A   1 "
-  angle_ideal: -180
-  weight: 0.00444444
-  periodicity: 3
-...
-chirality: (0, 1, 8, 11)
-  pdb=" CA  TYR A   1 "
-  pdb=" CB  TYR A   1 "
-  pdb=" C   TYR A   1 "
-  pdb=" N   TYR A   1 "
-  volume_ideal: -2.5104
-  both_signs: 0
-  weight: 25
-...
-planarity: (0, 8, 10, 15)
-  pdb=" CA  TYR A   1 " weight: 2500
-  pdb=" C   TYR A   1 " weight: 2500
-  pdb=" O   TYR A   1 " weight: 2500
-  pdb=" N   GLY A   2 " weight: 2500
-...
-nonbonded simple: (5, 39)
-  pdb=" CZ  TYR A   1 "
-  pdb=" O   HOH B   1 "
-  vdw_distance: 3.26
-...
-nonbonded asu: (7, 29)
-  pdb=" CD1 TYR A   1 "
-  pdb=" N   PHE A   4 " x+1,y,z
-  vdw_distance: 3.42
-""")
   #
   sel0 = geo.simple_edge_list()
   assert len(sel0) == 46

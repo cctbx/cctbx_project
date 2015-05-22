@@ -1455,6 +1455,23 @@ class torsion_ncs(object):
     else:
       return 0
 
+  def size(self):
+    return self.get_n_proxies()
+
+  def target_and_gradients(self, sites_cart, unit_cell, gradient_array):
+    if unit_cell is None:
+      return cctbx.geometry_restraints.dihedral_residual_sum(
+        sites_cart=sites_cart,
+        proxies=self.ncs_dihedral_proxies,
+        gradient_array=gradient_array)
+    else:
+      return cctbx.geometry_restraints.dihedral_residual_sum(
+          unit_cell=unit_cell,
+          sites_cart=sites_cart,
+          proxies=self.ncs_dihedral_proxies,
+          gradient_array=gradient_array)
+
+
 #split out functions
 class get_ncs_groups(object):
   def __init__(self,

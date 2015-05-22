@@ -86,8 +86,6 @@ def exercise(verbose=0):
         )
       assert minimized.minimizer.iter() > 100
       sites_cart_minimized_1 = sites_cart.deep_copy()
-      s = StringIO()
-      manager.show_interactions(f=s)
       if (0 or verbose):
         dump_pdb(
           file_name="minimized_1.pdb", sites_cart=sites_cart_minimized_1)
@@ -291,8 +289,6 @@ def exercise(verbose=0):
         geometry_restraints_manager=manager,
         lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
           max_iterations=1000))
-      s = StringIO()
-      manager.show_interactions(f=s)
       if (0 or verbose):
         minimized.final_target_result.show()
         print "number of function evaluations:", minimized.minimizer.nfun()
