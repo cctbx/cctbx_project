@@ -204,10 +204,9 @@ def run(fmodels, model, target_weights, params, log,
     reduced_geo_manager = None
   else:
     include_den_restraints = False
-    if model.restraints_manager.geometry. \
-       generic_restraints_manager.den_manager is not None:
+    if model.restraints_manager.geometry.den_manager is not None:
       if "torsion" in model.restraints_manager.geometry. \
-         generic_restraints_manager.den_manager.params.annealing_type:
+         den_manager.params.annealing_type:
         include_den_restraints = True
     reduced_geo_manager = model.restraints_manager.geometry \
       .reduce_for_tardy(
@@ -215,10 +214,6 @@ def run(fmodels, model, target_weights, params, log,
         omit_bonds_with_slack_greater_than
           =params.omit_bonds_with_slack_greater_than,
         include_den_restraints=include_den_restraints)
-    if include_den_restraints:
-      import mmtbx.geometry_restraints.flags
-      reduced_geo_manager.generic_restraints_manager.flags = \
-        mmtbx.geometry_restraints.flags.flags(den=True)
   potential_obj = potential_object(
     xray_weight_factor=params.xray_weight_factor,
     prolsq_repulsion_function_changes=params.prolsq_repulsion_function_changes,
@@ -365,12 +360,12 @@ def action(
        (tardy_model.potential_obj.reduced_geo_manager. \
         generic_restraints_manager is not None):
       if (tardy_model.potential_obj.reduced_geo_manager. \
-          generic_restraints_manager.den_manager is not None) and \
+          den_manager is not None) and \
          i_cool_step > 0 and not (i_cool_step)%den_update_interval:
         print >> log, "   update DEN eq distances at step %d, temp=%.1f" % \
           ( (n_time_steps), t_target)
         tardy_model.potential_obj.reduced_geo_manager. \
-          generic_restraints_manager.den_manager.update_eq_distances(
+          den_manager.update_eq_distances(
             sites_cart=tardy_model.sites_moved())
     e_kin_target = t_as_e(t=t_target)
     def reset_e_kin(msg):

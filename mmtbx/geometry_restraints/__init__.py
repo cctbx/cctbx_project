@@ -10,7 +10,6 @@ from scitbx.array_family import flex
 class manager (object) :
   def __init__ (self,
                 reference_manager=None,
-                den_manager=None,
                 flags=None) :
     adopt_init_args(self, locals())
     if self.flags is None:
@@ -21,18 +20,12 @@ class manager (object) :
       self.reference_manager = reference.manager()
 
   def get_n_proxies(self):
-    return self.get_n_reference_torsion_proxies() +\
-           self.get_n_den_proxies()
+    return self.get_n_reference_torsion_proxies()
 
   def get_n_reference_torsion_proxies(self):
     if self.reference_manager is not None:
       if self.reference_manager.reference_torsion_proxies is not None:
         return len(self.reference_manager.reference_torsion_proxies)
-    return 0
-
-  def get_n_den_proxies(self):
-    if self.den_manager is not None:
-      return len(self.den_manager.den_proxies)
     return 0
 
   def restraints_residual_sum (self,
@@ -47,14 +40,6 @@ class manager (object) :
         target += self.reference_manager.target_and_gradients(
           sites_cart=sites_cart,
           gradient_array=gradient_array)
-    if (self.den_manager is not None and
-        self.flags.den) :
-      #print "DEN target is in geneneric manager"
-      den_target = self.den_manager.target_and_gradients(
-        sites_cart=sites_cart,
-        gradient_array=gradient_array)
-      #print "DEN target: %.1f" % den_target
-      target += den_target
     return target
 
   def rotamers (self) :
@@ -63,12 +48,8 @@ class manager (object) :
   def select (self,
               n_seq,
               iselection) :
-    den_manager = None
-    if (self.den_manager is not None) :
-      den_manager = self.den_manager.select(n_seq, iselection)
     if self.reference_manager is not None:
       reference_manager = self.reference_manager.select(n_seq, iselection)
     return manager(
-      den_manager=den_manager,
       reference_manager=reference_manager,
       flags=self.flags)

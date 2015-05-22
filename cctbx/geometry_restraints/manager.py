@@ -60,6 +60,7 @@ class manager(object):
         reference_coordinate_proxies=None,
         reference_dihedral_proxies=None,
         ncs_dihedral_manager=None,
+        den_manager=None,
         chirality_proxies=None,
         planarity_proxies=None,
         parallelity_proxies=None,
@@ -231,6 +232,7 @@ class manager(object):
         angle_proxies=reduced_angle_proxies,
         dihedral_proxies=reduced_dihedral_proxies,
         ncs_dihedral_manager=self.ncs_dihedral_manager,
+        den_manager=self.den_manager,
         generic_restraints_manager=self.generic_restraints_manager,
         ramachandran_manager=self.ramachandran_manager)
 
@@ -323,6 +325,7 @@ class manager(object):
       generic_restraints_manager=self.generic_restraints_manager,
       ramachandran_manager=self.ramachandran_manager,
       ncs_dihedral_manager=self.ncs_dihedral_manager,
+      den_manager=self.den_manager,
       chirality_proxies=self.chirality_proxies,
       planarity_proxies=self.planarity_proxies,
       parallelity_proxies=self.parallelity_proxies,
@@ -412,6 +415,11 @@ class manager(object):
       if (n_seq is None): n_seq = get_n_seq()
       selected_ncs_dihedral_manager = self.ncs_dihedral_manager.select(
         n_seq, iselection)
+    selected_den_manager = None
+    if self.den_manager is not None:
+      if (n_seq is None): n_seq = get_n_seq()
+      selected_den_manager = self.den_manager.select(
+        n_seq, iselection)
     selected_chirality_proxies = None
     if (self.chirality_proxies is not None):
       if (n_seq is None): n_seq = get_n_seq()
@@ -457,6 +465,7 @@ class manager(object):
       generic_restraints_manager=generic_restraints_manager,
       ramachandran_manager=ramachandran_manager,
       ncs_dihedral_manager=selected_ncs_dihedral_manager,
+      den_manager=selected_den_manager,
       chirality_proxies=selected_chirality_proxies,
       planarity_proxies=selected_planarity_proxies,
       parallelity_proxies=selected_parallelity_proxies,
@@ -489,6 +498,7 @@ class manager(object):
       generic_restraints_manager=self.generic_restraints_manager,
       ramachandran_manager=self.ramachandran_manager,
       ncs_dihedral_manager=self.ncs_dihedral_manager,
+      den_manager=self.den_manager,
       chirality_proxies=self.chirality_proxies,
       planarity_proxies=self.planarity_proxies,
       parallelity_proxies=self.parallelity_proxies,
@@ -614,6 +624,14 @@ class manager(object):
           sites_cart=sites_cart,
           pdb_hierarchy=pdb_hierarchy,
           log=log)
+
+  def adopt_den_manager(self, den_manager):
+    self.den_manager = den_manager
+
+  def get_n_den_proxies(self):
+    if self.den_manager is not None:
+      return self.den_manager.get_n_proixes()
+    return 0
 
   def remove_chiralities_in_place(self, selection):
     self.chirality_proxies = self.chirality_proxies.proxy_remove(
@@ -1158,11 +1176,12 @@ class manager(object):
      reference_coordinate_proxies,
      reference_dihedral_proxies,
      ncs_dihedral_manager,
+     den_manager,
      chirality_proxies,
      planarity_proxies,
      parallelity_proxies,
      generic_restraints,
-     ramachandran_manager) = [None]*13
+     ramachandran_manager) = [None]*14
     if (flags.bond):
       assert pair_proxies.bond_proxies is not None
       bond_proxies = pair_proxies.bond_proxies
@@ -1180,6 +1199,7 @@ class manager(object):
     if (flags.reference_dihedral):
       reference_dihedral_proxies = self.reference_dihedral_proxies
     if (flags.ncs_dihedral): ncs_dihedral_manager = self.ncs_dihedral_manager
+    if flags.den_restraints: den_manager = self.den_manager
     if (flags.chirality): chirality_proxies = self.chirality_proxies
     if (flags.planarity): planarity_proxies = self.planarity_proxies
     if (flags.parallelity): parallelity_proxies = self.parallelity_proxies
@@ -1197,6 +1217,7 @@ class manager(object):
       reference_coordinate_proxies=reference_coordinate_proxies,
       reference_dihedral_proxies=reference_dihedral_proxies,
       ncs_dihedral_manager=ncs_dihedral_manager,
+      den_manager=den_manager,
       chirality_proxies=chirality_proxies,
       planarity_proxies=planarity_proxies,
       parallelity_proxies=parallelity_proxies,
@@ -1376,6 +1397,9 @@ class manager(object):
           print >> f, "  angle_ideal: %.6g" % proxy.angle_ideal
           print >> f, "  weight: %.6g" % proxy.weight
           print >> f, "  limit: %.6g" % proxy.limit
+    #
+    # Here should be showing of DEN manager...
+    #
     if (self.chirality_proxies is not None):
       for proxy in self.chirality_proxies:
         if (i_seq is None or i_seq in proxy.i_seqs):
@@ -1527,6 +1551,9 @@ class manager(object):
         by_value="residual",
         sites_cart=sites_cart, site_labels=site_labels, f=f, is_ncs=True)
       print >> f
+    #
+    # Here should be showing DEN manager...
+    #
     if self.ramachandran_manager is not None:
       self.ramachandran_manager.show_sorted(
           by_value="residual",

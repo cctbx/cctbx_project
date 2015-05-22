@@ -12,6 +12,7 @@ class flags(object):
         reference_coordinate=None,
         reference_dihedral=None,
         ncs_dihedral=None,
+        den_restraints=None,
         chirality=None,
         planarity=None,
         parallelity=None,
@@ -26,6 +27,7 @@ class flags(object):
     if (reference_coordinate is None): reference_coordinate = default
     if (reference_dihedral is None): reference_dihedral = default
     if (ncs_dihedral is None): ncs_dihedral = default
+    if den_restraints is None: den_restraints = default
     if (chirality is None): chirality = default
     if (planarity is None): planarity = default
     if (parallelity is None): parallelity = default
@@ -49,3 +51,4 @@ class flags(object):
     print >> f, "  bond similarity:", self.bond_similarity
     print >> f, "  other (generic):", self.generic_restraints
     print >> f, "  ramachandran:", self.ramachandran_restraints
+    print >> f, "  DEN:", self.den_restraints

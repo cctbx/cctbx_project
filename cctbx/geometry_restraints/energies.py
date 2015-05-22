@@ -18,6 +18,7 @@ class energies(scitbx.restraints.energies):
                reference_coordinate_proxies=None,
                reference_dihedral_proxies=None,
                ncs_dihedral_manager=None,
+               den_manager=None,
                chirality_proxies=None,
                planarity_proxies=None,
                parallelity_proxies=None,
@@ -159,6 +160,17 @@ class energies(scitbx.restraints.energies):
           gradient_array=self.gradients)
       self.number_of_restraints += self.n_ncs_dihedral_proxies
       self.residual_sum += self.ncs_dihedral_residual_sum
+
+    if den_manager is None:
+      self.n_den_proxies = None
+      self.den_residual_sum = 0
+    else:
+      self.n_den_proxies = den_manager.get_n_proxies()
+      self.den_residual_sum = den_manager.target_and_gradients(
+          sites_cart=sites_cart,
+          gradient_array=self.gradients)
+      self.number_of_restraints += self.n_den_proxies
+      self.residual_sum += self.den_residual_sum
 
     if (chirality_proxies is None):
       self.n_chirality_proxies = None
@@ -466,14 +478,15 @@ class energies(scitbx.restraints.energies):
     if (self.n_reference_dihedral_proxies is not None):
       print >> f, prefix+"  reference_dihedral_residual_sum (n=%d): %.6g" % (
         self.n_reference_dihedral_proxies, self.reference_dihedral_residual_sum)
-
     if (self.n_reference_coordinate_proxies is not None):
       print >> f, prefix+"  reference_coordinate_residual_sum (n=%d): %.6g" % (
         self.n_reference_coordinate_proxies, self.reference_coordinate_residual_sum)
-
     if (self.n_ncs_dihedral_proxies is not None):
       print >> f, prefix+"  ncs_dihedral_residual_sum (n=%d): %.6g" % (
         self.n_ncs_dihedral_proxies, self.ncs_dihedral_residual_sum)
+    if (self.n_den_proxies is not None):
+      print >> f, prefix+"  den_residual_sum (n=%d): %.6g" % (
+        self.n_den_proxies, self.den_residual_sum)
     if (self.n_chirality_proxies is not None):
       print >> f, prefix+"  chirality_residual_sum (n=%d): %.6g" % (
         self.n_chirality_proxies, self.chirality_residual_sum)

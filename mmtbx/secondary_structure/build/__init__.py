@@ -498,8 +498,7 @@ def substitute_ss(real_h,
     real_h.write_pdb_file(file_name=fname_before_regularization)
 
   #testing number of restraints
-  assert grm.geometry.generic_restraints_manager.\
-             get_n_den_proxies() == 0
+  assert grm.geometry.get_n_den_proxies() == 0
   assert grm.geometry.get_n_reference_coordinate_proxies() == n_main_chain_atoms
   refinement_log = null_out()
   if verbose:
