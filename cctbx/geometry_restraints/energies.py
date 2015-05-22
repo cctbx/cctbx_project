@@ -46,6 +46,7 @@ class energies(scitbx.restraints.energies):
         self.gradients = flex.vec3_double(sites_cart.size(), [0,0,0])
       else:
         assert self.gradients.size() == sites_cart.size()
+
     if (bond_proxies is None):
       self.n_bond_proxies = None
       self.bond_residual_sum = 0
@@ -71,42 +72,62 @@ class energies(scitbx.restraints.energies):
         disable_cache=False)
       self.number_of_restraints += self.n_nonbonded_proxies
       self.residual_sum += self.nonbonded_residual_sum
-    if (angle_proxies is None):
-      self.n_angle_proxies = None
-      self.angle_residual_sum = 0
+
+    # ====================================================================
+    # Unit cell dependent
+    # ====================================================================
+
+    # parameter, function to call
+    for name, proxies, residual_sum_function in [
+        ("angle", angle_proxies, geometry_restraints.angle_residual_sum),
+        ("dihedral",dihedral_proxies, geometry_restraints.dihedral_residual_sum),
+        ("reference_dihedral",reference_dihedral_proxies, geometry_restraints.dihedral_residual_sum),
+        ("planarity", planarity_proxies, geometry_restraints.planarity_residual_sum),
+        ("parallelity", parallelity_proxies, geometry_restraints.parallelity_residual_sum),
+        ("bond_similarity", bond_similarity_proxies, geometry_restraints.bond_similarity_residual_sum)]:
+      setattr(self, "n_%s_proxies" % name, None)
+      setattr(self, "%s_residual_sum" % name, 0)
+      if proxies is not None:
+        n_proxies = proxies.size()
+        # setattr(self, "n_%s_proxies" % name, proxies.size())
+        if unit_cell is None:
+          res_sum = residual_sum_function(
+              sites_cart=sites_cart,
+              proxies=proxies,
+              gradient_array=self.gradients)
+        else:
+          res_sum = residual_sum_function(
+              unit_cell=unit_cell,
+              sites_cart=sites_cart,
+              proxies=proxies,
+              gradient_array=self.gradients)
+        self.number_of_restraints += n_proxies
+        self.residual_sum += res_sum
+        setattr(self, "n_%s_proxies" % name, n_proxies)
+        setattr(self, "%s_residual_sum" % name, res_sum)
+
+    if (ncs_dihedral_manager is None):
+      self.n_ncs_dihedral_proxies = None
+      self.ncs_dihedral_residual_sum = 0
     else:
-      self.n_angle_proxies = len(angle_proxies)
-      if unit_cell is None: # ignore proxy.i_seqs
-        self.angle_residual_sum = geometry_restraints.angle_residual_sum(
-          sites_cart=sites_cart,
-          proxies=angle_proxies,
-          gradient_array=self.gradients)
-      else:
-        self.angle_residual_sum = geometry_restraints.angle_residual_sum(
+      self.n_ncs_dihedral_proxies = ncs_dihedral_manager.get_n_proxies()
+      self.ncs_dihedral_residual_sum = ncs_dihedral_manager.target_and_gradients(
           unit_cell=unit_cell,
           sites_cart=sites_cart,
-          proxies=angle_proxies,
           gradient_array=self.gradients)
-      self.number_of_restraints += self.n_angle_proxies
-      self.residual_sum += self.angle_residual_sum
-    if (dihedral_proxies is None):
-      self.n_dihedral_proxies = None
-      self.dihedral_residual_sum = 0
+      self.number_of_restraints += self.n_ncs_dihedral_proxies
+      self.residual_sum += self.ncs_dihedral_residual_sum
+
+    if den_manager is None:
+      self.n_den_proxies = None
+      self.den_residual_sum = 0
     else:
-      self.n_dihedral_proxies = len(dihedral_proxies)
-      if unit_cell is None: # ignore proxy.i_seqs
-        self.dihedral_residual_sum = geometry_restraints.dihedral_residual_sum(
+      self.n_den_proxies = den_manager.get_n_proxies()
+      self.den_residual_sum = den_manager.target_and_gradients(
           sites_cart=sites_cart,
-          proxies=dihedral_proxies,
           gradient_array=self.gradients)
-      else:
-        self.dihedral_residual_sum = geometry_restraints.dihedral_residual_sum(
-          unit_cell=unit_cell,
-          sites_cart=sites_cart,
-          proxies=dihedral_proxies,
-          gradient_array=self.gradients)
-      self.number_of_restraints += self.n_dihedral_proxies
-      self.residual_sum += self.dihedral_residual_sum
+      self.number_of_restraints += self.n_den_proxies
+      self.residual_sum += self.den_residual_sum
 
     if reference_coordinate_proxies is None:
       self.n_reference_coordinate_proxies = None
@@ -123,55 +144,6 @@ class energies(scitbx.restraints.energies):
       self.number_of_restraints += self.n_reference_coordinate_proxies
       self.residual_sum += self.reference_coordinate_residual_sum
 
-    if (reference_dihedral_proxies is None):
-      self.n_reference_dihedral_proxies = None
-      self.reference_dihedral_residual_sum = 0
-    else:
-      self.n_reference_dihedral_proxies = len(reference_dihedral_proxies)
-      if unit_cell is None: # ignore proxy.i_seqs
-        self.reference_dihedral_residual_sum = geometry_restraints.dihedral_residual_sum(
-          sites_cart=sites_cart,
-          proxies=reference_dihedral_proxies,
-          gradient_array=self.gradients)
-      else:
-        self.reference_dihedral_residual_sum = geometry_restraints.dihedral_residual_sum(
-          unit_cell=unit_cell,
-          sites_cart=sites_cart,
-          proxies=reference_dihedral_proxies,
-          gradient_array=self.gradients)
-      self.number_of_restraints += self.n_reference_dihedral_proxies
-      self.residual_sum += self.reference_dihedral_residual_sum
-
-    if (ncs_dihedral_manager is None):
-      self.n_ncs_dihedral_proxies = None
-      self.ncs_dihedral_residual_sum = 0
-    else:
-      self.n_ncs_dihedral_proxies = ncs_dihedral_manager.get_n_proxies()
-      if unit_cell is None: # ignore proxy.i_seqs
-        self.ncs_dihedral_residual_sum = geometry_restraints.dihedral_residual_sum(
-          sites_cart=sites_cart,
-          proxies=ncs_dihedral_manager.ncs_dihedral_proxies,
-          gradient_array=self.gradients)
-      else:
-        self.ncs_dihedral_residual_sum = geometry_restraints.dihedral_residual_sum(
-          unit_cell=unit_cell,
-          sites_cart=sites_cart,
-          proxies=ncs_dihedral_manager.ncs_dihedral_proxies,
-          gradient_array=self.gradients)
-      self.number_of_restraints += self.n_ncs_dihedral_proxies
-      self.residual_sum += self.ncs_dihedral_residual_sum
-
-    if den_manager is None:
-      self.n_den_proxies = None
-      self.den_residual_sum = 0
-    else:
-      self.n_den_proxies = den_manager.get_n_proxies()
-      self.den_residual_sum = den_manager.target_and_gradients(
-          sites_cart=sites_cart,
-          gradient_array=self.gradients)
-      self.number_of_restraints += self.n_den_proxies
-      self.residual_sum += self.den_residual_sum
-
     if (chirality_proxies is None):
       self.n_chirality_proxies = None
       self.chirality_residual_sum = 0
@@ -183,67 +155,6 @@ class energies(scitbx.restraints.energies):
         gradient_array=self.gradients)
       self.number_of_restraints += self.n_chirality_proxies
       self.residual_sum += self.chirality_residual_sum
-    if (planarity_proxies is None):
-      self.n_planarity_proxies = None
-      self.planarity_residual_sum = 0
-    else:
-      self.n_planarity_proxies = len(planarity_proxies)
-      if unit_cell is None: # ignore proxy.i_seqs
-        self.planarity_residual_sum = geometry_restraints \
-          .planarity_residual_sum(
-            sites_cart=sites_cart,
-            proxies=planarity_proxies,
-            gradient_array=self.gradients)
-      else:
-        self.planarity_residual_sum = geometry_restraints \
-          .planarity_residual_sum(
-            unit_cell=unit_cell,
-            sites_cart=sites_cart,
-            proxies=planarity_proxies,
-            gradient_array=self.gradients)
-      self.number_of_restraints += self.n_planarity_proxies
-      self.residual_sum += self.planarity_residual_sum
-    if parallelity_proxies is None:
-      self.n_parallelity_proxies = None
-      self.parallelity_residual_sum = 0
-    else:
-      self.n_parallelity_proxies = len(parallelity_proxies)
-      if unit_cell is None: # ignore proxy.i_seqs
-        self.parallelity_residual_sum = geometry_restraints \
-          .parallelity_residual_sum(
-            sites_cart=sites_cart,
-            proxies=parallelity_proxies,
-            gradient_array=self.gradients)
-      else:
-        self.parallelity_residual_sum = geometry_restraints \
-          .parallelity_residual_sum(
-            unit_cell=unit_cell,
-            sites_cart=sites_cart,
-            proxies=parallelity_proxies,
-            gradient_array=self.gradients)
-      self.number_of_restraints += self.n_parallelity_proxies
-      self.residual_sum += self.parallelity_residual_sum
-
-    if (bond_similarity_proxies is None):
-      self.n_bond_similarity_proxies = None
-      self.bond_similarity_residual_sum = 0
-    else:
-      self.n_bond_similarity_proxies = len(bond_similarity_proxies)
-      if unit_cell is None: # ignore proxy.i_seqs
-        self.bond_similarity_residual_sum = \
-          geometry_restraints.bond_similarity_residual_sum(
-            sites_cart=sites_cart,
-            proxies=bond_similarity_proxies,
-            gradient_array=self.gradients)
-      else:
-        self.bond_similarity_residual_sum = \
-          geometry_restraints.bond_similarity_residual_sum(
-            unit_cell=unit_cell,
-            sites_cart=sites_cart,
-            proxies=bond_similarity_proxies,
-            gradient_array=self.gradients)
-      self.number_of_restraints += self.n_bond_similarity_proxies
-      self.residual_sum += self.bond_similarity_residual_sum
 
     if (generic_restraints_manager is None) :
       self.n_generic_proxies = 0
@@ -259,14 +170,15 @@ class energies(scitbx.restraints.energies):
 
     if ramachandran_manager is None:
       self.n_ramachandran_proxies = 0
-      self.ramachandran_restraints_residual_sum = 0
+      self.ramachandran_residual_sum = 0
     else:
       self.n_ramachandran_proxies = self.ramachandran_manager.get_n_proxies()
-      self.ramachandran_restraints_residual_sum = self.ramachandran_manager.restraints_residual_sum(
+      self.ramachandran_residual_sum = self.ramachandran_manager.restraints_residual_sum(
           sites_cart=sites_cart,
           gradient_array=self.gradients)
       self.number_of_restraints += self.n_ramachandran_proxies
-      self.residual_sum += self.ramachandran_restraints_residual_sum
+      self.residual_sum += self.ramachandran_residual_sum
+
     if (external_energy_function is not None) :
       self.external_energy = external_energy_function(
         sites_cart=sites_cart,
@@ -463,45 +375,17 @@ class energies(scitbx.restraints.energies):
   def show(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
     print >> f, prefix+"target: %.6g" % self.target
-    if (self.n_bond_proxies is not None):
-      print >> f, prefix+"  bond_residual_sum (n=%d): %.6g" % (
-        self.n_bond_proxies, self.bond_residual_sum)
-    if (self.n_nonbonded_proxies is not None):
-      print >> f, prefix+"  nonbonded_residual_sum (n=%d): %.6g" % (
-        self.n_nonbonded_proxies, self.nonbonded_residual_sum)
-    if (self.n_angle_proxies is not None):
-      print >> f, prefix+"  angle_residual_sum (n=%d): %.6g" % (
-        self.n_angle_proxies, self.angle_residual_sum)
-    if (self.n_dihedral_proxies is not None):
-      print >> f, prefix+"  dihedral_residual_sum (n=%d): %.6g" % (
-        self.n_dihedral_proxies, self.dihedral_residual_sum)
-    if (self.n_reference_dihedral_proxies is not None):
-      print >> f, prefix+"  reference_dihedral_residual_sum (n=%d): %.6g" % (
-        self.n_reference_dihedral_proxies, self.reference_dihedral_residual_sum)
-    if (self.n_reference_coordinate_proxies is not None):
-      print >> f, prefix+"  reference_coordinate_residual_sum (n=%d): %.6g" % (
-        self.n_reference_coordinate_proxies, self.reference_coordinate_residual_sum)
-    if (self.n_ncs_dihedral_proxies is not None):
-      print >> f, prefix+"  ncs_dihedral_residual_sum (n=%d): %.6g" % (
-        self.n_ncs_dihedral_proxies, self.ncs_dihedral_residual_sum)
-    if (self.n_den_proxies is not None):
-      print >> f, prefix+"  den_residual_sum (n=%d): %.6g" % (
-        self.n_den_proxies, self.den_residual_sum)
-    if (self.n_chirality_proxies is not None):
-      print >> f, prefix+"  chirality_residual_sum (n=%d): %.6g" % (
-        self.n_chirality_proxies, self.chirality_residual_sum)
-    if (self.n_planarity_proxies is not None):
-      print >> f, prefix+"  planarity_residual_sum (n=%d): %.6g" % (
-        self.n_planarity_proxies, self.planarity_residual_sum)
-    if (self.n_parallelity_proxies is not None):
-      print >> f, prefix+"  parallelity_residual_sum (n=%d): %.6g" % (
-        self.n_parallelity_proxies, self.parallelity_residual_sum)
-    if (self.n_ramachandran_proxies is not None):
-      print >> f, prefix+"  ramachandran_residual_sum (n=%d): %.6g" % (
-        self.n_ramachandran_proxies, self.ramachandran_restraints_residual_sum)
-    if (self.n_bond_similarity_proxies is not None):
-      print >> f, prefix+"  bond_similarity_residual_sum (n=%d): %.6g" % (
-        self.n_bond_similarity_proxies, self.bond_similarity_residual_sum)
+
+    for p_name in ["bond", "nonbonded", "angle", "dihedral",
+        "reference_dihedral", "reference_coordinate", "ncs_dihedral",
+        "den", "chirality", "planarity", "parallelity", "ramachandran",
+        "bond_similarity"]:
+      if getattr(self, "n_%s_proxies" % p_name) is not None:
+        print >> f, "%s  %s_residual_sum (n=%d): %.6g" % (
+            prefix,
+            p_name,
+            getattr(self, "n_%s_proxies" % p_name),
+            getattr(self, "%s_residual_sum" % p_name))
     for extension_obj in self.extension_objects:
       extension_obj.energies_show(energies_obj=self, f=f, prefix=prefix)
     if (self.gradients is not None):

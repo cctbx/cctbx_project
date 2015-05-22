@@ -864,7 +864,7 @@ def run_apply(filename, testing=False, verbose=False):
   sites_cart = processed_pdb_file.all_chain_proxies.sites_cart_exact()
   if True:
     lines = StringIO()
-    restraints_manager.geometry.show_interactions(sites_cart=sites_cart,
+    restraints_manager.geometry.show_sorted(sites_cart=sites_cart,
                                                   f=lines)
     f=file("%s_pre.geo" % os.path.basename(filename)[:-4], "wb")
     f.write(lines.getvalue())
@@ -883,7 +883,7 @@ def run_apply(filename, testing=False, verbose=False):
   print 'Time to update restraints %0.5fs' % (time.time()-t0)
   if True:
     lines = StringIO()
-    restraints_manager.geometry.show_interactions(sites_cart=sites_cart,
+    restraints_manager.geometry.show_sorted(sites_cart=sites_cart,
                                                   f=lines)
     f=file("%s_post.geo" % os.path.basename(filename)[:-4], "wb")
     f.write(lines.getvalue())
