@@ -188,9 +188,9 @@ def square_pickle(data, square='crop'):
       for x in xrange(pixels.focus()[1]):
         new_pixels[y + delta_y, x + delta_x] = pixels[y, x]
     assert new_pixels.focus()[0] == new_pixels.focus()[1]
-  else:
-    new_size_x = width
-    new_size_y = height
+#   else:
+#     new_size_x = width
+#     new_size_y = height
 
   # save the results
   data['DATA'] = new_pixels

@@ -109,7 +109,7 @@ advanced
   save_tmp_pickles = False
     .type = bool
     .help = If True, saves pickle for each integration attempt in grid search.
-  print_input_list = False
+  print_input_list = True
     .type = bool
     .help = Print to a file a list of selected images
   clean_up_output = True
