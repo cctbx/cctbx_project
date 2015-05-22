@@ -341,7 +341,7 @@ if __name__ == "__main__":
 
   initial_input_list = inp.make_input_list(gs_params)
   input_list = [i for i in initial_input_list if \
-                i.endswith(('pickle', 'mccd', 'cbf'))]
+                i.endswith(('pickle', 'mccd', 'cbf', 'img'))]
 
   # Check if input needs to be converted to pickle format; also check if input
   # images need to be cropped / padded to be square, w/ beam center in the
@@ -365,11 +365,11 @@ if __name__ == "__main__":
     print "ERROR: Unknown image format. Please check your input"
     sys.exit()
 
+  check_options(args)
+
   # generate general input
   gs_range, input_dir_list, output_dir_list, log_dir, logfile, mp_input_list,\
   mp_output_list = inp.generate_input(gs_params, input_list, input_folder)
-
-  check_options(args)
 
   iota_start(txt_out, gs_params, gs_range, input_dir_list,
                     input_list, mp_input_list)
