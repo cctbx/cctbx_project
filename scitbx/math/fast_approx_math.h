@@ -1,5 +1,6 @@
 #ifndef SCITBX_FAST_APPROX_MATH_H
 #define SCITBX_FAST_APPROX_MATH_H
+#include <scitbx/constants.h>
 
 namespace scitbx { namespace math {
 
