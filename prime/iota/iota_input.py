@@ -18,6 +18,7 @@ from cStringIO import StringIO
 
 import iotbx.phil as ip
 import iota_cmd as cmd
+import prime.postrefine.mod_input as mi
 
 master_phil = ip.parse("""
 description = Integration Optimization, Transfer and Analysis (IOTA)
@@ -114,7 +115,7 @@ advanced
   clean_up_output = True
     .type = bool
     .help = Set to False to leave temporary folders and files in place'
-  square_mode = None pad crop
+  square_mode = None pad *crop
     .type = choice
     .help = Method to generate square image
   pred_img
@@ -165,7 +166,6 @@ def process_input(input_file_list):
               txt_output - plain text-formatted parameters
   """
 
-  global params
   user_phil = [ip.parse(open(inp).read()) for inp in input_file_list]
 
   working_phil = master_phil.fetch(sources=user_phil)
@@ -640,3 +640,8 @@ def print_params():
     txt_out += one_output + '\n'
 
   return help_out, txt_out
+
+def make_prime_input(prime_params):
+  pass
+
+
