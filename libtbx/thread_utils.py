@@ -327,7 +327,7 @@ else:
       Signals the process using os.kill, which despite the name, can also
       pause or resume processes on Unix.
       """
-      assert (self._child_process is not None) and (sys.platform != "win32")
+      assert (self._child_process is not None)
       try :
         os.kill(self._child_process.pid, signal_number)
       except OSError, e :
@@ -338,12 +338,24 @@ else:
       else :
         return True
 
-    def pause (self) : # XXX experimental, Unix only
-      if (self.send_signal(signal.SIGSTOP)) :
+    def pause (self) :
+      if sys.platform != "win32":
+        if (self.send_signal(signal.SIGSTOP)) :
+          self._cb_pause()
+      else:
+        import psutil # really should use psutil globally as it is platform independent
+        p = psutil.Process(self._child_process.pid)
+        p.suspend()
         self._cb_pause()
 
-    def resume (self) : # XXX experimental, Unix only
-      if (self.send_signal(signal.SIGCONT)) :
+    def resume (self) :
+      if sys.platform != "win32":
+        if (self.send_signal(signal.SIGCONT)) :
+          self._cb_resume()
+      else:
+        import psutil
+        p = psutil.Process(self._child_process.pid)
+        p.resume()
         self._cb_resume()
 
     def run (self) :
