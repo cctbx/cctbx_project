@@ -132,6 +132,7 @@ class geometry(object):
       esg.reference_coordinate_residual_sum+
       esg.reference_dihedral_residual_sum+
       esg.ncs_dihedral_residual_sum+
+      esg.den_residual_sum+
       esg.generic_restraint_residual_sum+
       esg.ramachandran_restraints_residual_sum)
     del energies_sites, esg # we accumulate this object, so make it clean asap

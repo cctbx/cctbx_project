@@ -4343,7 +4343,6 @@ class build_all_chain_proxies(linking_mixins):
         custom_nonbonded_exclusions=None,
         assume_hydrogens_all_missing=True,
         external_energy_function=None,
-        den_manager=None,
         reference_manager=None,
         log=None):
     assert self.special_position_settings is not None
@@ -4649,8 +4648,7 @@ class build_all_chain_proxies(linking_mixins):
     shell_sym_tables = [shell_asu_table.extract_pair_sym_table()
       for shell_asu_table in shell_asu_tables]
     generic_restraints_manager = mmtbx.geometry_restraints.manager(
-      reference_manager=reference_manager,
-      den_manager=den_manager)
+      reference_manager=reference_manager)
     nonbonded_params = ener_lib_as_nonbonded_params(
       ener_lib=ener_lib,
       assume_hydrogens_all_missing=assume_hydrogens_all_missing,
@@ -4931,7 +4929,6 @@ class process(object):
             custom_nonbonded_exclusions=custom_nonbonded_exclusions,
             assume_hydrogens_all_missing=assume_hydrogens_all_missing,
             external_energy_function=external_energy_function,
-            den_manager=den_manager,
             reference_manager=reference_manager,
             log=self.log)
 
@@ -4954,6 +4951,7 @@ class process(object):
             self.log)
         self._geometry_restraints_manager.set_ramachandran_restraints(
             ramachandran_manager)
+
 
       # C-beta restraints
       if self.all_chain_proxies.params.c_beta_restraints:
@@ -4984,6 +4982,9 @@ class process(object):
             get_n_reference_coordinate_proxies()
         print >> self.log, "  Number of reference coordinate restraints generated:",\
            n_rcr
+
+      # DEN manager
+      self._geometry_restraints_manager.adopt_den_manager(den_manager)
 
       # Secondary structure restraints:
       # Proteins first

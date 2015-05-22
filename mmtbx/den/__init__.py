@@ -213,6 +213,11 @@ class den_restraints(object):
       raise Sorry("No DEN pairs matched to working model. "+\
                   "Please check inputs.")
 
+  def get_n_proxies(self):
+    if self.den_proxies is not None:
+      return self.den_proxies.size()
+    return 0
+
   def find_atom_pairs(self, pdb_hierarchy, resid_hash):
     if self.restrain_to_starting_model:
       reference_txt = "starting"

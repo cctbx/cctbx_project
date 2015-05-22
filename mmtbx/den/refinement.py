@@ -36,10 +36,10 @@ class manager(object):
     self.tan_b_iso_max = 0
     self.random_seed = params.main.random_seed
     den_manager = model.restraints_manager. \
-      geometry.generic_restraints_manager.den_manager
+      geometry.den_manager
     print_statistics.make_header("DEN refinement", out=self.log)
     pdb_hierarchy = self.model.pdb_hierarchy(sync_with_xray_structure=True)
-    if len(den_manager.den_proxies) == 0:
+    if den_manager.get_n_proxies() == 0:
       print_statistics.make_sub_header(
         "DEN restraint nework", out = self.log)
       den_manager.build_den_proxies(pdb_hierarchy=pdb_hierarchy)
@@ -144,7 +144,7 @@ class manager(object):
     utils.assert_xray_structures_equal(
       x1 = fmodels.fmodel_xray().xray_structure,
       x2 = model.xray_structure)
-    model.restraints_manager.geometry.generic_restraints_manager.\
+    model.restraints_manager.geometry.\
       den_manager.import_eq_distances(eq_distances=best_eq_distances)
     self.model.restraints_manager.geometry.update_dihedral_ncs_restraints(
         sites_cart=self.model.xray_structure.sites_cart(),
@@ -171,17 +171,14 @@ class manager(object):
     gamma_local = grid_pair[0]
     weight_local = grid_pair[1]
     self.model.restraints_manager.geometry.\
-      generic_restraints_manager.den_manager.gamma = \
-        gamma_local
+        den_manager.gamma = gamma_local
     self.model.restraints_manager.geometry.\
-      generic_restraints_manager.den_manager.weight = \
-        weight_local
+        den_manager.weight = weight_local
     cycle = 0
     self.model.restraints_manager.geometry.\
-      generic_restraints_manager.den_manager.current_cycle = \
-      cycle+1
+        den_manager.current_cycle = cycle+1
     num_den_cycles = self.model.restraints_manager.geometry.\
-      generic_restraints_manager.den_manager.num_cycles
+        den_manager.num_cycles
     if self.params.den.optimize and \
        self.nproc != Auto and \
        self.nproc > 1:
@@ -229,14 +226,14 @@ class manager(object):
           log=local_log)
       cycle += 1
       self.model.restraints_manager.geometry.\
-        generic_restraints_manager.den_manager.current_cycle += 1
+          den_manager.current_cycle += 1
       r_free = self.fmodels.fmodel_xray().r_free()
       print >> local_log, "rfree at end of SA cycle: %f" % r_free
     r_free = self.fmodels.fmodel_xray().r_free()
     step_xray_structure = self.fmodels.fmodel_xray().\
       xray_structure.deep_copy_scatterers().scatterers()
     step_eq_distances = self.model.restraints_manager.geometry.\
-      generic_restraints_manager.den_manager.get_current_eq_distances()
+        den_manager.get_current_eq_distances()
     return (gamma_local,
             weight_local,
             r_free,
@@ -258,17 +255,14 @@ class manager(object):
     gamma_local = grid_pair[0]
     weight_local = grid_pair[1]
     self.model.restraints_manager.geometry.\
-      generic_restraints_manager.den_manager.gamma = \
-        gamma_local
+        den_manager.gamma = gamma_local
     self.model.restraints_manager.geometry.\
-      generic_restraints_manager.den_manager.weight = \
-        weight_local
+        den_manager.weight = weight_local
     cycle = 0
     self.model.restraints_manager.geometry.\
-      generic_restraints_manager.den_manager.current_cycle = \
-      cycle+1
+        den_manager.current_cycle = cycle+1
     num_den_cycles = self.model.restraints_manager.geometry.\
-      generic_restraints_manager.den_manager.num_cycles
+        den_manager.num_cycles
     if self.params.den.optimize and \
        self.nproc != Auto and \
        self.nproc > 1:
@@ -306,14 +300,14 @@ class manager(object):
           log=local_log)
       cycle += 1
       self.model.restraints_manager.geometry.\
-        generic_restraints_manager.den_manager.current_cycle += 1
+          den_manager.current_cycle += 1
       r_free = self.fmodels.fmodel_xray().r_free()
       print >> local_log, "rfree at end of SA cycle: %f" % r_free
     r_free = self.fmodels.fmodel_xray().r_free()
     step_xray_structure = self.fmodels.fmodel_xray().\
       xray_structure.deep_copy_scatterers().scatterers()
     step_eq_distances = self.model.restraints_manager.geometry.\
-      generic_restraints_manager.den_manager.get_current_eq_distances()
+        den_manager.get_current_eq_distances()
     return (gamma_local,
             weight_local,
             r_free,
