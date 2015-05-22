@@ -45,7 +45,7 @@ class manager (object) :
   def rotamers (self) :
     return None #self.rotamer_manager
 
-  def select (self,
+  def proxy_select (self,
               n_seq,
               iselection) :
     if self.reference_manager is not None:

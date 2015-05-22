@@ -724,6 +724,19 @@ class torsion_ncs(object):
         "Number of torsion NCS restraints: %d\n" \
           % len(self.ncs_dihedral_proxies)
 
+  def show_sorted(self,
+        by_value,
+        sites_cart,
+        site_labels,
+        proxy_label="NCS torsion angle",
+        f=sys.stdout):
+    self.ncs_dihedral_proxies.show_sorted(
+        by_value=by_value,
+        sites_cart=sites_cart,
+        site_labels=site_labels,
+        proxy_label=proxy_label,
+        f=f)
+
   def update_dihedral_ncs_restraints(self,
                                      sites_cart,
                                      pdb_hierarchy,
@@ -1418,7 +1431,7 @@ class torsion_ncs(object):
       delta_sq_sum += ( abs(delta)**2 )
     return math.sqrt(delta_sq_sum / len(deltas))
 
-  def select (self, nseq, iselection) :
+  def proxy_select (self, nseq, iselection) :
     assert (self.ncs_dihedral_proxies is not None)
     return torsion_ncs(
              fmodel=self.fmodel,

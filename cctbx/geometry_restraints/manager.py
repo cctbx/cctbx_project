@@ -333,30 +333,20 @@ class manager(object):
 
   def select(self, selection=None, iselection=None):
     assert [selection, iselection].count(None) == 1
+
     n_seqs = dict_with_default_0()
     if (iselection is None):
       iselection = selection.iselection()
       n_seqs[selection.size()] += 1
-    selected_model_indices = None
-    if (self.model_indices is not None):
-      selected_model_indices = self.model_indices.select(
-        iselection)
-      n_seqs[self.model_indices.size()] += 1
-    selected_conformer_indices = None
-    if (self.conformer_indices is not None):
-      selected_conformer_indices = self.conformer_indices.select(
-        iselection)
-      n_seqs[self.conformer_indices.size()] += 1
-    selected_sym_excl_indices = None
-    if (self.sym_excl_indices is not None):
-      selected_sym_excl_indices = self.sym_excl_indices.select(
-        iselection)
-      n_seqs[self.sym_excl_indices.size()] += 1
-    selected_donor_acceptor_excl_groups = None
-    if (self.donor_acceptor_excl_groups is not None):
-      selected_donor_acceptor_excl_groups = \
-        self.donor_acceptor_excl_groups.select(iselection)
-      n_seqs[self.donor_acceptor_excl_groups.size()] += 1
+
+    selected_stuff = [None]*7
+    for i, stuff in enumerate([self.model_indices, self.conformer_indices,
+        self.sym_excl_indices, self.donor_acceptor_excl_groups,
+        self.nonbonded_types,
+        self.nonbonded_charges]):
+      if stuff is not None:
+        selected_stuff[i] = stuff.select(iselection)
+        n_seqs[stuff.size()] += 1
     selected_site_symmetry_table = None
     if (self.site_symmetry_table is not None):
       selected_site_symmetry_table = self.site_symmetry_table.select(
@@ -369,106 +359,57 @@ class manager(object):
       n_seqs[self.bond_params_table.size()] += 1
     selected_shell_sym_tables = None
     if (self.shell_sym_tables is not None):
-      selected_shell_sym_tables = [shell_sym_table.proxy_select(iselection)
+      selected_shell_sym_tables = [shell_sym_table.proxy_select(
+          iselection)
         for shell_sym_table in self.shell_sym_tables]
       if (len(self.shell_sym_tables) > 0):
         n_seqs[self.shell_sym_tables[0].size()] += 1
     selected_nonbonded_types = None
-    if (self.nonbonded_types is not None):
-      selected_nonbonded_types = self.nonbonded_types.select(
-        iselection)
-      n_seqs[self.nonbonded_types.size()] += 1
-    selected_nonbonded_charges = None
-    if (self.nonbonded_charges is not None) :
-      selected_nonbonded_charges = self.nonbonded_charges.select(
-        iselection)
-      n_seqs[self.nonbonded_charges.size()] += 1
-    n_seq = None
+
     def get_n_seq():
       if (len(n_seqs) == 0):
         raise RuntimeError("Cannot determine n_seq.")
       if (len(n_seqs) != 1):
         raise RuntimeError("Selection size mismatches: %s." % str(n_seqs))
       return n_seqs.keys()[0]
-    selected_angle_proxies = None
-    if (self.angle_proxies is not None):
-      if (n_seq is None): n_seq = get_n_seq()
-      selected_angle_proxies = self.angle_proxies.proxy_select(
-        n_seq, iselection)
-    selected_dihedral_proxies = None
-    if (self.dihedral_proxies is not None):
-      if (n_seq is None): n_seq = get_n_seq()
-      selected_dihedral_proxies = self.dihedral_proxies.proxy_select(
-        n_seq, iselection)
-    selected_reference_coordinate_proxies = None
-    if self.reference_coordinate_proxies is not None:
-      if n_seq is None: n_seq = get_n_seq()
-      selected_reference_coordinate_proxies = self.reference_coordinate_proxies.\
-          proxy_select(n_seq, iselection)
-    selected_reference_dihedral_proxies = None
-    if (self.reference_dihedral_proxies is not None):
-      if (n_seq is None): n_seq = get_n_seq()
-      selected_reference_dihedral_proxies = self.reference_dihedral_proxies.proxy_select(
-        n_seq, iselection)
-    selected_ncs_dihedral_manager = None
-    if (self.ncs_dihedral_manager is not None):
-      if (n_seq is None): n_seq = get_n_seq()
-      selected_ncs_dihedral_manager = self.ncs_dihedral_manager.select(
-        n_seq, iselection)
-    selected_den_manager = None
-    if self.den_manager is not None:
-      if (n_seq is None): n_seq = get_n_seq()
-      selected_den_manager = self.den_manager.select(
-        n_seq, iselection)
-    selected_chirality_proxies = None
-    if (self.chirality_proxies is not None):
-      if (n_seq is None): n_seq = get_n_seq()
-      selected_chirality_proxies = self.chirality_proxies.proxy_select(
-        n_seq, iselection)
-    selected_planarity_proxies = None
-    if (self.planarity_proxies is not None):
-      if (n_seq is None): n_seq = get_n_seq()
-      selected_planarity_proxies = self.planarity_proxies.proxy_select(
-        n_seq, iselection)
-    selected_parallelity_proxies = None
-    if (self.parallelity_proxies is not None):
-      if (n_seq is None): n_seq = get_n_seq()
-      selected_parallelity_proxies = self.parallelity_proxies.proxy_select(
-        n_seq, iselection)
-    generic_restraints_manager = None
-    if (self.generic_restraints_manager is not None) :
-      generic_restraints_manager = self.generic_restraints_manager.select(
-        n_seq, iselection)
-    ramachandran_manager = None
-    if self.ramachandran_manager is not None:
-      ramachandran_manager = self.ramachandran_manager.select(
-          n_seq, iselection)
+
+    n_seq = get_n_seq()
+
+    selected_proxies = [None]*11
+    for i, proxies in enumerate([self.angle_proxies, self.dihedral_proxies,
+        self.reference_coordinate_proxies, self.reference_dihedral_proxies,
+        self.ncs_dihedral_manager, self.den_manager, self.chirality_proxies,
+        self.planarity_proxies, self.parallelity_proxies,
+        self.generic_restraints_manager, self.ramachandran_manager]):
+      if proxies is not None:
+        selected_proxies[i] = proxies.proxy_select(n_seq, iselection)
+
     return manager(
       crystal_symmetry=self.crystal_symmetry,
-      model_indices=selected_model_indices,
-      conformer_indices=selected_conformer_indices,
-      sym_excl_indices=selected_sym_excl_indices,
-      donor_acceptor_excl_groups=selected_donor_acceptor_excl_groups,
       site_symmetry_table=selected_site_symmetry_table,
+      model_indices=selected_stuff[0],
+      conformer_indices=selected_stuff[1],
+      sym_excl_indices=selected_stuff[2],
+      donor_acceptor_excl_groups=selected_stuff[3],
       bond_params_table=selected_bond_params_table,
       shell_sym_tables=selected_shell_sym_tables,
       nonbonded_params=self.nonbonded_params,
-      nonbonded_types=selected_nonbonded_types,
-      nonbonded_charges=selected_nonbonded_charges,
+      nonbonded_types=selected_stuff[4],
+      nonbonded_charges=selected_stuff[5],
       nonbonded_function=self.nonbonded_function,
       nonbonded_distance_cutoff=self.nonbonded_distance_cutoff,
       nonbonded_buffer=self.nonbonded_buffer,
-      angle_proxies=selected_angle_proxies,
-      dihedral_proxies=selected_dihedral_proxies,
-      reference_coordinate_proxies=selected_reference_coordinate_proxies,
-      reference_dihedral_proxies=selected_reference_dihedral_proxies,
-      generic_restraints_manager=generic_restraints_manager,
-      ramachandran_manager=ramachandran_manager,
-      ncs_dihedral_manager=selected_ncs_dihedral_manager,
-      den_manager=selected_den_manager,
-      chirality_proxies=selected_chirality_proxies,
-      planarity_proxies=selected_planarity_proxies,
-      parallelity_proxies=selected_parallelity_proxies,
+      angle_proxies=selected_proxies[0],
+      dihedral_proxies=selected_proxies[1],
+      reference_coordinate_proxies=selected_proxies[2],
+      reference_dihedral_proxies=selected_proxies[3],
+      generic_restraints_manager=selected_proxies[9],
+      ramachandran_manager=selected_proxies[10],
+      ncs_dihedral_manager=selected_proxies[4],
+      den_manager=selected_proxies[5],
+      chirality_proxies=selected_proxies[6],
+      planarity_proxies=selected_proxies[7],
+      parallelity_proxies=selected_proxies[8],
       plain_pairs_radius=self.plain_pairs_radius)
 
   def discard_symmetry(self, new_unit_cell):
@@ -1498,6 +1439,7 @@ class manager(object):
     pair_proxies = self.pair_proxies(flags=flags, sites_cart=sites_cart)
     if (sites_cart is None):
       sites_cart = self._sites_cart_used_for_pair_proxies
+
     if pair_proxies.bond_proxies is not None:
       pair_proxies.bond_proxies.show_sorted(
           by_value="residual",
@@ -1515,66 +1457,44 @@ class manager(object):
           prefix="",
           origin_id=1)
       print >> f, "Bond-like", tempbuffer.getvalue()[5:]
+
     if (self.angle_proxies is not None):
       self.angle_proxies.show_sorted(
         by_value="residual",
-        sites_cart=sites_cart, site_labels=site_labels, f=f,
+        sites_cart=sites_cart,
+        site_labels=site_labels,
+        f=f,
         origin_id=0)
       print >> f
+
       tempbuffer = StringIO.StringIO()
       self.angle_proxies.show_sorted(
         by_value="residual",
-        sites_cart=sites_cart, site_labels=site_labels, f=tempbuffer,
+        sites_cart=sites_cart,
+        site_labels=site_labels,
+        f=tempbuffer,
         origin_id=1)
       print >> f, "Noncovalent b%s" % tempbuffer.getvalue()[1:]
-    dih_prox = self.get_dihedral_proxies()
-    if dih_prox is not None:
-      dih_prox.show_sorted(
-        by_value="residual",
-        sites_cart=sites_cart, site_labels=site_labels, f=f)
-      print >> f
-    c_beta_proxies = self.get_c_beta_torsion_proxies()
-    if c_beta_proxies is not None and len(c_beta_proxies) > 0:
-      c_beta_proxies.show_sorted(
-          by_value="residual",
-          sites_cart=sites_cart,
-          site_labels=site_labels,
-          f=f, is_c_beta=True)
-      print >> f
-    if (self.reference_dihedral_proxies is not None):
-      self.reference_dihedral_proxies.show_sorted(
-        by_value="residual",
-        sites_cart=sites_cart, site_labels=site_labels, f=f, is_reference=True)
-      print >> f
-    if (self.ncs_dihedral_manager is not None):
-      self.ncs_dihedral_manager.ncs_dihedral_proxies.show_sorted(
-        by_value="residual",
-        sites_cart=sites_cart, site_labels=site_labels, f=f, is_ncs=True)
-      print >> f
+
+    for p_label, proxies in [
+        ("Dihedral angle", self.get_dihedral_proxies()),
+        ("C-Beta improper torsion angle", self.get_c_beta_torsion_proxies()),
+        ("Reference torsion angle", self.reference_dihedral_proxies),
+        ("NCS torsion angle", self.ncs_dihedral_manager),
+        ("", self.ramachandran_manager),
+        ("Chirality", self.chirality_proxies),
+        ("", self.planarity_proxies),
+        ("", self.parallelity_proxies)]:
+      if proxies is not None:
+        proxies.show_sorted(
+            by_value="residual",
+            sites_cart=sites_cart,
+            site_labels=site_labels,
+            proxy_label=p_label,
+            f=f)
     #
     # Here should be showing DEN manager...
     #
-    if self.ramachandran_manager is not None:
-      self.ramachandran_manager.show_sorted(
-          by_value="residual",
-          sites_cart=sites_cart,
-          site_labels=site_labels,
-          f=f)
-    if (self.chirality_proxies is not None):
-      self.chirality_proxies.show_sorted(
-        by_value="residual",
-        sites_cart=sites_cart, site_labels=site_labels, f=f)
-      print >> f
-    if (self.planarity_proxies is not None):
-      self.planarity_proxies.show_sorted(
-        by_value="residual",
-        sites_cart=sites_cart, site_labels=site_labels, f=f)
-      print >> f
-    if (self.parallelity_proxies is not None):
-      self.parallelity_proxies.show_sorted(
-        by_value="residual",
-        sites_cart=sites_cart, site_labels=site_labels, f=f)
-      print >> f
     if (pair_proxies.nonbonded_proxies is not None):
       pair_proxies.nonbonded_proxies.show_sorted(
         by_value="delta",
