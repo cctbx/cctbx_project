@@ -17,7 +17,6 @@ class flags(object):
         planarity=None,
         parallelity=None,
         bond_similarity=None,
-        generic_restraints=None,
         ramachandran_restraints=None,
         default=False):
     if (bond is None): bond = default
@@ -32,7 +31,6 @@ class flags(object):
     if (planarity is None): planarity = default
     if (parallelity is None): parallelity = default
     if (bond_similarity is None): bond_similarity = default
-    if (generic_restraints is None) : generic_restraints = default
     if ramachandran_restraints is None: ramachandran_restraints = default
     adopt_init_args(self, locals())
 
@@ -49,6 +47,5 @@ class flags(object):
     print >> f, "  planarity:", self.planarity
     print >> f, "  parallelity:", self.parallelity
     print >> f, "  bond similarity:", self.bond_similarity
-    print >> f, "  other (generic):", self.generic_restraints
     print >> f, "  ramachandran:", self.ramachandran_restraints
     print >> f, "  DEN:", self.den_restraints

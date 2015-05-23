@@ -61,6 +61,7 @@ def run(processed_pdb_file, params=master_params().extract(), log=sys.stdout):
   all_chain_proxies = processed_pdb_file.all_chain_proxies
   reference_manager = None
   if (co.restrain_c_alpha_positions):
+    assert 0, "Broken! - rewrite this part first."
     from mmtbx.geometry_restraints import reference
     ca_selection=all_chain_proxies.pdb_hierarchy.get_peptide_c_alpha_selection()
     ca_sites_cart = \
@@ -162,11 +163,8 @@ def add_rotamer_restraints(
     mode          = mode,
     selection     = selection,
     mon_lib_srv   = mon_lib_srv)
-  restraints_manager.geometry.generic_restraints_manager.\
-    reference_manager.remove_chi_angle_restraints(
-      pdb_hierarchy = pdb_hierarchy)
-  restraints_manager.geometry.generic_restraints_manager.\
-    reference_manager.add_torsion_restraints(
+  restraints_manager.geometry.remove_chi_torsion_restraints_in_place()
+  restraints_manager.geometry.add_chi_torsion_restraints_in_place(
       pdb_hierarchy   = pdb_hierarchy,
       sites_cart      = pdb_hierarchy.atoms().extract_xyz(),
       chi_angles_only = True,
@@ -187,7 +185,6 @@ class run2(object):
                chirality                      = False,
                planarity                      = False,
                parallelity                    = False,
-               generic_restraints             = False,
                rmsd_bonds_termination_cutoff  = 0,
                rmsd_angles_termination_cutoff = 0,
                alternate_nonbonded_off_on     = False,
@@ -228,7 +225,6 @@ class run2(object):
       reference_coordinate = True,
       reference_dihedral = True,
       bond_similarity    = True,
-      generic_restraints = True,
       ramachandran_restraints = True)
     self.update_cdl_restraints()
     self.show()

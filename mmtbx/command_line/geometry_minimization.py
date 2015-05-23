@@ -240,9 +240,8 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure,
     normalization = True)
   if (reference_torsion_proxies is not None
       and id_params.restrain_torsion_angles):
-    geometry.generic_restraints_manager.\
-        reference_manager.add_existing_reference_torsion_proxies(
-            proxies=reference_torsion_proxies)
+    geometry.add_dihedrals_in_place(
+        additional_dihedral_proxies=reference_torsion_proxies)
   if(xray_structure is not None):
     restraints_manager.crystal_symmetry = xray_structure.crystal_symmetry()
   return restraints_manager
@@ -270,7 +269,6 @@ def run_minimization(
     chirality                      = params.move.chirality,
     planarity                      = params.move.planarity,
     parallelity                    = params.move.parallelity,
-    generic_restraints             = False,
     rmsd_bonds_termination_cutoff  = params.rmsd_bonds_termination_cutoff,
     rmsd_angles_termination_cutoff = params.rmsd_angles_termination_cutoff,
     alternate_nonbonded_off_on     = params.alternate_nonbonded_off_on,
@@ -303,7 +301,6 @@ def run_minimization_amber (
     chirality                      = params.move.chirality,
     planarity                      = params.move.planarity,
     parallelity                    = params.move.parallelity,
-    generic_restraints             = False,
     grms_termination_cutoff       = params.grms_termination_cutoff,
     alternate_nonbonded_off_on     = params.alternate_nonbonded_off_on,
     log                            = log,

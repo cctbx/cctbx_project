@@ -338,9 +338,7 @@ def action(
   suppress_allowed_origin_shifts(collect_stats=False)
   n_time_steps = 0
   den_update_interval = None
-  if (tardy_model.potential_obj.reduced_geo_manager is not None) and \
-     (tardy_model.potential_obj.reduced_geo_manager. \
-      generic_restraints_manager is not None):
+  if (tardy_model.potential_obj.reduced_geo_manager is not None):
     den_update_interval = 50 / ( (  params.start_temperature_kelvin
                            - params.final_temperature_kelvin) \
                           / params.number_of_cooling_steps)
@@ -356,9 +354,7 @@ def action(
                - i_cool_step * (  params.start_temperature_kelvin
                                 - params.final_temperature_kelvin) \
                              / params.number_of_cooling_steps
-    if (tardy_model.potential_obj.reduced_geo_manager is not None) and \
-       (tardy_model.potential_obj.reduced_geo_manager. \
-        generic_restraints_manager is not None):
+    if (tardy_model.potential_obj.reduced_geo_manager is not None):
       if (tardy_model.potential_obj.reduced_geo_manager. \
           den_manager is not None) and \
          i_cool_step > 0 and not (i_cool_step)%den_update_interval:

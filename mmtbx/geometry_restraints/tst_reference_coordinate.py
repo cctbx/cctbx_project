@@ -271,15 +271,13 @@ def exercise_3(mon_lib_srv, ener_lib):
     assert selection.size() == len(reference_names)
     selection_bool = flex.bool(xrs2.scatterers().size(), min_selection)
     if(use_reference == 'True'):
-      grm.generic_restraints_manager.reference_manager.\
-        add_torsion_restraints(
+      grm.add_chi_torsion_restraints_in_place(
           pdb_hierarchy = pdb2,
           sites_cart = sites_cart_reference,
           selection = selection,
           sigma = 2.5)
     elif(use_reference == 'top_out'):
-      grm.generic_restraints_manager.reference_manager.\
-        add_torsion_restraints(
+      grm.add_chi_torsion_restraints_in_place(
           pdb_hierarchy = pdb2,
           sites_cart = sites_cart_reference,
           selection = selection,
@@ -287,14 +285,12 @@ def exercise_3(mon_lib_srv, ener_lib):
           limit = 180.0,
           top_out_potential=True)
     elif(use_reference == 'None'):
-      grm.generic_restraints_manager.reference_manager.\
-        add_torsion_restraints(
+      grm.add_chi_torsion_restraints_in_place(
           pdb_hierarchy = pdb2,
           sites_cart = sites_cart_reference,
           selection = selection,
           sigma = 2.5)
-      grm.generic_restraints_manager.reference_manager.\
-        remove_torsion_restraints(
+      grm.remove_chi_torsion_restraints_in_place(
           selection = selection)
     d1 = flex.mean(flex.sqrt((xrs2.sites_cart().select(min_selection) -
                               xrs3.sites_cart().select(min_selection)).dot()))
@@ -326,10 +322,8 @@ def exercise_3(mon_lib_srv, ener_lib):
       flex.max(flex.sqrt((xrs2.sites_cart().select(~selection_bool) -
                           xrs3.sites_cart().select(~selection_bool)).dot())), 0)
   #test torsion manipulation
-  grm.generic_restraints_manager.reference_manager.\
-    reference_coordinate_proxies = None
-  grm.generic_restraints_manager.reference_manager.\
-    reference_torsion_proxies = None
+  grm.remove_chi_torsion_restraints_in_place()
+  grm.remove_chi_torsion_restraints_in_place()
   sites_cart_reference = []
   selections_reference = []
   for model in pdb2.models():
@@ -340,36 +334,29 @@ def exercise_3(mon_lib_srv, ener_lib):
 
   #one residue at a time (effectively chi angles only)
   for sites_cart, selection in zip(sites_cart_reference, selections_reference):
-    grm.generic_restraints_manager.reference_manager.\
-      add_torsion_restraints(
+    grm.add_chi_torsion_restraints_in_place(
         pdb_hierarchy = pdb2,
         sites_cart    = sites_cart,
         selection     = selection)
-  assert len(grm.generic_restraints_manager.reference_manager.
-              reference_torsion_proxies) == 6
-  grm.generic_restraints_manager.reference_manager.\
-    reference_torsion_proxies = None
+  assert grm.get_n_chi_torsion_proixes() == 6
+  grm.remove_chi_torsion_restraints_in_place()
 
   #all sites at once, chi angles only
   sites_cart = xrs2.sites_cart()
-  grm.generic_restraints_manager.reference_manager.\
-    add_torsion_restraints(
+  grm.add_chi_torsion_restraints_in_place(
       pdb_hierarchy   = pdb2,
       sites_cart      = sites_cart,
       selection       = None,
       chi_angles_only = True)
-  assert len(grm.generic_restraints_manager.reference_manager.
-              reference_torsion_proxies) == 6
+  assert grm.get_n_chi_torsion_proixes() == 6
 
   #all sites at once, all torsions
-  grm.generic_restraints_manager.reference_manager.\
-    add_torsion_restraints(
+  grm.add_chi_torsion_restraints_in_place(
       pdb_hierarchy   = pdb2,
       sites_cart      = sites_cart,
       selection       = None,
       chi_angles_only = False)
-  assert len(grm.generic_restraints_manager.reference_manager.
-              reference_torsion_proxies) == 18
+  assert grm.get_n_chi_torsion_proixes() == 18
 
 if (__name__ == "__main__") :
   mon_lib_srv = server.server()

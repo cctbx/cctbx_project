@@ -32,6 +32,7 @@ from scitbx_array_family_flex_ext import reindexing_array
 #         1 - angle restraints associated with NA basepair hydrogen bonds
 # dihedral(torsion): 0 - covalent geometry
 #                    1 - C-beta restraints
+#                    2 - Torsion restraints on chi angles (side-chain rotamers)
 # chirality: 0 - covalent geometry
 # planarity: 0 - covalent geometry
 #            1 - planarity restraints for NA basepairs
@@ -64,7 +65,6 @@ class manager(object):
         chirality_proxies=None,
         planarity_proxies=None,
         parallelity_proxies=None,
-        generic_restraints_manager=None,
         ramachandran_manager=None,
         external_energy_function=None,
         plain_pairs_radius=None,
@@ -233,7 +233,6 @@ class manager(object):
         dihedral_proxies=reduced_dihedral_proxies,
         ncs_dihedral_manager=self.ncs_dihedral_manager,
         den_manager=self.den_manager,
-        generic_restraints_manager=self.generic_restraints_manager,
         ramachandran_manager=self.ramachandran_manager)
 
   def sites_cart_used_for_pair_proxies(self):
@@ -322,7 +321,6 @@ class manager(object):
       dihedral_proxies=self.dihedral_proxies,
       reference_coordinate_proxies=self.reference_coordinate_proxies,
       reference_dihedral_proxies=self.reference_dihedral_proxies,
-      generic_restraints_manager=self.generic_restraints_manager,
       ramachandran_manager=self.ramachandran_manager,
       ncs_dihedral_manager=self.ncs_dihedral_manager,
       den_manager=self.den_manager,
@@ -380,7 +378,7 @@ class manager(object):
         self.reference_coordinate_proxies, self.reference_dihedral_proxies,
         self.ncs_dihedral_manager, self.den_manager, self.chirality_proxies,
         self.planarity_proxies, self.parallelity_proxies,
-        self.generic_restraints_manager, self.ramachandran_manager]):
+        self.ramachandran_manager]):
       if proxies is not None:
         selected_proxies[i] = proxies.proxy_select(n_seq, iselection)
 
@@ -403,8 +401,7 @@ class manager(object):
       dihedral_proxies=selected_proxies[1],
       reference_coordinate_proxies=selected_proxies[2],
       reference_dihedral_proxies=selected_proxies[3],
-      generic_restraints_manager=selected_proxies[9],
-      ramachandran_manager=selected_proxies[10],
+      ramachandran_manager=selected_proxies[9],
       ncs_dihedral_manager=selected_proxies[4],
       den_manager=selected_proxies[5],
       chirality_proxies=selected_proxies[6],
@@ -436,7 +433,6 @@ class manager(object):
       dihedral_proxies=self.dihedral_proxies,
       reference_coordinate_proxies=self.reference_coordinate_proxies,
       reference_dihedral_proxies=self.reference_dihedral_proxies,
-      generic_restraints_manager=self.generic_restraints_manager,
       ramachandran_manager=self.ramachandran_manager,
       ncs_dihedral_manager=self.ncs_dihedral_manager,
       den_manager=self.den_manager,
@@ -452,12 +448,9 @@ class manager(object):
     self.angle_proxies = self.angle_proxies.proxy_remove(
       selection=selection)
 
-  def add_dihedrals_in_place(self, additional_dihedral_proxies):
-    if self.dihedral_proxies is not None:
-      self.dihedral_proxies.extend(additional_dihedral_proxies)
-    else:
-      self.dihedral_proxies = additional_dihedral_proxies
-
+  #=================================================================
+  # Reference coordinate proxies methods
+  #=================================================================
   def get_reference_coordinate_proxies(self):
     return self.reference_coordinate_proxies
 
@@ -529,19 +522,74 @@ class manager(object):
     if proxies.size() > 0:
       self.reference_coordinate_proxies = proxies
 
+  #=================================================================
+  # Torsion (dihedral) restraints on chi angles (side-chain rotamers)
+  # proxies methods
+  #=================================================================
+  def add_chi_torsion_restraints_in_place(self,
+      pdb_hierarchy,
+      sites_cart,
+      selection=None,
+      sigma=2.5,
+      limit=15.0,
+      chi_angles_only=False,
+      top_out_potential=False):
+    from mmtbx.geometry_restraints.reference import generate_torsion_restraints
+    chi_torsions = generate_torsion_restraints(
+        pdb_hierarchy=pdb_hierarchy,
+        sites_cart=sites_cart,
+        selection=selection,
+        sigma=sigma,
+        limit=limit,
+        chi_angles_only=chi_angles_only,
+        top_out_potential=top_out_potential,
+        origin_id=2)
+    self.add_dihedrals_in_place(chi_torsions)
+
+  def remove_chi_torsion_restraints_in_place(self, selection=None):
+    if self.dihedral_proxies is not None:
+      if selection is None:
+        self.dihedral_proxies = self.dihedral_proxies.proxy_remove(origin_id=2)
+      else:
+        chi_proxies = self.dihedral_proxies.proxy_select(origin_id=2)
+        should_remain_proxies = chi_proxies.proxy_remove(selection=selection)
+        self.dihedral_proxies = self.dihedral_proxies.proxy_remove(origin_id=2)
+        self.add_dihedrals_in_place(should_remain_proxies)
+
+  def get_chi_torsion_proxies(self):
+    if self.dihedral_proxies is not None:
+      return self.dihedral_proxies.proxy_select(origin_id=2)
+
+  def get_n_chi_torsion_proixes(self):
+    if self.dihedral_proxies is not None:
+      return self.dihedral_proxies.proxy_select(origin_id=2).size()
+
+
+  #=================================================================
+  # Dihedral proxies methods
+  #=================================================================
+  def add_dihedrals_in_place(self, additional_dihedral_proxies):
+    if self.dihedral_proxies is not None:
+      self.dihedral_proxies.extend(additional_dihedral_proxies)
+    else:
+      self.dihedral_proxies = additional_dihedral_proxies
+
   def remove_dihedrals_in_place(self, selection):
     if self.dihedral_proxies is not None:
       self.dihedral_proxies = self.dihedral_proxies.proxy_remove(
         selection=selection)
 
-  def get_c_beta_torsion_proxies(self):
-    if self.dihedral_proxies is not None:
-      return self.dihedral_proxies.proxy_select(origin_id=1)
-    return None
-
   def get_dihedral_proxies(self):
     if self.dihedral_proxies is not None:
       return self.dihedral_proxies.proxy_select(origin_id=0)
+    return None
+
+  #=================================================================
+  # C-beta dihedral proxies methods
+  #=================================================================
+  def get_c_beta_torsion_proxies(self):
+    if self.dihedral_proxies is not None:
+      return self.dihedral_proxies.proxy_select(origin_id=1)
     return None
 
   def remove_c_beta_torsion_restraints_in_place(self, selection=None):
@@ -551,6 +599,9 @@ class manager(object):
       self.dihedral_proxies = self.dihedral_proxies.proxy_select(origin_id=1).\
           proxy_remove(selection=selection)
 
+  #=================================================================
+  # Reference dihedral proxies methods
+  #=================================================================
   def remove_reference_dihedrals_in_place(self, selection):
     self.reference_dihedral_proxies = self.reference_dihedral_proxies.proxy_remove(
       selection=selection)
@@ -591,9 +642,6 @@ class manager(object):
   def remove_parallelities_in_place(self, selection):
     self.parallelity_proxies = self.parallelity_proxies.proxy_remove(
       selection=selection)
-
-  def set_generic_restraints (self, manager) :
-    self.generic_restraints_manager = manager
 
   def set_ramachandran_restraints(self, manager):
     self.ramachandran_manager=manager
@@ -1121,8 +1169,7 @@ class manager(object):
      chirality_proxies,
      planarity_proxies,
      parallelity_proxies,
-     generic_restraints,
-     ramachandran_manager) = [None]*14
+     ramachandran_manager) = [None]*13
     if (flags.bond):
       assert pair_proxies.bond_proxies is not None
       bond_proxies = pair_proxies.bond_proxies
@@ -1144,8 +1191,6 @@ class manager(object):
     if (flags.chirality): chirality_proxies = self.chirality_proxies
     if (flags.planarity): planarity_proxies = self.planarity_proxies
     if (flags.parallelity): parallelity_proxies = self.parallelity_proxies
-    if (flags.generic_restraints) :
-      generic_restraints = self.generic_restraints_manager
     if flags.ramachandran_restraints:
       ramachandran_manager = self.ramachandran_manager
     return geometry_restraints.energies.energies(
@@ -1162,7 +1207,6 @@ class manager(object):
       chirality_proxies=chirality_proxies,
       planarity_proxies=planarity_proxies,
       parallelity_proxies=parallelity_proxies,
-      generic_restraints_manager=generic_restraints,
       ramachandran_manager = ramachandran_manager,
       external_energy_function=external_energy_function,
       compute_gradients=compute_gradients,

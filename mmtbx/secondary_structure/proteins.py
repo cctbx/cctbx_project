@@ -27,6 +27,16 @@ helix
     .type = float
   top_out = False
     .type = bool
+  hbond
+    .multiple = True
+    .optional = True
+    .style = noauto
+  {
+    donor = None
+      .type = atom_selection
+    acceptor = None
+      .type = atom_selection
+  }
 }"""
 
 sheet_group_params_str = """
@@ -70,6 +80,16 @@ sheet
     .type = bool
     .help = Only applies to rigid-body groupings, and not H-bond restraints \
       which are already backbone-only.
+  hbond
+    .multiple = True
+    .optional = True
+    .style = noauto
+  {
+    donor = None
+      .type = atom_selection
+    acceptor = None
+      .type = atom_selection
+  }
 }
 """
 
