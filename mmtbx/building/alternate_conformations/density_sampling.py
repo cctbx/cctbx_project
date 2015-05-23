@@ -180,6 +180,7 @@ def score_density (self, two_fofc_map, fofc_map, unit_cell, params,
 
 # XXX from mmtbx/refinement/real_space/fit_residue.py
 def rigid_body_refine (residue, target_map, unit_cell, max_iterations = 250):
+  assert 0, "Never tested, now definitely broken."
   import mmtbx.geometry_restraints
   import mmtbx.refinement.real_space.rigid_body
   import cctbx.geometry_restraints.manager

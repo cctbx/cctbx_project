@@ -613,7 +613,6 @@ class box_build_refine_base (object) :
       dihedral=True,
       chirality=True,
       planarity=True,
-      generic_restraints=True,
       max_number_of_iterations=500,
       number_of_macro_cycles=5,
       rmsd_bonds_termination_cutoff  = 0,
@@ -637,8 +636,7 @@ class box_build_refine_base (object) :
       angle              = angle,
       dihedral           = dihedral,
       chirality          = chirality,
-      planarity          = planarity,
-      generic_restraints = generic_restraints)
+      planarity          = planarity)
     site_labels = self.box.xray_structure_box.scatterers().extract_labels()
     for i in xrange(number_of_macro_cycles):
       sites_cart = self.box.xray_structure_box.sites_cart()

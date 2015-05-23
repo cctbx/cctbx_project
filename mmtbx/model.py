@@ -743,7 +743,6 @@ class manager(object):
         chirality                      = False,
         planarity                      = False,
         parallelity                    = False,
-        generic_restraints             = False,
         rmsd_bonds_termination_cutoff  = 0,
         rmsd_angles_termination_cutoff = 0):
     # XXX consolidate with mmtbx.refinement.geometry_minimization.run2
@@ -761,8 +760,7 @@ class manager(object):
       dihedral           = dihedral,
       chirality          = chirality,
       planarity          = planarity,
-      parallelity        = parallelity,
-      generic_restraints = generic_restraints)
+      parallelity        = parallelity)
     for i in xrange(number_of_macro_cycles):
       sites_cart = self.xray_structure.sites_cart()
       sites_cart_orig = sites_cart.deep_copy()

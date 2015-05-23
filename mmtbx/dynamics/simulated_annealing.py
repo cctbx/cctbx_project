@@ -135,12 +135,11 @@ class run(object):
     verbose = params.verbose
     reset_velocities = True
     vxyz = None
-    den_manager = getattr(restraints_manager.geometry.generic_restraints_manager,
-      "den_manager", None)
+    den_manager = restraints_manager.geometry.den_manager
     cartesian_den_restraints = False
     if(den_manager is not None):
       if("cartesian" in den_manager.params.annealing_type):
-        restraints_manager.geometry.generic_restraints_manager.flags.den = True
+        # restraints_manager.geometry.generic_restraints_manager.flags.den = True
         cartesian_den_restraints = True
         verbose = False
     while params.final_temperature <= self.curr_temp:
@@ -180,8 +179,8 @@ class run(object):
         print >> self.log, "update DEN eq distances at temp=%.1f" % self.curr_temp
         den_manager.update_eq_distances(
           sites_cart=fmodel.xray_structure.sites_cart())
-    if(den_manager is not None):
-      restraints_manager.geometry.generic_restraints_manager.flags.den = False
+    # if(den_manager is not None):
+    #   restraints_manager.geometry.generic_restraints_manager.flags.den = False
 
   def show(self, curr_temp):
     if(self.verbose):

@@ -230,29 +230,26 @@ def exercise(d_min=5, random_seed=1111111):
     show(prefix="START",pdb_hierarchy = inp.ph, tm=target_map, xrs=xrs_poor, grm=inp.grm.geometry)
     #
     if(use_reference_torsion == "yes_add_per_residue"):
-      inp.grm.geometry.generic_restraints_manager.reference_manager.\
-        remove_chi_angle_restraints(pdb_hierarchy=pdb_hierarchy_reference)
+      inp.grm.geometry.remove_chi_torsion_restraints_in_place()
       for sites_cart, selection in zip(sites_cart_reference, selections_reference):
-        inp.grm.geometry.generic_restraints_manager.reference_manager.add_torsion_restraints(
+        inp.grm.geometry.add_chi_torsion_restraints_in_place(
           pdb_hierarchy   = pdb_hierarchy_reference,
           sites_cart      = sites_cart,
           selection       = selection,
           chi_angles_only = True,
           sigma           = 1)
     if(use_reference_torsion == "yes_add_once"):
-      inp.grm.geometry.generic_restraints_manager.reference_manager.\
-        remove_chi_angle_restraints(pdb_hierarchy=pdb_hierarchy_reference)
-      inp.grm.geometry.generic_restraints_manager.reference_manager.add_torsion_restraints(
+      inp.grm.geometry.remove_chi_torsion_restraints_in_place()
+      inp.grm.geometry.add_chi_torsion_restraints_in_place(
         pdb_hierarchy   = pdb_hierarchy_reference,
         sites_cart      = xrs_good.sites_cart(),
         chi_angles_only = True,
         sigma           = 1)
     if(use_reference_torsion == "yes_manual"):
-      inp.grm.geometry.generic_restraints_manager.reference_manager.\
-        remove_chi_angle_restraints(pdb_hierarchy=pdb_hierarchy_reference)
+      inp.grm.geometry.remove_chi_torsion_restraints_in_place()
       for sites_cart, selection in zip(sites_cart_reference_for_chi_only,
                                        selections_reference_for_chi_only):
-        inp.grm.geometry.generic_restraints_manager.reference_manager.add_torsion_restraints(
+        inp.grm.geometry.add_chi_torsion_restraints_in_place(
           pdb_hierarchy   = pdb_hierarchy_reference,
           sites_cart      = sites_cart,
           selection       = selection,

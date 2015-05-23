@@ -55,8 +55,6 @@ class manager(object):
     self.save_scatterers_local = fmodels.fmodel_xray().\
       xray_structure.deep_copy_scatterers().scatterers()
     #DEN refinement start, turn on
-    model.restraints_manager. \
-      geometry.generic_restraints_manager.flags.den = True
     if params.den.optimize:
       grid = den_manager.get_optimization_grid()
       print >> log, \
@@ -151,8 +149,6 @@ class manager(object):
         pdb_hierarchy=self.model.pdb_hierarchy(sync_with_xray_structure=True),
         log=self.log)
     #DEN refinement done, turn off
-    model.restraints_manager. \
-      geometry.generic_restraints_manager.flags.den = False
 
   def try_den_weight_torsion(self, grid_pair):
     #backup_k_rep = self.params.tardy.\
@@ -426,12 +422,11 @@ class manager(object):
       angle                          = True,
       dihedral                       = True,
       chirality                      = True,
-      planarity                      = True,
-      generic_restraints             = True)
+      planarity                      = True)
     utils.assert_xray_structures_equal(
       x1 = self.fmodels.fmodel_xray().xray_structure,
       x2 = self.model.xray_structure)
-    self.model.restraints_manager.geometry.generic_restraints_manager.\
-         reference_coordinate_proxies = None
-    self.model.restraints_manager.geometry.generic_restraints_manager.\
-         flags.reference_coordinate = False
+    self.model.restraints_manager.geometry.\
+        remove_reference_coordinate_restraints_in_place()
+    # self.model.restraints_manager.geometry.generic_restraints_manager.\
+    #      flags.reference_coordinate = False

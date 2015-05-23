@@ -109,6 +109,7 @@ def get_expected_n_hbonds_from_helix(helix):
 def print_hbond_proxies(geometry, hierarchy, pymol=False):
   """ Print hydrogen bonds in geometry restraints manager for debugging
   purposes"""
+  assert 0, "need to rewrite due to reorganization of GRM"
   atoms = hierarchy.atoms()
   if pymol:
     dashes = open('dashes.pml', 'w')
@@ -476,16 +477,14 @@ def substitute_ss(real_h,
           sites_cart = real_h.atoms().extract_xyz().select(other_selection),
           selection  = other_selection,
           sigma      = sigma_on_reference_non_ss))
-  grm.geometry.generic_restraints_manager.reference_manager.\
-      add_torsion_restraints(
+  grm.geometry.add_chi_torsion_restraints_in_place(
           pdb_hierarchy   = pre_result_h,
           sites_cart      = pre_result_h.atoms().extract_xyz().\
                                  select(ss_for_tors_selection),
           selection = ss_for_tors_selection,
           chi_angles_only = False,
           sigma           = sigma_on_torsion_ss)
-  grm.geometry.generic_restraints_manager.reference_manager.\
-      add_torsion_restraints(
+  grm.geometry.add_chi_torsion_restraints_in_place(
           pdb_hierarchy   = pre_result_h,
           sites_cart      = real_h.atoms().extract_xyz().\
                                 select(nonss_for_tors_selection),
@@ -516,11 +515,11 @@ def substitute_ss(real_h,
       dihedral                 = True,
       chirality                = True,
       planarity                = True,
+      fix_rotamer_outliers     = False,
       log                      = refinement_log)
 
   #print_hbond_proxies(grm.geometry,real_h)
-  return grm.geometry.generic_restraints_manager.\
-      reference_manager.reference_torsion_proxies
+  return grm.geometry.get_chi_torsion_proxies()
 
 
 def beta():

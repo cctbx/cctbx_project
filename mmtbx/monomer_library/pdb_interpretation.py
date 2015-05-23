@@ -4343,7 +4343,6 @@ class build_all_chain_proxies(linking_mixins):
         custom_nonbonded_exclusions=None,
         assume_hydrogens_all_missing=True,
         external_energy_function=None,
-        reference_manager=None,
         log=None):
     assert self.special_position_settings is not None
     timer = user_plus_sys_time()
@@ -4647,8 +4646,6 @@ class build_all_chain_proxies(linking_mixins):
         shell_asu_tables=shell_asu_tables)
     shell_sym_tables = [shell_asu_table.extract_pair_sym_table()
       for shell_asu_table in shell_asu_tables]
-    generic_restraints_manager = mmtbx.geometry_restraints.manager(
-      reference_manager=reference_manager)
     nonbonded_params = ener_lib_as_nonbonded_params(
       ener_lib=ener_lib,
       assume_hydrogens_all_missing=assume_hydrogens_all_missing,
@@ -4684,7 +4681,6 @@ class build_all_chain_proxies(linking_mixins):
       chirality_proxies=self.geometry_proxy_registries.chirality.proxies,
       planarity_proxies=self.geometry_proxy_registries.planarity.proxies,
       parallelity_proxies=self.geometry_proxy_registries.parallelity.proxies,
-      generic_restraints_manager=generic_restraints_manager,
       ramachandran_manager=None,
       external_energy_function=external_energy_function,
       max_reasonable_bond_distance=self.params.max_reasonable_bond_distance,
@@ -4914,8 +4910,7 @@ class process(object):
         hard_minimum_nonbonded_distance=0.001,
         nonbonded_distance_threshold=0.5,
         external_energy_function=None,
-        den_manager=None,
-        reference_manager=None):
+        den_manager=None):
     if (    self.all_chain_proxies.sites_cart is not None
         and self.all_chain_proxies.special_position_settings is not None
         and self._geometry_restraints_manager is None):
@@ -4929,7 +4924,6 @@ class process(object):
             custom_nonbonded_exclusions=custom_nonbonded_exclusions,
             assume_hydrogens_all_missing=assume_hydrogens_all_missing,
             external_energy_function=external_energy_function,
-            reference_manager=reference_manager,
             log=self.log)
 
       # initializing grm

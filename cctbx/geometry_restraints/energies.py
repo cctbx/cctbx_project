@@ -23,7 +23,6 @@ class energies(scitbx.restraints.energies):
                planarity_proxies=None,
                parallelity_proxies=None,
                bond_similarity_proxies=None,
-               generic_restraints_manager=None,
                ramachandran_manager=None,
                external_energy_function=None,
                compute_gradients=True,
@@ -155,18 +154,6 @@ class energies(scitbx.restraints.energies):
         gradient_array=self.gradients)
       self.number_of_restraints += self.n_chirality_proxies
       self.residual_sum += self.chirality_residual_sum
-
-    if (generic_restraints_manager is None) :
-      self.n_generic_proxies = 0
-      self.generic_restraint_residual_sum = 0
-    else :
-      self.n_generic_proxies = generic_restraints_manager.get_n_proxies()
-      self.generic_restraint_residual_sum = \
-        generic_restraints_manager.restraints_residual_sum(
-          sites_cart=sites_cart,
-          gradient_array=self.gradients)
-      self.number_of_restraints += self.n_generic_proxies
-      self.residual_sum += self.generic_restraint_residual_sum
 
     if ramachandran_manager is None:
       self.n_ramachandran_proxies = 0
