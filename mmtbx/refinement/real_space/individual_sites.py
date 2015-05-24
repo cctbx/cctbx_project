@@ -25,6 +25,7 @@ class easy(object):
         selection=None,
         rms_bonds_limit=0.015,
         rms_angles_limit=2.0,
+        max_iterations=150,
         w = None,
         states_accumulator=None,
         log=None):
@@ -49,6 +50,7 @@ class easy(object):
     refine_object = simple(
       target_map                  = map_data,
       selection                   = selection,
+      max_iterations              = max_iterations,
       geometry_restraints_manager = geometry_restraints_manager.geometry,
       states_accumulator          = states_accumulator)
     refine_object.refine(weight = self.w, xray_structure = self.xray_structure)
