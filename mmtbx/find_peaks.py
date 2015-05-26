@@ -138,7 +138,6 @@ class manager(object):
         fft_map.apply_volume_scaling()
         map_units = "e/A**3"
       fft_map_data = fft_map.real_map_unpadded()
-    gridding_n_real = fft_map.n_real()
     crystal_gridding_tags = fft_map.tags()
     max_number_of_peaks = self.params.max_number_of_peaks
     if(self.params.max_number_of_peaks is None):
