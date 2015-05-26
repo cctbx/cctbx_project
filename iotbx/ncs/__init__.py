@@ -1,6 +1,8 @@
 from __future__ import division
 import ncs_preprocess
 import sys
+import iotbx.pdb
+from scitbx.array_family import flex
 
 simple_ncs_phil_params = """\
 simple_ncs_from_pdb
@@ -300,3 +302,38 @@ def input(pdb_hierarchy_inp=None,
       ignore_chains=ignore_chains)
     return ncs_group_obj
 
+def extract_tncs_groups(distance_threshold, file_name=None, pdb_inp=None,
+                        show=True):
+  assert [file_name, pdb_inp].count(None) == 1
+  # Compute mean distance between master and copy, after moving to origin
+  def mean_dist_due_to_pure_rotation(sites_cart_1, sites_cart_2, rtm):
+    s1 = sites_cart_1 - sites_cart_1.mean()
+    s2 = sites_cart_2 - sites_cart_2.mean()
+    s21 = rtm.elems*s2
+    distances = flex.sqrt((s1 - s21).dot())
+    return flex.mean(distances)
+  #
+  if(file_name is not None):
+    pdb_inp = iotbx.pdb.input(file_name=file_name)
+    ncs_inp = iotbx.ncs.input(pdb_inp = pdb_inp,
+      exclude_misaligned_residues=False)
+  else:
+    ncs_inp = iotbx.ncs.input(file_name = file_name,
+      exclude_misaligned_residues=False)
+  sites_cart = pdb_inp.atoms().extract_xyz()
+  if(show):
+    ncs_groups_str = ncs_inp.get_ncs_info_as_spec().\
+      format_all_for_phenix_refine(quiet=True, prefix="ncs_group")
+    print ncs_groups_str
+  ncs_groups = ncs_inp.get_ncs_restraints_group_list()
+  result = []
+  for g in ncs_groups:
+    sel_master = g.master_iselection
+    for c in g.copies:
+      dist_m_copy = mean_dist_due_to_pure_rotation(
+        sites_cart_1 = sites_cart.select(g.master_iselection),
+        sites_cart_2 = sites_cart.select(c.iselection),
+        rtm          = c.r)
+      if(dist_m_copy < distance_threshold):
+        result.append([g,dist_m_copy])
+  return result
