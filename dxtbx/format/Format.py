@@ -259,6 +259,20 @@ class Format(object):
 
     return None
 
+  def get_gain(self):
+    '''
+    Overload this method to provide a gain map
+
+    '''
+    return None
+
+  def get_pedestal(self):
+    '''
+    Overload this method to provide a pedestal map
+
+    '''
+    return None
+
   ####################################################################
   #                                                                  #
   # Helper functions for dealing with compressed images.             #
