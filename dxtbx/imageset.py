@@ -467,9 +467,9 @@ class ImageSet(object):
       indices = self._indices[item]
       return ImageSet(self.reader(), indices, self._models)
     else:
-      return self.reader().read(self._indices[item])
+      return self.get_corrected_data(item)
 
-  def get_image(self, index):
+  def get_raw_data(self, index):
     '''
     Get the image at the given index
 
@@ -482,6 +482,51 @@ class ImageSet(object):
         image = (image,)
       self.image_cache = (index, image)
     return image
+
+  def get_corrected_data(self, index):
+    '''
+    Get the corrected data: (raw_data - pedestal) * gain
+
+    '''
+    data = self.get_raw_data(index)
+    gain = self.get_gain(index)
+    pedestal = self.get_pedestal(index)
+    result = []
+    for d, p, g in zip(data, pedestal, gain):
+      result.append((d.as_double() - p) * g)
+    return tuple(result)
+
+  def get_gain(self, index):
+    '''
+    Get the gain map
+
+    '''
+    from scitbx.array_family import flex
+    fmt = self.reader().get_format(index)
+    gain = fmt.get_gain()
+    if gain is not None:
+      return gain
+    image = self.get_raw_data(index)
+    gain = []
+    for im in image:
+      gain.append(flex.double(im.accessor(), 1.0))
+    return tuple(gain)
+
+  def get_pedestal(self, index):
+    '''
+    Get the pedestal
+
+    '''
+    from scitbx.array_family import flex
+    fmt = self.reader().get_format(index)
+    dark = fmt.get_gain()
+    if dark is not None:
+      return dark
+    image = self.get_raw_data(index)
+    dark = []
+    for im in image:
+      dark.append(flex.double(im.accessor(), 0.0))
+    return tuple(dark)
 
   def get_mask(self, index):
     '''
@@ -497,7 +542,7 @@ class ImageSet(object):
       return mask
 
     # Get the image and detector
-    image = self.get_image(index)
+    image = self.get_raw_data(index)
     detector = self.get_detector(index)
     assert(len(image) == len(detector))
 
@@ -676,35 +721,7 @@ class MemImageSet(ImageSet):
       indices = self._indices[item]
       return MemImageSet(self._images, indices)
     else:
-      img = self._images[self._indices[item]]
-
-      # Get the number of panels
-      npanels = len(img.get_detector())
-
-      # Return a flex array for single panels and a tuple of flex arrays
-      # for multiple panels
-      assert(npanels > 0)
-      if npanels == 1:
-        return img.get_raw_data(),
-      else:
-        return tuple([img.get_raw_data(i) for i in xrange(npanels)])
-
-  def get_image(self, index):
-    '''
-    Get the image at the given index
-    '''
-    img = self._images[self._indices[index]]
-
-    # Get the number of panels
-    npanels = len(img.get_detector())
-
-    # Return a flex array for single panels and a tuple of flex arrays
-    # for multiple panels
-    assert(npanels > 0)
-    if npanels == 1:
-      return img.get_raw_data(),
-    else:
-      return tuple([img.get_raw_data(i) for i in xrange(npanels)])
+      return self.get_corrected_data(item)
 
   def __len__(self):
     ''' Return the number of images in this image set. '''
