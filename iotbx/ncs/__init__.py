@@ -3,6 +3,8 @@ import ncs_preprocess
 import sys
 import iotbx.pdb
 from scitbx.array_family import flex
+from libtbx import group_args
+import scitbx.matrix
 
 simple_ncs_phil_params = """\
 simple_ncs_from_pdb
@@ -306,11 +308,10 @@ def extract_tncs_groups(distance_threshold, file_name=None, pdb_inp=None,
                         show=True):
   assert [file_name, pdb_inp].count(None) == 1
   # Compute mean distance between master and copy, after moving to origin
-  def mean_dist_due_to_pure_rotation(sites_cart_1, sites_cart_2, rtm):
+  def mean_dist_due_to_pure_rotation(sites_cart_1, sites_cart_2):
     s1 = sites_cart_1 - sites_cart_1.mean()
     s2 = sites_cart_2 - sites_cart_2.mean()
-    s21 = rtm.elems*s2
-    distances = flex.sqrt((s1 - s21).dot())
+    distances = flex.sqrt((s1 - s2).dot())
     return flex.mean(distances)
   #
   if(file_name is not None):
@@ -318,7 +319,7 @@ def extract_tncs_groups(distance_threshold, file_name=None, pdb_inp=None,
     ncs_inp = iotbx.ncs.input(pdb_inp = pdb_inp,
       exclude_misaligned_residues=False)
   else:
-    ncs_inp = iotbx.ncs.input(file_name = file_name,
+    ncs_inp = iotbx.ncs.input(pdb_inp = pdb_inp,
       exclude_misaligned_residues=False)
   sites_cart = pdb_inp.atoms().extract_xyz()
   if(show):
@@ -326,14 +327,57 @@ def extract_tncs_groups(distance_threshold, file_name=None, pdb_inp=None,
       format_all_for_phenix_refine(quiet=True, prefix="ncs_group")
     print ncs_groups_str
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
+  # Find ptNCS
   result = []
   for g in ncs_groups:
-    sel_master = g.master_iselection
+    m_sel = g.master_iselection
     for c in g.copies:
-      dist_m_copy = mean_dist_due_to_pure_rotation(
-        sites_cart_1 = sites_cart.select(g.master_iselection),
-        sites_cart_2 = sites_cart.select(c.iselection),
-        rtm          = c.r)
-      if(dist_m_copy < distance_threshold):
-        result.append([g,dist_m_copy])
+      c_sel = c.iselection
+      dist_m_c = mean_dist_due_to_pure_rotation(
+        sites_cart_1 = sites_cart.select(m_sel),
+        sites_cart_2 = sites_cart.select(c_sel))
+      if(dist_m_c < distance_threshold):
+        pair = group_args(
+          master_selection = m_sel,
+          copy_selection   = c_sel,
+          r                = c.r,
+          t                = c.t,
+          dist_m_c         = dist_m_c)
+        result.append(pair)
+  # Find tNCS
+  cs = pdb_inp.crystal_symmetry()
+  o = cs.unit_cell().orthogonalize
+  f = cs.unit_cell().fractionalize
+  # Loop over NCS groups
+  for g in ncs_groups:
+    all_selections = []
+    all_selections.append(g.master_iselection)
+    for c in g.copies:
+      all_selections.append(c.iselection)
+    # For each NCS copy loop over symmetry operations (except identity)
+    for i, sel_i in enumerate(all_selections):
+      master_sites_cart = sites_cart.select(sel_i)
+      for smx in cs.space_group().smx():
+        r = scitbx.matrix.sqr(smx.r().as_double())
+        t = scitbx.matrix.col(smx.t().as_double())
+        if(r.is_r3_identity_matrix()): # skip identity operator
+          assert t.is_col_zero()
+          continue
+        copy_sites_cart = o(r.elems*f(master_sites_cart)) # no t required!
+        # Loop over NCS copies again to see if symmetry related copy matches
+        # any of remaining copies
+        for j, sel_j in enumerate(all_selections):
+          if(i != j):
+            sites_cart_j = sites_cart.select(sel_j)
+            dist_m_c = mean_dist_due_to_pure_rotation(
+              sites_cart_1 = copy_sites_cart,
+              sites_cart_2 = sites_cart_j)
+            if(dist_m_c < distance_threshold):
+              pair = group_args(
+                master_selection = sel_i,
+                copy_selection   = None, # means symmetry related
+                r                = r.transpose(), # since need to apply to copy
+                t                = t,
+                dist_m_c         = dist_m_c)
+              result.append(pair)
   return result
