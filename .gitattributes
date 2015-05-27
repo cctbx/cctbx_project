@@ -2001,6 +2001,9 @@ mmtbx/msa.py -text
 mmtbx/ncs/ligands.py -text
 mmtbx/ncs/ncs_search.py -text
 mmtbx/ncs/ncs_utils.py -text
+mmtbx/ncs/tncs.h -text
+mmtbx/ncs/tncs_ext.cpp -text
+mmtbx/ncs/tst_tncs.py -text
 mmtbx/pdb_distances.py -text
 mmtbx/pdb_symmetry.py -text
 mmtbx/pdbtools.py -text
