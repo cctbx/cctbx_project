@@ -2165,6 +2165,7 @@ mmtbx/regression/tst_utils.py -text
 mmtbx/regression/tst_validation_summary.py -text
 mmtbx/resolve_resources.py -text
 mmtbx/ringer/__init__.py -text
+mmtbx/ringer/em_rolling.py -text
 mmtbx/ringer/em_rscc.py -text
 mmtbx/ringer/em_scoring.py -text
 mmtbx/ringer/tst_em_rscc.py -text

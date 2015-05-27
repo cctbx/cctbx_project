@@ -18,6 +18,7 @@ from collections import OrderedDict
 import argparse
 import math
 import os
+import sys
 
 # Residue_codes = ["PHE","TYR","TRP"]
 Residue_codes = ["ARG","ASN","ASP","CYS","GLU","GLN","HIS",
@@ -60,16 +61,16 @@ def RMSD_statistic(peak_list):
   RMSD = (sum(squared_deviations)/len(squared_deviations))**0.5
   return RMSD
 
-def calculate_peaks(ringer,threshold, args):
+def calculate_peaks(ringer,threshold):
   """
   Checks if something is greater than either of its neighbors (including
   wrapping) and returns if true and if above a threshold)
   """
   new_peaks=Peaklist()
-  list = ringer._angles[args.chi_angle].densities
+  list = ringer._angles[1].densities
   for i in range(len(list)):
     if (list[i]==max(list) and list[i]>threshold):
-      new_peaks.add_new(ringer.resname, ringer.resid, ringer.chain_id, args.chi_angle, i, list[i])
+      new_peaks.add_new(ringer.resname, ringer.resid, ringer.chain_id, 1, i, list[i])
   return new_peaks
 
 
@@ -106,36 +107,39 @@ def calculate_binned_counts(peak_count, first=60, binsize=12,n_angles=72):
       binned_output[i] += peak_count[int(first_loc+i*binsize-binsize/2+j)%72]
   return binned_output
 
-def calc_ratio(count_list, args):
+def calc_ratio(count_list, sampling_angle=5):
   """
   Calculate the same statistics as the "statistic" call, but do it without
   first binning the peaks.
   """
-  total_angles=360/args.sampling_angle
+  # Calculate the same statistics as the "statistic" call, but do it without ifrst binning the peaks.
+  total_angles=360/sampling_angle
   binsize=int(total_angles/6)
-  first_loc=args.first_rotamer/args.sampling_angle
-
+  first_loc=60/sampling_angle
+  
   binned_list=[0]*6
   for i in range(6):
     for j in range(binsize):
       binned_list[i] += count_list[int(first_loc+i*binsize-binsize/2+j)%72]
   rotamer_count = sum(binned_list[0::2])
   total_count = sum(binned_list)
-  stdev = 0.5*math.sqrt(total_count)
-  mean= total_count/2
+  stdev = math.sqrt((total_angles/2+3)*(total_angles/2-3)/(total_angles**2)*total_count)
+  mean= total_count*(total_angles/2+3)/total_angles
   rotamer_ratio=rotamer_count/(total_count+0.000000000000000000001)
   zscore=(rotamer_count-mean)/(stdev+0.000000000000000000001)
   return rotamer_ratio, zscore
 
-
 def main (args):
   parser = argparse.ArgumentParser()
-  parser.add_argument("-i", "--files", dest="filenames", help='Filenames (including path if not in current directory) of pkl', nargs='*', default=['/5778.ent_ringer.pkl'])
+  parser.add_argument("files",nargs="*")
   parser.add_argument("-s", "--Sampling_Angle", dest="sampling_angle", help="Don't mess with this unless you've also made the corresponding change in ringer. By default it is 5, which is identical to the default in ringer.", nargs='?', default=5)
   parser.add_argument("-r", "--Residues", dest="residues")
   args = parser.parse_args(args)
-  for file in args.filenames:
-    os.makedirs(file+'.output')
+  assert (len(args.files) > 0)
+  for file in args.files :
+    out_dir = file + ".output"
+    if (not os.path.isdir(out_dir)) :
+      os.makedirs(file+'.output')
     Weird_residues=OrderedDict()
     peak_count={}
     residue_peak_count={}
@@ -150,7 +154,7 @@ def main (args):
     rotamer_ratios=[]
 
     non_zero_thresholds=[]
-    waves, thresholds = parse_pickle(file, args)
+    waves, thresholds = parse_pickle(file)
     length = len(waves)
     peaks=OrderedDict()
         # calculate peaks and histogram
@@ -163,28 +167,28 @@ def main (args):
       for i in Residue_codes:
         residue_peak_count[i][threshold]=[0]*72
       for i in waves:
-        peaks[threshold].append_lists(calculate_peaks(i, threshold, args))
+        peaks[threshold].append_lists(calculate_peaks(i, threshold))
       for peak in peaks[threshold].get_peaks():
         peak_count[threshold][peak.chi_value]+=1
         residue_peak_count[peak.resname][threshold][peak.chi_value]+=1
         if ((peak.chi_value<6) or (peak.chi_value>18 and peak.chi_value<30) or (peak.chi_value>42 and peak.chi_value<54) or (peak.chi_value>66)):
           Weird_residues[threshold].peaks.append(peak)
       # Calculate the binned peaks and ratios
-      binned_peaks[threshold] = calculate_binned_counts(peak_count[threshold], args.first_rotamer)
+      binned_peaks[threshold] = calculate_binned_counts(peak_count[threshold], 60)
       # print "For threshold %.3f" % threshold
       # print "Sample size = %d" % sum(binned_peaks[threshold])
       zscore_n, rotamer_ratio_n = statistic(binned_peaks[threshold])
       if rotamer_ratio_n==0:
         break
       for i in Residue_codes:
-        rotamer_ratios_residues_n, zscores_n = calc_ratio(residue_peak_count[i][threshold], args)
+        rotamer_ratios_residues_n, zscores_n = calc_ratio(residue_peak_count[i][threshold], args.sampling_angle)
         rotamer_ratios_residues[i].append(rotamer_ratios_residues_n)
         zscores_residues[i].append(zscores_n)
       non_zero_thresholds.append(threshold)
       zscores.append(zscore_n)
       rotamer_ratios.append(rotamer_ratio_n)
       print "===== Plotting Histogram for Threshold %.3f =====" % threshold
-      plot_peaks(peak_count[threshold], file, threshold, args.first_rotamer, RMSD_statistic(peaks[threshold].peaks))
+      plot_peaks(peak_count[threshold], file, threshold, 60, RMSD_statistic(peaks[threshold].peaks))
       # plot_rotamers(binned_peaks[threshold], file, threshold, args.first_rotamer)
     #   print "Outliers at threshold %.2f: %s" % (threshold, str(Weird_residues[threshold]))
     print ""
@@ -217,60 +221,64 @@ def main (args):
         # print "Z-score/(length): %.8f" % (value/length)
         print "EMRinger Score: %8f" % (10*value/math.sqrt(length))
         break
-    return float(10*max(zscores)/math.sqrt(length))
+    #return float(10*max(zscores)/math.sqrt(length))
 
 
 ########################################################################
 # GUI and Output
 
-def plot_rotamers(binned_output, filename, threshold, first):
-  import matplotlib.pyplot as plt
-  # Binned Histogram
-  plt.figure(1)
-  plt.clf()
+def _plot_rotamers (fig, binned_output, filename, threshold, first) :
+  """Binned histogram"""
   colors=['blue','red']*3
   angles = range(6)
   bin_angles = [(i*60+first)%360 for i in angles]
-  plt.bar(bin_angles, binned_output, align='center', color=colors, width=60)
-  plt.savefig('%s.output/%.3f.Phenixed_Histogram.png' % (filename,threshold))
-  # print 'Wrote '+filename+'/%.3f.Phenixed_Histogram.png' % threshold
+  ax = fig.add_subplot(111)
+  ax.bar(bin_angles, binned_output, align='center', color=colors, width=60)
 
-def plot_peaks(peak_count, filename, threshold, first, title=0):
+def plot_rotamers (binned_output, filename, threshold, first):
   import matplotlib.pyplot as plt
-  plt.figure(2, figsize=(5,4))
+  fig = plt.figure(1)
+  _plot_rotamers(fig, binned_output, filename, threshold, first)
+  plt.savefig('%s.output/%.3f.Phenixed_Histogram.png' % (filename,threshold))
+  plt.close()
+
+def _plot_peaks (fig, peak_count, filename, threshold, first, title=0):
   # rcParams.update({'figure.autolayout': True})
   colors = ['#F15854']*6+['#5DA5DA']*13+['#F15854']*11+['#5DA5DA']*13+['#F15854']*11+['#5DA5DA']*13+['#F15854']*5
-  plt.clf()
-  plt.axvspan((first-30), first+30, color='0.5', alpha=0.5)
-  plt.axvspan(first+90, first+150, color='0.5', alpha=0.5)
-  plt.axvspan(first+210, (first+270), color='0.5', alpha=0.5)
-  plt.tick_params(axis='x',which='both',top='off')
-  plt.tick_params(axis='y',which='both',right='off')
+  ax = fig.add_subplot(111)
+  ax.axvspan((first-30), first+30, color='0.5', alpha=0.5)
+  ax.axvspan(first+90, first+150, color='0.5', alpha=0.5)
+  ax.axvspan(first+210, (first+270), color='0.5', alpha=0.5)
+  ax.tick_params(axis='x',which='both',top='off')
+  ax.tick_params(axis='y',which='both',right='off')
   peak_count_extra = peak_count+[peak_count[0]]
   angles = [i*5 for i in range(0,73)]
-  plt.bar(angles,peak_count_extra, width=5, align='center', color=colors)
-  plt.title('Peak Counts', y=1.05) #  - Threshold %.3f' % (threshold)
-  plt.xticks([i*60 for i in range(7)])
-  plt.xlim(0,360)
-  plt.xlabel(r'Chi1 Angle ($\degree$)', labelpad=10)
-  plt.ylabel("Peak Count", labelpad=10)
+  ax.bar(angles,peak_count_extra, width=5, align='center', color=colors)
+  ax.set_title('Peak Counts', y=1.05) #  - Threshold %.3f' % (threshold)
+  ax.set_xticks([i*60 for i in range(7)])
+  ax.set_xlim(0,360)
+  ax.set_xlabel(r'Chi1 Angle ($\degree$)', labelpad=10)
+  ax.set_ylabel("Peak Count", labelpad=10)
+
+def plot_peaks (peak_count, filename, threshold, first, title=0) :
+  import matplotlib.pyplot as plt
+  fig = plt.figure(2, figsize=(5,4))
+  _plot_peaks(fig, peak_count, filename, threshold, first, title)
   plt.savefig('%s.output/%.3f.histogram.png' % (filename,threshold))
   print 'Saved plot to %s.output/%.3f.histogram.png' % (filename,threshold)
   # print 'RMSD at threshold %.3f is %.1f' % (threshold,title)
   # print 'Wrote '+filename+'/%.3f.Phenix_allpeaks.png' % threshold
-  plt.clf()
+  plt.close()
 
-def plot_progression(non_zero_thresholds, rotamer_ratios, file, zscores,
+def _plot_progression(fig, non_zero_thresholds, rotamer_ratios, file, zscores,
     i="Total"):
-  import matplotlib.pyplot as plt
   for j in range(len(zscores)):
     if zscores[j]>=0:
       non_zero_thresholds = non_zero_thresholds[j:]
       rotamer_ratios= rotamer_ratios[j:]
       zscores=zscores[j:]
       break
-  fig = plt.figure(3, figsize=(5.5,4))
-  ax1 = plt.subplot()
+  ax1 = fig.add_subplot(111)
   ax1.plot(non_zero_thresholds, zscores, 'b-', linewidth=3.0, alpha=0.7)
   ax1.set_xlabel('Electron Potential Threshold')
   # Make the y-axis label and tick labels match the line color.
@@ -289,13 +297,19 @@ def plot_progression(non_zero_thresholds, rotamer_ratios, file, zscores,
   for tl in ax2.get_yticklabels():
     tl.set_color('r')
   if i != "Total":
-    plt.title("Threshold Scan - %s" % i, y=1.05)
+    ax1.set_title("Threshold Scan - %s" % i, y=1.05)
   else:
-    plt.title("Threshold Scan", y=1.05)
+    ax1.set_title("Threshold Scan", y=1.05)
+
+def plot_progression(non_zero_thresholds, rotamer_ratios, file, zscores,
+    i="Total"):
+  import matplotlib.pyplot as plt
+  fig = plt.figure(3, figsize=(5.5,4))
+  _plot_progression(fig, non_zero_thresholds, rotamer_ratios, file, zscores, i)
   plt.savefig('%s.output/%s.threshold_scan.png' % (file, i))
   print 'Saved plot to %s.output/%s.threshold_scan.png' % (file, i)
   # print 'Wrote '+file+'/threshold_scan.png'
-  plt.clf()
+  plt.close()
 
-#if __name__ == "__main__":
-#  main(sys.argv[1:])
+if __name__ == "__main__":
+  main(sys.argv[1:])

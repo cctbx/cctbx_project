@@ -31,19 +31,24 @@ import sys
 master_phil = libtbx.phil.parse("""
 pdb_file = None
   .type = path
-cif_file = None
-  .type = path
-  .multiple = True
-map_coeffs = None
-  .type = path
-map_label = None
-  .type = str
+  .style = file_type:pdb bold input_file
 map_file = None
   .type = path
-sampling_method = linear *spline direct
-  .type = choice(multi=False)
+  .short_caption = CCP4 or MRC map
+  .style = file_type:ccp4_map
+map_coeffs = None
+  .type = path
+  .short_caption = Map coefficients
+  .style = file_type:hkl input_file OnChange:extract_ringer_map_labels
+map_label = 2FOFCWT,PH2FOFCWT
+  .type = str
+  .input_size = 200
+  .short_caption = 2Fo-FC map labels
+  .style = renderer:draw_map_arrays_widget noauto
 sampling_angle = 5
   .type = int
+sampling_method = linear *spline direct
+  .type = choice(multi=False)
 grid_spacing = 1./5
   .type = float
 scaling = *sigma volume
@@ -68,7 +73,6 @@ def run (args, out=None, verbose=True) :
     pdb_file_def="pdb_file",
     reflection_file_def="map_coeffs",
     map_file_def="map_file",
-    cif_file_def="cif_file",
     usage_string="""\
 phenix.emringer model.pdb map.mrc [cif_file ...] [options]
 
