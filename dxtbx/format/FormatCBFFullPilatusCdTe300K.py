@@ -127,7 +127,7 @@ class FormatCBFFullPilatusCdTe300K(FormatCBFFullPilatus):
         # a header only CBF file will not have a beam object
         beam = self._beam()
 
-      except:
+      except: # no beam; please update to correct exception
         pass
 
       if beam:
