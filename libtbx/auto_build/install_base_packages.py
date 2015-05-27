@@ -159,7 +159,7 @@ class installer (object) :
         print >> log, 'SuSE detected; clobbering CONFIG_SITE in environ'
         try:
           del(os.environ['CONFIG_SITE'])
-        except: # deliberate
+        except: # intentional
           pass
 
     # Set package config.
