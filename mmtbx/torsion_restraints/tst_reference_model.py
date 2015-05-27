@@ -612,7 +612,6 @@ TER
   def_pars = reference_model_params
   params_text = """\
  reference_model {
-    file = "C550C_M14471_modrefiner_pdbset1.pdb"
     reference_group {
       reference = chain 'A'
       selection = chain 'A'
@@ -657,6 +656,91 @@ TER
   # new_h.write_pdb_file(file_name="final.pdb")
 
 
+def exercise_cutted_residue(mon_lib_srv, ener_lib):
+  pdb_str_original = """\
+CRYST1  117.739  195.224  119.094  90.00 101.60  90.00 P 1 21 1
+ATOM   6368  N   THR K 332       4.163  72.088  52.141  1.00171.28           N
+ATOM   6369  CA  THR K 332       2.830  71.741  52.608  1.00153.71           C
+ATOM   6370  C   THR K 332       1.990  70.958  51.609  1.00132.45           C
+ATOM   6371  O   THR K 332       2.224  71.000  50.405  1.00130.38           O
+ATOM   6372  CB  THR K 332       2.047  72.996  53.035  1.00155.45           C
+ATOM   6373  N   VAL K 333       1.006  70.246  52.144  1.00121.58           N
+ATOM   6374  CA  VAL K 333       0.085  69.440  51.360  1.00129.11           C
+ATOM   6375  C   VAL K 333      -1.326  69.771  51.818  1.00146.57           C
+ATOM   6376  O   VAL K 333      -1.517  70.242  52.935  1.00151.92           O
+ATOM   6377  CB  VAL K 333       0.342  67.942  51.562  1.00126.37           C
+ATOM   6378  N   SER K 334      -2.318  69.535  50.968  1.00156.08           N
+ATOM   6379  CA  SER K 334      -3.687  69.866  51.335  1.00158.16           C
+ATOM   6380  C   SER K 334      -4.197  69.116  52.555  1.00157.55           C
+ATOM   6381  O   SER K 334      -4.066  67.905  52.664  1.00161.93           O
+ATOM   6382  CB  SER K 334      -4.630  69.614  50.166  1.00162.09           C
+ATOM   6383  OG  SER K 334      -5.836  69.041  50.632  1.00170.98           O
+END
+  """
+
+  pdb_str_ref = """\
+CRYST1  117.739  195.224  119.094  90.00 101.60  90.00 P 1 21 1
+ATOM      1  N   THR K 332       4.195  72.012  51.895  1.00171.28           N
+ATOM      2  CA  THR K 332       2.946  71.699  52.580  1.00153.71           C
+ATOM      3  C   THR K 332       1.980  70.971  51.651  1.00132.45           C
+ATOM      4  O   THR K 332       2.092  71.062  50.429  1.00130.38           O
+ATOM      5  CB  THR K 332       2.291  72.982  53.125  1.00 20.00           C
+ATOM      6  OG1 THR K 332       2.036  73.887  52.046  1.00 20.00           O
+ATOM      7  CG2 THR K 332       3.269  73.749  54.003  1.00 20.00           C
+ATOM      8  N   VAL K 333       1.033  70.248  52.240  1.00121.58           N
+ATOM      9  CA  VAL K 333       0.047  69.503  51.468  1.00129.11           C
+ATOM     10  C   VAL K 333      -1.363  69.905  51.883  1.00146.57           C
+ATOM     11  O   VAL K 333      -1.552  70.599  52.882  1.00151.92           O
+ATOM     12  CB  VAL K 333       0.216  67.983  51.643  1.00 20.00           C
+ATOM     13  CG1 VAL K 333      -0.905  67.237  50.935  1.00 20.00           C
+ATOM     14  CG2 VAL K 333       1.574  67.534  51.125  1.00 20.00           C
+ATOM     15  N   SER K 334      -2.351  69.465  51.111  1.00156.08           N
+ATOM     16  CA  SER K 334      -3.745  69.778  51.397  1.00158.16           C
+ATOM     17  C   SER K 334      -4.297  68.870  52.492  1.00157.55           C
+ATOM     18  O   SER K 334      -3.964  67.686  52.556  1.00161.93           O
+ATOM     19  CB  SER K 334      -4.595  69.652  50.131  1.00162.09           C
+ATOM     20  OG  SER K 334      -5.954  69.950  50.396  1.00170.98           O
+  """
+  params_text = """\
+  reference_model {
+    reference_group {
+      reference = chain 'G'
+      selection = chain 'K'
+      file_name = "ref.pdb"
+    }
+  }
+  """
+  ref_file = open("ref.pdb", 'w')
+  ref_file.write(pdb_str_ref)
+  ref_file.close()
+  log = cStringIO.StringIO()
+  # log = sys.stdout
+  # orig_file = open("start.pdb", "w")
+  # orig_file.write(pdb_str_original)
+  # orig_file.close()
+  def_pars = reference_model_params
+  pars = iotbx.phil.parse(params_text)
+  all_pars = def_pars.fetch(pars).extract()
+  inp_hierarchy = iotbx.pdb.input(
+      source_info=None,
+      lines=flex.split_lines(pdb_str_original)).construct_hierarchy()
+  rm = reference_model(
+         pdb_hierarchy=inp_hierarchy,
+         reference_file_list=['ref.pdb'],
+         mon_lib_srv=mon_lib_srv,
+         ener_lib=ener_lib,
+         params=all_pars,
+         log=log)
+  rm.show_reference_summary(log=log)
+  new_h = inp_hierarchy.deep_copy()
+  xray_structure = new_h.extract_xray_structure()
+  rm.set_rotamer_to_reference(
+    xray_structure=xray_structure)
+  new_h.adopt_xray_structure(xray_structure)
+  r1 = rotalyze(pdb_hierarchy=new_h, outliers_only=False)
+  assert r1.n_outliers == 0
+
+
 def run(args):
   t0 = time.time()
   import mmtbx.monomer_library
@@ -664,6 +748,7 @@ def run(args):
   ener_lib = mmtbx.monomer_library.server.ener_lib()
   exercise_reference_model(args, mon_lib_srv, ener_lib)
   exercise_multiple_to_one(args, mon_lib_srv, ener_lib)
+  exercise_cutted_residue(mon_lib_srv, ener_lib)
   print "OK. Time: %8.3f"%(time.time()-t0)
 
 if (__name__ == "__main__"):

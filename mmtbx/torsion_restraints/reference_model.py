@@ -86,8 +86,6 @@ class reference_model(object):
                params=None,
                selection=None,
                log=None):
-    import time
-    t0 = time.time()
     assert [reference_hierarchy_list,
             reference_file_list].count(None) == 1
     if(log is None):
@@ -103,13 +101,11 @@ class reference_model(object):
     if self.selection is None:
       self.selection = flex.bool(len(sites_cart), True)
     self.pdb_hierarchy = pdb_hierarchy
-    t1 = time.time()
     if reference_hierarchy_list is None:
       reference_hierarchy_list = \
         utils.process_reference_files(
           reference_file_list=reference_file_list,
           log=self.log)
-    t2 = time.time()
     if reference_file_list is None:
       reference_file_list = []
       ref_counter = 1
@@ -128,7 +124,6 @@ class reference_model(object):
         log=self.log)
     self.i_seq_name_hash = utils.build_name_hash(
                              pdb_hierarchy=self.pdb_hierarchy)
-    t3 = time.time()
 
     #reference model components
     self.sites_cart_ref = {}
@@ -153,17 +148,12 @@ class reference_model(object):
           include_hydrogens=self.params.hydrogens,
           include_main_chain=self.params.main_chain,
           include_side_chain=self.params.side_chain)
-    t4 = time.time()
     self.match_map = None
     self.proxy_map = None
     self.build_reference_dihedral_proxy_hash()
-    t5 = time.time()
     #
     # This takes 80% of constructor time!!!
     self.get_reference_dihedral_proxies()
-    t6 = time.time()
-    # print "Timing in ref dih proxies constructor: %.3f, %.3f, %.3f, %.3f, %.3f, %.3f. Total: %.3f" % (
-    #     t1-t0, t2-t1, t3-t2, t4-t3, t5-t4, t6-t5, t6-t0)
 
   def top_out_function(self, x, weight, top):
     return top*(1-exp(-weight*x**2/top))
@@ -732,9 +722,10 @@ class reference_model(object):
               reference_rot = reference_hash[file].get(self.one_key_to_another(file_match[1]))
               m_chis = model_chis.get(key)
               r_chis = reference_chis[file].get(self.one_key_to_another(file_match[1]))
-              assert len(m_chis) == len(r_chis)
               if model_rot is not None and reference_rot is not None and \
                  m_chis is not None and r_chis is not None:
+                assert len(m_chis) == len(r_chis), "Probably different "+ \
+                    "amino acids are matched for reference dihedral restraints."
                 if (model_rot == 'OUTLIER' and \
                     reference_rot != 'OUTLIER'): # or \
                     #atom_group.resname in ["LEU", "VAL", "THR"]:
@@ -759,9 +750,10 @@ class reference_model(object):
     var1 = " %s  %s" % (key[4:], key[:3])
     return var1
 
-
   def change_residue_rotamer_in_place(self,sites_cart, residue,
       m_chis, r_chis, mon_lib_srv):
+    assert m_chis.count(None) == 0
+    assert r_chis.count(None) == 0
     axis_and_atoms_to_rotate= \
       rotatable_bonds.axes_and_atoms_aa_specific(
           residue=residue,
