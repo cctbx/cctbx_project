@@ -528,8 +528,12 @@ class loop(DictMixin):
       self.add_column(key, value)
 
   def update_column(self, key, values):
+    assert type(key)==type(""), "first argument is column key string"
     if self.size() != 0:
-      assert len(values) == self.size()
+      assert len(values) == self.size(), "len(values) %d != self.size() %d" % (
+        len(values),
+        self.size(),
+        )
     self[key] = values
     self.keys_lower[key.lower()] = key
 

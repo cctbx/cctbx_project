@@ -80,7 +80,7 @@ class ShellCommand(object):
         stdout=sys.stdout,
         stderr=sys.stderr
       )
-    except Exception, e:
+    except Exception, e: # error handline
       if isinstance(e, OSError):
         if e.errno == 2:
           executable = os.path.normpath(os.path.join(workdir, command[0]))
@@ -111,7 +111,7 @@ class Downloader(object):
     remote_mtime = 0
     try:
       remote_mtime = time.mktime(socket.info().getdate('last-modified'))
-    except:
+    except: # intentional
       pass
 
     if (file_size > 0):
@@ -123,7 +123,7 @@ class Downloader(object):
             log.write("local copy is current\n")
             socket.close()
             return -2
-        except:
+        except: # intentional
           # proceed with download if timestamp/size check fails for any reason
           pass
 
@@ -562,7 +562,7 @@ class Builder(object):
 
     # Build base packages
     if base:
-      self.add_base()
+      self.add_base(extra_opts=["--nproc="+str(nproc)])
 
     # Configure, make
     if build and not self.download_only:
@@ -646,8 +646,8 @@ class Builder(object):
       print "commands "*8
       for step in self.steps:
         print step
-        try:    print " ".join(step.get_command())
-        except: print '????'
+        #try:    print " ".join(step.get_command())
+        #except: print '????'
       print "commands "*8
 
   def add_module(self, module):
