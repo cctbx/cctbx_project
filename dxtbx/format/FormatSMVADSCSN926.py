@@ -49,8 +49,8 @@ class FormatSMVADSCSN926(FormatSMVADSCSN):
     import math
 
     distance = float(self._header_dictionary['DISTANCE'])
-    beam_x = float(self._header_dictionary['BEAM_CENTER_X'])
-    beam_y = float(self._header_dictionary['BEAM_CENTER_Y'])
+    beam_x = float(self._header_dictionary['DENZO_X_BEAM'])
+    beam_y = float(self._header_dictionary['DENZO_Y_BEAM'])
     pixel_size = float(self._header_dictionary['PIXEL_SIZE'])
     image_size = (float(self._header_dictionary['SIZE1']),
                   float(self._header_dictionary['SIZE2']))
