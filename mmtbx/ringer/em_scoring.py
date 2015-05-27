@@ -116,7 +116,7 @@ def calc_ratio(count_list, sampling_angle=5):
   total_angles=360/sampling_angle
   binsize=int(total_angles/6)
   first_loc=60/sampling_angle
-  
+
   binned_list=[0]*6
   for i in range(6):
     for j in range(binsize):
