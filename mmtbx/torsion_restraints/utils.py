@@ -202,6 +202,24 @@ def build_i_seq_hash(pdb_hierarchy):
     name_i_seq_hash[key]=atom.i_seq
   return name_i_seq_hash
 
+def id_str (chain_id,
+            resseq,
+            resname,
+            icode,
+            altloc,
+            segid=None,
+            ignore_altloc=False) :
+  base = "%2s%4s%1s" % (chain_id, resseq, icode)
+  if (not ignore_altloc) :
+    base += "%1s" % altloc
+  else :
+    base += " "
+  base += "%3s" % resname
+  if (segid is not None) :
+    base += " segid='%4s'" % segid
+  return base
+
+
 def build_xyz_hash(pdb_hierarchy):
   name_xyz_hash = dict()
   for atom in pdb_hierarchy.atoms():
@@ -666,20 +684,3 @@ def prepare_map(
   fft_map.apply_sigma_scaling()
   residual_map_data = fft_map.real_map_unpadded()
   return target_map_data, residual_map_data
-
-def id_str (chain_id,
-            resseq,
-            resname,
-            icode,
-            altloc,
-            segid=None,
-            ignore_altloc=False) :
-  base = "%2s%4s%1s" % (chain_id, resseq, icode)
-  if (not ignore_altloc) :
-    base += "%1s" % altloc
-  else :
-    base += " "
-  base += "%3s" % resname
-  if (segid is not None) :
-    base += " segid='%4s'" % segid
-  return base

@@ -80,10 +80,14 @@ class reference_model(object):
                pdb_hierarchy,
                reference_hierarchy_list=None,
                reference_file_list=None,
+               mon_lib_srv=None,
+               ener_lib=None,
                has_hd=False,
                params=None,
                selection=None,
                log=None):
+    import time
+    t0 = time.time()
     assert [reference_hierarchy_list,
             reference_file_list].count(None) == 1
     if(log is None):
@@ -92,16 +96,20 @@ class reference_model(object):
       self.log = log
     self.params = params
     self.selection = selection
+    self.mon_lib_srv = mon_lib_srv
+    self.ener_lib = ener_lib
     pdb_hierarchy.reset_i_seq_if_necessary()
     sites_cart = pdb_hierarchy.atoms().extract_xyz()
     if self.selection is None:
       self.selection = flex.bool(len(sites_cart), True)
     self.pdb_hierarchy = pdb_hierarchy
+    t1 = time.time()
     if reference_hierarchy_list is None:
       reference_hierarchy_list = \
         utils.process_reference_files(
           reference_file_list=reference_file_list,
           log=self.log)
+    t2 = time.time()
     if reference_file_list is None:
       reference_file_list = []
       ref_counter = 1
@@ -110,13 +118,17 @@ class reference_model(object):
         reference_file_list.append(key)
         ref_counter += 1
         hierarchy.reset_i_seq_if_necessary()
-    self.dihedral_proxies_ref = \
-      utils.get_reference_dihedral_proxies(
+    #
+    # this takes 20% of constructor time.
+    self.dihedral_proxies_ref = utils.get_reference_dihedral_proxies(
         reference_hierarchy_list=reference_hierarchy_list,
         reference_file_list=reference_file_list,
+        mon_lib_srv=self.mon_lib_srv,
+        ener_lib=self.ener_lib,
         log=self.log)
     self.i_seq_name_hash = utils.build_name_hash(
                              pdb_hierarchy=self.pdb_hierarchy)
+    t3 = time.time()
 
     #reference model components
     self.sites_cart_ref = {}
@@ -141,10 +153,17 @@ class reference_model(object):
           include_hydrogens=self.params.hydrogens,
           include_main_chain=self.params.main_chain,
           include_side_chain=self.params.side_chain)
+    t4 = time.time()
     self.match_map = None
     self.proxy_map = None
     self.build_reference_dihedral_proxy_hash()
+    t5 = time.time()
+    #
+    # This takes 80% of constructor time!!!
     self.get_reference_dihedral_proxies()
+    t6 = time.time()
+    # print "Timing in ref dih proxies constructor: %.3f, %.3f, %.3f, %.3f, %.3f, %.3f. Total: %.3f" % (
+    #     t1-t0, t2-t1, t3-t2, t4-t3, t5-t4, t6-t5, t6-t0)
 
   def top_out_function(self, x, weight, top):
     return top*(1-exp(-weight*x**2/top))
@@ -181,7 +200,7 @@ class reference_model(object):
                                log=None):
     if(log is None): log = sys.stdout
     model_iseq_hash = utils.build_i_seq_hash(pdb_hierarchy=pdb_hierarchy)
-    model_name_hash = utils.build_name_hash(pdb_hierarchy=pdb_hierarchy)
+    model_name_hash = {v:k for k, v in model_iseq_hash.iteritems()}
     sel_cache = pdb_hierarchy.atom_selection_cache()
     ref_iseq_hash = {}
     sel_cache_ref = {}
@@ -445,6 +464,8 @@ class reference_model(object):
     residue_match_hash = {}
     complete_dihedral_proxies = utils.get_complete_dihedral_proxies(
                                   pdb_hierarchy=self.pdb_hierarchy,
+                                  mon_lib_srv=self.mon_lib_srv,
+                                  ener_lib=self.ener_lib,
                                   log=self.log)
     self.reference_dihedral_proxies = \
       cctbx.geometry_restraints.shared_dihedral_proxy()
@@ -587,21 +608,22 @@ class reference_model(object):
 
   def set_rotamer_to_reference(self,
                                xray_structure,
+                               mon_lib_srv=None,
                                log=None,
                                quiet=False):
-    pdb_hierarchy=self.pdb_hierarchy
-    pdb_hierarchy_ref=self.pdb_hierarchy_ref
+    if self.mon_lib_srv is None:
+      self.mon_lib_srv = mon_lib_srv
+    assert isinstance(self.mon_lib_srv, mmtbx.monomer_library.server.server)
     if(log is None): log = self.log
     make_sub_header(
       "Correcting rotamer outliers to match reference model",
       out=log)
     sa = SidechainAngles(False)
-    mon_lib_srv = mmtbx.monomer_library.server.server()
-    r = rotalyze.rotalyze(pdb_hierarchy=pdb_hierarchy)
+    r = rotalyze.rotalyze(pdb_hierarchy=self.pdb_hierarchy)
     rot_list_reference = {}
     coot_reference = {}
-    for key in pdb_hierarchy_ref.keys():
-      hierarchy = pdb_hierarchy_ref[key]
+    for key in self.pdb_hierarchy_ref.keys():
+      hierarchy = self.pdb_hierarchy_ref[key]
       rot_list_reference[key] = \
         rotalyze.rotalyze(pdb_hierarchy=hierarchy)
     model_hash = {}
@@ -620,7 +642,7 @@ class reference_model(object):
         reference_hash[key][rot.id_str()] = rot.rotamer_name
 
     print >> log, "** evaluating rotamers for working model **"
-    for model in pdb_hierarchy.models():
+    for model in self.pdb_hierarchy.models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
             all_dict = rotalyze.construct_complete_sidechain(residue_group)
@@ -648,8 +670,8 @@ class reference_model(object):
       print >> log, "Number of rotamer outliers: %d" % model_outliers
 
     print >> log, "\n** evaluating rotamers for reference model **"
-    for file in pdb_hierarchy_ref.keys():
-      hierarchy = pdb_hierarchy_ref[file]
+    for file in self.pdb_hierarchy_ref.keys():
+      hierarchy = self.pdb_hierarchy_ref[file]
       reference_chis[file] = {}
       for model in hierarchy.models():
         for chain in model.chains():
@@ -675,11 +697,11 @@ class reference_model(object):
 
     print >> log, "\n** fixing outliers **"
     sites_cart_start = xray_structure.sites_cart()
-    for model in pdb_hierarchy.models():
+    for model in self.pdb_hierarchy.models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
           if len(residue_group.conformers()) > 1:
-            print >> log, "%s%5s %s has multiple conformations, **skipping**" % (
+            print >> log, "  %s%5s %s has multiple conformations, **skipping**" % (
               chain.id, residue_group.resid(),
               " "+residue_group.atom_groups()[0].resname)
             continue
@@ -707,25 +729,36 @@ class reference_model(object):
               else:
                 continue
               model_rot = model_hash.get(key)
-              reference_rot = reference_hash[file].get(key)
+              reference_rot = reference_hash[file].get(self.one_key_to_another(file_match[1]))
               m_chis = model_chis.get(key)
-              r_chis = reference_chis[file].get(key)
+              r_chis = reference_chis[file].get(self.one_key_to_another(file_match[1]))
               assert len(m_chis) == len(r_chis)
               if model_rot is not None and reference_rot is not None and \
                  m_chis is not None and r_chis is not None:
-                if (model_hash[key] == 'OUTLIER' and \
-                    reference_hash[file][key] != 'OUTLIER'): # or \
+                if (model_rot == 'OUTLIER' and \
+                    reference_rot != 'OUTLIER'): # or \
                     #atom_group.resname in ["LEU", "VAL", "THR"]:
                   self.change_residue_rotamer_in_place(
-                      sites_cart_start,residue, m_chis,r_chis,mon_lib_srv)
+                      sites_cart_start,residue, m_chis,r_chis,self.mon_lib_srv)
                   xray_structure.set_sites_cart(sites_cart_start)
 
                 elif self.params.strict_rotamer_matching and \
                   (model_rot != 'OUTLIER' and reference_rot != 'OUTLIER'):
                   if model_rot != reference_rot:
                     self.change_residue_rotamer_in_place(
-                        sites_cart_start,residue, m_chis,r_chis,mon_lib_srv)
+                        sites_cart_start,residue, m_chis,r_chis,self.mon_lib_srv)
                     xray_structure.set_sites_cart(sites_cart_start)
+
+  def one_key_to_another(self,key):
+    # Work-around function, don't have time to dig into 10 different cache
+    # types... Probably better data structure could be suggested to handle
+    # all needed information.
+
+    # sp = key.split()
+    # assert len(sp) == 3
+    var1 = " %s  %s" % (key[4:], key[:3])
+    return var1
+
 
   def change_residue_rotamer_in_place(self,sites_cart, residue,
       m_chis, r_chis, mon_lib_srv):
