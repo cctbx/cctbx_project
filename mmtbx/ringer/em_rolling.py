@@ -1,13 +1,11 @@
+from __future__ import division
 # Rolling rotamericity metric
 
 ########################################################################
 # Package imports
-from mmtbx.ringer import ringer_chi, ringer_residue
 from libtbx import easy_pickle
 import numpy as np
-from itertools import count, groupby
 import argparse
-import math
 import os
 
 # from matplotlib import rcParams
@@ -67,7 +65,7 @@ def identify_regions(results):
     for k in chain_out:
       if (np.divide(k[2],k[1]) > args.thresholded_cutoff) and (np.divide(k[3],k[2]) < args.rotamer_cutoff):
         for i in range(k[0]-args.extension, k[0]+args.extension):
-          outliers.append(i) 
+          outliers.append(i)
     if len(outliers) > 0:
       print list(ranges(outliers))
       print ""
@@ -111,8 +109,8 @@ def main (args):
   results_a = {}
   for chain in hierarchy.get_chains():
     results_a[chain] = []
-    # Results will be a list of tuples of the form residue number, 
-    # number checked in window, number passing threshold in window, 
+    # Results will be a list of tuples of the form residue number,
+    # number checked in window, number passing threshold in window,
     # number deviating in window.
     for i in hierarchy.get_residues(chain):
       total_n = 0.0
