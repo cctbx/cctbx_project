@@ -10,21 +10,23 @@ import boost.python
 
 class _(boost.python.injector, dps_extended):
 
-  def index(self,raw_spot_input=None,panel_addresses=None):
-    assert raw_spot_input is not None
+  def index(self, raw_spot_input=None, reciprocal_space_vectors=None,
+            panel_addresses=None):
+    assert [raw_spot_input, reciprocal_space_vectors].count(None) == 1
     self.raw_spot_input = raw_spot_input # deprecate record
     # must be x, y, phi in degrees, as a vec3_double
 
-    if len(self.detector) > 1:
-      assert len(raw_spot_input) == len(panel_addresses)
+    if raw_spot_input is not None:
+      if len(self.detector) > 1:
+        assert len(raw_spot_input) == len(panel_addresses)
 
-    # some hard protection against floating point error
-    assert len(raw_spot_input) > 7 # no chance of 1DFFT indexing with 7 or fewer spots
+      # some hard protection against floating point error
+      assert len(raw_spot_input) > 7 # no chance of 1DFFT indexing with 7 or fewer spots
 
-    self.panelID = panel_addresses
-    reciprocal_space_vectors = self.raw_spot_positions_mm_to_reciprocal_space(
-      self.raw_spot_input, self.detector, self.inv_wave, self.S0_vector, self.axis,
-      self.panelID)
+      self.panelID = panel_addresses
+      reciprocal_space_vectors = self.raw_spot_positions_mm_to_reciprocal_space(
+        self.raw_spot_input, self.detector, self.inv_wave, self.S0_vector, self.axis,
+        self.panelID)
 
     if self.max_cell is None:
       from rstbx.indexing_api.nearest_neighbor import neighbor_analysis
