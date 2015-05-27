@@ -8,7 +8,7 @@ import iotbx.phil
 from scitbx.array_family import flex
 from libtbx.utils import Sorry
 import cStringIO
-import sys
+import sys, os
 
 def run (args, out=sys.stdout, log=sys.stderr) :
   pdb_files = []
@@ -149,7 +149,7 @@ file_name = None
     if (prefix_scope != "") :
       print >> result_out, "}"
   result = result_out.getvalue()
-  outf = open("%s_ss.eff" %work_params.file_name[0], "w")
+  outf = open("%s_ss.eff" %os.path.basename(work_params.file_name[0]), "w")
   outf.write(result)
   outf.close()
   print >> out, result
