@@ -82,7 +82,7 @@ class FormatCBFFullPilatus(FormatCBFFull):
         # a header only CBF file will not have a beam object
         beam = self._beam()
 
-      except: # no beam; please update to correct exception
+      except Exception:
         pass
 
       if beam:
