@@ -22,11 +22,11 @@ class FormatSMVADSCSN926(FormatSMVADSCSN):
   def understand(image_file):
     '''Check to see if this is ADSC SN 926.'''
 
-    # check this is detector serial number 926
+    # check this is detector serial number 926 (or 907)
 
     size, header = FormatSMVADSCSN.get_smv_header(image_file)
 
-    if int(header['DETECTOR_SN']) != 926:
+    if int(header['DETECTOR_SN']) not in [926, 907]:
       return False
 
     return True
