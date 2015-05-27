@@ -116,8 +116,8 @@ def run_refine(rsr_simple_refiner, xray_structure, scorer, log, weight):
       rms_angles_limit         = 2.0)
     scorer.update(sites_cart=refined.sites_cart_result)
     weight_best = refined.weight_final
-  except KeyboardInterrupt: raise
-  except:
+  # except KeyboardInterrupt: raise
+  except Exception:
     if(log): print >> log, "A trial failed: keep going..."
   return weight_best
 

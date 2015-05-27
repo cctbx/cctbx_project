@@ -3,7 +3,7 @@ from cctbx.array_family import flex
 import math, sys
 from mmtbx.refinement import fit_rotamers
 from mmtbx.utils import rotatable_bonds
-import mmtbx.torsion_restraints.utils as torsion_utils
+import mmtbx.geometry_restraints.torsion_restraints.utils as torsion_utils
 from scitbx.matrix import rotate_point_around_axis
 import mmtbx.monomer_library.server
 from mmtbx.validation import rotalyze

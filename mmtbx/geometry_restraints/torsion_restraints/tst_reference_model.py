@@ -1,7 +1,8 @@
 from __future__ import division
 from mmtbx import monomer_library
-from mmtbx.torsion_restraints.reference_model import reference_model, reference_model_params
-from mmtbx.torsion_restraints import utils
+from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
+    reference_model, reference_model_params
+from mmtbx.geometry_restraints.torsion_restraints import utils
 from mmtbx.validation.rotalyze import rotalyze
 from cctbx.array_family import flex
 import iotbx.phil
@@ -95,7 +96,7 @@ def get_master_phil():
 reference_model
 {
   include \
-    scope mmtbx.torsion_restraints.reference_model.reference_model_params
+    scope mmtbx.geometry_restraints.torsion_restraints.reference_model.reference_model_params
 }
 """, process_includes=True)
 

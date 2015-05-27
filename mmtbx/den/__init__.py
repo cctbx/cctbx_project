@@ -179,7 +179,7 @@ class den_restraints(object):
       self.den_proxies = self.ext.shared_den_simple_proxy()
 
   def build_den_proxies(self, pdb_hierarchy):
-    from mmtbx.torsion_restraints import utils
+    from mmtbx.geometry_restraints.torsion_restraints import utils
     self.atoms_per_chain = \
       self.count_atoms_per_chain(pdb_hierarchy=pdb_hierarchy)
     self.atoms_per_chain_ref = \

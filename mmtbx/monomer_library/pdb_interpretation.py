@@ -8,7 +8,7 @@ from mmtbx.monomer_library import rna_sugar_pucker_analysis
 from mmtbx.monomer_library import conformation_dependent_restraints
 from mmtbx.geometry_restraints import ramachandran
 import mmtbx.geometry_restraints
-import mmtbx.torsion_restraints.utils
+import mmtbx.geometry_restraints.torsion_restraints.utils
 from cctbx import geometry_restraints
 import cctbx.geometry_restraints.manager
 from cctbx import crystal
@@ -1021,8 +1021,8 @@ class monomer_mapping(slots_getstate_setstate):
       residue_1_c1p_outbound_atom=ra1.c1p_outbound_atom,
       residue_2_p_atom=residue_2_p_atom)
     self.is_rna2p = ana.is_2p
-    mod_resname = mmtbx.torsion_restraints.utils.modernize_rna_resname(
-      resname=resname)
+    mod_resname = mmtbx.geometry_restraints.torsion_restraints.utils.\
+        modernize_rna_resname(resname=resname)
     if (self.is_rna2p):
       if mod_resname in ['  A', '  G']:
         primary_mod_id = "rna2p_pur"

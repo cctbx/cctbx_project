@@ -2,7 +2,7 @@
 from __future__ import division
 import sys
 import time
-from mmtbx.torsion_restraints import torsion_ncs
+from mmtbx.geometry_restraints.torsion_restraints import torsion_ncs
 from iotbx import pdb
 from libtbx.utils import Sorry
 

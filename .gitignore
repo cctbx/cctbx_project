@@ -33,6 +33,7 @@ mmtbx/examples/*.pyc
 mmtbx/f_model/*.pyc
 mmtbx/geometry_restraints/*.pyc
 mmtbx/geometry_restraints/boost_python/*.pyc
+mmtbx/geometry_restraints/torsion_restraints/*.pyc
 mmtbx/hydrogens/*.pyc
 mmtbx/ias/*.pyc
 mmtbx/ions/*.eff
@@ -59,7 +60,6 @@ mmtbx/scaling/*.pyc
 mmtbx/secondary_structure/*.pyc
 mmtbx/solvent/*.pyc
 mmtbx/tls/*.pyc
-mmtbx/torsion_restraints/*.pyc
 mmtbx/twinning/*.pyc
 mmtbx/utils/*.pyc
 mmtbx/validation/*.pyc
