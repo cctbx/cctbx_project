@@ -4,7 +4,7 @@ import iotbx.pdb
 from cctbx.array_family import flex
 from mmtbx.monomer_library import pdb_interpretation
 from cctbx import adp_restraints # import dependency
-from mmtbx.torsion_restraints import torsion_ncs, utils
+from mmtbx.geometry_restraints.torsion_restraints import torsion_ncs, utils
 import cStringIO
 import mmtbx
 

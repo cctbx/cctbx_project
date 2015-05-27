@@ -46,7 +46,7 @@ class load(object):
           chi_angles_.append(chi_)
         chi_angles = chi_angles_
         # XXX Fix later
-      except:
+      except Exception:
         chi_angles = None
       self.result.setdefault(aa_code,[]).extend([chi_angles])
 

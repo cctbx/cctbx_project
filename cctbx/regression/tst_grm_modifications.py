@@ -168,7 +168,7 @@ def exercise():
   try:
     mon_lib_srv = monomer_library.server.server()
     ener_lib = monomer_library.server.ener_lib()
-  except:
+  except: # intentional
     print "Can not initialize monomer_library, skipping test."
   if mon_lib_srv is not None and ener_lib is not None:
     exercise_add_new_bond_restraint_in_place(mon_lib_srv, ener_lib)

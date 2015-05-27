@@ -14,7 +14,7 @@ from libtbx.str_utils import make_sub_header
 import sys, math
 from mmtbx.ncs import restraints
 from libtbx.utils import Sorry
-from mmtbx.torsion_restraints import utils, rotamer_search
+from mmtbx.geometry_restraints.torsion_restraints import utils, rotamer_search
 from mmtbx import ncs
 import mmtbx.utils
 from libtbx import Auto

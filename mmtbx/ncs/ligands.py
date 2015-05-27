@@ -113,7 +113,7 @@ def find_ncs_operators (pdb_hierarchy, max_rmsd=2.0, try_sieve_fit=True,
   :param log: filehandle-like object
   :returns: list of lists of group_operators objects
   """
-  from mmtbx.torsion_restraints import torsion_ncs
+  from mmtbx.geometry_restraints.torsion_restraints import torsion_ncs
   from scitbx.math import superpose
   from scitbx.array_family import flex
   ncs_groups = torsion_ncs.determine_ncs_groups(pdb_hierarchy, log=log)

@@ -1,7 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME mmtbx.ssm_rmsd_for_chains
 from __future__ import division
 import sys
-from mmtbx.torsion_restraints import utils
+from mmtbx.geometry_restraints.torsion_restraints import utils
 from libtbx.utils import Sorry
 
 def run(args):

@@ -117,7 +117,7 @@ class TestPDBinterpretationNCSSearch(unittest.TestCase):
     if not DEBUG_MODE:
       try:
         shutil.rmtree(self.tempdir)
-      except:
+      except Exception:
         pass
 
 def run_selected_tests():

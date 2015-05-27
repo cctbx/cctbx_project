@@ -14,7 +14,7 @@ from libtbx.utils import Sorry
 from mmtbx import secondary_structure
 from scitbx.matrix import rotate_point_around_axis
 from libtbx.str_utils import make_sub_header
-from mmtbx.torsion_restraints import utils
+from mmtbx.geometry_restraints.torsion_restraints import utils
 import sys, re
 
 TOP_OUT_FLAG = True

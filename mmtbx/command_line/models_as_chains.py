@@ -20,7 +20,7 @@ def run(args):
   if(len(args)!=1): raise Sorry("PDB file is expected.")
   try:
     pdb_inp = iotbx.pdb.input(file_name=args[0])
-  except:
+  except Exception:
     raise Sorry("PDB file is expected.")
   h = pdb_inp.construct_hierarchy()
   r = iotbx.pdb.hierarchy.root()
