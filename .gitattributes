@@ -2690,6 +2690,7 @@ scitbx/math/fit_peak.py -text
 scitbx/math/fliege_mayer_400.py -text
 scitbx/math/fliege_mayer_900.py -text
 scitbx/math/fliege_mayer_900_ylm.py -text
+scitbx/math/g_function.h -text
 scitbx/math/gaussian_fit_1d_analytical.h -text
 scitbx/math/gcd.h svneol=native#text/plain
 scitbx/math/imaginary.h -text
@@ -2720,6 +2721,7 @@ scitbx/math/tests/tst_curve_fitting.py -text
 scitbx/math/tests/tst_dmatrix.py -text
 scitbx/math/tests/tst_exp_functions.py svneol=native#text/x-python
 scitbx/math/tests/tst_fit_peak.py -text
+scitbx/math/tests/tst_g_function.py -text
 scitbx/math/tests/tst_gaussian_fit_1d_analytical.py -text
 scitbx/math/tests/tst_gcd.py svneol=native#text/x-python
 scitbx/math/tests/tst_minimum_covering_ellipsoid.py svneol=native#text/x-python
