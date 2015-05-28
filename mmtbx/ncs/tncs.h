@@ -7,10 +7,8 @@
 #include <cctbx/sgtbx/space_group.h>
 #include <cctbx/miller.h>
 #include <scitbx/math/g_function.h>
-
 #include <boost/python/list.hpp>
 #include <boost/python/extract.hpp>
-
 #include <cctbx/maptbx/real_space_gradients_simple.h> // import dependency
 
 
@@ -54,7 +52,7 @@ class pair
 // --------------------------------------------------------------------------
 
 template <typename FloatType>
-class Gfunction {
+class tncs_eps_factor_refinery { // Gfunction in Phaser
 public:
   std::vector<af::double6> GfunTensorArray;
   std::vector<scitbx::vec3<FloatType> > ncsDeltaT;
@@ -68,11 +66,10 @@ public:
   af::shared<mat3<FloatType> > sym_mat;
   af::shared<FloatType> tncs_epsfac;
 
-  Gfunction(
+  tncs_eps_factor_refinery(
     bp::list const& pairs_,
     scitbx::mat3<FloatType> fractionalization_matrix_,
-    af::shared<mat3<double> > sym_mat_,
-    int n_sym_p_)
+    af::shared<mat3<FloatType> > sym_mat_)
   :
   refl_epsfac(0), sym_mat(sym_mat_),
   fractionalization_matrix(fractionalization_matrix_)
@@ -98,20 +95,21 @@ public:
     scitbx::mat3<FloatType> identity(1,0,0,0,1,0,0,0,1);
     // Pre-compute some results that don't depend on reflection number
     for(int ipair = 0; ipair < n_pairs; ipair++) {
-      FloatType radSqr = std::pow(pairs[ipair].radius, 2);
+      FloatType radSqr = scitbx::fn::pow2(pairs[ipair].radius);
       scitbx::mat3<FloatType> ncsR_t = pairs[ipair].r.transpose();
       scitbx::vec3<FloatType> ncsT = pairs[ipair].t;
       for (int isym = 0; isym < n_sym_p; isym++) {
-        /*
-          Metric matrix (represented as tensor) allows quick computation of
-          |s_klmm|^2 and therefore rs^2 for G-function
-          If F=fractionalization_matrix, R=Rotsym and (T) indicates transpose, then
-          s_klmm = (identity-ncsR(T))*F(T)*R(T)*h
-          |s_klmm|^2 = s_klmm(T).s_klmm = h(T)*R*F*(identity-ncsR)*(identity-ncsR(T))*F(T)*R(T)*h
-          The metric matrix is the part between h(T) and h.  In the
-          GfunTensorArray, factors of 2 are included so
-          the unique terms need to be computed only once.
-        */
+  /*
+    Metric matrix (represented as tensor) allows quick computation of
+    |s_klmm|^2 and therefore rs^2 for G-function
+    If F=fractionalization_matrix, R=Rotsym and (T) indicates transpose, then
+    s_klmm = (identity-ncsR(T))*F(T)*R(T)*h
+    |s_klmm|^2 = s_klmm(T).s_klmm =
+                         h(T)*R*F*(identity-ncsR)*(identity-ncsR(T))*F(T)*R(T)*h
+    The metric matrix is the part between h(T) and h.  In the
+    GfunTensorArray, factors of 2 are included so
+    the unique terms need to be computed only once.
+  */
         int i = ipair*n_sym_p+isym;
         ncsDeltaT[i] = sym_mat(isym).transpose()*ncsT; // symmetry translation cancels
         scitbx::mat3<FloatType> metric_matrix =
@@ -186,12 +184,12 @@ public:
     /* XXX PVA: done in constructor?
     SpaceGroup sg = this->getSpaceGroup();
     UnitCell uc = this->getUnitCell();
-    Gfunction gfun(sg,uc,pairs.size());
+    tncs_eps_factor_refinery gfun(sg,uc,pairs.size());
               gfun.calcArrays(pairs);
     */
     tncs_epsfac.resize(f_obs.size());
     for (unsigned r = 0; r < f_obs.size(); r++) {
-      double dLL_by_dEps(0),d2LL_by_dEps2(0);
+      double dLL_by_dEps(0);
       /*
         PVA: look-up array of integer numbers for each refletion telling which
              resolution bin it belongs to. Say this Fobs belongs to bin number 12.
@@ -214,7 +212,7 @@ public:
         bool do_grad = (do_gradient || do_hessian); // Need pIobs gradient for both
         double grad,hess;
         // Code based on Wilson distribution with inflated variance for measurement errors ==>
-        double cent_fac = centric_flags(r) ? 0.5 : 1.0; // XXX PVA: why not True/False?
+        double cent_fac = centric_flags(r) ? 0.5 : 1.0;
         double SigmaFactor = 2.*cent_fac;
         double ExpSig(SigmaFactor*scitbx::fn::pow2(sig_f_obs[r]));
         double V = epsnSigmaN + ExpSig;
@@ -233,27 +231,28 @@ public:
         }
       }
     } // loop over reflections
-    if (do_target || do_gradient || do_hessian)
-    {
-    const double rhoMNbinwt(1./(2*scitbx::fn::pow2(0.05))); // sigma of 0.05 for rhoMN bin smoothness
-    if (do_gradient || do_hessian)
-    for (int ipair = 0; ipair < n_pairs; ipair++)
-    for (int s = 1; s < nbins-1; s++) // restraints over inner bins
-    {
-      double dmean = (pairs[ipair].rhoMN[s-1] + pairs[ipair].rhoMN[s+1])/2.;
-      double delta = pairs[ipair].rhoMN[s] - dmean;
-      minusLL += rhoMNbinwt*scitbx::fn::pow2(delta);
-      if (do_gradient)
-      {
-        Gradient[ipair*nbins+s-1] -= rhoMNbinwt*delta;
-        Gradient[ipair*nbins+s]   += 2.*rhoMNbinwt*delta;
-        Gradient[ipair*nbins+s+1] -= rhoMNbinwt*delta;
+    if(do_target || do_gradient || do_hessian) {
+      const double rhoMNbinwt(1./(2*scitbx::fn::pow2(0.05))); // sigma of 0.05 for rhoMN bin smoothness
+      //if (do_gradient || do_hessian)
+      for (int ipair = 0; ipair < n_pairs; ipair++) {
+        for(int s = 1; s < nbins-1; s++) { // restraints over inner bins
+          double dmean = (pairs[ipair].rhoMN[s-1] + pairs[ipair].rhoMN[s+1])/2.;
+          double delta = pairs[ipair].rhoMN[s] - dmean;
+          minusLL += rhoMNbinwt*scitbx::fn::pow2(delta);
+          if(do_gradient) {
+            Gradient[ipair*nbins+s-1] -= rhoMNbinwt*delta;
+            Gradient[ipair*nbins+s]   += 2.*rhoMNbinwt*delta;
+            Gradient[ipair*nbins+s+1] -= rhoMNbinwt*delta;
+          }
+        }
       }
-    }
     }
     return minusLL;
   }
 
+  af::shared<FloatType> tncs_epsfac_result() {
+    return tncs_epsfac;
+  }
 
 };
 // --------------------------------------------------------------------------
