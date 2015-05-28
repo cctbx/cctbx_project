@@ -1339,6 +1339,7 @@ iotbx/pdb/tst_pdb_manipulation.py -text
 iotbx/pdb/tst_read_mtrix_records_from_cif.py -text
 iotbx/pdb/tst_rna_dna_atom_names.py -text
 iotbx/pdb/tst_secondary_structure.py -text
+iotbx/pdb/tst_secondary_structure_2.py -text
 iotbx/pdb/tst_tls.py -text
 iotbx/pdb/utils.cpp svneol=native#text/plain
 iotbx/pdb/utils.h svneol=native#text/plain

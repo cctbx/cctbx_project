@@ -14,6 +14,13 @@ from math import sqrt
 import sys, os
 import time
 
+#
+# Notes. Now this class trying to keep updated SS information in form of
+# phil parameters and as iotbx/secondary_structure/annotation. This is
+# not the optimal way, it would be better to work only with annotation, but
+# this requires massive rewriting of SS GUI which works only with phil...
+#
+
 sec_str_master_phil_str = """
 secondary_structure
   .style = box auto_align

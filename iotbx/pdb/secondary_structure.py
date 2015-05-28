@@ -31,7 +31,7 @@ from __future__ import division
 #
 #
 # Oleg on 5-27-2015
-# The purpose of these classes - represent as precisely as possible the
+# The purpose of these classes - store as precisely as possible the
 # knowledge about secondary structure itself, without connection to a particular
 # model file. Therefore these classes are just containers of information with
 # methods to convert it to various formats, e.g. pdb HELIX/SHEET records,
@@ -47,32 +47,13 @@ from __future__ import division
 #    of code.
 #
 
-from libtbx.utils import Sorry, Usage
-from libtbx import smart_open
+from libtbx.utils import Sorry
 import libtbx.phil
 from libtbx import adopt_init_args
-import sys, os
+import sys
 
-
-# ss_input_params_str = """
-#   file_name = None
-#     .type = path
-#     .multiple = True
-#     .optional = True
-#     .style = hidden
-#   use_hydrogens = True
-#     .type = bool
-#     .style = hidden
-#   include_helices = True
-#     .type = bool
-#     .style = hidden
-#   include_sheets = True
-#     .type = bool
-#     .style = hidden
-# """
-# ss_input_params = libtbx.phil.parse(ss_input_params_str)
-
-# Don't know what it is...
+# This switch representation of seletions used for phil output from
+# "resid 55 through 66" to "resseq 55:66"
 use_resids = False # XXX: for debugging purposes only
 
 class structure_base (object) :
@@ -122,24 +103,6 @@ class structure_base (object) :
     if current_sh_lines != []:
       result.append(current_sh_lines)
     return result
-
-
-  """
-  def as_pymol_dashes (self, params, object_name=None) :
-    cmds = []
-    prefix = ""
-    if object_name is not None :
-      prefix = "%s and " % object_name
-    bonded_atoms = self.extract_h_bonds(params)
-    for (atom1, atom2) in bonded_atoms :
-      sele1 = "(%schain '%s' and resi %d and name %s)" % (prefix,
-        atom1.chain_id, atom1.resseq, atom1.name)
-      sele2 = "(%schain '%s' and resi %d and name %s)" % (prefix,
-        atom2.chain_id, atom2.resseq, atom2.name)
-      cmd = "dist %s, %s" % (sele1, sele2)
-      cmds.append(cmd)
-    return "\n".join(cmds)
-  """
 
 class annotation(structure_base):
   def __init__(self, helices=None, sheets=None):
@@ -252,22 +215,32 @@ class annotation(structure_base):
   def get_n_sheets(self):
     return len(self.sheets)
 
-  """
-  def extract_h_bonds (self, params=ss_input_params.extract()) :
-    bonded_atoms = []
-    if params.include_helices :
-      for helix in self.helices :
-        helix_bonds = helix.extract_h_bonds(params)
-        bonded_atoms.extend(helix_bonds)
-    if params.include_sheets :
-      for sheet in self.sheets :
-        sheet_bonds = sheet.extract_h_bonds(params)
-        bonded_atoms.extend(sheet_bonds)
-    return bonded_atoms
-  """
 
-#-----------------------------------------------------------------------
+
+  def get_n_defined_hbonds(self):
+    n_hb = 0
+    if self.get_n_helices() > 0:
+      for h in self.helices:
+        n_hb += h.get_n_defined_hbonds()
+    if self.get_n_sheets() > 0:
+      for sh in self.sheets:
+        n_hb += sh.get_n_defined_hbonds()
+    return n_hb
+
+#=============================================================================
+#        88        88 88888888888 88          88 8b        d8
+#        88        88 88          88          88  Y8,    ,8P
+#        88        88 88          88          88   `8b  d8'
+#        88aaaaaaaa88 88aaaaa     88          88     Y88P
+#        88""""""""88 88"""""     88          88     d88b
+#        88        88 88          88          88   ,8P  Y8,
+#        88        88 88          88          88  d8'    `8b
+#        88        88 88888888888 88888888888 88 8P        Y8
+#=============================================================================
+
 class pdb_helix (structure_base) :
+  _helix_class_array = ['unknown','alpha', 'unknown', 'pi', 'unknown',
+        '3_10', 'unknown', 'unknown', 'unknown', 'unknown', 'unknown']
 
   def __init__ (self,
         serial,
@@ -287,7 +260,27 @@ class pdb_helix (structure_base) :
         ):
     adopt_init_args(self, locals())
     assert (length > 0), "Bad helix length"
-    assert (helix_class in range(1,11)), "Bad helix class"
+    if isinstance(self.helix_class, int):
+      self.helix_class = self._helix_class_array[helix_class]
+    assert (self.helix_class in self._helix_class_array), \
+        "Bad helix class: %s" % helix_class
+
+    if isinstance(self.helix_id, int):
+      self.helix_id = "%s" % self.helix_id
+      self.helix_id = self.helix_id[:3]
+    elif self.helix_id is None:
+      self.helix_id = "%s" % self.serial
+      self.helix_id = self.helix_id[:3]
+    else:
+      assert isinstance(self.helix_id, str)
+
+  @classmethod
+  def helix_class_to_int(cls, h_class):
+    return cls._helix_class_array.index(h_class)
+
+  @classmethod
+  def helix_class_to_str(cls, h_class):
+    return cls._helix_class_array[h_class]
 
   @classmethod
   def from_pdb_record(cls, line):
@@ -303,7 +296,7 @@ class pdb_helix (structure_base) :
       end_chain_id=cls.parse_chain_id(line[30:32]),
       end_resseq=int(line[33:37]),
       end_icode=line[37],
-      helix_class=int(line[38:40]),
+      helix_class=cls.helix_class_to_str(int(line[38:40])),
       comment=line[40:70],
       length=int(line[71:76])) #string.atoi(line[71:76]))
 
@@ -316,13 +309,11 @@ class pdb_helix (structure_base) :
       # continue
     sele_str = ("(%s) and (name N) and (altloc 'A' or altloc ' ')" %
                 helix_params.selection)
+    if helix_params.serial_number is not None:
+      serial = helix_params.serial_number
     amide_isel = isel(sele_str)
     start_atom = atoms[amide_isel[0]]
     end_atom = atoms[amide_isel[-1]]
-    if helix_params.helix_type == "unknown" :
-      helix_class = 2
-    else :
-      helix_class = cls.helix_class_to_int(helix_params.helix_type)
     hbonds = []
     for hb in helix_params.hbond:
       if hb.donor is None:
@@ -334,7 +325,7 @@ class pdb_helix (structure_base) :
       hbonds.append((hb.donor, hb.acceptor))
     return cls(
       serial=serial,
-      helix_id=serial,
+      helix_id=helix_params.helix_identifier,
       start_resname=start_atom.resname,
       start_chain_id=start_atom.chain_id,
       start_resseq=int(start_atom.resseq),
@@ -343,28 +334,13 @@ class pdb_helix (structure_base) :
       end_chain_id=end_atom.chain_id,
       end_resseq=int(end_atom.resseq),
       end_icode=end_atom.icode,
-      helix_class=helix_class,
+      helix_class=helix_params.helix_type,
       comment="",
       length=amide_isel.size(),
       hbond_list=hbonds)
 
-  @staticmethod
-  def get_helix_class_array():
-    return ['unknown','alpha', 'unknown', 'pi', 'unknown', '3_10',
-            'unknown', 'unknown', 'unknown', 'unknown', 'unknown']
-
-  @staticmethod
-  def helix_class_to_int(h_class):
-    helix_classes = pdb_helix.get_helix_class_array()
-    return helix_classes.index(h_class)
-
-  @staticmethod
-  def helix_class_to_str(h_class):
-    helix_classes = pdb_helix.get_helix_class_array()
-    return helix_classes[h_class]
-
-  def as_restraint_group (self, log=sys.stdout, prefix_scope="",
-      add_segid=None) :
+  def as_restraint_group(self, log=sys.stdout, prefix_scope="",
+      add_segid=None, show_hbonds=False):
     if self.start_chain_id != self.end_chain_id :
       print >> log, "Helix chain ID mismatch: starts in %s, ends in %s" % (
         self.start_chain_id, self.end_chain_id)
@@ -382,19 +358,41 @@ class pdb_helix (structure_base) :
         segid_extra, self.start_resseq, self.end_resseq)
     if prefix_scope != "" and not prefix_scope.endswith(".") :
       prefix_scope += "."
+    serial_and_id = ""
+    if self.serial is not None and self.serial > 0:
+      serial_and_id += "\n  serial_number = %d" % self.serial
+    if self.helix_id is not None:
+      serial_and_id += "\n  helix_identifier = %s" % self.helix_id
+    # if serial_and_id != "":
+    #   serial_and_id += "\n"
+    hbond_restr = ""
+    if show_hbonds:
+      if self.get_n_defined_hbonds() > 0:
+        for hb in self.hbond_list:
+          hb_str = "\n  hbond {\n    donor = \"%s\"\n    acceptor = \"%s\"\n  }" % (
+            hb[0], hb[1])
+          hbond_restr += hb_str
     rg = """\
-%sprotein.helix {
+%sprotein.helix {%s
   selection = "%s"
-  helix_type = %s
-}""" % (prefix_scope, sele, self.helix_class_to_str(self.helix_class))
+  helix_type = %s%s
+}""" % (prefix_scope, serial_and_id, sele,
+        self.helix_class, hbond_restr)
     return rg
 
-  def as_pdb_str (self) :
+  def as_pdb_str (self):
+    def h_class_to_pdb_int(h_class):
+      h_class_int = self.helix_class_to_int(h_class)
+      if h_class_int == 0:
+        return 1
+      return h_class_int
     format = "HELIX  %3d %3s %3s%2s %4d%1s %3s%2s %4d%1s%2d%30s %5d"
-    out = format % (self.serial, self.helix_id, self.start_resname,
+    out = format % (self.serial,
+      self.serial if self.helix_id is None else self.helix_id[:3],
+      self.start_resname,
       self.start_chain_id, self.start_resseq, self.start_icode,
       self.end_resname, self.end_chain_id, self.end_resseq, self.end_icode,
-      self.helix_class, self.comment, self.length)
+      h_class_to_pdb_int(self.helix_class), self.comment, self.length)
     return out.strip()
 
   def continuity_check (self) :
@@ -416,48 +414,29 @@ class pdb_helix (structure_base) :
       return len(self.hbond_list)
     return 0
 
-  """
-  def extract_h_bonds (self, params=ss_input_params.extract()) :
-    self.continuity_check()
-    bonded_atoms = []
-    i = 0
-    if self.helix_class == 1 : # alpha
-      j = 4
-    else :
-      if self.helix_class == 5 : # 3_10
-        j = 3
-      elif self.helix_class == 3 : # pi
-        j = 5
-      else :
-        raise RuntimeError("Don't know how to deal with helix class %d." %
-          self.helix_class)
-    acceptor_name = "O"
-    donor_name = "N"
-    if params.use_hydrogens :
-      donor_name = "H"
-    while j <= self.length :
-      resseq1 = self.start_resseq + i
-      resseq2 = self.start_resseq + j
-      i += 1
-      j += 1
-      #print resseq1, resseq2, self.end_resseq, self.helix_class
-      if not resseq2 <= self.end_resseq :
-        break
-      acceptor = group_args(
-        chain_id=self.start_chain_id,
-        resseq=resseq1,
-        name=acceptor_name,
-        icode=self.start_icode)
-      donor = group_args(
-        chain_id=self.start_chain_id,
-        resseq=resseq2,
-        name=donor_name,
-        icode=self.start_icode)
-      bonded_atoms.append((donor, acceptor))
-    return bonded_atoms
-  """
+  def get_n_maximum_hbonds(self):
+    if self.helix_class == 'alpha':
+      return self.length-4
+    elif self.helix_class=='3_10':
+      return self.length-3
+    elif helix.helix_class=='pi':
+      return self.length-5
+    elif helix.helix_class=='unknown':
+      return 0
+    else:
+      # Should never happen
+      assert 0, "Wrong helix_class creeped in object fields:" % self.helix_class
 
-#-----------------------------------------------------------------------
+#=============================================================================
+#       ad88888ba  88        88 88888888888 88888888888 888888888888
+#      d8"     "8b 88        88 88          88               88
+#      Y8,         88        88 88          88               88
+#      `Y8aaaaa,   88aaaaaaaa88 88aaaaa     88aaaaa          88
+#        `"""""8b, 88""""""""88 88"""""     88"""""          88
+#              `8b 88        88 88          88               88
+#      Y8a     a8P 88        88 88          88               88
+#       "Y88888P"  88        88 88888888888 88888888888      88
+#=============================================================================
 
 class pdb_strand(structure_base):
   def __init__ (self,
@@ -475,7 +454,6 @@ class pdb_strand(structure_base):
     adopt_init_args(self, locals())
     assert (sheet_id > 0) and (strand_id > 0)
     assert (sense in [-1, 0, 1]), "Bad sense."
-    #assert start_icode == end_icode, "Only equal insertion codes are supported"
     if start_icode != end_icode:
       raise Sorry("Different insertion codes for the beginning and the end of \
 beta strand are not supported.")
@@ -532,8 +510,15 @@ class pdb_sheet(structure_base):
       sheet_id,
       n_strands,
       strands,
-      registrations):
+      registrations,
+      hbond_list=[], # list of (donor, acceptor) selecitons
+      ):
     adopt_init_args(self, locals())
+    if isinstance(self.sheet_id, int):
+      self.sheet_id = "%s" % self.sheet_id
+      self.sheet_id = self.sheet_id[:3]
+    else:
+      assert isinstance(self.sheet_id, str)
 
   @classmethod
   def from_pdb_records(cls,records):
@@ -626,11 +611,21 @@ class pdb_sheet(structure_base):
           prev_icode=reg_prev_atom.icode)
       strands.append(strand)
       registrations.append(reg)
+    hbonds = []
+    for hb in sheet_params.hbond:
+      if hb.donor is None:
+        print >> log, "Donor selection in hbond cannot be None"
+        continue
+      if hb.acceptor is None:
+        print >> log, "Acceptor selection in hbond cannot be None"
+        continue
+      hbonds.append((hb.donor, hb.acceptor))
 
     return cls(sheet_id=sheet_id,
                n_strands=n_strands,
                strands=strands,
-               registrations=registrations)
+               registrations=registrations,
+               hbond_list=hbonds)
   @staticmethod
   def sense_to_int(str_sense):
     sense = 0
@@ -651,6 +646,11 @@ class pdb_sheet(structure_base):
     for strand in self.strands :
       strand_selections.append(strand.as_atom_selections())
     return strand_selections
+
+  def get_n_defined_hbonds(self):
+    if self.hbond_list is not None:
+      return len(self.hbond_list)
+    return 0
 
   def as_pdb_str (self) :
     assert len(self.strands) == len(self.registrations)
@@ -697,8 +697,8 @@ class pdb_sheet(structure_base):
             reg.prev_chain_id, reg.prev_resseq, reg.prev_icode)
     return line
 
-  def as_restraint_group (self, log=sys.stdout, prefix_scope="",
-      add_segid=None) :
+  def as_restraint_group(self, log=sys.stdout, prefix_scope="",
+      add_segid=None, show_hbonds=False):
     if len(self.strands) == 0 :
       return None
     selections = []
@@ -764,246 +764,19 @@ class pdb_sheet(structure_base):
     assert first_strand is not None
     if prefix_scope != "" and not prefix_scope.endswith(".") :
       prefix_scope += "."
+    hbond_restr = ""
+    if show_hbonds:
+      if self.get_n_defined_hbonds() > 0:
+        for hb in self.hbond_list:
+          hb_str = "\n  hbond {\n    donor = \"%s\"\n    acceptor = \"%s\"\n  }" % (
+            hb[0], hb[1])
+          hbond_restr += hb_str
     phil_str = """
 %sprotein.sheet {
   first_strand = "%s"
-%s
-}""" % (prefix_scope, first_strand, "\n".join(strands))
+%s%s
+}""" % (prefix_scope, first_strand, "\n".join(strands), hbond_restr)
     return phil_str
-
-  """
-  def extract_h_bonds (self, params=ss_input_params.extract()) :
-    assert len(self.strands) == len(self.registrations)
-    bonded_atoms = []
-    errors = 0
-    donor_name = "N"
-    acceptor_name = "O"
-    if params.use_hydrogens :
-      donor_name = "H"
-    for i, strand in enumerate(self.strands) :
-      registration = self.registrations[i]
-      prev_strand = self.strands[i - 1]
-      if registration is None : # usually the first strand, but not always!
-        continue
-      if ((strand.start_icode != strand.end_icode) or
-          (prev_strand.start_icode != prev_strand.end_icode)) :
-        errors += 1
-        continue # don't raise exception - other strands may be okay
-      cur_resseq = registration.cur_resseq
-      prev_resseq = registration.prev_resseq
-      if strand.sense == -1 :
-        while ((prev_resseq <= prev_strand.end_resseq) and
-               (cur_resseq >= strand.start_resseq)) :
-          # O (current) --> H/N (previous)
-          acceptor1 = group_args(
-            chain_id=strand.start_chain_id,
-            resseq=cur_resseq,
-            name=acceptor_name,
-            icode=strand.start_icode)
-          donor1 = group_args(
-            chain_id=prev_strand.start_chain_id,
-            resseq=prev_resseq,
-            name=donor_name,
-            icode=prev_strand.start_icode)
-          bonded_atoms.append((donor1, acceptor1))
-          # H/N (current) --> O (previous)
-          donor2 = group_args(
-            chain_id=strand.start_chain_id,
-            resseq=cur_resseq,
-            name=donor_name,
-            icode=strand.start_icode)
-          acceptor2 = group_args(
-            chain_id=prev_strand.start_chain_id,
-            resseq=prev_resseq,
-            name=acceptor_name,
-            icode=prev_strand.start_icode)
-          bonded_atoms.append((donor2, acceptor2))
-          prev_resseq += 2
-          cur_resseq -= 2
-      elif strand.sense == 1 :
-        while ((prev_resseq <= prev_strand.end_resseq) and
-               (cur_resseq <= strand.end_resseq)) :
-          # O (current) --> H/N (previous)
-          acceptor1 = group_args(
-            chain_id=strand.start_chain_id,
-            resseq=cur_resseq,
-            name=acceptor_name,
-            icode=strand.start_icode)
-          donor1 = group_args(
-            chain_id=prev_strand.start_chain_id,
-            resseq=prev_resseq,
-            name=donor_name,
-            icode=prev_strand.start_icode)
-          bonded_atoms.append((donor1, acceptor1))
-          if (cur_resseq + 2) > strand.end_resseq :
-            break
-          # H/N (current + 2) --> O (previous)
-          donor2 = group_args(
-            chain_id=strand.start_chain_id,
-            resseq=cur_resseq + 2,
-            name=donor_name,
-            icode=strand.start_icode)
-          acceptor2 = group_args(
-            chain_id=prev_strand.start_chain_id,
-            resseq=prev_resseq,
-            name=acceptor_name,
-            icode=prev_strand.start_icode)
-          bonded_atoms.append((donor2, acceptor2))
-          cur_resseq += 2
-          prev_resseq += 2
-      else :
-        raise RuntimeError("Strand sense must be either -1 or 1, except for "+
-          "the first strand in a sheet.")
-    return bonded_atoms
-
-  def extract_h_bonds_as_i_seqs (self) :
-    pass
-  """
-
-#-----------------------------------------------------------------------
-def process_records (records=None, pdb_files=None, allow_none=True) :
-  assert 0, "Hopefully is not used"
-  assert records is not None or pdb_files is not None
-  if records is None :
-    records = []
-    for file_name in pdb_files :
-      lines = smart_open.for_reading(file_name).readlines()
-      for line in lines :
-        if line.startswith("HELIX") or line.startswith("SHEET") :
-          records.append(line)
-  if len(records) == 0 :
-    if allow_none :
-      return None
-    else :
-      raise Sorry("No secondary structure found.")
-  secondary_structure = annotation.from_records(records=records)
-  return secondary_structure
-
-def run (args, out=sys.stdout, log=sys.stderr, cmd_params_str="") :
-  assert 0, "Hopefully is not used"
-  master_phil = libtbx.phil.parse("""%s
-  echo_pdb_records = False
-    .type = bool
-  echo_pymol_cmds = False
-    .type = bool
-  %s
-""" % (cmd_params_str, ss_input_params_str))
-  user_phil = []
-  for arg in args :
-    if os.path.isfile(arg) :
-      file_name = os.path.abspath(arg)
-      base, ext = os.path.splitext(file_name)
-      if ext in [".pdb", ".ent", ".gz"] :
-        user_phil.append(libtbx.phil.parse("file_name=\"%s\"" % file_name))
-      else :
-        user_phil.append(libtbx.phil.parse(file_name=file_name))
-    else :
-      if arg.startswith("--") :
-        arg = arg[2:] + "=True"
-      try :
-        cmdline_phil = libtbx.phil.parse(arg)
-      except RuntimeError, e :
-        print >> log, str(e)
-      else :
-        user_phil.append(cmdline_phil)
-  working_phil = master_phil.fetch(sources=user_phil)
-  params = working_phil.extract()
-  if len(params.file_name) == 0 :
-    raise Usage("Please supply at least one PDB file.")
-  secondary_structure = process_records(pdb_files=params.file_name)
-  if secondary_structure is not None :
-    if params.echo_pdb_records :
-      print >> out, secondary_structure.as_pdb_str()
-    elif params.echo_pymol_cmds :
-      print >> out, secondary_structure.as_pymol_dashes(params)
-  return secondary_structure
-
-#-----------------------------------------------------------------------
-def exercise_hbonds():
-  """ Disabled"""
-  from scitbx.array_family import flex
-  from libtbx import test_utils
-  # XXX: the PDB's annotation for 1ywf is simply wrong - the registers for the
-  # last two strands are offset, leading to "bonds" with a distance of > 6 A.
-  # The records below are correct.  However, the 3_10 helices will not result
-  # in any H-bonds, since the only bonds present in the structure involve
-  # adjacent residues not included in those specific HELIX records.  (ksdssp
-  # simply ignores the 3_10 helix at 192-194 and combines it with the adjacent
-  # alpha helices, which is also wrong.)
-  ptpb_1ywf_records = """\
-HELIX    1   1 ALA A   16  THR A   18  5                                   3
-HELIX    2   2 ASP A   37  GLY A   48  1                                  12
-HELIX    3   3 SER A   57  GLY A   65  1                                   9
-HELIX    4   4 ASN A  119  PHE A  133  1                                  15
-HELIX    5   5 PRO A  134  ARG A  136  5                                   3
-HELIX    6   6 GLY A  138  ALA A  152  1                                  15
-HELIX    7   7 ASP A  165  VAL A  178  1                                  14
-HELIX    8   8 ASP A  181  ARG A  191  1                                  11
-HELIX    9   9 SER A  192  ASP A  194  5                                   3
-HELIX   10  10 SER A  195  GLN A  209  1                                  15
-HELIX   11  11 ALA A  216  ALA A  225  1                                  10
-HELIX   12  12 SER A  228  GLY A  233  1                                   6
-HELIX   13  13 ARG A  235  GLY A  251  1                                  17
-HELIX   14  14 SER A  252  ALA A  260  1                                   9
-HELIX   15  15 SER A  263  LEU A  275  1                                  13
-SHEET    1   A 5 ARG A  13  ASP A  14  0
-SHEET    2   A 5 LEU A  27  SER A  30 -1  O  ARG A  29   N  ARG A  13
-SHEET    3   A 5 VAL A 156  HIS A 159  1  O  VAL A 156   N  PHE A  28
-SHEET    4   A 5 ASP A  51  ASP A  54  1  N  ALA A  51   O  LEU A 157
-SHEET    5   A 5 ASP A  74  LEU A  77  1  O  HIS A  74   N  VAL A  52"""
-
-  lines = flex.std_string()
-  lines.extend(flex.split_lines(ptpb_1ywf_records))
-  params = ss_input_params.extract()
-  ss = annotation.from_records(records=lines)
-  ss_out = ss.as_pdb_str()
-  assert not test_utils.show_diff(ss_out, ptpb_1ywf_records)
-  pml_out = ss.as_pymol_dashes(params=params)
-  assert len(pml_out.splitlines()) == 109
-  params.include_helices = False
-  pml_out = ss.as_pymol_dashes(params=params)
-  assert len(pml_out.splitlines()) == 11
-  params.include_helices = True
-  params.include_sheets = False
-  pml_out = ss.as_pymol_dashes(params=params)
-  assert len(pml_out.splitlines()) == 98
-  assert (pml_out.splitlines()[0] ==
-    """dist (chain 'A' and resi 41 and name H), (chain 'A' and resi 37 and name O)""")
-  params.include_sheets = True
-  assert len(ss.as_atom_selections(params=params)) == 20
-  assert (ss.as_atom_selections(params=params)[0] ==
-    """chain 'A' and resseq 16:18 and icode ' '""")
-
-# def exercise_single () :
-#   from scitbx.array_family import flex
-#   from libtbx import test_utils
-#   two_char_chain_records = """\
-# HELIX    1   1 THRA1   11  ASPA1   39  1                                  29
-# HELIX    2   2 GLUA1   46  ARGA1   73  1                                  28
-# HELIX    3   3 THRA1   93  ALAA1  120  1                                  28
-# HELIX    4   4 PROA1  124  HISA1  133  1                                  10
-# HELIX    5   5 LEUA1  135  ARGA1  154  1                                  20
-# HELIX    6   6 THRa1   11  TYRa1   37  1                                  27
-# HELIX    7   7 GLUa1   46  GLNa1   72  1                                  27
-# HELIX    8   8 THRa1   93  ALAa1  120  1                                  28
-# HELIX    9   9 PROa1  124  HISa1  133  1                                  10"""
-#   lines = flex.std_string()
-#   lines.extend(flex.split_lines(two_char_chain_records))
-#   ss = annotation(records=lines)
-#   ss_out = ss.as_pdb_str()
-#   assert not test_utils.show_diff(ss_out, two_char_chain_records)
-#   print "OK"
-
-# def tst_pdb_file () :
-#   from iotbx import file_reader
-#   pdb_in = file_reader.any_file(file_name, force_type="pdb")
-#   old_ss = pdb_in.file_object.secondary_structure_section()
-#   structure = pdb_in.file_object.extract_secondary_structure()
-#   new_ss = structure.as_pdb_str()
-#   old_ss = "\n".join(old_ss)
-#   assert not test_utils.show_diff(new_ss, old_ss)
 
 if __name__ == "__main__" :
   pass
-  # exercise_hbonds()
-  # exercise_single()
