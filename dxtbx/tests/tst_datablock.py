@@ -137,7 +137,7 @@ class Test(object):
 
     filenames = self.multiple_block_filenames()
     blocks = DataBlockFactory.from_filenames(filenames, verbose=False)
-    assert(len(blocks) == 21)
+    assert(len(blocks) == 22)
 
     # Block 1
     assert(blocks[0].num_images() == 9)
@@ -147,33 +147,6 @@ class Test(object):
     sweeps = blocks[0].extract_sweeps()
     assert(len(sweeps) == 1)
     assert(len(sweeps[0]) == 9)
-
-    # Block 2
-    assert(blocks[1].num_images() == 2)
-    imageset = blocks[1].extract_imagesets()
-    assert(len(imageset) == 2)
-    assert(all(len(i) == 1 for i in imageset))
-    sweeps = blocks[1].extract_sweeps()
-    assert(len(sweeps) == 2)
-    assert(all(len(s) == 1 for s in sweeps))
-
-    # Block 3
-    assert(blocks[2].num_images() == 1)
-    imageset = blocks[2].extract_imagesets()
-    assert(len(imageset) == 1)
-    assert(len(imageset[0]) == 1)
-    sweeps = blocks[2].extract_sweeps()
-    assert(len(sweeps) == 1)
-    assert(all(len(s) == 1 for s in sweeps))
-
-    # Block 4
-    assert(blocks[3].num_images() == 1)
-    imageset = blocks[3].extract_imagesets()
-    assert(len(imageset) == 1)
-    assert(all(len(i) == 1 for i in imageset))
-    sweeps = blocks[3].extract_sweeps()
-    assert(len(sweeps) == 1)
-    assert(all(len(s) == 1 for s in sweeps))
 
     print 'OK'
 

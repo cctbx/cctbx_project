@@ -415,22 +415,24 @@ class MemReader(ReaderBase):
   def get_scan(self, index=None):
     return self._indices[index].get_scan()
 
+class ExternalLookupItem(object):
+  '''
+  Save an external lookup item.
+
+  '''
+  def __init__(self):
+    self.data = None
+    self.filename = None
 
 class ExternalLookup(object):
   '''
   A class to hold some external lookup data
 
   '''
-
-  class Item(object):
-    def __init__(self):
-      data = None
-      filename = None
-
   def __init__(self):
-    self.mask = Item()
-    self.gain = Item()
-    self.pedestal = Item()
+    self.mask = ExternalLookupItem()
+    self.gain = ExternalLookupItem()
+    self.pedestal = ExternalLookupItem()
 
 
 class ImageSet(object):
