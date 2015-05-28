@@ -562,7 +562,7 @@ class Builder(object):
 
     # Build base packages
     if base:
-      self.add_base(extra_opts=["--nproc="+str(nproc)])
+      self.add_base(extra_opts=["--nproc=%s" % str(self.nproc)])
 
     # Configure, make
     if build and not self.download_only:
@@ -853,7 +853,6 @@ class Builder(object):
         'python',
         self.opjoin('modules', 'cctbx_project', 'libtbx', 'auto_build', 'install_base_packages.py'),
         '--python-shared',
-        '--nproc=%s' %str(self.nproc),
         '--%s'%self.BASE_PACKAGES
       ] + extra_opts,
       workdir=['.']
