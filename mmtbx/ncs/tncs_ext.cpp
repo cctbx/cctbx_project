@@ -15,10 +15,31 @@ namespace {
     return boost::python::make_tuple(self.r, self.t);
   }
 
+  using namespace boost::python;
+  using boost::python::arg;
+
+  template <typename FloatType>
+  struct tncs_eps_factor_refinery_wrapper
+  {
+    typedef tncs_eps_factor_refinery<FloatType> w_t;
+    static void wrap() {
+      using namespace boost::python;
+      class_<w_t>("tncs_eps_factor_refinery", no_init)
+        .def(init<
+             bp::list const&,
+             scitbx::mat3<double>,
+             af::shared<mat3<double> >
+                  >((arg("xxx"),
+                     arg("ccc"),
+                     arg("ddd"))))
+        .def("tncs_epsfac", &w_t::tncs_epsfac_result)
+      ;
+    }
+  };
+
   void init_module()
   {
-    using namespace boost::python;
-    using boost::python::arg;
+    tncs_eps_factor_refinery_wrapper<double>::wrap();
 
     typedef return_value_policy<return_by_value> rbv;
     class_<pair<> >("pair")
@@ -43,6 +64,7 @@ namespace {
       .enable_pickling()
       .def("__getinitargs__", getinitargs)
     ;
+
   }
 
 } // namespace <anonymous>
