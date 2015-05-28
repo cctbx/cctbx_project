@@ -482,9 +482,10 @@ class reference_model(object):
           sec_str_from_pdb_file=None)
         pdb_str = self.pdb_hierarchy_ref[file].as_pdb_string()
         (records, stderr) = secondary_structure.run_ksdssp_direct(pdb_str)
-        sec_str_from_pdb_file = iotbx.pdb.secondary_structure.process_records(
-                                  records=records,
-                                  allow_none=True)
+        sec_str_from_pdb_file = iotbx.pdb.secondary_structure.\
+            annotation.from_records(
+                records=records,
+                log=self.log)
         if sec_str_from_pdb_file != None:
           overall_helix_selection = \
             sec_str_from_pdb_file.overall_helix_selection()
