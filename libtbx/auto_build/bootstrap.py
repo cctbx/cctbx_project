@@ -1019,11 +1019,11 @@ class DIALSBuilder(CCIBuilder):
     self.add_test_command('cctbx_regression.test_nightly')
     self.add_test_parallel('dials', flunkOnFailure=False, warnOnFailure=True)
 
-  def add_base(self):
+  def add_base(self, extra_opts=[]):
     super(DIALSBuilder, self).add_base(
       extra_opts=['--dials',
                   #'--wxpython3'
-                 ])
+                 ] + extra_opts)
 
   def add_dispatchers(self):
     pass
