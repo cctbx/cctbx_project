@@ -238,9 +238,9 @@ class manager (object) :
     if (self.params.secondary_structure.use_ksdssp) :
       pdb_str = pdb_hierarchy.as_pdb_string()
       (records, stderr) = run_ksdssp_direct(pdb_str)
-      return iotbx.pdb.secondary_structure.process_records(
-        records=records,
-        allow_none=True)
+      return iotbx.pdb.secondary_structure.annotation.from_records(
+          records=records,
+          log=self.log)
     else : # TODO make this the default
       from mmtbx.secondary_structure import dssp
       print >> self.log, "  running mmtbx.dssp..."

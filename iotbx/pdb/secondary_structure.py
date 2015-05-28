@@ -29,6 +29,23 @@ from __future__ import division
 # should be methods of secondary structure classes. Then proteins.py could be
 # eliminated completely.
 #
+#
+# Oleg on 5-27-2015
+# The purpose of these classes - represent as precisely as possible the
+# knowledge about secondary structure itself, without connection to a particular
+# model file. Therefore these classes are just containers of information with
+# methods to convert it to various formats, e.g. pdb HELIX/SHEET records,
+# phil files, cif format (in future). No connection to model means no i_seqs,
+# no integer or bool selections etc. Object of annotation should be passed
+# whenever the SS information is needed to the places where particular pdb
+# model is available.
+# The outcome from this rationale is:
+# 1. No phil parameters in the module.
+# 2. Essentially only constructors from various formats and exports to
+#    various formats here
+# 3. Convenient access to the various data to work with in different parts
+#    of code.
+#
 
 from libtbx.utils import Sorry, Usage
 from libtbx import smart_open
@@ -36,26 +53,27 @@ import libtbx.phil
 from libtbx import adopt_init_args
 import sys, os
 
-ss_input_params_str = """
-  file_name = None
-    .type = path
-    .multiple = True
-    .optional = True
-    .style = hidden
-  use_hydrogens = True
-    .type = bool
-    .style = hidden
-  include_helices = True
-    .type = bool
-    .style = hidden
-  include_sheets = True
-    .type = bool
-    .style = hidden
-"""
-ss_input_params = libtbx.phil.parse(ss_input_params_str)
+
+# ss_input_params_str = """
+#   file_name = None
+#     .type = path
+#     .multiple = True
+#     .optional = True
+#     .style = hidden
+#   use_hydrogens = True
+#     .type = bool
+#     .style = hidden
+#   include_helices = True
+#     .type = bool
+#     .style = hidden
+#   include_sheets = True
+#     .type = bool
+#     .style = hidden
+# """
+# ss_input_params = libtbx.phil.parse(ss_input_params_str)
 
 # Don't know what it is...
-use_resids = True # XXX: for debugging purposes only
+use_resids = False # XXX: for debugging purposes only
 
 class structure_base (object) :
 
@@ -130,7 +148,7 @@ class annotation(structure_base):
     self.sheets = sheets
 
   @classmethod
-  def from_records(cls,records=None, log=None):
+  def from_records(cls, records=None, log=None):
     "Initialize annotation from pdb HELIX/SHEET records"
     helices = []
     sheets = []
@@ -186,17 +204,15 @@ class annotation(structure_base):
         phil_strs.append(sheet_phil)
     return "\n".join(phil_strs)
 
-  def as_atom_selections (self, params=ss_input_params.extract()) :
+  def as_atom_selections (self):
     selections = []
-    if params.include_helices :
-      for helix in self.helices :
-        try :
-          selections.extend(helix.as_atom_selections())
-        except RuntimeError, e :
-          pass
-    if params.include_sheets :
-      for sheet in self.sheets :
-        selections.extend(sheet.as_atom_selections())
+    for helix in self.helices :
+      try :
+        selections.extend(helix.as_atom_selections())
+      except RuntimeError, e :
+        pass
+    for sheet in self.sheets :
+      selections.extend(sheet.as_atom_selections())
     return selections
 
   def overall_helix_selection (self) :
@@ -218,7 +234,8 @@ class annotation(structure_base):
     return "(" + ") or (".join(selections) + ")"
 
 
-  def as_bond_selections (self, params=ss_input_params.extract()) :
+  def as_bond_selections (self) :
+    assert 0, "Probably is not used anywhere"
     bonded_atoms = self.extract_h_bonds(params)
     selections = []
     for (atom1, atom2) in bonded_atoms :
@@ -228,6 +245,12 @@ class annotation(structure_base):
         atom2.name, atom2.chain_id, atom2.resseq, atom2.icode)
       selections.append((selection_1, selection_2))
     return selections
+
+  def get_n_helices(self):
+    return len(self.helices)
+
+  def get_n_sheets(self):
+    return len(self.sheets)
 
   """
   def extract_h_bonds (self, params=ss_input_params.extract()) :
@@ -245,6 +268,7 @@ class annotation(structure_base):
 
 #-----------------------------------------------------------------------
 class pdb_helix (structure_base) :
+
   def __init__ (self,
         serial,
         helix_id,
@@ -258,7 +282,9 @@ class pdb_helix (structure_base) :
         end_icode,
         helix_class,
         comment,
-        length):
+        length,
+        hbond_list=[], # list of (donor, acceptor) selecitons
+        ):
     adopt_init_args(self, locals())
     assert (length > 0), "Bad helix length"
     assert (helix_class in range(1,11)), "Bad helix class"
@@ -297,6 +323,15 @@ class pdb_helix (structure_base) :
       helix_class = 2
     else :
       helix_class = cls.helix_class_to_int(helix_params.helix_type)
+    hbonds = []
+    for hb in helix_params.hbond:
+      if hb.donor is None:
+        print >> log, "Donor selection in hbond cannot be None"
+        continue
+      if hb.acceptor is None:
+        print >> log, "Acceptor selection in hbond cannot be None"
+        continue
+      hbonds.append((hb.donor, hb.acceptor))
     return cls(
       serial=serial,
       helix_id=serial,
@@ -310,7 +345,8 @@ class pdb_helix (structure_base) :
       end_icode=end_atom.icode,
       helix_class=helix_class,
       comment="",
-      length=amide_isel.size())
+      length=amide_isel.size(),
+      hbond_list=hbonds)
 
   @staticmethod
   def get_helix_class_array():
@@ -374,6 +410,11 @@ class pdb_helix (structure_base) :
     sele = "chain '%s' and resseq %d:%d and icode '%s'" % (self.start_chain_id,
       self.start_resseq, self.end_resseq, self.end_icode)
     return [sele]
+
+  def get_n_defined_hbonds(self):
+    if self.hbond_list is not None:
+      return len(self.hbond_list)
+    return 0
 
   """
   def extract_h_bonds (self, params=ss_input_params.extract()) :
@@ -821,6 +862,7 @@ class pdb_sheet(structure_base):
 
 #-----------------------------------------------------------------------
 def process_records (records=None, pdb_files=None, allow_none=True) :
+  assert 0, "Hopefully is not used"
   assert records is not None or pdb_files is not None
   if records is None :
     records = []
@@ -838,6 +880,7 @@ def process_records (records=None, pdb_files=None, allow_none=True) :
   return secondary_structure
 
 def run (args, out=sys.stdout, log=sys.stderr, cmd_params_str="") :
+  assert 0, "Hopefully is not used"
   master_phil = libtbx.phil.parse("""%s
   echo_pdb_records = False
     .type = bool
