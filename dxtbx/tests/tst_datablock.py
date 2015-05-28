@@ -12,6 +12,7 @@ class Test(object):
       print 'FAIL: dials_regression not configured'
       exit(0)
 
+    self.dials_regression = dials_regression
     self.centroid_test_data = os.path.join(dials_regression, 'centroid_test_data')
     self.image_examples = os.path.join(dials_regression, 'image_examples')
 
@@ -98,6 +99,7 @@ class Test(object):
     self.tst_pickling()
     self.tst_json()
     self.tst_from_null_sweep()
+    self.tst_with_external_lookup()
 
   def tst_create_single_sweep(self):
 
@@ -224,6 +226,40 @@ class Test(object):
 
     print 'OK'
 
+  def tst_with_external_lookup(self):
+    from dxtbx.datablock import DataBlockFactory
+    from dxtbx.imageset import ImageSweep
+    from os.path import join
+
+    filename = join(self.dials_regression, "centroid_test_data",
+                    "datablock_with_lookup.json")
+    blocks = DataBlockFactory.from_json_file(filename)
+    assert(len(blocks) == 1)
+    imageset = blocks[0].extract_imagesets()[0]
+    assert imageset.external_lookup.mask.data is not None
+    assert imageset.external_lookup.gain.data is not None
+    assert imageset.external_lookup.pedestal.data is not None
+    assert imageset.external_lookup.mask.filename is not None
+    assert imageset.external_lookup.gain.filename is not None
+    assert imageset.external_lookup.pedestal.filename is not None
+    assert imageset.external_lookup.mask.data.all_eq(True)
+    assert imageset.external_lookup.gain.data.all_eq(1)
+    assert imageset.external_lookup.pedestal.data.all_eq(0)
+
+    blocks = self.encode_json_then_decode(blocks)
+    assert(len(blocks) == 1)
+    imageset = blocks[0].extract_imagesets()[0]
+    assert imageset.external_lookup.mask.data is not None
+    assert imageset.external_lookup.gain.data is not None
+    assert imageset.external_lookup.pedestal.data is not None
+    assert imageset.external_lookup.mask.filename is not None
+    assert imageset.external_lookup.gain.filename is not None
+    assert imageset.external_lookup.pedestal.filename is not None
+    assert imageset.external_lookup.mask.data.all_eq(True)
+    assert imageset.external_lookup.gain.data.all_eq(1)
+    assert imageset.external_lookup.pedestal.data.all_eq(0)
+
+    print 'OK'
 
 if __name__ == '__main__':
   test = Test()
