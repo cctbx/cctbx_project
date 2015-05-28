@@ -2022,79 +2022,31 @@ secondary_structure.protein {
   }
 }"""
 
-  pdb_inp = iotbx.pdb.input(source_info=None,
-    lines=pdb_1ywf_sample_strings)
-  pdb_h = pdb_inp.construct_hierarchy()
-  ss_from_file = pdb_inp.secondary_structure_section()
-  ss_phil = iotbx.phil.parse(phil_str)
-  working_params = sec_str_master_phil.fetch(source=ss_phil).extract()
-  annot = ss.annotation.from_phil(
-      phil_helices=working_params.secondary_structure.protein.helix,
-      phil_sheets=working_params.secondary_structure.protein.sheet,
-      pdb_hierarchy=pdb_h)
+  annot, ss_from_file = get_annotation(
+      phil_lines=phil_str,
+      pdb_lines=pdb_1ywf_sample_strings)
   ss_from_phil = annot.as_pdb_str()
   assert ss_from_file == ss_from_phil
   print "OK"
 
-def tst_parsing_phil_2():
-  phil_str = """\
-  secondary_structure.protein.helix {
-    selection = chain A and resseq 37:48
-    helix_type = *alpha pi 3_10 unknown
-    hbond {
-      donor = chain A and resid 37 and name O
-      acceptor = chain A and resid 41 and name N
-      }
-    hbond {
-      donor = chain A and resid 38 and name O
-      acceptor = chain A and resid 42 and name N
-      }
-    hbond {
-      donor = chain A and resid 39 and name O
-      acceptor = chain A and resid 43 and name N
-      }
-    hbond {
-      donor = chain A and resid 40 and name O
-      acceptor = chain A and resid 44 and name N
-      }
-    hbond {
-      donor = chain A and resid 41 and name O
-      acceptor = chain A and resid 45 and name N
-      }
-    hbond {
-      donor = chain A and resid 42 and name O
-      acceptor = chain A and resid 46 and name N
-      }
-    hbond {
-      donor = chain A and resid 43 and name O
-      acceptor = chain A and resid 47 and name N
-      }
-    hbond {
-      donor = chain A and resid 44 and name O
-      acceptor = chain A and resid 48 and name N
-      }
-    }
-    """
+def get_annotation(phil_lines, pdb_lines):
   pdb_inp = iotbx.pdb.input(source_info=None,
-    lines=pdb_1ywf_sample_strings)
+    lines=pdb_lines)
   pdb_h = pdb_inp.construct_hierarchy()
   ss_from_file = pdb_inp.secondary_structure_section()
-  ss_phil = iotbx.phil.parse(phil_str)
+  ss_phil = iotbx.phil.parse(phil_lines)
   working_params = sec_str_master_phil.fetch(source=ss_phil).extract()
   annot = ss.annotation.from_phil(
       phil_helices=working_params.secondary_structure.protein.helix,
       phil_sheets=working_params.secondary_structure.protein.sheet,
       pdb_hierarchy=pdb_h)
-  assert annot.get_n_helices() == 1
-  assert annot.get_n_sheets() == 0
-  h = annot.helices[0]
-  assert h.get_n_defined_hbonds() == 8
+  return annot, ss_from_file
+
 
 def exercise(args):
   exercise_single()
   tst_pdb_file()
   tst_parsing_phil()
-  tst_parsing_phil_2()
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

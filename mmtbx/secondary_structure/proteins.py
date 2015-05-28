@@ -10,6 +10,12 @@ helix
   .optional = True
   .style = noauto
 {
+  serial_number = None
+    .type = int
+    .optional = True
+  helix_identifier = None
+    .type = str
+    .optional = True
   enabled = True
     .type = bool
     .help = Restrain this particular helix

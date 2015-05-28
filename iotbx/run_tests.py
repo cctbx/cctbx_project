@@ -36,6 +36,7 @@ tst_list = (
   "$D/pdb/secondary_structure.py",
   "$D/pdb/tst_atom_selection_string.py",
   "$D/pdb/tst_secondary_structure.py",
+  "$D/pdb/tst_secondary_structure_2.py",
   "$D/examples/iotbx_cif.py",
   "$D/examples/pdb_to_map_simple.py",
   "$D/examples/pdb_truncate_to_ala/tst.py",

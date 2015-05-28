@@ -65,7 +65,9 @@ ATOM      9  O   ALA A   2      33.675   2.539   3.772  1.00  0.00           O
 ATOM     10  CB  ALA A   2      32.232   3.483   1.399  1.00  0.00           C
 """
 
-helix_class_to_pdb_str = {1:alpha_helix_str, 3:pi_helix_str, 5: a310_helix_str}
+helix_class_to_pdb_str = {'alpha':alpha_helix_str,
+                          'pi':pi_helix_str,
+                          '3_10': a310_helix_str}
 
 ss_idealization_master_phil_str = """
 idealization
@@ -94,17 +96,6 @@ idealization
     .type = int
 }
 """
-
-def get_expected_n_hbonds_from_helix(helix):
-  # assess helix length
-  if helix.helix_class==1:
-    return helix.length-4
-  elif helix.helix_class==5:
-    return helix.length-3
-  elif helix.helix_class==3:
-    return helix.length-5
-  else:
-    raise Sorry("Unsupported helix type.")
 
 def print_hbond_proxies(geometry, hierarchy, pymol=False):
   """ Print hydrogen bonds in geometry restraints manager for debugging
@@ -323,7 +314,7 @@ def substitute_ss(real_h,
   ann = ss_annotation
   phil_str = ann.as_restraint_groups()
   for h in ann.helices:
-    expected_n_hbonds += get_expected_n_hbonds_from_helix(h)
+    expected_n_hbonds += h.get_n_maximum_hbonds()
   edited_h = real_h.deep_copy()
   n_atoms_in_real_h = real_h.atoms().size()
   cumm_bsel = flex.bool(n_atoms_in_real_h, False)
