@@ -26,6 +26,7 @@
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <scitbx/math/fast_approx_math.h>
+#include <scitbx/math/g_function.h>
 
 
 namespace scitbx { namespace math {
@@ -313,6 +314,10 @@ namespace {
 
     def("parabolic_cylinder_d", (double(*)(double, double))
       parabolic_cylinder_d::dv);
+
+    // G-function
+    def("GfuncOfRSsqr_approx", (double(*)(double))
+      g_function::GfuncOfRSsqr_approx);
 
     def("bessel_i1_over_i0", (double(*)(double const&)) bessel::i1_over_i0);
     def("bessel_i1_over_i0",
