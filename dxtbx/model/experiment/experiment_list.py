@@ -300,18 +300,22 @@ class ExperimentList(object):
       if isinstance(imset, ImageSweep):
         # FIXME_HACK
         template = get_template(imset)
-        result['imageset'].append(OrderedDict([
+        r = OrderedDict([
           ('__id__', 'ImageSweep'),
-          ('template', template)]))
+          ('template', template)])
       elif isinstance(imset, MemImageSet):
-        result['imageset'].append(OrderedDict([
-          ('__id__', 'MemImageSet')]))
+        r = OrderedDict([
+          ('__id__', 'MemImageSet')])
       elif isinstance(imset, ImageSet):
-        result['imageset'].append(OrderedDict([
+        r = OrderedDict([
           ('__id__', 'ImageSet'),
-          ('images', imset.paths())]))
+          ('images', imset.paths())])
       else:
         raise TypeError('expected ImageSet or ImageSweep, got %s' % type(imset))
+      r['mask'] = imset.external_lookup.mask.filename
+      r['gain'] = imset.external_lookup.gain.filename
+      r['pedestal'] = imset.external_lookup.pedestal.filename
+      result['imageset'].append(r)
 
     # Extract all the model dictionaries
     result['beam']       = [b.to_dict() for b in blist if b is not None]
@@ -447,6 +451,8 @@ class ExperimentListDict(object):
   def _extract_experiments(self):
     ''' Helper function. Extract the experiments. '''
     from dxtbx.imageset import ImageSweep, ImageSet
+    from dxtbx.serialize.filename import load_path
+    import cPickle as pickle
 
     # Map of imageset/scan pairs
     imagesets = {}
@@ -470,6 +476,24 @@ class ExperimentListDict(object):
 
         # Create the imageset from the input data
         if imageset is not None:
+          if 'mask' in imageset and imageset['mask'] is not None:
+            mask_filename = load_path(imageset['mask'])
+            mask = pickle.load(open(mask_filename))
+          else:
+            mask_filename = None
+            mask = None
+          if 'gain' in imageset and imageset['gain'] is not None:
+            gain_filename = load_path(imageset['gain'])
+            gain = pickle.load(open(gain_filename))
+          else:
+            gain_filename = None
+            gain = None
+          if 'pedestal' in imageset and imageset['pedestal'] is not None:
+            pedestal_filename = load_path(imageset['pedestal'])
+            pedestal = pickle.load(open(pedestal_filename))
+          else:
+            pedestal_filename = None
+            pedestal = None
           if imageset['__id__'] == 'ImageSet':
             imageset = self._make_stills(imageset)
           elif imageset['__id__'] == 'ImageSweep':
@@ -478,6 +502,12 @@ class ExperimentListDict(object):
             imageset = self._make_mem_imageset(imageset)
           else:
             raise RuntimeError('Unknown imageset type')
+          imageset.external_lookup.mask.data = mask
+          imageset.external_lookup.mask.filename = mask_filename
+          imageset.external_lookup.gain.data = gain
+          imageset.external_lookup.gain.filename = gain_filename
+          imageset.external_lookup.pedestal.data = pedestal
+          imageset.external_lookup.pedestal.filename = pedestal_filename
 
           # Fill in any models if they aren't already there
           if imageset is not None:
