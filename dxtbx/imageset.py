@@ -416,6 +416,23 @@ class MemReader(ReaderBase):
     return self._indices[index].get_scan()
 
 
+class ExternalLookup(object):
+  '''
+  A class to hold some external lookup data
+
+  '''
+
+  class Item(object):
+    def __init__(self):
+      data = None
+      filename = None
+
+  def __init__(self):
+    self.mask = Item()
+    self.gain = Item()
+    self.pedestal = Item()
+
+
 class ImageSet(object):
   ''' A class exposing the external image set interface. '''
 
@@ -448,6 +465,9 @@ class ImageSet(object):
 
     # Image cache
     self.image_cache = None
+
+    # Some static stuff
+    self.external_lookup = ExternalLookup()
 
   def __getitem__(self, item):
     ''' Get an item from the image set stream.
@@ -491,9 +511,18 @@ class ImageSet(object):
     data = self.get_raw_data(index)
     gain = self.get_gain(index)
     pedestal = self.get_pedestal(index)
+    if gain is None:
+      gain = [None] * len(data)
+    if pedestal is None:
+      pedestal = [None] * len(data)
     result = []
     for d, p, g in zip(data, pedestal, gain):
-      result.append((d.as_double() - p) * g)
+      r = d.as_double()
+      if p is not None:
+        r = r - p
+      if g is not None:
+        r = r * g
+      result.append(r)
     return tuple(result)
 
   def get_gain(self, index):
@@ -506,11 +535,7 @@ class ImageSet(object):
     gain = fmt.get_gain()
     if gain is not None:
       return gain
-    image = self.get_raw_data(index)
-    gain = []
-    for im in image:
-      gain.append(flex.double(im.accessor(), 1.0))
-    return tuple(gain)
+    return self.external_lookup.gain.data
 
   def get_pedestal(self, index):
     '''
@@ -519,14 +544,10 @@ class ImageSet(object):
     '''
     from scitbx.array_family import flex
     fmt = self.reader().get_format(index)
-    dark = fmt.get_pedestal()
-    if dark is not None:
-      return dark
-    image = self.get_raw_data(index)
-    dark = []
-    for im in image:
-      dark.append(flex.double(im.accessor(), 0.0))
-    return tuple(dark)
+    pedestal = fmt.get_pedestal()
+    if pedestal is not None:
+      return pedestal
+    return self.external_lookup.pedestal.data
 
   def get_mask(self, index):
     '''
@@ -538,6 +559,9 @@ class ImageSet(object):
     # Check for a dynamic mask
     fmt = self.reader().get_format(index)
     mask = fmt.get_mask()
+    if mask is not None:
+      return mask
+    mask = self.external_lookup.mask.data
     if mask is not None:
       return mask
 
