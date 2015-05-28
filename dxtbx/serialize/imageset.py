@@ -18,6 +18,11 @@ def filename_to_absolute(filename):
 
   return abspath(filename)
 
+def filename_or_none(filename):
+  if filename is None:
+    return None
+  return filename_to_absolute(filename)
+
 def basic_imageset_to_dict(imageset):
   ''' Convert an imageset to a dictionary
 
@@ -35,6 +40,9 @@ def basic_imageset_to_dict(imageset):
   return OrderedDict([
       ("__id__", "imageset"),
       ("filenames", filename_to_absolute(imageset.paths())),
+      ("mask", filename_or_none(imageset.external_lookup.mask.filename)),
+      ("gain", filename_or_none(imageset.external_lookup.gain.filename)),
+      ("pedestal", filename_or_none(imageset.external_lookup.pedestal.filename)),
       ("beam", imageset.get_beam().to_dict()),
       ("detector", imageset.get_detector().to_dict())])
 
@@ -55,6 +63,9 @@ def imagesweep_to_dict(sweep):
   return OrderedDict([
       ("__id__", "imageset"),
       ("template", filename_to_absolute(sweep.get_template())),
+      ("mask", filename_or_none(sweep.external_lookup.mask.filename)),
+      ("gain", filename_or_none(sweep.external_lookup.gain.filename)),
+      ("pedestal", filename_or_none(sweep.external_lookup.pedestal.filename)),
       ("beam", sweep.get_beam().to_dict()),
       ("detector", sweep.get_detector().to_dict()),
       ("goniometer", sweep.get_goniometer().to_dict()),
@@ -89,6 +100,20 @@ def basic_imageset_from_dict(d):
   # Get the filename list and create the imageset
   filenames = map(lambda p: load_path(p), map(str, d['filenames']))
   imageset = ImageSetFactory.new(filenames)[0]
+
+  # Set some external lookups
+  if 'mask' in d and d['mask'] is not None:
+    with open(d['mask']) as infile:
+      imageset.external_lookup.mask.filename = d['mask']
+      imageset.external_lookup.mask.data = pickle.load(infile)
+  if 'gain' in d and d['gain'] is not None:
+    with open(d['gain']) as infile:
+      imageset.external_lookup.gain.filename = d['gain']
+      imageset.external_lookup.gain.data = pickle.load(infile)
+  if 'pedestal' in d and d['pedestal'] is not None:
+    with open(d['pedestal']) as infile:
+      imageset.external_lookup.pedestal.filename = d['pedestal']
+      imageset.external_lookup.pedestal.data = pickle.load(infile)
 
   # Get the existing models as dictionaries
   beam_dict = beam.to_dict(imageset.get_beam())
@@ -135,6 +160,20 @@ def imagesweep_from_dict(d, check_format=True):
     gonio_dict = None
     detector_dict = None
     scan_dict = None
+
+  # Set some external lookups
+  if 'mask' in d and d['mask'] is not None:
+    with open(d['mask']) as infile:
+      sweep.external_lookup.mask.filename = d['mask']
+      sweep.external_lookup.mask.data = pickle.load(infile)
+  if 'gain' in d and d['gain'] is not None:
+    with open(d['gain']) as infile:
+      sweep.external_lookup.gain.filename = d['gain']
+      sweep.external_lookup.gain.data = pickle.load(infile)
+  if 'pedestal' in d and d['pedestal'] is not None:
+    with open(d['pedestal']) as infile:
+      sweep.external_lookup.pedestal.filename = d['pedestal']
+      sweep.external_lookup.pedestal.data = pickle.load(infile)
 
   # Set the models with the exisiting models as templates
   sweep.set_beam(beam.from_dict(d.get('beam'), beam_dict))
