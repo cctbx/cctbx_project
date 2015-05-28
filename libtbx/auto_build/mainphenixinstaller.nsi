@@ -168,7 +168,7 @@ Section -AdditionalIcons
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
   WriteIniStr "$INSTDIR\${PRODUCT_NAME}.url" "InternetShortcut" "URL" "${PRODUCT_WEB_SITE}"
   CreateDirectory "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}"
-  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\${PRODUCT_NAME}${PRODUCT_VERSION}.lnk" "$INSTDIR\${SOURCEDIR}\build\bin\phenix.bat" "" "${MYICON}" SW_SHOWMINIMIZED
+  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\${PRODUCT_NAME}${PRODUCT_VERSION}.lnk" "$INSTDIR\${SOURCEDIR}\build\bin\phenix.bat" "" "${MYICON}" 0 SW_SHOWMINIMIZED
   CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Documentation.lnk" "$INSTDIR\${SOURCEDIR}\build\bin\phenix.doc.bat" "" "$WINDIR\hh.exe" 0
   CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Phenix.Python.lnk" "$INSTDIR\${SOURCEDIR}\build\bin\phenix.python.bat" "" "$INSTDIR\${SOURCEDIR}\base\bin\python\python.exe"
   CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Phenix Command Prompt.lnk" "$SYSDIR\cmd.exe" "/k $\"$INSTDIR\${SOURCEDIR}\build\setpaths_all.bat$\"" "$SYSDIR\cmd.exe"
