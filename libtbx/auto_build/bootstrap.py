@@ -512,14 +512,14 @@ class Builder(object):
       distribute=False,
       auth=None,
       with_python=None,
-      nproc=4,
+      nproc=1,
       verbose=False,
       download_only=False,
       skip_base="",
       force_base_build=False,
     ):
     if nproc is None:
-      self.nproc=4
+      self.nproc=1
     else:
       self.nproc=nproc
     """Create and add all the steps."""
@@ -934,7 +934,6 @@ class Builder(object):
 
 
   def add_make(self):
-    # Todo: nproc=auto
     self.add_command('libtbx.scons', args=['-j', str(self.nproc)])
 
   def add_install(self):
@@ -1161,8 +1160,8 @@ def run(root=None):
   like phenix, require this argument for access to certain
   repositories.
 
-  You can provide the number of processes to use in compilation
-  using "--nproc".
+  You can run the compilation step in parallel by providing a 
+  the number of processes using "--nproc".
   Complete build output is shown with "-v" or "--verbose".
 
   Finally, you may specify a specific Python interpreter
@@ -1180,7 +1179,7 @@ def run(root=None):
   parser.add_option("--sfuser", help="SourceForge SVN username.")
   parser.add_option("--sfmethod", help="SourceForge SVN checkout method.", default="svn+ssh")
   parser.add_option("--with-python", dest="with_python", help="Use specified Python interpreter")
-  parser.add_option("--nproc", help="# processes in compile step.")
+  parser.add_option("--nproc", help="number of parallel processes in compile step.")
   parser.add_option("--download-only", dest="download_only", action="store_true", help="Do not build, only download prerequisites", default=False)
   parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Verbose output", default=False)
   parser.add_option("--skip-base-packages",
