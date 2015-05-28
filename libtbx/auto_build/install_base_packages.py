@@ -595,7 +595,8 @@ Installation of Python packages may fail.
         self.prefix,
         "--enable-framework=\"%s\"" % self.base_dir,]
       self.call("./configure %s" % " ".join(configure_args), log=log)
-      self.call("make -j %d" % self.nproc, log=log)
+      # Parallel build of python 2.7 needs to be limited to cope with race conditions
+      self.call("make -j %d" % min(self.nproc, 3), log=log)
       targets = "bininstall libinstall libainstall inclinstall sharedinstall"
       # XXX don't parallelize here - sometimes breaks on Mac
       self.call("make %s"% (targets), log=log)
@@ -619,7 +620,8 @@ Installation of Python packages may fail.
         log=log,
         cwd=python_dir,
         shell=False)
-      self.call('make -j %s install'%(self.nproc), log=log, cwd=python_dir)
+      # Parallel build of python 2.7 needs to be limited to cope with race conditions
+      self.call('make -j %s install'% min(3, self.nproc), log=log, cwd=python_dir)
       self.call('make install', log=log, cwd=python_dir)
     python_exe = op.abspath(op.join(self.base_dir, "bin", "python"))
     self.set_python(op.abspath(python_exe))
