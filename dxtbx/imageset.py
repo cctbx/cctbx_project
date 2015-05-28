@@ -519,7 +519,7 @@ class ImageSet(object):
     '''
     from scitbx.array_family import flex
     fmt = self.reader().get_format(index)
-    dark = fmt.get_gain()
+    dark = fmt.get_pedestal()
     if dark is not None:
       return dark
     image = self.get_raw_data(index)
