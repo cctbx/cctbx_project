@@ -3453,6 +3453,7 @@ wxtbx/phil_controls/tree.py -text
 wxtbx/phil_controls/tribool.py -text
 wxtbx/phil_controls/unit_cell.py -text
 wxtbx/plots/__init__.py -text
+wxtbx/plots/emringer.py -text
 wxtbx/plots/molprobity.py svneol=native#text/x-python
 wxtbx/polygon.py -text
 wxtbx/polygon_db_viewer.py -text
