@@ -398,7 +398,17 @@ class MemReader(ReaderBase):
     return True
 
   def read(self, index=None):
-    return self._images[index].get_raw_data()
+    # Get the format instance and the number of panels
+    format_instance = self.get_format(index)
+    npanels = len(format_instance.get_detector())
+
+    # Return a flex array for single panels and a tuple of flex arrays
+    # for multiple panels
+    assert(npanels > 0)
+    if npanels == 1:
+      return format_instance.get_raw_data()
+    else:
+      return tuple([format_instance.get_raw_data(i) for i in range(npanels)])
 
   def get_detectorbase(self, index=None):
     return self._images[index].get_detectorbase()
