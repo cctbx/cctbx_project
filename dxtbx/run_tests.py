@@ -17,6 +17,7 @@ tst_list = (
     "$D/tests/model/tst_scan_data.py",
     "$D/tests/model/tst_scan_helpers.py",
     "$D/tests/model/tst_crystal_model.py",
+    "$D/tests/model/tst_profile.py",
     "$D/tests/model/experiment/tst_experiment_list.py",
     "$D/tests/serialize/tst_serialize.py",
     "$D/tests/serialize/tst_xds.py",
