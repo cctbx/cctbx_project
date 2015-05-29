@@ -398,22 +398,22 @@ class MemReader(ReaderBase):
     return True
 
   def read(self, index=None):
-    return self._indices[index].get_raw_data()
+    return self._images[index].get_raw_data()
 
   def get_detectorbase(self, index=None):
-    return self._indices[index].get_detectorbase()
+    return self._images[index].get_detectorbase()
 
   def get_detector(self, index=None):
-    return self._indices[index].get_detector()
+    return self._images[index].get_detector()
 
   def get_goniometer(self, index=None):
-    return self._indices[index].get_goniometer()
+    return self._images[index].get_goniometer()
 
   def get_beam(self, index=None):
-    return self._indices[index].get_beam()
+    return self._images[index].get_beam()
 
   def get_scan(self, index=None):
-    return self._indices[index].get_scan()
+    return self._images[index].get_scan()
 
 class ExternalLookupItem(object):
   '''
@@ -728,6 +728,12 @@ class MemImageSet(ImageSet):
       self._indices = indices
     else:
       self._indices = range(len(images))
+
+    # Image cache
+    self.image_cache = None
+
+    # Some static stuff
+    self.external_lookup = ExternalLookup()
 
   def __getitem__(self, item):
     ''' Get an item from the image set.
