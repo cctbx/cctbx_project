@@ -491,6 +491,63 @@ def _bond_show_sorted_impl(self,
 
 class _(boost.python.injector, shared_bond_simple_proxy):
 
+  def as_pymol_dashes(self, pdb_hierarchy):
+    # copied from mmtbx/geometry_restraints/hbond.py due to deprecation of
+    # hbond.py
+    result = ""
+    pdb_atoms = pdb_hierarchy.atoms()
+    for proxy in self:
+      i_seq, j_seq = proxy.i_seqs
+      atom1 = pdb_atoms[i_seq].fetch_labels()
+      atom2 = pdb_atoms[j_seq].fetch_labels()
+      base_sele = """chain "%s" and resi %s and name %s"""
+      sele1 = base_sele % (atom1.chain_id, atom1.resseq, atom1.name)
+      sele2 = base_sele % (atom2.chain_id, atom2.resseq, atom2.name)
+      result += "dist %s, %s\n" % (sele1, sele2)
+    return result
+
+  def as_refmac_restraints(self, pdb_hierarchy):
+    # copied from mmtbx/geometry_restraints/hbond.py due to deprecation of
+    # hbond.py
+    pdb_atoms = pdb_hierarchy.atoms()
+    result = ""
+    for proxy in self:
+      sigma = 0.05
+      if proxy.weight > 1e-5:
+        sigma = 1.0/(proxy.weight**0.5)
+      i_seq, j_seq = proxy.i_seqs
+      atom1 = pdb_atoms[i_seq].fetch_labels()
+      atom2 = pdb_atoms[j_seq].fetch_labels()
+      cmd = (("exte dist first chain %s residue %s atom %s " +
+              "second chain %s residue %s atom %s value %.3f sigma %.2f") %
+        (atom1.chain_id, atom1.resseq, atom1.name, atom2.chain_id,
+         atom2.resseq, atom2.name, proxy.distance_ideal, sigma))
+      result += "%s\n" % cmd
+    return result
+
+  def as_kinemage(self, pdb_hierarchy):
+    # copied from mmtbx/geometry_restraints/hbond.py due to deprecation of
+    # hbond.py. Outputs something, not tested.
+    pdb_atoms = pdb_hierarchy.atoms()
+    result = ""
+    result += """\
+@group {PHENIX H-bonds}
+@subgroup {H-bond dots} dominant"""
+    for proxy in self:
+      i_seq, j_seq = proxy.i_seqs
+      a = pdb_atoms[i_seq].xyz
+      b = pdb_atoms[j_seq].xyz
+      ab = (b[0] - a[0], b[1] - a[1], b[2] - a[2])
+      result += """@dotlist {Drawn dots} color= green"""
+      for x in range(1, 12) :
+        fac = float(x) / 12
+        vec = (a[0] + (ab[0]*fac), a[1] + (ab[1]*fac), a[2] + (ab[2]*fac))
+        if (x == 1) :
+          result += "{drawn} %.4f %.4f %.4f" % vec
+        else :
+          result += "{''} %.4f %.4f %.4f" % vec
+    return result
+
   def get_sorted(self,
         by_value,
         sites_cart,

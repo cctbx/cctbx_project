@@ -4997,6 +4997,7 @@ class process(object):
             sec_str_from_pdb_file=self.all_chain_proxies.extract_secondary_structure(),
             params=ss_params,
             assume_hydrogens_all_missing=None,
+            mon_lib_srv=self.mon_lib_srv,
             verbose=-1,
             log=self.log)
         t1=time.time()

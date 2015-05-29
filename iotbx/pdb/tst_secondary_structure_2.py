@@ -343,6 +343,7 @@ def tst_parsing_phil_single_sheet():
   """
   result1 = """
 protein.sheet {
+  sheet_id = "  A"
   first_strand = "chain 'A' and resseq 13:14"
   strand {
     selection = "chain 'A' and resseq 27:30"
@@ -403,6 +404,7 @@ protein.sheet {
 }"""
   result1_1 = """
 protein.sheet {
+  sheet_id = "  A"
   first_strand = "chain 'A' and resseq 13:14"
   strand {
     selection = "chain 'A' and resseq 27:30"

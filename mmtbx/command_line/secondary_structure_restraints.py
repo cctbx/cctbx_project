@@ -2,7 +2,6 @@ from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.secondary_structure_restraints
 
 from mmtbx.secondary_structure import sec_str_master_phil_str, manager
-from mmtbx.geometry_restraints import hbond
 import iotbx.pdb
 import iotbx.phil
 from scitbx.array_family import flex
@@ -110,30 +109,20 @@ file_name = None
   if work_params.format == "phenix_bonds" :
     raise Sorry("Not yet implemented.")
   elif work_params.format in ["pymol", "refmac", "kinemage"] :
-    m.show_summary(out=result_out)
-    build_proxies = m.create_hbond_proxies(
-      log=result_out,
-      as_python_objects=True)
-    if (len(build_proxies.proxies) == 0) :
-      pass
-    elif work_params.format == "pymol" :
-      hbond.as_pymol_dashes(
-        proxies=build_proxies.proxies,
+    m.show_summary(log=result_out)
+    (hb_proxies, hb_angle_proxies, planarity_proxies,
+        parallelity_proxies) = m.create_all_new_restraints(
         pdb_hierarchy=pdb_hierarchy,
-        filter=work_params.filter_outliers,
-        out=result_out)
-    elif work_params.format == "kinemage" :
-      hbond.as_kinemage(
-        proxies=build_proxies.proxies,
-        pdb_hierarchy=pdb_hierarchy,
-        filter=work_params.filter_outliers,
-        out=result_out)
-    else :
-      hbond.as_refmac_restraints(
-        proxies=build_proxies.proxies,
-        pdb_hierarchy=pdb_hierarchy,
-        filter=work_params.filter_outliers,
-        out=result_out)
+        grm=geometry,
+        log=result_out)
+    if hb_proxies.size() > 0:
+      if work_params.format == "pymol" :
+        out = hb_proxies.as_pymol_dashes(pdb_hierarchy=pdb_hierarchy)
+      elif work_params.format == "kinemage" :
+        out = hb_proxies.as_kinemage(pdb_hierarchy=pdb_hierarchy)
+      else :
+        out = hb_proxies.as_refmac_restraints(pdb_hierarchy=pdb_hierarchy)
+      print >> result_out, out
   else :
     comment = "\n".join([
       "# These parameters are suitable for use in e.g. phenix.real_space_refine",
