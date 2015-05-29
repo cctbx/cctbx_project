@@ -502,15 +502,15 @@ class ExperimentListDict(object):
             imageset = self._make_mem_imageset(imageset)
           else:
             raise RuntimeError('Unknown imageset type')
-          imageset.external_lookup.mask.data = mask
-          imageset.external_lookup.mask.filename = mask_filename
-          imageset.external_lookup.gain.data = gain
-          imageset.external_lookup.gain.filename = gain_filename
-          imageset.external_lookup.pedestal.data = pedestal
-          imageset.external_lookup.pedestal.filename = pedestal_filename
 
           # Fill in any models if they aren't already there
           if imageset is not None:
+            imageset.external_lookup.mask.data = mask
+            imageset.external_lookup.mask.filename = mask_filename
+            imageset.external_lookup.gain.data = gain
+            imageset.external_lookup.gain.filename = gain_filename
+            imageset.external_lookup.pedestal.data = pedestal
+            imageset.external_lookup.pedestal.filename = pedestal_filename
             if beam is None:
               beam = imageset.get_beam()
             if detector is None:
