@@ -999,7 +999,6 @@ class CCTBXBuilder(CCIBuilder):
   BASE_PACKAGES = 'cctbx'
   def add_tests(self):
 #    self.add_step(cleanup_ext_class(".pyc", "modules"))
-    self.add_test_command('libtbx.import_all_ext')
     self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
     self.add_test_command('cctbx_regression.test_nightly')
 
@@ -1013,7 +1012,6 @@ class DIALSBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['dials', 'xia2']
   LIBTBX_EXTRA = ['dials', 'xia2']
   def add_tests(self):
-    self.add_test_command('libtbx.import_all_ext')
     self.add_test_command('cctbx_regression.test_nightly')
     self.add_test_parallel('dials', flunkOnFailure=False, warnOnFailure=True)
 
@@ -1060,7 +1058,6 @@ class XFELBuilder(CCIBuilder):
   ]
 
   def add_tests(self):
-    self.add_test_command('libtbx.import_all_ext')
     self.add_test_command('cctbx_regression.test_nightly')
     self.add_test_parallel('xfel_regression')
 
@@ -1160,7 +1157,7 @@ def run(root=None):
   like phenix, require this argument for access to certain
   repositories.
 
-  You can run the compilation step in parallel by providing a 
+  You can run the compilation step in parallel by providing a
   the number of processes using "--nproc".
   Complete build output is shown with "-v" or "--verbose".
 
