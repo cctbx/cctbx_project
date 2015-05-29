@@ -637,54 +637,55 @@ def get_basepair_hbond_proxies(
   assert pdb_hierarchy is not None
   bond_proxies_result = []
   angle_proxies_result = []
-  if len(bp_phil_params) < 1:
-    return bond_proxies_result, angle_proxies_result
-  selection_cache = pdb_hierarchy.atom_selection_cache()
-  pdb_atoms = pdb_hierarchy.atoms()
-  # dashes = open('dashes.pml', 'w')
-  pdb_atoms = pdb_hierarchy.atoms()
-  for base_pair in bp_phil_params:
-    if (base_pair.base1 is not None and base_pair.base2 is not None
-        and base_pair.enabled):
-      selected_atoms_1 = selection_cache.iselection(base_pair.base1)
-      selected_atoms_2 = selection_cache.iselection(base_pair.base2)
-      if len(selected_atoms_1) == 0:
-        raise Sorry("Selection %s in base_pair retusulted in 0 atoms." % (
-            base_pair.base1))
-      if len(selected_atoms_2) == 0:
-        raise Sorry("Selection %s in base_pair retusulted in 0 atoms." % (
-            base_pair.base2))
-      a1 = pdb_atoms[selected_atoms_1[0]]
-      a2 = pdb_atoms[selected_atoms_2[0]]
-      if base_pair.saenger_class == 0:
-        hbonds, saenger_class = get_h_bonds_for_basepair(
-          a1, a2, distance_cutoff=hbond_distance_cutoff,
-          log=sys.stdout, verbose=-1)
-        base_pair.saenger_class = saenger_class
-      hbonds = get_h_bonds_for_particular_basepair((a1, a2), base_pair.saenger_class)
-      for hb in hbonds:
-        dist = hb[0].distance(hb[1])
-        if dist < hbond_distance_cutoff:
-          if base_pair.restrain_hbonds:
-            hb_target, hb_sigma = get_hb_lenght_targets(hb)
-            p = geometry_restraints.bond_simple_proxy(
-              i_seqs=[hb[0].i_seq, hb[1].i_seq],
-              distance_ideal=hb_target,
-              weight=1.0/hb_sigma**2,
-              slack=0,
-              top_out=False,
-              limit=1,
-              origin_id=1)
-            bond_proxies_result.append(p)
-            # print "bond:", hb[0].id_str(), hb[1].id_str(), "(%4.2f, %4.2f)" % (hb_target, hb_sigma)
-            # s1 = pdb_atoms[hb[0].i_seq].id_str()
-            # s2 = pdb_atoms[hb[1].i_seq].id_str()
-            # ps = "dist chain \"%s\" and resi %s and name %s, chain \"%s\" and resi %s and name %s\n" % (
-            #   s1[14:15], s1[15:19], s1[5:8], s2[14:15], s2[15:19], s2[5:8])
-            # dashes.write(ps)
-          if base_pair.restrain_hb_angles:
-            angle_proxies_result += get_angle_proxies_for_bond(hb)
-        else:
-          print "NA hbond rejected:",hb[0].id_str(), hb[1].id_str(), "distance=%.2f" % dist
+  if len(bp_phil_params) > 0:
+    # return bond_proxies_result, angle_proxies_result
+    selection_cache = pdb_hierarchy.atom_selection_cache()
+    pdb_atoms = pdb_hierarchy.atoms()
+    # dashes = open('dashes.pml', 'w')
+    pdb_atoms = pdb_hierarchy.atoms()
+    for base_pair in bp_phil_params:
+      if (base_pair.base1 is not None and base_pair.base2 is not None
+          and base_pair.enabled):
+        selected_atoms_1 = selection_cache.iselection(base_pair.base1)
+        selected_atoms_2 = selection_cache.iselection(base_pair.base2)
+        if len(selected_atoms_1) == 0:
+          raise Sorry("Selection %s in base_pair retusulted in 0 atoms." % (
+              base_pair.base1))
+        if len(selected_atoms_2) == 0:
+          raise Sorry("Selection %s in base_pair retusulted in 0 atoms." % (
+              base_pair.base2))
+        a1 = pdb_atoms[selected_atoms_1[0]]
+        a2 = pdb_atoms[selected_atoms_2[0]]
+        if base_pair.saenger_class == 0:
+          hbonds, saenger_class = get_h_bonds_for_basepair(
+            a1, a2, distance_cutoff=hbond_distance_cutoff,
+            log=sys.stdout, verbose=-1)
+          base_pair.saenger_class = saenger_class
+        hbonds = get_h_bonds_for_particular_basepair((a1, a2), base_pair.saenger_class)
+        for hb in hbonds:
+          dist = hb[0].distance(hb[1])
+          if dist < hbond_distance_cutoff:
+            if base_pair.restrain_hbonds:
+              hb_target, hb_sigma = get_hb_lenght_targets(hb)
+              p = geometry_restraints.bond_simple_proxy(
+                i_seqs=[hb[0].i_seq, hb[1].i_seq],
+                distance_ideal=hb_target,
+                weight=1.0/hb_sigma**2,
+                slack=0,
+                top_out=False,
+                limit=1,
+                origin_id=1)
+              bond_proxies_result.append(p)
+              # print "bond:", hb[0].id_str(), hb[1].id_str(), "(%4.2f, %4.2f)" % (hb_target, hb_sigma)
+              # s1 = pdb_atoms[hb[0].i_seq].id_str()
+              # s2 = pdb_atoms[hb[1].i_seq].id_str()
+              # ps = "dist chain \"%s\" and resi %s and name %s, chain \"%s\" and resi %s and name %s\n" % (
+              #   s1[14:15], s1[15:19], s1[5:8], s2[14:15], s2[15:19], s2[5:8])
+              # dashes.write(ps)
+            if base_pair.restrain_hb_angles:
+              angle_proxies_result += get_angle_proxies_for_bond(hb)
+          else:
+            print "NA hbond rejected:",hb[0].id_str(), hb[1].id_str(), "distance=%.2f" % dist
   # dashes.close()
-  return bond_proxies_result, angle_proxies_result
+  return geometry_restraints.shared_bond_simple_proxy(bond_proxies_result), \
+      angle_proxies_result

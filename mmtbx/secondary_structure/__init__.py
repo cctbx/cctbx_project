@@ -9,7 +9,6 @@ from scitbx.array_family import flex
 from libtbx.utils import null_out
 from libtbx import easy_run
 import libtbx.load_env
-import cStringIO
 from math import sqrt
 import sys, os
 import time
@@ -95,9 +94,11 @@ class manager (object) :
                 sec_str_from_pdb_file=None,
                 params=None,
                 assume_hydrogens_all_missing=None,
+                mon_lib_srv=None,
                 verbose=-1,
                 log=sys.stdout):
     self.pdb_hierarchy = pdb_hierarchy
+    self.mon_lib_srv = mon_lib_srv
     self.actual_sec_str = None # Resulting SS either from pdb file header or
     # from automatic search. Instance of iotbx.pdb.secondary_structure.annotation
     self.grm = geometry_restraints_manager
@@ -128,6 +129,7 @@ class manager (object) :
     self.initialize()
 
   def as_phil_str (self, master_phil=sec_str_master_phil) :
+    # used in secondary_structure_restraints...
     return master_phil.format(python_object=self.params)
 
   def initialize(self):
@@ -187,21 +189,28 @@ class manager (object) :
             ss_phil = annot.as_restraint_groups(log=self.log,
               prefix_scope="secondary_structure")
             ss_params.append(ss_phil)
-            self.actual_sec_str = annot
+            # self.actual_sec_str = annot
       ss_params_str = "\n".join(ss_params)
       self.apply_phil_str(ss_params_str, log=self.log)
     else:
       if (self.sec_str_from_pdb_file is not None):
-        self.actual_sec_str = self.sec_str_from_pdb_file
+        # self.actual_sec_str = self.sec_str_from_pdb_file
         ss_params_str = self.sec_str_from_pdb_file.as_restraint_groups(
             log=self.log,
             prefix_scope="secondary_structure")
         self.apply_phil_str(ss_params_str, log=self.log)
-    if (find_automatically and
-        self.params.secondary_structure.helices_from_phi_psi):
-      restraint_groups = self.find_approximate_helices(log=self.log)
-      if restraint_groups is not None:
-        self.params.helix = restraint_groups.helix
+      else:
+        # got phil SS, need to refactor later, when the class is fully
+        # converted for operation with annotation object
+        # phil_string = sec_str_master_phil.format(python_object=self.params)
+        self.apply_phil_str(phil_string=None, phil_params=self.params, log=self.log)
+
+    # Strange undocumented option
+    # if (find_automatically and
+    #     self.params.secondary_structure.helices_from_phi_psi):
+    #   restraint_groups = self.find_approximate_helices(log=self.log)
+    #   if restraint_groups is not None:
+    #     self.params.helix = restraint_groups.helix
 
     t1 = time.time()
     # print >> log, "    Time for finding protein SS: %f" % (t1-t0)
@@ -302,7 +311,8 @@ class manager (object) :
             base_pairs = nucleic_acids.get_phil_base_pairs(
               pdb_hierarchy=selected_pdb_h,
               nonbonded_proxies=selected_grm.pair_proxies(
-                  sites_cart=selected_pdb_h.atoms().extract_xyz()).nonbonded_proxies,
+                  sites_cart=selected_pdb_h.atoms().extract_xyz()).\
+                      nonbonded_proxies,
               prefix="secondary_structure.nucleic_acid",
               log=log,
               add_segid=segid,
@@ -313,27 +323,46 @@ class manager (object) :
             annotations.append(stacking_pairs)
       return "\n".join(annotations)
 
-  def apply_phil_str (self, phil_string, log=None, verbose=False) :
+  def apply_phil_str(self,
+      phil_string,
+      phil_params=None,
+      log=None,
+      verbose=False):
+    assert [phil_string, phil_params].count(None) == 1
     if log is None:
       log = self.log
-    ss_phil = sec_str_master_phil.fetch(source=iotbx.phil.parse(phil_string))
-    if verbose :
-      ss_phil.show(out=log, prefix="    ")
-    new_ss_params = ss_phil.extract()
+    new_ss_params = None
+    if phil_string is not None:
+      ss_phil = sec_str_master_phil.fetch(source=iotbx.phil.parse(phil_string))
+      if verbose :
+        ss_phil.show(out=log, prefix="    ")
+      new_ss_params = ss_phil.extract()
+    else:
+      new_ss_params = phil_params
     self.params.secondary_structure.protein.helix = \
         new_ss_params.secondary_structure.protein.helix
     self.params.secondary_structure.protein.sheet = \
         new_ss_params.secondary_structure.protein.sheet
+    self.actual_sec_str = iotbx.pdb.secondary_structure.annotation.from_phil(
+        phil_helices=new_ss_params.secondary_structure.protein.helix,
+        phil_sheets=new_ss_params.secondary_structure.protein.sheet,
+        pdb_hierarchy=self.pdb_hierarchy)
 
   def apply_params (self, params) :
+    assert 0, "Not used anywhere?"
     self.params.helix = params.helix
     self.params.sheet = params.sheet
 
-  def create_hbond_proxies (self,
+  def create_protein_hbond_proxies (self,
+                            annotation,
                             log=sys.stdout,
-                            as_python_objects=False,
-                            master_selection=None,
-                            as_regular_bond_proxies=True):
+                            # as_python_objects=False,
+                            # master_selection=None,
+                            # as_regular_bond_proxies=True
+                            ):
+    # assert as_regular_bond_proxies=True
+    if annotation is None:
+      annotation = self.actual_sec_str
     remove_outliers = self.params.secondary_structure.protein.remove_outliers
     # choice of atoms to restraint is a three-way option: default is to guess
     # based on whether hydrogens are present in the model, but this can be
@@ -344,62 +373,103 @@ class manager (object) :
       use_hydrogens = False
     else :
       use_hydrogens = True
-    build_proxies = hydrogen_bond_proxies_from_selections(
-      pdb_hierarchy=self.pdb_hierarchy,
-      params=self.params,
-      use_hydrogens=use_hydrogens,
-      as_python_objects=as_python_objects,
-      remove_outliers=remove_outliers,
-      master_selection=master_selection,
-      log=log)
-    if isinstance(build_proxies.proxies, list) :
-      n_proxies = len(build_proxies.proxies)
+
+    from mmtbx.geometry_restraints import hbond
+    from scitbx.array_family import flex
+    atoms = self.pdb_hierarchy.atoms()
+    hbond_counts = flex.int(atoms.size(), 0)
+    selection_cache = self.pdb_hierarchy.atom_selection_cache()
+
+    # ??? Need to think about
+    if (use_hydrogens) :
+      distance_ideal = self.params.secondary_structure.protein.distance_ideal_h_o
+      distance_cut = self.params.secondary_structure.protein.distance_cut_h_o
     else :
-      n_proxies = build_proxies.proxies.size()
+      distance_ideal = self.params.secondary_structure.protein.distance_ideal_n_o
+      distance_cut = self.params.secondary_structure.protein.distance_cut_n_o
+    build_proxies = hbond.build_distance_proxies()
+    if (distance_cut is None) :
+      distance_cut = -1
+    if self.params.secondary_structure.protein.enabled:
+      for helix in self.params.secondary_structure.protein.helix :
+        if helix.selection is not None:
+          print >> log, "    Processing helix ", helix.selection
+          n_proxies = proteins.create_helix_hydrogen_bond_proxies(
+            params=helix,
+            pdb_hierarchy=self.pdb_hierarchy,
+            selection_cache=selection_cache,
+            build_proxies=build_proxies,
+            weight=1.0,
+            hbond_counts=hbond_counts,
+            distance_ideal=distance_ideal,
+            distance_cut=distance_cut,
+            remove_outliers=remove_outliers,
+            use_hydrogens=use_hydrogens,
+            log=log)
+          if (n_proxies == 0) :
+            print >> log, "      No H-bonds generated for '%s'" % helix.selection
+            continue
+      for k, sheet in enumerate(self.params.secondary_structure.protein.sheet) :
+        print >> log, "    Processing sheet with id=%s, first strand: %s" % (
+            sheet.sheet_id, sheet.first_strand)
+        if sheet.first_strand is not None:
+          n_proxies = proteins.create_sheet_hydrogen_bond_proxies(
+            sheet_params=sheet,
+            pdb_hierarchy=self.pdb_hierarchy,
+            build_proxies=build_proxies,
+            weight=1.0,
+            hbond_counts=hbond_counts,
+            distance_ideal=distance_ideal,
+            distance_cut=distance_cut,
+            remove_outliers=remove_outliers,
+            use_hydrogens=use_hydrogens,
+            log=log)
+          if (n_proxies == 0) :
+            print >> log, "  No H-bonds generated for sheet #%d" % k
+            continue
+
+    n_proxies = len(build_proxies.proxies)
     print >> log, ""
     if (n_proxies == 0) :
       print >> log, "  No hydrogen bonds defined for protein."
     else :
       print >> log, "  %d hydrogen bonds defined for protein." % n_proxies
-    if as_regular_bond_proxies:
-      reg_proxies = []
-      for hb_p in build_proxies.proxies:
-        reg_proxy = geometry_restraints.bond_simple_proxy(
-          i_seqs=hb_p.i_seqs,
-          distance_ideal=hb_p.distance_ideal,
-          weight=hb_p.weight,
-          slack=hb_p.slack,
-          top_out=hb_p.top_out,
-          limit=hb_p.limit,
-          origin_id=1)
-        reg_proxies.append(reg_proxy)
-      return reg_proxies
-    return build_proxies
+    reg_proxies = []
+    for hb_p in build_proxies.proxies:
+      reg_proxy = geometry_restraints.bond_simple_proxy(
+        i_seqs=hb_p.i_seqs,
+        distance_ideal=hb_p.distance_ideal,
+        weight=hb_p.weight,
+        slack=hb_p.slack,
+        top_out=hb_p.top_out,
+        limit=hb_p.limit,
+        origin_id=1)
+      reg_proxies.append(reg_proxy)
+    return geometry_restraints.shared_bond_simple_proxy(reg_proxies)
 
   def create_all_new_restraints(self,
       pdb_hierarchy,
       grm,
       log=sys.stdout):
-    t0 = time.time()
-    proteins_hbonds = self.create_hbond_proxies(
-        log=log,
-        as_python_objects=True,
-        master_selection=None,
-        as_regular_bond_proxies=True)
-    t1 = time.time()
 
     # initialize cache and monomer library server for underlying procedures
-    from mmtbx.monomer_library import server
-    mon_lib_srv = server.server()
+    if self.mon_lib_srv is None:
+      from mmtbx.monomer_library import server
+      self.mon_lib_srv = server.server()
     plane_cache = {}
 
+    t0 = time.time()
+    proteins_hbonds = self.create_protein_hbond_proxies(
+        log=log,
+        annotation=self.actual_sec_str)
+    t1 = time.time()
     # print >> log, "    Time for creating protein proxies:%f" % (t1-t0)
     stacking_proxies = nucleic_acids.get_stacking_proxies(
         pdb_hierarchy=pdb_hierarchy,
         stacking_phil_params=self.params.secondary_structure.\
             nucleic_acid.stacking_pair,
         grm=grm,
-        mon_lib_srv=mon_lib_srv,
+        mon_lib_srv=self.mon_lib_srv,
         plane_cache=plane_cache)
     t2 = time.time()
     # print >> log, "    Time for creating stacking proxies:%f" % (t2-t1)
@@ -408,7 +478,7 @@ class manager (object) :
         pdb_hierarchy=pdb_hierarchy,
         bp_phil_params=self.params.secondary_structure.nucleic_acid.base_pair,
         grm=grm,
-        mon_lib_srv=mon_lib_srv,
+        mon_lib_srv=self.mon_lib_srv,
         plane_cache=plane_cache)
     t3 = time.time()
     # print >> log, "    Time for creating planar/parall proxies:%f" % (t3-t2)
@@ -427,28 +497,33 @@ class manager (object) :
     print >> log, "    %d basepair planarities" % len(planarity_bp_proxies)
     print >> log, "    %d basepair parallelities" % len(parallelity_bp_proxies)
     print >> log, "    %d stacking parallelities" % len(stacking_proxies)
-    return (proteins_hbonds+hb_bond_proxies, hb_angle_proxies,
+    all_hbonds = proteins_hbonds.deep_copy()
+    all_hbonds.extend(hb_bond_proxies)
+    return (all_hbonds, hb_angle_proxies,
         planarity_bp_proxies, parallelity_bp_proxies+stacking_proxies)
 
   def get_simple_bonds (self, selection_phil=None) :
     # assert 0 # not tested and changed, used in GUI to draw bonds
+    # this function wants shared.stl_set_unsigned([(i_seq, j_seq),(i_seq, j_seq)])
+    desired_annotation = None
     if (selection_phil is not None) :
       if isinstance(selection_phil, str) :
         selection_phil = iotbx.phil.parse(selection_phil)
       params = sec_str_master_phil.fetch(source=selection_phil).extract()
+      desired_annotation = iotbx.pdb.secondary_structure.annotation.from_phil(
+          phil_helices=params.secondary_structure.protein.helix,
+          phil_sheets=params.secondary_structure.protein.sheet,
+          pdb_hierarchy=self.pdb_hierarchy)
     else :
-      params = self.params
-    from mmtbx.geometry_restraints import hbond
-    build_proxies = hydrogen_bond_proxies_from_selections(
-      pdb_hierarchy=self.pdb_hierarchy,
-      params=params,
-      use_hydrogens=(not self.assume_hydrogens_all_missing),
-      as_python_objects=True,
-      remove_outliers=self.params.secondary_structure.protein.remove_outliers,
-      master_selection=None,
-      log=cStringIO.StringIO())
-    bonds = hbond.get_simple_bonds(build_proxies.proxies)
-    return bonds
+      desired_annotation = self.actual_sec_str
+    hb_proxies = self.create_protein_hbond_proxies(
+        annotation=desired_annotation,
+        log=sys.stdout)
+    from scitbx.array_family import shared
+    simple_bonds = []
+    for p in hb_proxies:
+      simple_bonds.append(p.i_seqs)
+    return shared.stl_set_unsigned(simple_bonds)
 
   def calculate_structure_content (self) :
     isel = self.selection_cache.iselection
@@ -589,81 +664,6 @@ def sec_str_from_phil (phil_str) :
   ss_phil_fetched = sec_str_master_phil.fetch(source=ss_phil)
   # ss_phil_fetched.show()
   return ss_phil_fetched.extract()
-
-def hydrogen_bond_proxies_from_selections(
-    pdb_hierarchy,
-    params,
-    use_hydrogens,
-    as_python_objects=False,
-    remove_outliers=False,
-    master_selection=None,
-    log=sys.stdout) :
-  from mmtbx.geometry_restraints import hbond
-  from scitbx.array_family import flex
-  atoms = pdb_hierarchy.atoms()
-  hbond_counts = flex.int(atoms.size(), 0)
-  selection_cache = pdb_hierarchy.atom_selection_cache()
-  if (master_selection is None) :
-    master_selection = flex.bool(atoms.size(), True)
-  elif (isinstance(master_selection, str)) :
-    master_selection = selection_cache.seletion(master_selection)
-  hbond_params = hbond.master_phil
-  restrain_sheets = restrain_helices = params.secondary_structure.protein.enabled
-  restrain_base_pairs = params.secondary_structure.nucleic_acid.enabled
-  weight = 1.0
-  # ??? Need to think about
-  if (use_hydrogens) :
-    distance_ideal = params.secondary_structure.protein.distance_ideal_h_o
-    distance_cut = params.secondary_structure.protein.distance_cut_h_o
-  else :
-    distance_ideal = params.secondary_structure.protein.distance_ideal_n_o
-    distance_cut = params.secondary_structure.protein.distance_cut_n_o
-  build_proxies = hbond.build_simple_hbond_proxies()
-  if (as_python_objects) :
-    build_proxies = hbond.build_distance_proxies()
-  if (distance_cut is None) :
-    distance_cut = -1
-  if (restrain_helices) :
-    for helix in params.secondary_structure.protein.helix :
-      if helix.selection is not None:
-        print >> log, "    Processing helix ", helix.selection
-        n_proxies = proteins.create_helix_hydrogen_bond_proxies(
-          params=helix,
-          pdb_hierarchy=pdb_hierarchy,
-          selection_cache=selection_cache,
-          build_proxies=build_proxies,
-          weight=1.0,
-          hbond_counts=hbond_counts,
-          distance_ideal=distance_ideal,
-          distance_cut=distance_cut,
-          remove_outliers=remove_outliers,
-          use_hydrogens=use_hydrogens,
-          master_selection=master_selection,
-          log=log)
-        if (n_proxies == 0) :
-          print >> log, "      No H-bonds generated for '%s'" % helix.selection
-          continue
-  if (restrain_sheets) :
-    for k, sheet in enumerate(params.secondary_structure.protein.sheet) :
-      print >> log, "    Processing sheet with id=%s, first strand: %s" % (
-          sheet.sheet_id, sheet.first_strand)
-      if sheet.first_strand is not None:
-        n_proxies = proteins.create_sheet_hydrogen_bond_proxies(
-          sheet_params=sheet,
-          pdb_hierarchy=pdb_hierarchy,
-          build_proxies=build_proxies,
-          weight=1.0,
-          hbond_counts=hbond_counts,
-          distance_ideal=distance_ideal,
-          distance_cut=distance_cut,
-          remove_outliers=remove_outliers,
-          use_hydrogens=use_hydrogens,
-          master_selection=master_selection,
-          log=log)
-        if (n_proxies == 0) :
-          print >> log, "  No H-bonds generated for sheet #%d" % k
-          continue
-  return build_proxies
 
 def get_ksdssp_exe_path():
   if (not libtbx.env.has_module(name="ksdssp")):

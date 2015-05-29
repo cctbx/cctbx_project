@@ -257,6 +257,11 @@ class pdb_helix (structure_base) :
         comment,
         length,
         hbond_list=[], # list of (donor, acceptor) selecitons
+        helix_selection=None,
+        enabled=True,
+        sigma=0.05,
+        slack=0,
+        top_out=False,
         ):
     adopt_init_args(self, locals())
     assert (length > 0), "Bad helix length"
@@ -297,6 +302,7 @@ class pdb_helix (structure_base) :
       end_resseq=int(line[33:37]),
       end_icode=line[37],
       helix_class=cls.helix_class_to_str(int(line[38:40])),
+      helix_selection=None,
       comment=line[40:70],
       length=int(line[71:76])) #string.atoi(line[71:76]))
 
@@ -337,7 +343,13 @@ class pdb_helix (structure_base) :
       helix_class=helix_params.helix_type,
       comment="",
       length=amide_isel.size(),
-      hbond_list=hbonds)
+      hbond_list=hbonds,
+      helix_selection=helix_params.selection,
+      enabled=helix_params.enabled,
+      sigma=helix_params.sigma,
+      slack=helix_params.slack,
+      top_out=helix_params.top_out,
+      )
 
   def as_restraint_group(self, log=sys.stdout, prefix_scope="",
       add_segid=None, show_hbonds=False):
@@ -550,7 +562,9 @@ class pdb_sheet(structure_base):
     atoms = [a for a in pdb_hierarchy.atoms_with_labels()]
     if sheet_params.first_strand is None:
       raise Sorry("Empty first strand selection")
-    sheet_id =  "%3s" % sheet_params.sheet_id[:3]
+    sheet_id="1"
+    if sheet_params.sheet_id is not None:
+      sheet_id =  "%3s" % sheet_params.sheet_id[:3]
     n_strands = len(sheet_params.strand) + 1
     sele_str = ("(%s) and (name N) and (altloc 'A' or altloc ' ')" %
                     sheet_params.first_strand)
@@ -580,7 +594,7 @@ class pdb_sheet(structure_base):
       sense = cls.sense_to_int(strand_param.sense)
       strand = pdb_strand(
           sheet_id=sheet_id,
-          strand_id=i+1,
+          strand_id=i+2,
           start_resname=start_atom.resname,
           start_chain_id=start_atom.chain_id,
           start_resseq=int(start_atom.resseq),
@@ -773,9 +787,10 @@ class pdb_sheet(structure_base):
           hbond_restr += hb_str
     phil_str = """
 %sprotein.sheet {
+  sheet_id = "%s"
   first_strand = "%s"
 %s%s
-}""" % (prefix_scope, first_strand, "\n".join(strands), hbond_restr)
+}""" % (prefix_scope, self.sheet_id, first_strand, "\n".join(strands), hbond_restr)
     return phil_str
 
 if __name__ == "__main__" :

@@ -2,7 +2,7 @@
 from __future__ import division
 from mmtbx.secondary_structure import sec_str_master_phil_str, manager
 # from mmtbx.secondary_structure.base_pairing import pair_database
-from mmtbx.geometry_restraints import hbond
+from cctbx import geometry_restraints
 from iotbx import file_reader
 import iotbx.pdb.hierarchy
 import libtbx.load_env
@@ -38,40 +38,36 @@ def exercise_protein () :
     m = manager(pdb_hierarchy=pdb_hierarchy,
         sec_str_from_pdb_file=sec_str_from_pdb_file)
     m.params.secondary_structure.protein.remove_outliers = False
-    hbond_params = hbond.master_phil.extract()
-    # build_proxies = m.create_hbond_proxies(hbond_params=hbond_params,
-    #   log=log)
-    build_proxies = m.create_hbond_proxies(
-        log=log, as_regular_bond_proxies=False)
-    proxies = build_proxies.proxies
-    print len(proxies), len(build_proxies.exclude_nb_list)
-    # assert (len(proxies) == len(build_proxies.exclude_nb_list) == 109)
-    assert (type(proxies[0]).__name__ == "h_bond_simple_proxy")
-    assert (proxies[0].distance_ideal == expected_distances[k])
+    proxies = m.create_protein_hbond_proxies(
+        annotation=None, log=log)
+    print proxies.size()
+    assert proxies.size() == 109
+    assert isinstance(proxies, geometry_restraints.shared_bond_simple_proxy)
     (frac_alpha, frac_beta) = m.calculate_structure_content()
     assert ("%.3f" % frac_alpha == "0.643")
     assert ("%.3f" % frac_beta == "0.075")
+
     # Make sure the hydrogen auto-detection override is working
-    m.params.secondary_structure.protein.substitute_n_for_h = True
-    build_proxies = m.create_hbond_proxies(
-        log=log,
-        as_python_objects=True,
-        as_regular_bond_proxies=False)
-    proxies = build_proxies.proxies
-    atom_ids = []
-    for i_seq in proxies[0].i_seqs :
-      atom_ids.append(pdb_hierarchy.atoms()[i_seq].id_str())
-    print atom_ids
-    assert (atom_ids == ['pdb=" N   ARG A  41 "', 'pdb=" O   ASP A  37 "'])
-    assert (proxies[0].distance_ideal == 2.9)
+    # Functionality is disabled
+    # m.params.secondary_structure.protein.substitute_n_for_h = True
+    # build_proxies = m.create_hbond_proxies(
+    #     log=log,
+    #     as_python_objects=True,
+    #     as_regular_bond_proxies=False)
+    # proxies = build_proxies.proxies
+    # atom_ids = []
+    # for i_seq in proxies[0].i_seqs :
+    #   atom_ids.append(pdb_hierarchy.atoms()[i_seq].id_str())
+    # print atom_ids
+    # assert (atom_ids == ['pdb=" N   ARG A  41 "', 'pdb=" O   ASP A  37 "'])
+    # assert (proxies[0].distance_ideal == 2.9)
     if (run_ksdssp) :
       m = manager(pdb_hierarchy=pdb_hierarchy,
           sec_str_from_pdb_file=None)
       m.params.secondary_structure.protein.remove_outliers = False
-      hbond_params.restraint_type = "simple"
-      build_proxies = m.create_hbond_proxies(
-          log=log,as_regular_bond_proxies=False)
-      assert (build_proxies.proxies.size() == 90)
+      proxies = m.create_protein_hbond_proxies(
+          annotation=None, log=log)
+      assert proxies.size() == 90
 
 def exercise_nucleic_acids () :
   pdb_file_rna = libtbx.env.find_in_repositories(
@@ -249,11 +245,8 @@ ATOM    123  CB  ALA A  98      -1.627   2.343  20.021  1.00 20.00           C
     sec_str_from_pdb_file=None)
   m.params.secondary_structure.use_ksdssp = False
   m.params.secondary_structure.protein.remove_outliers = False
-  build_proxies = m.create_hbond_proxies(
-    log=null_out(),
-    as_regular_bond_proxies=False)
-  proxies = build_proxies.proxies
-  assert len(proxies) == 12
+  proxies = m.create_protein_hbond_proxies(annotation=None, log=null_out())
+  assert proxies.size() == 12
 
 def exercise_sheets_bonding_pattern():
   pdb_apar_input = iotbx.pdb.hierarchy.input(pdb_string = """\
@@ -647,11 +640,10 @@ SHEET    2   B 2 THR A  20  THR A  21  1  O  THR A  20   N  ALA A  46
                 params=custom_pars_ex.secondary_structure,
                 assume_hydrogens_all_missing=None,
                 verbose=-1)
-    proxies_for_grm = ss_manager.create_hbond_proxies(
-      log          = log,
-      as_python_objects = True,
-      as_regular_bond_proxies = False)
-    n_hbonds.append(len(proxies_for_grm.proxies))
+    proxies_for_grm = ss_manager.create_protein_hbond_proxies(
+      annotation= None,
+      log          = log)
+    n_hbonds.append(proxies_for_grm.size())
   print n_hbonds
   assert n_hbonds == [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 2, 3, 4, 2, 2]
 
@@ -749,11 +741,10 @@ END
               assume_hydrogens_all_missing=None,
               verbose=-1)
   ss_manager.initialize()
-  proxies_for_grm = ss_manager.create_hbond_proxies(
-    log          = log,
-    as_python_objects = True,
-    as_regular_bond_proxies = False)
-  assert len(proxies_for_grm.proxies) == 4
+  proxies_for_grm = ss_manager.create_protein_hbond_proxies(
+    annotation = None,
+    log          = log)
+  assert proxies_for_grm.size() == 4
 
 
 def exercise_phil_generation():
