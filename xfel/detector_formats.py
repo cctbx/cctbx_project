@@ -140,6 +140,11 @@ def _get_detector_format_version_dict():
     'CXI 11.1': {
       'address':'CxiDs1-0|Cspad-0',
       'start_time':timegm(strptime('2015-03-26, 17:00 UTC', f)),
+      'end_time'  :timegm(strptime('2015-05-05, 16:00 UTC', f))
+    },
+    'CXI 11.2': {
+      'address':'CxiDs1-0|Cspad-0',
+      'start_time':timegm(strptime('2015-05-05, 17:00 UTC', f)),
       'end_time'  :timegm(strptime('2015-08-11, 16:00 UTC', f))
     }
   }

@@ -694,10 +694,45 @@ def cxi_versioned_extract_detail(args):
                                                 0, 0,
                                                 0, 0]
 
+  elif cxi_version in ["CXI 11.1"]:
+    working_extract = working_phil.command_extractor
+
+    from scitbx.array_family import flex
+
+    corrected_auxiliary_translations =flex.int([
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0])
+
+
+    working_extract.distl.tile_translations = list(corrected_auxiliary_translations)
+
+    # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y.
+    working_extract.distl.quad_translations = [ 0, 0,
+                                                0, 0,
+                                                0, 0,
+                                                0, 0]
+
 
     return working_extract
 
-  elif cxi_version in ["CXI 11.1"]:
+  elif cxi_version in ["CXI 11.2"]:
     working_extract = working_phil.command_extractor
 
     from scitbx.array_family import flex

@@ -67,7 +67,7 @@ class NpyImage(DetectorImageBase):
       self.bin_safe_set_data(SI)
     elif version_control in ["CXI 3.2","CXI 4.1","CXI 5.1","CXI 6.1","CXI 7.1","CXI 7.d","XPP 7.1","XPP 7.marccd",
                              "CXI 8.1","CXI 8.d","XPP 8.1","XPP 8.marccd","CXI 8.2","Sacla.MPCCD","CXI 9.1","XPP 9.1",
-                             "CXI 10.1","CXI 10.2","CXI 11.1"]:
+                             "CXI 10.1","CXI 10.2","CXI 11.1","CXI 11.2"]:
       self.parameters['ACTIVE_AREAS']         = cspad_data.get('ACTIVE_AREAS', None)
       self.parameters['BEAM_CENTER_X']        = cspad_data['BEAM_CENTER_X']
       self.parameters['BEAM_CENTER_Y']        = cspad_data['BEAM_CENTER_Y']
