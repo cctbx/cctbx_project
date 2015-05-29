@@ -582,6 +582,7 @@ dxtbx/model/panel.h -text
 dxtbx/model/panel_data.h -text
 dxtbx/model/parallax_correction.h -text
 dxtbx/model/pixel_to_millimeter.h -text
+dxtbx/model/profile.py -text
 dxtbx/model/ray_intersection.h -text
 dxtbx/model/scan.h -text
 dxtbx/model/scan.py -text
@@ -634,6 +635,7 @@ dxtbx/tests/model/tst_detector2.py -text
 dxtbx/tests/model/tst_parallax_correction.py -text
 dxtbx/tests/model/tst_pickle.py -text
 dxtbx/tests/model/tst_pixel_to_millimeter.py -text
+dxtbx/tests/model/tst_profile.py -text
 dxtbx/tests/model/tst_ray_intersection.py -text
 dxtbx/tests/model/tst_scan_data.py -text
 dxtbx/tests/model/tst_scan_helpers.py -text
