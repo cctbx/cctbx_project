@@ -7,14 +7,14 @@ Implementation of the EMRinger method, with plots, for use with the
 EMRinger workflow.
 
 References:
+  Barad BA, Echols N, Wang RYR, Cheng YC, DiMaio F, Adams PD, Fraser JS. (2015)
+  Side-chain-directed model and map validation for 3D Electron Cryomicroscopy.
+  Nature Methods, in press.
+
   Lang PT, Ng HL, Fraser JS, Corn JE, Echols N, Sales M, Holton JM, Alber T.
   Automated electron-density sampling reveals widespread conformational
   polymorphism in proteins. Protein Sci. 2010 Jul;19(7):1420-31. PubMed PMID:
   20499387
-
-  Barad BA, Echols N, Wang RYR, Cheng YC, DiMaio F, Adams PD, Fraser JS.
-  Side-chain-directed model and map validation for 3D Electron Cryomicroscopy.
-  Manuscript in preparation.
 """
 
 # Any software that wants to use the pkl output of this tool
@@ -23,6 +23,7 @@ from __future__ import division
 import libtbx.phil
 from libtbx import easy_pickle
 from libtbx.str_utils import make_header
+from libtbx import runtime_utils
 from libtbx.utils import Sorry
 import time
 import os
@@ -133,7 +134,7 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
     print >> out, "Overall runtime:    %8.1fs" % (t2 - t0)
   if (params.output_base is None) :
     pdb_base = os.path.basename(params.pdb_file)
-    params.output_base = os.path.splitext(pdb_base)[0] + "_ringer"
+    params.output_base = os.path.splitext(pdb_base)[0] + "_emringer"
   easy_pickle.dump("%s.pkl" % params.output_base, results)
   print >> out, "Wrote %s.pkl" % params.output_base
   csv = "\n".join([ r.format_csv() for r in results ])
@@ -141,6 +142,10 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
   print >> out, "Wrote %s.csv" % params.output_base
   print >> out, "\nReferences:"
   print >> out, """\
+  Barad BA, Echols N, Wang RYR, Cheng YC, DiMaio F, Adams PD, Fraser JS. (2015)
+  Side-chain-directed model and map validation for 3D Electron Cryomicroscopy.
+  Nature Methods, in press.
+
   Lang PT, Ng HL, Fraser JS, Corn JE, Echols N, Sales M, Holton JM, Alber T.
   Automated electron-density sampling reveals widespread conformational
   polymorphism in proteins. Protein Sci. 2010 Jul;19(7):1420-31. PubMed PMID:
@@ -156,6 +161,12 @@ def validate_params (params) :
   if (params.map_coeffs is None) and (params.map_file is None) :
     raise Sorry("No map coefficients supplied (parameter: map_coeffs)")
   return True
+
+class launcher (runtime_utils.target_with_save_result) :
+  def run (self) :
+    os.makedirs(self.output_dir)
+    os.chdir(self.output_dir)
+    return run(args=list(self.args), out=sys.stdout)
 
 ########################################################################
 # GUI
