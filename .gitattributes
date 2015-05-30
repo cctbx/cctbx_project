@@ -1691,6 +1691,7 @@ mmtbx/command_line/distance_difference.py -text
 mmtbx/command_line/dssp.py -text
 mmtbx/command_line/dynamics.py -text
 mmtbx/command_line/emringer.py -text
+mmtbx/command_line/emringer_score.py -text
 mmtbx/command_line/estimate_bijvoet_ratio.py -text
 mmtbx/command_line/extend_sidechains.py -text
 mmtbx/command_line/f000.py -text

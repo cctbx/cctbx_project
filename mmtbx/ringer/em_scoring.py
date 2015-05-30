@@ -5,17 +5,15 @@ cryoEM data.  Written for use with EMRinger pkl output.
 
 Author: Benjamin Barad
 Reference:
-  Barad BA, Echols N, Wang RYR, Cheng YC, DiMaio F, Adams PD, Fraser JS.
+  Barad BA, Echols N, Wang RYR, Cheng YC, DiMaio F, Adams PD, Fraser JS. (2015)
   Side-chain-directed model and map validation for 3D Electron Cryomicroscopy.
-  Manuscript in preparation.
+  Nature Methods, in press.
 """
 
 from __future__ import division
 from mmtbx.ringer import Peak, Peaklist
 from libtbx import easy_pickle
-import numpy as np
 from collections import OrderedDict
-import argparse
 import math
 import os
 import sys
@@ -79,6 +77,7 @@ def parse_pickle(filename):
   All processes that require reading the pickle. Involves reading out the
   angles and calculating the thresholds.
   """
+  import numpy as np
   print "===== Loading Pickle: %s =====" % filename
   chi = 1
   waves=[]
@@ -130,9 +129,11 @@ def calc_ratio(count_list, sampling_angle=5):
   return rotamer_ratio, zscore
 
 class main (object) :
-  def __init__ (self, file_name, sampling_angle=5, out=sys.stdout,
+  def __init__ (self, file_name, sampling_angle=5, out_dir=None,
+      out=sys.stdout,
       quiet=False) :
-    if (not quiet) :
+    assert (out_dir is None) or os.path.isdir(out_dir)
+    if (out_dir is None) and (not quiet) :
       out_dir = file_name + ".output"
       if (not os.path.isdir(out_dir)) :
         os.makedirs(file_name+'.output')
@@ -185,39 +186,44 @@ class main (object) :
       self.zscores.append(zscore_n)
       self.rotamer_ratios.append(rotamer_ratio_n)
       if (not quiet) :
-        print "===== Plotting Histogram for Threshold %.3f =====" % threshold
+        print >> out, "===== Plotting Histogram for Threshold %.3f =====" % \
+          threshold
+        out_file = os.path.join(out_dir, "%.3f.histogram.png" % threshold)
         plot_peaks(
           peak_count=self.peak_count[threshold],
-          filename=file_name,
+          file_name=out_file,
           threshold=threshold,
           first=60,
           title=RMSD_statistic(self.peaks[threshold].peaks))
+        print >> out, "Saved plot to %s" % out_file
       # plot_rotamers(binned_peaks[threshold], file, threshold, args.first_rotamer)
     #   print "Outliers at threshold %.2f: %s" % (threshold, str(Weird_residues[threshold]))
     if (not quiet) :
-      print ""
-      print "===== Plotting Statistics Across Thresholds ====="
+      print >> out, ""
+      print >> out, "===== Plotting Statistics Across Thresholds ====="
+      out_file = os.path.join(out_dir, "Total.threshold_scan.png")
       plot_progression(
         non_zero_thresholds=self.non_zero_thresholds,
         rotamer_ratios=self.rotamer_ratios,
-        file_name=file_name,
+        file_name=out_file,
         zscores=self.all_scores)
+      print >> out, "Saved plot to %s" % out_file
     # for i in Residue_codes:
     #   plot_progression(non_zero_thresholds, rotamer_ratios_residues[i], file, zscores_residues[i], i)
-      print ""
-      print "===== Writing Pickles Out ====="
-      easy_pickle.dump(file_name+'.output/Outliers.pkl',Weird_residues)
-      print 'Wrote ' + file_name+'.output/Outliers.pkl'
-      easy_pickle.dump(file_name+'.output/rotamer_ratios.pkl', self.rotamer_ratios)
-      print 'Wrote ' + file_name+'.output/rotamer_ratios.pkl'
-      easy_pickle.dump(file_name+'.output/zscores.pkl', self.zscores)
-      print 'Wrote ' + file_name+'.output/zscores.pkl'
-      easy_pickle.dump(file_name+'.output/emringer_scores.pkl', self.all_scores)
-      print 'Wrote ' + file_name+'.output/emringer_scores.pkl'
-      easy_pickle.dump(file_name+'.output/thresholds.pkl', self.thresholds)
-      print 'Wrote ' + file_name+'.output/thresholds.pkl'
-      easy_pickle.dump(file_name+'.output/peak_counts.pkl', self.peak_count)
-      print 'Wrote ' + file_name+'.output/peak_counts.pkl'
+      print >> out, ""
+      print >> out, "===== Writing Pickles Out ====="
+      easy_pickle.dump(out_dir + '/Outliers.pkl',Weird_residues)
+      print >> out, 'Wrote ' + out_dir + '/Outliers.pkl'
+      easy_pickle.dump(out_dir + '/rotamer_ratios.pkl', self.rotamer_ratios)
+      print >> out, 'Wrote ' + out_dir + '/rotamer_ratios.pkl'
+      easy_pickle.dump(out_dir + '/zscores.pkl', self.zscores)
+      print >> out, 'Wrote ' + out_dir + '/zscores.pkl'
+      easy_pickle.dump(out_dir + '/emringer_scores.pkl', self.all_scores)
+      print >> out, 'Wrote ' + out_dir + '/emringer_scores.pkl'
+      easy_pickle.dump(out_dir + '/thresholds.pkl', self.thresholds)
+      print >> out, 'Wrote ' + out_dir + '/thresholds.pkl'
+      easy_pickle.dump(out_dir + '/peak_counts.pkl', self.peak_count)
+      print >> out, 'Wrote ' + out_dir + '/peak_counts.pkl'
     self.zscore_max = max(self.zscores)
     self._zscore_max_index = self.zscores.index(self.zscore_max)
 
@@ -259,6 +265,14 @@ class main (object) :
       first=60,
       title=RMSD_statistic(self.peaks[threshold].peaks))
 
+  def draw_wx_progression_plot (self, plot) :
+    plot.figure.clear()
+    _plot_progression(
+      fig=plot.figure,
+      non_zero_thresholds=self.non_zero_thresholds,
+      rotamer_ratios=self.rotamer_ratios,
+      zscores=self.all_scores)
+
 ########################################################################
 # GUI and Output
 
@@ -295,14 +309,11 @@ def _plot_peaks (fig, peak_count, threshold, first, title=0):
   ax.set_xlabel(r'Chi1 Angle ($\degree$)', labelpad=10)
   ax.set_ylabel("Peak Count", labelpad=10)
 
-def plot_peaks (peak_count, filename, threshold, first, title=0) :
+def plot_peaks (peak_count, file_name, threshold, first, title=0) :
   import matplotlib.pyplot as plt
   fig = plt.figure(2, figsize=(5,4))
   _plot_peaks(fig, peak_count, threshold, first, title)
-  plt.savefig('%s.output/%.3f.histogram.png' % (filename,threshold))
-  print 'Saved plot to %s.output/%.3f.histogram.png' % (filename,threshold)
-  # print 'RMSD at threshold %.3f is %.1f' % (threshold,title)
-  # print 'Wrote '+filename+'/%.3f.Phenix_allpeaks.png' % threshold
+  plt.savefig(file_name)
   plt.close()
 
 def _plot_progression(fig, non_zero_thresholds, rotamer_ratios, zscores,
@@ -341,41 +352,5 @@ def plot_progression(non_zero_thresholds, rotamer_ratios, file_name, zscores,
   import matplotlib.pyplot as plt
   fig = plt.figure(3, figsize=(5.5,4))
   _plot_progression(fig, non_zero_thresholds, rotamer_ratios, zscores, i)
-  plt.savefig('%s.output/%s.threshold_scan.png' % (file_name, i))
-  print 'Saved plot to %s.output/%s.threshold_scan.png' % (file_name, i)
-  # print 'Wrote '+file+'/threshold_scan.png'
+  plt.savefig(file_name)
   plt.close()
-
-def run (args, out=sys.stdout) :
-    parser = argparse.ArgumentParser()
-    parser.add_argument("files",nargs="*")
-    parser.add_argument("-s", "--Sampling_Angle", dest="sampling_angle", help="Don't mess with this unless you've also made the corresponding change in ringer. By default it is 5, which is identical to the default in ringer.", nargs='?', default=5)
-    parser.add_argument("-r", "--Residues", dest="residues")
-    parser.add_argument("--gui", dest="show_gui", action="store_true",
-      default=False)
-    args = parser.parse_args(args)
-    if (not args.show_gui) :
-      import matplotlib
-      matplotlib.use("Agg")
-    app = None
-    for file_name in args.files :
-      result = main(
-        file_name=file_name,
-        sampling_angle=args.sampling_angle,
-        out=out,
-        quiet=False).show_summary(out=out)
-      if (args.show_gui) :
-        import wxtbx.plots.emringer
-        import wxtbx.app
-        if (app is None) :
-          app = wxtbx.app.CCTBXApp(0)
-        f1 = wxtbx.plots.emringer.peaks_plot_frame(
-          parent=None,
-          title="Histograms for %s" % file_name)
-        f1.SetResult(result)
-        f1.Show()
-    if (args.show_gui) :
-      app.MainLoop()
-
-if __name__ == "__main__":
-  run(sys.argv[1:])
