@@ -2157,6 +2157,7 @@ mmtbx/regression/tst_ligand_ncs.py -text
 mmtbx/regression/tst_map_coeffs_simple.py -text
 mmtbx/regression/tst_map_type_parser.py -text
 mmtbx/regression/tst_maps_misc.py -text
+mmtbx/regression/tst_minimize_chain.py -text
 mmtbx/regression/tst_ml_estimate.py -text
 mmtbx/regression/tst_model_2.py -text
 mmtbx/regression/tst_models_to_from_chains.py -text
