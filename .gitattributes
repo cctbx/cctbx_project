@@ -1626,6 +1626,7 @@ mmtbx/building/alternate_conformations/tst_shear_conformers.py svneol=native#tex
 mmtbx/building/alternate_conformations/tst_sliding_window.py svneol=native#text/x-python
 mmtbx/building/extend_sidechains.py -text
 mmtbx/building/make_library.py -text
+mmtbx/building/minimize_chain.py -text
 mmtbx/building/tst.py -text
 mmtbx/building/tst_extend_sidechains.py -text
 mmtbx/building/tst_make_library.py -text
