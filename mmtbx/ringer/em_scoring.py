@@ -72,28 +72,31 @@ def calculate_peaks(ringer,threshold):
   return new_peaks
 
 
-def parse_pickle(filename):
+def parse_pickle(filename, out=sys.stdout):
+  print "===== Loading Pickle: %s =====" % filename
+  ringer_things = easy_pickle.load(filename)
+  return process_raw_results(ringer_things, out=out)
+
+def process_raw_results (ringer_result, out=sys.stdout) :
   """
   All processes that require reading the pickle. Involves reading out the
   angles and calculating the thresholds.
   """
   import numpy as np
-  print "===== Loading Pickle: %s =====" % filename
   chi = 1
   waves=[]
   averages=[]
   maxima=[]
-  ringer_things = easy_pickle.load(filename)
-  for i in ringer_things:
-    if chi in i._angles.keys() and i.resname in Residue_codes:
-      waves.append(i)
-      maxima.append(max(i._angles[chi].densities))
-      averages.append(np.average(i._angles[chi].densities))
+  for residue in ringer_result :
+    if chi in residue._angles.keys() and residue.resname in Residue_codes:
+      waves.append(residue)
+      maxima.append(max(residue._angles[chi].densities))
+      averages.append(np.average(residue._angles[chi].densities))
   max_max = max(maxima)
   avg_avg = np.average(averages)
   thresholds = [avg_avg+i*(max_max-avg_avg)/20 for i in range(20)]
-  print "Threshold list: %s" % thresholds
-  print "===== Pickle Parsed ====="
+  print >> out, "Threshold list: %s" % thresholds
+  print >> out, "===== Pickle Parsed ====="
   return waves, thresholds
 
 def calculate_binned_counts(peak_count, first=60, binsize=12,n_angles=72):
@@ -115,7 +118,6 @@ def calc_ratio(count_list, sampling_angle=5):
   total_angles=360/sampling_angle
   binsize=int(total_angles/6)
   first_loc=60/sampling_angle
-
   binned_list=[0]*6
   for i in range(6):
     for j in range(binsize):
@@ -129,9 +131,19 @@ def calc_ratio(count_list, sampling_angle=5):
   return rotamer_ratio, zscore
 
 class main (object) :
-  def __init__ (self, file_name, sampling_angle=5, out_dir=None,
+  def __init__ (self,
+      file_name,
+      ringer_result=None,
+      sampling_angle=5,
+      out_dir=None,
       out=sys.stdout,
       quiet=False) :
+    self.threshold = waves = None
+    if (ringer_result is not None) :
+      waves, self.thresholds = process_raw_results(ringer_result, out=out)
+    else :
+      assert (file_name is not None)
+      waves, self.thresholds = parse_pickle(file_name, out=out)
     assert (out_dir is None) or os.path.isdir(out_dir)
     if (out_dir is None) and (not quiet) :
       out_dir = file_name + ".output"
@@ -150,7 +162,6 @@ class main (object) :
     self.zscores=[]
     self.rotamer_ratios=[]
     self.non_zero_thresholds=[]
-    waves, self.thresholds = parse_pickle(file_name)
     self.length = len(waves)
     self.peaks=OrderedDict()
         # calculate peaks and histogram

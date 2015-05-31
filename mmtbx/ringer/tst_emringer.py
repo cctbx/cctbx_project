@@ -14,7 +14,7 @@ def exercise_emringer_residue_scan():
     relative_path="phenix_regression/mmtbx/em_ringer/tst_emringer_map.ccp4",
     test=os.path.isfile)
   assert (not None in [pdb_file, map_file])
-  results = emringer.run([pdb_file, map_file], out=null_out())
+  results, scoring, rolling = emringer.run([pdb_file, map_file], out=null_out())
   # Make sure the right number of residues (22 out of 28) get scanned
   assert len(results)==22
   modelled_list = [290.742121792,192.844056257,45.4781110306,294.247825632,303.618891108,58.7694040824,331.70068496,46.7136045049,290.167261226,304.261231829,282.651244586,268.729721112,195.972333785,305.321933311,314.81066224,286.028424514,311.180807466,313.004918133,296.67781565,296.949191638,169.644245088,192.496265164]

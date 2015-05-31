@@ -30,13 +30,14 @@ import os
 import sys
 
 master_phil = libtbx.phil.parse("""
-pdb_file = None
+model = None
   .type = path
   .style = file_type:pdb bold input_file
+  .short_caption = Model file
 map_file = None
   .type = path
   .short_caption = CCP4 or MRC map
-  .style = file_type:ccp4_map
+  .style = file_type:ccp4_map bold
 map_coeffs = None
   .type = path
   .short_caption = Map coefficients
@@ -48,6 +49,7 @@ map_label = 2FOFCWT,PH2FOFCWT
   .style = renderer:draw_map_arrays_widget noauto
 sampling_angle = 5
   .type = int
+  .input_size = 64
 sampling_method = linear *spline direct
   .type = choice(multi=False)
 grid_spacing = 1./5
@@ -58,20 +60,29 @@ skip_alt_confs = True
   .type = bool
 nproc = 1
   .type = int
+  .short_caption = Number of processors
+  .input_size = 64
+  .style = renderer:draw_nproc_widget
 show_gui = False
   .type = bool
 output_base = None
   .type = str
-""")
+output_dir = None
+  .type = path
+  .short_caption = Output directory
+  .style = output_dir
+include scope libtbx.phil.interface.tracking_params
+""", process_includes=True)
+master_params = master_phil # XXX Gui hack
 
-def run (args, out=None, verbose=True) :
+def run (args, out=None, verbose=True, plots_dir=None) :
   t0 = time.time()
   if (out is None) : out = sys.stdout
   import iotbx.phil
   cmdline = iotbx.phil.process_command_line_with_files(
     args=args,
     master_phil=master_phil,
-    pdb_file_def="pdb_file",
+    pdb_file_def="model",
     reflection_file_def="map_coeffs",
     map_file_def="map_file",
     usage_string="""\
@@ -81,7 +92,7 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
 """ % __doc__)
   params = cmdline.work.extract()
   validate_params(params)
-  pdb_in = cmdline.get_file(params.pdb_file)
+  pdb_in = cmdline.get_file(params.model)
   pdb_in.check_file_type("pdb")
   hierarchy = pdb_in.file_object.construct_hierarchy()
   hierarchy.atoms().reset_i_seq()
@@ -133,13 +144,38 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
     print >> out, "Time excluding I/O: %8.1fs" % (t2 - t1)
     print >> out, "Overall runtime:    %8.1fs" % (t2 - t0)
   if (params.output_base is None) :
-    pdb_base = os.path.basename(params.pdb_file)
+    pdb_base = os.path.basename(params.model)
     params.output_base = os.path.splitext(pdb_base)[0] + "_emringer"
   easy_pickle.dump("%s.pkl" % params.output_base, results)
   print >> out, "Wrote %s.pkl" % params.output_base
   csv = "\n".join([ r.format_csv() for r in results ])
   open("%s.csv" % params.output_base, "w").write(csv)
   print >> out, "Wrote %s.csv" % params.output_base
+  if (plots_dir is None) :
+    plots_dir = params.output_base + "_plots"
+  if (not os.path.isdir(plots_dir)) :
+    os.makedirs(plots_dir)
+  from mmtbx.ringer import em_rolling
+  from mmtbx.ringer import em_scoring
+  import matplotlib
+  matplotlib.use("Agg")
+  make_header("Scoring results", out=out)
+  scoring = em_scoring.main(
+    file_name=params.output_base,
+    ringer_result=results,
+    out_dir=plots_dir,
+    sampling_angle=params.sampling_angle,
+    quiet=False,
+    out=out)
+  make_header("Inspecting chains", out=out)
+  rolling = em_rolling.main(
+    ringer_results=results,
+    dir_name=plots_dir,
+    threshold=scoring.optimal_threshold,
+    graph=False,
+    save=True,
+    out=out)
+  scoring.show_summary(out=out)
   print >> out, "\nReferences:"
   print >> out, """\
   Barad BA, Echols N, Wang RYR, Cheng YC, DiMaio F, Adams PD, Fraser JS. (2015)
@@ -153,11 +189,11 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
   if (params.show_gui) :
     run_app(results)
   else :
-    return results
+    return (results, scoring, rolling)
 
 def validate_params (params) :
-  if (params.pdb_file is None) :
-    raise Sorry("No PDB file supplied (parameter: pdb_file)")
+  if (params.model is None) :
+    raise Sorry("No PDB file supplied (parameter: model)")
   if (params.map_coeffs is None) and (params.map_file is None) :
     raise Sorry("No map coefficients supplied (parameter: map_coeffs)")
   return True
@@ -166,7 +202,7 @@ class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
     os.makedirs(self.output_dir)
     os.chdir(self.output_dir)
-    return run(args=list(self.args), out=sys.stdout)
+    return run(args=list(self.args), out=sys.stdout, plots_dir="plots")
 
 ########################################################################
 # GUI

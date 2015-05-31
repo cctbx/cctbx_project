@@ -5,6 +5,8 @@ plotting code lives in mmtbx.ringer.em_scoring.
 """
 
 from __future__ import division
+from wxtbx.phil_controls import floatctrl
+from wxtbx import phil_controls
 import wxtbx.plots
 import wx
 
@@ -62,4 +64,52 @@ class threshold_plot_frame (emringer_plot_frame) :
   def _load_result (self) :
     assert (self._result is not None)
     self._result.draw_wx_progression_plot(plot=self.plot_panel)
+    self.plot_panel.canvas.draw()
+
+class rolling_plot (wxtbx.plots.plot_container) :
+  pass
+
+class rolling_plot_frame (emringer_plot_frame) :
+  def create_plot_panel (self) :
+    return rolling_plot(self)
+
+  def draw_top_panel (self) :
+    wxtbx.plots.plot_frame.draw_top_panel(self)
+    szr = wx.BoxSizer(wx.HORIZONTAL)
+    self.top_panel.SetSizer(szr)
+    label1 = wx.StaticText(self.top_panel, -1, "Chain ID:")
+    szr.Add(label1, 0, wx.ALL, 5)
+    self.chain_choice = wx.Choice(self.top_panel, -1, size=(160,-1))
+    szr.Add(self.chain_choice, 0, wx.ALL, 5)
+    self.Bind(wx.EVT_CHOICE, self.OnSetChain, self.chain_choice)
+    #label2 = wx.StaticText(self.top_panel, -1, "Density threshold:")
+    #szr.Add(label2, 0, wx.ALL, 5)
+    #self.threshold_entry = floatctrl.FloatCtrl(
+    #  parent=self.top_panel,
+    #  size=(80,-1),
+    #  value=0,
+    #  style=wx.TE_PROCESS_ENTER)
+    #self.threshold_entry.SetMin(0)
+    #self.threshold_entry.SetMax(1.0)
+    #szr.Add(self.threshold_entry, 0, wx.ALL, 5)
+    #self.Bind(phil_controls.EVT_PHIL_CONTROL, self.OnSetThreshold,
+    #  self.threshold_entry)
+
+  def _load_result (self) :
+    self.chain_choice.SetItems(self._result.chain_ids)
+    self._redraw()
+
+  def OnSetThreshold (self, evt) :
+    self._redraw()
+
+  def OnSetChain (self, evt) :
+    self._redraw()
+
+  def _redraw (self) :
+    chain_id = self.chain_choice.GetStringSelection()
+    #threshold = self.threshold_entry.GetPhilValue()
+    self._result.draw_wx_plot(
+      plot=self.plot_panel,
+      chain_id=chain_id)
+#      threshold=threshold)
     self.plot_panel.canvas.draw()

@@ -59,7 +59,7 @@ class ringer_chi (object) :
     rho_max = max(densities)
     for i, rho in enumerate(densities):
       if rho == max(densities):
-        i = i * 5
+        i = i * (360 / len(densities))
         return i, rho
     # This should never happen, but just in case, dump this in
     # place of throwing an error.
