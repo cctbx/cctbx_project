@@ -2097,6 +2097,7 @@ def run(only_i=None):
         ]:
         if i:
           cmd += " secondary_structure.enabled=1"
+      print "test number:",j
       print cmd
       run_and_test(cmd, pdb,i)
 
