@@ -1,5 +1,5 @@
 from __future__ import division
-import time,sys
+import sys
 import iotbx.pdb
 import mmtbx.utils
 from mmtbx import monomer_library
