@@ -270,6 +270,7 @@ def fit_chi1_simple (
   angle = 0
   map_level_best = 3.0 * len(sc_atoms)
   sites_best = sites_start
+  is_acceptable_cys_sg = True
   while (angle < 360) :
     map_level_sum = 0
     for atom in sc_atoms :
@@ -280,14 +281,20 @@ def fit_chi1_simple (
         angle=sampling_angle,
         deg=True)
       site_frac = unit_cell.fractionalize(site_cart=atom.xyz)
-      map_level_sum += target_map.eight_point_interpolation(site_frac)
+      map_level = target_map.eight_point_interpolation(site_frac)
+      map_level_sum += map_level
+      if (residue.resname == "CYS") and (atom.name.strip() == "SG") :
+        if (map_level < 5.0) :
+          is_acceptable_cys_sg = False
+    angle += sampling_angle
+    if (not is_acceptable_cys_sg) : # always True if resname != CYS
+      continue
     rotamer = rotamer_eval.evaluate_residue(residue)
     #print angle, map_level_sum, rotamer
     if (map_level_sum > map_level_best) and (rotamer != "OUTLIER") :
       #print "setting sites_best"
       sites_best = residue_atoms.extract_xyz().deep_copy()
       map_level_best = map_level_sum
-    angle += sampling_angle
   #print "RMSD:", sites_best.rms_difference(sites_start)
   residue_atoms.set_xyz(sites_best)
 
@@ -562,6 +569,19 @@ def process_results (
       unit_cell=unit_cell,
       two_fofc_map=two_fofc_map,
       fofc_map=fofc_map)
+    if (main_conf.resname in ["CYS", "MET", "MSE"]) :
+      # XXX if we have a heavier atom (S or SE) in the residue, some additional
+      # sanity checks insure that it has slightly stronger density than we
+      # require for lighter elements.  multipliers are just guesses, taking
+      # into account rad damage and partial SeMet incorporation.
+      heavy_atom = {"CYS":"SG", "MET":"SD", "MSE":"SE"}[main_conf.resname]
+      mult = {"CYS":1.6, "MET":1.6, "MSE":2.0}[main_conf.resname]
+      map_levels = density_quality.density_at_atom(heavy_atom)
+      if (map_levels is None) : # this probably shouldn't even happen
+        skip = True
+      if ((map_levels.fofc < params.map_thresholds.fofc_min*mult) or
+          (map_levels.two_fofc < params.map_thresholds.two_fofc_min*mult)) :
+        skip = True
     n_atoms_outside_density = density_quality.show_atoms_outside_density(
       two_fofc_cutoff=params.map_thresholds.two_fofc_min,
       fofc_cutoff=params.map_thresholds.fofc_min,

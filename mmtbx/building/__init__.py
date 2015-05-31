@@ -205,6 +205,17 @@ class local_density_quality (object) :
       two_fofc_map_value = two_fofc_map.tricubic_interpolation(site_frac)
       self.fofc_map_levels.append(fofc_map_value)
       self.two_fofc_map_levels.append(two_fofc_map_value)
+    self._atom_lookup = { n.strip():i for i,n in enumerate(self.atom_names) }
+
+  def density_at_atom (self, atom_name) :
+    """Return a simple object containing density levels for the named atom,
+    or None if no match was found."""
+    i_atom = self._atom_lookup.get(atom_name.strip())
+    if (i_atom is not None) :
+      return group_args(
+        two_fofc=self.two_fofc_map_levels[i_atom],
+        fofc=self.fofc_map_levels[i_atom])
+    return None
 
   def atoms_below_fofc_map_level (self, sigma_cutoff=-2.5) :
     selection = self.fofc_map_levels <= sigma_cutoff
