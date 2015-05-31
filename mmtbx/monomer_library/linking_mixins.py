@@ -410,6 +410,7 @@ class linking_mixins(object):
     nonbonded_proxies, sites_cart, pair_asu_table, asu_mappings, nonbonded_i_seqs = \
         _nonbonded_pair_objects(max_bonded_cutoff=max_bonded_cutoff,
           )
+    initial_pair_asu_table_table = bond_asu_table.table().deep_copy()
     for ii, item in enumerate(
         _nonbonded_pair_generator_geometry_restraints_sort(
           nonbonded_proxies=nonbonded_proxies,
@@ -593,11 +594,24 @@ Residue classes
       link_found = False
       if verbose:
         print 'len simple bond proxies',len(geometry_proxy_registries.bond_simple.proxies)
-      # VERY SLOW !!!
-      for bond_simple_proxy in geometry_proxy_registries.bond_simple.proxies:
-        if bond_simple_proxy.i_seqs in ij_seqs:
+
+      # Consistency check - debugging only
+      # for bsp in geometry_proxy_registries.bond_simple.proxies:
+      #   if bsp.i_seqs[1] not in initial_pair_asu_table_table[bsp.i_seqs[0]].keys():
+      #     print "ERROR!!!", bsp.i_seqs
+      # STOP()
+
+      # Proposed fast loop: Time building additional restraints for
+      # ribosome went from 5272 to 204 seconds.
+      for p in ij_seqs:
+        if p[1] in initial_pair_asu_table_table[p[0]].keys():
           link_found = True
           break
+      # VERY SLOW !!! - original loop
+      # for bond_simple_proxy in geometry_proxy_registries.bond_simple.proxies:
+      #   if bond_simple_proxy.i_seqs in ij_seqs:
+      #     link_found = True
+      #     break
       if link_found: continue
       # check for any link between atom groups based on residue name, eg ASN-NAG
       # get predefined link
