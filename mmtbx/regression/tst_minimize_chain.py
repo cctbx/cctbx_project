@@ -1,8 +1,6 @@
 from __future__ import division
 
 import time
-from libtbx.utils import null_out
-from cStringIO import StringIO
 from mmtbx.building.minimize_chain import run,get_params_edits,ccp4_map
 import iotbx.pdb
 
