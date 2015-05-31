@@ -88,7 +88,11 @@ def exercise_add_new_bond_restraint_in_place(mon_lib_srv, ener_lib):
     i_seqs=(0,3),
     distance_ideal=2.0,
     weight=3000)
+  assert not geometry.is_bonded_atoms(0,3)
+  assert not geometry.is_bonded_atoms(3,0)
   geometry.add_new_bond_restraints_in_place([proxy], xrs.sites_cart())
+  assert geometry.is_bonded_atoms(0,3)
+  assert geometry.is_bonded_atoms(3,0)
   assert geometry.pair_proxies().bond_proxies.simple.size() == 8
   assert geometry.pair_proxies().bond_proxies.asu.size() == 0
   assert geometry.pair_proxies().nonbonded_proxies.simple.size() == 8
@@ -98,7 +102,7 @@ def exercise_single_atom(mon_lib_srv, ener_lib):
   geometry, xrs = make_initial_grm(mon_lib_srv, ener_lib, raw_records1)
 
   # output for debugging!!!
-  # show_sorted_geometry(geometry, xrs, 'before_exersice_multiple_atoms.geo')
+  # show_sorted_geometry(geometry, xrs, 'before_exersice_single_atoms.geo')
 
   xrs_add = iotbx.pdb.input(source_info=None, lines=raw_records2) \
       .xray_structure_simple()
@@ -119,7 +123,8 @@ def exercise_single_atom(mon_lib_srv, ener_lib):
       skip_max_proxy_distance_calculation=True)
   # output for debugging!!!
   # show_sorted_geometry(new_geometry, new_xrs,
-      # 'after_exersice_multiple_atoms.geo')
+  #     'after_exersice_single_atoms.geo')
+  assert new_geometry.is_bonded_atoms(3,9)
 
   assert new_geometry.pair_proxies().bond_proxies.simple.size() == 8
   assert new_geometry.pair_proxies().bond_proxies.asu.size() == 1
@@ -162,6 +167,15 @@ def exercise_multiple_atoms(mon_lib_srv, ener_lib):
   assert new_geometry.pair_proxies().nonbonded_proxies.simple.size() == 11
   assert new_geometry.pair_proxies().nonbonded_proxies.asu.size() == 4
 
+def exercise_is_bonded_atoms(mon_lib_srv, ener_lib):
+  geometry, xrs = make_initial_grm(mon_lib_srv, ener_lib, raw_records1)
+  show_sorted_geometry(geometry, xrs, 'blabla.geo')
+  linked_atoms = [(0,1), (1,2), (1,4), (2,3), (4,5),(5,6), (6,7), (7,8)]
+  for i in range (9):
+    for j in range(9):
+      assert geometry.is_bonded_atoms(i,j) == geometry.is_bonded_atoms(j,i)
+      assert geometry.is_bonded_atoms(i,j) == (tuple(sorted([i,j])) in linked_atoms)
+
 def exercise():
   mon_lib_srv = None
   ener_lib = None
@@ -174,6 +188,7 @@ def exercise():
     exercise_add_new_bond_restraint_in_place(mon_lib_srv, ener_lib)
     exercise_single_atom(mon_lib_srv, ener_lib)
     exercise_multiple_atoms(mon_lib_srv, ener_lib)
+    exercise_is_bonded_atoms(mon_lib_srv, ener_lib)
 
 if (__name__ == "__main__"):
   exercise()

@@ -910,6 +910,14 @@ class manager(object):
     # print "t7: %f" % (t7-t61)
     # STOP()
 
+  def is_bonded_atoms(self, i_seq, j_seq):
+    i_s = i_seq
+    j_s = j_seq
+    if i_seq > j_seq:
+      i_s = j_seq
+      j_s = i_seq
+    return j_s in self.shell_sym_tables[0][i_s].keys()
+
   def pair_proxies(self,
         sites_cart=None,
         flags=None,
