@@ -355,11 +355,7 @@ class manager (object) :
 
   def create_protein_hbond_proxies (self,
                             annotation,
-                            log=sys.stdout,
-                            # as_python_objects=False,
-                            # master_selection=None,
-                            # as_regular_bond_proxies=True
-                            ):
+                            log=sys.stdout):
     # assert as_regular_bond_proxies=True
     if annotation is None:
       annotation = self.actual_sec_str
@@ -374,7 +370,6 @@ class manager (object) :
     else :
       use_hydrogens = True
 
-    from mmtbx.geometry_restraints import hbond
     from scitbx.array_family import flex
     atoms = self.pdb_hierarchy.atoms()
     hbond_counts = flex.int(atoms.size(), 0)
@@ -387,18 +382,17 @@ class manager (object) :
     else :
       distance_ideal = self.params.secondary_structure.protein.distance_ideal_n_o
       distance_cut = self.params.secondary_structure.protein.distance_cut_n_o
-    build_proxies = hbond.build_distance_proxies()
     if (distance_cut is None) :
       distance_cut = -1
+    generated_proxies = geometry_restraints.shared_bond_simple_proxy()
     if self.params.secondary_structure.protein.enabled:
       for helix in self.params.secondary_structure.protein.helix :
         if helix.selection is not None:
           print >> log, "    Processing helix ", helix.selection
-          n_proxies = proteins.create_helix_hydrogen_bond_proxies(
+          proxies = proteins.create_helix_hydrogen_bond_proxies(
             params=helix,
             pdb_hierarchy=self.pdb_hierarchy,
             selection_cache=selection_cache,
-            build_proxies=build_proxies,
             weight=1.0,
             hbond_counts=hbond_counts,
             distance_ideal=distance_ideal,
@@ -406,17 +400,18 @@ class manager (object) :
             remove_outliers=remove_outliers,
             use_hydrogens=use_hydrogens,
             log=log)
-          if (n_proxies == 0) :
+          if (proxies.size() == 0) :
             print >> log, "      No H-bonds generated for '%s'" % helix.selection
             continue
+          else:
+            generated_proxies.extend(proxies)
       for k, sheet in enumerate(self.params.secondary_structure.protein.sheet) :
         print >> log, "    Processing sheet with id=%s, first strand: %s" % (
             sheet.sheet_id, sheet.first_strand)
         if sheet.first_strand is not None:
-          n_proxies = proteins.create_sheet_hydrogen_bond_proxies(
+          proxies = proteins.create_sheet_hydrogen_bond_proxies(
             sheet_params=sheet,
             pdb_hierarchy=self.pdb_hierarchy,
-            build_proxies=build_proxies,
             weight=1.0,
             hbond_counts=hbond_counts,
             distance_ideal=distance_ideal,
@@ -424,28 +419,31 @@ class manager (object) :
             remove_outliers=remove_outliers,
             use_hydrogens=use_hydrogens,
             log=log)
-          if (n_proxies == 0) :
+          if (proxies.size() == 0) :
             print >> log, "  No H-bonds generated for sheet #%d" % k
             continue
+          else:
+            generated_proxies.extend(proxies)
 
-    n_proxies = len(build_proxies.proxies)
+    n_proxies = generated_proxies.size()
     print >> log, ""
     if (n_proxies == 0) :
       print >> log, "  No hydrogen bonds defined for protein."
     else :
       print >> log, "  %d hydrogen bonds defined for protein." % n_proxies
-    reg_proxies = []
-    for hb_p in build_proxies.proxies:
-      reg_proxy = geometry_restraints.bond_simple_proxy(
-        i_seqs=hb_p.i_seqs,
-        distance_ideal=hb_p.distance_ideal,
-        weight=hb_p.weight,
-        slack=hb_p.slack,
-        top_out=hb_p.top_out,
-        limit=hb_p.limit,
-        origin_id=1)
-      reg_proxies.append(reg_proxy)
-    return geometry_restraints.shared_bond_simple_proxy(reg_proxies)
+    # reg_proxies = []
+    # for hb_p in build_proxies.proxies:
+    #   reg_proxy = geometry_restraints.bond_simple_proxy(
+    #     i_seqs=hb_p.i_seqs,
+    #     distance_ideal=hb_p.distance_ideal,
+    #     weight=hb_p.weight,
+    #     slack=hb_p.slack,
+    #     top_out=hb_p.top_out,
+    #     limit=hb_p.limit,
+    #     origin_id=1)
+    #   reg_proxies.append(reg_proxy)
+    # return geometry_restraints.shared_bond_simple_proxy(reg_proxies)
+    return generated_proxies
 
   def create_all_new_restraints(self,
       pdb_hierarchy,
@@ -486,7 +484,8 @@ class manager (object) :
         get_basepair_hbond_proxies(
         pdb_hierarchy=pdb_hierarchy,
         bp_phil_params=self.params.secondary_structure.nucleic_acid.base_pair,
-        hbond_distance_cutoff=self.params.secondary_structure.nucleic_acid.hbond_distance_cutoff)
+        hbond_distance_cutoff=self.params.secondary_structure.\
+            nucleic_acid.hbond_distance_cutoff)
     t4 = time.time()
     # print >> log, "    Time for creating hbond-angle proxies:%f" % (t4-t3)
     self.stats = {'n_protein_hbonds':0, 'n_na_hbonds':0, 'n_na_hbond_angles':0,
@@ -623,6 +622,7 @@ class manager (object) :
     return whole_selection
 
   def base_pair_selections (self, limit=None, main_conf_only=False) :
+    # assert 0, "Probably shouldn't be used"
     sele = self.selection_cache.selection
     all_selections = []
     for bp in self.params.secondary_structure.nucleic_acid.base_pair :
@@ -648,6 +648,8 @@ class manager (object) :
     return sec_str
 
   def base_pair_selection (self, **kwds) :
+    # assert 0, "Probably shouldn't be used",
+    # used in mmtbx/command_line/find_tls_groups.py
     whole_selection = flex.bool(self.n_atoms)
     for sheet in self.base_pair_selections(**kwds) :
       whole_selection |= sheet
