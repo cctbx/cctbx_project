@@ -1055,7 +1055,6 @@ class interpreter:
     self.cif_file_names = []
     self.cif_objects = []
     self.processed_pdb_file = None
-    self.processed_pdb_file_reference = None
     self.process_args()
     self.pdb_file_names.extend(self.params.input.pdb.file_name)
     if(self.fake_crystal_symmetry): # create cs for internal use

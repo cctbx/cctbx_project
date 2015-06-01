@@ -4623,17 +4623,6 @@ class build_all_chain_proxies(linking_mixins):
     self.geometry_proxy_registries.discard_tables()
     self.scattering_type_registry.discard_tables()
     self.nonbonded_energy_type_registry.discard_tables()
-    #
-    #if (hydrogen_bonds is not None) :
-    #  for proxy in hydrogen_bonds.bond_sym_proxies :
-    #    if (proxy.weight <= 0): continue
-    #    i_seq, j_seq = proxy.i_seqs
-    #    bond_params_table.update(i_seq=i_seq, j_seq=j_seq, params=proxy)
-    #    bond_asu_table.add_pair(
-    #      i_seq=i_seq,
-    #      j_seq=j_seq,
-    #      rt_mx_ji=proxy.rt_mx_ji)
-    #
     self.geometry_proxy_registries.bond_simple.proxies = None # free memory
     #
     shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
