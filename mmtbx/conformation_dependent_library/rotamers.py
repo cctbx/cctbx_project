@@ -254,13 +254,24 @@ def update_restraints(hierarchy,
             )
           if rc is None: continue
           rotamer_name, chis, value = rc
-          if verbose: print >> log, "  %s %s %s %-5s %-60s %0.1f" % (
-              chain.id,
-              atom_group.resname,
-              residue_group.resseq,
-              rotamer_name,
-              chis,
-              value,
+          if verbose: 
+            try:
+              print >> log, "  %s %s %s %-5s %-60s %0.1f" % (
+                chain.id,
+                atom_group.resname,
+                residue_group.resseq,
+                rotamer_name,
+                chis,
+                value,
+              )
+            except TypeError, e:
+              print >> log, "  %s %s %s %-5s %-60s %s" % (
+                chain.id,
+                atom_group.resname,
+                residue_group.resseq,
+                rotamer_name,
+                chis,
+                value,
               )
           if rotamer_name in ["OUTLIER"]: continue
           if rotamer_name not in rdl_database[atom_group.resname]: continue
