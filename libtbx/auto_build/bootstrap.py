@@ -91,7 +91,8 @@ class ShellCommand(object):
 
     p.wait()
     if p.returncode != 0 and self.kwargs.get('haltOnFailure'):
-      raise RuntimeError, "Process failed with return code %s"%(p.returncode)
+      print "Process failed with return code %s"%(p.returncode)
+      sys.exit(1)
 
 # Download URL to local file
 class Downloader(object):
