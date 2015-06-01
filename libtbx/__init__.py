@@ -265,7 +265,7 @@ class group_args(object):
     outl = "group_args"
     for attr in sorted(self.__dict__.keys()):
       tmp=getattr(self, attr)
-      if str(tmp).find("ext.atom")>-1:
+      if str(tmp).find("ext.atom ")>-1:
         outl += "\n  %-30s : %s" % (attr, tmp.quote())
       else:
         outl += "\n  %-30s : %s" % (attr, tmp)
