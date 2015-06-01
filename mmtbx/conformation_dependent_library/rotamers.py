@@ -254,7 +254,7 @@ def update_restraints(hierarchy,
             )
           if rc is None: continue
           rotamer_name, chis, value = rc
-          if verbose: 
+          if verbose:
             try:
               print >> log, "  %s %s %s %-5s %-60s %0.1f" % (
                 chain.id,
