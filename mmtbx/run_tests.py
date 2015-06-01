@@ -110,7 +110,6 @@ tst_list = (
   # restraints
   "$D/secondary_structure/tst.py",
   "$D/secondary_structure/tst_segid.py",
-  # "$D/geometry_restraints/tst_hbond.py", Disabled due to module deprecation
   "$D/geometry_restraints/tst_reference_coordinate.py",
   "$D/geometry_restraints/tst_reference_coordinate2.py",
   "$D/geometry_restraints/tst_c_beta_restraints.py",
