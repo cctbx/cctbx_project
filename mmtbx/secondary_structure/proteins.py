@@ -2,6 +2,7 @@ from __future__ import division
 import iotbx.phil
 from libtbx.utils import Sorry
 from math import sqrt
+from cctbx import geometry_restraints
 import sys
 
 helix_group_params_str = """
@@ -104,7 +105,6 @@ master_helix_phil = iotbx.phil.parse(helix_group_params_str)
 def _create_hbond_proxy (
     acceptor_atoms,
     donor_atoms,
-    build_proxies,
     hbond_counts,
     distance_ideal,
     distance_cut,
@@ -134,15 +134,15 @@ def _create_hbond_proxy (
     if (use_hydrogens) and (hydrogen is None) :
       donor_resseq = donor_atoms[0].fetch_labels().resseq_as_int()
       print >> log, "      Missing hydrogen at %d" % donor_resseq
-      return 0
+      return None
     if (hbond_counts[donor.i_seq] > 0) :
       print >> log, "      WARNING: donor atom is already bonded, skipping"
       print >> log, "    %s" % donor_labels.id_str()
-      return 0
+      return None
     elif (hbond_counts[acceptor.i_seq] > 0) :
       print >> log, "      WARNING: acceptor atom is already bonded, skipping"
       print >> log, "    %s" % acceptor_labels.id_str()
-      return 0
+      return None
     if (remove_outliers) and (distance_cut > 0) :
       if (use_hydrogens) :
         dist = hydrogen.distance(acceptor)
@@ -151,7 +151,7 @@ def _create_hbond_proxy (
       if (dist > distance_cut) :
         print >> log, "      removed outlier: %.3fA  %s --> %s (cutoff:%.3fA)"%(
             dist, donor_labels.id_str(), acceptor_labels.id_str(), distance_cut)
-        return 0
+        return None
     if (use_hydrogens) :
       donor = hydrogen
     sigma_ = sigma
@@ -164,25 +164,23 @@ def _create_hbond_proxy (
     if (top_out) :
       limit = (distance_cut - distance_ideal)**2 * weight/(sigma_**2)
       print "limit: %.2f" % limit
-    build_proxies.add_proxy(
-      i_seqs=[donor.i_seq, acceptor.i_seq],
+    proxy = geometry_restraints.bond_simple_proxy(
+      i_seqs=(donor.i_seq, acceptor.i_seq),
       distance_ideal=distance_ideal,
-      distance_cut=distance_cut,
       weight=weight/(sigma_ ** 2),
       slack=slack_,
+      top_out=top_out,
       limit=limit,
-      top_out=top_out)
-    build_proxies.add_nonbonded_exclusion(donor.i_seq, acceptor.i_seq)
-    return 1
+      origin_id=1)
+    return proxy
   else :
     print >> log, "WARNING: missing atoms!"
-    return 0
+    return None
 
 def create_helix_hydrogen_bond_proxies (
     params,
     pdb_hierarchy,
     selection_cache,
-    build_proxies,
     weight,
     hbond_counts,
     distance_ideal,
@@ -191,6 +189,7 @@ def create_helix_hydrogen_bond_proxies (
     use_hydrogens,
     log=sys.stdout) :
   assert (not None in [distance_ideal, distance_cut])
+  generated_proxies = geometry_restraints.shared_bond_simple_proxy()
   helix_class = params.helix_type
   if helix_class == "alpha" :
     helix_step = 4
@@ -200,21 +199,21 @@ def create_helix_hydrogen_bond_proxies (
     helix_step = 3
   else :
     print >> log, "  Don't know bonding for helix class %s." % helix_class
-    return 0
+    return generated_proxies
   try :
     helix_selection = selection_cache.selection(params.selection)
   except Exception, e :
     print >> log, str(e)
-    return 0
+    return generated_proxies
   assert (helix_step in [3, 4, 5])
   n_proxies = 0
   helix_i_seqs = helix_selection.iselection()
   for model in pdb_hierarchy.models() :
     for chain in model.chains() :
-      # XXX Bug notification.
       # This loop over conformers produces 2 hbonds (if there are 2 conformers)
       # for the same atoms in helix if there are more than 1 conformer in chain
       # (if _any_ atom in chain has alternative conformation)
+      # Update. Extra bonds are eliminated using hbond_counts array...
       for conformer in chain.conformers() :
         chain_i_seqs = conformer.atoms().extract_i_seq()
         both_i_seqs = chain_i_seqs.intersection(helix_i_seqs)
@@ -250,10 +249,9 @@ def create_helix_hydrogen_bond_proxies (
             # should not be generated rather than rejected at the very last
             # second. It is not a bug.
             if (helix_selection[bonded_atoms[0].i_seq] == True) :
-              n_proxies += _create_hbond_proxy(
+              proxy = _create_hbond_proxy(
                 acceptor_atoms=resi_atoms,
                 donor_atoms=bonded_atoms,
-                build_proxies=build_proxies,
                 hbond_counts=hbond_counts,
                 distance_ideal=distance_ideal,
                 distance_cut=distance_cut,
@@ -263,13 +261,14 @@ def create_helix_hydrogen_bond_proxies (
                 sigma=params.sigma,
                 slack=params.slack,
                 log=log)
+              if proxy is not None:
+                generated_proxies.append(proxy)
           j_seq += 1
-  return n_proxies
+  return generated_proxies
 
 def create_sheet_hydrogen_bond_proxies (
     sheet_params,
     pdb_hierarchy,
-    build_proxies,
     weight,
     hbond_counts,
     distance_ideal,
@@ -286,6 +285,7 @@ def create_sheet_hydrogen_bond_proxies (
     strand_selection=prev_selection)
   n_proxies = 0
   k = 0
+  generated_proxies = geometry_restraints.shared_bond_simple_proxy()
   while k < len(sheet_params.strand) :
     curr_strand = sheet_params.strand[k]
     curr_selection = cache.selection(curr_strand.selection)
@@ -345,14 +345,12 @@ the .pdb file was edited without updating SHEET records.""" \
               j += 2
             current_start_res_is_donor = not current_start_res_is_donor
             if donor_residue.resname.strip() != "PRO":
-              n_proxies += _create_hbond_proxy(
+              proxy = _create_hbond_proxy(
                   acceptor_atoms=acceptor_residue.atoms(),
                   donor_atoms=donor_residue.atoms(),
-                  build_proxies=build_proxies,
                   hbond_counts=hbond_counts,
                   distance_ideal=distance_ideal,
                   distance_cut=distance_cut,
-                  # hbond_params=hbond_params,
                   remove_outliers=remove_outliers,
                   use_hydrogens=use_hydrogens,
                   weight=weight,
@@ -360,17 +358,17 @@ the .pdb file was edited without updating SHEET records.""" \
                   slack=sheet_params.slack,
                   top_out=sheet_params.top_out,
                   log=log)
+              if proxy is not None:
+                generated_proxies.append(proxy)
         elif (curr_strand.sense == "antiparallel") :
           while(i < len_prev_residues and j >= 0):
             if (prev_residues[i].resname.strip() != "PRO") :
-              n_proxies += _create_hbond_proxy(
+              proxy = _create_hbond_proxy(
                 acceptor_atoms=curr_residues[j].atoms(),
                 donor_atoms=prev_residues[i].atoms(),
-                build_proxies=build_proxies,
                 hbond_counts=hbond_counts,
                 distance_ideal=distance_ideal,
                 distance_cut=distance_cut,
-                # hbond_params=hbond_params,
                 remove_outliers=remove_outliers,
                 use_hydrogens=use_hydrogens,
                 weight=weight,
@@ -378,15 +376,16 @@ the .pdb file was edited without updating SHEET records.""" \
                 slack=sheet_params.slack,
                 top_out=sheet_params.top_out,
                 log=log)
+              if proxy is not None:
+                generated_proxies.append(proxy)
+
             if (curr_residues[j].resname.strip() != "PRO") :
-              n_proxies += _create_hbond_proxy(
+              proxy = _create_hbond_proxy(
                 acceptor_atoms=prev_residues[i].atoms(),
                 donor_atoms=curr_residues[j].atoms(),
-                build_proxies=build_proxies,
                 hbond_counts=hbond_counts,
                 distance_ideal=distance_ideal,
                 distance_cut=distance_cut,
-                # hbond_params=hbond_params,
                 remove_outliers=remove_outliers,
                 use_hydrogens=use_hydrogens,
                 weight=weight,
@@ -394,6 +393,8 @@ the .pdb file was edited without updating SHEET records.""" \
                 slack=sheet_params.slack,
                 top_out=sheet_params.top_out,
                 log=log)
+              if proxy is not None:
+                generated_proxies.append(proxy)
             i += 2;
             j -= 2;
         else :
@@ -412,7 +413,7 @@ the .pdb file was edited without updating SHEET records.""" \
     prev_strand = curr_strand
     prev_selection = curr_selection
     prev_residues = curr_residues
-  return n_proxies
+  return generated_proxies
 
 def _find_start_residue (
     residues,

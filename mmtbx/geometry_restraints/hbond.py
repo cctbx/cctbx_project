@@ -10,6 +10,9 @@ from libtbx import adopt_init_args, group_args
 from math import sqrt
 import sys
 
+# 6-1-2015 This module is not used anywhere and therefore the according test
+# mmtbx/geometry_restraints/tst_hbond.py is disabled.
+
 master_phil = libtbx.phil.parse("""
   restraint_type = *Auto simple lennard_jones implicit
     .type = choice
