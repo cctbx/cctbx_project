@@ -255,7 +255,7 @@ class SetupInstaller(object):
       import platform
       bitness = platform.architecture()[0][0:2]
       fname = os.path.join(self.dist_dir, '%sx%s.zip'%(os.path.basename(self.dest_dir), bitness))
-      myzip = zipfile.ZipFile(fname, 'w', zipfile.ZIP_DEFLATED)
+      myzip = zipfile.ZipFile(fname, 'w', zipfile.ZIP_DEFLATED, allowZip64=True )
       for dirpath,dirs,files in os.walk(self.dest_dir):
         for f in files:
           fname = os.path.join(dirpath, f)
