@@ -61,6 +61,10 @@ class mod_dump(common_mode.common_mode_correction):
       pixel_size = cspad_tbx.pixel_size
       saturated_value = cspad_tbx.cspad_saturated_value
       output_filename = self._basename
+    elif device == 'Rayonix':
+      pixel_size = 0.178
+      saturated_value = 2**16 - 1
+      output_filename = self._basename
     elif device == 'marccd':
       if distance == 0:
         distance = evt.get('marccd_distance')

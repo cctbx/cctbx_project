@@ -218,6 +218,9 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
         if device == 'marccd':
           self.hitfinder_d['BEAM_CENTER_X'] = self.beam_center[0]
           self.hitfinder_d['BEAM_CENTER_Y'] = self.beam_center[1]
+        elif device == 'Rayonix':
+          self.hitfinder_d['BEAM_CENTER_X'] = self.beam_center[0]
+          self.hitfinder_d['BEAM_CENTER_Y'] = self.beam_center[1]
 
         peak_heights,outvalue = self.distl_filter(
           self.address,
@@ -269,6 +272,9 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     elif device == 'marccd':
       pixel_size = evt.get("marccd_pixel_size")
       saturated_value = evt.get("marccd_saturated_value")
+    elif device == 'Rayonix':
+      pixel_size = 0.178
+      saturated_value = 2**16 - 1
 
     d = cspad_tbx.dpack(
       active_areas=self.active_areas,

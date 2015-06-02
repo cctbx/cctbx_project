@@ -108,6 +108,9 @@ class distl_hitfinder(object):
     elif device == 'marccd':
       img_dim = (4500, 4500)
       pixel_size = 0.079346
+    elif device == 'Rayonix':
+      img_dim = (860, 860)
+      pixel_size = 0.178
     else:
       raise RuntimeError("Unsupported device %s" % self.address)
 
@@ -142,4 +145,7 @@ class distl_hitfinder(object):
 
     elif device == 'marccd':
       # There is only one active area for the MAR CCD, so use it.
+      self.asic_filter = "distl.tile_flags=1"
+    elif device == 'Rayonix':
+      # There is only one active area for the Rayonix, so use it.
       self.asic_filter = "distl.tile_flags=1"

@@ -72,6 +72,9 @@ class mod_image_dict(common_mode.common_mode_correction):
     if device == 'Cspad':
       pixel_size = cspad_tbx.pixel_size
       saturated_value = cspad_tbx.cspad_saturated_value
+    elif device == 'Rayonix':
+      pixel_size = 0.178
+      saturated_value = 2**16 - 1
     elif device == 'marccd':
       pixel_size = evt.get("marccd_pixel_size")
       saturated_value = evt.get("marccd_saturated_value")
