@@ -2032,6 +2032,7 @@ mmtbx/refinement/minimization_ncs_constraints.py -text
 mmtbx/refinement/occupancies.py -text
 mmtbx/refinement/orca.py svneol=native#text/x-python
 mmtbx/refinement/real_space/__init__.py -text
+mmtbx/refinement/real_space/expload_and_refine.py -text
 mmtbx/refinement/real_space/fit_residue.py -text
 mmtbx/refinement/real_space/fit_residues.py -text
 mmtbx/refinement/real_space/fit_small_molecule.py -text
