@@ -3,12 +3,10 @@ import sys
 import iotbx.pdb
 import mmtbx.utils
 from mmtbx import monomer_library
-import mmtbx.refinement.real_space.individual_sites
 from scitbx.array_family import flex
-from cctbx import maptbx
-from libtbx import adopt_init_args
 from libtbx.utils import Sorry
 import iotbx.phil
+import mmtbx.refinement.real_space.expload_and_refine
 
 master_phil = iotbx.phil.parse("""
 
@@ -98,12 +96,12 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Target angle RMSD
        .help = Target angle RMSD
 
-     number_of_trials = 10
+     number_of_trials = 20
        .type = int
        .short_caption = Number of trials
        .help = Number of trials
 
-     start_xyz_error = 5.0
+     start_xyz_error = 10.0
        .type = float
        .short_caption = Starting coordinate error
        .help = Starting coordinate error
@@ -142,7 +140,6 @@ def get_params_edits(n_ca=None,edit_file_name='bond_edits.eff'):
       { %s }
   """ %geometry_restraints_edits_str
   )
-
   # Generate restraint file
   f=open(edit_file_name,'w')
   print >>f,"""
@@ -200,26 +197,6 @@ def ccp4_map(crystal_symmetry, file_name, map_data):
       map_data=map_data,
       labels=flex.std_string([""]))
 
-class scorer(object):
-  def __init__(self, pdb_hierarchy, unit_cell, map_data):
-    adopt_init_args(self, locals())
-    self.sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
-    self.target = maptbx.real_space_target_simple(
-      unit_cell   = self.unit_cell,
-      density_map = self.map_data,
-      sites_cart  = self.sites_cart)
-
-  def update(self, sites_cart):
-    target = maptbx.real_space_target_simple(
-      unit_cell   = self.unit_cell,
-      density_map = self.map_data,
-      sites_cart  = sites_cart)
-    if(target > self.target):
-      self.target = target
-      self.sites_cart = sites_cart
-    print self.target, target # XXX for debugging
-
-
 def run(args,map_data=None,map_coeffs=None,pdb_inp=None,pdb_string=None,
     params_edits=None,out=sys.stdout):
 
@@ -239,22 +216,37 @@ def run(args,map_data=None,map_coeffs=None,pdb_inp=None,pdb_string=None,
   xrs=pdb_inp.xray_structure_simple()
   if not pdb_string:
     pdb_string=hierarchy.as_pdb_string()
+  #
+  asc = hierarchy.atom_selection_cache()
+  sel_ca    = asc.selection(string="name CA")
+  sel_other = ~sel_ca
+  #
 
-  # Get the map to use; optionally truncate or sharpen it
-  from phenix.autosol.build_model import get_map
-  map_data,original_map_data,sharpened_map_coeffs,\
-        map_coeffs,params,actual_b_iso,crystal_symmetry=\
-    get_map(params=params,map=map_data,map_coeffs=map_coeffs,
-        map_as_float=False,out=out)
+#  # Get the map to use; optionally truncate or sharpen it
+#  from phenix.autosol.build_model import get_map
+#  map_data,original_map_data,sharpened_map_coeffs,\
+#        map_coeffs,params,actual_b_iso,crystal_symmetry=\
+#    get_map(params=params,map=map_data,map_coeffs=map_coeffs,
+#        map_as_float=False,out=out)
 
   # Initialize states accumulator
   states = mmtbx.utils.states(pdb_hierarchy=hierarchy, xray_structure=xrs)
   states.add(sites_cart = xrs.sites_cart())
 
   # Build geometry restraints
+  pi_params = monomer_library.pdb_interpretation.master_params
+  pi_params = pi_params.extract()
+  pi_params.max_reasonable_bond_distance=500
+  pi_params.nonbonded_weight=2000
+  #pi_params.peptide_link.ramachandran_restraints=True
+  #pi_params.peptide_link.rama_potential="emsley"
+  if 0:
+    pi_params.nonbonded_distance_cutoff=10
+    pi_params.vdw_1_4_factor=2.0
   processed_pdb_file = monomer_library.pdb_interpretation.process(
     mon_lib_srv              = monomer_library.server.server(),
     ener_lib                 = monomer_library.server.ener_lib(),
+    params                   = pi_params,
     raw_records              = pdb_string,
     strict_conflict_handling = True,
     force_symmetry           = True,
@@ -271,64 +263,28 @@ def run(args,map_data=None,map_coeffs=None,pdb_inp=None,pdb_string=None,
   if params.control.verbose:
     geometry.write_geo_file()
 
-  # Do real-space refinement
-  xrs_refined = xrs
-  # Refine without exploding - get refined starting model
-  ro=None
-  for macro_cycle in range(1,params.minimization.number_of_macro_cycles):
-    scale = float(params.minimization.number_of_macro_cycles)/macro_cycle
-    ro = mmtbx.refinement.real_space.individual_sites.easy(
-      map_data                    = map_data,
-      xray_structure              = xrs_refined,
-      pdb_hierarchy               = hierarchy,
-      geometry_restraints_manager = restraints_manager,
-      rms_bonds_limit             = params.minimization.target_bond_rmsd*scale,
-      rms_angles_limit            = params.minimization.target_angle_rmsd*scale,
-      max_iterations              = 50,
-      selection                   = None,
-      states_accumulator          = states, # this is good for demo, but makes it slower
-      log                         = None)
-    xrs_refined = ro.xray_structure
-  if ro:
-    weight = ro.w
-  else:
-    weight=None
-  # Expload and refine
-  sc = scorer(pdb_hierarchy=hierarchy, unit_cell=xrs.unit_cell(),
-    map_data=map_data)
-  for trial in xrange(params.minimization.number_of_trials):
-    xrs_refined.shake_sites_in_place(
-      rms_difference = None,
-      mean_distance  = params.minimization.start_xyz_error)
-    ro = mmtbx.refinement.real_space.individual_sites.easy(
-      map_data                    = map_data,
-      xray_structure              = xrs_refined,
-      pdb_hierarchy               = hierarchy,
-      geometry_restraints_manager = restraints_manager,
-      rms_bonds_limit             = params.minimization.target_bond_rmsd,
-      rms_angles_limit            = params.minimization.target_angle_rmsd,
-      max_iterations              = 250,
-      selection                   = None,
-      w                           = weight,
-      log                         = None)
-    xrs_refined = ro.xray_structure
-    sc.update(sites_cart = xrs_refined.sites_cart())
-    xrs_refined = xrs_refined.replace_sites_cart(new_sites=sc.sites_cart)
-    states.add(sites_cart = sc.sites_cart)
-  print "LOOK:",maptbx.real_space_target_simple( # XXX for debugging
-      unit_cell   = xrs_refined.unit_cell(),
-      density_map = map_data,
-      sites_cart  = xrs_refined.sites_cart())
-  # Output result
-  hierarchy.adopt_xray_structure(xrs_refined)
-  if params.output_files.pdb_out:
-    print >>out,"\nWriting output model to %s" %(params.output_files.pdb_out)
-    f=open(params.output_files.pdb_out,'w')
-    from iotbx import pdb
-    print >> f, pdb.format_cryst1_and_scale_records(
-         crystal_symmetry=crystal_symmetry)
-    print >>f,hierarchy.as_pdb_string()
-  return hierarchy,xrs_refined,states
+  ear = mmtbx.refinement.real_space.expload_and_refine.run(
+    xray_structure          = xrs,
+    pdb_hierarchy           = hierarchy,
+    map_data                = map_data,
+    restraints_manager      = restraints_manager,
+    number_of_macro_cycles  = params.minimization.number_of_macro_cycles,
+    target_bond_rmsd        = params.minimization.target_bond_rmsd,
+    target_angle_rmsd       = params.minimization.target_angle_rmsd,
+    number_of_trials        = params.minimization.number_of_trials,
+    xyz_shake               = params.minimization.start_xyz_error,
+    states                  = states)
+
+#  # Output result
+#  hierarchy.adopt_xray_structure(xrs_refined)
+#  if params.output_files.pdb_out:
+#    print >>out,"\nWriting output model to %s" %(params.output_files.pdb_out)
+#    f=open(params.output_files.pdb_out,'w')
+#    from iotbx import pdb
+#    print >> f, pdb.format_cryst1_and_scale_records(
+#         crystal_symmetry=xrs_refined.crystal_symmetry())
+#    print >>f,hierarchy.as_pdb_string()
+  return ear.pdb_hierarchy, ear.xray_structure, ear.states
 
 if (__name__ == "__main__"):
   args=sys.argv[1:]

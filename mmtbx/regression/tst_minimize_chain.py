@@ -332,5 +332,4 @@ if (__name__ == "__main__"):
   rmsd2=tst_02(args)
   print "Time: %6.4f"%(time.time()-t0)
   print "test 2 OK"
-  print "RMSD for CA atoms: %7.2f  ... for all-atoms: %7.2f " %(
-       rmsd1,rmsd2)
+  print "RMSD for CA atoms: %7.2f  ... for all-atoms: %7.2f " %(rmsd1,rmsd2)
