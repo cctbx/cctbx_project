@@ -47,6 +47,8 @@ class common_mode_correction(mod_event_info):
                laser_1_status=None,
                laser_4_status=None,
                laser_wait_time=None,
+               override_beam_x=None,
+               override_beam_y=None,
                **kwds):
     """The common_mode_correction class constructor stores the
     parameters passed from the pyana configuration file in instance
@@ -69,6 +71,8 @@ class common_mode_correction(mod_event_info):
                            change of status to begin accepting images again.
                            (rejection of images occurs immediately after status
                            change).
+    @param override_beam_x override value for x coordinate of beam center in pixels
+    @param override_beam_y override value for y coordinate of beam center in pixels
     """
 
     # Cannot use the super().__init__() construct here, because
@@ -95,6 +99,8 @@ class common_mode_correction(mod_event_info):
     if self.filter_laser_4_status is not None:
       self.filter_laser_4_status = bool(self.filter_laser_4_status)
     self.filter_laser_wait_time = cspad_tbx.getOptInteger(laser_wait_time)
+    self.override_beam_x = cspad_tbx.getOptFloat(override_beam_x)
+    self.override_beam_y = cspad_tbx.getOptFloat(override_beam_y)
 
     self.cspad_img = None # The current image - set by self.event()
     self.sum_common_mode = 0
@@ -123,6 +129,8 @@ class common_mode_correction(mod_event_info):
     elif device == 'marccd':
       self.sections = [] # XXX FICTION
     elif device == 'pnCCD':
+      self.sections = [] # XXX FICTION
+    elif device == 'Rayonix':
       self.sections = [] # XXX FICTION
     elif device == 'Opal1000':
       self.sections = [] # XXX FICTION
@@ -197,6 +205,9 @@ class common_mode_correction(mod_event_info):
 
     if self.address == 'XppGon-0|marccd-0':
       #mod_mar.py will set these during its event function
+      self.active_areas = None
+      self.beam_center = None
+    elif self.address == 'XppEndstation-0|Rayonix-0':
       self.active_areas = None
       self.beam_center = None
     elif self.address == 'XppGon-0|Cspad-0':
@@ -302,6 +313,11 @@ class common_mode_correction(mod_event_info):
         # to set this up.  The MAR does not have a configure object.
         self.beam_center = evt.get("marccd_beam_center")
         self.active_areas = evt.get("marccd_active_areas")
+      elif self.address == 'XppEndstation-0|Rayonix-0':
+        assert self.override_beam_x is not None
+        assert self.override_beam_y is not None
+        self.beam_center = self.override_beam_x,self.override_beam_y
+        self.active_areas = None # set later
       elif self.address == 'XppGon-0|Cspad-0':
         # Load the active areas as determined from the optical metrology
         from xfel.detector_formats import detector_format_version, reverse_timestamp
@@ -341,6 +357,15 @@ class common_mode_correction(mod_event_info):
       # XPP metrology.
       self.cspad_img = cspad_tbx.image_xpp(
         self.address, evt, env, self.active_areas)
+    elif self.address == 'XppEndstation-0|Rayonix-0':
+      from psana import Source, Camera
+      import numpy as np
+      address = cspad_tbx.old_address_to_new_address(self.address)
+      src=Source('DetInfo(%s)'%address)
+      self.cspad_img = evt.get(Camera.FrameV1,src)
+      if self.cspad_img is not None:
+        self.cspad_img = self.cspad_img.data16().astype(np.float64)
+        self.active_areas = flex.int([0,0,self.cspad_img.shape[0],self.cspad_img.shape[1]])
     elif self.address=='CxiDg3-0|Opal1000-0':
       if evt.getFrameValue(self.address) is not None:
         self.cspad_img = evt.getFrameValue(self.address).data()

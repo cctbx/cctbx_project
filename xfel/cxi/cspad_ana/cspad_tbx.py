@@ -850,7 +850,6 @@ def env_detz(address, env):
   the given address string on the z-axis in mm.  The zero-point is as
   far away as possible from the sample, and values decrease as the
   detector is moved towards the sample.
-
   @param address Full data source address of the DAQ device
   @param env     Environment object
   @return        Detector z-position, in mm
@@ -879,6 +878,11 @@ def env_detz(address, env):
         pv = env.epicsStore().value('CXI:DS1:MMS:06.RBV')
     elif detector == 'XppGon':
       # There is no distance recorded for the XPP's CSPAD on the robot
+      # arm.  Always return zero to allow the distance to be set using
+      # the offset.
+      return 0
+    elif detector == 'XppEndstation':
+      # There is no distance recorded for the XPP's Rayonix on the robot
       # arm.  Always return zero to allow the distance to be set using
       # the offset.
       return 0
