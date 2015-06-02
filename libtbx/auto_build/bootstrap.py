@@ -663,12 +663,12 @@ class Builder(object):
     elif sys.platform == "win32" and method == 'pscp':
       self._add_pscp(module, url)
     elif sys.platform == "win32" and tarurl:
-        # if more bootstraps are running avoid potential race condition on
-        # remote server by using unique random filenames
-        randarxname = next(tempfile._get_candidate_names()) + "_" + arxname
-        self._add_remote_make_tar(module, tarurl, randarxname, dirpath)
-        self._add_pscp(module, tarurl + ':' + randarxname)
-        self._add_remote_rm_tar(module, tarurl, randarxname)
+      # if more bootstraps are running avoid potential race condition on
+      # remote server by using unique random filenames
+      randarxname = next(tempfile._get_candidate_names()) + "_" + arxname
+      self._add_remote_make_tar(module, tarurl, randarxname, dirpath)
+      self._add_pscp(module, tarurl + ':' + randarxname)
+      self._add_remote_rm_tar(module, tarurl, randarxname)
     elif method == 'curl':
       self._add_curl(module, url)
     elif method == 'svn':
