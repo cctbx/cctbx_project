@@ -34,6 +34,12 @@ class postref_handler(object):
       target_anomalous_flag = False
 
     observations = observations_pickle["observations"][0]
+    if iparams.reindex_op == 'h,k,l':
+      pass
+    else:
+      from cctbx import sgtbx
+      cb_op = sgtbx.change_of_basis_op(iparams.reindex_op)
+      observations = observations.change_basis(cb_op)
 
     detector_distance_mm = observations_pickle['distance']
     mm_predictions = iparams.pixel_size_mm*(observations_pickle['mapped_predictions'][0])

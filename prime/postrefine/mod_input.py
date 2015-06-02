@@ -281,6 +281,9 @@ flag_replace_sigI = False
 percent_cone_fraction = 5.0
   .type = float
   .help = Perent used to select reflections inside a cone centering on each crystal axis.
+reindex_op = h,k,l
+  .type = str
+  .help = Change basis for the input observations.
 iotacc
   .help = "Parameters used in prime.iotacc selection."
 {
