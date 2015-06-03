@@ -582,34 +582,38 @@ def run(processed_args, params):
     if(not crystal_symmetries[0].is_similar_symmetry(crystal_symmetries[1])):
       raise Sorry("Crystal symmetry mismatch between different files.")
     crystal_symmetry = crystal_symmetries[0]
-  reflection_file = reflection_file_reader.any_reflection_file(
-    file_name = params.reflection_file_name, ensure_read_access = True)
-  rfs = reflection_file_server(
-    crystal_symmetry = crystal_symmetry,
-    reflection_files = [reflection_file])
-  parameters = utils.data_and_flags_master_params().extract()
-  if(params.data_labels is not None):
-    parameters.labels = [processed_args.data_labels]
-  determine_data_and_flags_result = utils.determine_data_and_flags(
-    reflection_file_server  = rfs,
-    parameters              = parameters,
-    keep_going              = True,
-    log                     = StringIO())
-  f_obs = determine_data_and_flags_result.f_obs
-  r_free_flags = determine_data_and_flags_result.r_free_flags
-  if(r_free_flags is None):
-    r_free_flags=f_obs.array(data=flex.bool(f_obs.data().size(), False))
-    test_flag_value=None
+  f_obs = None
+  r_free_flags = None
+  if(params.reflection_file_name is not None):
+    reflection_file = reflection_file_reader.any_reflection_file(
+      file_name = params.reflection_file_name, ensure_read_access = True)
+    rfs = reflection_file_server(
+      crystal_symmetry = crystal_symmetry,
+      reflection_files = [reflection_file])
+    parameters = utils.data_and_flags_master_params().extract()
+    if(params.data_labels is not None):
+      parameters.labels = [processed_args.data_labels]
+    determine_data_and_flags_result = utils.determine_data_and_flags(
+      reflection_file_server  = rfs,
+      parameters              = parameters,
+      keep_going              = True,
+      log                     = StringIO())
+    f_obs = determine_data_and_flags_result.f_obs
+    r_free_flags = determine_data_and_flags_result.r_free_flags
+    if(r_free_flags is None):
+      r_free_flags=f_obs.array(data=flex.bool(f_obs.data().size(), False))
+      test_flag_value=None
   xray_structure = iotbx.pdb.input(file_name =
     params.pdb_file_name).xray_structure_simple()
   xray_structure_da = None
   if(params.external_da_pdb_file_name is not None):
     xray_structure_da = iotbx.pdb.input(file_name =
       params.external_da_pdb_file_name).xray_structure_simple()
-  f_obs = f_obs.resolution_filter(d_min = params.high_resolution,
-    d_max = params.low_resolution)
-  r_free_flags = r_free_flags.resolution_filter(d_min = params.high_resolution,
-    d_max = params.low_resolution)
+  if(f_obs is not None):
+    f_obs = f_obs.resolution_filter(d_min = params.high_resolution,
+      d_max = params.low_resolution)
+    r_free_flags = r_free_flags.resolution_filter(d_min = params.high_resolution,
+      d_max = params.low_resolution)
   #
   assert params.mode in ["build", "build_and_refine"]
   grow_density(f_obs             = f_obs,
