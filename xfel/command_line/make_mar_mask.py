@@ -14,6 +14,7 @@ from __future__ import division
 from scitbx.array_family import flex
 import sys
 from libtbx import easy_pickle
+from xfel.cxi.cspad_ana.cspad_tbx import dpack, dwritef2
 
 def point_in_polygon(point, poly):
   """ Determine if a point is inside a given polygon or not.  Polygon is a list of (x,y) pairs.
@@ -77,6 +78,11 @@ def run(argv=None):
                           default="mask.pickle",
                           dest="destpath",
                           help="Output file path, should be *.pickle")
+                   .option(None, "--pixel_size", "-s",
+                          type="float",
+                          default=None,
+                          dest="pixel_size",
+                          help="Pixel size for detector")
                   ).process(args=argv[1:])
 
   # Must have width and height set
@@ -152,6 +158,21 @@ def run(argv=None):
     (masked_out,len(mask),(masked_out)*100/(len(mask)))
 
   easy_pickle.dump(command_line.options.destpath, mask)
+
+  d = dpack(
+    active_areas=[0,0,command_line.options.mask_width,command_line.options.mask_height],
+    address=None,
+    beam_center_x=None,
+    beam_center_y=None,
+    data=mask,
+    distance=None,
+    timestamp=None,
+    wavelength=1,
+    xtal_target=None,
+    pixel_size=command_line.options.pixel_size,
+    saturated_value=None)
+
+  dwritef2(d, command_line.options.destpath)
 
 if (__name__ == "__main__"):
   sys.exit(run())
