@@ -34,9 +34,6 @@ torsion_ncs_params = iotbx.phil.parse("""
  limit = 15.0
    .type = float
    .short_caption = Restraint limit (degrees)
- similarity = .80
-   .type = float
-   .short_caption = Sequence similarity cutoff
  fix_outliers = Auto
    .type = bool
    .short_caption = Fix rotamer outliers first
@@ -51,8 +48,6 @@ torsion_ncs_params = iotbx.phil.parse("""
  damping_limit = 10.0
    .type = float
    .expert_level = 1
- verbose = True
-   .type = bool
  filter_phi_psi_outliers = True
    .type = bool
    .expert_level = 4
@@ -62,29 +57,6 @@ torsion_ncs_params = iotbx.phil.parse("""
  silence_warnings = False
    .type = bool
    .expert_level = 4
- restraint_group
-  .multiple=True
-  .optional=True
-  .caption = These atom selections define groups of residues whose dihedral \
-    angles will be restrained to be similar.  This is normally done \
-    automatically, and the restraints are designed to release dihedral angles \
-    which are genuinely different.  You do not have to enter groups now \
-    unless you wish to view and/or edit them prior to running phenix.refine.
-  .short_caption=Torsion NCS restraint group
-  .style = noauto box caption_img:icons/custom/ncs_tb.png
- {
-  selection=None
-    .type=atom_selection
-    .short_caption=Restrained selection
-    .multiple=True
-    .input_size = 540
-    .style = use_list
-  b_factor_weight=10
-    .type=float
-    .short_caption = B factor weight
-  coordinate_sigma=0.5
-      .type = float
- }
 """)
 
 class torsion_ncs(object):
@@ -92,8 +64,6 @@ class torsion_ncs(object):
                pdb_hierarchy=None,
                fmodel=None,
                params=None,
-               b_factor_weight=None, # should not be used
-               coordinate_sigma=None,
                selection=None,
                ncs_groups=None,
                ncs_obj = None,
@@ -116,8 +86,6 @@ class torsion_ncs(object):
     self.slack = 0.0
     self.filter_phi_psi_outliers = params.filter_phi_psi_outliers
     self.restrain_to_master_chain = params.restrain_to_master_chain
-    self.b_factor_weight = b_factor_weight
-    self.coordinate_sigma = coordinate_sigma
     self.fmodel = fmodel
     self.ncs_groups = ncs_obj.get_array_of_selections()
     self.ncs_obj = ncs_obj
@@ -456,7 +424,7 @@ class torsion_ncs(object):
           finish = previous
           self.master_ranges[key].append( (start, finish) )
 
-      if self.params.verbose and self.ncs_dihedral_proxies is None:
+      if self.ncs_dihedral_proxies is None:
         self.show_ncs_summary(log=self.log)
       if self.ncs_dihedral_proxies is None: #first time run
         print >> self.log, "Initializing torsion NCS restraints..."
@@ -1337,10 +1305,7 @@ class torsion_ncs(object):
         processed_pdb              = processed_pdb_file,
         reference_selection_string = master,
         selection_strings          = selection_strings,
-        coordinate_sigma           = param_group.coordinate_sigma,
-        b_factor_weight            = param_group.b_factor_weight,
-        special_position_warnings_only
-          = True,
+        special_position_warnings_only = True,
         log = log)
       ncs_groups.members.append(group)
     if (len(ncs_groups.members) == 0):
@@ -1436,8 +1401,6 @@ class torsion_ncs(object):
     return torsion_ncs(
              fmodel=self.fmodel,
              params=self.params,
-             b_factor_weight=self.b_factor_weight,
-             coordinate_sigma=self.coordinate_sigma,
              selection=None, #not sure here
              ncs_groups=self.ncs_groups,
              ncs_obj=self.ncs_obj,
@@ -1479,6 +1442,7 @@ class get_ncs_groups(object):
                use_segid,
                params,
                log):
+    assert 0, "Switched to Youval's search procedure"
     ncs_groups = []
     alignments = {}
     used_chains = []
@@ -1582,6 +1546,7 @@ class get_ncs_groups(object):
 def determine_ncs_groups(pdb_hierarchy,
                          params=None,
                          log=None):
+  assert 0, "Shouldn't be exeucted, swithced to Youval's search"
   pdb_hierarchy.reset_i_seq_if_necessary()
   if params is None:
     params = torsion_ncs_params.extract()
