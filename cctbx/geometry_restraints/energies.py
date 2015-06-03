@@ -16,7 +16,7 @@ class energies(scitbx.restraints.energies):
                angle_proxies=None,
                dihedral_proxies=None,
                reference_coordinate_proxies=None,
-               reference_dihedral_proxies=None,
+               reference_dihedral_manager=None,
                ncs_dihedral_manager=None,
                den_manager=None,
                chirality_proxies=None,
@@ -75,12 +75,10 @@ class energies(scitbx.restraints.energies):
     # ====================================================================
     # Unit cell dependent
     # ====================================================================
-
-    # parameter, function to call
+    # name, parameter, function to call
     for name, proxies, residual_sum_function in [
         ("angle", angle_proxies, geometry_restraints.angle_residual_sum),
         ("dihedral",dihedral_proxies, geometry_restraints.dihedral_residual_sum),
-        ("reference_dihedral",reference_dihedral_proxies, geometry_restraints.dihedral_residual_sum),
         ("planarity", planarity_proxies, geometry_restraints.planarity_residual_sum),
         ("parallelity", parallelity_proxies, geometry_restraints.parallelity_residual_sum),
         ("bond_similarity", bond_similarity_proxies, geometry_restraints.bond_similarity_residual_sum)]:
@@ -105,29 +103,30 @@ class energies(scitbx.restraints.energies):
         setattr(self, "n_%s_proxies" % name, n_proxies)
         setattr(self, "%s_residual_sum" % name, res_sum)
 
-    if (ncs_dihedral_manager is None):
-      self.n_ncs_dihedral_proxies = None
-      self.ncs_dihedral_residual_sum = 0
-    else:
-      self.n_ncs_dihedral_proxies = ncs_dihedral_manager.get_n_proxies()
-      self.ncs_dihedral_residual_sum = ncs_dihedral_manager.target_and_gradients(
-          unit_cell=unit_cell,
-          sites_cart=sites_cart,
-          gradient_array=self.gradients)
-      self.number_of_restraints += self.n_ncs_dihedral_proxies
-      self.residual_sum += self.ncs_dihedral_residual_sum
+    # ====================================================================
+    # Managers
+    # ====================================================================
+    for name, manager in [
+        ("reference_dihedral", reference_dihedral_manager),
+        ("ncs_dihedral", ncs_dihedral_manager),
+        ("den", den_manager),
+        ("ramachandran", ramachandran_manager)]:
+      setattr(self, "n_%s_proxies" % name, None)
+      setattr(self, "%s_residual_sum" % name, 0)
+      if manager is not None:
+        n_proxies = manager.get_n_proxies()
+        res_sum = manager.target_and_gradients(
+            unit_cell=unit_cell,
+            sites_cart=sites_cart,
+            gradient_array=self.gradients)
+        self.number_of_restraints += n_proxies
+        self.residual_sum += res_sum
+        setattr(self, "n_%s_proxies" % name, n_proxies)
+        setattr(self, "%s_residual_sum" % name, res_sum)
 
-    if den_manager is None:
-      self.n_den_proxies = None
-      self.den_residual_sum = 0
-    else:
-      self.n_den_proxies = den_manager.get_n_proxies()
-      self.den_residual_sum = den_manager.target_and_gradients(
-          sites_cart=sites_cart,
-          gradient_array=self.gradients)
-      self.number_of_restraints += self.n_den_proxies
-      self.residual_sum += self.den_residual_sum
-
+    # ====================================================================
+    # The rest (not yet unified)
+    # ====================================================================
     if reference_coordinate_proxies is None:
       self.n_reference_coordinate_proxies = None
       self.reference_coordinate_residual_sum = 0
@@ -154,17 +153,6 @@ class energies(scitbx.restraints.energies):
         gradient_array=self.gradients)
       self.number_of_restraints += self.n_chirality_proxies
       self.residual_sum += self.chirality_residual_sum
-
-    if ramachandran_manager is None:
-      self.n_ramachandran_proxies = 0
-      self.ramachandran_residual_sum = 0
-    else:
-      self.n_ramachandran_proxies = self.ramachandran_manager.get_n_proxies()
-      self.ramachandran_residual_sum = self.ramachandran_manager.restraints_residual_sum(
-          sites_cart=sites_cart,
-          gradient_array=self.gradients)
-      self.number_of_restraints += self.n_ramachandran_proxies
-      self.residual_sum += self.ramachandran_residual_sum
 
     if (external_energy_function is not None) :
       self.external_energy = external_energy_function(
@@ -294,6 +282,7 @@ class energies(scitbx.restraints.energies):
       return r_min, r_max, r_ave
 
   def dihedral_deviations(self):
+    # !!!XXX!!! Warnign! this works wrong because it is not aware of origin_id!
     if(self.n_dihedral_proxies is not None):
       dihedral_deltas = geometry_restraints.dihedral_deltas(
         sites_cart = self.sites_cart,
@@ -305,6 +294,7 @@ class energies(scitbx.restraints.energies):
       return d_min, d_max, d_ave
 
   def reference_dihedral_deviations(self):
+    assert 0, "Not working"
     if(self.n_reference_dihedral_proxies is not None):
       reference_dihedral_deltas = geometry_restraints.reference_dihedral_deltas(
         sites_cart = self.sites_cart,
@@ -315,16 +305,17 @@ class energies(scitbx.restraints.energies):
       d_min = math.sqrt(flex.min_default(d_sq, 0))
       return d_min, d_max, d_ave
 
-  def ncs_dihedral_deviations(self):
-    if(self.n_ncs_dihedral_proxies is not None):
-      ncs_dihedral_deltas = geometry_restraints.ncs_dihedral_deltas(
-        sites_cart = self.sites_cart,
-        proxies    = self.ncs_dihedral_manager.ncs_dihedral_proxies)
-      d_sq  = ncs_dihedral_deltas * ncs_dihedral_deltas
-      d_ave = math.sqrt(flex.mean_default(d_sq, 0))
-      d_max = math.sqrt(flex.max_default(d_sq, 0))
-      d_min = math.sqrt(flex.min_default(d_sq, 0))
-      return d_min, d_max, d_ave
+  # def ncs_dihedral_deviations(self):
+      # It is probably wrong anyway - origin_id!
+  #   if(self.n_ncs_dihedral_proxies is not None):
+  #     ncs_dihedral_deltas = geometry_restraints.ncs_dihedral_deltas(
+  #       sites_cart = self.sites_cart,
+  #       proxies    = self.ncs_dihedral_manager.ncs_dihedral_proxies)
+  #     d_sq  = ncs_dihedral_deltas * ncs_dihedral_deltas
+  #     d_ave = math.sqrt(flex.mean_default(d_sq, 0))
+  #     d_max = math.sqrt(flex.max_default(d_sq, 0))
+  #     d_min = math.sqrt(flex.min_default(d_sq, 0))
+  #     return d_min, d_max, d_ave
 
   def chirality_deviations(self):
     if(self.n_chirality_proxies is not None):
@@ -338,6 +329,8 @@ class energies(scitbx.restraints.energies):
       return c_min, c_max, c_ave
 
   def planarity_deviations(self):
+    # XXX Need update, does not respect origin_id
+    # assert 0, "Not counting for origin_id"
     if(self.n_planarity_proxies is not None):
       planarity_deltas = geometry_restraints.planarity_deltas_rms(
         sites_cart = self.sites_cart,

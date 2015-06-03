@@ -176,7 +176,8 @@ def exercise_lbfgs_simple (mon_lib_srv, ener_lib, verbose=False) :
     rama_manager = ramachandran.ramachandran_manager(
         pdb_hierarchy, None, params, log)
     assert rama_manager.get_n_proxies() == 1
-    residual_an = rama_manager.restraints_residual_sum(
+    residual_an = rama_manager.target_and_gradients(
+      unit_cell=None,
       sites_cart=sites_cart_1,
       gradient_array=gradients_an)
     assert approx_equal(residual_an, residuals[i], eps=0.00001)
