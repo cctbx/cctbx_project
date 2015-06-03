@@ -90,32 +90,12 @@ ATOM   5496  O   ALA C 271      15.944  67.448  32.224  1.00  6.47           O
 ATOM   5497  CB  ALA C 271      17.151  68.239  29.297  1.00  8.10           C
 """
 
-def get_master_phil():
-  return iotbx.phil.parse(
-    input_string="""\
-reference_model
-{
-  include \
-    scope mmtbx.geometry_restraints.torsion_restraints.reference_model.reference_model_params
-}
-""", process_includes=True)
 
 def exercise_reference_model(args, mon_lib_srv, ener_lib):
   log = cStringIO.StringIO()
-  master_phil = get_master_phil()
-  input_objects = iotbx.utils.process_command_line_inputs(
-    args=args,
-    master_phil=master_phil,
-    input_types=("mtz", "pdb", "cif"))
-  work_phil = master_phil.fetch(sources=input_objects["phil"])
-  master_phil_str_overrides = """
-  reference_model {
-    fix_outliers=False
-  }
-  """
-  phil_objects = [
-    iotbx.phil.parse(input_string=master_phil_str_overrides)]
-  work_params = master_phil.fetch(sources=phil_objects).extract()
+  work_params = reference_model_params.extract()
+  work_params.reference_model.enabled = True
+  work_params.reference_model.fix_outliers = False
   pdb_hierarchy = iotbx.pdb.input(
     source_info=None,
     lines=flex.split_lines(model_raw_records)).construct_hierarchy()
@@ -130,7 +110,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
          reference_hierarchy_list=reference_hierarchy_list,
          params=work_params.reference_model,
          log=log)
-  assert len(rm.reference_dihedral_proxies) == 7
+  assert rm.get_n_proxies() == 7, "Got %d, expected 7" % rm.get_n_proxies()
 
   reference_hierarchy_list_alt_seq = []
   tmp_hierarchy = iotbx.pdb.input(
@@ -223,13 +203,14 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
     selection= chain C and resid 236:237
   }
   """
-  phil_objects = [
-    iotbx.phil.parse(input_string=master_phil_str_overrides)]
-  work_params_alt = master_phil.fetch(sources=phil_objects).extract()
+  def_pars = reference_model_params
+  pars = iotbx.phil.parse(master_phil_str_overrides)
+  all_pars = def_pars.fetch(pars).extract()
+  all_pars.reference_model.enabled = True
   rm = reference_model(
          pdb_hierarchy=pdb_hierarchy,
          reference_hierarchy_list=reference_hierarchy_list_alt_seq,
-         params=work_params_alt.reference_model,
+         params=all_pars.reference_model,
          log=log)
   match_map = rm.match_map
   assert match_map['ref1'] == \
@@ -242,19 +223,15 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   pdb_hierarchy = iotbx.pdb.input(file_name=pdb_file).construct_hierarchy()
   reference_file_list = []
   reference_file_list.append(pdb_file)
-  work_phil = master_phil.fetch(sources=input_objects["phil"])
-  master_phil_str_overrides = """
-  reference_model {
-    fix_outliers=False
-  }
-  """
-  phil_objects = [
-    iotbx.phil.parse(input_string=master_phil_str_overrides)]
-  work_params = master_phil.fetch(sources=phil_objects).extract()
+
+  work_pars = reference_model_params.extract()
+  work_pars.reference_model.fix_outliers = False
+  work_pars.reference_model.enabled = True
+
   rm = reference_model(
          pdb_hierarchy=pdb_hierarchy,
          reference_file_list=reference_file_list,
-         params=work_params.reference_model,
+         params=work_pars.reference_model,
          log=log)
   reference_dihedral_proxies = rm.reference_dihedral_proxies
   standard_weight = 0
@@ -265,15 +242,10 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   if (not libtbx.env.has_module(name="ksdssp")):
     print "Skipping KSDSSP tests: ksdssp module not available."
   else:
-    master_phil_str_overrides = """
-    reference_model {
-      secondary_structure_only = True
-    }
-    """
-    phil_objects = [
-      iotbx.phil.parse(input_string=master_phil_str_overrides)]
-    work_params_ss = master_phil.fetch(sources=phil_objects).extract()
-    rm.params = work_params_ss.reference_model
+    work_pars = reference_model_params.extract()
+    work_pars.reference_model.secondary_structure_only = True
+    work_pars.reference_model.enabled = True
+    rm.params = work_pars.reference_model
     rm.get_reference_dihedral_proxies()
     reference_dihedral_proxies = rm.reference_dihedral_proxies
     ss_weight = 0
@@ -636,6 +608,7 @@ TER
   }  """
   pars = iotbx.phil.parse(params_text)
   all_pars = def_pars.fetch(pars).extract()
+  all_pars.reference_model.enabled = True
   inp_hierarchy = iotbx.pdb.input(
       source_info=None,
       lines=flex.split_lines(pdb_str_original)).construct_hierarchy()
@@ -644,7 +617,7 @@ TER
          reference_file_list=['ref.pdb'],
          mon_lib_srv=mon_lib_srv,
          ener_lib=ener_lib,
-         params=all_pars,
+         params=all_pars.reference_model,
          log=log)
   # rm.show_reference_summary(log=log)
   new_h = inp_hierarchy.deep_copy()
@@ -681,26 +654,26 @@ END
 
   pdb_str_ref = """\
 CRYST1  117.739  195.224  119.094  90.00 101.60  90.00 P 1 21 1
-ATOM      1  N   THR K 332       4.195  72.012  51.895  1.00171.28           N
-ATOM      2  CA  THR K 332       2.946  71.699  52.580  1.00153.71           C
-ATOM      3  C   THR K 332       1.980  70.971  51.651  1.00132.45           C
-ATOM      4  O   THR K 332       2.092  71.062  50.429  1.00130.38           O
-ATOM      5  CB  THR K 332       2.291  72.982  53.125  1.00 20.00           C
-ATOM      6  OG1 THR K 332       2.036  73.887  52.046  1.00 20.00           O
-ATOM      7  CG2 THR K 332       3.269  73.749  54.003  1.00 20.00           C
-ATOM      8  N   VAL K 333       1.033  70.248  52.240  1.00121.58           N
-ATOM      9  CA  VAL K 333       0.047  69.503  51.468  1.00129.11           C
-ATOM     10  C   VAL K 333      -1.363  69.905  51.883  1.00146.57           C
-ATOM     11  O   VAL K 333      -1.552  70.599  52.882  1.00151.92           O
-ATOM     12  CB  VAL K 333       0.216  67.983  51.643  1.00 20.00           C
-ATOM     13  CG1 VAL K 333      -0.905  67.237  50.935  1.00 20.00           C
-ATOM     14  CG2 VAL K 333       1.574  67.534  51.125  1.00 20.00           C
-ATOM     15  N   SER K 334      -2.351  69.465  51.111  1.00156.08           N
-ATOM     16  CA  SER K 334      -3.745  69.778  51.397  1.00158.16           C
-ATOM     17  C   SER K 334      -4.297  68.870  52.492  1.00157.55           C
-ATOM     18  O   SER K 334      -3.964  67.686  52.556  1.00161.93           O
-ATOM     19  CB  SER K 334      -4.595  69.652  50.131  1.00162.09           C
-ATOM     20  OG  SER K 334      -5.954  69.950  50.396  1.00170.98           O
+ATOM      1  N   THR G 332       4.195  72.012  51.895  1.00171.28           N
+ATOM      2  CA  THR G 332       2.946  71.699  52.580  1.00153.71           C
+ATOM      3  C   THR G 332       1.980  70.971  51.651  1.00132.45           C
+ATOM      4  O   THR G 332       2.092  71.062  50.429  1.00130.38           O
+ATOM      5  CB  THR G 332       2.291  72.982  53.125  1.00 20.00           C
+ATOM      6  OG1 THR G 332       2.036  73.887  52.046  1.00 20.00           O
+ATOM      7  CG2 THR G 332       3.269  73.749  54.003  1.00 20.00           C
+ATOM      8  N   VAL G 333       1.033  70.248  52.240  1.00121.58           N
+ATOM      9  CA  VAL G 333       0.047  69.503  51.468  1.00129.11           C
+ATOM     10  C   VAL G 333      -1.363  69.905  51.883  1.00146.57           C
+ATOM     11  O   VAL G 333      -1.552  70.599  52.882  1.00151.92           O
+ATOM     12  CB  VAL G 333       0.216  67.983  51.643  1.00 20.00           C
+ATOM     13  CG1 VAL G 333      -0.905  67.237  50.935  1.00 20.00           C
+ATOM     14  CG2 VAL G 333       1.574  67.534  51.125  1.00 20.00           C
+ATOM     15  N   SER G 334      -2.351  69.465  51.111  1.00156.08           N
+ATOM     16  CA  SER G 334      -3.745  69.778  51.397  1.00158.16           C
+ATOM     17  C   SER G 334      -4.297  68.870  52.492  1.00157.55           C
+ATOM     18  O   SER G 334      -3.964  67.686  52.556  1.00161.93           O
+ATOM     19  CB  SER G 334      -4.595  69.652  50.131  1.00162.09           C
+ATOM     20  OG  SER G 334      -5.954  69.950  50.396  1.00170.98           O
   """
   params_text = """\
   reference_model {
@@ -722,6 +695,7 @@ ATOM     20  OG  SER K 334      -5.954  69.950  50.396  1.00170.98           O
   def_pars = reference_model_params
   pars = iotbx.phil.parse(params_text)
   all_pars = def_pars.fetch(pars).extract()
+  all_pars.reference_model.enabled = True
   inp_hierarchy = iotbx.pdb.input(
       source_info=None,
       lines=flex.split_lines(pdb_str_original)).construct_hierarchy()
@@ -730,7 +704,7 @@ ATOM     20  OG  SER K 334      -5.954  69.950  50.396  1.00170.98           O
          reference_file_list=['ref.pdb'],
          mon_lib_srv=mon_lib_srv,
          ener_lib=ener_lib,
-         params=all_pars,
+         params=all_pars.reference_model,
          log=log)
   rm.show_reference_summary(log=log)
   new_h = inp_hierarchy.deep_copy()
