@@ -3621,4 +3621,6 @@ xfel/small_cell/small_cell.py -text
 xfel/small_cell/solve_orientation.py -text
 xfel/util/cctbx_xfel_installer.py svneol=native#text/x-python
 xfel/vonHamos/__init__.py -text
+xfel/vonHamos/fit_3_gaussian.py -text
+xfel/vonHamos/test_3_gaussian.py -text
 xfel/vonHamos/xes_ext.cpp -text
