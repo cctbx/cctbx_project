@@ -124,10 +124,11 @@ class ramachandran_manager(object):
     print >> self.log, ""
     print >> self.log, "  %d Ramachandran restraints generated." % self.get_n_proxies()
 
-  def restraints_residual_sum (self,
-                               sites_cart,
-                               gradient_array=None,
-                               residuals_array=None) :
+  def target_and_gradients (self,
+      unit_cell,
+      sites_cart,
+      gradient_array=None,
+      residuals_array=None) :
     assert self.proxies is not None
     if(gradient_array is None) :
       gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
@@ -191,8 +192,9 @@ class ramachandran_manager(object):
     if self.get_n_proxies() == 0:
       return
     residuals_array = flex.double(self.proxies.size())
-    self.restraints_residual_sum(
-        sites_cart,
+    self.target_and_gradients(
+        unit_cell=None,
+        sites_cart=sites_cart,
         residuals_array=residuals_array)
     result = []
     labels = site_labels if site_labels is not None \

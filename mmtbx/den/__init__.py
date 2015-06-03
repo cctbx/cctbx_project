@@ -422,6 +422,7 @@ class den_restraints(object):
       dp.eq_distance = eq_distances[i]
 
   def target_and_gradients(self,
+                           unit_cell,
                            sites_cart,
                            gradient_array):
     return self.ext.den_simple_residual_sum(
