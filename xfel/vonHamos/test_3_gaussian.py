@@ -63,9 +63,22 @@ if __name__=="__main__":
         for i in xrange(len(values)):
           inelastic[key,i] = values[i]
 
-  plt.figure()
-  plt.imshow(inelastic,interpolation="none")
-  plt.title("Dark + inelastic + elastic histogram fitting")
-  plt.colorbar()
-  plt.clim(0, 220)
-  plt.show()
+  # save fitting result:
+  # some heuristics to output a proper filename
+  if fname.find('_offline')>=0:
+    filename = fname.replace('_offline','_fitted')
+  else:
+    filename = fname.replace('.h5','_fitted.h5')
+  ofile = h5py.File(filename, 'w')
+  group = ofile.create_group("mydata")
+  group.create_dataset("cspad_photons", data=inelastic)
+  ofile.close()
+  print '*** fitted image saved as', filename
+
+  if fig:
+    plt.figure()
+    plt.imshow(inelastic,interpolation="none")
+    plt.title("Dark + inelastic + elastic histogram fitting")
+    plt.colorbar()
+    plt.clim(0, 220)
+    plt.show()
