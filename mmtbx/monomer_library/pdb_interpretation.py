@@ -172,7 +172,7 @@ master_params_str = """\
       alternately leave the global setting off and enable individual link \
       types separately.
   {
-    link_all = False
+    link_all = Auto
       .type = bool
       .short_caption = Automatic ligand linking
       .help = If True, bond restraints will be generated for any appropriate \
@@ -4595,10 +4595,16 @@ class build_all_chain_proxies(linking_mixins):
                   "link_carbohydrates",
                   "link_amino_acid_rna_dna",
                   ]
-    if al_params.link_all:
+    if al_params.link_all is Auto:
+      pass
+    elif al_params.link_all:
       for attr in link_attrs:
         setattr(al_params, attr, True)
         any_links = True
+    elif not al_params.link_all:
+      for attr in link_attrs:
+        setattr(al_params, attr, False)
+        any_links = False
     for attr in link_attrs:
       if getattr(al_params, attr, False):
         any_links = True
