@@ -59,7 +59,7 @@ class manager(object):
         angle_proxies=None,
         dihedral_proxies=None,
         reference_coordinate_proxies=None,
-        reference_dihedral_proxies=None,
+        reference_dihedral_manager=None,
         ncs_dihedral_manager=None,
         den_manager=None,
         chirality_proxies=None,
@@ -320,7 +320,7 @@ class manager(object):
       angle_proxies=self.angle_proxies,
       dihedral_proxies=self.dihedral_proxies,
       reference_coordinate_proxies=self.reference_coordinate_proxies,
-      reference_dihedral_proxies=self.reference_dihedral_proxies,
+      reference_dihedral_manager=self.reference_dihedral_manager,
       ramachandran_manager=self.ramachandran_manager,
       ncs_dihedral_manager=self.ncs_dihedral_manager,
       den_manager=self.den_manager,
@@ -375,7 +375,7 @@ class manager(object):
 
     selected_proxies = [None]*11
     for i, proxies in enumerate([self.angle_proxies, self.dihedral_proxies,
-        self.reference_coordinate_proxies, self.reference_dihedral_proxies,
+        self.reference_coordinate_proxies, self.reference_dihedral_manager,
         self.ncs_dihedral_manager, self.den_manager, self.chirality_proxies,
         self.planarity_proxies, self.parallelity_proxies,
         self.ramachandran_manager]):
@@ -400,7 +400,7 @@ class manager(object):
       angle_proxies=selected_proxies[0],
       dihedral_proxies=selected_proxies[1],
       reference_coordinate_proxies=selected_proxies[2],
-      reference_dihedral_proxies=selected_proxies[3],
+      reference_dihedral_manager=selected_proxies[3],
       ramachandran_manager=selected_proxies[9],
       ncs_dihedral_manager=selected_proxies[4],
       den_manager=selected_proxies[5],
@@ -432,7 +432,7 @@ class manager(object):
       angle_proxies=self.angle_proxies,
       dihedral_proxies=self.dihedral_proxies,
       reference_coordinate_proxies=self.reference_coordinate_proxies,
-      reference_dihedral_proxies=self.reference_dihedral_proxies,
+      reference_dihedral_manager=self.reference_dihedral_manager,
       ramachandran_manager=self.ramachandran_manager,
       ncs_dihedral_manager=self.ncs_dihedral_manager,
       den_manager=self.den_manager,
@@ -602,9 +602,12 @@ class manager(object):
   #=================================================================
   # Reference dihedral proxies methods
   #=================================================================
+  def adopt_reference_dihedral_manager(self, manager):
+    self.reference_dihedral_manager = manager
+
   def remove_reference_dihedrals_in_place(self, selection):
-    self.reference_dihedral_proxies = self.reference_dihedral_proxies.proxy_remove(
-      selection=selection)
+    if self.reference_dihedral_manager is not None:
+      reference_dihedral_manager.proxy_remove(selection=selection)
 
   def remove_ncs_dihedrals_in_place(self):
     if self.ncs_dihedral_manager is not None:
@@ -1171,7 +1174,7 @@ class manager(object):
      angle_proxies,
      dihedral_proxies,
      reference_coordinate_proxies,
-     reference_dihedral_proxies,
+     reference_dihedral_manager,
      ncs_dihedral_manager,
      den_manager,
      chirality_proxies,
@@ -1193,7 +1196,7 @@ class manager(object):
     if flags.reference_coordinate:
       reference_coordinate_proxies = self.reference_coordinate_proxies
     if (flags.reference_dihedral):
-      reference_dihedral_proxies = self.reference_dihedral_proxies
+      reference_dihedral_manager = self.reference_dihedral_manager
     if (flags.ncs_dihedral): ncs_dihedral_manager = self.ncs_dihedral_manager
     if flags.den_restraints: den_manager = self.den_manager
     if (flags.chirality): chirality_proxies = self.chirality_proxies
@@ -1209,7 +1212,7 @@ class manager(object):
       angle_proxies=angle_proxies,
       dihedral_proxies=dihedral_proxies,
       reference_coordinate_proxies=reference_coordinate_proxies,
-      reference_dihedral_proxies=reference_dihedral_proxies,
+      reference_dihedral_manager=reference_dihedral_manager,
       ncs_dihedral_manager=ncs_dihedral_manager,
       den_manager=den_manager,
       chirality_proxies=chirality_proxies,
@@ -1363,7 +1366,7 @@ class manager(object):
     for p_label, proxies in [
         ("Dihedral angle", self.get_dihedral_proxies()),
         ("C-Beta improper torsion angle", self.get_c_beta_torsion_proxies()),
-        ("Reference torsion angle", self.reference_dihedral_proxies),
+        ("Reference torsion angle", self.reference_dihedral_manager),
         ("NCS torsion angle", self.ncs_dihedral_manager),
         ("", self.ramachandran_manager),
         ("Chirality", self.chirality_proxies),

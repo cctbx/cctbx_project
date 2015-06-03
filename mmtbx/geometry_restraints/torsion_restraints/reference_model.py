@@ -20,59 +20,121 @@ import sys, re
 TOP_OUT_FLAG = True
 
 reference_model_params = iotbx.phil.parse("""
- file = None
-   .type = path
-   .short_caption = Reference model
-   .style = bold file_type:pdb hidden
-   .multiple = True
- use_starting_model_as_reference = False
-   .type = bool
-   .short_caption = use starting model as reference
- sigma = 1.0
-   .type = float
- limit = 15.0
-   .type = float
- hydrogens = False
-   .type = bool
- main_chain = True
-   .type = bool
- side_chain = True
-   .type = bool
- fix_outliers = True
-   .type = bool
- strict_rotamer_matching = False
-   .type = bool
- auto_shutoff_for_ncs = False
-   .type = bool
- SSM_alignment = True
-   .type = bool
- similarity = .80
-   .type = float
-   .short_caption = Sequence similarity cutoff
- secondary_structure_only = False
-   .type = bool
- reference_group
-  .multiple=True
-  .optional=True
-  .short_caption=Reference group
-  .style = noauto auto_align menu_item parent_submenu:reference_model
+reference_model
+    .caption = The reference torsion restraints are used to steer refinement \
+      of the  working model.  This technique is advantageous in cases where \
+      the working data set is low resolution, but there is a known related \
+      structure solved at higher resolution.  The higher resolution \
+      reference model is used to generate a set of dihedral restraints \
+      that are applied to each matching dihedral in the working model. \
+      To specify a PDB file as the reference model, add it to the list of \
+      input files in the main window, then change the data type from \
+      "Input model" to "Reference model".
+    .style = box auto_align menu_item
+    .short_caption = Reference model restraints
 {
-  reference=None
-    .type=atom_selection
-    .short_caption=Reference selection
-  selection=None
-    .type=atom_selection
-    .short_caption=Restrained selection
-  file_name=None
-    .type=path
+  enabled = False
+    .short_caption = Reference model restraints
+    .type = bool
+    .help = Restrains the dihedral angles to a high-resolution reference \
+      structure to reduce overfitting at low resolution.  You will need to \
+      specify a reference PDB file (in the input list in the main window) \
+      to use this option.
+    .style = bold noauto
+  file = None
+    .type = path
+    .short_caption = Reference model
+    .style = bold file_type:pdb hidden
+    .multiple = True
+  use_starting_model_as_reference = False
+    .type = bool
+    .short_caption = use starting model as reference
+  sigma = 1.0
+    .type = float
+  limit = 15.0
+    .type = float
+  hydrogens = False
+    .type = bool
+  main_chain = True
+    .type = bool
+  side_chain = True
+    .type = bool
+  fix_outliers = True
+    .type = bool
+  strict_rotamer_matching = False
+    .type = bool
+  auto_shutoff_for_ncs = False
+    .type = bool
+  SSM_alignment = True
+    .type = bool
+  similarity = .80
+    .type = float
+    .short_caption = Sequence similarity cutoff
+  secondary_structure_only = False
+    .type = bool
+  reference_group
+    .multiple=True
     .optional=True
-    .short_caption = Reference model for this restraint group
-    .style = bold hidden
-    .help = this is to used internally to disambiguate cases where multiple \
-            reference models contain the same chain ID. This normally does \
-            not need to be set by the user
+    .short_caption=Reference group
+    .style = noauto auto_align menu_item parent_submenu:reference_model
+  {
+    reference=None
+      .type=atom_selection
+      .short_caption=Reference selection
+    selection=None
+      .type=atom_selection
+      .short_caption=Restrained selection
+    file_name=None
+      .type=path
+      .optional=True
+      .short_caption = Reference model for this restraint group
+      .style = bold hidden
+      .help = this is to used internally to disambiguate cases where multiple \
+              reference models contain the same chain ID. This normally does \
+              not need to be set by the user
+  }
 }
 """)
+
+def add_reference_dihedral_restraints_if_requested(
+    geometry,
+    processed_pdb_file,
+    mon_lib_srv=None,
+    ener_lib=None,
+    has_hd=False,
+    params=None,
+    selection=None,
+    log=None):
+  if not params.enabled:
+    return 0
+  if params.use_starting_model_as_reference and len(params.file) > 0:
+    raise Sorry("Cannot not restrain working model to self and a "+
+                    "reference model simultaneously")
+  reference_file_list = []
+  if params.use_starting_model_as_reference:
+    reference_file_list.append(self.params.input.pdb.file_name[0])
+    print >> log, \
+      "*** Restraining model to starting coordinates ***"
+  else:
+    for file_name in params.file:
+      reference_file_list.append(file_name)
+  print >> log, "*** Adding Reference Model Restraints ***"
+  #test for inserted TER cards in working model
+  ter_indices = processed_pdb_file.all_chain_proxies.pdb_inp.ter_indices()
+  if ter_indices is not None:
+    utils.check_for_internal_chain_ter_records(
+      pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
+      ter_indices=ter_indices)
+  rm = reference_model(
+    pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
+    reference_file_list=reference_file_list,
+    has_hd=has_hd,
+    params=params,
+    selection=selection,
+    log=log)
+  # rm.add_reference_dihedral_proxies(geometry=geometry)
+  rm.show_reference_summary(log=log)
+  geometry.adopt_reference_dihedral_manager(rm) 
 
 class reference_model(object):
 
@@ -155,6 +217,46 @@ class reference_model(object):
     # This takes 80% of constructor time!!!
     self.get_reference_dihedral_proxies()
 
+  def proxy_remove(self, selection=None):
+    if self.reference_dihedral_proxies is not None:
+      self.reference_dihedral_proxies = \
+          self.reference_dihedral_proxies.proxy_remove(selection=selection)
+
+  def proxy_select(self, n_seq, iselection):
+    if self.reference_dihedral_proxies is not None:
+      self.reference_dihedral_proxies = \
+          self.reference_dihedral_proxies.proxy_select(n_seq, iselection)
+
+  def show_sorted(self, by_value, sites_cart, site_labels, proxy_label, f):
+    if self.reference_dihedral_proxies is not None:
+      self.reference_dihedral_proxies.show_sorted(
+          by_value=by_value,
+          sites_cart=sites_cart,
+          site_labels=site_labels,
+          proxy_label=proxy_label,
+          f=f)
+
+  def target_and_gradients(self, unit_cell, sites_cart, gradient_array):
+    res_sum = 0
+    if self.reference_dihedral_proxies is not None:
+      if unit_cell is None:
+        res_sum = cctbx.geometry_restraints.dihedral_residual_sum(
+            sites_cart=sites_cart,
+            proxies=self.reference_dihedral_proxies,
+            gradient_array=gradient_array)
+      else:
+        res_sum = cctbx.geometry_restraints.dihedral_residual_sum(
+            unit_cell=unit_cell,
+            sites_cart=sites_cart,
+            proxies=self.reference_dihedral_proxies,
+            gradient_array=gradient_array)
+    return res_sum
+
+  def get_n_proxies(self):
+    if self.reference_dihedral_proxies is not None:
+      return self.reference_dihedral_proxies.size()
+    return 0      
+
   def top_out_function(self, x, weight, top):
     return top*(1-exp(-weight*x**2/top))
 
@@ -202,7 +304,11 @@ class reference_model(object):
     match_map = {}
     for file in self.reference_file_list:
       match_map[file] = {}
-    if len(params.reference_group) == 0:
+    if (len(params.reference_group) == 0 or 
+          (len(params.reference_group) == 1 and 
+          params.reference_group[0].reference is None and
+          params.reference_group[0].selection is None and 
+          params.reference_group[0].file_name is None)):
       matched_model_chains = []
       reference_matches = get_matching_chains(
         pdb_hierarchy=pdb_hierarchy,
@@ -220,7 +326,7 @@ class reference_model(object):
             raise Sorry("multiple reference models for one chain not "+\
                         "currently supported")
           matched_model_chains.append(model_chain)
-          new_reference_groups += "  reference_group {\n"
+          new_reference_groups += "  reference_model.reference_group {\n"
           new_reference_groups += "   reference = "+ref_chain+"\n"
           new_reference_groups += "   selection = "+model_chain+"\n"
           new_reference_groups += "   file_name = "+file+"\n"
@@ -230,7 +336,7 @@ class reference_model(object):
         params.reference_group = \
           reference_model_params.\
             fetch(new_reference_groups_as_phil)\
-            .extract().\
+            .extract().reference_model.\
             reference_group
     else:
       for rg in params.reference_group:
@@ -593,10 +699,6 @@ class reference_model(object):
       len(self.reference_dihedral_proxies)
     print >> log, "--------------------------------------------------------"
 
-  def add_reference_dihedral_proxies(self, geometry):
-    geometry.reference_dihedral_proxies= \
-      self.reference_dihedral_proxies
-
   def set_rotamer_to_reference(self,
                                xray_structure,
                                mon_lib_srv=None,
@@ -724,9 +826,7 @@ class reference_model(object):
               m_chis = model_chis.get(key)
               r_chis = reference_chis[file].get(self.one_key_to_another(file_match[1]))
               if model_rot is not None and reference_rot is not None and \
-                 m_chis is not None and r_chis is not None:
-                assert len(m_chis) == len(r_chis), "Probably different "+ \
-                    "amino acids are matched for reference dihedral restraints."
+                  m_chis is not None and r_chis is not None:
                 if (model_rot == 'OUTLIER' and \
                     reference_rot != 'OUTLIER'): # or \
                     #atom_group.resname in ["LEU", "VAL", "THR"]:
@@ -764,6 +864,7 @@ class reference_model(object):
     if axis_and_atoms_to_rotate is None:
       return
     assert len(m_chis) == len(axis_and_atoms_to_rotate)
+    assert len(r_chis) >= len(m_chis)
     counter = 0
     residue_iselection = residue.atoms().extract_i_seq()
     sites_cart_residue = sites_cart.select(residue_iselection)

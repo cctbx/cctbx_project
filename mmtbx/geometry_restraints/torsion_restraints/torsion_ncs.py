@@ -1306,7 +1306,7 @@ class torsion_ncs(object):
                   assert rotamer == model_rot
 
   def process_ncs_restraint_groups(self, model, processed_pdb_file):
-    assert 0, "who is using this?"
+    assert 0, "who is using this? Nobody!"
     log = self.log
     ncs_groups = ncs.restraints.groups()
     sites_cart = None

@@ -64,8 +64,7 @@ def process_reference_files(
     if ter_indices is not None:
       check_for_internal_chain_ter_records(
         pdb_hierarchy=cur_hierarchy,
-        ter_indices=ter_indices,
-        file_name=file)
+        ter_indices=ter_indices)
     reference_hierarchy_list.append(cur_hierarchy)
   return reference_hierarchy_list
 
@@ -502,8 +501,7 @@ def get_unique_segid(chain):
 
 def check_for_internal_chain_ter_records(
       pdb_hierarchy,
-      ter_indices,
-      file_name):
+      ter_indices):
   chains = pdb_hierarchy.chains()
   atoms = pdb_hierarchy.atoms()
   chain_ter_matches = {}
@@ -556,7 +554,7 @@ def check_for_internal_chain_ter_records(
     for key in reduced_chain_ranges.keys():
       min, max = reduced_chain_ranges[key]
       if ter_id > min and ter_id < max:
-        raise Sorry("chain '%s' in %s contains one or more "%(key,file_name)+
+        raise Sorry("chain '%s' contains one or more "%(key)+
                     "errant TER cards.\nPlease remove and try again.")
 
 def get_torsion_id(dp,
