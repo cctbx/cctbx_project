@@ -51,6 +51,40 @@ def scale_factor(self, other, weights=None, cutoff_factor=None,
         scale_factor(self.select(sel),other.select(sel), weights_sel))
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
 
+def split_sigma_test(self, other, use_binning=False):
+  """
+  Calculates the split sigma ratio test by Peter Zwart:
+  ssr = sum( (Iha-Ihb)^2 ) / sum( sigma_ah^2 + sigma_bh^2)
+
+  where Iah and Ibh are merged intensities for a given hkl from two halves of
+  a dataset (a and b). Likewise for sigma_ah and sigma_bh.
+
+  ssr (split sigma ratio) should approximately equal 1 if the errors are correctly estimated.
+  """
+
+  assert other.size() == self.data().size()
+  assert not use_binning or self.binner() is not None
+
+  if use_binning:
+    results = []
+    for i_bin in self.binner().range_all():
+      sel = self.binner().selection(i_bin)
+      i_self = self.select(sel)
+      i_other = other.select(sel)
+      if i_self.size() == 0:
+        results.append(None)
+      else:
+        results.append(split_sigma_test(i_self,i_other))
+    return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
+
+  a_data = self.data(); b_data = other.data()
+  a_sigmas = self.sigmas(); b_sigmas = other.sigmas()
+
+  n = flex.pow(a_data - b_data,2)
+  d = flex.pow(a_sigmas,2)+flex.pow(b_sigmas,2)
+
+  return flex.sum(n)/flex.sum(d)
+
 def r1_factor(self, other, scale_factor=None, assume_index_matching=False,
                 use_binning=False):
     """Get the R1 factor according to this formula
@@ -340,7 +374,13 @@ def run_cc(params,reindexing_op,output):
   oe_rint_all = r1_factor(selected_uniform[2],selected_uniform[3],
                        scale_factor = oe_scale_all)
   oe_rsplit_all = r_split(selected_uniform[2], selected_uniform[3])
-  print >>output, "R factors Riso = %.1f%%, Rint = %.1f%%"%(100.*ref_riso_all, 100.*oe_rint_all)
+  if have_iso_ref:
+    print >>output, "R factors Riso = %.1f%%, Rint = %.1f%%"%(100.*ref_riso_all, 100.*oe_rint_all)
+  else:
+    print >>output, "R factor Rint = %.1f%%"%(100.*oe_rint_all)
+
+  split_sigma_data = split_sigma_test(selected_uniform[2],selected_uniform[3], use_binning=True)
+  split_sigma_data_all = split_sigma_test(selected_uniform[2],selected_uniform[3], use_binning=False)
 
   print >>output
   if reindexing_op == "h,k,l":
@@ -349,8 +389,8 @@ def run_cc(params,reindexing_op,output):
     print >> output, "Table of Scaling Results Reindexing as %s:"%reindexing_op
 
   from libtbx import table_utils
-  table_header = ["","","","CC","","CC","","R","R","R","Scale","Scale"]
-  table_header2 = ["Bin","Resolution Range","Completeness","int","N","iso","N","int","split","iso","int","iso"]
+  table_header = ["","","","CC","","CC","","R","R","R","Scale","Scale","SpSig"]
+  table_header2 = ["Bin","Resolution Range","Completeness","int","N","iso","N","int","split","iso","int","iso","Test"]
   table_data = []
   table_data.append(table_header)
   table_data.append(table_header2)
@@ -404,6 +444,11 @@ def run_cc(params,reindexing_op,output):
     else:
       table_row.append("--")
 
+    if split_sigma_data.data[bin] is not None:
+      table_row.append("%.1f" % split_sigma_data.data[bin])
+    else:
+      table_row.append("--")
+
     table_data.append(table_row)
   table_data.append([""]*len(table_header))
 
@@ -429,6 +474,11 @@ def run_cc(params,reindexing_op,output):
   table_row.append(format_value("%.3f", oe_scale_all))
   if have_iso_ref:
     table_row.append(format_value("%.3f", ref_scale_all))
+  else:
+    table_row.append("--")
+
+  if split_sigma_data_all is not None:
+    table_row.append("%.1f" % split_sigma_data_all)
   else:
     table_row.append("--")
 
