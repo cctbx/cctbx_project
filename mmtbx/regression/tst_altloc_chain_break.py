@@ -54,6 +54,7 @@ def exercise(args):
   open("tmp_altloc_chain_break.pdb", "w").write(pdb1exr_fragment)
   command = " ".join([
     "phenix.geometry_minimization",
+    "cdl=False",
     "tmp_altloc_chain_break.pdb",
     "pdb_interpretation.nonbonded_weight=16",
     ">tmp_altloc_chain_break.zlog"])
