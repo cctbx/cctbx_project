@@ -134,7 +134,7 @@ def add_reference_dihedral_restraints_if_requested(
     log=log)
   # rm.add_reference_dihedral_proxies(geometry=geometry)
   rm.show_reference_summary(log=log)
-  geometry.adopt_reference_dihedral_manager(rm) 
+  geometry.adopt_reference_dihedral_manager(rm)
 
 class reference_model(object):
 
@@ -255,7 +255,7 @@ class reference_model(object):
   def get_n_proxies(self):
     if self.reference_dihedral_proxies is not None:
       return self.reference_dihedral_proxies.size()
-    return 0      
+    return 0
 
   def top_out_function(self, x, weight, top):
     return top*(1-exp(-weight*x**2/top))
@@ -304,10 +304,10 @@ class reference_model(object):
     match_map = {}
     for file in self.reference_file_list:
       match_map[file] = {}
-    if (len(params.reference_group) == 0 or 
-          (len(params.reference_group) == 1 and 
+    if (len(params.reference_group) == 0 or
+          (len(params.reference_group) == 1 and
           params.reference_group[0].reference is None and
-          params.reference_group[0].selection is None and 
+          params.reference_group[0].selection is None and
           params.reference_group[0].file_name is None)):
       matched_model_chains = []
       reference_matches = get_matching_chains(
