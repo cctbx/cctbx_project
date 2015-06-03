@@ -1266,7 +1266,7 @@ def getConfig(address, env):
 
   good_key = None
   for key in env.configStore().keys():
-    if address in str(key.src()):
+    if address in str(key.src()) and key.type() is not None:
       good_key = key
       break
 
