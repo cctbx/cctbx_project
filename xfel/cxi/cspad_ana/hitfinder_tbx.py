@@ -109,8 +109,9 @@ class distl_hitfinder(object):
       img_dim = (4500, 4500)
       pixel_size = 0.079346
     elif device == 'Rayonix':
-      img_dim = (860, 860)
-      pixel_size = 0.178
+      import rayonix_tbx
+      img_dim = rayonix_tbx.get_rayonix_detector_dimensions(self.bin_size)
+      pixel_size = rayonix_tbx.get_rayonix_pixel_size(self.bin_size)
     else:
       raise RuntimeError("Unsupported device %s" % self.address)
 

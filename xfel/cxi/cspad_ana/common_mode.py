@@ -49,6 +49,7 @@ class common_mode_correction(mod_event_info):
                laser_wait_time=None,
                override_beam_x=None,
                override_beam_y=None,
+               bin_size=None,
                **kwds):
     """The common_mode_correction class constructor stores the
     parameters passed from the pyana configuration file in instance
@@ -73,6 +74,7 @@ class common_mode_correction(mod_event_info):
                            change).
     @param override_beam_x override value for x coordinate of beam center in pixels
     @param override_beam_y override value for y coordinate of beam center in pixels
+    @param bin_size bin size for rayonix detector used to determin pixel size
     """
 
     # Cannot use the super().__init__() construct here, because
@@ -101,6 +103,7 @@ class common_mode_correction(mod_event_info):
     self.filter_laser_wait_time = cspad_tbx.getOptInteger(laser_wait_time)
     self.override_beam_x = cspad_tbx.getOptFloat(override_beam_x)
     self.override_beam_y = cspad_tbx.getOptFloat(override_beam_y)
+    self.bin_size = cspad_tbx.getOptInteger(bin_size)
 
     self.cspad_img = None # The current image - set by self.event()
     self.sum_common_mode = 0
