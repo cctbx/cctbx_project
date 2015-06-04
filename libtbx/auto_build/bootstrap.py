@@ -75,9 +75,13 @@ class ShellCommand(object):
       #if not os.path.isabs(command[0]):
         # executable path isn't located relative to workdir
       #  command[0] = os.path.join(workdir, command[0])
+      useshell = False
+      if self.kwargs["use_shell"] == True:
+        useshell = True
       p = subprocess.Popen(
         args=command,
         cwd=workdir,
+        shell=useshell,
         stdout=sys.stdout,
         stderr=sys.stderr
       )
@@ -560,9 +564,10 @@ class Builder(object):
     if base:
       self.add_base(extra_opts=["--nproc=%s" % str(self.nproc)])
 
-    # Configure, make
+    # Configure, make, get revision numbers
     if build and not self.download_only:
       self.add_configure()
+      self.add_get_revision_numbers()
       self.add_make()
       self.add_install()
 
@@ -602,6 +607,7 @@ class Builder(object):
     kwargs['timeout'] = 60*60*2 # 2 hours
     if 'workdir' in kwargs:
       kwargs['workdir'] = self.opjoin(*kwargs['workdir'])
+    kwargs['use_shell'] = kwargs.get("use_shell")
     return ShellCommand(**kwargs)
 
   def run(self):
@@ -613,6 +619,8 @@ class Builder(object):
     return os.path.join(*args)
 
   def get_codebases(self):
+    if sys.platform == "win32": # we can't currently compile cbflib for Windows
+      return list(set(self.CODEBASES + self.CODEBASES_EXTRA) - set(['cbflib']))
     return self.CODEBASES + self.CODEBASES_EXTRA
 
   def get_hot(self):
@@ -693,7 +701,7 @@ class Builder(object):
     if dirpath[-1] == '/':
       dirpath = dirpath[:-1]
     basename = posixpath.basename(dirpath)
-    self.add_step(self.shell( # pack directory with tar on remote system but exclude all svn files
+    self.add_step(self.shell( # pack directory with tar on remote system
       name='hot %s'%module,
       command=[
         'plink',
@@ -705,8 +713,8 @@ class Builder(object):
         'cfz',
         '~/' + arxname,
         basename + '/*',
-        '--exclude',
-        '*.svn'
+        #'--exclude',
+        #'*.svn'
       ],
       workdir=['modules']
     ))
@@ -777,6 +785,7 @@ class Builder(object):
 
   def _add_git(self, module, url):
     pass
+
 
   def add_command(self, command, name=None, workdir=None, args=None, **kwargs):
     if sys.platform == 'win32':
@@ -931,6 +940,30 @@ class Builder(object):
       description="save configure command",
     ))
 
+
+  def add_get_revision_numbers(self):
+    self.add_step(self.shell(
+      command=['echo module : revision number > RevisionNumbers.txt'][0],
+      workdir=['modules'],
+      use_shell = True,
+      description="make new file with revision numbers of modules",
+      quiet=True,
+    ))
+    for module in self.get_codebases() + self.get_hot():
+      if sys.platform == 'win32':
+        self.add_step(self.shell(
+          command=['((echo | set /p=\"' + module + ' : \") & ( svnversion ' + module + ')) >> RevisionNumbers.txt'][0],
+          workdir=['modules'],
+          use_shell = True,
+          quiet=True,
+        ))
+      else:
+        self.add_step(self.shell(
+          command=['((echo -n \"' + module + ' : \" ) & ( svnversion ' + module  + ')) >> RevisionNumbers.txt'],
+          workdir=['modules'],
+          use_shell = True,
+          quiet=True,
+        ))
 
   def add_make(self):
     self.add_command('libtbx.scons', args=['-j', str(self.nproc)])
