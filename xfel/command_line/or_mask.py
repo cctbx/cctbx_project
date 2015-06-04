@@ -10,13 +10,18 @@ print srcs,">",dest
 
 data1= easy_pickle.load(srcs[0])
 ddata = data1["DATA"]
-idata1 = ddata.iround()
+try:
+  idata1 = ddata.iround()
+except AttributeError:
+  idata1 = ddata.as_double().iround()
 discover_mask_pix_val = flex.sum(idata1)//(idata1!=0).count(True)
 bdata1 = (idata1!=0)
 for item in srcs[1:]:
   dataN= easy_pickle.load(item)
-  bdata1 |= (dataN["DATA"].iround()!=0)
-
+  try:
+    bdata1 |= (dataN["DATA"].iround()!=0)
+  except AttributeError:
+    bdata1 |= (dataN["DATA"].as_double().iround()!=0)
 dirname = os.path.dirname(dest)
 if dirname is not "" and not os.path.isdir(dirname):
   os.makedirs(dirname)
