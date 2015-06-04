@@ -12,6 +12,7 @@ __version__ = "$Revision$"
 
 from xfel.cxi.cspad_ana import common_mode
 from xfel.cxi.cspad_ana import cspad_tbx
+from xfel.cxi.cspad_ana import rayonix_tbx
 
 
 class mod_dump(common_mode.common_mode_correction):
@@ -62,7 +63,7 @@ class mod_dump(common_mode.common_mode_correction):
       saturated_value = cspad_tbx.cspad_saturated_value
       output_filename = self._basename
     elif device == 'Rayonix':
-      pixel_size = 0.178
+      pixel_size = rayonix_tbx.get_rayonix_pixel_size(self.bin_size)
       saturated_value = 2**16 - 1
       output_filename = self._basename
     elif device == 'marccd':

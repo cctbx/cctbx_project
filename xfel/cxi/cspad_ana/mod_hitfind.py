@@ -14,6 +14,7 @@ from scitbx.array_family import flex
 from xfel.cxi.cspad_ana.hitfinder_tbx import distl_hitfinder
 from xfel.cxi.cspad_ana import common_mode
 from xfel.cxi.cspad_ana import cspad_tbx
+from xfel.cxi.cspad_ana import rayonix_tbx
 from xfel.cxi.cspad_ana import skip_event_flag
 from xfel.detector_formats import detector_format_version as detector_format_function
 import getpass
@@ -273,7 +274,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       pixel_size = evt.get("marccd_pixel_size")
       saturated_value = evt.get("marccd_saturated_value")
     elif device == 'Rayonix':
-      pixel_size = 0.178
+      pixel_size = rayonix_tbx.get_rayonix_pixel_size(self.bin_size)
       saturated_value = 2**16 - 1
 
     d = cspad_tbx.dpack(

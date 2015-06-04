@@ -7,6 +7,7 @@ from __future__ import division
 
 from xfel.cxi.cspad_ana import common_mode
 from xfel.cxi.cspad_ana import cspad_tbx
+from xfel.cxi.cspad_ana import rayonix_tbx
 from xfel.cxi.cspad_ana import skip_event_flag
 
 class mod_image_dict(common_mode.common_mode_correction):
@@ -73,7 +74,7 @@ class mod_image_dict(common_mode.common_mode_correction):
       pixel_size = cspad_tbx.pixel_size
       saturated_value = cspad_tbx.cspad_saturated_value
     elif device == 'Rayonix':
-      pixel_size = 0.178
+      pixel_size = rayonix_tbx.get_rayonix_pixel_size(self.bin_size)
       saturated_value = 2**16 - 1
     elif device == 'marccd':
       pixel_size = evt.get("marccd_pixel_size")
