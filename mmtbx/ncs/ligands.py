@@ -113,11 +113,13 @@ def find_ncs_operators (pdb_hierarchy, max_rmsd=2.0, try_sieve_fit=True,
   :param log: filehandle-like object
   :returns: list of lists of group_operators objects
   """
-  from mmtbx.geometry_restraints.torsion_restraints import torsion_ncs
+  import iotbx.ncs
   from scitbx.math import superpose
   from scitbx.array_family import flex
-  ncs_groups = torsion_ncs.determine_ncs_groups(pdb_hierarchy, log=log)
-  #print ncs_groups
+  ncs_obj = iotbx.ncs.input(hierarchy=pdb_hierarchy)
+  ncs_groups = []
+  for k,v in ncs_obj.ncs_to_asu_selection.iteritems():
+    ncs_groups.append([k]+v)
   if (len(ncs_groups) == 0) :
     raise Sorry("No NCS present in the input model.")
   for k, group in enumerate(ncs_groups) :
