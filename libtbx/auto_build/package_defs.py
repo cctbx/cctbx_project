@@ -1,4 +1,4 @@
-
+	
 """
 Listing of current dependencies for CCTBX and related applications (including
 LABELIT, xia2, DIALS, and Phenix with GUI).  Not all of these can be downloaded
@@ -15,7 +15,7 @@ import sys
 BASE_CCI_PKG_URL = "http://cci.lbl.gov/cctbx_dependencies"
 BASE_XIA_PKG_URL = "http://www.ccp4.ac.uk/xia"
 BASE_H5PY_PKG_URL = "http://pypi.python.org/packages/source/h/h5py"
-BASE_HDF5_PKG_URL = "http://www.hdfgroup.org/ftp/HDF5/current/src"
+BASE_HDF5_PKG_URL = "http://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.8.15-patch1/src"
 BASE_CYTHON_PKG_URL = "http://pypi.python.org/packages/source/C/Cython"
 
 # from CCI
@@ -41,8 +41,7 @@ LIBSVM_PKG = "libsvm-3.17_cci.tar.gz"
 #H5PY_PKG = "h5py-2.0.1-edit.tar.gz"  # dxtbx
 
 H5PY_PKG = "h5py-2.4.0.tar.gz" # dxtbx
-HDF5_PKG = "hdf5-1.8.14.tar.bz2" # dxtbx
-HDF5_PKG = "hdf5-1.8.15.tar.bz2" # new version 13th May 2015
+HDF5_PKG = "hdf5-1.8.15-patch1.tar.bz2"
 CYTHON_PKG = "cython-0.22.tar.gz"
 
 # GUI dependencies
