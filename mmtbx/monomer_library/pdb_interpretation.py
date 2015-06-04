@@ -95,8 +95,8 @@ test_cdl_params = """\
     .type = bool
   cdl_interpolation = False
     .type = bool
-  rdl = False
-    .type = bool
+  cdl_weight = 1.
+    .type = float
 """
 
 altloc_weighting_params = """\
@@ -129,8 +129,6 @@ master_params_str = """\
     .help = Use Conformation Dependent Library (CDL) \
       for geometry minimization restraints
     .style = bold
-  cdl_weight = 1.
-    .type = float
   correct_hydrogens = True
     .type = bool
     .short_caption = Correct the hydrogen positions trapped in chirals etc
@@ -172,13 +170,16 @@ master_params_str = """\
       alternately leave the global setting off and enable individual link \
       types separately.
   {
-    link_all = Auto
+    link_all = False
       .type = bool
       .short_caption = Automatic ligand linking
       .help = If True, bond restraints will be generated for any appropriate \
         ligand-protein or ligand-nucleic acid covalent bonds. This includes \
         sugars, amino acid modifications, and other prosthetic groups.
       .style = bold renderer:draw_automatic_linking_control noauto
+    link_none = False
+      .type = bool
+      .short_caption = Overrides all automatic linking
     link_metals = False
       .type = bool
     link_residues = False
@@ -4595,13 +4596,11 @@ class build_all_chain_proxies(linking_mixins):
                   "link_carbohydrates",
                   "link_amino_acid_rna_dna",
                   ]
-    if al_params.link_all is Auto:
-      pass
-    elif al_params.link_all:
+    if al_params.link_all:
       for attr in link_attrs:
         setattr(al_params, attr, True)
         any_links = True
-    elif not al_params.link_all:
+    if al_params.link_none:
       for attr in link_attrs:
         setattr(al_params, attr, False)
         any_links = False
