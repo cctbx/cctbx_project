@@ -8,6 +8,7 @@ import math
 
 from scitbx.array_family import flex
 from xfel.cxi.cspad_ana import cspad_tbx
+from xfel.cxi.cspad_ana import rayonix_tbx
 from xfel.detector_formats import detector_format_version as detector_format_function
 from xfel.detector_formats import reverse_timestamp
 
