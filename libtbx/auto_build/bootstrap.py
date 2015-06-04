@@ -216,7 +216,6 @@ class SourceModule(object):
   _modules = {}
   module = None
   authenticated = None
-  authenticatedWindows = None
   authentarfile = None
   anonymous = None
   def __init__(self):
@@ -251,8 +250,6 @@ class SourceModule(object):
 
   def get_authenticated(self, auth=None):
     auth = auth or {}
-    if self.authenticatedWindows and sys.platform == 'win32':
-      return [self.authenticatedWindows[0], self.authenticatedWindows[1]%auth]
     if not self.authenticated:
       return None
     return [self.authenticated[0], self.authenticated[1]%auth]
@@ -279,14 +276,12 @@ class ccp4io_module(SourceModule):
 class annlib_module(SourceModule):
   module = 'annlib'
   anonymous = ['curl', 'http://cci.lbl.gov/repositories/annlib.gz']
-  #authenticatedWindows = anonymous
   authentarfile = ['%(cciuser)s@cci.lbl.gov', 'annlib.tar.gz', '/net/cci/auto_build/repositories/annlib']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/annlib/']
 
 class scons_module(SourceModule):
   module = 'scons'
   anonymous = ['curl', 'http://cci.lbl.gov/repositories/scons.gz']
-  #authenticatedWindows = anonymous
   authentarfile = ['%(cciuser)s@cci.lbl.gov', 'scons.tar.gz', '/net/cci/auto_build/repositories/scons']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/scons/']
 
@@ -295,7 +290,6 @@ class boost_module(SourceModule):
   anonymous = ['curl', 'http://cci.lbl.gov/repositories/boost.gz']
   # Compared to rsync pscp is very slow when downloading multiple files
   # Resort to downloading the compressed archive on Windows
-  #authenticatedWindows = anonymous
   authentarfile = ['%(cciuser)s@cci.lbl.gov', 'boost_hot.tar.gz', '/net/cci/auto_build/repositories/boost_hot/']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/boost_hot/']
 
