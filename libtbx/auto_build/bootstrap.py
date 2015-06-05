@@ -951,13 +951,13 @@ class Builder(object):
         self.add_step(self.shell(
           command=['cmd', '/c', '(((echo | set /p=' + module + ' : ) & (svnversion ' + module + ')) >> RevisionNumbers.txt)'],
           workdir=['modules'],
-          quiet=True,
+          #quiet=True,
         ))
       else:
         self.add_step(self.shell(
           command=['sh', '-c', '(((echo -n ' + module +' : ) & (svnversion ' + module  +'))>>RevisionNumbers.txt)'],
           workdir=['modules'],
-          quiet=True,
+          #quiet=True,
         ))
 
   def add_make(self):
