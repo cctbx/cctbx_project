@@ -334,7 +334,7 @@ def integration(int_type, mp_entry, log_dir, gs_params):
     if int_status != 'not integrated':
       with open('{}/integrated.lst'.format(os.path.abspath(gs_params.output)),\
                                                               'a') as f_int:
-          f_int.write('{}\n'.format(current_file))
+        f_int.write('{}\n'.format(current_file))
 
     if gs_params.advanced.pred_img.flag == True:
       viz.make_png(current_img, current_file)

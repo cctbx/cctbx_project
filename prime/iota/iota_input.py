@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 05/19/2015
+Last Changed: 06/03/2015
 Description : IOTA I/O module. Reads PHIL input, creates output directories,
               creates input lists and organizes starting parameters, also
               creates reasonable IOTA and PHIL defaults if selected
@@ -53,13 +53,13 @@ grid_search
   a_avg = 5
     .type = int
     .help = Minimum spot area.
-  a_std = 4
+  a_std = 2
     .type = int
     .help = Maximum spot area.
-  h_avg = 6
+  h_avg = 4
     .type = int
     .help = Minimum spot height.
-  h_std = 3
+  h_std = 2
     .type = int
     .help = Maximum spot height.
 }
@@ -108,15 +108,15 @@ advanced
   save_tmp_pickles = False
     .type = bool
     .help = If True, saves pickle for each integration attempt in grid search.
-  print_input_list = True
-    .type = bool
-    .help = Print to a file a list of selected images
-  clean_up_output = True
+  clean_up_output = False
     .type = bool
     .help = Set to False to leave temporary folders and files in place'
-  square_mode = None pad *crop
+  square_mode = None *pad crop
     .type = choice
     .help = Method to generate square image
+  erase_beamstop = False
+    .type = bool
+    .help = Set to True to find beamstop shadow and set pixels to -2
   pred_img
     .help = "Visualize spotfinding and integration results."
   {
@@ -195,6 +195,7 @@ def make_input_list (gs_params):
   input_list = []
   abs_inp_path = os.path.abspath(gs_params.input)
 
+
   if not gs_params.grid_search.flag_on:
     cmd.Command.start("Reading input list from file")
     with open('{}/input.lst'\
@@ -221,7 +222,7 @@ def make_input_list (gs_params):
     for root, dirs, files in os.walk(abs_inp_path):
       for filename in files:
         found_file = os.path.join(root, filename)
-        if os.path.isfile(found_file):
+        if found_file.endswith(('pickle', 'mccd', 'cbf', 'img')):
           input_list.append(found_file)
     cmd.Command.end("Generating input list -- DONE")
 
@@ -244,7 +245,7 @@ def make_input_list (gs_params):
     else:
       random_sample_number = gs_params.advanced.random_sample.number
 
-    cmd.Command.start("Selecting {} random images".format(random_sample_number))
+    cmd.Command.start("Selecting {} random images out of {} found".format(random_sample_number, len(input_list)))
     for i in range(random_sample_number):
       random_number = random.randrange(0, len(input_list))
       if input_list[random_number] in random_inp_list:
@@ -253,12 +254,13 @@ def make_input_list (gs_params):
         random_inp_list.append(input_list[random_number])
       else:
         random_inp_list.append(input_list[random_number])
-    cmd.Command.end("Selecting {} random images -- DONE ".format(random_sample_number))
+    cmd.Command.end("Selecting {} random images out of {} found -- DONE ".format(random_sample_number, len(input_list)))
 
     inp_list = random_inp_list
 
   else:
     inp_list = input_list
+
   return inp_list
 
 def make_raw_input(input_list, gs_params):
@@ -284,8 +286,10 @@ def make_raw_input(input_list, gs_params):
       dest_folder = '{0}/{1}'.format(conv_input_dir,
                                      os.path.relpath(path,
                                      os.path.abspath(gs_params.input)))
-
     converted_img_list.append(os.path.join(dest_folder, conv_filename))
+
+    if not os.path.isdir(dest_folder):
+      os.makedirs(dest_folder)
 
   return converted_img_list, conv_input_dir
 
@@ -508,12 +512,6 @@ def generate_input(gs_params, input_list, input_folder):
           "{}".format(os.path.abspath(gs_params.output))
       sys.exit()
 
-  if gs_params.advanced.print_input_list:
-    list_file = "{}/input.lst".format(gs_params.output)
-    with open(list_file, "a") as lf:
-      for input_file in input_list:
-        lf.write('{}\n'.format(input_file))
-
   # Initiate log file
   logfile = '{}/iota.log'.format(log_dir)
   main_log_init(logfile)
@@ -591,11 +589,13 @@ def auto_mode(current_path, data_path, now):
   # Modify list of default IOTA parameters to include the absolute path to data
   # folder and a description with a time-stamp
 
+  cmd.Command.start("Generating default parameters")
+
   gs_params = master_phil.extract()
   gs_params.description = 'IOTA parameters auto-generated on {}'.format(now)
   gs_params.input = data_path
-  gs_params.advanced.random_sample.flag_on = True
-  gs_params.advanced.random_sample.number = 0
+  #gs_params.advanced.random_sample.flag_on = True
+  #gs_params.advanced.random_sample.number = 0
 
   mod_phil = master_phil.format(python_object=gs_params)
 
@@ -607,16 +607,10 @@ def auto_mode(current_path, data_path, now):
   for one_output in output:
     txt_out += one_output + '\n'
 
-  #capture input read out by phil
-  with Capturing() as output:
-    mod_phil.show()
-
-  txt_out = ''
-  for one_output in output:
-    txt_out += one_output + '\n'
-
   # Write default parameter and target files
   write_defaults(current_path, txt_out)
+
+  cmd.Command.end("Generating default parameters -- DONE")
 
   return gs_params, txt_out
 
@@ -638,7 +632,5 @@ def print_params():
   for one_output in output:
     txt_out += one_output + '\n'
 
-  return help_out, txt_out
 
-def make_prime_input(prime_params):
-  pass
+  return help_out, txt_out
