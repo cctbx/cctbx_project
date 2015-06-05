@@ -25,7 +25,7 @@ def average(argv=None):
 
   command_line = (libtbx.option_parser.option_parser(
     usage="""
-%s [-p] -c config -x experiment -a address -r run -d detz_offset [-o outputdir] [-A averagepath] [-S stddevpath] [-M maxpath] [-n numevents] [-s skipnevents] [-v] [-m]
+%s [-p] -c config -x experiment -a address -r run -d detz_offset [-o outputdir] [-A averagepath] [-S stddevpath] [-M maxpath] [-n numevents] [-s skipnevents] [-v] [-m] [-b bin_size] [-X override_beam_x] [-Y override_beam_y] [-D xtc_dir]
 
 To write image pickles use -p, otherwise the program writes CSPAD CBFs.
 Writing CBFs requires the geometry to be already deployed.
@@ -120,6 +120,27 @@ the output images in the folder cxi49812.
                         default=False,
                         dest="pickle_optical_metrology",
                         help="If writing pickle files, use the optical metrology in the experiment's calib directory")
+                .option(None, "--bin_size", "-b",
+                        type="int",
+                        default=None,
+                        dest="bin_size",
+                        help="Rayonix detector bin size")
+                .option(None, "--override_beam_x", "-X",
+                        type="float",
+                        default=None,
+                        dest="override_beam_x",
+                        help="Rayonix detector beam center x coordinate")
+                .option(None, "--override_beam_y", "-Y",
+                        type="float",
+                        default=None,
+                        dest="override_beam_y",
+                        help="Rayonix detector beam center y coordinate")
+                .option(None, "--xtc_dir", "-D",
+                        type="string",
+                        default=None,
+                        dest="xtc_dir",
+                        metavar="PATH",
+                        help="xtc stream directory")
                 ).process(args=argv)
 
 
@@ -149,6 +170,8 @@ the output images in the folder cxi49812.
 
   setConfigFile(command_line.options.config)
   dataset_name = "exp=%s:run=%d:idx"%(command_line.options.experiment, command_line.options.run)
+  if command_line.options.xtc_dir is not None:
+    dataset_name += ":dir=%s"%command_line.options.xtc_dir
   ds = DataSource(dataset_name)
   address = command_line.options.address
   src = Source('DetInfo(%s)'%address)
@@ -170,10 +193,17 @@ the output images in the folder cxi49812.
       if i%10==0: print 'Rank',rank,'processing event',rank*len(mytimes)+i,', ',i,'of',len(mytimes)
       evt = run.event(mytimes[i])
       #print "Event #",rank*mylength+i," has id:",evt.get(EventId)
-      data = evt.get(ndarray_float64_3, src, 'image0')
-      if data is None:
-        print "No data"
-        continue
+      if 'Rayonix' in command_line.options.address:
+        data = evt.get(Camera.FrameV1,src)
+        if data is None:
+          print "No data"
+          continue
+        data=data.data16().astype(np.float64)
+      else:
+        data = evt.get(ndarray_float64_3, src, 'image0')
+        if data is None:
+          print "No data"
+          continue
 
       d = cspad_tbx.env_distance(address, run.env(), command_line.options.detz_offset)
       if d is None:
@@ -182,7 +212,7 @@ the output images in the folder cxi49812.
       if 'distance' in locals():
         distance += d
       else:
-        distance = np.array([d])
+        distance = np.array([float(d)])
 
       w = cspad_tbx.evt_wavelength(evt)
       if w is None:
@@ -265,6 +295,7 @@ the output images in the folder cxi49812.
     timestamp = (int(timestamp), timestamp % int(timestamp) * 1000)
     timestamp = cspad_tbx.evt_timestamp(timestamp)
 
+
     if command_line.options.as_pickle:
       extension = ".pickle"
     else:
@@ -274,8 +305,29 @@ the output images in the folder cxi49812.
                   cspad_tbx.pathsubst(command_line.options.stddevpath  + extension, evt, ds.env()),
                   cspad_tbx.pathsubst(command_line.options.maxpath     + extension, evt, ds.env())]
     dest_paths = [os.path.join(command_line.options.outputdir, path) for path in dest_paths]
-
-    if command_line.options.as_pickle:
+    if 'Rayonix' in command_line.options.address:
+      from xfel.cxi.cspad_ana import rayonix_tbx
+      pixel_size = rayonix_tbx.get_rayonix_pixel_size(command_line.options.bin_size)
+      beam_center = [command_line.options.override_beam_x,command_line.options.override_beam_y]
+      detector_dimensions = rayonix_tbx.get_rayonix_detector_dimensions(command_line.options.bin_size)
+      active_areas = flex.int([0,0,detector_dimensions[0],detector_dimensions[1]])
+      split_address = cspad_tbx.address_split(address)
+      old_style_address = split_address[0] + "-" + split_address[1] + "|" + split_address[2] + "-" + split_address[3]
+      for data, path in zip([mean, stddev, maxall], dest_paths):
+        print "Saving", path
+        d = cspad_tbx.dpack(
+            active_areas=active_areas,
+            address=old_style_address,
+            beam_center_x=pixel_size * beam_center[0],
+            beam_center_y=pixel_size * beam_center[1],
+            data=flex.double(data),
+            distance=distance,
+            pixel_size=pixel_size,
+            saturated_value=2**16 - 1,
+            timestamp=timestamp,
+            wavelength=wavelength)
+        easy_pickle.dump(path, d)
+    elif command_line.options.as_pickle:
       if command_line.options.pickle_optical_metrology:
         from xfel.cftbx.detector.cspad_cbf_tbx import get_calib_file_path
         metro_path = get_calib_file_path(run.env(), src)
