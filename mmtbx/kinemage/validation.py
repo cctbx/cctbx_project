@@ -926,7 +926,7 @@ Example:
   phenix.kinemage pdb=1ubq.pdb cif=ligands.cif
 """
 
-def run(args):
+def run(args, pdb_interpretation_params=None):
   if (len(args) == 0 or "--help" in args or "--h" in args or "-h" in args):
       raise Usage(usage())
   pdbID = None
@@ -975,6 +975,7 @@ def run(args):
         ener_lib=ener_lib,
         pdb_inp=pdb_io,
         for_dihedral_reference=True,
+        params=pdb_interpretation_params,
         substitute_non_crystallographic_unit_cell_if_necessary=True)
   if work_params.kinemage.out_file is not None:
     outfile = work_params.kinemage.out_file

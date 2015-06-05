@@ -135,7 +135,8 @@ def exercise(d_min = 3.5):
             refined.rms_bonds_final, refined.rms_angles_final, dist
           assert refined.rms_bonds_final  <= p[0]
           assert refined.rms_angles_final <= p[1]
-        assert flex.max(flex.abs(w_opt-flex.mean(w_opt)))<1.0
+        assert flex.max(flex.abs(w_opt-flex.mean(w_opt)))<1.0, \
+            "max %0.1f" % flex.max(flex.abs(w_opt-flex.mean(w_opt)))
 
 if(__name__ == "__main__"):
   timer = user_plus_sys_time()
