@@ -3,9 +3,31 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 05/19/2015
-Description : IOTA command-line module. Version 1.50
+Last Changed: 06/04/2015
+Description : IOTA command-line module. Version 1.52
 '''
+
+help_message = '\n{:-^70}'\
+               ''.format('Integration Optimization, Triage and Analysis') + """
+
+Auto mode
+Usage: prime.iota path/to/raw/images
+Generates two files, parameter file for IOTA (iota.param) and
+target file for cctbx.xfel (target.phil). Integrates a random
+subset of images without target cell. Outputs basic analysis.
+Converts raw images into pickle format and crops to ensure that
+beam center is in center of image.
+
+Script mode
+Usage: prime.iota <script>.param
+Run using IOTA parameter file and target PHIL file generated from
+the dry run or auto mode. Make sure that IOTA parameter file has
+the path to the input image folder under "input". Converts raw
+images into pickle format and modifies by cropping or padding to
+ensure that beam center is in center of image. Can also blank out
+beam stop shadow.
+
+"""
 
 import os
 import sys
@@ -21,6 +43,7 @@ import prime.iota.iota_select as ps
 import prime.iota.iota_analysis as ia
 import prime.iota.iota_cmd as cmd
 import prime.iota.iota_conversion as i2p
+import prime.iota.iota_triage as itr
 
 # Multiprocessor wrapper for grid search module
 def index_mproc_wrapper(current_img):
@@ -81,7 +104,23 @@ def conversion_wrapper(img_entry):
   else:
     gs_prog.finished()
 
-  return i2p.convert_image(img_entry[0], img_entry[1], square, True)
+  return i2p.convert_image(img_entry[0], img_entry[1], square, beamstop)
+
+
+def triage_mproc_wrapper(current_img):
+  """ Multiprocessor wrapper, image triage
+  """
+  prog_count = input_list.index(current_img)
+  n_int = len(input_list)
+
+  gs_prog = cmd.ProgressBar(title='TRIAGE')
+  if prog_count < n_int:
+    prog_step = 100 / n_int
+    gs_prog.update(prog_count * prog_step, prog_count)
+  else:
+    gs_prog.finished()
+
+  return itr.spotfinding_param_search(current_img, gs_params)
 
 # ============================================================================ #
 
@@ -207,70 +246,20 @@ def output_cleanup(gs_params):
 
   for int_file in int_list:
     filename = os.path.basename(int_file)
-    dest_file = "{}/{}".format(dest_dir, filename)
+    dest_file = os.path.join(dest_dir, filename)
     shutil.copyfile(int_file, dest_file)
-
-  for tmp_dir in os.listdir(os.path.abspath(gs_params.output)):
-    if "tmp" in tmp_dir:
-      rmd_dir = os.path.join(os.path.abspath(gs_params.output), tmp_dir)
-      shutil.rmtree(rmd_dir)
+    shutil.rmtree(os.path.dirname(int_file))
 
   os.remove(int_list_file)
 
   for int_file in os.listdir(dest_dir):
     with open(int_list_file, 'a') as f_int:
-        f_int.write('{}\n'.format(int_file))
+        f_int.write('{}\n'.format(dest_file))
 
-
-def dry_run():
-
-    print '\n{:-^70}\n'.format('IOTA Usage')
-
-    print 'Dry run mode'
-    print 'Usage: prime.iota'
-    print 'Generates default parameter file for IOTA (iota.param) and '
-    print 'target file for cctbx.xfel (target.phil).\n'
-
-    print 'Auto mode'
-    print 'Usage: prime.iota path/to/raw/images'
-    print 'Generates two files, parameter file for IOTA (iota.param) and'
-    print 'target file for cctbx.xfel (target.phil). Integrates a random'
-    print 'subset of images without target cell. Outputs basic analysis.'
-    print 'The input files currently MUST be in pickle format. Modify by'
-    print 'running cxi.image2pickle.\n'
-
-    print 'Script mode'
-    print 'Usage: prime.iota <script>.param'
-    print 'Run using IOTA parameter file and target PHIL file generated from'
-    print 'the dry run or auto mode. Make sure that IOTA parameter file has'
-    print 'the path to the input image folder under "input". The input files'
-    print 'currently MUST be in pickle format. Modify by running'
-    print 'cxi.image2pickle.\n\n'
-
-    help_out, txt_out = inp.print_params()
-
-    print '\n{:-^70}\n'.format('IOTA Parameters')
-    print help_out
-
-    inp.write_defaults(os.path.abspath(os.path.curdir), txt_out)
-
-def check_options(args):
-  """ Checks command-line options and runs anything that is pertinent
-  """
-
-  if args.l:
-    list_file = os.path.abspath("{}/input.lst".format(gs_params.output))
-    print '\nIOTA will run in LIST INPUT ONLY mode'
-    print 'Input list in {} \n\n'.format(list_file)
-    with open(list_file, "a") as lf:
-      for input_file in input_list:
-        print input_file
-        lf.write('{}\n'.format(input_file))
-    print '\nExiting...\n\n'
-    sys.exit()
-
-  if args.c:
-    sys.exit()
+def iota_exit(iota_version, now):
+  print '\n\nIOTA version {0}'.format(iota_version)
+  print '{}\n'.format(now)
+  sys.exit()
 
 def experimental(mp_input_list, gs_params, log_dir):
   """EXPERIMENTAL SECTION: Contains stuff I just want to try out without
@@ -282,7 +271,7 @@ def experimental(mp_input_list, gs_params, log_dir):
 
 if __name__ == "__main__":
 
-  iota_version = '1.50'
+  iota_version = '1.52'
   now = "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now())
   logo = "\n\n"\
    "     IIIIII          OOOO         TTTTTTTTTT           A              \n"\
@@ -298,25 +287,36 @@ if __name__ == "__main__":
 
   # Read arguments
   parser = argparse.ArgumentParser(prog = 'prime.iota',
-            description=('Integration Optimization, Triage and Analysis'))
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            description=(help_message),
+            epilog=('\n{:-^70}\n'.format('')))
   parser.add_argument('path', type=str, nargs = '?', default = None,
-            help = 'Path to data or file with IOTA parameters (blank = dry run)')
+            help = 'Path to data or file with IOTA parameters')
   parser.add_argument('--version', action = 'version',
             version = 'IOTA {}'.format(iota_version),
             help = 'Prints version info of IOTA')
   parser.add_argument('-l', action = 'store_true',
-            help = 'Use to ONLY make and print to file a list of input images')
-  parser.add_argument('-o', action = 'store_true',
-            help = 'Split output into separate files based on space group')
+            help = 'Output a file (input.lst) with input image paths and stop')
   parser.add_argument('-c', action = 'store_true',
-            help = 'Convert files only & output to temp input folder')
+            help = 'Convert raw images to pickles and stop')
+  parser.add_argument('-d', action = 'store_true',
+            help = 'Generate default iota.param and target.phil files and stop')
+  parser.add_argument('-t', action = 'store_true',
+            help = 'Find and exclude blank images using basic spotfinding')
+  parser.add_argument('-r', type=int, nargs=1, default=0,
+            help = 'Run IOTA with a random subset of images, e.g. "-r 5"')
 
   args = parser.parse_args()
   print logo
 
   if args.path == None:
-    dry_run()
-    sys.exit()
+    print help_message
+    if args.d:
+      help_out, txt_out = inp.print_params()
+      print '\n{:-^70}\n'.format('IOTA Parameters')
+      print help_out
+      inp.write_defaults(os.path.abspath(os.path.curdir), txt_out)
+    iota_exit(iota_version, now)
   else:
     print '\n{}\n'.format(now)
     carg = os.path.abspath(args.path)
@@ -329,48 +329,85 @@ if __name__ == "__main__":
       # If user provided a data folder
       elif os.path.isdir(carg):
         print "\nIOTA will run in AUTO mode:\n"
-        cmd.Command.start("Generating default parameters")
         gs_params, txt_out = inp.auto_mode(os.path.abspath(os.path.curdir),
                                            os.path.abspath(carg), now)
-        cmd.Command.end("Generating default parameters -- DONE")
-
     # If user provided gibberish
     else:
       print "ERROR: Invalid input! Need parameter filename or data folder."
-      sys.exit()
+      iota_exit(iota_version, now)
 
-  initial_input_list = inp.make_input_list(gs_params)
-  input_list = [i for i in initial_input_list if \
-                i.endswith(('pickle', 'mccd', 'cbf', 'img'))]
+  if args.r > 0:
+    gs_params.advanced.random_sample.flag_on = True
+    gs_params.advanced.random_sample.number = args.r[0]
+
+  input_list = inp.make_input_list(gs_params)
+
+  if args.l:
+    list_file = os.path.abspath("{}/input.lst".format(gs_params.output))
+    print '\nIOTA will run in LIST INPUT ONLY mode'
+    print 'Input list in {} \n\n'.format(list_file)
+    with open(list_file, "a") as lf:
+      for input_file in input_list:
+        print input_file
+        lf.write('{}\n'.format(input_file))
+    print '\nExiting...\n\n'
+    iota_exit(iota_version, now)
 
   # Check if input needs to be converted to pickle format; also check if input
   # images need to be cropped / padded to be square, w/ beam center in the
   # center of image. If these steps are needed, carry them out
-  img_check = i2p.check_image(input_list[0])
-  if img_check == 'image' or img_check == 'raw pickle':
-    square = gs_params.advanced.square_mode
-    converted_img_list, input_folder = inp.make_raw_input(input_list, gs_params)
-    raw_input_list = zip(input_list, converted_img_list)
+  if gs_params.grid_search.flag_on:
+    img_check = i2p.check_image(input_list[0])
+    if img_check == 'image' or img_check == 'raw pickle':
+      square = gs_params.advanced.square_mode
+      beamstop = gs_params.advanced.erase_beamstop
+      converted_img_list, input_folder = inp.make_raw_input(input_list, gs_params)
+      raw_input_list = zip(input_list, converted_img_list)
 
-    cmd.Command.start("Converting {} images".format(len(raw_input_list)))
-    parallel_map(iterable=raw_input_list,
-                 func=conversion_wrapper,
-                 processes=gs_params.n_processors)
-    cmd.Command.end("Converting {} images -- DONE ".format(len(raw_input_list)))
+      cmd.Command.start("Converting {} images".format(len(raw_input_list)))
+      parallel_map(iterable=raw_input_list,
+                   func=conversion_wrapper,
+                   processes=gs_params.n_processors)
+      cmd.Command.end("Converting {} images -- DONE ".format(len(raw_input_list)))
 
-    input_list = converted_img_list
-  elif img_check == 'converted pickle':
-    input_folder = gs_params.input
-  else:
-    print "ERROR: Unknown image format. Please check your input"
-    sys.exit()
+      input_list = converted_img_list
+    elif img_check == 'converted pickle':
+      input_folder = gs_params.input
+    else:
+      print "ERROR: Unknown image format. Please check your input"
+      iota_exit(iota_version, now)
 
-  check_options(args)
+    if args.c:
+      iota_exit(iota_version, now)
+
+    if args.t:
+      cmd.Command.start("Image triage")
+      accepted_img = parallel_map(iterable=input_list,
+                                  func=triage_mproc_wrapper,
+                                  processes=gs_params.n_processors,
+                                  preserve_order = True)
+      cmd.Command.end("Image triage -- DONE")
+
+      if len(accepted_img) > 0:
+        blank_img = [i for i in input_list if i not in accepted_img]
+        input_list = [i for i in input_list if i in accepted_img]
+      else:
+        print "No images with usable diffraction found!"
 
   # generate general input
   gs_range, input_dir_list, output_dir_list, log_dir, logfile, mp_input_list,\
   mp_output_list = inp.generate_input(gs_params, input_list, input_folder)
 
+  # Print input image list and blank image list to files
+  with open(os.path.abspath('{}/input_images.lst'.format(gs_params.output)), "w") as lf:
+    for input_file in input_list:
+      lf.write('{}\n'.format(input_file))
+
+  with open(os.path.abspath('{}/blank_images.lst'.format(gs_params.output)), "w") as bf:
+    for img in blank_img:
+      bf.write('{}\n'.format(img))
+
+  # Write out starting log entries
   iota_start(txt_out, gs_params, gs_range, input_dir_list,
                     input_list, mp_input_list)
 
@@ -378,7 +415,7 @@ if __name__ == "__main__":
   if gs_params.advanced.experimental:
     print "\nIOTA will run in EXPERIMENTAL mode:\n"
     experimental(mp_input_list, gs_params, log_dir)
-    sys.exit()
+    iota_exit(iota_version, now)
 
   # run grid search
   if gs_params.grid_search.flag_on:
@@ -393,7 +430,7 @@ if __name__ == "__main__":
   if sel_clean == []:
     print "\nNO IMAGES INTEGRATED! Check input and try again.\n"
     inp.main_log(logfile,"\nNO IMAGES INTEGRATED!\n")
-    sys.exit()
+    iota_exit(iota_version, now)
 
   # run final integration
   final_int = run_integration("final", gs_params, sel_clean)
@@ -401,7 +438,10 @@ if __name__ == "__main__":
   # print final integration results and summary
   ia.print_results(final_int, gs_range, logfile)
   ia.print_summary(gs_params, len(input_list), logfile, iota_version, now)
+  ia.make_prime_input(final_int, gs_params, iota_version, now)
 
-  if gs_params.advanced.clean_up_output:
+  if gs_params.advanced.clean_up_output and gs_params.grid_search.flag_on:
     if os.path.isfile(os.path.abspath("{}/integrated.lst".format(gs_params.output))):
       output_cleanup(gs_params)
+
+  iota_exit(iota_version, now)

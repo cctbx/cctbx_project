@@ -182,10 +182,12 @@ def square_pickle(data, square='crop'):
     new_pixels.resize(flex.grid(new_size, new_size))
     new_pixels.fill(-2)
 
-    for y in xrange(pixels.focus()[0]):
-      for x in xrange(pixels.focus()[1]):
-        new_pixels[y + delta_y, x + delta_x] = pixels[y, x]
-    assert new_pixels.focus()[0] == new_pixels.focus()[1]
+    new_pixels.matrix_paste_block_in_place(pixels, delta_y, delta_x)
+
+#     for y in xrange(pixels.focus()[0]):
+#       for x in xrange(pixels.focus()[1]):
+#         new_pixels[y + delta_y, x + delta_x] = pixels[y, x]
+#     assert new_pixels.focus()[0] == new_pixels.focus()[1]
 
   # save the results
   data['DATA'] = new_pixels
@@ -258,8 +260,6 @@ def convert_image(img_in, img_out, square, beamstop=True):
   if beamstop:
     img_data = mask_image(img_data)
 
-  if not os.path.isdir(os.path.dirname(img_out)):
-    os.makedirs(os.path.dirname(img_out))
   ep.dump(img_out, img_data)
 
 
