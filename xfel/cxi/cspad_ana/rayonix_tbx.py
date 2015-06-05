@@ -1,6 +1,9 @@
 from __future__ import division
 # Utility functions for the Rayonix Detector.
 
+# given value of rayonix detector saturation xppi6115
+rayonix_saturated_value = 100000
+
 def get_rayonix_pixel_size(bin_size):
   ''' Given a bin size determine a pixel size.
 

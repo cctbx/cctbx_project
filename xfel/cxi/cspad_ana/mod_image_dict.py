@@ -75,7 +75,7 @@ class mod_image_dict(common_mode.common_mode_correction):
       saturated_value = cspad_tbx.cspad_saturated_value
     elif device == 'Rayonix':
       pixel_size = rayonix_tbx.get_rayonix_pixel_size(self.bin_size)
-      saturated_value = 2**16 - 1
+      saturated_value = rayonix_tbx.rayonix_saturated_value
     elif device == 'marccd':
       pixel_size = evt.get("marccd_pixel_size")
       saturated_value = evt.get("marccd_saturated_value")
