@@ -282,7 +282,7 @@ class RingerPlot (plots.plot_container) :
       x = [ k*chi.sampling for k in range(len(chi.densities)) ]
       p.plot(x, chi.densities, 'r-', linewidth=1)
       p.axvline(chi.angle_current, color='b', linewidth=2, linestyle='--')
-      p.axvline(chi.peakchi, color='g', linewidth=2, linestyle = '--')
+      p.axvline(chi.peak_chi, color='g', linewidth=2, linestyle = '--')
       p.axhline(0, color=(0.4,0.4,0.4), linestyle='--', linewidth=1)
       p.axhspan(0.3,1,facecolor="green",alpha=0.5)
       p.axhspan(-1,0.3,facecolor="grey",alpha=0.5)
