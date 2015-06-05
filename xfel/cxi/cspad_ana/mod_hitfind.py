@@ -275,7 +275,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       saturated_value = evt.get("marccd_saturated_value")
     elif device == 'Rayonix':
       pixel_size = rayonix_tbx.get_rayonix_pixel_size(self.bin_size)
-      saturated_value = 2**16 - 1
+      saturated_value = rayonix_tbx.rayonix_saturated_value
 
     d = cspad_tbx.dpack(
       active_areas=self.active_areas,

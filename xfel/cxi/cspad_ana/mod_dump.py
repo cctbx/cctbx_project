@@ -64,7 +64,7 @@ class mod_dump(common_mode.common_mode_correction):
       output_filename = self._basename
     elif device == 'Rayonix':
       pixel_size = rayonix_tbx.get_rayonix_pixel_size(self.bin_size)
-      saturated_value = 2**16 - 1
+      saturated_value = rayonix_tbx.rayonix_saturated_value
       output_filename = self._basename
     elif device == 'marccd':
       if distance == 0:
