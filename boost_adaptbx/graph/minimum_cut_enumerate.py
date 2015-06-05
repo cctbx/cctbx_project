@@ -6,16 +6,47 @@ from boost_adaptbx.graph import utility
 import operator
 
 
+def no_heap_element_limit(heap):
+
+  return False
+
+
+class heap_element_limit(object):
+
+  def __init__(self, maxcount):
+
+    self.maxcount = maxcount
+    self.iteration = 0
+
+
+  def __call__(self, heap):
+
+    if self.maxcount < len( heap ):
+      heap.sort()
+
+      while self.maxcount < len( heap ):
+        heap.pop()
+
+      import heapq
+      heapq.heapify( heap )
+
+    self.iteration += 1
+    return self.maxcount <= self.iteration
+
+
 def stirling_adaptive_tree_enumeration(
   graph,
   reference,
   sw_path_vertex_selector,
   bk_path_vertex_selector,
+  maxiter = None,
   ):
   """
   Enumerates cuts in order of weight based on a tree built using the recursive
   formula for Stirling numbers of the second kind
   """
+
+  assert maxiter is None or 0 < maxiter
 
   import heapq
   heap = []
@@ -28,6 +59,12 @@ def stirling_adaptive_tree_enumeration(
     bk_path_vertex_selector = bk_path_vertex_selector,
     )
   heapq.heappush( heap, ( current.weight, current ) )
+
+  if maxiter is None:
+    handler = no_heap_element_limit
+
+  else:
+    handler = heap_element_limit( maxcount = maxiter )
 
   while heap:
     ( weight, current ) = heapq.heappop( heap )
@@ -44,6 +81,9 @@ def stirling_adaptive_tree_enumeration(
       reduce( operator.or_, current.source_set_labels(), set() ),
       reduce( operator.or_, current.sink_set_labels(), set() ),
       )
+
+    if handler( heap = heap ):
+      break
 
 
 class stirling_tree_node(object):
