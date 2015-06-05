@@ -7,49 +7,7 @@ import unittest
 
 class TestStirlingAdaptiveEnumeration(unittest.TestCase):
 
-  def manipulation(self, g):
-
-    vd0 = g.add_vertex( label = 0 )
-    vd1 = g.add_vertex( label = 1 )
-    vd2 = g.add_vertex( label = 2 )
-    vd3 = g.add_vertex( label = 3 )
-    vd4 = g.add_vertex( label = 4 )
-    vd5 = g.add_vertex( label = 5 )
-    vd6 = g.add_vertex( label = 6 )
-    vd7 = g.add_vertex( label = 7 )
-
-    g.add_edge( vertex1 = vd3, vertex2 = vd4, weight = 4 )
-    g.add_edge( vertex1 = vd3, vertex2 = vd6, weight = 3 )
-    g.add_edge( vertex1 = vd3, vertex2 = vd5, weight = 1 )
-    g.add_edge( vertex1 = vd0, vertex2 = vd4, weight = 3 )
-    g.add_edge( vertex1 = vd0, vertex2 = vd1, weight = 1 )
-    g.add_edge( vertex1 = vd0, vertex2 = vd6, weight = 2 )
-    g.add_edge( vertex1 = vd0, vertex2 = vd7, weight = 6 )
-    g.add_edge( vertex1 = vd0, vertex2 = vd5, weight = 1 )
-    g.add_edge( vertex1 = vd0, vertex2 = vd2, weight = 8 )
-    g.add_edge( vertex1 = vd4, vertex2 = vd1, weight = 1 )
-    g.add_edge( vertex1 = vd1, vertex2 = vd6, weight = 1 )
-    g.add_edge( vertex1 = vd1, vertex2 = vd5, weight = 80 )
-    g.add_edge( vertex1 = vd6, vertex2 = vd7, weight = 2 )
-    g.add_edge( vertex1 = vd7, vertex2 = vd5, weight = 1 )
-    g.add_edge( vertex1 = vd5, vertex2 = vd2, weight = 1 )
-
-    stiter = minimum_cut_enumerate.stirling_adaptive_tree_enumeration(
-      graph = g,
-      reference = vd0,
-      sw_path_vertex_selector = minimum_cut_enumerate.arbitrary_selection_from_set,
-      bk_path_vertex_selector = minimum_cut_enumerate.BKEqualSizeSelector(),
-      )
-    cuts_with_weight = {}
-
-    for ( weight, source, sink ) in stiter:
-      solu = (
-        frozenset( g.vertex_label( vertex = v ) for v in source ),
-        frozenset( g.vertex_label( vertex = v ) for v in sink ),
-        )
-      cuts_with_weight.setdefault( int( weight ), set() ).add( solu )
-
-    count_with_weight = {
+  full_count_with_weight = {
       7: 1,
       8: 4,
       9: 2,
@@ -96,10 +54,83 @@ class TestStirlingAdaptiveEnumeration(unittest.TestCase):
       110: 1,
       }
 
-    self.assertEqual( len( cuts_with_weight ), len( count_with_weight ) )
+  truncated_count_with_weight24 = {
+      7: 1,
+      8: 4,
+      9: 2,
+      10: 2,
+      11: 2,
+      13: 5,
+      14: 3,
+      15: 2,
+      16: 3,
+      }
+
+  truncated_count_with_weight27 = {
+      7: 1,
+      8: 4,
+      9: 2,
+      10: 2,
+      11: 2,
+      13: 5,
+      14: 3,
+      15: 2,
+      16: 3,
+      17: 3,
+      }
+
+
+  def build_graph(self, g):
+
+    vd0 = g.add_vertex( label = 0 )
+    vd1 = g.add_vertex( label = 1 )
+    vd2 = g.add_vertex( label = 2 )
+    vd3 = g.add_vertex( label = 3 )
+    vd4 = g.add_vertex( label = 4 )
+    vd5 = g.add_vertex( label = 5 )
+    vd6 = g.add_vertex( label = 6 )
+    vd7 = g.add_vertex( label = 7 )
+
+    g.add_edge( vertex1 = vd3, vertex2 = vd4, weight = 4 )
+    g.add_edge( vertex1 = vd3, vertex2 = vd6, weight = 3 )
+    g.add_edge( vertex1 = vd3, vertex2 = vd5, weight = 1 )
+    g.add_edge( vertex1 = vd0, vertex2 = vd4, weight = 3 )
+    g.add_edge( vertex1 = vd0, vertex2 = vd1, weight = 1 )
+    g.add_edge( vertex1 = vd0, vertex2 = vd6, weight = 2 )
+    g.add_edge( vertex1 = vd0, vertex2 = vd7, weight = 6 )
+    g.add_edge( vertex1 = vd0, vertex2 = vd5, weight = 1 )
+    g.add_edge( vertex1 = vd0, vertex2 = vd2, weight = 8 )
+    g.add_edge( vertex1 = vd4, vertex2 = vd1, weight = 1 )
+    g.add_edge( vertex1 = vd1, vertex2 = vd6, weight = 1 )
+    g.add_edge( vertex1 = vd1, vertex2 = vd5, weight = 80 )
+    g.add_edge( vertex1 = vd6, vertex2 = vd7, weight = 2 )
+    g.add_edge( vertex1 = vd7, vertex2 = vd5, weight = 1 )
+    g.add_edge( vertex1 = vd5, vertex2 = vd2, weight = 1 )
+    return vd0
+
+
+  def manipulation(self, g, reference, maxiter, expected):
+
+    stiter = minimum_cut_enumerate.stirling_adaptive_tree_enumeration(
+      graph = g,
+      reference = reference,
+      sw_path_vertex_selector = minimum_cut_enumerate.arbitrary_selection_from_set,
+      bk_path_vertex_selector = minimum_cut_enumerate.BKEqualSizeSelector(),
+      maxiter = maxiter,
+      )
+    cuts_with_weight = {}
+
+    for ( weight, source, sink ) in stiter:
+      solu = (
+        frozenset( g.vertex_label( vertex = v ) for v in source ),
+        frozenset( g.vertex_label( vertex = v ) for v in sink ),
+        )
+      cuts_with_weight.setdefault( int( weight ), set() ).add( solu )
+
+    self.assertEqual( len( expected ), len( cuts_with_weight ) )
 
     for ( weight, cuts ) in cuts_with_weight.iteritems():
-      self.assertEqual( len( cuts ), count_with_weight[ weight ] )
+      self.assertEqual( len( cuts ), expected[ weight ] )
 
 
   def test_adjacency_list_undirected_vector_set(self):
@@ -115,7 +146,25 @@ class TestStirlingAdaptiveEnumeration(unittest.TestCase):
       pass
 
     else:
-      self.manipulation( g )
+      reference = self.build_graph( g )
+      self.manipulation(
+        g,
+        reference = reference,
+        maxiter = None,
+        expected = self.full_count_with_weight,
+        )
+      self.manipulation(
+        g,
+        reference = reference,
+        maxiter = 24,
+        expected = self.truncated_count_with_weight24,
+        )
+      self.manipulation(
+        g,
+        reference = reference,
+        maxiter = 27,
+        expected = self.truncated_count_with_weight27,
+        )
 
 
   def test_adjacency_list_undirected_list_set(self):
@@ -131,7 +180,25 @@ class TestStirlingAdaptiveEnumeration(unittest.TestCase):
       pass
 
     else:
-      self.manipulation( g )
+      reference = self.build_graph( g )
+      self.manipulation(
+        g,
+        reference = reference,
+        maxiter = None,
+        expected = self.full_count_with_weight,
+        )
+      self.manipulation(
+        g,
+        reference = reference,
+        maxiter = 24,
+        expected = self.truncated_count_with_weight24,
+        )
+      self.manipulation(
+        g,
+        reference = reference,
+        maxiter = 27,
+        expected = self.truncated_count_with_weight27,
+        )
 
 
   def test_adjacency_list_undirected_vector_vector(self):
@@ -147,7 +214,25 @@ class TestStirlingAdaptiveEnumeration(unittest.TestCase):
       pass
 
     else:
-      self.manipulation( g )
+      reference = self.build_graph( g )
+      self.manipulation(
+        g,
+        reference = reference,
+        maxiter = None,
+        expected = self.full_count_with_weight,
+        )
+      self.manipulation(
+        g,
+        reference = reference,
+        maxiter = 24,
+        expected = self.truncated_count_with_weight24,
+        )
+      self.manipulation(
+        g,
+        reference = reference,
+        maxiter = 27,
+        expected = self.truncated_count_with_weight27,
+        )
 
 
   def test_adjacency_list_undirected_list_vector(self):
@@ -163,7 +248,25 @@ class TestStirlingAdaptiveEnumeration(unittest.TestCase):
       pass
 
     else:
-      self.manipulation( g )
+      reference = self.build_graph( g )
+      self.manipulation(
+        g,
+        reference = reference,
+        maxiter = None,
+        expected = self.full_count_with_weight,
+        )
+      self.manipulation(
+        g,
+        reference = reference,
+        maxiter = 24,
+        expected = self.truncated_count_with_weight24,
+        )
+      self.manipulation(
+        g,
+        reference = reference,
+        maxiter = 27,
+        expected = self.truncated_count_with_weight27,
+        )
 
 
 suite_stirling_adaptive_enumeration = unittest.TestLoader().loadTestsFromTestCase(
