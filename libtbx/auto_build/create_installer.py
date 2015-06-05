@@ -217,6 +217,9 @@ class SetupInstaller(object):
         os.path.join(self.root_dir, 'modules', module),
         os.path.join(self.dest_dir, 'modules', module)
       )
+    s = os.path.join(self.root_dir, 'modules', 'RevisionNumbers.txt')
+    if os.path.exists(s):
+      shutil.copyfile(s, os.path.join(self.dest_dir, 'modules', 'RevisionNumbers.txt'))
 
   def copy_doc(self):
     # Copy doc
