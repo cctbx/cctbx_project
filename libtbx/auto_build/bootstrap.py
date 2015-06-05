@@ -552,6 +552,7 @@ class Builder(object):
     # Add svn sources.
     if update:
       map(self.add_module, self.get_codebases())
+      self.add_get_revision_numbers()
 
     # always remove .pyc files
     self.remove_pyc()
@@ -563,7 +564,6 @@ class Builder(object):
     # Configure, make, get revision numbers
     if build and not self.download_only:
       self.add_configure()
-      self.add_get_revision_numbers()
       self.add_make()
       self.add_install()
 
