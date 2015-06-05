@@ -552,7 +552,6 @@ class Builder(object):
     # Add svn sources.
     if update:
       map(self.add_module, self.get_codebases())
-      self.add_get_revision_numbers()
 
     # always remove .pyc files
     self.remove_pyc()
@@ -935,30 +934,6 @@ class Builder(object):
       description="save configure command",
     ))
 
-
-  def add_get_revision_numbers(self):
-    if sys.platform == 'win32':
-      shcmd = ['cmd', '/c', 'echo Module : Revision > RevisionNumbers.txt']
-    else:
-      shcmd = ['sh', '-c', 'echo Module : Revision > RevisionNumbers.txt']
-    self.add_step(self.shell(
-      command= shcmd,
-      workdir=['modules'],
-      description="make new file with revision numbers of modules",
-    ))
-    for module in self.get_codebases() + self.get_hot():
-      if sys.platform == 'win32':
-        self.add_step(self.shell(
-          command=['cmd', '/c', '(((echo | set /p=' + module + ' : ) & (svnversion ' + module + ')) >> RevisionNumbers.txt)'],
-          workdir=['modules'],
-          #quiet=True,
-        ))
-      else:
-        self.add_step(self.shell(
-          command=['sh', '-c', '(((echo -n ' + module +' : ) & (svnversion ' + module  +'))>>RevisionNumbers.txt)'],
-          workdir=['modules'],
-          #quiet=True,
-        ))
 
   def add_make(self):
     self.add_command('libtbx.scons', args=['-j', str(self.nproc)])
