@@ -75,13 +75,9 @@ class ShellCommand(object):
       #if not os.path.isabs(command[0]):
         # executable path isn't located relative to workdir
       #  command[0] = os.path.join(workdir, command[0])
-      useshell = False
-      if self.kwargs["use_shell"] == True:
-        useshell = True
       p = subprocess.Popen(
         args=command,
         cwd=workdir,
-        shell=useshell,
         stdout=sys.stdout,
         stderr=sys.stderr
       )
@@ -607,7 +603,6 @@ class Builder(object):
     kwargs['timeout'] = 60*60*2 # 2 hours
     if 'workdir' in kwargs:
       kwargs['workdir'] = self.opjoin(*kwargs['workdir'])
-    kwargs['use_shell'] = kwargs.get("use_shell")
     return ShellCommand(**kwargs)
 
   def run(self):
@@ -942,26 +937,26 @@ class Builder(object):
 
 
   def add_get_revision_numbers(self):
+    if sys.platform == 'win32':
+      shcmd = ['cmd', '/c', 'echo Module : Revision > RevisionNumbers.txt']
+    else:
+      shcmd = ['sh', '-c', 'echo Module : Revision > RevisionNumbers.txt']
     self.add_step(self.shell(
-      command=['echo module : revision number > RevisionNumbers.txt'][0],
+      command= shcmd,
       workdir=['modules'],
-      use_shell = True,
       description="make new file with revision numbers of modules",
-      quiet=True,
     ))
     for module in self.get_codebases() + self.get_hot():
       if sys.platform == 'win32':
         self.add_step(self.shell(
-          command=['((echo | set /p=\"' + module + ' : \") & ( svnversion ' + module + ')) >> RevisionNumbers.txt'][0],
+          command=['cmd', '/c', '(((echo | set /p=' + module + ' : ) & (svnversion ' + module + ')) >> RevisionNumbers.txt)'],
           workdir=['modules'],
-          use_shell = True,
           quiet=True,
         ))
       else:
         self.add_step(self.shell(
-          command=['((echo -n \"' + module + ' : \" ) & ( svnversion ' + module  + ')) >> RevisionNumbers.txt'],
+          command=['sh', '-c', '(((echo -n ' + module +' : ) & (svnversion ' + module  +'))>>RevisionNumbers.txt)'],
           workdir=['modules'],
-          use_shell = True,
           quiet=True,
         ))
 
