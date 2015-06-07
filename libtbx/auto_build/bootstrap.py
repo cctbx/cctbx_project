@@ -3,6 +3,7 @@
 from __future__ import division
 import os, os.path, posixpath
 import sys
+import stat
 import subprocess
 import optparse
 #import getpass
@@ -59,6 +60,11 @@ class ShellCommand(object):
             shutil.rmtree(module)
           os.rename(tarfoldername, module)
         tar.close()
+        for root, dirs, files in os.walk(module):
+          for fname in files:
+            full_path = os.path.join(root, fname)
+            os.chmod(full_path ,stat.S_IWRITE)
+
       except Exception, e:
         print "Extracting tar archive resulted in error:"
         raise
@@ -706,9 +712,7 @@ class Builder(object):
         'tar',
         'cfz',
         '~/' + arxname,
-        basename + '/*',
-        #'--exclude',
-        #'*.svn'
+        basename
       ],
       workdir=['modules']
     ))
