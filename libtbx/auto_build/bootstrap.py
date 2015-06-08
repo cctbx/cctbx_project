@@ -59,11 +59,11 @@ class ShellCommand(object):
           if module != tarfoldername and os.path.exists(module):
             shutil.rmtree(module)
           os.rename(tarfoldername, module)
+          for root, dirs, files in os.walk(module):
+            for fname in files:
+              full_path = os.path.join(root, fname)
+              os.chmod(full_path ,stat.S_IWRITE)
         tar.close()
-#        for root, dirs, files in os.walk(module):
-#          for fname in files:
-#            full_path = os.path.join(root, fname)
-#            os.chmod(full_path ,stat.S_IWRITE)
 
       except Exception, e:
         print "Extracting tar archive resulted in error:"
@@ -87,7 +87,7 @@ class ShellCommand(object):
         stdout=sys.stdout,
         stderr=sys.stderr
       )
-    except Exception, e: # error handling
+    except Exception, e: # error handline
       if isinstance(e, OSError):
         if e.errno == 2:
           executable = os.path.normpath(os.path.join(workdir, command[0]))
