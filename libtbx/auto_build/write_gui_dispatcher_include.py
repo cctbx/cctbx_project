@@ -6,8 +6,6 @@ import os.path
 import sys
 
 def run (args, prologue=None, epilogue=None, out=sys.stdout) :
-  if sys.platform == "win32":
-    return
   parser = OptionParser(
     description="Generate the dispatcher include file for using "+
       "locally installed GUI (and related) libraries.  (Used in Phenix "+
@@ -46,9 +44,10 @@ def run (args, prologue=None, epilogue=None, out=sys.stdout) :
     os.path.join(base_path,"Python.framework","Versions","Current","lib"), ]
   check_libs = ld_library_paths
   if (sys.platform == "darwin") : check_libs = dyld_library_paths
-  for lib_dir in check_libs :
-    if (not os.path.isdir(lib_dir)) :
-      raise OSError("%s does not exist." % lib_dir)
+  if sys.platform != "win32":
+    for lib_dir in check_libs :
+      if (not os.path.isdir(lib_dir)) :
+        raise OSError("%s does not exist." % lib_dir)
   gtk_path = os.path.join(base_path, "lib", "gtk-2.0", options.gtk_version)
   if ((sys.platform.startswith("linux")) and
       (not os.path.isdir(gtk_path)) and
@@ -57,6 +56,9 @@ def run (args, prologue=None, epilogue=None, out=sys.stdout) :
       "exist (%s)." % gtk_path)
   dispatcher = os.path.join(build_path, "dispatcher_include_%s.sh" %
     options.suffix)
+  if sys.platform == "win32":
+    dispatcher = os.path.join(build_path, "dispatcher_include_%s.bat" %
+      options.suffix)
   f = open(dispatcher, "w")
   if (prologue is not None) :
     f.write(prologue + "\n")
@@ -65,7 +67,8 @@ def run (args, prologue=None, epilogue=None, out=sys.stdout) :
       f.write("%s\n" % options.prologue)
     else:
       f.write(open(options.prologue).read() + "\n")
-  print >> f, """\
+  if sys.platform != "win32":
+    print >> f, """\
 # include at start
 if [ "$LIBTBX_DISPATCHER_NAME" != "libtbx.scons" ] && \
    [ -z "$PHENIX_TRUST_OTHER_ENV" ]; then
