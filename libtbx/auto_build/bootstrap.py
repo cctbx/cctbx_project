@@ -867,20 +867,24 @@ class Builder(object):
   def add_dispatchers(self, product_name="phenix"):
     """Write dispatcher_include file."""
     """Generating Phenix environment additions for dispatchers..."""
-    if sys.platform == "win32":
-      return
+    envcmd = "export"
     dispatcher = os.path.join("build",
                               "dispatcher_include_%s.sh" %
                               product_name)
+    if sys.platform == "win32":
+      envcmd = "set"
+      dispatcher = os.path.join("build",
+                                "dispatcher_include_%s.bat" %
+                                product_name)
     if (os.path.isfile(dispatcher)): os.remove(dispatcher)
     env_prefix = product_name.upper() # e.g. "Phenix" -> "PHENIX"
     prologue = "\n".join([
-      "export %s=\"%s\"" % (env_prefix, os.getcwd()),
-      "export %s_VERSION=%s" % (env_prefix, "dev-svn"),
-      "export %s_ENVIRONMENT=1" % env_prefix,
-      #"export %s_MTYPE=%s" % (env_prefix, "none"),
+      "%s %s=\"%s\"" % (envcmd, env_prefix, os.getcwd()),
+      "%s %s_VERSION=%s" % (envcmd, env_prefix, "dev-svn"),
+      "%s %s_ENVIRONMENT=1" % (envcmd, env_prefix),
+      #"%s %s_MTYPE=%s" % (envcmd, env_prefix, "none"),
     ] #+ self.product_specific_dispatcher_prologue())
-                         )
+                           )
     #epilogue = "\n".join(self.product_specific_dispatcher_epilogue())
     dispatcher_opts = [
       "--build_dir=%s" % ".",
