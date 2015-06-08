@@ -51,7 +51,7 @@ class ShellCommand(object):
       try:
         # XXX use tarfile rather than unix tar command which is not platform independent
         tar = tarfile.open(os.path.join(workdir, command[2]))
-        tar.extractall(path=workdir)
+        tar.extractall(path=workdir) # TODO: requires python 2.5!
         if len(command) > 3 and command[3]: # rename to expected folder name, e.g. boost_hot -> boost
           module = os.path.join(workdir, command[3])
           tarfoldername = os.path.join(workdir, os.path.commonprefix(tar.getnames()).split('/')[0])
@@ -60,16 +60,16 @@ class ShellCommand(object):
             shutil.rmtree(module)
           os.rename(tarfoldername, module)
         tar.close()
-        for root, dirs, files in os.walk(module):
-          for fname in files:
-            full_path = os.path.join(root, fname)
-            os.chmod(full_path ,stat.S_IWRITE)
+#        for root, dirs, files in os.walk(module):
+#          for fname in files:
+#            full_path = os.path.join(root, fname)
+#            os.chmod(full_path ,stat.S_IWRITE)
 
       except Exception, e:
         print "Extracting tar archive resulted in error:"
         raise
       return
-    if command[0] == 'rm' :
+    if command[0] == 'rm':
       # XXX use shutil rather than rm which is not platform independent
       for dir in command[2:]:
         if os.path.exists(dir):
@@ -87,7 +87,7 @@ class ShellCommand(object):
         stdout=sys.stdout,
         stderr=sys.stderr
       )
-    except Exception, e: # error handline
+    except Exception, e: # error handling
       if isinstance(e, OSError):
         if e.errno == 2:
           executable = os.path.normpath(os.path.join(workdir, command[0]))
