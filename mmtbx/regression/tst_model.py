@@ -992,14 +992,14 @@ def exercise_2(mon_lib_srv, ener_lib):
                    relative_path="phenix_regression/pdb/adp_out_stat.pdb", test=os.path.isfile)
   params = monomer_library.pdb_interpretation.master_params.extract()
   params.nonbonded_weight = 16
+  params.clash_guard.nonbonded_distance_threshold = None # disable clash_guard
   processed_pdb_file = monomer_library.pdb_interpretation.process(
                                        mon_lib_srv               = mon_lib_srv,
                                        ener_lib                  = ener_lib,
                                        params                    = params,
                                        file_name                 = pdb_file,
                                        raw_records               = None,
-                                       force_symmetry            = True,
-                                       for_dihedral_reference    = True) # disable clash_guard
+                                       force_symmetry            = True)
   geometry = processed_pdb_file.geometry_restraints_manager(
                                                     show_energies      = False,
                                                     plain_pairs_radius = 5.0)
