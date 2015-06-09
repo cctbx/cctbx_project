@@ -125,7 +125,9 @@ def exercise_1(mon_lib_srv, ener_lib):
   log = cStringIO.StringIO()
   dihedral_proxies = utils.get_complete_dihedral_proxies(
                        raw_records=pdb_str_1)
-  assert len(dihedral_proxies) == 54
+  # single phi or psi on the chain edges are not selected anymore
+  assert len(dihedral_proxies) == 50, \
+      "Expected 50, got %d" % len(dihedral_proxies)
 
   # default run (1 residue is out of NCS)
   params = pdb_interpretation.master_params.extract()
@@ -140,7 +142,8 @@ def exercise_1(mon_lib_srv, ener_lib):
                   ncs_obj=ppf.ncs_obj,
                   log=log)
   nprox = ncs_manager.get_n_proxies()
-  assert nprox == 28, "got %d instead of 28" % nprox
+  # single phi or psi on the chain edges are not selected anymore
+  assert nprox == 26, "got %d instead of 26" % nprox
 
 
   # supply full NCS
@@ -163,7 +166,8 @@ ncs_group {
                   ncs_obj=ppf.ncs_obj,
                   log=log)
   nprox = ncs_manager.get_n_proxies()
-  assert nprox == 40, "got %d instead of 40" % nprox
+  # single phi or psi on the chain edges are not selected anymore
+  assert nprox == 36, "got %d instead of 36" % nprox
 
 if (__name__ == "__main__") :
   mon_lib_srv = mmtbx.monomer_library.server.server()

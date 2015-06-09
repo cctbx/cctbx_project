@@ -153,43 +153,43 @@ class torsion_ncs(object):
       # in this module
       # ================================================
       assert 0
-      atom_labels = list(pdb_hierarchy.atoms_with_labels())
-      segids = flex.std_string([ a.segid for a in atom_labels ])
-      self.use_segid = not segids.all_eq('    ')
-      ncs_groups_manager = get_ncs_groups(
-          pdb_hierarchy=pdb_hierarchy,
-          use_segid=self.use_segid,
-          params=self.params,
-          log=self.log)
-      self.ncs_groups = ncs_groups_manager.ncs_groups
-      self.alignments = ncs_groups_manager.alignments
-      new_ncs_groups = None
-      #sort NCS groups alphabetically
-      def selection_sort(match_list):
-        match_list.sort()
-        return match_list[0]
-      self.ncs_groups.sort(key=selection_sort)
-      if len(self.ncs_groups) > 0:
-        new_ncs_groups = "refinement {\n ncs {\n  torsion {\n"
-        for ncs_set in self.ncs_groups:
-          new_ncs_groups += "   restraint_group {\n"
-          for chain in ncs_set:
-            new_ncs_groups += "    selection = %s\n" % chain
-          if self.b_factor_weight is not None:
-            new_ncs_groups += \
-              "    b_factor_weight = %.1f\n" % self.b_factor_weight
-          else:
-            new_ncs_groups += \
-              "    b_factor_weight = None\n"
-          if self.coordinate_sigma is not None:
-            new_ncs_groups += \
-              "    coordinate_sigma = %.1f\n" % self.coordinate_sigma
-          else:
-            new_ncs_groups += \
-              "    coordinate_sigma = None\n"
-          new_ncs_groups += "   }\n"
-        new_ncs_groups += "  }\n }\n}"
-      self.found_ncs = new_ncs_groups
+      # atom_labels = list(pdb_hierarchy.atoms_with_labels())
+      # segids = flex.std_string([ a.segid for a in atom_labels ])
+      # self.use_segid = not segids.all_eq('    ')
+      # ncs_groups_manager = get_ncs_groups(
+      #     pdb_hierarchy=pdb_hierarchy,
+      #     use_segid=self.use_segid,
+      #     params=self.params,
+      #     log=self.log)
+      # self.ncs_groups = ncs_groups_manager.ncs_groups
+      # self.alignments = ncs_groups_manager.alignments
+      # new_ncs_groups = None
+      # #sort NCS groups alphabetically
+      # def selection_sort(match_list):
+      #   match_list.sort()
+      #   return match_list[0]
+      # self.ncs_groups.sort(key=selection_sort)
+      # if len(self.ncs_groups) > 0:
+      #   new_ncs_groups = "refinement {\n ncs {\n  torsion {\n"
+      #   for ncs_set in self.ncs_groups:
+      #     new_ncs_groups += "   restraint_group {\n"
+      #     for chain in ncs_set:
+      #       new_ncs_groups += "    selection = %s\n" % chain
+      #     if self.b_factor_weight is not None:
+      #       new_ncs_groups += \
+      #         "    b_factor_weight = %.1f\n" % self.b_factor_weight
+      #     else:
+      #       new_ncs_groups += \
+      #         "    b_factor_weight = None\n"
+      #     if self.coordinate_sigma is not None:
+      #       new_ncs_groups += \
+      #         "    coordinate_sigma = %.1f\n" % self.coordinate_sigma
+      #     else:
+      #       new_ncs_groups += \
+      #         "    coordinate_sigma = None\n"
+      #     new_ncs_groups += "   }\n"
+      #   new_ncs_groups += "  }\n }\n}"
+      # self.found_ncs = new_ncs_groups
 
   def find_ncs_matches_from_hierarchy(self,
                                       pdb_hierarchy):
@@ -1273,47 +1273,6 @@ class torsion_ncs(object):
                     sites_cart=sites_cart_moving)
                   assert rotamer == model_rot
 
-  def process_ncs_restraint_groups(self, model, processed_pdb_file):
-    assert 0, "who is using this? Nobody!"
-    log = self.log
-    ncs_groups = ncs.restraints.groups()
-    sites_cart = None
-
-    for param_group in self.params.restraint_group:
-      master = param_group.selection[0]
-      selection_strings = []
-      found_offset = False
-      range_text = ""
-      for range in self.master_ranges[master]:
-        if range_text == "":
-          range_text = "(resseq %d:%d" % (range[0], range[1])
-        else:
-          range_text += " or resseq %d:%d" % (range[0], range[1])
-      range_text += ")"
-      master = master + " and " + range_text
-      for selection in param_group.selection[1:]:
-        range_text = ""
-        for range in self.master_ranges[selection]:
-          if range_text == "":
-            range_text = "(resseq %d:%d" % (range[0], range[1])
-          else:
-            range_text += " or resseq %d:%d" % (range[0], range[1])
-        range_text += ")"
-        temp_selection = selection + " and " + range_text
-        selection_strings.append(temp_selection)
-      group = ncs.restraints.group.from_atom_selections(
-        processed_pdb              = processed_pdb_file,
-        reference_selection_string = master,
-        selection_strings          = selection_strings,
-        special_position_warnings_only = True,
-        log = log)
-      ncs_groups.members.append(group)
-    if (len(ncs_groups.members) == 0):
-      print >> log, "No NCS restraint groups specified."
-      print >> log
-    else:
-      model.restraints_manager.torsion_ncs_groups = ncs_groups
-
   def build_sidechain_angle_hash(self):
     sidechain_angle_hash = {}
     for key in self.sa.atomsForAngle.keys():
@@ -1433,134 +1392,6 @@ class torsion_ncs(object):
           sites_cart=sites_cart,
           proxies=self.ncs_dihedral_proxies,
           gradient_array=gradient_array)
-
-
-#split out functions
-class get_ncs_groups(object):
-  def __init__(self,
-               pdb_hierarchy,
-               use_segid,
-               params,
-               log):
-    assert 0, "Switched to Youval's search procedure"
-    ncs_groups = []
-    alignments = {}
-    used_chains = []
-    pair_hash = {}
-    chains = pdb_hierarchy.models()[0].chains()
-    am = utils.alignment_manager(pdb_hierarchy, use_segid, log)
-
-    for i, chain_i in enumerate(chains):
-      found_conformer = False
-      for conformer in chain_i.conformers():
-        if not conformer.is_protein() and not conformer.is_na():
-          continue
-        else:
-          found_conformer = True
-      if not found_conformer:
-        continue
-      segid_i = utils.get_unique_segid(chain_i)
-      if segid_i == None:
-        continue
-      if (use_segid) :
-        chain_i_str = "chain '%s' and segid '%s'" % \
-          (chain_i.id, segid_i)
-      else :
-        chain_i_str = "chain '%s'" % chain_i.id
-      for chain_j in chains[i+1:]:
-        found_conformer = False
-        for conformer in chain_j.conformers():
-          if not conformer.is_protein() and not conformer.is_na():
-            continue
-          else:
-            found_conformer = True
-        if not found_conformer:
-          continue
-        segid_j = utils.get_unique_segid(chain_j)
-        if segid_j == None:
-          continue
-        if (use_segid) :
-          chain_j_str = "chain '%s' and segid '%s'" % (chain_j.id, segid_j)
-        else :
-          chain_j_str = "chain '%s'" % chain_j.id
-        seq_pair = (am.sequences[chain_i_str],
-                    am.sequences[chain_j_str])
-        seq_pair_padded = (am.padded_sequences[chain_i_str],
-                           am.padded_sequences[chain_j_str])
-        struct_pair = (am.structures[chain_i_str],
-                       am.structures[chain_j_str])
-        if ( (len(seq_pair[0])==0 and len(seq_pair[1])==0) or
-             (len(seq_pair_padded[0])==0 and len(seq_pair_padded[1])==0) ):
-          continue
-        residue_match_map = \
-          utils._alignment(
-            sequences=seq_pair,
-            padded_sequences=seq_pair_padded,
-            structures=struct_pair,
-            log=log)
-        key = (chain_i_str, chain_j_str)
-        alignments[key] = residue_match_map
-        if ( min(len(residue_match_map),
-                 chain_i.residue_groups_size(),
-                 chain_j.residue_groups_size()) \
-             / max(len(residue_match_map),
-                   chain_i.residue_groups_size(),
-                   chain_j.residue_groups_size()) \
-             >= params.similarity ):
-          pair_key = (chain_i.id, segid_i)
-          match_key = (chain_j.id, segid_j)
-          if used_chains is not None:
-            if match_key in used_chains:
-              continue
-          assign_key = None
-          if pair_key in used_chains:
-            for group_key in pair_hash.keys():
-              if pair_key in pair_hash[group_key]:
-                assign_key = group_key
-          if assign_key is None:
-            assign_key = pair_key
-          if (not assign_key in pair_hash) :
-            pair_hash[assign_key] = []
-          pair_hash[assign_key].append(match_key)
-          used_chains.append(match_key)
-
-    for key in pair_hash.keys():
-      ncs_set = []
-      if (use_segid) :
-        chain_str = "chain '%s' and segid '%s'" % (key[0], key[1])
-      else :
-        chain_str = "chain '%s'" % (key[0])
-      ncs_set.append(chain_str)
-      for add_chain in pair_hash[key]:
-        if (use_segid) :
-          chain_str = "chain '%s' and segid '%s'" % \
-            (add_chain[0], add_chain[1])
-        else :
-          chain_str = "chain '%s'" % (add_chain[0])
-        ncs_set.append(chain_str)
-      ncs_groups.append(ncs_set)
-
-    self.alignments = alignments
-    self.ncs_groups = ncs_groups
-
-def determine_ncs_groups(pdb_hierarchy,
-                         params=None,
-                         log=None):
-  assert 0, "Shouldn't be exeucted, swithced to Youval's search"
-  pdb_hierarchy.reset_i_seq_if_necessary()
-  if params is None:
-    params = torsion_ncs_params.extract()
-  if log is None:
-    log = sys.stdout
-  atom_labels = list(pdb_hierarchy.atoms_with_labels())
-  segids = flex.std_string([ a.segid for a in atom_labels ])
-  use_segid = not segids.all_eq('    ')
-  ncs_groups_manager = get_ncs_groups(
-                         pdb_hierarchy=pdb_hierarchy,
-                         use_segid=use_segid,
-                         params=params,
-                         log=log)
-  return ncs_groups_manager.ncs_groups
 
 # XXX wrapper for running in Phenix GUI
 class _run_determine_ncs_groups (object) :

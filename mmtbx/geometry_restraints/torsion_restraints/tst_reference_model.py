@@ -12,6 +12,7 @@ from libtbx.test_utils import show_diff
 import libtbx.load_env
 import cStringIO
 import sys, os, time
+from mmtbx.monomer_library.pdb_interpretation import process
 
 model_raw_records = """\
 CRYST1   41.566   72.307   92.870 108.51  93.02  90.06 P 1           4
@@ -96,9 +97,11 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   work_params = reference_model_params.extract()
   work_params.reference_model.enabled = True
   work_params.reference_model.fix_outliers = False
-  pdb_hierarchy = iotbx.pdb.input(
-    source_info=None,
-    lines=flex.split_lines(model_raw_records)).construct_hierarchy()
+  processed_pdb_file = process(
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
+      raw_records=flex.split_lines(model_raw_records))
+  pdb_h = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   reference_hierarchy_list = []
   tmp_hierarchy = iotbx.pdb.input(
     source_info=None,
@@ -106,11 +109,11 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
 
   reference_hierarchy_list.append(tmp_hierarchy)
   rm = reference_model(
-         pdb_hierarchy=pdb_hierarchy,
+         processed_pdb_file=processed_pdb_file,
          reference_hierarchy_list=reference_hierarchy_list,
          params=work_params.reference_model,
          log=log)
-  assert rm.get_n_proxies() == 7, "Got %d, expected 7" % rm.get_n_proxies()
+  assert rm.get_n_proxies() == 5, "Got %d, expected 5" % rm.get_n_proxies()
 
   reference_hierarchy_list_alt_seq = []
   tmp_hierarchy = iotbx.pdb.input(
@@ -126,7 +129,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   reference_hierarchy_list_ref_match.append(tmp_hierarchy)
 
   i_seq_name_hash = utils.build_name_hash(
-    pdb_hierarchy=pdb_hierarchy)
+    pdb_hierarchy=pdb_h)
   assert i_seq_name_hash == \
     {0: ' N   ASN C 236     ', 1: ' CA  ASN C 236     ',
      2: ' C   ASN C 236     ', 3: ' O   ASN C 236     ',
@@ -137,11 +140,10 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
      12: ' CB  LEU C 237     ', 13: ' CG  LEU C 237     ',
      14: ' CD1 LEU C 237     ', 15: ' CD2 LEU C 237     '}
   i_seq_element_hash = utils.build_element_hash(
-    pdb_hierarchy=pdb_hierarchy)
+    pdb_hierarchy=pdb_h)
   assert i_seq_element_hash == \
-    {0: ' N', 1: ' C', 2: ' C', 3: ' O', 4: ' C', 5: ' C', 6: ' O', 7: ' N',
-     8: ' N', 9: ' C', 10: ' C', 11: ' O', 12: ' C', 13: ' C', 14: ' C',
-     15: ' C'}
+       {0: 'N', 1: 'C', 2: 'C', 3: 'O', 4: 'C', 5: 'C', 6: 'O', 7: 'N', 8: 'N',
+        9: 'C', 10: 'C', 11: 'O', 12: 'C', 13: 'C', 14: 'C', 15: 'C'}
 
   ref_pdb_hierarchy = reference_hierarchy_list[0]
   dihedral_proxies = \
@@ -154,14 +156,14 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
     include_hydrogens=False,
     include_main_chain=True,
     include_side_chain=True)
-  assert len(dihedral_hash) == 7
+  assert len(dihedral_hash) == 5
   reference_dihedral_proxies = rm.reference_dihedral_proxies.deep_copy()
   assert reference_dihedral_proxies is not None
   assert len(reference_dihedral_proxies) == len(dihedral_hash)
   for rdp in reference_dihedral_proxies:
     assert rdp.limit == work_params.reference_model.limit
 
-  r1 = rotalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
+  r1 = rotalyze(pdb_hierarchy=pdb_h, outliers_only=False)
   out1 = cStringIO.StringIO()
   r1.show_old_output(out=out1)
   r2 = rotalyze(pdb_hierarchy=ref_pdb_hierarchy, outliers_only=False)
@@ -178,13 +180,13 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
  C 237  LEU:1.00:60.8:179.1:57.3:::Favored:tp
 """)
 
-  xray_structure = pdb_hierarchy.extract_xray_structure()
+  xray_structure = pdb_h.extract_xray_structure()
   rm.set_rotamer_to_reference(
     xray_structure=xray_structure,
     mon_lib_srv=mon_lib_srv,
     quiet=True)
-  pdb_hierarchy.adopt_xray_structure(xray_structure)
-  r2 = rotalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
+  pdb_h.adopt_xray_structure(xray_structure)
+  r2 = rotalyze(pdb_hierarchy=pdb_h, outliers_only=False)
   out3 = cStringIO.StringIO()
   r2.show_old_output(out=out3)
   assert not show_diff(out3.getvalue(), """\
@@ -192,7 +194,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
  C 237  LEU:1.00:60.8:179.1:57.3:::Favored:tp
 """)
 
-  match_map = rm.match_map['ref1']
+  match_map = rm.match_map['ref0']
   assert match_map == \
   {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, 11: 11,
    12: 12, 13: 13, 14: 14, 15: 15}
@@ -208,19 +210,24 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   all_pars = def_pars.fetch(pars).extract()
   all_pars.reference_model.enabled = True
   rm = reference_model(
-         pdb_hierarchy=pdb_hierarchy,
+         processed_pdb_file=processed_pdb_file,
          reference_hierarchy_list=reference_hierarchy_list_alt_seq,
          params=all_pars.reference_model,
          log=log)
   match_map = rm.match_map
-  assert match_map['ref1'] == \
+  assert match_map['ref0'] == \
   {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, 11: 11,
    12: 12, 13: 13, 14: 14, 15: 15}
 
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/1ywf.pdb",
     test=os.path.isfile)
-  pdb_hierarchy = iotbx.pdb.input(file_name=pdb_file).construct_hierarchy()
+  processed_pdb_file = process(
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
+      file_name=pdb_file)
+  pdb_h = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  # pdb_hierarchy = iotbx.pdb.input(file_name=pdb_file).construct_hierarchy()
   reference_file_list = []
   reference_file_list.append(pdb_file)
 
@@ -229,7 +236,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   work_pars.reference_model.enabled = True
 
   rm = reference_model(
-         pdb_hierarchy=pdb_hierarchy,
+         processed_pdb_file=processed_pdb_file,
          reference_file_list=reference_file_list,
          params=work_pars.reference_model,
          log=log)
@@ -238,7 +245,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   for dp in reference_dihedral_proxies:
     if dp.weight == 1.0:
       standard_weight += 1
-  assert standard_weight == 1181
+  assert standard_weight == 1177, "Expecting 1181, got %d" % standard_weight
   if (not libtbx.env.has_module(name="ksdssp")):
     print "Skipping KSDSSP tests: ksdssp module not available."
   else:
@@ -609,18 +616,24 @@ TER
   pars = iotbx.phil.parse(params_text)
   all_pars = def_pars.fetch(pars).extract()
   all_pars.reference_model.enabled = True
-  inp_hierarchy = iotbx.pdb.input(
-      source_info=None,
-      lines=flex.split_lines(pdb_str_original)).construct_hierarchy()
+
+  processed_pdb_file = process(
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
+      raw_records=flex.split_lines(pdb_str_original))
+  pdb_h = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   rm = reference_model(
-         pdb_hierarchy=inp_hierarchy,
+         processed_pdb_file=processed_pdb_file,
          reference_file_list=['ref.pdb'],
          mon_lib_srv=mon_lib_srv,
          ener_lib=ener_lib,
          params=all_pars.reference_model,
          log=log)
   # rm.show_reference_summary(log=log)
-  new_h = inp_hierarchy.deep_copy()
+  assert rm.get_n_proxies() == 116, \
+      "Expecting 116 proxies, got %d" % rm.get_n_proxies()
+  # STOP()
+  new_h = pdb_h.deep_copy()
   xray_structure = new_h.extract_xray_structure()
   rm.set_rotamer_to_reference(
     xray_structure=xray_structure)
@@ -628,6 +641,304 @@ TER
   r1 = rotalyze(pdb_hierarchy=new_h, outliers_only=False)
   assert r1.n_outliers == 0
   # new_h.write_pdb_file(file_name="final.pdb")
+
+  #
+  # The same, but from multiple files
+  for i in range(4):
+    ref_file = open("ref_%d.pdb" % i, 'w')
+    ref_file.write(pdb_str_ref_minimized)
+    ref_file.close()
+  def_pars = reference_model_params
+  params_text = """\
+  reference_model {
+    file = ref_0.pdb
+    file = ref_1.pdb
+    file = ref_2.pdb
+    file = ref_3.pdb
+    reference_group {
+      reference = chain 'A'
+      selection = chain 'A'
+      file_name = "ref_0.pdb"
+    }
+    reference_group {
+      reference = chain 'A'
+      selection = chain 'B'
+      file_name = "ref_1.pdb"
+    }
+    reference_group {
+      reference = chain 'A'
+      selection = chain 'C'
+      file_name = "ref_2.pdb"
+    }
+    reference_group {
+      reference = chain 'A'
+      selection = chain 'D'
+      file_name = "ref_3.pdb"
+    }
+  }  """
+  pars = iotbx.phil.parse(params_text)
+  all_pars = def_pars.fetch(pars).extract()
+  all_pars.reference_model.enabled = True
+  rm = reference_model(
+         processed_pdb_file=processed_pdb_file,
+         reference_file_list=['ref_0.pdb', 'ref_1.pdb', 'ref_2.pdb', 'ref_3.pdb'],
+         mon_lib_srv=mon_lib_srv,
+         ener_lib=ener_lib,
+         params=all_pars.reference_model,
+         log=log)
+  assert rm.get_n_proxies() == 116, \
+      "Expecting 116 proxies, got %d" % rm.get_n_proxies()
+  for i in range(4):
+    os.remove("ref_%d.pdb" % i)
+  #
+  # The same, 1 group, should be 116/4=29 proxies
+  ref_file = open("ref_0.pdb", 'w')
+  ref_file.write(pdb_str_ref_minimized)
+  ref_file.close()
+  def_pars = reference_model_params
+  params_text = """\
+  reference_model {
+    file = ref_0.pdb
+    reference_group {
+      reference = chain 'A'
+      selection = chain 'A'
+      file_name = "ref_0.pdb"
+    }
+  }  """
+  pars = iotbx.phil.parse(params_text)
+  all_pars = def_pars.fetch(pars).extract()
+  all_pars.reference_model.enabled = True
+  rm = reference_model(
+         processed_pdb_file=processed_pdb_file,
+         reference_file_list=['ref_0.pdb'],
+         mon_lib_srv=mon_lib_srv,
+         ener_lib=ener_lib,
+         params=all_pars.reference_model,
+         log=log)
+  assert rm.get_n_proxies() == 29, \
+      "Expecting 29 proxies, got %d" % rm.get_n_proxies()
+  all_pars.reference_model.side_chain=False
+  rm = reference_model(
+         processed_pdb_file=processed_pdb_file,
+         reference_file_list=['ref_0.pdb'],
+         mon_lib_srv=mon_lib_srv,
+         ener_lib=ener_lib,
+         params=all_pars.reference_model,
+         log=log)
+  assert rm.get_n_proxies() == 19, \
+      "Expecting 19 proxies, got %d" % rm.get_n_proxies()
+  all_pars.reference_model.side_chain=True
+  all_pars.reference_model.main_chain=False
+  rm = reference_model(
+         processed_pdb_file=processed_pdb_file,
+         reference_file_list=['ref_0.pdb'],
+         mon_lib_srv=mon_lib_srv,
+         ener_lib=ener_lib,
+         params=all_pars.reference_model,
+         log=log)
+  assert rm.get_n_proxies() == 10, \
+      "Expecting 10 proxies, got %d" % rm.get_n_proxies()
+
+  # just throw all in without specifying:
+  all_pars = def_pars.fetch().extract()
+  all_pars.reference_model.enabled = True
+  all_pars.reference_model.file = 'ref_0.pdb'
+  rm = reference_model(
+         processed_pdb_file=processed_pdb_file,
+         reference_file_list=['ref_0.pdb'],
+         mon_lib_srv=mon_lib_srv,
+         ener_lib=ener_lib,
+         params=all_pars.reference_model,
+         log=log)
+  assert rm.get_n_proxies() == 116, \
+      "Expecting 116 proxies, got %d" % rm.get_n_proxies()
+  os.remove("ref_0.pdb")
+
+
+def exercise_multiple_ncs_groups_found(mon_lib_srv, ener_lib):
+  pdb_str_original = """\
+CRYST1   49.945   53.842   33.425  90.00  90.00  90.00 P 1
+ATOM   5466  N   ASN C 236       9.580  47.176  25.356  1.00 60.13           N
+ATOM   5467  CA  ASN C 236       8.200  46.668  25.442  1.00 60.52           C
+ATOM   5468  C   ASN C 236       8.058  45.158  25.655  1.00 60.49           C
+ATOM   5469  O   ASN C 236       7.110  44.527  25.191  1.00 60.60           O
+ATOM   5470  CB  ASN C 236       7.370  47.129  24.244  1.00 60.55           C
+ATOM   5471  CG  ASN C 236       6.038  47.680  24.666  1.00 61.75           C
+ATOM   5472  OD1 ASN C 236       5.937  48.842  25.096  1.00 62.86           O
+ATOM   5473  ND2 ASN C 236       5.000  46.849  24.575  1.00 61.22           N
+ATOM   5474  N   LEU C 237       8.997  44.597  26.396  1.00 60.55           N
+ATOM   5475  CA  LEU C 237       9.125  43.164  26.494  1.00 60.48           C
+ATOM   5476  C   LEU C 237       9.496  42.788  27.909  1.00 60.06           C
+ATOM   5477  O   LEU C 237       9.016  41.780  28.425  1.00 60.41           O
+ATOM   5478  CB  LEU C 237      10.199  42.697  25.506  1.00 60.91           C
+ATOM   5479  CG  LEU C 237      10.223  41.328  24.819  1.00 62.25           C
+ATOM   5480  CD1 LEU C 237       9.088  40.386  25.251  1.00 63.18           C
+ATOM   5481  CD2 LEU C 237      10.244  41.542  23.293  1.00 62.89           C
+TER
+ATOM      1  N   THR A   3      42.874  19.189  20.321  1.00 80.52           N
+ATOM      2  CA  THR A   3      42.493  17.965  19.539  1.00 80.52           C
+ATOM      4  CB  THR A   3      42.127  16.792  20.509  1.00 79.62           C
+ATOM      6  OG1 THR A   3      41.887  15.591  19.761  1.00 79.62           O
+ATOM      8  CG2 THR A   3      40.920  17.121  21.394  1.00 79.62           C
+ATOM     12  C   THR A   3      41.338  18.247  18.549  1.00 80.52           C
+ATOM     13  O   THR A   3      40.201  18.456  18.959  1.00 80.52           O
+ATOM     17  N   GLY A   4      41.644  18.246  17.245  1.00 79.31           N
+ATOM     18  CA  GLY A   4      40.711  18.691  16.220  1.00 79.31           C
+ATOM     21  C   GLY A   4      40.442  17.713  15.089  1.00 79.31           C
+ATOM     22  O   GLY A   4      39.471  16.958  15.136  1.00 79.31           O
+ATOM     24  N   ALA A   5      41.262  17.732  14.043  1.00 78.81           N
+ATOM     25  CA  ALA A   5      41.076  16.837  12.909  1.00 78.81           C
+ATOM     27  CB  ALA A   5      41.455  17.547  11.611  1.00 77.40           C
+ATOM     31  C   ALA A   5      41.876  15.548  13.042  1.00 78.81           C
+ATOM     32  O   ALA A   5      41.939  14.770  12.085  1.00 78.81           O
+ATOM     34  N   GLN A   6      42.497  15.306  14.200  1.00 80.55           N
+ATOM     35  CA  GLN A   6      43.323  14.113  14.346  1.00 80.55           C
+ATOM     37  CB  GLN A   6      44.064  14.112  15.682  1.00 79.84           C
+ATOM     40  CG  GLN A   6      44.945  15.305  15.924  1.00 79.84           C
+ATOM     43  CD  GLN A   6      44.171  16.444  16.553  1.00 79.84           C
+ATOM     44  OE1 GLN A   6      42.971  16.324  16.817  1.00 79.84           O
+ATOM     45  NE2 GLN A   6      44.848  17.558  16.796  1.00 79.84           N
+ATOM     48  C   GLN A   6      42.469  12.864  14.273  1.00 80.55           C
+ATOM     49  O   GLN A   6      42.829  11.892  13.601  1.00 80.55           O
+ATOM     51  N   VAL A   7      41.324  12.884  14.959  1.00 79.06           N
+ATOM     52  CA  VAL A   7      40.503  11.693  15.123  1.00 79.06           C
+ATOM     54  CB  VAL A   7      39.291  12.027  16.016  1.00 78.99           C
+ATOM     56  CG1 VAL A   7      38.330  10.839  16.122  1.00 78.99           C
+ATOM     60  CG2 VAL A   7      39.756  12.478  17.391  1.00 78.99           C
+ATOM     64  C   VAL A   7      40.080  11.140  13.778  1.00 79.06           C
+ATOM     65  O   VAL A   7      39.643   9.988  13.688  1.00 79.06           O
+ATOM     67  N   TYR A   8      40.219  11.933  12.718  1.00 79.78           N
+ATOM     68  CA  TYR A   8      40.126  11.380  11.379  1.00 79.78           C
+ATOM     70  CB  TYR A   8      40.413  12.461  10.342  1.00 77.69           C
+ATOM     73  CG  TYR A   8      40.315  11.969   8.911  1.00 77.69           C
+ATOM     74  CD1 TYR A   8      39.085  11.871   8.272  1.00 77.69           C
+ATOM     76  CE1 TYR A   8      38.989  11.420   6.968  1.00 77.69           C
+ATOM     78  CZ  TYR A   8      40.125  11.035   6.294  1.00 77.69           C
+ATOM     79  OH  TYR A   8      40.036  10.581   5.000  1.00 77.69           O
+ATOM     81  CE2 TYR A   8      41.353  11.105   6.908  1.00 77.69           C
+ATOM     83  CD2 TYR A   8      41.444  11.566   8.211  1.00 77.69           C
+ATOM     85  C   TYR A   8      41.097  10.224  11.185  1.00 79.78           C
+ATOM     86  O   TYR A   8      40.883   9.397  10.295  1.00 79.78           O
+ATOM     88  N   ALA A   9      42.156  10.145  11.999  1.00 79.03           N
+ATOM     89  CA  ALA A   9      43.144   9.077  11.874  1.00 79.02           C
+ATOM     91  CB  ALA A   9      44.125   9.129  13.047  1.00 79.18           C
+ATOM     95  C   ALA A   9      42.514   7.692  11.812  1.00 79.02           C
+ATOM     96  O   ALA A   9      43.151   6.757  11.310  1.00 79.02           O
+ATOM     98  N   ASN A  10      41.292   7.531  12.330  1.00 79.63           N
+ATOM     99  CA  ASN A  10      40.571   6.269  12.224  1.00 79.63           C
+ATOM    101  CB  ASN A  10      39.519   6.171  13.330  1.00 78.91           C
+ATOM    104  CG  ASN A  10      40.136   6.118  14.715  1.00 78.91           C
+ATOM    105  OD1 ASN A  10      41.317   5.836  14.855  1.00 78.91           O
+ATOM    106  ND2 ASN A  10      39.329   6.346  15.746  1.00 78.91           N
+ATOM    109  C   ASN A  10      39.894   6.092  10.871  1.00 79.63           C
+ATOM    110  O   ASN A  10      39.405   5.000  10.574  1.00 79.63           O
+TER
+END
+  """
+
+  pdb_str_ref = """\
+CRYST1   49.945   53.842   33.425  90.00  90.00  90.00 P 1
+ATOM   5466  N   ASN C 236      10.328  45.698  25.449  1.00 60.13           N
+ATOM   5467  CA  ASN C 236       8.971  45.973  25.787  1.00 60.52           C
+ATOM   5468  C   ASN C 236       8.271  44.664  25.724  1.00 60.49           C
+ATOM   5469  O   ASN C 236       7.276  44.532  25.017  1.00 60.60           O
+ATOM   5470  CB  ASN C 236       8.337  46.962  24.776  1.00 60.55           C
+ATOM   5471  CG  ASN C 236       7.235  47.762  25.415  1.00 61.75           C
+ATOM   5472  OD1 ASN C 236       6.331  47.222  26.063  1.00 62.86           O
+ATOM   5473  ND2 ASN C 236       7.315  49.079  25.302  1.00 61.22           N
+ATOM   5474  N   LEU C 237       8.820  43.663  26.441  1.00 60.55           N
+ATOM   5475  CA  LEU C 237       8.420  42.305  26.286  1.00 60.48           C
+ATOM   5476  C   LEU C 237       8.713  41.508  27.558  1.00 60.06           C
+ATOM   5477  O   LEU C 237       7.907  41.421  28.503  1.00 60.41           O
+ATOM   5478  CB  LEU C 237       9.159  41.598  25.114  1.00 60.91           C
+ATOM   5479  CG  LEU C 237       9.365  42.136  23.662  1.00 62.25           C
+ATOM   5480  CD1 LEU C 237      10.605  42.996  23.496  1.00 63.18           C
+ATOM   5481  CD2 LEU C 237       9.419  40.966  22.765  1.00 62.89           C
+TER
+ATOM      1  N   THR A   3      40.527  19.363  20.612  1.00 80.52           N
+ATOM      2  CA  THR A   3      41.278  18.625  19.636  1.00 80.52           C
+ATOM      4  CB  THR A   3      40.971  17.090  19.710  1.00 79.62           C
+ATOM      6  OG1 THR A   3      40.039  16.849  20.760  1.00 79.62           O
+ATOM      8  CG2 THR A   3      42.308  16.246  19.999  1.00 79.62           C
+ATOM     12  C   THR A   3      40.899  19.134  18.229  1.00 80.52           C
+ATOM     13  O   THR A   3      39.780  19.542  17.983  1.00 80.52           O
+ATOM     17  N   GLY A   4      41.890  19.246  17.384  1.00 79.31           N
+ATOM     18  CA  GLY A   4      41.732  19.850  16.092  1.00 79.31           C
+ATOM     21  C   GLY A   4      41.306  18.930  14.985  1.00 79.31           C
+ATOM     22  O   GLY A   4      40.121  18.885  14.657  1.00 79.31           O
+ATOM     24  N   ALA A   5      42.279  18.233  14.402  1.00 78.81           N
+ATOM     25  CA  ALA A   5      41.969  17.264  13.392  1.00 78.81           C
+ATOM     27  CB  ALA A   5      42.474  17.741  12.001  1.00 77.40           C
+ATOM     31  C   ALA A   5      42.643  15.914  13.751  1.00 78.81           C
+ATOM     32  O   ALA A   5      43.503  15.474  12.983  1.00 78.81           O
+ATOM     34  N   GLN A   6      42.216  15.310  14.835  1.00 80.55           N
+ATOM     35  CA  GLN A   6      42.871  14.115  15.363  1.00 80.55           C
+ATOM     37  CB  GLN A   6      43.590  14.383  16.698  1.00 79.84           C
+ATOM     40  CG  GLN A   6      44.888  15.121  16.536  1.00 79.84           C
+ATOM     43  CD  GLN A   6      44.671  16.613  16.295  1.00 79.84           C
+ATOM     44  OE1 GLN A   6      44.164  17.330  17.155  1.00 79.84           O
+ATOM     45  NE2 GLN A   6      45.100  17.105  15.149  1.00 79.84           N
+ATOM     48  C   GLN A   6      41.888  12.972  15.564  1.00 80.55           C
+ATOM     49  O   GLN A   6      42.024  12.228  16.514  1.00 80.55           O
+ATOM     51  N   VAL A   7      40.933  12.858  14.656  1.00 79.06           N
+ATOM     52  CA  VAL A   7      40.101  11.677  14.619  1.00 79.06           C
+ATOM     54  CB  VAL A   7      38.947  11.709  15.573  1.00 78.99           C
+ATOM     56  CG1 VAL A   7      39.330  11.128  16.941  1.00 78.99           C
+ATOM     60  CG2 VAL A   7      38.334  13.128  15.699  1.00 78.99           C
+ATOM     64  C   VAL A   7      39.594  11.421  13.214  1.00 79.06           C
+ATOM     65  O   VAL A   7      38.407  11.279  12.954  1.00 79.06           O
+ATOM     67  N   TYR A   8      40.568  11.433  12.304  1.00 79.78           N
+ATOM     68  CA  TYR A   8      40.360  10.983  10.905  1.00 79.78           C
+ATOM     70  CB  TYR A   8      40.783  12.069   9.904  1.00 77.69           C
+ATOM     73  CG  TYR A   8      40.349  11.670   8.527  1.00 77.69           C
+ATOM     74  CD1 TYR A   8      39.008  11.604   8.192  1.00 77.69           C
+ATOM     76  CE1 TYR A   8      38.600  11.184   6.931  1.00 77.69           C
+ATOM     78  CZ  TYR A   8      39.528  10.864   5.979  1.00 77.69           C
+ATOM     79  OH  TYR A   8      39.195  10.466   4.696  1.00 77.69           O
+ATOM     81  CE2 TYR A   8      40.880  10.918   6.304  1.00 77.69           C
+ATOM     83  CD2 TYR A   8      41.286  11.303   7.563  1.00 77.69           C
+ATOM     85  C   TYR A   8      41.107   9.702  10.624  1.00 79.78           C
+ATOM     86  O   TYR A   8      40.892   9.064   9.584  1.00 79.78           O
+ATOM     88  N   ALA A   9      42.003   9.312  11.526  1.00 79.03           N
+ATOM     89  CA  ALA A   9      42.888   8.166  11.317  1.00 79.02           C
+ATOM     91  CB  ALA A   9      44.052   8.246  12.231  1.00 79.18           C
+ATOM     95  C   ALA A   9      42.102   6.856  11.504  1.00 79.02           C
+ATOM     96  O   ALA A   9      42.154   5.981  10.647  1.00 79.02           O
+ATOM     98  N   ASN A  10      41.404   6.751  12.642  1.00 79.63           N
+ATOM     99  CA  ASN A  10      40.465   5.684  12.913  1.00 79.63           C
+ATOM    101  CB  ASN A  10      39.947   5.766  14.373  1.00 78.91           C
+ATOM    104  CG  ASN A  10      41.037   5.501  15.391  1.00 78.91           C
+ATOM    105  OD1 ASN A  10      42.073   4.895  15.058  1.00 78.91           O
+ATOM    106  ND2 ASN A  10      40.820   5.957  16.635  1.00 78.91           N
+ATOM    109  C   ASN A  10      39.283   5.748  11.958  1.00 79.63           C
+ATOM    110  O   ASN A  10      39.365   5.382  10.797  1.00 79.63           O
+TER
+  """
+  ref_file = open("ref.pdb", 'w')
+  ref_file.write(pdb_str_ref)
+  ref_file.close()
+  log = cStringIO.StringIO()
+  # log = sys.stdout
+
+  def_pars = reference_model_params
+  all_pars = def_pars.fetch().extract()
+  all_pars.reference_model.file = 'ref.pdb'
+  all_pars.reference_model.enabled = True
+  processed_pdb_file = process(
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
+      raw_records=flex.split_lines(pdb_str_original))
+  pdb_h = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  rm = reference_model(
+         processed_pdb_file=processed_pdb_file,
+         reference_file_list=['ref.pdb'],
+         mon_lib_srv=mon_lib_srv,
+         ener_lib=ener_lib,
+         params=all_pars.reference_model,
+         log=log)
+  assert rm.get_n_proxies() == 34, \
+      "Expecting 34 proxies, got %d" % rm.get_n_proxies()
+  os.remove("ref.pdb")
 
 
 def exercise_cutted_residue(mon_lib_srv, ener_lib):
@@ -696,18 +1007,21 @@ ATOM     20  OG  SER G 334      -5.954  69.950  50.396  1.00170.98           O
   pars = iotbx.phil.parse(params_text)
   all_pars = def_pars.fetch(pars).extract()
   all_pars.reference_model.enabled = True
-  inp_hierarchy = iotbx.pdb.input(
-      source_info=None,
-      lines=flex.split_lines(pdb_str_original)).construct_hierarchy()
+  processed_pdb_file = process(
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
+      raw_records=flex.split_lines(pdb_str_original))
+  pdb_h = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+
   rm = reference_model(
-         pdb_hierarchy=inp_hierarchy,
+         processed_pdb_file=processed_pdb_file,
          reference_file_list=['ref.pdb'],
          mon_lib_srv=mon_lib_srv,
          ener_lib=ener_lib,
          params=all_pars.reference_model,
          log=log)
   rm.show_reference_summary(log=log)
-  new_h = inp_hierarchy.deep_copy()
+  new_h = pdb_h.deep_copy()
   xray_structure = new_h.extract_xray_structure()
   rm.set_rotamer_to_reference(
     xray_structure=xray_structure)
@@ -723,6 +1037,7 @@ def run(args):
   ener_lib = mmtbx.monomer_library.server.ener_lib()
   exercise_reference_model(args, mon_lib_srv, ener_lib)
   exercise_multiple_to_one(args, mon_lib_srv, ener_lib)
+  exercise_multiple_ncs_groups_found(mon_lib_srv, ener_lib)
   exercise_cutted_residue(mon_lib_srv, ener_lib)
   print "OK. Time: %8.3f"%(time.time()-t0)
 

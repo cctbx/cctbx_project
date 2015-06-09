@@ -2710,7 +2710,6 @@ class build_all_chain_proxies(linking_mixins):
         keep_monomer_mappings=False,
         max_atoms=None,
         log=None,
-        for_dihedral_reference=False,
         carbohydrate_callback=None,
         #use_neutron_distances=False,
         restraints_loading_flags=None,
@@ -2723,9 +2722,6 @@ class build_all_chain_proxies(linking_mixins):
     assert special_position_settings is None or crystal_symmetry is None
     if (params is None): params = master_params.extract()
     self.params = params
-    if for_dihedral_reference:
-      self.params.peptide_link.discard_psi_phi=False
-      self.params.c_beta_restraints=False
     timer = user_plus_sys_time()
     self.time_building_chain_proxies = None
     if (log is not None and file_name is not None):
@@ -4841,7 +4837,6 @@ class process(object):
         keep_monomer_mappings=False,
         max_atoms=None,
         log=None,
-        for_dihedral_reference=False,
         carbohydrate_callback=None,
         #use_neutron_distances=False,
         restraints_loading_flags=None,
@@ -4852,7 +4847,6 @@ class process(object):
     nul = StringIO()
     if log is None:
       self.log = nul
-    self.for_dihedral_reference=for_dihedral_reference
     self.ss_manager = None
     self.all_chain_proxies = build_all_chain_proxies(
       mon_lib_srv=mon_lib_srv,
@@ -4871,7 +4865,6 @@ class process(object):
       keep_monomer_mappings=keep_monomer_mappings,
       max_atoms=max_atoms,
       log=log,
-      for_dihedral_reference=for_dihedral_reference,
       carbohydrate_callback=carbohydrate_callback,
       #use_neutron_distances=use_neutron_distances,
       restraints_loading_flags=restraints_loading_flags,
@@ -5162,9 +5155,8 @@ class process(object):
                              " (mainly nonbonded setup): %.2f" % (
             timer.elapsed())
           flush_log(self.log)
-      if not self.for_dihedral_reference:
-        self.clash_guard(hard_minimum_nonbonded_distance=hard_minimum_nonbonded_distance,
-                         nonbonded_distance_threshold=nonbonded_distance_threshold)
+      self.clash_guard(hard_minimum_nonbonded_distance=hard_minimum_nonbonded_distance,
+                       nonbonded_distance_threshold=nonbonded_distance_threshold)
     return self._geometry_restraints_manager
 
 
