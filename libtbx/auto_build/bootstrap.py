@@ -87,7 +87,7 @@ class ShellCommand(object):
         stdout=sys.stdout,
         stderr=sys.stderr
       )
-    except Exception, e: # error handline
+    except Exception, e: # error handling
       if isinstance(e, OSError):
         if e.errno == 2:
           executable = os.path.normpath(os.path.join(workdir, command[0]))
