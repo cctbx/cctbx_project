@@ -1140,7 +1140,21 @@ def run(filename=None):
       print ('%s ' % filename)*5
       run_apply(filename, testing=True)
 
+def test_threes_methods():
+  import iotbx.pdb
+  from mmtbx.conformation_dependent_library import generate_protein_threes
+  tmp_hierarchy = iotbx.pdb.input(
+      source_info=None,
+      lines=flex.split_lines(output_filenames["cdl_test_8.pdb"])).\
+    construct_hierarchy()
+  for three in generate_protein_threes(
+      hierarchy=tmp_hierarchy,
+      geometry=None):
+    # there should be only one!
+    three.get_resnames() == ("CYS", "TYR", "PRO")
+
 if __name__=="__main__":
   args = sys.argv[1:]
   del sys.argv[1:]
   run(*tuple(args))
+  test_threes_methods()
