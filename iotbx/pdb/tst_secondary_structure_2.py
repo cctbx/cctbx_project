@@ -117,6 +117,7 @@ secondary_structure.protein.helix {
 
   result1 = """\
 protein.helix {
+  helix_identifier = 0
   selection = "chain 'A' and resseq 37:48"
   helix_type = alpha
   hbond {
@@ -154,24 +155,28 @@ protein.helix {
 }"""
   result1_1 = """\
 protein.helix {
+  helix_identifier = 0
   selection = "chain 'A' and resseq 37:48"
   helix_type = alpha
 }"""
   result2_9 = """\
 ==================================================
 protein.helix {
+  helix_identifier = 0
   selection = "chain 'A' and resseq 37:48"
   helix_type = pi
 }
 HELIX    0   0 ASP A   37  GLY A   48  3                                  12
 ==================================================
 protein.helix {
+  helix_identifier = 0
   selection = "chain 'A' and resseq 37:48"
   helix_type = 3_10
 }
 HELIX    0   0 ASP A   37  GLY A   48  5                                  12
 ==================================================
 protein.helix {
+  helix_identifier = 0
   selection = "chain 'A' and resseq 37:48"
   helix_type = unknown
 }
@@ -179,6 +184,7 @@ HELIX    0   0 ASP A   37  GLY A   48  1                                  12
 ==================================================
 protein.helix {
   serial_number = 1
+  helix_identifier = 1
   selection = "chain 'A' and resseq 37:48"
   helix_type = alpha
 }
@@ -226,9 +232,9 @@ HELIX    1 D12 ASP A   37  GLY A   48  1                                  12
   assert h.get_n_defined_hbonds() == 8
   assert annot.get_n_defined_hbonds() == 8
   res = h.as_restraint_group(show_hbonds=True)
-  assert res == result1
+  assert not test_utils.show_diff(res, result1)
   res = h.as_restraint_group(show_hbonds=False)
-  assert res == result1_1
+  assert not test_utils.show_diff(res, result1_1)
   out = StringIO()
   for ph_str in [phil_str2, phil_str3, phil_str4, phil_str5, phil_str6,
       phil_str7, phil_str8, phil_str9]:
@@ -448,7 +454,7 @@ protein.sheet {
 
 
 def exercise(args):
-  # tst_parsing_phil_single_helix()
+  tst_parsing_phil_single_helix()
   tst_parsing_phil_single_sheet()
 
 
