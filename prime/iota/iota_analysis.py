@@ -3,10 +3,13 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 06/04/2015
+Last Changed: 06/09/2015
 Description : Analyzes integration results and outputs them in an accessible
-              format. Includes warnings in case of detected non-isomorphism
-              and other anomalies that require a more careful processing
+              format. Includes unit cell analysis by hierarchical clustering
+              (Zeldin, et al., Acta Cryst D, 2013). In case of multiple clusters
+              outputs a file with list of integrated pickles that comprise each
+              cluster. Populates a PHIL file for PRIME with information from
+              integration results (e.g. unit cell, resolution, data path, etc.)
 '''
 import os
 import numpy as np
@@ -14,20 +17,19 @@ from collections import Counter
 
 import cPickle as pickle
 from cctbx.uctbx import unit_cell
+from xfel.clustering.cluster import Cluster
 
 import prime.iota.iota_input as inp
 from prime.iota.iota_input import Capturing
 from prime.postrefine import mod_input
 
 
-def make_prime_input(clean_results, gs_params, iota_version, now):
+def make_prime_input(clean_results, sg, uc, data_path, iota_version, now):
   """ Imports default PRIME input parameters, modifies correct entries and
       prints out a starting PHIL file to be used with PRIME
   """
 
-  data_path = os.path.join(os.path.abspath(gs_params.output), 'integrated.lst')
   res = np.mean([results['res'] for results in clean_results])
-  sg, uc = sort_uc(clean_results)[2:]
   img_pickle = clean_results[0]['img']
   pixel_size = pickle.load(open(img_pickle, "rb"))['PIXEL_SIZE']
 
@@ -82,7 +84,8 @@ def make_prime_input(clean_results, gs_params, iota_version, now):
   for one_output in output:
     txt_out += one_output + '\n'
 
-  with open('{}/prime.phil'.format(gs_params.output), 'w') as prime_file:
+  prime_file = os.path.join(os.path.dirname(data_path), 'prime.phil')
+  with open(prime_file, 'w') as prime_file:
     prime_file.write(txt_out)
 
 def sort_uc(clean_results):
@@ -181,22 +184,90 @@ def print_results(clean_results, gs_range, logfile):
                     "".format(np.mean(num_spots), np.std(num_spots)))
   final_table.append("Avg. mosaicity:        {:<8.3f}  std. dev:    {:<6.2f}"\
                     "".format(np.mean(mosaicities), np.std(mosaicities)))
-  final_table.append("\nFound unit cells:\n")
 
-  uc_table, morphology_warning = sort_uc(clean_results)[:2]
+
+def unit_cell_analysis(cluster_threshold, logfile, int_pickle_file):
+  """ Calls unit cell analysis module, which uses hierarchical clustering
+      (Zeldin, et al, Acta D, 2015) to split integration results according to
+      detected morphological groupings (if any). Most useful with preliminary
+      integration without target unit cell specified.
+      input: cluster_threshold - used for separating tree into clusters
+             int_pickle_file - file with paths to integrated pickles
+
+      output: uc_table - list of lines for result output
+  """
+
+  uc_table = []
+  uc_summary = []
+  counter = 1
+
+  # read full list of output pickles from file
+  with open(int_pickle_file, 'r') as f:
+    img_list = f.read().splitlines()
+
+  # run hierarchical clustering analysis
+  ucs = Cluster.from_files(img_list, use_b=True)
+  clusters, _ = ucs.ab_cluster(cluster_threshold, log=False, write_file_lists=False,
+                               schnell=False, doplot=False)
+
+  uc_table.append("\n\n{:-^80}"\
+                  "".format(' UNIT CELL ANALYSIS '))
+  uc_table.append("{: ^80}\n"\
+                  "".format(' (Zeldin, et al, Acta D, 2015) '))
+
+  # extract clustering info and add to summary output list
+  for cluster in clusters:
+    sorted_pg_comp = sorted(cluster.pg_composition.items(),
+                              key=lambda x: -1 * x[1])
+    pgs = [pg[0] for pg in sorted_pg_comp]
+    cons_pg = Counter(pgs).most_common(1)[0][0]
+
+    output_dir = os.path.dirname(int_pickle_file)
+    output_file = os.path.join(output_dir, "uc_cluster_{}.lst".format(counter))
+
+    # write out lists of output pickles that comprise clusters with > 1 members
+    if len(cluster.members) > 1:
+      counter += 1
+      cluster.dump_file_list(out_file_name=output_file)
+      mark_output = os.path.basename(output_file)
+    else:
+      mark_output = ''
+
+    # format and record output
+    uc_line = "{:<6} {:^4}:  {:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), "\
+              "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), "\
+              "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f})   "\
+              "{}".format('({})'.format(len(cluster.members)), cons_pg,
+                          cluster.medians[0], cluster.stdevs[0],
+                          cluster.medians[1], cluster.stdevs[1],
+                          cluster.medians[2], cluster.stdevs[2],
+                          cluster.medians[3], cluster.stdevs[3],
+                          cluster.medians[4], cluster.stdevs[4],
+                          cluster.medians[5], cluster.stdevs[5],
+                          mark_output)
+    uc_table.append(uc_line)
+
+    if mark_output != '':
+      out_file = mark_output
+    else:
+      out_file = int_pickle_file
+
+    uc_info = [len(cluster.members), cons_pg, cluster.medians, out_file, uc_line]
+    uc_summary.append(uc_info)
+
+  uc_table.append('\nMost common unit cell:\n')
+
+  # select the most prevalent unit cell (most members in cluster)
+  uc_freqs = [i[0] for i in uc_summary]
+  uc_pick = uc_summary[np.argmax(uc_freqs)]
+  uc_table.append(uc_pick[4])
 
   for item in uc_table:
-    final_table.append(item)
-
-  if morphology_warning:
-    final_table.append('\nWARNING: the consensus unit cell is too variable! '\
-                       'This may be the result \nof multiple crystal forms '\
-                       'present in the dataset. Please run cxi.cluster \nto '\
-                       'test this more thoroughly.')
-
-  for item in final_table:
       print item
       inp.main_log(logfile, item)
+
+  return uc_pick[1], uc_pick[2], uc_pick[3]
+
 
 
 def print_summary(gs_params, n_img, logfile, iota_version, now):

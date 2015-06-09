@@ -3,8 +3,8 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 06/04/2015
-Description : IOTA command-line module. Version 1.52
+Last Changed: 06/09/2015
+Description : IOTA command-line module. Version 1.60
 '''
 
 help_message = '\n{:-^70}'\
@@ -241,20 +241,20 @@ def output_cleanup(gs_params):
   os.makedirs(dest_dir)
 
   with open(int_list_file, 'r') as int_file:
-    int_file_contents = int_file.read()
-    int_list = int_file_contents.splitlines()
+    int_list = int_file.read().splitlines()
+
+  os.remove(int_list_file)
 
   for int_file in int_list:
     filename = os.path.basename(int_file)
     dest_file = os.path.join(dest_dir, filename)
+
     shutil.copyfile(int_file, dest_file)
     shutil.rmtree(os.path.dirname(int_file))
-
-  os.remove(int_list_file)
-
-  for int_file in os.listdir(dest_dir):
     with open(int_list_file, 'a') as f_int:
         f_int.write('{}\n'.format(dest_file))
+
+
 
 def iota_exit(iota_version, now):
   print '\n\nIOTA version {0}'.format(iota_version)
@@ -271,7 +271,7 @@ def experimental(mp_input_list, gs_params, log_dir):
 
 if __name__ == "__main__":
 
-  iota_version = '1.52'
+  iota_version = '1.60'
   now = "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now())
   logo = "\n\n"\
    "     IIIIII          OOOO         TTTTTTTTTT           A              \n"\
@@ -386,13 +386,19 @@ if __name__ == "__main__":
                                   func=triage_mproc_wrapper,
                                   processes=gs_params.n_processors,
                                   preserve_order = True)
-      cmd.Command.end("Image triage -- DONE")
+      cmd.Command.end("Image triage ({} images have diffraction) -- DONE"\
+                      "".format(len(accepted_img)))
 
       if len(accepted_img) > 0:
         blank_img = [i for i in input_list if i not in accepted_img]
         input_list = [i for i in input_list if i in accepted_img]
       else:
         print "No images with usable diffraction found!"
+    else:
+      blank_img = []
+  else:
+    input_folder = gs_params.input
+    blank_img = []
 
   # generate general input
   gs_range, input_dir_list, output_dir_list, log_dir, logfile, mp_input_list,\
@@ -437,8 +443,10 @@ if __name__ == "__main__":
 
   # print final integration results and summary
   ia.print_results(final_int, gs_range, logfile)
+  sg, uc, out_file = ia.unit_cell_analysis(gs_params.advanced.cluster_threshold,
+         logfile, os.path.abspath("{}/integrated.lst".format(gs_params.output)))
   ia.print_summary(gs_params, len(input_list), logfile, iota_version, now)
-  ia.make_prime_input(final_int, gs_params, iota_version, now)
+  ia.make_prime_input(final_int, sg, uc, out_file, iota_version, now)
 
   if gs_params.advanced.clean_up_output and gs_params.grid_search.flag_on:
     if os.path.isfile(os.path.abspath("{}/integrated.lst".format(gs_params.output))):
