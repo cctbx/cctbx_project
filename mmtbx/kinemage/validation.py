@@ -970,12 +970,16 @@ def run(args, pdb_interpretation_params=None):
     if cif_object != None:
       for srv in [mon_lib_srv, ener_lib]:
         srv.process_cif_object(cif_object=cif_object)
+  if pdb_interpretation_params is None:
+    pdb_int_work_params = pdb_interpretation.master_params.extract()
+  else:
+    pdb_int_work_params = pdb_interpretation_params
+  pdb_int_work_params.clash_guard.nonbonded_distance_threshold = None
   processed_pdb_file = pdb_interpretation.process(
         mon_lib_srv=mon_lib_srv,
         ener_lib=ener_lib,
         pdb_inp=pdb_io,
-        for_dihedral_reference=True,
-        params=pdb_interpretation_params,
+        params=pdb_int_work_params,
         substitute_non_crystallographic_unit_cell_if_necessary=True)
   if work_params.kinemage.out_file is not None:
     outfile = work_params.kinemage.out_file

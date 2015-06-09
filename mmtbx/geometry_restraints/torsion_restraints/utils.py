@@ -4,51 +4,9 @@ from iotbx.pdb import common_residue_names_get_class
 from iotbx.pdb import amino_acid_codes, input
 from cctbx.array_family import flex
 from libtbx import group_args
-import ccp4io_adaptbx
 import math
 import mmtbx.alignment
 import sys
-
-class alignment_manager(object):
-
-  def __init__(self,
-               pdb_hierarchy,
-               use_segid=False,
-               log=None):
-    if(log is None): log = sys.stdout
-    self.sequences = {}
-    self.padded_sequences = {}
-    self.structures = {}
-    sel_cache = pdb_hierarchy.atom_selection_cache()
-    chains = pdb_hierarchy.models()[0].chains()
-    for i, chain_i in enumerate(chains):
-      found_conformer = False
-      for conformer in chain_i.conformers():
-        if not conformer.is_protein() and not conformer.is_na():
-          continue
-        else:
-          found_conformer = True
-      if not found_conformer:
-        continue
-      #test for unique segid
-      segid = get_unique_segid(chain_i)
-      if segid == None:
-        print >> log, \
-          "chain %s has conflicting segid values - skipping" % chain_i.id
-        continue
-      if (use_segid) :
-        chain_i_str = "chain '%s' and segid '%s'" % \
-          (chain_i.id, segid)
-      else :
-        chain_i_str = "chain '%s'" % chain_i.id
-      bsel = sel_cache.selection(string=chain_i_str)
-      chain_seq, chain_seq_padded, chain_structures = \
-        extract_sequence_and_sites(
-          pdb_hierarchy=pdb_hierarchy,
-          selection=bsel)
-      self.sequences[chain_i_str] = chain_seq
-      self.padded_sequences[chain_i_str] = chain_seq_padded
-      self.structures[chain_i_str] = chain_structures
 
 def process_reference_files(
       reference_file_list,
@@ -102,15 +60,10 @@ def get_complete_dihedral_proxies(
       ener_lib=None,
       crystal_symmetry=None,
       log=None):
-  # assert 0, "This should not be used due to ill architecture: never process" +\
-  #   "pdb file again!!! Probably this is first time for reference dihedrals," +\
-  #   "need to check later."
-  # ============================================
-  # Investigation revealed that in this round of processing pdb file specific
-  # options are enforsed, such as for_dihedral_reference=True resulting in
-  # peptide_link.discard_psi_phi=False and c_beta_restraints=False
-  # discard_psi_phi=False in turn produces extra dihedral restraints compared
-  # to standard processing
+  #
+  # This function is called only for reference files, that were not processed
+  # yet. For the main file only get_dihedrals_and_phi_psi below is called.
+  #
   assert [pdb_hierarchy,
           file_name,
           raw_records].count(None) == 2
@@ -127,20 +80,35 @@ def get_complete_dihedral_proxies(
   if raw_records is not None:
     if (isinstance(raw_records, str)):
       raw_records = flex.split_lines(raw_records)
+  work_params = pdb_interpretation.master_params.extract()
+  work_params.c_beta_restraints=False
+  work_params.automatic_linking.link_none=True
+  work_params.clash_guard.nonbonded_distance_threshold = None
+
   processed_pdb_file_local = \
     pdb_interpretation.process(
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
+      params=work_params,
       file_name=file_name,
       raw_records=raw_records,
       strict_conflict_handling=False,
       crystal_symmetry=crystal_symmetry,
       force_symmetry=True,
       log=cStringIO.StringIO(),
-      for_dihedral_reference=True,
       substitute_non_crystallographic_unit_cell_if_necessary=True)
-  grm = processed_pdb_file_local.geometry_restraints_manager()
-  return grm.get_dihedral_proxies()
+  return get_dihedrals_and_phi_psi(processed_pdb_file_local)
+
+def get_dihedrals_and_phi_psi(processed_pdb_file):
+  from mmtbx.conformation_dependent_library import generate_protein_threes
+  grm = processed_pdb_file.geometry_restraints_manager()
+  dihedral_proxies = grm.get_dihedral_proxies().deep_copy()
+  for three in generate_protein_threes(
+      hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
+      geometry=None):
+    phi_proxy, psi_proxy = three.get_dummy_dihedral_proxies()
+    dihedral_proxies.extend([phi_proxy, psi_proxy])
+  return dihedral_proxies
 
 def modernize_rna_resname(resname):
   if common_residue_names_get_class(resname,
@@ -317,18 +285,13 @@ def get_angle_average(angles):
   average = sum / n_angles
   return average
 
-def _ssm_align(reference_chain,
-               moving_chain):
-  ssm = ccp4io_adaptbx.SecondaryStructureMatching(
-          reference=reference_chain,
-          moving=moving_chain)
-  ssm_alignment = ccp4io_adaptbx.SSMAlignment.residue_groups(match=ssm)
-  return ssm, ssm_alignment
-
 def _alignment(sequences,
                padded_sequences,
                structures,
                log=None):
+  #
+  # used in torsion_ncs.py
+  #
   if(log is None): log = sys.stdout
   res_match_hash = {}
   model_mseq_res_hash = {}
@@ -445,6 +408,7 @@ def is_residue_in_selection(i_seqs, selection):
   return True
 
 def extract_sequence_and_sites(pdb_hierarchy, selection):
+  # used in torsion_ncs
   assert isinstance(selection, flex.bool)
   seq = []
   result = []
@@ -562,6 +526,8 @@ def get_torsion_id(dp,
                    phi_psi=False,
                    chi_only=False,
                    omega=False):
+  #
+  # used in torsion_ncs
   id = None
   chi_atoms = False
   atom_list = []
@@ -597,6 +563,8 @@ def get_torsion_id(dp,
 def get_c_alpha_hinges(pdb_hierarchy,
                        xray_structure=None,
                        selection=None):
+  #
+  # used in torsion_ncs
   c_alphas = []
   c_alpha_hinges = {}
   if xray_structure is not None:

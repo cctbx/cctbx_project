@@ -259,7 +259,7 @@ class ThreeProteinResidues(list):
           break
     return atoms
 
-  def get_cdl_key(self, exact=False, verbose=False):
+  def get_phi_psi_atoms(self):
     backbone_i_minus_1, junk = get_c_ca_n(self[0])
     backbone_i, junk = get_c_ca_n(self[1])
     backbone_i_plus_1, junk = get_c_ca_n(self[2])
@@ -272,19 +272,37 @@ class ThreeProteinResidues(list):
       backbone_i[1],
       backbone_i[0],
       ]
-    phi = dihedral_angle(sites=[atom.xyz for atom in phi_atoms], deg=True)
     psi_atoms = [
       backbone_i[2],
       backbone_i[1],
       backbone_i[0],
       backbone_i_plus_1[2],
       ]
+    return phi_atoms, psi_atoms
+
+  def get_cdl_key(self, exact=False, verbose=False):
+    phi_atoms, psi_atoms = self.get_phi_psi_atoms()
+    phi = dihedral_angle(sites=[atom.xyz for atom in phi_atoms], deg=True)
     psi = dihedral_angle(sites=[atom.xyz for atom in psi_atoms], deg=True)
     if verbose:
       print "psi, phi",psi,phi
     if exact: return (phi, psi)
     key = (round_to_ten(phi), round_to_ten(psi))
     return key
+
+  def get_dummy_dihedral_proxies(self):
+    from cctbx.geometry_restraints import dihedral_proxy
+    phi_atoms, psi_atoms = self.get_phi_psi_atoms()
+    phi_proxy = dihedral_proxy(
+        i_seqs=[atom.i_seq for atom in phi_atoms],
+        angle_ideal=0,
+        weight=1)
+    psi_proxy = dihedral_proxy(
+        i_seqs=[atom.i_seq for atom in psi_atoms],
+        angle_ideal=0,
+        weight=1)
+    return phi_proxy, psi_proxy
+
 
   def apply_updates(self,
                     restraint_values,

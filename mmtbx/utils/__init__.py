@@ -1057,8 +1057,7 @@ class process_pdb_file_srv(object):
                      cif_parameters            = None,
                      mon_lib_srv               = None,
                      ener_lib                  = None,
-                     use_neutron_distances     = False,
-                     for_dihedral_reference    = False):
+                     use_neutron_distances     = False):
     self.raw_records               = None
     self.crystal_symmetry          = crystal_symmetry
     self.pdb_parameters            = pdb_parameters
@@ -1080,7 +1079,6 @@ class process_pdb_file_srv(object):
 
   def process_pdb_files(self, pdb_file_names = None, raw_records = None,
                         stop_if_duplicate_labels = True,
-                        for_dihedral_reference = False,
                         allow_missing_symmetry=False):
     assert [pdb_file_names, raw_records].count(None) == 1
     if(self.cif_objects is not None):
@@ -1089,12 +1087,10 @@ class process_pdb_file_srv(object):
       pdb_file_names           = pdb_file_names,
       raw_records              = raw_records,
       stop_if_duplicate_labels = stop_if_duplicate_labels,
-      for_dihedral_reference   = for_dihedral_reference,
       allow_missing_symmetry            = allow_missing_symmetry)
 
   def _process_pdb_file(self, pdb_file_names, raw_records,
                         stop_if_duplicate_labels,
-                        for_dihedral_reference=False,
                         allow_missing_symmetry=False):
     if(raw_records is None):
       pdb_combined = combine_unique_pdb_files(file_names=pdb_file_names)
@@ -1146,7 +1142,6 @@ class process_pdb_file_srv(object):
       force_symmetry           = True,
       log                      = self.log,
       restraints_loading_flags = restraints_loading_flags,
-      for_dihedral_reference   = for_dihedral_reference,
       substitute_non_crystallographic_unit_cell_if_necessary=allow_missing_symmetry)
     processed_pdb_file.xray_structure(show_summary=True)
     if self.stop_for_unknowns == False:

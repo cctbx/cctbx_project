@@ -1,7 +1,4 @@
 from __future__ import division
-import mmtbx.alignment
-from iotbx.pdb import amino_acid_codes
-from libtbx import group_args
 import cctbx.geometry_restraints
 from mmtbx.validation import rotalyze
 from mmtbx.utils import rotatable_bonds
@@ -15,7 +12,8 @@ from mmtbx import secondary_structure
 from scitbx.matrix import rotate_point_around_axis
 from libtbx.str_utils import make_sub_header
 from mmtbx.geometry_restraints.torsion_restraints import utils
-import sys, re
+import sys
+import time
 
 TOP_OUT_FLAG = True
 
@@ -65,11 +63,6 @@ reference_model
     .type = bool
   auto_shutoff_for_ncs = False
     .type = bool
-  SSM_alignment = True
-    .type = bool
-  similarity = .80
-    .type = float
-    .short_caption = Sequence similarity cutoff
   secondary_structure_only = False
     .type = bool
   reference_group
@@ -126,8 +119,10 @@ def add_reference_dihedral_restraints_if_requested(
       pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
       ter_indices=ter_indices)
   rm = reference_model(
-    pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
+    processed_pdb_file=processed_pdb_file,
     reference_file_list=reference_file_list,
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
     has_hd=has_hd,
     params=params,
     selection=selection,
@@ -139,7 +134,7 @@ def add_reference_dihedral_restraints_if_requested(
 class reference_model(object):
 
   def __init__(self,
-               pdb_hierarchy,
+               processed_pdb_file,
                reference_hierarchy_list=None,
                reference_file_list=None,
                mon_lib_srv=None,
@@ -158,24 +153,20 @@ class reference_model(object):
     self.selection = selection
     self.mon_lib_srv = mon_lib_srv
     self.ener_lib = ener_lib
-    pdb_hierarchy.reset_i_seq_if_necessary()
-    sites_cart = pdb_hierarchy.atoms().extract_xyz()
+    self.processed_pdb_file = processed_pdb_file
+    self.pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+    self.pdb_hierarchy.reset_i_seq_if_necessary()
+    sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
     if self.selection is None:
       self.selection = flex.bool(len(sites_cart), True)
-    self.pdb_hierarchy = pdb_hierarchy
     if reference_hierarchy_list is None:
       reference_hierarchy_list = \
         utils.process_reference_files(
           reference_file_list=reference_file_list,
           log=self.log)
     if reference_file_list is None:
-      reference_file_list = []
-      ref_counter = 1
-      for hierarchy in reference_hierarchy_list:
-        key = "ref%d" % ref_counter
-        reference_file_list.append(key)
-        ref_counter += 1
-        hierarchy.reset_i_seq_if_necessary()
+      reference_file_list = \
+          ["ref%d" % x for x in range(len(reference_hierarchy_list))]
     #
     # this takes 20% of constructor time.
     self.dihedral_proxies_ref = utils.get_reference_dihedral_proxies(
@@ -186,7 +177,6 @@ class reference_model(object):
         log=self.log)
     self.i_seq_name_hash = utils.build_name_hash(
                              pdb_hierarchy=self.pdb_hierarchy)
-
     #reference model components
     self.sites_cart_ref = {}
     self.pdb_hierarchy_ref = {}
@@ -215,7 +205,135 @@ class reference_model(object):
     self.build_reference_dihedral_proxy_hash()
     #
     # This takes 80% of constructor time!!!
-    self.get_reference_dihedral_proxies()
+    self.residue_match_hash = {} # {key_model: ('file_name', key_ref)}
+    self.match_map = {} # {'file_name':{i_seq_model:i_seq_ref}}
+    self.get_matching_from_ncs()
+    new_ref_dih_proxies = self.get_reference_dihedral_proxies()
+
+  def _make_matching_and_fill_dictionaries(self, model_h, ref_h, fn,
+      m_cache, model_selection_str="all", ref_selection_str="all"):
+    ref_cache = self.pdb_hierarchy_ref[fn].atom_selection_cache()
+    m_sel = m_cache.selection(model_selection_str)
+    ref_sel = ref_cache.selection(ref_selection_str)
+    combined_h = model_h.select(m_sel).deep_copy()
+    ref_h = ref_h.select(ref_sel).deep_copy()
+    for chain in ref_h.only_model().chains():
+      chain.id +="ref"
+    combined_h.transfer_chains_from_other(ref_h)
+    combined_h.reset_i_seq_if_necessary()
+    ncs_obj = iotbx.ncs.input(
+        hierarchy=combined_h,
+        max_rmsd=5.0,
+        exclude_misaligned_residues=False)
+    for group_list in ncs_obj.get_ncs_restraints_group_list():
+      ncs_groups = []
+      for k,v in ncs_obj.ncs_to_asu_selection.iteritems():
+        ncs_groups += [k]+v
+      n_total_selections = len(group_list.copies) + 1
+      ncs_iselections = [group_list.master_iselection]
+      for i in range(len(group_list.copies)):
+        ncs_iselections.append(group_list.copies[i].iselection)
+      ncs_residue_groups = []
+      ncs_hierarchys = []
+      for i, isel in enumerate(ncs_iselections):
+        ncs_h = combined_h.select(isel)
+        ncs_hierarchys.append(ncs_h)
+        rgs = list(ncs_h.residue_groups())
+        ncs_residue_groups.append(rgs)
+      len_ncs_rg = len(ncs_residue_groups[0])
+      for ncs_rg in ncs_residue_groups:
+        assert len(ncs_rg) == len_ncs_rg
+      if fn not in self.match_map.keys():
+        self.match_map[fn] = {}
+      ref_index = 0
+      for i in range(n_total_selections):
+        if (len(ncs_residue_groups[i][0].parent().id) > 2 and
+            ncs_residue_groups[i][0].parent().id[-3:] == 'ref'):
+          ref_index = i
+      for i in range(n_total_selections):
+        # Figuring out what is reference and what is model
+        if i == ref_index:
+          continue
+        a = ncs_residue_groups[i]
+        for j in range(len_ncs_rg):
+          model_rg = a[j]
+          reference_rg = ncs_residue_groups[ref_index][j]
+          # Filling out self.residue_match_hash
+          if reference_rg.parent().id > 2 and reference_rg.parent().id[-3:] == 'ref':
+            reference_rg.parent().id = reference_rg.parent().id[:-3]
+          key_model = "%s %s" % (model_rg.unique_resnames()[0],
+              model_rg.id_str().strip())
+          key_ref = "%s %s" % (reference_rg.unique_resnames()[0],
+              reference_rg.id_str().strip())
+          print >> self.log, "'%s' <==> '%s'" % (key_model, key_ref)
+          if key_model not in self.residue_match_hash:
+            self.residue_match_hash[key_model] = (self.reference_file_list[0], key_ref)
+          # Filling out self.match_map
+          info_rgs = [[],[]]
+          assert reference_rg.atoms_size() == model_rg.atoms_size(), "%s, %s" % (
+              model_rg.id_str(), reference_rg.id_str())
+          for rg, info in [(model_rg, info_rgs[0]), (reference_rg, info_rgs[1])]:
+            info.append(rg.parent().id)
+            info.append(rg.unique_resnames()[0])
+            info.append(rg.resseq)
+            info.append(rg.icode)
+          m_str = "chain '%s' and resseq '%s' and icode '%s'" % (
+              info_rgs[0][0], info_rgs[0][2], info_rgs[0][3])
+          ref_str = "chain '%s' and resseq '%s' and icode '%s'" % (
+              info_rgs[1][0], info_rgs[1][2], info_rgs[1][3])
+          m_sel = m_cache.selection(m_str)
+          ref_sel = ref_cache.selection(ref_str)
+          for m_atom, ref_atom in zip(self.pdb_hierarchy.select(m_sel).atoms(),
+              self.pdb_hierarchy_ref[fn].select(ref_sel).atoms()):
+            self.match_map[fn][m_atom.i_seq] = ref_atom.i_seq
+
+  def is_reference_groups_provided(self):
+    if hasattr(self.params, "reference_group"):
+      if (len(self.params.reference_group) == 0 or
+          (len(self.params.reference_group) == 1 and
+          self.params.reference_group[0].reference is None and
+          self.params.reference_group[0].selection is None and
+          self.params.reference_group[0].file_name is None)):
+        return False
+      else:
+        for i, rg in enumerate(self.params.reference_group):
+          if rg.file_name is None:
+            if len(self.reference_file_list) > i:
+              rg.file_name = self.reference_file_list[i]
+            elif len(self.params.file) != 1:
+              raise Sorry("Ambigous definition of groups in reference model")
+            else:
+              rg.file_name = self.params.file
+        return True
+    else:
+      return False
+
+  def get_matching_from_ncs(self):
+    import iotbx.ncs
+    m_cache = self.pdb_hierarchy.atom_selection_cache()
+    if not self.is_reference_groups_provided():
+      # only files are specified
+      for fn in self.reference_file_list:
+        print >> self.log, "\nreference file: %s" % fn
+        print >> self.log, "Model:              Reference:"
+        self._make_matching_and_fill_dictionaries(
+            model_h=self.pdb_hierarchy,
+            ref_h=self.pdb_hierarchy_ref[fn],
+            fn=fn,
+            m_cache=m_cache)
+    else:
+      # We got reference_group section
+      for rg in self.params.reference_group:
+        file_name = rg.file_name
+        print >> self.log, "\nreference file: %s" % file_name
+        print >> self.log, "Model:              Reference:"
+        self._make_matching_and_fill_dictionaries(
+            model_h=self.pdb_hierarchy,
+            ref_h=self.pdb_hierarchy_ref[file_name],
+            fn=file_name,
+            m_cache=m_cache,
+            model_selection_str=rg.selection,
+            ref_selection_str=rg.reference)
 
   def proxy_remove(self, selection=None):
     if self.reference_dihedral_proxies is not None:
@@ -266,233 +384,6 @@ class reference_model(object):
   def top_out_curvature(self, x, weight, top):
     return (2*weight*(top - 2*weight*x**2))/top**2*exp(-(weight*x**2)/top)
 
-  def extract_sequence_and_sites(self, pdb_hierarchy, selection):
-    assert 0, "Seems that nobody is using this"
-    seq = []
-    result = []
-    counter = 0
-    for model in pdb_hierarchy.models():
-      for chain in model.chains():
-        for rg in chain.residue_groups():
-          if(len(rg.unique_resnames())==1):
-            resname = rg.unique_resnames()[0]
-            olc=amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
-            atoms = rg.atoms()
-            i_seqs = atoms.extract_i_seq()
-            if(olc!="X") and utils.is_residue_in_selection(i_seqs, selection):
-              seq.append(olc)
-              result.append(group_args(i_seq = counter, rg = rg))
-              counter += 1
-    return "".join(seq), result
-
-  def process_reference_groups(self,
-                               pdb_hierarchy,
-                               pdb_hierarchy_ref,
-                               params,
-                               log=None):
-    if(log is None): log = sys.stdout
-    model_iseq_hash = utils.build_i_seq_hash(pdb_hierarchy=pdb_hierarchy)
-    model_name_hash = {v:k for k, v in model_iseq_hash.iteritems()}
-    sel_cache = pdb_hierarchy.atom_selection_cache()
-    ref_iseq_hash = {}
-    sel_cache_ref = {}
-    for key in pdb_hierarchy_ref:
-      ref_hier = pdb_hierarchy_ref[key]
-      ref_iseq_hash[key] = \
-        utils.build_i_seq_hash(pdb_hierarchy=ref_hier)
-      sel_cache_ref[key] = ref_hier.atom_selection_cache()
-    match_map = {}
-    for file in self.reference_file_list:
-      match_map[file] = {}
-    if (len(params.reference_group) == 0 or
-          (len(params.reference_group) == 1 and
-          params.reference_group[0].reference is None and
-          params.reference_group[0].selection is None and
-          params.reference_group[0].file_name is None)):
-      matched_model_chains = []
-      reference_matches = get_matching_chains(
-        pdb_hierarchy=pdb_hierarchy,
-        pdb_hierarchy_ref=pdb_hierarchy_ref,
-        reference_file_list=self.reference_file_list,
-        params=params,
-        log=log)
-      new_reference_groups = ""
-      for file in reference_matches.keys():
-        matches = reference_matches[file]
-        for match in matches:
-          model_chain = match[0]
-          ref_chain = match[1]
-          if model_chain in matched_model_chains:
-            raise Sorry("multiple reference models for one chain not "+\
-                        "currently supported")
-          matched_model_chains.append(model_chain)
-          new_reference_groups += "  reference_model.reference_group {\n"
-          new_reference_groups += "   reference = "+ref_chain+"\n"
-          new_reference_groups += "   selection = "+model_chain+"\n"
-          new_reference_groups += "   file_name = "+file+"\n"
-          new_reference_groups += "  }\n"
-        new_reference_groups_as_phil = iotbx.phil.parse(
-          new_reference_groups)
-        params.reference_group = \
-          reference_model_params.\
-            fetch(new_reference_groups_as_phil)\
-            .extract().reference_model.\
-            reference_group
-    else:
-      for rg in params.reference_group:
-        if rg.file_name is None:
-          if len(self.reference_file_list) > 1:
-            raise Sorry("Ambiguous reference group selection - please "+\
-                        "specify file name for reference group")
-          #only one reference file specified
-          rg.file_name = self.reference_file_list[0]
-    for rg in params.reference_group:
-      model_chain = None
-      ref_chain = None
-      model_res_min = None
-      model_res_max = None
-      ref_res_min = None
-      ref_res_max = None
-      #check for selection sanity
-      sel_model = re.split(r"AND|OR|NOT",rg.selection.upper())
-      sel_ref = re.split(r"AND|OR|NOT",rg.reference.upper())
-      for sel in sel_model:
-        if sel.strip().strip('(').strip(')').startswith("CHAIN"):
-          if model_chain is None:
-            model_chain = sel.strip().strip('(').strip(')').split(' ')[-1].\
-              strip("'").strip('"')
-          else:
-            raise Sorry("Cannot specify more than one chain per selection")
-        if sel.strip().strip('(').strip(')').startswith("RESSEQ") or \
-           sel.strip().strip('(').strip(')').startswith("RESID"):
-          res = sel.strip().strip('(').strip(')').split(' ')[-1].split(':')
-          if len(res) > 1:
-            if model_res_min is None and model_res_max is None:
-              model_res_min = res[0]
-              model_res_max = res[1]
-            else:
-              raise Sorry("Cannot specify more than one residue "+\
-                "or residue range per selection")
-          elif len(res) == 1:
-            if model_res_min is None and model_res_max is None:
-              model_res_min = res[0]
-              model_res_max = res[0]
-          else:
-            raise Sorry("Do not understand residue selection")
-      for sel in sel_ref:
-        if sel.strip().strip('(').strip(')').startswith("CHAIN"):
-          if ref_chain is None:
-            ref_chain = sel.strip().strip('(').strip(')').split(' ')[-1].\
-              strip("'").strip('"')
-            if ref_chain.startswith("'") or ref_chain.startswith('"'):
-              ref_chain = ref_chain.lstrip()
-            if ref_chain.endswith("'") or ref_chain.endswith('"'):
-              ref_chain = ref_chain.rstrip()
-          else:
-            raise Sorry("Cannot specify more than one chain per selection")
-        if sel.strip().strip('(').strip(')').startswith("RESSEQ") or \
-           sel.strip().strip('(').strip(')').startswith("RESID"):
-          res = sel.strip().strip('(').strip(')').split(' ')[-1].split(':')
-          if len(res) > 1:
-            if ref_res_min is None and ref_res_max is None:
-              ref_res_min = res[0]
-              ref_res_max = res[1]
-            else:
-              raise Sorry("Cannot specify more than one residue "+\
-                "or residue range per selection")
-          elif len(res) == 1:
-            if ref_res_min is None and model_res_max is None:
-              ref_res_min = res[0]
-              ref_res_max = res[0]
-          else:
-            raise Sorry("Do not understand residue selection")
-      #check consistency
-      assert (ref_chain is None and model_chain is None) or \
-             (ref_chain is not None and model_chain is not None)
-      assert (ref_res_min is None and ref_res_max is None \
-              and model_res_min is None and model_res_max is None) or \
-              (ref_res_min is not None and ref_res_max is not None \
-              and model_res_min is not None and model_res_max is not None)
-      #prep for SSM alignment
-      file = rg.file_name
-      sel = sel_cache.selection(string=rg.selection)
-      sel_atoms = sel.iselection()
-      sel_ref = sel_cache_ref[file].selection(string=rg.reference)
-      mod_h = utils.hierarchy_from_selection(
-                pdb_hierarchy=pdb_hierarchy,
-                selection = sel,
-                log=log).models()[0].chains()[0]
-      ref_h = utils.hierarchy_from_selection(
-                pdb_hierarchy=pdb_hierarchy_ref[file],
-                selection = sel_ref,
-                log=log).models()[0].chains()[0]
-      ssm = None
-      if params.SSM_alignment:
-        try: #do SSM alignment
-          ssm, ssm_align = utils._ssm_align(
-                      reference_chain = ref_h,
-                      moving_chain = mod_h)
-        except RuntimeError, e:
-          if (str(e) != "can't make graph for first structure" and \
-              str(e) != "can't make graph for second structure" and \
-              str(e) != "secondary structure does not match"):
-            raise e
-          else:
-            print >> log, "SSM alignment failed..."
-      if ssm != None:
-        for pair in ssm_align.pairs:
-          model_res = pair[0]
-          ref_res = pair[1]
-          if model_res is None or ref_res is None:
-            continue
-          temp_model_atoms = {}
-          temp_ref_atoms = {}
-          for atom in model_res.atoms():
-            atom_temp = atom.pdb_label_columns()+atom.segid
-            temp_model_atoms[atom.name] = model_iseq_hash[atom_temp]
-          for atom in ref_res.atoms():
-            atom_temp = atom.pdb_label_columns()+atom.segid
-            temp_ref_atoms[atom.name] = ref_iseq_hash[file][atom_temp]
-          for key in temp_model_atoms.keys():
-            ref_atom = temp_ref_atoms.get(key)
-            if ref_atom != None:
-              match_map[file][temp_model_atoms[key]] = temp_ref_atoms[key]
-
-      else: #ssm not selected, or failed
-        print >> log, "trying simple matching..."
-        #calculate residue offset
-        offset = 0
-        if (ref_res_min is not None and ref_res_max is not None \
-            and model_res_min is not None and model_res_max is not None):
-          offset = int(model_res_min) - int(ref_res_min)
-          assert offset == (int(model_res_max) - int(ref_res_max))
-        for i_seq in sel_atoms:
-          key = model_name_hash[i_seq]
-          if ref_chain is not None:
-            if len(ref_chain)==1:
-              ref_chain = ' '+ref_chain
-            elif len(ref_chain)==0:
-              ref_chain = '  '
-            key = \
-              re.sub(r"(.{5}\D{3})(.{2})(.{4})",r"\1"+ref_chain+r"\3",key)
-          if offset != 0:
-            resnum = key[10:14]
-            new_num = "%4d" % (int(resnum) - offset)
-            key = \
-              re.sub(r"(.{5}\D{3})(.{2})(.{4})",r"\1"+ref_chain+new_num,key)
-          cur_ref = ref_iseq_hash[file].get(key)
-          if cur_ref is None:
-            #try no alternate
-            key = \
-              re.sub(r"(.{4}).(\D{3})(.{2})(.{4})",
-                     r"\1"+" "+r"\2"+ref_chain+r"\4",key)
-          cur_ref = ref_iseq_hash[file].get(key)
-          if cur_ref is None:
-            continue
-          else:
-            match_map[file][i_seq] = ref_iseq_hash[file][key]
-    return match_map
-
   def build_reference_dihedral_proxy_hash(self):
     self.reference_dihedral_proxy_hash = {}
     for ref in self.dihedral_proxies_ref.keys():
@@ -529,8 +420,7 @@ class reference_model(object):
         if not include_main_chain:
           sc_atoms = False
           for i_seq in dp.i_seqs:
-            if i_seq_name_hash[i_seq][0:4] \
-              not in [' CA ', ' N  ', ' C  ', ' O  ']:
+            if i_seq_name_hash[i_seq][0:4] not in [' CA ',' N  ',' C  ',' O  ']:
               sc_atoms = True
               break
           if not sc_atoms:
@@ -557,22 +447,12 @@ class reference_model(object):
     return dihedral_hash
 
   def get_reference_dihedral_proxies(self):
-    residue_match_hash = {}
-    complete_dihedral_proxies = utils.get_complete_dihedral_proxies(
-                                  pdb_hierarchy=self.pdb_hierarchy,
-                                  mon_lib_srv=self.mon_lib_srv,
-                                  ener_lib=self.ener_lib,
-                                  log=self.log)
-    self.reference_dihedral_proxies = \
+    complete_dihedral_proxies = utils.get_dihedrals_and_phi_psi(
+        processed_pdb_file=self.processed_pdb_file)
+    generated_reference_dihedral_proxies = \
       cctbx.geometry_restraints.shared_dihedral_proxy()
     sigma = self.params.sigma
     limit = self.params.limit
-    match_map = self.process_reference_groups(
-                               pdb_hierarchy=self.pdb_hierarchy,
-                               pdb_hierarchy_ref=self.pdb_hierarchy_ref,
-                               params=self.params,
-                               log=self.log)
-    self.match_map = match_map
     ref_ss_m = None
     ss_selection = None
     if self.params.secondary_structure_only:
@@ -604,7 +484,10 @@ class reference_model(object):
           if bsel.all_eq(False):
             raise Sorry("No atom selected")
           ss_selection[file] = bsel
+
+    t_sum = 0
     for dp in complete_dihedral_proxies:
+      # print "dp iseqs:", dp.i_seqs
       key_work = ""
       complete = True
       for i_seq in dp.i_seqs:
@@ -612,6 +495,7 @@ class reference_model(object):
           complete = False
       if not complete:
         continue
+
       for i_seq in dp.i_seqs:
         key_work = key_work + self.i_seq_name_hash[i_seq]
       #find matching key
@@ -625,7 +509,7 @@ class reference_model(object):
           ref_match = True
           for i_seq in dp.i_seqs:
             if ref_match:
-              map_part = match_map[file].get(i_seq)
+              map_part = self.match_map[file].get(i_seq)
               if map_part is not None:
                 key_part = \
                   self.i_seq_name_hash_ref[file].get(map_part)
@@ -643,11 +527,6 @@ class reference_model(object):
               file_match = file
       try:
         reference_angle = self.reference_dihedral_hash[file_match][key]
-        if key[5:18] == key[24:37] and \
-           key[5:18] == key[43:56] and \
-           key_work[5:18] == key_work[24:37] and \
-           key_work[5:18] == key_work[43:56]:
-          residue_match_hash[key_work[5:14]] = (file_match, key[5:14])
       except Exception:
         continue
       w_limit = limit
@@ -656,10 +535,10 @@ class reference_model(object):
           and ss_selection[file_match] is not None):
         limit2 = 15.0
         w_weight = 0.04
-        if (ss_selection[file_match][match_map[file_match][dp.i_seqs[0]]] and
-           ss_selection[file_match][match_map[file_match][dp.i_seqs[1]]] and
-           ss_selection[file_match][match_map[file_match][dp.i_seqs[2]]] and
-           ss_selection[file_match][match_map[file_match][dp.i_seqs[3]]]):
+        if (ss_selection[file_match][self.match_map[file_match][dp.i_seqs[0]]] and
+           ss_selection[file_match][self.match_map[file_match][dp.i_seqs[1]]] and
+           ss_selection[file_match][self.match_map[file_match][dp.i_seqs[2]]] and
+           ss_selection[file_match][self.match_map[file_match][dp.i_seqs[3]]]):
           limit2 = 30.0
           w_weight = 1
         dp_add = cctbx.geometry_restraints.dihedral_proxy(
@@ -668,7 +547,7 @@ class reference_model(object):
             weight=w_weight,
             limit=w_limit,
             top_out=TOP_OUT_FLAG)
-        self.reference_dihedral_proxies.append(dp_add)
+        generated_reference_dihedral_proxies.append(dp_add)
       else:
         dp_add = cctbx.geometry_restraints.dihedral_proxy(
             i_seqs=dp.i_seqs,
@@ -676,8 +555,8 @@ class reference_model(object):
             weight=1/sigma**2,
             limit=limit,
             top_out=TOP_OUT_FLAG)
-        self.reference_dihedral_proxies.append(dp_add)
-    self.residue_match_hash = residue_match_hash
+        generated_reference_dihedral_proxies.append(dp_add)
+    self.reference_dihedral_proxies = generated_reference_dihedral_proxies
 
   def show_reference_summary(self, log=None):
     if(log is None): log = sys.stdout
@@ -895,7 +774,7 @@ class reference_model(object):
     remaining_match_hash = {}
     for dp in ncs_dihedral_proxies:
       proxy_list.append(dp.i_seqs)
-    print len(self.reference_dihedral_proxies)
+    # print len(self.reference_dihedral_proxies)
     for dp in self.reference_dihedral_proxies:
       if dp.i_seqs not in proxy_list:
         remaining_proxies.append(dp)
@@ -910,117 +789,10 @@ class reference_model(object):
               found_match = True
       if not found_match:
         remaining_match_hash[key] = self.residue_match_hash[key]
-    print len(remaining_proxies)
+    # print len(remaining_proxies)
     self.reference_dihedral_proxies = remaining_proxies
     self.residue_match_hash = remaining_match_hash
     print >> self.log, "\n**Removed reference restraints that overlap "+ \
                        "with torsion NCS restraints**\n"
     print >> self.log, "Updated Reference Model Restraints:"
     self.show_reference_summary()
-
-def get_matching_chains(pdb_hierarchy,
-                        pdb_hierarchy_ref,
-                        reference_file_list,
-                        params,
-                        log):
-  reference_matches = {}
-  print >> log, "determining reference matches automatically..."
-  chains = pdb_hierarchy.models()[0].chains()
-  atom_labels = list(pdb_hierarchy.atoms_with_labels())
-  segids = flex.std_string([ a.segid for a in atom_labels ])
-  use_segid = not segids.all_eq('    ')
-  am = utils.alignment_manager(
-         pdb_hierarchy=pdb_hierarchy,
-         use_segid=use_segid)
-  for file in reference_file_list:
-    pair_hash = {}
-    reference_matches[file] = []
-    hierarchy_ref = pdb_hierarchy_ref[file]
-    chains_ref = hierarchy_ref.models()[0].chains()
-    atom_labels_ref = list(hierarchy_ref.atoms_with_labels())
-    segids_ref = flex.std_string([ a.segid for a in atom_labels_ref ])
-    use_segid_ref = not segids_ref.all_eq('    ')
-    am_ref = utils.alignment_manager(
-               pdb_hierarchy=hierarchy_ref,
-               use_segid=use_segid_ref)
-    for i, chain_i in enumerate(chains):
-      found_conformer = False
-      for conformer in chain_i.conformers():
-        if not conformer.is_protein() and not conformer.is_na():
-          continue
-        else:
-          found_conformer = True
-      if not found_conformer:
-        continue
-      segid_i = utils.get_unique_segid(chain_i)
-      if segid_i == None:
-        print >> log, \
-          "chain %s has conflicting segid values - skipping" % chain_i.id
-        continue
-      if (use_segid) :
-        chain_i_str = "chain '%s' and segid '%s'" % \
-          (chain_i.id, segid_i)
-      else :
-        chain_i_str = "chain '%s'" % chain_i.id
-      for j, chain_j in enumerate(chains_ref):
-        found_conformer = False
-        for conformer in chain_j.conformers():
-          if not conformer.is_protein() and not conformer.is_na():
-            continue
-          else:
-            found_conformer = True
-        if not found_conformer:
-          continue
-        segid_j = utils.get_unique_segid(chain_j)
-        if segid_j == None:
-          continue
-        if (use_segid_ref) :
-          chain_j_str = "chain '%s' and segid '%s'" % (chain_j.id, segid_j)
-        else :
-          chain_j_str = "chain '%s'" % chain_j.id
-        seq_pair = (am.sequences[chain_i_str],
-                    am_ref.sequences[chain_j_str])
-        seq_pair_padded = (am.padded_sequences[chain_i_str],
-                           am_ref.padded_sequences[chain_j_str])
-        struct_pair = (am.structures[chain_i_str],
-                       am_ref.structures[chain_j_str])
-        residue_match_map = \
-          utils._alignment(
-            sequences=seq_pair,
-            padded_sequences=seq_pair_padded,
-            structures=struct_pair,
-            log=log)
-        #require length of matches to be similar to shorter chain
-        if ( (len(residue_match_map) / min(chain_i.residue_groups_size(),
-                                           chain_j.residue_groups_size()))
-              >= params.similarity ):
-          key = (chain_i_str, chain_j_str)
-          pair_key = (chain_i.id, segid_i)
-          match_key = (chain_j.id, segid_j)
-          if (not pair_key in pair_hash) :
-            pair_hash[pair_key] = []
-          pair_hash[pair_key].append(match_key)
-    for key in pair_hash.keys():
-      if (use_segid) :
-        chain_str = "chain '%s' and segid '%s'" % (key[0], key[1])
-      else :
-        chain_str = "chain '%s'" % (key[0])
-      exact_match = None
-      first_match = None
-      for match in pair_hash[key]:
-        if (use_segid) :
-          ref_str = "chain '%s' and segid '%s'" % \
-            (match[0], match[1])
-        else :
-          ref_str = "chain '%s'" % (match[0])
-        if first_match == None:
-          first_match = ref_str
-        if key[0] == match[0]:
-          exact_match = ref_str
-      if exact_match != None:
-        match_pair = (chain_str, exact_match)
-      else:
-        match_pair = (chain_str, first_match)
-      reference_matches[file].append(match_pair)
-    reference_matches[file].sort()
-  return reference_matches
