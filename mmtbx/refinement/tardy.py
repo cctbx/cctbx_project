@@ -339,9 +339,8 @@ def action(
   n_time_steps = 0
   den_update_interval = None
   if (tardy_model.potential_obj.reduced_geo_manager is not None):
-    den_update_interval = 50 / ( (  params.start_temperature_kelvin
-                           - params.final_temperature_kelvin) \
-                          / params.number_of_cooling_steps)
+    den_update_interval = (50 *params.number_of_cooling_steps /
+        (params.start_temperature_kelvin - params.final_temperature_kelvin))
     den_update_interval = int(round(den_update_interval))
   for i_cool_step in xrange(params.number_of_cooling_steps+1):
     if (params.number_of_cooling_steps == 0):
