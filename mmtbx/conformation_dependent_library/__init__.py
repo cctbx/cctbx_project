@@ -11,6 +11,8 @@ from mmtbx.conformation_dependent_library.cdl_database import cdl_database
 from mmtbx.conformation_dependent_library.bond_angle_registry import \
   bond_angle_registry
 
+from mmtbx.conformation_dependent_library.cdl_utils import distance2
+
 chararcters_36 = letters[:26]+digits
 
 not_before_pro_groups = {
@@ -99,12 +101,6 @@ headers = [
   "C(0)  - O(0)",
   "",
   ]
-
-def distance2(a,b):
-  d2 = 0
-  for i in range(3):
-    d2 += (a.xyz[i]-b.xyz[i])**2
-  return d2
 
 def restraints_show(restraints_values):
   outl = ""
