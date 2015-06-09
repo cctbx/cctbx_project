@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/03/2015
+Last Changed: 06/09/2015
 Description : IOTA I/O module. Reads PHIL input, creates output directories,
               creates input lists and organizes starting parameters, also
               creates reasonable IOTA and PHIL defaults if selected
@@ -111,6 +111,9 @@ advanced
   clean_up_output = False
     .type = bool
     .help = Set to False to leave temporary folders and files in place'
+  cluster_threshold = 5000
+    .type = int
+    .help = threshold value for unit cell clustering
   square_mode = None *pad crop
     .type = choice
     .help = Method to generate square image
@@ -195,10 +198,9 @@ def make_input_list (gs_params):
   input_list = []
   abs_inp_path = os.path.abspath(gs_params.input)
 
-
   if not gs_params.grid_search.flag_on:
     cmd.Command.start("Reading input list from file")
-    with open('{}/input.lst'\
+    with open('{}/input_images.lst'\
               ''.format(os.path.abspath(gs_params.output)), 'r') as listfile:
       listfile_contents = listfile.read()
     inp_list = listfile_contents.splitlines()
