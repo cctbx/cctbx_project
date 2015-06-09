@@ -240,6 +240,28 @@ class ExperimentList(object):
         break
     return result
 
+  def where(self, crystal=None, imageset=None, detector=None, beam=None,
+            goniometer=None, scan=None, profile=None):
+    ''' Returns a list of indices to experiments containing the given models.'''
+    if [crystal, imageset, detector, beam, goniometer, scan, profile].count(None) == 7:
+      return []
+    expt_indices = []
+    for i_expt, expt in enumerate(self):
+      if crystal is not None and expt.crystal is not crystal:
+        continue
+      if imageset is not None and expt.imageset is not imageset:
+        continue
+      if detector is not None and expt.detector is not detector:
+        continue
+      if beam is not None and expt.beam is not beam:
+        continue
+      if goniometer is not None and expt.goniometer is not goniometer:
+        continue
+      if scan is not None and expt.scan is not scan:
+        continue
+      expt_indices.append(i_expt)
+    return expt_indices
+
   def to_dict(self):
     ''' Serialize the experiment list to dictionary. '''
     from libtbx.containers import OrderedDict

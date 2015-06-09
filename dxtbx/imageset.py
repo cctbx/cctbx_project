@@ -603,6 +603,8 @@ class ImageSet(object):
 
   def __cmp__(self, other):
     ''' Compare this image set to another. '''
+    if other is None:
+      return False
     return self.reader() == other.reader()
 
   def indices(self):
