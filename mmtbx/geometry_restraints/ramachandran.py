@@ -1,13 +1,10 @@
-
 from __future__ import division
 import libtbx.load_env
 import iotbx.phil
-from libtbx.str_utils import make_header
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 import sys
 import os
-import mmtbx.rotamer
 import boost.python
 from scitbx.array_family import flex
 
@@ -108,18 +105,30 @@ class ramachandran_manager(object):
         initialize=False)
 
   def extract_proxies(self):
-    angles = mmtbx.rotamer.extract_phi_psi(
-      pdb_hierarchy=self.pdb_hierarchy,
-      atom_selection=self.bool_atom_selection)
     self.proxies = ext.shared_phi_psi_proxy()
-    for angle in angles :
-      residue_name = angle.residue_name
-      if (residue_name == "MSE") :
-        residue_name = "MET"
+
+    from mmtbx.conformation_dependent_library import generate_protein_threes
+    selected_h = self.pdb_hierarchy.select(self.bool_atom_selection)
+    for three in generate_protein_threes(
+        hierarchy=selected_h,
+        geometry=None):
+      phi_atoms, psi_atoms = three.get_phi_psi_atoms()
+      i_seqs = [atom.i_seq for atom in phi_atoms] + [psi_atoms[-1].i_seq]
+      resnames = three.get_resnames()
+      r_name = resnames[1]
+      if (r_name == "MSE") :
+        r_name = "MET"
+      residue_type = "ala"
+      if (r_name == "PRO") :
+        residue_type = "pro"
+      elif (r_name == "GLY") :
+        residue_type = "gly"
+      elif (resnames[2] == "PRO") :
+        residue_type = "prepro"
       proxy = ext.phi_psi_proxy(
-        residue_name=residue_name,
-        residue_type=angle.residue_type,
-        i_seqs=angle.i_seqs)
+          residue_name=r_name,
+          residue_type=residue_type,
+          i_seqs=i_seqs)
       self.proxies.append(proxy)
     print >> self.log, ""
     print >> self.log, "  %d Ramachandran restraints generated." % self.get_n_proxies()
