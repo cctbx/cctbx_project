@@ -78,4 +78,4 @@ class ProfileModelFactory(object):
     '''
     if obj is None:
       return None
-    return ProfileModelFactory.find(obj['name']).from_dict(obj)
+    return ProfileModelFactory.find(obj['__id__']).from_dict(obj)
