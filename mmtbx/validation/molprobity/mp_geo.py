@@ -22,6 +22,8 @@ def get_master_phil():
       .type = bool
     outliers_only = False
       .type = bool
+    cdl = False
+      .type = bool
   }
   """,process_includes=True)
 
@@ -63,6 +65,7 @@ def get_altloc(atoms_info):
   return altloc
 
 def run(args):
+  print 55555
   master_phil = get_master_phil()
   import iotbx.utils
   input_objects = iotbx.utils.process_command_line_inputs(
@@ -79,6 +82,7 @@ def run(args):
   do_kinemage = work_params.mp_geo.kinemage
   do_rna_backbone = work_params.mp_geo.rna_backbone
   outliers_only = work_params.mp_geo.outliers_only
+  use_cdl = work_params.mp_geo.cdl
   log = StringIO()
   basename = os.path.basename(file_name)
   if do_bonds_and_angles:
@@ -94,7 +98,10 @@ def run(args):
   restraints_loading_flags = {}
   restraints_loading_flags["use_neutron_distances"]=False
   from mmtbx.validation import utils
+  params = pdb_interpretation.master_params.extract()
+  params.cdl = use_cdl
   processed_pdb_file = pdb_interpretation.process(
+    params                   = params,
     mon_lib_srv              = server.server(),
     ener_lib                 = server.ener_lib(),
     file_name                = file_name,
