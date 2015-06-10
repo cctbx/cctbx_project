@@ -668,8 +668,8 @@ class ExperimentListDict(object):
   @staticmethod
   def _profile_from_dict(obj):
     ''' Get the profile from a dictionary. '''
-    from dxtbx.model import ProfileFactory
-    return ProfileFactory.from_dict(obj)
+    from dxtbx.model import ProfileModelFactory
+    return ProfileModelFactory.from_dict(obj)
 
   @staticmethod
   def _from_file(filename):

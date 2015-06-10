@@ -11,7 +11,7 @@ from __future__ import division
 
 from abc import ABCMeta, abstractmethod
 
-class Profile(object):
+class ProfileModelBaseIface(object):
   '''
   A basic profile model class. This assumes no interface other than
   serialization methods. Classes inheriting from this class can
@@ -38,7 +38,7 @@ class Profile(object):
     pass
 
 
-class ProfileFactory(object):
+class ProfileModelFactory(object):
   '''
   A factory to create a profile model
 
@@ -50,7 +50,7 @@ class ProfileFactory(object):
     Iterate through the subclasses
 
     '''
-    stack = list(Profile.__subclasses__())
+    stack = list(ProfileModelBaseIface.__subclasses__())
     while len(stack) > 0:
       cls = stack.pop()
       yield cls
@@ -62,7 +62,7 @@ class ProfileFactory(object):
     Find a subclass with the given name
 
     '''
-    for cls in ProfileFactory.classes():
+    for cls in ProfileModelFactory.classes():
       try:
         if cls.name == name:
           return cls
@@ -78,4 +78,4 @@ class ProfileFactory(object):
     '''
     if obj is None:
       return None
-    return ProfileFactory.find(obj['name']).from_dict(obj)
+    return ProfileModelFactory.find(obj['name']).from_dict(obj)
