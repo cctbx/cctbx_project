@@ -1,0 +1,105 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{underscore}
+
+\newcommand{\code}[1]{\texttt{#1}}
+\newtheorem{theorem}{Theorem}
+
+\title{Drawing thermal ellipsoids with OpenGL}
+\author{Luc J. Bourhis}
+
+\begin{document}
+
+\maketitle
+
+\section{From anisotropic displacements to ellispoids}
+In this section, we will work in fractional coordinates.
+Ignoring anomalous scattering, the form factor $F(k)$ of an atom with an anisotropic displacement tensor $U$, sitting on the position $x$, and that has a scattering factor $f(k)$ reads
+\begin{align}
+  F(k) = f(k) e^{k U k^T} e^{i 2\pi k x},
+\end{align}
+where $x$ is a 3-vector column of coordinates whereas $k$ is a 3-vector row of Miller indices. The associated electron density $\rho(x)$ is the inverse Fourier transform of $F(k)$: it transforms the product of the thermal smoothing with the scattering into a convolution of their Fourier transforms,
+\begin{align}
+  \rho(x) = \sum_k \left[\int \rho_0(y) e^{(x-y)^T U^{-1} (x-y)} d^3y 
+  \right] e^{i 2\pi k x},
+\end{align}
+where $\rho_0$ is the electron density without thermal smearing.\footnote{and $y$ is another 3-vector column} The apparition of $U^{-1}$ is just a mathematical property of the Fourier transforms. Thus $p(y) \ltimes e^{(y-x)^T U^{-1} (y-x)}$ can be viewed as a probability distribution that smoothes $\rho_0(y)$. One may wish to display the surface corresponding to let's say 50\% probability. These surfaces are quadrics of equations
+\begin{align}
+  (y-x)^T U^{-1} (y-x) = r,
+  \label{quadrics}
+\end{align}
+for some constant $r$ depending on the sought probability. This is actually the standard mathematical form for a quadrics equation. This quadrics is an ellispoid if and only if $U$ is positive-definite. This is the only case of interest in term of graphical display but we wish to have a fail-safe procedure when $U$ is non-positive definite (NPD).
+
+\section{Drawing ellispsoids with OpenGL}
+
+From this point on, the crystallographic origin of $U$ does not matter anymore: we just deal with a symmetric matrix.
+
+First we move the problem to the origin with the change of variable
+\begin{align}
+  z = y - x,\\
+  \intertext{and the quadrics equation then becomes}
+  z^T U^{-1} z = r
+  \label{quadrics:at:orig}
+\end{align}
+
+Then we need to find a way to transform the problem into drawing a sphere because either GLU or GLUT provides tools to easily and efficiently draw that shape. The simplest idea is to seek a linear transformation that maps the points on the sphere $\cal S$ of radius $r$ centered at the origin onto our ellipsoid $\cal E$. Let $M$ be the matrix of that transformation: for any vectors $v$ lying on $\cal S$, $z=Mv$ shall lie on $\cal E$, i.e.
+\begin{align}
+  r &= z^T U^{-1} z = v^T M^T U^{-1} M v,\nonumber\\
+  \intertext{and since $v^T v$ = r,}
+  1 &= \frac{v^T M^T U^{-1} M v}{v^T v}\nonumber.
+\end{align}
+This is the Rayleigh quotient of the matrix $M^T U^{-1} M$, whose minimum and maximum values as $v$ spans $\cal S$ are respectively the minimum and maximum eigenvalue of that matrix. Thus this matrix is the identity matrix and we can conclude that $U=M M^T$.
+
+Reciproquely, if $U=M M^T$ for some matrix $M$, then for any vector $z=Mv$ with $v$ on $\cal S$, we have
+\begin{align}
+  r &= v^T v = z^T M^{-T} M^{-1} z = z^T U^{-1} z,\nonumber
+\end{align}
+and therefore $z$ lies on $\cal E$. Thus we can conclude that
+\begin{theorem}
+  A linear transformation of matrix $M$ maps $\cal S$ onto $\cal E$ if and only if
+  \begin{align}
+    U = M M^T.
+    \label{mapping:condition}
+  \end{align}
+\end{theorem}
+
+It shall be obvious that
+\begin{theorem}
+  If $M$ is solution of \eqref{mapping:condition}, then $MQ$ is also solution for any orthogonal matrix $Q$.
+\end{theorem}
+
+Two particular choices stand out from this infinite number of solutions, which we will now discuss. 
+
+\subsection{A scaling followed by a rotation}
+In this section, $U$ is the matrix of the thermal displacement tensor in Cartesian coordinates.
+Since $U$ is a symmetric matrix, it can be diagonalised:
+\begin{align}
+  U &= R \Delta R^T,\\
+  \intertext{where $\Delta$ is a diagonal matrix and where $R$ is a rotation matrix. Thus a possible mapping satisfying \eqref{mapping:condition} is}
+  M &= R \Delta^\frac{1}{2}
+\end{align} 
+ 
+The advantage of this method lies in its geometrical interpretation: $\Delta^\frac{1}{2}$ transforms the sphere into an ellipsoid with the correct dimensions but whose principal axes are the axes of the basis the coordinates $v$ are referred to; then $R$ rotates this ellipsoid into its correct position. As a result drawing the great circles on the sphere that lies in the planes of equations\footnote{we denote $v=\begin{pmatrix}
+  v_1\\
+  v_2\\
+  v_3
+\end{pmatrix}$} $v_1=0$, $v_2=0$, and $v_3=0$ will result in drawing the principal ellipses on the ellipsoid. Those are useful visual guides to assess its shape.
+
+In the \code{cctbx}, this is the method currently implemented in class \code{proto\_ellipsoid} in \code{gltbx/quadrics.h} -- the change of frame is actually implemented in class \code{ellipsoid_to_sphere_transform}. Bands are drawn about the great circles using textures created in class \code{ellipsoid_principal_sections_texture}. This is also the method used in Olex2.
+
+
+\subsection{The Cholesky factor}
+
+The Cholesky decomposition of $U$ reads
+\begin{align}
+  U = L L^T
+\end{align}
+where $L$ is lower triangular. Thus $L$ is a possible solution of \eqref{mapping:condition}.
+The main advantage of this method is that the Cholesky decomposition algorithm is much faster than the eigenvalue decomposition used in the previous section, and the former is particularly trivial to implement for a 3x3 matrix. A further advantage is that it is possible to start with $U$ in fractional coordinates, which is the input one would get from a CIF or a .res file, thus saving the cost of the computation of the Cartesian $U$ that is required by the method described in the previous section.
+
+However, there is a drawback. Since $L$ is a mapping that does not preserve orthogonality, the 3 great circles on the sphere introduced in the previous section are not mapped onto the principal ellipses on the ellipsoid. Thus we completely loose the ability to draw those visual clues. If this is not deemed important, then the Cholesky method discussed in this section shall be preferred.
+
+This is the method used by Coot.
+
+\end{document}

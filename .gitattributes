@@ -1129,6 +1129,7 @@ fftw3tbx/ext.cpp svneol=native#text/plain
 fftw3tbx/libtbx_config -text
 fftw3tbx/libtbx_refresh.py svneol=native#text/x-python
 fftw3tbx/tst_ext.py svneol=native#text/x-python
+gltbx/adp-display.tex -text
 gltbx/error_utils.h -text
 gltbx/quadrics.h -text
 gltbx/quadrics.py -text
