@@ -34,5 +34,6 @@ env.SharedLibrary(
     "weighted_covariance.cpp",
     "rotation.cpp",
     "interpolation.cpp",
+    "tetrahedron.cpp",
     ]
 )
