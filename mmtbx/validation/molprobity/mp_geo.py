@@ -65,7 +65,6 @@ def get_altloc(atoms_info):
   return altloc
 
 def run(args):
-  print 55555
   master_phil = get_master_phil()
   import iotbx.utils
   input_objects = iotbx.utils.process_command_line_inputs(
