@@ -510,6 +510,7 @@ class ExperimentListDict(object):
       goniometer = ExperimentListDict.model_or_none(self._glist, eobj, 'goniometer')
       scan = ExperimentListDict.model_or_none(self._slist, eobj, 'scan')
       crystal = ExperimentListDict.model_or_none(self._clist, eobj, 'crystal')
+      profile = ExperimentListDict.model_or_none(self._plist, eobj, 'profile')
       key = (eobj.get('imageset', None), eobj.get('scan',None))
       try:
         imageset = imagesets[key]
@@ -587,7 +588,8 @@ class ExperimentListDict(object):
         detector=detector,
         goniometer=goniometer,
         scan=scan,
-        crystal=crystal))
+        crystal=crystal,
+        profile=profile))
 
     # Return the experiment list
     return el

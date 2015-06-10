@@ -12,7 +12,7 @@ class NullProfile(ProfileModelBaseIface):
 
   def to_dict(self):
     return {
-      'name' : self.name,
+      '__id__' : self.name,
       'parameter' : self.parameter
     }
 
@@ -20,6 +20,7 @@ class NullProfile(ProfileModelBaseIface):
   def from_dict(Class, obj):
     return Class(obj['parameter'])
 
+ProfileModelFactory.append(NullProfile.name, NullProfile)
 
 
 class Test(object):
