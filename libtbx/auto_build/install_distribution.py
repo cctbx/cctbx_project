@@ -109,6 +109,8 @@ class installer(object):
     "intel-linux-2.6-x86_64",
     "mac-intel-osx",
     "mac-intel-osx-x86_64",
+    "Windows32bit",
+    "Windows64bit",
   ]
 
   def __init__ (self, args=None, out=sys.stdout) :
@@ -159,6 +161,8 @@ class installer(object):
       help="Create installation path prefix if not already present")
     parser.add_option("--binary", dest="binary", action="store_true",
       help="Use pre-compiled binary install", default=None)
+    parser.add_option("--nopycompile", dest="nopycompile", action="store_true",
+      help="Do not precompile python files", default=False)
     self.add_product_specific_options(parser)
     self.options, args = parser.parse_args(self.args)
 
@@ -167,15 +171,16 @@ class installer(object):
     self.parse_options()
     self.basic_setup()
     self.check_directories()
-    self.print_banner()
-    if not os.path.exists('build'):
-      print >> self.out, "No build directory exists; trying source installation."
-      self.options.source = True
-    if self.options.source:
-      print >> self.out, "Source installation specified."
-      self.install_from_source()
-    else:
-      self.install_from_binary()
+    if sys.platform != "win32":
+      self.print_banner()
+      if not os.path.exists('build'):
+        print >> self.out, "No build directory exists; trying source installation."
+        self.options.source = True
+      if self.options.source:
+        print >> self.out, "Source installation specified."
+        self.install_from_source()
+      else:
+        self.install_from_binary()
     self.install_finalize()
     self.print_header('Installation complete!')
 
@@ -183,7 +188,6 @@ class installer(object):
     # Check version
     self.version = self.get_version()
     assert (self.version is not None)
-
     # GUI Flag
     self.flag_build_gui = False
     if (self.include_gui_packages) :
@@ -202,6 +206,13 @@ class installer(object):
   """%{ "mtype" : self.mtype, "product" : self.product_name})
 
   def check_directories(self):
+    if sys.platform == "win32":
+      self.dest_dir = os.getcwd()
+      self.tmp_dir = self.dest_dir
+      self.build_dir = op.join(self.dest_dir, "build")
+      self.base_dir = op.join(self.dest_dir, "base")
+      self.modules_dir = op.join(self.dest_dir, "modules")
+      return
     # The default behavior for nearly all program's --prefix options
     # is to create the directory, so I don't think the --makedirs option
     # is necessary.
@@ -432,6 +443,13 @@ class installer(object):
       "--current_working_directory", self.build_dir,
       "--command_version_suffix", self.version,
     ] + self.configure_modules
+    if 'win32'==sys.platform:
+      args = [
+        os.path.join(self.base_dir, 'bin', 'python', 'python.exe'),
+        os.path.join(self.modules_dir, 'cctbx_project', 'libtbx', 'configure.py'),
+        "--command_version_suffix", self.version,
+      ] + self.configure_modules
+
     print self.build_dir
     print args
 
@@ -462,16 +480,21 @@ class installer(object):
     # Write dispatcher_include file.
     print >> self.out, "Generating %s environment additions for dispatchers..." % \
       self.product_name
-    dispatcher = op.join(self.build_dir, "dispatcher_include_%s.sh" %
-      self.dest_dir_prefix)
+    fnsuffix = '.sh'
+    envcmd = "export"
+    if sys.platform == "win32":
+      fnsuffix = '.bat'
+      envcmd = "set"
+    dispatcher = op.join(self.build_dir, "dispatcher_include_%s%s" %
+      (self.dest_dir_prefix, fnsuffix))
     if (op.isfile(dispatcher)) :
       os.remove(dispatcher)
     env_prefix = self.product_name.upper() # e.g. "Phenix" -> "PHENIX"
     prologue = "\n".join([
-      "export %s=\"%s\"" % (env_prefix, self.dest_dir),
-      "export %s_VERSION=%s" % (env_prefix, self.version),
-      "export %s_ENVIRONMENT=1" % env_prefix,
-      "export %s_MTYPE=%s" % (env_prefix, self.mtype),
+      "%s %s=\"%s\"" % (envcmd, env_prefix, self.dest_dir),
+      "%s %s_VERSION=%s" % (envcmd, env_prefix, self.version),
+      "%s %s_ENVIRONMENT=1" % (envcmd, env_prefix),
+      "%s %s_MTYPE=%s" % (envcmd, env_prefix, self.mtype),
     ] + self.product_specific_dispatcher_prologue())
     epilogue = "\n".join(self.product_specific_dispatcher_epilogue())
     dispatcher_opts = [
@@ -504,13 +527,17 @@ class installer(object):
       os.remove("libtbx_refresh_is_completed")
     self.reconfigure(log=log)
     os.chdir(self.build_dir)
-    assert op.isfile("setpaths.sh")
-    os.environ["PATH"] = "%s:%s" % (op.join(self.build_dir, "bin"), os.environ["PATH"])
+    assert op.isfile("setpaths%s" %fnsuffix)
+    if sys.platform != "win32":
+      os.environ["PATH"] = "%s:%s" % (op.join(self.build_dir, "bin"), os.environ["PATH"])
+    else:
+      os.environ["PATH"] = "%s;%s" % (op.join(self.build_dir, "bin"), os.environ["PATH"])
 
-    # Compile .py files
-    print >> self.out, "Precompiling .py files..."
-    os.chdir(self.modules_dir)
-    call(args="libtbx.py_compile_all", log=log)
+    if not self.options.nopycompile:
+      # Compile .py files
+      print >> self.out, "Precompiling .py files..."
+      os.chdir(self.modules_dir)
+      call(args="libtbx.py_compile_all", log=log)
 
     # Copy README et al.
     for file_name in ["CHANGES", "LICENSE", "README", "README-DEV", "SOURCES"] :
@@ -551,6 +578,9 @@ class installer(object):
     # run custom finalization
     self.product_specific_finalize_install(log)
 
+    if sys.platform == "win32":
+      return
+
     # remove source files if desired
     if (self.options.compact):
       self.reduce_installation_size()
@@ -586,6 +616,14 @@ class installer(object):
     # csh/tcsh environment setup file
     print >> self.out, "Generating %s environment setup scripts..."%self.product_name
     env_prefix = self.product_name.upper() # e.g. "Phenix" -> "PHENIX"
+    if sys.platform == "win32":
+      f = open(os.path.join(self.dest_dir, '%s_env.bat'%self.dest_dir_prefix), 'w')
+      f.write("set %s=%s\n" % (env_prefix, self.dest_dir))
+      f.write("set %s_VERSION=%s\n" % (env_prefix, self.version))
+      f.write("call %%%s%%\\build\\setpaths.bat\n" % (env_prefix))
+      f.close()
+      return
+
     f = open(os.path.join(self.dest_dir, '%s_env.csh'%self.dest_dir_prefix), 'w')
     f.write("#!/bin/csh -f\n")
     f.write("setenv %s \"%s\"\n" % (env_prefix, self.dest_dir))

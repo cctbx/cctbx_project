@@ -185,6 +185,10 @@ def get_os_version () :
   return kernel_version
 
 def machine_type () :
+  if sys.platform == "win32":
+    import platform
+    return platform.system() + platform.architecture()[0]
+
   import os
   uname = os.uname()
   if (uname[0] == "Linux") :
