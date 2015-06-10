@@ -254,6 +254,13 @@ class SetupInstaller(object):
   def make_dist(self):
     makedirs(self.dist_dir)
     if sys.platform == "win32":
+# Bake version number into the dispatchers and the help files and create rotarama db
+# This is done during installation on other platforms
+      from libtbx.auto_build import installer_utils
+      arg = [os.path.join(self.dest_dir,'base','bin','python','python.exe'),
+             os.path.join(self.dest_dir,'bin','install.py'), '--nopycompile']
+      installer_utils.call(arg, cwd=self.dest_dir)
+
       print "Creating zip archive of distribution"
       import platform
       bitness = platform.architecture()[0][0:2]
