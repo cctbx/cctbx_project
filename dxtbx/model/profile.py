@@ -44,17 +44,15 @@ class ProfileModelFactory(object):
 
   '''
 
+  _classes = { }
+
   @staticmethod
-  def classes():
+  def append(name, cls):
     '''
-    Iterate through the subclasses
+    Add a class to the registry
 
     '''
-    stack = list(ProfileModelBaseIface.__subclasses__())
-    while len(stack) > 0:
-      cls = stack.pop()
-      yield cls
-      stack.extend(cls.__subclasses__())
+    ProfileModelFactory._classes[name] = cls
 
   @staticmethod
   def find(name):
@@ -62,13 +60,10 @@ class ProfileModelFactory(object):
     Find a subclass with the given name
 
     '''
-    for cls in ProfileModelFactory.classes():
-      try:
-        if cls.name == name:
-          return cls
-      except Exception:
-        pass
-    return None
+    try:
+      return ProfileModelFactory._classes[name]
+    except Exception:
+      return None
 
   @staticmethod
   def from_dict(obj):
@@ -76,6 +71,11 @@ class ProfileModelFactory(object):
     Given a dictionary, convert to a profile model
 
     '''
+    from logging import warn
     if obj is None:
       return None
-    return ProfileModelFactory.find(obj['__id__']).from_dict(obj)
+    Class = ProfileModelFactory.find(obj['__id__'])
+    if Class == None:
+      warn('No profile class %s registered' % obj['__id__'])
+      return None
+    return Class.from_dict(obj)
