@@ -543,8 +543,12 @@ class installer(object):
     for file_name in ["CHANGES", "LICENSE", "README", "README-DEV", "SOURCES"] :
       src_file = op.join(self.installer_dir, file_name)
       if op.exists(src_file) :
+        dest_file = op.join(self.dest_dir, file_name)
         # XXX use our own implementation instead of shutil.copyfile
-        copy_file(src_file, op.join(self.dest_dir, file_name))
+        if sys.platform == "win32" and src_file==dest_file:
+          # writing to the same file on Windows renders it empty
+          continue
+        copy_file(src_file, dest_file)
 
     # generate .app (Mac only)
     apps_built = False
