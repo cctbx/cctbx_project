@@ -222,6 +222,7 @@ cctbx/omz/tst_bfgs.py svneol=native#text/x-python
 cctbx/omz/tst_cod.csh -text
 cctbx/omz/tst_dev.py svneol=native#text/x-python
 cctbx/r_free_utils.py svneol=native#text/x-python
+cctbx/regression/itvb_2001_table_a1427_hall_symbols.html -text
 cctbx/regression/random_generator_state.pickle -text
 cctbx/regression/structure_ideal.pickle -text
 cctbx/regression/structure_start.pickle -text
