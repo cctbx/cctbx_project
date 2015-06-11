@@ -111,7 +111,16 @@ class Downloader(object):
        being newer than the local copy (with matching file sizes).
     """
 
-    socket = urllib2.urlopen(url)
+    try:
+      socket = urllib2.urlopen(url)
+    except urllib2.URLError, e:
+      if os.path.isfile(file):
+        # Download failed for some reason, but a valid local copy of
+        # the file exists, so use that one instead.
+        log.write("%s\n" % str(e))
+        return -2
+      # otherwise pass on the error message
+      raise
 
     file_size = int(socket.info().getheader('Content-Length'))
     # There is no guarantee that the content-length header is set
