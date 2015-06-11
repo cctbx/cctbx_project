@@ -155,18 +155,8 @@ class fetch_packages (object) :
           pkg_name)
     full_url = "%s/%s" % (pkg_url, pkg_name)
     self.log.write("    downloading from %s : " % pkg_url)
-    try:
-      size = self.downloader.download_to_file(full_url, output_file, log=self.log)
-    except urllib2.HTTPError, err:
-      print >> self.log, err
-      if (op.exists(pkg_name)) :
-        print >> self.log, "    using ./%s" % pkg_name
-        if return_file_and_status:
-          return op.join(self.dest_dir, pkg_name), size
-        return op.join(self.dest_dir, pkg_name)
-      else:
-        raise
 
+    size = self.downloader.download_to_file(full_url, output_file, log=self.log)
     if (size == -2):
       print >> self.log, "    using ./%s (cached)" % pkg_name
       if return_file_and_status:
