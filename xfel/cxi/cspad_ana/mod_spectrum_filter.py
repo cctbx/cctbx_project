@@ -109,20 +109,22 @@ class mod_spectrum_filter(object):
       self.nshots +=1
       # get data as array and split into two half to find each peak
       if one_D:
-        data = np.array(data.hproj().astype(np.int32))
+        data = np.array(data.hproj().astype(np.float64))
+        if 'dark' in locals():
+          data = data - self.dark
         spectrum = data
         spectrum1 = data[:data.shape[0]//2]
         spectrum2 = data[data.shape[0]//2:]
       else:
-        data = np.array(data.data16().astype(np.int32))
+        data = np.array(data.data16().astype(np.float64))
+        if 'dark' in locals():
+          data = data - self.dark
         data_split1 = data[:,:data.shape[1]//2]
         data_split2 = data[:,data.shape[1]//2:]
         # make a 1D trace of entire spectrum and each half to find peaks
         spectrum  = np.sum(data,0)/data.shape[0]
         spectrum1 = np.sum(data_split1,0)/data_split1.shape[0]
         spectrum2 = np.sum(data_split2,0)/data_split2.shape[0]
-      if 'dark' in locals():
-        data = data - self.dark
 
       peak_one = np.max(spectrum1)
       peak_two = np.max(spectrum2)
