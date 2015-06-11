@@ -215,7 +215,7 @@ class installer (object) :
     packages += ['cython', 'hdf5', 'numpy', 'setuptools', 'pip', 'docutils']
     packages += ["libsvm"]
     # GUI packages.
-    if options.build_gui or options.build_all:
+    if options.build_gui or options.build_all or options.download_only:
       packages += [
         'png',
         'freetype',
@@ -223,10 +223,10 @@ class installer (object) :
         'pyopengl',
         'wxpython',
       ]
-      if self.flag_is_mac:
+      if self.flag_is_mac or options.download_only:
         # Use system libpng.
         packages += ['py2app']
-      if self.flag_is_linux:
+      if self.flag_is_linux or options.download_only:
         packages += [
           'tiff',
           'gettext',
@@ -957,12 +957,15 @@ Installation of Python packages may fail.
     untar(pkg, log=fonts_log, verbose=True)
     os.chdir(self.tmp_dir)
 
-  def build_wxpython (self) :
+  def build_wxpython(self):
     pkg_log = self.start_building_package("wxPython")
     pkg_name = WXPYTHON_PKG
+    if self.options.download_only: # download both versions if --download_only
+      pkg = self.fetch_package(pkg_name)
+
     # XXX we don't entirely trust wxPython-2.9, but it would be preferrable for
     # the future to use a single version instead
-    if (self.flag_is_mac or self.options.use_wxpython3) :
+    if self.flag_is_mac or self.options.use_wxpython3 or self.options.download_only:
       pkg_name = WXPYTHON_DEV_PKG
     pkg = self.fetch_package(pkg_name)
     if self.check_download_only(pkg_name): return
