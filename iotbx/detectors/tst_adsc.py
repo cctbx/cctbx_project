@@ -1,22 +1,17 @@
 from __future__ import division
 from iotbx.detectors import adsc
 from libtbx.test_utils import approx_equal
-import urllib
 import os
 
-def get_test_files():
-  try:
-    urllib.urlretrieve(
-      'http://cci.lbl.gov/cctbx_downloads/regression/iotbx/adsc.img',
-      'adsc.img')
-  except IOError:
-    pass
+adsc_file = 'adsc.img'
+# http://cci.lbl.gov/cctbx_downloads/regression/iotbx/adsc.img
+adsc_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), adsc_file)
 
 def exercise_adscread():
-  if (not os.path.isfile("adsc.img")):
+  if (not os.path.isfile(adsc_file)):
     print "Skipping exercise_adscread(): input file not available"
     return
-  a = adsc.ADSCImage('adsc.img')
+  a = adsc.ADSCImage(adsc_file)
   a.read()
   assert a.size1 == 2304
   assert a.size2 == 2304
@@ -26,7 +21,6 @@ def exercise_adscread():
   assert approx_equal(a.osc_start, 0)
 
 def run():
-  get_test_files()
   exercise_adscread()
   print "OK"
 
