@@ -596,7 +596,7 @@ Installation of Python packages may fail.
         "--enable-framework=\"%s\"" % self.base_dir,]
       self.call("./configure %s" % " ".join(configure_args), log=log)
       # Parallel build of python 2.7 needs to be limited to cope with race conditions
-      self.call("make -j %d" % min(self.nproc, 3), log=log)
+      self.call("make -j %d" % min(self.nproc, 2), log=log)
       targets = "bininstall libinstall libainstall inclinstall sharedinstall"
       # XXX don't parallelize here - sometimes breaks on Mac
       self.call("make %s"% (targets), log=log)
