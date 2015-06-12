@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/09/2015
+Last Changed: 06/11/2015
 Description : IOTA I/O module. Reads PHIL input, creates output directories,
               creates input lists and organizes starting parameters, also
               creates reasonable IOTA and PHIL defaults if selected
@@ -445,15 +445,15 @@ def main_log_init(logfile):
   """
 
   log_count = 0
-  log_dir = os.path.dirname(logfile)
 
-  for item in os.listdir(log_dir):
-    if item.find('iota') != -1:
+  for item in os.listdir(os.curdir):
+    if item.find('iota') and item.find('.log') != -1:
       log_count += 1
+      print log_count
 
   if log_count > 0:
     old_log_filename = logfile
-    new_log_filename = '{0}/iota_{1}.log'.format(log_dir, log_count)
+    new_log_filename = '{0}/iota_{1}.log'.format(os.curdir, log_count)
     os.rename(old_log_filename, new_log_filename)
 
   with open(logfile, 'w') as logfile:
@@ -515,7 +515,7 @@ def generate_input(gs_params, input_list, input_folder):
       sys.exit()
 
   # Initiate log file
-  logfile = '{}/iota.log'.format(log_dir)
+  logfile = '{}/iota.log'.format(os.curdir)
   main_log_init(logfile)
 
   return gs_range, input_dir_list, output_dir_list, log_dir,\
@@ -567,7 +567,8 @@ def write_defaults(current_path, txt_out):
                     'mosaicity_limit=2.0',
                     'dist_permit_binning=False',
                     'distl_minimum_number_spots_for_indexing=16',
-                    'distl_permit_binning=False'
+                    'distl_permit_binning=False',
+                    'beam_search_scope=5'
                     ]
   with open(def_target_file, 'w') as targ:
     for line in default_target:

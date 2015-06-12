@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 05/19/2015
+Last Changed: 06/11/2015
 Description : Converts raw image to pickle files; crops or pads pickle to place
               beam center into center of image; masks out beam stop. Adapted in
               part from cxi_image2pickle.py by Aaron Brewster.
@@ -259,6 +259,17 @@ def convert_image(img_in, img_out, square, beamstop=True):
 
   if beamstop:
     img_data = mask_image(img_data)
+
+  info_line = '{:<{width}} BEAM_X = {:<4.2f}, BEAM_Y = {:<4.2f}, '\
+              'PIXEL_SIZE = {:<8.6f}, IMG_SIZE = {:<4} X {:<4}'\
+              ''.format(img_out, img_data['BEAM_CENTER_X'],
+                        img_data['BEAM_CENTER_Y'], img_data['PIXEL_SIZE'],
+                        img_data['SIZE1'], img_data['SIZE2'],
+                        width = len(img_out))
+
+  logfile = '{}/{}/conversion.log'.format(os.curdir, 'conv_pickles')
+  with open(logfile, 'a') as conversion_log:
+    conversion_log.write('{}\n'.format(info_line))
 
   ep.dump(img_out, img_data)
 
