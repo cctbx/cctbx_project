@@ -1,8 +1,7 @@
 from __future__ import division
 from scitbx.math import tetrahedron
 from libtbx.test_utils import approx_equal
-from math import sqrt
-from itertools import permutations, imap
+from itertools import permutations
 from random import random
 
 def exercise_volume():
