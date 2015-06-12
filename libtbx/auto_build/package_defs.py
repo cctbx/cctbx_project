@@ -7,7 +7,6 @@ via the web (yet).
 
 from __future__ import division
 from installer_utils import *
-import urllib2
 import os.path as op
 import os
 import sys
