@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/11/2015
+Last Changed: 06/12/2015
 Description : IOTA I/O module. Reads PHIL input, creates output directories,
               creates input lists and organizes starting parameters, also
               creates reasonable IOTA and PHIL defaults if selected
@@ -447,9 +447,8 @@ def main_log_init(logfile):
   log_count = 0
 
   for item in os.listdir(os.curdir):
-    if item.find('iota') and item.find('.log') != -1:
+    if item.find('iota') != -1 and item.find('.log') != -1:
       log_count += 1
-      print log_count
 
   if log_count > 0:
     old_log_filename = logfile
