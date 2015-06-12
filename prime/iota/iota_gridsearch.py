@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/04/2015
+Last Changed: 06/11/2015
 Description : Runs cctbx.xfel integration module either in grid-search or final
               integration mode. Has options to output diagnostic visualizations
 '''
@@ -260,7 +260,7 @@ def integration(int_type, mp_entry, log_dir, gs_params):
       output: results file in CSV format and (optional) integration pickle
   """
 
-  logfile = '{}/iota.log'.format(log_dir)
+  logfile = '{}/iota.log'.format(os.curdir)
 
   current_img = mp_entry[0]
   current_output_dir = mp_entry[1]

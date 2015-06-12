@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 06/09/2015
+Last Changed: 06/11/2015
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes unit cell analysis by hierarchical clustering
               (Zeldin, et al., Acta Cryst D, 2013). In case of multiple clusters
@@ -84,9 +84,9 @@ def make_prime_input(clean_results, sg, uc, data_path, iota_version, now):
   for one_output in output:
     txt_out += one_output + '\n'
 
-  prime_file = os.path.join(os.path.dirname(data_path), 'prime.phil')
-  with open(prime_file, 'w') as prime_file:
-    prime_file.write(txt_out)
+  prime_file = os.path.join(os.curdir, 'prime.phil')
+  with open(prime_file, 'w') as pf:
+    pf.write(txt_out)
 
 def sort_uc(clean_results):
   """Sorts to entries to compile a table of point groups with consensus unit
@@ -219,8 +219,8 @@ def unit_cell_analysis(cluster_threshold, logfile, int_pickle_file):
   for cluster in clusters:
     sorted_pg_comp = sorted(cluster.pg_composition.items(),
                               key=lambda x: -1 * x[1])
-    pgs = [pg[0] for pg in sorted_pg_comp]
-    cons_pg = Counter(pgs).most_common(1)[0][0]
+    pg_nums = [pg[1] for pg in sorted_pg_comp]
+    cons_pg = sorted_pg_comp[np.argmax(pg_nums)]
 
     output_dir = os.path.dirname(int_pickle_file)
     output_file = os.path.join(output_dir, "uc_cluster_{}.lst".format(counter))
@@ -237,7 +237,7 @@ def unit_cell_analysis(cluster_threshold, logfile, int_pickle_file):
     uc_line = "{:<6} {:^4}:  {:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), "\
               "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), "\
               "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f})   "\
-              "{}".format('({})'.format(len(cluster.members)), cons_pg,
+              "{}".format('({})'.format(len(cluster.members)), cons_pg[0],
                           cluster.medians[0], cluster.stdevs[0],
                           cluster.medians[1], cluster.stdevs[1],
                           cluster.medians[2], cluster.stdevs[2],
@@ -248,11 +248,11 @@ def unit_cell_analysis(cluster_threshold, logfile, int_pickle_file):
     uc_table.append(uc_line)
 
     if mark_output != '':
-      out_file = mark_output
+      out_file = os.path.abspath(mark_output)
     else:
-      out_file = int_pickle_file
+      out_file = os.path.abspath(int_pickle_file)
 
-    uc_info = [len(cluster.members), cons_pg, cluster.medians, out_file, uc_line]
+    uc_info = [len(cluster.members), cons_pg[0], cluster.medians, out_file, uc_line]
     uc_summary.append(uc_info)
 
   uc_table.append('\nMost common unit cell:\n')

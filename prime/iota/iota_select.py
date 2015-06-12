@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 05/19/2015
+Last Changed: 06/11/2015
 Description : IOTA pickle selection module. Selects the best integration results
               from grid search output.
 '''
@@ -93,7 +93,7 @@ def best_file_selection(sel_type, gs_params, output_entry, log_dir):
   """
 
 
-  logfile = '{}/iota.log'.format(log_dir)
+  logfile = '{}/iota.log'.format(os.curdir)
 
   abs_tmp_dir = output_entry[0]
   input_file = output_entry[1]
