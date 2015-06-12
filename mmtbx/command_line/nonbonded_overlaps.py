@@ -145,7 +145,7 @@ def run (args, out=None) :
       open(pdb_file_name,'w').write(pdb_with_h)
   files = [pdb_file_name]
   if cif_file_name:
-      files.append(cif_file_name[0])
+      files += cif_file_name
 
   pdb_processed_file = pdb_inter.run(
     args=files,
