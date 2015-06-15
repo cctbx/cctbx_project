@@ -3,9 +3,7 @@ from libtbx.utils import Sorry
 from iotbx.pdb import common_residue_names_get_class
 from iotbx.pdb import amino_acid_codes, input
 from cctbx.array_family import flex
-from libtbx import group_args
 import math
-import mmtbx.alignment
 import sys
 
 def process_reference_files(
@@ -285,94 +283,6 @@ def get_angle_average(angles):
   average = sum / n_angles
   return average
 
-def _alignment(sequences,
-               padded_sequences,
-               structures,
-               log=None):
-  #
-  # used in torsion_ncs.py
-  #
-  if(log is None): log = sys.stdout
-  res_match_hash = {}
-  model_mseq_res_hash = {}
-  ref_mseq_res_hash = {}
-  model_seq = sequences[0]
-  model_seq_padded = padded_sequences[0]
-  model_structures = structures[0]
-  ref_seq = sequences[1]
-  ref_seq_padded = padded_sequences[1]
-  ref_structures = structures[1]
-  for struct in model_structures:
-    resname = struct.rg.atoms()[0].pdb_label_columns()[5:8]
-    if resname.upper() == "MSE":
-      resname = "MET"
-    updated_resname = modernize_rna_resname(resname)
-    key = struct.rg.atoms()[0].pdb_label_columns()[4:5]+\
-          updated_resname+struct.rg.atoms()[0].pdb_label_columns()[8:]+\
-          struct.rg.atoms()[0].segid
-    model_mseq_res_hash[struct.i_seq] = key
-  for struct in ref_structures:
-    resname = struct.rg.atoms()[0].pdb_label_columns()[5:8]
-    if resname.upper() == "MSE":
-      resname = "MET"
-    updated_resname = modernize_rna_resname(resname)
-    key = struct.rg.atoms()[0].pdb_label_columns()[4:5]+\
-          updated_resname+struct.rg.atoms()[0].pdb_label_columns()[8:]+\
-          struct.rg.atoms()[0].segid
-    ref_mseq_res_hash[struct.i_seq] = key
-  if model_seq == ref_seq:
-    pg = mmtbx.alignment.pairwise_global(
-           model_seq,
-           ref_seq)
-  else:
-    pg = mmtbx.alignment.pairwise_global(
-           model_seq_padded,
-           ref_seq_padded)
-  offset_i = 0
-  offset_j = 0
-  i = 0
-  j = 0
-  seq_j = pg.result2[j]
-  for seq_i in pg.result1:
-    seq_j = pg.result2[j]
-    if seq_i == seq_j and seq_i != 'X' and seq_j != 'X':
-      res_match_hash[model_mseq_res_hash[i-offset_i]] = \
-        ref_mseq_res_hash[j-offset_j]
-      i += 1
-      j += 1
-    else:
-      if seq_i == 'X' and seq_j == 'X':
-        i += 1
-        j += 1
-        offset_i += 1
-        offset_j += 1
-      elif (seq_i == 'X' and seq_j == '-') or \
-           (seq_i == '-' and seq_j == 'X'):
-        i += 1
-        j += 1
-        offset_i += 1
-        offset_j += 1
-      elif seq_i == 'X':
-        i += 1
-        j += 1
-        offset_i += 1
-      elif seq_j == 'X':
-        i += 1
-        j += 1
-        offset_j += 1
-      elif seq_i == '-':
-        i += 1
-        j += 1
-        offset_i += 1
-      elif seq_j == '-':
-        i += 1
-        j += 1
-        offset_j += 1
-      else:
-        i += 1
-        j += 1
-  return res_match_hash
-
 def chain_from_selection(chain, selection):
   from iotbx.pdb.hierarchy import new_hierarchy_from_chain
   new_hierarchy = new_hierarchy_from_chain(chain=chain).select(selection)
@@ -406,42 +316,6 @@ def is_residue_in_selection(i_seqs, selection):
     if not selection[i_seq]:
       return False
   return True
-
-def extract_sequence_and_sites(pdb_hierarchy, selection):
-  # used in torsion_ncs
-  assert isinstance(selection, flex.bool)
-  seq = []
-  result = []
-  padded_seq = []
-  last_resseq = 0
-  counter = 0
-  for model in pdb_hierarchy.models():
-    for chain in model.chains():
-      is_na = False
-      for conformer in chain.conformers():
-        if conformer.is_na():
-          is_na = True
-      for rg in chain.residue_groups():
-        if(len(rg.unique_resnames())==1):
-          resname = rg.unique_resnames()[0]
-          if is_na:
-            olc = get_nucleic_acid_one_letter_code(resname)
-          else:
-            olc= \
-            amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
-          atoms = rg.atoms()
-          i_seqs = atoms.extract_i_seq()
-          if(olc!="X") and is_residue_in_selection(i_seqs, selection):
-            seq.append(olc)
-            resseq = rg.resseq_as_int()
-            if (resseq > (last_resseq + 1)) :
-              for x in range(resseq - last_resseq - 1) :
-                padded_seq.append('X')
-            last_resseq = resseq
-            result.append(group_args(i_seq = counter, rg = rg))
-            padded_seq.append(olc)
-            counter += 1
-  return "".join(seq), "".join(padded_seq), result
 
 def get_nucleic_acid_one_letter_code(resname):
   olc=amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
@@ -564,7 +438,7 @@ def get_c_alpha_hinges(pdb_hierarchy,
                        xray_structure=None,
                        selection=None):
   #
-  # used in torsion_ncs
+  # used in rotamer_search.py
   c_alphas = []
   c_alpha_hinges = {}
   if xray_structure is not None:

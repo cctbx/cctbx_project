@@ -138,7 +138,7 @@ def exercise_1(mon_lib_srv, ener_lib):
       params=params,
       raw_records=flex.split_lines(pdb_str_1))
   ncs_manager = torsion_ncs.torsion_ncs(
-                  pdb_hierarchy=ppf.all_chain_proxies.pdb_hierarchy,
+                  processed_pdb_file=ppf,
                   ncs_obj=ppf.ncs_obj,
                   log=log)
   nprox = ncs_manager.get_n_proxies()
@@ -162,7 +162,7 @@ ncs_group {
       params=p,
       raw_records=flex.split_lines(pdb_str_1))
   ncs_manager = torsion_ncs.torsion_ncs(
-                  pdb_hierarchy=ppf.all_chain_proxies.pdb_hierarchy,
+                  processed_pdb_file=ppf,
                   ncs_obj=ppf.ncs_obj,
                   log=log)
   nprox = ncs_manager.get_n_proxies()

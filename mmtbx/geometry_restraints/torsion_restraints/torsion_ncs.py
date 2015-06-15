@@ -61,7 +61,7 @@ torsion_ncs_params = iotbx.phil.parse("""
 
 class torsion_ncs(object):
   def __init__(self,
-               pdb_hierarchy=None,
+               processed_pdb_file=None,
                fmodel=None,
                params=None,
                selection=None,
@@ -82,6 +82,7 @@ class torsion_ncs(object):
     assert ncs_obj is not None
     self.limit = params.limit
     self.selection = selection
+    self.processed_pdb_file = processed_pdb_file
     #slack is not a user parameter for now
     self.slack = 0.0
     self.filter_phi_psi_outliers = params.filter_phi_psi_outliers
@@ -99,14 +100,50 @@ class torsion_ncs(object):
     self.rotamer_id = rotamer_eval.RotamerID()
     self.rotamer_evaluator = rotamer_eval.RotamerEval()
     self.cache = None
+    self.pdb_hierarchy = None
+    if self.processed_pdb_file is not None:
+      self.pdb_hierarchy = self.processed_pdb_file.all_chain_proxies.pdb_hierarchy
     #sanity check
-    if pdb_hierarchy is not None:
-      pdb_hierarchy.reset_i_seq_if_necessary()
-      self.cache = pdb_hierarchy.atom_selection_cache()
+    if self.pdb_hierarchy is not None:
+      self.pdb_hierarchy.reset_i_seq_if_necessary()
+      self.cache = self.pdb_hierarchy.atom_selection_cache()
     if self.alignments is None:
-      self.find_ncs_groups(pdb_hierarchy=pdb_hierarchy)
-    if pdb_hierarchy is not None:
-      self.find_ncs_matches_from_hierarchy(pdb_hierarchy=pdb_hierarchy)
+      self.find_ncs_groups(pdb_hierarchy=self.pdb_hierarchy)
+    if self.pdb_hierarchy is not None:
+      self.find_ncs_matches_from_hierarchy(pdb_hierarchy=self.pdb_hierarchy)
+
+  def get_alignments(self):
+    def get_key(rg):
+      resname = rg.atoms()[0].pdb_label_columns()[5:8]
+      if resname.upper() == "MSE":
+        resname = "MET"
+      updated_resname = utils.modernize_rna_resname(resname)
+      return rg.atoms()[0].pdb_label_columns()[4:5]+\
+          updated_resname+rg.atoms()[0].pdb_label_columns()[8:]+\
+          rg.atoms()[0].segid
+    alignments = {}
+    for group in self.ncs_groups:
+      for i in group:
+        for j in group:
+          if i <= j:
+            continue
+
+          sel_i = self.cache.selection(i)
+          sel_j = self.cache.selection(j)
+          h_i = self.pdb_hierarchy.select(sel_i)
+          h_j = self.pdb_hierarchy.select(sel_j)
+          residue_match_map1 = {}
+          residue_match_map2 = {}
+          for rg1, rg2 in zip(h_i.residue_groups(), h_j.residue_groups()):
+            residue_match_map1[get_key(rg1)] = get_key(rg2)
+            residue_match_map2[get_key(rg2)] = get_key(rg1)
+          # This duplication won't be necessary when all the rest code would
+          # be able to work without it. 2x less memory...
+          key1 = (i, j)
+          key2 = (j, i)
+          alignments[key1] = residue_match_map1
+          alignments[key2] = residue_match_map2
+    return alignments
 
   def find_ncs_groups(self, pdb_hierarchy):
     print >> self.log, "Determining NCS matches..."
@@ -114,38 +151,8 @@ class torsion_ncs(object):
     chains = pdb_hierarchy.models()[0].chains()
     n_ncs_groups = self.ncs_obj.number_of_ncs_groups
     if n_ncs_groups > 0:
-      sequences = {}
-      padded_sequences = {}
-      structures = {}
-      alignments = {}
-
-      for group in self.ncs_groups:
-        for s in group:
-          sel = self.cache.selection(string=s)
-          key = s
-          sel_seq, sel_seq_padded, sel_structures = \
-              utils.extract_sequence_and_sites(
-                  pdb_hierarchy=pdb_hierarchy,
-                  selection=sel)
-          sequences[key] = sel_seq
-          padded_sequences[key] = sel_seq_padded
-          structures[key] = sel_structures
-      for group in self.ncs_groups:
-        for i in group:
-          for j in group:
-            if i == j:
-              continue
-            seq_pair = (sequences[i], sequences[j])
-            seq_pair_padded = (padded_sequences[i], padded_sequences[j])
-            struct_pair = (structures[i], structures[j])
-            residue_match_map = utils._alignment(
-                sequences=seq_pair,
-                padded_sequences=seq_pair_padded,
-                structures=struct_pair,
-                log=self.log)
-            key = (i, j)
-            alignments[key] = residue_match_map
-      self.alignments = alignments
+      new_alignments = self.get_alignments()
+      self.alignments = new_alignments
       return
     else:
       # ================================================
@@ -212,11 +219,17 @@ class torsion_ncs(object):
     if self.selection is None:
       self.selection = flex.bool(len(sites_cart), True)
 
-    #
-    #
-    # TODO: should be rewritten!!! Constructing new pdb_interpretation.process:
-    complete_dihedral_proxies = utils.get_complete_dihedral_proxies(
-                                  pdb_hierarchy=pdb_hierarchy)
+    if self.processed_pdb_file is not None:
+      complete_dihedral_proxies = utils.get_dihedrals_and_phi_psi(
+          processed_pdb_file=self.processed_pdb_file)
+    else:
+      # This is just because processed_pdb_file is not available in
+      # xyz_reciprocal_space.py funcitons and it is not clear how to
+      # handle it in this class selection
+      complete_dihedral_proxies = utils.get_complete_dihedral_proxies(
+          pdb_hierarchy=pdb_hierarchy)
+    # print "Number of complete_dihedral_proxies in find_ncs_matches_from_hierarchy", complete_dihedral_proxies.size()
+
     if self.cache is None:
       self.cache = pdb_hierarchy.atom_selection_cache()
     if len(self.ncs_groups) > 0:
@@ -506,22 +519,20 @@ class torsion_ncs(object):
 
   def build_chi_tracker(self, pdb_hierarchy):
     self.current_chi_restraints = {}
-    model_hash, model_score, all_rotamers, model_chis = \
-      self.get_rotamer_data(pdb_hierarchy=pdb_hierarchy)
     #current_rotamers = self.r.current_rotamers
-    self.current_rotamers = {}
+    current_rotamers = {}
     for rot in self.r.results:
-      self.current_rotamers[rot.id_str()] = rot.rotamer_name
+      current_rotamers[rot.id_str()] = rot.rotamer_name
     for key in self.ncs_match_hash.keys():
       search_key = key[4:11]+key[0:4] # SEGIDs?
-      rotamer = self.current_rotamers.get(search_key)
+      rotamer = current_rotamers.get(search_key)
       if rotamer is not None:
         split_rotamer = rotalyze.split_rotamer_names(rotamer=rotamer)
         self.current_chi_restraints[key] = split_rotamer
       key_list = self.ncs_match_hash.get(key)
       for key2 in key_list:
         search_key2 = key2[4:11]+key2[0:4] # SEGIDs?
-        rotamer = self.current_rotamers.get(search_key2)
+        rotamer = current_rotamers.get(search_key2)
         if rotamer is not None:
           split_rotamer = rotalyze.split_rotamer_names(rotamer=rotamer)
           self.current_chi_restraints[key2] = split_rotamer
@@ -531,6 +542,8 @@ class torsion_ncs(object):
         sites_cart,
         pdb_hierarchy,
         log):
+    model_hash, model_score, all_rotamers, model_chis = \
+      self.get_rotamer_data(pdb_hierarchy=pdb_hierarchy)
     self.build_chi_tracker(pdb_hierarchy)
     self.ncs_dihedral_proxies = \
       cctbx.geometry_restraints.shared_dihedral_proxy()
@@ -538,8 +551,6 @@ class torsion_ncs(object):
     #if self.fmodel is not None and self.use_cc_for_target_angles:
     #  target_map_data, residual_map_data = self.prepare_map(
     #                                         fmodel=self.fmodel)
-    model_hash, model_score, all_rotamers, model_chis = \
-      self.get_rotamer_data(pdb_hierarchy=pdb_hierarchy)
     #rama_outliers = None
     #rama_outlier_list = []
     omega_outlier_list = []
@@ -1027,7 +1038,6 @@ class torsion_ncs(object):
           rotamer_targets[res_key] = target
 
     sites_cart_moving = xray_structure.sites_cart()
-    sites_cart_backup = sites_cart_moving.deep_copy()
     for model in pdb_hierarchy.models():
       for chain in model.chains():
         if not utils.is_protein_chain(chain=chain):
