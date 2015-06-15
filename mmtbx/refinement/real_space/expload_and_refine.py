@@ -83,6 +83,8 @@ class run(object):
       self.xray_structure = self.xray_structure.replace_sites_cart(
         new_sites=sc.sites_cart)
       self.states.add(sites_cart = sc.sites_cart)
+    self.scorer=sc  # save the score
+
     print "LOOK:",maptbx.real_space_target_simple( # XXX for debugging
         unit_cell   = self.xray_structure.unit_cell(),
         density_map = map_data,

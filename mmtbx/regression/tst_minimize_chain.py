@@ -267,8 +267,9 @@ def tst_01(args):
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name = "%s_map.mtz"%prefix)
 
-  hierarchy,xrs_refined,states=run(
+  hierarchy,xrs_refined,states,score=run(
    args=args,map_data=target_map_data,
+     crystal_symmetry=fc.crystal_symmetry(),
      pdb_string=pdb_str_poor,
      params_edits=params_edits)
 
@@ -311,8 +312,9 @@ def tst_02(args):
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name = "%s_map.mtz"%prefix)
 
-  hierarchy,xrs_refined,states=run(
+  hierarchy,xrs_refined,states,score=run(
      args=args,map_data=target_map_data,
+     crystal_symmetry=fc.crystal_symmetry(),
      pdb_string=pdb_str_poor_full)
 
   hierarchy.write_pdb_file(file_name="%s_refined.pdb"%prefix)
@@ -322,7 +324,7 @@ def tst_02(args):
   return rmsd
 
 if (__name__ == "__main__"):
-  args=[]
+  args=["number_of_build_cycles=2","number_of_macro_cycles=1","number_of_trials=2","random_seed=77141"]
   t0=time.time()
   rmsd1=tst_01(args)
   print "Time: %6.4f"%(time.time()-t0)
