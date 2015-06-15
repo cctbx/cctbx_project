@@ -455,11 +455,11 @@ class DataBlockFilenameImporter(object):
     import operator
 
     # If no comparison functions are set
-    if compare_beam = None:
+    if compare_beam is None:
       compare_beam = operator.__eq__
-    if compare_detector = None:
+    if compare_detector is None:
       compare_detector = operator.__eq__
-    if compare_goniometer = None:
+    if compare_goniometer is None:
       compare_goniometer = operator.__eq__
 
     class Record(object):
@@ -986,6 +986,6 @@ class GoniometerComparison(object):
   def __call__(self, a, b):
     return a.is_similar_to(
       b,
-      rotation_axis_tolerance=rotation_axis_tolerance,
-      fixed_rotation_tolerance=fixed_rotation_tolerance,
-      setting_rotation_tolerance=setting_rotation_tolerance)
+      rotation_axis_tolerance=self.rotation_axis_tolerance,
+      fixed_rotation_tolerance=self.fixed_rotation_tolerance,
+      setting_rotation_tolerance=self.setting_rotation_tolerance)
