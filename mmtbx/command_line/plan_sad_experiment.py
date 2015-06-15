@@ -239,9 +239,16 @@ def get_params(args,out=sys.stdout):
 
 def setup_params (params, out) :
   if not params.crystal_info.f_double_prime:
-     params.crystal_info.f_double_prime=get_fp_fdp(
+     fp_fdp=get_fp_fdp(
       atom_type=params.crystal_info.atom_type,
-      wavelength=params.crystal_info.wavelength,out=out).fdp()
+      wavelength=params.crystal_info.wavelength,out=out)
+     if fp_fdp is not None:
+       params.crystal_info.f_double_prime=fp_fdp.fdp()
+     else:
+       raise Sorry(
+        "Please specify f_double_prime as the wavelength %7.2f A is" %(
+         params.crystal_info.wavelength)+
+         "\nout of range of the Sasaki tables used here.")
 
   if params.crystal_info.seq_file and \
        os.path.isfile(params.crystal_info.seq_file):

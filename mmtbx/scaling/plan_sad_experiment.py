@@ -268,7 +268,10 @@ def get_fp_fdp(atom_type=None,wavelength=None,out=sys.stdout):
     fp_fdp = table.at_angstrom(wavelength)
   except ValueError :
     raise Sorry("Unable to get scattering factors for %s" %(atom_type))
-  return fp_fdp
+  if fp_fdp.is_valid():
+    return fp_fdp
+  else:
+    return None
 
 def get_fo(atom_type=None,wavelength=None,out=sys.stdout):
   if not atom_type or not wavelength:
@@ -361,9 +364,13 @@ def include_intrinsic_scatterers(
     minimum_ratio=0.25):
   all_weak=True # noise if all are weak
   for x in intrinsic_scatterers_list:
-    fpp=get_fp_fdp(atom_type=x,wavelength=wavelength).fdp()
-    if fpp >= minimum_ratio*target_fpp:
-      all_weak=False
+    fp_fdp=get_fp_fdp(atom_type=x,wavelength=wavelength)
+    if fp_fdp is not None:
+      fpp=fp_fdp.fdp()
+      if fpp >= minimum_ratio*target_fpp:
+        all_weak=False
+    else:
+      fpp=None
   if all_weak:
     return True
   else:
@@ -406,12 +413,16 @@ def get_fo_list(chain_type="PROTEIN",wavelength=1.0,
   noise_table_rows = []
   n_atoms=0
   for x,n in zip(atoms_list,atoms_number_list):
-    fpp=get_fp_fdp(atom_type=x,wavelength=wavelength).fdp()
+    fp_fdp=get_fp_fdp(atom_type=x,wavelength=wavelength)
+    if fp_fdp is not None:
+      fpp=fp_fdp.fdp()
+    else:
+      fpp=None
     fo=get_fo(atom_type=x,wavelength=wavelength)
     fo_list.append(fo)
     fo_number_list.append(n*residues)
     n_atoms+=n*residues
-    if include_weak_anomalous_scattering:
+    if include_weak_anomalous_scattering and fpp is not None:
       fpp_list.append(fpp)
       fpp_number_list.append(n*residues)
       contribution=fpp*math.sqrt(n*residues)
