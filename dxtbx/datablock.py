@@ -975,8 +975,17 @@ class GoniometerComparison(object):
 
   '''
 
-  def __init__(self):
-    pass
+  def __init__(self,
+               rotation_axis_tolerance=1e-6,
+               fixed_rotation_tolerance=1e-6,
+               setting_rotation_tolerance=1e-6):
+    self.rotation_axis_tolerance = rotation_axis_tolerance
+    self.fixed_rotation_tolerance = fixed_rotation_tolerance
+    self.setting_rotation_tolerance = setting_rotation_tolerance
 
   def __call__(self, a, b):
-    pass
+    return a.is_similar_to(
+      b,
+      rotation_axis_tolerance=rotation_axis_tolerance,
+      fixed_rotation_tolerance=fixed_rotation_tolerance,
+      setting_rotation_tolerance=setting_rotation_tolerance)

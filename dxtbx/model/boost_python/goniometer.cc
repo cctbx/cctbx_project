@@ -102,6 +102,11 @@ namespace dxtbx { namespace model { namespace boost_python {
             arg("deg")=true))
       .def("__eq__", &Goniometer::operator==)
       .def("__ne__", &Goniometer::operator!=)
+      .def("is_similar_to", &Goniometer::is_similar_to, (
+            arg("other"),
+            arg("rotation_axis_tolerance")=1e-6,
+            arg("fixed_rotation_tolerance")=1e-6,
+            arg("setting_rotation_tolerance")=1e-6))
       .def("__str__", &goniometer_to_string)
       .def("to_dict", &to_dict<Goniometer>)
       .def("from_dict", &from_dict<Goniometer>,

@@ -158,7 +158,7 @@ namespace dxtbx { namespace model {
     }
 
     /** Check rotation axes are (almost) the same */
-    bool operator==(const Goniometer &b) {
+    bool operator==(const Goniometer &b) const {
       double eps = 1.0e-6;
 
       return std::abs(angle_safe(rotation_axis_, b.rotation_axis_)) <= eps
@@ -167,8 +167,17 @@ namespace dxtbx { namespace model {
     }
 
     /** Check rotation axes are not (almost) the same */
-    bool operator!=(const Goniometer &goniometer) {
+    bool operator!=(const Goniometer &goniometer) const {
       return !(*this == goniometer);
+    }
+
+    bool is_similar_to(const Goniometer &b,
+                       double rotation_axis_tolerance,
+                       double fixed_rotation_tolerance,
+                       double setting_rotation_tolerance) const {
+      return std::abs(angle_safe(rotation_axis_, b.rotation_axis_)) <= rotation_axis_tolerance
+      && fixed_rotation_.const_ref().all_approx_equal(b.fixed_rotation_.const_ref(), fixed_rotation_tolerance)
+      && setting_rotation_.const_ref().all_approx_equal(b.setting_rotation_.const_ref(), setting_rotation_tolerance);
     }
 
     /** Rotate the goniometer about an axis */
