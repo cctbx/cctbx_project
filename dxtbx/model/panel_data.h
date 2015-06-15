@@ -162,6 +162,22 @@ namespace dxtbx { namespace model {
 //              rhs.trusted_range_.const_ref(), 1e-7);
     }
 
+    bool is_similar_to2(const PanelData &rhs,
+                        double fast_axis_tolerance,
+                        double slow_axis_tolerance,
+                        double origin_tolerance) const {
+      return image_size_.const_ref().all_eq(
+              rhs.image_size_.const_ref())
+          && pixel_size_.const_ref().all_approx_equal(
+              rhs.pixel_size_.const_ref(), 1e-7)
+          && get_fast_axis().const_ref().all_approx_equal(
+              rhs.get_fast_axis().const_ref(), fast_axis_tolerance)
+          && get_slow_axis().const_ref().all_approx_equal(
+              rhs.get_slow_axis().const_ref(), slow_axis_tolerance)
+          && get_origin().const_ref().all_approx_equal(
+              rhs.get_origin().const_ref(), origin_tolerance);
+    }
+
   protected:
     tiny<double,2> pixel_size_;
     tiny<std::size_t,2> image_size_;
