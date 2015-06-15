@@ -70,7 +70,8 @@ master_phil = iotbx.phil.parse("""
   sharpening {
      b_sharpen = None
        .type = float
-       .help = B-factor for sharpening (positive is sharpen, negative is blur) \
+       .help = Ignored. \
+               B-factor for sharpening (positive is sharpen, negative is blur) \
                Note: if resolution is specified map will be Fourier filtered \
                to that resolution even if it is not sharpened.
        .short_caption = B-factor for sharpening
@@ -78,7 +79,8 @@ master_phil = iotbx.phil.parse("""
   minimization {
      strategy = *ca_only all_atoms
        .type = choice
-       .help = Strategy.  CA_only uses just CA atoms, all_atoms uses all
+       .help = Ignored. \
+          Strategy.  CA_only uses just CA atoms, all_atoms uses all
        .short_caption = CA only or all atoms
 
      number_of_macro_cycles=5
@@ -108,10 +110,6 @@ master_phil = iotbx.phil.parse("""
 
   }
   control {
-      resolve_size = None
-        .type = str
-        .help = "Size of resolve to use. "
-        .short_caption = Size of RESOLVE to use
       verbose = False
         .type = bool
         .help = Verbose output
@@ -222,13 +220,6 @@ def run(args,map_data=None,map_coeffs=None,pdb_inp=None,pdb_string=None,
   sel_other = ~sel_ca
   #
 
-#  # Get the map to use; optionally truncate or sharpen it
-#  from phenix.autosol.build_model import get_map
-#  map_data,original_map_data,sharpened_map_coeffs,\
-#        map_coeffs,params,actual_b_iso,crystal_symmetry=\
-#    get_map(params=params,map=map_data,map_coeffs=map_coeffs,
-#        map_as_float=False,out=out)
-
   # Initialize states accumulator
   states = mmtbx.utils.states(pdb_hierarchy=hierarchy, xray_structure=xrs)
   states.add(sites_cart = xrs.sites_cart())
@@ -275,15 +266,6 @@ def run(args,map_data=None,map_coeffs=None,pdb_inp=None,pdb_string=None,
     xyz_shake               = params.minimization.start_xyz_error,
     states                  = states)
 
-#  # Output result
-#  hierarchy.adopt_xray_structure(xrs_refined)
-#  if params.output_files.pdb_out:
-#    print >>out,"\nWriting output model to %s" %(params.output_files.pdb_out)
-#    f=open(params.output_files.pdb_out,'w')
-#    from iotbx import pdb
-#    print >> f, pdb.format_cryst1_and_scale_records(
-#         crystal_symmetry=xrs_refined.crystal_symmetry())
-#    print >>f,hierarchy.as_pdb_string()
   return ear.pdb_hierarchy, ear.xray_structure, ear.states
 
 if (__name__ == "__main__"):
