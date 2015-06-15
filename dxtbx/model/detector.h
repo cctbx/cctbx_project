@@ -128,30 +128,20 @@ namespace dxtbx { namespace model {
     }
 
     /** Check if the detectors are similar */
-    bool is_similar_to(const Detector &rhs) const {
+    bool is_similar_to(const Detector &rhs,
+                        double fast_axis_tolerance,
+                        double slow_axis_tolerance,
+                        double origin_tolerance,
+                        bool static_only) const {
       bool similar = panel_list_->size() == rhs.panel_list_->size();
       if (similar) {
         for (std::size_t i = 0; i < panel_list_->size(); ++i) {
           similar = similar && ((*panel_list_)[i].is_similar_to(
-            (*rhs.panel_list_)[i]));
-        }
-      }
-      return similar;
-    }
-
-    /** Check if the detectors are similar */
-    bool is_similar_to2(const Detector &rhs,
-                        double fast_axis_tolerance,
-                        double slow_axis_tolerance,
-                        double origin_tolerance) const {
-      bool similar = panel_list_->size() == rhs.panel_list_->size();
-      if (similar) {
-        for (std::size_t i = 0; i < panel_list_->size(); ++i) {
-          similar = similar && ((*panel_list_)[i].is_similar_to2(
             (*rhs.panel_list_)[i],
             fast_axis_tolerance,
             slow_axis_tolerance,
-            origin_tolerance));
+            origin_tolerance,
+            static_only));
         }
       }
       return similar;
