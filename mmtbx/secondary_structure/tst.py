@@ -421,6 +421,95 @@ TER
 END
 """)
 
+  pdb_par_ac_input = iotbx.pdb.hierarchy.input(pdb_string = """\
+CRYST1   46.460   46.460  193.210  90.00  90.00 120.00 P 31 2 1                 
+SCALE1      0.021524  0.012427  0.000000        0.00000                         
+SCALE2      0.000000  0.024854  0.000000        0.00000                         
+SCALE3      0.000000  0.000000  0.005176        0.00000                         
+ATOM      1  N  AALA A  15       5.011  -5.031  -8.967  0.50  5.73           N  
+ATOM      2  CA AALA A  15       4.943  -6.455  -9.287  0.50  6.16           C  
+ATOM      3  C  AALA A  15       5.610  -7.252  -8.166  0.50  6.39           C  
+ATOM      4  O  AALA A  15       6.751  -7.007  -7.857  0.50  9.87           O  
+ATOM      5  CB AALA A  15       5.684  -6.739 -10.604  0.50  7.46           C  
+ATOM      6  N  BALA A  15       5.111  -5.031  -8.967  0.50  5.73           N  
+ATOM      7  CA BALA A  15       5.043  -6.455  -9.287  0.50  6.16           C  
+ATOM      8  C  BALA A  15       5.710  -7.252  -8.166  0.50  6.39           C  
+ATOM      9  O  BALA A  15       6.851  -7.007  -7.857  0.50  9.87           O  
+ATOM     10  CB BALA A  15       5.784  -6.739 -10.604  0.50  7.46           C  
+ATOM     11  N  ATHR A  16       4.929  -8.263  -7.636  0.50  5.49           N  
+ATOM     12  C  ATHR A  16       5.316 -10.600  -7.084  0.50  5.07           C  
+ATOM     13  O  ATHR A  16       4.214 -11.002  -7.422  0.50  6.51           O  
+ATOM     14  CA ATHR A  16       5.513  -9.172  -6.657  0.50  5.70           C  
+ATOM     15  CB ATHR A  16       4.864  -9.001  -5.276  0.50  8.31           C  
+ATOM     16  N  BTHR A  16       5.029  -8.263  -7.636  0.50  5.49           N  
+ATOM     17  C  BTHR A  16       5.416 -10.600  -7.084  0.50  5.07           C  
+ATOM     18  O  BTHR A  16       4.314 -11.002  -7.422  0.50  6.51           O  
+ATOM     19  CA BTHR A  16       5.613  -9.172  -6.657  0.50  5.70           C  
+ATOM     20  CB BTHR A  16       4.964  -9.001  -5.276  0.50  8.31           C  
+ATOM     21  N   GLY A  17       6.393 -11.375  -7.067  1.00  4.56           N  
+ATOM     22  CA  GLY A  17       6.325 -12.770  -7.439  1.00  4.26           C  
+ATOM     23  C   GLY A  17       7.219 -13.654  -6.621  1.00  4.41           C  
+ATOM     24  O   GLY A  17       8.263 -13.233  -6.114  1.00  5.01           O  
+ATOM     25  N   SER A  18       6.827 -14.921  -6.561  1.00  4.24           N  
+ATOM     26  CA  SER A  18       7.657 -15.945  -5.959  1.00  4.02           C  
+ATOM     27  C   SER A  18       7.539 -17.244  -6.724  1.00  3.64           C  
+ATOM     28  O   SER A  18       6.482 -17.526  -7.331  1.00  4.07           O  
+ATOM     29  CB  SER A  18       7.335 -16.157  -4.481  1.00  5.86           C  
+ATOM     30  N   ALA A  19       8.573 -18.049  -6.627  1.00  3.19           N  
+ATOM     31  CA  ALA A  19       8.578 -19.414  -7.195  1.00  3.31           C  
+ATOM     32  C   ALA A  19       9.370 -20.307  -6.238  1.00  3.20           C  
+ATOM     33  O   ALA A  19      10.484 -19.956  -5.817  1.00  4.21           O  
+ATOM     34  CB  ALA A  19       9.235 -19.415  -8.574  1.00  3.85           C  
+ATOM     35  N   THR A  20       8.825 -21.476  -5.940  1.00  3.77           N  
+ATOM     36  CA  THR A  20       9.478 -22.432  -5.047  1.00  3.70           C  
+ATOM     37  C   THR A  20       9.444 -23.827  -5.640  1.00  3.56           C  
+ATOM     38  O   THR A  20       8.383 -24.281  -6.108  1.00  4.14           O  
+ATOM     39  CB  THR A  20       8.787 -22.430  -3.673  1.00  4.76           C  
+ATOM     40  N   THR A  21      10.560 -24.542  -5.569  1.00  4.00           N  
+ATOM     41  CA  THR A  21      10.597 -25.962  -5.876  1.00  4.05           C  
+ATOM     42  C   THR A  21      10.984 -26.770  -4.636  1.00  4.53           C  
+ATOM     43  O   THR A  21      11.770 -26.361  -3.802  1.00  5.04           O  
+ATOM     44  CB  THR A  21      11.488 -26.293  -7.083  1.00  4.38           C  
+ATOM     45  N   GLN A  40       0.280  -6.099  -9.049  1.00  6.35           N  
+ATOM     46  CA  GLN A  40       0.087  -7.454  -9.580  1.00  6.35           C  
+ATOM     47  C   GLN A  40       0.964  -8.417  -8.788  1.00  6.09           C  
+ATOM     48  O   GLN A  40       2.080  -8.093  -8.393  1.00  6.87           O  
+ATOM     49  CB  GLN A  40       0.461  -7.523 -11.060  1.00  7.52           C  
+ATOM     50  N   THR A  41       0.419  -9.596  -8.544  1.00  6.66           N  
+ATOM     51  CA  THR A  41       1.108 -10.640  -7.800  1.00  6.93           C  
+ATOM     52  C   THR A  41       0.932 -12.005  -8.414  1.00  6.82           C  
+ATOM     53  O   THR A  41      -0.069 -12.258  -9.104  1.00  8.79           O  
+ATOM     54  CB  THR A  41       0.633 -10.636  -6.352  1.00 10.84           C  
+ATOM     55  N   ALA A  42       1.951 -12.847  -8.263  1.00  6.44           N  
+ATOM     56  CA  ALA A  42       1.923 -14.209  -8.797  1.00  6.59           C  
+ATOM     57  C   ALA A  42       2.829 -15.117  -7.992  1.00  5.51           C  
+ATOM     58  O   ALA A  42       3.835 -14.684  -7.420  1.00  5.94           O  
+ATOM     59  CB  ALA A  42       2.327 -14.218 -10.264  1.00  9.02           C  
+ATOM     60  N   LYS A  43       2.479 -16.398  -7.978  1.00  6.26           N  
+ATOM     61  CA  LYS A  43       3.247 -17.395  -7.256  1.00  6.48           C  
+ATOM     62  C   LYS A  43       3.186 -18.741  -7.955  1.00  5.78           C  
+ATOM     63  O   LYS A  43       2.206 -19.041  -8.623  1.00  9.40           O  
+ATOM     64  CB  LYS A  43       2.727 -17.535  -5.836  1.00  8.81           C  
+ATOM     65  N   SER A  44       4.243 -19.534  -7.818  1.00  4.43           N  
+ATOM     66  CA  SER A  44       4.241 -20.890  -8.325  1.00  4.28           C  
+ATOM     67  C   SER A  44       4.998 -21.811  -7.358  1.00  4.09           C  
+ATOM     68  O   SER A  44       5.865 -21.377  -6.584  1.00  4.53           O  
+ATOM     69  CB  SER A  44       4.831 -20.949  -9.731  1.00  5.33           C  
+ATOM     70  N   PHE A  45       4.660 -23.091  -7.444  1.00  4.39           N  
+ATOM     71  CA  PHE A  45       5.198 -24.135  -6.576  1.00  4.44           C  
+ATOM     72  C   PHE A  45       5.222 -25.415  -7.389  1.00  4.16           C  
+ATOM     73  O   PHE A  45       4.183 -25.754  -7.979  1.00  5.11           O  
+ATOM     74  CB  PHE A  45       4.254 -24.281  -5.370  1.00  5.22           C  
+ATOM     75  N   ALA A  46       6.347 -26.119  -7.403  1.00  3.62           N  
+ATOM     76  CA  ALA A  46       6.443 -27.338  -8.202  1.00  3.99           C  
+ATOM     77  C   ALA A  46       7.579 -28.205  -7.717  1.00  4.57           C  
+ATOM     78  O   ALA A  46       8.479 -27.750  -7.000  1.00  4.79           O  
+ATOM     79  CB  ALA A  46       6.607 -27.026  -9.678  1.00  4.52           C  
+TER      80      ALA A  46                                                      
+END
+""")
+
+
   pdb_apar2_input = iotbx.pdb.hierarchy.input(pdb_string = """\
 CRYST1  172.640  172.640  172.640  90.00  90.00  90.00 P 1
 ATOM   2094  C   ASP N 271     109.854 129.638  88.152  1.00  0.00           C
@@ -540,8 +629,6 @@ ATOM   2637  O   LEU N 343     107.761 124.516  82.764  1.00  0.00           O
 END
 """)
 
-
-
   s_apar_records1 = """\
 SHEET    1   A 2 TYR A   2  VAL A   7  0
 SHEET    2   A 2 MET A  31  SER A  36 -1  O  ALA A  36   N  ALA A   2
@@ -613,7 +700,8 @@ SHEET    2   B 2 THR A  20  THR A  21  1  O  THR A  20   N  ALA A  46
   log = null_out()
   # defpars = sec_str_master_phil
   n_hbonds = []
-  for pdb_inp, recs in [(pdb_apar_input, s_apar_records1),
+  for pdb_inp, recs in [
+                        (pdb_apar_input, s_apar_records1),
                         (pdb_apar_input, s_apar_records2),
                         (pdb_par_input,  s_par_records1),
                         (pdb_par_input,  s_par_records2),
@@ -628,6 +716,7 @@ SHEET    2   B 2 THR A  20  THR A  21  1  O  THR A  20   N  ALA A  46
                         (pdb_par_input, s_par_records10),
                         (pdb_par_input, s_par_records11),
                         (pdb_par_input, s_par_records12),
+                        # (pdb_par_ac_input,  s_par_records1),
                         ]:
     ioss_annotation = ioss.annotation.from_records(records = recs.split('\n'))
     ann = ioss_annotation.as_restraint_groups(prefix_scope="secondary_structure")
@@ -643,6 +732,7 @@ SHEET    2   B 2 THR A  20  THR A  21  1  O  THR A  20   N  ALA A  46
     proxies_for_grm = ss_manager.create_protein_hbond_proxies(
       annotation= None,
       log          = log)
+    # print proxies_for_grm.size()
     n_hbonds.append(proxies_for_grm.size())
   print n_hbonds
   assert n_hbonds == [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 2, 3, 4, 2, 2]
