@@ -39,7 +39,7 @@ master_phil = iotbx.phil.parse("""
   }
   output_files {
 
-    pdb_out = minimize_ca.pdb
+    pdb_out = None
       .type = path
       .help = Output PDB file with CA positions
       .short_caption = Output PDB file
@@ -67,23 +67,20 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Unit Cell
        .help = Unit Cell (normally read from the data file)
   }
-  sharpening {
-     b_sharpen = None
-       .type = float
-       .help = Ignored. \
-               B-factor for sharpening (positive is sharpen, negative is blur) \
-               Note: if resolution is specified map will be Fourier filtered \
-               to that resolution even if it is not sharpened.
-       .short_caption = B-factor for sharpening
-  }
   minimization {
      strategy = *ca_only all_atoms
        .type = choice
-       .help = Ignored. \
+       .help = Ignored for now. \
           Strategy.  CA_only uses just CA atoms, all_atoms uses all
        .short_caption = CA only or all atoms
 
-     number_of_macro_cycles=5
+     number_of_build_cycles = 4
+       .type = int
+       .short_caption = Build cycles
+       .help = Number of build cycles \
+           (each build cycle has several macro_cycles)
+
+     number_of_macro_cycles = 5
        .type = int
        .short_caption = Number of overall cycles of minimization
        .help = Number of overall (macro) cycles of minimization
@@ -98,7 +95,7 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Target angle RMSD
        .help = Target angle RMSD
 
-     number_of_trials = 20
+     number_of_trials = 5
        .type = int
        .short_caption = Number of trials
        .help = Number of trials
@@ -114,6 +111,10 @@ master_phil = iotbx.phil.parse("""
         .type = bool
         .help = Verbose output
         .short_caption = Verbose output
+      random_seed = None
+        .type = int
+        .short_caption = Random seed
+        .help = Random seed. If set, the same result will be found each time.
   }
 """, process_includes=True)
 master_params = master_phil
@@ -195,20 +196,30 @@ def ccp4_map(crystal_symmetry, file_name, map_data):
       map_data=map_data,
       labels=flex.std_string([""]))
 
-def run(args,map_data=None,map_coeffs=None,pdb_inp=None,pdb_string=None,
-    params_edits=None,out=sys.stdout):
+def get_map_coeffs(
+        map_coeffs_file=None,
+        map_coeffs_labels=None):
+  from iotbx import reflection_file_reader
+  reflection_file=reflection_file_reader.any_reflection_file(map_coeffs_file)
+  miller_arrays=reflection_file.as_miller_arrays()
+  for ma in miller_arrays:
+    if not ma.is_complex_array: continue
+    if not map_coeffs_labels or map_coeffs_labels==ma.info().labels[0]:
+      return ma
+  raise Sorry("Unable to find map coeffs in the file %s with labels %s" %(
+      map_coeffs_file,str(map_coeffs_labels)))
 
-  # Get the parameters
-  params=get_params(args=args,out=out)
+def run_one_cycle(
+    params=None,
+    map_data=None,
+    map_coeffs=None,
+    pdb_inp=None,
+    pdb_string=None,
+    crystal_symmetry=None,
+    params_edits=None,
+    out=sys.stdout):
 
-  # Get the starting model and reset the sequence if necessary
-  if pdb_inp is None:
-    if not pdb_string:
-      if params.input_files.pdb_in:
-        pdb_string=open(params.input_files.pdb_in).read()
-      else:
-        raise Sorry("Need an input PDB file")
-    pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
+
   hierarchy=pdb_inp.construct_hierarchy()
   hierarchy.atoms().reset_i_seq()
   xrs=pdb_inp.xray_structure_simple()
@@ -266,8 +277,85 @@ def run(args,map_data=None,map_coeffs=None,pdb_inp=None,pdb_string=None,
     xyz_shake               = params.minimization.start_xyz_error,
     states                  = states)
 
-  return ear.pdb_hierarchy, ear.xray_structure, ear.states
+  return ear.pdb_hierarchy, ear.xray_structure, ear.states, ear.scorer.target
 
-if (__name__ == "__main__"):
+def run(args,
+    map_data=None,
+    map_coeffs=None,
+    pdb_inp=None,
+    pdb_string=None,
+    crystal_symmetry=None,
+    params_edits=None,
+    out=sys.stdout):
+
+  # Get the parameters
+  params=get_params(args=args,out=out)
+
+  if params.control.random_seed:
+    flex.set_random_seed(params.control.random_seed)
+    print >>out,"\nUsing random seed of %d" %(params.control.random_seed)
+
+  # Get map_data if not present
+  if not map_data:
+    if not map_coeffs:
+      map_coeffs=get_map_coeffs(
+        map_coeffs_file=params.input_files.map_coeffs_file,
+        map_coeffs_labels=params.input_files.map_coeffs_labels)
+    if not map_coeffs:
+      raise Sorry("Need map_coeffs_file")
+
+    fft_map = map_coeffs.fft_map(resolution_factor = 0.25)
+    fft_map.apply_sigma_scaling()
+    map_data = fft_map.real_map_unpadded()
+  if map_coeffs and not crystal_symmetry:
+    crystal_symmetry=map_coeffs.crystal_symmetry()
+
+  assert crystal_symmetry is not None
+
+  # Get the starting model
+  if pdb_inp is None:
+    if not pdb_string:
+      if params.input_files.pdb_in:
+        pdb_string=open(params.input_files.pdb_in).read()
+      else:
+        raise Sorry("Need an input PDB file")
+    pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
+
+  best_score=None
+  best_result=[]
+  for cycle in xrange(1,max(2,params.minimization.number_of_build_cycles+1)):
+    # and run one cycle
+    print >>out,"\nCycle %d of building " %(cycle)
+    pdb_hierarchy,xray_structure,states,score=run_one_cycle(
+      params=params,
+      map_data=map_data,
+      pdb_inp=pdb_inp,
+      pdb_string=pdb_string,
+      crystal_symmetry=crystal_symmetry,
+      params_edits=params_edits,
+      out=out)
+    if best_score is None or score > best_score:
+      best_score=score
+      best_result=[pdb_hierarchy,xray_structure,states,score]
+      print >>out,"Best score so far is: %7.2f" %(best_score)
+      # get new pdb string 
+      from cStringIO import StringIO
+      f=StringIO()
+      if crystal_symmetry:
+        print >>f, iotbx.pdb.format_cryst1_record(
+           crystal_symmetry=crystal_symmetry)
+      print >>f, pdb_hierarchy.as_pdb_string()
+      pdb_string=f.getvalue()
+
+    # Redo pdb_inp as we are going to get the hierarchy later
+    pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
+
+    if params.output_files.pdb_out:
+      f=open(params.output_files.pdb_out,'w')
+      print >>f, pdb_string
+      f.close()
+    return best_result
+
+if   (__name__ == "__main__"):
   args=sys.argv[1:]
   run(args=args)
