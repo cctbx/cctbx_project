@@ -77,7 +77,7 @@ def exercise_protein () :
   assert not show_diff(out3.getvalue(), """\
   Ramachandran outliers =   1.76 %
                 favored =  96.47 %
-  Rotamer outliers      =  18.67 %
+  Rotamer outliers      =  20.00 %
 """)
   # now with data
   args2 = args1 + [ hkl_file, "--maps" ]
