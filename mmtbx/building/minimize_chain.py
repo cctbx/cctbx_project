@@ -338,7 +338,7 @@ def run(args,
       best_score=score
       best_result=[pdb_hierarchy,xray_structure,states,score]
       print >>out,"Best score so far is: %7.2f" %(best_score)
-      # get new pdb string 
+      # get new pdb string
       from cStringIO import StringIO
       f=StringIO()
       if crystal_symmetry:
