@@ -131,7 +131,7 @@ def get_params(args,out=sys.stdout):
   master_phil.format(python_object=params).show(out=out)
   return params
 
-def get_params_edits(n_ca=None,edit_file_name='bond_edits.eff'):
+def get_params_edits(n_ca=None,edit_file_name='bond_edits.eff',out=sys.stdout):
 
   from mmtbx.monomer_library.pdb_interpretation import geometry_restraints_edits_str
   edit_phil = iotbx.phil.parse(
@@ -182,7 +182,7 @@ def get_params_edits(n_ca=None,edit_file_name='bond_edits.eff'):
   command_line = iotbx.phil.process_command_line_with_files(
       args=[edit_file_name],master_phil=edit_phil)
   params = command_line.work.extract()
-  edit_phil.format(python_object=params).show()
+  edit_phil.format(python_object=params).show(out=out)
   return params.refinement.geometry_restraints.edits
 
 def ccp4_map(crystal_symmetry, file_name, map_data):
