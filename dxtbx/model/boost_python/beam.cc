@@ -231,6 +231,11 @@ namespace dxtbx { namespace model { namespace boost_python {
             arg("deg")=true))
       .def("__eq__", &Beam::operator==)
       .def("__ne__", &Beam::operator!=)
+      .def("is_similar_to", &Beam::is_similar_to, (
+            arg("wavelength_tolerance")=1e-6,
+            arg("direction_tolerance")=1e-6,
+            arg("polarization_normal_tolerance")=1e-6,
+            arg("polarization_fraction_tolerance")=1e-6))
       .def("__str__", &beam_to_string)
       .def("to_dict", &to_dict<Beam>)
       .def("from_dict", &from_dict<Beam>,
