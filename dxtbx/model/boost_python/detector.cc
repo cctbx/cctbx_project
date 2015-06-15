@@ -107,6 +107,11 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("__eq__", &Detector::operator==)
       .def("__ne__", &Detector::operator!=)
       .def("is_similar_to", &Detector::is_similar_to)
+      .def("is_similar_to", &Detector::is_similar_to2, (
+            arg("other"),
+            arg("fast_axis_tolerance")=1e-6,
+            arg("slow_axis_tolerance")=1e-6,
+            arg("origin_tolerance")=1e-6))
       .def("get_max_resolution",
         &Detector::get_max_resolution, (arg("s0")))
       .def("get_ray_intersection",

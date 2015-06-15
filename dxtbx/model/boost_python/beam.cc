@@ -232,6 +232,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("__eq__", &Beam::operator==)
       .def("__ne__", &Beam::operator!=)
       .def("is_similar_to", &Beam::is_similar_to, (
+            arg("other"),
             arg("wavelength_tolerance")=1e-6,
             arg("direction_tolerance")=1e-6,
             arg("polarization_normal_tolerance")=1e-6,

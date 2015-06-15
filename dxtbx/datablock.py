@@ -953,11 +953,20 @@ class DetectorComparison(object):
 
   '''
 
-  def __init__(self):
-    pass
+  def __init__(self,
+               fast_axis_tolerance=1e-6,
+               slow_axis_tolerance=1e-6,
+               origin_tolerance=1e-6):
+    self.fast_axis_tolerance = fast_axis_tolerance
+    self.slow_axis_tolerance = slow_axis_tolerance
+    self.origin_tolerance = origin_tolerance
 
   def __call__(self, a, b):
-    pass
+    return a.is_similar_to(
+      b,
+      fast_axis_tolerance=self.fast_axis_tolerance,
+      slow_axis_tolerance=self.slow_axis_tolerance,
+      origin_tolerance=self.origin_tolerance)
 
 
 class GoniometerComparison(object):
