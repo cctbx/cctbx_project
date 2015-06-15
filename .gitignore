@@ -19,6 +19,7 @@ cctbx/eltbx/sasaki_tables_61_72.cpp
 cctbx/eltbx/sasaki_tables_73_82.cpp
 cctbx/eltbx/xray_scattering/n_gaussian_raw.cpp
 cctbx/uctbx/determine_unit_cell/NCDist.h.old.h
+iotbx/detectors/adsc.img
 mmtbx/*.pyc
 mmtbx/bulk_solvent/*.pyc
 mmtbx/cablam/*.pyc
