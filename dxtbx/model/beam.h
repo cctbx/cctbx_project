@@ -201,7 +201,7 @@ namespace dxtbx { namespace model {
     }
 
     /** Check wavlength and direction are (almost) same */
-    bool operator==(const Beam &rhs) {
+    bool operator==(const Beam &rhs) const {
       double eps = 1.0e-6;
       return std::abs(angle_safe(direction_, rhs.direction_)) <= eps
           && std::abs(wavelength_ - rhs.wavelength_) <= eps
@@ -211,8 +211,23 @@ namespace dxtbx { namespace model {
           && std::abs(polarization_fraction_ - rhs.polarization_fraction_) <= eps;
     }
 
+    /**
+     * Check if two models are similar
+     */
+    bool is_similar_to(
+        const Beam &rhs,
+        double wavelength_tolerance,
+        double direction_tolerance,
+        double polarization_normal_tolerance,
+        double polarization_fraction_tolerance) const {
+      return std::abs(angle_safe(direction_, rhs.direction_)) <= wavelength_tolerance
+          && std::abs(wavelength_ - rhs.wavelength_) <= direction_tolerance
+          && std::abs(angle_safe(polarization_normal_, rhs.polarization_normal_)) <= polarization_normal_tolerance
+          && std::abs(polarization_fraction_ - rhs.polarization_fraction_) <= polarization_fraction_tolerance;
+    }
+
     /** Check wavelength and direction are not (almost) equal. */
-    bool operator!=(const Beam &rhs) {
+    bool operator!=(const Beam &rhs) const {
       return !(*this == rhs);
     }
 

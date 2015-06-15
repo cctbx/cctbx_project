@@ -398,7 +398,12 @@ class DataBlockTemplateImporter(object):
 
 class DataBlockFilenameImporter(object):
   ''' A class to import a datablock from image files. '''
-  def __init__(self, filenames, verbose=False):
+  def __init__(self,
+               filenames,
+               verbose=False,
+               compare_beam=None,
+               compare_detector=None,
+               compare_goniometer=None):
     ''' Import the datablocks from the given filenames. '''
     from itertools import groupby
     from dxtbx.format.Registry import Registry
@@ -428,15 +433,34 @@ class DataBlockFilenameImporter(object):
           append_to_datablocks(imageset)
           if verbose: print 'Loaded file: %s' % filename
       else:
-        records = self._extract_file_metadata(fmt, group)
+        records = self._extract_file_metadata(
+          fmt,
+          group,
+          compare_beam,
+          compare_detector,
+          compare_goniometer)
         for group, items in groupby(records, lambda r: r.group):
           items = list(items)
           imageset = self._create_multi_file_imageset(fmt, list(items))
           append_to_datablocks(imageset)
 
-  def _extract_file_metadata(self, format_class, filenames):
+  def _extract_file_metadata(self,
+                             format_class,
+                             filenames,
+                             compare_beam=None,
+                             compare_detector=None,
+                             compare_goniometer=None):
     ''' Extract the file meta data in order to sort them. '''
     from dxtbx.sweep_filenames import template_regex
+    import operator
+
+    # If no comparison functions are set
+    if compare_beam = None:
+      compare_beam = operator.__eq__
+    if compare_detector = None:
+      compare_detector = operator.__eq__
+    if compare_goniometer = None:
+      compare_goniometer = operator.__eq__
 
     class Record(object):
       def __init__(self, beam=None, detector=None, goniometer=None, scan=None,
@@ -478,13 +502,13 @@ class DataBlockFilenameImporter(object):
       if len(records) > 0:
         last = records[-1]
         same = [False, False, False]
-        if last.beam == b:
+        if compare_beam(last.beam, b):
           b = last.beam
           same[0] = True
-        if last.detector == d:
+        if compare_detector(last.detector, d):
           d = last.detector
           same[1] = True
-        if last.goniometer == g:
+        if compare_goniometer(last.goniometer, g):
           g = last.goniometer
           same[2] = True
 
@@ -699,7 +723,12 @@ class DataBlockFactory(object):
   ''' Class for creating DataBlock instances'''
 
   @staticmethod
-  def from_args(args, verbose=False, unhandled=None):
+  def from_args(args,
+                verbose=False,
+                unhandled=None,
+                compare_beam=None,
+                compare_detector=None,
+                compare_goniometer=None):
     ''' Try to load datablocks from any recognized format. '''
 
     if unhandled is None:
@@ -707,7 +736,13 @@ class DataBlockFactory(object):
     unhandled1 = []
 
     # Try as image files
-    datablocks = DataBlockFactory.from_filenames(args, verbose, unhandled1)
+    datablocks = DataBlockFactory.from_filenames(
+      args,
+      verbose,
+      unhandled1,
+      compare_beam=None,
+      compare_detector=None,
+      compare_goniometer=None)
 
     # Try as serialized formats
     for filename in unhandled1:
@@ -721,7 +756,12 @@ class DataBlockFactory(object):
     return datablocks
 
   @staticmethod
-  def from_filenames(filenames, verbose=False, unhandled=None):
+  def from_filenames(filenames,
+                     verbose=False,
+                     unhandled=None,
+                     compare_beam=None,
+                     compare_detector=None,
+                     compare_goniometer=None):
     ''' Create a list of data blocks from a list of directory or file names. '''
 
     from os import listdir
@@ -742,7 +782,12 @@ class DataBlockFactory(object):
         if unhandled is not None:
           unhandled.append(f)
 
-    importer = DataBlockFilenameImporter(filelist, verbose)
+    importer = DataBlockFilenameImporter(
+      filelist,
+      verbose,
+      compare_beam,
+      compare_detector,
+      compare_goniometer)
     if unhandled is not None:
       unhandled.extend(importer.unhandled)
     return importer.datablocks
@@ -875,3 +920,54 @@ class DataBlockDumper(object):
     else:
       ext_str = '|'.join(j_ext + p_ext)
       raise RuntimeError('expected extension {%s}, got %s' % (ext_str, ext))
+
+
+class BeamComparison(object):
+  '''
+  A class to provide simple beam comparison
+
+  '''
+
+  def __init__(self,
+               wavelength_tolerance=1e-6,
+               direction_tolerance=1e-6,
+               polarization_normal_tolerance=1e-6,
+               polarization_fraction_tolerance=1e-6):
+    self.wavelength_tolerance = wavelength_tolerance
+    self.direction_tolerance = direction_tolerance
+    self.polarization_normal_tolerance = polarization_normal_tolerance
+    self.polarization_fraction_tolerance = polarization_fraction_tolerance
+
+  def __call__(self, a, b):
+    return a.is_similar_to(
+      b,
+      wavelength_tolerance=self.wavelength_tolerance,
+      direction_tolerance=self.direction_tolerance,
+      polarization_normal_tolerance=self.polarization_normal_tolerance,
+      polarization_fraction_tolerance=self.polarization_fraction_tolerance)
+
+
+class DetectorComparison(object):
+  '''
+  A class to provide simple detector comparison
+
+  '''
+
+  def __init__(self):
+    pass
+
+  def __call__(self, a, b):
+    pass
+
+
+class GoniometerComparison(object):
+  '''
+  A class to provide simple goniometer comparison
+
+  '''
+
+  def __init__(self):
+    pass
+
+  def __call__(self, a, b):
+    pass
