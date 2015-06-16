@@ -127,7 +127,6 @@ def add_reference_dihedral_restraints_if_requested(
     params=params,
     selection=selection,
     log=log)
-  # rm.add_reference_dihedral_proxies(geometry=geometry)
   rm.show_reference_summary(log=log)
   geometry.adopt_reference_dihedral_manager(rm)
 
@@ -245,14 +244,19 @@ class reference_model(object):
         assert len(ncs_rg) == len_ncs_rg
       if fn not in self.match_map.keys():
         self.match_map[fn] = {}
-      ref_index = 0
+      ref_indeces = []
       for i in range(n_total_selections):
         if (len(ncs_residue_groups[i][0].parent().id) > 2 and
             ncs_residue_groups[i][0].parent().id[-3:] == 'ref'):
-          ref_index = i
+          ref_indeces.append(i)
+      if len(ref_indeces) == 0:
+        # Reference model does not participate in particular found NCS copy.
+        # If it is in another copy, that's fine.
+        continue
+      ref_index=ref_indeces[0]
       for i in range(n_total_selections):
         # Figuring out what is reference and what is model
-        if i == ref_index:
+        if i in ref_indeces:
           continue
         a = ncs_residue_groups[i]
         for j in range(len_ncs_rg):
@@ -265,7 +269,6 @@ class reference_model(object):
               model_rg.id_str().strip())
           key_ref = "%s %s" % (reference_rg.unique_resnames()[0],
               reference_rg.id_str().strip())
-          print >> self.log, "'%s' <==> '%s'" % (key_model, key_ref)
           if key_model not in self.residue_match_hash:
             self.residue_match_hash[key_model] = (self.reference_file_list[0], key_ref)
           # Filling out self.match_map
