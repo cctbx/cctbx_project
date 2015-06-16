@@ -2844,10 +2844,10 @@ for res_type_group, res_type_db in sorted(omega_database.items()):
 
 
 def run():
-  print cdl_database["Pro_nonxpro"][(-180,-180)]
-  print cdl_database["Pro_nonxpro"][(-180,-170)]
-  print cdl_database["Pro_nonxpro"][( -70, 150)]
-  for res_group_type in cdl_database:
+  print omega_database["Pro_nonxpro"][(-180,-180)]
+  print omega_database["Pro_nonxpro"][(-180,-170)]
+  print omega_database["Pro_nonxpro"][( -70, 150)]
+  for res_group_type in sorted(omega_database):
     print res_group_type, len(omega_database[res_group_type])
 
 if __name__=="__main__":

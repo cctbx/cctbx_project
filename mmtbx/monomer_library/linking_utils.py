@@ -378,7 +378,11 @@ def is_atom_pair_linked(atom1,
   #
   # other
   #
-  if "other" in lookup:
+  if lookup==("other", "other"):
+    # non-standard residue to non-standard is too risky to do automatically ...
+    if verbose: print 'other, other returns True'
+    return True
+  elif "other" in lookup:
     if verbose: print 'other returns True'
     return True
   if verbose: print 'drop through '*5

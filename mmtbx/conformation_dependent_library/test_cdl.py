@@ -13,6 +13,7 @@ from cStringIO import StringIO
 #from libtbx.utils import format_cpu_times
 
 from mmtbx import conformation_dependent_library as cdl
+from mmtbx.conformation_dependent_library import cdl_utils, cdl_setup
 from mmtbx.conformation_dependent_library.cdl_database import cdl_database
 
 filenames = {
@@ -138,6 +139,12 @@ filenames = {
       ["B",   254, 120.38],
       ["B",   436, 120.72],
       ],
+    [(28, 29),
+     (27, 28, 29),
+     (27, 28),
+     (11, 27, 28),
+     (11, 27),
+     ],
     ],
   "cdl_test_8.pdb" : [
     [
@@ -760,9 +767,8 @@ def test_res_type(hierarchy,
     geometry=restraints_manager.geometry,
     )
                              ):
-    #print threes.show_detailed()
     print threes.show(),
-    res_type_group = cdl.get_res_type_group(
+    res_type_group = cdl_utils.get_res_type_group(
       threes[1].resname,
       threes[2].resname,
       )
@@ -781,7 +787,6 @@ def test_phi_psi_key(hierarchy,
     )
                              ):
     key = threes.get_cdl_key()
-    #print threes.show_detailed()
     print key
     assert key == filenames[filename][1][i]
 
@@ -795,7 +800,7 @@ def test_cdl_lookup(hierarchy,
     geometry=restraints_manager.geometry,
     )
                              ):
-    res_type_group = cdl.get_res_type_group(
+    res_type_group = cdl_utils.get_res_type_group(
       threes[1].resname,
       threes[2].resname,
       )
@@ -810,7 +815,6 @@ def test_cis_trans_peptide(hierarchy,
                            ):
   for i, threes in enumerate(cdl.generate_protein_threes(
     hierarchy,
-    #restraints_manager=restraints_manager
     geometry=restraints_manager.geometry,
     )
                              ):
@@ -819,7 +823,19 @@ def test_cis_trans_peptide(hierarchy,
       print cis_peptide_bond
       assert cis_peptide_bond == filenames[filename][3][i]
 
-def run_apply(filename, testing=False, verbose=False):
+def test_average(hierarchy,
+                 filename,
+                 restraints_manager,
+                 ):
+  for i, threes in enumerate(cdl.generate_protein_threes(
+    hierarchy,
+    geometry=restraints_manager.geometry,
+    )
+                             ):
+    if threes.registry.n: 
+      assert threes.registry.n.keys() == filenames[filename][3]
+
+def get_managers(filename, testing=False, verbose=False):
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
   processed_pdb_file = monomer_library.pdb_interpretation.process(
@@ -841,7 +857,10 @@ def run_apply(filename, testing=False, verbose=False):
     restraints_manager = restraints_manager,
     xray_structure = xray_structure,
     pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
+  return processed_pdb_file, restraints_manager
 
+def run_apply(filename, testing=False, verbose=False):
+  processed_pdb_file, restraints_manager = get_managers(filename)
   if testing:
     test_res_type(processed_pdb_file.all_chain_proxies.pdb_hierarchy,
                   filename,
@@ -871,14 +890,20 @@ def run_apply(filename, testing=False, verbose=False):
     f.close()
 
   t0=time.time()
-  cdl_proxies = cdl.setup_restraints(restraints_manager.geometry,
-                                     verbose=verbose,
-                                     )
+  cdl_proxies = cdl_setup.setup_restraints(restraints_manager.geometry,
+                                           verbose=verbose,
+                                         )
   cdl.update_restraints(processed_pdb_file.all_chain_proxies.pdb_hierarchy,
                         geometry=restraints_manager.geometry,
                         cdl_proxies=cdl_proxies,
                         verbose=verbose,
                         )
+  if testing:
+    test_average(processed_pdb_file.all_chain_proxies.pdb_hierarchy,
+                 filename,
+                 restraints_manager,
+                 )
+    print 'OK'
 
   print 'Time to update restraints %0.5fs' % (time.time()-t0)
   if True:
