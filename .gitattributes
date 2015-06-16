@@ -1780,13 +1780,17 @@ mmtbx/conformation_dependent_library/__init__.py -text
 mmtbx/conformation_dependent_library/altloc_weighting.py -text
 mmtbx/conformation_dependent_library/bond_angle_registry.py -text
 mmtbx/conformation_dependent_library/cdl_database.py -text
+mmtbx/conformation_dependent_library/cdl_setup.py -text
 mmtbx/conformation_dependent_library/cdl_utils.py -text
 mmtbx/conformation_dependent_library/hydrogen_bonding.py -text
+mmtbx/conformation_dependent_library/multi_residue_class.py -text
+mmtbx/conformation_dependent_library/omega.py -text
 mmtbx/conformation_dependent_library/omega_database.py -text
 mmtbx/conformation_dependent_library/rdl_database.py -text
 mmtbx/conformation_dependent_library/rotamers.py -text
 mmtbx/conformation_dependent_library/test_cdl.py -text
 mmtbx/conformation_dependent_library/test_interpolation.py -text
+mmtbx/conformation_dependent_library/test_omega_cdl.py -text
 mmtbx/conformation_dependent_library/test_rdl.py -text
 mmtbx/conformation_dependent_library/utils.py -text
 mmtbx/den/SConscript -text

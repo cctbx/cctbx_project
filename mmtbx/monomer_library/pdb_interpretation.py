@@ -129,6 +129,12 @@ master_params_str = """\
     .help = Use Conformation Dependent Library (CDL) \
       for geometry minimization restraints
     .style = bold
+  omega_cdl = False
+    .type = bool
+    .short_caption = Use Omega Conformation-Dependent Library
+    .help = Use Omega Conformation Dependent Library (OCDL) \
+      for geometry minimization restraints
+    .style = bold
   correct_hydrogens = True
     .type = bool
     .short_caption = Correct the hydrogen positions trapped in chirals etc
@@ -184,10 +190,17 @@ master_params_str = """\
       .type = bool
     link_residues = False
       .type = bool
+      .short_caption = Link amino acids in "special" ways such as cyclic and \
+        side-chain to side-chain links
     link_amino_acid_rna_dna = False
       .type = bool
+      .short_caption = Link any RNA/DNA to amino acid possibities
     link_carbohydrates = True
       .type = bool
+      .short_caption = Link carbohydrates to protein and other carbohydrates
+    link_ligands = False
+      .type = bool
+      .short_caption = Link ligands to protein
     metal_coordination_cutoff = 3.5
       .type = float
       .short_caption = Maximum distance for automatic linking of metals
@@ -202,6 +215,8 @@ master_params_str = """\
       .short_caption = Distance to add to intra_residue_bond_cutoff if one \
         or more element is in the second (or more) row
     carbohydrate_bond_cutoff = 1.99
+      .type = float
+    ligand_bond_cutoff = 1.99
       .type = float
   }
   use_neutron_distances = False
@@ -4591,6 +4606,7 @@ class build_all_chain_proxies(linking_mixins):
                   "link_residues",
                   "link_carbohydrates",
                   "link_amino_acid_rna_dna",
+                  "link_ligands",
                   ]
     if al_params.link_all:
       for attr in link_attrs:
@@ -4613,10 +4629,12 @@ class build_all_chain_proxies(linking_mixins):
         link_residues             = al_params.link_residues,
         link_carbohydrates        = al_params.link_carbohydrates,
         link_amino_acid_rna_dna   = al_params.link_amino_acid_rna_dna,
+        link_ligands              = al_params.link_ligands,
         amino_acid_bond_cutoff    = al_params.amino_acid_bond_cutoff,
         metal_coordination_cutoff = al_params.metal_coordination_cutoff,
         carbohydrate_bond_cutoff  = al_params.carbohydrate_bond_cutoff,
         inter_residue_bond_cutoff = al_params.inter_residue_bond_cutoff,
+        ligand_bond_cutoff        = al_params.ligand_bond_cutoff,
         second_row_buffer         = al_params.buffer_for_second_row_elements,
         log=log,
         )
@@ -4702,7 +4720,7 @@ class build_all_chain_proxies(linking_mixins):
       if (use_cdl) :
         print >> log, "  Switching to conformation-dependent library"
     if use_cdl :
-      from mmtbx.conformation_dependent_library import setup_restraints
+      from mmtbx.conformation_dependent_library.cdl_setup import setup_restraints
       from mmtbx.conformation_dependent_library import update_restraints
       from libtbx import utils
       t0=time.time()
@@ -4720,6 +4738,25 @@ class build_all_chain_proxies(linking_mixins):
       print >> log, """\
   Conformation dependent library (CDL) restraints added in %0.1f %sseconds
   """ % utils.greek_time(cdl_time)
+    if getattr(self.params, "omega_cdl", False):
+      from mmtbx.conformation_dependent_library.omega import setup_restraints
+      from mmtbx.conformation_dependent_library.omega import update_restraints
+      from libtbx import utils
+      t0=time.time()
+      cdl_proxies=setup_restraints(result)
+      update_restraints(
+        self.pdb_hierarchy,
+        result,
+        #current_geometry=model.xray_structure,
+        cdl_proxies=cdl_proxies,
+        log=log,
+        verbose=True,
+        )
+      self.use_cdl = True
+      cdl_time = time.time()-t0
+      print >> log, """\
+  omega-Conformation dependent library (o-CDL) restraints added in %0.1f %sseconds
+  """ % utils.greek_time(cdl_time)
     if getattr(self.params, "rdl", False):
       from mmtbx.conformation_dependent_library import rotamers
       from libtbx import utils
@@ -4734,10 +4771,10 @@ class build_all_chain_proxies(linking_mixins):
         log=log,
         verbose=True,
         )
-      cdl_time = time.time()-t0
+      rdl_time = time.time()-t0
       print >> log, """\
   Rotamer dependent library (RDL) restraints added in %0.1f %sseconds
-  """ % utils.greek_time(cdl_time)
+  """ % utils.greek_time(rdl_time)
     return result
 
   def extract_xray_structure(self, unknown_scattering_type_substitute = "?"):

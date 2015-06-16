@@ -279,12 +279,14 @@ class linking_mixins(object):
                                   link_residues               = True,
                                   link_carbohydrates          = True,
                                   link_amino_acid_rna_dna     = False,
+                                  link_ligands                = False,
                                   max_bonded_cutoff           = None,
                                   metal_coordination_cutoff   = 3.,
                                   amino_acid_bond_cutoff      = 2.,
                                   inter_residue_bond_cutoff   = 2.,
                                   second_row_buffer           = 0.5,
                                   carbohydrate_bond_cutoff    = 2.,
+                                  ligand_bond_cutoff          = 2.,
                                   log                         = None,
                                   verbose                     = False,
                                   ):
@@ -293,6 +295,7 @@ class linking_mixins(object):
       max_bonded_cutoff = max(metal_coordination_cutoff,
                               amino_acid_bond_cutoff,
                               carbohydrate_bond_cutoff,
+                              ligand_bond_cutoff,
                               inter_residue_bond_cutoff+second_row_buffer,
                               )
     # check that linking required
@@ -384,6 +387,7 @@ class linking_mixins(object):
         Metal                : %-5s - %0.2f
         Amimo acid           : %-5s - %0.2f
         Carbohydrate         : %-5s - %0.2f
+        Ligands              : %-5s - %0.2f
         Amino acid - RNA/DNA : %-5s
       """ % (link_metals,
              metal_coordination_cutoff,
@@ -391,6 +395,8 @@ class linking_mixins(object):
              amino_acid_bond_cutoff,
              link_carbohydrates,
              carbohydrate_bond_cutoff,
+             link_ligands,
+             ligand_bond_cutoff,
              link_amino_acid_rna_dna,
              )
     t0=time.time()
@@ -451,6 +457,8 @@ Residue classes
 
 %s
 %s """ % (classes1, classes2)
+      if not link_ligands and (classes1.other or classes2.other): 
+        continue
       # is_proxy_set between any of the atoms ????????
       if classes1.common_amino_acid and classes2.common_amino_acid:
         if not link_residues:
