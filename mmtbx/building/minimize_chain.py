@@ -320,6 +320,15 @@ def run(args,
       else:
         raise Sorry("Need an input PDB file")
     pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
+    if not pdb_inp.crystal_symmetry(): # get it
+      cryst1_line=iotbx.pdb.format_cryst1_record(
+         crystal_symmetry=crystal_symmetry)
+      from cStringIO import StringIO
+      f=StringIO()
+      print >>f, cryst1_line
+      print >>f,pdb_string
+      pdb_string=f.getvalue() 
+      pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
 
   best_score=None
   best_result=[]
@@ -354,7 +363,9 @@ def run(args,
       f=open(params.output_files.pdb_out,'w')
       print >>f, pdb_string
       f.close()
-    return best_result
+
+  # all done
+  return best_result
 
 if   (__name__ == "__main__"):
   args=sys.argv[1:]
