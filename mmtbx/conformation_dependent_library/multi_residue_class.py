@@ -151,6 +151,9 @@ class ThreeProteinResidues(list):
           break
     return atoms
 
+  def get_resnames(self):
+    return self[0].resname, self[1].resname, self[2].resname
+
   def get_phi_psi_atoms(self, only_psi_phi_pairs=True, force_plus_one=False):
     if force_plus_one: only_psi_phi_pairs=False
     backbone_i_minus_1, junk = get_c_ca_n(self[0])
@@ -212,7 +215,7 @@ class ThreeProteinResidues(list):
         print 'phi_or_psi',phi_or_psi
     key = []
     for phi_or_psi in dihedrals:
-      if exact: 
+      if exact:
         key.append(phi_or_psi)
       else:
         key.append(round_to_ten(phi_or_psi))

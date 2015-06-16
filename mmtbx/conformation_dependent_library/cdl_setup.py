@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx.conformation_dependent_library.bond_angle_registry import \
   bond_angle_registry
 

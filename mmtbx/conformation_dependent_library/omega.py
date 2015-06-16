@@ -1,10 +1,11 @@
+from __future__ import division
 import copy
 
 from mmtbx.conformation_dependent_library.bond_angle_registry import \
   bond_angle_registry
 from mmtbx.conformation_dependent_library import generate_protein_threes
 from mmtbx.conformation_dependent_library.multi_residue_class import \
-  ThreeProteinResidues, RestraintsRegistry
+  RestraintsRegistry
 
 from mmtbx.conformation_dependent_library.omega_database import omega_database
 
@@ -79,7 +80,7 @@ def apply_updates(self,
         if columns[i][0]=="s": continue
         code = columns[i][1:]
         names = []
-        if code=="ACNA": 
+        if code=="ACNA":
           if j:
             names = ["CA_i", "C_i", "N_plus_1", "CA_plus_1"]
           else:

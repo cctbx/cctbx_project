@@ -3,13 +3,11 @@ import sys
 import copy
 from string import letters, digits
 
-from libtbx.utils import Sorry
 import iotbx.pdb
 
 from mmtbx.conformation_dependent_library.cdl_database import cdl_database
 import mmtbx.conformation_dependent_library.cdl_utils
 
-from mmtbx.conformation_dependent_library.cdl_utils import distance2
 from mmtbx.conformation_dependent_library.multi_residue_class import \
   ThreeProteinResidues, RestraintsRegistry
 
@@ -91,7 +89,7 @@ def generate_protein_threes(hierarchy,
           #yield threes
           list_of_threes.append(copy.copy(threes))
         for i, threes in enumerate(list_of_threes):
-          if i==0: 
+          if i==0:
             threes.start =  True
           if i==len(list_of_threes)-1:
             threes.end = True
