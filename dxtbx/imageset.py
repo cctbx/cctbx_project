@@ -792,6 +792,8 @@ class MemImageSet(ImageSet):
 
   def __cmp__(self, other):
     ''' Compare this image set to another. '''
+    if other is None:
+      return False
     return self._images == other._images
 
   def indices(self):
