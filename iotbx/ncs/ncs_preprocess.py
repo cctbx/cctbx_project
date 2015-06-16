@@ -519,6 +519,9 @@ class ncs_group_object(object):
       transform_id = set()
       # get all master selection string
       m_all_list = [x for ix in ncs_gr.iselections[0] for x in list(ix)]
+      if len(m_all_list) < 3:
+        # we don't want NCS groups with less than 3 atoms.
+        continue
       m_all_list.sort()
       m_all_isel = flex.size_t(m_all_list)
       all_m_select_str = selection_string_from_selection(
