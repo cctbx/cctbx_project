@@ -204,7 +204,7 @@ class run2(object):
             parallelity].count(False) < 7
     self.cdl_proxies = None
     if(cdl):
-      from mmtbx.conformation_dependent_library import setup_restraints
+      from mmtbx.conformation_dependent_library.cdl_setup import setup_restraints
       self.cdl_proxies = setup_restraints(restraints_manager.geometry)
     self.correct_hydrogens = correct_hydrogens
     if(alternate_nonbonded_off_on and number_of_macro_cycles % 2 != 0):

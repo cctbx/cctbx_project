@@ -2055,8 +2055,10 @@ def run_and_test(cmd, pdb, i):
     if line.find("Bond restraints:")>-1:
       bonds = int(line.split()[2])
       break
-  print bonds
-  assert bonds == links[pdb][i]
+  assert bonds == links[pdb][i], "found %d bonds but expected %s!" % (
+    bonds,
+    links[pdb][i],
+    )
   new_geo = pdb.replace(".pdb", "_minimized_%d.geo" % i)
   if (os.path.isfile(new_geo)) :
     os.remove(new_geo)
@@ -2092,6 +2094,7 @@ def run(only_i=None):
       log_filename = "%s_%d.log" % (pdb, i)
       cmd = "phenix.geometry_minimization %s write_geo_file=True" % pdb
       cmd += " link_all=%d link_carbohydrate=%d %s" % (i, i, cifs)
+      cmd += " link_ligand=%d" % i
       if pdb in [
         "linking_test_ccp4_other.pdb",
         ]:

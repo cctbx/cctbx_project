@@ -38,7 +38,3 @@ def get_res_type_group(resname1, resname2):
     if resname1 in lookup[key]:
       return key
   return None
-
-
-
-

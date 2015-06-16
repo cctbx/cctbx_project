@@ -832,7 +832,7 @@ def test_average(hierarchy,
     geometry=restraints_manager.geometry,
     )
                              ):
-    if threes.registry.n: 
+    if threes.registry.n:
       assert threes.registry.n.keys() == filenames[filename][3]
 
 def get_managers(filename, testing=False, verbose=False):

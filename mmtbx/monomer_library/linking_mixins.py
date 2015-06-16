@@ -457,8 +457,8 @@ Residue classes
 
 %s
 %s """ % (classes1, classes2)
-      if not link_ligands and (classes1.other or classes2.other): 
-        continue
+      #if not link_ligands and (classes1.other or classes2.other):
+      #  continue
       # is_proxy_set between any of the atoms ????????
       if classes1.common_amino_acid and classes2.common_amino_acid:
         if not link_residues:

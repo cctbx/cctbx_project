@@ -1,3 +1,4 @@
+from __future__ import division
 import os, sys
 import time
 from StringIO import StringIO
@@ -132,7 +133,7 @@ def test_average(hierarchy,
     geometry=restraints_manager.geometry,
     )
                              ):
-    if threes.registry.n: 
+    if threes.registry.n:
       atoms = hierarchy.atoms()
       for key in threes.registry.n:
         print key
