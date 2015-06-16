@@ -327,7 +327,7 @@ def run(args,
       f=StringIO()
       print >>f, cryst1_line
       print >>f,pdb_string
-      pdb_string=f.getvalue() 
+      pdb_string=f.getvalue()
       pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
 
   best_score=None
