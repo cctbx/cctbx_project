@@ -70,7 +70,7 @@ simple_ncs_from_pdb
    .help = "Verbose output"
    .short_caption = Debugging output
    .style = noauto
- show_ncs_phil = False
+ show_ncs_phil = True
    .type = bool
    .help = "Show phil parameters for the NCS groups"
    .short_caption = Show phil parameters
