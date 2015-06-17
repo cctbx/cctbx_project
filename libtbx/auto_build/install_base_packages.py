@@ -212,7 +212,7 @@ class installer (object) :
       packages += ['python']
 
     # Always build hdf5 and numpy.
-    packages += ['cython', 'hdf5', 'numpy', 'setuptools', 'pip', 'docutils']
+    packages += ['cython', 'hdf5', 'numpy', 'setuptools', 'pip', 'pythonextra', 'docutils']
     packages += ["libsvm"]
     # GUI packages.
     if options.build_gui or options.build_all or options.download_only:
@@ -464,16 +464,17 @@ Installation of Python packages may fail.
       pkg_url,
       pkg_name,
       pkg_name_label,
+      pkg_local_file=None,
       callback_before_build=None,
       callback_after_build=None,
       confirm_import_module=None) :
     pkg_log = self.start_building_package(pkg_name_label)
-    pkg, size = self.fetch_package(pkg_name=pkg_name,
+    if pkg_local_file is None:
+      pkg_local_file, size = self.fetch_package(pkg_name=pkg_name,
                                    pkg_url=pkg_url,
-                                   return_file_and_status=True,
-      )
+                                   return_file_and_status=True)
     if self.check_download_only(pkg_name): return
-    self.untar_and_chdir(pkg=pkg, log=pkg_log)
+    self.untar_and_chdir(pkg=pkg_local_file, log=pkg_log)
     if (callback_before_build is not None) :
       assert callback_before_build(pkg_log), pkg_name
     debug_flag = ""
@@ -517,10 +518,11 @@ Installation of Python packages may fail.
       'setuptools',
       'libsvm',
       'pip',
+      'pythonextra',
       'biopython',
       'reportlab',
-      'sphinx',
       'docutils',
+      'sphinx',
       'ipython',
       'pyopengl',
       'scipy',
@@ -625,6 +627,35 @@ Installation of Python packages may fail.
     python_exe = op.abspath(op.join(self.base_dir, "bin", "python"))
     self.set_python(op.abspath(python_exe))
     log.close()
+
+  def build_pythonextra(self):
+    '''install all python packages found in base_tmp/python_extra/'''
+
+    python_extra_dir = os.path.join(self.tmp_dir, 'python_extra')
+    if os.path.exists(python_extra_dir):
+      print >> self.log, "Installing further python packages...\n"
+    else:
+      print >> self.log, "No further python packages to install."
+      return True
+
+    files = [ f for f in os.listdir(python_extra_dir) if f.endswith(".tar.gz") ]
+
+    python_extra_order = os.path.join(python_extra_dir, 'install.order')
+    if os.path.exists(python_extra_order):
+      f = open(python_extra_order)
+      reorder = []
+      for line in f.readlines():
+        line = line.strip()
+        if line in files:
+          files.remove(line)
+          reorder.append(line)
+      reorder.extend(files)
+      files = reorder
+      f.close()
+
+    for pkg in files:
+      self.build_python_module_simple(
+        pkg_url=None, pkg_local_file=os.path.join(python_extra_dir, pkg), pkg_name=pkg, pkg_name_label=pkg[:-7])
 
   def simple_log_parse_test(self, log_filename, line):
     if not os.path.exists(log_filename): return False
