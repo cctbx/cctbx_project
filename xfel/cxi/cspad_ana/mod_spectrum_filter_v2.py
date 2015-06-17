@@ -113,17 +113,16 @@ class mod_spectrum_filter_v2(object):
       self.nshots +=1
       # get data as array and split into two half to find each peak
       if one_D:
-        data = np.array(data.hproj().astype(np.int32))
         # filtering out outlier spikes in FEE data
-        #data = np.array(data.hproj().astype(np.float64))
-        #for i in xrange(len(data)):
-          #if data[i]>1000000000:
-            #data[i]=data[i]-(2**32)
+        data = np.array(data.hproj().astype(np.float64))
+        for i in xrange(len(data)):
+          if data[i]>1000000000:
+            data[i]=data[i]-(2**32)
         spectrum = data
         spectrum1 = data[:data.shape[0]//2]
         spectrum2 = data[data.shape[0]//2:]
       else:
-        data = np.array(data.data16().astype(np.int32))
+        data = np.array(data.data16().astype(np.float64))
         data_split1 = data[:,:data.shape[1]//2]
         data_split2 = data[:,data.shape[1]//2:]
         # make a 1D trace of entire spectrum and each half to find peaks
