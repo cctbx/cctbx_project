@@ -185,6 +185,9 @@ target_anomalous_flag = False
   .type = bool
   .help = Target anomalous flag (False = Not anomalous data)
   .optional = False
+flag_weak_anomalous = False
+  .type = bool
+  .help = Set to True to indicate that you have a very weak anomalous signal.
 target_crystal_system = None
   .type = str
   .help = Target crystal system
@@ -219,7 +222,7 @@ flag_plot_expert = False
 flag_force_no_postrefine = False
   .type = bool
   .help = Set to True to output only the mean-intensity scaled merged.
-flag_outlier_rejection = False
+flag_outlier_rejection = True
   .type = bool
   .help = Set to True to perform advance outlier rejection.
 n_postref_cycle = 3
@@ -284,6 +287,12 @@ percent_cone_fraction = 5.0
 reindex_op = h,k,l
   .type = str
   .help = Change basis for the input observations.
+flag_normalized = False
+  .type = bool
+  .help = Set to True for amplitude normalization.
+sigma_global_min = 1.0
+  .type = float
+  .help = Minimum I/sigI cutoff (global value).
 iotacc
   .help = "Parameters used in prime.iotacc selection."
 {
@@ -392,4 +401,3 @@ def process_input(argv=None):
     txt_out += one_output + '\n'
 
   return params, txt_out
-
