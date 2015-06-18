@@ -114,6 +114,9 @@ advanced
   cluster_threshold = 5000
     .type = int
     .help = threshold value for unit cell clustering
+  convert_images = True
+    .type = bool
+    .help = Set to False to force non-conversion of images
   square_mode = None *pad crop
     .type = choice
     .help = Method to generate square image
