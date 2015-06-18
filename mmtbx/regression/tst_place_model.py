@@ -1,6 +1,6 @@
 from __future__ import division
 
-import os,time 
+import os,time
 from mmtbx.command_line.place_model_in_map import run
 
 import libtbx.load_env

@@ -25,7 +25,7 @@ master_phil = iotbx.phil.parse("""
 
   }
   directories {
-    temp_dir = temp_place_model_in_map 
+    temp_dir = temp_place_model_in_map
       .type = path
       .help = temporary directory
       .short_caption = temporary directory
@@ -40,7 +40,7 @@ master_phil = iotbx.phil.parse("""
      resolution = None
        .type = float
        .help = Resolution of the map.  Required input.
-       .short_caption = Map resolution 
+       .short_caption = Map resolution
        .style = resolution
      molecular_mass = None
        .type = float
@@ -103,7 +103,7 @@ def guess_mw(file_name):
   import iotbx.pdb
   from cctbx.array_family import flex
   text=open(file_name).read()
-  if not text: 
+  if not text:
     raise Sorry(
       "Nothing found in the PDB file %s" %(params.input_files.pdb_file))
   pdb_inp=iotbx.pdb.input(source_info="",
@@ -112,7 +112,7 @@ def guess_mw(file_name):
   asc=hierarchy.atom_selection_cache()
   atom_selection="not element H"
   sel = asc.selection(string = atom_selection)
-  hierarchy = hierarchy.select(sel) 
+  hierarchy = hierarchy.select(sel)
   n_atoms=hierarchy.overall_counts().n_atoms
   mw=n_atoms*6.7 # Hendrickson, W.A. (2014) Quarterly Rev. Biophys. 47, 49-93.
   print "\nTotal of %d atoms. Molecular mass is about %.0f Da"%(
@@ -127,7 +127,7 @@ def run(args,out=sys.stdout):
   # make a temporary directory
   if not os.path.isdir(params.directories.temp_dir):
     os.mkdir(params.directories.temp_dir)
- 
+
   # choose resolution for FFT
   d_min=params.place_model.resolution*params.place_model.resolution_factor
   print >>out,"\nWorking resolution will be %7.1f A" %(d_min)
@@ -198,7 +198,7 @@ def run(args,out=sys.stdout):
   cc_mtz_pdb=get_cc_mtz_pdb(cc_args,copy_extra_columns=False,out=local_out)
   cc_value=cc_mtz_pdb.found_region
 
-  assert os.path.isfile(params.output_files.pdb_out) 
+  assert os.path.isfile(params.output_files.pdb_out)
   print >>out,"\nModel matching map is in %s\n" %(params.output_files.pdb_out)
   print >>out,"CC of model to map is %5.2f" %(cc_value)
 
@@ -212,5 +212,4 @@ def run(args,out=sys.stdout):
   return params.output_files.pdb_out,cc_value
 if __name__=="__main__":
   args=sys.argv[1:]
-  run(args) 
-
+  run(args)
