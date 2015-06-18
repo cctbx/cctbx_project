@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 06/11/2015
+Last Changed: 06/13/2015
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes unit cell analysis by hierarchical clustering
               (Zeldin, et al., Acta Cryst D, 2013). In case of multiple clusters
@@ -87,62 +87,6 @@ def make_prime_input(clean_results, sg, uc, data_path, iota_version, now):
   prime_file = os.path.join(os.curdir, 'prime.phil')
   with open(prime_file, 'w') as pf:
     pf.write(txt_out)
-
-def sort_uc(clean_results):
-  """Sorts to entries to compile a table of point groups with consensus unit
-     cells encountered in the selection. Should work regardless of whether the
-     unit cell prefilter was activated.
-
-     input: sel_clean - list of integrated results
-     output: uc_table - entries with point group and unit cell info
-  """
-
-  uc_table = []
-  sgs = [results['sg'] for results in clean_results]
-
-  ranked_sgs = Counter(sgs).most_common()
-  cons_sg = ranked_sgs[0][0]
-  reduced_sg_list = [i[0] for i in ranked_sgs]
-
-  for sg in reduced_sg_list:
-    batch = [e for e in clean_results if e['sg'] == sg]
-
-    avg_a = np.mean([results['a'] for results in batch])
-    std_a = np.std([results['a'] for results in batch])
-    avg_b = np.mean([results['b'] for results in batch])
-    std_b = np.std([results['b'] for results in batch])
-    avg_c = np.mean([results['c'] for results in batch])
-    std_c = np.std([results['c'] for results in batch])
-    avg_alpha = np.mean([results['alpha'] for results in batch])
-    std_alpha = np.std([results['alpha'] for results in batch])
-    avg_beta = np.mean([results['beta'] for results in batch])
-    std_beta = np.std([results['beta'] for results in batch])
-    avg_gamma = np.mean([results['gamma'] for results in batch])
-    std_gamma = np.std([results['gamma'] for results in batch])
-
-    if sg == cons_sg:
-      tag = '===>'
-      cons_uc = (avg_a, avg_b, avg_c, avg_alpha, avg_beta, avg_gamma)
-    else:
-      tag = ''
-
-    uc_table.append("{:>4} {:<6} {:^4}:  {:<6.2f} ({:>4.2f}), {:<6.2f} ({:>4.2f}), "\
-                     "{:<6.2f} ({:>4.2f}), {:<6.2f} ({:>4.2f}), "\
-                     "{:<6.2f} ({:>4.2f}), {:<6.2f} ({:>4.2f})"
-                     "".format(tag, '({})'.format(len(batch)), sg, avg_a, std_a,
-                               avg_b, std_b, avg_c, std_c, avg_alpha, std_alpha,
-                               avg_beta, std_beta, avg_gamma, std_gamma))
-    uc_check = std_a >= avg_a * 0.1 or std_b >= avg_b * 0.1 or \
-               std_c >= avg_c * 0.1 or std_alpha >= avg_alpha * 0.1 or \
-               std_beta >= avg_beta * 0.1 or std_gamma >= avg_gamma * 0.1
-
-    if uc_check and sg == cons_sg:
-        morphology_warning = True
-    else:
-        morphology_warning = False
-
-  return uc_table, morphology_warning, cons_sg, cons_uc
-
 
 def print_results(clean_results, gs_range, logfile):
   """ Prints diagnostics from the final integration run.
@@ -248,7 +192,7 @@ def unit_cell_analysis(cluster_threshold, logfile, int_pickle_file):
     uc_table.append(uc_line)
 
     if mark_output != '':
-      out_file = os.path.abspath(mark_output)
+      out_file = os.path.abspath(output_file)
     else:
       out_file = os.path.abspath(int_pickle_file)
 

@@ -3,8 +3,8 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 06/12/2015
-Description : IOTA command-line module. Version 1.62
+Last Changed: 06/18/2015
+Description : IOTA command-line module. Version 1.63
 '''
 
 help_message = '\n{:-^70}'\
@@ -271,7 +271,7 @@ def experimental(mp_input_list, gs_params, log_dir):
 
 if __name__ == "__main__":
 
-  iota_version = '1.62'
+  iota_version = '1.63'
   now = "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now())
   logo = "\n\n"\
    "     IIIIII          OOOO         TTTTTTTTTT           A              \n"\
@@ -305,6 +305,8 @@ if __name__ == "__main__":
             help = 'Find and exclude blank images using basic spotfinding')
   parser.add_argument('-r', type=int, nargs=1, default=0,
             help = 'Run IOTA with a random subset of images, e.g. "-r 5"')
+  parser.add_argument('-n', type=int, nargs=1, default=0,
+            help = 'Specify a number of cores for a multiprocessor run"')
 
   args = parser.parse_args()
   print logo
@@ -340,6 +342,9 @@ if __name__ == "__main__":
     gs_params.advanced.random_sample.flag_on = True
     gs_params.advanced.random_sample.number = args.r[0]
 
+  if args.n > 0:
+    gs_params.n_processors = args.n[0]
+
   input_list = inp.make_input_list(gs_params)
 
   if args.l:
@@ -356,7 +361,7 @@ if __name__ == "__main__":
   # Check if input needs to be converted to pickle format; also check if input
   # images need to be cropped / padded to be square, w/ beam center in the
   # center of image. If these steps are needed, carry them out
-  if gs_params.grid_search.flag_on:
+  if gs_params.grid_search.flag_on and gs_params.advanced.convert_images:
     img_check = i2p.check_image(input_list[0])
     if img_check == 'image' or img_check == 'raw pickle':
       square = gs_params.advanced.square_mode
