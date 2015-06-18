@@ -218,7 +218,7 @@ def create_filenames(img_file, dest_dir):
 
   return masked_file
 
-def mask_image(data):
+def mask_image(data, beamstop):
   """ Identifies beamstop shadow and sets pixels inside to -2 (to be ignored by
       processing software). Clunky now (merely finds all pixels with intensity
       less than 0.4 * image average intensity), to be refined later.
@@ -230,7 +230,7 @@ def mask_image(data):
 
   img_raw_bytes = data['DATA']
 
-  img_thresh = int((0.45*flex.mean(img_raw_bytes.as_double())))
+  img_thresh = int((beamstop*flex.mean(img_raw_bytes.as_double())))
   beam_stop_sel = img_raw_bytes <= img_thresh
   img_masked = img_raw_bytes.set_selected(beam_stop_sel, -2)
 
@@ -238,7 +238,7 @@ def mask_image(data):
   return data
 
 
-def convert_image(img_in, img_out, square, beamstop=True):
+def convert_image(img_in, img_out, square, beamstop=0):
   """ Converts images into pickle format; crops and masks out beamstop if
       selected
 
@@ -257,8 +257,8 @@ def convert_image(img_in, img_out, square, beamstop=True):
   if square != "None":
     img_data = square_pickle(img_data, square)
 
-  if beamstop:
-    img_data = mask_image(img_data)
+  if beamstop != 0:
+    img_data = mask_image(img_data, beamstop)
 
   info_line = '{:<{width}} BEAM_X = {:<4.2f}, BEAM_Y = {:<4.2f}, '\
               'PIXEL_SIZE = {:<8.6f}, IMG_SIZE = {:<4} X {:<4}'\

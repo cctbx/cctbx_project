@@ -365,7 +365,7 @@ if __name__ == "__main__":
     img_check = i2p.check_image(input_list[0])
     if img_check == 'image' or img_check == 'raw pickle':
       square = gs_params.advanced.square_mode
-      beamstop = gs_params.advanced.erase_beamstop
+      beamstop = gs_params.advanced.beamstop
       converted_img_list, input_folder = inp.make_raw_input(input_list, gs_params)
       raw_input_list = zip(input_list, converted_img_list)
 
