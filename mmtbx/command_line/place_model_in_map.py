@@ -190,11 +190,12 @@ def run(args,out=sys.stdout):
    "mtz_in=%s" %(mtz_file_name),
    "offset_pdb=%s" %(params.output_files.pdb_out),
    "quick=True",
+   "resolution=%7.1f" %(d_min),
    "temp_dir=%s" %(params.directories.temp_dir),
    "output_dir=%s" %(os.getcwd()),
    ]
   print >>out,"\nTranslating MR model to match map..."
-  cc_mtz_pdb=get_cc_mtz_pdb(cc_args,out=local_out)
+  cc_mtz_pdb=get_cc_mtz_pdb(cc_args,copy_extra_columns=False,out=local_out)
   cc_value=cc_mtz_pdb.found_region
 
   assert os.path.isfile(params.output_files.pdb_out) 
