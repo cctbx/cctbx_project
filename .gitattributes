@@ -2097,6 +2097,8 @@ mmtbx/regression/ncs/tst_minimization_ncs_constraints3.py -text
 mmtbx/regression/ncs/tst_minimization_ncs_constraints_real_space.py -text
 mmtbx/regression/ncs/tst_ncs_search.py -text
 mmtbx/regression/ncs/tst_ncs_utils.py -text
+mmtbx/regression/place_model_in_map/poor_map_2mFo-DFc.ccp4 -text
+mmtbx/regression/place_model_in_map/std_full.pdb -text
 mmtbx/regression/tls/__init__.py -text
 mmtbx/regression/tls/data_tls_analysis/dec04_test000.mes -text
 mmtbx/regression/tls/data_tls_analysis/dec04_test001.mes -text
@@ -2171,6 +2173,7 @@ mmtbx/regression/tst_models_to_from_chains.py -text
 mmtbx/regression/tst_msa.py -text
 mmtbx/regression/tst_mtz2map.py -text
 mmtbx/regression/tst_pdbtools.py -text
+mmtbx/regression/tst_place_model.py -text
 mmtbx/regression/tst_prune_model.py -text
 mmtbx/regression/tst_real_space_correlation.py -text
 mmtbx/regression/tst_refine_anomalous_substructure.py svneol=native#text/x-python
