@@ -19,7 +19,7 @@ def tst_01():
   file_name,cc_to_map=run(args)
   print "File: %s, CC to map: %5.2f " %(file_name,cc_to_map)
   assert file_name=="placed_model.pdb"
-  assert "%4.2f" %(cc_to_map)=="0.76"
+  assert cc_to_map>=0.75 and cc_to_map <=0.78
 
 
 if (__name__ == "__main__"):
