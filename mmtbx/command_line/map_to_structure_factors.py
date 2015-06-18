@@ -149,31 +149,33 @@ def run(args, log=None, ccp4_map=None, return_as_miller_arrays=False, nohl=False
   mtz_dataset.add_miller_array(
     miller_array      = f_obs.generate_r_free_flags(),
     column_root_label = "R-free-flags")
-  # convert phases into HL coefficeints
-  broadcast(m="Convert phases into HL coefficeints:", log=log)
-  hl = get_hl(f_obs_cmpl=f_obs_cmpl, k_blur=params.k_blur, b_blur=params.b_blur)
-  cc = get_cc(f = f_obs_cmpl, hl = hl)
-  print >>out, "cc:", cc
-  if(abs(1.-cc)>1.e-3):
-    print >>out, "Supplied b_blur is not good. Attempting to find optimal b_blur."
-    cc_best = 999.
-    b_blur_best = params.b_blur
-    for b_blur in range(1, 100):
-      hl = get_hl(f_obs_cmpl=f_obs_cmpl, k_blur=params.k_blur, b_blur=b_blur)
-      cc = get_cc(f = f_obs_cmpl, hl = hl)
-      if(cc<cc_best):
-        cc_best = cc
-        b_blur_best = b_blur
-      if(abs(1.-cc)<1.e-3):
-        b_blur_best = b_blur
-        break
-    hl = get_hl(f_obs_cmpl=f_obs_cmpl, k_blur=params.k_blur, b_blur=b_blur_best)
-    print >>out,"cc:", get_cc(f = f_obs_cmpl, hl = hl)
-    print >>out,"b_blur_best:", b_blur_best
-  mtz_dataset.add_miller_array(
-    miller_array      = hl,
-    column_root_label = "HL")
-
+  if not nohl:
+    # convert phases into HL coefficeints
+    broadcast(m="Convert phases into HL coefficients:", log=log)
+    hl = get_hl(f_obs_cmpl=f_obs_cmpl, k_blur=params.k_blur, b_blur=params.b_blur)
+    cc = get_cc(f = f_obs_cmpl, hl = hl)
+    print >>out, "cc:", cc
+    if(abs(1.-cc)>1.e-3):
+      print >>out, "Supplied b_blur is not good. Attempting to find optimal b_blur."
+      cc_best = 999.
+      b_blur_best = params.b_blur
+      for b_blur in range(1, 100):
+        hl = get_hl(f_obs_cmpl=f_obs_cmpl, k_blur=params.k_blur, b_blur=b_blur)
+        cc = get_cc(f = f_obs_cmpl, hl = hl)
+        if(cc<cc_best):
+          cc_best = cc
+          b_blur_best = b_blur
+        if(abs(1.-cc)<1.e-3):
+          b_blur_best = b_blur
+          break
+      hl = get_hl(f_obs_cmpl=f_obs_cmpl, k_blur=params.k_blur, b_blur=b_blur_best)
+      print >>out,"cc:", get_cc(f = f_obs_cmpl, hl = hl)
+      print >>out,"b_blur_best:", b_blur_best
+    mtz_dataset.add_miller_array(
+      miller_array      = hl,
+      column_root_label = "HL")
+  else:
+    hl=None
   if return_as_miller_arrays:
     return f_obs_cmpl,hl
   else:
