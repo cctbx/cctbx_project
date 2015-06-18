@@ -120,9 +120,9 @@ advanced
   square_mode = None *pad crop
     .type = choice
     .help = Method to generate square image
-  erase_beamstop = False
-    .type = bool
-    .help = Set to True to find beamstop shadow and set pixels to -2
+  beamstop = 0
+    .type = float
+    .help = Beamstop shadow threshold, zero to skip
   pred_img
     .help = "Visualize spotfinding and integration results."
   {
