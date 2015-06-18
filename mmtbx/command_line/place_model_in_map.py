@@ -117,7 +117,7 @@ def guess_mw(file_name):
   mw=n_atoms*6.7 # Hendrickson, W.A. (2014) Quarterly Rev. Biophys. 47, 49-93.
   print "\nTotal of %d atoms. Molecular mass is about %.0f Da"%(
      hierarchy.overall_counts().n_atoms,mw)
-  return mw
+  return hierarchy,mw,n_atoms
 
 def run(args,out=sys.stdout):
 
@@ -141,9 +141,16 @@ def run(args,out=sys.stdout):
     "d_min=%s" %(str(d_min))]
   mtsf(mtsf_args,nohl=True,out=out)
 
+  hierarchy,mw,n_atoms=guess_mw(params.input_files.pdb_file)
   if params.place_model.molecular_mass is None:
-    params.place_model.molecular_mass=guess_mw(params.input_files.pdb_file)
+    params.place_model.molecular_mass=mw
 
+  # write out the file again so Phaser can read it (phaser can't read cif)
+  f=open(os.path.join(params.directories.temp_dir,'starting_model.pdb'),'w')
+  pdb_for_phaser=f.name
+  print >>f,hierarchy.as_pdb_string()
+  f.close()
+  print >>out,"\nStarting model copied to %s" %(pdb_for_phaser)
   # Now just do MR using the data in our temporary mtz file
   root="mr"
   phaser_file_name=root+".1.pdb"
@@ -151,7 +158,7 @@ def run(args,out=sys.stdout):
    "mode=MR_AUTO",
    "%s" %(mtz_file_name),
    "labin=F-obs,SIGF-obs",
-   "%s" %(params.input_files.pdb_file),
+   "%s" %(pdb_for_phaser),
    "mol_weight=%.0f" %(params.place_model.molecular_mass),
    "model_identity=90",
    "component_copies=1",
@@ -192,6 +199,7 @@ def run(args,out=sys.stdout):
 
   assert os.path.isfile(params.output_files.pdb_out) 
   print >>out,"\nModel matching map is in %s\n" %(params.output_files.pdb_out)
+  print >>out,"CC of model to map is %5.2f" %(cc_value)
 
   if params.control.clean_up:
     print >>out,"Removing temporary directory %s" %(params.directories.temp_dir)
