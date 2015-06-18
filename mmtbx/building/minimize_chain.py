@@ -334,7 +334,7 @@ def run(args,
   best_result=[]
   for cycle in xrange(1,max(2,params.minimization.number_of_build_cycles+1)):
     # and run one cycle
-    print >>out,"\nCycle %d of building " %(cycle)
+    print >>out,"\nCycle %d of refinement" %(cycle)
     pdb_hierarchy,xray_structure,states,score=run_one_cycle(
       params=params,
       map_data=map_data,

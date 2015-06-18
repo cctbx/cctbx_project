@@ -88,7 +88,7 @@ def get_params(args,out=sys.stdout):
       if arg.find("=")<0 and not os.path.isfile(arg):
         try:
           params.place_model.resolution=float(arg)
-        except: pass
+        except Exception: pass  # no need
 
   if not params.place_model.resolution:
     raise Sorry("Need to specify resolution=xxx for place_model_in_map")
