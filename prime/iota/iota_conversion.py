@@ -127,7 +127,6 @@ def check_image(img):
 
   return verdict
 
-
 def square_pickle(data, square='crop'):
   """ A function to crop the image pickle to a square such that the beam center
       is in the center of image (mostly copied from cxi_image2pickle.py)
@@ -238,7 +237,7 @@ def mask_image(data, beamstop):
   return data
 
 
-def convert_image(img_in, img_out, square, beamstop=0):
+def convert_image(img_in, img_out, square, beamstop=0, beam_center=[0,0]):
   """ Converts images into pickle format; crops and masks out beamstop if
       selected
 
@@ -253,6 +252,11 @@ def convert_image(img_in, img_out, square, beamstop=0):
   """
 
   img_data = load_image(img_in)
+
+  if beam_center != [0,0]:
+    pixel_size = img_data['PIXEL_SIZE']
+    img_data['BEAM_CENTER_X'] = int(round(beam_center[0] * pixel_size))
+    img_data['BEAM_CENTER_Y'] = int(round(beam_center[1] * pixel_size))
 
   if square != "None":
     img_data = square_pickle(img_data, square)
