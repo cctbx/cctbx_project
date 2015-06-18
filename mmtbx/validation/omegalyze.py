@@ -33,6 +33,9 @@ def get_master_phil():
     kinemage = False
       .type = bool
       .help = "Prints kinemage markup for cis-peptides"
+    oneline = False
+      .type = bool
+      .help = "Prints oneline-style summary statistics"
     help = False
       .type = bool
       .help = "Prints this help message if true"
@@ -384,6 +387,27 @@ class omegalyze(validation):
       self.omega_count[OMEGA_GENERAL][OMEGALYZE_TWISTED],
       self.residue_count[OMEGA_GENERAL])
 
+  def summary_only(self, out=sys.stdout, pdbid="pdbid"):
+    out.write(os.path.basename(pdbid) + ":")
+    if self.omega_count[OMEGA_PRO][OMEGALYZE_CIS] == 0:
+      out.write("0:")
+    else:
+      out.write('%.3f' % (self.omega_count[OMEGA_PRO][OMEGALYZE_CIS]/self.residue_count[OMEGA_PRO]*100)+":")
+    if self.omega_count[OMEGA_PRO][OMEGALYZE_TWISTED] == 0:
+      out.write("0:")
+    else:
+      out.write('%.3f' % (self.omega_count[OMEGA_PRO][OMEGALYZE_TWISTED]/self.residue_count[OMEGA_GENERAL]*100)+":")
+    out.write("%i" % self.residue_count[OMEGA_PRO] + ":")
+    if self.omega_count[OMEGA_GENERAL][OMEGALYZE_CIS] == 0:
+      out.write("0:")
+    else:
+      out.write('%.3f' % (self.omega_count[OMEGA_GENERAL][OMEGALYZE_CIS]/self.residue_count[OMEGA_GENERAL]*100)+":")
+    if self.omega_count[OMEGA_GENERAL][OMEGALYZE_TWISTED] == 0:
+      out.write("0:")
+    else:
+      out.write('%.3f' % (self.omega_count[OMEGA_GENERAL][OMEGALYZE_TWISTED]/self.residue_count[OMEGA_GENERAL]*100)+":")
+    out.write("%i" % self.residue_count[OMEGA_GENERAL] + "\n")
+
 def write_header(writeto=sys.stdout):
   writeto.write("residue:omega:evaluation\n")
 
@@ -469,8 +493,11 @@ def run (args, out=sys.stdout, quiet=False) :
     quiet=quiet)
   if params.kinemage:
     print >> out, result.as_kinemage()
+  elif params.oneline:
+    result.summary_only(pdbid=params.model)
   elif params.text:
     result.show_old_output(out=out, verbose=True)
+
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
