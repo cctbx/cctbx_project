@@ -67,6 +67,9 @@ if (__name__ == "__main__"):
   iparams, txt_out_input = read_input(sys.argv[:1])
   iparams.flag_volume_correction = False
   iparams.flag_apply_b_by_frame = True
+  if iparams.flag_normalized:
+    iparams.flag_apply_b_by_frame = False
+    iparams.b_refine_d_min = -1
   print txt_out_input
   txt_out_verbose = 'Log verbose\n'+txt_out_input
 
@@ -190,6 +193,11 @@ if (__name__ == "__main__"):
         f = open(iparams.run_no+'/log.txt', 'w')
         f.write(txt_out)
         f.close()
+
+        if iparams.flag_output_verbose:
+          f = open(iparams.run_no+'/log_verbose.txt', 'w')
+          f.write(txt_out_verbose)
+          f.close()
         exit()
 
   if iparams.hklrefin is not None:
@@ -211,7 +219,6 @@ if (__name__ == "__main__"):
       if is_found_ref_as_amplitude_array:
         miller_array_ref = miller_array_converted_to_intensity.deep_copy()
 
-
   if miller_array_ref is None:
     print 'No reference intensity. Exit without post-refinement'
     exit()
@@ -228,8 +235,8 @@ if (__name__ == "__main__"):
     else:
       avg_mode = 'weighted'
 
-    if i_iter > 0:
-      iparams.b_refine_d_min = 0.5
+    if iparams.postref.reflecting_range.flag_on and i_iter > 0:
+      iparams.b_refine_d_min = -1
 
     _txt_merge_postref = 'Start post-refinement cycle '+str(i_iter+1)+'\n'
     _txt_merge_postref += 'Average mode: '+avg_mode+'\n'
@@ -345,4 +352,8 @@ if (__name__ == "__main__"):
     f = open(iparams.run_no+'/log_verbose.txt', 'w')
     f.write(txt_out_verbose)
     f.close()
+
+  #remove rejections.txt
+  if os.path.isfile(iparams.run_no+'/rejections.txt'):
+    os.remove(iparams.run_no+'/rejections.txt')
 

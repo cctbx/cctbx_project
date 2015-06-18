@@ -28,10 +28,13 @@ class postref_handler(object):
     """Given the pickle file, extract and prepare observations object and
     the alpha angle (meridional to equatorial).
     """
-    if avg_mode == 'final':
-      target_anomalous_flag = iparams.target_anomalous_flag
+    if iparams.flag_weak_anomalous:
+      if avg_mode == 'final':
+        target_anomalous_flag = iparams.target_anomalous_flag
+      else:
+        target_anomalous_flag = False
     else:
-      target_anomalous_flag = False
+      target_anomalous_flag = iparams.target_anomalous_flag
 
     observations = observations_pickle["observations"][0]
     if iparams.reindex_op == 'h,k,l':
@@ -184,7 +187,7 @@ class postref_handler(object):
       spot_pred_y_mm = spot_pred_y_mm_set[:]
 
 
-    if iparams.flag_apply_b_by_frame:
+    if iparams.flag_apply_b_by_frame or iparams.flag_normalized:
       try:
         asu_contents = {}
         if iparams.n_residues is None:
@@ -196,31 +199,24 @@ class postref_handler(object):
         observations_as_f = observations.as_amplitude_array()
         binner_template_asu = observations_as_f.setup_binner(auto_binning=True)
         wp = statistics.wilson_plot(observations_as_f, asu_contents, e_statistics=True)
+
+        normalised_f_obs = wp.normalised_f_obs
+        centric_flags = normalised_f_obs.centric_flags()
+        select_flags = flex.bool([True]*len(normalised_f_obs.data()))
+        i_f_obs = 0
+        for centric_flag in centric_flags.data():
+          if centric_flag:
+            e_thres = 4.89
+          else:
+            e_thres = 3.72
+          if normalised_f_obs.data()[i_f_obs] > e_thres:
+            select_flags[i_f_obs] = False
+          i_f_obs += 1
+
+        observations = observations.select(select_flags)
+
         if wp.wilson_b < 0:
           return None, 'Image rejected from scaling'
-
-        if iparams.flag_outlier_rejection:
-          normalised = observations_as_f.normalised_amplitudes(asu_contents, wilson_plot=wp)
-          normalised_f_obs = normalised.array()
-          centric_flags = normalised_f_obs.centric_flags()
-          select_flags = flex.bool([False]*len(normalised_f_obs.indices()))
-          i_f_obs = 0
-          for centric_flag in centric_flags.data():
-            if centric_flag:
-              e_thres = 4.89
-            else:
-              e_thres = 3.72
-            if normalised_f_obs.data()[i_f_obs] < e_thres:
-              select_flags[i_f_obs] = True
-            i_f_obs += 1
-
-          if len(select_flags.select(select_flags == True)) < len(observations.indices()) \
-          and iparams.flag_output_verbose:
-            print 'Outliers detected: ', len(observations.indices())-len(select_flags.select(select_flags == True)), ' reflections rejected.'
-          observations = observations.select(select_flags)
-          alpha_angle_obs = alpha_angle_obs.select(select_flags)
-          spot_pred_x_mm = spot_pred_x_mm.select(select_flags)
-          spot_pred_y_mm = spot_pred_y_mm.select(select_flags)
 
       except Exception:
         return None, 'Warning: problem with Wilson B-factor - continue.'
@@ -257,6 +253,7 @@ class postref_handler(object):
       reflection_file_polar = reflection_file_reader.any_reflection_file(iparams.indexing_ambiguity.index_basis_in)
       miller_arrays_polar=reflection_file_polar.as_miller_arrays()
       miller_array_polar = miller_arrays_polar[0]
+      miller_array_polar = miller_array_polar.resolution_filter(d_min=3.5, d_max=20)
 
       observations_asu = observations_original.map_to_asu()
       observations_rev = self.get_observations_non_polar(observations_original, 'k,h,-l')
@@ -366,7 +363,7 @@ class postref_handler(object):
                                                                    observations_non_polar_sel,
                                                                    detector_distance_mm)
     except Exception:
-      return None, 'Optimization failed. '+pickle_filepaths[len(pickle_filepaths)-1]
+      return None, 'Error - post-refinement (optimize)'
 
     #caculate partiality for output (with target_anomalous check)
     G_fin, B_fin, rotx_fin, roty_fin, ry_fin, rz_fin, r0_fin, re_fin, \
@@ -413,6 +410,38 @@ class postref_handler(object):
         data=observations_original.data().select(i_sel),
         sigmas=observations_original.sigmas().select(i_sel))
 
+    if iparams.flag_normalized:
+      asu_contents = {}
+      if iparams.n_residues is None:
+        asu_volume = iparams.target_unit_cell.volume()/float(observations_non_polar_sel.space_group().order_z())
+        number_carbons = asu_volume/18.0
+      else:
+        number_carbons = iparams.n_residues * 5.35
+      asu_contents.setdefault('C', number_carbons)
+
+      #correct for partiality
+      observations_non_polar_full_sel = observations_non_polar_sel.customized_copy(\
+          data=observations_non_polar_sel.data()/partiality_fin_sel, \
+          sigmas=observations_non_polar_sel.sigmas()/partiality_fin_sel)
+      observations_as_f = observations_non_polar_full_sel.as_amplitude_array()
+
+      try:
+        binner_template_asu = observations_as_f.setup_binner(auto_binning=True)
+        wp = statistics.wilson_plot(observations_as_f, asu_contents, e_statistics=True)
+        w_I = observations_non_polar_full_sel.data()/ observations_non_polar_full_sel.sigmas()
+        new_sigmas = (wp.normalised_f_obs.data()*1)/w_I
+
+        #output normalized structure factors
+        observations_non_polar_sel = observations_non_polar_sel.customized_copy(data=wp.normalised_f_obs.data()*1, \
+                sigmas=new_sigmas)
+        observations_original_sel = observations_original_sel.customized_copy(data=wp.normalised_f_obs.data()*1, \
+                sigmas=new_sigmas)
+        #reset partiality
+        partiality_fin_sel = flex.double([1]*len(observations_original_sel.data()))
+      except Exception:
+        return None, 'Error post-refinement'
+
+
     pres = postref_results()
     pres.set_params(observations = observations_non_polar_sel,
             observations_original = observations_original_sel,
@@ -426,9 +455,10 @@ class postref_handler(object):
             wavelength=wavelength,
             crystal_orientation=crystal_fin_orientation)
 
+
     txt_postref = '%6.0f %5.2f %6.0f %9.0f %8.2f %8.2f %6.2f %6.2f %6.2f %6.2f %6.2f %8.2f %6.2f %6.2f %6.2f %5.2f %5.2f %5.2f %6.2f '%( \
       pres.frame_no, observations_non_polar.d_min(), len(observations_non_polar.indices()), \
-      n_refl_postrefined, pres.R_init, pres.R_final, pres.R_xy_init, pres.R_xy_final, \
+      n_refl_postrefined, math.sqrt(pres.R_init), math.sqrt(pres.R_final), pres.R_xy_init, pres.R_xy_final, \
       pres.CC_init*100, pres.CC_final*100,pres.CC_iso_init*100, pres.CC_iso_final*100, \
       a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin, detector_distance_mm)+ \
       pickle_filepaths[len(pickle_filepaths)-1]
@@ -501,61 +531,16 @@ class postref_handler(object):
     wavelength = observations_pickle["wavelength"]
     crystal_init_orientation = observations_pickle["current_orientation"][0]
 
-    #select only reflections matched with scale input params.
-    #filter by resolution
-    i_sel_res = observations_original.resolution_filter_selection(d_min=iparams.scale.d_min,
-                                                                  d_max=iparams.scale.d_max)
-    observations_original_sel = observations_original.customized_copy( \
-      indices=observations_original.indices().select(i_sel_res),
-      data=observations_original.data().select(i_sel_res),
-      sigmas=observations_original.sigmas().select(i_sel_res))
-    alpha_angle_sel = alpha_angle.select(i_sel_res)
-    spot_pred_x_mm_sel = spot_pred_x_mm.select(i_sel_res)
-    spot_pred_y_mm_sel = spot_pred_y_mm.select(i_sel_res)
-
-    #filter by sigma
-    i_sel_sigmas = (observations_original_sel.data()/observations_original_sel.sigmas()) > iparams.scale.sigma_min
-    observations_original_sel = observations_original_sel.customized_copy(\
-      indices=observations_original_sel.indices().select(i_sel_sigmas),
-      data=observations_original_sel.data().select(i_sel_sigmas),
-      sigmas=observations_original_sel.sigmas().select(i_sel_sigmas))
-    alpha_angle_sel = alpha_angle_sel.select(i_sel_sigmas)
-    spot_pred_x_mm_sel = spot_pred_x_mm_sel.select(i_sel_sigmas)
-    spot_pred_y_mm_sel = spot_pred_y_mm_sel.select(i_sel_sigmas)
-
+    #get non-polar observations
     polar_hkl, cc_iso_raw_asu, cc_iso_raw_rev = self.determine_polar(observations_original, iparams, pickle_filename)
-    observations_non_polar_sel = self.get_observations_non_polar(observations_original_sel,
-                                                                 polar_hkl)
     observations_non_polar = self.get_observations_non_polar(observations_original, polar_hkl)
 
     uc_params = observations_original.unit_cell().parameters()
     from mod_leastsqr import calc_spot_radius
     r0 = calc_spot_radius(sqr(crystal_init_orientation.reciprocal_matrix()),
-                                          observations_original_sel.indices(), wavelength)
+                                          observations_original.indices(), wavelength)
 
-    #calculate first G
-    G = mean_of_mean_I/np.median(observations_original_sel.data())
-    B = 0
-    stats = (0,0,0,0,0,0,0,0,0,0)
-    if iparams.flag_apply_b_by_frame:
-      try:
-        asu_contents = {}
-        if iparams.n_residues is None:
-          asu_volume = iparams.target_unit_cell.volume()/float(observations_non_polar.space_group().order_z())
-          number_carbons = asu_volume/18.0
-        else:
-          number_carbons = iparams.n_residues * 5.35
-        asu_contents.setdefault('C', number_carbons)
-        observations_as_f = observations_non_polar.as_amplitude_array()
-        binner_template_asu = observations_as_f.setup_binner(auto_binning=True)
-        wp = statistics.wilson_plot(observations_as_f, asu_contents, e_statistics=True)
-        G = wp.wilson_intensity_scale_factor
-        B = wp.wilson_b
-      except Exception:
-        print 'Error'
-        return None, 'Warning: problem in mean scaling - continue.'
-
-
+    #calculate partiality
     from mod_leastsqr import calc_partiality_anisotropy_set
     two_theta = observations_original.two_theta(wavelength=wavelength).data()
     sin_theta_over_lambda_sq = observations_original.two_theta(wavelength=wavelength).sin_theta_over_lambda_sq().data()
@@ -570,19 +555,46 @@ class postref_handler(object):
                                                           crystal_init_orientation, spot_pred_x_mm, spot_pred_y_mm,
                                                           detector_distance_mm, iparams.partiality_model,
                                                           iparams.flag_beam_divergence)
+    #update intensity
+    observations_non_polar_full = observations_non_polar.customized_copy(data=observations_non_polar.data()/partiality_init, \
+        sigmas=observations_non_polar.sigmas()/partiality_init)
 
-    if iparams.flag_plot_expert:
-      n_bins = 20
-      binner = observations_original.setup_binner(n_bins=n_bins)
-      binner_indices = binner.bin_indices()
-      avg_partiality_init = flex.double()
-      avg_rs_init = flex.double()
-      avg_rh_init = flex.double()
-      one_dsqr_bin = flex.double()
-      for i in range(1,n_bins+1):
-        i_binner = (binner_indices == i)
-        if len(observations_original.data().select(i_binner)) > 0:
-          print binner.bin_d_range(i)[1], np.mean(partiality_init.select(i_binner)), np.mean(rs_init.select(i_binner)), np.mean(rh_init.select(i_binner)), len(partiality_init.select(i_binner))
+    #calculate first G
+    G = mean_of_mean_I/np.median(observations_non_polar.data())
+    B = 0
+    stats = (0,0,0,0,0,0,0,0,0,0)
+
+    if iparams.flag_apply_b_by_frame or iparams.flag_normalized:
+      try:
+        asu_contents = {}
+        if iparams.n_residues is None:
+          asu_volume = iparams.target_unit_cell.volume()/float(observations_non_polar_full.space_group().order_z())
+          number_carbons = asu_volume/18.0
+        else:
+          number_carbons = iparams.n_residues * 5.35
+        asu_contents.setdefault('C', number_carbons)
+        observations_as_f = observations_non_polar_full.as_amplitude_array()
+        binner_template_asu = observations_as_f.setup_binner(auto_binning=True)
+        wp = statistics.wilson_plot(observations_as_f, asu_contents, e_statistics=True)
+
+      except Exception:
+        print 'Error'
+        return None, 'Warning: problem in mean scaling - continue.'
+
+    if iparams.flag_apply_b_by_frame:
+      G, B = (wp.wilson_intensity_scale_factor,wp.wilson_b)
+
+    if iparams.flag_normalized:
+      #output normalized structure factors
+      w_I = observations_non_polar_full.data()/ observations_non_polar_full.sigmas()
+      new_sigmas = (wp.normalised_f_obs.data()*1)/w_I
+      observations_non_polar = observations_non_polar.customized_copy(data=wp.normalised_f_obs.data()*1, \
+            sigmas=new_sigmas)
+      observations_original = observations_original.customized_copy(data=wp.normalised_f_obs.data()*1, \
+            sigmas=new_sigmas)
+      #reset partiality and scale factors
+      partiality_init = flex.double([1]*len(observations_original.data()))
+      G, B = (1,0)
 
 
     refined_params = np.array([G,B,rotx,roty,ry,rz,r0,re,uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5]])
@@ -599,10 +611,9 @@ class postref_handler(object):
             pickle_filename=pickle_filename,
             wavelength=wavelength)
 
-    txt_scale_frame_by_mean_I = '%6.0f %6.2f %6.0f %6.0f %14.2f %14.2f %14.2f %6.2f %6.2f %6.2f %6.2f %6.2f %5.2f %5.2f %5.2f '%(frame_no,
-      observations_original.d_min(), len(observations_original.data()), len(observations_original_sel.data()),
-      np.sum(observations_original_sel.data()), np.mean(observations_original_sel.data()),
-      np.median(observations_original_sel.data()), G, B,
+    txt_scale_frame_by_mean_I = '%6.0f %6.2f %6.0f %6.0f %6.4f %6.2f %6.2f %6.2f %6.2f %5.2f %5.2f %5.2f '%(frame_no,
+      observations_original.d_min(), len(observations_original.data()), len(observations_original.data()),
+      G, B,
       uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5])+pickle_filepaths[len(pickle_filepaths)-1]
 
     print txt_scale_frame_by_mean_I
@@ -659,3 +670,4 @@ def read_input(args):
   from mod_input import process_input
   iparams, txt_out_input = process_input(args)
   return iparams, txt_out_input
+
