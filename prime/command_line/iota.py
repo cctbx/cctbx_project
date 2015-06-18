@@ -104,7 +104,7 @@ def conversion_wrapper(img_entry):
   else:
     gs_prog.finished()
 
-  return i2p.convert_image(img_entry[0], img_entry[1], square, beamstop)
+  return i2p.convert_image(img_entry[0], img_entry[1], square, beamstop, beam_center)
 
 
 def triage_mproc_wrapper(current_img):
@@ -366,6 +366,7 @@ if __name__ == "__main__":
     if img_check == 'image' or img_check == 'raw pickle':
       square = gs_params.advanced.square_mode
       beamstop = gs_params.advanced.beamstop
+      beam_center = [gs_params.advanced.beam_center.x, gs_params.advanced.beam_center.y]
       converted_img_list, input_folder = inp.make_raw_input(input_list, gs_params)
       raw_input_list = zip(input_list, converted_img_list)
 

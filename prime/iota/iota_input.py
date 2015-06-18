@@ -123,6 +123,14 @@ advanced
   beamstop = 0
     .type = float
     .help = Beamstop shadow threshold, zero to skip
+  beam_center
+    .help = Alternate beam center coordinates ("0" if leave the same)
+  {
+    x = 0
+      .type = float
+    y = 0
+      .type = float
+  }
   pred_img
     .help = "Visualize spotfinding and integration results."
   {
@@ -567,7 +575,7 @@ def write_defaults(current_path, txt_out):
                     '  }',
                     '}',
                     'mosaicity_limit=2.0',
-                    'dist_permit_binning=False',
+                    'distl_permit_binning=False',
                     'distl_minimum_number_spots_for_indexing=16',
                     'distl_permit_binning=False',
                     'beam_search_scope=5'
