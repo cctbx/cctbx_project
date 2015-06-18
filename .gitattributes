@@ -1743,7 +1743,6 @@ mmtbx/command_line/partial_omit_map.py svneol=native#text/x-python
 mmtbx/command_line/pdb_atom_selection.py svneol=native#text/x-python
 mmtbx/command_line/pdb_view_ad_hoc.py svneol=native#text/x-python
 mmtbx/command_line/pdbtools.py -text
-mmtbx/command_line/place_model_in_map.py -text
 mmtbx/command_line/plan_sad_experiment.py -text
 mmtbx/command_line/prepare_pdb_deposition.py -text
 mmtbx/command_line/prune_model.py -text
