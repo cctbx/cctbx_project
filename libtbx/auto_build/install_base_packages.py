@@ -631,16 +631,17 @@ Installation of Python packages may fail.
   def build_pythonextra(self):
     '''install all python packages found in base_tmp/python_extra/'''
 
-    python_extra_dir = os.path.join(self.tmp_dir, 'python_extra')
-    if os.path.exists(python_extra_dir):
+    python_extra_dir = 'python_extra'
+    python_extra_full_path = os.path.join(self.tmp_dir, python_extra_dir)
+    if os.path.exists(python_extra_full_path):
       print >> self.log, "Installing further python packages...\n"
     else:
       print >> self.log, "No further python packages to install."
       return True
 
-    files = [ f for f in os.listdir(python_extra_dir) if f.endswith(".tar.gz") ]
+    files = [ f for f in os.listdir(python_extra_full_path) if f.endswith(".tar.gz") ]
 
-    python_extra_order = os.path.join(python_extra_dir, 'install.order')
+    python_extra_order = os.path.join(python_extra_full_path, 'install.order')
     if os.path.exists(python_extra_order):
       f = open(python_extra_order)
       reorder = []
@@ -655,7 +656,8 @@ Installation of Python packages may fail.
 
     for pkg in files:
       self.build_python_module_simple(
-        pkg_url=None, pkg_local_file=os.path.join(python_extra_dir, pkg), pkg_name=pkg, pkg_name_label=pkg[:-7])
+        pkg_url=None, pkg_local_file=os.path.join(python_extra_full_path, pkg),
+        pkg_name=pkg, pkg_name_label=os.path.join(python_extra_dir, pkg[:-7]))
 
   def simple_log_parse_test(self, log_filename, line):
     if not os.path.exists(log_filename): return False
