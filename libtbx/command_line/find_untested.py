@@ -6,7 +6,8 @@ def find_all_tst_dot_py_files(root_dir):
   result = []
   for root, dirs, files in os.walk(root_dir):
     for f in files:
-      if([f.startswith("tst"),f.endswith(".py")].count(True)==2):
+      if([f.startswith("tst"),f.startswith("test")].count(True)==1 and
+          f.endswith(".py")):
         result.append("/".join([root,f]))
   return result
 
@@ -15,7 +16,8 @@ def extract_tests_from_run_tests_dot_py(file_name, full_path):
   unique_files = []
   for line in fo.readlines():
     line = line.strip()
-    if([line.count("$D"), line.count(".py"), line.count("tst")].count(True)==3):
+    if([line.count("$D"), line.count(".py")].count(True)==2 and
+       [line.startswith("tst"),line.startswith("test")].count(True)==1):
       line = line.split()[0]
       for c in ["[","$D","#",",",'"']: line=line.replace(c,"")
       if(not line in unique_files): unique_files.append(line)
