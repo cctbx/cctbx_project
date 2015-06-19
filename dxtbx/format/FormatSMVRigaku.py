@@ -32,6 +32,16 @@ class FormatSMVRigaku(FormatSMV):
       if not header_item in header:
         return False
 
+    # code around CMOS1 on ALS 4.2.2
+
+    detector_prefixes = header['DETECTOR_NAMES'].split()
+
+    if len(detector_prefixes) == 1:
+      prefix = detector_prefixes[0]
+      det_desc = '%sDETECTOR_DESCRIPTION' % prefix
+      if 'CMOS-1' in header.get(det_desc, ''):
+        return False
+
     detector_prefixes = header['DETECTOR_NAMES'].split()
     try:
       detector_number = int(header['DETECTOR_NUMBER'].strip())
