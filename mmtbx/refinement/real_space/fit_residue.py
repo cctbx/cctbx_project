@@ -168,13 +168,11 @@ class run_with_minimization(object):
 
   def fit_backbone(self):
     # move in place (pure geometry regularizaition of residue in question)
-    self.real_space_refine(optimize_weight=False, start_trial_weight_value=0,
-      use_selection_real_space=False)
+    self.real_space_refine(optimize_weight=False, start_trial_weight_value=0)
     # fit n-c-o-ca-cb only (ignore side chain!). XXX BAD: amino-acid specific!
     self.grid_sample_around_c_n_axis()
     # fine-tune
-    self.real_space_refine(optimize_weight=True, start_trial_weight_value=50,
-      use_selection_real_space=True)
+    self.real_space_refine(optimize_weight=True, start_trial_weight_value=50)
 
   def fit_rotamers(self):
     sps = self.xray_structure.special_position_settings()
@@ -237,8 +235,7 @@ class run_with_minimization(object):
     sites_cart_poor.set_selected(selection, scorer.sites_cart)
     self.xray_structure= self.xray_structure.replace_sites_cart(sites_cart_poor)
 
-  def real_space_refine(self, optimize_weight, start_trial_weight_value,
-        use_selection_real_space):
+  def real_space_refine(self, optimize_weight, start_trial_weight_value):
     brm = individual_sites.box_refinement_manager(
       xray_structure              = self.xray_structure,
       target_map                  = self.target_map_work,
