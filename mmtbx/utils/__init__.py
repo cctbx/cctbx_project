@@ -1765,7 +1765,11 @@ class process_command_line_args(object):
       if(cs0 is not None and cs0.unit_cell() is not None):
         for cs in crystal_symmetries:
          if(cs[1] is not None and cs[1].unit_cell() is not None):
-           if(not cs0.is_similar_symmetry(cs[1])):
+           is_similar_cs = cs0.is_similar_symmetry(cs[1],
+             relative_length_tolerance=1.e-4,
+             absolute_angle_tolerance=1.e-3,
+             absolute_length_tolerance=1.e-4)
+           if(not is_similar_cs):
              for cs in crystal_symmetries:
                if(cs[1] is not None):
                  print >> self.log, cs[0], cs[1].unit_cell(), cs[1].space_group_info()
