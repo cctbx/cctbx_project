@@ -131,7 +131,6 @@ def run(args, command_name = "phenix.cif_as_mtz", out=sys.stdout,
     ignore_bad_sigmas=command_line.options.ignore_bad_sigmas,
     extend_flags=command_line.options.extend_flags,
     log=out)
-
   if return_as_miller_arrays:
     return result
 
@@ -276,7 +275,6 @@ def extract(file_name,
      crystal_symmetry.space_group_info() is None):
     raise Sorry(
       "Crystal symmetry is not defined. Please use the --symmetry option.")
-
   mtz_object = iotbx.mtz.object() \
     .set_title(title="phenix.cif_as_mtz") \
     .set_space_group_info(space_group_info=crystal_symmetry.space_group_info())
@@ -401,7 +399,7 @@ def extract(file_name,
         ma = ma.map_to_asu().set_info(ma.info())
       if(remove_systematic_absences):
         ma = ma.remove_systematic_absences()
-      if (label.startswith(output_r_free_label)) :
+      if (label.startswith(output_r_free_label) and complete_set is not None) :
         n_missing = len(complete_set.lone_set(other=ma).indices())
         if (n_missing > 0) :
           if (extend_flags) :
