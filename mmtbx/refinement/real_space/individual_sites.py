@@ -215,8 +215,12 @@ class refinery(object):
       while True:
         self.rmsds(sites_cart=sites_cart_start) # DUMMY
         self.adjust_weight_sample_rate(weight=weight_last)
+        tmp = xray_structure.deep_copy_scatterers()
+        #tmp.shake_sites_in_place(
+        #  rms_difference = None,
+        #  mean_distance  = 0.5)
         refiner.refine(
-          xray_structure = xray_structure.deep_copy_scatterers(), # XXX
+          xray_structure = tmp,#xray_structure.deep_copy_scatterers(), # XXX
           weight     = weight)
         sites_cart_result = refiner.sites_cart()
         bd, ad = self.rmsds(sites_cart=sites_cart_result)
@@ -237,6 +241,13 @@ class refinery(object):
         #print ">>> ", "%8.4f %8.4f"%(weight, weight_last), "%6.4f %5.2f"%(bd, ad),\
         #  self.weight_sample_rate, "  f (start/final):", refiner.refined.f_start, refiner.refined.f_final
         if((weight<0 or weight>1000) or weight in weights): break
+        l = bonds.size()-1
+        if(bonds.size()>5 and
+           abs(bonds[l]-bonds[l-1])<0.0005 and
+           abs(bonds[l]-bonds[l-2])<0.0005 and
+           abs(bonds[l]-bonds[l-3])<0.0005 and
+           abs(bonds[l]-bonds[l-4])<0.0005 and
+           abs(bonds[l]-bonds[l-5])<0.0005): break
     else:
       refiner.refine(
         xray_structure = xray_structure.deep_copy_scatterers(), # XXX

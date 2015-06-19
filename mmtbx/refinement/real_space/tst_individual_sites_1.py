@@ -93,12 +93,10 @@ def get_pdb_inputs(pdb_str):
     grm = restraints_manager,
     xrs = xrs)
 
-def exercise(d_min = 3.5):
+def exercise():
   # Exercise "simple" target
   pi = get_pdb_inputs(pdb_str=pdb_str_1)
   selection = flex.bool(pi.xrs.scatterers().size(), True)
-  f_obs = abs(pi.xrs.structure_factors(d_min = d_min).f_calc())
-  r_free_flags = f_obs.generate_r_free_flags()
   for d_min in [1, 2, 3]:
     print "d_min:", d_min
     f_calc = pi.xrs.structure_factors(d_min = d_min).f_calc()
@@ -113,10 +111,10 @@ def exercise(d_min = 3.5):
       geometry_restraints_manager = pi.grm.geometry)
     for shake_size in [1,]:
       print "  shake_size:", shake_size
-      for p in [(0.01, 1.0), (0.03, 3.0)]:
+      for p in [(0.01, 1.0), (0.03, 3.0), (0.1, 10.0)]:
         print "    target:", p
         w_opt = flex.double()
-        for start_value in [0, 1000]:
+        for start_value in [0.001, 0.01, 0.1, 0, 1, 10, 100, 1000]:
           xrs_poor = pi.xrs.deep_copy_scatterers()
           random.seed(0)
           flex.set_random_seed(0)
@@ -131,12 +129,11 @@ def exercise(d_min = 3.5):
           w_opt.append(refined.weight_final)
           dist = flex.mean(flex.sqrt((pi.xrs.sites_cart() -
             refined.sites_cart_result).dot()))
-          print "      start_value:", start_value,refined.weight_final, \
-            refined.rms_bonds_final, refined.rms_angles_final, dist
+          print "      w_start,w_final,b,a,dist: %9.4f %9.4f %6.3f %6.3f %6.3f"%(
+            start_value, refined.weight_final, refined.rms_bonds_final,
+            refined.rms_angles_final, dist)
           assert refined.rms_bonds_final  <= p[0]
           assert refined.rms_angles_final <= p[1]
-        assert flex.max(flex.abs(w_opt-flex.mean(w_opt)))<1.0, \
-            "max %0.1f" % flex.max(flex.abs(w_opt-flex.mean(w_opt)))
 
 if(__name__ == "__main__"):
   timer = user_plus_sys_time()
