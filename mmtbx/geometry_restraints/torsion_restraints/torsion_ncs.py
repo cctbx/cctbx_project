@@ -1,8 +1,6 @@
 from __future__ import division
 import cctbx.geometry_restraints
-#from mmtbx.validation.rotalyze import rotalyze
 from mmtbx.validation import rotalyze
-#from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.validation import ramalyze
 from mmtbx.validation import analyze_peptides
 from mmtbx.rotamer.sidechain_angles import SidechainAngles
@@ -18,6 +16,7 @@ from mmtbx.geometry_restraints.torsion_restraints import utils, rotamer_search
 from mmtbx import ncs
 import mmtbx.utils
 from libtbx import Auto
+import time
 
 # Refactoring notes 11 May 2015
 # Torsion NCS restraints should use the same procedure to find NCS groups
@@ -123,24 +122,48 @@ class torsion_ncs(object):
           rg.atoms()[0].segid
     alignments = {}
     for group in self.ncs_groups:
-      for i in group:
-        for j in group:
+      for i, isel in enumerate(group):
+        for j, jsel in enumerate(group):
           if i <= j:
             continue
-
-          sel_i = self.cache.selection(i)
-          sel_j = self.cache.selection(j)
+          sel_i = self.cache.selection(isel)
+          sel_j = self.cache.selection(jsel)
           h_i = self.pdb_hierarchy.select(sel_i)
           h_j = self.pdb_hierarchy.select(sel_j)
+          # chain matching procedure
+          matching_chain_numbers = []
+          matching_chains = []
+          for ii, i_chain in enumerate(h_i.chains()):
+            for jj, j_chain in enumerate(h_j.chains()):
+              if (i_chain.atoms().size() == j_chain.atoms().size()
+                  and i_chain.is_similar_hierarchy(j_chain)
+                  and i_chain.as_sequence() == j_chain.as_sequence()):
+                matching_chain_numbers.append((ii, jj))
+                matching_chains.append((i_chain, j_chain))
+                break
+          # residue matching
+          i_chains = h_i.chains()
+          j_chains = h_j.chains()
           residue_match_map1 = {}
           residue_match_map2 = {}
-          for rg1, rg2 in zip(h_i.residue_groups(), h_j.residue_groups()):
-            residue_match_map1[get_key(rg1)] = get_key(rg2)
-            residue_match_map2[get_key(rg2)] = get_key(rg1)
+          for ic, jc in matching_chains:
+            for rg1, rg2 in zip(ic.residue_groups(), jc.residue_groups()):
+              resname1 = rg1.atom_groups()[0].resname
+              resname2 = rg2.atom_groups()[0].resname
+              if resname1 != resname2:
+                msg = "Error in matching procedure: matching "
+                msg += "'%s %s' and '%s %s'.\n" % (
+                    resname1, rg1.id_str(), resname2, rg2.id_str())
+                msg += "Please tell developers about this error"
+                msg += " (with files to reproduce it)! "
+                msg += "If you need to proceed try to disable NCS."
+                raise Sorry(msg)
+              residue_match_map1[get_key(rg1)] = get_key(rg2)
+              residue_match_map2[get_key(rg2)] = get_key(rg1)
           # This duplication won't be necessary when all the rest code would
           # be able to work without it. 2x less memory...
-          key1 = (i, j)
-          key2 = (j, i)
+          key1 = (isel, jsel)
+          key2 = (jsel, isel)
           alignments[key1] = residue_match_map1
           alignments[key2] = residue_match_map2
     return alignments
@@ -200,11 +223,9 @@ class torsion_ncs(object):
 
   def find_ncs_matches_from_hierarchy(self,
                                       pdb_hierarchy):
+    # This is list of dp_match, see below
     self.dp_ncs = []
     self.cb_dp_ncs = []
-    self.phi_list = []
-    self.psi_list = []
-    self.omega_list = []
     self.dihedral_proxies_backup = None
     self.name_hash = utils.build_name_hash(pdb_hierarchy)
     self.segid_hash = utils.build_segid_hash(pdb_hierarchy)
@@ -332,13 +353,16 @@ class torsion_ncs(object):
             except Exception:
               temp[key] = []
               temp[key].append(cur_matches[key])
-        dp_match = \
-          cctbx.geometry_restraints.shared_dihedral_proxy()
-        dp_match.append(dp)
+        # This is [[dp,bool,bool,bool],[dp, bool,bool,bool],...]
+        # where dp - dihedral proxy from complete_dihedral_proxies
+        # bool, bool, bool - is phi/psi/omega angle
+        dp_match = []
+          # cctbx.geometry_restraints.shared_dihedral_proxy()
+        dp_match.append([dp, False, False, False])
         for key in temp.keys():
           cur_dp_hash = dp_hash.get(tuple(temp[key]))
           if cur_dp_hash is not None:
-            dp_match.append(cur_dp_hash)
+            dp_match.append([cur_dp_hash, False, False, False])
             dp_hash[tuple(temp[key])] = None
         dp_hash[dp.i_seqs] = None
         if len(dp_match) > 1:
@@ -346,18 +370,18 @@ class torsion_ncs(object):
       #initialize tracking hashes
       for dp_set in self.dp_ncs:
         for dp in dp_set:
-          angle_atoms = self.get_torsion_atoms(dp)
-          angle_resname = self.get_torsion_resname(dp)
-          angle_id = utils.get_torsion_id(dp=dp, name_hash=self.name_hash)
+          angle_atoms = self.get_torsion_atoms(dp[0])
+          angle_resname = self.get_torsion_resname(dp[0])
+          angle_id = utils.get_torsion_id(dp=dp[0], name_hash=self.name_hash)
           #phi
           if angle_atoms == ' C  '+' N  '+' CA '+' C  ':
-            self.phi_list.append(dp.i_seqs)
+            dp[1] = True
           #psi
           elif angle_atoms == ' N  '+' CA '+' C  '+' N  ':
-            self.psi_list.append(dp.i_seqs)
+            dp[2] = True
           #omega
           elif angle_atoms == ' CA '+' C  '+' N  '+' CA ':
-            self.omega_list.append(dp.i_seqs)
+            dp[3] = True
 
       match_counter = {}
       inclusive_range = {}
@@ -370,34 +394,33 @@ class torsion_ncs(object):
       matched = []
       ncs_match_hash = {}
       for dp_set in self.dp_ncs:
-        key_set = []
-        for dp in dp_set:
-          if len(dp_set) < 2:
-            continue
-          cur_key = ""
-          for i_seq in dp.i_seqs:
-            cur_key += self.name_hash[i_seq]
-          if cur_key[4:19] == cur_key[23:38] and \
-             cur_key[4:19] == cur_key[42:57]:
-            key_set.append(cur_key[4:19])
-        if len(dp_set) == len(key_set):
-          key_set.sort()
-          master_key = None
-          skip = False
-          for i, key in enumerate(key_set):
-            if i == 0:
-              master_key = key
-              if master_key in matched:
-                skip = True
-              elif ncs_match_hash.get(key) is None:
-                ncs_match_hash[key] = []
-              elif len(key_set) <= len(ncs_match_hash[key]):
-                skip = True
-              else:
-                ncs_match_hash[key] = []
-            elif not skip:
-              ncs_match_hash[master_key].append(key)
-              matched.append(key)
+        if len(dp_set) > 1:
+          key_set = []
+          for dp in dp_set:
+            cur_key = ""
+            for i_seq in dp[0].i_seqs:
+              cur_key += self.name_hash[i_seq]
+            if cur_key[4:19] == cur_key[23:38] and \
+               cur_key[4:19] == cur_key[42:57]:
+              key_set.append(cur_key[4:19])
+          if len(dp_set) == len(key_set): # probably always True
+            key_set.sort()
+            master_key = None
+            skip = False
+            for i, key in enumerate(key_set):
+              if i == 0:
+                master_key = key
+                if master_key in matched:
+                  skip = True
+                elif ncs_match_hash.get(key) is None:
+                  ncs_match_hash[key] = []
+                elif len(key_set) <= len(ncs_match_hash[key]):
+                  skip = True
+                else:
+                  ncs_match_hash[key] = []
+              elif not skip:
+                ncs_match_hash[master_key].append(key)
+                matched.append(key)
       self.ncs_match_hash = ncs_match_hash
       self.reduce_redundancies()
 
@@ -565,6 +588,7 @@ class torsion_ncs(object):
       omega_outlier_list = \
         self.get_omega_outliers(pdb_hierarchy)
     torsion_counter = 0
+
     for dp_set in self.dp_ncs:
       if len(dp_set) < 2:
         continue
@@ -577,17 +601,17 @@ class torsion_ncs(object):
       wrap_hash = {}
       for i, dp in enumerate(dp_set):
         di = cctbx.geometry_restraints.dihedral(
-               sites_cart=sites_cart, proxy=dp)
+               sites_cart=sites_cart, proxy=dp[0])
         angle = di.angle_model
-        wrap_chis = self.is_symmetric_torsion(dp)
+        wrap_chis = self.is_symmetric_torsion(dp[0])
         if wrap_chis:
           if angle > 90.0 or angle < -90.0:
-            sym_i_seq = dp.i_seqs[3] #4th atom
+            sym_i_seq = dp[0].i_seqs[3] #4th atom
             swap_i_seq = self.sym_atom_hash.get(sym_i_seq)
             if swap_i_seq is not None:
-              swap_i_seqs = (dp.i_seqs[0],
-                             dp.i_seqs[1],
-                             dp.i_seqs[2],
+              swap_i_seqs = (dp[0].i_seqs[0],
+                             dp[0].i_seqs[1],
+                             dp[0].i_seqs[2],
                              swap_i_seq)
               dp_temp = cctbx.geometry_restraints.dihedral_proxy(
                 i_seqs=swap_i_seqs,
@@ -604,9 +628,9 @@ class torsion_ncs(object):
               angle = None
         angles.append(angle)
         rama_out = False
-        if (dp.i_seqs in self.phi_list) or (dp.i_seqs in self.psi_list):
+        if dp[1] or dp[2]:
           angle_id = utils.get_torsion_id(
-                       dp=dp,
+                       dp=dp[0],
                        name_hash=self.name_hash,
                        phi_psi=True)
           key = angle_id[4:11]+angle_id[0:4] #segid?
@@ -615,9 +639,9 @@ class torsion_ncs(object):
         is_rama_outlier.append(rama_out)
 
         omega_out = False
-        if (dp.i_seqs in self.omega_list):
+        if dp[3]:
           angle_id = utils.get_torsion_id(
-                       dp=dp,
+                       dp=dp[0],
                        name_hash=self.name_hash,
                        omega=True)
           key1 = \
@@ -638,12 +662,12 @@ class torsion_ncs(object):
         #  cc_s.append(di_cc)
 
         angle_id = utils.get_torsion_id(
-                     dp=dp,
+                     dp=dp[0],
                      name_hash=self.name_hash,
                      chi_only=True)
         if angle_id is not None:
           split_rotamer_list = self.current_chi_restraints.get(angle_id)
-          which_chi = self.get_chi_id(dp)
+          which_chi = self.get_chi_id(dp[0])
           rotamer_state.append(split_rotamer_list)
           if which_chi is not None:
             chi_ids.append(which_chi)
@@ -659,18 +683,18 @@ class torsion_ncs(object):
       #print target_angles
       for i, dp in enumerate(dp_set):
         target_angle = target_angles[i]
-        angle_atoms = self.get_torsion_atoms(dp)
-        angle_resname = self.get_torsion_resname(dp)
-        angle_id = utils.get_torsion_id(dp=dp, name_hash=self.name_hash)
+        angle_atoms = self.get_torsion_atoms(dp[0])
+        angle_resname = self.get_torsion_resname(dp[0])
+        angle_id = utils.get_torsion_id(dp=dp[0], name_hash=self.name_hash)
         cur_dict = self.sidechain_angle_hash.get(angle_resname)
         angle_name = None
         if cur_dict != None:
           angle_name = \
             cur_dict.get(angle_atoms)
         if target_angle is not None:
-          angle_atoms = self.get_torsion_atoms(dp)
-          angle_resname = self.get_torsion_resname(dp)
-          angle_id = utils.get_torsion_id(dp=dp, name_hash=self.name_hash)
+          angle_atoms = self.get_torsion_atoms(dp[0])
+          angle_resname = self.get_torsion_resname(dp[0])
+          angle_id = utils.get_torsion_id(dp=dp[0], name_hash=self.name_hash)
           cur_dict = self.sidechain_angle_hash.get(angle_resname)
           angle_name = None
           dp_sym = wrap_hash.get(i)
@@ -684,7 +708,7 @@ class torsion_ncs(object):
               slack=self.slack)
           else:
             dp_add = cctbx.geometry_restraints.dihedral_proxy(
-              i_seqs=dp.i_seqs,
+              i_seqs=dp[0].i_seqs,
               angle_ideal=target_angle,
               weight=1/self.sigma**2,
               limit=self.limit,
@@ -780,7 +804,7 @@ class torsion_ncs(object):
     assert (len(rotamer_state) == len(angles)) or \
            (len(rotamer_state) == 0)
     chi_num = None
-    #print chi_ids
+    # print "chi_ids", chi_ids
     if len(chi_ids) > 0:
       assert len(chi_ids) == chi_ids.count(chi_ids[0])
       if ('oh' not in chi_ids and
