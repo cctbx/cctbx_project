@@ -824,6 +824,10 @@ def construct_output_file_name(input_file_names,
   return user_file_name
 
 def make_joined_set (miller_arrays) :
+  if(len(miller_arrays)==0): return None
+  cs0 = miller_arrays[0].crystal_symmetry()
+  for ma in miller_arrays:
+    if(not ma.crystal_symmetry().is_similar_symmetry(cs0)): return None
   from cctbx import miller
   master_set = miller.set(
     crystal_symmetry=miller_arrays[0].crystal_symmetry(),
