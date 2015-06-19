@@ -64,8 +64,8 @@ master_phil = iotbx.phil.parse("""
 """ % potential_phil)
 
 class ramachandran_manager(object):
-  def __init__ (self, pdb_hierarchy, atom_selection, params=None, log=sys.stdout,
-      proxies=None, tables=None, initialize=True):
+  def __init__ (self, pdb_hierarchy, atom_selection=None, params=None,
+      log=sys.stdout, proxies=None, tables=None, initialize=True):
     assert pdb_hierarchy is not None
     assert not pdb_hierarchy.atoms().extract_i_seq().all_eq(0), ""+\
         "Probably all atoms have i_seq = 0 which is wrong"
