@@ -30,7 +30,7 @@ def run(args):
     if(len(sel_list) == 1):
       sel = asc.selection(string=sel_list[0])
     else:
-      sel_str=" or ".join( ["(%s)"%s for s in helix.as_atom_selections()] )
+      sel_str=" or ".join( ["(%s)"%s for s in rec.as_atom_selections()] )
       sel = asc.selection(string=sel_str)
     h_selected = h.select(sel)
     h_selected.write_pdb_file(file_name=file_name)

@@ -62,34 +62,7 @@ def defaults(log):
   print >> log
   return parsed
 
-def run(args, log = sys.stdout):
-  if(len(args)==0):
-    print >> log, legend
-    defaults(log=log)
-    return
-  #
-  parsed = defaults(log=log)
-  processed_args = mmtbx.utils.process_command_line_args(args = args,
-    log = sys.stdout, master_params = parsed)
-  params = processed_args.params.extract()
-  reflection_files = processed_args.reflection_files
-  #
-  atoms_with_labels = None
-  if(len(processed_args.pdb_file_names)==1):
-    pdb_combined = combine_unique_pdb_files(
-      file_names=processed_args.pdb_file_names)
-    pdb_combined.report_non_unique()
-    pdb_inp = iotbx.pdb.input(source_info = None,
-      lines = flex.std_string(pdb_combined.raw_records))
-    atoms_with_labels = pdb_inp.atoms_with_labels()
-  #
-  if(len(reflection_files) == 0):
-    raise Sorry("No reflection file found.")
-  if(len(reflection_files) > 1):
-    raise Sorry("More than one reflection file found.")
-  crystal_symmetry = processed_args.crystal_symmetry
-  if(crystal_symmetry is None):
-    raise Sorry("No crystal symmetry found.")
+def map_from_reflection_file(reflection_files, params):
   reflection_file_name = reflection_files[0].file_name()
   miller_arrays = reflection_file_reader.any_reflection_file(file_name =
     reflection_file_name).as_miller_arrays()
@@ -112,40 +85,75 @@ def run(args, log = sys.stdout):
   ma.show_comprehensive_summary(prefix="  ")
   print
   #
+  if params.resolution is not None or params.low_resolution is not None:
+    ma=ma.resolution_filter(d_min=params.resolution,
+       d_max=params.low_resolution)
+    print "Applying resolution filter from ",params.resolution,"to",params.low_resolution," NREFL: ",ma.data().size()
+
+  fft_map = ma.fft_map(resolution_factor=params.resolution_factor)
+  if(params.scale == "sigma"):
+    fft_map.apply_sigma_scaling()
+    print "Using sigma scaled map.\n"
+  else:
+    fft_map.apply_volume_scaling()
+    print "Using volume scale map.\n"
+  map_3d = fft_map.real_map_unpadded()
+  return map_3d
+
+def run(args, log = sys.stdout):
+  if(len(args)==0):
+    print >> log, legend
+    defaults(log=log)
+    return
+  #
+  parsed = defaults(log=log)
+  processed_args = mmtbx.utils.process_command_line_args(args = args,
+    log = sys.stdout, master_params = parsed)
+  params = processed_args.params.extract()
+  unit_cell = processed_args.crystal_symmetry.unit_cell()
+  reflection_files = processed_args.reflection_files
+  #
+  atoms_with_labels = None
+  if(len(processed_args.pdb_file_names)==1):
+    pdb_combined = combine_unique_pdb_files(
+      file_names=processed_args.pdb_file_names)
+    pdb_combined.report_non_unique()
+    pdb_inp = iotbx.pdb.input(source_info = None,
+      lines = flex.std_string(pdb_combined.raw_records))
+    atoms_with_labels = pdb_inp.atoms_with_labels()
   if(len(params.point)==0 and atoms_with_labels is None):
     raise Sorry("No points given to compute map value at.")
-  else:
-    if params.resolution is not None or params.low_resolution is not None:
-      ma=ma.resolution_filter(d_min=params.resolution,
-         d_max=params.low_resolution)
-      print "Applying resolution filter from ",params.resolution,"to",params.low_resolution," NREFL: ",ma.data().size()
 
-    fft_map = ma.fft_map(resolution_factor=params.resolution_factor)
-    if(params.scale == "sigma"):
-      fft_map.apply_sigma_scaling()
-      print "Using sigma scaled map.\n"
-    else:
-      fft_map.apply_volume_scaling()
-      print "Using volume scale map.\n"
-    map_3d = fft_map.real_map_unpadded()
-    print "Map values at specified points:"
-    for point in params.point:
-      point_frac = ma.unit_cell().fractionalize(point)
-      point_formatted = ",".join([str("%10.3f"%p).strip() for p in point])
-      point_frac_formatted = \
-        ",".join([str("%10.3f"%p).strip() for p in point_frac])
+  if(len(reflection_files) == 0 and processed_args.ccp4_map is None):
+    raise Sorry("No reflection or map files found.")
+
+  if(len(reflection_files) > 1):
+    raise Sorry("More than one reflection file found.")
+  crystal_symmetry = processed_args.crystal_symmetry
+  if(crystal_symmetry is None):
+    raise Sorry("No crystal symmetry found.")
+  if(len(reflection_files) != 0):
+    map_3d = map_from_reflection_file(reflection_files=reflection_files, params=params)
+  else:
+    map_3d = processed_args.ccp4_map.data.as_double()
+  print "Map values at specified points:"
+  for point in params.point:
+    point_frac = unit_cell.fractionalize(point)
+    point_formatted = ",".join([str("%10.3f"%p).strip() for p in point])
+    point_frac_formatted = \
+      ",".join([str("%10.3f"%p).strip() for p in point_frac])
+    map_value = str(
+      "%10.3f"%map_3d.eight_point_interpolation(point_frac)).strip()
+    print "  Input point: (%s) Fractionalized: (%s) Map value: %s"%(
+      point_formatted, point_frac_formatted, map_value)
+  #
+  if(atoms_with_labels is not None):
+    for point in atoms_with_labels:
+      point_frac = processed_args.crystal_symmetry.unit_cell().fractionalize(point.xyz)
+      point_formatted = ",".join([str("%8.3f"%p) for p in point.xyz])
       map_value = str(
         "%10.3f"%map_3d.eight_point_interpolation(point_frac)).strip()
-      print "  Input point: (%s) Fractionalized: (%s) Map value: %s"%(
-        point_formatted, point_frac_formatted, map_value)
-    #
-    if(atoms_with_labels is not None):
-      for point in atoms_with_labels:
-        point_frac = ma.unit_cell().fractionalize(point.xyz)
-        point_formatted = ",".join([str("%8.3f"%p) for p in point.xyz])
-        map_value = str(
-          "%10.3f"%map_3d.eight_point_interpolation(point_frac)).strip()
-        print point.quote(), "Point: %s Map value: %s"%(point_formatted,map_value)
+      print point.quote(), "Point: %s Map value: %s"%(point_formatted,map_value)
   #
   print
   print "All done."
