@@ -61,6 +61,10 @@ The final bsub command is saved in submit.sh for future use.
 
 
 phil_scope = parse('''
+  dry_run = False
+    .type = bool
+    .help = If True, the program will create the trial directory but not submit the job, \
+            and will show the command that would have been executed.
   input {
     cfg = None
       .type = str
@@ -93,7 +97,7 @@ phil_scope = parse('''
       .help = Directory for output files
   }
   mp {
-    method = *mpi sge pbs
+    method = *mpi sge pbs custom
       .type = choice
       .help = Muliprocessing method
     nproc = 1
@@ -115,6 +119,18 @@ phil_scope = parse('''
       walltime = "00:00:30"
         .type = str
         .help = Maximum time this job will be scheduled to run for.
+    }
+    custom {
+      extra_args = ""
+        .type = str
+        .help = Extra arguments to qsub as needed
+      submit_template = None
+        .type = str
+        .help = Submission script for qsub. The script will be copied to the trial \
+                directory and modified. There should be one instance of the string \
+                <command> (including the <> brackets) in the template script, which \
+                will be replaced with the processing command. <queue> and <nproc> \
+                will similarly be replaced.
     }
   }
 ''', process_includes=True)
@@ -358,17 +374,54 @@ class Script(object):
       f.write("aprun -n %d %s input.cfg=%s input.experiment=%s input.run_num=%d output.output_dir=%s mp.method=mpi %s\n"%( \
         params.mp.nproc, params.input.dispatcher, config_path, params.input.experiment, params.input.run_num, output_dir, extra_str))
       f.close()
+    elif params.mp.method == "custom":
+      if not os.path.exists(params.mp.custom.submit_template):
+        raise Sorry("Custom submission template file not found: %s"%params.mp.custom.submit_template)
+
+      # Use the input script as a template and fill in the missing info needed
+      submit_path = os.path.join(trialdir, "submit.sh")
+
+      if params.input.xtc_dir is None:
+        extra_str = ""
+      else:
+        extra_str = "input.xtc_dir=%s"%params.input.xtc_dir
+
+      if params.input.target is not None:
+        extra_str += " %s"%params.input.target
+
+      command = "qsub -o %s %s %s"%(os.path.join(stdoutdir, "log.out"), params.mp.custom.extra_args, submit_path)
+
+      processing_command = "%s input.cfg=%s input.experiment=%s input.run_num=%d output.output_dir=%s mp.method=mpi %s\n"%( \
+              params.input.dispatcher, config_path, params.input.experiment, params.input.run_num, output_dir, extra_str)
+
+      f = open(submit_path, 'w')
+      for line in open(params.mp.custom.submit_template).readlines():
+        if "<command>" in line:
+          line = line.replace("<command>", processing_command)
+        if "<queue>" in line:
+          line = line.replace("<queue>", params.mp.queue)
+        if "<nproc>" in line:
+          line = line.replace("<nproc>", str(params.mp.nproc))
+
+        f.write(line)
+      f.close()
+
     else:
       raise Sorry("Multiprocessing method %s not recognized"%params.mp.method)
 
 
-    try:
-      result = easy_run.fully_buffered(command=command).raise_if_errors()
-    except Exception, e:
-      if not "Warning: job being submitted without an AFS token." in str(e):
-        raise e
+    if params.dry_run:
+      print "Dry run: job not submitted. Trial directory created here:", trialdir
+      print "Execute this command to submit the job:"
+      print command
+    else:
+      try:
+        result = easy_run.fully_buffered(command=command).raise_if_errors()
+      except Exception, e:
+        if not "Warning: job being submitted without an AFS token." in str(e):
+          raise e
 
-    print "Job submitted.  Output in", trialdir
+      print "Job submitted.  Output in", trialdir
 
 if __name__ == "__main__":
   script = Script()
