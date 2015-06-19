@@ -38,7 +38,7 @@ scitbx::sym_mat3<FloatType>
     n_center[i] = sm::mod_positive(
       sm::nearest_integer(n_real[i]*site_frac[i]), n_real[i]);
   }
-  FloatType min_peak_value = map_data(n_center)/3.;
+  //FloatType min_peak_value = map_data(n_center)/3.;
   for(int kx = box_min[0]; kx < box_max[0]; kx++) {
     FloatType xn=site_frac[0]-FloatType(kx)/n_real[0];
     int mx = sm::mod_positive(kx, n_real[0]);
@@ -51,7 +51,7 @@ scitbx::sym_mat3<FloatType>
         FloatType map_value = map_data(mx,my,mz);
         cctbx::cartesian<> sc = unit_cell.orthogonalize(
           cctbx::fractional<>(xn,yn,zn));
-        if(map_value>min_peak_value) {
+        //if(map_value>min_peak_value) {
           FloatType w = map_value;
           result(0,0) += w*sc[0]*sc[0];
           result(1,1) += w*sc[1]*sc[1];
@@ -59,7 +59,7 @@ scitbx::sym_mat3<FloatType>
           result(0,1) += w*sc[0]*sc[1];
           result(0,2) += w*sc[0]*sc[2];
           result(1,2) += w*sc[1]*sc[2];
-        }
+        //}
   }}}
   return result;
 }

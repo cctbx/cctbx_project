@@ -385,11 +385,11 @@ def exercise_misc():
     unit_cell=structure.unit_cell(),
     site_cart=(5.,5.,5.),
     radius=2.0)
-  assert (approx_equal(pai.center_of_mass(), (5.0,5.0,5.0)))
-  assert (approx_equal(pai.inertia_tensor(), (28.09, 28.09, 28.09, 0.,0.,0.),
-    eps=0.001))
-  assert (approx_equal(list(pai.eigensystem().values()), (28.09,28.09,28.09),
-    eps=0.001))
+  assert approx_equal(pai.center_of_mass(), (5.0,5.0,5.0), 0.1)
+  assert (approx_equal(pai.inertia_tensor(), (44.89,44.89,44.89,1.87,1.87,1.87),
+    eps=0.5))
+  assert (approx_equal(list(pai.eigensystem().values()), (48,43,43),
+    eps=1))
   # and now with anisotropy
   structure = xray.structure(
     special_position_settings=crystal.special_position_settings(
@@ -412,12 +412,7 @@ def exercise_misc():
     unit_cell=structure.unit_cell(),
     site_cart=(5.,5.,5.),
     radius=2.0)
-  assert (approx_equal(pai.center_of_mass(), (5.0,5.0,5.0), eps=0.01))
-  # XXX these are still not consistent...
-  #assert (approx_equal(pai.inertia_tensor(),
-  #  (316.045, 313.423, 305.382, -9.208, 0., 0.), eps=0.001))
-  #assert (approx_equal(list(pai.eigensystem().values()),
-  #  (324.035, 305.433, 305.382), eps=0.001))
+  assert (approx_equal(pai.center_of_mass(), (5.0,5.0,5.0), eps=0.2))
 
 def exercise_eight_point_interpolation():
   map = flex.double(flex.grid(2,3,5), 10)
