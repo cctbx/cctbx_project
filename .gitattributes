@@ -520,6 +520,7 @@ dxtbx/format/FormatSMVADSCSN920.py -text
 dxtbx/format/FormatSMVADSCSN926.py -text
 dxtbx/format/FormatSMVADSCSNAPSID19.py -text
 dxtbx/format/FormatSMVADSCmlfsom.py -text
+dxtbx/format/FormatSMVCMOS1.py -text
 dxtbx/format/FormatSMVHamamatsu.py -text
 dxtbx/format/FormatSMVHamamatsuSPring8BL32XU.py -text
 dxtbx/format/FormatSMVNOIR.py -text
