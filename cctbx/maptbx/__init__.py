@@ -15,6 +15,8 @@ import libtbx.load_env
 import math
 import sys, os
 import scitbx.math
+from cctbx import adptbx
+from libtbx import group_args
 
 debug_peak_cluster_analysis = os.environ.get(
   "CCTBX_MAPTBX_DEBUG_PEAK_CLUSTER_ANALYSIS", "")
@@ -895,35 +897,24 @@ def principal_axes_of_inertia (
     real_map,
     site_cart,
     unit_cell,
-    radius) :
-  assert (radius > 0)
-  import scitbx.math
-  from libtbx.utils import n_dim_index_from_one_dim
-  sel = grid_indices_around_sites(
-    unit_cell=unit_cell,
-    fft_n_real=real_map.focus(),
-    fft_m_real=real_map.all(),
-    sites_cart=flex.vec3_double([site_cart]),
-    site_radii=flex.double([radius]))
-  grid_to_cart = grid2cart(real_map.focus(),
-    unit_cell.orthogonalization_matrix())
-  sites = flex.vec3_double()
-  values = flex.double()
-  site_frac = unit_cell.fractionalize(site_cart=site_cart)
-  weight_scale = real_map.tricubic_interpolation(site_frac)
-  if (weight_scale <= 0) :
-    weight_scale = flex.max(real_map.as_1d())
-  for i_seq in sel :
-    uvw = n_dim_index_from_one_dim(i_seq, real_map.all())
-    xyz = grid_to_cart(uvw)
-    sites.append(xyz)
-    site_frac = unit_cell.fractionalize(site_cart=xyz)
-    # XXX weights of zero risk crashing the underlying routine
-    values.append(max(0.000001, real_map[i_seq]) / weight_scale)
-  assert (flex.max(values) >= 0)
-  return scitbx.math.principal_axes_of_inertia(
-    points=sites,
-    weights=values)
+    radius):
+  st = sphericity_tensor(
+    map_data  = real_map,
+    unit_cell = unit_cell,
+    radius    = radius,
+    site_frac = unit_cell.fractionalize(site_cart))
+  es = adptbx.eigensystem(st)
+  def center_of_mass_():
+    return center_of_mass(
+    map_data=real_map, unit_cell=unit_cell, cutoff=0.1)
+  def inertia_tensor():
+    return st
+  def eigensystem():
+    return es
+  return group_args(
+    center_of_mass = center_of_mass_,
+    inertia_tensor = inertia_tensor,
+    eigensystem    = eigensystem)
 
 class local_scale(object):
   def __init__(

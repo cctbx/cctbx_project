@@ -4,7 +4,6 @@ import iotbx.pdb
 from cctbx import maptbx
 from cctbx import adptbx, sgtbx
 from libtbx.test_utils import approx_equal
-from libtbx.str_utils import format_value
 import time
 
 def ru(crystal_symmetry, u_scale=1, u_min=0.1):
@@ -112,32 +111,21 @@ END
     #
     fc = xrs.structure_factors(d_min = 0.5, algorithm = "direct").f_calc()
     fft_map = fc.fft_map(resolution_factor = 0.2)
-    fft_map.apply_volume_scaling()
+    fft_map.apply_sigma_scaling()
     map_data = fft_map.real_map_unpadded()
+    map_data = map_data.set_selected(map_data<4.0, 0)
     # Calculated anisotropy from ADP: this is exact answer
     a = list(xrs.scatterers().anisotropy(xrs.unit_cell()))[0]
     # Sphericity: main working implementation
     t0=time.time()
     s = maptbx.sphericity(map_data = map_data, unit_cell = xrs.unit_cell(),
-      radius = 1.5, sites_frac = xrs.sites_frac())
+      radius = 2.5, sites_frac = xrs.sites_frac())
     if(s.size()==2):
       assert approx_equal(s[1], 1.0, 0.001)
       found_two += 1
     assert approx_equal(a, s[0], 0.1)
     t1=time.time()
-    # Alternative implementation that doesn't seem to work correctly
-    pa = maptbx.principal_axes_of_inertia(real_map=map_data,
-      site_cart=xrs.sites_cart()[0], unit_cell=xrs.unit_cell(), radius=1.5)
-    v = pa.eigensystem().values()
-    n = flex.min(v)/flex.max(v)
-    t2=time.time()
-    #
-    t01 = t1 - t0
-    time_gain = None
-    if(t01 != 0):
-      time_gain = (t2-t1)/(t01)
-    print "#%2d: answer: %5.3f sphericity: %5.3f other: %5.3f time_gain: %s" % (
-      i+1, a, s[0], n, format_value("%6.2f", time_gain))
+    print "#%2d: answer: %5.3f sphericity: %5.3f" % (i+1, a, s[0])
   #
   assert found_two == 1
 
