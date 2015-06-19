@@ -204,6 +204,8 @@ if __name__ == "__main__":
   frame = ConstructFrameFromFiles(params.pickle_name, params.json_name).make_frame()
   if not params.output_dir is None:
     assert os.path.isdir(params.output_dir)
-    dest_path = os.path.splitext(params.pickle_name)[0] + "_extracted.pickle"
+    basename = os.path.basename(params.pickle_name)
+    name = os.path.splitext(basename)[0] + "_extracted.pickle"
+    dest_path = os.path.join(params.output_dir, name)
     assert not os.path.isfile(dest_path)
     easy_pickle.dump(dest_path, frame)
