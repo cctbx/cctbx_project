@@ -38,8 +38,11 @@ class MultiChoiceCtrl (wx.Panel, phil_controls.PhilCtrl) :
 
   def SetToolTip (self, tooltip) :
     super(MultiChoiceCtrl, self).SetToolTip(tooltip)
-    for key, ctrl in self._option_controls.iteritems() :
-      ctrl.SetToolTip(tooltip)
+    for key, ctrl in self._option_controls.iteritems():
+      # Never reuse a Tooltip as this will may lead to a nasty crash of Python
+      # So create a new tooltip for each additional control
+      newtt = wx.ToolTip(tooltip.GetTip())
+      ctrl.SetToolTip(newtt)
 
   def Realize (self) :
     """Finalizes layout and fits the panel."""
