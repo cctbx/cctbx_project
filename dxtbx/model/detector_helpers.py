@@ -149,7 +149,7 @@ def set_mosflm_beam_centre(detector, beam, mosflm_beam_centre):
       r = n.cross(s0)
       a = n.angle(s0)
     # if no two_theta offset use old method
-    if abs(a) < 5.0 * math.pi / 180.0:
+    if min(abs(math.pi-a), abs(a)) < 5.0 * math.pi / 180.0:
       return set_mosflm_beam_centre_old(detector, beam, mosflm_beam_centre)
     # apply matrix
     R = r.axis_and_angle_as_r3_rotation_matrix(a)
