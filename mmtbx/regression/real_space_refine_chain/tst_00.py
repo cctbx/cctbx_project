@@ -2,7 +2,6 @@ import time
 import iotbx.pdb
 import mmtbx.utils
 from mmtbx import monomer_library
-import mmtbx.refinement.real_space.individual_sites
 from scitbx.array_family import flex
 from cctbx import maptbx
 from libtbx import adopt_init_args
@@ -191,7 +190,7 @@ def ccp4_map(crystal_symmetry, file_name, map_data):
       #gridding_last=n_real,  # This causes a bug (map gets shifted)
       map_data=map_data,
       labels=flex.std_string([""]))
-  
+
 class scorer(object):
   def __init__(self, pdb_hierarchy, unit_cell, map_data):
     adopt_init_args(self, locals())
@@ -200,7 +199,7 @@ class scorer(object):
       unit_cell   = self.unit_cell,
       density_map = self.map_data,
       sites_cart  = self.sites_cart)
-    
+
   def update(self, sites_cart):
     target = maptbx.real_space_target_simple(
       unit_cell   = self.unit_cell,
@@ -225,7 +224,7 @@ def run(prefix="tst_00"):
   pdb_inp.write_pdb_file(file_name="%s_poor.pdb"%prefix)
   ph_poor = pdb_inp.construct_hierarchy()
   ph_poor.atoms().reset_i_seq()
-  xrs_poor = pdb_inp.xray_structure_simple()  
+  xrs_poor = pdb_inp.xray_structure_simple()
   # Initialize states accumulator
   states = mmtbx.utils.states(pdb_hierarchy=ph_answer, xray_structure=xrs_poor)
   states.add(sites_cart = xrs_poor.sites_cart())
@@ -234,7 +233,7 @@ def run(prefix="tst_00"):
   fft_map = fc.fft_map(resolution_factor = 0.25)
   fft_map.apply_sigma_scaling()
   target_map_data = fft_map.real_map_unpadded()
-  ccp4_map(crystal_symmetry=fc.crystal_symmetry(), file_name="map.ccp4", 
+  ccp4_map(crystal_symmetry=fc.crystal_symmetry(), file_name="map.ccp4",
     map_data=target_map_data)
   # Output map coefficients
   mtz_dataset = fc.as_mtz_dataset(column_root_label="FC")
@@ -255,7 +254,7 @@ def run(prefix="tst_00"):
     strict_conflict_handling = True,
     force_symmetry           = True,
     log                      = None)
-  
+
   geometry = processed_pdb_file.geometry_restraints_manager(
     show_energies                = False,
     plain_pairs_radius           = 5,
@@ -263,11 +262,11 @@ def run(prefix="tst_00"):
   restraints_manager = mmtbx.restraints.manager(
     geometry      = geometry,
     normalization = True)
-  
+
   #for a in ph_answer.atoms():
   #  print a.i_seq, a.name, a.xyz
     #STOP()
-  
+
   #ref_xyz = flex.vec3_double([(14.323, 35.055, 14.635), (16.099, 12.317, 16.37)])
   #selection = flex.size_t([1,76])
   #
@@ -276,7 +275,7 @@ def run(prefix="tst_00"):
   #    sites_cart = ref_xyz,
   #    selection = selection,
   #    sigma = 0.1))
-  
+
   # Do real-space refinement
   t0=time.time()
   ear = mmtbx.refinement.real_space.expload_and_refine.run(
@@ -287,7 +286,7 @@ def run(prefix="tst_00"):
     states                  = states)
   print "Time: %6.4f"%(time.time()-t0)
   ear.pdb_hierarchy.write_pdb_file(file_name="%s_refined.pdb"%prefix)
-  states.write(file_name="%s_refined_all_states.pdb"%prefix) 
+  states.write(file_name="%s_refined_all_states.pdb"%prefix)
 
 if (__name__ == "__main__"):
   run()
