@@ -1131,6 +1131,13 @@ class PhenixBuilder(CCIBuilder):
     'reduce',
     'probe',
   ]
+
+  def add_base(self, extra_opts=[]):
+    super(PhenixBuilder, self).add_base(
+      extra_opts=['--phenix',
+                  '--labelit'
+                 ] + extra_opts)
+
   def add_install(self):
     Builder.add_install(self)
     #self.rebuild_docs()
