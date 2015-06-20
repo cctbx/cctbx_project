@@ -18,7 +18,8 @@ def exercise () :
   print args
   rmsd = anneal_real_space.run(args=args, out=null_out())
   assert os.path.isfile("tst_anneal_real_space_out.pdb")
-  assert (rmsd > 0) and (rmsd < 1)
+  print rmsd
+  assert (rmsd > 0) and (rmsd < 2)
 
 if (__name__ == "__main__") :
   exercise()
