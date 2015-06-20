@@ -1931,6 +1931,7 @@ mmtbx/idealized_aa_residues/data/val-coarse_step10.pickle -text
 mmtbx/idealized_aa_residues/data/val.pdb -text
 mmtbx/idealized_aa_residues/rotamer_manager.py -text
 mmtbx/idealized_aa_residues/sample_rotamers.py -text
+mmtbx/idealized_aa_residues/tst.py -text
 mmtbx/ions/__init__.py -text
 mmtbx/ions/build.py -text
 mmtbx/ions/environment.py -text

@@ -144,6 +144,7 @@ tst_list = (
   "$D/refinement/real_space/tst_flipbase.py",
   "$D/refinement/real_space/tst_aa_residue_axes_and_clusters.py",
   "$D/refinement/real_space/tst_weight.py",
+  "$D/idealized_aa_residues/tst.py",
   #
   "$D/regression/tst_dssp.py",
   "$D/building/tst.py",

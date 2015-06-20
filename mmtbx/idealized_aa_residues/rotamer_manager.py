@@ -53,6 +53,7 @@ class load(object):
   def get_chi_angles(self, resname):
     resname = resname.strip().lower()
     assert resname in aa_codes
+    if(resname == "mse"): return self.result["met"][0] # alias
     return self.result[resname][0]
 
   def rotamer(self, residue):
