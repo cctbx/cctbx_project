@@ -1,7 +1,7 @@
 from __future__ import division
 
 import time
-from mmtbx.building.minimize_chain import run,get_params_edits,ccp4_map
+from mmtbx.building.minimize_chain import run,ccp4_map
 import iotbx.pdb
 
 pdb_str_answer_full = """\
@@ -220,65 +220,6 @@ ATOM     80  CB  ALA E  16      12.188   5.653  16.999  1.00 40.00           C
 TER
 """
 
-def tst_01(args):
-
-  print "Running test with CA-only model"
-  prefix='tst_01'
-  # Full good answer model
-  pdb_file_name_answer_full = "%s_answer_full.pdb"%prefix
-  pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str_answer_full)
-  pdb_inp.write_pdb_file(file_name="%s_answer_full.pdb"%prefix)
-  ph_answer_full = pdb_inp.construct_hierarchy()
-  ph_answer_full.atoms().reset_i_seq()
-  xrs_answer_full = pdb_inp.xray_structure_simple()
-
-  # Good answer model
-  pdb_file_name_answer = "%s_answer.pdb"%prefix
-  pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str_answer)
-  pdb_inp.write_pdb_file(file_name="%s_answer.pdb"%prefix)
-  ph_answer = pdb_inp.construct_hierarchy()
-  ph_answer.atoms().reset_i_seq()
-  xrs_answer = pdb_inp.xray_structure_simple()
-
-  # Poor model that we want to refine so it matches the answer
-  pdb_file_name_poor = "%s_poor.pdb"%prefix
-  pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str_poor)
-  pdb_inp.write_pdb_file(file_name="%s_poor.pdb"%prefix)
-  ph_poor = pdb_inp.construct_hierarchy()
-  ph_poor.atoms().reset_i_seq()
-  xrs_poor = pdb_inp.xray_structure_simple()
-  n_ca_poor=xrs_poor.sites_cart().size()
-
-  # set up bond edits for CA. Warning: assumes n_ca residues 1 to n_ca
-  print "Setting up bond edits...for %d CA atoms" %(n_ca_poor)
-  params_edits=get_params_edits(n_ca=n_ca_poor)
-
-  # Compute target map
-  fc = xrs_answer_full.structure_factors(d_min=3.5).f_calc()
-  fft_map = fc.fft_map(resolution_factor = 0.25)
-  fft_map.apply_sigma_scaling()
-  target_map_data = fft_map.real_map_unpadded()
-  ccp4_map(crystal_symmetry=fc.crystal_symmetry(),
-    file_name="%s_map.ccp4" %prefix,
-    map_data=target_map_data)
-
-  # Output map coefficients
-  mtz_dataset = fc.as_mtz_dataset(column_root_label="FC")
-  mtz_object = mtz_dataset.mtz_object()
-  mtz_object.write(file_name = "%s_map.mtz"%prefix)
-
-  hierarchy,xrs_refined,states,score=run(
-   args=args,map_data=target_map_data,
-     crystal_symmetry=fc.crystal_symmetry(),
-     pdb_string=pdb_str_poor,
-     params_edits=params_edits)
-
-  hierarchy.write_pdb_file(file_name="%s_refined.pdb"%prefix)
-  states.write(file_name="%s_refined_all_states.pdb"%prefix)
-
-  rmsd=xrs_refined.sites_cart().rms_difference(xrs_answer.sites_cart())
-  print "RMSD from TARGET for CA-model refinement: %7.2f " %(rmsd)
-  return rmsd
 
 def tst_02(args):
 
@@ -312,7 +253,7 @@ def tst_02(args):
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name = "%s_map.mtz"%prefix)
 
-  hierarchy,xrs_refined,states,score=run(
+  hierarchy,xrs_refined,states=run(
      args=args,map_data=target_map_data,
      crystal_symmetry=fc.crystal_symmetry(),
      pdb_string=pdb_str_poor_full)
@@ -326,12 +267,7 @@ def tst_02(args):
 if (__name__ == "__main__"):
   args=["number_of_build_cycles=2","number_of_macro_cycles=1","number_of_trials=2","random_seed=77141"]
   t0=time.time()
-  rmsd1=tst_01(args)
+  rmsd=tst_02(args)
   print "Time: %6.4f"%(time.time()-t0)
-  print "test 1 OK"
-
-  t0=time.time()
-  rmsd2=tst_02(args)
-  print "Time: %6.4f"%(time.time()-t0)
-  print "test 2 OK"
-  print "RMSD for CA atoms: %7.2f  ... for all-atoms: %7.2f " %(rmsd1,rmsd2)
+  print "OK"
+  print "RMSD %7.2f "%rmsd
