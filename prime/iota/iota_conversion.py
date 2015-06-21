@@ -115,10 +115,11 @@ def check_image(img):
       beam       = loaded_img.get_beam()
       beam_x     = detector.get_beam_centre(beam.get_s0())[0]
       beam_y     = detector.get_beam_centre(beam.get_s0())[1]
-      if int(beam_x) == int(beam_y):
+      if abs(beam_x - beam_y) <= 0.1:
         verdict = 'converted pickle'
       else:
         verdict = 'raw pickle'
+        print img, abs(beam_x - beam_y), beam_x, beam_y, verdict
     else:
       verdict = 'image'
   else:
@@ -183,10 +184,6 @@ def square_pickle(data, square='crop'):
 
     new_pixels.matrix_paste_block_in_place(pixels, delta_y, delta_x)
 
-#     for y in xrange(pixels.focus()[0]):
-#       for x in xrange(pixels.focus()[1]):
-#         new_pixels[y + delta_y, x + delta_x] = pixels[y, x]
-#     assert new_pixels.focus()[0] == new_pixels.focus()[1]
 
   # save the results
   data['DATA'] = new_pixels
@@ -265,10 +262,10 @@ def convert_image(img_in, img_out, square, beamstop=0, beam_center=[0,0]):
     img_data = mask_image(img_data, beamstop)
 
   info_line = '{:<{width}} BEAM_X = {:<4.2f}, BEAM_Y = {:<4.2f}, '\
-              'PIXEL_SIZE = {:<8.6f}, IMG_SIZE = {:<4} X {:<4}'\
-              ''.format(img_out, img_data['BEAM_CENTER_X'],
+              'PIXEL_SIZE = {:<8.6f}, IMG_SIZE = {:<4} X {:<4}, '\
+              'DIST = {}'.format(img_out, img_data['BEAM_CENTER_X'],
                         img_data['BEAM_CENTER_Y'], img_data['PIXEL_SIZE'],
-                        img_data['SIZE1'], img_data['SIZE2'],
+                        img_data['SIZE1'], img_data['SIZE2'], img_data['DISTANCE'],
                         width = len(img_out))
 
   logfile = '{}/{}/conversion.log'.format(os.curdir, 'conv_pickles')
