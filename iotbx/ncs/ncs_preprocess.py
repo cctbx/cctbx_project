@@ -1368,7 +1368,7 @@ class ncs_group_object(object):
         ncs_domain_pdb=None
 
       for gr_chains in gr[0]:
-        # the same chain be be part of the master NCS in several groups
+        # the same chain can be part of the master NCS in several groups
         if ncs_groups_by_chains.has_key(gr_chains):
           gr_dict = ncs_groups_by_chains[gr_chains]
         else:
