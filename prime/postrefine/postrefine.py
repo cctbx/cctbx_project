@@ -28,6 +28,7 @@ class postref_handler(object):
     """Given the pickle file, extract and prepare observations object and
     the alpha angle (meridional to equatorial).
     """
+      #print txt_exception
     if iparams.flag_weak_anomalous:
       if avg_mode == 'final':
         target_anomalous_flag = iparams.target_anomalous_flag
@@ -37,12 +38,19 @@ class postref_handler(object):
       target_anomalous_flag = iparams.target_anomalous_flag
 
     observations = observations_pickle["observations"][0]
+    #a,b,c,alpha,beta,gamma = observations.unit_cell().parameters()
+    #print pickle_filename, observations.space_group_info(), '%6.2f %6.2f %6.2f %6.2f %6.2f %6.2f'%(a,b,c,alpha,beta,gamma)
+
     if iparams.reindex_op == 'h,k,l':
       pass
     else:
       from cctbx import sgtbx
       cb_op = sgtbx.change_of_basis_op(iparams.reindex_op)
-      observations = observations.change_basis(cb_op)
+      if iparams.reindex_apply_to is None:
+        observations = observations.change_basis(cb_op)
+      else:
+        if str(observations.space_group_info()) == str(iparams.reindex_apply_to):
+          observations = observations.change_basis(cb_op)
 
     detector_distance_mm = observations_pickle['distance']
     mm_predictions = iparams.pixel_size_mm*(observations_pickle['mapped_predictions'][0])
@@ -99,8 +107,7 @@ class postref_handler(object):
                       crystal_symmetry=miller_set.crystal_symmetry())
     except Exception:
       a,b,c,alpha,beta,gamma = uc_constrained
-      txt_exception = 'Mismatch spacegroup (%6.2f,%6.2f,%6.2f,%6.2f,%6.2f,%6.2f)'%(a,b,c,alpha,beta,gamma)+pickle_filename
-      print txt_exception
+      txt_exception = 'rejected (bad cell) CELL:{0:6.2f} {1:6.2f} {2:6.2f} {3:6.2f} {4:6.2f} {5:6.2f}'.format(a,b,c,alpha,beta,gamma)
       return None, txt_exception
 
 
@@ -216,10 +223,10 @@ class postref_handler(object):
         observations = observations.select(select_flags)
 
         if wp.wilson_b < 0:
-          return None, 'Image rejected from scaling'
+          return None, 'rejected (bad b-factor) B:{0:6.2f}'.format(wp.wilson_b)
 
       except Exception:
-        return None, 'Warning: problem with Wilson B-factor - continue.'
+        return None, 'warning (bad b-factor estimate)'
 
     if iparams.flag_replace_sigI:
       observations = observations.customized_copy(sigmas=flex.sqrt(observations.data()))
@@ -314,12 +321,15 @@ class postref_handler(object):
     crystal_init_orientation = observations_pickle["current_orientation"][0]
     wavelength = observations_pickle["wavelength"]
     pickle_filepaths = pickle_filename.split('/')
+    img_filename_only = pickle_filepaths[len(pickle_filepaths)-1]
+    txt_exception = ' {0:40} ==> '.format(img_filename_only)
 
     inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename)
     if inputs is not None:
       observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = inputs
     else:
-      return None, txt_organize_input+pickle_filepaths[len(pickle_filepaths)-1]
+      txt_exception += txt_organize_input + '\n'
+      return None, txt_exception
 
     #2. Determine polarity - always do this even if flag_polar = False
     #the function will take care of it.
@@ -354,7 +364,7 @@ class postref_handler(object):
     #4. Do least-squares refinement
     lsqrh = leastsqr_handler()
     try:
-      refined_params, stats, n_refl_postrefined = lsqrh.optimize(I_ref_match,
+        refined_params, stats, n_refl_postrefined = lsqrh.optimize(I_ref_match,
                                                                    observations_original_sel, wavelength,
                                                                    crystal_init_orientation, alpha_angle_set,
                                                                    spot_pred_x_mm_set, spot_pred_y_mm_set,
@@ -363,7 +373,7 @@ class postref_handler(object):
                                                                    observations_non_polar_sel,
                                                                    detector_distance_mm)
     except Exception:
-      return None, 'Error - post-refinement (optimize)'
+      return None, txt_exception+'reverted (optimization fail)\n'
 
     #caculate partiality for output (with target_anomalous check)
     G_fin, B_fin, rotx_fin, roty_fin, ry_fin, rz_fin, r0_fin, re_fin, \
@@ -439,7 +449,7 @@ class postref_handler(object):
         #reset partiality
         partiality_fin_sel = flex.double([1]*len(observations_original_sel.data()))
       except Exception:
-        return None, 'Error post-refinement'
+        return None, txt_exception+'rejected (final Wilson scaling failed)'
 
 
     pres = postref_results()
@@ -455,27 +465,33 @@ class postref_handler(object):
             wavelength=wavelength,
             crystal_orientation=crystal_fin_orientation)
 
+    r_change, r_xy_change, cc_change, cc_iso_change = (0,0,0,0)
+    try:
+      r_change = ((pres.R_final - pres.R_init)/pres.R_init)*100
+      r_xy_change = ((pres.R_xy_final - pres.R_xy_init)/pres.R_xy_init)*100
+      cc_change = ((pres.CC_final - pres.CC_init)/pres.CC_init)*100
+      cc_iso_change = ((pres.CC_iso_final - pres.CC_iso_init)/pres.CC_iso_init)*100
+    except Exception:
+        pass
 
-    txt_postref = '%6.0f %5.2f %6.0f %9.0f %8.2f %8.2f %6.2f %6.2f %6.2f %6.2f %6.2f %8.2f %6.2f %6.2f %6.2f %5.2f %5.2f %5.2f %6.2f '%( \
-      pres.frame_no, observations_non_polar.d_min(), len(observations_non_polar.indices()), \
-      n_refl_postrefined, math.sqrt(pres.R_init), math.sqrt(pres.R_final), pres.R_xy_init, pres.R_xy_final, \
-      pres.CC_init*100, pres.CC_final*100,pres.CC_iso_init*100, pres.CC_iso_final*100, \
-      a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin, detector_distance_mm)+ \
-      pickle_filepaths[len(pickle_filepaths)-1]
-
+    txt_postref= ' {0:40} ==> RES:{1:5.2f} NREFL:{2:5d} R:{3:8.2f}% RXY:{4:8.2f}% CC:{5:6.2f}% CCISO:{6:6.2f}% CELL:{7:6.2f} {8:6.2f} {9:6.2f} {10:6.2f} {11:6.2f} {12:6.2f}'.format(img_filename_only, observations_original_sel.d_min(), len(observations_original_sel.data()), r_change, r_xy_change, cc_change, cc_iso_change, a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin)
     print txt_postref
+    txt_postref += '\n'
+
     return pres, txt_postref
 
   def calc_mean_intensity(self, pickle_filename, iparams, avg_mode):
     observations_pickle = pickle.load(open(pickle_filename,"rb"))
     wavelength = observations_pickle["wavelength"]
     pickle_filepaths = pickle_filename.split('/')
+    txt_exception = ' {0:40} ==> '.format(pickle_filepaths[len(pickle_filepaths)-1])
 
     inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename)
     if inputs is not None:
       observations_original, alpha_angle_obs, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = inputs
     else:
-      return None, txt_organize_input+pickle_filepaths[len(pickle_filepaths)-1]
+      txt_exception += txt_organize_input + '\n'
+      return None, txt_exception
 
     #filter resolution
     observations_sel = observations_original.resolution_filter(d_min=iparams.scale.d_min, d_max=iparams.scale.d_max)
@@ -483,7 +499,8 @@ class postref_handler(object):
     i_sel = (observations_sel.data()/observations_sel.sigmas()) > iparams.scale.sigma_min
 
     if len(observations_sel.data().select(i_sel)) == 0:
-      return None
+        txt_exception += 'rejected (bad no. of reflections)\n'
+        return None, txt_exception
     mean_I = np.median(observations_sel.data().select(i_sel))
 
     if iparams.flag_plot_expert:
@@ -513,20 +530,21 @@ class postref_handler(object):
       plt.grid()
       plt.show()
 
-    return mean_I, pickle_filepaths[len(pickle_filepaths)-1]
+    return mean_I, txt_exception+'ok'
 
 
   def scale_frame_by_mean_I(self, frame_no, pickle_filename, iparams, mean_of_mean_I, avg_mode):
 
     observations_pickle = pickle.load(open(pickle_filename,"rb"))
-
     pickle_filepaths = pickle_filename.split('/')
-
+    img_filename_only = pickle_filepaths[len(pickle_filepaths)-1]
     inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename)
+    txt_exception = ' {0:40} ==> '.format(img_filename_only)
     if inputs is not None:
       observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = inputs
     else:
-      return None, txt_organize_input+pickle_filepaths[len(pickle_filepaths)-1]
+      txt_exception += txt_organize_input + '\n'
+      return None, txt_exception
 
     wavelength = observations_pickle["wavelength"]
     crystal_init_orientation = observations_pickle["current_orientation"][0]
@@ -578,8 +596,8 @@ class postref_handler(object):
         wp = statistics.wilson_plot(observations_as_f, asu_contents, e_statistics=True)
 
       except Exception:
-        print 'Error'
-        return None, 'Warning: problem in mean scaling - continue.'
+        txt_exception += 'warning (bad Wilson scaling)\n'
+        return None, txt_exception
 
     if iparams.flag_apply_b_by_frame:
       G, B = (wp.wilson_intensity_scale_factor,wp.wilson_b)
@@ -611,12 +629,10 @@ class postref_handler(object):
             pickle_filename=pickle_filename,
             wavelength=wavelength)
 
-    txt_scale_frame_by_mean_I = '%6.0f %6.2f %6.0f %6.0f %6.4f %6.2f %6.2f %6.2f %6.2f %5.2f %5.2f %5.2f '%(frame_no,
-      observations_original.d_min(), len(observations_original.data()), len(observations_original.data()),
-      G, B,
-      uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5])+pickle_filepaths[len(pickle_filepaths)-1]
+    txt_scale_frame_by_mean_I = ' {0:40} ==> RES:{1:5.2f} NREFL:{2:5d} G:{3:10.3e} B:{4:6.2f} CELL:{5:6.2f} {6:6.2f} {7:6.2f} {8:6.2f} {9:6.2f} {10:6.2f}'.format(img_filename_only, observations_original.d_min(), len(observations_original.data()), G, B, uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5])
 
     print txt_scale_frame_by_mean_I
+    txt_scale_frame_by_mean_I += '\n'
     return pres, txt_scale_frame_by_mean_I
 
 
@@ -670,4 +686,3 @@ def read_input(args):
   from mod_input import process_input
   iparams, txt_out_input = process_input(args)
   return iparams, txt_out_input
-

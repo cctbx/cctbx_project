@@ -35,7 +35,7 @@ class intensities_scaler(object):
     from prime import Average_Mode, averaging_engine
     if avg_mode == 'average':
       avg_mode_cpp = Average_Mode.Average
-      sigma_max = 0
+      sigma_max = iparams.sigma_global_min
     elif avg_mode == 'weighted':
       avg_mode_cpp = Average_Mode.Weighted
       sigma_max = iparams.sigma_global_min
@@ -195,32 +195,27 @@ class intensities_scaler(object):
           if abs(pres.SE-SE_med)/SE_std > std_filter:
             flag_pres_ok = False
             cn_bad_frame_SE += 1
-            print pres.frame_no, img_filename, ' discarded (SE = %6.2f)'%(pres.SE)
 
         if flag_pres_ok and pres.CC_final < cc_thres:
           flag_pres_ok = False
           cn_bad_frame_cc += 1
-          print pres.frame_no, img_filename, ' discarded (CC = %6.2f)'%(pres.CC_final)
 
         if flag_pres_ok:
           if G_std > 0:
             if abs(pres.G-G_med)/G_std > std_filter:
               flag_pres_ok = False
               cn_bad_frame_G += 1
-              print pres.frame_no, img_filename, ' discarded (G = %6.2f)'%(pres.G)
 
         if flag_pres_ok:
           if re_std > 0:
             if abs(pres.re-re_med)/(math.sqrt(re_med)) > std_filter:
               flag_pres_ok = False
               cn_bad_frame_re += 1
-              print pres.frame_no, img_filename, ' discarded (gamma_e = %6.2f)'%(pres.re)
 
         from mod_leastsqr import good_unit_cell
         if flag_pres_ok and not good_unit_cell(pres.uc_params, iparams, iparams.merge.uc_tolerance):
           flag_pres_ok = False
           cn_bad_frame_uc += 1
-          print pres.frame_no, img_filename, ' discarded - unit-cell exceeds the limits (%6.2f %6.2f %6.2f %5.2f %5.2f %5.2f)'%(pres.uc_params[0], pres.uc_params[1], pres.uc_params[2], pres.uc_params[3], pres.uc_params[4], pres.uc_params[5])
 
         if flag_pres_ok:
           cn_good_frame += 1
@@ -245,7 +240,6 @@ class intensities_scaler(object):
           wavelength_all.extend(flex.double([pres.wavelength]*len(pres.observations.data())))
           pickle_filename_all += [pres.pickle_filename for i in range(len(pres.observations.data()))]
           i_seq.extend(flex.int([i for i in range(len(i_seq), len(i_seq)+len(pres.observations.data()))]))
-          print pres.frame_no+1, img_filename, ' merged'
 
 
     #plot stats
@@ -253,7 +247,7 @@ class intensities_scaler(object):
 
     #calculate average unit cell
     uc_mean, uc_med, uc_std = self.calc_mean_unit_cell(filtered_results)
-    unit_cell_mean = unit_cell((uc_mean[0], uc_mean[1], uc_mean[2], uc_mean[3], uc_mean[4], uc_mean[5]))
+    unit_cell_mean = unit_cell((uc_med[0], uc_med[1], uc_med[2], uc_med[3], uc_med[4], uc_med[5]))
 
     #recalculate stats for pr parameters
     pr_params_mean, pr_params_med, pr_params_std = self.calc_mean_postref_parameters(filtered_results)
@@ -263,7 +257,7 @@ class intensities_scaler(object):
 
     #from all observations merge them
     crystal_symmetry = crystal.symmetry(
-        unit_cell=(uc_mean[0], uc_mean[1], uc_mean[2], uc_mean[3], uc_mean[4], uc_mean[5]),
+        unit_cell=(uc_med[0], uc_med[1], uc_med[2], uc_med[3], uc_med[4], uc_med[5]),
         space_group_symbol=iparams.target_space_group)
     miller_set_all=miller.set(
                 crystal_symmetry=crystal_symmetry,
@@ -338,7 +332,7 @@ class intensities_scaler(object):
 
     return cn_group, group_id_list, miller_indices_all_sort, miller_indices_ori_all_sort, \
            I_obs_all_sort, sigI_obs_all_sort,G_all_sort, B_all_sort, \
-           p_all_sort, rs_all_sort, wavelength_all_sort, sin_sq_all_sort, SE_all_sort, uc_mean, \
+           p_all_sort, rs_all_sort, wavelength_all_sort, sin_sq_all_sort, SE_all_sort, uc_med, \
            np.mean(wavelength_all), pickle_filename_all_sort, txt_out
 
 
@@ -394,7 +388,7 @@ class intensities_scaler(object):
     I_even_l = I_even_l.select(i_sel_res)
     I_odd_l = I_odd_l.select(i_sel_res)
 
-    print 'N_refl after resolution filter', len(miller_indices_merge)
+    n_refl_res_filtered = len(miller_indices_merge)
 
     #Apply B-factor
     asu_contents = {}
@@ -422,6 +416,7 @@ class intensities_scaler(object):
 
 
     #Remove outliers
+    n_refl_removed_as_outlier = 0
     if iparams.flag_outlier_rejection:
       normalised = miller_array_merge_amplitude.normalised_amplitudes(asu_contents, wilson_plot=wp)
       normalised_f_obs = normalised.array()
@@ -437,8 +432,7 @@ class intensities_scaler(object):
           select_flags[i_f_obs] = False
         i_f_obs += 1
 
-      print 'Outlier detection: ', len(miller_array_merge.indices())-len(select_flags.select(select_flags == True)), ' reflections rejected.'
-
+      n_refl_removed_as_outlier = len(miller_array_merge.indices())-len(select_flags.select(select_flags == True))
 
       i_seq = flex.int(range(len(miller_array_merge.data())))
       stat_all_tmp = [stat_all[j] for j in i_seq.select(select_flags)]
@@ -537,6 +531,8 @@ class intensities_scaler(object):
     binner_template_asu_indices = binner_template_asu.bin_indices()
 
     txt_out = '\n'
+    txt_out += ' No. reflections:          %12.0f\n'%(n_refl_res_filtered)
+    txt_out += ' No. outliers:             %12.0f\n'%(n_refl_removed_as_outlier)
     txt_out += 'Summary for '+output_mtz_file_prefix+'_merge.mtz\n'
     txt_out += 'Bin Resolution Range     Completeness      <N_obs> |Rmerge  Rsplit   CC1/2   N_ind |CCiso   N_ind|CCanoma  N_ind| <'+data_label+'/std> <'+data_label+'>   <std> <'+data_label+'**2>\n'
     txt_out += '---------------------------------------------------------------------------------------------------------------------------------------------------\n'
@@ -751,7 +747,7 @@ class intensities_scaler(object):
 
       mean_I_sq_list.append(mean_I_sq_bin)
 
-      txt_out += '%02d %7.2f - %7.2f %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %9.2f %10.2f %6.2f %6.2f' \
+      txt_out += '%02d %7.2f - %7.2f %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %9.2f %.3e %.3e %6.2f' \
           %(i, binner_template_asu.bin_d_range(i)[0], binner_template_asu.bin_d_range(i)[1], completeness*100, \
           len(miller_indices_obs_bin), len(miller_indices_bin),\
           multiplicity_bin, r_meas_bin*100, r_split_bin*100, cc12_bin*100, n_refl_halfset_bin, cc_iso_bin*100, n_refl_cciso_bin, \
@@ -814,7 +810,7 @@ class intensities_scaler(object):
       r_meas = float('Inf')
 
     txt_out += '---------------------------------------------------------------------------------------------------------------------------------------------------\n'
-    txt_out += '        TOTAL        %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %9.2f %10.2f %6.2f %6.2f\n' \
+    txt_out += '        TOTAL        %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %9.2f %.3e %.3e %6.2f\n' \
     %((sum_refl_obs/sum_refl_complete)*100, sum_refl_obs, \
      sum_refl_complete, n_refl_obs_total/sum_refl_obs, \
      r_meas*100, r_split*100, cc12*100, len(I_even.select(i_even_filter_sel)), \
@@ -1149,4 +1145,3 @@ class svd_handler(object):
 
 
       return R, t
-

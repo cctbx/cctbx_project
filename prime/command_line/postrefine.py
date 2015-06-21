@@ -61,6 +61,15 @@ def read_pickles(data):
 if (__name__ == "__main__"):
   #capture starting time
   time_global_start=datetime.now()
+  import logging
+  logging.captureWarnings(True)
+  formatter = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
+  console_handler = logging.StreamHandler()
+  console_handler.setLevel(logging.ERROR)
+  console_handler.setFormatter(formatter)
+  logging.getLogger().addHandler(console_handler)
+  logging.getLogger('py.warnings').addHandler(console_handler)
+  logging.basicConfig(format='%(asctime)s\t%(levelname)s\t%(message)s', level=logging.DEBUG)
 
   #0 .read input parameters and frames (pickle files)
   from prime.postrefine import read_input
@@ -77,9 +86,11 @@ if (__name__ == "__main__"):
   frames = range(len(frame_files))
 
   #1. prepare reference miller array
-  print 'Generating a reference set (will not be used if hklrefin is set)'
-  print 'Frame#  Res (A)  Nrefl  Nrefl_used Sum_I           Mean_I       Median(I)    G     B                   Unit cell                File name'
-  txt_merge_mean = ''
+  txt_merge_mean = 'Generating a reference set (will not be used if hklrefin is set)'
+  print txt_merge_mean
+  txt_merge_mean += '\n'
+  txt_merge_mean_table = ''
+
   miller_array_ref = None
   avg_mode = 'average'
   #Always generate the mean-intensity scaled set.
@@ -117,6 +128,7 @@ if (__name__ == "__main__"):
   for result in scale_frame_by_mean_I_result:
     if result is not None:
       pres, txt_out_result = result
+      txt_merge_mean += txt_out_result
       if pres is not None:
         observations_merge_mean_set.append(pres)
 
@@ -177,7 +189,7 @@ if (__name__ == "__main__"):
       f.close()
 
       from prime.postrefine import write_output
-      miller_array_ref, txt_merge_mean = write_output(miller_indices_merge,
+      miller_array_ref, txt_merge_mean_table = write_output(miller_indices_merge,
                                                                       I_merge, sigI_merge,
                                                                       stat_all, (I_even, I_odd, I_even_h, I_odd_h,
                                                                       I_even_k, I_odd_k, I_even_l, I_odd_l),
@@ -186,8 +198,9 @@ if (__name__ == "__main__"):
                                                                       iparams.run_no+'/mean_scaled',
                                                                       avg_mode)
 
-      txt_merge_mean =  txt_merge_mean + txt_prep_out
-      print txt_merge_mean
+      txt_merge_mean +=  txt_merge_mean_table + txt_prep_out
+      print txt_merge_mean_table
+      print txt_prep_out
       if iparams.flag_force_no_postrefine:
         txt_out = txt_out_input + txt_merge_mean
         f = open(iparams.run_no+'/log.txt', 'w')
@@ -238,11 +251,11 @@ if (__name__ == "__main__"):
     if iparams.postref.reflecting_range.flag_on and i_iter > 0:
       iparams.b_refine_d_min = -1
 
-    _txt_merge_postref = 'Start post-refinement cycle '+str(i_iter+1)+'\n'
-    _txt_merge_postref += 'Average mode: '+avg_mode+'\n'
+    _txt_merge_postref = 'Post-refinement cycle '+str(i_iter+1)+' ('+avg_mode+')\n'
+    _txt_merge_postref += '* R and CC show percent change.\n'
     txt_merge_postref += _txt_merge_postref
     print _txt_merge_postref
-    print 'Frame# Res.(A) Nrefl Nreflused    Rini     Rfin  Rxyini  Rxyfin CCini CCfin CCisoini CCisofin             Unit cell                   File name'
+
     def postrefine_by_frame_mproc_wrapper(arg):
       return postrefine_by_frame_mproc(arg, frame_files, iparams,
                                        miller_array_ref, postrefine_by_frame_pres_list, avg_mode)
@@ -257,6 +270,7 @@ if (__name__ == "__main__"):
     for results in postrefine_by_frame_result:
       if results is not None:
         pres, txt_out_result = results
+        txt_merge_postref += txt_out_result
         postrefine_by_frame_pres_list.append(pres)
         if pres is not None:
           postrefine_by_frame_good.append(pres)
@@ -356,4 +370,3 @@ if (__name__ == "__main__"):
   #remove rejections.txt
   if os.path.isfile(iparams.run_no+'/rejections.txt'):
     os.remove(iparams.run_no+'/rejections.txt')
-
