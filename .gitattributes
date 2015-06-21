@@ -2099,7 +2099,6 @@ mmtbx/regression/ncs/tst_minimization_ncs_constraints_real_space.py -text
 mmtbx/regression/ncs/tst_ncs_search.py -text
 mmtbx/regression/ncs/tst_ncs_utils.py -text
 mmtbx/regression/real_space_refine_chain/pic.pml -text
-mmtbx/regression/real_space_refine_chain/pic1.pml -text
 mmtbx/regression/real_space_refine_chain/poor_map.mtz -text
 mmtbx/regression/real_space_refine_chain/poor_model.pdb -text
 mmtbx/regression/real_space_refine_chain/tst_00.py -text
