@@ -37,6 +37,14 @@ class Phil_constraints(object):
     self.master = 'reference'
     self.copy = 'selection'
 
+class Phil_pdb_interpretation(object):
+  """ pdb_interpretation Phil strings """
+
+  def __init__(self):
+    self.group = 'refinement.pdb_interpretation.ncs_group'
+    self.master = 'reference'
+    self.copy = 'selection'
+
 
 def concatenate_rot_tran(transforms_obj=None,
                          ncs_restraints_group_list=None):
@@ -1063,10 +1071,12 @@ def convert_phil_format(phil_str,to_type='ncs'):
   Return:
     out_phil_str (str): Phil selection string
   """
-  allowed_phil_types = ['ncs','restraints','constraints']
+  if to_type == 'ncs_group': to_type = 'ncs'
+  allowed_phil_types = \
+    ['ncs','restraints','constraints','pdb_interpretation']
   type_ok = to_type in allowed_phil_types
-  msg = "Phil type should be one of '{}', '{}' or '{}'\n".format(*allowed_phil_types)
-  if not type_ok: raise Sorry('Wrong Phil type, ' + msg)
+  msg = "Phil type should be one of '{}', '{}' , '{}' or '{}'\n"
+  if not type_ok: raise Sorry('Wrong Phil type, '+msg.format(*allowed_phil_types))
   phil_list = phil_str.splitlines()
   phil_list = [x for x in phil_list if x]
   # find current phil type
@@ -1075,12 +1085,14 @@ def convert_phil_format(phil_str,to_type='ncs'):
     if 'ncs_group' in l: current_phil_type = 'ncs'
     elif 'restraint' in l: current_phil_type = 'restraints'
     elif 'constraint' in l: current_phil_type = 'constraints'
+    elif 'pdb_interpretation' in l: current_phil_type = 'pdb_interpretation'
     if current_phil_type: break
   if not current_phil_type:
     # input phil string is not in a known format
     return ''
   type_dict = {
     'ncs':Phil_NCS(),
+    'pdb_interpretation':Phil_pdb_interpretation(),
     'restraints':Phil_restraints(),
     'constraints':Phil_constraints()}
   from_group_str = type_dict[current_phil_type].group
