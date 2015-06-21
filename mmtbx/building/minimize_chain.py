@@ -193,7 +193,7 @@ def run_one_cycle(
     target_angle_rmsd       = params.minimization.target_angle_rmsd,
     xyz_shake               = params.minimization.start_xyz_error,
     states                  = states)
-  return ear.pdb_hierarchy, ear.xray_structure, ear.states
+  return ear.pdb_hierarchy, ear.xray_structure, ear.states, ear.score
 
 def run(args,
     map_data=None,
@@ -246,7 +246,7 @@ def run(args,
       pdb_string=f.getvalue()
       pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
 
-  pdb_hierarchy,xray_structure,states=run_one_cycle(
+  pdb_hierarchy,xray_structure,states,score=run_one_cycle(
     params=params,
     map_data=map_data,
     pdb_inp=pdb_inp,
@@ -260,7 +260,7 @@ def run(args,
     print >>f, pdb_string
     f.close()
   # all done
-  return pdb_hierarchy,xray_structure,states
+  return pdb_hierarchy,xray_structure,states,score
 
 if   (__name__ == "__main__"):
   args=sys.argv[1:]

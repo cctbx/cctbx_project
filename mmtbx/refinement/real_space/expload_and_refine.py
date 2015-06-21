@@ -122,6 +122,7 @@ class run(object):
     # Finalize
     self.run_refine_flexible_rmsd_targets(weights = weights)
     self.show_target(prefix="flexible targets:")
+    self.score=sc.target # save the score
 
   def generate_perturbed_models(self, simulated_annealing=False,
                                 random_shake=False):

@@ -253,7 +253,7 @@ def tst_02(args):
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name = "%s_map.mtz"%prefix)
 
-  hierarchy,xrs_refined,states=run(
+  hierarchy,xrs_refined,states,score=run(
      args=args,map_data=target_map_data,
      crystal_symmetry=fc.crystal_symmetry(),
      pdb_string=pdb_str_poor_full)
