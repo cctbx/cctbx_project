@@ -229,7 +229,7 @@ def run(prefix="tst_00"):
   states = mmtbx.utils.states(pdb_hierarchy=ph_answer, xray_structure=xrs_poor)
   states.add(sites_cart = xrs_poor.sites_cart())
   # Compute target map
-  fc = xrs_answer.structure_factors(d_min=1.5).f_calc()
+  fc = xrs_answer.structure_factors(d_min=3.5).f_calc()
   fft_map = fc.fft_map(resolution_factor = 0.25)
   fft_map.apply_sigma_scaling()
   target_map_data = fft_map.real_map_unpadded()
