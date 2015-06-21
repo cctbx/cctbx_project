@@ -48,7 +48,7 @@ def make_prime_input(clean_results, sg, uc, data_path, iota_version, now):
   elif sg in orthorhombic:
     crystal_system = 'Orthorhombic'
   elif sg in tetragonal:
-    crystal_system = 'Tetratonal'
+    crystal_system = 'Tetragonal'
   elif sg in hexagonal:
     crystal_system = 'Hexagonal'
   elif sg in rhombohedral:

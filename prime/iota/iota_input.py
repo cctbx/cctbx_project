@@ -545,9 +545,12 @@ def write_defaults(current_path, txt_out):
 
   def_target_file = '{}/target.phil'.format(current_path)
   default_target = ['# -*- mode: conf -*-',
-                    '# target_cell = 79.4 79.4 38.1 90 90 90  # insert your own target cell once known',
-                    '# known_setting = 5                      # likewise known setting',
-                    '# target_cell_centring_type = P          # likewise centring type',
+                    '# target_cell = 79.4 79.4 38.1 90 90 90  # insert your own target unit cell if known',
+                    '# known_symmetry = P4                    # insert your own target point group if known',
+                    '# known_setting = 9                      # Triclinic = 1, monoclinic = 2,',
+                    '                                         # orthorhombic/rhombohedral = 5, tetragonal = 9,',
+                    '                                         # hexagonal = 12, cubic = 22,',
+                    '# target_cell_centring_type = *P C I R F',
                     'difflimit_sigma_cutoff = 0.01',
                     'force_method2_resolution_limit = 2.5',
                     'distl_highres_limit = 2.5',
@@ -578,7 +581,6 @@ def write_defaults(current_path, txt_out):
                     '  }',
                     '}',
                     'mosaicity_limit=2.0',
-                    'distl_permit_binning=False',
                     'distl_minimum_number_spots_for_indexing=16',
                     'distl_permit_binning=False',
                     'beam_search_scope=5'
