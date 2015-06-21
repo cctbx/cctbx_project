@@ -69,7 +69,7 @@ def spotfinding_param_search (input_img, gs_params):
     spots_inlier = Org.S.images[frame]['spots_inlier']
     Bragg_spots = Org.S.images[frame]['N_spots_inlier']
 
-  if Bragg_spots >= 10:
+  if Bragg_spots >= gs_params.advanced.min_Bragg_spots:
     return input_img
 
 def triage_mproc_wrapper(current_img):

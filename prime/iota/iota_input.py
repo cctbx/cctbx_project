@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/12/2015
+Last Changed: 06/20/2015
 Description : IOTA I/O module. Reads PHIL input, creates output directories,
               creates input lists and organizes starting parameters, also
               creates reasonable IOTA and PHIL defaults if selected
@@ -123,6 +123,9 @@ advanced
   beamstop = 0
     .type = float
     .help = Beamstop shadow threshold, zero to skip
+  min_Bragg_spots = 100
+    .type = int
+    .help = Minimum number of Bragg spots to qualify as sufficient diffraction
   beam_center
     .help = Alternate beam center coordinates ("0" if leave the same)
   {

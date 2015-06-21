@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/11/2015
+Last Changed: 06/20/2015
 Description : IOTA pickle selection module. Selects the best integration results
               from grid search output.
 '''
@@ -31,28 +31,39 @@ def prefilter(gs_params, int_list):
       try:
         tmp_pickle_name = os.path.basename(i['img'])
         uc_tol = gs_params.target_uc_tolerance
-        user_uc = [prm for prm in gs_params.target_unit_cell.parameters()]
 
+        if gs_params.target_unit_cell != None:
+          user_uc = [prm for prm in gs_params.target_unit_cell.parameters()]
+        else:
+          user_uc = None
         # read integration info and determine uc differences
         p_pg = i['sg'].replace(" ","")
 
+        if user_uc != None:
+          delta_a = abs(i['a'] - user_uc[0])
+          delta_b = abs(i['b'] - user_uc[1])
+          delta_c = abs(i['c'] - user_uc[2])
+          delta_alpha = abs(i['alpha'] - user_uc[3])
+          delta_beta = abs(i['beta'] - user_uc[4])
+          delta_gamma = abs(i['gamma'] - user_uc[5])
 
-        delta_a = abs(i['a'] - user_uc[0])
-        delta_b = abs(i['b'] - user_uc[1])
-        delta_c = abs(i['c'] - user_uc[2])
-        delta_alpha = abs(i['alpha'] - user_uc[3])
-        delta_beta = abs(i['beta'] - user_uc[4])
-        delta_gamma = abs(i['gamma'] - user_uc[5])
+          uc_check = (delta_a <= user_uc[0] * uc_tol and
+                      delta_b <= user_uc[1] * uc_tol and
+                      delta_c <= user_uc[2] * uc_tol and
+                      delta_alpha <= user_uc[3] * uc_tol and
+                      delta_beta <= user_uc[4] * uc_tol and
+                      delta_gamma <= user_uc[5] * uc_tol)
 
         # Determine if pickle satisfies sg / uc parameters within given
         # tolerance and low resolution cutoff
-        if p_pg == gs_params.target_pointgroup.replace(" ",""):
-          if  (delta_a <= user_uc[0] * uc_tol and
-                delta_b <= user_uc[1] * uc_tol and
-                delta_c <= user_uc[2] * uc_tol and
-                delta_alpha <= user_uc[3] * uc_tol and
-                delta_beta <= user_uc[4] * uc_tol and
-                delta_gamma <= user_uc[5] * uc_tol):
+        if gs_params.target_pointgroup != None and user_uc != None:
+          if p_pg == gs_params.target_pointgroup.replace(" ","") and uc_check:
+            acceptable_results.append(i)
+        elif gs_params.target_pointgroup != None and user_uc == None:
+          if p_pg == gs_params.target_pointgroup.replace(" ",""):
+            acceptable_results.append(i)
+        elif user_uc != None:
+          if uc_check:
             acceptable_results.append(i)
       except TypeError:
         raise Exception("".join(traceback.format_exception(*sys.exc_info())))
