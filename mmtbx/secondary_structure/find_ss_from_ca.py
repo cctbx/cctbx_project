@@ -140,9 +140,12 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
   model_list=[]
   if hierarchy:
     if not info: info={}
-  else: # a model object with hierarchy and info
+  elif hasattr(model,'hierarchy'): # a model object with hierarchy and info
     hierarchy=model.hierarchy
     info=model.info
+  else:
+    return []  # nothing here
+
   for m in hierarchy.models():
     for chain in m.chains():
       new_hierarchy=iotbx.pdb.pdb_input(
