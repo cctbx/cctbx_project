@@ -274,7 +274,7 @@ class Script(object):
     # Some configs files will specify out_dirname. If not, we want to explicitly create one
     # so the dispatcher will have an output directory.
     output_dir = os.path.join(trialdir, "out")
-    if not os.path.exists(trialdir):
+    if not os.path.exists(output_dir):
       os.makedirs(output_dir)
 
     # Write out a script for submitting this job and submit it
