@@ -1,3 +1,4 @@
+from __future__ import division
 import time
 import iotbx.pdb
 import mmtbx.utils
