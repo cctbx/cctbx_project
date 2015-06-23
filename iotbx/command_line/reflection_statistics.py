@@ -28,7 +28,9 @@ def show_average_of_binned_data(binned_data_list):
 
 class array_cache(object):
 
-  def __init__(self, input, n_bins, lattice_symmetry_max_delta):
+  def __init__(self, input, n_bins, lattice_symmetry_max_delta,
+     completeness_as_non_anomalous=None):
+    self.completeness_as_non_anomalous=completeness_as_non_anomalous
     self.input = input.eliminate_sys_absent(integral_only=True, log=sys.stdout)
     self.lattice_symmetry_max_delta = lattice_symmetry_max_delta
     if (not self.input.is_unique_set_under_symmetry()):
@@ -79,7 +81,8 @@ class array_cache(object):
     print "Completeness of %s:" % str(self.input.info())
     no_sys_abs = self.input.eliminate_sys_absent()
     no_sys_abs.use_binning_of(self.input)
-    no_sys_abs.completeness(use_binning=True).show()
+    no_sys_abs.completeness(use_binning=True,
+     as_non_anomalous_array=self.completeness_as_non_anomalous).show()
     print
 
   def idealized_input_unit_cell(self):
@@ -390,11 +393,18 @@ def run(
       default=3.,
       help="angular tolerance in degrees used in the determination"
            " of the lattice symmetry")
+    .option(None, "--completeness_as_non_anomalous_or_anomalous",
+      action="store_true",
+      help="analyze completeness as is, without conversion to non-anomalous")
+    
   ).process(args=args)
   if (len(command_line.args) == 0 and len(additional_miller_arrays) == 0):
     command_line.parser.show_help()
     return
   active_miller_arrays = []
+  completeness_as_non_anomalous= (
+     not command_line.options.completeness_as_non_anomalous_or_anomalous)
+
   n_f_sq_as_f = 0
   for file_name in command_line.args:
     reflection_file = reflection_file_reader.any_reflection_file(
@@ -451,7 +461,9 @@ def run(
     cache_0 = array_cache(
       input=input_0,
       n_bins=n_bins,
-      lattice_symmetry_max_delta=command_line.options.lattice_symmetry_max_delta)
+      lattice_symmetry_max_delta=\
+         command_line.options.lattice_symmetry_max_delta,
+      completeness_as_non_anomalous=completeness_as_non_anomalous)
     cache_0.show_possible_twin_laws()
     cache_0.show_completeness()
     cache_0.show_patterson_peaks()

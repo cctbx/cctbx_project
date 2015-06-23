@@ -356,6 +356,7 @@ class detect_pseudo_translations (scaling.xtriage_analysis):
       completeness_cut=0.75,
       cut_radius=3.5,
       min_cubicle_edge=5.0,
+      completeness_as_non_anomalous=None,
       out=None,
       verbose=0):
     if out is None:
@@ -369,16 +370,21 @@ class detect_pseudo_translations (scaling.xtriage_analysis):
     self.unit_cell = miller_array.unit_cell()
     self.d_max = low_limit
     self.d_min = high_limit
-    self.completeness_in_range = work_array.completeness()
+    self.completeness_in_range = work_array.completeness(
+      as_non_anomalous_array = completeness_as_non_anomalous)
     self.xs = crystal.symmetry(unit_cell=miller_array.unit_cell(),
                                space_group=miller_array.space_group())
 
-    if work_array.completeness()<completeness_cut:
+    if work_array.completeness(
+      as_non_anomalous_array = completeness_as_non_anomalous) \
+         <completeness_cut:
       print >> out
       print >> out," WARNING (twin_analysis):"
       print >> out,\
         "  The completeness is only %3.2f between %3.1f and %3.1f A."% (
-        work_array.completeness(), low_limit, high_limit)
+        work_array.completeness(
+          as_non_anomalous_array = completeness_as_non_anomalous
+          ), low_limit, high_limit)
       print >> out,"  This might not be enough to obtain a good estimate"
       print >> out,"  of the presence or absence of pseudo translational"
       print >> out,"  symmetry."
@@ -999,7 +1005,7 @@ class h_test (scaling.xtriage_analysis):
   def __init__(self,
                twin_law,
                miller_array, # ideally intensities!
-               fraction=0.50) :
+               fraction=0.50):
     self.fraction = fraction
     self.twin_law = twin_law
     miller_array = miller_array.select(
@@ -1019,7 +1025,7 @@ class h_test (scaling.xtriage_analysis):
           twin_law=twin_law,
           fraction=fraction)
       except ValueError, e :
-        if (miller_array.completeness() < 0.05) :
+        if (miller_array.completeness < 0.05) : # XXX could check for anomalous
           raise Sorry("These data are severely incomplete, which breaks the "+
             "H-test for twinning.  We recommend that you use a full data set "+
             "in Xtriage, otherwise the statistical analyses may be invalid.")
@@ -2217,7 +2223,9 @@ class twin_analyses (scaling.xtriage_analysis):
                verbose = 1,
                miller_calc=None,
                additional_parameters=None,
-               original_data=None):
+               original_data=None,
+               completeness_as_non_anomalous=None,
+                ):
     assert miller_array.is_unique_set_under_symmetry()
     if out is None:
       out = sys.stdout
@@ -2292,6 +2300,7 @@ class twin_analyses (scaling.xtriage_analysis):
       self.translational_pseudo_symmetry = detect_pseudo_translations(
         miller_array=f_obs,
         out=out,
+        completeness_as_non_anomalous=completeness_as_non_anomalous,
         verbose=verbose)
     except Sorry: pass
 
@@ -2496,7 +2505,8 @@ def merge_data_and_guess_space_groups(miller_array, txt, xs=None,out=None,
 # MILLER ARRAY EXTENSIONS
 # Injector class to extend the Miller array class with the intensity analyses
 # contained in this module.
-def analyze_intensity_statistics (self, d_min=2.5, log=None) :
+def analyze_intensity_statistics (self, d_min=2.5, 
+    completeness_as_non_anomalous=None, log=None) :
   """
   Detect translational pseudosymmetry and twinning.  Returns a
   twin_law_interpretation object.
@@ -2514,6 +2524,7 @@ def analyze_intensity_statistics (self, d_min=2.5, log=None) :
     miller_array=tmp_array,
     d_star_sq_low_limit=1.0/100.0, # XXX need to confirm
     d_star_sq_high_limit=1.0/(0.001**2.0), # XXX need to confirm
+    completeness_as_non_anomalous=completeness_as_non_anomalous,
     out = null_out(),
     out_plots = null_out(),
     verbose=False)
@@ -2523,6 +2534,7 @@ def analyze_intensity_statistics (self, d_min=2.5, log=None) :
 
 def twin_analyses_brief(miller_array,
                         cut_off=2.5,
+                        completeness_as_non_anomalous=None,
                         out = None,
                         verbose=0):
   """
@@ -2539,5 +2551,6 @@ def twin_analyses_brief(miller_array,
   if (out is None) and (verbose != 0) :
     out = sys.stdout
   summary = miller_array.analyze_intensity_statistics(d_min=cut_off,
-    log=out)
+    completeness_as_non_anomalous=completeness_as_non_anomalous,
+    log=out, )
   return summary.has_twinning()

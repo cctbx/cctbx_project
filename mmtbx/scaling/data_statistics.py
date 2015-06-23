@@ -31,7 +31,8 @@ class i_sigi_completeness_stats (scaling.xtriage_analysis):
                n_bins=15,
                isigi_cut=3.0,
                completeness_cut=0.85,
-               resolution_at_least=3.5):
+               resolution_at_least=3.5,
+               completeness_as_non_anomalous=None):
     miller_array = miller_array.deep_copy().set_observation_type(miller_array)
     self.amplitudes_flag = False
     #check to see if we have intensities
@@ -46,15 +47,18 @@ class i_sigi_completeness_stats (scaling.xtriage_analysis):
     #miller_array = miller_array.select( miller_array.sigmas() > 0 )
     miller_array.setup_binner(n_bins=n_bins)
     self.resolution_bins = list(miller_array.binner().limits())
-    self.overall = miller_array.completeness(use_binning=False)
-    self.overall_binned = miller_array.completeness(use_binning=True).data[1:-1]
+    self.overall = miller_array.completeness(use_binning=False,
+       as_non_anomalous_array = completeness_as_non_anomalous)
+    self.overall_binned = miller_array.completeness(use_binning=True,
+       as_non_anomalous_array = completeness_as_non_anomalous).data[1:-1]
     self.completeness_bins = []
     def cut_completeness (cut_value):
       tmp_miller = miller_array.select(
         miller_array.data() > cut_value*miller_array.sigmas() )
       tmp_miller.use_binning_of(miller_array)
       completeness = tmp_miller.completeness(use_binning=True,
-                                             return_fail=0.0)
+               return_fail=0.0,
+               as_non_anomalous_array = completeness_as_non_anomalous)
       return completeness.data
     # create table
     table_data = []
@@ -131,12 +135,14 @@ reliable than the values calculated from the raw intensities.
 class completeness_enforcement(object):
   def __init__(self,
                miller_array,
-               minimum_completeness=0.75):
+               minimum_completeness=0.75,
+               completeness_as_non_anomalous=None):
 
     self.miller_array = miller_array.deep_copy()
     self.miller_array.setup_binner_d_star_sq_step(auto_binning=True)
     completeness = self.miller_array.completeness(use_binning=True,
-                                                  return_fail=1.0)
+      return_fail=1.0,
+      as_non_anomalous_array = completeness_as_non_anomalous)
     selection_array = flex.bool( self.miller_array.indices().size(), False )
     #In this pass, we make sure that we have reasonable completeness
     for bin in completeness.binner.range_all():
@@ -234,7 +240,8 @@ class log_binned_completeness (scaling.xtriage_analysis) :
   def __init__ (self, miller_array,
       n_reflections_in_lowest_resolution_bin=100,
       max_number_of_bins=30,
-      min_reflections_in_bin=50) :
+      min_reflections_in_bin=50,
+      completeness_as_non_anomalous=None) :
     rows = []
     bins = miller_array.log_binning(
       n_reflections_in_lowest_resolution_bin=\
@@ -246,7 +253,8 @@ class log_binned_completeness (scaling.xtriage_analysis) :
       d_max, d_min = bin_array.d_max_min()
       n_refl = bin_array.size()
       n_refl_expect = bin_array.complete_set(d_max=d_max).size()
-      completeness = bin_array.completeness(d_max=d_max)
+      completeness = bin_array.completeness(d_max=d_max,
+          as_non_anomalous_array = completeness_as_non_anomalous)
       rows.append(("%.4f - %.4f" % (d_max, d_min), "%d/%d" % (n_refl,
         n_refl_expect), "%.1f%%" % (completeness*100)))
     self.table = table_utils.simple_table(
@@ -728,7 +736,8 @@ class data_strength_and_completeness (scaling.xtriage_analysis) :
   def __init__ (self,
       miller_array,
       isigi_cut=3.0,
-      completeness_cut=0.85) :
+      completeness_cut=0.85,
+      completeness_as_non_anomalous=None) :
     # Make a deep copy not to upset or change things in
     # the binner that might be present
     tmp_miller = miller_array.deep_copy()
@@ -756,8 +765,10 @@ class data_strength_and_completeness (scaling.xtriage_analysis) :
       self.data_strength = i_sigi_completeness_stats(
         miller_array,
         isigi_cut=isigi_cut,
-        completeness_cut=completeness_cut)
-    self.completeness_overall = miller_array.completeness()
+        completeness_cut=completeness_cut,
+        completeness_as_non_anomalous=completeness_as_non_anomalous)
+    self.completeness_overall = miller_array.completeness(
+       as_non_anomalous_array = completeness_as_non_anomalous)
     # low-resolution completeness
     tmp_miller_lowres = miller_array.resolution_filter(d_min=5.0)
     self.low_resolution_completeness = None
@@ -766,9 +777,11 @@ class data_strength_and_completeness (scaling.xtriage_analysis) :
     if (tmp_miller_lowres.indices().size()>0):
       tmp_miller_lowres.setup_binner(n_bins=10)
       self.low_resolution_completeness_overall = \
-        tmp_miller_lowres.completeness(use_binning=False)
+        tmp_miller_lowres.completeness(use_binning=False,
+          as_non_anomalous_array = completeness_as_non_anomalous)
       low_resolution_completeness = tmp_miller_lowres.completeness(
-        use_binning=True)
+        use_binning=True, 
+        as_non_anomalous_array = completeness_as_non_anomalous)
       self.low_resolution_completeness = \
         low_resolution_completeness.as_simple_table(data_label="Completeness")
       binner = low_resolution_completeness.binner
@@ -794,7 +807,9 @@ class data_strength_and_completeness (scaling.xtriage_analysis) :
       self.d_min_directional = analyze_resolution_limits(miller_array)
     except AssertionError : # FIXME
       self.d_min_directional = None
-    self.log_binned = log_binned_completeness(miller_array)
+    self.log_binned = log_binned_completeness(miller_array,
+      completeness_as_non_anomalous=
+        completeness_as_non_anomalous)
 
   def _show_impl (self, out) :
     out.show_header("Data strength and completeness")
@@ -916,7 +931,8 @@ class wilson_scaling (scaling.xtriage_analysis) :
                use_b_iso=None,
                n_copies_solc=1,
                n_bases=0,
-               z_score_cut=4.5) :
+               z_score_cut=4.5,
+               completeness_as_non_anomalous=None) :
     assert (n_bases+n_residues != 0) and (n_copies_solc != 0)
     info = miller_array.info()
     tmp_miller = miller_array.deep_copy()
@@ -1025,7 +1041,8 @@ class wilson_scaling (scaling.xtriage_analysis) :
                               .mean_of_intensity_divided_by_epsilon(
                                  use_binning=True, return_fail=0.0)
     completeness = absolute_miller.completeness(use_binning=True,
-                                                return_fail=1.0)
+        return_fail=1.0,
+        as_non_anomalous_array = completeness_as_non_anomalous)
     # Recompute the scattering info summats please
     scat_info.scat_data(d_star_sq)
     # Please compute normalised structure factors
