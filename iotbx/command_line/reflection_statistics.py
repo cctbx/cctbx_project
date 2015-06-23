@@ -396,7 +396,7 @@ def run(
     .option(None, "--completeness_as_non_anomalous_or_anomalous",
       action="store_true",
       help="analyze completeness as is, without conversion to non-anomalous")
-    
+
   ).process(args=args)
   if (len(command_line.args) == 0 and len(additional_miller_arrays) == 0):
     command_line.parser.show_help()

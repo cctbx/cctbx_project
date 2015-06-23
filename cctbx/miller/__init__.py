@@ -873,12 +873,12 @@ class set(crystal.symmetry):
       # report values for non-anomalous version of array
       merged = self.as_non_anomalous_array().merge_equivalents().array()
       merged.array().set_observation_type(self)
-      if use_binning: 
+      if use_binning:
         merged.setup_binner(n_bins=self.binner().n_bins_all())
-      return merged.completeness(use_binning=use_binning, 
+      return merged.completeness(use_binning=use_binning,
         d_min_tolerance=d_min_tolerance,
-        return_fail=return_fail, 
-        d_max = d_max, 
+        return_fail=return_fail,
+        d_max = d_max,
         multiplier = multiplier,
         as_non_anomalous_array=False)
 
@@ -4950,7 +4950,7 @@ class array(set):
 
   #---------------------------------------------------------------------
   # Xtriage extensions - tested in mmtbx/scaling/tst_xtriage_twin_analyses.py
-  def analyze_intensity_statistics (self, d_min=2.5, 
+  def analyze_intensity_statistics (self, d_min=2.5,
     completeness_as_non_anomalous=None,  log=None) :
     """
     Detect translational pseudosymmetry and twinning, using methods in

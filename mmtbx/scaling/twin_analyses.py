@@ -2505,7 +2505,7 @@ def merge_data_and_guess_space_groups(miller_array, txt, xs=None,out=None,
 # MILLER ARRAY EXTENSIONS
 # Injector class to extend the Miller array class with the intensity analyses
 # contained in this module.
-def analyze_intensity_statistics (self, d_min=2.5, 
+def analyze_intensity_statistics (self, d_min=2.5,
     completeness_as_non_anomalous=None, log=None) :
   """
   Detect translational pseudosymmetry and twinning.  Returns a

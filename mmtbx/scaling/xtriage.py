@@ -112,7 +112,7 @@ input {
     completeness_as_non_anomalous = True
       .type = bool
       .help = Report completeness of non-anomalous version of arrays
-      .short_caption = Completeness as non-anomalous 
+      .short_caption = Completeness as non-anomalous
     reference
       .help = "A reference data set. For the investigation of possible reindexing options"
       .short_caption = Reference data

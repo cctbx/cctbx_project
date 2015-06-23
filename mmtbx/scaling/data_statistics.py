@@ -780,7 +780,7 @@ class data_strength_and_completeness (scaling.xtriage_analysis) :
         tmp_miller_lowres.completeness(use_binning=False,
           as_non_anomalous_array = completeness_as_non_anomalous)
       low_resolution_completeness = tmp_miller_lowres.completeness(
-        use_binning=True, 
+        use_binning=True,
         as_non_anomalous_array = completeness_as_non_anomalous)
       self.low_resolution_completeness = \
         low_resolution_completeness.as_simple_table(data_label="Completeness")
