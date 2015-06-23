@@ -81,8 +81,31 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
 
     return
 
-  # FIXME this beamline has a kappa goniometer so should really be supporting
-  # this in here...
+  def _goniometer(self):
+    '''Return a model for a simple single-axis goniometer. This should
+    probably be checked against the image header, though for miniCBF
+    there are limited options for this.'''
+
+    if 'Phi' in self._cif_header_dictionary:
+      phi_value = float(self._cif_header_dictionary['Phi'].split()[0])
+    else:
+      phi_value = 0.0
+
+    if 'Kappa' in self._cif_header_dictionary:
+      kappa_value = float(self._cif_header_dictionary['Kappa'].split()[0])
+    else:
+      kappa_value = 0.0
+
+    from scitbx import matrix
+    axis = matrix.col((1, 0, 0))
+    phi = matrix.col((1, 0, 0))
+    kappa = matrix.col((0.914, 0.279, -0.297))
+
+    Rphi = phi.axis_and_angle_as_r3_rotation_matrix(phi_value, deg=True)
+    Rkappa = kappa.axis_and_angle_as_r3_rotation_matrix(kappa_value, deg=True)
+    fixed = Rkappa * Rphi
+
+    return self._goniometer_factory.make_goniometer(axis, fixed)
 
   def _detector(self):
     '''Detector model, allowing for small offsets in the positions of 60
