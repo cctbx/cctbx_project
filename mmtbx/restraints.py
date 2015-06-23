@@ -369,17 +369,13 @@ class manager(object):
       outf_descriptor.close()
     if (n_excessive != 0):
       raise Sorry("Excessive distances to NCS averages:\n"
-        + "  Please inspect the file\n"
-        + "    %s\n" % show_string(f.name)
+        + "  Please inspect the resulting .geo file\n"
         + "  for a full listing of the distances to the NCS averages.\n"
         + '  Look for the word "EXCESSIVE".\n'
-        + "  The current limit is:\n"
-        + "    refinement.ncs.excessive_distance_limit=%.6g\n"
-            % self.params.ncs.excessive_distance_limit
+        + "  The current limit is defined by parameter:\n"
+        + "    refinement.ncs.excessive_distance_limit\n"
         + "  The number of distances exceeding this limit is: %d\n"
             % n_excessive
-        + "  Please correct your model or redefine the limit, e.g. with:\n"
-        + "    refinement.ncs.excessive_distance_limit=%.2g\n"
-            % abs(2*self.params.ncs.excessive_distance_limit)
+        + "  Please correct your model or redefine the limit.\n"
         + "  To disable this message completely define:\n"
         + "    refinement.ncs.excessive_distance_limit=None")
