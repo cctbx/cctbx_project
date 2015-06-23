@@ -120,12 +120,123 @@ END
   f_obs.as_mtz_dataset(column_root_label="F").mtz_object().write(mtz_file)
   seq_file = "tst_xtriage_in.fa"
   open(seq_file, "w").write("> tst_xtriage\nGNNMQNY")
+
+  # check with completeness_as_non_anomalous=True
+
   xtriage_args = [
     mtz_file,
     pdb_file,
     seq_file,
     "log=tst_xtriage_1.log",
     "l_test_dhkl=2,2,2",
+    "completeness_as_non_anomalous=True",
+  ]
+  result = xtriage.run(args=xtriage_args, out=null_out())
+  test_pickle_consistency_and_size(result)
+  assert (result.matthews.n_copies == 1)
+  assert (str(result.matthews.table) == """\
+Solvent content analysis
+Copies             Solvent content    Matthews coeff.    P(solvent content)
+1                  0.472              2.33               1.000
+""")
+  data_strength = result.data_strength_and_completeness
+  assert approx_equal(data_strength.data_strength.resolution_cut, 1.5351,
+    eps=0.001)
+  out1 = data_strength.low_resolution_completeness.format()
+  assert (out1 == """\
+---------------------------------------------------------
+| Resolution range  | N(obs)/N(possible) | Completeness |
+---------------------------------------------------------
+| 21.9858 - 11.0128 | [5/6]              | 0.833        |
+| 11.0128 -  8.9320 | [4/4]              | 1.000        |
+|  8.9320 -  7.8618 | [1/2]              | 0.500        |
+|  7.8618 -  7.1704 | [4/4]              | 1.000        |
+|  7.1704 -  6.6719 | [2/2]              | 1.000        |
+|  6.6719 -  6.2882 | [5/5]              | 1.000        |
+|  6.2882 -  5.9800 | [3/3]              | 1.000        |
+|  5.9800 -  5.7244 | [4/5]              | 0.800        |
+|  5.7244 -  5.5076 | [4/4]              | 1.000        |
+|  5.5076 -  5.3204 | [6/6]              | 1.000        |
+|  5.3204 -  5.1562 | [2/2]              | 1.000        |
+|  5.1562 -  5.0106 | [4/4]              | 1.000        |
+---------------------------------------------------------"""),out1
+  # ANOMALOUS SIGNAL
+  a_meas = result.anomalous_info.measurability
+  assert approx_equal(a_meas.high_d_cut, 4.7636, eps=0.0001)
+  assert approx_equal(a_meas.low_d_cut, 2.2357, eps=0.0001)
+  # ABSOLUTE SCALING
+  ws = result.wilson_scaling
+  assert ("%.2f" % ws.iso_p_scale) == "0.66"
+  assert ("%.2f" % ws.iso_b_wilson) == "14.51"
+  # FIXME these may need to be adjusted for different hardware/OS
+  assert approx_equal(ws.aniso_p_scale, 0.66106, eps=0.001)
+  assert approx_equal(ws.aniso_u_star, [0.00034473, 0.00479983, 0.000287162,
+                                        -0.0, 9.00962e-05, 0.0])
+  assert approx_equal(ws.aniso_b_cart, (13.218423, 16.840142, 12.948426,
+    1.0354e-15, -0.0685311, -7.92862e-16))
+  # convenience methods for GUI
+  assert approx_equal(result.aniso_b_min, 12.948426)
+  assert approx_equal(result.aniso_range_of_b, 3.891716)
+  #
+  assert approx_equal(ws.outlier_shell_table.data[0], # d_spacing
+    [9.865132, 8.369653, 4.863587, 4.648635, 3.126905, 1.729609])
+  assert approx_equal(ws.outlier_shell_table.data[1], # z_score
+    [5.587749, 15.425036, 4.763399, 6.57819, 4.650204, 4.580195])
+  assert (len(ws.outliers.acentric_outliers_table.data[0]) == 2)
+  assert (ws.outliers.acentric_outliers_table.data[1] == [(0,-1,-1), (0,1,1)])
+  assert approx_equal(ws.outliers.acentric_outliers_table.data[2],
+    [3.440749, 3.253775])
+  assert (ws.outliers.centric_outliers_table.data is None)
+  assert (len(ws.ice_rings.table._rows) == 10)
+  assert (ws.ice_rings.table._rows[0] ==
+          ['    3.897', '     1.000', '   0.52', '   1.00']), \
+          ws.ice_rings.table._rows[0]
+  tw = result.twin_results
+  wm = tw.wilson_moments
+  out = StringIO()
+  wm.show(out)
+  assert not show_diff(out.getvalue(), """
+                  ----------Wilson ratio and moments----------
+
+Acentric reflections:
+
+
+   <I^2>/<I>^2    :2.047   (untwinned: 2.000; perfect twin 1.500)
+   <F>^2/<F^2>    :0.779   (untwinned: 0.785; perfect twin 0.885)
+   <|E^2 - 1|>    :0.743   (untwinned: 0.736; perfect twin 0.541)
+
+Centric reflections:
+
+
+   <I^2>/<I>^2    :3.043   (untwinned: 3.000; perfect twin 2.000)
+   <F>^2/<F^2>    :0.626   (untwinned: 0.637; perfect twin 0.785)
+   <|E^2 - 1|>    :0.996   (untwinned: 0.968; perfect twin 0.736)
+
+""")
+  # XXX PDB validation server
+  assert approx_equal(result.iso_b_wilson, 14.51, eps=0.1)
+  assert approx_equal(result.aniso_b_ratio, 0.271, eps=0.1)
+  assert (result.number_of_wilson_outliers == 2)
+  assert approx_equal(result.l_test_mean_l, 0.481, eps=0.1)
+  assert approx_equal(result.l_test_mean_l_squared, 0.322, eps=0.1)
+  assert approx_equal(result.i_over_sigma_outer_shell, 10.64, eps=0.01)
+  assert ("indicating pseudo-translationa" in result.patterson_verdict)
+  # check relative Wilson
+  # FIXME
+  #result.relative_wilson.show()
+  #assert (result.relative_wilson.n_outliers() == 0)
+  #show_pickled_object_sizes(result)
+  #
+
+  # check with completeness_as_non_anomalous=False
+
+  xtriage_args = [
+    mtz_file,
+    pdb_file,
+    seq_file,
+    "log=tst_xtriage_1.log",
+    "l_test_dhkl=2,2,2",
+    "completeness_as_non_anomalous=False",
   ]
   result = xtriage.run(args=xtriage_args, out=null_out())
   test_pickle_consistency_and_size(result)
@@ -231,6 +342,8 @@ Centric reflections:
     seq_file,
     "log=tst_xtriage_1.log",
   ]
+
+
   result = xtriage.run(args=xtriage_args, out=null_out())
   result.summarize_issues()
   # test in lower symmetry

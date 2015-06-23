@@ -856,7 +856,8 @@ class set(crystal.symmetry):
       return result
 
   def completeness(self, use_binning=False, d_min_tolerance=1.e-6,
-                   return_fail=None, d_max = None, multiplier=1):
+                   return_fail=None, d_max = None, multiplier=1,
+                   as_non_anomalous_array=None):
     """
     Calculate the (fractional) completeness of the array relative to the
     theoretical complete set, either overall or in resolution bins.  By default
@@ -865,8 +866,22 @@ class set(crystal.symmetry):
     :param d_min_tolerance: tolerance factor for d_min (avoid precision errors)
     :param d_max: Low-resolution limit (default = d_max of current set)
     :param multiplier: Factor to multiply the result by (usually 1 or 100)
+    :param as_non_anomalous_array: Report values for non-anomalous array
     """
     assert (multiplier > 0)
+    if as_non_anomalous_array and self.anomalous_flag():
+      # report values for non-anomalous version of array
+      merged = self.as_non_anomalous_array().merge_equivalents().array()
+      merged.array().set_observation_type(self)
+      if use_binning: 
+        merged.setup_binner(n_bins=self.binner().n_bins_all())
+      return merged.completeness(use_binning=use_binning, 
+        d_min_tolerance=d_min_tolerance,
+        return_fail=return_fail, 
+        d_max = d_max, 
+        multiplier = multiplier,
+        as_non_anomalous_array=False)
+
     if (not use_binning):
       complete_set = self.complete_set(d_min_tolerance=d_min_tolerance,
                                        d_max = d_max)
@@ -4935,7 +4950,8 @@ class array(set):
 
   #---------------------------------------------------------------------
   # Xtriage extensions - tested in mmtbx/scaling/tst_xtriage_twin_analyses.py
-  def analyze_intensity_statistics (self, d_min=2.5, log=None) :
+  def analyze_intensity_statistics (self, d_min=2.5, 
+    completeness_as_non_anomalous=None,  log=None) :
     """
     Detect translational pseudosymmetry and twinning, using methods in
     Xtriage.  Returns a mmtbx.scaling.twin_analyses.twin_law_interpretation
@@ -4948,6 +4964,7 @@ class array(set):
     return twin_analyses.analyze_intensity_statistics(
       self=self,
       d_min=d_min,
+      completeness_as_non_anomalous=completeness_as_non_anomalous,
       log=log)
 
   def has_twinning (self, d_min=2.5) :

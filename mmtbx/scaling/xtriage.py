@@ -109,6 +109,10 @@ input {
       .type = bool
       .help = Disable guards against corrupted input data.
       .expert_level = 3
+    completeness_as_non_anomalous = True
+      .type = bool
+      .help = Report completeness of non-anomalous version of arrays
+      .short_caption = Completeness as non-anomalous 
     reference
       .help = "A reference data set. For the investigation of possible reindexing options"
       .short_caption = Reference data
@@ -481,13 +485,15 @@ class data_summary (mmtbx.scaling.xtriage_analysis) :
     self.was_merged = was_merged
     self.n_indices = self.n_indices_merged = miller_array.size()
     self.anomalous_flag = miller_array.anomalous_flag()
-    self.completeness = self.completeness_merged = miller_array.completeness()
+    self.completeness = self.completeness_merged = miller_array.completeness(
+      as_non_anomalous_array=False)
     self.d_max_min = miller_array.d_max_min()
     self.anomalous_completeness = None
     non_anom = miller_array.average_bijvoet_mates()
     if (self.anomalous_flag) :
       self.n_indices_merged = non_anom.size()
-      self.completeness_merged = non_anom.completeness()
+      self.completeness_merged = non_anom.completeness(
+        as_non_anomalous_array=False)
       self.anomalous_completeness = miller_array.anomalous_completeness()
 
   def _show_impl (self, out) :
@@ -549,6 +555,8 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
       log_file_name = None):
     self.log_file_name = log_file_name
     assert (miller_obs is not None)
+
+
     if miller_obs.is_unmerged_intensity_array() :
       unmerged_obs = miller_obs.deep_copy()
     def process_input_array (miller_array) :
@@ -567,8 +575,12 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     if params is None:         # if nothing specified, defaults are used
       params = master_params.fetch(sources=[]).extract()
 
+    self.completeness_as_non_anomalous=\
+       params.scaling.input.xray_data.completeness_as_non_anomalous
     if (not params.scaling.input.xray_data.skip_sanity_checks) :
-      check_for_pathological_input_data(miller_obs)
+      check_for_pathological_input_data(miller_obs,
+        completeness_as_non_anomalous=
+          self.completeness_as_non_anomalous)
 
     ###
     self.merging_stats = None
@@ -629,7 +641,9 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     # Signal-to-noise and completeness
     self.data_strength_and_completeness = \
       data_statistics.data_strength_and_completeness(
-        miller_array=miller_obs).show(out=text_out)
+        miller_array=miller_obs,completeness_as_non_anomalous=\
+           self.completeness_as_non_anomalous
+        ).show(out=text_out)
     # Anomalous signal
     self.anomalous_info = None
     if miller_obs.anomalous_flag() :
@@ -641,7 +655,9 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
       miller_array=miller_obs,
       n_residues=params.scaling.input.asu_contents.n_residues,
       n_bases=params.scaling.input.asu_contents.n_bases,
-      n_copies_solc=params.scaling.input.asu_contents.n_copies_per_asu)
+      n_copies_solc=params.scaling.input.asu_contents.n_copies_per_asu,
+      completeness_as_non_anomalous=\
+           self.completeness_as_non_anomalous)
     self.wilson_scaling.show(out=text_out)
     self.relative_wilson = None
     # XXX The resolution filter isn't perfect - sometimes the subsequent steps
@@ -711,7 +727,9 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
         out=text_out,
         miller_calc=miller_calc,
         additional_parameters=twin_params,
-        original_data=miller_original)
+        original_data=miller_original,
+        completeness_as_non_anomalous=\
+           self.completeness_as_non_anomalous)
       self.twin_results.show(text_out)
       text_out.flush()
     else :
@@ -913,7 +931,8 @@ detect all issues.""")
 Please inspect all individual results closely, as it is difficlut to
 automatically detect all issues.""")
 
-def check_for_pathological_input_data (miller_array) :
+def check_for_pathological_input_data (miller_array,
+   completeness_as_non_anomalous=None) :
   acentrics = miller_array.select_acentric()
   n_acentrics = acentrics.size()
   if (n_acentrics == 0) and (not miller_array.space_group().is_centric()) :
@@ -924,7 +943,8 @@ def check_for_pathological_input_data (miller_array) :
   elif (n_acentrics < MIN_ACENTRICS) :
     raise Sorry(("Only %d acentric reflections are present in these data; "+
       "this usually indicates a corrupted input file.") % n_acentrics)
-  cmpl = miller_array.completeness()
+  cmpl = miller_array.completeness(
+    as_non_anomalous_array=completeness_as_non_anomalous)
   if (cmpl < 0.1) :
     raise Sorry(("Data are unusually incomplete (%.1f%%); this usually "+
       "indicates a corrupted input file or data processing errors.") %

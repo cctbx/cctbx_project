@@ -10,13 +10,14 @@ import iotbx.bioinformatics
 import sys
 
 
-class basic_analyses(object):
+class basic_analyses(object):  # XXX is this ever used?
   def __init__(self,
                miller_array,
                phil_object,
                out=None,
                out_plot=None, miller_calc=None,
                original_intensities=None,
+               completeness_as_non_anomalous=None,
                verbose=0):
     if out is None:
       out=sys.stdout
@@ -24,7 +25,6 @@ class basic_analyses(object):
       print >> out
       print >> out
       print >> out, "Matthews coefficient and Solvent content statistics"
-
     n_copies_solc = 1.0
     self.nres_known = False
     if (phil_object.scaling.input.asu_contents.n_residues is not None or
@@ -73,7 +73,8 @@ class basic_analyses(object):
       data_strength=data_statistics.i_sigi_completeness_stats(
         miller_array_intensities,
         isigi_cut = phil_object.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.isigi_cut,
-        completeness_cut = phil_object.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.completeness_cut)
+        completeness_cut = phil_object.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.completeness_cut,
+      completeness_as_non_anomalous=completeness_as_non_anomalous)
       data_strength.show(out)
       self.data_strength = data_strength
       if phil_object.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.high_resolution is None:
