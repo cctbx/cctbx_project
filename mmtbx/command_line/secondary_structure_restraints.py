@@ -127,7 +127,7 @@ file_name = None
     comment = "\n".join([
       "# These parameters are suitable for use in e.g. phenix.real_space_refine",
       "# or geometry_minimization. To use theim in phenix.refine add ",
-      "# 'refinement.' if front of secondary_structure."])
+      "# 'refinement.' if front of pdb_interpretation."])
     print >> result_out, comment
     if (prefix_scope != "") :
       print >> result_out, "%s {" % prefix_scope
