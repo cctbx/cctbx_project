@@ -245,7 +245,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   for dp in reference_dihedral_proxies:
     if dp.weight == 1.0:
       standard_weight += 1
-  assert standard_weight == 1177, "Expecting 1181, got %d" % standard_weight
+  assert standard_weight == 1181, "Expecting 1181, got %d" % standard_weight
   if (not libtbx.env.has_module(name="ksdssp")):
     print "Skipping KSDSSP tests: ksdssp module not available."
   else:
@@ -630,8 +630,8 @@ TER
          params=all_pars.reference_model,
          log=log)
   # rm.show_reference_summary(log=log)
-  assert rm.get_n_proxies() == 116, \
-      "Expecting 116 proxies, got %d" % rm.get_n_proxies()
+  assert rm.get_n_proxies() == 124, \
+      "Expecting 124 proxies, got %d" % rm.get_n_proxies()
   # STOP()
   new_h = pdb_h.deep_copy()
   xray_structure = new_h.extract_xray_structure()
@@ -686,8 +686,8 @@ TER
          ener_lib=ener_lib,
          params=all_pars.reference_model,
          log=log)
-  assert rm.get_n_proxies() == 116, \
-      "Expecting 116 proxies, got %d" % rm.get_n_proxies()
+  assert rm.get_n_proxies() == 124, \
+      "Expecting 124 proxies, got %d" % rm.get_n_proxies()
   for i in range(4):
     os.remove("ref_%d.pdb" % i)
   #
@@ -715,8 +715,8 @@ TER
          ener_lib=ener_lib,
          params=all_pars.reference_model,
          log=log)
-  assert rm.get_n_proxies() == 29, \
-      "Expecting 29 proxies, got %d" % rm.get_n_proxies()
+  assert rm.get_n_proxies() == 31, \
+      "Expecting 31 proxies, got %d" % rm.get_n_proxies()
   all_pars.reference_model.side_chain=False
   rm = reference_model(
          processed_pdb_file=processed_pdb_file,
@@ -725,8 +725,8 @@ TER
          ener_lib=ener_lib,
          params=all_pars.reference_model,
          log=log)
-  assert rm.get_n_proxies() == 19, \
-      "Expecting 19 proxies, got %d" % rm.get_n_proxies()
+  assert rm.get_n_proxies() == 21, \
+      "Expecting 21 proxies, got %d" % rm.get_n_proxies()
   all_pars.reference_model.side_chain=True
   all_pars.reference_model.main_chain=False
   rm = reference_model(
@@ -750,8 +750,8 @@ TER
          ener_lib=ener_lib,
          params=all_pars.reference_model,
          log=log)
-  assert rm.get_n_proxies() == 116, \
-      "Expecting 116 proxies, got %d" % rm.get_n_proxies()
+  assert rm.get_n_proxies() == 124, \
+      "Expecting 124 proxies, got %d" % rm.get_n_proxies()
   os.remove("ref_0.pdb")
 
 
@@ -936,8 +936,8 @@ TER
          ener_lib=ener_lib,
          params=all_pars.reference_model,
          log=log)
-  assert rm.get_n_proxies() == 34, \
-      "Expecting 34 proxies, got %d" % rm.get_n_proxies()
+  assert rm.get_n_proxies() == 36, \
+      "Expecting 36 proxies, got %d" % rm.get_n_proxies()
   os.remove("ref.pdb")
 
 

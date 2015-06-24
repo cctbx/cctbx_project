@@ -104,8 +104,10 @@ def get_dihedrals_and_phi_psi(processed_pdb_file):
   for three in generate_protein_threes(
       hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
       geometry=None):
-    phi_proxy, psi_proxy = three.get_dummy_dihedral_proxies()
-    dihedral_proxies.extend([phi_proxy, psi_proxy])
+    proxies = three.get_dummy_dihedral_proxies(
+        only_psi_phi_pairs=False)
+    for p in proxies:
+      dihedral_proxies.append(p)
   return dihedral_proxies
 
 def modernize_rna_resname(resname):
