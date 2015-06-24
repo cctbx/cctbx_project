@@ -874,7 +874,7 @@ class set(crystal.symmetry):
       merged = self.as_non_anomalous_array().merge_equivalents().array()
       merged.array().set_observation_type(self)
       if use_binning:
-        merged.setup_binner(n_bins=self.binner().n_bins_all())
+        merged.use_binning_of(self)
       return merged.completeness(use_binning=use_binning,
         d_min_tolerance=d_min_tolerance,
         return_fail=return_fail,
