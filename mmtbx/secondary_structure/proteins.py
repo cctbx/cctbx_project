@@ -3,6 +3,7 @@ import iotbx.phil
 from libtbx.utils import Sorry
 from math import sqrt
 from cctbx import geometry_restraints
+from cctbx.array_family import flex
 import sys
 
 helix_group_params_str = """
@@ -115,64 +116,59 @@ def _create_hbond_proxy (
     slack=None,
     top_out=False,
     log=sys.stdout) :
-  donor_labels = None
-  acceptor_labels = None
-  [donor,acceptor,acceptor_base,hydrogen] = [None] * 4
+  assert sigma is not None
+  assert slack is not None
+  donors = []
+  acceptors = []
   for atom in acceptor_atoms :
     if (atom.name == ' O  ') :
-      acceptor = atom
-      acceptor_labels = atom.fetch_labels()
-    elif (atom.name == ' C  ') :
-      acceptor_base = atom
+      acceptors.append(atom)
   for atom in donor_atoms :
     if (atom.name == ' N  ') :
-      donor = atom
-      donor_labels = atom.fetch_labels()
-    elif (atom.name == ' H  ') :
-      hydrogen = atom
-  if ([donor,acceptor,acceptor_base].count(None) == 0) :
-    if (use_hydrogens) and (hydrogen is None) :
-      donor_resseq = donor_atoms[0].fetch_labels().resseq_as_int()
-      print >> log, "      Missing hydrogen at %d" % donor_resseq
-      return None
-    if (hbond_counts[donor.i_seq] > 0) :
-      print >> log, "      WARNING: donor atom is already bonded, skipping"
-      print >> log, "    %s" % donor_labels.id_str()
-      return None
-    elif (hbond_counts[acceptor.i_seq] > 0) :
-      print >> log, "      WARNING: acceptor atom is already bonded, skipping"
-      print >> log, "    %s" % acceptor_labels.id_str()
-      return None
-    if (remove_outliers) and (distance_cut > 0) :
-      if (use_hydrogens) :
-        dist = hydrogen.distance(acceptor)
-      else :
-        dist = donor.distance(acceptor)
-      if (dist > distance_cut) :
-        print >> log, "      removed outlier: %.3fA  %s --> %s (cutoff:%.3fA)"%(
-            dist, donor_labels.id_str(), acceptor_labels.id_str(), distance_cut)
+      donors.append(atom)
+  if len(donors) > 0 and len(acceptors) > 0:
+    # make pairs of connecting atoms
+    donor_acceptor_pairs = []
+    if len(donors) == 1:
+      for acc in acceptors:
+        donor_acceptor_pairs.append((donors[0], acc))
+    elif len(donors) == 2 and len(acceptors) == 2:
+      donor_acceptor_pairs.append((donors[0], acceptors[0]))
+      donor_acceptor_pairs.append((donors[1], acceptors[1]))
+    elif len(donors) == 2 and len(acceptors) == 1:
+      for donor in donors:
+        donor_acceptor_pairs.append((donor, acceptors[0]))
+    result = []
+    for donor, acceptor in donor_acceptor_pairs:
+      # print "  linking:", donor.id_str(), acceptor.id_str()
+      if (hbond_counts[donor.i_seq] > 0) :
+        print >> log, "      WARNING: donor atom is already bonded, skipping"
+        print >> log, "    %s" % donor_labels.id_str()
         return None
-    if (use_hydrogens) :
-      donor = hydrogen
-    sigma_ = sigma
-    if (sigma is None) :
-      sigma_ = sigma
-    slack_ = slack
-    if (slack is None) :
-      slack_ = slack
-    limit = -1
-    if (top_out) :
-      limit = (distance_cut - distance_ideal)**2 * weight/(sigma_**2)
-      print "limit: %.2f" % limit
-    proxy = geometry_restraints.bond_simple_proxy(
-      i_seqs=(donor.i_seq, acceptor.i_seq),
-      distance_ideal=distance_ideal,
-      weight=weight/(sigma_ ** 2),
-      slack=slack_,
-      top_out=top_out,
-      limit=limit,
-      origin_id=1)
-    return proxy
+      elif (hbond_counts[acceptor.i_seq] > 0) :
+        print >> log, "      WARNING: acceptor atom is already bonded, skipping"
+        print >> log, "    %s" % acceptor_labels.id_str()
+        return None
+      if (remove_outliers) and (distance_cut > 0) :
+        dist = donor.distance(acceptor)
+        if (dist > distance_cut) :
+          print >> log, "      removed outlier: %.3fA  %s --> %s (cutoff:%.3fA)"%(
+              dist, donor.id_str(), acceptor.id_str(), distance_cut)
+          return None
+      limit = -1
+      if (top_out) :
+        limit = (distance_cut - distance_ideal)**2 * weight/(sigma**2)
+        print "limit: %.2f" % limit
+      proxy = geometry_restraints.bond_simple_proxy(
+        i_seqs=(donor.i_seq, acceptor.i_seq),
+        distance_ideal=distance_ideal,
+        weight=weight/(sigma ** 2),
+        slack=slack,
+        top_out=top_out,
+        limit=limit,
+        origin_id=1)
+      result.append(proxy)
+    return result
   else :
     print >> log, "WARNING: missing atoms!"
     return None
@@ -206,64 +202,32 @@ def create_helix_hydrogen_bond_proxies (
     print >> log, str(e)
     return generated_proxies
   assert (helix_step in [3, 4, 5])
-  n_proxies = 0
   helix_i_seqs = helix_selection.iselection()
-  for model in pdb_hierarchy.models() :
-    for chain in model.chains() :
-      # This loop over conformers produces 2 hbonds (if there are 2 conformers)
-      # for the same atoms in helix if there are more than 1 conformer in chain
-      # (if _any_ atom in chain has alternative conformation)
-      # Update. Extra bonds are eliminated using hbond_counts array...
-      for conformer in chain.conformers() :
-        chain_i_seqs = conformer.atoms().extract_i_seq()
-        both_i_seqs = chain_i_seqs.intersection(helix_i_seqs)
-        if (both_i_seqs.size() == 0) :
-          continue
-        residues = conformer.residues()
-        n_residues = len(residues)
-        j_seq = 0
-        while (j_seq < n_residues - helix_step) :
-          residue = residues[j_seq]
-          resi_atoms = residue.atoms()
-          resseq = residue.resseq_as_int()
-          donor = None
-          acceptor = None
-          acceptor_base = None
-          hydrogen = None
-          if(helix_selection[resi_atoms[0].i_seq]):
-            k_seq = j_seq + helix_step
-            bonded_resi = residues[k_seq]
-            bonded_resseq = bonded_resi.resseq_as_int()
-            if (bonded_resi.resname == "PRO") :
-              print >> log, "      Proline residue at %s %s - end of helix" % \
-                (chain.id, bonded_resseq)
-              j_seq += 3
-              continue # XXX is this safe?
-            elif (bonded_resseq != (resseq + helix_step)) :
-              print >> log, "      Confusing residue numbering: %s %s -> %s %s" \
-                % (chain.id, residue.resid(), chain.id, bonded_resi.resid())
-              j_seq += 1
-              continue
-            bonded_atoms = bonded_resi.atoms()
-            # This condition rejects several residue pairs which probably
-            # should not be generated rather than rejected at the very last
-            # second. It is not a bug.
-            if (helix_selection[bonded_atoms[0].i_seq] == True) :
-              proxy = _create_hbond_proxy(
-                acceptor_atoms=resi_atoms,
-                donor_atoms=bonded_atoms,
-                hbond_counts=hbond_counts,
-                distance_ideal=distance_ideal,
-                distance_cut=distance_cut,
-                remove_outliers=remove_outliers,
-                use_hydrogens=use_hydrogens,
-                weight=weight,
-                sigma=params.sigma,
-                slack=params.slack,
-                log=log)
-              if proxy is not None:
-                generated_proxies.append(proxy)
-          j_seq += 1
+  helix_rgs = _get_residue_groups_from_selection(pdb_hierarchy, helix_selection)
+  i = 0
+  print "selection:", params.selection
+  while i < len(helix_rgs)-helix_step:
+    if helix_rgs[i+helix_step].atom_groups()[0].resname.strip() == "PRO":
+      print >> log, "      Proline residue: %s - end of helix" % \
+        (helix_rgs[i+helix_step].id_str())
+      i += 3
+      continue # XXX is this safe?
+    proxies = _create_hbond_proxy(
+      acceptor_atoms=helix_rgs[i].atoms(),
+      donor_atoms=helix_rgs[i+helix_step].atoms(),
+      hbond_counts=hbond_counts,
+      distance_ideal=distance_ideal,
+      distance_cut=distance_cut,
+      remove_outliers=remove_outliers,
+      use_hydrogens=use_hydrogens,
+      weight=weight,
+      sigma=params.sigma,
+      slack=params.slack,
+      log=log)
+    if proxies is not None:
+      for proxy in proxies:
+        generated_proxies.append(proxy)
+    i += 1
   return generated_proxies
 
 def create_sheet_hydrogen_bond_proxies (
@@ -280,9 +244,9 @@ def create_sheet_hydrogen_bond_proxies (
   cache = pdb_hierarchy.atom_selection_cache()
   prev_strand = sheet_params.first_strand
   prev_selection = cache.selection(prev_strand)
-  prev_residues = _get_strand_residues(
-    pdb_hierarchy=pdb_hierarchy,
-    strand_selection=prev_selection)
+  prev_rgs = _get_residue_groups_from_selection(
+      pdb_hierarchy=pdb_hierarchy,
+      bool_selection=prev_selection)
   n_proxies = 0
   k = 0
   generated_proxies = geometry_restraints.shared_bond_simple_proxy()
@@ -291,7 +255,7 @@ def create_sheet_hydrogen_bond_proxies (
     curr_selection = cache.selection(curr_strand.selection)
     curr_start = cache.selection(curr_strand.bond_start_current)
     prev_start = cache.selection(curr_strand.bond_start_previous)
-    if curr_start.count(True) != 1 or prev_start.count(True) != 1:
+    if curr_start.count(True) < 1 or prev_start.count(True) < 1:
       error_msg = """\
 Wrong registration in SHEET record. One of these selections
 "%s" or "%s"
@@ -300,19 +264,20 @@ insertion codes or alternative conformations for one of these residues or
 the .pdb file was edited without updating SHEET records.""" \
 % (curr_strand.bond_start_current, curr_strand.bond_start_previous)
       raise Sorry(error_msg)
-    curr_residues = _get_strand_residues(
-      pdb_hierarchy=pdb_hierarchy,
-      strand_selection=curr_selection)
+
+    curr_rgs = _get_residue_groups_from_selection(
+        pdb_hierarchy=pdb_hierarchy,
+        bool_selection=curr_selection)
     i = j = 0
-    len_prev_residues = len(prev_residues)
-    len_curr_residues = len(curr_residues)
+    len_prev_residues = len(prev_rgs)
+    len_curr_residues = len(curr_rgs)
     current_start_res_is_donor = pdb_hierarchy.atoms().select(curr_start)[0].name.strip() == 'N'
     if (len_curr_residues > 0) and (len_prev_residues > 0) :
       i = _find_start_residue(
-        residues=prev_residues,
+        residues=prev_rgs,
         start_selection=prev_start)
       j = _find_start_residue(
-        residues=curr_residues,
+        residues=curr_rgs,
         start_selection=curr_start)
       if (i >= 0) and (j >= 0) :
         # move i,j pointers from registration residues to the beginning of
@@ -336,16 +301,16 @@ the .pdb file was edited without updating SHEET records.""" \
             current_start_res_is_donor = not current_start_res_is_donor
           while (i < len_prev_residues) and (j < len_curr_residues):
             if current_start_res_is_donor:
-              donor_residue = curr_residues[j]
-              acceptor_residue = prev_residues[i]
+              donor_residue = curr_rgs[j]
+              acceptor_residue = prev_rgs[i]
               i += 2
             else:
-              donor_residue = prev_residues[i]
-              acceptor_residue = curr_residues[j]
+              donor_residue = prev_rgs[i]
+              acceptor_residue = curr_rgs[j]
               j += 2
             current_start_res_is_donor = not current_start_res_is_donor
-            if donor_residue.resname.strip() != "PRO":
-              proxy = _create_hbond_proxy(
+            if donor_residue.atom_groups()[0].resname.strip() != "PRO":
+              proxies = _create_hbond_proxy(
                   acceptor_atoms=acceptor_residue.atoms(),
                   donor_atoms=donor_residue.atoms(),
                   hbond_counts=hbond_counts,
@@ -358,14 +323,15 @@ the .pdb file was edited without updating SHEET records.""" \
                   slack=sheet_params.slack,
                   top_out=sheet_params.top_out,
                   log=log)
-              if proxy is not None:
-                generated_proxies.append(proxy)
+              if proxies is not None:
+                for proxy in proxies:
+                  generated_proxies.append(proxy)
         elif (curr_strand.sense == "antiparallel") :
           while(i < len_prev_residues and j >= 0):
-            if (prev_residues[i].resname.strip() != "PRO") :
-              proxy = _create_hbond_proxy(
-                acceptor_atoms=curr_residues[j].atoms(),
-                donor_atoms=prev_residues[i].atoms(),
+            if (prev_rgs[i].atom_groups()[0].resname.strip() != "PRO") :
+              proxies = _create_hbond_proxy(
+                acceptor_atoms=curr_rgs[j].atoms(),
+                donor_atoms=prev_rgs[i].atoms(),
                 hbond_counts=hbond_counts,
                 distance_ideal=distance_ideal,
                 distance_cut=distance_cut,
@@ -376,13 +342,14 @@ the .pdb file was edited without updating SHEET records.""" \
                 slack=sheet_params.slack,
                 top_out=sheet_params.top_out,
                 log=log)
-              if proxy is not None:
-                generated_proxies.append(proxy)
+              if proxies is not None:
+                for proxy in proxies:
+                  generated_proxies.append(proxy)
 
-            if (curr_residues[j].resname.strip() != "PRO") :
-              proxy = _create_hbond_proxy(
-                acceptor_atoms=prev_residues[i].atoms(),
-                donor_atoms=curr_residues[j].atoms(),
+            if (curr_rgs[j].atom_groups()[0].resname.strip() != "PRO") :
+              proxies = _create_hbond_proxy(
+                acceptor_atoms=prev_rgs[i].atoms(),
+                donor_atoms=curr_rgs[j].atoms(),
                 hbond_counts=hbond_counts,
                 distance_ideal=distance_ideal,
                 distance_cut=distance_cut,
@@ -393,8 +360,9 @@ the .pdb file was edited without updating SHEET records.""" \
                 slack=sheet_params.slack,
                 top_out=sheet_params.top_out,
                 log=log)
-              if proxy is not None:
-                generated_proxies.append(proxy)
+              if proxies is not None:
+                for proxy in proxies:
+                  generated_proxies.append(proxy)
             i += 2;
             j -= 2;
         else :
@@ -412,7 +380,7 @@ the .pdb file was edited without updating SHEET records.""" \
     k += 1
     prev_strand = curr_strand
     prev_selection = curr_selection
-    prev_residues = curr_residues
+    prev_rgs = curr_rgs
   return generated_proxies
 
 def _find_start_residue (
@@ -425,31 +393,19 @@ def _find_start_residue (
       return i
   return -1
 
-def _get_strand_residues (
-    pdb_hierarchy,
-    strand_selection) :
-  strand_i_seqs = strand_selection.iselection()
-  strand_residues = []
-  for model in pdb_hierarchy.models() :
-    for chain in model.chains() :
-      for conformer in chain.conformers() :
-        chain_i_seqs = conformer.atoms().extract_i_seq()
-        both_i_seqs = chain_i_seqs.intersection(strand_i_seqs)
-        if (both_i_seqs.size() == 0) :
-          continue
-        residues = conformer.residues()
-        n_residues = len(residues)
-        for j_seq, residue in enumerate(residues) :
-          resi_atoms = residue.atoms()
-          if (strand_selection[resi_atoms[0].i_seq] == True) :
-            strand_residues.append(residue)
-        if (len(strand_residues) > 0) :
-          break
-      if (len(strand_residues) > 0) :
-        break
-    if (len(strand_residues) > 0) :
-      break
-  return strand_residues
+def _get_residue_groups_from_selection(pdb_hierarchy, bool_selection):
+  assert isinstance(bool_selection, flex.bool)
+  i_seqs = bool_selection.iselection()
+  rgs = []
+  for model in pdb_hierarchy.models():
+    for chain in model.chains():
+      chain_i_seqs = chain.atoms().extract_i_seq()
+      if (chain_i_seqs.intersection(i_seqs).size() == 0) :
+        continue
+      for rg in chain.residue_groups():
+        if bool_selection[rg.atoms()[0].i_seq]:
+          rgs.append(rg)
+  return rgs
 
 ########################################################################
 # ANNOTATION

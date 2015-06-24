@@ -390,16 +390,16 @@ class manager (object) :
         if helix.selection is not None:
           print >> log, "    Processing helix ", helix.selection
           proxies = proteins.create_helix_hydrogen_bond_proxies(
-            params=helix,
-            pdb_hierarchy=self.pdb_hierarchy,
-            selection_cache=selection_cache,
-            weight=1.0,
-            hbond_counts=hbond_counts,
-            distance_ideal=distance_ideal,
-            distance_cut=distance_cut,
-            remove_outliers=remove_outliers,
-            use_hydrogens=use_hydrogens,
-            log=log)
+              params=helix,
+              pdb_hierarchy=self.pdb_hierarchy,
+              selection_cache=selection_cache,
+              weight=1.0,
+              hbond_counts=hbond_counts,
+              distance_ideal=distance_ideal,
+              distance_cut=distance_cut,
+              remove_outliers=remove_outliers,
+              use_hydrogens=use_hydrogens,
+              log=log)
           if (proxies.size() == 0) :
             print >> log, "      No H-bonds generated for '%s'" % helix.selection
             continue
