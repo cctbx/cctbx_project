@@ -252,7 +252,9 @@ def exercise () :
   build_alt_confs_simple.run(args=args, out=null_out())
   rota_in = get_rotamers("tst_build_alt_confs_in.pdb")
   rota_out = get_rotamers("tst_build_alt_confs_out.pdb")
-  assert (rota_out == rota_in), "rotamers in %s not equal to out %s" % (
+  assert (rota_out == rota_in), "rotamers in %s not equal to out %s\n%s\n%s" % (
+    len(rota_in),
+    len(rota_out),
     rota_in,
     rota_out,
     )
