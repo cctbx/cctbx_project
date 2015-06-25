@@ -1214,6 +1214,14 @@ def exercise_scale_restraints () :
   mon_lib_srv = mmtbx.monomer_library.server.server()
   ener_lib = mmtbx.monomer_library.server.ener_lib()
   def run_pdb_interpretation (file_name) :
+  ## links_phil = iotbx.phil.parse(
+  ##   mmtbx.monomer_library.pdb_interpretation.master_params_str,
+  ##   process_includes=True,
+  ##   )
+  ## links = libtbx.phil.parse(link_def)
+  ## params_links = links_phil.fetch(source=links)
+  ## #params_links.show()
+  ## params_links = params_links.extract()
     processed_pdb_file = mmtbx.monomer_library.pdb_interpretation.process(
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
@@ -1257,9 +1265,15 @@ scale_restraints {
   for j, proxy_1 in enumerate(angle_proxies_1) :
     proxy_2 = angle_proxies_2[j]
     if (0 <= j <= 17) : # this corresponds to resseq 1
-      assert (proxy_2.weight == 2*proxy_1.weight)
+      assert (proxy_2.weight == 2*proxy_1.weight), "%s != 2*%s" % (
+        proxy_2.weight,
+        proxy_1.weight,
+        )
     elif (25 <= j <= 43) : # resseq 4 (and adjoining atoms)
-      assert (proxy_2.weight == 0.5*proxy_1.weight)
+      assert (proxy_2.weight == 0.5*proxy_1.weight), "%s != 0.5*%s" % (
+        proxy_2.weight,
+        proxy_1.weight,
+        )
     else :
       assert (proxy_2.weight == proxy_1.weight)
   for j, proxy_1 in enumerate(dihedral_proxies_1) :
@@ -1941,13 +1955,13 @@ _refine.pdbx_stereochemistry_target_values 'GeoStd + Monomer Library + CDL v1.2'
     from mmtbx.command_line.pdb_interpretation import run
     stdout_save = sys.stdout
     sys.stdout = null_out()
-    ppf_1 = run(args=[file1])[0]
-    ppf_2 = run(args=[file2])[0]
+    ppf_1 = run(args=[file1, "cdl=False"])[0]
+    ppf_2 = run(args=[file2, "cdl=False"])[0]
     grm_1 = ppf_1.geometry_restraints_manager()
     grm_2 = ppf_2.geometry_restraints_manager()
     assert not None in [grm_1, grm_2]
-    assert ppf_1.all_chain_proxies.use_cdl is None
-    assert ppf_2.all_chain_proxies.use_cdl is None
+    assert ppf_1.all_chain_proxies.use_cdl is None, ppf_1.all_chain_proxies.use_cdl
+    assert ppf_2.all_chain_proxies.use_cdl is None, ppf_2.all_chain_proxies.use_cdl
     ppf_1 = run(args=[file1, "cdl=Auto"])[0]
     ppf_2 = run(args=[file2, "cdl=Auto"])[0]
     grm_1 = ppf_1.geometry_restraints_manager()
