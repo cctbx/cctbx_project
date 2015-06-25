@@ -1768,7 +1768,7 @@ class process_command_line_args(object):
            is_similar_cs = cs0.is_similar_symmetry(cs[1],
              relative_length_tolerance=1.e-4,
              absolute_angle_tolerance=1.e-3,
-             absolute_length_tolerance=1.e-4)
+             absolute_length_tolerance=1.e-3)
            if(not is_similar_cs):
              for cs in crystal_symmetries:
                if(cs[1] is not None):
