@@ -3,8 +3,8 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 06/20/2015
-Description : IOTA command-line module. Version 1.64
+Last Changed: 06/24/2015
+Description : IOTA command-line module. Version 1.70
 '''
 
 help_message = '\n{:-^70}'\
@@ -214,7 +214,7 @@ def run_selection(sel_type, gs_params, mp_output_list):
     inp.main_log(logfile, 'Found integrated pickles ' \
                     'under {0}'.format(os.path.abspath(output_dir)))
 
-  if gs_params.flag_prefilter == True:
+  if gs_params.selection.prefilter.flag_on == True:
     prefilter = "ON"
   else:
     prefilter = "OFF"
@@ -271,16 +271,16 @@ def experimental(mp_input_list, gs_params, log_dir):
 
 if __name__ == "__main__":
 
-  iota_version = '1.64'
+  iota_version = '1.70'
   now = "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now())
   logo = "\n\n"\
-   "     IIIIII            OOOOOO        TTTTTTTTTT          A              \n"\
-   "       II             O      O           TT             A A             \n"\
-   "       II             O      O           TT            A   A            \n"\
-   ">------INTEGRATION----OPTIMIZATION-------TRIAGE-------ANALYSIS--------->\n"\
-   "       II             O      O           TT          A       A          \n"\
-   "       II             O      O           TT         A         A         \n"\
-   "     IIIIII            OOOOOO            TT        A           A   v{}"\
+   "     IIIIII            OOOOOOO        TTTTTTTTTT          A              \n"\
+   "       II             O       O           TT             A A             \n"\
+   "       II             O       O           TT            A   A            \n"\
+   ">------INTEGRATION----OPTIMIZATION--------TRIAGE-------ANALYSIS--------->\n"\
+   "       II             O       O           TT          A       A          \n"\
+   "       II             O       O           TT         A         A         \n"\
+   "     IIIIII            OOOOOOO            TT        A           A   v{}"\
    "".format(iota_version)
 
 
@@ -361,12 +361,13 @@ if __name__ == "__main__":
   # Check if input needs to be converted to pickle format; also check if input
   # images need to be cropped / padded to be square, w/ beam center in the
   # center of image. If these steps are needed, carry them out
-  if gs_params.grid_search.flag_on and gs_params.advanced.convert_images:
-    img_check = i2p.check_image(input_list[0])
+  if gs_params.grid_search.flag_on and gs_params.image_conversion.convert_images:
+    img_check = i2p.check_image(input_list[0], gs_params.image_conversion.square_mode)
     if img_check == 'image' or img_check == 'raw pickle':
-      square = gs_params.advanced.square_mode
-      beamstop = gs_params.advanced.beamstop
-      beam_center = [gs_params.advanced.beam_center.x, gs_params.advanced.beam_center.y]
+      square = gs_params.image_conversion.square_mode
+      beamstop = gs_params.image_conversion.beamstop
+      beam_center = [gs_params.image_conversion.beam_center.x,
+                     gs_params.image_conversion.beam_center.y]
       converted_img_list, input_folder = inp.make_raw_input(input_list, gs_params)
       raw_input_list = zip(input_list, converted_img_list)
 
@@ -392,25 +393,25 @@ if __name__ == "__main__":
 
     if args.c:
       iota_exit(iota_version, now)
-
-    if args.t:
-      cmd.Command.start("Image triage")
-      accepted_img = parallel_map(iterable=input_list,
-                                  func=triage_mproc_wrapper,
-                                  processes=gs_params.n_processors,
-                                  preserve_order = True)
-      cmd.Command.end("Image triage ({}/{} images have diffraction) -- DONE"\
-                      "".format(len(accepted_img), len(input_list)))
-
-      if len(accepted_img) > 0:
-        blank_img = [i for i in input_list if i not in accepted_img]
-        input_list = [i for i in input_list if i in accepted_img]
-      else:
-        print "No images with usable diffraction found!"
-    else:
-      blank_img = []
   else:
     input_folder = gs_params.input
+    blank_img = []
+
+  if (args.t or gs_params.image_triage.flag_on) and gs_params.grid_search.flag_on:
+    cmd.Command.start("Image triage")
+    accepted_img = parallel_map(iterable=input_list,
+                                func=triage_mproc_wrapper,
+                                processes=gs_params.n_processors,
+                                preserve_order = True)
+    cmd.Command.end("Image triage ({}/{} images have diffraction) -- DONE"\
+                    "".format(len(accepted_img), len(input_list)))
+
+    if len(accepted_img) > 0:
+      blank_img = [i for i in input_list if i not in accepted_img]
+      input_list = [i for i in input_list if i in accepted_img]
+    else:
+      print "No images with usable diffraction found!"
+  else:
     blank_img = []
 
   # generate general input
@@ -456,12 +457,18 @@ if __name__ == "__main__":
 
   # print final integration results and summary
   ia.print_results(final_int, gs_range, logfile)
-  sg, uc, out_file = ia.unit_cell_analysis(gs_params.advanced.cluster_threshold,
+
+  if len(final_int) > 1:
+    sg, uc, out_file = ia.unit_cell_analysis(gs_params.advanced.cluster_threshold,
          logfile, os.path.abspath("{}/integrated.lst".format(gs_params.output)))
+  else:
+    sg, uc = ia.unit_cell_single(logfile, final_int)
+    out_file = os.path.abspath("{}/integrated.lst".format(gs_params.output))
+
   ia.print_summary(gs_params, len(input_list), logfile, iota_version, now)
   ia.make_prime_input(final_int, sg, uc, out_file, iota_version, now)
 
-  if gs_params.advanced.clean_up_output and gs_params.grid_search.flag_on:
+  if gs_params.advanced.output_type == 'clean' and gs_params.grid_search.flag_on:
     if os.path.isfile(os.path.abspath("{}/integrated.lst".format(gs_params.output))):
       output_cleanup(gs_params)
 

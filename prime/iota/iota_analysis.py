@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 06/20/2015
+Last Changed: 06/24/2015
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes unit cell analysis by hierarchical clustering
               (Zeldin, et al., Acta Cryst D, 2013). In case of multiple clusters
@@ -134,6 +134,28 @@ def print_results(clean_results, gs_range, logfile):
       inp.main_log(logfile, item)
 
 
+def unit_cell_single(logfile, clean_results):
+  """ Generates unit cell, etc. info if only a single integration result exists.
+  """
+  int_file = clean_results[0]
+  unit_cell = (int_file['a'], int_file['b'], int_file['c'],
+               int_file['alpha'], int_file['beta'], int_file['gamma'])
+  point_group = int_file['sg']
+
+  print "\n\n{:-^80}\n".format(' UNIT CELL ANALYSIS ')
+  inp.main_log(logfile, "\n\n{:-^80}\n".format(' UNIT CELL ANALYSIS '))
+
+  uc_line = "{:<6} {:^4}:  {:<6.2f}, {:<6.2f}, {:<6.2f}, {:<6.2f}, "\
+            "{:<6.2f}, {:<6.2f}".format('({})'.format(len(clean_results)),
+                        point_group, unit_cell[0], unit_cell[1], unit_cell[2],
+                        unit_cell[3], unit_cell[4], unit_cell[5])
+
+  print uc_line
+  inp.main_log(logfile, uc_line)
+
+  return point_group, unit_cell
+
+
 def unit_cell_analysis(cluster_threshold, logfile, int_pickle_file):
   """ Calls unit cell analysis module, which uses hierarchical clustering
       (Zeldin, et al, Acta D, 2015) to split integration results according to
@@ -142,7 +164,10 @@ def unit_cell_analysis(cluster_threshold, logfile, int_pickle_file):
       input: cluster_threshold - used for separating tree into clusters
              int_pickle_file - file with paths to integrated pickles
 
-      output: uc_table - list of lines for result output
+      output: uc_pick[1] - consensus point group
+              uc_pick[2] - average consensus unit cell
+              uc-pick[3] - output filename
+
   """
 
   uc_table = []
@@ -160,8 +185,6 @@ def unit_cell_analysis(cluster_threshold, logfile, int_pickle_file):
 
   uc_table.append("\n\n{:-^80}"\
                   "".format(' UNIT CELL ANALYSIS '))
-  uc_table.append("{: ^80}\n"\
-                  "".format(' (Zeldin, et al, Acta D, 2015) '))
 
   # extract clustering info and add to summary output list
   for cluster in clusters:

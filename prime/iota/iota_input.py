@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/20/2015
+Last Changed: 06/24/2015
 Description : IOTA I/O module. Reads PHIL input, creates output directories,
               creates input lists and organizes starting parameters, also
               creates reasonable IOTA and PHIL defaults if selected
@@ -28,12 +28,8 @@ description = Integration Optimization, Transfer and Analysis (IOTA)
 input = None
   .type = path
   .multiple = False
-  .help = Path to folder with raw data in pickle format. Can be a tree w/ subfolders
-  .optional = False
-input_list = None
-  .type = str
-  .multiple = False
-  .help = Filename with list of specific subset of files under input to process (overrides input_list and input_dir_list)
+  .help = Path to folder with raw data in pickle format, list of files or single file
+  .help = Can be a tree with folders
   .optional = False
 output = iota_output
   .type = str
@@ -44,76 +40,9 @@ target = target.phil
   .multiple = False
   .help = Target (.phil) file with integration parameters
   .optional = False
-grid_search
-  .help = "Parameters for the grid search."
+image_conversion
+  .help = Parameters for raw image conversion to pickle format
 {
-  flag_on = True
-    .type = bool
-    .help = Set to False to run selection and final integration only. (Requires grid search results to be present!)
-  a_avg = 5
-    .type = int
-    .help = Minimum spot area.
-  a_std = 2
-    .type = int
-    .help = Maximum spot area.
-  h_avg = 4
-    .type = int
-    .help = Minimum spot height.
-  h_std = 2
-    .type = int
-    .help = Maximum spot height.
-}
-flag_prefilter = False
-  .type = bool
-  .help = Activate space group / unit cell pre-filter.
-target_unit_cell = 79.4, 79.4, 38.1, 90.0, 90.0, 90.0
-  .type = unit_cell
-  .help = Target unit-cell parameters are used to discard outlier cells.
-target_space_group = P 43 21 2
-  .type = str
-  .help = Target space group.
-target_pointgroup = P 4
-  .type = str
-  .help = Target point group.
-target_uc_tolerance = 0.05
-  .type = float
-  .help = Maximum allowed unit cell deviation from target
-min_sigma = 5
-  .type = int
-  .help = minimum sigma cutoff for "strong spots"
-n_processors = 32
-  .type = int
-  .help = No. of processing units
-advanced
-  .help = "Advanced, debugging and experimental options."
-{
-  sig_height_search = False
-    .type = bool
-    .help = scan signal height in addition to spot height
-  single_img = None
-    .type = str
-    .help = Runs grid search on specified single image
-  charts = False
-    .type = bool
-    .help = If True, outputs PDF files w/ charts of mosaicity, rmsd, etc.
-  mosaicity_plot = False
-    .type = bool
-    .help = If True, outputs PDF files w/ charts of mosaicity only.
-  debug = False
-    .type = bool
-    .help = Used for various debugging purposes.
-  experimental = False
-    .type = bool
-    .help = Set to true to run the experimental section of codes
-  save_tmp_pickles = False
-    .type = bool
-    .help = If True, saves pickle for each integration attempt in grid search.
-  clean_up_output = False
-    .type = bool
-    .help = Set to False to leave temporary folders and files in place'
-  cluster_threshold = 5000
-    .type = int
-    .help = threshold value for unit cell clustering
   convert_images = True
     .type = bool
     .help = Set to False to force non-conversion of images
@@ -123,29 +52,96 @@ advanced
   beamstop = 0
     .type = float
     .help = Beamstop shadow threshold, zero to skip
-  min_Bragg_spots = 100
-    .type = int
-    .help = Minimum number of Bragg spots to qualify as sufficient diffraction
   beam_center
-    .help = Alternate beam center coordinates ("0" if leave the same)
+    .help = Alternate beam center coordinates (set to zero to leave the same)
   {
     x = 0
       .type = float
     y = 0
       .type = float
   }
-  pred_img
-    .help = "Visualize spotfinding and integration results."
+}
+image_triage
+  .help = Check if images have diffraction using basic spotfinding (-t option)
+{
+  flag_on = True
+    .type = bool
+    .help = Set to true to activate
+  min_Bragg_peaks = 10
+    .type = int
+    .help = Minimum number of Bragg peaks to establish diffraction
+}
+grid_search
+  .help = "Parameters for the grid search."
+{
+  flag_on = True
+    .type = bool
+    .help = Set to False to run selection and final integration only. (Requires grid search results to be present!)
+  area_median = 5
+    .type = int
+    .help = Median spot area.
+  area_range = 2
+    .type = int
+    .help = Plus/minus range for spot area.
+  height_median = 4
+    .type = int
+    .help = Median spot height.
+  height_range = 2
+    .type = int
+    .help = Plus/minus range for spot height.
+  sig_height_search = False
+    .type = bool
+    .help = Set to true to scan signal height in addition to spot height
+}
+selection
+  .help = Parameters for integration result selection
+{
+  min_sigma = 5
+    .type = int
+    .help = minimum I/sigma(I) cutoff for "strong spots"
+  prefilter
+    .help = Used to throw out integration results that do not fit user-defined unit cell information
   {
-    flag = False
+    flag_on = False
       .type = bool
-      .help = Visualize the results of final integration
-    cv_vectors = False
-      .type = bool
-      .help = Visualize x,y offset information
+      .help = Set to True to activate prefilter
+    target_pointgroup = None
+      .type = str
+      .help = Target point group, e.g. "P4"
+    target_unit_cell = None
+      .type = unit_cell
+      .help = In format of "a, b, c, alpha, beta, gamma", e.g. 79.4, 79.4, 38.1, 90.0, 90.0, 90.0
+    target_uc_tolerance = 0.05
+      .type = float
+      .help = Maximum allowed unit cell deviation from target
   }
+}
+advanced
+  .help = "Advanced, debugging and experimental options."
+{
+  debug = False
+    .type = bool
+    .help = Used for various debugging purposes.
+  experimental = False
+    .type = bool
+    .help = Set to true to run the experimental section of codes
+  output_type = *as-is clean all_pickles
+    .type = choice
+    .help = Set to "clean" to collect all integration pickles in one folder
+    .help = Set to "all_pickles" to output all integration pickles
+    .help = "as-is" will maintain default output folder structure
+  cluster_threshold = 5000
+    .type = int
+    .help = threshold value for unit cell clustering
+  viz = *None integration cv_vectors
+    .type = choice
+    .help = Set to "integration" to visualize spotfinding and integration results.
+    .help = Set to "cv_vectors" to visualize accuracy of CV vectors
+  charts = False
+    .type = bool
+    .help = If True, outputs PDF files w/ charts of mosaicity, rmsd, etc.
   random_sample
-    .help = "Random grid search."
+    .help = Use a randomized subset of images (or -r <number> option)
   {
     flag_on = False
       .type = bool
@@ -155,6 +151,9 @@ advanced
       .help = Number of random samples. Set to zero to select 10% of input.
   }
 }
+n_processors = 32
+  .type = int
+  .help = No. of processing units
 """)
 
 class Capturing(list):
@@ -210,7 +209,6 @@ def make_input_list (gs_params):
   """
 
   input_list = []
-  abs_inp_path = os.path.abspath(gs_params.input)
 
   if not gs_params.grid_search.flag_on:
     cmd.Command.start("Reading input list from file")
@@ -221,19 +219,20 @@ def make_input_list (gs_params):
     cmd.Command.end("Reading input list from file -- DONE")
     return inp_list
 
-  if gs_params.advanced.single_img != None:
-    inp_list = [gs_params.advanced.single_img]
-    return inp_list
+  if os.path.isfile(gs_params.input):
+    if gs_params.input.endswith('.lst'):
+      cmd.Command.start("Reading input list from file")
+      with open(gs_params.input, 'r') as listfile:
+        listfile_contents = listfile.read()
+      input_list = listfile_contents.splitlines()
+      cmd.Command.end("Reading input list from file -- DONE")
+    else:
+      inp_list = [gs_params.input]
+      return inp_list
 
-  if gs_params.input_list != None:
-    cmd.Command.start("Reading input list from file")
-    with open(gs_params.input_list, 'r') as listfile:
-      listfile_contents = listfile.read()
-    input_list = listfile_contents.splitlines()
-    cmd.Command.end("Reading input list from file -- DONE")
-  else:
-  # search for diffraction image files within the tree and record in a list w/
-  # full absolute path and filenames
+  elif os.path.isdir(gs_params.input):
+    abs_inp_path = os.path.abspath(gs_params.input)
+
     cmd.Command.start("Generating input list")
     for root, dirs, files in os.walk(abs_inp_path):
       for filename in files:
@@ -278,6 +277,8 @@ def make_input_list (gs_params):
     inp_list = input_list
 
   return inp_list
+
+
 
 def make_raw_input(input_list, gs_params):
 
@@ -400,14 +401,14 @@ def make_mp_input(input_list, gs_params, gs_range):
     # Generate spotfinding parameter ranges, make input list w/ filenames
     h_min = gs_range[0]
     h_max = gs_range[1]
-    h_avg = gs_params.grid_search.h_avg
-    h_std = gs_params.grid_search.h_std
+    h_avg = gs_params.grid_search.height_median
+    h_std = gs_params.grid_search.height_range
     a_min = gs_range[2]
     a_max = gs_range[3]
 
     for spot_area in range(a_min, a_max + 1):
       for spot_height in range (h_min, h_max + 1):
-        if gs_params.advanced.sig_height_search:
+        if gs_params.grid_search.sig_height_search:
           if spot_height >= 1 + h_std:
             sigs = range(spot_height - h_std, spot_height + 1)
           elif spot_height < 1 + h_std:
@@ -500,10 +501,10 @@ def generate_input(gs_params, input_list, input_folder):
   """
 
   # Determine grid search range from average and std. deviation params
-  gs_range = [gs_params.grid_search.h_avg - gs_params.grid_search.h_std,
-              gs_params.grid_search.h_avg + gs_params.grid_search.h_std,
-              gs_params.grid_search.a_avg - gs_params.grid_search.a_std,
-              gs_params.grid_search.a_avg + gs_params.grid_search.a_std]
+  gs_range = [gs_params.grid_search.height_median - gs_params.grid_search.height_range,
+              gs_params.grid_search.height_median + gs_params.grid_search.height_range,
+              gs_params.grid_search.area_median - gs_params.grid_search.area_range,
+              gs_params.grid_search.area_median + gs_params.grid_search.area_range]
 
 
   # Make log directory and input/output directory lists

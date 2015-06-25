@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/11/2015
+Last Changed: 06/24/2015
 Description : Runs cctbx.xfel integration module either in grid-search or final
               integration mode. Has options to output diagnostic visualizations
 '''
@@ -76,29 +76,11 @@ def organize_parameters(int_type, mp_entry, gs_params):
       os.makedirs("{}/pdf_s{}_h{}_a{}"
                   "".format(current_output_dir, sig_height,
                             spot_height, spot_area))
-
-  # for mosaicity chart only
-  elif gs_params.advanced.mosaicity_plot:
-    advanced_args = ["integration.enable_residual_map=False",
-                     "integration.enable_residual_map_deltapsi=True",
-                     "integration.enable_residual_scatter=False",
-                     "integration.mosaic.enable_AD14F7B=True",
-                     "integration.graphics_backend=pdf",
-                     "integration.pdf_output_dir={}/pdf_s{}_h{}_a{}"\
-                     "".format(current_output_dir, sig_height, spot_height,
-                               spot_area)
-                     ]
-    if not os.path.exists("{}/pdf_s{}_h{}_a{}"\
-                        "".format(current_output_dir, sig_height,
-                                  spot_height, spot_area)):
-      os.makedirs("{}/pdf_s{}_h{}_a{}"
-                  "".format(current_output_dir, sig_height,
-                            spot_height, spot_area))
   else:
     advanced_args = []
 
   if int_type == "grid":
-    if gs_params.advanced.save_tmp_pickles:
+    if gs_params.advanced.output_type == 'all_pickles':
       arguments = ["target={0}".format(gs_params.target),
                    "distl.minimum_signal_height={0}".format(str(sig_height)),
                    "distl.minimum_spot_height={0}".format(str(spot_height)),
@@ -198,7 +180,7 @@ def integrate_image(mp_entry, current_log_file, arguments, ptitle, gs_params):
       sigmas = int_final['I_Observations'].sigmas()
       I_over_sigI = Is / sigmas
       spots = len(Is)
-      strong_spots = len([i for i in I_over_sigI if i >= gs_params.min_sigma])
+      strong_spots = len([i for i in I_over_sigI if i >= gs_params.selection.min_sigma])
 
       # Mosaicity parameters
       dom_size = int_AD14['domain_sz_ang']
@@ -215,8 +197,8 @@ def integrate_image(mp_entry, current_log_file, arguments, ptitle, gs_params):
       p_cell = "{:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}"\
              "".format(cell[0], cell[1], cell[2], cell[3], cell[4], cell[5])
 
-      int_status = 'RES: {:>4.2f} SG: {:^{wsg}}  CELL: {}'\
-                   ''.format(res, sg, p_cell, wsg = len(str(sg)))
+      int_status = 'RES: {:<4.2f}  NREF: {:<4}  SG: {:^5}  CELL: {}'\
+                   ''.format(res, strong_spots, sg, p_cell)
     except ValueError:
       import traceback
       print
@@ -336,9 +318,9 @@ def integration(int_type, mp_entry, log_dir, gs_params):
                                                               'a') as f_int:
         f_int.write('{}\n'.format(current_file))
 
-    if gs_params.advanced.pred_img.flag == True:
+    if gs_params.advanced.viz == 'integration':
       viz.make_png(current_img, current_file)
-      if gs_params.advanced.pred_img.cv_vectors == True:
+    if gs_params.advanced.viz == 'cv_vectors':
         viz.cv_png(current_img, current_file)
 
     return results

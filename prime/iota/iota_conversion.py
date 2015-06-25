@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/11/2015
+Last Changed: 06/24/2015
 Description : Converts raw image to pickle files; crops or pads pickle to place
               beam center into center of image; masks out beam stop. Adapted in
               part from cxi_image2pickle.py by Aaron Brewster.
@@ -99,7 +99,7 @@ def load_image(img):
   return data
 
 
-def check_image(img):
+def check_image(img, square):
 
   try:
     with Capturing() as suppressed_junk:
@@ -115,11 +115,10 @@ def check_image(img):
       beam       = loaded_img.get_beam()
       beam_x     = detector.get_beam_centre(beam.get_s0())[0]
       beam_y     = detector.get_beam_centre(beam.get_s0())[1]
-      if abs(beam_x - beam_y) <= 0.1:
+      if abs(beam_x - beam_y) <= 0.1 or square == "None":
         verdict = 'converted pickle'
       else:
         verdict = 'raw pickle'
-        print img, abs(beam_x - beam_y), beam_x, beam_y, verdict
     else:
       verdict = 'image'
   else:
