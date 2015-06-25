@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/20/2015
+Last Changed: 06/24/2015
 Description : IOTA pickle selection module. Selects the best integration results
               from grid search output.
 '''
@@ -26,13 +26,13 @@ def prefilter(gs_params, int_list):
   """
 
   acceptable_results = []
-  if gs_params.flag_prefilter == True:
+  if gs_params.selection.prefilter.flag_on:
     for i in int_list:
       try:
         tmp_pickle_name = os.path.basename(i['img'])
         uc_tol = gs_params.target_uc_tolerance
 
-        if gs_params.target_unit_cell != None:
+        if gs_params.selection.prefilter.target_unit_cell != None:
           user_uc = [prm for prm in gs_params.target_unit_cell.parameters()]
         else:
           user_uc = None
@@ -56,11 +56,11 @@ def prefilter(gs_params, int_list):
 
         # Determine if pickle satisfies sg / uc parameters within given
         # tolerance and low resolution cutoff
-        if gs_params.target_pointgroup != None and user_uc != None:
-          if p_pg == gs_params.target_pointgroup.replace(" ","") and uc_check:
+        if gs_params.selection.prefilter.target_pointgroup != None and user_uc != None:
+          if p_pg == gs_params.selection.prefilter.target_pointgroup.replace(" ","") and uc_check:
             acceptable_results.append(i)
-        elif gs_params.target_pointgroup != None and user_uc == None:
-          if p_pg == gs_params.target_pointgroup.replace(" ",""):
+        elif gs_params.selection.prefilter.target_pointgroup != None and user_uc == None:
+          if p_pg == gs_params.selection.prefilter.target_pointgroup.replace(" ",""):
             acceptable_results.append(i)
         elif user_uc != None:
           if uc_check:

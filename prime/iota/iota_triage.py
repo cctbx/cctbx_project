@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 06/04/2015
-Last Changed: 06/04/2015
+Last Changed: 06/24/2015
 Description : Finds blank images using DISTL spotfinding. Outputs image filename
               only if it finds > 10 Bragg spots.
 '''
@@ -51,9 +51,9 @@ def spotfinding_param_search (input_img, gs_params):
   spotfinding_log = ['{}\n'.format(input_img)]
 
   # set spotfinding parameters for DISTL spotfinder
-  params.distl.minimum_spot_area = gs_params.grid_search.a_avg
-  params.distl.minimum_signal_height = gs_params.grid_search.h_avg
-  params.distl.minimum_spot_height = int(gs_params.grid_search.h_avg / 2)
+  params.distl.minimum_spot_area = gs_params.grid_search.area_median
+  params.distl.minimum_spot_height = gs_params.grid_search.height_median
+  params.distl.minimum_signal_height = int(gs_params.grid_search.height_median / 2)
 
   # run DISTL spotfinder
 
@@ -69,7 +69,7 @@ def spotfinding_param_search (input_img, gs_params):
     spots_inlier = Org.S.images[frame]['spots_inlier']
     Bragg_spots = Org.S.images[frame]['N_spots_inlier']
 
-  if Bragg_spots >= gs_params.advanced.min_Bragg_spots:
+  if Bragg_spots >= gs_params.image_triage.min_Bragg_peaks:
     return input_img
 
 def triage_mproc_wrapper(current_img):
