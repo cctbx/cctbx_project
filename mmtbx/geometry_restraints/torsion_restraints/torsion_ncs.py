@@ -135,8 +135,12 @@ class torsion_ncs(object):
           matching_chains = []
           for ii, i_chain in enumerate(h_i.chains()):
             for jj, j_chain in enumerate(h_j.chains()):
+              # print "Checking chains:", i_chain.id, j_chain.id
+              # print "  ", i_chain.atoms().size(), j_chain.atoms().size()
+              # print "  ", i_chain.is_similar_hierarchy(j_chain)
+              # print "  ", i_chain.as_sequence(), j_chain.as_sequence(), i_chain.as_sequence() == j_chain.as_sequence()
               if (i_chain.atoms().size() == j_chain.atoms().size()
-                  and i_chain.is_similar_hierarchy(j_chain)
+                  # and i_chain.is_similar_hierarchy(j_chain)
                   and i_chain.as_sequence() == j_chain.as_sequence()):
                 matching_chain_numbers.append((ii, jj))
                 matching_chains.append((i_chain, j_chain))
@@ -146,6 +150,12 @@ class torsion_ncs(object):
           j_chains = h_j.chains()
           residue_match_map1 = {}
           residue_match_map2 = {}
+          if len(matching_chains) == 0:
+            msg = "Failed to find matching chains. "
+            msg += "No NCS restraints will be applied.\n"
+            msg += "Try to use phenix.simple_ncs_from_pdb or leave ncs_groups "
+            msg += "blank to allow \nautomatic search for NCS copies."
+            print >> self.log, msg
           for ic, jc in matching_chains:
             for rg1, rg2 in zip(ic.residue_groups(), jc.residue_groups()):
               resname1 = rg1.atom_groups()[0].resname
@@ -230,8 +240,6 @@ class torsion_ncs(object):
     self.name_hash = utils.build_name_hash(pdb_hierarchy)
     self.segid_hash = utils.build_segid_hash(pdb_hierarchy)
     self.sym_atom_hash = utils.build_sym_atom_hash(pdb_hierarchy)
-    self.njump = 1
-    self.min_length = 10
     self.sa = SidechainAngles(False)
     self.sidechain_angle_hash = self.build_sidechain_angle_hash()
     self.r = rotalyze.rotalyze(pdb_hierarchy=pdb_hierarchy)
