@@ -1729,6 +1729,7 @@ mmtbx/command_line/maps.py -text
 mmtbx/command_line/massage_data.py svneol=native#text/x-python
 mmtbx/command_line/matthews.py -text
 mmtbx/command_line/maximum_entropy_map.py -text
+mmtbx/command_line/model_idealization.py -text
 mmtbx/command_line/model_model_distances.py -text
 mmtbx/command_line/model_vs_data.py -text
 mmtbx/command_line/model_vs_sequence.py -text
@@ -2173,6 +2174,7 @@ mmtbx/regression/tst_maps_misc.py -text
 mmtbx/regression/tst_minimize_chain.py -text
 mmtbx/regression/tst_ml_estimate.py -text
 mmtbx/regression/tst_model_2.py -text
+mmtbx/regression/tst_model_idealization.py -text
 mmtbx/regression/tst_models_to_from_chains.py -text
 mmtbx/regression/tst_msa.py -text
 mmtbx/regression/tst_mtz2map.py -text
