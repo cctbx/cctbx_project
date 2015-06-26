@@ -5303,9 +5303,11 @@ class process(object):
     if(ncs_phil_groups is not None):
       empty_cntr = 0
       for ng in ncs_phil_groups:
-        if(len(ng.reference.strip())==0): empty_cntr += 1
+        if ng.reference is None or len(ng.reference.strip())==0:
+          empty_cntr += 1
         for s in ng.selection:
-          if(len(s.strip())==0): empty_cntr += 1
+          if s is None or len(s.strip())==0:
+            empty_cntr += 1
       if(empty_cntr>0): ncs_phil_groups=None
     ### XXX FIXME end
     ncs_obj = iotbx.ncs.input(
