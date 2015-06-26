@@ -205,7 +205,6 @@ def create_helix_hydrogen_bond_proxies (
   helix_i_seqs = helix_selection.iselection()
   helix_rgs = _get_residue_groups_from_selection(pdb_hierarchy, helix_selection)
   i = 0
-  print "selection:", params.selection
   while i < len(helix_rgs)-helix_step:
     if helix_rgs[i+helix_step].atom_groups()[0].resname.strip() == "PRO":
       print >> log, "      Proline residue: %s - end of helix" % \
