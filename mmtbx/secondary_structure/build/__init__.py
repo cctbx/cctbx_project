@@ -70,20 +70,34 @@ helix_class_to_pdb_str = {'alpha':alpha_helix_str,
                           '3_10': a310_helix_str}
 
 ss_idealization_master_phil_str = """
-idealization
+ss_idealization
 {
   enabled = False
     .type = bool
+    .help = Enable secondary structure idealization
   restrain_torsion_angles = False
     .type = bool
+    .help = Restrain torsion angles
   sigma_on_reference_non_ss = 1
     .type = float
+    .help = Weight on original model coordinates restraints where no ss \
+      present. Keeps loops close to initial model. \
+      (bigger number gives lighter restraints)
   sigma_on_reference_helix = 1
     .type = float
+    .help = Weight on original model coordinates restraints where helix \
+      present. Bends helices a bit according to initial model. \
+      (bigger number gives lighter restraints)
   sigma_on_reference_sheet = 0.5
     .type = float
+    .help = Weight on original model coordinates restraints where sheet \
+      present. Bends helices a bit according to initial model. \
+      (bigger number gives lighter restraints)
   sigma_on_torsion_ss = 5
     .type = float
+    .help = Weight on torsion angles restraints where ss present. \
+      Keeps helices torsion angles close to ideal. \
+      (bigger number gives lighter restraints)
   sigma_on_torsion_nonss = 5
     .type = float
   sigma_on_ramachandran = 1
@@ -96,6 +110,8 @@ idealization
     .type = int
 }
 """
+
+master_phil = iotbx.phil.parse(ss_idealization_master_phil_str)
 
 def print_hbond_proxies(geometry, hierarchy, pymol=False):
   """ Print hydrogen bonds in geometry restraints manager for debugging
@@ -267,19 +283,36 @@ def get_empty_ramachandran_proxies():
   proxies = ext.shared_phi_psi_proxy()
   return proxies
 
+def process_params(params):
+  min_sigma = 1e-5
+  if params is None:
+    params = master_phil.fetch().extract()
+  if hasattr(params, "ss_idealization"):
+    p_pars = params.ss_idealization
+  else:
+    assert hasattr(params, "enabled") and hasattr(params, "sigma_on_cbeta"), \
+        "Something wrong with parameters passed to ss_idealization"
+    p_pars = params
+  assert isinstance(p_pars.enabled, bool)
+  assert isinstance(p_pars.restrain_torsion_angles, bool)
+  for par in ["sigma_on_reference_non_ss",
+      "sigma_on_reference_helix", "sigma_on_reference_sheet",
+      "sigma_on_torsion_ss", "sigma_on_torsion_nonss", "sigma_on_ramachandran",
+      "sigma_on_cbeta"]:
+    assert (isinstance(getattr(p_pars, par), float) and \
+      getattr(p_pars, par) > min_sigma), "" + \
+      "Bad %s parameter" % par
+  for par in ["n_macro", "n_iter"]:
+    assert (isinstance(getattr(p_pars, par), int) and \
+      getattr(p_pars, par) >= 0), ""+ \
+      "Bad %s parameter" % par
+  return p_pars
+
 
 def substitute_ss(real_h,
                     xray_structure,
                     ss_annotation,
-                    sigma_on_reference_non_ss = 1,
-                    sigma_on_reference_helix = 1,
-                    sigma_on_reference_sheet = 0.5,
-                    sigma_on_torsion_ss = 5,
-                    sigma_on_torsion_nonss = 5,
-                    sigma_on_ramachandran = 1,
-                    sigma_on_cbeta = 2.5,
-                    n_macro=3,
-                    n_iter=300,
+                    params = None,
                     fname_before_regularization=None,
                     log=null_out(),
                     rotamer_manager=None,
@@ -294,14 +327,6 @@ def substitute_ss(real_h,
       construct processed_pdb_file and xray_structure is needed to call
       get_geometry_restraints_manager for no obvious reason).
   ss_annotation - annotation records.
-
-  Weights (bigger number gives lighter restraints):
-  sigma_on_reference_non_ss - weight on original model coordinates restraints
-      where no ss present. Keeps loops close to initial model.
-  sigma_on_reference_ss - weight on original model coordinates restraints
-      where ss present. Bends helices a bit according to initial model.
-  sigma_on_torsion_ss - weight on torsion angles restraints where ss present.
-      Keeps helices torsion angles close to ideal.
   """
   if rotamer_manager is None:
     rotamer_manager = RotamerEval()
@@ -310,6 +335,11 @@ def substitute_ss(real_h,
       if len(chain.conformers()) > 1:
         raise Sorry("Secondary structure substitution does not support\n"+\
             "the presence of alternative conformations.")
+
+  processed_params = process_params(params)
+  if not processed_params.enabled:
+    return None
+
   expected_n_hbonds = 0
   ann = ss_annotation
   phil_str = ann.as_restraint_groups()
@@ -399,7 +429,9 @@ def substitute_ss(real_h,
     nonss_for_tors_selection.set_selected(isel, False)
 
   for sheet in ann.sheets:
-    log.write("  %s\n" % sheet.as_pdb_str())
+    s = "  %s\n" % sheet.as_pdb_str()
+    ss = s.replace("\n", "\n  ")
+    log.write(ss)
     for ss_sels in sheet.as_atom_selections():
       selstring = main_chain_selection_prefix % ss_sels
       isel = selection_cache.iselection(selstring)
@@ -408,7 +440,6 @@ def substitute_ss(real_h,
       isel = selection_cache.iselection(selstring)
       ss_for_tors_selection.set_selected(isel, True)
       nonss_for_tors_selection.set_selected(isel, False)
-
   isel = selection_cache.iselection(
       "not name ca and not name n and not name o and not name c")
   other_selection.set_selected(isel, False)
@@ -457,31 +488,31 @@ def substitute_ss(real_h,
       reference.add_coordinate_restraints(
           sites_cart = real_h.atoms().extract_xyz().select(helix_selection),
           selection  = helix_selection,
-          sigma      = sigma_on_reference_helix))
+          sigma      = processed_params.sigma_on_reference_helix))
   grm.geometry.append_reference_coordinate_restraints_in_place(
       reference.add_coordinate_restraints(
           sites_cart = real_h.atoms().extract_xyz().select(sheet_selection),
           selection  = sheet_selection,
-          sigma      = sigma_on_reference_sheet))
+          sigma      = processed_params.sigma_on_reference_sheet))
   grm.geometry.append_reference_coordinate_restraints_in_place(
       reference.add_coordinate_restraints(
           sites_cart = real_h.atoms().extract_xyz().select(other_selection),
           selection  = other_selection,
-          sigma      = sigma_on_reference_non_ss))
+          sigma      = processed_params.sigma_on_reference_non_ss))
   grm.geometry.add_chi_torsion_restraints_in_place(
           pdb_hierarchy   = pre_result_h,
           sites_cart      = pre_result_h.atoms().extract_xyz().\
                                  select(ss_for_tors_selection),
           selection = ss_for_tors_selection,
           chi_angles_only = False,
-          sigma           = sigma_on_torsion_ss)
+          sigma           = processed_params.sigma_on_torsion_ss)
   grm.geometry.add_chi_torsion_restraints_in_place(
           pdb_hierarchy   = pre_result_h,
           sites_cart      = real_h.atoms().extract_xyz().\
                                 select(nonss_for_tors_selection),
           selection = nonss_for_tors_selection,
           chi_angles_only = False,
-          sigma           = sigma_on_torsion_nonss)
+          sigma           = processed_params.sigma_on_torsion_nonss)
 
   real_h.atoms().set_xyz(pre_result_h.atoms().extract_xyz())
   if fname_before_regularization is not None:
@@ -498,8 +529,8 @@ def substitute_ss(real_h,
   obj = run2(
       restraints_manager       = grm,
       pdb_hierarchy            = real_h,
-      max_number_of_iterations = n_iter,
-      number_of_macro_cycles   = n_macro,
+      max_number_of_iterations = processed_params.n_iter,
+      number_of_macro_cycles   = processed_params.n_macro,
       bond                     = True,
       nonbonded                = True,
       angle                    = True,

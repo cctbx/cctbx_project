@@ -205,6 +205,7 @@ tst_list = (
   "$D/refinement/tst_group_2.py",
   "$D/secondary_structure/build/tst_1.py",
   "$D/secondary_structure/build/tst_2.py",
+  "$D/regression/tst_model_idealization.py",
   "$D/utils/tst_switch_rotamers.py",
   "$D/refinement/tst_occupancy_selections.py",
   "$D/regression/ncs/tst_minimization_ncs_constraints.py",
