@@ -26,11 +26,11 @@ import sys, os
 import time
 import math
 
-# see iotbx/pdb/common_residue_names.h; additionally here only: U I
+# see iotbx/pdb/common_residue_names.h; additionally here only: U I S
 ad_hoc_single_atom_residue_element_types = """\
 ZN CA MG CL NA MN K FE CU CD HG NI CO BR XE SR CS PT BA TL PB SM AU RB YB LI
 KR MO LU CR OS GD TB LA F AR AG HO GA CE W SE RU RE PR IR EU AL V TE SB PD
-U I
+U I S
 """.split()
 
 class ad_hoc_single_atom_residue(object):
