@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/24/2015
+Last Changed: 06/26/2015
 Description : IOTA I/O module. Reads PHIL input, creates output directories,
               creates input lists and organizes starting parameters, also
               creates reasonable IOTA and PHIL defaults if selected
@@ -39,6 +39,10 @@ target = target.phil
   .type = str
   .multiple = False
   .help = Target (.phil) file with integration parameters
+  .optional = False
+logfile = iota.log
+  .type = str
+  .help = Main log file
   .optional = False
 image_conversion
   .help = Parameters for raw image conversion to pickle format
@@ -184,17 +188,17 @@ def process_input(input_file_list):
   user_phil = [ip.parse(open(inp).read()) for inp in input_file_list]
 
   working_phil = master_phil.fetch(sources=user_phil)
+  diff_phil = master_phil.fetch_diff(sources=user_phil)
   params = working_phil.extract()
 
-  #capture input read out by phil
-  with Capturing() as output:
-    working_phil.show()
+  with Capturing() as diff_output:
+    diff_phil.show()
 
-  txt_out = ''
-  for one_output in output:
-    txt_out += one_output + '\n'
+  diff_out = ''
+  for one_output in diff_output:
+    diff_out += one_output + '\n'
 
-  return params, txt_out
+  return params, diff_out
 
 
 def make_input_list (gs_params):
@@ -460,14 +464,16 @@ def main_log_init(logfile):
   """
 
   log_count = 0
+  log_filename = os.path.splitext(os.path.basename(logfile))[0]
+  log_folder = os.path.dirname(logfile)
 
   for item in os.listdir(os.curdir):
-    if item.find('iota') != -1 and item.find('.log') != -1:
+    if item.find(log_filename) != -1 and item.find('.log') != -1:
       log_count += 1
 
   if log_count > 0:
     old_log_filename = logfile
-    new_log_filename = '{0}/iota_{1}.log'.format(os.curdir, log_count)
+    new_log_filename = '{}/{}_{}.log'.format(log_folder, log_filename, log_count)
     os.rename(old_log_filename, new_log_filename)
 
   with open(logfile, 'w') as logfile:
@@ -528,12 +534,8 @@ def generate_input(gs_params, input_list, input_folder):
           "{}".format(os.path.abspath(gs_params.output))
       sys.exit()
 
-  # Initiate log file
-  logfile = '{}/iota.log'.format(os.curdir)
-  main_log_init(logfile)
-
   return gs_range, input_dir_list, output_dir_list, log_dir,\
-         logfile, mp_input_list, mp_output_list
+         mp_input_list, mp_output_list
 
 def write_defaults(current_path, txt_out):
   """ Generates list of default parameters for a reasonable target file

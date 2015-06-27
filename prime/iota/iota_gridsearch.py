@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/24/2015
+Last Changed: 06/26/2015
 Description : Runs cctbx.xfel integration module either in grid-search or final
               integration mode. Has options to output diagnostic visualizations
 '''
@@ -192,7 +192,7 @@ def integrate_image(mp_entry, current_log_file, arguments, ptitle, gs_params):
                      'spa':spot_area, 'sg':sg, 'a':cell[0], 'b':cell[1],
                      'c':cell[2], 'alpha':cell[3], 'beta':cell[4],
                      'gamma':cell[5], 'strong':strong_spots, 'res':res,
-                     'mos':mosaicity, 'mq':mos_quality}
+                     'mos':mosaicity}
 
       p_cell = "{:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}"\
              "".format(cell[0], cell[1], cell[2], cell[3], cell[4], cell[5])
@@ -242,7 +242,7 @@ def integration(int_type, mp_entry, log_dir, gs_params):
       output: results file in CSV format and (optional) integration pickle
   """
 
-  logfile = '{}/iota.log'.format(os.curdir)
+  logfile = os.path.abspath(gs_params.logfile)
 
   current_img = mp_entry[0]
   current_output_dir = mp_entry[1]
@@ -293,13 +293,13 @@ def integration(int_type, mp_entry, log_dir, gs_params):
       if os.path.isfile(result_file):
         with open(result_file, 'ab') as res_file:
           fn = ['img', 'sih', 'sph', 'spa', 'sg', 'a', 'b', 'c', 'alpha', 'beta',
-                'gamma', 'strong', 'res', 'mos', 'mq']
+                'gamma', 'strong', 'res', 'mos']
           writer = csv.DictWriter(res_file, fieldnames=fn)
           writer.writerow(results)
       else:
         with open(result_file, 'wb') as res_file:
           fn = ['img', 'sih', 'sph', 'spa', 'sg', 'a', 'b', 'c', 'alpha', 'beta',
-                'gamma', 'strong', 'res', 'mos', 'mq']
+                'gamma', 'strong', 'res', 'mos']
           writer = csv.DictWriter(res_file, fieldnames=fn)
           writer.writeheader()
           writer.writerow(results)

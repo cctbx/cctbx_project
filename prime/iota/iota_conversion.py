@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/24/2015
+Last Changed: 06/26/2015
 Description : Converts raw image to pickle files; crops or pads pickle to place
               beam center into center of image; masks out beam stop. Adapted in
               part from cxi_image2pickle.py by Aaron Brewster.
@@ -233,7 +233,7 @@ def mask_image(data, beamstop):
   return data
 
 
-def convert_image(img_in, img_out, square, beamstop=0, beam_center=[0,0]):
+def convert_image(img_in, img_out, gs_params):
   """ Converts images into pickle format; crops and masks out beamstop if
       selected
 
@@ -248,6 +248,11 @@ def convert_image(img_in, img_out, square, beamstop=0, beam_center=[0,0]):
   """
 
   img_data = load_image(img_in)
+  logfile = os.path.abspath(gs_params.logfile)
+  beamstop = gs_params.image_conversion.beamstop
+  beam_center = [gs_params.image_conversion.beam_center.x,
+                 gs_params.image_conversion.beam_center.y]
+  square = gs_params.image_conversion.square_mode
 
   if beam_center != [0,0]:
     pixel_size = img_data['PIXEL_SIZE']
@@ -267,7 +272,6 @@ def convert_image(img_in, img_out, square, beamstop=0, beam_center=[0,0]):
                         img_data['SIZE1'], img_data['SIZE2'], img_data['DISTANCE'],
                         width = len(img_out))
 
-  logfile = '{}/{}/conversion.log'.format(os.curdir, 'conv_pickles')
   with open(logfile, 'a') as conversion_log:
     conversion_log.write('{}\n'.format(info_line))
 

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 06/04/2015
-Last Changed: 06/24/2015
+Last Changed: 06/26/2015
 Description : Finds blank images using DISTL spotfinding. Outputs image filename
               only if it finds > 10 Bragg spots.
 '''
@@ -14,8 +14,8 @@ from cStringIO import StringIO
 import spotfinder
 from spotfinder.command_line.signal_strength import master_params as sf_params
 from spotfinder.applications.wrappers import DistlOrganizer
-import prime.iota.iota_input as inp
 
+import prime.iota.iota_input as inp
 
 class Capturing(list):
   """ Class used to capture stdout from cctbx.xfel objects. Saves output in
@@ -37,6 +37,8 @@ def spotfinding_param_search (input_img, gs_params):
               gs_params - general parameters
       output: input_img - only returns this if image has >= 10 Bragg spots
   """
+
+  logfile = os.path.abspath(gs_params.logfile)
 
   params = sf_params.extract()
   params.distl.image = input_img
@@ -70,7 +72,11 @@ def spotfinding_param_search (input_img, gs_params):
     Bragg_spots = Org.S.images[frame]['N_spots_inlier']
 
   if Bragg_spots >= gs_params.image_triage.min_Bragg_peaks:
+    inp.main_log(logfile, '{} --> ACCEPTED! {} good Bragg peaks'\
+                          ''.format(input_img, Bragg_spots))
     return input_img
+  else:
+    inp.main_log(logfile, '{} --> REJECTED'.format(input_img))
 
 def triage_mproc_wrapper(current_img):
   """ Multiprocessor wrapper for testing only
