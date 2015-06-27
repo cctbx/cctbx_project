@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 06/24/2015
+Last Changed: 06/26/2015
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes unit cell analysis by hierarchical clustering
               (Zeldin, et al., Acta Cryst D, 2013). In case of multiple clusters
@@ -123,7 +123,9 @@ def print_results(clean_results, gs_range, logfile):
                     "".format(np.mean(spot_areas), np.std(spot_areas),
                               max(spot_areas), min(spot_areas), cons_a))
   final_table.append("Avg. resolution:       {:<8.3f}  std. dev:    {:<6.2f}"\
-                    "".format(np.mean(resolutions), np.std(resolutions)))
+                     "  lowest: {:<6.3f}  highest: {:<6.3f}"\
+                    "".format(np.mean(resolutions), np.std(resolutions),
+                              max(resolutions), min(resolutions)))
   final_table.append("Avg. number of spots:  {:<8.3f}  std. dev:    {:<6.2f}"\
                     "".format(np.mean(num_spots), np.std(num_spots)))
   final_table.append("Avg. mosaicity:        {:<8.3f}  std. dev:    {:<6.2f}"\
@@ -183,7 +185,7 @@ def unit_cell_analysis(cluster_threshold, logfile, int_pickle_file):
   clusters, _ = ucs.ab_cluster(cluster_threshold, log=False, write_file_lists=False,
                                schnell=False, doplot=False)
 
-  uc_table.append("\n\n{:-^80}"\
+  uc_table.append("\n\n{:-^80}\n"\
                   "".format(' UNIT CELL ANALYSIS '))
 
   # extract clustering info and add to summary output list

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/24/2015
+Last Changed: 06/26/2015
 Description : IOTA pickle selection module. Selects the best integration results
               from grid search output.
 '''
@@ -104,7 +104,7 @@ def best_file_selection(sel_type, gs_params, output_entry, log_dir):
   """
 
 
-  logfile = '{}/iota.log'.format(os.curdir)
+  logfile = os.path.abspath(gs_params.logfile)
 
   abs_tmp_dir = output_entry[0]
   input_file = output_entry[1]
@@ -134,7 +134,7 @@ def best_file_selection(sel_type, gs_params, output_entry, log_dir):
     types = [('img', str), ('sih', int), ('sph', int), ('spa', int),\
              ('sg', str), ('a', float), ('b', float), ('c', float),\
              ('alpha', float), ('beta', float), ('gamma', float),\
-             ('strong', int), ('res', float), ('mos', float), ('mq', float)]
+             ('strong', int), ('res', float), ('mos', float)]
 
     for i in int_list:
       try:
@@ -157,11 +157,11 @@ def best_file_selection(sel_type, gs_params, output_entry, log_dir):
                       'of {1} integration results for ' \
                       '{2}:\n'.format(len(acceptable_results),
                       len(int_list), input_file))
-      categories = '{:^4}{:^4}{:^4}{:^9}{:^8}{:^55}{:^12}{:^12}{:^12}'\
+      categories = '{:^4}{:^4}{:^4}{:^9}{:^8}{:^55}{:^12}{:^14}'\
                    ''.format('S', 'H', 'A', 'RES', 'SG.',
-                   'UNIT CELL', 'SPOTS', 'MOS', 'MQ')
-      line = '{:-^4}{:-^4}{:-^4}{:-^9}{:-^8}{:-^55}{:-^16}{:-^18}{:^18}'\
-             ''.format('', '', '', '', '','', '', '', '')
+                             'UNIT CELL', 'SPOTS', 'MOS')
+      line = '{:-^4}{:-^4}{:-^4}{:-^9}{:-^8}{:-^55}{:-^16}{:-^14}'\
+             ''.format('', '', '', '', '','', '', '')
       ps_log_output.append(categories)
       ps_log_output.append(line)
 
@@ -173,17 +173,15 @@ def best_file_selection(sel_type, gs_params, output_entry, log_dir):
         cell = '{:>8.2f}, {:>8.2f}, {:>8.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}'\
                ''.format(acc['a'], acc['b'], acc['c'],
                          acc['alpha'], acc['beta'], acc['gamma'])
-        info_line = '{:^4}{:^4}{:^4}{:^9.2f}{:^8}{:^55}{:^12}{:^12.4f}{:^12.4f}'\
+        info_line = '{:^4}{:^4}{:^4}{:^9.2f}{:^8}{:^55}{:^12}{:^14.8f}'\
                     ''.format(acc['sih'], acc['sph'], acc['spa'], acc['res'],
-                              acc['sg'], cell, acc['strong'], acc['mos'],
-                              acc['mq'])
+                              acc['sg'], cell, acc['strong'], acc['mos'])
         ps_log_output.append(info_line)
 
       # Compute average values
       avg_res = np.mean([item['res'] for item in acceptable_results])
       avg_spots = np.mean([item['strong'] for item in acceptable_results])
       avg_mos = np.mean([item['mos'] for item in acceptable_results])
-      avg_mq = np.mean([item['mq'] for item in acceptable_results])
       avg_cell = '{:>8.2f}, {:>8.2f}, {:>8.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}'\
               ''.format(np.mean([item['a'] for item in acceptable_results]),
                         np.mean([item['b'] for item in acceptable_results]),
@@ -192,15 +190,14 @@ def best_file_selection(sel_type, gs_params, output_entry, log_dir):
                         np.mean([item['beta'] for item in acceptable_results]),
                         np.mean([item['gamma'] for item in acceptable_results]))
 
-      info_line = '\nAVG:    {:^9.2f}{:^8}{:^55}{:^12.2f}{:^12.4f}{:^12.4f}'\
-                  ''.format(avg_res, '', avg_cell, avg_spots, avg_mos, avg_mq)
+      info_line = '\nAVG:        {:^9.2f}{:^8}{:^55}{:^12.2f}{:^14.8f}'\
+                  ''.format(avg_res, '', avg_cell, avg_spots, avg_mos)
       ps_log_output.append(info_line)
 
       # Compute standard deviations
       std_res = np.std([item['res'] for item in acceptable_results])
       std_spots = np.std([item['strong'] for item in acceptable_results])
       std_mos = np.std([item['mos'] for item in acceptable_results])
-      std_mq = np.std([item['mq'] for item in acceptable_results])
       std_cell = '{:>8.2f}, {:>8.2f}, {:>8.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}'\
               ''.format(np.std([item['a'] for item in acceptable_results]),
                         np.std([item['b'] for item in acceptable_results]),
@@ -209,8 +206,8 @@ def best_file_selection(sel_type, gs_params, output_entry, log_dir):
                         np.std([item['beta'] for item in acceptable_results]),
                         np.std([item['gamma'] for item in acceptable_results]))
 
-      info_line = 'STD:    {:^9.2f}{:^8}{:^55}{:^12.2f}{:^12.4f}{:^12.4f}'\
-                  ''.format(std_res, '', std_cell, std_spots, std_mos, std_mq)
+      info_line = 'STD:        {:^9.2f}{:^8}{:^55}{:^12.2f}{:^14.8f}'\
+                  ''.format(std_res, '', std_cell, std_spots, std_mos)
       ps_log_output.append(info_line)
 
 
@@ -230,10 +227,9 @@ def best_file_selection(sel_type, gs_params, output_entry, log_dir):
       cell = '{:>8.2f}, {:>8.2f}, {:>8.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}'\
              ''.format(best['a'], best['b'], best['c'],
                        best['alpha'], best['beta'], best['gamma'])
-      info_line = '{:^4}{:^4}{:^4}{:^9.2f}{:^8}{:^55}{:^12}{:^12.4f}{:^12.2f}'\
+      info_line = '{:^4}{:^4}{:^4}{:^9.2f}{:^8}{:^55}{:^12}{:^14.8f}'\
                   ''.format(best['sih'], best['sph'], best['spa'], best['res'],
-                            best['sg'], cell, best['strong'], best['mos'],
-                            best['mq'])
+                            best['sg'], cell, best['strong'], best['mos'])
       ps_log_output.append(info_line)
 
     ps_log_output.append('\n')
