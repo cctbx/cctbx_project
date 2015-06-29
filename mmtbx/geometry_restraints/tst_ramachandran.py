@@ -248,6 +248,7 @@ def benchmark_structure (pdb_in, mon_lib_srv, ener_lib, verbose=False, w=1.0) :
   flags = cctbx.geometry_restraints.flags.flags(default=True)
   lbfgs = geometry_minimization.lbfgs(
     sites_cart=sites_cart_1,
+    correct_special_position_tolerance=1.0,
     geometry_restraints_manager=grm,
     geometry_restraints_flags=flags,
     lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
@@ -262,6 +263,7 @@ def benchmark_structure (pdb_in, mon_lib_srv, ener_lib, verbose=False, w=1.0) :
   grm.set_ramachandran_restraints(rama_manager)
   lbfgs = geometry_minimization.lbfgs(
     sites_cart=sites_cart_2,
+    correct_special_position_tolerance=1.0,
     geometry_restraints_manager=grm,
     geometry_restraints_flags=flags,
     lbfgs_termination_params=scitbx.lbfgs.termination_parameters(

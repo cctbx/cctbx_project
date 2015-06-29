@@ -220,6 +220,7 @@ def exercise_2(mon_lib_srv, ener_lib):
     sites_cart = xrs2.sites_cart()
     minimized = mmtbx.refinement.geometry_minimization.lbfgs(
       sites_cart                  = sites_cart,
+      correct_special_position_tolerance=1.0,
       geometry_restraints_manager = grm,
       sites_cart_selection        = flex.bool(sites_cart.size(), selection),
       geometry_restraints_flags   = grf,
@@ -307,6 +308,7 @@ def exercise_3(mon_lib_srv, ener_lib):
     sites_cart = xrs2.sites_cart()
     minimized = mmtbx.refinement.geometry_minimization.lbfgs(
       sites_cart                  = sites_cart,
+      correct_special_position_tolerance=1.0,
       geometry_restraints_manager = grm,
       sites_cart_selection        = flex.bool(sites_cart.size(), min_selection),
       geometry_restraints_flags   = grf,

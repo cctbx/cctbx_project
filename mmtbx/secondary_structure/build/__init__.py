@@ -528,6 +528,7 @@ def substitute_ss(real_h,
       "Refining geometry of substituted secondary structure elements.\n")
   obj = run2(
       restraints_manager       = grm,
+      correct_special_position_tolerance=1.0,
       pdb_hierarchy            = real_h,
       max_number_of_iterations = processed_params.n_iter,
       number_of_macro_cycles   = processed_params.n_macro,

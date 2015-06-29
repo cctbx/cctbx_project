@@ -84,6 +84,8 @@ minimization
   grms_termination_cutoff = 0
     .type = float
     .help = stop after reaching specified cutoff value
+  correct_special_position_tolerance = 1.0
+    .type = float
   move
     .help = Define what to include into refinement target
     .short_caption = Geometry terms
@@ -262,6 +264,7 @@ def run_minimization(
     max_number_of_iterations       = params.max_iterations,
     number_of_macro_cycles         = params.macro_cycles,
     selection                      = selection,
+    correct_special_position_tolerance = params.correct_special_position_tolerance,
     bond                           = params.move.bond,
     nonbonded                      = params.move.nonbonded,
     angle                          = params.move.angle,

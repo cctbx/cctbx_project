@@ -115,7 +115,7 @@ def exercise_01():
     pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy,
     log                     = None)
   ####
-  model.add_hydrogens()
+  model.add_hydrogens(correct_special_position_tolerance=1.0)
   result = StringIO()
   model.write_pdb_file(out=result)
   result = result.getvalue().splitlines()

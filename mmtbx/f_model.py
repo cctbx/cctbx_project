@@ -2127,6 +2127,18 @@ class manager(manager_mixin):
     timer = user_plus_sys_time()
     if(f_obs is None): f_obs = self.f_obs()
     if(f_model is None): f_model = self.f_model()
+    # Use work reflections if test set is too small
+    flags = self.r_free_flags().data()
+    d_max = self.f_obs().d_max_min()[0]
+    if(flags.count(True)<300 and d_max>15 and
+       flags.count(True)!=flags.size()): # XXX ad hoc. Make a parameter?
+      alpha, beta = maxlik.alpha_beta_est_manager(
+           f_obs                    = f_obs,
+           f_calc                   = f_model,
+           free_reflections_per_bin = 140,
+           flags                    = ~flags,
+           interpolation            = False).alpha_beta()
+      return alpha, beta
     alpha, beta = None, None
     ab_params = self.alpha_beta_params
     #Nobs and Ncalc restrained for ensemble refinement

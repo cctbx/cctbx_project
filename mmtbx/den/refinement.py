@@ -415,6 +415,7 @@ class manager(object):
     selection = self.model.selection_moving
     minimized = self.model.geometry_minimization(
       max_number_of_iterations       = 500,
+      correct_special_position_tolerance=1.0,
       number_of_macro_cycles         = 1,
       selection                      = selection,
       bond                           = True,

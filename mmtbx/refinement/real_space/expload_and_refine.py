@@ -173,6 +173,7 @@ class run(object):
       sites_cart_ = tmp.sites_cart()
       minimized = geometry_minimization.lbfgs(
         sites_cart                      = sites_cart_,
+        correct_special_position_tolerance = 1.0,
         geometry_restraints_manager     = self.restraints_manager.geometry,
         geometry_restraints_flags       = grf,
         lbfgs_exception_handling_params = lbfgs_exception_handling_params,

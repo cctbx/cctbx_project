@@ -275,6 +275,7 @@ def regularize_geometry(xray_structure, restraints_manager, params):
   sites_cart = xray_structure.sites_cart()
   minimized = gm.lbfgs(
     sites_cart = sites_cart,
+    correct_special_position_tolerance = 1.0,
     geometry_restraints_manager = restraints_manager.geometry,
     geometry_restraints_flags = gm.geometry_restraints.flags.flags(default=True),
     rmsd_bonds_termination_cutoff=params.rmsd_bonds_target,

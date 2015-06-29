@@ -29,6 +29,7 @@ class lbfgs(geometry_restraints.lbfgs.lbfgs):
         geometry_restraints_manager,
         geometry_restraints_flags,
         lbfgs_termination_params,
+        correct_special_position_tolerance,
         sites_cart_selection=None,
         lbfgs_exception_handling_params=None,
         rmsd_bonds_termination_cutoff=0,
@@ -40,6 +41,7 @@ class lbfgs(geometry_restraints.lbfgs.lbfgs):
     self.states_collector = states_collector
     geometry_restraints.lbfgs.lbfgs.__init__(self,
       sites_cart=sites_cart,
+      correct_special_position_tolerance=correct_special_position_tolerance,
       geometry_restraints_manager=geometry_restraints_manager,
       geometry_restraints_flags=geometry_restraints_flags,
       lbfgs_termination_params=lbfgs_termination_params,
@@ -175,6 +177,7 @@ class run2(object):
   def __init__(self,
                restraints_manager,
                pdb_hierarchy,
+               correct_special_position_tolerance,
                max_number_of_iterations       = 500,
                number_of_macro_cycles         = 5,
                selection                      = None,
@@ -244,6 +247,7 @@ class run2(object):
       sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
       self.minimized = lbfgs(
         sites_cart                      = sites_cart,
+        correct_special_position_tolerance=correct_special_position_tolerance,
         geometry_restraints_manager     = restraints_manager.geometry,
         geometry_restraints_flags       = geometry_restraints_flags,
         lbfgs_termination_params        = lbfgs_termination_params,
