@@ -655,6 +655,7 @@ class box_build_refine_base (object) :
         ignore_line_search_failed_step_at_lower_bound = True)
       minimized = geometry_minimization.lbfgs(
         sites_cart                  = sites_cart,
+        correct_special_position_tolerance = 1.0,
         geometry_restraints_manager = self.geo_box,
         geometry_restraints_flags   = geometry_restraints_flags,
         lbfgs_termination_params    = lbfgs_termination_params,

@@ -431,7 +431,8 @@ class manager(object):
     self._pdb_hierarchy = pdb_hierarchy
     return counter
 
-  def idealize_h(self, selection=None, show=True, nuclear=False):
+  def idealize_h(self, correct_special_position_tolerance=1.0,
+                   selection=None, show=True, nuclear=False):
     """
     Perform geometry regularization on hydrogen atoms only.
     """
@@ -463,6 +464,7 @@ class manager(object):
           if(self.ias_selection is not None and self.ias_selection.count(True) > 0):
             sel = sel.select(~self.ias_selection)
           min_result = self.geometry_minimization(
+            correct_special_position_tolerance=correct_special_position_tolerance,
             selection = sel,
             bond      = True,
             nonbonded = sel_pair[1],
@@ -531,7 +533,8 @@ class manager(object):
       rg.resseq = pdb.resseq_encode(value=i+1)
       rg.icode = " "
 
-  def add_hydrogens(self, element = "H", neutron = False, occupancy=0.01):
+  def add_hydrogens(self, correct_special_position_tolerance,
+        element = "H", neutron = False, occupancy=0.01):
     result = []
     xs = self.xray_structure
     if(neutron): element = "D"
@@ -638,7 +641,8 @@ class manager(object):
         sites_individual = True,
         s_occupancies    = neutron)
     self.reprocess_pdb_hierarchy_inefficient()
-    self.idealize_h()
+    self.idealize_h(correct_special_position_tolerance=
+      correct_special_position_tolerance)
 
   def reprocess_pdb_hierarchy_inefficient(self):
     # XXX very inefficient
@@ -733,6 +737,7 @@ class manager(object):
 
   def geometry_minimization(
         self,
+        correct_special_position_tolerance=1.0,
         max_number_of_iterations       = 500,
         number_of_macro_cycles         = 5,
         selection                      = None,
@@ -770,6 +775,7 @@ class manager(object):
         ignore_line_search_failed_step_at_lower_bound = True)
       minimized = geometry_minimization.lbfgs(
         sites_cart                  = sites_cart,
+        correct_special_position_tolerance=correct_special_position_tolerance,
         geometry_restraints_manager = self.restraints_manager.geometry,
         geometry_restraints_flags   = geometry_restraints_flags,
         lbfgs_termination_params    = lbfgs_termination_params,

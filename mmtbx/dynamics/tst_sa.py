@@ -194,11 +194,11 @@ def exercise_1():
   #
   r = fmodel.r_work()
   print "final r_work:", r
-  assert r < 0.006, r
+  assert r < 0.03, r
   dist = flex.mean(flex.sqrt((pi.xrs.sites_cart() -
           fmodel.xray_structure.sites_cart()).dot()))
   print "Distance(refined, answer): %6.4f"%dist
-  assert dist < 0.16, dist
+  assert dist < 0.25, dist
   if(0):
     pi.ph.adopt_xray_structure(fmodel.xray_structure)
     pi.ph.write_pdb_file(file_name="refined.pdb",

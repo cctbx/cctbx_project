@@ -66,6 +66,7 @@ def exercise(tolerance=0.001):
       xray_structure     = xray_structure,
       pdb_hierarchy      = ph)
     mmodel.geometry_minimization(
+      correct_special_position_tolerance=1.0,
       bond      = True,
       nonbonded = True,
       angle     = True,
