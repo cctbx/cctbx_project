@@ -246,6 +246,7 @@ class distance_and_repulsion_least_squares:
             try:
               m = geometry_restraints.lbfgs.lbfgs(
                 sites_cart=trial_sites_cart,
+                correct_special_position_tolerance=1.0,
                 geometry_restraints_manager=geometry_restraints_manager,
                 geometry_restraints_flags=geometry_restraints_flags,
                 lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
