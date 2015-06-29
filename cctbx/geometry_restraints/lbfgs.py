@@ -10,6 +10,7 @@ class lbfgs(object):
   def __init__(self,
       sites_cart,
       geometry_restraints_manager,
+      correct_special_position_tolerance=1.0,
       geometry_restraints_flags=None,
       lbfgs_termination_params=None,
       lbfgs_core_params=None,
@@ -21,6 +22,7 @@ class lbfgs(object):
     if (lbfgs_termination_params is None):
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
         max_iterations=1000)
+    self.correct_special_position_tolerance=correct_special_position_tolerance
     self.site_labels = site_labels
     self.states_collector = states_collector
     self.tmp = empty()
@@ -70,6 +72,7 @@ class lbfgs(object):
       for i_seq in site_symmetry_table.special_position_indices():
         self.tmp.sites_shifted[i_seq] = crystal.correct_special_position(
           crystal_symmetry=crystal_symmetry,
+          tolerance=self.correct_special_position_tolerance,
           special_op=site_symmetry_table.get(i_seq).special_op(),
           site_cart=self.tmp.sites_shifted[i_seq])
 
