@@ -139,11 +139,13 @@ class annotation(structure_base):
     helices = []
     sheets = []
     for i, helix_param in enumerate(phil_helices):
-      h = pdb_helix.from_phil_params(helix_param, pdb_hierarchy, i, log)
-      helices.append(h)
+      if helix_param.selection is not None:
+        h = pdb_helix.from_phil_params(helix_param, pdb_hierarchy, i, log)
+        helices.append(h)
     for i, sheet_param in enumerate(phil_sheets):
-      sh = pdb_sheet.from_phil_params(sheet_param, pdb_hierarchy, log)
-      sheets.append(sh)
+      if sheet_param.first_strand is not None:
+        sh = pdb_sheet.from_phil_params(sheet_param, pdb_hierarchy, log)
+        sheets.append(sh)
     return cls(helices=helices, sheets=sheets)
 
   def as_pdb_str (self) :

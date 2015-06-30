@@ -6,12 +6,8 @@ from mmtbx.monomer_library import idealized_aa
 from libtbx.utils import Sorry, null_out
 from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter as one_three
 from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter as three_one
-from mmtbx.refinement.geometry_minimization import run2
 from mmtbx.rotamer.rotamer_eval import RotamerEval
-import mmtbx.utils
-#from mmtbx.command_line.geometry_minimization import master_params
 from mmtbx import secondary_structure
-from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 
 alpha_helix_str = """
 ATOM      1  N   ALA A   1      -5.606  -2.251 -12.878  1.00  0.00           N
@@ -69,8 +65,8 @@ helix_class_to_pdb_str = {'alpha':alpha_helix_str,
                           'pi':pi_helix_str,
                           '3_10': a310_helix_str}
 
-ss_idealization_master_phil_str = """
-ss_idealization
+model_idealization_master_phil_str = """
+model_idealization
 {
   enabled = False
     .type = bool
@@ -111,7 +107,7 @@ ss_idealization
 }
 """
 
-master_phil = iotbx.phil.parse(ss_idealization_master_phil_str)
+master_phil = iotbx.phil.parse(model_idealization_master_phil_str)
 
 def print_hbond_proxies(geometry, hierarchy, pymol=False):
   """ Print hydrogen bonds in geometry restraints manager for debugging
@@ -287,11 +283,11 @@ def process_params(params):
   min_sigma = 1e-5
   if params is None:
     params = master_phil.fetch().extract()
-  if hasattr(params, "ss_idealization"):
-    p_pars = params.ss_idealization
+  if hasattr(params, "model_idealization"):
+    p_pars = params.model_idealization
   else:
     assert hasattr(params, "enabled") and hasattr(params, "sigma_on_cbeta"), \
-        "Something wrong with parameters passed to ss_idealization"
+        "Something wrong with parameters passed to model_idealization"
     p_pars = params
   assert isinstance(p_pars.enabled, bool)
   assert isinstance(p_pars.restrain_torsion_angles, bool)
@@ -415,8 +411,7 @@ def substitute_ss(real_h,
   isel = selection_cache.iselection("name ca or name n or name o or name c")
   nonss_for_tors_selection.set_selected(isel, True)
   main_chain_selection_prefix = "(name ca or name n or name o or name c) %s"
-  if verbose:
-    log.write("Replacing ss-elements with ideal ones:\n")
+  log.write("Replacing ss-elements with ideal ones:\n")
   for h in ann.helices:
     log.write("  %s\n" % h.as_pdb_str())
     ss_sels = h.as_atom_selections()[0]
@@ -448,17 +443,19 @@ def substitute_ss(real_h,
     sheet_selection = sheet_selection & ~helix_sheet_intersection
   assert ((helix_selection | sheet_selection) & other_selection).count(True)==0
 
+  from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
   params_line = grand_master_phil_str
   params_line += "secondary_structure {%s}" % secondary_structure.sec_str_master_phil_str
   params = iotbx.phil.parse(input_string=params_line, process_includes=True)
   custom_pars = params.fetch(source = iotbx.phil.parse("\n".join([
-      "pdb_interpretation.secondary_structure {h_bond_restraints.remove_outliers = False\n%s}" \
+      "pdb_interpretation.secondary_structure {protein.remove_outliers = False\n%s}" \
           % phil_str,
       "pdb_interpretation.peptide_link.ramachandran_restraints = True",
       "c_beta_restraints = True",
       "pdb_interpretation.secondary_structure.enabled=True",
       "pdb_interpretation.secondary_structure.find_automatically=False"]))).extract()
 
+  import mmtbx.utils
   processed_pdb_files_srv = mmtbx.utils.\
       process_pdb_file_srv(
           crystal_symmetry= xray_structure.crystal_symmetry(),
@@ -522,14 +519,15 @@ def substitute_ss(real_h,
   assert grm.geometry.get_n_den_proxies() == 0
   assert grm.geometry.get_n_reference_coordinate_proxies() == n_main_chain_atoms
   refinement_log = null_out()
+  log.write(
+      "Refining geometry of substituted secondary structure elements...")
   if verbose:
     refinement_log = log
-    refinement_log.write(
-      "Refining geometry of substituted secondary structure elements.\n")
+  from mmtbx.refinement.geometry_minimization import run2
   obj = run2(
       restraints_manager       = grm,
-      correct_special_position_tolerance=1.0,
       pdb_hierarchy            = real_h,
+      correct_special_position_tolerance = 1.0,
       max_number_of_iterations = processed_params.n_iter,
       number_of_macro_cycles   = processed_params.n_macro,
       bond                     = True,
@@ -540,6 +538,7 @@ def substitute_ss(real_h,
       planarity                = True,
       fix_rotamer_outliers     = False,
       log                      = refinement_log)
+  log.write(" Done\n")
 
   #print_hbond_proxies(grm.geometry,real_h)
   return grm.geometry.get_chi_torsion_proxies()
