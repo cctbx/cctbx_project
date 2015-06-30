@@ -9,7 +9,7 @@ from mmtbx.monomer_library import conformation_dependent_restraints
 from mmtbx.geometry_restraints import ramachandran
 import mmtbx.geometry_restraints
 import mmtbx.geometry_restraints.torsion_restraints.utils
-from mmtbx.secondary_structure.build import model_idealization_master_phil_str
+# from mmtbx.secondary_structure.build import model_idealization_master_phil_str
 from cctbx import geometry_restraints
 import cctbx.geometry_restraints.manager
 from cctbx import crystal
@@ -139,7 +139,7 @@ master_params_str = """\
   correct_hydrogens = True
     .type = bool
     .short_caption = Correct the hydrogen positions trapped in chirals etc
-  include scope mmtbx.secondary_structure.build.model_idealization_master_phil_str
+  # include scope mmtbx.secondary_structure.build.model_idealization_master_phil_str
   include scope mmtbx.secondary_structure.sec_str_master_phil
   c_beta_restraints=True
     .type = bool
@@ -4896,6 +4896,7 @@ class process(object):
     if log is None:
       self.log = nul
     self.ss_manager = None
+    self.ss_torsion_restraints = None
     self.all_chain_proxies = build_all_chain_proxies(
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
@@ -4934,28 +4935,28 @@ class process(object):
       self.ncs_obj = self.search_for_ncs(
         hierarchy = self.all_chain_proxies.pdb_hierarchy)
     # model_idealization
-    if self.all_chain_proxies.params.model_idealization.enabled:
-      from mmtbx.secondary_structure import build as ssb
-      from iotbx.pdb import secondary_structure as ioss
-      ss_params = self.all_chain_proxies.params.secondary_structure
-      ann = ioss.annotation.from_phil(
-          phil_helices=ss_params.protein.helix,
-          phil_sheets=ss_params.protein.sheet,
-          pdb_hierarchy=self.all_chain_proxies.pdb_hierarchy)
-      if ann.get_n_helices() + ann.get_n_sheets() == 0:
-        ann = self.all_chain_proxies.extract_secondary_structure()
-      if ann is not None and ann.get_n_helices() + ann.get_n_sheets() > 0:
-        ss_torsion_restraints = ssb.substitute_ss(
-            real_h=self.all_chain_proxies.pdb_hierarchy,
-            xray_structure=self.all_chain_proxies.extract_xray_structure(),
-            ss_annotation=ann,
-            params=self.all_chain_proxies.params.model_idealization,
-            fname_before_regularization=None,
-            log=self.log,
-            rotamer_manager=None,
-            verbose=False)
-        self.all_chain_proxies.update_internals_due_to_coordinates_change(
-            self.all_chain_proxies.pdb_hierarchy)
+    # if self.all_chain_proxies.params.model_idealization.enabled:
+    #   from mmtbx.secondary_structure import build as ssb
+    #   from iotbx.pdb import secondary_structure as ioss
+    #   ss_params = self.all_chain_proxies.params.secondary_structure
+    #   ann = ioss.annotation.from_phil(
+    #       phil_helices=ss_params.protein.helix,
+    #       phil_sheets=ss_params.protein.sheet,
+    #       pdb_hierarchy=self.all_chain_proxies.pdb_hierarchy)
+    #   if ann.get_n_helices() + ann.get_n_sheets() == 0:
+    #     ann = self.all_chain_proxies.extract_secondary_structure()
+    #   if ann is not None and ann.get_n_helices() + ann.get_n_sheets() > 0:
+    #     self.ss_torsion_restraints = ssb.substitute_ss(
+    #         real_h=self.all_chain_proxies.pdb_hierarchy,
+    #         xray_structure=self.all_chain_proxies.extract_xray_structure(),
+    #         ss_annotation=ann,
+    #         params=self.all_chain_proxies.params.model_idealization,
+    #         fname_before_regularization=None,
+    #         log=self.log,
+    #         rotamer_manager=None,
+    #         verbose=False)
+    #     self.all_chain_proxies.update_internals_due_to_coordinates_change(
+    #         self.all_chain_proxies.pdb_hierarchy)
 
   def geometry_restraints_manager(self,
         plain_pairs_radius=None,
