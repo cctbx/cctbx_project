@@ -3,8 +3,8 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 06/26/2015
-Description : IOTA command-line module. Version 1.71
+Last Changed: 06/29/2015
+Description : IOTA command-line module. Version 1.72
 '''
 
 help_message = '\n{:-^70}'\
@@ -271,7 +271,7 @@ def experimental(mp_input_list, gs_params, log_dir):
 
 if __name__ == "__main__":
 
-  iota_version = '1.71'
+  iota_version = '1.72'
   now = "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now())
   logo = "\n\n"\
    "     IIIIII            OOOOOOO        TTTTTTTTTT          A              \n"\

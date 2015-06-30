@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 06/04/2015
-Last Changed: 06/26/2015
+Last Changed: 06/29/2015
 Description : Finds blank images using DISTL spotfinding. Outputs image filename
               only if it finds > 10 Bragg spots.
 '''
@@ -76,7 +76,7 @@ def spotfinding_param_search (input_img, gs_params):
                           ''.format(input_img, Bragg_spots))
     return input_img
   else:
-    inp.main_log(logfile, '{} --> REJECTED'.format(input_img))
+    inp.main_log(logfile, '{} --> rejected'.format(input_img))
 
 def triage_mproc_wrapper(current_img):
   """ Multiprocessor wrapper for testing only
