@@ -25,7 +25,7 @@ def average(argv=None):
 
   command_line = (libtbx.option_parser.option_parser(
     usage="""
-%s [-p] -c config -x experiment -a address -r run -d detz_offset [-o outputdir] [-A averagepath] [-S stddevpath] [-M maxpath] [-n numevents] [-s skipnevents] [-v] [-m] [-b bin_size] [-X override_beam_x] [-Y override_beam_y] [-D xtc_dir]
+%s [-p] -c config -x experiment -a address -r run -d detz_offset [-o outputdir] [-A averagepath] [-S stddevpath] [-M maxpath] [-n numevents] [-s skipnevents] [-v] [-m] [-b bin_size] [-X override_beam_x] [-Y override_beam_y] [-D xtc_dir] [-f]
 
 To write image pickles use -p, otherwise the program writes CSPAD CBFs.
 Writing CBFs requires the geometry to be already deployed.
@@ -141,6 +141,11 @@ the output images in the folder cxi49812.
                         dest="xtc_dir",
                         metavar="PATH",
                         help="xtc stream directory")
+                .option(None, "--use_ffb", "-f",
+                        action="store_true",
+                        default=False,
+                        dest="use_ffb",
+                        help="Use the fast feedback filesystem at LCLS. Only for the active experiment!")
                 ).process(args=argv)
 
 
@@ -171,7 +176,12 @@ the output images in the folder cxi49812.
   setConfigFile(command_line.options.config)
   dataset_name = "exp=%s:run=%d:idx"%(command_line.options.experiment, command_line.options.run)
   if command_line.options.xtc_dir is not None:
+    if command_line.options.use_ffb:
+      raise Sorry("Cannot specify the xtc_dir and use SLAC's ffb system")
     dataset_name += ":dir=%s"%command_line.options.xtc_dir
+  elif command_line.options.use_ffb:
+    # as ffb is only at SLAC, ok to hardcode /reg/d here
+    dataset_name += ":dir=/reg/d/ffb/%s/%s/xtc"%(command_line.options.experiment[0:3],command_line.options.experiment)
   ds = DataSource(dataset_name)
   address = command_line.options.address
   src = Source('DetInfo(%s)'%address)
