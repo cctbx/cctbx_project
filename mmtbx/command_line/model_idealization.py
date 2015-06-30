@@ -14,7 +14,7 @@ file_name = None
   .multiple = True
   .short_caption = Model file
   .style = file_type:pdb bold input_file
-include scope mmtbx.secondary_structure.build.ss_idealization_master_phil_str
+include scope mmtbx.secondary_structure.build.model_idealization_master_phil_str
 include scope mmtbx.secondary_structure.sec_str_master_phil_str
 """
 
@@ -48,7 +48,7 @@ def run(args):
     raise Sorry("No PDB files specified.")
   if len(pdb_files) > 0 :
     work_params.file_name.extend(pdb_files)
-  work_params.ss_idealization.enabled=True
+  work_params.model_idealization.enabled=True
 
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_files)
   pdb_input = iotbx.pdb.input(source_info=None,
@@ -66,7 +66,7 @@ def run(args):
       real_h=pdb_h,
       xray_structure=pdb_input.xray_structure_simple(),
       ss_annotation=ann,
-      params=work_params.ss_idealization,
+      params=work_params.model_idealization,
       verbose=True,
       log=log,
       )

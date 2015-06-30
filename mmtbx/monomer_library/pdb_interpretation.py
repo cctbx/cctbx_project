@@ -9,6 +9,7 @@ from mmtbx.monomer_library import conformation_dependent_restraints
 from mmtbx.geometry_restraints import ramachandran
 import mmtbx.geometry_restraints
 import mmtbx.geometry_restraints.torsion_restraints.utils
+from mmtbx.secondary_structure.build import model_idealization_master_phil_str
 from cctbx import geometry_restraints
 import cctbx.geometry_restraints.manager
 from cctbx import crystal
@@ -138,6 +139,7 @@ master_params_str = """\
   correct_hydrogens = True
     .type = bool
     .short_caption = Correct the hydrogen positions trapped in chirals etc
+  include scope mmtbx.secondary_structure.build.model_idealization_master_phil_str
   include scope mmtbx.secondary_structure.sec_str_master_phil
   c_beta_restraints=True
     .type = bool
@@ -3184,6 +3186,12 @@ class build_all_chain_proxies(linking_mixins):
     if(self.special_position_settings is not None):
       self.pdb_hierarchy.adopt_xray_structure(self.extract_xray_structure())
 
+  def update_internals_due_to_coordinates_change(self, pdb_h):
+    self.pdb_hierarchy = pdb_h
+    self.pdb_atoms = self.pdb_hierarchy.atoms()
+    self.sites_cart = self.pdb_atoms.extract_xyz()
+    self._sites_cart_exact = None
+
   def fatal_problems_report(self, prefix="", log=None, max_lines=10):
     self.scattering_type_registry.report(
       pdb_atoms=self.pdb_atoms, log=log, prefix=prefix, max_lines=max_lines)
@@ -3216,7 +3224,10 @@ class build_all_chain_proxies(linking_mixins):
     return "\n  ".join(result)
 
   def extract_secondary_structure (self) :
-    return self.pdb_inp.extract_secondary_structure()
+    if hasattr(self.pdb_inp, "extract_secondary_structure"):
+      return self.pdb_inp.extract_secondary_structure()
+    else:
+      return None
 
   def site_symmetry_table(self):
     if (self._site_symmetry_table is None):
@@ -4922,6 +4933,29 @@ class process(object):
        self.all_chain_proxies.params.find_ncs):
       self.ncs_obj = self.search_for_ncs(
         hierarchy = self.all_chain_proxies.pdb_hierarchy)
+    # model_idealization
+    if self.all_chain_proxies.params.model_idealization.enabled:
+      from mmtbx.secondary_structure import build as ssb
+      from iotbx.pdb import secondary_structure as ioss
+      ss_params = self.all_chain_proxies.params.secondary_structure
+      ann = ioss.annotation.from_phil(
+          phil_helices=ss_params.protein.helix,
+          phil_sheets=ss_params.protein.sheet,
+          pdb_hierarchy=self.all_chain_proxies.pdb_hierarchy)
+      if ann.get_n_helices() + ann.get_n_sheets() == 0:
+        ann = self.all_chain_proxies.extract_secondary_structure()
+      if ann is not None and ann.get_n_helices() + ann.get_n_sheets() > 0:
+        ss_torsion_restraints = ssb.substitute_ss(
+            real_h=self.all_chain_proxies.pdb_hierarchy,
+            xray_structure=self.all_chain_proxies.extract_xray_structure(),
+            ss_annotation=ann,
+            params=self.all_chain_proxies.params.model_idealization,
+            fname_before_regularization=None,
+            log=self.log,
+            rotamer_manager=None,
+            verbose=False)
+        self.all_chain_proxies.update_internals_due_to_coordinates_change(
+            self.all_chain_proxies.pdb_hierarchy)
 
   def geometry_restraints_manager(self,
         plain_pairs_radius=None,
@@ -5033,6 +5067,7 @@ class process(object):
             grm=self._geometry_restraints_manager,
             log=self.log)
         pdb_h_atoms = self.all_chain_proxies.pdb_hierarchy.atoms()
+
         # for p in hb_proxies:
         #   print "H-bond:",p.i_seqs, pdb_h_atoms[p.i_seqs[0]].id_str(),pdb_h_atoms[p.i_seqs[1]].id_str(), p.origin_id
         # max_hb_dist = 0
@@ -5042,6 +5077,7 @@ class process(object):
         #     print "H-bond:",p.i_seqs, pdb_h_atoms[p.i_seqs[0]].id_str(),pdb_h_atoms[p.i_seqs[1]].id_str()
         #   if d > max_hb_dist:
         #     max_hb_dist = d
+
         t2=time.time()
         print >> self.log, "  Time for creating SS restraints: %.2f" % (t2-t1)
         print >> self.log, "  Adding SS restraints..."
@@ -5299,7 +5335,8 @@ class process(object):
     find_param = simple_params.domain_finding_parameters
     ncs_phil_groups = self.all_chain_proxies.params.ncs_group
     ### XXX FIXME begin: handle this correctly internally
-    if(len(ncs_phil_groups)==0): ncs_phil_groups=None
+    if (len(ncs_phil_groups)==0):
+      ncs_phil_groups=None
     if(ncs_phil_groups is not None):
       empty_cntr = 0
       for ng in ncs_phil_groups:
