@@ -25,12 +25,12 @@ ncs_group
   .style = auto_align
   .expert_level=0
   {
-  reference = ''
+  reference = None
     .type = str
     .short_caption = Reference selection
     .help = 'Residue selection string for the complete master NCS copy'
     .expert_level=0
-  selection = ''
+  selection = None
     .type = str
     .short_caption = NCS related selection
     .help = 'Residue selection string for each NCS copy location in ASU'
