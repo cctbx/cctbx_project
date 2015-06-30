@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/26/2015
+Last Changed: 06/30/2015
 Description : Runs cctbx.xfel integration module either in grid-search or final
               integration mode. Has options to output diagnostic visualizations
 '''
@@ -130,6 +130,7 @@ def integrate_image(mp_entry, current_log_file, arguments, ptitle, gs_params):
   int_results = {}
 
   #Actually run integration (from run_one_index_core)
+  error_message = ''
   with Capturing() as index_log:
     try:
       args = ["indexing.data={}".format(current_img),
@@ -153,15 +154,21 @@ def integrate_image(mp_entry, current_log_file, arguments, ptitle, gs_params):
     except Exception, e:
       if hasattr(e, "classname"):
         print e.classname, "for %s:"%file,
+        error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
       else:
-        print "Indexing error for %s:"%file,
+        print "Integration error for %s:"%file,
+        error_message = "{}".format(str(e).replace('\n', ' ')[:50])
       print e
 
 
   # Output results of integration (from the "info" object returned by
   # run_one_index_core)
   if int_final == None:
-    int_status = 'not integrated'
+    if error_message != '':
+      reason_for_failure = " - {}".format(error_message)
+    else:
+      reason_for_failure = ''
+    int_status = 'not integrated' + reason_for_failure
     int_results = {}
   elif int_final['I_Observations'] == None:
     int_status = 'no data recorded'
@@ -197,7 +204,7 @@ def integrate_image(mp_entry, current_log_file, arguments, ptitle, gs_params):
       p_cell = "{:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}"\
              "".format(cell[0], cell[1], cell[2], cell[3], cell[4], cell[5])
 
-      int_status = 'RES: {:<4.2f}  NREF: {:<4}  SG: {:^5}  CELL: {}'\
+      int_status = 'RES: {:<4.2f}  NSREF: {:<4}  SG: {:^5}  CELL: {}'\
                    ''.format(res, strong_spots, sg, p_cell)
     except ValueError:
       import traceback

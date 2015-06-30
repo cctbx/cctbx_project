@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 06/26/2015
+Last Changed: 06/29/2015
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes unit cell analysis by hierarchical clustering
               (Zeldin, et al., Acta Cryst D, 2013). In case of multiple clusters
@@ -259,18 +259,21 @@ def print_summary(gs_params, n_img, logfile, iota_version, now):
   int_fail_count = 0
   bad_int_count = 0
   final_count = 0
+  blank_img_count = 0
+  sel_gs_count = 0
 
   print "\n\n{:-^80}\n".format('SUMMARY')
   inp.main_log(logfile, "\n\n{:-^80}\n".format('SUMMARY'))
 
-  summary.append('raw images processed:                {}'.format(n_img))
+  with open('{0}/blank_images.lst'.format(os.path.abspath(gs_params.output)),
+            'r') as blank_img_list:
+    blank_img_list_contents = blank_img_list.read()
+    blank_img_count = len(blank_img_list_contents.splitlines())
 
-  if os.path.isfile('{0}/blank_images.lst'.format(os.path.abspath(gs_params.output))):
-    with open('{0}/blank_images.lst'.format(os.path.abspath(gs_params.output)),
-              'r') as blank_img_list:
-      blank_img_list_contents = blank_img_list.read()
-      blank_img_count = len(blank_img_list_contents.splitlines())
-    summary.append('raw images with no diffraction:      {}'.format(blank_img_count))
+  summary.append('raw images read in:                  {}'
+                 ''.format(n_img + blank_img_count))
+  summary.append('raw images with no diffraction:      {}'.format(blank_img_count))
+  summary.append('raw images with diffraction:         {}'.format(n_img))
 
   if os.path.isfile('{0}/not_integrated.lst'.format(os.path.abspath(gs_params.output))):
     with open('{0}/not_integrated.lst'.format(os.path.abspath(gs_params.output)),
@@ -286,12 +289,12 @@ def print_summary(gs_params, n_img, logfile, iota_version, now):
       bad_int_count = len(bad_int_list_contents.splitlines())
     summary.append('images failed prefilter:             {}'.format(bad_int_count))
 
-  if os.path.isfile('{0}/gs_selected.lst'.format(os.path.abspath(gs_params.output))):
-    with open('{0}/gs_selected.lst'.format(os.path.abspath(gs_params.output)),
-              'r') as sel_list:
-      sel_list_contents = sel_list.read()
-      sel_gs_count = len(sel_list_contents.splitlines())
-    summary.append('images in grid search selection:     {}'.format(sel_gs_count))
+#   if os.path.isfile('{0}/gs_selected.lst'.format(os.path.abspath(gs_params.output))):
+#     with open('{0}/gs_selected.lst'.format(os.path.abspath(gs_params.output)),
+#               'r') as sel_list:
+#       sel_list_contents = sel_list.read()
+#       sel_gs_count = len(sel_list_contents.splitlines())
+#     summary.append('images in grid search selection:     {}'.format(sel_gs_count))
 
   if os.path.isfile('{0}/integrated.lst'.format(os.path.abspath(gs_params.output))):
     with open('{0}/integrated.lst'.format(os.path.abspath(gs_params.output)),
