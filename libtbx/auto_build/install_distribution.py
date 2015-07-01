@@ -141,7 +141,7 @@ class installer(object):
       action="store_true", default=False,
       help="Attempt source install on unsupported platform")
     parser.add_option("--verbose", dest="verbose", action="store_true",
-      help="Provide more detailed output during installation")
+      help="Provide more detailed output during installation", default=False)
     # Source only options
     parser.add_option("--no-gui", dest="no_gui", action="store_true",
       help="Disable building of GUI dependencies (source install only)",
@@ -452,8 +452,9 @@ class installer(object):
         "--command_version_suffix", self.version,
       ] + self.configure_modules
 
-    print self.build_dir
-    print args
+    if self.options.verbose:
+      print self.build_dir
+      print args
 
     if 1: #try :
       call(args=args, log=log, verbose=self.options.verbose)
