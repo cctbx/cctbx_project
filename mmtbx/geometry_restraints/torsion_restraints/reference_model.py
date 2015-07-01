@@ -306,7 +306,7 @@ class reference_model(object):
             elif len(self.params.file) != 1:
               raise Sorry("Ambigous definition of groups in reference model")
             else:
-              rg.file_name = self.params.file
+              rg.file_name = self.params.file[0]
         return True
     else:
       return False
