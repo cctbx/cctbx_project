@@ -10,12 +10,14 @@ def run():
     print "FATAL: Python 2.3 or higher is required."
     print "Version currently in use:", sys.version
     print "*" * 78
-    sys.exit(1)
+    return False
   sys.path.insert(1, os.path.join(sys.path[0], "pythonpath"))
   sys.path[0] = os.path.dirname(sys.path[0])
   import libtbx.env_config
   libtbx.env_config.cold_start(sys.argv)
   print "Done."
+  return True
 
 if (__name__ == "__main__"):
-  run()
+  if not run():
+    sys.exit(1)

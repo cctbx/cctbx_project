@@ -140,6 +140,8 @@ class installer(object):
     parser.add_option("--try-unsupported", dest="try_unsupported",
       action="store_true", default=False,
       help="Attempt source install on unsupported platform")
+    parser.add_option("--verbose", dest="verbose", action="store_true",
+      help="Provide more detailed output during installation")
     # Source only options
     parser.add_option("--no-gui", dest="no_gui", action="store_true",
       help="Disable building of GUI dependencies (source install only)",
@@ -454,7 +456,7 @@ class installer(object):
     print args
 
     if 1: #try :
-      call(args=args, log=log)
+      call(args=args, log=log, verbose=self.options.verbose)
     else: #except RuntimeError :
       raise InstallerError("Configuration step incomplete!  See the log file for detailed error messages.")
 
