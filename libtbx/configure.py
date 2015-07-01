@@ -10,8 +10,7 @@ def run():
     print "FATAL: Python 2.3 or higher is required."
     print "Version currently in use:", sys.version
     print "*" * 78
-    print
-    return
+    sys.exit(1)
   sys.path.insert(1, os.path.join(sys.path[0], "pythonpath"))
   sys.path[0] = os.path.dirname(sys.path[0])
   import libtbx.env_config
