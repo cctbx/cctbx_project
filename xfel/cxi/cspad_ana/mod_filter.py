@@ -176,7 +176,7 @@ class mod_filter(object):
     if (self.timestamps_list is not None):
       t = cspad_tbx.evt_time(evt)
       if (t is None):
-        self.logger.warning("event(): no timestamp, shot skipped")
+        self.logger.warning("event(): no timestamp, shot skipped. Shot: %s"%self.nshots)
         evt.put(skip_event_flag(), "skip_event")
         return
       elif (self.negate and t in self.timestamps_list):
@@ -189,7 +189,7 @@ class mod_filter(object):
     else:
       t = cspad_tbx.evt_time(evt)
       if (t is None):
-        self.logger.warning("event(): no timestamp, shot skipped")
+        self.logger.warning("event(): no timestamp, shot skipped. Shot: %s"%self.nshots)
         evt.put(skip_event_flag(), "skip_event")
         return
       if (self.negate and self._tir(t, self.timestamps_interval)):
@@ -199,6 +199,7 @@ class mod_filter(object):
         evt.put(skip_event_flag(), "skip_event")
         return
 
+    self.logger.info("event(): event accepted. Shot: %s, TS: %s"%(self.nshots,cspad_tbx.evt_timestamp(t)))
     self.naccepted += 1
 
   #signature for pyana:

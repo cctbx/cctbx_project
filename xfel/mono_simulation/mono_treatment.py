@@ -215,8 +215,8 @@ class refinement(refinement_base):
 
           degrees = 360.*excursions
           rmsdexc = math.sqrt(flex.mean(degrees*degrees))
-          print "rotx %7.3f roty %7.3f degrees, -PVR excursion %7.3f degrees"%(
-          (rotx * 180./math.pi),(roty * 180./math.pi), rmsdexc)
+          #print "rotx %7.3f roty %7.3f degrees, -PVR excursion %7.3f degrees"%(
+          #(rotx * 180./math.pi),(roty * 180./math.pi), rmsdexc)
           # Note.  Luc Bourhis wants scale to be from 0 to 1. So instead of
           # returning on scale of degrees, use radians/(2*pi)
           # The parameters rotx roty are still expressed in radians
