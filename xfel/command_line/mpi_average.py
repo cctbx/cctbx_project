@@ -333,7 +333,7 @@ the output images in the folder cxi49812.
             data=flex.double(data),
             distance=distance,
             pixel_size=pixel_size,
-            saturated_value=2**16 - 1,
+            saturated_value=rayonix_tbx.rayonix_saturated_value,
             timestamp=timestamp,
             wavelength=wavelength)
         easy_pickle.dump(path, d)

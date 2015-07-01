@@ -65,6 +65,7 @@ for path in sys.argv[1:]:
       print "Max resolution: %f"%flex.min(d)
       print "Mean I/sigma:", flex.mean(obs.data())/flex.mean(obs.sigmas())
       print "I/sigma > 1 count:", (obs.data()/obs.sigmas() > 1).count(True)
+      print "I <= 0:", len(obs.data().select(obs.data() <= 0))
 
     elif key == 'mapped_predictions':
       print key, data[key][0][0], "(only first shown)"

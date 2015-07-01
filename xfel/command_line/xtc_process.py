@@ -368,7 +368,7 @@ class InMemScript(DialsProcessScript):
           experiments, indexed = self.index(datablock, observed)
         except Exception, e:
           import traceback; traceback.print_exc()
-          print str(e)
+          print str(e), "event", timestamp
           continue
 
         if self.params.dispatch.dump_indexed:
