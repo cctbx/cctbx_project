@@ -1029,6 +1029,230 @@ ATOM     20  OG  SER G 334      -5.954  69.950  50.396  1.00170.98           O
   r1 = rotalyze(pdb_hierarchy=new_h, outliers_only=False)
   assert r1.n_outliers == 0
 
+def exercise_dna(mon_lib_srv, ener_lib):
+  pdb_str_original = """\
+CRYST1   25.287   40.217   65.471  90.00  90.00  90.00 P 21 21 21    8
+SCALE1      0.039546  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.024865  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.015274        0.00000
+ATOM     80  P    DA A   5      -8.062  -5.965 -15.755  1.00 42.17           P
+ATOM     81  OP1  DA A   5      -8.426  -7.228 -16.405  1.00 50.61           O
+ATOM     82  OP2  DA A   5      -8.689  -5.557 -14.457  1.00 51.75           O
+ATOM     83  O5'  DA A   5      -6.496  -5.961 -15.638  1.00 34.89           O
+ATOM     84  C5'  DA A   5      -5.791  -6.321 -16.790  1.00 30.71           C
+ATOM     85  C4'  DA A   5      -4.355  -5.917 -16.600  1.00 34.43           C
+ATOM     86  O4'  DA A   5      -4.303  -4.509 -16.239  1.00 33.96           O
+ATOM     87  C3'  DA A   5      -3.630  -6.687 -15.491  1.00 35.56           C
+ATOM     88  O3'  DA A   5      -2.407  -7.257 -16.020  1.00 33.08           O
+ATOM     89  C2'  DA A   5      -3.531  -5.654 -14.384  1.00 32.41           C
+ATOM     90  C1'  DA A   5      -3.435  -4.334 -15.130  1.00 28.44           C
+ATOM     91  N9   DA A   5      -3.904  -3.143 -14.449  1.00 28.37           N
+ATOM     92  C8   DA A   5      -5.187  -2.933 -14.022  1.00 27.53           C
+ATOM     93  N7   DA A   5      -5.401  -1.724 -13.565  1.00 29.33           N
+ATOM     94  C5   DA A   5      -4.187  -1.082 -13.747  1.00 23.78           C
+ATOM     95  C6   DA A   5      -3.761   0.226 -13.474  1.00 25.22           C
+ATOM     96  N6   DA A   5      -4.519   1.150 -12.896  1.00 25.69           N
+ATOM     97  N1   DA A   5      -2.485   0.535 -13.749  1.00 24.39           N
+ATOM     98  C2   DA A   5      -1.712  -0.389 -14.320  1.00 24.89           C
+ATOM     99  N3   DA A   5      -2.001  -1.641 -14.653  1.00 28.33           N
+ATOM    100  C4   DA A   5      -3.268  -1.935 -14.326  1.00 27.45           C
+ATOM    101  P    DA A   6      -1.382  -8.057 -15.083  1.00 33.49           P
+ATOM    102  OP1  DA A   6      -0.596  -8.971 -15.989  1.00 35.26           O
+ATOM    103  OP2  DA A   6      -2.097  -8.481 -13.890  1.00 34.48           O
+ATOM    104  O5'  DA A   6      -0.480  -6.949 -14.401  1.00 31.72           O
+ATOM    105  C5'  DA A   6       0.398  -6.138 -15.188  1.00 28.12           C
+ATOM    106  C4'  DA A   6       1.219  -5.272 -14.269  1.00 22.57           C
+ATOM    107  O4'  DA A   6       0.380  -4.203 -13.784  1.00 23.34           O
+ATOM    108  C3'  DA A   6       1.783  -5.982 -13.049  1.00 23.61           C
+ATOM    109  O3'  DA A   6       3.202  -5.785 -13.150  1.00 22.60           O
+ATOM    110  C2'  DA A   6       1.110  -5.289 -11.881  1.00 22.21           C
+ATOM    111  C1'  DA A   6       0.653  -3.958 -12.418  1.00 20.89           C
+ATOM    112  N9   DA A   6      -0.561  -3.398 -11.831  1.00 21.71           N
+ATOM    113  C8   DA A   6      -1.777  -4.017 -11.666  1.00 23.62           C
+ATOM    114  N7   DA A   6      -2.693  -3.249 -11.139  1.00 23.57           N
+ATOM    115  C5   DA A   6      -2.071  -2.016 -11.029  1.00 20.29           C
+ATOM    116  C6   DA A   6      -2.506  -0.774 -10.519  1.00 20.33           C
+ATOM    117  N6   DA A   6      -3.763  -0.525 -10.122  1.00 20.36           N
+ATOM    118  N1   DA A   6      -1.604   0.233 -10.486  1.00 20.84           N
+ATOM    119  C2   DA A   6      -0.341  -0.023 -10.868  1.00 21.15           C
+ATOM    120  N3   DA A   6       0.174  -1.126 -11.378  1.00 22.91           N
+ATOM    121  C4   DA A   6      -0.746  -2.101 -11.433  1.00 20.00           C
+ATOM    122  P    DT A   7       4.283  -6.215 -12.051  1.00 23.53           P
+ATOM    123  OP1  DT A   7       5.598  -6.398 -12.780  1.00 27.73           O
+ATOM    124  OP2  DT A   7       3.774  -7.297 -11.205  1.00 24.18           O
+ATOM    125  O5'  DT A   7       4.350  -4.948 -11.106  1.00 22.94           O
+ATOM    126  C5'  DT A   7       4.668  -3.709 -11.633  1.00 21.30           C
+ATOM    127  C4'  DT A   7       4.525  -2.656 -10.580  1.00 20.84           C
+ATOM    128  O4'  DT A   7       3.138  -2.512 -10.296  1.00 19.94           O
+ATOM    129  C3'  DT A   7       5.205  -2.966  -9.250  1.00 20.02           C
+ATOM    130  O3'  DT A   7       6.280  -2.035  -9.099  1.00 23.74           O
+ATOM    131  C2'  DT A   7       4.144  -2.717  -8.200  1.00 19.47           C
+ATOM    132  C1'  DT A   7       3.048  -2.015  -8.962  1.00 20.12           C
+ATOM    133  N1   DT A   7       1.641  -2.197  -8.524  1.00 20.27           N
+ATOM    134  C2   DT A   7       0.957  -1.108  -8.030  1.00 18.61           C
+ATOM    135  O2   DT A   7       1.430   0.017  -7.926  1.00 19.56           O
+ATOM    136  N3   DT A   7      -0.344  -1.365  -7.721  1.00 18.89           N
+ATOM    137  C4   DT A   7      -1.018  -2.563  -7.836  1.00 21.94           C
+ATOM    138  O4   DT A   7      -2.200  -2.640  -7.497  1.00 23.57           O
+ATOM    139  C5   DT A   7      -0.226  -3.674  -8.271  1.00 18.09           C
+ATOM    140  C7   DT A   7      -0.860  -5.022  -8.351  1.00 19.35           C
+ATOM    141  C6   DT A   7       1.065  -3.446  -8.562  1.00 17.66           C
+ATOM    142  P    DT A   8       7.284  -1.980  -7.857  1.00 26.43           P
+ATOM    143  OP1  DT A   8       8.611  -1.444  -8.278  1.00 28.45           O
+ATOM    144  OP2  DT A   8       7.248  -3.298  -7.198  1.00 27.17           O
+ATOM    145  O5'  DT A   8       6.613  -0.927  -6.882  1.00 25.09           O
+ATOM    146  C5'  DT A   8       6.357   0.403  -7.340  1.00 24.67           C
+ATOM    147  C4'  DT A   8       5.543   1.125  -6.301  1.00 23.10           C
+ATOM    148  O4'  DT A   8       4.228   0.541  -6.229  1.00 23.60           O
+ATOM    149  C3'  DT A   8       6.127   1.057  -4.884  1.00 25.21           C
+ATOM    150  O3'  DT A   8       6.507   2.380  -4.493  1.00 28.93           O
+ATOM    151  C2'  DT A   8       5.018   0.434  -4.050  1.00 23.32           C
+ATOM    152  C1'  DT A   8       3.795   0.667  -4.883  1.00 22.06           C
+ATOM    153  N1   DT A   8       2.713  -0.291  -4.689  1.00 19.79           N
+ATOM    154  C2   DT A   8       1.466   0.223  -4.414  1.00 18.40           C
+ATOM    155  O2   DT A   8       1.263   1.399  -4.157  1.00 20.56           O
+ATOM    156  N3   DT A   8       0.484  -0.716  -4.337  1.00 19.20           N
+ATOM    157  C4   DT A   8       0.588  -2.075  -4.597  1.00 18.45           C
+ATOM    158  O4   DT A   8      -0.397  -2.789  -4.538  1.00 21.38           O
+ATOM    159  C5   DT A   8       1.920  -2.549  -4.859  1.00 17.02           C
+ATOM    160  C7   DT A   8       2.126  -4.006  -5.116  1.00 20.50           C
+ATOM    161  C6   DT A   8       2.895  -1.634  -4.959  1.00 19.29           C
+TER     245       DG A  12
+ATOM    325  P    DA B  17     -10.220   1.260  -1.207  1.00 27.94           P
+ATOM    326  OP1  DA B  17     -11.370   2.143  -0.856  1.00 34.83           O
+ATOM    327  OP2  DA B  17     -10.221   0.599  -2.553  1.00 31.17           O
+ATOM    328  O5'  DA B  17      -8.842   2.020  -1.098  1.00 26.12           O
+ATOM    329  C5'  DA B  17      -8.558   2.683   0.094  1.00 25.41           C
+ATOM    330  C4'  DA B  17      -7.407   3.619  -0.107  1.00 26.38           C
+ATOM    331  O4'  DA B  17      -6.208   2.886  -0.440  1.00 24.41           O
+ATOM    332  C3'  DA B  17      -7.600   4.631  -1.214  1.00 27.57           C
+ATOM    333  O3'  DA B  17      -6.972   5.834  -0.764  1.00 29.89           O
+ATOM    334  C2'  DA B  17      -6.902   3.980  -2.406  1.00 26.29           C
+ATOM    335  C1'  DA B  17      -5.771   3.225  -1.781  1.00 23.13           C
+ATOM    336  N9   DA B  17      -5.444   1.986  -2.460  1.00 22.66           N
+ATOM    337  C8   DA B  17      -6.295   0.942  -2.750  1.00 23.38           C
+ATOM    338  N7   DA B  17      -5.700  -0.094  -3.288  1.00 20.62           N
+ATOM    339  C5   DA B  17      -4.344   0.242  -3.234  1.00 20.59           C
+ATOM    340  C6   DA B  17      -3.178  -0.447  -3.603  1.00 17.89           C
+ATOM    341  N6   DA B  17      -3.184  -1.685  -4.072  1.00 20.22           N
+ATOM    342  N1   DA B  17      -1.995   0.205  -3.497  1.00 19.61           N
+ATOM    343  C2   DA B  17      -1.992   1.465  -3.030  1.00 20.38           C
+ATOM    344  N3   DA B  17      -3.021   2.207  -2.621  1.00 20.80           N
+ATOM    345  C4   DA B  17      -4.182   1.540  -2.774  1.00 19.17           C
+ATOM    346  P    DA B  18      -6.994   7.132  -1.670  1.00 32.91           P
+ATOM    347  OP1  DA B  18      -6.817   8.281  -0.798  1.00 37.55           O
+ATOM    348  OP2  DA B  18      -8.060   7.037  -2.636  1.00 31.04           O
+ATOM    349  O5'  DA B  18      -5.659   7.052  -2.535  1.00 30.20           O
+ATOM    350  C5'  DA B  18      -4.377   7.074  -1.958  1.00 30.19           C
+ATOM    351  C4'  DA B  18      -3.354   6.838  -3.036  1.00 28.09           C
+ATOM    352  O4'  DA B  18      -3.424   5.481  -3.484  1.00 26.27           O
+ATOM    353  C3'  DA B  18      -3.545   7.708  -4.286  1.00 29.73           C
+ATOM    354  O3'  DA B  18      -2.469   8.627  -4.273  1.00 34.73           O
+ATOM    355  C2'  DA B  18      -3.566   6.715  -5.433  1.00 27.32           C
+ATOM    356  C1'  DA B  18      -3.010   5.448  -4.841  1.00 24.83           C
+ATOM    357  N9   DA B  18      -3.488   4.196  -5.410  1.00 23.72           N
+ATOM    358  C8   DA B  18      -4.794   3.799  -5.530  1.00 20.51           C
+ATOM    359  N7   DA B  18      -4.937   2.581  -5.985  1.00 22.85           N
+ATOM    360  C5   DA B  18      -3.636   2.147  -6.189  1.00 20.87           C
+ATOM    361  C6   DA B  18      -3.111   0.950  -6.675  1.00 19.34           C
+ATOM    362  N6   DA B  18      -3.852  -0.099  -7.028  1.00 21.88           N
+ATOM    363  N1   DA B  18      -1.767   0.849  -6.776  1.00 19.77           N
+ATOM    364  C2   DA B  18      -1.023   1.872  -6.374  1.00 21.42           C
+ATOM    365  N3   DA B  18      -1.392   3.050  -5.910  1.00 22.19           N
+ATOM    366  C4   DA B  18      -2.734   3.129  -5.836  1.00 21.41           C
+ATOM    367  P    DT B  19      -2.064   9.546  -5.497  1.00 40.82           P
+ATOM    368  OP1  DT B  19      -1.281  10.615  -4.939  1.00 44.52           O
+ATOM    369  OP2  DT B  19      -3.292   9.787  -6.271  1.00 44.69           O
+ATOM    370  O5'  DT B  19      -1.119   8.619  -6.355  1.00 30.72           O
+ATOM    371  C5'  DT B  19       0.059   8.093  -5.804  1.00 29.16           C
+ATOM    372  C4'  DT B  19       0.704   7.195  -6.832  1.00 26.15           C
+ATOM    373  O4'  DT B  19      -0.129   6.045  -7.087  1.00 26.00           O
+ATOM    374  C3'  DT B  19       0.941   7.859  -8.188  1.00 25.98           C
+ATOM    375  O3'  DT B  19       2.343   7.877  -8.376  1.00 30.07           O
+ATOM    376  C2'  DT B  19       0.207   6.968  -9.181  1.00 26.77           C
+ATOM    377  C1'  DT B  19       0.036   5.665  -8.443  1.00 25.87           C
+ATOM    378  N1   DT B  19      -1.122   4.839  -8.816  1.00 24.60           N
+ATOM    379  C2   DT B  19      -0.906   3.556  -9.283  1.00 22.21           C
+ATOM    380  O2   DT B  19       0.197   3.084  -9.451  1.00 22.06           O
+ATOM    381  N3   DT B  19      -2.038   2.833  -9.519  1.00 22.04           N
+ATOM    382  C4   DT B  19      -3.339   3.262  -9.380  1.00 21.81           C
+ATOM    383  O4   DT B  19      -4.247   2.495  -9.615  1.00 24.16           O
+ATOM    384  C5   DT B  19      -3.499   4.613  -8.891  1.00 22.25           C
+ATOM    385  C7   DT B  19      -4.879   5.143  -8.663  1.00 23.26           C
+ATOM    386  C6   DT B  19      -2.396   5.327  -8.640  1.00 22.85           C
+ATOM    387  P    DT B  20       3.005   8.456  -9.725  1.00 32.03           P
+ATOM    388  OP1  DT B  20       4.339   8.958  -9.284  1.00 35.31           O
+ATOM    389  OP2  DT B  20       2.027   9.351 -10.442  1.00 33.99           O
+ATOM    390  O5'  DT B  20       3.144   7.102 -10.543  1.00 31.33           O
+ATOM    391  C5'  DT B  20       3.894   5.979 -10.032  1.00 28.60           C
+ATOM    392  C4'  DT B  20       3.851   4.840 -11.020  1.00 28.63           C
+ATOM    393  O4'  DT B  20       2.494   4.361 -11.145  1.00 26.47           O
+ATOM    394  C3'  DT B  20       4.300   5.211 -12.437  1.00 31.59           C
+ATOM    395  O3'  DT B  20       5.260   4.256 -12.875  1.00 39.07           O
+ATOM    396  C2'  DT B  20       3.027   5.147 -13.257  1.00 26.06           C
+ATOM    397  C1'  DT B  20       2.211   4.120 -12.529  1.00 24.42           C
+ATOM    398  N1   DT B  20       0.757   4.123 -12.660  1.00 23.79           N
+ATOM    399  C2   DT B  20       0.138   2.932 -12.972  1.00 25.04           C
+ATOM    400  O2   DT B  20       0.741   1.921 -13.262  1.00 24.66           O
+ATOM    401  N3   DT B  20      -1.229   2.977 -12.959  1.00 25.84           N
+ATOM    402  C4   DT B  20      -2.022   4.071 -12.671  1.00 25.98           C
+ATOM    403  O4   DT B  20      -3.234   3.948 -12.646  1.00 28.14           O
+ATOM    404  C5   DT B  20      -1.311   5.298 -12.387  1.00 22.81           C
+ATOM    405  C7   DT B  20      -2.094   6.540 -12.092  1.00 27.47           C
+ATOM    406  C6   DT B  20       0.028   5.263 -12.401  1.00 26.29           C
+TER     490       DG B  24
+  """
+  params_text = """\
+  reference_model {
+    reference_group {
+      reference = chain 'A'
+      selection = chain 'A'
+      file_name = "ref.pdb"
+    }
+    reference_group {
+      reference = chain 'B'
+      selection = chain 'B'
+      file_name = "ref.pdb"
+    }
+  }
+  """
+  ref_file = open("ref.pdb", 'w')
+  ref_file.write(pdb_str_original)
+  ref_file.close()
+  log = cStringIO.StringIO()
+  # log = sys.stdout
+  def_pars = reference_model_params
+  pars = iotbx.phil.parse(params_text)
+  all_pars = def_pars.fetch(pars).extract()
+  all_pars.reference_model.enabled = True
+  processed_pdb_file = process(
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
+      raw_records=flex.split_lines(pdb_str_original))
+  pdb_h = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+
+  rm = reference_model(
+         processed_pdb_file=processed_pdb_file,
+         reference_file_list=['ref.pdb'],
+         mon_lib_srv=mon_lib_srv,
+         ener_lib=ener_lib,
+         params=all_pars.reference_model,
+         log=log)
+  rm.show_reference_summary(log=log)
+  assert rm.get_n_proxies() == 74, \
+      "Expecting 74 proxies, got %d" % rm.get_n_proxies()
+  log_strings = log.getvalue().split("\n")
+  for needed_string in [
+      " DA A   5  <=====>   DA A   5",
+      " DA A   6  <=====>   DA A   6",
+      " DT A   7  <=====>   DT A   7",
+      " DT A   8  <=====>   DT A   8",
+      " DA B  17  <=====>   DA B  17",
+      " DA B  18  <=====>   DA B  18",
+      " DT B  19  <=====>   DT B  19",
+      " DT B  20  <=====>   DT B  20",
+      ]:
+    assert needed_string in log_strings, "'%s' not in log!" % needed_string
 
 def run(args):
   t0 = time.time()
@@ -1039,6 +1263,7 @@ def run(args):
   exercise_multiple_to_one(args, mon_lib_srv, ener_lib)
   exercise_multiple_ncs_groups_found(mon_lib_srv, ener_lib)
   exercise_cutted_residue(mon_lib_srv, ener_lib)
+  exercise_dna(mon_lib_srv, ener_lib)
   print "OK. Time: %8.3f"%(time.time()-t0)
 
 if (__name__ == "__main__"):
