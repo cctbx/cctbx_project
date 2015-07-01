@@ -149,7 +149,7 @@ def generate_master_phil_with_inputs (
     return master_phil_str
   master_phil = iotbx.phil.parse(master_phil_str, process_includes=True)
   if (enable_cdl is not None) :
-    wp = iotbx.phil.parse("pdb_interpretation.cdl=%s" % enable_cdl)
+    wp = iotbx.phil.parse("pdb_interpretation.restraints_library.cdl=%s" % enable_cdl)
     master_phil = master_phil.fetch(source=wp)
   return master_phil
 
@@ -430,7 +430,7 @@ class load_model_and_data (object) :
           mmtbx.monomer_library.pdb_interpretation.master_params.extract()
       make_sub_header("Processing PDB file(s)", out=self.log)
       pdb_combined = mmtbx.utils.combine_unique_pdb_files(
-        file_names=params.input.pdb.file_name)
+        file_names=params.input.pdb.file_name,)
       pdb_combined.report_non_unique(out=self.log)
       pdb_raw_records = pdb_combined.raw_records
       processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(

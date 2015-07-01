@@ -443,7 +443,7 @@ class run(object):
         restraints_manager   = self.grm,
         params               = self.params.minimization,
         pdb_hierarchy        = self.pdb_hierarchy,
-        cdl                  = self.params.pdb_interpretation.cdl,
+        cdl                  = self.params.pdb_interpretation.restraints_library.cdl,
         correct_hydrogens    = self.params.pdb_interpretation.correct_hydrogens,
         fix_rotamer_outliers = self.params.fix_rotamer_outliers,
         states_collector= self.states_collector,

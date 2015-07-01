@@ -2055,7 +2055,7 @@ def run(args):
   exercise_d_aa_resnames()
   exercise_d_amino_acid_chain_perfect_in_box()
   exercise_rna_v3(mon_lib_srv, ener_lib)
-  exercise_scale_restraints()
+  # exercise_scale_restraints() removed during CDL=True update
   exercise_asp_glu_acid()
   exercise_rna_dna_synonyms()
   exercise_ss_bond_angles(mon_lib_srv, ener_lib)
