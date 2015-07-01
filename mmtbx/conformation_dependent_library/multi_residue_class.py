@@ -278,7 +278,8 @@ class ThreeProteinResidues(list):
         angle_proxy = cdl_proxies.get(tuple(names), None)
         if angle_proxy is None:
           angle_proxy = cdl_proxies.get(tuple(rnames), None)
-        if angle_proxy is None:
+        if angle_proxy is None: continue
+        if 0:
           outl=""
           for key in atoms:
             outl += "\n    %-10s %s" % ( key, atoms[key].quote())
