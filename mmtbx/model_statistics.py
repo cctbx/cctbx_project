@@ -751,7 +751,7 @@ class info(object):
       ignore_hd = ignore_hd,
       use_molprobity = use_molprobity,
       ncs_manager = ncs_manager,
-      cdl_restraints = ref_par.pdb_interpretation.cdl,
+      cdl_restraints = ref_par.pdb_interpretation.restraints_library.cdl,
       general_selection = general_selection,
       )
     self.data_x, self.data_n = None, None

@@ -2,6 +2,7 @@ from __future__ import division
 import copy
 
 from scitbx.math import dihedral_angle
+from libtbx.utils import Sorry
 
 from mmtbx.conformation_dependent_library.cdl_utils import \
   get_c_ca_n, distance2, round_to_ten

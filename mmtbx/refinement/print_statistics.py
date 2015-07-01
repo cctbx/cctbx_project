@@ -184,7 +184,7 @@ class refinement_monitor(object):
                                                       ignore_hd)
         afitt_geom = model.geometry_statistics(
           ignore_hd = ignore_hd,
-          cdl_restraints=self.params.pdb_interpretation.cdl,
+          cdl_restraints=self.params.pdb_interpretation.restraints_library.cdl,
           general_selection=general_selection,
           )
         afitt_geom.show()
@@ -195,7 +195,7 @@ class refinement_monitor(object):
         ignore_hd)
     geom = model.geometry_statistics(
       ignore_hd = ignore_hd,
-      cdl_restraints=self.params.pdb_interpretation.cdl,
+      cdl_restraints=self.params.pdb_interpretation.restraints_library.cdl,
       general_selection=general_selection,
       )
     if(geom is not None): self.geom.append(geom)

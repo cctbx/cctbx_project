@@ -119,23 +119,30 @@ altloc_weighting_params = """\
       .type = float
   }
 """
+restraints_library_str = """
+  restraints_library
+    .short_caption = Restraints library selection
+  {
+    cdl = True
+      .type = bool
+      .short_caption = Use Conformation-Dependent Library
+      .help = Use Conformation Dependent Library (CDL) \
+        for geometry minimization restraints
+      .style = bold
+    omega_cdl = False
+      .type = bool
+      .short_caption = Use Omega Conformation-Dependent Library
+      .help = Use Omega Conformation Dependent Library (omega-CDL) \
+        for geometry minimization restraints
+      .style = bold
+    rdl = False
+      .type = bool
+  }
+"""
 master_params_str = """\
-  rdl = False
-    .type = bool
   rotamer_data_version = 500 *8000
     .type = choice
-  cdl = False
-    .type = bool
-    .short_caption = Use Conformation-Dependent Library
-    .help = Use Conformation Dependent Library (CDL) \
-      for geometry minimization restraints
-    .style = bold
-  omega_cdl = False
-    .type = bool
-    .short_caption = Use Omega Conformation-Dependent Library
-    .help = Use Omega Conformation Dependent Library (OCDL) \
-      for geometry minimization restraints
-    .style = bold
+  %(restraints_library_str)s
   correct_hydrogens = True
     .type = bool
     .short_caption = Correct the hydrogen positions trapped in chirals etc
@@ -510,6 +517,8 @@ parallelity
   target_angle_deg = 0
     .type = float
 }
+"""
+obsoleted_scale_restraints = """
 scale_restraints
   .multiple = True
   .optional = True
@@ -4146,6 +4155,7 @@ class build_all_chain_proxies(linking_mixins):
     Note that planarity proxies are currently left alone, since they have
     an array of weights instead of a scalar value.
     """
+    return # obsoleted
     sel_cache = self.pdb_hierarchy.atom_selection_cache()
     other_selections = []
     other_selection_strs = []
@@ -4369,8 +4379,8 @@ class build_all_chain_proxies(linking_mixins):
         log=None):
     assert self.special_position_settings is not None
     timer = user_plus_sys_time()
-    if (params_edits is not None) :
-      self.process_geometry_restraints_scale(params_edits, log)
+    #if (params_edits is not None) :
+    #  self.process_geometry_restraints_scale(params_edits, log)
     bond_params_table = geometry_restraints.extract_bond_params(
       n_seq=self.sites_cart.size(),
       bond_simple_proxies=self.geometry_proxy_registries.bond_simple.proxies)
@@ -4709,7 +4719,7 @@ class build_all_chain_proxies(linking_mixins):
       self.process_geometry_restraints_remove(
         params=params_remove, geometry_restraints_manager=result)
     self.time_building_geometry_restraints_manager = timer.elapsed()
-    use_cdl = self.params.cdl
+    use_cdl = self.params.restraints_library.cdl
     if (use_cdl is Auto) :
       if (self.pdb_inp.file_type() == "pdb") :
         for line in self.pdb_inp.remark_section() :

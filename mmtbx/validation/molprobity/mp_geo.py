@@ -98,7 +98,7 @@ def run(args):
   restraints_loading_flags["use_neutron_distances"]=False
   from mmtbx.validation import utils
   params = pdb_interpretation.master_params.extract()
-  params.cdl = use_cdl
+  params.restraints_library.cdl = use_cdl
   processed_pdb_file = pdb_interpretation.process(
     params                   = params,
     mon_lib_srv              = server.server(),
