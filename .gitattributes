@@ -2157,6 +2157,7 @@ mmtbx/regression/tst_compare_ligands.py -text
 mmtbx/regression/tst_dssp.py -text
 mmtbx/regression/tst_dynamics_cli.py -text
 mmtbx/regression/tst_examples.py -text
+mmtbx/regression/tst_find_ncs.py -text
 mmtbx/regression/tst_find_peaks_holes.py -text
 mmtbx/regression/tst_find_ss_structure.py -text
 mmtbx/regression/tst_fmodel_2.py -text
