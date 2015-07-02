@@ -1,6 +1,5 @@
 from __future__ import division
 
-from libtbx.utils import null_out
 from cStringIO import StringIO
 from mmtbx.ncs import ncs
 
