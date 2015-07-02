@@ -42,11 +42,6 @@ class ShellCommand(object):
       except Exception, e:
         pass
 
-    if command[0] == 'curl':
-      # XXX Ugly hack: intercept attemps to spawn external curl.
-      # There is no need to depend on curl since Python has urllib2.
-      Downloader().download_to_file(command[1], os.path.join(workdir, command[3]))
-      return
     if command[0] == 'tar':
       try:
         # XXX use tarfile rather than unix tar command which is not platform independent
@@ -111,6 +106,14 @@ class Downloader(object):
        being newer than the local copy (with matching file sizes).
     """
 
+    # Create directory structure if necessary
+    if os.path.dirname(file):
+      try:
+        os.makedirs(os.path.dirname(file))
+      except Exception, e:
+        pass
+
+    # Open connection to remote server
     try:
       socket = urllib2.urlopen(url)
     except urllib2.URLError, e:
@@ -760,10 +763,14 @@ class Builder(object):
 
   def _add_curl(self, module, url):
     filename = urlparse.urlparse(url).path.split('/')[-1]
-    self.add_step(self.shell(
-      command=['curl', url, '-o', filename],
-      workdir=['modules'],
-    ))
+
+    # There is no need to depend on curl since Python has urllib2.
+    class _download(object):
+      def run(self):
+        print "===== Downloading %s: " % url,
+        Downloader().download_to_file(url, os.path.join('modules', filename))
+    self.add_step(_download())
+
     self.add_step(self.shell(
       command=['tar', 'xzf', filename],
       workdir=['modules']
