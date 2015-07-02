@@ -45,7 +45,7 @@ MATCHING 7
 
 expected_text_group_specification=text
 
-expected_text_resolve=""" 
+expected_text_resolve="""
 new_ncs_group
 rota_matrix    1.0000    0.0000    0.0000
 rota_matrix    0.0000    1.0000    0.0000
@@ -63,10 +63,10 @@ center_orth   -9.2303   -5.9527   -6.7960
 
 """
 
-expected_text_refine=""" 
+expected_text_refine="""
 refinement.pdb_interpretation.ncs_group {
-  reference = chain 'A' and (resseq 92:98 ) 
-  selection = chain 'R' and (resseq 92:98 ) 
+  reference = chain 'A' and (resseq 92:98 )
+  selection = chain 'R' and (resseq 92:98 )
 }
 """
 
