@@ -910,18 +910,25 @@ ncs_group {
     print >> of, pdb_str
     of.close()
     pdb_inp = iotbx.pdb.input(file_name = pdb_file_name)
-    if test_i == 0: # XXX Not implemented. Fix later.
-      # using pdb_inp
-      ncs_inp = ncs.input(pdb_inp = pdb_inp)
-      check_result(ncs_inp,test_i)
-      # using file_name
-      ncs_inp = ncs.input(file_name = pdb_file_name)
-      check_result(ncs_inp,test_i)
-      # using pdb string
-      ncs_inp = ncs.input(pdb_string = pdb_str)
-      check_result(ncs_inp,test_i)
+    pdb_hierarchy = iotbx.pdb.input(
+      file_name = pdb_file_name).construct_hierarchy()
+    # using pdb_inp
+    ncs_inp = ncs.input(pdb_inp = pdb_inp)
+    check_result(ncs_inp,test_i)
+    # using pdb_hierarchy
+    ncs_inp = ncs.input(hierarchy = pdb_hierarchy)
+    check_result(ncs_inp,test_i)
+    # using file_name
+    ncs_inp = ncs.input(file_name = pdb_file_name)
+    check_result(ncs_inp,test_i)
+    # using pdb string
+    ncs_inp = ncs.input(pdb_string = pdb_str)
+    check_result(ncs_inp,test_i)
     # using combination of pdb_inp and Phil parameter string
     ncs_inp = ncs.input(pdb_inp = pdb_inp,
+      ncs_phil_string = ncs_params_str)
+    # using combination of pdb_hierarchy and Phil parameter string
+    ncs_inp = ncs.input(hierarchy = pdb_hierarchy,
       ncs_phil_string = ncs_params_str)
     check_result(ncs_inp,test_i)
     # using combination of pdb file name and Phil parameter string
