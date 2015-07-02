@@ -5345,19 +5345,6 @@ class process(object):
     simple_params = self.all_chain_proxies.params.simple_ncs_from_pdb
     find_param = simple_params.domain_finding_parameters
     ncs_phil_groups = self.all_chain_proxies.params.ncs_group
-    ### XXX FIXME begin: handle this correctly internally
-    if (len(ncs_phil_groups)==0):
-      ncs_phil_groups=None
-    if(ncs_phil_groups is not None):
-      empty_cntr = 0
-      for ng in ncs_phil_groups:
-        if ng.reference is None or len(ng.reference.strip())==0:
-          empty_cntr += 1
-        for s in ng.selection:
-          if s is None or len(s.strip())==0:
-            empty_cntr += 1
-      if(empty_cntr>0): ncs_phil_groups=None
-    ### XXX FIXME end
     ncs_obj = iotbx.ncs.input(
       ncs_phil_groups             = ncs_phil_groups,
       hierarchy                   = hierarchy,

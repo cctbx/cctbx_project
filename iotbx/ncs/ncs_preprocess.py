@@ -228,6 +228,11 @@ class ncs_group_object(object):
         pdb_inp,hierarchy)
     if extension.lower() in ['.pdb','.cif', '.mmcif', '.gz']:
       pdb_hierarchy_inp = pdb.hierarchy.input(file_name=file_name)
+    #
+    ncs_phil_groups = self.validate_ncs_phil_groups(
+      pdb_hierarchy_inp = pdb_hierarchy_inp,
+      ncs_phil_groups   = ncs_phil_groups)
+    #
     if pdb_hierarchy_inp and (not transform_info):
       transform_info = pdb_hierarchy_inp.input.process_mtrix_records(eps=0.01)
       if transform_info.as_pdb_string() == '': transform_info = None
@@ -275,6 +280,36 @@ class ncs_group_object(object):
         print >> log,'No NCS relation were found !!!\n'
       if self.messages != '':
         print >> log,self.messages
+
+  def validate_ncs_phil_groups(self, pdb_hierarchy_inp, ncs_phil_groups):
+    # Verify NCS selections
+    if(ncs_phil_groups is not None and len(ncs_phil_groups)>0):
+      msg="Empty selection in NCS group definition: %s"
+      asc = pdb_hierarchy_inp.hierarchy.atom_selection_cache()
+      for ncs_group in ncs_phil_groups:
+        s_string = ncs_group.reference
+        if(s_string is not None):
+          sel = asc.selection(s_string)
+          if(sel.count(True)==0):
+            raise Sorry(msg%s_string)
+        for s_string in ncs_group.selection:
+          if(s_string is not None):
+            sel = asc.selection(s_string)
+            if(sel.count(True)==0):
+              raise Sorry(msg%s_string)
+    # Massage NCS groups
+    if(ncs_phil_groups is not None and len(ncs_phil_groups)==0):
+      ncs_phil_groups=None
+    if(ncs_phil_groups is not None):
+      empty_cntr = 0
+      for ng in ncs_phil_groups:
+        if ng.reference is None or len(ng.reference.strip())==0:
+          empty_cntr += 1
+        for s in ng.selection:
+          if s is None or len(s.strip())==0:
+            empty_cntr += 1
+      if(empty_cntr>0): ncs_phil_groups=None
+    return ncs_phil_groups
 
   def build_ncs_obj_from_pdb_ncs(self,
                                  pdb_hierarchy_inp,
