@@ -723,19 +723,18 @@ class ncs:
       all_text+="\n"+text
     return all_text
 
-  def format_all_for_phenix_refine(self,quiet=False,out=None,
-        prefix="pdb_interpretation"): # XXX set prefix=None
-    if prefix == 'refinement.pdb_interpretation.ncs_group':
-      prefix="pdb_interpretation"
-    if quiet:
-      out = null_out()
-    elif out is None:
+  def format_all_for_phenix_refine(self,log=None,quiet=False,out=None,
+        prefix="refinement.pdb_interpretation.ncs_group"): # XXX set prefix=None
+    if out==None:
       out=sys.stdout
-    all_text = self._ncs_obj.show(format='phil',log=null_out(),header=False)
-    all_text = convert_phil_format(all_text,to_type=prefix)
-    if all_text:
-      if not quiet:
-        print >> out, all_text + '\n'
+    if log==None:
+      log=sys.stdout
+    all_text=""
+    for ncs_group in self._ncs_groups:
+      text= ncs_group.format_for_phenix_refine(prefix=prefix)
+      if text:
+        if not quiet: out.write(text+'\n')
+        all_text+="\n"+text
     return all_text
 
   def format_phil_for_phenix_refine(self,log=None,quiet=False,out=None):
