@@ -184,6 +184,9 @@ postrefinement {
     .help = rs only, eta_deff protocol 7
     .expert_level = 3
 }
+include_negatives = False
+  .type = bool
+  .help = Whether to include negative intensities during scaling and merging
 plot_single_index_histograms = False
   .type = bool
 """ + mysql_master_phil
@@ -715,7 +718,9 @@ class scaling_manager (intensity_data) :
       sigmas=SigI_all).resolution_filter(
         d_min=self.params.d_min).set_observation_type_xray_intensity()
     mtz_file = "%s.mtz" % self.params.output.prefix
-    all_obs = all_obs.select(all_obs.data() > 0)
+    if not self.params.include_negatives:
+      all_obs = all_obs.select(all_obs.data() > 0)
+
     mtz_out = all_obs.as_mtz_dataset(
       column_root_label="Iobs",
       title=self.params.output.title,
@@ -962,7 +967,7 @@ class scaling_manager (intensity_data) :
       sum_y = 0
       for pair in matches.pairs():
         data.n_obs += 1
-        if observations.data()[pair[1]] <= 0:
+        if not self.params.include_negatives and observations.data()[pair[1]] <= 0:
           data.n_rejected += 1
         else:
           sum_y += observations.data()[pair[1]]
@@ -986,7 +991,7 @@ class scaling_manager (intensity_data) :
           observations.sigmas()[pair[1]] = self.i_model.sigmas()[pair[0]] # SIM
 
         data.n_obs += 1
-        if observations.data()[pair[1]] <= 0:
+        if not self.params.include_negatives and observations.data()[pair[1]] <= 0:
           data.n_rejected += 1
           continue
         # Update statistics using reference intensities (I_r), and
@@ -1400,7 +1405,7 @@ class scaling_manager (intensity_data) :
     else:
       data.accept = True
       for pair in matches.pairs():
-        if (observations.data()[pair[1]] <= 0) :
+        if not self.params.include_negatives and (observations.data()[pair[1]] <= 0) :
           continue
         Intensity = observations.data()[pair[1]] / slope
 

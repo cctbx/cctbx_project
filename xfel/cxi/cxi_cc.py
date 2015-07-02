@@ -54,7 +54,7 @@ def scale_factor(self, other, weights=None, cutoff_factor=None,
 def split_sigma_test(self, other, use_binning=False):
   """
   Calculates the split sigma ratio test by Peter Zwart:
-  ssr = sum( (Iha-Ihb)^2 ) / sum( sigma_ah^2 + sigma_bh^2)
+  ssr = sum( (Iah-Ibh)^2 ) / sum( sigma_ah^2 + sigma_bh^2)
 
   where Iah and Ibh are merged intensities for a given hkl from two halves of
   a dataset (a and b). Likewise for sigma_ah and sigma_bh.
@@ -63,6 +63,7 @@ def split_sigma_test(self, other, use_binning=False):
   """
 
   assert other.size() == self.data().size()
+  assert (self.indices() == other.indices()).all_eq(True)
   assert not use_binning or self.binner() is not None
 
   if use_binning:
@@ -152,7 +153,7 @@ def r_split(self, other, assume_index_matching=False, use_binning=False):
         use_binning=False))
     return binned_data(binner=self.binner(), data=results, data_fmt='%7.4f')
 
-def binned_correlation(self,other):
+def binned_correlation(self,other,include_negatives=False):
     results = []
     bin_count = []
     for i_bin in self.binner().range_all():
@@ -161,7 +162,7 @@ def binned_correlation(self,other):
         results.append(0.)
         bin_count.append(0.)
         continue
-      result_tuple = correlation(self.select(sel),other.select(sel))
+      result_tuple = correlation(self.select(sel),other.select(sel),include_negatives)
       results.append(result_tuple[2])
       bin_count.append(result_tuple[3])
       # plots for debugging
@@ -172,7 +173,7 @@ def binned_correlation(self,other):
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f"),\
            binned_data(binner=self.binner(), data=bin_count, data_fmt="%7d")
 
-def correlation(self,other):
+def correlation(self,other, include_negatives=False):
     N = 0
     sum_xx = 0
     sum_xy = 0
@@ -187,7 +188,7 @@ def correlation(self,other):
       #assert I_r >= 0. or I_o >= 0.
       #why does this go from 81% to 33% when uniform selection is made?
 
-      if I_r < 0. or I_o < 0.: continue
+      if not include_negatives and (I_r < 0. or I_o < 0.): continue
       #print "%15s %15s %10.0f %10.0f"%(
     #self.indices()[idx], self.indices()[idx],
     #self.data()[idx], other.data()[idx],)
@@ -206,7 +207,7 @@ def correlation(self,other):
              math.sqrt(N * sum_yy - sum_y**2))
     return slope,offset,corr,N
 
-def run_cc(params,reindexing_op,output):
+def load_cc_data(params,reindexing_op,output):
   if reindexing_op is not "h,k,l":
     print """Recalculating after reindexing the new data with %s
      (it is necessary to pick which indexing choice gives the sensible CC iso):"""%reindexing_op
@@ -303,11 +304,6 @@ def run_cc(params,reindexing_op,output):
   selected_uniform = []
   if have_iso_ref:
     uniformA = (uniform[0].data() > cutoff).__and__(uniform[1].data() > cutoff)
-    slope, offset, corr_iso, N_iso = correlation(
-      uniform[1].select(uniformA), uniform[0].select(uniformA))
-    print >> output, "C.C. iso is %.1f%% on %d indices" % (
-      100 * corr_iso, N_iso)
-
     for x in [0, 1]:
       selected_uniform.append(uniform[x].select(uniformA))
       selected_uniform[x].setup_binner(
@@ -318,17 +314,29 @@ def run_cc(params,reindexing_op,output):
 
   uniformB = (uniform[2].data()>cutoff).__and__(uniform[3].data() > cutoff)
 
-  slope,offset,corr_int,N_int = correlation(uniform[2].select(uniformB),uniform[3].select(uniformB))
-  print >>output, "C.C. int is %.1f%% on %d indices"%(100.*corr_int, N_int)
-
   for x in [2, 3]:
     selected_uniform.append(uniform[x].select(uniformB))
     selected_uniform[x].setup_binner(
       d_max=100000, d_min=params.d_min, n_bins=NBIN)
 
+  return uniform, selected_uniform, have_iso_ref
+
+def run_cc(params,reindexing_op,output):
+  uniform, selected_uniform, have_iso_ref = load_cc_data(params, reindexing_op, output)
+  NBIN = params.output.n_bins
+
+  if have_iso_ref:
+    slope, offset, corr_iso, N_iso = correlation(
+      selected_uniform[1], selected_uniform[0], params.include_negatives)
+    print >> output, "C.C. iso is %.1f%% on %d indices" % (
+      100 * corr_iso, N_iso)
+
+  slope,offset,corr_int,N_int = correlation(uniform[2],uniform[3], params.include_negatives)
+  print >>output, "C.C. int is %.1f%% on %d indices"%(100.*corr_int, N_int)
+
   if have_iso_ref:
     binned_cc_ref, binned_cc_ref_N = binned_correlation(
-      selected_uniform[1], selected_uniform[0])
+      selected_uniform[1], selected_uniform[0], params.include_negatives)
     #binned_cc_ref.show(f=output)
 
     ref_scale = scale_factor(
@@ -351,7 +359,7 @@ def run_cc(params,reindexing_op,output):
       scale_factor=ref_scale_all)
 
   binned_cc_int,binned_cc_int_N = binned_correlation(
-    selected_uniform[2], selected_uniform[3])
+    selected_uniform[2], selected_uniform[3], params.include_negatives)
   #binned_cc_int.show(f=output)
 
   oe_scale = scale_factor(selected_uniform[2],selected_uniform[3],
@@ -445,7 +453,7 @@ def run_cc(params,reindexing_op,output):
       table_row.append("--")
 
     if split_sigma_data.data[bin] is not None:
-      table_row.append("%.1f" % split_sigma_data.data[bin])
+      table_row.append("%.4f" % split_sigma_data.data[bin])
     else:
       table_row.append("--")
 
