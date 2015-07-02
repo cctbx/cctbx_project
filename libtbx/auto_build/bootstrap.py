@@ -1036,7 +1036,7 @@ class CCTBXBuilder(CCIBuilder):
 
 class DIALSBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['dials', 'xia2']
-  LIBTBX_EXTRA = ['dials', 'xia2']
+  LIBTBX_EXTRA = ['dials', 'xia2', '--skip-phenix-dispatchers']
   def add_tests(self):
     self.add_test_command('cctbx_regression.test_nightly')
     self.add_test_parallel('dials', flunkOnFailure=False, warnOnFailure=True)

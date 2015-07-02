@@ -766,7 +766,8 @@ Wait for the command to finish, then try again.""" % vars())
         force_32bit=command_line.options.force_32bit,
         msvc_arch_flag=command_line.options.msvc_arch_flag,
         enable_cxx11=command_line.options.enable_cxx11,
-        old_division=command_line.options.old_division)
+        old_division=command_line.options.old_division,
+        skip_phenix_dispatchers=command_line.options.skip_phenix_dispatchers)
       self.build_options.get_flags_from_environment()
       if (command_line.options.command_version_suffix is not None):
         self.command_version_suffix = \
@@ -1104,6 +1105,8 @@ Wait for the command to finish, then try again.""" % vars())
         source_file, target_file, source_is_python_exe=False):
     source_file = self.as_relocatable_path(source_file)
     target_file = self.as_relocatable_path(target_file)
+    if self.build_options.skip_phenix_dispatchers and 'phenix' in target_file.basename():
+      return
     reg = self._dispatcher_registry.setdefault(target_file, source_file)
     if (reg != source_file):
       if not reg.isfile():
@@ -1835,7 +1838,9 @@ class build_options:
         force_32bit=False,
         msvc_arch_flag=default_msvc_arch_flag,
         enable_cxx11=default_enable_cxx11,
-        old_division=False):
+        old_division=False,
+        skip_phenix_dispatchers=False):
+
     adopt_init_args(self, locals())
     assert self.mode in build_options.supported_modes
     assert self.warning_level >= 0
@@ -2104,6 +2109,10 @@ class pre_process_args:
       action="store_true",
       default=False,
       help="Don't force 'true division' behavior in dispatchers")
+    parser.option(None, "--skip_phenix_dispatchers",
+      action="store_true",
+      default=False,
+      help="Skip all dispatchers with 'phenix' in the title")
     self.command_line = parser.process(args=args)
     if (len(self.command_line.args) == 0):
       raise RuntimeError(
