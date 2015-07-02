@@ -108,6 +108,7 @@ tst_list = (
   "$D/alignment.py",
   "$D/invariant_domain.py",
   # restraints
+  "$D/regression/tst_psi_phi_extraction.py",
   "$D/secondary_structure/tst.py",
   "$D/secondary_structure/tst_segid.py",
   "$D/geometry_restraints/tst_reference_coordinate.py",

@@ -2181,6 +2181,7 @@ mmtbx/regression/tst_mtz2map.py -text
 mmtbx/regression/tst_pdbtools.py -text
 mmtbx/regression/tst_place_model.py -text
 mmtbx/regression/tst_prune_model.py -text
+mmtbx/regression/tst_psi_phi_extraction.py -text
 mmtbx/regression/tst_real_space_correlation.py -text
 mmtbx/regression/tst_refine_anomalous_substructure.py svneol=native#text/x-python
 mmtbx/regression/tst_regularize_from_pdb.py -text
