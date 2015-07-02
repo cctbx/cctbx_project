@@ -76,7 +76,7 @@ class find_scale(lbfgs_with_curvatures_mix_in):
       if not self._subset[self._frames[i]]:
         continue
 
-      if self._data[i] <= 0:
+      if not params.include_negatives and self._data[i] <= 0:
         continue
 
       # XXX Should compare against sqrt(eps) instead?  See also
