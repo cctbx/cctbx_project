@@ -306,7 +306,7 @@ def minimal_master_ncs_grouping(match_dict):
       temp_master, temp_copy = master_id, copy_id
     #
     chains_in_groups.add(temp_copy)
-    if tr_num:
+    if tr_num and not (temp_master in transform_to_group[tr_num][0]):
       # update dictionaries with additions to master and copies
       transform_to_group[tr_num][0].append(temp_master)
       transform_to_group[tr_num][1].append(temp_copy)
