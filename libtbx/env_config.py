@@ -2289,6 +2289,9 @@ def unpickle():
   # XXX backward compatibility 2013-08-20
   if (not hasattr(env.build_options, "enable_cxx11")):
     env.build_options.enable_cxx11 = False
+  # XXX backward compatibility 2015-07-02
+  if (not hasattr(env.build_options, "skip_phenix_dispatchers")):
+    env.build_options.skip_phenix_dispatchers = False
   return env
 
 def warm_start(args):
