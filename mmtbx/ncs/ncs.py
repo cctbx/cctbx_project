@@ -723,19 +723,40 @@ class ncs:
       all_text+="\n"+text
     return all_text
 
-  def format_all_for_phenix_refine(self,log=None,quiet=False,out=None,
-        prefix="refinement.pdb_interpretation.ncs_group"): # XXX set prefix=None
-    if out==None:
-      out=sys.stdout
-    if log==None:
-      log=sys.stdout
-    all_text=""
-    for ncs_group in self._ncs_groups:
-      text= ncs_group.format_for_phenix_refine(prefix=prefix)
-      if text:
-        if not quiet: out.write(text+'\n')
-        all_text+="\n"+text
-    return all_text
+  def format_all_for_phenix_refine(self,quiet=False,out=None,
+        prefix="refinement.pdb_interpretation.ncs_group"):
+    '''
+    This function is an older version of creating phil for phenix refine,
+    it is modified to replicate a new phil parameters that can handle
+    selection to the level of atoms, "format_phil_for_phenix_refine".
+
+    When it will still can be used in the older form, which allows only
+    residue level selection.
+    '''
+    if hasattr(self._ncs_obj,'show'):
+      if prefix == 'refinement.pdb_interpretation.ncs_group':
+        prefix="pdb_interpretation"
+      if quiet:
+        out = null_out()
+      elif out is None:
+        out=sys.stdout
+      all_text = self._ncs_obj.show(format='phil',log=null_out(),header=False)
+      all_text = convert_phil_format(all_text,to_type=prefix)
+      if all_text:
+        if not quiet:
+          print >> out, all_text + '\n'
+      return all_text
+    else:
+      # this is only being used when only a spec file is provided
+      if out == None:
+        out=sys.stdout
+      all_text=""
+      for ncs_group in self._ncs_groups:
+        text= ncs_group.format_for_phenix_refine(prefix=prefix)
+        if text:
+          if not quiet: out.write(text+'\n')
+          all_text+="\n"+text
+      return all_text
 
   def format_phil_for_phenix_refine(self,log=None,quiet=False,out=None):
     """ Writes NCS phil selection in phenix_refine format """
