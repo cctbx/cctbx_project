@@ -489,6 +489,7 @@ class ncs_group_object(object):
     ph = pdb_hierarchy_inp.hierarchy
     if len(ph.models()) > 1:
       raise Sorry('Multi-model PDB (with MODEL-ENDMDL) is not supported.')
+    clean_chain_id(ph.models()[0])
     chain_ids = {x.id for x in ph.models()[0].chains()}
     if len(chain_ids) > 1:
       min_contig_length = self.min_contig_length
@@ -2323,6 +2324,14 @@ def rename_blank_chain_name(pdb_hierarchy_inp):
         ch.id = new_ch_spc_id
       elif ch.id == '**':
         ch.id = new_ch_str_id
+
+def clean_chain_id(ph_model):
+  '''
+  Make sure chain names do not contain leading or trailing spaces
+  '''
+  for ch in ph_model.chains():
+    ch.id = ch.id.strip()
+  return ph_model
 
 class NCS_copy():
 
