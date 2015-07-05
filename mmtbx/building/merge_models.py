@@ -342,20 +342,45 @@ def get_crossover_dict(
   return crossover_dict
 
 
-def get_cc_dict(hierarchy=None,chain_id=None,cc_calculator=None,out=sys.stdout):
+def get_cc_dict(hierarchy=None,crystal_symmetry=None,
+  chain_id=None,map_data=None,d_min=None,
+  table=None,out=sys.stdout):
+
   cc_dict={}
   print >>out, "\nMaking a table of residue CC values for chain %s" %(chain_id)
+  cryst1_line=iotbx.pdb.format_cryst1_record(crystal_symmetry=crystal_symmetry)
+
+  # select the model and chain we are interested in
   for model in hierarchy.models():
-    for chain in model.chains():
-      if chain.id != chain_id: continue
-      #print "\nMODEL %s CHAIN %s:\n" %(model.id,chain.id)
-      cc_list=flex.double()
-      cc_dict[model.id]=cc_list
-      for rg in chain.residue_groups():
-        cc = cc_calculator.cc(selection=rg.atoms().extract_i_seq())
-        #print >> out, "  chain id: %s resid %s: %6.4f"%(
-            #rg.parent().id, rg.resid(), cc)
-        cc_list.append(cc)
+
+    from cStringIO import StringIO
+    f=StringIO()
+    atom_selection="model %s chain %s" %(model.id,chain_id)
+    asc=hierarchy.atom_selection_cache()
+    sel=asc.selection(string = atom_selection)
+    sel_hierarchy=hierarchy.select(sel)
+    print >>f,cryst1_line
+    print >>f,sel_hierarchy.as_pdb_string()
+    pdb_string=f.getvalue()
+    pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
+    ph=pdb_inp.construct_hierarchy()
+
+    xrs = pdb_inp.xray_structure_simple(crystal_symmetry=crystal_symmetry)
+    xrs.scattering_type_registry(table = table)
+
+    cc_calculator=mmtbx.maps.correlation.from_map_and_xray_structure_or_fmodel(
+      xray_structure = xrs,
+      map_data       = map_data,
+      d_min          = d_min)
+
+    for m in ph.models():
+      for chain in m.chains():
+        cc_list=flex.double()
+        cc_dict[model.id]=cc_list
+        for rg in chain.residue_groups():
+          cc = cc_calculator.cc(selection=rg.atoms().extract_i_seq())
+          #print >> out, "  chain id: %s resid %s: %6.4f"%( rg.parent().id, rg.resid(), cc)
+          cc_list.append(cc)
 
   # check to make sure all are same
   std_size=None
@@ -483,11 +508,6 @@ def run(args,
   print >>out, "\nReady with %d models and map" %(n_models)
   # Get CC by residue for each model and map
 
-  cc_calculator = mmtbx.maps.correlation.from_map_and_xray_structure_or_fmodel(
-    xray_structure = xrs,
-    map_data       = map_data,
-    d_min          = params.crystal_info.resolution)
-
 
 
   # Run through chains separately
@@ -497,12 +517,11 @@ def run(args,
       if not chain.id in chain_id_list: chain_id_list.append(chain.id)
 
   for chain_id in chain_id_list:
-
-
-
     # get CC values for all residues
     cc_dict=get_cc_dict(hierarchy=hierarchy,chain_id=chain_id,
-     cc_calculator=cc_calculator,out=out)
+     map_data=map_data,d_min=params.crystal_info.resolution,
+     crystal_symmetry=crystal_symmetry,
+     table=params.crystal_info.scattering_table,out=out)
 
 
     # smooth CC values with window of smoothing_window
