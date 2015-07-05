@@ -275,7 +275,8 @@ def run(args,
   if params.minimization.merge_models:
     print >>out,"\nMerging models now\n"
     from mmtbx.building.merge_models import run as merge_models
-    args=['pdb_out=None',]
+    args=['pdb_out=None',
+          'verbose=%s' %(params.control.verbose)]
     pdb_hierarchy,xray_structure=merge_models(
       args=args,
       map_data=map_data,
