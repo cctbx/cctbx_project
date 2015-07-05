@@ -46,7 +46,7 @@ master_phil = iotbx.phil.parse("""
 
     pdb_out = merged.pdb
       .type = path
-      .help = Output PDB file (merged) 
+      .help = Output PDB file (merged)
       .short_caption = Output PDB file
 
   }
@@ -92,19 +92,19 @@ master_phil = iotbx.phil.parse("""
 
      minimum_matching_atoms = 3
        .type = int
-       .short_caption = Minimum number of matching atoms to cross over 
+       .short_caption = Minimum number of matching atoms to cross over
        .help =  Minimum number of matching atoms to cross over
 
      crossover_atom =  CA
-       .type = str 
+       .type = str
        .short_caption = Crossover atom
        .help = Atom where crossovers will occur
 
      smoothing_window = 5
-       .type = int 
-       .short_caption = Smoothing window 
+       .type = int
+       .short_caption = Smoothing window
        .help = Smoothing window. The residue CC values will be smoothed with \
-              this window in calculating the optimal crossover 
+              this window in calculating the optimal crossover
 
   }
   control {
@@ -201,8 +201,8 @@ class model_object:
           best_score=test_model.get_score()
           best_model=test_model
     return best_model
-         
-            
+
+
   def reset_score(self):
     self.score=None
     self.get_score()
@@ -228,7 +228,7 @@ class model_object:
       return None
 
 
-    
+
     # sum up CC values at each residue
     score=0.
     for i in xrange(self.size):
@@ -279,7 +279,7 @@ def get_crossover_dict(
                   crossover_dict[i][model1.id].append(model2.id)
               if not model1.id in crossover_dict[i][model2.id]:
                   crossover_dict[i][model2.id].append(model1.id)
-            
+
   # Now remove where the number
   #  of crossover atoms in a row that match is less than minimum_matching_atoms
 
@@ -310,7 +310,7 @@ def get_crossover_dict(
             new_list.append(id2)
         crossover_dict[i][id1]=new_list
 
-  # Now add all ends to crossover (always ok) 
+  # Now add all ends to crossover (always ok)
 
   for pos in [0,n_residues-1]:
     if not pos in crossover_dict.keys():
@@ -318,13 +318,13 @@ def get_crossover_dict(
     for id1 in used_model_ids:
       for id2 in used_model_ids:
         if id1==id2: continue
-        if not id1 in crossover_dict[pos].keys(): 
+        if not id1 in crossover_dict[pos].keys():
           crossover_dict[pos][id1]=[]
-        if not id2 in crossover_dict[pos][id1]: 
+        if not id2 in crossover_dict[pos][id1]:
           crossover_dict[pos][id1].append(id2)
- 
-   
-  if verbose: 
+
+
+  if verbose:
     i_list=crossover_dict.keys()
     i_list.sort()
     for i in i_list:
@@ -518,7 +518,7 @@ def run(args,
     crossover_dict=get_crossover_dict(
       n_residues=n_residues,
       hierarchy=hierarchy,chain_id=chain_id,
-      crossover_atom=params.crossover.crossover_atom, 
+      crossover_atom=params.crossover.crossover_atom,
       dist_max=params.crossover.dist_max,
       minimum_matching_atoms=params.crossover.minimum_matching_atoms,
       verbose=params.control.verbose,out=out)
@@ -527,7 +527,7 @@ def run(args,
     # Now we are ready to identify the best composite model...
     # A composite has reside 0 from model x, residue 1 from model y etc.
     # Each change from model a to model b between residues i and i+1 must have
-    #  a crossover between a and b at either residue i or i+1 
+    #  a crossover between a and b at either residue i or i+1
 
     keys=cc_dict.keys()
     keys.sort()
@@ -566,7 +566,7 @@ def run(args,
           new_best.show_summary(out=out)
         best_model=new_best
         found=True
-        
+
 
 
     # Write out best_model
