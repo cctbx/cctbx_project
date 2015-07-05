@@ -1,5 +1,5 @@
 from __future__ import division
-import os,sys
+import sys
 import iotbx.pdb
 from libtbx.utils import Sorry
 import iotbx.phil
