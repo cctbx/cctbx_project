@@ -1,5 +1,5 @@
 from __future__ import division
-import sys
+import sys,os
 import iotbx.pdb
 import mmtbx.utils
 from mmtbx import monomer_library
@@ -68,7 +68,7 @@ master_phil = iotbx.phil.parse("""
        .help = Unit Cell (normally read from the data file)
   }
   minimization {
-     strategy = *ca_only all_atoms
+     strategy = ca_only *all_atoms
        .type = choice
        .help = Ignored for now. \
           Strategy.  CA_only uses just CA atoms, all_atoms uses all
@@ -89,16 +89,25 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Target angle RMSD
        .help = Target angle RMSD
 
-     number_of_trials = 5
+     number_of_trials = 20
        .type = int
        .short_caption = Number of trials
        .help = Number of trials
+
+     number_of_sa_models = 20
+       .type = int
+       .short_caption = Number of SA models
+       .help = Number of SA models
 
      start_xyz_error = 5.0
        .type = float
        .short_caption = Starting coordinate error
        .help = Starting coordinate error
 
+     merge_models = False
+       .type = bool
+       .short_caption = Merge models
+       .help = Merge models at end, taking best parts of each
   }
   control {
       verbose = False
@@ -139,6 +148,10 @@ def ccp4_map(crystal_symmetry, file_name, map_data):
 def get_map_coeffs(
         map_coeffs_file=None,
         map_coeffs_labels=None):
+  if not map_coeffs_file:
+    return
+  if not os.path.isfile(map_coeffs_file):
+    raise Sorry("Unable to find the map coeffs file %s" %(maps_coeffs_file))
   from iotbx import reflection_file_reader
   reflection_file=reflection_file_reader.any_reflection_file(map_coeffs_file)
   miller_arrays=reflection_file.as_miller_arrays()
@@ -192,8 +205,10 @@ def run_one_cycle(
     target_bond_rmsd        = params.minimization.target_bond_rmsd,
     target_angle_rmsd       = params.minimization.target_angle_rmsd,
     xyz_shake               = params.minimization.start_xyz_error,
+    number_of_trials        = params.minimization.number_of_trials,
+    number_of_sa_models     = params.minimization.number_of_sa_models,
     states                  = states)
-  return ear.pdb_hierarchy, ear.xray_structure, ear.states, ear.score
+  return ear.pdb_hierarchy, ear.xray_structure, ear.ear_states, ear.score
 
 def run(args,
     map_data=None,
@@ -208,6 +223,8 @@ def run(args,
   params=get_params(args=args,out=out)
 
   if params.control.random_seed:
+    import random
+    random.seed(params.control.random_seed)
     flex.set_random_seed(params.control.random_seed)
     print >>out,"\nUsing random seed of %d" %(params.control.random_seed)
 
@@ -236,9 +253,9 @@ def run(args,
       else:
         raise Sorry("Need an input PDB file")
     pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
-    if not pdb_inp.crystal_symmetry(): # get it
-      cryst1_line=iotbx.pdb.format_cryst1_record(
+    cryst1_line=iotbx.pdb.format_cryst1_record(
          crystal_symmetry=crystal_symmetry)
+    if not pdb_inp.crystal_symmetry(): # get it
       from cStringIO import StringIO
       f=StringIO()
       print >>f, cryst1_line
@@ -255,9 +272,23 @@ def run(args,
     params_edits=params_edits,
     out=out)
 
+  if params.minimization.merge_models:
+    print >>out,"\nMerging models now\n"
+    from mmtbx.building.merge_models import run as merge_models
+    args=['pdb_out=None',]
+    pdb_hierarchy,xray_structure=merge_models(
+      args=args,
+      map_data=map_data,
+      states=states,
+      crystal_symmetry=crystal_symmetry,
+      ) 
+    print >>out,"\nDone with merging models"
+
   if params.output_files.pdb_out:
     f=open(params.output_files.pdb_out,'w')
-    print >>f, pdb_string
+    print >>f, cryst1_line
+    print >>f, pdb_hierarchy.as_pdb_string()
+    print >>out,"\nWrote output model to %s" %(params.output_files.pdb_out)
     f.close()
   # all done
   return pdb_hierarchy,xray_structure,states,score

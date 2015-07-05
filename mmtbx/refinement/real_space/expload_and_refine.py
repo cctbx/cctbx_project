@@ -103,6 +103,7 @@ class run(object):
         states=None,
         show=False):
     adopt_init_args(self, locals())
+    self.ear_states=None
     self.show_target(prefix="start:")
     # Get refined starting model
     weights = self.run_refine_flexible_rmsd_targets()
@@ -261,6 +262,7 @@ class run(object):
       self.states.add(sites_cart = scorer.sites_cart)
       self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
     if(collect_states): states.write(file_name="EAR.pdb")
+    self.ear_states=states
 
   def show_target(self, prefix):
     if(self.show):
