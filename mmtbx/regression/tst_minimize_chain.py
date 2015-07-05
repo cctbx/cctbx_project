@@ -221,9 +221,10 @@ TER
 """
 
 
-def tst_02(args):
+def tst_02(args,prefix=None):
 
-  prefix='tst_02'
+  if prefix is None:
+    prefix='tst_02'
   # Full good answer model
   pdb_file_name_answer_full = "%s_answer_full.pdb"%prefix
   pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str_answer_full)
@@ -261,13 +262,23 @@ def tst_02(args):
   hierarchy.write_pdb_file(file_name="%s_refined.pdb"%prefix)
   states.write(file_name="%s_refined_all_states.pdb"%prefix)
   rmsd=xrs_refined.sites_cart().rms_difference(xrs_answer_full.sites_cart())
-  print "RMSD from TARGET for FULL-model refinement: %7.2f " %(rmsd)
+  print "RMSD from TARGET for FULL-model refinement: %8.2f " %(rmsd)
   return rmsd
 
 if (__name__ == "__main__"):
   args=["number_of_build_cycles=2","number_of_macro_cycles=1","number_of_trials=2","random_seed=77141"]
   t0=time.time()
-  rmsd=tst_02(args)
+  print "Running standard minimize_chain"
+  extra_args=['merge_models=False','pdb_out=std.pdb']
+  rmsd=tst_02(args+extra_args,prefix='tst_02')
+  print "Time: %6.4f"%(time.time()-t0)
+  print "OK"
+  print "RMSD %7.2f "%rmsd
+
+  t0=time.time()
+  print "\nRunning standard minimize_chain plus merge_models"
+  extra_args=['merge_models=True','pdb_out=merged.pdb']
+  rmsd=tst_02(args+extra_args,prefix='tst_03')
   print "Time: %6.4f"%(time.time()-t0)
   print "OK"
   print "RMSD %7.2f "%rmsd
