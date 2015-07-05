@@ -281,7 +281,7 @@ def run(args,
       map_data=map_data,
       states=states,
       crystal_symmetry=crystal_symmetry,
-      ) 
+      )
     print >>out,"\nDone with merging models"
 
   if params.output_files.pdb_out:
