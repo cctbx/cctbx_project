@@ -136,28 +136,20 @@ def run(args):
         plain_pairs_radius = 5.0)
       restraints_manager = mmtbx.restraints.manager(
         geometry = geometry, normalization = False)
-      hd_selection = xray_structure.hd_selection()
-      for i in xrange(10):
-        xrs = xray_structure.deep_copy_scatterers()
-        xrs.shake_sites_in_place(mean_distance=0.5, selection = hd_selection)
-        m = mmtbx.model.manager(
-          restraints_manager = restraints_manager,
-          xray_structure     = xrs,
-          pdb_hierarchy      = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
-        #
-        r1 = m.geometry_statistics(ignore_hd = False)
-        m.idealize_h(show=False)
-        r2 = m.geometry_statistics(ignore_hd = False)
-        print "%6.3f %6.3f %6.3f %6.3f"%(r1.a_mean,r1.b_mean, r2.a_mean,r2.b_mean)
-        assert r1.a_mean > 10.0, "assertion %f > 10.0" % r1.a_mean
-        assert r1.b_mean > 0.1, "assertion %f > 0.1" % r1.b_mean
-        assert r2.a_mean < 1.0, "assertion %f < 1.0" % r2.a_mean
-        assert r2.b_mean < 0.01, "assertion %f < 0.01" % r2.b_mean
+      xrs = xray_structure.deep_copy_scatterers()
+      m = mmtbx.model.manager(
+        restraints_manager = restraints_manager,
+        xray_structure     = xrs,
+        pdb_hierarchy      = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
+      #
+      r1 = m.geometry_statistics(ignore_hd = False)
+      m.idealize_h(show=False)
+      r2 = m.geometry_statistics(ignore_hd = False)
+      print "%6.3f %6.3f %6.3f %6.3f"%(r1.a_mean,r1.b_mean, r2.a_mean,r2.b_mean)
+      assert r2.a_mean < 1.0, "assertion %f < 1.0" % r2.a_mean
+      assert r2.b_mean < 0.01, "assertion %f < 0.01" % r2.b_mean
 
 if (__name__ == "__main__"):
-  #
-  # UNSTABLE!!!
-  #
   t0 = time.time()
   run(sys.argv[1:])
   print "Time: %6.3f"%(time.time()-t0)
