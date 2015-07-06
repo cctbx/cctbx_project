@@ -1,5 +1,3 @@
-# LIBTBX_SET_DISPATCHER_NAME phenix.diffuse
-
 from __future__ import division
 from libtbx import easy_run
 import iotbx.mtz
@@ -102,13 +100,13 @@ TER
 ENDMDL
 END
 """
-#phenix.diffuse pdb=m.pdb probabilities=0.5,0.5 resolution=4.0 prefix=tst
+#cctbx.diffuse pdb=m.pdb probabilities=0.5,0.5 resolution=4.0 prefix=tst
 def exercise():
   fo = open("tst_diffuse.pdb","w")
   print >> fo, pdb_str
   fo.close()
   cmd = " ".join([
-    "phenix.diffuse",
+    "cctbx.diffuse",
     "pdb=tst_diffuse.pdb",
     "probabilities=0.5,0.5",
     "resolution=4.0",
