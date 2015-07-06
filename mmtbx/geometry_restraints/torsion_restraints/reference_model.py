@@ -104,14 +104,17 @@ def add_reference_dihedral_restraints_if_requested(
     raise Sorry("Cannot not restrain working model to self and a "+
                     "reference model simultaneously")
   reference_file_list = []
+  reference_hierarchy_list = None
   if params.use_starting_model_as_reference:
-    reference_file_list.append(self.params.input.pdb.file_name[0])
+    reference_hierarchy_list = \
+        [processed_pdb_file.all_chain_proxies.pdb_hierarchy]
+    reference_file_list = None
     print >> log, \
-      "*** Restraining model to starting coordinates ***"
+      "*** Restraining model using starting model ***"
   else:
     for file_name in params.file:
       reference_file_list.append(file_name)
-  print >> log, "*** Adding Reference Model Restraints ***"
+  print >> log, "*** Adding Reference Model Restraints (torsion) ***"
   #test for inserted TER cards in working model
   ter_indices = processed_pdb_file.all_chain_proxies.pdb_inp.ter_indices()
   if ter_indices is not None:
@@ -121,6 +124,7 @@ def add_reference_dihedral_restraints_if_requested(
   rm = reference_model(
     processed_pdb_file=processed_pdb_file,
     reference_file_list=reference_file_list,
+    reference_hierarchy_list=reference_hierarchy_list,
     mon_lib_srv=mon_lib_srv,
     ener_lib=ener_lib,
     has_hd=has_hd,
@@ -539,9 +543,9 @@ class reference_model(object):
         limit2 = 15.0
         w_weight = 0.04
         if (ss_selection[file_match][self.match_map[file_match][dp.i_seqs[0]]] and
-           ss_selection[file_match][self.match_map[file_match][dp.i_seqs[1]]] and
-           ss_selection[file_match][self.match_map[file_match][dp.i_seqs[2]]] and
-           ss_selection[file_match][self.match_map[file_match][dp.i_seqs[3]]]):
+            ss_selection[file_match][self.match_map[file_match][dp.i_seqs[1]]] and
+            ss_selection[file_match][self.match_map[file_match][dp.i_seqs[2]]] and
+            ss_selection[file_match][self.match_map[file_match][dp.i_seqs[3]]]):
           limit2 = 30.0
           w_weight = 1
         dp_add = cctbx.geometry_restraints.dihedral_proxy(
