@@ -1,3 +1,4 @@
+# LIBTBX_SET_DISPATCHER_NAME cctbx.diffuse
 # LIBTBX_SET_DISPATCHER_NAME phenix.diffuse
 
 from __future__ import division
@@ -21,7 +22,7 @@ MTZ file containing diffuse scattering intensity values (I) at each Bragg peak.
 
 Command line Usage
 ------------------
-phenix.diffuse pdb=test.pdb probabilities=0.3,0.3,0.3,0.1 resolution=4.0 prefix=tst
+cctbx.diffuse pdb=test.pdb probabilities=0.3,0.3,0.3,0.1 resolution=4.0 prefix=tst
 
 pdb: input PDB file. CRYST1 symmetry description is required.
 
@@ -44,7 +45,7 @@ def run(arg):
   if(len(args)!=4):
     msg="""Bad inputs.
 Usage example:
-  phenix.diffuse pdb=m.pdb probabilities=0.5,0.5 resolution=4.0 prefix=tst"""
+  cctbx.diffuse pdb=m.pdb probabilities=0.5,0.5 resolution=4.0 prefix=tst"""
     raise Sorry(msg)
   data = ensemble(
     pdb_file_name = args['pdb'],
