@@ -1166,6 +1166,9 @@ class PhenixBuilder(CCIBuilder):
     self.rebuild_docs()
     self.add_test_command('phenix_regression.run_p9_sad_benchmark')
     self.add_test_command('phenix_regression.run_hipip_refine_benchmark')
+    self.add_test_command('phenix_regression.wizards.test_all_parallel',
+                          name="test wizards",
+                         )
 
 def run(root=None):
   usage = """Usage: %prog [options] [actions]
