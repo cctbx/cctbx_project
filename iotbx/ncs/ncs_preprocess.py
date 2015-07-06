@@ -290,12 +290,17 @@ class ncs_group_object(object):
         s_string = ncs_group.reference
         if(s_string is not None):
           sel = asc.selection(s_string)
-          if(sel.count(True)==0):
+          n_reference = sel.count(True)
+          if(n_reference==0):
             raise Sorry(msg%s_string)
         for s_string in ncs_group.selection:
           if(s_string is not None):
             sel = asc.selection(s_string)
-            if(sel.count(True)==0):
+            n_copy = sel.count(True)
+            if(n_reference != n_copy):
+              raise Sorry(
+                "Bad NCS group selections: Natoms(copy)!=Natoms(reference)")
+            if(n_copy==0):
               raise Sorry(msg%s_string)
     # Massage NCS groups
     if(ncs_phil_groups is not None and len(ncs_phil_groups)==0):
