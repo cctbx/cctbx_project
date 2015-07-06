@@ -108,7 +108,7 @@ master_phil = iotbx.phil.parse("""
 
      max_keep = 10
        .type = int
-       .short_caption = Max keep 
+       .short_caption = Max keep
        .help = Max keep. Number of solutions to carry along during optimization
 
      max_regions_to_test = 10
@@ -239,7 +239,7 @@ class model_object:
     best_model=self
 
     # Now work down difference list until we get something useful.
-    # For each one, find how far in either direction we can to go 
+    # For each one, find how far in either direction we can to go
     #  maximize the score after crossover
 
     for dd,i in difference_list[:self.max_regions_to_test]:
@@ -253,7 +253,7 @@ class model_object:
         if ib <i: allowed_left_crossovers.append(ib)
         if ib >i: allowed_right_crossovers.append(ib)
 
-      if not allowed_left_crossovers or not allowed_right_crossovers: continue 
+      if not allowed_left_crossovers or not allowed_right_crossovers: continue
 
       # find best to left and to right, up to max_ends_per_region
 
@@ -296,13 +296,13 @@ class model_object:
           best_i_score=test_model.get_score()
           best_i=i2
 
-          #  save if best overall 
+          #  save if best overall
           if test_model.get_score()>best_score+self.minimum_improvement:
             best_score=test_model.get_score()
             best_model=test_model
       if best_model.get_score()>original_score+self.minimum_improvement:
         return best_model  # take it (and skip other possibilities)
-       
+
 
   def reset_score(self):
     self.score=None
@@ -708,13 +708,13 @@ def run(args,
         for m in working_model_list:
           if not working_model==m:  others.append(m)
         new_working_model=working_model.optimize_with_others(others=others)
-        if not new_working_model: 
+        if not new_working_model:
           print
           continue
         aa=[new_working_model.get_score(),new_working_model]
         if not aa in sorted_working_model_list:
           sorted_working_model_list.append(aa)
-      if not sorted_working_model_list: 
+      if not sorted_working_model_list:
          break # nothing to do
 
       sorted_working_model_list.sort()
