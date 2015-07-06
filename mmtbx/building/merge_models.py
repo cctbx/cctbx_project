@@ -106,6 +106,28 @@ master_phil = iotbx.phil.parse("""
        .help = Smoothing window. The residue CC values will be smoothed with \
               this window in calculating the optimal crossover
 
+     max_keep = 10
+       .type = int
+       .short_caption = Max keep 
+       .help = Max keep. Number of solutions to carry along during optimization
+
+     max_regions_to_test = 10
+       .type = int
+       .short_caption = Max regions to test
+       .help = Maximum number of regions within a chain to test for crossover \
+               with another chain.  Sorted on smoothed differences in local CC
+
+     max_ends_per_region = 5
+       .type = int
+       .short_caption = Max ends per region
+       .help = Maximum number of ends (left and right) to test for each \
+               potential crossover region.
+
+     minimum_improvement = 0.01
+       .type = float
+       .short_caption = Minimum improvement
+       .help = Minimum improvement to keep a crossover
+
   }
   control {
       verbose = False
@@ -129,9 +151,14 @@ def get_params(args,out=sys.stdout):
   return params
 
 class model_object:
-  def __init__(self,source_id=None,source_list=None,cc_dict=None,
+  def __init__(self,source_id=None,source_list=None,
+      cc_dict=None,
+      smoothed_cc_dict=None,
       crossover_dict=None,
       minimum_length=1,
+      minimum_improvement=0.01,
+      max_regions_to_test=15,
+      max_ends_per_region=5,
       maximum_fraction=0.5):
     if source_id is not None:
        self.source_list=cc_dict[source_id].size()*[source_id]
@@ -141,7 +168,11 @@ class model_object:
 
     self.size=len(self.source_list)
     self.cc_dict=cc_dict
+    self.smoothed_cc_dict=smoothed_cc_dict
+    self.max_regions_to_test=max_regions_to_test
+    self.max_ends_per_region=max_ends_per_region
     self.minimum_length=minimum_length
+    self.minimum_improvement=minimum_improvement
     self.maximum_fraction=maximum_fraction
     self.crossover_dict=crossover_dict
     self.reset_score()
@@ -162,8 +193,12 @@ class model_object:
     new_model=model_object(
      source_list=deepcopy(self.source_list),
      minimum_length=self.minimum_length,
+     minimum_improvement=self.minimum_improvement,
      maximum_fraction=self.maximum_fraction,
+     max_regions_to_test=self.max_regions_to_test,
+     max_ends_per_region=self.max_ends_per_region,
      cc_dict=self.cc_dict,
+     smoothed_cc_dict=self.smoothed_cc_dict,
      crossover_dict=self.crossover_dict)
     return new_model
 
@@ -175,33 +210,99 @@ class model_object:
       cycle+=1
       found=False
       for other_model in others:
-          new_model=best_model.select_best_from_other(other_model)
+          new_model=best_model.select_best_from_other_smooth(other_model)
           if not new_model: continue
           if best_model is None or new_model.get_score()>best_model.get_score():
             best_model=new_model
             found=True
     return best_model
 
-  def select_best_from_other(self,other=None):
-    # find the part of other that can best replace part of this one using
-    # allowed crossovers
-    best_score=None
-    best_model=None
+  def select_best_from_other_smooth(self,
+    other=None):
+
+    # Use smoothed cc_dict to identify location where
+    # biggest difference can be found and focus on that
+
+    difference_list=[]
     for i1 in xrange(self.size):
-      if not self.is_allowed_crossover(i1,other): continue
-      for i2 in xrange(i1+self.minimum_length+1,self.size):
-        if not self.is_allowed_crossover(i2,other): continue
-        if float(i2-i1+1)/self.size > self.maximum_fraction: break
-          # test replacing self with i1 to i2 of other
+      source_self=self.source_list[i1]
+      source_other=other.source_list[i1]
+      difference_list.append( [
+       self.cc_dict[source_other][i1]-self.cc_dict[source_self][i1],
+       i1])
+
+    difference_list.sort()
+    difference_list.reverse()
+
+    best_score=self.get_score()
+    original_score=best_score
+    best_model=self
+
+    # Now work down difference list until we get something useful.
+    # For each one, find how far in either direction we can to go 
+    #  maximize the score after crossover
+
+    for dd,i in difference_list[:self.max_regions_to_test]:
+      if dd<self.minimum_improvement: continue
+
+      #Now figure out where we can cross over on either side of i
+      allowed_left_crossovers=[]
+      allowed_right_crossovers=[]
+      for ib in xrange(self.size):
+        if not self.is_allowed_crossover(i,other): continue
+        if ib <i: allowed_left_crossovers.append(ib)
+        if ib >i: allowed_right_crossovers.append(ib)
+
+      if not allowed_left_crossovers or not allowed_right_crossovers: continue 
+
+      # find best to left and to right, up to max_ends_per_region
+
+      # if possible, find a right-crossover that is minimum_length from center
+      i2=allowed_right_crossovers[0]
+      for test_i2 in allowed_right_crossovers:
+        if test_i2-i>self.minimum_length: # take it; it is long enough
+          i2=test_i2
+          break
+
+      # find best start (i1, on left)
+      best_i=None
+      best_i_score=None
+      for i1 in allowed_left_crossovers[-self.max_ends_per_region:]:
+        if float(i2-i1+1)/self.size > self.maximum_fraction: continue
+        # test replacing self with i1 to i2 of other
         test_model=self.customized_copy()
         for i in xrange(i1,i2+1):
-            test_model.source_list[i]=other.source_list[i]
+          test_model.source_list[i]=other.source_list[i]
         test_model.reset_score()
-        if best_score is None or test_model.get_score()>best_score:
-          best_score=test_model.get_score()
-          best_model=test_model
-    return best_model
+        if best_i_score is None or \
+           test_model.get_score()>best_i_score:
+          best_i_score=test_model.get_score()
+          best_i=i1
+      i1=best_i
 
+      # Now find best end (right side ;i2)
+      best_i=None
+      best_i_score=None
+
+      for i2 in allowed_right_crossovers[:self.max_ends_per_region]:
+        if float(i2-i1+1)/self.size > self.maximum_fraction: continue
+        # test replacing self with i1 to i2 of other
+        test_model=self.customized_copy()
+        for i in xrange(i1,i2+1):
+          test_model.source_list[i]=other.source_list[i]
+        test_model.reset_score()
+        if best_i_score is None or \
+           test_model.get_score()>best_i_score:
+          best_i_score=test_model.get_score()
+          best_i=i2
+
+          #  save if best overall 
+          if test_model.get_score()>best_score+self.minimum_improvement:
+            best_score=test_model.get_score()
+            best_model=test_model
+      if best_model.get_score()>original_score+self.minimum_improvement:
+        return best_model  # take it (and skip other possibilities)
+       
 
   def reset_score(self):
     self.score=None
@@ -355,7 +456,20 @@ def get_cc_dict(hierarchy=None,crystal_symmetry=None,
 
     from cStringIO import StringIO
     f=StringIO()
-    atom_selection="model %s chain %s" %(model.id,chain_id)
+    if chain_id.replace(" ",""):
+      chain_sel=" chain %s " %(chain_id)
+    else:
+      chain_sel=""
+    if model.id.replace(" ",""):
+      model_sel="model %s " %(model.id)
+    else:
+      model_sel=""
+    if chain_sel and model_sel:
+      and_sel=" and "
+    else:
+      and_sel=""
+    atom_selection="%s %s %s" %(model_sel,and_sel,chain_sel)
+
     asc=hierarchy.atom_selection_cache()
     sel=asc.selection(string = atom_selection)
     sel_hierarchy=hierarchy.select(sel)
@@ -551,41 +665,69 @@ def run(args,
     keys=cc_dict.keys()
     keys.sort()
 
-    working_model_list=[]
+    sorted_working_model_list=[]
     for key in keys:
-      working_model=model_object(source_id=key,cc_dict=cc_dict,
+      working_model=model_object(source_id=key,
+         cc_dict=cc_dict,
+         smoothed_cc_dict=smoothed_cc_dict,
          crossover_dict=crossover_dict,
          minimum_length=params.crossover.minimum_length,
+         minimum_improvement=params.crossover.minimum_improvement,
+         max_regions_to_test=params.crossover.max_regions_to_test,
+         max_ends_per_region=params.crossover.max_ends_per_region,
          maximum_fraction=params.crossover.maximum_fraction)
       if params.control.verbose:
         working_model.show_summary(out=out)
-      working_model_list.append(working_model)
-
+      sorted_working_model_list.append(
+        [working_model.get_score(),working_model])
+    sorted_working_model_list.sort()
+    sorted_working_model_list.reverse()
+    sorted_working_model_list=\
+       sorted_working_model_list[:params.crossover.max_keep]
+    working_model_list=[]
+    for s,m in sorted_working_model_list:
+      working_model_list.append(m)
 
     # Go through all the working models and cross them with other models to
     #  optimize...Then take all the best and cross...
 
-    best_model=working_model_list[0]
+    best_score,best_model=sorted_working_model_list[0]
     found=True
+    cycle=0
     while found:
+      cycle+=1
+      print >>out, "\nCYCLE %d current best is %7.3f\n" %(
+        cycle,best_model.get_score())
       found=False
-      new_working_model_list=[]
+      sorted_working_model_list=[]
       new_best=best_model
+      id=0
       for working_model in working_model_list:
+        id+=1
         others=[]
         for m in working_model_list:
           if not working_model==m:  others.append(m)
         new_working_model=working_model.optimize_with_others(others=others)
-        new_working_model_list.append(new_working_model)
-        if new_working_model.get_score()>best_model.get_score():
-          new_best=new_working_model
-      if new_best.get_score()>best_model.get_score():
-        if params.control.verbose:
-          print "NEW BEST SCORE: %7.2f" %(new_best.get_score())
-          new_best.show_summary(out=out)
-        best_model=new_best
-        found=True
+        if not new_working_model: 
+          print
+          continue
+        aa=[new_working_model.get_score(),new_working_model]
+        if not aa in sorted_working_model_list:
+          sorted_working_model_list.append(aa)
+      if not sorted_working_model_list: 
+         break # nothing to do
 
+      sorted_working_model_list.sort()
+      sorted_working_model_list.reverse()
+      sorted_working_model_list=sorted_working_model_list[:params.crossover.max_keep]
+
+      new_working_score,new_working_model=sorted_working_model_list[0]
+      if new_working_score>best_model.get_score():
+        best_model=new_working_model
+        found=True
+        if params.control.verbose:
+          print >>out,"NEW BEST SCORE: %7.2f" %(best_model.get_score())
+          best_model.show_summary(out=out)
 
 
     # Write out best_model
@@ -617,7 +759,7 @@ def run(args,
     if params.output_files.pdb_out:
       f=open(params.output_files.pdb_out,'w')
       print >>f,pdb_string
-      print "Final model is in: \n%s" %(f.name)
+      print "Final model is in: %s\n" %(f.name)
       f.close()
 
     return pdb_hierarchy, xray_structure
