@@ -1690,8 +1690,12 @@ class process_command_line_args(object):
           self.phil_file_names.append(arg_file)
         elif(pdb.is_pdb_file(file_name=arg_file) or
              pdb.is_pdb_mmcif_file(file_name=arg_file)):
-          self.pdb_file_names.append(arg_file)
-          arg_is_processed = True
+          # This "if(not is_parameter):" may have adverse effect when main file
+          # is provided like file=xxx.pdb in which case it will be treatd as
+          # parameter
+          if(not is_parameter):
+            self.pdb_file_names.append(arg_file)
+            arg_is_processed = True
         elif(is_ccp4_map):
           assert [self.ccp4_map, self.ccp4_map_file_name].count(None)==2
           from iotbx import ccp4_map
