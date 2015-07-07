@@ -112,6 +112,7 @@ class Script(object):
           raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
 
     params = phil_scope.fetch(sources=user_phil).extract()
+    self.params = params
 
     assert params.input.cfg is not None
     assert params.input.experiment is not None
@@ -162,46 +163,77 @@ class Script(object):
       # list of all events
       times = run.times()
       nevents = min(len(times),max_events)
-      # chop the list into pieces, depending on rank.  This assigns each process
-      # events such that the get every Nth event where N is the number of processes
-      mytimes = [times[i] for i in xrange(nevents) if (i+rank)%size == 0]
 
-      for i in xrange(len(mytimes)):
-        ts = cspad_tbx.evt_timestamp((mytimes[i].seconds(),mytimes[i].nanoseconds()/1e6))
-        if params.debug.event_timestamp is not None and params.debug.event_timestamp != ts:
-          continue
+      if params.mp.method == "mpi" and size > 2:
+        # use a client/server approach to be sure every process is busy as much as possible
+        # only do this if there are more than 2 processes, as one process will be a server
+        if rank == 0:
+          # server process
+          for t in times[:nevents]:
+            # a client process will indicate it's ready by sending its rank
+            rankreq = comm.recv(source=MPI.ANY_SOURCE)
+            comm.send(t,dest=rankreq)
+          # send a stop command to each process
+          for rankreq in range(size-1):
+            rankreq = comm.recv(source=MPI.ANY_SOURCE)
+            comm.send('endrun',dest=rankreq)
+        else:
+          # client process
+          while True:
+            # inform the server this process is ready for an event
+            comm.send(rank,dest=0)
+            evttime = comm.recv(source=0)
+            if evttime == 'endrun': break
+            self.process_event(run, evttime)
+      else:
+        # chop the list into pieces, depending on rank.  This assigns each process
+        # events such that the get every Nth event where N is the number of processes
+        mytimes = [times[i] for i in xrange(nevents) if (i+rank)%size == 0]
 
-        ts_path = os.path.join(params.output.output_dir, "debug-" + ts + ".txt")
+        for i in xrange(len(mytimes)):
+          self.process_event(run, mytimes[i])
 
-        if params.debug.use_debug_files:
-          if not os.path.exists(ts_path):
-            print "Skipping event %s: no debug file found"%ts
-            continue
+  def process_event(self, run, timestamp):
+    """
+    Process a single event from a run
+    @param run psana run object
+    @param timestamp psana timestamp object
+    """
 
-          f = open(ts_path, "r")
-          if len(f.readlines()) > 1:
-            print "Skipping event %s: processed successfully previously"%ts
-            continue
-          f.close()
-          print "Accepted", ts
+    ts = cspad_tbx.evt_timestamp((timestamp.seconds(),timestamp.nanoseconds()/1e6))
+    if self.params.debug.event_timestamp is not None and self.params.debug.event_timestamp != ts:
+      return
 
-        if params.debug.write_debug_files:
-          f = open(ts_path, "w")
-          f.write("%s about to process %s\n"%(socket.gethostname(), ts))
-          f.close()
+    ts_path = os.path.join(self.params.output.output_dir, "debug-" + ts + ".txt")
 
-        # load the event.  This will cause any modules to be run.
-        evt = run.event(mytimes[i])
+    if self.params.debug.use_debug_files:
+      if not os.path.exists(ts_path):
+        print "Skipping event %s: no debug file found"%ts
+        return
 
-        if params.debug.write_debug_files:
-          f = open(ts_path, "a")
-          f.write("done\n")
-          f.close()
+      f = open(ts_path, "r")
+      if len(f.readlines()) > 1:
+        print "Skipping event %s: processed successfully previously"%ts
+        return
+      f.close()
+      print "Accepted", ts
 
-        id = evt.get(EventId)
-        #print "Event #",i," has id:",id
+    if self.params.debug.write_debug_files:
+      f = open(ts_path, "w")
+      f.write("%s about to process %s\n"%(socket.gethostname(), ts))
+      f.close()
 
-        # nop since the module does all the work.
+    # load the event.  This will cause any modules to be run.
+    evt = run.event(timestamp)
+
+    if self.params.debug.write_debug_files:
+      f = open(ts_path, "a")
+      f.write("done\n")
+      f.close()
+
+    id = evt.get(EventId)
+
+    # nop since the module does all the work.
 
 if __name__ == "__main__":
   script = Script()
