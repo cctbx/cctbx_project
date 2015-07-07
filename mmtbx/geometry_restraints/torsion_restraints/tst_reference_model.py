@@ -1221,38 +1221,44 @@ TER     490       DG B  24
   ref_file.close()
   log = cStringIO.StringIO()
   # log = sys.stdout
-  def_pars = reference_model_params
-  pars = iotbx.phil.parse(params_text)
-  all_pars = def_pars.fetch(pars).extract()
-  all_pars.reference_model.enabled = True
   processed_pdb_file = process(
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
       raw_records=flex.split_lines(pdb_str_original))
   pdb_h = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-
-  rm = reference_model(
-         processed_pdb_file=processed_pdb_file,
-         reference_file_list=['ref.pdb'],
-         mon_lib_srv=mon_lib_srv,
-         ener_lib=ener_lib,
-         params=all_pars.reference_model,
-         log=log)
-  rm.show_reference_summary(log=log)
-  assert rm.get_n_proxies() == 74, \
-      "Expecting 74 proxies, got %d" % rm.get_n_proxies()
-  log_strings = log.getvalue().split("\n")
-  for needed_string in [
-      " DA A   5  <=====>   DA A   5",
-      " DA A   6  <=====>   DA A   6",
-      " DT A   7  <=====>   DT A   7",
-      " DT A   8  <=====>   DT A   8",
-      " DA B  17  <=====>   DA B  17",
-      " DA B  18  <=====>   DA B  18",
-      " DT B  19  <=====>   DT B  19",
-      " DT B  20  <=====>   DT B  20",
-      ]:
-    assert needed_string in log_strings, "'%s' not in log!" % needed_string
+  for include_chains in [True, False]:
+    def_pars = reference_model_params
+    pars = iotbx.phil.parse(params_text)
+    all_pars = None
+    if include_chains:
+      all_pars = def_pars.fetch(pars).extract()
+      all_pars.reference_model.enabled = True
+    else:
+      all_pars = def_pars.extract()
+      all_pars.reference_model.enabled = True
+      all_pars.reference_model.file = "ref.pdb"
+    rm = reference_model(
+           processed_pdb_file=processed_pdb_file,
+           reference_file_list=['ref.pdb'],
+           mon_lib_srv=mon_lib_srv,
+           ener_lib=ener_lib,
+           params=all_pars.reference_model,
+           log=log)
+    rm.show_reference_summary(log=log)
+    assert rm.get_n_proxies() == 74, \
+        "Expecting 74 proxies, got %d" % rm.get_n_proxies()
+    log_strings = log.getvalue().split("\n")
+    for needed_string in [
+        " DA A   5  <=====>   DA A   5",
+        " DA A   6  <=====>   DA A   6",
+        " DT A   7  <=====>   DT A   7",
+        " DT A   8  <=====>   DT A   8",
+        " DA B  17  <=====>   DA B  17",
+        " DA B  18  <=====>   DA B  18",
+        " DT B  19  <=====>   DT B  19",
+        " DT B  20  <=====>   DT B  20",
+        ]:
+      assert needed_string in log_strings, "'%s' not in log!" % needed_string
 
 def run(args):
   t0 = time.time()
