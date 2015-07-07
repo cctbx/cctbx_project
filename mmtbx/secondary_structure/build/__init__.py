@@ -71,6 +71,8 @@ model_idealization
   enabled = False
     .type = bool
     .help = Enable secondary structure idealization
+  file_name_before_regularization = None
+    .type = path
   restrain_torsion_angles = False
     .type = bool
     .help = Restrain torsion angles
@@ -272,6 +274,13 @@ def get_helix(helix_class, rotamer_manager, sequence=None, pdb_hierarchy_templat
     rotamer_manager=rotamer_manager,
     pdb_hierarchy_template=pdb_hierarchy_template)
 
+def set_xyz_carefully(dest_h, source_h):
+  assert dest_h.atoms().size() >= source_h.atoms().size()
+  for d_ag, s_ag in zip(dest_h.atom_groups(), source_h.atom_groups()):
+    for s_atom in s_ag.atoms():
+      d_atom = d_ag.get_atom(s_atom.name.strip())
+      if d_atom is not None:
+        d_atom.set_xyz(s_atom.xyz)
 
 def get_empty_ramachandran_proxies():
   import boost.python
@@ -283,6 +292,7 @@ def process_params(params):
   min_sigma = 1e-5
   if params is None:
     params = master_phil.fetch().extract()
+    params.model_idealization.enabled = True
   if hasattr(params, "model_idealization"):
     p_pars = params.model_idealization
   else:
@@ -309,7 +319,6 @@ def substitute_ss(real_h,
                     xray_structure,
                     ss_annotation,
                     params = None,
-                    fname_before_regularization=None,
                     log=null_out(),
                     rotamer_manager=None,
                     verbose=False):
@@ -376,7 +385,8 @@ def substitute_ss(real_h,
     ideal_h = get_helix(helix_class=h.helix_class,
                         pdb_hierarchy_template=sel_h,
                         rotamer_manager=rotamer_manager)
-    edited_h.select(all_bsel).atoms().set_xyz(ideal_h.atoms().extract_xyz())
+    # edited_h.select(all_bsel).atoms().set_xyz(ideal_h.atoms().extract_xyz())
+    set_xyz_carefully(dest_h=edited_h.select(all_bsel), source_h=ideal_h)
   for sh in ann.sheets:
     for st in sh.strands:
       selstring = st.as_atom_selections()
@@ -391,7 +401,8 @@ def substitute_ss(real_h,
           pdb_hierarchy_template=sel_h,
           rotamer_manager=rotamer_manager,
           )
-      edited_h.select(all_bsel).atoms().set_xyz(ideal_h.atoms().extract_xyz())
+      set_xyz_carefully(edited_h.select(all_bsel), ideal_h)
+      # edited_h.select(all_bsel).atoms().set_xyz(ideal_h.atoms().extract_xyz())
 
   pre_result_h = edited_h
   pre_result_h.reset_i_seq_if_necessary()
@@ -461,12 +472,16 @@ def substitute_ss(real_h,
           crystal_symmetry= xray_structure.crystal_symmetry(),
           pdb_interpretation_params = custom_pars.pdb_interpretation,
           log=null_out())
+  if verbose:
+    print >> log, "Processing file..."
   processed_pdb_file, junk = processed_pdb_files_srv.\
       process_pdb_files(raw_records=flex.split_lines(real_h.as_pdb_string()))
   has_hd = None
   if(xray_structure is not None):
     sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()
     has_hd = "H" in sctr_keys or "D" in sctr_keys
+  if verbose:
+    print >> log, "Getting geometry_restraints_manager..."
   geometry = processed_pdb_file.geometry_restraints_manager(
     show_energies                = False,
     params_edits                 = custom_pars.geometry_restraints.edits,
@@ -480,6 +495,8 @@ def substitute_ss(real_h,
   grm = restraints_manager
 
   real_h.reset_i_seq_if_necessary()
+  if verbose:
+    print >> log, "Adding reference coordinate restraints..."
   from mmtbx.geometry_restraints import reference
   grm.geometry.append_reference_coordinate_restraints_in_place(
       reference.add_coordinate_restraints(
@@ -496,6 +513,8 @@ def substitute_ss(real_h,
           sites_cart = real_h.atoms().extract_xyz().select(other_selection),
           selection  = other_selection,
           sigma      = processed_params.sigma_on_reference_non_ss))
+  if verbose:
+    print >> log, "Adding chi torsion restraints..."
   grm.geometry.add_chi_torsion_restraints_in_place(
           pdb_hierarchy   = pre_result_h,
           sites_cart      = pre_result_h.atoms().extract_xyz().\
@@ -512,12 +531,18 @@ def substitute_ss(real_h,
           sigma           = processed_params.sigma_on_torsion_nonss)
 
   real_h.atoms().set_xyz(pre_result_h.atoms().extract_xyz())
-  if fname_before_regularization is not None:
-    real_h.write_pdb_file(file_name=fname_before_regularization)
+  if processed_params.file_name_before_regularization is not None:
+    real_h.write_pdb_file(
+        file_name=processed_params.file_name_before_regularization)
 
   #testing number of restraints
   assert grm.geometry.get_n_den_proxies() == 0
   assert grm.geometry.get_n_reference_coordinate_proxies() == n_main_chain_atoms
+  # f = open("before.geo", "w")
+  # grm.geometry.show_sorted(
+  #     site_labels=[atom.id_str() for atom in real_h.atoms()],
+  #     f=f)
+  # f.close()
   refinement_log = null_out()
   log.write(
       "Refining geometry of substituted secondary structure elements...")
