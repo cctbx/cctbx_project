@@ -1398,17 +1398,13 @@ class torsion_ncs(object):
     return math.sqrt(delta_sq_sum / len(deltas))
 
   def proxy_select (self, nseq, iselection) :
+    import copy
     assert (self.ncs_dihedral_proxies is not None)
-    return torsion_ncs(
-             fmodel=self.fmodel,
-             params=self.params,
-             selection=None, #not sure here
-             ncs_groups=self.ncs_groups,
-             ncs_obj=self.ncs_obj,
-             alignments=self.alignments,
-             ncs_dihedral_proxies= \
-               self.ncs_dihedral_proxies.proxy_select(nseq, iselection),
-             log=self.log)
+    new_ncs_dihedral_proxies = \
+        self.ncs_dihedral_proxies.proxy_select(nseq, iselection)
+    new_manager = copy.copy(self)
+    new_manager.ncs_dihedral_proxies = new_ncs_dihedral_proxies
+    return new_manager
 
   def remove_reference_dihedrals_in_place(self):
     self.ncs_dihedral_proxies = None
