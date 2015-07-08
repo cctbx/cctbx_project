@@ -69,50 +69,6 @@ def exercise_protein () :
           annotation=None, log=log)
       assert proxies.size() == 90
 
-def exercise_nucleic_acids () :
-  pdb_file_rna = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/pdb/1u8d.pdb",
-    test=os.path.isfile)
-  pdb_file_dna = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/pdb/dnatest.pdb",
-    test=os.path.isfile)
-  if (pdb_file_rna is None) :
-    print "Skipping exercise_nucleic_acids(): input file not available."
-    return False
-  # Nucleic acids (requires REDUCE and PROBE)
-  if (libtbx.env.has_module(name="reduce") and
-      libtbx.env.has_module(name="probe")):
-    pdb_in = file_reader.any_file(pdb_file_rna, force_type="pdb").file_object
-    pdb_hierarchy = pdb_in.hierarchy
-    sec_str_from_pdb_file = pdb_in.input.extract_secondary_structure()
-    m = manager(pdb_hierarchy=pdb_hierarchy,
-      sec_str_from_pdb_file=sec_str_from_pdb_file)
-    log = null_out()
-    build_proxies = m.create_hbond_proxies(log=log)
-    assert (build_proxies.proxies.size() == 70)
-    db = pair_database()
-    assert (db.get_atoms("A-U", "WWT", True) == [('H61', 'O4'), ('N1', 'H3')])
-    assert (db.get_atoms("DA-DT", "WWT", False) == [('N6', 'O4'), ('N1', 'N3')])
-    assert (db.get_atoms("DT-DA", "WWT", False) == [('O4', 'N6'), ('N3', 'N1')])
-    assert (db.get_atoms("G-C", "WWT", False) == [('O6', 'N4'), ('N1', 'N3'),
-      ('N2', 'O2')])
-    assert (db.get_atoms("C-G", "WWT", False) == [('N4', 'O6'), ('N3', 'N1'),
-      ('O2', 'N2')])
-    assert db.get_pair_type("A-U", [('H61', 'O4'), ('N1', 'H3')], True) == "XX"
-    assert db.get_pair_type("A-U", [('N1', 'H3'), ('H61', 'O4')], True) == "XX"
-    assert db.get_pair_type("C-G", [('N4', 'O6'), ('N3', 'N1'), ('O2', 'N2')], False) == "XIX"
-    # DNA
-    pdb_in = file_reader.any_file(pdb_file_dna, force_type="pdb").file_object
-    pdb_hierarchy = pdb_in.hierarchy
-    sec_str_from_pdb_file = pdb_in.input.extract_secondary_structure()
-    m = manager(pdb_hierarchy=pdb_hierarchy,
-      sec_str_from_pdb_file=sec_str_from_pdb_file)
-    log = null_out()
-    assert (len(m.params.nucleic_acids.base_pair) == 4)
-  else:
-    print "Skipping base-pairing tests: reduce or probe module not available."
-    pass
-
 def exercise_sheet_ends () :
   pdb_in = iotbx.pdb.hierarchy.input(pdb_string="""\
 ATOM      1  N   ALA A  37      27.738  -0.961  14.033  1.00 20.00           N
@@ -1189,7 +1145,6 @@ END
     log          = log)
   assert proxies_for_grm.size() == 4
 
-
 def exercise_phil_generation():
   log = null_out()
   defpars = sec_str_master_phil.fetch()
@@ -1198,7 +1153,6 @@ if __name__ == "__main__" :
   exercise_protein()
   exercise_sheet_ends()
 
-  # exercise_nucleic_acids() # obsoleted
   exercise_helix_bonding_pattern()
   exercise_sheets_bonding_pattern()
 
