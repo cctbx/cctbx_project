@@ -301,6 +301,8 @@ class InMemScript(DialsProcessScript):
           from dxtbx.format.FormatPYunspecifiedStill import FormatPYunspecifiedStillInMemory
           cspad_img = FormatPYunspecifiedStillInMemory(image_dict)
 
+        cspad_img.timestamp = s
+
         if self.params.dispatch.dump_all:
           self.save_image(cspad_img, self.params, os.path.join(self.params.output.output_dir, "shot-" + s))
 
@@ -405,7 +407,7 @@ class InMemScript(DialsProcessScript):
 
     try:
       if params.input.format == 'cbf':
-        cspad_img._cbf_handle.write_widefile(dest_path, pycbf.CBF,\
+        image._cbf_handle.write_widefile(dest_path, pycbf.CBF,\
           pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)
       else:
         from libtbx import easy_pickle
