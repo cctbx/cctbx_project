@@ -336,16 +336,20 @@ class integrate_one_frame(IntegrationMetaProcedure):
         x_vec = Amat_vec * self.hkllist.as_vec3_double()
 
         s0hat_vec = s0vec.each_normalize()
-        q0hat_vec = x_vec.each_normalize()     # AD14, equation (5)
-        e1hat_vec = q0hat_vec.cross(s0hat_vec) # AD14, equation (6)
-        c0hat_vec = s0hat_vec.cross(e1hat_vec) # AD14, equation (7)
+        q0hat_vec = x_vec.each_normalize()                      # AD14, equation (5)
+        e1hat_vec = q0hat_vec.cross(s0hat_vec).each_normalize() # AD14, equation (6)
+        c0hat_vec = s0hat_vec.cross(e1hat_vec).each_normalize() # AD14, equation (7)
         q_sq = x_vec.dot(x_vec)
         a_vec = q_sq*(wavelength/2.)
         b_vec = flex.sqrt(q_sq - a_vec*a_vec)
         r_vec = -a_vec * s0hat_vec + b_vec * c0hat_vec # AD14, equation (8)
 
-        s1vec = s0vec + x_vec  ### Why is this x_vec and not r_vec (r_vec gives poor results)
-                               ### this may expose a deeper problem in DIALS stills refinement XXX Fixme
+        if False: # using r_vec matches AD14 but gives slightly worse RMSDs and merging statistics.
+                  # Therefore use x_vec for now
+          s1vec = s0vec + r_vec
+        else:
+          s1vec = s0vec + x_vec
+
         for idx, s1 in enumerate(s1vec):
           position = detector[0].get_ray_intersection(s1)
           Rcalc['xyzobs.mm.value'][idx] = (position[0], position[1], 0)
@@ -357,6 +361,16 @@ class integrate_one_frame(IntegrationMetaProcedure):
         self.dials_spot_prediction = Rcalc
 
         self.predicted = Rcalc['xyzobs.mm.value']
+
+        if False:
+          # If using r_vec to compuse s1vec, the results should match the dials version
+          from dials.algorithms.spot_prediction import StillsReflectionPredictor
+          from libtbx.test_utils import approx_equal
+          pred = StillsReflectionPredictor(experiments[0])
+          test = flex.reflection_table.empty_standard(len(self.hkllist))
+          test['miller_index'] = self.hkllist
+          pred.for_reflection_table(test, crystal.get_A())
+          assert [approx_equal(self.predicted[i], test['xyzcal.mm'][i]) for i in xrange(len(self.predicted))].count(True) == len(self.predicted)
 
       elif self.horizons_phil.integration.spot_prediction == "ucbp3":
         self.predicted = BPpredicted
