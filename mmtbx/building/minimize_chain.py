@@ -208,7 +208,7 @@ def run_one_cycle(
     number_of_trials        = params.minimization.number_of_trials,
     number_of_sa_models     = params.minimization.number_of_sa_models,
     states                  = states)
-  return ear.pdb_hierarchy, ear.xray_structure, ear.ear_states, ear.score
+  return ear.pdb_hierarchy, ear.ear_states.root, ear.score
 
 def run(args,
     map_data=None,
@@ -263,7 +263,7 @@ def run(args,
       pdb_string=f.getvalue()
       pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
 
-  pdb_hierarchy,xray_structure,states,score=run_one_cycle(
+  pdb_hierarchy,multiple_models_hierarchy,score=run_one_cycle(
     params=params,
     map_data=map_data,
     pdb_inp=pdb_inp,
@@ -275,13 +275,12 @@ def run(args,
   if params.minimization.merge_models:
     print >>out,"\nMerging models now\n"
     from mmtbx.building.merge_models import run as merge_models
-    args=['pdb_out=None',
-          'verbose=%s' %(params.control.verbose)]
-    pdb_hierarchy,xray_structure=merge_models(
-      args=args,
+    pdb_hierarchy=merge_models(
       map_data=map_data,
-      states=states,
-      crystal_symmetry=crystal_symmetry,
+      pdb_inp=multiple_models_hierarchy.as_pdb_input(
+        crystal_symmetry=crystal_symmetry),
+      pdb_out=None,
+      verbose=params.control.verbose
       )
     print >>out,"\nDone with merging models"
 
@@ -292,7 +291,7 @@ def run(args,
     print >>out,"\nWrote output model to %s" %(params.output_files.pdb_out)
     f.close()
   # all done
-  return pdb_hierarchy,xray_structure,states,score
+  return pdb_hierarchy,multiple_models_hierarchy,score
 
 if   (__name__ == "__main__"):
   args=sys.argv[1:]
