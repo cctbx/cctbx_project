@@ -1,5 +1,5 @@
 from __future__ import division
-import sys
+import sys,os
 import iotbx.pdb
 from libtbx.utils import Sorry
 import iotbx.phil
@@ -7,6 +7,7 @@ import mmtbx.maps.correlation
 from scitbx.array_family import flex
 from scitbx.matrix import col
 from copy import deepcopy
+from libtbx import adopt_init_args
 
 # merge_models.py
 # crossover models and pick best parts of each
@@ -36,7 +37,7 @@ master_phil = iotbx.phil.parse("""
       .help = File with CCP4-style map
       .short_caption = Map file
 
-    pdb_in = None
+    pdb_in_file = None
       .type = path
       .help = Input PDB file to minimize
       .short_caption = Input PDB file
@@ -142,7 +143,7 @@ def get_params(args,out=sys.stdout):
   command_line = iotbx.phil.process_command_line_with_files(
     reflection_file_def="input_files.map_coeffs_file",
     map_file_def="input_files.map_file",
-    pdb_file_def="input_files.pdb_in",
+    pdb_file_def="input_files.pdb_in_file",
     args=args,
     master_phil=master_phil)
   params = command_line.work.extract()
@@ -151,30 +152,25 @@ def get_params(args,out=sys.stdout):
   return params
 
 class model_object:
-  def __init__(self,source_id=None,source_list=None,
+  def __init__(self,
+      source_id=None,
+      source_list=None,
       cc_dict=None,
       smoothed_cc_dict=None,
       crossover_dict=None,
-      minimum_length=1,
+      minimum_length=0,
       minimum_improvement=0.01,
       max_regions_to_test=15,
       max_ends_per_region=5,
       maximum_fraction=0.5):
-    if source_id is not None:
-       self.source_list=cc_dict[source_id].size()*[source_id]
-    else:
-      self.source_list=source_list # list of models as source for each residue
+
+    adopt_init_args(self, locals())
+
+    if self.source_id is not None: # list of models as source for each residue
+       self.source_list=cc_dict[self.source_id].size()*[self.source_id]
     assert self.source_list is not None
 
     self.size=len(self.source_list)
-    self.cc_dict=cc_dict
-    self.smoothed_cc_dict=smoothed_cc_dict
-    self.max_regions_to_test=max_regions_to_test
-    self.max_ends_per_region=max_ends_per_region
-    self.minimum_length=minimum_length
-    self.minimum_improvement=minimum_improvement
-    self.maximum_fraction=maximum_fraction
-    self.crossover_dict=crossover_dict
     self.reset_score()
 
   def show_summary(self,out=sys.stdout):
@@ -279,6 +275,8 @@ class model_object:
           best_i_score=test_model.get_score()
           best_i=i1
       i1=best_i
+      if i1 is None: 
+        continue
 
       # Now find best end (right side ;i2)
       best_i=None
@@ -473,10 +471,7 @@ def get_cc_dict(hierarchy=None,crystal_symmetry=None,
     asc=hierarchy.atom_selection_cache()
     sel=asc.selection(string = atom_selection)
     sel_hierarchy=hierarchy.select(sel)
-    print >>f,cryst1_line
-    print >>f,sel_hierarchy.as_pdb_string()
-    pdb_string=f.getvalue()
-    pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
+    pdb_inp=sel_hierarchy.as_pdb_input(crystal_symmetry=crystal_symmetry)
     ph=pdb_inp.construct_hierarchy()
 
     xrs = pdb_inp.xray_structure_simple(crystal_symmetry=crystal_symmetry)
@@ -538,66 +533,87 @@ def remove_ter(text): # remove blank lines and TER records
     new_lines.append(line)
   return "\n".join(new_lines)
 
-def run(args,
-    map_data=None,
-    map_coeffs=None,
+
+# NOTE: Match defaults here and in params at top of file
+#     : copy from defaults if params is not None below
+#     : See explanations of parameters in params at top of file
+def run(
+    params=None, # params for running from command line
+    map_data=None,  # map_data, as_double()
     pdb_inp=None,
-    states=None,
-    pdb_string=None,
     crystal_symmetry=None,
+    resolution=None,
+    scattering_table='n_gaussian',
+    smoothing_window=5,
+    crossover_atom='CA',
+    minimum_matching_atoms=3,
+    minimum_length=2,
+    dist_max=1.0,
+    minimum_improvement=0.01,
+    max_regions_to_test=10,
+    max_ends_per_region=5,
+    maximum_fraction=0.5,
+    max_keep=10,
+    map_coeffs_file=None,map_coeffs_labels=None, 
+    pdb_in_file=None,
+    pdb_out=None,
+    verbose=None,
     out=sys.stdout):
 
-  # Get the parameters
-  params=get_params(args=args,out=out)
+
+  # get info from params if present
+  if params:
+     verbose=params.control.verbose
+     map_coeffs_file=params.input_files.map_coeffs_file
+     map_coeffs_labels=params.input_files.map_coeffs_labels
+     pdb_in_file=params.input_files.pdb_in_file
+     resolution=params.crystal_info.resolution
+     scattering_table=params.crystal_info.scattering_table
+     smoothing_window=params.crossover.smoothing_window
+     crossover_atom=params.crossover.crossover_atom
+     minimum_matching_atoms=params.crossover.minimum_matching_atoms
+     minimum_length=params.crossover.minimum_length
+     dist_max=params.crossover.dist_max
+     minimum_improvement=params.crossover.minimum_improvement
+     max_regions_to_test=params.crossover.max_regions_to_test
+     max_ends_per_region=params.crossover.max_ends_per_region
+     maximum_fraction=params.crossover.maximum_fraction
+     max_keep=params.crossover.max_keep
+     pdb_out=params.output_files.pdb_out
 
   # Get map_data if not present
   if not map_data:
-    if not map_coeffs:
-      from mmtbx.building.minimize_chain import get_map_coeffs
-      map_coeffs=get_map_coeffs(
-        map_coeffs_file=params.input_files.map_coeffs_file,
-        map_coeffs_labels=params.input_files.map_coeffs_labels)
-    if not map_coeffs:
-      raise Sorry("Need map_coeffs_file")
+    if not map_coeffs_file or not os.path.isfile(map_coeffs_file):
+      raise Sorry("Cannot find the map_coeffs_file '%s'" %(
+        str(map_coeffs_file)))
+    from mmtbx.building.minimize_chain import get_map_coeffs
+    map_coeffs=get_map_coeffs(map_coeffs_file,
+        map_coeffs_labels=map_coeffs_labels)
 
     fft_map = map_coeffs.fft_map(resolution_factor = 0.25)
     fft_map.apply_sigma_scaling()
     map_data = fft_map.real_map_unpadded()
+    map_data=map_data.as_double()
+    if map_coeffs and not crystal_symmetry:
+      crystal_symmetry=map_coeffs.crystal_symmetry()
+    if map_coeffs and not resolution:
+      resolution=map_coeffs.d_min()
 
-  map_data=map_data.as_double()
-
-  if map_coeffs and not crystal_symmetry:
-    crystal_symmetry=map_coeffs.crystal_symmetry()
-
-  if map_coeffs and not params.crystal_info.resolution:
-    params.crystal_info.resolution=map_coeffs.d_min()
-
+  if not crystal_symmetry:
+    crystal_symmetry=pdb_inp.crystal_symmetry()
   assert crystal_symmetry is not None
 
   # Get the starting model
   if pdb_inp is None:
-    if not pdb_string:
-      if params.input_files.pdb_in:
-        print >>out,"Taking models from %s" %(params.input_files.pdb_in)
-        pdb_string=open(params.input_files.pdb_in).read()
-      elif states:
-        print >>out,"Taking models from input states"
-        pdb_string=states.root.as_pdb_string()
-      else:
-        raise Sorry("Need an input PDB file")
+    if not pdb_in_file or not os.path.isfile(pdb_in_file):
+      raise Sorry("Cannot read input PDB file '%s'" %(
+        str(pdb_in_file)))
+    else:
+      print >>out,"Taking models from %s" %(pdb_in_file)
+      pdb_string=open(pdb_in_file).read()
     pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
-    if not pdb_inp.crystal_symmetry(): # get it
-      cryst1_line=iotbx.pdb.format_cryst1_record(
-         crystal_symmetry=crystal_symmetry)
-      from cStringIO import StringIO
-      f=StringIO()
-      print >>f, cryst1_line
-      print >>f,pdb_string
-      pdb_string=f.getvalue()
-      pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
-
-  if not pdb_inp:
-    raise Sorry("Need a model or models")
+    if pdb_inp is None:
+      raise Sorry("Need a model or models")
 
   hierarchy = pdb_inp.construct_hierarchy()
   n_models=0
@@ -608,54 +624,55 @@ def run(args,
     return hierarchy
 
   xrs = pdb_inp.xray_structure_simple(crystal_symmetry=crystal_symmetry)
-  xrs.scattering_type_registry(table = params.crystal_info.scattering_table)
+  xrs.scattering_type_registry(table=scattering_table)
 
-  if not params.crystal_info.resolution:
+  if not resolution:
     from cctbx import maptbx
-    params.crystal_info.resolution=maptbx.resolution_from_map_and_model(
+    resolution=maptbx.resolution_from_map_and_model(
       map_data=map_data, xray_structure=xrs)
 
-  print >>out,"\nResolution limit: %7.2f" %(params.crystal_info.resolution)
+  print >>out,"\nResolution limit: %7.2f" %(resolution)
   print >>out,"\nSummary of input models"
   xrs.show_summary(f=out, prefix="  ")
 
   print >>out, "\nReady with %d models and map" %(n_models)
   # Get CC by residue for each model and map
 
-
-
-  # Run through chains separately
   chain_id_list=[]
   for model in hierarchy.models():
     for chain in model.chains():
       if not chain.id in chain_id_list: chain_id_list.append(chain.id)
 
+  # Run through chains separately
+  # NOTE: All models of each chain must match exactly
+
+  # Save composite model, chain by chain
+  from cStringIO import StringIO
+  composite_model_stream=StringIO()
+
   for chain_id in chain_id_list:
     # get CC values for all residues
     cc_dict=get_cc_dict(hierarchy=hierarchy,chain_id=chain_id,
-     map_data=map_data,d_min=params.crystal_info.resolution,
+     map_data=map_data,d_min=resolution,
      crystal_symmetry=crystal_symmetry,
-     table=params.crystal_info.scattering_table,out=out)
-
+     table=scattering_table,out=out)
 
     # smooth CC values with window of smoothing_window
     smoothed_cc_dict=smooth_cc_values(cc_dict=cc_dict,
-       smoothing_window=params.crossover.smoothing_window,
-       verbose=params.control.verbose,out=out)
+       smoothing_window=smoothing_window,
+       verbose=verbose,out=out)
 
     # figure out all the places where crossover can occur.
-    # this version: only crossover where corresponding residues are within
-    # dist_max of each other.
+
     n_residues=cc_dict[cc_dict.keys()[0]].size()
 
     crossover_dict=get_crossover_dict(
       n_residues=n_residues,
       hierarchy=hierarchy,chain_id=chain_id,
-      crossover_atom=params.crossover.crossover_atom,
-      dist_max=params.crossover.dist_max,
-      minimum_matching_atoms=params.crossover.minimum_matching_atoms,
-      verbose=params.control.verbose,out=out)
-
+      crossover_atom=crossover_atom,
+      dist_max=dist_max,
+      minimum_matching_atoms=minimum_matching_atoms,
+      verbose=verbose,out=out)
 
     # Now we are ready to identify the best composite model...
     # A composite has reside 0 from model x, residue 1 from model y etc.
@@ -671,19 +688,19 @@ def run(args,
          cc_dict=cc_dict,
          smoothed_cc_dict=smoothed_cc_dict,
          crossover_dict=crossover_dict,
-         minimum_length=params.crossover.minimum_length,
-         minimum_improvement=params.crossover.minimum_improvement,
-         max_regions_to_test=params.crossover.max_regions_to_test,
-         max_ends_per_region=params.crossover.max_ends_per_region,
-         maximum_fraction=params.crossover.maximum_fraction)
-      if params.control.verbose:
+         minimum_length=minimum_length,
+         minimum_improvement=minimum_improvement,
+         max_regions_to_test=max_regions_to_test,
+         max_ends_per_region=max_ends_per_region,
+         maximum_fraction=maximum_fraction)
+      if verbose:
         working_model.show_summary(out=out)
       sorted_working_model_list.append(
         [working_model.get_score(),working_model])
     sorted_working_model_list.sort()
     sorted_working_model_list.reverse()
     sorted_working_model_list=\
-       sorted_working_model_list[:params.crossover.max_keep]
+       sorted_working_model_list[:max_keep]
     working_model_list=[]
     for s,m in sorted_working_model_list:
       working_model_list.append(m)
@@ -719,20 +736,24 @@ def run(args,
 
       sorted_working_model_list.sort()
       sorted_working_model_list.reverse()
-      sorted_working_model_list=sorted_working_model_list[:params.crossover.max_keep]
+      sorted_working_model_list=sorted_working_model_list[:max_keep]
 
       new_working_score,new_working_model=sorted_working_model_list[0]
       if new_working_score>best_model.get_score():
         best_model=new_working_model
         found=True
-        if params.control.verbose:
+        if verbose:
           print >>out,"NEW BEST SCORE: %7.2f" %(best_model.get_score())
           best_model.show_summary(out=out)
 
+    print >>out, "\nDONE... best is %7.3f\n" %(
+        best_model.get_score())
 
-    # Write out best_model
+    # Create composite of this chain
 
-    # note residue values
+    # Note residue values. We are going to pick each residue from one of
+    # the models
+
     for model in hierarchy.models():
       for chain in model.chains():
         if chain.id != chain_id: continue
@@ -742,28 +763,31 @@ def run(args,
     residue_list.sort()
     assert len(best_model.source_list)==len(residue_list)
 
-    from cStringIO import StringIO
-    f=StringIO()
-    for i in xrange(len(residue_list)): #
+    for i in xrange(len(residue_list)):
       atom_selection="model %s and resseq %s" %(best_model.source_list[i],
           residue_list[i])
+      if chain_id:
+         atom_selection+=" and chain %s " %(chain_id)
       asc=hierarchy.atom_selection_cache()
       sel=asc.selection(string = atom_selection)
       sel_hierarchy=hierarchy.select(sel)
-      print >>f,remove_ter(sel_hierarchy.as_pdb_string())
-    pdb_string=f.getvalue()
-    pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
-    xray_structure=pdb_inp.xray_structure_simple()
-    pdb_hierarchy=pdb_inp.construct_hierarchy()
+      print >>composite_model_stream,remove_ter(sel_hierarchy.as_pdb_string())
 
-    if params.output_files.pdb_out:
-      f=open(params.output_files.pdb_out,'w')
-      print >>f,pdb_string
-      print "Final model is in: %s\n" %(f.name)
-      f.close()
+  #  All done, make a new pdb_hierarchy
+  pdb_string=composite_model_stream.getvalue()
+  pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
+  pdb_hierarchy=pdb_inp.construct_hierarchy()
 
-    return pdb_hierarchy, xray_structure
+  if pdb_out:
+    f=open(pdb_out,'w')
+    print >>f,pdb_hierarchy.as_pdb_string(crystal_symmetry=crystal_symmetry)
+    print "Final model is in: %s\n" %(f.name)
+    f.close()
+
+  return pdb_hierarchy
 
 if   (__name__ == "__main__"):
   args=sys.argv[1:]
-  run(args=args)
+  # Get the parameters
+  params=get_params(args=args)
+  run(params=params)
