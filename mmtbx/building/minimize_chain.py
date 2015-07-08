@@ -272,18 +272,6 @@ def run(args,
     params_edits=params_edits,
     out=out)
 
-  if params.minimization.merge_models:
-    print >>out,"\nMerging models now\n"
-    from mmtbx.building.merge_models import run as merge_models
-    pdb_hierarchy=merge_models(
-      map_data=map_data,
-      pdb_inp=multiple_models_hierarchy.as_pdb_input(
-        crystal_symmetry=crystal_symmetry),
-      pdb_out=None,
-      verbose=params.control.verbose
-      )
-    print >>out,"\nDone with merging models"
-
   if params.output_files.pdb_out:
     f=open(params.output_files.pdb_out,'w')
     print >>f, cryst1_line
