@@ -242,11 +242,9 @@ def run(prefix="tst_00"):
   mtz_object.write(file_name = "map.mtz")
   # Build geometry restraints
   params = monomer_library.pdb_interpretation.master_params.extract()
-  params.nonbonded_weight=200
-  params.peptide_link.ramachandran_restraints=True
-  params.peptide_link.rama_potential="emsley"
-  #print dir(params)
-  #STOP()
+  #params.nonbonded_weight=200
+  #params.peptide_link.ramachandran_restraints=True
+  #params.peptide_link.rama_potential="emsley"
   processed_pdb_file = monomer_library.pdb_interpretation.process(
     mon_lib_srv              = monomer_library.server.server(),
     ener_lib                 = monomer_library.server.ener_lib(),
