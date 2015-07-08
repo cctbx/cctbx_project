@@ -2927,7 +2927,8 @@ class states(object):
     self.counter += 1
 
   def write(self, file_name):
-    self.root.write_pdb_file(file_name = file_name)
+    self.root.write_pdb_file(file_name = file_name, 
+      crystal_symmetry = self.xray_structure.crystal_symmetry())
 
 def structure_factors_from_map(map_data, unit_cell_lengths, n_real,
                                crystal_symmetry, resolution_factor=1/4.):
