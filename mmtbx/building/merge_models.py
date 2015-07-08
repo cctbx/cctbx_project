@@ -275,7 +275,7 @@ class model_object:
           best_i_score=test_model.get_score()
           best_i=i1
       i1=best_i
-      if i1 is None: 
+      if i1 is None:
         continue
 
       # Now find best end (right side ;i2)
@@ -554,7 +554,7 @@ def run(
     max_ends_per_region=5,
     maximum_fraction=0.5,
     max_keep=10,
-    map_coeffs_file=None,map_coeffs_labels=None, 
+    map_coeffs_file=None,map_coeffs_labels=None,
     pdb_in_file=None,
     pdb_out=None,
     verbose=None,

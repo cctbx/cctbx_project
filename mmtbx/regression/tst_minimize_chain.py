@@ -568,7 +568,7 @@ def tst_01():
   mtz_object.write(file_name = "%s_map.mtz"%prefix)
 
   from mmtbx.building.merge_models import run as merge_models
-  hierarchy=merge_models( 
+  hierarchy=merge_models(
       map_data=target_map_data,
       pdb_inp=pdb_inp,
       dist_max=100,
