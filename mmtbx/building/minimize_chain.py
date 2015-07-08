@@ -6,7 +6,7 @@ from mmtbx import monomer_library
 from scitbx.array_family import flex
 from libtbx.utils import Sorry
 import iotbx.phil
-import mmtbx.refinement.real_space.expload_and_refine
+import mmtbx.refinement.real_space.explode_and_refine
 
 master_phil = iotbx.phil.parse("""
 
@@ -197,7 +197,7 @@ def run_one_cycle(
     normalization = True)
   if params.control.verbose:
     geometry.write_geo_file()
-  ear = mmtbx.refinement.real_space.expload_and_refine.run(
+  ear = mmtbx.refinement.real_space.explode_and_refine.run(
     xray_structure          = xrs,
     pdb_hierarchy           = hierarchy,
     map_data                = map_data,
