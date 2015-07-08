@@ -13,7 +13,7 @@ from __future__ import division
 
 from dxtbx.format.FormatSMVADSCSN import FormatSMVADSCSN
 
-class FormatSMVADSCSN445(FormatSMVADSCSN):
+class FormatSMVADSCSN905(FormatSMVADSCSN):
   '''A class for reading SMV format ADSC images, and correctly constructing
   a model for the experiment from this, for instrument number 905.'''
 
@@ -60,6 +60,38 @@ class FormatSMVADSCSN445(FormatSMVADSCSN):
         'CCD', distance, (beam_y, beam_x), '+x', '-y',
         (pixel_size, pixel_size), image_size, (underload, overload), [])
 
+  def get_raw_data(self):
+    '''Get the pixel intensities (i.e. read the image and return as a
+    flex array of integers.)'''
+
+    from boost.python import streambuf
+    from dxtbx import read_uint16, read_uint16_bs, is_big_endian
+    from scitbx.array_family import flex
+    assert(len(self.get_detector()) == 1)
+    image_pedestal = 40
+    panel = self.get_detector()[0]
+    size = panel.get_image_size()
+    f = FormatSMVADSCSN.open_file(self._image_file, 'rb')
+    f.read(self._header_size)
+
+    if self._header_dictionary['BYTE_ORDER'] == 'big_endian':
+      big_endian = True
+    else:
+      big_endian = False
+
+    if big_endian == is_big_endian():
+      raw_data = read_uint16(streambuf(f), int(size[0] * size[1]))
+    else:
+      raw_data = read_uint16_bs(streambuf(f), int(size[0] * size[1]))
+
+    # apply image pedestal, will result in *negative pixel values*
+
+    raw_data -= image_pedestal
+
+    image_size = panel.get_image_size()
+    raw_data.reshape(flex.grid(image_size[1], image_size[0]))
+
+    return raw_data
 
 if __name__ == '__main__':
 
