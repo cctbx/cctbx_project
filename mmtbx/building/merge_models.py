@@ -541,6 +541,7 @@ def run(
     params=None, # params for running from command line
     map_data=None,  # map_data, as_double()
     pdb_inp=None,
+    pdb_hierarchy=None,
     crystal_symmetry=None,
     resolution=None,
     scattering_table='n_gaussian',
@@ -581,6 +582,13 @@ def run(
      max_keep=params.crossover.max_keep
      pdb_out=params.output_files.pdb_out
 
+  # Consistency checks
+  if(pdb_hierarchy is not None):
+    assert pdb_in_file is None
+    assert pdb_inp is None
+    assert crystal_symmetry is not None
+    # XXX more checks here!
+
   # Get map_data if not present
   if not map_data:
     if not map_coeffs_file or not os.path.isfile(map_coeffs_file):
@@ -599,23 +607,24 @@ def run(
     if map_coeffs and not resolution:
       resolution=map_coeffs.d_min()
 
-  if not crystal_symmetry:
-    crystal_symmetry=pdb_inp.crystal_symmetry()
-  assert crystal_symmetry is not None
-
   # Get the starting model
-  if pdb_inp is None:
-    if not pdb_in_file or not os.path.isfile(pdb_in_file):
-      raise Sorry("Cannot read input PDB file '%s'" %(
-        str(pdb_in_file)))
-    else:
-      print >>out,"Taking models from %s" %(pdb_in_file)
-      pdb_string=open(pdb_in_file).read()
-    pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
+  if(pdb_hierarchy is None):
     if pdb_inp is None:
-      raise Sorry("Need a model or models")
-
-  hierarchy = pdb_inp.construct_hierarchy()
+      if not pdb_in_file or not os.path.isfile(pdb_in_file):
+        raise Sorry("Cannot read input PDB file '%s'" %(
+          str(pdb_in_file)))
+      else:
+        print >>out,"Taking models from %s" %(pdb_in_file)
+        pdb_string=open(pdb_in_file).read()
+      pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
+      if pdb_inp is None:
+        raise Sorry("Need a model or models")
+    if not crystal_symmetry:
+      crystal_symmetry=pdb_inp.crystal_symmetry()
+    assert crystal_symmetry is not None
+    hierarchy = pdb_inp.construct_hierarchy()
+  else:
+    hierarchy = pdb_hierarchy # XXX FIXME
   n_models=0
   for model in hierarchy.models():
     n_models+=1
@@ -623,7 +632,8 @@ def run(
   if n_models==1:  # nothing to do
     return hierarchy
 
-  xrs = pdb_inp.xray_structure_simple(crystal_symmetry=crystal_symmetry)
+  #xrs = pdb_inp.xray_structure_simple(crystal_symmetry=crystal_symmetry)
+  xrs = hierarchy.extract_xray_structure(crystal_symmetry=crystal_symmetry)
   xrs.scattering_type_registry(table=scattering_table)
 
   if not resolution:
