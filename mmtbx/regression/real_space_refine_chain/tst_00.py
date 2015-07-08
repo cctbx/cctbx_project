@@ -6,7 +6,7 @@ from mmtbx import monomer_library
 from scitbx.array_family import flex
 from cctbx import maptbx
 from libtbx import adopt_init_args
-import mmtbx.refinement.real_space.expload_and_refine
+import mmtbx.refinement.real_space.explode_and_refine
 from mmtbx.geometry_restraints import reference
 
 pdb_str_answer = """\
@@ -277,7 +277,7 @@ def run(prefix="tst_00"):
 
   # Do real-space refinement
   t0=time.time()
-  ear = mmtbx.refinement.real_space.expload_and_refine.run(
+  ear = mmtbx.refinement.real_space.explode_and_refine.run(
     xray_structure          = xrs_poor,
     pdb_hierarchy           = ph_poor,
     map_data                = target_map_data,
