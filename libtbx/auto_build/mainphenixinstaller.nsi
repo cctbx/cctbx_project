@@ -127,7 +127,7 @@ var ICONS_GROUP
 ; MUI end ------
 
 
-Section "MainSection" SEC01
+Section "Basic components" SEC01
   SetOutPath "$INSTDIR"
   SetOverwrite off
   File /r /x *.cpp /x *.cc /x *.h /x *.hh /x *.hpp /x *.c /x *.f /x .svn ${COPYDIR}\*
@@ -139,7 +139,7 @@ Section "MainSection" SEC01
   !insertmacro MUI_STARTMENU_WRITE_END
 SectionEnd
 
-Section "Sources" SEC02
+Section "Source code" SEC02
   SetOutPath "$INSTDIR"
   SetOverwrite on
   File /nonfatal /r ${COPYDIR}\*.hh
@@ -157,8 +157,8 @@ SectionEnd
 
 ; Section descriptions
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
-  !insertmacro MUI_DESCRIPTION_TEXT ${SEC01} "Executables, scripts and tutorials"
-  !insertmacro MUI_DESCRIPTION_TEXT ${SEC02} "C/C++ source files for compilation by expert users"
+  !insertmacro MUI_DESCRIPTION_TEXT ${SEC01} "Required executables, scripts and tutorials"
+  !insertmacro MUI_DESCRIPTION_TEXT ${SEC02} "Optional C/C++ source code for developers or expert users"
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 
