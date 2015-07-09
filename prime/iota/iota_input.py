@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/26/2015
+Last Changed: 07/08/2015
 Description : IOTA I/O module. Reads PHIL input, creates output directories,
               creates input lists and organizes starting parameters, also
               creates reasonable IOTA and PHIL defaults if selected
@@ -27,7 +27,7 @@ description = Integration Optimization, Transfer and Analysis (IOTA)
   .optional = True
 input = None
   .type = path
-  .multiple = False
+  .multiple = True
   .help = Path to folder with raw data in pickle format, list of files or single file
   .help = Can be a tree with folders
   .optional = False
@@ -118,6 +118,12 @@ selection
     target_uc_tolerance = 0.05
       .type = float
       .help = Maximum allowed unit cell deviation from target
+    min_reflections = 0
+      .type = int
+      .help = Minimum integrated reflections per image
+    min_resolution = None
+      .type = float
+      .help = Minimum resolution for accepted images
   }
 }
 advanced
@@ -212,8 +218,10 @@ def make_input_list (gs_params):
       output: inp_list - list of input files
   """
 
-  input_list = []
 
+
+  # If grid search not selected, get list of images from file, which was
+  # generated during the grid search run
   if not gs_params.grid_search.flag_on:
     cmd.Command.start("Reading input list from file")
     with open('{}/input_images.lst'\
@@ -223,31 +231,36 @@ def make_input_list (gs_params):
     cmd.Command.end("Reading input list from file -- DONE")
     return inp_list
 
-  if os.path.isfile(gs_params.input):
-    if gs_params.input.endswith('.lst'):
-      cmd.Command.start("Reading input list from file")
-      with open(gs_params.input, 'r') as listfile:
-        listfile_contents = listfile.read()
-      input_list = listfile_contents.splitlines()
-      cmd.Command.end("Reading input list from file -- DONE")
-    else:
-      inp_list = [gs_params.input]
-      return inp_list
+  input_entries = [i for i in gs_params.input if i != None]
+  input_list = []
 
-  elif os.path.isdir(gs_params.input):
-    abs_inp_path = os.path.abspath(gs_params.input)
+  # run through the list of multiple input entries (or just the one) and
+  # concatenate the input list
+  for input_entry in input_entries:
+    if os.path.isfile(input_entry):
+      if input_entry.endswith('.lst'):          # read from file list
+        cmd.Command.start("Reading input list from file")
+        with open(gs_params.input, 'r') as listfile:
+          listfile_contents = listfile.read()
+        input_list.extend(listfile_contents.splitlines())
+        cmd.Command.end("Reading input list from file -- DONE")
+      elif input_entry.endswith(('pickle', 'mccd', 'cbf', 'img')):
+        input_list.extend(input_entry)             # read in image directly
 
-    cmd.Command.start("Generating input list")
-    for root, dirs, files in os.walk(abs_inp_path):
-      for filename in files:
-        found_file = os.path.join(root, filename)
-        if found_file.endswith(('pickle', 'mccd', 'cbf', 'img')):
-          input_list.append(found_file)
-    cmd.Command.end("Generating input list -- DONE")
+    elif os.path.isdir(input_entry):
+      abs_inp_path = os.path.abspath(input_entry)
 
-    if len(input_list) == 0:
-      print "\nERROR: No data found!"
-      sys.exit()
+      cmd.Command.start("Reading files from data folder")
+      for root, dirs, files in os.walk(abs_inp_path):
+        for filename in files:
+          found_file = os.path.join(root, filename)
+          if found_file.endswith(('pickle', 'mccd', 'cbf', 'img')):
+            input_list.append(found_file)
+      cmd.Command.end("Reading files from data folder -- DONE")
+
+  if len(input_list) == 0:
+    print "\nERROR: No data found!"
+    sys.exit()
 
   # Pick a randomized subset of images
   if gs_params.advanced.random_sample.flag_on and \
@@ -290,6 +303,7 @@ def make_raw_input(input_list, gs_params):
   converted_img_list = []
 
   conv_input_dir = os.path.abspath("{}/conv_pickles".format(os.curdir))
+  common_path = os.path.abspath(os.path.dirname(os.path.commonprefix(input_list)))
 
   if os.path.isdir(conv_input_dir):
     shutil.rmtree(conv_input_dir)
@@ -301,12 +315,11 @@ def make_raw_input(input_list, gs_params):
     filename_no_ext = img_filename.split('.')[0]
     conv_filename = filename_no_ext + "_prep.pickle"
 
-    if os.path.relpath(path, os.path.abspath(gs_params.input)) == '.':
+    if os.path.relpath(path, common_path) == '.':
       dest_folder = conv_input_dir
     else:
       dest_folder = '{0}/{1}'.format(conv_input_dir,
-                                     os.path.relpath(path,
-                                     os.path.abspath(gs_params.input)))
+                                     os.path.relpath(path, common_path))
     converted_img_list.append(os.path.join(dest_folder, conv_filename))
 
     if not os.path.isdir(dest_folder):
