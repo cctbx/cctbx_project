@@ -135,20 +135,23 @@ file_name = None
   elif work_params.format == "phenix_bonds" :
     raise Sorry("Not yet implemented.")
   elif work_params.format in ["pymol", "refmac", "kinemage"] :
-    m.show_summary(log=result_out)
+    m.show_summary(log=out)
     (hb_proxies, hb_angle_proxies, planarity_proxies,
         parallelity_proxies) = m.create_all_new_restraints(
         pdb_hierarchy=pdb_hierarchy,
         grm=geometry,
-        log=result_out)
+        log=out)
     if hb_proxies.size() > 0:
       if work_params.format == "pymol" :
-        out = hb_proxies.as_pymol_dashes(pdb_hierarchy=pdb_hierarchy)
+        bonds_in_format = hb_proxies.as_pymol_dashes(
+            pdb_hierarchy=pdb_hierarchy)
       elif work_params.format == "kinemage" :
-        out = hb_proxies.as_kinemage(pdb_hierarchy=pdb_hierarchy)
+        bonds_in_format = hb_proxies.as_kinemage(
+            pdb_hierarchy=pdb_hierarchy)
       else :
-        out = hb_proxies.as_refmac_restraints(pdb_hierarchy=pdb_hierarchy)
-      print >> result_out, out
+        bonds_in_format = hb_proxies.as_refmac_restraints(
+            pdb_hierarchy=pdb_hierarchy)
+      print >> result_out, bonds_in_format
   result = result_out.getvalue()
   outf = open("%s_ss.eff" %os.path.basename(work_params.file_name[0]), "w")
   outf.write(result)
