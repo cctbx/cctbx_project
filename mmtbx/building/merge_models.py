@@ -480,7 +480,7 @@ def get_cc_dict(hierarchy=None,crystal_symmetry=None,
     f=StringIO()
 
     atom_selection=get_atom_selection(chain_id=chain_id,model_id=model.id)
-      
+
     asc=hierarchy.atom_selection_cache()
     sel=asc.selection(string = atom_selection)
     sel_hierarchy=hierarchy.select(sel)
