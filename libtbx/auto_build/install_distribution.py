@@ -626,10 +626,11 @@ class installer(object):
     if sys.platform == "win32":
       f = open(os.path.join(self.dest_dir, '%s_env.bat'%self.dest_dir_prefix), 'w')
       f.write("@echo off\n")
-      # use the %~dp0 alias for specifying the full path to where this bat file will be located
+      # Use the %~dp0 alias for specifying the full path to where phenix_env.bat will be located.
+      # This presumes phenix_env.bat will always reside where it has originally been installed to.
       f.write("set %s=%%~dp0\n" %env_prefix)
       f.write("set %s_VERSION=%s\n" % (env_prefix, self.version))
-      f.write("call %%%s%%\\build\\setpaths.bat\n" % (env_prefix))
+      f.write("call \"%%%s%%\\build\\setpaths.bat\"\n" % (env_prefix))
       f.close()
       return
 
