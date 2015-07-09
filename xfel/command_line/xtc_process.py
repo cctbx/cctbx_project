@@ -7,7 +7,7 @@ from psana import *
 import numpy as np
 from xfel.cftbx.detector import cspad_cbf_tbx
 from xfel.cxi.cspad_ana import cspad_tbx
-import pycbf, os, sys, copy
+import pycbf, os, sys, copy, socket
 import libtbx.load_env
 from libtbx.utils import Sorry, Usage
 from dials.util.options import OptionParser
@@ -42,6 +42,14 @@ phil_scope = parse('''
       .help = All frames will be saved to cbf format if set to True
   }
  debug {
+    write_debug_files = False
+      .type = bool
+      .help = "If true, will write out a tiny diagnostic file for each event before"
+      .help = "and after the event is processed"
+    use_debug_files = False
+      .type = bool
+      .help = "If true, will look for debug diagnostic files in the output_dir and"
+      .help = "only process events that crashed previously"
     event_timestamp = None
       .type = str
       .multiple = True
@@ -171,17 +179,17 @@ class InMemScript(DialsProcessScript):
 
     # The convention is to put %s in the phil parameter to add a time stamp to
     # each output datafile. Save the initial templates here.
-    strong_filename_template              = params.output.strong_filename
-    indexed_filename_template             = params.output.indexed_filename
-    refined_experiments_filename_template = params.output.refined_experiments_filename
-    integrated_filename_template          = params.output.integrated_filename
+    self.strong_filename_template              = params.output.strong_filename
+    self.indexed_filename_template             = params.output.indexed_filename
+    self.refined_experiments_filename_template = params.output.refined_experiments_filename
+    self.integrated_filename_template          = params.output.integrated_filename
 
     # Don't allow the strong reflections to be written unless there are enough to
     # process
     params.output.strong_filename = None
 
     # Save the paramters
-    self.params = copy.deepcopy(params)
+    self.params_cache = copy.deepcopy(params)
     self.options = options
 
     if params.mp.method == "mpi":
@@ -210,8 +218,8 @@ class InMemScript(DialsProcessScript):
     #sys.stdout = open(log_path,'w')
 
     # set up psana
-    setConfigFile(self.params.input.cfg)
-    dataset_name = "exp=%s:run=%s:idx"%(self.params.input.experiment,self.params.input.run_num)
+    setConfigFile(params.input.cfg)
+    dataset_name = "exp=%s:run=%s:idx"%(params.input.experiment,params.input.run_num)
     if params.input.xtc_dir is not None:
       if params.input.use_ffb:
         raise Sorry("Cannot specify the xtc_dir and use SLAC's ffb system")
@@ -220,178 +228,240 @@ class InMemScript(DialsProcessScript):
       # as ffb is only at SLAC, ok to hardcode /reg/d here
       dataset_name += ":dir=/reg/d/ffb/%s/%s/xtc"%(params.input.experiment[0:3],params.input.experiment)
     ds = DataSource(dataset_name)
-    src = Source('DetInfo(%s)'%self.params.input.address)
+    self.src = Source('DetInfo(%s)'%params.input.address)
 
     env = ds.env()
     calib_dir = env.calibDir()
 
     # set this to sys.maxint to analyze all events
-    if self.params.dispatch.max_events is None:
+    if params.dispatch.max_events is None:
       max_events = sys.maxint
     else:
-      max_events = self.params.dispatch.max_events
+      max_events = params.dispatch.max_events
 
     for run in ds.runs():
-      if self.params.input.format == "cbf":
+      if params.input.format == "cbf":
         # load a header only cspad cbf from the slac metrology
-        base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run.env(), src)
-        if base_dxtbx is None:
+        self.base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run.env(), self.src)
+        if self.base_dxtbx is None:
           raise Sorry("Couldn't load calibration file for run %d"%run.run())
 
       # list of all events
       times = run.times()
       nevents = min(len(times),max_events)
-      # chop the list into pieces, depending on rank.  This assigns each process
-      # events such that the get every Nth event where N is the number of processes
-      mytimes = [times[i] for i in xrange(nevents) if (i+rank)%size == 0]
-
-      for i in xrange(len(mytimes)):
-        ts = cspad_tbx.evt_timestamp((mytimes[i].seconds(),mytimes[i].nanoseconds()/1e6))
-        if len(self.params.debug.event_timestamp) > 0 and ts not in self.params.debug.event_timestamp:
-          continue
-
-        self.params = copy.deepcopy(params)
-
-        evt = run.event(mytimes[i])
-        id = evt.get(EventId)
-        print "Event #",i," has id:",id
-        if evt.get("skip_event"):
-          print "Skipping event",id
-          continue
-
-        # the data needs to have already been processed and put into the event by psana
-        if self.params.input.format == 'cbf':
-          data = evt.get(ndarray_float64_3, src, 'image0')
-          if data is None:
-            print "No data"
-            continue
-          data = data.astype(np.int32)
-          #print "MEAN", np.mean(data)
-          #continue
+      if params.mp.method == "mpi" and size > 2:
+        # use a client/server approach to be sure every process is busy as much as possible
+        # only do this if there are more than 2 processes, as one process will be a server
+        if rank == 0:
+          # server process
+          for t in times[:nevents]:
+            # a client process will indicate it's ready by sending its rank
+            rankreq = comm.recv(source=MPI.ANY_SOURCE)
+            comm.send(t,dest=rankreq)
+          # send a stop command to each process
+          for rankreq in range(size-1):
+            rankreq = comm.recv(source=MPI.ANY_SOURCE)
+            comm.send('endrun',dest=rankreq)
         else:
-          image_dict = evt.get('cctbx.xfel.image_dict')
-          data = image_dict['DATA']
+          # client process
+          while True:
+            # inform the server this process is ready for an event
+            comm.send(rank,dest=0)
+            evttime = comm.recv(source=0)
+            if evttime == 'endrun': break
+            self.process_event_wrapper(run, evttime)
+      else:
+        # chop the list into pieces, depending on rank.  This assigns each process
+        # events such that the get every Nth event where N is the number of processes
+        mytimes = [times[i] for i in xrange(nevents) if (i+rank)%size == 0]
 
-        distance = cspad_tbx.env_distance(self.params.input.address, run.env(), self.params.input.detz_offset)
-        if distance is None:
-          print "No distance, skipping shot"
-          continue
+        for i in xrange(len(mytimes)):
+          self.process_event_wrapper(run, mytimes[i])
 
-        if self.params.input.override_energy is None:
-          wavelength = cspad_tbx.evt_wavelength(evt)
-          if wavelength is None:
-            print "No wavelength, skipping shot"
-            continue
+  def process_event_wrapper(self, run, timestamp):
+    """
+    Wrapper to check the event and handle debug file management
+    @param run psana run object
+    @param timestamp psana timestamp object
+    """
+    ts = cspad_tbx.evt_timestamp((timestamp.seconds(),timestamp.nanoseconds()/1e6))
+    if len(self.params_cache.debug.event_timestamp) > 0 and ts not in self.params_cache.debug.event_timestamp:
+      return
+
+    ts_path = os.path.join(self.params_cache.output.output_dir, "debug-" + ts + ".txt")
+
+    if self.params_cache.debug.use_debug_files:
+      if not os.path.exists(ts_path):
+        print "Skipping event %s: no debug file found"%ts
+        return
+
+      f = open(ts_path, "r")
+      if len(f.readlines()) > 1:
+        print "Skipping event %s: processed successfully previously"%ts
+        return
+      f.close()
+      print "Accepted", ts
+
+    if self.params_cache.debug.write_debug_files:
+      f = open(ts_path, "w")
+      f.write("%s about to process %s\n"%(socket.gethostname(), ts))
+      f.close()
+
+    self.process_event(run, timestamp)
+
+    if self.params_cache.debug.write_debug_files:
+      f = open(ts_path, "a")
+      f.write("done\n")
+      f.close()
+
+  def process_event(self, run, timestamp):
+    """
+    Process a single event from a run
+    @param run psana run object
+    @param timestamp psana timestamp object
+    """
+
+    self.params = copy.deepcopy(self.params_cache)
+
+    evt = run.event(timestamp)
+    id = evt.get(EventId)
+    if evt.get("skip_event"):
+      print "Skipping event",id
+      return
+
+    # the data needs to have already been processed and put into the event by psana
+    if self.params.input.format == 'cbf':
+      data = evt.get(ndarray_float64_3, self.src, 'image0')
+      if data is None:
+        print "No data"
+        return
+      data = data.astype(np.int32)
+      #print "MEAN", np.mean(data)
+      #return
+    else:
+      image_dict = evt.get('cctbx.xfel.image_dict')
+      data = image_dict['DATA']
+
+    distance = cspad_tbx.env_distance(self.params.input.address, run.env(), self.params.input.detz_offset)
+    if distance is None:
+      print "No distance, skipping shot"
+      return
+
+    if self.params.input.override_energy is None:
+      wavelength = cspad_tbx.evt_wavelength(evt)
+      if wavelength is None:
+        print "No wavelength, skipping shot"
+        return
+    else:
+      wavelength = 12398.4187/self.params.input.override_energy
+
+    timestamp = cspad_tbx.evt_timestamp(cspad_tbx.evt_time(evt)) # human readable format
+    if timestamp is None:
+      print "No timestamp, skipping shot"
+      return
+
+    t = timestamp
+    s = t[0:4] + t[5:7] + t[8:10] + t[11:13] + t[14:16] + t[17:19] + t[20:23]
+    print "Processing shot", s
+
+    if self.params.input.format == 'cbf':
+      # stitch together the header, data and metadata into the final dxtbx format object
+      cspad_img = cspad_cbf_tbx.format_object_from_data(self.base_dxtbx, data, distance, wavelength, timestamp, self.params.input.address)
+    else:
+      from dxtbx.format.FormatPYunspecifiedStill import FormatPYunspecifiedStillInMemory
+      cspad_img = FormatPYunspecifiedStillInMemory(image_dict)
+
+    cspad_img.timestamp = s
+
+    if self.params.dispatch.dump_all:
+      self.save_image(cspad_img, self.params, os.path.join(self.params.output.output_dir, "shot-" + s))
+
+    self.cache_ranges(cspad_img, self.params)
+
+    imgset = MemImageSet([cspad_img])
+    datablock = DataBlockFactory.from_imageset(imgset)[0]
+
+    # before calling DIALS for processing, set output paths according to the templates
+    if self.indexed_filename_template is not None and "%s" in self.indexed_filename_template:
+      self.params.output.indexed_filename = os.path.join(self.params.output.output_dir, self.indexed_filename_template%("idx-" + s))
+    if "%s" in self.refined_experiments_filename_template:
+      self.params.output.refined_experiments_filename = os.path.join(self.params.output.output_dir, self.refined_experiments_filename_template%("idx-" + s))
+    if "%s" in self.integrated_filename_template:
+      self.params.output.integrated_filename = os.path.join(self.params.output.output_dir, self.integrated_filename_template%("idx-" + s))
+
+    # if border is requested, generate a border only mask
+    if self.params.border_mask.border > 0:
+      from dials.command_line.generate_mask import MaskGenerator
+      generator = MaskGenerator(self.params.border_mask)
+      mask = generator.generate(imgset)
+
+      self.params.spotfinder.lookup.mask = mask
+
+    try:
+      observed = self.find_spots(datablock)
+    except Exception, e:
+      import traceback; traceback.print_exc()
+      print str(e)
+      return
+
+    print "Found %d bright spots"%len(observed)
+
+    if self.params.dispatch.hit_finder and len(observed) < self.params.refinement.reflections.minimum_number_of_reflections:
+      print "Not enough spots to index"
+      return
+
+    self.restore_ranges(cspad_img, self.params)
+
+    # save cbf file
+    if self.params.dispatch.dump_strong:
+      self.save_image(cspad_img, self.params, os.path.join(self.params.output.output_dir, "hit-" + s))
+
+      # save strong reflections.  self.find_spots() would have done this, but we only
+      # want to save data if it is enough to try and index it
+      if self.strong_filename_template:
+        if "%s" in self.strong_filename_template:
+          strong_filename = self.strong_filename_template%("hit-" + s)
         else:
-          wavelength = 12398.4187/self.params.input.override_energy
+          strong_filename = self.strong_filename_template
+        strong_filename = os.path.join(self.params.output.output_dir, strong_filename)
 
-        timestamp = cspad_tbx.evt_timestamp(cspad_tbx.evt_time(evt)) # human readable format
-        if timestamp is None:
-          print "No timestamp, skipping shot"
-          continue
+        from dials.util.command_line import Command
+        Command.start('Saving {0} reflections to {1}'.format(
+            len(observed), os.path.basename(strong_filename)))
+        observed.as_pickle(strong_filename)
+        Command.end('Saved {0} observed to {1}'.format(
+            len(observed), os.path.basename(strong_filename)))
 
-        t = timestamp
-        s = t[0:4] + t[5:7] + t[8:10] + t[11:13] + t[14:16] + t[17:19] + t[20:23]
-        print "Processing shot", s
+    if not self.params.dispatch.index:
+      return
 
-        if self.params.input.format == 'cbf':
-          # stitch together the header, data and metadata into the final dxtbx format object
-          cspad_img = cspad_cbf_tbx.format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, self.params.input.address)
-        else:
-          from dxtbx.format.FormatPYunspecifiedStill import FormatPYunspecifiedStillInMemory
-          cspad_img = FormatPYunspecifiedStillInMemory(image_dict)
+    # index and refine
+    try:
+      experiments, indexed = self.index(datablock, observed)
+    except Exception, e:
+      import traceback; traceback.print_exc()
+      print str(e), "event", timestamp
+      return
 
-        cspad_img.timestamp = s
+    if self.params.dispatch.dump_indexed:
+      self.save_image(cspad_img, self.params, os.path.join(self.params.output.output_dir, "idx-" + s))
 
-        if self.params.dispatch.dump_all:
-          self.save_image(cspad_img, self.params, os.path.join(self.params.output.output_dir, "shot-" + s))
+    try:
+      experiments = self.refine(experiments, indexed)
+    except Exception, e:
+      import traceback; traceback.print_exc()
+      print str(e)
+      return
 
-        self.cache_ranges(cspad_img, self.params)
+    if not self.params.dispatch.integrate:
+      return
 
-        imgset = MemImageSet([cspad_img])
-        datablock = DataBlockFactory.from_imageset(imgset)[0]
-
-        # before calling DIALS for processing, set output paths according to the templates
-        if indexed_filename_template is not None and "%s" in indexed_filename_template:
-          self.params.output.indexed_filename = os.path.join(self.params.output.output_dir, indexed_filename_template%("idx-" + s))
-        if "%s" in refined_experiments_filename_template:
-          self.params.output.refined_experiments_filename = os.path.join(self.params.output.output_dir, refined_experiments_filename_template%("idx-" + s))
-        if "%s" in integrated_filename_template:
-          self.params.output.integrated_filename = os.path.join(self.params.output.output_dir, integrated_filename_template%("idx-" + s))
-
-        # if border is requested, generate a border only mask
-        if self.params.border_mask.border > 0:
-          from dials.command_line.generate_mask import MaskGenerator
-          generator = MaskGenerator(self.params.border_mask)
-          mask = generator.generate(imgset)
-
-          self.params.spotfinder.lookup.mask = mask
-
-        try:
-          observed = self.find_spots(datablock)
-        except Exception, e:
-          import traceback; traceback.print_exc()
-          print str(e)
-          continue
-
-        print "Found %d bright spots"%len(observed)
-
-        if self.params.dispatch.hit_finder and len(observed) < self.params.refinement.reflections.minimum_number_of_reflections:
-          print "Not enough spots to index"
-          continue
-
-        self.restore_ranges(cspad_img, self.params)
-
-        # save cbf file
-        if self.params.dispatch.dump_strong:
-          self.save_image(cspad_img, self.params, os.path.join(self.params.output.output_dir, "hit-" + s))
-
-          # save strong reflections.  self.find_spots() would have done this, but we only
-          # want to save data if it is enough to try and index it
-          if strong_filename_template:
-            if "%s" in strong_filename_template:
-              strong_filename = strong_filename_template%("hit-" + s)
-            else:
-              strong_filename = strong_filename_template
-            strong_filename = os.path.join(self.params.output.output_dir, strong_filename)
-
-            from dials.util.command_line import Command
-            Command.start('Saving {0} reflections to {1}'.format(
-                len(observed), os.path.basename(strong_filename)))
-            observed.as_pickle(strong_filename)
-            Command.end('Saved {0} observed to {1}'.format(
-                len(observed), os.path.basename(strong_filename)))
-
-        if not self.params.dispatch.index:
-          continue
-
-        # index and refine
-        try:
-          experiments, indexed = self.index(datablock, observed)
-        except Exception, e:
-          import traceback; traceback.print_exc()
-          print str(e), "event", timestamp
-          continue
-
-        if self.params.dispatch.dump_indexed:
-          self.save_image(cspad_img, self.params, os.path.join(self.params.output.output_dir, "idx-" + s))
-
-        try:
-          experiments = self.refine(experiments, indexed)
-        except Exception, e:
-          import traceback; traceback.print_exc()
-          print str(e)
-          continue
-
-        if not self.params.dispatch.integrate:
-          continue
-
-        # integrate
-        try:
-          integrated = self.integrate(experiments, indexed)
-        except Exception, e:
-          import traceback; traceback.print_exc()
-          print str(e)
+    # integrate
+    try:
+      integrated = self.integrate(experiments, indexed)
+    except Exception, e:
+      import traceback; traceback.print_exc()
+      print str(e)
 
   def save_image(self, image, params, root_path):
     """ Save an image, in either cbf or pickle format.
