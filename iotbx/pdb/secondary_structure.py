@@ -54,7 +54,9 @@ import sys
 
 # This switch representation of seletions used for phil output from
 # "resid 55 through 66" to "resseq 55:66"
-use_resids = False # XXX: for debugging purposes only
+# The former syntax is the only correct one because it is aware of insertion
+# codes.  Therefore use_resids should be obsoleted.
+use_resids = True
 
 class structure_base (object) :
 
@@ -468,9 +470,9 @@ class pdb_strand(structure_base):
     adopt_init_args(self, locals())
     assert (sheet_id > 0) and (strand_id > 0)
     assert (sense in [-1, 0, 1]), "Bad sense."
-    if start_icode != end_icode:
-      raise Sorry("Different insertion codes for the beginning and the end of \
-beta strand are not supported.")
+#     if start_icode != end_icode:
+#       raise Sorry("Different insertion codes for the beginning and the end of \
+# beta strand are not supported.")
 
   @classmethod
   def from_pdb_record(cls, line):

@@ -1,7 +1,6 @@
 
 from __future__ import division
 from mmtbx.secondary_structure import sec_str_master_phil_str, manager
-# from mmtbx.secondary_structure.base_pairing import pair_database
 from cctbx import geometry_restraints
 from iotbx import file_reader
 import iotbx.pdb.hierarchy

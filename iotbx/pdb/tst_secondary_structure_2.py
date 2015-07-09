@@ -118,7 +118,7 @@ secondary_structure.protein.helix {
   result1 = """\
 protein.helix {
   helix_identifier = 0
-  selection = "chain 'A' and resseq 37:48"
+  selection = "chain 'A' and resid 37  through 48 "
   helix_type = alpha
   hbond {
     donor = "chain A and resid 37 and name O"
@@ -156,28 +156,28 @@ protein.helix {
   result1_1 = """\
 protein.helix {
   helix_identifier = 0
-  selection = "chain 'A' and resseq 37:48"
+  selection = "chain 'A' and resid 37  through 48 "
   helix_type = alpha
 }"""
   result2_9 = """\
 ==================================================
 protein.helix {
   helix_identifier = 0
-  selection = "chain 'A' and resseq 37:48"
+  selection = "chain 'A' and resid 37  through 48 "
   helix_type = pi
 }
 HELIX    0   0 ASP A   37  GLY A   48  3                                  12
 ==================================================
 protein.helix {
   helix_identifier = 0
-  selection = "chain 'A' and resseq 37:48"
+  selection = "chain 'A' and resid 37  through 48 "
   helix_type = 3_10
 }
 HELIX    0   0 ASP A   37  GLY A   48  5                                  12
 ==================================================
 protein.helix {
   helix_identifier = 0
-  selection = "chain 'A' and resseq 37:48"
+  selection = "chain 'A' and resid 37  through 48 "
   helix_type = unknown
 }
 HELIX    0   0 ASP A   37  GLY A   48  1                                  12
@@ -185,7 +185,7 @@ HELIX    0   0 ASP A   37  GLY A   48  1                                  12
 protein.helix {
   serial_number = 1
   helix_identifier = 1
-  selection = "chain 'A' and resseq 37:48"
+  selection = "chain 'A' and resid 37  through 48 "
   helix_type = alpha
 }
 HELIX    1   1 ASP A   37  GLY A   48  1                                  12
@@ -193,7 +193,7 @@ HELIX    1   1 ASP A   37  GLY A   48  1                                  12
 protein.helix {
   serial_number = 2
   helix_identifier = A
-  selection = "chain 'A' and resseq 37:48"
+  selection = "chain 'A' and resid 37  through 48 "
   helix_type = alpha
 }
 HELIX    2   A ASP A   37  GLY A   48  1                                  12
@@ -201,7 +201,7 @@ HELIX    2   A ASP A   37  GLY A   48  1                                  12
 protein.helix {
   serial_number = 3
   helix_identifier = BB
-  selection = "chain 'A' and resseq 37:48"
+  selection = "chain 'A' and resid 37  through 48 "
   helix_type = alpha
 }
 HELIX    3  BB ASP A   37  GLY A   48  1                                  12
@@ -209,7 +209,7 @@ HELIX    3  BB ASP A   37  GLY A   48  1                                  12
 protein.helix {
   serial_number = 1
   helix_identifier = C12
-  selection = "chain 'A' and resseq 37:48"
+  selection = "chain 'A' and resid 37  through 48 "
   helix_type = alpha
 }
 HELIX    1 C12 ASP A   37  GLY A   48  1                                  12
@@ -217,7 +217,7 @@ HELIX    1 C12 ASP A   37  GLY A   48  1                                  12
 protein.helix {
   serial_number = 1
   helix_identifier = D123
-  selection = "chain 'A' and resseq 37:48"
+  selection = "chain 'A' and resid 37  through 48 "
   helix_type = alpha
 }
 HELIX    1 D12 ASP A   37  GLY A   48  1                                  12
@@ -350,30 +350,30 @@ def tst_parsing_phil_single_sheet():
   result1 = """
 protein.sheet {
   sheet_id = "  A"
-  first_strand = "chain 'A' and resseq 13:14"
+  first_strand = "chain 'A' and resid 13  through 14 "
   strand {
-    selection = "chain 'A' and resseq 27:30"
+    selection = "chain 'A' and resid 27  through 30 "
     sense = antiparallel
-    bond_start_current = "chain 'A' and resseq 29 and name O"
-    bond_start_previous = "chain 'A' and resseq 13 and name N"
+    bond_start_current = "chain 'A' and resid 29  and name O"
+    bond_start_previous = "chain 'A' and resid 13  and name N"
   }
   strand {
-    selection = "chain 'A' and resseq 156:159"
+    selection = "chain 'A' and resid 156  through 159 "
     sense = parallel
-    bond_start_current = "chain 'A' and resseq 156 and name O"
-    bond_start_previous = "chain 'A' and resseq 28 and name N"
+    bond_start_current = "chain 'A' and resid 156  and name O"
+    bond_start_previous = "chain 'A' and resid 28  and name N"
   }
   strand {
-    selection = "chain 'A' and resseq 51:54"
+    selection = "chain 'A' and resid 51  through 54 "
     sense = parallel
-    bond_start_current = "chain 'A' and resseq 51 and name O"
-    bond_start_previous = "chain 'A' and resseq 157 and name N"
+    bond_start_current = "chain 'A' and resid 51  and name O"
+    bond_start_previous = "chain 'A' and resid 157  and name N"
   }
   strand {
-    selection = "chain 'A' and resseq 74:77"
+    selection = "chain 'A' and resid 74  through 77 "
     sense = parallel
-    bond_start_current = "chain 'A' and resseq 74 and name O"
-    bond_start_previous = "chain 'A' and resseq 52 and name N"
+    bond_start_current = "chain 'A' and resid 74  and name O"
+    bond_start_previous = "chain 'A' and resid 52  and name N"
   }
   hbond {
     donor = "chain A and resid 29 and name O"
@@ -411,30 +411,30 @@ protein.sheet {
   result1_1 = """
 protein.sheet {
   sheet_id = "  A"
-  first_strand = "chain 'A' and resseq 13:14"
+  first_strand = "chain 'A' and resid 13  through 14 "
   strand {
-    selection = "chain 'A' and resseq 27:30"
+    selection = "chain 'A' and resid 27  through 30 "
     sense = antiparallel
-    bond_start_current = "chain 'A' and resseq 29 and name O"
-    bond_start_previous = "chain 'A' and resseq 13 and name N"
+    bond_start_current = "chain 'A' and resid 29  and name O"
+    bond_start_previous = "chain 'A' and resid 13  and name N"
   }
   strand {
-    selection = "chain 'A' and resseq 156:159"
+    selection = "chain 'A' and resid 156  through 159 "
     sense = parallel
-    bond_start_current = "chain 'A' and resseq 156 and name O"
-    bond_start_previous = "chain 'A' and resseq 28 and name N"
+    bond_start_current = "chain 'A' and resid 156  and name O"
+    bond_start_previous = "chain 'A' and resid 28  and name N"
   }
   strand {
-    selection = "chain 'A' and resseq 51:54"
+    selection = "chain 'A' and resid 51  through 54 "
     sense = parallel
-    bond_start_current = "chain 'A' and resseq 51 and name O"
-    bond_start_previous = "chain 'A' and resseq 157 and name N"
+    bond_start_current = "chain 'A' and resid 51  and name O"
+    bond_start_previous = "chain 'A' and resid 157  and name N"
   }
   strand {
-    selection = "chain 'A' and resseq 74:77"
+    selection = "chain 'A' and resid 74  through 77 "
     sense = parallel
-    bond_start_current = "chain 'A' and resseq 74 and name O"
-    bond_start_previous = "chain 'A' and resseq 52 and name N"
+    bond_start_current = "chain 'A' and resid 74  and name O"
+    bond_start_previous = "chain 'A' and resid 52  and name N"
   }
 }"""
 
