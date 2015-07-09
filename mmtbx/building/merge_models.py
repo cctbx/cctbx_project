@@ -335,6 +335,30 @@ class model_object:
     self.score=score
     return score
 
+def get_atom_selection(chain_id=None,model_id=None,resseq_sel=None):
+
+  if chain_id and chain_id.replace(" ",""):
+    chain_sel=" chain %s " %(chain_id)
+  else:
+    chain_sel=""
+  if model_id and model_id.replace(" ",""):
+    model_sel="model %s " %(model_id)
+  else:
+    model_sel=""
+  if chain_sel and model_sel:
+    and_sel=" and "
+  else:
+    and_sel=""
+  atom_selection="%s %s %s" %(model_sel,and_sel,chain_sel)
+
+  if resseq_sel and resseq_sel.replace(" ",""):
+    if atom_selection.replace(" ",""):
+      atom_selection="%s and resseq %s" %(atom_selection,resseq_sel)
+    else:
+      atom_selection="resseq %s" %(resseq_sel)
+
+  return atom_selection
+
 def get_crossover_dict(
       n_residues=None,
       hierarchy=None,chain_id=None,
@@ -454,20 +478,9 @@ def get_cc_dict(hierarchy=None,crystal_symmetry=None,
 
     from cStringIO import StringIO
     f=StringIO()
-    if chain_id.replace(" ",""):
-      chain_sel=" chain %s " %(chain_id)
-    else:
-      chain_sel=""
-    if model.id.replace(" ",""):
-      model_sel="model %s " %(model.id)
-    else:
-      model_sel=""
-    if chain_sel and model_sel:
-      and_sel=" and "
-    else:
-      and_sel=""
-    atom_selection="%s %s %s" %(model_sel,and_sel,chain_sel)
 
+    atom_selection=get_atom_selection(chain_id=chain_id,model_id=model.id)
+      
     asc=hierarchy.atom_selection_cache()
     sel=asc.selection(string = atom_selection)
     sel_hierarchy=hierarchy.select(sel)
@@ -774,10 +787,8 @@ def run(
     assert len(best_model.source_list)==len(residue_list)
 
     for i in xrange(len(residue_list)):
-      atom_selection="model %s and resseq %s" %(best_model.source_list[i],
-          residue_list[i])
-      if chain_id:
-         atom_selection+=" and chain %s " %(chain_id)
+      atom_selection=get_atom_selection(model_id=best_model.source_list[i],
+        resseq_sel=residue_list[i],chain_id=chain_id)
       asc=hierarchy.atom_selection_cache()
       sel=asc.selection(string = atom_selection)
       sel_hierarchy=hierarchy.select(sel)

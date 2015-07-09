@@ -99,7 +99,7 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Number of SA models
        .help = Number of SA models
 
-     start_xyz_error = 5.0
+     start_xyz_error = 2.0
        .type = float
        .short_caption = Starting coordinate error
        .help = Starting coordinate error
@@ -130,7 +130,7 @@ def get_params(args,out=sys.stdout):
     args=args,
     master_phil=master_phil)
   params = command_line.work.extract()
-  print >>out,"\nMinimize_ca ... optimize a coarse-grain model in EM or low-resolution X-ray map"
+  print >>out,"\nMinimize_chain ... optimize a coarse-grain model in EM or low-resolution X-ray map"
   master_phil.format(python_object=params).show(out=out)
   return params
 
