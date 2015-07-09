@@ -18,7 +18,7 @@ show_all_params = False
   .type = bool
 filter_outliers = True
   .type = bool
-format = *phenix phenix_bonds pymol refmac kinemage
+format = *phenix phenix_refine phenix_bonds pymol refmac kinemage
   .type = choice
 quiet = False
   .type = bool
@@ -39,6 +39,8 @@ file_name = None
   from mmtbx.secondary_structure import sec_str_master_phil
   work_params = pcl.work.extract()
   work_params.secondary_structure.enabled=True
+  assert work_params.format in ["phenix", "phenix_refine", "phenix_bonds",
+      "pymol", "refmac", "kinemage"]
   if work_params.quiet :
     out = cStringIO.StringIO()
   pdb_files = work_params.file_name
@@ -51,7 +53,8 @@ file_name = None
     lines=flex.std_string(pdb_combined.raw_records))
   cs = pdb_structure.crystal_symmetry()
   if cs is None:
-    print >> out, "Symmetry information was not found, putting molecule in P1 box."
+    print >> out, "Symmetry information was not found, " +\
+        "putting molecule in P1 box."
     from cctbx import uctbx
     atoms = pdb_structure.atoms()
     box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
@@ -100,13 +103,36 @@ file_name = None
   result_out = cStringIO.StringIO()
   # prefix_scope="refinement.pdb_interpretation"
   # prefix_scope=""
-  prefix_scope="pdb_interpretation"
-  if (work_params.format != "phenix") :
-    prefix_scope = ""
+  prefix_scope=""
+  if work_params.format == "phenix_refine":
+    prefix_scope = "refinement.pdb_interpretation"
+  elif work_params.format == "phenix":
+    prefix_scope = "pdb_interpretation"
   ss_phil = None
   working_phil = m.as_phil_str(master_phil=sec_str_master_phil)
   phil_diff = sec_str_master_phil.fetch_diff(source=working_phil)
-  if work_params.format == "phenix_bonds" :
+
+  if work_params.format in ["phenix", "phenix_refine"]:
+    comment = "\n".join([
+      "# These parameters are suitable for use in e.g. phenix.real_space_refine",
+      "# or geometry_minimization. To use theim in phenix.refine add ",
+      "# 'refinement.' if front of pdb_interpretation."])
+    if work_params.format == "phenix_refine":
+      comment = "\n".join([
+      "# These parameters are suitable for use in phenix.refine only.",
+      "# To use theim in other Phenix tools remove ",
+      "# 'refinement.' if front of pdb_interpretation."])
+    print >> result_out, comment
+    if (prefix_scope != "") :
+      print >> result_out, "%s {" % prefix_scope
+    if work_params.show_all_params :
+      working_phil.show(prefix="  ", out=result_out)
+    else :
+      phil_diff.show(prefix="  ", out=result_out)
+    if (prefix_scope != "") :
+      print >> result_out, "}"
+
+  elif work_params.format == "phenix_bonds" :
     raise Sorry("Not yet implemented.")
   elif work_params.format in ["pymol", "refmac", "kinemage"] :
     m.show_summary(log=result_out)
@@ -123,20 +149,6 @@ file_name = None
       else :
         out = hb_proxies.as_refmac_restraints(pdb_hierarchy=pdb_hierarchy)
       print >> result_out, out
-  else :
-    comment = "\n".join([
-      "# These parameters are suitable for use in e.g. phenix.real_space_refine",
-      "# or geometry_minimization. To use theim in phenix.refine add ",
-      "# 'refinement.' if front of pdb_interpretation."])
-    print >> result_out, comment
-    if (prefix_scope != "") :
-      print >> result_out, "%s {" % prefix_scope
-    if work_params.show_all_params :
-      working_phil.show(prefix="  ", out=result_out)
-    else :
-      phil_diff.show(prefix="  ", out=result_out)
-    if (prefix_scope != "") :
-      print >> result_out, "}"
   result = result_out.getvalue()
   outf = open("%s_ss.eff" %os.path.basename(work_params.file_name[0]), "w")
   outf.write(result)
