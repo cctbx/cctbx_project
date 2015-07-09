@@ -1025,7 +1025,6 @@ class run_anything (object) :
     self.target_function=target_function
 
   def __call__ (self, i) :
-    from copy import deepcopy
     kw=self.kw_list[i]
     return self.target_function(**kw)
 
