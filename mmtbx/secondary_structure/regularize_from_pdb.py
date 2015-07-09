@@ -49,12 +49,8 @@ master_phil = iotbx.phil.parse("""
 
   }
   output_files {
-    pdb_out = build_model.pdb
-      .type = path
-      .help = Output PDB file
-      .short_caption = Output PDB file
 
-    placed_segments_file = placed.pdb
+    pdb_out = placed.pdb
       .type = path
       .help = Output PDB file with placed segments only
       .short_caption = Output PDB file with placed segments only
@@ -1554,8 +1550,10 @@ class replace_with_segments_from_pdb:
        models=all_replacement_models, resid_offset=None)
 
     # write out results
-    if params.output_files.placed_segments_file:
-      f=open(params.output_files.placed_segments_file,'w')
+    if params.output_files.pdb_out:
+      print >>out,"\nWriting output PDB file to %s" %(
+        params.output_files.pdb_out)
+      f=open(params.output_files.pdb_out,'w')
       print >>f, replacement_model.hierarchy.as_pdb_string()
       f.close()
     self.replacement_model=replacement_model
