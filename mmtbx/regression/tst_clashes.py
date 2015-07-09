@@ -1,3 +1,4 @@
+from __future__ import division
 import mmtbx.clashes
 
 pdb_good = """
