@@ -1672,6 +1672,7 @@ mmtbx/cablam/rebuild_cablam_cache.py -text
 mmtbx/chemical_components/__init__.py -text
 mmtbx/chemical_components/cif_parser.py -text
 mmtbx/chemical_components/tst.py -text
+mmtbx/clashes.py -text
 mmtbx/command_line/afitt.py -text
 mmtbx/command_line/afitt_fd.py -text
 mmtbx/command_line/altloc_remediate.py -text
@@ -2154,6 +2155,7 @@ mmtbx/regression/tst_build_alt_confs.py -text
 mmtbx/regression/tst_cablam.py -text
 mmtbx/regression/tst_cc_star.py -text
 mmtbx/regression/tst_cif_as_mtz_wavelengths.py svneol=native#text/x-python
+mmtbx/regression/tst_clashes.py -text
 mmtbx/regression/tst_command_line_input.py svneol=native#text/x-python
 mmtbx/regression/tst_compare_ligands.py -text
 mmtbx/regression/tst_dssp.py -text
