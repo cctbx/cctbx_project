@@ -38,6 +38,7 @@ class from_pdb(object):
       clash_threshold             = clash_threshold,
       xray_structure              = ppf.xray_structure(),
       geometry_restraints_manager = ppf.geometry_restraints_manager())
+    self._ppf=ppf  #so that parents are remembered
 
   def format_clash_string(self, pair):
     a1 = self.atoms[pair[0]]
