@@ -1008,3 +1008,140 @@ def replacement_parallel_map(
   holder.pool.join()
   return results
 
+
+
+#  -------  SIMPLE INTERFACE TO MULTIPROCESSING -------------
+
+#  run_parallel
+
+# Simple interface to run any target function in parallel, allowing
+# specification of keyword inputs that may be different for each run
+
+#  Class to just run a method. This is part of run_parallel below.
+
+class run_anything (object) :
+  def __init__ (self,kw_list=None,target_function=None):
+    self.kw_list=kw_list
+    self.target_function=target_function
+
+  def __call__ (self, i) :
+    from copy import deepcopy
+    kw=self.kw_list[i]
+    return self.target_function(**kw)
+
+def run_parallel(
+   method='multiprocessing',  # multiprocessing, only choice for now
+   qsub_command='qsub',       # queue command, not supported yet
+   nproc=1,                   # number of processors to use
+   target_function=None,      # the method to run
+   kw_list=None):             # list of kw dictionaries for target_function
+
+  n=len(kw_list)  # number of jobs to run, one per kw dict
+
+  if nproc==1: # just run it for each case in list, no multiprocessing
+    results=[]
+    ra=run_anything(kw_list=kw_list,target_function=target_function)
+    for i in xrange(n):
+      results.append(ra(i))
+  elif (method == "multiprocessing") and (sys.platform != "win32") :
+    from libtbx.easy_mp import  pool_map
+    results = pool_map(
+      func=run_anything(target_function=target_function,kw_list=kw_list),
+      iterable=xrange(n),
+      processes=nproc)
+  else :
+    from libtbx.easy_mp import parallel_map
+    results=parallel_map(
+      func=run_anything(target_function=target_function,kw_list=kw_list),
+      iterable=xrange(n),
+      method=method,
+      processes=nproc,
+      callback=None,
+      qsub_command=qsub_command,
+      use_manager=(sys.platform == "win32"))
+  return results
+
+#  -------  END OF SIMPLE INTERFACE TO MULTIPROCESSING -------------
+
+#  -------  START OF DEMO use of run_parallel method  --------------
+
+""" ----------------------------------------------------------------
+
+  Sample use of this interface:
+
+import sys
+
+def method_to_run(value_1=None,value_2=None,out=sys.stdout):
+  # This is the method we want to run and return something
+  # any keywords and any method below are allowed, except that
+  #  the values of all the keywords must be picklable
+
+  # It is best for the return object to be small (not a huge molecule) because
+  # the multiprocessing system can hang if the return objects are very large.
+
+  value=value_1*value_2
+  return value
+
+def run_group(nproc=1, out=sys.stdout):
+
+  # This is a method that runs method_to_run in parallel. You create
+  #  the two methods together. This method sets up what is to be run
+  #  and calls run_parallel to run method_to_run
+
+  # You pass individual keyworded inputs to method_to_run.
+
+  # You can specify the output stream, normally you will want to set it
+  #  to null_out() if nproc>1 and to out if nproc==1
+
+  if nproc==1:
+    out_use=out
+  else:
+    from libtbx.utils import null_out
+    out_use=null_out()
+
+  #  The kw_list is a list of keyword dicts, one for each call of method_to_run
+
+  # Put a loop here to create all the kw sets that you want run
+  # You are going to run method_to_run(**kw) with each kw set.
+
+  kw_list=[]
+  for value_1 in xrange(2): # this is any loop you want to set up
+    for value_2 in xrange(2):
+
+      # Here you add a dict to kw_list. The keys for the dict must match the
+      #   allowed keywords in your method_to_run. In this example they are
+      #   value_1, value_2 and out
+
+      kw_list.append(
+       {'value_1':value_1,
+        'value_2':value_2,
+        'out':out_use })
+
+  print >>out,"\nRunning %d jobs on %d processors\n" %(len(kw_list),nproc)
+
+  # Now run the jobs in parallel.  Note that if method_to_run returns a single
+  # item, then results will contain a list of those items.
+
+  from libtbx.easy_mp import run_parallel
+  results=run_parallel(
+     method='multiprocessing',
+     qsub_command=None,
+     nproc=nproc,
+     target_function=method_to_run,
+     kw_list=kw_list)
+
+  # Summarize what inputs and outputs were for each run
+  for r,kw in zip(results,kw_list):
+    print >>out,"\nValue 1: %d  Value 2: %d    Result: %d " %(
+      kw['value_1'],kw['value_2'],r)
+
+if __name__=="__main__":
+  import sys
+  if len(sys.argv)>1:
+    nproc=int(sys.argv[1])
+  else:
+    nproc=1
+  run_group(nproc=nproc)
+
+    #---------------------------------------------------------------
+""" # END OF DEMO use of run_parallel method
