@@ -156,6 +156,7 @@ tst_list = (
   "$D/regression/tst_cablam.py",
   "$D/regression/tst_anomalous_substructure.py",
   "$D/regression/tst_map_coeffs_simple.py",
+  "$D/regression/tst_clashes.py",
   #
   "$D/regression/tst_fmodel_no_cryst1.py",
   "$D/regression/tst_fmodel_misc.py",
