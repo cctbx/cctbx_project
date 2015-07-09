@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/26/2015
+Last Changed: 07/02/2015
 Description : IOTA pickle selection module. Selects the best integration results
               from grid search output.
 '''
@@ -25,48 +25,38 @@ def prefilter(gs_params, int_list):
       output: acceptable_results - list of acceptable integration results
   """
 
-  acceptable_results = []
   if gs_params.selection.prefilter.flag_on:
+    acceptable_results = []
     for i in int_list:
-      try:
-        tmp_pickle_name = os.path.basename(i['img'])
-        uc_tol = gs_params.target_uc_tolerance
+      uc_tol = gs_params.selection.prefilter.target_uc_tolerance
+      pg = gs_params.selection.prefilter.target_pointgroup
+      uc = gs_params.selection.prefilter.target_unit_cell
 
-        if gs_params.selection.prefilter.target_unit_cell != None:
-          user_uc = [prm for prm in gs_params.target_unit_cell.parameters()]
-        else:
-          user_uc = None
-        # read integration info and determine uc differences
-        p_pg = i['sg'].replace(" ","")
+      if uc != None:
+        user_uc = [prm for prm in uc.parameters()]
+        delta_a = abs(i['a'] - user_uc[0])
+        delta_b = abs(i['b'] - user_uc[1])
+        delta_c = abs(i['c'] - user_uc[2])
+        delta_alpha = abs(i['alpha'] - user_uc[3])
+        delta_beta = abs(i['beta'] - user_uc[4])
+        delta_gamma = abs(i['gamma'] - user_uc[5])
+        uc_check = (delta_a <= user_uc[0] * uc_tol and
+                    delta_b <= user_uc[1] * uc_tol and
+                    delta_c <= user_uc[2] * uc_tol and
+                    delta_alpha <= user_uc[3] * uc_tol and
+                    delta_beta <= user_uc[4] * uc_tol and
+                    delta_gamma <= user_uc[5] * uc_tol)
+      else:
+        uc_check = True
 
-        if user_uc != None:
-          delta_a = abs(i['a'] - user_uc[0])
-          delta_b = abs(i['b'] - user_uc[1])
-          delta_c = abs(i['c'] - user_uc[2])
-          delta_alpha = abs(i['alpha'] - user_uc[3])
-          delta_beta = abs(i['beta'] - user_uc[4])
-          delta_gamma = abs(i['gamma'] - user_uc[5])
+      i_fail = i['strong'] <= gs_params.selection.prefilter.min_reflections or\
+              (gs_params.selection.prefilter.min_resolution != None and\
+               i['res'] >= gs_params.selection.prefilter.min_resolution) or\
+              (pg != None and pg.replace(" ","") != i['sg'].replace(" ","")) or\
+               not uc_check
 
-          uc_check = (delta_a <= user_uc[0] * uc_tol and
-                      delta_b <= user_uc[1] * uc_tol and
-                      delta_c <= user_uc[2] * uc_tol and
-                      delta_alpha <= user_uc[3] * uc_tol and
-                      delta_beta <= user_uc[4] * uc_tol and
-                      delta_gamma <= user_uc[5] * uc_tol)
-
-        # Determine if pickle satisfies sg / uc parameters within given
-        # tolerance and low resolution cutoff
-        if gs_params.selection.prefilter.target_pointgroup != None and user_uc != None:
-          if p_pg == gs_params.selection.prefilter.target_pointgroup.replace(" ","") and uc_check:
-            acceptable_results.append(i)
-        elif gs_params.selection.prefilter.target_pointgroup != None and user_uc == None:
-          if p_pg == gs_params.selection.prefilter.target_pointgroup.replace(" ",""):
-            acceptable_results.append(i)
-        elif user_uc != None:
-          if uc_check:
-            acceptable_results.append(i)
-      except TypeError:
-        raise Exception("".join(traceback.format_exception(*sys.exc_info())))
+      if not i_fail:
+        acceptable_results.append(i)
   else:
     acceptable_results = int_list
 
@@ -78,7 +68,6 @@ def selection_grid_search(acceptable_results):
 
       input:  acceptable_results - a list of acceptable pickles
       output: best - selected entry
-              lowest_mos_std - standard deviation for lowest 25% of mosaicities
   """
   # Select the 25% with lowest mosaicities, then select for most spots
   sorted_entries = sorted(acceptable_results, key=lambda i: i['mos'])
@@ -147,7 +136,8 @@ def best_file_selection(sel_type, gs_params, output_entry, log_dir):
     if len(acceptable_results) == 0:
       ps_log_output.append('All {0} entries in {1} failed prefilter' \
                            '\n'.format(len(int_list), result_file))
-      with open('{}/prefilter_fail.lst'.format(os.path.abspath(gs_params.output)), 'a') as bad_int:
+      with open('{}/prefilter_fail.lst'\
+                ''.format(os.path.abspath(gs_params.output)), 'a') as bad_int:
         bad_int.write('{}\n'.format(input_file))
       int_summary ='{} --     failed prefilter'.format(input_file)
 
@@ -177,38 +167,6 @@ def best_file_selection(sel_type, gs_params, output_entry, log_dir):
                     ''.format(acc['sih'], acc['sph'], acc['spa'], acc['res'],
                               acc['sg'], cell, acc['strong'], acc['mos'])
         ps_log_output.append(info_line)
-
-      # Compute average values
-      avg_res = np.mean([item['res'] for item in acceptable_results])
-      avg_spots = np.mean([item['strong'] for item in acceptable_results])
-      avg_mos = np.mean([item['mos'] for item in acceptable_results])
-      avg_cell = '{:>8.2f}, {:>8.2f}, {:>8.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}'\
-              ''.format(np.mean([item['a'] for item in acceptable_results]),
-                        np.mean([item['b'] for item in acceptable_results]),
-                        np.mean([item['c'] for item in acceptable_results]),
-                        np.mean([item['alpha'] for item in acceptable_results]),
-                        np.mean([item['beta'] for item in acceptable_results]),
-                        np.mean([item['gamma'] for item in acceptable_results]))
-
-      info_line = '\nAVG:        {:^9.2f}{:^8}{:^55}{:^12.2f}{:^14.8f}'\
-                  ''.format(avg_res, '', avg_cell, avg_spots, avg_mos)
-      ps_log_output.append(info_line)
-
-      # Compute standard deviations
-      std_res = np.std([item['res'] for item in acceptable_results])
-      std_spots = np.std([item['strong'] for item in acceptable_results])
-      std_mos = np.std([item['mos'] for item in acceptable_results])
-      std_cell = '{:>8.2f}, {:>8.2f}, {:>8.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}'\
-              ''.format(np.std([item['a'] for item in acceptable_results]),
-                        np.std([item['b'] for item in acceptable_results]),
-                        np.std([item['c'] for item in acceptable_results]),
-                        np.std([item['alpha'] for item in acceptable_results]),
-                        np.std([item['beta'] for item in acceptable_results]),
-                        np.std([item['gamma'] for item in acceptable_results]))
-
-      info_line = 'STD:        {:^9.2f}{:^8}{:^55}{:^12.2f}{:^14.8f}'\
-                  ''.format(std_res, '', std_cell, std_spots, std_mos)
-      ps_log_output.append(info_line)
 
 
       # Selection by round
