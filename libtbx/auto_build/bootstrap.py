@@ -708,8 +708,7 @@ class Builder(object):
     ))
 
   def _add_remote_make_tar(self, module, tarurl, arxname, dirpath):
-    """Add packages not in source control."""
-    # tar up hot packages for quick file transfer to windows since there's no rsync and pscp is painfully slow
+    """Windows: tar up hot packages for quick file transfer since there's no rsync and pscp is painfully slow"""
     if dirpath[-1] == '/':
       dirpath = dirpath[:-1]
     basename = posixpath.basename(dirpath)
@@ -730,6 +729,7 @@ class Builder(object):
     ))
 
   def _add_remote_rm_tar(self, module, tarurl, arxname):
+    """Windows: Delete tar file on remote system, unpack tar file locally, then delete tar file locally"""
     self.add_step(self.shell( # delete the tarfile on remote system
       name='hot %s'%module,
       command=[
@@ -740,13 +740,18 @@ class Builder(object):
       ],
       workdir=['modules']
     ))
-    self.add_step(self.shell( # extract the tarfile on our system
+    self.add_step(self.shell( # extract the tarfile locally
       command=['tar', 'xzf', arxname, module],
+      workdir=['modules']
+    ))
+    self.add_step(self.shell( # delete the tarfile locally
+      # use 'cmd', '/c' as a substitute for shell=True in the subprocess.Popen call
+      command=['cmd', '/c', 'del', arxname],
       workdir=['modules']
     ))
 
   def _add_pscp(self, module, url):
-    """Add packages not in source control."""
+    """Windows: equivalent of scp"""
     url1 = url
     if url[-1] == '/':
       url1 = url[:-1]
@@ -777,14 +782,19 @@ class Builder(object):
     ))
 
   def _add_svn(self, module, url):
+    svnflags = []
+    if sys.platform == 'win32':
+      # avoid stalling bootstrap on Windows with the occasional prompt
+      # whenever server certificates have been forgotten
+      svnflags = ['--non-interactive', '--trust-server-cert']
     if os.path.exists(self.opjoin(*['modules', module, '.svn'])):
       # print "using update..."
       self.add_step(self.shell(
-          command=['svn', 'update', module],
+          command=['svn', 'update', module] + svnflags,
           workdir=['modules']
       ))
       self.add_step(self.shell(
-          command=['svn', 'status', module],
+          command=['svn', 'status', module] + svnflags,
           workdir=['modules'],
           quiet=True,
       ))
@@ -793,7 +803,7 @@ class Builder(object):
     else:
       # print "fresh checkout..."
       self.add_step(self.shell(
-          command=['svn', 'co', url, module],
+          command=['svn', 'co', url, module] + svnflags,
           workdir=['modules']
       ))
 
