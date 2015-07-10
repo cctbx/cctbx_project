@@ -140,8 +140,6 @@ restraints_library_str = """
   }
 """
 master_params_str = """\
-  rotamer_data_version = 500 *8000
-    .type = choice
   %(restraints_library_str)s
   correct_hydrogens = True
     .type = bool
@@ -4788,7 +4786,7 @@ class build_all_chain_proxies(linking_mixins):
         result,
         #current_geometry=model.xray_structure,
         rdl_proxies=rdl_proxies,
-        data_version=self.params.rotamer_data_version,
+        data_version="8000",
         log=log,
         verbose=True,
         )
