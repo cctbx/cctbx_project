@@ -31,7 +31,7 @@ def setup_restraints():
 
 def generate_rotamer_data(pdb_hierarchy,
                           exclude_outliers=True,
-                          data_version="500",
+                          data_version="8000",
                           ):
   r = rotalyze.rotalyze(pdb_hierarchy=pdb_hierarchy,
                         data_version=data_version)
@@ -55,7 +55,7 @@ def adjust_rotamer_restraints(pdb_hierarchy,
                               i_seqs_restraints=None,
                               log=None,
                               verbose=False,
-                              data_version="500",
+                              data_version="8000",
                               ):
   assert 0
   if log is None: log = sys.stdout
@@ -165,7 +165,7 @@ def update_restraints(hierarchy,
                       exclude_backbone=False,
                       log=None,
                       verbose=False,
-                      data_version="500",
+                      data_version="8000",
                       ):
   from mmtbx.rotamer.sidechain_angles import SidechainAngles
   from mmtbx.rotamer import rotamer_eval

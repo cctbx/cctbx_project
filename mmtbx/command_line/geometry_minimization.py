@@ -428,6 +428,7 @@ class run(object):
         raise Sorry("Need to supply topology file using amber.topology_file_name=<filename>")
       if not self.params.amber.coordinate_file_name:
         raise Sorry("Need to supply topology file using amber.coordinate_file_name=<filename>")
+      use_sander = self.params.amber.md_engine=="sander"
       run_minimization_amber(
         selection = self.selection,
         restraints_manager = self.grm,
@@ -436,7 +437,7 @@ class run(object):
         log = self.log,
         prmtop = self.params.amber.topology_file_name,
         ambcrd = self.params.amber.coordinate_file_name,
-        use_sander = self.params.amber.use_sander)
+        use_sander = use_sander)
     else:
       run_minimization(
         selection            = self.selection,
