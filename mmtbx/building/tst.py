@@ -35,6 +35,9 @@ def exercise_model_utils () :
   assert out.getvalue() == """  chain 'A': 1-2A,4-6,10B\n""", out.getvalue()
 
 def exercise_box_rebuild () :
+  #
+  # UNSTABLE!
+  #
   pdb_in = get_1yjp_pdb()
   xrs = pdb_in.input.xray_structure_simple()
   fc = xrs.structure_factors(d_min=1.5).f_calc()
@@ -57,7 +60,8 @@ def exercise_box_rebuild () :
   pdb_in.hierarchy.atoms().set_xyz(sites_new)
   rmsd_start = sites_orig.rms_difference(sites_shaken)
   assert (rmsd_start > 0.1)
-  assert (sites_orig.rms_difference(sites_new) < rmsd_start)
+  assert (sites_orig.rms_difference(sites_new) < rmsd_start), "%f < %f" % (
+      sites_orig.rms_difference(sites_new), rmsd_start)
   assert (sites_orig.select(sel).rms_difference(sites_new.select(sel)) > 0)
   assert (sites_new.select(sel).rms_difference(sites_shaken.select(sel)) > 0)
   assert (sites_orig.select(~sel).rms_difference(sites_new.select(~sel)) == 0)
