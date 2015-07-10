@@ -1,3 +1,4 @@
+from __future__ import division
 import os, sys
 import shutil
 
@@ -39,8 +40,7 @@ def run():
   cmd = "libtbx.scons -j 1"
   print "\n  ~> %s\n" % cmd
   easy_run.call(cmd)
-  
+
 
 if __name__=="__main__":
   run()#sys.argv[1])
-  
