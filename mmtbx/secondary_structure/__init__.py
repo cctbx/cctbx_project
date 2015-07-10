@@ -51,19 +51,9 @@ secondary_structure
     distance_cut_n_o = 3.5
       .type = float
       .short_caption = N-O distance cutoff
-    distance_ideal_h_o = 1.975
-      .type = float
-      .short_caption = Ideal H-O distance
-    distance_cut_h_o = 2.5
-      .type = float
-      .short_caption = H-O distance cutoff
     remove_outliers = True
       .type = bool
       .short_caption = Filter bond outliers
-      .style = tribool
-    substitute_n_for_h = None
-      .type = bool
-      .short_caption = Substitute N for H atoms
       .style = tribool
     %s
     %s
@@ -204,13 +194,6 @@ class manager (object) :
         # converted for operation with annotation object
         # phil_string = sec_str_master_phil.format(python_object=self.params)
         self.apply_phil_str(phil_string=None, phil_params=self.params, log=self.log)
-
-    # Strange undocumented option
-    # if (find_automatically and
-    #     self.params.secondary_structure.helices_from_phi_psi):
-    #   restraint_groups = self.find_approximate_helices(log=self.log)
-    #   if restraint_groups is not None:
-    #     self.params.helix = restraint_groups.helix
 
     t1 = time.time()
     # print >> log, "    Time for finding protein SS: %f" % (t1-t0)
@@ -360,28 +343,14 @@ class manager (object) :
     if annotation is None:
       annotation = self.actual_sec_str
     remove_outliers = self.params.secondary_structure.protein.remove_outliers
-    # choice of atoms to restraint is a three-way option: default is to guess
-    # based on whether hydrogens are present in the model, but this can be
-    # misleading in some cases.
-    if (self.params.secondary_structure.protein.substitute_n_for_h is None) :
-      use_hydrogens = (not self.assume_hydrogens_all_missing)
-    elif (self.params.secondary_structure.protein.substitute_n_for_h) :
-      use_hydrogens = False
-    else :
-      use_hydrogens = True
 
     from scitbx.array_family import flex
     atoms = self.pdb_hierarchy.atoms()
     hbond_counts = flex.int(atoms.size(), 0)
     selection_cache = self.pdb_hierarchy.atom_selection_cache()
 
-    # ??? Need to think about
-    if (use_hydrogens) :
-      distance_ideal = self.params.secondary_structure.protein.distance_ideal_h_o
-      distance_cut = self.params.secondary_structure.protein.distance_cut_h_o
-    else :
-      distance_ideal = self.params.secondary_structure.protein.distance_ideal_n_o
-      distance_cut = self.params.secondary_structure.protein.distance_cut_n_o
+    distance_ideal = self.params.secondary_structure.protein.distance_ideal_n_o
+    distance_cut = self.params.secondary_structure.protein.distance_cut_n_o
     if (distance_cut is None) :
       distance_cut = -1
     generated_proxies = geometry_restraints.shared_bond_simple_proxy()
@@ -398,7 +367,6 @@ class manager (object) :
               distance_ideal=distance_ideal,
               distance_cut=distance_cut,
               remove_outliers=remove_outliers,
-              use_hydrogens=use_hydrogens,
               log=log)
           if (proxies.size() == 0) :
             print >> log, "      No H-bonds generated for '%s'" % helix.selection
@@ -417,7 +385,6 @@ class manager (object) :
             distance_ideal=distance_ideal,
             distance_cut=distance_cut,
             remove_outliers=remove_outliers,
-            use_hydrogens=use_hydrogens,
             log=log)
           if (proxies.size() == 0) :
             print >> log, "  No H-bonds generated for sheet #%d" % k

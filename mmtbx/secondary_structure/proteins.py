@@ -110,7 +110,6 @@ def _create_hbond_proxy (
     distance_ideal,
     distance_cut,
     remove_outliers,
-    use_hydrogens,
     weight=1.0,
     sigma=None,
     slack=None,
@@ -182,7 +181,6 @@ def create_helix_hydrogen_bond_proxies (
     distance_ideal,
     distance_cut,
     remove_outliers,
-    use_hydrogens,
     log=sys.stdout) :
   assert (not None in [distance_ideal, distance_cut])
   generated_proxies = geometry_restraints.shared_bond_simple_proxy()
@@ -218,7 +216,6 @@ def create_helix_hydrogen_bond_proxies (
       distance_ideal=distance_ideal,
       distance_cut=distance_cut,
       remove_outliers=remove_outliers,
-      use_hydrogens=use_hydrogens,
       weight=weight,
       sigma=params.sigma,
       slack=params.slack,
@@ -237,7 +234,6 @@ def create_sheet_hydrogen_bond_proxies (
     distance_ideal,
     distance_cut,
     remove_outliers,
-    use_hydrogens,
     log=sys.stdout) :
   assert (not None in [distance_ideal, distance_cut])
   cache = pdb_hierarchy.atom_selection_cache()
@@ -316,7 +312,6 @@ the .pdb file was edited without updating SHEET records.""" \
                   distance_ideal=distance_ideal,
                   distance_cut=distance_cut,
                   remove_outliers=remove_outliers,
-                  use_hydrogens=use_hydrogens,
                   weight=weight,
                   sigma=sheet_params.sigma,
                   slack=sheet_params.slack,
@@ -335,7 +330,6 @@ the .pdb file was edited without updating SHEET records.""" \
                 distance_ideal=distance_ideal,
                 distance_cut=distance_cut,
                 remove_outliers=remove_outliers,
-                use_hydrogens=use_hydrogens,
                 weight=weight,
                 sigma=sheet_params.sigma,
                 slack=sheet_params.slack,
@@ -353,7 +347,6 @@ the .pdb file was edited without updating SHEET records.""" \
                 distance_ideal=distance_ideal,
                 distance_cut=distance_cut,
                 remove_outliers=remove_outliers,
-                use_hydrogens=use_hydrogens,
                 weight=weight,
                 sigma=sheet_params.sigma,
                 slack=sheet_params.slack,
