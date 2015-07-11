@@ -240,40 +240,7 @@ def run(prefix="tst_00"):
   mtz_dataset = fc.as_mtz_dataset(column_root_label="FC")
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name = "map.mtz")
-  # Build geometry restraints
-  params = monomer_library.pdb_interpretation.master_params.extract()
-  #params.nonbonded_weight=200
-  #params.peptide_link.ramachandran_restraints=True
-  #params.peptide_link.rama_potential="emsley"
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-    mon_lib_srv              = monomer_library.server.server(),
-    ener_lib                 = monomer_library.server.ener_lib(),
-    raw_records              = pdb_str_poor,
-    params                   = params,
-    strict_conflict_handling = True,
-    force_symmetry           = True,
-    log                      = None)
-
-  geometry = processed_pdb_file.geometry_restraints_manager(
-    show_energies                = False,
-    plain_pairs_radius           = 5,
-    assume_hydrogens_all_missing = True)
-  restraints_manager = mmtbx.restraints.manager(
-    geometry      = geometry,
-    normalization = True)
-
-  #for a in ph_answer.atoms():
-  #  print a.i_seq, a.name, a.xyz
-    #STOP()
-
-  #ref_xyz = flex.vec3_double([(14.323, 35.055, 14.635), (16.099, 12.317, 16.37)])
-  #selection = flex.size_t([1,76])
-  #
-  #restraints_manager.geometry.adopt_reference_coordinate_restraints_in_place(
-  #  reference.add_coordinate_restraints(
-  #    sites_cart = ref_xyz,
-  #    selection = selection,
-  #    sigma = 0.1))
+  raw_records=pdb_str_poor
 
   # Do real-space refinement
   t0=time.time()
@@ -281,8 +248,10 @@ def run(prefix="tst_00"):
     xray_structure          = xrs_poor,
     pdb_hierarchy           = ph_poor,
     map_data                = target_map_data,
-    restraints_manager      = restraints_manager,
-    states                  = states)
+    raw_records             = raw_records,
+    states                  = states,
+    random_seed             = 1,
+    nproc                   = 1)
   print "Time: %6.4f"%(time.time()-t0)
   ear.pdb_hierarchy.write_pdb_file(file_name="%s_refined.pdb"%prefix)
   states.write(file_name="%s_refined_all_states.pdb"%prefix)

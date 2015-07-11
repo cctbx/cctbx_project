@@ -135,7 +135,7 @@ def get_pdb_hierarchy(text=None):
      source_info=None,lines=flex.split_lines(text)).construct_hierarchy()
 
 def split_model(model=None,hierarchy=None,verbose=False,info=None,
-     out=sys.stdout):
+     only_first_model=None,out=sys.stdout):
 
   model_list=[]
   if hierarchy:
@@ -178,6 +178,9 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
       new_model_info=model_info(hierarchy=new_hierarchy,info=deepcopy(info))
       model_list.append(new_model_info)
       new_model_info.info['chain_number']=len(model_list)
+    if only_first_model:
+      break
+
   if verbose:
     print >>out,"Models after splitting:"
     for m in model_list:
