@@ -335,7 +335,8 @@ class model_object:
     self.score=score
     return score
 
-def get_atom_selection(chain_id=None,model_id=None,resseq_sel=None):
+def get_atom_selection(chain_id=None,model_id=None,resseq_sel=None,
+   start_resno=None,end_resno=None):
 
   if chain_id and chain_id.replace(" ",""):
     chain_sel=" chain %s " %(chain_id)
@@ -357,11 +358,17 @@ def get_atom_selection(chain_id=None,model_id=None,resseq_sel=None):
     else:
       atom_selection="resseq %s" %(resseq_sel)
 
+  elif start_resno is not None and end_resno is not None:
+    if atom_selection.replace(" ",""):
+      atom_selection="%s and resseq %d:%d" %(atom_selection,start_resno,end_resno)
+    else:
+      atom_selection="resseq %d:%d" %(start_resno,end_resno)
+
   return atom_selection
 
 def get_crossover_dict(
       n_residues=None,
-      hierarchy=None,chain_id=None,
+      hierarchy=None,
       crossover_atom=None,
       minimum_matching_atoms=None,
       dist_max=None,
@@ -371,7 +378,9 @@ def get_crossover_dict(
   print >>out, "\nMaking a table of allowed crossovers"
 
   # select out just the crossover atoms...
-  atom_selection="name %s" %(crossover_atom)
+
+  atom_selection="name %s " %(crossover_atom)
+
   asc=hierarchy.atom_selection_cache()
   sel=asc.selection(string = atom_selection)
   sel_hierarchy=hierarchy.select(sel)
@@ -381,13 +390,17 @@ def get_crossover_dict(
   for model1 in sel_hierarchy.models():
     used_model_ids.append(model1.id)
     for chain1 in model1.chains():
-      if chain1.id != chain_id: continue
       xyz1=chain1.atoms().extract_xyz()
       for model2 in sel_hierarchy.models():
         if model2.id in used_model_ids: continue # already did it
         for chain2 in model2.chains():
-          if chain2.id != chain_id: continue
           xyz2=chain2.atoms().extract_xyz()
+          if xyz1.size()!=xyz2.size():
+            print >>out,"\nSize of chain " +\
+            "'%s' model '%s' (%d) is different than chain '%s' model '%s' (%d) " %(
+              chain1.id,model1.id,xyz1.size(),chain2.id,model2.id,xyz2.size())
+            assert xyz1.size()==xyz2.size()
+            
           for i in xrange(xyz1.size()):
             x1=col(xyz1[i])
             x2=col(xyz2[i])
@@ -466,11 +479,11 @@ def get_crossover_dict(
 
 
 def get_cc_dict(hierarchy=None,crystal_symmetry=None,
-  chain_id=None,map_data=None,d_min=None,
+  map_data=None,d_min=None,
   table=None,out=sys.stdout):
 
   cc_dict={}
-  print >>out, "\nMaking a table of residue CC values for chain %s" %(chain_id)
+  print >>out, "\nMaking a table of residue CC values"
   cryst1_line=iotbx.pdb.format_cryst1_record(crystal_symmetry=crystal_symmetry)
 
   # select the model and chain we are interested in
@@ -478,9 +491,7 @@ def get_cc_dict(hierarchy=None,crystal_symmetry=None,
 
     from cStringIO import StringIO
     f=StringIO()
-
-    atom_selection=get_atom_selection(chain_id=chain_id,model_id=model.id)
-
+    atom_selection=get_atom_selection(model_id=model.id)
     asc=hierarchy.atom_selection_cache()
     sel=asc.selection(string = atom_selection)
     sel_hierarchy=hierarchy.select(sel)
@@ -661,10 +672,19 @@ def run(
   print >>out, "\nReady with %d models and map" %(n_models)
   # Get CC by residue for each model and map
 
-  chain_id_list=[]
-  for model in hierarchy.models():
-    for chain in model.chains():
-      if not chain.id in chain_id_list: chain_id_list.append(chain.id)
+  chain_id_and_resseq_list=[] # Instead set up chain_id and resseq (range)
+  from mmtbx.secondary_structure.find_ss_from_ca import \
+      split_model,get_first_resno, get_last_resno,get_chain_id
+  model_list=split_model(hierarchy=hierarchy,only_first_model=True)
+  for m in model_list:
+    h=m.hierarchy
+    first_resno=get_first_resno(h)
+    last_resno=get_last_resno(h)
+    chain_id=get_chain_id(h)
+    residue_range=[first_resno,last_resno]
+    chain_id_and_resseq=[chain_id,residue_range]
+    if not chain_id_and_resseq in chain_id_and_resseq_list:
+       chain_id_and_resseq_list.append(chain_id_and_resseq)
 
   # Run through chains separately
   # NOTE: All models of each chain must match exactly
@@ -673,10 +693,23 @@ def run(
   from cStringIO import StringIO
   composite_model_stream=StringIO()
 
-  for chain_id in chain_id_list:
+  for chain_id_and_resseq in chain_id_and_resseq_list:
+    from cStringIO import StringIO
+    f=StringIO()
+    chain_id,[start_resno,end_resno]=chain_id_and_resseq
+    atom_selection=get_atom_selection(chain_id=chain_id,
+      start_resno=start_resno,end_resno=end_resno)
+    asc=hierarchy.atom_selection_cache()
+    sel=asc.selection(string = atom_selection)
+    sel_hierarchy=hierarchy.select(sel)
+    pdb_inp=sel_hierarchy.as_pdb_input(crystal_symmetry=crystal_symmetry)
+    ph=pdb_inp.construct_hierarchy()
+
+    print >>out,"\nWorking on chain_id='%s' resseq %d:%d\n" %(
+       chain_id_and_resseq[0],chain_id_and_resseq[1][0],chain_id_and_resseq[1][1])
+
     # get CC values for all residues
-    cc_dict=get_cc_dict(hierarchy=hierarchy,chain_id=chain_id,
-     map_data=map_data,d_min=resolution,
+    cc_dict=get_cc_dict(hierarchy=ph,map_data=map_data,d_min=resolution,
      crystal_symmetry=crystal_symmetry,
      table=scattering_table,out=out)
 
@@ -691,7 +724,7 @@ def run(
 
     crossover_dict=get_crossover_dict(
       n_residues=n_residues,
-      hierarchy=hierarchy,chain_id=chain_id,
+      hierarchy=ph,
       crossover_atom=crossover_atom,
       dist_max=dist_max,
       minimum_matching_atoms=minimum_matching_atoms,
@@ -777,7 +810,7 @@ def run(
     # Note residue values. We are going to pick each residue from one of
     # the models
 
-    for model in hierarchy.models():
+    for model in ph.models():
       for chain in model.chains():
         if chain.id != chain_id: continue
         residue_list=[]
@@ -788,10 +821,10 @@ def run(
 
     for i in xrange(len(residue_list)):
       atom_selection=get_atom_selection(model_id=best_model.source_list[i],
-        resseq_sel=residue_list[i],chain_id=chain_id)
-      asc=hierarchy.atom_selection_cache()
+        resseq_sel=residue_list[i])
+      asc=ph.atom_selection_cache()
       sel=asc.selection(string = atom_selection)
-      sel_hierarchy=hierarchy.select(sel)
+      sel_hierarchy=ph.select(sel)
       print >>composite_model_stream,remove_ter(sel_hierarchy.as_pdb_string())
 
   #  All done, make a new pdb_hierarchy
