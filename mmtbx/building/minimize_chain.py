@@ -2,7 +2,6 @@ from __future__ import division
 import sys,os
 import iotbx.pdb
 import mmtbx.utils
-from mmtbx import monomer_library
 from scitbx.array_family import flex
 from libtbx.utils import Sorry
 import iotbx.phil

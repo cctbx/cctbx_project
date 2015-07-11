@@ -400,7 +400,7 @@ def get_crossover_dict(
             "'%s' model '%s' (%d) is different than chain '%s' model '%s' (%d) " %(
               chain1.id,model1.id,xyz1.size(),chain2.id,model2.id,xyz2.size())
             assert xyz1.size()==xyz2.size()
-            
+
           for i in xrange(xyz1.size()):
             x1=col(xyz1[i])
             x2=col(xyz2[i])
