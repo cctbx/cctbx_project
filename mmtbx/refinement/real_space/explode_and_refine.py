@@ -9,7 +9,6 @@ from mmtbx.dynamics import simulated_annealing as sa
 from cctbx import geometry_restraints
 import scitbx.lbfgs
 from mmtbx.building.merge_models import run as merge_models
-import sys
 if (0): # fixed random seed to avoid rare failures
   random.seed(1)
   flex.set_random_seed(1)
@@ -63,7 +62,7 @@ def simulated_annealing(
    restraints_manager=None,
    raw_records=None,
    map_data=None,
-   weight=None, 
+   weight=None,
    number_of_sa_models=None,
    xyz_shake=None,
    set_random_seed=None,
@@ -99,19 +98,19 @@ def simulated_annealing(
       nn=number_of_sa_models//nproc
       if it < remainder: nn+=1
       number_of_models_list.append(nn)
-    
+
     random_seed_list=number_of_sa_models*[None]
     if set_random_seed:
       random_seed_list=[]
       for it in xrange(number_of_sa_models):
         local_random_seed=random.randint(0,10000000)
         random_seed_list.append(local_random_seed)
- 
+
     for it,local_number_of_sa_models in zip(
         xrange(nproc),number_of_models_list):
       local_random_seed_list=random_seed_list[:local_number_of_sa_models]
       random_seed_list=random_seed_list[local_number_of_sa_models:]
-      kw_list.append({ 
+      kw_list.append({
         'params':params,
         'xray_structure':xray_structure,
         'pdb_hierarchy':pdb_hierarchy,
@@ -120,7 +119,7 @@ def simulated_annealing(
         'grf':grf,
         'lbfgs_exception_handling_params':lbfgs_exception_handling_params,
         'map_data':map_data,
-        'weight':weight, 
+        'weight':weight,
         'xyz_shake':xyz_shake,
         'random_seed_list':local_random_seed_list,
         'number_of_sa_models':local_number_of_sa_models,
@@ -153,7 +152,7 @@ def run_sa(
    grf=None,
    lbfgs_exception_handling_params=None,
    map_data=None,
-   weight=None, 
+   weight=None,
    xyz_shake=None,
    random_seed_list=None,
    number_of_sa_models=None):
@@ -206,12 +205,12 @@ def run_sa(
 def ensemble_refine(
     ensemble_xrs=None,
     xray_structure=None,
-    pdb_hierarchy=None, 
+    pdb_hierarchy=None,
     restraints_manager=None,
     map_data=None,
     raw_records=None,
-    scorer=None, 
-    weight=None, 
+    scorer=None,
+    weight=None,
     target_bond_rmsd=None,
     target_angle_rmsd=None,
     states=None,
@@ -237,10 +236,10 @@ def ensemble_refine(
     # number of jobs per process
     nn=len(ensemble_xrs)//nproc
     # number of processes that get an extra ensemble
-    remainder=len(ensemble_xrs)-nproc*(len(ensemble_xrs)//nproc) 
+    remainder=len(ensemble_xrs)-nproc*(len(ensemble_xrs)//nproc)
 
     for it in xrange(nproc):
-      if it < remainder: 
+      if it < remainder:
         n_models=nn+1
       else:
         n_models=nn
@@ -296,11 +295,11 @@ def ensemble_refine(
 def run_ensemble_refine(
     ensemble_xrs=None,
     xray_structure=None,
-    pdb_hierarchy=None, 
+    pdb_hierarchy=None,
     restraints_manager=None,
     map_data=None,
     raw_records=None,
-    weight=None, 
+    weight=None,
     target_bond_rmsd=None,
     target_angle_rmsd=None):
 
@@ -325,7 +324,7 @@ def run_ensemble_refine(
         log                         = None)
 
       results.append(ro.xray_structure.deep_copy_scatterers())
-    return results 
+    return results
 
 class run(object):
   def __init__(
@@ -356,7 +355,7 @@ class run(object):
     else:
       set_random_seed=False
 
-    # Get restraints_manager 
+    # Get restraints_manager
     restraints_manager=get_restraints_manager(raw_records)
     self.restraints_manager=restraints_manager
 
@@ -372,7 +371,7 @@ class run(object):
       restraints_manager=restraints_manager,
       raw_records=raw_records,
       map_data=map_data,
-      weight=self.weight, 
+      weight=self.weight,
       number_of_sa_models=number_of_sa_models,
       xyz_shake=xyz_shake,
       set_random_seed=set_random_seed,
@@ -391,7 +390,7 @@ class run(object):
       map_data=map_data,
       restraints_manager=restraints_manager,
       raw_records=raw_records,
-      scorer=sc, 
+      scorer=sc,
       weight=flex.mean(weights),
       target_bond_rmsd=target_angle_rmsd,
       target_angle_rmsd=target_angle_rmsd,
