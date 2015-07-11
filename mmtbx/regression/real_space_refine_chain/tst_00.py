@@ -2,12 +2,10 @@ from __future__ import division
 import time
 import iotbx.pdb
 import mmtbx.utils
-from mmtbx import monomer_library
 from scitbx.array_family import flex
 from cctbx import maptbx
 from libtbx import adopt_init_args
 import mmtbx.refinement.real_space.explode_and_refine
-from mmtbx.geometry_restraints import reference
 
 pdb_str_answer = """\
 CRYST1   29.475   46.191   27.490  90.00  90.00  90.00 P 21 21 21
