@@ -1020,7 +1020,10 @@ namespace detail {
         if (model_record_oversight.atom_is_allowed_here()) {
           input_atom_labels_list_.push_back(
             detail::input_atom_labels(line_info));
-          atoms_.push_back(process_atom_record(line_info,/*hetero*/false));
+          hierarchy::atom cur_atom = process_atom_record(line_info,/*hetero*/false);
+          vec3 xyz = cur_atom.data->xyz;
+          IOTBX_ASSERT(! (xyz[0]>9999 && xyz[1]>9999 && xyz[2]>9999));
+          atoms_.push_back(cur_atom);
           if (line_info.error_occured()) {
             input_atom_labels_list_.pop_back();
             atoms_.pop_back();
@@ -1040,7 +1043,10 @@ namespace detail {
         if (model_record_oversight.atom_is_allowed_here()) {
           input_atom_labels_list_.push_back(
             detail::input_atom_labels(line_info));
-          atoms_.push_back(process_atom_record(line_info,/*hetero*/true));
+          hierarchy::atom cur_atom = process_atom_record(line_info,/*hetero*/true);
+          vec3 xyz = cur_atom.data->xyz;
+          IOTBX_ASSERT(! (xyz[0]>9999 && xyz[1]>9999 && xyz[2]>9999));
+          atoms_.push_back(cur_atom);
           if (line_info.error_occured()) {
             input_atom_labels_list_.pop_back();
             atoms_.pop_back();
