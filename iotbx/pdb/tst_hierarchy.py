@@ -6508,6 +6508,37 @@ TER
   assert list(css[3]) == [28, 29, 30, 31, 32, 33, 34, 35]
   assert len(css)==4
 
+def exercise_atom_xyz_9999():
+  """
+  When one atom have all 3 xyz coordinates > 9999 an exception should be
+  thrown. 2 such coordinates are fine for unknown reasons. Such files
+  could be originated from CNS where those are handled as "unknown coordinates"
+  """
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM  10849  C   ILE A1445      50.977  77.127  41.547  1.00129.33      A
+ATOM  10850  O   ILE A1445      50.257  76.569  42.421  1.00129.33      A
+ATOM  10851  OXT ILE A1445      50.752  78.273  41.078  1.00189.50      A
+ATOM  27953  ZN  ZN  A1506      50.7529999.9999999.999  1.00166.17      A
+"""))
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM  10849  C   ILE A1445      50.977  77.127  41.547  1.00129.33      A
+ATOM  10850  O   ILE A1445      50.257  76.569  42.421  1.00129.33      A
+ATOM  10851  OXT ILE A1445      50.752  78.273  41.078  1.00189.50      A
+ATOM  27953  ZN  ZN  A1506      50.752  78.2739999.999  1.00166.17      A
+"""))
+  try:
+    pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM  10849  C   ILE A1445      50.977  77.127  41.547  1.00129.33      A
+ATOM  10850  O   ILE A1445      50.257  76.569  42.421  1.00129.33      A
+ATOM  10851  OXT ILE A1445      50.752  78.273  41.078  1.00189.50      A
+ATOM  27953  ZN  ZN  A1506    9999.9999999.9999999.999  1.00166.17      A
+ATOM  27954  ZN  ZN  A1508    9999.9999999.9999999.999  1.00166.17      A
+"""))
+  except RuntimeError, e:
+    assert str(e).find(
+      "IOTBX_ASSERT(! (xyz[0]>9999 && xyz[1]>9999 && xyz[2]>9999)) failure.") >0
+  else: raise Exception_expected
+
 
 def exercise(args):
   comprehensive = "--comprehensive" in args
@@ -6565,6 +6596,7 @@ def exercise(args):
     exercise_equality_and_hashing()
     exercise_atom_is_in_same_conformer_as()
     exercise_substitute_atom_group()
+    exercise_atom_xyz_9999()
     if (not forever): break
   print format_cpu_times()
 
