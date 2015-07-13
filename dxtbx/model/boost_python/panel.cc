@@ -446,7 +446,13 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("add_mask", &PanelData::add_mask)
       .def("__eq__", &PanelData::operator==)
       .def("__ne__", &PanelData::operator!=)
-      .def("is_similar_to", &PanelData::is_similar_to);
+      .def("is_similar_to", &PanelData::is_similar_to, (
+            arg("other"),
+            arg("fast_axis_tolerance")=1e-6,
+            arg("slow_axis_tolerance")=1e-6,
+            arg("origin_tolerance")=1e-6,
+            arg("static_only")=false))
+      ;
 
     class_<Panel, bases<PanelData> >("Panel")
       .def(init<std::string,
