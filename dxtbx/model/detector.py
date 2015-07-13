@@ -288,11 +288,23 @@ class PanelGroup(VirtualPanel):
     ''' Check that this is not equal to another group. '''
     return not self.__eq__(other)
 
-  def is_similar_to(self, other):
+  def is_similar_to(self,
+                    other,
+                    fast_axis_tolerance=1e-6,
+                    slow_axis_tolerance=1e-6,
+                    origin_tolerance=1e-6,
+                    static_only=False):
     ''' Check is the hierarchy is similar. '''
     if len(self) != len(other):
       return False
-    return all(a.is_similar_to(b) for a, b in zip(self, other))
+    def is_similar_to(a, b):
+      return a.is_similar_to(
+        b,
+        fast_axis_tolerance=fast_axis_tolerance,
+        slow_axis_tolerance=slow_axis_tolerance,
+        origin_tolerance=origin_tolerance,
+        static_only=static_only)
+    return all(is_similar_to(a, b) for a, b in zip(self, other))
 
   def to_dict(self):
     ''' Convert the panel group to a dictionary. '''
