@@ -6,6 +6,7 @@ from scitbx.array_family import flex
 from libtbx.utils import Sorry
 import iotbx.phil
 import mmtbx.refinement.real_space.explode_and_refine
+from mmtbx import monomer_library
 
 master_phil = iotbx.phil.parse("""
 

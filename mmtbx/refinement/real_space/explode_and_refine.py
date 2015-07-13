@@ -214,6 +214,7 @@ class run(object):
     return self.pdb_hierarchy
 
   def merge_models(self, pdb_hierarchy):
+    t0=time.time()
     assert pdb_hierarchy.models_size() == self.number_of_trials, \
       pdb_hierarchy.models_size()
     from mmtbx.building.merge_models import run as merge_models
@@ -227,6 +228,7 @@ class run(object):
     self.xray_structure = self.xray_structure.replace_sites_cart(
       new_sites=pdb_hierarchy_merged.atoms().extract_xyz())
     self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
+    print >> self.log, "Time (merge): %10.3f"%(time.time()-t0)
 
   def run_refine_flexible_rmsd_targets(self, weights=None):
     t0=time.time()
