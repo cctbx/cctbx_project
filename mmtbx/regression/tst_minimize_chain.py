@@ -615,7 +615,7 @@ def tst_02(args,prefix=None):
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name = "%s_map.mtz"%prefix)
 
-  hierarchy,multiple_model_hierarchy,score=run(
+  hierarchy,multiple_model_hierarchy=run(
      args=args,map_data=target_map_data,
      crystal_symmetry=fc.crystal_symmetry(),
      pdb_string=pdb_str_poor_full)

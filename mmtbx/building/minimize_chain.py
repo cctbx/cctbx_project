@@ -184,19 +184,31 @@ def run_one_cycle(
   # Initialize states accumulator
   states = mmtbx.utils.states(pdb_hierarchy=hierarchy, xray_structure=xrs)
   states.add(sites_cart = xrs.sites_cart())
+  pdb_inp_params = monomer_library.pdb_interpretation.master_params.extract()
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv              = monomer_library.server.server(),
+    ener_lib                 = monomer_library.server.ener_lib(),
+    raw_records              = pdb_string,
+    params                   = pdb_inp_params,
+    strict_conflict_handling = True,
+    force_symmetry           = True,
+    log                      = None)
+  geometry = processed_pdb_file.geometry_restraints_manager(
+    show_energies                = False,
+    plain_pairs_radius           = 5,
+    assume_hydrogens_all_missing = True)
+  restraints_manager = mmtbx.restraints.manager(
+    geometry      = geometry,
+    normalization = True)
   ear = mmtbx.refinement.real_space.explode_and_refine.run(
-    xray_structure          = xrs,
-    pdb_hierarchy           = hierarchy,
-    map_data                = map_data,
-    raw_records             = pdb_string,
-    target_bond_rmsd        = params.minimization.target_bond_rmsd,
-    target_angle_rmsd       = params.minimization.target_angle_rmsd,
-    xyz_shake               = params.minimization.start_xyz_error,
-    number_of_trials        = params.minimization.number_of_trials,
-    number_of_sa_models     = params.minimization.number_of_sa_models,
-    nproc                   = params.control.nproc,
-    states                  = states)
-  return ear.pdb_hierarchy, ear.ear_states.root, ear.score
+    xray_structure     = xrs,
+    pdb_hierarchy      = hierarchy,
+    map_data           = map_data,
+    restraints_manager = restraints_manager,
+    states             = states,
+    nproc              = params.control.nproc)
+  return ear.pdb_hierarchy_overall_best(), \
+         ear.ensemble_pdb_hierarchy_refined()
 
 def run(args,
     map_data=None,
@@ -251,7 +263,7 @@ def run(args,
       pdb_string=f.getvalue()
       pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
 
-  pdb_hierarchy,multiple_models_hierarchy,score=run_one_cycle(
+  pdb_hierarchy,multiple_models_hierarchy=run_one_cycle(
     params=params,
     map_data=map_data,
     pdb_inp=pdb_inp,
@@ -267,7 +279,7 @@ def run(args,
     print >>out,"\nWrote output model to %s" %(params.output_files.pdb_out)
     f.close()
   # all done
-  return pdb_hierarchy,multiple_models_hierarchy,score
+  return pdb_hierarchy,multiple_models_hierarchy
 
 if   (__name__ == "__main__"):
   args=sys.argv[1:]

@@ -1770,8 +1770,7 @@ class process_command_line_args(object):
         for cs in crystal_symmetries:
          if(cs[1] is not None and cs[1].unit_cell() is not None):
            is_similar_cs = cs0.is_similar_symmetry(cs[1],
-             relative_length_tolerance=1.e-4,
-             absolute_angle_tolerance=1.e-3,
+             absolute_angle_tolerance=1.e-2,
              absolute_length_tolerance=1.e-3)
            if(not is_similar_cs):
              for cs in crystal_symmetries:
@@ -2926,9 +2925,16 @@ class states(object):
     self.root.append_model(md)
     self.counter += 1
 
-  def write(self, file_name):
-    self.root.write_pdb_file(file_name = file_name,
-      crystal_symmetry = self.xray_structure.crystal_symmetry())
+  def write(self, file_name, crystal_symmetry=None):
+    if(crystal_symmetry is None):
+      if(self.xray_structure is not None):
+        crystal_symmetry = self.xray_structure.crystal_symmetry()
+    if([crystal_symmetry,self.xray_structure].count(None)==0):
+      assert crystal_symmetry.is_similar_symmetry(
+        self.xray_structure.crystal_symmetry())
+    self.root.write_pdb_file(
+      file_name        = file_name,
+      crystal_symmetry = crystal_symmetry)
 
 def structure_factors_from_map(map_data, unit_cell_lengths, n_real,
                                crystal_symmetry, resolution_factor=1/4.):
