@@ -397,13 +397,28 @@ class HierarchicalDetector(Detector):
     ''' Return the hierarchy. '''
     return self._root
 
-  def is_similar_to(self, rhs):
+  def is_similar_to(self,
+                    rhs,
+                    fast_axis_tolerance=1e-6,
+                    slow_axis_tolerance=1e-6,
+                    origin_tolerance=1e-6,
+                    static_only=False):
     ''' Check if the detectors are similar (i.e. only differ in terms of
     things that could change per experiment. '''
     if not isinstance(rhs, HierarchicalDetector):
       return False
-    return (self._root.is_similar_to(rhs._root) and
-            super(HierarchicalDetector, self).is_similar_to(rhs))
+    return (self._root.is_similar_to(
+              rhs._root,
+              fast_axis_tolerance=fast_axis_tolerance,
+              slow_axis_tolerance=slow_axis_tolerance,
+              origin_tolerance=origin_tolerance,
+              static_only=static_only) and
+            super(HierarchicalDetector, self).is_similar_to(
+              rhs,
+              fast_axis_tolerance=fast_axis_tolerance,
+              slow_axis_tolerance=slow_axis_tolerance,
+              origin_tolerance=origin_tolerance,
+              static_only=static_only))
 
   def __eq__(self, rhs):
     ''' Check that this is equal to another group. '''
