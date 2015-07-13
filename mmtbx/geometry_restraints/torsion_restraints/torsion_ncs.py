@@ -1432,12 +1432,11 @@ class torsion_ncs(object):
           gradient_array=gradient_array)
 
 # XXX wrapper for running in Phenix GUI
-class _run_determine_ncs_groups (object) :
+class _run_iotbx_ncs_input (object) :
   def __init__ (self, params, pdb_hierarchy) :
     self.params = params
     self.pdb_hierarchy = pdb_hierarchy
 
   def __call__ (self, *args, **kwds) :
-    return determine_ncs_groups(
-      params=self.params,
-      pdb_hierarchy=self.pdb_hierarchy)
+    return iotbx.ncs.input(hierarchy=self.pdb_hierarchy).\
+      print_ncs_phil_param()
