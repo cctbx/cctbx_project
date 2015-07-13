@@ -4,7 +4,7 @@ from __future__ import division
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
 Last Changed: 07/08/2015
-Description : IOTA command-line module. Version 1.72
+Description : IOTA command-line module. Version 1.73
 '''
 
 help_message = '\n{:-^70}'\
@@ -390,7 +390,7 @@ if __name__ == "__main__":
     if args.c:
       iota_exit(iota_version, now)
   else:
-    input_folder = gs_params.input
+    input_folder = os.path.abspath(os.path.dirname(os.path.commonprefix(input_list)))
     blank_img = []
 
   if (args.t or gs_params.image_triage.flag_on) and gs_params.grid_search.flag_on:

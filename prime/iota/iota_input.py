@@ -589,7 +589,7 @@ def write_defaults(current_path, txt_out):
                     '  greedy_integration_limit=True',
                     '  combine_sym_constraints_and_3D_target=True',
                     '  spot_prediction=dials',
-                    '  integration.guard_width_sq=4.',
+                    '  guard_width_sq=4.',
                     '  mosaic {',
                     '    refinement_target=ML',
                     '    domain_size_lower_limit=4.',
@@ -627,9 +627,7 @@ def auto_mode(current_path, data_path, now):
 
   gs_params = master_phil.extract()
   gs_params.description = 'IOTA parameters auto-generated on {}'.format(now)
-  gs_params.input = data_path
-  #gs_params.advanced.random_sample.flag_on = True
-  #gs_params.advanced.random_sample.number = 0
+  gs_params.input = [data_path]
 
   mod_phil = master_phil.format(python_object=gs_params)
 
