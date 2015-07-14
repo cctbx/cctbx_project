@@ -26,7 +26,7 @@ class run_sa(object):
         nproc,
         weight):
     adopt_init_args(self, locals())
-    # initialize states collector
+    # Initialize states collector
     self.states = mmtbx.utils.states(
       xray_structure = self.xray_structure.deep_copy_scatterers(),
       pdb_hierarchy  = self.pdb_hierarchy.deep_copy())
