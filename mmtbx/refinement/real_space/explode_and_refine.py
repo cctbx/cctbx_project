@@ -162,6 +162,7 @@ class run(object):
         pdb_hierarchy,
         map_data,
         restraints_manager,
+        mode="quick",
         target_bond_rmsd=0.02,
         target_angle_rmsd=2.0,
         number_of_trials=20,
@@ -171,13 +172,21 @@ class run(object):
         show=True,
         log=None):
     adopt_init_args(self, locals())
+    assert self.mode in ["quick", "thorough"]
     if(self.log is None): self.log = sys.stdout
     self.show_target(prefix="Target(start):")
     # Get refined starting model
-    weights = self.run_refine_flexible_rmsd_targets()
+    if(mode=="thorough"):
+      weights = self.run_refine_flexible_rmsd_targets()
+      er_weight = flex.mean(weights)
+      sa_weight = weights[0]
+    else:
+      sa_weight = self.minimization(
+        target_bond_rmsd  = 0.03,
+        target_angle_rmsd = 3.5,
+        weight            = None)
+      er_weight = sa_weight
     self.show_target(prefix="Target(minimization):")
-    # Weight
-    self.weight = weights[len(weights)-1]
     # Generate SA ensemble of structures
     sao = run_sa(
       xray_structure     = self.xray_structure,
@@ -186,7 +195,7 @@ class run(object):
       map_data           = self.map_data,
       number_of_trials   = self.number_of_trials,
       nproc              = self.nproc,
-      weight             = weights[0])
+      weight             = sa_weight)
     self.ensemble_xrs = sao.ensemble_xrs()
     if(show): sao.show_states()
     # Refine each SA model
@@ -197,14 +206,20 @@ class run(object):
       target_bond_rmsd    = self.target_bond_rmsd,
       target_angle_rmsd   = self.target_angle_rmsd,
       map_data            = self.map_data,
-      weight              = flex.mean(weights),
+      weight              = er_weight,
       nproc               = self.nproc)
     if(show): self.ero.show_states()
     # Merge SA refined models
     self.merge_models(pdb_hierarchy = self.ero.ensemble_pdb_hierarchy_refined())
     self.show_target(prefix="Target(merge):")
     # Finalize
-    self.run_refine_flexible_rmsd_targets(weights = weights)
+    if(mode=="thorough"):
+      self.run_refine_flexible_rmsd_targets(weights = weights)
+    else:
+      _ = self.minimization(
+        target_bond_rmsd  = self.target_bond_rmsd,
+        target_angle_rmsd = self.target_angle_rmsd,
+        weight            = None)
     self.show_target(prefix="Target(final minimization):")
 
   def ensemble_pdb_hierarchy_refined(self):
@@ -230,6 +245,24 @@ class run(object):
     self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
     print >> self.log, "Time (merge): %10.3f"%(time.time()-t0)
 
+  def minimization(self, target_bond_rmsd, target_angle_rmsd, weight):
+    ro = mmtbx.refinement.real_space.individual_sites.easy(
+      map_data                    = self.map_data,
+      xray_structure              = self.xray_structure,
+      pdb_hierarchy               = self.pdb_hierarchy,
+      geometry_restraints_manager = self.restraints_manager,
+      rms_bonds_limit             = target_bond_rmsd,
+      rms_angles_limit            = target_angle_rmsd,
+      max_iterations              = 50,
+      selection                   = None,
+      w                           = weight,
+      states_accumulator          = self.states,
+      log                         = None)
+    self.xray_structure.replace_scatterers(
+      scatterers=ro.xray_structure.scatterers())
+    self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
+    return ro.w
+
   def run_refine_flexible_rmsd_targets(self, weights=None):
     t0=time.time()
     ro=None
@@ -238,22 +271,11 @@ class run(object):
     for i, pair in enumerate(pairs):
       if(weights is None): w = None
       else:                w = weights[i-1]
-      ro = mmtbx.refinement.real_space.individual_sites.easy(
-        map_data                    = self.map_data,
-        xray_structure              = self.xray_structure,
-        pdb_hierarchy               = self.pdb_hierarchy,
-        geometry_restraints_manager = self.restraints_manager,
-        rms_bonds_limit             = pair[0],
-        rms_angles_limit            = pair[1],
-        max_iterations              = 50,
-        selection                   = None,
-        w                           = w,
-        states_accumulator          = self.states,
-        log                         = None)
-      self.xray_structure.replace_scatterers(
-       scatterers=ro.xray_structure.scatterers())
-      result.append(ro.w)
-      self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
+      w_opt = self.minimization(
+        target_bond_rmsd  = pair[0],
+        target_angle_rmsd = pair[1],
+        weight            = w)
+      result.append(w_opt)
     print >> self.log, "Time (run_refine_flexible_rmsd_targets): %10.3f"%(
       time.time()-t0)
     return result
