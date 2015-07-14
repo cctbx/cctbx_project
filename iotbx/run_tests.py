@@ -33,6 +33,7 @@ tst_list = (
   "$D/pdb/tst_extract_rfactors_resolutions_sigma.py",
   "$D/pdb/tst_pdb.py",
   "$D/pdb/tst_pdb_manipulation.py",
+  "$D/regression/secondary_structure/tst_sheet.py",
   "$D/pdb/secondary_structure.py",
   "$D/pdb/tst_atom_selection_string.py",
   "$D/pdb/tst_secondary_structure.py",

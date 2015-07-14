@@ -52,9 +52,19 @@ file_name = None
   pdb_structure = iotbx.pdb.input(source_info=None,
     lines=flex.std_string(pdb_combined.raw_records))
   cs = pdb_structure.crystal_symmetry()
+
+  corrupted_cs = False
+  if cs is not None:
+    if [cs.unit_cell(), cs.space_group()].count(None) > 0:
+      corrupted_cs = True
+      cs = None
+
   if cs is None:
-    print >> out, "Symmetry information was not found, " +\
-        "putting molecule in P1 box."
+    if corrupted_cs:
+      print >> out, "Symmetry information is corrupted, "
+    else:
+      print >> out, "Symmetry information was not found, "
+    print >> out, "putting molecule in P1 box."
     from cctbx import uctbx
     atoms = pdb_structure.atoms()
     box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(

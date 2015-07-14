@@ -127,8 +127,8 @@ class annotation(structure_base):
     for sh_lines in cls.filter_and_split_sheet_records(records):
       try:
         sh = pdb_sheet.from_pdb_records(sh_lines)
-      except ValueError:
-        print >> log, "Bad SHEET records, was skipped:\n"
+      except ValueError, e:
+        print >> log, "Bad SHEET records, were skipped:\n"
         for l in sh_lines:
           print >> log, "  %s" % l
       else:
@@ -322,6 +322,11 @@ class pdb_helix (structure_base) :
     if helix_params.serial_number is not None:
       serial = helix_params.serial_number
     amide_isel = isel(sele_str)
+    if len(amide_isel) == 0:
+      error_msg = "Error in helix definition.\n"
+      error_msg += "String '%s' selected 0 atoms.\n" % sele_str
+      error_msg += "Most likely the definition of helix does not match model.\n"
+      raise Sorry(error_msg)
     start_atom = atoms[amide_isel[0]]
     end_atom = atoms[amide_isel[-1]]
     hbonds = []
@@ -510,6 +515,8 @@ class pdb_strand_register(structure_base):
 
   @classmethod
   def from_pdb_record(cls, line):
+    if len(line.strip()) < 67:
+      return None
     return cls(cur_atom=line[41:45],
         cur_resname=line[45:48],
         cur_chain_id=cls.parse_chain_id(line[48:50]),
@@ -551,8 +558,10 @@ class pdb_sheet(structure_base):
       s = pdb_strand.from_pdb_record(r)
       reg = None
       sense = int(r[38:40])
-      if sense != 0:
-        reg = pdb_strand_register.from_pdb_record(r)
+      reg = pdb_strand_register.from_pdb_record(r)
+      # do we really need to stop on this?
+      if sense == 0 and reg is not None:
+        raise Sorry("Sense should be 1 or -1 for non-first strand:\n%s" % r)
       strands.append(s)
       registrations.append(reg)
     return cls(sheet_id=sheet_id,
@@ -573,6 +582,11 @@ class pdb_sheet(structure_base):
     sele_str = ("(%s) and (name N) and (altloc 'A' or altloc ' ')" %
                     sheet_params.first_strand)
     amide_isel = isel(sele_str)
+    if len(amide_isel) == 0:
+      error_msg = "Error in sheet definition.\n"
+      error_msg += "String '%s' selected 0 atoms.\n" % sele_str
+      error_msg += "Most likely the definition of sheet does not match model.\n"
+      raise Sorry(error_msg)
     start_atom = atoms[amide_isel[0]]
     end_atom = atoms[amide_isel[-1]]
     first_strand = pdb_strand(
