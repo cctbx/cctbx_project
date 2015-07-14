@@ -1360,6 +1360,7 @@ iotbx/reflection_file_editor.py -text
 iotbx/regression/ncs/__init__.py -text
 iotbx/regression/ncs/tst_ncs_groups_preprocessing.py -text
 iotbx/regression/ncs/tst_ncs_input.py -text
+iotbx/regression/secondary_structure/tst_sheet.py -text
 iotbx/regression/tst_add_conformations.py -text
 iotbx/regression/tst_bioinformatics.py svneol=native#text/x-python
 iotbx/regression/tst_crystal_symmetry_from_any.py svneol=native#text/x-python
