@@ -289,9 +289,6 @@ master_params_str = """\
   add_angle_and_dihedral_restraints_for_disulfides = True
     .type = bool
     .optional = False
-  peptide_nucleotide_distance_cutoff = 3
-    .type=float
-    .optional=False
   %(dihedral_function_type_params_str)s
   chir_volume_esd = 0.2
     .type=float
