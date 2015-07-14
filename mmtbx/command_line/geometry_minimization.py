@@ -467,11 +467,23 @@ class run(object):
       ofn = os.path.join(directory, ofn)
     print >> self.log, "  output file name:", ofn
     print >> self.log, self.min_max_mean_shift()
+    out_pdb_file = open(ofn, 'w')
+    if self.processed_pdb_file.ss_manager is not None:
+      recs = self.processed_pdb_file.ss_manager.records_for_pdb_file()
+      if recs is not None:
+        print >> out_pdb_file, recs
+    else:
+      for s in self.processed_pdb_file.all_chain_proxies.\
+          pdb_inp.secondary_structure_section():
+        print >> out_pdb_file, s
+    pdb_str = ""
     if (self.output_crystal_symmetry) :
-      self.pdb_hierarchy.write_pdb_file(file_name = ofn, crystal_symmetry =
-        self.xray_structure.crystal_symmetry())
+      pdb_str = self.pdb_hierarchy.as_pdb_string(
+          crystal_symmetry=self.xray_structure.crystal_symmetry())
     else :
-      self.pdb_hierarchy.write_pdb_file(file_name = ofn)
+      pdb_str = self.pdb_hierarchy.as_pdb_string()
+    print >> out_pdb_file, pdb_str
+    out_pdb_file.close()
     if(self.states_collector):
       self.states_collector.write(
         file_name=ofn[:].replace(".pdb","_all_states.pdb"))
