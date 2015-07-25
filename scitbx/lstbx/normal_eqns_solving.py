@@ -249,3 +249,54 @@ class levenberg_marquardt_iterations(iterations):
 
   def __str__(self):
     return "Levenberg-Marquardt"
+
+class levenberg_marquardt_iterations_encapsulated_eqns(
+      levenberg_marquardt_iterations):
+
+  def __init__(self, non_linear_ls, **kwds):
+    iterations.__init__(self, non_linear_ls, **kwds)
+    """NKS 7/17/2015 Differs from Luc's original code two ways:
+      1) unbreak the encapsulation of the normal matrix; enforce access
+         to the normal matrix object through the non_linear_ls interface.
+         Luc's original version assumes foreknowledge of the normal matrix
+         data structure that will change in future sparse matrix implementation.
+      2) avoid a memory leak by deleting the following circular reference to self:
+    """
+    del self.non_linear_ls.journal
+
+  def do(self):
+    self.mu_history = flex.double()
+    self.n_iterations = 0
+    nu = 2
+    self.non_linear_ls.build_up()
+    if self.has_gradient_converged_to_zero(): return
+    a_diag = self.non_linear_ls.get_normal_matrix_diagonal()
+
+    self.mu = self.tau*flex.max(a_diag)
+    while self.n_iterations < self.n_max_iterations:
+      self.non_linear_ls.add_constant_to_diagonal(self.mu)
+      objective = self.non_linear_ls.objective()
+      #print "iteration %d OBJECTIVE %.4f"%(self.n_iterations,objective)
+      g = -self.non_linear_ls.opposite_of_gradient()
+      self.non_linear_ls.solve()
+      if self.had_too_small_a_step(): break
+      self.n_iterations += 1
+      h = self.non_linear_ls.step()
+      expected_decrease = 0.5*h.dot(self.mu*h - g)
+      self.non_linear_ls.step_forward()
+      self.non_linear_ls.build_up(objective_only=True)
+      objective_new = self.non_linear_ls.objective()
+      actual_decrease = objective - objective_new
+      rho = actual_decrease/expected_decrease
+      if rho > 0:
+        if self.has_gradient_converged_to_zero(): break
+        self.mu *= max(1/3, 1 - (2*rho - 1)**3)
+        nu = 2
+      else:
+        self.non_linear_ls.step_backward()
+        self.mu *= nu
+        nu *= 2
+      self.non_linear_ls.build_up()
+
+  def __str__(self):
+    return "Levenberg-Marquardt, with Eigen-based sparse matrix algebra"
