@@ -13,6 +13,7 @@ import tempfile
 import time
 import urllib2
 import urlparse
+import zipfile
 
 # To download this file:
 # svn export svn://svn.code.sf.net/p/cctbx/code/trunk/libtbx/auto_build/bootstrap.py
@@ -63,14 +64,14 @@ class ShellCommand(object):
       except Exception, e:
         print "Extracting tar archive resulted in error:"
         raise
-      return
+      return 0
     if command[0] == 'rm':
       # XXX use shutil rather than rm which is not platform independent
       for dir in command[2:]:
         if os.path.exists(dir):
           print 'Deleting directory : %s' % dir
           shutil.rmtree(dir)
-      return
+      return 0
     try:
       #print "workdir, os.getcwd =", workdir, os.getcwd()
       #if not os.path.isabs(command[0]):
@@ -83,6 +84,8 @@ class ShellCommand(object):
         stderr=sys.stderr
       )
     except Exception, e: # error handling
+      if not self.kwargs.get('haltOnFailure'):
+        return 1
       if isinstance(e, OSError):
         if e.errno == 2:
           executable = os.path.normpath(os.path.join(workdir, command[0]))
@@ -95,6 +98,7 @@ class ShellCommand(object):
     if p.returncode != 0 and self.kwargs.get('haltOnFailure'):
       print "Process failed with return code %s"%(p.returncode)
       sys.exit(1)
+    return p.returncode
 
 # Download URL to local file
 class Downloader(object):
@@ -125,8 +129,10 @@ class Downloader(object):
       # otherwise pass on the error message
       raise
 
-    file_size = int(socket.info().getheader('Content-Length'))
-    # There is no guarantee that the content-length header is set
+    try:
+      file_size = int(socket.info().getheader('Content-Length'))
+    except:
+      file_size = 0
 
     remote_mtime = 0
     try:
@@ -465,13 +471,11 @@ class xfel_regression_module(SourceModule):
 
 class xia2_module(SourceModule):
   module = 'xia2'
-  anonymous = ['svn', 'svn://svn.code.sf.net/p/xia2/code/trunk/xia2']
-  authenticated = ['svn', '%(sfmethod)s://%(sfuser)s@svn.code.sf.net/p/xia2/code/trunk/xia2']
+  anonymous = ['git', 'git@github.com:xia2/xia2.git', 'https://github.com/xia2/xia2.git', 'https://github.com/xia2/xia2/archive/master.zip']
 
 class xia2_regression_module(SourceModule):
   module = 'xia2_regression'
-  anonymous = ['svn', 'svn://svn.code.sf.net/p/xia2/code/trunk/xia2_regression']
-  authenticated = ['svn', '%(sfmethod)s://%(sfuser)s@svn.code.sf.net/p/xia2/code/trunk/xia2_regression']
+  anonymous = ['git', 'git@github.com:xia2/xia2_regression.git', 'https://github.com/xia2/xia2_regression.git', 'https://github.com/xia2/xia2_regression/archive/master.zip']
 
 # Duke repositories
 class probe_module(SourceModule):
@@ -667,15 +671,17 @@ class Builder(object):
       print "commands "*8
 
   def add_module(self, module):
-    method, url = MODULES.get_module(module)().get_url(auth=self.get_auth())
+    action = MODULES.get_module(module)().get_url(auth=self.get_auth())
+    method, parameters = action[0], action[1:]
+    if len(parameters) == 1: parameters = parameters[0]
     tarurl, arxname, dirpath = MODULES.get_module(module)().get_tarauthenticated(auth=self.get_auth())
     if sys.platform == "win32":
       if module in ["cbflib",]: # can't currently compile cbflib for Windows due to lack of HDF5 component
         return
     if method == 'rsync' and sys.platform != "win32":
-      self._add_rsync(module, url)
+      self._add_rsync(module, parameters)
     elif sys.platform == "win32" and method == 'pscp':
-      self._add_pscp(module, url)
+      self._add_pscp(module, parameters)
     elif sys.platform == "win32" and tarurl:
       # if more bootstraps are running avoid potential race condition on
       # remote server by using unique random filenames
@@ -684,13 +690,13 @@ class Builder(object):
       self._add_pscp(module, tarurl + ':' + randarxname)
       self._add_remote_rm_tar(module, tarurl, randarxname)
     elif method == 'curl':
-      self._add_curl(module, url)
+      self._add_curl(module, parameters)
     elif method == 'svn':
-      self._add_svn(module, url)
+      self._add_svn(module, parameters)
     elif method == 'git':
-      self._add_git(module, url)
+      self._add_git(module, parameters)
     else:
-      raise Exception('Unknown access method: %s %s'%(method, url))
+      raise Exception('Unknown access method: %s %s'%(method, str(parameters)))
 
   def _add_rsync(self, module, url):
     """Add packages not in source control."""
@@ -766,20 +772,52 @@ class Builder(object):
       workdir=['modules']
     ))
 
-  def _add_curl(self, module, url):
-    filename = urlparse.urlparse(url).path.split('/')[-1]
-
-    # There is no need to depend on curl since Python has urllib2.
+  def _add_download(self, url, to_file):
     class _download(object):
       def run(self):
         print "===== Downloading %s: " % url,
-        Downloader().download_to_file(url, os.path.join('modules', filename))
+        Downloader().download_to_file(url, to_file)
     self.add_step(_download())
+
+  def _add_curl(self, module, url):
+    filename = urlparse.urlparse(url).path.split('/')[-1]
+    self._add_download(url, os.path.join('modules', filename))
 
     self.add_step(self.shell(
       command=['tar', 'xzf', filename],
       workdir=['modules']
     ))
+
+  def _add_unzip(self, archive, directory, trim_directory=0):
+    class _unzipper(object):
+      def run(self):
+        print "===== Installing %s into %s" % (archive, directory)
+        if not zipfile.is_zipfile(archive):
+          raise Exception("%s is not a valid .zip file" % archive)
+        z = zipfile.ZipFile(archive, 'r')
+        for member in z.infolist():
+          is_directory = member.filename.endswith('/')
+          filename = os.path.join(*member.filename.split('/')[trim_directory:])
+          if filename != '': 
+            filename = os.path.normpath(filename)
+            if '../' in filename:
+              raise Exception('Archive %s contains invalid filename %s' % (archive, filename))
+            filename = os.path.join(directory, filename)
+            upperdirs = os.path.dirname(filename)
+            try:
+              if is_directory and not os.path.exists(filename):
+                os.makedirs(filename)
+              elif upperdirs and not os.path.exists(upperdirs):
+                os.makedirs(upperdirs)
+            except: pass
+            if not is_directory:
+              source = z.open(member)
+              target = file(filename, "wb")
+              shutil.copyfileobj(source, target)
+              target.close()
+              source.close()
+        z.close()
+    self.add_step(_unzipper())
 
   def _add_svn(self, module, url):
     svnflags = []
@@ -799,7 +837,7 @@ class Builder(object):
           quiet=True,
       ))
     elif os.path.exists(self.opjoin(*['modules', module])):
-      print "Existing non-svn directory -- dont know what to do. skipping: %s"%module
+      print "Existing non-svn directory -- don't know what to do. skipping: %s"%module
     else:
       # print "fresh checkout..."
       self.add_step(self.shell(
@@ -807,9 +845,42 @@ class Builder(object):
           workdir=['modules']
       ))
 
-  def _add_git(self, module, url):
-    pass
+  def _add_git(self, module, parameters):
+    git_available = self.shell(command=['git', '--version'], haltOnFailure=False, quiet=True).run() == 0
 
+    if git_available and os.path.exists(self.opjoin(*['modules', module, '.git'])):
+      self.add_step(self.shell(
+        command=['git', 'pull', '--ff-only'],
+        workdir=[os.path.join('modules', module)]
+      ))
+      return
+
+    if os.path.exists(self.opjoin(*['modules', module])):
+      print "Existing non-git directory -- don't know what to do. skipping: %s"%module
+      return
+
+    for source_candidate in parameters:
+      if not source_candidate.lower().startswith('http') and not self.auth['git_ssh']:
+        continue
+      if source_candidate.lower().endswith('.git'):
+        if not git_available:
+          continue
+        self.add_step(self.shell(
+          command=['git', 'clone', source_candidate, module],
+          workdir=['modules']
+        ))
+        return
+      filename = "%s-%s" % (module, urlparse.urlparse(source_candidate).path.split('/')[-1])
+      filename = os.path.join('modules', filename)
+      self._add_download(source_candidate, filename)
+      self._add_unzip(filename, os.path.join('modules', module), trim_directory=1)
+      return
+
+    error = "Cannot satisfy git dependency for module %s: None of the sources are available." % module
+    if not git_available:
+      print error
+      error = "A git installation has not been found."
+    raise Exception(error)
 
   def add_command(self, command, name=None, workdir=None, args=None, **kwargs):
     if sys.platform == 'win32':
@@ -1221,6 +1292,7 @@ def run(root=None):
   parser.add_option("--cciuser", help="CCI SVN username.")
   parser.add_option("--sfuser", help="SourceForge SVN username.")
   parser.add_option("--sfmethod", help="SourceForge SVN checkout method.", default="svn+ssh")
+  parser.add_option("--git-ssh", dest="git_ssh", action="store_true", help="Use ssh connections for git. This allows you to commit changes without changing remotes.", default=False)
   parser.add_option("--with-python", dest="with_python", help="Use specified Python interpreter")
   parser.add_option("--nproc", help="number of parallel processes in compile step.")
   parser.add_option("--download-only", dest="download_only", action="store_true", help="Do not build, only download prerequisites", default=False)
@@ -1261,7 +1333,7 @@ def run(root=None):
   if options.builder not in builders:
     raise ValueError("Unknown builder: %s"%options.builder)
 
-  auth = {}
+  auth = { 'git_ssh': options.git_ssh }
   if options.cciuser:
     auth['cciuser'] = options.cciuser
   if options.sfuser:
