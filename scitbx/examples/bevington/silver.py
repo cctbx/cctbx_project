@@ -1,7 +1,7 @@
 from __future__ import division
 import scitbx.lbfgs
 from scitbx.array_family import flex
-from math import exp,pow,sqrt
+from math import exp,sqrt
 from scitbx.matrix import sqr
 
 data = """
@@ -91,8 +91,11 @@ w_obs = 1./(y_obs)
 initial = flex.double([10, 900, 80, 27, 225])
 #initial = flex.double([10.4, 958.3, 131.4, 33.9, 205])
 
-class lbfgs_biexponential_fit:
+from scitbx.examples.bevington import bevington_silver
+class lbfgs_biexponential_fit (bevington_silver):
   def __init__(self, x_obs, y_obs, w_obs, initial):
+    super(lbfgs_biexponential_fit,self).__init__()
+    self.set_cpp_data(x_obs,y_obs,w_obs)
     assert x_obs.size() == y_obs.size()
     self.x_obs = x_obs
     self.y_obs = y_obs
@@ -108,27 +111,9 @@ class lbfgs_biexponential_fit:
 
   def compute_functional_and_gradients(self):
     self.a = self.x
-
-    y_calc = self.x[1] * flex.exp( -x_obs/self.x[3] ) + \
-             self.x[2] * flex.exp( -x_obs/self.x[4] ) + \
-             self.x[0]
-    y_diff = self.y_obs - y_calc
-    f = flex.sum(y_diff*y_diff*self.w_obs)
+    f = self.functional(self.x)
     self.print_step("LBFGS stp",f)
-    g = flex.double(self.n,0)
-    self.c = flex.double(self.n,0)
-    for i in xrange(len(self.x_obs)):
-      prefactor = -2. * self.w_obs[i] * y_diff[i]
-      g[0] += prefactor
-      g[1] += prefactor * exp(-self.x_obs[i]/self.x[3])
-      g[2] += prefactor * exp(-self.x_obs[i]/self.x[4])
-      g[3] += prefactor * self.x[1] * exp(-self.x_obs[i]/self.x[3]) * (self.x_obs[i]/(self.x[3]*self.x[3]))
-      g[4] += prefactor * self.x[2] * exp(-self.x_obs[i]/self.x[4]) * (self.x_obs[i] * pow(self.x[4],-2))
-      self.c[0] += 2 * self.w_obs[i]
-      self.c[1] += 2 * self.w_obs[i] * (exp(-self.x_obs[i]/self.x[3]))**2
-      self.c[2] += 2 * self.w_obs[i] * (exp(-self.x_obs[i]/self.x[4]))**2
-      self.c[3] += 2 * self.w_obs[i] * (self.x[1] * exp(-self.x_obs[i]/self.x[3]) * (self.x_obs[i]/(self.x[3]*self.x[3])))**2
-      self.c[4] += 2 * self.w_obs[i] * (self.x[2] * exp(-self.x_obs[i]/self.x[4]) * (self.x_obs[i] * pow(self.x[4],-2)))**2
+    g = self.gvec_callable(self.x)
     return f, g
 
 def lbfgs_example(verbose):
@@ -141,21 +126,15 @@ def lbfgs_example(verbose):
   for i in range(initial.size()):
 
     print "%2d %10.4f %10.4f %10.4f"%(
-           i, initial[i], fit.a[i], sqrt(2./fit.c[i]))
+           i, initial[i], fit.a[i], sqrt(2./fit.curvatures()[i]))
 
 from scitbx.lstbx import normal_eqns
 from scitbx.lstbx import normal_eqns_solving
-class levenberg_helper(normal_eqns.non_linear_ls,normal_eqns.non_linear_ls_mixin):
-  def __init__(pfh, initial_estimates):
-    super(levenberg_helper, pfh).__init__(n_parameters=len(initial_estimates))
+class levenberg_common(object):
+  def initialize(pfh, initial_estimates):
     pfh.x_0 = flex.double(initial_estimates)
     pfh.restart()
     pfh.counter = 0
-
-  def set_data(pfh,x,y,w):
-    pfh.xobs = x
-    pfh.yobs = y
-    pfh.wobs = w # set this equal to 1/variance
 
   def restart(pfh):
     pfh.x = pfh.x_0.deep_copy()
@@ -172,37 +151,24 @@ class levenberg_helper(normal_eqns.non_linear_ls,normal_eqns.non_linear_ls_mixin
   def parameter_vector_norm(pfh):
     return pfh.x.norm()
 
-  def fvec_callable(pfh,current):
-    ycalc = flex.double(len(pfh.xobs))
-    for iobs in xrange(len(pfh.xobs)):
-      ycalc[iobs] = current[0] + \
-                    current[1] * exp( -pfh.xobs[iobs]/ current[3]) + \
-                    current[2] * exp( -pfh.xobs[iobs]/ current[4])
-    y_diff = pfh.yobs - ycalc
-    return y_diff
-
-  def print_step(pfh,message,target):
-    print "%s %10.4f"%(message,flex.sum(target)),
+  def print_step(pfh,message,target=None,functional=None):
+    if functional is None:  functional = flex.sum(target)
+    print "%s %10.4f"%(message,functional),
     print "["," ".join(["%10.4f"%a for a in pfh.x]),"]"
+
+from scitbx.examples.bevington import dense_base_class
+class levenberg_helper(dense_base_class,levenberg_common,normal_eqns.non_linear_ls_mixin):
+  def __init__(pfh, initial_estimates):
+    super(levenberg_helper, pfh).__init__(n_parameters=len(initial_estimates))
+    pfh.initialize(initial_estimates)
 
   def build_up(pfh, objective_only=False):
     if not objective_only: pfh.counter+=1
-    residuals = pfh.fvec_callable(pfh.x)
-    target = residuals*residuals*pfh.wobs
     pfh.reset()
-    if objective_only:
-      pfh.add_residuals(residuals, weights=pfh.wobs)
-    else:
-      pfh.print_step("LM  dense",target)
-      for iobs in xrange(len(pfh.xobs)):
-        jacobian_one_row = flex.double(len(pfh.x))
-        prefactor = 1.
-        jacobian_one_row [0] = prefactor
-        jacobian_one_row [1] = prefactor * exp(-pfh.xobs[iobs]/pfh.x[3])
-        jacobian_one_row [2] = prefactor * exp(-pfh.xobs[iobs]/pfh.x[4])
-        jacobian_one_row [3] = prefactor * pfh.x[1] * exp(-pfh.xobs[iobs]/pfh.x[3]) * (pfh.xobs[iobs]/(pfh.x[3]*pfh.x[3]))
-        jacobian_one_row [4] = prefactor * pfh.x[2] * exp(-pfh.xobs[iobs]/pfh.x[4]) * (pfh.xobs[iobs] * pow(pfh.x[4],-2))
-        pfh.add_equation(-residuals[iobs], jacobian_one_row, pfh.wobs[iobs])
+    if not objective_only:
+      functional = pfh.functional(pfh.x)
+      pfh.print_step("LM  dense",functional = functional)
+    pfh.access_cpp_build_up_directly_dense(objective_only, current_values = pfh.x)
 
 class dense_worker(object):
 
@@ -210,7 +176,7 @@ class dense_worker(object):
     self.counter = 0
     self.x = initial.deep_copy()
     self.helper = levenberg_helper(initial_estimates = self.x)
-    self.helper.set_data(x_obs,y_obs,w_obs)
+    self.helper.set_cpp_data(x_obs,y_obs,w_obs)
     self.helper.restart()
     iterations = normal_eqns_solving.levenberg_marquardt_iterations(
                non_linear_ls = self.helper,
@@ -240,9 +206,6 @@ class dense_worker(object):
     self.error_diagonal = [error_matrix(a,a) for a in xrange(5)]
     print "End of minimization: Converged", self.helper.counter,"cycles"
 
-  def show_summary(self):
-    print "%d cycles"%self.counter
-
 def levenberg_example(verbose):
 
   fit = dense_worker(x_obs=x_obs,y_obs=y_obs,w_obs=w_obs,initial=initial)
@@ -255,41 +218,19 @@ def levenberg_example(verbose):
     print "%2d %10.4f %10.4f %10.4f %10.4f"%(
       i, initial[i], fit.helper.x[i], sqrt(fit.error_diagonal[i]), sqrt(1./fit.c[i]))
 
-from scitbx.examples.bevington import bevington_base_class as base_class
-class eigen_helper(base_class,normal_eqns.non_linear_ls_mixin):
+from scitbx.examples.bevington import eigen_base_class as base_class
+class eigen_helper(base_class,levenberg_common,normal_eqns.non_linear_ls_mixin):
   def __init__(pfh, initial_estimates):
     super(eigen_helper, pfh).__init__(n_parameters=len(initial_estimates))
-    pfh.x_0 = flex.double(initial_estimates)
-    pfh.restart()
-    pfh.counter = 0
-
-  def restart(pfh):
-    pfh.x = pfh.x_0.deep_copy()
-    pfh.old_x = None
-
-  def step_forward(pfh):
-    pfh.old_x = pfh.x.deep_copy()
-    pfh.x += pfh.step()
-
-  def step_backward(pfh):
-    assert pfh.old_x is not None
-    pfh.x, pfh.old_x = pfh.old_x, None
-
-  def parameter_vector_norm(pfh):
-    return pfh.x.norm()
-
-  def print_step(pfh,message,target):
-    print "%s %10.4f"%(message,flex.sum(target)),
-    print "["," ".join(["%10.4f"%a for a in pfh.x]),"]"
+    pfh.initialize(initial_estimates)
 
   def build_up(pfh, objective_only=False):
     if not objective_only: pfh.counter+=1
     pfh.reset()
     #print list(pfh.x),objective_only
     if not objective_only:
-      xresid = pfh.fvec_callable(pfh.x)
-      target = xresid*xresid*pfh.w_obs
-      pfh.print_step("LM sparse",target)
+      functional = pfh.functional(pfh.x)
+      pfh.print_step("LM sparse",functional = functional)
     pfh.access_cpp_build_up_directly_eigen_eqn(objective_only, current_values = pfh.x)
 
 class eigen_worker(object):
@@ -299,7 +240,6 @@ class eigen_worker(object):
     self.x = initial.deep_copy()
     self.helper = eigen_helper(initial_estimates = self.x)
     self.helper.set_cpp_data(x_obs,y_obs,w_obs)
-    self.helper.w_obs = w_obs
     self.helper.restart()
     iterations = normal_eqns_solving.levenberg_marquardt_iterations_encapsulated_eqns(
                non_linear_ls = self.helper,
@@ -311,9 +251,6 @@ class eigen_worker(object):
     self.helper.build_up()
     self.error_diagonal = self.helper.solve_returning_error_mat_diagonal()
     print "End of minimization: Converged", self.helper.counter,"cycles"
-
-  def show_summary(self):
-    print "%d cycles"%self.counter
 
 def eigen_example(verbose):
 
@@ -336,13 +273,47 @@ if (__name__ == "__main__"):
   print "\n SPARSE MATRIX:"
   eigen_example(verbose)
 '''
+EXPLANATION OF CLASS HIERARCHY.
+
+bevington_silver(C++)
+fundamental expression of target function, gradients, curvatures
+  ^                  ^
+  |                  |
+  |
+lbfgs_biexponential_fit(Python)
+engine for lbfgs parameter fit; has a scitbx.lbfgs
+-------------------------------------------------- done with LBFGS
+                     |
+                     |  scitbx::lstbx::normal_equations::non_linear_ls
+                     |    ^
+                     |    |
+  dense_base_class(C++): specializes quick build up function for Levenberg Marquardt
+                 ^
+                 |            levenberg_common(Python)
+                 |            LM infrastructure
+                 |             ^
+                 |             |     normal_eqns.non_linear_ls_mixin(Python)
+                 |             |     LM infrastructure
+                 |             |      ^
+                 |             |      |
+  levenberg_helper(Python): main engine for dense-matrix levenberg
+  ------------------------------------------------ done with dense matrix LM
+
+                     ^    ^
+                     |    |
+                     |  non_linear_ls_eigen_wrapper(C++)
+                     |  specialization of non_linear_ls, has a linear_ls_eigen_wrapper
+                     |                     ^
+                     |                     |
+  eigen_base_class(C++): specializes sparse Cholesky build up function for Levenberg Marq.
+            ^
+            |                  ^      ^
+            |                  |      |
+  eigen_helper(Python): main engine for sparse-Cholesky levenberg
+  ------------------------------------------------ done with sparse Cholesky LM
+
+
   To do list:
-  is there a quick calculation of the diag elements?  try to implement the algorithm & see
-  implement an eigen version
-  refactor this code, implement a common class for expressing
-    1) residual terms
-    2) gradient terms
-    3) curvature approximations
-    4) diagonal elements for full matrix
-    5) diagaonal approximatinos in the eigen case
+  is there a quick calculation of the diag error elements?  Perhaps using sparse vectors.
+  try to implement the algorithm & see; then implement an eigen version
 '''
