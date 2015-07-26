@@ -849,7 +849,7 @@ class Builder(object):
       ))
 
   def _add_git(self, module, parameters):
-    git_available = self.shell(command=['git', '--version'], haltOnFailure=False, quiet=True, silent=True).run() == 0
+    git_available = Builder.shell(self, command=['git', '--version'], haltOnFailure=False, quiet=True, silent=True).run() == 0
 
     if git_available and os.path.exists(self.opjoin(*['modules', module, '.git'])):
       self.add_step(self.shell(
@@ -863,7 +863,7 @@ class Builder(object):
       return
 
     for source_candidate in parameters:
-      if not source_candidate.lower().startswith('http') and not self.auth['git_ssh']:
+      if not source_candidate.lower().startswith('http') and not self.auth.get('git_ssh',False):
         continue
       if source_candidate.lower().endswith('.git'):
         if not git_available:
