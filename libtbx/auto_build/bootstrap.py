@@ -77,11 +77,14 @@ class ShellCommand(object):
       #if not os.path.isabs(command[0]):
         # executable path isn't located relative to workdir
       #  command[0] = os.path.join(workdir, command[0])
+      stderr, stdout = sys.stderr, sys.stdout
+      if self.kwargs.get("silent", False):
+        stderr = stdout = open(os.devnull, 'wb')
       p = subprocess.Popen(
         args=command,
         cwd=workdir,
-        stdout=sys.stdout,
-        stderr=sys.stderr
+        stdout=stdout,
+        stderr=stderr
       )
     except Exception, e: # error handling
       if not self.kwargs.get('haltOnFailure'):
@@ -780,7 +783,7 @@ class Builder(object):
     self.add_step(_download())
 
   def _add_curl(self, module, url):
-    filename = urlparse.urlparse(url).path.split('/')[-1]
+    filename = urlparse.urlparse(url)[2].split('/')[-1]
     self._add_download(url, os.path.join('modules', filename))
 
     self.add_step(self.shell(
@@ -798,7 +801,7 @@ class Builder(object):
         for member in z.infolist():
           is_directory = member.filename.endswith('/')
           filename = os.path.join(*member.filename.split('/')[trim_directory:])
-          if filename != '': 
+          if filename != '':
             filename = os.path.normpath(filename)
             if '../' in filename:
               raise Exception('Archive %s contains invalid filename %s' % (archive, filename))
@@ -846,7 +849,7 @@ class Builder(object):
       ))
 
   def _add_git(self, module, parameters):
-    git_available = self.shell(command=['git', '--version'], haltOnFailure=False, quiet=True).run() == 0
+    git_available = self.shell(command=['git', '--version'], haltOnFailure=False, quiet=True, silent=True).run() == 0
 
     if git_available and os.path.exists(self.opjoin(*['modules', module, '.git'])):
       self.add_step(self.shell(
@@ -1019,9 +1022,9 @@ class Builder(object):
       description="run configure.py",
     ))
     # Prepare saving configure.py command to file should user want to manually recompile Phenix
-    relpython = os.path.relpath(self.python_base, self.opjoin(os.getcwd(),'build'))
+    relpython = os.path.relpath(self.python_base, self.opjoin(os.getcwd(),'build')) # relpath requires python 2.6!
     if sys.platform != 'win32':
-      relpython = os.path.relpath(self.python_base, os.getcwd())
+      relpython = os.path.relpath(self.python_base, os.getcwd()) # relpath requires python 2.6!
     configcmd =[
         relpython, # default to using our python rather than system python
         self.opjoin('..', 'modules', 'cctbx_project', 'libtbx', 'configure.py')
