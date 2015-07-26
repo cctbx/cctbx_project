@@ -2617,6 +2617,11 @@ scitbx/error/SConscript -text
 scitbx/error/tst_error.cpp -text
 scitbx/error/tst_error.py -text
 scitbx/error_utils.h -text
+scitbx/examples/bevington/SConscript -text
+scitbx/examples/bevington/__init__.py -text
+scitbx/examples/bevington/bevington_ext.cpp -text
+scitbx/examples/bevington/prototype_core.h -text
+scitbx/examples/bevington/silver.py -text
 scitbx/examples/flex_grid.py svneol=native#text/x-python
 scitbx/examples/functions.py -text
 scitbx/examples/integrating_a_weighted_sinc_function.py -text
