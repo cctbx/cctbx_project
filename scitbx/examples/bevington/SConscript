@@ -4,36 +4,37 @@ Import("env_base", "env_etc")
 
 try:
   env_etc.eigen_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../eigen"))
-  env_etc.eigen_include = env_etc.eigen_dist
-  env_etc.scitbx_ex_bev_common_includes = [
-    env_etc.eigen_include,
-    env_etc.libtbx_include,
-    env_etc.scitbx_include,
-    env_etc.boost_include,
-  ]
-  env = env_base.Clone(SHLINKFLAGS=env_etc.shlinkflags)
-  env.Append(LIBS=["cctbx"] + env_etc.libm)
-  env_etc.include_registry.append(
-    env=env,
-    paths=env_etc.scitbx_ex_bev_common_includes)
-  if (env_etc.static_libraries): builder = env.StaticLibrary
-  else:                          builder = env.SharedLibrary
-  # future expansion, create static library
-  #builder(
-  #  target="#lib/scitbx_ex_bev",
-  #  source=["scitbx_ex_bev_core.cpp"]
-  #  )
-
-  if (not env_etc.no_boost_python):
-    Import("env_boost_python_ext")
-    env_scitbx_ex_bev_boost_python_ext = env_boost_python_ext.Clone()
-  #  env_scitbx_ex_bev_boost_python_ext.Prepend(
-  #                 LIBS=["scitbx_ex_bev",])
-    env_scitbx_ex_bev_boost_python_ext.SharedLibrary(
-                   target="#lib/scitbx_examples_bevington_ext", source="bevington_ext.cpp")
+  if os.path.isdir(env_etc.eigen_dist):
+    env_etc.eigen_include = env_etc.eigen_dist
+    env_etc.scitbx_ex_bev_common_includes = [
+      env_etc.eigen_include,
+      env_etc.libtbx_include,
+      env_etc.scitbx_include,
+      env_etc.boost_include,
+    ]
+    env = env_base.Clone(SHLINKFLAGS=env_etc.shlinkflags)
+    env.Append(LIBS=["cctbx"] + env_etc.libm)
     env_etc.include_registry.append(
-      env=env_scitbx_ex_bev_boost_python_ext,
+      env=env,
       paths=env_etc.scitbx_ex_bev_common_includes)
-    Export("env_scitbx_ex_bev_boost_python_ext")
+    if (env_etc.static_libraries): builder = env.StaticLibrary
+    else:                          builder = env.SharedLibrary
+    # future expansion, create static library
+    #builder(
+    #  target="#lib/scitbx_ex_bev",
+    #  source=["scitbx_ex_bev_core.cpp"]
+    #  )
+
+    if (not env_etc.no_boost_python):
+      Import("env_boost_python_ext")
+      env_scitbx_ex_bev_boost_python_ext = env_boost_python_ext.Clone()
+    #  env_scitbx_ex_bev_boost_python_ext.Prepend(
+    #                 LIBS=["scitbx_ex_bev",])
+      env_scitbx_ex_bev_boost_python_ext.SharedLibrary(
+                     target="#lib/scitbx_examples_bevington_ext", source="bevington_ext.cpp")
+      env_etc.include_registry.append(
+        env=env_scitbx_ex_bev_boost_python_ext,
+        paths=env_etc.scitbx_ex_bev_common_includes)
+      Export("env_scitbx_ex_bev_boost_python_ext")
 except:
   pass
