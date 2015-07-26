@@ -208,14 +208,11 @@ class non_linear_ls_eigen_wrapper:  public scitbx::lstbx::normal_equations::non_
     scitbx::af::shared<triplet_t> tripletList;
 };
 
-class bevington_base_class: public non_linear_ls_eigen_wrapper {
+class bevington_silver {
+  // encode the functional form of the silver decay target, also gradients and curvatures
   public:
     typedef scitbx::af::shared<double> vecd;
-
-    bevington_base_class(int n_parameters):
-      non_linear_ls_eigen_wrapper(n_parameters)
-      {
-      }
+    bevington_silver(){} // explicitly instantiate the class so it is available for Python derivation
 
     void set_cpp_data(vecd x, vecd y, vecd w) // pass reference, avoid big copy
     {
@@ -223,6 +220,9 @@ class bevington_base_class: public non_linear_ls_eigen_wrapper {
        y_obs = y;
        w_obs = w;
     }
+
+    vecd get_xobs(){ return x_obs; }
+    vecd get_wobs(){ return w_obs; }
 
     vecd
     fvec_callable(vecd current_values) {
@@ -236,7 +236,91 @@ class bevington_base_class: public non_linear_ls_eigen_wrapper {
       return y_diff;
     }
 
-    vecd x_obs, y_obs, w_obs;
+    vecd
+    gvec_callable(vecd current_values) {
+      vecd y_diff = fvec_callable(current_values);
+      vecd gvec = vecd(current_values.size());
+      cvec = vecd(current_values.size());
+      for (int ix = 0; ix < x_obs.size(); ++ix) {
+        double prefactor = -2. * w_obs[ix] * y_diff[ix];
+        gvec[0] += prefactor;
+        gvec[1] += prefactor * std::exp(-x_obs[ix]/current_values[3]);
+        gvec[2] += prefactor * std::exp(-x_obs[ix]/current_values[4]);
+        gvec[3] += prefactor * current_values[1] * std::exp(-x_obs[ix]/current_values[3]) *
+                               (x_obs[ix]/(current_values[3]*current_values[3]));
+        gvec[4] += prefactor * current_values[2] * std::exp(-x_obs[ix]/current_values[4]) *
+                               (x_obs[ix] * std::pow(current_values[4],-2));
+        cvec[0] += 2 * w_obs[ix];
+        cvec[1] += 2 * w_obs[ix] * std::pow(std::exp(-x_obs[ix]/current_values[3]),2);
+        cvec[2] += 2 * w_obs[ix] * std::pow(std::exp(-x_obs[ix]/current_values[4]),2);
+        cvec[3] += 2 * w_obs[ix] * std::pow(current_values[1] * std::exp(-x_obs[ix]/current_values[3]) *
+                                   (x_obs[ix]/(current_values[3]*current_values[3])),2);
+        cvec[4] += 2 * w_obs[ix] * std::pow(current_values[2] * std::exp(-x_obs[ix]/current_values[4]) *
+                                   (x_obs[ix] * std::pow(current_values[4],-2)),2);
+      }
+      return gvec;
+    }
+
+    double functional(vecd current_values) {
+      double result = 0;
+      vecd fvec = fvec_callable(current_values);
+      for (int i = 0; i < fvec.size(); ++i) {
+        result += fvec[i]*fvec[i]*w_obs[i];
+      }
+      return result;
+    }
+
+    vecd curvatures() const{
+      return cvec;
+    }
+
+    vecd x_obs, y_obs, w_obs, cvec;
+};
+
+class dense_base_class: public bevington_silver, public scitbx::lstbx::normal_equations::non_linear_ls<double> {
+  public:
+    dense_base_class(int n_parameters):
+      scitbx::lstbx::normal_equations::non_linear_ls<double>(n_parameters)
+      {
+      }
+
+    void access_cpp_build_up_directly_dense(bool objective_only, scitbx::af::shared<double> current_values) {
+
+        vecd residuals = fvec_callable(current_values);
+        if (objective_only){
+          add_residuals(residuals.const_ref(), w_obs.const_ref());
+          return;
+        }
+
+        // add one of the normal equations per each observation
+        for (int ix = 0; ix < x_obs.size(); ++ix) {
+
+          scitbx::af::shared<double> jacobian_one_row_data;
+
+          jacobian_one_row_data.push_back( 1. );
+
+          jacobian_one_row_data.push_back( std::exp( -x_obs[ix]/ current_values[3]) );
+
+          jacobian_one_row_data.push_back( std::exp( -x_obs[ix]/ current_values[4]) );
+
+          jacobian_one_row_data.push_back( current_values[1] * std::exp( -x_obs[ix]/ current_values[3]) *
+                                           ( x_obs[ix] / (current_values[3]*current_values[3]) ));
+
+          jacobian_one_row_data.push_back( current_values[2] * std::exp( -x_obs[ix]/ current_values[4]) *
+                                           ( x_obs[ix] / (current_values[4]*current_values[4]) ));
+
+          add_equation(-residuals[ix], jacobian_one_row_data.const_ref(), w_obs[ix]);
+        }
+
+    }
+};
+
+class eigen_base_class: public bevington_silver, public non_linear_ls_eigen_wrapper {
+  public:
+    eigen_base_class(int n_parameters):
+      non_linear_ls_eigen_wrapper(n_parameters)
+      {
+      }
 
     void access_cpp_build_up_directly_eigen_eqn(bool objective_only, scitbx::af::shared<double> current_values) {
 

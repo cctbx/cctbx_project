@@ -12,7 +12,6 @@
 #include <scitbx/examples/bevington/prototype_core.h>
 #include <Eigen/Sparse>
 #include <boost/python/return_internal_reference.hpp>
-#include <boost/math/tools/precision.hpp>
 
 using namespace boost::python;
 namespace scitbx{
@@ -49,11 +48,28 @@ namespace boost_python { namespace {
       .def("solve_returning_error_mat_diagonal", &nllsew::solve_returning_error_mat_diagonal)
     ;
 
-    typedef bevington_base_class bev;
-    class_<bev,bases<nllsew> >( "bevington_base_class", no_init)
+    typedef bevington_silver silver;
+    class_<silver>( "bevington_silver")
+      .def(init<>())
+      .def("set_cpp_data", &silver::set_cpp_data)
+      .def("fvec_callable", &silver::fvec_callable)
+      .def("gvec_callable", &silver::gvec_callable)
+      .def("curvatures", &silver::curvatures)
+      .def("functional", &silver::functional)
+      .def("get_xobs", &silver::get_xobs)
+      .def("get_wobs", &silver::get_wobs)
+    ;
+
+    typedef dense_base_class dbc;
+    class_<dbc,bases<silver, scitbx::lstbx::normal_equations::non_linear_ls<double> > >( "dense_base_class", no_init)
       .def(init<int>(arg("n_parameters")))
-      .def("set_cpp_data",&bev::set_cpp_data)
-      .def("fvec_callable", &bev::fvec_callable)
+      .def("access_cpp_build_up_directly_dense", &dbc::access_cpp_build_up_directly_dense,
+        (arg("objective_only"),arg("current_values")))
+    ;
+
+    typedef eigen_base_class bev;
+    class_<bev,bases<silver, nllsew> >( "eigen_base_class", no_init)
+      .def(init<int>(arg("n_parameters")))
       .def("access_cpp_build_up_directly_eigen_eqn", &bev::access_cpp_build_up_directly_eigen_eqn,
         (arg("objective_only"),arg("current_values")))
     ;
