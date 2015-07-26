@@ -156,7 +156,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       return right_hand_side_.array();
     }
 
-  private:
+  public:
     bool solved_;
     symmetric_matrix_owning_ref_t normal_matrix_;
     vector_owning_ref_t right_hand_side_;
@@ -293,7 +293,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       linearised.reset();
     }
 
-  private:
+  protected:
     std::size_t n_equations_;
     scalar_t r_sq;
     linear_ls<scalar_t> linearised;
