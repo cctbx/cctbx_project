@@ -492,7 +492,7 @@ class segment:  # object for holding a helix or a strand or other
     end_res=self.get_start_resno()+end_pos
     if start_pos==0 and end_pos==self.length()-1:
       return # nothing to do
-    atom_selection="resseq %s:%s" %(resseq_encode(start_res),
+    atom_selection="resid %s through %s" %(resseq_encode(start_res),
        resseq_encode(end_res))
 
     self.hierarchy=apply_atom_selection(atom_selection,hierarchy=self.hierarchy)
@@ -518,9 +518,11 @@ class segment:  # object for holding a helix or a strand or other
     atom_selection="name ca"
     sele=apply_atom_selection(atom_selection,hierarchy=self.hierarchy)
 
-    # extract coordinates
-    self.sites=sele.extract_xray_structure().sites_cart()
-
+    if sele.overall_counts().n_residues==0:
+      self.sites=flex.vec3_double()
+    else:
+      # extract coordinates
+      self.sites=sele.extract_xray_structure().sites_cart()
 
   def get_start_resno(self):
     return self.start_resno
@@ -695,7 +697,7 @@ class segment:  # object for holding a helix or a strand or other
 
   def apply_lsq_fit(self,lsq_fit_obj=None,hierarchy=None,
      start_res=None,end_res=None):
-    atom_selection="resseq %s:%s" %(resseq_encode(start_res),
+    atom_selection="resid %s through %s" %(resseq_encode(start_res),
        resseq_encode(end_res))
     sele=apply_atom_selection(atom_selection,hierarchy=hierarchy)
 
@@ -1099,7 +1101,7 @@ class find_segment: # class to look for a type of segment
       if self.extract_segments_from_pdb:
         start_resno=start_res_with_buffer+self.start_resno
         end_resno=end_res_with_buffer+self.start_resno
-        atom_selection="resseq %s:%s" %(resseq_encode(start_resno),
+        atom_selection="resid %s through %s" %(resseq_encode(start_resno),
            resseq_encode(end_resno))
         hierarchy=apply_atom_selection(
            atom_selection,hierarchy=self.model.hierarchy)
@@ -1462,6 +1464,8 @@ class find_beta_strand(find_segment):
       end=get_last_residue(segment.hierarchy)
     else:
       end=get_indexed_residue(segment.hierarchy,index=end_index)
+    # if start is None or end is None:
+      # raise Sorry("Something is not right in get_pdb_strand function")
 
     chain_id=get_chain_id(segment.hierarchy)
     pdb_strand = secondary_structure.pdb_strand(
@@ -1539,7 +1543,6 @@ class find_beta_strand(find_segment):
       current_sheet.add_strand(first_strand)
       current_sheet.add_registration(None)
       previous_s=s
-      previous_is_parallel=True
       i=k
       for j in remainder: # previous strand is i, current is j
         s=segment_list[j]
@@ -1550,12 +1553,8 @@ class find_beta_strand(find_segment):
         first_last_1_and_2=info_dict[key]
         first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel,i_index,j_index=\
            first_last_1_and_2
-        if previous_is_parallel:  # parallel to strand 1
-          current_is_parallel=is_parallel
-        else:
-          current_is_parallel=(not is_parallel)
 
-        if current_is_parallel:
+        if is_parallel:
           sense=1
         else:
           sense=-1
@@ -1573,7 +1572,6 @@ class find_beta_strand(find_segment):
           all_h_bonds=all_h_bonds)
         current_sheet.add_registration(register)
         previous_s=s
-        previous_is_parallel=current_is_parallel
         i=j
 
       records.append(current_sheet)
@@ -1716,7 +1714,7 @@ class find_beta_strand(find_segment):
         new_h_bond=h_bond(
              prev_atom=local_prev_atom,
              prev_resname=local_prev_residue.resname,
-             prev_chain_id=get_chain_id(segment.hierarchy),
+             prev_chain_id=get_chain_id(previous_segment.hierarchy),
              prev_resseq=local_prev_residue.resseq_as_int(),
              prev_icode=local_prev_residue.icode,
              cur_atom=local_cur_atom,
@@ -1905,13 +1903,12 @@ class find_secondary_structure: # class to look for secondary structure
 
       # remove alt conformers
       from mmtbx.pdbtools import remove_alt_confs
-      remove_alt_confs(hierarchy,always_keep_one_conformer=True)
+      remove_alt_confs(hierarchy,always_keep_one_conformer=False)
 
       self.models=split_model(hierarchy=hierarchy)
 
     for model in self.models:
       self.find_ss_in_model(params=params,model=model,out=out)
-
     for model in self.models:
       if model.find_beta:
         self.all_strands+=model.find_beta.segments
@@ -2342,6 +2339,11 @@ class find_secondary_structure: # class to look for secondary structure
 
     self.all_pdb_records=all_pdb_records.getvalue()
 
+  def get_pdb_annotation(self):
+    return secondary_structure.annotation(
+        helices=self.get_pdb_alpha_helix_list(),
+        sheets=self.get_pdb_sheet_list())
+
   def get_pdb_alpha_helix_list(self):
     if hasattr(self,'pdb_alpha_helix_list'):
       return self.pdb_alpha_helix_list
@@ -2365,7 +2367,6 @@ class find_secondary_structure: # class to look for secondary structure
   def get_all_selection_records(self):
     if not hasattr(self,'all_selection_records'):
        return
-
     text='"'
     first=True
     for sel in self.all_selection_records:
