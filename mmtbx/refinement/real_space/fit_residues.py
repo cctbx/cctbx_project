@@ -14,7 +14,7 @@ negate_map_table = {
   "asn": 5,
   "asp": 5,
   "cys": False,
-  "gln": False,
+  "gln": 6,
   "glu": 6,
   "gly": False,
   "his": 6,
@@ -29,8 +29,8 @@ negate_map_table = {
   "trp": 7.4,
   "tyr": 7.7,
   "val": False,
-  "arg": 8,
-  "lys": 7
+  "arg": 10,
+  "lys": 8
 }
 
 class manager(object):
@@ -42,6 +42,7 @@ class manager(object):
                backbone_sample=True,
                log = None):
     adopt_init_args(self, locals())
+    self.unit_cell = self.structure_monitor.xray_structure.unit_cell()
     if(self.log is None): self.log = sys.stdout
     assert approx_equal(
       self.structure_monitor.xray_structure.sites_cart(),
@@ -104,7 +105,7 @@ class manager(object):
         residue           = r.residue,
         rotamer_evaluator = self.rotamer_manager.rotamer_evaluator,
         mon_lib_srv       = self.mon_lib_srv,
-        unit_cell         = self.structure_monitor.xray_structure.unit_cell(),
+        unit_cell         = self.unit_cell,
         f_map             = sm.target_map_object.data,
         fdiff_map         = sm.target_map_object.f_map_diff)
       if(go):
@@ -166,3 +167,89 @@ class manager(object):
     assert approx_equal(
       sm.xray_structure.sites_cart(),
       sm.pdb_hierarchy.atoms().extract_xyz())
+    #
+    result = tune_up(
+      pdb_hierarchy   = sm.pdb_hierarchy,
+      rotamer_manager = self.rotamer_manager.rotamer_evaluator,
+      target_map      = target_map,
+      unit_cell       = self.unit_cell,
+      mon_lib_srv     = self.mon_lib_srv,
+      log             = self.log)
+    xrs.set_sites_cart(result.pdb_hierarchy.atoms().extract_xyz())
+    sm.update(xray_structure = xrs, accept_as_is=True)
+
+class fix_outliers(object):
+  def __init__(self,
+               pdb_hierarchy,
+               rotamer_manager,
+               sin_cos_table,
+               mon_lib_srv,
+               f_map=None,
+               fdiff_map=None,
+               unit_cell=None,
+               accept_only_if_max_shift_is_smaller_than=None,
+               log = None):
+    adopt_init_args(self, locals())
+    assert [f_map, fdiff_map, unit_cell].count(None) in [0,3]
+    ac = accept_only_if_max_shift_is_smaller_than
+    if(self.log is None): self.log = sys.stdout
+    get_class = iotbx.pdb.common_residue_names_get_class
+    for model in self.pdb_hierarchy.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          conformers = residue_group.conformers()
+          if(len(conformers)>1): continue
+          for conformer in residue_group.conformers():
+            residue = conformer.only_residue()
+            id_str="%s%s%s"%(chain.id,residue.resname,residue.resseq.strip())
+            if(get_class(residue.resname) == "common_amino_acid"):
+              # Idealize rotamer: move to nearest rotameric state
+              re = self.rotamer_manager.rotamer_evaluator
+              if(re.evaluate_residue(residue)=="OUTLIER"):
+                go=True
+                if([f_map, fdiff_map, unit_cell].count(None)==0):
+                  go = mmtbx.refinement.real_space.need_sidechain_fit(
+                    residue           = residue,
+                    rotamer_evaluator = self.rotamer_manager.rotamer_evaluator,
+                    mon_lib_srv       = self.mon_lib_srv,
+                    unit_cell         = self.unit_cell,
+                    f_map             = f_map,
+                    fdiff_map         = fdiff_map)
+                if(go):
+                  mmtbx.refinement.real_space.fit_residue.run(
+                    residue         = residue,
+                    backbone_sample = False,
+                    target_map      = None,
+                    mon_lib_srv     = self.mon_lib_srv,
+                    rotamer_manager = self.rotamer_manager,
+                    sin_cos_table   = self.sin_cos_table,
+                    accept_only_if_max_shift_is_smaller_than = ac)
+
+class tune_up(object):
+  def __init__(self,
+               pdb_hierarchy,
+               rotamer_manager,
+               target_map,
+               unit_cell,
+               mon_lib_srv,
+               log = None):
+    adopt_init_args(self, locals())
+    if(self.log is None): self.log = sys.stdout
+    get_class = iotbx.pdb.common_residue_names_get_class
+    for model in self.pdb_hierarchy.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          conformers = residue_group.conformers()
+          if(len(conformers)>1): continue
+          for conformer in residue_group.conformers():
+            residue = conformer.only_residue()
+            id_str="%s%s%s"%(chain.id,residue.resname,residue.resseq.strip())
+            if(get_class(residue.resname) == "common_amino_acid"):
+              re = self.rotamer_manager
+              if(re.evaluate_residue(residue)=="OUTLIER"):
+                mmtbx.refinement.real_space.fit_residue.tune_up(
+                  residue         = residue,
+                  unit_cell       = self.unit_cell,
+                  target_map      = target_map,
+                  mon_lib_srv     = self.mon_lib_srv,
+                  rotamer_manager = self.rotamer_manager)

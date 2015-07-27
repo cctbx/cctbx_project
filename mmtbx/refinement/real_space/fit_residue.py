@@ -19,17 +19,23 @@ def flatten(l):
 class run(object):
   def __init__(self,
                residue,
-               unit_cell,
-               target_map,
                mon_lib_srv,
                rotamer_manager,
                sin_cos_table,
-               backbone_sample=True):
+               target_map=None,
+               unit_cell=None,
+               backbone_sample=True,
+               accept_only_if_max_shift_is_smaller_than=None):
     adopt_init_args(self, locals())
+    #
+    if(target_map is None):
+      assert not backbone_sample
+      assert unit_cell is None
     # Initial state
     rotamer_start = rotamer_manager.rotamer(residue=self.residue)
     sites_cart_start=self.residue.atoms().extract_xyz()
-    target_start = self.get_target_value(sites_cart=sites_cart_start)
+    if(target_map is not None):
+      target_start = self.get_target_value(sites_cart=sites_cart_start)
     # Actual calculations
     self.chi_angles = self.rotamer_manager.get_chi_angles(
       resname=self.residue.resname)
@@ -41,14 +47,15 @@ class run(object):
       self.fit_c_beta(c_beta_rotation_cluster = co.clusters[0])
     self.fit_side_chain(clusters = co.clusters[1:])
     # Final state
-    rotamer_final = rotamer_manager.rotamer(residue=self.residue)
-    target_final = self.get_target_value(
-      sites_cart=self.residue.atoms().extract_xyz())
-    # Sanity and consistency check
-    #XXX not always hold due to approx fast math assert rotamer_final != "OUTLIER"
-    # Potentially this will keep an OUTLIER if no better fit found
-    if(target_start > target_final):
-      self.residue.atoms().set_xyz(sites_cart_start)
+    if(target_map is not None):
+      rotamer_final = rotamer_manager.rotamer(residue=self.residue)
+      target_final = self.get_target_value(
+        sites_cart=self.residue.atoms().extract_xyz())
+      # Sanity and consistency check
+      #XXX not always hold due to approx fast math assert rotamer_final != "OUTLIER"
+      # Potentially this will keep an OUTLIER if no better fit found
+      if(target_start > target_final):
+        self.residue.atoms().set_xyz(sites_cart_start)
 
   def get_target_value(self, sites_cart, selection=None):
     if(selection is None):
@@ -70,9 +77,11 @@ class run(object):
         residue     = self.residue)
     if(rotamer_iterator is None): return
     selection = flex.size_t(flatten(clusters[0].vector))
-    start_target_value = self.get_target_value(
-      sites_cart = self.residue.atoms().extract_xyz(),
-      selection  = selection)
+    if(self.target_map is not None):
+      start_target_value = self.get_target_value(
+        sites_cart = self.residue.atoms().extract_xyz(),
+        selection  = selection)
+    sites_cart_start = self.residue.atoms().extract_xyz()
     sites_cart_first_rotamer = list(rotamer_iterator)[0][1]
     self.residue.atoms().set_xyz(sites_cart_first_rotamer)
     axes = []
@@ -81,22 +90,44 @@ class run(object):
       cl = clusters[i]
       axes.append(flex.size_t(cl.axis))
       atr.append(flex.size_t(cl.atoms_to_rotate))
-    ro = ext.fit(
-      target_value             = start_target_value,
-      axes                     = axes,
-      rotatable_points_indices = atr,
-      angles_array             = self.chi_angles,
-      density_map              = self.target_map,
-      all_points               = self.residue.atoms().extract_xyz(),
-      unit_cell                = self.unit_cell,
-      selection                = selection,
-      sin_table                = self.sin_cos_table.sin_table,
-      cos_table                = self.sin_cos_table.cos_table,
-      step                     = self.sin_cos_table.step,
-      n                        = self.sin_cos_table.n)
+    if(self.target_map is not None):
+      ro = ext.fit(
+        target_value             = start_target_value,
+        axes                     = axes,
+        rotatable_points_indices = atr,
+        angles_array             = self.chi_angles,
+        density_map              = self.target_map,
+        all_points               = self.residue.atoms().extract_xyz(),
+        unit_cell                = self.unit_cell,
+        selection                = selection,
+        sin_table                = self.sin_cos_table.sin_table,
+        cos_table                = self.sin_cos_table.cos_table,
+        step                     = self.sin_cos_table.step,
+        n                        = self.sin_cos_table.n)
+    else:
+      ro = ext.fit(
+        sites_cart_start         = sites_cart_start.deep_copy(),
+        axes                     = axes,
+        rotatable_points_indices = atr,
+        angles_array             = self.chi_angles,
+        all_points               = self.residue.atoms().extract_xyz(),
+        sin_table                = self.sin_cos_table.sin_table,
+        cos_table                = self.sin_cos_table.cos_table,
+        step                     = self.sin_cos_table.step,
+        n                        = self.sin_cos_table.n)
     sites_cart_result = ro.result()
     if(sites_cart_result.size()>0):
-      self.residue.atoms().set_xyz(sites_cart_result)
+      dist = None
+      if(self.accept_only_if_max_shift_is_smaller_than is not None):
+        dist = flex.max(flex.sqrt((sites_cart_start - sites_cart_result).dot()))
+      if(dist is None):
+        self.residue.atoms().set_xyz(sites_cart_result)
+      else:
+        if(dist is not None and
+           dist < self.accept_only_if_max_shift_is_smaller_than):
+          self.residue.atoms().set_xyz(sites_cart_result)
+        else:
+          self.residue.atoms().set_xyz(sites_cart_start)
 
   def fit_c_beta(self, c_beta_rotation_cluster):
     selection = flex.size_t(c_beta_rotation_cluster.selection)
@@ -213,7 +244,7 @@ class run_with_minimization(object):
         selection       = use_in_target_selection)
     cl = get_cluster(self)
     residue_sites_cart = self.residue.atoms().extract_xyz()
-    scorer.reset_with(
+    scorer.reset(
       sites_cart = residue_sites_cart,
       selection  = cl.selection)
     angle_start = 0
@@ -266,3 +297,34 @@ def get_rotamer_iterator(mon_lib_srv, residue):
   if (rotamer_iterator.rotamer_info is None):
     return None
   return rotamer_iterator
+
+class tune_up(object):
+  def __init__(self,
+               target_map,
+               residue,
+               mon_lib_srv,
+               rotamer_manager,
+               unit_cell,
+               torsion_search_start = -20,
+               torsion_search_stop  = 20,
+               torsion_search_step  = 2):
+    adopt_init_args(self, locals())
+    self.clusters = None
+    self.axes_and_atoms_aa_specific = None
+    self.clusters = mmtbx.refinement.real_space.aa_residue_axes_and_clusters(
+      residue         = self.residue,
+      mon_lib_srv     = self.mon_lib_srv,
+      backbone_sample = False).clusters
+    score_residue = mmtbx.refinement.real_space.score3(
+      unit_cell    = self.unit_cell,
+      target_map   = self.target_map,
+      residue      = self.residue,
+      rotamer_eval = self.rotamer_manager)
+    mmtbx.refinement.real_space.torsion_search(
+      clusters   = self.clusters,
+      sites_cart = self.residue.atoms().extract_xyz(),
+      scorer     = score_residue,
+      start      = self.torsion_search_start,
+      stop       = self.torsion_search_stop,
+      step       = self.torsion_search_step)
+    self.residue.atoms().set_xyz(new_xyz=score_residue.sites_cart)

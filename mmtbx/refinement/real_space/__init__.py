@@ -84,7 +84,7 @@ def need_sidechain_fit(
   if(rotamer_evaluator.evaluate_residue(residue)=="OUTLIER"):
     map_values = flex.double()
     for i in side_chain_sel:
-      map_values.append(f_map.eight_point_interpolation(sites_frac[i]))
+      map_values.append(f_map.value_at_closest_grid_point(sites_frac[i]))
     valid_outlier = map_values.all_gt(1.0)
     return not valid_outlier
   ###
@@ -156,13 +156,7 @@ class aa_residue_axes_and_clusters(object):
   def __init__(self,
                residue,
                mon_lib_srv,
-               backbone_sample,
-               torsion_search_backbone_start=None,
-               torsion_search_backbone_stop=None,
-               torsion_search_backbone_step=None,
-               torsion_search_sidechain_start=None,
-               torsion_search_sidechain_stop=None,
-               torsion_search_sidechain_step=None):
+               backbone_sample):
     self.clusters = []
     atom_names = residue.atoms().extract_name()
     if(backbone_sample):
@@ -236,7 +230,7 @@ class structure_monitor(object):
   def __init__(self,
                pdb_hierarchy,
                xray_structure,
-               target_map_object,
+               target_map_object=None,
                geometry_restraints_manager=None):
     adopt_init_args(self, locals())
     self.unit_cell = self.xray_structure.unit_cell()
@@ -627,7 +621,7 @@ class score(object):
         self.target = target
         self.sites_cart = sites_cart
 
-  def reset_with(self, sites_cart, selection=None):
+  def reset(self, sites_cart, selection=None):
     self.target = self.compute_target(sites_cart = sites_cart,
       selection = selection)
     self.sites_cart = sites_cart
@@ -644,7 +638,7 @@ def torsion_search(clusters, scorer, sites_cart, start, stop, step):
   for i_cl, cl in enumerate(clusters):
     if(i_cl == 0): sites_cart_start = sites_cart.deep_copy()
     else:          sites_cart_start = scorer.sites_cart.deep_copy()
-    scorer.reset_with(sites_cart=sites_cart_start, selection=cl.selection)
+    scorer.reset(sites_cart=sites_cart_start, selection=cl.selection)
     sites_cart_ = scorer.sites_cart.deep_copy()
     for angle_deg in generate_range(start=start, stop=stop, step=step):
       xyz_moved = sites_cart_.deep_copy()
@@ -673,7 +667,7 @@ def torsion_search_nested(
   else: return
   nested_loop = flex.nested_loop(begin=r1, end=r2, open_range=False)
   selection = clusters[0].atoms_to_rotate
-  scorer.reset_with(sites_cart = sites_cart, selection = selection)
+  scorer.reset(sites_cart = sites_cart, selection = selection)
   for angles in nested_loop:
     xyz_moved = sites_cart.deep_copy()
     for i, angle in enumerate(angles):
@@ -687,3 +681,46 @@ def torsion_search_nested(
         xyz_moved[atom] = new_xyz
     scorer.update(sites_cart = xyz_moved, selection = selection)
   return scorer
+
+class score3(object):
+  def __init__(self,
+               unit_cell,
+               target_map,
+               residue,
+               rotamer_eval):
+    adopt_init_args(self, locals())
+    self.target = None
+    self.sites_cart = self.residue.atoms().extract_xyz()
+    self.target_start = maptbx.real_space_target_simple(
+        unit_cell   = self.unit_cell,
+        density_map = self.target_map,
+        sites_cart  = self.sites_cart)
+
+  def compute_target(self, sites_cart, selection=None):
+    if(selection is not None):
+      return maptbx.real_space_target_simple(
+        unit_cell   = self.unit_cell,
+        density_map = self.target_map,
+        sites_cart  = sites_cart,
+        selection   = selection)
+    else:
+      return maptbx.real_space_target_simple(
+        unit_cell   = self.unit_cell,
+        density_map = self.target_map,
+        sites_cart  = sites_cart)
+
+  def update(self, sites_cart, selection=None):
+    target = self.compute_target(sites_cart=sites_cart, selection=selection)
+    assert self.target is not None
+    if(target > self.target):
+      self.residue.atoms().set_xyz(sites_cart)
+      fl = self.rotamer_eval is None or \
+        self.rotamer_eval.evaluate_residue(residue = self.residue) != "OUTLIER"
+      if(fl):
+        self.target = target
+        self.sites_cart = sites_cart
+
+  def reset(self, sites_cart, selection=None):
+    self.target = self.compute_target(sites_cart = sites_cart,
+      selection = selection)
+    self.sites_cart = sites_cart
