@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/30/2015
+Last Changed: 07/15/2015
 Description : Runs cctbx.xfel integration module either in grid-search or final
               integration mode. Has options to output diagnostic visualizations
 '''
@@ -324,6 +324,10 @@ def integration(int_type, mp_entry, log_dir, gs_params):
       with open('{}/integrated.lst'.format(os.path.abspath(gs_params.output)),\
                                                               'a') as f_int:
         f_int.write('{}\n'.format(current_file))
+
+      with open('{}/int_pickles.lst'.format(os.path.abspath(gs_params.output)),\
+                                                              'a') as f_int:
+        f_int.write('{}\n'.format(current_img))
 
     if gs_params.advanced.viz == 'integration':
       viz.make_png(current_img, current_file)
