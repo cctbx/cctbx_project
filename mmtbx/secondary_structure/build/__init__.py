@@ -331,7 +331,7 @@ def substitute_ss(real_h,
   xray_structure - xray_structure - needed to get crystal symmetry (to
       construct processed_pdb_file and xray_structure is needed to call
       get_geometry_restraints_manager for no obvious reason).
-  ss_annotation - annotation records.
+  ss_annotation - iotbx.pdb.annotation object.
   """
   if rotamer_manager is None:
     rotamer_manager = RotamerEval()
@@ -358,6 +358,8 @@ def substitute_ss(real_h,
   error_msg = "The following secondary structure annotations result in \n"
   error_msg +="empty atom selections. They don't match the structre: \n"
   error_flg = False
+
+  # Checking for SS selections
   for h in ann.helices:
     selstring = h.as_atom_selections()
     isel = selection_cache.iselection(selstring[0])
@@ -370,12 +372,14 @@ def substitute_ss(real_h,
       isel = selection_cache.iselection(selstring)
       if len(isel) == 0:
         error_flg = True
-        error_msg += "  %s\n" % sh.particular_strand_as_pdb_str(
-                                      strand_id=st.strand_id)
+        error_msg += "  %s\n" % sh.as_pdb_str(strand_id=st.strand_id)
   if error_flg:
     raise Sorry(error_msg)
 
+  # Actually idelizing SS elements
+  log.write("Replacing ss-elements with ideal ones:\n")
   for h in ann.helices:
+    log.write("  %s\n" % h.as_pdb_str())
     selstring = h.as_atom_selections()
     isel = selection_cache.iselection(selstring[0])
     all_bsel = flex.bool(n_atoms_in_real_h, False)
@@ -388,6 +392,9 @@ def substitute_ss(real_h,
     # edited_h.select(all_bsel).atoms().set_xyz(ideal_h.atoms().extract_xyz())
     set_xyz_carefully(dest_h=edited_h.select(all_bsel), source_h=ideal_h)
   for sh in ann.sheets:
+    s = "  %s\n" % sh.as_pdb_str()
+    ss = s.replace("\n", "\n  ")
+    log.write(ss[:-2])
     for st in sh.strands:
       selstring = st.as_atom_selections()
       isel = selection_cache.iselection(selstring)
@@ -422,9 +429,9 @@ def substitute_ss(real_h,
   isel = selection_cache.iselection("name ca or name n or name o or name c")
   nonss_for_tors_selection.set_selected(isel, True)
   main_chain_selection_prefix = "(name ca or name n or name o or name c) %s"
-  log.write("Replacing ss-elements with ideal ones:\n")
+
+  # Here we are just preparing selections
   for h in ann.helices:
-    log.write("  %s\n" % h.as_pdb_str())
     ss_sels = h.as_atom_selections()[0]
     selstring = main_chain_selection_prefix % ss_sels
     isel = selection_cache.iselection(selstring)
@@ -435,9 +442,6 @@ def substitute_ss(real_h,
     nonss_for_tors_selection.set_selected(isel, False)
 
   for sheet in ann.sheets:
-    s = "  %s\n" % sheet.as_pdb_str()
-    ss = s.replace("\n", "\n  ")
-    log.write(ss)
     for ss_sels in sheet.as_atom_selections():
       selstring = main_chain_selection_prefix % ss_sels
       isel = selection_cache.iselection(selstring)
@@ -463,8 +467,7 @@ def substitute_ss(real_h,
           % phil_str,
       "pdb_interpretation.peptide_link.ramachandran_restraints = True",
       "c_beta_restraints = True",
-      "pdb_interpretation.secondary_structure.enabled=True",
-      "pdb_interpretation.secondary_structure.find_automatically=False"]))).extract()
+      "pdb_interpretation.secondary_structure.enabled=True"]))).extract()
 
   import mmtbx.utils
   processed_pdb_files_srv = mmtbx.utils.\

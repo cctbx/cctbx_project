@@ -248,7 +248,11 @@ class torsion_ncs(object):
     if self.selection is None:
       self.selection = flex.bool(len(sites_cart), True)
 
-    if self.processed_pdb_file is not None:
+    # XXX Update. Due to possible changes in number of atoms in hierarchy
+    # during refinement we have to construct again all internal stuff
+    # on every macro-cycle.
+    # if self.processed_pdb_file is not None:
+    if False:
       complete_dihedral_proxies = utils.get_dihedrals_and_phi_psi(
           processed_pdb_file=self.processed_pdb_file)
     else:
@@ -259,7 +263,8 @@ class torsion_ncs(object):
           pdb_hierarchy=pdb_hierarchy)
     # print "Number of complete_dihedral_proxies in find_ncs_matches_from_hierarchy", complete_dihedral_proxies.size()
 
-    if self.cache is None:
+    # if self.cache is None:
+    if True:
       self.cache = pdb_hierarchy.atom_selection_cache()
     if len(self.ncs_groups) > 0:
       element_hash = utils.build_element_hash(pdb_hierarchy)
@@ -757,6 +762,7 @@ class torsion_ncs(object):
     make_sub_header(
       "Updating torsion NCS restraints",
       out=log)
+    self.dp_ncs = None
     if self.dp_ncs is None:
       self.find_ncs_matches_from_hierarchy(pdb_hierarchy=pdb_hierarchy)
     else:

@@ -78,7 +78,6 @@ END
     "tst_geo_min_ss_phil.pdb",
     "tst_geo_min_ss_phil.phil",
     "secondary_structure.enabled=True",
-    "secondary_structure.find_automatically=False",
   ]
   dynamics.run(args=args, log=null_out())
   pdb_new = "tst_geo_min_ss_phil_shaken.pdb"

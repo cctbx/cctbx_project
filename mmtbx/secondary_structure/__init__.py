@@ -28,23 +28,14 @@ secondary_structure
     .short_caption = Secondary structure restraints
     .type = bool
     .style = noauto bold
-  find_automatically = True
-    .type = bool
-    .style = bold tribool
-  use_ksdssp = True
-    .type = bool
-    .help = Use KSDSSP program to annotate secondary structure.  If False, a \
-      built-in DSSP method will be used instead.
-    .expert_level = 3
-  helices_from_phi_psi = False
-    .type = bool
-    .short_caption = Use phi/psi angles to identify helices
-    .expert_level = 2
   protein
     .style = box auto_align noauto
   {
     enabled = True
       .type = bool
+    search_method = *ksdssp mmtbx_dssp from_ca
+      .type = choice
+      .help = Particular method to search protein secondary structure.
     distance_ideal_n_o = 2.9
       .type = float
       .short_caption = Ideal N-O distance
@@ -83,7 +74,6 @@ class manager (object) :
                 geometry_restraints_manager=None,
                 sec_str_from_pdb_file=None,
                 params=None,
-                assume_hydrogens_all_missing=None,
                 mon_lib_srv=None,
                 verbose=-1,
                 log=sys.stdout):
@@ -96,7 +86,7 @@ class manager (object) :
     self.params = sec_str_master_phil.extract()
     if params is not None:
       self.params.secondary_structure = params
-    self.assume_hydrogens_all_missing = assume_hydrogens_all_missing
+
     self.verbose = verbose
     self.log = log
     self.def_params = sec_str_master_phil.extract()
@@ -110,10 +100,6 @@ class manager (object) :
       i_seqs = atoms.extract_i_seq()
     self.n_atoms = atoms.size()
     self._was_initialized = False
-    if self.assume_hydrogens_all_missing is None :
-      elements = atoms.extract_element().strip()
-      self.assume_hydrogens_all_missing = not ("H" in elements or
-        "D" in elements)
     self.selection_cache = pdb_hierarchy.atom_selection_cache()
     self.pdb_atoms = atoms
     self.initialize()
@@ -129,7 +115,8 @@ class manager (object) :
       self._was_initialized = True
 
   def find_automatically(self):
-    find_automatically = self.params.secondary_structure.find_automatically
+    # find_automatically = self.params.secondary_structure.find_automatically
+    protein_found = False
     atom_labels = list(self.pdb_hierarchy.atoms_with_labels())
     segids = {}
     for a in atom_labels:
@@ -153,10 +140,11 @@ class manager (object) :
       if(self.verbose>0):
         print >> log, "No existing protein secondary structure definitions " + \
         "found in .pdb file or phil parameters."
-      find_automatically = True
+      # find_automatically = True
     else:
-      find_automatically = False
-    if find_automatically:
+      # find_automatically = False
+      protein_found = True
+    if not protein_found:
       ss_params = []
       if use_segid:
         # Could get rid of this 'if' clause, but I want to avoid construction of
@@ -198,6 +186,7 @@ class manager (object) :
     t1 = time.time()
     # print >> log, "    Time for finding protein SS: %f" % (t1-t0)
     # Step 2: nucleic acids
+    na_found = False
     na_ss_definition_present = False
     if (len(self.params.secondary_structure.nucleic_acid.base_pair) > 1 or
         len(self.params.secondary_structure.nucleic_acid.stacking_pair) > 1):
@@ -209,12 +198,10 @@ class manager (object) :
         self.params.secondary_structure.nucleic_acid.stacking_pair[0].base1 is not None):
       na_ss_definition_present = True
 
-    find_automatically = self.params.secondary_structure.find_automatically
-
     if na_ss_definition_present:
-      find_automatically = False
+      na_found = True
 
-    if find_automatically :
+    if not na_found:
       pairs = self.find_base_pairs(log=self.log, use_segid=use_segid, segids=segids)
       if len(pairs) > 1:
         bp_phil = iotbx.phil.parse(pairs)
@@ -233,20 +220,32 @@ class manager (object) :
       return self.sec_str_from_pdb_file.as_pdb_str()
     return None
 
-  def find_sec_str (self, pdb_hierarchy):
-    if (self.params.secondary_structure.use_ksdssp) :
+  def find_sec_str(self, pdb_hierarchy):
+    if self.params.secondary_structure.protein.search_method == "ksdssp":
       pdb_str = pdb_hierarchy.as_pdb_string()
+      print >> self.log, "  running ksdssp..."
       (records, stderr) = run_ksdssp_direct(pdb_str)
       return iotbx.pdb.secondary_structure.annotation.from_records(
           records=records,
           log=self.log)
-    else : # TODO make this the default
+    elif self.params.secondary_structure.protein.search_method == "mmtbx_dssp":
       from mmtbx.secondary_structure import dssp
       print >> self.log, "  running mmtbx.dssp..."
       return dssp.dssp(
         pdb_hierarchy=pdb_hierarchy,
         pdb_atoms=self.pdb_atoms,
         out=null_out()).get_annotation()
+    elif self.params.secondary_structure.protein.search_method == "from_ca":
+      from mmtbx.secondary_structure import find_ss_from_ca
+      print >> self.log, "  running find_ss_from_ca..."
+      fss = find_ss_from_ca.find_secondary_structure(
+          hierarchy=pdb_hierarchy,
+          out=null_out())
+      return fss.get_pdb_annotation()
+    else:
+      print >> self.log, "  WARNING: Unknown search method for SS. No SS found."
+      return iotbx.pdb.secondary_structure.annotation.from_records()
+
 
   def find_approximate_helices (self, log=sys.stdout) :
     print >> log, "  Looking for approximately helical regions. . ."
@@ -331,13 +330,8 @@ class manager (object) :
         phil_sheets=new_ss_params.secondary_structure.protein.sheet,
         pdb_hierarchy=self.pdb_hierarchy)
 
-  def apply_params (self, params) :
-    assert 0, "Not used anywhere?"
-    self.params.helix = params.helix
-    self.params.sheet = params.sheet
-
   def create_protein_hbond_proxies (self,
-                            annotation,
+                            annotation=None,
                             log=sys.stdout):
     # assert as_regular_bond_proxies=True
     if annotation is None:
@@ -387,7 +381,8 @@ class manager (object) :
             remove_outliers=remove_outliers,
             log=log)
           if (proxies.size() == 0) :
-            print >> log, "  No H-bonds generated for sheet #%d" % k
+            print >> log, \
+                "  No H-bonds generated for sheet with id=%s" % sheet.sheet_id
             continue
           else:
             generated_proxies.extend(proxies)
@@ -470,7 +465,8 @@ class manager (object) :
 
   def get_simple_bonds (self, selection_phil=None) :
     # assert 0 # not tested and changed, used in GUI to draw bonds
-    # this function wants shared.stl_set_unsigned([(i_seq, j_seq),(i_seq, j_seq)])
+    # this function wants
+    # shared.stl_set_unsigned([(i_seq, j_seq),(i_seq, j_seq)])
     desired_annotation = None
     if (selection_phil is not None) :
       if isinstance(selection_phil, str) :
@@ -603,6 +599,14 @@ class manager (object) :
         all_selections.append(bp_sele)
     return all_selections
 
+  def base_pair_selection (self, **kwds) :
+    # assert 0, "Probably shouldn't be used",
+    # used in mmtbx/command_line/find_tls_groups.py
+    whole_selection = flex.bool(self.n_atoms)
+    for sheet in self.base_pair_selections(**kwds) :
+      whole_selection |= sheet
+    return whole_selection
+
   def selections_as_ints (self) :
     assert 0, "Anybody using this?"
     sec_str = flex.int(self.n_atoms, 0)
@@ -614,14 +618,10 @@ class manager (object) :
     sec_str.set_selected(sheets, all_beta.select(sheets))
     return sec_str
 
-  def base_pair_selection (self, **kwds) :
-    # assert 0, "Probably shouldn't be used",
-    # used in mmtbx/command_line/find_tls_groups.py
-    whole_selection = flex.bool(self.n_atoms)
-    for sheet in self.base_pair_selections(**kwds) :
-      whole_selection |= sheet
-    return whole_selection
-
+  def apply_params (self, params) :
+    assert 0, "Not used anywhere?"
+    self.params.helix = params.helix
+    self.params.sheet = params.sheet
 
 # =============================================================================
 # General functions

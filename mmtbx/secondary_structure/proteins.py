@@ -248,66 +248,89 @@ def create_sheet_hydrogen_bond_proxies (
   while k < len(sheet_params.strand) :
     curr_strand = sheet_params.strand[k]
     curr_selection = cache.selection(curr_strand.selection)
-    curr_start = cache.selection(curr_strand.bond_start_current)
-    prev_start = cache.selection(curr_strand.bond_start_previous)
-    if curr_start.count(True) < 1 or prev_start.count(True) < 1:
-      error_msg = """\
-Wrong registration in SHEET record. One of these selections
-"%s" or "%s"
-yielded zero or several atoms. Possible reason for it is the presence of
-insertion codes or alternative conformations for one of these residues or
-the .pdb file was edited without updating SHEET records.""" \
-% (curr_strand.bond_start_current, curr_strand.bond_start_previous)
-      raise Sorry(error_msg)
-
+    curr_start = None
+    prev_start = None
+    if curr_strand.bond_start_current is not None:
+      curr_start = cache.selection(curr_strand.bond_start_current)
+    if curr_strand.bond_start_previous is not None:
+      prev_start = cache.selection(curr_strand.bond_start_previous)
     curr_rgs = _get_residue_groups_from_selection(
         pdb_hierarchy=pdb_hierarchy,
         bool_selection=curr_selection)
     i = j = 0
     len_prev_residues = len(prev_rgs)
     len_curr_residues = len(curr_rgs)
-    current_start_res_is_donor = pdb_hierarchy.atoms().select(curr_start)[0].name.strip() == 'N'
-    if (len_curr_residues > 0) and (len_prev_residues > 0) :
-      i = _find_start_residue(
-        residues=prev_rgs,
-        start_selection=prev_start)
-      j = _find_start_residue(
-        residues=curr_rgs,
-        start_selection=curr_start)
-      if (i >= 0) and (j >= 0) :
-        # move i,j pointers from registration residues to the beginning of
-        # beta-strands
-        while (1 < i and
-            ((1 < j and curr_strand.sense == "parallel") or
-            (j < len_curr_residues-2 and curr_strand.sense == "antiparallel"))):
-          if curr_strand.sense == "parallel":
-            i -= 2
-            j -= 2
-          elif curr_strand.sense == "antiparallel":
-            i -= 2
-            j += 2
-        if (curr_strand.sense == "parallel") :
-          # some tweaking for ensure correct donor assignment
-          if i >= 2 and not current_start_res_is_donor:
-            i -= 2
-            current_start_res_is_donor = not current_start_res_is_donor
-          if j >= 2 and current_start_res_is_donor:
-            j -= 2
-            current_start_res_is_donor = not current_start_res_is_donor
-          while (i < len_prev_residues) and (j < len_curr_residues):
-            if current_start_res_is_donor:
-              donor_residue = curr_rgs[j]
-              acceptor_residue = prev_rgs[i]
-              i += 2
-            else:
-              donor_residue = prev_rgs[i]
-              acceptor_residue = curr_rgs[j]
+    if curr_start is not None and prev_start is not None:
+      if curr_start.count(True) < 1 or prev_start.count(True) < 1:
+        error_msg = """\
+Wrong registration in SHEET record. One of these selections
+"%s" or "%s"
+yielded zero or several atoms. Possible reason for it is the presence of
+insertion codes or alternative conformations for one of these residues or
+the .pdb file was edited without updating SHEET records.""" \
+% (curr_strand.bond_start_current, curr_strand.bond_start_previous)
+        raise Sorry(error_msg)
+
+      current_start_res_is_donor = pdb_hierarchy.atoms().select(curr_start)[0].name.strip() == 'N'
+      if (len_curr_residues > 0) and (len_prev_residues > 0) :
+        i = _find_start_residue(
+          residues=prev_rgs,
+          start_selection=prev_start)
+        j = _find_start_residue(
+          residues=curr_rgs,
+          start_selection=curr_start)
+        if (i >= 0) and (j >= 0) :
+          # move i,j pointers from registration residues to the beginning of
+          # beta-strands
+          while (1 < i and
+              ((1 < j and curr_strand.sense == "parallel") or
+              (j < len_curr_residues-2 and curr_strand.sense == "antiparallel"))):
+            if curr_strand.sense == "parallel":
+              i -= 2
+              j -= 2
+            elif curr_strand.sense == "antiparallel":
+              i -= 2
               j += 2
-            current_start_res_is_donor = not current_start_res_is_donor
-            if donor_residue.atom_groups()[0].resname.strip() != "PRO":
-              proxies = _create_hbond_proxy(
-                  acceptor_atoms=acceptor_residue.atoms(),
-                  donor_atoms=donor_residue.atoms(),
+          if (curr_strand.sense == "parallel") :
+            # some tweaking for ensure correct donor assignment
+            if i >= 2 and not current_start_res_is_donor:
+              i -= 2
+              current_start_res_is_donor = not current_start_res_is_donor
+            if j >= 2 and current_start_res_is_donor:
+              j -= 2
+              current_start_res_is_donor = not current_start_res_is_donor
+            while (i < len_prev_residues) and (j < len_curr_residues):
+              if current_start_res_is_donor:
+                donor_residue = curr_rgs[j]
+                acceptor_residue = prev_rgs[i]
+                i += 2
+              else:
+                donor_residue = prev_rgs[i]
+                acceptor_residue = curr_rgs[j]
+                j += 2
+              current_start_res_is_donor = not current_start_res_is_donor
+              if donor_residue.atom_groups()[0].resname.strip() != "PRO":
+                proxies = _create_hbond_proxy(
+                    acceptor_atoms=acceptor_residue.atoms(),
+                    donor_atoms=donor_residue.atoms(),
+                    hbond_counts=hbond_counts,
+                    distance_ideal=distance_ideal,
+                    distance_cut=distance_cut,
+                    remove_outliers=remove_outliers,
+                    weight=weight,
+                    sigma=sheet_params.sigma,
+                    slack=sheet_params.slack,
+                    top_out=sheet_params.top_out,
+                    log=log)
+                if proxies is not None:
+                  for proxy in proxies:
+                    generated_proxies.append(proxy)
+          elif (curr_strand.sense == "antiparallel") :
+            while(i < len_prev_residues and j >= 0):
+              if (prev_rgs[i].atom_groups()[0].resname.strip() != "PRO") :
+                proxies = _create_hbond_proxy(
+                  acceptor_atoms=curr_rgs[j].atoms(),
+                  donor_atoms=prev_rgs[i].atoms(),
                   hbond_counts=hbond_counts,
                   distance_ideal=distance_ideal,
                   distance_cut=distance_cut,
@@ -317,60 +340,42 @@ the .pdb file was edited without updating SHEET records.""" \
                   slack=sheet_params.slack,
                   top_out=sheet_params.top_out,
                   log=log)
-              if proxies is not None:
-                for proxy in proxies:
-                  generated_proxies.append(proxy)
-        elif (curr_strand.sense == "antiparallel") :
-          while(i < len_prev_residues and j >= 0):
-            if (prev_rgs[i].atom_groups()[0].resname.strip() != "PRO") :
-              proxies = _create_hbond_proxy(
-                acceptor_atoms=curr_rgs[j].atoms(),
-                donor_atoms=prev_rgs[i].atoms(),
-                hbond_counts=hbond_counts,
-                distance_ideal=distance_ideal,
-                distance_cut=distance_cut,
-                remove_outliers=remove_outliers,
-                weight=weight,
-                sigma=sheet_params.sigma,
-                slack=sheet_params.slack,
-                top_out=sheet_params.top_out,
-                log=log)
-              if proxies is not None:
-                for proxy in proxies:
-                  generated_proxies.append(proxy)
+                if proxies is not None:
+                  for proxy in proxies:
+                    generated_proxies.append(proxy)
 
-            if (curr_rgs[j].atom_groups()[0].resname.strip() != "PRO") :
-              proxies = _create_hbond_proxy(
-                acceptor_atoms=prev_rgs[i].atoms(),
-                donor_atoms=curr_rgs[j].atoms(),
-                hbond_counts=hbond_counts,
-                distance_ideal=distance_ideal,
-                distance_cut=distance_cut,
-                remove_outliers=remove_outliers,
-                weight=weight,
-                sigma=sheet_params.sigma,
-                slack=sheet_params.slack,
-                top_out=sheet_params.top_out,
-                log=log)
-              if proxies is not None:
-                for proxy in proxies:
-                  generated_proxies.append(proxy)
-            i += 2;
-            j -= 2;
+              if (curr_rgs[j].atom_groups()[0].resname.strip() != "PRO") :
+                proxies = _create_hbond_proxy(
+                  acceptor_atoms=prev_rgs[i].atoms(),
+                  donor_atoms=curr_rgs[j].atoms(),
+                  hbond_counts=hbond_counts,
+                  distance_ideal=distance_ideal,
+                  distance_cut=distance_cut,
+                  remove_outliers=remove_outliers,
+                  weight=weight,
+                  sigma=sheet_params.sigma,
+                  slack=sheet_params.slack,
+                  top_out=sheet_params.top_out,
+                  log=log)
+                if proxies is not None:
+                  for proxy in proxies:
+                    generated_proxies.append(proxy)
+              i += 2;
+              j -= 2;
+          else :
+            print >> log, "  WARNING: strand direction not defined!"
+            print >> log, "    previous: %s" % prev_strand
+            print >> log, "    current: %s" % curr_strand.selection
         else :
-          print >> log, "  WARNING: strand direction not defined!"
+          print >> log, "  WARNING: can't find start of bonding for strands!"
           print >> log, "    previous: %s" % prev_strand
           print >> log, "    current: %s" % curr_strand.selection
       else :
-        print >> log, "  WARNING: can't find start of bonding for strands!"
+        print >> log, "  WARNING: can't find one or more strands!"
         print >> log, "    previous: %s" % prev_strand
         print >> log, "    current: %s" % curr_strand.selection
-    else :
-      print >> log, "  WARNING: can't find one or more strands!"
-      print >> log, "    previous: %s" % prev_strand
-      print >> log, "    current: %s" % curr_strand.selection
     k += 1
-    prev_strand = curr_strand
+    prev_strand = curr_strand.selection
     prev_selection = curr_selection
     prev_rgs = curr_rgs
   return generated_proxies
@@ -401,6 +406,8 @@ def _get_residue_groups_from_selection(pdb_hierarchy, bool_selection):
 
 ########################################################################
 # ANNOTATION
+#
+# Won't be used soon
 #
 class find_helices_simple (object) :
   """
