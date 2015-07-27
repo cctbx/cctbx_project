@@ -23,8 +23,9 @@ def run(args):
   asc = h.atom_selection_cache()
   sso = pdb_inp.extract_secondary_structure()
   for rec in sso.sheets+sso.helices:
-    file_name = "_".join(rec.as_pdb_str().split())+".pdb"
-    file_name = file_name[:min(40, len(file_name))]
+    file_name = "_".join(rec.as_pdb_str().split())
+    file_name = file_name[:min(36, len(file_name))]
+    file_name += ".pdb"
     sel_list = rec.as_atom_selections()
     assert type(sel_list) == list
     if(len(sel_list) == 1):
