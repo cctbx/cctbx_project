@@ -5,6 +5,7 @@ import sys, os
 from iotbx.pdb import secondary_structure as ioss
 from mmtbx.secondary_structure import build as ssb
 from scitbx.array_family import flex
+from iotbx.pdb import write_whole_pdb_file
 import iotbx.phil
 from libtbx.utils import Sorry
 
@@ -49,6 +50,7 @@ def run(args):
   if len(pdb_files) > 0 :
     work_params.file_name.extend(pdb_files)
   work_params.model_idealization.enabled=True
+  # work_params.model_idealization.file_name_before_regularization="before.pdb"
 
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_files)
   pdb_input = iotbx.pdb.input(source_info=None,
@@ -71,15 +73,11 @@ def run(args):
       log=log,
       )
   # Write resulting pdb file.
-  out_pdb = open("%s_idealized.pdb" % os.path.basename(
-      work_params.file_name[0]), "w")
-  ss_pdb_str = ann.as_pdb_str()
-  print >> out_pdb, ss_pdb_str
-  pdb_str = pdb_h.as_pdb_string(
-      append_end       = True,
-      crystal_symmetry = pdb_input.xray_structure_simple().crystal_symmetry())
-  print >> out_pdb, pdb_str
-  out_pdb.close()
+  write_whole_pdb_file(
+      file_name="%s_idealized.pdb" % os.path.basename(work_params.file_name[0]),
+      pdb_hierarchy=pdb_h,
+      crystal_symmetry=pdb_input.crystal_symmetry(),
+      ss_annotation=ann)
   print >> log, "All done."
 if __name__ == "__main__":
   run(sys.argv[1:])

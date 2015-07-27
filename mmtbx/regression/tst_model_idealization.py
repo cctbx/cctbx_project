@@ -52,15 +52,6 @@ HELIX    2   2 ARG A   23  GLN A   44  1                                  22
       "HELIX    2   2 ARG A   23  GLN A   44  1                                  22\n",
       ]:
     assert l in res_pdb_lines, "'%s' not in pdb file." % l
-  for l in ["CRYST1", "SCALE1"]:
-    found = False
-    for pdb_l in res_pdb_lines:
-      if pdb_l.startswith(l):
-        found = True
-        continue
-    assert found, "%s not found in pdb file" % l
-
-
 
 if (__name__ == "__main__"):
   t0 = time.time()
