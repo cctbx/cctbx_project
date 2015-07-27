@@ -198,7 +198,7 @@ ATOM    123  CB  ALA A  98      -1.627   2.343  20.021  1.00 20.00           C
   pdb_hierarchy.atoms().reset_i_seq()
   m = manager(pdb_hierarchy=pdb_hierarchy,
     sec_str_from_pdb_file=None)
-  m.params.secondary_structure.use_ksdssp = False
+  # m.params.secondary_structure.use_ksdssp = False
   m.params.secondary_structure.protein.remove_outliers = False
   proxies = m.create_protein_hbond_proxies(annotation=None, log=null_out())
   assert proxies.size() == 12
@@ -547,7 +547,6 @@ HELIX    1   1 ALA      2  ALA      5  1                                  10
                 pdb_inp.hierarchy,
                 sec_str_from_pdb_file=None,
                 params=custom_pars_ex.secondary_structure,
-                assume_hydrogens_all_missing=None,
                 verbose=-1)
     proxies_for_grm = ss_manager.create_protein_hbond_proxies(
       annotation= None,

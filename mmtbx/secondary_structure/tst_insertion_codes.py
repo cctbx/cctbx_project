@@ -168,7 +168,6 @@ HELIX    1   1 ALA      2  ALA      5  1                                  10
                 pdb_inp.hierarchy,
                 sec_str_from_pdb_file=None,
                 params=custom_pars_ex.secondary_structure,
-                assume_hydrogens_all_missing=None,
                 verbose=-1)
     proxies_for_grm = ss_manager.create_protein_hbond_proxies(
       annotation= None,
@@ -481,7 +480,6 @@ SHEET    2   B 2 GLN A  40  ALA A  45  1  O  GLN A  44   N  THR A  20
                 pdb_inp.hierarchy,
                 sec_str_from_pdb_file=None,
                 params=custom_pars_ex.secondary_structure,
-                assume_hydrogens_all_missing=None,
                 verbose=-1)
     proxies_for_grm = ss_manager.create_protein_hbond_proxies(
       annotation= None,
@@ -496,6 +494,6 @@ def exercise_phil_generation():
   defpars = sec_str_master_phil.fetch()
 
 if __name__ == "__main__" :
-  # exercise_helix_bonding_pattern_with_insertions()
+  exercise_helix_bonding_pattern_with_insertions()
   exercise_sheets_bonding_pattern_with_insertions()
   print "OK"
