@@ -1034,7 +1034,6 @@ SHEET    2   B 2 THR A  20  THR A  21  1  O  THR A  20   N  ALA A  46
                 pdb_inp.hierarchy,
                 sec_str_from_pdb_file=None,
                 params=custom_pars_ex.secondary_structure,
-                assume_hydrogens_all_missing=None,
                 verbose=-1)
     proxies_for_grm = ss_manager.create_protein_hbond_proxies(
       annotation= None,
@@ -1135,7 +1134,6 @@ END
               pdb_par_segid_input.hierarchy,
               sec_str_from_pdb_file=None,
               params=custom_pars.secondary_structure,
-              assume_hydrogens_all_missing=None,
               verbose=-1)
   ss_manager.initialize()
   proxies_for_grm = ss_manager.create_protein_hbond_proxies(
