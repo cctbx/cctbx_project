@@ -1568,7 +1568,7 @@ def exercise(pdb_str_answer, pdb_str_poor, rotamer_manager, sin_cos_table,
   #
   sm.pdb_hierarchy.write_pdb_file(file_name = "refined_%s.pdb"%prefix)
   dist = xrs_answer.mean_distance(other = sm.xray_structure)
-  assert dist < 0.18, dist
+  assert dist < 0.19, dist
 
 if(__name__ == "__main__"):
   t0 = time.time()

@@ -337,6 +337,7 @@ class box_refinement_manager(object):
       geo_box = \
         self.geometry_restraints_manager.select(box.selection_within)
       geo_box = geo_box.discard_symmetry(new_unit_cell=new_unit_cell)
+      geo_box.remove_reference_coordinate_restraints_in_place() # disaster happens otherwise
       map_box = box.map_box
       sites_cart_box = box.xray_structure_box.sites_cart()
       rsr_simple_refiner = simple(
