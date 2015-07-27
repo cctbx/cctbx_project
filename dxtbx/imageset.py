@@ -571,24 +571,29 @@ class ImageSet(object):
 
     '''
     # Check for a dynamic mask
-    fmt = self.reader().get_format(index)
-    mask = fmt.get_mask()
-    if mask is not None:
-      return mask
-    mask = self.external_lookup.mask.data
-    if mask is not None:
-      return mask
+    dyn_mask = self.reader().get_format(index).get_mask()
+    if dyn_mask is None:
 
-    # Get the image and detector
-    image = self.get_raw_data(index)
-    detector = self.get_detector(index)
-    assert(len(image) == len(detector))
+      # Get the image and detector
+      image = self.get_raw_data(index)
+      detector = self.get_detector(index)
+      assert(len(image) == len(detector))
 
-    # Threshold the image with the trusted range
-    mask = []
-    for im, panel in zip(image, detector):
-      mask.append(panel.get_trusted_range_mask(im))
-    return tuple(mask)
+      # Threshold the image with the trusted range
+      dyn_mask = []
+      for im, panel in zip(image, detector):
+        dyn_mask.append(panel.get_trusted_range_mask(im))
+      dyn_mask = tuple(dyn_mask)
+
+    # Get the external mask
+    ext_mask = self.external_lookup.mask.data
+
+    # Return a combination mask
+    if ext_mask is not None:
+      mask = tuple([m1 & m2 for m1, m2 in zip(dyn_mask, ext_mask)])
+    else:
+      mask = dyn_mask
+    return mask
 
   def __len__(self):
     ''' Return the number of images in this image set. '''
