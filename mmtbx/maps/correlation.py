@@ -96,11 +96,13 @@ class from_map_and_xray_structure_or_fmodel(object):
     if(fmodel is not None): self.xray_structure = fmodel.xray_structure
     # get map_data defined
     if(self.fmodel is not None):
-      mc = mmtbx.map_tools.electron_density_map(
-        fmodel=self.fmodel).map_coefficients(
-          map_type         = map_type,
-          isotropize       = True,
-          fill_missing     = False)
+      e_map_obj = fmodel.electron_density_map()
+      isotropize = True
+      if(fmodel.is_twin_fmodel_manager()): isotropize = False
+      mc = e_map_obj.map_coefficients(
+        map_type           = map_type,
+        fill_missing       = False,
+        isotropize         = isotropize)
       crystal_gridding = self.fmodel.f_obs().crystal_gridding(
         d_min              = self.fmodel.f_obs().d_min(),
         resolution_factor  = resolution_factor)
@@ -110,7 +112,10 @@ class from_map_and_xray_structure_or_fmodel(object):
       self.map_data = fft_map.real_map_unpadded()
     # get model map
     if(self.fmodel is not None):
-      f_model = self.fmodel.f_model_scaled_with_k1()
+      if(fmodel.is_twin_fmodel_manager()):
+        f_model = self.fmodel.f_model()
+      else:
+        f_model = self.fmodel.f_model_scaled_with_k1()
       fft_map = miller.fft_map(
         crystal_gridding     = crystal_gridding,
         fourier_coefficients = f_model)
