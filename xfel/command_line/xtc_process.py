@@ -20,11 +20,15 @@ phil_scope = parse('''
     max_events = None
       .type = int
       .help = If not specified, process all events. Otherwise, only process this many
-    hit_finder = True
-      .type = bool
-      .help = If the number of strong reflections is less than \
-              refinement.reflections.minimum_number_of_reflections, hit_filter=True \
-              will discard the image. hit_finder=False: process all images
+    hit_finder {
+      enable = True
+        .type = bool
+        .help = Whether to do hit finding. hit_finder=False: process all images
+      minimum_number_of_reflections = 16
+        .type = int
+        .help = If the number of strong reflections on an image is less than this, and \
+                the hitfinder is enabled, discard this image.
+    }
     index = True
       .type = bool
       .help = Attempt to index images
@@ -406,7 +410,7 @@ class InMemScript(DialsProcessScript):
 
     print "Found %d bright spots"%len(observed)
 
-    if self.params.dispatch.hit_finder and len(observed) < self.params.refinement.reflections.minimum_number_of_reflections:
+    if self.params.dispatch.hit_finder.enable and len(observed) < self.params.dispatch.hit_finder.minimum_number_of_reflections:
       print "Not enough spots to index"
       return
 
