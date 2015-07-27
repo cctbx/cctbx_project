@@ -344,11 +344,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
         b_vec = flex.sqrt(q_sq - a_vec*a_vec)
         r_vec = -a_vec * s0hat_vec + b_vec * c0hat_vec # AD14, equation (8)
 
-        if False: # using r_vec matches AD14 but gives slightly worse RMSDs and merging statistics.
-                  # Therefore use x_vec for now
-          s1vec = s0vec + r_vec
-        else:
-          s1vec = s0vec + x_vec
+        s1vec = s0vec + r_vec
 
         for idx, s1 in enumerate(s1vec):
           position = detector[0].get_ray_intersection(s1)
@@ -362,15 +358,14 @@ class integrate_one_frame(IntegrationMetaProcedure):
 
         self.predicted = Rcalc['xyzobs.mm.value']
 
-        if False:
-          # If using r_vec to compuse s1vec, the results should match the dials version
-          from dials.algorithms.spot_prediction import StillsReflectionPredictor
-          from libtbx.test_utils import approx_equal
-          pred = StillsReflectionPredictor(experiments[0])
-          test = flex.reflection_table.empty_standard(len(self.hkllist))
-          test['miller_index'] = self.hkllist
-          pred.for_reflection_table(test, crystal.get_A())
-          assert [approx_equal(self.predicted[i], test['xyzcal.mm'][i]) for i in xrange(len(self.predicted))].count(True) == len(self.predicted)
+        # These results should match the dials version
+        from dials.algorithms.spot_prediction import StillsReflectionPredictor
+        from libtbx.test_utils import approx_equal
+        pred = StillsReflectionPredictor(experiments[0])
+        test = flex.reflection_table.empty_standard(len(self.hkllist))
+        test['miller_index'] = self.hkllist
+        pred.for_reflection_table(test, crystal.get_A())
+        assert [approx_equal(self.predicted[i], test['xyzcal.mm'][i]) for i in xrange(len(self.predicted))].count(True) == len(self.predicted)
 
       elif self.horizons_phil.integration.spot_prediction == "ucbp3":
         self.predicted = BPpredicted
