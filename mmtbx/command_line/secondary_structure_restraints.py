@@ -18,7 +18,7 @@ show_all_params = False
   .type = bool
 filter_outliers = True
   .type = bool
-format = *phenix phenix_refine phenix_bonds pymol refmac kinemage
+format = *phenix phenix_refine phenix_bonds pymol pdb refmac kinemage
   .type = choice
 quiet = False
   .type = bool
@@ -40,7 +40,7 @@ file_name = None
   work_params = pcl.work.extract()
   work_params.secondary_structure.enabled=True
   assert work_params.format in ["phenix", "phenix_refine", "phenix_bonds",
-      "pymol", "refmac", "kinemage"]
+      "pymol", "refmac", "kinemage", "pdb"]
   if work_params.quiet :
     out = cStringIO.StringIO()
   pdb_files = work_params.file_name
@@ -141,7 +141,8 @@ file_name = None
       phil_diff.show(prefix="  ", out=result_out)
     if (prefix_scope != "") :
       print >> result_out, "}"
-
+  elif work_params.format == "pdb":
+    print >> result_out, m.actual_sec_str.as_pdb_str()
   elif work_params.format == "phenix_bonds" :
     raise Sorry("Not yet implemented.")
   elif work_params.format in ["pymol", "refmac", "kinemage"] :

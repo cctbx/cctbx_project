@@ -216,6 +216,8 @@ class reference_model(object):
   def _make_matching_and_fill_dictionaries(self, model_h, ref_h, fn,
       m_cache, model_selection_str="all", ref_selection_str="all"):
     ref_cache = self.pdb_hierarchy_ref[fn].atom_selection_cache()
+    model_selection_str += " and not element H and not element D and not water"
+    ref_selection_str += " and not element H and not element D and not water"
     m_sel = m_cache.selection(model_selection_str)
     ref_sel = ref_cache.selection(ref_selection_str)
     combined_h = model_h.select(m_sel).deep_copy()
@@ -348,9 +350,14 @@ class reference_model(object):
           self.reference_dihedral_proxies.proxy_remove(selection=selection)
 
   def proxy_select(self, n_seq, iselection):
+    import copy
+    new_proxies = None
     if self.reference_dihedral_proxies is not None:
-      self.reference_dihedral_proxies = \
-          self.reference_dihedral_proxies.proxy_select(n_seq, iselection)
+      new_proxies = self.reference_dihedral_proxies.proxy_select(
+          n_seq, iselection)
+    new_manager = copy.copy(self)
+    new_manager.reference_dihedral_proxies = new_proxies
+    return new_manager
 
   def show_sorted(self, by_value, sites_cart, site_labels, proxy_label, f):
     if self.reference_dihedral_proxies is not None:
@@ -796,7 +803,6 @@ class reference_model(object):
               found_match = True
       if not found_match:
         remaining_match_hash[key] = self.residue_match_hash[key]
-    # print len(remaining_proxies)
     self.reference_dihedral_proxies = remaining_proxies
     self.residue_match_hash = remaining_match_hash
     print >> self.log, "\n**Removed reference restraints that overlap "+ \

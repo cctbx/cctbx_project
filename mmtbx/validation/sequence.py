@@ -300,8 +300,7 @@ class validation (object) :
       import mmtbx.secondary_structure
       ssm = mmtbx.secondary_structure.manager(
         pdb_hierarchy=pdb_hierarchy,
-        sec_str_from_pdb_file=None,
-        assume_hydrogens_all_missing=None)
+        sec_str_from_pdb_file=None)
       helix_selection = ssm.alpha_selection()
       sheet_selection = ssm.beta_selection()
     pdb_chains = []

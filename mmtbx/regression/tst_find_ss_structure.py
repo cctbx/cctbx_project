@@ -3,9 +3,10 @@ from __future__ import division
 from libtbx.utils import null_out
 from cStringIO import StringIO
 from mmtbx.secondary_structure.find_ss_from_ca import find_secondary_structure
+from libtbx import test_utils
 
-def remove_blank(text):
-  return text.replace(" ","").replace("\n","")
+# def remove_blank(text):
+#   return text.replace(" ","").replace("\n","")
 
 def tst_01():
   text="""
@@ -37,16 +38,18 @@ PDB RECORDS:
 SHEET    1   1 1 GLY U  12  GLY U  15  0
 SHEET    1   2 1 GLY U  17  GLY U  21  0
 
-PDB Selections:
-" ( chain 'U' and resseq 12:15 and icode ' ')  or  ( chain 'U' and resseq 17:21 and icode ' ') "
 
+
+PDB Selections:
+" ( chain 'U' and resid 12  through 15 )  or  ( chain 'U' and resid 17  through 21 ) "
 """
   f=StringIO()
   fss.show_summary(out=f,verbose=True)
   found_text=f.getvalue()
-  if remove_blank(found_text)!=remove_blank(expected_text):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
-    raise AssertionError, "FAILED"
+  assert not test_utils.show_diff(found_text, expected_text)
+  # if remove_blank(found_text)!=remove_blank(expected_text):
+  #   print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
+  #   raise AssertionError, "FAILED"
   print "OK"
 
 
@@ -95,16 +98,18 @@ PDB RECORDS:
 HELIX    1   1 GLY A    1  VAL A    8  1                                   8
 HELIX    2   2 THR A   11  GLN A   26  1                                  16
 
-PDB Selections:
-" ( chain 'A' and resseq 1:8 and icode ' ')  or  ( chain 'A' and resseq 11:26 and icode ' ') "
 
+
+PDB Selections:
+" ( chain 'A' and resid 1  through 8 )  or  ( chain 'A' and resid 11  through 26 ) "
 """
   f=StringIO()
   fss.show_summary(out=f,verbose=True)
   found_text=f.getvalue()
-  if remove_blank(found_text)!=remove_blank(expected_text):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
-    raise AssertionError, "FAILED"
+  assert not test_utils.show_diff(found_text, expected_text)
+  # if remove_blank(found_text)!=remove_blank(expected_text):
+  #   print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
+  #   raise AssertionError, "FAILED"
   print "OK"
 
 def tst_03():
@@ -193,14 +198,15 @@ HELIX    1   1 ALA B    2  ALA B   22  3                                  21
 
 
 PDB Selections:
-" ( chain 'A' and resseq 1:16 and icode ' ')  or  ( chain 'C' and resseq 2:21 and icode ' ')  or  ( chain 'B' and resseq 2:22 and icode ' ') "
+" ( chain 'A' and resid 1  through 16 )  or  ( chain 'C' and resid 2  through 21 )  or  ( chain 'B' and resid 2  through 22 ) "
 """
   f=StringIO()
   fss.show_summary(out=f,verbose=True)
   found_text=f.getvalue()
-  if remove_blank(found_text)!=remove_blank(expected_text):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
-    raise AssertionError, "FAILED"
+  assert not test_utils.show_diff(found_text, expected_text)
+  # if remove_blank(found_text)!=remove_blank(expected_text):
+  #   print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
+  #   raise AssertionError, "FAILED"
   print "OK"
 
 def tst_04():
@@ -297,24 +303,24 @@ Class:  Beta strand  N: 7 Start: 66 End: 72  Rise: 3.41 A Dot: 0.98
 PDB RECORDS:
 SHEET    1   1 3 HISAa  32  LEUAa  36  0
 SHEET    2   1 3 VALAa  17  LEUAa  22 -1  N  GLYAa  21   O  HISAa  32
-SHEET    3   1 3 ALAAa  52  VALAa  55  1  N  LYSAa  54   O  ILEAa  20
+SHEET    3   1 3 ALAAa  52  VALAa  55 -1  N  LYSAa  54   O  ILEAa  20
 SHEET    1   2 4 GLUAa  40  GLNAa  45  0
 SHEET    2   2 4 PHEAa   7  ALAAa  12 -1  N  ALAAa  12   O  GLUAa  40
-SHEET    3   2 4 LYSAa  58  THRAa  63  1  N  GLNAa  62   O  VALAa   9
+SHEET    3   2 4 LYSAa  58  THRAa  63 -1  N  GLNAa  62   O  VALAa   9
 SHEET    4   2 4 GLYAa  66  GLUAa  71 -1  N  SERAa  70   O  ALAAa  59
 
 
 
 PDB Selections:
-" ( chain 'Aa' and resseq 32:36 and icode ' ')  or  ( chain 'Aa' and resseq 17:22 and icode ' ')  or  ( chain 'Aa' and resseq 52:55 and icode ' ')  or  ( chain 'Aa' and resseq 40:45 and icode ' ')  or  ( chain 'Aa' and resseq 7:12 and icode ' ')  or  ( chain 'Aa' and resseq 58:63 and icode ' ')  or  ( chain 'Aa' and resseq 66:71 and icode ' ') "
-
+" ( chain 'Aa' and resid 32  through 36 )  or  ( chain 'Aa' and resid 17  through 22 )  or  ( chain 'Aa' and resid 52  through 55 )  or  ( chain 'Aa' and resid 40  through 45 )  or  ( chain 'Aa' and resid 7  through 12 )  or  ( chain 'Aa' and resid 58  through 63 )  or  ( chain 'Aa' and resid 66  through 71 ) "
 """
   f=StringIO()
   fss.show_summary(out=f,verbose=True)
   found_text=f.getvalue()
-  if remove_blank(found_text)!=remove_blank(expected_text):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
-    raise AssertionError, "FAILED"
+  assert not test_utils.show_diff(found_text, expected_text)
+  # if remove_blank(found_text)!=remove_blank(expected_text):
+  #   print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
+  #   raise AssertionError, "FAILED"
   print "OK"
 
 if __name__=="__main__":

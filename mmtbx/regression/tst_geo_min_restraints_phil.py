@@ -255,7 +255,6 @@ END
     "tst_geo_min_ss_phil.pdb",
     "tst_geo_min_ss_phil.phil",
     "secondary_structure.enabled=True",
-    "secondary_structure.find_automatically=False",
   ]
   geometry_minimization.run(args=args, log=null_out())
   # TODO phenix.pdbtools?
