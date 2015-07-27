@@ -11,8 +11,9 @@ namespace {
   {
     using namespace boost::python;
 
-    class_<fit>("fit",
-                 init<double,
+    class_<fit<> >("fit")
+
+     .def(init<double,
                       boost::python::list const&,
                       boost::python::list const&,
                       boost::python::list const&,
@@ -36,7 +37,33 @@ namespace {
                          arg("cos_table"),
                          arg("step"),
                          arg("n"))))
-      .def("result", &fit::result)
+
+     .def(init<af::shared<scitbx::vec3<double> > const&,
+                      boost::python::list const&,
+                      boost::python::list const&,
+                      boost::python::list const&,
+                      //af::const_ref<double, af::c_grid_padded<3> > const&,
+                      af::shared<scitbx::vec3<double> >,
+                      //cctbx::uctbx::unit_cell const&,
+                      //af::const_ref<std::size_t> const& ,
+                      af::const_ref<double> const&,
+                      af::const_ref<double> const&,
+                      double,
+                      int >
+                       ((arg("sites_cart_start"),
+                         arg("axes"),
+                         arg("rotatable_points_indices"),
+                         arg("angles_array"),
+                         //arg("density_map"),
+                         arg("all_points"),
+                         //arg("unit_cell"),
+                         //arg("selection"),
+                         arg("sin_table"),
+                         arg("cos_table"),
+                         arg("step"),
+                         arg("n"))))
+
+      .def("result", &fit<>::result)
     ;
 
   }
