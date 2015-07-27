@@ -122,7 +122,7 @@ class conformation_scorer (object) :
         return True
     return False
 
-  def reset_with (self, sites_cart, selection) :
+  def reset (self, sites_cart, selection) :
     self.sites_cart = sites_cart
     first_i_seq = selection[0]
     if (self.new_residue_selection[first_i_seq]) :
