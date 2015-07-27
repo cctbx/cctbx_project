@@ -240,7 +240,7 @@ def make_input_list (gs_params):
     if os.path.isfile(input_entry):
       if input_entry.endswith('.lst'):          # read from file list
         cmd.Command.start("Reading input list from file")
-        with open(gs_params.input, 'r') as listfile:
+        with open(input_entry, 'r') as listfile:
           listfile_contents = listfile.read()
         input_list.extend(listfile_contents.splitlines())
         cmd.Command.end("Reading input list from file -- DONE")
