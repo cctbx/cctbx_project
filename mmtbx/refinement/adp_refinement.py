@@ -405,6 +405,10 @@ class refine_adp(object):
         fmodels.create_target_functors()
       self.show(weight=w_best)
     self.fmodels.fmodel_xray().xray_structure.tidy_us()
+    self.fmodels.update_xray_structure(
+      xray_structure = self.fmodels.fmodel_xray().xray_structure,
+      update_f_calc  = True)
+    fmodels.create_target_functors()
     assert approx_equal(self.fmodels.fmodel_xray().target_w(),
        self.fmodels.target_functor_result_xray(
          compute_gradients=False).target_work())
