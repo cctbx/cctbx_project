@@ -232,9 +232,11 @@ HELIX    1 D12 ASP A   37  GLY A   48  1                                  12
   assert h.get_n_defined_hbonds() == 8
   assert annot.get_n_defined_hbonds() == 8
   res = h.as_restraint_group(show_hbonds=True)
-  assert not test_utils.show_diff(res, result1)
+  assert not test_utils.show_diff(res, result1,
+      strip_trailing_whitespace=True)
   res = h.as_restraint_group(show_hbonds=False)
-  assert not test_utils.show_diff(res, result1_1)
+  assert not test_utils.show_diff(res, result1_1,
+      strip_trailing_whitespace=True)
   out = StringIO()
   for ph_str in [phil_str2, phil_str3, phil_str4, phil_str5, phil_str6,
       phil_str7, phil_str8, phil_str9]:
@@ -248,7 +250,8 @@ HELIX    1 D12 ASP A   37  GLY A   48  1                                  12
     h = annot.helices[0]
     print >> out, h.as_restraint_group()
     print >> out, h.as_pdb_str()
-  assert not test_utils.show_diff(out.getvalue(), result2_9)
+  assert not test_utils.show_diff(out.getvalue(), result2_9,
+      strip_trailing_whitespace=True)
   print "OK"
 
 def tst_parsing_phil_single_sheet():
@@ -447,9 +450,11 @@ protein.sheet {
   assert sh.get_n_defined_hbonds() == 8
   assert annot.get_n_defined_hbonds() == 8
   res = sh.as_restraint_group(show_hbonds=True)
-  assert not test_utils.show_diff(res, result1)
+  assert not test_utils.show_diff(res, result1,
+      strip_trailing_whitespace=True)
   res = sh.as_restraint_group(show_hbonds=False)
-  assert not test_utils.show_diff(res, result1_1)
+  assert not test_utils.show_diff(res, result1_1,
+      strip_trailing_whitespace=True)
   print "OK"
 
 

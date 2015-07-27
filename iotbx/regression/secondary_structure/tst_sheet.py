@@ -70,7 +70,8 @@ protein.sheet {
   assert ann_sheet.registrations == [None]*3
   only_sheet = annot.sheets[0]
   phil_string = annot.as_restraint_groups()
-  assert not test_utils.show_diff(phil_string, answer_phil_str)
+  assert not test_utils.show_diff(phil_string, answer_phil_str,
+      strip_trailing_whitespace=True)
 
 def exercise(args):
   exercise_01()
