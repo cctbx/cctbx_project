@@ -10,13 +10,15 @@ def biomt_reconstruction(args, command_name="phenix.pdb.biomt_reconstruction"):
   ''' (string) -> file
 
   Reconstruction of the biological assembly multimer by applying
-  BIOMT transformation, from the REMARK 350 in the pdb file, to all chains in file.
+  BIOMT transformation, from the REMARK 350 in the pdb file, to all
+  chains in file.
 
   Produce a new pdb file containg the biological assembly multimer information
 
   Arguments:
-  args: a string containing the pdb file name, 'file_name.pdb' and an optional output file name
-        if no file name is given, the output file will have the name 'biological_assembly_file_name.pdb'
+  args: a string containing the pdb file name, 'file_name.pdb' and an
+        optional output file name. If no file name is given, the output
+        file will have the name 'biological_assembly_file_name.pdb'
 
   >>> phenix.pdb.biomt_reconstruction input_file_name.pdb
   bio-assembly reconstructed pdb file was added to your current directory

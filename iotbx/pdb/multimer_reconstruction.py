@@ -11,7 +11,8 @@ import os
 
 class multimer(object):
   '''
-  Reconstruction of either the biological assembly or the crystallographic asymmetric unit
+  Reconstruction of either the biological assembly or the crystallographic
+  asymmetric unit
 
   Reconstruction of the biological assembly multimer by applying
   BIOMT transformation, from the pdb file, to all chains.
@@ -19,12 +20,13 @@ class multimer(object):
   Reconstruction of the crystallographic asymmetric unit by applying
   MTRIX transformations, from the pdb file, to all chains.
 
-  self.assembled_multimer is a pdb.hierarchy object with the multimer information
+  self.assembled_multimer is a pdb.hierarchy object with the multimer
+  information
 
   The method write generates a PDB file containing the multimer
 
-  since chain names string length is limited to two, this process does not maintain any
-  referance to the original chain names.
+  since chain names string length is limited to two, this process does
+  not maintain any referance to the original chain names.
 
   Several useful attributes:
   --------------------------
@@ -104,6 +106,13 @@ class multimer(object):
     self.assembled_multimer = self.transforms_obj.build_asu_hierarchy(
       pdb_hierarchy=pdb_obj.hierarchy,
       round_coordinates=round_coordinates)
+    annot = pdb_inp.extract_secondary_structure()
+    self.new_annotation = None
+    if annot is not None:
+      annot.multiply_to_asu(
+          ncs_copies_chain_names=self.transforms_obj.ncs_copies_chains_names,
+          n_copies=self.number_of_transforms)
+      self.new_annotation = annot
 
   def get_ncs_hierarchy(self):
     """
@@ -121,8 +130,8 @@ class multimer(object):
 
   def write(self,pdb_output_file_name='',crystal_symmetry=None):
     ''' (string) -> text file
-    Writes the modified protein, with the added chains, obtained by the BIOMT/MTRIX
-    reconstruction, to a text file in a pdb format.
+    Writes the modified protein, with the added chains, obtained by the
+    BIOMT/MTRIX reconstruction, to a text file in a pdb format.
     self.assembled_multimer is the modified pdb object with the added chains
 
     Argumets:
@@ -149,9 +158,12 @@ class multimer(object):
     if not crystal_symmetry and os.path.isfile(self.pdb_input_file_name):
       crystal_symmetry = crystal_symmetry_from_any.extract_from(
         self.pdb_input_file_name)
-    # using the pdb hierarchy pdb file writing method
-    self.assembled_multimer.write_pdb_file(file_name=self.pdb_output_file_name,
-      crystal_symmetry=crystal_symmetry)
+    # using the function to write whole pdb file
+    pdb.write_whole_pdb_file(
+        file_name=self.pdb_output_file_name,
+        pdb_hierarchy=self.assembled_multimer,
+        crystal_symmetry=crystal_symmetry,
+        ss_annotation=self.new_annotation)
 
   def get_ncs_restraints_group_list(self,raise_sorry=True):
     get_nrgl = self.transforms_obj.get_ncs_restraints_group_list

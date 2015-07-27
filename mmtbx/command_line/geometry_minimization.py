@@ -3,7 +3,7 @@
 from __future__ import division
 import mmtbx.refinement.geometry_minimization
 import mmtbx.utils
-from iotbx.pdb import combine_unique_pdb_files
+from iotbx.pdb import combine_unique_pdb_files, write_whole_pdb_file
 import iotbx.phil
 from cctbx.array_family import flex
 from libtbx.utils import user_plus_sys_time, Sorry
@@ -467,23 +467,20 @@ class run(object):
       ofn = os.path.join(directory, ofn)
     print >> self.log, "  output file name:", ofn
     print >> self.log, self.min_max_mean_shift()
-    out_pdb_file = open(ofn, 'w')
+    cs = None
+    if self.output_crystal_symmetry:
+      cs = self.xray_structure.crystal_symmetry()
+    ss_annotation = None
     if self.processed_pdb_file.ss_manager is not None:
-      recs = self.processed_pdb_file.ss_manager.records_for_pdb_file()
-      if recs is not None:
-        print >> out_pdb_file, recs
+      ss_annotation = self.processed_pdb_file.ss_manager.actual_sec_str
     else:
-      for s in self.processed_pdb_file.all_chain_proxies.\
-          pdb_inp.secondary_structure_section():
-        print >> out_pdb_file, s
-    pdb_str = ""
-    if (self.output_crystal_symmetry) :
-      pdb_str = self.pdb_hierarchy.as_pdb_string(
-          crystal_symmetry=self.xray_structure.crystal_symmetry())
-    else :
-      pdb_str = self.pdb_hierarchy.as_pdb_string()
-    print >> out_pdb_file, pdb_str
-    out_pdb_file.close()
+      ss_annotation = self.processed_pdb_file.all_chain_proxies.\
+          pdb_inp.extract_secondary_structure()
+    write_whole_pdb_file(
+        file_name=ofn,
+        pdb_hierarchy=self.pdb_hierarchy,
+        crystal_symmetry=cs,
+        ss_annotation=ss_annotation)
     if(self.states_collector):
       self.states_collector.write(
         file_name=ofn[:].replace(".pdb","_all_states.pdb"))

@@ -24,7 +24,7 @@ import mmtbx.model
 from mmtbx import model_statistics
 import random
 from libtbx import easy_run
-from iotbx.pdb import combine_unique_pdb_files
+from iotbx.pdb import combine_unique_pdb_files, write_whole_pdb_file
 from libtbx import runtime_utils
 import scitbx.matrix
 import cStringIO
@@ -814,15 +814,9 @@ def renumber_residues(pdb_hierarchy, renumber_from=None,
           resseq += renumber_from
           rg.resseq = "%4d" % resseq
 
-def write_model_file(pdb_hierarchy, crystal_symmetry, file_name, output_format):
-  assert output_format in ("pdb", "mmcif")
-  if output_format == "pdb":
-    pdb_hierarchy.write_pdb_file(
-      file_name=file_name, crystal_symmetry=crystal_symmetry, append_end=True,
-      atoms_reset_serial_first_value=1)
-  elif output_format == "mmcif":
-    pdb_hierarchy.write_mmcif_file(
-      file_name=file_name, crystal_symmetry=crystal_symmetry)
+def write_cif_file(pdb_hierarchy, crystal_symmetry, file_name):
+  pdb_hierarchy.write_mmcif_file(
+    file_name=file_name, crystal_symmetry=crystal_symmetry)
 
 # XXX only works for one MODEL at present
 def move_waters (pdb_hierarchy, xray_structure, out) :
@@ -1033,8 +1027,19 @@ def run(args, command_name="phenix.pdbtools", out=sys.stdout,
   crystal_symmetry = xray_structure.crystal_symmetry()
   if command_line_interpreter.fake_crystal_symmetry:
     crystal_symmetry = None
-  write_model_file(
-    pdb_hierarchy, crystal_symmetry, file_name=ofn, output_format=output_format)
+  ss_ann = None
+  if hasattr(command_line_interpreter.pdb_inp, "extract_secondary_structure"):
+    ss_ann = command_line_interpreter.pdb_inp.extract_secondary_structure()
+  if output_format == "pdb":
+    write_whole_pdb_file(
+        file_name=ofn,
+        pdb_hierarchy=pdb_hierarchy,
+        crystal_symmetry=crystal_symmetry,
+        append_end=True,
+        atoms_reset_serial_first_value=1,
+        ss_annotation=ss_ann)
+  elif output_format =="mmcif":
+    write_cif_file(pdb_hierarchy, crystal_symmetry, file_name=ofn)
   output_files.append(ofn)
   utils.print_header("Done", out = log)
   return output_files

@@ -52,12 +52,6 @@ import libtbx.phil
 from libtbx import adopt_init_args
 import sys
 
-# This switch representation of seletions used for phil output from
-# "resid 55 through 66" to "resseq 55:66"
-# The former syntax is the only correct one because it is aware of insertion
-# codes.  Therefore use_resids should be obsoleted.
-use_resids = True
-
 class structure_base (object) :
 
   def as_pdb_str (self) :
@@ -150,6 +144,49 @@ class annotation(structure_base):
         sheets.append(sh)
     return cls(helices=helices, sheets=sheets)
 
+  def multiply_to_asu(self, ncs_copies_chain_names, n_copies):
+    from iotbx.ncs.ncs_preprocess import format_num_as_str
+    import copy
+    # ncs_copies_chain_names = {'chain B_022':'CD' ...}
+    def make_key(chain_id, n):
+      return "chain %s_%s" % (chain_id, format_num_as_str(n))
+    def get_new_chain_id(old_chain_id, n_copy):
+      new_chain_id = ncs_copies_chain_names.get(
+          make_key(old_chain_id,n_copy), None)
+      if new_chain_id is None:
+        raise Sorry("Something went wrong in mulitplying HELIX/SHEET records")
+      return new_chain_id
+    new_helices = []
+    new_sheets = []
+    new_h_serial = 1
+    new_sheet_id = 1
+    for n_copy in xrange(1, n_copies+1):
+      for helix in self.helices:
+        new_helix = copy.deepcopy(helix)
+        new_helix.erase_hbond_list()
+        new_helix.set_new_chain_ids(
+            get_new_chain_id(new_helix.start_chain_id, n_copy))
+        new_helix.set_new_serial(new_h_serial, adopt_as_id=True)
+        new_h_serial += 1
+        new_helices.append(new_helix)
+      for sheet in self.sheets:
+        new_sheet = copy.deepcopy(sheet)
+        new_sheet.sheet_id = new_sheet_id
+        new_sheet_id += 1
+        new_sheet.erase_hbond_list()
+        for strand in new_sheet.strands:
+          strand.set_new_chain_ids(
+              get_new_chain_id(strand.start_chain_id, n_copy))
+        for reg in new_sheet.registrations:
+          if reg is not None:
+            reg.set_new_cur_chain_id(
+                get_new_chain_id(reg.cur_chain_id, n_copy))
+            reg.set_new_prev_chain_id(
+                get_new_chain_id(reg.prev_chain_id, n_copy))
+        new_sheets.append(new_sheet)
+    self.helices = new_helices
+    self.sheets = new_sheets
+
   def as_pdb_str (self) :
     records = []
     for helix in self.helices :
@@ -171,31 +208,32 @@ class annotation(structure_base):
         phil_strs.append(sheet_phil)
     return "\n".join(phil_strs)
 
-  def as_atom_selections (self):
+  def as_atom_selections(self, add_segid=None):
     selections = []
     for helix in self.helices :
       try :
-        selections.extend(helix.as_atom_selections())
+        selections.extend(helix.as_atom_selections(add_segid=add_segid))
       except RuntimeError, e :
         pass
     for sheet in self.sheets :
-      selections.extend(sheet.as_atom_selections())
+      selections.extend(sheet.as_atom_selections(add_segid=add_segid))
     return selections
 
-  def overall_helix_selection (self) :
+  def overall_helix_selection(self, add_segid=None):
     selections = []
-    for helix in self.helices :
+    for helix in self.helices:
       try :
-        selections.extend(helix.as_atom_selections())
+        selections.extend(helix.as_atom_selections(add_segid=add_segid))
       except RuntimeError, e :
         pass
+    print "selections", selections
     return "(" + ") or (".join(selections) + ")"
 
-  def overall_sheet_selection (self) :
+  def overall_sheet_selection(self, add_segid=None):
     selections = []
-    for sheet in self.sheets :
+    for sheet in self.sheets:
       try:
-        selections.extend(sheet.as_atom_selections())
+        selections.extend(sheet.as_atom_selections(add_segid=add_segid))
       except RuntimeError, e :
         pass
     return "(" + ") or (".join(selections) + ")"
@@ -278,10 +316,12 @@ class pdb_helix (structure_base) :
       self.helix_id = "%s" % self.helix_id
       self.helix_id = self.helix_id[:3]
     elif self.helix_id is None:
-      self.helix_id = "%s" % self.serial
-      self.helix_id = self.helix_id[:3]
+      self.adopt_serial_as_id()
     else:
       assert isinstance(self.helix_id, str)
+    if self.start_chain_id != self.end_chain_id:
+      raise RuntimeError("Don't know how to deal with helices with multiple "+
+        "chain IDs ('%s' vs. '%s')." % (self.start_chain_id, self.end_chain_id))
 
   @classmethod
   def helix_class_to_int(cls, h_class):
@@ -299,11 +339,11 @@ class pdb_helix (structure_base) :
       helix_id=line[11:14].strip(),
       start_resname=line[15:18],
       start_chain_id=cls.parse_chain_id(line[18:20]),
-      start_resseq=int(line[21:25]),
+      start_resseq=line[21:25],
       start_icode=line[25],
       end_resname=line[27:30],
       end_chain_id=cls.parse_chain_id(line[30:32]),
-      end_resseq=int(line[33:37]),
+      end_resseq=line[33:37],
       end_icode=line[37],
       helix_class=cls.helix_class_to_str(int(line[38:40])),
       helix_selection=None,
@@ -322,7 +362,7 @@ class pdb_helix (structure_base) :
     if helix_params.serial_number is not None:
       serial = helix_params.serial_number
     amide_isel = isel(sele_str)
-    if len(amide_isel) == 0:
+    if amide_isel is None or len(amide_isel) == 0:
       error_msg = "Error in helix definition.\n"
       error_msg += "String '%s' selected 0 atoms.\n" % sele_str
       error_msg += "Most likely the definition of helix does not match model.\n"
@@ -343,11 +383,11 @@ class pdb_helix (structure_base) :
       helix_id=helix_params.helix_identifier,
       start_resname=start_atom.resname,
       start_chain_id=start_atom.chain_id,
-      start_resseq=int(start_atom.resseq),
+      start_resseq=start_atom.resseq,
       start_icode=start_atom.icode,
       end_resname=end_atom.resname,
       end_chain_id=end_atom.chain_id,
-      end_resseq=int(end_atom.resseq),
+      end_resseq=end_atom.resseq,
       end_icode=end_atom.icode,
       helix_class=helix_params.helix_type,
       comment="",
@@ -360,23 +400,29 @@ class pdb_helix (structure_base) :
       top_out=helix_params.top_out,
       )
 
+  def set_new_serial(self, serial, adopt_as_id=False):
+    self.serial = serial
+    if adopt_as_id:
+      self.adopt_serial_as_id()
+
+  def adopt_serial_as_id(self):
+    self.helix_id = "%s" % self.serial
+    self.helix_id = self.helix_id[:3]
+
+  def set_new_chain_ids(self, new_chain_id):
+    self.start_chain_id = new_chain_id
+    self.end_chain_id = new_chain_id
+
+  def erase_hbond_list(self):
+    self.hbond_list = []
+
   def as_restraint_group(self, log=sys.stdout, prefix_scope="",
       add_segid=None, show_hbonds=False):
     if self.start_chain_id != self.end_chain_id :
       print >> log, "Helix chain ID mismatch: starts in %s, ends in %s" % (
         self.start_chain_id, self.end_chain_id)
       return None
-    segid_extra = ""
-    if add_segid is not None :
-      segid_extra = "and segid '%s' " % add_segid
-    if use_resids :
-      resid_start = "%d%s" % (self.start_resseq, self.start_icode)
-      resid_end = "%d%s" % (self.end_resseq, self.end_icode)
-      sele = "chain '%s' %sand resid %s through %s" % (self.start_chain_id,
-        segid_extra, resid_start, resid_end)
-    else :
-      sele = "chain '%s' %sand resseq %d:%d" % (self.start_chain_id,
-        segid_extra, self.start_resseq, self.end_resseq)
+    sele = self.as_atom_selections(add_segid=add_segid)[0]
     if prefix_scope != "" and not prefix_scope.endswith(".") :
       prefix_scope += "."
     serial_and_id = ""
@@ -384,18 +430,16 @@ class pdb_helix (structure_base) :
       serial_and_id += "\n  serial_number = %d" % self.serial
     if self.helix_id is not None:
       serial_and_id += "\n  helix_identifier = %s" % self.helix_id
-    # if serial_and_id != "":
-    #   serial_and_id += "\n"
     hbond_restr = ""
     if show_hbonds:
       if self.get_n_defined_hbonds() > 0:
         for hb in self.hbond_list:
-          hb_str = "\n  hbond {\n    donor = \"%s\"\n    acceptor = \"%s\"\n  }" % (
+          hb_str = "\n  hbond {\n    donor = %s\n    acceptor = %s\n  }" % (
             hb[0], hb[1])
           hbond_restr += hb_str
     rg = """\
 %sprotein.helix {%s
-  selection = "%s"
+  selection = %s
   helix_type = %s%s
 }""" % (prefix_scope, serial_and_id, sele,
         self.helix_class, hbond_restr)
@@ -407,7 +451,7 @@ class pdb_helix (structure_base) :
       if h_class_int == 0:
         return 1
       return h_class_int
-    format = "HELIX  %3d %3s %3s%2s %4d%1s %3s%2s %4d%1s%2d%30s %5d"
+    format = "HELIX  %3d %3s %3s%2s %4s%1s %3s%2s %4s%1s%2d%30s %5d"
     out = format % (self.serial,
       self.serial if self.helix_id is None else self.helix_id[:3],
       self.start_resname,
@@ -416,18 +460,14 @@ class pdb_helix (structure_base) :
       h_class_to_pdb_int(self.helix_class), self.comment, self.length)
     return out.strip()
 
-  def continuity_check (self) :
-    if self.start_icode != self.end_icode :
-      raise RuntimeError("Don't know how to deal with helices with multiple "+
-        "insertion codes ('%s' vs. '%s')." % (self.start_icode, self.end_icode))
-    if self.start_chain_id != self.end_chain_id :
-      raise RuntimeError("Don't know how to deal with helices with multiple "+
-        "chain IDs ('%s' vs. '%s')." % (self.start_chain_id, self.end_chain_id))
-
-  def as_atom_selections (self) :
-    self.continuity_check()
-    sele = "chain '%s' and resseq %d:%d and icode '%s'" % (self.start_chain_id,
-      self.start_resseq, self.end_resseq, self.end_icode)
+  def as_atom_selections(self, add_segid=None):
+    segid_extra = ""
+    if add_segid is not None :
+      segid_extra = "and segid '%s' " % add_segid
+    resid_start = "%s%s" % (self.start_resseq, self.start_icode)
+    resid_end = "%s%s" % (self.end_resseq, self.end_icode)
+    sele = "chain '%s' %sand resid %s through %s" % (self.start_chain_id,
+      segid_extra, resid_start, resid_end)
     return [sele]
 
   def get_n_defined_hbonds(self):
@@ -475,9 +515,9 @@ class pdb_strand(structure_base):
     adopt_init_args(self, locals())
     assert (sheet_id > 0) and (strand_id > 0)
     assert (sense in [-1, 0, 1]), "Bad sense."
-#     if start_icode != end_icode:
-#       raise Sorry("Different insertion codes for the beginning and the end of \
-# beta strand are not supported.")
+    if self.start_chain_id != self.end_chain_id:
+      raise RuntimeError("Don't know how to deal with helices with multiple "+
+        "chain IDs ('%s' vs. '%s')." % (self.start_chain_id, self.end_chain_id))
 
   @classmethod
   def from_pdb_record(cls, line):
@@ -485,19 +525,27 @@ class pdb_strand(structure_base):
         strand_id=int(line[7:10]),
         start_resname=line[17:20],
         start_chain_id=cls.parse_chain_id(line[20:22]),
-        start_resseq=int(line[22:26]),
+        start_resseq=line[22:26],
         start_icode=line[26],
         end_resname=line[28:31],
         end_chain_id=cls.parse_chain_id(line[31:33]),
-        end_resseq=int(line[33:37]),
+        end_resseq=line[33:37],
         end_icode=line[37],
         sense=int(line[38:40]))
 
+  def set_new_chain_ids(self, new_chain_id):
+    self.start_chain_id = new_chain_id
+    self.end_chain_id = new_chain_id
 
-  def as_atom_selections(self):
-    return "chain '%s' and resseq %d:%d and icode '%s'" % (
-        self.start_chain_id, self.start_resseq, self.end_resseq,
-        self.start_icode)
+  def as_atom_selections(self, add_segid=None):
+    segid_extra = ""
+    if add_segid is not None :
+      segid_extra = "and segid '%s' " % add_segid
+    resid_start = "%s%s" % (self.start_resseq, self.start_icode)
+    resid_end = "%s%s" % (self.end_resseq, self.end_icode)
+    sele = "chain '%s' %sand resid %s through %s" % (self.start_chain_id,
+      segid_extra, resid_start, resid_end)
+    return sele
 
 class pdb_strand_register(structure_base):
   def __init__ (self,
@@ -527,6 +575,27 @@ class pdb_strand_register(structure_base):
         prev_chain_id=cls.parse_chain_id(line[63:65]),
         prev_resseq=int(line[65:69]),
         prev_icode=line[69])
+
+  def set_new_cur_chain_id(self, new_chain_id):
+    self.cur_chain_id = new_chain_id
+
+  def set_new_prev_chain_id(self, new_chain_id):
+    self.prev_chain_id = new_chain_id
+
+  def as_atom_selections(self, add_segid=None):
+    segid_extra = ""
+    if add_segid is not None :
+      segid_extra = "and segid '%s' " % add_segid
+    sele_base = "chain '%s' %sand resid %s and name %s"
+    resid_curr = "%d%s" % (self.cur_resseq,self.cur_icode)
+    resid_prev = "%d%s" % (self.prev_resseq,
+        self.prev_icode)
+    sele_curr = sele_base % (self.cur_chain_id, segid_extra,
+        resid_curr, self.cur_atom.strip())
+    sele_prev = sele_base % (self.prev_chain_id,segid_extra,
+        resid_prev, self.prev_atom.strip())
+    return sele_curr, sele_prev
+
 
 class pdb_sheet(structure_base):
   def __init__ (self,
@@ -582,7 +651,7 @@ class pdb_sheet(structure_base):
     sele_str = ("(%s) and (name N) and (altloc 'A' or altloc ' ')" %
                     sheet_params.first_strand)
     amide_isel = isel(sele_str)
-    if len(amide_isel) == 0:
+    if amide_isel is None or len(amide_isel) == 0:
       error_msg = "Error in sheet definition.\n"
       error_msg += "String '%s' selected 0 atoms.\n" % sele_str
       error_msg += "Most likely the definition of sheet does not match model.\n"
@@ -594,11 +663,11 @@ class pdb_sheet(structure_base):
         strand_id=1,
         start_resname=start_atom.resname,
         start_chain_id=start_atom.chain_id,
-        start_resseq=int(start_atom.resseq),
+        start_resseq=start_atom.resseq,
         start_icode=start_atom.icode,
         end_resname=end_atom.resname,
         end_chain_id=end_atom.chain_id,
-        end_resseq=int(end_atom.resseq),
+        end_resseq=end_atom.resseq,
         end_icode=end_atom.icode,
         sense=0)
     strands = [first_strand]
@@ -607,6 +676,11 @@ class pdb_sheet(structure_base):
       sele_str = ("(%s) and (name N) and (altloc 'A' or altloc ' ')" %
                       strand_param.selection)
       amide_isel = isel(sele_str)
+      if amide_isel is None or len(amide_isel) == 0:
+        error_msg = "Error in helix definition.\n"
+        error_msg += "String '%s' selected 0 atoms.\n" % sele_str
+        error_msg += "Most likely the definition of helix does not match model.\n"
+        raise Sorry(error_msg)
       start_atom = atoms[amide_isel[0]]
       end_atom = atoms[amide_isel[-1]]
       sense = cls.sense_to_int(strand_param.sense)
@@ -622,25 +696,43 @@ class pdb_sheet(structure_base):
           end_resseq=int(end_atom.resseq),
           end_icode=end_atom.icode,
           sense=sense)
-      reg_cur_sel = isel(strand_param.bond_start_current)
-      if len(reg_cur_sel) == 0:
-        raise Sorry("This bond_start_current yields 0 atoms:\n %s" % strand_param.bond_start_current)
-      reg_cur_atom = atoms[reg_cur_sel[0]]
-      reg_prev_sel = isel(strand_param.bond_start_previous)
-      if len(reg_prev_sel) == 0:
-        raise Sorry("This bond_start_current yields 0 atoms:\n %s" % strand_param.bond_start_previous)
-      reg_prev_atom = atoms[reg_prev_sel[0]]
-      reg = pdb_strand_register(
-          cur_atom=reg_cur_atom.name,
-          cur_resname=reg_cur_atom.resname,
-          cur_chain_id=reg_cur_atom.chain_id,
-          cur_resseq=int(reg_cur_atom.resseq),
-          cur_icode=reg_cur_atom.icode,
-          prev_atom=reg_prev_atom.name,
-          prev_resname=reg_prev_atom.resname,
-          prev_chain_id=reg_prev_atom.chain_id,
-          prev_resseq=int(reg_prev_atom.resseq),
-          prev_icode=reg_prev_atom.icode)
+      reg_cur_atom = None
+      if strand_param.bond_start_current is not None:
+        reg_cur_sel = isel(strand_param.bond_start_current)
+        if reg_cur_sel is None or len(reg_cur_sel) == 0:
+          error_msg = "Error in sheet definition.\n"
+          error_msg += "String '%s' selected 0 atoms.\n" % strand_param.bond_start_current
+          error_msg += "Most likely the definition of sheet does not match model.\n"
+          raise Sorry(error_msg)
+        reg_cur_atom = atoms[reg_cur_sel[0]]
+      if reg_cur_atom is None: # No current atom in registration
+        pass
+        # raise Sorry("This bond_start_current yields 0 atoms:\n %s" % strand_param.bond_start_current)
+      reg_prev_atom = None
+      if strand_param.bond_start_previous is not None:
+        reg_prev_sel = isel(strand_param.bond_start_previous)
+        if reg_prev_sel is None or len(reg_prev_sel) == 0:
+          error_msg = "Error in sheet definition.\n"
+          error_msg += "String '%s' selected 0 atoms.\n" % strand_param.bond_start_previous
+          error_msg += "Most likely the definition of sheet does not match model.\n"
+          raise Sorry(error_msg)
+        reg_prev_atom = atoms[reg_prev_sel[0]]
+      if reg_prev_atom is None: # No previous atom in registration
+        pass
+        # raise Sorry("This bond_start_previous yields 0 atoms:\n %s" % strand_param.bond_start_previous)
+      reg = None
+      if reg_cur_atom is not None and reg_prev_atom is not None:
+        reg = pdb_strand_register(
+            cur_atom=reg_cur_atom.name,
+            cur_resname=reg_cur_atom.resname,
+            cur_chain_id=reg_cur_atom.chain_id,
+            cur_resseq=int(reg_cur_atom.resseq),
+            cur_icode=reg_cur_atom.icode,
+            prev_atom=reg_prev_atom.name,
+            prev_resname=reg_prev_atom.resname,
+            prev_chain_id=reg_prev_atom.chain_id,
+            prev_resseq=int(reg_prev_atom.resseq),
+            prev_icode=reg_prev_atom.icode)
       strands.append(strand)
       registrations.append(reg)
     hbonds = []
@@ -667,16 +759,19 @@ class pdb_sheet(structure_base):
       sense = -1
     return sense
 
+  def erase_hbond_list(self):
+    self.hbond_list = []
+
   def add_strand (self, strand) :
     self.strands.append(strand)
 
   def add_registration (self, registration) :
     self.registrations.append(registration)
 
-  def as_atom_selections (self) :
+  def as_atom_selections (self, add_segid=None):
     strand_selections = []
-    for strand in self.strands :
-      strand_selections.append(strand.as_atom_selections())
+    for strand in self.strands:
+      strand_selections.append(strand.as_atom_selections(add_segid=add_segid))
     return strand_selections
 
   def get_n_defined_hbonds(self):
@@ -684,15 +779,12 @@ class pdb_sheet(structure_base):
       return len(self.hbond_list)
     return 0
 
-  def as_pdb_str (self) :
+  def as_pdb_str(self, strand_id=None):
     assert len(self.strands) == len(self.registrations)
     lines = []
-    # print self.strands
-    # print self.registrations
-    # STOP()
     for strand, reg in zip(self.strands, self.registrations) :
-      format1 = "SHEET  %3d %3s%2d %3s%2s%4d%1s %3s%2s%4d%1s%2d"
-      format2 = "%4s%3s%2s%4d%1s %4s%3s%2s%4d%1s"
+      format1 = "SHEET  %3d %3s%2d %3s%2s%4s%1s %3s%2s%4s%1s%2d"
+      format2 = "%4s%3s%2s%4s%1s %4s%3s%2s%4s%1s"
       # print "STRAND, REG", strand, reg
       line = format1 % (strand.strand_id, self.sheet_id, self.n_strands,
         strand.start_resname, strand.start_chain_id, strand.start_resseq,
@@ -706,28 +798,10 @@ class pdb_sheet(structure_base):
       else :
         pass
         #assert strand.sense == 0
+      if strand_id is not None and strand_id == strand.strand_id:
+        return line
       lines.append(line.strip())
     return "\n".join(lines)
-
-  def particular_strand_as_pdb_str(self, strand_id=None):
-    if strand_id is None:
-      return ""
-    line = ""
-    for strand, reg in zip(self.strands, self.registrations):
-      if strand.strand_id == strand_id:
-        format1 = "SHEET  %3d %3s%2d %3s%2s%4d%1s %3s%2s%4d%1s%2d"
-        format2 = "%4s%3s%2s%4d%1s %4s%3s%2s%4d%1s"
-        # print "STRAND, REG", strand, reg
-        line = format1 % (strand.strand_id, self.sheet_id, self.n_strands,
-          strand.start_resname, strand.start_chain_id, strand.start_resseq,
-          strand.start_icode, strand.end_resname, strand.end_chain_id,
-          strand.end_resseq, strand.end_icode, strand.sense)
-        if reg is not None :
-          line += " "
-          line += format2 % (reg.cur_atom, reg.cur_resname, reg.cur_chain_id,
-            reg.cur_resseq, reg.cur_icode, reg.prev_atom, reg.prev_resname,
-            reg.prev_chain_id, reg.prev_resseq, reg.prev_icode)
-    return line
 
   def as_restraint_group(self, log=sys.stdout, prefix_scope="",
       add_segid=None, show_hbonds=False):
@@ -737,18 +811,8 @@ class pdb_sheet(structure_base):
     senses = []
     reg_curr = []
     reg_prev = []
-    segid_extra = ""
-    if add_segid is not None :
-      segid_extra = "and segid '%s' " % add_segid
     for (strand,registration) in zip(self.strands, self.registrations) :
-      if use_resids :
-        resid_start = "%d%s" % (strand.start_resseq, strand.start_icode)
-        resid_end = "%d%s" % (strand.end_resseq, strand.end_icode)
-        sele = "chain '%s' %sand resid %s through %s" % (strand.start_chain_id,
-          segid_extra, resid_start, resid_end)
-      else :
-        sele = "chain '%s' %sand resseq %d:%d" % (strand.start_chain_id,
-          segid_extra, strand.start_resseq, strand.end_resseq)
+      sele = strand.as_atom_selections(add_segid=add_segid)
       selections.append(sele)
       if strand.sense == 0 :
         senses.append("unknown")
@@ -759,25 +823,16 @@ class pdb_sheet(structure_base):
       else :
         raise Sorry("Sense must be 0, 1, or -1.")
       if registration is not None :
-        if use_resids :
-          sele_base = "chain '%s' %sand resid %s and name %s"
-          resid_curr = "%d%s" % (registration.cur_resseq,registration.cur_icode)
-          resid_prev = "%d%s" % (registration.prev_resseq,
-              registration.prev_icode)
-          reg_curr.append(sele_base % (registration.cur_chain_id,segid_extra,
-              resid_curr, registration.cur_atom.strip()))
-          reg_prev.append(sele_base % (registration.prev_chain_id,segid_extra,
-              resid_prev, registration.prev_atom.strip()))
-        else :
-          reg_curr.append("chain '%s' %sand resseq %d and name %s" % (
-              registration.cur_chain_id, segid_extra, registration.cur_resseq,
-              registration.cur_atom.strip()))
-          reg_prev.append("chain '%s' %sand resseq %d and name %s" % (
-              registration.prev_chain_id, segid_extra, registration.prev_resseq,
-              registration.prev_atom.strip()))
+        curr, prev = registration.as_atom_selections(add_segid=add_segid)
+        reg_curr.append(curr)
+        reg_prev.append(prev)
       else :
         reg_curr.append(None)
         reg_prev.append(None)
+    # print "selections", selections
+    # print "reg_curr", reg_curr
+    # print "reg_prev", reg_prev
+    # STOP()
     n = 0
     first_strand = None
     strands = []
@@ -787,10 +842,10 @@ class pdb_sheet(structure_base):
       else :
         strands.append("""\
   strand {
-    selection = "%s"
+    selection = %s
     sense = %s
-    bond_start_current = "%s"
-    bond_start_previous = "%s"
+    bond_start_current = %s
+    bond_start_previous = %s
   }""" % (sele, sense, curr, prev))
       n += 1
     assert first_strand is not None
@@ -800,15 +855,16 @@ class pdb_sheet(structure_base):
     if show_hbonds:
       if self.get_n_defined_hbonds() > 0:
         for hb in self.hbond_list:
-          hb_str = "\n  hbond {\n    donor = \"%s\"\n    acceptor = \"%s\"\n  }" % (
+          hb_str = "\n  hbond {\n    donor = %s\n    acceptor = %s\n  }" % (
             hb[0], hb[1])
           hbond_restr += hb_str
     phil_str = """
 %sprotein.sheet {
   sheet_id = "%s"
-  first_strand = "%s"
+  first_strand = %s
 %s%s
 }""" % (prefix_scope, self.sheet_id, first_strand, "\n".join(strands), hbond_restr)
+    # print "phil_str", phil_str
     return phil_str
 
 if __name__ == "__main__" :

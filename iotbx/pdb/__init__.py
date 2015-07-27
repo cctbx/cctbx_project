@@ -1967,3 +1967,26 @@ def format_MTRIX_pdb_string(rotation_matrices, translation_vectors,
 
 def mtrix_and_biomt_records_container():
   return  _._mtrix_and_biomt_records_container()
+
+def write_whole_pdb_file(
+    file_name=None,
+    output_file=None,
+    pdb_hierarchy=None,
+    crystal_symmetry=None,
+    append_end=True,
+    atoms_reset_serial_first_value=None,
+    ss_annotation=None):
+  assert [file_name, output_file].count(None) == 1
+  out = output_file
+  if file_name is not None:
+    out = open(file_name, "w")
+  if ss_annotation is not None:
+    out.write(ss_annotation.as_pdb_str())
+    out.write("\n")
+  if pdb_hierarchy is not None:
+    out.write(pdb_hierarchy.as_pdb_string(
+        crystal_symmetry=crystal_symmetry,
+        atoms_reset_serial_first_value=atoms_reset_serial_first_value,
+        append_end=append_end))
+  if file_name is not None:
+    out.close()
