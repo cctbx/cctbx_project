@@ -734,8 +734,7 @@ def find_tls (params,
   ssm = mmtbx.secondary_structure.manager(
     pdb_hierarchy                = pdb_hierarchy,
     sec_str_from_pdb_file        = None,
-    params                       = None,
-    assume_hydrogens_all_missing = None)
+    params                       = None)
   alpha_h_selection = ssm.alpha_selection()
   secondary_structure_selection = ssm.alpha_selection() | \
       ssm.beta_selection() | ssm.base_pair_selection()
