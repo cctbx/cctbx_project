@@ -200,7 +200,6 @@ def create_helix_hydrogen_bond_proxies (
     print >> log, str(e)
     return generated_proxies
   assert (helix_step in [3, 4, 5])
-  helix_i_seqs = helix_selection.iselection()
   helix_rgs = _get_residue_groups_from_selection(pdb_hierarchy, helix_selection)
   i = 0
   while i < len(helix_rgs)-helix_step:
@@ -396,7 +395,7 @@ def _get_residue_groups_from_selection(pdb_hierarchy, bool_selection):
   rgs = []
   for model in pdb_hierarchy.models():
     for chain in model.chains():
-      chain_i_seqs = chain.atoms().extract_i_seq()
+      chain_i_seqs = flex.size_t(sorted(chain.atoms().extract_i_seq()))
       if (chain_i_seqs.intersection(i_seqs).size() == 0) :
         continue
       for rg in chain.residue_groups():
