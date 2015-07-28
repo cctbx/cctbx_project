@@ -318,9 +318,11 @@ def DrawStatusLightControl (parent, message, name, level) :
     gc.SetBrush(wx.Brush((0,255,0)))
   elif (level == 1) :
     gc.SetBrush(wx.Brush((255,255,0)))
+  elif (1 < level < 2) :
+    gc.SetBrush(wx.Brush((255,140,0)))
   else :
     gc.SetBrush(wx.Brush((255,0,0)))
-  gc.DrawEllipse(4, 4, 28, 28)
+  gc.DrawEllipse(2, 2, 28, 28)
   btn = metallicbutton.MetallicButton(
     parent=parent,
     label2=message,

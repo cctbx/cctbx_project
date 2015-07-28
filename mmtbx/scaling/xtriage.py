@@ -505,6 +505,9 @@ The original dataset contained unmerged intensities; the statistics below
 are for the merged data.""")
     source = getattr(self.info, "source", None)
     label_string = getattr(self.info, "label_string", lambda: None)
+    if (source is not None):
+      if (os.path.isfile(source)):
+        source = os.path.basename(source)
     lines = [
       ("File name:", str(source)),
       ("Data labels:", str(label_string())),
@@ -530,6 +533,65 @@ are for the merged data.""")
         ("Completeness:", "%.2f%%" % (self.completeness*100)),
       ])
     out.show_text_columns(lines, indent=2)
+    # description of completeness values
+    if (self.anomalous_flag) :
+      out.show_text("""
+  Completeness (non-anomalous) is the completeness of the data after merging
+  Friedel pairs.
+
+  Completeness (all) is the completeness of the data before merging Friedel
+  pairs.
+
+  Completeness (anomalous) is the completeness of the anomalous data. The
+  anomalous completeness is calcluated by dividing the number of measured
+  acentric, Bijvoet mates by the total possible number of acentric indices.
+
+  Completeness (non-anomalous) should be used to determine if there is
+  sufficient data for non-anomalous purposes (refinement, model-building).
+  A value greater than 90% is generally desired, while a value less than
+  75% is considered poor. Values in between will provide less than optimal
+  results.
+
+  Completeness (anomalous) should be used to determine if there is sufficient
+  data for anomalous purposes (phasing, finding anomalous atoms, refinement
+  of anomalous occupancies or scattering factors). A value greater than 80%
+  is generally desired, while a value less than 50% is considered poor. Values
+  in between will provide less than optimal results.
+  """)
+    else:
+      out.show_text("""
+  Completeness should be used to determine if there is sufficient data for
+  refinement and/or model-building. A value greater than 90% is generally
+  desired, while a value less than 75% is considered poor. Values in between
+  will provide less than optimal results.
+  """)
+
+  def summarize_issues(self):
+    issues = []
+    if (self.anomalous_flag):
+      message = 'The non-anomalous completeness is %.2f%%.'%(100.0*self.completeness_merged)
+      if (self.completeness_merged < 0.75) :
+        issues.append((2, message, 'Summary'))
+      elif (self.completeness_merged < 0.90) :
+        issues.append((1, message, 'Summary'))
+      else :
+        issues.append((0, message, 'Summary'))
+      message = 'The anomalous completeness is %.2f%%.'%(100.0*self.anomalous_completeness)
+      if (self.anomalous_completeness < 0.5):
+        issues.append((1.5, message, 'Summary'))
+      elif (0.5 <= self.anomalous_completeness < 0.8):
+        issues.append((1, message, 'Summary'))
+      else:
+        issues.append((0,message,'Summary'))
+    else:
+      message = 'The completeness is %.2f%%.'%(100.0*self.completeness)
+      if (self.completeness < 0.75) :
+        issues.append((2, message, 'Summary'))
+      elif (self.completeness < 0.90) :
+        issues.append((1, message, 'Summary'))
+      else :
+        issues.append((0, message, 'Summary'))
+    return issues
 
 class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
   """
@@ -644,6 +706,8 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
         miller_array=miller_obs,completeness_as_non_anomalous=\
            self.completeness_as_non_anomalous
         ).show(out=text_out)
+    # completeness summary
+    self.data_summary.show(out=text_out)
     # Anomalous signal
     self.anomalous_info = None
     if miller_obs.anomalous_flag() :
@@ -894,6 +958,7 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     if (self.merging_stats is not None) :
       issues.extend(self.merging_stats.summarize_issues())
     issues.extend(self.data_strength_and_completeness.summarize_issues())
+    issues.extend(self.data_summary.summarize_issues())
     if (self.anomalous_info is not None) :
       pass
     return summary(issues)
@@ -913,6 +978,10 @@ class summary (mmtbx.scaling.xtriage_analysis) :
     have_problems = False
     if (self.n_problems > 0) :
       if hasattr(out, "show_issues") : # XXX GUI hack
+        for severity, message, linkto in self._issues :
+          if (severity > 1) :
+            have_problems = True
+            break
         out.show_issues(self._issues)
       else :
         for severity, message, linkto in self._issues :
@@ -928,7 +997,7 @@ you inspect the individual results closely, as it is difficult to automatically
 detect all issues.""")
     else :
       out.show("""
-Please inspect all individual results closely, as it is difficlut to
+Please inspect all individual results closely, as it is difficult to
 automatically detect all issues.""")
 
 def check_for_pathological_input_data (miller_array,

@@ -861,12 +861,6 @@ or omission of reflections by data-processing software.""")
     else :
       issues.append((0, "The overall completeness in low-resolution shells "+
         "is at least 90%.", "Low resolution completeness analyses"))
-    if (self.completeness_overall < 0.75) :
-      issues.append((2, "Overall completeness is less than 75%.", None))
-    elif (self.completeness_overall < 0.90) :
-      issues.append((1, "Overall completeness is less than 90%.", None))
-    else :
-      issues.append((0, "Overall completeness is above 90%.", None))
     return issues
 
 class anomalous (scaling.xtriage_analysis) :
