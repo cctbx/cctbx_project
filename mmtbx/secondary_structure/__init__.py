@@ -464,7 +464,7 @@ class manager (object) :
         planarity_bp_proxies, parallelity_bp_proxies+stacking_proxies)
 
   def get_simple_bonds (self, selection_phil=None) :
-    # assert 0 # not tested and changed, used in GUI to draw bonds
+    # assert 0 # used in GUI to draw bonds
     # this function wants
     # shared.stl_set_unsigned([(i_seq, j_seq),(i_seq, j_seq)])
     desired_annotation = None
