@@ -56,7 +56,7 @@ class wx_renderer (mmtbx.polygon.output.renderer) :
 
   def draw_labels (self, out, label, min, max, value, pos, angle) :
     gc = out
-    label_font = wx.Font(14, wx.NORMAL, wx.NORMAL, wx.BOLD)
+    label_font = wx.Font(14, wx.FONTFAMILY_DEFAULT, wx.NORMAL, wx.BOLD)
     stat_font = wx.Font(12, wx.MODERN, wx.NORMAL, wx.NORMAL)
     gc.PushState()
     gc.SetPen(wx.Pen("black", 1))
