@@ -855,23 +855,12 @@ class Builder(object):
     except OSError:
       git_available = False
 
-    def buildbot_log(message, path='modules'):
-      self.add_step(self.shell(command=['ls', '-la'], name="debug: %s"%message, workdir=[path]))
-
-    buildbot_log("Git: %s" % str(git_available))
-    buildbot_log("Path: %s" % self.opjoin(*['modules', module, '.git']), path='modules')
-    buildbot_log("Ex: %s" % str(self.opjoin(*['modules', module, '.git'])), path='modules')
-
     if git_available and os.path.exists(self.opjoin(*['modules', module, '.git'])):
       self.add_step(self.shell(
         command=['git', 'pull', '--ff-only'],
         workdir=[os.path.join('modules', module)]
       ))
       return
-
-    buildbot_log("PathM: %s" % self.opjoin(*['modules', module]), path='modules')
-    buildbot_log("ExM: %s" % str(os.path.exists(self.opjoin(*['modules', module]))), path='modules')
-    buildbot_log("PathGit", path='modules/%s' % module)
 
     if os.path.exists(self.opjoin(*['modules', module])):
       print "Existing non-git directory -- don't know what to do. skipping: %s"%module
