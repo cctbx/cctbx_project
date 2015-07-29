@@ -52,6 +52,246 @@ import libtbx.phil
 from libtbx import adopt_init_args
 import sys
 
+
+def segments_are_similar(atom_selection_1=None,
+   atom_selection_2=None,
+   hierarchy=None,
+   maximum_length_difference=None,
+   minimum_overlap=None):
+
+    "Return True if two segments selected are similar"
+    "Different lengths optional."
+    if minimum_overlap is None:
+      minimum_overlap=4 # set default
+ 
+    # Check to see if they overlap sufficiently and have similar lengths
+
+    asc=hierarchy.atom_selection_cache()
+    sel=asc.selection(string = atom_selection_1)
+    try:
+      h1=hierarchy.deep_copy().select(sel)  # keep original hierarchy too
+      number_self=h1.overall_counts().n_residues
+    except Exception, e:
+      return False
+
+    asc=hierarchy.atom_selection_cache()
+    sel=asc.selection(string = atom_selection_2)
+    try:
+      h2=hierarchy.deep_copy().select(sel)
+      number_other=h2.overall_counts().n_residues
+    except Exception, e:
+      return False
+
+    if maximum_length_difference is not None and \
+        abs(number_self-number_other)>maximum_length_difference:
+      return False
+
+    asc=hierarchy.atom_selection_cache()
+    atom_selection="(%s) and (%s)" %(atom_selection_1,atom_selection_2)
+    sel=asc.selection(string = atom_selection)
+    try:
+      h12=hierarchy.deep_copy().select(sel)
+      number_both=h12.overall_counts().n_residues
+    except Exception, e:
+      return False
+    
+    if number_both<minimum_overlap: 
+      return False 
+
+    return True
+
+
+class one_strand_pair_registration_atoms:
+  def __init__(self,
+      strand_a_atom=None,
+      strand_b_atom=None,
+      strand_a_position=None,
+      strand_b_position=None,
+      sense=None,
+      log=sys.stdout):
+
+    self.ok=True
+    self.sense=sense
+
+    #  If CA residue i of strand n matches with residue i' of strand n+1:
+    #  For both parallel and antiparallel: N,O alternately H-bond to strands
+    #    to right and to left
+
+    #  For parallel strands:
+    #  O of residue i in strand n H-bonds to N of residue i'+1 in strand n+1.
+    #  N of residue i in strand n H-bonds to O of residue i'-1 in strand n+1.
+    #  So... O 31 -- N 72  is equivalent to: (i=31  i'=71)
+    #        O 33 -- N 74  (just naming residues 2 away)
+    #        N 31 -- O 70  (naming N instead of O)
+    #  and not equivalent to:
+    #        O 32 -- N 73  (points the other way)
+
+    #  For antiparallel strands:
+    #  O of residue i in strand n H-bonds to N of residue i' in strand n+1
+    #  N of residue i in strand n H-bonds to O of residue i' in strand n+1
+
+    strand_a_atom=strand_a_atom.replace(" ","") 
+    strand_b_atom=strand_b_atom.replace(" ","") 
+
+    if (strand_a_atom=="O" and strand_b_atom != "N") or \
+       (strand_a_atom=="N" and strand_b_atom != "O") or \
+       (strand_a_atom!="N" and strand_b_atom != "N") or \
+       (strand_a_atom!="O" and strand_b_atom != "O"): 
+          print >>log,"Cannot interpret H-bonding of %s to %s " %(
+            strand_a_atom,strand_b_atom)
+          ok=False
+          return 
+
+    if not sense in [-1,1]:
+      print >>log,"Cannot interpret bonding with sense not -1 or 1:"
+      self.ok=False
+      return
+   
+    if sense==1:  # parallel
+      if strand_a_atom=="O":
+        self.std_position_a=strand_a_position
+        self.std_position_b=strand_b_position
+      else:
+        self.std_position_a=strand_a_position
+        self.std_position_b=strand_b_position+2  # equiv to O bonding here
+    else:  # antiparallel
+      self.std_position_a=strand_a_position
+      self.std_position_b=strand_b_position
+
+  def is_equivalent_to(self,other=None):
+    if not self.ok: return None  # can't tell
+
+    #  Equivalent if std_position_a and std_position_b are the same for both
+    #  or both offset by the same multiple of 2 (opposite multiple of 2 if
+    #  antiparallel)
+
+    
+    delta_a=self.std_position_a-other.std_position_a
+    if delta_a-2*(delta_a//2)!=0:  # must be multiple of 2
+      return False
+    delta_b=self.std_position_b-other.std_position_b
+    if delta_b-2*(delta_b//2)!=0:  # must be multiple of 2
+      return False
+    if self.sense==1 and delta_a != delta_b:
+      return False 
+    elif self.sense==-1 and delta_a != -delta_b:
+      return False 
+
+    return True # all ok
+ 
+class registration_atoms:
+  def __init__(self,hierarchy=None,
+      strand_1a=None,strand_1b=None,
+      strand_2a=None,strand_2b=None,
+      registration_1=None,registration_2=None,
+      sense=None,
+      log=sys.stdout):
+    adopt_init_args(self, locals())
+
+    self.ok=True
+    # 1a,1b are the prev and cur strands for registration 1; 2a,2b for reg 2
+
+    ok_a,strand_1a_position,strand_2a_position,\
+      strand_1a_atom,strand_2a_atom=\
+      self.get_positions_and_atoms_for_one_strand(prev=True)
+    if not ok_a: ok=False
+
+    ok_b,strand_1b_position,strand_2b_position, \
+      strand_1b_atom,strand_2b_atom=\
+      self.get_positions_and_atoms_for_one_strand(prev=False)
+    if not ok_b: ok=False
+
+    # pair_1 are the atoms and positions for one pair of strands
+    registration_pair_1=one_strand_pair_registration_atoms(
+      strand_a_atom=strand_1a_atom, 
+      strand_b_atom=strand_1b_atom, 
+      strand_a_position=strand_1a_position,
+      strand_b_position=strand_1b_position,
+      sense=sense,log=log)
+    if not registration_pair_1.ok: self.ok=False
+
+
+    registration_pair_2=one_strand_pair_registration_atoms(
+      strand_a_atom=strand_2a_atom, 
+      strand_b_atom=strand_2b_atom, 
+      strand_a_position=strand_2a_position,
+      strand_b_position=strand_2b_position,
+      sense=sense,log=log)
+    if not registration_pair_2.ok: self.ok=False
+
+    if not self.ok: 
+      self.pairs_are_equivalent=None
+    elif registration_pair_1.is_equivalent_to(registration_pair_2):
+      self.pairs_are_equivalent=True
+    else:
+      self.pairs_are_equivalent=False
+
+  def get_positions_and_atoms_for_one_strand(self,prev=True):
+    if prev:
+      atom_selection="( (%s) or (%s)) and name ca" %(
+       self.strand_1a.as_atom_selections(), self.strand_2a.as_atom_selections())
+    else:
+      atom_selection="( (%s) or (%s)) and name ca" %(
+       self.strand_1b.as_atom_selections(), self.strand_2b.as_atom_selections())
+    asc=self.hierarchy.atom_selection_cache()
+    sel=asc.selection(string = atom_selection)
+    ph=self.hierarchy.deep_copy().select(sel)  # keep original hierarchy too
+    # now ph is list of CA by residue.  Find the position of our N or O
+
+    strand_1_position=self.get_registration_position(
+      hierarchy=ph,
+      registration=self.registration_1,
+      prev=prev)
+
+    strand_2_position=self.get_registration_position(
+      hierarchy=ph,
+      registration=self.registration_2,
+      prev=prev)
+
+    if prev:
+      strand_1_atom=self.registration_1.prev_atom
+      strand_2_atom=self.registration_2.prev_atom
+    else:
+      strand_1_atom=self.registration_1.cur_atom
+      strand_2_atom=self.registration_2.cur_atom
+
+    ok=None
+    if strand_1_position is None and strand_2_position is not None: 
+      ok=False
+    if strand_2_position is None and strand_1_position is not None: 
+      ok=False
+    if strand_1_position is not None and strand_2_position is not None: 
+      ok=True 
+
+    return ok,strand_1_position,strand_2_position,strand_1_atom,strand_2_atom
+
+  def get_registration_position(self,hierarchy=None,
+      registration=None,prev=False):
+    if prev:
+      resname=registration.prev_resname
+      resseq=registration.prev_resseq
+      chain_id=registration.prev_chain_id
+      icode=registration.prev_icode
+    else:
+      resname=registration.cur_resname
+      resseq=registration.cur_resseq
+      chain_id=registration.cur_chain_id
+      icode=registration.cur_icode
+    # Assumes that there are no alternate conformations
+    pos=-1
+    for model in hierarchy.models()[:1]:
+      for chain in model.chains()[:1]:
+        for conformer in chain.conformers()[:1]:
+          for residue in conformer.residues():
+            pos+=1
+            if residue.resname==resname and \
+               residue.resseq.replace(" ","")==str(resseq) and \
+               chain.id==chain_id and residue.icode==icode:
+              return pos
+    return None 
+   
+
+
 class structure_base (object) :
 
   def as_pdb_str (self) :
@@ -100,11 +340,96 @@ class structure_base (object) :
       result.append(current_sh_lines)
     return result
 
+  def count_residues(self,hierarchy=None):
+    "Count residues in this secondary structure"
+
+    if hierarchy is None:
+      raise AssertionError,"Require hierarchy for count_h_bonds"
+
+    atom_selection=self.combine_atom_selections(self.as_atom_selections())
+    if not atom_selection:
+       return 0
+
+    asc=hierarchy.atom_selection_cache()
+    sel = asc.selection(string = atom_selection)
+    ph=hierarchy.deep_copy().select(sel)
+    return ph.overall_counts().n_residues
+
+  def count_h_bonds(self,hierarchy=None,
+       max_h_bond_length=None):
+    "Count good and poor H-bonds in this secondary structure"
+
+    if hierarchy is None:
+      raise AssertionError,"Require hierarchy for count_h_bonds"
+
+    atom_selection=self.combine_atom_selections(self.as_atom_selections())
+    if not atom_selection:
+       return 0,0
+
+    asc=hierarchy.atom_selection_cache()
+    sel = asc.selection(string = atom_selection)
+    ph=hierarchy.deep_copy().select(sel)
+
+    from mmtbx.secondary_structure.find_ss_from_ca import \
+      find_secondary_structure 
+    from libtbx.utils import null_out
+    fss=find_secondary_structure(hierarchy=ph,
+      user_annotation_text=self.as_pdb_str(),
+      force_secondary_structure_input=True,
+      max_h_bond_length=max_h_bond_length,out=null_out())
+    return fss.number_of_good_h_bonds,fss.number_of_poor_h_bonds
+
+
+  def is_similar_to(self,other=None,hierarchy=None,
+      maximum_length_difference=None, minimum_overlap=None):
+    "Return True if this annotation is similar to other."
+    "Allow equivalent representations (different alignment atoms with)"
+    "equivalent results, backwards order of strands in sheet, different "
+    "lengths of strands optional."
+    if self.is_same_as(other=other): return True  # always quicker
+
+    if hierarchy is None:
+      raise AssertionError,"Require hierarchy for is_similar_to"
+
+    # Check for different objects
+    if type(self) != type(other): return False 
+
+    self_atom_selections=self.as_atom_selections()
+    other_atom_selections=other.as_atom_selections()
+    if type(self_atom_selections)==type([1,2,3]):
+       assert len(self_atom_selections)==1
+       self_atom_selections=self_atom_selections[0]
+    if type(other_atom_selections)==type([1,2,3]):
+       assert len(other_atom_selections)==1
+       other_atom_selections=other_atom_selections[0]
+    return segments_are_similar(
+        atom_selection_1=self_atom_selections,
+        atom_selection_2=other_atom_selections,
+        hierarchy=hierarchy,
+        maximum_length_difference=maximum_length_difference,
+        minimum_overlap=minimum_overlap)
+
+  def combine_atom_selections(self,atom_selections_list):
+    all_list=[]
+    for x in atom_selections_list:
+      if type(x)==type([1,2,3]):
+        all_list+=x
+      else:
+        all_list.append(x)
+    if not all_list: return ""
+
+    atom_selection="(%s)" %(all_list[0])
+    for x in all_list[1:]:
+      atom_selection+=" or (%s) " %(x)
+    return atom_selection
+
+
 class annotation(structure_base):
   def __init__(self, helices=None, sheets=None):
     assert (not None in [helices, sheets])
     self.helices = helices
     self.sheets = sheets
+
 
   @classmethod
   def from_records(cls, records=None, log=None):
@@ -269,6 +594,303 @@ class annotation(structure_base):
         n_hb += sh.get_n_defined_hbonds()
     return n_hb
 
+  def split_sheets(self):
+    "Split all multi-strand sheets into 2-strand sheets"
+    new_sheets=[]
+    from copy import deepcopy
+    for sheet in self.sheets:
+      new_sheets+=sheet.split(starting_sheet_id_number=len(new_sheets)+1)
+    return annotation(
+      helices=deepcopy(self.helices),
+      sheets=new_sheets)
+
+  def merge_sheets(self):
+    "Group 2-strand sheets into larger sheets if identical component strands"
+    # First run sheet.split() on all sheets or split_sheets on the annotation
+    #  as this requires 2-strand sheets (not 3 or more)
+    from copy import deepcopy
+
+    sheet_pointer_0={}
+    sheet_pointer_1={}
+    all_strands=[]
+    for sheet in self.sheets:
+      assert len(sheet.strands)==2 and len(sheet.registrations)==2
+      strand_0_text=sheet.strands[0].as_atom_selections()
+      strand_1_text=sheet.strands[1].as_atom_selections()
+      sheet_pointer_0[strand_0_text]=sheet
+      sheet_pointer_1[strand_1_text]=sheet
+      if not sheet.strands[0] in all_strands:
+        all_strands.append(sheet.strands[0])
+      if not sheet.strands[1] in all_strands:
+        all_strands.append(sheet.strands[1])
+
+    used_strand_selections=[] # strands that have been used 
+    # Start with a strand that is in position 1 only (if any) and work through
+    #   all strands in that sheet. Then on second iteration take all unused
+    new_sheets=[]
+    for iter in [0,1]: 
+      for strand in all_strands:
+        key=strand.as_atom_selections()
+        if key in used_strand_selections: continue
+        if key in sheet_pointer_0.keys() and (
+            iter==1 or not key in sheet_pointer_1.keys()):
+
+          used_strand_selections.append(key)
+          working_sheet=deepcopy(sheet_pointer_0.get(key))
+          new_sheets.append(working_sheet)  # now we will extend this sheet
+
+          second_strand=working_sheet.strands[1] # second strand
+          next_key=second_strand.as_atom_selections()
+          if next_key in used_strand_selections: continue 
+
+          while next_key: # points to next sheet to merge 2nd strand
+            # find sheet where next_strand is the first strand
+            next_sheet=sheet_pointer_0.get(next_key)
+            if not next_sheet: break 
+            used_strand_selections.append(next_key)
+
+            next_strand=deepcopy(next_sheet.strands[1])
+            next_registration=deepcopy(next_sheet.registrations[1])
+            # Adjust sense of strand relative to first strand in working_sheet
+
+            working_sheet.add_strand(next_strand)
+            working_sheet.add_registration(next_registration)
+
+            next_key=next_strand.as_atom_selections()
+            if next_key in used_strand_selections: break
+
+
+    # Now new_sheets has strands arranged in sheets.
+    new_annotation=deepcopy(self)
+    new_annotation.sheets=new_sheets
+    return new_annotation
+
+  def combine_annotations(self,hierarchy=None,other=None,
+    keep_self=None,
+    max_h_bond_length=None,
+    maximize_h_bonds=True,
+    maximum_length_difference=None,
+    minimum_overlap=None,
+    out=sys.stdout):
+    "Create new annotation that is combination of self and other"
+
+    # Hierarchy is required in order to identify what parts of annotation are
+    #   in common for self and other and to identify which are better
+
+    # Default behavior (keep_self=None):
+    # For each annotation, keep the version that has the most information;
+    #   if equal, keep self.  Then add things from other that are not present in
+    #   self. Information is number of H-bonds (default) or total residues in
+    #   secondary_structure.
+
+    # Optional behavior (keep_self=True):
+    # Keep all of self and add things from other not present in self.
+
+    self.keep_self=keep_self
+    self.maximize_h_bonds=maximize_h_bonds
+    self.maximum_length_difference=maximum_length_difference
+    self.minimum_overlap=minimum_overlap
+    self.max_h_bond_length=max_h_bond_length
+
+    # Select just the part of hierarchy we will need
+    assert hierarchy
+    s1=self.as_atom_selections()
+    s2=other.as_atom_selections()
+    atom_selection=self.combine_atom_selections([s1,s2])
+    if not atom_selection: 
+      return None # nothing to do
+    asc=hierarchy.atom_selection_cache()
+    sel = asc.selection(string = atom_selection)
+    ph=hierarchy.deep_copy().select(sel)  #ph = needed part of hierarchy
+
+    # Split all sheets into pairs
+    a1=self.split_sheets()
+    a2=other.split_sheets()
+
+    # Find all pairs of overlapping annotations and all unique annotations in
+    #  self and other
+
+    print >>out,"\nFinding matching and unique helices:"
+    helices=self.get_unique_set(
+       a1.helices,a2.helices,hierarchy=hierarchy,out=out)
+
+    print >>out,"\nFinding matching and unique sheets:"
+    sheets=self.get_unique_set(a1.sheets,a2.sheets,hierarchy=hierarchy,out=out)
+
+    new_annotation=annotation(sheets=sheets,helices=helices)
+    new_annotation=new_annotation.merge_sheets()
+    return new_annotation
+
+  def get_unique_set(self,h1_list,h2_list,hierarchy=None,
+     poor_h_bond_weight=0.5,out=sys.stdout):
+    pairs=[]
+    unique_h1=[]
+    unique_h2=[]
+    used_h1=[]
+    used_h2=[]
+    for h1 in h1_list:
+      for h2 in h2_list:
+        if h2.is_similar_to(other=h1,hierarchy=hierarchy,
+            maximum_length_difference=self.maximum_length_difference,
+            minimum_overlap=self.minimum_overlap):
+          if not h1 in used_h1: used_h1.append(h1)
+          if not h2 in used_h2: used_h2.append(h2)
+          pairs.append([h1,h2])
+    for h1 in h1_list:
+      if not h1 in used_h1: unique_h1.append(h1)
+    for h2 in h2_list:
+      if not h2 in used_h2: unique_h2.append(h2)
+
+    if pairs:
+      print >>out,"\nMatching pairs:"
+      for [h1,h2] in pairs:
+        print >>out,"SELF : \n%s" %(h1.as_pdb_str())
+        print >>out,"OTHER: \n%s" %(h2.as_pdb_str())
+
+    if unique_h1 or unique_h2:
+      print >>out,"\nNon-matching:"
+      for h1 in unique_h1:
+        print >>out,"SELF : \n%s" %(h1.as_pdb_str())
+      for h2 in unique_h2:
+        print >>out,"OTHER: \n%s" %(h2.as_pdb_str())
+
+    unique=unique_h1+unique_h2
+
+    # Now take the best (or self if desired) of pairs and add on unique
+    final_list=[]
+    for [h1,h2] in pairs:
+      if self.maximize_h_bonds:
+        n_good_1,n_poor_1=h1.count_h_bonds(hierarchy=hierarchy,
+          max_h_bond_length=self.max_h_bond_length)
+        score_1=n_good_1+poor_h_bond_weight*n_poor_1
+        n_good_2,n_poor_2=h2.count_h_bonds(hierarchy=hierarchy,
+          max_h_bond_length=self.max_h_bond_length)
+        score_2=n_good_2+poor_h_bond_weight*n_poor_2
+      elif self.keep_self:
+        score_1=1
+        score_2=0
+      else: # take the one with more residues in secondary structure
+        score_1=h1.count_residues()
+        score_2=h2.count_residues()
+      print "score 1 and 2: ",score_1,score_2
+      if score_1>=score_2:
+        final_list.append(h1)
+      else:
+        final_list.append(h2)
+
+    for h in unique:
+      final_list.append(h)
+    
+    return final_list 
+
+  def is_comparable_to(self,other=None):
+
+    # Just see if self and other are remotely comparable
+
+    if other is None: return False,None,None
+
+    if type(self) != type(other): 
+      return False,None,None # Check for different objects
+
+    # Check for completely different helices
+    if len(self.helices) != len(other.helices): 
+      return False,None,None
+
+    # Split all sheets so that everything is comparable
+    a1=self.split_sheets()
+    a2=other.split_sheets()
+    # Check for completely different sheets
+    if len(a1.sheets) != len(a2.sheets): 
+      return False,None,None
+
+    return True,a1,a2
+
+  def is_similar_to(self,other=None,hierarchy=None,
+      maximum_length_difference=None, minimum_overlap=None):
+    "Return True if this annotation is similar to other."
+    "Allow equivalent representations (different alignment atoms with)"
+    "equivalent results, backwards order of strands in sheet, different "
+    "lengths of strands optional."
+
+    if self.is_same_as(other=other): return True  # always quicker
+
+    is_comparable,a1,a2=self.is_comparable_to(other=other)
+    if not is_comparable: return False
+
+    # Now a1 and a2 both have split sheets
+
+    # Check if helices are comparable
+    for h1 in a1.helices:
+      found=False
+      for h2 in a2.helices:
+        if h1.is_similar_to(other=h2,hierarchy=hierarchy,
+            minimum_overlap=minimum_overlap,
+            maximum_length_difference=maximum_length_difference):
+          found=True
+          break
+      if not found: return False
+    # Matched all the helices
+
+    # Check if sheets are comparable. Note all sheets have 2 strands
+    for s1 in a1.sheets:
+      found=False
+      for s2 in a2.sheets:
+        if s1.is_similar_to(other=s2,hierarchy=hierarchy,
+            minimum_overlap=minimum_overlap,
+            maximum_length_difference=maximum_length_difference):
+          found=True
+          break
+      if not found: return False
+    # Matched all the sheets
+    return True
+
+  def is_same_as(self,other=None):
+    "Return True if this annotation is the same as other. Allows different"
+    "representations of same sheet (as pairs, as sheet)"
+    "Does not allow different order of sheet or backwards"
+    "Does not allow equivalent but different specifications of the alignment"
+
+    is_comparable,a1,a2=self.is_comparable_to(other=other)
+    if not is_comparable: return False
+
+    def sort_strings(h):
+      sorted=[]
+      for x in h:
+        sorted.append(x.as_pdb_str(set_id_zero=True))
+      sorted.sort()
+      return sorted
+
+    # Sort helices and compare
+    a1_helices=sort_strings(a1.helices)
+    a2_helices=sort_strings(a2.helices)
+    if a1_helices != a2_helices: return False
+
+    # Sort sheets and compare
+    a1_sheets=sort_strings(a1.sheets)
+    a2_sheets=sort_strings(a2.sheets)
+    if a1_sheets != a2_sheets: return False
+
+    # Everything is the same
+    return True
+
+  def count_h_bonds(self,hierarchy=None,max_h_bond_length=None):
+    # go through ss and count good and poor H-bonds
+    number_of_good_h_bonds=0
+    number_of_poor_h_bonds=0
+    split_sheets=self.split_sheets() # annotation with split sheets
+    for h in self.helices:
+      n_good,n_poor=h.count_h_bonds(hierarchy=hierarchy,
+        max_h_bond_length=max_h_bond_length)
+      number_of_good_h_bonds+=n_good
+      number_of_poor_h_bonds+=n_poor
+    for s in self.sheets:
+      n_good,n_poor=s.count_h_bonds(hierarchy=hierarchy,
+        max_h_bond_length=max_h_bond_length)
+      number_of_good_h_bonds+=n_good
+      number_of_poor_h_bonds+=n_poor
+    return number_of_good_h_bonds,number_of_poor_h_bonds
+
+
 #=============================================================================
 #        88        88 88888888888 88          88 8b        d8
 #        88        88 88          88          88  Y8,    ,8P
@@ -339,11 +961,11 @@ class pdb_helix (structure_base) :
       helix_id=line[11:14].strip(),
       start_resname=line[15:18],
       start_chain_id=cls.parse_chain_id(line[18:20]),
-      start_resseq=line[21:25],
+      start_resseq=(line[21:25]),
       start_icode=line[25],
       end_resname=line[27:30],
       end_chain_id=cls.parse_chain_id(line[30:32]),
-      end_resseq=line[33:37],
+      end_resseq=int(line[33:37]),
       end_icode=line[37],
       helix_class=cls.helix_class_to_str(int(line[38:40])),
       helix_selection=None,
@@ -445,15 +1067,24 @@ class pdb_helix (structure_base) :
         self.helix_class, hbond_restr)
     return rg
 
-  def as_pdb_str (self):
+  def as_pdb_str (self, set_id_zero=False):
     def h_class_to_pdb_int(h_class):
       h_class_int = self.helix_class_to_int(h_class)
       if h_class_int == 0:
         return 1
       return h_class_int
     format = "HELIX  %3d %3s %3s%2s %4s%1s %3s%2s %4s%1s%2d%30s %5d"
-    out = format % (self.serial,
-      self.serial if self.helix_id is None else self.helix_id[:3],
+    if set_id_zero:
+      serial=0
+      helix_id=0
+    else:
+      serial=self.serial
+      if self.helix_id is None:
+        helix_id=self.serial
+      else:
+        helix_id=self.helix_id[:3]
+    out = format % (serial,
+      helix_id,
       self.start_resname,
       self.start_chain_id, self.start_resseq, self.start_icode,
       self.end_resname, self.end_chain_id, self.end_resseq, self.end_icode,
@@ -487,6 +1118,25 @@ class pdb_helix (structure_base) :
     else:
       # Should never happen
       assert 0, "Wrong helix_class creeped in object fields:" % self.helix_class
+
+  def is_same_as(self,other=None):
+    # return True if it self has the same values as other
+
+    if not other: return False
+    if type(self) != type(other): return False # Check for different objects
+
+    for key in [ 'start_resname',
+        'start_chain_id',
+        'start_resseq',
+        'start_icode',
+        'end_resname',
+        'end_chain_id',
+        'end_resseq',
+        'end_icode',
+        'helix_class' ]:
+      if getattr(self,key,None) != getattr(other,key,None):
+        return False
+    return True
 
 #=============================================================================
 #       ad88888ba  88        88 88888888888 88888888888 888888888888
@@ -525,11 +1175,11 @@ class pdb_strand(structure_base):
         strand_id=int(line[7:10]),
         start_resname=line[17:20],
         start_chain_id=cls.parse_chain_id(line[20:22]),
-        start_resseq=line[22:26],
+        start_resseq=int(line[22:26]),
         start_icode=line[26],
         end_resname=line[28:31],
         end_chain_id=cls.parse_chain_id(line[31:33]),
-        end_resseq=line[33:37],
+        end_resseq=int(line[33:37]),
         end_icode=line[37],
         sense=int(line[38:40]))
 
@@ -546,6 +1196,29 @@ class pdb_strand(structure_base):
     sele = "chain '%s' %sand resid %s through %s" % (self.start_chain_id,
       segid_extra, resid_start, resid_end)
     return sele
+
+
+  def is_same_as(self,other=None):
+    # return True if it self has the same values as other
+    # include sense (as it is relative to another strand)
+
+    if not other: return False
+    if type(self) != type(other): return False # Check for different objects
+
+    key_list= [ 'start_resname',
+        'start_chain_id',
+        'start_resseq',
+        'start_icode',
+        'end_resname',
+        'end_chain_id',
+        'end_resseq',
+        'end_icode',
+        'sense']
+
+    for key in key_list:
+      if getattr(self,key,None) != getattr(other,key,None):
+        return False
+    return True
 
 class pdb_strand_register(structure_base):
   def __init__ (self,
@@ -595,6 +1268,41 @@ class pdb_strand_register(structure_base):
     sele_prev = sele_base % (self.prev_chain_id,segid_extra,
         resid_prev, self.prev_atom.strip())
     return sele_curr, sele_prev
+
+  def is_same_as(self,other=None):
+
+    if not other: return False
+    if type(self) != type(other): return False # Check for different objects
+
+    for key in [ 'cur_atom',
+        'cur_resname',
+        'cur_chain_id',
+        'cur_resseq',
+        'cur_icode',
+        'prev_atom',
+        'prev_resname',
+        'prev_chain_id',
+        'prev_resseq',
+        'prev_icode']:
+      if getattr(self,key,None) != getattr(other,key,None):
+        return False
+    return True
+
+
+  def reversed(self):
+    # swap cur and prev
+    from copy import deepcopy
+    new_register=deepcopy(self)
+    for key in [
+        'atom',
+        'resname',
+        'chain_id',
+        'resseq',
+        'icode']:
+      setattr(new_register,'prev_'+key,getattr(self,'cur_'+key))
+      setattr(new_register,'cur_'+key,getattr(self,'prev_'+key))
+    return new_register
+
 
 
 class pdb_sheet(structure_base):
@@ -779,14 +1487,21 @@ class pdb_sheet(structure_base):
       return len(self.hbond_list)
     return 0
 
-  def as_pdb_str(self, strand_id=None):
+  def as_pdb_str(self, strand_id=None, set_id_zero=False):
     assert len(self.strands) == len(self.registrations)
     lines = []
     for strand, reg in zip(self.strands, self.registrations) :
       format1 = "SHEET  %3d %3s%2d %3s%2s%4s%1s %3s%2s%4s%1s%2d"
       format2 = "%4s%3s%2s%4s%1s %4s%3s%2s%4s%1s"
       # print "STRAND, REG", strand, reg
-      line = format1 % (strand.strand_id, self.sheet_id, self.n_strands,
+      if set_id_zero:
+        strand_id_for_print=0
+        sheet_id_for_print=0
+      else:
+        strand_id_for_print=strand.strand_id
+        sheet_id_for_print=strand.sheet_id
+
+      line = format1 % (strand_id_for_print, sheet_id_for_print, self.n_strands,
         strand.start_resname, strand.start_chain_id, strand.start_resseq,
         strand.start_icode, strand.end_resname, strand.end_chain_id,
         strand.end_resseq, strand.end_icode, strand.sense)
@@ -867,5 +1582,98 @@ class pdb_sheet(structure_base):
     # print "phil_str", phil_str
     return phil_str
 
+  def split(self,starting_sheet_id_number=1):
+    assert len(self.strands)==len(self.registrations) 
+    new_sheets=[]
+    from copy import deepcopy
+    for s1,s2,r2 in zip(
+      self.strands[:-1],
+      self.strands[1:],self.registrations[1:]):
+      self_id="%d" %(len(new_sheets)+1)
+      new_s1=deepcopy(s1)
+      new_s1.sense=0
+      new_s1.strand_id=1
+      new_s1.sheet_id="%d" %(starting_sheet_id_number)
+      new_s2=deepcopy(s2)
+      new_s2.strand_id=2
+      new_s2.sheet_id="%d" %(starting_sheet_id_number)
+      new_r2=deepcopy(r2)
+      new_sheet=pdb_sheet(
+             sheet_id="%d" %(starting_sheet_id_number),
+             n_strands=2,
+             strands=[new_s1,new_s2],
+             registrations=[None,new_r2])
+      new_sheets.append(new_sheet)
+      starting_sheet_id_number+=1
+    return new_sheets
+
+  def is_similar_to(self,other=None,hierarchy=None,
+      maximum_length_difference=None, minimum_overlap=None,log=sys.stdout):
+    # Two sheets are similar if their strands are similar and their
+    # alignments are similar, or if reversing the order, they are similar
+    if self.is_same_as(other=other): return True  # always quicker
+
+    # Check if two strands are similar to the other two strands
+    s1a=self.strands[0]
+    s1b=self.strands[1]
+    s2a=other.strands[0]
+    s2b=other.strands[1]
+
+    # both must be parallel or antiparallel
+    if s1b.sense!=s2b.sense: return False  
+
+    match_forward=None
+    if s1a.is_similar_to(other=s2a,hierarchy=hierarchy,
+        maximum_length_difference=maximum_length_difference,
+        minimum_overlap=minimum_overlap) and \
+       s1b.is_similar_to(other=s2b,hierarchy=hierarchy,
+        maximum_length_difference=maximum_length_difference,
+        minimum_overlap=minimum_overlap): 
+      match_forward=True
+    elif s1a.is_similar_to(other=s2b,hierarchy=hierarchy,
+        maximum_length_difference=maximum_length_difference,
+        minimum_overlap=minimum_overlap) and \
+       s1b.is_similar_to(other=s2a,hierarchy=hierarchy,
+        maximum_length_difference=maximum_length_difference,
+        minimum_overlap=minimum_overlap): 
+      match_forward=False
+    if match_forward is None: 
+      return False
+
+    assert len(self.registrations)==len(other.registrations)
+    reg1=self.registrations[1]
+    reg2=other.registrations[1]
+
+    if not match_forward:  # swap other so they should be comparable
+      xx=s2a
+      s2a=s2b
+      s2b=xx
+      reg2=reg2.reversed()
+
+    # Now check alignments
+
+
+    # Find the registration atom positions
+    ra=registration_atoms(
+      hierarchy=hierarchy,
+      strand_1a=s1a,strand_1b=s1b,strand_2a=s2a,strand_2b=s2b,
+      registration_1=reg1,registration_2=reg2,
+      sense=s1b.sense,log=log)
+
+    return ra.pairs_are_equivalent
+
+  def is_same_as(self,other=None):
+
+    if not other: return False
+    if type(self) != type(other): return False # Check for different objects
+
+    if self.n_strands != other.n_strands: return False
+    for s1,s2 in zip(self.strands,other.strands):
+      if not s1.is_same_as(s2): return False
+    for r1,r2 in zip(self.registrations,other.registrations):
+      if r1 is None and r2 is None: continue # special case..can be None
+      if not r1.is_same_as(r2): return False
+    return True
+      
 if __name__ == "__main__" :
   pass

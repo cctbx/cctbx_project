@@ -119,6 +119,12 @@ master_phil = iotbx.phil.parse("""
         .short_caption = Random seed
         .help = Random seed. If set, the same result will be found each time.
 
+      mode = *quick thorough 
+        .type = choice
+        .short_caption = Quick or thorough 
+        .help = In minimization, use quick or thorough mode. \
+                Currently does not affect other steps.
+
       nproc = 1
         .type = int
         .short_caption = Number of processors
@@ -207,6 +213,7 @@ def run_one_cycle(
     map_data           = map_data,
     restraints_manager = restraints_manager,
     states             = states,
+    mode               = params.control.mode,
     nproc              = params.control.nproc)
   return ear.pdb_hierarchy_overall_best(), \
          ear.ensemble_pdb_hierarchy_refined()

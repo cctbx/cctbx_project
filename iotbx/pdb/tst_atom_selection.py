@@ -430,6 +430,34 @@ HETATM   4   O  KHOH     6      16.545  29.521  64.086  0.00 19.76
   else :
     raise Exception_expected
 
+  # make sure that hybrid-36 numbers work with and without insertion codes
+
+  hierarchy = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM      2  CA  SER  A13L      33.163  16.115  17.936  1.00 26.68           C  
+ATOM      8  CA  ASP  A13M      34.633  18.762  20.254  1.00 22.59           C  
+ATOM     16  CA  LYS  A13N      36.047  17.704  23.610  1.00 19.79           C  
+ATOM     25  CA  ILE  A002      35.551  19.482  26.886  1.00 19.33           C  
+ATOM     34  CA AHIS  A003X     38.649  21.223  28.218  0.50 19.79           C  
+ATOM      5  N   TYR A   2      27.208 -20.701   0.590  1.00  7.29           N
+ATOM     17  N   SER A   2A     26.854 -17.177   0.412  1.00  6.66           N
+ATOM     26  N   CYS A   2B     25.627 -14.135  -0.995  1.00  5.11           N
+ATOM     32  N   ARG A   5      25.486 -10.691  -2.002  1.00  4.69           N
+ATOM     43  N   ALA A   6      24.325  -7.563  -3.358  1.00  4.39           N
+ATOM     48  N   VAL A   7      24.165  -4.139  -3.284  1.00  4.97           N
+ATOM    204  N   MET A  31      18.177  -3.966  -4.656  1.00  4.72           N
+ATOM    212  N   ALA A  32      19.899  -6.986  -4.412  1.00  3.90           N
+ATOM    217  N   SER A  33      20.230 -10.407  -3.567  1.00  4.02           N
+ATOM    223  N   GLY A  34      21.415 -13.600  -2.283  1.00  4.96           N
+ATOM    227  N   THR A  35      21.521 -17.105  -1.329  1.00  4.35           N
+ATOM    234  N   SER A  35A     23.294 -20.178  -1.426  1.00  4.63           N
+""")).construct_hierarchy()
+  sel_cache = hierarchy.atom_selection_cache()
+  isel = sel_cache.iselection
+  assert list(isel("resid A13L through A13N")) == [0, 1, 2]
+  assert list(isel("resid A002 through A003X")) == [3, 4]
+  assert list(isel("(resid A002 through A003X) and (altloc ' ' or altloc 'A') "))== [3, 4] 
+  assert list(isel("(chain 'A' and resid 2A through 7 ) and (name N) and (altloc 'A' or altloc ' ')"))==[6, 7, 8, 9, 10]
+  
 def run():
   exercise_selection()
   print "OK"

@@ -16,15 +16,18 @@ from libtbx.utils import Sorry, format_exception
 from libtbx import slots_getstate_setstate
 from mmtbx.ncs.ncs_search import get_chains_info
 
+abc="abcdefghijklmnopqrstuvwxyz"
+ABC="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
 def _character_case_id(strings):
   have_upper = False
   have_lower = False
   for s in strings:
     for c in s:
-      if   (c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"):
+      if   (c in ABC):
         if (have_lower): return 0
         have_upper = True
-      elif (c in "abcdefghijklmnopqrstuvwxyz"):
+      elif (c in abc):
         if (have_upper): return 0
         have_lower = True
   if (have_upper): return 1
@@ -106,9 +109,30 @@ class selection_tokenizer(tokenizer.word_iterator):
     if (word is None): raise RuntimeError("Missing argument for %s." % keyword)
     return word
 
+def has_icode(s):
+  # Distinguish '773A' (residue 773, icode A) from 'A13L' (residue 11425)
+  #  and from 'A13LC' (residue 11425 with icode C). 
+  s=s[:]
+  s=s.replace(" ","")
+
+  if len(s[:4])==4 and not s[0] in "0123456789": # this is hybrid-36
+    if len(s)>4 and s[-1] in ABC: 
+      # hybrid 36 and length >4 and ends with letter :icode
+      return True
+    else:
+      return False
+  else: # not hybrid-36
+    if s[-1] in ABC: # if ends with letter : icode
+      return True
+    else:
+      return False
+
 def resid_shift(s):
-  if (len(s) < 5 and s[-1] in "0123456789"): return s + " "
-  return s
+  # For icode residues keep the icode and do not pad with a space
+  if has_icode(s):
+    return s
+  else:
+    return s + " " 
 
 class AtomSelectionError(Sorry):
   __orig_module__ = __module__
