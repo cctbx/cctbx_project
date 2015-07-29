@@ -111,12 +111,12 @@ class selection_tokenizer(tokenizer.word_iterator):
 
 def has_icode(s):
   # Distinguish '773A' (residue 773, icode A) from 'A13L' (residue 11425)
-  #  and from 'A13LC' (residue 11425 with icode C). 
+  #  and from 'A13LC' (residue 11425 with icode C).
   s=s[:]
   s=s.replace(" ","")
 
   if len(s[:4])==4 and not s[0] in "0123456789": # this is hybrid-36
-    if len(s)>4 and s[-1] in ABC: 
+    if len(s)>4 and s[-1] in ABC:
       # hybrid 36 and length >4 and ends with letter :icode
       return True
     else:
@@ -132,7 +132,7 @@ def resid_shift(s):
   if has_icode(s):
     return s
   else:
-    return s + " " 
+    return s + " "
 
 class AtomSelectionError(Sorry):
   __orig_module__ = __module__
@@ -758,6 +758,11 @@ def selection_string_from_selection(pdb_hierarchy_inp,
                                     selection,
                                     chains_info=None):
   """
+  !!! if selection contains alternative conformations, the assertion in the
+  end will fail. This is to prevent using this function with such selections.
+  This limits its application to search NCS only and at the same time asserts
+  that found NCS groups don't contain alternative conformations.
+
   Convert a selection array to a selection string.
   The function tries to minimise the selection string as possible,
   using chain names, resseq ranges and when there is not other option
@@ -874,6 +879,10 @@ def selection_string_from_selection(pdb_hierarchy_inp,
       s = '(' + s + ')'
     s_l.append(s)
   sel_str = ' or '.join(s_l)
+  isel = pdb_hierarchy_inp.atom_selection_cache().iselection(sel_str)
+  assert len(isel) == len(selection), ""+\
+      "%d != %d: conversion to string selects different number of atoms!" \
+      % (len(isel), len(selection))
   return sel_str
 
 def get_clean_selection_string(ch_sel,res_selection):
