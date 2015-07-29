@@ -486,7 +486,6 @@ SHEET    2   B 2 GLN A  40  ALA A  45  1  O  GLN A  44   N  THR A  20
       log          = log)
     # print proxies_for_grm.size()
     n_hbonds.append(proxies_for_grm.size())
-  print n_hbonds
   assert n_hbonds == [6, 6, 4, 6, 6, 5, 8]
 
 def exercise_phil_generation():

@@ -24,6 +24,21 @@ master_phil = iotbx.phil.parse("""
       .type = path
       .help = Input PDB file
       .short_caption = Input PDB file
+
+    secondary_structure_input = None
+      .type = path
+      .help = Optional input secondary-structure file (can be a PDB or just \
+              text) with secondary-structure (HELIX/SHEET) records. If \
+              supplied, this secondary structure is used as a starting point \
+              and additional information is added if possible.  If \
+              force_ss_in=True, then this is used exactly as input. \
+      .short_caption = Input secondary structure
+
+    force_secondary_structure_input = False
+      .type = bool
+      .help = Force use of secondary_structure_input without changes
+      .short_caption = Force input secondary structure
+
   }
 
   find_ss_structure {  # note values from regularize_from_pdb overwrite these
@@ -85,6 +100,10 @@ master_phil = iotbx.phil.parse("""
        .help = Write SHEET records that contain a single strand
        .short_caption = Write single strands
 
+     max_h_bond_length = 3.5
+       .type = float
+       .help = Maximum H-bond length to include in secondary structure
+       .short_caption = Maximum H-bond length
   }
 
   alpha {
@@ -191,7 +210,8 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
 
 def merge_hierarchies_from_models(models=None,resid_offset=None,
     renumber=None,first_residue_number=None,
-    sequences=None,chain_id=None,trim_side_chains=None):
+    sequences=None,chain_id=None,trim_side_chains=None,
+    remove_ter_records=False):
   # assumes one chain from each model
   # if resid_offset, space by to next even n of this number of residues
   # otherwise if renumber, start at first_residue_number and sequence
@@ -254,6 +274,15 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
     atom_selection=\
       "name ca or name c or name o or name n or (name cb and not resname gly)"
     new_hierarchy=apply_atom_selection(atom_selection,hierarchy=new_hierarchy)
+
+  if remove_ter_records:
+    new_records=[]
+    for line in new_hierarchy.as_pdb_string().splitlines():
+      if not line.startswith("TER"): 
+        new_records.append(line)
+    
+    new_hierarchy=iotbx.pdb.pdb_input(
+         source_info="Model", lines=new_records).construct_hierarchy()
 
   new_model=model_info(hierarchy=new_hierarchy,info=info)
 
@@ -352,6 +381,18 @@ def get_last_residue(hierarchy):
           last_residue=residue
   return last_residue
 
+def has_atom(hierarchy,name=None):
+  if not hierarchy:
+    return None
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for conformer in chain.conformers():
+        for residue in conformer.residues():
+          for atom in residue.atoms():
+            if atom.name.replace(" ","")==name.replace(" ",""):
+              return True
+  return False 
+
 def get_first_resno(hierarchy):
   if not hierarchy:
     return None
@@ -369,6 +410,23 @@ def get_last_resno(hierarchy):
       for rg in chain.residue_groups():
         last_resno=rg.resseq_as_int()
   return last_resno
+
+def have_n_or_o(models):
+    have_n=False
+    have_o=False
+    for model in models:
+      if model.has_n():
+        have_n=True
+        break
+    for model in models:
+      if model.has_o():
+        have_o=True
+        break
+    if have_n and have_o:
+      return True
+    return False
+
+ 
 
 class model_info: # mostly just a holder
   def __init__(self,hierarchy=None,id=0,info={},
@@ -390,6 +448,12 @@ class model_info: # mostly just a holder
     for key in keys:
       print >>out,"%s: %s" %(key,str(self.info[key]))
 
+  def has_n(self):
+    return has_atom(self.hierarchy,name="N")
+    
+  def has_o(self):
+    return has_atom(self.hierarchy,name="O")
+    
   def first_residue(self):
     return get_first_resno(self.hierarchy)
 
@@ -517,6 +581,11 @@ class segment:  # object for holding a helix or a strand or other
   def get_sites_from_hierarchy(self):
     atom_selection="name ca"
     sele=apply_atom_selection(atom_selection,hierarchy=self.hierarchy)
+    if sele.overall_counts().n_residues==0:
+      self.sites=flex.vec3_double()
+    else:
+      # extract coordinates
+      self.sites=sele.extract_xray_structure().sites_cart()
 
     if sele.overall_counts().n_residues==0:
       self.sites=flex.vec3_double()
@@ -674,6 +743,9 @@ class segment:  # object for holding a helix or a strand or other
     self_orientation_points=self.get_orientation_points()
     other_orientation_points=other.get_orientation_points(
       start_res=start_res,end_res=end_res)
+
+    if not self_orientation_points or not other_orientation_points:
+      return None # none found
 
     if self_orientation_points.size()!=other_orientation_points.size():
       return None # did not match size
@@ -943,6 +1015,7 @@ class find_segment: # class to look for a type of segment
       extract_segments_from_pdb=None,
       make_unique=None,
       cut_up_segments=None,
+      model_as_segment=None, # take the whole model as a segment
       verbose=None,
       out=sys.stdout):
     # Assumes model is just 1 chain of sequential residues
@@ -952,6 +1025,7 @@ class find_segment: # class to look for a type of segment
     self.extract_segments_from_pdb=extract_segments_from_pdb
     self.make_unique=make_unique
     self.cut_up_segments=cut_up_segments
+    self.model_as_segment=model_as_segment
     self.verbose=verbose
     self.params=params
     self.model=model
@@ -1009,7 +1083,6 @@ class find_segment: # class to look for a type of segment
 
     keys=segment_dict.keys()
     keys.sort()
-
     # Specify which residues are in each segment
     #    (self.last_residue_offset past start)
     # and offset to start with first residue number
@@ -1045,7 +1118,6 @@ class find_segment: # class to look for a type of segment
            overall_start_res+overall_length-self.standard_length+1):
           start_end_list.append(
              [start_res_use,start_res_use+self.standard_length-1])
-
     self.segment_start_end_dict={}
     for start_res_use,end_res_use in start_end_list:
         self.segment_start_end_dict[start_res_use]=end_res_use
@@ -1098,7 +1170,7 @@ class find_segment: # class to look for a type of segment
       assert len(sites)>=end_res  # make sure we are in bounds
 
       # get the hierarchy if necessary
-      if self.extract_segments_from_pdb:
+      if self.extract_segments_from_pdb or self.model_as_segment:
         start_resno=start_res_with_buffer+self.start_resno
         end_resno=end_res_with_buffer+self.start_resno
         atom_selection="resid %s through %s" %(resseq_encode(start_resno),
@@ -1115,7 +1187,7 @@ class find_segment: # class to look for a type of segment
         is_n_terminus=is_n_terminus,
         is_c_terminus=is_c_terminus,
           )
-      if h.is_ok():
+      if h.is_ok() or self.model_as_segment:
         self.segments.append(h)
         return True
       else:
@@ -1152,6 +1224,9 @@ class find_segment: # class to look for a type of segment
     segment_dict={}
     used_residues=[]
 
+    if len(sites)>0 and self.model_as_segment:  # take the whole thing
+      segment_dict[0]=n-1
+      return diffs,norms,segment_dict
 
     for i in xrange(n):
       if i in used_residues or abs(norms[i]-target)>tol: continue
@@ -1333,6 +1408,7 @@ class find_helix(find_segment):
     extract_segments_from_pdb=None,
     make_unique=None,
     previously_used_residues=None,
+    model_as_segment=None,
     cut_up_segments=None,
     out=sys.stdout):
     self.previously_used_residues=previously_used_residues
@@ -1340,18 +1416,26 @@ class find_helix(find_segment):
     self.setup(params=params,model=model,segment_type='helix',
      extract_segments_from_pdb=extract_segments_from_pdb,
      make_unique=make_unique,
+     model_as_segment=model_as_segment,
      cut_up_segments=cut_up_segments,
      verbose=verbose,out=out)
 
   def pdb_records(self,segment_list=None,last_id=0,helix_type='alpha',
+     max_h_bond_length=None,
      allow_ca_only_model=None,out=sys.stdout): # helix
 
     records=[]
+    number_of_good_h_bonds=0
+    number_of_poor_h_bonds=0
     k=last_id
     for s in segment_list:
       if not s.hierarchy: continue
-      all_h_bonds=self.list_h_bonds(segment=s,helix_type=helix_type,
+      all_h_bonds,n_good,n_poor=self.list_h_bonds(
+          segment=s,helix_type=helix_type,
+          max_h_bond_length=max_h_bond_length,
           allow_ca_only_model=allow_ca_only_model,out=out)
+      number_of_good_h_bonds+=n_good
+      number_of_poor_h_bonds+=n_poor
       start=get_first_residue(s.hierarchy)
       end=get_last_residue(s.hierarchy)
       chain_id=get_chain_id(s.hierarchy)
@@ -1372,14 +1456,14 @@ class find_helix(find_segment):
         comment="",
         length=s.length())
       records.append(record)
-    return records
+    return records,number_of_good_h_bonds,number_of_poor_h_bonds
 
   def list_h_bonds(self,segment=None,helix_type='alpha',
+     max_h_bond_length=None,
      allow_ca_only_model=None,out=sys.stdout):
 
     helix_class=secondary_structure.pdb_helix.helix_class_to_int(
            helix_type) # 1=alpha 3=pi  5=3_10
-
 
     # residue that residue i is h-bonded to
     next_i_dict={
@@ -1390,6 +1474,8 @@ class find_helix(find_segment):
     next_i=next_i_dict[helix_class]
 
     all_h_bonds=[]
+    number_of_good_h_bonds=0
+    number_of_poor_h_bonds=0
 
     for i in xrange(segment.length()-next_i):
 
@@ -1409,10 +1495,12 @@ class find_helix(find_segment):
       if cur_xyz and next_xyz:
         dd=col(cur_xyz)-col(next_xyz)
         dist=dd.length()
-        if dist <=3.5:
+        if dist <=max_h_bond_length:
           bad_one=""
+          number_of_good_h_bonds+=1
         else:
           bad_one="**"
+          number_of_poor_h_bonds+=1
       else:
         bad_one=None
         dist=None
@@ -1433,7 +1521,7 @@ class find_helix(find_segment):
        )
       new_h_bond.show_summary(out=out,show_non_existent=False)
       all_h_bonds.append(new_h_bond)
-    return all_h_bonds
+    return all_h_bonds,number_of_good_h_bonds,number_of_poor_h_bonds
 
 class find_beta_strand(find_segment):
 
@@ -1441,6 +1529,7 @@ class find_beta_strand(find_segment):
       extract_segments_from_pdb=None,
       make_unique=None,
       cut_up_segments=None,
+      model_as_segment=None,
       previously_used_residues=None,
       out=sys.stdout):
 
@@ -1450,6 +1539,7 @@ class find_beta_strand(find_segment):
       model=model,segment_type='strand',
       extract_segments_from_pdb=extract_segments_from_pdb,
       make_unique=make_unique,
+      model_as_segment=model_as_segment,
       cut_up_segments=cut_up_segments,
       verbose=verbose,out=out)
 
@@ -1464,8 +1554,8 @@ class find_beta_strand(find_segment):
       end=get_last_residue(segment.hierarchy)
     else:
       end=get_indexed_residue(segment.hierarchy,index=end_index)
-    # if start is None or end is None:
-      # raise Sorry("Something is not right in get_pdb_strand function")
+    if start is None or end is None:
+       raise Sorry("Something is not right in get_pdb_strand function")
 
     chain_id=get_chain_id(segment.hierarchy)
     pdb_strand = secondary_structure.pdb_strand(
@@ -1508,6 +1598,7 @@ class find_beta_strand(find_segment):
 
   def pdb_records(self,segment_list=None,   # sheet
      sheet_list=None,info_dict=None,allow_ca_only_model=None,
+     max_h_bond_length=None,
      out=sys.stdout):
 
     # sheet_list is list of sheets. Each sheet is a list of strands (the index
@@ -1518,6 +1609,8 @@ class find_beta_strand(find_segment):
     #    for the two strands
 
     records=[]
+    number_of_good_h_bonds=0
+    number_of_poor_h_bonds=0
     sheet_id=0
     for sheet in sheet_list:
       sheet_id+=1
@@ -1553,6 +1646,8 @@ class find_beta_strand(find_segment):
         first_last_1_and_2=info_dict[key]
         first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel,i_index,j_index=\
            first_last_1_and_2
+        # sense is whether previous and current strands are parallel (1) or
+        #   antiparallel (-1)
 
         if is_parallel:
           sense=1
@@ -1562,9 +1657,13 @@ class find_beta_strand(find_segment):
           segment=s,sense=sense,start_index=start_dict[j],end_index=end_dict[j])
 
         current_sheet.add_strand(next_strand)
-        all_h_bonds=self.list_h_bonds(segment=s,
+        all_h_bonds,n_good,n_poor=self.list_h_bonds(
+          segment=s,
+          max_h_bond_length=max_h_bond_length,
           previous_segment=previous_s,first_last_1_and_2=first_last_1_and_2,
           allow_ca_only_model=allow_ca_only_model,out=out)
+        number_of_good_h_bonds+=n_good
+        number_of_poor_h_bonds+=n_poor
 
         register=self.get_pdb_strand_register(segment=s,
           previous_segment=previous_s,first_last_1_and_2=first_last_1_and_2,
@@ -1576,7 +1675,7 @@ class find_beta_strand(find_segment):
 
       records.append(current_sheet)
 
-    return records
+    return records,number_of_good_h_bonds,number_of_poor_h_bonds
 
 
   def is_even(self,i):
@@ -1587,9 +1686,9 @@ class find_beta_strand(find_segment):
      first_last_1_and_2=None,allow_ca_only_model=None,
      all_h_bonds=None):
 
-
     for h_bond in all_h_bonds: # choose first that is ok
-      if not h_bond.is_ok(): continue
+      if not h_bond.is_ok(): 
+        continue
 
       from iotbx.pdb.secondary_structure import pdb_strand_register
       register=pdb_strand_register(
@@ -1607,6 +1706,7 @@ class find_beta_strand(find_segment):
       # just take the first good one
 
   def list_h_bonds(self,segment=None,previous_segment=None,
+     max_h_bond_length=None,
      first_last_1_and_2=None,allow_ca_only_model=None,out=sys.stdout):
 
     #  Looking down a strand in direction from N to C...
@@ -1642,6 +1742,8 @@ class find_beta_strand(find_segment):
     # look at entire segments, not just the part we are including
 
     all_h_bonds=[]
+    number_of_poor_h_bonds=0
+    number_of_good_h_bonds=0
 
     first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel,i_index,j_index=\
            first_last_1_and_2
@@ -1696,7 +1798,7 @@ class find_beta_strand(find_segment):
         if local_cur_xyz and local_prev_xyz:
           dd=col(local_cur_xyz)-col(local_prev_xyz)
           dist=dd.length()
-          if dist <=3.5:
+          if dist <=max_h_bond_length:
             bad_one=""
           else:
             bad_one="**"
@@ -1710,6 +1812,11 @@ class find_beta_strand(find_segment):
           if bad_one!="": continue
           # and mark as not included
           bad_one="(Not included) "
+
+        if bad_one=="":
+          number_of_good_h_bonds+=1
+        elif bad_one=="**":
+          number_of_poor_h_bonds+=1
 
         new_h_bond=h_bond(
              prev_atom=local_prev_atom,
@@ -1727,7 +1834,7 @@ class find_beta_strand(find_segment):
          )
         new_h_bond.show_summary(out=out,show_non_existent=False)
         all_h_bonds.append(new_h_bond)
-    return all_h_bonds
+    return all_h_bonds,number_of_good_h_bonds,number_of_poor_h_bonds
 
 class h_bond:  # holder for a pair of atoms
   def __init__(self,
@@ -1836,9 +1943,13 @@ class find_other_structure(find_segment):
     # for example, helix(sites=sites)
     h=self.segment_class(params=params,sites=sites)
 
+    n=len(sites)
+    if n>0 and self.model_as_segment:  # take the whole thing
+      segment_dict[0]=n-1-self.last_residue_offset
+      return None,None,segment_dict
+
     # cross off used residues except for buffer of buffer_residues
     n_buf=params.buffer_residues
-    n=len(sites)
     used_residues=n*[False]
     used_residues=[]
     for i in xrange(n+1):
@@ -1870,46 +1981,23 @@ class find_other_structure(find_segment):
 
     return None,None,segment_dict
 
-class find_secondary_structure: # class to look for secondary structure
-
-  def __init__(self,params=None,args=None,hierarchy=None,models=None,
-      verbose=None,out=sys.stdout):
-
-    if not args: args=[]
-
-    if not params:  # get params from args if necessary
-      params=self.get_params(args,out=out)
-
+class helix_strand_segments:
+  def __init__(self):
     self.all_strands=[]
     self.all_alpha_helices=[]
     self.all_three_ten_helices=[]
     self.all_pi_helices=[]
     self.sheet_list=[]
+    self.used_strands=[]
+    self.pair_dict={}
+    self.info_dict={}
+
     self.pdb_alpha_helix_list=[]
     self.pdb_three_ten_helix_list=[]
     self.pdb_pi_helix_list=[]
     self.pdb_sheet_list=[]
 
-    if models:
-      self.models=models
-    else:
-      if not hierarchy: # get a hierarchy if necessary
-        if not params.input_files.pdb_in or \
-            not os.path.isfile(params.input_files.pdb_in):
-          raise Sorry("Missing file: %s" %(params.input_files.pdb_in))
-        hierarchy=get_pdb_hierarchy(text=open(params.input_files.pdb_in).read())
-      else: # make a copy as we are going to modify hierarchy
-        hierarchy=hierarchy.deep_copy()
-
-      # remove alt conformers
-      from mmtbx.pdbtools import remove_alt_confs
-      remove_alt_confs(hierarchy,always_keep_one_conformer=False)
-
-      self.models=split_model(hierarchy=hierarchy)
-
-    for model in self.models:
-      self.find_ss_in_model(params=params,model=model,out=out)
-    for model in self.models:
+  def add_from_model(self,model):
       if model.find_beta:
         self.all_strands+=model.find_beta.segments
       if model.find_alpha:
@@ -1919,59 +2007,24 @@ class find_secondary_structure: # class to look for secondary structure
       if model.find_pi:
         self.all_pi_helices+=model.find_pi.segments
 
-    if params.find_ss_structure.set_up_helices_sheets:
-      self.find_sheets(
-       include_single_strands=params.find_ss_structure.include_single_strands,
-       max_sheet_ca_ca_dist=params.beta.max_sheet_ca_ca_dist,
-       min_sheet_length=params.beta.min_sheet_length,
-       out=out) # organize strands into sheets
-
-      self.set_up_pdb_records(
-         allow_ca_only_model=params.beta.allow_ca_only_model,out=out)
-
-    if params.find_ss_structure.write_helix_sheet_records:
-      self.write_pdb_records(out=out)
-
-    self.show_summary(verbose=True,out=out)
-
-  def show_summary(self,verbose=None,out=sys.stdout):
-
-    for model in self.models:
-      print >>out,"\nModel %d  N: %d  Start: %d End: %d" %(
-          model.info['chain_number'],
-          model.length(),model.first_residue(),model.last_residue())
-      if verbose:
-        if model.find_alpha:
-          model.find_alpha.show_summary(out=out)
-        if model.find_three_ten:
-          model.find_three_ten.show_summary(out=out)
-        if model.find_pi:
-          model.find_pi.show_summary(out=out)
-        if model.find_beta:
-          model.find_beta.show_summary(out=out)
-        if model.find_other:
-          model.find_other.show_summary(out=out)
-    if verbose and self.get_all_pdb_records():
-      print >>out,"\nPDB RECORDS:"
-      print >>out,self.get_all_pdb_records()
-      print >>out,"\n\nPDB Selections:"
-      print >>out,self.get_all_selection_records()
-
   def find_sheets(self,out=sys.stdout,
      max_sheet_ca_ca_dist=6.,
      min_sheet_length=4,
      include_single_strands=None):
     if not self.all_strands: return
-    print >>out,"\nFinding sheets from %d strands" %(len(self.all_strands))
+    print >>out,"\nFinding sheets from %d strands" %(len(
+        self.all_strands))
     self.get_strand_pairs(tol=max_sheet_ca_ca_dist,
-       min_sheet_length=min_sheet_length)
-    # self.pair_dict is list of all the strands that each strand matches with
-    # self.info_dict is information on a particular pair of strands:
+        min_sheet_length=min_sheet_length)
+    # pair_dict is list of all the strands that each strand matches with
+    # self.info_dict is information on a particular pair 
+    #   of strands:
     #  self.info_dict["%d:%d" %(i,j)]=
     #     [first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel]
 
     # Create sheets from paired strands.
-    self.used_strands=[] # keep track of which ones we have assigned
+    # keep track of which ones we have assigned
+    self.used_strands=[] 
 
     # single_strands are those with no matching strands
     single_strands=self.get_strands_by_pairs(pairs=0)
@@ -1980,7 +2033,8 @@ class find_secondary_structure: # class to look for secondary structure
     multiple_strands=self.get_strands_by_pairs(pairs=None)
 
     self.used_strands=[] # initialize again
-    self.used_strands+=single_strands # we are going to ignore these
+    self.used_strands+=single_strands 
+    # we are going to ignore these
 
     self.sheet_list=[]
 
@@ -1989,8 +2043,10 @@ class find_secondary_structure: # class to look for secondary structure
         self.sheet_list.append([i])
 
     # find all sheets with edges (beginning with a paired strand)
-    self.sheet_list+=self.get_sheets_from_edges(pair_strands=pair_strands)
-    self.sheet_list+=self.get_sheets_from_edges(pair_strands=triple_strands)
+    self.sheet_list+=self.get_sheets_from_edges(
+      pair_strands=pair_strands)
+    self.sheet_list+=self.get_sheets_from_edges(
+      pair_strands=triple_strands)
 
     # any pairs remaining? Create specialized "sheet" for each one
     existing_pairs_in_sheets=self.get_existing_pairs_in_sheets()
@@ -2001,13 +2057,15 @@ class find_secondary_structure: # class to look for secondary structure
            not [i,j] in missing_pairs and not [j,i] in missing_pairs:
           missing_pairs.append([i,j])
           self.sheet_list.append([i,j])
-          if not i in self.used_strands: self.used_strands.append(i)
-          if not j in self.used_strands: self.used_strands.append(j)
+          if not i in self.used_strands: 
+            self.used_strands.append(i)
+          if not j in self.used_strands: 
+            self.used_strands.append(j)
 
-    # Now we are ready to create sheets from self.sheet_list, self.pair_dict and
+    # Now we are ready to create sheets from sheet_list, self.pair_dict and
     #   self.info_dict
 
-  def get_existing_pairs_in_sheets(self):
+  def get_existing_pairs_in_sheets(self=None):
     existing_pairs=[]
     for sheet in self.sheet_list:
       for i,j in zip(sheet[:-1],sheet[1:]):
@@ -2022,7 +2080,8 @@ class find_secondary_structure: # class to look for secondary structure
       strand_list=[i]
       current_strand=i
       while current_strand is not None:
-        current_strand=self.get_available_strand(current_strand=current_strand,
+        current_strand=self.get_available_strand(
+          current_strand=current_strand,
           strand_list=strand_list)
         if current_strand is not None:
           strand_list.append(current_strand)
@@ -2279,48 +2338,76 @@ class find_secondary_structure: # class to look for secondary structure
     else:
       return False
 
-  def set_up_pdb_records(self,allow_ca_only_model=None,out=sys.stdout):
+  def set_up_pdb_records(self,allow_ca_only_model=None,
+    max_h_bond_length=None,
+    models=None,out=sys.stdout):
 
+    number_of_good_h_bonds=0
+    number_of_poor_h_bonds=0
     # save everything as pdb_alpha_helix or pdb_sheet objects
-    if not self.models:
-      return
+    if not models:
+      return number_of_good_h_bonds,number_of_poor_h_bonds
 
-    print >>out,"\nList of H-bonds expected from strand pairings"
-    print >>out,"Distances > 3.5 A indicated by **"
+    # determine if there are N and O atoms present. 
+    # If not, set allow_ca_only_model=True
+    allow_ca_only_model=(not have_n_or_o(models))
+
+    print >>out,\
+       "\nList of H-bonds expected from helices and from strand pairings"
+    print >>out,"Distances > %3.1f A indicated by **" %(max_h_bond_length)
     print >>out,\
       "H-bonds not included in HELIX/SHEET records marked 'Not included'"
     print >>out,"\n      ATOM 1               ATOM 2           Dist (A)\n"
-
-
-    fa=self.models[0].find_alpha
+    def get_fa(find_what='find_alpha',models=None):
+       for model in models:
+        if getattr(model,find_what):
+          return getattr(model,find_what)
+    fa=get_fa(find_what='find_alpha',models=models)
     if fa and self.all_alpha_helices:
-      self.pdb_alpha_helix_list=fa.pdb_records(
-         segment_list=self.all_alpha_helices,helix_type='alpha',
+      self.pdb_alpha_helix_list,n_good,n_poor=fa.pdb_records(
+         segment_list=self.all_alpha_helices,
+         helix_type='alpha',
+         max_h_bond_length=max_h_bond_length,
          allow_ca_only_model=allow_ca_only_model,out=out)
+      number_of_good_h_bonds+=n_good
+      number_of_poor_h_bonds+=n_poor
 
-    fa=self.models[0].find_three_ten
+    fa=get_fa(find_what='find_three_ten',models=models)
     if fa and self.all_three_ten_helices:
-      self.pdb_three_ten_helix_list=fa.pdb_records(
-         segment_list=self.all_three_ten_helices,helix_type='3_10',
+      self.pdb_three_ten_helix_list,n_good,n_poor=fa.pdb_records(
+         segment_list=self.all_three_ten_helices,
+         helix_type='3_10',
+         max_h_bond_length=max_h_bond_length,
          allow_ca_only_model=allow_ca_only_model,out=out)
+      number_of_good_h_bonds+=n_good
+      number_of_poor_h_bonds+=n_poor
 
-    fa=self.models[0].find_pi
+    fa=get_fa(find_what='find_pi',models=models)
     if fa and self.all_pi_helices:
-      self.pdb_pi_helix_list=fa.pdb_records(
+      self.pdb_pi_helix_list,n_good,n_poor=fa.pdb_records(
         segment_list=self.all_pi_helices,helix_type='pi',
+        max_h_bond_length=max_h_bond_length,
         allow_ca_only_model=allow_ca_only_model,out=out)
+      number_of_good_h_bonds+=n_good
+      number_of_poor_h_bonds+=n_poor
 
-    fb=self.models[0].find_beta
-    if fb and self.sheet_list:
-      self.pdb_sheet_list=fb.pdb_records(segment_list=self.all_strands,
-       sheet_list=self.sheet_list,info_dict=self.info_dict,
+    fa=get_fa(find_what='find_beta',models=models)
+    if fa and self.sheet_list and self.all_strands:
+      self.pdb_sheet_list,n_good,n_poor=fa.pdb_records(
+        segment_list=self.all_strands,
+       sheet_list=self.sheet_list,
+       info_dict=self.info_dict,
+       max_h_bond_length=max_h_bond_length,
        allow_ca_only_model=allow_ca_only_model,out=out)
+      number_of_good_h_bonds+=n_good
+      number_of_poor_h_bonds+=n_poor
 
-  def write_pdb_records(self,out=sys.stdout):
+    return number_of_good_h_bonds,number_of_poor_h_bonds
+
+  def save_pdb_records_as_string(self):
     from cStringIO import StringIO
     all_pdb_records=StringIO()
     self.all_selection_records=[]
-
     for helix in self.pdb_alpha_helix_list:
       print >>all_pdb_records,helix.as_pdb_str()
       self.all_selection_records+=helix.as_atom_selections()
@@ -2364,6 +2451,12 @@ class find_secondary_structure: # class to look for secondary structure
     if hasattr(self,'all_pdb_records'):
       return self.all_pdb_records
 
+  def get_annotation(self):
+    if hasattr(self,'all_pdb_records'):
+      records=self.all_pdb_records
+      import iotbx.pdb.secondary_structure as ioss
+      return ioss.annotation.from_records(records=flex.split_lines(records))
+
   def get_all_selection_records(self):
     if not hasattr(self,'all_selection_records'):
        return
@@ -2376,6 +2469,277 @@ class find_secondary_structure: # class to look for secondary structure
       text+=" ( "+sel.replace('"','')+") "
     text+='"'
     return text
+
+class find_secondary_structure: # class to look for secondary structure
+
+  def __init__(self,params=None,args=None,hierarchy=None,models=None,
+      user_annotation_text=None,max_h_bond_length=None,
+      force_secondary_structure_input=None,
+      verbose=None,out=sys.stdout):
+
+    if not args: args=[]
+
+    if not params:  # get params from args if necessary
+      params=self.get_params(args,out=out)
+
+    if max_h_bond_length is not None:
+      params.find_ss_structure.max_h_bond_length=max_h_bond_length
+    if force_secondary_structure_input is not None:
+      params.input_files.force_secondary_structure_input=\
+         force_secondary_structure_input
+
+    self.helix_strand_segments=helix_strand_segments()
+    self.user_helix_strand_segments=helix_strand_segments()
+
+    self.user_models=[]
+    self.number_of_good_h_bonds=0
+    self.number_of_poor_h_bonds=0
+    self.user_number_of_good_h_bonds=0
+    self.user_number_of_poor_h_bonds=0
+
+    # Final annotation
+
+
+    if hierarchy:
+      hierarchy=hierarchy.deep_copy()
+    elif (not models) or \
+      getattr(params.input_files,'secondary_structure_input',None):
+      # need to get a hierarchy
+      if models:
+        combined_model=merge_hierarchies_from_models(models=models)
+        hierarchy=combined_model.hierarchy.deep_copy()
+      else:  # read it in
+        if not params.input_files.pdb_in or \
+            not os.path.isfile(params.input_files.pdb_in):
+          raise Sorry("Missing file: %s" %(params.input_files.pdb_in))
+        hierarchy=get_pdb_hierarchy(text=open(params.input_files.pdb_in).read())
+    if hierarchy:
+      # remove alt conformers
+      from mmtbx.pdbtools import remove_alt_confs
+      remove_alt_confs(hierarchy,always_keep_one_conformer=False)
+
+    # Get user ss information if any
+    if user_annotation_text or \
+      getattr(params.input_files,'secondary_structure_input',None):
+      self.get_user_ss(params=params,hierarchy=hierarchy,
+        user_annotation_text=user_annotation_text,out=out)
+    else:
+      if getattr(params.input_files,'force_secondary_structure_input',None):
+        raise Sorry(
+         "need secondary_structure_input for force_secondary_structure_input")
+
+    if getattr(params.input_files,'force_secondary_structure_input',None):
+      self.models=[] # we are going to do nothing
+    elif models:
+      self.models=models
+    else:
+      self.models=split_model(hierarchy=hierarchy)
+    if self.models: 
+      for model in self.models:
+        self.find_ss_in_model(params=params,model=model,out=out)
+        self.helix_strand_segments.add_from_model(model)
+
+    elif getattr(params.input_files,'force_secondary_structure_input',None):
+      self.helix_strand_segments=self.user_helix_strand_segments
+      self.models=self.user_models
+      print >>out,"Using user helix_strand analysis"
+
+    if self.helix_strand_segments and \
+         params.find_ss_structure.set_up_helices_sheets:
+      self.helix_strand_segments.find_sheets(
+       include_single_strands=params.find_ss_structure.include_single_strands,
+       max_sheet_ca_ca_dist=params.beta.max_sheet_ca_ca_dist,
+       min_sheet_length=params.beta.min_sheet_length,
+       out=out) # organize strands into sheets
+
+    if self.helix_strand_segments:
+      self.number_of_good_h_bonds,self.number_of_poor_h_bonds=\
+       self.helix_strand_segments.set_up_pdb_records(models=self.models,
+         max_h_bond_length=params.find_ss_structure.max_h_bond_length,
+         allow_ca_only_model=params.beta.allow_ca_only_model,out=out)
+
+
+    if params.find_ss_structure.write_helix_sheet_records:
+      self.helix_strand_segments.save_pdb_records_as_string()
+      self.annotation=self.helix_strand_segments.get_annotation()
+
+    self.show_summary(verbose=params.control.verbose,out=out)
+
+  def show_summary(self,verbose=None,out=sys.stdout):
+
+    for model in self.models:
+      print >>out,"\nModel %d  N: %d  Start: %d End: %d" %(
+          model.info.get('chain_number',0),
+          model.length(),model.first_residue(),model.last_residue())
+      if verbose:
+        if model.find_alpha:
+          model.find_alpha.show_summary(out=out)
+        if model.find_three_ten:
+          model.find_three_ten.show_summary(out=out)
+        if model.find_pi:
+          model.find_pi.show_summary(out=out)
+        if model.find_beta:
+          model.find_beta.show_summary(out=out)
+        if model.find_other:
+          model.find_other.show_summary(out=out)
+    if self.helix_strand_segments.get_all_pdb_records():
+      print >>out,"\nFINAL PDB RECORDS:"
+      print >>out,self.helix_strand_segments.get_all_pdb_records()
+      print >>out,"\n\nFINAL PDB selections:"
+      print >>out,self.helix_strand_segments.get_all_selection_records()
+
+
+  def get_annotation(self):
+    if hasattr(self,'annotation'):
+      return self.annotation
+
+  def get_user_ss(self,params=None,hierarchy=None,
+     user_annotation_text=None,out=sys.stdout):
+
+    if not user_annotation_text:
+      file_name=params.input_files.secondary_structure_input
+      if file_name and not os.path.isfile(file_name):
+       raise Sorry("The secondary_structure_input file '%s' is missing" %(
+         str(file_name)))
+
+      # Read ss structure from this file now
+      print >>out,"\nReading secondary structure records from %s\n" %(file_name)
+      user_annotation_text=open(file_name).read()
+
+    import iotbx.pdb.secondary_structure as ioss
+    user_annotation=ioss.annotation.from_records(
+        records=flex.split_lines(user_annotation_text))
+
+    print >>out,"\nUser helix/strand records as input:\n"
+    print >>out,user_annotation.as_pdb_str()
+    if params.input_files.force_secondary_structure_input:
+      print >>out,"\nThis secondary structure annotation will be used as is.\n"
+    else:
+      print >>out,\
+       "\nThis secondary structure annotation will be modified if necessary\n"
+
+    # Set up our alpha_helix_list etc from this...(just copy)
+
+    # Helix classes:   'alpha', 'pi', '3_10',
+    def get_string_or_first_element_of_list(something):
+      if type(something)==type([1,2,3]):
+        return something[0]
+      else:
+        return something
+    for helix in user_annotation.helices:
+      ph=apply_atom_selection(
+       get_string_or_first_element_of_list(helix.as_atom_selections()),
+       hierarchy=hierarchy)
+      model=model_info(hierarchy=ph,info={'class':helix.helix_class})
+      self.user_models.append(model)
+      if helix.helix_class=='alpha':
+        self.user_helix_strand_segments.pdb_alpha_helix_list.append(helix)
+        model.find_alpha=find_helix(params=params.alpha,model_as_segment=True,
+          model=model,verbose=params.control.verbose)
+      elif helix.helix_class=='pi':
+        self.user_helix_strand_segments.pdb_pi_helix_list.append(helix)
+        model.find_pi=find_helix(params=params.three_ten,
+          model_as_segment=True,
+          model=model,verbose=params.control.verbose)
+      elif helix.helix_class=='3_10':
+        self.user_helix_strand_segments.pdb_three_ten_helix_list.append(helix)
+        model.find_three_ten=find_helix(params=params.pi,
+          model_as_segment=True,
+          model=model,verbose=params.control.verbose)
+      else:
+        raise Sorry("Unknown helix type: '%s'" %(helix.helix_class))
+      self.user_helix_strand_segments.add_from_model(model)
+
+    self.user_helix_strand_segments.sheet_list=[]  
+    for sheet in user_annotation.sheets:
+      strand_id_in_sheet=[]
+      self.user_helix_strand_segments.sheet_list.append(strand_id_in_sheet)
+      prev_strand_as_segment=None
+      prev_strand_id=None
+      if len(sheet.registrations)!=len(sheet.strands):
+        raise Sorry("\nNot 1:1 registrations (%d) to strands (%d) " %(
+          len(sheet.registrations),len(sheet.strands)))
+       
+      prev_strand=None 
+      for strand in sheet.strands:
+        if prev_strand:
+          is_parallel=( 
+             (prev_strand.sense==0 and strand.sense==1) or 
+             (strand.sense==prev_strand.sense)
+          )
+        else:
+          is_parallel=None
+        ph=apply_atom_selection(
+         get_string_or_first_element_of_list(strand.as_atom_selections()),
+         hierarchy=hierarchy)
+        model=model_info(hierarchy=ph,info={'class':'strand'})
+        self.user_models.append(model)
+        model.find_beta=find_beta_strand(params=params.beta,
+          model_as_segment=True,
+          model=model,verbose=params.control.verbose)
+        n_strands_prev=len(self.user_helix_strand_segments.all_strands)
+        self.user_helix_strand_segments.add_from_model(model)
+        n_strands_cur=len(self.user_helix_strand_segments.all_strands)
+        assert n_strands_cur==n_strands_prev+1
+
+        current_strand_as_segment=\
+              self.user_helix_strand_segments.all_strands[-1]
+        current_strand_id=len(self.user_helix_strand_segments.all_strands)-1
+        strand_id_in_sheet.append(current_strand_id)
+ 
+        if prev_strand is not None: # add entries to pair_dict
+          first_ca_1=0
+          last_ca_1=prev_strand_as_segment.length()-1
+          first_ca_2=0
+	  last_ca_2=current_strand_as_segment.length()-1
+
+	  if not prev_strand_id in \
+              self.user_helix_strand_segments.pair_dict.keys():
+            self.user_helix_strand_segments.pair_dict[prev_strand_id]=[]
+          if not current_strand_id in \
+              self.user_helix_strand_segments.pair_dict.keys():
+            self.user_helix_strand_segments.pair_dict[current_strand_id]=[]
+
+          # identify residues i_index,j_index that are next to each other
+          first_last_1_and_2=\
+             [first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel]
+          i_index,j_index=self.user_helix_strand_segments.get_indices_of_h_bonding_atoms_in_sheet(
+              first_last_1_and_2=first_last_1_and_2,
+              i=prev_strand_id,j=current_strand_id,switch_i_j=False)
+          self.user_helix_strand_segments.pair_dict[prev_strand_id].append(
+             current_strand_id)
+          key12="%d:%d" %(prev_strand_id,current_strand_id)
+          self.user_helix_strand_segments.info_dict[key12]=\
+            [first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel,i_index,j_index]
+
+          # Now reversed
+          i_index,j_index=self.user_helix_strand_segments.get_indices_of_h_bonding_atoms_in_sheet(
+              first_last_1_and_2=first_last_1_and_2,
+              i=prev_strand_id,j=current_strand_id,switch_i_j=True)
+
+          self.user_helix_strand_segments.pair_dict[current_strand_id].append(
+             prev_strand_id)
+          key21="%d:%d" %(current_strand_id,prev_strand_id)
+          self.user_helix_strand_segments.info_dict[key21]=\
+            [first_ca_2,last_ca_2,first_ca_1,last_ca_1,is_parallel,i_index,j_index]
+        prev_strand=strand
+        prev_strand_as_segment=self.user_helix_strand_segments.all_strands[-1]
+        prev_strand_id=len(self.user_helix_strand_segments.all_strands)-1
+
+    self.user_number_of_good_h_bonds,self.user_number_of_poor_h_bonds=\
+     self.user_helix_strand_segments.set_up_pdb_records(models=self.user_models,
+         max_h_bond_length=params.find_ss_structure.max_h_bond_length,
+         allow_ca_only_model=params.beta.allow_ca_only_model,out=out)
+    self.user_helix_strand_segments.save_pdb_records_as_string()
+
+    if self.user_helix_strand_segments.get_all_pdb_records():
+      print >>out,"\nInput PDB RECORDS as modified:"
+      print >>out,self.user_helix_strand_segments.get_all_pdb_records()
+
+
+
+
+    return user_annotation
 
   def find_ss_in_model(self,params=None,model=None,out=sys.stdout):
 

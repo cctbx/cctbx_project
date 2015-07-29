@@ -38,6 +38,14 @@ def run(args, command_name=libtbx.env.dispatcher_name):
     log=sys.stdout)
   print
   acp = processed_pdb_file.all_chain_proxies
+
+  hierarchy=acp.pdb_hierarchy
+  asc=hierarchy.atom_selection_cache()
+  sel=asc.selection(string = "chain 'A' and resid 1 through 8 and icode ' '")
+  h1=hierarchy.select(sel)  # keep original hierarchy too
+  print h1.as_pdb_string()
+
+
   selection_cache = acp.pdb_hierarchy.atom_selection_cache()
   atoms = acp.pdb_atoms
   all_bsel = flex.bool(atoms.size(), False)

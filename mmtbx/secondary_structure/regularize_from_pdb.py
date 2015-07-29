@@ -138,6 +138,11 @@ master_phil = iotbx.phil.parse("""
        .help = Write SHEET records that contain a single strand
        .short_caption = Write single strands
 
+     max_h_bond_length = 3.5
+       .type = float
+       .help = Maximum H-bond length to include in secondary structure
+       .short_caption = Maximum H-bond length
+
   }
 
   extract_segments_from_pdb {
@@ -318,7 +323,7 @@ def get_and_split_model(pdb_hierarchy=None,
     print >>out,"Split model into %d chains" %(len(models))
     from mmtbx.pdbtools import remove_alt_confs
     for model in models:
-      remove_alt_confs(model.hierarchy,always_keep_one_conformer=True)
+      remove_alt_confs(model.hierarchy,always_keep_one_conformer=False)
       if get_start_end_length:
         model.info['model_start_resno']=get_first_resno(model.hierarchy)
         model.info['model_end_resno']=get_last_resno(model.hierarchy)
@@ -504,12 +509,12 @@ class segment_library:
        xrange(first_res_in_model_segment,last_res_in_model_segment+1),
        xrange(start_res,end_res+1)):
       atom_selection=\
-         "resseq %s:%s and (name n or name c or name ca or name o)" %(
+         "resid %s through %s and (name n or name c or name ca or name o)" %(
           resseq_encode(i),resseq_encode(i))
       model_res_hierarchy=apply_atom_selection(
         atom_selection,hierarchy=model_segment.hierarchy)
       atom_selection=\
-         "resseq %s:%s and (name n or name c or name ca or name o)" %(
+         "resid %s through %s and (name n or name c or name ca or name o)" %(
           resseq_encode(j),resseq_encode(j))
       other_res_hierarchy=apply_atom_selection(
         atom_selection,hierarchy=placed_other_hierarchy)
@@ -561,7 +566,6 @@ class segment_library:
     #  n residues in segment from segment lib where n=length of model_segment
     # delta_residues is change in length of model_segment to insert from
     #   segment_lib
-
     n=model_segment.length()
     best_segment=None
     best_lsq_fit=None
@@ -854,12 +858,12 @@ class connected_group:
       if length==0:
         continue
 
-      atom_selection="resseq %s:%s" %(resseq_encode(start_resno),
+      atom_selection="resid %s through %s" %(resseq_encode(start_resno),
        resseq_encode(end_resno))
       h=apply_atom_selection(atom_selection,hierarchy=cgs.segment.hierarchy)
 
       if model_to_match: # get comparison and sequence
-        atom_selection="name ca and resseq %s:%s" %(
+        atom_selection="name ca and resid %s through %s" %(
          resseq_encode(target_start_resno),
          resseq_encode(target_end_resno))
         original_ca=apply_atom_selection(atom_selection,
@@ -2010,7 +2014,8 @@ class replace_with_segments_from_pdb:
         combined_model=merge_hierarchies_from_models(
           models=[cg1_model,cg2_model],
           resid_offset=1,
-          first_residue_number=get_first_resno(cg1_model.hierarchy))
+          first_residue_number=get_first_resno(cg1_model.hierarchy),
+          renumber=True)
 
         sites=combined_model.hierarchy.extract_xray_structure().sites_cart()
 
@@ -2035,7 +2040,7 @@ class replace_with_segments_from_pdb:
         segment_list=[]
         for i in xrange(i_start,i_end+1):
           atom_selection=\
-           "resseq %s:%s and (name n or name c or name ca or name o)" %(
+           "resid %s through %s and (name n or name c or name ca or name o)" %(
             resseq_encode(i),resseq_encode(i+2*target_overlap-1))
           segment_list.append(other(params=params.other,
             start_resno=i,
