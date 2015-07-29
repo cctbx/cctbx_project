@@ -618,11 +618,11 @@ class ncs:
        cc=None,
        source_of_ncs_info=None):
      list_length=None
-     for list in [trans_orth,ncs_rota_matr,center_orth]:
-       if not list or len(list)<1:
+     for lst in [trans_orth,ncs_rota_matr,center_orth]:
+       if not lst or len(lst)<1:
          raise Sorry("The NCS operators in this file appear incomplete?")
-       if not list_length: list_length=len(list)
-       if list_length!=len(list):
+       if not list_length: list_length=len(lst)
+       if list_length!=len(lst):
          raise Sorry("The NCS operators in this file appear incomplete?")
      ncs_group_object=ncs_group(
        ncs_rota_matr=ncs_rota_matr,
@@ -640,15 +640,15 @@ class ncs:
   def save_ncs_group(self):
      # check that there is something  here:
      have_something=False
-     for list in [self._ncs_trans_orth,
+     for lst in [self._ncs_trans_orth,
          self._ncs_rota_matr,self._ncs_center_orth,
          self._residues_in_common_list,self._rmsd_list]:
-        if list is not None and self._n_ncs_oper and \
-           len(list) != self._n_ncs_oper:
+        if lst is not None and self._n_ncs_oper and \
+           len(lst) != self._n_ncs_oper:
           raise Sorry("The NCS operators in this file appear incomplete?")
-        if list is not None and len(list)<2:
+        if lst is not None and len(lst)<2:
           raise Sorry("The NCS operators in this file appear incomplete?")
-        if list is not None: have_something=True
+        if lst is not None: have_something=True
      if not have_something: return
      self._chain_residue_id=[self._group,self._list_of_resseq_list]
      ncs_group_object=ncs_group(
