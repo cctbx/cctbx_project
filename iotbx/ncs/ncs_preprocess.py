@@ -1400,14 +1400,7 @@ class ncs_group_object(object):
     else: stem += '_'
 
     for k in sort_dict_keys(self.ncs_group_map):
-      group_number += 1
       gr = self.ncs_group_map[k]
-      if create_ncs_domain_pdb:
-        ncs_domain_pdb = stem+'group_'+str(group_number+1)+'.pdb'# 2015-05-04 TT
-        self.ncs_domain_pdb_file_name_dict[group_number]=ncs_domain_pdb # 2015-05-03 TT
-      else:
-        ncs_domain_pdb=None
-
       for gr_chains in gr[0]:
         # the same chain can be part of the master NCS in several groups
         if ncs_groups_by_chains.has_key(gr_chains):
@@ -1456,6 +1449,12 @@ class ncs_group_object(object):
         res_num = sum([y-x+1 for [x,y] in range_list])
         residues_in_common_list.append(res_num)
       # build group
+      group_number += 1
+      if create_ncs_domain_pdb:
+        ncs_domain_pdb = stem+'group_'+str(group_number+1)+'.pdb'# 2015-05-04 TT
+        self.ncs_domain_pdb_file_name_dict[group_number]=ncs_domain_pdb # 2015-05-03 TT
+      else:
+        ncs_domain_pdb=None
       spec_object.import_ncs_group(
         center_orth = center_orth,
         ncs_rota_matr = rotations,
