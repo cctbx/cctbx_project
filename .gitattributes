@@ -1775,6 +1775,7 @@ mmtbx/command_line/strip_model.py svneol=native#text/x-python
 mmtbx/command_line/superpose.py -text
 mmtbx/command_line/table_one.py svneol=native#text/x-python
 mmtbx/command_line/tls.py -text
+mmtbx/command_line/tls_analysis.py -text
 mmtbx/command_line/tls_as_xyz.py -text
 mmtbx/command_line/validate_ions.py -text
 mmtbx/command_line/validate_ligands.py -text
@@ -2280,6 +2281,7 @@ mmtbx/sisa/optimize/mod_optimize.py -text
 mmtbx/sisa/optimize/mod_util.py -text
 mmtbx/solvent/ensemble_ordered_solvent.py svneol=native#text/x-python
 mmtbx/superpose.py -text
+mmtbx/tls/analysis.py -text
 mmtbx/tls/command_line.py -text
 mmtbx/tls/ladp.py -text
 mmtbx/tls/perm10.py -text

@@ -1,5 +1,5 @@
 from __future__ import division
-from mmtbx.tls import tls_as_xyz
+from mmtbx.tls import analysis
 import os
 import libtbx.load_env
 from scitbx import matrix
@@ -87,7 +87,7 @@ def run():
       test=os.path.isfile)
     of = open("phenix_"+fn, "w")
     T, L, S = extract(fn_)
-    r = tls_as_xyz.decompose_tls(T=T, L=L, S=S, log=of)
+    r = analysis.run(T=T, L=L, S=S, log=of)
     of.close()
 
 if (__name__ == "__main__"):
