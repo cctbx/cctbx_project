@@ -1212,7 +1212,7 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
     a_altloc = chains_info[a_id].no_altloc.count(False) > 0
   b_altloc = bool(chains_info[b_id].no_altloc)
   if b_altloc:
-    b_altloc = chains_info[a_id].no_altloc.count(False) > 0
+    b_altloc = chains_info[b_id].no_altloc.count(False) > 0
   test_altloc = a_altloc or b_altloc
   #
   res_num_a_updated = []
