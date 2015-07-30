@@ -3,10 +3,13 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/26/2015
-Description : Converts raw image to pickle files; crops or pads pickle to place
-              beam center into center of image; masks out beam stop. Adapted in
-              part from cxi_image2pickle.py by Aaron Brewster.
+Last Changed: 07/29/2015
+Description : Creates image object. If necessary, converts raw image to pickle
+              files; crops or pads pickle to place beam center into center of
+              image; masks out beam stop. (Adapted in part from
+              cxi_image2pickle.py by Aaron Brewster.) If selected, checks image
+              for diffraction. Creates instances of integrator and selector
+              objects.
 '''
 
 import os

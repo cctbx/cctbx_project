@@ -1,3 +1,13 @@
+from __future__ import division
+
+'''
+Author      : Lyubimov, A.Y.
+Created     : 10/12/2014
+Last Changed: 07/29/2015
+Description : Reads command line arguments. Initializes all IOTA starting 
+              parameters. Starts main log.
+'''
+
 import os
 import sys
 import argparse
