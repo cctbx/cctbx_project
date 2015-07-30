@@ -130,7 +130,7 @@ def exercise_1(mon_lib_srv, ener_lib):
 
   # default run (1 residue is out of NCS)
   params = pdb_interpretation.master_params.extract()
-  params.find_ncs=True
+  params.ncs_search.enabled=True
   ppf = pdb_interpretation.process(
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
@@ -146,7 +146,7 @@ def exercise_1(mon_lib_srv, ener_lib):
 
   # supply full NCS
   cuspars = iotbx.phil.parse("""
-find_ncs=True
+ncs_search.enabled=True
 ncs_group {
   reference        = (chain A )
   selection        = (chain B )
