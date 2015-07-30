@@ -282,26 +282,6 @@ class ncs_group_object(object):
         print >> log,self.messages
 
   def validate_ncs_phil_groups(self, pdb_hierarchy_inp, ncs_phil_groups):
-    # Verify NCS selections
-    if(ncs_phil_groups is not None and len(ncs_phil_groups)>0):
-      msg="Empty selection in NCS group definition: %s"
-      asc = pdb_hierarchy_inp.hierarchy.atom_selection_cache()
-      for ncs_group in ncs_phil_groups:
-        s_string = ncs_group.reference
-        if(s_string is not None):
-          sel = asc.selection(s_string)
-          n_reference = sel.count(True)
-          if(n_reference==0):
-            raise Sorry(msg%s_string)
-        for s_string in ncs_group.selection:
-          if(s_string is not None):
-            sel = asc.selection(s_string)
-            n_copy = sel.count(True)
-            if(n_reference != n_copy):
-              raise Sorry(
-                "Bad NCS group selections: Natoms(copy)!=Natoms(reference)")
-            if(n_copy==0):
-              raise Sorry(msg%s_string)
     # Massage NCS groups
     if(ncs_phil_groups is not None and len(ncs_phil_groups)==0):
       ncs_phil_groups=None
@@ -314,6 +294,82 @@ class ncs_group_object(object):
           if s is None or len(s.strip())==0:
             empty_cntr += 1
       if(empty_cntr>0): ncs_phil_groups=None
+    # Verify NCS selections
+    if(ncs_phil_groups is not None and len(ncs_phil_groups)>0):
+      msg="Empty selection in NCS group definition: %s"
+      asc = pdb_hierarchy_inp.hierarchy.atom_selection_cache()
+      for ncs_group in ncs_phil_groups:
+        selection_list = []
+        # first, check for selections producing 0 atoms
+        s_string = ncs_group.reference
+        if(s_string is not None):
+          sel = asc.iselection(s_string)
+          selection_list.append(s_string)
+          n_reference = sel.size()
+          if(n_reference==0):
+            raise Sorry(msg%s_string)
+        for s_string in ncs_group.selection:
+          if(s_string is not None):
+            sel = asc.iselection(s_string)
+            selection_list.append(s_string)
+            n_copy = sel.size()
+            if(n_copy==0):
+              raise Sorry(msg%s_string)
+
+        # XXX Here we will regenerate phil selections using the mechanism
+        # for finding NCS in this module. Afterwards we should have perfectly
+        # good phil selections, and later the object will be created from
+        # them.
+        # Most likely this is not the best way to validate user selections.
+
+        # selection_list
+        chain_info = ncs_search.get_chains_info(
+            ph = pdb_hierarchy_inp.hierarchy,
+            selection_list=selection_list)
+        match_list = ncs_search.search_ncs_relations(
+            chains_info=chain_info)
+        match_dict = ncs_search.clean_chain_matching(
+            chain_match_list=match_list,
+            ph = pdb_hierarchy_inp.hierarchy)
+        transform_to_group,match_dict = \
+            ncs_search.minimal_master_ncs_grouping(match_dict)
+        group_dict = ncs_search.build_group_dict(
+            transform_to_group,match_dict,chain_info)
+        # hopefully, we will get only 1 ncs group
+        ncs_group.selection = []
+        assert len(group_dict) == 1
+        for key, ncs_gr in group_dict.iteritems():
+          for i, isel in enumerate(ncs_gr.iselections):
+            m_all_list = [x for ix in isel for x in list(ix)]
+            m_all_list.sort()
+            m_all_isel = flex.size_t(m_all_list)
+            all_m_select_str = selection_string_from_selection(
+                pdb_hierarchy_inp=pdb_hierarchy_inp.hierarchy,
+                selection=m_all_isel,
+                chains_info=None)
+            if i == 0:
+              ncs_group.reference=all_m_select_str
+            else:
+              ncs_group.selection.append(all_m_select_str)
+        # Finally, we may check the number of atoms in selections that will
+        # go further
+
+        s_string = ncs_group.reference
+        if(s_string is not None):
+          sel = asc.iselection(s_string)
+          selection_list.append(s_string)
+          n_reference = sel.size()
+          if(n_reference==0):
+            raise Sorry(msg%s_string)
+        for s_string in ncs_group.selection:
+          if(s_string is not None):
+            sel = asc.iselection(s_string)
+            n_copy = sel.size()
+            if(n_reference != n_copy):
+              raise Sorry(
+                "Bad NCS group selections: Natoms(copy)!=Natoms(reference)")
+            if(n_copy==0):
+              raise Sorry(msg%s_string)
     return ncs_phil_groups
 
   def build_ncs_obj_from_pdb_ncs(self,
@@ -1955,7 +2011,11 @@ def separate_selection_string(s):
     sel_str = sel_str.strip()
     if sel_str.endswith(' or'): sel_str = sel_str[:-3]
     if not sel_str in ['','(']:
-      s_list.append('chain ' + sel_str)
+      new_s = 'chain ' + sel_str
+      if new_s.count('(') < new_s.count(')'):
+        new_s = '('+ new_s
+      assert new_s.count('(') == new_s.count(')')
+      s_list.append(new_s)
   return s_list
 
 def get_pdb_header(pdb_str):
