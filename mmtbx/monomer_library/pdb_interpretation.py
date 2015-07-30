@@ -411,15 +411,8 @@ master_params_str = """\
     fatal_problem_max_lines = 10
       .type=int
   }
-  find_ncs = False
-    .type = bool
-    .short_caption = Search for NCS relations
-  include scope iotbx.ncs.simple_ncs_phil_params
   include scope iotbx.ncs.ncs_preprocess.basic_phil_str
-  ncs
-  {
-     include scope iotbx.ncs.ncs_search_options
-  }
+  include scope iotbx.ncs.ncs_search_options
   %(clash_guard_params_str)s
 """ % vars()
 
@@ -4936,7 +4929,7 @@ class process(object):
     # Find NCS
     self.ncs_obj = None
     if(len(list(self.all_chain_proxies.pdb_hierarchy.models())) == 1 and
-       self.all_chain_proxies.params.find_ncs):
+       self.all_chain_proxies.params.ncs_search.enabled):
       self.ncs_obj = self.search_for_ncs(
         hierarchy = self.all_chain_proxies.pdb_hierarchy)
     # model_idealization
@@ -5335,19 +5328,17 @@ class process(object):
       return 'Clash Score'
 
   def search_for_ncs(self, hierarchy):
-    params = self.all_chain_proxies.params.ncs
-    simple_params = self.all_chain_proxies.params.simple_ncs_from_pdb
-    find_param = simple_params.domain_finding_parameters
+    params = self.all_chain_proxies.params.ncs_search
     ncs_phil_groups = self.all_chain_proxies.params.ncs_group
     ncs_obj = iotbx.ncs.input(
       ncs_phil_groups             = ncs_phil_groups,
       hierarchy                   = hierarchy,
-      chain_similarity_limit      = find_param.similarity_threshold,
-      min_contig_length           = find_param.min_contig_length,
-      min_percent                 = simple_params.min_percent,
-      max_rmsd                    = simple_params.max_rmsd,
-      max_dist_diff               = find_param.match_radius,
-      use_minimal_master_ncs      = params.use_minimal_master_ncs,
+      chain_similarity_limit      = params.similarity_threshold,
+      min_contig_length           = params.min_contig_length,
+      min_percent                 = params.min_percent,
+      max_rmsd                    = params.max_rmsd,
+      max_dist_diff               = params.match_radius,
+      use_minimal_master_ncs      = params.minimize_param == 'chains',
       process_similar_chains      = params.process_similar_chains,
       allow_different_size_res    = params.allow_different_size_res,
       exclude_misaligned_residues = params.exclude_misaligned_residues,

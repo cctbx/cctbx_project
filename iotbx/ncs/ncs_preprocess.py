@@ -1394,7 +1394,6 @@ class ncs_group_object(object):
           write=False,
           exclude_h=None,
           exclude_d=None,
-          restraint=True,
           create_ncs_domain_pdb=False,
           stem='',
           log = None,

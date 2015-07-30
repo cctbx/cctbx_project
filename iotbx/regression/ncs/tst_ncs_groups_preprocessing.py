@@ -374,7 +374,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     ncs_obj = ncs.input(pdb_string=pdb_str)
     self.assertTrue(ncs_obj.number_of_ncs_groups>0)
     ncs_obj.get_ncs_info_as_spec(
-      restraint=False,
       write=True,
       log=null_out())
     file_data = open('simple_ncs_from_pdb.ncs','r').read().splitlines()
