@@ -1117,7 +1117,8 @@ class pdb_helix (structure_base) :
       return 0
     else:
       # Should never happen
-      assert 0, "Wrong helix_class creeped in object fields:" % self.helix_class
+      assert 0, "Wrong helix_class creeped in object fields: %d" % (
+          self.helix_class)
 
   def is_same_as(self,other=None):
     # return True if it self has the same values as other
