@@ -1,7 +1,6 @@
 import os
 import sys
 import argparse
-import shutil
 from datetime import datetime
 
 import prime.iota.iota_input as inp
@@ -169,7 +168,7 @@ class InitAll(object):
       gs_img_objects = self.select_random_subset(img_objects)
     else:
       gs_img_objects = img_objects
-  
+
     return gs_img_objects
 
 

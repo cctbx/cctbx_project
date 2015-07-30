@@ -12,7 +12,6 @@ Description : IOTA I/O module. Reads PHIL input, creates output directories,
 
 import sys
 import os
-import shutil
 import random
 from cStringIO import StringIO
 
