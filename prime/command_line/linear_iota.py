@@ -3,8 +3,9 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 07/08/2015
-Description : IOTA command-line module. Version 2.00
+Last Changed: 07/29/2015
+Description : IOTA command-line module for running modules in order.
+              Version 2.00
 '''
 
 iota_version = '2.00'

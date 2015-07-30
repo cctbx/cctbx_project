@@ -1,4 +1,12 @@
 from __future__ import division
+
+'''
+Author      : Zeldin O.B.
+Created     : 10/12/2014
+Last Changed: 07/29/2015
+Description : Creates a PNG file visualizing integration results.
+'''
+
 from libtbx import easy_pickle as ep
 import scipy.misc as spm
 import numpy as np
