@@ -622,7 +622,6 @@ Installation of Python packages may fail.
         cwd=python_dir,
         shell=False)
       # Parallel build of python 2.7 needs to be limited to cope with race conditions
-      self.call('make -j %s install'% min(2, self.nproc), log=log, cwd=python_dir)
       self.call('make install', log=log, cwd=python_dir)
     python_exe = op.abspath(op.join(self.base_dir, "bin", "python"))
     self.set_python(op.abspath(python_exe))
