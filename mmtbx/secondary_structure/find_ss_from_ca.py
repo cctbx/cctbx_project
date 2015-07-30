@@ -278,9 +278,9 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
   if remove_ter_records:
     new_records=[]
     for line in new_hierarchy.as_pdb_string().splitlines():
-      if not line.startswith("TER"): 
+      if not line.startswith("TER"):
         new_records.append(line)
-    
+
     new_hierarchy=iotbx.pdb.pdb_input(
          source_info="Model", lines=new_records).construct_hierarchy()
 
@@ -391,7 +391,7 @@ def has_atom(hierarchy,name=None):
           for atom in residue.atoms():
             if atom.name.replace(" ","")==name.replace(" ",""):
               return True
-  return False 
+  return False
 
 def get_first_resno(hierarchy):
   if not hierarchy:
@@ -426,7 +426,7 @@ def have_n_or_o(models):
       return True
     return False
 
- 
+
 
 class model_info: # mostly just a holder
   def __init__(self,hierarchy=None,id=0,info={},
@@ -450,10 +450,10 @@ class model_info: # mostly just a holder
 
   def has_n(self):
     return has_atom(self.hierarchy,name="N")
-    
+
   def has_o(self):
     return has_atom(self.hierarchy,name="O")
-    
+
   def first_residue(self):
     return get_first_resno(self.hierarchy)
 
@@ -1687,7 +1687,7 @@ class find_beta_strand(find_segment):
      all_h_bonds=None):
 
     for h_bond in all_h_bonds: # choose first that is ok
-      if not h_bond.is_ok(): 
+      if not h_bond.is_ok():
         continue
 
       from iotbx.pdb.secondary_structure import pdb_strand_register
@@ -2017,14 +2017,14 @@ class helix_strand_segments:
     self.get_strand_pairs(tol=max_sheet_ca_ca_dist,
         min_sheet_length=min_sheet_length)
     # pair_dict is list of all the strands that each strand matches with
-    # self.info_dict is information on a particular pair 
+    # self.info_dict is information on a particular pair
     #   of strands:
     #  self.info_dict["%d:%d" %(i,j)]=
     #     [first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel]
 
     # Create sheets from paired strands.
     # keep track of which ones we have assigned
-    self.used_strands=[] 
+    self.used_strands=[]
 
     # single_strands are those with no matching strands
     single_strands=self.get_strands_by_pairs(pairs=0)
@@ -2033,7 +2033,7 @@ class helix_strand_segments:
     multiple_strands=self.get_strands_by_pairs(pairs=None)
 
     self.used_strands=[] # initialize again
-    self.used_strands+=single_strands 
+    self.used_strands+=single_strands
     # we are going to ignore these
 
     self.sheet_list=[]
@@ -2057,9 +2057,9 @@ class helix_strand_segments:
            not [i,j] in missing_pairs and not [j,i] in missing_pairs:
           missing_pairs.append([i,j])
           self.sheet_list.append([i,j])
-          if not i in self.used_strands: 
+          if not i in self.used_strands:
             self.used_strands.append(i)
-          if not j in self.used_strands: 
+          if not j in self.used_strands:
             self.used_strands.append(j)
 
     # Now we are ready to create sheets from sheet_list, self.pair_dict and
@@ -2348,7 +2348,7 @@ class helix_strand_segments:
     if not models:
       return number_of_good_h_bonds,number_of_poor_h_bonds
 
-    # determine if there are N and O atoms present. 
+    # determine if there are N and O atoms present.
     # If not, set allow_ca_only_model=True
     allow_ca_only_model=(not have_n_or_o(models))
 
@@ -2534,7 +2534,7 @@ class find_secondary_structure: # class to look for secondary structure
       self.models=models
     else:
       self.models=split_model(hierarchy=hierarchy)
-    if self.models: 
+    if self.models:
       for model in self.models:
         self.find_ss_in_model(params=params,model=model,out=out)
         self.helix_strand_segments.add_from_model(model)
@@ -2650,7 +2650,7 @@ class find_secondary_structure: # class to look for secondary structure
         raise Sorry("Unknown helix type: '%s'" %(helix.helix_class))
       self.user_helix_strand_segments.add_from_model(model)
 
-    self.user_helix_strand_segments.sheet_list=[]  
+    self.user_helix_strand_segments.sheet_list=[]
     for sheet in user_annotation.sheets:
       strand_id_in_sheet=[]
       self.user_helix_strand_segments.sheet_list.append(strand_id_in_sheet)
@@ -2659,12 +2659,12 @@ class find_secondary_structure: # class to look for secondary structure
       if len(sheet.registrations)!=len(sheet.strands):
         raise Sorry("\nNot 1:1 registrations (%d) to strands (%d) " %(
           len(sheet.registrations),len(sheet.strands)))
-       
-      prev_strand=None 
+
+      prev_strand=None
       for strand in sheet.strands:
         if prev_strand:
-          is_parallel=( 
-             (prev_strand.sense==0 and strand.sense==1) or 
+          is_parallel=(
+             (prev_strand.sense==0 and strand.sense==1) or
              (strand.sense==prev_strand.sense)
           )
         else:
@@ -2686,14 +2686,14 @@ class find_secondary_structure: # class to look for secondary structure
               self.user_helix_strand_segments.all_strands[-1]
         current_strand_id=len(self.user_helix_strand_segments.all_strands)-1
         strand_id_in_sheet.append(current_strand_id)
- 
+
         if prev_strand is not None: # add entries to pair_dict
           first_ca_1=0
           last_ca_1=prev_strand_as_segment.length()-1
           first_ca_2=0
-	  last_ca_2=current_strand_as_segment.length()-1
+          last_ca_2=current_strand_as_segment.length()-1
 
-	  if not prev_strand_id in \
+          if not prev_strand_id in \
               self.user_helix_strand_segments.pair_dict.keys():
             self.user_helix_strand_segments.pair_dict[prev_strand_id]=[]
           if not current_strand_id in \

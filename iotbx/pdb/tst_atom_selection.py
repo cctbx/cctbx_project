@@ -433,11 +433,11 @@ HETATM   4   O  KHOH     6      16.545  29.521  64.086  0.00 19.76
   # make sure that hybrid-36 numbers work with and without insertion codes
 
   hierarchy = pdb.input(source_info=None, lines=flex.split_lines("""\
-ATOM      2  CA  SER  A13L      33.163  16.115  17.936  1.00 26.68           C  
-ATOM      8  CA  ASP  A13M      34.633  18.762  20.254  1.00 22.59           C  
-ATOM     16  CA  LYS  A13N      36.047  17.704  23.610  1.00 19.79           C  
-ATOM     25  CA  ILE  A002      35.551  19.482  26.886  1.00 19.33           C  
-ATOM     34  CA AHIS  A003X     38.649  21.223  28.218  0.50 19.79           C  
+ATOM      2  CA  SER  A13L      33.163  16.115  17.936  1.00 26.68           C
+ATOM      8  CA  ASP  A13M      34.633  18.762  20.254  1.00 22.59           C
+ATOM     16  CA  LYS  A13N      36.047  17.704  23.610  1.00 19.79           C
+ATOM     25  CA  ILE  A002      35.551  19.482  26.886  1.00 19.33           C
+ATOM     34  CA AHIS  A003X     38.649  21.223  28.218  0.50 19.79           C
 ATOM      5  N   TYR A   2      27.208 -20.701   0.590  1.00  7.29           N
 ATOM     17  N   SER A   2A     26.854 -17.177   0.412  1.00  6.66           N
 ATOM     26  N   CYS A   2B     25.627 -14.135  -0.995  1.00  5.11           N
@@ -455,9 +455,9 @@ ATOM    234  N   SER A  35A     23.294 -20.178  -1.426  1.00  4.63           N
   isel = sel_cache.iselection
   assert list(isel("resid A13L through A13N")) == [0, 1, 2]
   assert list(isel("resid A002 through A003X")) == [3, 4]
-  assert list(isel("(resid A002 through A003X) and (altloc ' ' or altloc 'A') "))== [3, 4] 
+  assert list(isel("(resid A002 through A003X) and (altloc ' ' or altloc 'A') "))== [3, 4]
   assert list(isel("(chain 'A' and resid 2A through 7 ) and (name N) and (altloc 'A' or altloc ' ')"))==[6, 7, 8, 9, 10]
-  
+
 def run():
   exercise_selection()
   print "OK"

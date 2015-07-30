@@ -1,7 +1,6 @@
 from __future__ import division
 from libtbx import adopt_init_args
 from scitbx.array_family import flex
-import mmtbx.map_tools
 from cctbx import maptbx
 from cctbx import miller
 
