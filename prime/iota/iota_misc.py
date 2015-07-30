@@ -1,3 +1,5 @@
+from __future__ import division
+
 import os
 import sys
 from cStringIO import StringIO
@@ -56,8 +58,6 @@ def set_base_dir(dirname, sel_flag=False):
   else:
     new_path = "{}/001".format(path)
   return new_path
-
-
 
 def find_base_dir(dirname):
   """ Function to determine the current folder name """

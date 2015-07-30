@@ -29,12 +29,7 @@ ensure that beam center is in center of image. Can also blank out
 beam stop shadow.
 
 """
-import os
-import sys
-
 from libtbx.easy_mp import parallel_map
-
-import prime.iota.iota_input as inp
 from prime.iota.iota_init import InitAll
 from prime.iota.iota_analysis import Analyzer
 import prime.iota.iota_image as img
@@ -169,7 +164,7 @@ if __name__ == "__main__":
       misc.iota_exit(iota_version)
     else:
       misc.main_log(init.logfile, "{} out of {} images have diffraction"\
-                                         "".format(len(acc_img_objects), 
+                                         "".format(len(acc_img_objects),
                                                    len(img_objects)))
 
     # Check for -c option and exit if true
@@ -203,7 +198,7 @@ if __name__ == "__main__":
     misc.iota_exit(iota_version)
   else:
     misc.main_log(init.logfile, "\n{} out of {} images successfully integrated"\
-                                       "".format(len(int_img_objects), 
+                                       "".format(len(int_img_objects),
                                                  len(img_objects)))
   # Integration of selected pickles
   cmd.Command.start("Final integration")
@@ -225,5 +220,3 @@ if __name__ == "__main__":
   analysis.make_prime_input(init.int_base)
 
   misc.iota_exit(iota_version)
-
-################################################################################

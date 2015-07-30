@@ -331,5 +331,3 @@ class Analyzer(object):
     prime_file = os.path.join(int_folder, 'prime.phil')
     with open(prime_file, 'w') as pf:
       pf.write(txt_out)
-
-# **************************************************************************** #

@@ -9,7 +9,6 @@ Description : Runs cctbx.xfel integration module either in grid-search or final
 '''
 
 import os
-import csv
 import sys
 import numpy as np
 
@@ -239,7 +238,7 @@ class Selector(object):
 
   def select(self):
     """ First round of selection for results from the initial spotfinding grid
-        search. Select the 25% with lowest mosaicities, then select for most 
+        search. Select the 25% with lowest mosaicities, then select for most
         spots. """
     log_entry = []
     if len(self.grid) == 0:
@@ -280,7 +279,7 @@ class Selector(object):
                       ''.format(acc['sih'], acc['sph'], acc['spa'], acc['res'],
                                 acc['sg'], cell, acc['strong'], acc['mos'])
           log_entry.append(info_line)
- 
+
         # Perform selection
         sorted_entries = sorted(acceptable_results, key=lambda i: i['mos'])
         subset = [j[1] for j in enumerate(sorted_entries) \
@@ -299,5 +298,5 @@ class Selector(object):
         self.best['info'] = "Selection results for {}: {}"\
                             "".format(self.best['img'], info_line)
         log_entry = "\n".join(log_entry)
- 
+
     return self.best, log_entry
