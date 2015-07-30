@@ -392,7 +392,7 @@ def tst_00():
   found_text=f.getvalue()
 
   expected_text="""
-New records: 
+New records:
 SHEET    1   1 3 HISAa  32  LEUAa  36  0
 SHEET    2   1 3 VALAa  17  LEUAa  22 -1  N  GLYAa  21   O  HISAa  32
 SHEET    3   1 3 ALAAa  52  VALAa  55 -1  N  LYSAa  54   O  ILEAa  20
@@ -400,7 +400,7 @@ SHEET    1   2 4 GLUAa  40  GLNAa  45  0
 SHEET    2   2 4 PHEAa   7  ALAAa  12 -1  N  ALAAa  12   O  GLUAa  40
 SHEET    3   2 4 LYSAa  58  THRAa  63 -1  N  GLNAa  62   O  VALAa   9
 SHEET    4   2 4 GLYAa  66  GLUAa  71 -1  N  SERAa  70   O  ALAAa  59
-After split_sheets: 
+After split_sheets:
 SHEET    1   1 2 HISAa  32  LEUAa  36  0
 SHEET    2   1 2 VALAa  17  LEUAa  22 -1  N  GLYAa  21   O  HISAa  32
 SHEET    1   2 2 VALAa  17  LEUAa  22  0
@@ -411,7 +411,7 @@ SHEET    1   4 2 PHEAa   7  ALAAa  12  0
 SHEET    2   4 2 LYSAa  58  THRAa  63 -1  N  GLNAa  62   O  VALAa   9
 SHEET    1   5 2 LYSAa  58  THRAa  63  0
 SHEET    2   5 2 GLYAa  66  GLUAa  71 -1  N  SERAa  70   O  ALAAa  59
-After merge_sheets: 
+After merge_sheets:
 SHEET    1   1 2 HISAa  32  LEUAa  36  0
 SHEET    2   1 2 VALAa  17  LEUAa  22 -1  N  GLYAa  21   O  HISAa  32
 SHEET    2   2 2 ALAAa  52  VALAa  55 -1  N  LYSAa  54   O  ILEAa  20
@@ -463,7 +463,7 @@ FINAL PDB selections:
   if remove_blank(found_text)!=remove_blank(expected_text):
     print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
     raise AssertionError, "FAILED"
- 
+
 
   print "OK"
 
@@ -745,27 +745,27 @@ FINAL PDB selections:
 
 def tst_06():
   text="""
-ATOM      8  CA  GLY A   2      24.485  19.185   6.248  1.00 11.14           C  
-HETATM   15  CA  23F A   3      26.939  16.455   5.194  1.00  9.61           C  
-ATOM     33  CA  ALA A   4      29.149  18.888   3.424  1.00  9.96           C  
-HETATM   43  CA  23F A   5      30.573  19.304   6.910  1.00  6.42           C  
-HETATM   61  CA  23F A   6      32.558  16.167   6.280  1.00  6.41           C  
-ATOM     79  CA  ALA A   7      35.089  18.339   4.563  1.00  6.26           C  
-HETATM   89  CA  23F A   8      36.195  19.092   8.094  1.00  6.38           C  
-HETATM  107  CA  23F A   9      38.283  15.914   7.621  1.00  7.78           C  
-ATOM    125  CA  ALA A  10      40.789  18.180   5.892  1.00  8.66           C  
-ATOM    135  CA  GLY A  11      41.608  19.716   9.325  1.00 10.78           C  
-ATOM    142  CA  GLY A  12      44.498  17.479   9.975  1.00 17.00           C  
-ATOM    149  CA  GLY A  13      43.927  17.193  13.603  1.00 13.58           C  
-ATOM    156  CA  GLY A  14      41.242  17.379  16.363  1.00 11.14           C  
-HETATM  163  CA  23F A  15      39.608  20.319  14.616  1.00  7.70           C  
-ATOM    181  CA  ALA A  16      38.402  17.853  12.023  1.00  7.08           C  
-ATOM    191  CA  LEU A  17      35.810  16.973  14.649  1.00  6.22           C  
-HETATM  210  CA  23F A  18      34.098  20.219  13.633  1.00  6.81           C  
-ATOM    228  CA  ALA A  19      32.642  18.019  10.889  1.00  6.28           C  
-ATOM    238  CA  LEU A  20      30.139  16.927  13.574  1.00  6.81           C  
-HETATM  257  CA  23F A  21      28.460  20.242  12.654  1.00  8.80           C  
-ATOM    275  CA  ALA A  22      27.017  18.382   9.700  1.00  7.89           C  
+ATOM      8  CA  GLY A   2      24.485  19.185   6.248  1.00 11.14           C
+HETATM   15  CA  23F A   3      26.939  16.455   5.194  1.00  9.61           C
+ATOM     33  CA  ALA A   4      29.149  18.888   3.424  1.00  9.96           C
+HETATM   43  CA  23F A   5      30.573  19.304   6.910  1.00  6.42           C
+HETATM   61  CA  23F A   6      32.558  16.167   6.280  1.00  6.41           C
+ATOM     79  CA  ALA A   7      35.089  18.339   4.563  1.00  6.26           C
+HETATM   89  CA  23F A   8      36.195  19.092   8.094  1.00  6.38           C
+HETATM  107  CA  23F A   9      38.283  15.914   7.621  1.00  7.78           C
+ATOM    125  CA  ALA A  10      40.789  18.180   5.892  1.00  8.66           C
+ATOM    135  CA  GLY A  11      41.608  19.716   9.325  1.00 10.78           C
+ATOM    142  CA  GLY A  12      44.498  17.479   9.975  1.00 17.00           C
+ATOM    149  CA  GLY A  13      43.927  17.193  13.603  1.00 13.58           C
+ATOM    156  CA  GLY A  14      41.242  17.379  16.363  1.00 11.14           C
+HETATM  163  CA  23F A  15      39.608  20.319  14.616  1.00  7.70           C
+ATOM    181  CA  ALA A  16      38.402  17.853  12.023  1.00  7.08           C
+ATOM    191  CA  LEU A  17      35.810  16.973  14.649  1.00  6.22           C
+HETATM  210  CA  23F A  18      34.098  20.219  13.633  1.00  6.81           C
+ATOM    228  CA  ALA A  19      32.642  18.019  10.889  1.00  6.28           C
+ATOM    238  CA  LEU A  20      30.139  16.927  13.574  1.00  6.81           C
+HETATM  257  CA  23F A  21      28.460  20.242  12.654  1.00  8.80           C
+ATOM    275  CA  ALA A  22      27.017  18.382   9.700  1.00  7.89           C
 """
   print "Finding sheets with unusual residues...",
   import iotbx.pdb
@@ -794,17 +794,17 @@ FINAL PDB selections:
 
 def tst_07():
   text="""
-ATOM    651  CA BPRO E   1      14.350   6.490 -29.205  0.50 16.99           C  
-ATOM    658  CA BPRO E   2      12.612   6.495 -25.864  0.50 14.37           C  
-ATOM    666  CA AGLY E   3      12.816   7.962 -32.315  0.55 19.29           C  
-ATOM    667  CA BGLY E   3      13.074   9.621 -23.839  0.45 12.65           C  
-ATOM    674  CA APRO E   4      14.350   6.490 -29.205  0.50 16.99           C  
-ATOM    675  CA BPRO E   4      15.262  10.063 -20.808  0.50 15.34           C  
-ATOM    688  CA APRO E   5      12.612   6.495 -25.864  0.50 14.37           C  
-ATOM    689  CA BPRO E   5      14.316   8.840 -17.372  0.50 10.66           C  
-ATOM    702  CA AGLY E   6      13.074   9.621 -23.839  0.50 12.65           C  
-ATOM    703  CA BGLY E   6      11.932  10.884 -15.276  0.50  7.99           C  
-ATOM    710  CA APRO E   7      15.262  10.063 -20.808  0.50 15.34           C  
+ATOM    651  CA BPRO E   1      14.350   6.490 -29.205  0.50 16.99           C
+ATOM    658  CA BPRO E   2      12.612   6.495 -25.864  0.50 14.37           C
+ATOM    666  CA AGLY E   3      12.816   7.962 -32.315  0.55 19.29           C
+ATOM    667  CA BGLY E   3      13.074   9.621 -23.839  0.45 12.65           C
+ATOM    674  CA APRO E   4      14.350   6.490 -29.205  0.50 16.99           C
+ATOM    675  CA BPRO E   4      15.262  10.063 -20.808  0.50 15.34           C
+ATOM    688  CA APRO E   5      12.612   6.495 -25.864  0.50 14.37           C
+ATOM    689  CA BPRO E   5      14.316   8.840 -17.372  0.50 10.66           C
+ATOM    702  CA AGLY E   6      13.074   9.621 -23.839  0.50 12.65           C
+ATOM    703  CA BGLY E   6      11.932  10.884 -15.276  0.50  7.99           C
+ATOM    710  CA APRO E   7      15.262  10.063 -20.808  0.50 15.34           C
 ATOM    711  CA BPRO E   7      13.150  12.796 -12.241  0.50  9.73           C  """
   print "Finding sheets with alt confs where there is no A for first res...",
   import iotbx.pdb
@@ -839,15 +839,15 @@ def tst_08():
     for h2 in ann_one_helix_beg.helices:
        print "Should be same:",h1.is_similar_to(other=h2,hierarchy=hierarchy)
        assert h1.is_similar_to(other=h2,hierarchy=hierarchy)
-  for maximum_length_difference in [4,8]: 
-    for minimum_overlap in [6,10]: 
+  for maximum_length_difference in [4,8]:
+    for minimum_overlap in [6,10]:
       for h1 in ann_one_helix_beg.helices:
         for h2 in ann_one_helix.helices:
            value=h1.is_similar_to(other=h2,hierarchy=hierarchy,
              maximum_length_difference=maximum_length_difference,
-	     minimum_overlap=minimum_overlap)
+             minimum_overlap=minimum_overlap)
            print "Comparison:",value
-           assert (value and maximum_length_difference==8 and 
+           assert (value and maximum_length_difference==8 and
               minimum_overlap==6) or not value
 
 
@@ -1072,8 +1072,8 @@ SHEET    4   2 4 GLYAa  66  GLUAa  71 -1  N  SERAa  70   O  ALAAa  59
         for sb in b.strands:
           assert (sa==sb and sa.is_same_as(sb)) or (not sa.is_same_as(sb))
   print "OK"
-        
-     
+
+
 def get_annotation(text):
   import iotbx.pdb
   from cctbx.array_family import flex
@@ -1083,7 +1083,7 @@ def get_annotation(text):
   fss=find_secondary_structure(hierarchy=hierarchy,out=null_out())
   records=fss.helix_strand_segments.get_all_pdb_records()
   return ioss.annotation.from_records(records=flex.split_lines(records))
- 
+
 def tst_10():
 
   import iotbx.pdb
@@ -1116,9 +1116,9 @@ SHEET    2   1 2 LEU B 278  ALA B 282  1  N  ILE B 280   O  ILE A  51
   hs2=ioss.annotation.from_records(records=flex.split_lines(text_helix_2+text_sheet_2))
 
   print "\nCombining annotations"
- 
+
   ann_all=get_annotation(one_full_helix_text+two_chain_text)
-  print "\nFull annotation\n",ann_all.as_pdb_str() 
+  print "\nFull annotation\n",ann_all.as_pdb_str()
 
   print "\nCombining annotations from two parts"
   ann_one_full_helix=get_annotation(one_full_helix_text)
@@ -1172,14 +1172,14 @@ def tst_11():
   print "\nCounting H-bonds using ioss.annotation:"
 
   number_of_good_h_bonds,number_of_poor_h_bonds=ann.count_h_bonds(
-    hierarchy=hierarchy) 
+    hierarchy=hierarchy)
   print "Good H-bonds: %d  Poor H-Bonds: %d" %(
          fss.number_of_good_h_bonds,
          fss.number_of_poor_h_bonds,)
   assert fss.number_of_good_h_bonds==4 and fss.number_of_poor_h_bonds==0
 
   print "\nCounting residues in secondary structure:",
-  print ann.count_residues(hierarchy=hierarchy) 
+  print ann.count_residues(hierarchy=hierarchy)
   assert ann.count_residues(hierarchy=hierarchy)==10
 
   print "\nCounting H-bonds in helix:"
@@ -1192,7 +1192,7 @@ def tst_11():
 
   print "\nH-bonds with cutoff=3.5 (default):\n"
   number_of_good_h_bonds,number_of_poor_h_bonds=ann.count_h_bonds(
-    hierarchy=hierarchy) 
+    hierarchy=hierarchy)
   print "Good H-bonds: %d  Poor H-Bonds: %d" %(
          number_of_good_h_bonds,
          number_of_poor_h_bonds,)
@@ -1200,14 +1200,14 @@ def tst_11():
 
   print "\nH-bonds with cutoff=3.0:\n"
   number_of_good_h_bonds,number_of_poor_h_bonds=ann.count_h_bonds(
-    hierarchy=hierarchy,max_h_bond_length=3.0) 
+    hierarchy=hierarchy,max_h_bond_length=3.0)
   print "Good H-bonds: %d  Poor H-Bonds: %d" %(
          number_of_good_h_bonds,
          number_of_poor_h_bonds,)
   assert number_of_good_h_bonds==1 and number_of_poor_h_bonds==2
 
   print "\nCount number of residues in secondary structure:",
-  print ann.count_residues(hierarchy=hierarchy) 
+  print ann.count_residues(hierarchy=hierarchy)
   assert ann.count_residues(hierarchy=hierarchy) ==7
 
   print "\nH-bonds in mixed helix/strand"
@@ -1221,40 +1221,40 @@ def tst_11():
 
   print "\nH-bonds with cutoff=3.0 :\n"
   number_of_good_h_bonds,number_of_poor_h_bonds=ann.count_h_bonds(
-    hierarchy=hierarchy,max_h_bond_length=3.0) 
+    hierarchy=hierarchy,max_h_bond_length=3.0)
   print "Good H-bonds: %d  Poor H-Bonds: %d" %(
          number_of_good_h_bonds,
          number_of_poor_h_bonds,)
   assert number_of_good_h_bonds==5 and number_of_poor_h_bonds==2
 
   print "\nCount number of residues in secondary structure:",
-  print ann.count_residues(hierarchy=hierarchy) 
+  print ann.count_residues(hierarchy=hierarchy)
   assert ann.count_residues(hierarchy=hierarchy) ==17
 
 def tst_12():
 
   text="""
-ATOM      8  CA  GLY A   2      24.485  19.185   6.248  1.00 11.14           C  
-HETATM   15  CA  23F A   3      26.939  16.455   5.194  1.00  9.61           C  
-ATOM     33  CA  ALA A   4      29.149  18.888   3.424  1.00  9.96           C  
-HETATM   43  CA  23F A   5      30.573  19.304   6.910  1.00  6.42           C  
-HETATM   61  CA  23F A   6      32.558  16.167   6.280  1.00  6.41           C  
-ATOM     79  CA  ALA A   7      35.089  18.339   4.563  1.00  6.26           C  
-HETATM   89  CA  23F A   8      36.195  19.092   8.094  1.00  6.38           C  
-HETATM  107  CA  23F A   9      38.283  15.914   7.621  1.00  7.78           C  
-ATOM    125  CA  ALA A  10      40.789  18.180   5.892  1.00  8.66           C  
-ATOM    135  CA  GLY A  11      41.608  19.716   9.325  1.00 10.78           C  
-ATOM    142  CA  GLY A  12      44.498  17.479   9.975  1.00 17.00           C  
-ATOM    149  CA  GLY A  13      43.927  17.193  13.603  1.00 13.58           C  
-ATOM    156  CA  GLY A  14      41.242  17.379  16.363  1.00 11.14           C  
-HETATM  163  CA  23F A  15      39.608  20.319  14.616  1.00  7.70           C  
-ATOM    181  CA  ALA A  16      38.402  17.853  12.023  1.00  7.08           C  
-ATOM    191  CA  LEU A  17      35.810  16.973  14.649  1.00  6.22           C  
-HETATM  210  CA  23F A  18      34.098  20.219  13.633  1.00  6.81           C  
-ATOM    228  CA  ALA A  19      32.642  18.019  10.889  1.00  6.28           C  
-ATOM    238  CA  LEU A  20      30.139  16.927  13.574  1.00  6.81           C  
-HETATM  257  CA  23F A  21      28.460  20.242  12.654  1.00  8.80           C  
-ATOM    275  CA  ALA A  22      27.017  18.382   9.700  1.00  7.89           C  
+ATOM      8  CA  GLY A   2      24.485  19.185   6.248  1.00 11.14           C
+HETATM   15  CA  23F A   3      26.939  16.455   5.194  1.00  9.61           C
+ATOM     33  CA  ALA A   4      29.149  18.888   3.424  1.00  9.96           C
+HETATM   43  CA  23F A   5      30.573  19.304   6.910  1.00  6.42           C
+HETATM   61  CA  23F A   6      32.558  16.167   6.280  1.00  6.41           C
+ATOM     79  CA  ALA A   7      35.089  18.339   4.563  1.00  6.26           C
+HETATM   89  CA  23F A   8      36.195  19.092   8.094  1.00  6.38           C
+HETATM  107  CA  23F A   9      38.283  15.914   7.621  1.00  7.78           C
+ATOM    125  CA  ALA A  10      40.789  18.180   5.892  1.00  8.66           C
+ATOM    135  CA  GLY A  11      41.608  19.716   9.325  1.00 10.78           C
+ATOM    142  CA  GLY A  12      44.498  17.479   9.975  1.00 17.00           C
+ATOM    149  CA  GLY A  13      43.927  17.193  13.603  1.00 13.58           C
+ATOM    156  CA  GLY A  14      41.242  17.379  16.363  1.00 11.14           C
+HETATM  163  CA  23F A  15      39.608  20.319  14.616  1.00  7.70           C
+ATOM    181  CA  ALA A  16      38.402  17.853  12.023  1.00  7.08           C
+ATOM    191  CA  LEU A  17      35.810  16.973  14.649  1.00  6.22           C
+HETATM  210  CA  23F A  18      34.098  20.219  13.633  1.00  6.81           C
+ATOM    228  CA  ALA A  19      32.642  18.019  10.889  1.00  6.28           C
+ATOM    238  CA  LEU A  20      30.139  16.927  13.574  1.00  6.81           C
+HETATM  257  CA  23F A  21      28.460  20.242  12.654  1.00  8.80           C
+ATOM    275  CA  ALA A  22      27.017  18.382   9.700  1.00  7.89           C
 """
 if __name__=="__main__":
   import sys

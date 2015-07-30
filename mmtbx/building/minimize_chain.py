@@ -119,9 +119,9 @@ master_phil = iotbx.phil.parse("""
         .short_caption = Random seed
         .help = Random seed. If set, the same result will be found each time.
 
-      mode = *quick thorough 
+      mode = *quick thorough
         .type = choice
-        .short_caption = Quick or thorough 
+        .short_caption = Quick or thorough
         .help = In minimization, use quick or thorough mode. \
                 Currently does not affect other steps.
 

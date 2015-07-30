@@ -1,17 +1,13 @@
 from __future__ import division
 from scitbx import matrix
 import math
-from scitbx.linalg import eigensystem
 import random
-from libtbx.test_utils import approx_equal
-from libtbx import group_args
 import mmtbx.utils
 from scitbx.array_family import flex
 import iotbx.pdb
 from libtbx.utils import Sorry
 from cctbx import adptbx
 import sys
-from copy import deepcopy
 
 random.seed(2679941)
 
