@@ -3,15 +3,16 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 07/15/2015
-Description : IOTA command-line module. Version 1.74
+Last Changed: 07/08/2015
+Description : IOTA command-line module. Version 2.00
 '''
 
+iota_version = '2.00'
 help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 
 Auto mode
-Usage: prime.iota path/to/raw/images
+Usage: prime.iota [OPTIONS] path/to/raw/images
 Generates two files, parameter file for IOTA (iota.param) and
 target file for cctbx.xfel (target.phil). Integrates a random
 subset of images without target cell. Outputs basic analysis.
@@ -19,7 +20,7 @@ Converts raw images into pickle format and crops to ensure that
 beam center is in center of image.
 
 Script mode
-Usage: prime.iota <script>.param
+Usage: prime.iota [OPTIONS] <script>.param
 Run using IOTA parameter file and target PHIL file generated from
 the dry run or auto mode. Make sure that IOTA parameter file has
 the path to the input image folder under "input". Converts raw
@@ -28,453 +29,201 @@ ensure that beam center is in center of image. Can also blank out
 beam stop shadow.
 
 """
-
 import os
 import sys
-import argparse
-import shutil
-from datetime import datetime
 
 from libtbx.easy_mp import parallel_map
 
 import prime.iota.iota_input as inp
-import prime.iota.iota_gridsearch as gs
-import prime.iota.iota_select as ps
-import prime.iota.iota_analysis as ia
+from prime.iota.iota_init import InitAll
+from prime.iota.iota_analysis import Analyzer
+import prime.iota.iota_image as img
 import prime.iota.iota_cmd as cmd
-import prime.iota.iota_conversion as i2p
-import prime.iota.iota_triage as itr
+import prime.iota.iota_misc as misc
 
-# Multiprocessor wrapper for grid search module
-def index_mproc_wrapper(current_img):
 
-  prog_count = mp_input_list.index(current_img)
-  n_int = len(mp_input_list)
-
-  gs_prog = cmd.ProgressBar(title='GRID SEARCH')
-  if prog_count < n_int:
-    prog_step = 100 / n_int
+def importer_wrapper(input_entry):
+  """ Multiprocessor wrapper for image conversion  """
+  prog_count = input_entry[0]
+  n_img = input_entry[1]
+  gs_prog = cmd.ProgressBar(title='IMPORTING IMAGES')
+  if prog_count < n_img:
+    prog_step = 100 / n_img
     gs_prog.update(prog_count * prog_step, prog_count)
   else:
     gs_prog.finished()
+  img_object = img.SingleImage(input_entry, init)
+  return img_object.import_image()
 
-  return gs.integration("grid", current_img, log_dir, gs_params)
-
-# Multiprocessor wrapper for selection module after grid search
-def sel_grid_mproc_wrapper(output_entry):
-
-  prog_count = mp_output_list.index(output_entry)
-  n_int = len(mp_output_list)
-
-  gs_prog = cmd.ProgressBar(title='SELECTING')
-  if prog_count < n_int:
-    prog_step = 100 / n_int
+def gs_importer_wrapper(input_entry):
+  """ Multiprocessor wrapper for image conversion  """
+  prog_count = input_entry[0]
+  n_img = input_entry[1]
+  image = input_entry[2][0]
+  imported_grid = input_entry[2][1]
+  image = [prog_count, n_img, image]
+  gs_prog = cmd.ProgressBar(title='IMPORTING IMAGES')
+  if prog_count < n_img:
+    prog_step = 100 / n_img
     gs_prog.update(prog_count * prog_step, prog_count)
   else:
     gs_prog.finished()
+  img_object = img.SingleImage(image, init, imported_grid)
+  return img_object.import_image()
 
-  return ps.best_file_selection("grid", gs_params, output_entry, log_dir)
-
-# Multiprocessor wrapper for final integration module
-def final_mproc_wrapper(current_img):
-
-  prog_count = sel_clean.index(current_img)
-  n_int = len(sel_clean)
-
-  gs_prog = cmd.ProgressBar(title='INTEGRATING')
-  if prog_count < n_int:
-    prog_step = 100 / n_int
-    gs_prog.update(prog_count * prog_step, prog_count)
-  else:
-    gs_prog.finished()
-
-  return gs.integration("final", current_img, log_dir, gs_params)
-
-def conversion_wrapper(img_entry):
-  """ Multiprocessor wrapper, for raw image to pickle conversion
-  """
-
-  prog_count = raw_input_list.index(img_entry)
-  n_img = len(raw_input_list)
-
+def conversion_wrapper(input_entry):
+  """ Multiprocessor wrapper for image conversion  """
+  prog_count = input_entry[0]
+  n_img = input_entry[1]
+  img_object = input_entry[2]
   gs_prog = cmd.ProgressBar(title='CONVERTING IMAGES')
   if prog_count < n_img:
     prog_step = 100 / n_img
     gs_prog.update(prog_count * prog_step, prog_count)
   else:
     gs_prog.finished()
+  return img_object.convert_image()
 
-  return i2p.convert_image(img_entry[0], img_entry[1], gs_params)
-
-
-def triage_mproc_wrapper(current_img):
-  """ Multiprocessor wrapper, image triage
-  """
-  prog_count = input_list.index(current_img)
-  n_int = len(input_list)
-
-  gs_prog = cmd.ProgressBar(title='TRIAGE')
-  if prog_count < n_int:
-    prog_step = 100 / n_int
+def grid_search_wrapper(input_entry):
+  """ Multiprocessor wrapper for image conversion  """
+  prog_count = input_entry[0]
+  n_img = input_entry[1]
+  img_object = input_entry[2]
+  gs_prog = cmd.ProgressBar(title='GRID SEARCH')
+  if prog_count < n_img:
+    prog_step = 100 / n_img
     gs_prog.update(prog_count * prog_step, prog_count)
   else:
     gs_prog.finished()
+  return img_object.integrate('grid search')
 
-  return itr.spotfinding_param_search(current_img, gs_params)
-
-# ============================================================================ #
-
-def iota_start(txt_out, gs_params, gs_range, input_dir_list,
-                    input_list, mp_input_list):
-
-  # Log starting info
-  inp.main_log(logfile, '{:=^100} \n'.format(' IOTA MAIN LOG '))
-
-  inp.main_log(logfile, '{:-^100} \n'.format(' SETTINGS FOR THIS RUN '))
-  inp.main_log(logfile, txt_out)
-
-  if gs_params.grid_search.flag_on:
-    inp.main_log(logfile, '{:-^100} \n\n'.format(' TARGET FILE ({}) CONTENTS '
-                                       ''.format(gs_params.target)))
-    with open(gs_params.target, 'r') as phil_file:
-      phil_file_contents = phil_file.read()
-    inp.main_log(logfile, phil_file_contents)
-
-    inp.main_log(logfile, '{:-^100} \n\n'.format(''))
-    inp.main_log(logfile, 'Found image files in the following folder(s):')
-    for folder in input_dir_list:
-      inp.main_log(logfile, str(os.path.abspath(folder)))
-    inp.main_log(logfile, '\nSpot-finding parameter grid search: ' \
-                  '{0} input files, spot height: {1} - {2}, '\
-                  'spot area: {3} - {4} \n'.format(len(input_list),
-                   gs_range[0], gs_range[1], gs_range[2], gs_range[3]))
-
-
-def run_integration(int_type, gs_params, mp_input_list):
-  """ Runs grid search in multiprocessing mode.
-
-      input: txt_out - text of *.param file, preserved for analysis
-             gs_params - parameters from *.param file in PHIL format
-             input_dir_list - list of input folder(s)
-             input_list - list of input files
-             mp_input_list - as above, but for multiprocessing
-  """
-
-  if int_type == 'grid':
-    inp.main_log(logfile, '{:-^100} \n\n'.format(' SPOTFINDING GRID SEARCH '))
-
-    # run grid search on multiple processes
-    cmd.Command.start("Spotfinding Grid Search")
-    parallel_map(iterable=mp_input_list,
-                 func=index_mproc_wrapper,
-                 processes=gs_params.n_processors,
-                 preserve_order = True)
-    cmd.Command.end("Spotfinding Grid Search -- DONE")
-
-  elif int_type == 'final':
-    inp.main_log(logfile, "\n\n{:-^80}\n".format(' FINAL INTEGRATION '))
-
-    cmd.Command.start("Final integration")
-    result_objects = parallel_map(iterable=mp_input_list,
-                                  func=final_mproc_wrapper,
-                                  processes=gs_params.n_processors,
-                                  preserve_exception_message=False)
-    cmd.Command.end("Final integration -- DONE ")
-
-    clean_results = [results for results in result_objects if results != []]
-    return clean_results
-
-def run_selection(sel_type, gs_params, mp_output_list):
-  """ Runs pickle_selection in multiprocessing mode.
-
-      input: gs_params - parameters from *.param file in PHIL format
-             mp_output_list - list of output folders, for multiprocessing
-
-      output: selection_results - list of images w/ spotfinding params
-  """
-  inp.main_log(logfile, '\n\n{:-^100} \n'.format(' PICKLE SELECTION '))
-
-  # clear list files from previous selection run
-  if os.path.isfile("{}/not_integrated.lst".format(gs_params.output)):
-    os.remove("{}/not_integrated.lst".format(gs_params.output))
-  if os.path.isfile("{}/prefilter_fail.lst".format(gs_params.output)):
-    os.remove("{}/prefilter_fail.lst".format(gs_params.output))
-  if os.path.isfile("{}/gs_selected.lst".format(gs_params.output)):
-    os.remove("{}/gs_selected.lst".format(gs_params.output))
-  if os.path.isfile("{}/mos_selected.lst".format(gs_params.output)):
-    os.remove("{}/mos_selected.lst".format(gs_params.output))
-  if os.path.isfile("{}/integrated.lst".format(gs_params.output)):
-    os.remove("{}/integrated.lst".format(gs_params.output))
-
-  if not gs_params.grid_search.flag_on:
-    inp.main_log(logfile, '\nSettings for this run:\n')
-    inp.main_log(logfile, txt_out)
-
-  for output_dir in output_dir_list:
-    inp.main_log(logfile, 'Found integrated pickles ' \
-                    'under {0}'.format(os.path.abspath(output_dir)))
-
-  if gs_params.selection.prefilter.flag_on == True:
-    prefilter = "ON"
+def selection_wrapper(input_entry):
+  """ Multiprocessor wrapper for image conversion  """
+  prog_count = input_entry[0]
+  n_img = input_entry[1]
+  img_object = input_entry[2]
+  gs_prog = cmd.ProgressBar(title='SELECTION')
+  if prog_count < n_img:
+    prog_step = 100 / n_img
+    gs_prog.update(prog_count * prog_step, prog_count)
   else:
-    prefilter = "OFF"
+    gs_prog.finished()
+  return img_object.select()
 
-  inp.main_log(logfile, 'Space group / unit cell prefilter '\
-                 'turned {0} \n\n'.format(prefilter))
-  inp.main_log(logfile, '{:-^100} \n'.format(' STARTING SELECTION '))
-
-  # run pickle selection on multiple processes
-  if sel_type == 'grid':
-    cmd.Command.start("Spotfinding Combination Selection")
-    selection_results = parallel_map(iterable=mp_output_list,
-                                     func=sel_grid_mproc_wrapper,
-                                     processes=gs_params.n_processors)
-    cmd.Command.end("Spotfinding Combination Selection -- DONE")
-
-  return selection_results
-
-
-def output_cleanup(gs_params):
-
-  int_list_file = os.path.abspath('{}/integrated.lst'.format(gs_params.output))
-  dest_dir = os.path.abspath("{}/integrated".format(gs_params.output))
-  os.makedirs(dest_dir)
-
-  with open(int_list_file, 'r') as int_file:
-    int_list = int_file.read().splitlines()
-
-  os.remove(int_list_file)
-
-  for int_file in int_list:
-    filename = os.path.basename(int_file)
-    dest_file = os.path.join(dest_dir, filename)
-
-    shutil.copyfile(int_file, dest_file)
-    shutil.rmtree(os.path.dirname(int_file))
-    with open(int_list_file, 'a') as f_int:
-        f_int.write('{}\n'.format(dest_file))
-
-
-
-def iota_exit(iota_version, now):
-  print '\n\nIOTA version {0}'.format(iota_version)
-  print '{}\n'.format(now)
-  sys.exit()
-
-def experimental(mp_input_list, gs_params, log_dir):
-  """EXPERIMENTAL SECTION: Contains stuff I just want to try out without
-     running the whole darn thing
-  """
-  print "IT WORKS!"
+def final_integration_wrapper(input_entry):
+  """ Multiprocessor wrapper for image conversion  """
+  prog_count = input_entry[0]
+  n_img = input_entry[1]
+  img_object = input_entry[2]
+  gs_prog = cmd.ProgressBar(title='INTEGRATING')
+  if prog_count < n_img:
+    prog_step = 100 / n_img
+    gs_prog.update(prog_count * prog_step, prog_count)
+  else:
+    gs_prog.finished()
+  return img_object.integrate('integrate')
 
 # ============================================================================ #
-
 if __name__ == "__main__":
 
-  iota_version = '1.74'
-  now = "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now())
-  logo = "\n\n"\
-   "     IIIIII            OOOOOOO        TTTTTTTTTT          A              \n"\
-   "       II             O       O           TT             A A             \n"\
-   "       II             O       O           TT            A   A            \n"\
-   ">------INTEGRATION----OPTIMIZATION--------TRIAGE-------ANALYSIS--------->\n"\
-   "       II             O       O           TT          A       A          \n"\
-   "       II             O       O           TT         A         A         \n"\
-   "     IIIIII            OOOOOOO            TT        A           A   v{}"\
-   "".format(iota_version)
+  # Initialize IOTA parameters and log
+  init = InitAll(iota_version, help_message)
+  init.run()
 
+  if init.params.selection.select_only.flag_on:
+    # Generate image objects and modify with saved grid search results
+    cmd.Command.start("Generating {} image objects".format(len(init.gs_img_objects)))
+    img_list = [[i, len(init.gs_img_objects) + 1, j] for i, j in enumerate(init.gs_img_objects, 1)]
+    img_objects = parallel_map(iterable  = img_list,
+                               func      = gs_importer_wrapper,
+                               processes = init.params.n_processors)
+    cmd.Command.end("Generating {} image objects -- DONE ".format(len(init.gs_img_objects)))
 
-
-  # Read arguments
-  parser = argparse.ArgumentParser(prog = 'prime.iota',
-            formatter_class=argparse.RawDescriptionHelpFormatter,
-            description=(help_message),
-            epilog=('\n{:-^70}\n'.format('')))
-  parser.add_argument('path', type=str, nargs = '?', default = None,
-            help = 'Path to data or file with IOTA parameters')
-  parser.add_argument('--version', action = 'version',
-            version = 'IOTA {}'.format(iota_version),
-            help = 'Prints version info of IOTA')
-  parser.add_argument('-l', action = 'store_true',
-            help = 'Output a file (input.lst) with input image paths and stop')
-  parser.add_argument('-c', action = 'store_true',
-            help = 'Convert raw images to pickles and stop')
-  parser.add_argument('-d', action = 'store_true',
-            help = 'Generate default iota.param and target.phil files and stop')
-  parser.add_argument('-t', action = 'store_true',
-            help = 'Find and exclude blank images using basic spotfinding')
-  parser.add_argument('-r', type=int, nargs=1, default=0,
-            help = 'Run IOTA with a random subset of images, e.g. "-r 5"')
-  parser.add_argument('-n', type=int, nargs=1, default=0,
-            help = 'Specify a number of cores for a multiprocessor run"')
-
-  args = parser.parse_args()
-  print logo
-
-  if args.path == None:
-    print help_message
-    if args.d:
-      help_out, txt_out = inp.print_params()
-      print '\n{:-^70}\n'.format('IOTA Parameters')
-      print help_out
-      inp.write_defaults(os.path.abspath(os.path.curdir), txt_out)
-    iota_exit(iota_version, now)
   else:
-    print '\n{}\n'.format(now)
-    carg = os.path.abspath(args.path)
-    if os.path.exists(carg):
+    # Import and process raw images or image pickles
+    # Make list of image objects
+    cmd.Command.start("Importing {} images".format(len(init.input_list)))
+    img_list = [[i, len(init.input_list) + 1, j] for i, j in enumerate(init.input_list, 1)]
+    img_objects = parallel_map(iterable  = img_list,
+                               func      = importer_wrapper,
+                               processes = init.params.n_processors)
+    cmd.Command.end("Importing {} images -- DONE ".format(len(init.input_list)))
 
-      # If user provided a parameter file
-      if os.path.isfile(carg) and os.path.basename(carg).endswith('.param'):
-        gs_params, txt_out = inp.process_input([carg])
+    # Check / convert / triage images
+    cmd.Command.start("Checking / converting {} images".format(len(img_objects)))
+    misc.main_log(init.logfile, '\n{:-^100}\n'\
+                                 ''.format(' IMAGE CHECK / CONVERSION / TRIAGE '))
+    img_list = [[i, len(img_objects) + 1, j] for i, j in enumerate(img_objects, 1)]
+    img_objects = parallel_map(iterable  = img_list,
+                               func      = conversion_wrapper,
+                               processes = init.params.n_processors)
 
-      # If user provided a data folder
-      elif os.path.isdir(carg):
-        print "\nIOTA will run in AUTO mode:\n"
-        gs_params, txt_out = inp.auto_mode(os.path.abspath(os.path.curdir),
-                                           os.path.abspath(carg), now)
-    # If user provided gibberish
+    # Remove rejected images from image object list
+    acc_img_objects = [i.triage for i in img_objects if i.triage == 'accepted']
+    cmd.Command.end("Accepted {} of {} images -- DONE "\
+                    "".format(len(acc_img_objects), len(img_objects)))
+
+    # Exit if none of the images have diffraction
+    if len(acc_img_objects) == 0:
+      misc.main_log(init.logfile, 'No images have diffraction!', True)
+      misc.iota_exit(iota_version)
     else:
-      print "ERROR: Invalid input! Need parameter filename or data folder."
-      iota_exit(iota_version, now)
+      misc.main_log(init.logfile, "{} out of {} images have diffraction"\
+                                         "".format(len(acc_img_objects), 
+                                                   len(img_objects)))
 
-  if args.r > 0:
-    gs_params.advanced.random_sample.flag_on = True
-    gs_params.advanced.random_sample.number = args.r[0]
+    # Check for -c option and exit if true
+    if init.params.image_conversion.convert_only:
+      misc.iota_exit(iota_version)
 
-  if args.n > 0:
-    gs_params.n_processors = args.n[0]
+    # Grid search
+    cmd.Command.start("Grid Search")
+    misc.main_log(init.logfile, '\n{:-^100}\n'\
+                                 ''.format(' GRID SEARCH '))
+    img_list = [[i, len(img_objects) + 1, j] for i, j in enumerate(img_objects, 1)]
+    img_objects = parallel_map(iterable  = img_list,
+                               func      = grid_search_wrapper,
+                               processes = init.params.n_processors)
+    cmd.Command.end("Grid Search -- DONE ")
 
-  input_list = inp.make_input_list(gs_params)
+  # Selection
+  cmd.Command.start("Selecting best integration result")
+  misc.main_log(init.logfile, '\n{:-^100}\n'\
+                               ''.format(' SELECTION '))
+  img_list = [[i, len(img_objects) + 1, j] for i, j in enumerate(img_objects, 1)]
+  img_objects = parallel_map(iterable  = img_list,
+                             func      = selection_wrapper,
+                             processes = init.params.n_processors)
+  cmd.Command.end("Selecting best integration result -- DONE ")
 
-  if args.l:
-    list_file = os.path.abspath("{}/input.lst".format(os.curdir))
-    print '\nIOTA will run in LIST INPUT ONLY mode'
-    print 'Input list in {} \n\n'.format(list_file)
-    with open(list_file, "w") as lf:
-      for input_file in input_list:
-        print input_file
-        lf.write('{}\n'.format(input_file))
-    print '\nExiting...\n\n'
-    iota_exit(iota_version, now)
-
-  # Initiate log file
-  logfile = os.path.abspath(gs_params.logfile)
-  inp.main_log_init(logfile)
-
-  # Check if input needs to be converted to pickle format; also check if input
-  # images need to be cropped / padded to be square, w/ beam center in the
-  # center of image. If these steps are needed, carry them out
-  if gs_params.grid_search.flag_on and gs_params.image_conversion.convert_images:
-    img_check = i2p.check_image(input_list[0], gs_params.image_conversion.square_mode)
-    if img_check == 'image' or img_check == 'raw pickle':
-      converted_img_list, input_folder = inp.make_raw_input(input_list, gs_params)
-      raw_input_list = zip(input_list, converted_img_list)
-
-      inp.main_log(logfile, "\n\n{:-^100}\n".format('IMAGE CONVERSION'))
-
-      # convert images
-      cmd.Command.start("Converting {} images".format(len(raw_input_list)))
-      parallel_map(iterable=raw_input_list,
-                   func=conversion_wrapper,
-                   processes=gs_params.n_processors)
-      cmd.Command.end("Converting {} images -- DONE ".format(len(raw_input_list)))
-
-      input_list = converted_img_list
-    elif img_check == 'converted pickle':
-      input_folder = os.path.abspath(os.path.dirname(os.path.commonprefix(input_list)))
-    else:
-      print "ERROR: Unknown image format. Please check your input"
-      iota_exit(iota_version, now)
-
-    if args.c:
-      iota_exit(iota_version, now)
+  # Exit if no images integrated
+  int_img_objects = [i.final for i in img_objects if i.final['final'] != None]
+  if len(int_img_objects) == 0:
+    misc.main_log(init.logfile, 'None of the images successfully integrated!', True)
+    misc.iota_exit(iota_version)
   else:
-    input_folder = os.path.abspath(os.path.dirname(os.path.commonprefix(input_list)))
-    blank_img = []
+    misc.main_log(init.logfile, "\n{} out of {} images successfully integrated"\
+                                       "".format(len(int_img_objects), 
+                                                 len(img_objects)))
+  # Integration of selected pickles
+  cmd.Command.start("Final integration")
+  misc.main_log(init.logfile, '\n{:-^100}\n'\
+                               ''.format(' FINAL INTEGRATION '))
+  img_list = [[i, len(img_objects) + 1, j] for i, j in enumerate(img_objects, 1)]
+  img_objects= parallel_map(iterable   = img_list,
+                            func       = final_integration_wrapper,
+                            processes  = init.params.n_processors)
+  cmd.Command.end("Final integration -- DONE ")
 
-  if (args.t or gs_params.image_triage.flag_on) and gs_params.grid_search.flag_on:
-    cmd.Command.start("Image triage")
-    inp.main_log(logfile, "\n{:-^100}\n".format('IMAGE TRIAGE'))
-    triage_list = parallel_map(iterable=input_list,
-                               func=triage_mproc_wrapper,
-                               processes=gs_params.n_processors,
-                               preserve_order = True)
-    accepted_img = [i for i in triage_list if i != None]
-    inp.main_log(logfile, '\nCOMPLETE! {} out of {} files have diffraction\n\n'\
-                          ''.format(len(accepted_img), len(input_list)))
-    cmd.Command.end("Image triage ({}/{} images have diffraction) -- DONE"\
-                    "".format(len(accepted_img), len(input_list)))
 
-    if len(accepted_img) > 0:
-      blank_img = [i for i in input_list if i not in accepted_img]
-      input_list = [i for i in input_list if i in accepted_img]
-    else:
-      print "No images with usable diffraction found!"
-      sys.exit()
-  else:
-    blank_img = []
+  # Analysis of integration results
+  analysis = Analyzer(img_objects, init.logfile, iota_version, init.now)
+  analysis.print_results()
+  analysis.unit_cell_analysis(init.params.advanced.cluster_threshold,
+                              init.int_base)
+  analysis.print_summary(init.int_base)
+  analysis.make_prime_input(init.int_base)
 
-  # generate general input
-  gs_range, input_dir_list, output_dir_list, log_dir, mp_input_list,\
-  mp_output_list = inp.generate_input(gs_params, input_list, input_folder)
+  misc.iota_exit(iota_version)
 
-  # Print input image list and blank image list to files
-  with open(os.path.abspath('{}/input_images.lst'.format(gs_params.output)), "w") as lf:
-    for input_file in input_list:
-      lf.write('{}\n'.format(input_file))
-
-  with open(os.path.abspath('{}/blank_images.lst'.format(gs_params.output)), "w") as bf:
-    for img in blank_img:
-      bf.write('{}\n'.format(img))
-
-  # Write out starting log entries
-  iota_start(txt_out, gs_params, gs_range, input_dir_list,
-                    input_list, mp_input_list)
-
-  # debugging/experimental section - anything goes here
-  if gs_params.advanced.experimental:
-    print "\nIOTA will run in EXPERIMENTAL mode:\n"
-    experimental(mp_input_list, gs_params, log_dir)
-    iota_exit(iota_version, now)
-
-  # run grid search
-  if gs_params.grid_search.flag_on:
-    n_int = len(mp_input_list)
-    prog_count = 0
-    run_integration("grid", gs_params, mp_input_list)
-
-  # run pickle selection
-  selection_results = run_selection('grid', gs_params, mp_output_list)
-  sel_clean = [entry for entry in selection_results \
-                     if entry != None and entry != []]
-  if sel_clean == []:
-    print "\nNO IMAGES INTEGRATED! Check input and try again.\n"
-    inp.main_log(logfile,"\nNO IMAGES INTEGRATED!\n")
-    iota_exit(iota_version, now)
-
-  # run final integration
-  final_int = run_integration("final", gs_params, sel_clean)
-
-  if gs_params.advanced.debug:
-    for i in final_int: print final_int
-    sys.exit()
-
-  # print final integration results and summary
-  ia.print_results(final_int, gs_range, logfile)
-
-  if len(final_int) > 1:
-    sg, uc, out_file = ia.unit_cell_analysis(gs_params.advanced.cluster_threshold,
-         logfile, os.path.abspath("{}/integrated.lst".format(gs_params.output)))
-  else:
-    sg, uc = ia.unit_cell_single(logfile, final_int)
-    out_file = os.path.abspath("{}/integrated.lst".format(gs_params.output))
-
-  ia.print_summary(gs_params, len(input_list), logfile, iota_version, now)
-  ia.make_prime_input(final_int, sg, uc, out_file, iota_version, now)
-
-  if gs_params.advanced.output_type == 'clean' and gs_params.grid_search.flag_on:
-    if os.path.isfile(os.path.abspath("{}/integrated.lst".format(gs_params.output))):
-      output_cleanup(gs_params)
-
-  iota_exit(iota_version, now)
+################################################################################

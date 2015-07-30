@@ -2363,6 +2363,7 @@ prime/api.py -text
 prime/command_line/__init__.py -text
 prime/command_line/iota.py -text
 prime/command_line/iotacc.py -text
+prime/command_line/linear_iota.py -text
 prime/command_line/postrefine.py -text
 prime/command_line/spot_param_visualizer.py -text
 prime/command_line/viewstats.py -text
@@ -2371,11 +2372,11 @@ prime/iota/__init__.py -text
 prime/iota/double_gauss.py -text
 prime/iota/iota_analysis.py -text
 prime/iota/iota_cmd.py -text
-prime/iota/iota_conversion.py -text
-prime/iota/iota_gridsearch.py -text
+prime/iota/iota_image.py -text
+prime/iota/iota_init.py -text
 prime/iota/iota_input.py -text
-prime/iota/iota_select.py -text
-prime/iota/iota_triage.py -text
+prime/iota/iota_integrate.py -text
+prime/iota/iota_misc.py -text
 prime/iota/iota_vis_integration.py -text
 prime/iota/visualize_integration.py -text
 prime/libtbx_config -text

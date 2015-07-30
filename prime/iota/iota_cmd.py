@@ -4,9 +4,12 @@ from __future__ import division
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
 Last Changed: 06/18/2015
-Description : Generates a progress bar. Adapted from DIALS progress bar (nearly
-              a copy thereof with small alterations for IOTA purposes).
+Description : Miscellaneous classes. Mostly: progress bar. Adapted from DIALS
+              progress bar (nearly a copy thereof with small alterations for
+              IOTA purposes). Also: stdout / stderr capturing.
 '''
+
+import sys
 
 class ProgressBarTimer:
   """ A simple timer for the progress bar. """
