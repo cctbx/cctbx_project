@@ -56,6 +56,9 @@ grid_spacing = 1./5
   .type = float
 scaling = *sigma volume
   .type = choice(multi=False)
+rolling_window_threshold = 0
+  .type = float(value_min=0)
+  .help = Threshold for calculating statistics across rolling windows of residues
 skip_alt_confs = True
   .type = bool
 nproc = 1
@@ -168,10 +171,11 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
     quiet=False,
     out=out)
   make_header("Inspecting chains", out=out)
+  rolling_window_threshold = params.rolling_window_threshold
   rolling = em_rolling.main(
     ringer_results=results,
     dir_name=plots_dir,
-    threshold=scoring.optimal_threshold,
+    threshold=rolling_window_threshold, #scoring.optimal_threshold,
     graph=False,
     save=True,
     out=out)
