@@ -30,7 +30,14 @@ def exercise_emringer_residue_scan():
     assert approx_equal(results[i]._angles[1].peak_chi, peak_list[i])
     # Make sure the peak rhos are correct
     assert approx_equal(results[i]._angles[1].peak_rho, peak_rhos[i])
-  results, scoring, rolling = emringer.run([pdb_file, map_file, "sampling_angle=2"], out=null_out())
+  results, scoring2, rolling2 = emringer.run([pdb_file, map_file, "rolling_window_threshold=0.5"], out=null_out())
+  assert rolling.threshold == 0
+  assert rolling2.threshold == 0.5
+  #print rolling.results_a[0]
+  #print rolling2.results_a[0]
+  # just making sure this doesn't break!
+  results, scoring2, rolling = emringer.run([pdb_file, map_file, "sampling_angle=2"], out=null_out())
+  
 
 # FIXME this will fail right now, which is deliberate
 def exercise_emringer_out_of_bounds():
