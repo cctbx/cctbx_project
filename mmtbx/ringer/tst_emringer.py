@@ -37,7 +37,7 @@ def exercise_emringer_residue_scan():
   #print rolling2.results_a[0]
   # just making sure this doesn't break!
   results, scoring2, rolling = emringer.run([pdb_file, map_file, "sampling_angle=2"], out=null_out())
-  
+
 
 # FIXME this will fail right now, which is deliberate
 def exercise_emringer_out_of_bounds():
