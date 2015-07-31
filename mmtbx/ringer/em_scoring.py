@@ -13,6 +13,7 @@ Reference:
 from __future__ import division
 from mmtbx.ringer import Peak, Peaklist
 from libtbx import easy_pickle
+from libtbx.math_utils import iceil
 from collections import OrderedDict
 import math
 import os
@@ -24,15 +25,15 @@ Residue_codes = ["ARG","ASN","ASP","CYS","GLU","GLN","HIS",
 
 Ignored_codes = ["ALA","GLY","PRO","THR","ILE","VAL"]
 
-def statistic(binned_peaks):
+def statistic(binned_peaks, n_angles=72):
   """
   This is the main pair of statistics used for the plots.  Normal approximation
   to the binomial theorem.
   """
   rotamer_count = sum(binned_peaks[0::2])
   total_count = sum(binned_peaks)
-  stdev = math.sqrt(39.0/72*33.0/72*total_count)
-  mean= total_count*39.0/72
+  stdev = math.sqrt(39.0/n_angles*33.0/n_angles*total_count)
+  mean= total_count*39.0/n_angles
   # Hacky way to avoid zero division
   rotamer_ratio=rotamer_count/(total_count+0.000000000000000000001)
   zscore=(rotamer_count-mean)/(stdev+0.000000000000000000001)
@@ -106,7 +107,7 @@ def calculate_binned_counts(peak_count, first=60, binsize=12,n_angles=72):
   binned_output=[0]*bins
   for i in range(bins):
     for j in range(binsize):
-      binned_output[i] += peak_count[int(first_loc+i*binsize-binsize/2+j)%72]
+      binned_output[i] += peak_count[int(first_loc+i*binsize-binsize/2+j)%n_angles]
   return binned_output
 
 def calc_ratio(count_list, sampling_angle=5):
@@ -115,13 +116,13 @@ def calc_ratio(count_list, sampling_angle=5):
   first binning the peaks.
   """
   # Calculate the same statistics as the "statistic" call, but do it without ifrst binning the peaks.
-  total_angles=360/sampling_angle
+  total_angles=iceil(360.0/sampling_angle)
   binsize=int(total_angles/6)
   first_loc=60/sampling_angle
   binned_list=[0]*6
   for i in range(6):
     for j in range(binsize):
-      binned_list[i] += count_list[int(first_loc+i*binsize-binsize/2+j)%72]
+      binned_list[i] += count_list[int(first_loc+i*binsize-binsize/2+j)%total_angles]
   rotamer_count = sum(binned_list[0::2])
   total_count = sum(binned_list)
   stdev = math.sqrt((total_angles/2+3)*(total_angles/2-3)/(total_angles**2)*total_count)
@@ -159,6 +160,7 @@ class main (object) :
       rotamer_ratios_residues[i]=[]
       zscores_residues[i]=[]
     binned_peaks={}
+    n_angles = iceil(360.0 / sampling_angle)
     self.zscores=[]
     self.rotamer_ratios=[]
     self.non_zero_thresholds=[]
@@ -172,9 +174,9 @@ class main (object) :
           threshold
       self.peaks[threshold]=Peaklist()
       Weird_residues[threshold]=Peaklist()
-      self.peak_count[threshold] = [0]*72
+      self.peak_count[threshold] = [0]*n_angles
       for i in Residue_codes:
-        residue_peak_count[i][threshold]=[0]*72
+        residue_peak_count[i][threshold]=[0]*n_angles
       for i in waves:
         self.peaks[threshold].append_lists(calculate_peaks(i, threshold))
       for peak in self.peaks[threshold].get_peaks():
@@ -186,7 +188,7 @@ class main (object) :
       binned_peaks[threshold] = calculate_binned_counts(self.peak_count[threshold], 60)
       # print "For threshold %.3f" % threshold
       # print "Sample size = %d" % sum(binned_peaks[threshold])
-      zscore_n, rotamer_ratio_n = statistic(binned_peaks[threshold])
+      zscore_n, rotamer_ratio_n = statistic(binned_peaks[threshold], n_angles)
       if rotamer_ratio_n==0:
         break
       for i in Residue_codes:
@@ -205,7 +207,8 @@ class main (object) :
           file_name=out_file,
           threshold=threshold,
           first=60,
-          title=RMSD_statistic(self.peaks[threshold].peaks))
+          title=RMSD_statistic(self.peaks[threshold].peaks),
+          n_angles=n_angles)
         print >> out, "Saved plot to %s" % out_file
       # plot_rotamers(binned_peaks[threshold], file, threshold, args.first_rotamer)
     #   print "Outliers at threshold %.2f: %s" % (threshold, str(Weird_residues[threshold]))
@@ -302,7 +305,7 @@ def plot_rotamers (binned_output, threshold, first):
   plt.savefig('%s.output/%.3f.Phenixed_Histogram.png' % (filename,threshold))
   plt.close()
 
-def _plot_peaks (fig, peak_count, threshold, first, title=0):
+def _plot_peaks (fig, peak_count, threshold, first, title=0, n_angles=72):
   # rcParams.update({'figure.autolayout': True})
   colors = ['#F15854']*6+['#5DA5DA']*13+['#F15854']*11+['#5DA5DA']*13+['#F15854']*11+['#5DA5DA']*13+['#F15854']*5
   ax = fig.add_subplot(111)
@@ -312,7 +315,7 @@ def _plot_peaks (fig, peak_count, threshold, first, title=0):
   ax.tick_params(axis='x',which='both',top='off')
   ax.tick_params(axis='y',which='both',right='off')
   peak_count_extra = peak_count+[peak_count[0]]
-  angles = [i*5 for i in range(0,73)]
+  angles = [i*5 for i in range(0,n_angles+1)]
   ax.bar(angles,peak_count_extra, width=5, align='center', color=colors)
   ax.set_title('Peak Counts', y=1.05) #  - Threshold %.3f' % (threshold)
   ax.set_xticks([i*60 for i in range(7)])
@@ -320,10 +323,10 @@ def _plot_peaks (fig, peak_count, threshold, first, title=0):
   ax.set_xlabel(r'Chi1 Angle ($\degree$)', labelpad=10)
   ax.set_ylabel("Peak Count", labelpad=10)
 
-def plot_peaks (peak_count, file_name, threshold, first, title=0) :
+def plot_peaks (peak_count, file_name, threshold, first, title=0, n_angles=72) :
   import matplotlib.pyplot as plt
   fig = plt.figure(2, figsize=(5,4))
-  _plot_peaks(fig, peak_count, threshold, first, title)
+  _plot_peaks(fig, peak_count, threshold, first, title, n_angles=n_angles)
   plt.savefig(file_name)
   plt.close()
 

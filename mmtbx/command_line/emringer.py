@@ -266,7 +266,7 @@ class RingerFrame (plots.plot_frame) :
     self.plot_panel.show_residue(self.results[selection])
 
 class RingerPlot (plots.plot_container) :
-  def show_residue (self, residue) :
+  def show_residue (self, residue, show_background_boxes=False) :
     if (self.disabled) : return
     self.figure.clear()
     subplots = []
@@ -284,8 +284,9 @@ class RingerPlot (plots.plot_container) :
       p.axvline(chi.angle_current, color='b', linewidth=2, linestyle='--')
       p.axvline(chi.peak_chi, color='g', linewidth=2, linestyle = '--')
       p.axhline(0, color=(0.4,0.4,0.4), linestyle='--', linewidth=1)
-      p.axhspan(0.3,1,facecolor="green",alpha=0.5)
-      p.axhspan(-1,0.3,facecolor="grey",alpha=0.5)
+      if show_background_boxes:
+        p.axhspan(0.3,1,facecolor="green",alpha=0.5)
+        p.axhspan(-1,0.3,facecolor="grey",alpha=0.5)
       p.set_xlim(0,360)
       ax = p.get_axes()
       ax.set_ylabel("Rho")
