@@ -134,7 +134,7 @@ class Downloader(object):
 
     try:
       file_size = int(socket.info().getheader('Content-Length'))
-    except:
+    except: # intentional
       file_size = 0
 
     remote_mtime = 0
@@ -812,7 +812,7 @@ class Builder(object):
                 os.makedirs(filename)
               elif upperdirs and not os.path.exists(upperdirs):
                 os.makedirs(upperdirs)
-            except: pass
+            except Exception, e: pass
             if not is_directory:
               source = z.open(member)
               target = file(filename, "wb")
