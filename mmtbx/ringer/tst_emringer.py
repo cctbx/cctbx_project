@@ -1,8 +1,11 @@
 
 from __future__ import division
 from mmtbx.ringer import em_scoring as score
-from libtbx.test_utils import approx_equal
-from libtbx.utils import null_out
+from mmtbx.command_line import emringer
+from iotbx.file_reader import any_file
+from scitbx.array_family import flex
+from libtbx.test_utils import approx_equal, Exception_expected
+from libtbx.utils import null_out, Sorry
 import libtbx.load_env
 import os.path
 
@@ -27,6 +30,31 @@ def exercise_emringer_residue_scan():
     assert approx_equal(results[i]._angles[1].peak_chi, peak_list[i])
     # Make sure the peak rhos are correct
     assert approx_equal(results[i]._angles[1].peak_rho, peak_rhos[i])
+  results, scoring, rolling = emringer.run([pdb_file, map_file, "sampling_angle=2"], out=null_out())
+
+# FIXME this will fail right now, which is deliberate
+def exercise_emringer_out_of_bounds():
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/mmtbx/em_ringer/tst_emringer_model.pdb",
+    test=os.path.isfile)
+  map_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/mmtbx/em_ringer/tst_emringer_map.ccp4",
+    test=os.path.isfile)
+  assert (not None in [pdb_file, map_file])
+  pdb_in = any_file(pdb_file)
+  xyz = pdb_in.file_object.hierarchy.atoms().extract_xyz()
+  xyz += flex.vec3_double(xyz.size(), (200., 0.0, 0.0))
+  pdb_in.file_object.hierarchy.atoms().set_xyz(xyz)
+  with open("tst_emringer_shifted.pdb", "w") as f:
+    f.write(pdb_in.file_object.hierarchy.as_pdb_string(
+      crystal_symmetry=pdb_in.file_object.input.crystal_symmetry()))
+  args = ["tst_emringer_shifted.pdb", map_file]
+  try:
+    results, s, r = emringer.run(args, out=null_out())
+  except Sorry as e:
+    pass
+  else:
+    raise Exception_expected
 
 def exercise_emringer_pickle_loading():
   pkl_file = libtbx.env.find_in_repositories(
@@ -75,4 +103,8 @@ if __name__=='__main__':
     if(keep_going):
       from mmtbx.command_line import emringer
       exercise_emringer_residue_scan()
+      # FIXME
+      #exercise_emringer_out_of_bounds()
+      #w, t = exercise_emringer_pickle_loading()
+      #exercise_emringer_peakfinding(w)
       print "OK"
