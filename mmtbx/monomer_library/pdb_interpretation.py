@@ -122,6 +122,7 @@ altloc_weighting_params = """\
 restraints_library_str = """
   restraints_library
     .short_caption = Restraints library selection
+    .style = box auto_align
   {
     cdl = True
       .type = bool
@@ -158,6 +159,7 @@ master_params_str = """\
       collapsing in on the region missing atoms.  For conserving geometry \
       quality at low resolution, the more flexible reference model \
       restraints should be used instead.
+    .style = box auto_align
   {
     enabled = False
       .type = bool
@@ -232,13 +234,14 @@ master_params_str = """\
     .help = Use neutron X-H distances (which are longer than X-ray ones)
   resolution_dependent_restraints
     .short_caption = Load restraints based on resolution range
+    .style = box auto_align
   {
     load = False
       .type = bool
       .short_caption = Load restraints based on resolution range
     resolution = Auto
       .type = float
-      .short_caption = Resoltion to use where determining resolution range
+      .short_caption = Resolution to use where determining resolution range
     resolution_range = high *med low
       .type = choice
     high_resolution_range_limit = 1.5

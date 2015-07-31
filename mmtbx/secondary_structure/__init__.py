@@ -22,10 +22,10 @@ import time
 
 sec_str_master_phil_str = """
 secondary_structure
-  .style = box auto_align
+  .style = box auto_align hidden
 {
   enabled = False
-    .short_caption = Secondary structure restraints
+    .short_caption = Use secondary structure restraints
     .type = bool
     .style = noauto bold
   protein
