@@ -10,10 +10,14 @@ legend = """phenix.tls_analysis:
   Given PDB file with TLS records analyze each (T,L,S) triplet and interpret it
   in terms of parameters of elemental motions (rotations and translations).
 
-How to run:
-  phenix.tls_analysis model.pdb
+Citation:
+  From deep TLS validation to ensembles of atomic models built from elemental
+  motions
+  Urzhumtsev,A., Afonine,P.V., Van Benschoten,A.H., Fraser,J.S. & Adams,P.D.
+  Acta Cryst. (2015). D71
 
-"""
+How to run:
+  phenix.tls_analysis model.pdb"""
 
 def run(args):
   t0 = time.time()
