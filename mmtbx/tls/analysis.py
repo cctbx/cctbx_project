@@ -88,14 +88,15 @@ class run(object):
     self.Lxx, self.Lyy, self.Lzz = None, None, None
     self.Sxx, self.Syy, self.Szz = None, None, None
     # set at step B
-    self.w = None
+    self.w_15 = None # formula (15)
+    self.w = None # formula (16)
     self.T_CL = None
     self.D_WL = None
     # set at step C
     self.t_S = None
-    self.sx_bar = 0
-    self.sy_bar = 0
-    self.sz_bar = 0
+    self.sx = 0
+    self.sy = 0
+    self.sz = 0
     self.C_L_t_S = None
     self.V_L = None
     self.S_C = None
@@ -103,6 +104,7 @@ class run(object):
     self.V_V = None
     self.R_MV = None
     self.v_x, self.v_y, self.v_z = None, None, None
+    self.v_x_M, self.v_y_M, self.v_z_M = None, None, None # formula (40)
     self.tx, self.ty, self.tz = None, None, None
     # all steps
     self.step_A()
@@ -176,10 +178,11 @@ class run(object):
     else:
       wx_lz =-self.S_L[7]/self.Lzz
       wy_lz = self.S_L[6]/self.Lzz
+    # formuala (15)...
     w_lx = matrix.col((0,     wy_lx, wz_lx))
     w_ly = matrix.col((wx_ly,     0, wz_ly))
     w_lz = matrix.col((wx_lz, wy_lz,     0))
-    self.w = group_args(
+    self.w_15 = group_args(
       wy_lx = wy_lx,
       wz_lx = wz_lx,
       wx_ly = wx_ly,
@@ -192,6 +195,24 @@ class run(object):
     self.show_vector(x=w_lx, title="w_lx, eq.(15)")
     self.show_vector(x=w_ly, title="w_ly, eq.(15)")
     self.show_vector(x=w_lz, title="w_lz, eq.(15)")
+    # ... but really we want (16)
+    w_lx = matrix.col(((wx_ly+wx_lz)/2.,            wy_lx,            wz_lx)) # overwrite inplace
+    w_ly = matrix.col((           wx_ly, (wy_lx+wy_lz)/2.,            wz_ly)) # overwrite inplace
+    w_lz = matrix.col((           wx_lz,            wy_lz, (wz_lx+wz_ly)/2.)) # overwrite inplace
+    self.w = group_args(
+      wy_lx = wy_lx,
+      wz_lx = wz_lx,
+      wx_ly = wx_ly,
+      wz_ly = wz_ly,
+      wx_lz = wx_lz,
+      wy_lz = wy_lz,
+      w_lx = w_lx,
+      w_ly = w_ly,
+      w_lz = w_lz)
+    self.show_vector(x=w_lx, title="w_lx, eq.(16)")
+    self.show_vector(x=w_ly, title="w_ly, eq.(16)")
+    self.show_vector(x=w_lz, title="w_lz, eq.(16)")
+    #
     d11 = wz_ly**2*self.Lyy + wy_lz**2*self.Lzz
     d22 = wz_lx**2*self.Lxx + wx_lz**2*self.Lzz
     d33 = wy_lx**2*self.Lxx + wx_ly**2*self.Lyy
@@ -343,29 +364,29 @@ class run(object):
               0,        0, self.t_S])
     self.S_C = truncate(m=matrix.sqr(self.S_C))
     self.show_matrix(x=self.S_C, title="S_C, (26)")
-    # find sx_bar, sy_bar, sz_bar
+    # find sx, sy, sz
     if(self.is_zero(self.Lxx)):
       if(not self.is_zero(self.S_C[0])):
         raise Sorry("Step C: incompatible L_L and S_C matrices.")
     else:
-      self.sx_bar = truncate(m=self.S_C[0]/self.Lxx)
+      self.sx = truncate(m=self.S_C[0]/self.Lxx)
     if(self.is_zero(self.Lyy)):
       if(not self.is_zero(self.S_C[4])):
         raise Sorry("Step C: incompatible L_L and S_C matrices.")
     else:
-      self.sy_bar = truncate(m=self.S_C[4]/self.Lyy)
+      self.sy = truncate(m=self.S_C[4]/self.Lyy)
     if(self.is_zero(self.Lzz)):
       if(not self.is_zero(self.S_C[8])):
         raise Sorry("Step C: incompatible L_L and S_C matrices.")
     else:
-      self.sz_bar = truncate(m=self.S_C[8]/self.Lzz)
-    self.show_number(x=[self.sx_bar,self.sy_bar,self.sz_bar],
-      title="Screw parameters (section 4.5): sx_bar,sy_bar,sz_bar:")
+      self.sz = truncate(m=self.S_C[8]/self.Lzz)
+    self.show_number(x=[self.sx,self.sy,self.sz],
+      title="Screw parameters (section 4.5): sx,sy,sz:")
     # compose C_L_t_S (26), and V_L (27)
     self.C_L_t_S = matrix.sqr(
-      [self.sx_bar*self.S_C[0],                       0,                       0,
-                             0, self.sy_bar*self.S_C[4],                       0,
-                             0,                       0, self.sz_bar*self.S_C[8]])
+      [self.sx*self.S_C[0],                   0,                   0,
+                         0, self.sy*self.S_C[4],                   0,
+                         0,                   0, self.sz*self.S_C[8]])
     self.C_L_t_S = truncate(m=self.C_L_t_S)
     self.show_matrix(x=self.C_L_t_S, title="C_L(t_S) (26)")
     self.V_L = truncate(m=matrix.sqr(self.T_CL - self.C_L_t_S))
@@ -391,13 +412,13 @@ class run(object):
        self.v_x[2], self.v_y[2], self.v_z[2]])
     self.V_V = truncate(m=R.transpose()*self.V_L*R)
     self.show_matrix(x=self.V_V, title="V_V")
-    v_x_M = self.R_ML*self.v_x
-    v_y_M = self.R_ML*self.v_y
-    v_z_M = self.R_ML*self.v_z
+    self.v_x_M = self.R_ML*self.v_x
+    self.v_y_M = self.R_ML*self.v_y
+    self.v_z_M = self.R_ML*self.v_z
     self.R_MV = matrix.sqr(
-      [v_x_M[0], v_y_M[0], v_z_M[0],
-       v_x_M[1], v_y_M[1], v_z_M[1],
-       v_x_M[2], v_y_M[2], v_z_M[2]])
+      [self.v_x_M[0], self.v_y_M[0], self.v_z_M[0],
+       self.v_x_M[1], self.v_y_M[1], self.v_z_M[1],
+       self.v_x_M[2], self.v_y_M[2], self.v_z_M[2]])
 
   def check_33_34_35(self, a_s, b_s, c_s):
     if(not ((a_s<0 or self.is_zero(a_s)) and
@@ -507,10 +528,13 @@ class run(object):
       w_M_ly = self.R_ML*self.w.w_ly,
       w_M_lz = self.R_ML*self.w.w_lz,
       # Correlation shifts sx,sy,sz for libration
-      sx = self.sx_bar,
-      sy = self.sy_bar,
-      sz = self.sz_bar,
+      sx = self.sx,
+      sy = self.sy,
+      sz = self.sz,
       # Vectors defining three Vibration axes
+      v_x_M = self.v_x_M,
+      v_y_M = self.v_y_M,
+      v_z_M = self.v_z_M,
       v_x = self.v_x,
       v_y = self.v_y,
       v_z = self.v_z,
@@ -524,23 +548,23 @@ class run(object):
     r = self.result
     self.show_number(x=[r.dx, r.dy, r.dz], title="Libration rms around L-axes")
     #
-    self.show_vector(x=r.l_x, title="Unit vectors defining three Libration axes")
-    self.show_vector(x=r.l_y, title="Unit vectors defining three Libration axes")
-    self.show_vector(x=r.l_z, title="Unit vectors defining three Libration axes")
+    self.show_vector(x=r.l_x, title="Unit vector defining libration axis Lx (13):")
+    self.show_vector(x=r.l_y, title="Unit vector defining libration axis Ly (13):")
+    self.show_vector(x=r.l_z, title="Unit vector defining libration axis Lz (13):")
     #
-    self.show_vector(x=r.w_L_lx, title="Rotation axes pass through the points in the L base")
-    self.show_vector(x=r.w_L_ly, title="Rotation axes pass through the points in the L base")
-    self.show_vector(x=r.w_L_lz, title="Rotation axes pass through the points in the L base")
+    self.show_number(x=r.w_L_lx, title="Rotation axis passes through the point in the L basis (15-16):")
+    self.show_number(x=r.w_L_ly, title="Rotation axis passes through the point in the L basis (15-16):")
+    self.show_number(x=r.w_L_lz, title="Rotation axis passes through the point in the L basis (15-16):")
     #
-    self.show_vector(x=r.w_M_lx, title="Rotation axes pass through the points in the M base")
-    self.show_vector(x=r.w_M_ly, title="Rotation axes pass through the points in the M base")
-    self.show_vector(x=r.w_M_lz, title="Rotation axes pass through the points in the M base")
+    self.show_number(x=r.w_M_lx, title="Rotation axis passes through the point in the M basis (40):")
+    self.show_number(x=r.w_M_ly, title="Rotation axis passes through the point in the M basis (40):")
+    self.show_number(x=r.w_M_lz, title="Rotation axis passes through the point in the M basis (40):")
     #
-    self.show_number(x=[r.sx, r.sy, r.sz], title="Correlation shifts sx,sy,sz for libration")
+    self.show_number(x=[r.sx, r.sy, r.sz], title="Correlation shifts sx,sy,sz for libration (4.5):")
     #
-    self.show_vector(x=r.w_M_lx, title="Vectors defining three Vibration axes")
-    self.show_vector(x=r.w_M_ly, title="Vectors defining three Vibration axes")
-    self.show_vector(x=r.w_M_lz, title="Vectors defining three Vibration axes")
+    self.show_vector(x=r.v_x, title="Vector defining vibration axis in M basis (41):")
+    self.show_vector(x=r.v_y, title="Vector defining vibration axis in M basis (41):")
+    self.show_vector(x=r.v_z, title="Vector defining vibration axis in M basis (41):")
     #
     self.show_number(x=[r.tx, r.ty, r.tz], title="Vibration rms along V-axes")
 
