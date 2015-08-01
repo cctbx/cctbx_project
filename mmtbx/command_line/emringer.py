@@ -224,13 +224,13 @@ else :
     frame.show_results(results)
     frame.Show()
     app.MainLoop()
-  
+
   class RingerFrame (plots.plot_frame) :
     def create_plot_panel (self) :
       plot = RingerPlot(self, figure_size=(6,8))
       plot.canvas.Bind(wx.EVT_CHAR, self.OnChar)
       return plot
-  
+
     def draw_top_panel (self) :
       self.top_panel = wx.Panel(self, style=wx.SUNKEN_BORDER)
       panel_szr = wx.BoxSizer(wx.VERTICAL)
@@ -245,18 +245,18 @@ else :
       self.Bind(wx.EVT_CHAR, self.OnChar)
       self.chooser.Bind(wx.EVT_CHAR, self.OnChar)
       return self.top_panel
-  
+
     def OnSelect (self, event) :
       selection = event.GetEventObject().GetSelection()
       self.plot_panel.show_residue(self.results[selection])
-  
+
     def show_results (self, results) :
       self.results = results
       choices = [ result.format() for result in results ]
       self.chooser.SetItems(choices)
       self.chooser.SetSelection(0)
       self.plot_panel.show_residue(self.results[0])
-  
+
     def OnChar (self, event) :
       key = event.GetKeyCode()
       if (len(self.results) == 0) : return
@@ -273,7 +273,7 @@ else :
           selection = len(results) - 1
       self.chooser.SetSelection(selection)
       self.plot_panel.show_residue(self.results[selection])
-  
+
   class RingerPlot (plots.plot_container) :
     def show_residue (self, residue, show_background_boxes=False) :
       if (self.disabled) : return
