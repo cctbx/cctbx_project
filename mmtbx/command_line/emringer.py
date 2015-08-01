@@ -210,101 +210,106 @@ class launcher (runtime_utils.target_with_save_result) :
 
 ########################################################################
 # GUI
-from wxtbx import plots
-import wx
+try :
+  import wx
+except ImportError :
+  def run_app (results) :
+    raise Sorry("wxPython not available.")
+else :
+  from wxtbx import plots
 
-def run_app (results) :
-  app = wx.App(0)
-  frame = RingerFrame(None, -1, "Ringer results")
-  frame.show_results(results)
-  frame.Show()
-  app.MainLoop()
-
-class RingerFrame (plots.plot_frame) :
-  def create_plot_panel (self) :
-    plot = RingerPlot(self, figure_size=(6,8))
-    plot.canvas.Bind(wx.EVT_CHAR, self.OnChar)
-    return plot
-
-  def draw_top_panel (self) :
-    self.top_panel = wx.Panel(self, style=wx.SUNKEN_BORDER)
-    panel_szr = wx.BoxSizer(wx.VERTICAL)
-    self.top_panel.SetSizer(panel_szr)
-    szr2 = wx.BoxSizer(wx.HORIZONTAL)
-    panel_szr.Add(szr2)
-    txt1 = wx.StaticText(self.top_panel, -1, "Residue to display:")
-    szr2.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    self.chooser = wx.Choice(self.top_panel, -1, size=(200,-1))
-    szr2.Add(self.chooser, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    self.Bind(wx.EVT_CHOICE, self.OnSelect, self.chooser)
-    self.Bind(wx.EVT_CHAR, self.OnChar)
-    self.chooser.Bind(wx.EVT_CHAR, self.OnChar)
-    return self.top_panel
-
-  def OnSelect (self, event) :
-    selection = event.GetEventObject().GetSelection()
-    self.plot_panel.show_residue(self.results[selection])
-
-  def show_results (self, results) :
-    self.results = results
-    choices = [ result.format() for result in results ]
-    self.chooser.SetItems(choices)
-    self.chooser.SetSelection(0)
-    self.plot_panel.show_residue(self.results[0])
-
-  def OnChar (self, event) :
-    key = event.GetKeyCode()
-    if (len(self.results) == 0) : return
-    selection = self.chooser.GetSelection()
-    if (key in [wx.WXK_TAB, wx.WXK_RETURN, wx.WXK_SPACE]) :
-      if (selection < (len(self.results) - 1)) :
-        selection += 1
-      elif (len(self.results) > 0) :
-        selection = 0
-    elif (key in [wx.WXK_DELETE, wx.WXK_BACK]) :
-      if (selection > 0) :
-        selection -= 1
-      else :
-        selection = len(results) - 1
-    self.chooser.SetSelection(selection)
-    self.plot_panel.show_residue(self.results[selection])
-
-class RingerPlot (plots.plot_container) :
-  def show_residue (self, residue, show_background_boxes=False) :
-    if (self.disabled) : return
-    self.figure.clear()
-    subplots = []
-    for i in range(1, residue.n_chi + 1) :
-      chi = residue.get_angle(i)
-      if (chi is None) : continue
-      if (len(subplots) > 0) :
-        p = self.figure.add_subplot(4, 1, i, sharex=subplots[0])
-      else :
-        p = self.figure.add_subplot(4, 1, i)
-        p.set_title(residue.format())
-      p.set_position([0.15, 0.725 - 0.225*(i-1), 0.8, 0.225])
-      x = [ k*chi.sampling for k in range(len(chi.densities)) ]
-      p.plot(x, chi.densities, 'r-', linewidth=1)
-      p.axvline(chi.angle_current, color='b', linewidth=2, linestyle='--')
-      p.axvline(chi.peak_chi, color='g', linewidth=2, linestyle = '--')
-      p.axhline(0, color=(0.4,0.4,0.4), linestyle='--', linewidth=1)
-      if show_background_boxes:
-        p.axhspan(0.3,1,facecolor="green",alpha=0.5)
-        p.axhspan(-1,0.3,facecolor="grey",alpha=0.5)
-      p.set_xlim(0,360)
-      ax = p.get_axes()
-      ax.set_ylabel("Rho")
-      ax.set_xlabel("Chi%d" % i)
-      subplots.append(p)
-    for p in subplots[:-1] :
-      for label in p.get_axes().get_xticklabels() :
-        label.set_visible(False)
-    p.text(0,-0.5,'Green = Peak, Blue = Modelled',
-        transform=ax.transAxes)
-    self.canvas.draw()
-    self.canvas.Fit()
-    self.Layout()
-    self.parent.Refresh()
+  def run_app (results) :
+    app = wx.App(0)
+    frame = RingerFrame(None, -1, "Ringer results")
+    frame.show_results(results)
+    frame.Show()
+    app.MainLoop()
+  
+  class RingerFrame (plots.plot_frame) :
+    def create_plot_panel (self) :
+      plot = RingerPlot(self, figure_size=(6,8))
+      plot.canvas.Bind(wx.EVT_CHAR, self.OnChar)
+      return plot
+  
+    def draw_top_panel (self) :
+      self.top_panel = wx.Panel(self, style=wx.SUNKEN_BORDER)
+      panel_szr = wx.BoxSizer(wx.VERTICAL)
+      self.top_panel.SetSizer(panel_szr)
+      szr2 = wx.BoxSizer(wx.HORIZONTAL)
+      panel_szr.Add(szr2)
+      txt1 = wx.StaticText(self.top_panel, -1, "Residue to display:")
+      szr2.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+      self.chooser = wx.Choice(self.top_panel, -1, size=(200,-1))
+      szr2.Add(self.chooser, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+      self.Bind(wx.EVT_CHOICE, self.OnSelect, self.chooser)
+      self.Bind(wx.EVT_CHAR, self.OnChar)
+      self.chooser.Bind(wx.EVT_CHAR, self.OnChar)
+      return self.top_panel
+  
+    def OnSelect (self, event) :
+      selection = event.GetEventObject().GetSelection()
+      self.plot_panel.show_residue(self.results[selection])
+  
+    def show_results (self, results) :
+      self.results = results
+      choices = [ result.format() for result in results ]
+      self.chooser.SetItems(choices)
+      self.chooser.SetSelection(0)
+      self.plot_panel.show_residue(self.results[0])
+  
+    def OnChar (self, event) :
+      key = event.GetKeyCode()
+      if (len(self.results) == 0) : return
+      selection = self.chooser.GetSelection()
+      if (key in [wx.WXK_TAB, wx.WXK_RETURN, wx.WXK_SPACE]) :
+        if (selection < (len(self.results) - 1)) :
+          selection += 1
+        elif (len(self.results) > 0) :
+          selection = 0
+      elif (key in [wx.WXK_DELETE, wx.WXK_BACK]) :
+        if (selection > 0) :
+          selection -= 1
+        else :
+          selection = len(results) - 1
+      self.chooser.SetSelection(selection)
+      self.plot_panel.show_residue(self.results[selection])
+  
+  class RingerPlot (plots.plot_container) :
+    def show_residue (self, residue, show_background_boxes=False) :
+      if (self.disabled) : return
+      self.figure.clear()
+      subplots = []
+      for i in range(1, residue.n_chi + 1) :
+        chi = residue.get_angle(i)
+        if (chi is None) : continue
+        if (len(subplots) > 0) :
+          p = self.figure.add_subplot(4, 1, i, sharex=subplots[0])
+        else :
+          p = self.figure.add_subplot(4, 1, i)
+          p.set_title(residue.format())
+        p.set_position([0.15, 0.725 - 0.225*(i-1), 0.8, 0.225])
+        x = [ k*chi.sampling for k in range(len(chi.densities)) ]
+        p.plot(x, chi.densities, 'r-', linewidth=1)
+        p.axvline(chi.angle_current, color='b', linewidth=2, linestyle='--')
+        p.axvline(chi.peak_chi, color='g', linewidth=2, linestyle = '--')
+        p.axhline(0, color=(0.4,0.4,0.4), linestyle='--', linewidth=1)
+        if show_background_boxes:
+          p.axhspan(0.3,1,facecolor="green",alpha=0.5)
+          p.axhspan(-1,0.3,facecolor="grey",alpha=0.5)
+        p.set_xlim(0,360)
+        ax = p.get_axes()
+        ax.set_ylabel("Rho")
+        ax.set_xlabel("Chi%d" % i)
+        subplots.append(p)
+      for p in subplots[:-1] :
+        for label in p.get_axes().get_xticklabels() :
+          label.set_visible(False)
+      p.text(0,-0.5,'Green = Peak, Blue = Modelled',
+          transform=ax.transAxes)
+      self.canvas.draw()
+      self.canvas.Fit()
+      self.Layout()
+      self.parent.Refresh()
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
