@@ -2605,14 +2605,13 @@ class shift_origin(object):
     self.pdb_hierarchy = pdb_hierarchy
     self.crystal_symmetry = crystal_symmetry
     self.map_data = map_data
-    self.shifted = False
+    self.shift = None
     shift_needed = not \
       (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
        map_data.is_0_based())
     if(shift_needed):
       if(not crystal_symmetry.space_group().type().number() in [0,1]):
         raise RuntimeError("Not implemented")
-      self.shifted = True
       a,b,c = crystal_symmetry.unit_cell().parameters()[:3]
       N = map_data.all()
       O=map_data.origin()
@@ -2626,6 +2625,7 @@ class shift_origin(object):
           N_ = (N[0]-inc1,N[1]-inc1,N[2]-inc1)
           O_ = (O[0]-inc2,O[1]-inc2,O[2]-inc2)
           sx,sy,sz = a/N_[0]*O_[0], b/N_[1]*O_[1], c/N_[2]*O_[2]
+          self.shift = sx,sy,sz
           sites_cart_shifted = sites_cart+\
             flex.vec3_double(sites_cart.size(), [-sx,-sy,-sz])
           sites_frac_shifted = fm*sites_cart_shifted
@@ -2637,6 +2637,12 @@ class shift_origin(object):
             sites_cart_best=sites_cart_shifted.deep_copy()
       if(sites_cart_best is not None):
         self.pdb_hierarchy.atoms().set_xyz(sites_cart_best)
+
+  def shift_back(self, pdb_hierarchy):
+    sites_cart = pdb_hierarchy.atoms().extract_xyz()
+    sites_cart_shifted = sites_cart+\
+      flex.vec3_double(sites_cart.size(), self.shift)
+    pdb_hierarchy.atoms().set_xyz(sites_cart_shifted)
 
   def show_shifted(self):
     self.pdb_hierarchy.write_pdb_file(file_name="origin_shifted.pdb",
