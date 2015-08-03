@@ -136,6 +136,7 @@ class Integrator(object):
         dom_size = int_AD14['domain_sz_ang']
         mosaicity = round(int_AD14['fw_mos_deg'], 6)
         mos_quality = round(int_AD14['mosaic_model_area_under_green_curve_sampled'], 6)
+        mos_quality_nks = int_AD14['ewald_proximal_volume']
 
         # Assemble output for log file and/or integration result file
         p_cell = "{:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}"\

@@ -105,6 +105,11 @@ integration {
     enable_polychromatic = False
       .type = bool
       .help = followup top hat wavelength dispersion
+    ewald_proximal_volume_resolution_cutoff = 2.5
+      .type = float
+      .help = Resolution cutoff in Angstroms.  Set roughly to the apparent cutoff of bright spots for one or a group of images.
+      .help = governs the cutoff resolution for teh ewald proximal volume: that volume of reciprocal space containing
+      .help =  spots predicted by the current mosaicity model.
   }
   enable_residual_map = False
       .type = bool

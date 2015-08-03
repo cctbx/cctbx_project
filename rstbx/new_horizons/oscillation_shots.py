@@ -147,7 +147,8 @@ class IntegrateCharacters:
                                       domain_sz_ang=integrate_worker.DOMAIN_SZ_ANG,
                                       N_correction_vectors=integrate_worker.N_correction_vectors,
                                       rmsd_px=integrate_worker.rmsd_px,
-                    mosaic_model_area_under_green_curve_sampled=integrate_worker.green_curve_area
+                    mosaic_model_area_under_green_curve_sampled=integrate_worker.green_curve_area,
+                                      ewald_proximal_volume = integrate_worker.ewald_proximal_volume,
                                   )
         local["I_Observations"]=integrate_worker.get_obs(local["spacegroup"])
       except Exception:
