@@ -471,12 +471,17 @@ class refinement(refinement_base):
         OO.parent.show_figure(plt,fig,"psi")
         plt.close()
 
-      from xfel.mono_simulation.util import green_curve_area
+      from xfel.mono_simulation.util import green_curve_area,ewald_proximal_volume
       if OO.mosaic_refinement_target=="ML":
         OO.parent.green_curve_area = green_curve_area(two_thetas, tan_outer_deg_ML)
         OO.parent.inputai.setMosaicity(M.x[1]*180./math.pi) # full width, degrees
         OO.parent.ML_half_mosaicity_deg = M.x[1]*180./(2.*math.pi)
         OO.parent.ML_domain_size_ang = 1./M.x[0]
+        OO.parent.ewald_proximal_volume = ewald_proximal_volume(
+            wavelength_ang = OO.central_wavelength_ang,
+            resolution_cutoff_ang = OO.parent.horizons_phil.integration.mosaic.ewald_proximal_volume_resolution_cutoff,
+            domain_size_ang = 1./M.x[0],
+            full_mosaicity_rad = M.x[1])
         return results, helper.last_set_orientation,1./M.x[0] # full width domain size, angstroms
       else:
         assert OO.mosaic_refinement_target=="LSQ"
@@ -484,6 +489,11 @@ class refinement(refinement_base):
         OO.parent.inputai.setMosaicity(2*k_degrees) # full width
         OO.parent.ML_half_mosaicity_deg = k_degrees
         OO.parent.ML_domain_size_ang = s_ang
+        OO.parent.ewald_proximal_volume = ewald_proximal_volume(
+            wavelength_ang = OO.central_wavelength_ang,
+            resolution_cutoff_ang = OO.parent.horizons_phil.integration.mosaic.ewald_proximal_volume_resolution_cutoff,
+            domain_size_ang = s_ang,
+            full_mosaicity_rad = 2*k_degrees*math.pi/180.)
         return results, helper.last_set_orientation,s_ang # full width domain size, angstroms
 
   def show_plot(OO,excursi,rmsdpos,minimum):
