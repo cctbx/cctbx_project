@@ -104,7 +104,6 @@ class mod_spectrum_filter_v2(object):
       #self.logger.warning("event(): No spectrum data")
       evt.put(skip_event_flag(),"skip_event")
 
-
     if timestamp is None:
       evt.put(skip_event_flag(),"skip_event")
       #self.logger.warning("event(): No TIMESTAMP, skipping shot")
@@ -118,42 +117,44 @@ class mod_spectrum_filter_v2(object):
         for i in xrange(len(data)):
           if data[i]>1000000000:
             data[i]=data[i]-(2**32)
+        if self.dark is not None:
+          data = data - self.dark
         spectrum = data
         spectrum1 = data[:data.shape[0]//2]
         spectrum2 = data[data.shape[0]//2:]
       else:
-        data = np.array(data.data16().astype(np.float64))
+        data = np.array(data.data16().astype(np.int32))
+        if self.dark is not None:
+          data = data - self.dark
         data_split1 = data[:,:data.shape[1]//2]
         data_split2 = data[:,data.shape[1]//2:]
         # make a 1D trace of entire spectrum and each half to find peaks
         spectrum  = np.sum(data,0)/data.shape[0]
         spectrum1 = np.sum(data_split1,0)/data_split1.shape[0]
         spectrum2 = np.sum(data_split2,0)/data_split2.shape[0]
-      if 'dark' in locals():
-        data = data - self.dark
-
       if not one_D:
         # the x-coordinate of the weighted center of peak region
         weighted_peak_one_positions = []
         for i in xrange(self.peak_one_range_min,self.peak_one_range_max):
           weighted_peak_one_positions.append(spectrum[i]*i)
-
         weighted_sum_peak_one = sum(weighted_peak_one_positions)
         weighted_peak_one_center_position = weighted_sum_peak_one//sum(spectrum[self.peak_one_range_min:self.peak_one_range_max])
-
         weighted_peak_two_positions = []
         for i in xrange(self.peak_two_range_min,self.peak_two_range_max):
           weighted_peak_two_positions.append(spectrum[i]*i)
-
         weighted_sum_peak_two = sum(weighted_peak_two_positions)
         weighted_peak_two_center_position = weighted_sum_peak_two//sum(spectrum[self.peak_two_range_min:self.peak_two_range_max])
         # normalized integrated regions between the peaks
-        int_left_region_norm = np.sum(spectrum[0:self.peak_one_range_min])/len(spectrum[0:self.peak_one_range_max])
-        int_middle_region_norm = np.sum(spectrum[self.peak_one_range_min:self.peak_two_range_min])/len(spectrum[self.peak_one_range_max:self.peak_two_range_min])
-        int_right_region_norm = np.sum(spectrum[self.peak_two_range_max:])/len(spectrum[self.peak_two_range_max:])
+        int_left_region_norm = np.sum(spectrum[0:(weighted_peak_one_center_position-len(spectrum[self.peak_one_range_min:self.peak_one_range_max])/2)])/len(spectrum[0:(weighted_peak_one_center_position-len(spectrum[self.peak_one_range_min:self.peak_one_range_max])/2)])
+
+        int_middle_region_norm = np.sum(spectrum[(weighted_peak_one_center_position+len(spectrum[self.peak_one_range_min:self.peak_one_range_max])/2):(weighted_peak_two_center_position-len(spectrum[self.peak_two_range_min:self.peak_two_range_max])/2)])/len(spectrum[(weighted_peak_one_center_position+len(spectrum[self.peak_one_range_min:self.peak_one_range_max])/2):(weighted_peak_two_center_position-len(spectrum[self.peak_two_range_min:self.peak_two_range_max])/2)])
+
+        int_right_region_norm = np.sum(spectrum[(weighted_peak_two_center_position+len(spectrum[self.peak_two_range_min:self.peak_two_range_max])/2):])/len(spectrum[(weighted_peak_two_center_position+len(spectrum[self.peak_two_range_min:self.peak_two_range_max])/2):])
+
         # normalized integrated peaks
-        int_peak_one_norm = np.sum(spectrum[self.peak_one_range_min:self.peak_one_range_max])/len(spectrum[self.peak_one_range_min:self.peak_one_range_max])
-        int_peak_two_norm = np.sum(spectrum[self.peak_two_range_min:self.peak_two_range_max])/len(spectrum[self.peak_two_range_min:self.peak_two_range_max])
+        int_peak_one_norm = np.sum(spectrum[(weighted_peak_one_center_position-len(spectrum[self.peak_one_range_min:self.peak_one_range_max])/2):(weighted_peak_one_center_position+len(spectrum[self.peak_one_range_min:self.peak_one_range_max])/2)])/len(spectrum[(weighted_peak_one_center_position-len(spectrum[self.peak_one_range_min:self.peak_one_range_max])/2):(weighted_peak_one_center_position+len(spectrum[self.peak_one_range_min:self.peak_one_range_max])/2)])
+
+        int_peak_two_norm = np.sum(spectrum[(weighted_peak_two_center_position-len(spectrum[self.peak_two_range_min:self.peak_two_range_max])/2):(weighted_peak_two_center_position+len(spectrum[self.peak_two_range_min:self.peak_two_range_max])/2)])/len(spectrum[(weighted_peak_two_center_position-len(spectrum[self.peak_two_range_min:self.peak_two_range_max])/2):(weighted_peak_two_center_position+len(spectrum[self.peak_two_range_min:self.peak_two_range_max])/2)])
 
       else:
         # convert eV range of iron edge (7112 eV) to pixels:
@@ -165,15 +166,15 @@ class mod_spectrum_filter_v2(object):
         int_peak_two=np.sum(spectrum[metal_edge_max:])
       # now to do the filtering
       if not one_D:
-        if int_peak_one_norm/int_peak_two_norm < self.peak_ratio or int_peak_one_norm/int_peak_two_norm > 1/self.peak_ratio:
+        if min(int_peak_one_norm,int_peak_two_norm)/max(int_peak_one_norm,int_peak_two_norm) < self.peak_ratio:
           print "event(): too low"
           evt.put(skip_event_flag(), "skip_event")
           return
-        if weighted_peak_two_center_position < self.peak_two_position_min or weighted_peak_two_center_position > self.peak_two_position_max:
+        if (np.argmax(spectrum2)+len(spectrum2)) > (weighted_peak_two_center_position+(len(spectrum[self.peak_two_range_min:self.peak_two_range_max])/2)) or (np.argmax(spectrum2)+len(spectrum2)) < (weighted_peak_two_center_position-(len(spectrum[self.peak_two_range_min:self.peak_two_range_max])/2)):
           print "event(): out of range high energy peak"
           evt.put(skip_event_flag(), "skip_event")
           return
-        if weighted_peak_one_center_position < self.peak_one_position_min or weighted_peak_one_center_position > self.peak_one_position_max:
+        if np.argmax(spectrum1) > (weighted_peak_one_center_position+(len(spectrum[self.peak_one_range_min:self.peak_one_range_max])/2)) or np.argmax(spectrum1) < (weighted_peak_one_center_position-(len(spectrum[self.peak_one_range_min:self.peak_one_range_max])/2)):
           print "event(): out of range low energy peak"
           evt.put(skip_event_flag(), "skip_event")
           return
@@ -185,7 +186,7 @@ class mod_spectrum_filter_v2(object):
           print "event(): noisy middle"
           evt.put(skip_event_flag(), "skip_event")
           return
-        if int_middle_region_norm/int_peak_two_norm > self.normalized_peak_to_noise_ratio:
+        if int_middle_region_norm/int_peak_one_norm > self.normalized_peak_to_noise_ratio:
           print "event(): noisy middle"
           evt.put(skip_event_flag(), "skip_event")
           return
