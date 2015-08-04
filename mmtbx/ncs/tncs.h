@@ -21,7 +21,7 @@ using scitbx::vec3;
 using scitbx::mat3;
 
 /*
-Class-container of parameters for NCS pair. 
+Class-container of parameters for NCS pair.
 For usage from Python see /cctbx_project/mmtbx/ncs/tst_ncs_pair.py
 */
 
