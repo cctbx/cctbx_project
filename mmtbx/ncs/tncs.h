@@ -20,6 +20,11 @@ namespace bp=boost::python;
 using scitbx::vec3;
 using scitbx::mat3;
 
+/*
+Class-container of parameters for NCS pair. 
+For usage from Python see /cctbx_project/mmtbx/ncs/tst_ncs_pair.py
+*/
+
 template <typename FloatType=double>
 class pair
 {
@@ -60,7 +65,6 @@ public:
   af::shared<FloatType> dEps_by_drho;
   FloatType refl_epsfac;
   af::shared<pair<FloatType> > pairs;
-  int n_sym_p;
   int dim;
   int n_pairs;
   scitbx::mat3<FloatType> fractionalization_matrix;
@@ -73,6 +77,8 @@ public:
   af::const_ref<FloatType> f_obs;
   af::const_ref<FloatType> sig_f_obs;
   af::const_ref<FloatType> SigmaN;
+  // resulting gradient
+  af::shared<FloatType> Gradient;
 
   tncs_eps_factor_refinery(
     bp::list const& pairs_,
@@ -97,12 +103,12 @@ public:
       pairs.push_back(bp::extract<pair<FloatType> >(pairs_[i])());
     }
     n_pairs = pairs.size();
-    n_sym_p = sym_mat.size();
-    dim = n_pairs * n_sym_p;
+    dim = n_pairs * sym_mat.size();
     GfunTensorArray.resize(dim,af::double6(0,0,0,0,0,0));
     ncsDeltaT.resize(dim,scitbx::vec3<FloatType>(0,0,0));
     centric_flags = space_group.is_centric(miller_indices);
     epsilon = space_group.epsilon(miller_indices);
+    calcArrays();
   }
 
   void calcArrays()
@@ -119,7 +125,7 @@ public:
       FloatType radSqr = scitbx::fn::pow2(pairs[ipair].radius);
       scitbx::mat3<FloatType> ncsR_t = pairs[ipair].r.transpose();
       scitbx::vec3<FloatType> ncsT = pairs[ipair].t;
-      for (int isym = 0; isym < n_sym_p; isym++) {
+      for (int isym = 0; isym < sym_mat.size(); isym++) {
   /*
     Metric matrix (represented as tensor) allows quick computation of
     |s_klmm|^2 and therefore rs^2 for G-function
@@ -131,10 +137,10 @@ public:
     GfunTensorArray, factors of 2 are included so
     the unique terms need to be computed only once.
   */
-        int i = ipair*n_sym_p+isym;
-        ncsDeltaT[i] = sym_mat(isym).transpose()*ncsT; // symmetry translation cancels
+        int i = ipair*sym_mat.size()+isym;
+        ncsDeltaT[i] = sym_mat[isym].transpose()*ncsT; // symmetry translation cancels
         scitbx::mat3<FloatType> metric_matrix =
-          sym_mat(isym).transpose()*fractionalization_matrix*(identity-ncsR_t);
+          sym_mat[isym].transpose()*fractionalization_matrix*(identity-ncsR_t);
         metric_matrix = radSqr*metric_matrix*metric_matrix.transpose();
         GfunTensorArray[i] = af::double6(
             metric_matrix(0,0),  metric_matrix(1,1),  metric_matrix(2,2),
@@ -158,11 +164,11 @@ public:
     for (int ipair = 0; ipair < n_pairs; ipair++) {
       double wtfac(pairs[ipair].fracscat);
       dEps_by_drho[ipair] = 0.;
-      for (int isym = 0; isym < n_sym_p; isym++) {
+      for (int isym = 0; isym < sym_mat.size(); isym++) {
         // NCS-related contribution to epsilon, weighted by interference,
         // G-function and rhoMN terms
         int hh(miller[0]), kk(miller[1]), ll(miller[2]);
-        int i = ipair*n_sym_p+isym;
+        int i = ipair*sym_mat.size()+isym;
         af::double6 GfunTensor = GfunTensorArray[i];
         FloatType rsSqr =
           GfunTensor[0]*hh*hh + GfunTensor[1]*kk*kk + GfunTensor[2]*ll*ll +
@@ -180,40 +186,32 @@ public:
 
   double target_gradient(
            af::const_ref<int> const& rbin, // PVA: see below for definition
-           af::shared<FloatType>& Gradient,
+           //af::shared<FloatType>& Gradient,
            bool do_target,
            bool do_gradient)
   {
     int nbins = pairs[0].rho_mn.size();
     int npars_ref = n_pairs*nbins;
+    // Reset gradinet
     if(do_gradient) {
       Gradient.resize(npars_ref);
       Gradient.fill(0);
-      for (int g = 0; g < Gradient.size(); g++) Gradient[g] = 0;
+      for (int i = 0; i < Gradient.size(); i++) Gradient[i] = 0;
     }
     //function, and analytic gradient for rhoMN parameters
     double minusLL(0);
-    // Pre-compute some results that don't depend on reflection number
-    /* XXX PVA: done in constructor?
-    SpaceGroup sg = this->getSpaceGroup();
-    UnitCell uc = this->getUnitCell();
-    tncs_eps_factor_refinery gfun(sg,uc,pairs.size());
-              gfun.calcArrays(pairs);
-    */
     tncs_epsfac.resize(f_obs.size());
     for (unsigned r = 0; r < f_obs.size(); r++) {
       FloatType dLL_by_dEps(0);
       /*
-        PVA: look-up array of integer numbers for each refletion telling which
-             resolution bin it belongs to. Say this Fobs belongs to bin number 12.
+      PVA: look-up array of integer numbers for each refletion telling which
+           resolution bin it belongs to. Say this Fobs belongs to bin number 12.
       */
       unsigned s = rbin(r);
-
       //recalculate tncs_epsn from changed parameters
       // XXX PVA: this requires update method for rho_mn done elsewhere
-      calcRefineTerms(do_gradient,miller_indices[r],s);
+      calcRefineTerms(do_gradient, miller_indices[r], s);
       tncs_epsfac[r] = refl_epsfac; // result - tNCS epsilon factor
-
       if(do_target || do_gradient) {
         /* Compute effective gfun with half-triple summation rather than full
            quadruple summation: assume NCS chosen closest to pure translation,
@@ -221,20 +219,21 @@ public:
            from jncs>incs with jncs<incs
         */
         // XXX PVA: epsn = eps = epsilon - symmetry factors, integers.
-        double epsnSigmaN = epsilon(r)*tncs_epsfac[r]*SigmaN[r];
+        double epsnSigmaN = epsilon[r]*tncs_epsfac[r]*SigmaN[r];
         // Code based on Wilson distribution with inflated variance for
         // measurement errors ==>
-        double cent_fac = centric_flags(r) ? 0.5 : 1.0;
+        double cent_fac = centric_flags[r] ? 0.5 : 1.0;
         double SigmaFactor = 2.*cent_fac;
         double ExpSig(SigmaFactor*scitbx::fn::pow2(sig_f_obs[r]));
         double V = epsnSigmaN + ExpSig;
         double f_obs_sq = scitbx::fn::pow2(f_obs[r]);
         // For simplicity, leave constants out of log-likelihood, which will not
         // affect refinement
-        minusLL += cent_fac*(std::log(V) + f_obs_sq/V);
-        if (do_gradient)
-        {
-          dLL_by_dEps = cent_fac*SigmaN[r]*(V-f_obs_sq)/scitbx::fn::pow2(V);
+        if(V != 0.0) {
+          minusLL += cent_fac*(std::log(V) + f_obs_sq/V);
+          if(do_gradient) {
+            dLL_by_dEps = cent_fac*SigmaN[r]*(V-f_obs_sq)/scitbx::fn::pow2(V);
+          }
         }
         // <==
       }
