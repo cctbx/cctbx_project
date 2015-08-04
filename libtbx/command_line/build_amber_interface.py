@@ -54,7 +54,7 @@ def run():
 
   build_dir = os.path.dirname(os.path.dirname(phenix_dir))
   build_dir = os.path.join(build_dir, "build")
-  
+
   if 0: # don't do this as the python version can change
     dispatcher_include = os.path.join(os.path.dirname(phenix_dir),
                                       "amber_adaptbx",
@@ -74,11 +74,10 @@ def run():
     f.write( dispatcher_include_str % (filename, filename) )
     f.close()
 
-  if 0:
-    print "Building amber_adaptbx"
-    cmd = "libtbx.configure amber amber_adaptbx"
-    print "\n  ~> %s\n" % cmd
-    easy_run.call(cmd)
+  print "Building amber_adaptbx"
+  cmd = "libtbx.configure amber amber_adaptbx"
+  print "\n  ~> %s\n" % cmd
+  easy_run.call(cmd)
   os.chdir(build_dir)
   cmd = "libtbx.scons -j 1"
   print "\n  ~> %s\n" % cmd
