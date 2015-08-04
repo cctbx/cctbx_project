@@ -13,6 +13,10 @@ ncs_search
 {
   enabled = False
     .type = bool
+    .help = Use NCS restraints or constraints in refinement (can be \
+              determined automatically)
+    .short_caption = Use NCS
+    .style = noauto bold
   check_atom_order = True
     .type = bool
     .help = '''check atom order in matching residues'''
