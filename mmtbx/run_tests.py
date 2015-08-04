@@ -257,7 +257,7 @@ tst_list = (
   #
   "$D/regression/tst_models_to_from_chains.py",
   "$D/regression/tst_helix_sheet_recs_as_pdb_files.py",
-  "$D/ncs/tst_tncs.py",
+  "$D/ncs/tst_ncs_pair.py",
   )
 
 def run():
