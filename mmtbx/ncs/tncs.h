@@ -84,8 +84,8 @@ public:
     scitbx::mat3<FloatType> fractionalization_matrix_,
     af::shared<scitbx::mat3<FloatType> > sym_mat_)
   :
-  refl_epsfac(0), 
-  sym_mat(sym_mat_), 
+  refl_epsfac(0),
+  sym_mat(sym_mat_),
   miller_indices(miller_indices_),
   space_group(space_group_),
   fractionalization_matrix(fractionalization_matrix_),
@@ -181,7 +181,7 @@ public:
   double target_gradient(
            af::const_ref<int> const& rbin, // PVA: see below for definition
            af::shared<FloatType>& Gradient,
-           bool do_target, 
+           bool do_target,
            bool do_gradient)
   {
     int nbins = pairs[0].rho_mn.size();
@@ -222,14 +222,14 @@ public:
         */
         // XXX PVA: epsn = eps = epsilon - symmetry factors, integers.
         double epsnSigmaN = epsilon(r)*tncs_epsfac[r]*SigmaN[r];
-        // Code based on Wilson distribution with inflated variance for 
+        // Code based on Wilson distribution with inflated variance for
         // measurement errors ==>
         double cent_fac = centric_flags(r) ? 0.5 : 1.0;
         double SigmaFactor = 2.*cent_fac;
         double ExpSig(SigmaFactor*scitbx::fn::pow2(sig_f_obs[r]));
         double V = epsnSigmaN + ExpSig;
         double f_obs_sq = scitbx::fn::pow2(f_obs[r]);
-        // For simplicity, leave constants out of log-likelihood, which will not 
+        // For simplicity, leave constants out of log-likelihood, which will not
         // affect refinement
         minusLL += cent_fac*(std::log(V) + f_obs_sq/V);
         if (do_gradient)
