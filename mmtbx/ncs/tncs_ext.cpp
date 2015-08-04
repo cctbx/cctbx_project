@@ -27,11 +27,21 @@ namespace {
       class_<w_t>("tncs_eps_factor_refinery", no_init)
         .def(init<
              bp::list const&,
+             af::const_ref<double> const&,
+             af::const_ref<double> const&,
+             af::const_ref<double> const&,
+             cctbx::sgtbx::space_group,
+             af::const_ref<cctbx::miller::index<int> >,
              scitbx::mat3<double>,
-             af::shared<mat3<double> >
-                  >((arg("xxx"),
-                     arg("ccc"),
-                     arg("ddd"))))
+             af::shared<scitbx::mat3<double> >
+                  >((arg("tncs_pairs"),
+                     arg("f_obs"),
+                     arg("sigma_f_obs"),
+                     arg("SigmaN"),
+                     arg("space_group"),
+                     arg("miller_indices"),
+                     arg("fractionalization_matrix"),
+                     arg("sym_matrices"))))
         .def("tncs_epsfac", &w_t::tncs_epsfac_result)
       ;
     }
