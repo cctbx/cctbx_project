@@ -8,6 +8,7 @@ import iotbx.pdb
 from libtbx.utils import Sorry
 from cctbx import adptbx
 import sys
+from mmtbx.tls import analysis
 
 random.seed(2679941)
 
@@ -41,7 +42,7 @@ def run(pdb_file_name,
     raise Sorry("T matrix is not positive definite.")
   if(not adptbx.is_positive_definite(tlso.l, eps)):
     raise Sorry("L matrix is not positive definite.")
-  r = decompose_tls(T=T, L=L, S=S, log=log)
+  r = analysis.run(T=T, L=L, S=S, log=log)
   ensemble_generator(
     decompose_tls_object = r,
     pdb_hierarchy        = pdb_hierarchy,
@@ -69,13 +70,13 @@ class ensemble_generator(object):
     for trial in xrange(n_models):
       print >> log, "model #%d"%trial
       dx0,dy0,dz0 = step_i__get_dxdydz(
-        L_L=r.b_o.L_L, R_PL=r.b_o.R_PL, log = log)
-      d_r_M_V  = step_j(h_o=r.h_o, log = log)
+        L_L=r.L_L, R_PL=r.R_ML, log = log)
+      d_r_M_V  = step_j(r=r, log = log)
       sites_cart_new = flex.vec3_double()
       for site_cart in sites_cart:
-        r_L = r.b_o.R_PL.transpose() * site_cart
-        d_r_M_L = step_i__compute_delta_L_r_dp(
-          r_L=r_L,c_o=r.c_o,e_o=r.e_o,dx0=dx0,dy0=dy0,dz0=dz0, R_PL=r.b_o.R_PL)
+        r_L = r.R_ML.transpose() * site_cart
+        d_r_M_L = step_i__compute_delta_L_r_dp(r=r,
+          r_L=r_L, dx0=dx0,dy0=dy0,dz0=dz0)
         d_r_M = step_k(d_r_M_L=d_r_M_L, d_r_M_V=d_r_M_V)
         sites_cart_new.append(matrix.col(site_cart) + d_r_M)
       self.states.add(sites_cart = sites_cart_new)
@@ -87,73 +88,54 @@ def step_i__get_dxdydz(L_L, R_PL, log, eps=1.e-7):
   """
   Generation of shifts from screw rotations.
   """
-#XXX  print_step("step_i__get_dxdydz:", log)
   L_ = L_L.as_sym_mat3()
   Lxx, Lyy, Lzz = L_[0], L_[1], L_[2]
   dx0, dy0, dz0 = 0, 0, 0
-  if(abs(Lxx)>eps): dx0 = random.normalvariate(0,Lxx)
-  if(abs(Lyy)>eps): dy0 = random.normalvariate(0,Lyy)
-  if(abs(Lzz)>eps): dz0 = random.normalvariate(0,Lzz)
-#XXX  print >> log, "  dx0, dy0, dz0:", dx0, dy0, dz0
+  if(abs(Lxx)>eps): dx0 = random.normalvariate(0,(2*Lxx)**0.5) # ???
+  if(abs(Lyy)>eps): dy0 = random.normalvariate(0,(2*Lyy)**0.5) # ???
+  if(abs(Lzz)>eps): dz0 = random.normalvariate(0,(2*Lzz)**0.5) # ???
   return dx0, dy0, dz0
 
-def step_i__compute_delta_L_r_dp(r_L, c_o, e_o, dx0, dy0, dz0, R_PL):
-  sxb,syb,szb = e_o.sx_bar, e_o.sy_bar, e_o.sz_bar
+def step_i__compute_delta_L_r_dp(r, r_L, dx0, dy0, dz0):
+  sxb,syb,szb = r.sx, r.sy, r.sz
   x,y,z = r_L
   cos, sin = math.cos, math.sin
   d_lx_r_L = matrix.col((
     sxb*dx0,
-    (y-c_o.wy_lx)*(cos(dx0)-1) - (z-c_o.wz_lx)*sin(dx0),
-    (y-c_o.wy_lx)*sin(dx0)     + (z-c_o.wz_lx)*(cos(dx0)-1)
+    (y-r.w.wy_lx)*(cos(dx0)-1) - (z-r.w.wz_lx)*sin(dx0),
+    (y-r.w.wy_lx)*sin(dx0)     + (z-r.w.wz_lx)*(cos(dx0)-1)
     ))
   d_ly_r_L = matrix.col((
-    (z-c_o.wz_ly)*sin(dy0)     + (x-c_o.wx_ly)*(cos(dy0)-1),
+    (z-r.w.wz_ly)*sin(dy0)     + (x-r.w.wx_ly)*(cos(dy0)-1),
     syb*dy0,
-    (z-c_o.wz_ly)*(cos(dy0)-1) - (x-c_o.wx_ly)*sin(dy0)
+    (z-r.w.wz_ly)*(cos(dy0)-1) - (x-r.w.wx_ly)*sin(dy0)
     ))
   d_lz_r_L = matrix.col((
-    (x-c_o.wx_lz)*(cos(dz0)-1) - (y-c_o.wy_lz)*sin(dz0),
-    (x-c_o.wx_lz)*sin(dz0)     + (y-c_o.wy_lz)*(cos(dz0)-1),
+    (x-r.w.wx_lz)*(cos(dz0)-1) - (y-r.w.wy_lz)*sin(dz0),
+    (x-r.w.wx_lz)*sin(dz0)     + (y-r.w.wy_lz)*(cos(dz0)-1),
     szb*dz0
     ))
   d_r_L = d_lx_r_L + d_ly_r_L + d_lz_r_L
-  d_r_M = R_PL * d_r_L
+  d_r_M = r.R_ML * d_r_L
   return d_r_M
 
-def step_j(h_o, log):
+def step_j(r, log):
   """
   Generate shifts from group translation.
   """
 #XXX  print_step("step_j:", log)
-  V_V_ = h_o.V_V.as_sym_mat3()
+  V_V_ = r.V_V.as_sym_mat3()
   tx0, ty0, tz0 = 0, 0, 0
-  if(V_V_[0] != 0): tx0 = random.normalvariate(0,V_V_[0])
-  if(V_V_[1] != 0): ty0 = random.normalvariate(0,V_V_[1])
-  if(V_V_[2] != 0): tz0 = random.normalvariate(0,V_V_[2])
-#XXX  print >> log, "  u0, v0, w0:", tx0, ty0, tz0
-  d_r_V = tx0*h_o.v_x + ty0*h_o.v_y + tz0*h_o.v_z
-  d_r_M = h_o.R_MV * d_r_V
+  if(V_V_[0] != 0): tx0 = random.gauss(0,(2*V_V_[0]**0.5)) # ???
+  if(V_V_[1] != 0): ty0 = random.gauss(0,(2*V_V_[1]**0.5)) # ???
+  if(V_V_[2] != 0): tz0 = random.gauss(0,(2*V_V_[2]**0.5)) # ???
+  #print >> log, "  u0, v0, w0:, LOOK", tx0, ty0, tz0
+  d_r_V = tx0*r.v_x + ty0*r.v_y + tz0*r.v_z
+  d_r_M = r.R_MV * d_r_V
   return d_r_M
 
 def step_k(d_r_M_L, d_r_M_V):
   """
   Calculate the total shift in original coordinate system.
   """
-  return d_r_M_L + d_r_M_V
-
-def truncate(m, eps_string="%.6f"):
-  if(type(m) is float):
-    return float(eps_string%m)
-  elif(type(m) is flex.double):
-    return flex.double([float(eps_string%i) for i in m])
-  else:
-    if(not type(m) is matrix.sqr):
-      raise Sorry("truncate: arg must be matrix.sqr")
-    x = [m[0],m[1],m[2], m[3],m[4],m[5], m[6],m[7],m[8]]
-    x_ = []
-    for xi in x: x_.append(float(eps_string%xi))
-    return matrix.sqr(
-      [x_[0], x_[1], x_[2],
-       x_[3], x_[4], x_[5],
-       x_[6], x_[7], x_[8]])
-
+  return d_r_M_L + d_r_M_V # (42)
