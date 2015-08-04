@@ -21,7 +21,7 @@ def run(args, log=sys.stdout):
   inputs = mmtbx.utils.process_command_line_args(args = args)
   file_names = inputs.pdb_file_names
   if(len(file_names) != 1): raise Sorry("PDB file must be provided.")
-  mmtbx.tls.tls_as_xyz.run(pdb_file_name = file_names[0], n_models=100, log=log)
+  mmtbx.tls.tls_as_xyz.run(pdb_file_name = file_names[0], n_models=499, log=log)
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
