@@ -44,18 +44,18 @@ def run():
   if amberhome is None:
     raise Sorry("$AMBERHOME not set")
   print "\n  $AMBERHOME set :",amberhome
-  if 1:
-    print "\n  Linking AMBERHOME to Phenix modules"
-    assert os.path.exists(amberhome)
-    target = os.path.join(os.path.dirname(phenix_dir), "amber")
-    if os.path.exists(target):
-      print '\n  Not linking because it already exists : %s' % target
-    else:
-      os.symlink(amberhome, target)
+  print "\n  Linking AMBERHOME to Phenix modules"
+  assert os.path.exists(amberhome)
+  target = os.path.join(os.path.dirname(phenix_dir), "amber")
+  if os.path.exists(target):
+    print '\n  Not linking because it already exists : %s' % target
+  else:
+    os.symlink(amberhome, target)
 
   build_dir = os.path.dirname(os.path.dirname(phenix_dir))
   build_dir = os.path.join(build_dir, "build")
-  if 0:
+  
+  if 0: # don't do this as the python version can change
     dispatcher_include = os.path.join(os.path.dirname(phenix_dir),
                                       "amber_adaptbx",
                                       "dispatcher_include_amber.sh",
