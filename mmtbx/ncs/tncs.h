@@ -11,6 +11,7 @@
 #include <boost/python/extract.hpp>
 #include <cctbx/maptbx/real_space_gradients_simple.h> // import dependency
 #include <cctbx/sgtbx/space_group.h>
+#include <mmtbx/error.h>
 
 
 using namespace std;
@@ -77,6 +78,9 @@ public:
   af::const_ref<FloatType> f_obs;
   af::const_ref<FloatType> sig_f_obs;
   af::const_ref<FloatType> SigmaN;
+  af::const_ref<int> rbin;
+  bool do_target;
+  bool do_gradient;
   // resulting gradient
   af::shared<FloatType> Gradient;
 
@@ -84,6 +88,7 @@ public:
     bp::list const& pairs_,
     af::const_ref<FloatType> const& f_obs_,
     af::const_ref<FloatType> const& sig_f_obs_,
+    af::const_ref<int> const& rbin_,
     af::const_ref<FloatType> const& SigmaN_,
     cctbx::sgtbx::space_group space_group_,
     af::const_ref<cctbx::miller::index<int> > miller_indices_,
@@ -97,10 +102,18 @@ public:
   fractionalization_matrix(fractionalization_matrix_),
   f_obs(f_obs_),
   sig_f_obs(sig_f_obs_),
-  SigmaN(SigmaN_)
+  rbin(rbin_),
+  SigmaN(SigmaN_),
+  do_target(true),
+  do_gradient(true)
   {
+    MMTBX_ASSERT(f_obs.size()==sig_f_obs.size());
+    MMTBX_ASSERT(f_obs.size()==miller_indices.size());
+    MMTBX_ASSERT(SigmaN.size()==f_obs.size());
+    int n_bins = af::max(rbin)+1;
     for(std::size_t i=0;i<bp::len(pairs_);i++) {
       pairs.push_back(bp::extract<pair<FloatType> >(pairs_[i])());
+      MMTBX_ASSERT(pairs[i].rho_mn.size()==n_bins);
     }
     n_pairs = pairs.size();
     dim = n_pairs * sym_mat.size();
@@ -149,8 +162,7 @@ public:
     }
   }
 
-  void calcRefineTerms(bool& do_gradient,
-                       cctbx::miller::index<int>& miller, int sbin)
+  void calcRefineTerms(cctbx::miller::index<int> const& miller, int sbin)
   {
     /* Calculate tNCS-related epsilon factor (to multiply by normal
        symmetry-related epsilon factor), plus derivatives that can be used to
@@ -177,18 +189,14 @@ public:
         FloatType h_dot_T = scitbx::constants::two_pi*(miller*ncsDeltaT[i]);
         FloatType cosTerm = std::cos(h_dot_T);
         FloatType GcosTerm = 2.*Gf*cosTerm;
-        refl_epsfac += GcosTerm*wtfac*pairs[ipair].rhoMN[sbin]; // stored parameter
+        refl_epsfac += GcosTerm*wtfac*pairs[ipair].rho_mn[sbin]; // stored parameter
         if (do_gradient)
           dEps_by_drho[ipair] += GcosTerm*wtfac;
       }
     }
   }
 
-  double target_gradient(
-           af::const_ref<int> const& rbin, // PVA: see below for definition
-           //af::shared<FloatType>& Gradient,
-           bool do_target,
-           bool do_gradient)
+  double target_gradient()
   {
     int nbins = pairs[0].rho_mn.size();
     int npars_ref = n_pairs*nbins;
@@ -196,7 +204,6 @@ public:
     if(do_gradient) {
       Gradient.resize(npars_ref);
       Gradient.fill(0);
-      for (int i = 0; i < Gradient.size(); i++) Gradient[i] = 0;
     }
     //function, and analytic gradient for rhoMN parameters
     double minusLL(0);
@@ -207,10 +214,11 @@ public:
       PVA: look-up array of integer numbers for each refletion telling which
            resolution bin it belongs to. Say this Fobs belongs to bin number 12.
       */
-      unsigned s = rbin(r);
+      int s = rbin(r);
       //recalculate tncs_epsn from changed parameters
-      // XXX PVA: this requires update method for rho_mn done elsewhere
-      calcRefineTerms(do_gradient, miller_indices[r], s);
+      // XXX PVA: this requires update method for rho_mn done when doing
+      //          minimization !!!!!!!!
+      calcRefineTerms(miller_indices[r], s);
       tncs_epsfac[r] = refl_epsfac; // result - tNCS epsilon factor
       if(do_target || do_gradient) {
         /* Compute effective gfun with half-triple summation rather than full
@@ -226,14 +234,13 @@ public:
         double SigmaFactor = 2.*cent_fac;
         double ExpSig(SigmaFactor*scitbx::fn::pow2(sig_f_obs[r]));
         double V = epsnSigmaN + ExpSig;
+        MMTBX_ASSERT(V>0);
         double f_obs_sq = scitbx::fn::pow2(f_obs[r]);
         // For simplicity, leave constants out of log-likelihood, which will not
         // affect refinement
-        if(V != 0.0) {
-          minusLL += cent_fac*(std::log(V) + f_obs_sq/V);
-          if(do_gradient) {
-            dLL_by_dEps = cent_fac*SigmaN[r]*(V-f_obs_sq)/scitbx::fn::pow2(V);
-          }
+        minusLL += cent_fac*(std::log(V) + f_obs_sq/V);
+        if(do_gradient) {
+          dLL_by_dEps = cent_fac*SigmaN[r]*(V-f_obs_sq)/scitbx::fn::pow2(V);
         }
         // <==
       }
@@ -247,8 +254,8 @@ public:
       const double rhoMNbinwt(1./(2*scitbx::fn::pow2(0.05))); // sigma of 0.05 for rhoMN bin smoothness
       for (int ipair = 0; ipair < n_pairs; ipair++) {
         for(int s = 1; s < nbins-1; s++) { // restraints over inner bins
-          double dmean = (pairs[ipair].rhoMN[s-1] + pairs[ipair].rhoMN[s+1])/2.;
-          double delta = pairs[ipair].rhoMN[s] - dmean;
+          double dmean = (pairs[ipair].rho_mn[s-1] + pairs[ipair].rho_mn[s+1])/2.;
+          double delta = pairs[ipair].rho_mn[s] - dmean;
           minusLL += rhoMNbinwt*scitbx::fn::pow2(delta);
           if(do_gradient) {
             Gradient[ipair*nbins+s-1] -= rhoMNbinwt*delta;
@@ -265,8 +272,11 @@ public:
     return tncs_epsfac;
   }
 
+  af::shared<FloatType> gradient() {
+    return Gradient;
+  }
+
 };
-// --------------------------------------------------------------------------
 
 }} // namespace mmtbx::ncs
 

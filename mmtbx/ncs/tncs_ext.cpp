@@ -29,6 +29,7 @@ namespace {
              bp::list const&,
              af::const_ref<double> const&,
              af::const_ref<double> const&,
+             af::const_ref<int> const&,
              af::const_ref<double> const&,
              cctbx::sgtbx::space_group,
              af::const_ref<cctbx::miller::index<int> >,
@@ -37,12 +38,15 @@ namespace {
                   >((arg("tncs_pairs"),
                      arg("f_obs"),
                      arg("sigma_f_obs"),
+                     arg("rbin"),
                      arg("SigmaN"),
                      arg("space_group"),
                      arg("miller_indices"),
                      arg("fractionalization_matrix"),
                      arg("sym_matrices"))))
         .def("tncs_epsfac", &w_t::tncs_epsfac_result)
+        .def("target", &w_t::target_gradient)
+        .def("gradient", &w_t::gradient)
       ;
     }
   };
