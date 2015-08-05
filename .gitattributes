@@ -2030,6 +2030,7 @@ mmtbx/ncs/ncs_utils.py -text
 mmtbx/ncs/tncs.h -text
 mmtbx/ncs/tncs_ext.cpp -text
 mmtbx/ncs/tst_ncs_pair.py -text
+mmtbx/ncs/tst_tncs_epsfac_target_and_grad.py -text
 mmtbx/pdb_distances.py -text
 mmtbx/pdb_symmetry.py -text
 mmtbx/pdbtools.py -text
