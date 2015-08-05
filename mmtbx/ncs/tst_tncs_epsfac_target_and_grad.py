@@ -2,7 +2,6 @@ from __future__ import division
 import cctbx.array_family.flex # import dependency
 import boost.python
 ext = boost.python.import_ext("mmtbx_ncs_ext")
-#from mmtbx_ncs_ext import *
 import iotbx.pdb
 from scitbx.array_family import flex
 from cctbx import sgtbx
@@ -124,12 +123,12 @@ def run():
   ncs_pair = ext.pair(
     r = ([1,0,0,0,1,0,0,0,1]), # I have code to get this
     t = ([-9,0,0]),            # I have code to get this
-    radius=13,                     # XXX: need meaningful numbers here!
-    weight=14,                     # XXX: need meaningful numbers here!
+    radius=15,                     # XXX: need meaningful numbers here!
+    weight=20,                     # XXX: need meaningful numbers here!
     fracscat=0.5,                  # XXX: need meaningful numbers here!
     rho_mn=flex.double(n_bins,1) ) # XXX: need meaningful numbers here!
   #
-  # Prepare data that we need to call tncs_eps_factor_refinery
+  # Prepare data that we need in order to call tncs_eps_factor_refinery
   #
   # List of symmetry rotation matrices
   sym_matrices = []
@@ -151,9 +150,6 @@ def run():
     sym_matrices             = sym_matrices)
   print "target:",obj.target()
   print "gradient:", list(obj.gradient())
-
-
-
 
 if (__name__ == "__main__"):
   run()
