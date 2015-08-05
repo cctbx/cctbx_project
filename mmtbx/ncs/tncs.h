@@ -222,9 +222,9 @@ public:
       tncs_epsfac[r] = refl_epsfac; // result - tNCS epsilon factor
       if(do_target || do_gradient) {
         /* Compute effective gfun with half-triple summation rather than full
-           quadruple summation: 
+           quadruple summation:
              assume NCS chosen closest to pure translation,
-               ignore other NCS+symm combinations 
+               ignore other NCS+symm combinations
              pair off-diagonal contributions from jncs>incs with jncs<incs
         */
         // XXX PVA: epsn = eps = epsilon - symmetry factors, integers.
