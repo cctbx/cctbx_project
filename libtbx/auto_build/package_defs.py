@@ -100,6 +100,8 @@ subversion_repositories = {
   "tntbx": "http://cci.lbl.gov/svn/tntbx/trunk",
   "ksdssp": "http://cci.lbl.gov/svn/ksdssp/trunk",
   "muscle": "http://cci.lbl.gov/svn/muscle/trunk",
+  # adding for amber
+  "amber_adaptbx": "http://cci.lbl.gov/svn/amber_adaptbx/trunk",
 }
 
 class fetch_packages (object) :
