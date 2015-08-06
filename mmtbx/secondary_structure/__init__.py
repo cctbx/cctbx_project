@@ -75,9 +75,6 @@ secondary_structure
 
 master_phil_str = sec_str_master_phil_str # for docs
 
-def get_master_phil():
-  return iotbx.phil.parse(sec_str_master_phil).extract()
-
 sec_str_master_phil = iotbx.phil.parse(sec_str_master_phil_str)
 default_params = sec_str_master_phil.fetch().extract()
 
