@@ -25,27 +25,34 @@ secondary_structure
   .style = box auto_align hidden
 {
   enabled = False
-    .short_caption = Use secondary structure restraints
+    .short_caption = Use secondary structure restraints (main switch)
     .type = bool
     .style = noauto bold
+    .help = Turn on secondary structure restraints
   protein
     .style = box auto_align noauto
   {
     enabled = True
       .type = bool
+      .help = Turn on secondary structure restraints for protein
     search_method = *ksdssp mmtbx_dssp from_ca
       .type = choice
       .help = Particular method to search protein secondary structure.
     distance_ideal_n_o = 2.9
       .type = float
       .short_caption = Ideal N-O distance
+      .help = Target length for N-O hydrogen bond
     distance_cut_n_o = 3.5
       .type = float
       .short_caption = N-O distance cutoff
+      .help = Hydrogen bond with length exceeding this value will not be \
+       established
     remove_outliers = True
       .type = bool
       .short_caption = Filter bond outliers
       .style = tribool
+      .help = If true, h-bonds exceeding distance_cut_n_o length will not be \
+       established
     %s
     %s
   }
@@ -57,6 +64,7 @@ secondary_structure
   {
     enabled = True
       .type = bool
+      .help = Turn on secondary structure restraints for nucleic acids
     %s
   }
 }
@@ -64,6 +72,11 @@ secondary_structure
        proteins.helix_group_params_str,
        proteins.sheet_group_params_str,
        nucleic_acids.dna_rna_params_str)
+
+master_phil_str = sec_str_master_phil_str # for docs
+
+def get_master_phil():
+  return iotbx.phil.parse(sec_str_master_phil).extract()
 
 sec_str_master_phil = iotbx.phil.parse(sec_str_master_phil_str)
 default_params = sec_str_master_phil.fetch().extract()
