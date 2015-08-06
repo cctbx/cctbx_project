@@ -9,11 +9,7 @@ from libtbx.utils import Sorry
 import cStringIO
 import sys, os
 
-def run (args, out=sys.stdout, log=sys.stderr) :
-  pdb_files = []
-  sources = []
-  force_new_annotation = False
-  master_phil_str = """
+master_phil_str = """
 show_all_params = False
   .type = bool
 filter_outliers = True
@@ -31,11 +27,15 @@ file_name = None
   .style = hidden
   %s
 """ % sec_str_master_phil_str
+
+def run (args, out=sys.stdout, log=sys.stderr) :
+  pdb_files = []
+  sources = []
+  force_new_annotation = False
   pcl = iotbx.phil.process_command_line_with_files(
     args=args,
     master_phil_string=master_phil_str,
     pdb_file_def="file_name")
-
   from mmtbx.secondary_structure import sec_str_master_phil
   work_params = pcl.work.extract()
   work_params.secondary_structure.enabled=True
