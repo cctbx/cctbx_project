@@ -134,13 +134,13 @@ class Downloader(object):
 
     try:
       file_size = int(socket.info().getheader('Content-Length'))
-    except: # intentional
+    except Exception:
       file_size = 0
 
     remote_mtime = 0
     try:
       remote_mtime = time.mktime(socket.info().getdate('last-modified'))
-    except: # intentional
+    except Exception:
       pass
 
     if (file_size > 0):
@@ -152,7 +152,7 @@ class Downloader(object):
             log.write("local copy is current\n")
             socket.close()
             return -2
-        except: # intentional
+        except Exception:
           # proceed with download if timestamp/size check fails for any reason
           pass
 
