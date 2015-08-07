@@ -112,6 +112,8 @@ class one_strand_pair_registration_atoms:
 
     self.ok=True
     self.sense=sense
+    self.std_position_a=None
+    self.std_position_b=None
 
     #  If CA residue i of strand n matches with residue i' of strand n+1:
     #  For both parallel and antiparallel: N,O alternately H-bond to strands
@@ -129,6 +131,9 @@ class one_strand_pair_registration_atoms:
     #  For antiparallel strands:
     #  O of residue i in strand n H-bonds to N of residue i' in strand n+1
     #  N of residue i in strand n H-bonds to O of residue i' in strand n+1
+
+    if not strand_a_atom or not strand_b_atom:
+      return
 
     strand_a_atom=strand_a_atom.replace(" ","")
     strand_b_atom=strand_b_atom.replace(" ","")
@@ -165,6 +170,14 @@ class one_strand_pair_registration_atoms:
     #  or both offset by the same multiple of 2 (opposite multiple of 2 if
     #  antiparallel)
 
+    if self.std_position_a is None and other.std_position_a is None:
+      return None  # both are None
+    elif self.std_position_a is None or other.std_position_a is None:
+      return False # one is None
+    if self.std_position_b is None and other.std_position_b is None:
+      return None  # both are None
+    elif self.std_position_b is None or other.std_position_b is None:
+      return False # one is None
 
     delta_a=self.std_position_a-other.std_position_a
     if delta_a-2*(delta_a//2)!=0:  # must be multiple of 2
@@ -238,6 +251,9 @@ class registration_atoms:
     ph=self.hierarchy.deep_copy().select(sel)  # keep original hierarchy too
     # now ph is list of CA by residue.  Find the position of our N or O
 
+    if not self.registration_1 or not self.registration_2:
+      return False,None,None,None,None
+
     strand_1_position=self.get_registration_position(
       hierarchy=ph,
       registration=self.registration_1,
@@ -267,6 +283,9 @@ class registration_atoms:
 
   def get_registration_position(self,hierarchy=None,
       registration=None,prev=False):
+    if not registration:
+      return None
+
     if prev:
       resname=registration.prev_resname
       resseq=registration.prev_resseq
@@ -376,6 +395,7 @@ class structure_base (object) :
     fss=find_secondary_structure(hierarchy=ph,
       user_annotation_text=self.as_pdb_str(),
       force_secondary_structure_input=True,
+      combine_annotations=False,
       max_h_bond_length=max_h_bond_length,out=null_out())
     return fss.number_of_good_h_bonds,fss.number_of_poor_h_bonds
 
@@ -409,7 +429,12 @@ class structure_base (object) :
         maximum_length_difference=maximum_length_difference,
         minimum_overlap=minimum_overlap)
 
-  def combine_atom_selections(self,atom_selections_list):
+  def combine_atom_selections(self,atom_selections_list,require_all=False):
+    if require_all:
+      joiner="and"
+    else:
+      joiner="or"
+
     all_list=[]
     for x in atom_selections_list:
       if type(x)==type([1,2,3]):
@@ -420,8 +445,22 @@ class structure_base (object) :
 
     atom_selection="(%s)" %(all_list[0])
     for x in all_list[1:]:
-      atom_selection+=" or (%s) " %(x)
+      atom_selection+=" %s (%s) " %(joiner,x)
     return atom_selection
+
+  def overlaps_with(self,other=None,hierarchy=None):
+    assert hierarchy
+    s1=self.as_atom_selections()
+    s2=other.as_atom_selections()
+  
+    atom_selection=self.combine_atom_selections([s1,s2],require_all=True)
+    if atom_selection:
+      asc=hierarchy.atom_selection_cache()
+      sel = asc.selection(string = atom_selection)
+      ph=hierarchy.deep_copy().select(sel)  #ph = needed part of hierarchy
+      if ph.overall_counts().n_residues>0:
+        return True
+    return False
 
 
 class annotation(structure_base):
@@ -544,6 +583,20 @@ class annotation(structure_base):
       selections.extend(sheet.as_atom_selections(add_segid=add_segid))
     return selections
 
+  def overall_selection(self,add_segid=None):
+    selections = []
+    for helix in self.helices:
+      try :
+        selections.extend(helix.as_atom_selections(add_segid=add_segid))
+      except RuntimeError, e :
+        pass
+    for sheet in self.sheets:
+      try:
+        selections.extend(sheet.as_atom_selections(add_segid=add_segid))
+      except RuntimeError, e :
+        pass
+    return "(" + ") or (".join(selections) + ")"
+
   def overall_helix_selection(self, add_segid=None):
     selections = []
     for helix in self.helices:
@@ -606,6 +659,7 @@ class annotation(structure_base):
 
   def merge_sheets(self):
     "Group 2-strand sheets into larger sheets if identical component strands"
+    # Assumes that all the sheets are non-overlapping
     # First run sheet.split() on all sheets or split_sheets on the annotation
     #  as this requires 2-strand sheets (not 3 or more)
     from copy import deepcopy
@@ -651,7 +705,6 @@ class annotation(structure_base):
 
             next_strand=deepcopy(next_sheet.strands[1])
             next_registration=deepcopy(next_sheet.registrations[1])
-            # Adjust sense of strand relative to first strand in working_sheet
 
             working_sheet.add_strand(next_strand)
             working_sheet.add_registration(next_registration)
@@ -659,6 +712,17 @@ class annotation(structure_base):
             next_key=next_strand.as_atom_selections()
             if next_key in used_strand_selections: break
 
+    # Now renumber the new sheets
+    sheet_number=0
+    for sheet in new_sheets:
+      sheet_number+=1
+      sheet.n_strands=len(sheet.strands)
+      sheet.sheet_id="%d" %(sheet_number)
+      strand_number=0
+      for strand in sheet.strands:
+        strand_number+=1
+        strand.sheet_id=sheet.sheet_id
+        strand.strand_id=strand_number
 
     # Now new_sheets has strands arranged in sheets.
     new_annotation=deepcopy(self)
@@ -702,7 +766,6 @@ class annotation(structure_base):
     asc=hierarchy.atom_selection_cache()
     sel = asc.selection(string = atom_selection)
     ph=hierarchy.deep_copy().select(sel)  #ph = needed part of hierarchy
-
     # Split all sheets into pairs
     a1=self.split_sheets()
     a2=other.split_sheets()
@@ -710,69 +773,125 @@ class annotation(structure_base):
     # Find all pairs of overlapping annotations and all unique annotations in
     #  self and other
 
-    print >>out,"\nFinding matching and unique helices:"
+    #print >>out,"\nFinding matching and unique helices:"
     helices=self.get_unique_set(
        a1.helices,a2.helices,hierarchy=hierarchy,out=out)
 
-    print >>out,"\nFinding matching and unique sheets:"
+    #print >>out,"\nFinding matching and unique sheets:"
     sheets=self.get_unique_set(a1.sheets,a2.sheets,hierarchy=hierarchy,out=out)
 
     new_annotation=annotation(sheets=sheets,helices=helices)
     new_annotation=new_annotation.merge_sheets()
     return new_annotation
 
+  def score_pair(self,h1,h2,
+      maximize_h_bonds=None,
+      hierarchy=None,
+      max_h_bond_length=None,
+      poor_h_bond_weight=0.5,
+      keep_self=None):
+
+      assert h1 # h2 can be None
+      if maximize_h_bonds:
+        n_good_1,n_poor_1=h1.count_h_bonds(hierarchy=hierarchy,
+          max_h_bond_length=self.max_h_bond_length)
+        score_1=n_good_1+poor_h_bond_weight*n_poor_1
+        if h2:
+          n_good_2,n_poor_2=h2.count_h_bonds(hierarchy=hierarchy,
+            max_h_bond_length=self.max_h_bond_length)
+          score_2=n_good_2+poor_h_bond_weight*n_poor_2
+        else:
+          score_2=None
+      elif keep_self:
+        score_1=1
+        score_2=0
+      else: # take the one with more residues in secondary structure
+        score_1=h1.count_residues()
+        if h2:
+          score_2=h2.count_residues()
+        else:
+          score_2=None
+      return score_1,score_2
+ 
   def get_unique_set(self,h1_list,h2_list,hierarchy=None,
-     poor_h_bond_weight=0.5,out=sys.stdout):
+     out=sys.stdout):
+    # Sheets should be split before using get_unique_set
     pairs=[]
+    overlapping_but_not_matching_pairs=[]
     unique_h1=[]
     unique_h2=[]
     used_h1=[]
     used_h2=[]
     for h1 in h1_list:
       for h2 in h2_list:
+
         if h2.is_similar_to(other=h1,hierarchy=hierarchy,
             maximum_length_difference=self.maximum_length_difference,
             minimum_overlap=self.minimum_overlap):
           if not h1 in used_h1: used_h1.append(h1)
           if not h2 in used_h2: used_h2.append(h2)
           pairs.append([h1,h2])
+        elif h2.overlaps_with(other=h1,hierarchy=hierarchy):
+          overlapping_but_not_matching_pairs.append([h1,h2])
+          if not h1 in used_h1: used_h1.append(h1)
+          if not h2 in used_h2: used_h2.append(h2)
     for h1 in h1_list:
       if not h1 in used_h1: unique_h1.append(h1)
     for h2 in h2_list:
       if not h2 in used_h2: unique_h2.append(h2)
 
     if pairs:
-      print >>out,"\nMatching pairs:"
+      #print >>out,"\nMatching pairs:"
       for [h1,h2] in pairs:
-        print >>out,"SELF : \n%s" %(h1.as_pdb_str())
-        print >>out,"OTHER: \n%s" %(h2.as_pdb_str())
+
+        score_1,score_2=self.score_pair(h1,h2,
+          maximize_h_bonds=self.maximize_h_bonds,
+          hierarchy=hierarchy,
+          max_h_bond_length=self.max_h_bond_length,
+          keep_self=self.keep_self)
+        #print >>out,"SELF : %7.1f\n%s" %(score_1,h1.as_pdb_str())
+        #print >>out,"OTHER: %7.1f\n%s" %(score_2,h2.as_pdb_str())
+
+    if overlapping_but_not_matching_pairs:
+      #print >>out,"\nOverlapping non-matching pairs:"
+      for [h1,h2] in overlapping_but_not_matching_pairs:
+        score_1,score_2=self.score_pair(h1,h2,
+          maximize_h_bonds=self.maximize_h_bonds,
+          hierarchy=hierarchy,
+          max_h_bond_length=self.max_h_bond_length,
+          keep_self=self.keep_self)
+        #print >>out,"SELF : %7.1f\n%s" %(score_1,h1.as_pdb_str())
+        #print >>out,"OTHER: %7.1f\n%s\n" %(score_2,h2.as_pdb_str())
 
     if unique_h1 or unique_h2:
-      print >>out,"\nNon-matching:"
+      #print >>out,"\nNon-matching:"
       for h1 in unique_h1:
-        print >>out,"SELF : \n%s" %(h1.as_pdb_str())
+        score_1,score_2=self.score_pair(h1,None,
+          maximize_h_bonds=self.maximize_h_bonds,
+          hierarchy=hierarchy,
+          max_h_bond_length=self.max_h_bond_length,
+          keep_self=self.keep_self)
+        #print >>out,"SELF : %7.1f\n%s" %(score_1,h1.as_pdb_str())
       for h2 in unique_h2:
-        print >>out,"OTHER: \n%s" %(h2.as_pdb_str())
+        score_1,score_2=self.score_pair(h2,None,
+          maximize_h_bonds=self.maximize_h_bonds,
+          hierarchy=hierarchy,
+          max_h_bond_length=self.max_h_bond_length,
+          keep_self=self.keep_self)
+        #print >>out,"OTHER: %7.1f\n%s" %(score_1,h2.as_pdb_str())
 
     unique=unique_h1+unique_h2
 
     # Now take the best (or self if desired) of pairs and add on unique
     final_list=[]
-    for [h1,h2] in pairs:
-      if self.maximize_h_bonds:
-        n_good_1,n_poor_1=h1.count_h_bonds(hierarchy=hierarchy,
-          max_h_bond_length=self.max_h_bond_length)
-        score_1=n_good_1+poor_h_bond_weight*n_poor_1
-        n_good_2,n_poor_2=h2.count_h_bonds(hierarchy=hierarchy,
-          max_h_bond_length=self.max_h_bond_length)
-        score_2=n_good_2+poor_h_bond_weight*n_poor_2
-      elif self.keep_self:
-        score_1=1
-        score_2=0
-      else: # take the one with more residues in secondary structure
-        score_1=h1.count_residues()
-        score_2=h2.count_residues()
-      print "score 1 and 2: ",score_1,score_2
+    for [h1,h2] in pairs+overlapping_but_not_matching_pairs:
+      score_1,score_2=self.score_pair(h1,h2,
+        maximize_h_bonds=self.maximize_h_bonds,
+        hierarchy=hierarchy,
+        max_h_bond_length=self.max_h_bond_length,
+        keep_self=self.keep_self)
+
+      #print "score 1 and 2: ",score_1,score_2
       if score_1>=score_2:
         final_list.append(h1)
       else:
@@ -804,6 +923,24 @@ class annotation(structure_base):
       return False,None,None
 
     return True,a1,a2
+
+  def overlaps_with(self,other=None,hierarchy=None):
+    "Returns True if any element of the annotation overlap"
+
+    a1=self.split_sheets()
+    a2=other.split_sheets()
+    assert hierarchy
+    for h1 in a1.helices:
+      for h2 in a2.helices:
+        if h1.overlaps_with(other=h2,hierarchy=hierarchy):
+          return True
+
+    for s1 in a1.sheets:
+      for s2 in a2.sheets:
+        if s1.overlaps_with(other=s2,hierarchy=hierarchy):
+          return True
+
+    return False
 
   def is_similar_to(self,other=None,hierarchy=None,
       maximum_length_difference=None, minimum_overlap=None):
@@ -1312,7 +1449,7 @@ class pdb_sheet(structure_base):
       n_strands,
       strands,
       registrations,
-      hbond_list=[], # list of (donor, acceptor) selecitons
+      hbond_list=[], # list of (donor, acceptor) selections
       ):
     adopt_init_args(self, locals())
     if isinstance(self.sheet_id, int):
@@ -1608,6 +1745,42 @@ class pdb_sheet(structure_base):
       starting_sheet_id_number+=1
     return new_sheets
 
+  def overlaps_with(self,other=None,hierarchy=None):
+    "For sheet, overlaps if both members of any strand pair overlap"
+    assert hierarchy
+
+    if len(self.strands)<2: return False
+    if len(other.strands)<2: return False
+    self_sheets=[self]
+    other_sheets=[other]
+    if len(self.strands)>2 or len(other.strands)>2: # break down
+      self_sheets=self.split()
+      other_sheets=other.split()
+    asc=hierarchy.atom_selection_cache()
+    for self_sheet in self_sheets:
+      for other_sheet in other_sheets: 
+        assert len(self_sheet.strands)==2 
+        assert len(other_sheet.strands)==2 
+        
+        s1a=self_sheet.strands[0].as_atom_selections()
+        s1b=self_sheet.strands[1].as_atom_selections()
+        s2a=other_sheet.strands[0].as_atom_selections()
+        s2b=other_sheet.strands[1].as_atom_selections()
+        for pair_1,pair_2 in [[[s1a,s2a],[s1b,s2b]],[[s1a,s2b],[s1b,s2a]] ]:
+          atom_selection=self.combine_atom_selections(pair_1,require_all=True)
+          if not atom_selection: continue
+          sel = asc.selection(string = atom_selection)
+          ph=hierarchy.deep_copy().select(sel)  #ph = needed part of hierarchy
+          if ph.overall_counts().n_residues==0: continue
+
+          atom_selection=self.combine_atom_selections(pair_2,require_all=True)
+          if not atom_selection: continue
+          sel = asc.selection(string = atom_selection)
+          ph=hierarchy.deep_copy().select(sel)  #ph = needed part of hierarchy
+          if ph.overall_counts().n_residues>0:
+            return True  # both match
+    return False
+
   def is_similar_to(self,other=None,hierarchy=None,
       maximum_length_difference=None, minimum_overlap=None,log=sys.stdout):
     # Two sheets are similar if their strands are similar and their
@@ -1673,6 +1846,7 @@ class pdb_sheet(structure_base):
       if not s1.is_same_as(s2): return False
     for r1,r2 in zip(self.registrations,other.registrations):
       if r1 is None and r2 is None: continue # special case..can be None
+      if r1 is None or r2 is None: return False
       if not r1.is_same_as(r2): return False
     return True
 
