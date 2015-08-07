@@ -194,7 +194,7 @@ def get_map_data_and_symmetry(
   if map_coeffs and not crystal_symmetry:
     crystal_symmetry=map_coeffs.crystal_symmetry()
   assert crystal_symmetry is not None
-  return map_data,crystal_symmetry
+  return map_data,map_coeffs,crystal_symmetry
 
 def get_pdb_inp(
   crystal_symmetry=None,
@@ -283,7 +283,7 @@ def run(args,
     print >>out,"\nUsing random seed of %d" %(params.control.random_seed)
 
   # Get map_data if not present
-  map_data,crystal_symmetry=get_map_data_and_symmetry(
+  map_data,map_coeffs,crystal_symmetry=get_map_data_and_symmetry(
     crystal_symmetry=crystal_symmetry,
     map_data=map_data,
     map_coeffs=map_coeffs,

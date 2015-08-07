@@ -275,6 +275,10 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
       for chain in m.chains():
         if not renumber:
           cc=iotbx.pdb.hierarchy.chain()
+          if chain_id:
+            cc.id=chain_id
+          elif chain.id: # take what is already there
+            cc.id=chain.id
           mm.append_chain(cc)
         for r in chain.residue_groups():
           rr=r.detached_copy()
