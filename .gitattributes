@@ -3522,6 +3522,7 @@ xfel/clustering/cluster.py -text
 xfel/clustering/cluster_groups.py -text
 xfel/clustering/simulate_partial_data.py -text
 xfel/clustering/singleframe.py -text
+xfel/command_line/FEE_average_plot.py -text
 xfel/command_line/__init__.py -text
 xfel/command_line/auto_submit.py -text
 xfel/command_line/brehm_diederichs.py -text
