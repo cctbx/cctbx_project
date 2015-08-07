@@ -152,6 +152,10 @@ class one_strand_pair_registration_atoms:
       self.ok=False
       return
 
+    if strand_a_position is None or strand_b_position is None:
+      self.ok=False # can't do anything
+      return
+
     if sense==1:  # parallel
       if strand_a_atom=="O":
         self.std_position_a=strand_a_position
