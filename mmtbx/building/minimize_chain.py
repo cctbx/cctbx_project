@@ -174,6 +174,52 @@ def get_map_coeffs(
   raise Sorry("Unable to find map coeffs in the file %s with labels %s" %(
       map_coeffs_file,str(map_coeffs_labels)))
 
+def get_map_data_and_symmetry(
+    crystal_symmetry=None,
+    map_data=None,
+    map_coeffs=None,
+    map_coeffs_file=None,
+    map_coeffs_labels=None):
+  if not map_data:
+    if not map_coeffs:
+      map_coeffs=get_map_coeffs(
+        map_coeffs_file=map_coeffs_file,
+        map_coeffs_labels=map_coeffs_labels)
+    if not map_coeffs:
+      raise Sorry("Need map_coeffs_file")
+
+    fft_map = map_coeffs.fft_map(resolution_factor = 0.25)
+    fft_map.apply_sigma_scaling()
+    map_data = fft_map.real_map_unpadded()
+  if map_coeffs and not crystal_symmetry:
+    crystal_symmetry=map_coeffs.crystal_symmetry()
+  assert crystal_symmetry is not None
+  return map_data,crystal_symmetry
+
+def get_pdb_inp(
+  crystal_symmetry=None,
+  pdb_inp=None,
+  pdb_string=None,
+  pdb_in=None):
+   
+  if pdb_inp is None:
+    if not pdb_string:
+      if pdb_in:
+        pdb_string=open(pdb_in).read()
+      else:
+        raise Sorry("Need an input PDB file")
+    pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
+    cryst1_line=iotbx.pdb.format_cryst1_record(
+         crystal_symmetry=crystal_symmetry)
+    if not pdb_inp.crystal_symmetry(): # get it
+      from cStringIO import StringIO
+      f=StringIO()
+      print >>f, cryst1_line
+      print >>f,pdb_string
+      pdb_string=f.getvalue()
+      pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
+  return pdb_inp,cryst1_line
+
 def run_one_cycle(
     params=None,
     map_data=None,
@@ -237,39 +283,19 @@ def run(args,
     print >>out,"\nUsing random seed of %d" %(params.control.random_seed)
 
   # Get map_data if not present
-  if not map_data:
-    if not map_coeffs:
-      map_coeffs=get_map_coeffs(
-        map_coeffs_file=params.input_files.map_coeffs_file,
-        map_coeffs_labels=params.input_files.map_coeffs_labels)
-    if not map_coeffs:
-      raise Sorry("Need map_coeffs_file")
-
-    fft_map = map_coeffs.fft_map(resolution_factor = 0.25)
-    fft_map.apply_sigma_scaling()
-    map_data = fft_map.real_map_unpadded()
-  if map_coeffs and not crystal_symmetry:
-    crystal_symmetry=map_coeffs.crystal_symmetry()
-
-  assert crystal_symmetry is not None
+  map_data,crystal_symmetry=get_map_data_and_symmetry(
+    crystal_symmetry=crystal_symmetry,
+    map_data=map_data,
+    map_coeffs=map_coeffs,
+    map_coeffs_file=params.input_files.map_coeffs_file,
+    map_coeffs_labels=params.input_files.map_coeffs_labels)
 
   # Get the starting model
-  if pdb_inp is None:
-    if not pdb_string:
-      if params.input_files.pdb_in:
-        pdb_string=open(params.input_files.pdb_in).read()
-      else:
-        raise Sorry("Need an input PDB file")
-    pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
-    cryst1_line=iotbx.pdb.format_cryst1_record(
-         crystal_symmetry=crystal_symmetry)
-    if not pdb_inp.crystal_symmetry(): # get it
-      from cStringIO import StringIO
-      f=StringIO()
-      print >>f, cryst1_line
-      print >>f,pdb_string
-      pdb_string=f.getvalue()
-      pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
+  pdb_inp,cryst1_line=get_pdb_inp(
+    crystal_symmetry=crystal_symmetry,
+    pdb_inp=pdb_inp,
+    pdb_string=pdb_string,
+    pdb_in=params.input_files.pdb_in)
 
   pdb_hierarchy,multiple_models_hierarchy=run_one_cycle(
     params=params,

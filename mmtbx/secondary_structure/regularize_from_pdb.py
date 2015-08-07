@@ -46,6 +46,15 @@ master_phil = iotbx.phil.parse("""
       .help = Input PDB file
       .short_caption = Input PDB file
 
+    secondary_structure_input = None
+      .type = bool
+      .help = Not used
+      .style = hidden
+
+    force_secondary_structure_input = None
+      .type = bool
+      .help = Not used
+      .style = hidden
 
   }
   output_files {
@@ -54,6 +63,11 @@ master_phil = iotbx.phil.parse("""
       .type = path
       .help = Output PDB file with placed segments only
       .short_caption = Output PDB file with placed segments only
+
+    pdb_records_file = None
+      .type = path
+      .help = Not used
+      .style = hidden
 
   }
   crystal_info {
@@ -142,6 +156,19 @@ master_phil = iotbx.phil.parse("""
        .type = float
        .help = Maximum H-bond length to include in secondary structure
        .short_caption = Maximum H-bond length
+
+    search_secondary_structure = True
+      .type = bool
+      .help = Search for secondary structure in input model. \
+              (Alternative is to just use secondary structure from \
+              secondary_structure_input.)
+      .short_caption = Find secondary structure
+
+    combine_annotations = True
+      .type = bool
+      .help = Combine annotations if an input annotation is provided
+      .short_caption = Combine annotations
+
 
   }
 
