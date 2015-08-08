@@ -506,6 +506,22 @@ def contains_lines(lines, expected):
   return contains_substring(
     actual=lines, expected=expected, failure_prefix="contains_lines() ")
 
+def assert_lines_in_file(file_name, lines,
+    remove_white_spaces=True, remove_newline=True):
+  import os
+  f = open(file_name, "r")
+  f_lines = f.read()
+  f.close()
+  filtered_lines = lines
+  if remove_white_spaces:
+    f_lines = f_lines.replace(" ", "")
+    filtered_lines = filtered_lines.replace(" ", "")
+  if remove_newline:
+    f_lines = f_lines.replace(os.linesep,"")
+    filtered_lines = filtered_lines.replace(os.linesep,"")
+  assert f_lines.find(filtered_lines) > 0, \
+      "Lines:\n %s\n are not in file %s" % (lines, file_name)
+
 class RunCommandError(RuntimeError): pass
 
 def _check_command_output(
