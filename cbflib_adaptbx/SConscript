@@ -103,7 +103,8 @@ if (not env_etc.no_boost_python):
 
   env_cbflib_boost_python_ext.SharedLibrary(
     target='#lib/_pycbf',
-    source=[prefix+"/pycbf/pycbf_wrap.c"],
+    source=[prefix+"/pycbf/pycbf_wrap.c",
+            prefix+"/src/cbf_airy_disk.c"],
     LIBS=["cbf"]+env_etc.libs_python+env_etc.libm)
 
   Export("env_cbflib_boost_python_ext")
