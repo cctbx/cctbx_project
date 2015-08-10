@@ -2046,7 +2046,7 @@ SHEET    4   1 4 VAL A 103  ILE A 107 -1  N  ALA A 106   O  ILE A  82
   assert merged.is_similar_to(other=second_annotation,hierarchy=hierarchy)
 
 
-  
+
   std_short="""
 ATOM     41  N   ALA E   9      16.983  19.664  12.537  1.00 40.00           N
 ATOM     42  CA  ALA E   9      18.325  19.700  13.075  1.00 40.00           C
@@ -2109,7 +2109,7 @@ SHEET    2   1 4 ALA A  12  VAL A  18 -1  N  ILE A  17   O  VAL A  41
 SHEET    3   1 4 ARG A  81  GLY A  87  1  N  VAL A  83   O  ALA A  12
 SHEET    4   1 4 VAL A 103  ILE A 107 -1  N  ALA A 106   O  ILE A  82
 SHEET    1   2 2 ALA A  12  VAL A  18  0
-SHEET    2   2 2 ARG A  81  GLY A  87  1  
+SHEET    2   2 2 ARG A  81  GLY A  87  1
 """
   bad_sheet_anno="""
 SHEET    1   1 4 LYS A  40  VAL A  43  0
@@ -2152,9 +2152,9 @@ SHEET    2   3 2 VAL A 103  ILE A 107 -1  N  ALA A 106   O  ILE A  82   """))
 
   import iotbx.pdb
   from cctbx.array_family import flex
-  std_hierarchy=iotbx.pdb.input(source_info='text', 
+  std_hierarchy=iotbx.pdb.input(source_info='text',
         lines=flex.split_lines(std)).construct_hierarchy()
-  short_hierarchy=iotbx.pdb.input(source_info='text', 
+  short_hierarchy=iotbx.pdb.input(source_info='text',
         lines=flex.split_lines(std_short)).construct_hierarchy()
 
   import iotbx.pdb.secondary_structure as ioss
