@@ -456,7 +456,7 @@ class structure_base (object) :
     assert hierarchy
     s1=self.as_atom_selections()
     s2=other.as_atom_selections()
-  
+
     atom_selection=self.combine_atom_selections([s1,s2],require_all=True)
     if atom_selection:
       asc=hierarchy.atom_selection_cache()
@@ -816,7 +816,7 @@ class annotation(structure_base):
         else:
           score_2=None
       return score_1,score_2
- 
+
   def get_unique_set(self,h1_list,h2_list,hierarchy=None,
      out=sys.stdout):
     # Sheets should be split before using get_unique_set
@@ -1762,10 +1762,10 @@ class pdb_sheet(structure_base):
       other_sheets=other.split()
     asc=hierarchy.atom_selection_cache()
     for self_sheet in self_sheets:
-      for other_sheet in other_sheets: 
-        assert len(self_sheet.strands)==2 
-        assert len(other_sheet.strands)==2 
-        
+      for other_sheet in other_sheets:
+        assert len(self_sheet.strands)==2
+        assert len(other_sheet.strands)==2
+
         s1a=self_sheet.strands[0].as_atom_selections()
         s1b=self_sheet.strands[1].as_atom_selections()
         s2a=other_sheet.strands[0].as_atom_selections()
