@@ -1,10 +1,6 @@
 from __future__ import division
-import sys
-import iotbx.phil
 from psana import *
 import numpy as np
-from scitbx.array_family import flex
-from xfel.cxi.cspad_ana import cspad_tbx
 from libtbx import easy_pickle
 import iotbx.phil, sys
 import libtbx.load_env
@@ -196,7 +192,7 @@ def run(args):
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
-    from pylab import plot,scatter,savefig,close
+    from pylab import savefig,close
     from matplotlib.backends.backend_pdf import PdfPages
     import matplotlib.pyplot as plt
     from matplotlib import cm
