@@ -136,28 +136,34 @@ def run(args):
           continue
       try:
         data = evt.get(Camera.FrameV1,src)
-      except:
+      except ValueError,e:
         src = Source('BldInfo(%s)'%params.input.address)
         data = evt.get(Bld.BldDataSpectrometerV1, src)
       if data is None:
         print "No data"
         continue
+      #set default to determine FEE data type	
+      two_D=False
+      #check attribute of data for type	
       try:
-        # filtering out outlier spikes in FEE data
+        data = np.array(data.data16().astype(np.int32))
+	two_D=True
+      except AttributeError,e:  
         data = np.array(data.hproj().astype(np.float64))
-        #data = np.array(data.hproj().astype(np.int32))
-        for i in xrange(len(data)):
+      
+      if two_D:
+        if 'dark' in locals():
+          data = data - dark
+        one_D_data = np.sum(data,0)/data.shape[0]
+        two_D_data = np.double(data)	
+      else:
+      #used to fix underflow problem that was present in earlier release of psana and pressent for LH80 
+	for i in xrange(len(data)):
           if data[i]>1000000000:
             data[i]=data[i]-(2**32)
         if 'dark' in locals():
           data = data - dark
         one_D_data = data
-      except:
-        data = np.array(data.data16().astype(np.int32))
-        if 'dark' in locals():
-          data = data - dark
-        one_D_data = np.sum(data,0)/data.shape[0]
-        two_D_data = np.double(data)	
   
       totals[0] += 1
       print "total good:", totals[0]
