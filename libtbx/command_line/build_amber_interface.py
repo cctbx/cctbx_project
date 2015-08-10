@@ -1,3 +1,4 @@
+# LIBTBX_SET_DISPATCHER_NAME phenix.build_amber_interface
 from __future__ import division
 import os, sys
 import shutil
@@ -12,6 +13,7 @@ dispatcher_include_str = """#
 
 # include before command
 if [ ! -z "$AMBERHOME" ]; then
+  export PATH="${AMBERHOME}/bin:${PATH}"
   if [ "$LIBTBX_OS_NAME" = "Darwin" ]; then
     if [ -z "$DYLD_LIBRARY_PATH" ]; then
       export DYLD_LIBRARY_PATH=${AMBERHOME}/lib
@@ -24,11 +26,11 @@ if [ ! -z "$AMBERHOME" ]; then
     else
       export LD_LIBRARY_PATH=${AMBERHOME}/lib:${LD_LIBRARY_PATH}
     fi
-    if [ -z "$PYTHONPATH" ]; then
-      export PYTHONPATH="${AMBERHOME}/lib/%s/site-packages"
-    else
-      export PYTHONPATH="${AMBERHOME}/lib/%s/site-packages:${PYTHONPATH}"
-    fi
+  fi
+  if [ -z "$PYTHONPATH" ]; then
+    export PYTHONPATH="${AMBERHOME}/lib/%s/site-packages"
+  else
+    export PYTHONPATH="${AMBERHOME}/lib/%s/site-packages:${PYTHONPATH}"
   fi
 else
   echo 'This Phenix build has been configured to use Amber'

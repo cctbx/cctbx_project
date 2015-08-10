@@ -461,7 +461,7 @@ def tst_00():
   found_text=f.getvalue()
 
   expected_text="""
-New records: 
+New records:
 SHEET    1   1 3 HISAa  32  LEUAa  36  0
 SHEET    2   1 3 VALAa  17  LEUAa  22 -1  N  GLYAa  21   O  HISAa  32
 SHEET    3   1 3 ALAAa  52  VALAa  55 -1  N  LYSAa  54   O  ILEAa  20
@@ -469,7 +469,7 @@ SHEET    1   2 4 GLUAa  40  GLNAa  45  0
 SHEET    2   2 4 PHEAa   7  ALAAa  12 -1  N  ALAAa  12   O  GLUAa  40
 SHEET    3   2 4 LYSAa  58  THRAa  63 -1  N  GLNAa  62   O  VALAa   9
 SHEET    4   2 4 GLYAa  66  GLUAa  71 -1  N  SERAa  70   O  ALAAa  59
-After split_sheets: 
+After split_sheets:
 SHEET    1   1 2 HISAa  32  LEUAa  36  0
 SHEET    2   1 2 VALAa  17  LEUAa  22 -1  N  GLYAa  21   O  HISAa  32
 SHEET    1   2 2 VALAa  17  LEUAa  22  0
@@ -480,7 +480,7 @@ SHEET    1   4 2 PHEAa   7  ALAAa  12  0
 SHEET    2   4 2 LYSAa  58  THRAa  63 -1  N  GLNAa  62   O  VALAa   9
 SHEET    1   5 2 LYSAa  58  THRAa  63  0
 SHEET    2   5 2 GLYAa  66  GLUAa  71 -1  N  SERAa  70   O  ALAAa  59
-After merge_sheets: 
+After merge_sheets:
 SHEET    1   1 3 HISAa  32  LEUAa  36  0
 SHEET    2   1 3 VALAa  17  LEUAa  22 -1  N  GLYAa  21   O  HISAa  32
 SHEET    3   1 3 ALAAa  52  VALAa  55 -1  N  LYSAa  54   O  ILEAa  20
@@ -940,7 +940,7 @@ SHEET    3   1 3 ALAAa  52  VALAa  55 -1  N  LYSAa  54   O  ILEAa  20
   s1_not_overlap_records="""
 SHEET    1   1 3 HISAa  32  LEUAa  36  0
 SHEET    1   2 4 GLUAa  40  GLNAa  45  0
-SHEET    3   2 4 LYSAa  58  THRAa  63 -1  
+SHEET    3   2 4 LYSAa  58  THRAa  63 -1
 """
 
   s1_similar_records="""

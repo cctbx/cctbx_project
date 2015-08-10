@@ -116,10 +116,10 @@ master_phil = iotbx.phil.parse("""
       .type = bool
       .help = Search for secondary structure in input model. \
               (Alternative is to just use secondary structure from \
-              secondary_structure_input.) 
+              secondary_structure_input.)
       .short_caption = Find secondary structure
 
-    combine_annotations = True 
+    combine_annotations = True
       .type = bool
       .help = Combine annotations if an input annotation is provided
       .short_caption = Combine annotations
@@ -451,7 +451,7 @@ def verify_existence(hierarchy=None,
         chain_id=sh.start_chain_id,
         resseq=sh.start_resseq,
         icode=sh.start_icode)
-      if start_atom is None: 
+      if start_atom is None:
         raise Sorry(
         "The starting residue in an annotation is missing in the input model:"+
         "%s %s %s %s" %(
@@ -464,7 +464,7 @@ def verify_existence(hierarchy=None,
         chain_id=sh.end_chain_id,
         resseq=sh.end_resseq,
         icode=sh.end_icode)
-      if end_atom is None: 
+      if end_atom is None:
         raise Sorry(
         "The ending residue in an annotation is missing in the input model:"+
         "%s %s %s %s" %(
@@ -477,7 +477,7 @@ def verify_existence(hierarchy=None,
       chain_id=registration.cur_chain_id,
       resseq=registration.cur_resseq,
       icode=registration.cur_icode)
-    if cur_atom is None: 
+    if cur_atom is None:
         raise Sorry(
         "A residue in an strand registration is missing in the input model:"+
         "%s %s %s %s %s" %(
@@ -492,7 +492,7 @@ def verify_existence(hierarchy=None,
       chain_id=registration.prev_chain_id,
       resseq=registration.prev_resseq,
       icode=registration.prev_icode)
-    if prev_atom is None: 
+    if prev_atom is None:
       raise Sorry(
         "A residue in an strand registration is missing in the input model:"+
         "%s %s %s %s %s" %(
@@ -2338,10 +2338,10 @@ class helix_strand_segments:
           # N of i_index H-bonds to O of j_index-2
 
           assert prev_atom.replace(" ","") in ["O","N"]
-          if prev_atom.replace(" ","")=="N": 
+          if prev_atom.replace(" ","")=="N":
             # H-bond is to j_bond which is j_index-2
             j_index=j_bond+2
-            if j_index>strand_j.sites.size()-1: 
+            if j_index>strand_j.sites.size()-1:
               j_index-=2
               i_index-=2
               if i_index>strand_i.sites.size()-1 or \
@@ -2351,7 +2351,7 @@ class helix_strand_segments:
             # H-bond is to j_bond which is j_index
             j_index=j_bond
 
-        else: #  antiparallel strands: 
+        else: #  antiparallel strands:
           #  O of residue i in strand n H-bonds to N of residue i' in strand n+1
           #  N of residue i in strand n H-bonds to O of residue i' in strand n+1
           j_index=j_bond# everything is ok already
@@ -2715,12 +2715,12 @@ class find_secondary_structure: # class to look for secondary structure
     search_secondary_structure=\
        params.find_ss_structure.search_secondary_structure
 
-    if (not params.find_ss_structure.search_secondary_structure) and (not 
+    if (not params.find_ss_structure.search_secondary_structure) and (not
       params.input_files.secondary_structure_input) and (not
       user_annotation_text):
       raise Sorry(
        "Need either secondary_structure_input or search_secondary_structure=True")
- 
+
     self.helix_strand_segments=helix_strand_segments()
     self.user_helix_strand_segments=helix_strand_segments()
 
@@ -2774,7 +2774,7 @@ class find_secondary_structure: # class to look for secondary structure
     else:
       self.models=split_model(hierarchy=hierarchy)
 
-    if force_secondary_structure_input or (not 
+    if force_secondary_structure_input or (not
        params.find_ss_structure.search_secondary_structure):
       working_annotation=composite_user_annotation
     else:
@@ -2814,7 +2814,7 @@ class find_secondary_structure: # class to look for secondary structure
         print >>out,"\nMerged annotation:\n"
         print >>out,working_annotation.as_pdb_str()
 
-   
+
     # Now get final values of H-bonds etc with our final annotation
     if self.helix_strand_segments and not secondary_structure_input:
       # Use analysis from working annotation (no user input)
@@ -2854,7 +2854,7 @@ class find_secondary_structure: # class to look for secondary structure
         self.number_of_poor_h_bonds=0
 
 
- 
+
     print >>out,\
          "\nNumber of good H-bonds: %d  Number of poor H-bonds: %d" %(
           self.number_of_good_h_bonds,self.number_of_poor_h_bonds)
@@ -3075,7 +3075,7 @@ class find_secondary_structure: # class to look for secondary structure
          "\nNumber of good H-bonds: %d  Number of poor H-bonds: %d" %(
           self.user_number_of_good_h_bonds,self.user_number_of_poor_h_bonds)
     edited_annotation=self.user_helix_strand_segments.get_annotation()
-    
+
 
     if self.user_helix_strand_segments.get_all_pdb_records():
       if params.input_files.force_secondary_structure_input:

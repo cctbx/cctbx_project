@@ -201,7 +201,7 @@ def get_pdb_inp(
   pdb_inp=None,
   pdb_string=None,
   pdb_in=None):
-   
+
   if pdb_inp is None:
     if not pdb_string:
       if pdb_in:
