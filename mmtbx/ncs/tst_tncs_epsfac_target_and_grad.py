@@ -5,6 +5,8 @@ ext = boost.python.import_ext("mmtbx_ncs_ext")
 import iotbx.pdb
 from scitbx.array_family import flex
 from cctbx import sgtbx
+from libtbx import adopt_init_args
+from scitbx import lbfgs as scitbx_lbfgs
 
 pdb_str = """
 CRYST1   21.954   18.566   12.975  90.00  90.00  90.00 P 1
@@ -83,6 +85,122 @@ TER
 END
 """
 
+def lbfgs_run(target_evaluator,
+              min_iterations=0,
+              max_iterations=None,
+              traditional_convergence_test=1,
+              use_curvatures=False):
+  ext = scitbx_lbfgs.ext
+  minimizer = ext.minimizer(target_evaluator.n)
+  minimizer.error = None
+  if (traditional_convergence_test):
+    is_converged = ext.traditional_convergence_test(target_evaluator.n)
+  else:
+    raise RuntimeError
+    is_converged = ext.drop_convergence_test(min_iterations)
+  try:
+    icall = 0
+    requests_f_and_g = True
+    requests_diag = use_curvatures
+    while 1:
+      if (requests_f_and_g):
+        icall += 1
+      x, f, g, d = target_evaluator(
+        requests_f_and_g=requests_f_and_g,
+        requests_diag=requests_diag)
+      if (requests_diag):
+        print "x,f,d:", tuple(x), f, tuple(d)
+      else:
+        print "x,f:", ",".join(["%6.3f"%x_ for x_ in x]), f
+      if (use_curvatures):
+        if (d is None): d = flex.double(x.size())
+        have_request = minimizer.run(x, f, g, d)
+      else:
+        have_request = minimizer.run(x, f, g)
+      if (have_request):
+        requests_f_and_g = minimizer.requests_f_and_g()
+        requests_diag = minimizer.requests_diag()
+        continue
+      assert not minimizer.requests_f_and_g()
+      assert not minimizer.requests_diag()
+      if (traditional_convergence_test):
+        if (minimizer.iter() >= min_iterations and is_converged(x, g)): break
+      else:
+        if (is_converged(f)): break
+      if (max_iterations is not None and minimizer.iter() >= max_iterations):
+        break
+      if (use_curvatures):
+        have_request = minimizer.run(x, f, g, d)
+      else:
+        have_request = minimizer.run(x, f, g)
+      if (not have_request): break
+      requests_f_and_g = minimizer.requests_f_and_g()
+      requests_diag = minimizer.requests_diag()
+  except RuntimeError, e:
+    minimizer.error = str(e)
+  minimizer.n_calls = icall
+  return minimizer
+
+class minimizer:
+
+  def __init__(self,
+               ncs_pair,
+               f_obs,
+               sym_matrices,
+               rbin,
+               min_iterations=0,
+               max_iterations=10000):
+    adopt_init_args(self, locals())
+    self.x = self.ncs_pair.rho_mn
+    self.n = self.x.size()
+    self.tncs_epsfac = None
+
+  def run(self, use_curvatures=0):
+    self.minimizer = lbfgs_run(
+      target_evaluator=self,
+      min_iterations=self.min_iterations,
+      max_iterations=self.max_iterations,
+      use_curvatures=use_curvatures)
+    self(requests_f_and_g=True, requests_diag=False)
+    return self
+
+  def __call__(self, requests_f_and_g, requests_diag):
+    ### update refinable parameters
+    self.ncs_pair = ext.pair(
+      r        = self.ncs_pair.r,
+      t        = self.ncs_pair.t,
+      radius   = self.ncs_pair.radius,
+      weight   = self.ncs_pair.weight,
+      fracscat = self.ncs_pair.fracscat,
+      rho_mn   = self.x)
+    target_and_grads = ext.tncs_eps_factor_refinery(
+      tncs_pairs               = [self.ncs_pair],
+      f_obs                    = self.f_obs.data(),
+      sigma_f_obs              = self.f_obs.sigmas(),
+      rbin                     = self.rbin,
+      SigmaN                   = flex.double(self.f_obs.data().size(),1), # XXX: need meaningful numbers here!
+      space_group              = self.f_obs.space_group(),
+      miller_indices           = self.f_obs.indices(),
+      fractionalization_matrix = self.f_obs.unit_cell().fractionalization_matrix(),
+      sym_matrices             = self.sym_matrices)
+    ###
+    if (not requests_f_and_g and not requests_diag):
+      requests_f_and_g = True
+      requests_diag = True
+    if (requests_f_and_g):
+      self.f = target_and_grads.target()
+      self.g = target_and_grads.gradient()
+      self.d = None
+    if (requests_diag):
+      assert 0 # NA
+      #self.d = flex.double(
+      #  (curv_xx(self.xx, self.yy),
+      #   curv_yy(self.xx, self.yy)))
+      assert self.d.all_ne(0)
+      self.d = 1 / self.d
+    self.tncs_epsfac = target_and_grads.tncs_epsfac()
+    return self.x, self.f, self.g, self.d
+
 def run():
   #
   # Read PDB file from string above, create xray_structure object
@@ -138,7 +256,7 @@ def run():
     print m_as_string, m_as_double
     sym_matrices.append(m_as_double)
   #
-  obj = ext.tncs_eps_factor_refinery(
+  tg = ext.tncs_eps_factor_refinery(
     tncs_pairs               = [ncs_pair],
     f_obs                    = f_obs.data(),
     sigma_f_obs              = f_obs.sigmas(),
@@ -148,8 +266,16 @@ def run():
     miller_indices           = f_obs.indices(),
     fractionalization_matrix = f_obs.unit_cell().fractionalization_matrix(),
     sym_matrices             = sym_matrices)
-  print "target:",obj.target()
-  print "gradient:", list(obj.gradient())
+  print "target:", tg.target()
+  print "gradient:", list(tg.gradient())
+  print "tncs_epsfac:", list(tg.tncs_epsfac())
+  # Run refinement
+  m = minimizer(
+    ncs_pair     = ncs_pair,
+    f_obs        = f_obs,
+    sym_matrices = sym_matrices,
+    rbin         = rbin).run(use_curvatures=False)
+  print list(m.tncs_epsfac)[:10] # print first 10
 
 if (__name__ == "__main__"):
   run()
