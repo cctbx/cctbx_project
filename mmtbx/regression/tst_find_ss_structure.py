@@ -2046,6 +2046,147 @@ SHEET    4   1 4 VAL A 103  ILE A 107 -1  N  ALA A 106   O  ILE A  82
   assert merged.is_similar_to(other=second_annotation,hierarchy=hierarchy)
 
 
+  
+  std_short="""
+ATOM     41  N   ALA E   9      16.983  19.664  12.537  1.00 40.00           N
+ATOM     42  CA  ALA E   9      18.325  19.700  13.075  1.00 40.00           C
+ATOM     43  C   ALA E   9      18.282  19.275  14.530  1.00 40.00           C
+ATOM     44  O   ALA E   9      19.094  19.698  15.348  1.00 40.00           O
+ATOM     45  CB  ALA E   9      18.921  21.097  12.944  1.00 40.00           C
+ATOM     46  N   ALA E  10      17.311  18.426  14.838  1.00 40.00           N
+ATOM     47  CA  ALA E  10      16.934  18.105  16.208  1.00 40.00           C
+ATOM     48  C   ALA E  10      15.691  17.248  16.171  1.00 40.00           C
+ATOM     49  O   ALA E  10      15.418  16.533  17.133  1.00 40.00           O
+ATOM     50  CB  ALA E  10      16.643  19.341  17.056  1.00 40.00           C
+ATOM     51  N   ALA E  11      14.918  17.340  15.101  1.00 40.00           N
+ATOM     52  CA  ALA E  11      13.892  16.372  14.777  1.00 40.00           C
+ATOM     53  C   ALA E  11      14.481  15.437  13.750  1.00 40.00           C
+ATOM     54  O   ALA E  11      14.140  14.259  13.695  1.00 40.00           O
+ATOM     55  CB  ALA E  11      12.642  17.047  14.251  1.00 40.00           C
+ATOM     56  N   ALA E  12      15.357  15.975  12.922  1.00 40.00           N
+ATOM     57  CA  ALA E  12      16.068  15.188  11.935  1.00 40.00           C
+ATOM     58  C   ALA E  12      17.302  14.592  12.578  1.00 40.00           C
+ATOM     59  O   ALA E  12      17.738  13.498  12.224  1.00 40.00           O
+ATOM     60  CB  ALA E  12      16.473  16.043  10.745  1.00 40.00           C
+ATOM     61  N   ALA E  13      17.885  15.327  13.522  1.00 40.00           N
+ATOM     62  CA  ALA E  13      19.089  14.889  14.207  1.00 40.00           C
+ATOM     63  C   ALA E  13      18.624  13.974  15.341  1.00 40.00           C
+ATOM     64  O   ALA E  13      19.426  13.210  15.854  1.00 40.00           O
+ATOM     65  CB  ALA E  13      19.937  16.062  14.623  1.00 40.00           C
+ATOM     66  N   ALA E  14      17.377  14.036  15.725  1.00 40.00           N
+ATOM     67  CA  ALA E  14      16.776  12.964  16.497  1.00 40.00           C
+ATOM     68  C   ALA E  14      16.849  11.628  15.781  1.00 40.00           C
+ATOM     69  O   ALA E  14      17.479  11.493  14.731  1.00 40.00           O
+ATOM     70  CB  ALA E  14      15.332  13.334  16.814  1.00 40.00           C
+ATOM     71  N   ALA E  15      16.245  10.605  16.362  1.00 40.00           N
+ATOM     72  CA  ALA E  15      15.885   9.387  15.650  1.00 40.00           C
+ATOM     73  C   ALA E  15      14.370   9.403  15.597  1.00 40.00           C
+ATOM     74  O   ALA E  15      13.752   9.549  14.543  1.00 40.00           O
+ATOM     75  CB  ALA E  15      16.418   8.148  16.352  1.00 40.00           C
+ATOM     76  N   ALA E  16      13.770   9.311  16.781  1.00 40.00           N
+ATOM     77  CA  ALA E  16      12.311   9.393  16.932  1.00 40.00           C
+ATOM     78  C   ALA E  16      11.863  10.591  17.771  1.00 40.00           C
+ATOM     79  O   ALA E  16      10.793  11.154  17.534  1.00 40.00           O
+ATOM     80  CB  ALA E  16      11.787   8.113  17.522  1.00 40.00           C
+TER
+"""
+  std="""
+ATOM     36  N   ALA E   8      13.630  20.859  12.915  1.00 40.00           N
+ATOM     37  CA  ALA E   8      14.599  19.792  12.772  1.00 40.00           C
+ATOM     38  C   ALA E   8      15.979  20.231  13.192  1.00 40.00           C
+ATOM     39  O   ALA E   8      16.128  21.067  14.087  1.00 40.00           O
+ATOM     40  CB  ALA E   8      14.646  19.295  11.334  1.00 40.00           C
+""" + std_short
+
+  anno="""
+HELIX    1   1 ALA E    8  ALA E   14  1                                   7
+HELIX    1   1 ALA E    9  ALA E   14  1                                   7
+"""
+
+  sheet_anno="""
+SHEET    1   1 4 LYS A  40  VAL A  43  0
+SHEET    2   1 4 ALA A  12  VAL A  18 -1  N  ILE A  17   O  VAL A  41
+SHEET    3   1 4 ARG A  81  GLY A  87  1  N  VAL A  83   O  ALA A  12
+SHEET    4   1 4 VAL A 103  ILE A 107 -1  N  ALA A 106   O  ILE A  82
+SHEET    1   2 2 ALA A  12  VAL A  18  0
+SHEET    2   2 2 ARG A  81  GLY A  87  1  
+"""
+  bad_sheet_anno="""
+SHEET    1   1 4 LYS A  40  VAL A  43  0
+SHEET    2   1 4 GLY A  10  VAL A  18 -1  N  ILE A  17   O  VAL A  41
+SHEET    3   1 4 ARG A  81  GLY A  87  1  N  VAL A  83   O  ALA A  12
+SHEET    4   1 4 VAL A 103  ILE A 107 -1  N  ALA A 106   O  ILE A  82
+"""
+
+  print "\nRemoving bad annotation and duplicate annotation\n"
+
+  print "\nRemoving duplicate sheets"
+  annotation=ioss.annotation.from_records(records=flex.split_lines(sheet_anno))
+  print annotation.as_pdb_str()
+  new_annotation=annotation.remove_overlapping_annotations(
+      hierarchy=hierarchy)
+  print "New annotation:"
+  print new_annotation.as_pdb_str()
+  expected=ioss.annotation.from_records(records=flex.split_lines("""
+SHEET    1   1 4 LYS A  40  VAL A  43  0
+SHEET    2   1 4 ALA A  12  VAL A  18 -1  N  ILE A  17   O  VAL A  41
+SHEET    3   1 4 ARG A  81  GLY A  87  1  N  VAL A  83   O  ALA A  12
+SHEET    4   1 4 VAL A 103  ILE A 107 -1  N  ALA A 106   O  ILE A  82
+   """))
+  assert new_annotation.is_same_as(expected)
+
+  print "\nRemoving bad sheets"
+  annotation=ioss.annotation.from_records(records=flex.split_lines(
+      bad_sheet_anno))
+  print annotation.as_pdb_str()
+  from mmtbx.secondary_structure.find_ss_from_ca import remove_bad_annotation
+  new_annotation=remove_bad_annotation(annotation,hierarchy=hierarchy)
+  print "New annotation:"
+  print new_annotation.as_pdb_str()
+  expected=ioss.annotation.from_records(records=flex.split_lines("""
+SHEET    1   3 2 ARG A  81  GLY A  87  0
+SHEET    2   3 2 VAL A 103  ILE A 107 -1  N  ALA A 106   O  ILE A  82   """))
+  assert new_annotation.is_same_as(expected)
+
+
+
+  import iotbx.pdb
+  from cctbx.array_family import flex
+  std_hierarchy=iotbx.pdb.input(source_info='text', 
+        lines=flex.split_lines(std)).construct_hierarchy()
+  short_hierarchy=iotbx.pdb.input(source_info='text', 
+        lines=flex.split_lines(std_short)).construct_hierarchy()
+
+  import iotbx.pdb.secondary_structure as ioss
+  annotation=ioss.annotation.from_records(records=flex.split_lines(anno))
+
+  print "\nRemoving duplicate helices"
+  print annotation.as_pdb_str()
+
+  print "\nRemoving duplicate helix annotation\n"
+  expected=ioss.annotation.from_records(records=flex.split_lines("""
+HELIX    1   1 ALA E    8  ALA E   14  1                                   7
+  """))
+
+  new_annotation=annotation.remove_overlapping_annotations(
+      hierarchy=std_hierarchy)
+  print new_annotation.as_pdb_str()
+  assert new_annotation.is_same_as(expected)
+
+  print "\nRemoving bad annotation\n"
+  expected=ioss.annotation.from_records(records=flex.split_lines("""
+HELIX    1   1 ALA E    9  ALA E   14  1                                   7
+  """))
+
+  from mmtbx.secondary_structure.find_ss_from_ca import remove_bad_annotation
+  new_annotation=remove_bad_annotation(annotation,hierarchy=short_hierarchy,
+    out=null_out())
+  print new_annotation.as_pdb_str()
+  assert new_annotation.is_same_as(expected)
+
+
+
+
 if __name__=="__main__":
   import sys
   tst_00()

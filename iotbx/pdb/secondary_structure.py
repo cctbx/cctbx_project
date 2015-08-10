@@ -367,7 +367,7 @@ class structure_base (object) :
     "Count residues in this secondary structure"
 
     if hierarchy is None:
-      raise AssertionError,"Require hierarchy for count_h_bonds"
+      raise AssertionError,"Require hierarchy for count_residues"
 
     atom_selection=self.combine_atom_selections(self.as_atom_selections())
     if not atom_selection:
@@ -456,7 +456,7 @@ class structure_base (object) :
     assert hierarchy
     s1=self.as_atom_selections()
     s2=other.as_atom_selections()
-
+  
     atom_selection=self.combine_atom_selections([s1,s2],require_all=True)
     if atom_selection:
       asc=hierarchy.atom_selection_cache()
@@ -692,7 +692,6 @@ class annotation(structure_base):
         if key in used_strand_selections: continue
         if key in sheet_pointer_0.keys() and (
             iter==1 or not key in sheet_pointer_1.keys()):
-
           used_strand_selections.append(key)
           working_sheet=deepcopy(sheet_pointer_0.get(key))
           new_sheets.append(working_sheet)  # now we will extend this sheet
@@ -715,7 +714,6 @@ class annotation(structure_base):
 
             next_key=next_strand.as_atom_selections()
             if next_key in used_strand_selections: break
-
     # Now renumber the new sheets
     sheet_number=0
     for sheet in new_sheets:
@@ -810,13 +808,59 @@ class annotation(structure_base):
         score_1=1
         score_2=0
       else: # take the one with more residues in secondary structure
-        score_1=h1.count_residues()
+        score_1=h1.count_residues(hierarchy=hierarchy)
         if h2:
-          score_2=h2.count_residues()
+          score_2=h2.count_residues(hierarchy=hierarchy)
         else:
           score_2=None
       return score_1,score_2
 
+  def remove_overlapping_annotations(self,hierarchy=None,
+     maximize_h_bonds=True,max_h_bond_length=None,
+     maximum_length_difference=None,minimum_overlap=None):
+    if not hierarchy:
+      raise Sorry("Need hierarchy for remove_overlapping_annotations")
+    self.maximum_length_difference=maximum_length_difference
+    self.minimum_overlap=minimum_overlap
+    self.maximize_h_bonds=maximize_h_bonds
+    self.max_h_bond_length=max_h_bond_length
+
+    self.sheets=self.split_sheets().sheets
+    new_sheets=self.select_best_overlapping_annotations(hierarchy=hierarchy,
+      sheet_or_helix_list=self.sheets)
+    new_helices=self.select_best_overlapping_annotations(hierarchy=hierarchy,
+      sheet_or_helix_list=self.helices)
+    from copy import deepcopy
+    new_annotation=annotation(
+      helices=deepcopy(new_helices),
+      sheets=deepcopy(new_sheets))
+    return new_annotation.merge_sheets()
+
+  def select_best_overlapping_annotations(self,hierarchy=None,
+      sheet_or_helix_list=None):
+    assert hierarchy
+    score_list=[]
+    for s1 in sheet_or_helix_list:
+      score_1,score_2=self.score_pair(s1,None,
+         maximize_h_bonds=self.maximize_h_bonds,
+         hierarchy=hierarchy,
+         max_h_bond_length=self.max_h_bond_length,
+         keep_self=None)
+      score_list.append([score_1,s1])
+    score_list.sort()
+    score_list.reverse()
+
+    remove_list=[]
+    keep_list=[]
+    for score1,s1 in score_list: # remove things that overlap and lower score
+      if not s1 in remove_list and not s1 in keep_list:
+        keep_list.append(s1)
+      for score2,s2 in score_list:
+        if s2==s1 or s2 in keep_list or s2 in remove_list: continue
+        if s1.overlaps_with(other=s2,hierarchy=hierarchy):
+          remove_list.append(s2)
+    return keep_list
+ 
   def get_unique_set(self,h1_list,h2_list,hierarchy=None,
      out=sys.stdout):
     # Sheets should be split before using get_unique_set
@@ -1762,10 +1806,10 @@ class pdb_sheet(structure_base):
       other_sheets=other.split()
     asc=hierarchy.atom_selection_cache()
     for self_sheet in self_sheets:
-      for other_sheet in other_sheets:
-        assert len(self_sheet.strands)==2
-        assert len(other_sheet.strands)==2
-
+      for other_sheet in other_sheets: 
+        assert len(self_sheet.strands)==2 
+        assert len(other_sheet.strands)==2 
+        
         s1a=self_sheet.strands[0].as_atom_selections()
         s1b=self_sheet.strands[1].as_atom_selections()
         s2a=other_sheet.strands[0].as_atom_selections()
@@ -1822,6 +1866,12 @@ class pdb_sheet(structure_base):
     reg1=self.registrations[1]
     reg2=other.registrations[1]
 
+    if reg1 is None and reg2 is None:
+      return True # seems ok
+    elif reg1 is None or reg2 is None:
+      return False # one has it and other does not
+
+    # otherwise check the two for similarity 
     if not match_forward:  # swap other so they should be comparable
       xx=s2a
       s2a=s2b
