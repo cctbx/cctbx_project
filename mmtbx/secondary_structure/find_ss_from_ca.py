@@ -1822,7 +1822,8 @@ class find_beta_strand(find_segment):
       k=sheet[0]
       remainder=sheet[1:] # all the others
       s=segment_list[k]
-      if not s.hierarchy: continue
+      if not s.hierarchy or not s.hierarchy.overall_counts().n_residues:
+        continue
       current_sheet = secondary_structure.pdb_sheet(
         sheet_id=sheet_id,
         n_strands=len(sheet),
@@ -1844,7 +1845,8 @@ class find_beta_strand(find_segment):
       for j in remainder: # previous strand is i, current is j
         s=segment_list[j]
         strand_id+=1
-        if not s.hierarchy: continue
+        if not s.hierarchy or not s.hierarchy.overall_counts().n_residues:
+          continue
 
         key="%d:%d" %(i,j)
         first_last_1_and_2=info_dict[key]
