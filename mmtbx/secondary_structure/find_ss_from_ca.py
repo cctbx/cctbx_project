@@ -177,6 +177,10 @@ def get_pdb_hierarchy(text=None):
 def split_model(model=None,hierarchy=None,verbose=False,info=None,
      only_first_model=None,out=sys.stdout):
 
+  # XXX NOTE: this splits model at all icode residues (one model per residue)
+  # The routine extract_segment below assumes that the residues in an individual
+  #  model are sequential (no insertion codes)
+
   model_list=[]
   if hierarchy:
     if not info: info={}
@@ -1372,10 +1376,15 @@ class find_segment: # class to look for a type of segment
       if self.extract_segments_from_pdb or self.model_as_segment:
         start_resno=start_res_with_buffer+self.start_resno
         end_resno=end_res_with_buffer+self.start_resno
-        atom_selection="resid %s through %s" %(resseq_encode(start_resno),
+        # XXX NOTE: we assume that the model has been broken up so that there
+        # is at most one residue with each residue number (broken up at
+        # insertion codes).  If this changes this will not work properly.
+        atom_selection="resseq %s:%s" %(resseq_encode(start_resno),
            resseq_encode(end_resno))
         hierarchy=apply_atom_selection(
            atom_selection,hierarchy=self.model.hierarchy)
+        if hierarchy.overall_counts().n_residues==0:
+          return False # did not find anything here and needed to
       else:
         hierarchy=None
 
