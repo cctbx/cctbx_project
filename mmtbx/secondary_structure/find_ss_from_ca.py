@@ -513,8 +513,8 @@ def get_atom_index(hierarchy=None,atom_name=None,resname=None,
         for residue in conformer.residues():
           count+=1
           if not chain.id==chain_id: continue
-          if not residue.resseq.replace(" ","")==str(resseq) or \
-              not residue.icode==icode:
+          if not residue.resseq.replace(" ","")==str(resseq).replace(" ","") \
+             or not residue.icode==icode:
             continue
           for atom in residue.atoms():
             if atom_name is None or atom.name==atom_name:
@@ -536,7 +536,96 @@ def have_n_or_o(models):
       return True
     return False
 
+def remove_bad_annotation(annotation,hierarchy=None,
+     maximize_h_bonds=True,
+     max_h_bond_length=None,
+     maximum_length_difference=None,
+     minimum_overlap=None,
+     out=sys.stdout):
+  # ZZZ perhaps move this to secondary_structure.py
 
+  # remove parts of annotation that do not exist in the hierarchy or
+  #  that overlap with other annotations
+  new_annotation=annotation.split_sheets()
+
+  deleted_something=False
+  new_helices=[]
+  for helix in new_annotation.helices:
+    ph=apply_atom_selection(
+      get_string_or_first_element_of_list(helix.as_atom_selections()),
+         hierarchy=hierarchy)
+    try:
+        verify_existence(hierarchy=ph,helix=helix)
+        new_helices.append(helix)
+    except Exception,e: # the helix needs to be deleted
+        print >>out,"%s\nDeleting this helix" %(str(e))
+        deleted_something=True
+  if deleted_something:
+    new_annotation.helices=new_helices
+
+  new_sheets=[]
+  for sheet in new_annotation.sheets:
+    prev_hierarchy=None
+    strands_ok=True
+    registrations_ok=True
+    for strand,registration in zip(sheet.strands,sheet.registrations):
+      # verify that first and last atom selections in strand exist
+      ph=apply_atom_selection(
+         get_string_or_first_element_of_list(strand.as_atom_selections()),
+         hierarchy=hierarchy)
+      try:
+        verify_existence(hierarchy=ph,prev_hierarchy=prev_hierarchy,
+         strand=strand)
+      except Exception,e: # the strand needs to be deleted
+        print >>out,"%s\nDeleting this strand" %(str(e))
+        strands_ok=False
+        deleted_something=True
+      try:
+        verify_existence(hierarchy=ph,prev_hierarchy=prev_hierarchy,
+         registration=registration)
+      except Exception,e: # the registration needs to be deleted
+        print >>out,"Deleting registration\n%s" %(str(e))
+        registrations_ok=False
+        deleted_something=True
+      prev_hierarchy=ph
+    if strands_ok:
+      if not registrations_ok:
+        sheet.registrations=[None,None]
+      new_sheets.append(sheet)
+  new_annotation.sheets=new_sheets
+
+  if deleted_something:
+    new_annotation.merge_sheets()
+    if new_annotation.as_pdb_str():
+      print >>out, "User annotation after removing bad parts:"
+      print >>out, new_annotation.as_pdb_str()
+      return new_annotation
+    else:
+      print >>out,"No annotation left after removing bad parts"
+      return None
+
+  # Now remove overlaps
+
+  no_overlap_annotation=new_annotation.remove_overlapping_annotations(
+    hierarchy=hierarchy,
+    maximize_h_bonds=maximize_h_bonds,
+    max_h_bond_length=max_h_bond_length,
+    maximum_length_difference=maximum_length_difference,
+    minimum_overlap=minimum_overlap)
+
+  if not no_overlap_annotation.is_same_as(other=new_annotation):
+    print >>out,"Edited annotation without overlaps:"
+    print >>out,no_overlap_annotation.as_pdb_str()
+    print >>out
+
+  return no_overlap_annotation
+
+
+def get_string_or_first_element_of_list(something):
+  if type(something)==type([1,2,3]):
+    return something[0]
+  else:
+    return something
 
 class model_info: # mostly just a holder
   def __init__(self,hierarchy=None,id=0,info={},
@@ -2932,6 +3021,15 @@ class find_secondary_structure: # class to look for secondary structure
       print >>out,\
        "\nThis secondary structure annotation will be modified if necessary\n"
 
+      # Remove any parts of this annotation that do not exist in the hierarchy
+      user_annotation=remove_bad_annotation(
+        user_annotation,
+        hierarchy=hierarchy,
+        max_h_bond_length=params.find_ss_structure.max_h_bond_length,
+        out=out)
+      if not user_annotation:
+        return None
+
     if params.control.verbose or \
         (not params.input_files.force_secondary_structure_input) or \
         params.find_ss_structure.combine_annotations:
@@ -2943,11 +3041,6 @@ class find_secondary_structure: # class to look for secondary structure
     # Set up our alpha_helix_list etc from this...(just copy)
 
     # Helix classes:   'alpha', 'pi', '3_10',
-    def get_string_or_first_element_of_list(something):
-      if type(something)==type([1,2,3]):
-        return something[0]
-      else:
-        return something
     for helix in user_annotation.helices:
       ph=apply_atom_selection(
        get_string_or_first_element_of_list(helix.as_atom_selections()),
@@ -2997,9 +3090,6 @@ class find_secondary_structure: # class to look for secondary structure
          get_string_or_first_element_of_list(strand.as_atom_selections()),
          hierarchy=hierarchy)
 
-        # verify that first and last atom selections in strand exist
-        verify_existence(hierarchy=ph,prev_hierarchy=prev_hierarchy,
-           strand=strand,registration=registration)
 
 
         model=model_info(hierarchy=ph,info={'class':'strand'})
