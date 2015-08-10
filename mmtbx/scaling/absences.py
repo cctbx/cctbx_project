@@ -428,26 +428,28 @@ class analyze_absences(mmtbx.scaling.xtriage_analysis):
 
  For each operator, the reflections are split in three classes:
 """)
-    out.show_lines("""
-  Absent    : Reflections that are absent for this operator.
-  Non Absent: Reflection of the same type (i.e. (0,0,l)) as above, but they should be present.
-  Complement: All other reflections.
+    out.show_preformatted_text("""
+  Systematic absence: Reflections that are absent for this operator.
+  Non absence       : Reflections of the same type (i.e. (0,0,l)) as above, but they
+                      should be present.
+  Other reflections : All other reflections.
 """)
     out.show("""\
 For each class, the <I/sigI> is reported, as well as the number of
-'violations'. A 'violation' is designated as a reflection for which a I/sigI
-criterion is not met. The criteria are:""")
+violations. A violation is a reflection that is absent when it is expected
+to be present for a particular space group, or present when it is
+expected to be absent. The criteria are:""")
     out.show_preformatted_text("""
-  Absent violation     : I/sigI > %(cut)2.1f
-  Non Absent violation : I/sigI < %(cut)2.1f
-  Complement violation : I/sigI < %(cut)2.1f
+  Systematic absence violation: I/sigI > %(cut)2.1f
+  Non absence violation       : I/sigI < %(cut)2.1f
+  Other relections violation  : I/sigI < %(cut)2.1f
 """ % {"cut":self.cut})
     out.show_text("""\
-Operators with low associated violations for *both* absent and non absent
-reflections, are likely to be true screw axis or glide planes. Both the
-number of violations and their percentages are given.  The number of
-violations within the 'complement' class, can be used as a comparison for
-the number of violations in the non-absent class.
+Operators with low associated violations for *both* systematically absent and
+non absent reflections, are likely to be true screw axis or glide planes. Both
+the number of violations and their percentages are given.  The number of
+violations within the 'other reflections' class, can be used as a comparison
+for the number of violations in the non-absent class.
 """)
     out.show_table(self.table)
 
@@ -499,11 +501,11 @@ the number of violations in the non-absent class.
 
   def check_conditions(self,abs_lower_i_threshold=1e-6):
     table_labels = ('Operator',
-      "# absent",
+      "# expected systematic absences",
       "<I/sigI> (violations)",
-      "# not absent",
+      "# expected non absences",
       "<I/sigI> (violations)",
-      "# complete",
+      "# other reflections",
       "<I/sigI> (violations)",
       "Score")
     for  item in [0]: # absence_class in self.abs_check.absence_classes[ self.sg.group().crystal_system() ]:
@@ -716,7 +718,7 @@ class protein_space_group_choices(mmtbx.scaling.xtriage_analysis):
       self.violations.append( tmp_violations )
     tmp_rows = self.suggest_likely_candidates()
     self.sorted_table = table_utils.simple_table(
-      column_headers=['space group', 'n absent', '<Z>_absent',
+      column_headers=['space group', '#  absent', '<Z>_absent',
                       '<Z/sigZ>_absent', '+++', '---', 'score'],
       table_rows=tmp_rows)
 
@@ -727,9 +729,9 @@ class protein_space_group_choices(mmtbx.scaling.xtriage_analysis):
     out.show_text("""\
 Analyses of the absences table indicates a number of likely space group
 candidates, which are listed below. For each space group, the number of
-absent violations are listed under the '+++' column. The number of present
-violations (weak reflections) are listed under '---'. The last column is a
-likelihood based score for the particular space group.  Note that
+systematic absence violations are listed under the '+++' column. The number of
+non-absence violations (weak reflections) are listed under '---'. The last
+column is a likelihood based score for the particular space group.  Note that
 enantiomorphic spacegroups will have equal scores. Also, if absences were
 removed while processing the data, they will be regarded as missing
 information, rather then as enforcing that absence in the space group choices.
