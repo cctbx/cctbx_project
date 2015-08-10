@@ -575,7 +575,7 @@ class ice_ring_checker(scaling.xtriage_analysis):
         if (abnormality_completeness >= cutoff) :
           problems_detected = True
           out.show("""\
- At %3.2f A there is an lower occupancy than expected from the rest of the
+ At %3.2f A there is a lower completeness than expected from the rest of the
  data set.""" % self.ice_d_spacings[ii])
           if (abs(self.abnormality_intensity[ii]) >= cutoff):
             out.show("""\
@@ -583,7 +583,7 @@ class ice_ring_checker(scaling.xtriage_analysis):
  it should.""")
           else :
             out.show("""\
- Even though the completeness is lower as expected, the mean intensity is
+ Even though the completeness is lower than expected, the mean intensity is
  still reasonable at this resolution.""")
         if ((abs(self.abnormality_intensity[ii]) >= cutoff) or
             (abs(self.value_intensity[ii])>getattr(self,"z_score_limit",10))):
@@ -591,7 +591,7 @@ class ice_ring_checker(scaling.xtriage_analysis):
           if (abs(self.abnormality_completeness[ii])<=cutoff):
             out.show("""\
  At %3.2f A the z-score is more than %3.2f times the standard deviation of
- all z-scores, while at the same time, the occupancy does not go down.
+ all z-scores, while at the same time, the completeness does not go down.
 """ %(self.ice_d_spacings[ii], cutoff))
 
     if (not problems_detected) :
