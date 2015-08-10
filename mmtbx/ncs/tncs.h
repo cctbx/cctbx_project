@@ -185,7 +185,8 @@ public:
         FloatType rsSqr =
           GfunTensor[0]*hh*hh + GfunTensor[1]*kk*kk + GfunTensor[2]*ll*ll +
           GfunTensor[3]*hh*kk + GfunTensor[4]*hh*ll + GfunTensor[5]*kk*ll;
-        FloatType Gf = scitbx::math::g_function::GfuncOfRSsqr_approx(rsSqr);
+        //FloatType Gf = scitbx::math::g_function::GfuncOfRSsqr_approx(rsSqr);
+        FloatType Gf = scitbx::math::g_function::GfuncOfRSsqr(rsSqr);
         FloatType h_dot_T = scitbx::constants::two_pi*(miller*ncsDeltaT[i]);
         FloatType cosTerm = std::cos(h_dot_T);
         FloatType GcosTerm = 2.*Gf*cosTerm;
