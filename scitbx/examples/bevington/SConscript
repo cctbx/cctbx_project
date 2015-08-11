@@ -36,5 +36,5 @@ try:
         env=env_scitbx_ex_bev_boost_python_ext,
         paths=env_etc.scitbx_ex_bev_common_includes)
       Export("env_scitbx_ex_bev_boost_python_ext")
-except:
+except Exception:
   pass
