@@ -45,6 +45,7 @@ namespace boost_python { namespace {
       .def("reset", &nllsew::reset)
       .def("step_equations",&nllsew::step_equations, rir)
       .def("add_constant_to_diagonal",&nllsew::add_constant_to_diagonal)
+      .def("show_eigen_summary",&nllsew::show_eigen_summary)
       .def("get_normal_matrix_diagonal",&nllsew::get_normal_matrix_diagonal)
       .def("get_normal_matrix",&nllsew::get_normal_matrix)
       .def("get_cholesky_lower", &nllsew::get_cholesky_lower)

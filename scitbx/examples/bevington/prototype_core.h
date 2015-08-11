@@ -48,14 +48,6 @@ class linear_ls_eigen_wrapper
 
     void solve() {
       int N = n_parameters();
-      //SCITBX_EXAMINE(eigen_normal_matrix.nonZeros());
-      int matsize = eigen_normal_matrix.cols() * (eigen_normal_matrix.cols()+1)/2;
-      //printf("NM edge %10d, upper triangle size %10d, non-zeros %10d, %6.2f%%\n",
-      //  n_parameters(),
-      //  matsize,
-      //  eigen_normal_matrix.nonZeros(),
-      //  eigen_normal_matrix.nonZeros()/double(matsize));
-
       Eigen::SimplicialCholesky<sparse_matrix_t> chol(eigen_normal_matrix.transpose());
       // XXX pack the right hand side in a eigen vector type
       Eigen::VectorXd b(n_parameters());
@@ -95,6 +87,21 @@ class linear_ls_eigen_wrapper
         }
       }
       return result;
+    }
+
+    void show_eigen_summary() const {
+      int matsize = eigen_normal_matrix.cols() * (eigen_normal_matrix.cols()+1)/2;
+      printf("Number of parameters      %10d\n",n_parameters());
+      printf("Normal matrix square size %10d\n",eigen_normal_matrix.cols() * eigen_normal_matrix.cols());
+      printf("Upper triangle size       %10d\n",matsize);
+      printf("Normal matrix non-zeros   %10d, %6.2f%%\n",
+              eigen_normal_matrix.nonZeros(),
+              100. * eigen_normal_matrix.nonZeros()/double(matsize));
+      Eigen::SimplicialLDLT<sparse_matrix_t> chol(eigen_normal_matrix.transpose());
+      sparse_matrix_t lower = chol.matrixL();
+      printf("Cholesky factor non-zeros %10d, %6.2f%%\n",
+              lower.nonZeros(),
+              100. * lower.nonZeros()/double(matsize));
     }
 
     scitbx::af::shared<double> get_cholesky_diagonal() const {
@@ -248,6 +255,9 @@ class non_linear_ls_eigen_wrapper:  public scitbx::lstbx::normal_equations::non_
     inline void wipe_triplets(){
       //critical to release this memory
       tripletList = scitbx::af::shared<triplet_t>();
+    }
+    void show_eigen_summary(){
+      eigen_wrapper.show_eigen_summary();
     }
     scitbx::af::shared<double> get_cholesky_lower(){
       return eigen_wrapper.get_cholesky_lower();
