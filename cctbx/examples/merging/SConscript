@@ -1,0 +1,40 @@
+import libtbx.load_env
+import os
+Import("env_base", "env_etc")
+
+try:
+  env_etc.eigen_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../eigen"))
+  if os.path.isdir(env_etc.eigen_dist):
+    env_etc.eigen_include = env_etc.eigen_dist
+    env_etc.large_scale_merging_common_includes = [
+      env_etc.eigen_include,
+      env_etc.libtbx_include,
+      env_etc.cctbx_include,
+      env_etc.scitbx_include,
+      env_etc.boost_include,
+    ]
+    env = env_base.Clone(SHLINKFLAGS=env_etc.shlinkflags)
+    env.Append(LIBS=["cctbx"] + env_etc.libm)
+    env_etc.include_registry.append(
+      env=env,
+      paths=env_etc.large_scale_merging_common_includes)
+    if (env_etc.static_libraries): builder = env.StaticLibrary
+    else:                          builder = env.SharedLibrary
+    #builder(
+    #  target="#lib/large_scale_merging",
+    #  source=["large_scale_merging_core.cpp"]
+    #  )
+
+    if (not env_etc.no_boost_python):
+      Import("env_boost_python_ext")
+      env_large_scale_merging_boost_python_ext = env_boost_python_ext.Clone()
+    #  env_large_scale_merging_boost_python_ext.Prepend(
+    #                 LIBS=["large_scale_merging",])
+      env_large_scale_merging_boost_python_ext.SharedLibrary(
+                     target="#lib/cctbx_large_scale_merging_ext", source="large_scale_merging_ext.cpp")
+      env_etc.include_registry.append(
+	env=env_large_scale_merging_boost_python_ext,
+	paths=env_etc.large_scale_merging_common_includes)
+      Export("env_large_scale_merging_boost_python_ext")
+except Exception:
+  pass

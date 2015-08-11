@@ -130,6 +130,17 @@ cctbx/examples/hirshfeld_test.py -text
 cctbx/examples/list_non_principal_continuous_shifts.py -text
 cctbx/examples/location_part.py -text
 cctbx/examples/maximum_subgroups.py -text
+cctbx/examples/merging/SConscript -text
+cctbx/examples/merging/__init__.py -text
+cctbx/examples/merging/data_subset.py -text
+cctbx/examples/merging/data_utilities.py -text
+cctbx/examples/merging/large_scale_merging_ext.cpp -text
+cctbx/examples/merging/read_me -text
+cctbx/examples/merging/task4.py -text
+cctbx/examples/merging/test1.py -text
+cctbx/examples/merging/test_levenberg_sparse.py -text
+cctbx/examples/merging/tst_permutations.py -text
+cctbx/examples/merging/xscale_prototype_core.h -text
 cctbx/examples/miller_transform.py -text
 cctbx/examples/quartz_structure.py svneol=native#text/x-python
 cctbx/examples/random_puckers.py svneol=native#text/x-python

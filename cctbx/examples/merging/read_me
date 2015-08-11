@@ -1,0 +1,6 @@
+The examples here depend on reading a database of reflections.
+
+Until publication, the 
+test script assumes that you get the data files directly from the author (NKS) 
+and install them in the directory "xscale_reserve" at the same 
+directory level as cctbx_project, that is, in the "modules" source directory.
