@@ -545,6 +545,7 @@ def remove_bad_annotation(annotation,hierarchy=None,
      max_h_bond_length=None,
      maximum_length_difference=None,
      minimum_overlap=None,
+     remove_overlaps=True,
      out=sys.stdout):
   # ZZZ perhaps move this to secondary_structure.py
 
@@ -603,10 +604,12 @@ def remove_bad_annotation(annotation,hierarchy=None,
     if new_annotation.as_pdb_str():
       print >>out, "User annotation after removing bad parts:"
       print >>out, new_annotation.as_pdb_str()
-      return new_annotation
     else:
       print >>out,"No annotation left after removing bad parts"
       return None
+
+  if not remove_overlaps:
+    return new_annotation
 
   # Now remove overlaps
 
@@ -1379,8 +1382,9 @@ class find_segment: # class to look for a type of segment
         # XXX NOTE: we assume that the model has been broken up so that there
         # is at most one residue with each residue number (broken up at
         # insertion codes).  If this changes this will not work properly.
-        atom_selection="resseq %s:%s" %(resseq_encode(start_resno),
-           resseq_encode(end_resno))
+        atom_selection="resseq %s:%s" %(
+           resseq_encode(start_resno).replace(" ",""),
+           resseq_encode(end_resno).replace(" ",""))
         hierarchy=apply_atom_selection(
            atom_selection,hierarchy=self.model.hierarchy)
         if hierarchy.overall_counts().n_residues==0:
@@ -2939,7 +2943,7 @@ class find_secondary_structure: # class to look for secondary structure
 
     else: # need to redo it from the beginning with our new annotation:
       print >>out,"\nRunning analysis with new annotation"
-      if working_annotation.as_pdb_str():
+      if working_annotation and working_annotation.as_pdb_str():
         fss=find_secondary_structure(hierarchy=hierarchy,
           user_annotation_text=working_annotation.as_pdb_str(),
           force_secondary_structure_input=True,
@@ -2983,13 +2987,13 @@ class find_secondary_structure: # class to look for secondary structure
           model.find_beta.show_summary(out=out)
         if model.find_other:
           model.find_other.show_summary(out=out)
-    if self.annotation.as_pdb_str():
+    if self.annotation and self.annotation.as_pdb_str():
       print >>out,"\nFINAL PDB RECORDS:"
       print >>out,self.annotation.as_pdb_str()
       print >>out,"\n\nFINAL PDB selections:"
       print >>out,'"%s"' %(self.annotation.overall_selection())
 
-    if pdb_records_file:
+    if pdb_records_file and self.annotation:
       f=open(pdb_records_file,'w')
       print >>f,self.annotation.as_pdb_str()
       f.close()
@@ -3028,17 +3032,20 @@ class find_secondary_structure: # class to look for secondary structure
       else:
         print >>out,\
          "\nThis secondary structure annotation will be used as is.\n"
+      remove_overlaps=False
     else:
       print >>out,\
        "\nThis secondary structure annotation will be modified if necessary\n"
+      remove_overlaps=True
 
-      # Remove any parts of this annotation that do not exist in the hierarchy
-      user_annotation=remove_bad_annotation(
+    # Remove any parts of this annotation that do not exist in the hierarchy
+    user_annotation=remove_bad_annotation(
         user_annotation,
         hierarchy=hierarchy,
         max_h_bond_length=params.find_ss_structure.max_h_bond_length,
+        remove_overlaps=remove_overlaps,
         out=out)
-      if not user_annotation:
+    if not user_annotation:
         return None
 
     if params.control.verbose or \
@@ -3100,9 +3107,7 @@ class find_secondary_structure: # class to look for secondary structure
         ph=apply_atom_selection(
          get_string_or_first_element_of_list(strand.as_atom_selections()),
          hierarchy=hierarchy)
-
-
-
+          
         model=model_info(hierarchy=ph,info={'class':'strand'})
         self.user_models.append(model)
         model.find_beta=find_beta_strand(params=params.beta,
@@ -3196,8 +3201,9 @@ class find_secondary_structure: # class to look for secondary structure
 
       combined_annotation=edited_annotation.combine_annotations(
         hierarchy=hierarchy, other=user_annotation) # will take edited if equal
-      print >>out,"\nMerged annotation (input and edited input annotation):\n"
-      print >>out,combined_annotation.as_pdb_str()
+      if combined_annotation:
+        print >>out,"\nMerged annotation (input and edited input annotation):\n"
+        print >>out,combined_annotation.as_pdb_str()
 
       return combined_annotation
     else:
