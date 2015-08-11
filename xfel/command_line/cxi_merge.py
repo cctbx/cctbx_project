@@ -116,6 +116,10 @@ raw_data {
   sdfac_auto = False
     .type = bool
     .help = apply sdfac to each-image data assuming negative intensities are normally distributed noise
+  sdfac_refine = False
+    .type = bool
+    .help = Correct merged sigmas by refining sdfac, sdb and sdadd according to Evans 2011. Not \
+            compatible with sdfac_auto.
 }
 output {
   n_bins = 10
@@ -189,9 +193,15 @@ include_negatives = False
   .help = Whether to include negative intensities during scaling and merging
 plot_single_index_histograms = False
   .type = bool
+data_subsubsets {
+  subsubset = None
+    .type = int
+  subsubset_total = None
+    .type = int
+}
 """ + mysql_master_phil
 
-def get_observations (data_dirs,data_subset):
+def get_observations (data_dirs,data_subset, subsubset, subsubset_total):
   print "Step 1.  Get a list of all files"
   file_names = []
   for dir_name in data_dirs :
@@ -208,6 +218,8 @@ def get_observations (data_dirs,data_subset):
           (data_subset==1 and (int(os.path.basename(file_name).split(".pickle")[0][-1])%2==1)) or \
           (data_subset==2 and (int(os.path.basename(file_name).split(".pickle")[0][-1])%2==0)):
           file_names.append(os.path.join(dir_name, file_name))
+  if subsubset is not None and subsubset_total is not None:
+    file_names = [file_names[i] for i in xrange(len(file_names)) if (i+subsubset)%subsubset_total == 0]
   print "Number of pickle files found:", len(file_names)
   print
   return file_names
@@ -512,6 +524,9 @@ class scaling_manager (intensity_data) :
                + self.n_wrong_bravais + self.n_wrong_cell
     assert checksum == len(file_names)
 
+    if self.params.raw_data.sdfac_refine:
+      self.scale_errors()
+
   def _scale_all_parallel (self, file_names, db_mgr) :
     import multiprocessing
     import libtbx.introspection
@@ -680,6 +695,233 @@ class scaling_manager (intensity_data) :
       "SUMMARY: For %d reflections, got slope %f, correlation %f" \
         % (N, slope, corr)
     return N, corr
+
+  def get_overall_correlation_flex (self, data_a, data_b) :
+    """
+    Correlate any two sets of data.
+    @param data_a data set a
+    @param data_b data set b
+    @return tuple containing correlation coefficent, slope and offset.
+    """
+    import math
+
+    assert len(data_a) == len(data_b)
+    corr = 0
+    slope = 0
+    offset = 0
+    try:
+      sum_xx = 0
+      sum_xy = 0
+      sum_yy = 0
+      sum_x  = 0
+      sum_y  = 0
+      N      = 0
+      for i in xrange(len(data_a)):
+        I_r       = data_a[i]
+        I_o       = data_b[i]
+        N      += 1
+        sum_xx += I_r**2
+        sum_yy += I_o**2
+        sum_xy += I_r * I_o
+        sum_x  += I_r
+        sum_y  += I_o
+      slope = (N * sum_xy - sum_x * sum_y) / (N * sum_xx - sum_x**2)
+      offset = (sum_xx * sum_y - sum_x * sum_xy) / (N * sum_xx - sum_x**2)
+      corr  = (N * sum_xy - sum_x * sum_y) / (math.sqrt(N * sum_xx - sum_x**2) *
+                 math.sqrt(N * sum_yy - sum_y**2))
+    except ZeroDivisionError:
+      pass
+
+    return corr, slope, offset
+
+  def normal_probability_plot(self, data, rankits_sel=None, plot=False):
+    """ Use normal probability analysis to determine if a set of data is normally distributed
+    See https://en.wikipedia.org/wiki/Normal_probability_plot.
+    Rankits are computed in the same way as qqnorm does in R.
+    @param data flex array
+    @param rankits_sel only use the rankits in a certain range. Useful for outlier rejection. Should be
+    a tuple such as (-0.5,0.5).
+    @param plot whether to show the normal probabilty plot
+    """
+    from scitbx.math import distributions
+    import numpy as np
+    norm = distributions.normal_distribution()
+
+    n = len(data)
+    if n <= 10:
+      a = 3/8
+    else:
+      a = 0.5
+
+    sorted_data = flex.sorted(data)
+    rankits = flex.double([norm.quantile((i+1-a)/(n+1-(2*a))) for i in xrange(n)])
+
+    if rankits_sel is None:
+      corr, slope, offset = self.get_overall_correlation_flex(sorted_data, rankits)
+    else:
+      sel = (rankits >= rankits_sel[0]) & (rankits <= rankits_sel[1])
+      corr, slope, offset = self.get_overall_correlation_flex(sorted_data.select(sel), rankits.select(sel))
+
+    if plot:
+      from matplotlib import pyplot as plt
+      x = np.linspace(-500,500,100) # 100 linearly spaced numbers
+      y = slope * x + offset
+      plt.scatter(sorted_data, rankits)
+      plt.plot(x,y)
+      plt.show()
+
+    return corr, slope, offset
+
+  def get_initial_sdparams_estimates(self):
+    """
+    Use normal probability analysis to compute intial sdfac and sdadd parameters.
+    """
+    from xfel import compute_normalized_deviations
+    all_sigmas_normalized = compute_normalized_deviations(self.ISIGI, self.miller_set.indices())
+
+    corr, slope, offset = self.normal_probability_plot(all_sigmas_normalized, (-0.5, 0.5))
+    sdfac = slope
+    sdb = 0
+    sdadd = offset
+
+    return sdfac, sdb, sdadd
+
+
+  def get_binned_intensities(self, n_bins=100):
+    """
+    Using self.ISIGI, bin the intensities using the following procedure:
+    1) Take the log of all the observations
+    2) Find the minimum and maximum intensity values.
+    3) Divide max-min by n_bins. This is the bin step size
+    The effect is that there are more bins at lower intensity values than
+    higher.
+    @param n_bins number of bins to use.
+    @return a tuple with an array of selections for each bin and an array of median
+    intensity values for each bin.
+    """
+    all_mean_Is = flex.double()
+    only_means = flex.double()
+    for hkl_id in xrange(self.n_refl):
+      hkl = self.miller_set.indices()[hkl_id]
+      if hkl not in self.ISIGI: continue
+      n = len(self.ISIGI[hkl])
+      # get scaled intensities
+      intensities = flex.double([self.ISIGI[hkl][i][0] for i in xrange(n)])
+      meanI = flex.mean(intensities)
+      only_means.append(meanI)
+      all_mean_Is.extend(flex.double([meanI]*n))
+    log_only_means = flex.log(only_means)
+    log_all_mean_Is = flex.log(all_mean_Is)
+    step = (max(log_only_means)-min(log_only_means))/n_bins
+
+    sels = []
+    binned_intensities = []
+    for i in xrange(n_bins):
+      sel = (log_all_mean_Is > (min(log_all_mean_Is) + step * i)) & (log_all_mean_Is < (min(log_all_mean_Is) + step * (i+1)))
+      if sel.all_eq(False): continue
+      sels.append(sel)
+      binned_intensities.append(math.exp(((step/2) + step*i)+min(log_only_means)))
+
+    return sels, binned_intensities
+
+  def scale_errors(self):
+    """
+    Adjust sigmas according to Evans, 2011 Akta D and Evans and Murshudov, 2013 Akta D
+    """
+    print "Starting scale_errors"
+    print "Computing initial estimates of sdfac, sdb and sdadd"
+    sdfac, sdb, sdadd = self.get_initial_sdparams_estimates()
+
+    print "Initial estimates:", sdfac, sdb, sdadd
+
+    from xfel import compute_normalized_deviations, apply_sd_error_params
+    from scitbx.simplex import simplex_opt
+    class simplex_minimizer(object):
+      """Class for refining sdfac, sdb and sdadd"""
+      def __init__(self, sdfac, sdb, sdadd, data, indices, bins):
+        """
+        @param sdfac Initial value for sdfac
+        @param sdfac Initial value for sdfac
+        @param sdfac Initial value for sdfac
+        @param data ISIGI dictionary of unmerged intensities
+        @param indices array of miller indices to refine against
+        @params bins array of flex.bool object specifying the bins to use to calculate the functional
+        """
+        self.data = data
+        self.intensity_bin_selections = bins
+        self.indices = indices
+        self.n = 3
+        self.x = flex.double([sdfac, sdb, sdadd])
+        self.starting_simplex = []
+        for i in xrange(self.n+1):
+          self.starting_simplex.append(flex.random_double(self.n))
+
+        self.optimizer = simplex_opt( dimension = self.n,
+                                      matrix    = self.starting_simplex,
+                                      evaluator = self,
+                                      tolerance = 1e-1)
+        self.x = self.optimizer.get_solution()
+
+      def target(self, vector):
+        """ Compute the functional by first applying the current values for the sd parameters
+        to the input data, then computing the complete set of normalized deviations and finally
+        using those normalized deviations to compute the functional."""
+        sdfac, sdb, sdadd = vector
+
+        data = apply_sd_error_params(self.data, sdfac, sdb, sdadd)
+        all_sigmas_normalized = compute_normalized_deviations(data, self.indices)
+
+        f = 0
+        for bin in self.intensity_bin_selections:
+          binned_normalized_sigmas = all_sigmas_normalized.select(bin)
+          n = len(binned_normalized_sigmas)
+          if n == 0: continue
+          # weighting scheme from Evans, 2011
+          w = math.sqrt(n)
+          # functional is weight * (1-rms(normalized_sigmas))^s summed over all intensitiy bins
+          f += w * ((1-math.sqrt(flex.mean(binned_normalized_sigmas*binned_normalized_sigmas)))**2)
+
+        print "f: % 12.1f, sdadd: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(f, sdfac, sdb, sdadd)
+        return f
+
+    print "Refining error correction parameters sdfac, sdb, and sdadd"
+    sels, binned_intensities = self.get_binned_intensities()
+    minimizer = simplex_minimizer(sdfac, sdb, sdadd, self.ISIGI, self.miller_set.indices(), sels)
+    sdfac, sdb, sdadd = minimizer.x
+    print "Final sdadd: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(sdfac, sdb, sdadd)
+
+    print "Applying sdfac/sdb/sdadd 1"
+    self.ISIGI = apply_sd_error_params(self.ISIGI, sdfac, sdb, sdadd)
+
+    self.summed_weight= flex.double(self.n_refl, 0.)
+    self.summed_wt_I  = flex.double(self.n_refl, 0.)
+
+    print "Applying sdfac/sdb/sdadd 2"
+    for hkl_id in xrange(self.n_refl):
+      hkl = self.miller_set.indices()[hkl_id]
+      if hkl not in self.ISIGI: continue
+
+      n = len(self.ISIGI[hkl])
+
+      for i in xrange(n):
+        Intensity = self.ISIGI[hkl][i][0] # scaled intensity
+        sigma = Intensity / self.ISIGI[hkl][i][1] # corrected sigma
+        variance = sigma * sigma
+        self.summed_wt_I[hkl_id] += Intensity / variance
+        self.summed_weight[hkl_id] += 1 / variance
+
+    if False:
+      # validate using http://ccp4wiki.org/~ccp4wiki/wiki/index.php?title=Symmetry%2C_Scale%2C_Merge#Analysis_of_Standard_Deviations
+      print "Validating"
+      all_sigmas_normalized = compute_normalized_deviations(self.ISIGI, self.miller_set.indices())
+      binned_rms_normalized_sigmas = []
+
+      for i, sel in enumerate(sels):
+        binned_rms_normalized_sigmas.append(math.sqrt(flex.mean(all_sigmas_normalized.select(sel)*all_sigmas_normalized.select(sel))))
+
+      from matplotlib import pyplot as plt
+      plt.plot(binned_intensities, binned_rms_normalized_sigmas, 'o')
+      plt.show()
 
   def finalize_and_save_data (self) :
     """
@@ -1413,7 +1655,8 @@ class scaling_manager (intensity_data) :
         # to the dictionary of observations.
         index = self.miller_set.indices()[pair[0]]
         isigi = (Intensity,
-                 observations.data()[pair[1]] / observations.sigmas()[pair[1]])
+                 observations.data()[pair[1]] / observations.sigmas()[pair[1]],
+                 slope)
         if index in data.ISIGI:
           data.ISIGI[index].append(isigi)
         else:
@@ -1453,6 +1696,9 @@ def run(args):
       (not work_params.set_average_unit_cell)) :
     raise Usage("If rescale_with_average_cell=True, you must also specify "+
       "set_average_unit_cell=True.")
+  if work_params.raw_data.sdfac_auto and work_params.raw_data.sdfac_refine:
+    raise Usage("Cannot specify both sdfac_auto and sdfac_refine")
+
   # Read Nat's reference model from an MTZ file.  XXX The observation
   # type is given as F, not I--should they be squared?  Check with Nat!
   log = open("%s.log" % work_params.output.prefix, "w")
@@ -1494,7 +1740,7 @@ def run(args):
     assert not matches.have_singles()
     miller_set = miller_set.select(matches.permutation())
 
-  frame_files = get_observations(work_params.data, work_params.data_subset)
+  frame_files = get_observations(work_params.data, work_params.data_subset, work_params.data_subsubsets.subsubset, work_params.data_subsubsets.subsubset_total)
   scaler = scaling_manager(
     miller_set=miller_set,
     i_model=i_model,
@@ -1571,6 +1817,8 @@ def run(args):
   #  stats.counts != 0)
   #miller_counts.as_mtz_dataset(column_root_label="NOBS").mtz_object().write(
   #  file_name="nobs.mtz")
+  if work_params.data_subsubsets.subsubset is not None and work_params.data_subsubsets.subsubset_total is not None:
+    easy_pickle.dump("scaler_%d.pickle"%work_params.data_subsubsets.subsubset, scaler)
   print >> out, ""
   mtz_file, miller_array = scaler.finalize_and_save_data()
   #table_pickle_file = "%s_graphs.pkl" % work_params.output.prefix

@@ -235,7 +235,8 @@ get_scaling_results_mark2(const shared_double& x,
     L.sum_I[h] += I;
     L.sum_I_SIGI[h] += IsigI;
 
-    L.i_isig_list.push_back(scitbx::vec3<double>(h, I, IsigI));
+    L.hkl_ids.push_back(h);
+    L.i_isig_list.push_back(scitbx::vec3<double>(I, IsigI, G));
 
     const double d =
       params_unit_cell.d(cctbx::miller::index<>(L.merged_asu_hkl[h]));
@@ -294,5 +295,6 @@ get_scaling_results_mark2(const shared_double& x,
                      L.n_rejected,
                      L.n_obs,
                      L.d_min_values,
+                     L.hkl_ids,
                      L.i_isig_list));
 }

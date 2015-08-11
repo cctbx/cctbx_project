@@ -21,6 +21,7 @@
 #include <vector>
 #include <map>
 #include <set>
+#include <boost/python/extract.hpp>
 
 using namespace boost::python;
 
@@ -359,7 +360,7 @@ public:
 
   shared_double sum_I,sum_I_SIGI,summed_wt_I,summed_weight;
   shared_double n_rejected, n_obs, d_min_values;
-  shared_int completeness, summed_N;
+  shared_int completeness, summed_N, hkl_ids;
   shared_vec3 i_isig_list;
   int Nhkl;
 
@@ -406,8 +407,9 @@ public:
       sum_I[this_hkl_id] += Intensity;
       sum_I_SIGI[this_hkl_id] += isigi;
       cctbx::miller::index<> this_index( merged_asu_hkl[this_hkl_id] );
+      hkl_ids.push_back(this_hkl_id);
       i_isig_list.push_back( vec3(
-        this_hkl_id, Intensity, isigi));
+        Intensity, isigi, this_slope));
       double this_d_spacing = params_unit_cell.d(this_index);
       double this_frame_d_min = d_min_values[this_frame_id];
       if (this_frame_d_min==0.){
@@ -482,8 +484,9 @@ public:
       sum_I[this_hkl_id] += Intensity;
       sum_I_SIGI[this_hkl_id] += isigi;
       cctbx::miller::index<> this_index( merged_asu_hkl[this_hkl_id] );
+      hkl_ids.push_back(this_hkl_id);
       i_isig_list.push_back( vec3(
-        this_hkl_id, Intensity, isigi));
+        Intensity, isigi, 1.0));
       double this_d_spacing = params_unit_cell.d(this_index);
       double this_frame_d_min = d_min_values[this_frame_id];
       if (this_frame_d_min==0.){
@@ -522,7 +525,7 @@ get_scaling_results(scaling_results const& L){
     L.completeness, L.summed_N,
     L.summed_wt_I, L.summed_weight,
     L.n_rejected, L.n_obs,
-    L.d_min_values, L.i_isig_list );
+    L.d_min_values, L.hkl_ids, L.i_isig_list );
 }
 
 static boost::python::dict
@@ -530,12 +533,13 @@ get_isigi_dict(scaling_results const& L){
   boost::python::dict ISIGI;
   std::map<int, boost::python::list> cpp_mapping;
   for (int ditem=0; ditem<L.i_isig_list.size(); ++ditem){
+    int hkl_id = L.hkl_ids[ditem];
     scaling_results::vec3 dataitem = L.i_isig_list[ditem];
-    if (cpp_mapping.find(dataitem[0]) == cpp_mapping.end()) {
-      cpp_mapping[dataitem[0]]=boost::python::list();
+    if (cpp_mapping.find(hkl_id) == cpp_mapping.end()) {
+      cpp_mapping[hkl_id]=boost::python::list();
     }
-    boost::python::tuple i_isigi = make_tuple( dataitem[1], dataitem[2] );
-    cpp_mapping[dataitem[0]].append( i_isigi );
+    boost::python::tuple i_isigi = make_tuple( dataitem[0], dataitem[1], dataitem[2] );
+    cpp_mapping[hkl_id].append( i_isigi );
   }
   for (std::map<int, boost::python::list>::const_iterator item = cpp_mapping.begin();
        item != cpp_mapping.end(); ++item) {
@@ -544,6 +548,107 @@ get_isigi_dict(scaling_results const& L){
     ISIGI[miller_index] = item->second;
   }
   return ISIGI;
+}
+
+static scitbx::af::shared<double>
+compute_normalized_deviations(boost::python::dict const& ISIGI, scaling_results::shared_miller hkl_list) {
+  /*
+   * This formulation of the normalized deviations of a set of intensities and sigmas is similar to that
+   * described in Evans 2011, but includes the nn term as currently implmented by aimless
+   *
+   */
+  using namespace boost::python;
+  scitbx::af::shared<double> result;
+  for (std::size_t hkl_id = 0; hkl_id < hkl_list.size(); hkl_id++) {
+    cctbx::miller::index<> this_index = hkl_list[hkl_id];
+    tuple miller_index = make_tuple( this_index[0],this_index[1],this_index[2] );
+    if (!ISIGI.has_key(miller_index))
+      continue;
+
+    list data = extract<list>(ISIGI[miller_index]);
+    std::size_t n = len(data);
+
+    scitbx::af::shared<double> intensities(n);
+    scitbx::af::shared<double> sigmas(n);
+    scitbx::af::shared<double> meanIprimes(n);
+    double meanI = 0;
+    double nn = std::sqrt((n-1.0)/n);
+
+    // compute meanI, which is the mean of the observations of this hkl, and meanIprimes, which
+    // for each observation, is the mean of all other observations of this hkl
+    for (std::size_t i = 0; i < n; i++) {
+      tuple dataitem = extract<tuple>(data[i]);
+      // scaled intensities and sigmas
+      intensities[i] = extract<double>(dataitem[0]);
+      sigmas[i] = intensities[i] / extract<double>(dataitem[1]);
+      for (std::size_t j = 0; j < n; j++) {
+        if (i == j) continue;
+        meanIprimes[j] += intensities[i];
+      }
+      meanI += intensities[i];
+    }
+
+    meanI /= n;
+
+    // compute the normalized deviations
+    for (std::size_t i = 0; i < n; i++) {
+      double meanIprime = meanIprimes[i] / n;
+
+      result.push_back(nn * (intensities[i] - meanIprime) / sigmas[i]);
+    }
+  }
+  return result;
+}
+
+boost::python::dict
+apply_sd_error_params(boost::python::dict const& ISIGI, const double sdfac, const double sdb, const double sdadd) {
+  /*
+   * Apply a set of sd params (sdfac, sdb and sdd) to an ISIGI dict
+   */
+  using namespace boost::python;
+  dict result;
+  list keys = ISIGI.keys();
+  for (std::size_t hkl_id = 0; hkl_id < len(keys); hkl_id++) {
+    list data = extract<list>(ISIGI[keys[hkl_id]]);
+    std::size_t n = len(data);
+
+    scitbx::af::shared<double> intensities(n);
+    scitbx::af::shared<double> sigmas(n);
+    scitbx::af::shared<double> scales(n);
+    scitbx::af::shared<double> meanIprimes(n);
+    double meanI = 0;
+
+    for (std::size_t i = 0; i < n; i++) {
+      tuple dataitem = extract<tuple>(data[i]);
+      // scaled intensities and sigmas
+      intensities[i] = extract<double>(dataitem[0]);
+      sigmas[i] = intensities[i] / extract<double>(dataitem[1]);
+      scales[i] = extract<double>(dataitem[2]);
+      // compute meanI, which is the mean of the observations of this hkl, and meanIprimes, which
+      // for each observation, is the mean of all other observations of this hkl
+      for (std::size_t j = 0; j < n; j++) {
+        if (i == j) continue;
+        meanIprimes[j] += intensities[i];
+      }
+      meanI += intensities[i];
+    }
+
+    meanI /= n;
+    list corrected_data = list();
+
+    // set up the entry for this hkl in the returned ISIGI dict
+    for (std::size_t i = 0; i < n; i++) {
+      double meanIprime = meanIprimes[i] / n;
+      double sigma_corrected = sdfac * std::sqrt(std::pow(sigmas[i],2) + sdb * meanIprime + std::pow(sdadd*meanIprime,2));
+
+      tuple i_isigi = make_tuple(intensities[i],intensities[i]/sigma_corrected,scales[i]);
+
+      corrected_data.append(i_isigi);
+    }
+
+    result[keys[hkl_id]] = corrected_data;
+  }
+  return result;
 }
 
 double distance_between_points(scitbx::vec2<int> const& a, scitbx::vec2<int> const& b) {
@@ -679,6 +784,8 @@ namespace boost_python { namespace {
     def("get_scaling_results_mark2", &get_scaling_results_mark2);
     def("get_scaling_results", &get_scaling_results);
     def("get_isigi_dict", &get_isigi_dict);
+    def("compute_normalized_deviations", &compute_normalized_deviations);
+    def("apply_sd_error_params", &apply_sd_error_params);
     def("compute_projection", &compute_projection);
     class_<correction_vector_store>("correction_vector_store",init<>())
       .add_property("tiles",
