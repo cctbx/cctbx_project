@@ -25,10 +25,10 @@ secondary_structure
   .style = box auto_align hidden
 {
   enabled = False
-    .short_caption = Use secondary structure restraints (main switch)
+    .short_caption = Use secondary structure restraints
     .type = bool
     .style = noauto bold
-    .help = Turn on secondary structure restraints
+    .help = Turn on secondary structure restraints (main switch)
   protein
     .style = box auto_align noauto
   {
