@@ -167,6 +167,9 @@ advanced
 n_processors = 32
   .type = int
   .help = No. of processing units
+mp_method = *multiprocessing mpi
+  .type = choice
+  .help = Multiprocessing method
 """)
 
 class Capturing(list):
@@ -214,7 +217,7 @@ def process_input(args,
 
   # Check for -n option and set number of processors override
   # (for parallel map only, for now)
-  if args.nproc > 0:
+  if args.nproc[0] > 0:
     params.n_processors = args.nproc[0]
 
   # Check for -c option and set flags to exit IOTA after raw image conversion
