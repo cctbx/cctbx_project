@@ -148,6 +148,7 @@ class minimizer:
                f_obs,
                sym_matrices,
                rbin,
+               SigmaN,
                min_iterations=0,
                max_iterations=10000):
     adopt_init_args(self, locals())
@@ -178,7 +179,7 @@ class minimizer:
       f_obs                    = self.f_obs.data(),
       sigma_f_obs              = self.f_obs.sigmas(),
       rbin                     = self.rbin,
-      SigmaN                   = flex.double(self.f_obs.data().size(),1), # XXX: need meaningful numbers here!
+      SigmaN                   = self.SigmaN,
       space_group              = self.f_obs.space_group(),
       miller_indices           = self.f_obs.indices(),
       fractionalization_matrix = self.f_obs.unit_cell().fractionalization_matrix(),
@@ -219,11 +220,16 @@ def run():
   f_obs.setup_binner(reflections_per_bin = 250)
   binner = f_obs.binner()
   n_bins = binner.n_bins_used()
+  SigmaN = flex.double(f_obs.data().size(), -1)
   for i_bin in binner.range_used():
     bin_sel = f_obs.binner().selection(i_bin)
     f_obs_bin = f_obs.select(bin_sel)
+    eps_bin = f_obs_bin.epsilons()
+    sn = flex.sum(f_obs_bin.data()*f_obs_bin.data()/eps_bin.data().as_double())/f_obs_bin.data().size()
+    SigmaN = SigmaN.set_selected(bin_sel, sn)
     print "bin: %d n_refl.: %d" % (i_bin, f_obs_bin.data().size()), \
-      "%6.3f-%-6.3f"%f_obs_bin.d_max_min()
+      "%6.3f-%-6.3f"%f_obs_bin.d_max_min(), "SigmaN: %6.4f"%sn
+  assert SigmaN.all_gt(0)
   #
   # Construct rbin array used in tncs_eps_factor_refinery.
   # Very inefficient, ok for now..
@@ -261,7 +267,7 @@ def run():
     f_obs                    = f_obs.data(),
     sigma_f_obs              = f_obs.sigmas(),
     rbin                     = rbin,
-    SigmaN                   = flex.double(f_obs.data().size(),1), # XXX: need meaningful numbers here!
+    SigmaN                   = SigmaN,
     space_group              = f_obs.space_group(),
     miller_indices           = f_obs.indices(),
     fractionalization_matrix = f_obs.unit_cell().fractionalization_matrix(),
@@ -274,7 +280,8 @@ def run():
     ncs_pair     = ncs_pair,
     f_obs        = f_obs,
     sym_matrices = sym_matrices,
-    rbin         = rbin).run(use_curvatures=False)
+    rbin         = rbin,
+    SigmaN       = SigmaN).run(use_curvatures=False)
   print list(m.tncs_epsfac)[:10] # print first 10
 
 if (__name__ == "__main__"):

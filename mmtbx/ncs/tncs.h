@@ -236,7 +236,7 @@ public:
         double SigmaFactor = 2.*cent_fac;
         double ExpSig(SigmaFactor*scitbx::fn::pow2(sig_f_obs[r]));
         double V = epsnSigmaN + ExpSig;
-        MMTBX_ASSERT(V>0);
+        if(V<0) V=0.00001; // XXX ???
         double f_obs_sq = scitbx::fn::pow2(f_obs[r]);
         // For simplicity, leave constants out of log-likelihood, which will not
         // affect refinement
