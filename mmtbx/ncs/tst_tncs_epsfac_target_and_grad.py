@@ -6,7 +6,7 @@ import iotbx.pdb
 from scitbx.array_family import flex
 from cctbx import sgtbx
 from libtbx import adopt_init_args
-from scitbx import lbfgs as scitbx_lbfgs
+from scitbx import lbfgs, lbfgsb
 
 pdb_str = """
 CRYST1   21.954   18.566   12.975  90.00  90.00  90.00 P 1
@@ -90,14 +90,25 @@ def lbfgs_run(target_evaluator,
               max_iterations=None,
               traditional_convergence_test=1,
               use_curvatures=False):
-  ext = scitbx_lbfgs.ext
-  minimizer = ext.minimizer(target_evaluator.n)
+  #ext = lbfgs.ext
+  ext = lbfgsb
+  minimizer = ext.minimizer(
+      n=target_evaluator.n,
+      m=5,
+      l=flex.double(target_evaluator.n, 0),
+      u=flex.double(target_evaluator.n, 1),
+      nbd=flex.int(target_evaluator.n, 2),
+      #enable_stp_init=True,
+      factr=1.e+1,
+      pgtol=1.0e-16,
+      iprint=-1
+      )
   minimizer.error = None
-  if (traditional_convergence_test):
-    is_converged = ext.traditional_convergence_test(target_evaluator.n)
-  else:
-    raise RuntimeError
-    is_converged = ext.drop_convergence_test(min_iterations)
+  #if (traditional_convergence_test):
+  #  is_converged = ext.traditional_convergence_test(target_evaluator.n)
+  #else:
+  #  raise RuntimeError
+  #  is_converged = ext.drop_convergence_test(min_iterations)
   try:
     icall = 0
     requests_f_and_g = True
@@ -111,31 +122,32 @@ def lbfgs_run(target_evaluator,
       if (requests_diag):
         print "x,f,d:", tuple(x), f, tuple(d)
       else:
-        print "x,f:", ",".join(["%6.3f"%x_ for x_ in x]), f
+        print "x,f:", ",".join(["%6.3f"%x_ for x_ in x]), f, icall
       if (use_curvatures):
         if (d is None): d = flex.double(x.size())
         have_request = minimizer.run(x, f, g, d)
       else:
-        have_request = minimizer.run(x, f, g)
+        have_request = minimizer.process(x, f, g)
       if (have_request):
         requests_f_and_g = minimizer.requests_f_and_g()
-        requests_diag = minimizer.requests_diag()
+        #requests_diag = minimizer.requests_diag()
         continue
       assert not minimizer.requests_f_and_g()
-      assert not minimizer.requests_diag()
-      if (traditional_convergence_test):
-        if (minimizer.iter() >= min_iterations and is_converged(x, g)): break
-      else:
-        if (is_converged(f)): break
-      if (max_iterations is not None and minimizer.iter() >= max_iterations):
-        break
-      if (use_curvatures):
-        have_request = minimizer.run(x, f, g, d)
-      else:
-        have_request = minimizer.run(x, f, g)
-      if (not have_request): break
-      requests_f_and_g = minimizer.requests_f_and_g()
-      requests_diag = minimizer.requests_diag()
+      if(minimizer.is_terminated()): break
+      #assert not minimizer.requests_diag()
+      #if (traditional_convergence_test):
+      #  if (minimizer.iter() >= min_iterations and is_converged(x, g)): break
+      #else:
+      #  if (is_converged(f)): break
+      #if (max_iterations is not None and minimizer.iter() >= max_iterations):
+      #  break
+      #if (use_curvatures):
+      #  have_request = minimizer.run(x, f, g, d)
+      #else:
+      #  have_request = minimizer.run(x, f, g)
+      #if (not have_request): break
+      #requests_f_and_g = minimizer.requests_f_and_g()
+      #requests_diag = minimizer.requests_diag()
   except RuntimeError, e:
     minimizer.error = str(e)
   minimizer.n_calls = icall
@@ -216,8 +228,11 @@ class potential(object):
 
   def update(self, x):
     assert x.size() == self.ncs_pairs[0].rho_mn.size() #XXX
-    for i in xrange(x.size()):
-      self.ncs_pairs[0].rho_mn[i] = x[i]
+    #for i in xrange(x.size()):
+    #  xi = x[i]
+    #  if(xi<0): xi = 1.e-6
+    #  if(xi>1): xi = 1.
+    #  self.ncs_pairs[0].rho_mn[i] = xi
     #
     self.target_and_grads = ext.tncs_eps_factor_refinery(
       tncs_pairs               = self.ncs_pairs,
@@ -236,7 +251,7 @@ class potential(object):
   def gradient(self):
     return self.target_and_grads.gradient()
 
-def run():
+def run(reflections_per_bin=250):
   #
   # Read PDB file from string above, create xray_structure object
   #
@@ -248,7 +263,7 @@ def run():
   #
   f_obs = abs(xray_structure.structure_factors(d_min=2.0).f_calc())
   f_obs.set_sigmas(sigmas = flex.double(f_obs.data().size(), 1.0))
-  f_obs.setup_binner(reflections_per_bin = 250)
+  f_obs.setup_binner(reflections_per_bin = reflections_per_bin)
   binner = f_obs.binner()
   n_bins = binner.n_bins_used()
   #
@@ -256,13 +271,14 @@ def run():
   # This is C++ container implemented in cctbx_project/mmtbx/ncs/tncs.h
   #
   ncs_pair = ext.pair(
-    r = ([1,0,0,0,0.998630,0.052336,0,-0.052336,0.998630]), # I have code to get this
-    t = ([-9,0,0]),
+    r = ([1,0,0,0,0.998630,0.052336,0,-0.052336,0.998630]),
+    t = ([-9./21.954,0,0]),
     radius=4.24,
     weight=20,
     fracscat=0.5,
     rho_mn=flex.double(n_bins,1) )
-  pot = potential(f_obs = f_obs, ncs_pairs = [ncs_pair])
+  pot = potential(f_obs = f_obs, ncs_pairs = [ncs_pair],
+    reflections_per_bin = reflections_per_bin)
   # Run refinement
   m = minimizer(
     potential = pot
