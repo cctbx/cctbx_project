@@ -219,6 +219,8 @@ def run(args):
       (not work_params.set_average_unit_cell)) :
     raise Usage("If rescale_with_average_cell=True, you must also specify "+
       "set_average_unit_cell=True.")
+  if work_params.raw_data.sdfac_auto and work_params.raw_data.sdfac_refine:
+    raise Usage("Cannot specify both sdfac_auto and sdfac_refine")
 
   log = open("%s_%s.log" % (work_params.output.prefix,work_params.scaling.algorithm), "w")
   out = multi_out()
@@ -392,7 +394,7 @@ def run(args):
     sum_I, sum_I_SIGI, \
     scaler.completeness, scaler.summed_N, \
     scaler.summed_wt_I, scaler.summed_weight, scaler.n_rejected, scaler.n_obs, \
-    scaler.d_min_values, i_sigi_list = get_scaling_results(results)
+    scaler.d_min_values, hkl_ids, i_sigi_list = get_scaling_results(results)
 
     scaler.ISIGI = get_isigi_dict(results)
 
@@ -404,7 +406,7 @@ def run(args):
       sum_I, sum_I_SIGI, \
         scaler.completeness, scaler.summed_N, \
         scaler.summed_wt_I, scaler.summed_weight, scaler.n_rejected, \
-        scaler.n_obs, scaler.d_min_values, i_sigi_list \
+        scaler.n_obs, scaler.d_min_values, hkl_ids, i_sigi_list \
         = my_find_scale.get_scaling_results(results, scaler)
       scaler.ISIGI = get_isigi_dict(results)
 
@@ -417,6 +419,9 @@ def run(args):
       if scaler.n_obs[irej] > 0:
         scaler.rejected_fractions = scaler.n_rejected[irej]/scaler.n_obs[irej]
   # ---------- End of new code ----------------
+
+    if work_params.raw_data.sdfac_refine:
+      scaler.scale_errors()
 
     miller_set_avg = miller_set.customized_copy(
       unit_cell=work_params.target_unit_cell)
