@@ -25,6 +25,19 @@ SHEET    1   1 2 TYR A  50  TYR A  54  0
 SHEET    2   1 2 LEU B 278  ALA B 282  1  N  LEU B 278   O  ILE A  51
 """
 
+negative_residues="""
+ATOM      1  CA  ASP A  -5      34.633  18.762  20.254  1.00 22.59           C
+ATOM      2  CA  LYS A  -4      36.047  17.704  23.610  1.00 19.79           C
+ATOM      3  CA  ILE A  -3      35.551  19.482  26.886  1.00 19.33           C
+ATOM      4  CA AHIS A  -2      38.649  21.223  28.218  0.50 19.79           C
+ATOM      5  CA BHIS A  -2      38.583  21.270  28.209  0.50 20.43           C
+ATOM      6  CA  GLY A 138      38.261  15.285  27.690  1.00  6.80           C
+ATOM      7  CA  ALA A 139      34.607  14.241  27.428  1.00  4.76           C
+ATOM      8  CA ALEU A 140      33.091  14.490  23.937  0.50  5.08           C
+ATOM      9  CA BLEU A 140      33.072  14.565  23.972  0.50  5.41           C
+ATOM     10  CA  ASN A 141      30.271  17.061  23.474  1.00  5.65           C
+"""
+
 antiparallel_text="""
 ATOM      1  N   LEU A  95      19.823   2.447 -20.604  1.00  4.22           N
 ATOM      2  CA  LEU A  95      19.411   3.491 -19.655  1.00  4.09           C
@@ -1377,6 +1390,20 @@ def tst_11():
   assert no_fix_fss.get_annotation().is_similar_to(
     hierarchy=hierarchy,other=bad_anno)
 
+  print "\nNegative residue numbers..."
+  hierarchy=iotbx.pdb.input(source_info='text',
+       lines=flex.split_lines(negative_residues)
+         ).construct_hierarchy()
+  fss=find_secondary_structure(hierarchy=hierarchy,
+      combine_annotations=False,
+      out=null_out())
+  expected=ioss.annotation.from_records(records=flex.split_lines("""
+SHEET    1   1 2 ASP A  -5  HIS A  -2  0
+SHEET    2   1 2 GLY A 138  ASN A 141 -1  N  ASN A 141   O  ASP A  -5
+"""))
+  print fss.get_annotation().as_pdb_str()
+  assert fss.get_annotation().is_same_as(expected)
+
 
   print "\nNow for antiparallel:Make sure force and original ss are equivalent"
   hierarchy=iotbx.pdb.input(source_info='text',
@@ -2185,6 +2212,141 @@ HELIX    1   1 ALA E    9  ALA E   14  1                                   7
   assert new_annotation.is_same_as(expected)
 
 
+def tst_13():
+  text="""
+ATOM   1158  CA  GLU A 156      -8.682  11.320  15.966  1.00 10.43           C
+ATOM   1167  CA  GLN A 156A     -6.656  11.562  12.759  1.00  9.67           C
+ATOM   1176  CA  LEU A 157      -4.088   9.262  11.060  1.00  7.37           C
+ATOM   1184  CA  ASP A 158      -0.686  11.064  10.807  1.00  7.30           C
+ATOM   1192  CA  HIS A 159       2.219   8.525  11.247  1.00  5.74           C
+ATOM   1202  CA  GLY A 160       3.410   5.357   9.460  1.00  4.69           C
+ATOM   1206  CA  VAL A 161       4.873   2.505  11.506  1.00  4.06           C
+ATOM   1213  CA  LEU A 162       5.253  -1.330  11.465  1.00  4.26           C
+ATOM   1221  CA  LEU A 163       3.267  -3.988  13.368  1.00  3.63           C
+ATOM   1229  CA  VAL A 164       5.734  -6.749  14.393  1.00  3.93           C
+ATOM   1236  CA  GLY A 165       3.593  -8.854  16.787  1.00  4.71           C
+ATOM   1240  CA  TYR A 166       0.655  -9.045  19.213  1.00  4.48           C
+ATOM   1252  CA  ASN A 167      -0.292 -10.850  22.465  1.00  5.51           C
+ATOM   1260  CA  ASP A 167A     -3.960 -11.826  23.104  1.00  6.24           C
+ATOM   1268  CA  SER A 167B     -3.078 -13.777  26.298  1.00  8.74           C
+ATOM   1275  CA  ALA A 167C     -1.804 -10.753  28.295  1.00  8.17           C
+ATOM   1280  CA  ALA A 167D     -3.879  -9.096  31.017  1.00  8.79           C
+ATOM   1285  CA  VAL A 168      -4.502  -6.306  28.540  1.00  7.67           C
+ATOM   1292  CA  PRO A 169      -4.105  -7.677  24.962  1.00  6.12           C
+ATOM   1299  CA  TYR A 170      -1.596  -5.595  22.934  1.00  4.66           C
+ATOM   1311  CA  TRP A 171       0.102  -4.825  19.619  1.00  4.56           C
+ATOM   1325  CA  ILE A 172       3.927  -4.560  19.307  1.00  4.40           C
+ATOM   1333  CA  ILE A 173       4.979  -1.652  16.989  1.00  3.93           C
+ATOM   1341  CA  LYS A 174       8.388  -0.666  15.529  1.00  3.87           C
+ATOM   1350  CA  ASN A 175       8.873   3.137  15.566  1.00  4.64           C
+ATOM   1358  CA  SER A 176      11.580   5.250  13.796  1.00  5.32           C
+ATOM   1364  CA  TRP A 177      12.553   7.546  16.722  1.00  5.40           C
+ATOM   1378  CA  THR A 178      15.829   5.844  17.894  1.00  5.35           C
+ATOM   1385  CA  THR A 179      16.311   3.064  20.481  1.00  7.16           C
+ATOM   1392  CA  GLN A 180      16.334   5.566  23.406  1.00  6.59           C
+ATOM   1405  CA  TRP A 181      12.544   6.150  22.843  1.00  5.77           C
+ATOM   1419  CA  GLY A 182       9.950   3.677  24.216  1.00  6.03           C
+ATOM   1423  CA  GLU A 183      10.962   0.080  24.830  1.00  6.05           C
+ATOM   1432  CA  GLU A 184      14.314   0.060  22.937  1.00  6.35           C
+ATOM   1441  CA  GLY A 185      12.464   1.895  20.102  1.00  4.92           C
+ATOM   1445  CA  TYR A 186       9.218  -0.136  20.229  1.00  5.14           C
+ATOM   1457  CA  ILE A 187       5.733   0.737  21.605  1.00  5.19           C
+ATOM   1465  CA  ARG A 188       2.937  -1.524  22.890  1.00  5.72           C
+ATOM   1476  CA  ILE A 189      -0.685  -0.274  22.541  1.00  6.24           C
+ATOM   1484  CA  ALA A 190      -3.901  -1.997  23.697  1.00  6.52           C
+"""
+  anno="""
+SHEET    1   1 3 GLN A 156A VAL A 164  0
+SHEET    2   1 3 TYR A 170  ASN A 175 -1  N  ASN A 175   O  VAL A 161
+"""
+
+  import iotbx.pdb
+  from cctbx.array_family import flex
+  import iotbx.pdb.secondary_structure as ioss
+  hierarchy=iotbx.pdb.input(source_info='text',
+        lines=flex.split_lines(text)).construct_hierarchy()
+  annotation=ioss.annotation.from_records(records=flex.split_lines(anno))
+  print "\nAnnotation with insertion codes"
+  print "\nInput annotation:"
+  print annotation.as_pdb_str()
+  fss=find_secondary_structure(hierarchy=hierarchy,out=null_out())
+  new_annotation=fss.get_annotation()
+  print "\nNew annotation:"
+  expected=ioss.annotation.from_records(records=flex.split_lines("""
+HELIX    1   1 TRP A  181  TYR A  186  3                                   6
+SHEET    1   1 3 VAL A 161  VAL A 164  0
+SHEET    2   1 3 TYR A 170  ASN A 175 -1  N  ASN A 175   O  VAL A 161
+SHEET    3   1 3 ILE A 187  ALA A 190 -1  N  ILE A 189   O  TRP A 171
+"""))
+
+  print new_annotation.as_pdb_str()
+  assert expected.is_same_as(new_annotation)
+
+  print "\nNew forcing input annotation"
+  expected=ioss.annotation.from_records(records=flex.split_lines("""
+SHEET    1   1 2 GLN A 156A VAL A 164  0
+SHEET    2   1 2 TYR A 170  ASN A 175 -1
+"""))
+
+  force_fss=find_secondary_structure(hierarchy=hierarchy,
+      user_annotation_text=annotation.as_pdb_str(),
+      force_secondary_structure_input=True,
+      combine_annotations=False,
+      out=null_out()).get_annotation()
+  print force_fss.as_pdb_str()
+  assert expected.is_same_as(force_fss)
+
+  helix_icode="""
+ATOM      2  CA  ALA A   1A     11.323  32.055  11.635  1.00 40.00           C
+ATOM      7  CA  ALA A   4B      8.288  29.768  10.916  1.00 40.00           C
+ATOM     12  CA  ALA A   4C     10.313  27.854   8.231  1.00 40.00           C
+ATOM     17  CA  ALA A   4D     13.089  27.116  10.822  1.00 40.00           C
+ATOM     22  CA  ALA A   5      10.573  25.488  13.298  1.00 40.00           C
+ATOM     27  CA  ALA A   6       9.258  23.514  10.260  1.00 40.00           C
+ATOM     32  CA  ALA A   7      12.788  22.543   8.962  1.00 40.00           C
+ATOM     37  CA  ALA A   8      13.846  21.459  12.515  1.00 40.00           C
+ATOM     42  CA  ALA A   9      10.716  19.261  12.994  1.00 40.00           C
+ATOM     47  CA  ALA A  10      11.063  17.985   9.357  1.00 40.00           C
+ATOM     52  CA  ALA A  11      14.754  17.018   9.967  1.00 40.00           C
+ATOM     57  CA  ALA A  12      13.721  15.483  13.371  1.00 40.00           C
+ATOM     62  CA  ALA A  13      10.821  13.516  11.708  1.00 40.00           C
+ATOM     67  CA  ALA A  14      13.246  12.367   8.939  1.00 40.00           C
+ATOM     72  CA  ALA A  15      15.847  11.407  11.629  1.00 40.00           C
+ATOM     77  CA  ALA A  16      13.099   9.317  13.370  1.00 40.00           C
+"""
+  helix_icode_ss="""
+HELIX    1   1 ALA A    1A ALA A   16  1                                  16
+"""
+
+  hierarchy=iotbx.pdb.input(source_info='text',
+        lines=flex.split_lines(helix_icode)).construct_hierarchy()
+  annotation=ioss.annotation.from_records(
+     records=flex.split_lines(helix_icode_ss))
+  print "\nHelix annotation with insertion codes"
+  print "NOTE: currently misses the residues with insertion codes except those"
+  print "at the ends of a string of insertion codes"
+  fss=find_secondary_structure(hierarchy=hierarchy,
+      out=null_out()).get_annotation()
+  print fss.as_pdb_str()
+  expected=ioss.annotation.from_records(
+     records=flex.split_lines("""
+HELIX    1   1 ALA A    4D ALA A   16  1                                  13
+"""))
+  assert expected.is_same_as(fss)
+
+  print "\nHelix annotation with input annotation and insertion codes"
+  force_fss=find_secondary_structure(hierarchy=hierarchy,
+      user_annotation_text=annotation.as_pdb_str(),
+      force_secondary_structure_input=True,
+      combine_annotations=False,
+      out=null_out()).get_annotation()
+  print force_fss.as_pdb_str()
+  expected=ioss.annotation.from_records(
+     records=flex.split_lines("""
+HELIX    1   1 ALA A    1A ALA A   16  1                                  16
+"""))
+  assert expected.is_same_as(force_fss)
+
 
 
 if __name__=="__main__":
@@ -2202,4 +2364,5 @@ if __name__=="__main__":
   tst_10()
   tst_11()
   tst_12()
+  tst_13()
   print "OK"
