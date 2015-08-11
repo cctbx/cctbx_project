@@ -219,7 +219,7 @@ def get_pdb_inp(
       pdb_string=f.getvalue()
       pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
   if pdb_string is None:
-    pdb_string=pdb_inp.as_pdb_string() 
+    pdb_string=pdb_inp.as_pdb_string()
   return pdb_inp,cryst1_line,pdb_string
 
 def run_one_cycle(
