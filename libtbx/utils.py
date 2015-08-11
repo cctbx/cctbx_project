@@ -1533,8 +1533,9 @@ class import_python_object:
     module_path = ".".join(path_elements[:-1])
     try: module = __import__(module_path)
     except ImportError:
-      raise ImportError("%sno module %s%s" % (
-        error_prefix, module_path, where_str))
+      raise ImportError("%sno module %s%s or possibly import errors in "
+      "module %s" % (
+        error_prefix, module_path, where_str, module_path))
     for attr in path_elements[1:-1]:
       module = getattr(module, attr)
     try: self.object = getattr(module, path_elements[-1])
