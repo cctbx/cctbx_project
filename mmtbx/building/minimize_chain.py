@@ -218,7 +218,9 @@ def get_pdb_inp(
       print >>f,pdb_string
       pdb_string=f.getvalue()
       pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
-  return pdb_inp,cryst1_line
+  if pdb_string is None:
+    pdb_string=pdb_inp.as_pdb_string() 
+  return pdb_inp,cryst1_line,pdb_string
 
 def run_one_cycle(
     params=None,
@@ -291,7 +293,7 @@ def run(args,
     map_coeffs_labels=params.input_files.map_coeffs_labels)
 
   # Get the starting model
-  pdb_inp,cryst1_line=get_pdb_inp(
+  pdb_inp,cryst1_line,pdb_string=get_pdb_inp(
     crystal_symmetry=crystal_symmetry,
     pdb_inp=pdb_inp,
     pdb_string=pdb_string,
