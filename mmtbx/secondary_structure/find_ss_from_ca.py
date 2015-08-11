@@ -190,7 +190,12 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
   else:
     return []  # nothing here
 
-  for m in hierarchy.models()[:1]:
+  total_models=0
+  for m in hierarchy.models():
+    total_models+=1
+    if total_models>1:
+      raise Sorry("Sorry, find_ss_from_ca cannot use multi-model files. "+\
+        "Please use phenix.pdbtools to select just one model from your file.")
     for chain in m.chains():
       new_hierarchy=iotbx.pdb.pdb_input(
          source_info="Model", lines="").construct_hierarchy()
