@@ -144,15 +144,11 @@ def lbfgs_run(target_evaluator,
 class minimizer:
 
   def __init__(self,
-               ncs_pair,
-               f_obs,
-               sym_matrices,
-               rbin,
-               SigmaN,
+               potential,
                min_iterations=0,
                max_iterations=10000):
     adopt_init_args(self, locals())
-    self.x = self.ncs_pair.rho_mn
+    self.x = self.potential.ncs_pairs[0].rho_mn
     self.n = self.x.size()
     self.tncs_epsfac = None
 
@@ -166,31 +162,15 @@ class minimizer:
     return self
 
   def __call__(self, requests_f_and_g, requests_diag):
-    ### update refinable parameters
-    self.ncs_pair = ext.pair(
-      r        = self.ncs_pair.r,
-      t        = self.ncs_pair.t,
-      radius   = self.ncs_pair.radius,
-      weight   = self.ncs_pair.weight,
-      fracscat = self.ncs_pair.fracscat,
-      rho_mn   = self.x)
-    target_and_grads = ext.tncs_eps_factor_refinery(
-      tncs_pairs               = [self.ncs_pair],
-      f_obs                    = self.f_obs.data(),
-      sigma_f_obs              = self.f_obs.sigmas(),
-      rbin                     = self.rbin,
-      SigmaN                   = self.SigmaN,
-      space_group              = self.f_obs.space_group(),
-      miller_indices           = self.f_obs.indices(),
-      fractionalization_matrix = self.f_obs.unit_cell().fractionalization_matrix(),
-      sym_matrices             = self.sym_matrices)
-    ###
+    # update refinable parameters
+    self.potential.update(x = self.x)
+    #
     if (not requests_f_and_g and not requests_diag):
       requests_f_and_g = True
       requests_diag = True
     if (requests_f_and_g):
-      self.f = target_and_grads.target()
-      self.g = target_and_grads.gradient()
+      self.f = self.potential.target()
+      self.g = self.potential.gradient()
       self.d = None
     if (requests_diag):
       assert 0 # NA
@@ -199,8 +179,73 @@ class minimizer:
       #   curv_yy(self.xx, self.yy)))
       assert self.d.all_ne(0)
       self.d = 1 / self.d
-    self.tncs_epsfac = target_and_grads.tncs_epsfac()
     return self.x, self.f, self.g, self.d
+
+class potential(object):
+
+  def __init__(self, f_obs, ncs_pairs, reflections_per_bin = 250):
+    adopt_init_args(self, locals())
+    # Create bins and SigmaN
+    f_obs.setup_binner(reflections_per_bin = reflections_per_bin)
+    binner = f_obs.binner()
+    n_bins = binner.n_bins_used()
+    self.SigmaN = flex.double(f_obs.data().size(), -1)
+    for i_bin in binner.range_used():
+      bin_sel = f_obs.binner().selection(i_bin)
+      f_obs_bin = f_obs.select(bin_sel)
+      eps_bin = f_obs_bin.epsilons()
+      sn = flex.sum(f_obs_bin.data()*f_obs_bin.data()/eps_bin.data().as_double())/f_obs_bin.data().size()
+      self.SigmaN = self.SigmaN.set_selected(bin_sel, sn)
+      print "bin: %d n_refl.: %d" % (i_bin, f_obs_bin.data().size()), \
+        "%6.3f-%-6.3f"%f_obs_bin.d_max_min(), "SigmaN: %6.4f"%sn
+    assert self.SigmaN.all_gt(0)
+    #
+    self.rbin = flex.int(f_obs.data().size(), -1)
+    for i_bin in binner.range_used():
+      for i_seq in binner.array_indices(i_bin):
+        self.rbin[i_seq] = i_bin-1 # i_bin starts with 1, not 0 !
+    assert flex.min(self.rbin)==0
+    assert flex.max(self.rbin)==n_bins-1
+    # Extract symmetry matrices
+    self.sym_matrices = []
+    for m_as_string in f_obs.space_group().smx():
+      o = sgtbx.rt_mx(symbol=str(m_as_string), t_den=f_obs.space_group().t_den())
+      m_as_double = o.r().as_double()
+      print m_as_string, m_as_double
+      self.sym_matrices.append(m_as_double)
+    #
+    self.target_and_grads = ext.tncs_eps_factor_refinery(
+      tncs_pairs               = self.ncs_pairs,
+      f_obs                    = self.f_obs.data(),
+      sigma_f_obs              = self.f_obs.sigmas(),
+      rbin                     = self.rbin,
+      SigmaN                   = self.SigmaN,
+      space_group              = self.f_obs.space_group(),
+      miller_indices           = self.f_obs.indices(),
+      fractionalization_matrix = self.f_obs.unit_cell().fractionalization_matrix(),
+      sym_matrices             = self.sym_matrices)
+
+  def update(self, x):
+    assert x.size() == self.ncs_pairs[0].rho_mn.size() #XXX
+    for i in xrange(x.size()):
+      self.ncs_pairs[0].rho_mn[i] = x[i]
+    #
+    self.target_and_grads = ext.tncs_eps_factor_refinery(
+      tncs_pairs               = self.ncs_pairs,
+      f_obs                    = self.f_obs.data(),
+      sigma_f_obs              = self.f_obs.sigmas(),
+      rbin                     = self.rbin,
+      SigmaN                   = self.SigmaN,
+      space_group              = self.f_obs.space_group(),
+      miller_indices           = self.f_obs.indices(),
+      fractionalization_matrix = self.f_obs.unit_cell().fractionalization_matrix(),
+      sym_matrices             = self.sym_matrices)
+
+  def target(self):
+    return self.target_and_grads.target()
+
+  def gradient(self):
+    return self.target_and_grads.gradient()
 
 def run():
   #
@@ -214,75 +259,27 @@ def run():
   #
   f_obs = abs(xray_structure.structure_factors(d_min=2).f_calc())
   f_obs.set_sigmas(sigmas = flex.double(f_obs.data().size(), 1.0))
-  #
-  # Create resolution bins
-  #
   f_obs.setup_binner(reflections_per_bin = 250)
   binner = f_obs.binner()
   n_bins = binner.n_bins_used()
-  SigmaN = flex.double(f_obs.data().size(), -1)
-  for i_bin in binner.range_used():
-    bin_sel = f_obs.binner().selection(i_bin)
-    f_obs_bin = f_obs.select(bin_sel)
-    eps_bin = f_obs_bin.epsilons()
-    sn = flex.sum(f_obs_bin.data()*f_obs_bin.data()/eps_bin.data().as_double())/f_obs_bin.data().size()
-    SigmaN = SigmaN.set_selected(bin_sel, sn)
-    print "bin: %d n_refl.: %d" % (i_bin, f_obs_bin.data().size()), \
-      "%6.3f-%-6.3f"%f_obs_bin.d_max_min(), "SigmaN: %6.4f"%sn
-  assert SigmaN.all_gt(0)
-  #
-  # Construct rbin array used in tncs_eps_factor_refinery.
-  # Very inefficient, ok for now..
-  #
-  rbin = flex.int(f_obs.data().size(), -1)
-  for i_bin in binner.range_used():
-    for i_seq in binner.array_indices(i_bin):
-      rbin[i_seq] = i_bin-1 # i_bin starts with 1, not 0 !
-  assert flex.min(rbin)==0
-  assert flex.max(rbin)==n_bins-1
   #
   # Create NCS pair object that contains all information we will need.
   # This is C++ container implemented in cctbx_project/mmtbx/ncs/tncs.h
   #
   ncs_pair = ext.pair(
     r = ([1,0,0,0,0.998630,0.052336,0,-0.052336,0.998630]), # I have code to get this
-    t = ([-9,0,0]),            # I have code to get this
-    radius=4.24,                     # XXX: need meaningful numbers here!
-    weight=20,                     # XXX: need meaningful numbers here!
-    fracscat=0.5,                  # XXX: need meaningful numbers here!
-    rho_mn=flex.double(n_bins,1) ) # XXX: need meaningful numbers here!
-  #
-  # Prepare data that we need in order to call tncs_eps_factor_refinery
-  #
-  # List of symmetry rotation matrices
-  sym_matrices = []
-  for m_as_string in f_obs.space_group().smx():
-    o = sgtbx.rt_mx(symbol=str(m_as_string), t_den=f_obs.space_group().t_den())
-    m_as_double = o.r().as_double()
-    print m_as_string, m_as_double
-    sym_matrices.append(m_as_double)
-  #
-  tg = ext.tncs_eps_factor_refinery(
-    tncs_pairs               = [ncs_pair],
-    f_obs                    = f_obs.data(),
-    sigma_f_obs              = f_obs.sigmas(),
-    rbin                     = rbin,
-    SigmaN                   = SigmaN,
-    space_group              = f_obs.space_group(),
-    miller_indices           = f_obs.indices(),
-    fractionalization_matrix = f_obs.unit_cell().fractionalization_matrix(),
-    sym_matrices             = sym_matrices)
-  print "target:", tg.target()
-  print "gradient:", list(tg.gradient())
-  print "tncs_epsfac:", list(tg.tncs_epsfac())
+    t = ([-9,0,0]),
+    radius=4.24,
+    weight=20,
+    fracscat=0.5,
+    rho_mn=flex.double(n_bins,1) )
+  pot = potential(f_obs = f_obs, ncs_pairs = [ncs_pair])
   # Run refinement
   m = minimizer(
-    ncs_pair     = ncs_pair,
-    f_obs        = f_obs,
-    sym_matrices = sym_matrices,
-    rbin         = rbin,
-    SigmaN       = SigmaN).run(use_curvatures=False)
-  print list(m.tncs_epsfac)[:10] # print first 10
+    potential = pot
+    ).run(use_curvatures=False)
+  print list(pot.target_and_grads.tncs_epsfac())[:10] # print first 10
+  print pot.target_and_grads.tncs_epsfac().min_max_mean().as_tuple()
 
 if (__name__ == "__main__"):
   run()
