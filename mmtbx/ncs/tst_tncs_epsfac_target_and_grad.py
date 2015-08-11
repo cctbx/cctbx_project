@@ -213,17 +213,6 @@ class potential(object):
       m_as_double = o.r().as_double()
       print m_as_string, m_as_double
       self.sym_matrices.append(m_as_double)
-    #
-    self.target_and_grads = ext.tncs_eps_factor_refinery(
-      tncs_pairs               = self.ncs_pairs,
-      f_obs                    = self.f_obs.data(),
-      sigma_f_obs              = self.f_obs.sigmas(),
-      rbin                     = self.rbin,
-      SigmaN                   = self.SigmaN,
-      space_group              = self.f_obs.space_group(),
-      miller_indices           = self.f_obs.indices(),
-      fractionalization_matrix = self.f_obs.unit_cell().fractionalization_matrix(),
-      sym_matrices             = self.sym_matrices)
 
   def update(self, x):
     assert x.size() == self.ncs_pairs[0].rho_mn.size() #XXX
@@ -257,7 +246,7 @@ def run():
   #
   # Calculate "Fobs" from this model
   #
-  f_obs = abs(xray_structure.structure_factors(d_min=2).f_calc())
+  f_obs = abs(xray_structure.structure_factors(d_min=2.0).f_calc())
   f_obs.set_sigmas(sigmas = flex.double(f_obs.data().size(), 1.0))
   f_obs.setup_binner(reflections_per_bin = 250)
   binner = f_obs.binner()
