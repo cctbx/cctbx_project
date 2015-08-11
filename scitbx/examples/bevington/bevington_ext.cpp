@@ -32,6 +32,7 @@ namespace boost_python { namespace {
       .def("right_hand_side", &linear_ls_eigen_wrapper::right_hand_side)
       .def("solve", &linear_ls_eigen_wrapper::solve)
       .def("solved", &linear_ls_eigen_wrapper::solved)
+      .def("normal_matrix", &linear_ls_eigen_wrapper::normal_matrix)
       .def("solution", &linear_ls_eigen_wrapper::solution)
     ;
 
@@ -45,7 +46,10 @@ namespace boost_python { namespace {
       .def("step_equations",&nllsew::step_equations, rir)
       .def("add_constant_to_diagonal",&nllsew::add_constant_to_diagonal)
       .def("get_normal_matrix_diagonal",&nllsew::get_normal_matrix_diagonal)
-      .def("solve_returning_error_mat_diagonal", &nllsew::solve_returning_error_mat_diagonal)
+      .def("get_normal_matrix",&nllsew::get_normal_matrix)
+      .def("get_cholesky_lower", &nllsew::get_cholesky_lower)
+      .def("get_cholesky_diagonal", &nllsew::get_cholesky_diagonal)
+      .def("get_eigen_permutation_ordering", &nllsew::get_eigen_permutation_ordering)
     ;
 
     typedef bevington_silver silver;
