@@ -3107,7 +3107,7 @@ class find_secondary_structure: # class to look for secondary structure
         ph=apply_atom_selection(
          get_string_or_first_element_of_list(strand.as_atom_selections()),
          hierarchy=hierarchy)
-          
+
         model=model_info(hierarchy=ph,info={'class':'strand'})
         self.user_models.append(model)
         model.find_beta=find_beta_strand(params=params.beta,
