@@ -54,8 +54,8 @@ def gs_importer_wrapper(input_entry):
   """ Multiprocessor wrapper for image conversion  """
   prog_count = input_entry[0]
   n_img = input_entry[1]
-  image = input_entry[2][0]
-  imported_grid = input_entry[2][1]
+  image = input_entry[2].conv_img
+  imported_grid = input_entry[2].grid
   image = [prog_count, n_img, image]
   gs_prog = cmd.ProgressBar(title='IMPORTING IMAGES')
   if prog_count < n_img:

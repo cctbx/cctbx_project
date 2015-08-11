@@ -71,11 +71,10 @@ class Integrator(object):
       if not os.path.exists(pdf_folder):
         os.makedirs(pdf_folder)
       self.args.extend(["integration.enable_residual_map=True",
-                       "integration.enable_residual_map_deltapsi=True",
-                       "integration.enable_residual_scatter=True",
-                       "integration.mosaic.enable_AD14F7B=True",
-                       "integration.graphics_backend=pdf",
-                       "integration.pdf_output_dir={}".format(pdf_folder)])
+                        "integration.enable_residual_scatter=True",
+                        "integration.mosaic.enable_AD14F7B=True",
+                        "integration.graphics_backend=pdf",
+                        "integration.pdf_output_dir={}".format(pdf_folder)])
     if self.tag == 'integrate':
       args.append("indexing.completeness_pickle={}".format(self.out_img))
 
@@ -136,7 +135,7 @@ class Integrator(object):
         dom_size = int_AD14['domain_sz_ang']
         mosaicity = round(int_AD14['fw_mos_deg'], 6)
         mos_quality = round(int_AD14['mosaic_model_area_under_green_curve_sampled'], 6)
-        mos_quality_nks = int_AD14['ewald_proximal_volume']
+        ewald_proximal_volume = round(int_AD14['ewald_proximal_volume'], 6)
 
         # Assemble output for log file and/or integration result file
         p_cell = "{:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}"\
@@ -148,7 +147,8 @@ class Integrator(object):
         int_results = {'sg':sg, 'a':cell[0], 'b':cell[1], 'c':cell[2],
                         'alpha':cell[3], 'beta':cell[4], 'gamma':cell[5],
                         'strong':strong_spots, 'res':res, 'mos':mosaicity,
-                        'epv':0, 'info':int_status, 'ok':True}
+                        'epv':ewald_proximal_volume, 'info':int_status,
+                        'ok':True}
 
       except ValueError:
         import traceback
@@ -244,7 +244,7 @@ class Selector(object):
         spots. """
     log_entry = []
     if len(self.grid) == 0:
-      log_entry = 'No integration results for {}\n'.format(self.final['img'])
+      log_entry = '\nNo integration results for {}\n'.format(self.final['img'])
       self.best['info'] = log_entry
       self.best['final'] = None
     else:
@@ -254,22 +254,22 @@ class Selector(object):
         acceptable_results = self.grid
 
       if len(acceptable_results) == 0:
-        log_entry = 'All {0} results from {1} failed prefilter' \
+        log_entry = '\nAll {0} results from {1} failed prefilter' \
                     '\n'.format(len(self.grid), self.final['img'])
         self.best['info'] = log_entry
         self.best['final'] = None
         self.prefilter = False
       else:
         # Generate log summary of integration results
-        log_entry.append('Selecting from {0} out '\
+        log_entry.append('\nSelecting from {0} out '\
                         'of {1} integration results for ' \
                         '{2}:\n'.format(len(acceptable_results),
                         len(self.grid), self.final['img']))
-        categories = '{:^4}{:^4}{:^4}{:^9}{:^8}{:^55}{:^12}{:^14}'\
+        categories = '{:^4}{:^4}{:^4}{:^9}{:^8}{:^55}{:^12}{:^14}{:^14}'\
                      ''.format('S', 'H', 'A', 'RES', 'SG.',
-                               'UNIT CELL', 'SPOTS', 'MOS')
-        line = '{:-^4}{:-^4}{:-^4}{:-^9}{:-^8}{:-^55}{:-^16}{:-^14}'\
-               ''.format('', '', '', '', '','', '', '')
+                               'UNIT CELL', 'SPOTS', 'MOS', 'EPV')
+        line = '{:-^4}{:-^4}{:-^4}{:-^9}{:-^8}{:-^55}{:-^16}{:-^14}{:-^14}'\
+               ''.format('', '', '', '', '','', '', '', '')
         log_entry.append(categories)
         log_entry.append(line)
 
@@ -277,9 +277,10 @@ class Selector(object):
           cell = '{:>8.2f}, {:>8.2f}, {:>8.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}'\
                  ''.format(acc['a'], acc['b'], acc['c'],
                            acc['alpha'], acc['beta'], acc['gamma'])
-          info_line = '{:^4}{:^4}{:^4}{:^9.2f}{:^8}{:^55}{:^12}{:^14.8f}'\
+          info_line = '{:^4}{:^4}{:^4}{:^9.2f}{:^8}{:^55}{:^12}{:^14.8f}{:^14.8f}'\
                       ''.format(acc['sih'], acc['sph'], acc['spa'], acc['res'],
-                                acc['sg'], cell, acc['strong'], acc['mos'])
+                                acc['sg'], cell, acc['strong'], acc['mos'],
+                                acc['epv'])
           log_entry.append(info_line)
 
         # Perform selection
@@ -292,10 +293,10 @@ class Selector(object):
         cell = '{:>8.2f}, {:>8.2f}, {:>8.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}'\
                  ''.format(self.best['a'], self.best['b'], self.best['c'],
                            self.best['alpha'], self.best['beta'], self.best['gamma'])
-        info_line = '\n{:^4}{:^4}{:^4}{:^9.2f}{:^8}{:^55}{:^12}{:^14.8f}\n'\
+        info_line = '\n{:^4}{:^4}{:^4}{:^9.2f}{:^8}{:^55}{:^12}{:^14.8f}{:^14.8f}\n'\
                       ''.format(self.best['sih'], self.best['sph'], self.best['spa'],
                                 self.best['res'], self.best['sg'], cell, self.best['strong'],
-                                self.best['mos'])
+                                self.best['mos'], self.best['epv'])
         log_entry.append(info_line)
         self.best['info'] = "Selection results for {}: {}"\
                             "".format(self.best['img'], info_line)

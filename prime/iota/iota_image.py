@@ -35,10 +35,11 @@ class SingleImage(object):
 
     # Initialize parameters
     self.params = init.params
+    self.args = init.args
     self.raw_img = img[2]
     self.conv_img = img[2]
     self.img_index = img[0]
-    self.img_type = self.check_image()
+    self.img_type = None
     self.triage = 'accepted'
     self.Bragg = 0
     self.log_info = []
@@ -114,7 +115,7 @@ class SingleImage(object):
 
 
   def check_image(self):
-    """ Determines whether image has been converted """
+    """ Determines whether image has been converted [DEPRECATED] """
     try:
       with misc.Capturing() as suppressed_junk:
         loaded_img = dxtbx.load(self.raw_img)
@@ -162,6 +163,10 @@ class SingleImage(object):
 
       if scan is None:
         timestamp = None
+        if abs(beam_x - beam_y) <= 0.1 or self.params.image_conversion.square_mode == "None":
+          self.img_type = 'converted'
+        else:
+          self.img_type = 'unconverted'
       else:
         msec, sec = math.modf(scan.get_epochs()[0])
         timestamp = evt_timestamp((sec,msec))
@@ -179,10 +184,10 @@ class SingleImage(object):
 
       if scan is not None:
         osc_start, osc_range = scan.get_oscillation()
+        self.img_type = 'unconverted'
         if osc_start != osc_range:
           data['OSC_START'] = osc_start
           data['OSC_RANGE'] = osc_range
-
           data['TIME'] = scan.get_exposure_times()[0]
     else:
       data = None
@@ -376,6 +381,10 @@ class SingleImage(object):
       if self.viz_path != None and not os.path.isdir(self.viz_path):
           os.makedirs(self.viz_path)
 
+      # Save file object for MPI
+      if self.args.mpi != None:
+        ep.dump(self.gs_file, self)
+
 
     log_entry = "\n".join(self.log_info)
     misc.main_log(self.main_log, log_entry)
@@ -502,9 +511,8 @@ class SingleImage(object):
       # Check if this is select-only, check for *.int files and load results
       if self.params.selection.select_only.flag_on:
         gs_result_file = self.determine_gs_result_file()
-        gs_result = ep.load(gs_result_file)
-        for i in range(len(self.grid)):
-          self.grid[i].update(gs_result[i])
+        gs_result = ep.load(gs_result_file).grid
+        self.grid.update(gs_result)
       else:
         # Linear grid search (for now)
         for i in range(len(self.grid)):
@@ -524,6 +532,10 @@ class SingleImage(object):
       # Throw out grid search results that yielded no integration
       self.grid = [i for i in self.grid if "not integrated" not in i['info'] and\
                    "no data recorded" not in i['info']]
+
+      # Save image object to file for MPI
+      if self.args.mpi != None:
+        ep.dump(self.gs_file, self)
 
     elif tag == 'integrate':
       # Single integration event with selected parameters
@@ -553,10 +565,6 @@ class SingleImage(object):
   def select(self):
     """ Selects best grid search result using the Selector class """
 
-    # Save grid search results into a pickle file
-    gs_file_contents = [self.conv_img, self.grid]
-    ep.dump(self.gs_file, gs_file_contents)
-
     from prime.iota.iota_integrate import Selector
     selector = Selector(self.grid,
                         self.final,
@@ -569,6 +577,9 @@ class SingleImage(object):
 
     self.final, log_entry = selector.select()
     misc.main_log(self.main_log, log_entry)
+
+    # Save results into a pickle file
+    ep.dump(self.gs_file, self)
 
     return self
 

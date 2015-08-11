@@ -19,6 +19,42 @@ import prime.iota.iota_misc as misc
 
 # --------------------------- Initialize IOTA -------------------------------- #
 
+
+def parse_command_args(iver, help_message):
+  """ Parses command line arguments (only options for now) """
+  parser = argparse.ArgumentParser(prog = 'prime.iota',
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            description=(help_message),
+            epilog=('\n{:-^70}\n'.format('')))
+  parser.add_argument('path', type=str, nargs = '?', default = None,
+            help = 'Path to data or file with IOTA parameters')
+  parser.add_argument('--version', action = 'version',
+            version = 'IOTA {}'.format(iver),
+            help = 'Prints version info of IOTA')
+  parser.add_argument('-l', '--list', action = 'store_true',
+            help = 'Output a file (input.lst) with input image paths and stop')
+  parser.add_argument('-c', '--convert', action = 'store_true',
+            help = 'Convert raw images to pickles and stop')
+  parser.add_argument('-d', '--default', action = 'store_true',
+            help = 'Generate default iota.param and target.phil files and stop')
+  parser.add_argument('-p', '--prefix', type=str, default="Auto",
+            help = 'Specify custom prefix for converted pickles')
+  parser.add_argument('-s', '--select', action = 'store_true',
+            help = 'Selection only, no grid search')
+  parser.add_argument('-r', type=int, nargs=1, default=0, dest='random',
+            help = 'Run IOTA with a random subset of images, e.g. "-r 5"')
+  parser.add_argument('-n', type=int, nargs=1, default=0, dest='nproc',
+            help = 'Specify a number of cores for a multiprocessor run"')
+  parser.add_argument('--mpi', type=str, nargs='?', const=None, default=None,
+            help = 'Specify stage of process - for MPI only')
+
+  return parser
+
+
+
+
+
+
 class InitAll(object):
   """ Class to initialize current IOTA run
 
@@ -45,36 +81,6 @@ class InitAll(object):
     self.conv_base = None
     self.gs_base = None
     self.int_base = None
-
-  def parse_command_args(self):
-    """ Parses command line arguments (only options for now) """
-    parser = argparse.ArgumentParser(prog = 'prime.iota',
-              formatter_class=argparse.RawDescriptionHelpFormatter,
-              description=(self.help_message),
-              epilog=('\n{:-^70}\n'.format('')))
-    parser.add_argument('path', type=str, nargs = '?', default = None,
-              help = 'Path to data or file with IOTA parameters')
-    parser.add_argument('--version', action = 'version',
-              version = 'IOTA {}'.format(self.iver),
-              help = 'Prints version info of IOTA')
-    parser.add_argument('-l', '--list', action = 'store_true',
-              help = 'Output a file (input.lst) with input image paths and stop')
-    parser.add_argument('-c', '--convert', action = 'store_true',
-              help = 'Convert raw images to pickles and stop')
-    parser.add_argument('-d', '--default', action = 'store_true',
-              help = 'Generate default iota.param and target.phil files and stop')
-    parser.add_argument('-t', '--triage', action = 'store_true',
-              help = 'Find and exclude blank images using basic spotfinding')
-    parser.add_argument('-p', '--prefix', type=str, default="Auto",
-              help = 'Specify custom prefix for converted pickles')
-    parser.add_argument('-s', '--select', action = 'store_true',
-              help = 'Selection only, no grid search')
-    parser.add_argument('-r', type=int, nargs=1, default=0, dest='random',
-              help = 'Run IOTA with a random subset of images, e.g. "-r 5"')
-    parser.add_argument('-n', type=int, nargs=1, default=0, dest='nproc',
-              help = 'Specify a number of cores for a multiprocessor run"')
-    return parser
-
 
   def make_input_list(self):
     """ Reads input directory or directory tree and makes lists of input images
@@ -185,12 +191,12 @@ class InitAll(object):
   # Runs general initialization
   def run(self):
 
-    args = self.parse_command_args().parse_args()
+    self.args = parse_command_args(self.iver, self.help_message).parse_args()
 
     # Check for type of input
-    if args.path == None:                   # No input
-      self.parse_command_args().print_help()
-      if args.default:                      # Write out default params and exit
+    if self.args.path == None:                   # No input
+      parse_command_args(self.iver, self.help_message).print_help()
+      if self.args.default:                      # Write out default params and exit
         help_out, txt_out = inp.print_params()
         print '\n{:-^70}\n'.format('IOTA Parameters')
         print help_out
@@ -199,26 +205,32 @@ class InitAll(object):
     else:                                   # If input exists, check type
       print self.logo
       print '\n{}\n'.format(self.now)
-      carg = os.path.abspath(args.path)
+      carg = os.path.abspath(self.args.path)
       if os.path.exists(carg):
 
         # If user provided a parameter file
         if os.path.isfile(carg) and os.path.basename(carg).endswith('.param'):
-          self.params, self.txt_out = inp.process_input(args, carg, 'file')
+          self.params, self.txt_out = inp.process_input(self.args, carg, 'file')
 
         # If user provided a list of input files
         elif os.path.isfile(carg) and os.path.basename(carg).endswith('.lst'):
           print "\nIOTA will run in AUTO mode using {}:\n".format(carg)
-          self.params, self.txt_out = inp.process_input(args, carg, 'auto', self.now)
+          self.params, self.txt_out = inp.process_input(self.args, carg, 'auto', self.now)
 
         # If user provided a data folder
         elif os.path.isdir(carg):
           print "\nIOTA will run in AUTO mode using {}:\n".format(carg)
-          self.params, self.txt_out = inp.process_input(args, carg, 'auto', self.now)
+          self.params, self.txt_out = inp.process_input(self.args, carg, 'auto', self.now)
       # If user provided gibberish
       else:
         print "ERROR: Invalid input! Need parameter filename or data folder."
         misc.iota_exit(self.iver)
+
+    if self.params.mp_method == 'mpi':
+      rank, size = misc.get_mpi_rank_and_size()
+      self.master_process = rank == 0
+    else:
+      self.master_process = True
 
     # Call function to read input folder structure (or input file) and
     # generate list of image file paths
@@ -246,7 +258,7 @@ class InitAll(object):
       os.makedirs(self.fin_base)
 
     # Check for -l option, output list of input files and exit
-    if args.list:
+    if self.args.list:
       list_file = os.path.abspath("{}/input.lst".format(os.curdir))
       print '\nIOTA will run in LIST INPUT ONLY mode'
       print 'Input list in {} \n\n'.format(list_file)
@@ -269,8 +281,8 @@ class InitAll(object):
     misc.main_log(self.logfile, self.txt_out)
 
     misc.main_log(self.logfile, '{:-^100} \n\n'
-                               ''.format(' TARGET FILE ({}) CONTENTS '
-                               ''.format(self.params.target)))
+                                ''.format(' TARGET FILE ({}) CONTENTS '
+                                ''.format(self.params.target)))
     with open(self.params.target, 'r') as phil_file:
       phil_file_contents = phil_file.read()
     misc.main_log(self.logfile, phil_file_contents)

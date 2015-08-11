@@ -39,9 +39,10 @@ class Analyzer(object):
     self.now = now
 
     self.prime_data_path = None
-
     self.all_objects = all_objects
-    self.final_objects = [i for i in all_objects if i.final['final'] != None]
+    self.final_objects = [i for i in all_objects if i.triage == 'accepted' and\
+                                                    i.prefilter == True and\
+                                                    i.final['final'] != None]
     self.logfile = logfile
 
     self.cons_pg = None
@@ -153,7 +154,7 @@ class Analyzer(object):
           # Write to file
           for obj in sorted_cluster:
             with open(output_file, 'a') as scf:
-              scf.write('{}\n'.format(obj.final['img']))
+              scf.write('{}\n'.format(obj.final['final']))
 
           mark_output = os.path.basename(output_file)
         else:
