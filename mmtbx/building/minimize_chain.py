@@ -163,7 +163,7 @@ def get_map_coeffs(
   if not map_coeffs_file:
     return
   if not os.path.isfile(map_coeffs_file):
-    raise Sorry("Unable to find the map coeffs file %s" %(maps_coeffs_file))
+    raise Sorry("Unable to find the map coeffs file %s" %(map_coeffs_file))
   from iotbx import reflection_file_reader
   reflection_file=reflection_file_reader.any_reflection_file(map_coeffs_file)
   miller_arrays=reflection_file.as_miller_arrays()
