@@ -190,7 +190,7 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
   else:
     return []  # nothing here
 
-  for m in hierarchy.models():
+  for m in hierarchy.models()[:1]:
     for chain in m.chains():
       new_hierarchy=iotbx.pdb.pdb_input(
          source_info="Model", lines="").construct_hierarchy()
