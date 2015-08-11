@@ -177,7 +177,7 @@ master_params_str = """\
       .type = bool
   }
   automatic_linking
-    .style = box auto_align
+    .style = box auto_align hidden
     .short_caption = Automatic covalent linking
     .caption = Please note that if the "Automatic ligand linking" option is \
       selected in the main window, this will also enable the separate options \
@@ -191,10 +191,11 @@ master_params_str = """\
       .help = If True, bond restraints will be generated for any appropriate \
         ligand-protein or ligand-nucleic acid covalent bonds. This includes \
         sugars, amino acid modifications, and other prosthetic groups.
-      .style = bold renderer:draw_automatic_linking_control noauto
+      .style = hidden #renderer:draw_automatic_linking_control
     link_none = False
       .type = bool
       .short_caption = Overrides all automatic linking
+      .style = hidden
     link_metals = False
       .type = bool
     link_residues = False
