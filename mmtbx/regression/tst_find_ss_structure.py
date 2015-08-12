@@ -1432,6 +1432,36 @@ SHEET    2   1 2 GLY A 138  ASN A 141 -1  N  ASN A 141   O  ASP A  -5
   print "\nIs same: ",fss.get_annotation().is_similar_to(
      other=force_fss.get_annotation(),hierarchy=hierarchy)
 
+  print "\nRemove annotation with too few H-bonds"
+  force_fss=find_secondary_structure(hierarchy=hierarchy,
+      user_annotation_text=antiparallel_ss,
+      force_secondary_structure_input=True,
+      combine_annotations=False,
+      require_h_bonds=True,  # has no effect as force=true
+      minimum_h_bonds=4,out=null_out())
+  number_of_good_h_bonds,number_of_poor_h_bonds=\
+      force_fss.get_annotation().count_h_bonds(
+      hierarchy=hierarchy)
+  print "Good H-bonds: %d  Poor H-Bonds: %d" %(
+         number_of_good_h_bonds,
+         number_of_poor_h_bonds,)
+  assert number_of_good_h_bonds==4 and number_of_poor_h_bonds==0
+
+  force_fss=find_secondary_structure(hierarchy=hierarchy,
+      user_annotation_text=antiparallel_ss,
+      combine_annotations=False,
+      require_h_bonds=True,
+      minimum_h_bonds=5,out=null_out())
+  number_of_good_h_bonds,number_of_poor_h_bonds=\
+      force_fss.get_annotation().count_h_bonds(
+      hierarchy=hierarchy)
+  print "Good H-bonds: %d  Poor H-Bonds: %d" %(
+         number_of_good_h_bonds,
+         number_of_poor_h_bonds,)
+  assert number_of_good_h_bonds==0 and number_of_poor_h_bonds==0
+
+  print "\nDONE Now remove annotation with too few H-bonds"
+
 
 def tst_12():
 
