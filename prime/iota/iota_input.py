@@ -256,6 +256,7 @@ def process_input(args,
     raise Sorry("Not all arguments processed, remaining: {}".format(phil_args))
 
   temp_phil = [final_phil]
+  params = final_phil.extract()
   diff_phil = master_phil.fetch_diff(sources=temp_phil)
 
   with Capturing() as output:
