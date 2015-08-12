@@ -124,6 +124,18 @@ master_phil = iotbx.phil.parse("""
       .help = Combine annotations if an input annotation is provided
       .short_caption = Combine annotations
 
+    require_h_bonds = False
+      .type = bool
+      .help = Remove all secondary structure records that have fewer than \
+              minimum_h_bonds good hydrogen bonds
+      .short_caption = Require H-bonds
+
+    minimum_h_bonds = 1
+      .type = int
+      .help = Minimum number of good hydrogen bonds to keep secondary \
+              structure if require_h_bonds is set
+      .short_caption = Minimum number of H bonds
+
   }
 
   alpha {
@@ -1640,6 +1652,8 @@ class find_helix(find_segment):
   def pdb_records(self,segment_list=None,last_id=0,helix_type='alpha',
      max_h_bond_length=None,
      force_secondary_structure_input=None,
+     require_h_bonds=None,
+     minimum_h_bonds=None,
      allow_ca_only_model=None,out=sys.stdout): # helix
 
     records=[]
@@ -1648,11 +1662,16 @@ class find_helix(find_segment):
     k=last_id
     for s in segment_list:
       if not s.hierarchy: continue
+      from cStringIO import StringIO
+      f=StringIO()
       all_h_bonds,n_good,n_poor=self.list_h_bonds(
           segment=s,helix_type=helix_type,
           max_h_bond_length=max_h_bond_length,
           force_secondary_structure_input=force_secondary_structure_input,
-          allow_ca_only_model=allow_ca_only_model,out=out)
+          allow_ca_only_model=allow_ca_only_model,out=f)
+      if require_h_bonds and n_good<minimum_h_bonds:
+        continue
+      print >>out,f.getvalue(),
       number_of_good_h_bonds+=n_good
       number_of_poor_h_bonds+=n_poor
       start=get_first_residue(s.hierarchy)
@@ -1821,6 +1840,8 @@ class find_beta_strand(find_segment):
      sheet_list=None,info_dict=None,allow_ca_only_model=None,
      force_secondary_structure_input=None,
      max_h_bond_length=None,
+     require_h_bonds=None,
+     minimum_h_bonds=None,
      out=sys.stdout):
 
     # sheet_list is list of sheets. Each sheet is a list of strands (the index
@@ -1835,6 +1856,11 @@ class find_beta_strand(find_segment):
     number_of_poor_h_bonds=0
     sheet_id=0
     for sheet in sheet_list:
+      good_in_sheet=0
+      poor_in_sheet=0
+      from cStringIO import StringIO
+      f=StringIO()
+
       sheet_id+=1
       strand_id=1
       k=sheet[0]
@@ -1886,9 +1912,9 @@ class find_beta_strand(find_segment):
           max_h_bond_length=max_h_bond_length,
           previous_segment=previous_s,first_last_1_and_2=first_last_1_and_2,
           force_secondary_structure_input=force_secondary_structure_input,
-          allow_ca_only_model=allow_ca_only_model,out=out)
-        number_of_good_h_bonds+=n_good
-        number_of_poor_h_bonds+=n_poor
+          allow_ca_only_model=allow_ca_only_model,out=f)
+        good_in_sheet+=n_good
+        poor_in_sheet+=n_poor
 
         register=self.get_pdb_strand_register(segment=s,
           previous_segment=previous_s,first_last_1_and_2=first_last_1_and_2,
@@ -1898,7 +1924,14 @@ class find_beta_strand(find_segment):
         previous_s=s
         i=j
 
+      if require_h_bonds and good_in_sheet<minimum_h_bonds:
+        sheet_id-=1
+        continue
+      print >>out,f.getvalue(),
+      number_of_good_h_bonds+=good_in_sheet
+      number_of_poor_h_bonds+=poor_in_sheet
       records.append(current_sheet)
+
 
     return records,number_of_good_h_bonds,number_of_poor_h_bonds
 
@@ -2649,7 +2682,11 @@ class helix_strand_segments:
   def set_up_pdb_records(self,allow_ca_only_model=None,
     max_h_bond_length=None,
     force_secondary_structure_input=None,
+    require_h_bonds=None,minimum_h_bonds=None,
     models=None,out=sys.stdout):
+
+    # skip any secondary structure elements that have fewer than minimum_h_bonds
+    #   if require_h_bonds is True
 
     number_of_good_h_bonds=0
     number_of_poor_h_bonds=0
@@ -2680,6 +2717,8 @@ class helix_strand_segments:
          helix_type='alpha',
          max_h_bond_length=max_h_bond_length,
          force_secondary_structure_input=force_secondary_structure_input,
+         require_h_bonds=require_h_bonds,
+         minimum_h_bonds=minimum_h_bonds,
          allow_ca_only_model=allow_ca_only_model,out=f)
       number_of_good_h_bonds+=n_good
       number_of_poor_h_bonds+=n_poor
@@ -2690,6 +2729,8 @@ class helix_strand_segments:
          segment_list=self.all_three_ten_helices,
          helix_type='3_10',
          max_h_bond_length=max_h_bond_length,
+         require_h_bonds=require_h_bonds,
+         minimum_h_bonds=minimum_h_bonds,
          force_secondary_structure_input=force_secondary_structure_input,
          allow_ca_only_model=allow_ca_only_model,out=f)
       number_of_good_h_bonds+=n_good
@@ -2700,6 +2741,8 @@ class helix_strand_segments:
       self.pdb_pi_helix_list,n_good,n_poor=fa.pdb_records(
         segment_list=self.all_pi_helices,helix_type='pi',
         max_h_bond_length=max_h_bond_length,
+        require_h_bonds=require_h_bonds,
+        minimum_h_bonds=minimum_h_bonds,
         force_secondary_structure_input=force_secondary_structure_input,
         allow_ca_only_model=allow_ca_only_model,out=f)
       number_of_good_h_bonds+=n_good
@@ -2712,6 +2755,8 @@ class helix_strand_segments:
        sheet_list=self.sheet_list,
        info_dict=self.info_dict,
        max_h_bond_length=max_h_bond_length,
+       require_h_bonds=require_h_bonds,
+       minimum_h_bonds=minimum_h_bonds,
        force_secondary_structure_input=force_secondary_structure_input,
        allow_ca_only_model=allow_ca_only_model,out=f)
       number_of_good_h_bonds+=n_good
@@ -2769,8 +2814,7 @@ class helix_strand_segments:
       return self.all_pdb_records
 
   def get_annotation(self):
-    if not hasattr(self,'all_pdb_records'):
-      self.save_pdb_records_as_string()
+    self.save_pdb_records_as_string()
     records=self.all_pdb_records
     import iotbx.pdb.secondary_structure as ioss
     return ioss.annotation.from_records(records=flex.split_lines(records))
@@ -2795,6 +2839,8 @@ class find_secondary_structure: # class to look for secondary structure
       force_secondary_structure_input=None,
       search_secondary_structure=None,
       combine_annotations=None,
+      require_h_bonds=None,
+      minimum_h_bonds=None,
       verbose=None,out=sys.stdout):
 
     if not args: args=[]
@@ -2806,6 +2852,10 @@ class find_secondary_structure: # class to look for secondary structure
       params.control.verbose=verbose
     verbose=params.control.verbose
 
+    if require_h_bonds is not None:
+      params.find_ss_structure.require_h_bonds=require_h_bonds
+    if minimum_h_bonds is not None:
+      params.find_ss_structure.minimum_h_bonds=minimum_h_bonds
     if max_h_bond_length is not None:
       params.find_ss_structure.max_h_bond_length=max_h_bond_length
     if combine_annotations is not None:
@@ -2925,28 +2975,58 @@ class find_secondary_structure: # class to look for secondary structure
 
 
     # Now get final values of H-bonds etc with our final annotation
+
+    if params.find_ss_structure.require_h_bonds and \
+        params.find_ss_structure.minimum_h_bonds>0:
+      remove_text=\
+        "\nRemoving any secondary structure with fewer than %d H-bonds"  %(
+        params.find_ss_structure.minimum_h_bonds)
+    else:
+      remove_text=""
+
     if self.helix_strand_segments and not secondary_structure_input:
       # Use analysis from working annotation (no user input)
+      if remove_text: print >>out,remove_text
       print >>out,"\nGetting H-bonds from working annotation"
       self.number_of_good_h_bonds,self.number_of_poor_h_bonds=\
          self.helix_strand_segments.set_up_pdb_records(models=self.models,
          max_h_bond_length=params.find_ss_structure.max_h_bond_length,
          force_secondary_structure_input=force_secondary_structure_input,
-         allow_ca_only_model=params.beta.allow_ca_only_model,out=out)
+         allow_ca_only_model=params.beta.allow_ca_only_model,
+         require_h_bonds=params.find_ss_structure.require_h_bonds,
+         minimum_h_bonds=params.find_ss_structure.minimum_h_bonds,
+         out=out)
       self.h_bond_text=self.helix_strand_segments.h_bond_text
+      working_annotation=self.helix_strand_segments.get_annotation()
+
     elif self.user_helix_strand_segments and secondary_structure_input and \
         not params.find_ss_structure.combine_annotations:
       # use analysis of user input (as is)
+      if remove_text and not force_secondary_structure_input:
+        print >>out,remove_text
+        require_h_bonds=params.find_ss_structure.require_h_bonds
+        minimum_h_bonds=params.find_ss_structure.minimum_h_bonds
+      else:
+        remove_text=None
+        require_h_bonds=None
+        minimum_h_bonds=None
+
       print >>out,"\nGetting H-bonds from user annotation"
       self.number_of_good_h_bonds,self.number_of_poor_h_bonds=\
          self.user_helix_strand_segments.set_up_pdb_records(
          models=self.user_models,
          max_h_bond_length=params.find_ss_structure.max_h_bond_length,
          force_secondary_structure_input=force_secondary_structure_input,
-         allow_ca_only_model=params.beta.allow_ca_only_model,out=out)
+         require_h_bonds=require_h_bonds,
+         minimum_h_bonds=minimum_h_bonds,
+         allow_ca_only_model=params.beta.allow_ca_only_model,
+         out=out)
       self.h_bond_text=self.user_helix_strand_segments.h_bond_text
+      working_annotation=self.user_helix_strand_segments.get_annotation()
 
-    else: # need to redo it from the beginning with our new annotation:
+    else: # need to redo it from the beginning with our new annotation
+      # user annotation combined with new annotation
+      if remove_text: print >>out,remove_text
       print >>out,"\nRunning analysis with new annotation"
       if working_annotation and working_annotation.as_pdb_str():
         fss=find_secondary_structure(hierarchy=hierarchy,
@@ -2954,20 +3034,20 @@ class find_secondary_structure: # class to look for secondary structure
           force_secondary_structure_input=True,
           combine_annotations=False,
           max_h_bond_length=params.find_ss_structure.max_h_bond_length,
+          require_h_bonds=params.find_ss_structure.require_h_bonds,
+          minimum_h_bonds=params.find_ss_structure.minimum_h_bonds,
           out=local_out)
         print >>out,fss.h_bond_text
         self.number_of_good_h_bonds=fss.number_of_good_h_bonds
         self.number_of_poor_h_bonds=fss.number_of_poor_h_bonds
+        working_annotation=fss.get_pdb_annotation()
       else:
         self.number_of_good_h_bonds=0
         self.number_of_poor_h_bonds=0
 
-
-
     print >>out,\
          "\nNumber of good H-bonds: %d  Number of poor H-bonds: %d" %(
           self.number_of_good_h_bonds,self.number_of_poor_h_bonds)
-
 
     self.annotation=working_annotation
 
