@@ -555,6 +555,15 @@ class annotation(structure_base):
     self.helices = new_helices
     self.sheets = new_sheets
 
+  def remove_1hb_helices(self):
+    filtered_helices = []
+    for h in self.helices:
+      if h.get_n_maximum_hbonds() <= 1:
+        continue
+      else:
+        filtered_helices.append(h)
+    self.helices = filtered_helices
+
   def as_pdb_str (self) :
     records = []
     for helix in self.helices :
@@ -1296,9 +1305,9 @@ class pdb_helix (structure_base) :
       return self.length-4
     elif self.helix_class=='3_10':
       return self.length-3
-    elif helix.helix_class=='pi':
+    elif self.helix_class=='pi':
       return self.length-5
-    elif helix.helix_class=='unknown':
+    elif self.helix_class=='unknown':
       return 0
     else:
       # Should never happen
