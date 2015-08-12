@@ -1359,7 +1359,9 @@ include scope libtbx.phil.t_s_t.include_scope_target_1
 """, process_includes=True)
     except ImportError, e:
       assert str(e) \
-        == "include scope: no module libtbx.phil.t_s_t (input line 1)"
+        == "include scope: no module libtbx.phil.t_s_t (input line 1)" \
+           " or possibly import errors in module libtbx.phil.t_s_t", \
+        "Incorrect exception: %s" % str(e)
     else: raise Exception_expected
     try: phil.parse(input_string="""\
 include scope libtbx.phil.tst.include_scope_target_none
