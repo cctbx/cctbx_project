@@ -40,7 +40,7 @@ class minimizer:
     self.x = self.potential.ncs_pairs[0].rho_mn
     self.n = self.x.size()
 
-  def run(self, use_curvatures=0):
+  def run(self):
     self.minimizer = lbfgs_run(
       target_evaluator=self,
       use_bounds=self.use_bounds)
@@ -59,23 +59,14 @@ class potential(object):
     adopt_init_args(self, locals())
     # Create bins and SigmaN
     f_obs.setup_binner(reflections_per_bin = reflections_per_bin)
-    binner = f_obs.binner()
-    n_bins = binner.n_bins_used()
-    self.SigmaN = flex.double(f_obs.data().size(), -1)
-    for i_bin in binner.range_used():
-      bin_sel = f_obs.binner().selection(i_bin)
-      f_obs_bin = f_obs.select(bin_sel)
-      f_obs_bin_data = f_obs_bin.data()
-      eps_bin = f_obs_bin.epsilons().data().as_double()
-      sn = flex.sum(f_obs_bin_data*f_obs_bin_data/eps_bin)/f_obs_bin_data.size()
-      self.SigmaN = self.SigmaN.set_selected(bin_sel, sn)
-      print "bin: %d n_refl.: %d" % (i_bin, f_obs_bin.data().size()), \
-        "%6.3f-%-6.3f"%f_obs_bin.d_max_min(), "SigmaN: %6.4f"%sn
-    assert self.SigmaN.all_gt(0)
+    self.binner = f_obs.binner()
+    n_bins = self.binner.n_bins_used()
+    self.SigmaN = None
+    self.update_SigmaN()
     #
     self.rbin = flex.int(f_obs.data().size(), -1)
-    for i_bin in binner.range_used():
-      for i_seq in binner.array_indices(i_bin):
+    for i_bin in self.binner.range_used():
+      for i_seq in self.binner.array_indices(i_bin):
         self.rbin[i_seq] = i_bin-1 # i_bin starts with 1, not 0 !
     assert flex.min(self.rbin)==0
     assert flex.max(self.rbin)==n_bins-1
@@ -99,6 +90,23 @@ class potential(object):
       miller_indices           = self.f_obs.indices(),
       fractionalization_matrix = self.f_obs.unit_cell().fractionalization_matrix(),
       sym_matrices             = self.sym_matrices)
+
+  def update_SigmaN(self):
+    if(self.SigmaN is None):
+      eps = self.f_obs.epsilons().data().as_double()
+    else:
+      eps = self.target_and_grads.tncs_epsfac()
+    self.SigmaN = flex.double(self.f_obs.data().size(), -1)
+    for i_bin in self.binner.range_used():
+      bin_sel = self.f_obs.binner().selection(i_bin)
+      f_obs_bin = self.f_obs.select(bin_sel)
+      f_obs_bin_data = f_obs_bin.data()
+      eps_bin = eps.select(bin_sel)
+      sn = flex.sum(f_obs_bin_data*f_obs_bin_data/eps_bin)/f_obs_bin_data.size()
+      self.SigmaN = self.SigmaN.set_selected(bin_sel, sn)
+      print "bin: %d n_refl.: %d" % (i_bin, f_obs_bin.data().size()), \
+        "%6.3f-%-6.3f"%f_obs_bin.d_max_min(), "SigmaN: %6.4f"%sn
+    assert self.SigmaN.all_gt(0)
 
   def target(self):
     return self.target_and_grads.target()
