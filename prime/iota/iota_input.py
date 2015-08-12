@@ -189,6 +189,7 @@ class Capturing(list):
     sys.stderr = self._stderr
 
 def process_input(args,
+                  phil_args,
                   input_file,
                   mode='auto',
                   now=None):
@@ -199,6 +200,9 @@ def process_input(args,
       output: params - PHIL-formatted parameters
               txt_output - plain text-formatted parameters
   """
+
+  from libtbx.phil.command_line import argument_interpreter
+  from libtbx.utils import Sorry
 
   cmd.Command.start("Generating parameters")
   if mode == 'file':
@@ -217,7 +221,7 @@ def process_input(args,
 
   # Check for -n option and set number of processors override
   # (for parallel map only, for now)
-  if args.nproc[0] > 0:
+  if args.nproc > 0:
     params.n_processors = args.nproc[0]
 
   # Check for -c option and set flags to exit IOTA after raw image conversion
@@ -236,6 +240,21 @@ def process_input(args,
     params.selection.select_only.flag_on = True
 
   final_phil = master_phil.format(python_object=params)
+
+  argument_interpreter = argument_interpreter(master_phil=master_phil)
+  consume = []
+  for arg in phil_args:
+    try:
+      command_line_params = argument_interpreter.process(arg=arg)
+      final_phil = final_phil.fetch(sources=[command_line_params,])
+      consume.append(arg)
+    except Sorry,e:
+      pass
+  for item in consume:
+    phil_args.remove(item)
+  if len(phil_args) > 0:
+    raise Sorry("Not all arguments processed, remaining: {}".format(phil_args))
+
   temp_phil = [final_phil]
   diff_phil = master_phil.fetch_diff(sources=temp_phil)
 
