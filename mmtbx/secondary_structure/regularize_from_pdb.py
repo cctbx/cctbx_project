@@ -178,7 +178,13 @@ master_phil = iotbx.phil.parse("""
     minimum_h_bonds = 1
       .type = int
       .help = Minimum number of good hydrogen bonds to keep secondary \
-              structure if require_h_bonds is set
+              structure element (helix/sheet) if require_h_bonds is set
+      .short_caption = Minimum number of H bonds
+
+    maximum_poor_h_bonds = None
+      .type = int
+      .help = Maximum number of poor hydrogen bonds to keep secondary \
+              structure element (helix/sheet) if require_h_bonds is set
       .short_caption = Minimum number of H bonds
 
 
