@@ -2232,6 +2232,7 @@ class build_chain_proxies(object):
     if restraints_loading_flags is None: restraints_loading_flags={}
     import iotbx.cif.model
     self.cif = iotbx.cif.model.cif()
+    self.pdb_link_records = {}
     self.conformation_dependent_restraints_list = \
       conformation_dependent_restraints_list
     unknown_residues = dicts.with_default_value(0)
@@ -2297,7 +2298,7 @@ class build_chain_proxies(object):
         )
 
       if mm.monomer and mm.monomer.cif_object:
-        self.cif["comp_%s" % residue.resname] = mm.monomer.cif_object
+        self.cif["comp_%s" % residue.resname.strip()] = mm.monomer.cif_object
 
       if (mm.monomer is None):
         def use_scattering_type_if_available_to_define_nonbonded_type():
@@ -2734,6 +2735,7 @@ class build_all_chain_proxies(linking_mixins):
                ):
     import iotbx.cif.model
     self.cif = iotbx.cif.model.cif()
+    self.pdb_link_records = {}
     if restraints_loading_flags is None:
       restraints_loading_flags = get_restraints_loading_flags(params)
     self.mon_lib_srv = mon_lib_srv
@@ -2943,6 +2945,7 @@ class build_all_chain_proxies(linking_mixins):
             log=log,
             )
           self.cif.update(chain_proxies.cif)
+          assert not chain_proxies.pdb_link_records
           self.conformation_dependent_restraints_list = \
             chain_proxies.conformation_dependent_restraints_list
           del chain_proxies
@@ -4452,7 +4455,6 @@ class build_all_chain_proxies(linking_mixins):
       site_symmetry_table=self.site_symmetry_table())
     bond_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
 
-
     #_ = asu_mappings.site_symmetry_table()
     #for bond in self.geometry_proxy_registries.bond_simple.proxies:
     #  if bond.rt_mx_ji is None: continue
@@ -4481,6 +4483,14 @@ class build_all_chain_proxies(linking_mixins):
     for sym_pair in disulfide_sym_table.iterator():
       i_seq = self.cystein_sulphur_i_seqs[sym_pair.i_seq]
       j_seq = self.cystein_sulphur_i_seqs[sym_pair.j_seq]
+      # add atoms to PDB link object
+      # need to include sym. op.
+      self.pdb_link_records.setdefault("SSBOND", [])
+      self.pdb_link_records["SSBOND"].append([self.pdb_atoms[i_seq],
+                                              self.pdb_atoms[j_seq],
+                                              sym_pair.rt_mx_ji,
+                                            ]
+                                            )
       bond_params_table.update(
         i_seq=i_seq,
         j_seq=j_seq,
@@ -4986,6 +4996,11 @@ class process(object):
             assume_hydrogens_all_missing=assume_hydrogens_all_missing,
             external_energy_function=external_energy_function,
             log=self.log)
+
+      #for key, item in self.all_chain_proxies.pdb_link_records.items():
+      #  print key
+      #  for atom1, atom2, sym_op in item:
+      #    print atom1.quote(), atom2.quote(), sym_op
 
       # initializing grm
       self._geometry_restraints_manager.pair_proxies(

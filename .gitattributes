@@ -1335,6 +1335,7 @@ iotbx/pdb/hybrid_36_cpp.h svneol=native#text/plain
 iotbx/pdb/input.cpp svneol=native#text/plain
 iotbx/pdb/input_write.cpp svneol=native#text/plain
 iotbx/pdb/mining.py svneol=native#text/x-python
+iotbx/pdb/misc_records_output.py -text
 iotbx/pdb/mmcif.py -text
 iotbx/pdb/multimer_reconstruction.py -text
 iotbx/pdb/namespace.h svneol=native#text/plain

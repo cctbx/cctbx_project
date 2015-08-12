@@ -110,6 +110,7 @@ def _apply_link_using_proxies(link,
   assert link
   count = 0
   #
+  bond_i_seqs = []
   for bond in link.bond_list:
     i_seqs = _get_restraint_i_seqs(atom_group1,
                                    atom_group2,
@@ -140,6 +141,7 @@ def _apply_link_using_proxies(link,
       rt_mx_ji=rt_mx_ji,
       )
     count+=1
+    bond_i_seqs.append(i_seqs)
   #
   for angle in link.angle_list:
     i_seqs = _get_restraint_i_seqs(atom_group1,
@@ -204,7 +206,7 @@ def _apply_link_using_proxies(link,
         weights=weights[plane_id],
         )
       geometry_proxy_registries.planarity.add_if_not_duplicated(proxy=proxy)
-  return count
+  return count, bond_i_seqs
 
 def possible_cyclic_peptide(atom1,
                             atom2,
@@ -642,16 +644,17 @@ Residue classes
       if link:
         # apply a standard link
         links.setdefault(key, [])
+        count, bond_i_seqs = _apply_link_using_proxies(
+          link,
+          atom_group1,
+          atom_group2,
+          bond_params_table,
+          bond_asu_table,
+          geometry_proxy_registries,
+          rt_mx_ji=link_rt_mx_ji,
+        )
         links[key].append([atom_group1, atom_group2])
-        _apply_link_using_proxies(link,
-                                  atom_group1,
-                                  atom_group2,
-                                  bond_params_table,
-                                  bond_asu_table,
-                                  geometry_proxy_registries,
-#                                  distance=distance,
-                                  rt_mx_ji=link_rt_mx_ji,
-                                  )
+        links[key][-1]+=bond_i_seqs[0] # odd?
         if verbose: print "predefined residue named link",key
         self.cif["link_%s" % key] = link.cif_object
         continue
@@ -669,30 +672,34 @@ Residue classes
       key = link_key[0]
       link = self.mon_lib_srv.link_link_id_dict.get(key, None)
       if key.find("ALPHA1")>-1 or key.find("BETA1")>-1: # is handled in elif
-        key, cif = glyco_utils.apply_glyco_link_using_proxies_and_atoms(
-          atom_group2,
+        key, cif, bond_i_seqs = \
+          glyco_utils.apply_glyco_link_using_proxies_and_atoms(
+            atom_group2,
+            atom_group1,
+            bond_params_table,
+            bond_asu_table,
+            geometry_proxy_registries,
+            rt_mx_ji=link_rt_mx_ji,
+            link_carbon_dist=carbohydrate_bond_cutoff,
+          )
+        links.setdefault(key, [])
+        links[key].append([atom_group1, atom_group2])
+        links[key][-1]+=bond_i_seqs
+        self.cif["link_%s" % key] = cif
+        continue
+      elif link:
+        count, bond_i_seqs = _apply_link_using_proxies(
+          link,
           atom_group1,
+          atom_group2,
           bond_params_table,
           bond_asu_table,
           geometry_proxy_registries,
           rt_mx_ji=link_rt_mx_ji,
-          link_carbon_dist=carbohydrate_bond_cutoff,
-          )
+        )
         links.setdefault(key, [])
         links[key].append([atom_group1, atom_group2])
-        self.cif["link_%s" % key] = cif
-        continue
-      elif link:
-        links.setdefault(key, [])
-        links[key].append([atom_group1, atom_group2])
-        _apply_link_using_proxies(link,
-                                  atom_group1,
-                                  atom_group2,
-                                  bond_params_table,
-                                  bond_asu_table,
-                                  geometry_proxy_registries,
-                                  rt_mx_ji=link_rt_mx_ji,
-                                  )
+        links[key][-1]+=bond_i_seqs[0]
         continue
       else:
         # possible peptide or rna/dna link
@@ -727,6 +734,7 @@ Residue classes
                                            geometry_proxy_registries,
                                            rt_mx_ji=link_rt_mx_ji,
               )
+          # not added to links so not LINK record
           if sym_op:
             sym_links += 1
             link_data.append( (atoms[i_seq].id_str(),
@@ -778,7 +786,6 @@ Residue classes
         bond_data_i_seqs[j_seq].append(i_seq)
         pair_asu_table.add_pair(proxy.i_seqs)
 
-
     # END MAIN LOOP for ii, item in enumerate(nonbonded?)
     #
     #
@@ -796,9 +803,15 @@ Residue classes
     #  print sym_pair.i_seq, sym_pair.j_seq,
     #  print atoms[sym_pair.i_seq].quote(), atoms[sym_pair.j_seq].quote()
     n_simple, n_symmetry = 0, 0
-
+    self.pdb_link_records.setdefault("LINK", [])
     for sym_pair in pair_sym_table.iterator():
       i_seq, j_seq = sym_pair.i_seqs()
+      # adding link to PDB
+      #assert len(bond_i_seqs)==1
+      self.pdb_link_records["LINK"].append([self.pdb_atoms[i_seq],
+                                            self.pdb_atoms[j_seq],
+                                            link_rt_mx_ji,
+                                          ])
       assert i_seq == nonbonded_i_seqs[i_seq]
       assert j_seq == nonbonded_i_seqs[j_seq]
       atom1 = atoms[i_seq]
@@ -870,7 +883,11 @@ Residue classes
       for key in sorted(links):
         print >> log,  "    %s" % key
         links[key].sort(_sort_on_id)
-        for ag1, ag2 in links[key]:
+        for ag1, ag2, i_seq, j_seq in links[key]:
+          self.pdb_link_records["LINK"].append([self.pdb_atoms[i_seq],
+                                                self.pdb_atoms[j_seq],
+                                                "x,y,z", #link_rt_mx_ji,
+                                                ])
           if ag1.altloc or ag2.altloc:
             print >> log, '      "%s" - "%s" : altloc "%s" - "%s"' % (
               ag1.id_str(),
@@ -887,8 +904,7 @@ Residue classes
         simple_bonds,
         sym_bonds,
         )
-      for caption, bond_type in [#("Nucleic acid basepair bonds",'h-dna'),
-                                 ("Other bonds",'bond')]:
+      for caption, bond_type in [("Other bonds",'bond')]:
         print >> log, "  %s:" % caption
         for label1, label2, sym_op, bt in sorted(bond_data):
           if sym_op is None and bt == bond_type:

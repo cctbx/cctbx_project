@@ -2048,6 +2048,7 @@ def run_and_test(cmd, pdb, i):
   else :
     raise RuntimeError("Missing expected log output")
   print "OK"
+  # test .geo
   f=file(pdb.replace(".pdb", "_minimized.geo"), "rb")
   lines = f.readlines()
   f.close()
@@ -2064,6 +2065,31 @@ def run_and_test(cmd, pdb, i):
     os.remove(new_geo)
   os.rename(pdb.replace(".pdb", "_minimized.geo"), new_geo)
   print "OK"
+  # test links
+  if pdb in ["linking_test_LEU-CSY-VAL.pdb",
+             ]:
+    return
+  number_of_links=0
+  f=file(pdb.replace(".pdb", "_minimized.pdb"), "rb")
+  lines = f.readlines()
+  f.close()
+  for line in lines:
+    if line.find("LINK")>-1:
+      number_of_links+=1
+  if i==0:
+    expected = 0
+  else:
+    expected = links[pdb][i]-links[pdb][0]
+  print i,links[pdb],expected
+  assert number_of_links == expected, "found %d LINK but expected %s!" % (
+    number_of_links,
+    expected,
+    )
+  if 0:
+    cmd = "phenix.start_coot --no-guano --pdb %s" % pdb.replace(".pdb",
+                                                                "_minimized.pdb"
+                                                                )
+    os.system(cmd)
 
 def run(only_i=None):
   try: only_i=int(only_i)
