@@ -699,9 +699,10 @@ class manager(object):
       if pair_proxies.bond_proxies is not None:
         simple_p = pair_proxies.bond_proxies.simple.proxy_select(origin_id=1)
         asu_p = pair_proxies.bond_proxies.asu.proxy_select(origin_id=1)
-        for p_array in [simple_p, asu_p]:
-          for p in p_array:
-            result.append((p.i_seqs[0], p.i_seqs[1]))
+        for p in simple_p:
+          result.append((p.i_seqs[0], p.i_seqs[1]))
+        for p in asu_p:
+          result.append((p.i_seq, p.j_seq))
     return result
 
   def new_included_bonded_atoms(self, proxies, sites_cart,
