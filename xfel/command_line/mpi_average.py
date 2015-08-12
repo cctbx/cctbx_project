@@ -338,14 +338,28 @@ the output images in the folder cxi49812.
             wavelength=wavelength)
         easy_pickle.dump(path, d)
     elif command_line.options.as_pickle:
-      if command_line.options.pickle_optical_metrology:
-        from xfel.cftbx.detector.cspad_cbf_tbx import get_calib_file_path
-        metro_path = get_calib_file_path(run.env(), src)
+      split_address = cspad_tbx.address_split(address)
+      old_style_address = split_address[0] + "-" + split_address[1] + "|" + split_address[2] + "-" + split_address[3]
+
+      xpp = 'xpp' in address.lower()
+      if xpp:
+        evt_time = cspad_tbx.evt_time(evt) # tuple of seconds, milliseconds
+        timestamp = cspad_tbx.evt_timestamp(evt_time) # human readable format
+        from xfel.detector_formats import detector_format_version, reverse_timestamp
+        from xfel.cxi.cspad_ana.cspad_tbx import xpp_active_areas
+        version_lookup = detector_format_version(old_style_address, reverse_timestamp(timestamp)[0])
+        assert version_lookup is not None
+        active_areas = xpp_active_areas[version_lookup]['active_areas']
+        beam_center = [1765 // 2, 1765 // 2]
       else:
-        metro_path = libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0")
-      sections = parse_calib.calib2sections(metro_path)
-      beam_center, active_areas = cspad_tbx.cbcaa(
-        cspad_tbx.getConfig(address, ds.env()), sections)
+        if command_line.options.pickle_optical_metrology:
+          from xfel.cftbx.detector.cspad_cbf_tbx import get_calib_file_path
+          metro_path = get_calib_file_path(run.env(), src)
+        else:
+          metro_path = libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0")
+        sections = parse_calib.calib2sections(metro_path)
+        beam_center, active_areas = cspad_tbx.cbcaa(
+          cspad_tbx.getConfig(address, ds.env()), sections)
 
       class fake_quad(object):
         def __init__(self, q, d):
@@ -358,23 +372,33 @@ the output images in the folder cxi49812.
         def data(self):
           return self.d
 
-      quads = [fake_quad(i, mean[i*8:(i+1)*8,:,:]) for i in xrange(4)]
-      mean = cspad_tbx.CsPadDetector(
-        address, evt, ds.env(), sections, quads=quads)
-      mean = flex.double(mean.astype(np.float64))
+      if xpp:
+        quads = [fake_quad(i, mean[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+        mean = cspad_tbx.image_xpp(old_style_address, None, ds.env(), active_areas, quads = quads)
+        mean = flex.double(mean.astype(np.float64))
 
-      quads = [fake_quad(i, stddev[i*8:(i+1)*8,:,:]) for i in xrange(4)]
-      stddev = cspad_tbx.CsPadDetector(
-        address, evt, ds.env(), sections, quads=quads)
-      stddev = flex.double(stddev.astype(np.float64))
+        quads = [fake_quad(i, stddev[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+        stddev = cspad_tbx.image_xpp(old_style_address, None, ds.env(), active_areas, quads = quads)
+        stddev = flex.double(stddev.astype(np.float64))
 
-      quads = [fake_quad(i, maxall[i*8:(i+1)*8,:,:]) for i in xrange(4)]
-      maxall = cspad_tbx.CsPadDetector(
-        address, evt, ds.env(), sections, quads=quads)
-      maxall = flex.double(maxall.astype(np.float64))
+        quads = [fake_quad(i, maxall[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+        maxall = cspad_tbx.image_xpp(old_style_address, None, ds.env(), active_areas, quads = quads)
+        maxall = flex.double(maxall.astype(np.float64))
+      else:
+        quads = [fake_quad(i, mean[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+        mean = cspad_tbx.CsPadDetector(
+          address, evt, ds.env(), sections, quads=quads)
+        mean = flex.double(mean.astype(np.float64))
 
-      split_address = cspad_tbx.address_split(address)
-      old_style_address = split_address[0] + "-" + split_address[1] + "|" + split_address[2] + "-" + split_address[3]
+        quads = [fake_quad(i, stddev[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+        stddev = cspad_tbx.CsPadDetector(
+          address, evt, ds.env(), sections, quads=quads)
+        stddev = flex.double(stddev.astype(np.float64))
+
+        quads = [fake_quad(i, maxall[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+        maxall = cspad_tbx.CsPadDetector(
+          address, evt, ds.env(), sections, quads=quads)
+        maxall = flex.double(maxall.astype(np.float64))
 
       for data, path in zip([mean, stddev, maxall], dest_paths):
         print "Saving", path

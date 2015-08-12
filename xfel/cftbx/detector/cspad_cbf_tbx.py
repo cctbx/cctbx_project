@@ -119,45 +119,57 @@ def read_slac_metrology(path, plot=False):
   null_ori = matrix.col((0,0,1)).axis_and_angle_as_unit_quaternion(0, deg=True)
 
   root = geometry.get_top_geo()
-  while len(root.get_list_of_children()) != 4:
+  while len(root.get_list_of_children()) != 4 and len(root.get_list_of_children()) != 32:
     assert len(root.get_list_of_children()) == 1
     root = root.get_list_of_children()[0]
 
   #metro[(0,)] = basis_from_geo(root) # don't use any offsets or orientations from root, as we provide our own
   metro[(0,)] = basis(orientation = null_ori, translation = matrix.col((0,0,0)))
 
-  for quad_id, quad in enumerate(root.get_list_of_children()):
-    metro[(0,quad_id)] = basis_from_geo(quad)
-    for sensor_id, sensor in enumerate(quad.get_list_of_children()):
-      metro[(0,quad_id,sensor_id)] = basis_from_geo(sensor)
+  def add_sensor(quad_id, sensor_id, sensor):
+    metro[(0,quad_id,sensor_id)] = basis_from_geo(sensor)
 
-      x, y, z = sensor.get_pixel_coords()
-      x/=1000; y/=1000; z/=1000
-      assert x.shape == y.shape == z.shape
-      sensor_px_slow = x.shape[0]
-      sensor_px_fast = x.shape[1]
-      assert sensor_px_fast % 2 == 0
+    x, y, z = sensor.get_pixel_coords()
+    x/=1000; y/=1000; z/=1000
+    assert x.shape == y.shape == z.shape
+    sensor_px_slow = x.shape[0]
+    sensor_px_fast = x.shape[1]
+    assert sensor_px_fast % 2 == 0
 
-      a0ul = sul = matrix.col((x[0,0],y[0,0],z[0,0]))
-      a1ur = sur = matrix.col((x[0,sensor_px_fast-1],y[0,sensor_px_fast-1],z[0,sensor_px_fast-1]))
-      a1lr = slr = matrix.col((x[sensor_px_slow-1,sensor_px_fast-1],y[sensor_px_slow-1,sensor_px_fast-1],z[sensor_px_slow-1,sensor_px_fast-1]))
-      a0ll = sll = matrix.col((x[sensor_px_slow-1,0],y[sensor_px_slow-1,0],z[sensor_px_slow-1,0]))
+    a0ul = sul = matrix.col((x[0,0],y[0,0],z[0,0]))
+    a1ur = sur = matrix.col((x[0,sensor_px_fast-1],y[0,sensor_px_fast-1],z[0,sensor_px_fast-1]))
+    a1lr = slr = matrix.col((x[sensor_px_slow-1,sensor_px_fast-1],y[sensor_px_slow-1,sensor_px_fast-1],z[sensor_px_slow-1,sensor_px_fast-1]))
+    a0ll = sll = matrix.col((x[sensor_px_slow-1,0],y[sensor_px_slow-1,0],z[sensor_px_slow-1,0]))
 
-      a0ur = matrix.col((x[0,sensor_px_fast//2-1],y[0,sensor_px_fast//2-1],z[0,sensor_px_fast//2-1]))
-      a0lr = matrix.col((x[sensor_px_slow-1,sensor_px_fast//2-1],y[sensor_px_slow-1,sensor_px_fast//2-1],z[sensor_px_slow-1,sensor_px_fast//2-1]))
+    a0ur = matrix.col((x[0,sensor_px_fast//2-1],y[0,sensor_px_fast//2-1],z[0,sensor_px_fast//2-1]))
+    a0lr = matrix.col((x[sensor_px_slow-1,sensor_px_fast//2-1],y[sensor_px_slow-1,sensor_px_fast//2-1],z[sensor_px_slow-1,sensor_px_fast//2-1]))
 
-      a1ul = matrix.col((x[0,sensor_px_fast//2],y[0,sensor_px_fast//2],z[0,sensor_px_fast//2]))
-      a1ll = matrix.col((x[sensor_px_slow-1,sensor_px_fast//2],y[sensor_px_slow-1,sensor_px_fast//2],z[sensor_px_slow-1,sensor_px_fast//2]))
+    a1ul = matrix.col((x[0,sensor_px_fast//2],y[0,sensor_px_fast//2],z[0,sensor_px_fast//2]))
+    a1ll = matrix.col((x[sensor_px_slow-1,sensor_px_fast//2],y[sensor_px_slow-1,sensor_px_fast//2],z[sensor_px_slow-1,sensor_px_fast//2]))
 
-      sensor_center = center([sul,sur,slr,sll])
-      asic0_center = center([a0ul,a0ur,a0lr,a0ll])
-      asic1_center = center([a1ul,a1ur,a1lr,a1ll])
+    sensor_center = center([sul,sur,slr,sll])
+    asic0_center = center([a0ul,a0ur,a0lr,a0ll])
+    asic1_center = center([a1ul,a1ur,a1lr,a1ll])
 
-      asic_trans0 = (asic0_center-sensor_center).length()
-      asic_trans1 = (asic1_center-sensor_center).length()
+    asic_trans0 = (asic0_center-sensor_center).length()
+    asic_trans1 = (asic1_center-sensor_center).length()
 
-      metro[(0,quad_id,sensor_id,0)] = basis(orientation=null_ori,translation=matrix.col((-asic_trans0,0,0)))
-      metro[(0,quad_id,sensor_id,1)] = basis(orientation=null_ori,translation=matrix.col((+asic_trans1,0,0)))
+    metro[(0,quad_id,sensor_id,0)] = basis(orientation=null_ori,translation=matrix.col((-asic_trans0,0,0)))
+    metro[(0,quad_id,sensor_id,1)] = basis(orientation=null_ori,translation=matrix.col((+asic_trans1,0,0)))
+
+  if len(root.get_list_of_children()) == 4:
+    for quad_id, quad in enumerate(root.get_list_of_children()):
+      metro[(0,quad_id)] = basis_from_geo(quad)
+      for sensor_id, sensor in enumerate(quad.get_list_of_children()):
+        add_sensor(quad_id, sensor_id, sensor)
+  elif len(root.get_list_of_children()) == 32:
+    for quad_id in xrange(4):
+      metro[(0,quad_id)] = basis(orientation = null_ori, translation = matrix.col((0,0,0)))
+      sensors = root.get_list_of_children()
+      for sensor_id in xrange(8):
+        add_sensor(quad_id, sensor_id, sensors[quad_id*4+sensor_id])
+  else:
+    assert False
 
   return metro
 
