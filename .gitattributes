@@ -2039,6 +2039,7 @@ mmtbx/ncs/ligands.py -text
 mmtbx/ncs/ncs_search.py -text
 mmtbx/ncs/ncs_utils.py -text
 mmtbx/ncs/tncs.h -text
+mmtbx/ncs/tncs.py -text
 mmtbx/ncs/tncs_ext.cpp -text
 mmtbx/ncs/tst_ncs_pair.py -text
 mmtbx/ncs/tst_tncs_epsfac_target_and_grad.py -text
