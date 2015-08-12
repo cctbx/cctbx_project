@@ -119,11 +119,15 @@ def run(reflections_per_bin=250):
   pot = tncs.potential(f_obs = f_obs, ncs_pairs = [ncs_pair],
     reflections_per_bin = reflections_per_bin)
   # Run refinement
-  m = tncs.minimizer(
-    potential = pot, use_bounds=2
-    ).run(use_curvatures=False)
+  m = tncs.minimizer(potential = pot, use_bounds=2).run()
   print list(pot.target_and_grads.tncs_epsfac())[:10] # print first 10
   print pot.target_and_grads.tncs_epsfac().min_max_mean().as_tuple()
+  for i in [1,2,3]:
+    print
+    pot.update_SigmaN()
+    m = tncs.minimizer(potential = pot, use_bounds=2).run()
+    print list(pot.target_and_grads.tncs_epsfac())[:10] # print first 10
+    print pot.target_and_grads.tncs_epsfac().min_max_mean().as_tuple()
 
 if (__name__ == "__main__"):
   run()
