@@ -26,7 +26,13 @@ detector_format_version = None
   .help = Detector metrology on which to overlay the gain map
 resolution = None
   .type = float
-  .help = Low gain pixels will be set out to this resolution
+  .help = Low gain pixels will be set out to this resolution. If using an annulus, instead, pixels higher than this resolution will be set to low gain
+annulus_inner = None
+  .type = float
+  .help = Use a low gain annulus instead of masking out all the pixels below the given resolution.
+annulus_outer = None
+  .type = float
+  .help = Use a low gain annulus instead of masking out all the pixels below the given resolution.
 distance = None
   .type = float
   .help = Detector distance
@@ -50,12 +56,25 @@ if (__name__ == "__main__") :
       raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
 
   params = master_phil.fetch(sources=user_phil).extract()
-  assert params.resolution is not None
+  assert params.resolution is not None or (params.annulus_inner is not None and params.annulus_outer is not None)
   assert params.distance is not None
   assert params.wavelength is not None
 
-  print "Generating circular gain mask using %s metrology at %s angstroms, assuming a distance %s mm and wavelength %s angstroms" % \
-    (str(params.detector_format_version), params.resolution, params.distance, params.wavelength)
+  annulus = (params.annulus_inner is not None and params.annulus_outer is not None)
+
+  if annulus and params.resolution is not None:
+    assert params.resolution < params.annulus_outer
+
+  if annulus:
+    if params.resolution is None:
+      print "Generating annular gain mask using %s metrology between %f and %f angstroms, assuming a distance %s mm and wavelength %s angstroms" % \
+        (str(params.detector_format_version), params.annulus_inner, params.annulus_outer, params.distance, params.wavelength)
+    else:
+      print "Generating annular gain mask using %s metrology between %f and %f angstroms, assuming a distance %s mm and wavelength %s angstroms. Also, pixels higher than %f angstroms will be set to low gain." % \
+        (str(params.detector_format_version), params.annulus_inner, params.annulus_outer, params.distance, params.wavelength, params.resolution)
+  elif params.resolution is not None:
+    print "Generating circular gain mask using %s metrology at %s angstroms, assuming a distance %s mm and wavelength %s angstroms" % \
+      (str(params.detector_format_version), params.resolution, params.distance, params.wavelength)
 
   from xfel.cxi.cspad_ana.cspad_tbx import dpack, evt_timestamp, cbcaa, pixel_size, CsPadDetector
   from xfel.detector_formats import address_and_timestamp_from_detector_format_version
@@ -123,8 +142,14 @@ if (__name__ == "__main__") :
   tm = img.get_tile_manager(horizons_phil)
   effective_active_areas = tm.effective_tiling_as_flex_int()
 
-  radius = params.distance * math.tan(2*math.sinh(params.wavelength/(2*params.resolution)))/pixel_size
-  print "Pixel radius:", radius
+  if annulus:
+    inner = params.distance * math.tan(2*math.sinh(params.wavelength/(2*params.annulus_inner)))/pixel_size
+    outer = params.distance * math.tan(2*math.sinh(params.wavelength/(2*params.annulus_outer)))/pixel_size
+    print "Pixel inner:", inner
+    print "Pixel outer:", outer
+  if params.resolution is not None:
+    radius = params.distance * math.tan(2*math.sinh(params.wavelength/(2*params.resolution)))/pixel_size
+    print "Pixel radius:", radius
 
   print "Percent done: 0",; sys.stdout.flush()
   next_percent = 10
@@ -133,8 +158,16 @@ if (__name__ == "__main__") :
       print next_percent,; sys.stdout.flush()
       next_percent += 10
     for x in xrange(data.focus()[0]):
-      if not point_inside_circle(x,y,beam_center[0],beam_center[1],radius):
-        data[y,x] = 1
+      if annulus:
+        if not point_inside_circle(x,y,beam_center[0],beam_center[1],outer) or point_inside_circle(x,y,beam_center[0],beam_center[1],inner):
+          data[y,x] = 1
+      if params.resolution is not None:
+        if annulus:
+          if not point_inside_circle(x,y,beam_center[0],beam_center[1],radius):
+            data[y,x] = 0
+        else:
+          if not point_inside_circle(x,y,beam_center[0],beam_center[1],radius):
+            data[y,x] = 1
   print 100
 
   if 'XPP' in params.detector_format_version:
