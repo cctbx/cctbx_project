@@ -209,19 +209,19 @@ class Selector(object):
 
     for i in self.grid:
       if self.uc != None:
-        user_uc = [prm for prm in uc.parameters()]
+        user_uc = [prm for prm in self.uc.parameters()]
         delta_a = abs(i['a'] - user_uc[0])
         delta_b = abs(i['b'] - user_uc[1])
         delta_c = abs(i['c'] - user_uc[2])
         delta_alpha = abs(i['alpha'] - user_uc[3])
         delta_beta = abs(i['beta'] - user_uc[4])
         delta_gamma = abs(i['gamma'] - user_uc[5])
-        uc_check = (delta_a <= user_uc[0] * uc_tol and
-                    delta_b <= user_uc[1] * uc_tol and
-                    delta_c <= user_uc[2] * uc_tol and
-                    delta_alpha <= user_uc[3] * uc_tol and
-                    delta_beta <= user_uc[4] * uc_tol and
-                    delta_gamma <= user_uc[5] * uc_tol)
+        uc_check = (delta_a <= user_uc[0] * self.uc_tol and
+                    delta_b <= user_uc[1] * self.uc_tol and
+                    delta_c <= user_uc[2] * self.uc_tol and
+                    delta_alpha <= user_uc[3] * self.uc_tol and
+                    delta_beta <= user_uc[4] * self.uc_tol and
+                    delta_gamma <= user_uc[5] * self.uc_tol)
       else:
         uc_check = True
 

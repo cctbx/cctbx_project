@@ -164,9 +164,9 @@ class SingleImage(object):
       if scan is None:
         timestamp = None
         if abs(beam_x - beam_y) <= 0.1 or self.params.image_conversion.square_mode == "None":
-          self.img_type = 'converted'
+          img_type = 'converted'
         else:
-          self.img_type = 'unconverted'
+          img_type = 'unconverted'
       else:
         msec, sec = math.modf(scan.get_epochs()[0])
         timestamp = evt_timestamp((sec,msec))
@@ -184,14 +184,14 @@ class SingleImage(object):
 
       if scan is not None:
         osc_start, osc_range = scan.get_oscillation()
-        self.img_type = 'unconverted'
+        img_type = 'unconverted'
         if osc_start != osc_range:
           data['OSC_START'] = osc_start
           data['OSC_RANGE'] = osc_range
           data['TIME'] = scan.get_exposure_times()[0]
     else:
       data = None
-    return data
+    return data, img_type
 
 
   def square_pickle(self, data):
@@ -286,7 +286,7 @@ class SingleImage(object):
     """ Converts images into pickle format; crops and masks out beamstop if
         selected """
 
-    img_data = self.load_image()
+    img_data, self.img_type = self.load_image()
     info = []
 
     self.log_info.append('Imported image  : {}'.format(self.raw_img))
@@ -298,6 +298,7 @@ class SingleImage(object):
                                             img_data['SIZE1'],
                                             img_data['SIZE2'],
                                             img_data['DISTANCE']))
+
 
     if self.img_type == 'unconverted':
       # Check for and/or create a converted pickles folder
@@ -534,8 +535,7 @@ class SingleImage(object):
                    "no data recorded" not in i['info']]
 
       # Save image object to file for MPI
-      if self.args.mpi != None:
-        ep.dump(self.gs_file, self)
+      ep.dump(self.gs_file, self)
 
     elif tag == 'integrate':
       # Single integration event with selected parameters
