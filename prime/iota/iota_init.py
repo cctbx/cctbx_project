@@ -47,13 +47,7 @@ def parse_command_args(iver, help_message):
             help = 'Specify a number of cores for a multiprocessor run"')
   parser.add_argument('--mpi', type=str, nargs='?', const=None, default=None,
             help = 'Specify stage of process - for MPI only')
-
   return parser
-
-
-
-
-
 
 class InitAll(object):
   """ Class to initialize current IOTA run
@@ -191,7 +185,8 @@ class InitAll(object):
   # Runs general initialization
   def run(self):
 
-    self.args = parse_command_args(self.iver, self.help_message).parse_args()
+    self.args, self.phil_args = parse_command_args(self.iver,
+                                self.help_message).parse_known_args()
 
     # Check for type of input
     if self.args.path == None:                   # No input
@@ -210,17 +205,23 @@ class InitAll(object):
 
         # If user provided a parameter file
         if os.path.isfile(carg) and os.path.basename(carg).endswith('.param'):
-          self.params, self.txt_out = inp.process_input(self.args, carg, 'file')
+          self.params, self.txt_out = inp.process_input(self.args,
+                                                        self.phil_args,
+                                                        carg, 'file')
 
         # If user provided a list of input files
         elif os.path.isfile(carg) and os.path.basename(carg).endswith('.lst'):
           print "\nIOTA will run in AUTO mode using {}:\n".format(carg)
-          self.params, self.txt_out = inp.process_input(self.args, carg, 'auto', self.now)
+          self.params, self.txt_out = inp.process_input(self.args,
+                                                        self.phil_args,
+                                                        carg, 'auto', self.now)
 
         # If user provided a data folder
         elif os.path.isdir(carg):
           print "\nIOTA will run in AUTO mode using {}:\n".format(carg)
-          self.params, self.txt_out = inp.process_input(self.args, carg, 'auto', self.now)
+          self.params, self.txt_out = inp.process_input(self.args,
+                                                        self.phil_args,
+                                                        carg, 'auto', self.now)
       # If user provided gibberish
       else:
         print "ERROR: Invalid input! Need parameter filename or data folder."
@@ -243,19 +244,18 @@ class InitAll(object):
     # Generate base folder paths
     if self.params.image_conversion.convert_images:
       self.conv_base = misc.set_base_dir('converted_pickles')
-    if not self.params.image_conversion.convert_only:
-      self.int_base = misc.set_base_dir('integration')
-      self.gs_base = os.path.join(self.int_base, 'grid_search')
-      self.fin_base = os.path.join(self.int_base, 'final')
-      if self.params.advanced.viz != 'None':
-        self.viz_base = os.path.join(self.int_base, 'visualization')
-      else:
-        self.viz_base = None
+    self.int_base = misc.set_base_dir('integration')
+    self.gs_base = os.path.join(self.int_base, 'grid_search')
+    self.fin_base = os.path.join(self.int_base, 'final')
+    if self.params.advanced.viz != 'None':
+      self.viz_base = os.path.join(self.int_base, 'visualization')
+    else:
+      self.viz_base = None
 
-      # Generate base folders (if not conversion only)
-      os.makedirs(self.int_base)
-      os.makedirs(self.gs_base)
-      os.makedirs(self.fin_base)
+    # Generate base folders
+    os.makedirs(self.int_base)
+    os.makedirs(self.gs_base)
+    os.makedirs(self.fin_base)
 
     # Check for -l option, output list of input files and exit
     if self.args.list:

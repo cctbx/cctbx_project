@@ -7,7 +7,7 @@ Last Changed: 07/29/2015
 Description : IOTA command-line module. Version 2.00
 '''
 
-iota_version = '2.00'
+iota_version = '2.03'
 help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 
