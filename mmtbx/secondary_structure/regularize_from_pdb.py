@@ -169,6 +169,18 @@ master_phil = iotbx.phil.parse("""
       .help = Combine annotations if an input annotation is provided
       .short_caption = Combine annotations
 
+    require_h_bonds = False
+      .type = bool
+      .help = Remove all secondary structure records that have fewer than \
+              minimum_h_bonds good hydrogen bonds
+      .short_caption = Require H-bonds
+
+    minimum_h_bonds = 1
+      .type = int
+      .help = Minimum number of good hydrogen bonds to keep secondary \
+              structure if require_h_bonds is set
+      .short_caption = Minimum number of H bonds
+
 
   }
 
