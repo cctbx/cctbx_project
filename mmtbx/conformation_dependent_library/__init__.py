@@ -105,7 +105,7 @@ def generate_protein_threes(hierarchy,
               threes.end = True
               list_of_threes[i+1].start = True
           yield threes
-          assert len(threes)==3
+          #assert len(threes)==3
       threes = ThreeProteinResidues(geometry, registry=registry)
 
 def update_restraints(hierarchy,

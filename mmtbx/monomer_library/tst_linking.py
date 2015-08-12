@@ -2080,7 +2080,6 @@ def run_and_test(cmd, pdb, i):
     expected = 0
   else:
     expected = links[pdb][i]-links[pdb][0]
-  print i,links[pdb],expected
   assert number_of_links == expected, "found %d LINK but expected %s!" % (
     number_of_links,
     expected,

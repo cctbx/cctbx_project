@@ -1,9 +1,7 @@
 from __future__ import division
 def link_record_output(all_chain_proxies):
   outl = ""
-  print all_chain_proxies.pdb_link_records
   for key, item in all_chain_proxies.pdb_link_records.items():
-    print 'key',key,item
     if key=="SSBOND":
       for ssi, (atom1, atom2, sym_op) in enumerate(item):
         #
