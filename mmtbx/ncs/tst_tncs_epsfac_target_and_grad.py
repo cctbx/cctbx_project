@@ -106,12 +106,12 @@ def run(reflections_per_bin=250):
   ncs_inp = iotbx.ncs.input(pdb_string=pdb_str)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
   assert len(ncs_groups)==1
-  print ncs_groups[0].copies[0].r
-  print ncs_groups[0].copies[0].t
+  #print ncs_groups[0].copies[0].r
+  #print ncs_groups[0].copies[0].t
   #
   ncs_pair = ext.pair(
     r = ([1,0,0,0,0.998630,0.052336,0,-0.052336,0.998630]),
-    t = ([-9./21.954,0,0]),
+    t = ([-8.99998/21.954,-0.33409/18.566,0.47453/12.975]),
     radius=4.24,
     weight=20,
     fracscat=0.5,
