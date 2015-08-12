@@ -90,7 +90,6 @@ def generate_protein_threes(hierarchy,
         for i, threes in enumerate(list_of_threes):
           if i==0:
             threes.start =  True
-          print i, len(list_of_threes)
           if i==len(list_of_threes)-1:
             threes.end = True
           else:
