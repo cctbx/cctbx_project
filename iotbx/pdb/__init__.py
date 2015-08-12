@@ -1975,7 +1975,9 @@ def write_whole_pdb_file(
     crystal_symmetry=None,
     append_end=True,
     atoms_reset_serial_first_value=None,
-    ss_annotation=None):
+    ss_annotation=None,
+    link_records=None,
+    ):
   assert [file_name, output_file].count(None) == 1
   out = output_file
   if file_name is not None:
@@ -1983,6 +1985,8 @@ def write_whole_pdb_file(
   if ss_annotation is not None:
     out.write(ss_annotation.as_pdb_str())
     out.write("\n")
+  if link_records is not None:
+    out.write("%s\n" % link_records)
   if pdb_hierarchy is not None:
     out.write(pdb_hierarchy.as_pdb_string(
         crystal_symmetry=crystal_symmetry,
