@@ -1430,7 +1430,7 @@ def image(address, config, evt, env, sections=None):
       return img
   return None
 
-def image_xpp(address, evt, env, aa):
+def image_xpp(address, evt, env, aa, quads = None):
   """Assemble the uint16 detector image, see also
   cspad_tbx.CsPadDetector().  XXX Documentation! XXX Would be nice to
   get rid of the constant string names.  XXX Better named evt_image()?
@@ -1439,6 +1439,7 @@ def image_xpp(address, evt, env, aa):
   @param evt     Event data object, a configure object
   @param env     Environment object
   @param aa      Active areas, in lieu of full metrology object
+  @param quads   Data, if None get it from the event
   @return        XXX
   """
 
@@ -1452,11 +1453,12 @@ def image_xpp(address, evt, env, aa):
   if config is None:
     return None
 
-  # For consistency, one could/should verify that len(quads) is equal
-  # to len(sections).
-  quads = evt_get_quads(address, evt, env)
-  if quads is None or len(quads) != len(aa) // (8 * 2 * 4):
-    return None
+  if quads is None:
+    # For consistency, one could/should verify that len(quads) is equal
+    # to len(sections).
+    quads = evt_get_quads(address, evt, env)
+    if quads is None or len(quads) != len(aa) // (8 * 2 * 4):
+      return None
 
   # Start out with a blank image of the detector.  Mikhail
   # S. Dubrovin's HDF5Explorer/src/ConfigCSpad.py uses a detector
@@ -1726,5 +1728,5 @@ _xpp_active_areas = {
   },
 
 }
-_xpp_active_areas['XPP 9.1'] = _xpp_active_areas['XPP 8.1']
+_xpp_active_areas['XPP 11.1'] = _xpp_active_areas['XPP 9.1'] = _xpp_active_areas['XPP 8.1']
 xpp_active_areas = _xpp_active_areas

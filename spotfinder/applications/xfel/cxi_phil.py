@@ -364,6 +364,49 @@ def cxi_versioned_extract_detail(args):
 
     return working_extract
 
+  elif cxi_version in ["XPP 11.1"]:
+    working_extract = working_phil.command_extractor
+
+    # metrology from trial 14, runs 40, 41, xppe0314
+    corrected_auxiliary_translations = [
+       1,  2,  1,  2,  1,  2,  1,  2,
+       2,  1,  2,  1,  2,  2,  2,  2,
+      -1, -1, -1, -1,  0,  0,  0,  0,
+      -2,  1, -2,  1, -1,  2, -1,  2,
+
+       0, -1,  0, -1,  0,  0,  0,  0,
+      -2, -1, -2, -1, -2, -1, -2, -1,
+      -2,  0, -2,  0, -3, -1, -3, -1,
+       0, -2,  0, -2,  0, -1,  0, -1,
+
+       1, -1,  1, -1,  1, -1,  1, -1,
+       0, -3,  0, -3,  1, -2,  1, -2,
+      -2, -3, -2, -3,  0,  0,  0,  0,
+      -3,  0, -3,  0,  0, -1,  0, -1,
+
+      -1,  0, -1,  0,  0,  0,  0,  0,
+      -3,  1, -3,  1, -3,  1, -3,  1,
+      -1,  2, -1,  2, -4,  2, -4,  2,
+       0,  0,  0,  0,  0, -1,  0, -1
+    ]
+
+    from scitbx.array_family import flex
+    total_tile_translations = flex.int(corrected_auxiliary_translations)
+
+    TT = list(total_tile_translations)
+    working_extract.distl.tile_translations = TT
+
+    # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y.  For the
+    # XPP CSPAD, this is effectively correcting for the beam center.
+    # analysis by hand from runs 35-38, trial 1, xpph9015.
+    working_extract.distl.quad_translations = [1, 10,
+                                               2,  9,
+                                              -1,  9,
+                                              -1,  4]
+
+    return working_extract
+
+
 
   elif cxi_version in ["XPP 7.marccd"]:
     working_extract = working_phil.command_extractor
