@@ -136,6 +136,12 @@ master_phil = iotbx.phil.parse("""
               structure if require_h_bonds is set
       .short_caption = Minimum number of H bonds
 
+    maximum_poor_h_bonds = None
+      .type = int      
+      .help = Maximum number of poor hydrogen bonds to keep secondary \
+              structure element (helix/sheet) if require_h_bonds is set
+      .short_caption = Minimum number of H bonds
+
   }
 
   alpha {
@@ -1654,6 +1660,7 @@ class find_helix(find_segment):
      force_secondary_structure_input=None,
      require_h_bonds=None,
      minimum_h_bonds=None,
+     maximum_poor_h_bonds=None,
      allow_ca_only_model=None,out=sys.stdout): # helix
 
     records=[]
@@ -1669,8 +1676,11 @@ class find_helix(find_segment):
           max_h_bond_length=max_h_bond_length,
           force_secondary_structure_input=force_secondary_structure_input,
           allow_ca_only_model=allow_ca_only_model,out=f)
-      if require_h_bonds and n_good<minimum_h_bonds:
-        continue
+      if require_h_bonds:
+        if n_good<minimum_h_bonds or ( 
+            maximum_poor_h_bonds is not None and n_poor>maximum_poor_h_bonds):
+          continue
+
       print >>out,f.getvalue(),
       number_of_good_h_bonds+=n_good
       number_of_poor_h_bonds+=n_poor
@@ -1842,6 +1852,7 @@ class find_beta_strand(find_segment):
      max_h_bond_length=None,
      require_h_bonds=None,
      minimum_h_bonds=None,
+     maximum_poor_h_bonds=None,
      out=sys.stdout):
 
     # sheet_list is list of sheets. Each sheet is a list of strands (the index
@@ -1924,9 +1935,11 @@ class find_beta_strand(find_segment):
         previous_s=s
         i=j
 
-      if require_h_bonds and good_in_sheet<minimum_h_bonds:
-        sheet_id-=1
-        continue
+      if require_h_bonds:
+        if good_in_sheet<minimum_h_bonds or ( 
+            maximum_poor_h_bonds is not None and n_poor>maximum_poor_h_bonds):
+          sheet_id-=1
+          continue
       print >>out,f.getvalue(),
       number_of_good_h_bonds+=good_in_sheet
       number_of_poor_h_bonds+=poor_in_sheet
@@ -2682,7 +2695,9 @@ class helix_strand_segments:
   def set_up_pdb_records(self,allow_ca_only_model=None,
     max_h_bond_length=None,
     force_secondary_structure_input=None,
-    require_h_bonds=None,minimum_h_bonds=None,
+    require_h_bonds=None,
+    minimum_h_bonds=None,
+    maximum_poor_h_bonds=None,
     models=None,out=sys.stdout):
 
     # skip any secondary structure elements that have fewer than minimum_h_bonds
@@ -2719,6 +2734,7 @@ class helix_strand_segments:
          force_secondary_structure_input=force_secondary_structure_input,
          require_h_bonds=require_h_bonds,
          minimum_h_bonds=minimum_h_bonds,
+         maximum_poor_h_bonds=maximum_poor_h_bonds,
          allow_ca_only_model=allow_ca_only_model,out=f)
       number_of_good_h_bonds+=n_good
       number_of_poor_h_bonds+=n_poor
@@ -2731,6 +2747,7 @@ class helix_strand_segments:
          max_h_bond_length=max_h_bond_length,
          require_h_bonds=require_h_bonds,
          minimum_h_bonds=minimum_h_bonds,
+         maximum_poor_h_bonds=maximum_poor_h_bonds,
          force_secondary_structure_input=force_secondary_structure_input,
          allow_ca_only_model=allow_ca_only_model,out=f)
       number_of_good_h_bonds+=n_good
@@ -2743,6 +2760,7 @@ class helix_strand_segments:
         max_h_bond_length=max_h_bond_length,
         require_h_bonds=require_h_bonds,
         minimum_h_bonds=minimum_h_bonds,
+        maximum_poor_h_bonds=maximum_poor_h_bonds,
         force_secondary_structure_input=force_secondary_structure_input,
         allow_ca_only_model=allow_ca_only_model,out=f)
       number_of_good_h_bonds+=n_good
@@ -2757,6 +2775,7 @@ class helix_strand_segments:
        max_h_bond_length=max_h_bond_length,
        require_h_bonds=require_h_bonds,
        minimum_h_bonds=minimum_h_bonds,
+       maximum_poor_h_bonds=maximum_poor_h_bonds,
        force_secondary_structure_input=force_secondary_structure_input,
        allow_ca_only_model=allow_ca_only_model,out=f)
       number_of_good_h_bonds+=n_good
@@ -2841,6 +2860,7 @@ class find_secondary_structure: # class to look for secondary structure
       combine_annotations=None,
       require_h_bonds=None,
       minimum_h_bonds=None,
+      maximum_poor_h_bonds=None,
       verbose=None,out=sys.stdout):
 
     if not args: args=[]
@@ -2856,6 +2876,8 @@ class find_secondary_structure: # class to look for secondary structure
       params.find_ss_structure.require_h_bonds=require_h_bonds
     if minimum_h_bonds is not None:
       params.find_ss_structure.minimum_h_bonds=minimum_h_bonds
+    if maximum_poor_h_bonds is not None:
+      params.find_ss_structure.maximum_poor_h_bonds=maximum_poor_h_bonds
     if max_h_bond_length is not None:
       params.find_ss_structure.max_h_bond_length=max_h_bond_length
     if combine_annotations is not None:
@@ -2976,11 +2998,18 @@ class find_secondary_structure: # class to look for secondary structure
 
     # Now get final values of H-bonds etc with our final annotation
 
-    if params.find_ss_structure.require_h_bonds and \
-        params.find_ss_structure.minimum_h_bonds>0:
-      remove_text=\
-        "\nRemoving any secondary structure with fewer than %d H-bonds"  %(
+    if params.find_ss_structure.require_h_bonds:
+      remove_text=""
+      if params.find_ss_structure.minimum_h_bonds>0:
+        remove_text+=\
+         "\nRemoving any secondary structure with fewer than %d H-bonds"  %(
         params.find_ss_structure.minimum_h_bonds)
+      if params.find_ss_structure.maximum_poor_h_bonds and \
+         params.find_ss_structure.maximum_poor_h_bonds>0:
+        remove_text+=\
+         "\nRemoving any secondary structure with more than %d poor H-bonds"  %(
+        params.find_ss_structure.maximum_poor_h_bonds)
+    
     else:
       remove_text=""
 
@@ -2995,6 +3024,7 @@ class find_secondary_structure: # class to look for secondary structure
          allow_ca_only_model=params.beta.allow_ca_only_model,
          require_h_bonds=params.find_ss_structure.require_h_bonds,
          minimum_h_bonds=params.find_ss_structure.minimum_h_bonds,
+         maximum_poor_h_bonds=params.find_ss_structure.maximum_poor_h_bonds,
          out=out)
       self.h_bond_text=self.helix_strand_segments.h_bond_text
       working_annotation=self.helix_strand_segments.get_annotation()
@@ -3006,10 +3036,12 @@ class find_secondary_structure: # class to look for secondary structure
         print >>out,remove_text
         require_h_bonds=params.find_ss_structure.require_h_bonds
         minimum_h_bonds=params.find_ss_structure.minimum_h_bonds
+        maximum_poor_h_bonds=params.find_ss_structure.maximum_poor_h_bonds,
       else:
         remove_text=None
         require_h_bonds=None
         minimum_h_bonds=None
+        maximum_poor_h_bonds=None
 
       print >>out,"\nGetting H-bonds from user annotation"
       self.number_of_good_h_bonds,self.number_of_poor_h_bonds=\
@@ -3019,6 +3051,7 @@ class find_secondary_structure: # class to look for secondary structure
          force_secondary_structure_input=force_secondary_structure_input,
          require_h_bonds=require_h_bonds,
          minimum_h_bonds=minimum_h_bonds,
+         maximum_poor_h_bonds=params.find_ss_structure.maximum_poor_h_bonds,
          allow_ca_only_model=params.beta.allow_ca_only_model,
          out=out)
       self.h_bond_text=self.user_helix_strand_segments.h_bond_text
@@ -3036,6 +3069,7 @@ class find_secondary_structure: # class to look for secondary structure
           max_h_bond_length=params.find_ss_structure.max_h_bond_length,
           require_h_bonds=params.find_ss_structure.require_h_bonds,
           minimum_h_bonds=params.find_ss_structure.minimum_h_bonds,
+          maximum_poor_h_bonds=params.find_ss_structure.maximum_poor_h_bonds,
           out=local_out)
         print >>out,fss.h_bond_text
         self.number_of_good_h_bonds=fss.number_of_good_h_bonds
