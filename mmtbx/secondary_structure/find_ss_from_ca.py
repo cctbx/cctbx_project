@@ -137,7 +137,7 @@ master_phil = iotbx.phil.parse("""
       .short_caption = Minimum number of H bonds
 
     maximum_poor_h_bonds = None
-      .type = int      
+      .type = int
       .help = Maximum number of poor hydrogen bonds to keep secondary \
               structure element (helix/sheet) if require_h_bonds is set. \
               Note: None means ignore this test, 0 means allow no poor H-bonds.
@@ -1678,7 +1678,7 @@ class find_helix(find_segment):
           force_secondary_structure_input=force_secondary_structure_input,
           allow_ca_only_model=allow_ca_only_model,out=f)
       if require_h_bonds:
-        if n_good<minimum_h_bonds or ( 
+        if n_good<minimum_h_bonds or (
             maximum_poor_h_bonds is not None and n_poor>maximum_poor_h_bonds):
           continue
 
@@ -1937,7 +1937,7 @@ class find_beta_strand(find_segment):
         i=j
 
       if require_h_bonds:
-        if good_in_sheet<minimum_h_bonds or ( 
+        if good_in_sheet<minimum_h_bonds or (
             maximum_poor_h_bonds is not None and n_poor>maximum_poor_h_bonds):
           sheet_id-=1
           continue
@@ -3010,7 +3010,7 @@ class find_secondary_structure: # class to look for secondary structure
         remove_text+=\
          "\nRemoving any secondary structure with more than %d poor H-bonds"  %(
         params.find_ss_structure.maximum_poor_h_bonds)
-    
+
     else:
       remove_text=""
 
