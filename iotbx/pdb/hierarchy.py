@@ -666,7 +666,14 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
         atom_hetatm=True,
         sigatm=True,
         anisou=True,
-        siguij=True):
+        siguij=True,
+        link_records=None,
+        ):
+    if link_records:
+      if (open_append): mode = "ab"
+      else:             mode = "wb"
+      print >> open(file_name, mode), link_records
+      open_append = True
     if (crystal_symmetry is not None or cryst1_z is not None):
       from iotbx.pdb import format_cryst1_and_scale_records
       if (open_append): mode = "ab"
@@ -685,7 +692,8 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       atom_hetatm=atom_hetatm,
       sigatm=sigatm,
       anisou=anisou,
-      siguij=siguij)
+      siguij=siguij,
+      )
 
   def as_cif_block(self, crystal_symmetry=None):
     from iotbx.pdb.mmcif import pdb_hierarchy_as_cif_block

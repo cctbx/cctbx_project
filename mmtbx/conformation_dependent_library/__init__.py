@@ -86,19 +86,27 @@ def generate_protein_threes(hierarchy,
             threes.append(residue)
           if len(threes)!=3: continue
           assert len(threes)<=3
-          #yield threes
           list_of_threes.append(copy.copy(threes))
         for i, threes in enumerate(list_of_threes):
           if i==0:
             threes.start =  True
+          print i, len(list_of_threes)
           if i==len(list_of_threes)-1:
             threes.end = True
           else:
-            if threes[1] != list_of_threes[i+1][0]:
+            #print threes
+            #print threes.show_detailed()
+            #print list_of_threes[i]
+            #print list_of_threes[i+1]
+            #try:print list_of_threes[i+2]
+            #except: print None
+            if len(threes)!=3:
+              pass
+            elif threes[1] != list_of_threes[i+1][0]:
               threes.end = True
               list_of_threes[i+1].start = True
           yield threes
-        #assert 0
+          assert len(threes)==3
       threes = ThreeProteinResidues(geometry, registry=registry)
 
 def update_restraints(hierarchy,

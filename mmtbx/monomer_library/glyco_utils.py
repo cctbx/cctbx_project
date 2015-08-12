@@ -607,6 +607,7 @@ anomeric carbon.
              gla)
              )
   i_seqs = [gla.anomeric_carbon.i_seq, gla.link_oxygen.i_seq]
+  bond_i_seqs = i_seqs
   # bonds
   _add_bond(i_seqs, bond_params_table, bond_asu_table, 1.439, 0.02, rt_mx_ji)
   # angles
@@ -635,4 +636,4 @@ anomeric carbon.
     esd = 0.02
     _add_chiral(i_seqs, geometry_proxy_registries, value, esd)
 
-  return gla.get_isomer(), gla.as_cif()
+  return gla.get_isomer(), gla.as_cif(), bond_i_seqs

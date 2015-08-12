@@ -3,7 +3,7 @@
 from __future__ import division
 import mmtbx.refinement.geometry_minimization
 import mmtbx.utils
-from iotbx.pdb import combine_unique_pdb_files, write_whole_pdb_file
+from iotbx.pdb import combine_unique_pdb_files
 import iotbx.phil
 from cctbx.array_family import flex
 from libtbx.utils import user_plus_sys_time, Sorry
@@ -453,6 +453,8 @@ class run(object):
       sites_cart = self.pdb_hierarchy.atoms().extract_xyz())
 
   def write_pdb_file(self, prefix):
+    from iotbx.pdb.misc_records_output import link_record_output
+    link_records = link_record_output(self.processed_pdb_file.all_chain_proxies)
     broadcast(m=prefix, log = self.log)
     self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
     ofn = self.params.output_file_name_prefix
@@ -467,20 +469,23 @@ class run(object):
       ofn = os.path.join(directory, ofn)
     print >> self.log, "  output file name:", ofn
     print >> self.log, self.min_max_mean_shift()
-    cs = None
-    if self.output_crystal_symmetry:
-      cs = self.xray_structure.crystal_symmetry()
-    ss_annotation = None
+    out_pdb_file = open(ofn, 'w')
     if self.processed_pdb_file.ss_manager is not None:
-      ss_annotation = self.processed_pdb_file.ss_manager.actual_sec_str
+      recs = self.processed_pdb_file.ss_manager.records_for_pdb_file()
+      if recs is not None:
+        print >> out_pdb_file, recs
     else:
-      ss_annotation = self.processed_pdb_file.all_chain_proxies.\
-          pdb_inp.extract_secondary_structure()
-    write_whole_pdb_file(
-        file_name=ofn,
-        pdb_hierarchy=self.pdb_hierarchy,
-        crystal_symmetry=cs,
-        ss_annotation=ss_annotation)
+      for s in self.processed_pdb_file.all_chain_proxies.\
+          pdb_inp.secondary_structure_section():
+        print >> out_pdb_file, s
+    if (self.output_crystal_symmetry) :
+      self.pdb_hierarchy.write_pdb_file(
+        file_name = ofn,
+        crystal_symmetry = self.xray_structure.crystal_symmetry(),
+        link_records=link_records)
+    else :
+      self.pdb_hierarchy.write_pdb_file(file_name = ofn,
+                                        link_records=link_records)
     if(self.states_collector):
       self.states_collector.write(
         file_name=ofn[:].replace(".pdb","_all_states.pdb"))
