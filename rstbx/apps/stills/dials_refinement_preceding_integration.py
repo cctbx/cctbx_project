@@ -356,6 +356,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
     params.refinement.parameterisation.detector.fix_list=3, # fix detector rotz, allow distance to refine
     params.refinement.reflections.weighting_strategy.delpsi_constant=100000.
     params.refinement.reflections.weighting_strategy.override="stills"
+    params.refinement.parameterisation.auto_reduction.action="fix"
     #params.refinement.reflections.do_outlier_rejection=True
     #params.refinement.reflections.iqr_multiplier=0.5
     #params.refinement.reflections.minimum_sample_size=50
