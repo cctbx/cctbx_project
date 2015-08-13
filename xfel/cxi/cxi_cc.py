@@ -51,7 +51,7 @@ def scale_factor(self, other, weights=None, cutoff_factor=None,
         scale_factor(self.select(sel),other.select(sel), weights_sel))
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
 
-def split_sigma_test(self, other, use_binning=False):
+def split_sigma_test(self, other, scale, use_binning=False, show_plot=False):
   """
   Calculates the split sigma ratio test by Peter Zwart:
   ssr = sum( (Iah-Ibh)^2 ) / sum( sigma_ah^2 + sigma_bh^2)
@@ -72,14 +72,40 @@ def split_sigma_test(self, other, use_binning=False):
       sel = self.binner().selection(i_bin)
       i_self = self.select(sel)
       i_other = other.select(sel)
+      scale_rel = scale.data[i_bin]
       if i_self.size() == 0:
         results.append(None)
       else:
-        results.append(split_sigma_test(i_self,i_other))
+        results.append(split_sigma_test(i_self,i_other,scale=scale_rel,show_plot=show_plot))
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
 
-  a_data = self.data(); b_data = other.data()
-  a_sigmas = self.sigmas(); b_sigmas = other.sigmas()
+  a_data = self.data(); b_data = scale * other.data()
+  a_sigmas = self.sigmas(); b_sigmas = scale * other.sigmas()
+
+  if show_plot:
+    # Diagnostic use of the (I - <I>) / sigma distribution, should have mean=0, std=1
+    a_variance = a_sigmas * a_sigmas
+    b_variance = b_sigmas * b_sigmas
+    mean_num = (a_data/ (a_variance) ) + (b_data/ (b_variance) )
+    mean_den = (1./ (a_variance) ) + (1./ (b_variance) )
+    mean_values = mean_num / mean_den
+
+    delta_I_a = a_data - mean_values
+    normal_a = delta_I_a / (a_sigmas)
+    stats_a = flex.mean_and_variance(normal_a)
+    print "\nA mean %7.4f std %7.4f"%(stats_a.mean(),stats_a.unweighted_sample_standard_deviation())
+    order_a = flex.sort_permutation(normal_a)
+
+    delta_I_b = b_data - mean_values
+    normal_b = delta_I_b / (b_sigmas)
+    stats_b = flex.mean_and_variance(normal_b)
+    print "B mean %7.4f std %7.4f"%(stats_b.mean(),stats_b.unweighted_sample_standard_deviation())
+    order_b = flex.sort_permutation(normal_b)
+    # plots for debugging
+    from matplotlib import pyplot as plt
+    plt.plot(xrange(len(order_a)),normal_a.select(order_a),"b.")
+    plt.plot(xrange(len(order_b)),normal_b.select(order_b),"r.")
+    plt.show()
 
   n = flex.pow(a_data - b_data,2)
   d = flex.pow(a_sigmas,2)+flex.pow(b_sigmas,2)
@@ -387,8 +413,10 @@ def run_cc(params,reindexing_op,output):
   else:
     print >>output, "R factor Rint = %.1f%%"%(100.*oe_rint_all)
 
-  split_sigma_data = split_sigma_test(selected_uniform[2],selected_uniform[3], use_binning=True)
-  split_sigma_data_all = split_sigma_test(selected_uniform[2],selected_uniform[3], use_binning=False)
+  split_sigma_data = split_sigma_test(selected_uniform[2],selected_uniform[3],
+                                      scale=oe_scale,use_binning=True,show_plot=False)
+  split_sigma_data_all = split_sigma_test(selected_uniform[2],selected_uniform[3],
+                                          scale=oe_scale_all,use_binning=False,show_plot=False)
 
   print >>output
   if reindexing_op == "h,k,l":
@@ -500,11 +528,11 @@ def run_cc(params,reindexing_op,output):
 
   if params.scaling.show_plots:
     from matplotlib import pyplot as plt
-    plt.plot(flex.log(uniform[2].select(uniformB).data()),
-             flex.log(uniform[3].select(uniformB).data()), 'r.')
+    plt.plot(flex.log10(selected_uniform[-2].data()),
+             flex.log10(selected_uniform[-1].data()), 'r.')
     plt.show()
     if have_iso_ref:
-      plt.plot(flex.log(uniform[0].select(uniformA).data()),
-               flex.log(uniform[1].select(uniformA).data()), 'r.')
+      plt.plot(flex.log10(selected_uniform[0].data()),
+               flex.log10(selected_uniform[1].data()), 'r.')
       plt.show()
   print >>output
