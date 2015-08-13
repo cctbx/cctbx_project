@@ -654,6 +654,44 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
             raise RuntimeError("Mismatch: \n %s \n %s \n"%(sc.label,a.id_str()))
         set_attr(sc=sc, a=a)
 
+  def expand_to_p1(self, crystal_symmetry):
+    # ANISIU will be invalid
+    import string
+    import scitbx.matrix
+    r = root()
+    m = model()
+    idl = [i for i in string.ascii_lowercase]
+    idu = [i for i in string.ascii_uppercase]
+    taken = []
+    n_atoms = []
+    for m_ in self.models():
+      for smx in crystal_symmetry.space_group().smx():
+        m3 = smx.r().as_double()
+        m3 = scitbx.matrix.sqr(m3)
+        t = smx.t().as_double()
+        t = scitbx.matrix.col((t[0],t[1],t[2]))
+        for c_ in m_.chains():
+          n_at = len(c_.atoms())
+          if(not n_at in n_atoms): n_atoms.append(n_at)
+          c_ = c_.detached_copy()
+          xyz = c_.atoms().extract_xyz()
+          xyz = crystal_symmetry.unit_cell().fractionalize(xyz)
+          new_xyz = crystal_symmetry.unit_cell().orthogonalize(m3.elems*xyz+t)
+          c_.atoms().set_xyz(new_xyz)
+          found = False
+          for idu_ in idu:
+            for idl_ in idl:
+              id_ = idu_+idl_
+              if(not id_ in taken):
+                taken.append(id_)
+                found = id_
+                break
+            if(found): break
+          c_.id = found
+          m.append_chain(c_)
+    r.append_model(m)
+    return r
+
   def write_pdb_file(self,
         file_name,
         open_append=False,
