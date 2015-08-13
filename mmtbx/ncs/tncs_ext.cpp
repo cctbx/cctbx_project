@@ -61,18 +61,15 @@ namespace {
                 scitbx::vec3<double> const&,
                 double,
                 double,
-                double,
                 af::shared<double> >((
                   arg("r"),
                   arg("t"),
                   arg("radius"),
-                  arg("weight"),
                   arg("fracscat"),
                   arg("rho_mn"))))
       .add_property("r",      make_getter(&pair<>::r,      rbv()))
       .add_property("t",      make_getter(&pair<>::t,      rbv()))
       .add_property("radius", make_getter(&pair<>::radius, rbv()))
-      .add_property("weight", make_getter(&pair<>::weight, rbv()))
       .add_property("fracscat", make_getter(&pair<>::fracscat, rbv()))
       .add_property("rho_mn", make_getter(&pair<>::rho_mn, rbv()))
       .enable_pickling()

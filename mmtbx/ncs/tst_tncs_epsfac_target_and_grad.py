@@ -4,7 +4,6 @@ import boost.python
 ext = boost.python.import_ext("mmtbx_ncs_ext")
 import iotbx.pdb
 from scitbx.array_family import flex
-import iotbx.ncs
 from mmtbx.ncs import tncs
 
 pdb_str = """
@@ -103,17 +102,14 @@ def run(reflections_per_bin=250):
   # Create NCS pair object that contains all information we will need.
   # This is C++ container implemented in cctbx_project/mmtbx/ncs/tncs.h
   #
-  ncs_inp = iotbx.ncs.input(pdb_string=pdb_str)
-  ncs_groups = ncs_inp.get_ncs_restraints_group_list()
-  assert len(ncs_groups)==1
-  #print ncs_groups[0].copies[0].r
-  #print ncs_groups[0].copies[0].t
+#  tncs.construct_tncs_group_object(pdb_hierarchy = pdb_inp.construct_hierarchy(),
+#    unit_cell = f_obs.unit_cell())
+#  STOP()
   #
   ncs_pair = ext.pair(
     r = ([1,0,0,0,0.998630,0.052336,0,-0.052336,0.998630]),
-    t = ([-8.99998/21.954,-0.33409/18.566,0.47453/12.975]),
+    t = ([-9/21.954,0,0]),
     radius=4.24,
-    weight=20,
     fracscat=0.5,
     rho_mn=flex.double(n_bins,0.98) )
   pot = tncs.potential(f_obs = f_obs, ncs_pairs = [ncs_pair],

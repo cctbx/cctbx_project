@@ -6,13 +6,66 @@ from scitbx.array_family import flex
 from cctbx import sgtbx
 from libtbx import adopt_init_args
 from scitbx import lbfgsb
+import iotbx.ncs
+import math
+import scitbx.math
+
+class groups(object):
+
+  def __init__(self,
+               pdb_hierarchy,
+               crystal_symmetry,
+               angular_difference_threshold_deg=10):
+    asc = pdb_hierarchy.atom_selection_cache()
+    sel = asc.selection("pepnames and (name CA or name N or name O or name C)")
+    pdb_hierarchy = pdb_hierarchy.select(sel)
+    pdb_hierarchy = pdb_hierarchy.expand_to_p1(
+      crystal_symmetry=crystal_symmetry)
+    pdb_hierarchy.atoms().reset_i_seq()
+    sites_cart = pdb_hierarchy.atoms().extract_xyz()
+    ncs_inp = iotbx.ncs.input(hierarchy=pdb_hierarchy)
+    ncs_groups = ncs_inp.get_ncs_restraints_group_list()
+    self.rta = []
+    for g in ncs_groups:
+      for c in g.copies:
+        angle = math.acos((c.r.trace()-1)/2)*180./math.pi
+        r = c.r
+        t = crystal_symmetry.unit_cell().fractionalize(c.t)
+        if(angle < angular_difference_threshold_deg):
+          t_new = []
+          for t_ in t:
+            t_new.append(math.modf(t_)[0]) # same as t_-int(t_)
+          # radius
+          sites_cart_sel = sites_cart.select(c.iselection)
+          radius = 0
+          for sc in sites_cart_sel - sites_cart_sel.mean():
+            x,y,z = sc
+            radius += math.sqrt(x**2+y**2+z**2)
+          radius = radius/sites_cart_sel.size()*2.
+          #
+          self.rta.append([c.r, t_new, angle, radius])
+    for i, it in enumerate(self.rta):
+      r,t,a, rad = it
+      ncs_pair = ext.pair(
+        r = r,
+        t = t,
+        radius=rad,
+        fracscat=1./(2*len(self.rta)),
+        rho_mn=flex.double(100,0.98) )
+
+  def show_summary(self):
+    for i, it in enumerate(self.rta):
+      print "tNCS group: %d"%i
+      r,t,a = it
+      print "  Translation vector (fractional): (%s)"%\
+        ",".join(["%6.3f"%i for i in t]), "Rotation angle (deg): %-5.2f"%a
 
 def lbfgs_run(target_evaluator, use_bounds):
   minimizer = lbfgsb.minimizer(
     n   = target_evaluator.n,
     l   = flex.double(target_evaluator.n, 0), # lower bound
     u   = flex.double(target_evaluator.n, 1), # upper bound
-    nbd = flex.int(target_evaluator.n, use_bounds))    # apply both bounds
+    nbd = flex.int(target_evaluator.n, use_bounds)) # flag to apply both bounds
   minimizer.error = None
   try:
     icall = 0
@@ -80,6 +133,8 @@ class potential(object):
 
   def update(self, x):
     assert x.size() == self.ncs_pairs[0].rho_mn.size() #XXX
+    #for i in xrange(x.size()):
+    #  assert abs(self.ncs_pairs[0].rho_mn[i]-x[i])<1.e-4
     self.target_and_grads = ext.tncs_eps_factor_refinery(
       tncs_pairs               = self.ncs_pairs,
       f_obs                    = self.f_obs.data(),
