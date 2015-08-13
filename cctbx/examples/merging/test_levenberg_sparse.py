@@ -50,6 +50,7 @@ class xscale6e(object):
     self.x = flex.double(list(Ibase) + list(Gbase) + list(flex.double(len(Gbase), 0.0)))
     self.N_I = len(Ibase)
     self.N_G = len(Gbase)
+    self.N_raw_obs = FSIM.raw_obs.size()
     print "# structure factors:",self.N_I, "# frames:",self.N_G
 
     self.helper = levenberg_helper(initial_estimates = self.x)
@@ -250,11 +251,35 @@ class xscale6e(object):
       self.helper.x[ self.N_I + self.N_G : ]          # fitted B
     )
 
+  def unpack_stddev(self):
+    # the data-to_parameter ratio will control which method for returning e.s.d's
+    data_to_parameter = float(self.N_raw_obs) / self.helper.x.size()
+    self.helper.build_up()
+    if data_to_parameter <= 4. and self.helper.x.size() < 500:
+      # estimate standard deviations by singular value decomposition
+      norm_mat_packed_upper = self.helper.get_normal_matrix()
+      norm_mat_all_elems = self.packed_to_all(norm_mat_packed_upper)
+      NM = sqr(norm_mat_all_elems)
+      from scitbx.linalg.svd import inverse_via_svd
+      svd_inverse,sigma = inverse_via_svd(NM.as_flex_double_matrix())
+      IA = sqr(svd_inverse)
+      estimated_stddev = flex.double([math.sqrt(IA(i,i)) for i in xrange(self.helper.x.size())])
+    else:
+      # estimate standard deviations by normal matrix curvatures
+      diagonal_curvatures = self.helper.get_normal_matrix_diagonal()
+      estimated_stddev = flex.sqrt(1./diagonal_curvatures)
+    return (
+      estimated_stddev[ 0 : self.N_I ],                  # fitted intensity
+      estimated_stddev[ self.N_I : self.N_I + self.N_G ],# fitted G
+      estimated_stddev[ self.N_I + self.N_G : ]          # fitted B
+    )
+
   def show_summary(self):
     print "%d cycles"%self.counter
     self.helper.show_eigen_summary()
 
-def execute_case(datadir, n_frame,transmittance,apply_noise,plot=False,esd_plot=False):
+class execute_case(object):
+ def __init__(self,datadir,n_frame,transmittance,apply_noise,plot=False,esd_plot=False,half_data_flag=0):
   # read the ground truth values back in
   import cPickle as pickle
   ordered_intensities = pickle.load(open(os.path.join(datadir,"intensities.pickle"),"rb"))
@@ -265,7 +290,8 @@ def execute_case(datadir, n_frame,transmittance,apply_noise,plot=False,esd_plot=
 
   FSIM = prepare_simulation_with_noise(sim, transmittance=transmittance,
                                        apply_noise=apply_noise,
-                                       ordered_intensities=ordered_intensities)
+                                       ordered_intensities=ordered_intensities,
+                                       half_data_flag=half_data_flag)
 
   I,I_visited,G,G_visited = I_and_G_base_estimate(FSIM)
   model_I = ordered_intensities.data()[0:len(I)]
@@ -285,6 +311,7 @@ def execute_case(datadir, n_frame,transmittance,apply_noise,plot=False,esd_plot=
   show_correlation(Fit_G,model_G,G_visited,"Correlation of G:")
   show_correlation(Fit_B,model_B,G_visited,"Correlation of B:")
   show_correlation(Fit_I,model_I,I_visited,"Correlation of I:")
+  Fit_I_stddev, Fit_G_stddev, Fit_B_stddev = minimizer.e_unpack_stddev()
 
   if plot:
     plot_it(Fit_G, model_G)
@@ -295,7 +322,16 @@ def execute_case(datadir, n_frame,transmittance,apply_noise,plot=False,esd_plot=
   if esd_plot:
     minimizer.esd_plot()
 
+  from cctbx.examples.merging.show_results import show_overall_observations
+  table1,self.n_bins,self.d_min = show_overall_observations(
+           Fit_I,Fit_I_stddev,model_I,I_visited,
+           ordered_intensities,frames,FSIM,title="Statistics for all reflections")
 
+  self.FSIM=FSIM
+  self.ordered_intensities=ordered_intensities
+  self.Fit_I=Fit_I
+  self.Fit_I_stddev=Fit_I_stddev
+  self.I_visited=I_visited
 
 if __name__=="__main__":
 

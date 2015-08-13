@@ -42,22 +42,30 @@ def mapper_factory(base_class):
 
       base_class.__init__(self,subsetIbase,subsetGbase,remapped_FSIM,**kwargs)
       fitted_I,fitted_G,fitted_B = self.unpack()
+      fitted_I_stddev,fitted_G_stddev,fitted_B_stddev = self.unpack_stddev()
 
       self.expanded_G = flex.double(len(Gbase))
       self.expanded_B = flex.double(len(Gbase))
+      self.expanded_G_stddev = flex.double(len(Gbase))
+      self.expanded_B_stddev = flex.double(len(Gbase))
       for s in xrange(len(G_visited)):
         if G_visited[s]:
           self.expanded_G[s]=fitted_G[ forward_map_G[s] ]
           self.expanded_B[s]=fitted_B[ forward_map_G[s] ]
+          self.expanded_G_stddev[s]=fitted_G_stddev[ forward_map_G[s] ]
+          self.expanded_B_stddev[s]=fitted_B_stddev[ forward_map_G[s] ]
 
       self.expanded_I = flex.double(len(Ibase))
+      self.expanded_I_stddev = flex.double(len(Ibase))
       for s in xrange(len(I_visited)):
         if I_visited[s]:
           self.expanded_I[s]=fitted_I[ forward_map_I[s] ]
+          self.expanded_I_stddev[s]=fitted_I_stddev[ forward_map_I[s] ]
 
       print "DONE UNMAPPING HERE"
 
-    def e_unpack(self): return (self.expanded_I, self.expanded_G,self.expanded_B)
+    def e_unpack(self): return (self.expanded_I, self.expanded_G, self.expanded_B)
+    def e_unpack_stddev(self): return (self.expanded_I_stddev, self.expanded_G_stddev, self.expanded_B_stddev)
 
   return mapper_unmapper
 
