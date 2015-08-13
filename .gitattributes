@@ -136,8 +136,10 @@ cctbx/examples/merging/data_subset.py -text
 cctbx/examples/merging/data_utilities.py -text
 cctbx/examples/merging/large_scale_merging_ext.cpp -text
 cctbx/examples/merging/read_me -text
+cctbx/examples/merging/show_results.py -text
 cctbx/examples/merging/task4.py -text
 cctbx/examples/merging/test1.py -text
+cctbx/examples/merging/test_cc_half.py -text
 cctbx/examples/merging/test_levenberg_sparse.py -text
 cctbx/examples/merging/tst_permutations.py -text
 cctbx/examples/merging/xscale_prototype_core.h -text
