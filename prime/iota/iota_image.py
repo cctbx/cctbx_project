@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 07/29/2015
+Last Changed: 08/12/2015
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
