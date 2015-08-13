@@ -81,6 +81,7 @@ public:
   alpha_beta_est(boost::python::list const& fo_sets_list,
                  boost::python::list const& fm_sets_list,
                  boost::python::list const& hkl_sets_list,
+                 boost::python::list const& epsilons_sets_list,
                  cctbx::sgtbx::space_group const& sg)
      {
        int len_list = boost::python::len(fo_sets_list);
@@ -91,16 +92,15 @@ public:
        beta_  = af::shared<double> (len_list);
 
        for(std::size_t i=0; i < len_list; i++) {
-         boost::python::extract<af::shared<double> >
-                                                 elem_proxy_1(fo_sets_list[i]);
+         boost::python::extract<af::shared<double> > elem_proxy_1(fo_sets_list[i]);
          fo = elem_proxy_1();
-         boost::python::extract<af::shared<double> >
-                                                 elem_proxy_2(fm_sets_list[i]);
+         boost::python::extract<af::shared<double> > elem_proxy_2(fm_sets_list[i]);
          fm = elem_proxy_2();
-         boost::python::extract<af::shared<cctbx::miller::index<> > >
-                                                elem_proxy_3(hkl_sets_list[i]);
+         boost::python::extract<af::shared<cctbx::miller::index<> > > elem_proxy_3(hkl_sets_list[i]);
          hkl = elem_proxy_3();
-         A_B_topt_est(fo,fm,hkl,sg,A_in_zones[i],B_in_zones[i],topt[i]); //going around in a circle for external access
+         boost::python::extract<af::shared<double> > elem_proxy_4(epsilons_sets_list[i]);
+         epsilons = elem_proxy_4();
+         A_B_topt_est(fo,fm,hkl,epsilons,sg,A_in_zones[i],B_in_zones[i],topt[i]); //going around in a circle for external access
        }
        topt = smooth(topt);
        alpha_beta_in_zones(A_in_zones, B_in_zones, topt);
@@ -109,6 +109,7 @@ public:
     void  A_B_topt_est(af::shared<double> const& fo,
                  af::shared<double> const& fm,
                  af::shared<cctbx::miller::index<> > const& hkl,
+                 af::shared<double> const& epsilons,
                  cctbx::sgtbx::space_group const& sg,
                  double& ext_A,
                  double& ext_B,
@@ -118,7 +119,7 @@ public:
          MMTBX_ASSERT(fo.size() > 0 && fm.size() > 0);
          MMTBX_ASSERT(fo.size() == fm.size());
          MMTBX_ASSERT(fo.size() == hkl.size());
-         eps = sg.epsilon(hkl.const_ref());
+         eps = epsilons;
          cf = sg.is_centric(hkl.const_ref());
          A_B_C_D_omega();
          double topt;
@@ -282,11 +283,11 @@ public:
   af::shared<double> alpha() { return alpha_; };
   af::shared<double> beta() { return beta_; };
 protected:
-  af::shared<double> fo, fm;
+  af::shared<double> fo, fm, epsilons;
   af::shared<cctbx::miller::index<> > hkl;
   double SUMwj,A,B,C,OMEGAi,wi;
   af::shared<double> alpha_,beta_,bj;
-  af::shared<int> eps;
+  af::shared<double> eps;
   af::shared<bool> cf;
 };
 

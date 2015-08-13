@@ -162,7 +162,8 @@ class alpha_beta_est_manager(object):
                     f_calc,
                     free_reflections_per_bin,
                     flags,
-                    interpolation):
+                    interpolation,
+                    epsilons=None):
     adopt_init_args(self, locals())
     #
     # icent - array contains 0 for acentric reflections and >0 integer
@@ -194,9 +195,12 @@ class alpha_beta_est_manager(object):
       self.f_calc_test = self.f_calc.select(~self.flags)
     self.f_obs_test.setup_binner_counting_sorted(
       reflections_per_bin= self.free_reflections_per_bin)
+    if(self.epsilons is None):
+      self.epsilons = self.f_obs_test.epsilons().data().as_double()
     self.fo_test_sets = []
     self.fm_test_sets = []
     self.indices_sets = []
+    self.epsilons_sets = []
     for i_bin in self.f_obs_test.binner().range_used():
        sel = self.f_obs_test.binner().selection(i_bin)
        sel_f_obs_test = self.f_obs_test.select(sel)
@@ -205,11 +209,13 @@ class alpha_beta_est_manager(object):
          self.fo_test_sets.append(sel_f_obs_test.data())
          self.fm_test_sets.append(sel_f_calc_test.data())
          self.indices_sets.append(sel_f_obs_test.indices())
+         self.epsilons_sets.append(self.epsilons.select(sel))
     for a,b,c in zip(self.fo_test_sets, self.fm_test_sets, self.indices_sets):
       assert a.size() == b.size() == c.size() != 0
     obj = max_lik.alpha_beta_est(fo_test     = self.fo_test_sets,
                                  fm_test     = self.fm_test_sets,
                                  indices     = self.indices_sets,
+                                 epsilons    = self.epsilons_sets,
                                  space_group = self.f_obs_test.space_group())
     self.alpha_in_zones, self.beta_in_zones = obj.alpha(), obj.beta()
     self.alpha, self.beta = self.alpha_beta_for_each_reflection()
