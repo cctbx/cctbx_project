@@ -95,6 +95,9 @@ phil_scope = parse('''
     output_dir = "."
       .type = str
       .help = Directory for output files
+    split_logs = False
+      .type = bool
+      .help = Option to split error and log files into separate per process
   }
   mp {
     method = *mpi sge pbs custom
@@ -223,7 +226,12 @@ class Script(object):
     # log file will live here
     stdoutdir = os.path.join(trialdir, "stdout")
     os.mkdir(stdoutdir)
-
+    if params.output.split_logs:# test parameter for split_log then open and close log file and loop over nprocs
+      for i in xrange(params.mp.nproc):
+        error_files = os.path.join(stdoutdir,"error_rank%04d.out"%i)
+        log_files = os.path.join(stdoutdir,"log_rank%04d.out"%i)
+        open(log_files,'a').close()
+        open(error_files,'a').close()
     # make a copy of the original cfg file
     shutil.copy(params.input.cfg, os.path.join(trialdir, "psana_orig.cfg"))
 
@@ -281,9 +289,9 @@ class Script(object):
     submit_path = os.path.join(trialdir, "submit.sh")
 
     if params.mp.method == "mpi":
-      command = "bsub -a mympi -n %d -o %s -q %s %s input.cfg=%s input.experiment=%s input.run_num=%d"%( \
+      command = "bsub -a mympi -n %d -o %s -q %s %s input.cfg=%s input.experiment=%s input.run_num=%d output.logging_dir=%s"%( \
         params.mp.nproc, os.path.join(stdoutdir, "log.out"), params.mp.queue, params.input.dispatcher, config_path,
-        params.input.experiment, params.input.run_num)
+        params.input.experiment, params.input.run_num,stdoutdir)
 
       command += " output.output_dir=%s"%output_dir
 
@@ -391,8 +399,8 @@ class Script(object):
 
       command = "qsub -o %s %s %s"%(os.path.join(stdoutdir, "log.out"), params.mp.custom.extra_args, submit_path)
 
-      processing_command = "%s input.cfg=%s input.experiment=%s input.run_num=%d output.output_dir=%s mp.method=mpi %s\n"%( \
-              params.input.dispatcher, config_path, params.input.experiment, params.input.run_num, output_dir, extra_str)
+      processing_command = "%s input.cfg=%s input.experiment=%s input.run_num=%d output.output_dir=%s mp.method=mpi %s output.logging_dir=%s\n"%( \
+         params.input.dispatcher, config_path, params.input.experiment, params.input.run_num, output_dir, extra_str, stdoutdir)
 
       f = open(submit_path, 'w')
       for line in open(params.mp.custom.submit_template).readlines():
