@@ -44,9 +44,11 @@ namespace {
                  init<boost::python::list const&,
                       boost::python::list const&,
                       boost::python::list const&,
+                      boost::python::list const&,
                       cctbx::sgtbx::space_group const& >((arg("fo_test"),
                                                           arg("fm_test"),
                                                           arg("indices"),
+                                                          arg("epsilons"),
                                                           arg("space_group"))))
       .def("alpha", &alpha_beta_est::alpha)
       .def("beta",  &alpha_beta_est::beta)
