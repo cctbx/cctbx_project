@@ -2,8 +2,6 @@ from __future__ import division
 import ncs_preprocess
 import sys
 import iotbx.pdb
-from scitbx.array_family import flex
-from libtbx import group_args
 import scitbx.matrix
 
 ncs_search_options = """\
