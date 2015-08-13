@@ -352,7 +352,6 @@ def substitute_ss(real_h,
     expected_n_hbonds += h.get_n_maximum_hbonds()
   edited_h = real_h.deep_copy()
   n_atoms_in_real_h = real_h.atoms().size()
-  cumm_bsel = flex.bool(n_atoms_in_real_h, False)
   selection_cache = real_h.atom_selection_cache()
   # check the annotation for correctness (atoms are actually in hierarchy)
   error_msg = "The following secondary structure annotations result in \n"
@@ -384,7 +383,6 @@ def substitute_ss(real_h,
     isel = selection_cache.iselection(selstring[0])
     all_bsel = flex.bool(n_atoms_in_real_h, False)
     all_bsel.set_selected(isel, True)
-    cumm_bsel.set_selected(isel, True)
     sel_h = real_h.select(all_bsel, copy_atoms=True)
     ideal_h = get_helix(helix_class=h.helix_class,
                         pdb_hierarchy_template=sel_h,
@@ -400,7 +398,6 @@ def substitute_ss(real_h,
       isel = selection_cache.iselection(selstring)
       all_bsel = flex.bool(n_atoms_in_real_h, False)
       all_bsel.set_selected(isel, True)
-      cumm_bsel.set_selected(isel, True)
       sel_h = real_h.select(all_bsel, copy_atoms=True)
       ideal_h = secondary_structure_from_sequence(
           pdb_str=beta_pdb_str,
