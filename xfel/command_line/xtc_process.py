@@ -20,15 +20,11 @@ phil_scope = parse('''
     max_events = None
       .type = int
       .help = If not specified, process all events. Otherwise, only process this many
-    hit_finder {
-      enable = True
-        .type = bool
-        .help = Whether to do hit finding. hit_finder=False: process all images
-      minimum_number_of_reflections = 16
-        .type = int
-        .help = If the number of strong reflections on an image is less than this, and \
-                the hitfinder is enabled, discard this image.
-    }
+    hit_finder = True
+      .type = bool
+      .help = If the number of strong reflections is less than \
+              refinement.reflections.minimum_number_of_reflections, hit_filter=True \
+              will discard the image. hit_finder=False: process all images
     index = True
       .type = bool
       .help = Attempt to index images
@@ -103,6 +99,9 @@ phil_scope = parse('''
     output_dir = .
       .type = str
       .help = Directory output files will be placed
+    logging_dir = None
+      .type = str
+      .help = Directory output log files will be placed
     datablock_filename = %s_datablock.json
       .type = str
       .help = The filename for output datablock
@@ -217,9 +216,19 @@ class InMemScript(DialsProcessScript):
       rank = 0
       size = 1
 
+    if params.output.logging_dir is not None:
+      log_path = os.path.join(params.output.logging_dir, "log_rank%04d.out"%rank)
+      error_path = os.path.join(params.output.logging_dir, "error_rank%04d.out"%rank)
+      print "Redirecting stdout to %s"%log_path
+      print "Redirecting stderr to %s"%error_path
+      assert os.path.exists(log_path)
+      sys.stdout = open(log_path,'a', buffering=0)
+      sys.stderr = open(error_path,'a',buffering=0)
+      print "Should be redirected now"
     #log_path = os.path.join(params.output.output_dir, "log_rank%04d.out"%rank)
     #print "Redirecting stdout to %s"%log_path
     #sys.stdout = open(log_path,'w')
+
 
     # set up psana
     setConfigFile(params.input.cfg)
@@ -410,7 +419,7 @@ class InMemScript(DialsProcessScript):
 
     print "Found %d bright spots"%len(observed)
 
-    if self.params.dispatch.hit_finder.enable and len(observed) < self.params.dispatch.hit_finder.minimum_number_of_reflections:
+    if self.params.dispatch.hit_finder and len(observed) < self.params.refinement.reflections.minimum_number_of_reflections:
       print "Not enough spots to index"
       return
 
