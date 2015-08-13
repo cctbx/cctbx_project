@@ -161,12 +161,13 @@ scaling {
     .type = bool
     .help = enable the mark0 algorithm, otherwise individual-image scale factors are set to 1.0
     .expert_level = 3
-  algorithm = *mark0 mark1
+  algorithm = *mark0 mark1 levmar
     .type = choice
     .help = "mark0: original per-image scaling by reference to
              isomorphous PDB model"
     .help = "mark1: no scaling, just averaging (i.e. Monte Carlo
              algorithm).  Individual image scale factors are set to 1."
+    .help = "Sparse-matrix Levenberg-Marquardt scaling and merging.  Under development, not available in cxi.merge"
   simulation = None
     .type = str
     .help = To test scaling, use simulated data from the model instead of the actual observations
