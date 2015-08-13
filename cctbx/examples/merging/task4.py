@@ -6,7 +6,8 @@ import pickle
 from cctbx.examples.merging import intensity_data
 def prepare_simulation_with_noise(sim, transmittance,
                                        apply_noise,
-                                       ordered_intensities=None):
+                                       ordered_intensities=None,
+                                       half_data_flag = 0):
   result = intensity_data()
   result.frame = sim["frame_lookup"]
   result.miller= sim['miller_lookup']
@@ -23,6 +24,13 @@ def prepare_simulation_with_noise(sim, transmittance,
     noise = flex.double(len(raw_obs_no_noise),0.)
 
   raw_obs = raw_obs_no_noise + noise
+
+  if half_data_flag in [1,2]:  # apply selection after random numbers have been applied
+    half_data_selection = (sim["frame_lookup"]%2)==(half_data_flag%2)
+    result.frame  = sim["frame_lookup"].select(half_data_selection)
+    result.miller = sim['miller_lookup'].select(half_data_selection)
+    raw_obs       = raw_obs.select(half_data_selection)
+
   mean_signal = flex.mean(raw_obs)
 
   sigma_obs = flex.sqrt(flex.abs(raw_obs))
