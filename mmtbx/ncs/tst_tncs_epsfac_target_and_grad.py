@@ -102,28 +102,19 @@ def run(reflections_per_bin=250):
   # Create NCS pair object that contains all information we will need.
   # This is C++ container implemented in cctbx_project/mmtbx/ncs/tncs.h
   #
-#  tncs.construct_tncs_group_object(pdb_hierarchy = pdb_inp.construct_hierarchy(),
-#    unit_cell = f_obs.unit_cell())
-#  STOP()
-  #
-  ncs_pair = ext.pair(
-    r = ([1,0,0,0,0.998630,0.052336,0,-0.052336,0.998630]),
-    t = ([-9/21.954,0,0]),
-    radius=4.24,
-    fracscat=0.5,
-    rho_mn=flex.double(n_bins,0.98) )
-  pot = tncs.potential(f_obs = f_obs, ncs_pairs = [ncs_pair],
+  o = tncs.groups(
+    pdb_hierarchy    = pdb_inp.construct_hierarchy(),
+    crystal_symmetry = pdb_inp.crystal_symmetry(),
+    n_bins           = n_bins)
+  o.show_summary()
+  # Target and gradients evaluator
+  pot = tncs.potential(f_obs = f_obs, ncs_pairs = o.ncs_pairs,
     reflections_per_bin = reflections_per_bin)
   # Run refinement
   m = tncs.minimizer(potential = pot, use_bounds=2).run()
-  print list(pot.target_and_grads.tncs_epsfac())[:10] # print first 10
-  print pot.target_and_grads.tncs_epsfac().min_max_mean().as_tuple()
-  for i in [1,2,3]:
-    print
-    pot.update_SigmaN()
-    m = tncs.minimizer(potential = pot, use_bounds=2).run()
-    print list(pot.target_and_grads.tncs_epsfac())[:10] # print first 10
-    print pot.target_and_grads.tncs_epsfac().min_max_mean().as_tuple()
+  print "tncs_epsfac, first 10:", list(pot.target_and_grads.tncs_epsfac())[:10]
+  print "tncs_epsfac min/max/mean:", \
+    pot.target_and_grads.tncs_epsfac().min_max_mean().as_tuple()
 
 if (__name__ == "__main__"):
   run()

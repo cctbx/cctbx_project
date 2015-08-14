@@ -15,6 +15,7 @@ class groups(object):
   def __init__(self,
                pdb_hierarchy,
                crystal_symmetry,
+               n_bins, # XXX remove later
                angular_difference_threshold_deg=10):
     asc = pdb_hierarchy.atom_selection_cache()
     sel = asc.selection("pepnames and (name CA or name N or name O or name C)")
@@ -44,6 +45,7 @@ class groups(object):
           radius = radius/sites_cart_sel.size()*2.
           #
           self.rta.append([c.r, t_new, angle, radius])
+    self.ncs_pairs = []
     for i, it in enumerate(self.rta):
       r,t,a, rad = it
       ncs_pair = ext.pair(
@@ -51,14 +53,20 @@ class groups(object):
         t = t,
         radius=rad,
         fracscat=1./(2*len(self.rta)),
-        rho_mn=flex.double(100,0.98) )
+        rho_mn=flex.double(n_bins,0.98) )
+      self.ncs_pairs.append(ncs_pair)
 
   def show_summary(self):
     for i, it in enumerate(self.rta):
       print "tNCS group: %d"%i
-      r,t,a = it
-      print "  Translation vector (fractional): (%s)"%\
-        ",".join(["%6.3f"%i for i in t]), "Rotation angle (deg): %-5.2f"%a
+      r,t,a, rad = it
+      t = ",".join([("%6.3f"%t_).strip() for t_ in t]).strip()
+      r = ",".join([("%8.6f"%r_).strip() for r_ in r]).strip()
+      print "  Translation (fractional): (%s)"%t
+      print "  Rotation (deg): %-5.2f"%a
+      print "  Rotation matrix: (%s)"%r
+      print "  Radius: %-6.1f"%rad
+      print "  fracscat:", self.ncs_pairs[i].fracscat
 
 def lbfgs_run(target_evaluator, use_bounds):
   minimizer = lbfgsb.minimizer(
