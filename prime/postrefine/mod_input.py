@@ -231,7 +231,7 @@ n_postref_cycle = 3
 n_postref_sub_cycle = 3
   .type = int
   .help = No. of cycles for the least-squares minimization in post-refinement.
-n_rejection_cycle = 3
+n_rejection_cycle = 1
   .type = int
   .help = No. of cycles for the outlier rejection.
 sigma_rejection = 3
@@ -294,40 +294,15 @@ reindex_apply_to = None
 flag_normalized = False
   .type = bool
   .help = Set to True for amplitude normalization.
-sigma_global_min = 1.0
+sigma_global_min = 3.0
   .type = float
   .help = Minimum I/sigI cutoff (global value).
-iotacc
-  .help = "Parameters used in prime.iotacc selection."
-{
-  set_id = None
-    .type = str
-    .help = Crystal set id. Set to None for one single set.
-  n_shots = 99
-    .type = int
-    .help = Maximum no. of shots per crystal.
-    .optional = True
-  d_min = 0.1
-    .type = float
-    .help = Minimum resolution.
-  d_max = 99
-    .type = float
-    .help = Maximum resolution.
-  uc_tolerance = 3
-    .type = float
-    .help = Unit-cell tolerance in percent.
-  LEN_SHOT_SEQ = 5
-    .type = int
-    .help = No. of digits used to format shot no.
-    .optional = True
-  sigma_min = 1.5
-    .type = float
-    .help = Minimum I/sigI cutoff.
-  percent_top_cc = 10
-    .type = float
-    .help = Percent of best cc.
-    .optional = True
-}
+fraction_r_free = 0.1
+  .type = float
+  .help = Set to 0 to turn off Rfree calculation.
+n_clusters = 3
+  .type = int
+  .help = No. of clusters for image classification.
 """)
 
 txt_help = """**************************************************************************************************

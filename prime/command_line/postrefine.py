@@ -11,7 +11,8 @@ import numpy as np
 from cctbx.array_family import flex
 from datetime import datetime, time
 import math
-
+from cctbx import miller
+import matplotlib.pyplot as plt
 
 def determine_mean_I_mproc(frame_no, frame_files, iparams, avg_mode):
   from prime.postrefine import postref_handler
@@ -236,13 +237,55 @@ if (__name__ == "__main__"):
     print 'No reference intensity. Exit without post-refinement'
     exit()
 
-  #2. Post-refinement
+  if iparams.flag_plot:
+    #collect mean intensity of the reference set
+    obs_ref = miller_array_ref.deep_copy()
+    binner = obs_ref.setup_binner(n_bins=20)
+    binner_indices = binner.bin_indices()
+    obs_ref_mean = obs_ref.mean(use_binning=True)
+    I_ref_mean = flex.double([0]*binner.n_bins_used())
+    for i_bin in range(binner.n_bins_used()):
+      if obs_ref_mean.data[i_bin+1] is not None:
+        I_ref_mean[i_bin] = obs_ref_mean.data[i_bin+1]
+    I_raw_set = []
+    for pres in observations_merge_mean_set:
+      obs = pres.observations.deep_copy()
+      obs.use_binning_of(obs_ref)
+      obs_mean = obs.mean(use_binning=True)
+      I_mean = flex.double([0]*binner.n_bins_used())
+      one_dsqr = flex.double()
+      for i_bin in range(binner.n_bins_used()):
+        one_dsqr.append(1/binner.bin_d_range(i_bin+1)[1]**2)
+        if obs_mean.data[i_bin+1] is not None:
+          I_mean[i_bin] = obs_mean.data[i_bin+1]
+      I_raw_set.append(I_mean)
+
+    for I_mean,cn_plot in zip(I_raw_set, range(len(I_raw_set))):
+      plt.plot(one_dsqr, flex.log(I_mean), linestyle='-', linewidth=2.0, c='b')
+    plt.title('Wilson plot before scaling')
+    plt.xlabel('1/(d^2)')
+    plt.ylabel('Log(<I>)')
+    plt.grid()
+    plt.show()
+
+  #2. Generate Test Set
+  ma_ref_r_free_flags = None
+  if iparams.fraction_r_free > 0:
+    ma_ref_r_free_flags = miller_array_ref.generate_r_free_flags(fraction=iparams.fraction_r_free, n_shells=iparams.n_bins)
+    ma_indices_for_test = miller_array_ref.indices().select(ma_ref_r_free_flags.data())
+    txt_r_free_out = ''
+    for i in range(len(ma_indices_for_test)):
+      txt_r_free_out += str(ma_indices_for_test[i][0])+' '+str(ma_indices_for_test[i][1])+' '+str(ma_indices_for_test[i][2])+'\n'
+    f = open(iparams.run_no+'/rfree.txt', 'w')
+    f.write(txt_r_free_out)
+    f.close()
+
+  #3. Post-refinement
   n_iters = iparams.n_postref_cycle
   txt_merge_postref = ''
   postrefine_by_frame_result = None
   postrefine_by_frame_pres_list = []
   for i_iter in range(n_iters):
-    miller_array_ref = miller_array_ref.generate_bijvoet_mates()
     if i_iter == (n_iters-1):
       avg_mode = 'final'
     else:
@@ -342,11 +385,42 @@ if (__name__ == "__main__"):
                                                                wavelength_mean,
                                                                iparams.run_no+'/postref_cycle_'+str(i_iter+1), avg_mode)
 
+        #calculate R and Rfree
+        R_work, R_free = (0,0)
+        if ma_ref_r_free_flags is not None:
+          ma_ref_r_work_indices = ma_ref_r_free_flags.indices().select(ma_ref_r_free_flags.data()==False)
+          ma_ref_r_free_indices = ma_ref_r_free_flags.indices().select(ma_ref_r_free_flags.data())
+
+          matches = miller.match_multi_indices(
+                  miller_indices_unique=miller_array_ref.indices(),
+                  miller_indices=miller_array_pr.indices())
+          I_ref_match = flex.double([miller_array_ref.data()[pair[0]] for pair in matches.pairs()])
+          I_pr_match = flex.double([miller_array_pr.data()[pair[1]] for pair in matches.pairs()])
+          miller_indices_match = flex.miller_index([miller_array_pr.indices()[pair[1]] for pair in matches.pairs()])
+
+          matches = miller.match_multi_indices(
+                  miller_indices_unique=miller_indices_match,
+                  miller_indices=ma_ref_r_work_indices)
+          I_ref_work = flex.double([I_ref_match[pair[0]] for pair in matches.pairs()])
+          I_pr_work = flex.double([I_pr_match[pair[0]] for pair in matches.pairs()])
+
+          matches = miller.match_multi_indices(
+                  miller_indices_unique=miller_indices_match,
+                  miller_indices=ma_ref_r_free_indices)
+          I_ref_free = flex.double([I_ref_match[pair[0]] for pair in matches.pairs()])
+          I_pr_free = flex.double([I_pr_match[pair[0]] for pair in matches.pairs()])
+
+          R_work = math.sqrt(np.sum((I_ref_work - I_pr_work)**2)/np.sum(I_ref_work**2))
+          R_free = math.sqrt(np.sum((I_ref_free - I_pr_free)**2)/np.sum(I_ref_free**2))
+          txt_R_out =  ' Rwork:                   %12.2f%% REFL: %6.2f%%\n'%(R_work*100, (len(I_ref_work)/len(miller_indices_match))*100)
+          txt_R_out += ' Rfree:                   %12.2f%% REFL: %6.2f%%\n'%(R_free*100, (len(I_ref_free)/len(miller_indices_match))*100)
+
         miller_array_ref = miller_array_pr.deep_copy()
 
-        txt_merge_postref +=  txt_merge_out + txt_prep_out
+        txt_merge_postref +=  txt_merge_out + txt_prep_out + txt_R_out
         print txt_merge_out
         print txt_prep_out
+        print txt_R_out
     else:
       print "No frames merged as a reference set - exit without post-refinement"
       exit()

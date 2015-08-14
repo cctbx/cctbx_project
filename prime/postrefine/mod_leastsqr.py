@@ -808,6 +808,8 @@ class leastsqr_handler(object):
 
     I_o_fin = calc_full_refl(observations_original.data(), sin_theta_over_lambda_sq,
                               G, B, partiality_fin, rs_fin, iparams, observations_original)
+
+    #calculate stats
     SE_of_the_estimate = standard_error_of_the_estimate(I_r_flex,I_o_fin, 13)
     R_sq = coefficient_of_determination(I_r_flex,I_o_fin)*100
 
@@ -1018,4 +1020,3 @@ class leastsqr_handler(object):
     xopt = (G, B, rotx, roty, ry, rz, r0, re,a,b,c,alpha,beta,gamma)
 
     return xopt, (SE_of_the_estimate, R_sq, CC_init, CC_final, R_init, R_final, R_xy_init, R_xy_final, CC_iso_init, CC_iso_final), len(I_ref_sel)
-
