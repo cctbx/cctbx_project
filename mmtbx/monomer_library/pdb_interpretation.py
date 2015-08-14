@@ -179,15 +179,14 @@ master_params_str = """\
   automatic_linking
     .style = box auto_align hidden
     .short_caption = Automatic covalent linking
-    .caption = Please note that if the "Automatic ligand linking" option is \
-      selected in the main window, this will also enable the separate options \
-      for linking metals, carbohydrates, and amino acid residues.  You may \
-      alternately leave the global setting off and enable individual link \
-      types separately.
+    .caption = You may choose to run with the defaults or use the buttons \
+      below to select all or none of the linking options. Also, you may enable \
+      individual link types separately and adjust the cutoff values to \
+      fine-tune the link candidates.
   {
     link_all = False
       .type = bool
-      .short_caption = Automatic ligand linking
+      .short_caption = Automatic linking
       .help = If True, bond restraints will be generated for any appropriate \
         ligand-protein or ligand-nucleic acid covalent bonds. This includes \
         sugars, amino acid modifications, and other prosthetic groups.
