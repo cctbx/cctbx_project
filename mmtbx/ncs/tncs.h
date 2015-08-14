@@ -171,7 +171,7 @@ public:
       paying attention to terms from molecules that are in similar orientations.
     */
     for (int ipair = 0; ipair < n_pairs; ipair++) {
-      double wtfac(pairs[ipair].fracscat);
+      double wtfac(pairs[ipair].fracscat/sym_mat.size());
       dEps_by_drho[ipair] = 0.;
       for (int isym = 0; isym < sym_mat.size(); isym++) {
         // NCS-related contribution to epsilon, weighted by interference,
