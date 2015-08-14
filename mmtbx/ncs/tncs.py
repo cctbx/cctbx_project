@@ -42,7 +42,7 @@ class groups(object):
           for sc in sites_cart_sel - sites_cart_sel.mean():
             x,y,z = sc
             radius += math.sqrt(x**2+y**2+z**2)
-          radius = radius/sites_cart_sel.size()*2.
+          radius = radius/sites_cart_sel.size()*4./3.
           #
           self.rta.append([c.r, t_new, angle, radius])
     self.ncs_pairs = []
