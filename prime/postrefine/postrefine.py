@@ -23,12 +23,11 @@ class postref_handler(object):
     Constructor
     '''
 
-  def organize_input(self, observations_pickle, iparams, avg_mode, pickle_filename=None):
+  def organize_input(self, observations_pickle, iparams, avg_mode, pickle_filename=None, flag_exclude_rfree=False):
 
     """Given the pickle file, extract and prepare observations object and
     the alpha angle (meridional to equatorial).
     """
-      #print txt_exception
     if iparams.flag_weak_anomalous:
       if avg_mode == 'final':
         target_anomalous_flag = iparams.target_anomalous_flag
@@ -46,11 +45,16 @@ class postref_handler(object):
     else:
       from cctbx import sgtbx
       cb_op = sgtbx.change_of_basis_op(iparams.reindex_op)
+      #a,b,c,alpha,beta,gamma = observations.unit_cell().parameters()
+      #if c > 100:
+      #  observations = observations.change_basis(cb_op)
+
       if iparams.reindex_apply_to is None:
         observations = observations.change_basis(cb_op)
       else:
         if str(observations.space_group_info()) == str(iparams.reindex_apply_to):
           observations = observations.change_basis(cb_op)
+
 
     detector_distance_mm = observations_pickle['distance']
     mm_predictions = iparams.pixel_size_mm*(observations_pickle['mapped_predictions'][0])
@@ -111,38 +115,65 @@ class postref_handler(object):
       return None, txt_exception
 
 
+    #exclude rejected reflections
     import os.path
+    miller_indices_ori_rejected = flex.miller_index()
     if os.path.isfile(iparams.run_no+'/rejections.txt'):
       txt_out = pickle_filename + ' \nN_before_rejection: ' + str(len(observations.data())) + '\n'
       #remove observations from rejection list
       file_reject = open(iparams.run_no+'/rejections.txt', 'r')
       data_reject=file_reject.read().split("\n")
-      miller_indices_ori_rejected = flex.miller_index()
+
       for row_reject in data_reject:
         col_reject = row_reject.split()
         if len(col_reject) > 0:
           if col_reject[0].strip() == pickle_filename:
             miller_indices_ori_rejected.append((int(col_reject[1].strip()), int(col_reject[2].strip()), int(col_reject[3].strip())))
 
-      if len(miller_indices_ori_rejected) > 0:
-        i_sel_flag = flex.bool([True]*len(observations.data()))
-        for miller_index_ori_rejected in miller_indices_ori_rejected:
-          i_index_ori = 0
-          for miller_index_ori in observations.indices():
-            if miller_index_ori_rejected == miller_index_ori:
-              i_sel_flag[i_index_ori] = False
-              txt_out += ' -Discard:' + str(miller_index_ori[0]) + \
-          ','+str(miller_index_ori[1])+','+str(miller_index_ori[2]) + '\n'
-            i_index_ori += 1
+    if len(miller_indices_ori_rejected) > 0:
+      i_sel_flag = flex.bool([True]*len(observations.data()))
+      for miller_index_ori_rejected in miller_indices_ori_rejected:
+        i_index_ori = 0
+        for miller_index_ori in observations.indices():
+          if miller_index_ori_rejected == miller_index_ori:
+            i_sel_flag[i_index_ori] = False
+            txt_out += ' -Discard:' + str(miller_index_ori[0])+','+str(miller_index_ori[1])+','+str(miller_index_ori[2]) + '\n'
+          i_index_ori += 1
 
+      observations = observations.select(i_sel_flag)
+      alpha_angle_obs = alpha_angle_obs.select(i_sel_flag)
+      spot_pred_x_mm = spot_pred_x_mm.select(i_sel_flag)
+      spot_pred_y_mm = spot_pred_y_mm.select(i_sel_flag)
+      txt_out += 'N_after_rejection: ' + str(len(observations.data())) + '\n'
 
-        observations = observations.customized_copy(indices=observations.indices().select(i_sel_flag),
-            data=observations.data().select(i_sel_flag),
-            sigmas=observations.sigmas().select(i_sel_flag))
-        alpha_angle_obs = alpha_angle_obs.select(i_sel_flag)
-        spot_pred_x_mm = spot_pred_x_mm.select(i_sel_flag)
-        spot_pred_y_mm = spot_pred_y_mm.select(i_sel_flag)
-        txt_out += 'N_after_rejection: ' + str(len(observations.data())) + '\n'
+    #exclude test set - if flag_exclude_rfree is on
+    miller_indices_ori_rejected = flex.miller_index()
+    if flag_exclude_rfree:
+      fname_r_free = iparams.run_no+'/rfree.txt'
+      if os.path.isfile(fname_r_free):
+        file_r_free = open(fname_r_free,'r')
+        data_r_free = file_r_free.read().split("\n")
+        for data in data_r_free:
+          data_arr = data.split()
+          if len(data_arr) > 0 :
+            miller_indices_ori_rejected.append((int(data_arr[0].strip()), int(data_arr[1].strip()), int(data_arr[2].strip())))
+
+    observations_asu = observations.map_to_asu()
+    if len(miller_indices_ori_rejected) > 0:
+      i_sel_flag = flex.bool([True]*len(observations.data()))
+      for miller_index_ori_rejected in miller_indices_ori_rejected:
+        i_index_ori = 0
+        for miller_index_ori in observations_asu.indices():
+          if miller_index_ori_rejected == miller_index_ori:
+            i_sel_flag[i_index_ori] = False
+            txt_out += ' -Discard:' + str(miller_index_ori[0])+','+str(miller_index_ori[1])+','+str(miller_index_ori[2]) + '\n'
+          i_index_ori += 1
+
+      observations = observations.select(i_sel_flag)
+      alpha_angle_obs = alpha_angle_obs.select(i_sel_flag)
+      spot_pred_x_mm = spot_pred_x_mm.select(i_sel_flag)
+      spot_pred_y_mm = spot_pred_y_mm.select(i_sel_flag)
+      txt_out += 'N_after_rejection: ' + str(len(observations.data())) + '\n'
 
 
     #filter resolution
@@ -273,8 +304,6 @@ class postref_handler(object):
       cc_asu = np.corrcoef(I_ref_match, I_obs_match)[0,1]
       n_refl_asu = len(matches.pairs())
 
-
-
       matches = miller.match_multi_indices(
                   miller_indices_unique=miller_array_polar.indices(),
                   miller_indices=observations_rev.indices())
@@ -324,7 +353,7 @@ class postref_handler(object):
     img_filename_only = pickle_filepaths[len(pickle_filepaths)-1]
     txt_exception = ' {0:40} ==> '.format(img_filename_only)
 
-    inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename)
+    inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename, flag_exclude_rfree=True)
     if inputs is not None:
       observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = inputs
     else:
@@ -379,6 +408,9 @@ class postref_handler(object):
     G_fin, B_fin, rotx_fin, roty_fin, ry_fin, rz_fin, r0_fin, re_fin, \
         a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin = refined_params
     inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename)
+    if inputs is None:
+      print ' {0:40} ==> {1:50}'.format(img_filename_only, txt_organize_input)
+      return None, txt_organize_input
     observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = inputs
     observations_non_polar = self.get_observations_non_polar(observations_original, polar_hkl)
 
@@ -472,7 +504,7 @@ class postref_handler(object):
       cc_change = ((pres.CC_final - pres.CC_init)/pres.CC_init)*100
       cc_iso_change = ((pres.CC_iso_final - pres.CC_iso_init)/pres.CC_iso_init)*100
     except Exception:
-        pass
+      pass
 
     txt_postref= ' {0:40} ==> RES:{1:5.2f} NREFL:{2:5d} R:{3:8.2f}% RXY:{4:8.2f}% CC:{5:6.2f}% CCISO:{6:6.2f}% CELL:{7:6.2f} {8:6.2f} {9:6.2f} {10:6.2f} {11:6.2f} {12:6.2f}'.format(img_filename_only, observations_original_sel.d_min(), len(observations_original_sel.data()), r_change, r_xy_change, cc_change, cc_iso_change, a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin)
     print txt_postref
@@ -577,33 +609,48 @@ class postref_handler(object):
     observations_non_polar_full = observations_non_polar.customized_copy(data=observations_non_polar.data()/partiality_init, \
         sigmas=observations_non_polar.sigmas()/partiality_init)
 
+    #filter by resolution and sigmas
+    observations_non_polar_full_sel = observations_non_polar_full.resolution_filter(d_min=iparams.scale.d_min, d_max=iparams.scale.d_max)
+    i_sel = (observations_non_polar_full_sel.data()/observations_non_polar_full_sel.sigmas()) > iparams.scale.sigma_min
+    observations_non_polar_full_sel = observations_non_polar_full_sel.select(i_sel)
+    n_refl_used = len(observations_non_polar_full_sel.data())
+
+    if len(observations_non_polar_full_sel.data()) == 0:
+      txt_exception += 'rejected (no reflections pass filter selection)\n'
+      return None, txt_exception
+
     #calculate first G
-    G = mean_of_mean_I/np.median(observations_non_polar.data())
+    G = mean_of_mean_I/np.median(observations_non_polar_full_sel.data())
     B = 0
     stats = (0,0,0,0,0,0,0,0,0,0)
+    asu_contents = {}
+    if iparams.n_residues is None:
+      asu_volume = iparams.target_unit_cell.volume()/float(observations_non_polar_full_sel.space_group().order_z())
+      number_carbons = asu_volume/18.0
+    else:
+      number_carbons = iparams.n_residues * 5.35
+    asu_contents.setdefault('C', number_carbons)
 
-    if iparams.flag_apply_b_by_frame or iparams.flag_normalized:
+    if iparams.flag_apply_b_by_frame:
       try:
-        asu_contents = {}
-        if iparams.n_residues is None:
-          asu_volume = iparams.target_unit_cell.volume()/float(observations_non_polar_full.space_group().order_z())
-          number_carbons = asu_volume/18.0
-        else:
-          number_carbons = iparams.n_residues * 5.35
-        asu_contents.setdefault('C', number_carbons)
-        observations_as_f = observations_non_polar_full.as_amplitude_array()
+        observations_as_f = observations_non_polar_full_sel.as_amplitude_array()
         binner_template_asu = observations_as_f.setup_binner(auto_binning=True)
         wp = statistics.wilson_plot(observations_as_f, asu_contents, e_statistics=True)
-
+        G, B = (wp.wilson_intensity_scale_factor*100,wp.wilson_b)
       except Exception:
         txt_exception += 'warning (bad Wilson scaling)\n'
         return None, txt_exception
 
-    if iparams.flag_apply_b_by_frame:
-      G, B = (wp.wilson_intensity_scale_factor,wp.wilson_b)
-
     if iparams.flag_normalized:
       #output normalized structure factors
+      try:
+        observations_as_f = observations_non_polar_full.as_amplitude_array()
+        binner_template_asu = observations_as_f.setup_binner(auto_binning=True)
+        wp = statistics.wilson_plot(observations_as_f, asu_contents, e_statistics=True)
+      except Exception:
+        txt_exception += 'warning (bad Wilson scaling)\n'
+        return None, txt_exception
+
       w_I = observations_non_polar_full.data()/ observations_non_polar_full.sigmas()
       new_sigmas = (wp.normalised_f_obs.data()*1)/w_I
       observations_non_polar = observations_non_polar.customized_copy(data=wp.normalised_f_obs.data()*1, \
@@ -613,7 +660,7 @@ class postref_handler(object):
       #reset partiality and scale factors
       partiality_init = flex.double([1]*len(observations_original.data()))
       G, B = (1,0)
-
+      n_refl_used = len(observations_non_polar_full.data())
 
     refined_params = np.array([G,B,rotx,roty,ry,rz,r0,re,uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5]])
 
@@ -629,7 +676,7 @@ class postref_handler(object):
             pickle_filename=pickle_filename,
             wavelength=wavelength)
 
-    txt_scale_frame_by_mean_I = ' {0:40} ==> RES:{1:5.2f} NREFL:{2:5d} G:{3:10.3e} B:{4:6.2f} CELL:{5:6.2f} {6:6.2f} {7:6.2f} {8:6.2f} {9:6.2f} {10:6.2f}'.format(img_filename_only, observations_original.d_min(), len(observations_original.data()), G, B, uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5])
+    txt_scale_frame_by_mean_I = ' {0:40} ==> RES:{1:5.2f} NREFL:{2:5d} G:{3:10.3e} B:{4:6.2f} CELL:{5:6.2f} {6:6.2f} {7:6.2f} {8:6.2f} {9:6.2f} {10:6.2f}'.format(img_filename_only, observations_original.d_min(), n_refl_used, G, B, uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5])
 
     print txt_scale_frame_by_mean_I
     txt_scale_frame_by_mean_I += '\n'
