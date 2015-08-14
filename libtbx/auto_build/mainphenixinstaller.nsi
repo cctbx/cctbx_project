@@ -169,9 +169,10 @@ Section -AdditionalIcons
   WriteIniStr "$INSTDIR\${PRODUCT_NAME}.url" "InternetShortcut" "URL" "${PRODUCT_WEB_SITE}"
   CreateDirectory "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}"
   CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\${PRODUCT_NAME}${PRODUCT_VERSION}.lnk" "$INSTDIR\${SOURCEDIR}\build\bin\phenix.bat" "" "${MYICON}" 0 SW_SHOWMINIMIZED
-  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Documentation.lnk" "$INSTDIR\${SOURCEDIR}\build\bin\phenix.doc.bat" "" "$WINDIR\hh.exe" 0
-  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Phenix.Python.lnk" "$INSTDIR\${SOURCEDIR}\build\bin\phenix.python.bat" "" "$INSTDIR\${SOURCEDIR}\base\bin\python\python.exe"
-  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Phenix Command Prompt.lnk" "$SYSDIR\cmd.exe" "/k $\"$INSTDIR\${SOURCEDIR}\phenix_env.bat$\"" "$SYSDIR\cmd.exe"
+  CreateShortCut "$DESKTOP\${PRODUCT_NAME}${PRODUCT_VERSION}.lnk" "$INSTDIR\${SOURCEDIR}\build\bin\phenix.bat" "" "${MYICON}" 0 SW_SHOWMINIMIZED
+  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Documentation ${PRODUCT_VERSION}.lnk" "$INSTDIR\${SOURCEDIR}\build\bin\phenix.doc.bat" "" "$WINDIR\hh.exe" 0
+  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Phenix.Python ${PRODUCT_VERSION}.lnk" "$INSTDIR\${SOURCEDIR}\build\bin\phenix.python.bat" "" "$INSTDIR\${SOURCEDIR}\base\bin\python\python.exe"
+  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Phenix Command Prompt ${PRODUCT_VERSION}.lnk" "$SYSDIR\cmd.exe" "/k $\"$INSTDIR\${SOURCEDIR}\phenix_env.bat$\"" "$SYSDIR\cmd.exe"
   CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Uninstall${PRODUCT_NAME}${PRODUCT_VERSION}.lnk" "${UNINSTEXE}" "" "${UNINSTEXE}"
   CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\PHENIX Website.lnk" "${PRODUCT_WEB_SITE}" "" "$PROGRAMFILES\Internet Explorer\iexplore.exe" 0
   !insertmacro MUI_STARTMENU_WRITE_END
@@ -188,7 +189,8 @@ SectionEnd
 
 
 Function MyOnGUIinit
-!insertmacro UnSelectSection ${SEC01}
+;!insertmacro UnSelectSection ${SEC01}
+!insertmacro SelectSection ${SEC01}
 !insertmacro UnSelectSection ${SEC02}
 FunctionEnd
 
@@ -218,6 +220,7 @@ Section Uninstall
   !insertmacro MUI_STARTMENU_GETFOLDER "Application" $ICONS_GROUP
 
   RMDir /r "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}"
+  Delete "$DESKTOP\${PRODUCT_NAME}${PRODUCT_VERSION}.lnk"
   RMDir /r "$INSTDIR\${SOURCEDIR}"
   Delete "${UNINSTEXE}"
 
