@@ -84,10 +84,6 @@ sheet
     .type = float
   top_out = False
     .type = bool
-  backbone_only = False
-    .type = bool
-    .help = Only applies to rigid-body groupings, and not H-bond restraints \
-      which are already backbone-only.
   hbond
     .multiple = True
     .optional = True
