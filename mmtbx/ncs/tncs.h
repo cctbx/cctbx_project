@@ -60,7 +60,7 @@ class tncs_eps_factor_refinery { // Gfunction in Phaser
 public:
   af::shared<af::double6> GfunTensorArray;
   af::shared<scitbx::vec3<FloatType> > ncsDeltaT;
-  af::shared<FloatType> dEps_by_drho;
+  af::shared<FloatType> dEps_by_drho,dEps_by_dradius;
   FloatType refl_epsfac;
   af::shared<pair<FloatType> > pairs;
   int dim;
@@ -79,7 +79,8 @@ public:
   bool do_target;
   bool do_gradient;
   // resulting gradient
-  af::shared<FloatType> Gradient;
+  af::shared<FloatType> Gradient_rhoMN;
+  af::shared<FloatType> Gradient_radius;
 
   tncs_eps_factor_refinery(
     bp::list const& pairs_,
@@ -159,6 +160,14 @@ public:
     }
   }
 
+  // XXX This function should probably be moved to scitbx
+  double dGfunc_by_dR(double r, double s)
+  {
+    double twoPiRS(scitbx::constants::two_pi*r*s);
+    return 3*(3*twoPiRS*std::cos(twoPiRS) + (scitbx::fn::pow2(twoPiRS)-3.)*std::sin(twoPiRS)) /
+           (r*scitbx::fn::pow3(twoPiRS));
+  }
+
   void calcRefineTerms(cctbx::miller::index<int> const& miller, int sbin)
   {
     /* Calculate tNCS-related epsilon factor (to multiply by normal
@@ -166,6 +175,7 @@ public:
        refine parameters characterising the tNCS
     */
     dEps_by_drho.resize(n_pairs);
+    dEps_by_dradius.resize(n_pairs);
     refl_epsfac = 1.; // Epsilon before modulation by tNCS
     /*Use half-triple summation rather than full quadruple summation, i.e. only
       paying attention to terms from molecules that are in similar orientations.
@@ -173,6 +183,7 @@ public:
     for (int ipair = 0; ipair < n_pairs; ipair++) {
       double wtfac(pairs[ipair].fracscat/sym_mat.size());
       dEps_by_drho[ipair] = 0.;
+      dEps_by_dradius[ipair] = 0.;
       for (int isym = 0; isym < sym_mat.size(); isym++) {
         // NCS-related contribution to epsilon, weighted by interference,
         // G-function and rhoMN terms
@@ -189,7 +200,12 @@ public:
         FloatType GcosTerm = 2.*Gf*cosTerm;
         refl_epsfac += GcosTerm*wtfac*pairs[ipair].rho_mn[sbin]; // stored parameter
         if (do_gradient)
+        {
           dEps_by_drho[ipair] += GcosTerm*wtfac;
+          double sklmn = std::sqrt(rsSqr)/pairs[ipair].radius;
+          dEps_by_dradius[ipair] += 2.*cosTerm*wtfac*pairs[ipair].rho_mn[sbin] *
+                                    dGfunc_by_dR(pairs[ipair].radius,sklmn);
+        }
       }
     }
   }
@@ -198,10 +214,12 @@ public:
   {
     int nbins = pairs[0].rho_mn.size();
     int npars_ref = n_pairs*nbins;
-    // Reset gradinet
+    // Reset gradient
     if(do_gradient) {
-      Gradient.resize(npars_ref);
-      Gradient.fill(0);
+      Gradient_rhoMN.resize(npars_ref);
+      Gradient_rhoMN.fill(0);
+      Gradient_radius.resize(n_pairs);
+      Gradient_radius.fill(0);
     }
     //function, and analytic gradient for rhoMN parameters
     double minusLL(0);
@@ -209,7 +227,7 @@ public:
     for (unsigned r = 0; r < f_obs.size(); r++) {
       FloatType dLL_by_dEps(0);
       /*
-      PVA: look-up array of integer numbers for each refletion telling which
+      PVA: look-up array of integer numbers for each reflection telling which
            resolution bin it belongs to. Say this Fobs belongs to bin number 12.
       */
       int s = rbin(r);
@@ -245,7 +263,8 @@ public:
       }
       if(do_gradient) {
         for(int ipair = 0; ipair < n_pairs; ipair++) {
-          Gradient[ipair*nbins+s] += dLL_by_dEps*dEps_by_drho[ipair];
+          Gradient_rhoMN[ipair*nbins+s] += dLL_by_dEps*dEps_by_drho[ipair];
+          Gradient_radius[ipair] += dLL_by_dEps*dEps_by_dradius[ipair];
         }
       }
     } // loop over reflections
@@ -257,9 +276,9 @@ public:
           double delta = pairs[ipair].rho_mn[s] - dmean;
           minusLL += rhoMNbinwt*scitbx::fn::pow2(delta);
           if(do_gradient) {
-            Gradient[ipair*nbins+s-1] -= rhoMNbinwt*delta;
-            Gradient[ipair*nbins+s]   += 2.*rhoMNbinwt*delta;
-            Gradient[ipair*nbins+s+1] -= rhoMNbinwt*delta;
+            Gradient_rhoMN[ipair*nbins+s-1] -= rhoMNbinwt*delta;
+            Gradient_rhoMN[ipair*nbins+s]   += 2.*rhoMNbinwt*delta;
+            Gradient_rhoMN[ipair*nbins+s+1] -= rhoMNbinwt*delta;
           }
         }
       }
@@ -272,7 +291,7 @@ public:
   }
 
   af::shared<FloatType> gradient() {
-    return Gradient;
+    return Gradient_rhoMN;
   }
 
 };
