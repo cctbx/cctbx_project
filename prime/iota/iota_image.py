@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 08/12/2015
+Last Changed: 08/14/2015
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -29,7 +29,7 @@ class Empty: pass
 
 class SingleImage(object):
 
-  def __init__(self, img, init, imported_grid=None):
+  def __init__(self, img, init, verbose=True, imported_grid=None):
     """ Constructor for the SingleImage object using a raw image file or pickle
     """
 
@@ -46,6 +46,7 @@ class SingleImage(object):
     self.gs_results = []
     self.main_log = init.logfile
     self.prefilter = True
+    self.verbose = verbose
 
     self.input_base = init.input_base
     self.conv_base = init.conv_base
@@ -109,35 +110,10 @@ class SingleImage(object):
 
     int_line = {'img':self.conv_img, 'sih':0, 'sph':0, 'spa':0, 'a':0, 'b':0,
                 'c':0, 'alpha':0, 'beta':0, 'gamma':0, 'sg':'', 'strong':0,
-                'res':0, 'mos':0, 'epv':0, 'info':'', 'final':''}
+                'res':0, 'mos':0, 'epv':0, 'info':'', 'final':None}
 
     return gs_block, int_line
 
-
-  def check_image(self):
-    """ Determines whether image has been converted [DEPRECATED] """
-    try:
-      with misc.Capturing() as suppressed_junk:
-        loaded_img = dxtbx.load(self.raw_img)
-    except IOError:
-      loaded_img = None
-      pass
-    if loaded_img is not None:
-      scan = loaded_img.get_scan()
-      if scan is None:
-        detector   = loaded_img.get_detector()[0]
-        beam       = loaded_img.get_beam()
-        beam_x     = detector.get_beam_centre(beam.get_s0())[0]
-        beam_y     = detector.get_beam_centre(beam.get_s0())[1]
-        if abs(beam_x - beam_y) <= 0.1 or self.params.image_conversion.square_mode == "None":
-          verdict = 'converted'
-        else:
-          verdict = 'unconverted'
-      else:
-        verdict = 'unconverted'
-    else:
-      verdict = None
-    return verdict
 
   def load_image(self):
     """ Reads raw image file and extracts data for conversion into pickle
@@ -386,10 +362,10 @@ class SingleImage(object):
       if self.args.mpi != None:
         ep.dump(self.gs_file, self)
 
-
-    log_entry = "\n".join(self.log_info)
-    misc.main_log(self.main_log, log_entry)
-    misc.main_log(self.main_log, '\n')
+    if self.verbose:
+      log_entry = "\n".join(self.log_info)
+      misc.main_log(self.main_log, log_entry)
+      misc.main_log(self.main_log, '\n')
 
     return self
 
@@ -494,89 +470,92 @@ class SingleImage(object):
   def integrate(self, tag):
     """ Runs integration using the Integrator class """
 
-    if self.triage == 'rejected' or not self.prefilter:
+    if self.triage == 'rejected' or not self.prefilter or \
+       len(self.grid) == 0 or self.final['final'] == None:
       self.grid = []
-      return self
+      self.final['final'] = None
 
-    from prime.iota.iota_integrate import Integrator
-    integrator = Integrator(self.conv_img,
-                            self.fin_file,
-                            self.params.selection.min_sigma,
-                            self.params.target,
-                            self.params.advanced.charts,
-                            self.viz_path,
-                            self.int_log,
-                            tag)
+    else:
+      from prime.iota.iota_integrate import Integrator
+      integrator = Integrator(self.conv_img,
+                              self.fin_file,
+                              self.params.selection.min_sigma,
+                              self.params.target,
+                              self.params.advanced.charts,
+                              self.viz_path,
+                              self.int_log,
+                              tag)
 
-    if tag == 'grid search':
-      # Check if this is select-only, check for *.int files and load results
-      if self.params.selection.select_only.flag_on:
-        gs_result_file = self.determine_gs_result_file()
-        gs_result = ep.load(gs_result_file).grid
-        self.grid.update(gs_result)
-      else:
-        # Linear grid search (for now)
-        for i in range(len(self.grid)):
-          int_results = integrator.integrate(self.grid[i])
-          self.grid[i].update(int_results)
-          img_filename = os.path.basename(self.conv_img)
-          log_entry ='{:<{width}}: S = {:<3} H = {:<3} ' \
-                     'A = {:<3} ---> {}'.format(img_filename,
-                      self.grid[i]['sih'],
-                      self.grid[i]['sph'],
-                      self.grid[i]['spa'],
-                      self.grid[i]['info'],
-                      width = len(img_filename) + 2)
+      if tag == 'grid search':
+        # Check if this is select-only, check for *.int files and load results
+        if self.params.selection.select_only.flag_on:
+          gs_result_file = self.determine_gs_result_file()
+          gs_result = ep.load(gs_result_file).grid
+          self.grid.update(gs_result)
+        else:
+          # Linear grid search (for now)
+          for i in range(len(self.grid)):
+            int_results = integrator.integrate(self.grid[i])
+            self.grid[i].update(int_results)
+            img_filename = os.path.basename(self.conv_img)
+            log_entry ='{:<{width}}: S = {:<3} H = {:<3} ' \
+                       'A = {:<3} ---> {}'.format(img_filename,
+                        self.grid[i]['sih'],
+                        self.grid[i]['sph'],
+                        self.grid[i]['spa'],
+                        self.grid[i]['info'],
+                        width = len(img_filename) + 2)
+            if self.verbose:
+              misc.main_log(self.main_log, log_entry)
+            self.gs_results.append(log_entry)
+
+        # Throw out grid search results that yielded no integration
+        self.grid = [i for i in self.grid if "not integrated" not in i['info'] and\
+                     "no data recorded" not in i['info']]
+
+      elif tag == 'integrate':
+        # Single integration event with selected parameters
+        # Exit if image failed to integrate
+        final_results = integrator.integrate(self.final)
+        self.final.update(final_results)
+        img_filename = os.path.basename(self.conv_img)
+        log_entry ='{:<{width}}: S = {:<3} H = {:<3} ' \
+                   'A = {:<3} ---> {}'.format(img_filename,
+                    self.final['sih'],
+                    self.final['sph'],
+                    self.final['spa'],
+                    self.final['info'],
+                    width = len(img_filename) + 2)
+        if self.verbose:
           misc.main_log(self.main_log, log_entry)
-          self.gs_results.append(log_entry)
 
-      # Throw out grid search results that yielded no integration
-      self.grid = [i for i in self.grid if "not integrated" not in i['info'] and\
-                   "no data recorded" not in i['info']]
+        if self.params.advanced.viz == 'integration':
+          viz.make_png(self.final['img'], self.final['final'], self.viz_file)
+        elif self.params.advanced.viz == 'cv_vectors':
+          viz.cv_png(self.final['img'], self.final['final'], self.viz_file)
 
-      # Save image object to file for MPI
-      ep.dump(self.gs_file, self)
-
-    elif tag == 'integrate':
-      # Single integration event with selected parameters
-      # Exit if image failed to integrate
-      if self.final['final'] == None:
-        return self
-      final_results = integrator.integrate(self.final)
-      self.final.update(final_results)
-      img_filename = os.path.basename(self.conv_img)
-      log_entry ='{:<{width}}: S = {:<3} H = {:<3} ' \
-                 'A = {:<3} ---> {}'.format(img_filename,
-                  self.final['sih'],
-                  self.final['sph'],
-                  self.final['spa'],
-                  self.final['info'],
-                  width = len(img_filename) + 2)
-      misc.main_log(self.main_log, log_entry)
-
-      if self.params.advanced.viz == 'integration':
-        viz.make_png(self.final['img'], self.final['final'], self.viz_file)
-      elif self.params.advanced.viz == 'cv_vectors':
-        viz.cv_png(self.final['img'], self.final['final'], self.viz_file)
-
+    # Save image object to file for MPI
+    ep.dump(self.gs_file, self)
     return self
 
 
   def select(self):
     """ Selects best grid search result using the Selector class """
 
-    from prime.iota.iota_integrate import Selector
-    selector = Selector(self.grid,
-                        self.final,
-                        self.params.selection.prefilter.flag_on,
-                        self.params.selection.prefilter.target_uc_tolerance,
-                        self.params.selection.prefilter.target_pointgroup,
-                        self.params.selection.prefilter.target_unit_cell,
-                        self.params.selection.prefilter.min_reflections,
-                        self.params.selection.prefilter.min_resolution)
+    if self.triage == 'accepted':
+      from prime.iota.iota_integrate import Selector
+      selector = Selector(self.grid,
+                          self.final,
+                          self.params.selection.prefilter.flag_on,
+                          self.params.selection.prefilter.target_uc_tolerance,
+                          self.params.selection.prefilter.target_pointgroup,
+                          self.params.selection.prefilter.target_unit_cell,
+                          self.params.selection.prefilter.min_reflections,
+                          self.params.selection.prefilter.min_resolution)
 
-    self.final, log_entry = selector.select()
-    misc.main_log(self.main_log, log_entry)
+      self.final, log_entry = selector.select()
+      if self.verbose:
+        misc.main_log(self.main_log, log_entry)
 
     # Save results into a pickle file
     ep.dump(self.gs_file, self)

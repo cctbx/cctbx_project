@@ -5,10 +5,10 @@ Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
 Last Changed: 07/29/2015
 Description : IOTA command-line module for running modules in order.
-              Version 2.02
+              Version 2.04
 '''
 
-iota_version = '2.02'
+iota_version = '2.04'
 help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 
@@ -106,9 +106,9 @@ def parallel_map (
 
 def run_wrapper(input_entry):
   """ Multiprocessor wrapper for image conversion  """
-  return run_one_image(input_entry, init)
+  return run_one_image(input_entry, init, progbar=False)
 
-def run_one_image(image, init):
+def run_one_image(image, init, progbar=True):
 
   def advance_progbar(prog_count, n_img):
     if 'imp' in args.mpi:
@@ -129,11 +129,12 @@ def run_one_image(image, init):
 
   if 'imp' in args.mpi:
     # Import image
-    single_image = img.SingleImage(image, init)
+    single_image = img.SingleImage(image, init, verbose=True)
     img_object = single_image.import_image()
 
     # Check / convert / triage image
-    advance_progbar(image[0], image[1])
+    if progbar:
+      advance_progbar(image[0], image[1])
     img_object = single_image.convert_image()
 
     # Exit if the image does not have diffraction
@@ -146,7 +147,8 @@ def run_one_image(image, init):
   if 'gri' in args.mpi:
     # Grid search
     if single_image.triage == 'accepted':
-      advance_progbar(image[0], image[1])
+      if progbar:
+        advance_progbar(image[0], image[1])
       img_object = single_image.integrate('grid search')
     else:
       return single_image
@@ -154,20 +156,23 @@ def run_one_image(image, init):
   elif 'sel' in args.mpi:
     # Selection
     if len(single_image.grid) != 0 and single_image.triage == 'accepted':
-      advance_progbar(image[0], image[1])
+      if progbar:
+        advance_progbar(image[0], image[1])
       img_object = single_image.select()
     elif len(single_image.grid) == 0 or single_image.triage == 'rejected':
       return single_image
 
     # Exit if image not integrated
     if single_image.final['final'] == None:
-      advance_progbar(image[0], image[1])
+      if progbar:
+        advance_progbar(image[0], image[1])
       return single_image
 
   elif 'fin' in args.mpi:
     # Final integration
     if single_image.final['final'] != None:
-      advance_progbar(image[0], image[1])
+      if progbar:
+        advance_progbar(image[0], image[1])
       img_object = single_image.integrate('integrate')
     else:
       return single_image
@@ -213,22 +218,23 @@ if __name__ == "__main__":
       inp_list = [ep.load(os.path.join(init.gs_base, i)) for i in os.listdir(init.gs_base)]
 
     # Run all modules in order in multiprocessor mode
-    cmd.Command.start(msg)
+    #cmd.Command.start(msg)
     img_list = [[i, len(inp_list) + 1, j] for i, j in enumerate(inp_list, 1)]
     img_objects = parallel_map(iterable  = img_list,
                                func      = run_wrapper,
                                processes = init.params.n_processors,
                                method    = init.params.mp_method,
                                preserve_order = False)
-    cmd.Command.end("{} -- DONE ".format(msg))
+    #cmd.Command.end("{} -- DONE ".format(msg))
     misc.iota_exit(iota_version, True)
 
   else:
     img_objects = [ep.load(os.path.join(init.gs_base, i)) for i in os.listdir(init.gs_base)]
-    if len(img_objects) != 0:
+    int_objects = [i for i in img_objects if i.final['final'] != None]
+    if len(int_objects) != 0:
 
       # Analysis of integration results
-      analysis = Analyzer(img_objects, init.logfile, iota_version, init.now)
+      analysis = Analyzer(int_objects, init.logfile, iota_version, init.now)
       analysis.print_results()
       analysis.unit_cell_analysis(init.params.advanced.cluster_threshold,
                                   init.int_base)

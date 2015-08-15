@@ -242,8 +242,7 @@ class InitAll(object):
       self.input_list = self.make_input_list()
 
     # Generate base folder paths
-    if self.params.image_conversion.convert_images:
-      self.conv_base = misc.set_base_dir('converted_pickles')
+    self.conv_base = misc.set_base_dir('converted_pickles')
     self.int_base = misc.set_base_dir('integration')
     self.gs_base = os.path.join(self.int_base, 'grid_search')
     self.fin_base = os.path.join(self.int_base, 'final')
