@@ -129,7 +129,7 @@ def run_one_image(image, init, progbar=True):
 
   if 'imp' in args.mpi:
     # Import image
-    single_image = img.SingleImage(image, init, verbose=True)
+    single_image = img.SingleImage(image, init, verbose=False)
     img_object = single_image.import_image()
 
     # Check / convert / triage image
