@@ -37,9 +37,6 @@ target = target.phil
 image_conversion
   .help = Parameters for raw image conversion to pickle format
 {
-  convert_images = True
-    .type = bool
-    .help = Set to False to force non-conversion of images
   rename_pickle_prefix = Auto
     .type = str
     .help = Specify prefix (e.g. "HEWL_room_temp") to rename all input images
