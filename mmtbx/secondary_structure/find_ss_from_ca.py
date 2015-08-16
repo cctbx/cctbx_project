@@ -571,7 +571,7 @@ def remove_bad_annotation(annotation,hierarchy=None,
      minimum_overlap=None,
      remove_overlaps=True,
      out=sys.stdout):
-  # ZZZ perhaps move this to secondary_structure.py
+  # XXX perhaps move this to secondary_structure.py
 
   # remove parts of annotation that do not exist in the hierarchy or
   #  that overlap with other annotations
@@ -2808,11 +2808,6 @@ class helix_strand_segments:
 
     self.all_pdb_records=all_pdb_records.getvalue()
 
-  def get_pdb_annotation(self):
-    return secondary_structure.annotation(
-        helices=self.get_pdb_alpha_helix_list(),
-        sheets=self.get_pdb_sheet_list())
-
   def get_pdb_alpha_helix_list(self):
     if hasattr(self,'pdb_alpha_helix_list'):
       return self.pdb_alpha_helix_list
@@ -3075,7 +3070,7 @@ class find_secondary_structure: # class to look for secondary structure
         print >>out,fss.h_bond_text
         self.number_of_good_h_bonds=fss.number_of_good_h_bonds
         self.number_of_poor_h_bonds=fss.number_of_poor_h_bonds
-        working_annotation=fss.get_pdb_annotation()
+        working_annotation=fss.get_annotation()
       else:
         self.number_of_good_h_bonds=0
         self.number_of_poor_h_bonds=0
