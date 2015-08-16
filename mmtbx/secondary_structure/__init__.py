@@ -251,7 +251,7 @@ class manager (object) :
       fss = find_ss_from_ca.find_secondary_structure(
           hierarchy=pdb_hierarchy,
           out=null_out())
-      return fss.get_pdb_annotation()
+      return fss.get_annotation()
     else:
       print >> self.log, "  WARNING: Unknown search method for SS. No SS found."
       return iotbx.pdb.secondary_structure.annotation.from_records()
