@@ -975,30 +975,41 @@ class summary (mmtbx.scaling.xtriage_analysis) :
 
   def _show_impl (self, out) :
     out.show_header("Xtriage summary")
+    some_problems = False
     have_problems = False
     if (self.n_problems > 0) :
       if hasattr(out, "show_issues") : # XXX GUI hack
         for severity, message, linkto in self._issues :
-          if (severity > 1) :
+          if (severity == 2) :
             have_problems = True
+            break
+          elif ( (severity < 2) and (severity >= 1) ):
+            some_problems = True
             break
         out.show_issues(self._issues)
       else :
         for severity, message, linkto in self._issues :
-          if (severity > 1) :
+          if (severity == 2) :
             have_problems = True
+            out.warn(message)
+          elif ( (severity < 2) and (severity >= 1) ):
+            some_problems = True
             out.warn(message)
           else :
             out.show(wordwrap(message, max_chars=78))
-    if (not have_problems) :
+    if (have_problems):
+      out.show("""
+Please inspect all individual results closely, as it is difficult to
+automatically detect all issues.""")
+    elif (some_problems):
+      out.show("""
+There are some aspects of the data that are of concern, please check the
+individual results.""")
+    else:
       out.show("""
 No obvious problems were found with this dataset.  However, we recommend that
 you inspect the individual results closely, as it is difficult to automatically
 detect all issues.""")
-    else :
-      out.show("""
-Please inspect all individual results closely, as it is difficult to
-automatically detect all issues.""")
 
 def check_for_pathological_input_data (miller_array,
    completeness_as_non_anomalous=None) :
