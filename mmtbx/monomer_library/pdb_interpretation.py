@@ -3923,6 +3923,7 @@ class build_all_chain_proxies(linking_mixins):
       max_bond_length = ebdl
     n_excessive = 0
     sel_attrs = ["atom_selection_"+n for n in ["1", "2"]]
+    self.pdb_link_records.setdefault("LINK", [])
     for bond in params.bond:
       def show_atom_selections():
         for attr in sel_attrs:
@@ -3959,6 +3960,10 @@ class build_all_chain_proxies(linking_mixins):
         else:
           s = bond.symmetry_operation
         rt_mx_ji = sgtbx.rt_mx(symbol=s, t_den=space_group.t_den())
+        self.pdb_link_records["LINK"].append([self.pdb_atoms[i_seqs[0]],
+                                              self.pdb_atoms[i_seqs[1]],
+                                              rt_mx_ji,
+                                            ])
         p = geometry_restraints.bond_sym_proxy(
           i_seqs=i_seqs,
           distance_ideal=bond.distance_ideal,
