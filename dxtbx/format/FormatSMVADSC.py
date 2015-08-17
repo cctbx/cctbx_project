@@ -153,39 +153,39 @@ class FormatSMVADSC(FormatSMV):
 
     return raw_data
 
-  def get_mask(self):
-    from scitbx.array_family import flex
-    from iotbx.detectors import image_divider
+  #def get_mask(self):
+    #from scitbx.array_family import flex
+    #from iotbx.detectors import image_divider
 
-    data = self.get_raw_data()
-    nullvalue = self.detectorbase.vendor_specific_null_value
+    #data = self.get_raw_data()
+    #nullvalue = self.detectorbase.vendor_specific_null_value
 
-    # get effective active area coordinates
-    ID = image_divider(data=data, nullvalue=nullvalue)
-    n_modules = ID.module_count()
+    ## get effective active area coordinates
+    #ID = image_divider(data=data, nullvalue=nullvalue)
+    #n_modules = ID.module_count()
 
-    # set the mask to the same dimensions as the data
-    mask = flex.bool(flex.grid(data.focus()), False)
+    ## set the mask to the same dimensions as the data
+    #mask = flex.bool(flex.grid(data.focus()), False)
 
-    # set active areas to True so they are not masked
-    for i in range(n_modules):
-      interval_fast = ID.tile_fast_interval(i)
-      interval_slow = ID.tile_slow_interval(i)
-      #print interval_slow.first, interval_slow.last
-      #print interval_fast.first, interval_fast.last
-      mask_tile = flex.bool(
-        flex.grid(interval_slow.last-interval_slow.first,
-                  interval_fast.last-interval_fast.first), True)
-      mask.matrix_paste_block_in_place(
-        mask_tile, interval_slow.first, interval_fast.first)
+    ## set active areas to True so they are not masked
+    #for i in range(n_modules):
+      #interval_fast = ID.tile_fast_interval(i)
+      #interval_slow = ID.tile_slow_interval(i)
+      ##print interval_slow.first, interval_slow.last
+      ##print interval_fast.first, interval_fast.last
+      #mask_tile = flex.bool(
+        #flex.grid(interval_slow.last-interval_slow.first,
+                  #interval_fast.last-interval_fast.first), True)
+      #mask.matrix_paste_block_in_place(
+        #mask_tile, interval_slow.first, interval_fast.first)
 
-    # create untrusted pixel mask
-    detector = self.get_detector()
-    assert len(detector) == 1
-    trusted_mask = detector[0].get_trusted_range_mask(data)
+    ## create untrusted pixel mask
+    #detector = self.get_detector()
+    #assert len(detector) == 1
+    #trusted_mask = detector[0].get_trusted_range_mask(data)
 
-    # returns merged untrusted pixels and active areas
-    return (mask & trusted_mask,)
+    ## returns merged untrusted pixels and active areas
+    #return (mask & trusted_mask,)
 
 if __name__ == '__main__':
 
