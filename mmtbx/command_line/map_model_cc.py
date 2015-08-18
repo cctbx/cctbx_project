@@ -14,8 +14,8 @@ legend = """phenix.map_model_cc or phenix.model_map_cc:
   Given PDB file and a map file calculate model-map coorelation.
 
 How to run:
-  phenix.map_model_cc model.pdb map.ccp4
-  phenix.model_map_cc model.pdb map.ccp4
+  phenix.map_model_cc model.pdb map.ccp4 resolution=3
+  phenix.model_map_cc model.pdb map.ccp4 resolution=3
 
 Feedback:
   PAfonine@lbl.gov
