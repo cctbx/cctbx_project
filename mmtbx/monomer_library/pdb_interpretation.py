@@ -5353,9 +5353,11 @@ class process(object):
   def search_for_ncs(self, hierarchy):
     params = self.all_chain_proxies.params.ncs_search
     ncs_phil_groups = self.all_chain_proxies.params.ncs_group
+    # This function may alter pdb_hierarchy, e.g. when chain_id is blank
+    # it substitutes them with "A". Therefore deep_copy() is necessary.
     ncs_obj = iotbx.ncs.input(
       ncs_phil_groups             = ncs_phil_groups,
-      hierarchy                   = hierarchy,
+      hierarchy                   = hierarchy.deep_copy(),
       chain_similarity_limit      = params.similarity_threshold,
       min_contig_length           = params.min_contig_length,
       min_percent                 = params.min_percent,
