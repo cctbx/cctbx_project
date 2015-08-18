@@ -1580,9 +1580,9 @@ class pdb_sheet(structure_base):
                       strand_param.selection)
       amide_isel = isel(sele_str)
       if amide_isel is None or len(amide_isel) == 0:
-        error_msg = "Error in helix definition.\n"
+        error_msg = "Error in sheet definition.\n"
         error_msg += "String '%s' selected 0 atoms.\n" % sele_str
-        error_msg += "Most likely the definition of helix does not match model.\n"
+        error_msg += "Most likely the definition of sheet does not match model.\n"
         raise Sorry(error_msg)
       start_atom = atoms[amide_isel[0]]
       end_atom = atoms[amide_isel[-1]]
