@@ -28,7 +28,29 @@ file_name = None
   %s
 """ % sec_str_master_phil_str
 
+def show_usage():
+  help_msg = """\
+phenix.secondary_structure_restraints: tool for manipulating with secondary
+  structure restraints. It can search and output them in various formats.
+
+Please note, that if HELIX/SHEET records are present in supplied .pdb file,
+automatic search will not be executed. These records will be outputted in
+choosen format instead.
+
+Usage examples:
+  phenix.secondary_structure_restraints model.pdb
+  phenix.secondary_structure_restraints model.pdb format=phenix_refine
+  phenix.secondary_structure_restraints model.pdb search_method=from_ca
+
+Full scope of parameters:
+  """
+  print help_msg
+  iotbx.phil.parse(master_phil_str).show()
+
 def run (args, out=sys.stdout, log=sys.stderr) :
+  if len(args) == 0 or args[0] == "-h" or args[0] == "--help":
+    show_usage()
+    return
   pdb_files = []
   sources = []
   force_new_annotation = False
