@@ -525,7 +525,7 @@ class set(crystal.symmetry):
       print >> f, prefix + "Lone Bijvoet mates:", \
         matches.n_singles() - n_centric
       if (isinstance(self, array) and self.is_real_array()):
-        print >> f, prefix + "Anomalous signal: %.4f" % (
+        print >> f, prefix + "Mean anomalous difference: %.4f" % (
           no_sys_abs.anomalous_signal())
     return self
 
