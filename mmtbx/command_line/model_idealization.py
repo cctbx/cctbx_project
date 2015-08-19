@@ -4,6 +4,7 @@ from __future__ import division
 import sys, os
 from iotbx.pdb import secondary_structure as ioss
 from mmtbx.secondary_structure import build as ssb
+import mmtbx.utils
 from scitbx.array_family import flex
 from iotbx.pdb import write_whole_pdb_file
 import iotbx.phil
@@ -36,26 +37,32 @@ Usage examples:
 
 def run(args):
   log = sys.stdout
-  pcl = iotbx.phil.process_command_line_with_files(
-    args=args,
-    master_phil_string=master_params_str,
-    pdb_file_def="file_name")
   if len(args) == 0:
     format_usage_message(log)
-  work_params = pcl.work.extract()
-  pcl.work.show(prefix="  ", out = log)
-  pdb_files = work_params.file_name
-  if pdb_files is None:
-    raise Sorry("No PDB files specified.")
-  if len(pdb_files) > 0 :
-    work_params.file_name.extend(pdb_files)
+    return
+  inputs = mmtbx.utils.process_command_line_args(args=args,
+      master_params=master_params())
+  work_params = inputs.params.extract()
+  inputs.params.show(prefix=" ", out=log)
+  pdb_file_names = list(inputs.pdb_file_names)
+  if work_params.file_name is not None:
+    pdb_file_names += work_params.file_name
+  if len(pdb_file_names) == 0:
+    raise Sorry("No PDB file specified")
   work_params.model_idealization.enabled=True
   work_params.model_idealization.file_name_before_regularization="before.pdb"
 
-  pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_files)
+  pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_file_names)
   pdb_input = iotbx.pdb.input(source_info=None,
     lines=flex.std_string(pdb_combined.raw_records))
   pdb_h = pdb_input.construct_hierarchy()
+  # couple checks if combined pdb_h is ok
+  o_c = pdb_h.overall_counts()
+  o_c.raise_duplicate_atom_labels_if_necessary()
+  o_c.raise_residue_groups_with_multiple_resnames_using_same_altloc_if_necessary()
+  o_c.raise_chains_with_mix_of_proper_and_improper_alt_conf_if_necessary()
+  o_c.raise_improper_alt_conf_if_necessary()
+
   ann = ioss.annotation.from_phil(
       phil_helices=work_params.secondary_structure.protein.helix,
       phil_sheets=work_params.secondary_structure.protein.sheet,
@@ -69,12 +76,13 @@ def run(args):
       xray_structure=pdb_input.xray_structure_simple(),
       ss_annotation=ann,
       params=work_params.model_idealization,
+      cif_objects=inputs.cif_objects,
       verbose=True,
       log=log,
       )
   # Write resulting pdb file.
   write_whole_pdb_file(
-      file_name="%s_idealized.pdb" % os.path.basename(work_params.file_name[0]),
+      file_name="%s_idealized.pdb" % os.path.basename(pdb_file_names[0]),
       pdb_hierarchy=pdb_h,
       crystal_symmetry=pdb_input.crystal_symmetry(),
       ss_annotation=ann)
