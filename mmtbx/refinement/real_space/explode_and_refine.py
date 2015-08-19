@@ -236,7 +236,8 @@ class run(object):
     pdb_hierarchy_merged = merge_models(
       map_data         = self.map_data,
       pdb_hierarchy    = pdb_hierarchy,
-      crystal_symmetry = self.xray_structure.crystal_symmetry())
+      crystal_symmetry = self.xray_structure.crystal_symmetry(),
+      out              = self.log)
     if(self.show):
       pdb_hierarchy_merged.write_pdb_file(
         file_name="SA_ensemble_refined_merged.pdb")

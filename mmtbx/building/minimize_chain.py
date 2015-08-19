@@ -104,10 +104,6 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Starting coordinate error
        .help = Starting coordinate error
 
-     merge_models = False
-       .type = bool
-       .short_caption = Merge models
-       .help = Merge models at end, taking best parts of each
   }
   control {
       verbose = False
@@ -247,7 +243,7 @@ def run_one_cycle(
     params                   = pdb_inp_params,
     strict_conflict_handling = True,
     force_symmetry           = True,
-    log                      = None)
+    log                      = out)
   geometry = processed_pdb_file.geometry_restraints_manager(
     show_energies                = False,
     plain_pairs_radius           = 5,
@@ -262,7 +258,8 @@ def run_one_cycle(
     restraints_manager = restraints_manager,
     states             = states,
     mode               = params.control.mode,
-    nproc              = params.control.nproc)
+    nproc              = params.control.nproc,
+    log                = out)
   return ear.pdb_hierarchy_overall_best(), \
          ear.ensemble_pdb_hierarchy_refined()
 
