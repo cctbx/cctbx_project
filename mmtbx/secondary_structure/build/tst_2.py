@@ -3,6 +3,7 @@ from mmtbx.secondary_structure import build as ssb
 import iotbx.pdb
 from iotbx.pdb import secondary_structure as ioss
 from scitbx.array_family import flex
+from libtbx.utils import Sorry
 
 tst_00_start_lines = """\
 ATOM      1  N   SER A   2      35.297  13.646  38.741  1.00 25.20           N
@@ -985,6 +986,29 @@ TER
 END
 """
 
+tst_04_start_lines = """\
+ATOM      1  N   ALA A  21       8.035  20.299   4.150  1.00 33.96           N
+ATOM      2  CA  ALA A  21       9.085  20.780   5.040  1.00 32.69           C
+ATOM      3  C   ALA A  21       9.114  19.980   6.338  1.00 32.55           C
+ATOM      4  O   ALA A  21       8.257  20.152   7.204  1.00 33.56           O
+ATOM      5  CB  ALA A  21       8.893  22.260   5.334  1.00 33.18           C
+ATOM      6  N   ALA A  22      10.106  19.104   6.465  1.00 31.24           N
+ATOM      7  CA  UNK A  22      10.248  18.275   7.655  1.00 30.10           C
+ATOM      8  C   UNK A  22      11.377  18.783   8.546  1.00 29.32           C
+ATOM      9  O   UNK A  22      12.549  18.724   8.173  1.00 30.19           O
+ATOM     10  CB  UNK A  22      10.491  16.826   7.266  1.00 30.34           C
+ATOM     11  N   ALA A  23      11.017  19.283   9.723  1.00 27.76           N
+ATOM     12  CA  ALA A  23      11.998  19.805  10.666  1.00 26.26           C
+ATOM     13  C   ALA A  23      11.854  19.144  12.033  1.00 23.38           C
+ATOM     14  O   ALA A  23      11.027  18.251  12.217  1.00 25.31           O
+ATOM     15  CB  ALA A  23      11.863  21.315  10.790  1.00 27.05           C
+ATOM     16  N   ALA A  24      12.663  19.590  12.988  1.00 19.15           N
+ATOM     17  CA  ALA A  24      12.633  19.039  14.337  1.00 17.40           C
+ATOM     18  C   ALA A  24      11.922  19.980  15.304  1.00 15.24           C
+ATOM     19  O   ALA A  24      12.393  21.086  15.567  1.00 15.15           O
+ATOM     20  CB  ALA A  24      14.044  18.750  14.822  1.00 16.09           C
+"""
+
 def get_distances(h, n_neighbours=None):
   d = flex.double()
   for i, a in enumerate(h.atoms()):
@@ -1071,14 +1095,14 @@ HELIX    2   2 ARG A   23  GLN A   44  1                                  22
   ann = ioss.annotation.from_records(records=h_records.split('\n'))
   h = pdb_inp.construct_hierarchy()
   d1 = get_distances(h, n_neighbours=20)
-  # h.write_pdb_file(file_name=prefix+'_initial.pdb')
+  h.write_pdb_file(file_name=prefix+'_initial.pdb')
   for i in range(1):
     rm = ssb.substitute_ss(
       real_h=h,
       xray_structure=pdb_inp.xray_structure_simple(),
       ss_annotation=ann)
   d2 = get_distances(h, n_neighbours=20)
-  # h.write_pdb_file(file_name=prefix+'_result.pdb')
+  h.write_pdb_file(file_name=prefix+'_result.pdb')
   dist = abs(d2-d1)
   dmmm = abs(d2-d1).min_max_mean().as_tuple()
   # print "minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample()
@@ -1100,14 +1124,14 @@ SHEET    2  AA 2 CYS A  52  GLY A  57 -1  O  LYS A  53   N  TYR A  46
   ann = ioss.annotation.from_records(records=h_records.split('\n'))
   h = pdb_inp.construct_hierarchy()
   d1 = get_distances(h, n_neighbours=20)
-  # h.write_pdb_file(file_name=prefix+'_initial.pdb')
+  h.write_pdb_file(file_name=prefix+'_initial.pdb')
   for i in range(3):
     rm = ssb.substitute_ss(
       real_h=h,
       xray_structure=pdb_inp.xray_structure_simple(),
       ss_annotation=ann)
   d2 = get_distances(h, n_neighbours=20)
-  # h.write_pdb_file(file_name=prefix+'_result.pdb')
+  h.write_pdb_file(file_name=prefix+'_result.pdb')
   dist = abs(d2-d1)
   dmmm = abs(d2-d1).min_max_mean().as_tuple()
   # print "minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample()
@@ -1141,6 +1165,26 @@ HELIX   13  13 SER A  466  TYR A  472  1                                   7
   dmmm = abs(d2-d1).min_max_mean().as_tuple()
   assert dmmm[2] < 0.1
 
+def exercise_04(prefix="tst_2_exercise_04"):
+  """
+  Unknown residue in SS structure
+  """
+  h_records = """\
+HELIX    1  21 ALA A   21  ALA A   24  1                                  5
+"""
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=tst_04_start_lines)
+  ann = ann = ioss.annotation.from_records(records=h_records.split('\n'))
+  h = pdb_inp.construct_hierarchy()
+  # h.write_pdb_file(file_name="start.pdb")
+  try:
+    rm = ssb.substitute_ss(
+        real_h=h,
+        xray_structure=pdb_inp.xray_structure_simple(),
+        ss_annotation=ann)
+  except Sorry as e:
+    assert str(e).find(
+        "The residue UNK (chain A, resid   22 ) chain is not standard") > 0
+
 
 def exercise():
   """  Crashes on chevy, works on marbles. """
@@ -1149,6 +1193,7 @@ def exercise():
   exercise_01()
   exercise_02()
   exercise_03()
+  exercise_04()
   print "OK"
 
 if (__name__ == "__main__"):

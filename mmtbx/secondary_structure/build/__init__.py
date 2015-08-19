@@ -162,7 +162,15 @@ def get_r_t_matrices_from_structure(pdb_str):
 
 
 def side_chain_placement(ag_to_place, current_reference_ag, rotamer_manager):
-  c = one_three[current_reference_ag.resname.upper()]
+  resname = current_reference_ag.resname.upper()
+  c = one_three.get(resname, None)
+  if c is None:
+    msg = "Only standard protein residues are currently supported.\n"
+    msg += "The residue %s (chain %s, resid %s) chain is not standard." % (
+        resname,
+        current_reference_ag.parent().parent().id,
+        current_reference_ag.parent().resid())
+    raise Sorry(msg)
   if c == 'A':
     return
   ag_to_place.resname = three_one[c]
@@ -319,6 +327,7 @@ def substitute_ss(real_h,
                     xray_structure,
                     ss_annotation,
                     params = None,
+                    cif_objects=None,
                     log=null_out(),
                     rotamer_manager=None,
                     verbose=False):
@@ -338,8 +347,7 @@ def substitute_ss(real_h,
   for model in real_h.models():
     for chain in model.chains():
       if len(chain.conformers()) > 1:
-        raise Sorry("Secondary structure substitution does not support\n"+\
-            "the presence of alternative conformations.")
+        raise Sorry("Alternative conformations are not supported.")
 
   processed_params = process_params(params)
   if not processed_params.enabled:
@@ -471,7 +479,8 @@ def substitute_ss(real_h,
       process_pdb_file_srv(
           crystal_symmetry= xray_structure.crystal_symmetry(),
           pdb_interpretation_params = custom_pars.pdb_interpretation,
-          log=null_out())
+          log=null_out(),
+          cif_objects=cif_objects)
   if verbose:
     print >> log, "Processing file..."
   processed_pdb_file, junk = processed_pdb_files_srv.\
