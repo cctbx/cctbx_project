@@ -651,6 +651,9 @@ def validate_input_params (params) :
   """
   if params.input.pdb.file_name is None :
     raise Sorry("No PDB file defined.")
+  elif isinstance(params.input.pdb.file_name,list):
+    if (len(params.input.pdb.file_name) == 0):
+      raise Sorry("No PDB file defined.")
   elif params.input.xray_data.file_name is None :
     raise Sorry("No reflection file defined.")
   elif params.input.xray_data.labels is None :
