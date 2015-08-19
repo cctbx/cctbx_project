@@ -585,6 +585,7 @@ def run(
     verbose=None,
     out=sys.stdout):
 
+  if out is None: out=sys.stdout # explode and refine calls it this way
 
   # get info from params if present
   if params:
