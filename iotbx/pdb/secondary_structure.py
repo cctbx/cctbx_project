@@ -784,10 +784,10 @@ class annotation(structure_base):
     # Find all pairs of overlapping annotations and all unique annotations in
     #  self and other
 
-    #print >>out,"\nFinding matching and unique helices:"
+    print >>out,"\nFinding matching and unique helices:"
+
     helices=self.get_unique_set(
        a1.helices,a2.helices,hierarchy=hierarchy,out=out)
-
     #print >>out,"\nFinding matching and unique sheets:"
     sheets=self.get_unique_set(a1.sheets,a2.sheets,hierarchy=hierarchy,out=out)
 
@@ -799,10 +799,13 @@ class annotation(structure_base):
       maximize_h_bonds=None,
       hierarchy=None,
       max_h_bond_length=None,
+      rescore_if_zero_scores=True,
       poor_h_bond_weight=0.5,
       keep_self=None):
 
       assert h1 # h2 can be None
+      score_1=None
+      score_2=None
       if maximize_h_bonds:
         n_good_1,n_poor_1=h1.count_h_bonds(hierarchy=hierarchy,
           max_h_bond_length=self.max_h_bond_length)
@@ -813,15 +816,18 @@ class annotation(structure_base):
           score_2=n_good_2+poor_h_bond_weight*n_poor_2
         else:
           score_2=None
-      elif keep_self:
-        score_1=1
-        score_2=0
-      else: # take the one with more residues in secondary structure
-        score_1=h1.count_residues(hierarchy=hierarchy)
-        if h2:
-          score_2=h2.count_residues(hierarchy=hierarchy)
-        else:
-          score_2=None
+
+      if (score_1 is None and score_2 is None ) or \
+         (rescore_if_zero_scores and score_1==0 and score_2==0): #nothing yet
+        if keep_self:
+          score_1=1
+          score_2=0
+        else: # take the one with more residues in secondary structure
+          score_1=h1.count_residues(hierarchy=hierarchy)
+          if h2:
+            score_2=h2.count_residues(hierarchy=hierarchy)
+          else:
+            score_2=None
       return score_1,score_2
 
   def remove_overlapping_annotations(self,hierarchy=None,
@@ -881,7 +887,6 @@ class annotation(structure_base):
     used_h2=[]
     for h1 in h1_list:
       for h2 in h2_list:
-
         if h2.is_similar_to(other=h1,hierarchy=hierarchy,
             maximum_length_difference=self.maximum_length_difference,
             minimum_overlap=self.minimum_overlap):
@@ -905,6 +910,7 @@ class annotation(structure_base):
           maximize_h_bonds=self.maximize_h_bonds,
           hierarchy=hierarchy,
           max_h_bond_length=self.max_h_bond_length,
+          rescore_if_zero_scores=True,
           keep_self=self.keep_self)
         #print >>out,"SELF : %7.1f\n%s" %(score_1,h1.as_pdb_str())
         #print >>out,"OTHER: %7.1f\n%s" %(score_2,h2.as_pdb_str())
@@ -915,6 +921,7 @@ class annotation(structure_base):
         score_1,score_2=self.score_pair(h1,h2,
           maximize_h_bonds=self.maximize_h_bonds,
           hierarchy=hierarchy,
+          rescore_if_zero_scores=True,
           max_h_bond_length=self.max_h_bond_length,
           keep_self=self.keep_self)
         #print >>out,"SELF : %7.1f\n%s" %(score_1,h1.as_pdb_str())
@@ -925,6 +932,7 @@ class annotation(structure_base):
       for h1 in unique_h1:
         score_1,score_2=self.score_pair(h1,None,
           maximize_h_bonds=self.maximize_h_bonds,
+          rescore_if_zero_scores=True,
           hierarchy=hierarchy,
           max_h_bond_length=self.max_h_bond_length,
           keep_self=self.keep_self)
@@ -933,26 +941,31 @@ class annotation(structure_base):
         score_1,score_2=self.score_pair(h2,None,
           maximize_h_bonds=self.maximize_h_bonds,
           hierarchy=hierarchy,
+          rescore_if_zero_scores=True,
           max_h_bond_length=self.max_h_bond_length,
           keep_self=self.keep_self)
         #print >>out,"OTHER: %7.1f\n%s" %(score_1,h2.as_pdb_str())
 
     unique=unique_h1+unique_h2
 
+
     # Now take the best (or self if desired) of pairs and add on unique
     final_list=[]
     for [h1,h2] in pairs+overlapping_but_not_matching_pairs:
       score_1,score_2=self.score_pair(h1,h2,
         maximize_h_bonds=self.maximize_h_bonds,
+        rescore_if_zero_scores=True,
         hierarchy=hierarchy,
         max_h_bond_length=self.max_h_bond_length,
         keep_self=self.keep_self)
 
       #print "score 1 and 2: ",score_1,score_2
       if score_1>=score_2:
-        final_list.append(h1)
+        if not h1 in final_list:final_list.append(h1)
+        if h2 in final_list:final_list.remove(h2)
       else:
-        final_list.append(h2)
+        if not h2 in final_list:final_list.append(h2)
+        if h1 in final_list:final_list.remove(h1)
 
     for h in unique:
       final_list.append(h)
