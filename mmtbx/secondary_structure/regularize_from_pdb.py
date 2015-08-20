@@ -1585,10 +1585,10 @@ class replace_with_segments_from_pdb:
 
     # get parameters
     params=self.get_params(args,out=out)
-      
+
     if helices_are_alpha:
       params.find_ss_structure.helices_are_alpha=True
- 
+
     if params.extract_segments_from_pdb.extract in [None,'None']:
       params.extract_segments_from_pdb.extract=None
       # get libraries
