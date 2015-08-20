@@ -2381,7 +2381,7 @@ ATOM     12  CA  VAL U  76      -2.498  13.792  -5.167  1.00 30.00      UNK  C
 ATOM     13  CA  GLY U  77      -0.596  14.285  -1.925  1.00 30.00      UNK  C
 ATOM     14  CA  GLY U  78       2.056  16.680  -0.704  1.00 30.00      UNK  C
 """
- 
+
   annotation_text="""
 HELIX    2   2 LYS U   71  PRO U   78  5                                   8
 """
