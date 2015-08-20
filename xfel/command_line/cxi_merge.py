@@ -811,9 +811,11 @@ class scaling_manager (intensity_data) :
       meanI = flex.mean(intensities)
       only_means.append(meanI)
       all_mean_Is.extend(flex.double([meanI]*n))
+    if not ((only_means < 0).all_eq(False) and (all_mean_Is < 0).all_eq(False)):
+      raise Sorry("Cannot continue. About to take the log of a negative number")
     log_only_means = flex.log(only_means)
     log_all_mean_Is = flex.log(all_mean_Is)
-    step = (max(log_only_means)-min(log_only_means))/n_bins
+    step = (flex.max(log_only_means)-flex.min(log_only_means))/n_bins
 
     sels = []
     binned_intensities = []
@@ -827,7 +829,7 @@ class scaling_manager (intensity_data) :
 
   def scale_errors(self):
     """
-    Adjust sigmas according to Evans, 2011 Akta D and Evans and Murshudov, 2013 Akta D
+    Adjust sigmas according to Evans, 2011 Acta D and Evans and Murshudov, 2013 Acta D
     """
     print "Starting scale_errors"
     print "Computing initial estimates of sdfac, sdb and sdadd"
@@ -882,7 +884,7 @@ class scaling_manager (intensity_data) :
           # functional is weight * (1-rms(normalized_sigmas))^s summed over all intensitiy bins
           f += w * ((1-math.sqrt(flex.mean(binned_normalized_sigmas*binned_normalized_sigmas)))**2)
 
-        print "f: % 12.1f, sdadd: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(f, sdfac, sdb, sdadd)
+        print "f: % 12.1f, sdfac: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(f, sdfac, sdb, sdadd)
         return f
 
     print "Refining error correction parameters sdfac, sdb, and sdadd"
