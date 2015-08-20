@@ -55,6 +55,11 @@ master_phil = iotbx.phil.parse("""
        .help = Find alpha helices
        .short_caption = Find alpha helices
 
+     helices_are_alpha = False
+       .type = bool
+       .help = Find alpha helices and not three_ten or pi
+       .short_caption = Helices are alpha 
+
      find_three_ten = True
        .type = bool
        .help = Find three_ten helices
@@ -2857,6 +2862,7 @@ class find_secondary_structure: # class to look for secondary structure
       require_h_bonds=None,
       minimum_h_bonds=None,
       maximum_poor_h_bonds=None,
+      helices_are_alpha=False,
       verbose=None,out=sys.stdout):
 
     if not args: args=[]
@@ -2868,6 +2874,9 @@ class find_secondary_structure: # class to look for secondary structure
       params.control.verbose=verbose
     verbose=params.control.verbose
 
+    if helices_are_alpha or params.find_ss_structure.helices_are_alpha:
+      params.find_ss_structure.find_three_ten=False
+      params.find_ss_structure.find_pi=False
     if require_h_bonds is not None:
       params.find_ss_structure.require_h_bonds=require_h_bonds
     if minimum_h_bonds is not None:

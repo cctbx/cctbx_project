@@ -101,6 +101,11 @@ master_phil = iotbx.phil.parse("""
        .help = Find alpha helices
        .short_caption = Find alpha helices
 
+     helices_are_alpha = True
+       .type = bool
+       .help = Find alpha helices and not three_ten or pi
+       .short_caption = Helices are alpha
+
      find_three_ten = False
        .type = bool
        .help = Find three_ten helices
@@ -1571,7 +1576,8 @@ class replacement_segment_summary:
 
 class replace_with_segments_from_pdb:
 
-  def __init__(self,pdb_hierarchy=None,args=None,out=sys.stdout):
+  def __init__(self,pdb_hierarchy=None,args=None,
+       helices_are_alpha=None,out=sys.stdout):
 
     self.replacement_model=model_info() # empty object
     self.model_output_number_of_residues_by_segment={}
@@ -1579,7 +1585,10 @@ class replace_with_segments_from_pdb:
 
     # get parameters
     params=self.get_params(args,out=out)
-
+      
+    if helices_are_alpha:
+      params.find_ss_structure.helices_are_alpha=True
+ 
     if params.extract_segments_from_pdb.extract in [None,'None']:
       params.extract_segments_from_pdb.extract=None
       # get libraries
@@ -1639,7 +1648,9 @@ class replace_with_segments_from_pdb:
       self.model_replacement_segment_summaries.append(rss)
 
     # identify secondary structure
-    fss=find_secondary_structure(params=params,models=models,out=out)
+    fss=find_secondary_structure(params=params,models=models,
+     helices_are_alpha=params.find_ss_structure.helices_are_alpha,
+       out=out)
     return fss.models
 
   def get_libraries(self,params,out=sys.stdout):
