@@ -58,7 +58,7 @@ master_phil = iotbx.phil.parse("""
      helices_are_alpha = False
        .type = bool
        .help = Find alpha helices and not three_ten or pi
-       .short_caption = Helices are alpha 
+       .short_caption = Helices are alpha
 
      find_three_ten = True
        .type = bool
