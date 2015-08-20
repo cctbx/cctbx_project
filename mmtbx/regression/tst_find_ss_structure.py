@@ -1475,31 +1475,6 @@ SHEET    2   1 2 GLY A 138  ASN A 141 -1  N  ASN A 141   O  ASP A  -5
   assert number_of_good_h_bonds==0 and number_of_poor_h_bonds==0
 
 
-def tst_12():
-
-  text="""
-ATOM      8  CA  GLY A   2      24.485  19.185   6.248  1.00 11.14           C
-HETATM   15  CA  23F A   3      26.939  16.455   5.194  1.00  9.61           C
-ATOM     33  CA  ALA A   4      29.149  18.888   3.424  1.00  9.96           C
-HETATM   43  CA  23F A   5      30.573  19.304   6.910  1.00  6.42           C
-HETATM   61  CA  23F A   6      32.558  16.167   6.280  1.00  6.41           C
-ATOM     79  CA  ALA A   7      35.089  18.339   4.563  1.00  6.26           C
-HETATM   89  CA  23F A   8      36.195  19.092   8.094  1.00  6.38           C
-HETATM  107  CA  23F A   9      38.283  15.914   7.621  1.00  7.78           C
-ATOM    125  CA  ALA A  10      40.789  18.180   5.892  1.00  8.66           C
-ATOM    135  CA  GLY A  11      41.608  19.716   9.325  1.00 10.78           C
-ATOM    142  CA  GLY A  12      44.498  17.479   9.975  1.00 17.00           C
-ATOM    149  CA  GLY A  13      43.927  17.193  13.603  1.00 13.58           C
-ATOM    156  CA  GLY A  14      41.242  17.379  16.363  1.00 11.14           C
-HETATM  163  CA  23F A  15      39.608  20.319  14.616  1.00  7.70           C
-ATOM    181  CA  ALA A  16      38.402  17.853  12.023  1.00  7.08           C
-ATOM    191  CA  LEU A  17      35.810  16.973  14.649  1.00  6.22           C
-HETATM  210  CA  23F A  18      34.098  20.219  13.633  1.00  6.81           C
-ATOM    228  CA  ALA A  19      32.642  18.019  10.889  1.00  6.28           C
-ATOM    238  CA  LEU A  20      30.139  16.927  13.574  1.00  6.81           C
-HETATM  257  CA  23F A  21      28.460  20.242  12.654  1.00  8.80           C
-ATOM    275  CA  ALA A  22      27.017  18.382   9.700  1.00  7.89           C
-"""
 
 def tst_12():
   pdb_text="""
@@ -2389,6 +2364,52 @@ HELIX    1   1 ALA A    1A ALA A   16  1                                  16
 """))
   assert expected.is_same_as(force_fss)
 
+def tst_14():
+  text_pi_alpha="""
+ATOM      1  CA  LYS U  65       9.083   9.180  -3.939  1.00 30.00      UNK  C
+ATOM      2  CA  LYS U  66       8.415   5.910  -5.790  1.00 30.00      UNK  C
+ATOM      3  CA  ARG U  67       6.335   7.380  -8.591  1.00 30.00      UNK  C
+ATOM      4  CA  GLY U  68       8.644   5.764 -11.121  1.00 30.00      UNK  C
+ATOM      5  CA  LYS U  69       6.554   2.639 -10.591  1.00 30.00      UNK  C
+ATOM      6  CA  GLY U  70       3.920   4.296 -12.763  1.00 30.00      UNK  C
+ATOM      7  CA  LYS U  71       1.379   5.357 -10.152  1.00 30.00      UNK  C
+ATOM      8  CA  VAL U  72       1.224   9.093 -10.806  1.00 30.00      UNK  C
+ATOM      9  CA  LYS U  73      -2.228  10.251  -9.725  1.00 30.00      UNK  C
+ATOM     10  CA  VAL U  74      -1.340   8.736  -6.335  1.00 30.00      UNK  C
+ATOM     11  CA  LYS U  75       0.620  11.990  -6.338  1.00 30.00      UNK  C
+ATOM     12  CA  VAL U  76      -2.498  13.792  -5.167  1.00 30.00      UNK  C
+ATOM     13  CA  GLY U  77      -0.596  14.285  -1.925  1.00 30.00      UNK  C
+ATOM     14  CA  GLY U  78       2.056  16.680  -0.704  1.00 30.00      UNK  C
+"""
+ 
+  annotation_text="""
+HELIX    2   2 LYS U   71  PRO U   78  5                                   8
+"""
+  overlapping_text="""
+HELIX    1   1 LYS U   66  LYS U   71  1                                   6
+HELIX    1   1 VAL U   72  GLY U   77  5                                   6
+"""
+
+  import iotbx.pdb
+  from cctbx.array_family import flex
+
+  hierarchy=iotbx.pdb.input(source_info='text',
+       lines=flex.split_lines(text_pi_alpha)
+         ).construct_hierarchy()
+
+  import iotbx.pdb.secondary_structure as ioss
+  annotation=ioss.annotation.from_records(records=flex.split_lines(annotation_text))
+  overlapping_annotation=ioss.annotation.from_records(records=flex.split_lines(overlapping_text))
+
+  print "\nMerging annotations that overlap"
+  print "First annotation"
+  print annotation.as_pdb_str()
+  print "Overlapping annotation"
+  print overlapping_annotation.as_pdb_str()
+  merged=overlapping_annotation.combine_annotations(other=annotation, hierarchy=hierarchy)
+  print "\nMerged: "
+  print merged.as_pdb_str()
+  assert merged.is_same_as(other=annotation)
 
 
 if __name__=="__main__":
@@ -2407,4 +2428,5 @@ if __name__=="__main__":
   tst_11()
   tst_12()
   tst_13()
+  tst_14()
   print "OK"
