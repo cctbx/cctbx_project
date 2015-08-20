@@ -190,7 +190,7 @@ flag_weak_anomalous = False
   .help = Set to True to indicate that you have a very weak anomalous signal.
 target_crystal_system = None
   .type = str
-  .help = Target crystal system
+  .help = Target crystal system (Triclinic, Monoclinic, Orthorhombic, Tetragonal, Trigonal, Hexagonal, or Cubic)
   .optional = True
 n_residues = None
   .type = int
@@ -354,6 +354,12 @@ def process_input(argv=None):
   if (len(params.data) == 0):
     master_phil.show()
     raise Usage("Use the above list of parameters to generate your input file (.phil). For more information, run prime.postrefine -h.")
+
+  #check target_crystal_system
+  crystal_system_dict = {'Triclinic': 0, 'Monoclinic': 0, 'Orthorhombic': 0, 'Tetragonal': 0, 'Trigonal': 0, 'Hexagonal': 0, 'Cubic':0}
+  if params.target_crystal_system is not None:
+    if params.target_crystal_system not in crystal_system_dict:
+      raise Sorry("Incorrect target_crystal_system (available options: Triclinic, Monoclinic, Orthorhombic, Tetragonal, Trigonal, Hexagonal, or Cubic).")
 
   #generate run_no folder
   if os.path.exists(params.run_no):

@@ -12,12 +12,12 @@ from scitbx.matrix import sqr
 from cctbx import statistics
 
 class postref_handler(object):
-  '''
+  """
   handle post-refinement
   - read-in and store input in input_handler object
   - generate a mean-intensity-scaled mtz file as a reference set
   - perform post-refinement
-  '''
+  """
   def __init__(self):
     '''
     Constructor
@@ -45,10 +45,6 @@ class postref_handler(object):
     else:
       from cctbx import sgtbx
       cb_op = sgtbx.change_of_basis_op(iparams.reindex_op)
-      #a,b,c,alpha,beta,gamma = observations.unit_cell().parameters()
-      #if c > 100:
-      #  observations = observations.change_basis(cb_op)
-
       if iparams.reindex_apply_to is None:
         observations = observations.change_basis(cb_op)
       else:
@@ -320,11 +316,8 @@ class postref_handler(object):
       #use basis in the given input file
       polar_hkl = 'h,k,l'
       basis_pickle = pickle.load(open(iparams.indexing_ambiguity.index_basis_in,"rb"))
-      keys = basis_pickle.viewkeys()
-      for key in keys:
-        if key.find(pickle_filename_only) > 0:
-          polar_hkl = basis_pickle[key]
-          break
+      if pickle_filename in basis_pickle:
+        polar_hkl = basis_pickle[pickle_filename]
 
     return polar_hkl, cc_asu, cc_rev
 
