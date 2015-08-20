@@ -1048,7 +1048,10 @@ class Builder(object):
 
 
   def add_make(self):
-    self.add_command('libtbx.scons', args=['-j', str(self.nproc)])
+    self.add_command('libtbx.scons', args=['-j',
+                                           str(self.nproc),
+                                           "--skip-version", # for Phaser
+                                           ])
 
   def add_install(self):
     """Run after compile, before tests."""
