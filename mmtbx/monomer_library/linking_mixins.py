@@ -643,7 +643,6 @@ Residue classes
       #
       if link:
         # apply a standard link
-        links.setdefault(key, [])
         count, bond_i_seqs = _apply_link_using_proxies(
           link,
           atom_group1,
@@ -653,6 +652,11 @@ Residue classes
           geometry_proxy_registries,
           rt_mx_ji=link_rt_mx_ji,
         )
+        if len(bond_i_seqs)==0:
+          if verbose:
+            print 'failed to link using %s' % key
+          continue
+        links.setdefault(key, [])
         links[key].append([atom_group1, atom_group2])
         links[key][-1]+=bond_i_seqs[0] # odd?
         if verbose: print "predefined residue named link",key
