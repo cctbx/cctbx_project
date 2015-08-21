@@ -299,6 +299,9 @@ def run(args):
     iotbx.pdb.amino_acid_codes.one_letter_given_three_letter.keys())
   for resname in amino_acid_resnames:
     if (verbose): print "resname:", resname
+    if resname == "UNK":
+      # skipping UNK residue because there is no rotamers available for it
+      continue
     pdb_inp = iotbx.pdb.input(
       file_name=op.join(
         protein_pdb_files, reference_pdb_file_name_lookup[resname]))

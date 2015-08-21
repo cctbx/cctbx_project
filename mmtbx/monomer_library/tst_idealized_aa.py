@@ -9,7 +9,7 @@ import time
 
 def exercise_00():
   d = iaa.residue_dict()
-  assert len(d.keys()) == 42
+  assert len(d.keys()) == 44
   for aac in iotbx.pdb.amino_acid_codes.one_letter_given_three_letter:
     assert aac.lower() in d.keys()
   #
@@ -35,12 +35,12 @@ def exercise_00():
       a_z = es.angle_deviations_z()
       print "%5s"%aac_, "bonds     : %5.3f %5.3f %5.3f"%b, \
         "angles     : %5.3f %5.3f %5.3f"%a
-      assert a[2] < 1.2
-      assert b[2] < 0.005
+      assert a[2] < 1.2, a[2]
+      assert b[2] < 0.005, b[2]
       print "%5s"%aac_, "bonds rmsZ: %5.3f %5.3f %5.3f"%b_z, \
         "angles rmsZ: %5.3f %5.3f %5.3f"%a_z
-      assert a_z[2] < 0.7
-      assert b_z[2] < 0.7
+      assert a_z[2] < 0.7, a_z[2]
+      assert b_z[2] < 0.7, b_z[2]
 
 
 if (__name__ == "__main__"):

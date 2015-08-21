@@ -3,7 +3,6 @@ from mmtbx.secondary_structure import build as ssb
 import iotbx.pdb
 from iotbx.pdb import secondary_structure as ioss
 from scitbx.array_family import flex
-from libtbx.utils import Sorry
 
 tst_00_start_lines = """\
 ATOM      1  N   SER A   2      35.297  13.646  38.741  1.00 25.20           N
@@ -992,21 +991,47 @@ ATOM      2  CA  ALA A  21       9.085  20.780   5.040  1.00 32.69           C
 ATOM      3  C   ALA A  21       9.114  19.980   6.338  1.00 32.55           C
 ATOM      4  O   ALA A  21       8.257  20.152   7.204  1.00 33.56           O
 ATOM      5  CB  ALA A  21       8.893  22.260   5.334  1.00 33.18           C
-ATOM      6  N   ALA A  22      10.106  19.104   6.465  1.00 31.24           N
+ATOM      6  N   UNK A  22      10.106  19.104   6.465  1.00 31.24           N
 ATOM      7  CA  UNK A  22      10.248  18.275   7.655  1.00 30.10           C
 ATOM      8  C   UNK A  22      11.377  18.783   8.546  1.00 29.32           C
 ATOM      9  O   UNK A  22      12.549  18.724   8.173  1.00 30.19           O
 ATOM     10  CB  UNK A  22      10.491  16.826   7.266  1.00 30.34           C
-ATOM     11  N   ALA A  23      11.017  19.283   9.723  1.00 27.76           N
-ATOM     12  CA  ALA A  23      11.998  19.805  10.666  1.00 26.26           C
-ATOM     13  C   ALA A  23      11.854  19.144  12.033  1.00 23.38           C
-ATOM     14  O   ALA A  23      11.027  18.251  12.217  1.00 25.31           O
-ATOM     15  CB  ALA A  23      11.863  21.315  10.790  1.00 27.05           C
-ATOM     16  N   ALA A  24      12.663  19.590  12.988  1.00 19.15           N
-ATOM     17  CA  ALA A  24      12.633  19.039  14.337  1.00 17.40           C
-ATOM     18  C   ALA A  24      11.922  19.980  15.304  1.00 15.24           C
-ATOM     19  O   ALA A  24      12.393  21.086  15.567  1.00 15.15           O
-ATOM     20  CB  ALA A  24      14.044  18.750  14.822  1.00 16.09           C
+ATOM     11  CG  UNK A  22      10.006  16.721   7.661  1.00 20.00           C
+ATOM     12  N   ALA A  23      11.017  19.283   9.723  1.00 27.76           N
+ATOM     13  CA  ALA A  23      11.998  19.805  10.666  1.00 26.26           C
+ATOM     14  C   ALA A  23      11.854  19.144  12.033  1.00 23.38           C
+ATOM     15  O   ALA A  23      11.027  18.251  12.217  1.00 25.31           O
+ATOM     16  CB  ALA A  23      11.863  21.315  10.790  1.00 27.05           C
+ATOM     17  N   ALA A  24      12.663  19.590  12.988  1.00 19.15           N
+ATOM     18  CA  ALA A  24      12.633  19.039  14.337  1.00 17.40           C
+ATOM     19  C   ALA A  24      11.922  19.980  15.304  1.00 15.24           C
+ATOM     20  O   ALA A  24      12.393  21.086  15.567  1.00 15.15           O
+ATOM     21  CB  ALA A  24      14.044  18.750  14.822  1.00 16.09           C
+"""
+
+tst_04_answer_lines = """\
+ATOM      1  N   ALA A  21       9.494  21.954   5.991  1.00 33.96           N
+ATOM      2  CA  ALA A  21       8.437  20.970   5.799  1.00 32.69           C
+ATOM      3  C   ALA A  21       8.598  19.797   6.760  1.00 32.55           C
+ATOM      4  O   ALA A  21       7.615  19.270   7.279  1.00 33.56           O
+ATOM      5  CB  ALA A  21       8.426  20.479   4.359  1.00 33.18           C
+ATOM      6  N   UNK A  22       9.844  19.397   6.998  1.00 31.24           N
+ATOM      7  CA  UNK A  22      10.109  18.239   7.860  1.00 30.10           C
+ATOM      8  C   UNK A  22      11.539  18.157   8.509  1.00 29.32           C
+ATOM      9  O   UNK A  22      12.289  17.203   8.182  1.00 30.19           O
+ATOM     10  CB  UNK A  22       9.871  16.955   7.044  1.00 30.34           C
+ATOM     11  CG  UNK A  22       8.817  16.061   7.670  1.00 20.00           C
+ATOM     12  N   ALA A  23      11.898  19.102   9.374  1.00 27.76           N
+ATOM     13  CA  ALA A  23      13.023  18.871  10.274  1.00 26.26           C
+ATOM     14  C   ALA A  23      12.730  19.317  11.704  1.00 23.38           C
+ATOM     15  O   ALA A  23      13.123  18.649  12.661  1.00 25.31           O
+ATOM     16  CB  ALA A  23      14.265  19.579   9.750  1.00 27.05           C
+ATOM     17  N   ALA A  24      12.039  20.442  11.846  1.00 19.15           N
+ATOM     18  CA  ALA A  24      11.719  20.983  13.163  1.00 17.40           C
+ATOM     19  C   ALA A  24      10.743  20.086  13.915  1.00 15.24           C
+ATOM     20  O   ALA A  24      10.862  19.903  15.126  1.00 15.15           O
+ATOM     21  CB  ALA A  24      11.152  22.389  13.032  1.00 16.09           C
+TER
 """
 
 def get_distances(h, n_neighbours=None):
@@ -1175,15 +1200,22 @@ HELIX    1  21 ALA A   21  ALA A   24  1                                  5
   pdb_inp = iotbx.pdb.input(source_info=None, lines=tst_04_start_lines)
   ann = ann = ioss.annotation.from_records(records=h_records.split('\n'))
   h = pdb_inp.construct_hierarchy()
-  # h.write_pdb_file(file_name="start.pdb")
-  try:
-    rm = ssb.substitute_ss(
-        real_h=h,
-        xray_structure=pdb_inp.xray_structure_simple(),
-        ss_annotation=ann)
-  except Sorry as e:
-    assert str(e).find(
-        "The residue UNK (chain A, resid   22 ) chain is not standard") > 0
+  h.write_pdb_file(file_name="%s_start.pdb" % prefix)
+  rm = ssb.substitute_ss(
+      real_h=h,
+      xray_structure=pdb_inp.xray_structure_simple(),
+      ss_annotation=ann)
+  h.write_pdb_file(file_name="%s_result.pdb" % prefix)
+  d1 = get_distances(h, 5)
+  answer_h = iotbx.pdb.input(
+      source_info=None,
+      lines=tst_04_answer_lines).construct_hierarchy()
+  # answer_h.write_pdb_file(file_name="answer.pdb")
+  d2 = get_distances(answer_h, 5)
+  dist = abs(d2-d1)
+  dmmm = abs(d2-d1).min_max_mean().as_tuple()
+  print dmmm
+  assert dmmm[2] < 0.1
 
 
 def exercise():
