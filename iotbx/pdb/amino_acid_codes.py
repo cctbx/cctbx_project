@@ -21,6 +21,7 @@ one_letter_given_three_letter = {
 "TRP": "W",
 "TYR": "Y",
 "VAL": "V",
+"UNK": "U", # Not described in standard (pdb does not define one letter code)
 }
 
 one_letter_given_three_letter_modified_aa  = {
@@ -57,7 +58,9 @@ three_letter_given_one_letter = {
 "T": "THR",
 "V": "VAL",
 "W": "TRP",
-"Y": "TYR"}
+"Y": "TYR",
+"U": "UNK", # Not described in standard (pdb does not define one letter code)
+}
 
 three_letter_l_given_three_letter_d = {
 "DAL": "ALA",

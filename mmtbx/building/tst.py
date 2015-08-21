@@ -21,7 +21,8 @@ def exercise_model_utils () :
     residue = hierarchy.only_model().only_chain().only_residue_group().only_atom_group()
     result = building.generate_sidechain_clusters(residue, mon_lib_srv)
     if (len(result) == 0) :
-      assert (residue.resname in ["ALA", "GLY"])
+      # no side-chain clusters for UNK as well
+      assert (residue.resname in ["ALA", "GLY", "UNK"]), residue.resname
   # show_chain_resseq_ranges
   resids = [ (1,''),(2,''),(2,'A'),(4,''),(5,''),(6,''),(10,'B') ]
   import iotbx.pdb.hierarchy

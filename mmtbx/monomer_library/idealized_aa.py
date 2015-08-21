@@ -773,6 +773,40 @@ TER
 END
 """
 
+unk_h = """
+CRYST1   13.769   14.284   14.289  90.00  90.00  90.00 P 1
+ATOM      1  N   UNK A   1       5.434   6.134   6.852  1.00 20.00      A    N
+ATOM      2  CA  UNK A   1       6.900   5.968   6.872  1.00 20.00      A    C
+ATOM      3  C   UNK A   1       7.525   5.941   8.305  1.00 20.00      A    C
+ATOM      4  O   UNK A   1       6.747   6.019   9.289  1.00 20.00      A    O
+ATOM      5  CB  UNK A   1       7.543   7.105   6.063  1.00 20.00      A    C
+ATOM      6  CG  UNK A   1       7.223   8.477   6.632  1.00 20.00      A    C
+ATOM      7  OXT UNK A   1       8.769   5.841   8.370  1.00 20.00      A    O-1
+ATOM      8  H   UNK A   1       5.086   6.402   7.766  1.00 20.00      A    H
+ATOM      9  H2  UNK A   1       5.000   5.232   6.639  1.00 20.00      A    H
+ATOM     10  HA  UNK A   1       7.170   5.000   6.373  1.00 20.00      A    H
+ATOM     11  HB1 UNK A   1       7.224   7.055   5.000  1.00 20.00      A    H
+ATOM     12  HB2 UNK A   1       8.639   6.952   6.035  1.00 20.00      A    H
+ATOM     13  HG1 UNK A   1       6.150   8.652   6.745  1.00 20.00      A    H
+ATOM     14  HG2 UNK A   1       7.610   9.284   5.994  1.00 20.00      A    H
+ATOM     15  HG3 UNK A   1       7.674   8.622   7.625  1.00 20.00      A    H
+TER
+END
+"""
+
+unk = """
+CRYST1   13.769   14.284   14.289  90.00  90.00  90.00 P 1
+ATOM      1  N   UNK A   1       5.434   6.134   6.852  1.00 20.00      A    N
+ATOM      2  CA  UNK A   1       6.900   5.968   6.872  1.00 20.00      A    C
+ATOM      3  C   UNK A   1       7.525   5.941   8.305  1.00 20.00      A    C
+ATOM      4  O   UNK A   1       6.747   6.019   9.289  1.00 20.00      A    O
+ATOM      5  CB  UNK A   1       7.543   7.105   6.063  1.00 20.00      A    C
+ATOM      6  CG  UNK A   1       7.223   8.477   6.632  1.00 20.00      A    C
+ATOM      7  OXT UNK A   1       8.769   5.841   8.370  1.00 20.00      A    O-1
+TER
+END
+"""
+
 def residue_dict():
   from mmtbx.monomer_library import idealized_aa as iaa
   aac = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
