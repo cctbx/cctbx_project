@@ -2002,6 +2002,41 @@ ATOM      4  O   SER   115     -74.545   2.372 309.209  1.00 72.36      DS08 O
 ATOM      5  CB  SER   115     -74.096  -0.829 309.007  1.00 81.98      DS08 C
 ATOM      6  OG  SER   115     -74.613  -2.114 308.687  1.00 93.10      DS08 O
 """,
+  "linking_test_ASN-NAG-not-THR.pdb" : """
+ATOM  11100  N   ASN C 281     -20.823  10.632  36.650  1.00128.11           N
+ATOM  11101  CA  ASN C 281     -21.542  11.723  36.020  1.00126.84           C
+ATOM  11102  C   ASN C 281     -20.321  12.535  35.687  1.00133.47           C
+ATOM  11103  O   ASN C 281     -19.289  12.313  36.291  1.00141.10           O
+ATOM  11104  CB  ASN C 281     -22.554  12.488  36.879  1.00132.74           C
+ATOM  11105  CG  ASN C 281     -22.348  12.326  38.361  1.00136.41           C
+ATOM  11106  OD1 ASN C 281     -21.585  11.488  38.806  1.00137.40           O
+ATOM  11107  ND2 ASN C 281     -23.058  13.149  39.138  1.00142.79           N
+ATOM  11108  N   GLY C 282     -20.400  13.479  34.769  1.00132.24           N
+ATOM  11109  CA  GLY C 282     -19.205  14.196  34.360  1.00136.73           C
+ATOM  11110  C   GLY C 282     -18.431  14.831  35.495  1.00138.96           C
+ATOM  11111  O   GLY C 282     -17.216  14.977  35.444  1.00139.29           O
+ATOM  11112  N   THR C 283     -19.149  15.231  36.515  1.00133.75           N
+ATOM  11113  CA  THR C 283     -18.571  15.870  37.669  1.00134.08           C
+ATOM  11114  C   THR C 283     -17.581  15.120  38.564  1.00137.98           C
+ATOM  11115  O   THR C 283     -16.604  15.691  39.022  1.00143.56           O
+ATOM  11116  CB  THR C 283     -19.722  16.166  38.613  1.00144.68           C
+ATOM  11117  OG1 THR C 283     -20.222  14.917  39.104  1.00143.45           O
+ATOM  11118  CG2 THR C 283     -20.836  16.883  37.874  1.00141.28           C
+HETATM14227  C1  NAG C1281     -23.045  13.197  40.578  1.00155.05           C
+HETATM14228  C2  NAG C1281     -24.038  13.231  41.733  1.00155.85           C
+HETATM14229  C3  NAG C1281     -24.245  14.639  42.281  1.00159.74           C
+HETATM14230  C4  NAG C1281     -22.956  15.416  42.476  1.00164.53           C
+HETATM14231  C5  NAG C1281     -21.978  15.164  41.334  1.00162.17           C
+HETATM14232  C6  NAG C1281     -20.583  15.654  41.678  1.00163.10           C
+HETATM14233  C7  NAG C1281     -26.167  13.389  40.586  1.00151.28           C
+HETATM14234  C8  NAG C1281     -26.553  12.787  39.271  1.00144.48           C
+HETATM14235  N2  NAG C1281     -25.308  12.684  41.309  1.00153.73           N
+HETATM14236  O3  NAG C1281     -24.905  14.555  43.545  1.00169.63           O
+HETATM14237  O4  NAG C1281     -23.259  16.819  42.509  1.00164.51           O
+HETATM14238  O5  NAG C1281     -21.850  13.775  41.067  1.00160.58           O
+HETATM14239  O6  NAG C1281     -19.653  14.829  40.962  1.00160.49           O
+HETATM14240  O7  NAG C1281     -26.606  14.456  40.975  1.00157.16           O
+""",
         }
 
 links = {
@@ -2037,6 +2072,8 @@ links = {
   "linking_test_SER_C.pdb" : [26,27],
   #
   "linking_test_two_ASN-NAG.pdb" : [28,29,29,29],
+  #
+  "linking_test_ASN-NAG-not-THR.pdb" : [32,33],
   }
 
 def run_and_test(cmd, pdb, i):
@@ -2112,7 +2149,7 @@ def run(only_i=None):
         "linking_test_CD_GHE_A_B.pdb",
         "linking_test_NAG-FU4.pdb", # get_alpha_beta seems to be broken
         ]: continue
-    #if pdb.find("SER_C")==-1: continue
+    #if pdb.find("not")==-1: continue
     j+=1
     if only_i is not None and only_i!=j: continue
     for i in range(2):
@@ -2132,7 +2169,6 @@ def run(only_i=None):
   for pdb in sorted(pdbs):
     if pdb not in longer_tests: continue
     j+=1
-    #print j, pdb
     if only_i is not None and only_i!=j: continue
     k=0
     for i in range(2):
