@@ -3,7 +3,10 @@ from __future__ import division
 #
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.xtc_process
 #
-from psana import *
+try:
+  from psana import *
+except ImportError:
+  pass # for running at home without psdm build
 import numpy as np
 from xfel.cftbx.detector import cspad_cbf_tbx
 from xfel.cxi.cspad_ana import cspad_tbx
