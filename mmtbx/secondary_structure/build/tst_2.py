@@ -1215,7 +1215,7 @@ HELIX    1  21 ALA A   21  ALA A   24  1                                  5
   dist = abs(d2-d1)
   dmmm = abs(d2-d1).min_max_mean().as_tuple()
   print dmmm
-  assert dmmm[2] < 0.1
+  assert dmmm[2] < 0.2
 
 
 def exercise():
