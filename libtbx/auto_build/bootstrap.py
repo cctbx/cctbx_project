@@ -1050,7 +1050,7 @@ class Builder(object):
   def add_make(self):
     self.add_command('libtbx.scons', args=['-j',
                                            str(self.nproc),
-#                                          "--skip-version", # for Phaser
+#                                          #"--skip-version", # for Phaser
                                            ])
 
   def add_install(self):
