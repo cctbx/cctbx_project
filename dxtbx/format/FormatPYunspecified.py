@@ -168,7 +168,8 @@ class FormatPYunspecified(FormatPY):
     assert len(detector) == 1
     trusted_mask = detector[0].get_trusted_range_mask(data)
 
-    # returns merged untrusted pixels and active areas
+    # returns merged untrusted pixels and active areas using bitwise AND (pixels are accepted
+    # if they are inside of the active areas AND inside of the trusted range)
     return (mask & trusted_mask,)
 
 class FormatPYunspecifiedInMemory(FormatPYunspecified):
