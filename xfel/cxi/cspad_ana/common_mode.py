@@ -508,7 +508,7 @@ class common_mode_correction(mod_event_info):
       self.cspad_img *= self.gain_map
 
     if (self.mask_img is not None):
-      sel = (self.mask_img == -2 )|(self.mask_img == -10000)
+      sel = (self.mask_img == -2 )|(self.mask_img == cspad_tbx.cspad_mask_value)
       self.cspad_img.set_selected(sel, cspad_tbx.cspad_mask_value)
 
     if self.cache_image:
