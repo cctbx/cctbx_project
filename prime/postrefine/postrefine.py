@@ -263,7 +263,7 @@ class postref_handler(object):
     return inputs, 'OK'
 
 
-  def determine_polar(self, observations_original, iparams, pickle_filename):
+  def determine_polar(self, observations_original, iparams, pickle_filename, pres=None):
 
     """
     Determine polarity based on input data.
@@ -273,51 +273,75 @@ class postref_handler(object):
     if iparams.indexing_ambiguity.flag_on == False:
       return 'h,k,l', 0 , 0
 
-    pickle_filename_arr = pickle_filename.split('/')
-    if len(pickle_filename_arr) == 1:
-      pickle_filename_only = pickle_filename_arr[0]
-    else:
-      pickle_filename_only = pickle_filename_arr[len(pickle_filename_arr)-1]
-
     cc_asu = 0
     cc_rev = 0
-    if iparams.indexing_ambiguity.index_basis_in.endswith('mtz'):
-      #use reference mtz file to determine polarity
-      from iotbx import reflection_file_reader
-      reflection_file_polar = reflection_file_reader.any_reflection_file(iparams.indexing_ambiguity.index_basis_in)
-      miller_arrays_polar=reflection_file_polar.as_miller_arrays()
-      miller_array_polar = miller_arrays_polar[0]
-      miller_array_polar = miller_array_polar.resolution_filter(d_min=3.5, d_max=20)
+    if iparams.indexing_ambiguity.index_basis_in is not None:
+      if iparams.indexing_ambiguity.index_basis_in.endswith('mtz'):
+        #use reference mtz file to determine polarity
+        from iotbx import reflection_file_reader
+        reflection_file_polar = reflection_file_reader.any_reflection_file(iparams.indexing_ambiguity.index_basis_in)
+        miller_arrays_polar=reflection_file_polar.as_miller_arrays()
+        miller_array_polar = miller_arrays_polar[0]
+        miller_array_polar = miller_array_polar.resolution_filter(d_min=iparams.indexing_ambiguity.d_min, d_max=iparams.indexing_ambiguity.d_max)
 
-      observations_asu = observations_original.map_to_asu()
-      observations_rev = self.get_observations_non_polar(observations_original, 'k,h,-l')
+        #for post-refinement, apply the scale factors and partiality first
+        if pres is not None:
+          #observations_original = pres.observations_original.deep_copy()
 
-      matches = miller.match_multi_indices(
-                  miller_indices_unique=miller_array_polar.indices(),
-                  miller_indices=observations_asu.indices())
-      I_ref_match = flex.double([miller_array_polar.data()[pair[0]] for pair in matches.pairs()])
-      I_obs_match = flex.double([observations_asu.data()[pair[1]] for pair in matches.pairs()])
-      cc_asu = np.corrcoef(I_ref_match, I_obs_match)[0,1]
-      n_refl_asu = len(matches.pairs())
+          two_theta = observations_original.two_theta(wavelength=pres.wavelength).data()
+          from mod_leastsqr import calc_partiality_anisotropy_set
+          alpha_angle = flex.double([0]*len(observations_original.indices()))
+          spot_pred_x_mm = flex.double([0]*len(observations_original.indices()))
+          spot_pred_y_mm = flex.double([0]*len(observations_original.indices()))
+          detector_distance_mm = None
+          partiality, dummy, dummy, dummy = calc_partiality_anisotropy_set(pres.unit_cell, 0, 0,
+                                                                 observations_original.indices(),
+                                                                 pres.ry, pres.rz, pres.r0, pres.re,
+                                                                 two_theta, alpha_angle, pres.wavelength, pres.crystal_orientation,
+                                                                 spot_pred_x_mm, spot_pred_y_mm,
+                                                                 detector_distance_mm,
+                                                                 iparams.partiality_model,
+                                                                 iparams.flag_beam_divergence)
 
-      matches = miller.match_multi_indices(
-                  miller_indices_unique=miller_array_polar.indices(),
-                  miller_indices=observations_rev.indices())
-      I_ref_match = flex.double([miller_array_polar.data()[pair[0]] for pair in matches.pairs()])
-      I_obs_match = flex.double([observations_rev.data()[pair[1]] for pair in matches.pairs()])
-      cc_rev = np.corrcoef(I_ref_match, I_obs_match)[0,1]
-      n_refl_rev = len(matches.pairs())
+          #partiality = pres.partiality
+          sin_theta_over_lambda_sq = observations_original.two_theta(pres.wavelength).sin_theta_over_lambda_sq().data()
+          I_full = flex.double(observations_original.data()/(pres.G * flex.exp(flex.double(-2*pres.B*sin_theta_over_lambda_sq)) * partiality))
+          sigI_full = flex.double(observations_original.sigmas()/(pres.G * flex.exp(flex.double(-2*pres.B*sin_theta_over_lambda_sq)) * partiality))
+          observations_original = observations_original.customized_copy(data=I_full, sigmas=sigI_full)
 
-      polar_hkl = 'h,k,l'
-      if cc_rev > cc_asu:
-        polar_hkl = 'k,h,-l'
 
+        observations_asu = observations_original.map_to_asu()
+        observations_rev = self.get_observations_non_polar(observations_original, iparams.indexing_ambiguity.assigned_basis)
+
+        matches = miller.match_multi_indices(
+                    miller_indices_unique=miller_array_polar.indices(),
+                    miller_indices=observations_asu.indices())
+        I_ref_match = flex.double([miller_array_polar.data()[pair[0]] for pair in matches.pairs()])
+        I_obs_match = flex.double([observations_asu.data()[pair[1]] for pair in matches.pairs()])
+        cc_asu = np.corrcoef(I_ref_match, I_obs_match)[0,1]
+        n_refl_asu = len(matches.pairs())
+
+        matches = miller.match_multi_indices(
+                    miller_indices_unique=miller_array_polar.indices(),
+                    miller_indices=observations_rev.indices())
+        I_ref_match = flex.double([miller_array_polar.data()[pair[0]] for pair in matches.pairs()])
+        I_obs_match = flex.double([observations_rev.data()[pair[1]] for pair in matches.pairs()])
+        cc_rev = np.corrcoef(I_ref_match, I_obs_match)[0,1]
+        n_refl_rev = len(matches.pairs())
+
+        polar_hkl = 'h,k,l'
+        if cc_rev > (cc_asu*1.01):
+          polar_hkl = iparams.indexing_ambiguity.assigned_basis
+
+      else:
+        #use basis in the given input file
+        polar_hkl = 'h,k,l'
+        basis_pickle = pickle.load(open(iparams.indexing_ambiguity.index_basis_in,"rb"))
+        if pickle_filename in basis_pickle:
+          polar_hkl = basis_pickle[pickle_filename]
     else:
-      #use basis in the given input file
+      #set default polar_hkl to h,k,l
       polar_hkl = 'h,k,l'
-      basis_pickle = pickle.load(open(iparams.indexing_ambiguity.index_basis_in,"rb"))
-      if pickle_filename in basis_pickle:
-        polar_hkl = basis_pickle[pickle_filename]
 
     return polar_hkl, cc_asu, cc_rev
 
@@ -355,7 +379,7 @@ class postref_handler(object):
 
     #2. Determine polarity - always do this even if flag_polar = False
     #the function will take care of it.
-    polar_hkl, cc_iso_raw_asu, cc_iso_raw_rev = self.determine_polar(observations_original, iparams, pickle_filename)
+    polar_hkl, cc_iso_raw_asu, cc_iso_raw_rev = self.determine_polar(observations_original, iparams, pickle_filename, pres=pres_in)
 
     #3. Select data for post-refinement (only select indices that are common with the reference set
     observations_non_polar = self.get_observations_non_polar(observations_original, polar_hkl)

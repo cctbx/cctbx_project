@@ -198,6 +198,8 @@ if (__name__ == "__main__"):
                                                                       wavelength_mean,
                                                                       iparams.run_no+'/mean_scaled',
                                                                       avg_mode)
+      #reset index_basis_in
+      iparams.indexing_ambiguity.index_basis_in = iparams.run_no+'/mean_scaled_merge.mtz'
 
       txt_merge_mean +=  txt_merge_mean_table + txt_prep_out
       print txt_merge_mean_table
@@ -262,7 +264,7 @@ if (__name__ == "__main__"):
 
     for I_mean,cn_plot in zip(I_raw_set, range(len(I_raw_set))):
       plt.plot(one_dsqr, flex.log(I_mean), linestyle='-', linewidth=2.0, c='b')
-    plt.title('Wilson plot before scaling')
+    plt.title('Wilson plot')
     plt.xlabel('1/(d^2)')
     plt.ylabel('Log(<I>)')
     plt.grid()
@@ -384,6 +386,9 @@ if (__name__ == "__main__"):
                                                                I_even_k, I_odd_k, I_even_l, I_odd_l), iparams, uc_mean,
                                                                wavelength_mean,
                                                                iparams.run_no+'/postref_cycle_'+str(i_iter+1), avg_mode)
+
+        #reset index_basis_in
+        iparams.indexing_ambiguity.index_basis_in = iparams.run_no+'/postref_cycle_'+str(i_iter+1)+'_merge.mtz'
 
         #calculate R and Rfree
         R_work, R_free = (0,0)
