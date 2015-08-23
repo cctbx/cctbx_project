@@ -206,6 +206,15 @@ indexing_ambiguity
     .type = path
     .help = Pickle file storing polarity info. (output from Brehm & \
       Diederichs clustering algorithm).
+  assigned_basis = h,k,l
+    .type = str
+    .help = In case index_basis_in given is an mtz file, you can specify a basis that each integration can be converted to.
+  d_min = 3.0
+    .type = float
+    .help = In case index_basis_in given is an mtz file, you can pecify minimum resolution used to calculate correlation with the given mtz file.
+  d_max = 10.0
+    .type = float
+    .help = In case index_basis_in given is an mtz file, you can pecify maximum resolution used to calculate correlation with the given mtz file.
 }
 hklisoin = None
   .type = path
