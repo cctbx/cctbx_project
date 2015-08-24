@@ -1769,6 +1769,7 @@ mmtbx/command_line/prepare_pdb_deposition.py -text
 mmtbx/command_line/prune_model.py -text
 mmtbx/command_line/r_factor_statistics.py -text
 mmtbx/command_line/ramalyze.py -text
+mmtbx/command_line/rank_scale_map.py -text
 mmtbx/command_line/real_space_correlation.py -text
 mmtbx/command_line/reciprocal_space_arrays.py -text
 mmtbx/command_line/refine_anomalous_substructure.py -text
@@ -2206,6 +2207,7 @@ mmtbx/regression/tst_pdbtools.py -text
 mmtbx/regression/tst_place_model.py -text
 mmtbx/regression/tst_prune_model.py -text
 mmtbx/regression/tst_psi_phi_extraction.py -text
+mmtbx/regression/tst_rank_scale_map.py -text
 mmtbx/regression/tst_real_space_correlation.py -text
 mmtbx/regression/tst_refine_anomalous_substructure.py svneol=native#text/x-python
 mmtbx/regression/tst_regularize_from_pdb.py -text
