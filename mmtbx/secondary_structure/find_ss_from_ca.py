@@ -394,6 +394,8 @@ def get_atom_list(hierarchy):
 def get_atom_from_residue(residue=None,
   atom_name=None,allow_ca_only_model=False,
   skip_n_for_pro=False):
+  if not residue:
+    return None,None
   # just make sure that atom_name is there
   for atom in residue.atoms():
     if atom.name.replace(" ","")==atom_name.replace(" ",""):
@@ -1747,7 +1749,7 @@ class find_helix(find_segment):
         atom_name=' N  ',allow_ca_only_model=allow_ca_only_model,
         skip_n_for_pro=True)
 
-      if cur_xyz and next_xyz:
+      if cur_xyz and next_xyz:  # both present at least
         dd=col(cur_xyz)-col(next_xyz)
         dist=dd.length()
         if dist <=max_h_bond_length:
@@ -1756,11 +1758,8 @@ class find_helix(find_segment):
         else:
           bad_one="**"
           number_of_poor_h_bonds+=1
-      else:
-        bad_one=None
-        dist=None
 
-      new_h_bond=h_bond(
+        new_h_bond=h_bond(
            prev_atom=cur_atom,
            prev_resname=cur_residue.resname,
            prev_chain_id=get_chain_id(segment.hierarchy),
@@ -1774,9 +1773,12 @@ class find_helix(find_segment):
            dist=dist,
            bad_one=bad_one,
            anything_is_ok=force_secondary_structure_input,
-       )
-      new_h_bond.show_summary(out=out,show_non_existent=False)
-      all_h_bonds.append(new_h_bond)
+         )
+        new_h_bond.show_summary(out=out,show_non_existent=False)
+        all_h_bonds.append(new_h_bond)
+      else:
+        bad_one=None
+        dist=None
     return all_h_bonds,number_of_good_h_bonds,number_of_poor_h_bonds
 
 class find_beta_strand(find_segment):

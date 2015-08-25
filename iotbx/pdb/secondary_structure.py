@@ -784,7 +784,7 @@ class annotation(structure_base):
     # Find all pairs of overlapping annotations and all unique annotations in
     #  self and other
 
-    print >>out,"\nFinding matching and unique helices:"
+    #print >>out,"\nFinding matching and unique helices:"
 
     helices=self.get_unique_set(
        a1.helices,a2.helices,hierarchy=hierarchy,out=out)
