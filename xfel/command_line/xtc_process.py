@@ -18,7 +18,7 @@ from libtbx.phil import parse
 from dxtbx.imageset import MemImageSet
 from dxtbx.datablock import DataBlockFactory
 
-phil_scope = parse('''
+xtc_phil_str = '''
   dispatch {
     max_events = None
       .type = int
@@ -101,7 +101,7 @@ phil_scope = parse('''
       .type = str
       .help = Optional path to data directory if it's non-standard. Only needed if xtc \
               streams are not in the standard location for your PSDM installation.
- }
+  }
   output {
     output_dir = .
       .type = str
@@ -133,6 +133,9 @@ phil_scope = parse('''
       .type = choice
       .help = Muliprocessing method
   }
+'''
+
+dials_phil_str = '''
   verbosity = 1
    .type = int(value_min=0)
    .help = The verbosity level
@@ -145,7 +148,9 @@ phil_scope = parse('''
   include scope dials.algorithms.profile_model.factory.phil_scope
   include scope dials.algorithms.integration.integrator.phil_scope
   include scope dials.algorithms.spot_prediction.reflection_predictor.phil_scope
-''', process_includes=True)
+'''
+
+phil_scope = parse(xtc_phil_str + dials_phil_str, process_includes=True)
 
 # work around for copying dxtbx FormatCBFCspad objects
 from xfel.cftbx.detector.cspad_cbf_tbx import cbf_wrapper
