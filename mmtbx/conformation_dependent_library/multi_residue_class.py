@@ -28,8 +28,13 @@ class RestraintsRegistry(dict):
       dict.__setitem__(self, key, item)
 
 class ThreeProteinResidues(list):
-  def __init__(self, geometry, registry=None):
+  def __init__(self,
+               geometry,
+               length=3, # CDL & other psi/phi apps
+               registry=None,
+              ):
     assert registry is not None
+    self.length = length
     self.geometry = geometry
     self.registry = registry
     if geometry is None:
@@ -156,6 +161,7 @@ class ThreeProteinResidues(list):
     return self[0].resname, self[1].resname, self[2].resname
 
   def get_phi_psi_atoms(self, only_psi_phi_pairs=True, force_plus_one=False):
+    if len(self)!=self.length: return None, None
     if force_plus_one: only_psi_phi_pairs=False
     backbone_i_minus_1, junk = get_c_ca_n(self[0])
     backbone_i, junk = get_c_ca_n(self[1])
