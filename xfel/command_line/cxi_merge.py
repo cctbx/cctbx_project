@@ -791,15 +791,14 @@ class scaling_manager (intensity_data) :
   def get_binned_intensities(self, n_bins=100):
     """
     Using self.ISIGI, bin the intensities using the following procedure:
-    1) Take the log of all the observations
-    2) Find the minimum and maximum intensity values.
-    3) Divide max-min by n_bins. This is the bin step size
-    The effect is that there are more bins at lower intensity values than
-    higher.
+    1) Find the minimum and maximum intensity values.
+    2) Divide max-min by n_bins. This is the bin step size
+    The effect is
     @param n_bins number of bins to use.
     @return a tuple with an array of selections for each bin and an array of median
     intensity values for each bin.
     """
+    print "Computing intensity bins.",
     all_mean_Is = flex.double()
     only_means = flex.double()
     for hkl_id in xrange(self.n_refl):
@@ -811,19 +810,19 @@ class scaling_manager (intensity_data) :
       meanI = flex.mean(intensities)
       only_means.append(meanI)
       all_mean_Is.extend(flex.double([meanI]*n))
-    if not ((only_means < 0).all_eq(False) and (all_mean_Is < 0).all_eq(False)):
-      raise Sorry("Cannot continue. About to take the log of a negative number")
-    log_only_means = flex.log(only_means)
-    log_all_mean_Is = flex.log(all_mean_Is)
-    step = (flex.max(log_only_means)-flex.min(log_only_means))/n_bins
+    step = (flex.max(only_means)-flex.min(only_means))/n_bins
+    print "Bin size:", step
 
     sels = []
     binned_intensities = []
     for i in xrange(n_bins):
-      sel = (log_all_mean_Is > (min(log_all_mean_Is) + step * i)) & (log_all_mean_Is < (min(log_all_mean_Is) + step * (i+1)))
+      sel = (all_mean_Is > (min(all_mean_Is) + step * i)) & (all_mean_Is < (min(all_mean_Is) + step * (i+1)))
       if sel.all_eq(False): continue
       sels.append(sel)
-      binned_intensities.append(math.exp(((step/2) + step*i)+min(log_only_means)))
+      binned_intensities.append((step/2 + step*i)+min(only_means))
+
+    #for i, (sel, intensity) in enumerate(zip(sels, binned_intensities)):
+    #  print "Bin %02d, number of observations: % 10d, midpoint intensity: %f"%(i, sel.count(True), intensity)
 
     return sels, binned_intensities
 
