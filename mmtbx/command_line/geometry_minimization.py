@@ -473,19 +473,11 @@ class run(object):
     cs = None
     if self.output_crystal_symmetry:
       cs = self.xray_structure.crystal_symmetry()
-    ss_annotation = None
-    if self.processed_pdb_file.ss_manager is not None:
-      ss_annotation = self.processed_pdb_file.ss_manager.actual_sec_str
-    else:
-      if hasattr(self.processed_pdb_file.all_chain_proxies.pdb_inp,
-          'extract_secondary_structure'):
-        ss_annotation = self.processed_pdb_file.all_chain_proxies.\
-            pdb_inp.extract_secondary_structure()
     write_whole_pdb_file(
         file_name=ofn,
+        processed_pdb_file=self.processed_pdb_file,
         pdb_hierarchy=self.pdb_hierarchy,
         crystal_symmetry=cs,
-        ss_annotation=ss_annotation,
         link_records=link_records,
       )
     if(self.states_collector):

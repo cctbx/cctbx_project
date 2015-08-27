@@ -162,8 +162,7 @@ class multimer(object):
     pdb.write_whole_pdb_file(
         file_name=self.pdb_output_file_name,
         pdb_hierarchy=self.assembled_multimer,
-        crystal_symmetry=crystal_symmetry,
-        ss_annotation=self.new_annotation)
+        crystal_symmetry=crystal_symmetry)
 
   def get_ncs_restraints_group_list(self,raise_sorry=True):
     get_nrgl = self.transforms_obj.get_ncs_restraints_group_list
