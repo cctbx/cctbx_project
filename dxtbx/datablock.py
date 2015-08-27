@@ -351,7 +351,7 @@ class DataBlockTemplateImporter(object):
       find_format = FormatChecker(verbose=verbose)
       fmt = find_format(paths[0])
       if fmt is None:
-        raise RuntimeError('Image file %s format is unknown' % path[0])
+        raise RuntimeError('Image file %s format is unknown' % paths[0])
       else:
         imageset = self._create_imageset(fmt, template, paths)
         append_to_datablocks(imageset)
