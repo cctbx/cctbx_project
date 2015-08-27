@@ -1971,20 +1971,38 @@ def mtrix_and_biomt_records_container():
 def write_whole_pdb_file(
     file_name=None,
     output_file=None,
+    processed_pdb_file=None,
     pdb_hierarchy=None,
     crystal_symmetry=None,
+    ss_annotation=None,
     append_end=True,
     atoms_reset_serial_first_value=None,
-    ss_annotation=None,
     link_records=None,
     ):
   assert [file_name, output_file].count(None) == 1
+  assert [processed_pdb_file, ss_annotation].count(None) <= 1
   out = output_file
   if file_name is not None:
     out = open(file_name, "w")
+  # outputting HELIX/SHEET records
+  ss_records = ""
+  if processed_pdb_file is not None:
+    if processed_pdb_file.ss_manager is not None:
+      ss_ann = processed_pdb_file.ss_manager.actual_sec_str
+      ss_records = ss_ann.as_pdb_str()
+    else:
+      if hasattr(processed_pdb_file.all_chain_proxies.pdb_inp,
+          'secondary_structure_section'):
+        ss_section = processed_pdb_file.all_chain_proxies.\
+            pdb_inp.secondary_structure_section()
+        if len(ss_section) > 0:
+          ss_records = "\n".join(ss_section)
   if ss_annotation is not None:
-    out.write(ss_annotation.as_pdb_str())
-    out.write("\n")
+    ss_records = ss_annotation.as_pdb_str()
+  if ss_records != "":
+    if ss_records[-1] != "\n":
+      ss_records += "\n"
+    out.write(ss_records)
   if link_records is not None:
     out.write("%s\n" % link_records)
   if pdb_hierarchy is not None:

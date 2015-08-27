@@ -1027,17 +1027,14 @@ def run(args, command_name="phenix.pdbtools", out=sys.stdout,
   crystal_symmetry = xray_structure.crystal_symmetry()
   if command_line_interpreter.fake_crystal_symmetry:
     crystal_symmetry = None
-  ss_ann = None
-  if hasattr(command_line_interpreter.pdb_inp, "extract_secondary_structure"):
-    ss_ann = command_line_interpreter.pdb_inp.extract_secondary_structure()
   if output_format == "pdb":
     write_whole_pdb_file(
         file_name=ofn,
+        processed_pdb_file=command_line_interpreter.processed_pdb_file,
         pdb_hierarchy=pdb_hierarchy,
         crystal_symmetry=crystal_symmetry,
         append_end=True,
-        atoms_reset_serial_first_value=1,
-        ss_annotation=ss_ann)
+        atoms_reset_serial_first_value=1)
   elif output_format =="mmcif":
     write_cif_file(pdb_hierarchy, crystal_symmetry, file_name=ofn)
   output_files.append(ofn)
