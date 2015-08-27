@@ -1980,7 +1980,7 @@ def write_whole_pdb_file(
     link_records=None,
     ):
   assert [file_name, output_file].count(None) == 1
-  assert [processed_pdb_file, ss_annotation].count(None) <= 1
+  assert [processed_pdb_file, ss_annotation].count(None) >= 1
   out = output_file
   if file_name is not None:
     out = open(file_name, "w")
