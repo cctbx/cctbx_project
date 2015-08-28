@@ -48,7 +48,7 @@ def cmd_driver(pdb_file_name):
       print >> log, str(e)
     log.close()
 
-def truncate(m, eps_string="%.6f"):
+def truncate(m, eps_string="%.8f"):
   if(type(m) is float):
     return float(eps_string%m)
   elif(type(m) is flex.double):
@@ -225,7 +225,7 @@ class run(object):
        d13, d23, d33])
     self.show_matrix(x=self.D_WL, title="D_WL, eq.(10)")
     self.T_CL = self.T_L - self.D_WL
-    self.T_CL = truncate(m=matrix.sqr(self.T_CL), eps_string="%.5f")
+    self.T_CL = truncate(matrix.sqr(self.T_CL))
     self.show_matrix(x=self.T_CL, title="T_CL")
     if(not self.is_pd(self.T_CL.as_sym_mat3())):
       raise Sorry("Step B: Matrix T_C[L] is not positive semidefinite.")
@@ -290,13 +290,14 @@ class run(object):
       t_max_a = t_0+t_a
       self.show_number(x=[t_min_a, t_max_a], title="t_min_a, t_max_a eq.(37):")
       # compute t_min, t_max - this is step b)
-      t_min = truncate(m=max(t_min_C, t_min_tau, t_min_a))
-      t_max = truncate(m=min(t_max_C, t_max_tau, t_max_a))
+      t_min = truncate(m=max(t_min_C, t_min_tau, t_min_a), eps_string="%.7f")
+      t_max = truncate(m=min(t_max_C, t_max_tau, t_max_a), eps_string="%.7f")
       if(t_min > t_max):
         raise Sorry("Step C (left branch): Intersection of the intervals for t_S is empty.")
       elif(self.is_zero(t_min-t_max)):
         _, b_s, c_s = self.as_bs_cs(t=t_min, txx=t11,tyy=t22,tzz=t33,
           txy=t12,tyz=t23,tzx=t13)
+        b_s, c_s = truncate(b_s), truncate(c_s)
         if(b_s >= 0 and c_s <= 0): self.t_S = t_min
         else:
           raise Sorry("Step C (left branch): t_min=t_max gives non positive semidefinite V_lambda.")
