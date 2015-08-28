@@ -12,10 +12,7 @@ from __future__ import division
 import os
 
 from dxtbx.format.FormatCBFMini import FormatCBFMini
-from dxtbx.format.FormatCBFMiniPilatusHelpers import \
-     get_pilatus_timestamp
 #from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
-from dxtbx.model import ParallaxCorrectedPxMmStrategy
 
 class FormatCBFMiniEigerPhotonFactory(FormatCBFMini):
   '''A class for reading mini CBF format Eiger images, and correctly
