@@ -48,21 +48,26 @@ def cmd_driver(pdb_file_name):
       print >> log, str(e)
     log.close()
 
-def truncate(m, eps_string="%.8f"):
+def truncate(m, eps=1.e-8):
   if(type(m) is float):
-    return float(eps_string%m)
+    if(m<0 and abs(m)<eps): return 0
+    else: return m
   elif(type(m) is flex.double):
-    return flex.double([float(eps_string%i) for i in m])
+    new=flex.doubel()
+    for m_ in m:
+      if(m_<0 and abs(m_)<eps): new.append(0)
+      else: new.append(m_)
+    return new
   else:
     if(not type(m) is matrix.sqr):
       raise Sorry("truncate: arg must be matrix.sqr")
     x = [m[0],m[1],m[2], m[3],m[4],m[5], m[6],m[7],m[8]]
-    x_ = []
-    for xi in x: x_.append(float(eps_string%xi))
+    for i in xrange(len(x)):
+      if(x[i]<0 and abs(x[i])<eps): x[i]=0
     return matrix.sqr(
-      [x_[0], x_[1], x_[2],
-       x_[3], x_[4], x_[5],
-       x_[6], x_[7], x_[8]])
+      [x[0], x[1], x[2],
+       x[3], x[4], x[5],
+       x[6], x[7], x[8]])
 
 class run(object):
   def __init__(self, T, L, S, log=sys.stdout, eps=1.e-6, self_check_eps=1.e-5,
@@ -139,9 +144,9 @@ class run(object):
     self.show_matrix(x=self.R_ML, title="Matrix R_ML, eq.(14)")
     R_ML_transpose = self.R_ML.transpose()
     assert approx_equal(R_ML_transpose, self.R_ML.inverse(), 1.e-5)
-    self.T_L = truncate(m=R_ML_transpose*self.T_M*self.R_ML)
-    self.L_L = truncate(m=R_ML_transpose*self.L_M*self.R_ML)
-    self.S_L = truncate(m=R_ML_transpose*self.S_M*self.R_ML)
+    self.T_L = R_ML_transpose*self.T_M*self.R_ML
+    self.L_L = R_ML_transpose*self.L_M*self.R_ML
+    self.S_L = R_ML_transpose*self.S_M*self.R_ML
     self.show_matrix(x=self.T_L, title="T_L, eq.(13)")
     self.show_matrix(x=self.L_L, title="L_L, eq.(13)")
     self.show_matrix(x=self.S_L, title="S_L, eq.(13)")
@@ -237,35 +242,32 @@ class run(object):
     print_step("Step C:", self.log)
     T_ = self.T_CL.as_sym_mat3()
     self.T_CLxx, self.T_CLyy, self.T_CLzz = T_[0], T_[1], T_[2]
-    tlxx = self.T_CLxx*self.Lxx
-    tlyy = self.T_CLyy*self.Lyy
-    tlzz = self.T_CLzz*self.Lzz
-    if(tlxx < 0 or tlyy < 0 or tlzz < 0):
-      raise Sorry("Step C: Arguments in eq.(24) must be non-negative.")
-    rx, ry, rz = math.sqrt(tlxx), math.sqrt(tlyy), math.sqrt(tlzz)
-    #
-    t_min_C = truncate(m=max(self.Sxx-rx, self.Syy-ry, self.Szz-rz))
-    t_max_C = truncate(m=min(self.Sxx+rx, self.Syy+ry, self.Szz+rz))
-    self.show_number(x=[t_min_C, t_max_C], title="t_min_C,t_max_C eq.(24):")
-    t11, t22, t33 = tlxx, tlyy, tlzz
-    t12 = self.T_CL[1] * math.sqrt(self.Lxx*self.Lyy)
-    t13 = self.T_CL[2] * math.sqrt(self.Lxx*self.Lzz)
-    t23 = self.T_CL[5] * math.sqrt(self.Lyy*self.Lzz)
     #
     # Left branch
     #
     if(not (self.is_zero(self.Lxx) or
             self.is_zero(self.Lyy) or
             self.is_zero(self.Lzz))):
+      tlxx = self.T_CLxx*self.Lxx
+      tlyy = self.T_CLyy*self.Lyy
+      tlzz = self.T_CLzz*self.Lzz
+      t11, t22, t33 = tlxx, tlyy, tlzz # the rest is below
+      rx, ry, rz = math.sqrt(tlxx), math.sqrt(tlyy), math.sqrt(tlzz)
+      t12 = self.T_CL[1] * math.sqrt(self.Lxx*self.Lyy)
+      t13 = self.T_CL[2] * math.sqrt(self.Lxx*self.Lzz)
+      t23 = self.T_CL[5] * math.sqrt(self.Lyy*self.Lzz)
+      t_min_C = max(self.Sxx-rx, self.Syy-ry, self.Szz-rz)
+      t_max_C = min(self.Sxx+rx, self.Syy+ry, self.Szz+rz)
+      self.show_number(x=[t_min_C, t_max_C], title="t_min_C,t_max_C eq.(24):")
       if(t_min_C > t_max_C):
         raise Sorry("Step C (left branch): Empty (tmin_c,tmax_c) interval.")
       t_0 = self.S_L.trace()/3.
       self.show_number(x=t_0, title="t_0 eq.(20):")
       # compose T_lambda and find tau_max (30)
-      T_lambda = truncate( m=matrix.sqr(
+      T_lambda = matrix.sqr(
         [t11, t12, t13,
          t12, t22, t23,
-         t13, t23, t33]) )
+         t13, t23, t33])
       self.show_matrix(x=T_lambda, title="T_lambda eq.(29)")
       es = eigensystem.real_symmetric(T_lambda.as_sym_mat3())
       vals = es.values()
@@ -290,15 +292,15 @@ class run(object):
       t_max_a = t_0+t_a
       self.show_number(x=[t_min_a, t_max_a], title="t_min_a, t_max_a eq.(37):")
       # compute t_min, t_max - this is step b)
-      t_min = truncate(m=max(t_min_C, t_min_tau, t_min_a), eps_string="%.7f")
-      t_max = truncate(m=min(t_max_C, t_max_tau, t_max_a), eps_string="%.7f")
+      t_min = max(t_min_C, t_min_tau, t_min_a)
+      t_max = min(t_max_C, t_max_tau, t_max_a)
       if(t_min > t_max):
         raise Sorry("Step C (left branch): Intersection of the intervals for t_S is empty.")
       elif(self.is_zero(t_min-t_max)):
         _, b_s, c_s = self.as_bs_cs(t=t_min, txx=t11,tyy=t22,tzz=t33,
           txy=t12,tyz=t23,tzx=t13)
-        b_s, c_s = truncate(b_s), truncate(c_s)
-        if(b_s >= 0 and c_s <= 0): self.t_S = t_min
+        if( (self.is_zero(b_s) or bs>0) and (c_s<0 or self.is_zero(c_s))):
+          self.t_S = t_min
         else:
           raise Sorry("Step C (left branch): t_min=t_max gives non positive semidefinite V_lambda.")
       elif(t_min < t_max):
@@ -317,17 +319,29 @@ class run(object):
         assert self.t_S <= t_max
         if(self.t_S is None):
           raise Sorry("Step C (left branch): Interval (t_min,t_max) has no t giving positive semidefinite V.")
-        self.t_S = truncate(self.t_S)
+        self.t_S = self.t_S
     #
     # Right branch, Section 4.4
     #
     else:
+      Lxx, Lyy, Lzz = self.Lxx, self.Lyy, self.Lzz
+      if(self.is_zero(self.Lxx)): Lxx = 0
+      if(self.is_zero(self.Lyy)): Lyy = 0
+      if(self.is_zero(self.Lzz)): Lzz = 0
+      tlxx = self.T_CLxx*Lxx
+      tlyy = self.T_CLyy*Lyy
+      tlzz = self.T_CLzz*Lzz
+      t11, t22, t33 = tlxx, tlyy, tlzz # the rest is below
+      rx, ry, rz = math.sqrt(tlxx), math.sqrt(tlyy), math.sqrt(tlzz)
+      t12 = self.T_CL[1] * math.sqrt(Lxx*Lyy)
+      t13 = self.T_CL[2] * math.sqrt(Lxx*Lzz)
+      t23 = self.T_CL[5] * math.sqrt(Lyy*Lzz)
       # helper-function to check Cauchy conditions
       def cauchy_conditions(i,j,k, tSs): # diagonals: 0,4,8; 4,0,8; 8,0,4
         if(self.is_zero(self.L_L[i])):
           t_S = self.S_L[i]
-          cp1 = (self.S_L[j] - t_S)**2 - self.T_CL[j]*self.L_L[j] # *0.5 is missing!!! ?
-          cp2 = (self.S_L[k] - t_S)**2 - self.T_CL[k]*self.L_L[k] # *0.5 is missing!!! ?
+          cp1 = (self.S_L[j] - t_S)**2 - self.T_CL[j]*self.L_L[j]
+          cp2 = (self.S_L[k] - t_S)**2 - self.T_CL[k]*self.L_L[k]
           if( not ((cp1 < 0 or self.is_zero(cp1)) and
                    (cp2 < 0 or self.is_zero(cp2))) ):
             raise Sorry("Step C (right branch): Cauchy condition failed (23).")
@@ -350,7 +364,6 @@ class run(object):
     # end-of-procedure check, then truncate
     if(self.t_S is None):
       raise RuntimeError
-    self.t_S = truncate(m=self.t_S)
     # override with provided value
     if(self.force_t_S is not None):
       self.t_S = self.force_t_S
@@ -363,24 +376,24 @@ class run(object):
       [self.t_S,        0,        0,
               0, self.t_S,        0,
               0,        0, self.t_S])
-    self.S_C = truncate(m=matrix.sqr(self.S_C))
+    self.S_C = matrix.sqr(self.S_C)
     self.show_matrix(x=self.S_C, title="S_C, (26)")
     # find sx, sy, sz
     if(self.is_zero(self.Lxx)):
       if(not self.is_zero(self.S_C[0])):
         raise Sorry("Step C: incompatible L_L and S_C matrices.")
     else:
-      self.sx = truncate(m=self.S_C[0]/self.Lxx)
+      self.sx = self.S_C[0]/self.Lxx
     if(self.is_zero(self.Lyy)):
       if(not self.is_zero(self.S_C[4])):
         raise Sorry("Step C: incompatible L_L and S_C matrices.")
     else:
-      self.sy = truncate(m=self.S_C[4]/self.Lyy)
+      self.sy = self.S_C[4]/self.Lyy
     if(self.is_zero(self.Lzz)):
       if(not self.is_zero(self.S_C[8])):
         raise Sorry("Step C: incompatible L_L and S_C matrices.")
     else:
-      self.sz = truncate(m=self.S_C[8]/self.Lzz)
+      self.sz = self.S_C[8]/self.Lzz
     self.show_number(x=[self.sx,self.sy,self.sz],
       title="Screw parameters (section 4.5): sx,sy,sz:")
     # compose C_L_t_S (26), and V_L (27)
@@ -388,9 +401,9 @@ class run(object):
       [self.sx*self.S_C[0],                   0,                   0,
                          0, self.sy*self.S_C[4],                   0,
                          0,                   0, self.sz*self.S_C[8]])
-    self.C_L_t_S = truncate(m=self.C_L_t_S)
+    self.C_L_t_S = self.C_L_t_S
     self.show_matrix(x=self.C_L_t_S, title="C_L(t_S) (26)")
-    self.V_L = truncate(m=matrix.sqr(self.T_CL - self.C_L_t_S))
+    self.V_L = matrix.sqr(self.T_CL - self.C_L_t_S)
     self.show_matrix(x=self.V_L, title="V_L (26-27)")
     if(not self.is_pd(self.V_L.as_sym_mat3())):
       raise Sorry("Step C: Matrix V[L] is not positive semidefinite.")
@@ -411,7 +424,7 @@ class run(object):
       [self.v_x[0], self.v_y[0], self.v_z[0],
        self.v_x[1], self.v_y[1], self.v_z[1],
        self.v_x[2], self.v_y[2], self.v_z[2]])
-    self.V_V = truncate(m=R.transpose()*self.V_L*R)
+    self.V_V = m=R.transpose()*self.V_L*R
     self.show_matrix(x=self.V_V, title="V_V")
     self.v_x_M = self.R_ML*self.v_x
     self.v_y_M = self.R_ML*self.v_y
@@ -438,7 +451,7 @@ class run(object):
 
   def is_pd(self, m):
     es = eigensystem.real_symmetric(deepcopy(m))
-    r = flex.min(truncate(m=es.values()))
+    r = flex.min(es.values())
     if(r > 0 or self.is_zero(r)): return True
     else:                         return False
 
@@ -471,7 +484,7 @@ class run(object):
 
   def eigen_system_default_handler(self, m, suffix):
     es = eigensystem.real_symmetric(m.as_sym_mat3())
-    vals, vecs = truncate(m=es.values()), truncate(m=es.vectors())
+    vals, vecs = es.values(), es.vectors()
     print >> self.log, "  eigen values  (%s):"%suffix, " ".join([self.ff%i for i in vals])
     print >> self.log, "  eigen vectors (%s):"%suffix, " ".join([self.ff%i for i in vecs])
     assert vals[0]>=vals[1]>=vals[2]
@@ -513,9 +526,9 @@ class run(object):
   def finalize(self):
     return group_args(
       # Libration rms around L-axes
-      dx = math.sqrt(self.Lxx),
-      dy = math.sqrt(self.Lyy),
-      dz = math.sqrt(self.Lzz),
+      dx = math.sqrt(truncate(self.Lxx)),
+      dy = math.sqrt(truncate(self.Lyy)),
+      dz = math.sqrt(truncate(self.Lzz)),
       # Unit vectors defining three Libration axes
       l_x = self.l_x,
       l_y = self.l_y,
@@ -637,7 +650,7 @@ class run(object):
     S_M = R_ML * (S + matrix_9) * R_ML.transpose()
     self.show_matrix(x=self.S_M, title="Input S_M:")
     self.show_matrix(x=S_M, title="Recoverd S_M:")
-    d = truncate(m=matrix.sqr(self.S_M-S_M))
+    d = matrix.sqr(self.S_M-S_M)
     # remark: diagonal does not have to match, can be different by a constant
     max_diff = flex.max(flex.abs(
       flex.double([d[1],d[2],d[3],d[5],d[6],d[7],d[0]-d[4],d[0]-d[8]])))
