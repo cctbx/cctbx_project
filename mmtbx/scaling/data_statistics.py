@@ -663,7 +663,7 @@ class analyze_measurability(scaling.xtriage_analysis):
       message = None
       if self.low_d_cut ==  self.high_d_cut :
         message = """\
- The full resolution range seems to contain a useful ammount of anomalous
+ The full resolution range seems to contain a useful amount of anomalous
  signal. Depending on your specific substructure, you could use all the data
  available for the location of the heavy atoms, or cut the resolution
  to speed up the search."""
