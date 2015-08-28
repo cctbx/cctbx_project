@@ -769,7 +769,7 @@ def selection_string_from_selection(pdb_hierarchy_inp,
   residues IDs
 
   Limitations:
-    When pdb_hierarchy_inp contains multiple confirmations, selection must
+    When pdb_hierarchy_inp contains multiple conformations, selection must
     not include residues with alternate locations
 
   Args:
