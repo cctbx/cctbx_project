@@ -617,7 +617,6 @@ class annotation(structure_base):
         selections.extend(helix.as_atom_selections(add_segid=add_segid))
       except RuntimeError, e :
         pass
-    print "selections", selections
     return "(" + ") or (".join(selections) + ")"
 
   def overall_sheet_selection(self, add_segid=None):
