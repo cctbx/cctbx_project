@@ -211,7 +211,11 @@ class reference_model(object):
     self.residue_match_hash = {} # {key_model: ('file_name', key_ref)}
     self.match_map = {} # {'file_name':{i_seq_model:i_seq_ref}}
     self.get_matching_from_ncs()
-    new_ref_dih_proxies = self.get_reference_dihedral_proxies()
+    if self.match_map == {}:
+      new_ref_dih_proxies = self.reference_dihedral_proxies = \
+          cctbx.geometry_restraints.shared_dihedral_proxy()
+    else:
+      new_ref_dih_proxies = self.get_reference_dihedral_proxies()
 
   def _make_matching_and_fill_dictionaries(self, model_h, ref_h, fn,
       m_cache, model_selection_str="all", ref_selection_str="all"):
@@ -226,75 +230,94 @@ class reference_model(object):
       chain.id +="ref"
     combined_h.transfer_chains_from_other(ref_h)
     combined_h.reset_i_seq_if_necessary()
+    temp_h = combined_h.deep_copy()
+    temp_h.atoms().reset_i_seq()
     ncs_obj = iotbx.ncs.input(
-        hierarchy=combined_h,
+        hierarchy=temp_h,
         max_rmsd=5.0,
         exclude_misaligned_residues=False)
-    for group_list in ncs_obj.get_ncs_restraints_group_list():
-      ncs_groups = []
-      for k,v in ncs_obj.ncs_to_asu_selection.iteritems():
-        ncs_groups += [k]+v
+    spec_obj = ncs_obj.get_ncs_info_as_spec()
+
+    ncs_groups_from_spec = spec_obj._ncs_groups
+    # Probably we need to deal with format_group_specification() or similar
+    # that doesn't handle
+    for group_list in ncs_obj.get_ncs_restraints_group_list(
+        raise_sorry=False):
       n_total_selections = len(group_list.copies) + 1
       ncs_iselections = [group_list.master_iselection]
       for i in range(len(group_list.copies)):
         ncs_iselections.append(group_list.copies[i].iselection)
-      ncs_residue_groups = []
-      ncs_hierarchys = []
-      for i, isel in enumerate(ncs_iselections):
-        ncs_h = combined_h.select(isel)
-        ncs_hierarchys.append(ncs_h)
-        rgs = list(ncs_h.residue_groups())
-        ncs_residue_groups.append(rgs)
-      len_ncs_rg = len(ncs_residue_groups[0])
-      for ncs_rg in ncs_residue_groups:
-        assert len(ncs_rg) == len_ncs_rg
-      if fn not in self.match_map.keys():
-        self.match_map[fn] = {}
-      ref_indeces = []
-      for i in range(n_total_selections):
-        if (len(ncs_residue_groups[i][0].parent().id) > 2 and
-            ncs_residue_groups[i][0].parent().id[-3:] == 'ref'):
-          ref_indeces.append(i)
-      if len(ref_indeces) == 0:
-        # Reference model does not participate in particular found NCS copy.
-        # If it is in another copy, that's fine.
-        continue
-      ref_index=ref_indeces[0]
-      for i in range(n_total_selections):
-        # Figuring out what is reference and what is model
-        if i in ref_indeces:
+      # here is going to be loop over ncs_groups_from_spec which contains
+      # separated chains in them.
+      for ncs_group_from_spec in ncs_groups_from_spec:
+        chain_ids = ncs_group_from_spec._chain_residue_id[0]
+        ncs_residue_groups = []
+        ncs_hierarchys = []
+        for i, isel in enumerate(ncs_iselections):
+          ncs_h = combined_h.select(isel)
+          chain_sel_str = ""
+          for ch_id in chain_ids:
+            chain_sel_str += "chain \"%s\" or " % ch_id
+          chain_sel_str = chain_sel_str[:-4]
+          ncs_h = ncs_h.select(ncs_h.atom_selection_cache().selection(
+              chain_sel_str))
+          ncs_hierarchys.append(ncs_h)
+          rgs = list(ncs_h.residue_groups())
+          if len(rgs)>0:
+            ncs_residue_groups.append(rgs)
+        n_total_ncs_residue_groups = len(ncs_residue_groups)
+        if n_total_ncs_residue_groups == 0:
           continue
-        a = ncs_residue_groups[i]
-        for j in range(len_ncs_rg):
-          model_rg = a[j]
-          reference_rg = ncs_residue_groups[ref_index][j]
-          # Filling out self.residue_match_hash
-          if reference_rg.parent().id > 2 and reference_rg.parent().id[-3:] == 'ref':
-            reference_rg.parent().id = reference_rg.parent().id[:-3]
-          key_model = "%s %s" % (model_rg.unique_resnames()[0],
-              model_rg.id_str().strip())
-          key_ref = "%s %s" % (reference_rg.unique_resnames()[0],
-              reference_rg.id_str().strip())
-          if key_model not in self.residue_match_hash:
-            self.residue_match_hash[key_model] = (self.reference_file_list[0], key_ref)
-          # Filling out self.match_map
-          info_rgs = [[],[]]
-          assert reference_rg.atoms_size() == model_rg.atoms_size(), "%s, %s" % (
-              model_rg.id_str(), reference_rg.id_str())
-          for rg, info in [(model_rg, info_rgs[0]), (reference_rg, info_rgs[1])]:
-            info.append(rg.parent().id)
-            info.append(rg.unique_resnames()[0])
-            info.append(rg.resseq)
-            info.append(rg.icode)
-          m_str = "chain '%s' and resseq '%s' and icode '%s'" % (
-              info_rgs[0][0], info_rgs[0][2], info_rgs[0][3])
-          ref_str = "chain '%s' and resseq '%s' and icode '%s'" % (
-              info_rgs[1][0], info_rgs[1][2], info_rgs[1][3])
-          m_sel = m_cache.selection(m_str)
-          ref_sel = ref_cache.selection(ref_str)
-          for m_atom, ref_atom in zip(self.pdb_hierarchy.select(m_sel).atoms(),
-              self.pdb_hierarchy_ref[fn].select(ref_sel).atoms()):
-            self.match_map[fn][m_atom.i_seq] = ref_atom.i_seq
+        len_ncs_rg = len(ncs_residue_groups[0])
+        for ncs_rg in ncs_residue_groups:
+          assert len(ncs_rg) == len_ncs_rg
+        if fn not in self.match_map.keys():
+          self.match_map[fn] = {}
+        ref_indeces = []
+        for i in range(n_total_ncs_residue_groups):
+          if (len(ncs_residue_groups[i][0].parent().id) > 2 and
+              ncs_residue_groups[i][0].parent().id[-3:] == 'ref'):
+            ref_indeces.append(i)
+        if len(ref_indeces) == 0:
+          # Reference model does not participate in particular found NCS copy.
+          # If it is in another copy, that's fine.
+          continue
+        ref_index=ref_indeces[0]
+        for i in range(n_total_ncs_residue_groups):
+          # Figuring out what is reference and what is model
+          if i in ref_indeces:
+            continue
+          a = ncs_residue_groups[i]
+          for j in range(len_ncs_rg):
+            model_rg = a[j]
+            reference_rg = ncs_residue_groups[ref_index][j]
+            # Filling out self.residue_match_hash
+            if reference_rg.parent().id > 2 and reference_rg.parent().id[-3:] == 'ref':
+              reference_rg.parent().id = reference_rg.parent().id[:-3]
+            key_model = "%s %s" % (model_rg.unique_resnames()[0],
+                model_rg.id_str().strip())
+            key_ref = "%s %s" % (reference_rg.unique_resnames()[0],
+                reference_rg.id_str().strip())
+            if key_model not in self.residue_match_hash:
+              self.residue_match_hash[key_model] = (self.reference_file_list[0], key_ref)
+            # Filling out self.match_map
+            info_rgs = [[],[]]
+            assert reference_rg.atoms_size() == model_rg.atoms_size(), "%s, %s" % (
+                model_rg.id_str(), reference_rg.id_str())
+            for rg, info in [(model_rg, info_rgs[0]), (reference_rg, info_rgs[1])]:
+              info.append(rg.parent().id)
+              info.append(rg.unique_resnames()[0])
+              info.append(rg.resseq)
+              info.append(rg.icode)
+            m_str = "chain '%s' and resseq '%s' and icode '%s'" % (
+                info_rgs[0][0], info_rgs[0][2], info_rgs[0][3])
+            ref_str = "chain '%s' and resseq '%s' and icode '%s'" % (
+                info_rgs[1][0], info_rgs[1][2], info_rgs[1][3])
+            m_sel = m_cache.selection(m_str)
+            ref_sel = ref_cache.selection(ref_str)
+            for m_atom, ref_atom in zip(self.pdb_hierarchy.select(m_sel).atoms(),
+                self.pdb_hierarchy_ref[fn].select(ref_sel).atoms()):
+              self.match_map[fn][m_atom.i_seq] = ref_atom.i_seq
 
   def is_reference_groups_provided(self):
     if hasattr(self.params, "reference_group"):
@@ -516,7 +539,7 @@ class reference_model(object):
       key = None
       file_match = None
       for file in self.reference_file_list:
-        if key is not None:
+        if key is not None or file not in self.match_map:
           continue
         else:
           key = ""
