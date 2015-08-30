@@ -1262,7 +1262,7 @@ TER     490       DG B  24
 
 def exercise_3chains_self(mon_lib_srv, ener_lib):
   """
-  Test reference model, 3 chains, reference is the same and selections are 
+  Test reference model, 3 chains, reference is the same and selections are
   supposed to be mixed, like ref=(A or Bref or C) sel=(Aref, B, Cref)  """
   pdb_str_original = """\
 CRYST1  129.069   83.165   84.393  90.00  90.00  90.00 P 1
@@ -1500,7 +1500,7 @@ END
   grm = processed_pdb_file.geometry_restraints_manager()
   # pdb_h.atoms().reset_i_seq()
   # ref_h.atoms().reset_i_seq()
-  
+
   log = cStringIO.StringIO()
   # log = sys.stdout
   def_pars = reference_model_params
