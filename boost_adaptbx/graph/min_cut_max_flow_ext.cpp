@@ -144,7 +144,7 @@ struct maximum_flow_export
     capacity_property_map_type cappropmap( capmap.get() );
     edge_iterator ei, ej;
 
-    for( tie( ei, ej ) = edges( graph ); ei != ej; ++ei )
+    for( boost::tuples::tie( ei, ej ) = edges( graph ); ei != ej; ++ei )
     {
       double weight( extract< double >( get( edge_weight, graph, *ei ) ) );
       boost::put( cappropmap, *ei, weight );

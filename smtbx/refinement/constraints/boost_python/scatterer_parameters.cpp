@@ -51,11 +51,11 @@ struct scatterer_parameters_wrapper
            (arg("scatterer"), arg("site"), arg("occupancy"), arg("u"))))
       .add_property("scatterer", make_getter(&wt::scatterer, rir))
       .add_property("site"     , make_getter(&wt::site, rir)
-                               , make_setter(&wt::site))
+                               , make_setter(&wt::site, rir))
       .add_property("occupancy", make_getter(&wt::occupancy, rir)
-                               , make_setter(&wt::occupancy))
+                               , make_setter(&wt::occupancy, rir))
       .add_property("u"        , make_getter(&wt::u, rir)
-                               , make_setter(&wt::u))
+                               , make_setter(&wt::u, rir))
       ;
 
     scitbx::af::boost_python::shared_wrapper<wt, rir_t>
