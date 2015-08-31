@@ -34,7 +34,7 @@ struct approx_equal_wrapper
     using namespace boost::python;
     class_<wt>(name, no_init)
       .def(init<T>(arg("tolerance")))
-	  .def_readwrite("tolerance", &wt::tolerance)
+          .def_readwrite("tolerance", &wt::tolerance)
       .def("__call__", vector_shared_cmp)
       .def("__call__", vector_copy_cmp)
       .def("__call__", matrix_cmp);
