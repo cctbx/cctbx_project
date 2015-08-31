@@ -1359,6 +1359,8 @@ def get_chains_info(ph,selection_list=None,exclude_water=True,
         model = model[0]
         chains_info[sel_str] = Chains_info()
         chains_info[sel_str].chains_atom_number = ph_sel.atoms().size()
+        coc = flex.vec3_double([ph_sel.atoms().extract_xyz().mean()])
+        chains_info[sel_str].center_of_coordinates = coc
         for ch in model.chains():
           for res in ch.residue_groups():
             for atoms in res.atom_groups():

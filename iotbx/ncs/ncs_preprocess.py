@@ -326,11 +326,24 @@ class ncs_group_object(object):
         chain_info = ncs_search.get_chains_info(
             ph = pdb_hierarchy_inp.hierarchy,
             selection_list=selection_list)
+        # Here we want to use relaxed criteria to extract maximum from
+        # user's selection
         match_list = ncs_search.search_ncs_relations(
-            chains_info=chain_info)
+            chains_info=chain_info,
+            min_contig_length=5,
+            min_percent=0.5,
+            check_atom_order=False,
+            allow_different_size_res=True,
+            use_minimal_master_ncs=False,
+            )
         match_dict = ncs_search.clean_chain_matching(
             chain_match_list=match_list,
-            ph = pdb_hierarchy_inp.hierarchy)
+            ph = pdb_hierarchy_inp.hierarchy,
+            max_rmsd=10.0,
+            exclude_misaligned_residues=False,
+            max_dist_diff=4.0,
+            chain_similarity_limit=0.5,
+            )
         transform_to_group,match_dict = \
             ncs_search.minimal_master_ncs_grouping(match_dict)
         group_dict = ncs_search.build_group_dict(
