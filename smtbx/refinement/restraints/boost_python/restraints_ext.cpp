@@ -17,27 +17,11 @@
 
 #include <smtbx/import_scitbx_af.h>
 
+namespace uctbx = cctbx::uctbx;
+
 namespace smtbx { namespace refinement { namespace restraints {
 
 namespace boost_python {
-
-  struct functions_wrapper {
-    template <typename ProxyType, typename RestraintType>
-    static void wrap() {
-      using namespace boost::python;
-      def("linearise_restraints",
-        cctbx::restraints::linearise_restraints_with_params<
-          double,
-          cctbx::adp_restraints::adp_restraint_params<double>,
-          ProxyType,
-          RestraintType>::impl, (
-            arg("unit_cell"),
-            arg("params"),
-            arg("parameter_map"),
-            arg("proxies"),
-            arg("linearised_eqns")));
-    }
-  };
 
   template <typename FloatType>
   struct linearised_eqns_of_restraint_wrapper
@@ -62,18 +46,71 @@ namespace boost_python {
   };
 
   template <typename FloatType, typename ProxyType, typename RestraintType>
-  struct geom_res_linearise_restraints_wrapper
+  struct linearise_restraints_with_parameter_map_wrapper
   {
+    static void linearise_restraints(
+      uctbx::unit_cell const &unit_cell,
+      af::const_ref<scitbx::vec3<FloatType> > const &sites_cart,
+      cctbx::xray::parameter_map<cctbx::xray::scatterer<FloatType> > const
+        &parameter_map,
+      af::const_ref<ProxyType> const &proxies,
+      cctbx::restraints::linearised_eqns_of_restraint<FloatType>
+        &linearised_eqns)
+    {
+      for(std::size_t i=0;i<proxies.size();i++) {
+        ProxyType const& proxy = proxies[i];
+        RestraintType restraint(unit_cell, sites_cart, proxy);
+        restraint.linearise(
+          unit_cell, linearised_eqns, parameter_map, proxy);
+      }
+    }
+
     static void wrap() {
       using namespace boost::python;
       def("linearise_restraints",
-        cctbx::restraints::linearise_restraints_with_parameter_map<
-          FloatType, ProxyType, RestraintType>::impl, (
+          linearise_restraints, (
             arg("unit_cell"),
             arg("sites_cart"),
             arg("parameter_map"),
             arg("proxies"),
             arg("restraints_matrix")));
+    }
+  };
+
+  template <typename FloatType,
+            template<typename> class ParameterTypeTemplate,
+            typename ProxyType,
+            typename RestraintType>
+  struct linearise_restraints_with_parameter_map_and_extra_parameters {
+
+    typedef ParameterTypeTemplate<FloatType> ParameterType;
+
+    static void linearise_restraints(
+      uctbx::unit_cell const &unit_cell,
+      ParameterType const &params,
+      cctbx::xray::parameter_map<cctbx::xray::scatterer<FloatType> > const
+        &parameter_map,
+      af::const_ref<ProxyType> const &proxies,
+      cctbx::restraints::linearised_eqns_of_restraint<FloatType>
+        &linearised_eqns)
+    {
+      for(std::size_t i=0;i<proxies.size();i++) {
+        ProxyType const& proxy = proxies[i];
+        RestraintType restraint(params, proxy);
+        restraint.linearise(
+          unit_cell, linearised_eqns, parameter_map, proxy.i_seqs);
+      }
+    }
+
+    static void wrap() {
+      using namespace boost::python;
+      def("linearise_restraints",
+          linearise_restraints, (
+            arg("unit_cell"),
+            arg("params"),
+            arg("parameter_map"),
+            arg("proxies"),
+            arg("linearised_eqns")));
     }
   };
 
@@ -86,29 +123,47 @@ namespace boost_python {
     linearised_eqns_of_restraint_wrapper<
       double>::wrap("linearised_eqns_of_restraint");
 
-    geom_res_linearise_restraints_wrapper<
+    // geometrical restraints
+    linearise_restraints_with_parameter_map_wrapper<
       double, geom_res::angle_proxy, geom_res::angle>::wrap();
-    geom_res_linearise_restraints_wrapper<
+
+    linearise_restraints_with_parameter_map_wrapper<
       double, geom_res::bond_simple_proxy, geom_res::bond>::wrap();
-    geom_res_linearise_restraints_wrapper<
+
+    linearise_restraints_with_parameter_map_wrapper<
       double, geom_res::dihedral_proxy, geom_res::dihedral>::wrap();
-    //geom_res_linearise_restraints_wrapper<
+
+    //linearise_restraints_with_parameter_map_wrapper<
     //  double, double, geom_res::planarity_proxy, geom_res::planarity>::wrap();
-    geom_res_linearise_restraints_wrapper<
+
+    linearise_restraints_with_parameter_map_wrapper<
       double, geom_res::bond_similarity_proxy, geom_res::bond_similarity>::wrap();
-    // wrap linearisation functions
-    functions_wrapper::wrap<
-      adp_res::isotropic_adp_proxy, adp_res::isotropic_adp>();
-    functions_wrapper::wrap<
-      adp_res::fixed_u_eq_adp_proxy, adp_res::fixed_u_eq_adp>();
-    functions_wrapper::wrap<
-      adp_res::adp_similarity_proxy, adp_res::adp_similarity>();
-    functions_wrapper::wrap<
-      adp_res::adp_u_eq_similarity_proxy, adp_res::adp_u_eq_similarity>();
-    functions_wrapper::wrap<
-      adp_res::rigid_bond_proxy, adp_res::rigid_bond>();
-    functions_wrapper::wrap<
-      adp_res::adp_volume_similarity_proxy, adp_res::adp_volume_similarity>();
+
+    // ADP restraints
+    linearise_restraints_with_parameter_map_and_extra_parameters<
+      double, cctbx::adp_restraints::adp_restraint_params,
+      adp_res::isotropic_adp_proxy, adp_res::isotropic_adp>::wrap();
+
+    linearise_restraints_with_parameter_map_and_extra_parameters<
+      double, cctbx::adp_restraints::adp_restraint_params,
+      adp_res::fixed_u_eq_adp_proxy, adp_res::fixed_u_eq_adp>::wrap();
+
+    linearise_restraints_with_parameter_map_and_extra_parameters<
+      double, cctbx::adp_restraints::adp_restraint_params,
+      adp_res::adp_similarity_proxy, adp_res::adp_similarity>::wrap();
+
+    linearise_restraints_with_parameter_map_and_extra_parameters<
+      double, cctbx::adp_restraints::adp_restraint_params,
+      adp_res::adp_u_eq_similarity_proxy, adp_res::adp_u_eq_similarity>::wrap();
+
+    linearise_restraints_with_parameter_map_and_extra_parameters<
+      double, cctbx::adp_restraints::adp_restraint_params,
+      adp_res::rigid_bond_proxy, adp_res::rigid_bond>::wrap();
+
+    linearise_restraints_with_parameter_map_and_extra_parameters<
+      double, cctbx::adp_restraints::adp_restraint_params,
+      adp_res::adp_volume_similarity_proxy, adp_res::adp_volume_similarity>::wrap();
+
   }
 
   void wrap_origin_fixing_restraints();
