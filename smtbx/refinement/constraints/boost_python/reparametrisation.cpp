@@ -190,7 +190,7 @@ namespace boost_python {
              boost::noncopyable>(name.c_str(), no_init)
         .add_property("value",
                       make_getter(&wt::value, rbv),
-                      make_setter(&wt::value));
+                      make_setter(&wt::value, rbv));
     }
   };
 
@@ -225,7 +225,7 @@ namespace boost_python {
              boost::noncopyable>("site_parameter", no_init)
         .add_property("value",
                       make_getter(&wt::value, rbv),
-                      make_setter(&wt::value));
+                      make_setter(&wt::value, rbv));
         ;
     }
   };
@@ -270,7 +270,7 @@ namespace boost_python {
              boost::noncopyable>("u_star_parameter", no_init)
         .add_property("value",
                       make_getter(&wt::value, rbv),
-                      make_setter(&wt::value));
+                      make_setter(&wt::value, rbv));
         ;
     }
   };
