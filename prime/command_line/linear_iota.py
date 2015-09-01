@@ -121,7 +121,7 @@ def run_one_image(image, init, progbar=True):
 
   if 'imp' in args.mpi:
     # Import image
-    if init.params.selection.select_only:
+    if init.params.selection.select_only.flag_on:
       gs_img = ep.load(image)
       img_object = gs_img.import_int_file(init)
     else:
@@ -174,7 +174,7 @@ if __name__ == "__main__":
 
     # if necessary, read in saved image objects
     if 'imp' in args.mpi:
-      if init.params.selection.select_only:
+      if init.params.selection.select_only.flag_on:
         inp_list = init.gs_img_objects
       else:
         inp_list = init.input_list
