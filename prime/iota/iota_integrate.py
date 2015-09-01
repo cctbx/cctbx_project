@@ -285,7 +285,7 @@ class Selector(object):
           log_entry.append(info_line)
 
         # Perform selection
-        if self.select_by == 'mosaicity:
+        if self.select_by == 'mosaicity':
           sorted_entries = sorted(acceptable_results, key=lambda i: i['mos'])
         elif self.select_by == 'epv':
           sorted_entries = sorted(acceptable_results, key=lambda i: i['epv'])

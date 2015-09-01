@@ -545,7 +545,7 @@ class SingleImage(object):
                           self.params.selection.prefilter.target_pointgroup,
                           self.params.selection.prefilter.target_unit_cell,
                           self.params.selection.prefilter.min_reflections,
-                          self.params.selection.prefilter.min_resolution
+                          self.params.selection.prefilter.min_resolution,
                           self.params.selection.select_by)
 
       self.fail, self.final, log_entry = selector.select()

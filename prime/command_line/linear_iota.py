@@ -32,6 +32,7 @@ beam stop shadow.
 """
 
 from libtbx.easy_mp import parallel_map as easy_mp_parallel_map
+from libtbx import easy_pickle as ep
 from prime.iota.iota_init import InitAll
 from prime.iota.iota_analysis import Analyzer
 import prime.iota.iota_image as img
@@ -120,23 +121,19 @@ def run_one_image(image, init, progbar=True):
 
   if 'imp' in args.mpi:
     # Import image
-    single_image = img.SingleImage(image, init, verbose=False)
-    img_object = single_image.import_image()
+    if init.params.selection.select_only:
+      gs_img = ep.load(image)
+      img_object = gs_img.import_int_file(init)
+    else:
+      single_image = img.SingleImage(image, init, verbose=False)
+      img_object = single_image.import_image()
 
     # Check / convert / triage image
     if progbar:
       advance_progbar(image[0], image[1])
     img_object = single_image.convert_image()
 
-    # Exit if the image does not have diffraction
-    if img_object.triage == 'rejected':
-      return img_object
-
-  else:
-    single_image = image[2]
-
   if 'pro' in args.mpi:
-    # Grid search
     if single_image.triage == 'accepted':
       if progbar:
         advance_progbar(image[0], image[1])
@@ -155,6 +152,10 @@ if __name__ == "__main__":
   from libtbx import easy_pickle as ep
 
   args = parse_command_args(iota_version, help_message).parse_args()
+
+  if args.mpi == None:
+    misc.iota_exit(iota_version, True)
+
   if "ini" in args.mpi:
     # Initialize IOTA parameters and log
     init = InitAll(iota_version, help_message)
@@ -173,7 +174,10 @@ if __name__ == "__main__":
 
     # if necessary, read in saved image objects
     if 'imp' in args.mpi:
-      inp_list = init.input_list
+      if init.params.selection.select_only:
+        inp_list = init.gs_img_objects
+      else:
+        inp_list = init.input_list
       msg = "Importing {} images".format(len(inp_list))
     elif 'pro' in args.mpi:
       inp_list = [ep.load(os.path.join(init.gs_base, i)) for i in os.listdir(init.gs_base)]
