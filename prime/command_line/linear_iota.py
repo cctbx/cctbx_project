@@ -117,7 +117,6 @@ def run_one_image(image, init, progbar=True):
       gs_prog.update(prog_count * prog_step, prog_count)
     else:
       gs_prog.finished()
- 
 
   if 'imp' in args.mpi:
     # Import image
@@ -176,14 +175,9 @@ if __name__ == "__main__":
     if 'imp' in args.mpi:
       inp_list = init.input_list
       msg = "Importing {} images".format(len(inp_list))
-    elif 'sel' in args.mpi or 'gri' in args.mpi or 'fin' in args.mpi:
-      if 'gri' in args.mpi:
-        msg = "Performing spotfinding grid search"
-      elif 'sel' in args.mpi:
-        msg = "Selecting best integrated results"
-      elif 'fin' in args.mpi:
-        msg = "Performing final integration"
+    elif 'pro' in args.mpi:
       inp_list = [ep.load(os.path.join(init.gs_base, i)) for i in os.listdir(init.gs_base)]
+      msg = "Processing {} images".format(len(inp_list))
 
     # Run all modules in order in multiprocessor mode
     #cmd.Command.start(msg)
