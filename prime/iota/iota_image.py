@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 08/31/2015
+Last Changed: 09/01/2015
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -545,7 +545,8 @@ class SingleImage(object):
                           self.params.selection.prefilter.target_pointgroup,
                           self.params.selection.prefilter.target_unit_cell,
                           self.params.selection.prefilter.min_reflections,
-                          self.params.selection.prefilter.min_resolution)
+                          self.params.selection.prefilter.min_resolution
+                          self.params.selection.select_by)
 
       self.fail, self.final, log_entry = selector.select()
       self.status = 'selection'
