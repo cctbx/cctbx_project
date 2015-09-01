@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 08/12/2015
+Last Changed: 08/31/2015
 Description : Runs cctbx.xfel integration module either in grid-search or final
               integration mode. Has options to output diagnostic visualizations.
               Includes selector class for best integration result selection
@@ -200,6 +200,7 @@ class Selector(object):
     self.min_res = min_res
     self.final = final
     self.best = final
+    self.fail = None
 
 
   def prefilter(self):
@@ -246,7 +247,7 @@ class Selector(object):
     if len(self.grid) == 0:
       log_entry = '\nNo integration results for {}\n'.format(self.final['img'])
       self.best['info'] = log_entry
-      self.best['final'] = None
+      self.fail = 'failed grid search'
     else:
       if self.apply_prefilter:
         acceptable_results = self.prefilter()
@@ -257,8 +258,7 @@ class Selector(object):
         log_entry = '\nAll {0} results from {1} failed prefilter' \
                     '\n'.format(len(self.grid), self.final['img'])
         self.best['info'] = log_entry
-        self.best['final'] = None
-        self.prefilter = False
+        self.fail = 'failed prefilter'
       else:
         # Generate log summary of integration results
         log_entry.append('\nSelecting from {0} out '\
@@ -302,4 +302,4 @@ class Selector(object):
                             "".format(self.best['img'], info_line)
         log_entry = "\n".join(log_entry)
 
-    return self.best, log_entry
+    return self.fail, self.best, log_entry

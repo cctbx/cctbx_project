@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 07/29/2015
+Last Changed: 08/31/2015
 Description : Reads command line arguments. Initializes all IOTA starting
               parameters. Starts main log.
 '''
@@ -237,7 +237,7 @@ class InitAll(object):
     # generate list of image file paths
     if self.params.selection.select_only.flag_on:
       self.gs_img_objects = self.make_int_object_list()
-      self.input_list = [i[0] for i in self.gs_img_objects]
+      self.input_list = [i.conv_img for i in self.gs_img_objects]
     else:
       self.input_list = self.make_input_list()
 
@@ -246,7 +246,9 @@ class InitAll(object):
     self.int_base = misc.set_base_dir('integration')
     self.gs_base = os.path.join(self.int_base, 'grid_search')
     self.fin_base = os.path.join(self.int_base, 'final')
-    if self.params.advanced.viz != 'None':
+    if self.params.advanced.viz != 'None' or\
+       self.params.advanced.heatmap != 'None' or\
+       self.params.advanced.charts:
       self.viz_base = os.path.join(self.int_base, 'visualization')
     else:
       self.viz_base = None
