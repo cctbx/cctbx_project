@@ -79,7 +79,7 @@ class FormatCBFMiniEigerPhotonFactory(FormatCBFMini):
         slow=(-0.0026197,-0.862841,0.505469),
         pixel=(0.075,0.075),
         size=(2070,2167),
-        trusted_range=(0,1e7), # XXX FIXME
+        trusted_range=(-1,1e7), # XXX FIXME
       )
 
     elif '_upper_' in self._image_file:
@@ -102,9 +102,8 @@ class FormatCBFMiniEigerPhotonFactory(FormatCBFMini):
         slow=(0.00213163,0.863573,0.504219),
         pixel=(0.075,0.075),
         size=(2070,2167),
-        trusted_range=(0,1e7), # XXX FIXME
+        trusted_range=(-1,1e7), # XXX FIXME
       )
-
 
     else:
       raise RuntimeError("Don't understand image")
