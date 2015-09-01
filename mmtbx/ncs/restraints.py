@@ -78,7 +78,6 @@ class resconfid(object):
     confs = {}
     for ag in residue_group.atom_groups():
       altloc = ag.altloc
-      assert not altloc in confs
       confs[altloc] = ag.resname
     self.confs = confs
 
@@ -198,46 +197,6 @@ def match_atoms(
             + '      Other 2: %s' % o_atom.quote())
         assert stat == 0
 
-class adhoc_revertable_altloc_manipulation(object):
-  """
-  Ad hoc work-around to allow NCS selections consisting of one conformer only (
-  with blank or non-blank altloc) per user-defined NCS selection. It should be
-  called before match_atoms with .set() and then after match_atoms with
-  .revert().
-  """
-
-  def __init__(
-        self,
-        reference_selection_string,
-        selection_strings,
-        pdb_hierarchy):
-    self.reference_selection_string=reference_selection_string
-    self.selection_strings=selection_strings
-    self.pdb_hierarchy=pdb_hierarchy
-    self.status=False
-    self.asc=pdb_hierarchy.atom_selection_cache()
-    self.all_selections=self.selection_strings
-    if(self.reference_selection_string is not None):
-      self.all_selections=self.all_selections+[self.reference_selection_string]
-    self.altlocs=[]
-
-  def set(self):
-    for ss in self.all_selections:
-      sel = self.asc.selection(string = ss)
-      phs = self.pdb_hierarchy.select(sel)
-      try: conf = phs.only_conformer()
-      except AssertionError: return None
-      self.altlocs.append(conf.altloc)
-      for ag in phs.atoms(): ag.parent().altloc=""
-      self.status=True
-
-  def revert(self):
-    if(self.status):
-      for ss, altloc in zip(self.all_selections, self.altlocs):
-        sel = self.asc.selection(string = ss)
-        phs = self.pdb_hierarchy.select(sel)
-        for ag in phs.atoms(): ag.parent().altloc=altloc
-
 class pair_lists_generator(object):
 
   def __init__(self,
@@ -246,12 +205,6 @@ class pair_lists_generator(object):
         selection_strings,
         special_position_warnings_only,
         log):
-    aram = adhoc_revertable_altloc_manipulation(
-      reference_selection_string = reference_selection_string,
-      selection_strings          = selection_strings,
-      pdb_hierarchy              =
-        processed_pdb.all_chain_proxies.pdb_hierarchy)
-    aram.set()
     self.processed_pdb = processed_pdb
     del processed_pdb
     self.reference_selection_string = reference_selection_string
@@ -331,7 +284,6 @@ class pair_lists_generator(object):
           "  Reference selection: %s" % show_string(self.selection_strings[0]),
           "      Other selection: %s" % show_string(
             self.selection_strings[i_pair+1])]))
-    aram.revert()
 
 class group(object):
 
