@@ -9,6 +9,7 @@
 # FormatCBFMini.
 
 from __future__ import division
+import os
 
 from dxtbx.format.FormatCBFMini import FormatCBFMini
 from dxtbx.format.FormatCBFMiniPilatusHelpers import \
