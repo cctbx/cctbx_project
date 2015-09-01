@@ -119,27 +119,22 @@ def run_one_image(image, init, progbar=True):
     else:
       gs_prog.finished()
 
-  if 'imp' in args.mpi:
-    # Import image
-    if init.params.selection.select_only.flag_on:
-      gs_img = ep.load(image)
-      img_object = gs_img.import_int_file(init)
-    else:
-      single_image = img.SingleImage(image, init, verbose=False)
-      img_object = single_image.import_image()
+  if init.params.selection.select_only.flag_on:
+    single_image = ep.load(image)
+    img_object = single_image.import_int_file(init)
+  else:
+    single_image = img.SingleImage(image, init, verbose=True)
+    imported_img_object = single_image.import_image()
+    img_object = imported_img_object.convert_image()
 
-    # Check / convert / triage image
-    if progbar:
-      advance_progbar(image[0], image[1])
-    img_object = single_image.convert_image()
+  if init.params.image_conversion.convert_only:
+    return single_image
 
-  if 'pro' in args.mpi:
-    if single_image.triage == 'accepted':
-      if progbar:
-        advance_progbar(image[0], image[1])
-      img_object = single_image.process()
-    else:
-      return single_image
+  print single_image.fail
+  if single_image.fail == None:
+    img_object = single_image.process()
+  else:
+    return single_image
 
   return img_object
 
@@ -169,19 +164,18 @@ if __name__ == "__main__":
       print 'This run not initialized. Use "--mpi init" option'
       misc.iota_exit(iota_version, True)
 
-
   if 'ana' not in args.mpi:
 
     # if necessary, read in saved image objects
-    if 'imp' in args.mpi:
+    if 'pro' in args.mpi:
       if init.params.selection.select_only.flag_on:
         inp_list = init.gs_img_objects
       else:
         inp_list = init.input_list
-      msg = "Importing {} images".format(len(inp_list))
-    elif 'pro' in args.mpi:
-      inp_list = [ep.load(os.path.join(init.gs_base, i)) for i in os.listdir(init.gs_base)]
       msg = "Processing {} images".format(len(inp_list))
+#     elif 'pro' in args.mpi:
+#       inp_list = [ep.load(os.path.join(init.gs_base, i)) for i in os.listdir(init.gs_base)]
+#       msg = "Processing {} images".format(len(inp_list))
 
     # Run all modules in order in multiprocessor mode
     #cmd.Command.start(msg)
