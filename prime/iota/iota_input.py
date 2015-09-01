@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 07/29/2015
+Last Changed: 08/31/2015
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -134,6 +134,9 @@ selection
 advanced
   .help = "Advanced, debugging and experimental options."
 {
+  integrate_with = *cctbx dials
+    .type = choice
+    .help = Choose image processing software package
   debug = False
     .type = bool
     .help = Used for various debugging purposes.
@@ -150,6 +153,9 @@ advanced
   charts = False
     .type = bool
     .help = If True, outputs PDF files w/ charts of mosaicity, rmsd, etc.
+  heatmap = *None show file both
+    .type = choice
+    .help = Show / output to file a heatmap of grid search results
   random_sample
     .help = Use a randomized subset of images (or -r <number> option)
   {

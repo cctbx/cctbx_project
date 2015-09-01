@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 08/14/2015
+Last Changed: 08/31/2015
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -40,12 +40,12 @@ class SingleImage(object):
     self.conv_img = img[2]
     self.img_index = img[0]
     self.img_type = None
-    self.triage = 'accepted'
+    self.status = None
+    self.fail = None
     self.Bragg = 0
     self.log_info = []
     self.gs_results = []
     self.main_log = init.logfile
-    self.prefilter = True
     self.verbose = verbose
 
     self.input_base = init.input_base
@@ -61,52 +61,96 @@ class SingleImage(object):
     self.fin_file = None
     self.viz_path = None
 
-    if self.params.selection.select_only.flag_on:
-      self.import_gs_file(imported_grid)
-    else:
-      if not self.params.grid_search.flag_on:
-        self.params.grid_search.area_range = 0
-        self.params.grid_search.height_range = 0
-        self.params.grid_search.sig_height_search = False
-      self.grid, self.final = self.generate_grid()
+    if not self.params.grid_search.flag_on:
+      self.params.grid_search.area_range = 0
+      self.params.grid_search.height_range = 0
+      self.params.grid_search.sig_height_search = False
+    self.grid, self.final = self.generate_grid()
 
   def import_image(self):
     """ Returns imported image object """
+    self.status = 'imported'
     return self
+
+
+  def import_int_file(self, init):
+    """ Replaces path settings in imported image object with new settings
+        NEED TO RE-DO LATER """
+
+    # Generate paths to output files
+    self.params = init.params
+    self.main_log = init.logfile
+    self.input_base = init.input_base
+    self.conv_base = init.conv_base
+    self.int_base = init.int_base
+    self.gs_base = init.gs_base
+    self.fin_base = init.fin_base
+    self.viz_base = init.viz_base
+    self.gs_path = misc.make_image_path(self.conv_img, self.input_base, self.gs_base)
+    self.gs_file = os.path.abspath(os.path.join(self.gs_path,
+            os.path.basename(self.conv_img).split('.')[0] + ".int"))
+    self.fin_path = misc.make_image_path(self.conv_img, self.input_base, self.fin_base)
+    self.fin_file = os.path.abspath(os.path.join(self.fin_path,
+            os.path.basename(self.conv_img).split('.')[0] + "_int.pickle"))
+    self.final['final'] = self.fin_file
+    self.final['img'] = self.conv_img
+    if self.viz_base != None:
+      self.viz_path = misc.make_image_path(self.raw_img, self.input_base, self.viz_base)
+      self.viz_file = os.path.join(self.viz_path,
+                   os.path.basename(self.conv_img).split('.')[0] + "_int.png")
+
+    # Generate output folders and files:
+    # Grid search subfolder or final integration subfolder
+    if not os.path.isdir(self.gs_path):
+      os.makedirs(self.gs_path)
+    if not os.path.isdir(self.fin_path):
+      os.makedirs(self.fin_path)
+
+    # Grid search / integration log file
+    self.int_log = os.path.join(self.fin_path,
+                          os.path.basename(self.conv_img).split('.')[0] + '.log')
+
+    # Visualization subfolder
+    if self.viz_path != None and not os.path.isdir(self.viz_path):
+        os.makedirs(self.viz_path)
+
+    # Reset status to 'grid search' to pick up at selection (if no fail)
+    if self.fail == None:
+      self.status = 'grid search'
+
+    return self
+
 
   def generate_grid(self):
     """ Function to generate grid search parameters for this image object """
 
-    if self.params.selection.select_only.flag_on:
-      gs_block = self.imported_grid
-    else:
-      gs_block = []
-      h_min = self.params.grid_search.height_median - self.params.grid_search.height_range
-      h_max = self.params.grid_search.height_median + self.params.grid_search.height_range
-      h_std = self.params.grid_search.height_range
-      a_min = self.params.grid_search.area_median - self.params.grid_search.area_range
-      a_max = self.params.grid_search.area_median + self.params.grid_search.area_range
-      a_std = self.params.grid_search.area_range
+    gs_block = []
+    h_min = self.params.grid_search.height_median - self.params.grid_search.height_range
+    h_max = self.params.grid_search.height_median + self.params.grid_search.height_range
+    h_std = self.params.grid_search.height_range
+    a_min = self.params.grid_search.area_median - self.params.grid_search.area_range
+    a_max = self.params.grid_search.area_median + self.params.grid_search.area_range
+    a_std = self.params.grid_search.area_range
 
-      for spot_area in range(a_min, a_max + 1):
-        for spot_height in range (h_min, h_max + 1):
-          if self.params.grid_search.sig_height_search:
-            if spot_height >= 1 + h_std:
-              sigs = range(spot_height - h_std, spot_height + 1)
-            elif spot_height < 1 + h_std:
-              sigs = range(1, spot_height + 1)
-            elif spot_height == 1:
-              sigs = [1]
-          else:
-            sigs = [spot_height]
+    for spot_area in range(a_min, a_max + 1):
+      for spot_height in range (h_min, h_max + 1):
+        if self.params.grid_search.sig_height_search:
+          if spot_height >= 1 + h_std:
+            sigs = range(spot_height - h_std, spot_height + 1)
+          elif spot_height < 1 + h_std:
+            sigs = range(1, spot_height + 1)
+          elif spot_height == 1:
+            sigs = [1]
+        else:
+          sigs = [spot_height]
 
-          for sig_height in sigs:
-            gs_item = {'sih':sig_height, 'sph':spot_height,
-                       'spa':spot_area, 'a':0, 'b':0, 'c':0,
-                       'alpha':0, 'beta':0, 'gamma':0, 'sg':'',
-                       'strong':0, 'res':0, 'mos':0,
-                       'epv':0, 'info':'', 'ok':True}
-            gs_block.append(gs_item)
+        for sig_height in sigs:
+          gs_item = {'sih':sig_height, 'sph':spot_height,
+                     'spa':spot_area, 'a':0, 'b':0, 'c':0,
+                     'alpha':0, 'beta':0, 'gamma':0, 'sg':'',
+                     'strong':0, 'res':0, 'mos':0,
+                     'epv':0, 'info':'', 'ok':True}
+          gs_block.append(gs_item)
 
     int_line = {'img':self.conv_img, 'sih':0, 'sph':0, 'spa':0, 'a':0, 'b':0,
                 'c':0, 'alpha':0, 'beta':0, 'gamma':0, 'sg':'', 'strong':0,
@@ -265,6 +309,7 @@ class SingleImage(object):
     img_data, self.img_type = self.load_image()
     info = []
 
+    self.log_info.append('\n{:-^100}\n'.format(self.raw_img))
     self.log_info.append('Imported image  : {}'.format(self.raw_img))
     self.log_info.append('Parameters      : BEAM_X = {:<4.2f}, BEAM_Y = {:<4.2f}, '\
                          'PIXEL_SIZE = {:<8.6f}, IMG_SIZE = {:<4} X {:<4}, '\
@@ -321,12 +366,16 @@ class SingleImage(object):
                                               img_data['DISTANCE']))
       self.img_type = 'converted'
 
+
       # Save converted image pickle
       ep.dump(self.conv_img, img_data)
 
-
-    if self.params.image_triage.flag_on:
-      self.triage_image()
+    self.status = 'converted'
+    if self.params.image_triage.flag_on and self.status == 'converted':
+      self.fail = self.triage_image()
+      self.status = 'triaged'
+    else:
+      self.fail = None
 
     if not self.params.image_conversion.convert_only:
       self.gs_path = misc.make_image_path(self.conv_img, self.input_base, self.gs_base)
@@ -358,61 +407,12 @@ class SingleImage(object):
       if self.viz_path != None and not os.path.isdir(self.viz_path):
           os.makedirs(self.viz_path)
 
-      # Save file object for MPI
-      if self.args.mpi != None:
-        ep.dump(self.gs_file, self)
-
-    if self.verbose:
-      log_entry = "\n".join(self.log_info)
-      misc.main_log(self.main_log, log_entry)
-      misc.main_log(self.main_log, '\n')
-
     return self
-
-
-  def import_gs_file(self, imported_grid):
-
-    # Insert imported grid search results
-    self.grid = imported_grid
-
-    # Generate blank final line
-    self.final = {'img':self.conv_img, 'sih':0, 'sph':0, 'spa':0, 'a':0, 'b':0,
-                  'c':0, 'alpha':0, 'beta':0, 'gamma':0, 'sg':'', 'strong':0,
-                  'res':0, 'mos':0, 'epv':0, 'info':'', 'final':''}
-
-    # Generate paths to output files
-    self.gs_path = misc.make_image_path(self.conv_img, self.input_base, self.gs_base)
-    self.gs_file = os.path.abspath(os.path.join(self.gs_path,
-            os.path.basename(self.conv_img).split('.')[0] + ".int"))
-    self.fin_path = misc.make_image_path(self.conv_img, self.input_base, self.fin_base)
-    self.fin_file = os.path.abspath(os.path.join(self.fin_path,
-            os.path.basename(self.conv_img).split('.')[0] + "_int.pickle"))
-    self.final['final'] = self.fin_file
-    self.final['img'] = self.conv_img
-    if self.viz_base != None:
-      self.viz_path = misc.make_image_path(self.raw_img, self.input_base, self.viz_base)
-      self.viz_file = os.path.join(self.viz_path,
-                   os.path.basename(self.conv_img).split('.')[0] + "_int.png")
-
-    # Generate output folders and files:
-    # Grid search subfolder or final integration subfolder
-    if not os.path.isdir(self.gs_path):
-      os.makedirs(self.gs_path)
-    if not os.path.isdir(self.fin_path):
-      os.makedirs(self.fin_path)
-
-    # Grid search / integration log file
-    self.int_log = os.path.join(self.fin_path,
-                          os.path.basename(self.conv_img).split('.')[0] + '.log')
-
-    # Visualization subfolder
-    if self.viz_path != None and not os.path.isdir(self.viz_path):
-        os.makedirs(self.viz_path)
-
 
 
   def triage_image(self):
     """ Performs a quick DISTL spotfinding without grid search.
+        NOTE: Convert to DIALS spotfinder when ready! (Even for CCTBX runs.)
     """
 
     import spotfinder
@@ -450,10 +450,12 @@ class SingleImage(object):
     if self.Bragg >= self.params.image_triage.min_Bragg_peaks:
       self.log_info.append('ACCEPTED! {} good Bragg peaks'\
                             ''.format(self.Bragg))
-      self.triage = 'accepted'
+      status = None
     else:
       self.log_info.append('REJECTED')
-      self.triage = 'rejected'
+      status = 'failed triage'
+
+    return status
 
 
   def determine_gs_result_file(self):
@@ -467,14 +469,13 @@ class SingleImage(object):
     return gs_result_file
 
 
-  def integrate(self, tag):
+  def integrate_cctbx(self, tag):
     """ Runs integration using the Integrator class """
 
-    if self.triage == 'rejected' or not self.prefilter or \
-       len(self.grid) == 0 or self.final['final'] == None:
+    # Check to see if the image is suitable for grid search / integration
+    if self.fail != None:
       self.grid = []
       self.final['final'] = None
-
     else:
       from prime.iota.iota_integrate import Integrator
       integrator = Integrator(self.conv_img,
@@ -485,39 +486,32 @@ class SingleImage(object):
                               self.viz_path,
                               self.int_log,
                               tag)
-
       if tag == 'grid search':
-        # Check if this is select-only, check for *.int files and load results
-        if self.params.selection.select_only.flag_on:
-          gs_result_file = self.determine_gs_result_file()
-          gs_result = ep.load(gs_result_file).grid
-          self.grid.update(gs_result)
-        else:
-          # Linear grid search (for now)
-          for i in range(len(self.grid)):
-            int_results = integrator.integrate(self.grid[i])
-            self.grid[i].update(int_results)
-            img_filename = os.path.basename(self.conv_img)
-            log_entry ='{:<{width}}: S = {:<3} H = {:<3} ' \
-                       'A = {:<3} ---> {}'.format(img_filename,
-                        self.grid[i]['sih'],
-                        self.grid[i]['sph'],
-                        self.grid[i]['spa'],
-                        self.grid[i]['info'],
-                        width = len(img_filename) + 2)
-            if self.verbose:
-              misc.main_log(self.main_log, log_entry)
-            self.gs_results.append(log_entry)
+        self.log_info.append('\nCCTBX grid search:')
+        for i in range(len(self.grid)):
+          int_results = integrator.integrate(self.grid[i])
+          self.grid[i].update(int_results)
+          img_filename = os.path.basename(self.conv_img)
+          log_entry ='{:<{width}}: S = {:<3} H = {:<3} ' \
+                     'A = {:<3} ---> {}'.format(img_filename,
+                      self.grid[i]['sih'],
+                      self.grid[i]['sph'],
+                      self.grid[i]['spa'],
+                      self.grid[i]['info'],
+                      width = len(img_filename) + 2)
+          self.log_info.append(log_entry)
+          self.gs_results.append(log_entry)
 
         # Throw out grid search results that yielded no integration
         self.grid = [i for i in self.grid if "not integrated" not in i['info'] and\
                      "no data recorded" not in i['info']]
+        self.status = 'grid search'
 
       elif tag == 'integrate':
-        # Single integration event with selected parameters
-        # Exit if image failed to integrate
+        self.log_info.append('\nCCTBX final integration:')
         final_results = integrator.integrate(self.final)
         self.final.update(final_results)
+        self.status = 'final'
         img_filename = os.path.basename(self.conv_img)
         log_entry ='{:<{width}}: S = {:<3} H = {:<3} ' \
                    'A = {:<3} ---> {}'.format(img_filename,
@@ -526,23 +520,23 @@ class SingleImage(object):
                     self.final['spa'],
                     self.final['info'],
                     width = len(img_filename) + 2)
-        if self.verbose:
-          misc.main_log(self.main_log, log_entry)
+        self.log_info.append(log_entry)
 
         if self.params.advanced.viz == 'integration':
           viz.make_png(self.final['img'], self.final['final'], self.viz_file)
         elif self.params.advanced.viz == 'cv_vectors':
           viz.cv_png(self.final['img'], self.final['final'], self.viz_file)
 
-    # Save image object to file for MPI
-    ep.dump(self.gs_file, self)
+      # Save image object to file
+      ep.dump(self.gs_file, self)
+
     return self
 
 
-  def select(self):
+  def select_cctbx(self):
     """ Selects best grid search result using the Selector class """
 
-    if self.triage == 'accepted':
+    if self.fail == None:
       from prime.iota.iota_integrate import Selector
       selector = Selector(self.grid,
                           self.final,
@@ -553,15 +547,41 @@ class SingleImage(object):
                           self.params.selection.prefilter.min_reflections,
                           self.params.selection.prefilter.min_resolution)
 
-      self.final, log_entry = selector.select()
-      if self.verbose:
-        misc.main_log(self.main_log, log_entry)
+      self.fail, self.final, log_entry = selector.select()
+      self.status = 'selection'
+      self.log_info.append(log_entry)
 
     # Save results into a pickle file
     ep.dump(self.gs_file, self)
 
     return self
 
+  def process(self):
+    """ Image processing; selects method, runs requisite modules """
+
+    if self.params.advanced.integrate_with == 'cctbx':
+
+      # Run grid search if haven't already
+      if self.fail == None and self.status != 'grid search':
+        self.integrate_cctbx('grid search')
+
+      # Run selection if haven't already
+      if self.fail == None and self.status != 'select':
+        self.select_cctbx()
+
+      # Run final integration if haven't already
+      if self.fail == None and self.status != 'final':
+        self.integrate_cctbx('integrate')
+
+      if self.verbose:
+         log_entry = "\n".join(self.log_info)
+         misc.main_log(self.main_log, log_entry)
+         misc.main_log(self.main_log, '\n{:-^100}\n'.format(''))
+
+    elif self.params.advanced.integrate_with == 'dials':
+      print "PLACEHOLDER FOR DIALS INTEGRATION!"
+
+    return self
 
 
 # **************************************************************************** #
