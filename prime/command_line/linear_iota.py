@@ -3,12 +3,12 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 07/29/2015
+Last Changed: 09/01/2015
 Description : IOTA command-line module for running modules in order.
-              Version 2.04
+              Version 2.10
 '''
 
-iota_version = '2.04'
+iota_version = '2.10'
 help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 
@@ -111,21 +111,13 @@ def run_wrapper(input_entry):
 def run_one_image(image, init, progbar=True):
 
   def advance_progbar(prog_count, n_img):
-    if 'imp' in args.mpi:
-      ptitle = "IMPORTING IMAGES"
-    elif 'gri' in args.mpi:
-      ptitle = "GRID SEARCH"
-    elif 'sel' in args.mpi:
-      ptitle = "SELECTING"
-    elif 'fin' in args.mpi:
-      ptitle = "INTEGRATING"
-
-    gs_prog = cmd.ProgressBar(title=ptitle)
+    gs_prog = cmd.ProgressBar(title='PROCESSING')
     if prog_count < n_img:
       prog_step = 100 / n_img
       gs_prog.update(prog_count * prog_step, prog_count)
     else:
       gs_prog.finished()
+ 
 
   if 'imp' in args.mpi:
     # Import image
@@ -144,36 +136,12 @@ def run_one_image(image, init, progbar=True):
   else:
     single_image = image[2]
 
-  if 'gri' in args.mpi:
+  if 'pro' in args.mpi:
     # Grid search
     if single_image.triage == 'accepted':
       if progbar:
         advance_progbar(image[0], image[1])
-      img_object = single_image.integrate('grid search')
-    else:
-      return single_image
-
-  elif 'sel' in args.mpi:
-    # Selection
-    if len(single_image.grid) != 0 and single_image.triage == 'accepted':
-      if progbar:
-        advance_progbar(image[0], image[1])
-      img_object = single_image.select()
-    elif len(single_image.grid) == 0 or single_image.triage == 'rejected':
-      return single_image
-
-    # Exit if image not integrated
-    if single_image.final['final'] == None:
-      if progbar:
-        advance_progbar(image[0], image[1])
-      return single_image
-
-  elif 'fin' in args.mpi:
-    # Final integration
-    if single_image.final['final'] != None:
-      if progbar:
-        advance_progbar(image[0], image[1])
-      img_object = single_image.integrate('integrate')
+      img_object = single_image.process()
     else:
       return single_image
 
