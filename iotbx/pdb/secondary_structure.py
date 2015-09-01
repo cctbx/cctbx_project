@@ -502,13 +502,14 @@ class annotation(structure_base):
   def from_phil(cls, phil_helices, phil_sheets, pdb_hierarchy, log=None):
     helices = []
     sheets = []
+    cache = pdb_hierarchy.atom_selection_cache()
     for i, helix_param in enumerate(phil_helices):
       if helix_param.selection is not None:
-        h = pdb_helix.from_phil_params(helix_param, pdb_hierarchy, i, log)
+        h = pdb_helix.from_phil_params(helix_param, pdb_hierarchy, cache, i, log)
         helices.append(h)
     for i, sheet_param in enumerate(phil_sheets):
       if sheet_param.first_strand is not None:
-        sh = pdb_sheet.from_phil_params(sheet_param, pdb_hierarchy, log)
+        sh = pdb_sheet.from_phil_params(sheet_param, pdb_hierarchy, cache, log)
         sheets.append(sh)
     return cls(helices=helices, sheets=sheets)
 
@@ -1179,9 +1180,7 @@ class pdb_helix (structure_base) :
       length=int(line[71:76])) #string.atoi(line[71:76]))
 
   @classmethod
-  def from_phil_params(cls, helix_params, pdb_hierarchy, serial=0, log=None):
-    isel = pdb_hierarchy.atom_selection_cache().iselection
-    atoms = [ a for a in pdb_hierarchy.atoms_with_labels() ]
+  def from_phil_params(cls, helix_params, pdb_hierarchy, cache, serial=0, log=None):
     if helix_params.selection is None :
       print >> log, "Empty helix at serial %d." % (serial)
       # continue
@@ -1189,14 +1188,14 @@ class pdb_helix (structure_base) :
                 helix_params.selection)
     if helix_params.serial_number is not None:
       serial = helix_params.serial_number
-    amide_isel = isel(sele_str)
+    amide_isel = cache.iselection(sele_str)
     if amide_isel is None or len(amide_isel) == 0:
       error_msg = "Error in helix definition.\n"
       error_msg += "String '%s' selected 0 atoms.\n" % sele_str
       error_msg += "Most likely the definition of helix does not match model.\n"
       raise Sorry(error_msg)
-    start_atom = atoms[amide_isel[0]]
-    end_atom = atoms[amide_isel[-1]]
+    start_atom = pdb_hierarchy.atoms()[amide_isel[0]]
+    end_atom = pdb_hierarchy.atoms()[amide_isel[-1]]
     hbonds = []
     for hb in helix_params.hbond:
       if hb.donor is None:
@@ -1209,14 +1208,14 @@ class pdb_helix (structure_base) :
     return cls(
       serial=serial,
       helix_id=helix_params.helix_identifier,
-      start_resname=start_atom.resname,
-      start_chain_id=start_atom.chain_id,
-      start_resseq=start_atom.resseq,
-      start_icode=start_atom.icode,
-      end_resname=end_atom.resname,
-      end_chain_id=end_atom.chain_id,
-      end_resseq=end_atom.resseq,
-      end_icode=end_atom.icode,
+      start_resname=start_atom.parent().resname,
+      start_chain_id=start_atom.parent().parent().parent().id,
+      start_resseq=start_atom.parent().parent().resseq,
+      start_icode=start_atom.parent().parent().icode,
+      end_resname=end_atom.parent().resname,
+      end_chain_id=end_atom.parent().parent().parent().id,
+      end_resseq=end_atom.parent().parent().resseq,
+      end_icode=end_atom.parent().parent().icode,
       helix_class=helix_params.helix_type,
       comment="",
       length=amide_isel.size(),
@@ -1554,9 +1553,7 @@ class pdb_sheet(structure_base):
                registrations=registrations)
 
   @classmethod
-  def from_phil_params(cls, sheet_params, pdb_hierarchy, log=None):
-    isel = pdb_hierarchy.atom_selection_cache().iselection
-    atoms = [a for a in pdb_hierarchy.atoms_with_labels()]
+  def from_phil_params(cls, sheet_params, pdb_hierarchy, cache, log=None):
     if sheet_params.first_strand is None:
       raise Sorry("Empty first strand selection")
     sheet_id="1"
@@ -1565,73 +1562,73 @@ class pdb_sheet(structure_base):
     n_strands = len(sheet_params.strand) + 1
     sele_str = ("(%s) and (name N) and (altloc 'A' or altloc ' ')" %
                     sheet_params.first_strand)
-    amide_isel = isel(sele_str)
+    amide_isel = cache.iselection(sele_str)
     if amide_isel is None or len(amide_isel) == 0:
       error_msg = "Error in sheet definition.\n"
       error_msg += "String '%s' selected 0 atoms.\n" % sele_str
       error_msg += "Most likely the definition of sheet does not match model.\n"
       raise Sorry(error_msg)
-    start_atom = atoms[amide_isel[0]]
-    end_atom = atoms[amide_isel[-1]]
+    start_atom = pdb_hierarchy.atoms()[amide_isel[0]]
+    end_atom = pdb_hierarchy.atoms()[amide_isel[-1]]
     first_strand = pdb_strand(
         sheet_id=sheet_id,
         strand_id=1,
-        start_resname=start_atom.resname,
-        start_chain_id=start_atom.chain_id,
-        start_resseq=start_atom.resseq,
-        start_icode=start_atom.icode,
-        end_resname=end_atom.resname,
-        end_chain_id=end_atom.chain_id,
-        end_resseq=end_atom.resseq,
-        end_icode=end_atom.icode,
+        start_resname=start_atom.parent().resname,
+        start_chain_id=start_atom.parent().parent().parent().id,
+        start_resseq=start_atom.parent().parent().resseq,
+        start_icode=start_atom.parent().parent().icode,
+        end_resname=end_atom.parent().resname,
+        end_chain_id=end_atom.parent().parent().parent().id,
+        end_resseq=end_atom.parent().parent().resseq,
+        end_icode=end_atom.parent().parent().icode,
         sense=0)
     strands = [first_strand]
     registrations = [None]
     for i, strand_param in enumerate(sheet_params.strand):
       sele_str = ("(%s) and (name N) and (altloc 'A' or altloc ' ')" %
                       strand_param.selection)
-      amide_isel = isel(sele_str)
+      amide_isel = cache.iselection(sele_str)
       if amide_isel is None or len(amide_isel) == 0:
         error_msg = "Error in sheet definition.\n"
         error_msg += "String '%s' selected 0 atoms.\n" % sele_str
         error_msg += "Most likely the definition of sheet does not match model.\n"
         raise Sorry(error_msg)
-      start_atom = atoms[amide_isel[0]]
-      end_atom = atoms[amide_isel[-1]]
+      start_atom = pdb_hierarchy.atoms()[amide_isel[0]]
+      end_atom = pdb_hierarchy.atoms()[amide_isel[-1]]
       sense = cls.sense_to_int(strand_param.sense)
       strand = pdb_strand(
           sheet_id=sheet_id,
           strand_id=i+2,
-          start_resname=start_atom.resname,
-          start_chain_id=start_atom.chain_id,
-          start_resseq=int(start_atom.resseq),
-          start_icode=start_atom.icode,
-          end_resname=end_atom.resname,
-          end_chain_id=end_atom.chain_id,
-          end_resseq=int(end_atom.resseq),
-          end_icode=end_atom.icode,
+          start_resname=start_atom.parent().resname,
+          start_chain_id=start_atom.parent().parent().parent().id,
+          start_resseq=int(start_atom.parent().parent().resseq),
+          start_icode=start_atom.parent().parent().icode,
+          end_resname=end_atom.parent().resname,
+          end_chain_id=end_atom.parent().parent().parent().id,
+          end_resseq=int(end_atom.parent().parent().resseq),
+          end_icode=end_atom.parent().parent().icode,
           sense=sense)
       reg_cur_atom = None
       if strand_param.bond_start_current is not None:
-        reg_cur_sel = isel(strand_param.bond_start_current)
+        reg_cur_sel = cache.iselection(strand_param.bond_start_current)
         if reg_cur_sel is None or len(reg_cur_sel) == 0:
           error_msg = "Error in sheet definition.\n"
           error_msg += "String '%s' selected 0 atoms.\n" % strand_param.bond_start_current
           error_msg += "Most likely the definition of sheet does not match model.\n"
           raise Sorry(error_msg)
-        reg_cur_atom = atoms[reg_cur_sel[0]]
+        reg_cur_atom = pdb_hierarchy.atoms()[reg_cur_sel[0]]
       if reg_cur_atom is None: # No current atom in registration
         pass
         # raise Sorry("This bond_start_current yields 0 atoms:\n %s" % strand_param.bond_start_current)
       reg_prev_atom = None
       if strand_param.bond_start_previous is not None:
-        reg_prev_sel = isel(strand_param.bond_start_previous)
+        reg_prev_sel = cache.iselection(strand_param.bond_start_previous)
         if reg_prev_sel is None or len(reg_prev_sel) == 0:
           error_msg = "Error in sheet definition.\n"
           error_msg += "String '%s' selected 0 atoms.\n" % strand_param.bond_start_previous
           error_msg += "Most likely the definition of sheet does not match model.\n"
           raise Sorry(error_msg)
-        reg_prev_atom = atoms[reg_prev_sel[0]]
+        reg_prev_atom = pdb_hierarchy.atoms()[reg_prev_sel[0]]
       if reg_prev_atom is None: # No previous atom in registration
         pass
         # raise Sorry("This bond_start_previous yields 0 atoms:\n %s" % strand_param.bond_start_previous)
@@ -1639,15 +1636,15 @@ class pdb_sheet(structure_base):
       if reg_cur_atom is not None and reg_prev_atom is not None:
         reg = pdb_strand_register(
             cur_atom=reg_cur_atom.name,
-            cur_resname=reg_cur_atom.resname,
-            cur_chain_id=reg_cur_atom.chain_id,
-            cur_resseq=int(reg_cur_atom.resseq),
-            cur_icode=reg_cur_atom.icode,
+            cur_resname=reg_cur_atom.parent().resname,
+            cur_chain_id=reg_cur_atom.parent().parent().parent().id,
+            cur_resseq=int(reg_cur_atom.parent().parent().resseq),
+            cur_icode=reg_cur_atom.parent().parent().icode,
             prev_atom=reg_prev_atom.name,
-            prev_resname=reg_prev_atom.resname,
-            prev_chain_id=reg_prev_atom.chain_id,
-            prev_resseq=int(reg_prev_atom.resseq),
-            prev_icode=reg_prev_atom.icode)
+            prev_resname=reg_prev_atom.parent().resname,
+            prev_chain_id=reg_prev_atom.parent().parent().parent().id,
+            prev_resseq=int(reg_prev_atom.parent().parent().resseq),
+            prev_icode=reg_prev_atom.parent().parent().icode)
       strands.append(strand)
       registrations.append(reg)
     hbonds = []
