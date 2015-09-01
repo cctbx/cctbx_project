@@ -67,7 +67,8 @@ class FormatCBFMiniPilatusDLS6MSN119(FormatCBFMiniPilatus):
         year = int(record.replace('-', ' ').replace('/', ' ').split()[1])
         break
 
-    assert (year > 0)
+    if (year <= 0):
+      return False
 
     for record in header.split('\n'):
       if '# Detector' in record and \
