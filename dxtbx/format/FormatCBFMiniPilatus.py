@@ -25,6 +25,9 @@ class FormatCBFMiniPilatus(FormatCBFMini):
     '''Check to see if this looks like an Pilatus mini CBF format image,
     i.e. we can make sense of it.'''
 
+    if 'ENABLE_PHOTON_FACTORY_TWO_EIGER' in os.environ:
+      return False
+
     header = FormatCBFMini.get_cbf_header(image_file)
 
     for record in header.split('\n'):
