@@ -386,18 +386,19 @@ class ProcessDialog (wx.Dialog) :
     szr.Fit(self)
     self.Centre(wx.BOTH)
 
-  def run (self, process, update_on_timer=False) :
+  def run (self, process):
     self.process = process
-    if (update_on_timer) :
-      self._timer = wx.Timer(owner=self)
-      self.Bind(wx.EVT_TIMER, self.OnTimer)
-      self._timer.Start(250)
+    self._timer = wx.Timer(owner=self)
+    self.Bind(wx.EVT_TIMER, self.OnTimer)
+    self._timer.Start(100)
     self.process.start()
     self.gauge.Pulse()
     return self.ShowModal()
 
   def OnTimer (self, event) :
-    self.process.update()
+    if hasattr(self.process,'update'):
+      self.process.update()
+    self.gauge.Pulse()
 
   def OnAbort (self, event) :
     self.process.abort()
@@ -437,6 +438,7 @@ Error in subprocess!
         self.callback(event.data)
     finally :
       self._result = event.data
+      self._timer.Stop()
       self.EndModal(wx.ID_OK)
 
   def get_result (self) :
