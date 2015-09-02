@@ -815,8 +815,9 @@ class scaling_manager (intensity_data) :
 
     sels = []
     binned_intensities = []
+    min_all_mean_Is = flex.min(all_mean_Is)
     for i in xrange(n_bins):
-      sel = (all_mean_Is > (min(all_mean_Is) + step * i)) & (all_mean_Is < (min(all_mean_Is) + step * (i+1)))
+      sel = (all_mean_Is > (min_all_mean_Is + step * i)) & (all_mean_Is < (min_all_mean_Is + step * (i+1)))
       if sel.all_eq(False): continue
       sels.append(sel)
       binned_intensities.append((step/2 + step*i)+min(only_means))
