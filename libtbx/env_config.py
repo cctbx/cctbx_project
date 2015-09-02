@@ -777,8 +777,7 @@ Wait for the command to finish, then try again.""" % vars())
       self.build_options.build_boost_python_extensions \
         = command_line.options.build_boost_python_extensions
     self.reset_module_registry()
-    module_names.append("libtbx")
-    module_names.reverse()
+    module_names.insert(0, "libtbx")
     for module_name in module_names:
       self.process_module(
         dependent_module=None, module_name=module_name, optional=False)
