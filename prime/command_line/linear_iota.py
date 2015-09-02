@@ -123,15 +123,15 @@ def run_one_image(image, init, progbar=True):
     single_image = ep.load(image)
     img_object = single_image.import_int_file(init)
   else:
-    single_image = img.SingleImage(image, init, verbose=True)
+    single_image = img.SingleImage(image, init, verbose=False)
     imported_img_object = single_image.import_image()
     img_object = imported_img_object.convert_image()
 
   if init.params.image_conversion.convert_only:
     return single_image
 
-  print single_image.fail
   if single_image.fail == None:
+    single_image.verbose = True
     img_object = single_image.process()
   else:
     return single_image
@@ -173,9 +173,6 @@ if __name__ == "__main__":
       else:
         inp_list = init.input_list
       msg = "Processing {} images".format(len(inp_list))
-#     elif 'pro' in args.mpi:
-#       inp_list = [ep.load(os.path.join(init.gs_base, i)) for i in os.listdir(init.gs_base)]
-#       msg = "Processing {} images".format(len(inp_list))
 
     # Run all modules in order in multiprocessor mode
     #cmd.Command.start(msg)
@@ -190,10 +187,8 @@ if __name__ == "__main__":
 
   else:
     img_objects = [ep.load(os.path.join(init.gs_base, i)) for i in os.listdir(init.gs_base)]
-    int_objects = [i for i in img_objects if i.final['final'] != None]
+    int_objects = [i for i in img_objects if i.fail == None]
     if len(int_objects) != 0:
-
-      # Analysis of integration results
       analysis = Analyzer(int_objects, init.logfile, iota_version, init.now)
       analysis.print_results()
       analysis.unit_cell_analysis(init.params.advanced.cluster_threshold,
