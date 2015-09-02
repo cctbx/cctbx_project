@@ -1168,7 +1168,7 @@ class pdb_helix (structure_base) :
       helix_id=line[11:14].strip(),
       start_resname=line[15:18],
       start_chain_id=cls.parse_chain_id(line[18:20]),
-      start_resseq=(line[21:25]),
+      start_resseq=int(line[21:25]),
       start_icode=line[25],
       end_resname=line[27:30],
       end_chain_id=cls.parse_chain_id(line[30:32]),
