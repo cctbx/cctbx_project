@@ -202,10 +202,21 @@ if __name__ == "__main__":
     if len(int_objects) != 0:
       analysis = Analyzer(img_objects, init.logfile, iota_version, init.now)
       analysis.print_results()
-      analysis.unit_cell_analysis(init.params.advanced.cluster_threshold,
+      analysis.unit_cell_analysis(init.params.analysis.cluster_threshold,
                                   init.int_base)
       analysis.print_summary(init.int_base)
       analysis.make_prime_input(init.int_base)
+
+      # Spotfinding heatmap
+      if init.params.analysis.heatmap != None:
+        hm_file = "{}/{}".format(init.viz_base, 'heatmap.png')
+        if init.params.analysis.heatmap == 'show':
+          analysis.show_heatmap()
+        elif init.params.analysis.heatmap == 'file':
+          analysis.show_heatmap(show=False, hm_file=hm_file)
+        elif init.params.analysis.heatmap == 'both':
+          analysis.show_heatmap(hm_file=hm_file)
+
     else:
       print "No images integrated"
 
