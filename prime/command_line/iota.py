@@ -3,11 +3,11 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 08/31/2015
-Description : IOTA command-line module. Version 2.10
+Last Changed: 09/02/2015
+Description : IOTA command-line module. Version 2.11
 '''
 
-iota_version = '2.10'
+iota_version = '2.11'
 help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 
@@ -27,6 +27,18 @@ the path to the input image folder under "input". Converts raw
 images into pickle format and modifies by cropping or padding to
 ensure that beam center is in center of image. Can also blank out
 beam stop shadow.
+
+MPI mode
+Usage:
+prime.linear_iota iota.param --mpi init
+prime.linear_iota iota.param --mpi process
+prime.linear_iota iota.param --mpi analyze
+
+Run IOTA in three separate batches (initialization, image processing,
+analysis); can use MPI (mpirun) to run the image processing step.
+Can run these in sequence in a shell script or any other kind of a
+submission script. Useful for huge datasets.
+
 
 """
 from prime.iota.iota_analysis import Analyzer
@@ -149,21 +161,19 @@ if __name__ == "__main__":
   # Analysis of integration results
   analysis = Analyzer(img_objects, init.logfile, iota_version, init.now)
   analysis.print_results()
-  analysis.unit_cell_analysis(init.params.advanced.cluster_threshold,
+  analysis.unit_cell_analysis(init.params.analysis.cluster_threshold,
                               init.int_base)
   analysis.print_summary(init.int_base)
   analysis.make_prime_input(init.int_base)
 
-#   for i in img_objects:
-#     print i.conv_img, "fail code: {}".format(i.fail)
-
-  if init.params.advanced.heatmap != None:
+  # Spotfinding heatmap
+  if init.params.analysis.heatmap != None:
     hm_file = "{}/{}".format(init.viz_base, 'heatmap.png')
-    if init.params.advanced.heatmap == 'show':
+    if init.params.analysis.heatmap == 'show':
       analysis.show_heatmap()
-    elif init.params.advanced.heatmap == 'file':
+    elif init.params.analysis.heatmap == 'file':
       analysis.show_heatmap(show=False, hm_file=hm_file)
-    elif init.params.advanced.heatmap == 'both':
+    elif init.params.analysis.heatmap == 'both':
       analysis.show_heatmap(hm_file=hm_file)
 
   misc.iota_exit(iota_version)

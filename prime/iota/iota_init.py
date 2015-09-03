@@ -224,7 +224,6 @@ class InitAll(object):
                                                         carg, 'auto', self.now)
       # If user provided gibberish
       else:
-        print carg
         print "ERROR: Invalid input! Need parameter filename or data folder."
         misc.iota_exit(self.iver)
 
@@ -247,17 +246,18 @@ class InitAll(object):
     self.int_base = misc.set_base_dir('integration')
     self.gs_base = os.path.join(self.int_base, 'grid_search')
     self.fin_base = os.path.join(self.int_base, 'final')
-    if self.params.advanced.viz != 'None' or\
-       self.params.advanced.heatmap != 'None' or\
-       self.params.advanced.charts:
+    if self.params.analysis.viz != 'None' or\
+       self.params.analysis.heatmap != 'None' or\
+       self.params.analysis.charts:
       self.viz_base = os.path.join(self.int_base, 'visualization')
     else:
       self.viz_base = None
 
     # Generate base folders
-    os.makedirs(self.int_base)
-    os.makedirs(self.gs_base)
-    os.makedirs(self.fin_base)
+    if not self.params.image_conversion.convert_only:
+      os.makedirs(self.int_base)
+      os.makedirs(self.gs_base)
+      os.makedirs(self.fin_base)
 
     # Check for -l option, output list of input files and exit
     if self.args.list:

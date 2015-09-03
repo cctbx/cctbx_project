@@ -113,12 +113,14 @@ class Analyzer(object):
     ax.set_xticks(np.arange(len(cols))+.5, minor=False)
     ax.set_yticklabels(row_labels, minor=False)
     ax.set_xticklabels(col_labels, minor=False)
+    ax.set_xlabel('Spot height')
+    ax.set_ylabel('Spot area')
 
     if show:
       plt.show()
 
     if hm_file != None:
-      print "Saving to {}".format(hm_file)
+      print "\nSpotfinding heatmap saved to {}".format(hm_file)
       fig.savefig(hm_file, format='png', bbox_inches=0)
 
 

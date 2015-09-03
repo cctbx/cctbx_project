@@ -29,6 +29,17 @@ images into pickle format and modifies by cropping or padding to
 ensure that beam center is in center of image. Can also blank out
 beam stop shadow.
 
+MPI mode
+Usage:
+prime.linear_iota iota.param --mpi init
+prime.linear_iota iota.param --mpi process
+prime.linear_iota iota.param --mpi analyze
+
+Run IOTA in three separate batches (initialization, image processing,
+analysis); can use MPI (mpirun) to run the image processing step.
+Can run these in sequence in a shell script or any other kind of a
+submission script. Useful for huge datasets.
+
 """
 
 from libtbx.easy_mp import parallel_map as easy_mp_parallel_map
@@ -189,7 +200,7 @@ if __name__ == "__main__":
     img_objects = [ep.load(os.path.join(init.gs_base, i)) for i in os.listdir(init.gs_base)]
     int_objects = [i for i in img_objects if i.fail == None]
     if len(int_objects) != 0:
-      analysis = Analyzer(int_objects, init.logfile, iota_version, init.now)
+      analysis = Analyzer(img_objects, init.logfile, iota_version, init.now)
       analysis.print_results()
       analysis.unit_cell_analysis(init.params.advanced.cluster_threshold,
                                   init.int_base)

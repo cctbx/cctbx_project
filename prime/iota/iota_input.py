@@ -134,6 +134,23 @@ selection
       .help = Minimum resolution for accepted images
   }
 }
+analysis
+  .help = "Analysis / visualization options."
+{
+  cluster_threshold = 5000
+    .type = int
+    .help = threshold value for unit cell clustering
+  viz = *None integration cv_vectors
+    .type = choice
+    .help = Set to "integration" to visualize spotfinding and integration results.
+    .help = Set to "cv_vectors" to visualize accuracy of CV vectors
+  charts = False
+    .type = bool
+    .help = If True, outputs PDF files w/ charts of mosaicity, rmsd, etc.
+  heatmap = None show *file both
+    .type = choice
+    .help = Show / output to file a heatmap of grid search results
+}
 advanced
   .help = "Advanced, debugging and experimental options."
 {
@@ -146,19 +163,6 @@ advanced
   experimental = False
     .type = bool
     .help = Set to true to run the experimental section of codes
-  cluster_threshold = 5000
-    .type = int
-    .help = threshold value for unit cell clustering
-  viz = *None integration cv_vectors
-    .type = choice
-    .help = Set to "integration" to visualize spotfinding and integration results.
-    .help = Set to "cv_vectors" to visualize accuracy of CV vectors
-  charts = False
-    .type = bool
-    .help = If True, outputs PDF files w/ charts of mosaicity, rmsd, etc.
-  heatmap = *None show file both
-    .type = choice
-    .help = Show / output to file a heatmap of grid search results
   random_sample
     .help = Use a randomized subset of images (or -r <number> option)
   {
