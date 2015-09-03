@@ -86,5 +86,8 @@ def qdel (job_id, platform) :
   # XXX this is specific to SGE - need error handling for other systems too
   for line in qdel_out :
     if "denied" in line :
-      raise RuntimeError("\n".join(qdel_out))
+      if ("does not exist" in line):  # SGE job does not exist
+        pass
+      else:
+        raise RuntimeError("\n".join(qdel_out))
   return True
