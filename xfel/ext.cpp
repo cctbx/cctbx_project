@@ -571,28 +571,21 @@ compute_normalized_deviations(boost::python::dict const& ISIGI, scaling_results:
     scitbx::af::shared<double> intensities(n);
     scitbx::af::shared<double> sigmas(n);
     scitbx::af::shared<double> meanIprimes(n);
-    double meanI = 0;
+    double sumI = 0;
     double nn = std::sqrt((n-1.0)/n);
 
-    // compute meanI, which is the mean of the observations of this hkl, and meanIprimes, which
-    // for each observation, is the mean of all other observations of this hkl
+    // compute meanIprime, which for each observation, is the mean of all other observations of this hkl
     for (std::size_t i = 0; i < n; i++) {
       tuple dataitem = extract<tuple>(data[i]);
       // scaled intensities and sigmas
       intensities[i] = extract<double>(dataitem[0]);
       sigmas[i] = intensities[i] / extract<double>(dataitem[1]);
-      for (std::size_t j = 0; j < n; j++) {
-        if (i == j) continue;
-        meanIprimes[j] += intensities[i];
-      }
-      meanI += intensities[i];
+      sumI += intensities[i];
     }
-
-    meanI /= n;
 
     // compute the normalized deviations
     for (std::size_t i = 0; i < n; i++) {
-      double meanIprime = meanIprimes[i] / n;
+      double meanIprime = (sumI-intensities[i]) / (n>1 ? (n-1) : 1);
 
       result.push_back(nn * (intensities[i] - meanIprime) / sigmas[i]);
     }
@@ -615,8 +608,7 @@ apply_sd_error_params(boost::python::dict const& ISIGI, const double sdfac, cons
     scitbx::af::shared<double> intensities(n);
     scitbx::af::shared<double> sigmas(n);
     scitbx::af::shared<double> scales(n);
-    scitbx::af::shared<double> meanIprimes(n);
-    double meanI = 0;
+    double sumI = 0;
 
     for (std::size_t i = 0; i < n; i++) {
       tuple dataitem = extract<tuple>(data[i]);
@@ -624,21 +616,15 @@ apply_sd_error_params(boost::python::dict const& ISIGI, const double sdfac, cons
       intensities[i] = extract<double>(dataitem[0]);
       sigmas[i] = intensities[i] / extract<double>(dataitem[1]);
       scales[i] = extract<double>(dataitem[2]);
-      // compute meanI, which is the mean of the observations of this hkl, and meanIprimes, which
-      // for each observation, is the mean of all other observations of this hkl
-      for (std::size_t j = 0; j < n; j++) {
-        if (i == j) continue;
-        meanIprimes[j] += intensities[i];
-      }
-      meanI += intensities[i];
+      sumI += intensities[i];
     }
 
-    meanI /= n;
     list corrected_data = list();
 
     // set up the entry for this hkl in the returned ISIGI dict
     for (std::size_t i = 0; i < n; i++) {
-      double meanIprime = meanIprimes[i] / n;
+      // compute meanIprime, which for each observation, is the mean of all other observations of this hkl
+      double meanIprime = (sumI-intensities[i]) / (n>1 ? (n-1) : 1);
       double sigma_corrected = sdfac * std::sqrt(std::pow(sigmas[i],2) + sdb * meanIprime + std::pow(sdadd*meanIprime,2));
 
       tuple i_isigi = make_tuple(intensities[i],intensities[i]/sigma_corrected,scales[i]);
