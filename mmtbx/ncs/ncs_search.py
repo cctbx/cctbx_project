@@ -1314,9 +1314,7 @@ def get_chains_info(ph,selection_list=None,exclude_water=True,
       atom_selection = chains_info[ch.id].atom_selection
       no_altloc = chains_info[ch.id].no_altloc
       # check for alternative conformers (also when chains are split)
-      has_altloc = hasattr(ch,'conformers')
-      #
-      if has_altloc and (len(ch.conformers()) > 1):
+      if len(ch.conformers()) > 1:
         # process cases with alternative locations
         conf = ch.conformers()[0]
         for res in conf.residues():
@@ -1337,8 +1335,7 @@ def get_chains_info(ph,selection_list=None,exclude_water=True,
             res_names.append(x)
             atom_names.append(list(atoms.atoms().extract_name()))
             atom_selection.append(list(atoms.atoms().extract_i_seq()))
-            if has_altloc:
-              no_altloc.append(True)
+            no_altloc.append(True)
       #
       chains_info[ch.id].resid = resids
       chains_info[ch.id].res_names = res_names
