@@ -984,6 +984,10 @@ class GoniometerComparison(object):
     self.setting_rotation_tolerance = setting_rotation_tolerance
 
   def __call__(self, a, b):
+    if a is None and b is None:
+      return True
+    elif a is None or b is None:
+      return False
     return a.is_similar_to(
       b,
       rotation_axis_tolerance=self.rotation_axis_tolerance,
