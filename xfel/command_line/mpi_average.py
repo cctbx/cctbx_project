@@ -135,6 +135,12 @@ the output images in the folder cxi49812.
                         default=None,
                         dest="override_beam_y",
                         help="Rayonix detector beam center y coordinate")
+                .option(None, "--calib_dir", "-C",
+                        type="string",
+                        default=None,
+                        dest="calib_dir",
+                        metavar="PATH",
+                        help="calibration directory")
                 .option(None, "--xtc_dir", "-D",
                         type="string",
                         default=None,
@@ -352,7 +358,9 @@ the output images in the folder cxi49812.
         active_areas = xpp_active_areas[version_lookup]['active_areas']
         beam_center = [1765 // 2, 1765 // 2]
       else:
-        if command_line.options.pickle_optical_metrology:
+        if command_line.options.calib_dir is not None:
+          metro_path = command_line.options.calib_dir
+        elif command_line.options.pickle_optical_metrology:
           from xfel.cftbx.detector.cspad_cbf_tbx import get_calib_file_path
           metro_path = get_calib_file_path(run.env(), src)
         else:
