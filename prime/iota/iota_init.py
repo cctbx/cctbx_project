@@ -227,12 +227,6 @@ class InitAll(object):
         print "ERROR: Invalid input! Need parameter filename or data folder."
         misc.iota_exit(self.iver)
 
-    if self.params.mp_method == 'mpi':
-      rank, size = misc.get_mpi_rank_and_size()
-      self.master_process = rank == 0
-    else:
-      self.master_process = True
-
     # Call function to read input folder structure (or input file) and
     # generate list of image file paths
     if self.params.selection.select_only.flag_on:
