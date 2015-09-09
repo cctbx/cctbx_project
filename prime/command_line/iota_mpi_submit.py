@@ -68,8 +68,8 @@ phil_scope = parse('''
   input {
     param = None
       .type = str
-      .help = Path to iota param file. User can include RUN_NO, RUN_STR and NPROC, which
-              will be replaced with the appropiate values when the param file is copied
+      .help = Path to iota param file. User can include RUN_NO, RUN_STR and NPROC, which \
+              will be replaced with the appropiate values when the param file is copied \
               to the trial directory.
     run_num = None
       .type = int
