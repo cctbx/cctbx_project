@@ -503,7 +503,8 @@ class refine_adp(object):
     #return minimized
 
   def run_lbfgs(self):
-    if(self.model.ncs_groups is None):
+    if(self.model.ncs_groups is None or
+       not self.all_params.ncs.constraints.apply_to_adp):
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
         max_iterations = self.individual_adp_params.iso.max_number_of_iterations)
       is_neutron_scat_table = False
@@ -520,17 +521,13 @@ class refine_adp(object):
         verbose                  = 0,
         target_weights           = self.target_weights,
         h_params                 = self.h_params)
-    else:
+    elif(self.all_params.ncs.constraints.apply_to_coordinates):
       fmodel = self.fmodels.fmodel_xray()
       # update NCS groups
       import mmtbx.ncs.ncs_utils as nu
-      best_list = nu.get_list_of_best_ncs_copy_map_correlation(
-        ncs_restraints_group_list = self.model.ncs_groups,
-        xray_structure            = fmodel.xray_structure,
-        fmodel                    = fmodel)
-      self.model.ncs_groups = nu.change_ncs_groups_master(
-        ncs_restraints_group_list = self.model.ncs_groups,
-        new_masters               = best_list)
+      nu.get_list_of_best_ncs_copy_map_correlation(
+        ncs_groups = self.model.ncs_groups,
+        fmodel     = fmodel)
       assert "individual_adp" in self.all_params.refine.strategy
       minimized = minimization.run_constrained(
         model         = self.model,
@@ -541,6 +538,7 @@ class refine_adp(object):
         refine_u_iso  = True,
         prefix        = "NCS constrained ADP refinement").minimized
       self.model.xray_structure = fmodel.xray_structure
+    else: raise RuntimeError("Bad ncs options.")
 
 class weight_result (object) :
   def __init__ (self, r_work, r_free, delta_b, mean_b, weight, xray_target,

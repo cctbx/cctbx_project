@@ -480,64 +480,6 @@ class Test_ncs_utils(unittest.TestCase):
     s = nu.remove_items_from_selection(a,r)
     assert list(s) == [1,6,4]
 
-  def test_ncs_restraints_group_list_switching(self):
-    """
-    Testing switching of master ncs copy and a copy (turning the copy to master)
-    and then switching to the original configuration
-    """
-    # print sys._getframe().f_code.co_name
-    nrg = self.tr_obj2.get_ncs_restraints_group_list()
-    master = nrg[0].master_iselection
-    copy_1 = nrg[0].copies[0].iselection
-    # switch master with the first copy
-    nrg_new = nu.change_ncs_groups_master(
-      ncs_restraints_group_list=nrg,
-      new_masters=[1])
-    # test that selection have switched
-    assert list(copy_1) == list(nrg_new[0].master_iselection)
-    assert list(master) == list(nrg_new[0].copies[0].iselection)
-    # test that rotation matrices and translation vectors are properly converted
-    R1 = self.rotation1.transpose()
-    R2 = self.rotation2 * R1
-    R3 = self.rotation3 * R1
-
-    T1 = - R1 * self.translation1
-    T2 = self.rotation2 * T1 + self.translation2
-    T3 = self.rotation3 * T1 + self.translation3
-
-    assert R1.round(8).elems == nrg_new[0].copies[0].r.round(8).elems
-    assert R2.round(8).elems == nrg_new[0].copies[1].r.round(8).elems
-    assert R3.round(8).elems == nrg_new[0].copies[2].r.round(8).elems
-
-    assert T1.round(8).elems == nrg_new[0].copies[0].t.round(8).elems
-    assert T2.round(6).elems == nrg_new[0].copies[1].t.round(6).elems
-    assert T3.round(6).elems == nrg_new[0].copies[2].t.round(6).elems
-
-    # flip back to original formation
-    nrg_original = nu.change_ncs_groups_master(
-      ncs_restraints_group_list=nrg_new,
-      new_masters=[1])
-    # test that selection have switched
-    r1 = self.rotation1
-    r2 = self.rotation2
-    r3 = self.rotation3
-
-    t1 = self.translation1
-    t2 = self.translation2
-    t3 = self.translation3
-
-    assert list(master) == list(nrg_original[0].master_iselection)
-    assert list(copy_1) == list(nrg_original[0].copies[0].iselection)
-    # test that rotation matrices and translation vectors are properly converted
-    assert r1.round(4).elems == nrg_original[0].copies[0].r.round(4).elems
-    assert r2.round(4).elems == nrg_original[0].copies[1].r.round(4).elems
-    assert r3.round(4).elems == nrg_original[0].copies[2].r.round(4).elems
-
-    assert t1.round(4).elems == nrg_original[0].copies[0].t.round(4).elems
-    assert t2.round(4).elems == nrg_original[0].copies[1].t.round(4).elems
-    assert t3.round(4).elems == nrg_original[0].copies[2].t.round(4).elems
-
-
   def test_get_list_of_best_ncs_copy_map_correlation(self):
     """
     Verifying that we get a list of chain index for the chain with the best
@@ -574,14 +516,11 @@ class Test_ncs_utils(unittest.TestCase):
 
     cc = mp.cc(selections=selections)
 
-    best_list = nu.get_list_of_best_ncs_copy_map_correlation(
-      ncs_restraints_group_list,
+    nu.get_list_of_best_ncs_copy_map_correlation(
+      ncs_groups     = ncs_restraints_group_list,
       xray_structure = xrs_poor,
       map_data       = map_data,
       d_min          = d_min)
-
-    assert [round(x,1) for x in cc] == [0.5,0.8,0.5]
-    assert best_list == [1]
 
   def test_iselection_ncs_to_asu(self):
     # print sys._getframe().f_code.co_name
@@ -600,53 +539,6 @@ class Test_ncs_utils(unittest.TestCase):
     isel_ncs = isel_asu - 7
     results = nu.iselection_asu_to_ncs(isel_asu,'B',ph)
     self.assertEqual(list(isel_ncs),list(results))
-
-  def test_change_ncs_groups_master(self):
-    """ test change_ncs_groups_master when we have more than one group """
-    ncs_obj_phil = ncs.input(
-      pdb_string=test_pdb_str_2,
-      ncs_phil_string=phil_str)
-    nrgl = ncs_obj_phil.get_ncs_restraints_group_list()
-    self.assertAlmostEqual(len(nrgl),2)
-    # check that the masters coordinates are the same after several flips
-    # select masters and some copies as references
-    master_1 = nrgl[0].master_iselection
-    master_2 = nrgl[1].master_iselection
-    copy_1_1 = nrgl[0].copies[0].iselection
-    copy_2_1 = nrgl[1].copies[0].iselection
-    copy_2_2 = nrgl[1].copies[1].iselection
-    # Test rotation and translations
-    pdb_inp = pdb.input(lines=test_pdb_str_2,source_info=None)
-    ph = pdb_inp.construct_hierarchy()
-    nu.check_ncs_group_list(nrgl,ph,max_delta=1.0)
-    # change only the second master
-    nrgl_new = nu.change_ncs_groups_master(
-      ncs_restraints_group_list=nrgl,
-      new_masters=[0,2])
-    self.assertEqual(list(master_1),list(nrgl_new[0].master_iselection))
-    self.assertEqual(list(copy_1_1),list(nrgl_new[0].copies[0].iselection))
-    self.assertEqual(list(master_2),list(nrgl_new[1].copies[1].iselection))
-    self.assertEqual(list(copy_2_1),list(nrgl_new[1].copies[0].iselection))
-    self.assertEqual(list(copy_2_2),list(nrgl_new[1].master_iselection))
-    nu.check_ncs_group_list(nrgl_new,ph,max_delta=1)
-    # change back
-    nrgl_new = nu.change_ncs_groups_master(
-      ncs_restraints_group_list=nrgl_new,
-      new_masters=[1,0])
-    nu.check_ncs_group_list(nrgl_new,ph,max_delta=1)
-
-    # Change only first group
-    nu.check_ncs_group_list(nrgl,ph,max_delta=1)
-    nrgl_new = nu.change_ncs_groups_master(
-      ncs_restraints_group_list=nrgl,
-      new_masters=[1,0])
-    nu.check_ncs_group_list(nrgl_new,ph,max_delta=1)
-    # change both
-    nu.check_ncs_group_list(nrgl,ph,max_delta=1)
-    nrgl_new = nu.change_ncs_groups_master(
-      ncs_restraints_group_list=nrgl,
-      new_masters=[2,1])
-    nu.check_ncs_group_list(nrgl_new,ph,max_delta=1)
 
   def test_check_ncs_group_list(self):
     """ Test that ncs_restraints_group_list test is working properly """
