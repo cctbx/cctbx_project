@@ -788,7 +788,7 @@ def index_phil_objects (phil_object,
     raise RuntimeError("Type required for parameter '%s'." % full_path)
   text_index_for_child_objects = None
   if ((text_index is not None) and
-      ((phil_object.expert_level is None) or (phil_object.expert_level <=2 ))):
+      ((phil_object.expert_level is None) or (phil_object.expert_level <=3 ))):
     label = get_standard_phil_label(phil_object)
     text_fields = (label, str(phil_object.caption), str(phil_object.help),
       phil_object.is_definition)
