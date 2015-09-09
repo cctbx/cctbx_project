@@ -77,7 +77,7 @@ Parameters:"""%h
     print_statistics.make_sub_header("CCP4 map", out=log)
     ccp4_map = inputs.ccp4_map
     ccp4_map.show_summary(prefix="  ")
-    map_data = ccp4_map.data
+    map_data = ccp4_map.map_data()
   #
   xray_structure = pdb_hierarchy.extract_xray_structure(
     crystal_symmetry=inputs.crystal_symmetry)
