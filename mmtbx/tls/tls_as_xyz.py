@@ -77,7 +77,7 @@ class ensemble_generator(object):
         r_L = r.R_ML.transpose() * site_cart
         d_r_M_L = step_i__compute_delta_L_r_dp(r=r,
           r_L=r_L, dx0=dx0,dy0=dy0,dz0=dz0)
-        d_r_M = step_k(d_r_M_L=d_r_M_L, d_r_M_V=d_r_M_V)
+        d_r_M = d_r_M_L + d_r_M_V # (42)
         sites_cart_new.append(matrix.col(site_cart) + d_r_M)
       self.states.add(sites_cart = sites_cart_new)
 
@@ -91,9 +91,9 @@ def step_i__get_dxdydz(L_L, R_PL, log, eps=1.e-7):
   L_ = L_L.as_sym_mat3()
   Lxx, Lyy, Lzz = L_[0], L_[1], L_[2]
   dx0, dy0, dz0 = 0, 0, 0
-  if(abs(Lxx)>eps): dx0 = random.normalvariate(0,(2*Lxx)**0.5) # ???
-  if(abs(Lyy)>eps): dy0 = random.normalvariate(0,(2*Lyy)**0.5) # ???
-  if(abs(Lzz)>eps): dz0 = random.normalvariate(0,(2*Lzz)**0.5) # ???
+  if(abs(Lxx)>eps): dx0 = random.normalvariate(0,Lxx**0.5)
+  if(abs(Lyy)>eps): dy0 = random.normalvariate(0,Lyy**0.5)
+  if(abs(Lzz)>eps): dz0 = random.normalvariate(0,Lzz**0.5)
   return dx0, dy0, dz0
 
 def step_i__compute_delta_L_r_dp(r, r_L, dx0, dy0, dz0):
@@ -123,19 +123,11 @@ def step_j(r, log):
   """
   Generate shifts from group translation.
   """
-#XXX  print_step("step_j:", log)
   V_V_ = r.V_V.as_sym_mat3()
   tx0, ty0, tz0 = 0, 0, 0
-  if(V_V_[0] != 0): tx0 = random.gauss(0,(2*V_V_[0]**0.5)) # ???
-  if(V_V_[1] != 0): ty0 = random.gauss(0,(2*V_V_[1]**0.5)) # ???
-  if(V_V_[2] != 0): tz0 = random.gauss(0,(2*V_V_[2]**0.5)) # ???
-  #print >> log, "  u0, v0, w0:, LOOK", tx0, ty0, tz0
+  if(V_V_[0] != 0): tx0 = random.normalvariate(0,V_V_[0]**0.5)
+  if(V_V_[1] != 0): ty0 = random.normalvariate(0,V_V_[1]**0.5)
+  if(V_V_[2] != 0): tz0 = random.normalvariate(0,V_V_[2]**0.5)
   d_r_V = tx0*r.v_x + ty0*r.v_y + tz0*r.v_z
   d_r_M = r.R_MV * d_r_V
-  return d_r_M
-
-def step_k(d_r_M_L, d_r_M_V):
-  """
-  Calculate the total shift in original coordinate system.
-  """
-  return d_r_M_L + d_r_M_V # (42)
+  return d_r_V
