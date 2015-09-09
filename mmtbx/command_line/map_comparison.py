@@ -35,7 +35,7 @@ def run(args):
     raise Sorry("Not a valid file (provide CCP4 formatted map file).")
   cs_1 = crystal.symmetry(ccp4_map_1.unit_cell().parameters(),
     ccp4_map_1.space_group_number)
-  m1 = ccp4_map_1.data.as_double()
+  m1 = ccp4_map_1.map_data()
   # map 2
   try:
     ccp4_map_2 = iotbx.ccp4_map.map_reader(file_name=args[1])
@@ -43,7 +43,7 @@ def run(args):
     raise Sorry("Not a valid file (provide CCP4 formatted map file).")
   cs_2 = crystal.symmetry(ccp4_map_2.unit_cell().parameters(),
     ccp4_map_2.space_group_number)
-  m2 = ccp4_map_2.data.as_double()
+  m2 = ccp4_map_2.map_data()
   # sanity checks
   assert cs_1.is_similar_symmetry(cs_2)
   assert m1.accessor().all() == m2.accessor().all()
