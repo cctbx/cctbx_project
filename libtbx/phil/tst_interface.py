@@ -140,7 +140,7 @@ refinement.refine.adp.tls = None
   names = i.search_phil_text("macro_cycles", phil_name_only=True)
   assert len(names) == 1
   names = i.search_phil_text("elemental")
-  assert (len(names) == 0)
+  assert (len(names) == 1)
   i.update("refinement.gui.output_dir=/var/tmp")
   i.update("refinement.gui.job_title=\"Hello, world!\"")
   assert (i.get_output_dir() == "/var/tmp")
@@ -254,7 +254,6 @@ refinement.input.monomers.file_name = ligand.cif
 refinement.output.title = Test refinement run
 """)
   names = i.search_phil_text("CIF")
-  print names
   assert (set(names) == {
     'refinement.output.write_model_cif_file',
     'refinement.output.write_reflection_cif_file',
