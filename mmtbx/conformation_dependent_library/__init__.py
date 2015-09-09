@@ -57,9 +57,14 @@ def generate_protein_threes(hierarchy,
                             include_non_linked=False,
                             verbose=False,
                             ):
+  backbone_asc = hierarchy.atom_selection_cache()
+  backbone_sel = backbone_asc.selection("name ca or name c or name n or name o or name cb")
+  backbone_hierarchy = hierarchy.select(backbone_sel)
   get_class = iotbx.pdb.common_residue_names_get_class
   threes = ThreeProteinResidues(geometry, registry=registry)
-  for model in hierarchy.models():
+  loop_hierarchy=hierarchy
+  if 1: loop_hierarchy=backbone_hierarchy
+  for model in loop_hierarchy.models():
     if verbose: print 'model: "%s"' % model.id
     for chain in model.chains():
       if verbose: print 'chain: "%s"' % chain.id
@@ -93,12 +98,6 @@ def generate_protein_threes(hierarchy,
           if i==len(list_of_threes)-1:
             threes.end = True
           else:
-            #print threes
-            #print threes.show_detailed()
-            #print list_of_threes[i]
-            #print list_of_threes[i+1]
-            #try:print list_of_threes[i+2]
-            #except: print None
             if len(threes)!=3:
               pass
             elif threes[1] != list_of_threes[i+1][0]:

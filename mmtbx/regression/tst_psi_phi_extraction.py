@@ -384,7 +384,7 @@ def exercise_phi_psi_extraction():
       ([6, 4], rec_4_residues_isertions),
       ([12, 10], pdb_1yjp),
       ([8, 4], pdb_1yjp_minus_4),
-      # ([4, 2], rec_3_res_ac_h),
+      ([4, 2], rec_3_res_ac_h),
       ]:
     tmp_hierarchy = iotbx.pdb.input(
       source_info=None,
@@ -399,7 +399,10 @@ def exercise_phi_psi_extraction():
         proxies.extend(ppp)
       print len(proxies), n_prox
       assert len(proxies) == n_prox[opp], \
-         "Expected %d, got %d" % (len(proxies), n_prox[opp])
+         "Expected %d, got %d" % (
+           n_prox[opp],
+           len(proxies),
+           )
 
 if (__name__ == "__main__"):
   exercise_phi_psi_extraction()
