@@ -214,7 +214,7 @@ class target_function_and_grads_real_space(object):
       refine_transformations = self.refine_transformations,
       x                      = x,
       grad                   = g_data)
-    if(self.data_weight is None): self.data_weight=1.
+    if(self.data_weight is None): self.data_weight=1. #XXX BAD!
     t = t_data*self.data_weight + t_restraints
     if(compute_gradients):
       g = g_data*self.data_weight + g_restraints
@@ -314,9 +314,15 @@ class target_function_and_grads_reciprocal_space(object):
       use_hd                 = self.use_hd,
       grad                   = g_data)
     if(self.data_weight is None): self.data_weight=1.
-    t = t_data*self.data_weight + t_restraints
+    if(self.refine_transformations): # no restraints
+      t = t_data
+    else:
+      t = t_data*self.data_weight + t_restraints
     if(compute_gradients):
-      g = g_data*self.data_weight + g_restraints
+      if(self.refine_transformations): # no restraints
+        g = g_data
+      else:
+        g = g_data*self.data_weight + g_restraints
       if(not self.refine_transformations):
         if self.use_ncs_constraints:
           g = grads_asu_to_one_ncs(

@@ -833,60 +833,23 @@ def remove_items_from_selection(selection,remove):
   new_selection = [x for x in selection if not (x in remove)]
   return flex.size_t(new_selection)
 
-def change_ncs_groups_master(ncs_restraints_group_list,new_masters):
-  """
-  Switch master NCS copy with one of the copies, as specified in the new_masters
-
-  Args:
-    ncs_restraints_group_list: list of ncs restraints group objects
-    new_masters (list of integers): the number of the copy, in each group,
-      that will become the new master
-
-  Returns:
-    Modified ncs_restraints_group_list
-  """
-  assert isinstance(new_masters,list)
-  assert len(ncs_restraints_group_list) == len(new_masters)
-
-  for nrg,c in zip(ncs_restraints_group_list,new_masters):
-    # c for the master is 0 and for the first copy is 1
-    if c == 0: continue
-    c_i = c - 1
-    # switch master and copy selection
-    nrg.master_iselection, nrg.copies[c_i].iselection = \
-      nrg.copies[c_i].iselection, nrg.master_iselection
-    # Adjust rotation and translation for the new master
-    r = nrg.copies[c_i].r = (nrg.copies[c_i].r.transpose())
-    t = nrg.copies[c_i].t = -(nrg.copies[c_i].r * nrg.copies[c_i].t)
-    # change all other rotations and translations to the new master
-    for i,ncs in enumerate(nrg.copies):
-      if i == c_i: continue
-      # change translation before rotation
-      nrg.copies[i].t = (nrg.copies[i].r * t + nrg.copies[i].t)
-      nrg.copies[i].r = (nrg.copies[i].r * r)
-  return ncs_restraints_group_list
-
-
 def get_list_of_best_ncs_copy_map_correlation(
-        ncs_restraints_group_list,
-        xray_structure=None,
-        fmodel=None,
-        map_data=None,
-        d_min=1.0):
+      ncs_groups,
+      xray_structure=None,
+      fmodel=None,
+      map_data=None,
+      d_min=None):
   """
   Finds the copy with best map correlation in each ncs group
-
-  Args:
-    ncs_restraints_group_list: list of ncs restraints group objects
-    xray_structure (object):
-    fmodel (object):
-    map_data (object):
-    d_min (float): min data resolution
 
   Returns:
     best_list (list of int): list of the copy with the best map correlation.
       (the master copy is 0)
   """
+  assert [fmodel,d_min].count(None) in [0,1]
+  assert [fmodel,map_data].count(None)==1
+  assert [d_min,map_data].count(None) in [0,2]
+  assert [xray_structure, fmodel].count(None)==1
   import mmtbx.maps.correlation
   best_list = []
   if(fmodel is None):
@@ -898,13 +861,27 @@ def get_list_of_best_ncs_copy_map_correlation(
   else:
     mp = mmtbx.maps.correlation.from_map_and_xray_structure_or_fmodel(
       fmodel = fmodel)
-  for nrg in ncs_restraints_group_list:
+  for nrg in ncs_groups:
     selections = [nrg.master_iselection]
     for ncs in nrg.copies:
       selections.append(ncs.iselection)
     cc = mp.cc(selections=selections)
-    best_list.append(cc.index(max(cc)))
-  return best_list
+    i_seq = cc.index(max(cc)) # best matching copy
+    if(i_seq == 0): continue
+    #
+    c_i = i_seq-1
+    # switch master and copy selection
+    nrg.master_iselection, nrg.copies[c_i].iselection = \
+      nrg.copies[c_i].iselection, nrg.master_iselection
+    # Adjust rotation and translation for the new master
+    r = nrg.copies[c_i].r = (nrg.copies[c_i].r.transpose())
+    t = nrg.copies[c_i].t = -(nrg.copies[c_i].r * nrg.copies[c_i].t)
+    # change all other rotations and translations to the new master
+    for i in xrange(len(nrg.copies)):
+      if i == c_i: continue
+      # change translation before rotation
+      nrg.copies[i].t = (nrg.copies[i].r * t + nrg.copies[i].t)
+      nrg.copies[i].r = (nrg.copies[i].r * r)
 
 def get_refine_selection(refine_selection=None,number_of_atoms=None):
   """ populate refine_selection with all atoms if no selection is given  """
