@@ -74,6 +74,7 @@ files = [
   "dec04_test148.mes",
   "dec04_test149.mes",
   "dec04_test159.mes",
+
   "dec04_test168.mes",
   "dec04_test169.mes",
   "dec04_test215.mes"
@@ -81,14 +82,18 @@ files = [
 
 def run():
   for fn in files:
-    print fn
-    fn_ = libtbx.env.find_in_repositories(
-      relative_path="mmtbx/regression/tls/data_tls_analysis/%s"%fn,
-      test=os.path.isfile)
-    of = open("phenix_"+fn, "w")
-    T, L, S = extract(fn_)
-    r = analysis.run(T=T, L=L, S=S, log=of)
-    of.close()
+    try:
+      fn_ = libtbx.env.find_in_repositories(
+        relative_path="mmtbx/regression/tls/data_tls_analysis/%s"%fn,
+        test=os.path.isfile)
+      of = open("phenix_"+fn, "w")
+      T, L, S = extract(fn_)
+      r = analysis.run(T=T, L=L, S=S, log=of)
+      of.close()
+      print fn, "OK"
+    except Exception, e:
+      print fn, str(e)
+
 
 if (__name__ == "__main__"):
   run()
