@@ -345,6 +345,32 @@ ATOM     58  OH  TYR A   7       3.766   0.589  10.291  1.00 14.39           O
 ATOM     59  OXT TYR A   7      11.358   2.999   7.612  1.00 17.49           O
 """
 
+rec_3_res_ac_h = """\
+CRYST1   72.072   33.173   34.033  90.00  90.00  90.00 P 1
+ATOM    519  N   HIS B   1       5.000   8.515  18.112  1.00 20.00           N
+ATOM    520  CA  HIS B   1       5.999   8.713  17.074  1.00 20.00           C
+ATOM    521  C   HIS B   1       7.157   9.627  17.517  1.00 20.00           C
+ATOM    522  O   HIS B   1       8.302   9.165  17.614  1.00 20.00           O
+ATOM    523  CB  HIS B   1       5.315   9.226  15.797  1.00 20.00           C
+ATOM    524  HA  HIS B   1       6.434   7.742  16.835  1.00 20.00           H
+ATOM    525  N   TRP B   2       6.845  10.900  17.805  1.00 20.00           N
+ATOM    526  CA  TRP B   2       7.853  11.954  18.083  1.00 20.00           C
+ATOM    527  C   TRP B   2       8.071  12.262  19.565  1.00 20.00           C
+ATOM    528  O   TRP B   2       8.355  13.406  19.941  1.00 20.00           O
+ATOM    529  CB  TRP B   2       7.516  13.257  17.336  1.00 20.00           C
+ATOM    530  HA  TRP B   2       8.809  11.606  17.692  1.00 20.00           H
+ATOM    531  H  ATRP B   2       5.886  11.243  17.855  0.50 20.00           H
+ATOM    532  D  BTRP B   2       5.886  11.243  17.855  0.50 20.00           D
+ATOM    533  N   GLU B   3       7.910  11.239  20.396  1.00 20.00           N
+ATOM    534  CA  GLU B   3       8.310  11.284  21.798  1.00 20.00           C
+ATOM    535  C   GLU B   3       9.344  10.190  21.979  1.00 20.00           C
+ATOM    536  O   GLU B   3      10.197  10.267  22.867  1.00 20.00           O
+ATOM    537  CB  GLU B   3       7.115  11.041  22.731  1.00 20.00           C
+ATOM    538  HA  GLU B   3       8.761  12.248  22.034  1.00 20.00           H
+ATOM    539  H  AGLU B   3       7.474  10.360  20.122  0.50 20.00           H
+ATOM    540  D  BGLU B   3       7.474  10.360  20.122  0.50 20.00           D
+"""
+
 def exercise_phi_psi_extraction():
   for n_prox, raw_records in [
       ([0, 0], rec_1_residue),
@@ -358,6 +384,7 @@ def exercise_phi_psi_extraction():
       ([6, 4], rec_4_residues_isertions),
       ([12, 10], pdb_1yjp),
       ([8, 4], pdb_1yjp_minus_4),
+      # ([4, 2], rec_3_res_ac_h),
       ]:
     tmp_hierarchy = iotbx.pdb.input(
       source_info=None,
