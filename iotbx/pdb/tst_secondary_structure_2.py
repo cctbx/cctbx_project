@@ -355,28 +355,28 @@ protein.sheet {
   sheet_id = "  A"
   first_strand = chain 'A' and resid   13  through   14
   strand {
-    selection = chain 'A' and resid 27  through 30
+    selection = chain 'A' and resid   27  through   30
     sense = antiparallel
-    bond_start_current = chain 'A' and resid 29  and name O
-    bond_start_previous = chain 'A' and resid 13  and name N
+    bond_start_current = chain 'A' and resid   29  and name O
+    bond_start_previous = chain 'A' and resid   13  and name N
   }
   strand {
-    selection = chain 'A' and resid 156  through 159
+    selection = chain 'A' and resid  156  through  159
     sense = parallel
-    bond_start_current = chain 'A' and resid 156  and name O
-    bond_start_previous = chain 'A' and resid 28  and name N
+    bond_start_current = chain 'A' and resid  156  and name O
+    bond_start_previous = chain 'A' and resid   28  and name N
   }
   strand {
-    selection = chain 'A' and resid 51  through 54
+    selection = chain 'A' and resid   51  through   54
     sense = parallel
-    bond_start_current = chain 'A' and resid 51  and name O
-    bond_start_previous = chain 'A' and resid 157  and name N
+    bond_start_current = chain 'A' and resid   51  and name O
+    bond_start_previous = chain 'A' and resid  157  and name N
   }
   strand {
-    selection = chain 'A' and resid 74  through 77
+    selection = chain 'A' and resid   74  through   77
     sense = parallel
-    bond_start_current = chain 'A' and resid 74  and name O
-    bond_start_previous = chain 'A' and resid 52  and name N
+    bond_start_current = chain 'A' and resid   74  and name O
+    bond_start_previous = chain 'A' and resid   52  and name N
   }
   hbond {
     donor = chain A and resid 29 and name O
@@ -416,28 +416,28 @@ protein.sheet {
   sheet_id = "  A"
   first_strand = chain 'A' and resid   13  through   14
   strand {
-    selection = chain 'A' and resid 27  through 30
+    selection = chain 'A' and resid   27  through   30
     sense = antiparallel
-    bond_start_current = chain 'A' and resid 29  and name O
-    bond_start_previous = chain 'A' and resid 13  and name N
+    bond_start_current = chain 'A' and resid   29  and name O
+    bond_start_previous = chain 'A' and resid   13  and name N
   }
   strand {
-    selection = chain 'A' and resid 156  through 159
+    selection = chain 'A' and resid  156  through  159
     sense = parallel
-    bond_start_current = chain 'A' and resid 156  and name O
-    bond_start_previous = chain 'A' and resid 28  and name N
+    bond_start_current = chain 'A' and resid  156  and name O
+    bond_start_previous = chain 'A' and resid   28  and name N
   }
   strand {
-    selection = chain 'A' and resid 51  through 54
+    selection = chain 'A' and resid   51  through   54
     sense = parallel
-    bond_start_current = chain 'A' and resid 51  and name O
-    bond_start_previous = chain 'A' and resid 157  and name N
+    bond_start_current = chain 'A' and resid   51  and name O
+    bond_start_previous = chain 'A' and resid  157  and name N
   }
   strand {
-    selection = chain 'A' and resid 74  through 77
+    selection = chain 'A' and resid   74  through   77
     sense = parallel
-    bond_start_current = chain 'A' and resid 74  and name O
-    bond_start_previous = chain 'A' and resid 52  and name N
+    bond_start_current = chain 'A' and resid   74  and name O
+    bond_start_previous = chain 'A' and resid   52  and name N
   }
 }"""
 

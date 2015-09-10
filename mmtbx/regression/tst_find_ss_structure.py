@@ -1012,15 +1012,15 @@ SHEET    1   1 3 HISAa  32  LEUAa  36 -1  O  SERAa  33   N  ILEAa  20
              maximum_length_difference=4)
           print str1.as_atom_selections(),str2.as_atom_selections(),value
           print >>f,str1.as_atom_selections(),str2.as_atom_selections(),value
-  assert f.getvalue()=="""chain 'Aa' and resid 32  through 36  chain 'Aa' and resid 32  through 36  True
-chain 'Aa' and resid 32  through 36  chain 'Aa' and resid 18  through 22  False
-chain 'Aa' and resid 32  through 36  chain 'Aa' and resid 50  through 57  False
-chain 'Aa' and resid 17  through 22  chain 'Aa' and resid 32  through 36  False
-chain 'Aa' and resid 17  through 22  chain 'Aa' and resid 18  through 22  True
-chain 'Aa' and resid 17  through 22  chain 'Aa' and resid 50  through 57  False
-chain 'Aa' and resid 52  through 55  chain 'Aa' and resid 32  through 36  False
-chain 'Aa' and resid 52  through 55  chain 'Aa' and resid 18  through 22  False
-chain 'Aa' and resid 52  through 55  chain 'Aa' and resid 50  through 57  True
+  assert f.getvalue()=="""chain 'Aa' and resid   32  through   36  chain 'Aa' and resid   32  through   36  True
+chain 'Aa' and resid   32  through   36  chain 'Aa' and resid   18  through   22  False
+chain 'Aa' and resid   32  through   36  chain 'Aa' and resid   50  through   57  False
+chain 'Aa' and resid   17  through   22  chain 'Aa' and resid   32  through   36  False
+chain 'Aa' and resid   17  through   22  chain 'Aa' and resid   18  through   22  True
+chain 'Aa' and resid   17  through   22  chain 'Aa' and resid   50  through   57  False
+chain 'Aa' and resid   52  through   55  chain 'Aa' and resid   32  through   36  False
+chain 'Aa' and resid   52  through   55  chain 'Aa' and resid   18  through   22  False
+chain 'Aa' and resid   52  through   55  chain 'Aa' and resid   50  through   57  True
 """
 
   print "\nChecking different strands:",
