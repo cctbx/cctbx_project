@@ -112,6 +112,8 @@ class torsion_ncs(object):
       self.find_ncs_matches_from_hierarchy(pdb_hierarchy=self.pdb_hierarchy)
 
   def get_alignments(self):
+    # This function should use something like common_res_dict already available
+    # in ncs_obj or something similar instead of aligning residues itself.
     def get_key(rg):
       resname = rg.atoms()[0].pdb_label_columns()[5:8]
       if resname.upper() == "MSE":
@@ -126,8 +128,13 @@ class torsion_ncs(object):
         for j, jsel in enumerate(group):
           if i <= j:
             continue
-          sel_i = self.cache.selection(isel)
-          sel_j = self.cache.selection(jsel)
+          isel_plus = isel
+          jsel_plus = jsel
+          if self.ncs_obj.exclude_selection is not None:
+            isel_plus += " and not (%s)" % self.ncs_obj.exclude_selection
+            jsel_plus += " and not (%s)" % self.ncs_obj.exclude_selection
+          sel_i = self.cache.selection(isel_plus)
+          sel_j = self.cache.selection(jsel_plus)
           h_i = self.pdb_hierarchy.select(sel_i)
           h_j = self.pdb_hierarchy.select(sel_j)
           # chain matching procedure

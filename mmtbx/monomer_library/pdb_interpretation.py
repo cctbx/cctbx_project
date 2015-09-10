@@ -5364,6 +5364,7 @@ class process(object):
       chain_similarity_limit      = params.similarity_threshold,
       min_contig_length           = params.min_contig_length,
       min_percent                 = params.min_percent,
+      exclude_selection           = params.exclude_selection,
       max_rmsd                    = params.max_rmsd,
       max_dist_diff               = params.match_radius,
       use_minimal_master_ncs      = params.minimize_param == 'chains',

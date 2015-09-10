@@ -14,10 +14,18 @@ from libtbx.str_utils import make_sub_header
 from mmtbx.geometry_restraints.torsion_restraints import utils
 import sys
 import time
+import iotbx
 
 TOP_OUT_FLAG = True
 
-reference_model_params = iotbx.phil.parse("""
+renamed_ncs_search_str = iotbx.ncs.ncs_search_options.replace(
+    "ncs_search", "search_options")
+renamed_ncs_search_str = renamed_ncs_search_str.replace(
+    "max_rmsd = 2.", "max_rmsd = 5.")
+renamed_ncs_search_str = renamed_ncs_search_str.replace(
+    "exclude_misaligned_residues = True", "exclude_misaligned_residues = False")
+
+reference_model_str = """
 reference_model
     .caption = The reference torsion restraints are used to steer refinement \
       of the  working model.  This technique is advantageous in cases where \
@@ -86,8 +94,12 @@ reference_model
               reference models contain the same chain ID. This normally does \
               not need to be set by the user
   }
+  %s
 }
-""")
+""" % renamed_ncs_search_str
+
+reference_model_params = iotbx.phil.parse(
+    reference_model_str)
 
 def add_reference_dihedral_restraints_if_requested(
     geometry,
@@ -232,12 +244,23 @@ class reference_model(object):
     combined_h.reset_i_seq_if_necessary()
     temp_h = combined_h.deep_copy()
     temp_h.atoms().reset_i_seq()
+
+    search_options = self.params.search_options
+    # combined_h.write_pdb_file("combined.pdb")
     ncs_obj = iotbx.ncs.input(
         hierarchy=temp_h,
-        max_rmsd=5.0,
-        exclude_misaligned_residues=False)
+        use_minimal_master_ncs=search_options.minimize_param == 'chains',
+        exclude_misaligned_residues=search_options.exclude_misaligned_residues,
+        check_atom_order=search_options.check_atom_order,
+        allow_different_size_res=search_options.allow_different_size_res,
+        process_similar_chains=search_options.process_similar_chains,
+        max_dist_diff=search_options.match_radius,
+        chain_similarity_limit=search_options.similarity_threshold,
+        min_contig_length=search_options.min_contig_length,
+        min_percent=search_options.min_percent,
+        max_rmsd=search_options.max_rmsd,
+        )
     spec_obj = ncs_obj.get_ncs_info_as_spec()
-
     ncs_groups_from_spec = spec_obj._ncs_groups
     # Probably we need to deal with format_group_specification() or similar
     # that doesn't handle
@@ -247,6 +270,7 @@ class reference_model(object):
       ncs_iselections = [group_list.master_iselection]
       for i in range(len(group_list.copies)):
         ncs_iselections.append(group_list.copies[i].iselection)
+
       # here is going to be loop over ncs_groups_from_spec which contains
       # separated chains in them.
       for ncs_group_from_spec in ncs_groups_from_spec:
@@ -483,6 +507,12 @@ class reference_model(object):
         pass
     return dihedral_hash
 
+  def _is_proxy_already_present(self, proxy_array, proxy):
+    for p in proxy_array:
+      if proxy.i_seqs == p.i_seqs:
+        return True
+    return False
+
   def get_reference_dihedral_proxies(self):
     complete_dihedral_proxies = utils.get_dihedrals_and_phi_psi(
         processed_pdb_file=self.processed_pdb_file)
@@ -524,7 +554,6 @@ class reference_model(object):
 
     t_sum = 0
     for dp in complete_dihedral_proxies:
-      # print "dp iseqs:", dp.i_seqs
       key_work = ""
       complete = True
       for i_seq in dp.i_seqs:
@@ -592,6 +621,8 @@ class reference_model(object):
             weight=1/sigma**2,
             limit=limit,
             top_out=TOP_OUT_FLAG)
+        # print "Already_there:", self._is_proxy_already_present(generated_reference_dihedral_proxies,dp_add)
+        # if not self._is_proxy_already_present(generated_reference_dihedral_proxies,dp_add):
         generated_reference_dihedral_proxies.append(dp_add)
     self.reference_dihedral_proxies = generated_reference_dihedral_proxies
 
@@ -811,7 +842,6 @@ class reference_model(object):
     remaining_match_hash = {}
     for dp in ncs_dihedral_proxies:
       proxy_list.append(dp.i_seqs)
-    # print len(self.reference_dihedral_proxies)
     for dp in self.reference_dihedral_proxies:
       if dp.i_seqs not in proxy_list:
         remaining_proxies.append(dp)

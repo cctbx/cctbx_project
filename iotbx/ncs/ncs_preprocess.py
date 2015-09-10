@@ -54,6 +54,7 @@ class ncs_group_object(object):
     """
     self.total_asu_length = None
     # iselection maps, each master ncs to its copies position in the asu
+    # {'selection string_001':iselection, ... '':}
     self.ncs_to_asu_map = {}
     # iselection maps of each ncs copy to its master ncs
     self.asu_to_ncs_map = {}
@@ -96,6 +97,10 @@ class ncs_group_object(object):
     # Collect messages, recommendation and errors
     self.messages = ''
     self.write_messages = False
+    self.old_i_seqs = None
+    self.exclude_selection = None
+    self.original_hierarchy = None
+    self.truncated_hierarchy = None
     self.log = sys.stdout
 
   def preprocess_ncs_obj(self,
@@ -116,6 +121,7 @@ class ncs_group_object(object):
                          spec_ncs_groups=None,
                          pdb_string=None,
                          use_minimal_master_ncs=True,
+                         exclude_selection=None,
                          max_rmsd=2.0,
                          write_messages=False,
                          process_similar_chains=True,
@@ -195,6 +201,7 @@ class ncs_group_object(object):
     self.allow_different_size_res = allow_different_size_res
     self.use_minimal_master_ncs = use_minimal_master_ncs
     self.min_contig_length = min_contig_length
+    self.exclude_selection = exclude_selection
     self.max_rmsd = max_rmsd
     self.exclude_misaligned_residues = exclude_misaligned_residues
     self.max_dist_diff = max_dist_diff
@@ -228,6 +235,17 @@ class ncs_group_object(object):
         pdb_inp,hierarchy)
     if extension.lower() in ['.pdb','.cif', '.mmcif', '.gz']:
       pdb_hierarchy_inp = pdb.hierarchy.input(file_name=file_name)
+
+    # truncating hierarchy
+    if pdb_hierarchy_inp:
+      self.original_hierarchy = pdb_hierarchy_inp.hierarchy.deep_copy()
+      if self.exclude_selection is not None:
+        cache = pdb_hierarchy_inp.hierarchy.atom_selection_cache()
+        sel = cache.selection("not (%s)" % self.exclude_selection)
+        pdb_hierarchy_inp.hierarchy = pdb_hierarchy_inp.hierarchy.select(sel)
+        self.truncated_hierarchy = pdb_hierarchy_inp.hierarchy
+        self.old_i_seqs = pdb_hierarchy_inp.hierarchy.atoms().extract_i_seq()
+        pdb_hierarchy_inp.hierarchy.atoms().reset_i_seq()
     #
     ncs_phil_groups = self.validate_ncs_phil_groups(
       pdb_hierarchy_inp = pdb_hierarchy_inp,
@@ -273,6 +291,9 @@ class ncs_group_object(object):
       self.build_ncs_obj_from_pdb_asu(pdb_hierarchy_inp=pdb_hierarchy_inp)
     else:
       raise Sorry('Please provide one of the supported input')
+
+
+
     # error handling
     self.found_ncs_transforms = (len(self.transform_to_be_used) > 0)
     if self.write_messages:
@@ -1161,9 +1182,13 @@ class ncs_group_object(object):
     Steps that are common to most method of transform info
     """
     if pdb_hierarchy_inp:
+      if self.old_i_seqs is not None:
+        for k, v in self.ncs_to_asu_map.iteritems():
+          for i in range(len(v)):
+            v[i] = self.old_i_seqs[v[i]]
       self.compute_ncs_asu_coordinates_map(pdb_hierarchy_inp=pdb_hierarchy_inp)
       # keep hierarchy for writing
-      self.hierarchy = pdb_hierarchy_inp.hierarchy
+      self.truncated_hierarchy = pdb_hierarchy_inp.hierarchy
       self.set_common_res_dict()
     # add group selection to ncs_group_map
     for gr_num in self.ncs_group_map.iterkeys():
@@ -1185,9 +1210,9 @@ class ncs_group_object(object):
     # collect all master chain IDs
     sorted_keys = sort_dict_keys(self.ncs_copies_chains_names)
     only_master_ncs_in_hierarchy = False
-    if self.ncs_atom_selection.count(True) == self.hierarchy.atoms().size():
+    if self.ncs_atom_selection.count(True) == self.truncated_hierarchy.atoms().size():
       only_master_ncs_in_hierarchy = True
-    sc = self.hierarchy.atom_selection_cache()
+    sc = self.truncated_hierarchy.atom_selection_cache()
     #
     for key in sorted_keys:
       master_sel_str, ncs_sel_str = self.tr_id_to_selection[key]
@@ -1202,7 +1227,7 @@ class ncs_group_object(object):
         rmsd = tr.rmsd
       # get continuous res ids
       range_list = []
-      t_ph = self.hierarchy.select(copy_selection_indices).models()[0].chains()
+      t_ph = self.truncated_hierarchy.select(copy_selection_indices).models()[0].chains()
       for chain in t_ph:
         res_id = []
         # for rs in chain.residues():
@@ -1268,13 +1293,13 @@ class ncs_group_object(object):
       # compare master_isel_test and master_isel
       ncs_restraints_group_list.append(new_nrg)
     # When hierarchy available, test ncs_restraints_group_list
-    if self.hierarchy and raise_sorry:
+    if self.original_hierarchy and raise_sorry:
       # check that hierarchy is for the complete ASU
-      if self.hierarchy.atoms().size() == self.total_asu_length:
+      if self.original_hierarchy.atoms().size() == self.total_asu_length:
         import mmtbx.ncs.ncs_utils as nu
         nrgl_ok = nu.check_ncs_group_list(
           ncs_restraints_group_list,
-          self.hierarchy,
+          self.original_hierarchy,
           max_delta=max_delta,
           log=self.log)
         if not nrgl_ok:
@@ -1351,8 +1376,8 @@ class ncs_group_object(object):
     #
     if fmodel:
       xrs = fmodel.xray_structure
-    if xrs and self.hierarchy and (not pdb_hierarchy):
-      pdb_hierarchy = self.hierarchy
+    if xrs and self.original_hierarchy and (not pdb_hierarchy):
+      pdb_hierarchy = self.original_hierarchy
       pdb_str = xrs.as_pdb_file()
       pdb_header_str = get_pdb_header(pdb_str)
       xyz = pdb_hierarchy.atoms().extract_xyz()
@@ -1440,14 +1465,14 @@ class ncs_group_object(object):
     spec_object = ncs.ncs(exclude_h=exclude_h,exclude_d=exclude_d)
     if [bool(xrs),bool(pdb_hierarchy_asu),bool(fmodel)].count(True) == 0:
       # if not input containing coordinates is given
-      if self.hierarchy:
-        if (self.hierarchy.atoms().size() == self.total_asu_length):
-          xyz = self.hierarchy.atoms().extract_xyz()
+      if self.truncated_hierarchy:
+        if (self.truncated_hierarchy.atoms().size() == self.total_asu_length):
+          xyz = self.truncated_hierarchy.atoms().extract_xyz()
         else:
           # get the ASU coordinates
           nrg = self.get_ncs_restraints_group_list()
           xyz = nu.apply_transforms(
-            ncs_coordinates = self.hierarchy.atoms().extract_xyz(),
+            ncs_coordinates = self.truncated_hierarchy.atoms().extract_xyz(),
             ncs_restraints_group_list = nrg,
             total_asu_length =  self.total_asu_length,
             extended_ncs_selection = self.ncs_atom_selection)
@@ -1611,7 +1636,6 @@ class ncs_group_object(object):
       result.append(group)
     return result
 
-
   def create_ncs_domain_pdb_files(
           self,
           hierarchy=None,
@@ -1626,7 +1650,7 @@ class ncs_group_object(object):
       exclude_chains (list): list of chain IDs to ignore when writing NCS to pdb
       temp_dir (str): temp directory path
     """
-    if not hierarchy: hierarchy = self.hierarchy
+    if not hierarchy: hierarchy = self.original_hierarchy
     if not hierarchy: return None
     if self.number_of_ncs_groups == 0: return None
     nrgl = self.get_ncs_restraints_group_list()

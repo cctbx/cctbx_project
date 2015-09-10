@@ -1412,7 +1412,8 @@ def exercise_03():
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_5)
   ncs_inp = ncs.input(pdb_inp = pdb_inp)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
-  asc = ncs_inp.hierarchy.atom_selection_cache()
+  # truncated_hierarchy also works here
+  asc = ncs_inp.original_hierarchy.atom_selection_cache()
   sel_master = asc.selection(string = "chain 1")
   sel_copy_1 = asc.selection(string = "chain A")
   sel_copy_2 = asc.selection(string = "chain B")
