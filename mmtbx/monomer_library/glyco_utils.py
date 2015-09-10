@@ -61,8 +61,12 @@ ring_carbon       = "2 C2"
 def get_chiral_sign(code):
   return glyco_chiral_values.volumes.get(code, None)
 
-def get_alpha_beta(code):
-  # fake alpha/beta
+def get_alpha_beta(code, fake=True): # the fake chiral is needed to apply the
+                                     # correct link from monomer library
+                                     # needed because FUC is alpha but has a
+                                     # chiral volume of beta
+  if not fake:
+    return glyco_chiral_values.alpha_beta.get(code, None)
   cs = get_chiral_sign(code)
   if cs is None: return None
   elif cs < 0: return "ALPHA"
