@@ -48,15 +48,15 @@ def exercise_03():
 
 protein.sheet {
   sheet_id = "  3"
-  first_strand = chain 'A' and resid 157  through 161
+  first_strand = chain 'A' and resid  157  through  161
   strand {
-    selection = chain 'A' and resid 114  through 122
+    selection = chain 'A' and resid  114  through  122
     sense = antiparallel
     bond_start_current = None
     bond_start_previous = None
   }
   strand {
-    selection = chain 'A' and resid 193  through 201
+    selection = chain 'A' and resid  193  through  201
     sense = parallel
     bond_start_current = None
     bond_start_previous = None

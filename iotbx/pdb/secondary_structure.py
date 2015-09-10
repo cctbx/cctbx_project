@@ -51,6 +51,7 @@ from libtbx.utils import Sorry
 import libtbx.phil
 from libtbx import adopt_init_args
 import sys
+from iotbx.pdb.hybrid_36 import hy36encode, hy36decode
 
 
 def segments_are_similar(atom_selection_1=None,
@@ -308,7 +309,7 @@ class registration_atoms:
           for residue in conformer.residues():
             pos+=1
             if residue.resname==resname and \
-               residue.resseq.replace(" ","")==str(resseq) and \
+               residue.resseq.replace(" ","")==resseq.replace(" ", "") and \
                chain.id==chain_id and residue.icode==icode:
               return pos
     return None
@@ -322,6 +323,14 @@ class structure_base (object) :
 
   def __str__ (self) :
     return self.as_pdb_str()
+
+  @staticmethod
+  def convert_resseq(resseq):
+    if isinstance(resseq, str):
+      self.start_resseq = "%4s" % resseq[:4]
+    elif isinstance(resseq, int):
+      self.start_resseq = hy36encode(4, resseq)
+
 
   @staticmethod
   def parse_chain_id (chars) :
@@ -1168,11 +1177,11 @@ class pdb_helix (structure_base) :
       helix_id=line[11:14].strip(),
       start_resname=line[15:18],
       start_chain_id=cls.parse_chain_id(line[18:20]),
-      start_resseq=int(line[21:25]),
+      start_resseq=line[21:25],
       start_icode=line[25],
       end_resname=line[27:30],
       end_chain_id=cls.parse_chain_id(line[30:32]),
-      end_resseq=int(line[33:37]),
+      end_resseq=line[33:37],
       end_icode=line[37],
       helix_class=cls.helix_class_to_str(int(line[38:40])),
       helix_selection=None,
@@ -1226,6 +1235,22 @@ class pdb_helix (structure_base) :
       slack=helix_params.slack,
       top_out=helix_params.top_out,
       )
+
+  def get_start_resseq_as_int(self):
+    if self.start_resseq is not None:
+      return hy36decode(4, self.start_resseq)
+    return None
+
+  def get_end_resseq_as_int(self):
+    if self.end_resseq is not None:
+      return hy36decode(4, self.end_resseq)
+    return None
+
+  def set_start_resseq(self, resseq):
+    self.start_resseq = self.convert_resseq(resseq)
+
+  def set_end_resseq(self, resseq):
+    self.end_resseq = self.convert_resseq(resseq)
 
   def set_new_serial(self, serial, adopt_as_id=False):
     self.serial = serial
@@ -1381,17 +1406,33 @@ class pdb_strand(structure_base):
         strand_id=int(line[7:10]),
         start_resname=line[17:20],
         start_chain_id=cls.parse_chain_id(line[20:22]),
-        start_resseq=int(line[22:26]),
+        start_resseq=line[22:26],
         start_icode=line[26],
         end_resname=line[28:31],
         end_chain_id=cls.parse_chain_id(line[31:33]),
-        end_resseq=int(line[33:37]),
+        end_resseq=line[33:37],
         end_icode=line[37],
         sense=int(line[38:40]))
 
   def set_new_chain_ids(self, new_chain_id):
     self.start_chain_id = new_chain_id
     self.end_chain_id = new_chain_id
+
+  def get_start_resseq_as_int(self):
+    if self.start_resseq is not None:
+      return hy36decode(4, self.start_resseq)
+    return None
+
+  def get_end_resseq_as_int(self):
+    if self.end_resseq is not None:
+      return hy36decode(4, self.end_resseq)
+    return None
+
+  def set_start_resseq(self, resseq):
+    self.start_resseq = self.convert_resseq(resseq)
+
+  def set_end_resseq(self, resseq):
+    self.end_resseq = self.convert_resseq(resseq)
 
   def as_atom_selections(self, add_segid=None):
     segid_extra = ""
@@ -1447,13 +1488,29 @@ class pdb_strand_register(structure_base):
     return cls(cur_atom=line[41:45],
         cur_resname=line[45:48],
         cur_chain_id=cls.parse_chain_id(line[48:50]),
-        cur_resseq=int(line[50:54]),
+        cur_resseq=line[50:54],
         cur_icode=line[54],
         prev_atom=line[56:60],
         prev_resname=line[60:63],
         prev_chain_id=cls.parse_chain_id(line[63:65]),
-        prev_resseq=int(line[65:69]),
+        prev_resseq=line[65:69],
         prev_icode=line[69])
+
+  def get_cur_resseq_as_int(self):
+    if self.cur_resseq is not None:
+      return hy36decode(4, self.cur_resseq)
+    return None
+
+  def get_prev_resseq_as_int(self):
+    if self.prev_resseq is not None:
+      return hy36decode(4, self.prev_resseq)
+    return None
+
+  def set_cur_resseq(self, resseq):
+    self.cur_resseq = self.convert_resseq(resseq)
+
+  def set_prev_resseq(self, resseq):
+    self.prev_resseq = self.convert_resseq(resseq)
 
   def set_new_cur_chain_id(self, new_chain_id):
     self.cur_chain_id = new_chain_id
@@ -1466,8 +1523,8 @@ class pdb_strand_register(structure_base):
     if add_segid is not None :
       segid_extra = "and segid '%s' " % add_segid
     sele_base = "chain '%s' %sand resid %s and name %s"
-    resid_curr = "%d%s" % (self.cur_resseq,self.cur_icode)
-    resid_prev = "%d%s" % (self.prev_resseq,
+    resid_curr = "%s%s" % (self.cur_resseq,self.cur_icode)
+    resid_prev = "%s%s" % (self.prev_resseq,
         self.prev_icode)
     sele_curr = sele_base % (self.cur_chain_id, segid_extra,
         resid_curr, self.cur_atom.strip())
@@ -1601,11 +1658,11 @@ class pdb_sheet(structure_base):
           strand_id=i+2,
           start_resname=start_atom.parent().resname,
           start_chain_id=start_atom.parent().parent().parent().id,
-          start_resseq=int(start_atom.parent().parent().resseq),
+          start_resseq=start_atom.parent().parent().resseq,
           start_icode=start_atom.parent().parent().icode,
           end_resname=end_atom.parent().resname,
           end_chain_id=end_atom.parent().parent().parent().id,
-          end_resseq=int(end_atom.parent().parent().resseq),
+          end_resseq=end_atom.parent().parent().resseq,
           end_icode=end_atom.parent().parent().icode,
           sense=sense)
       reg_cur_atom = None
@@ -1638,12 +1695,12 @@ class pdb_sheet(structure_base):
             cur_atom=reg_cur_atom.name,
             cur_resname=reg_cur_atom.parent().resname,
             cur_chain_id=reg_cur_atom.parent().parent().parent().id,
-            cur_resseq=int(reg_cur_atom.parent().parent().resseq),
+            cur_resseq=reg_cur_atom.parent().parent().resseq,
             cur_icode=reg_cur_atom.parent().parent().icode,
             prev_atom=reg_prev_atom.name,
             prev_resname=reg_prev_atom.parent().resname,
             prev_chain_id=reg_prev_atom.parent().parent().parent().id,
-            prev_resseq=int(reg_prev_atom.parent().parent().resseq),
+            prev_resseq=reg_prev_atom.parent().parent().resseq,
             prev_icode=reg_prev_atom.parent().parent().icode)
       strands.append(strand)
       registrations.append(reg)
