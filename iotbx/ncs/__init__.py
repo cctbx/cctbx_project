@@ -15,6 +15,10 @@ ncs_search
               determined automatically)
     .short_caption = Use NCS
     .style = noauto bold
+  exclude_selection = "water or element H or element D"
+    .type = atom_selection
+    .help = Atoms selected by this selection will be excluded from the model \
+      before NCS search procedures will run.
   check_atom_order = True
     .type = bool
     .help = '''check atom order in matching residues'''
@@ -122,6 +126,7 @@ def input(pdb_hierarchy_inp=None,
           spec_ncs_groups=None,
           pdb_string=None,
           use_minimal_master_ncs=True,
+          exclude_selection=None,
           max_rmsd=2.0,
           write_messages=False,
           log=None,
@@ -213,6 +218,7 @@ def input(pdb_hierarchy_inp=None,
       spec_ncs_groups=spec_ncs_groups,
       pdb_string=pdb_string,
       use_minimal_master_ncs=use_minimal_master_ncs,
+      exclude_selection=exclude_selection,
       max_rmsd=max_rmsd,
       write_messages=write_messages,
       log=log,
