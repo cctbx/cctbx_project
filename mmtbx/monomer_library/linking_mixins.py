@@ -883,6 +883,7 @@ Residue classes
       return 1
     #
     if links:
+      explained = []
       print >> log,  "  Links applied"
       for key in sorted(links):
         print >> log,  "    %s" % key
@@ -903,6 +904,24 @@ Residue classes
             print >> log, '      "%s" - "%s"' % (ag1.id_str(),
                                                  ag2.id_str(),
               )
+          explain=""
+          if key.find("ALPHA")==0 or key.find("BETA")==0:
+            true_alpha_beta = glyco_utils.get_alpha_beta(ag2.resname,
+                                                         fake=False,
+            )
+            if true_alpha_beta and key.find(true_alpha_beta.upper())==-1:
+              one = "a beta"
+              two = "an alpha"
+              if true_alpha_beta=="alpha":
+                one = "an alpha"
+                two = "a beta"
+              explain = "%s~> Even though %s is %s isomer," % (' '*7,
+                                                               ag2.resname,
+                                                               one)
+              explain += " %s linkage is required..." % (two)
+              if explain not in explained:
+                print >> log, explain
+              explained.append(explain)
     if bond_data:
       print >> log, "  Number of additional bonds: simple=%d, symmetry=%d" % (
         simple_bonds,
