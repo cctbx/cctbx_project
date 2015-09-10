@@ -2,6 +2,7 @@ from __future__ import division
 from cctbx.array_family import flex
 from mmtbx.monomer_library import server, pdb_interpretation
 from mmtbx.geometry_restraints import c_beta
+import iotbx
 
 pdb_str_1 = """\
 CRYST1   26.960   29.455   29.841  90.00  90.00  90.00 P 21 21 21
@@ -34,6 +35,38 @@ ATOM     26  C   GLY A  22       5.373   9.358   8.580  1.00 33.22           C
 ATOM     27  O   GLY A  22       5.196  10.531   8.906  1.00 30.06           O
 """
 
+pdb_str_2 = """\
+CRYST1   72.072   33.173   34.033  90.00  90.00  90.00 P 1
+ATOM    533  N   GLU B   3       7.910  11.239  20.396  1.00 20.00           N
+ATOM    534  CA  GLU B   3       8.310  11.284  21.798  1.00 20.00           C
+ATOM    534  CA  GLU B   3       8.310  11.284  21.798  1.00 20.00           C
+ATOM    535  C   GLU B   3       9.344  10.190  21.979  1.00 20.00           C
+ATOM    536  O   GLU B   3      10.197  10.267  22.867  1.00 20.00           O
+ATOM    537  CB  GLU B   3       7.115  11.041  22.731  1.00 20.00           C
+ATOM    538  HA  GLU B   3       8.761  12.248  22.034  1.00 20.00           H
+ATOM    539  H  AGLU B   3       7.474  10.360  20.122  0.50 20.00           H
+ATOM    540  D  BGLU B   3       7.474  10.360  20.122  0.50 20.00           D
+"""
+
+pdb_str_3 = """\
+CRYST1   72.072   33.173   34.033  90.00  90.00  90.00 P 1
+ATOM    533  N   GLU B   3       7.910  11.239  20.396  1.00 20.00           N
+ATOM    534  CA AGLU B   3       8.310  11.284  21.798  1.00 20.00           C
+ATOM    534  CA BGLU B   3       8.310  11.284  21.798  1.00 20.00           C
+ATOM    535  C   GLU B   3       9.344  10.190  21.979  1.00 20.00           C
+ATOM    536  O   GLU B   3      10.197  10.267  22.867  1.00 20.00           O
+ATOM    537  CB  GLU B   3       7.115  11.041  22.731  1.00 20.00           C
+"""
+
+pdb_str_4 = """\
+CRYST1   72.072   33.173   34.033  90.00  90.00  90.00 P 1
+ATOM    533  N   GLU B   3       7.910  11.239  20.396  1.00 20.00           N
+ATOM    534  CA AGLU B   3       8.310  11.284  21.798  1.00 20.00           C
+ATOM    535  C   GLU B   3       9.344  10.190  21.979  1.00 20.00           C
+ATOM    536  O   GLU B   3      10.197  10.267  22.867  1.00 20.00           O
+ATOM    537  CB  GLU B   3       7.115  11.041  22.731  1.00 20.00           C
+"""
+
 def exercise_1():
   processed_pdb_file = pdb_interpretation.process(
     mon_lib_srv              = server.server(),
@@ -49,16 +82,12 @@ def exercise_1():
   assert len(grm.get_c_beta_torsion_proxies()) == 4
 
   #test global selection and removing c-beta restraints
-  tst_iselection = flex.size_t()
-  for model in pdb_hierarchy.models():
-    for chain in model.chains():
-      for residue_group in chain.residue_groups():
-        for atom_group in residue_group.atom_groups():
-          for atom in atom_group.atoms():
-            if atom_group.resname == "TYR":
-              tst_iselection.append(atom.i_seq)
+  tst_boolsel = pdb_hierarchy.atom_selection_cache().selection("resname TYR")
+  tst_iselection = tst_boolsel.iselection()
   #test global selection
   grm2 = grm.select(iselection=tst_iselection)
+  assert len(grm2.get_c_beta_torsion_proxies()) == 2
+  grm2 = grm.select(selection=tst_boolsel)
   assert len(grm2.get_c_beta_torsion_proxies()) == 2
   #remove a selection
   grm.remove_c_beta_torsion_restraints_in_place(selection=tst_iselection)
@@ -72,6 +101,29 @@ def exercise_1():
       sigma=2.5)
   assert len(c_beta_torsion_proxies) == 2
 
+def exercise_2():
+  """
+  Testing with ACs
+  """
+  pdb_h = iotbx.pdb.input(
+      source_info=None,
+      lines=pdb_str_2).construct_hierarchy()
+  c_beta_restrs = c_beta.get_c_beta_torsion_proxies(pdb_h)
+  assert len(c_beta_restrs) == 2
+
+  pdb_h = iotbx.pdb.input(
+      source_info=None,
+      lines=pdb_str_3).construct_hierarchy()
+  c_beta_restrs = c_beta.get_c_beta_torsion_proxies(pdb_h)
+  assert len(c_beta_restrs) == 4
+
+  pdb_h = iotbx.pdb.input(
+      source_info=None,
+      lines=pdb_str_4).construct_hierarchy()
+  c_beta_restrs = c_beta.get_c_beta_torsion_proxies(pdb_h)
+  assert len(c_beta_restrs) == 2
+
 if (__name__ == "__main__") :
   exercise_1()
+  exercise_2()
   print "OK"

@@ -17,9 +17,11 @@ def get_c_beta_torsion_proxies(pdb_hierarchy,
       raise Sorry("Bad selection supplied for c_beta restraints")
   if selection is None:
     actual_bselection = flex.bool(pdb_hierarchy.atoms_size(), True)
+  cache = pdb_hierarchy.atom_selection_cache()
+  sel = cache.selection("name N or name CA or name C or name CB")
   c_beta_dihedral_proxies = \
       cctbx.geometry_restraints.shared_dihedral_proxy()
-  for model in pdb_hierarchy.models():
+  for model in pdb_hierarchy.select(sel).models():
     for chain in model.chains():
       for rg in chain.residue_groups():
         for conformer in rg.conformers():
