@@ -586,6 +586,8 @@ class ncs_group_object(object):
       raise Sorry('Multi-model PDB (with MODEL-ENDMDL) is not supported.')
     clean_chain_id(ph.models()[0])
     chain_ids = {x.id for x in ph.models()[0].chains()}
+    # print "chain_ids", chain_ids
+    self.total_asu_length = ph.atoms().size()
     if len(chain_ids) > 1:
       min_contig_length = self.min_contig_length
       min_percent = self.min_percent
@@ -1471,6 +1473,10 @@ class ncs_group_object(object):
         else:
           # get the ASU coordinates
           nrg = self.get_ncs_restraints_group_list()
+          # print "nrg", nrg
+          # print self.truncated_hierarchy.as_pdb_string()
+          # print "self.total_asu_length", self.total_asu_length
+          # print "self.ncs_atom_selection", self.ncs_atom_selection
           xyz = nu.apply_transforms(
             ncs_coordinates = self.truncated_hierarchy.atoms().extract_xyz(),
             ncs_restraints_group_list = nrg,
