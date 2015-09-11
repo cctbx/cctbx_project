@@ -315,7 +315,6 @@ class registration_atoms:
     return None
 
 
-
 class structure_base (object) :
 
   def as_pdb_str (self) :
@@ -327,9 +326,9 @@ class structure_base (object) :
   @staticmethod
   def convert_resseq(resseq):
     if isinstance(resseq, str):
-      self.start_resseq = "%4s" % resseq[:4]
+      return "%4s" % resseq[:4]
     elif isinstance(resseq, int):
-      self.start_resseq = hy36encode(4, resseq)
+      return hy36encode(4, resseq)
 
 
   @staticmethod
@@ -638,7 +637,6 @@ class annotation(structure_base):
         pass
     return "(" + ") or (".join(selections) + ")"
 
-
   def as_bond_selections (self) :
     assert 0, "Probably is not used anywhere"
     bonded_atoms = self.extract_h_bonds(params)
@@ -656,8 +654,6 @@ class annotation(structure_base):
 
   def get_n_sheets(self):
     return len(self.sheets)
-
-
 
   def get_n_defined_hbonds(self):
     n_hb = 0
