@@ -46,7 +46,8 @@ namespace {
                      arg("sym_matrices"))))
         .def("tncs_epsfac", &w_t::tncs_epsfac_result)
         .def("target", &w_t::target_gradient)
-        .def("gradient", &w_t::gradient)
+        .def("gradient_rhoMN", &w_t::gradient_rhoMN)
+        .def("gradient_radius", &w_t::gradient_radius)
       ;
     }
   };
@@ -74,6 +75,8 @@ namespace {
       .add_property("rho_mn", make_getter(&pair<>::rho_mn, rbv()))
       .enable_pickling()
       .def("__getinitargs__", getinitargs)
+      .def("set_radius", &pair<>::set_radius)
+      .def("set_rhoMN", &pair<>::set_rhoMN)
     ;
 
   }

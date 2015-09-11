@@ -51,6 +51,9 @@ class pair
       r(r_),t(t_),radius(radius_),fracscat(fracscat_),
       rho_mn(rho_mn_)
     {}
+
+    void set_radius(FloatType _) { radius = _; }
+    void set_rhoMN(af::shared<FloatType> _) { rho_mn = _; }
 };
 
 // --------------------------------------------------------------------------
@@ -290,8 +293,12 @@ public:
     return tncs_epsfac;
   }
 
-  af::shared<FloatType> gradient() {
+  af::shared<FloatType> gradient_rhoMN() {
     return Gradient_rhoMN;
+  }
+
+  af::shared<FloatType> gradient_radius() {
+    return Gradient_radius;
   }
 
 };

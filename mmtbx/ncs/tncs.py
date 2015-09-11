@@ -16,10 +16,11 @@ class groups(object):
                pdb_hierarchy,
                crystal_symmetry,
                n_bins, # XXX remove later
-               angular_difference_threshold_deg=10):
-    asc = pdb_hierarchy.atom_selection_cache()
-    sel = asc.selection("pepnames and (name CA or name N or name O or name C)")
-    pdb_hierarchy = pdb_hierarchy.select(sel)
+               angular_difference_threshold_deg=10,
+               rad=None):
+    #asc = pdb_hierarchy.atom_selection_cache()
+    #sel = asc.selection("pepnames and (name CA or name N or name O or name C)")
+    #pdb_hierarchy = pdb_hierarchy.select(sel)
     pdb_hierarchy = pdb_hierarchy.expand_to_p1(
       crystal_symmetry=crystal_symmetry)
     pdb_hierarchy.atoms().reset_i_seq()
@@ -37,12 +38,15 @@ class groups(object):
           for t_ in t:
             t_new.append(math.modf(t_)[0]) # same as t_-int(t_)
           # radius
-          sites_cart_sel = sites_cart.select(c.iselection)
-          radius = 0
-          for sc in sites_cart_sel - sites_cart_sel.mean():
-            x,y,z = sc
-            radius += math.sqrt(x**2+y**2+z**2)
-          radius = radius/sites_cart_sel.size()*4./3.
+          if(rad is None):
+            sites_cart_sel = sites_cart.select(c.iselection)
+            radius = 0
+            for sc in sites_cart_sel - sites_cart_sel.mean():
+              x,y,z = sc
+              radius += math.sqrt(x**2+y**2+z**2)
+            radius = radius/sites_cart_sel.size()*4./3.
+          else:
+            radius = rad
           #
           self.rta.append([c.r, t_new, angle, radius])
     self.ncs_pairs = []
@@ -68,11 +72,11 @@ class groups(object):
       print "  Radius: %-6.1f"%rad
       print "  fracscat:", self.ncs_pairs[i].fracscat
 
-def lbfgs_run(target_evaluator, use_bounds):
+def lbfgs_run(target_evaluator, use_bounds, lower_bound, upper_bound):
   minimizer = lbfgsb.minimizer(
     n   = target_evaluator.n,
-    l   = flex.double(target_evaluator.n, 0), # lower bound
-    u   = flex.double(target_evaluator.n, 1), # upper bound
+    l   = flex.double(target_evaluator.n, lower_bound), # lower bound
+    u   = flex.double(target_evaluator.n, upper_bound), # upper bound
     nbd = flex.int(target_evaluator.n, use_bounds)) # flag to apply both bounds
   minimizer.error = None
   try:
@@ -80,7 +84,7 @@ def lbfgs_run(target_evaluator, use_bounds):
     while 1:
       icall += 1
       x, f, g = target_evaluator()
-      print "x,f:", ",".join(["%6.3f"%x_ for x_ in x]), f, icall
+      #print "x,f:", ",".join(["%6.3f"%x_ for x_ in x]), f, icall
       have_request = minimizer.process(x, f, g)
       if(have_request):
         requests_f_and_g = minimizer.requests_f_and_g()
@@ -92,19 +96,24 @@ def lbfgs_run(target_evaluator, use_bounds):
   minimizer.n_calls = icall
   return minimizer
 
-class minimizer:
+class minimizer(object):
 
   def __init__(self,
                potential,
-               use_bounds):
+               use_bounds,
+               lower_bound,
+               upper_bound,
+               initial_values):
     adopt_init_args(self, locals())
-    self.x = self.potential.ncs_pairs[0].rho_mn
+    self.x = initial_values
     self.n = self.x.size()
 
   def run(self):
     self.minimizer = lbfgs_run(
       target_evaluator=self,
-      use_bounds=self.use_bounds)
+      use_bounds=self.use_bounds,
+      lower_bound = self.lower_bound,
+      upper_bound = self.upper_bound)
     self()
     return self
 
@@ -136,13 +145,15 @@ class potential(object):
     for m_as_string in f_obs.space_group().smx():
       o = sgtbx.rt_mx(symbol=str(m_as_string), t_den=f_obs.space_group().t_den())
       m_as_double = o.r().as_double()
-      print m_as_string, m_as_double
       self.sym_matrices.append(m_as_double)
+    self.gradient_evaluator = None
+    self.update()
 
-  def update(self, x):
-    assert x.size() == self.ncs_pairs[0].rho_mn.size() #XXX
-    #for i in xrange(x.size()):
-    #  assert abs(self.ncs_pairs[0].rho_mn[i]-x[i])<1.e-4
+  def update(self, x=None):
+    if(self.gradient_evaluator=="rhoMN"):
+      self.ncs_pairs[0].set_rhoMN(x)
+    elif(self.gradient_evaluator=="radius"):
+      self.ncs_pairs[0].set_radius(x[0])
     self.target_and_grads = ext.tncs_eps_factor_refinery(
       tncs_pairs               = self.ncs_pairs,
       f_obs                    = self.f_obs.data(),
@@ -167,12 +178,22 @@ class potential(object):
       eps_bin = eps.select(bin_sel)
       sn = flex.sum(f_obs_bin_data*f_obs_bin_data/eps_bin)/f_obs_bin_data.size()
       self.SigmaN = self.SigmaN.set_selected(bin_sel, sn)
-      print "bin: %d n_refl.: %d" % (i_bin, f_obs_bin.data().size()), \
-        "%6.3f-%-6.3f"%f_obs_bin.d_max_min(), "SigmaN: %6.4f"%sn
     assert self.SigmaN.all_gt(0)
+
+  def set_refine_radius(self):
+    self.gradient_evaluator = "radius"
+    return self
+
+  def set_refine_rhoMN(self):
+    self.gradient_evaluator = "rhoMN"
+    return self
 
   def target(self):
     return self.target_and_grads.target()
 
   def gradient(self):
-    return self.target_and_grads.gradient()
+    if(self.gradient_evaluator=="rhoMN"):
+      return self.target_and_grads.gradient_rhoMN()
+    elif(self.gradient_evaluator=="radius"):
+      return self.target_and_grads.gradient_radius()
+    else: assert 0
