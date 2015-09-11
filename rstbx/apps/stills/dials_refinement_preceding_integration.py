@@ -333,6 +333,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
         Rcalc['miller_index'] = self.hkllist
         predictor.for_reflection_table(Rcalc, crystal.get_A())
         self.predicted = Rcalc['xyzcal.mm']
+        self.dials_spot_prediction = Rcalc
 
       elif self.horizons_phil.integration.spot_prediction == "ucbp3":
         self.predicted = BPpredicted
