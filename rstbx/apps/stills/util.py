@@ -15,7 +15,7 @@ def residual_map_special_deltapsi_add_on( reflections,experiments,matches,hkllis
           obs_miller = hkllist[match["pred"]]
           model_index= model_millers.first_index(obs_miller)
 
-          raw_delta_psi = reflections["deltapsi_vec"][model_index]
+          raw_delta_psi = reflections["delpsical.rad"][model_index]
           deltapsi_envelope = (unit_cell.d(obs_miller)/deff) + math.pi*eta_deg/180.
           normalized_delta_psi = raw_delta_psi/deltapsi_envelope
 
