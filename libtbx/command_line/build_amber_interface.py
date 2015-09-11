@@ -73,17 +73,20 @@ def run():
       if filename.startswith("python"):
         break
     f=file("dispatcher_include_amber.sh", "wb")
-    f.write( dispatcher_include_str % (filename, filename) )
+    f.write(dispatcher_include_str % (filename, filename) )
     f.close()
 
   print "Building amber_adaptbx"
-  cmd = "libtbx.configure amber amber_adaptbx"
+  cmd = "libtbx.configure amber"
   print "\n  ~> %s\n" % cmd
   easy_run.call(cmd)
   os.chdir(build_dir)
-  cmd = "libtbx.scons -j 1"
-  print "\n  ~> %s\n" % cmd
-  easy_run.call(cmd)
+  #
+  # not needed because sander is python
+  #
+  #cmd = "libtbx.scons -j 1"
+  #print "\n  ~> %s\n" % cmd
+  #easy_run.call(cmd)
 
 
 if __name__=="__main__":
