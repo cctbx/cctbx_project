@@ -108,7 +108,12 @@ def exercise(tolerance=0.001):
       n2 = a2.name.strip()
       if([n1,n2]==["CD1","HD1"] or [n1,n2]==["CD2","HD2"] or
          [n1,n2]==["CE1","HE1"] or [n1,n2]==["CE2","HE2"]):
-        assert approx_equal(dist(a1.xyz, a2.xyz), 1.08, tolerance)
+        assert approx_equal(dist(a1.xyz, a2.xyz), 1.08, tolerance), """
+        dist(a1.xyz, a2.xyz) : %f
+        tolerance            : %f
+        """ % (dist(a1.xyz, a2.xyz),
+               tolerance,
+          )
         cntr += 1
       if(n1=="OH" and n2 in ["HH","DH"]):
         assert approx_equal(dist(a1.xyz, a2.xyz), 0.98, tolerance)
