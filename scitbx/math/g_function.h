@@ -14,11 +14,11 @@ template <typename FloatType>
 FloatType Gfunction(FloatType twoPiRS)
 {
   // G-function (Fourier transform of a sphere of radius r at resolution s).
-  static FloatType EPS(0.00015);
+  static FloatType EPS(0.001);
   if(std::abs(twoPiRS) > EPS)
     return 3*(std::sin(twoPiRS)-twoPiRS*std::cos(twoPiRS))/fn::pow3(twoPiRS);
   else
-    return 1;
+    return 1-fn::pow2(twoPiRS)/10;
 }
 
 template <typename FloatType>
