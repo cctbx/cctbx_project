@@ -11,6 +11,13 @@ from cctbx import crystal
 from scitbx.array_family import flex
 from cctbx.miller import binned_data
 
+# A possible development path 9/11/2015 NKS
+# can we first filter on the outliers to avoid outliers in the I - <I> plot and check that in
+# then figure out what our target function is: delta or SpSig?
+# figure out what happens to these statistics when confronted with known normal distributions
+# thus settling the issues of factors of two and root(two)
+# then figure out some empirical correction that fits the plot.  Doesn't have to be sdfac/sdb/adadd just has to be smooth.
+
 def scale_factor(self, other, weights=None, cutoff_factor=None,
                    use_binning=False):
     """
@@ -83,6 +90,7 @@ def split_sigma_test(self, other, scale, use_binning=False, show_plot=False):
   a_sigmas = self.sigmas(); b_sigmas = scale * other.sigmas()
 
   if show_plot:
+    """
     # Diagnostic use of the (I - <I>) / sigma distribution, should have mean=0, std=1
     a_variance = a_sigmas * a_sigmas
     b_variance = b_sigmas * b_sigmas
@@ -106,6 +114,12 @@ def split_sigma_test(self, other, scale, use_binning=False, show_plot=False):
     plt.plot(xrange(len(order_a)),normal_a.select(order_a),"b.")
     plt.plot(xrange(len(order_b)),normal_b.select(order_b),"r.")
     plt.show()
+    """
+    from cctbx.examples.merging.sigma_correction import ccp4_model
+    Correction = ccp4_model()
+    Correction.plots(a_data, b_data, a_sigmas, b_sigmas)
+    #a_new_variance,b_new_variance = Correction.optimize(a_data, b_data, a_sigmas, b_sigmas)
+    #Correction.plots(a_data, b_data, flex.sqrt(a_new_variance), flex.sqrt(b_new_variance))
 
   n = flex.pow(a_data - b_data,2)
   d = flex.pow(a_sigmas,2)+flex.pow(b_sigmas,2)
