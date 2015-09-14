@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 09/01/2015
+Last Changed: 09/14/2015
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -146,12 +146,11 @@ class SingleImage(object):
           sigs = [spot_height]
 
         for sig_height in sigs:
-          gs_item = {'sih':sig_height, 'sph':spot_height,
+          gs_block.append({'sih':sig_height, 'sph':spot_height,
                      'spa':spot_area, 'a':0, 'b':0, 'c':0,
                      'alpha':0, 'beta':0, 'gamma':0, 'sg':'',
                      'strong':0, 'res':0, 'mos':0,
-                     'epv':0, 'info':'', 'ok':True}
-          gs_block.append(gs_item)
+                     'epv':0, 'info':'', 'ok':True})
 
     int_line = {'img':self.conv_img, 'sih':0, 'sph':0, 'spa':0, 'a':0, 'b':0,
                 'c':0, 'alpha':0, 'beta':0, 'gamma':0, 'sg':'', 'strong':0,
@@ -385,7 +384,7 @@ class SingleImage(object):
               os.path.basename(self.conv_img).split('.')[0] + ".int"))
       self.fin_path = misc.make_image_path(self.conv_img, self.input_base, self.fin_base)
       self.fin_file = os.path.abspath(os.path.join(self.fin_path,
-              os.path.basename(self.conv_img).split('.')[0] + "_int.pickle"))
+        "int_{}.pickle".format(os.path.basename(self.conv_img).split('.')[0])))
       self.final['final'] = self.fin_file
       self.final['img'] = self.conv_img
       self.int_log = os.path.join(self.fin_path,
@@ -393,7 +392,7 @@ class SingleImage(object):
       if self.viz_base != None:
         self.viz_path = misc.make_image_path(self.raw_img, self.input_base, self.viz_base)
         self.viz_file = os.path.join(self.viz_path,
-                   os.path.basename(self.conv_img).split('.')[0] + "_int.png")
+            "int_{}.png".format(os.path.basename(self.conv_img).split('.')[0]))
 
       # Create actual folders
       try:
@@ -406,6 +405,9 @@ class SingleImage(object):
             os.makedirs(self.viz_path)
       except OSError:
         pass
+
+    # Save image object to file
+    ep.dump(self.gs_file, self)
 
     return self
 
@@ -469,7 +471,7 @@ class SingleImage(object):
     return gs_result_file
 
 
-  def integrate_cctbx(self, tag):
+  def integrate_cctbx(self, tag, grid_point=0):
     """ Runs integration using the Integrator class """
 
     # Check to see if the image is suitable for grid search / integration
@@ -507,6 +509,21 @@ class SingleImage(object):
         self.grid = [i for i in self.grid if "not integrated" not in i['info'] and\
                      "no data recorded" not in i['info']]
         self.status = 'grid search'
+
+      elif tag == 'split grid':
+        self.log_info.append('\nCCTBX grid search:')
+        int_results = integrator.integrate(self.grid[grid_point])
+        self.grid[grid_point].update(int_results)
+        img_filename = os.path.basename(self.conv_img)
+        log_entry ='{:<{width}}: S = {:<3} H = {:<3} ' \
+                   'A = {:<3} ---> {}'.format(img_filename,
+                                              self.grid[grid_point]['sih'],
+                                              self.grid[grid_point]['sph'],
+                                              self.grid[grid_point]['spa'],
+                                              self.grid[grid_point]['info'],
+                                              width = len(img_filename) + 2)
+        self.log_info.append(log_entry)
+        self.gs_results.append(log_entry)
 
       elif tag == 'integrate':
         self.log_info.append('\nCCTBX final integration:')

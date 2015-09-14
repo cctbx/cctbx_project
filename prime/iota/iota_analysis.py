@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 08/31/2015
+Last Changed: 09/08/2015
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes unit cell analysis by hierarchical clustering
               (Zeldin, et al., Acta Cryst D, 2013). In case of multiple clusters
@@ -113,8 +113,8 @@ class Analyzer(object):
     ax.set_xticks(np.arange(len(cols))+.5, minor=False)
     ax.set_yticklabels(row_labels, minor=False)
     ax.set_xticklabels(col_labels, minor=False)
-    ax.set_xlabel('Spot height')
-    ax.set_ylabel('Spot area')
+    ax.set_xlabel('Spot area')
+    ax.set_ylabel('Spot height')
 
     if show:
       plt.show()
@@ -124,7 +124,7 @@ class Analyzer(object):
       fig.savefig(hm_file, format='png', bbox_inches=0)
 
 
-  def unit_cell_analysis(self, cluster_threshold, output_dir):
+  def unit_cell_analysis(self, cluster_threshold, output_dir, write_files=True):
     """ Calls unit cell analysis module, which uses hierarchical clustering
         (Zeldin, et al, Acta D, 2015) to split integration results according to
         detected morphological groupings (if any). Most useful with preliminary
@@ -184,11 +184,15 @@ class Analyzer(object):
           sorted_cluster = sorted(clustered_objects,
                                   key=lambda i: i.final['mos'])
           # Write to file
-          for obj in sorted_cluster:
-            with open(output_file, 'a') as scf:
-              scf.write('{}\n'.format(obj.final['final']))
+          if write_files:
+            for obj in sorted_cluster:
+              with open(output_file, 'a') as scf:
+                scf.write('{}\n'.format(obj.final['final']))
 
-          mark_output = os.path.basename(output_file)
+            mark_output = os.path.basename(output_file)
+          else:
+            mark_output = '*'
+            output_file = None
         else:
           mark_output = ''
           output_file = None
@@ -233,16 +237,6 @@ class Analyzer(object):
     """
 
     summary = []
-    input_list_file = os.path.join(int_base, 'input_images.lst')
-    blank_images_file = os.path.join(int_base, 'blank_images.lst')
-    prefilter_fail_file = os.path.join(int_base, 'failed_prefilter.lst')
-    not_integrated_file = os.path.join(int_base, 'not_integrated.lst')
-    integrated_file = os.path.join(int_base, 'integrated.lst')
-    int_images_file = os.path.join(int_base, 'int_image_pickles.lst')
-
-    if self.prime_data_path == None:
-      self.prime_data_path = integrated_file
-
 
     misc.main_log(self.logfile, "\n\n{:-^80}\n".format('SUMMARY'), True)
 
@@ -252,51 +246,70 @@ class Analyzer(object):
     no_diff_objects = [i for i in self.all_objects if i.fail == 'failed triage']
     summary.append('raw images with no diffraction:      {}'\
                    ''.format(len(no_diff_objects)))
-    if len(no_diff_objects) > 0:
-      with open(blank_images_file, 'w') as bif:
-        for obj in no_diff_objects:
-          bif.write('{}\n'.format(obj.conv_img))
 
     diff_objects = [i for i in self.all_objects if i.fail != 'failed triage']
     summary.append('raw images with diffraction:         {}'\
                    ''.format(len(diff_objects)))
-    if len(diff_objects) > 0:
-      with open(input_list_file, 'w') as ilf:
-        for obj in diff_objects:
-          ilf.write('{}\n'.format(obj.conv_img))
 
     not_int_objects = [i for i in self.all_objects if i.fail == 'failed grid search']
     summary.append('raw images not integrated:           {}'\
                    ''.format(len(not_int_objects)))
-    if len(not_int_objects) > 0:
-      with open(not_integrated_file, 'w') as nif:
-        for obj in not_int_objects:
-          nif.write('{}\n'.format(obj.conv_img))
 
     prefilter_fail_objects = [i for i in self.all_objects if i.fail == 'failed prefilter']
     summary.append('images failed prefilter:             {}'\
                    ''.format(len(prefilter_fail_objects)))
-    if len(prefilter_fail_objects) > 0:
-      with open(prefilter_fail_file, 'w') as pff:
-        for obj in prefilter_fail_objects:
-          pff.write('{}\n'.format(obj.conv_img))
 
     final_images = sorted(self.final_objects, key=lambda i: i.final['mos'])
     summary.append('final integrated pickles:            {}'\
                    ''.format(len(final_images)))
-    if len(self.final_objects) > 0:
-      with open(integrated_file, 'w') as intf:
-        for obj in final_images:
-          intf.write('{}\n'.format(obj.final['final']))
-      with open(int_images_file, 'w') as ipf:
-        for obj in final_images:
-          ipf.write('{}\n'.format(obj.final['img']))
 
     for item in summary:
       misc.main_log(self.logfile, "{}".format(item), True)
-
     misc.main_log(self.logfile, '\n\nIOTA version {0}'.format(self.ver))
     misc.main_log(self.logfile, "{}\n".format(self.now))
+
+
+    # Write list files:
+    if int_base != None:
+      input_list_file = os.path.join(int_base, 'input_images.lst')
+      blank_images_file = os.path.join(int_base, 'blank_images.lst')
+      prefilter_fail_file = os.path.join(int_base, 'failed_prefilter.lst')
+      not_integrated_file = os.path.join(int_base, 'not_integrated.lst')
+      integrated_file = os.path.join(int_base, 'integrated.lst')
+      int_images_file = os.path.join(int_base, 'int_image_pickles.lst')
+
+      if self.prime_data_path == None:
+        self.prime_data_path = integrated_file
+
+      if len(no_diff_objects) > 0:
+        with open(blank_images_file, 'w') as bif:
+          for obj in no_diff_objects:
+            bif.write('{}\n'.format(obj.conv_img))
+
+      if len(diff_objects) > 0:
+        with open(input_list_file, 'w') as ilf:
+          for obj in diff_objects:
+            ilf.write('{}\n'.format(obj.conv_img))
+
+      if len(not_int_objects) > 0:
+        with open(not_integrated_file, 'w') as nif:
+          for obj in not_int_objects:
+            nif.write('{}\n'.format(obj.conv_img))
+
+      if len(prefilter_fail_objects) > 0:
+        with open(prefilter_fail_file, 'w') as pff:
+          for obj in prefilter_fail_objects:
+            pff.write('{}\n'.format(obj.conv_img))
+
+      if len(self.final_objects) > 0:
+        with open(integrated_file, 'w') as intf:
+          for obj in final_images:
+            intf.write('{}\n'.format(obj.final['final']))
+        with open(int_images_file, 'w') as ipf:
+          for obj in final_images:
+            ipf.write('{}\n'.format(obj.final['img']))
+
+
 
 
   def make_prime_input(self, int_folder):

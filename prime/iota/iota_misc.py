@@ -42,8 +42,9 @@ def main_log(logfile, entry, print_tag=False):
       is necessary so that I don't have to use the Python logger module, which
       creates a lot of annoying crosstalk with other cctbx.xfel modules.
   """
-  with open(logfile, 'a') as lf:
-    lf.write('{}\n'.format(entry))
+  if logfile != None:
+    with open(logfile, 'a') as lf:
+      lf.write('{}\n'.format(entry))
 
   if print_tag:
     print entry

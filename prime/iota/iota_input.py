@@ -236,7 +236,6 @@ def process_input(args,
 
   # Check for -c option and set flags to exit IOTA after raw image conversion
   if args.convert:
-    params.image_conversion.convert_images = True
     params.image_conversion.convert_only = True
 
   # Check -p option to see if converted file prefix is supplied; will run

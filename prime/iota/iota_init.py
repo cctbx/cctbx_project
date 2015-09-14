@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 08/31/2015
+Last Changed: 09/11/2015
 Description : Reads command line arguments. Initializes all IOTA starting
               parameters. Starts main log.
 '''
@@ -47,6 +47,8 @@ def parse_command_args(iver, help_message):
             help = 'Specify a number of cores for a multiprocessor run"')
   parser.add_argument('--mpi', type=str, nargs='?', const=None, default=None,
             help = 'Specify stage of process - for MPI only')
+  parser.add_argument('--analyze', type=str, nargs='?', const=None, default=None,
+            help = 'Use for analysis only; specify run number or folder')
   return parser
 
 class InitAll(object):
@@ -182,6 +184,37 @@ class InitAll(object):
     return gs_img_objects
 
 
+  def analyze_prior_results(self, analysis_source):
+    """ Runs analysis of previous grid search / integration results, used in an
+        analyze-only mode """
+
+    from prime.iota.iota_analysis import Analyzer
+    from libtbx import easy_pickle as ep
+
+    if os.path.isdir(analysis_source):
+      int_folder = os.path.abspath(analysis_source)
+    else:
+      try:
+        int_folder = os.path.abspath(os.path.join(os.curdir,
+                     'integration/{}/grid_search'.format(analysis_source)))
+      except ValueError:
+        print 'Run #{} not found'.format(analysis_source)
+
+    if os.path.isdir(int_folder):
+      int_list = [os.path.join(int_folder, i) for i in os.listdir(int_folder)]
+      img_objects = [ep.load(i) for i in int_list]
+
+      analysis = Analyzer(img_objects, None, self.iver, self.now)
+      analysis.print_results()
+      analysis.unit_cell_analysis(self.params.analysis.cluster_threshold,
+                                  int_folder, False)
+      analysis.print_summary(None)
+      analysis.show_heatmap()
+    else:
+      print 'No results found in {}'.format(int_folder)
+
+
+
   # Runs general initialization
   def run(self):
 
@@ -227,6 +260,28 @@ class InitAll(object):
         print "ERROR: Invalid input! Need parameter filename or data folder."
         misc.iota_exit(self.iver)
 
+    # Check for -l option, output list of input files and exit
+    if self.args.list:
+      list_file = os.path.abspath("{}/input.lst".format(os.curdir))
+      print '\nIOTA will run in LIST INPUT ONLY mode'
+      print 'Input list in {} \n\n'.format(list_file)
+      with open(list_file, "w") as lf:
+        for i, input_file in enumerate(input_list, 1):
+          print "{}: {}".format(i, input_file)
+          lf.write('{}\n'.format(input_file))
+      print '\nExiting...\n\n'
+      misc.iota_exit(self.iver)
+
+    if self.args.analyze != None:
+      self.analyze_prior_results(self.args.analyze)
+      misc.iota_exit(self.iver)
+
+    if self.params.mp_method == 'mpi':
+      rank, size = misc.get_mpi_rank_and_size()
+      self.master_process = rank == 0
+    else:
+      self.master_process = True
+
     # Call function to read input folder structure (or input file) and
     # generate list of image file paths
     if self.params.selection.select_only.flag_on:
@@ -254,18 +309,6 @@ class InitAll(object):
       os.makedirs(self.gs_base)
       os.makedirs(self.fin_base)
       os.makedirs(self.tmp_base)
-
-    # Check for -l option, output list of input files and exit
-    if self.args.list:
-      list_file = os.path.abspath("{}/input.lst".format(os.curdir))
-      print '\nIOTA will run in LIST INPUT ONLY mode'
-      print 'Input list in {} \n\n'.format(list_file)
-      with open(list_file, "w") as lf:
-        for i, input_file in enumerate(input_list, 1):
-          print "{}: {}".format(i, input_file)
-          lf.write('{}\n'.format(input_file))
-      print '\nExiting...\n\n'
-      misc.iota_exit(self.iver)
 
     # Determine input base
     self.input_base = os.path.abspath(os.path.dirname(os.path.commonprefix(self.input_list)))
