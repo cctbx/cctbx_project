@@ -3,11 +3,11 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 09/02/2015
-Description : IOTA command-line module. Version 2.11
+Last Changed: 09/14/2015
+Description : IOTA command-line module. Version 2.15
 '''
 
-iota_version = '2.11'
+iota_version = '2.15'
 help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 
@@ -65,7 +65,7 @@ def gs_importer_wrapper(input_entry):
   """ Multiprocessor wrapper for image conversion  """
   prog_count = input_entry[0]
   n_img = input_entry[1]
-  gs_prog = cmd.ProgressBar(title='IMPORTING IMAGES')
+  gs_prog = cmd.ProgressBar(title='READING IMAGE OBJECTS')
   if prog_count < n_img:
     prog_step = 100 / n_img
     gs_prog.update(prog_count * prog_step, prog_count)
@@ -159,6 +159,13 @@ if __name__ == "__main__":
   cmd.Command.end("Processing {} images -- DONE ".format(len(img_objects)))
 
   # Analysis of integration results
+
+  final_objects = [i for i in img_objects if i.fail == None]
+
+  if len(final_objects) == 0:
+    print 'No images successfully integrated!'
+    misc.iota_exit(iota_version)
+
   analysis = Analyzer(img_objects, init.logfile, iota_version, init.now)
   analysis.print_results()
   analysis.unit_cell_analysis(init.params.analysis.cluster_threshold,

@@ -2387,7 +2387,7 @@ prime/command_line/iota.py -text
 prime/command_line/iota_bulletproof.py -text
 prime/command_line/iota_mpi_submit.py -text
 prime/command_line/iotacc.py -text
-prime/command_line/linear_iota.py -text
+prime/command_line/mpi_iota.py -text
 prime/command_line/postrefine.py -text
 prime/command_line/spot_param_visualizer.py -text
 prime/command_line/viewstats.py -text
@@ -2402,7 +2402,6 @@ prime/iota/iota_input.py -text
 prime/iota/iota_integrate.py -text
 prime/iota/iota_misc.py -text
 prime/iota/iota_vis_integration.py -text
-prime/iota/visualize_integration.py -text
 prime/libtbx_config -text
 prime/postrefine/__init__.py -text
 prime/postrefine/mod_input.py -text

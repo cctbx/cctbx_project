@@ -133,12 +133,17 @@ class Integrator(object):
     else:
       try:
         # Unit cell / resolution:
+#        uc = int_final['cell'].split()
+#        cell = (float(uc[0]), float(uc[1]), float(uc[2]),
+#                float(uc[3]), float(uc[4]), float(uc[5]))
         obs = int_final['results'][0].get_obs(int_final["spacegroup"])
         cell = obs.unit_cell().parameters()
         sg = int_final['spacegroup']
         res = round(int_final['I_Observations'].d_min(), 4)
 
         # Calculate number of spots w/ high I / sigmaI
+#        Is = int_final['I_Observations'].data()
+#        sigmas = int_final['I_Observations'].sigmas()
         Is = obs.data()
         sigmas = obs.sigmas()
         I_over_sigI = Is / sigmas
