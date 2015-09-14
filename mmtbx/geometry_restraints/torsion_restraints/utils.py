@@ -98,17 +98,23 @@ def get_complete_dihedral_proxies(
   return get_dihedrals_and_phi_psi(processed_pdb_file_local)
 
 def get_dihedrals_and_phi_psi(processed_pdb_file):
+  from cctbx.geometry_restraints import dihedral_proxy_registry
+  dihedral_registry = dihedral_proxy_registry(
+      strict_conflict_handling=True)
+  dihedral_registry.initialize_table()
   from mmtbx.conformation_dependent_library import generate_protein_threes
   grm = processed_pdb_file.geometry_restraints_manager()
   dihedral_proxies = grm.get_dihedral_proxies().deep_copy()
+  for p in dihedral_proxies:
+    dihedral_registry.add_if_not_duplicated(p)
   for three in generate_protein_threes(
       hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
       geometry=None):
     proxies = three.get_dummy_dihedral_proxies(
         only_psi_phi_pairs=False)
     for p in proxies:
-      dihedral_proxies.append(p)
-  return dihedral_proxies
+      dihedral_registry.add_if_not_duplicated(p)
+  return dihedral_registry.proxies
 
 def modernize_rna_resname(resname):
   if common_residue_names_get_class(resname,

@@ -63,6 +63,12 @@ master_phil = iotbx.phil.parse("""
     .short_caption = Exclude secondary structure from Ramachandran restraints
 """ % potential_phil)
 
+def is_proxy_present(proxies, proxy):
+  for p in proxies:
+    if list(p.get_i_seqs()) == list(proxy.get_i_seqs()):
+      return True
+  return False
+
 class ramachandran_manager(object):
   def __init__ (self, pdb_hierarchy, atom_selection=None, params=None,
       log=sys.stdout, proxies=None, tables=None, initialize=True):
@@ -129,7 +135,8 @@ class ramachandran_manager(object):
           residue_name=r_name,
           residue_type=residue_type,
           i_seqs=i_seqs)
-      self.proxies.append(proxy)
+      if not is_proxy_present(self.proxies, proxy):
+        self.proxies.append(proxy)
     print >> self.log, ""
     print >> self.log, "  %d Ramachandran restraints generated." % self.get_n_proxies()
 
