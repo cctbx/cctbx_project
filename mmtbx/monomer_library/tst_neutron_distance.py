@@ -43,7 +43,7 @@ END
 def dist(a,b):
   return math.sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2)
 
-def exercise(tolerance=0.001):
+def exercise(tolerance=0.01):
   for use_neutron_distances in [True, False]:
     mon_lib_srv = monomer_library.server.server()
     ener_lib = monomer_library.server.ener_lib()
