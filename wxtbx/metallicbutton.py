@@ -159,7 +159,7 @@ class MetallicButton (wx.PyControl) :
     if self._menu is not None or self._style & MB_STYLE_DROPARROW:
       # Positioning needs a little help on Windows
       if wx.Platform == '__WXMSW__':
-          xpos -= 2
+        xpos -= 2
       tripoints = [(xpos, ypos), (xpos + 6, ypos), (xpos + 3, ypos + 5)]
       brush_b = gc.GetBrush()
       pen_b = gc.GetPen()

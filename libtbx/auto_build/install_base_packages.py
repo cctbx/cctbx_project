@@ -991,7 +991,7 @@ Installation of Python packages may fail.
 
   def build_wxpython(self):
     pkg_log = self.start_building_package("wxPython")
-    pkg_name = WXPYTHON_PKG
+    pkg_name = WXPYTHON_DEV_PKG
     if self.options.download_only: # download both versions if --download_only
       pkg = self.fetch_package(pkg_name)
 
@@ -1057,25 +1057,26 @@ Installation of Python packages may fail.
         "--with-gtk-prefix=\"%s\"" % self.base_dir,
         "--with-gtk-exec-prefix=\"%s\"" % op.join(self.base_dir, "lib"),
         "--enable-graphics_ctx",
-        "--enable-mediactrl",
+        "--disable-mediactrl",
         "--enable-display",
+        "--without-libnotify"
       ])
 
-    install_gizmos = True
+    install_gizmos = False #True
     print >> self.log, "  building wxWidgets with options:"
     for opt in config_opts :
       print >> self.log, "    %s" % opt
     self.call("./configure %s" % " ".join(config_opts), log=pkg_log)
     self.call("make -j %d" % self.nproc, log=pkg_log)
-    if (not self.flag_is_mac) : # XXX ???
-      self.call("make -j %d -C contrib/src/stc" % self.nproc, log=pkg_log)
-      if install_gizmos:
-        self.call("make -j %d -C contrib/src/gizmos" % self.nproc, log=pkg_log)
+    # if (not self.flag_is_mac) : # XXX ???
+    #   self.call("make -j %d -C contrib/src/stc" % self.nproc, log=pkg_log)
+    #   if install_gizmos:
+    #     self.call("make -j %d -C contrib/src/gizmos" % self.nproc, log=pkg_log)
     self.call("make install", log=pkg_log)
-    if (not self.flag_is_mac) : # XXX ???
-      self.call("make -C contrib/src/stc install", log=pkg_log)
-      if install_gizmos:
-        self.call("make -C contrib/src/gizmos install", log=pkg_log)
+    # if (not self.flag_is_mac) : # XXX ???
+    #   self.call("make -C contrib/src/stc install", log=pkg_log)
+    #   if install_gizmos:
+    #     self.call("make -C contrib/src/gizmos install", log=pkg_log)
 
     # Stage 2: build wxPython itself
     wxpy_build_opts = [
@@ -1090,8 +1091,8 @@ Installation of Python packages may fail.
       wxpy_build_opts.extend(["BUILD_STC=1",
                               "WXPORT=osx_cocoa"])
     else :
-      wxpy_build_opts.extend(["BUILD_STC=0",
-                              "BUILD_OGL=0",
+      wxpy_build_opts.extend(["BUILD_STC=1", #"BUILD_STC=0",
+                              #"BUILD_OGL=0",
                               "WX_CONFIG=%s/bin/wx-config" %self.base_dir])
     self.chdir("wxPython", log=pkg_log)
     debug_flag = ""
@@ -1136,7 +1137,6 @@ Installation of Python packages may fail.
         "--with-macosx-version-min=10.6",
         "--enable-monolithic",
         "--enable-unicode"
-        "--enable-monolithic"
       ])
     elif (self.flag_is_linux) :
       config_opts.extend([
