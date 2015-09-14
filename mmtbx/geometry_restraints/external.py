@@ -31,6 +31,7 @@ if (amber_installed) :
 """
 
 qb_installed = os.environ.get("QBHOME", False)
+if qb_installed: qb_installed = os.path.isdir(qb_installed)
 if (qb_installed) :
   external_energy_params_str += """
     qbio
