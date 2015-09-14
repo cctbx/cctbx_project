@@ -11,10 +11,12 @@ Description : Runs cctbx.xfel integration module either in grid-search or final
 
 import os
 import sys
+import uuid
 import numpy as np
 
 import iota_vis_integration as viz
 import prime.iota.iota_misc as misc
+from libtbx import easy_pickle, easy_run
 
 
 class Integrator(object):
@@ -27,7 +29,8 @@ class Integrator(object):
                charts = False,
                viz = None,
                log = None,
-               tag = 'grid search'):
+               tag = 'grid search',
+               tmp_base = None):
 
     self.img = source_image
     self.out_img = output_image
@@ -37,25 +40,24 @@ class Integrator(object):
     self.tag = tag
     self.int_log = log
     self.charts = charts
+    self.tmp_base = tmp_base
 
 
     self.args = ["target={}".format(self.target),
                  "indexing.data={}".format(self.img),
                  "beam_search_scope=0.5",
-                 "lepage_max_delta = 3.0",
-                 "spots_pickle = None",
-                 "subgroups_pickle = None",
-                 "refinements_pickle = None",
-                 "rmsd_tolerance = 5.0",
-                 "mosflm_rmsd_tolerance = 5.0",
+                 "lepage_max_delta=3.0",
+                 "spots_pickle=None",
+                 "subgroups_pickle=None",
+                 "refinements_pickle=None",
+                 "rmsd_tolerance=5.0",
+                 "mosflm_rmsd_tolerance=5.0",
                  "difflimit_sigma_cutoff=2.0",
                  "indexing.verbose_cv=True"]
 
   def integrate(self, grid_point):
     """ Runs the integration module in cctbx.xfel; used by either grid-search or
         final integration function. """
-    from xfel.phil_preferences import load_cxi_phil
-    from xfel.cxi.display_spots import run_one_index_core
 
     self.s = grid_point['sih']
     self.h = grid_point['sph']
@@ -78,27 +80,40 @@ class Integrator(object):
     if self.tag == 'integrate':
       args.append("indexing.completeness_pickle={}".format(self.out_img))
 
-    #Actually run integration (from run_one_index_core)
+    #Actually run integration using iota.bulletproof
     error_message = ''
     with misc.Capturing() as index_log:
-      try:
-        arguments = ["distl.minimum_signal_height={}".format(str(self.s)),
-                     "distl.minimum_spot_height={}".format(str(self.h)),
-                     "distl.minimum_spot_area={}".format(str(self.a)),
-                     "indexing.open_wx_viewer=False"] + list(args[1:])
+      arguments = ["distl.minimum_signal_height={}".format(str(self.s)),
+                   "distl.minimum_spot_height={}".format(str(self.h)),
+                   "distl.minimum_spot_area={}".format(str(self.a)),
+                   "indexing.open_wx_viewer=False"] + list(args[1:])
 
-        horizons_phil = load_cxi_phil(self.target, arguments)
-        info = run_one_index_core(horizons_phil)
-        int_final = info.organizer.info['best_integration']['integration']
-        int_AD14 = int_final['AD14_parameters']
+      tmppath = os.path.join(self.tmp_base, str(uuid.uuid4()) + ".pickle")
+      assert not os.path.exists(tmppath)
+
+      # invoke the indexer in a way that will protect iota from any crashes
+      command = "iota.bulletproof %s %s %s"%(tmppath, self.target, " ".join(arguments))
+
+      try:
+        easy_run.fully_buffered(command,join_stdout_stderr=True).show_stdout()
+        if not os.path.exists(tmppath):
+          raise Exception("Indexing failed for an unknown reason")
+
+        # iota.bulletproof saves the needed results from indexing in a tmp file
+        result = easy_pickle.load(tmppath)
+        os.remove(tmppath)
+        if isinstance(result, str):
+          raise Exception(result)
+        else:
+          int_final, int_AD14 = result
 
       except Exception, e:
         int_final = None
         if hasattr(e, "classname"):
-          print e.classname, "for %s:"%file,
+          print e.classname, "for %s:"%self.img,
           error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
         else:
-          print "Integration error for %s:"%file,
+          print "Integration error for %s:"%self.img,
           error_message = "{}".format(str(e).replace('\n', ' ')[:50])
         print e
 
