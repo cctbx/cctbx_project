@@ -311,7 +311,6 @@ def DrawStatusLightControl (parent, message, name, level) :
   bmp = wx.EmptyBitmap(32, 32)
   dc = wx.MemoryDC()
   dc.SelectObject(bmp)
-  dc.SetBackground(wx.TRANSPARENT_BRUSH)
   gc = wx.GraphicsContext.Create(dc)
   dc.Clear()
   if (level == 0) :
@@ -322,7 +321,8 @@ def DrawStatusLightControl (parent, message, name, level) :
     gc.SetBrush(wx.Brush((255,140,0)))
   else :
     gc.SetBrush(wx.Brush((255,0,0)))
-  gc.DrawEllipse(2, 2, 28, 28)
+  gc.DrawEllipse(4, 4, 28, 28)
+  bmp.SetMask(wx.Mask(bmp,wx.WHITE))
   btn = metallicbutton.MetallicButton(
     parent=parent,
     label2=message,
