@@ -548,6 +548,101 @@ def exercise_ramachandran_selections(mon_lib_srv, ener_lib):
   grm = processed_pdb_file.geometry_restraints_manager()
   # print grm.ramachandran_manager.get_n_proxies() 0 is wrong here
 
+def exercise_acs(mon_lib_srv, ener_lib):
+  ac_pdb1 = """\
+CRYST1   72.072   33.173   34.033  90.00  90.00  90.00 P 1
+SCALE1      0.013875  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.030145  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.029383        0.00000
+ATOM    519  N   HIS B   1       5.000   8.515  18.112  1.00 20.00           N
+ATOM    520  CA  HIS B   1       5.999   8.713  17.074  1.00 20.00           C
+ATOM    521  C   HIS B   1       7.157   9.627  17.517  1.00 20.00           C
+ATOM    522  O   HIS B   1       8.302   9.165  17.614  1.00 20.00           O
+ATOM    523  CB AHIS B   1       5.315   9.226  15.797  0.50 20.00           C
+ATOM    523  CB BHIS B   1       5.315   9.226  15.797  0.50 20.00           C
+ATOM    524  HA  HIS B   1       6.434   7.742  16.835  1.00 20.00           H
+ATOM    525  N   TRP B   2       6.845  10.900  17.805  1.00 20.00           N
+ATOM    526  CA  TRP B   2       7.853  11.954  18.083  1.00 20.00           C
+ATOM    527  C   TRP B   2       8.071  12.262  19.565  1.00 20.00           C
+ATOM    528  O   TRP B   2       8.355  13.406  19.941  1.00 20.00           O
+ATOM    529  CB  TRP B   2       7.516  13.257  17.336  1.00 20.00           C
+ATOM    530  HA  TRP B   2       8.809  11.606  17.692  1.00 20.00           H
+ATOM    531  H  ATRP B   2       5.886  11.243  17.855  0.50 20.00           H
+ATOM    532  D  BTRP B   2       5.886  11.243  17.855  0.50 20.00           D
+ATOM    533  N   GLU B   3       7.910  11.239  20.396  1.00 20.00           N
+ATOM    534  CA  GLU B   3       8.310  11.284  21.798  1.00 20.00           C
+ATOM    535  C   GLU B   3       9.344  10.190  21.979  1.00 20.00           C
+ATOM    536  O   GLU B   3      10.197  10.267  22.867  1.00 20.00           O
+ATOM    537  CB  GLU B   3       7.115  11.041  22.731  1.00 20.00           C
+ATOM    538  HA  GLU B   3       8.761  12.248  22.034  1.00 20.00           H
+ATOM    539  H  AGLU B   3       7.474  10.360  20.122  0.50 20.00           H
+ATOM    540  D  BGLU B   3       7.474  10.360  20.122  0.50 20.00           D """
+  ac_pdb2 = """\
+CRYST1   72.072   33.173   34.033  90.00  90.00  90.00 P 1
+SCALE1      0.013875  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.030145  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.029383        0.00000
+ATOM    519  N   HIS B   1       5.000   8.515  18.112  1.00 20.00           N
+ATOM    520  CA  HIS B   1       5.999   8.713  17.074  1.00 20.00           C
+ATOM    521  C   HIS B   1       7.157   9.627  17.517  1.00 20.00           C
+ATOM    522  O   HIS B   1       8.302   9.165  17.614  1.00 20.00           O
+ATOM    523  CB  HIS B   1       5.315   9.226  15.797  1.00 20.00           C
+ATOM    524  HA  HIS B   1       6.434   7.742  16.835  1.00 20.00           H
+ATOM    525  N   TRP B   2       6.845  10.900  17.805  1.00 20.00           N
+ATOM    526  CA ATRP B   2       7.853  11.954  18.083  0.50 20.00           C
+ATOM    556  CA BTRP B   2       7.453  11.454  18.083  0.50 20.00           C
+ATOM    527  C   TRP B   2       8.071  12.262  19.565  1.00 20.00           C
+ATOM    528  O   TRP B   2       8.355  13.406  19.941  1.00 20.00           O
+ATOM    529  CB  TRP B   2       7.516  13.257  17.336  1.00 20.00           C
+ATOM    530  HA  TRP B   2       8.809  11.606  17.692  1.00 20.00           H
+ATOM    531  H  ATRP B   2       5.886  11.243  17.855  0.50 20.00           H
+ATOM    532  D  BTRP B   2       5.886  11.243  17.855  0.50 20.00           D
+ATOM    533  N   GLU B   3       7.910  11.239  20.396  1.00 20.00           N
+ATOM    534  CA  GLU B   3       8.310  11.284  21.798  1.00 20.00           C
+ATOM    535  C   GLU B   3       9.344  10.190  21.979  1.00 20.00           C
+ATOM    536  O   GLU B   3      10.197  10.267  22.867  1.00 20.00           O
+ATOM    537  CB  GLU B   3       7.115  11.041  22.731  1.00 20.00           C
+ATOM    538  HA  GLU B   3       8.761  12.248  22.034  1.00 20.00           H
+ATOM    539  H  AGLU B   3       7.474  10.360  20.122  0.50 20.00           H
+ATOM    540  D  BGLU B   3       7.474  10.360  20.122  0.50 20.00           D """
+  no_ac_pdb = """\
+CRYST1   72.072   33.173   34.033  90.00  90.00  90.00 P 1
+SCALE1      0.013875  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.030145  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.029383        0.00000
+ATOM    519  N   HIS B   1       5.000   8.515  18.112  1.00 20.00           N
+ATOM    520  CA  HIS B   1       5.999   8.713  17.074  1.00 20.00           C
+ATOM    521  C   HIS B   1       7.157   9.627  17.517  1.00 20.00           C
+ATOM    522  O   HIS B   1       8.302   9.165  17.614  1.00 20.00           O
+ATOM    523  CB  HIS B   1       5.315   9.226  15.797  1.00 20.00           C
+ATOM    525  N   TRP B   2       6.845  10.900  17.805  1.00 20.00           N
+ATOM    556  CA  TRP B   2       7.453  11.454  18.083  0.50 20.00           C
+ATOM    527  C   TRP B   2       8.071  12.262  19.565  1.00 20.00           C
+ATOM    528  O   TRP B   2       8.355  13.406  19.941  1.00 20.00           O
+ATOM    529  CB  TRP B   2       7.516  13.257  17.336  1.00 20.00           C
+ATOM    533  N   GLU B   3       7.910  11.239  20.396  1.00 20.00           N
+ATOM    534  CA  GLU B   3       8.310  11.284  21.798  1.00 20.00           C
+ATOM    535  C   GLU B   3       9.344  10.190  21.979  1.00 20.00           C
+ATOM    536  O   GLU B   3      10.197  10.267  22.867  1.00 20.00           O
+ATOM    537  CB  GLU B   3       7.115  11.041  22.731  1.00 20.00           C
+"""
+  for correct_nprox, pdb_str in [
+      (1, ac_pdb1),
+      (2, ac_pdb2),
+      (1, no_ac_pdb),
+      ]:
+    params = pdb_interpretation.master_params.fetch().extract()
+    params.peptide_link.ramachandran_restraints = True
+    processed_pdb_file = pdb_interpretation.process(
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
+      params=params,
+      raw_records=pdb_str.split("\n"),
+      log=StringIO())
+    grm = processed_pdb_file.geometry_restraints_manager()
+    nprox = grm.ramachandran_manager.get_n_proxies()
+    assert nprox == correct_nprox, ""+\
+        "Want to get %d rama proxies, got %d" % (correct_nprox, nprox)
 
 if __name__ == "__main__" :
   import time
@@ -573,6 +668,8 @@ if __name__ == "__main__" :
   #
   exercise_ramachandran_selections(mon_lib_srv, ener_lib)
   t5 = time.time()
-  print "Times: %.3f, %.3f, %.3f, %.3f, %.3f. Total: %.3f" % (
-      t1-t0, t2-t1, t3-t2, t4-t3, t5-t4, t5-t0)
+  exercise_acs(mon_lib_srv, ener_lib)
+  t6 = time.time()
+  print "Times: %.3f, %.3f, %.3f, %.3f, %.3f, %.3f. Total: %.3f" % (
+      t1-t0, t2-t1, t3-t2, t4-t3, t5-t4, t6-t5, t6-t0)
   print "OK"
