@@ -54,6 +54,7 @@ class SingleImage(object):
     self.gs_base = init.gs_base
     self.fin_base = init.fin_base
     self.viz_base = init.viz_base
+    self.tmp_base = init.tmp_base
 
     self.gs_path = None
     self.gs_file = None
@@ -484,7 +485,8 @@ class SingleImage(object):
                               self.params.analysis.charts,
                               self.viz_path,
                               self.int_log,
-                              tag)
+                              tag,
+                              self.tmp_base)
       if tag == 'grid search':
         self.log_info.append('\nCCTBX grid search:')
         for i in range(len(self.grid)):
