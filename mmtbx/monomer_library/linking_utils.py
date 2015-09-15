@@ -8,6 +8,8 @@ from mmtbx.monomer_library.linking_setup import ad_hoc_single_metal_residue_elem
 from mmtbx.monomer_library.linking_setup import ad_hoc_non_linking_elements
 from mmtbx.monomer_library.linking_setup import ad_hoc_first_row
 
+from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
+
 get_class = iotbx.pdb.common_residue_names_get_class
 
 sugar_types = ["SACCHARIDE",
@@ -232,11 +234,15 @@ def get_classes(atom, important_only=False, verbose=False):
     if i:
       rc = gc
     else:
-      if get_type(atom_group.resname) is not None:
-        if get_type(atom_group.resname).upper() in sugar_types:
+      if atom_group.resname in one_letter_given_three_letter:
+        gotten_type = "L-PEPTIDE LINKING"
+      elif atom_group.resname in ["HOH"]:
+        gotten_type = "NON-POLYMER"
+      else:
+        gotten_type = get_type(atom_group.resname)
+      if gotten_type is not None:
+        if gotten_type.upper() in sugar_types:
           rc = attr
-        #elif get_type(atom_group.resname).upper() in amino_types:
-        #  rc = attr
     if rc==attr:
       if important_only: return _filter_for_metal(atom, rc)
       setattr(classes, attr, True)

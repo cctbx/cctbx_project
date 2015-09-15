@@ -12,14 +12,12 @@ def distance2(a,b):
 def get_c_ca_n(atom_group):
   tmp = []
   outl = []
-  for name in ["C", "CA", "N"]:
-    for atom in atom_group.atoms():
-      if atom.name.strip()==name:
-        tmp.append(atom)
-        break
+  for name in [" C  ", " CA ", " N  "]:
+    atom = atom_group.find_atom_by(name=name)
+    if atom:
+      tmp.append(atom)
     else:
-      for atom in atom_group.atoms():
-        outl.append(atom.format_atom_record())
+      outl.append("%s %s" % atom_group.resname, name)
       tmp = None
       break
   return tmp, outl
