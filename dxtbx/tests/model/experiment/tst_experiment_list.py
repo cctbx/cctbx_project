@@ -617,6 +617,7 @@ class TestExperimentListDumper(object):
     self.tst_dump_formats()
     self.tst_dump_empty_sweep()
     self.tst_dump_with_lookup()
+    self.tst_dump_with_bad_lookup()
 
   def tst_dump_formats(self):
     from uuid import uuid4
@@ -698,7 +699,7 @@ class TestExperimentListDumper(object):
 
     experiments = ExperimentListFactory.from_json_file(
       filename,
-      check_format=False)
+      check_format=True)
 
     imageset = experiments[0].imageset
     assert imageset.external_lookup.mask.data is not None
@@ -717,7 +718,7 @@ class TestExperimentListDumper(object):
 
     experiments = ExperimentListFactory.from_json_file(
       filename,
-      check_format=False)
+      check_format=True)
 
     imageset = experiments[0].imageset
     assert imageset.external_lookup.mask.data is not None
@@ -729,6 +730,52 @@ class TestExperimentListDumper(object):
     assert imageset.external_lookup.mask.data.all_eq(True)
     assert imageset.external_lookup.gain.data.all_eq(1)
     assert imageset.external_lookup.pedestal.data.all_eq(0)
+
+  def tst_dump_with_bad_lookup(self):
+    from dxtbx.imageset import ImageSweep, NullReader, SweepFileList
+    from dxtbx.model import Beam, Detector, Goniometer, Scan
+    from dxtbx.model.crystal import crystal_model
+    from uuid import uuid4
+    import libtbx.load_env
+    import os
+    from os.path import join
+
+    try:
+      dials_regression = libtbx.env.dist_path('dials_regression')
+    except KeyError, e:
+      print 'FAIL: dials_regression not configured'
+      exit(0)
+
+    filename = join(dials_regression, "centroid_test_data",
+                    "experiments_with_bad_lookup.json")
+
+    experiments = ExperimentListFactory.from_json_file(
+      filename,
+      check_format=False)
+
+    imageset = experiments[0].imageset
+    assert imageset.external_lookup.mask.data is None
+    assert imageset.external_lookup.gain.data is None
+    assert imageset.external_lookup.pedestal.data is None
+    assert imageset.external_lookup.mask.filename is not None
+    assert imageset.external_lookup.gain.filename is not None
+    assert imageset.external_lookup.pedestal.filename is not None
+
+    dump = ExperimentListDumper(experiments)
+    filename = 'temp%s.json' % uuid4().hex
+    dump.as_json(filename)
+
+    experiments = ExperimentListFactory.from_json_file(
+      filename,
+      check_format=False)
+
+    imageset = experiments[0].imageset
+    assert imageset.external_lookup.mask.data is None
+    assert imageset.external_lookup.gain.data is None
+    assert imageset.external_lookup.pedestal.data is None
+    assert imageset.external_lookup.mask.filename is not None
+    assert imageset.external_lookup.gain.filename is not None
+    assert imageset.external_lookup.pedestal.filename is not None
 
     print "OK"
 
