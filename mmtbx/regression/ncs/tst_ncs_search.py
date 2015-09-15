@@ -220,7 +220,7 @@ class TestSimpleAlignment(unittest.TestCase):
         list_a, list_b,
         res_n_a,res_n_b,
         ref_sites,other_sites,
-        max_dist_diff=4.0)
+        match_radius=4.0)
     #
     self.assertEqual([0, 1, 5, 7, 8],res_n_a)
     self.assertEqual([1, 2, 6, 8, 9],res_n_b)
@@ -282,7 +282,7 @@ class TestSimpleAlignment(unittest.TestCase):
       min_contig_length=1,check_atom_order=True)
     match_dict = ncs_search.clean_chain_matching(
       chain_match_list=chain_match_list,ph=ph,
-      chain_similarity_limit=0.1)
+      similarity_threshold=0.1)
     transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
       match_dict)
     group_dict = ncs_search.build_group_dict(
@@ -380,7 +380,7 @@ class TestSimpleAlignment(unittest.TestCase):
       min_contig_length=1,check_atom_order=True)
     match_dict = ncs_search.clean_chain_matching(
       chain_match_list=chain_match_list,ph=ph,
-      chain_similarity_limit=0.1)
+      similarity_threshold=0.1)
     transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
       match_dict)
     #

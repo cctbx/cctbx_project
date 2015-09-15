@@ -95,8 +95,8 @@ def find_ncs_in_hierarchy(ph,
                           check_atom_order=False,
                           allow_different_size_res=True,
                           exclude_misaligned_residues=False,
-                          chain_similarity_limit=0.95,
-                          max_dist_diff=4.0,
+                          similarity_threshold=0.95,
+                          match_radius=4.0,
                           ignore_chains=None):
   """
   Find NCS relation in hierarchy
@@ -116,11 +116,11 @@ def find_ncs_in_hierarchy(ph,
         excluded from matching set
     exclude_misaligned_residues (bool): check and exclude individual residues
       alignment quality
-    max_dist_diff (float): max allow distance difference between pairs of matching
+    match_radius (float): max allow distance difference between pairs of matching
       atoms of two residues
     allow_different_size_res (bool): keep matching residue with different
       number of atoms
-    chain_similarity_limit (float): min similarity between matching chains
+    similarity_threshold (float): min similarity between matching chains
     ignore_chains (set of str): set of chain IDs to exclude
 
   Return:
@@ -148,8 +148,8 @@ def find_ncs_in_hierarchy(ph,
     ph=ph,
     max_rmsd=max_rmsd,
     exclude_misaligned_residues=exclude_misaligned_residues,
-    max_dist_diff=max_dist_diff,
-    chain_similarity_limit=chain_similarity_limit)
+    match_radius=match_radius,
+    similarity_threshold=similarity_threshold)
   #
   if use_minimal_master_ncs:
     transform_to_group,match_dict = minimal_master_ncs_grouping(match_dict)
@@ -728,7 +728,7 @@ def collect_info(sorted_masters,copies,match_dict):
 def clean_chain_matching(chain_match_list,ph,
                          max_rmsd=10.0,
                          exclude_misaligned_residues=False,
-                         max_dist_diff=4.0,chain_similarity_limit=0.95):
+                         match_radius=4.0,similarity_threshold=0.95):
   """
   Remove all bad matches from chain_match_list
 
@@ -742,9 +742,9 @@ def clean_chain_matching(chain_match_list,ph,
     max_rmsd (float): limit of rms difference chains
     exclude_misaligned_residues (bool): check and exclude individual residues
       alignment quality
-    max_dist_diff (float): max allow distance difference between pairs of matching
+    match_radius (float): max allow distance difference between pairs of matching
       atoms of two residues
-    chain_similarity_limit (float): min similarity between matching chains
+    similarity_threshold (float): min similarity between matching chains
 
   Returns:
     match_dict(dict): key:(chains_id_a,chains_id_b)
@@ -760,7 +760,7 @@ def clean_chain_matching(chain_match_list,ph,
   for match in match_list:
     [ch_a_id,ch_b_id,list_a,list_b,res_list_a,res_list_b,similarity] = match
     update_match_dicts(
-      best_matches,match_dict,ch_a_id,ch_b_id,similarity,chain_similarity_limit)
+      best_matches,match_dict,ch_a_id,ch_b_id,similarity,similarity_threshold)
     sel_a = make_selection_from_lists(list_a)
     sel_b = make_selection_from_lists(list_b)
     other_sites = ph.select(sel_a).atoms().extract_xyz()
@@ -782,7 +782,7 @@ def clean_chain_matching(chain_match_list,ph,
             list_a, list_b,
             res_list_a,res_list_b,
             ref_sites,lsq_fit_obj.other_sites_best_fit(),
-            max_dist_diff=max_dist_diff)
+            match_radius=match_radius)
       if sel_a.size() > 0:
         match_dict[ch_a_id,ch_b_id]=[sel_a,sel_b,res_list_a,res_list_b,r,t,rmsd]
   return match_dict
@@ -790,7 +790,7 @@ def clean_chain_matching(chain_match_list,ph,
 def remove_far_atoms(list_a, list_b,
                      res_list_a,res_list_b,
                      ref_sites,other_sites,
-                     max_dist_diff=4.0):
+                     match_radius=4.0):
   """
   When comparing lists of matching atoms, remove residues where some atoms are
   are locally misaligned, for example when matching residues are
@@ -798,13 +798,13 @@ def remove_far_atoms(list_a, list_b,
 
   The criteria used:
   For each matching residues, the difference between distance of farthest
-  matching atoms pair and the distance of closest pair mast be < max_dist_diff
+  matching atoms pair and the distance of closest pair mast be < match_radius
 
   Args:
     list_a, list_a (list of list): list of residues atoms
     res_list_a,res_list_b (list): list of residues in chains
     ref_sites,other_sites (flex.vec3): atoms coordinates
-    max_dist_diff (float): max allow distance difference
+    match_radius (float): max allow distance difference
 
   Returns:
     Updated arguments:
@@ -828,7 +828,7 @@ def remove_far_atoms(list_a, list_b,
     current_pos += res_len
     xyz_diff = abs(res_ref_sites.as_double() - res_other_sites.as_double())
     (min_d,max_d,_) = xyz_diff.min_max_mean().as_tuple()
-    if (max_d - min_d) <= max_dist_diff:
+    if (max_d - min_d) <= match_radius:
       ref_sites_new.extend(res_ref_sites)
       other_sites_new.extend(res_other_sites)
       sel_a.extend(list_a[i])
@@ -839,7 +839,7 @@ def remove_far_atoms(list_a, list_b,
 
 def update_match_dicts(best_matches,match_dict,
                        ch_a_id,ch_b_id,similarity,
-                       chain_similarity_limit=0.95):
+                       similarity_threshold=0.95):
   """
   Updates the best_matches dictionaries best_matches,match_dict to keep only
   matches that are at least 95% of best match and
@@ -853,7 +853,7 @@ def update_match_dicts(best_matches,match_dict,
       val: [selection_1,selection_2,res_list_1,res_list_2,rot,trans,rmsd]
     ch_a_id,ch_b_id (str): chain IDs
     similarity (float): similarity between chains
-    chain_similarity_limit (float): min similarity between matching chains
+    similarity_threshold (float): min similarity between matching chains
       Note that smaller value cause more chains to be grouped together and
       can lower the number of common residues
   """
@@ -865,7 +865,7 @@ def update_match_dicts(best_matches,match_dict,
       max_sim = best_matches[ch_id][-1][0]
       if similarity > max_sim:
         for s,(a,b) in best_matches[ch_id]:
-          if s/similarity >= chain_similarity_limit:
+          if s/similarity >= similarity_threshold:
             temp_rec.append([s,(a,b)])
           else:
             records_to_remove.add((a,b))
