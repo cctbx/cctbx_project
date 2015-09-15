@@ -132,29 +132,17 @@ class ThreeProteinResidues(list):
   def get_i_seqs(self):
     atoms = {}
     # i-1
-    for name in ["C", "CA"]: # need CA_minus_1 for omega-CDL
-      for atom in self[0].atoms():
-        if atom.name.strip()==name:
-          atoms["%s_minus_1" % name] = atom
-          break
+    for name in [" C  ", " CA "]: # need CA_minus_1 for omega-CDL
+      atom = self[0].find_atom_by(name=name)
+      if atom: atoms["%s_minus_1" % name.strip()] = atom
     # i
-    for name in ["N", "CA", "CB", "C", "O"]:
-      for atom in self[1].atoms():
-        if atom.name.strip()==name:
-          atoms["%s_i" % name] = atom
-          break
-      #else:
-      #  if name not in ["CB", "O"]:
-      #    print self
-      #    for atom in self[1].atoms():
-      #      print atom.name, atom.xyz
-      #    assert 0
+    for name in [" N  ", " CA ", " CB ", " C  ", " O  "]:
+      atom = self[1].find_atom_by(name=name)
+      if atom: atoms["%s_i" % name.strip()] = atom
     # i+1
-    for name in ["N", "CA"]: # need CA_plus_1 for omega-CDL
-      for atom in self[2].atoms():
-        if atom.name.strip()==name:
-          atoms["%s_plus_1" % name] = atom
-          break
+    for name in [" N  ", " CA "]: # need CA_plus_1 for omega-CDL
+      atom = self[2].find_atom_by(name=name)
+      if atom: atoms["%s_plus_1" % name.strip()] = atom
     return atoms
 
   def get_resnames(self):
@@ -279,10 +267,10 @@ class ThreeProteinResidues(list):
       for j in range(len(names)):
         names[j] = atoms[names[j]].i_seq
       if len(names)==3:
-        rnames = copy.deepcopy(names)
-        rnames.reverse()
         angle_proxy = cdl_proxies.get(tuple(names), None)
         if angle_proxy is None:
+          rnames = copy.deepcopy(names)
+          rnames.reverse()
           angle_proxy = cdl_proxies.get(tuple(rnames), None)
         if angle_proxy is None: continue
         if 0:
@@ -329,25 +317,18 @@ class ThreeProteinResidues(list):
     if verbose:
       print averages
       print averages.n
-    for key in averages.n:
+    if not averages.n: return
+    keys = averages.n.keys()
+    for key in keys:
       if len(key)==2:
         bond=self.bond_params_table.lookup(*key)
         bond.distance_ideal = averages[key]/averages.n[key]
       elif len(key)==3:
-        rkey = list(copy.deepcopy(key))
-        rkey.reverse()
-        rkey=tuple(rkey)
-#        for angle in self.restraints_manager.geometry.angle_proxies:
-        for angle in self.geometry.angle_proxies:
-          # could be better!
-          akey = list(copy.deepcopy(angle.i_seqs))
-          akey.sort()
-          akey=tuple(akey)
-          if akey==key or akey==rkey:
-            angle.angle_ideal = averages[key]/averages.n[key]
-            break
-        else:
-          print key,rkey
-          print averages[key]
-          print averages.n[key]
+        rkey = (key[2],key[1],key[0])
+        averages.n[rkey]=averages.n[key]
+    for angle in self.geometry.angle_proxies:
+      if angle.i_seqs in averages.n:
+        key = angle.i_seqs
+        if key not in averages:
           assert 0
+        angle.angle_ideal = averages[key]/averages.n[key]

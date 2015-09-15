@@ -30,7 +30,35 @@ class energies(scitbx.restraints.energies):
                disable_asu_cache=False,
                normalization=False,
                extension_objects=[]):
-    adopt_init_args(self, locals())
+    # runsnaked away...
+    #adopt_init_args(self, locals())
+    #for local in sorted(locals()):
+    #  print "    self.%(local)s=%(local)s" % locals()
+    #assert 0
+    #
+    self.angle_proxies=angle_proxies
+    self.bond_proxies=bond_proxies
+    self.bond_similarity_proxies=bond_similarity_proxies
+    self.chirality_proxies=chirality_proxies
+    self.compute_gradients=compute_gradients
+    self.den_manager=den_manager
+    self.dihedral_proxies=dihedral_proxies
+    self.disable_asu_cache=disable_asu_cache
+    self.extension_objects=extension_objects
+    self.external_energy_function=external_energy_function
+    self.gradients=gradients
+    self.ncs_dihedral_manager=ncs_dihedral_manager
+    self.nonbonded_function=nonbonded_function
+    self.nonbonded_proxies=nonbonded_proxies
+    self.normalization=normalization
+    self.parallelity_proxies=parallelity_proxies
+    self.planarity_proxies=planarity_proxies
+    self.ramachandran_manager=ramachandran_manager
+    self.reference_coordinate_proxies=reference_coordinate_proxies
+    self.reference_dihedral_manager=reference_dihedral_manager
+    self.sites_cart=sites_cart
+    self.unit_cell=unit_cell
+    #
     scitbx.restraints.energies.__init__(self,
                                         compute_gradients=compute_gradients,
                                         gradients=gradients,
