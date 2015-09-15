@@ -655,19 +655,22 @@ class DataBlockDictImporter(object):
           beam, detector, gonio, scan, check_format)
         if 'mask' in imageset and imageset['mask'] is not None:
           imageset['mask'] = load_path(imageset['mask'])
-          with open(imageset['mask']) as infile:
-            iset.external_lookup.mask.filename = imageset['mask']
-            iset.external_lookup.mask.data = pickle.load(infile)
+          iset.external_lookup.mask.filename = imageset['mask']
+          if check_format:
+            with open(imageset['mask']) as infile:
+              iset.external_lookup.mask.data = pickle.load(infile)
         if 'gain' in imageset and imageset['gain'] is not None:
           imageset['gain'] = load_path(imageset['gain'])
-          with open(imageset['gain']) as infile:
-            iset.external_lookup.gain.filename = imageset['gain']
-            iset.external_lookup.gain.data = pickle.load(infile)
+          iset.external_lookup.gain.filename = imageset['gain']
+          if check_format:
+            with open(imageset['gain']) as infile:
+              iset.external_lookup.gain.data = pickle.load(infile)
         if 'pedestal' in imageset and imageset['pedestal'] is not None:
           imageset['pedestal'] = load_path(imageset['pedestal'])
-          with open(imageset['pedestal']) as infile:
-            iset.external_lookup.pedestal.filename = imageset['pedestal']
-            iset.external_lookup.pedestal.data = pickle.load(infile)
+          iset.external_lookup.pedestal.filename = imageset['pedestal']
+          if check_format:
+            with open(imageset['pedestal']) as infile:
+              iset.external_lookup.pedestal.data = pickle.load(infile)
         imagesets.append(iset)
       elif ident == 'ImageSet':
         filenames = [image['filename'] for image in imageset['images']]
@@ -683,19 +686,22 @@ class DataBlockDictImporter(object):
             iset.set_scan(scan, i)
         if 'mask' in imageset and imageset['mask'] is not None:
           imageset['mask'] = load_path(imageset['mask'])
-          with open(imageset['mask']) as infile:
-            iset.external_lookup.mask.filename = imageset['mask']
-            iset.external_lookup.mask.data = pickle.load(infile)
+          iset.external_lookup.mask.filename = imageset['mask']
+          if check_format:
+            with open(imageset['mask']) as infile:
+              iset.external_lookup.mask.data = pickle.load(infile)
         if 'gain' in imageset and imageset['gain'] is not None:
           imageset['gain'] = load_path(imageset['gain'])
-          with open(imageset['gain']) as infile:
-            iset.external_lookup.gain.filename = imageset['gain']
-            iset.external_lookup.gain.data = pickle.load(infile)
+          iset.external_lookup.gain.filename = imageset['gain']
+          if check_format:
+            with open(imageset['gain']) as infile:
+              iset.external_lookup.gain.data = pickle.load(infile)
         if 'pedestal' in imageset and imageset['pedestal'] is not None:
           imageset['pedestal'] = load_path(imageset['pedestal'])
-          with open(imageset['pedestal']) as infile:
-            iset.external_lookup.pedestal.filename = imageset['pedestal']
-            iset.external_lookup.pedestal.data = pickle.load(infile)
+          iset.external_lookup.pedestal.filename = imageset['pedestal']
+          if check_format:
+            with open(imageset['pedestal']) as infile:
+              iset.external_lookup.pedestal.data = pickle.load(infile)
         imagesets.append(iset)
       else:
         raise RuntimeError('expected ImageSet/ImageSweep, got %s' % ident)
