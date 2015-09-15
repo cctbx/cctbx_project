@@ -23,9 +23,9 @@ def get_c_beta_torsion_proxies(pdb_hierarchy,
       cctbx.geometry_restraints.shared_dihedral_proxy()
   for model in pdb_hierarchy.select(sel).models():
     for chain in model.chains():
-      for rg in chain.residue_groups():
-        for conformer in rg.conformers():
-          if conformer.is_protein():
+      if chain.is_protein():
+        for rg in chain.residue_groups():
+          for conformer in rg.conformers():
             for residue in conformer.residues():
               if residue.resname in three_letter_l_given_three_letter_d:
                 continue
@@ -33,7 +33,8 @@ def get_c_beta_torsion_proxies(pdb_hierarchy,
               CA_atom = residue.find_atom_by(name=" CA ")
               C_atom  = residue.find_atom_by(name=" C  ")
               CB_atom = residue.find_atom_by(name=" CB ")
-              if [N_atom, CA_atom, C_atom, CB_atom].count(None) == 0:
+              if (N_atom is not None and CA_atom is not None
+                  and C_atom is not None and CB_atom is not None):
                 if not (actual_bselection[N_atom.i_seq] and
                     actual_bselection[CA_atom.i_seq] and
                     actual_bselection[C_atom.i_seq] and
