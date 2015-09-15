@@ -17,7 +17,7 @@ def get_c_ca_n(atom_group):
     if atom:
       tmp.append(atom)
     else:
-      outl.append("%s %s" % atom_group.resname, name)
+      outl.append("%s %s" % (atom_group.resname, name))
       tmp = None
       break
   return tmp, outl
