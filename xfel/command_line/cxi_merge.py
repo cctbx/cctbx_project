@@ -1653,6 +1653,9 @@ class scaling_manager (intensity_data) :
         if not self.params.include_negatives and (observations.data()[pair[1]] <= 0) :
           continue
         Intensity = observations.data()[pair[1]] / slope
+        # Super-rare exception. If saved sigmas instead of I/sigmas in the ISIGI dict, this wouldn't be needed.
+        if Intensity == 0:
+          continue
 
         # Add the reflection as a two-tuple of intensity and I/sig(I)
         # to the dictionary of observations.
