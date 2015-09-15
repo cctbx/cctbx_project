@@ -132,12 +132,12 @@ def input(pdb_hierarchy_inp=None,
           log=None,
           process_similar_chains=True,
           min_percent=0.85,
-          chain_similarity_limit=0.95,
+          similarity_threshold=0.95,
           min_contig_length=10,
           check_atom_order=True,
           allow_different_size_res=True,
           exclude_misaligned_residues=True,
-          max_dist_diff=4.0,
+          match_radius=4.0,
           ignore_chains=None):
     """
     Select method to build ncs_group_object
@@ -185,7 +185,7 @@ def input(pdb_hierarchy_inp=None,
       min_percent (float): Threshold for similarity between chains
         similarity define as:
         (number of matching res) / (number of res in longer chain)
-      chain_similarity_limit (float): min similarity between matching chains
+      similarity_threshold (float): min similarity between matching chains
       min_contig_length (int): minimum length of matching chain segments
       check_atom_order (bool): check atom order in matching residues.
         When False, matching residues with different number of atoms will be
@@ -194,7 +194,7 @@ def input(pdb_hierarchy_inp=None,
         number of atoms
       exclude_misaligned_residues (bool): check and exclude individual residues
         alignment quality
-      max_dist_diff (float): max allow distance difference between pairs of matching
+      match_radius (float): max allow distance difference between pairs of matching
         atoms of two residues
       ignore_chains (set of str): set of chain IDs to exclude
     """
@@ -228,7 +228,7 @@ def input(pdb_hierarchy_inp=None,
       check_atom_order=check_atom_order,
       allow_different_size_res=allow_different_size_res,
       exclude_misaligned_residues=exclude_misaligned_residues,
-      max_dist_diff=max_dist_diff,
-      chain_similarity_limit=chain_similarity_limit,
+      match_radius=match_radius,
+      similarity_threshold=similarity_threshold,
       ignore_chains=ignore_chains)
     return ncs_group_obj

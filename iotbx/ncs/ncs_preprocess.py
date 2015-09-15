@@ -126,13 +126,13 @@ class ncs_group_object(object):
                          write_messages=False,
                          process_similar_chains=True,
                          min_percent=0.85,
-                         chain_similarity_limit=0.95,
+                         similarity_threshold=0.95,
                          min_contig_length=10,
                          log=None,
                          check_atom_order=False,
                          allow_different_size_res=True,
                          exclude_misaligned_residues=True,
-                         max_dist_diff=4.0,
+                         match_radius=4.0,
                          ignore_chains=None):
     """
     Select method to build ncs_group_object
@@ -180,7 +180,7 @@ class ncs_group_object(object):
       min_percent (float): Threshold for similarity between chains
         similarity define as:
         (number of matching res) / (number of res in longer chain)
-      chain_similarity_limit (float): min similarity between matching chains
+      similarity_threshold (float): min similarity between matching chains
       min_contig_length (int): minimum length of matching chain segments
       check_atom_order (bool): check atom order in matching residues.
         When False, matching residues with different number of atoms will be
@@ -189,7 +189,7 @@ class ncs_group_object(object):
         number of atoms
       exclude_misaligned_residues (bool): check and exclude individual residues
         alignment quality
-      max_dist_diff (float): max allow distance difference between pairs of matching
+      match_radius (float): max allow distance difference between pairs of matching
         atoms of two residues
       ignore_chains (set of str): set of chain IDs to exclude
     """
@@ -204,9 +204,9 @@ class ncs_group_object(object):
     self.exclude_selection = exclude_selection
     self.max_rmsd = max_rmsd
     self.exclude_misaligned_residues = exclude_misaligned_residues
-    self.max_dist_diff = max_dist_diff
+    self.match_radius = match_radius
     self.min_percent = min_percent
-    self.chain_similarity_limit = chain_similarity_limit
+    self.similarity_threshold = similarity_threshold
     self.process_similar_chains = process_similar_chains
     self.ignore_chains = ignore_chains
     #
@@ -362,8 +362,8 @@ class ncs_group_object(object):
             ph = pdb_hierarchy_inp.hierarchy,
             max_rmsd=10.0,
             exclude_misaligned_residues=False,
-            max_dist_diff=4.0,
-            chain_similarity_limit=0.5,
+            match_radius=4.0,
+            similarity_threshold=0.5,
             )
         transform_to_group,match_dict = \
             ncs_search.minimal_master_ncs_grouping(match_dict)
@@ -599,7 +599,7 @@ class ncs_group_object(object):
         ph=ph,
         min_contig_length=min_contig_length,
         min_percent=min_percent,
-        chain_similarity_limit=self.chain_similarity_limit,
+        similarity_threshold=self.similarity_threshold,
         use_minimal_master_ncs=self.use_minimal_master_ncs,
         max_rmsd=self.max_rmsd,
         write=self.write_messages,
@@ -607,7 +607,7 @@ class ncs_group_object(object):
         check_atom_order=self.check_atom_order,
         allow_different_size_res=self.allow_different_size_res,
         exclude_misaligned_residues=self.exclude_misaligned_residues,
-        max_dist_diff=self.max_dist_diff,
+        match_radius=self.match_radius,
         ignore_chains=self.ignore_chains)
       # process atom selections
       self.total_asu_length = ph.atoms().size()
@@ -1823,8 +1823,8 @@ class ncs_group_object(object):
     """
     list_of_values = [
       'use_minimal_master_ncs','min_contig_length','max_rmsd',
-      'check_atom_order','exclude_misaligned_residues','max_dist_diff',
-      'min_percent','chain_similarity_limit']
+      'check_atom_order','exclude_misaligned_residues','match_radius',
+      'min_percent','similarity_threshold']
     str_out = ['\n{}NCS search parameters:'.format(prefix),'-'*51]
     str_line = prefix + '{:<35s}:   {}'
     for val in list_of_values:
