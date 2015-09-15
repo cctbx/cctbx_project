@@ -521,19 +521,28 @@ class ExperimentListDict(object):
         if imageset is not None:
           if 'mask' in imageset and imageset['mask'] is not None:
             mask_filename = load_path(imageset['mask'])
-            mask = pickle.load(open(mask_filename))
+            if self._check_format:
+              mask = pickle.load(open(mask_filename))
+            else:
+              mask = None
           else:
             mask_filename = None
             mask = None
           if 'gain' in imageset and imageset['gain'] is not None:
             gain_filename = load_path(imageset['gain'])
-            gain = pickle.load(open(gain_filename))
+            if self._check_format:
+              gain = pickle.load(open(gain_filename))
+            else:
+              gain = None
           else:
             gain_filename = None
             gain = None
           if 'pedestal' in imageset and imageset['pedestal'] is not None:
             pedestal_filename = load_path(imageset['pedestal'])
-            pedestal = pickle.load(open(pedestal_filename))
+            if self._check_format:
+              pedestal = pickle.load(open(pedestal_filename))
+            else:
+              pedestal = None
           else:
             pedestal_filename = None
             pedestal = None
