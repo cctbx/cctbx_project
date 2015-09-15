@@ -100,6 +100,7 @@ class Test(object):
     self.tst_json()
     self.tst_from_null_sweep()
     self.tst_with_external_lookup()
+    self.tst_with_bad_external_lookup()
 
   def tst_create_single_sweep(self):
 
@@ -223,6 +224,35 @@ class Test(object):
     assert(sweeps[0].get_detector() == sweep.get_detector())
     assert(sweeps[0].get_goniometer() == sweep.get_goniometer())
     assert(sweeps[0].get_scan() == sweep.get_scan())
+
+    print 'OK'
+
+  def tst_with_bad_external_lookup(self):
+    from dxtbx.datablock import DataBlockFactory
+    from dxtbx.imageset import ImageSweep
+    from os.path import join
+
+    filename = join(self.dials_regression, "centroid_test_data",
+                    "datablock_with_bad_lookup.json")
+    blocks = DataBlockFactory.from_json_file(filename, check_format=False)
+    assert(len(blocks) == 1)
+    imageset = blocks[0].extract_imagesets()[0]
+    assert imageset.external_lookup.mask.filename is not None
+    assert imageset.external_lookup.gain.filename is not None
+    assert imageset.external_lookup.pedestal.filename is not None
+    assert imageset.external_lookup.mask.data is None
+    assert imageset.external_lookup.gain.data is None
+    assert imageset.external_lookup.pedestal.data is None
+
+    blocks = self.encode_json_then_decode(blocks, check_format=False)
+    assert(len(blocks) == 1)
+    imageset = blocks[0].extract_imagesets()[0]
+    assert imageset.external_lookup.mask.filename is not None
+    assert imageset.external_lookup.gain.filename is not None
+    assert imageset.external_lookup.pedestal.filename is not None
+    assert imageset.external_lookup.mask.data is None
+    assert imageset.external_lookup.gain.data is None
+    assert imageset.external_lookup.pedestal.data is None
 
     print 'OK'
 
