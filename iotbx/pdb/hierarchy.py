@@ -1223,6 +1223,8 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
     """
     Determine whether the chain represents an amino acid polymer, based on the
     frequency of residue names.
+    Very slow due to usage of residue_name_plus_atom_names_interpreter in
+    get_residue_names_and_classes (majority of the processing is unnecessary)
     """
     rn_seq, residue_classes = self.get_residue_names_and_classes()
     n_aa = residue_classes["common_amino_acid"]
@@ -1242,6 +1244,8 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
     """
     Determine whether the chain represents a nucleic acid polymer, based on the
     frequency of base names.
+    Very slow due to usage of residue_name_plus_atom_names_interpreter in
+    get_residue_names_and_classes (majority of the processing is unnecessary)
     """
     rn_seq, residue_classes = self.get_residue_names_and_classes()
     n_aa = residue_classes["common_amino_acid"]
