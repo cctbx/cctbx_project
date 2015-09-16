@@ -307,7 +307,7 @@ class Script(object):
         params.mp.nproc, params.input.dispatcher, param_path))
       f.close()
     elif params.mp.method == "custom":
-      if not os.path.exists(params.mp.custom.submit_template):
+      if params.mp.custom.submit_template is None or not os.path.exists(params.mp.custom.submit_template):
         raise Sorry("Custom submission template file not found: %s"%params.mp.custom.submit_template)
 
       command_process = "qsub -o %s %s %s"%(os.path.join(stdoutdir, "log.out"), params.mp.custom.extra_args, submit_path)
@@ -339,7 +339,7 @@ class Script(object):
 
     if params.dry_run:
       print "Dry run: job not submitted. Trial directory created here:", trialdir
-      print "Execute this command to submit the job:"
+      print "Execute this command from inside the trial directory to submit the job:"
       print command_process
     else:
       try:
