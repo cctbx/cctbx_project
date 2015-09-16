@@ -539,11 +539,15 @@ Residue classes
       if verbose: print 'class_key',class_key
       #
       if not link_metals and "metal" in class_key: continue
+      atoms_must_be = {}
       if not link_residues:
         if class_key in [
             ("common_amino_acid", "common_amino_acid"),
             ("common_amino_acid", "other"),
            ]: continue
+      else:
+        atoms_must_be.setdefault(("common_amino_acid", "common_amino_acid"),["C", "N"])
+        atoms_must_be.setdefault(("common_amino_acid", "other"),["C", "N"])
       if not link_carbohydrates and "common_saccharide" in class_key: continue
       if not link_amino_acid_rna_dna:
         if "common_amino_acid" in class_key and "common_rna_dna" in class_key:
@@ -667,6 +671,15 @@ Residue classes
         self.cif["link_%s" % key] = link.cif_object
         continue
       #
+      if atoms_must_be:
+        # this could be fancier...
+        # link_residues is peptide and SG links
+        atoms_must_be_key = [atom1.element.strip(), atom2.element.strip()]
+        #atoms_must_be_key = [atom1.name.strip(), atom2.name.strip()]
+        atoms_must_be_key.sort()
+        if class_key in atoms_must_be and "S" not in atoms_must_be_key:
+          if atoms_must_be[class_key]!=atoms_must_be_key:
+            continue
       rc = linking_utils.process_atom_groups_for_linking_single_link(
         self.pdb_hierarchy,
         atom1,
