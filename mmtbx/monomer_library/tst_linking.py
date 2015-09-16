@@ -2037,6 +2037,85 @@ HETATM14238  O5  NAG C1281     -21.850  13.775  41.067  1.00160.58           O
 HETATM14239  O6  NAG C1281     -19.653  14.829  40.962  1.00160.49           O
 HETATM14240  O7  NAG C1281     -26.606  14.456  40.975  1.00157.16           O
 """,
+  "linking_test_HEM_TYR.pdb" : """
+ATOM      6  CG  TYR A 140      98.997   4.611  10.805  1.00 38.35           C
+ATOM      7  CD1 TYR A 140      99.820   3.648  11.373  1.00 36.78           C
+ATOM      8  CD2 TYR A 140      98.847   5.821  11.476  1.00 37.30           C
+ATOM      9  CE1 TYR A 140     100.465   3.853  12.607  1.00 37.29           C
+ATOM     10  CE2 TYR A 140      99.502   6.047  12.739  1.00 42.05           C
+ATOM     11  CZ  TYR A 140     100.316   5.053  13.295  1.00 39.27           C
+ATOM     12  OH  TYR A 140     101.024   5.185  14.508  1.00 47.51           O
+ATOM     13  N   CYS A 470     106.717   6.301  20.283  1.00 34.42           N
+ATOM     14  CA  CYS A 470     107.171   7.557  19.724  1.00 35.14           C
+ATOM     15  C   CYS A 470     108.672   7.540  19.477  1.00 37.62           C
+ATOM     16  O   CYS A 470     109.451   7.026  20.285  1.00 39.29           O
+ATOM     17  CB  CYS A 470     106.833   8.698  20.693  1.00 30.41           C
+ATOM     18  SG  CYS A 470     107.139  10.328  20.022  1.00 34.85           S
+ATOM     19  CAA HEM A 601     102.373   6.235  20.462  1.00 29.04           C
+ATOM     20  CAB HEM A 601     105.667  15.514  22.495  1.00 32.15           C
+ATOM     21  CAC HEM A 601     108.356  13.649  15.330  1.00 33.91           C
+ATOM     22  CAD HEM A 601     105.102   6.382  15.766  1.00 29.31           C
+ATOM     23  NA  HEM A 601     103.895   9.666  19.977  1.00 30.01           N
+ATOM     24  CBA HEM A 601     101.025   6.147  19.746  1.00 31.00           C
+ATOM     25  CBB HEM A 601     105.408  16.127  23.646  1.00 39.39           C
+ATOM     26  CBC HEM A 601     109.441  14.426  15.313  1.00 37.97           C
+ATOM     27  CBD HEM A 601     103.624   6.099  15.536  1.00 31.13           C
+ATOM     28  NB  HEM A 601     104.842  12.376  20.622  1.00 28.66           N
+ATOM     29  CGA HEM A 601     100.437   4.775  19.956  1.00 31.11           C
+ATOM     30  CGD HEM A 601     103.294   4.677  15.216  1.00 36.63           C
+ATOM     31  ND  HEM A 601     105.110   9.805  17.433  1.00 28.27           N
+ATOM     32  CHA HEM A 601     104.002   7.823  18.350  1.00 28.03           C
+ATOM     33  CHB HEM A 601     103.388  10.956  22.005  1.00 29.20           C
+ATOM     34  CHC HEM A 601     106.256  14.228  19.862  1.00 31.30           C
+ATOM     35  CHD HEM A 601     106.404  11.313  15.985  1.00 28.55           C
+ATOM     36  CMA HEM A 601     101.920   8.258  22.900  1.00 30.34           C
+ATOM     37  CMB HEM A 601     103.702  13.324  24.099  1.00 31.20           C
+ATOM     38  CMC HEM A 601     108.238  15.628  17.974  1.00 30.92           C
+ATOM     39  CMD HEM A 601     106.699   8.724  14.156  1.00 27.61           C
+ATOM     40  C1A HEM A 601     103.617   8.383  19.542  1.00 31.73           C
+ATOM     41  C1B HEM A 601     104.130  12.102  21.772  1.00 30.51           C
+ATOM     42  C1C HEM A 601     106.579  13.710  18.629  1.00 31.98           C
+ATOM     43  C1D HEM A 601     105.856  10.084  16.301  1.00 28.65           C
+ATOM     44  O1A HEM A 601      99.301   4.511  19.494  1.00 36.78           O
+ATOM     45  O1D HEM A 601     104.283   3.883  15.263  1.00 33.51           O
+ATOM     46  C2A HEM A 601     102.863   7.699  20.570  1.00 33.39           C
+ATOM     47  C2B HEM A 601     104.328  13.232  22.690  1.00 33.80           C
+ATOM     48  C2C HEM A 601     107.499  14.297  17.699  1.00 30.13           C
+ATOM     49  C2D HEM A 601     105.949   8.853  15.516  1.00 36.74           C
+ATOM     50  O2A HEM A 601     101.111   3.928  20.599  1.00 35.99           O
+ATOM     51  O2D HEM A 601     102.032   4.472  14.888  1.00 47.04           O
+ATOM     52  C3A HEM A 601     102.693   8.556  21.587  1.00 33.17           C
+ATOM     53  C3B HEM A 601     105.108  14.136  22.069  1.00 30.61           C
+ATOM     54  C3C HEM A 601     107.530  13.499  16.617  1.00 32.10           C
+ATOM     55  C3D HEM A 601     105.302   7.882  16.179  1.00 35.98           C
+ATOM     56  C4A HEM A 601     103.337   9.814  21.234  1.00 28.53           C
+ATOM     57  C4B HEM A 601     105.443  13.603  20.772  1.00 26.80           C
+ATOM     58  C4C HEM A 601     106.652  12.369  16.852  1.00 31.29           C
+ATOM     59  C4D HEM A 601     104.750   8.469  17.397  1.00 29.94           C
+ATOM     60  NC  HEM A 601     106.086  12.539  18.099  1.00 32.94           N
+ATOM     61 FE   HEM A 601     105.139  11.046  19.090  1.00 32.47          Fe
+""",
+  "linking_test_HEM_TYR.params" : """
+pdb_interpretation {
+  automatic_linking {
+    automatic_linking {
+      link_metals = True
+      link_residues = True
+      inter_residue_bond_cutoff = 2.5
+    }
+  }
+}
+geometry_restraints.edits {
+  bond {
+    atom_selection_1 = chain 'A' and resid ' 601 ' and name 'FE  ' and \
+                       altloc ' '
+    atom_selection_2 = chain 'A' and resid ' 470 ' and name ' SG ' and \
+                       altloc ' '
+    distance_ideal = 2.33
+    sigma = 0.02
+  }
+}
+"""
         }
 
 links = {
@@ -2074,6 +2153,8 @@ links = {
   "linking_test_two_ASN-NAG.pdb" : [28,29,29,29],
   #
   "linking_test_ASN-NAG-not-THR.pdb" : [32,33],
+  #
+  "linking_test_HEM_TYR.pdb" : [63,63],
   }
 
 def run_and_test(cmd, pdb, i):
@@ -2117,6 +2198,8 @@ def run_and_test(cmd, pdb, i):
     expected = 0
   else:
     expected = links[pdb][i]-links[pdb][0]
+  if pdb in ["linking_test_HEM_TYR.pdb"]:
+    expected += 1
   assert number_of_links == expected, "found %d LINK but expected %s!" % (
     number_of_links,
     expected,
@@ -2144,12 +2227,13 @@ def run(only_i=None):
   for pdb in sorted(pdbs):
     #break
     if pdb.endswith(".cif"): continue
+    if pdb.endswith(".params"): continue
     if pdb in longer_tests: continue
     if pdb in [
         "linking_test_CD_GHE_A_B.pdb",
         "linking_test_NAG-FU4.pdb", # get_alpha_beta seems to be broken
         ]: continue
-    #if pdb.find("not")==-1: continue
+    #if pdb.find("HEM_TYR")==-1: continue
     j+=1
     if only_i is not None and only_i!=j: continue
     for i in range(2):
@@ -2162,6 +2246,8 @@ def run(only_i=None):
         ]:
         if i:
           cmd += " secondary_structure.enabled=1"
+      if pdb.replace(".pdb", ".params") in pdbs:
+        cmd += " %s" % pdb.replace(".pdb", ".params")
       print "test number:",j
       print cmd
       run_and_test(cmd, pdb,i)
