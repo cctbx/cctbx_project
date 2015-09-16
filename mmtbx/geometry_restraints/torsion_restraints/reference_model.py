@@ -627,7 +627,11 @@ class reference_model(object):
     self.reference_dihedral_proxies = generated_reference_dihedral_proxies
 
   def show_reference_summary(self, log=None):
-    if(log is None): log = sys.stdout
+    if log is None:
+      if self.log is None:
+        log = sys.stdout
+      else:
+        log = self.log
     print >> log, "--------------------------------------------------------"
     print >> log, "Reference Model Matching Summary:"
     keys = self.residue_match_hash.keys()
