@@ -64,8 +64,15 @@ master_phil = iotbx.phil.parse("""
 """ % potential_phil)
 
 def is_proxy_present(proxies, proxy):
+  proxy_iseqs = proxy.get_i_seqs()
   for p in proxies:
-    if list(p.get_i_seqs()) == list(proxy.get_i_seqs()):
+    # all_eq() is not available for these arrays.
+    p_iseqs = p.get_i_seqs()
+    if (p_iseqs[0] == proxy_iseqs[0] and
+        p_iseqs[1] == proxy_iseqs[1] and
+        p_iseqs[2] == proxy_iseqs[2] and
+        p_iseqs[3] == proxy_iseqs[3] and
+        p_iseqs[4] == proxy_iseqs[4] ):
       return True
   return False
 
