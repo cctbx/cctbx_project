@@ -727,7 +727,9 @@ def check_for_acid(hierarchy, carbon):
   carbons=0
   bonds = get_bonded(hierarchy, carbon, bond_cutoff=1.8)
   for ba in bonds:
-    if ba.element.strip()=="O": oxygens+=1
+    if ba.element.strip()=="O":
+      if len(get_bonded(hierarchy, ba, bond_cutoff=1.8))==1:
+        oxygens+=1
   if carbon.element.strip()=="C":
     carbons=1
   if oxygens==2 and carbons==1:
@@ -735,7 +737,7 @@ def check_for_acid(hierarchy, carbon):
     return True
   return False
 
-def check_valence(hierarchy, atom):
+def check_valence_and_acid(hierarchy, atom):
   acid=None
   if atom.element.strip()=="C":
     acid = check_for_acid(hierarchy, atom)
@@ -750,4 +752,11 @@ def check_valence(hierarchy, atom):
       if len(bonds)==1:
         acid = check_for_acid(hierarchy, bonds[0])
         if acid: return False
+  return True
+
+def check_valence(hierarchy, atom):
+  if atom.element.strip() not in linking_setup.simple_valence: return True
+  bonds = get_bonded(hierarchy, atom, bond_cutoff=1.8)
+  if len(bonds)==linking_setup.simple_valence[atom.element.strip()]:
+    return False
   return True
