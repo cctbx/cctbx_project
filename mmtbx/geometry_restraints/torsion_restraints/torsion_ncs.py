@@ -258,6 +258,11 @@ class torsion_ncs(object):
     # XXX Update. Due to possible changes in number of atoms in hierarchy
     # during refinement we have to construct again all internal stuff
     # on every macro-cycle.
+    mon_lib_srv = None
+    ener_lib = None
+    if self.processed_pdb_file is not None:
+      mon_lib_srv = self.processed_pdb_file.mon_lib_srv
+      ener_lib = self.processed_pdb_file.ener_lib
     # if self.processed_pdb_file is not None:
     if False:
       complete_dihedral_proxies = utils.get_dihedrals_and_phi_psi(
@@ -267,7 +272,9 @@ class torsion_ncs(object):
       # xyz_reciprocal_space.py funcitons and it is not clear how to
       # handle it in this class selection
       complete_dihedral_proxies = utils.get_complete_dihedral_proxies(
-          pdb_hierarchy=pdb_hierarchy)
+          pdb_hierarchy=pdb_hierarchy,
+          mon_lib_srv=mon_lib_srv,
+          ener_lib=ener_lib)
     # print "Number of complete_dihedral_proxies in find_ncs_matches_from_hierarchy", complete_dihedral_proxies.size()
 
     # if self.cache is None:
