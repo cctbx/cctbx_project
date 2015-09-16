@@ -630,6 +630,10 @@ Residue classes
         atom_group2,
         self.mon_lib_srv,
         )
+      if verbose:
+        print 'link',link
+        print 'swap',swap
+        print 'key',key
       if swap:
         tmp = atom_group2
         atom_group2 = atom_group1
@@ -667,6 +671,7 @@ Residue classes
         self.pdb_hierarchy,
         atom1,
         atom2,
+        verbose=verbose,
         )
       if not rc:
         done.remove_link(done_key, names)
@@ -675,6 +680,11 @@ Residue classes
       assert len(link_key)==1
       key = link_key[0]
       link = self.mon_lib_srv.link_link_id_dict.get(key, None)
+      if verbose:
+        print 'pdbres',pdbres
+        print 'link',link
+        print 'link_key',link_key
+        print 'link_atoms',link_atoms
       if key.find("ALPHA1")>-1 or key.find("BETA1")>-1: # is handled in elif
         key, cif, bond_i_seqs = \
           glyco_utils.apply_glyco_link_using_proxies_and_atoms(

@@ -6,6 +6,7 @@ from mmtbx.chemical_components import get_type
 from mmtbx.monomer_library import linking_setup
 from mmtbx.monomer_library.linking_setup import ad_hoc_single_metal_residue_element_types
 from mmtbx.monomer_library.linking_setup import ad_hoc_non_linking_elements
+from mmtbx.monomer_library.linking_setup import ad_hoc_non_linking_pairs
 from mmtbx.monomer_library.linking_setup import ad_hoc_first_row
 
 from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
@@ -289,6 +290,10 @@ def is_atom_pair_linked(atom1,
   if atom1.element.strip().upper() in ad_hoc_non_linking_elements:
     return False
   if atom2.element.strip().upper() in ad_hoc_non_linking_elements:
+    return False
+  atom_pair = [atom1.element.strip().upper(), atom2.element.strip().upper()]
+  atom_pair.sort()
+  if atom_pair in ad_hoc_non_linking_pairs:
     return False
   skip_if_both = linking_setup.skip_if_both
   skip_if_longer = linking_setup.update_skip_if_longer(amino_acid_bond_cutoff,
@@ -717,9 +722,32 @@ def print_apply(apply):
 #     print item
 #     list.__append__(self, item)
 
+def check_for_acid(hierarchy, carbon):
+  oxygens=0
+  carbons=0
+  bonds = get_bonded(hierarchy, carbon, bond_cutoff=1.8)
+  for ba in bonds:
+    if ba.element.strip()=="O": oxygens+=1
+  if carbon.element.strip()=="C":
+    carbons=1
+  if oxygens==2 and carbons==1:
+    # acid
+    return True
+  return False
+
 def check_valence(hierarchy, atom):
+  acid=None
+  if atom.element.strip()=="C":
+    acid = check_for_acid(hierarchy, atom)
+  if acid: return False
   if atom.element.strip() not in linking_setup.simple_valence: return True
   bonds = get_bonded(hierarchy, atom, bond_cutoff=1.8)
   if len(bonds)==linking_setup.simple_valence[atom.element.strip()]:
     return False
+  else:
+    # check for acid
+    if atom.element.strip()=="O":
+      if len(bonds)==1:
+        acid = check_for_acid(hierarchy, bonds[0])
+        if acid: return False
   return True

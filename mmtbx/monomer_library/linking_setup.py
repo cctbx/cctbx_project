@@ -52,6 +52,10 @@ skip_if_both = [
 simple_valence = {
   "O" : 2,
 }
+# must be sorted pairs
+ad_hoc_non_linking_pairs = [
+  ["O", "O"], # occurs in nonH models
+]
 #
 def adjust_class(atom, atom_class):
   if atom_class in ["common_element"]:
