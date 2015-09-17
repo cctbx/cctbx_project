@@ -4,6 +4,7 @@
 !define MUI_ABORTWARNING
 !define MUI_UNICON "${NSISDIR}\Contrib\Graphics\Icons\modern-uninstall.ico"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}${PRODUCT_VERSION}"
+!define PRODUCT_INST_KEY "Software\${PRODUCT_NAME}\${PRODUCT_VERSION}"
 !define PRODUCT_ROOT_KEY SHCTX ; replaced with HKLM or HKCU on runtime according to SetShellVarContext
 !define PRODUCT_STARTMENU_REGVAL "NSIS:StartMenuDir"
 
@@ -167,6 +168,8 @@ Section -AdditionalIcons
   !define MYICON "$INSTDIR\${SOURCEDIR}\modules\gui_resources\icons\custom\WinPhenix.ico"
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
   WriteIniStr "$INSTDIR\${PRODUCT_NAME}.url" "InternetShortcut" "URL" "${PRODUCT_WEB_SITE}"
+  WriteRegStr ${PRODUCT_ROOT_KEY} "${PRODUCT_INST_KEY}" "InstallPath" "$INSTDIR\${SOURCEDIR}"
+
   CreateDirectory "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}"
   CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\${PRODUCT_NAME}${PRODUCT_VERSION}.lnk" "$INSTDIR\${SOURCEDIR}\build\bin\phenix.bat" "" "${MYICON}" 0 SW_SHOWMINIMIZED
   CreateShortCut "$DESKTOP\${PRODUCT_NAME}${PRODUCT_VERSION}.lnk" "$INSTDIR\${SOURCEDIR}\build\bin\phenix.bat" "" "${MYICON}" 0 SW_SHOWMINIMIZED
@@ -225,5 +228,7 @@ Section Uninstall
   Delete "${UNINSTEXE}"
 
   DeleteRegKey ${PRODUCT_ROOT_KEY} "${PRODUCT_UNINST_KEY}"
+  DeleteRegKey ${PRODUCT_ROOT_KEY} "${PRODUCT_INST_KEY}"
+
   SetAutoClose false
 SectionEnd
