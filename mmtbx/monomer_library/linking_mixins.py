@@ -518,7 +518,7 @@ Residue classes
           ):
         if verbose:
           print "is not linked", atom1.quote(),atom2.quote(),key
-        if ( atom1.element.strip().upper() in hydrogens or 
+        if ( atom1.element.strip().upper() in hydrogens or
              atom2.element.strip().upper() in hydrogens):
           pass
         else:
