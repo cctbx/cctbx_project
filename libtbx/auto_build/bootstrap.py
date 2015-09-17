@@ -67,10 +67,12 @@ class ShellCommand(object):
       return 0
     if command[0] == 'rm':
       # XXX use shutil rather than rm which is not platform independent
-      for dir in command[2:]:
-        if os.path.exists(dir):
-          print 'Deleting directory : %s' % dir
-          shutil.rmtree(dir)
+      for directory in command[2:]:
+        if os.path.exists(directory):
+          print 'Deleting directory : %s' % directory
+          try: shutil.rmtree(directory)
+          except OSError, e:
+            print "Stangely couldn't delete %s" % directory
       return 0
     try:
       #print "workdir, os.getcwd =", workdir, os.getcwd()
@@ -406,10 +408,6 @@ class amber_module(SourceModule):
 class ksdssp_module(SourceModule):
   module = 'ksdssp'
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/ksdssp/trunk']
-
-class pex_module(SourceModule):
-  module = 'pex'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/pex/trunk']
 
 class pulchra_module(SourceModule):
   module = 'pulchra'
@@ -1197,7 +1195,6 @@ class PhenixBuilder(CCIBuilder):
     'elbow',
     'amber_adaptbx',
     'ksdssp',
-    'pex',
     'pulchra',
     'solve_resolve',
     'reel',
@@ -1209,6 +1206,8 @@ class PhenixBuilder(CCIBuilder):
     'probe',
     'king',
     'suitename',
+    # "dials",
+    # "xia2",
   ]
   HOT_EXTRA = [
     'phaser',
@@ -1228,6 +1227,8 @@ class PhenixBuilder(CCIBuilder):
     'amber_adaptbx',
     'reduce',
     'probe',
+    # "dials",
+    # "xia2",
   ]
 
   def add_base(self, extra_opts=[]):
