@@ -188,7 +188,8 @@ class potential(object):
 class compute_eps_factor(object):
 
   def __init__(self, f_obs, pdb_hierarchy, reflections_per_bin):
-    f_obs.set_sigmas(sigmas = flex.double(f_obs.data().size(), 1.0)) ###XXX
+    if(not f_obs.sigmas_are_sensible()):
+      f_obs.set_sigmas(sigmas = flex.double(f_obs.data().size(), 1.0))
     f_obs.setup_binner(reflections_per_bin = reflections_per_bin)
     binner = f_obs.binner()
     n_bins = binner.n_bins_used()
@@ -197,6 +198,9 @@ class compute_eps_factor(object):
       pdb_hierarchy    = pdb_hierarchy,
       crystal_symmetry = f_obs.crystal_symmetry(),
       n_bins           = n_bins).ncs_pairs
+    radii = flex.double()
+    for ncs_pair in self.ncs_pairs:
+      radii.append(ncs_pair.radius)
     # Target and gradients evaluator
     pot = potential(f_obs = f_obs, ncs_pairs = self.ncs_pairs,
       reflections_per_bin = reflections_per_bin)
@@ -209,9 +213,6 @@ class compute_eps_factor(object):
         upper_bound    = 1.,
         initial_values = self.ncs_pairs[0].rho_mn).run()
       # refine radius
-      radii = flex.double()
-      for ncs_pair in self.ncs_pairs:
-        radii.append(ncs_pair.radius)
       m = minimizer(
         potential      = pot.set_refine_radius(),
         use_bounds     = 2,
