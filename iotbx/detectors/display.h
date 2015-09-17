@@ -120,13 +120,13 @@ public:
 
     af::versa<DataType, af::c_grid<2> > sampled(sample_size);
 
-    if (binning==2) {
+/*    if (binning==2) {
       for (std::size_t i = 0; i < sample_size[0]; ++i) {
         for (std::size_t j = 0; j < sample_size[1]; ++j) {
           sampled(i,j) = (raw(2*i,2*j) + raw(2*i+1,2*j+1))/2;
         }
       }
-    } else if (binning==1) { return raw; }
+    } else */ if (binning==1) { return raw; }
     else {
       //binning is a larger power of two.  Take the max pixel for each chunk
       std::vector<DataType> candidate_max;
