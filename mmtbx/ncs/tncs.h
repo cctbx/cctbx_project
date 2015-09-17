@@ -163,18 +163,6 @@ public:
     }
   }
 
-  // XXX This function should probably be moved to scitbx
-  double dGfunc_by_dR(double r, double s)
-  {
-    static FloatType EPS(0.001);
-    double twoPiRS(scitbx::constants::two_pi*r*s);
-    if (std::abs(twoPiRS) > EPS)
-      return 3*(3*twoPiRS*std::cos(twoPiRS) + (scitbx::fn::pow2(twoPiRS)-3.)*std::sin(twoPiRS)) /
-        (r*scitbx::fn::pow3(twoPiRS));
-    else
-      return -scitbx::fn::pow2(twoPiRS)/(5*r);
-  }
-
   void calcRefineTerms(cctbx::miller::index<int> const& miller, int sbin)
   {
     /* Calculate tNCS-related epsilon factor (to multiply by normal
@@ -211,7 +199,7 @@ public:
           dEps_by_drho[ipair] += GcosTerm*wtfac;
           double sklmn = std::sqrt(rsSqr)/pairs[ipair].radius;
           dEps_by_dradius[ipair] += 2.*cosTerm*wtfac*pairs[ipair].rho_mn[sbin] *
-                                    dGfunc_by_dR(pairs[ipair].radius,sklmn);
+            scitbx::math::g_function::dGfunc_by_dR(pairs[ipair].radius, sklmn);
         }
       }
     }

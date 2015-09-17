@@ -28,6 +28,19 @@ FloatType GfuncOfRSsqr(FloatType rsSqr)
 }
 
 template <typename FloatType>
+FloatType dGfunc_by_dR(FloatType r, FloatType s)
+{
+  static FloatType EPS(0.001);
+  FloatType twoPiRS(scitbx::constants::two_pi*r*s);
+  if (std::abs(twoPiRS) > EPS)
+    return 3*(3*twoPiRS*std::cos(twoPiRS) +
+      (scitbx::fn::pow2(twoPiRS)-3.)*std::sin(twoPiRS)) /
+      (r*scitbx::fn::pow3(twoPiRS));
+  else
+    return -scitbx::fn::pow2(twoPiRS)/(5*r);
+}
+
+template <typename FloatType>
 af::shared<std::pair<FloatType,FloatType> >
 getGfuncOfRSsqrTable(int tbllen, FloatType argmax)
 {

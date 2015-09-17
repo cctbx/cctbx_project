@@ -9,6 +9,8 @@ from scitbx import lbfgsb
 import iotbx.ncs
 import math
 import scitbx.math
+from scitbx.math import matrix
+import sys
 
 class groups(object):
 
@@ -18,9 +20,6 @@ class groups(object):
                n_bins, # XXX remove later
                angular_difference_threshold_deg=10,
                rad=None):
-    #asc = pdb_hierarchy.atom_selection_cache()
-    #sel = asc.selection("pepnames and (name CA or name N or name O or name C)")
-    #pdb_hierarchy = pdb_hierarchy.select(sel)
     pdb_hierarchy = pdb_hierarchy.expand_to_p1(
       crystal_symmetry=crystal_symmetry)
     pdb_hierarchy.atoms().reset_i_seq()
@@ -57,20 +56,8 @@ class groups(object):
         t = t,
         radius=rad,
         fracscat=1./(2*len(self.rta)),
-        rho_mn=flex.double(n_bins,0.98) )
+        rho_mn=flex.double(n_bins,0.98))
       self.ncs_pairs.append(ncs_pair)
-
-  def show_summary(self):
-    for i, it in enumerate(self.rta):
-      print "tNCS group: %d"%i
-      r,t,a, rad = it
-      t = ",".join([("%6.3f"%t_).strip() for t_ in t]).strip()
-      r = ",".join([("%8.6f"%r_).strip() for r_ in r]).strip()
-      print "  Translation (fractional): (%s)"%t
-      print "  Rotation (deg): %-5.2f"%a
-      print "  Rotation matrix: (%s)"%r
-      print "  Radius: %-6.1f"%rad
-      print "  fracscat:", self.ncs_pairs[i].fracscat
 
 def lbfgs_run(target_evaluator, use_bounds, lower_bound, upper_bound):
   minimizer = lbfgsb.minimizer(
@@ -197,3 +184,53 @@ class potential(object):
     elif(self.gradient_evaluator=="radius"):
       return self.target_and_grads.gradient_radius()
     else: assert 0
+
+class compute_eps_factor(object):
+
+  def __init__(self, f_obs, pdb_hierarchy, reflections_per_bin):
+    f_obs.set_sigmas(sigmas = flex.double(f_obs.data().size(), 1.0)) ###XXX
+    f_obs.setup_binner(reflections_per_bin = reflections_per_bin)
+    binner = f_obs.binner()
+    n_bins = binner.n_bins_used()
+    #
+    self.ncs_pairs = groups(
+      pdb_hierarchy    = pdb_hierarchy,
+      crystal_symmetry = f_obs.crystal_symmetry(),
+      n_bins           = n_bins).ncs_pairs
+    # Target and gradients evaluator
+    pot = potential(f_obs = f_obs, ncs_pairs = self.ncs_pairs,
+      reflections_per_bin = reflections_per_bin)
+    for it in xrange(10):
+      # refine eps fac
+      m = minimizer(
+        potential      = pot.set_refine_rhoMN(),
+        use_bounds     = 2,
+        lower_bound    = 0.,
+        upper_bound    = 1.,
+        initial_values = self.ncs_pairs[0].rho_mn).run()
+      # refine radius
+      radii = flex.double()
+      for ncs_pair in self.ncs_pairs:
+        radii.append(ncs_pair.radius)
+      m = minimizer(
+        potential      = pot.set_refine_radius(),
+        use_bounds     = 2,
+        lower_bound    = flex.min(radii)/3,
+        upper_bound    = flex.max(radii)*3,
+        initial_values = flex.double([self.ncs_pairs[0].radius]) ).run()
+    self.epsfac = pot.target_and_grads.tncs_epsfac()
+
+  def show_summary(self, log=None):
+    if(log is None): log = sys.stdout
+    for i, ncs_pair in enumerate(self.ncs_pairs):
+      print >> log, "tNCS group: %d"%i
+      angle = math.acos((matrix.sqr(ncs_pair.r).trace()-1)/2)*180./math.pi
+      t = ",".join([("%6.3f"%t_).strip() for t_ in ncs_pair.t]).strip()
+      r = ",".join([("%8.6f"%r_).strip() for r_ in ncs_pair.r]).strip()
+      print >> log, "  Translation (fractional): (%s)"%t
+      print >> log, "  Rotation (deg): %-5.2f"%angle
+      print >> log, "  Rotation matrix: (%s)"%r
+      print >> log, "  Radius: %-6.1f"%ncs_pair.radius
+      print >> log, "  fracscat:", ncs_pair.fracscat
+    print >> log, "tNCS eps factor: min,max,mean: %6.4f %6.4f %6.4f"%\
+      self.epsfac.min_max_mean().as_tuple()
