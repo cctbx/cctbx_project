@@ -63,18 +63,11 @@ master_phil = iotbx.phil.parse("""
     .short_caption = Exclude secondary structure from Ramachandran restraints
 """ % potential_phil)
 
-def is_proxy_present(proxies, proxy):
-  proxy_iseqs = proxy.get_i_seqs()
-  for p in proxies:
-    # all_eq() is not available for these arrays.
-    p_iseqs = p.get_i_seqs()
-    if (p_iseqs[0] == proxy_iseqs[0] and
-        p_iseqs[1] == proxy_iseqs[1] and
-        p_iseqs[2] == proxy_iseqs[2] and
-        p_iseqs[3] == proxy_iseqs[3] and
-        p_iseqs[4] == proxy_iseqs[4] ):
-      return True
-  return False
+def is_proxy_present(proxies, n_seq, proxy):
+  p_iseqs = list(proxy.get_i_seqs())
+  ps = proxies.proxy_select(n_seq=n_seq,
+      iselection=flex.size_t(p_iseqs))
+  return ps.size() > 0
 
 class ramachandran_manager(object):
   def __init__ (self, pdb_hierarchy, atom_selection=None, params=None,
@@ -122,6 +115,7 @@ class ramachandran_manager(object):
 
     from mmtbx.conformation_dependent_library import generate_protein_threes
     selected_h = self.pdb_hierarchy.select(self.bool_atom_selection)
+    n_seq = flex.max(selected_h.atoms().extract_i_seq())
     for three in generate_protein_threes(
         hierarchy=selected_h,
         geometry=None):
@@ -142,7 +136,7 @@ class ramachandran_manager(object):
           residue_name=r_name,
           residue_type=residue_type,
           i_seqs=i_seqs)
-      if not is_proxy_present(self.proxies, proxy):
+      if not is_proxy_present(self.proxies, n_seq, proxy):
         self.proxies.append(proxy)
     print >> self.log, ""
     print >> self.log, "  %d Ramachandran restraints generated." % self.get_n_proxies()
