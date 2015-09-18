@@ -1063,56 +1063,22 @@ def clustal_alignment_parse(text):
   Specific for Clustal alignments
   """
 
-  lines = text.splitlines()
+  from Bio import AlignIO
+  from cStringIO import StringIO
+  try:
+    aln = AlignIO.read( StringIO( text ), "clustal" )
 
-  if not lines:
+  except ValueError:
     return ( None, text )
 
-  assert 0 < len( lines )
-
-  match = CLUSTAL_HEADER.search( lines[0] )
-
-  if not match:
-    return ( None, text )
-
-  program = match.group( 1 )
-  data_for = {}
-  names = []
-
-  for line in lines[1:]:
-    if not line.strip():
-      continue
-
-    # Get names and data
-    match = CLUSTAL_BODY.search( line )
-
-    if not match:
-      if CLUSTAL_MIDLINE.search( line ):
-        continue
-
-      return ( None, text )
-
-    info = match.groupdict()
-    name = info[ "name" ]
-
-    if name not in data_for:
-      assert name not in names
-      data_for[ name ] = []
-      names.append( name )
-
-    data_for[ name ].extend([c for c in info[ "alignment" ] if not c.isspace()])
-
-  if not check_alignments_are_valid( alignments = data_for.values() ):
-    return ( None, text )
-
-  return (
-    clustal_alignment(
-      names = names,
-      alignments = [ "".join( data_for[ name ] ) for name in names ],
-      program = program
-      ),
-    ""
-    )
+  else:
+    return (
+      clustal_alignment(
+        names = [ sr.id for sr in aln ],
+        alignments = [ str( sr.seq ) for sr in aln ],
+        ),
+      "",
+      )
 
 
 def hhalign_alignment_parse(text):
