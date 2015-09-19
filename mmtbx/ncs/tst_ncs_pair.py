@@ -10,11 +10,13 @@ def esercise_00():
     r = ([1,2,3,4,5,6,7,8,9]),
     t = ([10,11,12]),
     radius=13,
+    radius_estimate=13.5,
     fracscat=15,
     rho_mn=([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]))
   assert approx_equal(p.r,[1,2,3,4,5,6,7,8,9])
   assert approx_equal(p.t,[10,11,12])
   assert approx_equal(p.radius, 13)
+  assert approx_equal(p.radius_estimate, 13.5)
   assert approx_equal(p.fracscat, 15)
   assert approx_equal(p.rho_mn,[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15])
 
