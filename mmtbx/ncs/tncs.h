@@ -269,14 +269,19 @@ public:
     if(do_target || do_gradient) {
       const double rhoMNbinwt(1./(2*scitbx::fn::pow2(0.05))); // sigma of 0.05 for rhoMN bin smoothness
       for (int ipair = 0; ipair < n_pairs; ipair++) {
+        // Weakly restrain radii to initial estimates, with sigma of estimate/4
+        double radiuswt(1./(2*scitbx::fn::pow2(pairs[ipair].radius_estimate/4.)));
+        double delta_radius = pairs[ipair].radius - pairs[ipair].radius_estimate;
+        minusLL += radiuswt*scitbx::fn::pow2(delta_radius);
+        if(do_gradient) Gradient_radius[ipair] += 2.*radiuswt*delta_radius;
         for(int s = 1; s < nbins-1; s++) { // restraints over inner bins
           double dmean = (pairs[ipair].rho_mn[s-1] + pairs[ipair].rho_mn[s+1])/2.;
-          double delta = pairs[ipair].rho_mn[s] - dmean;
-          minusLL += rhoMNbinwt*scitbx::fn::pow2(delta);
+          double delta_rhoMN = pairs[ipair].rho_mn[s] - dmean;
+          minusLL += rhoMNbinwt*scitbx::fn::pow2(delta_rhoMN);
           if(do_gradient) {
-            Gradient_rhoMN[ipair*nbins+s-1] -= rhoMNbinwt*delta;
-            Gradient_rhoMN[ipair*nbins+s]   += 2.*rhoMNbinwt*delta;
-            Gradient_rhoMN[ipair*nbins+s+1] -= rhoMNbinwt*delta;
+            Gradient_rhoMN[ipair*nbins+s-1] -= rhoMNbinwt*delta_rhoMN;
+            Gradient_rhoMN[ipair*nbins+s]   += 2.*rhoMNbinwt*delta_rhoMN;
+            Gradient_rhoMN[ipair*nbins+s+1] -= rhoMNbinwt*delta_rhoMN;
           }
         }
       }
