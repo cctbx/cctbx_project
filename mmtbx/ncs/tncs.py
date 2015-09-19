@@ -55,6 +55,7 @@ class groups(object):
         r = r,
         t = t,
         radius=rad,
+        radius_estimate=rad,
         fracscat=1./(2*len(self.rta)),
         rho_mn=flex.double(n_bins,0.98))
       self.ncs_pairs.append(ncs_pair)
@@ -62,8 +63,8 @@ class groups(object):
 def lbfgs_run(target_evaluator, use_bounds, lower_bound, upper_bound):
   minimizer = lbfgsb.minimizer(
     n   = target_evaluator.n,
-    l   = flex.double(target_evaluator.n, lower_bound), # lower bound
-    u   = flex.double(target_evaluator.n, upper_bound), # upper bound
+    l   = lower_bound,# flex.double(target_evaluator.n, lower_bound), # lower bound
+    u   = upper_bound,# flex.double(target_evaluator.n, upper_bound), # upper bound
     nbd = flex.int(target_evaluator.n, use_bounds)) # flag to apply both bounds
   minimizer.error = None
   try:
@@ -134,13 +135,25 @@ class potential(object):
       m_as_double = o.r().as_double()
       self.sym_matrices.append(m_as_double)
     self.gradient_evaluator = None
+    ### Place to initialize rho_mn
+    ### rhoMN = (2*pi^2/3)*(rms/d)^2, and rms=0.4-0.8 is probably a good choice.
+    #rho_mn_initial = flex.double()
+    #d_spacings = self.f_obs.d_spacings().data()
+    #for i_bin in self.binner.range_used():
+    #  sel_bin = self.binner.selection(i_bin)
+    #  print (2*math.pi**2/3)*(0.5/flex.mean(d_spacings.select(sel_bin)))**2
+    #STOP()
+    ###
     self.update()
 
   def update(self, x=None):
     if(self.gradient_evaluator=="rhoMN"):
-      self.ncs_pairs[0].set_rhoMN(x)
+      size = len(self.ncs_pairs)
+      for i, ncs_pair in enumerate(self.ncs_pairs):
+        ncs_pair.set_rhoMN(x[i:i+x.size()//size])
     elif(self.gradient_evaluator=="radius"):
-      self.ncs_pairs[0].set_radius(x[0])
+      for ncs_pair, x_ in zip(self.ncs_pairs, x):
+        ncs_pair.set_radius(x_)
     self.target_and_grads = ext.tncs_eps_factor_refinery(
       tncs_pairs               = self.ncs_pairs,
       f_obs                    = self.f_obs.data(),
@@ -189,36 +202,48 @@ class compute_eps_factor(object):
 
   def __init__(self, f_obs, pdb_hierarchy, reflections_per_bin):
     if(not f_obs.sigmas_are_sensible()):
-      f_obs.set_sigmas(sigmas = flex.double(f_obs.data().size(), 1.0))
+      f_obs.set_sigmas(sigmas = flex.double(f_obs.data().size(), 0.0))
     f_obs.setup_binner(reflections_per_bin = reflections_per_bin)
     binner = f_obs.binner()
     n_bins = binner.n_bins_used()
+    self.unit_cell = f_obs.unit_cell()
     #
     self.ncs_pairs = groups(
       pdb_hierarchy    = pdb_hierarchy,
       crystal_symmetry = f_obs.crystal_symmetry(),
       n_bins           = n_bins).ncs_pairs
+    # Radii
     radii = flex.double()
+    rad_lower_bound = flex.double()
+    rad_upper_bound = flex.double()
     for ncs_pair in self.ncs_pairs:
       radii.append(ncs_pair.radius)
+      rad_lower_bound.append(ncs_pair.radius/3)
+      rad_upper_bound.append(ncs_pair.radius*3)
     # Target and gradients evaluator
     pot = potential(f_obs = f_obs, ncs_pairs = self.ncs_pairs,
       reflections_per_bin = reflections_per_bin)
     for it in xrange(10):
       # refine eps fac
+      rho_mn = flex.double()
+      for ncs_pair in self.ncs_pairs:
+        rho_mn.extend(ncs_pair.rho_mn)
       m = minimizer(
         potential      = pot.set_refine_rhoMN(),
         use_bounds     = 2,
-        lower_bound    = 0.,
-        upper_bound    = 1.,
-        initial_values = self.ncs_pairs[0].rho_mn).run()
+        lower_bound    = flex.double(rho_mn.size(), 0.),
+        upper_bound    = flex.double(rho_mn.size(), 1.),
+        initial_values = rho_mn).run()
       # refine radius
+      radii = flex.double()
+      for ncs_pair in self.ncs_pairs:
+        radii.append(ncs_pair.radius)
       m = minimizer(
         potential      = pot.set_refine_radius(),
         use_bounds     = 2,
-        lower_bound    = flex.min(radii)/3,
-        upper_bound    = flex.max(radii)*3,
-        initial_values = flex.double([self.ncs_pairs[0].radius]) ).run()
+        lower_bound    = rad_lower_bound,
+        upper_bound    = rad_upper_bound,
+        initial_values = radii).run()
     self.epsfac = pot.target_and_grads.tncs_epsfac()
 
   def show_summary(self, log=None):
@@ -227,8 +252,11 @@ class compute_eps_factor(object):
       print >> log, "tNCS group: %d"%i
       angle = math.acos((matrix.sqr(ncs_pair.r).trace()-1)/2)*180./math.pi
       t = ",".join([("%6.3f"%t_).strip() for t_ in ncs_pair.t]).strip()
+      t_cart = ",".join([("%6.3f"%t_).strip()
+        for t_ in self.unit_cell.orthogonalize(ncs_pair.t)]).strip()
       r = ",".join([("%8.6f"%r_).strip() for r_ in ncs_pair.r]).strip()
       print >> log, "  Translation (fractional): (%s)"%t
+      print >> log, "  Translation (Cartesian):  (%s)"%t_cart
       print >> log, "  Rotation (deg): %-5.2f"%angle
       print >> log, "  Rotation matrix: (%s)"%r
       print >> log, "  Radius: %-6.1f"%ncs_pair.radius

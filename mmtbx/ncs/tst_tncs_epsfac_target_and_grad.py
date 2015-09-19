@@ -184,22 +184,20 @@ END
 """
 
 def run(reflections_per_bin=250):
-  #
-  # Read PDB file from string above, create xray_structure object
-  #
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
   pdb_inp.write_pdb_file(file_name="model.pdb")
   xray_structure = pdb_inp.xray_structure_simple()
-  #
-  # Calculate "Fobs" from this model
-  #
-  f_obs = abs(xray_structure.structure_factors(d_min=2.0).f_calc())
-  #
-  o = tncs.compute_eps_factor(
-    f_obs               = f_obs,
-    pdb_hierarchy       = pdb_inp.construct_hierarchy(),
-    reflections_per_bin = reflections_per_bin)
-  o.show_summary()
+  for b in [0, 1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]:
+    xray_structure = xray_structure.set_b_iso(value=b)
+    f_obs = abs(xray_structure.structure_factors(d_min=2.0).f_calc())
+    result = tncs.compute_eps_factor(
+      f_obs               = f_obs,
+      pdb_hierarchy       = pdb_inp.construct_hierarchy(),
+      reflections_per_bin = reflections_per_bin)
+    print "trial B: %5.1f radii: refined %4.1f estimate %4.1f"%(
+      b, result.ncs_pairs[0].radius, result.ncs_pairs[0].radius_estimate)
+  # this shows summary for the result corresponding to last trial B (100)
+  result.show_summary()
 
 if (__name__ == "__main__"):
   run()
