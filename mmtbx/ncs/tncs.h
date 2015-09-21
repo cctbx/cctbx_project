@@ -191,7 +191,10 @@ public:
         FloatType rsSqr =
           GfunTensor[0]*hh*hh + GfunTensor[1]*kk*kk + GfunTensor[2]*ll*ll +
           GfunTensor[3]*hh*kk + GfunTensor[4]*hh*ll + GfunTensor[5]*kk*ll;
-        //FloatType Gf = scitbx::math::g_function::GfuncOfRSsqr_approx(rsSqr);
+        if(rsSqr<0) {
+          if(std::abs(rsSqr)<1.e-9) rsSqr=0;
+          SCITBX_ASSERT(rsSqr>=0);
+        }
         FloatType Gf = scitbx::math::g_function::GfuncOfRSsqr(rsSqr);
         FloatType h_dot_T = scitbx::constants::two_pi*(miller*ncsDeltaT[i]);
         FloatType cosTerm = std::cos(h_dot_T);
@@ -249,6 +252,7 @@ public:
         double SigmaFactor = 2.*cent_fac;
         double ExpSig(SigmaFactor*scitbx::fn::pow2(sig_f_obs[r]));
         double V = epsnSigmaN + ExpSig;
+        MMTBX_ASSERT(V!=0.);
         if(V<0) V=0.00001; // XXX ???
         double f_obs_sq = scitbx::fn::pow2(f_obs[r]);
         // For simplicity, leave constants out of log-likelihood, which will not
