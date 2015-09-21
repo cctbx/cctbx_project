@@ -196,7 +196,7 @@ namespace {
           af::const_ref<std::complex<double> > const&,
           af::const_ref<double> const&,
           af::const_ref<double> const&,
-          af::const_ref<int> const&,
+          af::const_ref<double> const&,
           af::const_ref<bool> const&,
           double,
           bool>((
