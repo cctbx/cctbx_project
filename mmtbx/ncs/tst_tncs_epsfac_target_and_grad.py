@@ -3,6 +3,7 @@ import cctbx.array_family.flex # import dependency
 import boost.python
 ext = boost.python.import_ext("mmtbx_ncs_ext")
 import iotbx.pdb
+from scitbx.array_family import flex
 from mmtbx.ncs import tncs
 
 pdb_str="""
@@ -183,21 +184,53 @@ TER
 END
 """
 
-def run(reflections_per_bin=250):
+def e_sm(f_obs, reflections_per_bin, eps_fac = None):
+  # compute E and E**2
+  eps = f_obs.epsilons().data().as_double()
+  if(eps_fac is not None):
+    eps = eps * eps_fac
+  f_obs.setup_binner(reflections_per_bin = reflections_per_bin)
+  E = flex.double(f_obs.data().size(), 0)
+  for i_bin in f_obs.binner().range_used():
+    bin_sel = f_obs.binner().selection(i_bin)
+    fo = f_obs.data().select(bin_sel)
+    if(fo.size()==0): continue
+    e = eps.select(bin_sel)
+    fo_eps = fo/flex.sqrt(e)
+    E_bin = fo_eps/(flex.sum(fo_eps**2)/fo_eps.size())**0.5
+    E = E.set_selected(bin_sel, E_bin)
+  E_sq = E**2
+  # compute <E**4>/<E**2>**2
+  centrics_selection  = f_obs.centric_flags().data()
+  result = []
+  for prefix, sel in [("centric:",  centrics_selection),
+                      ("acentric:",~centrics_selection)]:
+    if(sel.count(True)==0): continue
+    E_ = E.select(sel)
+    E_sq_ = E_sq.select(sel)
+    result.append(flex.mean(E_sq_*E_sq_)/flex.mean(E_sq_)**2)
+  return result
+
+def run(reflections_per_bin=150):
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
   pdb_inp.write_pdb_file(file_name="model.pdb")
   xray_structure = pdb_inp.xray_structure_simple()
-  for b in [0, 1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]:
+  for b in [0, 50, 100, 200, 400, 800]:
     xray_structure = xray_structure.set_b_iso(value=b)
-    f_obs = abs(xray_structure.structure_factors(d_min=2.0).f_calc())
-    result = tncs.compute_eps_factor(
-      f_obs               = f_obs,
-      pdb_hierarchy       = pdb_inp.construct_hierarchy(),
-      reflections_per_bin = reflections_per_bin)
-    print "trial B: %5.1f radii: refined %4.1f estimate %4.1f"%(
-      b, result.ncs_pairs[0].radius, result.ncs_pairs[0].radius_estimate)
-  # this shows summary for the result corresponding to last trial B (100)
-  result.show_summary()
+    print "B: %5.1f"%b
+    for d_min in [2,3,4,6,8]:
+      f_obs = abs(xray_structure.structure_factors(d_min=d_min).f_calc())
+      result = tncs.compute_eps_factor(
+        f_obs               = f_obs,
+        pdb_hierarchy       = pdb_inp.construct_hierarchy(),
+        reflections_per_bin = reflections_per_bin)
+      M2      = e_sm(f_obs, reflections_per_bin)[0]
+      M2_corr = e_sm(f_obs, reflections_per_bin, result.epsfac)[0]
+      fmt="  d_min: %5.1f R: refined %4.1f estimate %4.1f 2nd Mom.: orig %4.2f corr %4.2f"
+      print fmt%(d_min, result.ncs_pairs[0].radius,
+        result.ncs_pairs[0].radius_estimate, M2, M2_corr)
+  # this shows summary for the result corresponding to last trial B and d_min
+  #result.show_summary()
 
 if (__name__ == "__main__"):
   run()
