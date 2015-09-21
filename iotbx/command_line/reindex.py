@@ -2,7 +2,7 @@ from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.reindex
 
 import libtbx.phil
-from libtbx.utils import Sorry
+from libtbx.utils import Usage, Sorry
 import string
 import os
 import sys
