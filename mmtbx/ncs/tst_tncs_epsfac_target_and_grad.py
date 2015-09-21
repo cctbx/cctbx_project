@@ -230,7 +230,7 @@ def run(reflections_per_bin=150):
       print fmt%(d_min, result.ncs_pairs[0].radius,
         result.ncs_pairs[0].radius_estimate, M2, M2_corr)
   # this shows summary for the result corresponding to last trial B and d_min
-  #result.show_summary()
+  result.show_summary()
 
 if (__name__ == "__main__"):
   run()
