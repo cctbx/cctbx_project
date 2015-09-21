@@ -207,6 +207,7 @@ class potential(object):
 class compute_eps_factor(object):
 
   def __init__(self, f_obs, pdb_hierarchy, reflections_per_bin):
+    f_obs = f_obs.deep_copy()
     if(not f_obs.sigmas_are_sensible()):
       f_obs.set_sigmas(sigmas = flex.double(f_obs.data().size(), 0.0))
     reflections_per_bin = min(f_obs.data().size(), reflections_per_bin)
