@@ -260,7 +260,7 @@ class compute_eps_factor(object):
     if(log is None): log = sys.stdout
     for i, ncs_pair in enumerate(self.ncs_pairs):
       print >> log, "tNCS group: %d"%i
-      angle = ncs_pair.r.rotation_angle()
+      angle = matrix.sqr(ncs_pair.r).rotation_angle()
       t = ",".join([("%6.3f"%t_).strip() for t_ in ncs_pair.t]).strip()
       t_cart = ",".join([("%6.3f"%t_).strip()
         for t_ in self.unit_cell.orthogonalize(ncs_pair.t)]).strip()
