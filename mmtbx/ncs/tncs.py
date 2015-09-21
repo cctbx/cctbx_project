@@ -63,8 +63,8 @@ class groups(object):
 def lbfgs_run(target_evaluator, use_bounds, lower_bound, upper_bound):
   minimizer = lbfgsb.minimizer(
     n   = target_evaluator.n,
-    l   = lower_bound,# flex.double(target_evaluator.n, lower_bound), # lower bound
-    u   = upper_bound,# flex.double(target_evaluator.n, upper_bound), # upper bound
+    l   = lower_bound, # lower bound
+    u   = upper_bound, # upper bound
     nbd = flex.int(target_evaluator.n, use_bounds)) # flag to apply both bounds
   minimizer.error = None
   try:
@@ -113,9 +113,9 @@ class minimizer(object):
 
 class potential(object):
 
-  def __init__(self, f_obs, ncs_pairs, reflections_per_bin = 250):
+  def __init__(self, f_obs, ncs_pairs, reflections_per_bin):
     adopt_init_args(self, locals())
-    # Create bins and SigmaN
+    # Create bins
     f_obs.setup_binner(reflections_per_bin = reflections_per_bin)
     self.binner = f_obs.binner()
     n_bins = self.binner.n_bins_used()
@@ -135,14 +135,18 @@ class potential(object):
       m_as_double = o.r().as_double()
       self.sym_matrices.append(m_as_double)
     self.gradient_evaluator = None
-    ### Place to initialize rho_mn
-    ### rhoMN = (2*pi^2/3)*(rms/d)^2, and rms=0.4-0.8 is probably a good choice.
-    #rho_mn_initial = flex.double()
-    #d_spacings = self.f_obs.d_spacings().data()
-    #for i_bin in self.binner.range_used():
-    #  sel_bin = self.binner.selection(i_bin)
-    #  print (2*math.pi**2/3)*(0.5/flex.mean(d_spacings.select(sel_bin)))**2
-    #STOP()
+    ### Initialize rho_mn
+    ### rhoMN = exp(-(2*pi^2/3)*(rms/d)^2, and rms=0.4-0.8 is probably a good.
+    rho_mn_initial = flex.double(n_bins, 0)
+    d_spacings = self.f_obs.d_spacings().data()
+    cntr=0
+    for i_bin in self.binner.range_used():
+      sel_bin = self.binner.selection(i_bin)
+      if(sel_bin.count(True)>0):
+        arg = (2*math.pi**2/3)*(0.5/flex.mean(d_spacings.select(sel_bin)))**2
+        rho_mn_initial[cntr] = math.exp(-1*arg)
+      cntr+=1
+    ncs_pairs[0].set_rhoMN(rho_mn_initial)
     ###
     self.update()
 
@@ -170,14 +174,16 @@ class potential(object):
       eps = self.f_obs.epsilons().data().as_double()
     else:
       eps = self.target_and_grads.tncs_epsfac()
-    self.SigmaN = flex.double(self.f_obs.data().size(), -1)
+    self.SigmaN = flex.double(self.f_obs.data().size(), 0)
     for i_bin in self.binner.range_used():
       bin_sel = self.f_obs.binner().selection(i_bin)
       f_obs_bin = self.f_obs.select(bin_sel)
       f_obs_bin_data = f_obs_bin.data()
-      eps_bin = eps.select(bin_sel)
-      sn = flex.sum(f_obs_bin_data*f_obs_bin_data/eps_bin)/f_obs_bin_data.size()
-      self.SigmaN = self.SigmaN.set_selected(bin_sel, sn)
+      f_obs_bin_data_size = f_obs_bin_data.size()
+      if(f_obs_bin_data_size>0):
+        eps_bin = eps.select(bin_sel)
+        sn = flex.sum(f_obs_bin_data*f_obs_bin_data/eps_bin)/f_obs_bin_data_size
+        self.SigmaN = self.SigmaN.set_selected(bin_sel, sn)
     assert self.SigmaN.all_gt(0)
 
   def set_refine_radius(self):
