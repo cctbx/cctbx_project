@@ -641,7 +641,7 @@ class refinement(object):
         alpha=O.alpha_beta[0].data(),
         beta=O.alpha_beta[1].data(),
         scale_factor=1,
-        epsilons=O.epsilons.data(),
+        epsilons=O.epsilons.data().as_double(),
         centric_flags=O.centric_flags.data(),
         compute_gradients=bool(derivatives_depth))
     raise RuntimeError("Unknown target_type: %s" % target.type)

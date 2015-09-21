@@ -1796,7 +1796,7 @@ def exercise_maximum_likelihood_targets():
         alpha=alpha,
         beta=beta,
         scale_factor=1,
-        epsilons=epsilons,
+        epsilons=epsilons.as_double(),
         centric_flags=centric_flags,
         compute_gradients=compute_gradients)
       tpr = ml.target_per_reflection()
@@ -1843,7 +1843,7 @@ def exercise_maximum_likelihood_targets():
           alpha=alpha.select(~rff),
           beta=beta.select(~rff),
           scale_factor=1,
-          epsilons=epsilons.select(~rff),
+          epsilons=epsilons.select(~rff).as_double(),
           centric_flags=centric_flags.select(~rff),
           compute_gradients=compute_gradients)
         assert approx_equal(mlw.target_per_reflection(), tpr.select(~rff))

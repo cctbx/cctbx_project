@@ -329,6 +329,7 @@ class manager(manager_mixin):
          f_part2                      = None,
          f_calc                       = None,
          abcd                         = None,
+         epsilons                     = None,
          sf_and_grads_accuracy_params = None,
          target_name                  = "ml",
          alpha_beta_params            = None,
@@ -441,6 +442,8 @@ class manager(manager_mixin):
           xray_structure = self.xray_structure,
           force_update   = True)
       f_mask_twin = self.mask_manager.shell_f_masks_twin()
+    self.epsilons = epsilons
+    if(self.epsilons is None): self.epsilons = f_obs.epsilons().data().as_double()
     self.update_core(
       f_calc        = f_calc,
       f_mask        = f_mask,
@@ -691,6 +694,7 @@ class manager(manager_mixin):
       sf_and_grads_accuracy_params = deepcopy(self.sfg_params),
       target_name                  = self.target_name,
       abcd                         = new_hl_coeffs,
+      epsilons                     = self.epsilons.select(selection),
       alpha_beta_params            = deepcopy(self.alpha_beta_params),
       xray_structure               = xrs,
       f_calc                       = self.f_calc().select(selection=selection),

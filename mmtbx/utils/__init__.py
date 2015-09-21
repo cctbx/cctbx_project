@@ -1470,6 +1470,7 @@ def fmodel_manager(
       k_mask                        = None,
       k_anisotropic                 = None,
       hl_coeff                      = None,
+      epsilons                      = None,
       use_f_model_scaled            = False,
       twin_law                      = None,
       detwin_mode                   = None,
@@ -1494,6 +1495,7 @@ def fmodel_manager(
       f_mask                       = f_mask,
       f_calc                       = f_calc,
       abcd                         = hl_coeff,
+      epsilons                     = epsilons,
       max_number_of_bins           = max_number_of_resolution_bins,
       n_resolution_bins_output     = n_resolution_bins_output)
   else:
