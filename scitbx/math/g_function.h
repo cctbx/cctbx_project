@@ -24,6 +24,10 @@ FloatType Gfunction(FloatType twoPiRS)
 template <typename FloatType>
 FloatType GfuncOfRSsqr(FloatType rsSqr)
 {
+  if(rsSqr<0) {
+    if(std::abs(rsSqr)<1.e-9) rsSqr=0;
+    SCITBX_ASSERT(rsSqr>=0);
+  }
   return Gfunction(scitbx::constants::two_pi*std::sqrt(rsSqr));
 }
 

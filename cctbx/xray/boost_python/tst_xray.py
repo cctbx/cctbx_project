@@ -1857,7 +1857,7 @@ def exercise_maximum_likelihood_targets():
         f_calc=f_calc,
         alpha=alpha,
         beta=beta,
-        epsilons=epsilons,
+        epsilons=epsilons.as_double(),
         centric_flags=centric_flags,
         integration_step_size=5,
         compute_gradients=compute_gradients)
@@ -1909,7 +1909,7 @@ def exercise_maximum_likelihood_targets():
           f_calc=f_calc.select(~rff),
           alpha=alpha.select(~rff),
           beta=beta.select(~rff),
-          epsilons=epsilons.select(~rff),
+          epsilons=epsilons.select(~rff).as_double(),
           centric_flags=centric_flags.select(~rff),
           integration_step_size=5,
           compute_gradients=compute_gradients)

@@ -29,7 +29,7 @@ class groups(object):
     self.rta = []
     for g in ncs_groups:
       for c in g.copies:
-        angle = math.acos((c.r.trace()-1)/2)*180./math.pi
+        angle = c.r.rotation_angle()
         r = c.r
         t = crystal_symmetry.unit_cell().fractionalize(c.t)
         if(angle < angular_difference_threshold_deg):
@@ -260,7 +260,7 @@ class compute_eps_factor(object):
     if(log is None): log = sys.stdout
     for i, ncs_pair in enumerate(self.ncs_pairs):
       print >> log, "tNCS group: %d"%i
-      angle = math.acos((matrix.sqr(ncs_pair.r).trace()-1)/2)*180./math.pi
+      angle = ncs_pair.r.rotation_angle()
       t = ",".join([("%6.3f"%t_).strip() for t_ in ncs_pair.t]).strip()
       t_cart = ",".join([("%6.3f"%t_).strip()
         for t_ in self.unit_cell.orthogonalize(ncs_pair.t)]).strip()

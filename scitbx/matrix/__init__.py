@@ -564,6 +564,16 @@ class rec(object):
     if (deg): result *= 180/math.pi
     return result
 
+  def rotation_angle(self, eps=1.e-6):
+    """
+    Assuming it is a rotation matrix, tr(m) = 1+2*cos(alpha)
+    """
+    assert self.is_r3_rotation_matrix(rms_tolerance=eps)
+    arg = (self.trace()-1.)/2
+    if(  arg<0 and abs(arg)>1 and abs(1-abs(arg))<1.e-6): arg=-1.
+    elif(arg>0 and abs(arg)>1 and abs(1-abs(arg))<1.e-6): arg= 1.
+    return math.acos(arg)*180./math.pi
+
   def accute_angle(self, other, value_if_undefined=None, deg=False):
     cos_angle = self.cos_angle(other=other)
     if (cos_angle is None): return value_if_undefined
