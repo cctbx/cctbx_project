@@ -37,9 +37,9 @@ class max_like(object):
         experimental_phases,
         alpha_beta,
         scale_factor,
+        epsilons,
         integration_step_size=5.0):
     adopt_init_args(self, locals())
-    self.epsilons = f_obs.epsilons().data()
     self.centric_flags = f_obs.centric_flags().data()
 
   def __call__(self, f_calc, compute_gradients):

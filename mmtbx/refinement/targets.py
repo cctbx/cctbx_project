@@ -169,12 +169,13 @@ class target_functor(object):
         experimental_phases = None
       if(alpha_beta is None): alpha_beta = manager.alpha_beta()
       self.core = xray.target_functors.max_like(
-        f_obs=manager.f_obs(),
-        r_free_flags=manager.r_free_flags(),
-        experimental_phases=experimental_phases,
-        alpha_beta=alpha_beta,
-        scale_factor=manager.scale_ml_wrapper(),
-        integration_step_size=5.0)
+        f_obs                 = manager.f_obs(),
+        r_free_flags          = manager.r_free_flags(),
+        experimental_phases   = experimental_phases,
+        alpha_beta            = alpha_beta,
+        scale_factor          = manager.scale_ml_wrapper(),
+        epsilons              = manager.epsilons,
+        integration_step_size = 5.0)
     else:
       if (attr.pseudo_ml):
         f_obs, weights = manager.f_star_w_star()

@@ -163,7 +163,7 @@ namespace {
           af::const_ref<double> const&,
           af::const_ref<double> const&,
           double,
-          af::const_ref<int> const&,
+          af::const_ref<double> const&,
           af::const_ref<bool> const&,
           bool>((
             arg("f_obs"),

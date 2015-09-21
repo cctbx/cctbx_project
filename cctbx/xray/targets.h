@@ -341,7 +341,7 @@ namespace cctbx { namespace xray { namespace targets {
     double a,
     double b,
     double k,
-    int e,
+    double e,
     bool centric)
   {
     CCTBX_ASSERT(e > 0);
@@ -392,7 +392,7 @@ namespace cctbx { namespace xray { namespace targets {
     double a,
     double b,
     double k,
-    int e,
+    double e,
     bool centric)
   {
     CCTBX_ASSERT(e > 0);
@@ -441,7 +441,7 @@ namespace cctbx { namespace xray { namespace targets {
     double a,
     double b,
     double k,
-    int e,
+    double e,
     bool centric)
   {
     CCTBX_ASSERT(e > 0);
@@ -487,7 +487,7 @@ namespace cctbx { namespace xray { namespace targets {
         af::const_ref<double> const& alpha,
         af::const_ref<double> const& beta,
         double scale_factor,
-        af::const_ref<int> const& epsilons,
+        af::const_ref<double> const& epsilons,
         af::const_ref<bool> const& centric_flags,
         bool compute_gradients)
       :
@@ -515,7 +515,7 @@ namespace cctbx { namespace xray { namespace targets {
           double fc = std::abs(f_calc[i]);
           double a  = alpha[i];
           double b  = beta[i];
-          int e  = epsilons[i];
+          double e  = epsilons[i];
           bool c = centric_flags[i];
           double t = maximum_likelihood_target_one_h(
             fo, fc, a, b, scale_factor, e, c);

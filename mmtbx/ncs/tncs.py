@@ -218,41 +218,44 @@ class compute_eps_factor(object):
       pdb_hierarchy    = pdb_hierarchy,
       crystal_symmetry = f_obs.crystal_symmetry(),
       n_bins           = n_bins).ncs_pairs
-    # Radii
-    radii = flex.double()
-    rad_lower_bound = flex.double()
-    rad_upper_bound = flex.double()
-    for ncs_pair in self.ncs_pairs:
-      radii.append(ncs_pair.radius)
-      rad_lower_bound.append(ncs_pair.radius/3)
-      rad_upper_bound.append(ncs_pair.radius*3)
-    # Target and gradients evaluator
-    pot = potential(f_obs = f_obs, ncs_pairs = self.ncs_pairs,
-      reflections_per_bin = reflections_per_bin)
-    for it in xrange(10):
-      # refine eps fac
-      rho_mn = flex.double()
-      for ncs_pair in self.ncs_pairs:
-        rho_mn.extend(ncs_pair.rho_mn)
-      m = minimizer(
-        potential      = pot.set_refine_rhoMN(),
-        use_bounds     = 2,
-        lower_bound    = flex.double(rho_mn.size(), 0.),
-        upper_bound    = flex.double(rho_mn.size(), 1.),
-        initial_values = rho_mn).run()
-      # refine radius
+    self.epsfac = None
+    if(len(self.ncs_pairs)>0):
+      # Radii
       radii = flex.double()
+      rad_lower_bound = flex.double()
+      rad_upper_bound = flex.double()
       for ncs_pair in self.ncs_pairs:
         radii.append(ncs_pair.radius)
-      m = minimizer(
-        potential      = pot.set_refine_radius(),
-        use_bounds     = 2,
-        lower_bound    = rad_lower_bound,
-        upper_bound    = rad_upper_bound,
-        initial_values = radii).run()
-    self.epsfac = pot.target_and_grads.tncs_epsfac()
+        rad_lower_bound.append(ncs_pair.radius/3)
+        rad_upper_bound.append(ncs_pair.radius*3)
+      # Target and gradients evaluator
+      pot = potential(f_obs = f_obs, ncs_pairs = self.ncs_pairs,
+        reflections_per_bin = reflections_per_bin)
+      for it in xrange(10):
+        # refine eps fac
+        rho_mn = flex.double()
+        for ncs_pair in self.ncs_pairs:
+          rho_mn.extend(ncs_pair.rho_mn)
+        m = minimizer(
+          potential      = pot.set_refine_rhoMN(),
+          use_bounds     = 2,
+          lower_bound    = flex.double(rho_mn.size(), 0.),
+          upper_bound    = flex.double(rho_mn.size(), 1.),
+          initial_values = rho_mn).run()
+        # refine radius
+        radii = flex.double()
+        for ncs_pair in self.ncs_pairs:
+          radii.append(ncs_pair.radius)
+        m = minimizer(
+          potential      = pot.set_refine_radius(),
+          use_bounds     = 2,
+          lower_bound    = rad_lower_bound,
+          upper_bound    = rad_upper_bound,
+          initial_values = radii).run()
+      self.epsfac = pot.target_and_grads.tncs_epsfac()
 
   def show_summary(self, log=None):
+    if(self.epsfac is None): return None
     if(log is None): log = sys.stdout
     for i, ncs_pair in enumerate(self.ncs_pairs):
       print >> log, "tNCS group: %d"%i
