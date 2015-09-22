@@ -18,36 +18,25 @@ columns = [
   "sACNA",
   ]
 
-def get_restraint_values(threes, interpolate=False):
-  from mmtbx.conformation_dependent_library import utils
+def get_restraint_values(threes):
   res_type_group = get_res_type_group(
     threes[1].resname,
     threes[2].resname,
   )
   if res_type_group is None: return None
   restraint_values = []
-  if interpolate:
-    assert 0 # tested with CDL and not much ...
-    restraint_values = ["2", -1]
-    key = threes.get_cdl_key(exact=interpolate)
-    for i in range(2,26):
-      grid = utils.get_grid_values(res_type_group, key[0], key[1], column=i)
-      index = utils.get_index(*key)
-      r = utils.interpolate_2d(grid, index)
-      restraint_values.append(r)
-  else:
-    key = threes.get_cdl_key(force_plus_one=True)
-    previous_key = None
-    if len(key)==4:
-      previous_key = key[:2]
-    key = key[-2:]
-    if previous_key:
-      rv = omega_database[res_type_group][previous_key]
-      restraint_values.append(rv)
-    else:
-      restraint_values.append(None)
-    rv= omega_database[res_type_group][key]
+  key = threes.get_cdl_key(force_plus_one=True)
+  previous_key = None
+  if len(key)==4:
+    previous_key = key[:2]
+  key = key[-2:]
+  if previous_key:
+    rv = omega_database[res_type_group][previous_key]
     restraint_values.append(rv)
+  else:
+    restraint_values.append(None)
+  rv= omega_database[res_type_group][key]
+  restraint_values.append(rv)
   return restraint_values
 
 def setup_restraints(geometry,
@@ -126,7 +115,6 @@ def update_restraints(hierarchy,
                       ideal=True,
                       esd=True,
                       esd_factor=1.,
-                      interpolate=False,
                       log=None,
                       verbose=False,
                       ):
@@ -155,39 +143,9 @@ def update_restraints(hierarchy,
         print threes
       continue
 
-    if 0:
-      res_type_group = get_res_type_group(
-        threes[1].resname,
-        threes[2].resname,
-         )
-      if res_type_group is None: continue
-      print 'res_type_group',res_type_group
-      key = threes.get_cdl_key(force_plus_one=True) #verbose=verbose)
-      print 'key',key
-      previous_key = None
-      if len(key)==4:
-        previous_key = key[:2]
-        key = key[2:]
-      if previous_key:
-        print 'previous_key'
-        restraint_values = omega_database[res_type_group][previous_key]
-        print previous_key,restraint_values
-        print len(restraint_values)
-      restraint_values = omega_database[res_type_group][key]
-      print key,restraint_values
-      print len(restraint_values)
-      assert 0
-    else:
-      restraint_values = get_restraint_values(threes, interpolate=interpolate)
-
-    #if 1:
-    #  print threes, threes.are_linked(), res_type_group, key, restraint_values
-
+    restraint_values = get_restraint_values(threes)
     if restraint_values is None: continue
-
-    print 'restraint_values',restraint_values
     if restraint_values[0]=="I":
-      #print threes, threes.are_linked(), res_type_group, key, restraint_values[:4]
       average_updates += 1
     else:
       total_updates += 1
@@ -210,9 +168,7 @@ def update_restraints(hierarchy,
         log.write("%s\n" % line)
       else:
         print line
-#  print 'average updates',average_updates,total_updates
-#  assert average_updates==0
-  return geometry #restraints_manager
+  return geometry
 
 def run(filename):
   if False:
