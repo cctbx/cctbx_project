@@ -26,12 +26,8 @@ def get_grid_values(residue_type, phi, psi, column=2):
     indices.append([])
     for i in range(-1,3):
       key = (key0[0]+i*step, key0[1]+j*step)
-      #grid[-1].append(get_db_result(cdl_database["Gly_nonxpro"], key, column))
       grid[-1].append(get_db_result(cdl_database[residue_type], key, column))
       indices[-1].append(key)
-  if 0:
-    for i, d in zip(indices, grid):
-      print i,d
   return grid
 
 def get_index(phi, psi):
