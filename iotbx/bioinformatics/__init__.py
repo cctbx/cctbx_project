@@ -1049,8 +1049,8 @@ class sequential_alignment_parser(generic_alignment_parser):
 CLUSTAL_BODY = re.compile(
   r"""
   ^
-  (?P<name> [\S]* ) \s+
-  (?P<alignment> [A-Z\-]* )
+  (?P<name> [\S]+ ) \s+
+  (?P<alignment> [A-Z\-]+ )
   (?P<number> \s+ \d+ )? \s* $
   """,
   re.VERBOSE | re.MULTILINE
@@ -1063,22 +1063,95 @@ def clustal_alignment_parse(text):
   Specific for Clustal alignments
   """
 
-  from Bio import AlignIO
-  from cStringIO import StringIO
+  lines = list( reversed( text.splitlines() ) ) # create a stack
+
+  if not lines:
+    return ( None, text )
+
+  assert 0 < len( lines )
+
+  match = CLUSTAL_HEADER.search( lines.pop() )
+
+  if not match:
+    return ( None, text )
+
+  program = match.group( 1 )
+
+  # Read first block
+  discard_clustal_empty_lines( lines )
+
   try:
-    aln = AlignIO.read( StringIO( text ), "clustal" )
+    ( names, sequences ) = read_clustal_block( lines )
 
   except ValueError:
     return ( None, text )
 
-  else:
-    return (
-      clustal_alignment(
-        names = [ sr.id for sr in aln ],
-        alignments = [ str( sr.seq ) for sr in aln ],
-        ),
-      "",
-      )
+  assert len( names ) == len( sequences )
+  parts = [ sequences ]
+  discard_clustal_empty_lines( lines )
+
+  while lines:
+    try:
+      ( ns, sequences ) = read_clustal_block( lines )
+
+    except ValueError:
+      return ( None, text )
+
+    assert len( ns ) == len( sequences )
+
+    if names != ns:
+      return ( None, text )
+
+    assert len( names ) == len( sequences )
+
+    parts.append( sequences )
+    discard_clustal_empty_lines( lines )
+
+  return (
+    clustal_alignment(
+      names = names,
+      alignments = [
+        "".join( seqs[ i ] for seqs in parts ) for i in range( len( names ) )
+        ],
+      program = program
+      ),
+    ""
+    )
+
+
+def read_clustal_block(lines):
+
+  names = []
+  sequences = []
+
+  while lines:
+    if not lines[-1].strip():
+      break
+
+    # Get names and data
+    match = CLUSTAL_BODY.search( lines[-1] )
+
+    if match:
+      info = match.groupdict()
+      names.append( info[ "name" ] )
+      sequences.append( info[ "alignment" ] )
+
+    else:
+      if not CLUSTAL_MIDLINE.search( lines[-1] ):
+        raise ValueError, "Line '%s' does not match expected body or midline formats" % lines[-1]
+
+    lines.pop()
+
+  return ( names, sequences )
+
+
+def discard_clustal_empty_lines(lines):
+
+  while lines:
+    if lines[ -1 ].strip():
+      break
+
+    lines.pop()
 
 
 def hhalign_alignment_parse(text):
