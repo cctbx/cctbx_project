@@ -77,7 +77,15 @@ from libtbx.auto_build import create_mac_app
 from libtbx.auto_build.installer_utils import *
 
 class InstallerError(Exception):
-  pass
+  __orig_module__ = __module__
+  # trick to get just "Sorry" instead of "libtbx.utils.Sorry"
+  __module__ = Exception.__module__
+
+  def reset_module (self) :
+    """
+    Reset the class module on an instance to libtbx.utils.
+    """
+    self.__class__.__module__ = self.__class__.__orig_module__
 
 class installer(object):
   """
@@ -219,8 +227,16 @@ class installer(object):
     # is to create the directory, so I don't think the --makedirs option
     # is necessary.
 
+    if not os.access(self.options.prefix, os.W_OK):
+      raise InstallerError("""
+  Installation directory not writeable":
+    %s
+  Please specify an alternative directory using the --prefix option."""
+      %self.options.prefix)
+
     # Do not overwrite an existing installation.
-    self.dest_dir = op.abspath(op.join(self.options.prefix, "%s-%s"%(self.dest_dir_prefix, self.version)))
+    self.dest_dir = op.abspath(op.join(
+      self.options.prefix, "%s-%s"%(self.dest_dir_prefix, self.version)))
     if os.path.exists(self.dest_dir):
       raise InstallerError("""
   Installation directory already exists:
