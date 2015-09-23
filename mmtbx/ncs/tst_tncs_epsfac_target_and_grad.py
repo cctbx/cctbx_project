@@ -5,6 +5,7 @@ ext = boost.python.import_ext("mmtbx_ncs_ext")
 import iotbx.pdb
 from scitbx.array_family import flex
 from mmtbx.ncs import tncs
+from libtbx.test_utils import approx_equal
 
 pdb_str="""
 CRYST1   55.000   55.000   55.000  90.00  90.00  90.00 P 1
@@ -211,7 +212,99 @@ def e_sm(f_obs, reflections_per_bin, eps_fac = None):
     result.append(flex.mean(E_sq_*E_sq_)/flex.mean(E_sq_)**2)
   return result
 
-def run(reflections_per_bin=150):
+def exercise_00(reflections_per_bin=150):
+  """
+  Finite differences test for radii
+  """
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+  pdb_inp.write_pdb_file(file_name="model.pdb")
+  xray_structure = pdb_inp.xray_structure_simple()
+  xray_structure = xray_structure.set_b_iso(value=10)
+  f_obs = abs(xray_structure.structure_factors(d_min=2.0).f_calc())
+  f_obs.set_sigmas(sigmas = flex.double(f_obs.data().size(), 0.0))
+  reflections_per_bin = min(f_obs.data().size(), reflections_per_bin)
+  f_obs.setup_binner(reflections_per_bin = reflections_per_bin)
+  binner = f_obs.binner()
+  n_bins = binner.n_bins_used()
+  #
+  ncs_pairs = tncs.groups(
+    pdb_hierarchy    = pdb_inp.construct_hierarchy(),
+    crystal_symmetry = f_obs.crystal_symmetry(),
+    n_bins           = n_bins).ncs_pairs
+  ncs_pairs[0].set_radius(5)
+  pot = tncs.potential(f_obs = f_obs, ncs_pairs = ncs_pairs,
+      reflections_per_bin = reflections_per_bin)
+  pot = pot.set_refine_radius()
+  t = pot.target()
+  g_exact = pot.gradient()
+  #
+  eps = 1.e-3
+  #
+  pot.update(x = flex.double([5+eps]))
+  t1 = pot.target()
+  #
+  pot.update(x = flex.double([5-eps]))
+  t2 = pot.target()
+  #
+  g_fd = (t1-t2)/(2*eps)
+  #
+  assert approx_equal(g_fd, g_exact[0], 1.e-6)
+
+def exercise_01(reflections_per_bin=150):
+  """
+  Finite differences test for rho_mn.
+  """
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+  pdb_inp.write_pdb_file(file_name="model.pdb")
+  xray_structure = pdb_inp.xray_structure_simple()
+  xray_structure = xray_structure.set_b_iso(value=10)
+  f_obs = abs(xray_structure.structure_factors(d_min=2.0).f_calc())
+  f_obs.set_sigmas(sigmas = flex.double(f_obs.data().size(), 0.0))
+  reflections_per_bin = min(f_obs.data().size(), reflections_per_bin)
+  f_obs.setup_binner(reflections_per_bin = reflections_per_bin)
+  binner = f_obs.binner()
+  n_bins = binner.n_bins_used()
+  #
+  ncs_pairs = tncs.groups(
+    pdb_hierarchy    = pdb_inp.construct_hierarchy(),
+    crystal_symmetry = f_obs.crystal_symmetry(),
+    n_bins           = n_bins).ncs_pairs
+  #
+  pot = tncs.potential(f_obs = f_obs, ncs_pairs = ncs_pairs,
+      reflections_per_bin = reflections_per_bin)
+  pot = pot.set_refine_rhoMN()
+  t = pot.target()
+  g_exact = pot.gradient()
+  #print "Exact:", list(g_exact)
+  #
+  rho_mn = flex.double()
+  for p in ncs_pairs:
+    rho_mn.extend(p.rho_mn)
+  #
+  eps = 1.e-6
+  #
+  g_fd = []
+  for i, rho_mn_i in enumerate(rho_mn):
+    rho_mn_p = rho_mn.deep_copy()
+    rho_mn_p[i] = rho_mn_i + eps
+    rho_mn_m = rho_mn.deep_copy()
+    rho_mn_m[i] = rho_mn_i - eps
+    #
+    pot.update(x = rho_mn_p)
+    t1 = pot.target()
+    #
+    pot.update(x = rho_mn_m)
+    t2 = pot.target()
+    #
+    g_fd_ = (t1-t2)/(2*eps)
+    g_fd.append(g_fd_)
+  #print "Finite diff.:",g_fd
+  assert approx_equal(g_fd, g_exact, 1.e-3)
+
+def exercise_02(reflections_per_bin=150):
+  """
+  tncs_epsfac calculation with radius refinement
+  """
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
   pdb_inp.write_pdb_file(file_name="model.pdb")
   xray_structure = pdb_inp.xray_structure_simple()
@@ -233,4 +326,6 @@ def run(reflections_per_bin=150):
   result.show_summary()
 
 if (__name__ == "__main__"):
-  run()
+  exercise_00()
+  exercise_01()
+  exercise_02()
