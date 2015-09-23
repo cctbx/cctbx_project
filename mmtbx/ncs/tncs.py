@@ -119,6 +119,7 @@ class potential(object):
     f_obs.setup_binner(reflections_per_bin = reflections_per_bin)
     self.binner = f_obs.binner()
     n_bins = self.binner.n_bins_used()
+    self.n_bins = n_bins
     self.SigmaN = None
     self.update_SigmaN()
     #
@@ -146,7 +147,8 @@ class potential(object):
         arg = (2*math.pi**2/3)*(0.5/flex.mean(d_spacings.select(sel_bin)))**2
         rho_mn_initial[cntr] = math.exp(-1*arg)
       cntr+=1
-    ncs_pairs[0].set_rhoMN(rho_mn_initial)
+    for p in self.ncs_pairs:
+      p.set_rhoMN(rho_mn_initial)
     ###
     self.update()
 
@@ -154,7 +156,7 @@ class potential(object):
     if(self.gradient_evaluator=="rhoMN"):
       size = len(self.ncs_pairs)
       for i, ncs_pair in enumerate(self.ncs_pairs):
-        ncs_pair.set_rhoMN(x[i:i+x.size()//size])
+        ncs_pair.set_rhoMN(x[i*self.n_bins:(i+1)*self.n_bins])
     elif(self.gradient_evaluator=="radius"):
       for ncs_pair, x_ in zip(self.ncs_pairs, x):
         ncs_pair.set_radius(x_)
@@ -271,6 +273,7 @@ class compute_eps_factor(object):
       print >> log, "  Rotation (deg): %-5.2f"%angle
       print >> log, "  Rotation matrix: (%s)"%r
       print >> log, "  Radius: %-6.1f"%ncs_pair.radius
+      print >> log, "  Radius (estimate): %-6.1f"%ncs_pair.radius_estimate
       print >> log, "  fracscat:", ncs_pair.fracscat
     print >> log, "tNCS eps factor: min,max,mean: %6.4f %6.4f %6.4f"%\
       self.epsfac.min_max_mean().as_tuple()
