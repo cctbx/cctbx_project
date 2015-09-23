@@ -798,6 +798,43 @@ clustal2 = """CLUSTAL X (1.81) multiple sequence alignment
 1ahq IQ-VEVQATD-AAEISEDAVSERAKK--
 """
 
+clustal3 = """MUSCLE (3.8) multiple sequence alignment
+
+
+1mru_A          -----------------GSHMTTPSHLSD-----RYELGEILGFGGMSEVHLARDLRLHR
+2h34_A          MGSSHHHHHHSSGLVPRGSHMDGTAESREGTQFGPYRLRRLVGRGGMGDVYEAEDTVRER
+                                 ****  .:   :      * *  ::* ***.:*: * *    *
+
+1mru_A          DVAVKVLRADLARDPSFYLRFRREAQNAAALNHPAIVAVYDTGEAETPAGPLPYIVMEYV
+2h34_A          IVALKLMSETLSSDPVFRTRMQREARTAGRLQEPHVVPIHDFGEID---GQL-YVDMRLI
+                 **:*::   *: ** *  *:.***..*. *: * :*.::* ** :   * * *: *  :
+"""
+
+bad_clustal1 = """MUSCLE (3.8) multiple sequence alignment
+Blah
+
+1mru_A          -----------------GSHMTTPSHLSD-----RYELGEILGFGGMSEVHLARDLRLHR
+2h34_A          MGSSHHHHHHSSGLVPRGSHMDGTAESREGTQFGPYRLRRLVGRGGMGDVYEAEDTVRER
+                                 ****  .:   :      * *  ::* ***.:*: * *    *
+
+1mru_A          DVAVKVLRADLARDPSFYLRFRREAQNAAALNHPAIVAVYDTGEAETPAGPLPYIVMEYV
+2h34_A          IVALKLMSETLSSDPVFRTRMQREARTAGRLQEPHVVPIHDFGEID---GQL-YVDMRLI
+                 **:*::   *: ** *  *:.***..*. *: * :*.::* ** :   * * *: *  :
+"""
+
+bad_clustal2 = """MUSCLE (3.8) multiple sequence alignment
+
+
+1mru_A          -----------------GSHMTTPSHLSD-----RYELGEILGFGGMSEVHLARDLRLHR
+2h34_A          MGSSHHHHHHSSGLVPRGSHMDGTAESREGTQFGPYRLRRLVGRGGMGDVYEAEDTVRER
+                                 ****  .:   :      * *  ::* ***.:*: * *    *
+
+1mru_A          DVAVKVLRADLARDPSFYLRFRREAQNAAALNHPAIVAVYDTGEAETPAGPLPYIVMEYV
+2h34_A          IVALKLMSETLSSDPVFRTRMQREARTAGRLQEPHVVPIHDFGEID---GQL-YVDMRLI
+2ghj_A          IVALKLMSETLSSDPVFRTRMQREARTAGRLQEPHVVPIHDFGEID---GQL-YVDMRLI
+                 **:*::   *: ** *  *:.***..*. *: * :*.::* ** :   * * *: *  :
+"""
+
 pir_ali1 = """
 >P1;Horse
 
@@ -1212,7 +1249,7 @@ class test_alignment_parse(unittest.TestCase):
 
     self.assertEqual( unknowns, "" )
 
-    self.assertEqual( ali.program, "CLUSTAL 2.0.9" )
+    self.assertEqual( ali.program, "CLUSTAL 2.0.10" )
     self.assertEqual( ali.names, [ "Horse", "chain_A" ] )
     self.assertEqual(
       ali.alignments,
@@ -1230,7 +1267,7 @@ class test_alignment_parse(unittest.TestCase):
 
     self.assertEqual( unknowns, "" )
 
-    self.assertEqual( ali.program, "CLUSTAL 2.0.9" )
+    self.assertEqual( ali.program, "CLUSTAL X (1.81)" )
     self.assertEqual( ali.names, [ "1vkk", "1ahq" ] )
     self.assertEqual(
       ali.alignments,
@@ -1244,6 +1281,22 @@ class test_alignment_parse(unittest.TestCase):
         ]
       )
 
+    ( ali, unknowns ) = bioinformatics.clustal_alignment_parse( clustal3 )
+
+    self.assertEqual( unknowns, "" )
+
+    self.assertEqual( ali.program, "MUSCLE (3.8)" )
+    self.assertEqual( ali.names, [ "1mru_A", "2h34_A" ] )
+    self.assertEqual(
+      ali.alignments,
+      [
+        "-----------------GSHMTTPSHLSD-----RYELGEILGFGGMSEVHLARDLRLHR"
+        + "DVAVKVLRADLARDPSFYLRFRREAQNAAALNHPAIVAVYDTGEAETPAGPLPYIVMEYV",
+        "MGSSHHHHHHSSGLVPRGSHMDGTAESREGTQFGPYRLRRLVGRGGMGDVYEAEDTVRER"
+        + "IVALKLMSETLSSDPVFRTRMQREARTAGRLQEPHVVPIHDFGEID---GQL-YVDMRLI",
+        ]
+      )
+
     # Bad format
     badaln = "Blah\nBlah\n" + clustal2
     ( ali, unknowns ) = bioinformatics.clustal_alignment_parse( badaln )
@@ -1251,15 +1304,25 @@ class test_alignment_parse(unittest.TestCase):
     self.assertEqual( unknowns, badaln )
     self.assertEqual( ali, None )
 
-    # Empty alignment
-    #( ali, unknowns ) = bioinformatics.clustal_alignment_parse(
-    #  "CLUSTAL 2.0.10 multiple sequence alignment\n\n"
-    #  )
+    ( ali, unknowns ) = bioinformatics.clustal_alignment_parse( bad_clustal1 )
 
-    #self.assertEqual( unknowns, "" )
-    #self.assertEqual( ali.program, "CLUSTAL 2.0.10" )
-    #self.assertEqual( ali.names, [] )
-    #self.assertEqual( ali.alignments, [] )
+    self.assertEqual( unknowns, bad_clustal1 )
+    self.assertEqual( ali, None )
+
+    ( ali, unknowns ) = bioinformatics.clustal_alignment_parse( bad_clustal2 )
+
+    self.assertEqual( unknowns, bad_clustal2 )
+    self.assertEqual( ali, None )
+
+    # Empty alignment
+    ( ali, unknowns ) = bioinformatics.clustal_alignment_parse(
+      "CLUSTAL 2.0.10 multiple sequence alignment\n\n"
+      )
+
+    self.assertEqual( unknowns, "" )
+    self.assertEqual( ali.program, "CLUSTAL 2.0.10" )
+    self.assertEqual( ali.names, [] )
+    self.assertEqual( ali.alignments, [] )
 
 
   def testPir(self):
