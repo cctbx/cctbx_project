@@ -483,17 +483,20 @@ class TestSimpleAlignment(unittest.TestCase):
   def test_ncs_search_order(self):
     """
     verify correct order of chains are selected for the NCS search
+    9/23/2015. Oleg. This test is turned off due to disabling sorting, which
+    is tested by this test.
     """
-    pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_9)
-    ph = pdb_inp.hierarchy
-    chains_info = ncs_search.get_chains_info(ph)
-    chains_in_copies = {'B','E'}
-    i = 1
-    sorted_ch = sorted(chains_info)
-    self.assertEqual(sorted_ch,['A', 'B', 'C', 'D', 'E', 'F'])
-    sorted_ch = ncs_search.update_chain_ids_search_order(
-        chains_info,sorted_ch,chains_in_copies,i)
-    self.assertEqual(sorted_ch,['A', 'D', 'C', 'B', 'E', 'F'])
+    pass
+    # pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_9)
+    # ph = pdb_inp.hierarchy
+    # chains_info = ncs_search.get_chains_info(ph)
+    # chains_in_copies = {'B','E'}
+    # i = 1
+    # sorted_ch = sorted(chains_info)
+    # self.assertEqual(sorted_ch,['A', 'B', 'C', 'D', 'E', 'F'])
+    # sorted_ch = ncs_search.update_chain_ids_search_order(
+    #     chains_info,sorted_ch,chains_in_copies,i)
+    # self.assertEqual(sorted_ch,['A', 'D', 'C', 'B', 'E', 'F'])
 
   def test_overlapping_chains(self):
     '''  Test processing of overlapping identical chains  '''

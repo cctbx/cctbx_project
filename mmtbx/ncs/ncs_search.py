@@ -250,6 +250,34 @@ def minimal_ncs_operators_grouping(match_dict):
   transform_to_group = remove_overlapping_selection(transform_to_group,chain_ids)
   return transform_to_group,match_dict
 
+def get_rmsds(hierarchy, cache, cur_ttg, master, copy):
+  """
+  This function is for debugging purposes and not called.
+  Similar check will be performed later in execution and in case of
+  wrong grouping will raise Sorry: bad phil records.
+  """
+  str_sel_m = "chain "+" or chain ".join(cur_ttg[0]+[master])
+  str_sel_c = "chain "+" or chain ".join(cur_ttg[1]+[copy])
+  sel1 = cache.selection("chain "+" or chain ".join(cur_ttg[0]+[master]))
+  sel2 = cache.selection("chain "+" or chain ".join(cur_ttg[1]+[copy]))
+  print "sel1, sel2", str_sel_m, "|", str_sel_c
+  master_xyz = hierarchy.select(sel1).atoms().extract_xyz()
+  copy_xyz = hierarchy.select(sel2).atoms().extract_xyz()
+  xyz = cur_ttg[2][0].elems * master_xyz + cur_ttg[2][1]
+  rmsd1 = copy_xyz.rms_difference(xyz)
+
+  str_sel_m = "chain "+" or chain ".join(cur_ttg[0]+[copy])
+  str_sel_c = "chain "+" or chain ".join(cur_ttg[1]+[master])
+  print "sel1, sel2", str_sel_m, "|", str_sel_c
+  sel1 = cache.selection("chain "+" or chain ".join(cur_ttg[0]+[copy]))
+  sel2 = cache.selection("chain "+" or chain ".join(cur_ttg[1]+[master]))
+  # print "sel1, sel2", sel1, sel2
+  master_xyz = hierarchy.select(sel1).atoms().extract_xyz()
+  copy_xyz = hierarchy.select(sel2).atoms().extract_xyz()
+  xyz = cur_ttg[2][0].elems * master_xyz + cur_ttg[2][1]
+  rmsd2 = copy_xyz.rms_difference(xyz)
+  return rmsd1, rmsd2
+
 def minimal_master_ncs_grouping(match_dict):
   """
   Look for NCS groups with the smallest number of chains in the master copy
@@ -306,7 +334,16 @@ def minimal_master_ncs_grouping(match_dict):
       temp_master, temp_copy = master_id, copy_id
     #
     chains_in_groups.add(temp_copy)
-    if tr_num and not (temp_master in transform_to_group[tr_num][0]):
+    if tr_num and temp_master not in transform_to_group[tr_num][0]:
+      # Here we want to make sure that this update won't violate
+      # order of atoms, if not, we are changing the order...
+      # rmsd1, rmsd2 = get_rmsds(
+      #     hierarchy,
+      #     cache,
+      #     transform_to_group[tr_num],
+      #     temp_master,
+      #     temp_copy)
+      # print "RMSDs:", rmsd1, rmsd2
       # update dictionaries with additions to master and copies
       transform_to_group[tr_num][0].append(temp_master)
       transform_to_group[tr_num][1].append(temp_copy)
@@ -1529,7 +1566,12 @@ def  update_chain_ids_search_order(chains_info,sorted_ch,chains_in_copies,i):
 
   Return:
     ch_id_list (list): ordered list of chain IDs
+
+  23/09/2015 Oleg. Disabled because arbitrary tossing chains may cause
+  selection problems in future execution. The test exercising it is in:
+
   """
+  return sorted_ch
   if i == 0:
     return sorted_ch
   else:
@@ -1547,5 +1589,9 @@ def  update_chain_ids_search_order(chains_info,sorted_ch,chains_in_copies,i):
         min_ch_id = ch_id
     # flip the i position with the min_indx position
     min_indx = sorted_ch.index(min_ch_id)
+    # alternatively, just place chain in front of current instead of flipping
+    # Doesn't really help.
+    # sorted_ch.remove(min_ch_id)
+    # sorted_ch.insert(i, min_ch_id)
     sorted_ch[i], sorted_ch[min_indx] = sorted_ch[min_indx], sorted_ch[i]
     return sorted_ch
