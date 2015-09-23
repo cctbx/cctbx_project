@@ -24,7 +24,8 @@ class groups(object):
       crystal_symmetry=crystal_symmetry)
     pdb_hierarchy.atoms().reset_i_seq()
     sites_cart = pdb_hierarchy.atoms().extract_xyz()
-    ncs_inp = iotbx.ncs.input(hierarchy=pdb_hierarchy)
+    ncs_inp = iotbx.ncs.input(hierarchy=pdb_hierarchy,
+        exclude_selection="water or element H or element D")
     ncs_groups = ncs_inp.get_ncs_restraints_group_list()
     self.rta = []
     for g in ncs_groups:
