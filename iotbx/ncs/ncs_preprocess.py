@@ -121,7 +121,7 @@ class ncs_group_object(object):
                          spec_ncs_groups=None,
                          pdb_string=None,
                          use_minimal_master_ncs=True,
-                         exclude_selection=None,
+                         exclude_selection="water or element H or element D",
                          max_rmsd=2.0,
                          write_messages=False,
                          process_similar_chains=True,
@@ -246,6 +246,9 @@ class ncs_group_object(object):
         self.truncated_hierarchy = pdb_hierarchy_inp.hierarchy
         self.old_i_seqs = pdb_hierarchy_inp.hierarchy.atoms().extract_i_seq()
         pdb_hierarchy_inp.hierarchy.atoms().reset_i_seq()
+        # pdb_hierarchy_inp.write_pdb_file("in_ncs_pre.pdb")
+      if pdb_hierarchy_inp.hierarchy.atoms().size() == 0:
+        return
     #
     ncs_phil_groups = self.validate_ncs_phil_groups(
       pdb_hierarchy_inp = pdb_hierarchy_inp,
