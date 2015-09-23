@@ -126,7 +126,8 @@ if [ "$PHENIX_GUI_ENVIRONMENT" = "1" ]; then
 fi
 """ % (base_path, ":".join(ld_library_paths), ":".join(ld_library_paths), options.gtk_version)
   # QBio DivCon paths
-  print >> f, """
+  if sys.platform != "win32":
+    print >> f, """
  if [ ! -z "$QB_PYTHONPATH" ]; then
    export PYTHONPATH=$PYTHONPATH:$QB_PYTHONPATH
  fi
