@@ -125,6 +125,18 @@ if [ "$PHENIX_GUI_ENVIRONMENT" = "1" ]; then
   fi
 fi
 """ % (base_path, ":".join(ld_library_paths), ":".join(ld_library_paths), options.gtk_version)
+  # QBio DivCon paths
+  print >> f, """
+ if [ ! -z "$QB_PYTHONPATH" ]; then
+   export PYTHONPATH=$PYTHONPATH:$QB_PYTHONPATH
+ fi
+ if [ ! -z "$QB_LD_LIBRARY_PATH" ]; then
+   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$QB_LD_LIBRARY_PATH
+ fi
+ if [ ! -z "$QB_DYLD_LIBRARY_PATH" ]; then
+   export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$QB_DYLD_LIBRARY_PATH
+ fi
+"""
   if (epilogue is not None) :
     f.write(epilogue + "\n")
   if (options.epilogue is not None) :
@@ -134,21 +146,13 @@ fi
     print >> out, "Wrote %s" % dispatcher
     print >> out, "You should now run libtbx.refresh to regenerate dispatchers."
 
-missing = """
-> if [ ! -z "$QB_PYTHONPATH" ]; then
->   export PYTHONPATH=$PYTHONPATH:$QB_PYTHONPATH
-> fi
-> if [ ! -z "$QB_LD_LIBRARY_PATH" ]; then
->   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$QB_LD_LIBRARY_PATH
-> fi
-> if [ ! -z "$QB_DYLD_LIBRARY_PATH" ]; then
->   export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$QB_DYLD_LIBRARY_PATH
-> fi
-> if [ "$PHENIX_MTYPE" != "mac-ppc-osx" ] && \
->    [ "$PHENIX_MTYPE" != "mac-intel-osx" ] && \
->    [ "$PHENIX_MTYPE" != "mac-intel-osx-x86_64" ]; then
->   export PYMOL_PATH=$PHENIX/pymol
-> fi
+# obsolete???
+pymol_paths = """
+ if [ "$PHENIX_MTYPE" != "mac-ppc-osx" ] && \
+    [ "$PHENIX_MTYPE" != "mac-intel-osx" ] && \
+    [ "$PHENIX_MTYPE" != "mac-intel-osx-x86_64" ]; then
+   export PYMOL_PATH=$PHENIX/pymol
+ fi
 """
 
 if (__name__ == "__main__") :
