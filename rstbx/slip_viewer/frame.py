@@ -41,9 +41,14 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self.sizer = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(self.sizer)
 
-    self.init_pyslip_presizer()
-
+    # initialization is done in stages as windows are created
+    self.pyslip = None
+    self.viewer = wx.Panel(self, wx.ID_ANY)
+    self.viewer.SetMinSize((640,640))
+    self.viewer.SetBackgroundColour(wx.WHITE)
+    self.viewer.ClearBackground()
     self.sizer.Add(self.viewer, 1, wx.EXPAND)
+
     self.statusbar = self.CreateStatusBar()
     self.settings_frame = None
     self._calibration_frame = None
@@ -68,7 +73,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self.Fit()
     self.SetMinSize(self.GetSize())
     self.SetSize((720,720))
-    self.OnShowSettings(None)
+
     self.Bind(EVT_EXTERNAL_UPDATE, self.OnExternalUpdate)
 
     self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUICalibration,
@@ -84,6 +89,20 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIScore,
               id=self._id_score)
 
+    self.Bind(wx.EVT_WINDOW_CREATE, self.OnWindowCreate)
+
+  # This function is for calling layout functions after certain windows are
+  # created. This is due to the upgrade to wxPython 3.0.2 for Linux
+  # http://trac.wxwidgets.org/ticket/16034
+  # The function is called when EVT_WINDOW_CREATE is triggered
+  def OnWindowCreate(self, evt):
+    window = evt.GetWindow()
+    if (self.pyslip is None):
+      self.set_pyslip(self.viewer)
+    if (type(window) is type(self.pyslip)):
+      self.init_pyslip_presizer()
+      self.Layout()
+
   def setup_toolbar(self) :
     XFBaseClass.setup_toolbar(self)
 
@@ -94,12 +113,14 @@ class XrayFrame (AppFrame,XFBaseClass) :
     kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnSaveAs, btn)
 
+  # using StaticBox creates a horizontal white bar in Linux
+  # replaces make_gui in slip_display.py
+  def make_gui(self, parent):
+    parent.sizer = wx.BoxSizer(wx.HORIZONTAL)
+    parent.SetSizer(parent.sizer)
+    parent.sizer.Add(self.pyslip,1,wx.EXPAND)
+
   def init_pyslip_presizer(self):
-    self.viewer  = wx.Panel(self, wx.ID_ANY, size=(1024,640))
-    self.viewer.SetMinSize((640,640))
-    self.viewer.SetBackgroundColour(wx.WHITE)
-    self.viewer.ClearBackground()
-    # create select event dispatch directory
     self.demo_select_dispatch = {}
 
     #self.tile_directory = None#"/Users/nksauter/rawdata/demo/insulin_1_001.img"
@@ -192,6 +213,11 @@ class XrayFrame (AppFrame,XFBaseClass) :
     """The load_image() function displays the image from @p
     file_name_or_data.  The chooser is updated appropriately.
     """
+
+    if (self.pyslip is None):
+      self.set_pyslip(self.viewer)
+      self.init_pyslip_presizer()
+      self.Layout()
 
     try:
       img = rv_image(file_name_or_data.get_detectorbase())
