@@ -266,6 +266,7 @@ class AppFrame(wx.Frame):
         self.tile_directory = tile_dir
 
         # build the GUI
+        self.pyslip = None
         self.make_gui(self.panel)
 
         # do initialisation stuff - all the application stuff
@@ -285,6 +286,10 @@ class AppFrame(wx.Frame):
 #####
 # Build the GUI
 #####
+
+    def set_pyslip(self, parent):
+        self.pyslip = pyslip.PySlip(parent, tile_dir=None, # dummy file name value
+                                    min_level=MinTileLevel)
 
     def make_gui(self, parent):
         """Create application GUI."""
@@ -316,11 +321,11 @@ class AppFrame(wx.Frame):
 
         # create gui objects
         sb = AppStaticBox(parent, '')
-        self.pyslip = pyslip.PySlip(parent, tile_dir=None, # dummy file name value
-                                    min_level=MinTileLevel)
 
         # lay out objects
         box = wx.StaticBoxSizer(sb, orient=wx.HORIZONTAL)
+        if (self.pyslip is None):
+            self.set_pyslip(parent)
         box.Add(self.pyslip, proportion=1, border=1, flag=wx.EXPAND)
 
         return box

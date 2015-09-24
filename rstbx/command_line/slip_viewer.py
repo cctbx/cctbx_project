@@ -54,13 +54,7 @@ def run(argv=None):
   app = wx.App(0)
   wx.SystemOptions.SetOptionInt("osx.openfiledialog.always-show-types", 1)
   frame = XrayFrame(None, -1, "X-ray image display", size=(800,720))
-
-  # Update initial settings with values from the command line.  Needs
-  # to be done before image is loaded (but after the frame is
-  # instantiated).
-  frame.params = work_params
-  frame.pyslip.tiles.user_requests_antialiasing = work_params.anti_aliasing
-  frame.pyslip.tiles.show_untrusted = frame.params.show_untrusted
+  frame.OnShowSettings(None)
 
   frame.settings_frame.panel.center_ctrl.SetValue(
     work_params.beam_center)
@@ -81,6 +75,14 @@ def run(argv=None):
     frame.metrology_matrices = metrology_as_transformation_matrices(
       metrology_phil.extract())
 
+  frame.Show()
+  # Update initial settings with values from the command line.  Needs
+  # to be done before image is loaded (but after the frame is
+  # instantiated).
+  frame.params = work_params
+  # frame.pyslip.tiles.user_requests_antialiasing = work_params.anti_aliasing
+  # frame.pyslip.tiles.show_untrusted = frame.params.show_untrusted
+
   paths = work_phil.remaining_args
   if (len(paths) == 1 and os.path.basename(paths[0]) == "DISTL_pickle"):
     assert os.path.isfile(paths[0])
@@ -98,7 +100,6 @@ def run(argv=None):
     idx = sets[0].indices()[0]
     frame.load_image(chooser_wrapper(sets[0],idx))
 
-  frame.Show()
   app.MainLoop()
 
   return 0
