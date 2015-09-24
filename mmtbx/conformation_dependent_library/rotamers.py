@@ -167,6 +167,9 @@ def update_restraints(hierarchy,
                       verbose=False,
                       data_version="8000",
                       ):
+  loud=True and False
+  if loud:
+    verbose=1
   from mmtbx.rotamer.sidechain_angles import SidechainAngles
   from mmtbx.rotamer import rotamer_eval
   from mmtbx.validation import rotalyze
@@ -201,19 +204,22 @@ def update_restraints(hierarchy,
     count = 0
     for angle_proxy in geometry.dihedral_proxies:
       if angle_proxy.i_seqs in lookup:
-        if verbose: print " i_seqs %-15s initial %12.3f %12.3f %d" % (
+        if verbose: print " i_seqs %-15s initial %12.3f %12.3f %s %d" % (
           angle_proxy.i_seqs,
           angle_proxy.angle_ideal,
           angle_proxy.weight,
+          angle_proxy.alt_angle_ideals,
           angle_proxy.periodicity,
           )
         angle_proxy.angle_ideal = lookup[angle_proxy.i_seqs][0]
         angle_proxy.weight = esd_factor/lookup[angle_proxy.i_seqs][1]**2
+        angle_proxy.alt_angle_ideals=None
         angle_proxy.periodicity = lookup[angle_proxy.i_seqs][2]
-        if verbose: print " i_seqs %-15s final   %12.3f %12.3f %d" % (
+        if verbose: print " i_seqs %-15s final   %12.3f %12.3f %s %d" % (
           angle_proxy.i_seqs,
           angle_proxy.angle_ideal,
           angle_proxy.weight,
+          angle_proxy.alt_angle_ideals,
           angle_proxy.periodicity,
           )
         count += 1
@@ -273,8 +279,13 @@ def update_restraints(hierarchy,
                 chis,
                 value,
               )
+          if loud: print 'exclude_backbone',exclude_backbone
           if rotamer_name in ["OUTLIER"]: continue
-          if rotamer_name not in rdl_database[atom_group.resname]: continue
+          if loud: print 'not outlier'
+          if rotamer_name not in rdl_database[atom_group.resname]:
+            if loud: print "rotamer_name %s not in RDL db" % rotamer_name
+            continue
+          if loud: print 'rotamer_name %s found' % rotamer_name
           restraints = rdl_database[atom_group.resname][rotamer_name]
           defaults = rdl_database[atom_group.resname]["default"]
           rdl_proxies.append(atom_group.id_str())
@@ -294,19 +305,25 @@ def update_restraints(hierarchy,
               i_seqs_restraints_reverse[tuple(i_seqs)] = defaults[names]
               i_seqs.reverse()
               i_seqs_restraints_reverse[tuple(i_seqs)] = defaults[names]
-
   #
+  if loud:
+    for i, atom in enumerate(hierarchy.atoms()):
+      print i, atom.quote()
   count = _set_or_reset_dihedral_restraints(geometry,
                                             i_seqs_restraints_reverse,
+                                            #verbose=loud,
                                             )
   count_d = _set_or_reset_dihedral_restraints(geometry,
                                             i_seqs_restraints,
+                                            verbose=loud,
                                             )
   count = _set_or_reset_angle_restraints(geometry,
                                          i_seqs_restraints_reverse,
+                                         #verbose=loud,
                                          )
   count_a = _set_or_reset_angle_restraints(geometry,
                                          i_seqs_restraints,
+                                         verbose=loud,
                                          )
   #
   print >> log, "    Number of angles, dihedrals RDL adjusted : %d, %d" % (
