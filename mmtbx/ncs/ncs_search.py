@@ -1569,7 +1569,7 @@ def  update_chain_ids_search_order(chains_info,sorted_ch,chains_in_copies,i):
 
   23/09/2015 Oleg. Disabled because arbitrary tossing chains may cause
   selection problems in future execution. The test exercising it is in:
-
+  cctbx_project/iotbx/regression/ncs/tst_ncs_input.py, exersice_23()
   """
   return sorted_ch
   if i == 0:
