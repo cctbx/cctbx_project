@@ -1,5 +1,5 @@
 from __future__ import division
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, show_diff
 import iotbx.ncs as ncs
 import iotbx.pdb
 import sys
@@ -1265,6 +1265,33 @@ ATOM      7  N   MET     1      -1.968  19.642   1.989  1.00 38.36           N
 ATOM      8  CA  MET     1      -0.810  19.133   2.704  1.00 36.79           C
 '''
 
+pdb_str_23 = """\
+CRYST1  178.041  178.041  241.485  90.00  90.00  90.00 P 4 21 2
+SCALE1      0.005617  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.005617  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.004141        0.00000
+ATOM      1  N   VAL A 175       4.326 -59.034 -15.595  1.00105.80           N
+ATOM      2  CA  VAL A 175       5.525 -58.206 -15.617  1.00 86.22           C
+ATOM      3  C   VAL A 175       6.348 -58.476 -14.358  1.00 61.80           C
+ATOM      4  O   VAL A 175       5.879 -59.158 -13.445  1.00 58.55           O
+TER
+ATOM   2117  N   THR B 174     -15.180 -65.753 -17.549  1.00113.31           N
+ATOM   2118  CA  THR B 174     -14.857 -64.334 -17.581  1.00120.94           C
+ATOM   2119  C   THR B 174     -15.877 -63.524 -16.808  1.00109.70           C
+ATOM   2120  O   THR B 174     -15.828 -62.302 -16.798  1.00110.07           O
+TER
+ATOM   9373  N   LYS F  30     -75.643   8.901 124.736  1.00205.41           N
+ATOM   9374  CA  LYS F  30     -74.928  10.142 125.003  1.00200.32           C
+ATOM   9375  C   LYS F  30     -75.558  11.283 124.229  1.00198.69           C
+ATOM   9376  O   LYS F  30     -74.919  11.832 123.330  1.00194.89           O
+ATOM   9377  N   THR F  31     -76.807  11.640 124.555  1.00163.49           N
+ATOM   9378  CA  THR F  31     -77.445  12.728 123.826  1.00162.32           C
+ATOM   9379  C   THR F  31     -76.491  13.902 123.640  1.00160.35           C
+ATOM   9380  O   THR F  31     -76.874  15.060 123.806  1.00158.76           O
+TER
+END
+"""
+
 def exercise_00(prefix="iotbx_ncs_exercise_00",debug=False):
   pdb_file_name = "%s.pdb"%prefix
   ncs_params_str = """
@@ -1837,6 +1864,35 @@ def exercise_22():
     string = "chain B or chain C or chain D").iselection()
   assert sel_1.all_eq(sel)
 
+def exercise_23():
+  """
+  Case when reordering of chains (function update_chain_ids_search_order
+  ncs_search.py) results in selections that doesn't match 'atom-by-atom'
+  with each others.
+  """
+  pdb_inp = iotbx.pdb.input(source_info=None,lines=pdb_str_23.split('\n'))
+  pdb_hierarchy = pdb_inp.construct_hierarchy()
+  pdb_hierarchy = pdb_hierarchy.expand_to_p1(
+    crystal_symmetry=pdb_inp.crystal_symmetry())
+  pdb_hierarchy.atoms().reset_i_seq()
+  ncs_inp = iotbx.ncs.input(hierarchy=pdb_hierarchy)
+  ncs_groups = ncs_inp.get_ncs_restraints_group_list()
+  phil_out = ncs_inp.show_phil_format()
+  assert not show_diff(phil_out, """\
+
+NCS phil parameters:
+-----------------------
+ncs_group {
+  reference        = chain Aa or chain Ab or chain Ac
+  selection        = chain Ad or chain Ae or chain Af
+  selection        = chain Ag or chain Ah or chain Ai
+  selection        = chain Aj or chain Ak or chain Al
+  selection        = chain Am or chain An or chain Ao
+  selection        = chain Ap or chain Aq or chain Ar
+  selection        = chain As or chain At or chain Au
+  selection        = chain Av or chain Aw or chain Ax
+}""")
+
 def clean_temp_files(file_list):
   """ delete files in the file_list """
   for fn in file_list:
@@ -1867,3 +1923,4 @@ if (__name__ == "__main__"):
   exercise_20()
   exercise_21()
   exercise_22()
+  exercise_23()
