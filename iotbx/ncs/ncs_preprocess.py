@@ -243,7 +243,7 @@ class ncs_group_object(object):
       # print "====="
       self.original_hierarchy = pdb_hierarchy_inp.hierarchy.deep_copy()
       if self.exclude_selection is not None:
-        pdb_hierarchy_inp.hierarchy.write_pdb_file("in_ncs_pre_before.pdb")
+        # pdb_hierarchy_inp.hierarchy.write_pdb_file("in_ncs_pre_before.pdb")
         cache = pdb_hierarchy_inp.hierarchy.atom_selection_cache()
         sel = cache.selection("not (%s)" % self.exclude_selection)
         pdb_hierarchy_inp.hierarchy = pdb_hierarchy_inp.hierarchy.select(sel)
@@ -254,7 +254,7 @@ class ncs_group_object(object):
         #   print "o", a.i_seq, a.id_str()
         # print "====="
         # print "old iseqs:", list(self.old_i_seqs)
-        pdb_hierarchy_inp.hierarchy.write_pdb_file("in_ncs_pre_after.pdb")
+        # pdb_hierarchy_inp.hierarchy.write_pdb_file("in_ncs_pre_after.pdb")
       if pdb_hierarchy_inp.hierarchy.atoms().size() == 0:
         return
     #
