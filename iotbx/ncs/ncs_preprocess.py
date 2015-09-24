@@ -238,15 +238,23 @@ class ncs_group_object(object):
 
     # truncating hierarchy
     if pdb_hierarchy_inp:
+      # for a in pdb_hierarchy_inp.hierarchy.atoms():
+      #   print "o", a.i_seq, a.id_str()
+      # print "====="
       self.original_hierarchy = pdb_hierarchy_inp.hierarchy.deep_copy()
       if self.exclude_selection is not None:
+        pdb_hierarchy_inp.hierarchy.write_pdb_file("in_ncs_pre_before.pdb")
         cache = pdb_hierarchy_inp.hierarchy.atom_selection_cache()
         sel = cache.selection("not (%s)" % self.exclude_selection)
         pdb_hierarchy_inp.hierarchy = pdb_hierarchy_inp.hierarchy.select(sel)
         self.truncated_hierarchy = pdb_hierarchy_inp.hierarchy
         self.old_i_seqs = pdb_hierarchy_inp.hierarchy.atoms().extract_i_seq()
         pdb_hierarchy_inp.hierarchy.atoms().reset_i_seq()
-        # pdb_hierarchy_inp.write_pdb_file("in_ncs_pre.pdb")
+        # for a in pdb_hierarchy_inp.hierarchy.atoms():
+        #   print "o", a.i_seq, a.id_str()
+        # print "====="
+        # print "old iseqs:", list(self.old_i_seqs)
+        pdb_hierarchy_inp.hierarchy.write_pdb_file("in_ncs_pre_after.pdb")
       if pdb_hierarchy_inp.hierarchy.atoms().size() == 0:
         return
     #
@@ -439,8 +447,19 @@ class ncs_group_object(object):
         transform_assignment=self.transform_chain_assignment,
         unique_chain_names = self.model_unique_chains_ids)
       # build self.ncs_to_asu_selection
+      if self.old_i_seqs is not None:
+        len_old_i_seq = self.old_i_seqs.size()
+        max_old_i_seq = self.old_i_seqs[-1]
+        n = 1
       group_by_tr = {}
       for k in self.transform_chain_assignment:
+        if self.old_i_seqs is not None:
+          new_part = []
+          for a in range(len_old_i_seq):
+            kkk = self.old_i_seqs[a]+n*(max_old_i_seq+1)
+            new_part.append(self.old_i_seqs[a]+n*(max_old_i_seq+1))
+          self.old_i_seqs.extend(flex.size_t(new_part))
+          n += 1
         selection_str = 'chain ' + self.ncs_copies_chains_names[k]
         key,tr_id =  k.split('_')
         # build master and copies selections
@@ -682,8 +701,8 @@ class ncs_group_object(object):
           key0 = 'chain {}_{}'.format(m_ch_id,tr_id)
           key1 = m_select_str
           key2 = key1 + '_' + tr_id
-          self.asu_to_ncs_map[key1] = m_isel
-          self.ncs_to_asu_map[key2] = c_isel
+          self.asu_to_ncs_map[key1] = m_isel.deep_copy()
+          self.ncs_to_asu_map[key2] = c_isel.deep_copy()
           self.tr_id_to_selection[key0] = (m_select_str,c_select_str)
           self.selection_ids.add(m_select_str)
           self.update_ncs_copies_chains_names(
@@ -1187,11 +1206,24 @@ class ncs_group_object(object):
     Steps that are common to most method of transform info
     """
     if pdb_hierarchy_inp:
+      self.compute_ncs_asu_coordinates_map(pdb_hierarchy_inp=pdb_hierarchy_inp)
+      # print "self.old_i_seqs", list(self.old_i_seqs)
+      # print "self.ncs_to_asu_map in finalize"
+      # for k, v in self.ncs_to_asu_map.iteritems():
+      #   print "  ", k, list(v)
+      # print "self.asu_to_ncs_map in finalize"
+      # for k, v in self.asu_to_ncs_map.iteritems():
+      #   print "  ", k, list(v)
       if self.old_i_seqs is not None:
         for k, v in self.ncs_to_asu_map.iteritems():
           for i in range(len(v)):
+            # print v[i], "-->", self.old_i_seqs[v[i]]
             v[i] = self.old_i_seqs[v[i]]
-      self.compute_ncs_asu_coordinates_map(pdb_hierarchy_inp=pdb_hierarchy_inp)
+        for k, v in self.asu_to_ncs_map.iteritems():
+          for i in range(len(v)):
+            # print v[i], "-->", self.old_i_seqs[v[i]]
+            v[i] = self.old_i_seqs[v[i]]
+      # self.compute_ncs_asu_coordinates_map(pdb_hierarchy_inp=pdb_hierarchy_inp)
       # keep hierarchy for writing
       self.truncated_hierarchy = pdb_hierarchy_inp.hierarchy
       self.set_common_res_dict()
@@ -1232,7 +1264,10 @@ class ncs_group_object(object):
         rmsd = tr.rmsd
       # get continuous res ids
       range_list = []
-      t_ph = self.truncated_hierarchy.select(copy_selection_indices).models()[0].chains()
+      if len(copy_selection_indices) == 0:
+        t_ph = []
+      else:
+        t_ph = self.truncated_hierarchy.select(copy_selection_indices).models()[0].chains()
       for chain in t_ph:
         res_id = []
         # for rs in chain.residues():
