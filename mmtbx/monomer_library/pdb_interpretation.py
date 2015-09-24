@@ -4766,7 +4766,7 @@ class build_all_chain_proxies(linking_mixins):
       print >> log, """\
   Conformation dependent library (CDL) restraints added in %0.1f %sseconds
   """ % utils.greek_time(cdl_time)
-    if getattr(self.params, "omega_cdl", False):
+    if getattr(self.params.restraints_library, "omega_cdl", False):
       from mmtbx.conformation_dependent_library.omega import setup_restraints
       from mmtbx.conformation_dependent_library.omega import update_restraints
       from libtbx import utils
@@ -4785,7 +4785,7 @@ class build_all_chain_proxies(linking_mixins):
       print >> log, """\
   omega-Conformation dependent library (o-CDL) restraints added in %0.1f %sseconds
   """ % utils.greek_time(cdl_time)
-    if getattr(self.params, "rdl", False):
+    if getattr(self.params.restraints_library, "rdl", False):
       from mmtbx.conformation_dependent_library import rotamers
       from libtbx import utils
       t0=time.time()
