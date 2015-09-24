@@ -1311,7 +1311,12 @@ ncs_group {
     # using combination of pdb_inp and Phil parameter string
     ncs_inp = ncs.input(pdb_inp = pdb_inp,
       ncs_phil_string = ncs_params_str)
+    check_result(ncs_inp,test_i)
     # using combination of pdb_hierarchy and Phil parameter string
+    # !!! Construct hierarchy again because it gets distorted in previous
+    # ncs.input() runs!
+    pdb_hierarchy = iotbx.pdb.input(
+      file_name = pdb_file_name).construct_hierarchy()
     ncs_inp = ncs.input(hierarchy = pdb_hierarchy,
       ncs_phil_string = ncs_params_str)
     check_result(ncs_inp,test_i)
@@ -1718,7 +1723,9 @@ ncs_group {
   asc = iotbx.pdb.input(source_info=None,
     lines=pdb_str_15).construct_hierarchy().atom_selection_cache()
   ### user-supplied
-  ncs_inp = ncs.input(pdb_string = pdb_str_15, ncs_phil_string = phil_str)
+
+  ncs_inp = ncs.input(pdb_string = pdb_str_15, ncs_phil_string = phil_str,
+      exclude_selection=None)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
   assert len(ncs_groups)==1
   # group 1
@@ -1728,6 +1735,21 @@ ncs_group {
   assert len(g1_c)==1
   assert g1_c[0].iselection.all_eq(
     asc.selection(string = "chain B").iselection())
+
+  ncs_inp = ncs.input(pdb_string = pdb_str_15, ncs_phil_string = phil_str)
+  ncs_groups = ncs_inp.get_ncs_restraints_group_list()
+  assert len(ncs_groups)==1
+  # group 1
+  assert ncs_groups[0].master_iselection.all_eq(
+      asc.selection(
+          string = "chain A and not (water or element H or element D)"
+      ).iselection())
+  g1_c = ncs_groups[0].copies
+  assert len(g1_c)==1
+  assert g1_c[0].iselection.all_eq(
+      asc.selection(
+          string = "chain B and not (water or element H or element D)"
+      ).iselection())
 
 def exercise_19():
   """
