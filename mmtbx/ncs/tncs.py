@@ -71,7 +71,7 @@ class groups(object):
             reference_sites = sites_cart_1,
             other_sites     = sites_cart_2)
           angle = lsq_fit_obj.r.rotation_angle()
-          if(angle < 10):
+          if(angle < angular_difference_threshold_deg):
             t_frac = unit_cell.fractionalize((sites_cart_1-sites_cart_2).mean())
             t_frac = [math.modf(t)[0] for t in t_frac] # put into [-1,1]
             radius = flex.sum(flex.sqrt((sites_cart_1-
