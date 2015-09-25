@@ -662,7 +662,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     m = model()
     idl = [i for i in string.ascii_lowercase]
     idu = [i for i in string.ascii_uppercase]
-    taken = []
+    taken = [c.id for c in self.chains()]
     n_atoms = []
     for m_ in self.models():
       for smx in crystal_symmetry.space_group().smx():
@@ -678,16 +678,19 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
           xyz = crystal_symmetry.unit_cell().fractionalize(xyz)
           new_xyz = crystal_symmetry.unit_cell().orthogonalize(m3.elems*xyz+t)
           c_.atoms().set_xyz(new_xyz)
-          found = False
-          for idu_ in idu:
-            for idl_ in idl:
-              id_ = idu_+idl_
-              if(not id_ in taken):
-                taken.append(id_)
-                found = id_
-                break
-            if(found): break
-          c_.id = found
+          #
+          if(not (smx.r().is_unit_mx() and smx.t().is_zero())):
+            found = False
+            for idu_ in idu:
+              for idl_ in idl:
+                id_ = idu_+idl_
+                if(not id_ in taken):
+                  taken.append(id_)
+                  found = id_
+                  break
+              if(found): break
+            c_.id = found
+          #
           m.append_chain(c_)
     r.append_model(m)
     return r
