@@ -523,7 +523,7 @@ def run_function_as_detached_process_in_dialog (
   easy_run.call("libtbx.start_process \"%s\" &" % eff_file)
   result = None
   abort = False
-  if (dlg.run(process, update_on_timer=True) == wx.ID_OK) :
+  if (dlg.run(process) == wx.ID_OK) :
     result = dlg.get_result()
   elif dlg.exception_raised() :
     dlg.handle_error()
