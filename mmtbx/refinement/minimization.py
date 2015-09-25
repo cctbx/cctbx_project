@@ -32,7 +32,8 @@ class lbfgs(object):
                      macro_cycle              = None,
                      u_min                    = adptbx.b_as_u(-5.0),
                      u_max                    = adptbx.b_as_u(999.99),
-                     collect_monitor          = True):
+                     collect_monitor          = True,
+                     log                      = None):
     timer = user_plus_sys_time()
     adopt_init_args(self, locals())
     self.f=None
@@ -119,12 +120,15 @@ class lbfgs(object):
     if(self.refine_xyz):
       site_symmetry_table = self.xray_structure.site_symmetry_table()
       for i_seq in site_symmetry_table.special_position_indices():
-        scatterers_shifted[i_seq].site = crystal.correct_special_position(
-          crystal_symmetry = self.xray_structure,
-          special_op       = site_symmetry_table.get(i_seq).special_op(),
-          site_frac        = scatterers_shifted[i_seq].site,
-          site_label       = scatterers_shifted[i_seq].label,
-          tolerance        = self.correct_special_position_tolerance)
+        try:
+          scatterers_shifted[i_seq].site = crystal.correct_special_position(
+            crystal_symmetry = self.xray_structure,
+            special_op       = site_symmetry_table.get(i_seq).special_op(),
+            site_frac        = scatterers_shifted[i_seq].site,
+            site_label       = scatterers_shifted[i_seq].label,
+            tolerance        = self.correct_special_position_tolerance)
+        except Exception, e:
+          print >> self.log, str(e)
     self.xray_structure.replace_scatterers(scatterers = scatterers_shifted)
     if(self.refine_adp):
       return apply_shifts_result.u_iso_refinable_params
