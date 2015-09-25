@@ -380,31 +380,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     test = ['ncs_group' in x for x in file_data]
     self.assertTrue(test.count(True)==1)
 
-  def test_ncs_phil_format(self):
-    """ test ncs phil group format """
-    params_str = """\
-    include scope iotbx.ncs.ncs_groups
-    """
-    params = iotbx.phil.parse(params_str,process_includes=True)
-    phil_str = params.as_str()
-    phil_list = phil_str.splitlines()
-    answer = [
-      'refinement {',
-      '  ncs {',
-      '    restraint_group {',
-      '      reference = None',
-      '      selection = None',
-      '    }',
-      '    constraint_group {',
-      '      reference = None',
-      '      selection = None',
-      '    }',
-      '  }',
-      '}']
-    phil_list = map(str.strip,phil_list)
-    answer = map(str.strip,answer)
-    self.assertEqual(phil_list,answer)
-
   def test_correct_grouping(self):
     """ test correct representation of groups in .ncs file"""
     ncs_obj = iotbx.ncs.input(pdb_string=pdb_str_4)
