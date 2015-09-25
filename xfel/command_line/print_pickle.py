@@ -68,8 +68,8 @@ for path in sys.argv[1:]:
       print "I <= 0:", len(obs.data().select(obs.data() <= 0))
 
     elif key == 'mapped_predictions':
-      print key, data[key][0][0], "(only first shown)"
-    elif key == 'correction_vectors':
+      print key, data[key][0][0], "(only first shown of %d)"%len(data[key][0])
+    elif key == 'correction_vectors' and data[key] is not None and data[key][0] is not None:
       if data[key][0] is None:
         print key, "None"
       else:

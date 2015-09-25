@@ -129,7 +129,7 @@ class ConstructFrame(object):
     assert self.reflections.has_key('xyzcal.px'), "no calculated spot positions"
     self.frame['mapped_predictions'][0] = flex.vec2_double()
     for i in xrange(len(self.reflections['xyzcal.px'])):
-      self.frame['mapped_predictions'][0].append(tuple(self.reflections['xyzcal.px'][i][0:2]))
+      self.frame['mapped_predictions'][0].append(tuple(self.reflections['xyzcal.px'][i][1::-1])) # 1::-1 reverses the order taking only the first two elements first.
 
   # generate a list of dictionaries containing a series of corrections for each predicted reflection
   def populate_corrections(self):
