@@ -72,43 +72,6 @@ ncs_search
 }
 """
 
-# This is not used anywhere
-ncs_groups = '''\
-refinement
-{
-  ncs
-  .short_caption = NCS restraints and constraints groups selections
-  {
-    restraint_group
-    .multiple = True
-    .optional = True
-    .short_caption = Restraint group
-    {
-      reference = None
-        .type = str
-        .short_caption = Master NCS selection string
-      selection = None
-        .type = str
-        .multiple = True
-        .short_caption = NCS copy selection string
-    }
-    constraint_group
-    .multiple = True
-    .optional = True
-    .short_caption = Constraint group
-    {
-      reference = None
-        .type = str
-        .short_caption = Master NCS selection string
-      selection = None
-        .type = str
-        .multiple = True
-        .short_caption = NCS copy selection string
-    }
-  }
-}
-'''
-
 def input(pdb_hierarchy_inp=None,
           pdb_inp=None,
           hierarchy=None,
