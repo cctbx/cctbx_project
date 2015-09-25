@@ -80,8 +80,12 @@ def run(argv=None):
   # to be done before image is loaded (but after the frame is
   # instantiated).
   frame.params = work_params
-  # frame.pyslip.tiles.user_requests_antialiasing = work_params.anti_aliasing
-  # frame.pyslip.tiles.show_untrusted = frame.params.show_untrusted
+  if (frame.pyslip is None): # check for OS X
+    frame.set_pyslip(frame.viewer)
+    frame.init_pyslip_presizer()
+    frame.Layout()
+  frame.pyslip.tiles.user_requests_antialiasing = work_params.anti_aliasing
+  frame.pyslip.tiles.show_untrusted = frame.params.show_untrusted
 
   paths = work_phil.remaining_args
   if (len(paths) == 1 and os.path.basename(paths[0]) == "DISTL_pickle"):
