@@ -459,7 +459,7 @@ def show_rejected_summary(rejected, log=None):
   if len(rejected) > 0:
     print >> log, "** Summary or rejected intensities **"
     print >> log, "-----------------------------------------------------------------"
-    print >> log, "Miller Index  :  Intesity  :  Sigma  :  Bin Mean Intensity"
+    print >> log, "Miller Index  :  Intensity  :  Sigma  :  Bin Mean Intensity"
     for rej in rejected:
       print >> log, "%s    %.3f      %.3f    %.3f" % \
                     (str(rej[0]),rej[1],rej[2],rej[3])
