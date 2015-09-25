@@ -124,7 +124,6 @@ class IntegrateCharacters:
       integrate_worker.set_up_mask_focus()
       integrate_worker.initialize_increments(i)
       integrate_worker.horizons_phil = self.horizons_phil
-      #P = Profiler("concept")
       if self.horizons_phil.indexing.verbose_cv:
         print "EFFECTIVE TILING"," ".join(
           ["%d"%z for z in refimage.get_tile_manager(self.horizons_phil).effective_tiling_as_flex_int()])
@@ -177,6 +176,14 @@ class IntegrateCharacters:
           # instantiated).
           frame.inherited_params = integrate_worker.horizons_phil
           frame.params = work_params
+
+          if (frame.pyslip is None): # check for OS X
+            frame.set_pyslip(frame.viewer)
+            frame.init_pyslip_presizer()
+            frame.Layout()
+          if (frame.settings_frame is None):
+            frame.OnShowSettings(None)
+
           frame.pyslip.tiles.user_requests_antialiasing = work_params.anti_aliasing
           frame.settings_frame.panel.center_ctrl.SetValue(True)
           frame.settings_frame.panel.integ_ctrl.SetValue(True)
