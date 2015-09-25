@@ -6,58 +6,92 @@ from scitbx.array_family import flex
 from cctbx import sgtbx
 from libtbx import adopt_init_args
 from scitbx import lbfgsb
-import iotbx.ncs
 import math
 import scitbx.math
 from scitbx.math import matrix
 import sys
+from scitbx.math import superpose
+import mmtbx.alignment
 
 class groups(object):
 
   def __init__(self,
                pdb_hierarchy,
                crystal_symmetry,
-               n_bins, # XXX remove later
-               angular_difference_threshold_deg=10,
-               rad=None):
-    pdb_hierarchy = pdb_hierarchy.expand_to_p1(
+               n_bins,
+               angular_difference_threshold_deg=10.,
+               sequence_identity_threshold=90.):
+    h = pdb_hierarchy
+    unit_cell = crystal_symmetry.unit_cell()
+    # remove altlocs and water and expand to P1
+    s_str = "altloc ' ' and not water"
+    h = h.select(h.atom_selection_cache().selection(s_str)).expand_to_p1(
       crystal_symmetry=crystal_symmetry)
-    pdb_hierarchy.atoms().reset_i_seq()
-    sites_cart = pdb_hierarchy.atoms().extract_xyz()
-    ncs_inp = iotbx.ncs.input(hierarchy=pdb_hierarchy,
-        exclude_selection="water or element H or element D")
-    ncs_groups = ncs_inp.get_ncs_restraints_group_list()
-    self.rta = []
-    for g in ncs_groups:
-      for c in g.copies:
-        angle = c.r.rotation_angle()
-        r = c.r
-        t = crystal_symmetry.unit_cell().fractionalize(c.t)
-        if(angle < angular_difference_threshold_deg):
-          t_new = []
-          for t_ in t:
-            t_new.append(math.modf(t_)[0]) # same as t_-int(t_)
-          # radius
-          if(rad is None):
-            sites_cart_sel = sites_cart.select(c.iselection)
-            radius = 0
-            for sc in sites_cart_sel - sites_cart_sel.mean():
-              x,y,z = sc
-              radius += math.sqrt(x**2+y**2+z**2)
-            radius = radius/sites_cart_sel.size()*4./3.
-          else:
-            radius = rad
-          #
-          self.rta.append([c.r, t_new, angle, radius])
+    chains = list(h.chains())
+    result = []
+    # double loop over chains to find matching pairs related by pure translation
+    for i, c1 in enumerate(chains):
+      if([c1.is_protein(), c1.is_na()].count(True)==0): continue
+      r1 = list(c1.residues())
+      c1_seq = "".join(c1.as_sequence())
+      for c2 in chains[i+1:]:
+        r2 = list(c2.residues())
+        c2_seq = "".join(c2.as_sequence())
+        sites_cart_1, sites_cart_2 = None,None
+        sc_1_tmp = c1.atoms().extract_xyz()
+        sc_2_tmp = c2.atoms().extract_xyz()
+        # chains are identical
+        if(c1_seq==c2_seq and sc_1_tmp.size()==sc_2_tmp.size()):
+          sites_cart_1 = sc_1_tmp
+          sites_cart_2 = sc_2_tmp
+        # chains are not identical, do alignement
+        else:
+          align_obj = mmtbx.alignment.align(seq_a = c1_seq, seq_b = c2_seq)
+          alignment = align_obj.extract_alignment()
+          matches = alignment.matches()
+          equal = matches.count("|")
+          total = len(alignment.a) - alignment.a.count("-")
+          p_identity = 100.*equal/max(1,total)
+          if(p_identity>sequence_identity_threshold):
+            sites_cart_1 = flex.vec3_double()
+            sites_cart_2 = flex.vec3_double()
+            for i1, i2 in zip(alignment.i_seqs_a, alignment.i_seqs_b):
+              if(i1 is not None and i2 is not None):
+                r1i, r2i = r1[i1], r2[i2]
+                assert r1i.resname==r2i.resname
+                for a1 in r1i.atoms():
+                  for a2 in r2i.atoms():
+                    if(a1.name == a2.name):
+                      sites_cart_1.append(a1.xyz)
+                      sites_cart_2.append(a2.xyz)
+                      break
+        # superpose two sequence-aligned chains
+        if([sites_cart_1,sites_cart_2].count(None)==0):
+          lsq_fit_obj = superpose.least_squares_fit(
+            reference_sites = sites_cart_1,
+            other_sites     = sites_cart_2)
+          angle = lsq_fit_obj.r.rotation_angle()
+          if(angle < 10):
+            t_frac = unit_cell.fractionalize((sites_cart_1-sites_cart_2).mean())
+            t_frac = [math.modf(t)[0] for t in t_frac] # put into [-1,1]
+            radius = flex.sum(flex.sqrt((sites_cart_1-
+              sites_cart_1.mean()).dot()))/sites_cart_1.size()*4./3.
+            result.append([lsq_fit_obj.r, t_frac, angle, radius])
+            # show tNCS group
+            fmt="chains %s <> %s angle: %4.2f trans.vect.: (%s)"
+            t = ",".join([("%6.3f"%t_).strip() for t_ in t_frac]).strip()
+            print fmt%(c1.id, c2.id, angle, t)
+    # compose filal tNCS pairs object
     self.ncs_pairs = []
-    for i, it in enumerate(self.rta):
-      r,t,a, rad = it
+    fs=2./(1+math.sqrt(1+8*len(result)))
+    for _ in result:
+      r, t, angle, rad = _
       ncs_pair = ext.pair(
         r = r,
         t = t,
         radius=rad,
         radius_estimate=rad,
-        fracscat=1./(2*len(self.rta)),
+        fracscat=fs,
         rho_mn=flex.double(n_bins,0.98))
       self.ncs_pairs.append(ncs_pair)
 

@@ -1817,10 +1817,11 @@ def exercise_00(reflections_per_bin=150):
     crystal_symmetry = f_obs.crystal_symmetry(),
     n_bins           = n_bins).ncs_pairs
   #
-  r1,r2,r3 = 3,6,9
+  r1,r2,r3,r4 = 3,6,9,7
   ncs_pairs[0].set_radius(r1)
   ncs_pairs[1].set_radius(r2)
   ncs_pairs[2].set_radius(r3)
+  ncs_pairs[3].set_radius(r4)
   #
   pot = tncs.potential(f_obs = f_obs, ncs_pairs = ncs_pairs,
       reflections_per_bin = reflections_per_bin)
@@ -1832,9 +1833,10 @@ def exercise_00(reflections_per_bin=150):
   eps = 1.e-3
   #
   g_fd = []
-  for x in [[(r1+eps,r2    ,r3    ),(r1-eps,r2    ,r3    )],
-            [(r1    ,r2+eps,r3    ),(r1    ,r2-eps,r3    )],
-            [(r1    ,r2    ,r3+eps),(r1    ,r2    ,r3-eps)]]:
+  for x in [[(r1+eps,r2    ,r3    ,r4    ),(r1-eps,r2    ,r3    ,r4    )],
+            [(r1    ,r2+eps,r3    ,r4    ),(r1    ,r2-eps,r3    ,r4    )],
+            [(r1    ,r2    ,r3+eps,r4    ),(r1    ,r2    ,r3-eps,r4    )],
+            [(r1    ,r2    ,r3    ,r4+eps),(r1    ,r2    ,r3    ,r4-eps)]]:
     xp, xm = x
     #
     pot.update(x = flex.double(xp))
@@ -1898,7 +1900,7 @@ def exercise_01(reflections_per_bin=5000):
   for g1,g2 in zip(g_exact, g_fd):
     print "exact: %10.6f fd: %10.6f"%(g1,g2)
 
-def exercise_02(reflections_per_bin=150):
+def exercise_02(reflections_per_bin=1000):
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
   pdb_inp.write_pdb_file(file_name="model.pdb")
   xray_structure = pdb_inp.xray_structure_simple()
@@ -1919,5 +1921,5 @@ def exercise_02(reflections_per_bin=150):
 
 if (__name__ == "__main__"):
   exercise_00()
-  exercise_01()
-  exercise_02()
+  #exercise_01()
+  #exercise_02()
