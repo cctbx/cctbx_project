@@ -139,6 +139,9 @@ restraints_library_str = """
     rdl = False
       .type = bool
       .style = hidden
+    hpdl = False
+      .type = bool
+      .style = hidden
   }
 """
 master_params_str = """\
@@ -4756,7 +4759,6 @@ class build_all_chain_proxies(linking_mixins):
       update_restraints(
         self.pdb_hierarchy,
         result,
-        #current_geometry=model.xray_structure,
         cdl_proxies=cdl_proxies,
         log=log,
         verbose=True,
@@ -4766,6 +4768,9 @@ class build_all_chain_proxies(linking_mixins):
       print >> log, """\
   Conformation dependent library (CDL) restraints added in %0.1f %sseconds
   """ % utils.greek_time(cdl_time)
+    #
+    # need autodetect code
+    #
     if getattr(self.params.restraints_library, "omega_cdl", False):
       from mmtbx.conformation_dependent_library.omega import setup_restraints
       from mmtbx.conformation_dependent_library.omega import update_restraints
@@ -4775,7 +4780,6 @@ class build_all_chain_proxies(linking_mixins):
       update_restraints(
         self.pdb_hierarchy,
         result,
-        #current_geometry=model.xray_structure,
         cdl_proxies=cdl_proxies,
         log=log,
         verbose=True,
@@ -4803,6 +4807,20 @@ class build_all_chain_proxies(linking_mixins):
       print >> log, """\
   Rotamer dependent library (RDL) restraints added in %0.1f %sseconds
   """ % utils.greek_time(rdl_time)
+    if getattr(self.params.restraints_library, "hpdl", False):
+      from mmtbx.conformation_dependent_library import histidines
+      from libtbx import utils
+      t0=time.time()
+      histidines.update_restraints(
+        self.pdb_hierarchy,
+        result,
+        log=log,
+        verbose=True,
+        )
+      hpr_time = time.time()-t0
+      print >> log, """\
+  Histidine protonation dependent restraints added in %0.1f %sseconds
+  """ % utils.greek_time(hpr_time)
     return result
 
   def extract_xray_structure(self, unknown_scattering_type_substitute = "?"):

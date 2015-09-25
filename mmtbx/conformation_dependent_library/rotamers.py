@@ -1,10 +1,9 @@
-
 from __future__ import division
 import sys
 import time
 
+from libtbx.utils import Sorry
 from mmtbx.conformation_dependent_library.rdl_database import rdl_database
-
 from mmtbx.validation import rotalyze
 
 def get_rotamer_data(atom_group,
@@ -163,10 +162,12 @@ def update_restraints(hierarchy,
                       rdl_proxies=None,
                       esd_factor=1.,
                       exclude_backbone=False,
+                      assert_rotamer_found=False,
                       log=None,
                       verbose=False,
                       data_version="8000",
                       ):
+  assert not exclude_backbone
   loud=True and False
   if loud:
     verbose=1
@@ -281,6 +282,11 @@ def update_restraints(hierarchy,
               )
           if loud: print 'exclude_backbone',exclude_backbone
           if rotamer_name in ["OUTLIER"]: continue
+          if rotamer_name not in rdl_database[atom_group.resname]:
+            if assert_rotamer_found:
+              raise Sorry("rotamer %s not found in db" % rotamer_name)
+            else:
+              continue
           if loud: print 'not outlier'
           if rotamer_name not in rdl_database[atom_group.resname]:
             if loud: print "rotamer_name %s not in RDL db" % rotamer_name
