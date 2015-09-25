@@ -467,7 +467,7 @@ def get_program(st):
               "NUCLSQ", "MOPRO", "MOLLY", "PROFFT", "TNT", "CORELS", "GROMOS"
               "XTALVIEW", "RESTRAIN", "GPRLSA", "ARP", "CNX", "EREF",
               "NMREF", "GSAS", "BUSTER","SOLVE", "CCP4", "NUCLIN", "MAIN",
-              "PHENIX", "PHENIX.REFINE", "FFX"]
+              "PHENIX", "PHENIX.REFINE", "FFX","NCNS"]
   diamond = "DIAMOND"
   if(st[0:6] == "REMARK"):
     st_split = st.split()
