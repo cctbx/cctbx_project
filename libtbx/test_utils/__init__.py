@@ -519,7 +519,7 @@ def assert_lines_in_file(file_name, lines,
   if remove_newline:
     f_lines = f_lines.replace(os.linesep,"")
     filtered_lines = filtered_lines.replace(os.linesep,"")
-  assert f_lines.find(filtered_lines) > 0, \
+  assert f_lines.find(filtered_lines) >= 0, \
       "Lines:\n %s\n are not in file %s" % (lines, file_name)
 
 class RunCommandError(RuntimeError): pass
