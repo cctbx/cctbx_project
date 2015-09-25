@@ -98,6 +98,7 @@ def run(filename):
   pdb_hierarchy.reset_i_seq_if_necessary()
   rdl.update_restraints(pdb_hierarchy,
                         geometry_restraints_manager,
+                        assert_rotamer_found=True,
                         verbose=True,
     )
   print "OK"
