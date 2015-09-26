@@ -384,7 +384,7 @@ class Test_ncs_utils(unittest.TestCase):
     xrs = self.pdb_obj.xray_structure_simple()
     nrg = self.ncs_restraints_group_list
 
-    shifts = nu.get_ncs_gorups_centers(
+    shifts = nu.get_ncs_groups_centers(
       xray_structure = xrs,
       ncs_restraints_group_list=nrg)
 
