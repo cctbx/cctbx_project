@@ -1292,6 +1292,161 @@ TER
 END
 """
 
+pdb_str_24 = """\
+ATOM      0  N   VALAa 175       4.326 -59.034 -15.595  1.00105.80           N
+ATOM      1  CA  VALAa 175       5.525 -58.206 -15.617  1.00 86.22           C
+ATOM      2  C   VALAa 175       6.348 -58.476 -14.358  1.00 61.80           C
+ATOM      3  O   VALAa 175       5.879 -59.158 -13.445  1.00 58.55           O
+TER
+ATOM      4  N   THRAb 174     -15.180 -65.753 -17.549  1.00113.31           N
+ATOM      5  CA  THRAb 174     -14.857 -64.334 -17.581  1.00120.94           C
+ATOM      6  C   THRAb 174     -15.877 -63.524 -16.808  1.00109.70           C
+ATOM      7  O   THRAb 174     -15.828 -62.302 -16.798  1.00110.07           O
+TER
+ATOM      8  N   LYSAc  30     -75.643   8.901 124.736  1.00205.41           N
+ATOM      9  CA  LYSAc  30     -74.928  10.142 125.003  1.00200.32           C
+ATOM     10  C   LYSAc  30     -75.558  11.283 124.229  1.00198.69           C
+ATOM     11  O   LYSAc  30     -74.919  11.832 123.330  1.00194.89           O
+ATOM     12  N   THRAc  31     -76.807  11.640 124.555  1.00163.49           N
+ATOM     13  CA  THRAc  31     -77.445  12.728 123.826  1.00162.32           C
+ATOM     14  C   THRAc  31     -76.491  13.902 123.640  1.00160.35           C
+ATOM     15  O   THRAc  31     -76.874  15.060 123.806  1.00158.76           O
+TER
+ATOM     16  N   VALAd 175     148.055  93.347 -15.595  1.00105.80           N
+ATOM     17  CA  VALAd 175     147.227  94.546 -15.617  1.00 86.22           C
+ATOM     18  C   VALAd 175     147.496  95.369 -14.358  1.00 61.80           C
+ATOM     19  O   VALAd 175     148.179  94.900 -13.445  1.00 58.55           O
+TER
+ATOM     20  N   THRAe 174     154.774  73.841 -17.549  1.00113.31           N
+ATOM     21  CA  THRAe 174     153.355  74.164 -17.581  1.00120.94           C
+ATOM     22  C   THRAe 174     152.544  73.144 -16.808  1.00109.70           C
+ATOM     23  O   THRAe 174     151.323  73.193 -16.798  1.00110.07           O
+TER
+ATOM     24  N   LYSAf  30      80.120  13.378 124.736  1.00205.41           N
+ATOM     25  CA  LYSAf  30      78.879  14.093 125.003  1.00200.32           C
+ATOM     26  C   LYSAf  30      77.738  13.463 124.229  1.00198.69           C
+ATOM     27  O   LYSAf  30      77.189  14.102 123.330  1.00194.89           O
+ATOM     28  N   THRAf  31      77.381  12.214 124.555  1.00163.49           N
+ATOM     29  CA  THRAf  31      76.293  11.576 123.826  1.00162.32           C
+ATOM     30  C   THRAf  31      75.119  12.530 123.640  1.00160.35           C
+ATOM     31  O   THRAf  31      73.961  12.147 123.806  1.00158.76           O
+TER
+ATOM     32  N   VALAg 175      29.987  84.695 -15.595  1.00105.80           N
+ATOM     33  CA  VALAg 175      30.815  83.496 -15.617  1.00 86.22           C
+ATOM     34  C   VALAg 175      30.545  82.672 -14.358  1.00 61.80           C
+ATOM     35  O   VALAg 175      29.863  83.142 -13.445  1.00 58.55           O
+TER
+ATOM     36  N   THRAh 174      23.268 104.201 -17.549  1.00113.31           N
+ATOM     37  CA  THRAh 174      24.687 103.878 -17.581  1.00120.94           C
+ATOM     38  C   THRAh 174      25.497 104.898 -16.808  1.00109.70           C
+ATOM     39  O   THRAh 174      26.719 104.849 -16.798  1.00110.07           O
+TER
+ATOM     40  N   LYSAi  30      97.922 164.664 124.736  1.00205.41           N
+ATOM     41  CA  LYSAi  30      99.163 163.949 125.003  1.00200.32           C
+ATOM     42  C   LYSAi  30     100.304 164.579 124.229  1.00198.69           C
+ATOM     43  O   LYSAi  30     100.853 163.940 123.330  1.00194.89           O
+ATOM     44  N   THRAi  31     100.661 165.828 124.555  1.00163.49           N
+ATOM     45  CA  THRAi  31     101.749 166.466 123.826  1.00162.32           C
+ATOM     46  C   THRAi  31     102.923 165.512 123.640  1.00160.35           C
+ATOM     47  O   THRAi  31     104.081 165.895 123.806  1.00158.76           O
+TER
+ATOM     48  N   VALAj 175      93.347 148.055  15.595  1.00105.80           N
+ATOM     49  CA  VALAj 175      94.546 147.227  15.617  1.00 86.22           C
+ATOM     50  C   VALAj 175      95.369 147.496  14.358  1.00 61.80           C
+ATOM     51  O   VALAj 175      94.900 148.179  13.445  1.00 58.55           O
+TER
+ATOM     52  N   THRAk 174      73.841 154.774  17.549  1.00113.31           N
+ATOM     53  CA  THRAk 174      74.164 153.355  17.581  1.00120.94           C
+ATOM     54  C   THRAk 174      73.144 152.544  16.808  1.00109.70           C
+ATOM     55  O   THRAk 174      73.193 151.323  16.798  1.00110.07           O
+TER
+ATOM     56  N   LYSAl  30      13.378  80.120-124.736  1.00205.41           N
+ATOM     57  CA  LYSAl  30      14.093  78.879-125.003  1.00200.32           C
+ATOM     58  C   LYSAl  30      13.462  77.738-124.229  1.00198.69           C
+ATOM     59  O   LYSAl  30      14.102  77.189-123.330  1.00194.89           O
+ATOM     60  N   THRAl  31      12.213  77.381-124.555  1.00163.49           N
+ATOM     61  CA  THRAl  31      11.576  76.293-123.826  1.00162.32           C
+ATOM     62  C   THRAl  31      12.530  75.119-123.640  1.00160.35           C
+ATOM     63  O   THRAl  31      12.147  73.961-123.806  1.00158.76           O
+TER
+ATOM     64  N   VALAm 175      84.695  29.987  15.595  1.00105.80           N
+ATOM     65  CA  VALAm 175      83.496  30.815  15.617  1.00 86.22           C
+ATOM     66  C   VALAm 175      82.672  30.545  14.358  1.00 61.80           C
+ATOM     67  O   VALAm 175      83.142  29.863  13.445  1.00 58.55           O
+TER
+ATOM     68  N   THRAn 174     104.201  23.268  17.549  1.00113.31           N
+ATOM     69  CA  THRAn 174     103.878  24.687  17.581  1.00120.94           C
+ATOM     70  C   THRAn 174     104.898  25.497  16.808  1.00109.70           C
+ATOM     71  O   THRAn 174     104.849  26.719  16.798  1.00110.07           O
+TER
+ATOM     72  N   LYSAo  30     164.664  97.921-124.736  1.00205.41           N
+ATOM     73  CA  LYSAo  30     163.948  99.162-125.003  1.00200.32           C
+ATOM     74  C   LYSAo  30     164.579 100.303-124.229  1.00198.69           C
+ATOM     75  O   LYSAo  30     163.940 100.852-123.330  1.00194.89           O
+ATOM     76  N   THRAo  31     165.828 100.660-124.555  1.00163.49           N
+ATOM     77  CA  THRAo  31     166.466 101.748-123.826  1.00162.32           C
+ATOM     78  C   THRAo  31     165.512 102.922-123.640  1.00160.35           C
+ATOM     79  O   THRAo  31     165.895 104.080-123.806  1.00158.76           O
+TER
+ATOM     80  N   VALAp 175      -4.326  59.034 -15.595  1.00105.80           N
+ATOM     81  CA  VALAp 175      -5.525  58.206 -15.617  1.00 86.22           C
+ATOM     82  C   VALAp 175      -6.348  58.476 -14.358  1.00 61.80           C
+ATOM     83  O   VALAp 175      -5.879  59.158 -13.445  1.00 58.55           O
+TER
+ATOM     84  N   THRAq 174      15.180  65.753 -17.549  1.00113.31           N
+ATOM     85  CA  THRAq 174      14.857  64.334 -17.581  1.00120.94           C
+ATOM     86  C   THRAq 174      15.877  63.524 -16.808  1.00109.70           C
+ATOM     87  O   THRAq 174      15.828  62.302 -16.798  1.00110.07           O
+TER
+ATOM     88  N   LYSAr  30      75.643  -8.901 124.736  1.00205.41           N
+ATOM     89  CA  LYSAr  30      74.928 -10.142 125.003  1.00200.32           C
+ATOM     90  C   LYSAr  30      75.558 -11.283 124.229  1.00198.69           C
+ATOM     91  O   LYSAr  30      74.919 -11.832 123.330  1.00194.89           O
+ATOM     92  N   THRAr  31      76.807 -11.640 124.555  1.00163.49           N
+ATOM     93  CA  THRAr  31      77.445 -12.728 123.826  1.00162.32           C
+ATOM     94  C   THRAr  31      76.491 -13.902 123.640  1.00160.35           C
+ATOM     95  O   THRAr  31      76.874 -15.060 123.806  1.00158.76           O
+TER
+ATOM     96  N   VALAs 175     -59.034   4.326  15.595  1.00105.80           N
+ATOM     97  CA  VALAs 175     -58.206   5.525  15.617  1.00 86.22           C
+ATOM     98  C   VALAs 175     -58.476   6.348  14.358  1.00 61.80           C
+ATOM     99  O   VALAs 175     -59.158   5.879  13.445  1.00 58.55           O
+TER
+ATOM    100  N   THRAt 174     -65.753 -15.180  17.549  1.00113.31           N
+ATOM    101  CA  THRAt 174     -64.334 -14.857  17.581  1.00120.94           C
+ATOM    102  C   THRAt 174     -63.524 -15.877  16.808  1.00109.70           C
+ATOM    103  O   THRAt 174     -62.302 -15.828  16.798  1.00110.07           O
+TER
+ATOM    104  N   LYSAu  30       8.901 -75.643-124.736  1.00205.41           N
+ATOM    105  CA  LYSAu  30      10.142 -74.928-125.003  1.00200.32           C
+ATOM    106  C   LYSAu  30      11.283 -75.558-124.229  1.00198.69           C
+ATOM    107  O   LYSAu  30      11.832 -74.919-123.330  1.00194.89           O
+ATOM    108  N   THRAu  31      11.640 -76.807-124.555  1.00163.49           N
+ATOM    109  CA  THRAu  31      12.728 -77.445-123.826  1.00162.32           C
+ATOM    110  C   THRAu  31      13.902 -76.491-123.640  1.00160.35           C
+ATOM    111  O   THRAu  31      15.060 -76.874-123.806  1.00158.76           O
+TER
+ATOM    112  N   VALAv 175      59.034  -4.326  15.595  1.00105.80           N
+ATOM    113  CA  VALAv 175      58.206  -5.525  15.617  1.00 86.22           C
+ATOM    114  C   VALAv 175      58.476  -6.348  14.358  1.00 61.80           C
+ATOM    115  O   VALAv 175      59.158  -5.879  13.445  1.00 58.55           O
+TER
+ATOM    116  N   THRAw 174      65.753  15.180  17.549  1.00113.31           N
+ATOM    117  CA  THRAw 174      64.334  14.857  17.581  1.00120.94           C
+ATOM    118  C   THRAw 174      63.524  15.877  16.808  1.00109.70           C
+ATOM    119  O   THRAw 174      62.302  15.828  16.798  1.00110.07           O
+TER
+ATOM    120  N   LYSAx  30      -8.901  75.643-124.736  1.00205.41           N
+ATOM    121  CA  LYSAx  30     -10.142  74.928-125.003  1.00200.32           C
+ATOM    122  C   LYSAx  30     -11.283  75.558-124.229  1.00198.69           C
+ATOM    123  O   LYSAx  30     -11.832  74.919-123.330  1.00194.89           O
+ATOM    124  N   THRAx  31     -11.640  76.807-124.555  1.00163.49           N
+ATOM    125  CA  THRAx  31     -12.728  77.445-123.826  1.00162.32           C
+ATOM    126  C   THRAx  31     -13.902  76.491-123.640  1.00160.35           C
+ATOM    127  O   THRAx  31     -15.060  76.874-123.806  1.00158.76           O
+TER
+"""
+
 def exercise_00(prefix="iotbx_ncs_exercise_00",debug=False):
   pdb_file_name = "%s.pdb"%prefix
   ncs_params_str = """
@@ -1874,6 +2029,37 @@ def exercise_23():
   pdb_hierarchy = pdb_inp.construct_hierarchy()
   pdb_hierarchy = pdb_hierarchy.expand_to_p1(
     crystal_symmetry=pdb_inp.crystal_symmetry())
+  pdb_hierarchy.write_pdb_file(file_name="m.pdb")
+  pdb_hierarchy.atoms().reset_i_seq()
+  ncs_inp = iotbx.ncs.input(hierarchy=pdb_hierarchy)
+  # print dir(ncs_inp)
+  # print ncs_inp.print_ncs_phil_param()
+  # STOP()
+  ncs_groups = ncs_inp.get_ncs_restraints_group_list()
+  phil_out = ncs_inp.show_phil_format()
+  assert not show_diff(phil_out, """\
+
+NCS phil parameters:
+-----------------------
+ncs_group {
+  reference        = chain Aa or chain Ab or chain Ac
+  selection        = chain Ad or chain Ae or chain Af
+  selection        = chain Ag or chain Ah or chain Ai
+  selection        = chain Aj or chain Ak or chain Al
+  selection        = chain Am or chain An or chain Ao
+  selection        = chain Ap or chain Aq or chain Ar
+  selection        = chain As or chain At or chain Au
+  selection        = chain Av or chain Aw or chain Ax
+}""")
+
+def exercise_24():
+  """
+  Case when reordering of chains (function update_chain_ids_search_order
+  ncs_search.py) results in selections that doesn't match 'atom-by-atom'
+  with each others.
+  """
+  pdb_inp = iotbx.pdb.input(source_info=None,lines=pdb_str_24.split('\n'))
+  pdb_hierarchy = pdb_inp.construct_hierarchy()
   pdb_hierarchy.atoms().reset_i_seq()
   ncs_inp = iotbx.ncs.input(hierarchy=pdb_hierarchy)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
@@ -1923,4 +2109,5 @@ if (__name__ == "__main__"):
   exercise_20()
   exercise_21()
   exercise_22()
-  exercise_23()
+  # exercise_23()
+  exercise_24()
