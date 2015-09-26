@@ -130,7 +130,7 @@ class filter_intensities_by_sigma (object) :
     sigma_filtering = get_filtering_convention(array, sigma_filtering)
     assert (sigma_filtering in ["scala","scalepack","xds", None])
     self.n_rejected_before_merge = self.n_rejected_after_merge = 0
-    merge = array.merge_equivalents(use_internal_variance=False)
+    merge = array.merge_equivalents()
     array_merged = merge.array()
     reject_sel = None
     self.observed_criterion_sigma_I = None
@@ -141,14 +141,14 @@ class filter_intensities_by_sigma (object) :
       bad_data = array_merged.select(reject_sel)
       array = array.delete_indices(other=bad_data)
       # and merge again...
-      merge = array.merge_equivalents(use_internal_variance=False)
+      merge = array.merge_equivalents()
       array_merged = merge.array()
     elif (sigma_filtering == "scalepack") :
       self.observed_criterion_sigma_I = -3
       reject_sel = (array.data() < -3* array.sigmas())
       self.n_rejected_before_merge = reject_sel.count(True)
       array = array.select(~reject_sel)
-      merge = array.merge_equivalents(use_internal_variance=False)
+      merge = array.merge_equivalents()
       array_merged = merge.array()
     elif (sigma_filtering == "scala") or (sigma_filtering is None) :
       pass
@@ -408,7 +408,7 @@ class dataset_statistics (object) :
       overall_d_max_min = d_max_cutoff, d_min_cutoff
     else :
       i_obs.setup_binner(n_bins=n_bins)
-    merge = i_obs.merge_equivalents(use_internal_variance=False)
+    merge = i_obs.merge_equivalents()
     self.overall = merging_stats(i_obs,
       d_max_min=overall_d_max_min,
       model_arrays=model_arrays,

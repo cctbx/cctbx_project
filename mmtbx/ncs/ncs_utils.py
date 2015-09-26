@@ -691,7 +691,7 @@ def shift_translation_back_to_place(shifts, ncs_restraints_group_list):
     new_list = ncs_restraints_group_list
   return new_list
 
-def get_ncs_gorups_centers(xray_structure, ncs_restraints_group_list):
+def get_ncs_groups_centers(xray_structure, ncs_restraints_group_list):
   """
   calculate the center of coordinate for the master of each ncs copy
 

@@ -385,7 +385,7 @@ class lbfgs(object):
       self.x = xray_structure_one_ncs_copy.extract_u_iso_or_u_equiv()
     elif self.refine_transformations:
       # move refinable parameters to coordinate center
-      self.ncs_groups_coordinates_centers = nu.get_ncs_gorups_centers(
+      self.ncs_groups_coordinates_centers = nu.get_ncs_groups_centers(
         xray_structure=self.xray_structure,
         ncs_restraints_group_list=self.ncs_restraints_group_list)
       self.ncs_restraints_group_list = nu.shift_translation_to_center(
