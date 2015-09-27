@@ -1531,6 +1531,7 @@ libtbx/command_line/sh.sh -text
 libtbx/command_line/show_environ_usage.py svneol=native#text/x-python
 libtbx/command_line/show_full_command_path.py -text
 libtbx/command_line/show_include_paths.py svneol=native#text/x-python
+libtbx/command_line/show_module_dependencies.py -text
 libtbx/command_line/show_number_of_processors.py svneol=native#text/x-python
 libtbx/command_line/show_numpy_version.py svneol=native#text/x-python
 libtbx/command_line/show_python_sys_executable.py svneol=native#text/x-python
