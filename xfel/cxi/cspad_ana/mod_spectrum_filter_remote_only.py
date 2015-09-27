@@ -147,19 +147,16 @@ class mod_spectrum_filter_remote_only(object):
         weighted_sum_peak_two = np.sum(weighted_peak_two_positions)
         weighted_peak_two_center_position = weighted_sum_peak_two/np.sum(spectrum[self.peak_two_range_min:self.peak_two_range_max])
 
-
         # normalized integrated regions between the peaks
-        int_left_region = np.sum(spectrum[:(weighted_peak_one_center_position-len(spectrum[self.peak_one_range_min:self.peak_one_range_max]))])
+        #int_left_region = np.sum(spectrum[weighted_peak_one_center_position+len(spectrum[self.peak_one_range_min:self.peak_one_range_max])/2:(weighted_peak_two_center_position-len(spectrum[self.peak_two_range_min:self.peak_two_range_max])/2)])
+        int_left_region = np.sum(spectrum[:weighted_peak_two_center_position/2])
 
-        int_left_region_norm = np.sum(spectrum[:(weighted_peak_one_center_position-len(spectrum[self.peak_one_range_min:self.peak_one_range_max]))])/len(spectrum[:(weighted_peak_one_center_position-len(spectrum[self.peak_one_range_min:self.peak_one_range_max]))])
+        #int_left_region_norm = np.sum(spectrum[weighted_peak_one_center_position+len(spectrum[self.peak_one_range_min:self.peak_one_range_max])/2:(weighted_peak_two_center_position-len(spectrum[self.peak_two_range_min:self.peak_two_range_max])/2)])/len(spectrum[weighted_peak_one_center_position+len(spectrum[self.peak_one_range_min:self.peak_one_range_max])/2:(weighted_peak_two_center_position-len(spectrum[self.peak_two_range_min:self.peak_two_range_max])/2)])
+        int_left_region_norm = np.sum(spectrum[:weighted_peak_two_center_position/2])/len(spectrum[:weighted_peak_two_center_position/2])
 
-        int_middle_region = np.sum(spectrum[(weighted_peak_one_center_position+len(spectrum[self.peak_one_range_min:self.peak_one_range_max])):(weighted_peak_two_center_position-len(spectrum[self.peak_two_range_min:self.peak_two_range_max]))])
+        int_right_region = np.sum(spectrum[self.peak_two_range_max:])
 
-        int_middle_region_norm = np.sum(spectrum[(weighted_peak_one_center_position+len(spectrum[self.peak_one_range_min:self.peak_one_range_max])):(weighted_peak_two_center_position-len(spectrum[self.peak_two_range_min:self.peak_two_range_max]))])/len(spectrum[(weighted_peak_one_center_position+len(spectrum[self.peak_one_range_min:self.peak_one_range_max])):(weighted_peak_two_center_position-len(spectrum[self.peak_two_range_min:self.peak_two_range_max]))])
-
-        int_right_region = np.sum(spectrum[(weighted_peak_two_center_position+len(spectrum[self.peak_two_range_min:self.peak_two_range_max])):])
-
-        int_right_region_norm = np.sum(spectrum[(weighted_peak_two_center_position+len(spectrum[self.peak_two_range_min:self.peak_two_range_max])):])/len(spectrum[(weighted_peak_two_center_position+len(spectrum[self.peak_two_range_min:self.peak_two_range_max])):])
+        int_right_region_norm = np.sum(spectrum[self.peak_two_range_max:])/len(spectrum[self.peak_two_range_max:])
 
         # normalized integrated peaks
         int_peak_one = np.sum(spectrum[(weighted_peak_one_center_position-len(spectrum[self.peak_one_range_min:self.peak_one_range_max])/2):(weighted_peak_one_center_position+len(spectrum[self.peak_one_range_min:self.peak_one_range_max])/2)])
@@ -170,64 +167,24 @@ class mod_spectrum_filter_remote_only(object):
 
         int_peak_two_norm = np.sum(spectrum[(weighted_peak_two_center_position-len(spectrum[self.peak_two_range_min:self.peak_two_range_max])/2):(weighted_peak_two_center_position+len(spectrum[self.peak_two_range_min:self.peak_two_range_max])/2)])/len(spectrum[(weighted_peak_two_center_position-len(spectrum[self.peak_two_range_min:self.peak_two_range_max])/2):(weighted_peak_two_center_position+len(spectrum[self.peak_two_range_min:self.peak_two_range_max])/2)])
 
-      else:
-        # convert eV range of iron edge (7112 eV) to pixels:
-        metal_edge_max=(self.forbidden_range_eV/2.)/0.059+738
-        metal_edge_min=(-self.forbidden_range_eV/2.)/0.059+738
-        int_metal_region = np.sum(spectrum[metal_edge_min:metal_edge_max])
-        #peak one region integrate:
-        int_peak_one=np.sum(spectrum[0:metal_edge_min])
-        int_peak_two=np.sum(spectrum[metal_edge_max:])
-      # now to do the filtering
       if not one_D:
-        if int_peak_one_norm/int_peak_two_norm < self.peak_ratio:
-          print "event(): too low"
+        if int_peak_one_norm/int_peak_two_norm > self.peak_ratio:
+          print "event(): inflection peak too high"
           evt.put(skip_event_flag(), "skip_event")
           return
-        if np.argmax(spectrum1)>(weighted_peak_one_center_position+(len(spectrum[self.peak_one_range_min:self.peak_one_range_max])/2)) or np.argmax(spectrum1)<(weighted_peak_one_center_position-(len(spectrum[self.peak_one_range_min:self.peak_one_range_max])/2)):
-          print "event(): out of range low energy peak"
-          evt.put(skip_event_flag(), "skip_event")
-          return
-        if (np.argmax(spectrum2)+len(spectrum1)) > (weighted_peak_two_center_position+(len(spectrum[self.peak_two_range_min:self.peak_two_range_max])/2)) or (np.argmax(spectrum2)+len(spectrum1)) < (weighted_peak_two_center_position-(len(spectrum[self.peak_two_range_min:self.peak_two_range_max])/2)):
-          print "event(): out of range high energy peak"
-          evt.put(skip_event_flag(), "skip_event")
-          return
-        if int_left_region_norm > self.normalized_peak_to_noise_ratio*int_peak_one_norm:
+        if int_left_region_norm > self.normalized_peak_to_noise_ratio*int_peak_two_norm:
           print "event(): noisy left of low energy peak"
-          evt.put(skip_event_flag(), "skip_event")
-          return
-        if int_middle_region_norm > self.normalized_peak_to_noise_ratio*int_peak_two_norm:
-          print "event(): noisy middle"
-          evt.put(skip_event_flag(), "skip_event")
-          return
-        if int_middle_region_norm > self.normalized_peak_to_noise_ratio*int_peak_one_norm:
-          print "event(): noisy middle"
           evt.put(skip_event_flag(), "skip_event")
           return
         if int_right_region_norm > self.normalized_peak_to_noise_ratio*int_peak_two_norm:
           print "event(): noisy right of high energy peak"
           evt.put(skip_event_flag(), "skip_event")
           return
-      else:
-      # filter for cxih8015
-      #iron edge at 738 pixels on FFE detetor
-        if int_metal_region>=0.10*int_peak_two:
-          print "event(): high intensity at metal edge"
-          evt.put(skip_event_flag(), "skip_event")
-          return
-        if int_metal_region>=0.10*int_peak_one:
-          print "event(): high intensity at metal edge"
-          evt.put(skip_event_flag(), "skip_event")
-          return
-        if min(int_peak_one,int_peak_two)/max(int_peak_one,int_peak_two) < self.peak_ratio:
-          print "event(): peak ratio too low"
-          evt.put(skip_event_flag(), "skip_event")
-          return
       #self.logger.info("TIMESTAMP %s accepted" %timestamp)
       self.naccepted += 1
       self.ntwo_color += 1
-      print "%d Two Color shots"  %self.ntwo_color
-      print "%s Two Color timestamp" %timestamp
+      print "%d Remote shot"  %self.ntwo_color
+      print "%s Remote timestamp" %timestamp
   def endjob(self, obj1, obj2=None):
     """
     @param evt Event object (psana only)
