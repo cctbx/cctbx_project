@@ -92,7 +92,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
     self.N_correction_vectors = len(correction_vectors_provisional)
     self.rmsd_px = math.sqrt(flex.mean(c_v_p_flex.dot(c_v_p_flex)))
     print "... %d provisional matches"%self.N_correction_vectors,
-    print "r.m.s.d. in pixels: %5.2f"%(self.rmsd_px)
+    print "r.m.s.d. in pixels: %6.3f"%(self.rmsd_px)
 
     if self.horizons_phil.integration.enable_residual_scatter:
       from matplotlib import pyplot as plt
@@ -334,6 +334,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
         predictor.for_reflection_table(Rcalc, crystal.get_A())
         self.predicted = Rcalc['xyzcal.mm']
         self.dials_spot_prediction = Rcalc
+        self.dials_model = experiments
 
       elif self.horizons_phil.integration.spot_prediction == "ucbp3":
         self.predicted = BPpredicted
