@@ -228,8 +228,11 @@ class installer(object):
     # is necessary.
 
     if not os.access(self.options.prefix, os.W_OK):
-      raise InstallerError("""
-  Installation directory not writeable":
+      if not os.path.exists(self.options.prefix):
+        os.makedirs(self.options.prefix)
+      else:
+        raise InstallerError("""
+  Installation directory not writeable:
     %s
   Please specify an alternative directory using the --prefix option."""
       %self.options.prefix)
