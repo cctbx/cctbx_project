@@ -22,6 +22,7 @@ class groups(object):
                angular_difference_threshold_deg=10.,
                sequence_identity_threshold=90.):
     h = pdb_hierarchy
+    original_chain_ids = [c.id for c in h.chains()]
     unit_cell = crystal_symmetry.unit_cell()
     # remove altlocs and water and expand to P1
     s_str = "altloc ' ' and not water"
@@ -32,6 +33,7 @@ class groups(object):
     # double loop over chains to find matching pairs related by pure translation
     for i, c1 in enumerate(chains):
       if([c1.is_protein(), c1.is_na()].count(True)==0): continue
+      if(not c1.id in original_chain_ids): continue
       r1 = list(c1.residues())
       c1_seq = "".join(c1.as_sequence())
       for c2 in chains[i+1:]:
