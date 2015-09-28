@@ -8,6 +8,7 @@ import subprocess
 import optparse
 #import getpass
 import shutil
+import socket as pysocket
 import tarfile
 import tempfile
 import time
@@ -122,11 +123,16 @@ class Downloader(object):
       except Exception, e:
         pass
 
+    localcopy = os.path.isfile(file)
+
     # Open connection to remote server
     try:
-      socket = urllib2.urlopen(url)
-    except urllib2.URLError, e:
-      if os.path.isfile(file):
+      if localcopy:
+        socket = urllib2.urlopen(url, None, 7)
+      else:
+        socket = urllib2.urlopen(url)
+    except (pysocket.timeout, urllib2.URLError), e:
+      if localcopy:
         # Download failed for some reason, but a valid local copy of
         # the file exists, so use that one instead.
         log.write("%s\n" % str(e))
