@@ -37,8 +37,6 @@ default_enable_cuda = False
 default_opt_resources = False
 default_enable_cxx11 = False
 
-optional_adaptbx_tbx = ["amber"]
-
 def is_64bit_architecture():
   # this appears to be most compatible (hat tip: James Stroud)
   # http://stackoverflow.com/questions/1405913/how-do-i-determine-if-my-python-shell-is-executing-in-32bit-or-64bit-mode-on-os
@@ -669,7 +667,6 @@ Wait for the command to finish, then try again.""" % vars())
 
   def find_dist_path(self, module_name, optional=False,
                      return_relocatable_path=False):
-    if module_name in optional_adaptbx_tbx: optional=True
     dist_path = self.command_line_redirections.get(module_name, None)
     if (dist_path is not None):
       return dist_path.self_or_abs_if(return_relocatable_path)
