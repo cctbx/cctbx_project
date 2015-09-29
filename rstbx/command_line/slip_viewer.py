@@ -54,8 +54,10 @@ def run(argv=None):
   app = wx.App(0)
   wx.SystemOptions.SetOptionInt("osx.openfiledialog.always-show-types", 1)
   frame = XrayFrame(None, -1, "X-ray image display", size=(800,720))
-  frame.OnShowSettings(None)
+  frame.Show()
 
+  # show settings panel
+  frame.OnShowSettings(None)
   frame.settings_frame.panel.center_ctrl.SetValue(
     work_params.beam_center)
   frame.settings_frame.panel.integ_ctrl.SetValue(
@@ -75,15 +77,11 @@ def run(argv=None):
     frame.metrology_matrices = metrology_as_transformation_matrices(
       metrology_phil.extract())
 
-  frame.Show()
   # Update initial settings with values from the command line.  Needs
   # to be done before image is loaded (but after the frame is
   # instantiated).
   frame.params = work_params
-  if (frame.pyslip is None): # check for OS X
-    frame.set_pyslip(frame.viewer)
-    frame.init_pyslip_presizer()
-    frame.Layout()
+  frame.init_pyslip()
   frame.pyslip.tiles.user_requests_antialiasing = work_params.anti_aliasing
   frame.pyslip.tiles.show_untrusted = frame.params.show_untrusted
 
