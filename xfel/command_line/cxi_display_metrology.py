@@ -71,39 +71,68 @@ if (__name__ == "__main__") :
       sensor_slow = x.shape[2]
       sensor_fast = x.shape[3]
       while True:
-        if len(root.get_list_of_children()) == 4:
+        if len(root.get_list_of_children()) == 4 or len(root.get_list_of_children()) == 32:
           break
         assert len(root.get_list_of_children()) == 1
         root = root.get_list_of_children()[0]
-      for quad_id, quad in enumerate(root.get_list_of_children()):
-        ax.arrow(0, 0, quad.x0/1000, quad.y0/1000, head_width=0.05, head_length=0.1, fc='k', ec='k')
-        for sensor_id, sensor in enumerate(quad.get_list_of_children()):
-          sensor_x, sensor_y, sensor_z = sensor.get_pixel_coords()
-          transformed_x, transformed_y, transformed_z = quad.transform_geo_coord_arrays(sensor_x, sensor_y, sensor_z)
+      if len(root.get_list_of_children()) == 4:
+        for quad_id, quad in enumerate(root.get_list_of_children()):
+          ax.arrow(0, 0, quad.x0/1000, quad.y0/1000, head_width=0.05, head_length=0.1, fc='k', ec='k')
+          for sensor_id, sensor in enumerate(quad.get_list_of_children()):
+            sensor_x, sensor_y, sensor_z = sensor.get_pixel_coords()
+            transformed_x, transformed_y, transformed_z = quad.transform_geo_coord_arrays(sensor_x, sensor_y, sensor_z)
 
-          arrow_start = matrix.col((quad.x0/1000, quad.y0/1000))
-          arrow_end = matrix.col((transformed_x[0,0]/1000, transformed_y[0,0]/1000))
-          dx, dy = arrow_end - arrow_start
-          ax.arrow(quad.x0/1000, quad.y0/1000, dx, dy, head_width=0.05, head_length=0.1, fc='k', ec='k')
+            arrow_start = matrix.col((quad.x0/1000, quad.y0/1000))
+            arrow_end = matrix.col((transformed_x[0,0]/1000, transformed_y[0,0]/1000))
+            dx, dy = arrow_end - arrow_start
+            ax.arrow(quad.x0/1000, quad.y0/1000, dx, dy, head_width=0.05, head_length=0.1, fc='k', ec='k')
 
-          p0 = col((x[quad_id,sensor_id,0,0]/1000,
-                    y[quad_id,sensor_id,0,0]/1000))
-          p1 = col((x[quad_id,sensor_id,sensor_slow-1,0]/1000,
-                    y[quad_id,sensor_id,sensor_slow-1,0]/1000))
-          p2 = col((x[quad_id,sensor_id,sensor_slow-1,sensor_fast-1]/1000,
-                    y[quad_id,sensor_id,sensor_slow-1,sensor_fast-1]/1000))
-          p3 = col((x[quad_id,sensor_id,0,sensor_fast-1]/1000,
-                    y[quad_id,sensor_id,0,sensor_fast-1]/1000))
+            p0 = col((x[quad_id,sensor_id,0,0]/1000,
+                      y[quad_id,sensor_id,0,0]/1000))
+            p1 = col((x[quad_id,sensor_id,sensor_slow-1,0]/1000,
+                      y[quad_id,sensor_id,sensor_slow-1,0]/1000))
+            p2 = col((x[quad_id,sensor_id,sensor_slow-1,sensor_fast-1]/1000,
+                      y[quad_id,sensor_id,sensor_slow-1,sensor_fast-1]/1000))
+            p3 = col((x[quad_id,sensor_id,0,sensor_fast-1]/1000,
+                      y[quad_id,sensor_id,0,sensor_fast-1]/1000))
 
-          v1 = p1-p0
-          v2 = p3-p0
-          vcen = ((v2/2) + (v1/2)) + p0
+            v1 = p1-p0
+            v2 = p3-p0
+            vcen = ((v2/2) + (v1/2)) + p0
 
-          ax.add_patch(Polygon((p0[0:2],p1[0:2],p2[0:2],p3[0:2]), closed=True, color='green', fill=False, hatch='/'))
-          ax.annotate("%d,%d"%(quad_id,sensor_id), vcen[0:2])
+            ax.add_patch(Polygon((p0[0:2],p1[0:2],p2[0:2],p3[0:2]), closed=True, color='green', fill=False, hatch='/'))
+            ax.annotate("%d,%d"%(quad_id,sensor_id), vcen[0:2])
+        ax.set_xlim((-100, 100))
+        ax.set_ylim((-100, 100))
+      else:
+        for quad_id in xrange(4):
+          for sensor_id, sensor in enumerate(root.get_list_of_children()[quad_id*8:(quad_id+1)*8]):
+            sensor_x, sensor_y, sensor_z = sensor.get_pixel_coords()
+            #transformed_x, transformed_y, transformed_z = quad.transform_geo_coord_arrays(sensor_x, sensor_y, sensor_z)
 
-      ax.set_xlim((-100, 100))
-      ax.set_ylim((-100, 100))
+            #arrow_start = matrix.col((quad.x0/1000, quad.y0/1000))
+            #arrow_end = matrix.col((transformed_x[0,0]/1000, transformed_y[0,0]/1000))
+            #dx, dy = arrow_end - arrow_start
+            #ax.arrow(quad.x0/1000, quad.y0/1000, dx, dy, head_width=0.05, head_length=0.1, fc='k', ec='k')
+
+            p0 = col((x[0,quad_id*8+sensor_id,0,0]/1000,
+                      y[0,quad_id*8+sensor_id,0,0]/1000))
+            p1 = col((x[0,quad_id*8+sensor_id,sensor_slow-1,0]/1000,
+                      y[0,quad_id*8+sensor_id,sensor_slow-1,0]/1000))
+            p2 = col((x[0,quad_id*8+sensor_id,sensor_slow-1,sensor_fast-1]/1000,
+                      y[0,quad_id*8+sensor_id,sensor_slow-1,sensor_fast-1]/1000))
+            p3 = col((x[0,quad_id*8+sensor_id,0,sensor_fast-1]/1000,
+                      y[0,quad_id*8+sensor_id,0,sensor_fast-1]/1000))
+
+            v1 = p1-p0
+            v2 = p3-p0
+            vcen = ((v2/2) + (v1/2)) + p0
+
+            ax.add_patch(Polygon((p0[0:2],p1[0:2],p2[0:2],p3[0:2]), closed=True, color='green', fill=False, hatch='/'))
+            ax.annotate("%d,%d"%(quad_id,sensor_id), vcen[0:2])
+
+          ax.set_xlim((0, 200))
+          ax.set_ylim((0, 200))
 
     else:
       img = reader(params.metrology)
