@@ -170,6 +170,7 @@ class IntegrateCharacters:
           app = wx.App(0)
           wx.SystemOptions.SetOptionInt("osx.openfiledialog.always-show-types", 1)
           frame = SlipXrayFrame(None, -1, "X-ray image display", size=(800,720))
+          frame.Show()
 
           # Update initial settings with values from the command line.  Needs
           # to be done before image is loaded (but after the frame is
@@ -177,12 +178,11 @@ class IntegrateCharacters:
           frame.inherited_params = integrate_worker.horizons_phil
           frame.params = work_params
 
-          if (frame.pyslip is None): # check for OS X
-            frame.set_pyslip(frame.viewer)
-            frame.init_pyslip_presizer()
-            frame.Layout()
+          if (frame.pyslip is None):
+            frame.init_pyslip()
           if (frame.settings_frame is None):
             frame.OnShowSettings(None)
+          frame.Layout()
 
           frame.pyslip.tiles.user_requests_antialiasing = work_params.anti_aliasing
           frame.settings_frame.panel.center_ctrl.SetValue(True)
@@ -194,7 +194,7 @@ class IntegrateCharacters:
 
           frame.user_callback = integrate_worker.slip_callback
           frame.load_image(self.files.filenames()[i])
-          frame.Show()
+
           app.MainLoop()
           del app
         except Exception:
