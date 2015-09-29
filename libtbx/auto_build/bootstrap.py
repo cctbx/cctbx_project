@@ -558,6 +558,8 @@ class Builder(object):
     self.python_base = self.opjoin(*['..', 'base', 'bin', 'python'])
     if 'win32'==sys.platform:
       self.python_base = self.opjoin(*[os.getcwd(), 'base', 'bin', 'python', 'python.exe'])
+      if not os.getenv("SVN_SSH"):
+        raise Exception('SVN_SSH environment variable should be something like "SVN_SSH=C:/Program Files (x86)/PuTTY/plink.exe"')
     self.with_python = with_python
     if self.with_python:
       self.python_base = with_python
