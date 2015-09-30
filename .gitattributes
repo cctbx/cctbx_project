@@ -2167,6 +2167,10 @@ mmtbx/regression/tls/tst_get_t_scheme.py -text
 mmtbx/regression/tls/tst_tls.py -text
 mmtbx/regression/tls/tst_tls_analysis.py -text
 mmtbx/regression/tls/tst_tls_refinement_fft.py -text
+mmtbx/regression/tncs/model_1.pdb -text
+mmtbx/regression/tncs/model_2.pdb -text
+mmtbx/regression/tncs/model_3.pdb -text
+mmtbx/regression/tncs/model_4.pdb -text
 mmtbx/regression/tncs/tst_epsfac_and_radius.py -text
 mmtbx/regression/tncs/tst_fd.py -text
 mmtbx/regression/tncs/tst_pair.py -text
