@@ -576,9 +576,11 @@ compute_normalized_deviations(boost::python::dict const& ISIGI, scaling_results:
 
     // compute meanIprime, which for each observation, is the mean of all other observations of this hkl
     for (std::size_t i = 0; i < n; i++) {
+      // tuple of scaled intensity I (obs/slope), Isigi (obs/sigma), slope
       tuple dataitem = extract<tuple>(data[i]);
-      // scaled intensities and sigmas
+      // scaled intensity
       intensities[i] = extract<double>(dataitem[0]);
+      // corrected sigma (original sigma/slope)
       sigmas[i] = intensities[i] / extract<double>(dataitem[1]);
       sumI += intensities[i];
     }
@@ -612,11 +614,11 @@ apply_sd_error_params(boost::python::dict const& ISIGI, const double sdfac, cons
 
     for (std::size_t i = 0; i < n; i++) {
       tuple dataitem = extract<tuple>(data[i]);
-      // scaled intensities and sigmas
+      // tuple of scaled intensity I (obs/slope), Isigi (obs/sigma), slope
       intensities[i] = extract<double>(dataitem[0]);
-      double sigma = extract<double>(dataitem[1]);
-      SCITBX_ASSERT(sigma != 0.0);
-      sigmas[i] = intensities[i] / sigma;
+      double isigi = extract<double>(dataitem[1]);
+      SCITBX_ASSERT(isigi != 0.0);
+      sigmas[i] = intensities[i] / isigi;
       scales[i] = extract<double>(dataitem[2]);
       sumI += intensities[i];
     }
@@ -627,12 +629,19 @@ apply_sd_error_params(boost::python::dict const& ISIGI, const double sdfac, cons
     for (std::size_t i = 0; i < n; i++) {
       // compute meanIprime, which for each observation, is the mean of all other observations of this hkl
       double meanIprime = (sumI-intensities[i]) / (n>1 ? (n-1) : 1);
+
+      // apply correction parameters
       double tmp = std::pow(sigmas[i],2) + sdb * meanIprime + std::pow(sdadd*meanIprime,2);
-      SCITBX_ASSERT(tmp >= 0);
+
+      // avoid rare negatives
+      double minimum = 0.1 * std::pow(sigmas[i],2);
+      if (tmp < minimum)
+        tmp = minimum;
+
       double sigma_corrected = sdfac * std::sqrt(tmp);
       SCITBX_ASSERT(sigma_corrected != 0.0);
 
-      tuple i_isigi = make_tuple(intensities[i],intensities[i]/sigma_corrected,scales[i]);
+      tuple i_isigi = make_tuple(intensities[i],intensities[i]*scales[i]/sigma_corrected,scales[i]);
 
       corrected_data.append(i_isigi);
     }
