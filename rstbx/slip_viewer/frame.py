@@ -741,7 +741,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
               pdf_canvas.drawPath(path, fill=filled)
 
           elif layer.type == self.pyslip.TypeText:
-            raise NotImplementedError(
+            print Warning(
               "PDF output of text layers not yet implemented")
 
         pdf_canvas.save()
