@@ -1024,6 +1024,41 @@ def all_in_plane(points, tolerance):
     if(d>tolerance): return False
   return True
 
+def __project_point_on_axis(axis_point_1,axis_point_2, point):
+  """
+  Slow version based on flex arrays
+  """
+  from scitbx.array_family import flex
+  a = flex.vec3_double([axis_point_1])
+  b = flex.vec3_double([axis_point_2])
+  p = flex.vec3_double([point])
+  ab = b-a
+  ap = p-a
+  proj = a + (ap.dot(ab)/ab.dot(ab))*ab
+  return proj
+
+def project_point_on_axis(axis_point_1,axis_point_2, point):
+  """
+  Project a 3D coordinate on a given arbitrary axis.
+
+  :param axis_point_1: tuple representing 3D coordinate at one end of the axis
+  :param axis_point_2: tuple representing 3D coordinate at other end of the axis
+  :param point: tuple representing 3D coordinate of starting point to rotate
+  :param deg: Python boolean (default=False), specifies whether the angle is
+    in degrees
+  :returns: Python tuple (len=3) of rotated point
+  """
+  ax, ay, az = axis_point_1
+  bx, by, bz = axis_point_2
+  px, py, pz = point
+  abx, aby, abz = (bx-ax, by-ay, bz-az)
+  apx, apy, apz = (px-ax, py-ay, pz-az)
+  ap_dot_ab = apx*abx+apy*aby+apz*abz
+  ab_dot_ab = abx*abx+aby*aby+abz*abz
+  brackets = ap_dot_ab/ab_dot_ab
+  proj = (ax+brackets*abx, ay+brackets*aby,az+brackets*abz)
+  return proj
+
 def rotate_point_around_axis(
       axis_point_1,
       axis_point_2,
@@ -1823,6 +1858,13 @@ def exercise_1():
       assert approx_equal(
         rotate_point_around_axis(**args),
         __rotate_point_around_axis(**args))
+    args = group_args(
+      axis_point_1=sites[0],
+      axis_point_2=sites[1],
+      point=sites[2]).__dict__
+    assert approx_equal(
+      project_point_on_axis(**args),
+      list(__project_point_on_axis(**args))[0])
   # exercise plane_equation
   point_1=col((1,2,3))
   point_2=col((10,20,30))
