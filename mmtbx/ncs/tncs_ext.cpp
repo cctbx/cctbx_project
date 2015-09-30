@@ -48,6 +48,7 @@ namespace {
         .def("target", &w_t::target_gradient)
         .def("gradient_rhoMN", &w_t::gradient_rhoMN)
         .def("gradient_radius", &w_t::gradient_radius)
+        .def("update_pairs", &w_t::update_pairs)
       ;
     }
   };
