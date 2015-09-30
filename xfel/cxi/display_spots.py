@@ -219,6 +219,10 @@ def run_one_index(path, *arguments, **kwargs):
   info = run_one_index_core(horizons_phil)
   info.Files = info.organizer.Files
   info.phil_params = info.horizons_phil
+
+  # The spotfinder view within cxi.index is an anachronism; no useful purpose anymore
+  # therefore remove this option within cxi.index:
+  return
   work = wrapper_of_callback(info)
 
   if kwargs.get("display",False):
