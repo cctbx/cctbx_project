@@ -76,7 +76,29 @@ def tardy_model(
   for i,atom_name in enumerate(mon_lib_atom_names):
     if (atom_name in tree_root_atom_names):
       fixed_vertices.append(i)
-  if(not (len(fixed_vertices) == len(tree_root_atom_names))): return None
+  if(not (len(fixed_vertices) == len(tree_root_atom_names))):
+    return None
+  # check that terminal atoms are bonded correctly
+  # needed for nonstandard
+  terminal_bonds = {
+    "OXT" : ["C", "HXT"],
+    "HXT" : ["OXT"],
+    "H1"  : ["N"],
+    "H2"  : ["N"],
+    "H3"  : ["N"],
+    }
+  for bond in comp_comp_id.bond_list:
+    name1, name2 = bond.atom_ids()
+    if  ( name1 in terminal_backbone_atom_names or
+          name2 in terminal_backbone_atom_names):
+      if name1 in terminal_backbone_atom_names:
+        term = name1
+        other = name2
+      else:
+        term = name2
+        other = name1
+      if other not in terminal_bonds.get(term, []):
+        terminal_backbone_atom_names.remove(term)
   for i,atom_name in enumerate(mon_lib_atom_names):
     if (atom_name in terminal_backbone_atom_names):
       fixed_vertices.append(i)
@@ -227,30 +249,36 @@ class rotamer_iterator(object):
       O.rotamer_info.fine_sampling = True
     resname = comp_comp_id.chem_comp.id
     import iotbx.pdb.atom_name_interpretation
-    matched_atom_names = iotbx.pdb.atom_name_interpretation.interpreters[
-      resname].match_atom_names(atom_names=atom_names)
-    names = matched_atom_names.unexpected
-    if (len(names) != 0):
-      O.problem_message = "resname=%s: unexpected atoms: %s" % (
-        resname, " ".join(sorted(names)))
-      return
-    names = matched_atom_names.missing_atom_names(ignore_hydrogen=True)
-    if (len(names) != 0):
-      O.problem_message = "resname=%s: missing atoms: %s" % (
-        resname, " ".join(sorted(names)))
-      return
-    O.mon_lib_atom_names = matched_atom_names.mon_lib_names()
-    if (O.rotamer_info.atom_ids_not_handled is not None):
-      atom_ids_not_handled = set(O.rotamer_info.atom_ids_not_handled)
-      not_handled = []
-      for atom_name, mon_lib_atom_name in zip(atom_names, O.mon_lib_atom_names):
-        if (mon_lib_atom_name in atom_ids_not_handled):
-          not_handled.append(atom_name.strip())
-      if (len(not_handled) != 0):
-        O.problem_message = \
-          "%s: rotamer_info does not handle these atoms: %s" % (
-            resname, " ".join(not_handled))
+    if resname in iotbx.pdb.atom_name_interpretation.interpreters:
+      matched_atom_names = iotbx.pdb.atom_name_interpretation.interpreters[
+        resname].match_atom_names(atom_names=atom_names)
+      names = matched_atom_names.unexpected
+      if (len(names) != 0):
+        O.problem_message = "resname=%s: unexpected atoms: %s" % (
+          resname, " ".join(sorted(names)))
         return
+      names = matched_atom_names.missing_atom_names(ignore_hydrogen=True)
+      if (len(names) != 0):
+        O.problem_message = "resname=%s: missing atoms: %s" % (
+          resname, " ".join(sorted(names)))
+        return
+      O.mon_lib_atom_names = matched_atom_names.mon_lib_names()
+      if (O.rotamer_info.atom_ids_not_handled is not None):
+        atom_ids_not_handled = set(O.rotamer_info.atom_ids_not_handled)
+        not_handled = []
+        for atom_name, mon_lib_atom_name in zip(atom_names, O.mon_lib_atom_names):
+          if (mon_lib_atom_name in atom_ids_not_handled):
+            not_handled.append(atom_name.strip())
+        if (len(not_handled) != 0):
+          O.problem_message = \
+            "%s: rotamer_info does not handle these atoms: %s" % (
+              resname, " ".join(not_handled))
+          return
+    else:
+      O.mon_lib_atom_names=[]
+      for name in atom_names:
+        O.mon_lib_atom_names.append(name.strip())
+
     O.bonds_to_omit = extract_bonds_to_omit(rotamer_info=O.rotamer_info)
     O.tardy_model = tardy_model(
       comp_comp_id=comp_comp_id,
@@ -260,6 +288,7 @@ class rotamer_iterator(object):
       bonds_to_omit=O.bonds_to_omit,
       constrain_dihedrals_with_sigma_less_than_or_equal_to
         =O.rotamer_info.constrain_dihedrals_with_sigma_less_than_or_equal_to)
+    assert O.tardy_model
     O.rotamer_tor_atom_ids_by_tor_id = build_rotamer_tor_atom_ids_by_tor_id(
       comp_comp_id=comp_comp_id,
       rotamer_info=O.rotamer_info)

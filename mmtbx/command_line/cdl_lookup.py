@@ -11,6 +11,7 @@ import sys
 import os
 
 from mmtbx import conformation_dependent_library
+from mmtbx.conformation_dependent_library import cdl_utils
 from mmtbx.conformation_dependent_library.cdl_database import cdl_database
 
 master_phil = libtbx.phil.parse("""
@@ -51,7 +52,7 @@ def run2(args=(), out=sys.stdout):
   working_params = working_phil.extract()
 
   if working_params.cdl_lookup.residue_group_class is None:
-    working_params.cdl_lookup.residue_group_class = conformation_dependent_library.get_res_type_group(
+    working_params.cdl_lookup.residue_group_class = cdl_utils.get_res_type_group(
       *tuple(working_params.cdl_lookup.residue_names.split(",")[1:])
       )
     print "\nPeptide triplet class : %s" % working_params.cdl_lookup.residue_group_class
