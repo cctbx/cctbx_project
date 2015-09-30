@@ -16,6 +16,7 @@ chararcters_36 = letters[:26]+digits
 registry = RestraintsRegistry()
 
 def restraints_show(restraints_values):
+  from mmtbx.conformation_dependent_library.cdl_setup import headers
   outl = ""
   for i, item in enumerate(restraints_values):
     if i%2==0:

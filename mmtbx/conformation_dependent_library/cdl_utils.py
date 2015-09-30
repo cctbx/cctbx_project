@@ -32,6 +32,8 @@ def round_to_ten(d):
   return t
 
 def get_res_type_group(resname1, resname2):
+  resname1=resname1.strip()
+  resname2=resname2.strip()
   if resname2=="PRO":
     lookup = before_pro_groups
   else:
