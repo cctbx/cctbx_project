@@ -15,6 +15,7 @@ import time
 import urllib2
 import urlparse
 import zipfile
+import distutils.spawn
 
 # To download this file:
 # svn export svn://svn.code.sf.net/p/cctbx/code/trunk/libtbx/auto_build/bootstrap.py
@@ -557,9 +558,8 @@ class Builder(object):
     # Platform configuration.
     self.python_base = self.opjoin(*['..', 'base', 'bin', 'python'])
     if 'win32'==sys.platform:
+      self._check_for_Windows_prerequisites()
       self.python_base = self.opjoin(*[os.getcwd(), 'base', 'bin', 'python', 'python.exe'])
-      if not os.getenv("SVN_SSH"):
-        raise Exception('SVN_SSH environment variable should be something like "SVN_SSH=C:/Program Files (x86)/PuTTY/plink.exe"')
     self.with_python = with_python
     if self.with_python:
       self.python_base = with_python
@@ -894,6 +894,27 @@ class Builder(object):
       print error
       error = "A git installation has not been found."
     raise Exception(error)
+
+  def _check_for_Windows_prerequisites(self):
+    if sys.platform != 'win32':
+      return
+    xcptstr = ''
+    if not distutils.spawn.find_executable("makensis"):
+      xcptstr += '"makensis" from NSIS must be present in the executable path.\n'
+    if not distutils.spawn.find_executable("svn"):
+      xcptstr += '"Tortoisesvn" with command line tools must be present in the executable path.\n'
+    if not distutils.spawn.find_executable("plink.exe"):
+      xcptstr += '"pscp.exe" from the PuTTY program suite is not present in the executable path.\n'
+    p = distutils.spawn.find_executable("plink.exe")
+    if not p:
+      xcptstr += '"plink.exe" from the PuTTY program suite is not present in the executable path.\n'
+    if not os.getenv("SVN_SSH") and p:
+      q=p.split("\\")
+      fwdp = "/".join(q) # svn client expects foward slashed path to plink
+      xcptstr += 'SVN_SSH environment variable should be set to "SVN_SSH=%s' %fwdp
+    if xcptstr:
+      raise Exception(xcptstr)
+
 
   def add_command(self, command, name=None, workdir=None, args=None, **kwargs):
     if sys.platform == 'win32':
