@@ -257,9 +257,9 @@ tst_list = (
   #
   "$D/regression/tst_models_to_from_chains.py",
   "$D/regression/tst_helix_sheet_recs_as_pdb_files.py",
-  "$D/ncs/tst_ncs_pair.py",
-  "$D/ncs/tst_tncs_epsfac_target_and_grad.py",
-  # XXX tmp disbale "$D/ncs/tst_tncs_multi.py",
+  "$D/regression/tncs/tst_ncs_pair.py",
+  "$D/regression/tncs/tst_tncs_epsfac_target_and_grad.py",
+  #"$D/regression/tncs/tst_tncs_multi.py",
   "$D/regression/tst_rank_scale_map.py",
   )
 
