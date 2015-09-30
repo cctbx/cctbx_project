@@ -12,6 +12,7 @@ from scitbx.math import matrix
 import sys
 from scitbx.math import superpose
 import mmtbx.alignment
+from libtbx.test_utils import approx_equal
 
 class groups(object):
 
@@ -242,6 +243,94 @@ class potential(object):
     elif(self.gradient_evaluator=="radius"):
       return self.target_and_grads.gradient_radius()
     else: assert 0
+
+def finite_differences_grad_radius(ncs_pairs, f_obs, reflections_per_bin,
+      tolerance):
+  reflections_per_bin = min(f_obs.data().size(), reflections_per_bin)
+  f_obs.setup_binner(reflections_per_bin = reflections_per_bin)
+  binner = f_obs.binner()
+  n_bins = binner.n_bins_used()
+  #
+  radii = flex.double()
+  for ncs_pair in ncs_pairs:
+    radii.append(ncs_pair.radius)
+  #
+  pot = potential(f_obs = f_obs, ncs_pairs = ncs_pairs,
+      reflections_per_bin = reflections_per_bin)
+  pot = pot.set_refine_radius()
+  t = pot.target()
+  g_exact = pot.gradient()
+  #print "Exact:", list(g_exact)
+  #
+  eps = 1.e-6
+  #
+  g_fd = []
+  for i, rad in enumerate(radii):
+    radii_p = radii.deep_copy()
+    radii_m = radii.deep_copy()
+    radii_p[i] = radii[i]+eps
+    radii_m[i] = radii[i]-eps
+    #
+    pot.update(x = flex.double(radii_p))
+    t1 = pot.target()
+    #
+    pot.update(x = flex.double(radii_m))
+    t2 = pot.target()
+    #
+    g_fd_ = (t1-t2)/(2*eps)
+    g_fd.append(g_fd_)
+  #print "Finite diff.:",g_fd
+  relative_error = flex.double()
+  for g1,g2 in zip(g_exact, g_fd):
+    #print "exact: %10.6f fd: %10.6f"%(g1,g2)
+    relative_error.append( abs((g1-g2)/(g1+g2))*2.*100. )
+  mmm = relative_error.min_max_mean().as_tuple()
+  print "min/max/mean of |(g_eaxct-g_fd)/(g_eaxct+g_fd)|*100.*2:",\
+    "%6.4f %6.4f %6.4f"%mmm
+  assert approx_equal(mmm, [0,0,0], tolerance)
+
+def finite_differences_rho_mn(ncs_pairs, f_obs, reflections_per_bin,
+      tolerance):
+  reflections_per_bin = min(f_obs.data().size(), reflections_per_bin)
+  f_obs.setup_binner(reflections_per_bin = reflections_per_bin)
+  binner = f_obs.binner()
+  n_bins = binner.n_bins_used()
+  #
+  pot = potential(f_obs = f_obs, ncs_pairs = ncs_pairs,
+      reflections_per_bin = reflections_per_bin)
+  pot = pot.set_refine_rhoMN()
+  t = pot.target()
+  g_exact = pot.gradient()
+  #
+  rho_mn = flex.double()
+  for p in ncs_pairs:
+    rho_mn.extend(p.rho_mn)
+  #
+  eps = 1.e-6
+  #
+  g_fd = []
+  for i, rho_mn_i in enumerate(rho_mn):
+    rho_mn_p = rho_mn.deep_copy()
+    rho_mn_p[i] = rho_mn_i + eps
+    rho_mn_m = rho_mn.deep_copy()
+    rho_mn_m[i] = rho_mn_i - eps
+    #
+    pot.update(x = rho_mn_p)
+    t1 = pot.target()
+    #
+    pot.update(x = rho_mn_m)
+    t2 = pot.target()
+    #
+    g_fd_ = (t1-t2)/(2*eps)
+    g_fd.append(g_fd_)
+  relative_error = flex.double()
+  for g1,g2 in zip(g_exact, g_fd):
+    #print "exact: %10.6f fd: %10.6f"%(g1,g2)
+    relative_error.append( abs((g1-g2)/(g1+g2))*2.*100. )
+  mmm = relative_error.min_max_mean().as_tuple()
+  print "min/max/mean of |(g_eaxct-g_fd)/(g_eaxct+g_fd)|*100.*2:",\
+    "%6.4f %6.4f %6.4f"%mmm
+  assert approx_equal(mmm, [0,0,0], tolerance)
 
 class compute_eps_factor(object):
 
