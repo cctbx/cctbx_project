@@ -19,7 +19,6 @@ class groups(object):
   def __init__(self,
                pdb_hierarchy,
                crystal_symmetry,
-               n_bins,
                angular_difference_threshold_deg=10.,
                sequence_identity_threshold=90.):
     h = pdb_hierarchy
@@ -95,8 +94,25 @@ class groups(object):
         radius=rad,
         radius_estimate=rad,
         fracscat=fs,
-        rho_mn=flex.double(n_bins,0.98))
+        rho_mn=flex.double()) # rho_mn undefined, needs to be set later
       self.ncs_pairs.append(ncs_pair)
+
+def initialize_rho_mn(ncs_pairs, d_spacings_data, binner, rms=0.5):
+  """
+  Initialize rho_mn
+    rhoMN = exp(-(2*pi^2/3)*(rms/d)^2, and rms=0.4-0.8 is probably a good.
+  """
+  n_bins = binner.n_bins_used()
+  rho_mn_initial = flex.double(n_bins, 0)
+  cntr=0
+  for i_bin in binner.range_used():
+    sel_bin = binner.selection(i_bin)
+    if(sel_bin.count(True)>0):
+      arg = (2*math.pi**2/3)*(rms/flex.mean(d_spacings_data.select(sel_bin)))**2
+      rho_mn_initial[cntr] = math.exp(-1*arg)
+    cntr+=1
+  for p in ncs_pairs:
+    p.set_rhoMN(rho_mn_initial)
 
 def lbfgs_run(target_evaluator, use_bounds, lower_bound, upper_bound):
   minimizer = lbfgsb.minimizer(
@@ -340,14 +356,15 @@ class compute_eps_factor(object):
       f_obs.set_sigmas(sigmas = flex.double(f_obs.data().size(), 0.0))
     reflections_per_bin = min(f_obs.data().size(), reflections_per_bin)
     f_obs.setup_binner(reflections_per_bin = reflections_per_bin)
-    binner = f_obs.binner()
-    n_bins = binner.n_bins_used()
     self.unit_cell = f_obs.unit_cell()
     #
     self.ncs_pairs = groups(
       pdb_hierarchy    = pdb_hierarchy,
-      crystal_symmetry = f_obs.crystal_symmetry(),
-      n_bins           = n_bins).ncs_pairs
+      crystal_symmetry = f_obs.crystal_symmetry()).ncs_pairs
+    initialize_rho_mn(
+      ncs_pairs       = self.ncs_pairs,
+      d_spacings_data = f_obs.d_spacings().data(),
+      binner          = f_obs.binner())
     self.epsfac = None
     if(len(self.ncs_pairs)>0):
       # Radii
