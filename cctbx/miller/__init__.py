@@ -3561,6 +3561,49 @@ class array(set):
       miller_set=self,
       data=self.data()/flex.sqrt(self.epsilons().data().as_double()))
 
+  def normalize(self, reflections_per_bin=150, eps_fac=None):
+    """
+    Compute E-values: E = (F/eps**0.5) / rms of (F/eps**0.5)
+    This is 'Karle' approach, that is not using overall B from Wilson plot.
+    """
+    f_obs = self
+    if(self.is_xray_intensity_array()):
+      f_obs = self.f_sq_as_f()
+    else:
+      assert self.is_xray_amplitude_array()
+    eps = f_obs.epsilons().data().as_double()
+    if(eps_fac is not None):
+      eps = eps * eps_fac
+    f_obs.setup_binner(reflections_per_bin = reflections_per_bin)
+    E = flex.double(f_obs.data().size(), 0)
+    for i_bin in f_obs.binner().range_used():
+      bin_sel = f_obs.binner().selection(i_bin)
+      fo = f_obs.data().select(bin_sel)
+      if(fo.size()==0): continue
+      e = eps.select(bin_sel)
+      fo_eps = fo/flex.sqrt(e)
+      E_bin = fo_eps/(flex.sum(fo_eps**2)/fo_eps.size())**0.5
+      E = E.set_selected(bin_sel, E_bin)
+    return self.array(data = E)
+
+  def second_moments_centric_acentric(self, reflections_per_bin=150,
+        eps_fac=None):
+    """
+    Compute <E**4>/<E**2>**2 for centric and acentric reflections.
+    """
+    e = self.normalize(reflections_per_bin=reflections_per_bin,
+      eps_fac=eps_fac).data()
+    centrics_selection  = self.centric_flags().data()
+    e_sq = e**2
+    result = []
+    for prefix, sel in [("centric",  centrics_selection),
+                        ("acentric",~centrics_selection)]:
+      if(sel.count(True)==0): continue
+      e_ = e.select(sel)
+      e_sq_ = e_sq.select(sel)
+      result.append((prefix, flex.mean(e_sq_*e_sq_)/flex.mean(e_sq_)**2))
+    return result
+
   def amplitude_quasi_normalisations(self, d_star_power=1):
     """ A miller.array whose data N(h) are the normalisations to convert
     between locally normalised E's and F's:

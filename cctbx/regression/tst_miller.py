@@ -2342,7 +2342,28 @@ def exercise_systematic_absences_info () :
   else :
     raise Exception_expected
 
+def exercise_karle_normalization():
+  xrs = random_structure.xray_structure(
+    space_group_info = sgtbx.space_group_info(number=19),
+    elements=["C"]*500,
+    volume_per_atom=50,
+    min_distance=1.0,
+    general_positions_only=True,
+    u_iso=0.0)
+  fc = abs(xrs.structure_factors(
+    d_min=1).f_calc()).set_observation_type_xray_amplitude()
+  cntr = 0
+  for m in fc.second_moments_centric_acentric():
+    if(m[0]=="centric"):
+      assert approx_equal(m[1], 3.0, 0.1)
+      cntr += 1
+    if(m[0]=="acentric"):
+      assert approx_equal(m[1], 2.0, 0.1)
+      cntr += 1
+  assert cntr == 2
+
 def run(args):
+  exercise_karle_normalization()
   exercise_systematic_absences_info()
   exercise_change_symmetry()
   exercise_convert_to_non_anomalous_if_ratio_pairs_lone_less_than()
