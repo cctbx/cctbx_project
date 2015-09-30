@@ -2169,9 +2169,7 @@ mmtbx/regression/tls/tst_tls_analysis.py -text
 mmtbx/regression/tls/tst_tls_refinement_fft.py -text
 mmtbx/regression/tncs/tst_epsfac_and_radius.py -text
 mmtbx/regression/tncs/tst_fd.py -text
-mmtbx/regression/tncs/tst_ncs_pair.py -text
 mmtbx/regression/tncs/tst_pair.py -text
-mmtbx/regression/tncs/tst_tncs_epsfac_target_and_grad.py -text
 mmtbx/regression/tncs/tst_tncs_multi.py -text
 mmtbx/regression/tst_add_h_to_water.py -text
 mmtbx/regression/tst_alignment.py -text
