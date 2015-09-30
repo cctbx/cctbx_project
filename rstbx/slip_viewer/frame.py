@@ -94,6 +94,14 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self.set_pyslip(self.viewer)
     self.init_pyslip_presizer()
 
+  def Show(self):
+    # Due to the asynchronous nature of X11 on Linux, just showing a frame
+    # does not guarantee window creation. The frame calls Raise() so that it
+    # will be shown. This addresses an error with PySlip requiring the
+    # window to exist before instantiation.
+    super(XrayFrame,self).Show()
+    self.Raise()
+
   def setup_toolbar(self) :
     XFBaseClass.setup_toolbar(self)
 
