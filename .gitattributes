@@ -2174,7 +2174,6 @@ mmtbx/regression/tncs/model_4.pdb -text
 mmtbx/regression/tncs/tst_epsfac_and_radius.py -text
 mmtbx/regression/tncs/tst_fd.py -text
 mmtbx/regression/tncs/tst_pair.py -text
-mmtbx/regression/tncs/tst_tncs_multi.py -text
 mmtbx/regression/tst_add_h_to_water.py -text
 mmtbx/regression/tst_alignment.py -text
 mmtbx/regression/tst_altloc_chain_break.py -text
