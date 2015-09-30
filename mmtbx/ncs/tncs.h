@@ -128,6 +128,12 @@ public:
     calcArrays();
   }
 
+  void update_pairs(bp::list const& new_pairs) {
+    for(std::size_t i=0;i<bp::len(new_pairs);i++) {
+      pairs[i] = bp::extract<pair<FloatType> >(new_pairs[i])();
+    }
+  }
+
   void calcArrays()
   {
   /*
@@ -237,37 +243,31 @@ public:
       //          minimization !!!!!!!!
       calcRefineTerms(miller_indices[r], s);
       tncs_epsfac[r] = refl_epsfac; // result - tNCS epsilon factor
-      if(do_target || do_gradient) {
-        /* Compute effective gfun with half-triple summation rather than full
-           quadruple summation:
-             assume NCS chosen closest to pure translation,
-               ignore other NCS+symm combinations
-             pair off-diagonal contributions from jncs>incs with jncs<incs
-        */
-        // XXX PVA: epsn = eps = epsilon - symmetry factors, integers.
-        double epsnSigmaN = epsilon[r]*tncs_epsfac[r]*SigmaN[r];
-        // Code based on Wilson distribution with inflated variance for
-        // measurement errors ==>
-        double cent_fac = centric_flags[r] ? 0.5 : 1.0;
-        double SigmaFactor = 2.*cent_fac;
-        double ExpSig(SigmaFactor*scitbx::fn::pow2(sig_f_obs[r]));
-        double V = epsnSigmaN + ExpSig;
-        MMTBX_ASSERT(V!=0.);
-        if(V<0) V=0.00001; // XXX ???
-        double f_obs_sq = scitbx::fn::pow2(f_obs[r]);
-        // For simplicity, leave constants out of log-likelihood, which will not
-        // affect refinement
+      /* Compute effective gfun with half-triple summation rather than full
+         quadruple summation:
+           assume NCS chosen closest to pure translation,
+             ignore other NCS+symm combinations
+           pair off-diagonal contributions from jncs>incs with jncs<incs
+      */
+      // XXX PVA: epsn = eps = epsilon - symmetry factors, integers.
+      double epsnSigmaN = epsilon[r]*tncs_epsfac[r]*SigmaN[r];
+      // Code based on Wilson distribution with inflated variance for
+      // measurement errors ==>
+      double cent_fac = centric_flags[r] ? 0.5 : 1.0;
+      double SigmaFactor = 2.*cent_fac;
+      double ExpSig(SigmaFactor*scitbx::fn::pow2(sig_f_obs[r]));
+      double V = epsnSigmaN + ExpSig;
+      double f_obs_sq = scitbx::fn::pow2(f_obs[r]);
+      // For simplicity, leave constants out of log-likelihood, which will not
+      // affect refinement
+      if(V>0) {
         minusLL += cent_fac*(std::log(V) + f_obs_sq/V);
-        if(do_gradient) {
-          dLL_by_dEps = cent_fac*SigmaN[r]*(V-f_obs_sq)/scitbx::fn::pow2(V);
-        }
-        // <==
+        dLL_by_dEps = cent_fac*SigmaN[r]*(V-f_obs_sq)/scitbx::fn::pow2(V);
       }
-      if(do_gradient) {
-        for(int ipair = 0; ipair < n_pairs; ipair++) {
-          Gradient_rhoMN[ipair*nbins+s] += dLL_by_dEps*dEps_by_drho[ipair];
-          Gradient_radius[ipair] += dLL_by_dEps*dEps_by_dradius[ipair];
-        }
+      // <==
+      for(int ipair = 0; ipair < n_pairs; ipair++) {
+        Gradient_rhoMN[ipair*nbins+s] += dLL_by_dEps*dEps_by_drho[ipair];
+        Gradient_radius[ipair] += dLL_by_dEps*dEps_by_dradius[ipair];
       }
     } // loop over reflections
     if(do_target || do_gradient) {
