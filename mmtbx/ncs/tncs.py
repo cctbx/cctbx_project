@@ -24,33 +24,27 @@ class groups(object):
     h = pdb_hierarchy
     s_str = "altloc ' ' and not water and pepnames"
     h = h.select(h.atom_selection_cache().selection(s_str))
-    chains = list(h.chains())
-    original_chain_ids = [c.id for c in h.chains()]
+    h1 = h.deep_copy()
     unit_cell = crystal_symmetry.unit_cell()
-    h = h.select(h.atom_selection_cache().selection(s_str)).expand_to_p1(
-      crystal_symmetry=crystal_symmetry)
-    chains_p1 = list(h.chains())
     result = []
-    #j=None
     # double loop over chains to find matching pairs related by pure translation
-    for i, c1 in enumerate(chains):
+    for c1 in h1.chains():
+      c1.parent().remove_chain(c1)
       if([c1.is_protein(), c1.is_na()].count(True)==0): continue
-      if(not c1.id in original_chain_ids): continue
       r1 = list(c1.residues())
       c1_seq = "".join(c1.as_sequence())
-      #if j is None: j=i+1
-      #for ic2, c2 in enumerate(chains[max(j,i+1):]):
-      for ic2, c2 in enumerate(chains_p1[i+1:]):
+      sc_1_tmp = c1.atoms().extract_xyz()
+      h1_p1 = h1.expand_to_p1(crystal_symmetry=crystal_symmetry)
+      for c2 in h1_p1.chains():
         r2 = list(c2.residues())
         c2_seq = "".join(c2.as_sequence())
         sites_cart_1, sites_cart_2 = None,None
-        sc_1_tmp = c1.atoms().extract_xyz()
         sc_2_tmp = c2.atoms().extract_xyz()
         # chains are identical
         if(c1_seq==c2_seq and sc_1_tmp.size()==sc_2_tmp.size()):
           sites_cart_1 = sc_1_tmp
           sites_cart_2 = sc_2_tmp
-        # chains are not identical, do alignement
+        # chains are not identical, do alignment
         else:
           align_obj = mmtbx.alignment.align(seq_a = c1_seq, seq_b = c2_seq)
           alignment = align_obj.extract_alignment()
@@ -89,7 +83,7 @@ class groups(object):
             fmt="chains %s <> %s angle: %4.2f trans.vect.: (%s)"
             t = ",".join([("%6.3f"%t_).strip() for t_ in t_frac]).strip()
             print fmt%(c1.id, c2.id, angle, t)
-    # compose filal tNCS pairs object
+    # compose final tNCS pairs object
     self.ncs_pairs = []
     fs=2./(1+math.sqrt(1+8*len(result)))
     for _ in result:
