@@ -378,7 +378,7 @@ class compute_eps_factor(object):
       # Target and gradients evaluator
       pot = potential(f_obs = f_obs, ncs_pairs = self.ncs_pairs,
         reflections_per_bin = reflections_per_bin)
-      for it in xrange(10):
+      for it in xrange(2):
         # refine eps fac
         rho_mn = flex.double()
         for ncs_pair in self.ncs_pairs:
