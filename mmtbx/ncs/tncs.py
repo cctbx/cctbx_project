@@ -22,21 +22,25 @@ class groups(object):
                angular_difference_threshold_deg=10.,
                sequence_identity_threshold=90.):
     h = pdb_hierarchy
+    s_str = "altloc ' ' and not water and pepnames"
+    h = h.select(h.atom_selection_cache().selection(s_str))
+    chains = list(h.chains())
     original_chain_ids = [c.id for c in h.chains()]
     unit_cell = crystal_symmetry.unit_cell()
-    # remove altlocs and water and expand to P1
-    s_str = "altloc ' ' and not water"
     h = h.select(h.atom_selection_cache().selection(s_str)).expand_to_p1(
       crystal_symmetry=crystal_symmetry)
-    chains = list(h.chains())
+    chains_p1 = list(h.chains())
     result = []
+    #j=None
     # double loop over chains to find matching pairs related by pure translation
     for i, c1 in enumerate(chains):
       if([c1.is_protein(), c1.is_na()].count(True)==0): continue
       if(not c1.id in original_chain_ids): continue
       r1 = list(c1.residues())
       c1_seq = "".join(c1.as_sequence())
-      for c2 in chains[i+1:]:
+      #if j is None: j=i+1
+      #for ic2, c2 in enumerate(chains[max(j,i+1):]):
+      for ic2, c2 in enumerate(chains_p1[i+1:]):
         r2 = list(c2.residues())
         c2_seq = "".join(c2.as_sequence())
         sites_cart_1, sites_cart_2 = None,None
@@ -74,6 +78,8 @@ class groups(object):
             other_sites     = sites_cart_2)
           angle = lsq_fit_obj.r.rotation_angle()
           if(angle < angular_difference_threshold_deg):
+            #for jj in xrange(len(chains)):
+            #  if chains[jj]==c2: j=jj
             t_frac = unit_cell.fractionalize((sites_cart_1-sites_cart_2).mean())
             t_frac = [math.modf(t)[0] for t in t_frac] # put into [-1,1]
             radius = flex.sum(flex.sqrt((sites_cart_1-
