@@ -19,6 +19,7 @@ def f_obs_and_tncs_pairs_from_pdb(file_name, reflections_per_bin):
   f_obs.set_sigmas(sigmas = flex.double(f_obs.data().size(), 0.0))
   reflections_per_bin = min(f_obs.data().size(), reflections_per_bin)
   f_obs.setup_binner(reflections_per_bin = reflections_per_bin)
+  print f_obs.binner().n_bins_used()
   ncs_pairs = tncs.groups(
     pdb_hierarchy    = pdb_inp.construct_hierarchy(),
     crystal_symmetry = f_obs.crystal_symmetry()).ncs_pairs
@@ -28,14 +29,14 @@ def f_obs_and_tncs_pairs_from_pdb(file_name, reflections_per_bin):
     binner          = f_obs.binner())
   return f_obs, ncs_pairs
 
-def exercise_00(file_name, reflections_per_bin=500):
+def exercise_00(file_name, reflections_per_bin=150):
   """
   Finite differences test for radii.
   """
   f_obs, ncs_pairs = f_obs_and_tncs_pairs_from_pdb(file_name = file_name,
     reflections_per_bin = reflections_per_bin)
   tncs.finite_differences_grad_radius(ncs_pairs=ncs_pairs,
-    f_obs=f_obs, reflections_per_bin=reflections_per_bin, tolerance=1.e-3)
+    f_obs=f_obs, reflections_per_bin=reflections_per_bin, tolerance=1.)
 
 def exercise_01(file_name, reflections_per_bin=5000):
   """
@@ -44,7 +45,7 @@ def exercise_01(file_name, reflections_per_bin=5000):
   f_obs, ncs_pairs = f_obs_and_tncs_pairs_from_pdb(file_name = file_name,
     reflections_per_bin = reflections_per_bin)
   tncs.finite_differences_rho_mn(ncs_pairs=ncs_pairs,
-    f_obs=f_obs, reflections_per_bin=reflections_per_bin, tolerance=0.05)
+    f_obs=f_obs, reflections_per_bin=reflections_per_bin, tolerance=1.)
 
 def run():
   for file_name in ["model_2.pdb", "model_4.pdb"]:
