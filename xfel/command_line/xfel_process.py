@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# LIBTBX_SET_DISPATCHER_NAME ccxbx.xfel.dials_process
+# LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.process
 
 from __future__ import division
 
@@ -90,7 +90,6 @@ class Script(object):
     from dials.util import log
     from logging import info
     from time import time
-    import sys
     from libtbx.utils import Abort
 
     # Parse the command line
