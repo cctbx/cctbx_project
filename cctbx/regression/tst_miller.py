@@ -2355,9 +2355,13 @@ def exercise_karle_normalization():
   cntr = 0
   for m in fc.second_moments_centric_acentric():
     if(m[0]=="centric"):
-      assert approx_equal(m[1], 3.0, 0.1)
+      # result of 430 test runs:
+      # min 2.757, q1 2.899, mean 2.947, q3 2.990, max 3.118, sd 0.06530
+      assert approx_equal(m[1], 3.0, 0.3)
       cntr += 1
     if(m[0]=="acentric"):
+      # result of 430 test runs:
+      # min 1.964, q1 1.982, mean 1.987, q3 1.993, max 2.012, sd 0.00844
       assert approx_equal(m[1], 2.0, 0.1)
       cntr += 1
   assert cntr == 2
