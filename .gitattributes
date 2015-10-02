@@ -3577,6 +3577,7 @@ xfel/command_line/cxi_spots.py -text
 xfel/command_line/cxi_stream_to_pickle.py -text
 xfel/command_line/cxi_view.py -text
 xfel/command_line/cxi_xtc_process.py -text
+xfel/command_line/dials_process.py -text
 xfel/command_line/frame_extractor.py -text
 xfel/command_line/frame_unpickler.py -text
 xfel/command_line/get_next_trial_id.py -text

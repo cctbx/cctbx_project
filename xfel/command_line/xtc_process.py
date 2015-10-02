@@ -158,7 +158,7 @@ def __stupid_but_swig_safe__deepcopy__(self, memo):
   pass
 cbf_wrapper.__deepcopy__ = __stupid_but_swig_safe__deepcopy__
 
-from dials.command_line.process import Script as DialsProcessScript
+from xfel.command_line.dials_process import Script as DialsProcessScript
 class InMemScript(DialsProcessScript):
   """ Script to process XFEL data at LCLS """
   def __init__(self):
