@@ -1,14 +1,5 @@
 #!/usr/bin/env python
 #
-# dials_process.py
-#
-#  Copyright (C) 2013 Diamond Light Source
-#
-#  Author: James Parkhurst
-#
-#  This code is distributed under the BSD license, a copy of which is
-#  included in the root directory of this package.
-
 # LIBTBX_SET_DISPATCHER_NAME ccxbx.xfel.dials_process
 
 from __future__ import division
@@ -18,36 +9,6 @@ help_message = '''
 10/02/15: copied in from dials/command_line/process.py since dials.process
 has been deperecated and we used it here. This file will be changed
 to a stills-specific indexing program.
-
-This is the main dials program. Given a set of images, the data will be
-processed and a list of integrated reflections will be given as output. More
-specialised help can be seen by looking at the command line programs that
-perform the individual processing steps. See at the following for more
-details::
-
-  dials.import
-  dials.find_spots
-  dials.index
-  dials.refine
-  dials.integrate
-  dials.export_mtz
-
-This program will do the following:
-
-  First the image data will be imported into a datablock. Strong spots will then
-  be found on all the images of the datablock. These strong spots will then be
-  indexed (the indexing step also includes some static centroid refinement). The
-  experimental geometry will then be refined and the reflections integrated.
-  Finally, the integrated reflections will be exported to an MTZ file which can
-  be input into Aimless to be scaled.
-
-Examples::
-
-  dials.process images*.cbf
-
-  dials.process datablock.json
-
-  find . -name "images*.cbf" | dials.process
 
 '''
 
@@ -174,33 +135,6 @@ class Script(object):
     if diff_phil is not '':
       info('The following parameters have been modified:\n')
       info(diff_phil)
-
-    # Preamble stuff
-    info('*' * 80)
-    info('')
-    info('                       mmmm   mmmmm    mm   m       mmmm            ')
-    info('                       #   "m   #      ##   #      #"   "           ')
-    info('                      m#mm  #   #     #  #  #      "#mmm            ')
-    info('                       #    #   #     #mm#  #          "#           ')
-    info('                       #mmm"  mm#mm  #    # #mmmmm "mmm#"           ')
-    info('')
-    info('Launching dials.process')
-    info('')
-    info('The following tasks will be performed:')
-    info(' 1) Strong spots will be found (dials.find_spots)')
-    info(' 2) The strong spots will be indexed (dials.index)')
-    info(' 3) The model will be further refined (dials.refine)')
-    info(' 4) The reflections will be integrated (dials.integrate)')
-    info(' 5) The data will be exported as MTZ (dials.export_mtz)')
-    info('')
-    info('Please be patient, this may take a few minutes')
-    info('')
-    info('*' * 80)
-    info('')
-    info('Command-line: %s' % (' '.join(sys.argv[1:]))[:65])
-    info('')
-    info('*' * 80)
-    info('')
 
     if self.params.output.datablock_filename:
       from dxtbx.datablock import DataBlockDumper
