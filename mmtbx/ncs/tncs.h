@@ -88,7 +88,6 @@ public:
   bool do_radius;
   bool do_rho_mn;
   bool target_called;
-  af::shared<std::pair<FloatType,FloatType> > GfuncOfRSsqrTable;
 
   tncs_eps_factor_refinery(
     bp::list const& pairs_,
@@ -129,8 +128,6 @@ public:
     centric_flags = space_group.is_centric(miller_indices);
     epsilon = space_group.epsilon(miller_indices);
     calcArrays();
-    GfuncOfRSsqrTable =
-      scitbx::math::g_function::getGfuncOfRSsqrTable(8192,0.51143712);
   }
 
   void set_compute_gradients_radius() {
