@@ -82,11 +82,13 @@ public:
   af::const_ref<FloatType> sig_f_obs;
   af::const_ref<FloatType> SigmaN;
   af::const_ref<int> rbin;
-  bool do_target;
-  bool do_gradient;
   // resulting gradient
   af::shared<FloatType> Gradient_rhoMN;
   af::shared<FloatType> Gradient_radius;
+  bool do_radius;
+  bool do_rho_mn;
+  bool target_called;
+  af::shared<std::pair<FloatType,FloatType> > GfuncOfRSsqrTable;
 
   tncs_eps_factor_refinery(
     bp::list const& pairs_,
@@ -108,8 +110,9 @@ public:
   sig_f_obs(sig_f_obs_),
   rbin(rbin_),
   SigmaN(SigmaN_),
-  do_target(true),
-  do_gradient(true)
+  do_radius(false),
+  do_rho_mn(false),
+  target_called(false)
   {
     MMTBX_ASSERT(f_obs.size()==sig_f_obs.size());
     MMTBX_ASSERT(f_obs.size()==miller_indices.size());
@@ -126,6 +129,18 @@ public:
     centric_flags = space_group.is_centric(miller_indices);
     epsilon = space_group.epsilon(miller_indices);
     calcArrays();
+    GfuncOfRSsqrTable =
+      scitbx::math::g_function::getGfuncOfRSsqrTable(8192,0.51143712);
+  }
+
+  void set_compute_gradients_radius() {
+    do_radius = true;
+    do_rho_mn = false;
+  }
+
+  void set_compute_gradients_rho_mn() {
+    do_radius = false;
+    do_rho_mn = true;
   }
 
   void update_pairs(bp::list const& new_pairs) {
@@ -178,16 +193,16 @@ public:
        symmetry-related epsilon factor), plus derivatives that can be used to
        refine parameters characterising the tNCS
     */
-    dEps_by_drho.resize(n_pairs);
-    dEps_by_dradius.resize(n_pairs);
+    if(do_rho_mn) dEps_by_drho.resize(n_pairs);
+    if(do_radius) dEps_by_dradius.resize(n_pairs);
     refl_epsfac = 1.; // Epsilon before modulation by tNCS
     /*Use half-triple summation rather than full quadruple summation, i.e. only
       paying attention to terms from molecules that are in similar orientations.
     */
     for (int ipair = 0; ipair < n_pairs; ipair++) {
       double wtfac(pairs[ipair].fracscat/sym_mat.size());
-      dEps_by_drho[ipair] = 0.;
-      dEps_by_dradius[ipair] = 0.;
+      if(do_rho_mn) dEps_by_drho[ipair] = 0.;
+      if(do_radius) dEps_by_dradius[ipair] = 0.;
       for (int isym = 0; isym < sym_mat.size(); isym++) {
         // NCS-related contribution to epsilon, weighted by interference,
         // G-function and rhoMN terms
@@ -201,14 +216,13 @@ public:
           if(std::abs(rsSqr)<1.e-9) rsSqr=0;
           SCITBX_ASSERT(rsSqr>=0);
         }
-        FloatType Gf = scitbx::math::g_function::GfuncOfRSsqr(rsSqr);
+        FloatType Gf = scitbx::math::g_function::GfuncOfRSsqr_approx(rsSqr);
         FloatType h_dot_T = scitbx::constants::two_pi*(miller*ncsDeltaT[i]);
         FloatType cosTerm = std::cos(h_dot_T);
         FloatType GcosTerm = 2.*Gf*cosTerm;
         refl_epsfac += GcosTerm*wtfac*pairs[ipair].rho_mn[sbin]; // stored parameter
-        if (do_gradient)
-        {
-          dEps_by_drho[ipair] += GcosTerm*wtfac;
+        if(do_rho_mn) dEps_by_drho[ipair] += GcosTerm*wtfac;
+        if(do_radius) {
           double sklmn = std::sqrt(rsSqr)/pairs[ipair].radius;
           dEps_by_dradius[ipair] += 2.*cosTerm*wtfac*pairs[ipair].rho_mn[sbin] *
             scitbx::math::g_function::dGfunc_by_dR(pairs[ipair].radius, sklmn);
@@ -219,12 +233,15 @@ public:
 
   double target_gradient()
   {
+    target_called=true;
     int nbins = pairs[0].rho_mn.size();
     int npars_ref = n_pairs*nbins;
     // Reset gradient
-    if(do_gradient) {
+    if(do_rho_mn) {
       Gradient_rhoMN.resize(npars_ref);
       Gradient_rhoMN.fill(0);
+    }
+    if(do_radius) {
       Gradient_radius.resize(n_pairs);
       Gradient_radius.fill(0);
     }
@@ -234,13 +251,11 @@ public:
     for (unsigned r = 0; r < f_obs.size(); r++) {
       FloatType dLL_by_dEps(0);
       /*
-      PVA: look-up array of integer numbers for each reflection telling which
-           resolution bin it belongs to. Say this Fobs belongs to bin number 12.
+      Look-up array of integer numbers for each reflection telling which
+      resolution bin it belongs to (eg.: this Fobs belongs to bin number 12).
       */
       int s = rbin(r);
       //recalculate tncs_epsn from changed parameters
-      // XXX PVA: this requires update method for rho_mn done when doing
-      //          minimization !!!!!!!!
       calcRefineTerms(miller_indices[r], s);
       tncs_epsfac[r] = refl_epsfac; // result - tNCS epsilon factor
       /* Compute effective gfun with half-triple summation rather than full
@@ -249,7 +264,7 @@ public:
              ignore other NCS+symm combinations
            pair off-diagonal contributions from jncs>incs with jncs<incs
       */
-      // XXX PVA: epsn = eps = epsilon - symmetry factors, integers.
+      // epsn = eps = epsilon - symmetry factors, integers.
       double epsnSigmaN = epsilon[r]*tncs_epsfac[r]*SigmaN[r];
       // Code based on Wilson distribution with inflated variance for
       // measurement errors ==>
@@ -260,29 +275,31 @@ public:
       double f_obs_sq = scitbx::fn::pow2(f_obs[r]);
       // For simplicity, leave constants out of log-likelihood, which will not
       // affect refinement
-      if(V>0) {
-        minusLL += cent_fac*(std::log(V) + f_obs_sq/V);
-        dLL_by_dEps = cent_fac*SigmaN[r]*(V-f_obs_sq)/scitbx::fn::pow2(V);
-      }
+      MMTBX_ASSERT(V>0);
+      minusLL += cent_fac*(std::log(V) + f_obs_sq/V);
+      dLL_by_dEps = cent_fac*SigmaN[r]*(V-f_obs_sq)/scitbx::fn::pow2(V);
       // <==
       for(int ipair = 0; ipair < n_pairs; ipair++) {
-        Gradient_rhoMN[ipair*nbins+s] += dLL_by_dEps*dEps_by_drho[ipair];
-        Gradient_radius[ipair] += dLL_by_dEps*dEps_by_dradius[ipair];
+        if(do_rho_mn) Gradient_rhoMN[ipair*nbins+s] += dLL_by_dEps*dEps_by_drho[ipair];
+        if(do_radius) Gradient_radius[ipair] += dLL_by_dEps*dEps_by_dradius[ipair];
       }
-    } // loop over reflections
-    if(do_target || do_gradient) {
-      const double rhoMNbinwt(1./(2*scitbx::fn::pow2(0.05))); // sigma of 0.05 for rhoMN bin smoothness
+    }
+    // sigma of 0.05 for rhoMN bin smoothness
+    const double rhoMNbinwt(1./(2*scitbx::fn::pow2(0.05)));
+    if(do_rho_mn || do_radius) {
       for (int ipair = 0; ipair < n_pairs; ipair++) {
         // Weakly restrain radii to initial estimates, with sigma of estimate/4
-        double radiuswt(1./(2*scitbx::fn::pow2(pairs[ipair].radius_estimate/4.)));
-        double delta_radius = pairs[ipair].radius - pairs[ipair].radius_estimate;
-        minusLL += radiuswt*scitbx::fn::pow2(delta_radius);
-        if(do_gradient) Gradient_radius[ipair] += 2.*radiuswt*delta_radius;
-        for(int s = 1; s < nbins-1; s++) { // restraints over inner bins
-          double dmean = (pairs[ipair].rho_mn[s-1] + pairs[ipair].rho_mn[s+1])/2.;
-          double delta_rhoMN = pairs[ipair].rho_mn[s] - dmean;
-          minusLL += rhoMNbinwt*scitbx::fn::pow2(delta_rhoMN);
-          if(do_gradient) {
+        if(do_radius) {
+          double radiuswt(1./(2*scitbx::fn::pow2(pairs[ipair].radius_estimate/4.)));
+          double delta_radius = pairs[ipair].radius - pairs[ipair].radius_estimate;
+          minusLL += radiuswt*scitbx::fn::pow2(delta_radius);
+          Gradient_radius[ipair] += 2.*radiuswt*delta_radius;
+        }
+        if(do_rho_mn) {
+          for(int s = 1; s < nbins-1; s++) { // restraints over inner bins
+            double dmean = (pairs[ipair].rho_mn[s-1] + pairs[ipair].rho_mn[s+1])/2.;
+            double delta_rhoMN = pairs[ipair].rho_mn[s] - dmean;
+            minusLL += rhoMNbinwt*scitbx::fn::pow2(delta_rhoMN);
             Gradient_rhoMN[ipair*nbins+s-1] -= rhoMNbinwt*delta_rhoMN;
             Gradient_rhoMN[ipair*nbins+s]   += 2.*rhoMNbinwt*delta_rhoMN;
             Gradient_rhoMN[ipair*nbins+s+1] -= rhoMNbinwt*delta_rhoMN;
@@ -298,10 +315,12 @@ public:
   }
 
   af::shared<FloatType> gradient_rhoMN() {
+    MMTBX_ASSERT(do_rho_mn && !do_radius && target_called);
     return Gradient_rhoMN;
   }
 
   af::shared<FloatType> gradient_radius() {
+    MMTBX_ASSERT(!do_rho_mn && do_radius && target_called);
     return Gradient_radius;
   }
 

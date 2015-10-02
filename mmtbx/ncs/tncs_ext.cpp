@@ -49,6 +49,8 @@ namespace {
         .def("gradient_rhoMN", &w_t::gradient_rhoMN)
         .def("gradient_radius", &w_t::gradient_radius)
         .def("update_pairs", &w_t::update_pairs)
+        .def("set_compute_gradients_rho_mn", &w_t::set_compute_gradients_rho_mn)
+        .def("set_compute_gradients_radius", &w_t::set_compute_gradients_radius)
       ;
     }
   };

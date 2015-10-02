@@ -22,6 +22,7 @@ class groups(object):
                angular_difference_threshold_deg=10.,
                sequence_identity_threshold=90.):
     h = pdb_hierarchy
+    n_atoms_all = h.atoms_size()
     s_str = "altloc ' ' and not water and pepnames"
     h = h.select(h.atom_selection_cache().selection(s_str))
     h1 = h.deep_copy()
@@ -78,16 +79,17 @@ class groups(object):
             t_frac = [math.modf(t)[0] for t in t_frac] # put into [-1,1]
             radius = flex.sum(flex.sqrt((sites_cart_1-
               sites_cart_1.mean()).dot()))/sites_cart_1.size()*4./3.
-            result.append([lsq_fit_obj.r, t_frac, angle, radius])
+            fracscat = c1.atoms_size()/n_atoms_all
+            result.append([lsq_fit_obj.r, t_frac, angle, radius, fracscat])
             # show tNCS group
-            fmt="chains %s <> %s angle: %4.2f trans.vect.: (%s)"
+            fmt="chains %s <> %s angle: %4.2f trans.vect.: (%s) fracscat: %5.3f"
             t = ",".join([("%6.3f"%t_).strip() for t_ in t_frac]).strip()
-            print fmt%(c1.id, c2.id, angle, t)
+            print fmt%(c1.id, c2.id, angle, t, fracscat)
     # compose final tNCS pairs object
     self.ncs_pairs = []
     fs=2./(1+math.sqrt(1+8*len(result)))
     for _ in result:
-      r, t, angle, rad = _
+      r, t, angle, rad, fs = _
       ncs_pair = ext.pair(
         r = r,
         t = t,
@@ -117,6 +119,7 @@ def initialize_rho_mn(ncs_pairs, d_spacings_data, binner, rms=0.5):
 def lbfgs_run(target_evaluator, use_bounds, lower_bound, upper_bound):
   minimizer = lbfgsb.minimizer(
     n   = target_evaluator.n,
+    #factr=1.e+1, XXX Affects speed significantly
     l   = lower_bound, # lower bound
     u   = upper_bound, # upper bound
     nbd = flex.int(target_evaluator.n, use_bounds)) # flag to apply both bounds
@@ -190,20 +193,17 @@ class potential(object):
       m_as_double = o.r().as_double()
       self.sym_matrices.append(m_as_double)
     self.gradient_evaluator = None
-    ### Initialize rho_mn
-    ### rhoMN = exp(-(2*pi^2/3)*(rms/d)^2, and rms=0.4-0.8 is probably a good.
-    rho_mn_initial = flex.double(n_bins, 0)
-    d_spacings = self.f_obs.d_spacings().data()
-    cntr=0
-    for i_bin in self.binner.range_used():
-      sel_bin = self.binner.selection(i_bin)
-      if(sel_bin.count(True)>0):
-        arg = (2*math.pi**2/3)*(0.5/flex.mean(d_spacings.select(sel_bin)))**2
-        rho_mn_initial[cntr] = math.exp(-1*arg)
-      cntr+=1
-    for p in self.ncs_pairs:
-      p.set_rhoMN(rho_mn_initial)
-    ###
+    self.target_and_grads = ext.tncs_eps_factor_refinery(
+        tncs_pairs               = self.ncs_pairs,
+        f_obs                    = self.f_obs.data(),
+        sigma_f_obs              = self.f_obs.sigmas(),
+        rbin                     = self.rbin,
+        SigmaN                   = self.SigmaN,
+        space_group              = self.f_obs.space_group(),
+        miller_indices           = self.f_obs.indices(),
+        fractionalization_matrix = self.f_obs.unit_cell().fractionalization_matrix(),
+        sym_matrices             = self.sym_matrices)
+
     self.update()
 
   def update(self, x=None):
@@ -211,19 +211,21 @@ class potential(object):
       size = len(self.ncs_pairs)
       for i, ncs_pair in enumerate(self.ncs_pairs):
         ncs_pair.set_rhoMN(x[i*self.n_bins:(i+1)*self.n_bins])
+      self.target_and_grads.update_pairs(self.ncs_pairs)
     elif(self.gradient_evaluator=="radius"):
       for ncs_pair, x_ in zip(self.ncs_pairs, x):
         ncs_pair.set_radius(x_)
-    self.target_and_grads = ext.tncs_eps_factor_refinery(
-      tncs_pairs               = self.ncs_pairs,
-      f_obs                    = self.f_obs.data(),
-      sigma_f_obs              = self.f_obs.sigmas(),
-      rbin                     = self.rbin,
-      SigmaN                   = self.SigmaN,
-      space_group              = self.f_obs.space_group(),
-      miller_indices           = self.f_obs.indices(),
-      fractionalization_matrix = self.f_obs.unit_cell().fractionalization_matrix(),
-      sym_matrices             = self.sym_matrices)
+      self.target_and_grads = ext.tncs_eps_factor_refinery(
+        tncs_pairs               = self.ncs_pairs,
+        f_obs                    = self.f_obs.data(),
+        sigma_f_obs              = self.f_obs.sigmas(),
+        rbin                     = self.rbin,
+        SigmaN                   = self.SigmaN,
+        space_group              = self.f_obs.space_group(),
+        miller_indices           = self.f_obs.indices(),
+        fractionalization_matrix = self.f_obs.unit_cell().fractionalization_matrix(),
+        sym_matrices             = self.sym_matrices)
+      self.target_and_grads.set_compute_gradients_radius()
 
   def update_SigmaN(self):
     if(self.SigmaN is None):
@@ -244,10 +246,12 @@ class potential(object):
 
   def set_refine_radius(self):
     self.gradient_evaluator = "radius"
+    self.target_and_grads.set_compute_gradients_radius()
     return self
 
   def set_refine_rhoMN(self):
     self.gradient_evaluator = "rhoMN"
+    self.target_and_grads.set_compute_gradients_rho_mn()
     return self
 
   def target(self):
@@ -278,7 +282,7 @@ def finite_differences_grad_radius(ncs_pairs, f_obs, reflections_per_bin,
   g_exact = pot.gradient()
   #print "Exact:", list(g_exact)
   #
-  eps = 1.e-6
+  eps = 1.e-4
   #
   g_fd = []
   for i, rad in enumerate(radii):
