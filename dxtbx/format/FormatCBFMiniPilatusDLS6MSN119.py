@@ -97,6 +97,8 @@ class FormatCBFMiniPilatusDLS6MSN119(FormatCBFMiniPilatus):
     probably be checked against the image header, though for miniCBF
     there are limited options for this.'''
 
+    if '+FAST' in self._cif_header_dictionary.get('Oscillation_axis'):
+      return self._goniometer_factory.known_axis((1, 0, 0))
     return self._goniometer_factory.known_axis((0, 1, 0))
 
 if __name__ == '__main__':
