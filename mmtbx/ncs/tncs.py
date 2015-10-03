@@ -56,10 +56,11 @@ class groups(object):
           if(p_identity>sequence_identity_threshold):
             sites_cart_1 = flex.vec3_double()
             sites_cart_2 = flex.vec3_double()
-            for i1, i2 in zip(alignment.i_seqs_a, alignment.i_seqs_b):
-              if(i1 is not None and i2 is not None):
+            for i1, i2, match in zip(alignment.i_seqs_a, alignment.i_seqs_b,
+                                     matches):
+              if(i1 is not None and i2 is not None and match=="|"):
                 r1i, r2i = r1[i1], r2[i2]
-                assert r1i.resname==r2i.resname
+                assert r1i.resname==r2i.resname, [r1i.resname,r2i.resname,i1,i2]
                 for a1 in r1i.atoms():
                   for a2 in r2i.atoms():
                     if(a1.name == a2.name):
@@ -73,8 +74,6 @@ class groups(object):
             other_sites     = sites_cart_2)
           angle = lsq_fit_obj.r.rotation_angle()
           if(angle < angular_difference_threshold_deg):
-            #for jj in xrange(len(chains)):
-            #  if chains[jj]==c2: j=jj
             t_frac = unit_cell.fractionalize((sites_cart_1-sites_cart_2).mean())
             t_frac = [math.modf(t)[0] for t in t_frac] # put into [-1,1]
             radius = flex.sum(flex.sqrt((sites_cart_1-
@@ -87,7 +86,6 @@ class groups(object):
             print fmt%(c1.id, c2.id, angle, t, fracscat)
     # compose final tNCS pairs object
     self.ncs_pairs = []
-    fs=2./(1+math.sqrt(1+8*len(result)))
     for _ in result:
       r, t, angle, rad, fs = _
       ncs_pair = ext.pair(
