@@ -678,7 +678,9 @@ ATOM      2  CA  LEU     2       1.118  -9.777   0.735  1.00  0.00
   else: raise Exception_expected
   #
   assert "HIS" in pdb.common_residue_names_amino_acid
+  assert "TRO" in pdb.common_residue_names_modified_amino_acid
   assert "GUA" in pdb.common_residue_names_rna_dna
+  assert "21C" in pdb.common_residue_names_modified_rna_dna
   assert "CD " in pdb.common_residue_names_ccp4_mon_lib_rna_dna
   assert "HOH" in pdb.common_residue_names_water
   assert "SO4" in pdb.common_residue_names_small_molecule
