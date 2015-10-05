@@ -881,8 +881,9 @@ def selection_string_from_selection(pdb_hierarchy_inp,
   sel_str = ' or '.join(s_l)
   isel = pdb_hierarchy_inp.atom_selection_cache().iselection(sel_str)
   assert len(isel) == len(selection), ""+\
-      "%d != %d: conversion to string selects different number of atoms!" \
-      % (len(isel), len(selection))
+      "%d != %d: conversion to string selects different number of atoms!.\n" \
+      % (len(isel), len(selection)) +\
+      "String lead to error: '%s'" % sel_str
   return sel_str
 
 def get_clean_selection_string(ch_sel,res_selection):
