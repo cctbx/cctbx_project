@@ -65,7 +65,8 @@ class RamachandranEval:
     Values below 0.0005 are considered outliers for the general case,
     or values below 0.002 for glycine, proline, and pre-proline.
     The field aaName should be one of "general", "glycine", "proline", or "prepro".
-    If the aaName is not recognized, returns None.'''
+    If the aaName is not recognized, returns None.
+    phiPsi is a list or tuple of angles in degrees(?): [phi, psi]'''
     ndt = self.aaTables.get(aaName.lower())
     if (ndt is None): return None
     return ndt.valueAt(phiPsi)
