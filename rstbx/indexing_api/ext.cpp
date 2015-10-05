@@ -10,9 +10,6 @@ using namespace rstbx::indexing_api;
 BOOST_PYTHON_MODULE(rstbx_indexing_api_ext)
 {
 
-   typedef return_value_policy<return_by_value> rbv;
-   typedef default_call_policies dcp;
-
    def("cpp_absence_test",cpp_absence_test);
 
    class_<dps_extended, bases<rstbx::dps_core> >("dps_extended",init< >())
