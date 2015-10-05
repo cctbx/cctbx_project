@@ -139,20 +139,27 @@ class NDimTable:
 
 
     def valueAt(self, pt):
-        '''Estimates the value of the density trace at a given position, using linear interpolation.
+        '''Estimates the value of the density trace at a given position,
+        using linear interpolation.
 
-        This algorithm basically consults the 2^n bins nearest in space to the input point,
-        and weights their contributions according to their distances.
+        This algorithm basically consults the 2^n bins nearest in space to
+        the input point, and weights their contributions according to their
+        distances.
 
-        To get a feeling for how it works, work out a linear interpolation in one dimension
+        To get a feeling for how it works, work out a linear interpolation in
+        one dimension
         ( a...x.......b -- what is x in terms of a and b? )(trivial)
-        and then in two dimensions (still fairly easy -- do one dimension first, then interpolate between those results).
+        and then in two dimensions (still fairly easy -- do one dimension
+        first, then interpolate between those results).
 
-        In dimensions very near the edge of the table, no interpolation is performed in that dimension
-        (it would be impossible to do so, anyway, because there's no 2nd value to interpolate out *to*).
+        In dimensions very near the edge of the table, no interpolation is
+        performed in that dimension
+        (it would be impossible to do so, anyway, because there's no 2nd
+        value to interpolate out *to*).
 
         pt - the point at which the value should be estimated
-        returns - the approximate value of the density trace at the specified point'''
+        returns - the approximate value of the density trace at the specified
+        point'''
 
         value = 0 # The value this function is calculating!
         va_home = self.whereIs(pt) # the bin this point falls into
