@@ -33,6 +33,13 @@ class PubMedDirective(Directive):
 
     text = []
 
+    def raw_html_link_new_tab(identifier, link_text, link):
+      return '.. |%s| raw:: html\n\n' %identifier + \
+        '   <a class="reference external" href="%s" target="_blank">%s</a>' %(
+          link, link_text)
+
+    raw_directives = []
+
     for i in xrange(len(XML)):
       # Title/doi link:
       possible_doi = [ idx for idx in XML[i]["PubmedData"]["ArticleIdList"]
@@ -40,15 +47,16 @@ class PubMedDirective(Directive):
       article = XML[i]["MedlineCitation"]["Article"]
       get_title = article["ArticleTitle"]
       get_title = get_title.strip(".")
+      doi_link_text = None
       if len(possible_doi) > 0:
-        text.append("| `%s <http://dx.doi.org/%s>`_" %(
-          get_title, possible_doi[0]))
+        text.append('| |%s|' %possible_doi[0])
+        raw_directives.append(raw_html_link_new_tab(
+          possible_doi[0], get_title, "http://dx.doi.org/%s" %possible_doi[0]))
 
       # Author list
       authors = [ " ".join([elem["LastName"],elem["Initials"]])
                   for elem in article["AuthorList"] ]
-      text.append(
-        "| %s." %(", ".join(authors)))
+      text.append("| %s." %(", ".join(authors)))
 
       # Journal reference
       journal = article["Journal"]
@@ -66,13 +74,23 @@ class PubMedDirective(Directive):
       possible_pmc = [ idx for idx in XML[i]["PubmedData"]["ArticleIdList"]
                        if idx.attributes["IdType"]=="pmc" ]
       if len(possible_pmc) > 0:
-        journal_text += " [PMC reprint: `%s <http://ncbi.nlm.nih.gov/pmc/articles/%s/>`_]"%(
-          str(possible_pmc[0]), str(possible_pmc[0]) )
-      if reprint_url is not None:
-        journal_text += " `(Reprint) <%s>`_" %(reprint_url)
-      text.append(journal_text)
+        journal_text += " [PMC reprint: |%s|]" %possible_pmc[0]
+        raw_directives.append(raw_html_link_new_tab(
+          possible_pmc[0], "%s" %possible_pmc[0],
+          "http://ncbi.nlm.nih.gov/pmc/articles/%s/" %possible_pmc[0]))
 
-    #print "\n".join(text)
+      if reprint_url is not None:
+        journal_text += " |%s_reprint|" %PMID
+        raw_directives.append(raw_html_link_new_tab(
+          "%s_reprint" %PMID, "(Reprint)", reprint_url))
+      text.append(journal_text)
+      for directive in raw_directives:
+        text.append("\n%s\n" %directive)
+
+    #try:
+      #print "\n".join(text)
+    #except Exception:
+      #pass
 
     # insert rst
     source = self.state_machine.input_lines.source(
