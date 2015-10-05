@@ -78,10 +78,15 @@ def run(args, log=None, ccp4_map=None, return_as_miller_arrays=False, nohl=False
   print >>out,"map: min/max/mean:", flex.min(m.data), flex.max(m.data), flex.mean(m.data)
   print >>out,"unit cell:", m.unit_cell_parameters
   #
-  if(not m.data.is_0_based()):
-    raise Sorry("Map must have origin at (0,0,0): recenter the map and try again.")
+  map_data=m.data
+  shift_needed = not \
+     (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
+      map_data.is_0_based())
+  if(shift_needed):
+    map_data = map_data.shift_origin()
+
   # generate complete set of Miller indices up to given high resolution d_min
-  n_real = m.data.focus()
+  n_real = map_data.focus()
   cs = crystal.symmetry(m.unit_cell_parameters, 1)
   crystal_gridding = maptbx.crystal_gridding(
     unit_cell         = cs.unit_cell(),
@@ -92,7 +97,7 @@ def run(args, log=None, ccp4_map=None, return_as_miller_arrays=False, nohl=False
   d_min = params.d_min
   if(d_min is None and not params.box):
     d_min = maptbx.d_min_from_map(
-      map_data  = m.data,
+      map_data  = map_data,
       unit_cell = cs.unit_cell())
   if(d_min is None):
     # box of reflections in |h|<N1/2, |k|<N2/2, 0<=|l|<N3/2
@@ -126,7 +131,7 @@ def run(args, log=None, ccp4_map=None, return_as_miller_arrays=False, nohl=False
   complete_set.show_comprehensive_summary(prefix="  ",f=out)
   try:
     f_obs_cmpl = complete_set.structure_factors_from_map(
-      map            = m.data.as_double(),
+      map            = map_data.as_double(),
       use_scale      = True,
       anomalous_flag = False,
       use_sg         = False)
