@@ -171,6 +171,8 @@ class cache(slots_getstate_setstate):
     "charge",
     "anisou",
     "pepnames",
+    "protein",
+    "nucleotide",
     "single_atom_residue",
     "water",
     "hetero",
@@ -183,6 +185,8 @@ class cache(slots_getstate_setstate):
     root.get_atom_selection_cache(self)
     self.pepnames = None
     self.single_atom_residue = None
+    self.protein = None
+    self.nucleotide = None
     self.water = None
     self.hetero = None
     self.special_position_settings = special_position_settings
@@ -311,6 +315,40 @@ class cache(slots_getstate_setstate):
                   atom.tmp = 1
       self.water = (atoms.extract_tmp_as_size_t() == 1).iselection()
     return [self.water]
+
+  def get_protein(self):
+    if self.protein is None:
+      import iotbx.pdb
+      get_class = iotbx.pdb.common_residue_names_get_class
+      atoms = self.root.atoms()
+      sentinel = atoms.reset_tmp(first_value=0, increment=0)
+      for model in self.root.models():
+        for chain in model.chains():
+          for conformer in chain.conformers():
+            for residue in conformer.residues():
+              cl = get_class(name = residue.resname)
+              if cl == "common_amino_acid" or cl == "modified_amino_acid":
+                for atom in residue.atoms():
+                  atom.tmp = 1
+      self.protein = (atoms.extract_tmp_as_size_t() == 1).iselection()
+    return [self.protein]
+
+  def get_nucleotide(self):
+    if self.nucleotide is None:
+      import iotbx.pdb
+      get_class = iotbx.pdb.common_residue_names_get_class
+      atoms = self.root.atoms()
+      sentinel = atoms.reset_tmp(first_value=0, increment=0)
+      for model in self.root.models():
+        for chain in model.chains():
+          for conformer in chain.conformers():
+            for residue in conformer.residues():
+              cl = get_class(name = residue.resname)
+              if cl == "common_rna_dna" or cl == "modified_rna_dna":
+                for atom in residue.atoms():
+                  atom.tmp = 1
+      self.nucleotide = (atoms.extract_tmp_as_size_t() == 1).iselection()
+    return [self.nucleotide]
 
   def get_hetero (self) :
     if (self.hetero is None) :
@@ -453,6 +491,12 @@ class cache(slots_getstate_setstate):
   def sel_single_atom_residue(self):
     return self.union(iselections=self.get_single_atom_residue())
 
+  def sel_protein(self):
+    return self.union(iselections=self.get_protein())
+
+  def sel_nucleotide(self):
+    return self.union(iselections=self.get_nucleotide())
+
   def sel_water(self):
     return self.union(iselections=self.get_water())
 
@@ -493,10 +537,6 @@ class cache(slots_getstate_setstate):
             =expect_nonmatching_closing_parenthesis):
       lword = word.value.lower()
       def raise_syntax_error():
-        if (lword in ["peptide", "protein"]):
-          raise Sorry(
-            '"%s" atom selection keyword not available:\n'
-            '  Please try using "pepnames" instead.' % lword)
         raise RuntimeError(
           'Atom selection syntax error at word "%s".' % lword)
       if (lword == "optional"):
@@ -616,6 +656,13 @@ class cache(slots_getstate_setstate):
           result_stack.append(self.sel_anisou())
         elif (lword == "pepnames"):
           result_stack.append(self.sel_pepnames())
+        elif ((lword == "protein" or lword == "peptide")
+            and callback is None):
+          # if there is callback, these keywords shoudl be processed there,
+          # most likely it is pdb_interpretation
+          result_stack.append(self.sel_protein())
+        elif lword == "nucleotide" and callback is None:
+          result_stack.append(self.sel_nucleotide())
         elif (lword == "single_atom_residue"):
           result_stack.append(self.sel_single_atom_residue())
         elif (lword == "water"):

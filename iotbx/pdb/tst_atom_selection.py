@@ -332,16 +332,8 @@ ATOM     45  CA  CA      6      16.545  29.521  64.086  1.00 19.76
   assert list(isel("pepnames")) == [0,1,5,6,7,8,9,10,11]
   #
   for s in ["peptide", "protein"]:
-    try:
-      isel(s)
-    except pdb.atom_selection.AtomSelectionError, e:
-      assert not show_diff(str(e), """\
-Sorry: "%s" atom selection keyword not available:
-  Please try using "pepnames" instead.
-Atom selection string leading to error:
-  %s""" % (s, s))
-    else: raise Exception_expected
-  #
+    assert list(isel(s)) == [0, 1, 5, 6, 7, 8, 9, 10, 11]
+
   try:
     isel("chain A or (peptyde and name ca)")
   except pdb.atom_selection.AtomSelectionError, e:
@@ -457,6 +449,48 @@ ATOM    234  N   SER A  35A     23.294 -20.178  -1.426  1.00  4.63           N
   assert list(isel("resid A002 through A003X")) == [3, 4]
   assert list(isel("(resid A002 through A003X) and (altloc ' ' or altloc 'A') "))== [3, 4]
   assert list(isel("(chain 'A' and resid 2A through 7 ) and (name N) and (altloc 'A' or altloc ' ')"))==[6, 7, 8, 9, 10]
+
+  # exercise peptide, protein
+  hierarchy = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM      5  CA  SER     1       9.242  30.200  62.974  1.00 46.62
+ATOM     11  CA  ARG     2      12.548  28.316  63.532  1.00 30.20
+ATOM     21  N   TRI     3J     13.947  29.997  64.680  1.00 22.94
+ATOM     22  CA  TRI     3J     14.902  31.100  64.827  1.00 20.19
+ATOM     24  O   TRI     3J     16.545  29.521  64.086  1.00 19.76
+ATOM     28  N  AILE     4      16.953  31.648  63.512  1.00 15.29
+ATOM     29  CA AILE     4      18.243  31.372  62.859  1.00 14.32
+ATOM     30  C  AILE     4      19.233  32.112  63.743  1.00 13.54
+ATOM     31  O  AILE     4      19.105  33.315  64.009  1.00 11.84
+ATOM     41  N   PRO     5      13.947  29.997  64.680  1.00 22.94
+ATOM     42  CA  HOH     6      14.902  31.100  64.827  1.00 20.19
+ATOM     44  O   HOH     7      16.545  29.521  64.086  1.00 19.76
+ATOM     45  CA  CA      8      16.545  29.521  64.086  1.00 19.76
+""")).construct_hierarchy()
+  sel_cache = hierarchy.atom_selection_cache()
+  isel = sel_cache.iselection
+  for s in ["peptide", "protein"]:
+    assert list(isel(s)) == [0,1,2,3,4,5,6,7,8,9]
+
+  # exercise nucleotide
+  hierarchy = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM      5  CA    A     1       9.242  30.200  62.974  1.00 46.62
+ATOM     11  CA    C     2      12.548  28.316  63.532  1.00 30.20
+ATOM     21  N   DA      3J     13.947  29.997  64.680  1.00 22.94
+ATOM     22  CA  DA      3J     14.902  31.100  64.827  1.00 20.19
+ATOM     24  O   DA      3J     16.545  29.521  64.086  1.00 19.76
+ATOM     28  N  A21C     4      16.953  31.648  63.512  1.00 15.29
+ATOM     29  CA A21C     4      18.243  31.372  62.859  1.00 14.32
+ATOM     30  C  A21C     4      19.233  32.112  63.743  1.00 13.54
+ATOM     31  O  A21C     4      19.105  33.315  64.009  1.00 11.84
+ATOM     41  N   PRO     5      13.947  29.997  64.680  1.00 22.94
+ATOM     42  CA  HOH     6      14.902  31.100  64.827  1.00 20.19
+ATOM     44  O   HOH     7      16.545  29.521  64.086  1.00 19.76
+ATOM     45  CA  CA      8      16.545  29.521  64.086  1.00 19.76
+""")).construct_hierarchy()
+  sel_cache = hierarchy.atom_selection_cache()
+  isel = sel_cache.iselection
+  assert list(isel("nucleotide")) == [0,1,2,3,4,5,6,7,8]
+  assert list(isel("nucleotide or protein")) == [0,1,2,3,4,5,6,7,8,9]
 
 def run():
   exercise_selection()
