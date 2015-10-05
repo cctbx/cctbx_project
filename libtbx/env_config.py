@@ -33,6 +33,7 @@ default_write_full_flex_fwd_h = sys.platform.startswith("irix")
 default_msvc_arch_flag = ["None", "SSE2"][int(os.name == "nt")]
 default_build_boost_python_extensions = True
 default_enable_openmp_if_possible = False
+default_enable_boost_threads = False
 default_enable_cuda = False
 default_opt_resources = False
 default_enable_cxx11 = False
@@ -760,6 +761,8 @@ Wait for the command to finish, then try again.""" % vars())
           =command_line.options.boost_python_bool_int_strict,
         enable_openmp_if_possible
           =command_line.options.enable_openmp_if_possible,
+        enable_boost_threads
+          =command_line.options.enable_boost_threads,
         enable_cuda=command_line.options.enable_cuda,
         opt_resources=command_line.options.opt_resources,
         use_environment_flags=command_line.options.use_environment_flags,
@@ -1830,6 +1833,7 @@ class build_options:
         boost_python_no_py_signatures=False,
         boost_python_bool_int_strict=True,
         enable_openmp_if_possible=default_enable_openmp_if_possible,
+        enable_boost_threads=False,
         enable_cuda=default_enable_cuda,
         opt_resources=default_opt_resources,
         precompile_headers=False,
@@ -1892,6 +1896,7 @@ class build_options:
     print >> f, "Define BOOST_PYTHON_BOOL_INT_STRICT:", \
       self.boost_python_bool_int_strict
     print >> f, "Enable OpenMP if possible:", self.enable_openmp_if_possible
+    print >> f, "Boost threads enabled:", self.enable_boost_threads
     print >> f, "Enable CUDA:", self.enable_cuda
     print >> f, "Use opt_resources if available:", self.opt_resources
     print >> f, "Use environment flags:", self.use_environment_flags
@@ -2067,6 +2072,11 @@ class pre_process_args:
       help="use OpenMP if available and known to work (default: %s)"
         % bool_literal(default_enable_openmp_if_possible),
       metavar="True|False")
+    parser.option(None, "--enable_boost_threads",
+      action="store",
+      type="bool",
+      default=default_enable_boost_threads,
+      help="make Boost.Threads available")
     parser.option(None, "--enable_cuda",
       action="store_true",
       default=default_enable_cuda,
@@ -2291,6 +2301,9 @@ def unpickle():
   # XXX backward compatibility 2015-07-02
   if (not hasattr(env.build_options, "skip_phenix_dispatchers")):
     env.build_options.skip_phenix_dispatchers = False
+  # XXX backward compatibility 2015-09-05
+  if not hasattr(env.build_options, "enable_boost_threads"):
+    env.build_options.enable_boost_threads = default_enable_boost_threads
   return env
 
 def warm_start(args):
