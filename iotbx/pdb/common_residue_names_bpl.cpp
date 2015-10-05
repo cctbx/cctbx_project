@@ -20,7 +20,9 @@ namespace {
           common_residue_names::type);
 
     IOTBX_PDB_COMMON_RESIDUE_NAMES_LIST(amino_acid)
+    IOTBX_PDB_COMMON_RESIDUE_NAMES_LIST(modified_amino_acid)
     IOTBX_PDB_COMMON_RESIDUE_NAMES_LIST(rna_dna)
+    IOTBX_PDB_COMMON_RESIDUE_NAMES_LIST(modified_rna_dna)
     IOTBX_PDB_COMMON_RESIDUE_NAMES_LIST(ccp4_mon_lib_rna_dna)
     IOTBX_PDB_COMMON_RESIDUE_NAMES_LIST(water)
     IOTBX_PDB_COMMON_RESIDUE_NAMES_LIST(small_molecule)

@@ -685,7 +685,10 @@ ATOM      2  CA  LEU     2       1.118  -9.777   0.735  1.00  0.00
   assert " FE" in pdb.common_residue_names_element
   get_class = pdb.common_residue_names_get_class
   assert get_class(name="ALA") == "common_amino_acid"
+  assert get_class(name="0AF") == "modified_amino_acid"
+  assert get_class(name="TRQ") == "modified_amino_acid"
   assert get_class(name="  U") == "common_rna_dna"
+  assert get_class(name="21U") == "modified_rna_dna"
   assert get_class(name="HOH") == "common_water"
   assert get_class(name="SO4") == "common_small_molecule"
   assert get_class(name="CL ") == "common_element"

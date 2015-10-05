@@ -1341,6 +1341,8 @@ iotbx/pdb/input_write.cpp svneol=native#text/plain
 iotbx/pdb/mining.py svneol=native#text/x-python
 iotbx/pdb/misc_records_output.py -text
 iotbx/pdb/mmcif.py -text
+iotbx/pdb/modified_aa_names.h -text
+iotbx/pdb/modified_rna_dna_names.h -text
 iotbx/pdb/multimer_reconstruction.py -text
 iotbx/pdb/namespace.h svneol=native#text/plain
 iotbx/pdb/overall_counts.cpp svneol=native#text/plain

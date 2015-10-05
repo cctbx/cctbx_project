@@ -5,6 +5,8 @@
 #include <scitbx/array_family/ref.h>
 #include <string>
 #include <set>
+#include <iotbx/pdb/modified_aa_names.h>
+#include <iotbx/pdb/modified_rna_dna_names.h>
 
 namespace iotbx { namespace pdb { namespace common_residue_names {
 
@@ -350,10 +352,28 @@ namespace iotbx { namespace pdb { namespace common_residue_names {
 
   inline
   const std::set<str3>&
+  modified_amino_acid_set()
+  {
+    static std::set<str3> result;
+    initialize_set(result, modified_amino_acid);
+    return result;
+  }
+
+  inline
+  const std::set<str3>&
   rna_dna_set()
   {
     static std::set<str3> result;
     initialize_set(result, rna_dna);
+    return result;
+  }
+
+  inline
+  const std::set<str3>&
+  modified_rna_dna_set()
+  {
+    static std::set<str3> result;
+    initialize_set(result, modified_rna_dna);
     return result;
   }
 
@@ -398,13 +418,17 @@ namespace iotbx { namespace pdb { namespace common_residue_names {
   get_class(str3 const& name, bool consider_ccp4_mon_lib_rna_dna=false)
   {
     static const std::set<str3>& aa_set = amino_acid_set();
+    static const std::set<str3>& modified_aa_set = modified_amino_acid_set();
     static const std::set<str3>& na_set = rna_dna_set();
+    static const std::set<str3>& modified_na_set = modified_rna_dna_set();
     static const std::set<str3>& ml_na_set = ccp4_mon_lib_rna_dna_set();
     static const std::set<str3>& w_set = water_set();
     static const std::set<str3>& sm_set = small_molecule_set();
     static const std::set<str3>& e_set = element_set();
     static const std::string common_amino_acid("common_amino_acid");
+    static const std::string modified_amino_acid("modified_amino_acid");
     static const std::string common_rna_dna("common_rna_dna");
+    static const std::string modified_rna_dna("modified_rna_dna");
     static const std::string ccp4_mon_lib_rna_dna("ccp4_mon_lib_rna_dna");
     static const std::string common_water("common_water");
     static const std::string common_small_molecule("common_small_molecule");
@@ -413,8 +437,14 @@ namespace iotbx { namespace pdb { namespace common_residue_names {
     if (aa_set.find(name) != aa_set.end()) {
       return common_amino_acid;
     }
+    if (modified_aa_set.find(name) != modified_aa_set.end()) {
+      return modified_amino_acid;
+    }
     if (na_set.find(name) != na_set.end()) {
       return common_rna_dna;
+    }
+    if (modified_na_set.find(name) != modified_na_set.end()) {
+      return modified_rna_dna;
     }
     if (   consider_ccp4_mon_lib_rna_dna
         && ml_na_set.find(name) != ml_na_set.end()) {
