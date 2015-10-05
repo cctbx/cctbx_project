@@ -111,6 +111,7 @@ env_etc.msvc_version = None
 env_etc.gcc_is_llvm_gcc = None
 env_etc.apple_gcc_builds = libtbx.group_args(gcc=None, llvm=None)
 env_etc.cxx11_is_available = None
+env_etc.boost_thread_support = True # Let's be optimistic!
 
 env_etc.include_registry = libtbx.env_config.include_registry() \
   .scan_boost(flag=libtbx.env.build_options.scan_boost)
@@ -285,7 +286,7 @@ if (sys.platform == "win32" or
   env_etc.extension_module_suffix = ".pyd"
   if (env_etc.compiler == "win32_cl"):
     if hasattr(sys, 'gettotalrefcount'): # only the debug build of Python has this function
-      env_etc.extension_module_suffix = "_d.pyd" # then rename extension modules accordingly 
+      env_etc.extension_module_suffix = "_d.pyd" # then rename extension modules accordingly
                                                  # so that debug version of Python can load them
     cl_exe = full_command_path("cl.exe")
     if (cl_exe is None):
@@ -827,7 +828,38 @@ int main() {
       env_etc.ccflags_base.extend(["-no-cpp-precomp"])
       if (env_etc.gcc_version < 40201):
         env_etc.ccflags_base.append("-Wno-long-double")
+
     env_etc.cxxflags_base = []
+
+    # We need to work around a bug in the support of clang by Boost
+    # At least 1.55 is known to be affected.
+    if (env_etc.clang_version is not None and
+        not libtbx.env.build_options.force_32bit):
+      clone = env_base.Clone()
+      clone.Append(CXXFLAGS="-I%s" % libtbx.env.dist_path("boost"))
+      conf = clone.Configure()
+      test_code = """\
+      #include <boost/thread.hpp>
+
+      struct callable { void operator()(){} };
+      void whatever() {
+        callable f;
+        boost::thread t(f);
+      }
+      """
+      success = conf.TryCompile(test_code, extension='.cpp')
+      conf.Finish()
+      if not success:
+        int128_opt = "-DBOOST_HAS_INT128=1"
+        clone.Append(CXXFLAGS=int128_opt)
+        conf = clone.Configure()
+        success = conf.TryCompile(test_code, extension='.cpp')
+        conf.Finish()
+        if success:
+          env_etc.cxxflags_base.append(int128_opt)
+        else:
+          env_etc.boost_thread_support = False
+
     if env_etc.clang_version is None and env_etc.gcc_version < 40000:
       env_etc.cxxflags_base.append("-fcoalesce-templates")
     env_etc.cxxflags_base.append("-DBOOST_ALL_NO_LIB")
