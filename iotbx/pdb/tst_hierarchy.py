@@ -2418,8 +2418,8 @@ histogram of atom element+charge frequency:
   " S  " 3
   " N  " 2
 residue name classes:
-  "common_amino_acid" 1
-  "other"             1
+  "common_amino_acid"   1
+  "modified_amino_acid" 1
 number of chain ids: 1
 histogram of chain id frequency:
   "A" 1
@@ -2436,7 +2436,7 @@ residue alt. conf. situations:
 chains with mix of proper and improper alt. conf.: 0
 number of residue names: 2
 histogram of residue name frequency:
-  "CSO" 1    other
+  "CSO" 1    modified amino acid
   "CYS" 1
 ### WARNING: consecutive residue_groups with same resid ###
 number of consecutive residue groups with same resid: 1
@@ -6050,7 +6050,7 @@ Alternate conformations:  0
 Amino acid residues:      289
 Water molecules:          350
 Elemental ions:           1 ( CL)
-Other molecules:          2 (PO4, SEP)
+Other molecules:          1 (PO4)
 Mean isotropic B-factor:  22.10 (range: 10.58 - 55.34)
 Space group:              P 21 21 21
 Unit cell:                59.781 66.674 96.999 90 90 90

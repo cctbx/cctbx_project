@@ -157,7 +157,9 @@ class overall_counts(object):
       print >> out, prefix+"histogram of residue name frequency:"
       annotation_appearance = {
         "common_amino_acid": None,
+        "modified_amino_acid": "   modified amino acid",
         "common_rna_dna": None,
+        "modified_rna_dna": "   modified rna/dna",
         "common_water": "   common water",
         "common_small_molecule": "   common small molecule",
         "common_element": "   common element",
