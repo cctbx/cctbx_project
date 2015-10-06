@@ -1880,7 +1880,7 @@ def exercise_17():
   """
   asc = iotbx.pdb.input(source_info=None,
     lines=pdb_str_14).construct_hierarchy().atom_selection_cache()
-  ncs_inp = ncs.input(pdb_string = pdb_str_14)
+  ncs_inp = ncs.input(pdb_string = pdb_str_14, exclude_selection=None)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
   assert len(ncs_groups)==1
   assert ncs_groups[0].master_iselection.all_eq(asc.selection(
@@ -1894,7 +1894,8 @@ def exercise_17():
 
 def exercise_18():
   """
-  Include water if requested by user
+  Include water if requested by user.
+  Oleg. Not anymore. Just fixing
   """
   phil_str="""
 ncs_group {
@@ -1918,19 +1919,20 @@ ncs_group {
   assert g1_c[0].iselection.all_eq(
     asc.selection(string = "chain B").iselection())
 
-  ncs_inp = ncs.input(pdb_string = pdb_str_15, ncs_phil_string = phil_str)
+  ncs_inp = ncs.input(pdb_string = pdb_str_15, ncs_phil_string = phil_str,
+      exclude_selection=None)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
   assert len(ncs_groups)==1
   # group 1
   assert ncs_groups[0].master_iselection.all_eq(
       asc.selection(
-          string = "chain A and not (water or element H or element D)"
+          string = "chain A"
       ).iselection())
   g1_c = ncs_groups[0].copies
   assert len(g1_c)==1
   assert g1_c[0].iselection.all_eq(
       asc.selection(
-          string = "chain B and not (water or element H or element D)"
+          string = "chain B"
       ).iselection())
 
 def exercise_19():

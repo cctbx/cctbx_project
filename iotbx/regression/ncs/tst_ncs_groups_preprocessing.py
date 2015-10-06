@@ -83,13 +83,16 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
         IOError,ncs.input,ncs_phil_string=pc)
 
   def test_phil_processing(self):
-    """ Verify that phil parameters are properly processed   """
+    """ Verify that phil parameters are properly processed
+    need to supply exclude_selection=None because model consist only from UNK
+    residues. """
     # print sys._getframe().f_code.co_name
     # read file and create pdb object
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
     trans_obj = ncs.input(
         ncs_phil_string = pdb_test_data2_phil,
-        pdb_hierarchy_inp=pdb_obj)
+        pdb_hierarchy_inp=pdb_obj,
+        exclude_selection=None)
 
     expected = '(chain A) or (chain B or chain C)'
     self.assertEqual(trans_obj.ncs_selection_str,expected)
@@ -110,13 +113,16 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertEqual(trans_obj.ncs_atom_selection.count(True),4)
 
   def test_superpos_pdb(self):
-    """  verify creation of transformations using superpose_pdb   """
+    """  verify creation of transformations using superpose_pdb
+    need to supply exclude_selection=None because model consist only from UNK
+    residues. """
     # print sys._getframe().f_code.co_name
     # read file and create pdb object
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data1)
     trans_obj = ncs.input(
         ncs_phil_string = pdb_test_data1_phil,
-        pdb_hierarchy_inp=pdb_obj)
+        pdb_hierarchy_inp=pdb_obj,
+        exclude_selection=None)
 
     self.assertEqual(trans_obj.ncs_selection_str,'(chain A) or (chain B)')
     expected = {'chain A': ['chain C', 'chain E'],
@@ -309,12 +315,15 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertEqual(t2,c2.t)
 
   def test_print_ncs_phil_param(self):
-    """ Verify correct printout of NCS phil parameters """
+    """ Verify correct printout of NCS phil parameters.
+    need to supply exclude_selection=None because model consist only from UNK
+    residues. """
     # print sys._getframe().f_code.co_name
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
     trans_obj = ncs.input(
       ncs_phil_string = pdb_test_data2_phil,
-      pdb_hierarchy_inp=pdb_obj)
+      pdb_hierarchy_inp=pdb_obj,
+      exclude_selection=None)
     result = trans_obj.print_ncs_phil_param(write=False)
     test = (pdb_test_data2_phil == result)
     test = test or (pdb_test_data2_phil_reverse == result)

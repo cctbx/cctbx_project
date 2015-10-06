@@ -125,10 +125,12 @@ class TestMultimerReconstruction(unittest.TestCase):
     """
     Verify that insertion and reordering of the identity transform is done
     properly
+    need to use exclude_selection=None because test pdb files contain only UNK
+    residues.
     """
     # print sys._getframe().f_code.co_name
     for pdb_str in [pdb_test_data5,pdb_test_data6]:
-      ncs_inp = ncs.input(pdb_string=pdb_test_data5)
+      ncs_inp = ncs.input(pdb_string=pdb_str, exclude_selection=None)
       transform_info = ncs_inp.build_MTRIX_object()
       self.assertEqual(len(transform_info.r),3)
       self.assertEqual(len(transform_info.t),3)

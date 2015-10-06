@@ -9,11 +9,15 @@ import unittest
 __author__ = 'Youval'
 
 class TestMinimizationFunctions(unittest.TestCase):
-  """ Test NCS constraints minimization function  """
+  """ Test NCS constraints minimization function
+  exclude_selection have to be used because NAG is not included into NCS
+  search procedure by default anymore"""
 
   def test_grads_one_ncs_to_asu(self):
+    # No more NAGs in NCS selection
     # print sys._getframe().f_code.co_name
-    ncs_inp = ncs.input(pdb_string=test_pdb_1)
+    ncs_inp = ncs.input(pdb_string=test_pdb_1,
+        exclude_selection=None)
     pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb_1)
     ph = pdb_inp.construct_hierarchy()
     xrs =  pdb_inp.xray_structure_simple()

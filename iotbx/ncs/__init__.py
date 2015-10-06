@@ -15,7 +15,7 @@ ncs_search
               determined automatically)
     .short_caption = Use NCS
     .style = noauto bold
-  exclude_selection = "water or element H or element D"
+  exclude_selection = "not (protein or nucleotide) or element H or element D"
     .type = atom_selection
     .help = Atoms selected by this selection will be excluded from the model \
       before NCS search procedures will run.
@@ -89,7 +89,7 @@ def input(pdb_hierarchy_inp=None,
           spec_ncs_groups=None,
           pdb_string=None,
           use_minimal_master_ncs=True,
-          exclude_selection="water or element H or element D",
+          exclude_selection="not (protein or nucleotide) or element H or element D",
           max_rmsd=2.0,
           write_messages=False,
           log=None,
