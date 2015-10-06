@@ -217,7 +217,8 @@ def gcc_common_warn_options():
   return result
 
 def clang_common_warn_options():
-  return [ '-Wmost', '-Wno-unknown-pragmas', '-Wno-logical-op-parentheses' ]
+  return [ '-Wmost', '-Wno-unknown-pragmas', '-Wno-logical-op-parentheses',
+           '-Wno-unused-local-typedef' ]
 
 def enable_more_warnings(env):
   """ Enable more warning for debug_level == 0 """
