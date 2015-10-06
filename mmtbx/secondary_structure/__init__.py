@@ -400,9 +400,9 @@ class manager (object) :
     n_proxies = generated_proxies.size()
     print >> log, ""
     if (n_proxies == 0) :
-      print >> log, "  No hydrogen bonds defined for protein."
+      print >> log, "    No hydrogen bonds defined for protein."
     else :
-      print >> log, "  %d hydrogen bonds defined for protein." % n_proxies
+      print >> log, "    %d hydrogen bonds defined for protein." % n_proxies
     # reg_proxies = []
     # for hb_p in build_proxies.proxies:
     #   reg_proxy = geometry_restraints.bond_simple_proxy(
@@ -462,12 +462,12 @@ class manager (object) :
     # print >> log, "    Time for creating hbond-angle proxies:%f" % (t4-t3)
     self.stats = {'n_protein_hbonds':0, 'n_na_hbonds':0, 'n_na_hbond_angles':0,
         'n_na_basepairs':0, 'n_na_stacking_pairs':0}
-    print >> log, "  Restraints generated for nucleic acids:"
-    print >> log, "    %d hydrogen bonds" % len(hb_bond_proxies)
-    print >> log, "    %d hydrogen bond angles" % len(hb_angle_proxies)
-    print >> log, "    %d basepair planarities" % len(planarity_bp_proxies)
-    print >> log, "    %d basepair parallelities" % len(parallelity_bp_proxies)
-    print >> log, "    %d stacking parallelities" % len(stacking_proxies)
+    print >> log, "    Restraints generated for nucleic acids:"
+    print >> log, "      %d hydrogen bonds" % len(hb_bond_proxies)
+    print >> log, "      %d hydrogen bond angles" % len(hb_angle_proxies)
+    print >> log, "      %d basepair planarities" % len(planarity_bp_proxies)
+    print >> log, "      %d basepair parallelities" % len(parallelity_bp_proxies)
+    print >> log, "      %d stacking parallelities" % len(stacking_proxies)
     all_hbonds = proteins_hbonds.deep_copy()
     all_hbonds.extend(hb_bond_proxies)
     return (all_hbonds, hb_angle_proxies,
@@ -528,10 +528,10 @@ class manager (object) :
     if n_stacking_pairs == 1:
       if self.params.secondary_structure.nucleic_acid.stacking_pair[0].base1 is None:
         n_stacking_pairs = 0
-    print >> log, "Secondary structure from input PDB file:"
-    print >> log, "  %d helices and %d sheets defined" % (n_helices,n_sheets)
-    print >> log, "  %.1f%% alpha, %.1f%% beta" %(frac_alpha*100,frac_beta*100)
-    print >> log, "  %d base pairs and %d stacking pairs defined." % (n_base_pairs,n_stacking_pairs)
+    print >> log, "    Secondary structure from input PDB file:"
+    print >> log, "      %d helices and %d sheets defined" % (n_helices,n_sheets)
+    print >> log, "      %.1f%% alpha, %.1f%% beta" %(frac_alpha*100,frac_beta*100)
+    print >> log, "      %d base pairs and %d stacking pairs defined." % (n_base_pairs,n_stacking_pairs)
 
   def helix_selections (self, limit=None, main_conf_only=False,
       alpha_only=False) :
