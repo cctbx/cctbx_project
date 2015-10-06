@@ -5057,7 +5057,8 @@ class process(object):
           self._geometry_restraints_manager.add_dihedrals_in_place(
               c_beta_torsion_proxies)
         print >> self.log, "  Number of C-beta restraints generated: ",\
-           n_c_beta_restraints
+            n_c_beta_restraints
+        print >> self.log
 
       # Reference coordinate restraints
       if self.all_chain_proxies.params.reference_coordinate_restraints.enabled:
@@ -5073,7 +5074,7 @@ class process(object):
                 top_out=rcr.top_out)
         n_rcr = self._geometry_restraints_manager.\
             get_n_reference_coordinate_proxies()
-        print >> self.log, "  Number of reference coordinate restraints generated:",\
+        print >> self.log, "    Number of reference coordinate restraints generated:",\
            n_rcr
 
       # DEN manager
@@ -5099,7 +5100,7 @@ class process(object):
             verbose=-1,
             log=self.log)
         t1=time.time()
-        print >> self.log, "  Time for finding SS restraints: %.2f" % (t1-t0)
+        print >> self.log, "    Time for finding SS restraints: %.2f" % (t1-t0)
         print >> self.log, "  Creating SS restraints..."
         (hb_proxies, hb_angle_proxies, planarity_proxies,
         parallelity_proxies) = self.ss_manager.create_all_new_restraints(
@@ -5134,6 +5135,7 @@ class process(object):
             parallelity_proxies)
         t3=time.time()
         print >> self.log, "  Total time for adding SS restraints: %.2f" % (t3-t2)
+        print >> self.log
         # print >> self.log, "    Bonds : %f" % (t21-t2)
         # print >> self.log, "    Angles: %f" % (t22-t21)
         # print >> self.log, "    Planes: %f" % (t23-t22)
