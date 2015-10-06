@@ -582,12 +582,12 @@ ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
   v_out1 = out1.getvalue()
   v_out2 = out2.getvalue()
   assert v_out2.find("""\
-  Restraints generated for nucleic acids:
-    6 hydrogen bonds
-    12 hydrogen bond angles
-    0 basepair planarities
-    2 basepair parallelities
-    2 stacking parallelities""") > 0
+    Restraints generated for nucleic acids:
+      6 hydrogen bonds
+      12 hydrogen bond angles
+      0 basepair planarities
+      2 basepair parallelities
+      2 stacking parallelities""") > 0
   for v in [v_out1, v_out2]:
     for portion in identical_portions:
       if not v.find(portion) > 0:
