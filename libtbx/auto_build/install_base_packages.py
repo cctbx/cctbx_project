@@ -451,9 +451,10 @@ Installation of Python packages may fail.
   def configure_and_build (self, config_args=(), log=None, make_args=(), limit_nproc=None) :
     self.call("./configure %s" % " ".join(list(config_args)), log=log)
     self.workarounds()
-    self.call("make -j %d %s" % (
-      min(self.nproc, limit_nproc) if limit_nproc is not None else self.nproc,
-      " ".join(list(make_args))), log=log)
+    nproc = self.nproc
+    if limit_nproc is not None:
+      nproc = min(nproc, limit_nproc)
+    self.call("make -j %d %s" % (nproc, " ".join(list(make_args))), log=log)
     self.call("make install", log=log)
 
   def build_compiled_package_simple (self,
