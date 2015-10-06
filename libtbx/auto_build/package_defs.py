@@ -17,6 +17,10 @@ BASE_H5PY_PKG_URL = "http://pypi.python.org/packages/source/h/h5py"
 BASE_HDF5_PKG_URL = "http://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.8.15-patch1/src"
 BASE_CYTHON_PKG_URL = "http://pypi.python.org/packages/source/C/Cython"
 
+# OpenSSL - needed for Mac OS X 10.11
+BASE_OPENSSL_PKG_URL = "http://www.openssl.org/source"
+OPENSSL_PKG = "openssl-1.0.2d.tar.gz"
+
 # from CCI
 PYTHON_PKG = "Python-2.7.8_cci.tar.gz"
 NUMPY_PKG = "numpy-1.8.1.tar.gz"         # used many places

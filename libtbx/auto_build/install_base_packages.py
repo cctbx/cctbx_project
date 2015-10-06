@@ -211,6 +211,12 @@ class installer (object) :
     else:
       packages += ['python']
 
+    if (self.flag_is_mac and get_os_version() == "10.11") :
+      # Apple no longer ships openssl headers, therefore need to provide our own
+      # https://forums.developer.apple.com/thread/3897
+      # http://lists.apple.com/archives/macnetworkprog/2015/Jun/msg00025.html
+      packages += ['openssl']
+
     # Always build hdf5 and numpy.
     packages += ['cython', 'hdf5', 'numpy', 'setuptools', 'pip', 'pythonextra', 'docutils']
     packages += ["libsvm"]
@@ -511,6 +517,7 @@ Installation of Python packages may fail.
     # Build in the correct dependency order.
     packages = packages or []
     order = [
+      'openssl',
       'python',
       'numpy',
       'cython',
@@ -595,6 +602,8 @@ Installation of Python packages may fail.
     if self.flag_is_mac:
       configure_args = [
         self.prefix,
+        'CPPFLAGS="-I%s/include"' %self.base_dir,
+        'LDFLAGS="-L%s/lib"' %self.base_dir,
         "--enable-framework=\"%s\"" % self.base_dir,]
       self.call("./configure %s" % " ".join(configure_args), log=log)
       # Do not build Python 2.7 in parallel. Race conditions observed on Mac and Linux.
@@ -826,6 +835,24 @@ Installation of Python packages may fail.
     #self.call("%s setup.py test" % self.python_exe, log=pkg_log)
     self.verify_python_module("h5py", "h5py")
 
+  def build_openssl (self) :
+    # https://wiki.openssl.org/index.php/Compilation_and_Installation#Configure_.26_Config
+    # http://stackoverflow.com/a/20740964
+
+    pkg_url=BASE_OPENSSL_PKG_URL
+    pkg_name=OPENSSL_PKG
+    pkg_name_label="OpenSSL"
+    pkg_log = self.start_building_package(pkg_name_label)
+    pkg = self.fetch_package(pkg_name=pkg_name, pkg_url=pkg_url)
+    if self.check_download_only(pkg_name): return
+    self.untar_and_chdir(pkg=pkg, log=pkg_log)
+    self.configure_and_build(
+      config_args=["darwin64-x86_64-cc", self.prefix,
+                   "no-hw", "--openssldir=...",
+                   ],
+      log=pkg_log)
+    self.include_dirs.append(op.join(self.base_dir, "include", "openssl"))
+
   def build_freetype (self) :
     self.build_compiled_package_simple(
       pkg_url=BASE_CCI_PKG_URL,
@@ -1015,7 +1042,7 @@ Installation of Python packages may fail.
                                  " /usr/lib/i386-linux-gnu" +
                                  " /usr/lib/x86_64-linux-gnu", ))
 
-    if (self.flag_is_mac and get_os_version() == "10.10") :
+    if (self.flag_is_mac and get_os_version() in ("10.10", "10.11")) :
       # Workaround wxwidgets 3.0.2 compilation error on Yosemite
       # This will be fixed in 3.0.3.
       # See:
