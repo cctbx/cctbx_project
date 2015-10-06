@@ -173,6 +173,7 @@ def get_os_version () :
   kernel_version = uname[2]
   if (uname[0] == "Darwin") :
     os_versions = {
+      "15" : "10.11",
       "14" : "10.10",
       "13" : "10.9",
       "12" : "10.8",
