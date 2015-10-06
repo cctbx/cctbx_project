@@ -5074,7 +5074,7 @@ class process(object):
                 top_out=rcr.top_out)
         n_rcr = self._geometry_restraints_manager.\
             get_n_reference_coordinate_proxies()
-        print >> self.log, "    Number of reference coordinate restraints generated:",\
+        print >> self.log, "  Number of reference coordinate restraints generated:",\
            n_rcr
 
       # DEN manager
