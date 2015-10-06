@@ -121,7 +121,7 @@ class ncs_group_object(object):
                          spec_ncs_groups=None,
                          pdb_string=None,
                          use_minimal_master_ncs=True,
-                         exclude_selection="water or element H or element D",
+                         exclude_selection="not (protein or nucleotide) or element H or element D",
                          max_rmsd=2.0,
                          write_messages=False,
                          process_similar_chains=True,
