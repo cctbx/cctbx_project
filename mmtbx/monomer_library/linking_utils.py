@@ -219,6 +219,9 @@ def get_classes(atom, important_only=False, verbose=False):
     "uncommon_amino_acid",
     "unknown",
     ]
+  redirect = {"modified_amino_acid" : "other",
+              "modified_rna_dna" : "other",
+              }
   atom_group = atom.parent()
   classes = empty()
   for attr in attrs:
@@ -230,6 +233,7 @@ def get_classes(atom, important_only=False, verbose=False):
       get_class(atom_group.resname, consider_ccp4_mon_lib_rna_dna=True),
       )
   gc = get_class(atom_group.resname, consider_ccp4_mon_lib_rna_dna=True)
+  gc = redirect.get(gc,gc)
   for i, attr in enumerate(attrs):
     rc = None
     if i:
