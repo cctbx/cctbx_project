@@ -448,10 +448,12 @@ Installation of Python packages may fail.
 
     return
 
-  def configure_and_build (self, config_args=(), log=None, make_args=()) :
+  def configure_and_build (self, config_args=(), log=None, make_args=(), limit_nproc=None) :
     self.call("./configure %s" % " ".join(list(config_args)), log=log)
     self.workarounds()
-    self.call("make -j %d %s" % (self.nproc, " ".join(list(make_args))), log=log)
+    self.call("make -j %d %s" % (
+      min(self.nproc, limit_nproc) if limit_nproc is not None else self.nproc,
+      " ".join(list(make_args))), log=log)
     self.call("make install", log=log)
 
   def build_compiled_package_simple (self,
@@ -850,7 +852,7 @@ Installation of Python packages may fail.
       config_args=["darwin64-x86_64-cc", self.prefix,
                    "no-hw", "--openssldir=...",
                    ],
-      log=pkg_log)
+      log=pkg_log, limit_nproc=1) # openssl is not parallel buildable
     self.include_dirs.append(op.join(self.base_dir, "include", "openssl"))
 
   def build_freetype (self) :
