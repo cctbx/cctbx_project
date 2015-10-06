@@ -903,7 +903,7 @@ class Builder(object):
       xcptstr += '"makensis" from NSIS must be present in the executable path.\n'
     if not distutils.spawn.find_executable("svn"):
       xcptstr += '"Tortoisesvn" with command line tools must be present in the executable path.\n'
-    if not distutils.spawn.find_executable("plink.exe"):
+    if not distutils.spawn.find_executable("pscp.exe"):
       xcptstr += '"pscp.exe" from the PuTTY program suite is not present in the executable path.\n'
     p = distutils.spawn.find_executable("plink.exe")
     if not p:
