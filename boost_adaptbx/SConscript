@@ -161,23 +161,6 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
     source="tests/tst_optional_copy.cpp")
 
   import os, os.path
-  env = env_base.Clone(LIBS=env_etc.libs_python)
-  env.Append(LIBPATH=env_etc.libpath_python)
-  env.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
-  env.Append(SHCXXFLAGS=["-DBOOST_PYTHON_SOURCE"])
-  if (libtbx.env.build_options.boost_python_bool_int_strict):
-    env.Append(SHCXXFLAGS=["-DBOOST_PYTHON_BOOL_INT_STRICT"])
-  env.Replace(SHLINKFLAGS=env_etc.shlinkflags)
-  env.Append(CXXFLAGS=env_etc.cxxflags_bpl_defines_base)
-  env.Append(CXXFLAGS="-DBOOST_PYTHON_SOURCE")
-  env.Replace(LINKFLAGS=env_etc.shlinkflags)
-  env_etc.include_registry.append(
-    env=env,
-    paths=[env_etc.boost_include, env_etc.python_include])
-
-  darwin_shlinkcom(env_etc, env,
-                   lo="boost/libs/python/src/libboost_python.lo",
-                   dylib="lib/libboost_python.dylib")
 
   # Build Boost.Thread if asked
   # We may also need to build Boost.System on recent versions
@@ -233,6 +216,24 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
       target="#lib/boost_adaptbx_boost_thread_test_ext",
       source="tests/boost_thread_test.cpp",
       LIBS=['boost_thread', 'boost_system'])
+
+  env = env_base.Clone(LIBS=env_etc.libs_python)
+  env.Append(LIBPATH=env_etc.libpath_python)
+  env.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
+  env.Append(SHCXXFLAGS=["-DBOOST_PYTHON_SOURCE"])
+  if (libtbx.env.build_options.boost_python_bool_int_strict):
+    env.Append(SHCXXFLAGS=["-DBOOST_PYTHON_BOOL_INT_STRICT"])
+  env.Replace(SHLINKFLAGS=env_etc.shlinkflags)
+  env.Append(CXXFLAGS=env_etc.cxxflags_bpl_defines_base)
+  env.Append(CXXFLAGS="-DBOOST_PYTHON_SOURCE")
+  env.Replace(LINKFLAGS=env_etc.shlinkflags)
+  env_etc.include_registry.append(
+    env=env,
+    paths=[env_etc.boost_include, env_etc.python_include])
+
+  darwin_shlinkcom(env_etc, env,
+                   lo="boost/libs/python/src/libboost_python.lo",
+                   dylib="lib/libboost_python.dylib")
 
   # fixed list of file names introduced 2009-09-29, due to major changes in
   # boost/libs/python/build/Jamfile.v2 svn rev. 56305 (new Python 3 support)
