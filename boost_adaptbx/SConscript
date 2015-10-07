@@ -19,6 +19,28 @@ env_etc.boost_adaptbx_include = os.path.dirname(env_etc.boost_adaptbx_dist)
 env_etc.boost_version = libtbx.env.boost_version
 print "BOOST_VERSION: %i" %env_etc.boost_version
 
+# If Boost.Thread was asked for at configuration time and if it is available
+# we modify env_base to link the DLL's necessary for code using Boost.Thread
+# to work. Since all other SCons environment derive from env_base, they
+# are all ready to build Boost.Thread-dependent code if the build was
+# configured to use Boost.Thread. This makes it much simpler for the
+# developers and it is pretty much harmless, as linking dynamic libraries
+# to other libraries or programs which do not use them should not create
+# any issue.
+if (libtbx.env.build_options.enable_boost_threads and
+  env_etc.boost_thread_support):
+  boost_thread_uses_winthreads = (sys.platform == 'win32' and
+                                  not env_etc.compiler.endswith('mingw'))
+  # This environment is to be used latter to build Boost libraries
+  # So we need a clean one without extra library linking.
+  env_boost_shlibs_base = env_base.Copy()
+  libs = ['boost_thread', 'boost_system']
+  if boost_thread_uses_winthreads:
+    libs.append('boost_chrono')
+  # In case env_base specifies LIBS already, don't override but instead
+  # append to them.
+  env_base.Append(LIBS=libs)
+
 if (not env_etc.no_boost_python):
   env_etc.cxxflags_bpl_defines_base = [
     "-DBOOST_PYTHON_MAX_BASES=2"]
@@ -27,7 +49,9 @@ if (not env_etc.no_boost_python):
       "-DBOOST_PYTHON_NO_PY_SIGNATURES")
   env_no_includes_boost_python_ext = env_base.Clone(
     SHLINKFLAGS=env_etc.shlinkflags_bpl,
-    SHLIBPREFIX="",
+    SHLIBPREFIX="")
+  # Do not override the libraries linked by env_base
+  env_no_includes_boost_python_ext.Append(
     LIBS=["boost_python"] + env_etc.libs_python + env_etc.libm)
   env_no_includes_boost_python_ext.Append(
     LIBPATH=env_etc.libpath_python)
@@ -184,23 +208,22 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
       darwin_shlinkcom(env_etc, env,
                        lo="boost/libs/%s/src/libboost_%s.lo" % ((libname,)*2),
                        dylib="lib/libboost_%s.dylib" % libname)
-    use_winthreads = (sys.platform == 'win32' and
-                      not env_etc.compiler.endswith('mingw'))
-    env_boost_shlibs_base = env_base.Copy()
+
+    env_boost_thread_and_co = env_boost_shlibs_base.Copy()
 
     # the following is necessary to avoid a bad __declspec on Windows
     # in Boost.Thread (don't ask!)
-    env_boost_shlibs_base.Append(CPPDEFINES={'BOOST_SYSTEM_NO_DEPRECATED':1})
+    env_boost_thread_and_co.Append(CPPDEFINES={'BOOST_SYSTEM_NO_DEPRECATED':1})
     env_etc.include_registry.append(
-      env=env_boost_shlibs_base,
+      env=env_boost_thread_and_co,
       paths=[env_etc.boost_include])
 
     # Boost.Thread
-    env_boost_threads = env_boost_shlibs_base.Copy()
+    env_boost_threads = env_boost_thread_and_co.Copy()
     simple_darwin_shlinkcom(env_etc, env_boost_threads, 'thread')
     boost_thread_dir = os.path.join('libs', 'thread', 'src')
     boost_thread_src = ['future.cpp']
-    if use_winthreads:
+    if boost_thread_uses_winthreads:
       boost_thread_src.extend(
         os.path.join('win32', p)
         for p in ('thread.cpp', 'tss_pe.cpp', 'tss_dll.cpp'))
@@ -215,7 +238,7 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
     # For Windows (c.f. point 2 above)
     env_boost_threads.Append(CPPDEFINES={'BOOST_THREAD_BUILD_DLL':1})
     libs = ['boost_system']
-    if use_winthreads:
+    if boost_thread_uses_winthreads:
       libs.append('boost_chrono')
     env_boost_threads.SharedLibrary(
       target='#lib/boost_thread',
@@ -224,7 +247,7 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
 
     # Boost.System?
     if os.path.isdir(os.path.join(env_etc.boost_dist, 'boost', 'system')):
-      env_boost_system = env_boost_shlibs_base.Copy()
+      env_boost_system = env_boost_thread_and_co.Copy()
       simple_darwin_shlinkcom(env_etc, env_boost_system, 'system')
       boost_system_src = [
         '#' + os.path.relpath(p, os.path.dirname(env_etc.boost_dist))
@@ -238,8 +261,8 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
         source=boost_system_src)
 
     #Boost.Chrono?
-    if use_winthreads:
-      env_boost_chrono = env_boost_shlibs_base.Copy()
+    if boost_thread_uses_winthreads:
+      env_boost_chrono = env_boost_thread_and_co.Copy()
       simple_darwin_shlinkcom(env_etc, env, 'chrono')
       boost_chrono_src = [
         '#' + os.path.relpath(p, os.path.dirname(env_etc.boost_dist))
@@ -252,7 +275,11 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
         source=boost_chrono_src,
         LIBS=['boost_system'])
 
-    # For testing we got it working (c.f. tst_boost_thread.py)
+  # Build a Python extension using Boost.Thread so as to test it works.
+  # This also constitutes a nice real-life example of
+  # how to build such extensions.
+  if (libtbx.env.build_options.enable_boost_threads and
+        env_etc.boost_thread_support):
     env_boost_threads_test = env_pure_boost_python_ext.Clone()
     env_etc.include_registry.append(
       env=env_boost_threads_test,
@@ -260,11 +287,6 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
     env_boost_threads_test.SharedLibrary(
       target="#lib/boost_adaptbx_boost_thread_test_ext",
       source="tests/boost_thread_test.cpp")
-    libs = ['boost_thread', 'boost_system']
-    if use_winthreads:
-      libs.append('boost_chrono')
-    # We need to append to the libraries needed for Boost.Python
-    env_boost_threads_test.Append(LIBS=libs)
 
   env = env_base.Clone(LIBS=env_etc.libs_python)
   env.Append(LIBPATH=env_etc.libpath_python)
