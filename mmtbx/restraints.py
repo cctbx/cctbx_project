@@ -156,6 +156,7 @@ class manager(object):
           self.afitt_object,
         )
         result.target = result.residual_sum
+        result.afitt_energy=result.residual_sum
       elif (self.use_rosetta) :
         ##################################################################
         #                                                                #
