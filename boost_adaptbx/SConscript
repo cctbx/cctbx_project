@@ -40,6 +40,10 @@ if (libtbx.env.build_options.enable_boost_threads and
   # In case env_base specifies LIBS already, don't override but instead
   # append to them.
   env_base.Append(LIBS=libs)
+  if not boost_thread_uses_winthreads:
+    env_base.Append(CXXFLAGS='-pthread',
+                    SHCXXFLAGS='-pthread',
+                    LINKFLAGS='-pthread')
 
 if (not env_etc.no_boost_python):
   env_etc.cxxflags_bpl_defines_base = [
