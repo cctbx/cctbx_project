@@ -1285,9 +1285,13 @@ class PhenixBuilder(CCIBuilder):
     # Other Phenix tests.
     self.add_test_parallel(module='elbow')
     self.rebuild_docs()
-    self.add_test_command('phenix_regression.run_p9_sad_benchmark')
-    self.add_test_command('phenix_regression.run_hipip_refine_benchmark')
-    self.add_test_command('phenix_regression.wizards.test_all_parallel',
+    self.add_test_command('phenix_regression.run_p9_sad_benchmark',
+                          name="test p9 sad",
+                         )
+    self.add_test_command('phenix_regression.run_hipip_refine_benchmark',
+                          name="test hipip",
+                         )
+    self.add_test_command('phenix_regression.wizards.test_all_parallel nproc=3',
                           name="test wizards",
                          )
 
