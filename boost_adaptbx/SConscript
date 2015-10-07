@@ -171,12 +171,13 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
       env_etc.boost_thread_support):
     use_winthreads = (sys.platform == 'win32' and
                       not env_etc.compiler.endswith('mingw'))
-    env_boost_threads = env_base.Copy()
+    env_boost_shlibs_base = env_base.Copy()
     env_etc.include_registry.append(
-      env=env_boost_threads,
+      env=env_boost_shlibs_base,
       paths=[env_etc.boost_include])
 
     # Boost.Thread
+    env_boost_threads = env_boost_shlibs_base.Copy()
     darwin_shlinkcom(env_etc, env_boost_threads,
       lo="boost/libs/thread/src/libboost_thread.lo",
       dylib="lib/libboost_thread.dylib")
@@ -200,7 +201,7 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
 
     # Boost.System?
     if os.path.isdir(os.path.join(env_etc.boost_dist, 'boost', 'system')):
-      env_boost_system = env_boost_threads.Copy()
+      env_boost_system = env_boost_shlibs_base.Copy()
       darwin_shlinkcom(env_etc, env_boost_system,
         lo="boost/libs/system/src/libboost_system.lo",
         dylib="lib/libboost_system.dylib")
