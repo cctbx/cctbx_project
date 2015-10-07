@@ -163,9 +163,14 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
   import os, os.path
 
   # Build Boost.Thread if asked
-  # We may also need to build Boost.System on recent versions
+  # We may also need to build Boost.System on recent versions.
+  # Notes:
+  # 1. There are two alternatives: pthreads or winthreads.
+  #    I assume mingw uses the former.
   if (libtbx.env.build_options.enable_boost_threads and
       env_etc.boost_thread_support):
+    use_winthreads = (sys.platform == 'win32' and
+                      not env_etc.compiler.endswith('mingw'))
     env_boost_threads = env_base.Copy()
     env_etc.include_registry.append(
       env=env_boost_threads,
@@ -177,7 +182,7 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
       dylib="lib/libboost_thread.dylib")
     boost_thread_dir = os.path.join('libs', 'thread', 'src')
     boost_thread_src = ['future.cpp']
-    if sys.platform == 'win32':
+    if use_winthreads:
       boost_thread_src.extend(
         os.path.join('win32', p)
         for p in ('thread.cpp', 'tss_pe.cpp', 'tss_dll.cpp'))
