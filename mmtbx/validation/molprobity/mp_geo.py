@@ -99,6 +99,7 @@ def run(args):
   from mmtbx.validation import utils
   params = pdb_interpretation.master_params.extract()
   params.restraints_library.cdl = use_cdl
+  params.clash_guard.nonbonded_distance_threshold = None
   processed_pdb_file = pdb_interpretation.process(
     params                   = params,
     mon_lib_srv              = server.server(),
