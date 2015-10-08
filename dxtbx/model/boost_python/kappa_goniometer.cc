@@ -27,6 +27,44 @@ namespace dxtbx { namespace model { namespace boost_python {
     return ss.str();
   }
 
+  struct KappaGoniometerPickleSuite : boost::python::pickle_suite {
+    static
+    boost::python::tuple getinitargs(const KappaGoniometer &obj) {
+      KappaGoniometer::Direction direction(obj.get_direction());
+      std::string direction_str;
+      if (direction == KappaGoniometer::PlusY) {
+        direction_str = "+y";
+      } else if (direction == KappaGoniometer::PlusZ) {
+        direction_str = "+z";
+      } else if (direction == KappaGoniometer::MinusY) {
+        direction_str = "-y";
+      } else if (direction == KappaGoniometer::MinusZ) {
+        direction_str = "-y";
+      } else {
+        direction_str = "";
+      }
+
+      KappaGoniometer::ScanAxis scan_axis(obj.get_scan_axis());
+      std::string scan_axis_str;
+
+      if (scan_axis == KappaGoniometer::Omega) {
+        scan_axis_str = "omega";
+      } else if (scan_axis == KappaGoniometer::Phi) {
+        scan_axis_str = "phi";
+      } else {
+        scan_axis_str = "";
+      }
+
+      return boost::python::make_tuple(
+        obj.get_alpha_angle(),
+        obj.get_omega_angle(),
+        obj.get_kappa_angle(),
+        obj.get_phi_angle(),
+        direction_str,
+        scan_axis_str);
+    }
+  };
+
   static boost::shared_ptr<KappaGoniometer> make_kappa_goniometer(
       double alpha, double omega, double kappa, double phi,
       std::string direction_str, std::string scan_axis_str)
@@ -105,7 +143,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         &KappaGoniometer::get_kappa_axis)
       .def("get_phi_axis",
         &KappaGoniometer::get_phi_axis)
-      .def("__str__", &kappa_goniometer_to_string);
+      .def("__str__", &kappa_goniometer_to_string)
+      .def_pickle(KappaGoniometerPickleSuite());
   }
 
 }}} // namespace dxtbx::model::boost_python
