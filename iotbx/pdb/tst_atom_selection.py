@@ -478,10 +478,10 @@ ATOM     11  CA    C     2      12.548  28.316  63.532  1.00 30.20
 ATOM     21  N   DA      3J     13.947  29.997  64.680  1.00 22.94
 ATOM     22  CA  DA      3J     14.902  31.100  64.827  1.00 20.19
 ATOM     24  O   DA      3J     16.545  29.521  64.086  1.00 19.76
-ATOM     28  N  A6MC     4      16.953  31.648  63.512  1.00 15.29
-ATOM     29  CA A6MC     4      18.243  31.372  62.859  1.00 14.32
-ATOM     30  C  A6MC     4      19.233  32.112  63.743  1.00 13.54
-ATOM     31  O  A6MC     4      19.105  33.315  64.009  1.00 11.84
+ATOM     28  N  A6MA     4      16.953  31.648  63.512  1.00 15.29
+ATOM     29  CA A6MA     4      18.243  31.372  62.859  1.00 14.32
+ATOM     30  C  A6MA     4      19.233  32.112  63.743  1.00 13.54
+ATOM     31  O  A6MA     4      19.105  33.315  64.009  1.00 11.84
 ATOM     41  N   PRO     5      13.947  29.997  64.680  1.00 22.94
 ATOM     42  CA  HOH     6      14.902  31.100  64.827  1.00 20.19
 ATOM     44  O   HOH     7      16.545  29.521  64.086  1.00 19.76
@@ -489,7 +489,7 @@ ATOM     45  CA  CA      8      16.545  29.521  64.086  1.00 19.76
 """)).construct_hierarchy()
   sel_cache = hierarchy.atom_selection_cache()
   isel = sel_cache.iselection
-  assert list(isel("nucleotide")) == [0,1,2,3,4,5,6,7,8]
+  assert list(isel("nucleotide")) == [0,1,2,3,4,5,6,7,8], 'found %s' % list(isel("nucleotide"))
   assert list(isel("nucleotide or protein")) == [0,1,2,3,4,5,6,7,8,9]
 
 def run():
