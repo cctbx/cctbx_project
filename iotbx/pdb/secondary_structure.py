@@ -619,9 +619,17 @@ class annotation(structure_base):
         pass
     return "(" + ") or (".join(selections) + ")"
 
-  def overall_helix_selection(self, add_segid=None):
+  def overall_helix_selection(self,
+                              add_segid=None,
+                              helix_types_selection=None,
+                              n_hbonds_selection=None,
+                              ):
     selections = []
     for helix in self.helices:
+      if helix_types_selection is not None:
+        if helix.helix_class not in helix_types_selection: continue
+      if n_hbonds_selection is not None:
+        if helix.get_n_maximum_hbonds()<n_hbonds_selection: continue
       try :
         selections.extend(helix.as_atom_selections(add_segid=add_segid))
       except RuntimeError, e :

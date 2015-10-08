@@ -73,6 +73,8 @@ def generate_protein_threes(hierarchy,
         if verbose: print '  conformer: altloc="%s"' % (
           conformer.altloc)
         while threes: del threes[0]
+        threes.start=None
+        threes.end=None
         list_of_threes = []
         for residue in conformer.residues():
           if verbose:
@@ -93,6 +95,7 @@ def generate_protein_threes(hierarchy,
           if len(threes)!=3: continue
           assert len(threes)<=3
           list_of_threes.append(copy.copy(threes))
+        # per conformer
         for i, threes in enumerate(list_of_threes):
           if i==0:
             threes.start =  True
