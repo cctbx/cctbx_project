@@ -9,7 +9,6 @@ from iotbx import reflection_file_reader
 from cctbx.array_family import flex
 from cctbx import maptbx
 import mmtbx.utils
-import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 import mmtbx.masks
