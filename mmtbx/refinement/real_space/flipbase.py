@@ -142,7 +142,7 @@ def flip_and_refine(pdb_hierarchy,
       for residue in rg.atom_groups():
         if alt_loc and alt_loc != residue.altloc.strip():
           continue
-        base_pairing.flip_base(residue, angle=180)
+        flip_base(residue, angle=180)
 
         sites_cart.set_selected(residue.atoms().extract_i_seq(),
           residue.atoms().extract_xyz())

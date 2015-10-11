@@ -1,5 +1,4 @@
-from __future__ import division
-import sys
+import os, sys
 
 rdl_database = {
   "ARG" : {
