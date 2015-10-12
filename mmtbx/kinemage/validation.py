@@ -292,7 +292,7 @@ def get_residue_bonds(residue):
 
 def make_probe_dots(hierarchy, keep_hydrogens=False):
   probe = \
-    'phenix.probe -4H -quiet -noticks -nogroup -dotmaster -mc -self "ALL" -'
+    'phenix.probe -4H -quiet -sepworse -noticks -nogroup -dotmaster -mc -self "ALL" -'
   trim = "phenix.reduce -quiet -trim -"
   build = "phenix.reduce -oh -his -flip -pen9999 -keep -allalt -"
   probe_return = ""
