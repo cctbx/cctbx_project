@@ -466,8 +466,7 @@ class labelit_regression_module(SourceModule):
 
 class dials_module(SourceModule):
   module = 'dials'
-  anonymous = ['svn', 'svn://svn.code.sf.net/p/dials/code/trunk']
-  authenticated = ['svn', '%(sfmethod)s://%(sfuser)s@svn.code.sf.net/p/dials/code/trunk']
+  anonymous = ['git', 'git@github.com:dials/dials.git', 'https://github.com/dials/dials.git', 'https://github.com/dials/dials/archive/master.zip']
 
 class dials_regression_module(SourceModule):
   module = 'dials_regression'
