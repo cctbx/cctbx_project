@@ -217,7 +217,7 @@ class rotalyze (validation) :
     return ""
 
   def get_plot_data (self, residue_name, point_type) :
-    assert (point_type in ["All", "Outlier"])
+    assert (point_type in ["All", "None", "Outlier"])
     points = []
     coords = []
     for i, residue in enumerate(self.results) :
@@ -234,6 +234,7 @@ class rotalyze (validation) :
     frame = wxtbx.plots.molprobity.rotalyze_frame(
       parent=parent, title=title, validation=self)
     frame.Show()
+    return frame
 
   def as_coot_data (self) :
     data = []
