@@ -23,7 +23,7 @@ class groups(object):
                sequence_identity_threshold=90.):
     h = pdb_hierarchy
     n_atoms_all = h.atoms_size()
-    s_str = "altloc ' ' and not water and pepnames"
+    s_str = "altloc ' ' and (protein or nucleotide)"
     h = h.select(h.atom_selection_cache().selection(s_str))
     h1 = h.deep_copy()
     unit_cell = crystal_symmetry.unit_cell()
