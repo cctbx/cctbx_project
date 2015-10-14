@@ -438,6 +438,9 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def(self >= self)
       .def(self += self)
       .def(self + self)
+      .def("append", &Scan::append, (
+            arg("rhs"),
+            arg("scan_tolerance")=0.01))
       .def("__len__", &Scan::get_num_images)
       .def("__str__", &scan_to_string)
       .def("swap", &scan_swap)

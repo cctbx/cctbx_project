@@ -403,7 +403,8 @@ class DataBlockFilenameImporter(object):
                verbose=False,
                compare_beam=None,
                compare_detector=None,
-               compare_goniometer=None):
+               compare_goniometer=None,
+               scan_tolerance=None):
     ''' Import the datablocks from the given filenames. '''
     from itertools import groupby
     from dxtbx.format.Registry import Registry
@@ -438,7 +439,8 @@ class DataBlockFilenameImporter(object):
           group,
           compare_beam,
           compare_detector,
-          compare_goniometer)
+          compare_goniometer,
+          scan_tolerance)
         for group, items in groupby(records, lambda r: r.group):
           items = list(items)
           imageset = self._create_multi_file_imageset(fmt, list(items))
@@ -449,7 +451,8 @@ class DataBlockFilenameImporter(object):
                              filenames,
                              compare_beam=None,
                              compare_detector=None,
-                             compare_goniometer=None):
+                             compare_goniometer=None,
+                             scan_tolerance=None):
     ''' Extract the file meta data in order to sort them. '''
     from dxtbx.sweep_filenames import template_regex
     import operator
@@ -524,7 +527,10 @@ class DataBlockFilenameImporter(object):
             group += 1
           else:
             try:
-              last.scan += s
+              if scan_tolerance is None:
+                last.scan.append(s)
+              else:
+                last.scan.append(s, scan_tolerance=scan_tolerance)
               last.index = index
               continue
             except Exception:
@@ -734,7 +740,8 @@ class DataBlockFactory(object):
                 unhandled=None,
                 compare_beam=None,
                 compare_detector=None,
-                compare_goniometer=None):
+                compare_goniometer=None,
+                scan_tolerance=None):
     ''' Try to load datablocks from any recognized format. '''
 
     if unhandled is None:
@@ -748,7 +755,8 @@ class DataBlockFactory(object):
       unhandled1,
       compare_beam=None,
       compare_detector=None,
-      compare_goniometer=None)
+      compare_goniometer=None,
+      scan_tolerance=None)
 
     # Try as serialized formats
     for filename in unhandled1:
@@ -767,7 +775,8 @@ class DataBlockFactory(object):
                      unhandled=None,
                      compare_beam=None,
                      compare_detector=None,
-                     compare_goniometer=None):
+                     compare_goniometer=None,
+                     scan_tolerance=None):
     ''' Create a list of data blocks from a list of directory or file names. '''
 
     from os import listdir
@@ -793,7 +802,8 @@ class DataBlockFactory(object):
       verbose,
       compare_beam,
       compare_detector,
-      compare_goniometer)
+      compare_goniometer,
+      scan_tolerance=None)
     if unhandled is not None:
       unhandled.extend(importer.unhandled)
     return importer.datablocks

@@ -220,9 +220,9 @@ namespace dxtbx { namespace model {
     /**
      * Append the rhs scan onto the current scan
      */
-    Scan& operator+=(const Scan &rhs) {
-      // Set the epsilon to 1% of oscillation range
-      double eps = 0.01 * oscillation_[1];
+    void append(const Scan &rhs, double scan_tolerance) {
+      double eps = scan_tolerance * std::abs(oscillation_[1]);
+      DXTBX_ASSERT(eps > 0);
       DXTBX_ASSERT(std::abs(oscillation_[1]) > 0.0);
       DXTBX_ASSERT(image_range_[1] + 1 == rhs.image_range_[0]);
       DXTBX_ASSERT(std::abs(oscillation_[1] - rhs.oscillation_[1]) < eps);
@@ -240,6 +240,14 @@ namespace dxtbx { namespace model {
         std::back_inserter(exposure_times_));
       std::copy(rhs.epochs_.begin(), rhs.epochs_.end(),
         std::back_inserter(epochs_));
+    }
+
+    /**
+     * Append the rhs scan onto the current scan
+     */
+    Scan& operator+=(const Scan &rhs) {
+      // Set the epsilon to 1% of oscillation range
+      append(rhs, 0.01);
       return *this;
     }
 
