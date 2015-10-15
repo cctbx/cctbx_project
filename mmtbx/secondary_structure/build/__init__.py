@@ -541,6 +541,7 @@ def substitute_ss(real_h,
 
   real_h.atoms().set_xyz(pre_result_h.atoms().extract_xyz())
   if processed_params.file_name_before_regularization is not None:
+    print >> log, "Outputting model before regularization %s" % processed_params.file_name_before_regularization
     real_h.write_pdb_file(
         file_name=processed_params.file_name_before_regularization)
 
