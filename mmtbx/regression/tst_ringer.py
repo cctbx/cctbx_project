@@ -10,7 +10,7 @@ def exercise () :
   pdb_file = "tmp_ringer.pdb"
   mtz_file = "tmp_ringer.mtz"
   open(pdb_file, "w").write(tst_build_alt_confs.pdb_raw)
-  args = [
+  cmd = " ".join([
     "phenix.fmodel",
     pdb_file,
     "high_resolution=2.0",
@@ -19,8 +19,9 @@ def exercise () :
     "random_seed=12345",
     "label=F",
     "output.file_name=%s" % mtz_file,
-  ]
-  easy_run.fully_buffered(args).raise_if_errors()
+  ])
+  print cmd
+  easy_run.call(cmd)
   result = easy_run.fully_buffered(
     "phenix.maps \"%s\" \"%s\" output.prefix=tmp_ringer" %
     (pdb_file, mtz_file)).raise_if_errors()
