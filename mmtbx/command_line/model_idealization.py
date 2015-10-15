@@ -50,7 +50,7 @@ def run(args):
   if len(pdb_file_names) == 0:
     raise Sorry("No PDB file specified")
   work_params.model_idealization.enabled=True
-  work_params.model_idealization.file_name_before_regularization="before.pdb"
+  # work_params.model_idealization.file_name_before_regularization="before.pdb"
 
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_file_names)
   pdb_input = iotbx.pdb.input(source_info=None,
