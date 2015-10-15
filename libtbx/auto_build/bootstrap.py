@@ -1290,7 +1290,7 @@ class PhenixBuilder(CCIBuilder):
     self.add_test_command('phenix_regression.run_hipip_refine_benchmark',
                           name="test hipip",
                          )
-    self.add_test_command('phenix_regression.wizards.test_all_parallel nproc=3',
+    self.add_test_command('phenix_regression.wizards.test_all_parallel',
                           name="test wizards",
                          )
 
