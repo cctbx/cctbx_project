@@ -22,7 +22,7 @@ if "--break" in args:
 else:
   dobreak = False
 
-for path in sys.argv[1:]:
+for path in args:
   if not os.path.isfile(path):
     print "Not a file:", path
     continue
@@ -48,8 +48,10 @@ for path in sys.argv[1:]:
     detector_format_version = detector_format_function(
       LCLS_detector_address, reverse_timestamp(data['TIMESTAMP'])[0])
     print "Detector format version:", detector_format_version
+    image_pickle = True
   else:
     print "Not an image pickle"
+    image_pickle = False
 
   for key in data:
     if key == 'ACTIVE_AREAS':
@@ -81,6 +83,18 @@ for path in sys.argv[1:]:
     else:
       print key, data[key]
 
+  if image_pickle:
+    import dxtbx
+    image = dxtbx.load(path)
+    tile_manager = image.detectorbase.get_tile_manager(image.detectorbase.horizons_phil_cache)
+    tiling = tile_manager.effective_tiling_as_flex_int(reapply_peripheral_margin = True)
+    print int(len(tiling)/4), "translated active areas, first one: ", list(tiling[0:4])
+
   if dobreak:
     print "Entering break. The pickle is loaded in the variable 'data'"
-    import pdb; pdb.set_trace()
+    try:
+      from IPython import embed
+    except ImportError:
+      import pdb; pdb.set_trace()
+    else:
+      embed()
