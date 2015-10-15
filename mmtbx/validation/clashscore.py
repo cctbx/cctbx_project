@@ -421,7 +421,10 @@ def check_and_add_hydrogen(
   r.append_model(mdc)
   if keep_hydrogens:
     elements = r.atoms().extract_element()
-    h_count = elements.count(' H') + elements.count(' D')
+    # strangely the elements can have a space when coming from phenix.clashscore
+    # but no space when comming from phenix.molprobity
+    h_count = elements.count(' H') + elements.count(' D') + \
+              elements.count("H")  + elements.count("D")
     if h_count > n_hydrogen_cut_off:
       has_hd = True
     else:
