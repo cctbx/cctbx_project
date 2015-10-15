@@ -290,7 +290,8 @@ class iterate_over_residues (object) :
         res_out = ringer_residue(
           resname=residue.resname,
           chain_id=residue_group.parent().id,
-          resid=residue.resid(),
+          # resid=residue.resid(),
+          resid=residue.resseq_as_int(),
           altloc=conformer.altloc,
           n_chi=n_chi,
           xyz=xyz)

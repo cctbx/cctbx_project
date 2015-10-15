@@ -38,6 +38,19 @@ def exercise_emringer_residue_scan():
   # just making sure this doesn't break!
   results, scoring2, rolling = emringer.run([pdb_file, map_file, "sampling_angle=2"], out=null_out())
 
+def exercise_emringer_insertion_codes():
+  """
+  Checks that emringer doesn't crash when there are insertion codes.
+  The correctness of output is not checked.
+  """
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/mmtbx/em_ringer/tst_emringer_insertion_codes_model.pdb",
+    test=os.path.isfile)
+  map_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/mmtbx/em_ringer/tst_emringer_map.ccp4",
+    test=os.path.isfile)
+  assert (not None in [pdb_file, map_file])
+  results, scoring, rolling = emringer.run([pdb_file, map_file], out=null_out())
 
 # FIXME this will fail right now, which is deliberate
 def exercise_emringer_out_of_bounds():
@@ -110,6 +123,7 @@ if __name__=='__main__':
     if(keep_going):
       from mmtbx.command_line import emringer
       exercise_emringer_residue_scan()
+      exercise_emringer_insertion_codes()
       # FIXME
       #exercise_emringer_out_of_bounds()
       #w, t = exercise_emringer_pickle_loading()
