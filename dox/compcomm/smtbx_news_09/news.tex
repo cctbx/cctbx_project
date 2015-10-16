@@ -1,0 +1,375 @@
+\documentclass[12pt]{article}
+\usepackage{cctbx_preamble}
+\usepackage{listings}
+\usepackage{color}
+\definecolor{lightgrey}{rgb}{0.9,0.9,0.9}
+\lstset{basicstyle=\footnotesize,texcl=true,backgroundcolor=\color{lightgrey}}
+\lstset{
+  literate={\_}{}{0\discretionary{\_}{}{\_}}{/}{}{0\discretionary{/}{}{/}}%
+}
+\geometry{margin=2cm}
+%\usepackage[hang,flushmargin]{footmisc} 
+\title{Small Molecule ToolBox}
+\author{Luc J. Bourhis \and Richard J. Gildea \and Oleg V. Dolomanov \and Judith A.K. Howard \and Horst Puschmann}
+\date{}
+\begin{document}
+\maketitle
+\begin{center}
+Department of Chemistry, \\
+Durham University, UK
+\end{center}
+
+\section{Introduction}
+
+This article belongs to a series of three published in this edition of the newsletter. The other two are respectively about the program Olex2~\cite{Dolomanov:2009}, developed by the same Durham group, which provides an point-and-click interface to several of the tools we will expound in this newsletter, and about new advances endeavoured by the Oxford end of our common EPSRC grant. In this article, we will concern ourselves with the contributions made to the \cctbx~\cite{cctbx} with the goal to enable small molecule structure refinement up to the standards required for publication, a goal which has become temptingly close at the time of writing this newsletter.
+
+Although the \cctbx new developments have increasingly become targeted towards macromolecular works, a consequence of its being the foundation upon which the Phenix~\cite{phenix} suite is built, all the core algorithms are valid for any crystal structure. The most important example is that all algorithms in the \cctbx module\footnote{The reader is referred to the previous \cctbx newsletter for the general organisation of the toolbox, especially the very first one~\cite{Grosse-Kunstleve:2003}.} are correct in any setting of the 230 crystallographic space groups\footnote{E.g. settings with an inversion centre not placed at the origin are allowed, which is not the case in any other small molecule program.} and that they are routinely tested with space groups not found in protein crystallography. However, there are key differences between macromolecular and small molecule studies in the way crystal structures are modelled and in the way the fit to the diffraction data is performed, interpreted and reported. As a result, the \cctbx, as it stood four years ago at the beginning of our grant, could not be used for routine small molecule works. Therefore, on the one hand, we have improved existing or added new tools to the \cctbx where it seemed they were not small molecule-specific and on the other hand we have spun a sister library off, the Small Molecule Toolbox, or \smtbx, for the more dedicated tools. In practice that dividing line has not been strongly enforced when the changes to the \cctbx would have threatened its stability. In those cases, we preferred to roll out a new implementation in the \smtbx (a key example being structure factor computations).
+
+This newsletter will be organised as follows.
+
+The new ab-initio solution method known as charge flipping~\cite{Oszlanyi:2008,Palatinus:2007} has become increasingly popular in recent years for small molecule structures, which motivated us to implement that algorithm in the \smtbx. We will discuss it in section~\ref{chargeflipping}.
+
+The refinement of small molecule single crystal structure has a few key specificities, which reflects in the feature set provided by the programs SHELXL~\cite{Sheldrick:2008} and Crystals~\cite{Crystals:v12}, with which nearly all traditional\footnote{By ``traditional'', we mean no incommensurate crystals and no charge density models.} small molecule studies are carried out.
+This will be the subject of section~\ref{refinement} where, after a short reminder of the specificities of small molecule refinement, we will discuss in turn the LBFGS refinement scheme, the full matrix scheme, normal equations, the floating origin problem and restraints and constraints.
+
+We will then briefly discuss some of the graphs for the analysis of reflection statistics that have been implemented using the \cctbx.
+
+
+\section{Charge flipping}
+\label{chargeflipping}
+The first difficulty to overcome in any practical charge flipping algorithm is the initial guess of the flipping threshold $\delta$: too low and the initial random electron density will never be altered enough to reveal structures, too high and emerging structures will be swamped and not given enough time to build up. Our current implementation relies on the map noise $\sigma$: $\delta = k \sigma$ where $k$ is a parameter that can be specified at runtime, with a reasonable default value of 1.1.
+
+The second difficulty to overcome is the detection of the phase transition.  Following Gabor Oszl{\'a}nyi's advice, we elected the map skewness as the best indicator, which brutally increases at the phase transition as the tail of high density grid points corresponding to the scatterers emerges from the sea of low density. However, before and after the phase transition, the skewness, or any indicator for that matter, significantly fluctuates, which complicates the detection of the phase transition. We therefore use a smoothing technique known as exponential moving average.
+
+The third and last difficulty is to find the origin shift. Indeed charge flipping works in P1 and the structure is shifted compared to the standard space group settings. SUPERFLIP does actually discover the space group symmetry from the final map along with the origin shift, which is clearly the approach to be preferred since it makes charge flipping an ab-initio method by itself. Our code is much cruder and it relies on an a priori knowledge of the symmetry. Moreover we use the macromolecular technique known as fast translation function to recover the origin shift, a method which scales like the 4th power of the number of symmetry elements, which makes it extremely slow on those highly symmetric space groups common in inorganic materials. We are currently working on improving on this weakness.
+
+Finally, after the solution has been obtained, a few cycles of polishing using low density elimination~\cite{Shiono:1992} are performed. This polishing could be performed after any solution method actually and it has proven to be invaluable to get good electron density peak positions from which one can assign atom types from geometric considerations. This is at least the experience accumulated with AutoChem, the automatic system developed by our group for Oxford Diffraction, which is available through Olex2.
+
+The implementation is nearly entirely in Python, and resides in the module\\ \code{smtbx.ab_initio.charge_flipping}. It features the original method as well as the newer one enhanced to deal with weak reflections~\cite{Oszlanyi:2004}. Here is the starting point to explore these tools
+ \begin{lstlisting}[language=Python]
+ from smtbx.ab_initio import charge_flipping
+ 
+ # low level iterations over the charge flipping cycles
+ for cycle in charge_flipping.weak_reflection_improved_iterator(f_obs):
+ 	# this is executed at each cycle and one can inspect the situation:
+	rho = cycle.rho_map
+        c_tot = rho.c_tot() # total charge
+        c_flip = rho.c_flip(flipping.delta) # flipped charge
+        skew = rho.skewness()
+ 
+ # higher level interface featuring the $\delta$-guessing and phase transition detection
+ flipping = charge_flipping.weak_reflection_improved_iterator(f_obs)
+ solving = charge_flipping.solving_iterator(flipping)
+ charge_flipping.loop(solving, verbose="highly") # for maximum printout 
+\end{lstlisting}
+
+\section{Refinement}
+\label{refinement}
+\subsection{Introduction}
+
+The key specificities of small molecule refinement compared to macromolecular work are threefold:
+\begin{enumerate}
+\item the systematic use of so-called full matrix least-squares;\label{fullmatrix}
+\item the use of weighting schemes;\label{weightingschemes}
+\item the mundane use of constraints.\label{constraints}
+\end{enumerate}
+
+Full matrix least-squares is deemed necessary in order to get the variance-covariance matrix for the parameters of the atomic model which has been fitted to the diffraction data. Then derived quantities such as bond lengths, angles, etc can be computed with estimated standard deviations (e.s.d) which eventually depend on the $\sigma$'s quoted for each value of $F_o(h)$ or $F_o^2(h)$. This has deep and wide reaching consequences on the possible organisation of numerical code. In this context, the fastest method, if not the most robust, to solve the least-squares minimisation problem is by the method of normal equations.
+
+Weighting schemes work by replacing each aforementioned experimental $\sigma$ by a function of $F_o(h)$ and $F_c(h)$ which is tuned so that the resulting weighted residuals do not show any trend with the magnitude of $F_c(h)^2$ or $F_c(h)$ for respectively $F^2$ and $F$ refinement or with resolution. This fine tuning is only performed in the very last stages of the refinement.
+
+Constraints are used even in trouble-free structures, to idealise the geometry of hydrogen atoms, so as to significantly increase the ratio of reflections to parameters, for which a lower bound is required for publication, as enforced by the CHECKCIF system\footnote{Respectively 10:1 and 8:1 for respectively centrosymmetric and non-centrosymmetric structures}. They are also necessary to model disorder, in order, at least, to constrain the occupancies of corresponding disordered parts to add up to unity, but sometimes also to stabilise the refinement by forcing ADPs to be exactly equal. Constraints need to be taken into account at three stages of the refinement: in the computation of the derivatives at the beginning of each refinement cycle, in the application of the shifts at the end of each refinement cycle and then in the computation of the variance-covariance matrix.
+
+\subsection{Overview of a typical macromolecular cycle}
+
+We will first introduce the scheme used for macromolecular refinement which is pervasive throughout the entire \mmtbx and \cctbx module too. We denote by $L$ the minimisation target, e.g. the least-squares
+\begin{equation}
+L = \sum_{\text{Miller indices $h$}} w_h \left(F_o(h) - K \modulus{F_c(h)}\right)^2,
+\end{equation}
+or more likely a maximum likelihood estimator, which would be function of the $F_c$'s too. An oversimplified cycle would proceed as follow\footnote{the biggest caveat is that in reality there is no loop over Miller indices since the FFT method is used to compute the structure factors and their derivatives: we chose this unrealistic alternative to ease our presentation and to contrast with the full matrix case in the next section}:
+\begin{enumerate}
+\item compute $F_c(h)$ for each Miller index $h$, storing those structure factors in an array;
+\label{itemcomputefcalc}
+\item compute the minimisation target $L$ for those $F_c$'s as well as the derivatives $\partialder{L}{F_c(h)}$ for each $h$, storing them in another array;
+\label{itemtargetlinearisation}
+\item Initialise the gradient $\nabla L$ of $L$ with respect to the model parameters to zero; 
+then\\ for each Miller index $h$:
+\begin{enumerate}
+\item compute the gradient $\nabla F_c(h)$ of $F_c(h)$ with respect to the model parameters;
+\item compute $2\re \left[\partialder{L}{F_c(h)} \nabla F_c(h)\right]$ and add it up to $\nabla L$;
+\end{enumerate}
+\label{itemgradtarget}
+\item pass $\nabla L$ to the LBFGS minimiser which will compute the parameter shifts to apply for this cycle, as well as internally improve its estimation of the Hessian\footnote{i.e. the matrix of second-order derivatives} of $L$ from the last 5 cycles, so that better and better shifts can be computed as cycles pass.
+\end{enumerate}
+
+This sequence of operations is typically laid out in Python:
+
+ \begin{lstlisting}[language=Python]
+ # Initialisation before first cycle
+ from cctbx import xray
+ target_functor = xray.target_functors.intensity_correlation(f_obs)
+ structure_factors_functor = xray.structure_factors.from_scatterers(
+ 	miller_set=f_obs)
+ target_gradients_functor = xray.structure_factors.gradients(miller_set=f_obs)
+ x = flex.double(number_of_refined_parameters)
+ 
+ # Typical cycle
+ # step \ref{itemcomputefcalc}.
+ f_calc = structure_factors_functor(xray_structure, miller_set=f_obs)
+ # step \ref{itemtargetlinearisation}.
+ target_linearisation_wrt_f_calc = target_functor(f_calc, compute_gradients=True)
+ # step \ref{itemgradtarget}.
+ grad_f_calc = structure_factor_gradients_functor(
+      xray_structure,
+      miller_set=f_obs,
+      d_target_d_f_calc= target_linearisation_wrt_f_calc.derivatives(),
+      n_parameters=x.size()).packed() 
+ \end{lstlisting}
+ 
+ This scheme is efficient. When it comes to efficiency, three aspects need to be considered:
+ number of floating point operations (flops), the size of the manipulated data and and the size of the machine code which is executed. The latter is often overlooked. First, a bloated library will result in a slower starting time for any program using it, as the library needs to be loaded into memory from disk. Then, one single program may use different features of the \cctbx at different times and the greater the amount of code to load for each feature, the greater the switching time between parts of the program using those different features, as the new module needs to be loaded from disk and the old one may need to be shelved away to disk as part of the virtual memory system.
+ 
+ Since the loops over the Miller indices are implemented in \cpp code which is called by the Python objects \code{target_functor}, \code{structure_factors_functor} and \code{target_gradients_functor}, the computation speed is optimal. Moreover the \cpp code for each of those is completely independent from the others. As the result the total code size is the sum of the code size of each needed component, which constitutes the optimal case again. For example, if the program above wishes to use a least-squares target, the memory footprint will be increased only by the code size of that new component.
+ 
+It should also be noted that weighting schemes and constraints are easy to add into that scheme, keeping its modular nature. The former requires computing $F_c$-dependent weights between step~\ref{itemcomputefcalc} and~\ref{itemtargetlinearisation}. The latter requires to alter $\nabla L$ after step~\ref{itemgradtarget} using the chain rule before passing it to LBFGS and then to alter the shifts after that step. The \cctbx newsletter '08 demonstrated~\cite{Bourhis:2008} how the reduction of gradients and expansion of shifts is performed in the case of special position constraints and the reader is referred to it for detailed explanations.
+ 
+ \subsection{Full matrix cycle}
+ 
+ First a mathematical remark is in order. The non-linear least-squares method discussed in this section does not require the computation of the second-order derivatives of $F_c(h)$ any more than the method described in the previous section. But instead of relying on LBFGS to estimate those second-order derivatives based on some general heuristic, one can take advantage of the special structure of the least-squares target to compute a special approximation of those second-order derivatives. That method is centuries-old as it was known to Gauss, and it is actually often named after him: the Gauss-Newton method. The normal equations are just one particularly efficient implementation of that method. Compared to LBFGS, each cycle is more costly but makes greater progresses toward the minimum.
+ 
+ The traditional implementation, as found in existing FORTRAN codes, follows the scheme below. We will denote by $x$ the crystallographic parameters of the model (sites, ADPs, etc) and by $y$ the set of independent parameters after taking constraints into account (independent sites, independent ADPs but also extra parameters as needed by some constraints as exemplified later).
+ \begin{enumerate}
+ \item Initialise the normal matrix $A_y$ and the right hand side $b_y$ of the normal equations to zero.
+\item For each Miller index $h$: \label{bignormalmatrixloop}
+\begin{enumerate}
+\item compute $F_c(h)$ and $\nabla_x F_c(h)$;\label{fcandgradfc}
+\item compute $\nabla_x \modulus{F_c(h)}^2 = 2\re\left[F_c^*(h) \nabla_x F_c(h)\right]$;
+\item compute $\nabla_y \modulus{F_c(h)}^2$ by using the constraint matrix $C=\left[\frac{\partial x_i}{\partial y_j}\right]_{ij}$: \\
+$\nabla_y \modulus{F_c(h)}^2 = C^T \nabla_x \modulus{F_c(h)}^2$;
+\item compute the $F_c$-dependent weight $w(h)$ as per the weighting scheme;
+\item compute the least-squares residual $r(h) = w(h)\left(F_o^2(h) - K \modulus{F_c(h)}^2\right)^2$;
+\item form the rank-1 matrix $\left[\nabla_y \modulus{F_c(h)}^2\right] \left[\nabla_y \modulus{F_c(h)}^2\right]^T$ and the vector $r(h) \nabla_y \modulus{F_c(h)}^2$;
+\\ add them up respectively to $A_y$ and $b_y$.
+\end{enumerate}
+\item Solve $A_y \eta = b_y$ for the shifts $\eta$ of $y$ and apply them to $y$ to get the new value of the independent parameters.
+\item Compute the new value of the crystallographic parameters from the known dependency to the independent ones.
+\label{constrainedshifts}
+\end{enumerate}
+A few comments are in order. 
+
+First, at step~\ref{fcandgradfc}, one can take advantage of the mathematical form of the structure factors to compute the gradient as a side-product of the computation of $F_c(h)$ with very little overhead. This is to be contrasted to the previous section where the structure factors and their gradients were computed separately by two completely different bodies of code. This is what motivated the module \code{smtbx.structure_factors.direct.standard_xray}. It features a computation valid in any space-group and one hand-optimised for the case of centrosymmetric structures, for which one can exploit the fact that $F_c(h)$ is real and $\nabla F_c(h)$ is imaginary to save flops.
+
+Secondly, at step~\ref{constrainedshifts}, it would not have been correct to simply compute the shifts $\xi$ for the crystallographic parameters $x$ by applying the constraint matrix to the shifts $\eta$ of the independent parameters, $\xi = C \eta$, and then to apply those $\xi$ to $x$. This would indeed not work for non-linear constraints. For example, a $CH_3$ group rotating around the $C-C$ bond, would need an azimuthal angle as part of the vector $y$. After application of the hydrogen site shifts computed from the shifts of that angle, the geometry would not be that of an ideal tetrahedral $CH_3$ anymore. The more cycles, the more distortion would result. Thus the exact formula expressing the sites of the hydrogen atoms as a function of the shifted angle shall be used at the end of each cycle to keep the constraint exactly enforced throughout all the cycles, which is the very reason for a constraint to be used in the first place.
+
+Thirdly, compared to the macromolecular scheme, where the work was split into 3 loops over the Miller indices, all the work needs to be done in one and only one loop here. Any splitting would result in a loss of performance. Let us elaborate on this.
+\begin{itemize}
+\item Why not compute the normal matrix $A_x$ for the crystallographic parameters $x$ and then reducing it to $A_y$ with $A_y = C^T A_x C$?\\
+With the scheme outlined above, the cost of accumulating the normal matrix is $O(m n_y^2)$ where $m$ is the number of reflections and $n_y$ the number of independent parameters. The proposed alternative would make it $O(m n_x^2)$. The ratio $n_x/n_y$ can be as large as 2 in practice, a case which would result in a fourfold increase of computational cost.
+\item Why not store the design matrix, each row of which is one $\nabla_x \modulus{F_c(h)}^2$?\\
+At the resolutions used for small molecule work, the reflection to parameter ratio $m/n_x$ is routinely around 30. For example, a structure with 4096 parameters and a data to parameter ratio of 32, refined in double precision, results in a design matrix occupying 4 GB whereas the normal matrix occupies just over 64 MB, a dramatic difference indeed.
+\end{itemize}
+
+This scheme is efficient from the point of view of flops and data size but it may be dreadful from the point of view of code size. Indeed, the code for the whole of step~\ref{bignormalmatrixloop} must be compiled in one block. If one wishes to keep each component independent from the others, then for each combination of structure factor algorithm, weighting schemes, constraint system and minimisation targets, we need to compile the whole block. Thus, for example, merely adding another weighting scheme will result in duplicating the whole block of machine code instead of augmenting the code size by the weighting scheme code which is typically tiny. As a result, the total code size needed to enable all possible component combinations is not the sum of the code size of each component anymore: it scales as the number of those combinations. This can result in a very significant overhead. The traditional solution in FORTRAN code is to have a monolithic block which does all alternatives and branches depending on flags passed at runtime. But such a design defeats modularity and makes future extension and maintenance difficult, which is precisely one of the reason to have chosen modern programming languages such as \cpp and Python in the first place. This is clearly a difficult problem where some tradeoffs will have to be made.
+
+\subsection{Normal equations free of the overall scale factor}
+
+ We have not addressed the issue of the overall scale factor. Indeed the least-squares target
+ \begin{equation}
+L = \sum_h w_h \left(y_o(h) - K y_c(h)\right)^2,
+\end{equation}
+where $y_c = \modulus{F_c}$ or $\modulus{F_c}^2$, is a function of that scale $K$ which is a priori unknown. The traditional solution consists in adding $K$ to the list of refined parameters, and therefore to add a line and a column to the normal equations corresponding to $K$.
+
+Another solution is to note that $L$, as a function of $K$, is a second-order polynomial and therefore that the value $K^*$ realising the minimum has an analytic expression,
+\begin{equation}
+K^* = \frac{\sum_h w_h y_o(h) y_c(h)}{\sum_h w_h y_c(h)^2}.
+\label{eqn:optimalK}
+\end{equation}
+Obviously, $K^*$ is a function of the crystallographic parameters that $y_c(h)$ is a function of. It is then obvious that minimising $L|_{K=K^*}$ is still a least-squares problem since that last expression is a sum of squares too.  The normal equations for the minimisation of $L|_{K=K^*}$ can easily be computed as a correction to the normal equations for the minimisation of $L|_{\text{fixed $K$}}$. Only second order derivatives of $L$ need to be corrected actually, since by definition of $K^*$, the first order derivatives are obtained by merely plugging $K^*$ in the generic formula valid for any $K$. This is implemented in the \cpp class \code{normal_equations_separating_scale_factor} defined in \code{scitbx/lstbx/normal_equations.h}. This crystallography-agnostic code is in turn used by the \smtbx, specifically the function \code{build_normal_equations} defined in \code{smtbx/refinement/least_squares.h}.
+
+It should be noted that \eqnref{optimalK} is used in the \cctbx too but in the context of LBFGS minimisation, in the \cpp class \code{least_squares} defined in \code{cctbx/xray/targets/least_squares.h}. Because of the remark just made about first-order derivatives, this choice of $K$ is totally invisible from the point of view of LBFGS.
+
+\subsection{Floating origin}
+
+In space groups such as $P2$ or $Pm$, the normal matrix is singular because $\modulus{F_c(h)}^2$ is invariant, for any Miller index $h$, under a global translation of the whole structure along the 2-axis and along the mirror plane respectively. Let us consider the simplest case to ease the exposition: only 3 sites are refined. Then in the space group $P2$, the vector $v$ defined as
+\newcommand{\tmp}[1]{\underbrace{\protect\begin{array}{ccc} 0&1&0 \end{array}}_{\text{atom #1}}}
+\begin{equation}
+v^T = \left[ \begin{array}{ccc} \tmp{1} & \tmp{2} & \tmp{3} \end{array} \right]
+\end{equation}
+is a singular vector for the normal matrix, where for each atom the triplet represent shifts in the $x$, $y$ and $z$ directions. Our restraint consists in adding to the normal matrix a term
+\begin{equation}
+\mu v v^T.
+\end{equation}
+In this case, this is equivalent to restraining the coordinate of the barycentre of the structure along the floating direction to be zero.
+
+The weight $\mu$ is chosen as 1000 times the biggest element on the normal matrix diagonal. In fact, the same shifts are obtained for any value of that weight, as long as it is big enough to prevent catastrophic round-offs by keeping the matrix far from being singular. After adding the restraint, the normal matrix is indeed non-singular and the normal equations can be solved. The obtained shift $\xi$ has the property that it has no component along the singular vector $v$. Thus in this case, that restraint acts as an exact constraint in the sense that the barycentre of the structure will not move. This is actually correct as long as there is no special position in the structure. 
+
+Let us consider the space group $R 3 (-y+z, x+z, -x+y+z)$ (Hall symbol) to illustrate the effect that special positions may have. The 3-axis is in the direction $(1, 1, 1)$.  In general, the singular vector is
+\renewcommand{\tmp}[1]{\underbrace{\protect\begin{array}{ccc} 1&1&1 \end{array}}_{\text{atom #1}}}
+\begin{equation}
+v^T = \left[ \begin{array}{ccc} \tmp{1} & \tmp{2} & \tmp{3} \end{array} \right]
+\end{equation}
+If e.g. the 1st atom is on that 3-axis, its site being then constrained to have the form $(x_1, x_1, x_1)$, the singular vector of the normal matrix reduced by the special position constraints becomes
+\begin{equation}
+v'^T = \left[ \begin{array}{ccc} \underbrace{1}_{\text{atom 1}} & \tmp{2} & \tmp{3} \end{array} \right]
+\end{equation}
+and it is easily seen that adding $\mu v' v'^T$ to the normal matrix still allows a shift of the barycentre. However the property that the total shift vector for the independent site coordinates,
+\begin{equation}
+\xi^T = \begin{bmatrix} \Delta x_1 & \Delta x_2 & \Delta y_2 & \Delta z_2 & \Delta x_3 & \Delta y_3 & \Delta z_3 \end{bmatrix},
+\end{equation}
+does not have any component along $v'$ holds as in the first case without special positions: this is a general property of the method.
+
+We shall stress that the fact that the barycentre is not always restrained to stay at the origin is not a problem at all. Since the shifts along the singular direction(s) of the normal matrix are null in this scheme, one obtains the so-called minimum norm solution of the least-squares problems. A corollary is that the inverse of the restrained normal matrix is the pseudo-inverse of the original singular normal matrix, which is precisely the one with the right statistical properties, i.e. the one which gives the correct variances and correlations under the Gauss-Markov theorem, as any good treaty on Statistics would expound, see e.g.~\cite{Silvey:1975}.
+
+This flavour of floating origin restraints is implemented in the \cpp class \code{floating_origin_restraints} defined in \code{smtbx/refinement/least_squares.h}.
+\subsection{Restraints}
+
+As described in a previous \cctbx newsletter \cite{cctbxnews:2004b}, geometry restraints of the kind that are extensively used in macromolecular crystallography have already been implemented in the \cctbx.  However, with the exception of the bond distance restraint, these were not able to deal with symmetry equivalent atoms, as is allowed by most common small molecule refinement programs.  These have now been extended to allow symmetry equivalent atoms, and a new bond similarity restraint has been added.
+
+We have also implemented several common restraints on anisotropic displacement parameters (ADPs), including restraints based on Hirshfeld's ``rigid-bond'' test \cite{Hirshfeld:1976}, similarity restraints and isotropic restraints.
+There appears to be little in the literature with regard to the mathematical details required for the actual implementation of restraints on ADPs in refinement programs. It was therefore necessary to devise our formulae for the equations of restraints and derive their gradients with respect to the least squares parameters. All the residuals we have implemented possess a property we deemed important: they are rotationally invariant, \emph{i.e.} they are left unchanged if the ADP is transformed by any rotation, or equivalently they are frame-invariant, \emph{i.e.} they are unaffected if the frame to which they are referred is rotated.
+
+An extensive set of tests has been written. The correctness of the analytical gradients was confirmed by testing against gradients determined by the finite differences method. The frame-invariance was also systematically tested.
+
+\subsubsection{Rigid-bond restraint}
+
+In a ``rigid-bond'' restraint the components of the anisotropic displacement parameters of two atoms in the direction of the vector connecting those two atoms are restrained to be equal. This corresponds to Hirshfeld's ``rigid-bond'' test \cite{Hirshfeld:1976} for testing whether anisotropic displacement parameters are physically reasonable (see SHELX manual, DELU restraint \cite{SHELX:man97})and is in general appropriate for bonded and 1,3-separated pairs of atoms and should hold true for most covalently bonded systems. We therefore minimise the mean square displacement of the atoms in the direction of the bond. This is equivalent to the formula given by Hendrickson and Konnert \cite{Hendrickson:1980}, with $\theta=0$.
+
+The weighted least squares residual is then
+\begin{equation}
+R = w(z^2_{A,B} - z^2_{B,A})^2,
+\end{equation}
+where in the Cartesian coordinate system the mean square displacement of atom A
+along the vector $\overrightarrow{AB}$, $z^2_{A,B}$, is given by
+\begin{equation}
+z^2_{A,B} = \frac{\vec{r}^t\mat{U}_{cart,A}\vec{r}}{\norm{\vec{r}}^2},
+\end{equation}
+where
+\begin{equation}
+\vec{r} = \begin{pmatrix} x_A - x_B\\y_A - y_B\\z_A - z_B \end{pmatrix}
+= \begin{pmatrix} x\\y\\z \end{pmatrix},
+\end{equation}
+$\vec{r}^t$ is the transpose of $\vec{r}$ (\textit{i.e.} a row vector) and
+$\norm{\vec{r}}$ is the length of the vector $\overrightarrow{AB}$.
+
+The derivative of the residual with respect to an element of $\vec{U}_{cart,A}$,
+$U_{A,ij}$ is given by (using the chain rule)
+\begin{equation}
+\partialder{R}{U_{A,ij}} 
+=2w(z^2_{A,B} - z^2_{B,A}) \partialder{z^2_{A,B}}{U_{A,ij}}\label{eqn:u_derivative}
+\end{equation}
+with
+\begin{align}
+\partialder{z^2_{A,B}}{U_{11}} &= \frac{x^2}{\norm{\vec{r}}^2} ,&
+\partialder{z^2_{A,B}}{U_{22}} &= \frac{y^2}{\norm{\vec{r}}^2} ,&
+\partialder{z^2_{A,B}}{U_{33}} &= \frac{z^2}{\norm{\vec{r}}^2} ,&
+\\
+\intertext{and}
+\partialder{z^2_{A,B}}{U_{12}} &= \frac{2xy}{\norm{\vec{r}}^2} ,&
+\partialder{z^2_{A,B}}{U_{13}} &= \frac{2xz}{\norm{\vec{r}}^2} ,&
+\partialder{z^2_{A,B}}{U_{23}} &= \frac{2yz}{\norm{\vec{r}}^2} .
+\end{align}
+
+From inspection of their analytical form, and making the assumption that the magnitudes of $\vec{U}_{cart,ij}$ will be much smaller than the values for $x, y, z$, it can be assumed that the gradients of the residual with respect to the sites will be negligible.  Analysis of the gradients computed by the finite differences method has confirmed that the gradients with respect to the sites are typically one order of magnitude smaller than the gradients with respect to $\vec{U}_{cart,ij}$, and hence their contribution can be neglected.
+
+%------------------------------------------------------------------------------
+
+
+\subsubsection{ADP similarity restraint}
+\label{ADP:similarity}
+In the similarity restraint, the anisotropic displacement parameters of two atoms are restrained to have the same $U_{ij}$ components. Since this is only a rough approximation to reality, this restraint should be given a smaller weight in the least squares minimisation than for a rigid-bond restraint, and is suitable for use in larger structures with a poor data to parameter ratio. Applied correctly, this restraint permits a gradual increase and change in direction of the anisotropic displacement parameters along a molecular side-chain \cite{SHELX:man97}. This is equivalent to a SHELXL SIMU restraint \cite{SHELX:man97}.
+The weighted least squares residual is defined as the square of the Frobenius norm of the matrix of deltas, which, after taking into account the symmetric nature of $\mat{U}$, can be written as
+\begin{equation}
+R = w \left( \sum_{i=1}^3 (U_{A,ii} - U_{B,ii})^2 + 2 \sum_{i < j} (U_{A,ij} - U_{B,ij})^2 \right) .
+\end{equation}
+The factor 2 in front of the off-diagonal contribution is necessary to make $R$ independent of its orientation with respect to Cartesian axes.
+
+%------------------------------------------------------------------------------
+
+
+\subsubsection{Isotropic ADP restraint}
+Here we minimise the difference between the Cartesian ADPs, $\mat{U}_{cart}$, and the isotropic equivalent, $\mat{U}_{eq}$. The weighted least squares residual then reads
+\begin{equation}
+R = w \left( \sum_{i=1}^3 (U_{ii} - U_{eq,ii})^2 + 2 \sum_{i<j} (U_{ij} - U_{eq,ij})^2 \right) ,
+\end{equation}
+where
+\begin{equation}
+\mat{U}_{eq} = 
+\begin{pmatrix} U_{iso} & 0 & 0\\
+  0 & U_{iso} & 0\\
+  0 & 0 & U_{iso}\end{pmatrix},
+\end{equation}
+and
+\begin{equation}
+U_{iso} = \tfrac{1}{3} \mathrm{tr}(\mat{U}_{cart}).
+\end{equation}
+The factor 2 is again essential for frame-independence.
+
+%>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+\subsubsection{Implementation}
+
+The implementation of the geometry restraints has previously been described by Grosse-Kunstleve et al. \cite{cctbxnews:2004b}, and the ADP restraints were designed in the same way as the pre-existing geometry restraints classes.
+
+The SHELXL SIMU, ISOR and DELU instructions for restraints on anisotropic displacement parameters automatically set up the appropriate restraints for adjacent pairs of atoms (and 1,3- pairs in the case of DELU), using the atomic connectivity table \cite{SHELX:man97}. This can be done for all atoms in the structure, current residue, or given list of atoms. A python class was implemented to emulate each of these SHELXL instructions and create the appropriate shared proxy arrays for each restraint type. These were tested and compared against structures using SHELXL to confirm that both had setup the same restraints.
+
+It was necessary to add the ability to create the \cctbx atomic connectivity table taking into account the covalent radii of the atoms when deciding whether any two atoms are bonded or not. Previously it was only possible to discriminate bonded from non-bonded by means of a distance cutoff value.
+
+
+%>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+
+\subsubsection{Parsing of SHELXL restraints}
+
+Parsing of a crystal structure from a SHELXL instruction file exists in the \iotbx (input/output toolbox) module of the \cctbx in the form of a lexer/parser/builder combination. This has been extended to include parsing of SHELXL restraints and building of the appropriate shared proxy arrays required by the refinement.
+
+\subsection{Constraints}
+
+We will finish this overview of refinement with a quick word on constraints.
+
+Special position constraints are automatically handled, both for sites and ADPs, for LBFGS and full matrix refinement. The core numerical code was discussed in last year's \cctbx newsletter.
+
+The chain rule has been implemented for all hydrogen geometries supported by SHELXL, including rotating $CH_3$ groups and stretchable $C-H$ bonds. In the former, this results in one azimuthal angle to be added to the independent parameters, whereas an additional bond length appears in the latter. The implementation has been validated with a comprehensive list of tests. It sits in \code{smtbx/refinement/constraints/geometric_hydrogen.h}. However it has not been plugged into either the LBFGS or the full matrix refinement engine yet. The design of the interface for the constraint system is still in a state of flux and this is clearly the next priority.
+
+
+\section{Analysis of reflection statistics}
+
+An example of the ease of rapid prototyping with the Python language can be found in the statistical graphs that have been added to the \cctbx and which are now available from Olex2 \cite{Dolomanov:2009}. These include Wilson plots, systematic absences intensity distribution, completeness plots and a cumulative intensity distribution. In each cases, it was possible to take advantage of tools already in the \cctbx such as those for dealing with miller arrays of reflection data, binning of data and general scientific and mathematical tools available in the \scitbx module.
+A simple implementation of a systematic absences intensity distribution could be written in just seven lines of Python.
+
+\begin{lstlisting}[language=Python]
+class sys_absent_intensity_distribution: 
+ # I/sigma(I) vs I
+ def __init__(self, f_obs):
+ sys_absences=f_obs.select_sys_absent()
+ assert sys_absences.sigmas() is not None
+ intensities=sys_absences.as_intensity_array()
+ self.x=(intensities/sys_absences.sigmas()).data()
+ self.y=intensities.data()
+\end{lstlisting}
+
+The computation that occurs in the penultimate line
+\begin{lstlisting}[language=Python]
+intensities/sys_absences.sigmas()
+\end{lstlisting}
+actually occurs in \cpp code, despite being called in Python.
+
+A class to calculate the Wilson plot was already in the \cctbx, however this did not calculate the normalised amplitudes or E statistics that are used in space group determination. Therefore, a \cpp class was written to calculate the normalised amplitudes and E statistics that were missing from the current python class.
+
+A cumulative intensity distribution class \cite{Howells:1950} was initially written exclusively in Python, but the core part of the algorithm was rewritten in \cpp for increased speed in the computationally intensive loop over potentially as many as several tens of thousands of reflections.
+
+We have recently exposed some of the statistical distributions that are part of the BOOST \cpp library \cite{boostcpp} to python, in order to enable the calculation of quantile-quantile plots such as normal probability plots \cite{Abrahams:1971}, or probability plots based on Student's \textit{t}-distribution \cite{Hooft:2009}.
+
+Some small tools were added to the \iotbx module of the \cctbx to enable simple outputting of data to a comma-separated values (CSV) file for easy importing of the data into spreadsheet software if required, or the XY data can be passed to a program such as Olex2 \cite{Dolomanov:2009} for graphical output.
+
+
+\section{Future works}
+
+We will conclude this newsletter by laying out the plan for the foreseeable future. As pointed out in several places, there are some clear gaps in our framework which prevent us from using it for crystal structure publications. After implementing full matrix refinement, we have come much closer to that goal since the variance-covariance matrix can now be obtained. We have to finalise the code to do so, which in turn depends on finalising the design of the constraint system and then plug in the most common restraints, geometric hydrogen constraints being the highest priority. At the other end of the workflow, some polishing of our charge flipping code needs to be carried out, especially the efficient recovery of the origin shift and space group.
+
+
+\section*{Acknowledgements}
+We gratefully acknowledge the financial support of the Engineering and Physical Sciences Research Council (UK) under grant number EP/C536274/1. We would like to thank David Watkin who was key to the birth of this project and who has shared his in-depth knowledge of crystallography during all those years. One of the authors, Luc Bourhis, would like to warmly thank Gabor Oszl{\'a}nyi for openly sharing with him his mastery of the charge flipping algorithm at the Kyoto Computing School. Finally we are all indebted to Ralf W. Grosse-Kunstleve for his infallible support and patience.
+
+\bibliography{cctbx_references}
+
+\end{document}
