@@ -1453,8 +1453,12 @@ def inverse_transform(r,t):
 def angle_between_rotations(v1,v2):
   """ get angle between two vectors"""
   cos_angle = v1.dot(v2)
-  result = math.acos(min(1,cos_angle))
-  result *= 180/math.pi
+  if cos_angle > 1.0:
+    cos_angle = 1.0
+  elif cos_angle < -1.0:
+    cos_angle = -1.0
+  result = math.acos(cos_angle)
+  result *= 180./math.pi
   return result
 
 def get_rotation_vec(r):
