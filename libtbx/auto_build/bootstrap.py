@@ -1173,8 +1173,14 @@ class DIALSBuilder(CCIBuilder):
 class LABELITBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['labelit', 'labelit_regression']
   LIBTBX_EXTRA = ['labelit', 'labelit_regression']
+
+  def add_base(self, extra_opts=[]):
+    super(LABELITBuilder, self).add_base(
+      extra_opts=['--labelit'] + extra_opts)
+
   def add_tests(self):
-    pass
+    self.add_test_command('cctbx_regression.test_nightly')
+    self.add_test_parallel('labelit', flunkOnFailure=False, warnOnFailure=True)
 
   def add_dispatchers(self):
     pass
