@@ -1197,8 +1197,8 @@ class DIALSBuilder(CCIBuilder):
     pass
 
 class LABELITBuilder(CCIBuilder):
-  CODEBASES_EXTRA = ['labelit', 'labelit_regression']
-  LIBTBX_EXTRA = ['labelit', 'labelit_regression']
+  CODEBASES_EXTRA = ['labelit']
+  LIBTBX_EXTRA = ['labelit']
 
   def add_base(self, extra_opts=[]):
     super(LABELITBuilder, self).add_base(
@@ -1218,23 +1218,18 @@ class XFELBuilder(CCIBuilder):
   CODEBASES_EXTRA = [
     'dials',
     'labelit',
-    'labelit_regression',
-    'xfel_regression',
     'cxi_xdr_xes'
   ]
   LIBTBX_EXTRA = [
     'dials',
     'labelit',
-    'labelit_regression',
     'xfel',
-    'xfel_regression',
     'cxi_xdr_xes',
     'prime'
   ]
 
   def add_tests(self):
     self.add_test_command('cctbx_regression.test_nightly')
-    self.add_test_parallel('xfel_regression')
 
   def add_dispatchers(self):
     pass
@@ -1261,13 +1256,10 @@ class PhenixBuilder(CCIBuilder):
     'gui_resources',
     'opt_resources',
     'muscle',
-    'labelit',
     'reduce',
     'probe',
     'king',
     'suitename',
-    # "dials",
-    # "xia2",
   ]
   HOT_EXTRA = [
     'phaser',
@@ -1287,8 +1279,6 @@ class PhenixBuilder(CCIBuilder):
     'amber_adaptbx',
     'reduce',
     'probe',
-    # "dials",
-    # "xia2",
   ]
 
   def add_base(self, extra_opts=[]):
