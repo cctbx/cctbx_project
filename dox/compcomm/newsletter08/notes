@@ -1,0 +1,6 @@
+conversion to .doc:
+  in Internet Explorer, save as html complete
+  manually change file name from .htm to .doc
+  double-click to open in word
+  remove top part (title, abstract, preamble)
+  copy top part from compcomm7/news.doc
