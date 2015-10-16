@@ -15,13 +15,34 @@ import time
 import urllib2
 import urlparse
 import zipfile
-import distutils.spawn
 
 # To download this file:
 # svn export svn://svn.code.sf.net/p/cctbx/code/trunk/libtbx/auto_build/bootstrap.py
 
 # Note: to relocate an SVN repo:
 # svn relocate svn+ssh://<username>@svn.code.sf.net/p/cctbx/code/trunk
+
+
+def check_for_Windows_prerequisites():
+  import distutils.spawn
+  if not sys.platform=="win32":
+    return
+  xcptstr = ''
+  if not distutils.spawn.find_executable("makensis"):
+    xcptstr += '"makensis" from NSIS must be present in the executable path.\n'
+  if not distutils.spawn.find_executable("svn"):
+    xcptstr += '"Tortoisesvn" with command line tools must be present in the executable path.\n'
+  if not distutils.spawn.find_executable("pscp.exe"):
+    xcptstr += '"pscp.exe" from the PuTTY program suite is not present in the executable path.\n'
+  p = distutils.spawn.find_executable("plink.exe")
+  if not p:
+    xcptstr += '"plink.exe" from the PuTTY program suite is not present in the executable path.\n'
+  if not os.getenv("SVN_SSH") and p:
+    q=p.split("\\")
+    fwdp = "/".join(q) # svn client expects foward slashed path to plink
+    xcptstr += 'SVN_SSH environment variable should be set to "SVN_SSH=%s' %fwdp
+  if xcptstr:
+    raise Exception(xcptstr)
 
 # Mock commands to run standalone, without buildbot.
 class ShellCommand(object):
@@ -292,7 +313,7 @@ class SourceModule(object):
 
   def get_tarauthenticated(self, auth=None):
     auth = auth or {}
-    if self.authentarfile and sys.platform == 'win32':
+    if self.authentarfile: # and self.isPlatformWindows():
       return [self.authentarfile[0]%auth, self.authentarfile[1], self.authentarfile[2]]
     return None, None, None
 
@@ -556,7 +577,8 @@ class Builder(object):
     self.name = '%s-%s'%(self.category, self.platform)
     # Platform configuration.
     self.python_base = self.opjoin(*['..', 'base', 'bin', 'python'])
-    if 'win32'==sys.platform:
+    #if 'win32'==sys.platform:
+    if self.isPlatformWindows():
       self._check_for_Windows_prerequisites()
       self.python_base = self.opjoin(*[os.getcwd(), 'base', 'bin', 'python', 'python.exe'])
     self.with_python = with_python
@@ -613,6 +635,14 @@ class Builder(object):
       self.add_dispatchers()
       self.add_refresh()
 
+  def isPlatformWindows(self):
+    if self.platform and 'windows' in self.platform:
+        return True
+    else:
+      if sys.platform == "win32":
+        return True
+    return False
+
   def add_auth(self, account, username):
     self.auth[account] = username
 
@@ -643,7 +673,8 @@ class Builder(object):
     return os.path.join(*args)
 
   def get_codebases(self):
-    if sys.platform == "win32": # we can't currently compile cbflib for Windows
+    #if sys.platform == "win32": # we can't currently compile cbflib for Windows
+    if self.isPlatformWindows():
       return list(set(self.CODEBASES + self.CODEBASES_EXTRA) - set(['cbflib']))
     return self.CODEBASES + self.CODEBASES_EXTRA
 
@@ -651,7 +682,8 @@ class Builder(object):
     return self.HOT + self.HOT_EXTRA
 
   def get_libtbx_configure(self):
-    if sys.platform == "win32": # we can't currently compile cbflib for Windows
+    #if sys.platform == "win32": # we can't currently compile cbflib for Windows
+    if self.isPlatformWindows():
       return list(set(self.LIBTBX + self.LIBTBX_EXTRA) - set(['cbflib']))
     return self.LIBTBX + self.LIBTBX_EXTRA
 
@@ -661,6 +693,10 @@ class Builder(object):
   def cleanup(self, dirs=None):
     dirs = dirs or []
     cmd=['rm', '-rf'] + dirs
+    #if sys.platform == "win32":
+    if self.isPlatformWindows():
+      #rmdir sets the error flag if directory is not found. Mask it with cmd shell
+      cmd=['cmd', '/c', 'rmdir', '/S', '/Q'] + dirs + ['&', 'set', 'ERRORLEVEL=0']
     self.add_step(self.shell(
       name='cleanup',
       command =cmd,
@@ -683,14 +719,15 @@ class Builder(object):
     method, parameters = action[0], action[1:]
     if len(parameters) == 1: parameters = parameters[0]
     tarurl, arxname, dirpath = MODULES.get_module(module)().get_tarauthenticated(auth=self.get_auth())
-    if sys.platform == "win32":
+    #if sys.platform == "win32":
+    if self.isPlatformWindows():
       if module in ["cbflib",]: # can't currently compile cbflib for Windows due to lack of HDF5 component
         return
-    if method == 'rsync' and sys.platform != "win32":
+    if method == 'rsync' and not self.isPlatformWindows(): # sys.platform != "win32":
       self._add_rsync(module, parameters)
-    elif sys.platform == "win32" and method == 'pscp':
+    elif self.isPlatformWindows() and method == 'pscp':
       self._add_pscp(module, parameters)
-    elif sys.platform == "win32" and tarurl:
+    elif self.isPlatformWindows() and tarurl:
       # if more bootstraps are running avoid potential race condition on
       # remote server by using unique random filenames
       randarxname = next(tempfile._get_candidate_names()) + "_" + arxname
@@ -829,7 +866,7 @@ class Builder(object):
 
   def _add_svn(self, module, url):
     svnflags = []
-    if sys.platform == 'win32':
+    if self.isPlatformWindows():
       # avoid stalling bootstrap on Windows with the occasional prompt
       # whenever server certificates have been forgotten
       svnflags = ['--non-interactive', '--trust-server-cert']
@@ -895,35 +932,24 @@ class Builder(object):
     raise Exception(error)
 
   def _check_for_Windows_prerequisites(self):
-    if sys.platform != 'win32':
+    if not self.isPlatformWindows():
       return
-    xcptstr = ''
-    if not distutils.spawn.find_executable("makensis"):
-      xcptstr += '"makensis" from NSIS must be present in the executable path.\n'
-    if not distutils.spawn.find_executable("svn"):
-      xcptstr += '"Tortoisesvn" with command line tools must be present in the executable path.\n'
-    if not distutils.spawn.find_executable("pscp.exe"):
-      xcptstr += '"pscp.exe" from the PuTTY program suite is not present in the executable path.\n'
-    p = distutils.spawn.find_executable("plink.exe")
-    if not p:
-      xcptstr += '"plink.exe" from the PuTTY program suite is not present in the executable path.\n'
-    if not os.getenv("SVN_SSH") and p:
-      q=p.split("\\")
-      fwdp = "/".join(q) # svn client expects foward slashed path to plink
-      xcptstr += 'SVN_SSH environment variable should be set to "SVN_SSH=%s' %fwdp
-    if xcptstr:
-      raise Exception(xcptstr)
-
+# platform specific checks cannot run on buildbot master so add to build steps to run on slaves
+    self.add_step(self.shell(command=[
+       'python','-c','import sys, os; sys.path.append(os.path.join(os.getcwd(),"..")); import bootstrap; bootstrap.check_for_Windows_prerequisites()'],
+      workdir=['build'],
+      description="Checking for Windows prerequisites",
+    ))
 
   def add_command(self, command, name=None, workdir=None, args=None, **kwargs):
-    if sys.platform == 'win32':
+    if self.isPlatformWindows():
       command = command + '.bat'
     # Relative path to workdir.
     workdir = workdir or ['build']
     dots = [".."]*len(workdir)
     if workdir[0] == '.':
       dots = []
-    if sys.platform == 'win32':
+    if self.isPlatformWindows():
       dots.extend([os.getcwd(), 'build', 'bin', command])
     else:
       dots.extend(['build', 'bin', command])
@@ -1001,7 +1027,7 @@ class Builder(object):
     dispatcher = os.path.join("build",
                               "dispatcher_include_%s.sh" %
                               product_name)
-    if sys.platform == "win32":
+    if self.isPlatformWindows():
       envcmd = "set"
       dispatcher = os.path.join("build",
                                 "dispatcher_include_%s.bat" %
@@ -1053,7 +1079,7 @@ class Builder(object):
     ))
     # Prepare saving configure.py command to file should user want to manually recompile Phenix
     relpython = os.path.relpath(self.python_base, self.opjoin(os.getcwd(),'build')) # relpath requires python 2.6!
-    if sys.platform != 'win32':
+    if not self.isPlatformWindows():
       relpython = os.path.relpath(self.python_base, os.getcwd()) # relpath requires python 2.6!
     configcmd =[
         relpython, # default to using our python rather than system python
@@ -1061,7 +1087,7 @@ class Builder(object):
         ] + self.get_libtbx_configure()
     fname = self.opjoin("config_modules.cmd")
     confstr = subprocess.list2cmdline(configcmd) + '\n'
-    if sys.platform != 'win32':
+    if self.isPlatformWindows():
       fname = self.opjoin("config_modules.sh")
       confstr = '#!/bin/sh\n\n' + confstr
     # klonky way of writing file later on, but it works
@@ -1283,7 +1309,7 @@ class PhenixBuilder(CCIBuilder):
     self.add_test_command('libtbx.import_all_ext')
     self.add_test_command('cctbx_regression.test_nightly')
     # Windows convenience hack.
-    if 'win32' == sys.platform:
+    if self.isPlatformWindows():
       self.add_test_command('phenix_regression.test_nightly_windows')
     else:
       self.add_test_command('phenix_regression.test_nightly')
