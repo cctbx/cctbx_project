@@ -1446,12 +1446,6 @@ iotbx/xplor/map_reader.cpp svneol=native#text/plain
 iotbx/xplor/map_reader.h svneol=native#text/plain
 iotbx/xplor/map_writer.cpp svneol=native#text/plain
 iotbx/xplor/map_writer.h svneol=native#text/plain
-ipctbx/SConscript -text
-ipctbx/__init__.py svneol=native#text/x-python
-ipctbx/command_line/delete_all_segments.py svneol=native#text/x-python
-ipctbx/ext.cpp svneol=native#text/plain
-ipctbx/libtbx_config -text
-ipctbx/tst_ext.py svneol=native#text/x-python
 libtbx/assert_utils.py -text
 libtbx/auto_build/README -text
 libtbx/auto_build/__init__.py -text
