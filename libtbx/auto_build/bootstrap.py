@@ -719,7 +719,7 @@ class Builder(object):
     method, parameters = action[0], action[1:]
     if len(parameters) == 1: parameters = parameters[0]
     tarurl, arxname, dirpath = None, None, None
-    if sys.platform=="win32":
+    if self.isPlatformWindows():
       tarurl, arxname, dirpath = MODULES.get_module(module)().get_tarauthenticated(auth=self.get_auth())
     #if sys.platform == "win32":
     if self.isPlatformWindows():
