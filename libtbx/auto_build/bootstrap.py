@@ -718,7 +718,9 @@ class Builder(object):
     action = MODULES.get_module(module)().get_url(auth=self.get_auth())
     method, parameters = action[0], action[1:]
     if len(parameters) == 1: parameters = parameters[0]
-    tarurl, arxname, dirpath = MODULES.get_module(module)().get_tarauthenticated(auth=self.get_auth())
+    tarurl, arxname, dirpath = None, None, None
+    if sys.platform=="win32":
+      tarurl, arxname, dirpath = MODULES.get_module(module)().get_tarauthenticated(auth=self.get_auth())
     #if sys.platform == "win32":
     if self.isPlatformWindows():
       if module in ["cbflib",]: # can't currently compile cbflib for Windows due to lack of HDF5 component
