@@ -41,8 +41,8 @@ using namespace spotfinder;
     rawData = data.deep_copy();
     newData = scitbx::af::shared<int>(origData.size(),0);
     tempData = scitbx::af::shared<int>(origData.size(),0);
-    row = data.accessor().focus()[0];
-    col = data.accessor().focus()[1];
+    row = data.accessor().focus()[1];
+    col = data.accessor().focus()[0];
     pixelSize = p;
   }
 
