@@ -1207,7 +1207,6 @@ class LABELITBuilder(CCIBuilder):
       extra_opts=['--labelit'] + extra_opts)
 
   def add_tests(self):
-    self.add_test_command('cctbx_regression.test_nightly')
     self.add_test_parallel('labelit', flunkOnFailure=False, warnOnFailure=True)
 
   def add_dispatchers(self):
