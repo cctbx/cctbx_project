@@ -172,6 +172,7 @@ tst_list = (
   "$D/ringer/tst_em_rscc.py",
   # validation/molprobity
   "$D/validation/regression/tst_waters.py",
+  "$D/validation/regression/tst_keep_hydrogens.py",
   "$D/validation/regression/tst_nqh_minimize.py",
   "$D/validation/regression/tst_mp_geo.py",
   "$D/validation/regression/tst_rotalyze.py",

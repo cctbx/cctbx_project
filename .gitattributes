@@ -2349,6 +2349,7 @@ mmtbx/validation/regression/tst_cbetadev.py -text
 mmtbx/validation/regression/tst_clashscore.py svneol=native#text/x-python
 mmtbx/validation/regression/tst_experimental.py svneol=native#text/x-python
 mmtbx/validation/regression/tst_hydrogen_addition_clashscore.py -text
+mmtbx/validation/regression/tst_keep_hydrogens.py -text
 mmtbx/validation/regression/tst_model_properties.py -text
 mmtbx/validation/regression/tst_molprobity_1.py -text
 mmtbx/validation/regression/tst_molprobity_2.py -text
