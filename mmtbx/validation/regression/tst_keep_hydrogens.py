@@ -18,7 +18,7 @@ HETATM 1544  O  AHOH A 337      32.837  13.298   7.618  0.67  4.89           O
 HETATM 1545  O  BHOH A 337      32.593  12.260   7.604  0.33 16.54           O
 """
 
-import os, sys
+import sys
 from libtbx import easy_run
 import StringIO
 
