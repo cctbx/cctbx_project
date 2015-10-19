@@ -32,10 +32,6 @@ if [ ! -z "$AMBERHOME" ]; then
   else
     export PYTHONPATH="${AMBERHOME}/lib/%s/site-packages:${PYTHONPATH}"
   fi
-else
-  echo 'This Phenix build has been configured to use Amber'
-  echo 'Therefore environment variable AMBERHOME needs set'
-  exit
 fi
 """
 
