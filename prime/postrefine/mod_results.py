@@ -24,7 +24,8 @@ class postref_results(object):
       frame_no=None,
       pickle_filename=None,
       wavelength=None,
-      crystal_orientation=None):
+      crystal_orientation=None,
+      detector_distance_mm=None):
 
     self.observations = observations
     self.observations_original = observations_original
@@ -63,3 +64,4 @@ class postref_results(object):
     self.R_xy_final = stats[7]
     self.CC_iso_init = stats[8]
     self.CC_iso_final = stats[9]
+

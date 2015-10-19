@@ -128,7 +128,7 @@ namespace prime {
       double SE_norm_odd_sum = 0;
       I_avg_even = 0;
       I_avg_odd = 0;
-      if (I_full_group.size() > 3) {
+      if (I_full_group.size() > 2) {
         for (int i = 0; i < I_full_group.size(); i++) {
           if (i % 2 == 0) {
             I_even_sum += I_full_group[i];
@@ -191,14 +191,13 @@ namespace prime {
       scitbx::af::shared<double> mosaic_radian_set;
       for(int x = 0; x < G_.size(); x++) {
         double tmp1 = G_[x] *std::exp(-2*B_[x]*sin_theta_over_lambda_sq_[x]);
-        double tmp2_I = I_[x];
+        double tmp2 = I_[x];
         double tmp3 = p_set_[x];
-        double tmp2_sigI = sigI_[x];
         if (x==0)
-          printf("c++ check overflow: %70.70f\n",tmp1*tmp2_I); // Without this printf, I_full comes out differently between
+          printf("c++ check overflow: %70.70f\n",tmp1*tmp2); // Without this printf, I_full comes out differently between
                                                                // python and cpp in the highest significant digits. No idea why.
-        I_full.push_back(tmp2_I/(tmp1*tmp3));
-        sigI_full.push_back(tmp2_sigI/(tmp1*tmp3));
+        I_full.push_back(tmp2/(tmp1*tmp3));
+        sigI_full.push_back(sigI_[x]/(G_[x] * std::exp(-2*B_[x]*sin_theta_over_lambda_sq_[x]) * p_set_[x]));
         mosaic_radian_set.push_back(2 * rs_set_[x] * wavelength_set_[x]);
       }
 
@@ -257,25 +256,19 @@ namespace prime {
 
         // log
         char buf[512];
-        sprintf(buf, "Reflection: %d,%d,%d\nmeanI, medI, sigI_est, n_refl\n",current_index[0],current_index[1],current_index[2]);
+        sprintf(buf, "Reflection: %d,%d,%d\nmeanI    medI  sigI_est sigI_true delta_sigI   n_refl\n",current_index[0],current_index[1],current_index[2]);
         txt_obs_out << buf;
         scitbx::af::shared<double> I_full_group_copy;
-        scitbx::af::shared<double> I_over_sigI_group;
-        for (int i = 0; i < I_full_group.size(); i++) {
+        for (int i = 0; i < I_full_group.size(); i++)
           I_full_group_copy.push_back(I_full_group[i]);
-          I_over_sigI_group.push_back(I_full_group[i]/sigI_full_group[i]);
-        }
         scitbx::math::basic_statistics<double> basic_stat(I_full_group_copy.const_ref());
         scitbx::math::median_functor mf;
-        scitbx::math::basic_statistics<double> basic_stat_I_over_sigI(I_over_sigI_group.const_ref());
 
         double median_I = mf(I_full_group_copy.ref());
         double mean_I = basic_stat.mean;
-        double std_I = basic_stat.biased_standard_deviation;
-
-        double mean_I_over_sigI = basic_stat_I_over_sigI.mean;
-        double std_I_over_sigI = basic_stat_I_over_sigI.biased_standard_deviation;
-        double I_over_sigI_thres = mean_I_over_sigI - (std_I_over_sigI * sigma_max_);
+        double std_I = 0;
+        //if (I_full_group.size() > 1)
+        std_I = basic_stat.biased_standard_deviation; // based on what I think numpy is doing compared to basic_statistics
 
         sprintf(buf, "%6.2f %6.2f %8.2f %8.0f\n", mean_I, median_I, std_I, double(I_full_group.size()));
         txt_obs_out << buf;
@@ -304,8 +297,8 @@ namespace prime {
             double std_I = basic_stat.biased_standard_deviation; // based on what I think numpy is doing compared to basic_statistics
 
             for (int i = 0; i < I_full_group.size(); i++) {
-              double I_full_as_sigma = I_full_group[i]/sigI_full_group[i];
-              if (I_full_as_sigma < I_over_sigI_thres) {
+              double I_full_as_sigma = (I_full_group[i] - median_I) / std_I;
+              if (std::abs(I_full_as_sigma) > sigma_max_) {
                 char buf[512];
                 sprintf(buf, "%s%3.0f %3.0f %3.0f %10.2f %10.2f\n", pickle_filename_set_group[i].c_str(),
                   double(current_index_ori[i][0]), double(current_index_ori[i][1]), double(current_index_ori[i][2]), I_group[i], sigI_group[i]);
@@ -365,12 +358,12 @@ namespace prime {
 
         double SE_norm_sum = scitbx::af::sum(SE_norm.const_ref());
         SCITBX_ASSERT(SE_norm_sum != 0);
-        scitbx::af::shared<double> avg_I_tmp;
+        scitbx::af::shared<double> avg_tmp;
         for (int i = 0; i < SE_norm.size(); i++) {
-          avg_I_tmp.push_back(SE_norm[i] * I_full_group[i]);
+          avg_tmp.push_back(SE_norm[i] * I_full_group[i]);
         }
 
-        double I_avg = scitbx::af::sum(avg_I_tmp.const_ref())/SE_norm_sum;
+        double I_avg = scitbx::af::sum(avg_tmp.const_ref())/SE_norm_sum;
         double sigI_avg = scitbx::af::mean(sigI_full_group.const_ref());
 
         //Rmeas, Rmeas_w, multiplicity
@@ -462,9 +455,9 @@ namespace prime {
           for (int i = 0; i < I_full_group.size(); i++) {
             char buf[512];
             sprintf(buf, "%10.2f %10.2f %6.2f %6.2f %6.2f %8.5f %8.5f %8.5f %6.2f %10.2f %10.2f\n",
-              I_group[i],sigI_group[i],G_[valid_ptrs[i]],B_[valid_ptrs[i]],p_set_[valid_ptrs[i]],rs_set_[valid_ptrs[i]],
+              I_group[i],sigI_group[i],1/G_[valid_ptrs[i]],B_[valid_ptrs[i]],p_set_[valid_ptrs[i]],rs_set_[valid_ptrs[i]],
               wavelength_set_[valid_ptrs[i]],mosaic_radian_set[valid_ptrs[i]]*180/scitbx::constants::pi,SE_norm[i],
-              I_full_group[i],sigI_full_group[i]);
+              I_full_group[i],sigI_full[i]);
             txt_obs_out << buf;
           }
           char buf[512];
