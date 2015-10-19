@@ -187,10 +187,10 @@ target_anomalous_flag = False
   .optional = False
 flag_weak_anomalous = False
   .type = bool
-  .help = Set to True to indicate that you have a very weak anomalous signal.
+  .help = Set to True to indicate that you have weak anomalous signal.
 target_crystal_system = None
   .type = str
-  .help = Target crystal system (Triclinic, Monoclinic, Orthorhombic, Tetragonal, Trigonal, Hexagonal, or Cubic)
+  .help = Target crystal system
   .optional = True
 n_residues = None
   .type = int
@@ -231,9 +231,6 @@ flag_plot_expert = False
 flag_force_no_postrefine = False
   .type = bool
   .help = Set to True to output only the mean-intensity scaled merged.
-flag_outlier_rejection = True
-  .type = bool
-  .help = Set to True to perform advance outlier rejection.
 n_postref_cycle = 3
   .type = int
   .help = No. of cycles for post-refinement.
@@ -243,7 +240,10 @@ n_postref_sub_cycle = 3
 n_rejection_cycle = 1
   .type = int
   .help = No. of cycles for the outlier rejection.
-sigma_rejection = 3
+n_min_frames = 1000
+  .type = int
+  .help = No. of minimum frames.
+sigma_rejection = 99
   .type = float
   .help = Sigma level for outlier rejection.
 n_bins = 20
@@ -278,7 +278,7 @@ n_processors = 32
   .type = int
   .help = No. of processing units
   .optional = True
-gamma_e = 0.002
+gamma_e = 0.001
   .type = float
   .help = Initial spread of the energy spectrum (1/Angstrom).
 polarization_horizontal_fraction = 1.0
@@ -293,25 +293,9 @@ flag_replace_sigI = False
 percent_cone_fraction = 5.0
   .type = float
   .help = Perent used to select reflections inside a cone centering on each crystal axis.
-reindex_op = h,k,l
-  .type = str
-  .help = Change basis for the input observations.
-reindex_apply_to = None
-  .type = str
-  .help = Space group which reindex will be performed on.
-  .optional = False
-flag_normalized = False
+flag_include_negatives = True
   .type = bool
-  .help = Set to True for amplitude normalization.
-sigma_global_min = 3.0
-  .type = float
-  .help = Minimum I/sigI cutoff (global value).
-fraction_r_free = 0.1
-  .type = float
-  .help = Set to 0 to turn off Rfree calculation.
-n_clusters = 3
-  .type = int
-  .help = No. of clusters for image classification.
+  .help = Set to False to exlude negative measurements.
 """)
 
 txt_help = """**************************************************************************************************
@@ -368,11 +352,19 @@ def process_input(argv=None):
   crystal_system_dict = {'Triclinic': 0, 'Monoclinic': 0, 'Orthorhombic': 0, 'Tetragonal': 0, 'Trigonal': 0, 'Hexagonal': 0, 'Cubic':0}
   if params.target_crystal_system is not None:
     if params.target_crystal_system not in crystal_system_dict:
-      raise Sorry("Incorrect target_crystal_system (available options: Triclinic, Monoclinic, Orthorhombic, Tetragonal, Trigonal, Hexagonal, or Cubic).")
+      raise Sorry("Oops, incorrect target_crystal_system (available options: Triclinic, Monoclinic, Orthorhombic, Tetragonal, Trigonal, Hexagonal, or Cubic).")
+
+  #check indexing ambiguity parameters
+  if params.indexing_ambiguity.flag_on and \
+     params.indexing_ambiguity.index_basis_in is None and \
+     params.indexing_ambiguity.assigned_basis == 'h,k,l':
+     raise Sorry("Oops, you asked to resolve indexing ambiguity but not given any solution file nor assigned basis. \nPlease give the solution file (eg. indexing_ambiguity.index_basis_in=any.pickle/or.mtz) OR \nassigned basis (eg. indexing_ambiguity.assigned_basis=k,h,-l) OR \nturn indexing ambiguity off (eg. indexing_ambiguity.flag_on=False).")
+  if str(params.indexing_ambiguity.index_basis_in).endswith('mtz') and params.indexing_ambiguity.assigned_basis == 'h,k,l':
+    raise Sorry("Oops, you asked to resolve indexing ambiguity and gave the solution file as an mtz file. \nPlease give the assigned basis (eg. indexing_ambiguity.assigned_basis=k,h,-l) to proceed.")
 
   #generate run_no folder
   if os.path.exists(params.run_no):
-    raise Sorry("The run number %s already exists."%params.run_no)
+    raise Sorry("Oops, the run number %s already exists."%params.run_no)
 
   os.makedirs(params.run_no)
 
