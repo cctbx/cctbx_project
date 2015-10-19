@@ -422,9 +422,11 @@ def check_and_add_hydrogen(
   if keep_hydrogens:
     elements = r.atoms().extract_element()
     # strangely the elements can have a space when coming from phenix.clashscore
-    # but no space when comming from phenix.molprobity
-    h_count = elements.count(' H') + elements.count(' D') + \
-              elements.count("H")  + elements.count("D")
+    # but no space when coming from phenix.molprobity
+    h_count = elements.count('H')
+    if h_count <= n_hydrogen_cut_off: h_count += elements.count(' H')
+    if h_count <= n_hydrogen_cut_off: h_count += elements.count('D')
+    if h_count <= n_hydrogen_cut_off: h_count += elements.count(' D')
     if h_count > n_hydrogen_cut_off:
       has_hd = True
     else:
