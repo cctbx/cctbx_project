@@ -194,11 +194,11 @@ class ThreeProteinResidues(list):
           print atom.quote()
     return atoms
 
-  def get_cdl_key(self,
-                  exact=False,
-                  only_psi_phi_pairs=True,
-                  force_plus_one=False,
-                  verbose=False):
+  def get_phi_psi_angles(self,
+                         only_psi_phi_pairs=True,
+                         force_plus_one=False,
+                         verbose=False,
+                         ):
     atoms = self.get_phi_psi_atoms(only_psi_phi_pairs=only_psi_phi_pairs,
                                    force_plus_one=force_plus_one)
     dihedrals = []
@@ -208,13 +208,37 @@ class ThreeProteinResidues(list):
     if verbose:
       for phi_or_psi in dihedrals:
         print 'phi_or_psi',phi_or_psi
+    return dihedrals
+
+  def get_cdl_key(self,
+                  exact=False,
+                  only_psi_phi_pairs=True,
+                  force_plus_one=False,
+                  verbose=False):
+    dihedrals=self.get_phi_psi_angles(only_psi_phi_pairs=only_psi_phi_pairs,
+                                      verbose=verbose,
+                                      )
     key = []
     for phi_or_psi in dihedrals:
       if exact:
         key.append(phi_or_psi)
       else:
         key.append(round_to_ten(phi_or_psi))
+    #print self, self.get_ramalyse_key(verbose=1)
     return tuple(key)
+
+  def get_ramalyse_key(self,
+                       verbose=False,
+                       ):
+    res_types = ["general", "glycine", "cis-proline", "trans-proline",
+                 "pre-proline", "isoleucine or valine"]
+    if self[1].resname == "PRO":
+      if self.cis_group(): return "cis-proline"
+      else: return "trans-proline"
+    elif self[2].resname == "PRO": return 'pre-proline'
+    elif self[1].resname in ["ILE", "VAL"]: return "isoleucine or valine"
+    elif self[1].resname == "GLY": return "glycine"
+    else: return "general"
 
   def get_dummy_dihedral_proxies(self, only_psi_phi_pairs=True):
     from cctbx.geometry_restraints import dihedral_proxy
@@ -332,3 +356,22 @@ class ThreeProteinResidues(list):
         if key not in averages:
           assert 0
         angle.angle_ideal = averages[key]/averages.n[key]
+
+if __name__=="__main__":
+  import sys
+  from iotbx import pdb
+  from test_rdl import get_geometry_restraints_manager
+  filename=sys.argv[1]
+  pdb_inp = pdb.input(filename)
+  pdb_hierarchy = pdb_inp.construct_hierarchy()
+  geometry_restraints_manager = get_geometry_restraints_manager(filename)
+  pdb_hierarchy.reset_i_seq_if_necessary()
+  from mmtbx.conformation_dependent_library import generate_protein_threes
+  for threes in generate_protein_threes(pdb_hierarchy,
+                                        geometry_restraints_manager,
+                                        #verbose=verbose,
+                                        ):
+    print threes
+    print "  cis? %s" % threes.cis_group()
+    print "  rama %s" % threes.get_ramalyse_key()
+  print "OK"

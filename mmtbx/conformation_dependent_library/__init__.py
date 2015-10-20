@@ -81,10 +81,7 @@ def generate_protein_threes(hierarchy,
             if residue.resname not in ["HOH"]:
               print '    residue: resname="%s" resid="%s"' % (
                 residue.resname, residue.resid())
-              #for atom in residue.atoms():
-              #  if verbose: print '         atom: name="%s"' % (atom.name)
-          if verbose:
-            print 'residue class : %s' % get_class(residue.resname)
+          if verbose: print 'residue class : %s' % get_class(residue.resname)
           if get_class(residue.resname) not in ["common_amino_acid"]:
             continue
           if include_non_linked:
@@ -108,7 +105,6 @@ def generate_protein_threes(hierarchy,
               threes.end = True
               list_of_threes[i+1].start = True
           yield threes
-          #assert len(threes)==3
       threes = ThreeProteinResidues(geometry, registry=registry)
 
 def update_restraints(hierarchy,
@@ -147,9 +143,6 @@ def update_restraints(hierarchy,
                                         #verbose=verbose,
                                         ):
     if threes.cis_group():
-      if verbose and 0:
-        print 'cis '*20
-        print threes
       continue
 
     if 0:
