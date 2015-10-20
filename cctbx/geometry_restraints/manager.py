@@ -694,7 +694,16 @@ class manager(object):
 
   def get_hbond_proxies_iseqs(self):
     result = []
-    pair_proxies = self.pair_proxies()
+    try:
+      pair_proxies = self.pair_proxies()
+    except AssertionError as e:
+      # This is in case when somebody tries to access hbonds when
+      # grm is not ready. See e.g. phenix/refinement/runtime.py
+      # class refinement_status, grm.get_hbond_proxies_iseqs()
+      if "pair_proxies not defined already." in e.args:
+        return result
+      else:
+        raise
     if pair_proxies is not None:
       if pair_proxies.bond_proxies is not None:
         simple_p = pair_proxies.bond_proxies.simple.proxy_select(origin_id=1)
