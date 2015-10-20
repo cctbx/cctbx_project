@@ -44,6 +44,6 @@ def cbf_gonio_to_effective_axis_fixed(cbf_gonio):
 
   axis = matrix.col(rot.axis)
 
-  S = axis.axis_and_angle_as_r3_rotation_matrix(start, deg = True)
+  S = axis.axis_and_angle_as_r3_rotation_matrix(-start, deg = True)
 
   return axis, S.inverse() * R
