@@ -372,7 +372,7 @@ struct flex_image_wrapper {
 
     class_<w_t >(python_name, no_init)
       .def(init<array_t&, const int&, const std::string&,
-                double const&, int const&, bool const& >(
+                double const&, long int const&, bool const& >(
             (
             arg_("rawdata"),
             arg_("binning"),
