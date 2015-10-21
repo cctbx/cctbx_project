@@ -446,8 +446,7 @@ class omegalyze(validation):
 
   def gui_summary(self):
     output = []
-    
-    if self.omega_count[OMEGA_PRO][OMEGALYZE_CIS]:
+    if self.omega_count[OMEGA_PRO][OMEGALYZE_CIS] or self.residue_count[OMEGA_PRO]:
       output.append('%i cis prolines out of %i PRO' % (self.omega_count[OMEGA_PRO][OMEGALYZE_CIS],self.residue_count[OMEGA_PRO]))
     if self.omega_count[OMEGA_PRO][OMEGALYZE_TWISTED]:
       output.append('%i twisted prolines out of %i PRO' % (self.omega_count[OMEGA_PRO][OMEGALYZE_TWISTED],self.residue_count[OMEGA_PRO]))
