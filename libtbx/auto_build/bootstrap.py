@@ -980,12 +980,16 @@ class Builder(object):
       **kwargs
     )
 
-  def add_test_parallel(self, module=None, **kwargs):
+  def add_test_parallel(self, module=None, nproc=None, **kwargs):
+    if nproc is None:
+      nprocstr = 'nproc=auto'
+    else:
+      nprocstr = 'nproc=%d'%nproc
     self.add_command(
       'libtbx.run_tests_parallel',
       name='test %s'%module,
       workdir=['tests', module],
-      args=['module=%s'%module, 'nproc=auto', 'verbosity=1'],
+      args=['module=%s'%module, nprocstr, 'verbosity=1'],
       haltOnFailure=False,
       **kwargs
     )
