@@ -188,14 +188,9 @@ class postref_handler(object):
 
     if iparams.flag_apply_b_by_frame:
       try:
-        asu_contents = {}
-        if iparams.n_residues is None:
-          #asu_volume = iparams.target_unit_cell.volume()/float(observations.space_group().order_z())
-          asu_volume = observations.unit_cell().volume()/float(observations.space_group().order_z())
-          number_carbons = asu_volume/18.0
-        else:
-          number_carbons = iparams.n_residues * 5.35
-        asu_contents.setdefault('C', number_carbons)
+        from mod_util import mx_handler
+        mxh = mx_handler()
+        asu_contents = mxh.get_asu_contents(iparams.n_residues)
         observations_as_f = observations.as_amplitude_array()
         binner_template_asu = observations_as_f.setup_binner(auto_binning=True)
         wp = statistics.wilson_plot(observations_as_f, asu_contents, e_statistics=True)
@@ -490,33 +485,6 @@ class postref_handler(object):
 
     mean_I = np.median(observations_sel.data().select(i_sel))
 
-    if iparams.flag_plot_expert:
-      binner = observations_original.setup_binner(n_bins=iparams.n_bins)
-      binner_indices = binner.bin_indices()
-      avg_I_sigI_bin = flex.double()
-      avg_I_bin = flex.double()
-      one_dsqr_bin = flex.double()
-      for i in range(1,iparams.n_bins+1):
-        i_binner = (binner_indices == i)
-        I_sel = observations_original.data().select(i_binner)
-        sigI_sel = observations_original.sigmas().select(i_binner)
-        avg_I_sigI_bin.append(np.mean(I_sel/sigI_sel))
-        avg_I_bin.append(np.mean(I_sel))
-        one_dsqr_bin.append(1/binner.bin_d_range(i)[1]**2)
-
-      x_axis = one_dsqr_bin
-      import matplotlib.pyplot as plt
-      fig, ax1 = plt.subplots()
-      ln1 = ax1.plot(x_axis, avg_I_bin, linestyle='-', linewidth=2.0, c='b')
-      ax1.set_xlabel('1/d^2')
-      ax1.set_ylabel('<I>', color='b')
-
-      ax2 = ax1.twinx()
-      ln2 = ax2.plot(x_axis, avg_I_sigI_bin, linestyle='-', linewidth=2.0, c='r')
-      ax2.set_ylabel('<I/sigI>', color='r')
-      plt.grid()
-      plt.show()
-
     return mean_I, txt_exception+'ok'
 
 
@@ -572,18 +540,13 @@ class postref_handler(object):
     stats = (0,0,0,0,0,0,0,0,0,0)
     if iparams.flag_apply_b_by_frame:
       try:
-        asu_contents = {}
-        if iparams.n_residues is None:
-          #asu_volume = iparams.target_unit_cell.volume()/float(observations_non_polar.space_group().order_z())
-          asu_volume = observations_non_polar.unit_cell().volume()/float(observations_non_polar.space_group().order_z())
-          number_carbons = asu_volume/18.0
-        else:
-          number_carbons = iparams.n_residues * 5.35
-        asu_contents.setdefault('C', number_carbons)
+        from mod_util import mx_handler
+        mxh = mx_handler()
+        asu_contents = mxh.get_asu_contents(iparams.n_residues)
         observations_as_f = observations_non_polar.as_amplitude_array()
         binner_template_asu = observations_as_f.setup_binner(auto_binning=True)
         wp = statistics.wilson_plot(observations_as_f, asu_contents, e_statistics=True)
-        G = wp.wilson_intensity_scale_factor*1e2
+        G = wp.wilson_intensity_scale_factor*1e3
         B = wp.wilson_b
       except Exception:
         txt_exception += 'warning B-factor calculation failed.\n'
