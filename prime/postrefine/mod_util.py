@@ -1167,3 +1167,58 @@ class svd_handler(object):
 
 
       return R, t
+
+class wilson_plot_handler(object):
+  """
+  Take miller array and show Wilson Plot
+  """
+  def __init__(self):
+    """
+    Constructor
+    """
+
+  def show_plot(self, miller_array_in, n_bins=None):
+    if n_bins is None:
+      binner = miller_array_in.setup_binner(auto_binning=True)
+    else:
+      binner = miller_array_in.setup_binner(n_bins=n_bins)
+    binner_indices = binner.bin_indices()
+    avg_I_bin = flex.double()
+    one_dsqr_bin = flex.double()
+    for i in range(1, n_bins+1):
+      i_binner = (binner_indices == i)
+      I_sel = observations_original.data().select(i_binner)
+      avg_I_bin.append(np.mean(I_sel))
+      one_dsqr_bin.append(1/binner.bin_d_range(i)[1]**2)
+
+    x_axis = one_dsqr_bin
+    import matplotlib.pyplot as plt
+    fig, ax1 = plt.subplots()
+    ln1 = ax1.plot(x_axis, avg_I_bin, linestyle='-', linewidth=2.0, c='b')
+    ax1.set_xlabel('1/d^2')
+    ax1.set_ylabel('<I>', color='b')
+    plt.grid()
+    plt.show()
+
+class mx_handler(object):
+  """
+  Author      : Uervirojnangkoorn, M.
+  Created     : 8/15/2015
+  A collection of macromolecular-crystallagphic wrapper functions
+  """
+
+  def __init__(self):
+    """
+    Constructor
+    """
+
+  def get_asu_contents(self, n_residues):
+    asu_contents = None
+    if n_residues > 0:
+      asu_contents = {"H":8.0*float(n_residues),
+                      "C":5.0*float(n_residues),
+                      "N":1.5*float(n_residues),
+                      "O":1.2*float(n_residues)
+                     }
+
+    return asu_contents
