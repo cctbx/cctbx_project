@@ -43,7 +43,7 @@ molprobity {
   count_anomalous_pairs_separately = False
     .type = bool
     .expert_level = 2
-  rotamer_library = *500 8000
+  rotamer_library = 500 *8000
     .type = choice
     .help = Library of rotamer probabilities (Top500 or Top8000)
     .expert_level = 2
