@@ -1014,7 +1014,7 @@ class ScanFactory(object):
 
     # Get the image and oscillation range
     phi = obj.handle.file[obj.handle['depends_on'][()]]
-    image_range = (0, len(phi))
+    image_range = (1, len(phi))
     oscillation = (float(phi[0]), float(phi[1]-phi[0]))
 
     # Construct the model
@@ -1065,13 +1065,13 @@ class DataList(object):
   '''
 
   def __init__(self, obj):
-    self.obj = obj
+    self.datasets = obj
     self.num_images = 0
     self.lookup = []
     self.offset = [0]
     for i, dataset in enumerate(self.datasets):
-      self.num_images += dataset.shape[2]
-      self.lookup.append([i] * dataset.shape[2])
+      self.num_images += dataset.shape[0]
+      self.lookup.extend([i] * dataset.shape[0])
       self.offset.append(self.num_images)
 
   def __len__(self):

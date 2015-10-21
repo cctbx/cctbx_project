@@ -88,11 +88,25 @@ class FormatNexus(FormatHDF5):
   def _scan(self):
     return self._scan_model
 
+  def get_goniometer(self, index=None):
+    return self._goniometer()
+
+  def get_detector(self, index=None):
+    return self._detector()
+
+  def get_beam(self, index=None):
+    return self._beam()
+
+  def get_scan(self, index=None):
+    if index is None:
+      return self._scan()
+    return self._scan()[index]
+
   def get_raw_data(self, index):
     return self._raw_data[index]
 
   def get_num_images(self):
-    return len(self._raw_data)
+    return self._scan().get_num_images()
 
   def get_image_file(self, index=None):
     return self._image_file
