@@ -518,6 +518,7 @@ dxtbx/format/FormatHDF5Sacla.py -text
 dxtbx/format/FormatMAR.py -text
 dxtbx/format/FormatMarIP.py -text
 dxtbx/format/FormatMultiImage.py -text
+dxtbx/format/FormatNexus.py -text
 dxtbx/format/FormatPY.py -text
 dxtbx/format/FormatPYunspecifiedStill.py -text
 dxtbx/format/FormatPilatusHelpers.py -text
@@ -567,6 +568,7 @@ dxtbx/format/TemplatePYCXI71.py -text
 dxtbx/format/TemplatePYCXI7d.py -text
 dxtbx/format/__init__.py -text
 dxtbx/format/doc/adding_new_formats.txt -text
+dxtbx/format/nexus.py -text
 dxtbx/format/tests/TestFormat.py -text
 dxtbx/format/tests/TestRegistry.py -text
 dxtbx/imageset.py -text
