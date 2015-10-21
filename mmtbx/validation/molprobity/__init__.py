@@ -14,6 +14,9 @@ from mmtbx.validation import rna_validate
 from mmtbx.validation import clashscore
 from mmtbx.validation import restraints
 from mmtbx.validation import ramalyze
+##### omegalyze ################################################################
+from mmtbx.validation import omegalyze
+##### omegalyze ################################################################
 from mmtbx.validation import rotalyze
 from mmtbx.validation import cbetadev
 from mmtbx.validation import waters
@@ -30,6 +33,8 @@ master_phil_str = """
 clashscore = True
   .type = bool
 ramalyze = True
+  .type = bool
+omegalyze = True
   .type = bool
 rotalyze = True
   .type = bool
@@ -105,6 +110,7 @@ class molprobity (slots_getstate_setstate) :
 
   __slots__ = [
     "ramalyze",
+    "omegalyze",
     "rotalyze",
     "cbetadev",
     "clashes",
@@ -180,6 +186,14 @@ class molprobity (slots_getstate_setstate) :
           outliers_only=outliers_only,
           out=null_out(),
           quiet=True)
+##### omegalyze ################################################################
+      if (flags.omegalyze) :
+        self.omegalyze = omegalyze.omegalyze(
+          pdb_hierarchy=pdb_hierarchy,
+          nontrans_only=outliers_only,
+          out=null_out(),
+          quiet=True)
+##### omegalyze ################################################################
       if (flags.rotalyze) :
         self.rotalyze = rotalyze.rotalyze(
           pdb_hierarchy=pdb_hierarchy,
@@ -323,6 +337,11 @@ class molprobity (slots_getstate_setstate) :
     if (self.ramalyze is not None) :
       make_sub_header("Ramachandran angles", out=out)
       self.ramalyze.show(out=out, prefix="  ", outliers_only=outliers_only)
+##### omegalyze ################################################################
+    if (self.omegalyze is not None) :
+      make_sub_header("Omegalyze analysis", out=out)
+      self.omegalyze.show(out=out, prefix=" ", outliers_only=outliers_only)
+##### omegalyze ################################################################
     if (self.rotalyze is not None) :
       make_sub_header("Sidechain rotamers", out=out)
       self.rotalyze.show(out=out, prefix="  ", outliers_only=outliers_only)
@@ -532,6 +551,10 @@ class molprobity (slots_getstate_setstate) :
     f.write("data = {}\n")
     if (self.ramalyze is not None) :
       f.write("data['rama'] = %s\n" % self.ramalyze.as_coot_data())
+##### omegalyze ################################################################
+    if (self.omegalyze is not None) :
+      f.write("data['omega'] = %s\n" % self.omegalyze.as_coot_data())
+##### omegalyze ################################################################
     if (self.rotalyze is not None) :
       f.write("data['rota'] = %s\n" % self.rotalyze.as_coot_data())
     if (self.cbetadev is not None) :

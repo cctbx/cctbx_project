@@ -186,6 +186,10 @@ class omega_result(residue):
       out_this = vector_line1 + vector_line2
     return out_this
 
+  def as_table_row_phenix(self):
+    return [ self.chain_id, "%s %s" % (self.resname, self.resid),
+             res_types[self.res_type], self.omega, omega_types[self.omega_type] ]
+
 #the ramachandran_ensemble class is only called in mmtbx/validation/ensembles
 # and does not seem to provide functionality useful to omega analysis
 #So it is omitted for the moment
@@ -204,7 +208,7 @@ class omegalyze(validation):
   output_header = "residue:type:omega:conformation"
   gui_list_headers = ["Chain","Residue","Residue type","omega","conformation"]
   gui_formats = ["%s", "%s", "%s", "%.2f", "%s"]
-  wx_column_widths = [125]*6
+  wx_column_widths = [125]*5
 
   def get_result_class(self): return omega_result
 
@@ -286,6 +290,7 @@ class omegalyze(validation):
               omega_type = find_omega_type(omega)
               is_nontrans = False
               if omega_type == OMEGALYZE_CIS or omega_type == OMEGALYZE_TWISTED:
+                self.n_outliers += 1
                 is_nontrans = True
               self.omega_count[res_type][omega_type] += 1
               markup_atoms = [None, None, None, None] #for kinemage markup
@@ -320,6 +325,7 @@ class omegalyze(validation):
                 omega_type=omega_type,
                 res_type=res_type,
                 is_nontrans=is_nontrans,
+                outlier=is_nontrans,
                 xyz=coords,
                 markup_atoms=markup_atoms)
               if is_nontrans or not nontrans_only: #(not nontrans_only or is_nontrans)
@@ -366,6 +372,36 @@ class omegalyze(validation):
     return "".join(outlist)
     #it's my understanding that .join(list) is more efficient than string concat
 
+##################################################
+#gui_list_headers = ["Chain","Residue","Residue type","omega","conformation"]
+# GUI output
+###  def as_table_row_phenix(self):
+###    return [ self.chain_id, "%s %s" % (self.resname, self.resid),
+###             res_types[self.res_type], self.omega, omega_types[self.omega_type] ]
+
+#from validation
+##  def as_gui_table_data (self, outliers_only=True, include_zoom=False) :
+##    """
+##    Format results for display in the Phenix GUI.
+##    """
+##    table = []
+##    for result in self.iter_results(outliers_only) :
+##      extra = []
+##      if (include_zoom) :
+##        extra = result.zoom_info()
+##      row = result.as_table_row_phenix()
+##      assert (len(row) == len(self.gui_list_headers) == len(self.gui_formats))
+##      table.append(row + extra)
+##    return table
+
+#from entity
+##def zoom_info (self) :
+##    """
+##    Returns data needed to zoom/recenter the graphics programs from the Phenix
+##    GUI.
+##    """
+##    return [ self.as_selection_string(), self.xyz ]
+
   def as_coot_data(self):
     data = []
     for result in self.results:
@@ -407,6 +443,19 @@ class omegalyze(validation):
     else:
       out.write('%.3f' % (self.omega_count[OMEGA_GENERAL][OMEGALYZE_TWISTED]/self.residue_count[OMEGA_GENERAL]*100)+":")
     out.write("%i" % self.residue_count[OMEGA_GENERAL] + "\n")
+
+  def gui_summary(self):
+    output = []
+    
+    if self.omega_count[OMEGA_PRO][OMEGALYZE_CIS]:
+      output.append('%i cis prolines out of %i PRO' % (self.omega_count[OMEGA_PRO][OMEGALYZE_CIS],self.residue_count[OMEGA_PRO]))
+    if self.omega_count[OMEGA_PRO][OMEGALYZE_TWISTED]:
+      output.append('%i twisted prolines out of %i PRO' % (self.omega_count[OMEGA_PRO][OMEGALYZE_TWISTED],self.residue_count[OMEGA_PRO]))
+    if self.omega_count[OMEGA_GENERAL][OMEGALYZE_CIS]:
+      output.append('%i cis residues out of %i nonPRO' % (self.omega_count[OMEGA_GENERAL][OMEGALYZE_CIS],self.residue_count[OMEGA_GENERAL]))
+    if self.omega_count[OMEGA_GENERAL][OMEGALYZE_TWISTED]:
+      output.append('%i twisted residues out of %i nonPRO' % (self.omega_count[OMEGA_GENERAL][OMEGALYZE_TWISTED],self.residue_count[OMEGA_GENERAL]))
+    return "\n".join(output)
 
 def write_header(writeto=sys.stdout):
   writeto.write("residue:omega:evaluation\n")

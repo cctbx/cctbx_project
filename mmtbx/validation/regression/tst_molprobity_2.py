@@ -55,7 +55,7 @@ def exercise_protein () :
   assert approx_equal(result.rms_angles(), 2.356740)
   assert approx_equal(result.rama_favored(), 96.47059)
   assert (result.cbeta_outliers() == 10)
-  assert approx_equal(result.molprobity_score(), 3.3725, eps=0.0001)
+  assert approx_equal(result.molprobity_score(), 3.40, eps=0.01)
   summary = result.summarize()
   gui_fields = list(summary.iter_molprobity_gui_fields())
   assert (len(gui_fields) == 6)
