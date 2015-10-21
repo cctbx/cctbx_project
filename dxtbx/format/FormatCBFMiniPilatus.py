@@ -167,6 +167,28 @@ class FormatCBFMiniPilatus(FormatCBFMini):
         self._image_file, format, exposure_time,
         osc_start, osc_range, timestamp)
 
+  def get_mask(self):
+    from scitbx.array_family import flex
+    detector = self.get_detector()
+    mask = [flex.bool(flex.grid(reversed(p.get_image_size())), True) for p in detector]
+    for i, p in enumerate(detector):
+      untrusted_regions = p.get_mask()
+      for j, (f0, s0, f1, s1) in enumerate(untrusted_regions):
+        sub_array = flex.bool(flex.grid(s1-s0+1, f1-f0+1), False)
+        mask[i].matrix_paste_block_in_place(sub_array, s0-1, f0-1)
+
+    if len(detector) == 1:
+      raw_data = [self.get_raw_data()]
+    else:
+      raw_data = [self.get_raw_data(i) for i in range(len(detector))]
+    trusted_mask = [
+      p.get_trusted_range_mask(im) for im, p in zip(raw_data, detector)]
+
+    # returns merged untrusted pixels and active areas using bitwise AND (pixels are accepted
+    # if they are inside of the active areas AND inside of the trusted range)
+    return tuple([m & tm for m, tm in zip(mask, trusted_mask)])
+
+
 if __name__ == '__main__':
 
   import sys
