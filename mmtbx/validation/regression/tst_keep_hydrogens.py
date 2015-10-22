@@ -37,11 +37,13 @@ def run():
       er = easy_run.fully_buffered(command=cmd)
       std = StringIO.StringIO()
       er.show_stdout(out=std)
+      cs=None
       for line in std.getvalue().splitlines():
         if line.find("clashscore =")>-1:
           cs = float(line.split()[2])
           break
       print 'clashscore',cs
+      if cs is None: continue
       if keep: assert cs==71.43, "clashscore is not 71.43 %s" % cs
       else: assert cs==0, "clashscore is not 0 %s" % cs
 
