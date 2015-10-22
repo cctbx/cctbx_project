@@ -285,6 +285,9 @@ def construct_vector(nx_file, item, vector=None):
     units = nx_file[item].attrs['units']
     ttype = nx_file[item].attrs['transformation_type']
     vector = nx_file[item].attrs['vector']
+    if ttype == 'translation':
+      value = convert_units(value, units, "mm")
+      vector = vector * value
   else:
     pass
   visitor = TransformVisitor(vector)
@@ -877,7 +880,7 @@ class BeamFactory(object):
 
     # Construct the beam model
     self.model = Beam(
-      direction=(0, 0,-1),
+      direction=(0, 0,1),
       wavelength=wavelength_value)
 
 
@@ -902,7 +905,7 @@ class DetectorFactory(object):
     detector_name = str(nx_detector.name)
 
     # Get the trusted range of pixel values
-    trusted_range = (0, float(nx_detector['saturation_value'][()]))
+    trusted_range = (-1, float(nx_detector['saturation_value'][()]))
 
     # Get the detector thickness
     thickness = nx_detector['sensor_thickness']
