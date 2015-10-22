@@ -42,8 +42,12 @@ def cbf_gonio_to_effective_axis_fixed(cbf_gonio):
 
   start = cbf_gonio.get_rotation_range()[0]
 
+  # want positive rotations => if negative invert axis
   axis = matrix.col(rot.axis)
+  angle = rot.angle()
+  if angle < 0:
+    axis = -1 * axis
 
-  S = axis.axis_and_angle_as_r3_rotation_matrix(start, deg = True)
+  S = axis.axis_and_angle_as_r3_rotation_matrix(start, deg=True)
 
   return axis, S.inverse() * R
