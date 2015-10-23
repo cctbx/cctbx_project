@@ -193,6 +193,10 @@ class installer (object) :
   def configure_packages(self, options):
     packages = []
     # Package groups.
+    if options.cctbx:
+      options.build_gui = True
+      options.build_all = True
+      packages += ['imaging']
     if options.phenix:
       options.build_gui = True
       options.build_all = True

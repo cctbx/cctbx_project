@@ -1177,6 +1177,11 @@ class CCTBXBuilder(CCIBuilder):
     self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
     self.add_test_command('cctbx_regression.test_nightly')
 
+  def add_base(self, extra_opts=[]):
+    super(CCTBXBuilder, self).add_base(
+      extra_opts=['--cctbx',
+                 ] + extra_opts)
+
   def add_dispatchers(self):
     pass
 

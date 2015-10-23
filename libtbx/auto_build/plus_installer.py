@@ -25,10 +25,21 @@ class installer (install_distribution.installer) :
     ['dxtbx', 'wxtbx', "gltbx", "crys3d", "rstbx", "spotfinder"]
   include_gui_packages = True
   base_package_options = ['--all', "--sphinx", "--ipython"]
-  source_packages = [ "cctbx_bundle" ] + ['cbflib','annlib','annlib_adaptbx']
-  #
+  modules = [
+    # hot
+    'annlib',
+    'boost',
+    'scons',
+    'ccp4io',
+    # base
+    'cbflib',
+    'cctbx_project',
+    'gui_resources',
+    'ccp4io_adaptbx',
+    'annlib_adaptbx',
+  ]
 
   installer_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 if (__name__ == "__main__") :
-  installer(sys.argv[1:])
+  installer(sys.argv[1:]).install()
