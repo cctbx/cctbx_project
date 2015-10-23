@@ -37,6 +37,7 @@ class installer (install_distribution.installer) :
     'gui_resources',
     'ccp4io_adaptbx',
     'annlib_adaptbx',
+    'tntbx',
   ]
 
   installer_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
