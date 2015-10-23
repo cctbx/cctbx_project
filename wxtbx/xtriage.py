@@ -13,7 +13,7 @@ import wxtbx.plots
 import mmtbx.scaling
 import wx.lib.scrolledpanel
 from libtbx.utils import Sorry
-from libtbx import easy_pickle
+from libtbx import easy_pickle, easy_run
 import wx
 import os.path
 import sys
