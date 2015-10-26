@@ -89,12 +89,16 @@ namespace boost_python {
           af::const_ref<scitbx::vec3<double> > const&,
           af::const_ref<scitbx::vec3<double> > const&,
           af::const_ref<scitbx::vec3<double> > const&,
+          af::const_ref<scitbx::vec3<double> > const&,
+          af::const_ref<scitbx::vec3<double> > const&,
           af::tiny<double, 4>,
           af::ref<double> const&))
         ramachandran_residual_sum,
         (arg("sites_cart"), arg("proxies"), arg("gradient_array"),
-        arg("gly_table"), arg("pro_table"), arg("prepro_table"),
-        arg("ala_table"), arg("weights"), arg("residuals_array")));  //sites_cart, proxies,gr_arr, 4 tables
+        arg("general_table"), arg("gly_table"), arg("cispro_table"),
+        arg("transpro_table"), arg("prepro_table"), arg("ileval_table"),
+        arg("weights"), arg("residuals_array")));
+        //sites_cart, proxies,gr_arr, 6 tables
   }
 
   void init_module ()

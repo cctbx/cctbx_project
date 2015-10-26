@@ -10,7 +10,7 @@ import cctbx.geometry_restraints
 import scitbx.lbfgs
 from scitbx.array_family import flex
 import boost.python
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, show_diff
 import libtbx.load_env
 from libtbx import group_args
 from cStringIO import StringIO
@@ -40,7 +40,7 @@ def exercise_basic () :
     ext.phi_psi_proxy(
       i_seqs=[4,5,6,7,8],
       residue_name="ALA",
-      residue_type="prepro"))
+      residue_type="pre-proline"))
   proxies.append(
     ext.phi_psi_proxy(
       i_seqs=[8,9,10,11,12],
@@ -54,7 +54,7 @@ def exercise_basic () :
   assert selected[0].residue_type == "general"
   assert list(selected[1].get_i_seqs()) == [4,5,6,7,8]
   assert selected[1].residue_name == "ALA"
-  assert selected[1].residue_type == "prepro"
+  assert selected[1].residue_type == "pre-proline"
 
 pdb1 = """
 CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P 1           1
@@ -155,7 +155,8 @@ def exercise_lbfgs_simple (mon_lib_srv, ener_lib, verbose=False) :
   # Note that the ramalyze score for the first actually gets slightly worse,
   # but it's still good and we're starting from an excellent score anyway.
   #
-  residuals = [0.00024512, 307.616444, 294.913714]
+  # residuals = [0.00024512, 307.616444, 294.913714]
+  residuals = [0.00024512, 285.954033214, 273.678906289]
   for i, peptide in enumerate([pdb1, pdb2, pdb3]) :
     pdb_in = iotbx.pdb.input(source_info="peptide",
       lines=flex.split_lines(peptide))
@@ -420,7 +421,7 @@ phi-psi angles formed by             residual
       f=out)
   gv = out.getvalue()
   # print out.getvalue()
-  assert gv == """\
+  assert not show_diff(gv, """\
 Ramachandran plot restraints: 8
 Sorted by residual:
 phi-psi angles formed by             residual
@@ -472,7 +473,7 @@ phi-psi angles formed by             residual
     pdb=" C   ALA     4 "
     pdb=" N   ALA     5 "
 
-"""
+""")
 
 
 def exercise_other (mon_lib_srv, ener_lib) :
