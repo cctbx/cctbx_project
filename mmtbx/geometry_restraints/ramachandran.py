@@ -12,7 +12,8 @@ ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
 from mmtbx_ramachandran_restraints_ext import lookup_table, \
     ramachandran_residual_sum
 
-
+# rosetta_adaptbx is not considered as working anymore.
+# Probably should be removed at some point.
 if libtbx.env.has_module("rosetta_adaptbx") :
   potential_phil = """\
    rama_potential = *oldfield emsley rosetta
@@ -112,7 +113,6 @@ class ramachandran_manager(object):
 
   def extract_proxies(self):
     self.proxies = ext.shared_phi_psi_proxy()
-
     from mmtbx.conformation_dependent_library import generate_protein_threes
     selected_h = self.pdb_hierarchy.select(self.bool_atom_selection)
     n_seq = flex.max(selected_h.atoms().extract_i_seq())
@@ -120,26 +120,21 @@ class ramachandran_manager(object):
         hierarchy=selected_h,
         geometry=None):
       phi_atoms, psi_atoms = three.get_phi_psi_atoms()
+      rama_key = three.get_ramalyse_key()
       i_seqs = [atom.i_seq for atom in phi_atoms] + [psi_atoms[-1].i_seq]
       resnames = three.get_resnames()
       r_name = resnames[1]
-      if (r_name == "MSE") :
-        r_name = "MET"
-      residue_type = "ala"
-      if (r_name == "PRO") :
-        residue_type = "pro"
-      elif (r_name == "GLY") :
-        residue_type = "gly"
-      elif (resnames[2] == "PRO") :
-        residue_type = "prepro"
+      assert rama_key in ["general", "glycine", "cis-proline", "trans-proline",
+                 "pre-proline", "isoleucine or valine"]
       proxy = ext.phi_psi_proxy(
           residue_name=r_name,
-          residue_type=residue_type,
+          residue_type=rama_key,
           i_seqs=i_seqs)
       if not is_proxy_present(self.proxies, n_seq, proxy):
         self.proxies.append(proxy)
     print >> self.log, ""
-    print >> self.log, "  %d Ramachandran restraints generated." % self.get_n_proxies()
+    print >> self.log, "  %d Ramachandran restraints generated." % (
+        self.get_n_proxies())
 
   def target_and_gradients (self,
       unit_cell,
@@ -161,10 +156,12 @@ class ramachandran_manager(object):
           sites_cart=sites_cart,
           proxies=self.proxies,
           gradient_array=gradient_array,
+          general_table=self.tables.general,
           gly_table=self.tables.gly,
-          pro_table=self.tables.pro,
+          cispro_table=self.tables.cispro,
+          transpro_table=self.tables.transpro,
           prepro_table=self.tables.prepro,
-          ala_table=self.tables.general,
+          ileval_table=self.tables.ileval,
           weights=(w, op.esd, op.dist_weight_max, op.weight_scale),
           residuals_array=residuals_array)
       return res
@@ -176,11 +173,16 @@ class ramachandran_manager(object):
           sites_cart=sites_cart,
           proxy=proxy,
           weight=self.params.rama_weight)
-    else:
+    else: # emsley
       assert (self.params.rama_weight >= 0.0)
+      # bad hack to keep emsley potential in working(?) condition after
+      # changing from rama500 to rama8000
+      new_to_old_conversion = {"general":"ala", "glycine":"gly",
+          "cis-proline":"pro", "trans-proline":"pro", "pre-proline":"prepro",
+          "isoleucine or valine":"ala"}
       # Moving these cycles to C++ part would speed them up only up to 10%
       for i, proxy in enumerate(self.proxies):
-        rama_table = self.tables[proxy.residue_type]
+        rama_table = self.tables[new_to_old_conversion[proxy.residue_type]]
         residuals_array[i] = rama_table.compute_gradients(
           gradient_array=gradient_array,
           sites_cart=sites_cart,
@@ -246,7 +248,7 @@ class ramachandran_manager(object):
       by_value=by_value,
       sites_cart=sites_cart,
       site_labels=site_labels)
-    print >> f, "Ramachandran plot restraints: %d" % len(sorted_proxies_for_show)
+    print >> f, "Ramachandran plot restraints: %d"%len(sorted_proxies_for_show)
     print >> f, "Sorted by %s:" % by_value
     for p in sorted_proxies_for_show:
       print >> f, "phi-psi angles formed by             residual"
@@ -281,39 +283,49 @@ def load_tables (params=None) :
 
 class ramachandran_plot_data(object):
   def __init__(self):
-    self.gly = None
-    self.pro = None
-    self.prepro = None
     self.general = None
-    files = [
-      ["gly",     "rama500-gly-sym.data"],
-      ["pro",     "rama500-pro.data"],
-      ["prepro",  "rama500-prepro.data"],
-      ["general", "rama500-general.data"]]
-    for rtf in files:
-      rt,f = rtf
+    self.gly = None
+    self.cispro = None
+    self.transpro = None
+    self.prepro = None
+    self.ileval = None
+    stuff = [None]*6
+    data = [("general", "rama8000-general-noGPIVpreP.data", 0),
+        ("glycine", "rama8000-gly-sym.data", 1),
+        ("cis-proline", "rama8000-cispro.data", 2),
+        ("trans-proline", "rama8000-transpro.data", 3),
+        ("pre-proline", "rama8000-prepro-noGP.data", 4),
+        ("isoleucine or valine", "rama8000-ileval-nopreP.data", 5)]
+
+    for (rama_key, file_name, selfstore) in data:
       file_name = libtbx.env.find_in_repositories(
-        relative_path="chem_data/rotarama_data/%s"%f,
+        relative_path="chem_data/rotarama_data/%s" % file_name,
         test = os.path.isfile)
-      if(rt=="gly"):     self.gly     = flex.vec3_double()
-      if(rt=="pro"):     self.pro     = flex.vec3_double()
-      if(rt=="prepro"):  self.prepro  = flex.vec3_double()
-      if(rt=="general"): self.general = flex.vec3_double()
+      stuff[selfstore] = flex.vec3_double()
       fo = open(file_name, "r")
       for line in fo.readlines():
         line = line.split()
         if(len(line)==3):
           phi_, psi_, val = float(line[0]),float(line[1]),float(line[2])
           triplet = [phi_, psi_, val]
-          if(rt=="gly"):     self.gly    .append(triplet)
-          if(rt=="pro"):     self.pro    .append(triplet)
-          if(rt=="prepro"):  self.prepro .append(triplet)
-          if(rt=="general"): self.general.append(triplet)
-    #
-    self.gly = self.normalize_gly(data=self.gly)
-    self.pro = self.normalize_pro(data=self.pro)
-    self.prepro = self.normalize_prepro(data=self.prepro)
-    self.general = self.normalize_general(data=self.general)
+          stuff[selfstore].append(triplet)
+
+    # This strange cutting of tables at arbitrary thresholds is necessary
+    # to make underlying 'algorithm' for gradient calculation
+    # work in reasonable time (~2*n where n is number of points in the table,
+    # for every gradient for each proxy).
+    # Essentially, for each region on Ramachandran
+    # plot it selects points with highest values (>0.5-0.7 of maximum region
+    # value) and works only with them. This selection has nothing to do with
+    # actual limits of allowed/favored regions. Funny thing is as soon as
+    # phi-psi angles arrive to selected area, corresponding restraint is
+    # effectively disabled by weight - calculations are still performed.
+    self.general = self.normalize_general(data=stuff[0])
+    self.gly     = self.normalize_gly(data=stuff[1])
+    self.cispro  = self.normalize_pro(data=stuff[2])
+    self.transpro= self.normalize_pro(data=stuff[3])
+    self.prepro  = self.normalize_prepro(data=stuff[4])
+    self.ileval  = self.normalize_general(data=stuff[5])
 
   def norm_to_max(self, data, val, sel, threshold=0.5):
     vmax = flex.max(val.select(sel))
@@ -321,7 +333,8 @@ class ramachandran_plot_data(object):
     return data.select((sel1&sel))
 
   def thin_data(self, x, step = 1):
-    return x.select(flex.size_t(range(0,x.size(),step)))
+    result = x.select(flex.size_t(range(0,x.size(),step)))
+    return result
 
   def split_array(self, data):
     phi = flex.double()

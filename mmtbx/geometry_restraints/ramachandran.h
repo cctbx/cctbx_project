@@ -274,6 +274,7 @@ namespace mmtbx { namespace geometry_restraints {
     double score_current = 0;
     af::shared<double> distances;
     distances.resize(rama_table.size(), 0);
+    // This is just to find out score of the current point
     for(int i=0; i<rama_table.size(); i++) {
       scitbx::vec3<double> point = rama_table[i];
       double d1 = gr::angle_delta_deg(point[0],phi_deg);
@@ -285,6 +286,9 @@ namespace mmtbx { namespace geometry_restraints {
         score_current = point[2];
       }
     }
+    // Now we just looking for the nearest point with better score than current
+    // point. then return phi-psi and distance to that point.
+    // distance is used to determine weight for gradient calculation.
     double dist_to_allowed = 1.e+9;
     for(int i=0; i<rama_table.size(); i++) {
       scitbx::vec3<double> point = rama_table[i];
@@ -304,10 +308,12 @@ namespace mmtbx { namespace geometry_restraints {
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     af::const_ref<phi_psi_proxy> const& proxies,
     af::ref<scitbx::vec3<double> > const& gradient_array,
+    af::const_ref<scitbx::vec3<double> > const& general_table,
     af::const_ref<scitbx::vec3<double> > const& gly_table,
-    af::const_ref<scitbx::vec3<double> > const& pro_table,
+    af::const_ref<scitbx::vec3<double> > const& cispro_table,
+    af::const_ref<scitbx::vec3<double> > const& transpro_table,
     af::const_ref<scitbx::vec3<double> > const& prepro_table,
-    af::const_ref<scitbx::vec3<double> > const& ala_table,
+    af::const_ref<scitbx::vec3<double> > const& ileval_table,
     af::tiny<double, 4> weights,
     af::ref<double > const& residuals_array)
   {
@@ -318,16 +324,23 @@ namespace mmtbx { namespace geometry_restraints {
     for (std::size_t i=0; i<proxies.size(); i++) {
       phi_psi_proxy const& proxy = proxies[i];
       af::tiny<double, 3> r;
-      if (proxy.residue_type.compare("gly") == 0) {
+      if (proxy.residue_type == "general") {
+        r = target_phi_psi<double>(general_table, sites_cart, proxy);}
+      else if (proxy.residue_type == "glycine") {
         r = target_phi_psi<double>(gly_table, sites_cart, proxy);}
-      else if (proxy.residue_type.compare("pro") == 0) {
-        r = target_phi_psi<double>(pro_table, sites_cart, proxy);}
-      else if (proxy.residue_type.compare("prepro") == 0) {
+      else if (proxy.residue_type == "cis-proline") {
+        r = target_phi_psi<double>(cispro_table, sites_cart, proxy);}
+      else if (proxy.residue_type == "trans-proline") {
+        r = target_phi_psi<double>(transpro_table, sites_cart, proxy);}
+      else if (proxy.residue_type == "pre-proline") {
         r = target_phi_psi<double>(prepro_table, sites_cart, proxy);}
-      else if (proxy.residue_type.compare("ala") == 0) {
-        r = target_phi_psi<double>(ala_table, sites_cart, proxy);}
+      else if (proxy.residue_type == "isoleucine or valine") {
+        r = target_phi_psi<double>(ileval_table, sites_cart, proxy);}
       else {
-        throw error("Wrong proxy_type in Ramachandran proxy.");
+        std::string error_msg;
+        error_msg = "Wrong proxy_type in Ramachandran proxy: '";
+        error_msg += proxy.residue_type + "'";
+        throw error(error_msg);
       }
       double w;
       if (weights[0] < 0) {
