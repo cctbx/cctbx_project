@@ -37,7 +37,7 @@ class covalent_object:
 
 class afitt_object:
   def __init__(self,
-               ligand_paths,   # ligand CIF restraints file
+               ligand_paths,  # ligand CIF restraints file
                ligand_names,  # ligand 3-codes
                pdb_hierarchy, #
                ff='mmff94s',     #
@@ -91,9 +91,14 @@ class afitt_object:
     cif_object = cif.reader(file_path=ligand_path, strict=False).model()
     return cif_object
 
-  def get_sites_cart_pointers(self, atom_ids, pdb_hierarchy, chain_id, altloc, resseq):
-    phrase='hello'
-    sites_cart_ptrs=[0]*len(atom_ids)
+  def get_sites_cart_pointers(self,
+                              atom_ids,
+                              pdb_hierarchy,
+                              chain_id,
+                              altloc,
+                              resseq,
+                              ):
+    sites_cart_ptrs=[-1]*len(atom_ids)
     #this should be simplified by using iotbx.pdb.atom_selection.cache
     for model in pdb_hierarchy.models():
       for chain in model.chains():
@@ -330,6 +335,9 @@ class afitt_object:
                                           altloc=residue_instance[1],
                                           resseq=residue_instance[2])
                                         )
+        for ptrs in this_res_sites_cart_ptrs:
+          if ptrs.count(-1)>2:
+            raise Sorry("Atoms missing from %s. Likely need to add hydrogens." % res)
       self.sites_cart_ptrs.append( this_res_sites_cart_ptrs )
       this_occupancies=[]
       for ptrs in this_res_sites_cart_ptrs:
@@ -349,14 +357,11 @@ class afitt_object:
     r_i=resname_i
     i_i=instance_i
     sites_cart_ptrs=self.sites_cart_ptrs[r_i][i_i]
-    # print sites_cart_ptrs
     elements=self.atom_elements[r_i]
     assert len(elements) ==  len(sites_cart_ptrs), \
            "No. of atoms in residue %s, instance %d does not equal to \
            number of atom seq pointers." %(self.resname[resname_i], instance_i)
     f=StringIO.StringIO()
-    # print "PAWEL %d\n" %len(self.covalent_data)
-    # print self.covalent_data
     if len(self.covalent_data) == 0 or self.covalent_data[r_i][i_i] == None:
     # if True:
       f.write(  '%d\n' %self.n_atoms[r_i])
@@ -379,10 +384,7 @@ class afitt_object:
               f.write ('%d %d\n' %(i,fcharge))
       f.write('fixed_atoms 0\n')
     else:
-      # print "COVALENT!!!\n"
-      # print elements
       cov_obj =  self.covalent_data[r_i][i_i]
-      # print cov_obj.atom_elements
       # print '%d %d\n ' %(self.n_atoms[r_i] , cov_obj.n_atoms)
       f.write('%d\n' %(self.n_atoms[r_i] + cov_obj.n_atoms) )
       f.write('residue_type %s chain %s number %d total_charge %d\n'
