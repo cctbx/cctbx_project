@@ -78,7 +78,7 @@ class geometry(object):
       self.c_number=0
       self.p_number=0
       self.d_number=0
-      
+
       self.bond_deltas_histogram = \
         flex.histogram(data = flex.abs(bond_deltas), n_slots = n_histogram_slots)
       self.angle_deltas_histogram = \
@@ -89,7 +89,7 @@ class geometry(object):
       for restraint_type in ["b", "a", "c", "p", "ll", "d", "n"] :
         for value_type in [("mean",2), ("max",1), ("min",0)] :
           name = "%s_%s" % (restraint_type, value_type[0])
-          if getattr(self, restraint_type) is None: 
+          if getattr(self, restraint_type) is None:
             setattr(self, name, None)
             continue
           setattr(self, name, getattr(self, restraint_type)[value_type[1]])
@@ -164,7 +164,7 @@ class geometry(object):
       return fmt_str%(f1,f2,d1)
     def fmt2(f1):
       if f1 is None: return '  -   '
-      return "%-6.3f"%str(f1[0])
+      return "%-6.3f"%(f1[0])
     result = "%s" % prefix
     rl = "GEOSTD + MON.LIB."
     if self.cdl_restraints:
