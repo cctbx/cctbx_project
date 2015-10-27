@@ -39,6 +39,28 @@ def exercise_amino_acid_codes():
   for d,l in lgd.items():
     assert dgl[l] == d
 
+def exercise_validate_sequence():
+  from iotbx.pdb.amino_acid_codes import validate_sequence
+  test_sequence = 'abcdefghijklmnopqrstuvwxyz'
+  a = validate_sequence(test_sequence,protein=True,strict_protein=True,
+                        nucleic_acid=False)
+  assert (len(a) == 6)
+  a = validate_sequence(test_sequence,protein=True,strict_protein=False,
+                        nucleic_acid=False)
+  assert (len(a) == 2)
+  a = validate_sequence(test_sequence,
+                        nucleic_acid=True,strict_nucleic_acid=True,
+                        protein=False)
+  assert (len(a) == 21)
+  a = validate_sequence(test_sequence,
+                        nucleic_acid=True,strict_nucleic_acid=False,
+                        protein=False)
+  assert (len(a) == 10)
+  a = validate_sequence(test_sequence,
+                        protein=True,strict_protein=True,
+                        nucleic_acid=True,strict_nucleic_acid=True)
+  assert (len(a) == 5)
+
 def exercise_records():
   r = pdb.records.header(pdb_str="""\
 HEADER    PLANT SEED PROTEIN                      31-JAN-97   1AB1""")
@@ -756,6 +778,7 @@ def run():
   exercise_pdb_input_error_handling()
   exercise_systematic_chain_ids()
   exercise_amino_acid_codes()
+  exercise_validate_sequence()
   exercise_records()
   exercise_make_atom_with_labels()
   exercise_combine_unique_pdb_files()
