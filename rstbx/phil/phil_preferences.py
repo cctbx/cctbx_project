@@ -147,6 +147,13 @@ integration {
   spot_prediction = *ucbp3 dials
       .type = choice
       .help = in high-symmetry integration protocol, predict with ucbp3 (CSPAD subpixel corrections) or dials (detector tilt, but unit translations)
+  enable_one_to_one_safeguard = False
+    .type = bool
+    .help = Flag enables a safeguard within the stills integration algorithm, within the mapping of
+    .help = predicted spots to observations prior to model refinement.  The safeguard prevents
+    .help = a many-to-one predicted-to-observation mapping, assuring that each prediction is mapped
+    .help = to at most one observation, one that is closest.  The legacy code did not include
+    .help = this safeguard.  It is expected that True should become the default after a testing period.
 }
 """
 indexing_defs = """

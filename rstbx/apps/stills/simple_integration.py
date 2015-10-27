@@ -221,7 +221,9 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
     idx_cutoff = float(min(self.mask_focus[image_number]))
     if verbose:
       print "idx_cutoff distance in pixels",idx_cutoff
-    for i in xrange(len(self.predicted)): # loop over predicteds
+    if not self.horizons_phil.integration.enable_one_to_one_safeguard:
+     # legacy code, no safeguard against many-to-one predicted-to-observation mapping
+     for i in xrange(len(self.predicted)): # loop over predicteds
       #for n in xrange(NEAR): # loop over near spotfinder spots
       for n in xrange(1): # only consider the nearest spotfinder spot
         Match = dict(spot=IS_adapt.nn[i*NEAR+n],pred=i)
@@ -233,6 +235,24 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
              spots[Match["spot"]].ctr_mass_y() - self.predicted[Match["pred"]][1]/pxlsz])
           correction_vectors_provisional.append(vector)
           c_v_p_flex.append((vector[0],vector[1],0.))
+    else:
+      one_to_one = {}
+      for i in xrange(len(self.predicted)): # loop over predicteds
+        annresultidx = i*NEAR
+        obsidx = IS_adapt.nn[annresultidx]
+        this_distancesq = IS_adapt.distances[annresultidx]
+        if not one_to_one.has_key(obsidx) or \
+           this_distancesq < one_to_one[obsidx]["distancesq"]:
+           if math.sqrt(this_distancesq) < idx_cutoff:
+             one_to_one[obsidx] = dict(spot=obsidx,pred=i,distancesq=this_distancesq)
+      for key,value in one_to_one.items():
+        indexed_pairs_provisional.append(value)
+        vector = matrix.col(
+            [spots[value["spot"]].ctr_mass_x() - self.predicted[value["pred"]][0]/pxlsz,
+             spots[value["spot"]].ctr_mass_y() - self.predicted[value["pred"]][1]/pxlsz])
+        correction_vectors_provisional.append(vector)
+        c_v_p_flex.append((vector[0],vector[1],0.))
+
     print "... %d provisional matches"%len(correction_vectors_provisional),
     print "r.m.s.d. in pixels: %5.2f"%(math.sqrt(flex.mean(c_v_p_flex.dot(c_v_p_flex))))
 
