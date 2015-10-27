@@ -265,7 +265,7 @@ refinement.output.title = Test refinement run
     ('ligand.pdb', 'Input model', 'refinement.input.pdb.file_name'),
     ('data.mtz', 'Reflections file', 'refinement.input.xray_data.file_name'),
     ('ligand.cif', 'Restraints (CIF)', 'refinement.input.monomers.file_name')])
-  assert (i.get_run_title() == "Test refinement run")
+  assert (i.get_job_title() == "Test refinement run")
   #
   # .style processing
   style = i.get_scope_style("refinement.refine.strategy")

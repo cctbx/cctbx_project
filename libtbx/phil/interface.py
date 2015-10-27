@@ -392,10 +392,6 @@ class index (object) :
             files.append((file_name, label, def_name))
     return files
 
-  # XXX DEPRECATED
-  def get_run_title (self) :
-    return self.get_job_title()
-
   def get_job_title (self) :
     for def_name in self._full_path_index.keys() :
       if ((def_name in ["title", "job_title"]) or
