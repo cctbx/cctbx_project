@@ -141,6 +141,7 @@ class refinement_monitor(object):
     self.sites_cart_start = None
     for name in self.__arrays__ :
       setattr(self, name, [])
+    self.is_amber_monitor = False
 
   def dump_statistics (self, file_name) :
     stats = {}
@@ -169,6 +170,7 @@ class refinement_monitor(object):
     use_amber = False
     if hasattr(self.params, "amber"): # loaded amber scope
       use_amber = self.params.amber.use_amber
+      self.is_amber_monitor=use_amber
     ignore_hd = True
     if self.neutron_refinement or use_amber:
       ignore_hd = False
