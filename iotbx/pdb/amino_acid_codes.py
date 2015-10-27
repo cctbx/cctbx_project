@@ -103,3 +103,55 @@ three_letter_d_given_three_letter_l = {
 "TRP": "DTR",
 "TYR": "DTY",
 "VAL": "DVA"}
+
+def validate_sequence(sequence=None,
+                      protein=True, strict_protein=True,
+                      nucleic_acid=False, strict_nucleic_acid=True):
+  '''
+
+  =============================================================================
+  Function for checking if a sequence conforms to the FASTA format.
+  (http://www.ncbi.nlm.nih.gov/BLAST/blastcgihelp.shtml)
+
+  Parameters:
+  -----------
+  sequence - str (None) - the sequence to be checked
+  protein - bool (True) - check for protein letters if True
+  strict_protein - bool (True) - only check for the 20 amino acids if True
+  nucleic_acid - bool (False) - check for nucleic acid letters if True
+  strict_nucleic_acid - bool (True) - only check for the 5 base pairs if True
+
+  Return:
+  -------
+  The function returns a set of unknown letters. If no unknown letters are
+  found, the set is of size 0.
+
+  Notes:
+  ------
+  There is overlap between the letters used to represent amino aicds and the
+  letters used to represent nucleic acids. So if both protein and nucleic_acid
+  are set to True, the set of valid letters is the union of both. This will
+  make the overall validation less strict.
+
+  =============================================================================
+
+  '''
+
+  # construct set of FASTA letters to test against
+  fasta_format = set()
+  if (protein):
+    fasta_format = fasta_format.union(
+      set(three_letter_given_one_letter.keys()))
+    fasta_format.remove('U')     # non-standard letter
+    if (not strict_protein):
+      fasta_format = fasta_format.union(set(['B', 'U', 'Z', 'X', '*', '-']))
+  if (nucleic_acid):
+    fasta_format = fasta_format.union(set(['A', 'T', 'C', 'G', 'U']))
+    if (not strict_nucleic_acid):
+      fasta_format = fasta_format.union(set(['N', 'K', 'M', 'B', 'V', 'S', 'W',
+                                             'D', 'Y', 'R', 'H', '-']))
+
+  # test sequence
+  unknown_letters = set(sequence.upper()).difference(fasta_format)
+
+  return unknown_letters
