@@ -74,7 +74,11 @@ class geometry(object):
                                           ignore_hd=ignore_hydrogens)
       self.b_number = esg.n_bond_proxies(amber_parm,
                                          ignore_hd=ignore_hydrogens)
-      # self.c, self.p, self.ll, self.d, self.n = None, None, None, None, None
+      self.c, self.p, self.ll, self.d, self.n = None, None, None, None, None
+      self.c_number=0
+      self.p_number=0
+      self.d_number=0
+      
       self.bond_deltas_histogram = \
         flex.histogram(data = flex.abs(bond_deltas), n_slots = n_histogram_slots)
       self.angle_deltas_histogram = \
@@ -82,6 +86,13 @@ class geometry(object):
       # nonbonded_distances = esg.nonbonded_distances()
       # self.nonbonded_distances_histogram = flex.histogram(
       #   data = flex.abs(nonbonded_distances), n_slots = n_histogram_slots)
+      for restraint_type in ["b", "a", "c", "p", "ll", "d", "n"] :
+        for value_type in [("mean",2), ("max",1), ("min",0)] :
+          name = "%s_%s" % (restraint_type, value_type[0])
+          if getattr(self, restraint_type) is None: 
+            setattr(self, name, None)
+            continue
+          setattr(self, name, getattr(self, restraint_type)[value_type[1]])
       return
     self.a = esg.angle_deviations()
     self.b = esg.bond_deviations()
@@ -147,7 +158,13 @@ class geometry(object):
     return s.capitalize()
 
   def format_basic_geometry_statistics(self, prefix=""):
-    fmt = "%6.3f %7.3f %6d"
+    def fmt(f1,f2,d1):
+      fmt_str= "%6.3f %7.3f %6d"
+      if f1 is None  : return '   -       -       -  '
+      return fmt_str%(f1,f2,d1)
+    def fmt2(f1):
+      if f1 is None: return '  -   '
+      return "%-6.3f"%str(f1[0])
     result = "%s" % prefix
     rl = "GEOSTD + MON.LIB."
     if self.cdl_restraints:
@@ -169,12 +186,12 @@ class geometry(object):
 %s"""%(
        prefix,
        prefix,
-       prefix, fmt%(self.b_mean, self.b_max, self.b_number),
-       prefix, fmt%(self.a_mean, self.a_max, self.a_number),
-       prefix, fmt%(self.c_mean, self.c_max, self.c_number),
-       prefix, fmt%(self.p_mean, self.p_max, self.p_number),
-       prefix, fmt%(self.d_mean, self.d_max, self.d_number),
-       prefix, str("%-6.3f"%self.n[0]),
+       prefix, fmt(self.b_mean, self.b_max, self.b_number),
+       prefix, fmt(self.a_mean, self.a_max, self.a_number),
+       prefix, fmt(self.c_mean, self.c_max, self.c_number),
+       prefix, fmt(self.p_mean, self.p_max, self.p_number),
+       prefix, fmt(self.d_mean, self.d_max, self.d_number),
+       prefix, fmt2(self.n),
        prefix,
        )
     if not prefix:
