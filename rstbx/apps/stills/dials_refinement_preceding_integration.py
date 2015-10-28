@@ -309,6 +309,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
       base = Parameters(xbeam = newbeam[0], ybeam = newbeam[1], #oldbase.xbeam, ybeam = oldbase.ybeam,
                         distance = -detector[0].get_distance(), twotheta = 0.0)
       self.inputai.setBase(base)
+      self.inputai.setWavelength(experiments[0].beam.get_wavelength())
 
       self.bp3_wrapper = pre_get_predictions(self.inputai, self.horizons_phil,
         raw_image = self.imagefiles.images[self.image_number],
