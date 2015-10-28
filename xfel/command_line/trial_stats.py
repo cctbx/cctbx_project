@@ -16,6 +16,18 @@ master_phil = libtbx.phil.parse("""
     .type = int
   run_end = None
     .type = int
+  db {
+    host = None
+      .type = str
+    name = None
+      .type = str
+    table_name = None
+      .type = str
+    user = None
+      .type = str
+    password = None
+      .type = str
+  }
 """)
 
 def run (args) :
@@ -54,11 +66,11 @@ def run (args) :
   if params.run_end is not None:
     extra_cmd += "AND run <= %d" % params.run_end
 
-  dbobj = db.dbconnect()
+  dbobj = db.dbconnect(host=params.db.host, db=params.db.name, username=params.db.user, password=params.db.password)
 
 
   cursor = dbobj.cursor()
-  cmd = "SELECT DISTINCT(run) FROM %s WHERE trial = %%s %s ORDER BY run"%(db.table_name, extra_cmd)
+  cmd = "SELECT DISTINCT(run) FROM %s WHERE trial = %%s %s ORDER BY run"%(params.db.table_name, extra_cmd)
   cursor.execute(cmd, params.trial_id)
 
   frames_total = 0
@@ -68,7 +80,7 @@ def run (args) :
   for runId in cursor.fetchall():
     run = int(runId[0])
     cursor.execute("SELECT id, eventstamp, hitcount, distance, sifoil, wavelength, indexed FROM %s \
-        WHERE trial = %s AND run = %s"%(db.table_name,params.trial_id,run))
+        WHERE trial = %s AND run = %s"%(params.db.table_name,params.trial_id,run))
 
     numframes = numhits = numindexed = 0
     for id, eventstamp, hitcount, distance, sifoil, wavelength, indexed in cursor.fetchall():
