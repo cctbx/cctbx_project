@@ -17,7 +17,7 @@ from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana import rayonix_tbx
 from xfel.cxi.cspad_ana import skip_event_flag
 from xfel.detector_formats import detector_format_version as detector_format_function
-import getpass
+#import getpass
 
 # import matplotlib
 # matplotlib.use("PDF")
@@ -44,6 +44,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                sql_buffer_size        = 1,
                db_host                = None,
                db_name                = None,
+               db_table_name          = None,
                db_user                = None,
                db_password            = None,
                **kwds):
@@ -84,6 +85,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     self.m_sql_buffer_size      = cspad_tbx.getOptInteger(sql_buffer_size)
     self.m_db_host              = cspad_tbx.getOptString(db_host)
     self.m_db_name              = cspad_tbx.getOptString(db_name)
+    self.m_db_table_name        = cspad_tbx.getOptString(db_table_name)
     self.m_db_user              = cspad_tbx.getOptString(db_user)
     self.m_db_password          = cspad_tbx.getOptString(db_password)
     # A ROI should not contain any ASIC boundaries, as these are
@@ -130,35 +132,11 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       try:
         self.trial = self.m_trial_id # TODO: beat the race condition and use db.get_next_trial_id if
                                       # this is not set or is zero or less
-        db.create_tables(dbobj)
+        db.create_tables(dbobj, self.m_db_table_name)
 
       except Exception,e:
         self.logger.info("Couldn't create root tables: %s"%(e))
       dbobj.close()
-
-    """ This doesn't work.  The many threads add the values over and over to the master db :(
-    try:
-      trial = 1244
-      cmd = "SELECT * FROM %s WHERE trial = %%s"%(db.root_table_name)
-      count = cursor.execute(cmd, trial)
-      self.logger.info("Count is %s"%(count))
-
-      if count < 3:
-        cmd = "INSERT INTO %s (trial,experiment,user,datatable) VALUES (%%s,%%s,%%s,'cxi_braggs_front');"%(db.root_table_name)
-        #self.logger.info("here!!")
-        #self.logger.info(cmd%(123,env.experiment(),getpass.getuser()))
-        cursor.execute(cmd, (trial,env.experiment(),getpass.getuser()))
-
-        cmd = "INSERT INTO %s (trial,experiment,user,datatable) VALUES (%%s,%%s,%%s,'cxi_braggs_back');"%(db.root_table_name)
-        cursor.execute(cmd, (trial,env.experiment(),getpass.getuser()))
-
-        cmd = "INSERT INTO %s (trial,experiment,user,datatable) VALUES (%%s,%%s,%%s,'cxi_xes');"%(db.root_table_name)
-        cursor.execute(cmd, (trial,env.experiment(),getpass.getuser()))
-
-        self.db.commit()
-    except Exception,e:
-      self.logger.info("Couldn't create root entries: %s"%(e))
-    """
 
   def event(self, evt, env):
     """The event() function is called for every L1Accept transition.
@@ -424,9 +402,9 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
   def commit_entries(self):
     if self.m_sql_buffer_size > 1 and len(self.buffered_sql_entries) > 0:
       from cxi_xdr_xes.cftbx.cspad_ana import db
-      dbobj = db.dbconnect()
+      dbobj = db.dbconnect(self.m_db_host, self.m_db_name, self.m_db_user, self.m_db_password)
       cursor = dbobj.cursor()
-      cmd = "INSERT INTO %s (trial,run,eventstamp,hitcount,distance,sifoil,wavelength,indexed) VALUES "%(db.table_name)
+      cmd = "INSERT INTO %s (trial,run,eventstamp,hitcount,distance,sifoil,wavelength,indexed) VALUES "%(self.m_db_table_name)
       comma = ""
       for entry in self.buffered_sql_entries:
         cmd += comma + "(%s,%s,%s,%s,%s,%s,%s,%s)"%entry
