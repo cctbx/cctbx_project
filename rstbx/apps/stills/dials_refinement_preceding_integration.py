@@ -354,9 +354,6 @@ class integrate_one_frame(IntegrationMetaProcedure):
     from dials.algorithms.refinement.refiner import phil_scope
     from libtbx.phil import parse
     params = phil_scope.fetch(source=parse('')).extract()
-    params.refinement.parameterisation.beam.fix="all"
-    #params.refinement.parameterisation.detector.fix="orientation"
-    params.refinement.parameterisation.detector.fix_list=3, # fix detector rotz, allow distance to refine
     params.refinement.reflections.weighting_strategy.delpsi_constant=100000.
     params.refinement.reflections.weighting_strategy.override="stills"
     params.refinement.parameterisation.auto_reduction.action="fix"
@@ -365,6 +362,12 @@ class integrate_one_frame(IntegrationMetaProcedure):
     #params.refinement.reflections.minimum_sample_size=50
     #params.refinement.reflections.maximum_sample_size=50
     #params.refinement.reflections.random_seed=1
+    if self.horizons_phil.integration.dials_refinement.strategy=="distance":
+      params.refinement.parameterisation.beam.fix="all"
+      params.refinement.parameterisation.detector.fix_list=3, # fix detector rotz, allow distance to refine
+    elif self.horizons_phil.integration.dials_refinement.strategy=="wavelength":
+      params.refinement.parameterisation.beam.fix="in_spindle_plane,out_spindle_plane"
+      params.refinement.parameterisation.detector.fix_list=[0,3,] # fix detector rotz and distance
 
     from dials.algorithms.refinement.refiner import RefinerFactory
     refiner = RefinerFactory.from_parameters_data_experiments(params,
