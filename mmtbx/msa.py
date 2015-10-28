@@ -337,7 +337,7 @@ def get_muscle_alignment (fasta_sequences, group_sequences=True, out=None) :
     print >> out, "\n".join(muscle_out)
   return alignment
 
-def get_muscle_alignment_ordered(sequences):
+def get_muscle_alignment_ordered(sequences, out = None):
 
   from iotbx import bioinformatics
 
@@ -351,7 +351,8 @@ def get_muscle_alignment_ordered(sequences):
     fasta_sequences = "\n".join(
       str( bioinformatics.sequence( name = name, sequence = seq.sequence ) )
       for ( seq, name ) in name_for.items()
-      )
+      ),
+    out = out,
     )
 
   lookup = dict( zip( alignment.names, alignment.alignments ) )
@@ -425,10 +426,15 @@ def run (args=(), params=None, out=sys.stdout) :
           "format.  (Original message: %s)") % (file_name, str(e)))
   if (len(seqs) < 2) :
     raise Sorry("Need at least two valid sequences to run MUSCLE.")
-  combined = "\n".join([ seq.format(80) for seq in seqs ])
-  muscle_out = run_muscle(combined)
-  open(output_file, "w").write("\n".join(muscle_out))
-  return (output_file, "\n".join(muscle_out))
+
+  alignment = get_muscle_alignment_ordered( sequences = seqs )
+  alistr = str( alignment )
+
+  with open( output_file, "w" ) as ofile:
+    ofile.write( alistr )
+    ofile.write( "\n" )
+
+  return ( output_file, alistr )
 
 def validate_params (params) :
   if (len(params.muscle.seq_file) == 0) :
