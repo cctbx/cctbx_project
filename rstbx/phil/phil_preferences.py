@@ -154,6 +154,11 @@ integration {
     .help = a many-to-one predicted-to-observation mapping, assuring that each prediction is mapped
     .help = to at most one observation, one that is closest.  The legacy code did not include
     .help = this safeguard.  It is expected that True should become the default after a testing period.
+  dials_refinement{
+    strategy = *distance wavelength
+      .type = choice
+      .help = either refine the distance or the wavelength for XFEL stills
+  }
 }
 """
 indexing_defs = """
