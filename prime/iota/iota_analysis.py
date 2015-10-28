@@ -121,7 +121,7 @@ class Analyzer(object):
 
     if hm_file != None:
       print "\nSpotfinding heatmap saved to {}".format(hm_file)
-      fig.savefig(hm_file, format='png', bbox_inches=0)
+      fig.savefig(hm_file, format='pdf', bbox_inches=0)
 
 
   def unit_cell_analysis(self, cluster_threshold, output_dir, write_files=True):

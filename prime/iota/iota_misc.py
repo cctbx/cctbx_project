@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 07/29/2015
+Last Changed: 10/28/2015
 Description : Module with miscellaneous useful functions and classes
 '''
 
@@ -106,7 +106,7 @@ def make_image_path(raw_img, input_base, base_path):
   else:
     dest_folder = '{0}/{1}'.format(base_path,
                                    os.path.relpath(path, input_base))
-  return dest_folder
+  return os.path.normpath(dest_folder)
 
 
 def iota_exit(iota_version, silent=False):

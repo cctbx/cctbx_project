@@ -3,11 +3,11 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 09/14/2015
-Description : IOTA command-line module. Version 2.15
+Last Changed: 10/27/2015
+Description : IOTA command-line module. Version 2.21
 '''
 
-iota_version = '2.15'
+iota_version = '2.21'
 help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 
@@ -48,19 +48,6 @@ import prime.iota.iota_cmd as cmd
 import prime.iota.iota_misc as misc
 from libtbx.easy_mp import parallel_map
 
-def importer_wrapper(input_entry):
-  """ Multiprocessor wrapper for image conversion  """
-  prog_count = input_entry[0]
-  n_img = input_entry[1]
-  gs_prog = cmd.ProgressBar(title='IMPORTING IMAGES')
-  if prog_count < n_img:
-    prog_step = 100 / n_img
-    gs_prog.update(prog_count * prog_step, prog_count)
-  else:
-    gs_prog.finished()
-  img_object = img.SingleImage(input_entry, init)
-  return img_object.import_image()
-
 def gs_importer_wrapper(input_entry):
   """ Multiprocessor wrapper for image conversion  """
   prog_count = input_entry[0]
@@ -79,12 +66,13 @@ def conversion_wrapper(input_entry):
   prog_count = input_entry[0]
   n_img = input_entry[1]
   img_object = input_entry[2]
-  gs_prog = cmd.ProgressBar(title='CONVERTING IMAGES')
+  gs_prog = cmd.ProgressBar(title='IMPORTING IMAGES')
   if prog_count < n_img:
     prog_step = 100 / n_img
     gs_prog.update(prog_count * prog_step, prog_count)
   else:
     gs_prog.finished()
+  img_object = img.SingleImage(input_entry, init)
   return img_object.convert_image()
 
 def processing_wrapper(input_entry):
@@ -107,7 +95,7 @@ if __name__ == "__main__":
   init = InitAll(iota_version, help_message)
   init.run()
 
-  if init.params.selection.select_only.flag_on:
+  if init.params.cctbx.selection.select_only.flag_on:
     # Generate image objects and modify with saved grid search results
     cmd.Command.start("Generating {} image objects".format(len(init.gs_img_objects)))
     img_list = [[i, len(init.gs_img_objects) + 1, j] for i, j in enumerate(init.gs_img_objects, 1)]
@@ -117,18 +105,9 @@ if __name__ == "__main__":
     cmd.Command.end("Generating {} image objects -- DONE ".format(len(init.gs_img_objects)))
 
   else:
-    # Import and process raw images or image pickles
-    # Make list of image objects
+    # Import ( and check / convert / triage) images
     cmd.Command.start("Importing {} images".format(len(init.input_list)))
     img_list = [[i, len(init.input_list) + 1, j] for i, j in enumerate(init.input_list, 1)]
-    img_objects = parallel_map(iterable  = img_list,
-                               func      = importer_wrapper,
-                               processes = init.params.n_processors)
-    cmd.Command.end("Importing {} images -- DONE ".format(len(init.input_list)))
-
-    # Check / convert / triage images
-    cmd.Command.start("Checking / converting {} images".format(len(img_objects)))
-    img_list = [[i, len(img_objects) + 1, j] for i, j in enumerate(img_objects, 1)]
     img_objects = parallel_map(iterable  = img_list,
                                func      = conversion_wrapper,
                                processes = init.params.n_processors)
@@ -158,8 +137,13 @@ if __name__ == "__main__":
                              processes = init.params.n_processors)
   cmd.Command.end("Processing {} images -- DONE ".format(len(img_objects)))
 
-  # Analysis of integration results
 
+  # DIALS TESTING SWITCH
+  if init.params.advanced.integrate_with == 'dials':
+    print '\n DIALS trial finished, exiting... \n'
+    misc.iota_exit(iota_version)
+
+  # Analysis of integration results
   final_objects = [i for i in img_objects if i.fail == None]
 
   if len(final_objects) == 0:
@@ -175,7 +159,7 @@ if __name__ == "__main__":
 
   # Spotfinding heatmap
   if init.params.analysis.heatmap != None:
-    hm_file = "{}/{}".format(init.viz_base, 'heatmap.png')
+    hm_file = "{}/{}".format(init.viz_base, 'heatmap.pdf')
     if init.params.analysis.heatmap == 'show':
       analysis.show_heatmap()
     elif init.params.analysis.heatmap == 'file':

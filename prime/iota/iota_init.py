@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 09/11/2015
+Last Changed: 10/28/2015
 Description : Reads command line arguments. Initializes all IOTA starting
               parameters. Starts main log.
 '''
@@ -75,7 +75,7 @@ class InitAll(object):
     self.help_message = self.logo + help_message
     self.input_base = None
     self.conv_base = None
-    self.gs_base = None
+    self.obj_base = None
     self.int_base = None
 
   def make_input_list(self):
@@ -158,10 +158,10 @@ class InitAll(object):
     """ Generates list of image objects from previous grid search """
     from libtbx import easy_pickle as ep
 
-    if self.params.selection.select_only.grid_search_path == None:
+    if self.params.cctbx.selection.select_only.grid_search_path == None:
       int_dir = misc.set_base_dir('integration', True)
     else:
-      int_dir = self.params.selection.select_only.grid_search_path
+      int_dir = self.params.cctbx.selection.select_only.grid_search_path
 
     img_objects = []
 
@@ -231,34 +231,53 @@ class InitAll(object):
         inp.write_defaults(os.path.abspath(os.path.curdir), txt_out)
       misc.iota_exit(self.iver)
     else:                                   # If input exists, check type
-      print self.logo
-      print '\n{}\n'.format(self.now)
       carg = os.path.abspath(self.args.path)
       if os.path.exists(carg):
 
         # If user provided a parameter file
         if os.path.isfile(carg) and os.path.basename(carg).endswith('.param'):
+          msg = ''
           self.params, self.txt_out = inp.process_input(self.args,
                                                         self.phil_args,
                                                         carg, 'file')
 
         # If user provided a list of input files
         elif os.path.isfile(carg) and os.path.basename(carg).endswith('.lst'):
-          print "\nIOTA will run in AUTO mode using {}:\n".format(carg)
+          msg = "\nIOTA will run in AUTO mode using {}:\n".format(carg)
+          self.params, self.txt_out = inp.process_input(self.args,
+                                                        self.phil_args,
+                                                        carg, 'auto', self.now)
+
+        # If user provided a single filepath
+        elif os.path.isfile(carg) and not os.path.basename(carg).endswith('.lst'):
+          msg = "\nIOTA will run in SINGLE-FILE mode using {}:\n".format(carg)
           self.params, self.txt_out = inp.process_input(self.args,
                                                         self.phil_args,
                                                         carg, 'auto', self.now)
 
         # If user provided a data folder
         elif os.path.isdir(carg):
-          print "\nIOTA will run in AUTO mode using {}:\n".format(carg)
+          msg = "\nIOTA will run in AUTO mode using {}:\n".format(carg)
           self.params, self.txt_out = inp.process_input(self.args,
                                                         self.phil_args,
                                                         carg, 'auto', self.now)
       # If user provided gibberish
       else:
+        print self.logo
         print "ERROR: Invalid input! Need parameter filename or data folder."
         misc.iota_exit(self.iver)
+
+    # Identify indexing / integration program
+    if self.params.advanced.integrate_with == 'cctbx':
+      prg = "                                                          with CCTBX.XFEL\n"
+    elif self.params.advanced.integrate_with == 'dials':
+      prg = "                                                               with DIALS\n"
+
+    self.logo += prg
+    print self.logo
+    print '\n{}\n'.format(self.now)
+    if msg != '':
+      print msg
 
     # Check for -l option, output list of input files and exit
     if self.args.list:
@@ -284,16 +303,21 @@ class InitAll(object):
 
     # Call function to read input folder structure (or input file) and
     # generate list of image file paths
-    if self.params.selection.select_only.flag_on:
+    if self.params.cctbx.selection.select_only.flag_on:
       self.gs_img_objects = self.make_int_object_list()
       self.input_list = [i.conv_img for i in self.gs_img_objects]
     else:
       self.input_list = self.make_input_list()
 
+    # If fewer images than requested processors are supplied, set the number of
+    # processors to the number of images
+    if self.params.n_processors > len(self.input_list):
+      self.params.n_processors = len(self.input_list)
+
     # Generate base folder paths
     self.conv_base = misc.set_base_dir('converted_pickles')
     self.int_base = misc.set_base_dir('integration')
-    self.gs_base = os.path.join(self.int_base, 'grid_search')
+    self.obj_base = os.path.join(self.int_base, 'image_objects')
     self.fin_base = os.path.join(self.int_base, 'final')
     self.tmp_base = os.path.join(self.int_base, 'tmp')
     if self.params.analysis.viz != 'None' or\
@@ -304,11 +328,10 @@ class InitAll(object):
       self.viz_base = None
 
     # Generate base folders
-    if not self.params.image_conversion.convert_only:
-      os.makedirs(self.int_base)
-      os.makedirs(self.gs_base)
-      os.makedirs(self.fin_base)
-      os.makedirs(self.tmp_base)
+    os.makedirs(self.int_base)
+    os.makedirs(self.obj_base)
+    os.makedirs(self.fin_base)
+    os.makedirs(self.tmp_base)
 
     # Determine input base
     self.input_base = os.path.abspath(os.path.dirname(os.path.commonprefix(self.input_list)))

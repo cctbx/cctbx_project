@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 09/14/2015
+Last Changed: 10/28/2015
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -13,6 +13,7 @@ Description : Creates image object. If necessary, converts raw image to pickle
 '''
 
 import os
+import sys
 import math
 
 from scitbx.array_family import flex
@@ -47,31 +48,41 @@ class SingleImage(object):
     self.gs_results = []
     self.main_log = init.logfile
     self.verbose = verbose
+    self.hmed = self.params.cctbx.grid_search.height_median
+    self.amed = self.params.cctbx.grid_search.area_median
 
     self.input_base = init.input_base
     self.conv_base = init.conv_base
     self.int_base = init.int_base
-    self.gs_base = init.gs_base
+    self.obj_base = init.obj_base
     self.fin_base = init.fin_base
     self.viz_base = init.viz_base
     self.tmp_base = init.tmp_base
 
-    self.gs_path = None
-    self.gs_file = None
+    self.obj_path = None
+    self.obj_file = None
     self.fin_path = None
     self.fin_file = None
     self.viz_path = None
 
-    if not self.params.grid_search.flag_on:
-      self.params.grid_search.area_range = 0
-      self.params.grid_search.height_range = 0
-      self.params.grid_search.sig_height_search = False
-    self.grid, self.final = self.generate_grid()
-
-  def import_image(self):
-    """ Returns imported image object """
-    self.status = 'imported'
-    return self
+    if self.params.advanced.integrate_with == 'cctbx':
+      if not self.params.cctbx.grid_search.flag_on:
+        self.params.cctbx.grid_search.area_range = 0
+        self.params.cctbx.grid_search.height_range = 0
+        self.params.cctbx.grid_search.sig_height_search = False
+      if self.params.cctbx.grid_search.smart:
+        self.hrange = 1
+        self.arange = 1
+      else:
+        self.hrange = self.params.cctbx.grid_search.height_range
+        self.arange = self.params.cctbx.grid_search.area_range
+      self.grid_points = []
+      self.grid, self.final = self.generate_grid()
+    elif self.params.advanced.integrate_with == 'dials':
+      self.final = {'img':self.conv_img, 'sih':0, 'sph':0, 'spa':0, 'a':0,
+                    'b':0, 'c':0, 'alpha':0, 'beta':0, 'gamma':0, 'sg':'',
+                    'strong':0, 'res':0, 'mos':0, 'epv':0, 'info':'',
+                    'final':None, 'program':'dials'}
 
 
   def import_int_file(self, init):
@@ -84,11 +95,11 @@ class SingleImage(object):
     self.input_base = init.input_base
     self.conv_base = init.conv_base
     self.int_base = init.int_base
-    self.gs_base = init.gs_base
+    self.obj_base = init.obj_base
     self.fin_base = init.fin_base
     self.viz_base = init.viz_base
-    self.gs_path = misc.make_image_path(self.conv_img, self.input_base, self.gs_base)
-    self.gs_file = os.path.abspath(os.path.join(self.gs_path,
+    self.obj_path = misc.make_image_path(self.conv_img, self.input_base, self.obj_base)
+    self.obj_file = os.path.abspath(os.path.join(self.obj_path,
             os.path.basename(self.conv_img).split('.')[0] + ".int"))
     self.fin_path = misc.make_image_path(self.conv_img, self.input_base, self.fin_base)
     self.fin_file = os.path.abspath(os.path.join(self.fin_path,
@@ -102,8 +113,8 @@ class SingleImage(object):
 
     # Generate output folders and files:
     # Grid search subfolder or final integration subfolder
-    if not os.path.isdir(self.gs_path):
-      os.makedirs(self.gs_path)
+    if not os.path.isdir(self.obj_path):
+      os.makedirs(self.obj_path)
     if not os.path.isdir(self.fin_path):
       os.makedirs(self.fin_path)
 
@@ -126,16 +137,16 @@ class SingleImage(object):
     """ Function to generate grid search parameters for this image object """
 
     gs_block = []
-    h_min = self.params.grid_search.height_median - self.params.grid_search.height_range
-    h_max = self.params.grid_search.height_median + self.params.grid_search.height_range
-    h_std = self.params.grid_search.height_range
-    a_min = self.params.grid_search.area_median - self.params.grid_search.area_range
-    a_max = self.params.grid_search.area_median + self.params.grid_search.area_range
-    a_std = self.params.grid_search.area_range
+    h_min = self.hmed - self.hrange
+    h_max = self.hmed + self.hrange
+    a_min = self.amed - self.arange
+    a_max = self.amed + self.arange
+    h_std = self.params.cctbx.grid_search.height_range
+    a_std = self.params.cctbx.grid_search.area_range
 
     for spot_area in range(a_min, a_max + 1):
       for spot_height in range (h_min, h_max + 1):
-        if self.params.grid_search.sig_height_search:
+        if self.params.cctbx.grid_search.sig_height_search:
           if spot_height >= 1 + h_std:
             sigs = range(spot_height - h_std, spot_height + 1)
           elif spot_height < 1 + h_std:
@@ -146,15 +157,18 @@ class SingleImage(object):
           sigs = [spot_height]
 
         for sig_height in sigs:
-          gs_block.append({'sih':sig_height, 'sph':spot_height,
-                     'spa':spot_area, 'a':0, 'b':0, 'c':0,
-                     'alpha':0, 'beta':0, 'gamma':0, 'sg':'',
-                     'strong':0, 'res':0, 'mos':0,
-                     'epv':0, 'info':'', 'ok':True})
+          if (spot_area, spot_height, sig_height) not in self.grid_points:
+            self.grid_points.append((spot_area, spot_height, sig_height))
+            gs_block.append({'sih':sig_height, 'sph':spot_height,
+                             'spa':spot_area, 'a':0, 'b':0, 'c':0,
+                             'alpha':0, 'beta':0, 'gamma':0, 'sg':'',
+                             'strong':0, 'res':0, 'mos':0,
+                             'epv':0, 'info':'', 'ok':True})
 
     int_line = {'img':self.conv_img, 'sih':0, 'sph':0, 'spa':0, 'a':0, 'b':0,
                 'c':0, 'alpha':0, 'beta':0, 'gamma':0, 'sg':'', 'strong':0,
-                'res':0, 'mos':0, 'epv':0, 'info':'', 'final':None}
+                'res':0, 'mos':0, 'epv':0, 'info':'', 'final':None,
+                'program':'cctbx'}
 
     return gs_block, int_line
 
@@ -209,6 +223,11 @@ class SingleImage(object):
           data['OSC_START'] = osc_start
           data['OSC_RANGE'] = osc_range
           data['TIME'] = scan.get_exposure_times()[0]
+
+      print
+      print detector
+      sys.exit()
+
     else:
       data = None
     return data, img_type
@@ -306,6 +325,7 @@ class SingleImage(object):
     """ Converts images into pickle format; crops and masks out beamstop if
         selected """
 
+    self.status = 'imported'
     img_data, self.img_type = self.load_image()
     info = []
 
@@ -323,9 +343,12 @@ class SingleImage(object):
 
     if self.img_type == 'unconverted':
       # Check for and/or create a converted pickles folder
-      self.input_base = self.conv_base
-      if not os.path.isdir(self.conv_base):
-        os.makedirs(self.conv_base)
+      try:
+        if not os.path.isdir(self.conv_base):
+          os.makedirs(self.conv_base)
+      except OSError:
+        pass
+
 
       # Generate converted image pickle filename
       if self.params.image_conversion.rename_pickle_prefix != None:
@@ -340,7 +363,14 @@ class SingleImage(object):
       else:
         img_path = misc.make_image_path(self.raw_img, self.input_base, self.conv_base)
         self.conv_img = os.path.abspath(os.path.join(img_path,
-             os.path.basename(self.raw_img).split('.')[0] + "_converted.pickle"))
+             os.path.basename(self.raw_img).split('.')[0] + ".pickle"))
+
+        # Make subfolder for converted pickles
+        try:
+          if not os.path.isdir(img_path):
+            os.makedirs(img_path)
+        except OSError:
+          pass
 
       # Convert raw image to image pickle
       beamstop = self.params.image_conversion.beamstop
@@ -365,7 +395,7 @@ class SingleImage(object):
                                               img_data['SIZE2'],
                                               img_data['DISTANCE']))
       self.img_type = 'converted'
-
+      self.input_base = self.conv_base
 
       # Save converted image pickle
       ep.dump(self.conv_img, img_data)
@@ -379,8 +409,8 @@ class SingleImage(object):
 
     # Generate names for output folders and files:
     if not self.params.image_conversion.convert_only:
-      self.gs_path = misc.make_image_path(self.conv_img, self.input_base, self.gs_base)
-      self.gs_file = os.path.abspath(os.path.join(self.gs_path,
+      self.obj_path = misc.make_image_path(self.conv_img, self.input_base, self.obj_base)
+      self.obj_file = os.path.abspath(os.path.join(self.obj_path,
               os.path.basename(self.conv_img).split('.')[0] + ".int"))
       self.fin_path = misc.make_image_path(self.conv_img, self.input_base, self.fin_base)
       self.fin_file = os.path.abspath(os.path.join(self.fin_path,
@@ -390,14 +420,14 @@ class SingleImage(object):
       self.int_log = os.path.join(self.fin_path,
                         os.path.basename(self.conv_img).split('.')[0] + '.log')
       if self.viz_base != None:
-        self.viz_path = misc.make_image_path(self.raw_img, self.input_base, self.viz_base)
+        self.viz_path = misc.make_image_path(self.conv_img, self.input_base, self.viz_base)
         self.viz_file = os.path.join(self.viz_path,
             "int_{}.png".format(os.path.basename(self.conv_img).split('.')[0]))
 
-      # Create actual folders
+      # Create actual folders (if necessary)
       try:
-        if not os.path.isdir(self.gs_path):
-          os.makedirs(self.gs_path)
+        if not os.path.isdir(self.obj_path):
+          os.makedirs(self.obj_path)
         if not os.path.isdir(self.fin_path):
           os.makedirs(self.fin_path)
         if self.viz_base != None:
@@ -406,8 +436,8 @@ class SingleImage(object):
       except OSError:
         pass
 
-    # Save image object to file
-    ep.dump(self.gs_file, self)
+      # Save image object to file
+      ep.dump(self.obj_file, self)
 
     return self
 
@@ -434,9 +464,9 @@ class SingleImage(object):
     spotfinding_log = ['{}\n'.format(self.conv_img)]
 
     # set spotfinding parameters for DISTL spotfinder
-    sf_params.distl.minimum_spot_area = self.params.grid_search.area_median
-    sf_params.distl.minimum_spot_height = self.params.grid_search.height_median
-    sf_params.distl.minimum_signal_height = int(self.params.grid_search.height_median / 2)
+    sf_params.distl.minimum_spot_area = self.params.cctbx.grid_search.area_median
+    sf_params.distl.minimum_spot_height = self.params.cctbx.grid_search.height_median
+    sf_params.distl.minimum_signal_height = int(self.params.cctbx.grid_search.height_median / 2)
 
     # run DISTL spotfinder
     with misc.Capturing() as junk_output:
@@ -461,17 +491,17 @@ class SingleImage(object):
 
 
   def determine_gs_result_file(self):
-    if self.params.selection.select_only.grid_search_path != None:
-      gs_path = os.path.abspath(self.params.selection.select_only.grid_search_path)
+    if self.params.cctbx.selection.select_only.grid_search_path != None:
+      obj_path = os.path.abspath(self.params.cctbx.selection.select_only.grid_search_path)
     else:
       run_number = int(os.path.basename(self.int_base)) - 1
-      gs_path = "{}/integration/{:03d}/grid_search"\
+      obj_path = "{}/integration/{:03d}/grid_search"\
                 "".format(os.path.abspath(os.curdir), run_number)
-    gs_result_file = os.path.join(gs_path, os.path.basename(self.gs_file))
+    gs_result_file = os.path.join(obj_path, os.path.basename(self.obj_file))
     return gs_result_file
 
 
-  def integrate_cctbx(self, tag, grid_point=0):
+  def integrate_cctbx(self, tag, grid_point=0, single_image=False):
     """ Runs integration using the Integrator class """
 
     # Check to see if the image is suitable for grid search / integration
@@ -479,16 +509,17 @@ class SingleImage(object):
       self.grid = []
       self.final['final'] = None
     else:
-      from prime.iota.iota_integrate import Integrator
+      from prime.iota.iota_cctbx import Integrator
       integrator = Integrator(self.conv_img,
                               self.fin_file,
-                              self.params.selection.min_sigma,
+                              self.params.cctbx.selection.min_sigma,
                               self.params.target,
                               self.params.analysis.charts,
                               self.viz_path,
                               self.int_log,
                               tag,
-                              self.tmp_base)
+                              self.tmp_base,
+                              single_image)
       if tag == 'grid search':
         self.log_info.append('\nCCTBX grid search:')
         for i in range(len(self.grid)):
@@ -509,6 +540,12 @@ class SingleImage(object):
         self.grid = [i for i in self.grid if "not integrated" not in i['info'] and\
                      "no data recorded" not in i['info']]
         self.status = 'grid search'
+
+        # Throw out grid search results that yielded no integration
+        self.grid = [i for i in self.grid if "not integrated" not in i['info'] and\
+                     "no data recorded" not in i['info']]
+        self.status = 'grid search'
+
 
       elif tag == 'split grid':
         self.log_info.append('\nCCTBX grid search:')
@@ -546,7 +583,7 @@ class SingleImage(object):
           viz.cv_png(self.final['img'], self.final['final'], self.viz_file)
 
       # Save image object to file
-      ep.dump(self.gs_file, self)
+      ep.dump(self.obj_file, self)
 
     return self
 
@@ -555,42 +592,72 @@ class SingleImage(object):
     """ Selects best grid search result using the Selector class """
 
     if self.fail == None:
-      from prime.iota.iota_integrate import Selector
+      from prime.iota.iota_cctbx import Selector
       selector = Selector(self.grid,
                           self.final,
-                          self.params.selection.prefilter.flag_on,
-                          self.params.selection.prefilter.target_uc_tolerance,
-                          self.params.selection.prefilter.target_pointgroup,
-                          self.params.selection.prefilter.target_unit_cell,
-                          self.params.selection.prefilter.min_reflections,
-                          self.params.selection.prefilter.min_resolution,
-                          self.params.selection.select_by)
+                          self.params.cctbx.selection.prefilter.flag_on,
+                          self.params.cctbx.selection.prefilter.target_uc_tolerance,
+                          self.params.cctbx.selection.prefilter.target_pointgroup,
+                          self.params.cctbx.selection.prefilter.target_unit_cell,
+                          self.params.cctbx.selection.prefilter.min_reflections,
+                          self.params.cctbx.selection.prefilter.min_resolution,
+                          self.params.cctbx.selection.select_by)
 
       self.fail, self.final, log_entry = selector.select()
       self.status = 'selection'
       self.log_info.append(log_entry)
 
     # Save results into a pickle file
-    ep.dump(self.gs_file, self)
+    ep.dump(self.obj_file, self)
 
     return self
 
-  def process(self):
+  def process(self, single_image=False):
     """ Image processing; selects method, runs requisite modules """
 
     if self.params.advanced.integrate_with == 'cctbx':
 
-      # Run grid search if haven't already
-      if self.fail == None and self.status != 'grid search':
-        self.integrate_cctbx('grid search')
+      terminate = False
+      current_epv = 9999
 
-      # Run selection if haven't already
-      if self.fail == None and self.status != 'select':
-        self.select_cctbx()
+      while not terminate:
+        # Run grid search if haven't already
+        if self.fail == None and self.status != 'grid search':
+          self.integrate_cctbx('grid search', single_image=single_image)
+
+        # Run selection if haven't already
+        if self.fail == None and self.status != 'select':
+          self.select_cctbx()
+
+        if self.fail == None and self.params.cctbx.grid_search.smart:
+          if self.final['epv'] < current_epv:
+            current_epv = self.final['epv']
+            self.hmed = self.final['sph']
+            self.amed = self.final['spa']
+            tmp_final = self.final
+            self.grid, self.final = self.generate_grid()
+            if len(self.grid) == 0:
+              terminate = True
+              continue
+            if self.verbose:
+              log_entry = '\nNew starting point: H = {}, A = {}\n'\
+                          ''.format(self.hmed, self.amed)
+              self.log_info.append(log_entry)
+          else:
+            self.final = tmp_final
+            if self.verbose:
+              log_entry = '\nNo improvement in EPV (current = {})'\
+                          '\nFinal set of parameters: H = {}, A = {}'\
+                          ''.format(self.final['epv'], self.final['sph'],
+                                    self.final['spa'])
+              self.log_info.append(log_entry)
+            terminate = True
+        else:
+          terminate = True
 
       # Run final integration if haven't already
       if self.fail == None and self.status != 'final':
-        self.integrate_cctbx('integrate')
+        self.integrate_cctbx('integrate', single_image=single_image)
 
       if self.verbose:
          log_entry = "\n".join(self.log_info)
@@ -598,7 +665,15 @@ class SingleImage(object):
          misc.main_log(self.main_log, '\n{:-^100}\n'.format(''))
 
     elif self.params.advanced.integrate_with == 'dials':
-      print "PLACEHOLDER FOR DIALS INTEGRATION!"
+
+      # Create DIALS integrator object
+      from prime.iota.iota_dials import Integrator
+      integrator = Integrator(self.conv_img,
+                              self.obj_base)
+
+      # Run DIALS test
+      integrator.find_spots()
+      integrator.index()
 
     return self
 
