@@ -3692,6 +3692,7 @@ xfel/project.cpp -text
 xfel/small_cell/__init__.py -text
 xfel/small_cell/small_cell.py -text
 xfel/small_cell/solve_orientation.py -text
+xfel/small_cell/write_orientation_arrows.py -text
 xfel/util/cctbx_xfel_installer.py svneol=native#text/x-python
 xfel/util/dials_pickle_reader.py -text
 xfel/vonHamos/__init__.py -text
