@@ -42,6 +42,10 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                trial_id               = None,
                db_logging             = False,
                sql_buffer_size        = 1,
+               db_host                = None,
+               db_name                = None,
+               db_user                = None,
+               db_password            = None,
                **kwds):
     """The mod_hitfind class constructor stores the parameters passed
     from the pyana configuration file in instance variables.  All
@@ -78,6 +82,10 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     self.m_trial_id             = cspad_tbx.getOptInteger(trial_id)
     self.m_db_logging           = cspad_tbx.getOptBool(db_logging)
     self.m_sql_buffer_size      = cspad_tbx.getOptInteger(sql_buffer_size)
+    self.m_db_host              = cspad_tbx.getOptString(db_host)
+    self.m_db_name              = cspad_tbx.getOptString(db_name)
+    self.m_db_user              = cspad_tbx.getOptString(db_user)
+    self.m_db_password          = cspad_tbx.getOptString(db_password)
     # A ROI should not contain any ASIC boundaries, as these are
     # noisy.  Hence circular ROI:s around the beam centre are probably
     # not such a grand idea.
@@ -115,7 +123,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     if self.m_db_logging:
       from cxi_xdr_xes.cftbx.cspad_ana import db
       self.logger.info("Connecting to db...")
-      dbobj = db.dbconnect()
+      dbobj = db.dbconnect(self.m_db_host, self.m_db_name, self.m_db_user, self.m_db_password)
       assert dbobj.open
       self.logger.info("Connected.")
 
