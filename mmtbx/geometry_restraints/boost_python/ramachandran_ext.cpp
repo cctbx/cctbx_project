@@ -91,7 +91,7 @@ namespace boost_python {
           af::const_ref<scitbx::vec3<double> > const&,
           af::const_ref<scitbx::vec3<double> > const&,
           af::const_ref<scitbx::vec3<double> > const&,
-          af::tiny<double, 4>,
+          af::small<double, 5>,
           af::ref<double> const&))
         ramachandran_residual_sum,
         (arg("sites_cart"), arg("proxies"), arg("gradient_array"),

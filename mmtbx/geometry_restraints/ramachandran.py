@@ -50,6 +50,9 @@ master_phil = iotbx.phil.parse("""
     dist_weight_max = 10.0
       .type = float
       .expert_level = 2
+    dist_weight_min = 2.0
+      .type = float
+      .expert_level = 2
     weight = None
       .type = float
       .expert_level = 2
@@ -162,7 +165,7 @@ class ramachandran_manager(object):
           transpro_table=self.tables.transpro,
           prepro_table=self.tables.prepro,
           ileval_table=self.tables.ileval,
-          weights=(w, op.esd, op.dist_weight_max, op.weight_scale),
+          weights=(w, op.esd, op.dist_weight_max, 2.0, op.weight_scale),
           residuals_array=residuals_array)
       return res
     elif (self.params.rama_potential == "rosetta") :
@@ -310,31 +313,39 @@ class ramachandran_plot_data(object):
           triplet = [phi_, psi_, val]
           stuff[selfstore].append(triplet)
 
-    # This strange cutting of tables at arbitrary thresholds is necessary
-    # to make underlying 'algorithm' for gradient calculation
-    # work in reasonable time (~2*n where n is number of points in the table,
-    # for every gradient for each proxy).
-    # Essentially, for each region on Ramachandran
-    # plot it selects points with highest values (>0.5-0.7 of maximum region
-    # value) and works only with them. This selection has nothing to do with
-    # actual limits of allowed/favored regions. Funny thing is as soon as
-    # phi-psi angles arrive to selected area, corresponding restraint is
-    # effectively disabled by weight - calculations are still performed.
-    self.general = self.normalize_general(data=stuff[0])
-    self.gly     = self.normalize_gly(data=stuff[1])
-    self.cispro  = self.normalize_pro(data=stuff[2])
-    self.transpro= self.normalize_pro(data=stuff[3])
-    self.prepro  = self.normalize_prepro(data=stuff[4])
-    self.ileval  = self.normalize_general(data=stuff[5])
+    self.general = self.select_good(data=stuff[0], step=2)
+    self.gly     = self.select_good(data=stuff[1], step=4)
+    self.cispro  = self.select_good(data=stuff[2], step=2)
+    self.transpro= self.select_good(data=stuff[3], step=2)
+    self.prepro  = self.select_good(data=stuff[4], step=2)
+    self.ileval  = self.select_good(data=stuff[5], step=2)
 
-  def norm_to_max(self, data, val, sel, threshold=0.5):
-    vmax = flex.max(val.select(sel))
-    sel1 = val > vmax*threshold
-    return data.select((sel1&sel))
-
-  def thin_data(self, x, step = 1):
-    result = x.select(flex.size_t(range(0,x.size(),step)))
+  def select_good(self, data, step):
+    phi, psi, val = self.split_array(data=data)
+    # 0.02 is border for favored, 0.007 - arbitrary addition to ensure more
+    # residues in favored region
+    sel = (val>0.027)
+    phi_values = set(list(phi))
+    psi_values = set(list(psi))
+    phi_list = sorted(phi_values)
+    psi_list = sorted(psi_values)
+    needed_phi_values = set([phi_list[i] for i in range(0, len(phi_list),step)])
+    needed_psi_values = set([psi_list[i] for i in range(0, len(psi_list),step)])
+    result = flex.vec3_double()
+    selected = data.select(sel)
+    for phi, psi, val in selected:
+      if phi in needed_phi_values and psi in needed_psi_values:
+        result.append([phi, psi, val])
     return result
+
+  # def norm_to_max(self, data, val, sel, threshold=0.5):
+  #   vmax = flex.max(val.select(sel))
+  #   sel1 = val > vmax*threshold
+  #   return data.select((sel1&sel))
+
+  # def thin_data(self, x, step = 1):
+  #   result = x.select(flex.size_t(range(0,x.size(),step)))
+  #   return result
 
   def split_array(self, data):
     phi = flex.double()
@@ -346,86 +357,89 @@ class ramachandran_plot_data(object):
       val.append(z)
     return phi, psi, val
 
-  def normalize_general(self, data):
-    phi, psi, val = self.split_array(data=data)
-    s0=(phi>0)&(phi< 180) & (psi<  -5)&(psi>-180)
-    s1=(phi>0)&(phi< 180) & (psi>  -5)&(psi< 65)
-    s2=(phi<0)&(phi>-180) & (psi<-100)&(psi>-180)
-    s3=(phi<0)&(phi>-180) & (psi> -65)&(psi<  50)
-    s4=(phi<0)&(phi>-180) & (psi>  50)&(psi< 180)
-    s5=(phi<0)&(phi>-180) & (psi<-65)&(psi>-100)
-    s6=(phi>0)&(phi< 180) & (psi>65)&(psi< 180)
-    d0 = self.norm_to_max(data=data, val=val, sel=s0, threshold=0.7)
-    d1 = self.norm_to_max(data=data, val=val, sel=s1, threshold=0.5)
-    d2 = self.norm_to_max(data=data, val=val, sel=s2, threshold=0.5)
-    d3 = self.norm_to_max(data=data, val=val, sel=s3, threshold=0.5)
-    d4 = self.norm_to_max(data=data, val=val, sel=s4, threshold=0.5)
-    d5 = self.norm_to_max(data=data, val=val, sel=s5, threshold=0.7)
-    d6 = self.norm_to_max(data=data, val=val, sel=s6, threshold=0.7)
-    d1.extend(d5)
-    d1.extend(d6)
-    d1.extend(d0)
-    d1.extend(d2)
-    d1.extend(d3)
-    d1.extend(d4)
-    return self.thin_data(d1)
+  # def normalize_general(self, data):
+  #   phi, psi, val = self.split_array(data=data)
+  #   s0=(phi>0)&(phi< 180) & (psi<  -5)&(psi>-180)
+  #   s1=(phi>0)&(phi< 180) & (psi>  -5)&(psi< 65)
+  #   s2=(phi<0)&(phi>-180) & (psi<-100)&(psi>-180)
+  #   s3=(phi<0)&(phi>-180) & (psi> -65)&(psi<  50)
+  #   s4=(phi<0)&(phi>-180) & (psi>  50)&(psi< 180)
+  #   s5=(phi<0)&(phi>-180) & (psi<-65)&(psi>-100)
+  #   s6=(phi>0)&(phi< 180) & (psi>65)&(psi< 180)
+  #   d0 = self.norm_to_max(data=data, val=val, sel=s0, threshold=0.7)
+  #   d1 = self.norm_to_max(data=data, val=val, sel=s1, threshold=0.5)
+  #   d2 = self.norm_to_max(data=data, val=val, sel=s2, threshold=0.5)
+  #   d3 = self.norm_to_max(data=data, val=val, sel=s3, threshold=0.5)
+  #   d4 = self.norm_to_max(data=data, val=val, sel=s4, threshold=0.5)
+  #   d5 = self.norm_to_max(data=data, val=val, sel=s5, threshold=0.7)
+  #   d6 = self.norm_to_max(data=data, val=val, sel=s6, threshold=0.7)
+  #   d1.extend(d5)
+  #   d1.extend(d6)
+  #   d1.extend(d0)
+  #   d1.extend(d2)
+  #   d1.extend(d3)
+  #   d1.extend(d4)
+  #   return self.thin_data(d1)
 
-  def normalize_prepro(self, data):
-    phi, psi, val = self.split_array(data=data)
-    s1 =(phi<0)&(phi>-180) & (psi<10)&(psi>-110)
-    s2 =(phi<0)&(phi>-180) & (psi>10)&(psi<180)
-    s3 =(phi>0)&(phi<90) & (psi> 0)&(psi< 110)
-    s6 =(phi<0)&(phi>-180)& (psi<-150)&(psi>-180)
-    s5 =(phi>120)&(phi<180)& (psi>-180)&(psi<180)
-    s4 =(phi>0)&(phi<120)& (psi>120)&(psi<180)
-    d1 = self.norm_to_max(data=data, val=val, sel=s1)
-    d2 = self.norm_to_max(data=data, val=val, sel=s2)
-    d3 = self.norm_to_max(data=data, val=val, sel=s3)
-    d6 = self.norm_to_max(data=data, val=val, sel=s6)
-    d4 = self.norm_to_max(data=data, val=val, sel=s4)
-    d5 = self.norm_to_max(data=data, val=val, sel=s5)
-    d1.extend(d4)
-    d1.extend(d5)
-    d1.extend(d2)
-    d1.extend(d3)
-    d1.extend(d6)
-    return self.thin_data(d1)
+  # def normalize_prepro(self, data):
+  #   phi, psi, val = self.split_array(data=data)
+  #   s1 =(phi<0)&(phi>-180) & (psi<10)&(psi>-110)
 
-  def normalize_pro(self, data):
-    phi, psi, val = self.split_array(data=data)
-    s1=(phi<0)&(phi>-130)& (psi<-100)&(psi>-180)
-    s2=(phi<0)&(phi>-130)& (psi>-100)&(psi<  30)
-    s3=(phi<0)&(phi>-130)& (psi>  30)&(psi<  90)
-    s4=(phi<0)&(phi>-130)& (psi>  90)&(psi< 180)
-    d1 = self.norm_to_max(data=data, val=val, sel=s1)
-    d2 = self.norm_to_max(data=data, val=val, sel=s2)
-    d3 = self.norm_to_max(data=data, val=val, sel=s3)
-    d4 = self.norm_to_max(data=data, val=val, sel=s4)
-    d1.extend(d2)
-    d1.extend(d3)
-    d1.extend(d4)
-    return self.thin_data(d1)
+  #   s2 = (((phi<0)&(phi>-180) & (psi>10)&(psi<180)) |
+  #    ((phi<0)&(phi>-180)& (psi<-150)&(psi>-180)) |
+  #    ((phi>120)&(phi<180)& (psi>-180)&(psi<180)))
 
-  def normalize_gly(self, data):
-    phi, psi, val = self.split_array(data=data)
-    s1=(phi<0)&(phi>-180)& (psi<-90)&(psi>-180)
-    s2=(phi>0)&(phi<180) & (psi<-90)&(psi>-180)
-    s3=(phi<0)&(phi>-180)& (psi>-90)&(psi<70)
-    s4=(phi>0)&(phi<180) & (psi>-90)&(psi<70)
-    s5=(phi<0)&(phi>-180)& (psi>70)&(psi<180)
-    s6=(phi>0)&(phi<180) & (psi>70)&(psi<180)
-    d1 = self.norm_to_max(data=data, val=val, sel=s1)
-    d2 = self.norm_to_max(data=data, val=val, sel=s2)
-    d3 = self.norm_to_max(data=data, val=val, sel=s3)
-    d4 = self.norm_to_max(data=data, val=val, sel=s4)
-    d5 = self.norm_to_max(data=data, val=val, sel=s5)
-    d6 = self.norm_to_max(data=data, val=val, sel=s6)
-    d1.extend(d2)
-    d1.extend(d3)
-    d1.extend(d4)
-    d1.extend(d5)
-    d1.extend(d6)
-    return self.thin_data(d1)
+  #   s3 =(phi>0)&(phi<90) & (psi> 0)&(psi< 110)
+  #   d1 = self.norm_to_max(data=data, val=val, sel=s1)
+  #   d2 = self.norm_to_max(data=data, val=val, sel=s2)
+  #   d3 = self.norm_to_max(data=data, val=val, sel=s3)
+  #   d1.extend(d2)
+  #   d1.extend(d3)
+  #   return self.thin_data(d1)
+
+  # def normalize_trans_pro(self, data):
+  #   phi, psi, val = self.split_array(data=data)
+  #   s1=(((phi<0)&(phi>-130)& (psi<-100)&(psi>-180)) |
+  #     ((phi<0)&(phi>-130)& (psi>  90)&(psi< 180)))
+  #   s2=(phi<0)&(phi>-130)& (psi>-100)&(psi<  30)
+  #   s3=(phi<0)&(phi>-130)& (psi>  30)&(psi<  90)
+  #   d1 = self.norm_to_max(data=data, val=val, sel=s1)
+  #   d2 = self.norm_to_max(data=data, val=val, sel=s2)
+  #   d3 = self.norm_to_max(data=data, val=val, sel=s3)
+  #   d1.extend(d2)
+  #   d1.extend(d3)
+  #   return self.thin_data(d1)
+
+  # def normalize_cis_pro(self, data):
+  #   phi, psi, val = self.split_array(data=data)
+  #   s1=(((phi<0)&(phi>-130)& (psi<-100)&(psi>-180)) |
+  #     ((phi<0)&(phi>-130)& (psi>  90)&(psi< 180)))
+  #   s2=(phi<0)&(phi>-130)& (psi>-100)&(psi<  80)
+  #   d1 = self.norm_to_max(data=data, val=val, sel=s1)
+  #   d2 = self.norm_to_max(data=data, val=val, sel=s2)
+  #   d1.extend(d2)
+  #   return self.thin_data(d1)
+
+  # def normalize_gly(self, data):
+  #   phi, psi, val = self.split_array(data=data)
+  #   s1=(phi<0)&(phi>-180)& (psi<-90)&(psi>-180)
+  #   s2=(phi>0)&(phi<180) & (psi<-90)&(psi>-180)
+  #   s3=(phi<0)&(phi>-180)& (psi>-90)&(psi<70)
+  #   s4=(phi>0)&(phi<180) & (psi>-90)&(psi<70)
+  #   s5=(phi<0)&(phi>-180)& (psi>70)&(psi<180)
+  #   s6=(phi>0)&(phi<180) & (psi>70)&(psi<180)
+  #   d1 = self.norm_to_max(data=data, val=val, sel=s1)
+  #   d2 = self.norm_to_max(data=data, val=val, sel=s2)
+  #   d3 = self.norm_to_max(data=data, val=val, sel=s3)
+  #   d4 = self.norm_to_max(data=data, val=val, sel=s4)
+  #   d5 = self.norm_to_max(data=data, val=val, sel=s5)
+  #   d6 = self.norm_to_max(data=data, val=val, sel=s6)
+  #   d1.extend(d2)
+  #   d1.extend(d3)
+  #   d1.extend(d4)
+  #   d1.extend(d5)
+  #   d1.extend(d6)
+  #   return self.thin_data(d1)
 
 
 # def process_refinement_settings (
