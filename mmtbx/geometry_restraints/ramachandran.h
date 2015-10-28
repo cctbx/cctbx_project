@@ -314,7 +314,7 @@ namespace mmtbx { namespace geometry_restraints {
     af::const_ref<scitbx::vec3<double> > const& transpro_table,
     af::const_ref<scitbx::vec3<double> > const& prepro_table,
     af::const_ref<scitbx::vec3<double> > const& ileval_table,
-    af::tiny<double, 4> weights,
+    af::small<double, 5> weights,
     af::ref<double > const& residuals_array)
   {
     MMTBX_ASSERT(gradient_array.size() == sites_cart.size());
@@ -345,7 +345,7 @@ namespace mmtbx { namespace geometry_restraints {
       double w;
       if (weights[0] < 0) {
         w = 1.0/weights[1]/weights[1] *
-            (r[2]<weights[2] ? r[2] : weights[2]) * weights[3];
+            (std::max(weights[3], std::min(r[2], weights[2]))) * weights[4];
       }
       else w = weights[0];
       double weight = w;
