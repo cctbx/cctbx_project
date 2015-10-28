@@ -574,6 +574,10 @@ def draw_ramachandran_plot (points,
                             show_labels=True) :
   p = ramachandran_plot()
   # XXX where do these numbers come from?
+  # They are probably wrong/inconsistent.
+  # They don't match what we have right here in evaluateScore function
+  # - at the very least I don't see separate values for cis-proline
+  # while it is present in evaluateScore.
   if position_type == RAMA_GENERAL :
     contours = [0.1495, 0.376]
   else :
