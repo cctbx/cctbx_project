@@ -2399,6 +2399,7 @@ prime/command_line/iota_mpi_submit.py -text
 prime/command_line/iotacc.py -text
 prime/command_line/mpi_iota.py -text
 prime/command_line/postrefine.py -text
+prime/command_line/single_image_iota.py -text
 prime/command_line/spot_param_visualizer.py -text
 prime/command_line/viewstats.py -text
 prime/ext.cpp -text

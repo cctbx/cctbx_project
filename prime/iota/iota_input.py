@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 09/01/2015
+Last Changed: 10/28/2015
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -15,7 +15,6 @@ import random
 from cStringIO import StringIO
 
 import iotbx.phil as ip
-import iota_cmd as cmd
 
 master_phil = ip.parse("""
 description = Integration Optimization, Transfer and Analysis (IOTA)
@@ -69,70 +68,86 @@ image_triage
     .type = int
     .help = Minimum number of Bragg peaks to establish diffraction
 }
-grid_search
-  .help = "Parameters for the grid search."
+cctbx
+  .help = Options for CCTBX-based image processing
 {
-  flag_on = True
-    .type = bool
-    .help = Set to false to only use median spotfinding parameters
-  area_median = 5
-    .type = int
-    .help = Median spot area.
-  area_range = 2
-    .type = int
-    .help = Plus/minus range for spot area.
-  height_median = 4
-    .type = int
-    .help = Median spot height.
-  height_range = 2
-    .type = int
-    .help = Plus/minus range for spot height.
-  sig_height_search = False
-    .type = bool
-    .help = Set to true to scan signal height in addition to spot height
-}
-selection
-  .help = Parameters for integration result selection
-{
-  select_only
-    .help = set to True to re-do selection with previous
-    {
-    flag_on = False
-      .type = bool
-      .help = set to True to bypass grid search and just run selection
-    grid_search_path = None
-      .type = path
-      .help = set if you want to use specific grid_search results
-      .help = leave as None to use grid search results from previous run
-    }
-  min_sigma = 5
-    .type = int
-    .help = minimum I/sigma(I) cutoff for "strong spots"
-  select_by = *mosaicity epv
-    .type = choice
-    .help = Use mosaicity or Ewald proximal volume for optimal parameter selection
-  prefilter
-    .help = Used to throw out integration results that do not fit user-defined unit cell information
+  grid_search
+    .help = "Parameters for the grid search."
   {
-    flag_on = False
+    flag_on = True
       .type = bool
-      .help = Set to True to activate prefilter
-    target_pointgroup = None
-      .type = str
-      .help = Target point group, e.g. "P4"
-    target_unit_cell = None
-      .type = unit_cell
-      .help = In format of "a, b, c, alpha, beta, gamma", e.g. 79.4, 79.4, 38.1, 90.0, 90.0, 90.0
-    target_uc_tolerance = 0.05
-      .type = float
-      .help = Maximum allowed unit cell deviation from target
-    min_reflections = 0
+      .help = Set to false to only use median spotfinding parameters
+    smart = False
+      .type = bool
+      .help = Set to True to perform a pseudo-gradient search instead of brute
+      .help = force grid search
+    area_median = 5
       .type = int
-      .help = Minimum integrated reflections per image
-    min_resolution = None
-      .type = float
-      .help = Minimum resolution for accepted images
+      .help = Median spot area.
+    area_range = 2
+      .type = int
+      .help = Plus/minus range for spot area.
+    height_median = 4
+      .type = int
+      .help = Median spot height.
+    height_range = 2
+      .type = int
+      .help = Plus/minus range for spot height.
+    sig_height_search = False
+      .type = bool
+      .help = Set to true to scan signal height in addition to spot height
   }
+  selection
+    .help = Parameters for integration result selection
+  {
+    select_only
+      .help = set to True to re-do selection with previous
+      {
+      flag_on = False
+        .type = bool
+        .help = set to True to bypass grid search and just run selection
+      grid_search_path = None
+        .type = path
+        .help = set if you want to use specific grid_search results
+        .help = leave as None to use grid search results from previous run
+      }
+    min_sigma = 5
+      .type = int
+      .help = minimum I/sigma(I) cutoff for "strong spots"
+    select_by = *mosaicity epv
+      .type = choice
+      .help = Use mosaicity or Ewald proximal volume for optimal parameter selection
+    prefilter
+      .help = Used to throw out integration results that do not fit user-defined unit cell information
+    {
+      flag_on = False
+        .type = bool
+        .help = Set to True to activate prefilter
+      target_pointgroup = None
+        .type = str
+        .help = Target point group, e.g. "P4"
+      target_unit_cell = None
+        .type = unit_cell
+        .help = In format of "a, b, c, alpha, beta, gamma", e.g. 79.4, 79.4, 38.1, 90.0, 90.0, 90.0
+      target_uc_tolerance = 0.05
+        .type = float
+        .help = Maximum allowed unit cell deviation from target
+      min_reflections = 0
+        .type = int
+        .help = Minimum integrated reflections per image
+      min_resolution = None
+        .type = float
+        .help = Minimum resolution for accepted images
+    }
+  }
+}
+dials
+  .help = Options for DIALS-based image processing
+  .help = This option is not yet ready for general use!
+{
+  min_spot_size = 6
+    .type = int
+    .help = Minimal spot size
 }
 analysis
   .help = "Analysis / visualization options."
@@ -147,7 +162,7 @@ analysis
   charts = False
     .type = bool
     .help = If True, outputs PDF files w/ charts of mosaicity, rmsd, etc.
-  heatmap = None show *file both
+  heatmap = *None show file both
     .type = choice
     .help = Show / output to file a heatmap of grid search results
 }
@@ -214,7 +229,6 @@ def process_input(args,
   from libtbx.phil.command_line import argument_interpreter
   from libtbx.utils import Sorry
 
-  cmd.Command.start("Generating parameters")
   if mode == 'file':
     user_phil = [ip.parse(open(inp).read()) for inp in [input_file]]
     working_phil = master_phil.fetch(sources=user_phil)
@@ -282,8 +296,6 @@ def process_input(args,
       txt_out += one_output + '\n'
     write_defaults(os.path.abspath(os.curdir), txt_out)
 
-  cmd.Command.end("Generating parameters -- DONE")
-
   return params, diff_out
 
 
@@ -343,6 +355,48 @@ def write_defaults(current_path, txt_out):
 
   with open('{}/iota.param'.format(current_path), 'w') as default_settings_file:
     default_settings_file.write(txt_out)
+
+
+def write_dials_defaults(current_path):
+  """ Generate default DIALS params; MAY BE UNNECESSARY IN LONG TERM """
+
+  from iotbx.phil import parse
+  from dials.command_line.process import phil_scope
+
+  phil_scope = parse('''
+    include scope xfel.command_line.xtc_process.phil_scope
+  ''', process_includes=True)
+
+  sub_phil_scope = parse('''
+    output {
+      cxi_merge_picklefile = None
+        .type = str
+        .help = Output integration results for each color data to separate cctbx.xfel-style pickle files
+    }
+    indexing {
+      stills {
+        ewald_proximity_resolution_cutoff = 2.0
+          .type = float
+          .help = For calculating the area under the green curve, or the acceptable
+          .help = volume of reciprocal space for spot prediction, use this high-resolution cutoff
+      }
+    }
+    cxi_merge {
+      include scope xfel.command_line.cxi_merge.master_phil
+    }
+  ''', process_includes=True)
+
+  phil_scope.adopt_scope(sub_phil_scope)
+
+  with Capturing() as output:
+    phil_scope.show()
+
+  def_target_file = '{}/dials_target.phil'.format(current_path)
+
+  with open(def_target_file, 'w') as targ:
+    for one_output in output:
+      targ.write('{}\n'.format(one_output))
+
 
 def print_params():
 
