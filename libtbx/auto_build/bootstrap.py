@@ -1,7 +1,7 @@
 
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 from __future__ import division
-import os, os.path, posixpath
+import os, os.path, posixpath, ntpath
 import sys
 import stat
 import subprocess
@@ -586,7 +586,9 @@ class Builder(object):
     self.name = '%s-%s'%(self.category, self.platform)
     # Platform configuration.
     self.python_base = self.opjoin(*['..', 'base', 'bin', 'python'])
-    if self.isPlatformWindows():
+    if self.platform and 'windows' in self.platform:
+      self.python_base = self.opjoin(*['..', 'base', 'bin', 'python', 'python.exe'])
+    if sys.platform == "win32": # assuming we run standalone without buildbot
       self.python_base = self.opjoin(*[os.getcwd(), 'base', 'bin', 'python', 'python.exe'])
     self.with_python = with_python
     if self.with_python:
@@ -686,7 +688,8 @@ class Builder(object):
       i.run()
 
   def opjoin(self, *args):
-    #return self.sep.join(args)
+    if self.isPlatformWindows():
+      return ntpath.join(*args)
     return os.path.join(*args)
 
   def get_codebases(self):
@@ -750,7 +753,7 @@ class Builder(object):
     if self.isPlatformWindows():
       if module in ["cbflib",]: # can't currently compile cbflib for Windows due to lack of HDF5 component
         return
-    if method == 'rsync' and not self.isPlatformWindows(): # sys.platform != "win32":
+    if method == 'rsync' and not self.isPlatformWindows():
       self._add_rsync(module, parameters)
     elif self.isPlatformWindows() and method == 'pscp':
       self._add_pscp(module, parameters)
@@ -1129,7 +1132,7 @@ class Builder(object):
         ] + self.get_libtbx_configure()
     fname = self.opjoin("config_modules.cmd")
     confstr = subprocess.list2cmdline(configcmd) + '\n'
-    if self.isPlatformWindows():
+    if not self.isPlatformWindows():
       fname = self.opjoin("config_modules.sh")
       confstr = '#!/bin/sh\n\n' + confstr
     # klonky way of writing file later on, but it works
