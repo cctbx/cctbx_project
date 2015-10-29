@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 10/28/2015
+Last Changed: 10/29/2015
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -13,7 +13,6 @@ Description : Creates image object. If necessary, converts raw image to pickle
 '''
 
 import os
-import sys
 import math
 
 from scitbx.array_family import flex
@@ -223,10 +222,6 @@ class SingleImage(object):
           data['OSC_START'] = osc_start
           data['OSC_RANGE'] = osc_range
           data['TIME'] = scan.get_exposure_times()[0]
-
-      print
-      print detector
-      sys.exit()
 
     else:
       data = None
@@ -669,7 +664,8 @@ class SingleImage(object):
       # Create DIALS integrator object
       from prime.iota.iota_dials import Integrator
       integrator = Integrator(self.conv_img,
-                              self.obj_base)
+                              self.obj_base,
+                              self.params)
 
       # Run DIALS test
       integrator.find_spots()
