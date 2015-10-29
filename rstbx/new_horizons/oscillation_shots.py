@@ -135,9 +135,10 @@ class IntegrateCharacters:
       #P = Profiler("proper")
       integrate_worker.integration_proper()
       local["results"].append(integrate_worker)
-      local["r_xbeam"]=setting["refined x beam"]
-      local["r_ybeam"]=setting["refined y beam"]
-      local["r_distance"]=setting["refined distance"]
+      local["r_xbeam"]=ai.xbeam()
+      local["r_ybeam"]=ai.ybeam()
+      local["r_distance"]=ai.distance()
+      local["r_wavelength"]=ai.wavelength
       local["r_residual"]=integrate_worker.r_residual
       local["r_mosaicity"]=setting["mosaicity"]
       try:
@@ -299,7 +300,7 @@ class IntegrateCharacters:
             xbeam = local["r_xbeam"],
             ybeam = local["r_ybeam"],
             distance = local["r_distance"],
-            wavelength = float(local["wavelength"]),
+            wavelength = float(local["r_wavelength"]),
             residual = local["r_residual"],
             mosaicity = local["r_mosaicity"],
             pointgroup = local["spacegroup"],

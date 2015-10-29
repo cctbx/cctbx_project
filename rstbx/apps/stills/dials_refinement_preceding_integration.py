@@ -183,6 +183,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
                azimuthal=azimuthal))
 
 
+    self.inputpd["symmetry"] = c_symmetry
     self.inputpd["symmetry"].show_summary(prefix="SETTING ")
 
 
@@ -304,10 +305,11 @@ class integrate_one_frame(IntegrationMetaProcedure):
 
       #print oldbase.xbeam, oldbase.ybeam
       newbeam = detector[0].get_beam_centre(experiments[0].beam.get_s0())
+      newdistance = -detector[0].get_beam_centre_lab(experiments[0].beam.get_s0())[2]
 
       from labelit.dptbx import Parameters
       base = Parameters(xbeam = newbeam[0], ybeam = newbeam[1], #oldbase.xbeam, ybeam = oldbase.ybeam,
-                        distance = -detector[0].get_distance(), twotheta = 0.0)
+                        distance = newdistance, twotheta = 0.0)
       self.inputai.setBase(base)
       self.inputai.setWavelength(experiments[0].beam.get_wavelength())
 
@@ -383,6 +385,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
     print refiner.selection_used_for_refinement().count(True),"spots used for refinement"
     print refiner.get_experiments()[0].beam
     print refiner.get_experiments()[0].detector
+    print "Distance:", -refiner.get_experiments()[0].detector[0].get_beam_centre_lab(refiner.get_experiments()[0].beam.get_s0())[2]
     print refiner.get_experiments()[0].crystal
     return refiner
 
