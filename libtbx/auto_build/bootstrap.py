@@ -23,7 +23,32 @@ import zipfile
 # svn relocate svn+ssh://<username>@svn.code.sf.net/p/cctbx/code/trunk
 
 
-def check_for_Windows_prerequisites():
+# Utililty function to be executed on slave machine or called directly by standalone bootstrap script
+def tar_extract(workdir, arx, modulename=None):
+  try:
+    # using tarfile module rather than unix tar command which is not platform independent
+    tar = tarfile.open(os.path.join(workdir, arx))
+    tar.extractall(path=workdir) # TODO: requires python 2.5!
+    tarfoldername = os.path.join(workdir, os.path.commonprefix(tar.getnames()).split('/')[0])
+    tar.close()
+    # take full permissions on all extracted files
+    module = os.path.join(workdir, tarfoldername)
+    for root, dirs, files in os.walk(module):
+      for fname in files:
+        full_path = os.path.join(root, fname)
+        os.chmod(full_path, stat.S_IWRITE)
+    # rename to expected folder name, e.g. boost_hot -> boost
+    # only rename if folder names differ
+    if modulename != tarfoldername and os.path.exists(modulename):
+      shutil.rmtree(modulename)
+    os.rename(tarfoldername, modulename)
+  except Exception, e:
+    print "Extracting tar archive resulted in error:"
+    raise
+  return 0
+
+# Utililty function to be executed on slave machine or called directly by standalone bootstrap script
+def CheckWindowsPrerequisites():
   import distutils.spawn
   if not sys.platform=="win32":
     return
@@ -43,6 +68,7 @@ def check_for_Windows_prerequisites():
     xcptstr += 'SVN_SSH environment variable should be set to "SVN_SSH=%s' %fwdp
   if xcptstr:
     raise Exception(xcptstr)
+
 
 # Mock commands to run standalone, without buildbot.
 class ShellCommand(object):
@@ -65,29 +91,12 @@ class ShellCommand(object):
         os.makedirs(workdir)
       except Exception, e:
         pass
-
     if command[0] == 'tar':
-      try:
-        # XXX use tarfile rather than unix tar command which is not platform independent
-        tar = tarfile.open(os.path.join(workdir, command[2]))
-        tar.extractall(path=workdir) # TODO: requires python 2.5!
-        if len(command) > 3 and command[3]: # rename to expected folder name, e.g. boost_hot -> boost
-          module = os.path.join(workdir, command[3])
-          tarfoldername = os.path.join(workdir, os.path.commonprefix(tar.getnames()).split('/')[0])
-          # only rename if folder names differ
-          if module != tarfoldername and os.path.exists(module):
-            shutil.rmtree(module)
-          os.rename(tarfoldername, module)
-          for root, dirs, files in os.walk(module):
-            for fname in files:
-              full_path = os.path.join(root, fname)
-              os.chmod(full_path ,stat.S_IWRITE)
-        tar.close()
-
-      except Exception, e:
-        print "Extracting tar archive resulted in error:"
-        raise
-      return 0
+      # don't think any builders explicitly calls tar but leave it here just in case
+      modname = None
+      if len(command) > 3 and command[3]:
+        modname = command[3]
+      return tar_extract(workdir, command[2], modname)
     if command[0] == 'rm':
       # XXX use shutil rather than rm which is not platform independent
       for directory in command[2:]:
@@ -95,7 +104,7 @@ class ShellCommand(object):
           print 'Deleting directory : %s' % directory
           try: shutil.rmtree(directory)
           except OSError, e:
-            print "Stangely couldn't delete %s" % directory
+            print "Strangely couldn't delete %s" % directory
       return 0
     try:
       #print "workdir, os.getcwd =", workdir, os.getcwd()
@@ -577,9 +586,7 @@ class Builder(object):
     self.name = '%s-%s'%(self.category, self.platform)
     # Platform configuration.
     self.python_base = self.opjoin(*['..', 'base', 'bin', 'python'])
-    #if 'win32'==sys.platform:
     if self.isPlatformWindows():
-      self._check_for_Windows_prerequisites()
       self.python_base = self.opjoin(*[os.getcwd(), 'base', 'bin', 'python', 'python.exe'])
     self.with_python = with_python
     if self.with_python:
@@ -588,7 +595,6 @@ class Builder(object):
     self.download_only = download_only
     self.skip_base = skip_base
     self.force_base_build = force_base_build
-
     self.add_init()
 
     # Cleanup
@@ -596,6 +602,14 @@ class Builder(object):
       self.cleanup(['dist', 'tests', 'doc', 'tmp', 'base', 'base_tmp', 'build'])
     else:
       self.cleanup(['dist', 'tests', 'tmp'])
+
+    if self.platform and 'windows' in self.platform: # only executed by buildbot master
+      from buildbot.steps.transfer import FileDownload
+      # download us to folder above modules on slave so we can run the utility functions defined above
+      self.add_step(FileDownload(mastersrc="bootstrap.py", slavedest="../bootstrap.py"))
+
+    if self.isPlatformWindows():
+      self._check_for_Windows_prerequisites()
 
     # Add 'hot' sources
     if hot:
@@ -634,6 +648,9 @@ class Builder(object):
     if build and not self.download_only:
       self.add_dispatchers()
       self.add_refresh()
+
+    if self.platform and 'windows' in self.platform: # only executed by buildbot master
+      self.add_rm_bootstrap_on_slave()
 
   def isPlatformWindows(self):
     if self.platform and 'windows' in self.platform:
@@ -693,7 +710,6 @@ class Builder(object):
   def cleanup(self, dirs=None):
     dirs = dirs or []
     cmd=['rm', '-rf'] + dirs
-    #if sys.platform == "win32":
     if self.isPlatformWindows():
       #rmdir sets the error flag if directory is not found. Mask it with cmd shell
       cmd=['cmd', '/c', 'rmdir', '/S', '/Q'] + dirs + ['&', 'set', 'ERRORLEVEL=0']
@@ -701,6 +717,16 @@ class Builder(object):
       name='cleanup',
       command =cmd,
       workdir=['.']
+    ))
+
+  def add_rm_bootstrap_on_slave(self):
+    # if file is not found error flag is set. Mask it with cmd shell
+    cmd=['cmd', '/c', 'del', '/Q', "bootstrap.py*", '&', 'set', 'ERRORLEVEL=0']
+    self.add_step(self.shell(
+      name='removing bootstrap utilities',
+      command =cmd,
+      workdir=['modules'],
+      description="remove temporary bootstrap.py*",
     ))
 
   def add_step(self, step):
@@ -721,7 +747,6 @@ class Builder(object):
     tarurl, arxname, dirpath = None, None, None
     if self.isPlatformWindows():
       tarurl, arxname, dirpath = MODULES.get_module(module)().get_tarauthenticated(auth=self.get_auth())
-    #if sys.platform == "win32":
     if self.isPlatformWindows():
       if module in ["cbflib",]: # can't currently compile cbflib for Windows due to lack of HDF5 component
         return
@@ -765,20 +790,23 @@ class Builder(object):
     if dirpath[-1] == '/':
       dirpath = dirpath[:-1]
     basename = posixpath.basename(dirpath)
-    self.add_step(self.shell( # pack directory with tar on remote system
-      name='hot %s'%module,
-      command=[
+    cmd=[
         'plink',
         tarurl,
-        'cd',
+        '"' + 'cd',
         posixpath.split(dirpath)[0],
         '&&',
         'tar',
         'cfz',
         '~/' + arxname,
-        basename
-      ],
-      workdir=['modules']
+        basename + '"'
+      ]
+    mstr= " ".join(cmd)
+    self.add_step(self.shell( # pack directory with tar on remote system
+      name='hot %s'%module,
+      command=mstr,
+      workdir=['modules'],
+      description="create remote temporary archive of %s" %module,
     ))
 
   def _add_remote_rm_tar(self, module, tarurl, arxname):
@@ -791,16 +819,20 @@ class Builder(object):
         'rm ',
         arxname
       ],
-      workdir=['modules']
+      workdir=['modules'],
+      description="delete remote temporary archive of %s" %module,
     ))
-    self.add_step(self.shell( # extract the tarfile locally
-      command=['tar', 'xzf', arxname, module],
-      workdir=['modules']
+    self.add_step(self.shell(command=[
+      "python","-c","import sys; sys.path.append('..'); import bootstrap; \
+      bootstrap.tar_extract('','%s', '%s')" %(arxname, module) ],
+      workdir=['modules'],
+      description="extracting archive files to %s" %module,
     ))
     self.add_step(self.shell( # delete the tarfile locally
       # use 'cmd', '/c' as a substitute for shell=True in the subprocess.Popen call
       command=['cmd', '/c', 'del', arxname],
-      workdir=['modules']
+      workdir=['modules'],
+      description="delete local temporary archive of %s" %module,
     ))
 
   def _add_pscp(self, module, url):
@@ -816,7 +848,8 @@ class Builder(object):
         url1,
         '.',
       ],
-      workdir=['modules']
+      workdir=['modules'],
+      description="getting remote file %s" %url1,
     ))
 
   def _add_download(self, url, to_file):
@@ -829,10 +862,12 @@ class Builder(object):
   def _add_curl(self, module, url):
     filename = urlparse.urlparse(url)[2].split('/')[-1]
     self._add_download(url, os.path.join('modules', filename))
-
-    self.add_step(self.shell(
-      command=['tar', 'xzf', filename],
-      workdir=['modules']
+    #self._add_untar(filename, 'modules')
+    self.add_step(self.shell(command=[
+       "python","-c","import sys; sys.path.append('..''); import bootstrap; \
+       bootstrap.tar_extract('','%s')" %module],
+      workdir=['modules'],
+      description="extracting files from %s" %module,
     ))
 
   def _add_unzip(self, archive, directory, trim_directory=0):
@@ -865,6 +900,7 @@ class Builder(object):
               source.close()
         z.close()
     self.add_step(_unzipper())
+
 
   def _add_svn(self, module, url):
     svnflags = []
@@ -934,14 +970,14 @@ class Builder(object):
     raise Exception(error)
 
   def _check_for_Windows_prerequisites(self):
-    if not self.isPlatformWindows():
-      return
-# platform specific checks cannot run on buildbot master so add to build steps to run on slaves
-    self.add_step(self.shell(command=[
-       'python','-c','import sys, os; sys.path.append(os.path.join(os.getcwd(),"..")); import bootstrap; bootstrap.check_for_Windows_prerequisites()'],
-      workdir=['build'],
-      description="Checking for Windows prerequisites",
-    ))
+    if self.isPlatformWindows():
+      # platform specific checks cannot run on buildbot master so add to build steps to run on slaves
+      self.add_step(self.shell(command=[
+         "python","-c","import sys; sys.path.append('..'); import bootstrap; \
+          bootstrap.CheckWindowsPrerequisites()"],
+        workdir=['modules'],
+        description="Checking Windows prerequisites",
+      ))
 
   def add_command(self, command, name=None, workdir=None, args=None, **kwargs):
     if self.isPlatformWindows():
