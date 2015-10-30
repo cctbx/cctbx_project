@@ -36,12 +36,13 @@ def tar_extract(workdir, arx, modulename=None):
     for root, dirs, files in os.walk(module):
       for fname in files:
         full_path = os.path.join(root, fname)
-        os.chmod(full_path, stat.S_IWRITE)
+        os.chmod(full_path, stat.S_IREAD | stat.S_IWRITE)
     # rename to expected folder name, e.g. boost_hot -> boost
     # only rename if folder names differ
-    if modulename != tarfoldername and os.path.exists(modulename):
-      shutil.rmtree(modulename)
-    os.rename(tarfoldername, modulename)
+    if modulename:
+      if modulename != tarfoldername and os.path.exists(modulename):
+        shutil.rmtree(modulename)
+      os.rename(tarfoldername, modulename)
   except Exception, e:
     print "Extracting tar archive resulted in error:"
     raise
@@ -865,12 +866,13 @@ class Builder(object):
   def _add_curl(self, module, url):
     filename = urlparse.urlparse(url)[2].split('/')[-1]
     self._add_download(url, os.path.join('modules', filename))
-    #self._add_untar(filename, 'modules')
-    self.add_step(self.shell(command=[
+    self.add_step(self.shell(
+      name="extracting files from %s" %filename,
+      command=[
        "python","-c","import sys; sys.path.append('..'); import bootstrap; \
-       bootstrap.tar_extract('','%s')" %module],
+       bootstrap.tar_extract('','%s')" %filename],
       workdir=['modules'],
-      description="extracting files from %s" %module,
+      description="extracting files from %s" %filename,
     ))
 
   def _add_unzip(self, archive, directory, trim_directory=0):
@@ -990,7 +992,7 @@ class Builder(object):
     dots = [".."]*len(workdir)
     if workdir[0] == '.':
       dots = []
-    if self.isPlatformWindows():
+    if sys.platform == "win32": # assuming we run standalone without buildbot
       dots.extend([os.getcwd(), 'build', 'bin', command])
     else:
       dots.extend(['build', 'bin', command])
@@ -1123,21 +1125,18 @@ class Builder(object):
       description="run configure.py",
     ))
     # Prepare saving configure.py command to file should user want to manually recompile Phenix
-    relpython = os.path.relpath(self.python_base, self.opjoin(os.getcwd(),'build')) # relpath requires python 2.6!
-    if not self.isPlatformWindows():
-      relpython = os.path.relpath(self.python_base, os.getcwd()) # relpath requires python 2.6!
     configcmd =[
-        relpython, # default to using our python rather than system python
+        self.python_base, # default to using our python rather than system python
         self.opjoin('..', 'modules', 'cctbx_project', 'libtbx', 'configure.py')
         ] + self.get_libtbx_configure()
     fname = self.opjoin("config_modules.cmd")
-    confstr = subprocess.list2cmdline(configcmd) + '\n'
+    confstr = subprocess.list2cmdline(configcmd)
     if not self.isPlatformWindows():
       fname = self.opjoin("config_modules.sh")
       confstr = '#!/bin/sh\n\n' + confstr
     # klonky way of writing file later on, but it works
     self.add_step(self.shell(command=[
-         'python','-c','open(r\"%s\",\"w\").write(r\"\"\"%s\"\"\")' %(fname, confstr)
+         'python','-c','open(r\"%s\",\"w\").write(r\"\"\"%s\"\"\" + \"\\n\")' %(fname, confstr)
          ],
       workdir=['build'],
       description="save configure command",
