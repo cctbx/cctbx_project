@@ -10,7 +10,7 @@ from mmtbx.validation import rna_validate
 from mmtbx.validation import omegalyze
 from mmtbx.kinemage import kin_vec
 from iotbx.pdb import common_residue_names_get_class
-from libtbx import easy_run
+from libtbx import easy_run, Auto
 from scitbx import matrix
 from cctbx import geometry_restraints
 from mmtbx.monomer_library import pdb_interpretation
@@ -40,8 +40,15 @@ def get_master_phil():
         keep_hydrogens = False
         .type = bool
         .help = '''Keep hydrogens in input file'''
+        pdb_interpretation
+          .short_caption = Model interpretation
+        {
+          include scope mmtbx.monomer_library.pdb_interpretation.master_params_str
+        }
   }
-    """)
+    """,
+    process_includes=True,
+  )
 
 def build_name_hash(pdb_hierarchy):
   i_seq_name_hash = dict()
@@ -936,8 +943,15 @@ def run(args, pdb_interpretation_params=None):
     args=args,
     master_phil=master_phil,
     input_types=("pdb", "cif"))
+  auto_cdl=True
+  for po in input_objects["phil"]:
+    if po.as_str().find(".cdl")>-1:
+      auto_cdl=False
+      break
   work_phil = master_phil.fetch(sources=input_objects["phil"])
   work_params = work_phil.extract()
+  if auto_cdl:
+    work_params.kinemage.pdb_interpretation.restraints_library.cdl = Auto
   if work_params.kinemage.pdb == None:
     assert len(input_objects["pdb"]) == 1
     file_obj = input_objects["pdb"][0]
@@ -971,7 +985,8 @@ def run(args, pdb_interpretation_params=None):
       for srv in [mon_lib_srv, ener_lib]:
         srv.process_cif_object(cif_object=cif_object)
   if pdb_interpretation_params is None:
-    pdb_int_work_params = pdb_interpretation.master_params.extract()
+    #pdb_int_work_params = pdb_interpretation.master_params.extract()
+    pdb_int_work_params = work_params.kinemage.pdb_interpretation
   else:
     pdb_int_work_params = pdb_interpretation_params
   pdb_int_work_params.clash_guard.nonbonded_distance_threshold = None
