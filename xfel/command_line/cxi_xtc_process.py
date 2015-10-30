@@ -192,6 +192,8 @@ class Script(object):
 
         for i in xrange(len(mytimes)):
           self.process_event(run, mytimes[i])
+      run.end()
+    ds.end()
 
   def process_event(self, run, timestamp):
     """

@@ -47,6 +47,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                db_table_name          = None,
                db_user                = None,
                db_password            = None,
+               tags                   = None,
                **kwds):
     """The mod_hitfind class constructor stores the parameters passed
     from the pyana configuration file in instance variables.  All
@@ -88,6 +89,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     self.m_db_table_name        = cspad_tbx.getOptString(db_table_name)
     self.m_db_user              = cspad_tbx.getOptString(db_user)
     self.m_db_password          = cspad_tbx.getOptString(db_password)
+    self.m_tags                 = cspad_tbx.getOptString(tags)
     # A ROI should not contain any ASIC boundaries, as these are
     # noisy.  Hence circular ROI:s around the beam centre are probably
     # not such a grand idea.
@@ -108,6 +110,8 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       self.buffered_sql_entries = []
       assert self.m_sql_buffer_size >= 1
 
+    if self.m_tags is None:
+      self.m_tags = ""
 
 
   def beginjob(self, evt, env):
@@ -242,7 +246,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
           if self.m_db_logging:
             # log misses to the database
             self.queue_entry((self.trial, evt.run(), "%.3f"%evt_time, number_of_accepted_peaks, distance,
-                              self.sifoil, self.wavelength, False))
+                              self.sifoil, self.wavelength, False, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, self.m_tags))
           evt.put(skip_event_flag(), "skip_event")
           return
         # the indexer will log this hit when it is ran. Bug: if the spotfinder is ran by itself, this
@@ -299,8 +303,27 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
         else:
           n_spots = sfspots
 
+        if indexed:
+          int_final = info.organizer.info['best_integration']['integration']
+          int_AD14 = int_final['AD14_parameters']
+
+          mosaic_bloc_rotation = round(int_AD14['fw_mos_deg'], 6)
+          mosaic_block_size = int_AD14['domain_sz_ang']
+          green_curve_volume = round(int_AD14['mosaic_model_area_under_green_curve_sampled'], 6)
+
+          obs = int_final['results'][0].get_obs(int_final["spacegroup"])
+          cell_a, cell_b, cell_c, cell_alpha, cell_beta, cell_gamma = obs.unit_cell().parameters()
+          spacegroup = int_final['spacegroup']
+          resolution = int_final['I_Observations'].d_min()
+        else:
+          mosaic_bloc_rotation = modaic_block_size = green_curve_volume = cell_a = cell_b = cell_c = \
+            cell_alpha = cell_beta = cell_gamma = spacegroup = resolution = 0
+
         self.queue_entry((self.trial, evt.run(), "%.3f"%evt_time, n_spots, distance,
-                          self.sifoil, self.wavelength, indexed))
+                          self.sifoil, self.wavelength, indexed, mosaic_bloc_rotation,
+                          mosaic_block_size, green_curve_volume, spacegroup, cell_a,
+                          cell_b, cell_c, cell_alpha, cell_beta, cell_gamma, resolution,
+                          self.m_tags))
 
       if (not indexed):
         evt.put(skip_event_flag(), "skip_event")
@@ -400,14 +423,16 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       self.commit_entries()
 
   def commit_entries(self):
-    if self.m_sql_buffer_size > 1 and len(self.buffered_sql_entries) > 0:
+    if len(self.buffered_sql_entries) > 0:
       from cxi_xdr_xes.cftbx.cspad_ana import db
       dbobj = db.dbconnect(self.m_db_host, self.m_db_name, self.m_db_user, self.m_db_password)
       cursor = dbobj.cursor()
-      cmd = "INSERT INTO %s (trial,run,eventstamp,hitcount,distance,sifoil,wavelength,indexed) VALUES "%(self.m_db_table_name)
+      cmd = "INSERT INTO %s (trial,run,eventstamp,hitcount,distance,sifoil,wavelength,indexed,\
+mosaic_block_rotation,mosaic_block_size,green_curve_volume,spacegroup,\
+cell_a,cell_b,cell_c,cell_alpha,cell_beta,cell_gamma,resolution,tags) VALUES "%(self.m_db_table_name)
       comma = ""
       for entry in self.buffered_sql_entries:
-        cmd += comma + "(%s,%s,%s,%s,%s,%s,%s,%s)"%entry
+        cmd += comma + "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'%s',%s,%s,%s,%s,%s,%s,%s,'%s')"%entry
         comma = ", "
       cursor.execute(cmd)
       dbobj.commit()

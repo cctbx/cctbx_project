@@ -303,6 +303,9 @@ class InMemScript(DialsProcessScript):
         for i in xrange(len(mytimes)):
           self.process_event_wrapper(run, mytimes[i])
 
+      run.end()
+    ds.end()
+
   def process_event_wrapper(self, run, timestamp):
     """
     Wrapper to check the event and handle debug file management
