@@ -8,10 +8,8 @@ def exercise_inline () :
   loggraph1 = """\
 $TABLE: Resolution shell statistics
 $GRAPHS
-:R-free vs. resolution
-:A:1,3:
-:FOM vs. resolution
-:A:1,4:
+:R-free vs. resolution:A:1,3:
+:FOM vs. resolution:A:1,4:
 $$
 1/resol^2  Nrefl      R-free     FOM       $$
 $$

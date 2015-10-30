@@ -414,7 +414,7 @@ class table_data (object) :
     if graph_types is None :
       graph_types = ["A" for graph in graph_names ]
     for i, graph_name in enumerate(graph_names) :
-      out += ":%s\n" % graph_name
+      out += ":%s" % graph_name
       out += ":%s:%s:\n" % (graph_types[i],
                            ",".join([ "%d"%(x+1) for x in graph_columns[i] ]))
     out += "$$\n"
