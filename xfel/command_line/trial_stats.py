@@ -27,6 +27,8 @@ master_phil = libtbx.phil.parse("""
       .type = str
     password = None
       .type = str
+    tags = None
+      .type = str
   }
 """)
 
@@ -79,8 +81,12 @@ def run (args) :
 
   for runId in cursor.fetchall():
     run = int(runId[0])
-    cursor.execute("SELECT id, eventstamp, hitcount, distance, sifoil, wavelength, indexed FROM %s \
-        WHERE trial = %s AND run = %s"%(params.db.table_name,params.trial_id,run))
+    cmd = "SELECT id, eventstamp, hitcount, distance, sifoil, wavelength, indexed FROM %s \
+        WHERE trial = %s AND run = %s"
+    if params.db.tags is not None:
+      for tag in params.db.tags.split(','):
+        cmd += """ AND tags LIKE "%%{0}%%" """.format(tag)
+    cursor.execute(cmd%(params.db.table_name,params.trial_id,run))
 
     numframes = numhits = numindexed = 0
     for id, eventstamp, hitcount, distance, sifoil, wavelength, indexed in cursor.fetchall():
@@ -90,12 +96,30 @@ def run (args) :
       if indexed:
         numindexed += 1
 
-    print "Run: %3d, number of hits: %6d, number of frames: %6d, hitrate: %4.1f%%. Number indexed: %6d (%4.1f%%)"%(run,numhits,numframes,100*numhits/numframes,numindexed,100*numindexed/numframes)
+    if numhits == 0:
+      hitrate = 0
+    else:
+      hitrate = 100*numhits/numframes
+    if numindexed == 0:
+      indexingrate = 0
+    else:
+      indexingrate = 100*numindexed/numframes
+
+    print "Run: %3d, number of hits: %6d, number of frames: %6d, hitrate: %4.1f%%. Number indexed: %6d (%4.1f%%)"%(run,numhits,numframes,hitrate,numindexed,indexingrate)
     frames_total += numframes
     hits_total += numhits
     indexed_total += numindexed
 
-  print "Totals: frames: %d, hits: %d (%4.1f%%), indexed: %d (%4.1f%%)"%(frames_total,hits_total,100*hits_total/frames_total,indexed_total,100*indexed_total/frames_total)
+  if hits_total == 0:
+    hitrate = 0
+  else:
+    hitrate = 100*hits_total/frames_total
+  if indexed_total == 0:
+    indexingrate = 0
+  else:
+    indexingrate = 100*indexed_total/frames_total
+
+  print "Totals: frames: %d, hits: %d (%4.1f%%), indexed: %d (%4.1f%%)"%(frames_total,hits_total,hitrate,indexed_total,indexingrate)
   dbobj.close()
 
 if (__name__ == "__main__") :
