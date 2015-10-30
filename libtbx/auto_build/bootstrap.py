@@ -867,7 +867,7 @@ class Builder(object):
     self._add_download(url, os.path.join('modules', filename))
     #self._add_untar(filename, 'modules')
     self.add_step(self.shell(command=[
-       "python","-c","import sys; sys.path.append('..''); import bootstrap; \
+       "python","-c","import sys; sys.path.append('..'); import bootstrap; \
        bootstrap.tar_extract('','%s')" %module],
       workdir=['modules'],
       description="extracting files from %s" %module,
