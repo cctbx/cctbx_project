@@ -1,5 +1,6 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.mtz.dump
+# LIBTBX_SET_DISPATCHER_NAME iotbx.mtz.dump
 
 from iotbx import mtz
 from iotbx.option_parser import option_parser
