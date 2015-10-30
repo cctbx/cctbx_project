@@ -316,7 +316,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
           spacegroup = int_final['spacegroup']
           resolution = int_final['I_Observations'].d_min()
         else:
-          mosaic_bloc_rotation = modaic_block_size = green_curve_volume = cell_a = cell_b = cell_c = \
+          mosaic_bloc_rotation = mosaic_block_size = green_curve_volume = cell_a = cell_b = cell_c = \
             cell_alpha = cell_beta = cell_gamma = spacegroup = resolution = 0
 
         self.queue_entry((self.trial, evt.run(), "%.3f"%evt_time, n_spots, distance,
