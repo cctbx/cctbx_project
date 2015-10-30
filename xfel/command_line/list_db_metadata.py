@@ -4,7 +4,7 @@ from __future__ import division
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
 import libtbx.phil
-from libtbx.utils import Usage, Sorry
+from libtbx.utils import Sorry
 import sys
 
 def run(args):
