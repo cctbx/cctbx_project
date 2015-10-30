@@ -47,7 +47,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                db_table_name          = None,
                db_user                = None,
                db_password            = None,
-               tags                   = None,
+               db_tags                = None,
                **kwds):
     """The mod_hitfind class constructor stores the parameters passed
     from the pyana configuration file in instance variables.  All
@@ -89,7 +89,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     self.m_db_table_name        = cspad_tbx.getOptString(db_table_name)
     self.m_db_user              = cspad_tbx.getOptString(db_user)
     self.m_db_password          = cspad_tbx.getOptString(db_password)
-    self.m_tags                 = cspad_tbx.getOptString(tags)
+    self.m_db_tags              = cspad_tbx.getOptString(db_tags)
     # A ROI should not contain any ASIC boundaries, as these are
     # noisy.  Hence circular ROI:s around the beam centre are probably
     # not such a grand idea.
@@ -110,8 +110,8 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       self.buffered_sql_entries = []
       assert self.m_sql_buffer_size >= 1
 
-    if self.m_tags is None:
-      self.m_tags = ""
+    if self.m_db_tags is None:
+      self.m_db_tags = ""
 
 
   def beginjob(self, evt, env):
@@ -246,7 +246,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
           if self.m_db_logging:
             # log misses to the database
             self.queue_entry((self.trial, evt.run(), "%.3f"%evt_time, number_of_accepted_peaks, distance,
-                              self.sifoil, self.wavelength, False, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, self.m_tags))
+                              self.sifoil, self.wavelength, False, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, self.m_db_tags))
           evt.put(skip_event_flag(), "skip_event")
           return
         # the indexer will log this hit when it is ran. Bug: if the spotfinder is ran by itself, this
@@ -323,7 +323,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                           self.sifoil, self.wavelength, indexed, mosaic_bloc_rotation,
                           mosaic_block_size, green_curve_volume, spacegroup, cell_a,
                           cell_b, cell_c, cell_alpha, cell_beta, cell_gamma, resolution,
-                          self.m_tags))
+                          self.m_db_tags))
 
       if (not indexed):
         evt.put(skip_event_flag(), "skip_event")
