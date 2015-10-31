@@ -21,20 +21,21 @@ class mod_dump(common_mode.common_mode_correction):
   'write_dict' dispatch from mod_hitfind.
   """
 
-  def __init__(self, address, out_dirname, out_basename, **kwds):
+  def __init__(self, address, out_dirname, out_basename, out_format="pickle", **kwds):
     """The mod_dump class constructor stores the parameters passed from
     the pyana configuration file in instance variables.
 
     @param address      Full data source address of the DAQ device
     @param out_dirname  Directory portion of output image pathname
     @param out_basename Filename prefix of output image pathname
-
+    @param out_format   Output the data as pickle or TIFF
     """
 
     super(mod_dump, self).__init__(address=address, **kwds)
 
     self._basename = cspad_tbx.getOptString(out_basename)
     self._dirname = cspad_tbx.getOptString(out_dirname)
+    self._format = cspad_tbx.getOptString(out_format)
 
 
   def event(self, evt, env):
@@ -84,6 +85,8 @@ class mod_dump(common_mode.common_mode_correction):
       saturated_value=saturated_value,
       timestamp=self.timestamp,
       wavelength=self.wavelength)
-
-    cspad_tbx.dwritef(d, self._dirname, output_filename)
+    if self._format == "pickle":
+      cspad_tbx.dwritef(d, self._dirname, output_filename)
+    elif self._format == "tiff":
+      cspad_tbx.write_tiff(d, self._dirname, output_filename)
     output_filename = None
