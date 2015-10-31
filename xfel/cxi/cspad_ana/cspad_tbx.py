@@ -573,6 +573,36 @@ def hdf5pack(hdf5_file,
   grp_event.create_dataset('ATTENUATION', data=[attenuation])
   grp_event.create_dataset('PULSE_LENGTH', data=[pulse_length])
 
+def write_tiff(d, dirname=None, basename=None):
+  """The write an image tiff.  Basic implementation no frills, no metadata
+  """
+
+  if basename is None:
+    basename = ""
+  if dirname is None:
+    dirname = "."
+  if not os.path.isdir(dirname):
+    os.makedirs(dirname)
+
+  # The output path should not contain any funny characters which may
+  # not work in all environments.  This constructs a sequence number à
+  # la evt_seqno() from the dictionary's timestamp.
+  t = d['TIMESTAMP']
+  s = t[0:4] + t[5:7] + t[8:10] + t[11:13] + t[14:16] + t[17:19] + t[20:23]
+
+  path = os.path.join(dirname, basename + s + '.tiff')
+
+  #assure that the 2-byte data are within the unsigned limits
+  selecthi = d["DATA"]>65535
+  d["DATA"].set_selected(selecthi,0)
+  selectlo = d["DATA"]<0
+  d["DATA"].set_selected(selectlo,0)
+
+  idata = d["DATA"].as_numpy_array()
+  idata =  idata.astype("uint16")
+  import cv2 # psdm install should have this extension
+  cv2.imwrite(path,idata)
+  return path
 
 def dwritef(d, dirname=None, basename=None):
   """The dwritef() function pickles the dictionary pointed to by @p d
