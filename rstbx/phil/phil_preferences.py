@@ -292,9 +292,9 @@ isoforms
     lookup_symbol=None
       .type=str
       .help=The sgtbx lookup symbol of the reflections pointgroup
-    rmsd_target=None
+    rmsd_target_mm=None
       .type=float
-      .help=Maximum acceptable DIALS positional rmsd, in pixels
+      .help=Maximum acceptable DIALS positional rmsd, in mm
   }
 """
 libtbx_defs = indexing_defs + libtbx_misc_defs
