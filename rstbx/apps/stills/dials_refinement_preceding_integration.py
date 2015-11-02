@@ -23,11 +23,35 @@ class integrate_one_frame(IntegrationMetaProcedure):
     reflections = self.prepare_reflection_list(experiments[0].detector)
     self.refine(experiments=experiments, reflections=reflections)
 
-    setting_experiments = self.prepare_dxtbx_models(setting_specific_ai = self.inputai,
+    if self.horizons_phil.isoforms == []: # normal behavior; no isoform constraints
+      setting_experiments = self.prepare_dxtbx_models(setting_specific_ai = self.inputai,
       sg = self.inputpd["symmetry"].space_group_info().type().lookup_symbol())
-    setting_reflections = copy.deepcopy(reflections)
-    setting_reflections["miller_index"] = cb_op_to_primitive.inverse().apply(reflections["miller_index"])
-    R = self.refine(experiments=setting_experiments, reflections=setting_reflections)
+      setting_reflections = copy.deepcopy(reflections)
+      setting_reflections["miller_index"] = cb_op_to_primitive.inverse().apply(reflections["miller_index"])
+      R = self.refine(experiments=setting_experiments, reflections=setting_reflections)
+    else:
+      isoform_refineries = []
+      setting_reflections = copy.deepcopy(reflections)
+      setting_reflections["miller_index"] = cb_op_to_primitive.inverse().apply(reflections["miller_index"])
+      look_symbol = self.inputpd["symmetry"].space_group_info().type().lookup_symbol()
+
+      for isoform in self.horizons_phil.isoforms:
+        print "Testing isoform %s"%isoform.name,isoform.cell.parameters()
+
+        assert look_symbol == isoform.lookup_symbol
+        setting_experiments = self.prepare_dxtbx_models(setting_specific_ai = self.inputai,
+          sg = look_symbol, isoform = isoform.cell )
+        P = self.refine(experiments=setting_experiments, reflections=setting_reflections, isoform=True)
+        print P.rmsds()
+        isoform_refineries.append(P)
+      positional_rmsds = [P.rmsds()[0]**2 + P.rmsds()[1]**2 for P in isoform_refineries]
+      minvalue = min(positional_rmsds)
+      minindex = positional_rmsds.index(minvalue)
+      minrmsd = math.sqrt(minvalue)
+      print "The smallest rmsd is %5.1f um from isoform %s"%(1000.*minrmsd,self.horizons_phil.isoforms[minindex].name)
+      assert minrmsd < self.horizons_phil.isoforms[minindex].rmsd_target
+      print "Acceptable rmsd for isoform",self.horizons_phil.isoforms[minindex].name
+      R = isoform_refineries[minindex]
 
     self.integration_concept_detail(experiments=R.get_experiments(), reflections=setting_reflections,
                                     spots=self.triclinic.get_observations_with_outlier_removal(),
@@ -352,9 +376,10 @@ class integrate_one_frame(IntegrationMetaProcedure):
          self.inputai.setMosaicity(down)
       return
 
-  def refine(self, experiments, reflections):
+  def refine(self, experiments, reflections, isoform=None):
     from dials.algorithms.refinement.refiner import phil_scope
     from libtbx.phil import parse
+
     params = phil_scope.fetch(source=parse('')).extract()
     params.refinement.reflections.weighting_strategy.delpsi_constant=100000.
     params.refinement.reflections.weighting_strategy.override="stills"
@@ -370,7 +395,9 @@ class integrate_one_frame(IntegrationMetaProcedure):
     elif self.horizons_phil.integration.dials_refinement.strategy=="wavelength":
       params.refinement.parameterisation.beam.fix="in_spindle_plane,out_spindle_plane"
       params.refinement.parameterisation.detector.fix_list=[0,3,] # fix detector rotz and distance
-
+    if isoform is not None:
+      params.refinement.reflections.outlier.algorithm="null"
+      params.refinement.parameterisation.crystal.fix="cell"
     from dials.algorithms.refinement.refiner import RefinerFactory
     refiner = RefinerFactory.from_parameters_data_experiments(params,
       reflections, experiments, verbosity=1)
@@ -421,7 +448,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
 
     return R
 
-  def prepare_dxtbx_models(self,setting_specific_ai,sg):
+  def prepare_dxtbx_models(self,setting_specific_ai,sg,isoform=None):
 
     from dxtbx.model.beam import beam_factory
     beam = beam_factory.simple(wavelength = self.inputai.wavelength)
@@ -446,6 +473,9 @@ class integrate_one_frame(IntegrationMetaProcedure):
       space_group_symbol = sg,
       mosaicity = setting_specific_ai.getMosaicity()
     )
+    if isoform is not None:
+      newB = matrix.sqr(isoform.fractionalization_matrix()).transpose()
+      crystal.set_B(newB)
 
     from dxtbx.model.experiment.experiment_list import Experiment, ExperimentList
     experiments = ExperimentList()
