@@ -44,10 +44,10 @@ class integrate_one_frame(IntegrationMetaProcedure):
         P = self.refine(experiments=setting_experiments, reflections=setting_reflections, isoform=True)
         print P.rmsds()
         isoform_refineries.append(P)
-      positional_rmsds = [P.rmsds()[0]**2 + P.rmsds()[1]**2 for P in isoform_refineries]
-      minvalue_mmsq = min(positional_rmsds)
-      minindex = positional_rmsds.index(minvalue_mmsq)
-      minrmsd_mm = math.sqrt(minvalue_mmsq)
+      positional_rmsds = [math.sqrt(P.rmsds()[0]**2 + P.rmsds()[1]**2) for P in isoform_refineries]
+      print "Positional rmsds for all isoforms:", positional_rmsds
+      minrmsd_mm = min(positional_rmsds)
+      minindex = positional_rmsds.index(minrmsd_mm)
       print "The smallest rmsd is %5.1f um from isoform %s"%(1000.*minrmsd_mm,self.horizons_phil.isoforms[minindex].name)
       assert minrmsd_mm < self.horizons_phil.isoforms[minindex].rmsd_target_mm
       print "Acceptable rmsd for isoform",self.horizons_phil.isoforms[minindex].name
