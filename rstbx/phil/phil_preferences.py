@@ -279,7 +279,23 @@ target_cell_centring_type= *P C I R F
   .type=choice
   .multiple=False
   .help="Centring symbol for the target cell"
-
+isoforms
+  .help=Constrain the unit cell to specific values during refinement
+  .help=As presently implemented, applies only to dials_refinement_preceding_integration
+  .help=and applies only to the higher-symmetry integration trial, not the initial triclinic
+  .multiple=True
+  {
+    name=None
+      .type=str
+    cell=None
+      .type=unit_cell
+    lookup_symbol=None
+      .type=str
+      .help=The sgtbx lookup symbol of the reflections pointgroup
+    rmsd_target=None
+      .type=float
+      .help=Maximum acceptable DIALS positional rmsd, in pixels
+  }
 """
 libtbx_defs = indexing_defs + libtbx_misc_defs
 iotbx_defs = iotbx_defs_viewer + iotbx_defs_target
