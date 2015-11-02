@@ -715,8 +715,9 @@ class Builder(object):
     dirs = dirs or []
     cmd=['rm', '-rf'] + dirs
     if self.isPlatformWindows():
-      #rmdir sets the error flag if directory is not found. Mask it with cmd shell
-      cmd=['cmd', '/c', 'rmdir', '/S', '/Q'] + dirs + ['&', 'set', 'ERRORLEVEL=0']
+      # rmdir sets the error flag if directory is not found. Mask it with cmd shell
+      # running the del command first makes for quicker deletion of folders
+      cmd=['cmd', '/c', 'del', '/F', '/S', '/Q'] + dirs + ['>', 'nul', '&', 'rmdir', '/S', '/Q'] + dirs + ['&', 'set', 'ERRORLEVEL=0']
     self.add_step(self.shell(
       name='cleanup',
       command =cmd,
