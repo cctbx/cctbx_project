@@ -44,6 +44,8 @@ class Test(object):
     xy = flex.vec2_double([random_coord() for i in range(100)])
     self.tst_array(xy)
 
+    self.tst_inverted_axis()
+
     # Test passed
     print 'OK'
 
@@ -70,6 +72,56 @@ class Test(object):
     assert approx_equal(xy_corr, xy_corr_gold)
     assert approx_equal(xy_corr_panel, xy_corr_gold)
 
+    print 'OK'
+
+  def tst_inverted_axis(self):
+
+    def get_values(invert_y):
+
+      from dxtbx.model.beam import beam_factory
+      beam = beam_factory.simple(wavelength = 1)
+
+      if invert_y:
+        y_direction = "-y"
+      else:
+        y_direction = "+y"
+
+      from dxtbx.model.detector import detector_factory
+      detector = detector_factory.simple(
+        sensor = detector_factory.sensor("PAD"),
+        distance = 100,
+        beam_centre = [50,50],
+        fast_direction = "+x",
+        slow_direction = y_direction,
+        pixel_size = [0.1,0.1],
+        image_size = [1000,1000]
+        )
+
+
+      from dxtbx.model import ParallaxCorrectedPxMmStrategy
+      from cctbx.eltbx import attenuation_coefficient
+      wavelength = beam.get_wavelength()
+      thickness = 0.5
+      table = attenuation_coefficient.get_table("Si")
+      mu = table.mu_at_angstrom(wavelength) / 10.0
+      t0 = thickness
+
+      for panel in detector:
+        panel.set_px_mm_strategy(ParallaxCorrectedPxMmStrategy(mu, t0))
+      v1 = detector[0].pixel_to_millimeter((0,0))
+      v2 = detector[0].pixel_to_millimeter((1000,1000))
+
+      return v1, v2
+
+    v11, v12 = get_values(False)
+    v21, v22 = get_values(False)
+
+    assert abs(v11[0] - v21[0]) < 1e-7
+    assert abs(v11[1] - v21[1]) < 1e-7
+    assert abs(v12[0] - v22[0]) < 1e-7
+    assert abs(v12[1] - v22[1]) < 1e-7
+
+    print 'OK'
 
   def correct_gold(self, xy):
     from scitbx import matrix
