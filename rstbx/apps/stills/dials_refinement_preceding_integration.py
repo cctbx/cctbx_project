@@ -49,8 +49,13 @@ class integrate_one_frame(IntegrationMetaProcedure):
       minrmsd_mm = min(positional_rmsds)
       minindex = positional_rmsds.index(minrmsd_mm)
       print "The smallest rmsd is %5.1f um from isoform %s"%(1000.*minrmsd_mm,self.horizons_phil.isoforms[minindex].name)
-      assert minrmsd_mm < self.horizons_phil.isoforms[minindex].rmsd_target_mm
-      print "Acceptable rmsd for isoform",self.horizons_phil.isoforms[minindex].name
+      if self.horizons_phil.isoforms[minindex].rmsd_target_mm is not None:
+        assert minrmsd_mm < self.horizons_phil.isoforms[minindex].rmsd_target_mm
+      print "Acceptable rmsd for isoform %s."%(self.horizons_phil.isoforms[minindex].name),
+      if len (self.horizons_phil.isoforms)==2:
+        print "Rmsd gain over the other isoform %5.1f um."%(1000.*abs(positional_rmsds[0] - positional_rmsds[1]))
+      else:
+        print
       R = isoform_refineries[minindex]
 
     self.integration_concept_detail(experiments=R.get_experiments(), reflections=setting_reflections,
