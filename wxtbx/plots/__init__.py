@@ -109,7 +109,7 @@ class plot_container (wx.BoxSizer, wxtbx.MouseWheelTransparencyMixin) :
       size   = self.font_size)
     self._fonts["title"] = matplotlib.font_manager.FontProperties(
       family = ["Helvetica", "sans-serif"],
-      weight = "normal",
+      weight = "bold",
       size   = self.title_font_size)
 
   def get_font (self, font_type) :
