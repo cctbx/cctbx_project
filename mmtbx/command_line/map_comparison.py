@@ -2,7 +2,6 @@ from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.map_comparison
 
 from iotbx import file_reader, phil
-from libtbx.phil.command_line import argument_interpreter
 
 from cctbx import maptbx
 import iotbx.ccp4_map
@@ -15,15 +14,19 @@ master_phil = phil.parse("""
 input
 {
   map_1 = None
-    .type = str
-    .short_caption = A CCP4-formatted map
+    .type = path
+    .short_caption = Map 1
+    .help = A CCP4-formatted map
     .style = file_type:ccp4_map bold input_file
   map_2 = None
-    .type = str
-    .short_caption = A CCP4-formatted map
+    .type = path
+    .short_caption = Map 2
+    .help = A CCP4-formatted map
     .style = file_type:ccp4_map bold input_file
 }
 """)
+
+master_params = master_phil
 
 def show_overall_statistics(s, header):
   print header
@@ -32,40 +35,56 @@ def show_overall_statistics(s, header):
   print "  skewness    : %6.4f" % s.skewness()
   print "  sigma       : %6.4f" % s.sigma()
 
-def show_citation():
-  print "-"*79
+def create_statistics_dict(s):
+  statistics_dict = dict()
+  statistics_dict['min'] = s.min()
+  statistics_dict['max'] = s.max()
+  statistics_dict['mean'] = s.mean()
+  statistics_dict['kurtosis'] = s.kurtosis()
+  statistics_dict['skewness'] = s.skewness()
+  statistics_dict['sigma'] = s.sigma()
+  return statistics_dict
+
+def show_citation(out=sys.stdout):
+  print >> out, "-"*79
   msg = """Map comparison and statistics. For details see:
   Acta Cryst. (2014). D70, 2593-2606
   Metrics for comparison of crystallographic maps
   A. Urzhumtsev, P. V. Afonine, V. Y. Lunin, T. C. Terwilliger and P. D. Adams"""
-  print msg
-  print "-"*79
+  print >> out, msg
+  print >> out, "-"*79
 
 # =============================================================================
-def run(args):
+def run(args, validated=False):
   show_citation()
   if ( (len(args) == 0) or (len(args) > 2) ):
     print '\nUsage: phenix.map_comparison map_1=<first map> map_2=<second map>\n'
     sys.exit()
 
   # process arguments
-  arg_int = argument_interpreter(master_phil=master_phil)
-  command_line_args = list()
-  map_files = list()
-  for arg in args:
-    if (os.path.isfile(arg)):
-      map_files.append(arg)
-    else:
-      command_line_args.append(arg_int.process(arg))
-  params = master_phil.fetch(sources=command_line_args).extract()
-  for map_file in map_files:
-    if (params.input.map_1 is None):
-      params.input.map_1 = map_file
-    else:
-      params.input.map_2 = map_file
+  try: # automatic parsing
+    params = phil.process_command_line_with_files(
+      args=args, master_phil=master_phil).work.extract()
+  except Exception: # map_file_def only handles one map phil
+    from libtbx.phil.command_line import argument_interpreter
+    arg_int = argument_interpreter(master_phil=master_phil)
+    command_line_args = list()
+    map_files = list()
+    for arg in args:
+      if (os.path.isfile(arg)):
+        map_files.append(arg)
+      else:
+        command_line_args.append(arg_int.process(arg))
+    params = master_phil.fetch(sources=command_line_args).extract()
+    for map_file in map_files:
+      if (params.input.map_1 is None):
+        params.input.map_1 = map_file
+      else:
+        params.input.map_2 = map_file
 
-  # validate arguments
-  validate_params(params)
+  # validate arguments (GUI sets validated to true, no need to run again)
+  if (not validated):
+    validate_params(params)
 
   # ---------------------------------------------------------------------------
   # map 1
@@ -125,18 +144,22 @@ def run(args):
     print "(%9.5f %9.5f %9.5f) <> (%9.5f %9.5f %9.5f)"%(a1,c1,v1, a2,c2,v2)
 
   # store results
+  s1_dict = create_statistics_dict(s1)
+  s2_dict = create_statistics_dict(s2)
   results = dict()
   results['map_files'] = (params.input.map_1, params.input.map_2)
-  results['map_statistics'] = (s1, s2)
+  results['map_statistics'] = (s1_dict, s2_dict)
   results['cc_input_maps'] = cc_input_maps
   results['cc_quantile'] = cc_quantile
   results['cc_peaks'] = cc_peaks
   results['discrepancies'] = discrepancies
-  results['map_histograms'] = (h1, h2)
+  results['map_histograms'] = ( (h1.arguments(), h1.c_values(), h1.values()),
+                                (h2.arguments(), h2.c_values(), h2.values()) )
 
   return results
 
 # =============================================================================
+# Parameter validation for CLI and GUI
 def validate_params(params):
 
   if ( (params.input.map_1 is None) or (params.input.map_2 is None) ):
@@ -167,6 +190,16 @@ def validate_params(params):
     raise Sorry('The two maps are not similar.')
 
   return True
+
+# =============================================================================
+# GUI-specific class for running command
+from libtbx import runtime_utils
+class launcher (runtime_utils.target_with_save_result) :
+  def run (self) :
+    # os.mkdir(self.output_dir)
+    # os.chdir(self.output_dir)
+    result = run(args=self.args, validated=True)
+    return result
 
 # =============================================================================
 if (__name__ == "__main__"):
