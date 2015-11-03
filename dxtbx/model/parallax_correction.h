@@ -66,6 +66,32 @@ namespace dxtbx { namespace model {
   }
 
   /**
+   * Function to compute the distance into the detector an x-ray is likely to
+   * travel.
+   * @param mu Linear attenuation coefficient (mm^-1)
+   * @param t0 Sensor thickness (mm)
+   * @param xy The xy mm coordinate
+   * @param fast Detector fast direction
+   * @param slow Detector slow direction
+   * @param origin Direction of detector origin
+   */
+  inline
+  double attenuation_length(double mu, double t0,
+                            vec3<double> s1,
+                            vec3<double> fast,
+                            vec3<double> slow,
+                            vec3<double> origin) {
+    vec3<double> normal = fast.cross(slow);
+    double distance = origin * normal;
+    if (distance < 0) {
+      normal = -normal;
+    }
+    double cos_t = s1 * normal;
+    DXTBX_ASSERT(mu > 0 && cos_t > 0);
+    return (1.0 / mu) - (t0 / cos_t + 1.0 / mu) * exp(- mu * t0 / cos_t);
+  }
+
+  /**
    * Function to perform a parallax correction on a given coordinate correctly,
    * given the sensor thickness and so on. X corresponds to the fast direction,
    * Y to the slow direction in input & output. Returns corrected mm position.
@@ -82,15 +108,11 @@ namespace dxtbx { namespace model {
                                     vec3<double> fast,
                                     vec3<double> slow,
                                     vec3<double> origin) {
-    vec3<double> normal;
+    double o;
     vec2<double> c_xy;
-    double cos_t, o;
     vec3<double> s1 = origin + xy[0] * fast + xy[1] * slow;
     s1 = s1.normalize();
-    normal = fast.cross(slow);
-    cos_t = s1 * normal;
-    DXTBX_ASSERT(mu > 0 && cos_t != 0);
-    o = (1.0 / mu) - (t0 / cos_t + 1.0 / mu) * exp(- mu * t0 / cos_t);
+    o = attenuation_length(mu, t0, s1, fast, slow, origin);
     c_xy[0] = xy[0] + (s1 * fast) * o;
     c_xy[1] = xy[1] + (s1 * slow) * o;
     return c_xy;
@@ -114,14 +136,11 @@ namespace dxtbx { namespace model {
                                     vec3<double> fast,
                                     vec3<double> slow,
                                     vec3<double> origin) {
-    vec3<double> normal;
+    double o;
     vec2<double> c_xy;
-    double cos_t, o;
     vec3<double> s1 = origin + xy[0] * fast + xy[1] * slow;
     s1 = s1.normalize();
-    normal = fast.cross(slow);
-    cos_t = s1 * normal;
-    o = (1.0 / mu) - (t0 / cos_t + 1.0 / mu) * exp(- mu * t0 / cos_t);
+    o = attenuation_length(mu, t0, s1, fast, slow, origin);
     c_xy[0] = xy[0] - (s1 * fast) * o;
     c_xy[1] = xy[1] - (s1 * slow) * o;
     return c_xy;
