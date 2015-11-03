@@ -79,14 +79,23 @@ class ShellCommand(object):
   def get_command(self):
     return self.kwargs['command']
 
+  def get_description(self):
+    if 'description' in self.kwargs:
+      return self.kwargs['description']
+    return None
+
   def get_workdir(self):
     return self.kwargs.get('workdir', 'build')
 
   def run(self):
     command = self.get_command()
+    description = self.get_description()
     workdir = self.get_workdir()
     if not self.kwargs.get("quiet", False):
-      print "===== Running in %s:"%workdir, " ".join(command)
+      if description:
+        print "===== Running in %s:"%workdir, description
+      else:
+        print "===== Running in %s:"%workdir, " ".join(command)
     if workdir:
       try:
         os.makedirs(workdir)
@@ -716,8 +725,9 @@ class Builder(object):
     cmd=['rm', '-rf'] + dirs
     if self.isPlatformWindows():
       # rmdir sets the error flag if directory is not found. Mask it with cmd shell
-      # running the del command first makes for quicker deletion of folders
-      cmd=['cmd', '/c', 'del', '/F', '/S', '/Q'] + dirs + ['>', 'nul', '&', 'rmdir', '/S', '/Q'] + dirs + ['&', 'set', 'ERRORLEVEL=0']
+      # deleting folders by copying an empty folder with robocopy is more reliable on Windows
+      cmd=['cmd', '/c', 'mkdir', 'empty', '&', '(FOR', '%d', 'IN', '('] + dirs + \
+       [')', 'DO', '(ROBOCOPY', 'empty', '%d', '/MIR', '>', 'nul', '&', 'rmdir', '%d))', '&', 'rmdir', 'empty']
     self.add_step(self.shell(
       name='cleanup',
       command =cmd,
