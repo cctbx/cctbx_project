@@ -2406,11 +2406,12 @@ prime/ext.cpp -text
 prime/iota/__init__.py -text
 prime/iota/double_gauss.py -text
 prime/iota/iota_analysis.py -text
+prime/iota/iota_cctbx.py -text
 prime/iota/iota_cmd.py -text
+prime/iota/iota_dials.py -text
 prime/iota/iota_image.py -text
 prime/iota/iota_init.py -text
 prime/iota/iota_input.py -text
-prime/iota/iota_integrate.py -text
 prime/iota/iota_misc.py -text
 prime/iota/iota_vis_integration.py -text
 prime/libtbx_config -text

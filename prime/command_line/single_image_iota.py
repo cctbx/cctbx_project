@@ -3,12 +3,12 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 10/28/2015
+Last Changed: 11/02/2015
 Description : Single-image IOTA module.
-              Version 2.21
+              Version 2.22
 '''
 
-iota_version = '2.21'
+iota_version = '2.22'
 help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 
@@ -29,9 +29,6 @@ def run_one_image(image, init):
 
   # Import image
   single_image = img.SingleImage(image, init, verbose=True)
-  img_object = single_image.import_image()
-
-  # Check / convert / triage image
   img_object = single_image.convert_image()
 
   # Exit if the image does not have diffraction
