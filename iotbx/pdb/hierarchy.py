@@ -1886,11 +1886,9 @@ def get_contiguous_ranges (hierarchy) :
 
 # used for reporting build results in phenix
 def get_residue_and_fragment_count (pdb_file=None, pdb_hierarchy=None) :
-  from iotbx.pdb import amino_acid_codes
   import iotbx.pdb
   from libtbx import smart_open
-  covalent_residues = amino_acid_codes.one_letter_given_three_letter.keys()
-  covalent_residues.extend(iotbx.pdb.cns_dna_rna_residue_names.keys())
+  get_class = iotbx.pdb.common_residue_names_get_class
   if (pdb_file is not None) :
     raw_records = flex.std_string()
     f = smart_open.for_reading(file_name=pdb_file)
@@ -1910,13 +1908,14 @@ def get_residue_and_fragment_count (pdb_file=None, pdb_hierarchy=None) :
   for chain in chains :
     i = -999
     for res in chain.conformers()[0].residues() :
-      if res.resname.strip() in covalent_residues :
+      residue_type = get_class(res.resname, consider_ccp4_mon_lib_rna_dna=True)
+      if ( ('amino_acid' in residue_type) or ('rna_dna' in residue_type) ):
         n_res += 1
         resseq = res.resseq_as_int()
         if resseq > (i + 1) :
           n_frag += 1
         i = resseq
-      elif res.resname.strip() in ['HOH','WAT','H2O'] :
+      elif ('water' in residue_type):
         n_h2o += 1
   return (n_res, n_frag, n_h2o)
 
