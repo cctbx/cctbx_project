@@ -4532,6 +4532,7 @@ class build_all_chain_proxies(linking_mixins):
           return ss_atoms
         cb_atoms = _get_ss_atom_pairs("CB")
         ca_atoms = _get_ss_atom_pairs("CA")
+        # there was a bug-report where ca_atoms[1] is still None!
         lookup = {
           "1CA" : ca_atoms[0].i_seq,
           "2CA" : ca_atoms[1].i_seq,
