@@ -44,12 +44,13 @@ private:
   }
 
 public:
-  template <typename MapType>
   connectivity(
-    af::const_ref<MapType, af::c_grid<3> > const& map_data,
+    af::const_ref<double, af::flex_grid<> > const& map_data,
     double const& threshold)
   {
-    map_dimensions = map_data.accessor();
+    CCTBX_ASSERT(map_data.accessor().nd() == 3);
+    CCTBX_ASSERT(map_data.accessor().all().all_gt(0));
+    map_dimensions = af::adapt(map_data.accessor().all());
     int pointer_empty=0, pointer_current=0, cur_reg = 0;
 
     // estimating size of working array tempcoors. If this code fails with
@@ -90,25 +91,27 @@ public:
                                    neighbours);
                 for (int l = 0; l<6; l++) {
                   //processing 6 neighbours
-                  if (map_new(neighbours[l])<0) {
-                    if (map_data(neighbours[l]) > threshold) {
-                      map_new(neighbours[l]) = cur_reg;
+                  if (map_new(af::adapt(neighbours[l]))<0) {
+                    if (map_data(af::adapt(neighbours[l])) > threshold) {
+                      map_new(af::adapt(neighbours[l])) = cur_reg;
                       cur_reg_vol += 1;
                       tempcoors[pointer_empty] = neighbours[l];
                       pointer_empty += 1;
                       if (pointer_empty >= needed_size) pointer_empty = 0;
-                      if (map_data(neighbours[l]) > cur_max_value)
+                      if (map_data(af::adapt(neighbours[l])) > cur_max_value)
                       {
-                        cur_max_value = map_data(neighbours[l]);
+                        cur_max_value = map_data(af::adapt(neighbours[l]));
                         cur_max = neighbours[l];
                       }
                     }
                     else {
-                      map_new(neighbours[l]) = 0;
+                      map_new(af::adapt(neighbours[l])) = 0;
                       v0 += 1;
-                      if (map_data(neighbours[l]) > region_maximum_values[0])
+                      if (map_data(af::adapt(neighbours[l])) >
+                          region_maximum_values[0])
                       {
-                        region_maximum_values[0] = map_data(neighbours[l]);
+                        region_maximum_values[0] =
+                            map_data(af::adapt(neighbours[l]));
                         region_maximum_coors[0] = neighbours[l];
                       }
                     }
@@ -141,7 +144,7 @@ public:
   af::versa<int, af::c_grid<3> > result() {return map_new;}
   af::shared<int> regions() {return region_vols;}
   af::shared<double> maximum_values() {return region_maximum_values;}
-  af::shared<scitbx::vec3<int> > maximum_coors() { return region_maximum_coors;}
+  af::shared<scitbx::vec3<int> > maximum_coors() {return region_maximum_coors;}
   af::versa<int, af::c_grid<3> > volume_cutoff_mask(int const& volume_cutoff)
   {
     af::versa<int, af::c_grid<3> > vol_mask;
@@ -204,9 +207,11 @@ public:
     af::shared<int> fill_data(n_regions+1, 0);
     for (int i=1; i < connectivity_object_at_t1.n_regions+1; i++ )
     {
-      if (connectivity_object_at_t1.region_vols[i] > elimination_volume_threshold_at_t1)
+      if (connectivity_object_at_t1.region_vols[i] >
+          elimination_volume_threshold_at_t1)
       {
-        int good_reg_number_t2 = map_new(connectivity_object_at_t1.region_maximum_coors[i]);
+        int good_reg_number_t2 =
+            map_new(connectivity_object_at_t1.region_maximum_coors[i]);
         fill_data[good_reg_number_t2] = (good_reg_number_t2>0) ? 1 : 0;
       }
     }
