@@ -34,8 +34,8 @@ class _(boost.python.injector, connectivity):
     min_boundaries = []
     max_boundaries = []
     for i in range(len(regs)):
-      minb = (boundaries[0,i,0], boundaries[0,i,1], boundaries[0,i,1])
-      maxb = (boundaries[1,i,0], boundaries[1,i,1], boundaries[1,i,1])
+      minb = (boundaries[0,i,0], boundaries[0,i,1], boundaries[0,i,2])
+      maxb = (boundaries[1,i,0], boundaries[1,i,1], boundaries[1,i,2])
       min_boundaries.append(minb)
       max_boundaries.append(maxb)
     return min_boundaries, max_boundaries
