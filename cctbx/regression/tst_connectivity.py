@@ -1,5 +1,6 @@
 from __future__ import division
 from scitbx.array_family import flex
+import time
 import iotbx.pdb
 from cctbx import maptbx
 from cctbx import miller
@@ -11,6 +12,8 @@ def getvs(cmap, threshold):
   coors = co.maximum_coors()
   vals = co.maximum_values()
   assert len(list(regs)) == len(list(coors)) == len(list(vals))
+  # check dimensions
+  assert cmap.all() == map_result.all()
   v=[0,0,0]
   for i in range(3):
     v[i] = (map_result==i).count(True)
@@ -35,6 +38,10 @@ END
   # get 'map' of the same size with integers: 0 where below threshold,
   # 1,2,3... - for connected regions
   map_result = co.result()
+  # to find out the number of connected region for particular point:
+  assert map_result[0,0,0] == 0    # means under threshold
+  assert map_result[20,20,20] == 1 # blob 1
+
   # get 1d array of integer volumes and transform it to list.
   volumes = list(co.regions())
   # find max volume (except volume of 0-region which will be probably max)
@@ -373,7 +380,52 @@ def exercise_noise_elimination_two_cutoffs():
       zero_all_interblob_region=False)
   assert (res_mask!=0).count(True) == 350
 
-if __name__ == "__main__" :
+def exercise_get_blobs_boundaries():
+  cmap = flex.double(flex.grid(100,100,100))
+  cmap.fill(1)
+  for i in range(10,20):
+    for j in range(10,20):
+      for k in range(10,20):
+        cmap[i,j,k] = 10
+  co = maptbx.connectivity(map_data=cmap, threshold=5)
+  # raw function:
+  boundaries = co.get_blobs_boundaries()
+  # how to use this:
+  # boundaries[min/max, n_blob, x/y/z]
+  blob_0_min_boundaries = \
+      (boundaries[0,0,0], boundaries[0,0,1], boundaries[0,0,1])
+  blob_0_max_boundaries = \
+      (boundaries[1,0,0], boundaries[1,0,1], boundaries[1,0,1])
+  # 0th blob - under the limit, covering almost whole cell
+  assert blob_0_min_boundaries == (0,0,0)
+  assert blob_0_max_boundaries == (99,99,99)
+  # 1st blob - covers coordinates from 10 to 19 by construction
+  blob_1_min_boundaries = \
+      (boundaries[0,1,0], boundaries[0,1,1], boundaries[0,1,1])
+  blob_1_max_boundaries = \
+      (boundaries[1,1,0], boundaries[1,1,1], boundaries[1,1,1])
+  assert blob_1_min_boundaries == (10,10,10)
+  assert blob_1_max_boundaries == (19,19,19)
+  # convinient get_blobs_boundaries_tuples
+  minb, maxb = co.get_blobs_boundaries_tuples()
+  assert minb == [(0,0,0), (10,10,10)]
+  assert maxb == [(99,99,99), (19,19,19)]
+
+  # ==============================
+  # two blobs test
+  # just add a blob to the previous cmap
+  for i in range(50,70):
+    for j in range(50,70):
+      for k in range(50,70):
+        cmap[i,j,k] = 10
+  co = maptbx.connectivity(map_data=cmap, threshold=5)
+  minb, maxb = co.get_blobs_boundaries_tuples()
+  assert minb == [(0,0,0), (10,10,10), (50,50,50)]
+  assert maxb == [(99,99,99), (19,19,19), (69,69,69)]
+
+
+if __name__ == "__main__":
+  t0 = time.time()
   exercise1()  # examples of usage are here!
   exercise3()
   exercise4()
@@ -383,3 +435,5 @@ if __name__ == "__main__" :
   exercise_volume_cutoff()
   exercise_max_values()
   exercise_noise_elimination_two_cutoffs() # example and comment
+  exercise_get_blobs_boundaries()
+  print "OK time =%8.3f"%(time.time() - t0)

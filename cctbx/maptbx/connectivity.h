@@ -164,6 +164,36 @@ public:
   }
 
   af::versa<int, af::c_grid<3> >
+  get_blobs_boundaries()
+  {
+    // boundaries - array[min/max, number_of_blob, x/y/z]
+    af::versa<int, af::c_grid<3> > boundaries;
+    boundaries.resize(af::c_grid<3>(2, n_regions+1, 3));
+    // initialization
+    for (int j = 0; j < n_regions+1; j++) {
+      for (int k = 0; k < 3; k++) {
+        boundaries(0,j,k) = 1000000;
+        boundaries(1,j,k) = -1000000;
+      }
+    }
+    // do the cycle
+    for (int i = 0; i < map_dimensions[0]; i++) {
+      for (int j = 0; j < map_dimensions[1]; j++) {
+        for (int k = 0; k < map_dimensions[2]; k++) {
+          int n_reg = map_new(i,j,k);
+          if (i < boundaries(0,n_reg,0)) {boundaries(0,n_reg,0) = i;}
+          if (j < boundaries(0,n_reg,1)) {boundaries(0,n_reg,1) = j;}
+          if (k < boundaries(0,n_reg,2)) {boundaries(0,n_reg,2) = k;}
+          if (i > boundaries(1,n_reg,0)) {boundaries(1,n_reg,0) = i;}
+          if (j > boundaries(1,n_reg,1)) {boundaries(1,n_reg,1) = j;}
+          if (k > boundaries(1,n_reg,2)) {boundaries(1,n_reg,2) = k;}
+        }
+      }
+    }
+    return boundaries;
+  }
+
+  af::versa<int, af::c_grid<3> >
   noise_elimination_two_cutoffs(
     connectivity const& connectivity_object_at_t1,
     int const& elimination_volume_threshold_at_t1,
