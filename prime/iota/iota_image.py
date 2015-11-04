@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 10/29/2015
+Last Changed: 11/02/2015
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -174,7 +174,8 @@ class SingleImage(object):
 
   def load_image(self):
     """ Reads raw image file and extracts data for conversion into pickle
-        format. """
+        format. Also estimates gain if turned on."""
+    # Load raw image or image pickle
     try:
       with misc.Capturing() as junk_output:
         loaded_img = dxtbx.load(self.raw_img)
@@ -182,6 +183,7 @@ class SingleImage(object):
       loaded_img = None
       pass
 
+    # Extract image information
     if loaded_img is not None:
       raw_data   = loaded_img.get_raw_data()
       detector   = loaded_img.get_detector()[0]
@@ -204,6 +206,7 @@ class SingleImage(object):
         msec, sec = math.modf(scan.get_epochs()[0])
         timestamp = evt_timestamp((sec,msec))
 
+      # Assemble datapack
       data = dpack(data=raw_data,
                    distance=distance,
                    pixel_size=pixel_size,
@@ -223,8 +226,55 @@ class SingleImage(object):
           data['OSC_RANGE'] = osc_range
           data['TIME'] = scan.get_exposure_times()[0]
 
+      # Estimate gain (or set gain to 1.00 if cannot calculate)
+      # Cribbed from estimate_gain.py by Richard Gildea
+      if self.params.advanced.estimate_gain:
+        try:
+          from dials.algorithms.image.threshold import KabschDebug
+          raw_data = [raw_data]
+
+          gain_value = 1
+          kernel_size=(10,10)
+          gain_map = [flex.double(raw_data[i].accessor(), gain_value)
+                      for i in range(len(loaded_img.get_detector()))]
+          mask = loaded_img.get_mask()
+          min_local = 0
+
+          # dummy values, shouldn't affect results
+          nsigma_b = 6
+          nsigma_s = 3
+          global_threshold = 0
+
+          kabsch_debug_list = []
+          for i_panel in range(len(loaded_img.get_detector())):
+            kabsch_debug_list.append(
+              KabschDebug(
+                raw_data[i_panel].as_double(), mask[i_panel], gain_map[i_panel],
+                kernel_size, nsigma_b, nsigma_s, global_threshold, min_local))
+
+          dispersion = flex.double()
+          for kabsch in kabsch_debug_list:
+            dispersion.extend(kabsch.coefficient_of_variation().as_1d())
+
+          sorted_dispersion = flex.sorted(dispersion)
+          from libtbx.math_utils import nearest_integer as nint
+
+          q1 = sorted_dispersion[nint(len(sorted_dispersion)/4)]
+          q2 = sorted_dispersion[nint(len(sorted_dispersion)/2)]
+          q3 = sorted_dispersion[nint(len(sorted_dispersion)*3/4)]
+          iqr = q3-q1
+
+          inlier_sel = (sorted_dispersion > (q1 - 1.5*iqr)) & (sorted_dispersion < (q3 + 1.5*iqr))
+          sorted_dispersion = sorted_dispersion.select(inlier_sel)
+          self.gain = sorted_dispersion[nint(len(sorted_dispersion)/2)]
+        except:
+          self.gain = 1.0
+      else:
+        self.gain = 1.0
+
     else:
       data = None
+
     return data, img_type
 
 
@@ -514,6 +564,7 @@ class SingleImage(object):
                               self.int_log,
                               tag,
                               self.tmp_base,
+                              self.gain,
                               single_image)
       if tag == 'grid search':
         self.log_info.append('\nCCTBX grid search:')
@@ -610,27 +661,35 @@ class SingleImage(object):
   def process(self, single_image=False):
     """ Image processing; selects method, runs requisite modules """
 
+    #for CCTBX indexing / integration 
     if self.params.advanced.integrate_with == 'cctbx':
-
       terminate = False
-      current_epv = 9999
+      prev_status = self.status
+      prev_fail = self.fail
+      prev_final = self.final
+      prev_epv = 9999
 
       while not terminate:
+
         # Run grid search if haven't already
         if self.fail == None and self.status != 'grid search':
           self.integrate_cctbx('grid search', single_image=single_image)
 
         # Run selection if haven't already
-        if self.fail == None and self.status != 'select':
+        if self.fail == None and self.status != 'selection':
           self.select_cctbx()
 
-        if self.fail == None and self.params.cctbx.grid_search.smart:
-          if self.final['epv'] < current_epv:
-            current_epv = self.final['epv']
+        # If smart grid search is active run multiple rounds until convergence
+        if self.params.cctbx.grid_search.smart:
+          if self.fail == None and self.final['epv'] < prev_epv:
+            prev_epv = self.final['epv']
+            prev_final = self.final
+            prev_status = self.status
+            prev_fail = self.fail
             self.hmed = self.final['sph']
             self.amed = self.final['spa']
-            tmp_final = self.final
             self.grid, self.final = self.generate_grid()
+            self.final['final'] = self.fin_file
             if len(self.grid) == 0:
               terminate = True
               continue
@@ -639,14 +698,16 @@ class SingleImage(object):
                           ''.format(self.hmed, self.amed)
               self.log_info.append(log_entry)
           else:
-            self.final = tmp_final
-            if self.verbose:
-              log_entry = '\nNo improvement in EPV (current = {})'\
-                          '\nFinal set of parameters: H = {}, A = {}'\
-                          ''.format(self.final['epv'], self.final['sph'],
-                                    self.final['spa'])
-              self.log_info.append(log_entry)
+            self.final = prev_final
+            self.status = prev_status
+            self.fail = prev_fail
             terminate = True
+            if self.verbose:
+              log_entry = '\nFinal set of parameters: H = {}, A = {}'\
+                          ''.format(self.final['sph'], self.final['spa'])
+              self.log_info.append(log_entry)          
+
+        # If brute force grid search is selected run one round
         else:
           terminate = True
 
@@ -659,12 +720,14 @@ class SingleImage(object):
          misc.main_log(self.main_log, log_entry)
          misc.main_log(self.main_log, '\n{:-^100}\n'.format(''))
 
+    # For DIALS integration (DOES NOT YET WORK)
     elif self.params.advanced.integrate_with == 'dials':
 
       # Create DIALS integrator object
       from prime.iota.iota_dials import Integrator
       integrator = Integrator(self.conv_img,
                               self.obj_base,
+                              self.gain,
                               self.params)
 
       # Run DIALS test

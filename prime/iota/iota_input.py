@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 10/28/2015
+Last Changed: 11/02/2015
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -172,6 +172,9 @@ advanced
   integrate_with = *cctbx dials
     .type = choice
     .help = Choose image processing software package
+  estimate_gain = True
+    .type = bool
+    .help = Estimates detector gain (sometimes helps indexing)
   debug = False
     .type = bool
     .help = Used for various debugging purposes.
@@ -333,7 +336,6 @@ def write_defaults(current_path, txt_out):
                     '  model=user_supplied',
                     '  spotfinder_subset=spots_non-ice',
                     '  mask_pixel_value=-2',
-                    '  detector_gain=0.32',
                     '  greedy_integration_limit=True',
                     '  combine_sym_constraints_and_3D_target=True',
                     '  spot_prediction=dials',

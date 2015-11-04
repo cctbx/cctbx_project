@@ -124,7 +124,10 @@ class Analyzer(object):
       fig.savefig(hm_file, format='pdf', bbox_inches=0)
 
 
-  def unit_cell_analysis(self, cluster_threshold, output_dir, write_files=True):
+  def unit_cell_analysis(self,
+                         cluster_threshold,
+                         output_dir,
+                         write_files=True):
     """ Calls unit cell analysis module, which uses hierarchical clustering
         (Zeldin, et al, Acta D, 2015) to split integration results according to
         detected morphological groupings (if any). Most useful with preliminary
@@ -156,11 +159,12 @@ class Analyzer(object):
       counter = 1
 
       # run hierarchical clustering analysis
+      print self.pickles
+      exit()
       ucs = Cluster.from_files(self.pickles, use_b=True)
       clusters, _ = ucs.ab_cluster(cluster_threshold, log=False,
                                    write_file_lists=False, schnell=False,
                                    doplot=False)
-
       uc_table.append("\n\n{:-^80}\n"\
                       "".format(' UNIT CELL ANALYSIS '))
 
