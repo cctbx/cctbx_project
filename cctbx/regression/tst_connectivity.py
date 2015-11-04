@@ -114,8 +114,6 @@ def exercise4():
   assert v[:1] == volumes
 
 def exercise41():
-  # No more supporting of int arrays!
-  return
   cmap = flex.int(flex.grid(100,100,100))
   cmap.fill(1)
   for i in range(10,20):
