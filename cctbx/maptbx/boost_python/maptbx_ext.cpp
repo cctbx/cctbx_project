@@ -224,6 +224,7 @@ namespace {
         .def("regions",   &w_t::regions)
         .def("volume_cutoff_mask", &w_t::volume_cutoff_mask,
                     (arg("volume_cutoff")))
+        .def("get_blobs_boundaries", &w_t::get_blobs_boundaries)
         .def("noise_elimination_two_cutoffs",
              &w_t::noise_elimination_two_cutoffs,
                     (arg("connectivity_object_at_t1"),

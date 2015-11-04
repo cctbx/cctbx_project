@@ -21,6 +21,26 @@ from libtbx import group_args
 debug_peak_cluster_analysis = os.environ.get(
   "CCTBX_MAPTBX_DEBUG_PEAK_CLUSTER_ANALYSIS", "")
 
+class _(boost.python.injector, connectivity):
+  def get_blobs_boundaries_tuples(self):
+    """
+    get lists of minimum and maximum coordinates for each connected
+    region.
+    returns 2 lists of tuples: first is minimum, second is maximum coordinates.
+    [(x0,y0,z0), (x1,y1,z1), ...] where 0,1,... - number of region
+    """
+    boundaries = self.get_blobs_boundaries()
+    regs = self.regions()
+    min_boundaries = []
+    max_boundaries = []
+    for i in range(len(regs)):
+      minb = (boundaries[0,i,0], boundaries[0,i,1], boundaries[0,i,1])
+      maxb = (boundaries[1,i,0], boundaries[1,i,1], boundaries[1,i,1])
+      min_boundaries.append(minb)
+      max_boundaries.append(maxb)
+    return min_boundaries, max_boundaries
+
+
 def value_at_closest_grid_point(map, x_frac):
   return map[closest_grid_point(map.accessor(), x_frac)]
 
