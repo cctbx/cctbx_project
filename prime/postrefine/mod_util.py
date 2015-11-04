@@ -875,41 +875,62 @@ class intensities_scaler(object):
 
   def plot_stats(self, results, iparams):
     #retrieve stats from results and plot them
-    G_frame = flex.double()
-    B_frame = flex.double()
-    rotx_frame = flex.double()
-    roty_frame = flex.double()
-    ry_frame = flex.double()
-    rz_frame = flex.double()
-    re_frame = flex.double()
-    uc_a_frame = flex.double()
-    uc_b_frame = flex.double()
-    uc_c_frame = flex.double()
-    uc_alpha_frame = flex.double()
-    uc_beta_frame = flex.double()
-    uc_gamma_frame = flex.double()
-    SE_all = flex.double()
-    R_sq_all = flex.double()
-    cc_all = flex.double()
+    if iparams.flag_plot or iparams.flag_output_verbose:
+      G_frame = flex.double()
+      B_frame = flex.double()
+      rotx_frame = flex.double()
+      roty_frame = flex.double()
+      ry_frame = flex.double()
+      rz_frame = flex.double()
+      re_frame = flex.double()
+      uc_a_frame = flex.double()
+      uc_b_frame = flex.double()
+      uc_c_frame = flex.double()
+      uc_alpha_frame = flex.double()
+      uc_beta_frame = flex.double()
+      uc_gamma_frame = flex.double()
+      SE_all = flex.double()
+      R_sq_all = flex.double()
+      cc_all = flex.double()
+      txt_out_verbose = ''
 
-    for pres in results:
-      G_frame.append(pres.G)
-      B_frame.append(pres.B)
-      rotx_frame.append(pres.rotx*180/math.pi)
-      roty_frame.append(pres.roty*180/math.pi)
-      ry_frame.append(pres.ry)
-      rz_frame.append(pres.rz)
-      re_frame.append(pres.re)
-      uc_a_frame.append(pres.uc_params[0])
-      uc_b_frame.append(pres.uc_params[1])
-      uc_c_frame.append(pres.uc_params[2])
-      uc_alpha_frame.append(pres.uc_params[3])
-      uc_beta_frame.append(pres.uc_params[4])
-      uc_gamma_frame.append(pres.uc_params[5])
-      SE_all.append(pres.SE)
-      R_sq_all.append(pres.R_sq)
-      cc_all.append(pres.CC_final)
+      for pres in results:
+        G_frame.append(pres.G)
+        B_frame.append(pres.B)
+        rotx_frame.append(pres.rotx*180/math.pi)
+        roty_frame.append(pres.roty*180/math.pi)
+        ry_frame.append(pres.ry)
+        rz_frame.append(pres.rz)
+        re_frame.append(pres.re)
+        uc_a_frame.append(pres.uc_params[0])
+        uc_b_frame.append(pres.uc_params[1])
+        uc_c_frame.append(pres.uc_params[2])
+        uc_alpha_frame.append(pres.uc_params[3])
+        uc_beta_frame.append(pres.uc_params[4])
+        uc_gamma_frame.append(pres.uc_params[5])
+        SE_all.append(pres.SE)
+        R_sq_all.append(pres.R_sq)
+        cc_all.append(pres.CC_final)
+        txt_out_verbose += '%8.1f %8.1f %8.1f %8.2f %6.2f %6.2f %6.2f %6.2f %8.5f %8.5f %8.5f %8.5f %8.2f %8.2f %8.2f %8.2f %8.2f %8.2f %6.2f ' \
+        %(pres.R_init, pres.R_final, pres.R_xy_init, pres.R_xy_final, pres.G, pres.B, pres.rotx*180/math.pi, pres.roty*180/math.pi, \
+        pres.ry, pres.rz, pres.r0, pres.re, pres.uc_params[0], pres.uc_params[1], pres.uc_params[2], pres.uc_params[3], \
+        pres.uc_params[4], pres.uc_params[5], pres.CC_final)+pres.pickle_filename+'\n'
 
+    if iparams.flag_output_verbose:
+      import os
+      fileseq_list = flex.int()
+      for file_in in os.listdir(iparams.run_no):
+        if file_in.endswith('.paramhist'):
+          file_split = file_in.split('.')
+          fileseq_list.append(int(file_split[0]))
+      if len(fileseq_list) == 0:
+        new_fileseq = 0
+      else:
+        new_fileseq = flex.max(fileseq_list) + 1
+      newfile_name = str(new_fileseq) + '.paramhist'
+      f = open(iparams.run_no+'/'+newfile_name, 'w')
+      f.write(txt_out_verbose)
+      f.close()
 
     if iparams.flag_plot:
       plt.subplot(121)

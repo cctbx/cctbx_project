@@ -253,6 +253,8 @@ if (__name__ == "__main__"):
 
     if i_iter > 0:
       iparams.b_refine_d_min = 0.5
+    if i_iter > 1:
+      iparams.postref.reflecting_range.flag_on = False
 
     _txt_merge_postref = 'Post-refinement cycle '+str(i_iter+1)+' ('+avg_mode+')\n'
     _txt_merge_postref += ' * R and CC show percent change.\n'

@@ -185,45 +185,6 @@ class postref_handler(object):
       spot_pred_x_mm = spot_pred_x_mm_set[:]
       spot_pred_y_mm = spot_pred_y_mm_set[:]
 
-
-    if iparams.flag_apply_b_by_frame:
-      try:
-        from mod_util import mx_handler
-        mxh = mx_handler()
-        asu_contents = mxh.get_asu_contents(iparams.n_residues)
-        observations_as_f = observations.as_amplitude_array()
-        binner_template_asu = observations_as_f.setup_binner(auto_binning=True)
-        wp = statistics.wilson_plot(observations_as_f, asu_contents, e_statistics=True)
-        if wp.wilson_b < 0:
-          txt_exception += 'Image rejected from scaling'
-          print txt_exception
-          return None, txt_exception
-
-        normalised = observations_as_f.normalised_amplitudes(asu_contents, wilson_plot=wp)
-        normalised_f_obs = normalised.array()
-        centric_flags = normalised_f_obs.centric_flags()
-        select_flags = flex.bool([False]*len(normalised_f_obs.indices()))
-        i_f_obs = 0
-        for centric_flag in centric_flags.data():
-          if centric_flag:
-            e_thres = 4.89
-          else:
-            e_thres = 3.72
-          if normalised_f_obs.data()[i_f_obs] < e_thres:
-            select_flags[i_f_obs] = True
-          i_f_obs += 1
-
-        if len(select_flags.select(select_flags == True)) < len(observations.indices()) \
-        and iparams.flag_output_verbose:
-          print 'Outliers detected: ', len(observations.indices())-len(select_flags.select(select_flags == True)), ' reflections rejected.'
-        #observations = observations.select(select_flags)
-        #alpha_angle_obs = alpha_angle_obs.select(select_flags)
-        #spot_pred_x_mm = spot_pred_x_mm.select(select_flags)
-        #spot_pred_y_mm = spot_pred_y_mm.select(select_flags)
-
-      except Exception:
-        return None, 'Warning: problem with Wilson B-factor - continue.'
-
     if iparams.flag_replace_sigI:
       observations = observations.customized_copy(sigmas=flex.sqrt(observations.data()))
 
