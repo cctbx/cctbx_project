@@ -740,7 +740,7 @@ class Builder(object):
     self.add_step(self.shell(
       name='removing bootstrap utilities',
       command =cmd,
-      workdir=['modules'],
+      workdir=['.'],
       description="remove temporary bootstrap.py*",
     ))
 
