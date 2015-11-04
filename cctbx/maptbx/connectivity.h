@@ -44,9 +44,10 @@ private:
   }
 
 public:
+  template <typename MapType>
   connectivity(
-    af::const_ref<double, af::flex_grid<> > const& map_data,
-    double const& threshold)
+    af::const_ref<MapType, af::flex_grid<> > const& map_data,
+    MapType const& threshold)
   {
     CCTBX_ASSERT(map_data.accessor().nd() == 3);
     CCTBX_ASSERT(map_data.accessor().all().all_gt(0));
@@ -79,7 +80,7 @@ public:
               cur_reg += 1;
               tempcoors[0] = scitbx::vec3<int> (i,j,k);
               map_new(i,j,k) = cur_reg;
-              double cur_max_value = map_data(i,j,k);
+              MapType cur_max_value = map_data(i,j,k);
               scitbx::vec3<int> cur_max (i,j,k);
               cur_reg_vol = 1;
               pointer_empty = 1;
