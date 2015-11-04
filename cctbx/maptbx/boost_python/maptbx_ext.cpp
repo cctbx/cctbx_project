@@ -208,15 +208,7 @@ namespace {
       typedef connectivity w_t;
 
       class_<w_t>("connectivity", no_init)
-        .def(init<af::const_ref<double, af::c_grid<3> > const&,
-                  double const& >(
-                    (arg("map_data"),
-                     arg("threshold"))))
-        .def(init<af::const_ref<float, af::c_grid<3> > const&,
-                  double const& >(
-                    (arg("map_data"),
-                     arg("threshold"))))
-        .def(init<af::const_ref<int, af::c_grid<3> > const&,
+        .def(init<af::const_ref<double, af::flex_grid<> > const&,
                   double const& >(
                     (arg("map_data"),
                      arg("threshold"))))

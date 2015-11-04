@@ -114,6 +114,8 @@ def exercise4():
   assert v[:1] == volumes
 
 def exercise41():
+  # No more supporting of int arrays!
+  return
   cmap = flex.int(flex.grid(100,100,100))
   cmap.fill(1)
   for i in range(10,20):
@@ -415,13 +417,13 @@ def exercise_get_blobs_boundaries():
   # two blobs test
   # just add a blob to the previous cmap
   for i in range(50,70):
-    for j in range(50,70):
-      for k in range(50,70):
+    for j in range(50,80):
+      for k in range(50,90):
         cmap[i,j,k] = 10
   co = maptbx.connectivity(map_data=cmap, threshold=5)
   minb, maxb = co.get_blobs_boundaries_tuples()
   assert minb == [(0,0,0), (10,10,10), (50,50,50)]
-  assert maxb == [(99,99,99), (19,19,19), (69,69,69)]
+  assert maxb == [(99,99,99), (19,19,19), (69,79,89)]
 
 
 if __name__ == "__main__":
