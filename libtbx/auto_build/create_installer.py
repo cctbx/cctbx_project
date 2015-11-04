@@ -262,9 +262,7 @@ class SetupInstaller(object):
       installer_utils.call(arg, cwd=self.dest_dir)
 
       print "Creating zip archive of distribution"
-      import platform
-      bitness = platform.architecture()[0][0:2]
-      fname = os.path.join(self.dist_dir, '%sx%s.zip'%(os.path.basename(self.dest_dir), bitness))
+      fname = os.path.join(self.dist_dir, '%s.zip'%os.path.basename(self.dest_dir))
       myzip = zipfile.ZipFile(fname, 'w', zipfile.ZIP_DEFLATED, allowZip64=True )
       for dirpath,dirs,files in os.walk(self.dest_dir):
         for f in files:
