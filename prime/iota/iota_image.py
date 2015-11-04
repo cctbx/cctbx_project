@@ -661,7 +661,7 @@ class SingleImage(object):
   def process(self, single_image=False):
     """ Image processing; selects method, runs requisite modules """
 
-    #for CCTBX indexing / integration 
+    #for CCTBX indexing / integration
     if self.params.advanced.integrate_with == 'cctbx':
       terminate = False
       prev_status = self.status
@@ -705,7 +705,7 @@ class SingleImage(object):
             if self.verbose:
               log_entry = '\nFinal set of parameters: H = {}, A = {}'\
                           ''.format(self.final['sph'], self.final['spa'])
-              self.log_info.append(log_entry)          
+              self.log_info.append(log_entry)
 
         # If brute force grid search is selected run one round
         else:
