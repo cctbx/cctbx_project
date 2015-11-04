@@ -51,23 +51,17 @@ def integrate_one_image(data, **kwargs):
   try:
     return run_one_index_core(horizons_phil)
   except NoAutoIndex,e:
-    print "NoAutoIndex"
-    print e
+    print "NoAutoIndex", data['TIMESTAMP'], e
   except AutoIndexError,e:
-    print "FailedAutoIndex"
-    print e
+    print "FailedAutoIndex", data['TIMESTAMP'], e
   except Sorry,e:
-    print "Sorry"
-    print e
+    print "Sorry", data['TIMESTAMP'], e
   except ZeroDivisionError,e:
-    print "ZeroDivisionError"
-    print e
+    print "ZeroDivisionError", data['TIMESTAMP'], e
   except SpotfinderError,e:
-    print "Too few spots from Spotfinder"
-    print e
+    print "Too few spots from Spotfinder", data['TIMESTAMP'], e
   except Exception,e:
-    print "ANOTHER exception"
-    print e
+    print "ANOTHER exception", data['TIMESTAMP'], e
     import traceback
     traceback.print_exc()
 
