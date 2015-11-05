@@ -2032,6 +2032,41 @@ END
   assert approx_equal(deltas[3], -19.6324864704) # --> -86 degrees
   assert approx_equal(deltas[6], 23.2807269272) # --> 93 degrees
 
+def exercise_ss_bond_angles_alt_loc(mon_lib_srv, ener_lib):
+  raw_records = """\
+HEADER    HYDROLASE                               19-OCT-05   2BCH
+CRYST1   45.908   45.908  101.372  90.00  90.00 120.00 P 31 2 1      6
+ATOM    274  N   CYS A  27      17.541   4.439  12.897  1.00 13.99           N
+ATOM    275  CA  CYS A  27      16.566   5.527  12.862  1.00 14.57           C
+ATOM    276  C   CYS A  27      16.236   6.026  11.467  1.00 14.53           C
+ATOM    277  O   CYS A  27      15.254   6.760  11.351  1.00 16.95           O
+ATOM    278  CB  CYS A  27      17.114   6.698  13.662  1.00 15.77           C
+ATOM    279  SG  CYS A  27      17.230   6.332  15.443  1.00 17.57           S
+ATOM   1225  CB  CYS A 123      14.607   7.591  16.260  1.00 24.16           C
+ATOM   1226  SG  CYS A 123      15.316   5.939  15.946  1.00 20.05           S
+ATOM   1217  N  ACYS A 123      15.023   7.279  18.624  0.58 26.40           N
+ATOM   1219  CA ACYS A 123      15.266   8.190  17.491  0.58 25.69           C
+ATOM   1221  C  ACYS A 123      14.764   9.599  17.776  0.58 26.33           C
+ATOM   1223  O  ACYS A 123      14.197  10.238  16.886  0.58 28.70           O
+ATOM   1227  OXTACYS A 123      14.975  10.081  18.878  0.58 28.31           O
+ATOM   1218  N  BCYS A 123      15.023   7.288  18.685  0.42 25.68           N
+ATOM   1220  CA BCYS A 123      15.108   8.205  17.548  0.42 25.86           C
+ATOM   1222  C  BCYS A 123      14.270   9.460  17.813  0.42 26.42           C
+ATOM   1224  O  BCYS A 123      13.915  10.125  16.837  0.42 27.75           O
+ATOM   1228  OXTBCYS A 123      13.981   9.728  18.968  0.42 28.04           O
+END
+  """.splitlines()
+  log = StringIO()
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    file_name=None,
+    raw_records=raw_records,
+    log=log)
+  grm = processed_pdb_file.geometry_restraints_manager()
+  assert grm.angle_proxies.size() == 21
+  assert grm.get_dihedral_proxies().size() == 8
+
 def run(args):
   assert len(args) == 0
   mon_lib_srv = monomer_library.server.server()
@@ -2059,6 +2094,7 @@ def run(args):
   exercise_asp_glu_acid()
   exercise_rna_dna_synonyms()
   exercise_ss_bond_angles(mon_lib_srv, ener_lib)
+  exercise_ss_bond_angles_alt_loc(mon_lib_srv, ener_lib)
   print format_cpu_times()
 
 if (__name__ == "__main__"):
