@@ -5,6 +5,7 @@ from labelit.dptbx.autoindex import index_and_refine
 
 class new_horizons_state:
   def __init__(self,horizons_phil,args):
+    self.last_saved_best = None
     self.horizons_phil = horizons_phil
     if self.horizons_phil.spotfinder=="distl":
       print "Importing DISTL"
@@ -58,7 +59,7 @@ class new_horizons_state:
       IC = IntegrateCharacters(M,self.pd,self.horizons_phil,files,
         spotfinder_results)
       IC.find_best()
-      IC.save_best()
+      self.last_saved_best = IC.save_best()
       IC.show()
     # Lattice character information added for special UCSF/ LLNL project (5/2014):
     self.pd["lattice_characters"]=M.best()
