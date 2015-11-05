@@ -321,7 +321,7 @@ class IntegrateCharacters:
             info['ML_domain_size_ang'] = [getattr(a,"ML_domain_size_ang",0) for a in local["results"]]
           G = open(file,"wb")
           pickle.dump(info,G,pickle.HIGHEST_PROTOCOL)
-          return
+          return info
 
   def show(self):
     print
