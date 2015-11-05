@@ -3588,6 +3588,7 @@ xfel/command_line/cxi_spots.py -text
 xfel/command_line/cxi_stream_to_pickle.py -text
 xfel/command_line/cxi_view.py -text
 xfel/command_line/cxi_xtc_process.py -text
+xfel/command_line/experiment_manager.py -text
 xfel/command_line/frame_extractor.py -text
 xfel/command_line/frame_unpickler.py -text
 xfel/command_line/get_next_trial_id.py -text
@@ -3712,4 +3713,5 @@ xfel/vonHamos/fit_3_gaussian.py -text
 xfel/vonHamos/test_3_gaussian.py -text
 xfel/vonHamos/xes_ext.cpp -text
 xfel/xpp/__init__.py -text
+xfel/xpp/experiment_schema.sql -text
 xfel/xpp/simulate.py -text
