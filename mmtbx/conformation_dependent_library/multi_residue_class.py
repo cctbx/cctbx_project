@@ -51,7 +51,8 @@ class ThreeProteinResidues(list):
   def show(self):
     outl = "ThreeProteinResidues"
     for residue in self:
-      outl += " %s(%s)" % (residue.resname, residue.resseq)
+      if residue is not None: outl += " %s(%s)" % (residue.resname, residue.resseq)
+      else: outl += ' "%s"' % residue
     outl += " %s" % self.are_linked(return_value=True)
     if self.start is not None: outl += " start=T"
     if self.end is not None: outl += " end=T"
@@ -91,6 +92,8 @@ class ThreeProteinResidues(list):
     for i, residue in enumerate(self):
       if i==0: continue
       ccn1, outl1 = get_c_ca_n(residue)
+      if self[i-1] is None: # place holder for omega CDL
+        return False
       ccn2, outl2 = get_c_ca_n(self[i-1])
       if ccn1 is None:
         for line in outl1:
@@ -132,9 +135,10 @@ class ThreeProteinResidues(list):
   def get_i_seqs(self):
     atoms = {}
     # i-1
-    for name in [" C  ", " CA "]: # need CA_minus_1 for omega-CDL
-      atom = self[0].find_atom_by(name=name)
-      if atom: atoms["%s_minus_1" % name.strip()] = atom
+    if self[0]:
+      for name in [" C  ", " CA "]: # need CA_minus_1 for omega-CDL
+        atom = self[0].find_atom_by(name=name)
+        if atom: atoms["%s_minus_1" % name.strip()] = atom
     # i
     for name in [" N  ", " CA ", " CB ", " C  ", " O  "]:
       atom = self[1].find_atom_by(name=name)
@@ -148,21 +152,42 @@ class ThreeProteinResidues(list):
   def get_resnames(self):
     return self[0].resname, self[1].resname, self[2].resname
 
-  def get_phi_psi_atoms(self, only_psi_phi_pairs=True, force_plus_one=False):
-    if len(self)!=self.length: return None, None
+  def get_phi_psi_atoms(self,
+                        only_psi_phi_pairs=True,
+                        force_plus_one=False,
+                        omega_cdl=False,
+                        ):
+    if omega_cdl:
+      if len(self) not in [self.length, self.length-1]:
+        return None, None
+      if len(self)==2:
+        self.insert(0, None)
+    else:
+      if len(self)!=self.length: return None, None
     if force_plus_one: only_psi_phi_pairs=False
-    backbone_i_minus_1, junk = get_c_ca_n(self[0])
+    if self[0] is None:
+      backbone_i_minus_1 = None
+    else:
+      backbone_i_minus_1, junk = get_c_ca_n(self[0])
+      assert len(backbone_i_minus_1)==3
     backbone_i, junk = get_c_ca_n(self[1])
     backbone_i_plus_1, junk = get_c_ca_n(self[2])
-    assert len(backbone_i_minus_1)==3
     assert len(backbone_i)==3
     assert len(backbone_i_plus_1)==3
-    phi_atoms = [
-      backbone_i_minus_1[0],
-      backbone_i[2],
-      backbone_i[1],
-      backbone_i[0],
-      ]
+    if omega_cdl: # phi(+1)
+      phi_atoms = [
+        backbone_i[0],
+        backbone_i_plus_1[2],
+        backbone_i_plus_1[1],
+        backbone_i_plus_1[0],
+        ]
+    else:
+      phi_atoms = [
+        backbone_i_minus_1[0],
+        backbone_i[2],
+        backbone_i[1],
+        backbone_i[0],
+        ]
     psi_atoms = [
       backbone_i[2],
       backbone_i[1],
@@ -197,10 +222,13 @@ class ThreeProteinResidues(list):
   def get_phi_psi_angles(self,
                          only_psi_phi_pairs=True,
                          force_plus_one=False,
+                         omega_cdl=False,
                          verbose=False,
                          ):
     atoms = self.get_phi_psi_atoms(only_psi_phi_pairs=only_psi_phi_pairs,
-                                   force_plus_one=force_plus_one)
+                                   force_plus_one=force_plus_one,
+                                   omega_cdl=omega_cdl,
+                                  )
     dihedrals = []
     for dihedral in atoms:
       phi_or_psi=dihedral_angle(sites=[atom.xyz for atom in dihedral], deg=True)
@@ -214,8 +242,10 @@ class ThreeProteinResidues(list):
                   exact=False,
                   only_psi_phi_pairs=True,
                   force_plus_one=False,
+                  omega_cdl=False,
                   verbose=False):
     dihedrals=self.get_phi_psi_angles(only_psi_phi_pairs=only_psi_phi_pairs,
+                                      omega_cdl=omega_cdl,
                                       verbose=verbose,
                                       )
     key = []

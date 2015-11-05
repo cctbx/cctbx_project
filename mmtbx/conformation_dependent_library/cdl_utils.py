@@ -10,6 +10,7 @@ def distance2(a,b):
   return d2
 
 def get_c_ca_n(atom_group):
+  assert atom_group
   tmp = []
   outl = []
   for name in [" C  ", " CA ", " N  "]:
