@@ -41,14 +41,20 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
   def apply_cob_to_vector(self,vector=None,
          change_of_basis_operator=None,
+         coordinate_offset=None,
          unit_cell=None,new_unit_cell=None):
-    frac=unit_cell.fractionalize(vector)
-    new_frac = change_of_basis_operator.c() * frac
-    new_vector=new_unit_cell.orthogonalize(new_frac)
+    if coordinate_offset is not None:
+      from scitbx.math import  matrix
+      new_vector=matrix.col(vector)+matrix.col(coordinate_offset)
+    elif change_of_basis_operator:
+      frac=unit_cell.fractionalize(vector)
+      new_frac = change_of_basis_operator.c() * frac
+      new_vector=new_unit_cell.orthogonalize(new_frac)
     return new_vector
 
   def copy_rot_trans(self,list_of_matrices,list_of_translations,
       change_of_basis_operator=None,
+      coordinate_offset=None,
       unit_cell=None,new_unit_cell=None):
     # if change_of_basis_operator is None, then return copy of what we have
     from copy import deepcopy
@@ -63,9 +69,19 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     else:
       a=None
     for ncs_r,ncs_t in zip(list_of_matrices,list_of_translations):
-      if change_of_basis_operator is None:
+      if change_of_basis_operator is None and coordinate_offset is None:
         new_list_of_matrices.append(deepcopy(ncs_r))
         new_list_of_translations.append(deepcopy(ncs_t))
+      elif coordinate_offset is not None:
+        # TT 2015-11-02 special case of below where cob is just a translation
+        # R' =  R
+        # T' =  T + t - R t
+        new_list_of_matrices.append(deepcopy(ncs_r))  # these are the same
+        delta = ncs_r * coordinate_offset
+        t_prime=matrix.col(ncs_t) + \
+          matrix.col(coordinate_offset) - matrix.col(delta)
+        new_list_of_translations.append(t_prime)
+
       else:
         # tt 2011-10-02
         # Formula for conversion of NCS rotation matrix and translation
@@ -113,22 +129,26 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
   def copy_vector_list(self,list_of_vectors,
       change_of_basis_operator=None,
+      coordinate_offset=None,
          unit_cell=None,new_unit_cell=None):
     from copy import deepcopy
     new_vector_list=[]
     for vector in list_of_vectors:
-      if change_of_basis_operator is None:
+      if change_of_basis_operator is None and coordinate_offset is None:
         new_vector=deepcopy(vector)
       else:
         new_vector=self.apply_cob_to_vector(vector=vector,
           change_of_basis_operator=change_of_basis_operator,
+          coordinate_offset=coordinate_offset,
            unit_cell=unit_cell,new_unit_cell=new_unit_cell)
       new_vector_list.append(new_vector)
     return new_vector_list
 
   def deep_copy(self,change_of_basis_operator=None,unit_cell=None,
+      coordinate_offset=None,
       new_unit_cell=None):  # make full copy;
     # optionally apply change-of-basis operator (requires old, new unit cells)
+    # optionally apply coordinate_offset (adding coordinate_offset to coords)
 
     from mmtbx.ncs.ncs import ncs
     from copy import deepcopy
@@ -140,12 +160,13 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     # centers simply get affected by the change of basis operator if present
     new._centers=self.copy_vector_list(self._centers,
       change_of_basis_operator=change_of_basis_operator,
+      coordinate_offset=coordinate_offset,
          unit_cell=unit_cell,new_unit_cell=new_unit_cell)
 
     # matrices and translations may need to be adjusted if change of basis set
     new._rota_matrices,new._translations_orth=self.copy_rot_trans(
        self._rota_matrices,self._translations_orth,
-         change_of_basis_operator=change_of_basis_operator,
+         coordinate_offset=coordinate_offset,
          unit_cell=unit_cell,new_unit_cell=new_unit_cell)
 
     new._n_ncs_oper=deepcopy(self._n_ncs_oper)
@@ -398,6 +419,7 @@ class ncs:
     self._ncs_obj = None
 
   def deep_copy(self,change_of_basis_operator=None,unit_cell=None,
+      coordinate_offset=None,
       new_unit_cell=None):  # make a copy
     from mmtbx.ncs.ncs import ncs
 
@@ -410,6 +432,7 @@ class ncs:
     for ncs_group in self._ncs_groups:
       new._ncs_groups.append(ncs_group.deep_copy(
          change_of_basis_operator=change_of_basis_operator,
+         coordinate_offset=coordinate_offset,
          unit_cell=unit_cell,new_unit_cell=new_unit_cell))
     return new
 
@@ -421,6 +444,12 @@ class ncs:
            "new_unit_cell and operator are all required")
     return self.deep_copy(change_of_basis_operator=change_of_basis_operator,
       unit_cell=unit_cell,new_unit_cell=new_unit_cell)
+
+  def coordinate_offset(self,coordinate_offset=None,unit_cell=None,
+      new_unit_cell=None):
+    if coordinate_offset is None:
+       raise Sorry("For coordinate_offset an offset is required.")
+    return self.deep_copy(coordinate_offset=coordinate_offset)
 
   def ncs_read(self):
     return self._ncs_read
@@ -473,6 +502,20 @@ class ncs:
           self.save_oper()
         set=self.get_3_values_after_key(line)
         self._rota_matrix.append(set)
+
+      elif len(spl)==8 and key=='remark' and spl[2][:-1].lower()=='biomt':
+        # PDB REMARK 350 BIOMT1 BIOMT2 BIOMT3 record
+        if self._rota_matrix and \
+            len(self._rota_matrix)==3 or len(self._rota_matrix)==0:
+          self.save_oper()
+        set=self.get_3_values_after_key(" ".join(spl[3:]))
+        self._rota_matrix.append(set)
+        value=self.get_1_value_after_key(" ".join(spl[6:]))
+        if self._trans is None: self._trans=[]
+        self._trans.append(value)
+        if self._center is None: self._center=[]
+        self._center.append(0.)
+
       elif key=='tran_orth': # read translation
         self._trans=self.get_3_values_after_key(line)
       elif key=='center_orth': # read translation
@@ -585,7 +628,9 @@ class ncs:
        if not item:
           have_oper=False
      if self._rota_matrix and len(self._rota_matrix)!=3:
-          raise Sorry("Cannot interpret this NCS file")
+          raise Sorry("Cannot interpret this NCS file (rotations not understood)")
+     if self._trans and len(self._trans)!=3:
+          raise Sorry("Cannot interpret this NCS file (translations not understood)")
      have_something=False
      if have_oper or self._rmsd or self._residues_in_common:
        have_something=True
