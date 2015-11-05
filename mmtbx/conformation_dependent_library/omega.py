@@ -20,12 +20,14 @@ columns = [
 
 def get_restraint_values(threes):
   res_type_group = get_res_type_group(
-    threes[1].resname,
-    threes[2].resname,
+    threes[-2].resname,
+    threes[-1].resname,
   )
   if res_type_group is None: return None
   restraint_values = []
-  key = threes.get_cdl_key(force_plus_one=True)
+  key = threes.get_cdl_key(force_plus_one=True,
+                           omega_cdl=True,
+                          )
   previous_key = None
   if len(key)==4:
     previous_key = key[:2]
@@ -106,7 +108,6 @@ def apply_updates(self,
         else:
           assert 0
 
-
 def update_restraints(hierarchy,
                       geometry, # restraints_manager,
                       current_geometry=None, # xray_structure!!
@@ -134,6 +135,7 @@ def update_restraints(hierarchy,
   total_updates = 0
   for threes in generate_protein_threes(hierarchy,
                                         geometry,
+                                        omega_cdl=True,
                                         #verbose=verbose,
                                         ):
     threes.apply_updates = apply_updates

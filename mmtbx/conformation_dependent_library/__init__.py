@@ -56,6 +56,7 @@ def get_restraint_values(threes, interpolate=False):
 def generate_protein_threes(hierarchy,
                             geometry,
                             include_non_linked=False,
+                            omega_cdl=False,
                             verbose=False,
                             ):
   backbone_asc = hierarchy.atom_selection_cache()
@@ -89,7 +90,12 @@ def generate_protein_threes(hierarchy,
             if len(threes)>3: del threes[0]
           else:
             threes.append(residue)
-          if len(threes)!=3: continue
+          if len(threes)!=3:
+            if omega_cdl:
+              if len(threes)==2:
+                threes.insert(0,None)
+              else: continue
+            else: continue
           assert len(threes)<=3
           list_of_threes.append(copy.copy(threes))
         # per conformer
