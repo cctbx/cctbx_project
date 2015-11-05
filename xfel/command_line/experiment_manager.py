@@ -95,12 +95,16 @@ class initialize(object):
 
   def drop_tables(self):
     print "Dropping tables..."
-    cmd = "SET FOREIGN_KEY_CHECKS=0; "
     for table in self.expected_tables:
-      cmd += "DROP TABLE IF EXISTS %s; "%(self.params.experiment_tag + "_" + table);
-    cmd += "SET FOREIGN_KEY_CHECKS=1;"
-    cursor = self.dbobj.cursor()
-    cursor.execute(cmd);
+      cmd = "SHOW TABLES LIKE '%s'"%(self.params.experiment_tag + "_" + table)
+      cursor = self.dbobj.cursor()
+      cursor.execute(cmd)
+      if cursor.rowcount > 0:
+        cmd = "SET FOREIGN_KEY_CHECKS=0; "
+        cmd += "DROP TABLE IF EXISTS %s; "%(self.params.experiment_tag + "_" + table);
+        cmd += "SET FOREIGN_KEY_CHECKS=1;"
+        cursor = self.dbobj.cursor()
+        cursor.execute(cmd);
 
   def create_tables(self):
     print "Creating tables..."
@@ -118,6 +122,9 @@ class initialize(object):
 
       if "REFERENCES" in line:
         line = line.replace("`mydb`.`","`%s`.`%s_")%(self.params.db.name, self.params.experiment_tag)
+
+      if "CONSTRAINT" in line:
+        line = line.replace("`fk_","`fk_%s_")%self.params.experiment_tag
 
       if reading_create:
         cmd.append(line)
