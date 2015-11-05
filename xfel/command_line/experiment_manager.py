@@ -57,8 +57,10 @@ class initialize(object):
       else:
         self.params.experiment_tag = raw_input("Input an experiment tag: ")
 
+    assert self.params.experiment is not None and self.params.experiment_tag is not None and len(self.params.experiment_tag) > 0
+
     print "Administering experiment", self.params.experiment, "using tag", self.params.experiment_tag
-    if get_bool_from_user("Drop exisiting tables for %s?"%self.params.experiment_tag, default=False):
+    if get_bool_from_user("Drop existing tables for %s?"%self.params.experiment_tag, default=False):
       self.drop_tables()
 
     if not self.verify_tables():
