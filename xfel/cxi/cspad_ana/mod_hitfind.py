@@ -292,7 +292,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       indexed = info is not None
       if indexed:
         # integration pickle dictionary is available here as info.last_saved_best
-
+        pass
       if self.m_db_logging:
         sec,ms = cspad_tbx.evt_time(evt)
         evt_time = sec + ms/1000
