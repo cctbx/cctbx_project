@@ -6,7 +6,7 @@ import iotbx.gui_tools
 from iotbx import file_reader
 from libtbx.utils import Sorry
 import cStringIO
-import os
+import os, tempfile
 
 model_file_types = {"pdb" : "PDB", "mmcif" : "mmCIF", }
 
@@ -80,7 +80,7 @@ class model_handler (iotbx.gui_tools.manager) :
         pdb_hierarchies.append(self.get_pdb_hierarchy(file_name))
       tmp_dir = self.tmp_dir
       if tmp_dir is None :
-        tmp_dir = "/var/tmp"
+        tmp_dir = tempfile.gettempdir()
       assert os.path.isdir(tmp_dir)
       file_name = os.path.join(tmp_dir, "current_model.pdb")
       f = open(file_name, "w")
@@ -213,7 +213,7 @@ class model_handler (iotbx.gui_tools.manager) :
     import iotbx.pdb
     if (tmp_dir is None) :
       if (self.tmp_dir is None) :
-        tmp_dir = "/var/tmp"
+        tmp_dir = tempfile.gettempdir()
       else :
         tmp_dir = self.tmp_dir
     assert os.path.isdir(tmp_dir)
