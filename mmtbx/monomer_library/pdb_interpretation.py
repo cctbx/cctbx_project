@@ -4518,44 +4518,76 @@ class build_all_chain_proxies(linking_mixins):
         # we do know i_seq, j_seq of linked atoms, and we do know that there
         # is no symmetry operation for this link
         def _get_ss_atom_pairs(atom_name):
-          ss_atoms = [None, None]
+          ss_atoms = [{}, {}]
           for i, seq in enumerate([i_seq, j_seq]):
             a = self.pdb_atoms[seq]
             ag = a.parent()
             rg = ag.parent()
-            ss_atoms[i] = ag.get_atom(atom_name)
-            if ss_atoms[i] is None:
+            atom = ag.get_atom(atom_name)
+            if atom: ss_atoms[i][ag.altloc]=atom
+            else:
               for ag_t in rg.atom_groups():
-                if ag_t.altloc == "":
-                  ss_atoms[i] = ag_t.get_atom(atom_name)
-                  break
+                if ag_t.get_atom(atom_name):
+                  ss_atoms[i][ag_t.altloc] = ag_t.get_atom(atom_name)
           return ss_atoms
-        cb_atoms = _get_ss_atom_pairs("CB")
-        ca_atoms = _get_ss_atom_pairs("CA")
-        # there was a bug-report where ca_atoms[1] is still None!
-        lookup = {
-          "1CA" : ca_atoms[0].i_seq,
-          "2CA" : ca_atoms[1].i_seq,
-          "1CB" : cb_atoms[0].i_seq,
-          "2CB" : cb_atoms[1].i_seq,
-          "1SG" : i_seq,
-          "2SG" : j_seq,
-          }
-        angle_weight = 1/disulfide_angle.value_angle_esd**2
-        if cb_atoms[0] is not None:
-          proxy = geometry_restraints.angle_proxy(
-            i_seqs=[cb_atoms[0].i_seq,i_seq,j_seq],
-            angle_ideal=disulfide_angle.value_angle,
-            weight=angle_weight)
-          self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
-        if cb_atoms[1] is not None:
-          proxy = geometry_restraints.angle_proxy(
-            i_seqs=[i_seq,j_seq,cb_atoms[1].i_seq],
-            angle_ideal=disulfide_angle.value_angle,
-            weight=angle_weight)
-          self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
+        def genereate_ss_atom_lookup():
+          cb_atoms = _get_ss_atom_pairs("CB")
+          ca_atoms = _get_ss_atom_pairs("CA")
+          altlocs = []
+          for atoms in [ca_atoms, cb_atoms]:
+            for residue in atoms:
+              for altloc in residue:
+                if altloc not in altlocs: altlocs.append(altloc)
+          for altloc in altlocs:
+            lookup = {
+              "1SG" : i_seq,
+              "2SG" : j_seq,
+              }
+            if altloc in ["", " "]:
+              if altloc in ca_atoms[0]: lookup["1CA"]=ca_atoms[0][altloc].i_seq
+              if altloc in ca_atoms[1]: lookup["2CA"]=ca_atoms[1][altloc].i_seq
+              if altloc in cb_atoms[0]: lookup["1CB"]=cb_atoms[0][altloc].i_seq
+              if altloc in cb_atoms[1]: lookup["2CB"]=cb_atoms[1][altloc].i_seq
+            else:
+              if altloc in ca_atoms[0]: lookup["1CA"]=ca_atoms[0][altloc].i_seq
+              elif ""   in ca_atoms[0]: lookup["1CA"]=ca_atoms[0][""].i_seq
+              if altloc in ca_atoms[1]: lookup["2CA"]=ca_atoms[1][altloc].i_seq
+              elif ""   in ca_atoms[1]: lookup["2CA"]=ca_atoms[1][""].i_seq
+              if altloc in cb_atoms[0]: lookup["1CB"]=cb_atoms[0][altloc].i_seq
+              elif ""   in cb_atoms[0]: lookup["1CB"]=cb_atoms[0][""].i_seq
+              if altloc in cb_atoms[1]: lookup["2CB"]=cb_atoms[1][altloc].i_seq
+              elif ""   in cb_atoms[1]: lookup["2CB"]=cb_atoms[1][""].i_seq
+            if len(lookup)==6:
+              yield lookup
 
-        if len(filter(None,cb_atoms))==2 and len(filter(None,ca_atoms))==2:
+        for lookup in genereate_ss_atom_lookup():
+          # move checking of having all atoms to generator
+          angle_weight = 1/disulfide_angle.value_angle_esd**2
+          proxy = geometry_restraints.angle_proxy(
+            i_seqs=[lookup["1CB"],i_seq,j_seq],
+            angle_ideal=disulfide_angle.value_angle,
+            weight=angle_weight)
+          self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
+          proxy = geometry_restraints.angle_proxy(
+            i_seqs=[i_seq,j_seq,lookup["2CB"]],
+            angle_ideal=disulfide_angle.value_angle,
+            weight=angle_weight)
+          self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
+          if 0:
+            indent=14
+            print >> log, "      Atoms : %s\n%s%s\n%s%s\n%s%s\n%s%s\n%s%s" % (
+              self.pdb_atoms[lookup["1CA"]].quote(),
+              ' '*indent,
+              self.pdb_atoms[lookup["1CB"]].quote(),
+              ' '*indent,
+              self.pdb_atoms[lookup["1SG"]].quote(),
+              ' '*indent,
+              self.pdb_atoms[lookup["2SG"]].quote(),
+              ' '*indent,
+              self.pdb_atoms[lookup["2CB"]].quote(),
+              ' '*indent,
+              self.pdb_atoms[lookup["2CA"]].quote(),
+              )
           for disulfide_torsion in disulfide_torsions:
             assert disulfide_torsion.value_angle is not None
             assert disulfide_torsion.value_angle_esd is not None
@@ -4577,7 +4609,7 @@ class build_all_chain_proxies(linking_mixins):
                 )
               i_seqs.append(lookup[key])
             proxy = geometry_restraints.dihedral_proxy(
-              i_seqs=i_seqs, #[cb_atoms[0].i_seq,i_seq,j_seq, cb_atoms[1].i_seq],
+              i_seqs=i_seqs,
               angle_ideal=disulfide_torsion.value_angle,
               weight=1/disulfide_torsion.value_angle_esd**2,
               periodicity=disulfide_torsion.period,
