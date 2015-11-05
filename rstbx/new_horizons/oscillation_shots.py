@@ -319,6 +319,7 @@ class IntegrateCharacters:
           if self.horizons_phil.integration.model=="user_supplied":
             info['ML_half_mosaicity_deg'] = [getattr(a,"ML_half_mosaicity_deg",0) for a in local["results"]]
             info['ML_domain_size_ang'] = [getattr(a,"ML_domain_size_ang",0) for a in local["results"]]
+          info["identified_isoform"] = local["results"][0].__dict__.get("identified_isoform",None)
           G = open(file,"wb")
           pickle.dump(info,G,pickle.HIGHEST_PROTOCOL)
           return info

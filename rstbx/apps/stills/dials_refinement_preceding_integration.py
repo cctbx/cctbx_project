@@ -57,6 +57,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
       else:
         print
       R = isoform_refineries[minindex]
+      self.identified_isoform = self.horizons_phil.isoforms[minindex].name
 
     self.integration_concept_detail(experiments=R.get_experiments(), reflections=setting_reflections,
                                     spots=self.triclinic.get_observations_with_outlier_removal(),
