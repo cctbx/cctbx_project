@@ -53,18 +53,21 @@ public:
     CCTBX_ASSERT(map_data.accessor().all().all_gt(0));
     map_dimensions = af::adapt(map_data.accessor().all());
     int pointer_empty=0, pointer_current=0, cur_reg = 0;
-
+    af::const_ref<MapType, af::c_grid<3> > data_ref(
+        map_data.begin(),
+        af::c_grid<3>(af::adapt(map_data.accessor().all())));
     // estimating size of working array tempcoors. If this code fails with
     // segmentation fault or reveal a bug, here is the first place to look.
     // To make sure the cause is not here, just make tempcoors of map_data
-    // size and delete boundaries check (91 and 97th lines).
+    // size and delete boundaries check (~L104, L125, look for
+    // if (pointer_empty >= needed_size).
     int maxside = ((map_dimensions[0]>map_dimensions[1]) ?
                         map_dimensions[0] : map_dimensions[1]);
     maxside = maxside>map_dimensions[2] ? maxside : map_dimensions[2];
     int needed_size = 4*4*maxside*maxside;
     af::shared<scitbx::vec3<int> > tempcoors(needed_size);
+    // af::shared<scitbx::vec3<int> > tempcoors(needed_size);
     map_new.resize(af::c_grid<3>(map_dimensions), -1);
-
     af::shared<scitbx::vec3<int> > neighbours(6);
     region_vols.push_back(0);
     region_maximum_values.push_back(-10000000);
@@ -75,12 +78,12 @@ public:
       for (int j = 0; j < map_dimensions[1]; j++) {
         for (int k = 0; k < map_dimensions[2]; k++) {
           if (map_new(i,j,k)<0) {
-            if (map_data(i,j,k) > threshold) {
+            if (data_ref(i,j,k) > threshold) {
               // got a new point, start filling
               cur_reg += 1;
               tempcoors[0] = scitbx::vec3<int> (i,j,k);
               map_new(i,j,k) = cur_reg;
-              MapType cur_max_value = map_data(i,j,k);
+              MapType cur_max_value = data_ref(i,j,k);
               scitbx::vec3<int> cur_max (i,j,k);
               cur_reg_vol = 1;
               pointer_empty = 1;
@@ -93,26 +96,26 @@ public:
                 for (int l = 0; l<6; l++) {
                   //processing 6 neighbours
                   if (map_new(af::adapt(neighbours[l]))<0) {
-                    if (map_data(af::adapt(neighbours[l])) > threshold) {
+                    if (data_ref(af::adapt(neighbours[l])) > threshold) {
                       map_new(af::adapt(neighbours[l])) = cur_reg;
                       cur_reg_vol += 1;
                       tempcoors[pointer_empty] = neighbours[l];
                       pointer_empty += 1;
                       if (pointer_empty >= needed_size) pointer_empty = 0;
-                      if (map_data(af::adapt(neighbours[l])) > cur_max_value)
+                      if (data_ref(af::adapt(neighbours[l])) > cur_max_value)
                       {
-                        cur_max_value = map_data(af::adapt(neighbours[l]));
+                        cur_max_value = data_ref(af::adapt(neighbours[l]));
                         cur_max = neighbours[l];
                       }
                     }
                     else {
                       map_new(af::adapt(neighbours[l])) = 0;
                       v0 += 1;
-                      if (map_data(af::adapt(neighbours[l])) >
+                      if (data_ref(af::adapt(neighbours[l])) >
                           region_maximum_values[0])
                       {
                         region_maximum_values[0] =
-                            map_data(af::adapt(neighbours[l]));
+                            data_ref(af::adapt(neighbours[l]));
                         region_maximum_coors[0] = neighbours[l];
                       }
                     }
@@ -128,9 +131,9 @@ public:
             else {
               map_new(i,j,k) = 0;
               v0 += 1;
-              if (map_data(i,j,k) > region_maximum_values[0])
+              if (data_ref(i,j,k) > region_maximum_values[0])
               {
-                region_maximum_values[0] = map_data(i,j,k);
+                region_maximum_values[0] = data_ref(i,j,k);
                 region_maximum_coors[0] = scitbx::vec3<int>(i,j,k);
               }
             }
