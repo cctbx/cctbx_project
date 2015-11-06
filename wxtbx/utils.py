@@ -138,6 +138,7 @@ class LogViewer (wx.TextCtrl) :
     kwds['style'] = wx.TE_MULTILINE|wx.TE_WORDWRAP|wx.TE_READONLY
     wx.TextCtrl.__init__(self, *args, **kwds)
     #self.SetFont(wx.Font(self.font_size, wx.MODERN, wx.NORMAL, wx.NORMAL))
+    self.character_limit = 16000000  # ~ 200,000 lines @ 80 characters/line
 
   def Clear (self) :
     wx.TextCtrl.Clear(self)
@@ -161,6 +162,9 @@ class LogViewer (wx.TextCtrl) :
         print "warning: %s (string = '%s')" % (str(e), text)
         return
     wx.TextCtrl.AppendText(self, text)
+    # keep text to be a certain size for performance
+    if (self.GetLastPosition() > self.character_limit):
+      self.Remove(0,len(text))
 
 if (__name__ == "__main__") :
   app = wx.App(0)
