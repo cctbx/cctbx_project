@@ -225,6 +225,9 @@ namespace {
         .def("volume_cutoff_mask", &w_t::volume_cutoff_mask,
                     (arg("volume_cutoff")))
         .def("get_blobs_boundaries", &w_t::get_blobs_boundaries)
+        .def("expand_mask", &w_t::expand_mask,
+                  (arg("id_to_expand"),
+                   arg("expand_size")))
         .def("noise_elimination_two_cutoffs",
              &w_t::noise_elimination_two_cutoffs,
                     (arg("connectivity_object_at_t1"),

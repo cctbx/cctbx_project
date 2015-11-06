@@ -43,6 +43,24 @@ private:
     neighbours[4][1] = neighbours[5][1] = y;
   }
 
+  inline
+  int get_coordinate_in_boundaries(int x, int map_size)
+  {
+    if (x > map_size-1) return x-map_size;
+    if (x < 0) return map_size + x;
+    return x;
+  }
+
+  scitbx::vec3<int>
+  put_coordinates_in_boundaries(int x, int y, int z)
+  {
+    scitbx::vec3<int> result(0,0,0);
+    result[0] = get_coordinate_in_boundaries(x, map_dimensions[0]);
+    result[1] = get_coordinate_in_boundaries(y, map_dimensions[1]);
+    result[2] = get_coordinate_in_boundaries(z, map_dimensions[2]);
+    return result;
+  }
+
 public:
   template <typename MapType>
   connectivity(
@@ -59,8 +77,8 @@ public:
     // estimating size of working array tempcoors. If this code fails with
     // segmentation fault or reveal a bug, here is the first place to look.
     // To make sure the cause is not here, just make tempcoors of map_data
-    // size and delete boundaries check (~L104, L125, look for
-    // if (pointer_empty >= needed_size).
+    // size and delete boundaries check (~L122, L143, look for
+    // if ( ... >= needed_size)
     int maxside = ((map_dimensions[0]>map_dimensions[1]) ?
                         map_dimensions[0] : map_dimensions[1]);
     maxside = maxside>map_dimensions[2] ? maxside : map_dimensions[2];
@@ -198,6 +216,34 @@ public:
       }
     }
     return boundaries;
+  }
+
+  af::versa<bool, af::c_grid<3> >
+  expand_mask(int id_to_expand, int expand_size)
+  {
+    CCTBX_ASSERT(expand_size > 0);
+    CCTBX_ASSERT(id_to_expand >= 0);
+    af::versa<bool, af::c_grid<3> > result;
+    result.resize(af::c_grid<3>(map_dimensions), false);
+    for (int i = 0; i < map_dimensions[0]; i++) {
+      for (int j = 0; j < map_dimensions[1]; j++) {
+        for (int k = 0; k < map_dimensions[2]; k++) {
+          if (map_new(i,j,k) == id_to_expand)
+          {
+            for (int ii=i-expand_size; ii<=i+expand_size; ii++) {
+              for (int jj=j-expand_size; jj<=j+expand_size; jj++) {
+                for (int kk=k-expand_size; kk<=k+expand_size; kk++) {
+                  scitbx::vec3<int> adj_coor = put_coordinates_in_boundaries(ii,jj,kk);
+                  // result(af::adapt(adj_coor)) = true;
+                  result(adj_coor) = true;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    return result;
   }
 
   af::versa<int, af::c_grid<3> >
