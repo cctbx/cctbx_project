@@ -707,7 +707,7 @@ class SingleImage(object):
                             ''.format(self.final['sph'], self.final['spa'])
                 self.log_info.append(log_entry)
             terminate = True
-              
+
         # If brute force grid search is selected run one round
         else:
           terminate = True
