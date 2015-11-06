@@ -665,7 +665,7 @@ class SingleImage(object):
     if self.params.advanced.integrate_with == 'cctbx':
       terminate = False
       prev_status = self.status
-      prev_fail = self.fail
+      prev_fail = 'first cycle'
       prev_final = self.final
       prev_epv = 9999
 
@@ -698,20 +698,22 @@ class SingleImage(object):
                           ''.format(self.hmed, self.amed)
               self.log_info.append(log_entry)
           else:
-            self.final = prev_final
-            self.status = prev_status
-            self.fail = prev_fail
+            if prev_fail != 'first cycle':
+              self.final = prev_final
+              self.status = prev_status
+              self.fail = prev_fail
+              if self.verbose:
+                log_entry = '\nFinal set of parameters: H = {}, A = {}'\
+                            ''.format(self.final['sph'], self.final['spa'])
+                self.log_info.append(log_entry)
             terminate = True
-            if self.verbose:
-              log_entry = '\nFinal set of parameters: H = {}, A = {}'\
-                          ''.format(self.final['sph'], self.final['spa'])
-              self.log_info.append(log_entry)
-
+              
         # If brute force grid search is selected run one round
         else:
           terminate = True
 
       # Run final integration if haven't already
+      print self.fail
       if self.fail == None and self.status != 'final':
         self.integrate_cctbx('integrate', single_image=single_image)
 

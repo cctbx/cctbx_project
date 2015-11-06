@@ -128,11 +128,9 @@ def run_one_image(image, init, progbar=True):
       gs_prog.finished()
 
   if 'imp' in args.mpi:
-    # Import image
     single_image = img.SingleImage(image, init, verbose=False)
-    img_object = single_image.import_image()
 
-    # Check / convert / triage image
+    # Import / check / convert / triage image
     if progbar:
       advance_progbar(image[0], image[1])
     img_object = single_image.convert_image()
