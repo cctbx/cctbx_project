@@ -306,24 +306,21 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
           n_spots = sfspots
 
         if indexed:
-          int_final = info.organizer.info['best_integration']['integration']
-          int_AD14 = int_final['AD14_parameters']
+          mosaic_bloc_rotation = info.last_saved_best.get('ML_half_mosaicity_deg', [0])[0]
+          mosaic_block_size = info.last_saved_best.get('ML_domain_size_ang', [0])[0]
+          ewald_proximal_volume = info.last_saved_best.get('ewald_proximal_volume', [0])[0]
 
-          mosaic_bloc_rotation = round(int_AD14['fw_mos_deg'], 6)
-          mosaic_block_size = int_AD14['domain_sz_ang']
-          green_curve_volume = round(int_AD14['mosaic_model_area_under_green_curve_sampled'], 6)
-
-          obs = int_final['results'][0].get_obs(int_final["spacegroup"])
+          obs = info.last_saved_best['observations'][0]
           cell_a, cell_b, cell_c, cell_alpha, cell_beta, cell_gamma = obs.unit_cell().parameters()
-          spacegroup = int_final['spacegroup']
-          resolution = int_final['I_Observations'].d_min()
+          pointgroup = info.last_saved_best['pointgroup']
+          resolution = obs.d_min()
         else:
-          mosaic_bloc_rotation = mosaic_block_size = green_curve_volume = cell_a = cell_b = cell_c = \
+          mosaic_bloc_rotation = mosaic_block_size = ewald_proximal_volume = cell_a = cell_b = cell_c = \
             cell_alpha = cell_beta = cell_gamma = spacegroup = resolution = 0
 
         self.queue_entry((self.trial, evt.run(), "%.3f"%evt_time, n_spots, distance,
                           self.sifoil, self.wavelength, indexed, mosaic_bloc_rotation,
-                          mosaic_block_size, green_curve_volume, spacegroup, cell_a,
+                          mosaic_block_size, ewald_proximal_volume, pointgroup, cell_a,
                           cell_b, cell_c, cell_alpha, cell_beta, cell_gamma, resolution,
                           self.m_db_tags))
 
@@ -430,7 +427,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       dbobj = db.dbconnect(self.m_db_host, self.m_db_name, self.m_db_user, self.m_db_password)
       cursor = dbobj.cursor()
       cmd = "INSERT INTO %s (trial,run,eventstamp,hitcount,distance,sifoil,wavelength,indexed,\
-mosaic_block_rotation,mosaic_block_size,green_curve_volume,spacegroup,\
+mosaic_block_rotation,mosaic_block_size,ewald_proximal_volume,spacegroup,\
 cell_a,cell_b,cell_c,cell_alpha,cell_beta,cell_gamma,resolution,tags) VALUES "%(self.m_db_table_name)
       comma = ""
       for entry in self.buffered_sql_entries:
