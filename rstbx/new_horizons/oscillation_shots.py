@@ -282,7 +282,6 @@ class IntegrateCharacters:
 
   def save_best(self):
     file = self.horizons_phil.indexing.completeness_pickle
-    if file==None: return
     for index in self.M.best():
       if index.has_key('integration'):
         if index['counter']==self.best_counter:
@@ -312,8 +311,9 @@ class IntegrateCharacters:
             info['ML_domain_size_ang'] = [getattr(a,"ML_domain_size_ang",0) for a in local["results"]]
             info['ewald_proximal_volume'] = [getattr(a,"ewald_proximal_volume",0) for a in local["results"]]
           info["identified_isoform"] = local["results"][0].__dict__.get("identified_isoform",None)
-          G = open(file,"wb")
-          pickle.dump(info,G,pickle.HIGHEST_PROTOCOL)
+          if file is not None:
+            G = open(file,"wb")
+            pickle.dump(info,G,pickle.HIGHEST_PROTOCOL)
           return info
 
   def show(self):
