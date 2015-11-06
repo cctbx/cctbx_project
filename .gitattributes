@@ -3606,6 +3606,7 @@ xfel/command_line/postrefine.py -text
 xfel/command_line/quadrants.py -text
 xfel/command_line/quadrants_cbf.py -text
 xfel/command_line/radial_average.py -text
+xfel/command_line/runs_sentinel.py -text
 xfel/command_line/small_cell_index.py -text
 xfel/command_line/smooth_spectrum.py -text
 xfel/command_line/stills_merge.py -text
