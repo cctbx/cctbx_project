@@ -259,6 +259,84 @@ class trials_menu(option_chooser):
       'u': trials_menu.update_trial
     }
 
+class link_trials_to_rungroup_menu(option_chooser):
+  selection_string = "Link trials to run groups"
+  help_string = "Use this menu to link trials to specific run groups for processing"
+
+  class list_links(db_action):
+    selection_string = "List all trial/rungroup links"
+    help_string = "List all links between trials and rungroups"
+
+    def __call__(self):
+      cmd = "SELECT %s_trial_rungroups.trial_rungroup_id, %s_trials.trial_id, %s_rungroups.rungroup_id, %s_trials.trial, %s_rungroups.startrun, %s_rungroups.endrun, %s_trial_rungroups.active FROM %s_trials JOIN %s_trial_rungroups ON %s_trials.trial_id = %s_trial_rungroups.trials_id JOIN %s_rungroups ON %s_rungroups.rungroup_id = %s_trial_rungroups.rungroups_id"%tuple([self.params.experiment_tag]*14)
+      cursor = self.dbobj.cursor()
+      cursor.execute(cmd)
+      if cursor.rowcount == 0:
+        print "No links set up yet"
+      else:
+        print "Link Trial  RG Start run End run   Active"
+        for entry in cursor.fetchall():
+          link_id, trial_id, rungroup_id, trial, startrun, endrun, active = entry
+          active = bool(active)
+          if endrun is None:
+            print "% 4d % 5d % 3d % 9d       +   %s"%(link_id, trial, rungroup_id, startrun, active)
+          else:
+            print "% 4d % 5d % 3d % 9d % 7d   %s"%(link_id, trial, rungroup_id, startrun, endrun, active)
+
+  class add_link(db_action):
+    selection_string = "Add trial/rungroup link"
+    help_string = "Link a trial to a rungroup for processing"
+
+    def __call__(self):
+      trial = raw_input("Trial: ")
+      rungroup_id = raw_input("Run group id: ")
+      active = get_bool_from_user("Make link active? ")
+
+      cmd = "SELECT trial_id from %s_trials where %s_trials.trial = %s"%(self.params.experiment_tag, self.params.experiment_tag, trial)
+      cursor = self.dbobj.cursor()
+      cursor.execute(cmd)
+      assert cursor.rowcount <= 1
+      if cursor.rowcount == 0:
+        print "Trial %s not found."%trial
+      trial_id = cursor.fetchall()[0][0]
+
+      cmd = "SELECT rungroup_id from %s_rungroups where %s_rungroups.rungroup_id = %s"%(self.params.experiment_tag, self.params.experiment_tag, rungroup_id)
+      cursor = self.dbobj.cursor()
+      cursor.execute(cmd)
+      assert cursor.rowcount <= 1
+      if cursor.rowcount == 0:
+        print "Rungroup %s not found."%rungroup_id
+
+      cmd = "INSERT INTO %s_trial_rungroups (trials_id, rungroups_id, active) VALUES (%s,%s,%s)"%(self.params.experiment_tag, trial_id, rungroup_id, active)
+
+      cursor = self.dbobj.cursor()
+      cursor.execute(cmd)
+      self.dbobj.commit()
+      print "Link added"
+
+  class update_link(db_action):
+    selection_string = "Update trial/rungroup links"
+    help_string = "Activate or inactivate trial/rungroup links"
+
+    def __call__(self):
+      link_id = raw_input("Trial/rungroup link to change: ")
+      active = get_bool_from_user("Make link active? ")
+
+      cmd = "UPDATE %s_trial_rungroups SET active=%s WHERE trial_rungroup_id=%s"%(self.params.experiment_tag, active, link_id)
+      cursor = self.dbobj.cursor()
+      cursor.execute(cmd)
+      self.dbobj.commit()
+      print "Link updated"
+
+  def __init__(self, params, dbobj):
+    option_chooser.__init__(self, params, dbobj)
+    self.menu_string = "Managing trial/rungroup links"
+    self.options = {
+      'l': link_trials_to_rungroup_menu.list_links,
+      'a': link_trials_to_rungroup_menu.add_link,
+      'u': link_trials_to_rungroup_menu.update_link
+    }
+
 class rungroups_menu(option_chooser):
   selection_string = "Manage run groups"
   help_string = "Use this menu to manage settings on groups of runs"
@@ -268,7 +346,7 @@ class rungroups_menu(option_chooser):
     help_string = "List all run groups being used with this experiment tag"
 
     def __call__(self):
-      cmd = "SELECT id,startrun,endrun,comment from %s_rungroups"%self.params.experiment_tag
+      cmd = "SELECT rungroup_id,startrun,endrun,comment from %s_rungroups"%self.params.experiment_tag
       cursor = self.dbobj.cursor()
       cursor.execute(cmd)
       if cursor.rowcount == 0:
@@ -316,7 +394,7 @@ class rungroups_menu(option_chooser):
       endrun = get_optional_input("New end run (leave blank if the last run in this group hasn't been collected yet): ")
       comment = raw_input("New comment: ")
 
-      cmd = "UPDATE %s_rungroups SET startrun=%s, endrun=%s, comment='%s' WHERE id=%s"%(self.params.experiment_tag, startrun, endrun, comment, rungroup)
+      cmd = "UPDATE %s_rungroups SET startrun=%s, endrun=%s, comment='%s' WHERE rungroup_id=%s"%(self.params.experiment_tag, startrun, endrun, comment, rungroup)
       cursor = self.dbobj.cursor()
       cursor.execute(cmd)
       self.dbobj.commit()
@@ -340,7 +418,8 @@ class top_menu(option_chooser):
     self.options = {
       'i': isoforms_menu,
       't': trials_menu,
-      'g': rungroups_menu
+      'g': rungroups_menu,
+      'l': link_trials_to_rungroup_menu
     }
 
 def run(args):
