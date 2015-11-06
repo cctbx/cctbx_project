@@ -423,6 +423,33 @@ def exercise_get_blobs_boundaries():
   assert minb == [(0,0,0), (10,10,10), (50,50,50)]
   assert maxb == [(99,99,99), (19,19,19), (69,79,89)]
 
+def exercise_expand_mask():
+  # case 1: standard
+  cmap = flex.double(flex.grid(30,30,30))
+  cmap.fill(1)
+  for i in range(10,20):
+    for j in range(10,20):
+      for k in range(10,20):
+        cmap[i,j,k] = 10
+  co = maptbx.connectivity(map_data=cmap, threshold=5)
+  new_mask = co.expand_mask(1,1)
+  for i in range(30):
+    for j in range(30):
+      for k in range(30):
+        assert new_mask[i,j,k] == (i in range(9,21) and 
+            j in range(9,21) and k in range(9,21))
+
+  # case 2: over boundaries
+  cmap = flex.double(flex.grid(30,30,30))
+  cmap.fill(1)
+  cmap[1,1,1] = 10
+  co = maptbx.connectivity(map_data=cmap, threshold=5)
+  new_mask = co.expand_mask(1,2)
+  for i in range(30):
+    for j in range(30):
+      for k in range(30):
+        assert new_mask[i,j,k] == (i in [29,0,1,2,3] and
+            j in [29,0,1,2,3] and k in [29,0,1,2,3])
 
 if __name__ == "__main__":
   t0 = time.time()
@@ -436,4 +463,5 @@ if __name__ == "__main__":
   exercise_max_values()
   exercise_noise_elimination_two_cutoffs() # example and comment
   exercise_get_blobs_boundaries()
+  exercise_expand_mask()
   print "OK time =%8.3f"%(time.time() - t0)
