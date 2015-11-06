@@ -142,18 +142,9 @@ class IntegrateCharacters:
       local["r_residual"]=integrate_worker.r_residual
       local["r_mosaicity"]=setting["mosaicity"]
       try:
-        #added specifically for prime.iota
-        local["AD14_parameters"]=dict(fw_mos_deg=integrate_worker.inputai.getMosaicity(),
-                                      domain_sz_ang=integrate_worker.DOMAIN_SZ_ANG,
-                                      N_correction_vectors=integrate_worker.N_correction_vectors,
-                                      rmsd_px=integrate_worker.rmsd_px,
-                    mosaic_model_area_under_green_curve_sampled=integrate_worker.green_curve_area,
-                                      ewald_proximal_volume = integrate_worker.ewald_proximal_volume,
-                                  )
-        local["I_Observations"]=integrate_worker.get_obs(local["spacegroup"])
-      except Exception:
-        local["AD14_parameters"]=None
-        local["I_Observations"]=None
+        local["ewald_proximal_volume"]=integrate_worker.ewald_proximal_volume
+      except Exception, e:
+        local["ewald_proximal_volume"]=None
 
       if (self.horizons_phil.indexing.open_wx_viewer) :
        if True: #use updated slip viewer
@@ -319,6 +310,7 @@ class IntegrateCharacters:
           if self.horizons_phil.integration.model=="user_supplied":
             info['ML_half_mosaicity_deg'] = [getattr(a,"ML_half_mosaicity_deg",0) for a in local["results"]]
             info['ML_domain_size_ang'] = [getattr(a,"ML_domain_size_ang",0) for a in local["results"]]
+            info['ewald_proximal_volume'] = [getattr(a,"ewald_proximal_volume",0) for a in local["results"]]
           info["identified_isoform"] = local["results"][0].__dict__.get("identified_isoform",None)
           G = open(file,"wb")
           pickle.dump(info,G,pickle.HIGHEST_PROTOCOL)
