@@ -40,6 +40,13 @@ def get_bool_from_user(prompt, default=True):
     if response in no:
       return False
 
+def get_optional_input(prompt):
+  response = raw_input(prompt)
+  if response == "":
+    return "NULL"
+  else:
+    return response
+
 class initialize(object):
   expected_tables = ["runs", "jobs", "rungroups", "trials", "trial_rungroups", "isoforms", "frames", "observations", "hkls"]
 
@@ -94,6 +101,9 @@ class initialize(object):
       return False
 
   def drop_tables(self):
+    if raw_input("Are you sure? Type drop: ").lower() != "drop":
+      return
+
     print "Dropping tables..."
     for table in self.expected_tables:
       cmd = "SHOW TABLES LIKE '%s'"%(self.params.experiment_tag + "_" + table)
@@ -143,6 +153,196 @@ class initialize(object):
 
     f.close()
 
+class option_chooser(object):
+  menu_string = ""
+  options = None
+
+  def __init__(self, params, dbobj):
+    self.params = params
+    self.dbobj = dbobj
+
+  def __call__(self):
+    while True:
+      print "############################"
+      print self.menu_string
+      for o in self.options:
+        print o, ":", self.options[o].selection_string
+      print "h : get help on a selection"
+      print "q : exit this menu"
+
+      i = raw_input("Selection: ").lower()
+      print "############################"
+      if i == 'h':
+        i = raw_input("Help on which item? ")
+        if i in self.options:
+          print self.options[i].help_string
+        else:
+          print "Option not found:", i
+      elif i == 'q':
+        return
+      elif i not in self.options:
+        print "Option not found:", i
+      else:
+        self.options[i](self.params, self.dbobj)()
+
+class db_action(object):
+  def __init__(self, params, dbobj):
+    self.params = params
+    self.dbobj = dbobj
+
+class isoforms_menu(option_chooser):
+  selection_string = "Manage isoforms"
+  help_string = "Use this menu to manage known crystal isoforms refined during indexing and integration"
+
+  def __init__(self, params, dbobj):
+    option_chooser.__init__(self, params, dbobj)
+    self.menu_string = "Managing isoforms"
+    self.options = {}
+
+class trials_menu(option_chooser):
+  selection_string = "Manage trials"
+  help_string = "Use this menu to manage trials for this experiment, including add new trials or inactivating old ones"
+
+  class list_trials(db_action):
+    selection_string = "List all trials"
+    help_string = "List all trials being used with this experiment tag"
+
+    def __call__(self):
+      cmd = "SELECT * from %s_trials"%self.params.experiment_tag
+      cursor = self.dbobj.cursor()
+      cursor.execute(cmd)
+      if cursor.rowcount == 0:
+        print "No trials set up yet"
+      else:
+        for entry in cursor.fetchall():
+          id, trial, active, target, comment = entry
+          active = bool(active)
+          print "Trial %s. Active: %s, target: %s, comment: %s"%(trial, active, target, comment)
+
+  class add_trial(db_action):
+    selection_string = "Add trial"
+    help_string = "Add a trial for use with this experiment tag"
+
+    def __call__(self):
+      trial = raw_input("Trial number: ")
+      active = get_bool_from_user("Make trial active? ")
+      target = raw_input("Path to target phil file: ")
+      comment = raw_input("Add a comment: ")
+
+      cmd = "INSERT INTO %s_trials (trial,active,target_phil_path,comment) VALUES (%s,%s,'%s','%s')"%(self.params.experiment_tag, trial, active, target, comment)
+      cursor = self.dbobj.cursor()
+      cursor.execute(cmd)
+      self.dbobj.commit()
+      print "Trial added"
+
+  class update_trial(db_action):
+    selection_string = "Update trial"
+    help_string = "Activate/inactivate a trial or change its comment"
+
+    def __call__(self):
+      trial = raw_input("Trial number: ")
+      active = get_bool_from_user("Make trial active? ")
+      comment = raw_input("New comment: ")
+
+      cmd = "UPDATE %s_trials SET active=%s, comment='%s' WHERE trial=%s"%(self.params.experiment_tag, active, comment, trial)
+      cursor = self.dbobj.cursor()
+      cursor.execute(cmd)
+      self.dbobj.commit()
+      print "Trial updated"
+
+  def __init__(self, params, dbobj):
+    option_chooser.__init__(self, params, dbobj)
+    self.menu_string = "Managing trials"
+    self.options = {
+      'l': trials_menu.list_trials,
+      'a': trials_menu.add_trial,
+      'u': trials_menu.update_trial
+    }
+
+class rungroups_menu(option_chooser):
+  selection_string = "Manage run groups"
+  help_string = "Use this menu to manage settings on groups of runs"
+
+  class list_rungroups(db_action):
+    selection_string = "List all run groups"
+    help_string = "List all run groups being used with this experiment tag"
+
+    def __call__(self):
+      cmd = "SELECT id,startrun,endrun,comment from %s_rungroups"%self.params.experiment_tag
+      cursor = self.dbobj.cursor()
+      cursor.execute(cmd)
+      if cursor.rowcount == 0:
+        print "No run groups set up yet"
+      else:
+        print "RG  Start run End run   Comment"
+        for entry in cursor.fetchall():
+          id, startrun, endrun, comment = entry
+          if endrun is None:
+            print "% 3d % 9d       +   %s"%(id, startrun, comment)
+          else:
+            print "% 3d % 9d % 7d   %s"%(id, startrun, endrun, comment)
+
+  class add_rungroup(db_action):
+    selection_string = "Add run group"
+    help_string = "Add a run group defining a set of runs with the same parameters"
+
+    def __call__(self):
+      startrun = raw_input("Start run: ")
+      endrun = get_optional_input("End run (leave blank if the last run in this group hasn't been collected yet): ")
+      detz_parameter = raw_input("Detz parameter (CXI: detz_offset, XPP: distance): ")
+      beamx = get_optional_input("Beam center x (leave blank to not override): ")
+      beamy = get_optional_input("Beam center y (leave blank to not override): ")
+      pixelmask = get_optional_input("Path to untrusted pixel mask (if available): ")
+      darkavg = get_optional_input("Path to dark average image (if available): ")
+      darkstddev = get_optional_input("Path to dark standard deviation image (if available): ")
+      gainmap = get_optional_input("Path to gain map image (if available): ")
+      binning = get_optional_input("Binning (if applicable) :")
+      #usecase = get_optional_input("Use case (list available cases here):")
+      comment = raw_input("Add a comment: ")
+
+      cmd = "INSERT INTO %s_rungroups (startrun,endrun,detz_parameter,beamx,beamy,untrusted_pixel_mask_path,dark_avg_path,dark_stddev_path,gain_map_path,binning,comment) VALUES (%s,%s,%s,%s,%s,'%s','%s','%s','%s',%s,'%s')"%(self.params.experiment_tag, startrun, endrun, detz_parameter, beamx, beamy, pixelmask, darkavg, darkstddev, gainmap, binning, comment)
+      cursor = self.dbobj.cursor()
+      cursor.execute(cmd)
+      self.dbobj.commit()
+      print "Run group added"
+
+  class update_rungroup(db_action):
+    selection_string = "Update run group"
+    help_string = "Change run group start and end values and comments"
+
+    def __call__(self):
+      rungroup = raw_input("Run group number: ")
+      startrun = raw_input("New start run: ")
+      endrun = get_optional_input("New end run (leave blank if the last run in this group hasn't been collected yet): ")
+      comment = raw_input("New comment: ")
+
+      cmd = "UPDATE %s_rungroups SET startrun=%s, endrun=%s, comment='%s' WHERE id=%s"%(self.params.experiment_tag, startrun, endrun, comment, rungroup)
+      cursor = self.dbobj.cursor()
+      cursor.execute(cmd)
+      self.dbobj.commit()
+      print "Run group updated"
+
+  def __init__(self, params, dbobj):
+    option_chooser.__init__(self, params, dbobj)
+    self.menu_string = "Managing run groups"
+    self.options = {
+      'l': rungroups_menu.list_rungroups,
+      'a': rungroups_menu.add_rungroup,
+      'u': rungroups_menu.update_rungroup
+    }
+
+class top_menu(option_chooser):
+  def __init__(self, params, dbobj):
+    option_chooser.__init__(self, params, dbobj)
+
+    self.menu_string = "Top level menu, administering %s using tag %s"%(self.params.experiment, self.params.experiment_tag)
+
+    self.options = {
+      'i': isoforms_menu,
+      't': trials_menu,
+      'g': rungroups_menu
+    }
+
 def run(args):
   try:
     from cxi_xdr_xes.cftbx.cspad_ana import db as db
@@ -170,6 +370,7 @@ def run(args):
     raise Sorry(e)
 
   initialize(params, dbobj)()
+  top_menu(params, dbobj)()
 
   print "Done"
 
