@@ -432,11 +432,11 @@ def exercise_expand_mask():
       for k in range(10,20):
         cmap[i,j,k] = 10
   co = maptbx.connectivity(map_data=cmap, threshold=5)
-  new_mask = co.expand_mask(1,1)
+  new_mask = co.expand_mask(id_to_expand=1, expand_size=1)
   for i in range(30):
     for j in range(30):
       for k in range(30):
-        assert new_mask[i,j,k] == (i in range(9,21) and 
+        assert new_mask[i,j,k] == (i in range(9,21) and
             j in range(9,21) and k in range(9,21))
 
   # case 2: over boundaries
@@ -444,7 +444,7 @@ def exercise_expand_mask():
   cmap.fill(1)
   cmap[1,1,1] = 10
   co = maptbx.connectivity(map_data=cmap, threshold=5)
-  new_mask = co.expand_mask(1,2)
+  new_mask = co.expand_mask(id_to_expand=1, expand_size=2)
   for i in range(30):
     for j in range(30):
       for k in range(30):
