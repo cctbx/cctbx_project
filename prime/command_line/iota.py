@@ -1,13 +1,14 @@
 from __future__ import division
+# LIBTBX_SET_DISPATCHER_NAME iota.run
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 11/02/2015
-Description : IOTA command-line module. Version 2.22
+Last Changed: 11/06/2015
+Description : IOTA command-line module. Version 2.23
 '''
 
-iota_version = '2.22'
+iota_version = '2.23'
 help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 
@@ -30,9 +31,12 @@ beam stop shadow.
 
 MPI mode
 Usage:
-prime.linear_iota iota.param --mpi init
-prime.linear_iota iota.param --mpi process
-prime.linear_iota iota.param --mpi analyze
+iota.mpi iota.param --mpi init
+mpirun -n [num_cores] iota.mpi iota.param --mpi import
+mpirun -n [num_cores] iota.mpi iota.param --mpi gridsearch
+mpirun -n [num_cores] iota.mpi iota.param --mpi select
+mpirun -n [num_cores] iota.mpi iota.param --mpi final
+iota.mpi iota.param --mpi analyze
 
 Run IOTA in three separate batches (initialization, image processing,
 analysis); can use MPI (mpirun) to run the image processing step.

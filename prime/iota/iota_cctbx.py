@@ -108,7 +108,7 @@ class Integrator(object):
         if isinstance(result, str):
           raise Exception(result)
         else:
-          int_final, int_AD14 = result
+          int_final = result
 
       except Exception, e:
         int_final = None
@@ -130,15 +130,15 @@ class Integrator(object):
         reason_for_failure = ''
       int_status = 'not integrated' + reason_for_failure
       int_results = {'info': int_status}
-    elif int_final['I_Observations'] == None:
+    elif int_final['observations'][0] == None:
       int_status = 'no data recorded'
       int_results = {'info': int_status}
     else:
       try:
-        obs = int_final['results'][0].get_obs(int_final["spacegroup"])
+        obs = int_final['observations'][0]
         cell = obs.unit_cell().parameters()
-        sg = int_final['spacegroup']
-        res = round(int_final['I_Observations'].d_min(), 4)
+        sg = int_final['pointgroup']
+        res = obs.d_min()
 
         # Calculate number of spots w/ high I / sigmaI
         Is = obs.data()
@@ -148,10 +148,9 @@ class Integrator(object):
         strong_spots = len([i for i in I_over_sigI if i >= self.min_sigma])
 
         # Mosaicity parameters
-        dom_size = int_AD14['domain_sz_ang']
-        mosaicity = round(int_AD14['fw_mos_deg'], 6)
-        mos_quality = round(int_AD14['mosaic_model_area_under_green_curve_sampled'], 6)
-        ewald_proximal_volume = round(int_AD14['ewald_proximal_volume'], 6)
+        mosaicity = round((int_final.get('ML_half_mosaicity_deg', [0])[0]), 6)
+        dom_size = int_final.get('ML_domain_size_ang', [0])[0]
+        ewald_proximal_volume = int_final.get('ewald_proximal_volume', [0])[0]
 
         # Assemble output for log file and/or integration result file
         p_cell = "{:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}"\

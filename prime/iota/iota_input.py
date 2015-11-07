@@ -341,7 +341,7 @@ def write_defaults(current_path, txt_out):
                     '  spot_prediction=dials',
                     '  guard_width_sq=4.',
                     '  mosaic {',
-                    '    refinement_target=ML',
+                    '    refinement_target=*LSQ ML',
                     '    domain_size_lower_limit=4.',
                     '    enable_rotational_target_highsym=False',
                     '  }',
