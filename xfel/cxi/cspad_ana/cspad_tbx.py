@@ -1292,21 +1292,23 @@ def getConfig(address, env):
   @param address detector address
   @param env environment object to search"""
 
-  address = old_address_to_new_address(address)
-
-  good_key = None
-  for key in env.configStore().keys():
-    if address in str(key.src()) and key.type() is not None:
-      good_key = key
-      break
-
-  if good_key is None:
-    return None
-
-  return env.configStore().get(good_key.type(),good_key.src())
+  if hasattr(env, 'configStore'):
+    good_key = None
+    address = old_address_to_new_address(address)
+    for key in env.configStore().keys():
+      if address in str(key.src()) and key.type() is not None:
+        good_key = key
+        break
+    if good_key is None:
+      return None
+    return env.configStore().get(good_key.type(),good_key.src())
+  else:
+    # Try the pyana method for older data
+    from pypdsdata.xtc import TypeId
+    return env.getConfig(TypeId.Type.Id_CspadConfig, address)
 
 def getOptBool(s):
-  if s is None: return False
+  if s is None or s == "None": return False
   elif isinstance(s, bool):
     return s
   s = s.strip().lower()
@@ -1368,7 +1370,7 @@ def getOptInteger(s):
   conversion fails?
   """
 
-  if (s is None or s == ""):
+  if (s is None or s == "" or s == "None"):
     return None
   return (int(s))
 
@@ -1376,7 +1378,7 @@ def getOptFloat(s):
   """Return a single float.
   """
 
-  if (s is None or s == ""):
+  if (s is None or s == "" or s == "None"):
     return None
   return (float(s))
 
