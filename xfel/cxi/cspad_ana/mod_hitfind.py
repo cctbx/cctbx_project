@@ -48,6 +48,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                db_user                = None,
                db_password            = None,
                db_tags                = None,
+               rungroup_id            = None,
                **kwds):
     """The mod_hitfind class constructor stores the parameters passed
     from the pyana configuration file in instance variables.  All
@@ -90,6 +91,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     self.m_db_user              = cspad_tbx.getOptString(db_user)
     self.m_db_password          = cspad_tbx.getOptString(db_password)
     self.m_db_tags              = cspad_tbx.getOptString(db_tags)
+    self.m_rungroup_id          = cspad_tbx.getOptInteger(rungroup_id)
     # A ROI should not contain any ASIC boundaries, as these are
     # noisy.  Hence circular ROI:s around the beam centre are probably
     # not such a grand idea.
