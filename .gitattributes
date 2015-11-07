@@ -3719,4 +3719,5 @@ xfel/xpp/__init__.py -text
 xfel/xpp/cfgs/index_all.cfg -text
 xfel/xpp/experiment_schema.sql -text
 xfel/xpp/isoform.py -text
+xfel/xpp/progress_support.py -text
 xfel/xpp/simulate.py -text
