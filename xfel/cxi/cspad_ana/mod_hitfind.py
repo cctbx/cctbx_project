@@ -41,6 +41,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                negate_hits            = False,
                trial_id               = None,
                db_logging             = False,
+               progress_logging       = False,
                sql_buffer_size        = 1,
                db_host                = None,
                db_name                = None,
@@ -84,6 +85,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     self.m_negate_hits          = cspad_tbx.getOptBool(negate_hits)
     self.m_trial_id             = cspad_tbx.getOptInteger(trial_id)
     self.m_db_logging           = cspad_tbx.getOptBool(db_logging)
+    self.m_progress_logging     = cspad_tbx.getOptBool(progress_logging)
     self.m_sql_buffer_size      = cspad_tbx.getOptInteger(sql_buffer_size)
     self.m_db_host              = cspad_tbx.getOptString(db_host)
     self.m_db_name              = cspad_tbx.getOptString(db_name)
@@ -292,9 +294,21 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       sys.stderr = sys.__stderr__
 
       indexed = info is not None
-      if indexed:
+      if indexed and self.m_progress_logging:
         # integration pickle dictionary is available here as info.last_saved_best
         pass
+        if info.last_saved_best["identified_isoform"] is not None:
+          #print info.last_saved_best.keys()
+          from cxi_xdr_xes.cftbx.cspad_ana import db
+          dbobj = db.dbconnect(self.m_db_host, self.m_db_name, self.m_db_user, self.m_db_password)
+          cursor = dbobj.cursor()
+          from xfel.xpp.progress_support import progress_manager
+          PM = progress_manager(info.last_saved_best,self.m_db_name)
+          indices, miller_id = PM.get_HKL(cursor)
+          PM.scale_frame_detail(self.timestamp,cursor)
+          dbobj.commit()
+          dbobj.close()
+
       if self.m_db_logging:
         sec,ms = cspad_tbx.evt_time(evt)
         evt_time = sec + ms/1000
