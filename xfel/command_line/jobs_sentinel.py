@@ -10,13 +10,16 @@ xpp.jobs_sentinel db.name=xppi6115 db.user=xppi6115 experiment=xppi6115 experime
 """
 
 import iotbx.phil
+import libtbx.load_env
 from libtbx.utils import Usage, Sorry
-import sys, time
+import sys, os, time
 
 master_phil = """
   experiment = None
     .type = str
   experiment_tag = None
+    .type = str
+  config_dir = "."
     .type = str
   db {
     host = psdb.slac.stanford.edu
@@ -30,8 +33,51 @@ master_phil = """
   }
 """
 
-def write_hitfind_cfg(trial, rungroup):
-  pass
+def write_hitfind_cfg(params, dbobj, trial_id, trial, rungroup_id):
+  assert os.path.exists(params.config_dir)
+
+  config_path = os.path.join(params.config_dir, "%s_%s_t%03d_rg%03d.cfg"%(params.experiment, params.experiment_tag, trial, rungroup_id))
+
+  if os.path.exists(config_path):
+    return config_path
+
+  cmd = "SELECT target_phil_path FROM %s_trials where %s_trials.trial_id = %d"%(params.experiment_tag, params.experiment_tag, trial_id)
+  cursor = dbobj.cursor()
+  cursor.execute(cmd)
+  assert cursor.rowcount == 1
+  target_phil_path = cursor.fetchall()[0][0]
+
+  cmd = "SELECT detz_parameter, beamx, beamy, untrusted_pixel_mask_path, dark_avg_path, dark_stddev_path, gain_map_path, binning FROM %s_rungroups where %s_rungroups.rungroup_id = %d"%(params.experiment_tag, params.experiment_tag, rungroup_id)
+  cursor = dbobj.cursor()
+  cursor.execute(cmd)
+  assert cursor.rowcount == 1
+  detz_parameter, beamx, beamy, untrusted_pixel_mask_path, dark_avg_path, dark_stddev_path, gain_map_path, binning = cursor.fetchall()[0]
+
+  template = open(os.path.join(libtbx.env.find_in_repositories("xfel/xpp/cfgs"),"index_all.cfg"))
+  cfg = open(config_path, 'w')
+
+  d = dict(
+    default_calib_dir         = libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0"),
+    trial_id                  = trial_id,
+    run_group_id              = rungroup_id,
+    dark_avg_path             = dark_avg_path,
+    dark_stddev_path          = dark_stddev_path,
+    untrusted_pixel_mask_path = untrusted_pixel_mask_path,
+    detz_parameter            = detz_parameter,
+    gain_map_path             = gain_map_path,
+    beamx                     = beamx,
+    beamy                     = beamy,
+    binning                   = binning,
+    db_name                   = params.db.name,
+    db_user                   = params.db.user,
+    db_password               = params.db.password,
+    target_phil_path          = target_phil_path)
+
+  for line in template.readlines():
+    cfg.write(line.format(**d))
+
+  template.close()
+  cfg.close()
 
 def run(args):
   try:
@@ -69,12 +115,14 @@ def run(args):
     known_runs = [int(entry[0]) for entry in cursor.fetchall()]
 
     # Get the list of active trials
-    cmd = "SELECT trial_id from %s_trials WHERE active = True"%params.experiment_tag
+    cmd = "SELECT trial_id, trial from %s_trials WHERE active = True"%params.experiment_tag
     cursor = dbobj.cursor()
     cursor.execute(cmd)
-    active_trial_ids = [int(entry[0]) for entry in cursor.fetchall()]
+    entries = cursor.fetchall()
+    active_trial_ids = [int(entry[0]) for entry in entries]
+    active_trials = [int(entry[1]) for entry in entries]
 
-    for trial_id in active_trial_ids:
+    for trial_id, trial in zip(active_trial_ids, active_trials):
       # Get the active rungroups for this trial
       cmd = "SELECT rungroups_id from %s_trial_rungroups WHERE trials_id = %d AND active = True"%(params.experiment_tag, trial_id)
       cursor = dbobj.cursor()
@@ -113,6 +161,8 @@ def run(args):
             continue
 
           print "Submitting run %d into trial %d using rungroup %d"%(run_id, trial_id, rungroup_id)
+
+          config_path = write_hitfind_cfg(params, dbobj, trial_id, trial, rungroup_id)
 
           cmd = "INSERT INTO %s_jobs (runs_id, trials_id, rungroups_id, status) VALUES (%d, %d, %d, '%s')"%(params.experiment_tag, run_id, trial_id, rungroup_id, "submitted")
           cursor = dbobj.cursor()
