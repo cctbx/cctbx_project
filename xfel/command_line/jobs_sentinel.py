@@ -21,6 +21,8 @@ master_phil = """
     .type = str
   config_dir = "."
     .type = str
+  dry_run = False
+    .type = bool
   db {
     host = psdb.slac.stanford.edu
       .type = str
@@ -59,7 +61,7 @@ def write_hitfind_cfg(params, dbobj, trial_id, trial, rungroup_id):
   d = dict(
     default_calib_dir         = libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0"),
     trial_id                  = trial_id,
-    run_group_id              = rungroup_id,
+    rungroup_id               = rungroup_id,
     dark_avg_path             = dark_avg_path,
     dark_stddev_path          = dark_stddev_path,
     untrusted_pixel_mask_path = untrusted_pixel_mask_path,
@@ -78,6 +80,11 @@ def write_hitfind_cfg(params, dbobj, trial_id, trial, rungroup_id):
 
   template.close()
   cfg.close()
+
+def submit_job(params, dbobj, trial_id, trial, rungroup_id, run, config_path):
+  assert os.path.exists(config_path)
+  submit_phil_path = os.path.join(params.config_dir, "%s_%s_r%04d_t%03d_rg%03d_submit.phil"%(params.experiment, params.experiment_tag, run, trial, rungroup_id))
+
 
 def run(args):
   try:

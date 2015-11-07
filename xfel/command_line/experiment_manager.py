@@ -374,7 +374,7 @@ class rungroups_menu(option_chooser):
       darkavg = get_optional_input("Path to dark average image (if available): ")
       darkstddev = get_optional_input("Path to dark standard deviation image (if available): ")
       gainmap = get_optional_input("Path to gain map image (if available): ")
-      binning = get_optional_input("Binning (if applicable) :")
+      binning = get_optional_input("Binning (if applicable): ")
       #usecase = get_optional_input("Use case (list available cases here):")
       comment = raw_input("Add a comment: ")
 
