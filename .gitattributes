@@ -3717,6 +3717,7 @@ xfel/vonHamos/test_3_gaussian.py -text
 xfel/vonHamos/xes_ext.cpp -text
 xfel/xpp/__init__.py -text
 xfel/xpp/cfgs/index_all.cfg -text
+xfel/xpp/cfgs/submit.phil -text
 xfel/xpp/experiment_schema.sql -text
 xfel/xpp/isoform.py -text
 xfel/xpp/progress_support.py -text
