@@ -3716,6 +3716,7 @@ xfel/vonHamos/fit_3_gaussian.py -text
 xfel/vonHamos/test_3_gaussian.py -text
 xfel/vonHamos/xes_ext.cpp -text
 xfel/xpp/__init__.py -text
+xfel/xpp/cfgs/index_all.cfg -text
 xfel/xpp/experiment_schema.sql -text
 xfel/xpp/isoform.py -text
 xfel/xpp/simulate.py -text
