@@ -1,10 +1,14 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME iota.bulletproof
-"""
-Script for indexing using run_one_index_core. Designed to be called by
-easy_run.fully_buffered, protecting the calling program from boost
-errors.
-"""
+
+'''
+Author      : Brewster, A.S., Lyubimov, A.Y.
+Created     : 10/12/2014
+Last Changed: 11/06/2015
+Description : Script for indexing using run_one_index_core. Designed to be
+              called by easy_run.fully_buffered, protecting the calling program
+              from boost errors.
+'''
 
 import sys
 from xfel.phil_preferences import load_cxi_phil
@@ -22,9 +26,8 @@ if __name__ == "__main__":
     horizons_phil = load_cxi_phil(target, args)
     info = run_one_index_core(horizons_phil)
     # save specific results from the info object to be used by iota
-    int_final = info.organizer.info['best_integration']['integration']
-    int_AD14 = int_final['AD14_parameters']
-    easy_pickle.dump(tmppath, (int_final, int_AD14))
+    int_final = info.last_saved_best
+    easy_pickle.dump(tmppath, int_final)
   except Exception, e:
     if hasattr(e, "classname"):
       error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])

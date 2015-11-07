@@ -713,7 +713,6 @@ class SingleImage(object):
           terminate = True
 
       # Run final integration if haven't already
-      print self.fail
       if self.fail == None and self.status != 'final':
         self.integrate_cctbx('integrate', single_image=single_image)
 
