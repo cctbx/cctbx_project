@@ -78,6 +78,10 @@ phil_scope = parse('''
     trial = None
       .type = int
       .help = Trial number for this job.  Leave blank to auto determine.
+    rungroup = None
+      .type = int
+      .help = Optional. If used, will add _rgXXX to the trial path. Useful for organizing \
+              runs with similar parameters into logical groupings.
     xtc_dir = None
       .type = str
       .help = Optional path to data directory if it's non-standard. Only needed if xtc \
@@ -208,6 +212,8 @@ class Script(object):
       found_one = False
       for i in xrange(1000):
         trialdir = os.path.join(rundir, "%03d"%i)
+        if params.input.rungroup is not None:
+          trialdir += "_rg%03d"%params.input.rungroup
         if not os.path.exists(trialdir):
           found_one = True
           break
@@ -217,6 +223,8 @@ class Script(object):
         raise Sorry("All trial numbers in use")
     else:
       trialdir = os.path.join(rundir, "%03d"%params.input.trial)
+      if params.input.rungroup is not None:
+        trialdir += "_rg%03d"%params.input.rungroup
       if os.path.exists(trialdir):
         raise Sorry("Trial %d already in use"%params.input.trial)
 
@@ -253,6 +261,9 @@ class Script(object):
       if "trial_id" in line:
         key, val = line.split("=")
         line = "%s= %d\n"%(key,params.input.trial)
+      if "rungroup_id" in line:
+        key, val = line.split("=")
+        line = "%s= %s\n"%(key,params.input.rungroup) # None ok
       elif "_dirname" in line:
         key, val = line.split("=")
         val = os.path.join(trialdir, os.path.basename(val.strip()))

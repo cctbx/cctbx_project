@@ -21,8 +21,18 @@ master_phil = """
     .type = str
   config_dir = "."
     .type = str
+  output_dir = "."
+    .type = str
   dry_run = False
     .type = bool
+  mp {
+    nproc = 1
+      .type = int
+      .help = Number of processes
+    queue = "psanacsq"
+      .type = str
+      .help = Queue to submit MPI job to
+  }
   db {
     host = psdb.slac.stanford.edu
       .type = str
@@ -80,11 +90,32 @@ def write_hitfind_cfg(params, dbobj, trial_id, trial, rungroup_id):
 
   template.close()
   cfg.close()
+  return config_path
 
 def submit_job(params, dbobj, trial_id, trial, rungroup_id, run, config_path):
   assert os.path.exists(config_path)
   submit_phil_path = os.path.join(params.config_dir, "%s_%s_r%04d_t%03d_rg%03d_submit.phil"%(params.experiment, params.experiment_tag, run, trial, rungroup_id))
 
+
+  template = open(os.path.join(libtbx.env.find_in_repositories("xfel/xpp/cfgs"), "submit.phil"))
+  phil = open(submit_phil_path, "w")
+
+  d = dict(dry_run = params.dry_run,
+    cfg = config_path,
+    experiment = params.experiment,
+    run_num = run,
+    trial = trial,
+    rungroup = rungroup_id,
+    output_dir = params.output_dir,
+    nproc = params.mp.nproc,
+    queue = params.mp.queue
+  )
+
+  for line in template.readlines():
+    phil.write(line.format(**d))
+
+  template.close()
+  phil.close()
 
 def run(args):
   try:
@@ -170,6 +201,8 @@ def run(args):
           print "Submitting run %d into trial %d using rungroup %d"%(run_id, trial_id, rungroup_id)
 
           config_path = write_hitfind_cfg(params, dbobj, trial_id, trial, rungroup_id)
+          if submit_job(params, dbobj, trial_id, trial, rungroup_id, run, config_path):
+            pass
 
           cmd = "INSERT INTO %s_jobs (runs_id, trials_id, rungroups_id, status) VALUES (%d, %d, %d, '%s')"%(params.experiment_tag, run_id, trial_id, rungroup_id, "submitted")
           cursor = dbobj.cursor()
