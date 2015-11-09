@@ -1,19 +1,19 @@
 from __future__ import division
+# LIBTBX_SET_DISPATCHER_NAME iota.single_image
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 11/02/2015
-Description : Single-image IOTA module.
-              Version 2.22
+Last Changed: 11/06/2015
+Description : Single-image IOTA module. Version 2.23
 '''
 
-iota_version = '2.22'
+iota_version = '2.23'
 help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 
 Single image mode
-Usage: prime.single_image_iota [OPTIONS] path/to/image.file
+Usage: iota.single_image [OPTIONS] path/to/image.file
 Imports, converts, triages, indexes and integrates a single
 diffraction image using CCTBX defaults. Can use either IOTA
 default parameters, or individual parameters can be changed
