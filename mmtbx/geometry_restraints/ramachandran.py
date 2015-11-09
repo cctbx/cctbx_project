@@ -12,21 +12,6 @@ ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
 from mmtbx_ramachandran_restraints_ext import lookup_table, \
     ramachandran_residual_sum
 
-# rosetta_adaptbx is not considered as working anymore.
-# Probably should be removed at some point.
-if libtbx.env.has_module("rosetta_adaptbx") :
-  potential_phil = """\
-   rama_potential = *oldfield emsley rosetta
-    .type = choice(multi=False)
-    .short_caption = Ramachandran potential
-    .caption = Oldfield Coot Rosetta"""
-else :
-  potential_phil = """\
-   rama_potential = *oldfield emsley
-    .type = choice(multi=False)
-    .short_caption = Ramachandran potential
-    .caption = Oldfield Coot"""
-
 master_phil = iotbx.phil.parse("""
   rama_weight = 1.0
     .type = float
@@ -35,7 +20,10 @@ master_phil = iotbx.phil.parse("""
   scale_allowed = 1.0
     .type = float
     .short_caption = Rescale allowed region pseudo-energy by
-  %s
+  rama_potential = *oldfield emsley
+    .type = choice(multi=False)
+    .short_caption = Ramachandran potential
+    .caption = Oldfield Coot
   oldfield
     .short_caption = Oldfield potential parameters
     .style = box auto_align
@@ -65,7 +53,7 @@ master_phil = iotbx.phil.parse("""
     .type = bool
     .expert_level = 1
     .short_caption = Exclude secondary structure from Ramachandran restraints
-""" % potential_phil)
+""")
 
 def is_proxy_present(proxies, n_seq, proxy):
   p_iseqs = list(proxy.get_i_seqs())
@@ -92,10 +80,6 @@ class ramachandran_manager(object):
     if initialize:
       if(self.params.rama_potential == "oldfield"):
         self.tables = ramachandran_plot_data()
-      elif (self.params.rama_potential == "rosetta") :
-        import rosetta_adaptbx
-        rosetta_adaptbx.init()
-        self.tables = rosetta_adaptbx.ext.ramachandran()
       else :
         self.tables = load_tables(params)
       # get proxies
@@ -168,14 +152,6 @@ class ramachandran_manager(object):
           weights=(w, op.esd, op.dist_weight_max, 2.0, op.weight_scale),
           residuals_array=residuals_array)
       return res
-    elif (self.params.rama_potential == "rosetta") :
-      # Moving these cycles to C++ part would speed them up only up to 10%
-      for i, proxy in enumerate(self.proxies):
-        residuals_array[i] = self.tables.residue_target_and_gradients(
-          gradient_array=gradient_array,
-          sites_cart=sites_cart,
-          proxy=proxy,
-          weight=self.params.rama_weight)
     else: # emsley
       assert (self.params.rama_weight >= 0.0)
       # bad hack to keep emsley potential in working(?) condition after
@@ -313,12 +289,22 @@ class ramachandran_plot_data(object):
           triplet = [phi_, psi_, val]
           stuff[selfstore].append(triplet)
 
-    self.general = self.select_good(data=stuff[0], step=2)
-    self.gly     = self.select_good(data=stuff[1], step=4)
-    self.cispro  = self.select_good(data=stuff[2], step=2)
-    self.transpro= self.select_good(data=stuff[3], step=2)
-    self.prepro  = self.select_good(data=stuff[4], step=2)
-    self.ileval  = self.select_good(data=stuff[5], step=2)
+    self.general  = self.select_good(data=stuff[0], step=2)
+    self.gly      = self.select_good(data=stuff[1], step=4)
+    self.cispro   = self.select_good(data=stuff[2], step=1)
+    self.transpro = self.select_good(data=stuff[3], step=1)
+    self.prepro   = self.select_good(data=stuff[4], step=2)
+    self.ileval   = self.select_good(data=stuff[5], step=2)
+
+    # print "self.general ", len(self.general )
+    # print "self.gly     ", len(self.gly     )
+    # print "self.cispro  ", len(self.cispro  )
+    # print "self.transpro", len(self.transpro)
+    # for phi, psi, val in self.transpro:
+    #   print "%.1f, %.1f, %.5f" % (phi, psi, val)
+    # print "self.prepro  ", len(self.prepro  )
+    # print "self.ileval  ", len(self.ileval  )
+    # STOP()
 
   def select_good(self, data, step):
     phi, psi, val = self.split_array(data=data)
