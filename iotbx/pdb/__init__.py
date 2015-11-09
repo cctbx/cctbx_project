@@ -991,6 +991,22 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
   def file_type (self) :
     return "pdb"
 
+  def sequence_from_SEQRES(self):
+    d = {}
+    ps = self.primary_structure_section()
+    for l in ps:
+      l = l.strip()
+      ls = l.split()
+      if(l.startswith("SEQRES")):
+        kw, i_seq, chid, rns = ls[0], ls[1], ls[2], ls[4:]
+        d.setdefault(chid, []).extend(rns)
+    result = []
+    ott = amino_acid_codes.one_letter_given_three_letter
+    for k, vs in zip(d.keys(), d.values()):
+      result.append(">chain %s"%k)
+      result.append("".join([ott.get(v,"?") for v in vs]))
+    return "\n".join(result)
+
   def extract_header_year(self):
     for line in self.title_section():
       if (line.startswith("HEADER ")):

@@ -58,14 +58,16 @@ namespace {
                       af::shared<double> const&,
                       af::shared<double> const&,
                       af::shared<double> const&,
-                      cctbx::sgtbx::space_group const&,
-                      af::const_ref<cctbx::miller::index<> > const& >((
+                      af::shared<double> const&,
+                      af::shared<bool> const&
+                       >((
                                                           arg("f_obs"),
                                                           arg("f_model"),
                                                           arg("alpha"),
                                                           arg("beta"),
-                                                          arg("space_group"),
-                                                          arg("miller_indices"))))
+                                                          arg("epsilons"),
+                                                          arg("centric_flags")
+                                                          )))
       .def("fom",         &fom_and_phase_error::fom)
       .def("phase_error", &fom_and_phase_error::phase_error)
     ;

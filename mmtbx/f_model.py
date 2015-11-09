@@ -2141,7 +2141,8 @@ class manager(manager_mixin):
            f_calc                   = f_model,
            free_reflections_per_bin = 140,
            flags                    = ~flags,
-           interpolation            = False).alpha_beta()
+           interpolation            = False,
+           epsilons                 = self.epsilons).alpha_beta()
       return alpha, beta
     alpha, beta = None, None
     ab_params = self.alpha_beta_params
@@ -2160,8 +2161,8 @@ class manager(manager_mixin):
              free_reflections_per_bin
                = self.alpha_beta_params.free_reflections_per_bin,
              flags           = self.r_free_flags().data(),
-             interpolation   = self.alpha_beta_params.interpolation) \
-               .alpha_beta()
+             interpolation   = self.alpha_beta_params.interpolation,
+             epsilons        = self.epsilons).alpha_beta()
          else:
            p = self.alpha_beta_params.sigmaa_estimator
            alpha, beta = sigmaa_estimator(
@@ -2189,7 +2190,8 @@ class manager(manager_mixin):
          f_calc                   = f_model,
          free_reflections_per_bin = 140,
          flags                    = self.r_free_flags().data(),
-         interpolation            = False).alpha_beta()
+         interpolation            = False,
+         epsilons                 = self.epsilons).alpha_beta()
     time_alpha_beta += timer.elapsed()
     return alpha, beta
 
@@ -2240,7 +2242,8 @@ class manager(manager_mixin):
         f_calc          = self.f_model_scaled_with_k1(),
         free_reflections_per_bin = free_reflections_per_bin,
         flags           = self.r_free_flags().data(),
-        interpolation   = True).alpha_beta()
+        interpolation   = True,
+        epsilons        = self.epsilons).alpha_beta()
     else:
       p = self.alpha_beta_params.sigmaa_estimator
       alpha, beta = sigmaa_estimator(
@@ -2458,8 +2461,8 @@ class manager(manager_mixin):
       f_model        = flex.abs(self.arrays.f_model.data()),
       alpha          = alpha.data(),
       beta           = beta.data(),
-      space_group    = self.f_obs().space_group(),
-      miller_indices = self.f_obs().indices()).fom()
+      epsilons       = self.epsilons,
+      centric_flags  = self.f_obs().centric_flags().data()).fom()
     time_foms += timer.elapsed()
     return result
 
@@ -2485,8 +2488,8 @@ class manager(manager_mixin):
       f_model        = flex.abs(self.arrays.f_model.data()),
       alpha          = alpha.data(),
       beta           = beta.data(),
-      space_group    = self.f_obs().space_group(),
-      miller_indices = self.f_obs().indices()).phase_error()
+      epsilons       = self.epsilons,
+      centric_flags  = self.f_obs().centric_flags().data()).phase_error()
     time_phase_errors += timer.elapsed()
     return result
 
@@ -2529,19 +2532,21 @@ class manager(manager_mixin):
       def __init__(self, fmodel, free_reflections_per_bin, interpolation):
         self.f_obs = fmodel.f_obs()
         self.f_model = fmodel.f_model()
+        assert fmodel.epsilons.size()==self.f_obs.data().size()
         self.alpha, self.beta = maxlik.alpha_beta_est_manager(
           f_obs                    = self.f_obs,
           f_calc                   = self.f_model,
           free_reflections_per_bin = free_reflections_per_bin,
           flags                    = fmodel.r_free_flags().data(),
-          interpolation            = interpolation).alpha_beta()
+          interpolation            = interpolation,
+          epsilons                 = fmodel.epsilons).alpha_beta()
         self.fom = max_lik.fom_and_phase_error(
           f_obs          = self.f_obs.data(),
           f_model        = flex.abs(self.f_model.data()),
           alpha          = self.alpha.data(),
           beta           = self.beta.data(),
-          space_group    = fmodel.r_free_flags().space_group(),
-          miller_indices = fmodel.r_free_flags().indices()).fom()
+          epsilons       = fmodel.epsilons,
+          centric_flags  = self.f_obs.centric_flags().data()).fom()
     return result(
       fmodel                   = self,
       free_reflections_per_bin = free_reflections_per_bin,

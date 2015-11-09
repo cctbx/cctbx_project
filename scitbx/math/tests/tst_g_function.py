@@ -11,9 +11,9 @@ def G(x):
 
 def exercise():
   x = 0
-  while x < 4.45: #undefined for larger arguments
-    gf = m.GfuncOfRSsqr_approx((x/(2.*math.pi))**2)
-    assert approx_equal(gf, G(x))
+  while x < 5:
+    gf = math.GfuncOfRSsqr(x)
+    print "%6.4f %6.4f %6.4f"%(x, gf, G(x))
     x += 0.01
 
 if (__name__ == "__main__"):

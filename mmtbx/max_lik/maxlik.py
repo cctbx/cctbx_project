@@ -163,7 +163,7 @@ class alpha_beta_est_manager(object):
                     free_reflections_per_bin,
                     flags,
                     interpolation,
-                    epsilons=None):
+                    epsilons):
     adopt_init_args(self, locals())
     #
     # icent - array contains 0 for acentric reflections and >0 integer
@@ -183,6 +183,7 @@ class alpha_beta_est_manager(object):
     #
     assert len(self.flags) == self.f_obs.data().size()
     assert self.f_obs.data().size() == self.f_calc.data().size()
+    assert self.f_obs.data().size() == self.epsilons.size()
     assert self.f_calc.indices().all_eq(self.f_obs.indices()) == 1
     self.f_calc = abs(self.f_calc)
     if(self.flags.count(True) > 0):
@@ -190,13 +191,13 @@ class alpha_beta_est_manager(object):
          self.free_reflections_per_bin = flags.count(True)
       self.f_obs_test  = self.f_obs.select(self.flags)
       self.f_calc_test = self.f_calc.select(self.flags)
+      self.epsilons_test = self.epsilons.select(self.flags)
     if(self.flags.count(True) == 0):
       self.f_obs_test  = self.f_obs.select(~self.flags)
       self.f_calc_test = self.f_calc.select(~self.flags)
+      self.epsilons_test = self.epsilons.select(~self.flags)
     self.f_obs_test.setup_binner_counting_sorted(
       reflections_per_bin= self.free_reflections_per_bin)
-    if(self.epsilons is None):
-      self.epsilons = self.f_obs_test.epsilons().data().as_double()
     self.fo_test_sets = []
     self.fm_test_sets = []
     self.indices_sets = []
@@ -205,11 +206,12 @@ class alpha_beta_est_manager(object):
        sel = self.f_obs_test.binner().selection(i_bin)
        sel_f_obs_test = self.f_obs_test.select(sel)
        sel_f_calc_test = self.f_calc_test.select(sel)
+       sel_epsilons_test = self.epsilons_test.select(sel)
        if(sel.count(True) > 0): # XXX I do not understand why it can be 0 (in rare cases)
          self.fo_test_sets.append(sel_f_obs_test.data())
          self.fm_test_sets.append(sel_f_calc_test.data())
          self.indices_sets.append(sel_f_obs_test.indices())
-         self.epsilons_sets.append(self.epsilons.select(sel))
+         self.epsilons_sets.append(sel_epsilons_test)
     for a,b,c in zip(self.fo_test_sets, self.fm_test_sets, self.indices_sets):
       assert a.size() == b.size() == c.size() != 0
     obj = max_lik.alpha_beta_est(fo_test     = self.fo_test_sets,
