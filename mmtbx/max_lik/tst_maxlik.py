@@ -78,7 +78,8 @@ def test_1():
                     f_calc = f_calc,
                     free_reflections_per_bin = 1000,
                     flags = flags,
-                    interpolation = False).alpha_beta()
+                    interpolation = False,
+                    epsilons = f_obs.epsilons().data().as_double()).alpha_beta()
 
   assert alpha.data().size() == beta.data().size()
   assert alpha.data().size() == f_obs.size()
@@ -87,11 +88,13 @@ def test_1():
   assert approx_equal(flex.min(beta.data()),818.503411782)
   assert approx_equal(flex.max(beta.data()),818.503411782)
 # *********************************************************TEST = 2
-  alpha, beta = maxlik.alpha_beta_est_manager(f_obs  = f_obs,
-                                      f_calc = f_calc,
-                                      free_reflections_per_bin = 50,
-                                      flags = flags,
-                                      interpolation = False).alpha_beta()
+  alpha, beta = maxlik.alpha_beta_est_manager(
+    f_obs  = f_obs,
+    f_calc = f_calc,
+    free_reflections_per_bin = 50,
+    flags = flags,
+    interpolation = False,
+    epsilons = f_obs.epsilons().data().as_double()).alpha_beta()
 
   assert alpha.data().size() == beta.data().size()
   assert alpha.data().size() == f_obs.size()
@@ -108,12 +111,13 @@ def test_1():
                     final_error     = 0.0,
                     absent_atom_type = "C").alpha_beta()
 
-  fom = max_lik.fom_and_phase_error(f_obs          = f_obs.data(),
-                                    f_model        = flex.abs(f_calc.data()),
-                                    alpha          = alpha.data(),
-                                    beta           = beta.data(),
-                                    space_group    = f_calc.space_group(),
-                                    miller_indices = f_calc.indices()).fom()
+  fom = max_lik.fom_and_phase_error(
+    f_obs          = f_obs.data(),
+    f_model        = flex.abs(f_calc.data()),
+    alpha          = alpha.data(),
+    beta           = beta.data(),
+    epsilons       = f_obs.epsilons().data().as_double(),
+    centric_flags  = f_obs.centric_flags().data()).fom()
 
   assert flex.max(fom) <= 1.0
   assert flex.min(fom) >= 0.0
@@ -133,40 +137,44 @@ def test_1():
 
   alp = flex.double(2,0.0)
   bet = flex.double(2,1e+9)
-  fom = max_lik.fom_and_phase_error(f_obs          = mao.data(),
-                                    f_model        = mac.data(),
-                                    alpha          = alp,
-                                    beta           = bet,
-                                    space_group    = mao.space_group(),
-                                    miller_indices = mao.indices()).fom()
+  fom = max_lik.fom_and_phase_error(
+    f_obs          = mao.data(),
+    f_model        = mac.data(),
+    alpha          = alp,
+    beta           = bet,
+    epsilons       = mao.epsilons().data().as_double(),
+    centric_flags  = mao.centric_flags().data()).fom()
   assert approx_equal(fom,[0.0, 0.0])
   alp = flex.double(2,1.0)
   bet = flex.double(2,1e+9)
-  fom = max_lik.fom_and_phase_error(f_obs          = mao.data(),
-                                    f_model        = mac.data(),
-                                    alpha          = alp,
-                                    beta           = bet,
-                                    space_group    = mao.space_group(),
-                                    miller_indices = mao.indices()).fom()
+  fom = max_lik.fom_and_phase_error(
+    f_obs          = mao.data(),
+    f_model        = mac.data(),
+    alpha          = alp,
+    beta           = bet,
+    epsilons       = mao.epsilons().data().as_double(),
+    centric_flags  = mao.centric_flags().data()).fom()
 
   assert approx_equal(fom,[0.0, 0.0])
   alp = flex.double(2,0.0)
   bet = flex.double(2,1e-9)
-  fom = max_lik.fom_and_phase_error(f_obs          = mao.data(),
-                                    f_model        = mac.data(),
-                                    alpha          = alp,
-                                    beta           = bet,
-                                    space_group    = mao.space_group(),
-                                    miller_indices = mao.indices()).fom()
+  fom = max_lik.fom_and_phase_error(
+    f_obs          = mao.data(),
+    f_model        = mac.data(),
+    alpha          = alp,
+    beta           = bet,
+    epsilons       = mao.epsilons().data().as_double(),
+    centric_flags  = mao.centric_flags().data()).fom()
   assert approx_equal(fom,[0.0, 0.0])
   alp = flex.double(2,1.0)
   bet = flex.double(2,1e-9)
-  fom = max_lik.fom_and_phase_error(f_obs          = mao.data(),
-                                    f_model        = mac.data(),
-                                    alpha          = alp,
-                                    beta           = bet,
-                                    space_group    = mao.space_group(),
-                                    miller_indices = mao.indices()).fom()
+  fom = max_lik.fom_and_phase_error(
+    f_obs          = mao.data(),
+    f_model        = mac.data(),
+    alpha          = alp,
+    beta           = bet,
+    epsilons       = mao.epsilons().data().as_double(),
+    centric_flags  = mao.centric_flags().data()).fom()
   assert approx_equal(fom,[1.0, 1.0])
 
 def test_2():
@@ -214,11 +222,12 @@ def test_2():
 
     # *********************************************************TEST = 1
       alpha, beta = maxlik.alpha_beta_est_manager(
-                        f_obs           = f_obs,
-                        f_calc          = f_calc,
-                        free_reflections_per_bin = f_obs.data().size(),
-                        flags           = flags,
-                        interpolation   = False).alpha_beta()
+        f_obs           = f_obs,
+        f_calc          = f_calc,
+        free_reflections_per_bin = f_obs.data().size(),
+        flags           = flags,
+        interpolation   = False,
+        epsilons        = f_obs.epsilons().data().as_double()).alpha_beta()
 
       assert alpha.size() == beta.size()
       assert alpha.size() == f_obs.size()
@@ -228,11 +237,12 @@ def test_2():
       assert approx_equal(flex.max(beta.data()) ,0.0, 1.e-2)
 
       alpha, beta = maxlik.alpha_beta_est_manager(
-                        f_obs           = f_obs,
-                        f_calc          = f_calc,
-                        free_reflections_per_bin = f_obs.data().size(),
-                        flags           = flags,
-                        interpolation   = True).alpha_beta()
+        f_obs           = f_obs,
+        f_calc          = f_calc,
+        free_reflections_per_bin = f_obs.data().size(),
+        flags           = flags,
+        interpolation   = True,
+        epsilons        = f_obs.epsilons().data().as_double()).alpha_beta()
 
       assert alpha.size() == beta.size()
       assert alpha.size() == f_obs.size()
@@ -243,12 +253,13 @@ def test_2():
     # *********************************************************TEST = 2
 
       alpha, beta = maxlik.alpha_beta_est_manager(
-                        f_obs           = miller.array(miller_set = f_obs,
-                                                       data       = f_obs.data() * scale),
-                        f_calc          = f_calc,
-                        free_reflections_per_bin = 200,
-                        flags           = flags,
-                        interpolation   = False).alpha_beta()
+        f_obs           = miller.array(miller_set = f_obs,
+                                       data       = f_obs.data() * scale),
+        f_calc          = f_calc,
+        free_reflections_per_bin = 200,
+        flags           = flags,
+        interpolation   = False,
+        epsilons        = f_obs.epsilons().data().as_double()).alpha_beta()
 
       assert alpha.size() == beta.size()
       assert alpha.size() == f_obs.size()
@@ -258,12 +269,13 @@ def test_2():
       assert approx_equal(flex.max(beta.data()) ,0.0, 1.e-2)
 
       alpha, beta = maxlik.alpha_beta_est_manager(
-                        f_obs           = miller.array(miller_set = f_obs,
-                                                       data       = f_obs.data() * scale),
-                        f_calc          = f_calc,
-                        free_reflections_per_bin = 200,
-                        flags           = flags,
-                        interpolation   = True).alpha_beta()
+        f_obs           = miller.array(miller_set = f_obs,
+                                       data       = f_obs.data() * scale),
+        f_calc          = f_calc,
+        free_reflections_per_bin = 200,
+        flags           = flags,
+        interpolation   = True,
+        epsilons        = f_obs.epsilons().data().as_double()).alpha_beta()
 
       assert alpha.size() == beta.size()
       assert alpha.size() == f_obs.size()
@@ -274,12 +286,13 @@ def test_2():
     # *********************************************************TEST = 3
 
       alpha, beta = maxlik.alpha_beta_est_manager(
-                        f_obs           = miller.array(miller_set = f_obs,
-                                                       data       = f_obs.data() * scale),
-                        f_calc          = f_calc,
-                        free_reflections_per_bin = 200,
-                        flags           = flex.bool(f_obs.data().size(), True),
-                        interpolation   = False).alpha_beta()
+        f_obs           = miller.array(miller_set = f_obs,
+                                       data       = f_obs.data() * scale),
+        f_calc          = f_calc,
+        free_reflections_per_bin = 200,
+        flags           = flex.bool(f_obs.data().size(), True),
+        interpolation   = False,
+        epsilons        = f_obs.epsilons().data().as_double()).alpha_beta()
 
       assert alpha.size() == beta.size()
       assert alpha.size() == f_obs.size()
@@ -289,12 +302,13 @@ def test_2():
       assert approx_equal(flex.max(beta.data()) ,0.0, 1.e-2)
 
       alpha, beta = maxlik.alpha_beta_est_manager(
-                        f_obs           = miller.array(miller_set = f_obs,
-                                                       data       = f_obs.data() * scale),
-                        f_calc          = f_calc,
-                        free_reflections_per_bin = 200,
-                        flags           = flex.bool(f_obs.data().size(), True),
-                        interpolation   = True).alpha_beta()
+        f_obs           = miller.array(miller_set = f_obs,
+                                       data       = f_obs.data() * scale),
+        f_calc          = f_calc,
+        free_reflections_per_bin = 200,
+        flags           = flex.bool(f_obs.data().size(), True),
+        interpolation   = True,
+        epsilons        = f_obs.epsilons().data().as_double()).alpha_beta()
 
       assert alpha.size() == beta.size()
       assert alpha.size() == f_obs.size()
@@ -305,12 +319,13 @@ def test_2():
     # *********************************************************TEST = 4
 
       alpha, beta = maxlik.alpha_beta_est_manager(
-                        f_obs           = miller.array(miller_set = f_obs,
-                                                       data       = f_obs.data() * scale),
-                        f_calc          = f_calc,
-                        free_reflections_per_bin = 200,
-                        flags           = flex.bool(f_obs.data().size(), False),
-                        interpolation   = False).alpha_beta()
+        f_obs           = miller.array(miller_set = f_obs,
+                                       data       = f_obs.data() * scale),
+        f_calc          = f_calc,
+        free_reflections_per_bin = 200,
+        flags           = flex.bool(f_obs.data().size(), False),
+        interpolation   = False,
+        epsilons        = f_obs.epsilons().data().as_double()).alpha_beta()
 
       assert alpha.size() == beta.size()
       assert alpha.size() == f_obs.size()
@@ -320,12 +335,13 @@ def test_2():
       assert approx_equal(flex.max(beta.data()) ,0.0, 1.e-2)
 
       alpha, beta = maxlik.alpha_beta_est_manager(
-                        f_obs           = miller.array(miller_set = f_obs,
-                                                       data       = f_obs.data() * scale),
-                        f_calc          = f_calc,
-                        free_reflections_per_bin = 200,
-                        flags           = flex.bool(f_obs.data().size(), False),
-                        interpolation   = True).alpha_beta()
+        f_obs           = miller.array(miller_set = f_obs,
+                                       data       = f_obs.data() * scale),
+        f_calc          = f_calc,
+        free_reflections_per_bin = 200,
+        flags           = flex.bool(f_obs.data().size(), False),
+        interpolation   = True,
+        epsilons        = f_obs.epsilons().data().as_double()).alpha_beta()
 
       assert alpha.size() == beta.size()
       assert alpha.size() == f_obs.size()
@@ -385,8 +401,9 @@ def test_4():
    symmetry = crystal.symmetry(unit_cell          = (15.67, 25.37, 35.68, 90, 90, 90),
                                space_group_symbol = "P 21 21 21")
    structure = xray.structure(crystal_symmetry = symmetry)
-   mi = structure.structure_factors(d_min          = 1.5,
-                                    anomalous_flag = False).f_calc().indices()
+   ma = structure.structure_factors(d_min          = 1.5,
+                                    anomalous_flag = False).f_calc()
+   mi = ma.indices()
    # ================================================================= TEST-1
    alpha  = flex.double(mi.size())
    beta   = flex.double(mi.size())
@@ -410,12 +427,13 @@ def test_4():
      beta  [i-1] = i*500.0
      alpha [i-1] = float(i) / float(i + 1)
 
-   obj = max_lik.fom_and_phase_error(f_obs          = d_obs,
-                                     f_model        = d_calc,
-                                     alpha          = alpha,
-                                     beta           = beta,
-                                     space_group    = symmetry.space_group(),
-                                     miller_indices = mi)
+   obj = max_lik.fom_and_phase_error(
+     f_obs          = d_obs,
+     f_model        = d_calc,
+     alpha          = alpha,
+     beta           = beta,
+     epsilons       = ma.epsilons().data().as_double(),
+     centric_flags  = ma.centric_flags().data())
    per = obj.phase_error()
    fom = obj.fom()
    assert approx_equal(flex.max(per) ,  89.9325000127     , 1.e-4)
