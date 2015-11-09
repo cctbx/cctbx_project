@@ -298,6 +298,7 @@ class link_trials_to_rungroup_menu(option_chooser):
       assert cursor.rowcount <= 1
       if cursor.rowcount == 0:
         print "Trial %s not found."%trial
+        return
       trial_id = cursor.fetchall()[0][0]
 
       cmd = "SELECT rungroup_id from %s_rungroups where %s_rungroups.rungroup_id = %s"%(self.params.experiment_tag, self.params.experiment_tag, rungroup_id)
@@ -306,6 +307,7 @@ class link_trials_to_rungroup_menu(option_chooser):
       assert cursor.rowcount <= 1
       if cursor.rowcount == 0:
         print "Rungroup %s not found."%rungroup_id
+        return
 
       cmd = "INSERT INTO %s_trial_rungroups (trials_id, rungroups_id, active) VALUES (%s,%s,%s)"%(self.params.experiment_tag, trial_id, rungroup_id, active)
 
