@@ -98,6 +98,14 @@ Crystal:
   assert approx_equal(model.get_unit_cell().parameters(),
                       (12, 12, 12, 90, 90, 90))
 
+  U = matrix.sqr((
+    0.3455, -0.2589, -0.9020, 0.8914, 0.3909, 0.2293, 0.2933, -0.8833, 0.3658))
+  B = matrix.sqr((1/13, 0, 0, 0, 1/13, 0, 0, 0, 1/13))
+  model.set_A(U * B)
+  assert approx_equal(model.get_A(), U * B)
+  assert approx_equal(model.get_U(), U, 1e-4)
+  assert approx_equal(model.get_B(), B, 1e-5)
+
   model3 = crystal_model(
     real_space_a=(10,0,0),
     real_space_b=(0,11,0),
