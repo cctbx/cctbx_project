@@ -20,6 +20,12 @@ subset of images without target cell. Outputs basic analysis.
 Converts raw images into pickle format and crops to ensure that
 beam center is in center of image.
 
+Single-image mode
+Usage: iota.run [OPTIONS] /path/to/single/image.[pickle/cbf/img/mccd]
+Same as AUTO mode, but can accept a single image file. Will generate default
+iota.param and target.phil files and integrate the single image provided. Can
+also be used with iota.single_image in the same manner.
+
 Script mode
 Usage: prime.iota [OPTIONS] <script>.param
 Run using IOTA parameter file and target PHIL file generated from
@@ -29,22 +35,8 @@ images into pickle format and modifies by cropping or padding to
 ensure that beam center is in center of image. Can also blank out
 beam stop shadow.
 
-MPI mode
-Usage:
-iota.mpi iota.param --mpi init
-mpirun -n [num_cores] iota.mpi iota.param --mpi import
-mpirun -n [num_cores] iota.mpi iota.param --mpi gridsearch
-mpirun -n [num_cores] iota.mpi iota.param --mpi select
-mpirun -n [num_cores] iota.mpi iota.param --mpi final
-iota.mpi iota.param --mpi analyze
-
-Run IOTA in three separate batches (initialization, image processing,
-analysis); can use MPI (mpirun) to run the image processing step.
-Can run these in sequence in a shell script or any other kind of a
-submission script. Useful for huge datasets.
-
-
 """
+
 from prime.iota.iota_analysis import Analyzer
 from prime.iota.iota_init import InitAll
 import prime.iota.iota_image as img
