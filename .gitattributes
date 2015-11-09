@@ -2393,10 +2393,10 @@ prime/__init__.py -text
 prime/api.py -text
 prime/command_line/__init__.py -text
 prime/command_line/change_path_indexing_ambiguity.py -text
-prime/command_line/iota.py -text
 prime/command_line/iota_bulletproof.py -text
 prime/command_line/iota_mpi.py -text
 prime/command_line/iota_mpi_submit.py -text
+prime/command_line/iota_run.py -text
 prime/command_line/iota_single_image.py -text
 prime/command_line/iotacc.py -text
 prime/command_line/postrefine.py -text
