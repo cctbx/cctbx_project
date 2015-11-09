@@ -382,6 +382,7 @@ class ncs_group_object(object):
             transform_to_group,match_dict,chain_info)
         # hopefully, we will get only 1 ncs group
         ncs_group.selection = []
+        # User triggered the fail of this assert!
         assert len(group_dict) == 1
         for key, ncs_gr in group_dict.iteritems():
           for i, isel in enumerate(ncs_gr.iselections):
