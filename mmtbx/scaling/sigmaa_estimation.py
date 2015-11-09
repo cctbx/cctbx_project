@@ -238,12 +238,12 @@ class sigmaa_estimator(object):
   def phase_errors(self):
     alpha, beta = self.alpha_beta()
     result = max_lik.fom_and_phase_error(
-                           f_obs          = self.miller_obs.data(),
-                           f_model        = flex.abs(self.miller_calc.data()),
-                           alpha          = alpha.data(),
-                           beta           = beta.data(),
-                           space_group    = self.miller_obs.space_group(),
-                           miller_indices = self.miller_obs.indices() ).phase_error()
+      f_obs          = self.miller_obs.data(),
+      f_model        = flex.abs(self.miller_calc.data()),
+      alpha          = alpha.data(),
+      beta           = beta.data(),
+      epsilons       = self.miller_obs.epsilons().data().as_double(),
+      centric_flags  = self.miller_obs.centric_flags().data()).phase_error()
     result =  self.miller_obs.customized_copy(data=result)
     return result
 

@@ -466,8 +466,9 @@ public:
                       af::shared<double> const& fm,
                       af::shared<double> const& alpha,
                       af::shared<double> const& beta,
-                      cctbx::sgtbx::space_group const& sg,
-                      af::const_ref<cctbx::miller::index<> > hkl)
+                      af::shared<double> const& epsilons,
+                      af::shared<bool> const& centric_flags
+                      )
      {
        fo_ = fo;
        fm_ = fm;
@@ -475,9 +476,10 @@ public:
        beta_ = beta;
        MMTBX_ASSERT( fo.size() > 0 && (fo.size() == fm.size()) );
        MMTBX_ASSERT( alpha.size() == beta.size() );
-       MMTBX_ASSERT( (fo.size() == alpha.size()) && (fo.size() == hkl.size()) );
-       eps_ = sg.epsilon(hkl);
-       cf_ = sg.is_centric(hkl);
+       for(std::size_t i=0; i < epsilons.size(); i++) {
+         eps_.push_back(epsilons[i]);
+         cf_.push_back(centric_flags[i]);
+       }
      }
 
   //! calculate figures of merit (fom)
@@ -624,7 +626,7 @@ public:
 protected:
   af::shared<double> fo_, fm_, alpha_, beta_;
   af::shared<double> fom_, phase_error_;
-  af::shared<int> eps_;
+  af::shared<double> eps_;
   af::shared<bool> cf_;
 };
 
