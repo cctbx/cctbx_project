@@ -568,9 +568,9 @@ def validate_params (params) :
   if (not os.path.isdir(params.table_one.output.directory)) :
     raise Sorry("Please specify a valid output directory.")
   for i, struct in enumerate(params.table_one.structure) :
-    if (None in [struct.pdb_file, struct.mtz_file]) :
+    if (None in [struct.name, struct.pdb_file, struct.mtz_file]) :
       raise Sorry(("Structure #%d is missing either a PDB file or an MTZ "+
-        "file.") % (i+1))
+        "file or a structure name.") % (i+1))
 #    elif (None in [struct.data_labels, struct.r_free_flags.label]) :
 #      raise Sorry(("Need both data labels and R-free flag label for MTZ file "+
 #        "%s (structure #%d).") % (struct.mtz_file, i+1))
