@@ -169,6 +169,13 @@ class crystal_model(object):
     # reset scan-varying data, if the static B has changed
     self.reset_scan_points()
 
+  def set_A(self, A):
+    uc = unit_cell(orthogonalization_matrix=A.transpose().inverse())
+    B = matrix.sqr(uc.fractionalization_matrix()).transpose()
+    U = A * B.inverse()
+    self.set_B(B)
+    self.set_U(U)
+
   def set_A_at_scan_points(self, A_list):
     '''Set the setting matrix A at a series of checkpoints within a rotation
     scan. There would typically be n+1 points, where n is the number of images
