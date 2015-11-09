@@ -3618,6 +3618,7 @@ xfel/command_line/xes_finalise.py -text
 xfel/command_line/xes_histograms.py -text
 xfel/command_line/xfel_process.py -text
 xfel/command_line/xpp_isoform.py -text
+xfel/command_line/xpp_progress_detail.py -text
 xfel/command_line/xpp_simulate.py -text
 xfel/command_line/xtc_process.py -text
 xfel/cxi/__init__.py -text
@@ -3721,4 +3722,5 @@ xfel/xpp/cfgs/submit.phil -text
 xfel/xpp/experiment_schema.sql -text
 xfel/xpp/isoform.py -text
 xfel/xpp/progress_support.py -text
+xfel/xpp/progress_utils.py -text
 xfel/xpp/simulate.py -text
