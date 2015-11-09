@@ -34,7 +34,10 @@ def application(params):
           compl       = self_sel.completeness(d_max = d_max)
 
           n_ref       = sel.count(True)
-          multiplicity= given[i_bin]/ccomplete[i_bin]
+          if ccomplete[i_bin] == 0.:
+            multiplicity = 0.
+          else:
+            multiplicity= given[i_bin]/ccomplete[i_bin]
           d_range     = miller_set.binner().bin_legend(
                  i_bin = i_bin, show_bin_number = False, show_counts = True)
           fmt = "%3d: %-24s %4.2f %6d mult=%4.2f"
