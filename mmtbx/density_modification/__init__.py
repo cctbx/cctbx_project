@@ -489,7 +489,8 @@ class density_modification(object):
       f_calc=f_calc_active,
       free_reflections_per_bin=140,
       flags=flex.bool(f_obs_active.size()),
-      interpolation=True)
+      interpolation=True,
+      epsilons=f_obs_active.epsilons().data().as_double())
     alpha, beta = alpha_beta_est.alpha_beta_for_each_reflection(
       f_obs=self.f_obs_complete.select(self.f_obs_complete.d_spacings().data() >= self.d_min))
     f_obs.data().copy_selected(
