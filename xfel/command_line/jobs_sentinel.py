@@ -45,6 +45,15 @@ master_phil = """
   }
 """
 
+def parse_entry(entry):
+  result = []
+  for item in entry:
+    if item == "NULL":
+      result.append(None)
+    else:
+      result.append(item)
+  return result
+
 def write_hitfind_cfg(params, dbobj, trial_id, trial, rungroup_id):
   assert os.path.exists(params.config_dir)
 
@@ -57,13 +66,13 @@ def write_hitfind_cfg(params, dbobj, trial_id, trial, rungroup_id):
   cursor = dbobj.cursor()
   cursor.execute(cmd)
   assert cursor.rowcount == 1
-  target_phil_path = cursor.fetchall()[0][0]
+  target_phil_path = parse_entry(cursor.fetchall()[0])[0]
 
   cmd = "SELECT detz_parameter, beamx, beamy, untrusted_pixel_mask_path, dark_avg_path, dark_stddev_path, gain_map_path, binning FROM %s_rungroups where %s_rungroups.rungroup_id = %d"%(params.experiment_tag, params.experiment_tag, rungroup_id)
   cursor = dbobj.cursor()
   cursor.execute(cmd)
   assert cursor.rowcount == 1
-  detz_parameter, beamx, beamy, untrusted_pixel_mask_path, dark_avg_path, dark_stddev_path, gain_map_path, binning = cursor.fetchall()[0]
+  detz_parameter, beamx, beamy, untrusted_pixel_mask_path, dark_avg_path, dark_stddev_path, gain_map_path, binning = parse_entry(cursor.fetchall()[0])
 
   template = open(os.path.join(libtbx.env.find_in_repositories("xfel/xpp/cfgs"),"index_all.cfg"))
   cfg = open(config_path, 'w')
@@ -117,6 +126,9 @@ def submit_job(params, dbobj, trial_id, trial, rungroup_id, run, config_path):
   template.close()
   phil.close()
 
+  from xfel.command_line.cxi_mpi_submit import Script as submit_script
+  submit_script().run([submit_phil_path])
+
 def run(args):
   try:
     from cxi_xdr_xes.cftbx.cspad_ana import db as db
@@ -150,13 +162,13 @@ def run(args):
     cmd = "SELECT run from %s_runs"%params.experiment_tag
     cursor = dbobj.cursor()
     cursor.execute(cmd)
-    known_runs = [int(entry[0]) for entry in cursor.fetchall()]
+    known_runs = [int(parse_entry(entry)[0]) for entry in cursor.fetchall()]
 
     # Get the list of active trials
     cmd = "SELECT trial_id, trial from %s_trials WHERE active = True"%params.experiment_tag
     cursor = dbobj.cursor()
     cursor.execute(cmd)
-    entries = cursor.fetchall()
+    entries = [parse_entry(entry) for entry in cursor.fetchall()]
     active_trial_ids = [int(entry[0]) for entry in entries]
     active_trials = [int(entry[1]) for entry in entries]
 
@@ -165,7 +177,7 @@ def run(args):
       cmd = "SELECT rungroups_id from %s_trial_rungroups WHERE trials_id = %d AND active = True"%(params.experiment_tag, trial_id)
       cursor = dbobj.cursor()
       cursor.execute(cmd)
-      active_rungroup_ids = [int(entry[0]) for entry in cursor.fetchall()]
+      active_rungroup_ids = [int(parse_entry(entry)[0]) for entry in cursor.fetchall()]
 
       for rungroup_id in active_rungroup_ids:
         # Get the list of runs for this rungroup
@@ -174,7 +186,7 @@ def run(args):
         cursor.execute(cmd)
 
         assert cursor.rowcount == 1
-        startrun, endrun = cursor.fetchall()[0]
+        startrun, endrun = parse_entry(cursor.fetchall()[0])
 
         cmd = "SELECT run_id, run from %s_runs WHERE run >= %d"%(params.experiment_tag, startrun)
         if endrun is not None:
@@ -182,7 +194,7 @@ def run(args):
         cursor = dbobj.cursor()
         cursor.execute(cmd)
 
-        entries = cursor.fetchall()
+        entries = [parse_entry(entry) for entry in cursor.fetchall()]
         run_ids = [int(entry[0]) for entry in entries]
         runs = [int(entry[1]) for entry in entries]
 
@@ -191,7 +203,7 @@ def run(args):
         cursor = dbobj.cursor()
         cursor.execute(cmd)
 
-        submitted_run_ids = [int(entry[0]) for entry in cursor.fetchall()]
+        submitted_run_ids = [int(parse_entry(entry)[0]) for entry in cursor.fetchall()]
 
         # Submit new runs
         for run_id, run in zip(run_ids, runs):

@@ -171,16 +171,19 @@ class Script(object):
   def __init__(self):
     pass
 
-  def run(self):
+  def run(self, argv = None):
+    if argv is None:
+      argv = sys.argv[1:]
+
     """ Set up run folder and submit the job. """
-    if len(sys.argv) == 1 or "-h" in sys.argv or "--help" in sys.argv or "-c" in sys.argv:
+    if len(argv) == 0 or "-h" in argv or "--help" in argv or "-c" in argv:
       print help_str
       print "Showing phil parameters:"
       print phil_scope.as_str(attributes_level = 2)
       return
 
     user_phil = []
-    for arg in sys.argv[1:]:
+    for arg in argv:
       if (os.path.isfile(arg)):
         user_phil.append(parse(file_name=arg))
       else:
