@@ -12,7 +12,7 @@ class progress_manager(manager):
 
   def get_HKL(self,cursor):
     name = self.db_name
-    query = '''SELECT H,K,L,%s_hkls.id from %s_hkls,%s_isoforms WHERE %s_hkls.isoforms_id = %s_isoforms.id AND %s_isoforms.name = "%s"'''%(
+    query = '''SELECT H,K,L,%s_hkls.hkl_id from %s_hkls,%s_isoforms WHERE %s_hkls.isoforms_id = %s_isoforms.isoform_id AND %s_isoforms.name = "%s"'''%(
             name, name, name, name, name, name, self.params["identified_isoform"])
     print query
     cursor.execute(query)
@@ -22,7 +22,7 @@ class progress_manager(manager):
     self.miller_set = mset(crystal_symmetry=self.params["observations"][0].crystal_symmetry(), indices=indices)
     self.miller_set_id = miller_id
     # might have to change this to isoform_id next iteration
-    cursor.execute('SELECT id FROM %s_isoforms WHERE name = "%s"'%(
+    cursor.execute('SELECT isoform_id FROM %s_isoforms WHERE name = "%s"'%(
             name, self.params["identified_isoform"]))
 
     self.isoforms_id = cursor.fetchall()[0][0]
@@ -162,11 +162,12 @@ class progress_manager(manager):
       index_into_hkl_id = matches.pairs()[x][0]
       print index_into_hkl_id,
       print self.miller_set.indices()[index_into_hkl_id],
-      cursor.execute('SELECT H,K,L FROM %s_hkls WHERE id = %d'%(
+      cursor.execute('SELECT H,K,L FROM %s_hkls WHERE hkl_id = %d'%(
             self.db_name, self.miller_set_id[index_into_hkl_id]))
 
       print cursor.fetchall()[0]
     '''
+    print "Adding %d observations for this frame"%(len(sel_observations))
     kwargs = {'hkls_id': self.miller_set_id.select(flex.size_t([pair[0] for pair in matches.pairs()])),
               'i': observations.data().select(sel_observations),
               'sigi': observations.sigmas().select(sel_observations),
