@@ -1,4 +1,5 @@
 from __future__ import division
+# LIBTBX_SET_DISPATCHER_NAME iota.mpi
 
 '''
 Author      : Lyubimov, A.Y.
@@ -8,26 +9,23 @@ Description : IOTA command-line module for running modules in order.
               Version 2.20
 '''
 
-iota_version = '2.20'
+iota_version = '2.23'
 help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 
-Auto mode
-Usage: prime.iota [OPTIONS] path/to/raw/images
-Generates two files, parameter file for IOTA (iota.param) and
-target file for cctbx.xfel (target.phil). Integrates a random
-subset of images without target cell. Outputs basic analysis.
-Converts raw images into pickle format and crops to ensure that
-beam center is in center of image.
+MPI mode
+Usage:
+iota.mpi iota.param --mpi init
+mpirun -n [num_cores] iota.mpi iota.param --mpi import
+mpirun -n [num_cores] iota.mpi iota.param --mpi gridsearch
+mpirun -n [num_cores] iota.mpi iota.param --mpi select
+mpirun -n [num_cores] iota.mpi iota.param --mpi final
+iota.mpi iota.param --mpi analyze
 
-Script mode
-Usage: prime.iota [OPTIONS] <script>.param
-Run using IOTA parameter file and target PHIL file generated from
-the dry run or auto mode. Make sure that IOTA parameter file has
-the path to the input image folder under "input". Converts raw
-images into pickle format and modifies by cropping or padding to
-ensure that beam center is in center of image. Can also blank out
-beam stop shadow.
+Run IOTA in three separate batches (initialization, image processing,
+analysis); can use MPI (mpirun) to run the image processing step.
+Can run these in sequence in a shell script or any other kind of a
+submission script. Useful for huge datasets.
 
 """
 
