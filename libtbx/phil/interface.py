@@ -18,6 +18,7 @@ tracking_params = libtbx.phil.parse("""
     .type = str
     .input_size = 400
     .help = Job title in PHENIX GUI, not used on command line
+    .style = noauto bold
 """)
 
 class index (object) :
