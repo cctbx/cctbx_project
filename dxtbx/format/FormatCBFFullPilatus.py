@@ -65,8 +65,6 @@ class FormatCBFFullPilatus(FormatCBFFull):
     detector = self._detector_factory.imgCIF_H(self._cbf_handle,
                                                'PAD')
 
-    # FIXME Set proper overload
-    detector[0].set_trusted_range((-1, 1000000))
     for f0, s0, f1, s1 in determine_pilatus_mask(detector):
       detector[0].add_mask(f0, s0, f1, s1)
 
