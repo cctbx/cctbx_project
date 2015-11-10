@@ -39,7 +39,8 @@ def time_ellipsoid(n=1000000):
   u = flex.sym_mat3_double(n, (0.0008, 0.0004, 0.0002,
                                0.0001, 0.00015, 0.00005))
   timer = timeit.Timer(lambda: time_ellipsoid_to_sphere_transform(u))
-  print ("%i ellipsoid --> sphere transforms: %.3g μs per transform"
+  # \xb5s is unicode for μ
+  print (u"%i ellipsoid --> sphere transforms: %.3g \xb5s per transform"
          % (n, timer.timeit(1)/n*1e6))
 
 def run():
