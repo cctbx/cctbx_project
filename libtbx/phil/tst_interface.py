@@ -251,7 +251,7 @@ refinement.input.pdb.file_name = protein.pdb
 refinement.input.pdb.file_name = ligand.pdb
 refinement.input.xray_data.file_name = data.mtz
 refinement.input.monomers.file_name = ligand.cif
-refinement.output.title = Test refinement run
+refinement.output.job_title = Test refinement run
 """)
   names = i.search_phil_text("CIF")
   assert (set(names) == {
