@@ -12,16 +12,22 @@ def phil_validation(params):
   return True
 
 def application(params):
-  PM = progress_manager(params)
   from cxi_xdr_xes.cftbx.cspad_ana import db as cxidb
+  dbobj = cxidb.dbconnect(params.db.host, params.data, params.db.user, params.db.password)
+  cursor = dbobj.cursor()
+  PM = progress_manager(params, cursor)
+  PM.setup_isoforms(cursor)
+  isoforms = PM.isoforms
+  del dbobj
 
   while 1:
     dbobj = cxidb.dbconnect(params.db.host, params.data, params.db.user, params.db.password)
     cursor = dbobj.cursor()
-    for isoform in ["A","B"]:
+
+    for isoform in isoforms:
       M = PM.get_HKL(cursor,isoform=isoform)
-      cell = dict(B=unit_cell((118.5,225.1,313.3)), A=unit_cell((118.4,225.6,333.2,90,90,90)))[isoform]
-      miller_set = mset(anomalous_flag = False, crystal_symmetry=symmetry(unit_cell=cell, space_group_symbol="P m m m"), indices=M)
+      cell = isoforms[isoform]['cell']
+      miller_set = mset(anomalous_flag = False, crystal_symmetry=symmetry(unit_cell=cell, space_group_symbol=isoforms[isoform]['lookup_symbol']), indices=M)
       miller_set.show_comprehensive_summary()
 
       miller_set.setup_binner(d_min=2.5, n_bins=15)
@@ -49,28 +55,52 @@ def application(params):
 
 from xfel.cxi.merging_database import manager
 class progress_manager(manager):
-  def __init__(self,params):
+  def __init__(self,params, cursor):
     self.params = params
     self.db_name = params.data
 
+    query = "SELECT trial_id FROM %s_trials WHERE %s_trials.trial = %d"%(self.db_name, self.db_name, params.trial)
+    cursor.execute(query)
+    assert cursor.rowcount == 1
+    self.trial_id = int(cursor.fetchall()[0][0])
+
+  def setup_isoforms(self, cursor):
+    isoform_ids = []
+    query = "SELECT DISTINCT(isoforms_id) from %s_frames WHERE %s_frames.trials_id = %d"%(self.db_name, self.db_name, self.trial_id)
+    cursor.execute(query)
+    for entry in cursor.fetchall():
+      isoform_ids.append(int(entry[0]))
+
+    d = {}
+    for isoform_id in isoform_ids:
+      query = "SELECT * FROM %s_isoforms WHERE %s_isoforms.isoform_id = %d"%(self.db_name, self.db_name, isoform_id)
+      cursor.execute(query)
+      assert cursor.rowcount == 1
+      if_id, name, cell_a, cell_b, cell_c, cell_alpha, cell_beta, cell_gamma, lookup_symbol = cursor.fetchall()[0]
+      assert isoform_id == int(if_id)
+      cell = unit_cell((cell_a, cell_b, cell_c, cell_alpha, cell_beta, cell_gamma))
+      d[name] = dict(
+        isoform_id = isoform_id,
+        cell = cell,
+        lookup_symbol = lookup_symbol)
+    self.isoforms = d
+
   def get_HKL(self,cursor,isoform):
     name = self.db_name
-    query = '''select %s_hkls.h,%s_hkls.k,%s_hkls.l
-               from %s_observations,%s_isoforms,%s_hkls,%s_trials
-               WHERE %s_trials.trial = %s
-               AND %s_trials.trial_id = %s_observations.frames_trials_id
-               AND %s_hkls.isoforms_id = %s_isoforms.isoform_id
-               AND %s_isoforms.name = '%s'
-               AND %s_observations.hkls_id = %s_hkls.hkl_id
-               ORDER BY %s_hkls.h,%s_hkls.k,%s_hkls.l'''%(
-            name, name, name, name, name, name, name, name,
-            self.params.trial,
-            name, name, name, name, name,
-            isoform,
-            name, name, name, name, name)
-    #print query
+    query = """SELECT hkls.h, hkls.k, hkls.l
+               FROM %s_observations obs
+               JOIN %s_hkls hkls on obs.hkls_id = hkls.hkl_id
+               JOIN %s_isoforms isos on hkls.isoforms_id = isos.isoform_id
+                 AND isos.isoform_id = %d
+               JOIN %s_frames frames on obs.frames_id = frames.frame_id
+                 AND frames.trials_id = %d"""%(
+               name, name, name, self.isoforms[isoform]['isoform_id'], name, self.trial_id)
+
+    print "Reading db..."
     cursor.execute(query)
+    print "Getting results..."
     ALL = cursor.fetchall()
+    print "Parsing results..."
     indices = flex.miller_index([(a[0],a[1],a[2]) for a in ALL])
 
     print "ISOFORM %s:"%(isoform),len(indices),"result"
