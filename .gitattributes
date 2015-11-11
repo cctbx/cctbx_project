@@ -3618,6 +3618,7 @@ xfel/command_line/xes_finalise.py -text
 xfel/command_line/xes_histograms.py -text
 xfel/command_line/xfel_process.py -text
 xfel/command_line/xpp_isoform.py -text
+xfel/command_line/xpp_progress_bar.py -text
 xfel/command_line/xpp_progress_detail.py -text
 xfel/command_line/xpp_simulate.py -text
 xfel/command_line/xtc_process.py -text
