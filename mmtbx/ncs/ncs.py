@@ -463,6 +463,14 @@ class ncs:
     else:
       return None
 
+  def set_unit_ncs(self):  # just make a single ncs operator
+    lines="""
+REMARK 350   BIOMT1   1  1.000000  0.000000  0.000000        0.00000
+REMARK 350   BIOMT2   1  0.000000  1.000000  0.000000        0.00000
+REMARK 350   BIOMT3   1  0.000000  0.000000  1.000000        0.00000
+""".splitlines()
+    self.read_ncs(lines=lines)
+
   def read_ncs(self,file_name=None,lines=[],source_info="",log=None,quiet=False):
     if not log: log=sys.stdout
     if not quiet:
@@ -665,9 +673,11 @@ class ncs:
      list_length=None
      for lst in [trans_orth,ncs_rota_matr,center_orth]:
        if not lst or len(lst)<1:
+         print "Length too short:",type(lst),lst,len(lst)
          raise Sorry("The NCS operators in this file appear incomplete?")
        if not list_length: list_length=len(lst)
        if list_length!=len(lst):
+         print "Length of list incorrect:",type(lst),lst,len(lst),list_length
          raise Sorry("The NCS operators in this file appear incomplete?")
      ncs_group_object=ncs_group(
        ncs_rota_matr=ncs_rota_matr,
@@ -688,10 +698,13 @@ class ncs:
      for lst in [self._ncs_trans_orth,
          self._ncs_rota_matr,self._ncs_center_orth,
          self._residues_in_common_list,self._rmsd_list]:
-        if lst is not None and self._n_ncs_oper and \
+        if lst and self._n_ncs_oper and \
            len(lst) != self._n_ncs_oper:
+          print "Lengh of list does not match number of operators:",\
+             type(lst),lst,self._n_ncs_oper
           raise Sorry("The NCS operators in this file appear incomplete?")
-        if lst is not None and len(lst)<2:
+        if lst is not None and len(lst)<1:
+          print "Length of operators too short:",lst,len(lst)
           raise Sorry("The NCS operators in this file appear incomplete?")
         if lst is not None: have_something=True
      if not have_something: return
