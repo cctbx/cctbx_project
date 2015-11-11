@@ -346,27 +346,39 @@ class omegalyze(validation):
 
   def as_kinemage(self):
     outlist = []
-    cislist = []
-    cisvectorlist = []
+    cisprolist = []
+    cisnonprolist = []
+    cisprovectorlist = []
+    cisnonprovectorlist = []
     twistlist = []
     twistvectorlist = []
-    cishead = ["@subgroup {Cis peptides} dominant master= {Cis peptides}\n",
-      "@trianglelist {cis omega triangles} color= sea\n"]
+    cisprohead = ["@subgroup {Cis peptides} dominant master= {Cis proline}\n",
+      "@trianglelist {cis pro omega triangles} color= sea\n"]
+    cisnonprohead = [
+      "@subgroup {Cis peptides} dominant master= {Cis non-proline}\n",
+      "@trianglelist {cis nonpro omega triangles} color= lime\n"]
     twisthead = [
       "@subgroup {Twisted peptides} dominant master= {Twisted peptides}\n",
-      "@trianglelist {twisted omega triangles} color= lime\n"]
-    cisvectorhead = ["@vectorlist {cis omega vectors} color= sea width=3\n"]
+      "@trianglelist {twisted omega triangles} color= yellow\n"]
+    cisprovectorhead = ["@vectorlist {cis pro omega vectors} color= sea width=3\n"]
+    cisnonprovectorhead = ["@vectorlist {cis nonpro omega vectors} color= lime width=3\n"]
     twistvectorhead=[
-    "@vectorlist {twisted omega vectors} color= lime width=3\n"]
+    "@vectorlist {twisted omega vectors} color= yellow width=3\n"]
     for result in self.results:
       if result.omega_type == OMEGALYZE_CIS:
-        cislist.append(result.as_kinemage(triangles=True))
-        cisvectorlist.append(result.as_kinemage(vectors=True))
+        if result.res_type == OMEGA_PRO:
+          cisprolist.append(result.as_kinemage(triangles=True))
+          cisprovectorlist.append(result.as_kinemage(vectors=True))
+        else:
+          cisnonprolist.append(result.as_kinemage(triangles=True))
+          cisnonprovectorlist.append(result.as_kinemage(vectors=True))
       elif result.omega_type == OMEGALYZE_TWISTED:
         twistlist.append(result.as_kinemage(triangles=True))
         twistvectorlist.append(result.as_kinemage(vectors=True))
-    if cislist:
-      outlist = outlist + cishead + cislist + cisvectorhead + cisvectorlist
+    if cisprolist:
+      outlist = outlist + cisprohead + cisprolist + cisprovectorhead + cisprovectorlist
+    if cisnonprolist:
+      outlist = outlist + cisnonprohead + cisnonprolist + cisnonprovectorhead + cisnonprovectorlist
     if twistlist:
       outlist = outlist + twisthead + twistlist + twistvectorhead + twistvectorlist
     return "".join(outlist)
