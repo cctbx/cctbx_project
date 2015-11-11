@@ -67,7 +67,7 @@ master_phil = iotbx.phil.parse("""
       .help = Write out intermediate maps and masks for visualization
       .short_caption = Write intermediate maps
 
-    write_output_maps = True 
+    write_output_maps = True
       .type = bool
       .help = Write out maps
       .short_caption = Write maps
@@ -75,7 +75,7 @@ master_phil = iotbx.phil.parse("""
     remainder_map_file = remainder_map.ccp4
       .type = path
       .help = output map file with remainder after initial regions identified
-      .short_caption = Output remainder map file 
+      .short_caption = Output remainder map file
   }
 
   crystal_info {
@@ -139,7 +139,7 @@ master_phil = iotbx.phil.parse("""
     min_volume = 10
       .type = int
       .help = Minimum region size to consider (in grid points)
-      .short_caption = Minimum region size 
+      .short_caption = Minimum region size
 
     max_overlap_fraction = 0.01
       .type = float
@@ -157,7 +157,7 @@ master_phil = iotbx.phil.parse("""
       .help = Grid points to expand size of regions when excluding for next \
                round. If None, set to approx number of grid points to get \
                expand_target below
-      .short_caption = Expand size 
+      .short_caption = Expand size
 
     expand_target = 1.5
       .type = float
@@ -224,7 +224,7 @@ def set_up_xrs(crystal_symmetry=None):  # dummy xrs to write out atoms
   return xrs,scatterers
 
   """from cctbx import xray
-  scatterers.append( xray.scatterer(scattering_type="O", label="O",  
+  scatterers.append( xray.scatterer(scattering_type="O", label="O",
     site=xyz_frac, u=0.1, occupancy=1.0))
   """
 
@@ -236,7 +236,7 @@ def write_xrs(xrs=None,scatterers=None,file_name="atoms.pdb"):
   print >>f,text
   f.close()
   print "Atoms written to %s" %file_name
-  
+
 def get_params(args,out=sys.stdout):
   import mmtbx.utils
   inputs = mmtbx.utils.process_command_line_args(args = args,
@@ -277,7 +277,7 @@ def get_params(args,out=sys.stdout):
     origin_shift=None
 
   if params.segmentation.expand_size is None:
- 
+
     abc = crystal_symmetry.unit_cell().parameters()[:3]
     N_ = map_data.all()
     nn=0.
@@ -288,7 +288,7 @@ def get_params(args,out=sys.stdout):
     params.segmentation.expand_size=nn
     print >>out,"Expand size (grid units): %d (about %4.1f A) " %(
       nn,nn*abc[0]/N_[0])
-    
+
   return params,crystal_symmetry,map_data,origin_shift
 
 def get_ncs(params,origin_shift=None,out=sys.stdout):
@@ -331,7 +331,7 @@ def score_threshold(threshold=None,
      weight_near_one=0.5,
      minimum_ratio_of_ncs_copy_to_first=0.5,
      out=sys.stdout):
-   # target is about 1 region per 20-100 residues, about 
+   # target is about 1 region per 20-100 residues, about
    #   target_fraction*protein_fraction*grid_points in the top
    #    n_residues/50 regions
    grid_points=map_data.size()
@@ -347,7 +347,7 @@ def score_threshold(threshold=None,
 
    v1,i1=sorted_by_volume[min(1,nn-1)]
    if v1 < min_volume:
-     return 0.0 
+     return 0.0
 
    v2,i2=sorted_by_volume[max(1,min(ncs_copies-1,nn-1))]
    score_ratio=v2/v1  # want it to be about 1
@@ -367,10 +367,10 @@ def score_threshold(threshold=None,
      score_near_one=threshold
 
    overall_score=(
-     (weight_score_ratio*score_ratio+  
+     (weight_score_ratio*score_ratio+
      weight_score_grid_points*score_grid_points+
      weight_near_one*score_near_one
-       ) /  
+       ) /
      (weight_score_ratio+weight_score_grid_points+weight_near_one))
    return overall_score
 
@@ -440,7 +440,7 @@ def get_connectivity(params,
   sd=map_data.sample_standard_deviation()
   scaled_sd=sd/(1-solvent_fraction)**0.5
   map_data=(map_data-map_data.as_1d().min_max_mean().mean)/scaled_sd
-  
+
   # Try connectivity at various thresholds
   # Choose one that has about the right number of grid points in top regions
   threshold=choose_threshold(params,
@@ -479,7 +479,7 @@ def get_volume_of_seq(text,vol=None,chain_type=None,out=sys.stdout):
 
   if chain_type=='PROTEIN':
     mw_residue=110.0  # from $CDOC/matthews.doc
-    density_factor=1.23   # 1.66/DENSITY-OF-PROTEIN=1.66/1.35      
+    density_factor=1.23   # 1.66/DENSITY-OF-PROTEIN=1.66/1.35
   else:
     mw_residue=330.0  # guess for DNA
     density_factor=1.15   # 1.66/DENSITY-OF-DNA=1.66/1.45
@@ -497,7 +497,7 @@ def guess_chain_type(text,chain_type=None,out=sys.stdout):
     else:
       test_types=[chain_type]
     from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter
-    from iotbx.pdb import cns_dna_rna_residue_names  
+    from iotbx.pdb import cns_dna_rna_residue_names
     three_letter_rna_dna_given_one_letter=create_rna_dna(
        cns_dna_rna_residue_names)
 
@@ -518,7 +518,7 @@ def guess_chain_type(text,chain_type=None,out=sys.stdout):
         seq_text+=c
         if test_chain_type=='PROTEIN' and three_char not in ['GLY','ALA']:
           found_non_gly_non_ala=True
-           
+
       residues_dict[test_chain_type]=len(seq_text)
       if residues_dict[test_chain_type]>most_residues:
         most_residues=residues_dict[test_chain_type]
@@ -614,11 +614,11 @@ def choose_max_regions_to_consider(params,
   cntr=0
   for p in sorted_by_volume[1:]:
     cntr+=1
-    if max_per_au and (cntr>max_per_au*ncs_copies): 
+    if max_per_au and (cntr>max_per_au*ncs_copies):
       cntr-=1
       break
     v,i=p  # v=volume in grid points, i=id
-    if v/max_grid_points<min_ratio or v < min_volume: 
+    if v/max_grid_points<min_ratio or v < min_volume:
       cntr-=1
       break
   return cntr
@@ -639,9 +639,9 @@ def get_edited_mask(sorted_by_volume=None,
     edited_volume_list.append(v)
     s = (conn_obj==id)
     if first:
-      edited_mask=edited_mask.set_selected(~s,0) 
+      edited_mask=edited_mask.set_selected(~s,0)
       first=False
-    edited_mask=edited_mask.set_selected(s,i)   # edited mask has ID of 
+    edited_mask=edited_mask.set_selected(s,i)   # edited mask has ID of
          # regions, labeled in decreasing size from 1 to max_regions_to_consider
   return edited_mask,edited_volume_list,original_id_from_id
 
@@ -674,7 +674,7 @@ def choose_subset(a,target_number=1):
      new_array.append(x)
     i+=1
   return new_array
-    
+
 def analyze(region_range_dict,region_centroid_dict,region_n_dict,
      region_scattered_points_dict,
      out=sys.stdout):
@@ -688,7 +688,7 @@ def analyze(region_range_dict,region_centroid_dict,region_n_dict,
       target_number=min(30,max(region_n_dict[id]/10,10)))
     print >>out,"Region: %d N: %d  N-scattered: %d Center: %7.1f %7.1f %7.1f " %(
        id, region_n_dict[id],region_scattered_points_dict[id].size(),
-       rc[0],rc[1],rc[2]) 
+       rc[0],rc[1],rc[2])
     r=region_range_dict[id]
     print >>out,"    Range: (%7.1f - %7.1f, %7.1f - %7.1f, %7.1f - %7.1f ) " %(
      r[0][0],r[0][1],r[1][0],r[1][1],r[2][0],r[2][1])
@@ -741,7 +741,7 @@ def get_duplicates_and_ncs(
    write_atoms=None, # ID of region to write dummy atoms for (if any)
    out=sys.stdout,
    ):
- 
+
   ncs_group=ncs_obj.ncs_groups()[0]
   duplicate_dict={}  # keyed by id, number of duplicates for that region
   equiv_dict={}  # equiv_dict[id][other_id]=number_of points other_id matches
@@ -762,12 +762,12 @@ def get_duplicates_and_ncs(
 
   if write_atoms:
     xrs,scatterers=set_up_xrs(crystal_symmetry=crystal_symmetry)
- 
+
   for i in xrange (origin[0],all[0],njump):
     for j in xrange (origin[1],all[1],njump):
       for k in xrange (origin[2],all[2],njump):
         id=edited_mask[i,j,k]
-        if id <1: continue 
+        if id <1: continue
 
         # What regions are ncs-related points in?
         xyz_frac=(i/all[0],j/all[1],k/all[2])
@@ -777,7 +777,7 @@ def get_duplicates_and_ncs(
           xyz_cart=xyz_cart,id=id)
         if write_atoms and id==write_atoms:
           from cctbx import xray
-          scatterers.append( xray.scatterer(scattering_type="O", label="O",  
+          scatterers.append( xray.scatterer(scattering_type="O", label="O",
            site=xyz_cart, u=0.1, occupancy=1.0))
 
         # Assume first one is identity
@@ -793,10 +793,10 @@ def get_duplicates_and_ncs(
             duplicate_dict[id]+=1
             break # only count once
           elif value>0:  # notice which one is matched
-            if not id in equiv_dict.keys(): 
+            if not id in equiv_dict.keys():
               equiv_dict[id]={}
               equiv_dict_ncs_copy_dict[id]={}
-            if not value in equiv_dict[id].keys(): 
+            if not value in equiv_dict[id].keys():
               equiv_dict[id][value]=0
               equiv_dict_ncs_copy_dict[id][value]={}
             equiv_dict[id][value]+=1
@@ -841,7 +841,7 @@ def remove_bad_regions(params=None,
     if cntr in dups and \
        duplicate_dict[cntr]>params.segmentation.max_overlap_fraction*v \
         and params.segmentation.remove_bad_regions: #  mark it for not using
-      bad_region_list.append(id) 
+      bad_region_list.append(id)
     new_sorted_by_volume.append([v,id])
     region_list.append(id)
     region_volume_dict[id]=v
@@ -860,7 +860,7 @@ def sort_by_ncs_overlap(matches,equiv_dict_ncs_copy_dict_id):
     for n,id1 in sort_list:
       key_list.append(id1)
     return key_list
-     
+
 
 def get_ncs_equivalents(
     bad_region_list=None,
@@ -885,10 +885,10 @@ def get_ncs_equivalents(
       #     id matches id1 N=match_dict[id1]
       key,n=top_key(equiv_dict_ncs_copy_dict[id][id1]) # ncs_copy, n-overlap
       if n<min_coverage*region_volume_dict[id1]/(njump**3):
-        break 
+        break
       else:
         if not id in equiv_dict_ncs_copy.keys():equiv_dict_ncs_copy[id]={}
-        equiv_dict_ncs_copy[id][id1]=key 
+        equiv_dict_ncs_copy[id][id1]=key
         n_found+=1
         if n_found>=ncs_copies-1:
           break
@@ -899,7 +899,7 @@ def get_ncs_equivalents(
   used=[]
   for id in keys:
     #if id in used: continue
-    others=equiv_dict_ncs_copy[id].keys() 
+    others=equiv_dict_ncs_copy[id].keys()
     used+=others
     print >>out,"%d: " %(id),
     for id1 in others:
@@ -914,7 +914,7 @@ def group_ncs_equivalents(
     region_volume_dict=None,
     equiv_dict_ncs_copy=None,
     ncs_copies=None,
-    split_if_possible=None, 
+    split_if_possible=None,
     out=sys.stdout):
 
   # equiv_dict_ncs_copy[id][id1]=ncs_copy
@@ -924,7 +924,7 @@ def group_ncs_equivalents(
   ncs_equiv_groups_as_list=[]
   ncs_equiv_groups_as_dict={}
   for id in region_list:
-    equiv_group={}  #equiv_group[ncs_copy]=[id1,id2,id3...] 
+    equiv_group={}  #equiv_group[ncs_copy]=[id1,id2,id3...]
     equiv_group[0]=[id] # always
     for id1 in equiv_dict_ncs_copy.get(id,{}).keys():
       ncs_copy=equiv_dict_ncs_copy[id][id1]
@@ -932,7 +932,7 @@ def group_ncs_equivalents(
       equiv_group[ncs_copy].append(id1) # id1 is ncs_copy of id
     complete=True
     all_single=True
-    equiv_group_as_list=[] 
+    equiv_group_as_list=[]
     total_grid_points=0
     for ncs_copy in xrange(ncs_copies): # goes 0 to ncs_copies-1
       equiv_group_as_list.append(equiv_group.get(ncs_copy,[]))
@@ -945,13 +945,13 @@ def group_ncs_equivalents(
         complete=False
     equiv_group_as_list.sort()
     if complete and \
-        (not str(equiv_group_as_list) in ncs_equiv_groups_as_dict.keys() or 
+        (not str(equiv_group_as_list) in ncs_equiv_groups_as_dict.keys() or
          total_grid_points>ncs_equiv_groups_as_dict[str(equiv_group_as_list)]) \
         and (all_single or (not split_if_possible)):
       ncs_equiv_groups_as_dict[str(equiv_group_as_list)]=total_grid_points
       ncs_equiv_groups_as_list.append([total_grid_points,equiv_group_as_list])
 
-  ncs_equiv_groups_as_list.sort() 
+  ncs_equiv_groups_as_list.sort()
   ncs_equiv_groups_as_list.reverse()
 
   # Now remove any group that duplicates a previous group
@@ -962,7 +962,7 @@ def group_ncs_equivalents(
   max_duplicates=ncs_copies-1  # don't let there be all duplicates
   ncs_group_list=[]
   used_list=[]
-  print >>out,"All equiv groups:" 
+  print >>out,"All equiv groups:"
   used_regions=[]
   for total_grid_points,equiv_group_as_list in ncs_equiv_groups_as_list:
     duplicate=False
@@ -979,7 +979,7 @@ def group_ncs_equivalents(
       for equiv_group in equiv_group_as_list:
         for x in equiv_group: used_list.append(x)
   return ncs_group_list
-  
+
 
 def identify_ncs_regions(params,
      sorted_by_volume=None,
@@ -1034,7 +1034,7 @@ def identify_ncs_regions(params,
       njump=params.control.njump,
       out=out)
 
-  # Remove any bad regions 
+  # Remove any bad regions
   region_list,region_volume_dict,new_sorted_by_volume,\
       bad_region_list=remove_bad_regions(
     params=params,
@@ -1056,7 +1056,7 @@ def identify_ncs_regions(params,
 
   # Group together regions that are ncs-related. Also if one ncs
   #   copy has 2 or more regions linked together, group the other ones.
- 
+
   # each entry in ncs_group_list is a list of regions for each ncs_copy:
   #  e.g.,  [[8], [9, 23], [10, 25], [11, 27], [12, 24], [13, 22], [14, 26]]
   #  May contain elements that are in bad_region_list (to exclude later)
@@ -1094,7 +1094,7 @@ def get_average_center(regions,
   center_list=get_center_list(regions,region_centroid_dict=region_centroid_dict)
   for region in regions:
     center_list.append(region_centroid_dict[region])
-  average_center=deepcopy(center_list[0]) 
+  average_center=deepcopy(center_list[0])
   if len(center_list)>1:
     for r in center_list[1:]:
       for i in xrange(3):
@@ -1113,7 +1113,7 @@ def has_intersection(set1,set2):
   set1a=single_list(set1)
   set2a=single_list(set2)
   for x in set1a:
-    if x in set2a: 
+    if x in set2a:
       return True
   return False
 
@@ -1123,11 +1123,11 @@ def get_scattered_points_list(other_regions,
   for x in other_regions:
     scattered_points_list.extend(region_scattered_points_dict[x])
   return scattered_points_list
-    
+
 
 def get_closest_neighbor_rms(ncs_group_obj=None,selected_regions=None,
     target_scattered_points=None):
-  # return rms closest distance of each region center to nearest other 
+  # return rms closest distance of each region center to nearest other
 
   rms=0.
   rms_n=0.
@@ -1135,7 +1135,7 @@ def get_closest_neighbor_rms(ncs_group_obj=None,selected_regions=None,
     test_centers=ncs_group_obj.region_scattered_points_dict[x]
     other_regions=remove_one_item(selected_regions,item_to_remove=x)
     other_center_list=get_scattered_points_list(other_regions,
-       region_scattered_points_dict=ncs_group_obj.region_scattered_points_dict) 
+       region_scattered_points_dict=ncs_group_obj.region_scattered_points_dict)
     if target_scattered_points:
       other_center_list.extend(target_scattered_points)
     dist=get_closest_dist(test_centers,other_center_list)
@@ -1183,7 +1183,7 @@ def get_closest_dist(test_center,target_centers):
     if closest_dist is None or dist<closest_dist:
       closest_dist=dist
   return closest_dist
-  
+
 def select_from_seed(starting_region,
       target_scattered_points=None,
       ncs_group_obj=None):
@@ -1194,7 +1194,7 @@ def select_from_seed(starting_region,
   for ncs_group in ncs_group_obj.ncs_group_list: # try adding from each group
     best_ncs_set=None
     best_dist=None
- 
+
     current_scattered_points_list=get_scattered_points_list(selected_regions,
        region_scattered_points_dict=ncs_group_obj.region_scattered_points_dict)
     if target_scattered_points:
@@ -1235,7 +1235,7 @@ def select_from_seed(starting_region,
 def remove_one_item(input_list,item_to_remove=None):
   new_list=[]
   for item in input_list:
-    if item != item_to_remove: 
+    if item != item_to_remove:
       new_list.append(item)
   return new_list
 
@@ -1251,7 +1251,7 @@ def get_ncs_related_regions(
         for i in ids_in_group:
           if (not i==id) and (not i in ncs_related_regions):
             ncs_related_regions.append(i)
-    
+
   return ncs_related_regions
 
 def all_elements_are_length_one(list_of_elements):
@@ -1272,7 +1272,7 @@ def select_regions_in_au(params,
     return ncs_group_obj,[],[]
 
   if all_elements_are_length_one(ncs_group_obj.ncs_group_list):
-    best_selected_regions=single_list(ncs_group_obj.ncs_group_list) 
+    best_selected_regions=single_list(ncs_group_obj.ncs_group_list)
     best_rms=None
   else:
 
@@ -1283,7 +1283,7 @@ def select_regions_in_au(params,
       selected_regions,rms=select_from_seed([starting_region],
         target_scattered_points=target_scattered_points,
         ncs_group_obj=ncs_group_obj)
-      if not selected_regions: 
+      if not selected_regions:
         continue
       if best_rms is None or rms<best_rms:
         best_rms=rms
@@ -1295,7 +1295,7 @@ def select_regions_in_au(params,
       raise Sorry("No NCS regions found from NCS groups")
     changing=True
     while changing:
-      # Now see if replacing any regions with alternatives would improve it 
+      # Now see if replacing any regions with alternatives would improve it
       changing=False
       for x in selected_regions:
         starting_regions=remove_one_item(selected_regions,item_to_remove=x)
@@ -1304,7 +1304,7 @@ def select_regions_in_au(params,
           ncs_group_obj=ncs_group_obj)
         if not new_selected_regions: continue
         if best_rms is None or rms<best_rms-0.00001:
-          changing=True 
+          changing=True
           best_rms=rms
           best_selected_regions=new_selected_regions
           print >>out,"Optimized best selected: rms: %7.1f: %s " %(
@@ -1363,7 +1363,7 @@ def get_bool_mask_of_regions(ncs_group_obj=None,region_list=None,
   bool_mask = bool_mask.set_selected(~s,False)
 
   return bool_mask
-  
+
 def create_remaining_mask_and_map(params,
     ncs_group_obj=None,
     map_data=None,
@@ -1375,12 +1375,12 @@ def create_remaining_mask_and_map(params,
     return map_data
 
 
-  # create new remaining_map containing everything except the part that 
+  # create new remaining_map containing everything except the part that
   # has been interpreted (and all points in interpreted NCS-related copies)
 
   bool_all_used=get_bool_mask_of_regions(ncs_group_obj=ncs_group_obj,
      region_list=ncs_group_obj.selected_regions+ncs_group_obj.ncs_related_regions,
-     expand_size=params.segmentation.expand_size)  
+     expand_size=params.segmentation.expand_size)
   map_data_remaining=map_data.deep_copy()
   s=(bool_all_used==True)
   map_data_remaining=map_data_remaining.set_selected(s,-1.0)
@@ -1389,7 +1389,7 @@ def create_remaining_mask_and_map(params,
 def get_lower(lower_bounds,lower):
   new_lower=[]
   for i in xrange(3):
-    if lower_bounds[i] is None: 
+    if lower_bounds[i] is None:
       new_lower.append(lower[i])
     elif lower[i] is None:
       new_lower.append(lower_bounds[i])
@@ -1400,20 +1400,20 @@ def get_lower(lower_bounds,lower):
 def get_upper(upper_bounds,upper):
   new_upper=[]
   for i in xrange(3):
-    if upper_bounds[i] is None: 
+    if upper_bounds[i] is None:
       new_upper.append(upper[i])
     elif upper[i] is None:
       new_upper.append(upper_bounds[i])
     else:
       new_upper.append(max(upper_bounds[i],upper[i]))
   return new_upper
-  
+
 def get_bounds(min_b=None,max_b=None,ncs_group_obj=None,id=None):
   orig_id=ncs_group_obj.original_id_from_id[id]
   lower=min_b[orig_id]
   upper=max_b[orig_id]
   return lower,upper
-  
+
 def get_selected_and_related_regions(params,
     ncs_group_obj=None):
   # Identify all points in the targeted regions
@@ -1445,7 +1445,7 @@ def adjust_bounds(params,lower_bounds,upper_bounds,map_data=None,out=sys.stdout)
     upper_bounds[i]+=params.output_files.box_buffer
     upper_bounds[i]=min(map_data.all()[i],upper_bounds[i])
 
-    
+
   print >>out,"Range:  X:(%6d,%6d)    Y:(%6d,%6d)    Z:(%6d,%6d)" %(
      lower_bounds[0],upper_bounds[0],
      lower_bounds[1],upper_bounds[1],
@@ -1551,7 +1551,7 @@ def write_output_files(params,
 
     s |=  (bool_remainder_ncs_related_mask==True)
 
-  # Now create NCS mask by eliminating all points in target (expanded) in 
+  # Now create NCS mask by eliminating all points in target (expanded) in
   #   NCS-related copies
 
   bool_selected_regions=bool_selected_regions.set_selected(s,False)
@@ -1565,7 +1565,7 @@ def write_output_files(params,
     map_data=map_data,out=out)
 
 
-  # Write out mask of NCS AU 
+  # Write out mask of NCS AU
 
   mask_data_ncs_au=get_bool_mask_as_int(
      ncs_group_obj=ncs_group_obj,mask_as_bool=bool_selected_regions)
@@ -1576,34 +1576,34 @@ def write_output_files(params,
     print >>out,"Wrote output NCS au mask to %s" %(
       params.output_files.mask_output_file)
 
-  if params.output_files.box_mask_output_file: 
+  if params.output_files.box_mask_output_file:
     # write out NCS mask and mask as box_mask (cut out the region they enclose)
     box_mask_ncs_au,box_crystal_symmetry=cut_out_map(
        map_data=mask_data_ncs_au.as_double(), crystal_symmetry=crystal_symmetry,
        min_point=lower_bounds, max_point=upper_bounds)
-    write_ccp4_map(box_crystal_symmetry,params.output_files.box_mask_output_file, 
+    write_ccp4_map(box_crystal_symmetry,params.output_files.box_mask_output_file,
       box_mask_ncs_au)
     print >>out,"Wrote output NCS au as cut out (box) mask to %s" %(
       params.output_files.box_mask_output_file)
 
-  # Write out map of NCS AU 
+  # Write out map of NCS AU
 
   map_data_ncs_au=map_data.deep_copy()
   s=(bool_selected_regions==True)
   map_data_ncs_au=map_data_ncs_au.set_selected(~s,-1.0)
 
-  if params.output_files.map_output_file: # Write out the NCS au of density 
-    write_ccp4_map(crystal_symmetry,params.output_files.map_output_file, 
+  if params.output_files.map_output_file: # Write out the NCS au of density
+    write_ccp4_map(crystal_symmetry,params.output_files.map_output_file,
       map_data_ncs_au)
     print >>out,"Wrote output NCS au map to %s" %(
       params.output_files.map_output_file)
 
-  if params.output_files.box_map_output_file: 
+  if params.output_files.box_map_output_file:
     # write out NCS map and mask as box_map (cut out the region they enclose)
     box_map_ncs_au,box_crystal_symmetry=cut_out_map(
        map_data=map_data_ncs_au.as_double(), crystal_symmetry=crystal_symmetry,
        min_point=lower_bounds, max_point=upper_bounds)
-    write_ccp4_map(box_crystal_symmetry,params.output_files.box_map_output_file, 
+    write_ccp4_map(box_crystal_symmetry,params.output_files.box_map_output_file,
       box_map_ncs_au)
     print >>out,"Wrote output NCS au as cut out (box) map to %s" %(
       params.output_files.box_map_output_file)
@@ -1649,7 +1649,7 @@ def write_intermediate_maps(params,
       write_ccp4_map(crystal_symmetry,'mask_%d.ccp4' %id, region_mask)
       print >>out,"Wrote output mask for region %d to %s" %(id,
         "mask_%d.ccp4" %(id))
-    
+
 
 def iterate_search(params,
       map_data_remaining=None,
@@ -1663,7 +1663,7 @@ def iterate_search(params,
       out=sys.stdout):
 
 
-  # Write out intermediate maps if desired 
+  # Write out intermediate maps if desired
   if params.output_files.write_intermediate_maps:
     write_intermediate_maps(params,
       crystal_symmetry=crystal_symmetry,
@@ -1671,9 +1671,9 @@ def iterate_search(params,
       map_data_remaining=map_data_remaining,
       ncs_group_obj=ncs_group_obj,
       out=out)
- 
+
   from copy import deepcopy
-  new_params=deepcopy(params) 
+  new_params=deepcopy(params)
   new_params.segmentation.iterate_with_remainder=False
   new_params.output_files.write_output_maps=False
   if params.output_files.write_intermediate_maps:
@@ -1702,14 +1702,14 @@ def iterate_search(params,
   # Combine the results to get remainder_id_dict
   #   remainder_id_dict[id_remainder]=id_nearby
 
-  remainder_ncs_group_obj=combine_with_iteration(params, 
+  remainder_ncs_group_obj=combine_with_iteration(params,
      map_data=map_data,
      crystal_symmetry=crystal_symmetry,
      ncs_group_obj=ncs_group_obj,
      remainder_ncs_group_obj=remainder_ncs_group_obj,
      out=out)
 
-  return remainder_ncs_group_obj 
+  return remainder_ncs_group_obj
 
 def combine_with_iteration(params,
     map_data=None,
@@ -1720,10 +1720,10 @@ def combine_with_iteration(params,
 
   if not ncs_group_obj.selected_regions or \
       not remainder_ncs_group_obj or not remainder_ncs_group_obj.selected_regions:
-    return None 
+    return None
 
   # see if any regions in ncs_obj overlap with remainder_ncs_group_obj...
-  #   if so, combine 
+  #   if so, combine
   remainder_id_dict={}
   for id_remainder in remainder_ncs_group_obj.selected_regions:
     best_id=None
@@ -1759,7 +1759,7 @@ def cut_out_map(map_data=None, crystal_symmetry=None,
   # shrink unit cell, angles are the same
   shrunk_uc = []
   for i in range(3):
-    shrunk_uc.append( 
+    shrunk_uc.append(
      crystal_symmetry.unit_cell().parameters()[i] * new_map_data.all()[i]/na[i] )
   uc_params=crystal_symmetry.unit_cell().parameters()
   new_unit_cell_box = uctbx.unit_cell(
@@ -1768,7 +1768,7 @@ def cut_out_map(map_data=None, crystal_symmetry=None,
   new_crystal_symmetry=crystal.symmetry(
     unit_cell=new_unit_cell_box,space_group=crystal_symmetry.space_group())
   return new_map_data, new_crystal_symmetry
- 
+
 def run(args,
      params=None,
      map_data=None,
@@ -1793,8 +1793,8 @@ def run(args,
     solvent_fraction,n_residues=get_solvent_fraction(
        params,crystal_symmetry=crystal_symmetry,
        ncs_object=ncs_obj,out=out)
-   
- 
+
+
   # get connectivity  (conn=connectivity_object.result)
   co,conn,sorted_by_volume,min_b,max_b=get_connectivity(params,
      map_data=map_data,
@@ -1803,7 +1803,7 @@ def run(args,
      ncs_copies=ncs_obj.max_operators(),
      solvent_fraction=solvent_fraction,out=out)
 
-  # Check to see which regions are in more than one au of the NCS 
+  # Check to see which regions are in more than one au of the NCS
   #   and set them aside.  Group ncs-related regions together
 
   ncs_group_obj=identify_ncs_regions(
