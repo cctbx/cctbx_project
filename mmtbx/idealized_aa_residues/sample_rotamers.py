@@ -103,10 +103,7 @@ def exercise(file_name):
   clusters = mmtbx.refinement.real_space.aa_residue_axes_and_clusters(
     residue         = residue,
     mon_lib_srv     = mon_lib_srv,
-    backbone_sample = False, #!!!
-    torsion_search_sidechain_start = None,
-    torsion_search_sidechain_stop  = None,
-    torsion_search_sidechain_step  = None ).clusters
+    backbone_sample = False).clusters
   ri = mmtbx.refinement.real_space.fit_residue.get_rotamer_iterator(
     mon_lib_srv = mon_lib_srv,
     residue     = residue)
