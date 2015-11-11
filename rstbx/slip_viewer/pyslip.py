@@ -1931,7 +1931,8 @@ class PySlip(_BufferedCanvas):
                 for id in self.layer_z_order[:]:
                     l = self.layer_mapping[id]
                     # if layer visible and selectable
-                    if l.selectable and l.visible:
+                    if l.selectable and l.visible and \
+                        (l.type in self.layerPSelHandler):
                         if l.map_rel:
                             p_data = self.layerPSelHandler[l.type](l,
                                                                    clickpt_m)
