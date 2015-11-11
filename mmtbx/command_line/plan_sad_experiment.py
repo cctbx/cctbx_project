@@ -11,6 +11,7 @@ import os.path
 import sys
 
 master_phil = iotbx.phil.parse("""
+include scope libtbx.phil.interface.tracking_params
 input_files {
     data = None
       .type = path
