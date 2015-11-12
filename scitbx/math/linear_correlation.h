@@ -46,7 +46,7 @@ namespace scitbx { namespace math {
           }
           denominator_ = std::sqrt(sum_denominator_x_ * sum_denominator_y_);
           if (numerator_ == 0 && denominator_ == 0) {
-            coefficient_ = 1;
+            coefficient_ = 0;
             is_well_defined_ = true;
           }
           else if (denominator_ > fn::absolute(numerator_ * epsilon)) {
