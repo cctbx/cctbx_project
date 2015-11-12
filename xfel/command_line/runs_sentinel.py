@@ -19,6 +19,8 @@ master_phil = """
     .type = str
   experiment_tag = None
     .type = str
+  run_tags = None
+    .type = str
   db {
     host = psdb.slac.stanford.edu
       .type = str
@@ -66,6 +68,14 @@ def run(args):
   from xfel.xpp.simulate import file_table
   query = "https://pswww.slac.stanford.edu/ws-auth/dataexport/placed?exp_name=%s"%(params.experiment)
 
+  # set up extra run tags, if provided
+  if params.run_tags is not None:
+    extra1 = ", tags"
+    extra2 = ",'%s'"%params.run_tags
+  else:
+    extra1 = ""
+    extra2 = ""
+
   while True:
     # Get the set of known runs in the experiment database
     cmd = "SELECT run from %s_runs"%params.experiment_tag
@@ -83,10 +93,10 @@ def run(args):
 
     # Enter any new runs into the experiment database
     if len(unknown_runs) > 0:
-      cmd = "INSERT INTO %s_runs (run) VALUES "%params.experiment_tag
+      cmd = "INSERT INTO %s_runs (run%s) VALUES "%(params.experiment_tag, extra1)
       comma = ""
       for run in unknown_runs:
-        cmd += comma + "(%d)"%run
+        cmd += comma + "(%d%s)"%(run, extra2)
         comma = ", "
 
       cursor = dbobj.cursor()
