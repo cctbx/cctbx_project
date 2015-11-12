@@ -992,6 +992,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
     return "pdb"
 
   def sequence_from_SEQRES(self):
+    from iotbx.pdb import amino_acid_codes
     d = {}
     ps = self.primary_structure_section()
     for l in ps:
