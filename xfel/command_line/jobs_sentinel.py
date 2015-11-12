@@ -90,6 +90,7 @@ def write_hitfind_cfg(params, dbobj, trial_id, trial, rungroup_id):
     beamy                     = beamy,
     binning                   = binning,
     db_name                   = params.db.name,
+    db_experiment_tag         = params.experiment_tag,
     db_user                   = params.db.user,
     db_password               = params.db.password,
     target_phil_path          = target_phil_path)

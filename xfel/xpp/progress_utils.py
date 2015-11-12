@@ -7,13 +7,12 @@ from cctbx.uctbx import unit_cell
 from cctbx.crystal import symmetry
 import time
 
-
 def phil_validation(params):
   return True
 
 def application(params):
   from cxi_xdr_xes.cftbx.cspad_ana import db as cxidb
-  dbobj = cxidb.dbconnect(params.db.host, params.data, params.db.user, params.db.password)
+  dbobj = cxidb.dbconnect(params.db.host, params.db.name, params.db.user, params.db.password)
   cursor = dbobj.cursor()
   PM = progress_manager(params, cursor)
   PM.setup_isoforms(cursor)
@@ -21,7 +20,7 @@ def application(params):
   del dbobj
 
   while 1:
-    dbobj = cxidb.dbconnect(params.db.host, params.data, params.db.user, params.db.password)
+    dbobj = cxidb.dbconnect(params.db.host, params.db.name, params.db.user, params.db.password)
     cursor = dbobj.cursor()
 
     for isoform in isoforms:
@@ -57,23 +56,26 @@ from xfel.cxi.merging_database import manager
 class progress_manager(manager):
   def __init__(self,params, cursor):
     self.params = params
-    self.db_name = params.data
+    if params.experiment_tag is None:
+      self.db_experiment_tag = params.experiment
+    else:
+      self.db_experiment_tag = params.experiment_tag
 
-    query = "SELECT trial_id FROM %s_trials WHERE %s_trials.trial = %d"%(self.db_name, self.db_name, params.trial)
+    query = "SELECT trial_id FROM %s_trials WHERE %s_trials.trial = %d"%(self.db_experiment_tag, self.db_experiment_tag, params.trial)
     cursor.execute(query)
     assert cursor.rowcount == 1
     self.trial_id = int(cursor.fetchall()[0][0])
 
   def setup_isoforms(self, cursor):
     isoform_ids = []
-    query = "SELECT DISTINCT(isoforms_id) from %s_frames WHERE %s_frames.trials_id = %d"%(self.db_name, self.db_name, self.trial_id)
+    query = "SELECT DISTINCT(isoforms_isoform_id) from %s_frames WHERE %s_frames.trials_id = %d"%(self.db_experiment_tag, self.db_experiment_tag, self.trial_id)
     cursor.execute(query)
     for entry in cursor.fetchall():
       isoform_ids.append(int(entry[0]))
 
     d = {}
     for isoform_id in isoform_ids:
-      query = "SELECT * FROM %s_isoforms WHERE %s_isoforms.isoform_id = %d"%(self.db_name, self.db_name, isoform_id)
+      query = "SELECT * FROM %s_isoforms WHERE %s_isoforms.isoform_id = %d"%(self.db_experiment_tag, self.db_experiment_tag, isoform_id)
       cursor.execute(query)
       assert cursor.rowcount == 1
       if_id, name, cell_a, cell_b, cell_c, cell_alpha, cell_beta, cell_gamma, lookup_symbol = cursor.fetchall()[0]
@@ -86,11 +88,11 @@ class progress_manager(manager):
     self.isoforms = d
 
   def get_HKL(self,cursor,isoform):
-    name = self.db_name
+    name = self.db_experiment_tag
     query = """SELECT hkls.h, hkls.k, hkls.l
                FROM %s_observations obs
                JOIN %s_hkls hkls on obs.hkls_id = hkls.hkl_id
-               JOIN %s_isoforms isos on hkls.isoforms_id = isos.isoform_id
+               JOIN %s_isoforms isos on hkls.isoforms_isoform_id = isos.isoform_id
                  AND isos.isoform_id = %d
                JOIN %s_frames frames on obs.frames_id = frames.frame_id
                  AND frames.trials_id = %d"""%(

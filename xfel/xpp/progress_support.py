@@ -6,15 +6,29 @@ from scitbx import matrix
 
 from xfel.cxi.merging_database import manager
 class progress_manager(manager):
-  def __init__(self,params,db_name):
+  def __init__(self,params,db_experiment_tag,trial,rungroup_id,run):
     self.params = params
-    self.db_name = db_name
+    self.db_experiment_tag = db_experiment_tag
+    self.trial = trial
+    self.rungroup_id = rungroup_id
+    self.run = run
+
+  def get_trial_id(self, cursor):
+    query = "SELECT trial_id FROM %s_trials WHERE %s_trials.trial = %d"%(self.db_experiment_tag, self.db_experiment_tag, self.trial)
+    cursor.execute(query)
+    assert cursor.rowcount == 1
+    return int(cursor.fetchall()[0][0])
+
+  def get_run_id(self, cursor):
+    query = "SELECT run_id FROM %s_runs WHERE %s_runs.run = %d"%(self.db_experiment_tag, self.db_experiment_tag, self.run)
+    cursor.execute(query)
+    assert cursor.rowcount == 1
+    return int(cursor.fetchall()[0][0])
 
   def get_HKL(self,cursor):
-    name = self.db_name
-    query = '''SELECT H,K,L,%s_hkls.hkl_id from %s_hkls,%s_isoforms WHERE %s_hkls.isoforms_id = %s_isoforms.isoform_id AND %s_isoforms.name = "%s"'''%(
+    name = self.db_experiment_tag
+    query = '''SELECT H,K,L,%s_hkls.hkl_id from %s_hkls,%s_isoforms WHERE %s_hkls.isoforms_isoform_id = %s_isoforms.isoform_id AND %s_isoforms.name = "%s"'''%(
             name, name, name, name, name, name, self.params["identified_isoform"])
-    print query
     cursor.execute(query)
     ALL = cursor.fetchall()
     indices = flex.miller_index([(a[0],a[1],a[2]) for a in ALL])
@@ -25,7 +39,7 @@ class progress_manager(manager):
     cursor.execute('SELECT isoform_id FROM %s_isoforms WHERE name = "%s"'%(
             name, self.params["identified_isoform"]))
 
-    self.isoforms_id = cursor.fetchall()[0][0]
+    self.isoform_id = cursor.fetchall()[0][0]
     return indices,miller_id
 
   def connection(self):
@@ -108,10 +122,12 @@ class progress_manager(manager):
               'eventstamp':timestamp,
               'sifoil': 0.0}
 
-    #hack
-    kwargs["rungroups_id"] = 1
-    kwargs["trials_id"] = 1
-    kwargs["isoforms_id"] = self.isoforms_id
+    trial_id = self.get_trial_id(cursor)
+    run_id = self.get_run_id(cursor)
+    kwargs["trials_id"] = trial_id
+    kwargs["rungroups_id"] = self.rungroup_id
+    kwargs["runs_run_id"] = run_id
+    kwargs["isoforms_isoform_id"] = self.isoform_id
     res_ori_direct = matrix.sqr(
         observations.unit_cell().orthogonalization_matrix()).transpose().elems
 
@@ -127,10 +143,11 @@ class progress_manager(manager):
 
     kwargs['mosaic_block_rotation'] = result.get("ML_half_mosaicity_deg",[float("NaN")])[0]
     kwargs['mosaic_block_size'] = result.get("ML_domain_size_ang",[float("NaN")])[0]
+    kwargs['ewald_proximal_volume'] = result.get("ewald_proximal_volume",[float("NaN")])[0]
 
 
     sql, parameters = self._insert(
-      table='`%s_frames`' % self.db_name,
+      table='`%s_frames`' % self.db_experiment_tag,
       **kwargs)
     print sql
     print parameters
@@ -163,7 +180,7 @@ class progress_manager(manager):
       print index_into_hkl_id,
       print self.miller_set.indices()[index_into_hkl_id],
       cursor.execute('SELECT H,K,L FROM %s_hkls WHERE hkl_id = %d'%(
-            self.db_name, self.miller_set_id[index_into_hkl_id]))
+            self.db_experiment_tag, self.miller_set_id[index_into_hkl_id]))
 
       print cursor.fetchall()[0]
     '''
@@ -178,8 +195,8 @@ class progress_manager(manager):
               'original_h': [hkl[0] for hkl in set_original_hkl],
               'original_k': [hkl[1] for hkl in set_original_hkl],
               'original_l': [hkl[2] for hkl in set_original_hkl],
-              'frames_rungroups_id': [1] * len(matches.pairs()),
-              'frames_trials_id': [1] * len(matches.pairs()),
+              'frames_rungroups_id': [self.rungroup_id] * len(matches.pairs()),
+              'frames_trials_id': [trial_id] * len(matches.pairs()),
               'panel': [0] * len(matches.pairs())
     }
 
@@ -188,7 +205,7 @@ class progress_manager(manager):
     # (http://sourceforge.net/p/mysql-python/bugs/305).
     #
     # See also merging_database_sqlite3._insert()
-    query = ("INSERT INTO `%s_observations` (" % self.db_name) \
+    query = ("INSERT INTO `%s_observations` (" % self.db_experiment_tag) \
             + ", ".join(kwargs.keys()) + ") values (" \
             + ", ".join(["%s"] * len(kwargs.keys())) + ")"
     try:
