@@ -9,12 +9,15 @@ import iotbx.phil
 import sys
 
 master_phil="""
-data = None
+experiment = None
   .type = str
-  .help = LCLS experiment, like xppi6113
+experiment_tag = None
+  .type = str
 db {
   host = None
     .type=str
+  name = None
+    .type = str
   user = None
     .type=str
   password = None

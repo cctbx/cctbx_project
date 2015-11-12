@@ -46,6 +46,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                db_host                = None,
                db_name                = None,
                db_table_name          = None,
+               db_experiment_tag      = None,
                db_user                = None,
                db_password            = None,
                db_tags                = None,
@@ -90,6 +91,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     self.m_db_host              = cspad_tbx.getOptString(db_host)
     self.m_db_name              = cspad_tbx.getOptString(db_name)
     self.m_db_table_name        = cspad_tbx.getOptString(db_table_name)
+    self.m_db_experiment_tag    = cspad_tbx.getOptString(db_experiment_tag)
     self.m_db_user              = cspad_tbx.getOptString(db_user)
     self.m_db_password          = cspad_tbx.getOptString(db_password)
     self.m_db_tags              = cspad_tbx.getOptString(db_tags)
@@ -296,14 +298,13 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       indexed = info is not None
       if indexed and self.m_progress_logging:
         # integration pickle dictionary is available here as info.last_saved_best
-        pass
         if info.last_saved_best["identified_isoform"] is not None:
           #print info.last_saved_best.keys()
           from cxi_xdr_xes.cftbx.cspad_ana import db
           dbobj = db.dbconnect(self.m_db_host, self.m_db_name, self.m_db_user, self.m_db_password)
           cursor = dbobj.cursor()
           from xfel.xpp.progress_support import progress_manager
-          PM = progress_manager(info.last_saved_best,self.m_db_name)
+          PM = progress_manager(info.last_saved_best,self.m_db_experiment_tag, self.m_trial_id, self.m_rungroup_id, evt.run())
           indices, miller_id = PM.get_HKL(cursor)
           PM.scale_frame_detail(self.timestamp,cursor)
           dbobj.commit()
