@@ -25,6 +25,14 @@ db {
 }
 trial = None
   .type = int
+resolution = 2.5
+  .type = float
+n_bins = 15
+  .type = int
+run_tags = None
+  .type = str
+include_negatives = False
+  .type = bool
 """
 #xpp.progress_detail db.host= db.user= data=xppi6115 trial=12
 #-----------------------------------------------------------------------

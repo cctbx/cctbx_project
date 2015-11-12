@@ -29,7 +29,7 @@ def application(params):
       miller_set = mset(anomalous_flag = False, crystal_symmetry=symmetry(unit_cell=cell, space_group_symbol=isoforms[isoform]['lookup_symbol']), indices=M)
       miller_set.show_comprehensive_summary()
 
-      miller_set.setup_binner(d_min=2.5, n_bins=15)
+      miller_set.setup_binner(d_min=params.resolution, n_bins=params.n_bins)
       given = miller_set.binner().counts_given()
       ccomplete = miller_set.binner().counts_complete()
       for i_bin in miller_set.binner().range_used():
@@ -89,14 +89,28 @@ class progress_manager(manager):
 
   def get_HKL(self,cursor,isoform):
     name = self.db_experiment_tag
+    if self.params.run_tags is not None:
+      extrajoin = "JOIN %s_runs runs ON frames.runs_run_id = runs.run_id"%name
+      for tag in self.params.run_tags.split():
+        tag = tag.strip()
+        extrajoin += " AND runs.tags LIKE '%%%s%%'"%tag
+    else:
+      extrajoin = ""
+    if self.params.include_negatives:
+      extrawhere = ""
+    else:
+      extrawhere = "WHERE obs.i >= 0"
+
     query = """SELECT hkls.h, hkls.k, hkls.l
                FROM %s_observations obs
-               JOIN %s_hkls hkls on obs.hkls_id = hkls.hkl_id
-               JOIN %s_isoforms isos on hkls.isoforms_isoform_id = isos.isoform_id
+               JOIN %s_hkls hkls ON obs.hkls_id = hkls.hkl_id
+               JOIN %s_isoforms isos ON hkls.isoforms_isoform_id = isos.isoform_id
                  AND isos.isoform_id = %d
-               JOIN %s_frames frames on obs.frames_id = frames.frame_id
-                 AND frames.trials_id = %d"""%(
-               name, name, name, self.isoforms[isoform]['isoform_id'], name, self.trial_id)
+               JOIN %s_frames frames ON obs.frames_id = frames.frame_id
+                 AND frames.trials_id = %d
+               %s
+               %s"""%(
+               name, name, name, self.isoforms[isoform]['isoform_id'], name, self.trial_id, extrajoin, extrawhere)
 
     print "Reading db..."
     cursor.execute(query)
