@@ -199,6 +199,84 @@ class isoforms_menu(option_chooser):
     self.menu_string = "Managing isoforms"
     self.options = {}
 
+class runs_menu(option_chooser):
+  selection_string = "Manage runs"
+  help_string = "Use this menu to manage runs for this experiment, including adding and removing tags"
+
+  class list_runs(db_action):
+    selection_string = "List all runs"
+    help_string = "List all runs being logged so far, including any tags on them"
+
+    def __call__(self):
+      cmd = "SELECT * from %s_runs"%self.params.experiment_tag
+      cursor = self.dbobj.cursor()
+      cursor.execute(cmd)
+      if cursor.rowcount == 0:
+        print "No runs logged yet"
+      else:
+        for entry in cursor.fetchall():
+          id, run, tags = entry
+          print "Run %s. Tags: %s"%(run, tags)
+
+  class update_tags(db_action):
+    selection_string = "Update run tags"
+    help_string = "Add or remove tags from runs"
+
+    def get_runs_from_user(self, prompt):
+      if get_bool_from_user("%s All runs? "%prompt):
+        return ""
+      else:
+        start = raw_input("%s Starting with run: "%prompt)
+        end = raw_input("%s Ending with run: "%prompt)
+        return "WHERE %s_runs.run >= %s and %s_runs.run <= %s"%(
+          self.params.experiment_tag, start, self.params.experiment_tag, end)
+
+    def __call__(self):
+      choice = raw_input("Add or remove tag? [a/r]: ").lower()
+      if choice == 'a':
+        prompt = "Add tag."
+      elif choice == 'r':
+        prompt = "Remove tag."
+      else:
+        print "Choice not recognized"
+        return
+      tag = raw_input("Enter tag: ")
+      cursor = self.dbobj.cursor()
+
+      cmd = "SELECT * from %s_runs %s"%(self.params.experiment_tag, self.get_runs_from_user(prompt))
+      cursor.execute(cmd)
+      for entry in cursor.fetchall():
+        run_id, run, tags = entry
+        if choice == 'a':
+          if tags is None or tags == "":
+            tags = ""
+            comma = ""
+          else:
+            comma = ","
+          if tag not in tags:
+            tags += comma + tag
+        else:
+          if tags is None or tag not in tags:
+            continue
+          tags = tags.split(',')
+          while tag in tags:
+            tags.remove(tag)
+          tags = ','.join(tags)
+
+        cmd = "UPDATE %s_runs SET tags='%s' WHERE run_id=%s"%(self.params.experiment_tag, tags, run_id)
+        cursor.execute(cmd)
+
+      self.dbobj.commit()
+      print "Run tags updated"
+
+  def __init__(self, params, dbobj):
+    option_chooser.__init__(self, params, dbobj)
+    self.menu_string = "Managing runs"
+    self.options = {
+      'l': runs_menu.list_runs,
+      'u': runs_menu.update_tags
+    }
+
 class trials_menu(option_chooser):
   selection_string = "Manage trials"
   help_string = "Use this menu to manage trials for this experiment, including add new trials or inactivating old ones"
@@ -418,6 +496,7 @@ class top_menu(option_chooser):
     self.menu_string = "Top level menu, administering %s using tag %s"%(self.params.experiment, self.params.experiment_tag)
 
     self.options = {
+      'r': runs_menu,
       'i': isoforms_menu,
       't': trials_menu,
       'g': rungroups_menu,
