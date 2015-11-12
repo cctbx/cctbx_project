@@ -3,6 +3,14 @@ from libtbx import easy_run
 from mmtbx.secondary_structure.build.tst_2 import tst_01_start_lines
 import os.path
 import time
+import sys
+
+# different syntax on windows for joining stderr to stdout
+errpipe = ">&"
+errpipe2 = ""
+if sys.platform=="win32":
+  errpipe = ">"
+  errpipe2 = "2>&1"
 
 def exercise_01(prefix="tst_mi_test_01"):
   # no SS annotations
@@ -12,7 +20,9 @@ def exercise_01(prefix="tst_mi_test_01"):
   cmd = " ".join([
       "phenix.model_idealization",
       "%s_start.pdb" % prefix,
-      ">& %s.log" % prefix])
+      errpipe,
+      "%s.log" % prefix,
+      errpipe2])
   print cmd
   easy_run.call(cmd)
   res_log = open("%s.log" % prefix, "r")
@@ -35,7 +45,9 @@ HELIX    2   2 ARG A   23  GLN A   44  1                                  22
   cmd = " ".join([
       "phenix.model_idealization",
       "%s_start.pdb" % prefix,
-      ">& %s.log" % prefix])
+      errpipe,
+      "%s.log" % prefix,
+      errpipe2])
   print cmd
   easy_run.call(cmd)
   res_log = open("%s.log" % prefix, "r")
