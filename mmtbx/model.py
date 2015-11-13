@@ -394,39 +394,41 @@ class manager(object):
     def is_supported(residue):
       return get_class(name=residue.resname) in supported
     counter = 0
+    reduce_residue_lookup = {}
     for model1 in ph.models():
       for chain1 in model1.chains():
         for conformer1 in chain1.conformers():
           for residue1 in conformer1.residues():
             if(not is_supported(residue1)): continue
+            reduce_residue_lookup[residue1.id_str()]=residue1.standalone_copy()
+    for model2 in pdb_hierarchy.models():
+      for chain2 in model2.chains():
+        for conformer2 in chain2.conformers():
+          for residue2 in conformer2.residues():
+            if(not is_supported(residue2)): continue
+            residue1=reduce_residue_lookup[residue2.id_str()]
             cm1 = cm_from_residue_non_hd(residue=residue1)
-            for model2 in pdb_hierarchy.models():
-              for chain2 in model2.chains():
-                for conformer2 in chain2.conformers():
-                  for residue2 in conformer2.residues():
-                    if(not is_supported(residue2)): continue
-                    cm2 = cm_from_residue_non_hd(residue=residue1)
-                    if(residue1.id_str()==residue2.id_str() and
-                       dist(cm1,cm2)<1.e-3):
-                      # skip proper alternative confromations
-                      is_ac = False
-                      for a1, a2 in zip(residue1.atoms(), residue2.atoms()):
-                        if((a1.parent().altloc !=""
-                            and not a1.element_is_hydrogen()) or
-                           (a2.parent().altloc !=""
-                            and not a2.element_is_hydrogen())):
-                          is_ac=True
-                          break
-                      if(not is_ac):
-                        for a1 in residue1.atoms():
-                          if(a1.element_is_hydrogen()):
-                            n1 = a1.name.strip()[1:]
-                            for a2 in residue2.atoms():
-                              n2 = a2.name.strip()[1:]
-                              if(a2.element_is_hydrogen() and n1 == n2):
-                                if(dist(a1.xyz, a2.xyz)>deviation_threshold):
-                                  a2.set_xyz(a1.xyz)
-                                  counter += 1
+            cm2 = cm_from_residue_non_hd(residue=residue2)
+            if dist(cm1,cm2)<1.e-3:
+              # skip proper alternative confromations
+              is_ac = False
+              for a1, a2 in zip(residue1.atoms(), residue2.atoms()):
+                if((a1.parent().altloc !=""
+                    and not a1.element_is_hydrogen()) or
+                   (a2.parent().altloc !=""
+                    and not a2.element_is_hydrogen())):
+                  is_ac=True
+                  break
+              if(not is_ac):
+                for a1 in residue1.atoms():
+                  if(a1.element_is_hydrogen()):
+                    n1 = a1.name.strip()[1:]
+                    for a2 in residue2.atoms():
+                      n2 = a2.name.strip()[1:]
+                      if(a2.element_is_hydrogen() and n1 == n2):
+                        if(dist(a1.xyz, a2.xyz)>deviation_threshold):
+                          a2.set_xyz(a1.xyz)
+                          counter += 1
     self.xray_structure.set_sites_cart(pdb_hierarchy.atoms().extract_xyz())
     self._pdb_hierarchy = pdb_hierarchy
     return counter
