@@ -103,6 +103,12 @@ class postref_handler(object):
       print txt_exception
       return None, txt_exception
 
+    #reset systematic absence
+    sys_absent_negate_flags = flex.bool([sys_absent_flag[1]==False for sys_absent_flag in observations.sys_absent_flags()])
+    observations = observations.select(sys_absent_negate_flags)
+    alpha_angle_obs = alpha_angle_obs.select(sys_absent_negate_flags)
+    spot_pred_x_mm = spot_pred_x_mm.select(sys_absent_negate_flags)
+    spot_pred_y_mm = spot_pred_y_mm.select(sys_absent_negate_flags)
 
     import os.path
     if os.path.isfile(iparams.run_no+'/rejections.txt'):
@@ -148,7 +154,7 @@ class postref_handler(object):
     #Filter weak
     if iparams.flag_include_negatives:
       if iparams.merge.sigma_min > 0:
-        iparams.merge.sigma_min = -1.0
+        iparams.merge.sigma_min = -99.0
 
     i_sel = (observations.data()/observations.sigmas()) > iparams.merge.sigma_min
     observations = observations.select(i_sel)

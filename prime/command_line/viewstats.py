@@ -46,13 +46,17 @@ for param_file in param_file_list:
       n_data += 1
   data_dict_list.append(data_dict)
 
-test_key = data_dict_list[0].keys()[0]
-
+#prepare test key
+data_dict_0 = data_dict_list[0]
+data_dict_1 = data_dict_list[1]
+for i in range(n_data):
+  test_key = data_dict_list[0].keys()[i]
+  if (test_key in data_dict_0) and (test_key in data_dict_1):
+    test_id = i
+    break
 
 #Fix Tpr and Txy for first data_dict
-data_dict_0 = data_dict_list[0]
 test_param_0_raw = np.array(data_dict_0[test_key])
-data_dict_1 = data_dict_list[1]
 test_param_1 = data_dict_1[test_key]
 for key in data_dict_0.keys():
   if key in data_dict_1:
@@ -64,6 +68,7 @@ for key in data_dict_0.keys():
 
 test_param_0_update = data_dict_0[test_key]
 test_delta_1_calc = np.absolute(test_param_1-test_param_0_update)
+print 'test id', test_id
 print 'test key', test_key
 print '0th cycle (raw):', test_param_0_raw
 print '0th cycle (updated):', test_param_0_update
@@ -107,5 +112,6 @@ for i in range(n_col-2):
       plt.xticks(x_range, x_label)
       if data_title[i] in ('ry','rz','r0','re'):
         plt.ylim([0, 0.01])
+      plt.grid(True)
     cn_plot += 1
 plt.show()
