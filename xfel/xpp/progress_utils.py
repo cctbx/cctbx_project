@@ -26,6 +26,8 @@ def application(params, loop = True):
     dbobj = cxidb.dbconnect(params.db.host, params.db.name, params.db.user, params.db.password)
     cursor = dbobj.cursor()
 
+    results = {}
+
     for tag in params.run_tags.split(','):
       for isoform in isoforms:
         M = PM.get_HKL(cursor,isoform=isoform,run_tags=tag)
@@ -53,9 +55,17 @@ def application(params, loop = True):
             print fmt % (i_bin,d_range,compl,n_ref,
                           multiplicity)
         print
+        if len(tag) > 0:
+          key = "%s %s"%(tag, isoform)
+        else:
+          key = isoform
+        results[key] = dict(
+          multiplicity = sum(given)/sum(ccomplete),
+          completeness = miller_set.completeness()
+        )
     del dbobj
     if not loop:
-      return
+      return results
     time.sleep(10)
 
 from xfel.cxi.merging_database import manager
@@ -119,7 +129,10 @@ class progress_manager(manager):
                name, name, name, self.isoforms[isoform]['isoform_id'], name, self.trial_id, extrajoin, extrawhere)
 
     #print query
-    print "%s, isoform %s"%(run_tags, isoform)
+    if len(run_tags) > 0:
+      print "%s, isoform %s"%(run_tags, isoform)
+    else:
+      print "isoform %s"%isoform
     print "Reading db..."
     cursor.execute(query)
     print "Getting results..."
