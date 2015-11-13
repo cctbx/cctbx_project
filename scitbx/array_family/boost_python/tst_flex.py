@@ -2188,7 +2188,7 @@ def exercise_linear_correlation():
   y = flex.double((0,0,0))
   c = flex.linear_correlation(x, y)
   assert c.is_well_defined()
-  assert approx_equal(c.coefficient(), 1)
+  assert approx_equal(c.coefficient(), 0)
   c = flex.linear_correlation(y, y)
   assert c.is_well_defined()
   c = flex.linear_correlation(flex.double(), flex.double())
