@@ -542,11 +542,11 @@ def run_cc(params,reindexing_op,output):
 
   if params.scaling.show_plots:
     from matplotlib import pyplot as plt
-    plt.plot(flex.log10(selected_uniform[-2].data()),
-             flex.log10(selected_uniform[-1].data()), 'r.')
+    plt.plot(flex.log(selected_uniform[-2].data()),
+             flex.log(selected_uniform[-1].data()), 'r.')
     plt.show()
     if have_iso_ref:
-      plt.plot(flex.log10(selected_uniform[0].data()),
-               flex.log10(selected_uniform[1].data()), 'r.')
+      plt.plot(flex.log(selected_uniform[0].data()),
+               flex.log(selected_uniform[1].data()), 'r.')
       plt.show()
   print >>output
