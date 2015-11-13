@@ -16,7 +16,6 @@ Currently it features:
 '''
 from __future__ import division
 import os
-import random
 import wx
 import numpy as np
 import sys
@@ -51,8 +50,6 @@ class BarsFrame(wx.Frame):
         self.redraw_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_redraw_timer, self.redraw_timer)
         self.redraw_timer.Start(1000)
-        self.trial = None
-        self.res = None
 
     def create_menu(self):
         self.menubar = wx.MenuBar()
@@ -168,11 +165,12 @@ class BarsFrame(wx.Frame):
 
         res = self.restextbox.GetValue()
         trial = self.textbox.GetValue()
-        self.mult = [random.uniform(0.0,4.0) for i in xrange(0,4)]
+        self.mult = [stats[key]['multiplicity'] for key in stats.keys()]
         plot_max = max(self.mult) + 1
-        self.completeness = [random.uniform(0.0,1.0)*plot_max for i in xrange(0,4)]
+        self.completeness = [stats[key]['completeness']*plot_max for key in stats.keys()]
         pos = np.arange(len(self.completeness))+0.5 # the bar centers on the y-axis
-        labels = ['Dark Isoform A', 'Dark Isoform B', '2F Isoform A', '2F Isoform B']
+        labels = [stats.keys()[i] for i in xrange(len(stats.keys()))]
+        n = len(labels)
         # clear the axes and redraw the plot anew
         #
         self.axes.clear()
@@ -186,20 +184,18 @@ class BarsFrame(wx.Frame):
         self.axes.set_yticklabels(labels)
         self.axes.set_xlabel('Multiplicity')
         self.axes.set_xlim(0.0,plot_max)
-        self.axes.axvline(x=self.mult[0], ymin=0.0, ymax=0.25, color='k', linestyle='dashed', linewidth=4)
-        self.axes.axvline(x=self.mult[1], ymin=0.25, ymax=0.50, color='k', linestyle='dashed', linewidth=4)
-        self.axes.axvline(x=self.mult[2], ymin=0.5, ymax=0.75, color='k', linestyle='dashed', linewidth=4)
-        self.axes.axvline(x=self.mult[3], ymin=0.75, ymax=1.0, color='k', linestyle='dashed', linewidth=4)
+        for i in xrange(n):
+          self.axes.axvline(x=self.mult[i], ymin=i/n, ymax=(i+1)/n, color='k', linestyle='dashed', linewidth=4)
         self.canvas.draw()
 
     def on_submit(self, event):
-        self.trial = self.textbox.GetValue()
-        self.res = self.restextbox.GetValue()
-        #print 'Textbox value is: %s'% self.trial
+        self.params.trial = self.textbox.GetValue()
+        self.params.resolution = self.restextbox.GetValue()
+        self.params.run_tags = self.tagstextbox.GetValue()
         self.on_redraw_timer()
 
     def on_redraw_timer(self,event=None):
-        if self.trial is not None and self.res is not None:
+        if self.params.trial is not None and self.params.resolution is not None:
           self.draw_figure()
 
     def on_save_plot(self, event):
