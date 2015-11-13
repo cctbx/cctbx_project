@@ -36,6 +36,7 @@ class postref_results(object):
     self.frame_no = frame_no
     self.pickle_filename = pickle_filename
     self.wavelength = wavelength
+    self.detector_distance_mm = detector_distance_mm
 
     #refined_params
     #note params = G,B,rotx,roty,ry,a,b,c,alpha,beta,gamma
