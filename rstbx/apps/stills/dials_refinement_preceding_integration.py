@@ -37,6 +37,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
 
       for isoform in self.horizons_phil.isoforms:
         print "Testing isoform %s"%isoform.name,isoform.cell.parameters()
+        print "asserting", look_symbol ,"==", isoform.lookup_symbol
 
         assert look_symbol == isoform.lookup_symbol
         setting_experiments = self.prepare_dxtbx_models(setting_specific_ai = self.inputai,
@@ -50,6 +51,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
       minindex = positional_rmsds.index(minrmsd_mm)
       print "The smallest rmsd is %5.1f um from isoform %s"%(1000.*minrmsd_mm,self.horizons_phil.isoforms[minindex].name)
       if self.horizons_phil.isoforms[minindex].rmsd_target_mm is not None:
+        print "asserting",minrmsd_mm ,"<", self.horizons_phil.isoforms[minindex].rmsd_target_mm
         assert minrmsd_mm < self.horizons_phil.isoforms[minindex].rmsd_target_mm
       print "Acceptable rmsd for isoform %s."%(self.horizons_phil.isoforms[minindex].name),
       if len (self.horizons_phil.isoforms)==2:
@@ -57,6 +59,13 @@ class integrate_one_frame(IntegrationMetaProcedure):
       else:
         print
       R = isoform_refineries[minindex]
+      # Now one last check to see if direct beam is out of bounds
+      if self.horizons_phil.isoforms[minindex].beam_restraint is not None:
+        refined_beam = matrix.col(R.get_experiments()[0].detector[0].get_beam_centre(experiments[0].beam.get_s0()))
+        known_beam = matrix.col(self.horizons_phil.isoforms[minindex].beam_restraint)
+        print "asserting",(refined_beam-known_beam).length(),"<",self.horizons_phil.isoforms[minindex].rmsd_target_mm
+        assert (refined_beam-known_beam).length() < self.horizons_phil.isoforms[minindex].rmsd_target_mm
+        # future--circle of confusion could be given as a separate length in mm instead of reusing rmsd_target
       self.identified_isoform = self.horizons_phil.isoforms[minindex].name
 
     self.integration_concept_detail(experiments=R.get_experiments(), reflections=setting_reflections,
