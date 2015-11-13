@@ -76,6 +76,11 @@ master_phil = iotbx.phil.parse("""
       .type = path
       .help = output map file with remainder after initial regions identified
       .short_caption = Output remainder map file
+
+    output_info_file = None
+      .type = path
+      .help = Output pickle file with information about map and masks
+      .short_caption = Output pickle file 
   }
 
   crystal_info {
@@ -179,13 +184,33 @@ master_phil = iotbx.phil.parse("""
 """, process_includes=True)
 master_params = master_phil
 
-class ncs_group_object:
-  def __init__(self,ncs_group_list=None,
-      edited_mask=None,
+class info_object:
+  def __init__(self,
+      ncs_obj=None,
+      ncs_group_list=None,
+      origin_shift=None,
       edited_volume_list=None,
       region_range_dict=None,
-      selected_regions=None,
-      ncs_related_regions=None,
+      selected_regions=[],
+      ncs_related_regions=[],
+      bad_region_list=None,
+      region_centroid_dict=None,
+      original_id_from_id=None,
+      remainder_id_dict=None,  # dict relating regions in a remainder object to
+    ):
+    from libtbx import adopt_init_args
+    adopt_init_args(self, locals())
+
+class ncs_group_object:
+  def __init__(self,
+      ncs_obj=None,
+      ncs_group_list=None,
+      edited_mask=None,
+      origin_shift=None,
+      edited_volume_list=None,
+      region_range_dict=None,
+      selected_regions=[],
+      ncs_related_regions=[],
       bad_region_list=None,
       region_centroid_dict=None,
       region_scattered_points_dict=None,
@@ -197,9 +222,24 @@ class ncs_group_object:
          ):
     from libtbx import adopt_init_args
     adopt_init_args(self, locals())
+
+  def as_info_object(self):
+    return info_object(
+      ncs_obj=self.ncs_obj,
+      ncs_group_list=self.ncs_group_list,
+      origin_shift=self.origin_shift,
+      edited_volume_list=self.edited_volume_list,
+      region_range_dict=self.region_range_dict,
+      selected_regions=self.selected_regions,
+      ncs_related_regions=self.ncs_related_regions,
+      bad_region_list=self.bad_region_list,
+      region_centroid_dict=self.region_centroid_dict,
+      original_id_from_id=self.original_id_from_id,
+     )
   def set_selected_regions(self,selected_regions):
     from copy import deepcopy
     self.selected_regions=deepcopy(selected_regions)
+
   def set_ncs_related_regions(self,ncs_related_regions):
     from copy import deepcopy
     self.ncs_related_regions=deepcopy(ncs_related_regions)
@@ -303,7 +343,11 @@ def get_ncs(params,origin_shift=None,out=sys.stdout):
   else: # get the ncs
     from mmtbx.ncs.ncs import ncs
     ncs_object=ncs()
-    ncs_object.read_ncs(file_name,log=out)
+    try: # see if we can read biomtr records
+      pdb_inp=iotbx.pdb.input(file_name=file_name)
+      ncs_object.ncs_from_pdb_input_BIOMT(pdb_inp=pdb_inp,log=out)
+    except Exception,e: # try as regular ncs object
+      ncs_object.read_ncs(file_name=file_name,log=out)
     ncs_object.display_all(log=out)
   if not ncs_object or ncs_object.max_operators()<1:
     raise Sorry("Need ncs information from an ncs_info file")
@@ -988,6 +1032,7 @@ def identify_ncs_regions(params,
      ncs_obj=None,
      unit_cell=None,
      crystal_symmetry=None,
+     origin_shift=None,
      out=sys.stdout):
 
   # 1.choose top regions to work with
@@ -1068,8 +1113,11 @@ def identify_ncs_regions(params,
     equiv_dict_ncs_copy=equiv_dict_ncs_copy,
     out=out)
 
-  ncs_group_obj=ncs_group_object(ncs_group_list=ncs_group_list,
+  ncs_group_obj=ncs_group_object(
+     ncs_group_list=ncs_group_list,
+     ncs_obj=ncs_obj,
      edited_mask=edited_mask,
+     origin_shift=origin_shift,
      co=co,
      conn_obj=conn_obj,
      bad_region_list=bad_region_list,
@@ -1269,7 +1317,7 @@ def select_regions_in_au(params,
   # If target scattered_points is supplied, include them as allowed target
 
   if not ncs_group_obj.ncs_group_list:
-    return ncs_group_obj,[],[]
+    return ncs_group_obj,[]
 
   if all_elements_are_length_one(ncs_group_obj.ncs_group_list):
     best_selected_regions=single_list(ncs_group_obj.ncs_group_list)
@@ -1346,6 +1394,7 @@ def get_bool_mask_as_int(ncs_group_obj=None,mask_as_bool=None):
 def get_bool_mask_of_regions(ncs_group_obj=None,region_list=None,
     expand_size=None):
   s = (ncs_group_obj.edited_mask == -1)
+  if region_list is None: region_list=[]
   for id in region_list:
 
     if not expand_size:
@@ -1439,7 +1488,10 @@ def adjust_bounds(params,lower_bounds,upper_bounds,map_data=None,out=sys.stdout)
   # range is lower_bounds to upper_bounds
   lower_bounds=list(lower_bounds)
   upper_bounds=list(upper_bounds)
+  if params.output_files.box_buffer is None: params.output_files.box_buffer=0
   for i in xrange(3):
+    if lower_bounds[i] is None: lower_bounds[i]=0
+    if upper_bounds[i] is None: upper_bounds[i]=0
     lower_bounds[i]-=params.output_files.box_buffer
     lower_bounds[i]=max(0,lower_bounds[i])
     upper_bounds[i]+=params.output_files.box_buffer
@@ -1461,6 +1513,8 @@ def write_region_maps(params,
     regions_to_skip=None,
     out=sys.stdout):
   remainder_regions_written=[]
+  if not ncs_group_obj: 
+    return remainder_regions_written 
 
   min_b,max_b=ncs_group_obj.co.get_blobs_boundaries_tuples()
   if remainder_ncs_group_obj:
@@ -1676,6 +1730,7 @@ def iterate_search(params,
   new_params=deepcopy(params)
   new_params.segmentation.iterate_with_remainder=False
   new_params.output_files.write_output_maps=False
+  new_params.output_files.output_info_file=None
   if params.output_files.write_intermediate_maps:
     new_params.output_files.map_output_file=\
      params.output_files.map_output_file[:-5]+"_cycle_2.ccp4"
@@ -1781,7 +1836,7 @@ def run(args,
 
   if params and  map_data and ncs_obj and solvent_fraction and \
       n_residues and crystal_symmetry:  # have things ready to go
-    pass
+    origin_shift=None
   else:
     # get the parameters
     params,crystal_symmetry,map_data,origin_shift=get_params(args,out=out)
@@ -1813,6 +1868,7 @@ def run(args,
      co=co,
      conn_obj=conn,
      ncs_obj=ncs_obj,
+     origin_shift=origin_shift,
      out=out)
 
   # Choose one region or group of regions from each ncs_group in the list
@@ -1858,6 +1914,12 @@ def run(args,
       ncs_group_obj=ncs_group_obj,
       remainder_ncs_group_obj=remainder_ncs_group_obj,
       out=out)
+
+  if params.output_files.output_info_file:
+    from libtbx import easy_pickle
+    info_obj=ncs_group_obj.as_info_object()
+    easy_pickle.dump( params.output_files.output_info_file,
+       info_obj)
 
   return ncs_group_obj,remainder_ncs_group_obj
 
