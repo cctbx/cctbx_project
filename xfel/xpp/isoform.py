@@ -73,7 +73,7 @@ class application(manager):
 
     import cStringIO
     query = cStringIO.StringIO()
-    query.write("INSERT INTO `%s_hkls` (h,k,l,isoforms_id) VALUES "%self.params.experiment_tag)
+    query.write("INSERT INTO `%s_hkls` (h,k,l,isoforms_isoform_id) VALUES "%self.params.experiment_tag)
     firstcomma = ""
     for item in indices:
       query.write(firstcomma); firstcomma=","
