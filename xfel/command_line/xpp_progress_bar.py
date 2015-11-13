@@ -19,6 +19,7 @@ import os
 import random
 import wx
 import numpy as np
+import sys
 # The recommended way to use wx with mpl is with the WXAgg
 # backend.
 #
@@ -29,17 +30,22 @@ from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
 
+from xfel.command_line.xpp_progress_detail import master_phil
+import iotbx.phil
+
 class BarsFrame(wx.Frame):
     """ The main frame of the application
     """
     title = 'Completeness and Multiplicity Progress'
 
-    def __init__(self):
+    def __init__(self, params):
         wx.Frame.__init__(self, None, -1, self.title)
+        self.params = params
 
         self.create_menu()
         self.create_status_bar()
         self.create_main_panel()
+
 
         #set up the timer for testing
         self.redraw_timer = wx.Timer(self)
@@ -83,17 +89,23 @@ class BarsFrame(wx.Frame):
 
         # set up trial text box
         self.textbox = wx.TextCtrl(self.panel, -1, '')
+        if self.params.trial is not None:
+          self.textbox.SetValue(str(self.params.trial))
         self.fnameLabel = wx.StaticText(self.panel, wx.ID_ANY, 'Trial Number ')
         self.fnameLabel.SetFont(wx.Font (12, wx.SWISS, wx.NORMAL, wx.BOLD))
 
         # set up resolution text box
         self.restextbox = wx.TextCtrl(self.panel, -1, '')
+        if self.params.resolution is not None:
+          self.restextbox.SetValue(str(self.params.resolution))
         self.resLabel = wx.StaticText(self.panel, wx.ID_ANY, 'Resolution Shell')
         self.resLabel.SetFont(wx.Font (12, wx.SWISS, wx.NORMAL, wx.BOLD))
 
         # set up tags text box
         # this determines which crystal isoforms in which illumination stats are plotted
         self.tagstextbox = wx.TextCtrl(self.panel, -1, '')
+        if self.params.run_tags is not None:
+          self.tagstextbox.SetValue(self.params.run_tags)
         self.tagsLabel = wx.StaticText(self.panel, wx.ID_ANY, 'Tags')
         self.tagsLabel.SetFont(wx.Font (12, wx.SWISS, wx.NORMAL, wx.BOLD))
 
@@ -150,6 +162,10 @@ class BarsFrame(wx.Frame):
     def draw_figure(self):
         """ Redraws the figure
         """
+        from xfel.xpp.progress_utils import application
+        stats = application(self.params, loop = False)
+        print stats
+
         res = self.restextbox.GetValue()
         trial = self.textbox.GetValue()
         self.mult = [random.uniform(0.0,4.0) for i in xrange(0,4)]
@@ -231,7 +247,15 @@ class BarsFrame(wx.Frame):
 
 
 if __name__ == '__main__':
+  args = sys.argv[1:]
+  phil = iotbx.phil.process_command_line(args=args, master_string=master_phil).show()
+  work_params = phil.work.extract()
+  from xfel.xpp.progress_utils import phil_validation
+  phil_validation(work_params)
+  if ("--help" in args) :
+    libtbx.phil.parse(master_phil.show())
+  else:
     app = wx.PySimpleApp()
-    app.frame = BarsFrame()
+    app.frame = BarsFrame(work_params)
     app.frame.Show()
     app.MainLoop()
