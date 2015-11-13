@@ -1551,6 +1551,7 @@ class ImageSetFactory(object):
       format_class = Registry.find(filenames[0])
 
     # Create the reader
+    indices = None
     if format_class is None:
       if template_format is not None:
         filenames = SweepFileList(template_format, array_range)
@@ -1559,6 +1560,9 @@ class ImageSetFactory(object):
       if issubclass(format_class, FormatMultiImage):
         assert len(filenames) == 1
         format_instance = format_class(filenames[0])
+        if scan is not None:
+          image0 = scan.get_array_range()[0]
+          indices = list(range(scan.get_num_images()))
         reader = SingleFileReader(format_instance)
       else:
         assert(template_format is not None)
@@ -1568,6 +1572,7 @@ class ImageSetFactory(object):
     # Create the sweep object
     sweep = ImageSweep(
       reader,
+      indices=indices,
       beam=beam,
       detector=detector,
       goniometer=goniometer,
