@@ -32,7 +32,7 @@ from matplotlib.backends.backend_wxagg import \
 class BarsFrame(wx.Frame):
     """ The main frame of the application
     """
-    title = 'Completeness and Multiplicity at 2.5 Angstrom Resolution Progress'
+    title = 'Completeness and Multiplicity Progress'
 
     def __init__(self):
         wx.Frame.__init__(self, None, -1, self.title)
@@ -46,6 +46,7 @@ class BarsFrame(wx.Frame):
         self.Bind(wx.EVT_TIMER, self.on_redraw_timer, self.redraw_timer)
         self.redraw_timer.Start(1000)
         self.trial = None
+        self.res = None
 
     def create_menu(self):
         self.menubar = wx.MenuBar()
@@ -84,8 +85,22 @@ class BarsFrame(wx.Frame):
         self.textbox = wx.TextCtrl(self.panel, -1, '')
         self.fnameLabel = wx.StaticText(self.panel, wx.ID_ANY, 'Trial Number ')
         self.fnameLabel.SetFont(wx.Font (12, wx.SWISS, wx.NORMAL, wx.BOLD))
+
+        # set up resolution text box
+        self.restextbox = wx.TextCtrl(self.panel, -1, '')
+        self.resLabel = wx.StaticText(self.panel, wx.ID_ANY, 'Resolution Shell')
+        self.resLabel.SetFont(wx.Font (12, wx.SWISS, wx.NORMAL, wx.BOLD))
+
+        # set up tags text box
+        # this determines which crystal isoforms in which illumination stats are plotted
+        self.tagstextbox = wx.TextCtrl(self.panel, -1, '')
+        self.tagsLabel = wx.StaticText(self.panel, wx.ID_ANY, 'Tags')
+        self.tagsLabel.SetFont(wx.Font (12, wx.SWISS, wx.NORMAL, wx.BOLD))
+
+        # set up the submit button
         self.SubmitButton = wx.Button(self.panel, wx.ID_ANY, 'Submit')
         self.Bind(wx.EVT_BUTTON, self.on_submit, self.SubmitButton)
+
         # Since we have only one plot, we can use add_axes
         # instead of add_subplot, but then the subplot
         # configuration tool in the navigation toolbar wouldn't
@@ -109,11 +124,22 @@ class BarsFrame(wx.Frame):
         self.hbox = wx.BoxSizer(wx.HORIZONTAL)
         flags = wx.ALIGN_LEFT | wx.ALL | wx.ALIGN_CENTER_VERTICAL
 
-        # create a box for entering the trial number
-        self.vbox.Add(self.fnameLabel, 0 , wx.ALL, 5)
-        self.vbox.Add(self.textbox, 0, wx.ALL , 5)
-        self.vbox.Add(self.SubmitButton, 0, wx.ALL , 5)
+        self.DataSizer = wx.BoxSizer(wx.HORIZONTAL)
 
+        # create a box for entering the trial number
+        self.DataSizer.Add(self.fnameLabel, 0 , wx.ALL | wx.ALIGN_CENTER, 5)
+        self.DataSizer.Add(self.textbox, 1, wx.ALL | wx.ALIGN_CENTER , 5)
+
+        # create a box for entering the resolution shell
+        self.DataSizer.Add(self.resLabel, 0, wx.ALIGN_CENTER | wx.ALL, 5)
+        self.DataSizer.Add(self.restextbox, 1, wx.ALIGN_CENTER| wx.ALL, 5)
+
+        self.DataSizer.Add(self.tagsLabel, 0, wx.ALIGN_CENTER | wx.ALL, 5)
+        self.DataSizer.Add(self.tagstextbox, 1, wx.ALIGN_CENTER| wx.ALL, 5)
+
+        self.DataSizer.Add(self.SubmitButton, 0, wx.ALL | wx.EXPAND , 5)
+
+        self.vbox.Add(self.DataSizer, 0 , wx.ALL |wx.CENTER, 5)
 
         self.panel.SetSizer(self.vbox)
         self.vbox.Fit(self)
@@ -124,25 +150,26 @@ class BarsFrame(wx.Frame):
     def draw_figure(self):
         """ Redraws the figure
         """
-        # multiplicity at 2.5 Angstroms
+        res = self.restextbox.GetValue()
+        trial = self.textbox.GetValue()
         self.mult = [random.uniform(0.0,4.0) for i in xrange(0,4)]
-        self.plot_max = max(self.mult) + 1
-        # completeness at 2.5 Angstroms
-        self.data = [random.uniform(0.0,1.0)*self.plot_max for i in xrange(0,4)]
-        pos = np.arange(len(self.data))+0.5 # the bar centers on the y-axis
+        plot_max = max(self.mult) + 1
+        self.completeness = [random.uniform(0.0,1.0)*plot_max for i in xrange(0,4)]
+        pos = np.arange(len(self.completeness))+0.5 # the bar centers on the y-axis
         labels = ['Dark Isoform A', 'Dark Isoform B', '2F Isoform A', '2F Isoform B']
         # clear the axes and redraw the plot anew
         #
         self.axes.clear()
         self.axes.barh(
             pos,
-            self.data,
+            self.completeness,
             align='center')
-        self.axes.set_title('Trial: %s Completeness and Multiplicity at 2.5 Angstroms' % self.textbox.GetValue())
+        title = 'Trial: %(x)s Completeness and Multiplicity at %(y)s Angstroms'% {"x": trial, "y": res}
+        self.axes.set_title(title)
         self.axes.set_yticks(pos)
         self.axes.set_yticklabels(labels)
         self.axes.set_xlabel('Multiplicity')
-        self.axes.set_xlim(0.0,self.plot_max)
+        self.axes.set_xlim(0.0,plot_max)
         self.axes.axvline(x=self.mult[0], ymin=0.0, ymax=0.25, color='k', linestyle='dashed', linewidth=4)
         self.axes.axvline(x=self.mult[1], ymin=0.25, ymax=0.50, color='k', linestyle='dashed', linewidth=4)
         self.axes.axvline(x=self.mult[2], ymin=0.5, ymax=0.75, color='k', linestyle='dashed', linewidth=4)
@@ -150,13 +177,13 @@ class BarsFrame(wx.Frame):
         self.canvas.draw()
 
     def on_submit(self, event):
-        print 'on_submit handler'
         self.trial = self.textbox.GetValue()
-        print 'Textbox value is: %s'% self.trial
+        self.res = self.restextbox.GetValue()
+        #print 'Textbox value is: %s'% self.trial
         self.on_redraw_timer()
 
     def on_redraw_timer(self,event=None):
-        if self.trial is not None:
+        if self.trial is not None and self.res is not None:
           self.draw_figure()
 
     def on_save_plot(self, event):
