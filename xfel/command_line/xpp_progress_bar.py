@@ -49,7 +49,7 @@ class BarsFrame(wx.Frame):
         #set up the timer for testing
         self.redraw_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_redraw_timer, self.redraw_timer)
-        self.redraw_timer.Start(1000)
+        self.redraw_timer.Start(10000)
 
     def create_menu(self):
         self.menubar = wx.MenuBar()
@@ -162,6 +162,8 @@ class BarsFrame(wx.Frame):
         from xfel.xpp.progress_utils import application
         stats = application(self.params, loop = False)
         print stats
+        if len(stats) == 0:
+          return
 
         res = self.restextbox.GetValue()
         trial = self.textbox.GetValue()
