@@ -80,7 +80,7 @@ master_phil = iotbx.phil.parse("""
     output_info_file = None
       .type = path
       .help = Output pickle file with information about map and masks
-      .short_caption = Output pickle file 
+      .short_caption = Output pickle file
   }
 
   crystal_info {
@@ -193,6 +193,7 @@ class info_object:
       region_range_dict=None,
       selected_regions=[],
       ncs_related_regions=[],
+      map_files_written=[],
       bad_region_list=None,
       region_centroid_dict=None,
       original_id_from_id=None,
@@ -211,6 +212,7 @@ class ncs_group_object:
       region_range_dict=None,
       selected_regions=[],
       ncs_related_regions=[],
+      map_files_written=[],
       bad_region_list=None,
       region_centroid_dict=None,
       region_scattered_points_dict=None,
@@ -235,6 +237,7 @@ class ncs_group_object:
       bad_region_list=self.bad_region_list,
       region_centroid_dict=self.region_centroid_dict,
       original_id_from_id=self.original_id_from_id,
+      map_files_written=self.map_files_written,
      )
   def set_selected_regions(self,selected_regions):
     from copy import deepcopy
@@ -243,6 +246,10 @@ class ncs_group_object:
   def set_ncs_related_regions(self,ncs_related_regions):
     from copy import deepcopy
     self.ncs_related_regions=deepcopy(ncs_related_regions)
+
+  def set_map_files_written(self,map_files_written):
+    from copy import deepcopy
+    self.map_files_written=deepcopy(map_files_written)
 
 def write_ccp4_map(crystal_symmetry, file_name, map_data):
   iotbx.ccp4_map.write_ccp4_map(
@@ -285,6 +292,10 @@ def get_params(args,out=sys.stdout):
   print >>out,"\nSegment_and_split_map\n"
   master_params.format(python_object=params).show(out=out)
 
+  if not inputs.ccp4_map:
+    if params.input_files.ccp4_map_file:
+      from iotbx import ccp4_map
+      inputs.ccp4_map=iotbx.ccp4_map.map_reader(file_name=params.input_files.ccp4_map_file)
   if not inputs.ccp4_map:
     raise Sorry("Need ccp4 map")
 
@@ -1513,8 +1524,9 @@ def write_region_maps(params,
     regions_to_skip=None,
     out=sys.stdout):
   remainder_regions_written=[]
-  if not ncs_group_obj: 
-    return remainder_regions_written 
+  map_files_written=[]
+  if not ncs_group_obj:
+    return remainder_regions_written
 
   min_b,max_b=ncs_group_obj.co.get_blobs_boundaries_tuples()
   if remainder_ncs_group_obj:
@@ -1569,8 +1581,8 @@ def write_region_maps(params,
     file_name='map%s_%d.ccp4' %(text, id)
     write_ccp4_map(box_crystal_symmetry,file_name, box_map)
     print >>out,"to %s" %(file_name)
-
-  return remainder_regions_written
+    map_files_written.append(file_name)
+  return map_files_written,remainder_regions_written
 
 def write_output_files(params,
     crystal_symmetry=None,
@@ -1663,7 +1675,7 @@ def write_output_files(params,
       params.output_files.box_map_output_file)
 
   # Write out all the selected regions
-  remainder_regions_written=write_region_maps(params,
+  map_files_written,remainder_regions_written=write_region_maps(params,
     map_data=map_data,
     crystal_symmetry=crystal_symmetry,
     ncs_group_obj=ncs_group_obj,
@@ -1671,13 +1683,14 @@ def write_output_files(params,
     out=out)
 
   # and pick up the remainder regions not already written
-  write_region_maps(params,
+  remainder_map_files_written,dummy_remainder=write_region_maps(params,
     map_data=map_data,
     crystal_symmetry=crystal_symmetry,
     ncs_group_obj=remainder_ncs_group_obj,
     regions_to_skip=remainder_regions_written,
     out=out)
-
+  map_files_written+=remainder_map_files_written
+  return map_files_written
 
 def write_intermediate_maps(params,
     crystal_symmetry=None,
@@ -1907,13 +1920,16 @@ def run(args,
 
   # Write out final maps
   if params.output_files.write_output_maps:
-    write_output_files(params,
+    map_files_written=write_output_files(params,
       crystal_symmetry=crystal_symmetry,
       map_data=map_data,
       map_data_remaining=map_data_remaining,
       ncs_group_obj=ncs_group_obj,
       remainder_ncs_group_obj=remainder_ncs_group_obj,
       out=out)
+    ncs_group_obj.set_map_files_written(map_files_written)
+  else:
+    map_files_written=[]
 
   if params.output_files.output_info_file:
     from libtbx import easy_pickle
