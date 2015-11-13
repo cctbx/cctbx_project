@@ -27,6 +27,7 @@ def application(params, loop = True):
     cursor = dbobj.cursor()
 
     results = {}
+    print "Looking for data..."
 
     for tag in params.run_tags.split(','):
       for isoform in isoforms:
