@@ -26,6 +26,10 @@ def exercise_compilation():
     cmd = 'source "%s/examples/build_cif_parser.sh"' %ucif_dist
     ext = ""
   result = easy_run.fully_buffered(cmd)
+  if result.return_code:
+    if len(result.stderr_lines) > 0:
+      raise RuntimeError, result.show_stderr()
+    raise RuntimeError, result.show_stdout()
   assert os.path.exists("cif_parser"+ext)
   f = open_tmp_file(suffix=".cif")
   f.write(cif_string)
