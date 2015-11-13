@@ -345,6 +345,24 @@ ATOM      4  O   GLY A  34     -72.196  12.128 -25.997  1.00  0.00           O
     exception_message = str(e)
   assert exception_message == "Corrupt crystal symmetry."
 
+  # Ensure the same behavior if there is more parameters
+  exception_message2 = None
+  try:
+    utils.process_command_line_args(args=["tmp_exercise_corrupt_cryst1.pdb",
+        "bla=bla"])
+  except Exception, e:
+    exception_message2 = str(e)
+  assert exception_message2 == "Corrupt crystal symmetry."
+
+  exception_message3 = None
+  try:
+    utils.process_command_line_args(args=["tmp_exercise_corrupt_cryst1.pdb",
+        "bla"])
+  except Exception, e:
+    exception_message3 = str(e)
+  assert exception_message3 == "Corrupt crystal symmetry."
+
+
 def run():
   verbose = "--verbose" in sys.argv[1:]
   exercise_corrupt_cryst1()
