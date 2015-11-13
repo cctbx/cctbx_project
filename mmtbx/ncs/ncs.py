@@ -463,13 +463,35 @@ class ncs:
     else:
       return None
 
+  def ncs_from_pdb_input_BIOMT(self,pdb_inp=None,log=None,quiet=False):
+    p=pdb_inp.process_BIOMT_records()
+    if not p:
+      print >>log, "No BIOMT records available"
+      return
+
+    self.init_ncs_group()
+
+    for r,t in zip(p.r,p.t):
+      self._rota_matrix=r.as_list_of_lists()
+      self._trans=list(t)
+      self._center=[0.,0.,0.]
+      self.save_oper()
+
+    self.save_existing_group_info()
+    self._ncs_read=True
+
+
   def set_unit_ncs(self):  # just make a single ncs operator
-    lines="""
-REMARK 350   BIOMT1   1  1.000000  0.000000  0.000000        0.00000
-REMARK 350   BIOMT2   1  0.000000  1.000000  0.000000        0.00000
-REMARK 350   BIOMT3   1  0.000000  0.000000  1.000000        0.00000
-""".splitlines()
-    self.read_ncs(lines=lines)
+
+    self.init_ncs_group()
+
+    self._rota_matrix=[[1.,0.,0.],[0.,1.,0.],[0.,0.,1.]]
+    self._trans=[0.,0.,0.]
+    self._center=[0.,0.,0.]
+    self.save_oper()
+
+    self.save_existing_group_info()
+    self._ncs_read=True
 
   def read_ncs(self,file_name=None,lines=[],source_info="",log=None,quiet=False):
     if not log: log=sys.stdout
@@ -510,19 +532,6 @@ REMARK 350   BIOMT3   1  0.000000  0.000000  1.000000        0.00000
           self.save_oper()
         set=self.get_3_values_after_key(line)
         self._rota_matrix.append(set)
-
-      elif len(spl)==8 and key=='remark' and spl[2][:-1].lower()=='biomt':
-        # PDB REMARK 350 BIOMT1 BIOMT2 BIOMT3 record
-        if self._rota_matrix and \
-            len(self._rota_matrix)==3 or len(self._rota_matrix)==0:
-          self.save_oper()
-        set=self.get_3_values_after_key(" ".join(spl[3:]))
-        self._rota_matrix.append(set)
-        value=self.get_1_value_after_key(" ".join(spl[6:]))
-        if self._trans is None: self._trans=[]
-        self._trans.append(value)
-        if self._center is None: self._center=[]
-        self._center.append(0.)
 
       elif key=='tran_orth': # read translation
         self._trans=self.get_3_values_after_key(line)
