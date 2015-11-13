@@ -295,6 +295,10 @@ isoforms
     rmsd_target_mm=None
       .type=float
       .help=Maximum acceptable DIALS positional rmsd, in mm
+    beam_restraint=None
+      .type=floats(size=2)
+      .help=Known beam position in mm X,Y, rmsd_target_mm is reused here as a circle of confusion
+      .help=to assure that no images are accepted where the lattice is misindexed by a unit shift.
   }
 """
 libtbx_defs = indexing_defs + libtbx_misc_defs
