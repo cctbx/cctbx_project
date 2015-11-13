@@ -10,7 +10,7 @@ import time
 def phil_validation(params):
   return True
 
-def application(params):
+def application(params, loop = True):
   from cxi_xdr_xes.cftbx.cspad_ana import db as cxidb
   dbobj = cxidb.dbconnect(params.db.host, params.db.name, params.db.user, params.db.password)
   cursor = dbobj.cursor()
@@ -19,37 +19,43 @@ def application(params):
   isoforms = PM.isoforms
   del dbobj
 
+  if params.run_tags is None:
+    params.run_tags = ""
+
   while 1:
     dbobj = cxidb.dbconnect(params.db.host, params.db.name, params.db.user, params.db.password)
     cursor = dbobj.cursor()
 
-    for isoform in isoforms:
-      M = PM.get_HKL(cursor,isoform=isoform)
-      cell = isoforms[isoform]['cell']
-      miller_set = mset(anomalous_flag = False, crystal_symmetry=symmetry(unit_cell=cell, space_group_symbol=isoforms[isoform]['lookup_symbol']), indices=M)
-      miller_set.show_comprehensive_summary()
+    for tag in params.run_tags.split(','):
+      for isoform in isoforms:
+        M = PM.get_HKL(cursor,isoform=isoform,run_tags=tag)
+        cell = isoforms[isoform]['cell']
+        miller_set = mset(anomalous_flag = False, crystal_symmetry=symmetry(unit_cell=cell, space_group_symbol=isoforms[isoform]['lookup_symbol']), indices=M)
+        miller_set.show_comprehensive_summary()
 
-      miller_set.setup_binner(d_min=params.resolution, n_bins=params.n_bins)
-      given = miller_set.binner().counts_given()
-      ccomplete = miller_set.binner().counts_complete()
-      for i_bin in miller_set.binner().range_used():
-          sel         = miller_set.binner().selection(i_bin)
-          self_sel    = miller_set.select(sel)
-          d_max,d_min = self_sel.d_max_min()
-          compl       = self_sel.completeness(d_max = d_max)
+        miller_set.setup_binner(d_min=params.resolution, n_bins=params.n_bins)
+        given = miller_set.binner().counts_given()
+        ccomplete = miller_set.binner().counts_complete()
+        for i_bin in miller_set.binner().range_used():
+            sel         = miller_set.binner().selection(i_bin)
+            self_sel    = miller_set.select(sel)
+            d_max,d_min = self_sel.d_max_min()
+            compl       = self_sel.completeness(d_max = d_max)
 
-          n_ref       = sel.count(True)
-          if ccomplete[i_bin] == 0.:
-            multiplicity = 0.
-          else:
-            multiplicity= given[i_bin]/ccomplete[i_bin]
-          d_range     = miller_set.binner().bin_legend(
-                 i_bin = i_bin, show_bin_number = False, show_counts = True)
-          fmt = "%3d: %-24s %4.2f %6d mult=%4.2f"
-          print fmt % (i_bin,d_range,compl,n_ref,
-                        multiplicity)
-      print
+            n_ref       = sel.count(True)
+            if ccomplete[i_bin] == 0.:
+              multiplicity = 0.
+            else:
+              multiplicity= given[i_bin]/ccomplete[i_bin]
+            d_range     = miller_set.binner().bin_legend(
+                   i_bin = i_bin, show_bin_number = False, show_counts = True)
+            fmt = "%3d: %-24s %4.2f %6d mult=%4.2f"
+            print fmt % (i_bin,d_range,compl,n_ref,
+                          multiplicity)
+        print
     del dbobj
+    if not loop:
+      return
     time.sleep(10)
 
 from xfel.cxi.merging_database import manager
@@ -87,11 +93,11 @@ class progress_manager(manager):
         lookup_symbol = lookup_symbol)
     self.isoforms = d
 
-  def get_HKL(self,cursor,isoform):
+  def get_HKL(self,cursor,isoform,run_tags):
     name = self.db_experiment_tag
-    if self.params.run_tags is not None:
+    if run_tags is not None:
       extrajoin = "JOIN %s_runs runs ON frames.runs_run_id = runs.run_id"%name
-      for tag in self.params.run_tags.split():
+      for tag in run_tags.split():
         tag = tag.strip()
         extrajoin += " AND runs.tags LIKE '%%%s%%'"%tag
     else:
@@ -112,6 +118,8 @@ class progress_manager(manager):
                %s"""%(
                name, name, name, self.isoforms[isoform]['isoform_id'], name, self.trial_id, extrajoin, extrawhere)
 
+    #print query
+    print "%s, isoform %s"%(run_tags, isoform)
     print "Reading db..."
     cursor.execute(query)
     print "Getting results..."
