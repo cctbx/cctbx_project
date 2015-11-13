@@ -110,7 +110,8 @@ if (__name__ == "__main__"):
 
   xbeam_set = flex.double()
   ybeam_set = flex.double()
-  sys_abs_set = flex.double()
+  sys_abs_set = []
+  sys_abs_all = flex.double()
   for pickle_filename in frame_files:
     check_sys_absent = check_sys_absent_input
     observations_pickle = pickle.load(open(pickle_filename,"rb"))
@@ -186,7 +187,7 @@ if (__name__ == "__main__"):
     a, b, c, alpha, beta, gamma = observations.unit_cell().parameters()
     txt_out_head= '{0:25} {1:5.2f} {2:6.0f} {3:6.2f} {4:6.2f} {5:6.2f} {6:8.6f} {7:6.2f} {8:6.2f} {9:6.2f} {10:6.2f} {11:6.2f} {12:6.2f} {13:6.2f} {17:6.2f} {14:6.4f} {15:6.4f} {16:6.2f} {18:8.2f} {19:15}'.format(pickle_filename_only, observations.d_min(), len(observations.data()), detector_distance_mm, xbeam, ybeam, wavelength, a, b, c, alpha, beta, gamma, cc_iso, observations_pickle["residual"], observations_pickle["ML_half_mosaicity_deg"][0], observations_pickle["mosaicity"], cc_full_iso, observations_pickle["ML_domain_size_ang"][0], observations.space_group_info())
 
-
+    sys_abs_lst = flex.double()
     if check_sys_absent:
       cn_refl = 0
       for sys_absent_flag, miller_index_ori, miller_index_asu, I, sigI in zip(observations.sys_absent_flags(), observations.indices(), observations_asu.indices(), observations.data(), observations.sigmas()):
@@ -195,7 +196,9 @@ if (__name__ == "__main__"):
             txt_out = txt_out_head + '{0:3} {1:3} {2:3} {3:3} {4:3} {5:3} {6:8.2f} {7:8.2f} {8:6.2f}'.format(miller_index_ori[0], miller_index_ori[1], miller_index_ori[2], miller_index_asu[0], miller_index_asu[1], miller_index_asu[2], I, sigI, I/sigI)
             print txt_out
             cn_refl +=1
-            sys_abs_set.append(I/sigI)
+            sys_abs_lst.append(I/sigI)
+            sys_abs_all.append(I/sigI)
+    sys_abs_set.append(sys_abs_lst)
 
   #plot beamxy
   xbeam_mean = flex.mean(xbeam_set)
@@ -207,14 +210,17 @@ if (__name__ == "__main__"):
   xbeam_filtered_set = flex.double()
   ybeam_filtered_set = flex.double()
   frame_filtered_set = []
+  sys_abs_all_filtered = flex.double()
   txt_out = ''
-  for pickle_filename, xbeam, ybeam in zip(frame_files, xbeam_set, ybeam_set):
+  for pickle_filename, xbeam, ybeam, sys_abs_lst in zip(frame_files, xbeam_set, ybeam_set, sys_abs_set):
     if abs(xbeam - xbeam_mean)/xbeam_std < beam_thres and \
       abs(ybeam - ybeam_mean)/ybeam_std < beam_thres:
         xbeam_filtered_set.append(xbeam)
         ybeam_filtered_set.append(ybeam)
         frame_filtered_set.append(pickle_filename)
         txt_out += pickle_filename + '\n'
+        sys_abs_all_filtered.extend(sys_abs_lst)
+
   print 'Xbeam mean=%8.4f std=%6.4f'%(xbeam_mean, xbeam_std)
   print 'Ybeam mean=%8.4f std=%6.4f'%(ybeam_mean, ybeam_std)
   print 'N_frames = %6.0f After filter = %6.0f'%(len(frame_files), len(frame_filtered_set))
@@ -238,14 +244,26 @@ if (__name__ == "__main__"):
 
   #plot I/sigI histogram for systematic absences
   if len(sys_abs_set) > 0:
-    x = sys_abs_set.as_numpy_array()
+    plt.subplot(211)
+    x = sys_abs_all.as_numpy_array()
     mu = np.mean(x)
     med = np.median(x)
     sigma = np.std(x)
     num_bins = 20
-    n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
-    y = mlab.normpdf(bins, mu, sigma)
-    plt.plot(bins, y, 'r--')
+    n, bins, patches = plt.hist(x, num_bins, normed=False, facecolor='green', alpha=0.5)
+    #y = mlab.normpdf(bins, mu, sigma)
+    #plt.plot(bins, y, 'r--')
     plt.ylabel('Frequencies')
-    plt.title('I/sigI distribution of systematic absences\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+    plt.title('I/sigI distribution of systematic absences (Before BeamXY filter)\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+    plt.subplot(212)
+    x = sys_abs_all_filtered.as_numpy_array()
+    mu = np.mean(x)
+    med = np.median(x)
+    sigma = np.std(x)
+    num_bins = 20
+    n, bins, patches = plt.hist(x, num_bins, normed=False, facecolor='green', alpha=0.5)
+    #y = mlab.normpdf(bins, mu, sigma)
+    #plt.plot(bins, y, 'r--')
+    plt.ylabel('Frequencies')
+    plt.title('I/sigI distribution of systematic absences (After BeamXY filter)\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
     plt.show()
