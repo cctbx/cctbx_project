@@ -1637,7 +1637,9 @@ class process_command_line_args(object):
                master_params=None,
                log=None,
                home_scope=None,
-               suppress_symmetry_related_errors=False):
+               suppress_symmetry_related_errors=False,
+               absolute_angle_tolerance=1.e-2,
+               absolute_length_tolerance=1.e-3):
     self.log = log
     self.pdb_file_names   = []
     self.cif_objects      = []
@@ -1669,14 +1671,14 @@ class process_command_line_args(object):
       arg_file = arg
       #
       is_parameter = False
+      is_file = os.path.isfile(arg)
       if(arg.count("=")==1):
         arg_file = arg[arg.index("=")+1:]
-        is_parameter = True
-      #
-      is_file = os.path.isfile(arg)
+        if(not os.path.isfile(arg_file)): is_parameter = True
+        else: is_file=True
       #
       if([is_parameter, is_file].count(True)==0):
-        raise Sorry("Neither parameter not file: %s"%arg)
+        raise Sorry("Neither parameter nor file: %s"%arg)
       #
       try:
         if(not suppress_symmetry_related_errors):
@@ -1780,8 +1782,8 @@ class process_command_line_args(object):
         for cs in crystal_symmetries:
          if(cs[1] is not None and cs[1].unit_cell() is not None):
            is_similar_cs = cs0.is_similar_symmetry(cs[1],
-             absolute_angle_tolerance=1.e-2,
-             absolute_length_tolerance=1.e-3)
+             absolute_angle_tolerance=absolute_angle_tolerance,
+             absolute_length_tolerance=absolute_length_tolerance)
            if(not is_similar_cs):
              for cs in crystal_symmetries:
                if(cs[1] is not None):
