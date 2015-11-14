@@ -1637,9 +1637,7 @@ class process_command_line_args(object):
                master_params=None,
                log=None,
                home_scope=None,
-               suppress_symmetry_related_errors=False,
-               absolute_angle_tolerance=1.e-2,
-               absolute_length_tolerance=1.e-3):
+               suppress_symmetry_related_errors=False):
     self.log = log
     self.pdb_file_names   = []
     self.cif_objects      = []
@@ -1669,23 +1667,15 @@ class process_command_line_args(object):
       #
       arg_is_processed = False
       arg_file = arg
-      #
       is_parameter = False
-      is_file = os.path.isfile(arg)
       if(arg.count("=")==1):
         arg_file = arg[arg.index("=")+1:]
-        if(not os.path.isfile(arg_file)): is_parameter = True
-        else: is_file=True
-      #
-      if([is_parameter, is_file].count(True)==0):
-        raise Sorry("Neither parameter nor file: %s"%arg)
-      #
+        is_parameter = True
       try:
         if(not suppress_symmetry_related_errors):
           if(not is_ccp4_map):
-            cs_tmp = crystal_symmetry_from_any.extract_from(arg_file)
-            if(cs_tmp is not None and is_file):
-              crystal_symmetries.append([arg_file, cs_tmp])
+            crystal_symmetries.append(
+              [arg_file, crystal_symmetry_from_any.extract_from(arg_file)])
       except KeyboardInterrupt: raise
       except RuntimeError: pass
       if(os.path.isfile(arg_file)):
@@ -1719,7 +1709,7 @@ class process_command_line_args(object):
             if(not suppress_symmetry_related_errors):
               cs = crystal.symmetry(self.ccp4_map.unit_cell().parameters(),
                 space_group_number)
-              if(cs is not None): crystal_symmetries.append([arg_file, cs])
+              crystal_symmetries.append([arg_file, cs])
           except KeyboardInterrupt: raise
           except RuntimeError: pass
           arg_is_processed = True
@@ -1755,7 +1745,7 @@ class process_command_line_args(object):
         except Sorry, e:
           if(not os.path.isfile(arg)):
             if("=" in arg): raise
-            raise Sorry("Cannot process: %s" % show_string(arg))
+            raise Sorry("File not found: %s" % show_string(arg))
           raise Sorry("Unknown file format: %s" % arg)
         else:
           command_line_params.append(params)
@@ -1782,8 +1772,8 @@ class process_command_line_args(object):
         for cs in crystal_symmetries:
          if(cs[1] is not None and cs[1].unit_cell() is not None):
            is_similar_cs = cs0.is_similar_symmetry(cs[1],
-             absolute_angle_tolerance=absolute_angle_tolerance,
-             absolute_length_tolerance=absolute_length_tolerance)
+             absolute_angle_tolerance=1.e-2,
+             absolute_length_tolerance=1.e-3)
            if(not is_similar_cs):
              for cs in crystal_symmetries:
                if(cs[1] is not None):
@@ -1800,9 +1790,8 @@ class process_command_line_args(object):
     if(self.cmd_cs is not None and self.cmd_cs.unit_cell() is not None):
       self.crystal_symmetry = self.cmd_cs
     if(self.crystal_symmetry is not None):
-      cntr_none = [self.crystal_symmetry.unit_cell(),
-                   self.crystal_symmetry.space_group()].count(None)
-      if(cntr_none>0):
+      if([self.crystal_symmetry.unit_cell(),
+          self.crystal_symmetry.space_group()].count(None)>0):
          raise Sorry("Corrupt crystal symmetry.")
 
   def get_reflection_file_server (self) :
