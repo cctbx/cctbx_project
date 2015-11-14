@@ -253,7 +253,7 @@ class runs_menu(option_chooser):
             comma = ""
           else:
             comma = ","
-          if tag not in tags:
+          if tag not in tags.split(','):
             tags += comma + tag
         else:
           if tags is None or tag not in tags:
