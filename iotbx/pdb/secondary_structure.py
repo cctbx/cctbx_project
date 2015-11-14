@@ -1197,7 +1197,9 @@ class pdb_helix (structure_base) :
     if helix_params.selection is None :
       print >> log, "Empty helix at serial %d." % (serial)
       # continue
-    sele_str = ("(%s) and (name N) and (altloc 'A' or altloc ' ')" %
+    # No evidence that this is really necessary
+    # sele_str = ("(%s) and (name N) and (altloc 'A' or altloc ' ')" %
+    sele_str = ("(%s) and (name N)" %
                 helix_params.selection)
     if helix_params.serial_number is not None:
       serial = helix_params.serial_number
@@ -1621,7 +1623,8 @@ class pdb_sheet(structure_base):
     if sheet_params.sheet_id is not None:
       sheet_id =  "%3s" % sheet_params.sheet_id[:3]
     n_strands = len(sheet_params.strand) + 1
-    sele_str = ("(%s) and (name N) and (altloc 'A' or altloc ' ')" %
+    # sele_str = ("(%s) and (name N) and (altloc 'A' or altloc ' ')" %
+    sele_str = ("(%s) and (name N)" %
                     sheet_params.first_strand)
     amide_isel = cache.iselection(sele_str)
     if amide_isel is None or len(amide_isel) == 0:
@@ -1646,7 +1649,8 @@ class pdb_sheet(structure_base):
     strands = [first_strand]
     registrations = [None]
     for i, strand_param in enumerate(sheet_params.strand):
-      sele_str = ("(%s) and (name N) and (altloc 'A' or altloc ' ')" %
+      # sele_str = ("(%s) and (name N) and (altloc 'A' or altloc ' ')" %
+      sele_str = ("(%s) and (name N)" %
                       strand_param.selection)
       amide_isel = cache.iselection(sele_str)
       if amide_isel is None or len(amide_isel) == 0:

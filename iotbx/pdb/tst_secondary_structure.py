@@ -6,6 +6,30 @@ import iotbx
 from scitbx.array_family import flex
 from mmtbx.secondary_structure import sec_str_master_phil
 
+pdb_1ywf_cutted = """\
+HELIX    1   1 ALA A   16  THR A   18  5                                   3
+CRYST1  113.068  113.068   53.292  90.00  90.00  90.00 I 41          8
+ATOM    104  N  BALA A  16      18.311  43.243  12.339  1.00 24.05           N
+ATOM    105  CA BALA A  16      18.235  41.899  12.944  1.00 25.81           C
+ATOM    106  C  BALA A  16      16.917  41.185  12.596  1.00 27.13           C
+ATOM    107  O  BALA A  16      16.831  39.985  12.735  1.00 27.81           O
+ATOM    108  CB BALA A  16      18.382  42.023  14.447  1.00 26.22           C
+ATOM    109  N  BASP A  17      15.907  41.918  12.128  1.00 27.98           N
+ATOM    110  CA BASP A  17      14.682  41.273  11.658  1.00 28.73           C
+ATOM    111  C  BASP A  17      15.004  40.350  10.493  1.00 29.07           C
+ATOM    112  O  BASP A  17      14.352  39.344  10.313  1.00 30.53           O
+ATOM    113  CB BASP A  17      13.612  42.270  11.216  1.00 29.29           C
+ATOM    114  CG BASP A  17      13.134  43.191  12.318  1.00 33.79           C
+ATOM    115  OD1BASP A  17      13.364  42.935  13.534  1.00 36.75           O
+ATOM    116  OD2BASP A  17      12.543  44.276  12.027  1.00 39.54           O
+ATOM    117  N  BTHR A  18      16.026  40.674   9.718  1.00 28.45           N
+ATOM    118  CA BTHR A  18      16.424  39.884   8.579  1.00 27.82           C
+ATOM    119  C  BTHR A  18      17.641  39.035   8.906  1.00 28.55           C
+ATOM    120  O  BTHR A  18      17.622  37.801   8.712  1.00 28.77           O
+ATOM    121  CB BTHR A  18      16.662  40.804   7.377  1.00 27.83           C
+ATOM    122  OG1BTHR A  18      15.427  41.485   7.071  1.00 26.22           O
+ATOM    123  CG2BTHR A  18      16.991  40.012   6.126  1.00 28.79           C
+"""
 
 pdb_1ywf_sample_strings = """\
 HELIX    1   1 ALA A   16  THR A   18  5                                   3
@@ -2042,11 +2066,21 @@ def get_annotation(phil_lines, pdb_lines):
       pdb_hierarchy=pdb_h)
   return annot, ss_from_file
 
+def exercise_only_b_altloc():
+  pdb_inp = iotbx.pdb.input(source_info=None,
+    lines=pdb_1ywf_cutted)
+  old_ss = pdb_inp.secondary_structure_section()
+  structure = pdb_inp.extract_secondary_structure()
+  new_ss = structure.as_pdb_str()
+  old_ss = "\n".join(old_ss)
+  assert not test_utils.show_diff(new_ss, old_ss)
+  print "OK"
 
 def exercise(args):
   exercise_single()
   tst_pdb_file()
   tst_parsing_phil()
+  exercise_only_b_altloc()
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])
