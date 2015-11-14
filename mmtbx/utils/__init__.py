@@ -1667,15 +1667,22 @@ class process_command_line_args(object):
       #
       arg_is_processed = False
       arg_file = arg
+      #
       is_parameter = False
       if(arg.count("=")==1):
         arg_file = arg[arg.index("=")+1:]
         is_parameter = True
+      #
+      is_file = os.path.isfile(arg)
+      #
+      if([is_parameter, is_file].count(True)==0):
+        raise Sorry("Neither parameter not file: %s"%arg)
+      #
       try:
         if(not suppress_symmetry_related_errors):
           if(not is_ccp4_map):
-            crystal_symmetries.append(
-              [arg_file, crystal_symmetry_from_any.extract_from(arg_file)])
+            cs_tmp = crystal_symmetry_from_any.extract_from(arg_file)
+            if(cs_tmp is not None): crystal_symmetries.append([arg_file, cs_tmp])
       except KeyboardInterrupt: raise
       except RuntimeError: pass
       if(os.path.isfile(arg_file)):
@@ -1709,7 +1716,7 @@ class process_command_line_args(object):
             if(not suppress_symmetry_related_errors):
               cs = crystal.symmetry(self.ccp4_map.unit_cell().parameters(),
                 space_group_number)
-              crystal_symmetries.append([arg_file, cs])
+              if(cs is not None): crystal_symmetries.append([arg_file, cs])
           except KeyboardInterrupt: raise
           except RuntimeError: pass
           arg_is_processed = True
@@ -1745,7 +1752,7 @@ class process_command_line_args(object):
         except Sorry, e:
           if(not os.path.isfile(arg)):
             if("=" in arg): raise
-            raise Sorry("File not found: %s" % show_string(arg))
+            raise Sorry("Cannot process: %s" % show_string(arg))
           raise Sorry("Unknown file format: %s" % arg)
         else:
           command_line_params.append(params)
