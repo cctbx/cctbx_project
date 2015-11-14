@@ -18,11 +18,9 @@ def application(params, loop = True):
   cursor = dbobj.cursor()
   PM = progress_manager(params, cursor)
   PM.setup_isoforms(cursor)
+  PM.setup_runtags(cursor)
   isoforms = PM.isoforms
   del dbobj
-
-  if params.run_tags is None:
-    params.run_tags = ""
 
   while 1:
     dbobj = cxidb.dbconnect(params.db.host, params.db.name, params.db.user, params.db.password)
@@ -110,6 +108,13 @@ class progress_manager(manager):
         lookup_symbol = lookup_symbol)
     self.isoforms = d
 
+  def setup_runtags(self, cursor):
+    if self.params.run_tags is None:
+      self.params.run_tags = ""
+
+    if len(self.params.run_tags) == 0:
+      return
+
   def get_HKL(self,cursor,isoform,run_tags):
     name = self.db_experiment_tag
     if run_tags is not None:
@@ -131,9 +136,13 @@ class progress_manager(manager):
                  AND isos.isoform_id = %d
                JOIN %s_frames frames ON obs.frames_id = frames.frame_id
                  AND frames.trials_id = %d
+               JOIN %s_trial_rungroups trg
+                 ON trg.trials_id = frames.trials_id
+                 AND trg.rungroups_id = frames.rungroups_id
+                 AND trg.active
                %s
                %s"""%(
-               name, name, name, self.isoforms[isoform]['isoform_id'], name, self.trial_id, extrajoin, extrawhere)
+               name, name, name, self.isoforms[isoform]['isoform_id'], name, self.trial_id, name, extrajoin, extrawhere)
 
     #print query
     if len(run_tags) > 0:
