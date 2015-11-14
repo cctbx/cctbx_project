@@ -7,6 +7,8 @@ from cctbx.uctbx import unit_cell
 from cctbx.crystal import symmetry
 import time
 
+from libtbx.development.timers import Timer
+
 def phil_validation(params):
   return True
 
@@ -50,6 +52,8 @@ def application(params, loop = True):
               multiplicity = 0.
             else:
               multiplicity= given[i_bin]/ccomplete[i_bin]
+              highest_multi = multiplicity
+              higest_compl = compl
             d_range     = miller_set.binner().bin_legend(
                    i_bin = i_bin, show_bin_number = False, show_counts = True)
             fmt = "%3d: %-24s %4.2f %6d mult=%4.2f"
@@ -62,7 +66,9 @@ def application(params, loop = True):
           key = isoform
         results[key] = dict(
           multiplicity = sum(given)/sum(ccomplete),
-          completeness = miller_set.completeness()
+          completeness = miller_set.completeness(),
+          multiplicity_highest = highest_multi,
+          completeness_highest = higest_compl
         )
     del dbobj
     if not loop:
@@ -134,12 +140,15 @@ class progress_manager(manager):
       print "%s, isoform %s"%(run_tags, isoform)
     else:
       print "isoform %s"%isoform
-    print "Reading db..."
+    T = Timer("Reading db...")
     cursor.execute(query)
-    print "Getting results..."
+    del T
+    T = Timer("Getting results...")
     ALL = cursor.fetchall()
-    print "Parsing results..."
+    del T
+    T = Timer("Parsing results...")
     indices = flex.miller_index([(a[0],a[1],a[2]) for a in ALL])
+    del T
 
     print "ISOFORM %s:"%(isoform),len(indices),"result"
     return indices

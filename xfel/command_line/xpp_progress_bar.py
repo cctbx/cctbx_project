@@ -4,11 +4,11 @@
 #
 '''
 This is a wxpython GUI application for reading a database and
-displaying a plot showing completeness and multiplicity by trial.
+displaying a plot showing multiplicity by trial.
 Currently it features:
 * contains the matplotlib navigation toolbar
 * allows user input of desired experiment trial number
-* finds the multiplicity and completeness of data currently in the trial
+* finds the multiplicity of data currently in the trial
 * Displays this information graphically
 * automatically updates the plot on a timer
 * The plot can be saved to a file from the file menu
@@ -35,7 +35,7 @@ import iotbx.phil
 class BarsFrame(wx.Frame):
     """ The main frame of the application
     """
-    title = 'Completeness and Multiplicity Progress'
+    title = 'Multiplicity Progress'
 
     def __init__(self, params):
         wx.Frame.__init__(self, None, -1, self.title)
@@ -159,18 +159,20 @@ class BarsFrame(wx.Frame):
     def draw_figure(self):
         """ Redraws the figure
         """
+        self.redraw_timer.Stop()
         from xfel.xpp.progress_utils import application
         stats = application(self.params, loop = False)
         print stats
+        self.redraw_timer.Start()
         if len(stats) == 0:
           return
 
         res = self.restextbox.GetValue()
         trial = self.textbox.GetValue()
+        self.mult_highest = [stats[key]['multiplicity_highest'] for key in stats.keys()]
+        plot_max = max(self.mult_highest) + 1
         self.mult = [stats[key]['multiplicity'] for key in stats.keys()]
-        plot_max = max(self.mult) + 1
-        self.completeness = [stats[key]['completeness']*plot_max for key in stats.keys()]
-        pos = np.arange(len(self.completeness))+0.5 # the bar centers on the y-axis
+        pos = np.arange(len(self.mult))+0.5 # the bar centers on the y-axis
         labels = [stats.keys()[i] for i in xrange(len(stats.keys()))]
         n = len(labels)
         # clear the axes and redraw the plot anew
@@ -178,21 +180,21 @@ class BarsFrame(wx.Frame):
         self.axes.clear()
         self.axes.barh(
             pos,
-            self.completeness,
+            self.mult,
             align='center')
-        title = 'Trial: %(x)s Completeness and Multiplicity at %(y)s Angstroms'% {"x": trial, "y": res}
+        title = 'Trial: %(x)s Overall multplicity and multiplicity at %(y)s angstroms'% {"x": trial, "y": res}
         self.axes.set_title(title)
         self.axes.set_yticks(pos)
         self.axes.set_yticklabels(labels)
         self.axes.set_xlabel('Multiplicity')
         self.axes.set_xlim(0.0,plot_max)
         for i in xrange(n):
-          self.axes.axvline(x=self.mult[i], ymin=i/n, ymax=(i+1)/n, color='k', linestyle='dashed', linewidth=4)
+          self.axes.axvline(x=self.mult_highest[i], ymin=i/n, ymax=(i+1)/n, color='k', linestyle='dashed', linewidth=4)
         self.canvas.draw()
 
     def on_submit(self, event):
-        self.params.trial = self.textbox.GetValue()
-        self.params.resolution = self.restextbox.GetValue()
+        self.params.trial = int(self.textbox.GetValue())
+        self.params.resolution = float(self.restextbox.GetValue())
         self.params.run_tags = self.tagstextbox.GetValue()
         self.on_redraw_timer()
 
