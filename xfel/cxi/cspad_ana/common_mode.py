@@ -50,6 +50,7 @@ class common_mode_correction(mod_event_info):
                override_beam_x=None,
                override_beam_y=None,
                bin_size=None,
+               crop_rayonix=False,
                **kwds):
     """The common_mode_correction class constructor stores the
     parameters passed from the pyana configuration file in instance
@@ -75,6 +76,7 @@ class common_mode_correction(mod_event_info):
     @param override_beam_x override value for x coordinate of beam center in pixels
     @param override_beam_y override value for y coordinate of beam center in pixels
     @param bin_size bin size for rayonix detector used to determin pixel size
+    @param crop_rayonix    whether to crop rayonix images such that image center is the beam center
     """
 
     # Cannot use the super().__init__() construct here, because
@@ -104,6 +106,7 @@ class common_mode_correction(mod_event_info):
     self.override_beam_x = cspad_tbx.getOptFloat(override_beam_x)
     self.override_beam_y = cspad_tbx.getOptFloat(override_beam_y)
     self.bin_size = cspad_tbx.getOptInteger(bin_size)
+    self.crop_rayonix = cspad_tbx.getOptBool(crop_rayonix)
 
     self.cspad_img = None # The current image - set by self.event()
     self.sum_common_mode = 0
@@ -515,6 +518,15 @@ class common_mode_correction(mod_event_info):
       # Store the image in the event.
       evt.put(self.cspad_img, self.address)
 
+    if self.address == 'XppEndstation-0|Rayonix-0' and self.crop_rayonix:
+      # Crop the masked data so that the beam center is in the center of the image
+      maxy, maxx = self.cspad_img.focus()
+      bx = int(round(self.override_beam_x))
+      by = int(round(self.override_beam_y))
+      minsize = min([bx,by,maxx-bx,maxy-by])
+      self.cspad_img = self.cspad_img[by-minsize:by+minsize,bx-minsize:bx+minsize]
+      self.beam_center = minsize,minsize
+      self.active_areas = flex.int([0,0,self.cspad_img.focus()[0],self.cspad_img.focus()[1]])
 
   #signature for pyana:
   #def endjob(self, env):
