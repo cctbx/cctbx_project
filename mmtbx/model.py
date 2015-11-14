@@ -717,6 +717,7 @@ class manager(object):
   def reset_adp_of_hd_sites_to_be_equal(self):
     scatterers = self.xray_structure.scatterers()
     adp_fl = self.refinement_flags.adp_individual_iso
+    adp_fl_a = self.refinement_flags.adp_individual_aniso
     if(adp_fl is not None):
       for gsel in self.hd_group_selections():
         i,j = gsel[0][0], gsel[1][0]
@@ -732,6 +733,8 @@ class manager(object):
           i_seq_max_q = i
           i_seq_min_q = j
         if([adp_fl[i_seq_max_q], adp_fl[i_seq_min_q]].count(True) > 0):
+          if([adp_fl_a[i_seq_max_q], adp_fl_a[i_seq_min_q]].count(True) > 0):
+            continue
           adp_fl[i_seq_max_q] = True
           adp_fl[i_seq_min_q] = False
           assert [adp_fl[i_seq_max_q], adp_fl[i_seq_min_q]].count(True) > 0
