@@ -1682,7 +1682,8 @@ class process_command_line_args(object):
         if(not suppress_symmetry_related_errors):
           if(not is_ccp4_map):
             cs_tmp = crystal_symmetry_from_any.extract_from(arg_file)
-            if(cs_tmp is not None): crystal_symmetries.append([arg_file, cs_tmp])
+            if(cs_tmp is not None and is_file):
+              crystal_symmetries.append([arg_file, cs_tmp])
       except KeyboardInterrupt: raise
       except RuntimeError: pass
       if(os.path.isfile(arg_file)):
@@ -1797,8 +1798,9 @@ class process_command_line_args(object):
     if(self.cmd_cs is not None and self.cmd_cs.unit_cell() is not None):
       self.crystal_symmetry = self.cmd_cs
     if(self.crystal_symmetry is not None):
-      if([self.crystal_symmetry.unit_cell(),
-          self.crystal_symmetry.space_group()].count(None)>0):
+      cntr_none = [self.crystal_symmetry.unit_cell(),
+                   self.crystal_symmetry.space_group()].count(None)
+      if(cntr_none>0):
          raise Sorry("Corrupt crystal symmetry.")
 
   def get_reflection_file_server (self) :
