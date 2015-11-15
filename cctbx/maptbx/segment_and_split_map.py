@@ -35,7 +35,7 @@ master_phil = iotbx.phil.parse("""
       .type = path
       .help = Directory where output maps are to be written \
                 applied.
-      .short_caption = Output map directory 
+      .short_caption = Output map directory
 
     shifted_map_file = shifted_map.ccp4
       .type = path
