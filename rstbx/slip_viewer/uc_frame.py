@@ -9,6 +9,7 @@ class UCSettingsFrame(wx.MiniFrame):
   def __init__ (self, *args, **kwds) :
     super(UCSettingsFrame, self).__init__(*args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)
+    self.phil_params = args[0].params
     panel = UCSettingsPanel(self)
     self.SetSizer(szr)
     szr.Add(panel, 1, wx.EXPAND)
@@ -23,6 +24,7 @@ class UCSettingsPanel(wx.Panel):
   def __init__ (self, *args, **kwds) :
     super(UCSettingsPanel, self).__init__(*args, **kwds)
 
+    self.phil_params = args[0].phil_params
     from wx.lib.agw.floatspin import EVT_FLOATSPIN, FloatSpin
 
     # Needed to draw and delete the rings.  XXX Applies to
@@ -36,8 +38,15 @@ class UCSettingsPanel(wx.Panel):
     self.digits = 2
 
     # Unit cell controls.
-    self._cell = [78,78,37,90,90,90]
-    self._spacegroup = "P43212"
+    if self.phil_params.calibrate_unitcell.unitcell is not None:
+      self._cell = list(self.phil_params.calibrate_unitcell.unitcell.parameters())
+    else:
+      self._cell = [78,78,37,90,90,90]
+
+    if self.phil_params.calibrate_unitcell.spacegroup is not None:
+      self._spacegroup = self.phil_params.calibrate_unitcell.spacegroup
+    else:
+      self._spacegroup = "P43212"
     self._cell_control_names = ["uc_a_ctrl","uc_b_ctrl","uc_c_ctrl",
                                 "uc_alpha_ctrl","uc_beta_ctrl","uc_gamma_ctrl"]
 
@@ -132,7 +141,10 @@ class UCSettingsPanel(wx.Panel):
 
 
     # d_min control
-    self.d_min = 10
+    if self.phil_params.calibrate_unitcell.d_min is not None:
+      self.d_min = self.phil_params.calibrate_unitcell.d_min
+    else:
+      self.d_min = 10
     box = wx.BoxSizer(wx.HORIZONTAL)
     self.d_min_ctrl = FloatSpin(
           self, digits=self.digits, name="d_min", value=self.d_min)

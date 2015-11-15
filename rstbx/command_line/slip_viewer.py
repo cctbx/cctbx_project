@@ -12,9 +12,10 @@ import sys
 import wx
 
 from rstbx.slip_viewer.frame import XrayFrame
-from libtbx import phil
+from iotbx import phil
 from spotfinder import phil_str
 from spotfinder.command_line.signal_strength import additional_spotfinder_phil_defs
+from rstbx.phil.phil_preferences import iotbx_defs_viewer_detail
 
 master_str="""
 anti_aliasing = False
@@ -38,7 +39,7 @@ show_effective_tiling = False
 show_untrusted = False
   .type = bool
   .help = "Always highlyight untrusted pixels, regardless of detector type"
-"""
+""" + iotbx_defs_viewer_detail
 
 def run(argv=None):
   if (argv is None):
