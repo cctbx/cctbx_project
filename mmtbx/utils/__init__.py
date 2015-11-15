@@ -2633,7 +2633,7 @@ class shift_origin(object):
           sites_frac_shifted = fm*sites_cart_shifted
           t = maptbx.map_sum_at_sites_frac(map_data=self.map_data,
             sites_frac=sites_frac_shifted)
-          print inc1, inc2, t
+          #print inc1, inc2, t
           if(t>t_best):
             t_best=t
             sites_cart_best=sites_cart_shifted.deep_copy()
@@ -2669,9 +2669,18 @@ class extract_box_around_model_and_map(object):
                selection_string=None,
                selection=None,
                map_data_2=None,
-               assert_pdb_hierarchy_and_xray_structure_equal=True):
+               assert_pdb_hierarchy_and_xray_structure_equal=True,
+               density_select=None,
+               threshold=None,
+               crystal_symmetry=None):
     adopt_init_args(self, locals())
-    cs = xray_structure.crystal_symmetry()
+    assert (xray_structure or crystal_symmetry)
+    if crystal_symmetry:
+      cs=crystal_symmetry
+    else:
+      cs = xray_structure.crystal_symmetry()
+    self.initial_shift = None
+    self.total_shift = None
     if((pdb_hierarchy is not None) and
         assert_pdb_hierarchy_and_xray_structure_equal) :
       xrs = pdb_hierarchy.extract_xray_structure(crystal_symmetry=cs)
@@ -2687,20 +2696,32 @@ class extract_box_around_model_and_map(object):
     shift_needed = not \
       (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
        map_data.is_0_based())
-    if(shift_needed and pdb_hierarchy is not None):
+    if(shift_needed):
       if(not cs.space_group().type().number() in [0,1]):
         raise RuntimeError("Not implemented")
-      # Map origin is not at (0,0,0) and it is P1: shifting map and model.
-      osh = shift_origin(
-        map_data         = map_data,
-        pdb_hierarchy    = pdb_hierarchy,
-        crystal_symmetry = cs)
-      osh.show_shifted()
-      pdb_hierarchy = osh.pdb_hierarchy
-      map_data      = osh.map_data
-      xray_structure = pdb_hierarchy.extract_xray_structure(crystal_symmetry=cs)
+      # Map origin is not at (0,0,0) and it is P1
+      if (pdb_hierarchy is None):  # no pdb_hierarchy
+        # shifting map only
+        N_ = map_data.all()
+        O_ =map_data.origin()
+        a,b,c = cs.unit_cell().parameters()[:3]
+        sx,sy,sz = a/N_[0]*O_[0], b/N_[1]*O_[1], c/N_[2]*O_[2]
+        self.initial_shift = sx,sy,sz
+        map_data=map_data.shift_origin()
+      else:
+        # shifting map and model
+        osh = shift_origin(
+          map_data         = map_data,
+          pdb_hierarchy    = pdb_hierarchy,
+          crystal_symmetry = cs)
+        osh.show_shifted()
+        pdb_hierarchy = osh.pdb_hierarchy
+        map_data      = osh.map_data
+        xray_structure = pdb_hierarchy.extract_xray_structure(crystal_symmetry=cs)
+        self.initial_shift=osh.shift
       self.map_data = map_data
     #
+
     assert [selection_string, selection_radius].count(None) in [0,2]
     if(selection_string is not None):
       assert pdb_hierarchy is not None
@@ -2713,11 +2734,18 @@ class extract_box_around_model_and_map(object):
       self.selection_within = selection
       assert [selection_string, selection_radius].count(None)==2
     # extract box
-    xray_structure_selected = xray_structure.select(
-      selection=self.selection_within)
-    frac_max = xray_structure_selected.sites_frac().max()
-    frac_min = xray_structure_selected.sites_frac().min()
-    cushion = flex.double(xray_structure.unit_cell().fractionalize(
+    if self.selection_within is not None:
+      xray_structure_selected = xray_structure.select(
+        selection=self.selection_within)
+    else:
+      xray_structure_selected = xray_structure
+    if density_select:
+      frac_min,frac_max=self.select_box(threshold,xrs=xray_structure_selected)
+    else:
+      self.pdb_outside_box_msg=""
+      frac_min = xray_structure_selected.sites_frac().min()
+      frac_max = xray_structure_selected.sites_frac().max()
+    cushion = flex.double(cs.unit_cell().fractionalize(
       (box_cushion,)*3))
     frac_max = list(flex.double(frac_max)+cushion)
     frac_min = list(flex.double(frac_min)-cushion)
@@ -2725,10 +2753,20 @@ class extract_box_around_model_and_map(object):
     na = map_data.all()
     gridding_first=[ifloor(f*n) for f,n in zip(frac_min,na)]
     gridding_last=[iceil(f*n) for f,n in zip(frac_max,na)]
-    a=map_data.all()
+    all=map_data.all()
     self.map_box = maptbx.copy(map_data, gridding_first, gridding_last)
     o = self.map_box.origin()
-    fs = (-o[0]/a[0],-o[1]/a[1],-o[2]/a[2])
+    fs = (-o[0]/all[0],-o[1]/all[1],-o[2]/all[2])
+    a,b,c = cs.unit_cell().parameters()[:3]
+    self.secondary_shift = (a*o[0]/all[0],b*o[1]/all[1],c*o[2]/all[2])
+    ps=self.initial_shift
+    ss=self.secondary_shift
+    if ps is None:
+      self.total_shift=ss
+    elif ss is None:
+      self.total_shift=ps
+    else:
+      self.total_shift = ( ps[0]+ss[0], ps[1]+ss[1], ps[2]+ss[2])
     self.map_box.reshape(flex.grid(self.map_box.all()))
     self.map_box_2 = None
     if (map_data_2 is not None) :
@@ -2736,28 +2774,127 @@ class extract_box_around_model_and_map(object):
       self.map_box_2 = maptbx.copy(map_data_2, gridding_first, gridding_last)
       self.map_box_2.reshape(flex.grid(self.map_box_2.all()))
     # shrink unit cell to match the box
-    p = xray_structure.unit_cell().parameters()
+    p = cs.unit_cell().parameters()
     abc = []
     for i in range(3):
       abc.append( p[i] * self.map_box.all()[i]/na[i] )
     new_unit_cell_box = uctbx.unit_cell(
       parameters=(abc[0],abc[1],abc[2],p[3],p[4],p[5]))
-    # new xray_structure in the box, and corresponding PDB hierarchy
-    sites_frac_new = xray_structure_selected.sites_frac()+fs
-    xray_structure_box=xray_structure_selected.replace_sites_frac(sites_frac_new)
     cs = crystal.symmetry(unit_cell=new_unit_cell_box, space_group="P1")
-    sites_cart = xray_structure_box.sites_cart()
-    sites_frac = new_unit_cell_box.fractionalize(sites_cart)
+    self.box_crystal_symmetry=cs
     sp = crystal.special_position_settings(cs)
-    xray_structure_box = xray_structure_box.replace_sites_frac(sites_frac)
-    self.xray_structure_box = xray.structure(sp,xray_structure_box.scatterers())
+    if (xray_structure is not None):
+      # new xray_structure in the box, and corresponding PDB hierarchy
+      sites_frac_new = xray_structure_selected.sites_frac()+fs
+      xray_structure_box=xray_structure_selected.replace_sites_frac(sites_frac_new)
+      sites_cart = xray_structure_box.sites_cart()
+      sites_frac = new_unit_cell_box.fractionalize(sites_cart)
+      xray_structure_box = xray_structure_box.replace_sites_frac(sites_frac)
+      self.xray_structure_box = xray.structure(
+         sp,xray_structure_box.scatterers())
+      # shift to map (boxed) sites back
+      sc1 = xray_structure_selected.sites_cart()
+      sc2 = self.xray_structure_box.sites_cart()
+      self.shift_to_map_boxed_sites_back = (sc1-sc2)[0]
+    else:
+      self.shift_to_map_boxed_sites_back = None
+      self.xray_structure_box=xray.structure(
+         sp,None)
+
     if(self.pdb_hierarchy is not None):
       self.pdb_hierarchy_box = self.pdb_hierarchy.select(self.selection_within)
       self.pdb_hierarchy_box.adopt_xray_structure(self.xray_structure_box)
-    # shift to map (boxed) sites back
-    sc1 = xray_structure_selected.sites_cart()
-    sc2 = self.xray_structure_box.sites_cart()
-    self.shift_to_map_boxed_sites_back = (sc1-sc2)[0]
+
+  def select_box(self,threshold,xrs=None):
+    # Select box where data are positive (> threshold*max)
+    map_data=self.map_data
+    origin=list(map_data.origin())
+    assert origin==[0,0,0]
+    all=list(map_data.all())
+
+    # Get max value vs x,y,z
+    value_list=flex.double()
+    for i in xrange(0,all[0]):
+      new_map_data = maptbx.copy(map_data,
+         tuple((i,0,0)),
+         tuple((i,all[1],all[2]))
+       )
+      value_list.append(new_map_data.as_1d().as_double().min_max_mean().max)
+    x_min,x_max=self.get_range(value_list,threshold=threshold)
+
+    value_list=flex.double()
+    for j in xrange(0,all[1]):
+      new_map_data = maptbx.copy(map_data,
+         tuple((0,j,0)),
+         tuple((all[0],j,all[2]))
+       )
+      value_list.append(new_map_data.as_1d().as_double().min_max_mean().max)
+    y_min,y_max=self.get_range(value_list,threshold=threshold)
+
+    value_list=flex.double()
+    for k in xrange(0,all[2]):
+      new_map_data = maptbx.copy(map_data,
+         tuple((0,0,k)),
+         tuple((all[0],all[1],k))
+       )
+      value_list.append(new_map_data.as_1d().as_double().min_max_mean().max)
+    z_min,z_max=self.get_range(value_list,threshold=threshold)
+
+    frac_min=(x_min,y_min,z_min)
+    frac_max=(x_max,y_max,z_max)
+
+    self.pdb_outside_box_msg=""
+    if xrs is not None: # warn if outside box chosen
+      c_min= xrs.sites_frac().min()
+      c_max= xrs.sites_frac().max()
+      if c_min[0]<frac_min[0] or \
+         c_min[1]<frac_min[1] or \
+         c_min[2]<frac_min[2] or \
+         c_max[0]>frac_max[0] or \
+         c_max[1]>frac_max[1] or \
+         c_max[2]>frac_max[2]:
+       cs=xrs.crystal_symmetry()
+       self.pdb_outside_box_msg="""
+NOTE: Output model is not contained in box.
+Range for model: %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f
+Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
+     cs.unit_cell().orthogonalize(c_min)+
+     cs.unit_cell().orthogonalize(c_max)+
+     cs.unit_cell().orthogonalize(frac_min)+
+     cs.unit_cell().orthogonalize(frac_max))
+
+    return frac_min,frac_max
+
+  def get_range(self, value_list, threshold=None, ignore_ends=True,
+     keep_near_ends_frac=0.02):
+    # ignore ends allows ignoring the first and last points which may be off
+    if threshold is None: threshold=0
+    n_tot=value_list.size()
+    assert n_tot>0
+    min_value=value_list.min_max_mean().min
+    max_value=value_list.min_max_mean().max
+    cutoff=min_value+(max_value-min_value)*threshold
+    if ignore_ends:
+      i_start=1
+    else:
+      i_start=0
+    i_low=None
+    for i in xrange(i_start,n_tot):
+      if value_list[i]>cutoff:
+        i_low=i
+        break
+    i_high=None
+    for i in xrange(i_start,n_tot):
+      ii=n_tot-i
+      if value_list[ii]>cutoff:
+        i_high=ii
+        break
+    if i_low is None or i_high is None:
+      raise Sorry("Cannot auto-select region...please supply PDB file")
+    if i_low/n_tot<keep_near_ends_frac: i_low=0
+    if (n_tot-1-i_high)/n_tot<keep_near_ends_frac: i_high=n_tot-1
+    return i_low/n_tot,i_high/n_tot
+
 
   def write_pdb_file(self, file_name):
     assert self.pdb_hierarchy is not None
