@@ -181,15 +181,19 @@ class BarsFrame(wx.Frame):
         self.axes.barh(
             pos,
             self.mult,
-            align='center')
+            align='center',
+            color='lightskyblue')
+        self.axes.barh(
+            pos,
+            self.mult_highest,
+            align='center',
+            color='blue')
         title = 'Trial: %(x)s Overall multplicity and multiplicity at %(y)s angstroms'% {"x": trial, "y": res}
         self.axes.set_title(title)
         self.axes.set_yticks(pos)
         self.axes.set_yticklabels(labels)
         self.axes.set_xlabel('Multiplicity')
         self.axes.set_xlim(0.0,plot_max)
-        for i in xrange(n):
-          self.axes.axvline(x=self.mult_highest[i], ymin=i/n, ymax=(i+1)/n, color='k', linestyle='dashed', linewidth=4)
         self.canvas.draw()
 
     def on_submit(self, event):
