@@ -233,8 +233,7 @@ indexing {
 }
 """
 
-iotbx_defs_viewer = """
-viewer {
+iotbx_defs_viewer_detail = """
   powder_arcs{
     show = False
       .type=bool
@@ -268,8 +267,14 @@ viewer {
       .type=str
       .help = "Specify spacegroup for the unit cell"
   }
-}
 """
+
+iotbx_defs_viewer = """
+viewer {
+  %s
+}
+"""%iotbx_defs_viewer_detail
+
 iotbx_defs_target = """
 target_cell=None
   .type=unit_cell
