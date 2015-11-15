@@ -170,8 +170,8 @@ class BarsFrame(wx.Frame):
         res = self.restextbox.GetValue()
         trial = self.textbox.GetValue()
         self.mult_highest = [stats[key]['multiplicity_highest'] for key in stats.keys()]
-        plot_max = max(self.mult_highest) + 1
         self.mult = [stats[key]['multiplicity'] for key in stats.keys()]
+        plot_max = max(max(self.mult), max(self.mult_highest)) + 1
         pos = np.arange(len(self.mult))+0.5 # the bar centers on the y-axis
         labels = [stats.keys()[i] for i in xrange(len(stats.keys()))]
         n = len(labels)

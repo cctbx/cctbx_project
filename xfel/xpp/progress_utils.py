@@ -49,9 +49,8 @@ def application(params, loop = True):
             if ccomplete[i_bin] == 0.:
               multiplicity = 0.
             else:
-              multiplicity= given[i_bin]/ccomplete[i_bin]
-              highest_multi = multiplicity
-              higest_compl = compl
+              res_highest   = d_min
+              multiplicity  = given[i_bin]/ccomplete[i_bin]
             d_range     = miller_set.binner().bin_legend(
                    i_bin = i_bin, show_bin_number = False, show_counts = True)
             fmt = "%3d: %-24s %4.2f %6d mult=%4.2f"
@@ -65,8 +64,9 @@ def application(params, loop = True):
         results[key] = dict(
           multiplicity = sum(given)/sum(ccomplete),
           completeness = miller_set.completeness(),
-          multiplicity_highest = highest_multi,
-          completeness_highest = higest_compl
+          multiplicity_highest = multiplicity,
+          completeness_highest = compl,
+          resolution_highest = res_highest
         )
     del dbobj
     if not loop:
