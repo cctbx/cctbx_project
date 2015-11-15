@@ -31,6 +31,12 @@ master_phil = iotbx.phil.parse("""
               shifted_map_file (after any origin shifts are applied)
       .short_caption = Output NCS info file
 
+    output_map_directory =  None
+      .type = path
+      .help = Directory where output maps are to be written \
+                applied.
+      .short_caption = Output map directory 
+
     shifted_map_file = shifted_map.ccp4
       .type = path
       .help = Input map file shifted to new origin. Only written if a shift is\
@@ -381,40 +387,46 @@ def score_threshold(threshold=None,
      map_data=None,
      residues_per_region=50.,
      min_volume=None,
-     weight_score_grid_points=0.25,
-     weight_score_ratio=0.75,
-     weight_near_one=0.5,
+     weight_score_grid_points=1.,
+     weight_score_ratio=1.0,
+     weight_near_one=0.1,
      minimum_ratio_of_ncs_copy_to_first=0.5,
      out=sys.stdout):
    # target is about 1 region per 20-100 residues, about
    #   target_fraction*protein_fraction*grid_points in the top
-   #    n_residues/50 regions
+   #    n_residues/100 regions
    grid_points=map_data.size()
-   expected_regions=n_residues/residues_per_region
+   expected_regions=max(1,int(0.5+n_residues/residues_per_region))
+
    target_in_all_regions=float(grid_points)*target_fraction*(1-solvent_fraction)
    target_in_top_regions=target_in_all_regions/expected_regions
 
-   nn=len(sorted_by_volume)
+   nn=len(sorted_by_volume)-1 # first one is total
    if nn < ncs_copies:
      return 0. # not enough
 
-   # there should be about ncs_copies copies of each size region
 
-   v1,i1=sorted_by_volume[min(1,nn-1)]
+   v1,i1=sorted_by_volume[1]
    if v1 < min_volume:
      return 0.0
 
-   v2,i2=sorted_by_volume[max(1,min(ncs_copies-1,nn-1))]
-   score_ratio=v2/v1  # want it to be about 1
-   if score_ratio < minimum_ratio_of_ncs_copy_to_first:
-     return 0.0 # not allowed
+   # there should be about ncs_copies copies of each size region if ncs_copies>1
+   if ncs_copies>1:
+     v2,i2=sorted_by_volume[max(1,min(ncs_copies,nn))]
+     score_ratio=v2/v1  # want it to be about 1
+     if score_ratio < minimum_ratio_of_ncs_copy_to_first:
+       return 0.0 # not allowed
+   else:
+     score_ratio=1.0 # for ncs_copies=1
+
+   nn2=min(nn,max(1,(len(sorted_by_volume[1:expected_regions])+1)//2))
+   median_number,iavg=sorted_by_volume[nn2]
 
    # number in each region should be about target_in_top_regions
-   average_number=0.5*(v1+v2)
-   if average_number > target_in_top_regions:
-     score_grid_points=target_in_top_regions/average_number
+   if median_number > target_in_top_regions:
+     score_grid_points=target_in_top_regions/max(1.,median_number)
    else:
-     score_grid_points=average_number/target_in_top_regions
+     score_grid_points=median_number/target_in_top_regions
 
    if threshold>1.:
      score_near_one=1./threshold
@@ -620,8 +632,8 @@ def get_solvent_fraction(params,crystal_symmetry=None,
     "Cell volume: %.1f  NCS copies: %d   Volume of unique chains: %.1f" %(
      map_volume,ncs_copies,volume_of_chains)
   print >>out,\
-    "Volume of all chains: %.1f  Solvent fraction: %6.9f "%(
-       volume_of_molecules,solvent_fraction)
+    "Total residues: %d  Volume of all chains: %.1f  Solvent fraction: %.3f "%(
+       n_residues,volume_of_molecules,solvent_fraction)
   return solvent_fraction,n_residues
 
 def mask_for_region(id=None,conn_obj=None):
@@ -1526,11 +1538,12 @@ def write_region_maps(params,
   remainder_regions_written=[]
   map_files_written=[]
   if not ncs_group_obj:
-    return remainder_regions_written
+    return map_files_written,remainder_regions_written
 
   min_b,max_b=ncs_group_obj.co.get_blobs_boundaries_tuples()
   if remainder_ncs_group_obj:
     r_min_b,r_max_b=remainder_ncs_group_obj.co.get_blobs_boundaries_tuples()
+
 
   for id in ncs_group_obj.selected_regions:
     if regions_to_skip and id in regions_to_skip:
@@ -1578,7 +1591,11 @@ def write_region_maps(params,
       text=""
     else:
       text="_r"
-    file_name='map%s_%d.ccp4' %(text, id)
+    base_file='map%s_%d.ccp4' %(text, id)
+    if params.output_files.output_map_directory:
+      file_name=os.path.join(params.output_files.output_map_directory,base_file)
+    else:
+      file_name=base_file
     write_ccp4_map(box_crystal_symmetry,file_name, box_map)
     print >>out,"to %s" %(file_name)
     map_files_written.append(file_name)
@@ -1742,6 +1759,7 @@ def iterate_search(params,
   from copy import deepcopy
   new_params=deepcopy(params)
   new_params.segmentation.iterate_with_remainder=False
+  new_params.segmentation.density_threshold=None
   new_params.output_files.write_output_maps=False
   new_params.output_files.output_info_file=None
   if params.output_files.write_intermediate_maps:
