@@ -559,6 +559,13 @@ class ncs:
     self.save_existing_group_info()
     if read_something or len(self._ncs_groups) > 0:
       self._ncs_read=True
+    else: # Try as biomtr
+      import iotbx.pdb
+      if 1: #try:
+        pdb_inp = iotbx.pdb.input(lines=lines,source_info=file_name)
+        self.ncs_from_pdb_input_BIOMT(pdb_inp=pdb_inp,log=log,quiet=quiet)
+      if 0:#except Exception,e:
+        pass
 
   def save_existing_group_info(self):
 
