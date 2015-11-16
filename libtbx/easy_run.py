@@ -247,7 +247,7 @@ def exercise(args=None):
       assert [s.strip() for s in result.stdout_lines] == ["3"]
   #
   if (os.name == "nt"):
-    result = fb(command="dir /?").raise_if_errors()
+    result = fb(command="dir").raise_if_errors()
     if (verbose): print result.stdout_lines
     assert len(result.stdout_lines) > 0
     windir = os.environ.get("windir", None)
