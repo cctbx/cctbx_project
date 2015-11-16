@@ -117,31 +117,32 @@ class progress_manager(manager):
     if len(self.params.run_tags) > 0:
       return
 
-    # The following select statement uses a subquery to make a table from rungroups and trials_rungroups such that
-    # all the active rungroups for a trial are selected, then it uses that table to get the distinct tag lists from
-    # the runs in those run groups
-
+    all_tags = []
     name = self.db_experiment_tag
-    query = """SELECT DISTINCT(runs.tags)
-               FROM %s_runs runs,
-                 ( SELECT rg.startrun, rg.endrun
-                   FROM %s_rungroups rg
-                   JOIN %s_trial_rungroups trg
-                     ON rg.rungroup_id = trg.rungroups_id
-                     AND trg.trials_id = %d
-                     AND trg.active) as q
-               WHERE runs.run_id >= q.startrun AND
-                 runs.run_id <= q.endrun
-               """%(name, name, name, self.trial_id)
-    print query
+    query = """ SELECT rg.startrun, rg.endrun
+                  FROM %s_rungroups rg
+                  JOIN %s_trial_rungroups trg
+                    ON rg.rungroup_id = trg.rungroups_id
+                    AND trg.trials_id = %d
+                    AND trg.active
+               """%(name, name, self.trial_id)
     cursor.execute(query)
 
-    all_tags = []
-    for row in cursor.fetchall():
-      tags = row[0]
-      if tags is None: continue
-      if len(tags) == 0: continue
-      all_tags.extend(tags.split(','))
+    for entry in cursor.fetchall():
+      startrun, endrun = entry
+      query = """SELECT DISTINCT(runs.tags)
+                   FROM %s_runs runs
+                   WHERE runs.run_id >= %d
+              """%(name, startrun)
+      if endrun is not None:
+        query += " AND runs.run_id <= %d"%endrun
+      cursor.execute(query)
+
+      for row in cursor.fetchall():
+        tags = row[0]
+        if tags is None: continue
+        if len(tags) == 0: continue
+        all_tags.extend(tags.split(','))
     self.params.run_tags = ','.join(set(all_tags))
 
     print "Found these run tags:", self.params.run_tags
