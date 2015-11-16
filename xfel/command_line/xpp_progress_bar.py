@@ -156,18 +156,37 @@ class BarsFrame(wx.Frame):
     def create_status_bar(self):
         self.statusbar = self.CreateStatusBar()
 
+    def get_run_tags(self):
+        from cxi_xdr_xes.cftbx.cspad_ana import db as cxidb
+        dbobj = cxidb.dbconnect(self.params.db.host, self.params.db.name, self.params.db.user, self.params.db.password)
+        cursor = dbobj.cursor()
+
+        Query = '''SELECT DISTINCT xppj9515_runs.tags  FROM xppj9515_trials,xppj9515_trial_rungroups,xppj9515_rungroups,xppj9515_runs WHERE xppj9515_trials.trial_id=xppj9515_trial_rungroups.trials_id AND xppj9515_trial_rungroups.rungroups_id=xppj9515_rungroups.rungroup_id AND xppj9515_runs.run >= xppj9515_rungroups.startrun AND xppj9515_runs.run <= xppj9515_rungroups.endrun AND xppj9515_trials.trial=%d'''%(self.params.trial)
+        Query = Query.replace('xppj9515',self.params.experiment_tag)
+        cursor.execute(Query)
+        all_tags = []
+        for row in cursor.fetchall():
+          tags = row[0]
+          if tags is None: continue
+          if len(tags) == 0: continue
+          all_tags.extend(tags.split(','))
+        run_tags = ','.join(set(all_tags))
+        #self.params.run_tags = run_tags
+
+
     def draw_figure(self):
         """ Redraws the figure
         """
         self.redraw_timer.Stop()
+        self.get_run_tags()
         from xfel.xpp.progress_utils import application
         stats = application(self.params, loop = False)
         print stats
         self.redraw_timer.Start()
         if len(stats) == 0:
           return
-
-        res = self.restextbox.GetValue()
+	
+	res = self.restextbox.GetValue()
         trial = self.textbox.GetValue()
         self.mult_highest = [stats[key]['multiplicity_highest'] for key in stats.keys()]
         self.mult = [stats[key]['multiplicity'] for key in stats.keys()]
@@ -188,7 +207,7 @@ class BarsFrame(wx.Frame):
             self.mult_highest,
             align='center',
             color='blue')
-        title = 'Trial: %(x)s Overall multplicity and multiplicity at %(y)s angstroms'% {"x": trial, "y": res}
+        title = 'Trial: %(x)s Overall multplicity (light blue) and multiplicity at %(y)s angstroms (blue)'% {"x": trial, "y": res}
         self.axes.set_title(title)
         self.axes.set_yticks(pos)
         self.axes.set_yticklabels(labels)
