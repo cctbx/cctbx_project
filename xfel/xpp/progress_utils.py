@@ -61,8 +61,10 @@ def application(params, loop = True):
           key = "%s %s"%(tag, isoform)
         else:
           key = isoform
+        given_used = flex.int(given).select(flex.size_t(miller_set.binner().range_used()))
+        ccomplete_used = flex.int(ccomplete).select(flex.size_t(miller_set.binner().range_used()))
         results[key] = dict(
-          multiplicity = sum(given)/sum(ccomplete),
+          multiplicity = flex.sum(given_used)/flex.sum(ccomplete_used),
           completeness = miller_set.completeness(),
           multiplicity_highest = multiplicity,
           completeness_highest = compl,
