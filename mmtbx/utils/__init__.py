@@ -1773,7 +1773,7 @@ class process_command_line_args(object):
          if(cs[1] is not None and cs[1].unit_cell() is not None):
            is_similar_cs = cs0.is_similar_symmetry(cs[1],
              absolute_angle_tolerance=1.e-2,
-             absolute_length_tolerance=1.e-3)
+             absolute_length_tolerance=1.e-2)
            if(not is_similar_cs):
              for cs in crystal_symmetries:
                if(cs[1] is not None):
