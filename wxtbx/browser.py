@@ -47,6 +47,23 @@ class browser_frame (wx.Frame) :
       self.SetInitialSize((1024,640))
     #self.Bind(wx.EVT_WINDOW_CREATE, self.OnShow)
 
+    # create keyboard shortcuts for zoom functions in toolbar
+    zoomInId = wx.NewId()
+    zoomOutId = wx.NewId()
+    zoomDefaultId = wx.NewId()
+    self.Bind(wx.EVT_MENU, self.OnZoomIn, id=zoomInId)
+    self.Bind(wx.EVT_MENU, self.OnZoomOut, id=zoomOutId)
+    self.Bind(wx.EVT_MENU, self.OnZoomDefault, id=zoomDefaultId)
+    self.accelerator_table = wx.AcceleratorTable(
+      [ (wx.ACCEL_CTRL, ord('='), zoomInId),
+        (wx.ACCEL_CTRL, wx.WXK_NUMPAD_ADD, zoomInId),
+        (wx.ACCEL_CTRL, ord('-'), zoomOutId),
+        (wx.ACCEL_CTRL, wx.WXK_NUMPAD_SUBTRACT, zoomOutId),
+        (wx.ACCEL_CTRL, ord('0'), zoomDefaultId),
+        (wx.ACCEL_CTRL, wx.WXK_NUMPAD0, zoomDefaultId) ])
+    self.SetAcceleratorTable(self.accelerator_table)
+    self.zoom_counter = 0
+
   def SetHomepage (self, url) :
     self.home_url = url
 
@@ -68,6 +85,25 @@ class browser_frame (wx.Frame) :
         shortHelp=label, kind=wx.ITEM_NORMAL)
       self.Bind(wx.EVT_MENU, getattr(self, fname), tool_button)
     self.toolbar.AddSeparator()
+
+    # buttons for increasing/decreasing text size
+    commands = [
+      ('actions', 'zoom-in-2', 'Zoom In', 'Increase text size', 'OnZoomIn'),
+      ('actions', 'zoom-out-2', 'Zoom Out', 'Decrease text size', 'OnZoomOut'),
+      ('actions','zoom-fit-best','Default','Default text size','OnZoomDefault')
+    ]
+    for (icon_class, icon_name, label, shortHelp, fname) in commands:
+      bmp = wxtbx.bitmaps.fetch_icon_bitmap(icon_class, icon_name, 128)
+      tool_button = self.toolbar.AddLabelTool(
+        -1, label, bmp, shortHelp=shortHelp, kind=wx.ITEM_NORMAL)
+      self.Bind(wx.EVT_MENU, getattr(self, fname), tool_button)
+
+    # bmp = wxtbx.bitmaps.fetch_icon_bitmap('actions', 'zoom-out-2', 128)
+    # zoom_out_button = self.toolbar.AddLabelTool(
+    #   -1, 'Zoom Out', bmp, shortHelp='Decrease text size', kind=wx.ITEM_NORMAL)
+    # self.Bind(wx.EVT_MENU, self.OnZoomOut, zoom_out_button)
+    self.toolbar.AddSeparator()
+
     if (not self._is_default_viewer) :
       phenix_bmp = wxtbx.bitmaps.fetch_custom_icon_bitmap("phenix.refine")
       phenix_btn = self.toolbar.AddLabelTool(-1, "PHENIX homepage", phenix_bmp,
@@ -105,6 +141,23 @@ class browser_frame (wx.Frame) :
 
   def OnStop (self, event) :
     self.viewer.Stop()
+
+  def OnZoomIn(self, event=None):
+    if (self.viewer.CanIncreaseTextSize()):
+      self.viewer.IncreaseTextSize()
+      self.zoom_counter += 1
+
+  def OnZoomOut(self, event=None):
+    if (self.viewer.CanDecreaseTextSize()):
+      self.viewer.DecreaseTextSize()
+      self.zoom_counter -= 1
+
+  def OnZoomDefault(self, event):
+    while (self.zoom_counter != 0):
+      if (self.zoom_counter > 0):
+        self.OnZoomOut()
+      else:
+        self.OnZoomIn()
 
   def Open (self, url) :
     self.LoadURL(url)
