@@ -796,8 +796,8 @@ def run(prefix, target, pdb_strs, eps=1.e-3):
     of = open("%s.pdb"%prefix, "w")
     print >> of, pdb_str
     of.close()
-    cmd1="phenix.angle %s.pdb 'chain X' 'chain Y' "%(prefix)
-    cmd2="phenix.angle %s.pdb 'chain Y' 'chain X' "%(prefix)
+    cmd1='phenix.angle %s.pdb "chain X" "chain Y" '%(prefix)
+    cmd2='phenix.angle %s.pdb "chain Y" "chain X" '%(prefix)
     for cmd in [cmd1,cmd2]:
       r = float(easy_run.go(cmd).stdout_lines[2].split()[2])
       assert approx_equal(r, target, eps)
