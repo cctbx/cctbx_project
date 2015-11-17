@@ -2698,7 +2698,7 @@ class extract_box_around_model_and_map(object):
        map_data.is_0_based())
     if(shift_needed):
       if(not cs.space_group().type().number() in [0,1]):
-        raise RuntimeError("Not implemented")
+        raise RuntimeError("Shift for space group other than 0 or 1 not implemented")
       # Map origin is not at (0,0,0) and it is P1
       if (pdb_hierarchy is None):  # no pdb_hierarchy
         # shifting map only
@@ -2739,16 +2739,23 @@ class extract_box_around_model_and_map(object):
         selection=self.selection_within)
     else:
       xray_structure_selected = xray_structure
+
+    cushion = flex.double(cs.unit_cell().fractionalize(
+      (box_cushion,)*3))
     if density_select:
-      frac_min,frac_max=self.select_box(threshold,xrs=xray_structure_selected)
+      frac_min,frac_max=self.select_box(
+        threshold,xrs=xray_structure_selected)
+      frac_max = list(flex.double(frac_max)+cushion)
+      frac_min = list(flex.double(frac_min)-cushion)
+      for kk in xrange(3):
+        frac_min[kk]=max(0.,frac_min[kk])
+        frac_max[kk]=min(1.-1./map_data.all()[kk], frac_max[kk])
     else:
       self.pdb_outside_box_msg=""
       frac_min = xray_structure_selected.sites_frac().min()
       frac_max = xray_structure_selected.sites_frac().max()
-    cushion = flex.double(cs.unit_cell().fractionalize(
-      (box_cushion,)*3))
-    frac_max = list(flex.double(frac_max)+cushion)
-    frac_min = list(flex.double(frac_min)-cushion)
+      frac_max = list(flex.double(frac_max)+cushion)
+      frac_min = list(flex.double(frac_min)-cushion)
     self.frac_min = frac_min
     na = map_data.all()
     gridding_first=[ifloor(f*n) for f,n in zip(frac_min,na)]
