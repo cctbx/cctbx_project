@@ -394,13 +394,13 @@ def score_threshold(threshold=None,
      out=sys.stdout):
 
    # We want about 1 region per 50-100 residues for the biggest region.
-   # One possibility is to try to maximize the median size of the N top 
+   # One possibility is to try to maximize the median size of the N top
    # regions, where N=number of expected regions= n_residues/residues_per_region
 
    # Also note we have an idea how big a region should be (how many
    # grid points) if we make an assumption about the fractional volume that
    # should be inside a region compared to the total volume of protein/nucleic
-   # acid in the region...this gives us target_in_top_regions points. 
+   # acid in the region...this gives us target_in_top_regions points.
    # So using this, make the median size as close to target_in_top_regions as
    # we can.
 
