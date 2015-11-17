@@ -19,7 +19,11 @@ f = open("arrows.p",'w')
 for dirname in sys.argv[1:]:
   for filename in os.listdir(dirname):
     print "Reading", os.path.join(dirname, filename)
-    data = easy_pickle.load(os.path.join(dirname, filename))
+    try:
+      data = easy_pickle.load(os.path.join(dirname, filename))
+    except Exception, e:
+      print "Couldn't read", filename
+      continue
     ori = data['current_orientation'][0]
     A = sqr(ori.reciprocal_matrix())
     abasis = A * col((1,0,0))
