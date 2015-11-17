@@ -254,14 +254,17 @@ class ThreeProteinResidues(list):
         key.append(phi_or_psi)
       else:
         key.append(round_to_ten(phi_or_psi))
-    #print self, self.get_ramalyse_key(verbose=1)
+    #print self, self.get_ramalyze_key(verbose=1)
     return tuple(key)
 
-  def get_ramalyse_key(self,
+  def get_ramalyze_key(self,
                        verbose=False,
                        ):
-    res_types = ["general", "glycine", "cis-proline", "trans-proline",
-                 "pre-proline", "isoleucine or valine"]
+
+    # defined in mmtbx.validation.ramalyze:
+    # res_types = ["general", "glycine", "cis-proline", "trans-proline",
+    #              "pre-proline", "isoleucine or valine"]
+    #
     if self[1].resname == "PRO":
       if self.cis_group(): return "cis-proline"
       else: return "trans-proline"
@@ -403,5 +406,5 @@ if __name__=="__main__":
                                         ):
     print threes
     print "  cis? %s" % threes.cis_group()
-    print "  rama %s" % threes.get_ramalyse_key()
+    print "  rama %s" % threes.get_ramalyze_key()
   print "OK"
