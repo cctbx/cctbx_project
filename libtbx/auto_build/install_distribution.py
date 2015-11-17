@@ -120,6 +120,10 @@ class installer(object):
     "Windows32bit",
     "Windows64bit",
   ]
+  # Boolean flags to control installer behaviour in a fine-grained manner
+  flags = [
+    'create_versioned_dispatchers'
+  ]
 
   def __init__ (self, args=None, out=sys.stdout) :
     self.args = args or []
@@ -461,15 +465,16 @@ class installer(object):
     args = [
       os.path.join(self.base_dir, 'bin', 'python'),
       os.path.join(self.modules_dir, 'cctbx_project', 'libtbx', 'configure.py'),
-      "--current_working_directory", self.build_dir,
-      "--command_version_suffix", self.version,
-    ] + self.configure_modules
+      "--current_working_directory", self.build_dir
+    ]
     if 'win32'==sys.platform:
       args = [
         os.path.join(self.base_dir, 'bin', 'python', 'python.exe'),
         os.path.join(self.modules_dir, 'cctbx_project', 'libtbx', 'configure.py'),
-        "--command_version_suffix", self.version,
-      ] + self.configure_modules
+      ]
+    if 'create_versioned_dispatchers' in self.flags:
+      args += [ "--command_version_suffix", self.version ]
+    args += self.configure_modules
 
     if self.options.verbose:
       print self.build_dir
