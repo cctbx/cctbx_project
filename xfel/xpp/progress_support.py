@@ -45,7 +45,7 @@ class progress_manager(manager):
   def connection(self):
     pass
 
-  def scale_frame_detail(self,timestamp,cursor):#, result, file_name, db_mgr, out):
+  def scale_frame_detail(self,timestamp,cursor,do_inserts=True):#, result, file_name, db_mgr, out):
     result = self.params
 
     # If the pickled integration file does not contain a wavelength,
@@ -151,9 +151,12 @@ class progress_manager(manager):
       **kwargs)
     print sql
     print parameters
-    cursor.execute(sql, parameters[0])
-
-    frame_id = cursor.lastrowid
+    results = {'frame':[sql, parameters, kwargs]}
+    if do_inserts:
+      cursor.execute(sql, parameters[0])
+      frame_id = cursor.lastrowid
+    else:
+      frame_id = None
 
     xypred = result["mapped_predictions"][0]
     indices = flex.size_t([pair[1] for pair in matches.pairs()])
@@ -199,22 +202,28 @@ class progress_manager(manager):
               'frames_trials_id': [trial_id] * len(matches.pairs()),
               'panel': [0] * len(matches.pairs())
     }
+    if do_inserts:
+      # For MySQLdb executemany() is six times slower than a single big
+      # execute() unless the "values" keyword is given in lowercase
+      # (http://sourceforge.net/p/mysql-python/bugs/305).
+      #
+      # See also merging_database_sqlite3._insert()
+      query = ("INSERT INTO `%s_observations` (" % self.db_experiment_tag) \
+              + ", ".join(kwargs.keys()) + ") values (" \
+              + ", ".join(["%s"] * len(kwargs.keys())) + ")"
+      try:
+        parameters = zip(*kwargs.values())
+      except TypeError:
+        parameters = [kwargs.values()]
+      cursor.executemany(query, parameters)
+      #print "done execute many"
+      #print cursor._last_executed
+      results['observations'] = [query, parameters, kwargs]
+    else:
+      # since frame_id isn't valid in the query here, don't include a sql statement or parameters array in the results
+      results['observations'] = [None, None, kwargs]
 
-    # For MySQLdb executemany() is six times slower than a single big
-    # execute() unless the "values" keyword is given in lowercase
-    # (http://sourceforge.net/p/mysql-python/bugs/305).
-    #
-    # See also merging_database_sqlite3._insert()
-    query = ("INSERT INTO `%s_observations` (" % self.db_experiment_tag) \
-            + ", ".join(kwargs.keys()) + ") values (" \
-            + ", ".join(["%s"] * len(kwargs.keys())) + ")"
-    try:
-      parameters = zip(*kwargs.values())
-    except TypeError:
-      parameters = [kwargs.values()]
-    cursor.executemany(query, parameters)
-    #print "done execute many"
-    #print cursor._last_executed
+    return results
 
 '''START HERE
 scons ; cxi.xtc_process input.cfg=xppi6115/LI61-PSII-db.cfg input.experiment=xppi6115 input.run_num=137
