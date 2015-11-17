@@ -72,7 +72,7 @@ the output images in the folder cxi49812.
                         dest="address",
                         help="detector address name (eg CxiDs2.0:Cspad.0)")
                 .option(None, "--detz_offset", "-d",
-                        type="int",
+                        type="float",
                         default=None,
                         dest="detz_offset",
                         help="offset (in mm) from sample interaction region to back of CSPAD detector rail (CXI), or detector distance (XPP)")
