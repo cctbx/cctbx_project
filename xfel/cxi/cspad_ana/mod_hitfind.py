@@ -116,6 +116,10 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       self.buffered_sql_entries = []
       assert self.m_sql_buffer_size >= 1
 
+    if self.m_progress_logging:
+      self.buffered_progress_entries = []
+      assert self.m_sql_buffer_size >= 1
+
     if self.m_db_tags is None:
       self.m_db_tags = ""
 
@@ -306,9 +310,12 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
           from xfel.xpp.progress_support import progress_manager
           PM = progress_manager(info.last_saved_best,self.m_db_experiment_tag, self.m_trial_id, self.m_rungroup_id, evt.run())
           indices, miller_id = PM.get_HKL(cursor)
-          PM.scale_frame_detail(self.timestamp,cursor)
-          dbobj.commit()
-          dbobj.close()
+          if self.m_sql_buffer_size > 1:
+            self.queue_progress_entry(PM.scale_frame_detail(self.timestamp,cursor,do_inserts=False))
+          else:
+            PM.scale_frame_detail(self.timestamp,cursor,do_inserts=True)
+            dbobj.commit()
+            dbobj.close()
 
       if self.m_db_logging:
         sec,ms = cspad_tbx.evt_time(evt)
@@ -433,6 +440,9 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     if self.m_db_logging:
       self.commit_entries()
 
+    if self.m_progress_logging:
+      self.commit_progress_entries()
+
   def queue_entry(self, entry):
     self.buffered_sql_entries.append(entry)
     if len(self.buffered_sql_entries) >= self.m_sql_buffer_size:
@@ -454,3 +464,39 @@ cell_a,cell_b,cell_c,cell_alpha,cell_beta,cell_gamma,resolution,tags) VALUES "%(
       dbobj.commit()
       dbobj.close()
       self.buffered_sql_entries = []
+
+  def queue_progress_entry(self, entry):
+    self.buffered_progress_entries.append(entry)
+    if len(self.buffered_progress_entries) >= self.m_sql_buffer_size:
+      self.commit_progress_entries()
+
+  def commit_progress_entries(self):
+    if len(self.buffered_progress_entries) > 0:
+      print "Commiting %d entries to the db"%len(self.buffered_progress_entries)
+
+      from cxi_xdr_xes.cftbx.cspad_ana import db
+      dbobj = db.dbconnect(self.m_db_host, self.m_db_name, self.m_db_user, self.m_db_password)
+      cursor = dbobj.cursor()
+
+      for entry in self.buffered_progress_entries:
+        frame_sql, parameters, kwargs = entry['frame']
+
+        cursor.execute(frame_sql, parameters[0])
+        frame_id = cursor.lastrowid
+
+        _, _, kwargs = entry['observations']
+
+        kwargs['frames_id'] = [frame_id] * len(kwargs['frames_id'])
+
+        query = ("INSERT INTO `%s_observations` (" % self.m_db_experiment_tag) \
+                + ", ".join(kwargs.keys()) + ") values (" \
+                + ", ".join(["%s"] * len(kwargs.keys())) + ")"
+        try:
+          parameters = zip(*kwargs.values())
+        except TypeError:
+          parameters = [kwargs.values()]
+        cursor.executemany(query, parameters)
+
+      dbobj.commit()
+      dbobj.close()
+      self.buffered_progress_entries = []
