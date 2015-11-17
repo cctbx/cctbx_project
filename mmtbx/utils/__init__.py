@@ -2777,7 +2777,7 @@ class extract_box_around_model_and_map(object):
     self.map_box.reshape(flex.grid(self.map_box.all()))
     self.map_box_2 = None
     if (map_data_2 is not None) :
-      assert (len(map_data_2) == len(map_data)) and (map_data_2.all() == a)
+      assert (len(map_data_2) == len(map_data)) and (map_data_2.all() == na)
       self.map_box_2 = maptbx.copy(map_data_2, gridding_first, gridding_last)
       self.map_box_2.reshape(flex.grid(self.map_box_2.all()))
     # shrink unit cell to match the box
