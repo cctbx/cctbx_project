@@ -281,6 +281,10 @@ def final_link_direction_check(atom1, atom2, rna_dna_angle_cutoff=35):
   a1p = atom1.parent().get_atom('C4')
   a2p = atom1.parent().get_atom('C5')
   a3p = atom1.parent().get_atom('C6')
+  if a1p is None or a2p is None or a3p is None:
+    # this is something strange, but a user managed to get here and sent
+    # bug report
+    return False
   v1p = flex.vec3_double([(a1p.xyz)]) - flex.vec3_double([(a2p.xyz)])
   v2p = flex.vec3_double([(a2p.xyz)]) - flex.vec3_double([(a3p.xyz)])
   vn = v1p.cross(v2p)
