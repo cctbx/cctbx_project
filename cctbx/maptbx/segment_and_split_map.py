@@ -392,9 +392,18 @@ def score_threshold(threshold=None,
      weight_near_one=0.1,
      minimum_ratio_of_ncs_copy_to_first=0.5,
      out=sys.stdout):
-   # target is about 1 region per 20-100 residues, about
-   #   target_fraction*protein_fraction*grid_points in the top
-   #    n_residues/100 regions
+
+   # We want about 1 region per 50-100 residues for the biggest region.
+   # One possibility is to try to maximize the median size of the N top 
+   # regions, where N=number of expected regions= n_residues/residues_per_region
+
+   # Also note we have an idea how big a region should be (how many
+   # grid points) if we make an assumption about the fractional volume that
+   # should be inside a region compared to the total volume of protein/nucleic
+   # acid in the region...this gives us target_in_top_regions points. 
+   # So using this, make the median size as close to target_in_top_regions as
+   # we can.
+
    grid_points=map_data.size()
    expected_regions=max(1,int(0.5+n_residues/residues_per_region))
 
@@ -439,6 +448,11 @@ def score_threshold(threshold=None,
      weight_near_one*score_near_one
        ) /
      (weight_score_ratio+weight_score_grid_points+weight_near_one))
+
+   print >>out,\
+    "Threshold %5.2f Target:%5d N:%4d Biggest:%5d  Median: %5d  Score: %5.3f" %(
+       threshold,target_in_top_regions,expected_regions,
+       v1,median_number,overall_score)
    return overall_score
 
 
@@ -473,9 +487,6 @@ def choose_threshold(params,map_data=None,
        map_data=map_data,
        out=out)
     v,i=sorted_by_volume[1]
-    print >>out,\
-       "Threshold %5.2f  Grid points in biggest region :%8d  Score: %5.3f" %(
-       threshold,v,score)
     if best_score is None or score > best_score:
       best_threshold=threshold
       best_score=score

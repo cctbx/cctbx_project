@@ -120,14 +120,6 @@ Parameters:"""%h
       string = params.selection)
     print >> log, "  selects %d atoms from total %d atoms."%(selection.count(True),
       selection.size())
-    #
-    if params.density_select:
-      print_statistics.make_sub_header(
-      "extracting box around selected density and writing output files", out=log)
-    else:
-     print_statistics.make_sub_header(
-      "extracting box around selected atoms and writing output files", out=log)
-    #
     sites_cart_all = xray_structure.sites_cart()
     sites_cart = sites_cart_all.select(selection)
     selection = xray_structure.selection_within(
@@ -136,6 +128,14 @@ Parameters:"""%h
   else:
     xray_structure=None
     selection=None
+  #
+  if params.density_select:
+    print_statistics.make_sub_header(
+    "Extracting box around selected density and writing output files", out=log)
+  else:
+   print_statistics.make_sub_header(
+    "Extracting box around selected atoms and writing output files", out=log)
+  #
 
   #
   box = mmtbx.utils.extract_box_around_model_and_map(
@@ -217,14 +217,6 @@ Parameters:"""%h
     box.ncs_object=None
   print >> log
   return box
-
-def select_box(params,map_data=None):
-  # choose minimum and maximum points for a box based on where values are
-  #  highest in the map
-  frac_min=(0.21884765624999997, 0.4059863281250001, 0.066611328125)
-  frac_max=(0.5963134765625, 0.754462890625, 0.9808056640625)
-
-  return frac_min,frac_max
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
