@@ -126,7 +126,7 @@ class BarsFrame(wx.Frame):
         # Layout with box sizers
         #
         self.vbox = wx.BoxSizer(wx.VERTICAL)
-        self.vbox.Add(self.canvas, 1, wx.LEFT | wx.TOP | wx.GROW)
+        self.vbox.Add(self.canvas, 1, wx.LEFT | wx.TOP | wx.GROW )
         self.vbox.Add(self.toolbar, 0, wx.EXPAND)
         self.vbox.AddSpacer(10)
 
@@ -185,8 +185,8 @@ class BarsFrame(wx.Frame):
         self.redraw_timer.Start()
         if len(stats) == 0:
           return
-	
-	res = self.restextbox.GetValue()
+
+        res = self.restextbox.GetValue()
         trial = self.textbox.GetValue()
         self.mult_highest = [stats[key]['multiplicity_highest'] for key in stats.keys()]
         self.mult = [stats[key]['multiplicity'] for key in stats.keys()]
