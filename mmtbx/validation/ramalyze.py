@@ -235,7 +235,7 @@ class ramalyze (validation) :
               self.n_type[res_type] += 1
               value = r.evaluate(res_types[res_type], [phi, psi])
               ramaType = self.evaluateScore(res_type, value)
-              is_outlier = isOutlier(res_type, value)
+              is_outlier = ramaType == RAMALYZE_OUTLIER
               c_alphas = None
               # XXX only save kinemage data for outliers
               if is_outlier :
@@ -330,31 +330,36 @@ class ramalyze (validation) :
           coords.append(residue.xyz)
     return (points, coords)
 
-  def evaluateScore(self, resType, value):
+  @staticmethod
+  def evalScore(resType, value):
     if (value >= 0.02):
-      self.n_favored += 1
       return RAMALYZE_FAVORED
     if (resType == RAMA_GENERAL):
       if (value >= 0.0005):
-        self.n_allowed += 1
         return RAMALYZE_ALLOWED
       else:
-        self.n_outliers += 1
         return RAMALYZE_OUTLIER
     elif (resType == RAMA_CISPRO):
       if (value >=0.0020):
-        self.n_allowed += 1
         return RAMALYZE_ALLOWED
       else:
-        self.n_outliers += 1
         return RAMALYZE_OUTLIER
     else:
       if (value >= 0.0010):
-        self.n_allowed += 1
         return RAMALYZE_ALLOWED
       else:
-        self.n_outliers += 1
         return RAMALYZE_OUTLIER
+
+  def evaluateScore(self, resType, value):
+    ev = ramalyze.evalScore(resType, value)
+    assert ev in [RAMALYZE_FAVORED, RAMALYZE_ALLOWED, RAMALYZE_OUTLIER]
+    if ev == RAMALYZE_FAVORED:
+      self.n_favored += 1
+    elif ev == RAMALYZE_ALLOWED:
+      self.n_allowed += 1
+    elif ev == RAMALYZE_OUTLIER:
+      self.n_outliers += 1
+    return ev
 
   def get_outliers_goal(self):
     return "< 0.2%"
@@ -530,17 +535,6 @@ def isPrePro(residues, i):
     for ag in next.atom_groups():
       if (ag.resname[0:3] == "PRO"): return True
   return False
-
-def isOutlier (resType, value) :
-  if (resType == RAMA_GENERAL):
-    if (value < 0.0005): return True
-    else: return False
-  elif (resType == RAMA_CISPRO):
-    if (value < 0.0020): return True
-    else: return False
-  else:
-    if (value < 0.0010): return True
-    else: return False
 
 #-----------------------------------------------------------------------
 # GRAPHICS OUTPUT
