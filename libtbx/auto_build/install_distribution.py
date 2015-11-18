@@ -117,8 +117,8 @@ class installer(object):
     "intel-linux-2.6-x86_64",
     "mac-intel-osx",
     "mac-intel-osx-x86_64",
-    "Windows32bit",
-    "Windows64bit",
+    "intel-windows",
+    "intel-windows-x86_64",
   ]
   # Boolean flags to control installer behaviour in a fine-grained manner
   flags = [
