@@ -193,11 +193,7 @@ maps {
       .input_size = 100
       .short_caption = Output prefix
       .style = bold noauto
-    title = None
-      .type = str
-      .short_caption = Job title
-      .input_size = 400
-      .style = noauto
+    include scope libtbx.phil.interface.tracking_params
     fmodel_data_file_format = mtz
       .optional=True
       .type=choice

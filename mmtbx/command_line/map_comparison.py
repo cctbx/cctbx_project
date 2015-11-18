@@ -11,6 +11,7 @@ from scitbx.array_family import flex
 import os, sys
 
 master_phil = phil.parse("""
+include scope libtbx.phil.interface.tracking_params
 input
 {
   map_1 = None
@@ -24,7 +25,7 @@ input
     .help = A CCP4-formatted map
     .style = file_type:ccp4_map bold input_file
 }
-""")
+""", process_includes=True)
 
 master_params = master_phil
 
