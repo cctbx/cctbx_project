@@ -19,6 +19,7 @@ import os
 import wx
 import numpy as np
 import sys
+import threading
 # The recommended way to use wx with mpl is with the WXAgg
 # backend.
 #
@@ -32,6 +33,40 @@ from matplotlib.backends.backend_wxagg import \
 from xfel.command_line.xpp_progress_detail import master_phil
 import iotbx.phil
 
+myEVT_DB_STATS = wx.NewEventType()
+EVT_DB_STATS = wx.PyEventBinder(myEVT_DB_STATS, 1)
+class StatsEvent(wx.PyCommandEvent):
+  """Event to signal that a count value is ready"""
+  def __init__(self, etype, eid, value=None):
+      """Creates the event object"""
+      wx.PyCommandEvent.__init__(self, etype, eid)
+      self._value = value
+
+  def GetValue(self):
+      """Returns the value from the event.
+      @return: the value of this event
+      """
+      return self._value
+
+class DB_thread(threading.Thread):
+    def __init__(self, parent):
+       """
+         @param parent: The gui object that should recieve the value
+         @param value: value to 'calculate' to
+
+       """
+       threading.Thread.__init__(self)
+       self.parent = parent
+
+    def run(self):
+       while True:
+         from xfel.xpp.progress_utils import application
+         stats = application(self.parent.params, loop = False)
+         evt = StatsEvent(myEVT_DB_STATS, -1, stats)
+         wx.PostEvent(self.parent, evt)
+         import time
+         time.sleep(5)
+
 class BarsFrame(wx.Frame):
     """ The main frame of the application
     """
@@ -40,16 +75,17 @@ class BarsFrame(wx.Frame):
     def __init__(self, params):
         wx.Frame.__init__(self, None, -1, self.title)
         self.params = params
+        self.stats = None
 
         self.create_menu()
         self.create_status_bar()
         self.create_main_panel()
 
 
-        #set up the timer for testing
-        self.redraw_timer = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self.on_redraw_timer, self.redraw_timer)
-        self.redraw_timer.Start(10000)
+        #set up the thread
+        self.Bind(EVT_DB_STATS, self.on_stats_update)
+        self.worker = DB_thread(self)
+        self.worker.start()
 
     def create_menu(self):
         self.menubar = wx.MenuBar()
@@ -156,36 +192,15 @@ class BarsFrame(wx.Frame):
     def create_status_bar(self):
         self.statusbar = self.CreateStatusBar()
 
-    def get_run_tags(self):
-        from cxi_xdr_xes.cftbx.cspad_ana import db as cxidb
-        dbobj = cxidb.dbconnect(self.params.db.host, self.params.db.name, self.params.db.user, self.params.db.password)
-        cursor = dbobj.cursor()
-
-        Query = '''SELECT DISTINCT xppj9515_runs.tags  FROM xppj9515_trials,xppj9515_trial_rungroups,xppj9515_rungroups,xppj9515_runs WHERE xppj9515_trials.trial_id=xppj9515_trial_rungroups.trials_id AND xppj9515_trial_rungroups.rungroups_id=xppj9515_rungroups.rungroup_id AND xppj9515_runs.run >= xppj9515_rungroups.startrun AND xppj9515_runs.run <= xppj9515_rungroups.endrun AND xppj9515_trials.trial=%d'''%(self.params.trial)
-        Query = Query.replace('xppj9515',self.params.experiment_tag)
-        cursor.execute(Query)
-        all_tags = []
-        for row in cursor.fetchall():
-          tags = row[0]
-          if tags is None: continue
-          if len(tags) == 0: continue
-          all_tags.extend(tags.split(','))
-        run_tags = ','.join(set(all_tags))
-        #self.params.run_tags = run_tags
-
-
     def draw_figure(self):
         """ Redraws the figure
         """
-        self.redraw_timer.Stop()
-        self.get_run_tags()
-        from xfel.xpp.progress_utils import application
-        stats = application(self.params, loop = False)
-        print stats
-        self.redraw_timer.Start()
+        stats = self.stats
+        if stats is None: return
         if len(stats) == 0:
           return
 
+        print stats
         res = self.restextbox.GetValue()
         trial = self.textbox.GetValue()
         self.mult_highest = [stats[key]['multiplicity_highest'] for key in stats.keys()]
@@ -219,11 +234,10 @@ class BarsFrame(wx.Frame):
         self.params.trial = int(self.textbox.GetValue())
         self.params.resolution = float(self.restextbox.GetValue())
         self.params.run_tags = self.tagstextbox.GetValue()
-        self.on_redraw_timer()
 
-    def on_redraw_timer(self,event=None):
-        if self.params.trial is not None and self.params.resolution is not None:
-          self.draw_figure()
+    def on_stats_update(self,event):
+        self.stats = event.GetValue()
+        self.draw_figure()
 
     def on_save_plot(self, event):
         file_choices = "PNG (*.png)|*.png"
@@ -267,7 +281,6 @@ class BarsFrame(wx.Frame):
 
     def on_flash_status_off(self, event):
         self.statusbar.SetStatusText('')
-
 
 if __name__ == '__main__':
   args = sys.argv[1:]
