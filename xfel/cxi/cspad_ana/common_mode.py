@@ -214,8 +214,20 @@ class common_mode_correction(mod_event_info):
       self.active_areas = None
       self.beam_center = None
     elif self.address == 'XppEndstation-0|Rayonix-0':
-      self.active_areas = None
-      self.beam_center = None
+      assert self.override_beam_x is not None
+      assert self.override_beam_y is not None
+      from xfel.cxi.cspad_ana import rayonix_tbx
+      maxx, maxy = rayonix_tbx.get_rayonix_detector_dimensions(self.bin_size)
+      if self.crop_rayonix:
+        bx = int(round(self.override_beam_x))
+        by = int(round(self.override_beam_y))
+        minsize = min([bx,by,maxx-bx,maxy-by])
+        self.beam_center = minsize,minsize
+        self.active_areas = flex.int([0,0,2*minsize,2*minsize])
+        self.rayonix_crop_slice = slice(by-minsize,by+minsize), slice(bx-minsize,bx+minsize)
+      else:
+        self.beam_center = self.override_beam_x,self.override_beam_y
+        self.active_areas = flex.int([0,0,maxx,maxy])
     elif self.address == 'XppGon-0|Cspad-0':
       evt_time = cspad_tbx.evt_time(evt) # tuple of seconds, milliseconds
       timestamp = cspad_tbx.evt_timestamp(evt_time) # human readable format
@@ -320,10 +332,7 @@ class common_mode_correction(mod_event_info):
         self.beam_center = evt.get("marccd_beam_center")
         self.active_areas = evt.get("marccd_active_areas")
       elif self.address == 'XppEndstation-0|Rayonix-0':
-        assert self.override_beam_x is not None
-        assert self.override_beam_y is not None
-        self.beam_center = self.override_beam_x,self.override_beam_y
-        self.active_areas = None # set later
+        pass # bc and aa set in the beginjob function
       elif self.address == 'XppGon-0|Cspad-0':
         # Load the active areas as determined from the optical metrology
         from xfel.detector_formats import detector_format_version, reverse_timestamp
@@ -371,7 +380,6 @@ class common_mode_correction(mod_event_info):
       self.cspad_img = evt.get(Camera.FrameV1,src)
       if self.cspad_img is not None:
         self.cspad_img = self.cspad_img.data16().astype(np.float64)
-        self.active_areas = flex.int([0,0,self.cspad_img.shape[0],self.cspad_img.shape[1]])
     elif self.address=='CxiDg3-0|Opal1000-0':
       if evt.getFrameValue(self.address) is not None:
         self.cspad_img = evt.getFrameValue(self.address).data()
@@ -514,19 +522,14 @@ class common_mode_correction(mod_event_info):
       sel = (self.mask_img == -2 )|(self.mask_img == cspad_tbx.cspad_mask_value)
       self.cspad_img.set_selected(sel, cspad_tbx.cspad_mask_value)
 
+    if self.address == 'XppEndstation-0|Rayonix-0' and self.crop_rayonix:
+      # Crop the masked data so that the beam center is in the center of the image
+      self.cspad_img = self.cspad_img[self.rayonix_crop_slice[0], self.rayonix_crop_slice[1]]
+
     if self.cache_image:
       # Store the image in the event.
       evt.put(self.cspad_img, self.address)
 
-    if self.address == 'XppEndstation-0|Rayonix-0' and self.crop_rayonix:
-      # Crop the masked data so that the beam center is in the center of the image
-      maxy, maxx = self.cspad_img.focus()
-      bx = int(round(self.override_beam_x))
-      by = int(round(self.override_beam_y))
-      minsize = min([bx,by,maxx-bx,maxy-by])
-      self.cspad_img = self.cspad_img[by-minsize:by+minsize,bx-minsize:bx+minsize]
-      self.beam_center = minsize,minsize
-      self.active_areas = flex.int([0,0,self.cspad_img.focus()[0],self.cspad_img.focus()[1]])
 
   #signature for pyana:
   #def endjob(self, env):
