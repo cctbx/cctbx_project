@@ -152,7 +152,7 @@ class IntegrateCharacters:
           import wx
           from rstbx.slip_viewer.frame import XrayFrame as SlipXrayFrame
           from rstbx.command_line.slip_viewer import master_str as slip_params
-          from libtbx import phil
+          from iotbx import phil
           from spotfinder import phil_str
           from spotfinder.command_line.signal_strength import additional_spotfinder_phil_defs
 
