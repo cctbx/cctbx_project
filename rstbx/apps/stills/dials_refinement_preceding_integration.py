@@ -186,7 +186,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
         correction_vectors.append(correction_vectors_provisional[clorder[icand]])
         if cache_refinement_spots:
           self.spotfinder.images[self.frame_numbers[self.image_number]]["refinement_spots"].append(
-          spots[indexed_pairs[-1]["spot"]])
+          spots[reflections[indexed_pairs[-1]["spot"]]['spotfinder_lookup']])
         if kwargs.get("verbose_cv")==True:
             print "CV OBSCENTER %7.2f %7.2f REFINEDCENTER %7.2f %7.2f"%(
               float(self.inputpd["size1"])/2.,float(self.inputpd["size2"])/2.,
@@ -440,7 +440,8 @@ class integrate_one_frame(IntegrationMetaProcedure):
         "panel":0,
         "miller_index":item["pred"],
         "xyzobs.px.value":(spots[item["spot"]].ctr_mass_x(),spots[item["spot"]].ctr_mass_y(),0.0),
-        "xyzobs.px.variance":(0.25,0.25,0.25)
+        "xyzobs.px.variance":(0.25,0.25,0.25),
+        "spotfinder_lookup":item["spot"]
       }
       for item in self.triclinic_pairs
     ]
@@ -451,6 +452,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
     R['miller_index'] = flex.miller_index([item["miller_index"] for item in ordinary_python_list_of_indexed_observations])
     R['xyzobs.px.value'] = flex.vec3_double([item["xyzobs.px.value"] for item in ordinary_python_list_of_indexed_observations])
     R['xyzobs.px.variance'] = flex.vec3_double([item["xyzobs.px.variance"] for item in ordinary_python_list_of_indexed_observations])
+    R['spotfinder_lookup'] = flex.int([item["spotfinder_lookup"] for item in ordinary_python_list_of_indexed_observations])
 
     R['xyzobs.mm.value'] = flex.vec3_double(self.length)
     R['xyzobs.mm.variance'] = flex.vec3_double(self.length)
