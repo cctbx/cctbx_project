@@ -23,40 +23,44 @@ def slip_callback(self,frame):
         renderer = frame.pyslip.LightweightDrawPointLayer,
         show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
 
-  yellow_data = []; cyan_data = []
+  bmask_data = []; foreground_data = []
+  count_integrated = 0
   for imsk in xrange(len(self.BSmasks)):
     smask_keys = self.get_ISmask(imsk)
     bmask = self.BSmasks[imsk]
     if len(bmask.keys())==0: continue
+    count_integrated+=1
 
-    # CYAN: integration mask
+    # foreground: integration mask
     for ks in xrange(0,len(smask_keys),2):
-      cyan_data.append(
+      foreground_data.append(
         frame.pyslip.tiles.picture_fast_slow_to_map_relative(
          smask_keys[ks+1] + 0.5,smask_keys[ks] + 0.5))
 
-    # YELLOW: background mask
+    # background mask
     for key in bmask.keys():
-      yellow_data.append(
+      bmask_data.append(
         frame.pyslip.tiles.picture_fast_slow_to_map_relative(
           key[1] + 0.5 ,key[0] + 0.5))
-  if normal: self.cyan_layer = frame.pyslip.AddPointLayer(
-        cyan_data, color="cyan", name="<cyan_layer>",
+  if normal: self.foreground_layer = frame.pyslip.AddPointLayer(
+        foreground_data, color="cyan", name="<foreground_layer>",
         radius=1.5,
         renderer = frame.pyslip.LightweightDrawPointLayer,
         show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
-  if normal: self.yellow_layer = frame.pyslip.AddPointLayer(
-        yellow_data, color="blue", name="<yellow_layer>",
+  if normal:
+    print "BLUE: plotting %d integrated spots"%count_integrated
+    self.bmask_layer = frame.pyslip.AddPointLayer(
+        bmask_data, color="blue", name="<bmask_layer>",
         radius=1.5,
         renderer = frame.pyslip.LightweightDrawPointLayer,
         show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
 
-  red_data = []; green_data = []
-  print "User callback plotting %d spots"%len(self.spotfinder.images[self.frame_numbers[self.image_number]]["goodspots"])
+  goodspots_data = []; refinedspots_data = []
+  print "RED: plotting %d spotfinder goodspots"%len(self.spotfinder.images[self.frame_numbers[self.image_number]]["goodspots"])
   for spot in self.spotfinder.images[self.frame_numbers[self.image_number]]["goodspots"]:
-    # RED: spotfinder spot pixels
+    # goodspots: spotfinder spot pixels
     for pxl in spot.bodypixels:
-      red_data.append(
+      goodspots_data.append(
         frame.pyslip.tiles.picture_fast_slow_to_map_relative(
           pxl.y + 0.5, pxl.x + 0.5))
 
@@ -65,24 +69,23 @@ def slip_callback(self,frame):
     #    frame.pyslip.tiles.picture_fast_slow_to_map_relative(
     #      spot.ctr_mass_y() + 0.5, spot.ctr_mass_x() + 0.5))
 
-  print "User callback plotting %d spots"%len(self.spotfinder.images[self.frame_numbers[self.image_number]]["refinement_spots"])
+  print "YELLOW: plotting %d refinement spots"%len(self.spotfinder.images[self.frame_numbers[self.image_number]]["refinement_spots"])
   for spot in self.spotfinder.images[self.frame_numbers[self.image_number]]["refinement_spots"]:
     # RED: spotfinder spot pixels
     for pxl in spot.bodypixels:
-      green_data.append(
+      refinedspots_data.append(
         frame.pyslip.tiles.picture_fast_slow_to_map_relative(
           pxl.y + 0.5, pxl.x + 0.5))
 
-  self.red_layer = frame.pyslip.AddPointLayer(
-        red_data, color="red", name="<red_layer>",
+  self.goodspots_layer = frame.pyslip.AddPointLayer(
+        goodspots_data, color="red", name="<goodspots_layer>",
         radius=1.5,
         renderer = frame.pyslip.LightweightDrawPointLayer,
         show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
-  if normal: self.green_layer = frame.pyslip.AddPointLayer(
-        green_data, color="yellow", name="<green_layer>",
+  if normal: self.refinedspots_layer = frame.pyslip.AddPointLayer(
+        refinedspots_data, color="yellow", name="<refinedspots_layer>",
         radius=2.0,
         renderer = frame.pyslip.LightweightDrawPointLayer,
         show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
 
 setattr(slip_callback,"requires_refinement_spots",True)
-
