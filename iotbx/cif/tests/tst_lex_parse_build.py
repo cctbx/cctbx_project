@@ -892,8 +892,127 @@ Final HKLF 4 output contains 64446 reflections, Rint = 0.0650
   except CifParserError, e: pass
   else: raise Exception_expected
 
+def exercise_missing_atom_site_type_symbol():
+  m = cif.reader(input_string=cif_with_atom_site_type_symbol).model()
+  xs = cif.builders.crystal_structure_builder(m['9000000']).structure
+  sc = xs.scatterers()
+  assert len(sc) == 18
+  assert sc[0].label == 'Fe1'
+  assert sc[0].scattering_type == 'Fe'
+  assert sc[-1].label == 'O7'
+  assert sc[-1].scattering_type == 'O'
+
+cif_with_atom_site_type_symbol = """\
+#------------------------------------------------------------------------------
+#$Date: 2013-05-05 10:21:46 -0400 (Sun, 05 May 2013) $
+#$Revision: 85285 $
+#$URL: svn://www.crystallography.net/cod/cif/9/00/00/9000000.cif $
+#------------------------------------------------------------------------------
+#
+# This file is available in the Crystallography Open Database (COD),
+# http://www.crystallography.net/. The original data for this entry
+# were provided the American Mineralogist Crystal Structure Database,
+# http://rruff.geo.arizona.edu/AMS/amcsd.php
+#
+# The file may be used within the scientific community so long as
+# proper attribution is given to the journal article from which the
+# data were obtained.
+#
+data_9000000
+loop_
+_publ_author_name
+'Finger, L. W.'
+_publ_section_title
+;
+ The crystal structure and cation distribution of a grunerite
+ Locality: Wabush iron formation, Labrador, Canada
+;
+_journal_name_full
+'Mineralogical Society of America Special Paper'
+_journal_page_first              95
+_journal_page_last               100
+_journal_volume                  2
+_journal_year                    1969
+_chemical_formula_sum            'F0.5 Fe6.1 H1.5 Mg0.9 O23.5 Si8'
+_chemical_name_mineral           Grunerite
+_space_group_IT_number           12
+_symmetry_space_group_name_Hall  '-C 2y'
+_symmetry_space_group_name_H-M   'C 1 2/m 1'
+_cell_angle_alpha                90
+_cell_angle_beta                 101.892
+_cell_angle_gamma                90
+_cell_length_a                   9.5642
+_cell_length_b                   18.393
+_cell_length_c                   5.3388
+_cell_volume                     919.015
+_exptl_crystal_density_diffrn    3.521
+_[local]_cod_chemical_formula_sum_orig '(Fe6.1 Mg.9) Si8 O23.5 (F.5 H1.5)'
+_cod_database_code               9000000
+loop_
+_symmetry_equiv_pos_as_xyz
+x,y,z
+1/2+x,1/2+y,z
+x,-y,z
+1/2+x,1/2-y,z
+-x,y,-z
+1/2-x,1/2+y,-z
+-x,-y,-z
+1/2-x,1/2-y,-z
+loop_
+_atom_site_aniso_label
+_atom_site_aniso_U_11
+_atom_site_aniso_U_22
+_atom_site_aniso_U_33
+_atom_site_aniso_U_12
+_atom_site_aniso_U_13
+_atom_site_aniso_U_23
+Fe1 0.00532 0.00943 0.00498 0.00000 0.00198 0.00000
+Mg1 0.00532 0.00943 0.00498 0.00000 0.00198 0.00000
+Fe2 0.00532 0.00823 0.00622 0.00000 0.00198 0.00000
+Mg2 0.00532 0.00823 0.00622 0.00000 0.00198 0.00000
+Fe3 0.00621 0.00857 0.00622 0.00000 0.00074 0.00000
+Mg3 0.00621 0.00857 0.00622 0.00000 0.00074 0.00000
+Fe4 0.00843 0.01645 0.01106 0.00000 0.00421 0.00000
+Mg4 0.00843 0.01645 0.01106 0.00000 0.00421 0.00000
+Si1 0.00399 0.00703 0.00553 -0.00026 0.00050 0.00000
+Si2 0.00444 0.00651 0.00747 -0.00166 0.00074 0.00000
+O1 0.00577 0.01028 0.00899 0.00000 0.00173 0.00146
+O2 0.00399 0.01028 0.00940 -0.00087 0.00272 -0.00146
+OH3 0.01864 0.01200 0.01272 0.00000 0.00570 0.00000
+F3 0.01864 0.01200 0.01272 0.00000 0.00570 0.00000
+O4 0.00887 0.00686 0.00567 -0.00087 -0.00050 0.00097
+O5 0.00355 0.01371 0.01244 -0.00262 0.00223 0.00730
+O6 0.00399 0.02057 0.00760 0.00349 -0.00025 -0.00438
+O7 0.00843 0.00000 0.02019 0.00000 0.00520 0.00000
+loop_
+_atom_site_label
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+_atom_site_U_iso_or_equiv
+Fe1 0.00000 0.08781 0.50000 0.84800 0.00646
+Mg1 0.00000 0.08781 0.50000 0.15200 0.00646
+Fe2 0.00000 0.17936 0.00000 0.77300 0.00646
+Mg2 0.00000 0.17936 0.00000 0.22700 0.00646
+Fe3 0.00000 0.00000 0.00000 0.88800 0.00709
+Mg3 0.00000 0.00000 0.00000 0.11200 0.00709
+Fe4 0.00000 0.25741 0.50000 0.98500 0.01165
+Mg4 0.00000 0.25741 0.50000 0.01500 0.01165
+Si1 0.28670 0.08360 0.27070 1.00000 0.00557
+Si2 0.29930 0.16670 0.77800 1.00000 0.00621
+O1 0.11200 0.08820 0.20440 1.00000 0.00849
+O2 0.12530 0.17350 0.71420 1.00000 0.00747
+O-H3 0.11470 0.00000 0.70350 0.75000 0.01381
+F3 0.11470 0.00000 0.70350 0.25000 0.01381
+O4 0.38390 0.24160 0.76890 1.00000 0.00735
+O5 0.34830 0.12750 0.05190 1.00000 0.00975
+O6 0.34780 0.11820 0.55300 1.00000 0.01089
+O7 0.33760 0.00000 0.27000 1.00000 0.00937
+"""
 
 def exercise():
+  exercise_missing_atom_site_type_symbol()
   exercise_syntax_errors()
   exercise_detect_binary()
   exercise_crystal_symmetry()
