@@ -77,11 +77,7 @@ density_modification {
         .style = hidden
     }
   }
-  job_title = None
-    .type = str
-    .input_size = 400
-    .help = Job title in PHENIX GUI, not used on command line
-    .style = noauto
+include scope libtbx.phil.interface.tracking_params
 %s
 }
 """ %(mmtbx.utils.data_and_flags_str,
