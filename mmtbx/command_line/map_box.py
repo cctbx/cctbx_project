@@ -43,7 +43,7 @@ master_phil = libtbx.phil.parse("""
 
 """)
 
-def run(args, log=None):
+def run(args, crystal_symmetry=None, log=None):
   h = "phenix.map_box: extract box with model and map around selected atoms"
   if(log is None): log = sys.stdout
   print_statistics.make_header(h, out=log)
@@ -64,9 +64,12 @@ Parameters:"""%h
     master_phil.show(prefix="  ")
     return
   inputs = mmtbx.utils.process_command_line_args(args = args,
+    cmd_cs=crystal_symmetry,
     master_params = master_phil)
   params = inputs.params.extract()
   # PDB file
+  if params.pdb_file and not inputs.pdb_file_names:
+    inputs.pdb_file_names=[params.pdb_file]
   if(len(inputs.pdb_file_names)!=1 and not params.density_select):
     raise Sorry("PDB file is needed unless density_select is set.")
   print_statistics.make_sub_header("pdb model", out=log)
