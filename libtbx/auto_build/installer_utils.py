@@ -187,27 +187,30 @@ def get_os_version () :
 
 def machine_type () :
   if sys.platform == "win32":
+    mtype = "intel-windows"
     import platform
-    return platform.system() + platform.architecture()[0]
-
+    arch, os_type = platform.architecture()
+    if (arch == "64bit") :
+      mtype += "-x86_64"
+    return mtype
   import os
   uname = os.uname()
   if (uname[0] == "Linux") :
-    platform = "intel-linux-2.6"
+    mtype = "intel-linux-2.6"
   elif (uname[0] == "Darwin") :
-    platform = "mac-intel-osx"
+    mtype = "mac-intel-osx"
   else :
-    platform = uname[0]
+    mtype = uname[0]
   if (uname[-1] == "x86_64") :
-    platform += "-x86_64"
-  elif (platform == "mac-intel-osx") :
+    mtype += "-x86_64"
+  elif (mtype == "mac-intel-osx") :
     version_fields = uname[2].split(".")
     major_version = int(version_fields[0])
     if (major_version >= 10) :
-      platform += "-x86_64"
+      mtype += "-x86_64"
     if (major_version >= 13):
-      platform += "-10.9"
-  return platform
+      mtype += "-10.9"
+  return mtype
 
 def regenerate_relative_symlinks (dir_name, log=sys.stdout) :
   """
