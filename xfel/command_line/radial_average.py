@@ -124,7 +124,6 @@ def run (args, source_data = None) :
 
   the_tiles = img.get_tile_manager(horizons_phil).effective_tiling_as_flex_int(
         reapply_peripheral_margin=False,encode_inactive_as_zeroes=True)
-  assert len(the_tiles) == 256
 
   if params.beam_x is None:
     params.beam_x = img.beamx / img.pixel_size
@@ -134,13 +133,6 @@ def run (args, source_data = None) :
     logger.write("I think the beam center is (%s,%s)\n"%(params.beam_x, params.beam_y))
 
   bc = (int(params.beam_x),int(params.beam_y))
-
-  #hs = (0,9,11,12,16)
-  #for i in xrange(17):
-  #for i in hs:
-    #show_tiles(the_tiles, img, horizons_phil, bc, i)
-    #break
-  #return
 
   extent = int(math.ceil(max(distance((0,0),bc),
                              distance((img.size1,0),bc),
@@ -166,7 +158,7 @@ def run (args, source_data = None) :
   if params.verbose:
     logger.write("Generating average...tile:")
     logger.flush()
-  for tile in xrange(64):
+  for tile in xrange(len(the_tiles)//4):
     if params.verbose:
       logger.write(" %d"%tile)
       logger.flush()
