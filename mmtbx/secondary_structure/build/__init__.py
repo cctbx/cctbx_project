@@ -8,57 +8,50 @@ from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter as one_thre
 from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter as three_one
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx import secondary_structure
+from mmtbx.pdbtools import truncate_to_poly_gly
 
 alpha_helix_str = """
-ATOM      1  N   ALA A   1      -5.606  -2.251 -12.878  1.00  0.00           N
-ATOM      2  CA  ALA A   1      -5.850  -1.194 -13.852  1.00  0.00           C
-ATOM      3  C   ALA A   1      -5.186  -1.524 -15.184  1.00  0.00           C
-ATOM      4  O   ALA A   1      -5.744  -1.260 -16.249  1.00  0.00           O
-ATOM      5  CB  ALA A   1      -5.350   0.142 -13.324  1.00  0.00           C
-ATOM      6  N   ALA A   2      -3.991  -2.102 -15.115  1.00  0.00           N
-ATOM      7  CA  ALA A   2      -3.262  -2.499 -16.313  1.00  0.00           C
-ATOM      8  C   ALA A   2      -3.961  -3.660 -17.011  1.00  0.00           C
-ATOM      9  O   ALA A   2      -4.016  -3.716 -18.240  1.00  0.00           O
-ATOM     10  CB  ALA A   2      -1.829  -2.872 -15.965  1.00  0.00           C
+ATOM      1  N   GLY A   1      -5.606  -2.251 -12.878  1.00  0.00           N
+ATOM      2  CA  GLY A   1      -5.850  -1.194 -13.852  1.00  0.00           C
+ATOM      3  C   GLY A   1      -5.186  -1.524 -15.184  1.00  0.00           C
+ATOM      4  O   GLY A   1      -5.744  -1.260 -16.249  1.00  0.00           O
+ATOM      6  N   GLY A   2      -3.991  -2.102 -15.115  1.00  0.00           N
+ATOM      7  CA  GLY A   2      -3.262  -2.499 -16.313  1.00  0.00           C
+ATOM      8  C   GLY A   2      -3.961  -3.660 -17.011  1.00  0.00           C
+ATOM      9  O   GLY A   2      -4.016  -3.716 -18.240  1.00  0.00           O
 """
 
 a310_helix_str = """\
-ATOM      1  N   ALA A   1       8.836  -4.233 -14.408  1.00  0.00           N
-ATOM      2  CA  ALA A   1      10.232  -4.071 -14.799  1.00  0.00           C
-ATOM      3  C   ALA A   1      10.764  -5.331 -15.476  1.00  0.00           C
-ATOM      4  O   ALA A   1      11.679  -5.262 -16.297  1.00  0.00           O
-ATOM      5  CB  ALA A   1      11.088  -3.716 -13.593  1.00  0.00           C
-ATOM      6  N   ALA A   2      10.176  -6.478 -15.143  1.00  0.00           N
-ATOM      7  CA  ALA A   2      10.582  -7.741 -15.750  1.00  0.00           C
-ATOM      8  C   ALA A   2      10.381  -7.714 -17.262  1.00  0.00           C
-ATOM      9  O   ALA A   2      11.080  -8.410 -17.999  1.00  0.00           O
-ATOM     10  CB  ALA A   2       9.815  -8.901 -15.134  1.00  0.00           C
+ATOM      1  N   GLY A   1       8.836  -4.233 -14.408  1.00  0.00           N
+ATOM      2  CA  GLY A   1      10.232  -4.071 -14.799  1.00  0.00           C
+ATOM      3  C   GLY A   1      10.764  -5.331 -15.476  1.00  0.00           C
+ATOM      4  O   GLY A   1      11.679  -5.262 -16.297  1.00  0.00           O
+ATOM      6  N   GLY A   2      10.176  -6.478 -15.143  1.00  0.00           N
+ATOM      7  CA  GLY A   2      10.582  -7.741 -15.750  1.00  0.00           C
+ATOM      8  C   GLY A   2      10.381  -7.714 -17.262  1.00  0.00           C
+ATOM      9  O   GLY A   2      11.080  -8.410 -17.999  1.00  0.00           O
 """
 
 pi_helix_str = """\
-ATOM      1  N   ALA A   1      -3.365  -3.446  -8.396  1.00  0.00           N
-ATOM      2  CA  ALA A   1      -4.568  -4.249  -8.592  1.00  0.00           C
-ATOM      3  C   ALA A   1      -5.809  -3.386  -8.805  1.00  0.00           C
-ATOM      4  O   ALA A   1      -6.559  -3.591  -9.759  1.00  0.00           O
-ATOM      5  CB  ALA A   1      -4.775  -5.185  -7.411  1.00  0.00           C
-ATOM      6  N   ALA A   2      -6.025  -2.424  -7.914  1.00  0.00           N
-ATOM      7  CA  ALA A   2      -7.221  -1.588  -7.976  1.00  0.00           C
-ATOM      8  C   ALA A   2      -7.101  -0.486  -9.025  1.00  0.00           C
-ATOM      9  O   ALA A   2      -8.089  -0.114  -9.659  1.00  0.00           O
-ATOM     10  CB  ALA A   2      -7.511  -0.985  -6.610  1.00  0.00           C
+ATOM      1  N   GLY A   1      -3.365  -3.446  -8.396  1.00  0.00           N
+ATOM      2  CA  GLY A   1      -4.568  -4.249  -8.592  1.00  0.00           C
+ATOM      3  C   GLY A   1      -5.809  -3.386  -8.805  1.00  0.00           C
+ATOM      4  O   GLY A   1      -6.559  -3.591  -9.759  1.00  0.00           O
+ATOM      6  N   GLY A   2      -6.025  -2.424  -7.914  1.00  0.00           N
+ATOM      7  CA  GLY A   2      -7.221  -1.588  -7.976  1.00  0.00           C
+ATOM      8  C   GLY A   2      -7.101  -0.486  -9.025  1.00  0.00           C
+ATOM      9  O   GLY A   2      -8.089  -0.114  -9.659  1.00  0.00           O
 """
 
 beta_pdb_str = """
-ATOM      1  N   ALA A   1      27.961   0.504   1.988  1.00  0.00           N
-ATOM      2  CA  ALA A   1      29.153   0.205   2.773  1.00  0.00           C
-ATOM      3  C   ALA A   1      30.420   0.562   2.003  1.00  0.00           C
-ATOM      4  O   ALA A   1      30.753  -0.077   1.005  1.00  0.00           O
-ATOM      5  CB  ALA A   1      29.170  -1.262   3.172  1.00  0.00           C
-ATOM      6  N   ALA A   2      31.123   1.587   2.474  1.00  0.00           N
-ATOM      7  CA  ALA A   2      32.355   2.031   1.832  1.00  0.00           C
-ATOM      8  C   ALA A   2      33.552   1.851   2.758  1.00  0.00           C
-ATOM      9  O   ALA A   2      33.675   2.539   3.772  1.00  0.00           O
-ATOM     10  CB  ALA A   2      32.232   3.483   1.399  1.00  0.00           C
+ATOM      1  N   GLY A   1      27.961   0.504   1.988  1.00  0.00           N
+ATOM      2  CA  GLY A   1      29.153   0.205   2.773  1.00  0.00           C
+ATOM      3  C   GLY A   1      30.420   0.562   2.003  1.00  0.00           C
+ATOM      4  O   GLY A   1      30.753  -0.077   1.005  1.00  0.00           O
+ATOM      6  N   GLY A   2      31.123   1.587   2.474  1.00  0.00           N
+ATOM      7  CA  GLY A   2      32.355   2.031   1.832  1.00  0.00           C
+ATOM      8  C   GLY A   2      33.552   1.851   2.758  1.00  0.00           C
+ATOM      9  O   GLY A   2      33.675   2.539   3.772  1.00  0.00           O
 """
 
 helix_class_to_pdb_str = {'alpha':alpha_helix_str,
@@ -162,6 +155,10 @@ def get_r_t_matrices_from_structure(pdb_str):
 
 
 def side_chain_placement(ag_to_place, current_reference_ag, rotamer_manager):
+  """
+  Works with poly_gly truncated hierarchy.
+  Also used in fix_rama_outliers.
+  """
   resname = current_reference_ag.resname.upper()
   c = one_three.get(resname, None)
   if c is None:
@@ -171,20 +168,15 @@ def side_chain_placement(ag_to_place, current_reference_ag, rotamer_manager):
         current_reference_ag.parent().parent().id,
         current_reference_ag.parent().resid())
     raise Sorry(msg)
-  if c == 'A':
-    return
   ag_to_place.resname = three_one[c]
   if c == 'G':
-    for a in ag_to_place.atoms():
-      if a.name.strip() == "CB":
-        ag_to_place.remove_atom(atom=a)
-        break
     return
+
   # align residue from ideal_res_dict to just placed ALA (ag_to_place)
   # or from pdb_hierarchy_template
   fixed_sites = flex.vec3_double()
   moving_sites = flex.vec3_double()
-  reper_atoms = ["CB","CA", "N"]
+  reper_atoms = ["C","CA", "N"]
   for (ag, arr) in [(ag_to_place, fixed_sites),
                     (current_reference_ag, moving_sites)]:
     for a in ag.atoms():
@@ -201,11 +193,10 @@ def side_chain_placement(ag_to_place, current_reference_ag, rotamer_manager):
   ag_to_place.pre_allocate_atoms(number_of_additional_atoms=\
                                               len(ideal_correct_ag.atoms())-5)
   for a in ideal_correct_ag.atoms():
-    if a.name.strip() not in ["N","CA","C","O", "CB"]:
+    if a.name.strip() not in ["N","CA","C","O"]:
       at = a.detached_copy()
       at.uij_erase()
       ag_to_place.append_atom(atom=at)
-
 
 
 def secondary_structure_from_sequence(pdb_str,
@@ -242,8 +233,9 @@ def secondary_structure_from_sequence(pdb_str,
     real_res_list = pht.models()[0].chains()[0].residue_groups()
   pdb_hierarchy = iotbx.pdb.input(source_info=None, lines=pdb_str).\
       construct_hierarchy()
+  truncate_to_poly_gly(pdb_hierarchy)
   chain = pdb_hierarchy.models()[0].chains()[0]
-  current_ala_ag = chain.residue_groups()[0].atom_groups()[0]
+  current_gly_ag = chain.residue_groups()[0].atom_groups()[0]
   new_chain = iotbx.pdb.hierarchy.chain(id="A")
   new_chain.pre_allocate_residue_groups(number_of_additional_residue_groups=\
                                                             number_of_residues)
@@ -253,10 +245,10 @@ def secondary_structure_from_sequence(pdb_str,
     rg = iotbx.pdb.hierarchy.residue_group(icode="")
     rg.resseq = j+1
     new_chain.append_residue_group(residue_group=rg)
-    ag_to_place = current_ala_ag.detached_copy()
+    ag_to_place = current_gly_ag.detached_copy()
     rg.append_atom_group(atom_group=ag_to_place)
-    current_ala_ag.atoms().set_xyz(
-                          r.elems*current_ala_ag.atoms().extract_xyz()+t.elems)
+    current_gly_ag.atoms().set_xyz(
+                          r.elems*current_gly_ag.atoms().extract_xyz()+t.elems)
     current_reference_ag = real_res_list[j].atom_groups()[0] if pht else \
         ideal_res_dict[three_one[sequence[j]].lower()].models()[0].chains()[0].\
         residue_groups()[0].atom_groups()[0]
@@ -281,6 +273,45 @@ def get_helix(helix_class, rotamer_manager, sequence=None, pdb_hierarchy_templat
     sequence=sequence,
     rotamer_manager=rotamer_manager,
     pdb_hierarchy_template=pdb_hierarchy_template)
+
+def calculate_rmsd_smart(h1, h2):
+  assert h1.atoms().size() == h2.atoms().size()
+  rmsd = 0
+  for atom in h1.atoms():
+    for c in h2.chains():
+      if c.id != atom.parent().parent().parent().id:
+        continue
+      for rg in c.residue_groups():
+        if (rg.resseq, rg.icode) != (atom.parent().parent().resseq, atom.parent().parent().icode):
+          continue
+        for ag in rg.atom_groups():
+          if (ag.resname, ag.altloc) != (atom.parent().resname, atom.parent().altloc):
+            continue
+          a = ag.get_atom(atom.name.strip())
+          if a is not None:
+            rmsd += a.distance(atom)**2
+  return rmsd ** 0.5
+
+def set_xyz_smart(dest_h, source_h):
+  """
+  Even more careful setting of coordinates than set_xyz_carefully below
+  """
+  assert dest_h.atoms().size() >= source_h.atoms().size()
+  for atom in source_h.atoms():
+    for c in dest_h.chains():
+      if c.id != atom.parent().parent().parent().id:
+        continue
+      for rg in c.residue_groups():
+        if (rg.resseq, rg.icode) != (atom.parent().parent().resseq, atom.parent().parent().icode):
+          continue
+        for ag in rg.atom_groups():
+          if (ag.resname, ag.altloc) != (atom.parent().resname, atom.parent().altloc):
+            continue
+          # print "atom name", atom.name
+          a = ag.get_atom(atom.name.strip())
+          if a is not None:
+            # print "actually setting coordinates:", a.xyz, "->", atom.xyz
+            a.set_xyz(atom.xyz)
 
 def set_xyz_carefully(dest_h, source_h):
   assert dest_h.atoms().size() >= source_h.atoms().size()
