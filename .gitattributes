@@ -1652,6 +1652,10 @@ mmtbx/building/alternate_conformations/tst_shear_backrub_density.py svneol=nativ
 mmtbx/building/alternate_conformations/tst_shear_conformers.py svneol=native#text/x-python
 mmtbx/building/alternate_conformations/tst_sliding_window.py svneol=native#text/x-python
 mmtbx/building/extend_sidechains.py -text
+mmtbx/building/loop_closure/__init__.py -text
+mmtbx/building/loop_closure/ccd.py -text
+mmtbx/building/loop_closure/starting_conformations.py -text
+mmtbx/building/loop_closure/utils.py -text
 mmtbx/building/make_library.py -text
 mmtbx/building/merge_models.py -text
 mmtbx/building/minimize_chain.py -text
@@ -1732,6 +1736,7 @@ mmtbx/command_line/find_peaks_holes.py -text
 mmtbx/command_line/find_residue_in_pdb.py -text
 mmtbx/command_line/find_tls_groups.py -text
 mmtbx/command_line/find_torsion_angle_ncs_groups.py svneol=native#text/x-python
+mmtbx/command_line/fix_rama_outliers.py -text
 mmtbx/command_line/flip_peptides.py -text
 mmtbx/command_line/flipbase.py -text
 mmtbx/command_line/fmodel.py -text
