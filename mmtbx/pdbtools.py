@@ -654,6 +654,31 @@ def set_atomic_charge (
     scatterers[i_seq].scattering_type = elem_symbol + charge
     print >> log, "  %s : set charge to %s" % (atom.id_str(), charge)
 
+def truncate_to_poly_gly(hierarchy, start_res_num=None, end_res_num=None):
+  """
+  Remove all protein sidechain atoms beyond C-alpha (as well as all hydrogens).
+  Does not change the chemical identity of the residues.
+  Refactoring ideas: combine with truncate_to_poly_ala
+  """
+  import iotbx.pdb.amino_acid_codes
+  aa_resnames = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
+  gly_atom_names = set([" N  ", " CA ", " C  ", " O  "])
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for rg in chain.residue_groups():
+        if ((start_res_num is None or rg.resseq_as_int() >= start_res_num)
+          and (end_res_num is None or rg.resseq_as_int() <= end_res_num)):
+          def have_amino_acid():
+            for ag in rg.atom_groups():
+              if (ag.resname in aa_resnames):
+                return True
+            return False
+          if (have_amino_acid()):
+            for ag in rg.atom_groups():
+              for atom in ag.atoms():
+                if (atom.name not in gly_atom_names):
+                  ag.remove_atom(atom=atom)
+
 def truncate_to_poly_ala(hierarchy):
   """
   Remove all protein sidechain atoms beyond C-alpha (as well as all hydrogens).
