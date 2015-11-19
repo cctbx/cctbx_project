@@ -10,6 +10,7 @@ from cctbx.array_family import flex
 master_phil = iotbx.phil.parse("""
 
   input_files {
+
     ccp4_map_file = None
       .type = path
       .help = File with CCP4-style map
@@ -22,20 +23,13 @@ master_phil = iotbx.phil.parse("""
               Can also be a .ncs_spec file from phenix.
       .short_caption = NCS info file
 
+    pdb_file = None
+      .type = path
+      .help = Optional PDB file matching ccp4_map_file to be offset
+
   }
 
   output_files {
-    ncs_out_file = None
-      .type = path
-      .help = Output NCS information file. Refers to the same origin as \
-              shifted_map_file (after any origin shifts are applied)
-      .short_caption = Output NCS info file
-
-    output_map_directory =  None
-      .type = path
-      .help = Directory where output maps are to be written \
-                applied.
-      .short_caption = Output map directory
 
     shifted_map_file = shifted_map.ccp4
       .type = path
@@ -43,12 +37,32 @@ master_phil = iotbx.phil.parse("""
                 applied.
       .short_caption = Shifted map file
 
-    box_map_output_file = box_map.ccp4
+    shifted_pdb_file = shifted_pdb.pdb
+      .type = path
+      .help = Input pdb file shifted to new origin. Only written if a shift is\
+                applied.
+      .short_caption = Shifted pdb file
+
+    shifted_ncs_file = shifted_ncs.ncs_spec 
+      .type = path
+      .help = NCS information shifted to new origin.  Only written if a shift \
+         is applied.
+      .short_caption = Output NCS info file
+
+
+    output_map_directory =  None
+      .type = path
+      .help = Directory where output maps are to be written \
+                applied.
+      .short_caption = Output map directory
+
+
+    box_map_file = box_map_au.ccp4
       .type = path
       .help = Output map file with one NCS asymmetric unit, cut out box
       .short_caption = Box NCS map file
 
-    box_mask_output_file = box_mask.ccp4
+    box_mask_file = box_mask_au.ccp4
       .type = path
       .help = Output mask file with one NCS asymmetric unit, cut out box
       .short_caption = Box NCS mask file
@@ -58,12 +72,12 @@ master_phil = iotbx.phil.parse("""
       .help = Buffer (grid units) around NCS asymmetric unit in box_mask and map
       .short_caption = Box buffer size
 
-    map_output_file = map.ccp4
+    au_map_output_file = shifted_map_au.ccp4
       .type = path
       .help = Output map file with one NCS asymmetric unit included
       .short_caption = Output NCS map file
 
-    mask_output_file = mask.ccp4
+    au_mask_output_file = shifted_mask_au.ccp4
       .type = path
       .help = Output mask file with one NCS asymmetric unit marked
       .short_caption = Output NCS mask file
@@ -146,6 +160,11 @@ master_phil = iotbx.phil.parse("""
       .type = float
       .short_caption = Minimum ratio to keep
       .help = Minimum ratio of region size to maximum to keep it
+
+    max_ratio_to_target = 3
+      .type = float
+      .help = Maximum ratio of grid points in top region to target
+      .short_caption = Max ratio to target
 
     min_volume = 10
       .type = int
@@ -296,12 +315,31 @@ def get_params(args,out=sys.stdout):
     master_params = master_phil)
   params = inputs.params.extract()
   print >>out,"\nSegment_and_split_map\n"
+  print >>out,"Command used: %s\n" %(
+   " ".join(['segment_and_split_map']+args))
   master_params.format(python_object=params).show(out=out)
 
-  if not inputs.ccp4_map:
+  # PDB file
+  if params.input_files.pdb_file and not inputs.pdb_file_names:
+    inputs.pdb_file_names=[params.input_files.pdb_file]
+  if inputs.pdb_file_names:
+    params.input_files.pdb_file=inputs.pdb_file_names[0]
+  print >>out,"\nInput PDB file: %s\n" %(params.input_files.pdb_file)
+  if params.input_files.pdb_file:
+    pdb_inp = iotbx.pdb.input(file_name=params.input_files.pdb_file)
+    pdb_hierarchy = pdb_inp.construct_hierarchy()
+    pdb_atoms = pdb_hierarchy.atoms()
+    pdb_atoms.reset_i_seq()
+  else:
+    pdb_hierarchy=None
+
+  if inputs.ccp4_map:
+    params.input_files.ccp4_map_file=inputs.ccp4_map_file_name
+  else:
     if params.input_files.ccp4_map_file:
       from iotbx import ccp4_map
-      inputs.ccp4_map=iotbx.ccp4_map.map_reader(file_name=params.input_files.ccp4_map_file)
+      inputs.ccp4_map=iotbx.ccp4_map.map_reader(
+       file_name=params.input_files.ccp4_map_file)
   if not inputs.ccp4_map:
     raise Sorry("Need ccp4 map")
 
@@ -327,9 +365,6 @@ def get_params(args,out=sys.stdout):
     print >>out,"Adding (%8.2f,%8.2f,%8.2f) to all coordinates\n"%(sx,sy,sz)
 
     map_data=map_data.shift_origin()
-    if params.output_files.shifted_map_file:
-      write_ccp4_map(crystal_symmetry,params.output_files.shifted_map_file,
-      map_data)
   else:
     origin_shift=None
 
@@ -346,15 +381,15 @@ def get_params(args,out=sys.stdout):
     print >>out,"Expand size (grid units): %d (about %4.1f A) " %(
       nn,nn*abc[0]/N_[0])
 
-  return params,crystal_symmetry,map_data,origin_shift
+  return params,crystal_symmetry,map_data,origin_shift,pdb_hierarchy
 
-def get_ncs(params,origin_shift=None,out=sys.stdout):
+def get_ncs(params,out=sys.stdout):
   file_name=params.input_files.ncs_file
   if not file_name: # No ncs supplied...use just 1 ncs copy..
     from mmtbx.ncs.ncs import ncs
     ncs_object=ncs()
     ncs_object.set_unit_ncs()
-    ncs_object.display_all(log=out)
+    #ncs_object.display_all(log=out)
   elif not os.path.isfile(file_name):
     raise Sorry("The ncs file %s is missing" %(file_name))
   else: # get the ncs
@@ -365,18 +400,11 @@ def get_ncs(params,origin_shift=None,out=sys.stdout):
       ncs_object.ncs_from_pdb_input_BIOMT(pdb_inp=pdb_inp,log=out)
     except Exception,e: # try as regular ncs object
       ncs_object.read_ncs(file_name=file_name,log=out)
-    ncs_object.display_all(log=out)
+    #ncs_object.display_all(log=out)
+    print >>out,"\nTotal of %d NCS operators read\n" %(
+      ncs_object.max_operators())
   if not ncs_object or ncs_object.max_operators()<1:
     raise Sorry("Need ncs information from an ncs_info file")
-  if origin_shift is not None:
-    print >>out,"Shifting origin for NCS"
-    from scitbx.math import  matrix
-    ncs_object=ncs_object.coordinate_offset(
-       coordinate_offset=matrix.col(origin_shift))
-    ncs_object.display_all(log=out)
-  if params.output_files.ncs_out_file:
-    ncs_object.format_all_for_group_specification(
-       file_name=params.output_files.ncs_out_file)
   return ncs_object
 
 def score_threshold(threshold=None,
@@ -387,6 +415,8 @@ def score_threshold(threshold=None,
      map_data=None,
      residues_per_region=50.,
      min_volume=None,
+     min_ratio=None,
+     max_ratio_to_target=None,
      weight_score_grid_points=1.,
      weight_score_ratio=1.0,
      weight_near_one=0.1,
@@ -403,7 +433,6 @@ def score_threshold(threshold=None,
    # acid in the region...this gives us target_in_top_regions points.
    # So using this, make the median size as close to target_in_top_regions as
    # we can.
-
    grid_points=map_data.size()
    expected_regions=max(1,int(0.5+n_residues/residues_per_region))
 
@@ -411,20 +440,24 @@ def score_threshold(threshold=None,
    target_in_top_regions=target_in_all_regions/expected_regions
 
    nn=len(sorted_by_volume)-1 # first one is total
+   ok=True
    if nn < ncs_copies:
-     return 0. # not enough
+     ok=False #return  # not enough
 
 
    v1,i1=sorted_by_volume[1]
    if v1 < min_volume:
-     return 0.0
+     ok=False #return
+
+   if v1 > max_ratio_to_target*target_in_top_regions:
+     ok=False #return
 
    # there should be about ncs_copies copies of each size region if ncs_copies>1
    if ncs_copies>1:
      v2,i2=sorted_by_volume[max(1,min(ncs_copies,nn))]
      score_ratio=v2/v1  # want it to be about 1
      if score_ratio < minimum_ratio_of_ncs_copy_to_first:
-       return 0.0 # not allowed
+       ok=False #return  # not allowed
    else:
      score_ratio=1.0 # for ncs_copies=1
 
@@ -449,11 +482,29 @@ def score_threshold(threshold=None,
        ) /
      (weight_score_ratio+weight_score_grid_points+weight_near_one))
 
+   half_expected_regions=max(1,(1+expected_regions)//2)
+   if ok and v1 >= target_in_top_regions/2 and \
+        len(sorted_by_volume)>half_expected_regions:
+     ratio=sorted_by_volume[half_expected_regions][0]/v1
+     last_volume=sorted_by_volume[half_expected_regions][0]
+     if ratio >=min_ratio and \
+         last_volume>=min_volume:
+       has_sufficient_regions=True
+     else:
+       has_sufficient_regions=False
+   else:
+       has_sufficient_regions=False
+       ratio=0.
+
    print >>out,\
-    "Threshold %5.2f Target:%5d N:%4d Biggest:%5d  Median: %5d  Score: %5.3f" %(
+    " %5.2f   %5d     %4d    %5d     %5d     %6.3f   %5s    %5.3f" %(
        threshold,target_in_top_regions,expected_regions,
-       v1,median_number,overall_score)
-   return overall_score
+       v1,median_number,ratio,has_sufficient_regions,overall_score)
+
+   if ok:
+     return overall_score,has_sufficient_regions
+   else:
+     return
 
 
 def choose_threshold(params,map_data=None,
@@ -467,33 +518,53 @@ def choose_threshold(params,map_data=None,
   best_score=None
 
   print >>out,"\nChecking possible cutoffs for region identification"
-  sufficient_regions=20
-  finished_first_set=False
-  for n_range_low,n_range_high in [[-8,2],[-8,4],[-8,40]]:
-   for nn in xrange(n_range_low,n_range_high+1):
-    threshold=0.90**nn
-    if threshold < 0.01 or threshold > 100: continue
-    co = maptbx.connectivity(map_data=map_data.deep_copy(), threshold=threshold)
-    z = zip(co.regions(),range(0,co.regions().size()))
-    sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
-    if len(sorted_by_volume)<2:continue
-    score=score_threshold(threshold=threshold,
-       sorted_by_volume=sorted_by_volume,
-       target_fraction=target_fraction,
-       solvent_fraction=solvent_fraction,
-       min_volume=params.segmentation.min_volume,
-       ncs_copies=ncs_copies,
-       n_residues=n_residues,
-       map_data=map_data,
-       out=out)
-    v,i=sorted_by_volume[1]
-    if best_score is None or score > best_score:
-      best_threshold=threshold
-      best_score=score
-   if best_threshold is not None and len(sorted_by_volume)>sufficient_regions and\
-      finished_first_set:
-     break
-   finished_first_set=True
+  used_ranges=[]
+  print >>out,\
+    "Threshold  Target    N     Biggest   Median     Ratio    OK    Score"
+
+  # Assume any threshold that is lower than a threshold that gave a non-zero value
+  #  and is zero is an upper bound on the best value.  Same the other way around
+  upper_bound=100
+  lower_bound=0.01
+  best_nn=None
+  for n_range_low,n_range_high in [[-16,4],[-32,16],[-64,80]]:
+    last_score=None
+    for nn in xrange(n_range_low,n_range_high+1):
+      if nn in used_ranges: continue
+      used_ranges.append(nn)
+      threshold=0.95**nn
+      if threshold < lower_bound or threshold > upper_bound: 
+        continue
+      co = maptbx.connectivity(map_data=map_data.deep_copy(), 
+         threshold=threshold)
+      z = zip(co.regions(),range(0,co.regions().size()))
+      sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
+      if len(sorted_by_volume)<2:
+        info=None
+      else: 
+        info=score_threshold(
+         threshold=threshold,
+         sorted_by_volume=sorted_by_volume,
+         target_fraction=target_fraction,
+         solvent_fraction=solvent_fraction,
+         min_volume=params.segmentation.min_volume,
+         min_ratio=params.segmentation.min_ratio,
+         max_ratio_to_target=params.segmentation.max_ratio_to_target,
+         ncs_copies=ncs_copies,
+         n_residues=n_residues,
+         map_data=map_data,
+         out=out)
+      if not info or not info[0]: # zero value
+        if best_threshold and threshold >best_threshold: # new upper bound
+           upper_bound=threshold
+        elif best_threshold and threshold <best_threshold: # new upper bound
+           lower_bound=threshold
+        continue
+
+      score,has_sufficient_regions=info
+      if score and ( best_score is None or score > best_score):
+        best_threshold=threshold
+        best_score=score
 
   if params.segmentation.density_threshold is not None: # use it
      best_threshold=params.segmentation.density_threshold
@@ -537,17 +608,22 @@ def get_connectivity(params,
   min_b, max_b = co.get_blobs_boundaries_tuples() # As grid points, not A
 
   cntr=0
+  v1=sorted_by_volume[1][0]
+  n_use=0
   for p in sorted_by_volume[1:]:
     cntr+=1
-    if(cntr>2*ncs_copies+1): break
     v,i=p
+    if(v<params.segmentation.min_volume): break
+    if(v/v1 <params.segmentation.min_ratio): break
+    """
     print >>out,\
     "Region %3d (%3d)  volume:%5d  X:%6d - %6d   Y:%6d - %6d  Z:%6d - %6d "%(
      cntr,i,v,
      min_b[i][0],max_b[i][0],
      min_b[i][1],max_b[i][1],
      min_b[i][2],max_b[i][2])
-    if ncs_copies*(cntr//ncs_copies)==cntr: print >>out
+    """
+    n_use=cntr
   return co,conn,sorted_by_volume,min_b,max_b
 
 def get_volume_of_seq(text,vol=None,chain_type=None,out=sys.stdout):
@@ -756,7 +832,7 @@ def choose_subset(a,target_number=1):
 def analyze(region_range_dict,region_centroid_dict,region_n_dict,
      region_scattered_points_dict,
      out=sys.stdout):
-  print >>out,"Centroid and ranges for regions:"
+  #print >>out,"Centroid and ranges for regions:"
   for id in region_n_dict.keys():
     for i in xrange(3):
       region_centroid_dict[id][i]=region_centroid_dict[id][i]/region_n_dict[id]
@@ -764,12 +840,6 @@ def analyze(region_range_dict,region_centroid_dict,region_n_dict,
     region_scattered_points_dict[id]=choose_subset(
       region_scattered_points_dict[id],
       target_number=min(30,max(region_n_dict[id]/10,10)))
-    print >>out,"Region: %d N: %d  N-scattered: %d Center: %7.1f %7.1f %7.1f " %(
-       id, region_n_dict[id],region_scattered_points_dict[id].size(),
-       rc[0],rc[1],rc[2])
-    r=region_range_dict[id]
-    print >>out,"    Range: (%7.1f - %7.1f, %7.1f - %7.1f, %7.1f - %7.1f ) " %(
-     r[0][0],r[0][1],r[1][0],r[1][1],r[2][0],r[2][1])
 
 def run_get_duplicates_and_ncs(
    ncs_obj=None,
@@ -886,8 +956,6 @@ def get_duplicates_and_ncs(
   if write_atoms:
     write_xrs(xrs=xrs,scatterers=scatterers,file_name="atoms.pdb")
 
-  print >>out,"\nTotal of %d points marked in top %d regions" %(
-     cntr,max_regions_to_consider)
   analyze(region_range_dict,region_centroid_dict,region_n_dict,
      region_scattered_points_dict,out=out)
 
@@ -970,6 +1038,8 @@ def get_ncs_equivalents(
         n_found+=1
         if n_found>=ncs_copies-1:
           break
+ 
+  return equiv_dict_ncs_copy
 
   print >>out,"\nSets of NCS-related regions"
   keys=equiv_dict_ncs_copy.keys()
@@ -985,7 +1055,6 @@ def get_ncs_equivalents(
       print >>out,"%d:%d" %(id1,n),
     print >>out
   print >>out
-  return equiv_dict_ncs_copy
 
 def group_ncs_equivalents(
     region_list=None,
@@ -1084,7 +1153,8 @@ def identify_ncs_regions(params,
     "\nIdentifying NCS-related regions.Total regions to consider: %d" %(
     max_regions_to_consider)
   if max_regions_to_consider<1:
-    raise Sorry("Unable to identify any NCS regions")
+    print >>out,"\nUnable to identify any NCS regions"
+    return None
 
   # Go through all grid points; discard if not in top regions
   #  Renumber regions in order of decreasing size
@@ -1532,10 +1602,12 @@ def adjust_bounds(params,lower_bounds,upper_bounds,map_data=None,out=sys.stdout)
     upper_bounds[i]=min(map_data.all()[i],upper_bounds[i])
 
 
-  print >>out,"Range:  X:(%6d,%6d)    Y:(%6d,%6d)    Z:(%6d,%6d)" %(
+  """
+  print >>out,"\nRange:  X:(%6d,%6d)    Y:(%6d,%6d)    Z:(%6d,%6d)" %(
      lower_bounds[0],upper_bounds[0],
      lower_bounds[1],upper_bounds[1],
      lower_bounds[2],upper_bounds[2])
+  """
 
   return lower_bounds,upper_bounds
 
@@ -1618,6 +1690,7 @@ def write_output_files(params,
     map_data_remaining=None,
     ncs_group_obj=None,
     remainder_ncs_group_obj=None,
+    pdb_hierarchy=None,
     out=sys.stdout):
 
   # Write out mask and map representing one NCS copy and none of
@@ -1650,59 +1723,87 @@ def write_output_files(params,
 
   bool_selected_regions=bool_selected_regions.set_selected(s,False)
 
-
-  print >>out,"\nMaking box-maps for AU of NCS mask and map with buffer of "+\
-       "%d grid units in each direction around AU" %(
-          params.output_files.box_buffer)
-
   lower_bounds,upper_bounds=adjust_bounds(params,lower_bounds,upper_bounds,
     map_data=map_data,out=out)
 
+  print >>out,\
+     "\nMaking two types of maps for AU of NCS mask and map with "+\
+      "buffer of %d grid units \nin each direction around AU" %(
+      params.output_files.box_buffer)
+  print >>out,"Both types of maps have the same origin and overlay on %s" %(
+   params.output_files.shifted_map_file) 
+      
+  print >>out,\
+     "\nThe standard maps (%s, %s) have the \noriginal cell dimensions." %(
+   params.output_files.au_mask_output_file,
+   params.output_files.au_map_output_file)+\
+   "\nThese maps show only the unique (NCS AU) part of the map."
 
-  # Write out mask of NCS AU
+  print >>out,\
+     "\nThe cut out box_maps (%s, %s) have \nsmaller cell dimensions." %(
+      params.output_files.box_mask_file,
+      params.output_files.box_map_file,) +\
+   "\nThese maps also show only the unique part of the map and have this"+\
+   "\nunique part cut out.\n"
+ 
+
+  # Write out mask and map of NCS AU with shifted origin but 
+  #  initial crystal_symmetry
 
   mask_data_ncs_au=get_bool_mask_as_int(
      ncs_group_obj=ncs_group_obj,mask_as_bool=bool_selected_regions)
 
-  if params.output_files.mask_output_file: # Write out the mask (as int)
+  if params.output_files.au_mask_output_file: # Write out the mask (as int)
     write_ccp4_map(crystal_symmetry,
-      params.output_files.mask_output_file,mask_data_ncs_au)
-    print >>out,"Wrote output NCS au mask to %s" %(
-      params.output_files.mask_output_file)
+      params.output_files.au_mask_output_file,mask_data_ncs_au)
+    print >>out,\
+       "Output NCS AU mask:  %s" %(
+      params.output_files.au_mask_output_file)
 
-  if params.output_files.box_mask_output_file:
-    # write out NCS mask and mask as box_mask (cut out the region they enclose)
-    box_mask_ncs_au,box_crystal_symmetry=cut_out_map(
-       map_data=mask_data_ncs_au.as_double(), crystal_symmetry=crystal_symmetry,
-       min_point=lower_bounds, max_point=upper_bounds)
-    write_ccp4_map(box_crystal_symmetry,params.output_files.box_mask_output_file,
-      box_mask_ncs_au)
-    print >>out,"Wrote output NCS au as cut out (box) mask to %s" %(
-      params.output_files.box_mask_output_file)
-
-  # Write out map of NCS AU
+  # Now write out NCS AU mask and map cut out, with box_crystal_symmetry
 
   map_data_ncs_au=map_data.deep_copy()
   s=(bool_selected_regions==True)
   map_data_ncs_au=map_data_ncs_au.set_selected(~s,-1.0)
 
-  if params.output_files.map_output_file: # Write out the NCS au of density
-    write_ccp4_map(crystal_symmetry,params.output_files.map_output_file,
+  if params.output_files.au_map_output_file: # Write out the NCS au of density
+    write_ccp4_map(crystal_symmetry,params.output_files.au_map_output_file,
       map_data_ncs_au)
-    print >>out,"Wrote output NCS au map to %s" %(
-      params.output_files.map_output_file)
+    print >>out,\
+       "Output NCS AU map:  %s" %(
+      params.output_files.au_map_output_file)
 
-  if params.output_files.box_map_output_file:
+  box_mask_ncs_au,box_crystal_symmetry=cut_out_map(
+       map_data=mask_data_ncs_au.as_double(), crystal_symmetry=crystal_symmetry,
+       min_point=lower_bounds, max_point=upper_bounds)
+
+  if params.output_files.box_mask_file:
+    # write out NCS mask and mask as box_mask (cut out the region they enclose)
+    write_ccp4_map(
+     box_crystal_symmetry,params.output_files.box_mask_file,
+      box_mask_ncs_au)
+    print >>out,\
+      "Output NCS au as box (cut out) mask:  %s " %(
+      params.output_files.box_mask_file)
+
+  if params.output_files.box_map_file:
     # write out NCS map and mask as box_map (cut out the region they enclose)
     box_map_ncs_au,box_crystal_symmetry=cut_out_map(
        map_data=map_data_ncs_au.as_double(), crystal_symmetry=crystal_symmetry,
        min_point=lower_bounds, max_point=upper_bounds)
-    write_ccp4_map(box_crystal_symmetry,params.output_files.box_map_output_file,
+    write_ccp4_map(box_crystal_symmetry,params.output_files.box_map_file,
       box_map_ncs_au)
-    print >>out,"Wrote output NCS au as cut out (box) map to %s" %(
-      params.output_files.box_map_output_file)
+    print >>out,\
+      "Output NCS au as box (cut out) map:  %s " %(
+      params.output_files.box_map_file)
 
   # Write out all the selected regions
+  print >>out,"\nWriting out region maps. "+\
+    "These superimpose on the NCS AU map \nand "+\
+    "mask %s,%s\n" %(
+      params.output_files.box_map_file,
+      params.output_files.box_mask_file,)
+
   map_files_written,remainder_regions_written=write_region_maps(params,
     map_data=map_data,
     crystal_symmetry=crystal_symmetry,
@@ -1774,19 +1875,20 @@ def iterate_search(params,
   new_params.output_files.write_output_maps=False
   new_params.output_files.output_info_file=None
   if params.output_files.write_intermediate_maps:
-    new_params.output_files.map_output_file=\
-     params.output_files.map_output_file[:-5]+"_cycle_2.ccp4"
-    new_params.output_files.mask_output_file=\
-      params.output_files.mask_output_file[:-5]+"_cycle_2.ccp4"
+    new_params.output_files.au_map_output_file=\
+     params.output_files.au_map_output_file[:-5]+"_cycle_2.ccp4"
+    new_params.output_files.au_mask_output_file=\
+      params.output_files.au_mask_output_file[:-5]+"_cycle_2.ccp4"
   else:
-    new_params.output_files.map_output_file=None
-    new_params.output_files.mask_output_file=None
+    new_params.output_files.au_map_output_file=None
+    new_params.output_files.au_mask_output_file=None
 
   fraction=0.2
   new_n_residues=int(n_residues*fraction)
   new_solvent_fraction=1- (1-solvent_fraction)*fraction
 
   print >>out,"\nIterating with remainder density"
+  # NOTE: do not include pdb_hierarchy here unless you deep_copy it
   remainder_ncs_group_obj,dummy_remainder=run(None,params=new_params,
     map_data=map_data_remaining,
     ncs_obj=ncs_obj,
@@ -1795,6 +1897,8 @@ def iterate_search(params,
     n_residues=new_n_residues,
     crystal_symmetry=crystal_symmetry,
     out=out)
+  if not remainder_ncs_group_obj: # Nothing to do
+    return None
 
   # Combine the results to get remainder_id_dict
   #   remainder_id_dict[id_remainder]=id_nearby
@@ -1866,6 +1970,67 @@ def cut_out_map(map_data=None, crystal_symmetry=None,
     unit_cell=new_unit_cell_box,space_group=crystal_symmetry.space_group())
   return new_map_data, new_crystal_symmetry
 
+def apply_shift_to_pdb_hierarchy(
+    origin_shift=None,
+    crystal_symmetry=None,
+    pdb_hierarchy=None,out=sys.stdout):
+
+  if origin_shift is not None:
+    sites_cart=pdb_hierarchy.atoms().extract_xyz()
+    sites_cart_shifted=sites_cart+\
+      flex.vec3_double(sites_cart.size(), origin_shift)
+    pdb_hierarchy.atoms().set_xyz(sites_cart_shifted)
+
+  return pdb_hierarchy
+
+def apply_origin_shift(origin_shift=None,
+    ncs_object=None,
+    pdb_hierarchy=None,
+    crystal_symmetry=None,
+    map_data=None,
+    shifted_map_file=None,
+    shifted_pdb_file=None,
+    shifted_ncs_file=None,
+    min_point=None, # ZZZ
+    max_point=None,
+    out=sys.stdout):
+
+  if origin_shift: # Note origin shift does not change crystal_symmetry
+    if shifted_map_file:
+      write_ccp4_map(crystal_symmetry,shifted_map_file,
+      map_data)
+      print >>out,"Wrote shifted map to %s" %(
+        shifted_map_file)
+
+    if pdb_hierarchy:
+      pdb_hierarchy=apply_shift_to_pdb_hierarchy(
+       origin_shift=origin_shift,
+       crystal_symmetry=crystal_symmetry,
+       pdb_hierarchy=pdb_hierarchy,
+       out=out)
+      
+    if shifted_pdb_file: 
+      import iotbx.pdb
+      f=open(shifted_pdb_file,'w')
+      print >>f, iotbx.pdb.format_cryst1_record(
+         crystal_symmetry=crystal_symmetry)
+      print >>f,pdb_hierarchy.as_pdb_string()
+      f.close() 
+      print >>out,"Wrote shifted pdb file to %s" %(
+        shifted_pdb_file)
+
+    from scitbx.math import  matrix
+    ncs_object=ncs_object.coordinate_offset(
+       coordinate_offset=matrix.col(origin_shift))
+    #ncs_object.display_all(log=out)
+    if shifted_ncs_file:
+      ncs_object.format_all_for_group_specification(
+         file_name=shifted_ncs_file)
+      print >>out,"Wrote NCS operators for shifted map to %s" %(
+       shifted_ncs_file)
+    
+  return ncs_object,pdb_hierarchy
+
 def run(args,
      params=None,
      map_data=None,
@@ -1881,10 +2046,26 @@ def run(args,
     origin_shift=None
   else:
     # get the parameters
-    params,crystal_symmetry,map_data,origin_shift=get_params(args,out=out)
+    params,crystal_symmetry,map_data,origin_shift,pdb_hierarchy=get_params(
+        args,out=out)
 
     # read and write the ncs (Normally point-group NCS)
-    ncs_obj=get_ncs(params,origin_shift=origin_shift,out=out)
+    ncs_obj=get_ncs(params)
+
+    if origin_shift:
+      print >>out,"\nShifting map, model and NCS based on origin shift"
+      ncs_obj,pdb_hierarchy=apply_origin_shift(
+        shifted_map_file=params.output_files.shifted_map_file,
+        shifted_ncs_file=params.output_files.shifted_ncs_file,
+        shifted_pdb_file=params.output_files.shifted_pdb_file,
+        origin_shift=origin_shift,
+        ncs_object=ncs_obj,
+        pdb_hierarchy=pdb_hierarchy,
+        crystal_symmetry=crystal_symmetry,
+        map_data=map_data,
+        out=out)
+    else:
+      shifted_map_file=params.input_files.ccp4_map_file # but do not overwrite
 
     # get the chain types and therefore (using ncs_copies) volume fraction
     solvent_fraction,n_residues=get_solvent_fraction(
@@ -1912,6 +2093,8 @@ def run(args,
      ncs_obj=ncs_obj,
      origin_shift=origin_shift,
      out=out)
+  if not ncs_group_obj:  # nothing to do
+    return None,None
 
   # Choose one region or group of regions from each ncs_group in the list
   #  Optimize the closeness of centers
@@ -1955,6 +2138,7 @@ def run(args,
       map_data_remaining=map_data_remaining,
       ncs_group_obj=ncs_group_obj,
       remainder_ncs_group_obj=remainder_ncs_group_obj,
+      pdb_hierarchy=pdb_hierarchy,
       out=out)
     ncs_group_obj.set_map_files_written(map_files_written)
   else:
