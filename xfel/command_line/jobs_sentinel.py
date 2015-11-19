@@ -59,9 +59,6 @@ def write_hitfind_cfg(params, dbobj, trial_id, trial, rungroup_id):
 
   config_path = os.path.join(params.config_dir, "%s_%s_t%03d_rg%03d.cfg"%(params.experiment, params.experiment_tag, trial, rungroup_id))
 
-  if os.path.exists(config_path):
-    return config_path
-
   cmd = "SELECT target_phil_path FROM %s_trials where %s_trials.trial_id = %d"%(params.experiment_tag, params.experiment_tag, trial_id)
   cursor = dbobj.cursor()
   cursor.execute(cmd)

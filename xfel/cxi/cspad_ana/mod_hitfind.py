@@ -498,5 +498,6 @@ cell_a,cell_b,cell_c,cell_alpha,cell_beta,cell_gamma,resolution,tags) VALUES "%(
         cursor.executemany(query, parameters)
 
       dbobj.commit()
+      cursor.close()
       dbobj.close()
       self.buffered_progress_entries = []
