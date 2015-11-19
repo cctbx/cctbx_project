@@ -25,6 +25,7 @@ tst_list = (
   #
   "$D/regression/tst_angle.py",
   "$D/rotamer/tst_rotamer_eval.py",
+  "$D/rotamer/tst_geostd_vs_sidechain_angles_props.py",
   "$D/monomer_library/tst_idealized_aa.py",
   "$D/regression/tst_ml_estimate.py",
   "$D/density_modification/tst_density_modification.py",
