@@ -10,18 +10,18 @@ import itertools
 
 def get_favored_regions(rama_key):
   if rama_key == "general":
-    return [(-120, 120), (-60, -55), (60, 55)]
+    return [(-99, 119), (-63, -43), (53, 43)]
   if rama_key == "glycine":
-    return [(-60, -57), (-80, 135), (65, 55), (80, 145)]
+    return [(63, 41), (-63, -41), (79, -173), (-79, 173)]
   if rama_key == "cis-proline":
-    return [(-77, 0), (-65, 135)]
+    return [(-75, 155), (-89, 5)]
   if rama_key == "trans-proline":
     # return [(-56, -55), (-55, 135)]
     return [(-57, -37), (-59, 143), (-81, 65)]
   if rama_key == "pre-proline":
-    return [(-58, -58), (-60, 120), (58,58)]
+    return [(-57, -45), (-100, 120), (49, 57)]
   if rama_key == "isoleucine or valine":
-    return [(-60, -57), (-115, 120)]
+    return [(-63, -45), (-119, 127)]
 
 
 def set_rama_angles(moving_h, angles):
