@@ -6,6 +6,8 @@ import libtbx.load_env
 from libtbx.easy_pickle import loads, dumps
 from cStringIO import StringIO
 import os.path
+from mmtbx.validation import ramalyze
+import time
 
 def exercise_ramalyze():
   from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
@@ -18,7 +20,6 @@ def exercise_ramalyze():
   if (find_rotarama_data_dir(optional=True) is None):
     print "Skipping exercise_ramalyze(): rotarama_data directory not available"
     return
-  from mmtbx.validation import ramalyze
   from iotbx import file_reader
   # Exercise 1
   pdb_in = file_reader.any_file(file_name=regression_pdb)
@@ -203,7 +204,13 @@ ATOM   1495  O   LYS A 222      -1.856  14.424  10.883  1.00 14.32           O
     outliers_only=False)
   assert (len(r.results) == 3)
 
-  print "OK"
+def exercise_favored_regions():
+  assert ramalyze.get_favored_regions("bla") is None
+  assert ramalyze.get_favored_regions("general") == [(-99, 119), (-63, -43), (53, 43)]
 
 if (__name__ == "__main__") :
+  t0=time.time()
   exercise_ramalyze()
+  exercise_favored_regions()
+  print "Time: %6.4f"%(time.time()-t0)
+  print "OK"
