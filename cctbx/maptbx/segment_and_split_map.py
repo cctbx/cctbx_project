@@ -43,7 +43,7 @@ master_phil = iotbx.phil.parse("""
                 applied.
       .short_caption = Shifted pdb file
 
-    shifted_ncs_file = shifted_ncs.ncs_spec 
+    shifted_ncs_file = shifted_ncs.ncs_spec
       .type = path
       .help = NCS information shifted to new origin.  Only written if a shift \
          is applied.
@@ -533,15 +533,15 @@ def choose_threshold(params,map_data=None,
       if nn in used_ranges: continue
       used_ranges.append(nn)
       threshold=0.95**nn
-      if threshold < lower_bound or threshold > upper_bound: 
+      if threshold < lower_bound or threshold > upper_bound:
         continue
-      co = maptbx.connectivity(map_data=map_data.deep_copy(), 
+      co = maptbx.connectivity(map_data=map_data.deep_copy(),
          threshold=threshold)
       z = zip(co.regions(),range(0,co.regions().size()))
       sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
       if len(sorted_by_volume)<2:
         info=None
-      else: 
+      else:
         info=score_threshold(
          threshold=threshold,
          sorted_by_volume=sorted_by_volume,
@@ -1038,7 +1038,7 @@ def get_ncs_equivalents(
         n_found+=1
         if n_found>=ncs_copies-1:
           break
- 
+
   return equiv_dict_ncs_copy
 
   print >>out,"\nSets of NCS-related regions"
@@ -1731,8 +1731,8 @@ def write_output_files(params,
       "buffer of %d grid units \nin each direction around AU" %(
       params.output_files.box_buffer)
   print >>out,"Both types of maps have the same origin and overlay on %s" %(
-   params.output_files.shifted_map_file) 
-      
+   params.output_files.shifted_map_file)
+
   print >>out,\
      "\nThe standard maps (%s, %s) have the \noriginal cell dimensions." %(
    params.output_files.au_mask_output_file,
@@ -1745,9 +1745,9 @@ def write_output_files(params,
       params.output_files.box_map_file,) +\
    "\nThese maps also show only the unique part of the map and have this"+\
    "\nunique part cut out.\n"
- 
 
-  # Write out mask and map of NCS AU with shifted origin but 
+
+  # Write out mask and map of NCS AU with shifted origin but
   #  initial crystal_symmetry
 
   mask_data_ncs_au=get_bool_mask_as_int(
@@ -2008,14 +2008,14 @@ def apply_origin_shift(origin_shift=None,
        crystal_symmetry=crystal_symmetry,
        pdb_hierarchy=pdb_hierarchy,
        out=out)
-      
-    if shifted_pdb_file: 
+
+    if shifted_pdb_file:
       import iotbx.pdb
       f=open(shifted_pdb_file,'w')
       print >>f, iotbx.pdb.format_cryst1_record(
          crystal_symmetry=crystal_symmetry)
       print >>f,pdb_hierarchy.as_pdb_string()
-      f.close() 
+      f.close()
       print >>out,"Wrote shifted pdb file to %s" %(
         shifted_pdb_file)
 
@@ -2028,7 +2028,7 @@ def apply_origin_shift(origin_shift=None,
          file_name=shifted_ncs_file)
       print >>out,"Wrote NCS operators for shifted map to %s" %(
        shifted_ncs_file)
-    
+
   return ncs_object,pdb_hierarchy
 
 def run(args,
