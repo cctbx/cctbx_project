@@ -2,26 +2,11 @@ from __future__ import division
 
 from mmtbx.rotamer import ramachandran_eval
 from mmtbx.building.loop_closure import utils
-#from mmtbx.validation.ramalyze import ramalyze, RAMALYZE_FAVORED
+from mmtbx.validation.ramalyze import ramalyze,
+from mmtbx.validation.ramalyze import RAMALYZE_FAVORED # import dependency
 from mmtbx.validation.ramalyze import RAMALYZE_ALLOWED # import dependency
 from mmtbx.validation.ramalyze import RAMALYZE_OUTLIER # import dependency
 import itertools
-
-
-def get_favored_regions(rama_key):
-  if rama_key == "general":
-    return [(-99, 119), (-63, -43), (53, 43)]
-  if rama_key == "glycine":
-    return [(63, 41), (-63, -41), (79, -173), (-79, 173)]
-  if rama_key == "cis-proline":
-    return [(-75, 155), (-89, 5)]
-  if rama_key == "trans-proline":
-    # return [(-56, -55), (-55, 135)]
-    return [(-57, -37), (-59, 143), (-81, 65)]
-  if rama_key == "pre-proline":
-    return [(-57, -45), (-100, 120), (49, 57)]
-  if rama_key == "isoleucine or valine":
-    return [(-63, -45), (-119, 127)]
 
 
 def set_rama_angles(moving_h, angles):
@@ -75,7 +60,7 @@ def get_all_starting_conformations(moving_h, change_radius, cutoff=50):
   # print "  change_angles", change_angles
   for i, (phi_psi_pair, rama_key) in enumerate(phi_psi_atoms):
     if i in change_angles or (utils.rama_evaluate(phi_psi_pair, r, rama_key) == RAMALYZE_OUTLIER):
-      variants.append(get_favored_regions(rama_key))
+      variants.append(ramalyze.get_favored_regions(rama_key))
     else:
       variants.append([(None, None)])
   print "variants", variants
@@ -99,7 +84,7 @@ def get_starting_conformations(moving_h, cutoff=50):
   phi_psi_atoms = utils.get_phi_psi_atoms(moving_h)
   for phi_psi_pair, rama_key in phi_psi_atoms:
     if (utils.rama_evaluate(phi_psi_pair, r, rama_key) == RAMALYZE_OUTLIER):
-      variants.append(get_favored_regions(rama_key))
+      variants.append(ramalyze.get_favored_regions(rama_key))
     else:
       variants.append([(None, None)])
   result = []
