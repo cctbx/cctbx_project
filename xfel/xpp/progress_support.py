@@ -45,8 +45,9 @@ class progress_manager(manager):
   def connection(self):
     pass
 
-  def scale_frame_detail(self,timestamp,cursor,do_inserts=True):#, result, file_name, db_mgr, out):
-    result = self.params
+  def scale_frame_detail(self,timestamp,cursor,do_inserts=True,result=None):#, file_name, db_mgr, out):
+    if result is None:
+      result = self.params
 
     # If the pickled integration file does not contain a wavelength,
     # fall back on the value given on the command line.  XXX The

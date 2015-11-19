@@ -119,6 +119,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     if self.m_progress_logging:
       self.buffered_progress_entries = []
       assert self.m_sql_buffer_size >= 1
+      self.isoforms = {}
 
     if self.m_db_tags is None:
       self.m_db_tags = ""
@@ -307,14 +308,20 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
           from cxi_xdr_xes.cftbx.cspad_ana import db
           dbobj = db.dbconnect(self.m_db_host, self.m_db_name, self.m_db_user, self.m_db_password)
           cursor = dbobj.cursor()
-          from xfel.xpp.progress_support import progress_manager
-          PM = progress_manager(info.last_saved_best,self.m_db_experiment_tag, self.m_trial_id, self.m_rungroup_id, evt.run())
-          indices, miller_id = PM.get_HKL(cursor)
+          if info.last_saved_best["identified_isoform"] in self.isoforms:
+            PM, indices, miller_id = self.isoforms[info.last_saved_best["identified_isoform"]]
+          else:
+            from xfel.xpp.progress_support import progress_manager
+            PM = progress_manager(info.last_saved_best,self.m_db_experiment_tag, self.m_trial_id, self.m_rungroup_id, evt.run())
+            indices, miller_id = PM.get_HKL(cursor)
+            # cache these as they don't change for a given isoform
+            self.isoforms[info.last_saved_best["identified_isoform"]] = PM, indices, miller_id
           if self.m_sql_buffer_size > 1:
             self.queue_progress_entry(PM.scale_frame_detail(self.timestamp,cursor,do_inserts=False))
           else:
             PM.scale_frame_detail(self.timestamp,cursor,do_inserts=True)
             dbobj.commit()
+            cursor.close()
             dbobj.close()
 
       if self.m_db_logging:
