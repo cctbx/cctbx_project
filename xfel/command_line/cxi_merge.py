@@ -200,6 +200,9 @@ data_subsubsets {
   subsubset_total = None
     .type = int
 }
+isoform_name = None
+  .type = str
+  .help = Only accept this isoform
 """ + mysql_master_phil
 
 def get_observations (data_dirs,data_subset, subsubset, subsubset_total):
@@ -254,7 +257,11 @@ def load_result (file_name,
     return None
   if (not obj.has_key("observations")) :
     return None
-
+  if params.isoform_name is not None:
+    if not "identified_isoform" in obj:
+      return None
+    if obj["identified_isoform"] != params.isoform_name:
+      return None
   if reindex_op == "h,k,l":
     pass
     #raise WrongBravaisError("Skipping file with h,k,l")
