@@ -19,6 +19,7 @@ import os
 import wx
 import numpy as np
 import sys
+import time
 import threading
 # The recommended way to use wx with mpl is with the WXAgg
 # backend.
@@ -222,7 +223,10 @@ class BarsFrame(wx.Frame):
             self.mult_highest,
             align='center',
             color='blue')
-        title = 'Trial: %(x)s Overall multplicity (light blue) and multiplicity at %(y)s angstroms (blue)'% {"x": trial, "y": res}
+        title = 'Trial: %(tr)s Overall multplicity (light blue) and multiplicity at %(ang)s angstroms (blue).\n' \
+          % {"tr": trial, "ang": res} \
+          + 'Updated %(HH)02d:%(MM)02d:%(SS)02d' \
+          % {"HH":time.localtime().tm_hour, "MM":time.localtime().tm_min, "SS":time.localtime().tm_sec}
         self.axes.set_title(title)
         self.axes.set_yticks(pos)
         self.axes.set_yticklabels(labels)
