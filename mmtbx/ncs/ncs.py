@@ -531,7 +531,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       return offset_list[0],len(missing_list)
     else:
       return None,None
-      
+
 class ncs:
   def __init__(self,exclude_h=None,exclude_d=None):
     self._ncs_groups=[]  # each group is an ncs_group object
@@ -1147,4 +1147,3 @@ if __name__=="__main__":
       print ncs_object.is_point_group_symmetry()
       print "IS helical:",
       print ncs_object.is_helical_symmetry()
-
