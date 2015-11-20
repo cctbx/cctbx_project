@@ -180,6 +180,8 @@ def _apply_link_using_proxies(link,
     volume_ideal = 2.4
     if chir.volume_sign[:4].lower()=="nega":
       volume_ideal = -2.4
+    elif chir.volume_sign[:4].lower()=="zero":
+      volume_ideal = 0. 
     proxy = geometry_restraints.chirality_proxy(
       i_seqs=i_seqs,
       volume_ideal=volume_ideal,
