@@ -28,17 +28,31 @@ class find_matching_img(object):
         self.image = [pickle.split(".pickle")[0] + ".cbf"]
       elif os.path.exists(os.path.join(pickle.split("integration")[0], "out")):
         loc = os.path.join(os.path.dirname(pickle).split("integration")[0], "out")
-        name = os.path.basename(pickle).split("_00000.pickle")[0][8:]
+        name = os.path.basename(pickle).split(".pickle")[0]
+        #name = os.path.basename(pickle).split("_00000.pickle")[0][8:]
         prefix = "idx-" + os.path.basename(pickle)[4:8]
-        imgname = prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + ".pickle"
+        parts = name.split("-")
+        parts = parts[0:3] + parts[3].split(":")
+        parts = parts[0:4] + parts[4].split(".")
+        parts = parts[0:5] + parts[5].split("_")
+        imgname = prefix + parts[1] + parts[2] \
+        + parts[3][0:2] + parts[3][3:5] + parts[4][0:2] + parts[4][3:5] + parts[5] + ".pickle"
+        #imgname = prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + ".pickle"
         self.image = [os.path.join(loc, imgname)]
     elif img_location is None:
       self.image = [pickle]
     else:
       loc = os.path.join("", img_location)
-      name = os.path.basename(pickle).split("_00000.pickle")[0][8:]
+      name = os.path.basename(pickle).split(".pickle")[0]
+      #name = os.path.basename(pickle).split("_00000.pickle")[0][8:]
       prefix = "idx-" + os.path.basename(pickle)[4:8]
-      imgname = prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + ".pickle"
+      parts = name.split("-")
+      parts = parts[0:3] + parts[3].split(":")
+      parts = parts[0:4] + parts[4].split(".")
+      parts = parts[0:5] + parts[5].split("_")
+      imgname = prefix + parts[1] + parts[2] \
+      + parts[3][0:2] + parts[3][3:5] + parts[4][0:2] + parts[4][3:5] + parts[5] + ".pickle"
+      #imgname = prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + ".pickle"
       self.image = [os.path.join(loc, imgname)]
     assert os.path.exists(self.image[0]), "Can't find images at the designated location."
 
@@ -138,9 +152,16 @@ class construct_reflection_table_and_experiment_list(object):
       loc = os.path.dirname(self.pickle)
     else:
       loc = path_name
-    name = os.path.basename(self.pickle).split("_00000.pickle")[0][8:]
+    name = os.path.basename(self.pickle).split(".pickle")[0]
+    #name = os.path.basename(self.pickle).split("_00000.pickle")[0][8:]
     prefix = "idx-" + os.path.basename(self.pickle)[4:8]
-    expt_name = prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + "_experiments.json"
+    parts = name.split("-")
+    parts = parts[0:3] + parts[3].split(":")
+    parts = parts[0:4] + parts[4].split(".")
+    parts = parts[0:5] + parts[5].split("_")
+    expt_name = prefix + parts[1] + parts[2] \
+    + parts[3][0:2] + parts[3][3:5] + parts[4][0:2] + parts[4][3:5] + parts[5] + "_experiments.json"
+    #expt_name = prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + "_experiments.json"
     experiments = os.path.join(loc, expt_name)
     dumper = experiment_list.ExperimentListDumper(self.experiment_list)
     dumper.as_json(experiments)
@@ -230,9 +251,16 @@ class construct_reflection_table_and_experiment_list(object):
       loc = os.path.dirname(self.pickle)
     else:
       loc = path_name
-    name = os.path.basename(self.pickle).split("_00000.pickle")[0][8:]
+    name = os.path.basename(self.pickle).split(".pickle")[0]
+    #name = os.path.basename(self.pickle).split("_00000.pickle")[0][8:]
     prefix = "idx-" + os.path.basename(self.pickle)[4:8]
-    refl_name = prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + "_integrated.pickle"
+    parts = name.split("-")
+    parts = parts[0:3] + parts[3].split(":")
+    parts = parts[0:4] + parts[4].split(".")
+    parts = parts[0:5] + parts[5].split("_")
+    refl_name = prefix + parts[1] + parts[2] \
+    + parts[3][0:2] + parts[3][3:5] + parts[4][0:2] + parts[4][3:5] + parts[5] + "_integrated.pickle"
+    #refl_name = prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + "_integrated.pickle"
     reflections = os.path.join(loc, refl_name)
     self.reflections.as_pickle(reflections)
 
