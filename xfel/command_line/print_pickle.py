@@ -22,6 +22,13 @@ if "--break" in args:
 else:
   dobreak = False
 
+if "--plots" in args:
+  args.remove("--plots")
+  doplots = True
+else:
+  doplots = False
+
+
 for path in args:
   if not os.path.isfile(path):
     print "Not a file:", path
@@ -80,6 +87,24 @@ for path in args:
       print key,"len=%d max=%f min=%f dimensions=%s"%(data[key].size(),flex.max(data[key]),flex.min(data[key]),str(data[key].focus()))
     elif key == "WAVELENGTH":
       print "WAVELENGTH", data[key], ", converted to eV:", 12398.4187/data[key]
+    elif key == "applied_absorption_correction":
+      print key, data[key]
+      if doplots:
+        c = data[key][0]
+        hist = flex.histogram(c, n_slots=30)
+        from matplotlib import pyplot as plt
+        plt.scatter(hist.slot_centers(), hist.slots())
+        plt.show()
+
+        obs = data['observations'][0]
+        preds = data['mapped_predictions'][0]
+        p1 = preds.select(c == 1.0)
+        p2 = preds.select((c != 1.0) & (c <= 1.5))
+        plt.scatter(preds.parts()[1], preds.parts()[0], c='g')
+        plt.scatter(p1.parts()[1], p1.parts()[0], c='b')
+        plt.scatter(p2.parts()[1], p2.parts()[0], c='r')
+        plt.show()
+
     else:
       print key, data[key]
 
