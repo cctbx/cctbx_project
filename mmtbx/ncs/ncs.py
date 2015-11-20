@@ -14,6 +14,30 @@ import scitbx.rigid_body
  #  for rota_matr in group.rota_matrices(): returns rota matrices
  #  for trans_orth in group.translations_orth(): returns translation matrices
 
+ # NOTE: symmetry operators map NCS position i on to NCS position 0 (they are
+ #  inverses of the operators mapping position 0 on to i).
+
+
+def abs(aa):
+  if aa>=0:return aa
+  return -aa
+
+def is_identity(r,t,tol=1.e-2):
+  identity_r=[1,0,0,0,1,0,0,0,1]
+  identity_t=[0,0,0]
+  for i in xrange(9):
+    if abs(r[i]-identity_r[i])>tol: return False
+  for i in xrange(3):
+    if abs(t[i]-identity_t[i])>tol: return False
+  return True
+
+def is_same_transform(r1,t1,r2,t2,tol=.05):
+    # require everything to be very similar
+    for i in xrange(9):
+      if abs(r1[i]-r2[i])>tol: return False
+    for i in xrange(3):
+      if abs(t1[i]-t2[i])>tol: return False
+    return True
 
 class ncs_group:  # one group of NCS operators and center and where it applies
   def __init__(self, ncs_rota_matr=None, center_orth=None, trans_orth=None,
@@ -317,7 +341,8 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     for center,trans_orth,ncs_rota_matr in zip (
        self._centers, self._translations_orth,self._rota_matrices):
       i+=1
-      if i==1 and skip_identity: continue
+      if i==1 and is_identity(ncs_rota_matr,trans_orth) and \
+        skip_identity: continue
       for j in xrange(3):
        text+="\nrota_matrix "+" %8.4f  %8.4f  %8.4f" %tuple(
           ncs_rota_matr[j*3:j*3+3])
@@ -363,6 +388,28 @@ class ncs_group:  # one group of NCS operators and center and where it applies
   def translations_orth(self):
     return self._translations_orth
 
+  def rota_matrices(self):
+    return self._rota_matrices
+
+  def translations_orth_inv(self):
+    if not hasattr(self,"_translations_orth_inv"):
+      self.get_inverses()
+    return self._translations_orth_inv
+
+  def rota_matrices_inv(self):
+    if not hasattr(self,"_rota_matrices_inv"):
+      self.get_inverses()
+    return self._rota_matrices_inv
+
+  def get_inverses(self):
+    self._translations_orth_inv=[]
+    self._rota_matrices_inv=[]
+    for r,t in zip(self.rota_matrices(),self.translations_orth()):
+      r_inv=r.inverse()
+      t_inv=-1.*r_inv*t
+      self._rota_matrices_inv.append(r_inv)
+      self._translations_orth_inv.append(-1.*r_inv*t)
+
   def rotations_translations_forward_euler(self):
     # note usual rt is from molecule j to molecule 1. Here it is opposite.
     from scitbx.math import euler_angles
@@ -376,8 +423,6 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       translations_forward_euler.append(t_inv)
     return rotations_forward_euler,translations_forward_euler
 
-  def rota_matrices(self):
-    return self._rota_matrices
 
   def source_of_ncs_info(self):
     return self._source_of_ncs_info
@@ -409,6 +454,84 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       rounded=-1.*rounded
     return rounded
 
+  def is_point_group_symmetry(self):
+    # return True if any 2 sequential operations is a member of the
+    #  set.  Test by sequentially applying all pairs of
+    # operators and verifying that the result is a member of the set
+
+
+    for r,t in zip(self.rota_matrices_inv(),self.translations_orth_inv()):
+      for r1,t1 in zip(self.rota_matrices_inv(),self.translations_orth_inv()):
+        new_r = r1 * r
+        new_t = (r1 * t) + t1
+        is_similar=False
+        for r2,t2 in zip(self.rota_matrices_inv(),self.translations_orth_inv()):
+          if is_same_transform(new_r,new_t,r2,t2):
+            is_similar=True
+            break
+        if not is_similar:
+          return False
+    return True
+
+  def is_helical_symmetry(self):
+    # This assumes the operators are in order
+    # For helical symmetry sequential application of operators moves up or
+    #  down the list by an index depending on the indices of the operators.
+
+    if self.is_point_group_symmetry():
+      return False
+
+    n=len(self.rota_matrices_inv())
+    offset_list=[]
+    n_missing_list=[]
+    for i1 in xrange(n): # figure out offset made by this operator
+      offset,n_missing=self.oper_adds_offset(i1)
+      offset_list.append(offset)
+      n_missing_list.append(n_missing)
+    # offset_list should be one instance of each value and will be 0 at the
+    #  operator that is unity
+    if None in offset_list: return False
+    ii=offset_list.index(0)
+    if not is_identity(self.rota_matrices_inv()[ii],self.translations_orth_inv()[ii]):
+      return False
+
+    for i1 in xrange(n):
+      if n_missing_list[i1] != abs(i1-ii):
+        return False
+    offset_list.sort()
+    start_value=offset_list[0]
+    expected_list=list(xrange(start_value,start_value+n))
+    if offset_list == expected_list:
+      return True
+    return False
+
+  def oper_adds_offset(self,i1):
+    # figure out what operator is created from operator i1 + any other one
+    n=len(self.rota_matrices_inv())
+    r1=self.rota_matrices_inv()[i1]
+    t1=self.translations_orth_inv()[i1]
+    offset_list=[]
+    missing_list=[]
+    for i in xrange(n): # apply i1+i and see what k we get (k-i should be const)
+      r=self.rota_matrices_inv()[i]
+      t=self.translations_orth_inv()[i]
+      new_r = r1 * r
+      new_t = (r1 * t) + t1
+      match_offset=None
+      for j in xrange(n):
+        r2=self.rota_matrices_inv()[j]
+        t2=self.translations_orth_inv()[j]
+        if is_same_transform(new_r,new_t,r2,t2):
+          match_offset=j-i
+      if match_offset is not None:
+        if not match_offset in offset_list: offset_list.append(match_offset)
+      else:
+        missing_list.append(i)
+    if len(offset_list)==1:
+      return offset_list[0],len(missing_list)
+    else:
+      return None,None
+      
 class ncs:
   def __init__(self,exclude_h=None,exclude_d=None):
     self._ncs_groups=[]  # each group is an ncs_group object
@@ -901,6 +1024,19 @@ class ncs:
         n_max=ncs_group.n_ncs_oper()
     return n_max
 
+  def is_point_group_symmetry(self):
+    for ncs_group in self._ncs_groups:
+      if not ncs_group.is_point_group_symmetry():
+        return False
+    return True
+
+  def is_helical_symmetry(self):
+    for ncs_group in self._ncs_groups:
+      if not ncs_group.is_helical_symmetry():
+        return False
+    return True
+
+
 test_ncs_info="""
 
 new_ncs_group
@@ -1007,3 +1143,8 @@ if __name__=="__main__":
     if 1:
       file2='OUTPUT.NCS'
       text=ncs_object.format_all_for_group_specification(file_name=file2)
+      print "IS point-group: ",
+      print ncs_object.is_point_group_symmetry()
+      print "IS helical:",
+      print ncs_object.is_helical_symmetry()
+
