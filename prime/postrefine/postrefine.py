@@ -28,6 +28,11 @@ class postref_handler(object):
     """Given the pickle file, extract and prepare observations object and
     the alpha angle (meridional to equatorial).
     """
+    if iparams.isoform_name is not None:
+      if "identified_isoform" not in observations_pickle:
+        return None, "No identified isoform"
+      if observations_pickle["identified_isoform"] != iparams.isoform_name:
+        return None, "Identified isoform(%s) is not the requested isoform (%s)"%(observations_pickle["identified_isoform"], iparams.isoform_name)
     if iparams.flag_weak_anomalous:
       if avg_mode == 'final':
         target_anomalous_flag = iparams.target_anomalous_flag

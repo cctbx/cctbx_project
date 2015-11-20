@@ -296,6 +296,9 @@ percent_cone_fraction = 5.0
 flag_include_negatives = True
   .type = bool
   .help = Set to False to exlude negative measurements.
+isoform_name = None
+  .type = str
+  .help = Use this isoform.
 """)
 
 txt_help = """**************************************************************************************************
