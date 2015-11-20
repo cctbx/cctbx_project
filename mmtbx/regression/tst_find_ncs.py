@@ -409,7 +409,7 @@ def tst_02():
   assert not ncs_object.is_helical_symmetry()
   assert not ncs_object.is_point_group_symmetry()
 
-  print "OK" 
+  print "OK"
 
 if __name__=="__main__":
   tst_01()
