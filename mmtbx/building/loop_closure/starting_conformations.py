@@ -2,7 +2,7 @@ from __future__ import division
 
 from mmtbx.rotamer import ramachandran_eval
 from mmtbx.building.loop_closure import utils
-from mmtbx.validation.ramalyze import ramalyze,
+from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.validation.ramalyze import RAMALYZE_FAVORED # import dependency
 from mmtbx.validation.ramalyze import RAMALYZE_ALLOWED # import dependency
 from mmtbx.validation.ramalyze import RAMALYZE_OUTLIER # import dependency
