@@ -44,8 +44,9 @@ add_conformations
     .short_caption = Start at altloc
     .input_size = 64
     .style = noauto
+  include scope libtbx.phil.interface.tracking_params
 }
-""")
+""", process_includes=True)
 master_params = master_phil # XXX backwards compatibility for phenix gui
 
 def run (args=(), params=None, out=sys.stdout) :
