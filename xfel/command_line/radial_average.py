@@ -29,6 +29,8 @@ master_phil = libtbx.phil.parse("""
     .type = bool
   output_file = None
     .type = str
+  plot_y_max = None
+    .type = int
 """)
 # Array of handedness possibilities.  Input 0 for no subpixel
 # metrology correction
@@ -198,10 +200,12 @@ def run (args, source_data = None) :
   logger.write("Maximum 2theta for %s, TS %s: %f, value: %f\n"%(params.file_path, source_data['TIMESTAMP'], max_twotheta, max_result))
 
   if params.verbose:
-    from pylab import scatter, show, xlabel, ylabel
+    from pylab import scatter, show, xlabel, ylabel, ylim
     scatter(xvals,results)
     xlabel("2 theta")
     ylabel("Avg ADUs")
+    if params.plot_y_max is not None:
+      ylim(0, params.plot_y_max)
     show()
 
   return xvals, results
