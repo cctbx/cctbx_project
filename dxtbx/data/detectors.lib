@@ -23,6 +23,7 @@ IMAGE_PLATE  2300 2300  150  150 mar-345
 IMAGE_PLATE  3450 3450  100  100 mar-345
 PAD           487 619   172  172 pilatus-300K
 PAD           487 407   172  172 pilatus-200K
+PAD           981 1043  172  172 pilatus-1M
 PAD          1475 1679  172  172 pilatus-2M
 PAD          2463 2527  172  172 pilatus-6M
 PAD          2463 5071  172  172 pilatus-12M
