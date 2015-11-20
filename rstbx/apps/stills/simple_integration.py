@@ -499,6 +499,21 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
     self.integrated_miller=self.get_integrated_miller()
     self.detector_xy = self.get_detector_xy()
     self.max_signal = self.get_max_signal()
+    if self.horizons_phil.integration.absorption_correction.apply:
+      print "Absorption correction with %d reflections to correct"%(len(self.detector_xy))
+      from cxi_xdr_xes import absorption
+      C = absorption.correction()
+      self.applied_absorption_correction = C(
+        panel_size_px = (self.inputpd['size1'],self.inputpd['size2']),
+        pixel_size_mm = self.pixel_size,
+        detector_distance_mm = self.inputai.distance(),
+        wavelength_ang = self.inputai.wavelength,
+        BSmasks = self.BSmasks,
+        get_ISmask_function = self.get_ISmask
+      )
+      # apply these corrections now
+      self.integrated_data *= self.applied_absorption_correction
+      self.integrated_sigma *= self.applied_absorption_correction
     #self.show_rejected_spots()
     return # function has been recoded in C++
 

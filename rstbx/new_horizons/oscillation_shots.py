@@ -306,6 +306,8 @@ class IntegrateCharacters:
             effective_tiling = self.files.images[0].get_tile_manager(
               self.horizons_phil).effective_tiling_as_flex_int()
           )
+          if self.horizons_phil.integration.absorption_correction.apply:
+            info['applied_absorption_correction'] = [a.applied_absorption_correction for a in local["results"]]
           if self.horizons_phil.integration.model=="user_supplied":
             info['ML_half_mosaicity_deg'] = [getattr(a,"ML_half_mosaicity_deg",0) for a in local["results"]]
             info['ML_domain_size_ang'] = [getattr(a,"ML_domain_size_ang",0) for a in local["results"]]

@@ -159,6 +159,14 @@ integration {
       .type = choice
       .help = either refine the distance or the wavelength for XFEL stills
   }
+  absorption_correction{
+    apply = False
+      .type = bool
+      .help = must be supplied as a user-defined function with a specific interface (not documented)
+    algorithm = None
+      .type = str
+      .help = a specific tag for user code to identify experiment number, parameter set, etc
+  }
 }
 """
 indexing_defs = """
