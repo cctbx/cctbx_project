@@ -480,18 +480,22 @@ def run(args):
 
   miller_set_avg.setup_binner(
     d_max=100000, d_min=work_params.d_min, n_bins=work_params.output.n_bins)
-  table_data = [["Bin", "Resolution Range", "# images"]]
+  table_data = [["Bin", "Resolution Range", "# images", "%accept"]]
   if work_params.model is None:
     appropriate_min_corr = -1.1 # lowest possible c.c.
   else:
     appropriate_min_corr = work_params.min_corr
+  col_count1 = results.count_frames(appropriate_min_corr, miller_set_avg.binner().selection(1))
+  print "colcount1",col_count1
   for i_bin in miller_set_avg.binner().range_used():
     col_count = '%8d' % results.count_frames(
       appropriate_min_corr, miller_set_avg.binner().selection(i_bin))
     col_legend = '%-13s' % miller_set_avg.binner().bin_legend(
       i_bin=i_bin, show_bin_number=False, show_bin_range=False,
       show_d_range=True, show_counts=False)
-    table_data.append(['%3d' % i_bin, col_legend, col_count])
+    xpercent = results.count_frames(appropriate_min_corr, miller_set_avg.binner().selection(i_bin))/float(col_count1)
+    percent = '%5.2f'% (100.*xpercent)
+    table_data.append(['%3d' % i_bin, col_legend, col_count,percent])
 
   n_frames = (scaler.frames['cc'] > appropriate_min_corr).count(True)
   table_data.append([""] * len(table_data[0]))
