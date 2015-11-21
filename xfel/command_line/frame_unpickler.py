@@ -8,6 +8,7 @@ from __future__ import division
 from dials.array_family import flex
 from scitbx.array_family import flex as sciflex
 from libtbx import easy_pickle
+from libtbx.utils import Sorry
 from dials.util.options import OptionParser
 from dxtbx.model import beam, crystal, detector, scan
 from dxtbx.format import FormatMultiImage
@@ -17,56 +18,59 @@ import dxtbx
 import iotbx.phil
 import os
 
-class UnmatchedPickleError(Exception):
-  pass
+def int_pickle_to_filename(int_name, prefix, suffix):
+  parts = int_name.split("-")
+  parts = parts[0:3] + parts[3].split(":")
+  parts = parts[0:4] + parts[4].split(".")
+  parts = parts[0:5] + parts[5].split("_")
+  outname = prefix + parts[1] + parts[2] \
+    + parts[3][0:2] + parts[3][3:5] + parts[4][0:2] + parts[4][3:5] + parts[5] + suffix
+  return outname
 
-class find_matching_img(object):
-  def __init__(self, pickle, img_location='auto'):
-    # find the image associated with the pickle file to be processed, or use the pickle file itself as a placeholder
-    if img_location == 'auto':
-      if os.path.exists(pickle.split(".pickle")[0] + ".cbf"):
-        self.image = [pickle.split(".pickle")[0] + ".cbf"]
-      elif os.path.exists(os.path.join(pickle.split("integration")[0], "out")):
-        loc = os.path.join(os.path.dirname(pickle).split("integration")[0], "out")
-        name = os.path.basename(pickle).split(".pickle")[0]
-        #name = os.path.basename(pickle).split("_00000.pickle")[0][8:]
-        prefix = "idx-" + os.path.basename(pickle)[4:8]
-        parts = name.split("-")
-        parts = parts[0:3] + parts[3].split(":")
-        parts = parts[0:4] + parts[4].split(".")
-        parts = parts[0:5] + parts[5].split("_")
-        imgname = prefix + parts[1] + parts[2] \
-        + parts[3][0:2] + parts[3][3:5] + parts[4][0:2] + parts[4][3:5] + parts[5] + ".pickle"
-        #imgname = prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + ".pickle"
-        self.image = [os.path.join(loc, imgname)]
-    elif img_location is None:
-      self.image = [pickle]
-    else:
-      loc = os.path.join("", img_location)
+def find_matching_img(pickle, img_location=None):
+  # find the image associated with the pickle file to be processed, or use the pickle file itself as a placeholder
+  if pickle is None:
+    raise Sorry, "Cannot find matching image for NoneType in place of pickle"
+  if img_location is None:
+    if os.path.exists(pickle.split(".pickle")[0] + ".cbf"):
+      return pickle.split(".pickle")[0] + ".cbf"
+    elif os.path.exists(os.path.join(os.path.dirname(pickle), "..", "out")):
+      loc = os.path.join(os.path.dirname(pickle), "..", "out")
       name = os.path.basename(pickle).split(".pickle")[0]
-      #name = os.path.basename(pickle).split("_00000.pickle")[0][8:]
-      prefix = "idx-" + os.path.basename(pickle)[4:8]
-      parts = name.split("-")
-      parts = parts[0:3] + parts[3].split(":")
-      parts = parts[0:4] + parts[4].split(".")
-      parts = parts[0:5] + parts[5].split("_")
-      imgname = prefix + parts[1] + parts[2] \
-      + parts[3][0:2] + parts[3][3:5] + parts[4][0:2] + parts[4][3:5] + parts[5] + ".pickle"
-      #imgname = prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + ".pickle"
-      self.image = [os.path.join(loc, imgname)]
-    assert os.path.exists(self.image[0]), "Can't find images at the designated location."
+      imgname = int_pickle_to_filename(name, "idx-", ".pickle")
+      if os.path.exists(os.path.join(loc, imgname)):
+        return os.path.join(loc, imgname)
+      else:
+        return None
+    else:
+      return None
+  else:
+    loc = img_location
+    name = os.path.basename(pickle).split(".pickle")[0]
+    imgname = int_pickle_to_filename(name, "idx-", ".pickle")
+    if os.path.exists(os.path.join(loc, imgname)):
+      return os.path.join(loc, imgname)
+    else:
+      return None
 
 class construct_reflection_table_and_experiment_list(object):
-  def __init__(self, pickle, img_location, pixel_size):
+  def __init__(self, pickle, img_location, pixel_size, proceed_without_image=False):
     # unpickle pickle file and keep track of image location
     self.pickle = pickle
+    if img_location is None:
+      if proceed_without_image:
+        self.img_location = [pickle]
+      else:
+        raise Sorry, "No image found at specified location. Override by setting proceed_without_image to False" \
+        + "to produce experiment lists that may only be read when check_format is False."
+    else:
+      self.img_location = [img_location]
     try:
       self.data = easy_pickle.load(pickle)
     except EOFError:
       self.data = None
     if self.data is not None:
       self.length = len(self.data['observations'][0].data())
-      self.img_location = img_location
       self.pixel_size = pixel_size
 
   # extract things from pickle file
@@ -145,23 +149,13 @@ class construct_reflection_table_and_experiment_list(object):
                                                   scan=self.scan)
     self.experiment_list = experiment_list.ExperimentList([self.experiments])
 
-  def experiments_to_json(self, path_name="auto"):
+  def experiments_to_json(self, path_name=None):
     if path_name is None:
-      return
-    elif path_name == "auto" or str(path_name) == "Auto":
       loc = os.path.dirname(self.pickle)
     else:
       loc = path_name
     name = os.path.basename(self.pickle).split(".pickle")[0]
-    #name = os.path.basename(self.pickle).split("_00000.pickle")[0][8:]
-    prefix = "idx-" + os.path.basename(self.pickle)[4:8]
-    parts = name.split("-")
-    parts = parts[0:3] + parts[3].split(":")
-    parts = parts[0:4] + parts[4].split(".")
-    parts = parts[0:5] + parts[5].split("_")
-    expt_name = prefix + parts[1] + parts[2] \
-    + parts[3][0:2] + parts[3][3:5] + parts[4][0:2] + parts[4][3:5] + parts[5] + "_experiments.json"
-    #expt_name = prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + "_experiments.json"
+    expt_name = int_pickle_to_filename(name, "idx-", "_experiments.json")
     experiments = os.path.join(loc, expt_name)
     dumper = experiment_list.ExperimentListDumper(self.experiment_list)
     dumper.as_json(experiments)
@@ -244,23 +238,13 @@ class construct_reflection_table_and_experiment_list(object):
     self.refl_zeta_maker()
     self.refl_s1_maker() # depends on successful completion of refl_xyz_obs_maker
 
-  def reflections_to_pickle(self, path_name="auto"):
+  def reflections_to_pickle(self, path_name=None):
     if path_name is None:
-      return
-    elif path_name == "auto" or str(path_name) == 'Auto':
       loc = os.path.dirname(self.pickle)
     else:
       loc = path_name
     name = os.path.basename(self.pickle).split(".pickle")[0]
-    #name = os.path.basename(self.pickle).split("_00000.pickle")[0][8:]
-    prefix = "idx-" + os.path.basename(self.pickle)[4:8]
-    parts = name.split("-")
-    parts = parts[0:3] + parts[3].split(":")
-    parts = parts[0:4] + parts[4].split(".")
-    parts = parts[0:5] + parts[5].split("_")
-    refl_name = prefix + parts[1] + parts[2] \
-    + parts[3][0:2] + parts[3][3:5] + parts[4][0:2] + parts[4][3:5] + parts[5] + "_integrated.pickle"
-    #refl_name = prefix + name[0:4] + name[5:7] + name[8:10] + name[11:13] + name[14:16] + name[17:19] + name[20:] + "_integrated.pickle"
+    refl_name = int_pickle_to_filename(name, "idx-", "_integrated.pickle")
     reflections = os.path.join(loc, refl_name)
     self.reflections.as_pickle(reflections)
 
@@ -269,27 +253,30 @@ if __name__ == "__main__":
     pickle_location = None
       .type = path
       .help = supply complete path to integration pickle to be unpacked.
-    img_location = auto
+    img_location = None
       .type = path
-      .help = supply complete path to image as either cbf or image pickle. Use option "auto" to locate cbfs
-      .help = in the same directory as integration pickle files.
-    json_location = auto
+      .help = supply complete path to image as either cbf or image pickle. If None, will attempt to locate cbfs
+      .help = in the same directory or the sibling out directory
+    json_location = None
       .type = path
-      .help = supply complete path to new json directory, or use "auto" to place all generated files in the
+      .help = supply complete path to new json directory. If None, will place all generated files in the
       .help = same directory as the integration pickles.
-    refl_location = auto
+    refl_location = None
       .type = path
-      .help = supply complete path to new reflection table directory, or use "auto" to place all generated
+      .help = supply complete path to new reflection table directory. If None, will place all generated
       .help = files in the same directory as the integration pickles.
     pixel_size = 0.11
       .type = float
       .help = detector-specific parameter for pixel size in mm
-      """)
+    proceed_without_image = False
+      .type = bool
+      .help = override raising exceptions if no image can be found. Write a json with a dummy image (pickle name)
+    """)
   parser = OptionParser(phil=master_phil_scope)
   params, options = parser.parse_args(show_diff_phil=False)
   for pickle_file in os.listdir(params.pickle_location):
     pickle_path = os.path.join(params.pickle_location, pickle_file)
-    result = construct_reflection_table_and_experiment_list(pickle_path, find_matching_img(pickle_path, params.img_location).image, params.pixel_size)
+    result = construct_reflection_table_and_experiment_list(pickle_path, find_matching_img(pickle_path, params.img_location), params.pixel_size, proceed_without_image=params.proceed_without_image)
     if result.data is not None:
       result.assemble_experiments()
       result.assemble_reflections()
