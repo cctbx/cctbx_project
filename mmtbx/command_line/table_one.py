@@ -114,10 +114,7 @@ table_one {
       .help = This is only used by the PHENIX GUI.
       .short_caption = Output directory
       .style = bold output_dir
-    job_title = None
-      .type = str
-      .input_size = 400
-      .style = bold
+    include scope libtbx.phil.interface.tracking_params
     show_missing_fields = True
       .type = bool
     format = txt csv *rtf
