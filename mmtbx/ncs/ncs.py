@@ -401,6 +401,12 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       self.get_inverses()
     return self._rota_matrices_inv
 
+  def delete_inv(self):
+    if hasattr(self,"_rota_matrices_inv"):
+      del self._rota_matrices_inv
+    if hasattr(self,"_translations_orth_inv"):
+      del self._translations_orth_inv
+
   def get_inverses(self):
     self._translations_orth_inv=[]
     self._rota_matrices_inv=[]
@@ -473,14 +479,18 @@ class ncs_group:  # one group of NCS operators and center and where it applies
           return False
     return True
 
-  def is_helical_symmetry(self):
-    # This assumes the operators are in order
+  def is_helical_symmetry(self,try_reorder=True):
+    # This assumes the operators are in order, but allow special case
+    #   where the identity operator is placed at the beginning but belongs 
+    #   at the end
     # For helical symmetry sequential application of operators moves up or
     #  down the list by an index depending on the indices of the operators.
+
 
     if self.is_point_group_symmetry():
       return False
 
+    is_helical=True
     n=len(self.rota_matrices_inv())
     offset_list=[]
     n_missing_list=[]
@@ -490,21 +500,42 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       n_missing_list.append(n_missing)
     # offset_list should be one instance of each value and will be 0 at the
     #  operator that is unity
-    if None in offset_list: return False
-    ii=offset_list.index(0)
-    if not is_identity(
-        self.rota_matrices_inv()[ii],self.translations_orth_inv()[ii]):
-      return False
+    if None in offset_list: 
+      is_helical=False
+    
+    if is_helical:
+      ii=offset_list.index(0)
+      if not is_identity(
+          self.rota_matrices_inv()[ii],self.translations_orth_inv()[ii]):
+        is_helical=False
 
-    for i1 in xrange(n):
-      if n_missing_list[i1] != abs(i1-ii):
-        return False
-    offset_list.sort()
-    start_value=offset_list[0]
-    expected_list=list(xrange(start_value,start_value+n))
-    if offset_list == expected_list:
-      return True
-    return False
+    if is_helical:
+      for i1 in xrange(n):
+        if n_missing_list[i1] != abs(i1-ii):
+          is_helical=False
+          break
+    if is_helical:
+      offset_list.sort()
+      start_value=offset_list[0]
+      expected_list=list(xrange(start_value,start_value+n))
+      if offset_list != expected_list:
+        is_helical=False
+    if is_helical:
+      return True 
+
+    if try_reorder: # Special case move first matrix to end
+       from copy import deepcopy
+       rota_matrices_sav=deepcopy(self._rota_matrices)
+       translations_orth_sav=deepcopy(self._translations_orth)
+       self._rota_matrices=rota_matrices_sav[1:]+rota_matrices_sav[0:1]
+       self._translations_orth=\
+          translations_orth_sav[1:]+translations_orth_sav[0:1]
+       self.delete_inv() # remove the inv matrices/rotations so they regenerate
+       is_helical=self.is_helical_symmetry(try_reorder=False)
+       self._rota_matrices=rota_matrices_sav
+       self._translations_orth=translations_orth_sav
+       self.delete_inv() # remove the inv matrices/rotations so they regenerate
+    return is_helical 
 
   def oper_adds_offset(self,i1):
     # figure out what operator is created from operator i1 + any other one
