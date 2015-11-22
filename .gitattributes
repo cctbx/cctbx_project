@@ -3734,3 +3734,4 @@ xfel/xpp/isoform.py -text
 xfel/xpp/progress_support.py -text
 xfel/xpp/progress_utils.py -text
 xfel/xpp/simulate.py -text
+xfel/xpp/split_pickles.py -text
