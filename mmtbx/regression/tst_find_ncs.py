@@ -541,7 +541,7 @@ def tst_02():
   f.close()
   ncs_object=ncs()
   ncs_object.read_ncs('helical.ncs_spec',quiet=True)
-  assert ncs_object.is_helical_symmetry()
+  assert ncs_object.is_helical_along_z()
   assert not ncs_object.is_point_group_symmetry()
 
   f=open('point_group.ncs_spec','w')
@@ -549,7 +549,7 @@ def tst_02():
   f.close()
   ncs_object=ncs()
   ncs_object.read_ncs('point_group.ncs_spec',quiet=True)
-  assert not ncs_object.is_helical_symmetry()
+  assert not ncs_object.is_helical_along_z()
   assert ncs_object.is_point_group_symmetry()
 
   f=open('nothing.ncs_spec','w')
@@ -557,7 +557,7 @@ def tst_02():
   f.close()
   ncs_object=ncs()
   ncs_object.read_ncs('nothing.ncs_spec',quiet=True)
-  assert not ncs_object.is_helical_symmetry()
+  assert not ncs_object.is_helical_along_z()
   assert not ncs_object.is_point_group_symmetry()
 
   f=open('helical_requires_reordering.ncs_spec','w')
@@ -565,7 +565,7 @@ def tst_02():
   f.close()
   ncs_object=ncs()
   ncs_object.read_ncs('helical_requires_reordering.ncs_spec',quiet=True)
-  assert ncs_object.is_helical_symmetry()
+  assert ncs_object.is_helical_along_z()
   assert not ncs_object.is_point_group_symmetry()
 
 
