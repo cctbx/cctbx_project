@@ -489,7 +489,6 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     # For helical symmetry sequential application of operators moves up or
     #  down the list by an index depending on the indices of the operators.
 
-
     if self.is_point_group_symmetry():
       return False
 
@@ -1093,12 +1092,16 @@ class ncs:
     return n_max
 
   def is_point_group_symmetry(self):
+    if not self._ncs_groups:
+      return False
     for ncs_group in self._ncs_groups:
       if not ncs_group.is_point_group_symmetry():
         return False
     return True
 
   def is_helical_along_z(self):
+    if not self._ncs_groups:
+      return False
     for ncs_group in self._ncs_groups:
       if not ncs_group.is_helical_along_z():
         return False
