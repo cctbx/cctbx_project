@@ -66,8 +66,13 @@ for runroot in os.listdir("."):
         # the rest, this time including the odd bits from the right half
         mid_sel = (~p1_sel) & (~p2_sel)
 
+        a = p1_sel.count(True)
+        b = p2_sel.count(True)
+        c = mid_sel.count(True)
+        assert a + b + c == len(preds[i])
+
         sel_l.append(p1_sel)
-        sel_r.append(p1_sel)
+        sel_r.append(p2_sel)
         sel_mid.append(mid_sel)
 
       dl = {}
