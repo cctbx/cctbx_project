@@ -481,7 +481,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
   def is_helical_symmetry(self,try_reorder=True):
     # This assumes the operators are in order, but allow special case
-    #   where the identity operator is placed at the beginning but belongs 
+    #   where the identity operator is placed at the beginning but belongs
     #   at the end
     # For helical symmetry sequential application of operators moves up or
     #  down the list by an index depending on the indices of the operators.
@@ -500,9 +500,9 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       n_missing_list.append(n_missing)
     # offset_list should be one instance of each value and will be 0 at the
     #  operator that is unity
-    if None in offset_list: 
+    if None in offset_list:
       is_helical=False
-    
+
     if is_helical:
       ii=offset_list.index(0)
       if not is_identity(
@@ -521,7 +521,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       if offset_list != expected_list:
         is_helical=False
     if is_helical:
-      return True 
+      return True
 
     if try_reorder: # Special case move first matrix to end
        from copy import deepcopy
@@ -535,7 +535,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
        self._rota_matrices=rota_matrices_sav
        self._translations_orth=translations_orth_sav
        self.delete_inv() # remove the inv matrices/rotations so they regenerate
-    return is_helical 
+    return is_helical
 
   def oper_adds_offset(self,i1):
     # figure out what operator is created from operator i1 + any other one
