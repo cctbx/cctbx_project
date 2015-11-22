@@ -479,7 +479,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
           return False
     return True
 
-  def is_helical_along_z(self,tol=0.001):
+  def is_helical_along_z(self,tol=0.01):
     # This assumes the operators are in order, but allow special case
     #   where the identity operator is placed at the beginning but belongs
     #   at the end
@@ -498,8 +498,6 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     z_translations=[]
     sort_z_translations=[]
     for i1 in xrange(n): # figure out if translation is along z
-      if abs(self.translations_orth_inv()[i1][0])>tol: is_helical=False
-      if abs(self.translations_orth_inv()[i1][1])>tol: is_helical=False
       z_translations.append(self.translations_orth_inv()[i1][2])
       sort_z_translations.append([self.translations_orth_inv()[i1][2],i1])
     from copy import deepcopy
@@ -509,13 +507,22 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       # sort the z-translations to reorder the matrices. Could be backwards
       sort_z_translations.sort()
       sorted_indices=[]
+      sorted_z=[]
       n_plus_one=0
       n_minus_one=0
+      delta=None
+      all_same_delta=True
       for z,i1 in sort_z_translations:
         if sorted_indices:
           if i1==sorted_indices[-1]+1: n_plus_one+=1
           if i1==sorted_indices[-1]-1: n_minus_one+=1
+          delta_z=z-sorted_z[-1]
+          if delta is None:
+            delta=delta_z
+          elif abs(delta-delta_z)>tol:
+            is_helical=False
         sorted_indices.append(i1)
+        sorted_z.append(z)
       if n_minus_one>n_plus_one:
         sorted_indices.reverse()
 
@@ -556,6 +563,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       if offset_list != expected_list:
         is_helical=False
     # restore
+    sys.stdout.flush()
     self._rota_matrices=rota_matrices_sav
     self._translations_orth=translations_orth_sav
     self.delete_inv() # remove the inv matrices/rotations so they regenerate
