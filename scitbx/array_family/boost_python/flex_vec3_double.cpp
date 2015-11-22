@@ -444,6 +444,22 @@ namespace {
   }
 
   double
+  min_distance_between_any_pair(
+    af::const_ref<vec3<double> > const& lhs,
+    af::const_ref<vec3<double> > const& rhs)
+  {
+    if (lhs.size() == 0) return 0;
+    if (rhs.size() == 0) return 0;
+    double min_length_sq = (lhs[0]-rhs[0]).length_sq();
+    for(std::size_t i=0;i<lhs.size();i++) {
+      for(std::size_t j=0;j<rhs.size();j++) {
+        math::update_min(min_length_sq, (lhs[i]-rhs[j]).length_sq());
+      }
+    }
+    return std::sqrt(min_length_sq);
+  }
+
+  double
   max_distance(
     af::const_ref<vec3<double> > const& lhs,
     af::const_ref<vec3<double> > const& rhs)
@@ -578,6 +594,7 @@ namespace boost_python {
       .def("norm", norm_)
       .def("each_normalize", each_normalize, (
         arg("raise_if_length_zero")=true))
+      .def("min_distance_between_any_pair", min_distance_between_any_pair)
       .def("max_distance", max_distance)
       .def("rms_difference", rms_difference)
       .def("rms_length", rms_length)
