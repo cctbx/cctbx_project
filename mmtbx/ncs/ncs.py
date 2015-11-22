@@ -332,7 +332,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     text = '\n'.join(text)
     return text
 
-  def format_for_resolve(self,crystal_number=None,skip_identity=False,
+  def format_for_resolve(self,crystal_number=None,skip_identity_if_first=False,
        ncs_domain_pdb=True):
     text="new_ncs_group"
     if ncs_domain_pdb and self._ncs_domain_pdb is not None:
@@ -341,8 +341,8 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     for center,trans_orth,ncs_rota_matr in zip (
        self._centers, self._translations_orth,self._rota_matrices):
       i+=1
-      if i==1 and is_identity(ncs_rota_matr,trans_orth) and \
-        skip_identity: continue
+      if i==1 and skip_identity_if_first and \
+        is_identity(ncs_rota_matr,trans_orth): continue
       for j in xrange(3):
        text+="\nrota_matrix "+" %8.4f  %8.4f  %8.4f" %tuple(
           ncs_rota_matr[j*3:j*3+3])
@@ -492,7 +492,8 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     #  operator that is unity
     if None in offset_list: return False
     ii=offset_list.index(0)
-    if not is_identity(self.rota_matrices_inv()[ii],self.translations_orth_inv()[ii]):
+    if not is_identity(
+        self.rota_matrices_inv()[ii],self.translations_orth_inv()[ii]):
       return False
 
     for i1 in xrange(n):
@@ -905,7 +906,7 @@ class ncs:
     return all_text
 
   def format_all_for_resolve(self,log=None,quiet=False,out=None,
-      crystal_number=None,skip_identity=False,ncs_domain_pdb=True):
+      crystal_number=None,skip_identity_if_first=False,ncs_domain_pdb=True):
     if out==None:
        out=sys.stdout
     if log==None:
@@ -915,7 +916,8 @@ class ncs:
     all_text=""
     for ncs_group in self._ncs_groups:
       text=ncs_group.format_for_resolve(crystal_number=crystal_number,
-         skip_identity=skip_identity,ncs_domain_pdb=ncs_domain_pdb)
+         skip_identity_if_first=skip_identity_if_first,
+         ncs_domain_pdb=ncs_domain_pdb)
       if not quiet: out.write("\n"+text+"\n\n")
       all_text+="\n"+text
     return all_text
