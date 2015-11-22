@@ -493,8 +493,11 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     if self.is_point_group_symmetry():
       return False
 
-    is_helical=True
     n=len(self.rota_matrices_inv())
+    if n < 2:
+      return False
+
+    is_helical=True
     z_translations=[]
     sort_z_translations=[]
     for i1 in xrange(n): # figure out if translation is along z
