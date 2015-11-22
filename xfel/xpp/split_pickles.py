@@ -11,6 +11,8 @@ for runroot in os.listdir("."):
   if not os.path.isdir(runroot):
     continue
   for rg in os.listdir(runroot):
+    if not os.path.isdir(os.path.join(runroot,rg)):
+      continue
     intpath = os.path.join(runroot, rg, "integration")
     destroot_l = os.path.join(intpath, "left")
     destroot_r = os.path.join(intpath, "right")
