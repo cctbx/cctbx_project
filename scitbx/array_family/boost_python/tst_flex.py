@@ -1718,6 +1718,9 @@ def exercise_flex_vec3_double():
   assert approx_equal(
     a.max_distance(b)**2,
     max(flex.vec3_double(a.as_double()-b.as_double()).dot()))
+  a1 = flex.vec3_double([(0,0,0),(0,1,0),(0,0,2)])
+  a2 = flex.vec3_double([(5,0,0),(0,3,2),(2,0,2),(5,5,5)])
+  assert approx_equal(a1.min_distance_between_any_pair(a2),2)
   assert approx_equal(a.sum_sq(), 285)
   assert approx_equal(a.sum_sq(), flex.sum_sq(a.as_double()))
   assert approx_equal(a.norm(), math.sqrt(285))
@@ -1854,6 +1857,9 @@ def exercise_flex_vec2_double():
   assert approx_equal(
     a.max_distance(b)**2,
     max(flex.vec2_double(a.as_double()-b.as_double()).dot()))
+  a1 = flex.vec2_double([(0,0),(3,2),(0,0)])
+  a2 = flex.vec2_double([(5,0),(0,3),(2,0),(5,5)])
+  assert approx_equal(a1.min_distance_between_any_pair(a2),2)
   assert approx_equal(a.sum_sq(), 91)
   assert approx_equal(a.sum_sq(), flex.sum_sq(a.as_double()))
   assert approx_equal(a.norm(), math.sqrt(91.))
