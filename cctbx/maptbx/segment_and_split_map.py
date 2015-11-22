@@ -605,7 +605,7 @@ def get_connectivity(params,
      out=out)
   if threshold is None:
     return None,None,None,None,None
- 
+
   co = maptbx.connectivity(map_data=map_data, threshold=threshold)
   conn = co.result()
   z = zip(co.regions(),range(0,co.regions().size()))
@@ -869,10 +869,10 @@ def run_get_duplicates_and_ncs(
     if missing:
       s = (new_edited_mask == missing[0])
       for id in missing[1:]:
-        s |= (new_edited_mask==id) 
+        s |= (new_edited_mask==id)
       new_edited_mask=new_edited_mask.set_selected(~s,-1) # cross off all others
 
-    
+
     new_duplicate_dict,new_equiv_dict,new_equiv_dict_ncs_copy_dict,\
         new_region_range_dict,new_region_centroid_dict,\
         new_region_scattered_points_dict,new_njump_dict=\
@@ -891,7 +891,7 @@ def run_get_duplicates_and_ncs(
         out=out)
 
 
-    # Merge in the new information 
+    # Merge in the new information
     copy_dict_info(new_duplicate_dict,duplicate_dict)
     copy_dict_info(new_equiv_dict,equiv_dict)
     copy_dict_info(new_equiv_dict_ncs_copy_dict,equiv_dict_ncs_copy_dict)
@@ -973,7 +973,7 @@ def get_duplicates_and_ncs(
           xyz_frac=(i/all[0],j/all[1],k/all[2])
           xyz_cart=unit_cell.orthogonalize(xyz_frac)
           region_scattered_points_dict[id].append(xyz_cart)
-          
+
   for i in xrange(len(edited_volume_list)):
     v=edited_volume_list[i]
     id=i+1
@@ -1023,7 +1023,7 @@ def get_duplicates_and_ncs(
           if i0==identity_op: continue
           r=ncs_group.rota_matrices_inv()[i0] # inverse maps pos 0 on to pos i
           t=ncs_group.translations_orth_inv()[i0]
-        
+
           n+=1
           new_xyz_cart=r * matrix.col(xyz_cart) + t
           new_xyz_frac=unit_cell.fractionalize(new_xyz_cart)
@@ -1117,11 +1117,11 @@ def get_ncs_equivalents(
       #     id matches id1 N=match_dict[id1]
       njump=njump_dict[id]
       njump1=njump_dict[id1]
-      if njump!=njump1: 
+      if njump!=njump1:
         njump=max(njump,njump1)
-    
+
       key,n=top_key(equiv_dict_ncs_copy_dict[id][id1]) # ncs_copy, n-overlap
-      if n<min_coverage*region_volume_dict[id1]/(njump**3): 
+      if n<min_coverage*region_volume_dict[id1]/(njump**3):
         break
       else:
         if not id in equiv_dict_ncs_copy.keys():equiv_dict_ncs_copy[id]={}
@@ -1270,7 +1270,7 @@ def identify_ncs_regions(params,
       co=co,
       crystal_symmetry=crystal_symmetry,
       edited_mask=edited_mask,
-      original_id_from_id=original_id_from_id, 
+      original_id_from_id=original_id_from_id,
       edited_volume_list=edited_volume_list,
       unit_cell=unit_cell,
       max_regions_to_consider=max_regions_to_consider,
@@ -1420,7 +1420,7 @@ def single_list(list_of_lists):
   return single
 
 def get_closest_dist(test_center,target_centers):
-  # make sure we have target_centers=vec3_double and not a list,  
+  # make sure we have target_centers=vec3_double and not a list,
   #  and vec3_double or tuple for test_center
 
   if type(test_center)==type([1,2,3]):
@@ -2074,10 +2074,10 @@ def get_touching_dist(centers,default=100.,min_dist=8.):
        mean_dist_n+=1.
   if mean_dist_n>0:
     return max(min_dist,2.0*mean_dist/mean_dist_n)
-  else: 
+  else:
     return default
-     
-    
+
+
 def cut_out_map(map_data=None, crystal_symmetry=None,
     min_point=None,max_point=None):
   from cctbx import uctbx
