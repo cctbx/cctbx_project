@@ -615,7 +615,7 @@ def get_connectivity(params,
       raise Sorry("No threshold found...try with threshold=xxx")
     else: # on iteration...ok
       print >>out,"Note: No threshold found"
-      return None,None,None,None,None
+      return None,None,None,None
 
   co = maptbx.connectivity(map_data=map_data, threshold=threshold)
   z = zip(co.regions(),range(0,co.regions().size()))
