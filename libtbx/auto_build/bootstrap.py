@@ -40,12 +40,13 @@ def tar_extract(workdir, arx, modulename=None):
     # rename to expected folder name, e.g. boost_hot -> boost
     # only rename if folder names differ
     if modulename:
-      if modulename != tarfoldername and os.path.exists(modulename):
-        shutil.rmtree(modulename)
-      os.rename(tarfoldername, modulename)
+      if modulename != tarfoldername:
+        if os.path.exists(modulename):
+          shutil.rmtree(modulename)
+        os.rename(tarfoldername, modulename)
   except Exception, e:
-    print "Extracting tar archive resulted in error:"
-    raise
+    raise Exception("Extracting tar archive resulted in error: " + str(e))
+    return 1
   return 0
 
 # Utililty function to be executed on slave machine or called directly by standalone bootstrap script
@@ -731,7 +732,8 @@ class Builder(object):
     self.add_step(self.shell(
       name='cleanup',
       command =cmd,
-      workdir=['.']
+      workdir=['.'],
+      description="deleting " + ", ".join(dirs),
     ))
 
   def add_rm_bootstrap_on_slave(self):
@@ -821,7 +823,7 @@ class Builder(object):
       name='hot %s'%module,
       command=mstr,
       workdir=['modules'],
-      description="create remote temporary archive of %s" %module,
+      description="create remote temporary archive %s:%s" %(tarurl, arxname),
     ))
 
   def _add_remote_rm_tar(self, module, tarurl, arxname):
