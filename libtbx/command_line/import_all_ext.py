@@ -24,6 +24,7 @@ def run(args):
   t_start = time.time()
   from libtbx import introspection
   import os
+  import sysconfig
   print "After script imports:"
   print "  wall clock time: %.2f" % (time.time() - t_start)
   print
@@ -33,10 +34,11 @@ def run(args):
     "lib")
   ext_so = []
   for node in os.listdir(lib):
-    if (node.endswith("_ext.so")):
-      ext_so.append(node[:-3])
+    pylibext = sysconfig.get_config_vars("SO")[0]
+    if (node.endswith("_ext" + pylibext)):
+      ext_so.append(node.split(".")[0])
   ext_so.sort(cmp_so)
-  print "Before importing extensios:"
+  print "Before importing extensions:"
   vmi = introspection.virtual_memory_info()
   vmi.show(prefix="  ")
   prev_vms = vmi.get_bytes('VmSize:')
@@ -58,7 +60,7 @@ def run(args):
     prev_vms = vms
     prev_rss = rss
   print
-  print "After importing all extensios:"
+  print "After importing all extensions:"
   introspection.virtual_memory_info().show(prefix="  ")
   print "  wall clock time: %.2f" % (time.time() - t_start)
   print
