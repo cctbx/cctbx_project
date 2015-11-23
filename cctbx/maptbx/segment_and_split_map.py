@@ -72,15 +72,10 @@ master_phil = iotbx.phil.parse("""
       .help = Buffer (grid units) around NCS asymmetric unit in box_mask and map
       .short_caption = Box buffer size
 
-    au_map_output_file = shifted_map_au.ccp4
-      .type = path
-      .help = Output map file with one NCS asymmetric unit included
-      .short_caption = Output NCS map file
-
-    au_mask_output_file = shifted_mask_au.ccp4
-      .type = path
-      .help = Output mask file with one NCS asymmetric unit marked
-      .short_caption = Output NCS mask file
+    au_output_file_stem = shifted_au
+      .type = str 
+      .help = File stem for output map files with one NCS asymmetric unit
+      .short_caption = Output au file stem
 
     write_intermediate_maps = False
       .type = bool
@@ -201,10 +196,6 @@ master_phil = iotbx.phil.parse("""
         .type = bool
         .help = '''Verbose output'''
         .short_caption = Verbose output
-      njump = 2
-        .type = int
-        .help = Take every njump'th grid point in each direction in analyses
-        .short_caption = Grid skip interval
    }
 """, process_includes=True)
 master_params = master_phil
@@ -212,13 +203,15 @@ master_params = master_phil
 class info_object:
   def __init__(self,
       ncs_obj=None,
+      min_b=None,
+      max_b=None,
       ncs_group_list=None,
       origin_shift=None,
       edited_volume_list=None,
       region_range_dict=None,
-      selected_regions=[],
-      ncs_related_regions=[],
-      map_files_written=[],
+      selected_regions=None,
+      ncs_related_regions=None,
+      map_files_written=None,
       bad_region_list=None,
       region_centroid_dict=None,
       original_id_from_id=None,
@@ -226,6 +219,9 @@ class info_object:
     ):
     from libtbx import adopt_init_args
     adopt_init_args(self, locals())
+    if not selected_regions: selected_regions=[]
+    if not ncs_related_regions: ncs_related_regions=[]
+    if not map_files_written: map_files_written=[]
 
 class ncs_group_object:
   def __init__(self,
@@ -242,7 +238,8 @@ class ncs_group_object:
       region_centroid_dict=None,
       region_scattered_points_dict=None,
       co=None,
-      conn_obj=None,
+      min_b=None,
+      max_b=None,
       original_id_from_id=None,
       remainder_id_dict=None,  # dict relating regions in a remainder object to
                                #  those in the original map
@@ -256,6 +253,8 @@ class ncs_group_object:
   def as_info_object(self):
     return info_object(
       ncs_obj=self.ncs_obj,
+      max_b=self.max_b,
+      min_b=self.min_b,
       ncs_group_list=self.ncs_group_list,
       origin_shift=self.origin_shift,
       edited_volume_list=self.edited_volume_list,
@@ -619,7 +618,6 @@ def get_connectivity(params,
       return None,None,None,None,None
 
   co = maptbx.connectivity(map_data=map_data, threshold=threshold)
-  conn = co.result()
   z = zip(co.regions(),range(0,co.regions().size()))
   sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
 
@@ -642,7 +640,7 @@ def get_connectivity(params,
      min_b[i][2],max_b[i][2])
     """
     n_use=cntr
-  return co,conn,sorted_by_volume,min_b,max_b
+  return co,sorted_by_volume,min_b,max_b
 
 def get_volume_of_seq(text,vol=None,chain_type=None,out=sys.stdout):
   chain_type,n_residues=guess_chain_type(text,chain_type=chain_type,out=out)
@@ -741,23 +739,6 @@ def get_solvent_fraction(params,crystal_symmetry=None,
        n_residues,volume_of_molecules,solvent_fraction)
   return solvent_fraction,n_residues
 
-def mask_for_region(id=None,conn_obj=None):
-   region_mask_i = conn_obj.deep_copy()
-   s = (region_mask_i==id)
-   region_mask_i = region_mask_i.set_selected(s,1)
-   region_mask_i = region_mask_i.set_selected(~s,0)
-   return region_mask_i
-
-def region_is_in_multiple_ncs_au(id=None,
-        conn_obj=None,ncs_obj=None,
-        max_overlap=None,out=sys.stdout):
-   # figure out if any points in this region are in more than one ncs au
-   # map all points in the region to ncs copies and see if they are then in
-   #  the same region
-   # value_at_closest_grid_point
-   region_mask_i=mask_for_region(id=id,conn_obj=conn_obj)
-   return False
-
 def top_key(dd):
   if not dd:
     return None,None
@@ -796,8 +777,10 @@ def choose_max_regions_to_consider(params,
   return cntr
 
 def get_edited_mask(sorted_by_volume=None,
-    conn_obj=None,max_regions_to_consider=None,
+    max_regions_to_consider=None,
+    co=None,
     out=sys.stdout):
+  conn_obj=co.result()
   origin=list(conn_obj.accessor().origin())
   all=list(conn_obj.accessor().all())
   conn_obj.accessor().show_summary(out)
@@ -831,13 +814,12 @@ def choose_subset(a,target_number=1):
 
 def run_get_duplicates_and_ncs(
    ncs_obj=None,
-   conn_obj=None,
-   co=None,
+   min_b=None,
+   max_b=None,
    crystal_symmetry=None,
    edited_mask=None,
    original_id_from_id=None,
    edited_volume_list=None,
-   njump=None,
    unit_cell=None,
    max_regions_to_consider=None,
    regions_left=None,
@@ -848,73 +830,28 @@ def run_get_duplicates_and_ncs(
      region_centroid_dict,region_scattered_points_dict=\
       get_duplicates_and_ncs(
         ncs_obj=ncs_obj,
-        conn_obj=conn_obj,
-        co=co,
+        min_b=min_b,
+        max_b=max_b,
         edited_mask=edited_mask,
         edited_volume_list=edited_volume_list,
         original_id_from_id=original_id_from_id,
         unit_cell=unit_cell,
         crystal_symmetry=crystal_symmetry,
         max_regions_to_consider=max_regions_to_consider,
-        njump=njump,
         out=out)
 
   # check that we have region_centroid for all values
   complete=True
   missing=[]
-  njump_dict={}
   for i in xrange(1,max_regions_to_consider+1):
-    if i in region_centroid_dict.keys():
-      njump_dict[i]=njump
-    else:
+    if not i in region_centroid_dict.keys():
       if (regions_left is None) or (i in regions_left):
          complete=False
          missing.append(i)
   if complete:
        return duplicate_dict,equiv_dict,equiv_dict_ncs_copy_dict,\
         region_range_dict,region_centroid_dict,\
-        region_scattered_points_dict,njump_dict
-  elif njump>1: # get values with finer spacing for remainder
-    print >>out,"\nUsing finer grid for regions %s with njump=%d" %(
-      str(missing),njump-1)
-    new_edited_mask=edited_mask.deep_copy()
-    if missing:
-      s = (new_edited_mask == missing[0])
-      for id in missing[1:]:
-        s |= (new_edited_mask==id)
-      new_edited_mask=new_edited_mask.set_selected(~s,-1) # cross off all others
-
-
-    new_duplicate_dict,new_equiv_dict,new_equiv_dict_ncs_copy_dict,\
-        new_region_range_dict,new_region_centroid_dict,\
-        new_region_scattered_points_dict,new_njump_dict=\
-      run_get_duplicates_and_ncs(
-        ncs_obj=ncs_obj,
-        conn_obj=conn_obj,
-        co=co,
-        crystal_symmetry=crystal_symmetry,
-        edited_volume_list=new_edited_volume_list,
-        original_id_from_id=original_id_from_id,
-        edited_mask=new_edited_mask,
-        unit_cell=unit_cell,
-        max_regions_to_consider=max_regions_to_consider,
-        njump=njump-1,
-        regions_left=missing,
-        out=out)
-
-
-    # Merge in the new information
-    copy_dict_info(new_duplicate_dict,duplicate_dict)
-    copy_dict_info(new_equiv_dict,equiv_dict)
-    copy_dict_info(new_equiv_dict_ncs_copy_dict,equiv_dict_ncs_copy_dict)
-    copy_dict_info(new_region_range_dict,region_range_dict)
-    copy_dict_info(new_region_centroid_dict,region_centroid_dict)
-    copy_dict_info(new_region_scattered_points_dict,
-       region_scattered_points_dict)
-    copy_dict_info(new_njump_dict,njump_dict)
-    return duplicate_dict,equiv_dict,equiv_dict_ncs_copy_dict,\
-        region_range_dict,region_centroid_dict,region_scattered_points_dict,\
-        njump_dict
+        region_scattered_points_dict
   else:
     raise Sorry("Cannot find region-centroid for all regions? Missing: %s" %(
       missing))
@@ -923,9 +860,9 @@ def copy_dict_info(from_dict,to_dict):
   for key in from_dict.keys():
     to_dict[key]=from_dict[key]
 
-def get_centroid_from_blobs(co=None,id=None,original_id_from_id=None):
+def get_centroid_from_blobs(min_b=None,max_b=None,
+    id=None,original_id_from_id=None):
   orig_id=original_id_from_id[id]
-  min_b,max_b=co.get_blobs_boundaries_tuples()
   upper=max_b[orig_id]
   lower=min_b[orig_id]
   avg=[]
@@ -935,12 +872,11 @@ def get_centroid_from_blobs(co=None,id=None,original_id_from_id=None):
 
 def get_duplicates_and_ncs(
    ncs_obj=None,
-   conn_obj=None,
-   co=None,
+   min_b=None,
+   max_b=None,
    edited_mask=None,
    original_id_from_id=None,
    edited_volume_list=None,
-   njump=None,
    crystal_symmetry=None,
    unit_cell=None,
    max_regions_to_consider=None,
@@ -951,8 +887,8 @@ def get_duplicates_and_ncs(
    ):
 
   from scitbx.math import matrix
-  origin=list(conn_obj.accessor().origin())
-  all=list(conn_obj.accessor().all())
+  origin=list(edited_mask.accessor().origin())
+  all=list(edited_mask.accessor().all())
 
   # Get sampled points in each region
   sample_dict={}
@@ -992,7 +928,7 @@ def get_duplicates_and_ncs(
 
   # Now just use the scattered points to get everything else:
   region_n_dict={}  # count of points used by region (differs from volume due
-     # to the njump parameter. Should be about volume/njump**3)
+     # to the sampling)
   region_range_dict={} # keyed by region in edited_mask; range for x, y, z
   region_centroid_dict={} # keyed by region in edited_mask; range for x, y, z
   for id in region_scattered_points_dict.keys():
@@ -1001,7 +937,8 @@ def get_duplicates_and_ncs(
     if region_n_dict[id]:
       region_centroid_dict[id]=list(sites.mean())
     else: # No points...use bounds from object
-      region_centroid_dict[id]=get_centroid_from_blobs(co=co,
+      region_centroid_dict[id]=get_centroid_from_blobs(min_b=min_b,
+        max_b=max_b,
         id=id,original_id_from_id=original_id_from_id)
 
   # Now get NCS relationships
@@ -1109,9 +1046,8 @@ def sort_by_ncs_overlap(matches,equiv_dict_ncs_copy_dict_id):
 def get_ncs_equivalents(
     bad_region_list=None,
     region_list=None,
-    region_volume_dict=None,
+    region_scattered_points_dict=None,
     equiv_dict=None,
-    njump_dict=None,
     ncs_copies=None,
     equiv_dict_ncs_copy_dict=None,
     min_coverage=.10,
@@ -1127,13 +1063,9 @@ def get_ncs_equivalents(
     n_found=0
     for id1 in key_list:
       #     id matches id1 N=match_dict[id1]
-      njump=njump_dict[id]
-      njump1=njump_dict[id1]
-      if njump!=njump1:
-        njump=max(njump,njump1)
 
       key,n=top_key(equiv_dict_ncs_copy_dict[id][id1]) # ncs_copy, n-overlap
-      if n<min_coverage*region_volume_dict[id1]/(njump**3):
+      if n<min_coverage*region_scattered_points_dict[id].size():
         break
       else:
         if not id in equiv_dict_ncs_copy.keys():equiv_dict_ncs_copy[id]={}
@@ -1234,7 +1166,8 @@ def group_ncs_equivalents(
 def identify_ncs_regions(params,
      sorted_by_volume=None,
      co=None,
-     conn_obj=None,
+     min_b=None,
+     max_b=None,
      ncs_obj=None,
      unit_cell=None,
      crystal_symmetry=None,
@@ -1264,7 +1197,7 @@ def identify_ncs_regions(params,
 
   edited_mask,edited_volume_list,original_id_from_id=get_edited_mask(
      sorted_by_volume=sorted_by_volume,
-     conn_obj=conn_obj,
+     co=co,
      max_regions_to_consider=max_regions_to_consider,out=out)
   # edited_mask contains re-numbered region id's
 
@@ -1275,18 +1208,17 @@ def identify_ncs_regions(params,
 
   duplicate_dict,equiv_dict,equiv_dict_ncs_copy_dict,\
       region_range_dict,region_centroid_dict,\
-      region_scattered_points_dict,njump_dict=\
+      region_scattered_points_dict=\
     run_get_duplicates_and_ncs(
       ncs_obj=ncs_obj,
-      conn_obj=conn_obj,
-      co=co,
+      min_b=min_b,
+      max_b=max_b,
       crystal_symmetry=crystal_symmetry,
       edited_mask=edited_mask,
       original_id_from_id=original_id_from_id,
       edited_volume_list=edited_volume_list,
       unit_cell=unit_cell,
       max_regions_to_consider=max_regions_to_consider,
-      njump=params.control.njump,
       out=out)
 
   # Remove any bad regions
@@ -1302,10 +1234,9 @@ def identify_ncs_regions(params,
   equiv_dict_ncs_copy=get_ncs_equivalents(
     region_list=region_list,
     bad_region_list=bad_region_list,
-    region_volume_dict=region_volume_dict,
+    region_scattered_points_dict=region_scattered_points_dict,
     equiv_dict=equiv_dict,
     ncs_copies=ncs_obj.max_operators(),
-    njump_dict=njump_dict,
     equiv_dict_ncs_copy_dict=equiv_dict_ncs_copy_dict,
     out=out)
 
@@ -1329,7 +1260,8 @@ def identify_ncs_regions(params,
      edited_mask=edited_mask,
      origin_shift=origin_shift,
      co=co,
-     conn_obj=conn_obj,
+     min_b=min_b,
+     max_b=max_b,
      bad_region_list=bad_region_list,
      original_id_from_id=original_id_from_id,
      edited_volume_list=edited_volume_list,
@@ -1443,17 +1375,16 @@ def get_closest_dist(test_center,target_centers):
   closest_dist=test_center.min_distance_between_any_pair(target_centers)
   return closest_dist
 
-def select_from_seed(starting_region,
+def select_from_seed(starting_regions,
       target_scattered_points=None,
       ncs_group_obj=None):
   from copy import deepcopy
-  selected_regions=single_list(deepcopy(starting_region))
+  selected_regions=single_list(deepcopy(starting_regions))
   # do not allow any region in ncs_group_obj.bad_region_list
 
   for ncs_group in ncs_group_obj.ncs_group_list: # try adding from each group
     best_ncs_set=None
     best_dist=None
-
     current_scattered_points_list=get_scattered_points_list(selected_regions,
        region_scattered_points_dict=ncs_group_obj.region_scattered_points_dict)
     if target_scattered_points:
@@ -1537,9 +1468,19 @@ def select_regions_in_au(params,
 
     best_selected_regions=None
     best_rms=None
-    for starting_region in ncs_group_obj.ncs_group_list[0]: # try each au as seed
-      if starting_region in ncs_group_obj.bad_region_list: continue # do not use
-      selected_regions,rms=select_from_seed([starting_region],
+    if target_scattered_points:
+      starting_regions=[None]
+    else:
+      starting_regions=ncs_group_obj.ncs_group_list[0]
+
+    for starting_region in starting_regions: # try each au as seed
+      if starting_region and starting_region in ncs_group_obj.bad_region_list: 
+        continue # do not use
+      if starting_region:
+        starting_region_list=[starting_region]
+      else:
+        starting_region_list=[]
+      selected_regions,rms=select_from_seed(starting_region_list,
         target_scattered_points=target_scattered_points,
         ncs_group_obj=ncs_group_obj)
       if not selected_regions:
@@ -1668,10 +1609,10 @@ def get_upper(upper_bounds,upper):
       new_upper.append(max(upper_bounds[i],upper[i]))
   return new_upper
 
-def get_bounds(min_b=None,max_b=None,ncs_group_obj=None,id=None):
+def get_bounds(ncs_group_obj=None,id=None):
   orig_id=ncs_group_obj.original_id_from_id[id]
-  lower=min_b[orig_id]
-  upper=max_b[orig_id]
+  lower=ncs_group_obj.min_b[orig_id]
+  upper=ncs_group_obj.max_b[orig_id]
   return lower,upper
 
 def get_selected_and_related_regions(params,
@@ -1684,14 +1625,12 @@ def get_selected_and_related_regions(params,
   bool_ncs_related_mask=get_bool_mask_of_regions(ncs_group_obj=ncs_group_obj,
        region_list=ncs_group_obj.ncs_related_regions)
 
-  min_b,max_b=ncs_group_obj.co.get_blobs_boundaries_tuples()
   lower_bounds=[None,None,None]
   upper_bounds=[None,None,None]
   if ncs_group_obj.selected_regions:
     for id in ncs_group_obj.selected_regions:
       lower,upper=get_bounds(
-        min_b=min_b,max_b=max_b,ncs_group_obj=ncs_group_obj,
-        id=id)
+        ncs_group_obj=ncs_group_obj,id=id)
       lower_bounds=get_lower(lower_bounds,lower)
       upper_bounds=get_upper(upper_bounds,upper)
 
@@ -1732,11 +1671,6 @@ def write_region_maps(params,
   if not ncs_group_obj:
     return map_files_written,remainder_regions_written
 
-  min_b,max_b=ncs_group_obj.co.get_blobs_boundaries_tuples()
-  if remainder_ncs_group_obj:
-    r_min_b,r_max_b=remainder_ncs_group_obj.co.get_blobs_boundaries_tuples()
-
-
   if not ncs_group_obj.selected_regions:
     return map_files_written,remainder_regions_written
 
@@ -1751,8 +1685,7 @@ def write_region_maps(params,
 
     s = (bool_region_mask==True)
 
-    lower_bounds,upper_bounds=get_bounds(
-      min_b=min_b,max_b=max_b,ncs_group_obj=ncs_group_obj,id=id)
+    lower_bounds,upper_bounds=get_bounds(ncs_group_obj=ncs_group_obj,id=id)
 
     if remainder_ncs_group_obj:
       for remainder_id in remainder_ncs_group_obj.remainder_id_dict.keys():
@@ -1764,8 +1697,7 @@ def write_region_maps(params,
            expand_size=params.segmentation.expand_size)
           s|= (remainder_bool_region_mask==True)
           lower,upper=get_bounds(
-            min_b=r_min_b,max_b=r_max_b,ncs_group_obj=remainder_ncs_group_obj,
-            id=remainder_id)
+            ncs_group_obj=remainder_ncs_group_obj,id=remainder_id)
           lower_bounds=get_lower(lower_bounds,lower)
           upper_bounds=get_upper(upper_bounds,upper)
 
@@ -1845,10 +1777,16 @@ def write_output_files(params,
   print >>out,"Both types of maps have the same origin and overlay on %s" %(
    params.output_files.shifted_map_file)
 
+  if params.output_files.au_output_file_stem:
+    au_mask_output_file=params.output_files.au_output_file_stem+"_mask.ccp4"
+    au_map_output_file=params.output_files.au_output_file_stem+"_map.ccp4"
+  else:
+    au_mask_output_file=None
+    au_map_output_file=None
   print >>out,\
      "\nThe standard maps (%s, %s) have the \noriginal cell dimensions." %(
-   params.output_files.au_mask_output_file,
-   params.output_files.au_map_output_file)+\
+   au_mask_output_file,
+   au_map_output_file)+\
    "\nThese maps show only the unique (NCS AU) part of the map."
 
   print >>out,\
@@ -1865,12 +1803,12 @@ def write_output_files(params,
   mask_data_ncs_au=get_bool_mask_as_int(
      ncs_group_obj=ncs_group_obj,mask_as_bool=bool_selected_regions)
 
-  if params.output_files.au_mask_output_file: # Write out the mask (as int)
+  if au_mask_output_file: # Write out the mask (as int)
     write_ccp4_map(crystal_symmetry,
-      params.output_files.au_mask_output_file,mask_data_ncs_au)
+      au_mask_output_file,mask_data_ncs_au)
     print >>out,\
        "Output NCS AU mask:  %s" %(
-      params.output_files.au_mask_output_file)
+      au_mask_output_file)
 
   # Now write out NCS AU mask and map cut out, with box_crystal_symmetry
 
@@ -1878,12 +1816,12 @@ def write_output_files(params,
   s=(bool_selected_regions==True)
   map_data_ncs_au=map_data_ncs_au.set_selected(~s,-1.0)
 
-  if params.output_files.au_map_output_file: # Write out the NCS au of density
-    write_ccp4_map(crystal_symmetry,params.output_files.au_map_output_file,
+  if au_map_output_file: # Write out the NCS au of density
+    write_ccp4_map(crystal_symmetry,au_map_output_file,
       map_data_ncs_au)
     print >>out,\
        "Output NCS AU map:  %s" %(
-      params.output_files.au_map_output_file)
+      au_map_output_file)
 
   box_mask_ncs_au,box_crystal_symmetry=cut_out_map(
        map_data=mask_data_ncs_au.as_double(), crystal_symmetry=crystal_symmetry,
@@ -1987,13 +1925,10 @@ def iterate_search(params,
   new_params.output_files.write_output_maps=False
   new_params.output_files.output_info_file=None
   if params.output_files.write_intermediate_maps:
-    new_params.output_files.au_map_output_file=\
-     params.output_files.au_map_output_file[:-5]+"_cycle_2.ccp4"
-    new_params.output_files.au_mask_output_file=\
-      params.output_files.au_mask_output_file[:-5]+"_cycle_2.ccp4"
+    new_params.output_files.au_output_file_stem=\
+      params.output_files.au_output_file_stem+"_cycle_2"
   else:
-    new_params.output_files.au_map_output_file=None
-    new_params.output_files.au_mask_output_file=None
+    new_params.output_files.au_output_file_stem=None
 
   fraction=0.2
   new_n_residues=int(n_residues*fraction)
@@ -2024,6 +1959,13 @@ def iterate_search(params,
 
   return remainder_ncs_group_obj
 
+def bounds_overlap(lower=None,upper=None,
+          other_lower=None,other_upper=None,tol=1):
+   for i in xrange(3):
+     if       upper[i]+tol<other_lower[i]: return False
+     if other_upper[i]+tol<lower[i]:       return False
+   return True 
+
 def combine_with_iteration(params,
     map_data=None,
     crystal_symmetry=None,
@@ -2047,12 +1989,24 @@ def combine_with_iteration(params,
         remainder_ncs_group_obj.region_scattered_points_dict[id_remainder]
     # figure out typical distance between scattered_points...
     touching_dist=get_touching_dist(remainder_centers)
+
+    # Notice bounds of remainder region:
+    r_lower,r_upper=get_bounds(
+       ncs_group_obj=remainder_ncs_group_obj,id=id_remainder)
+    
     for id in ncs_group_obj.selected_regions:
 
       # Skip if not likely to be very close...
+      lower,upper=get_bounds(ncs_group_obj=ncs_group_obj,id=id)
+      if not bounds_overlap(lower=lower,upper=upper,
+          other_lower=r_lower,other_upper=r_upper):
+        continue
+
+      
       test_centers=ncs_group_obj.region_scattered_points_dict[id]
       dist=get_closest_dist(test_centers,remainder_centers)
-      if touching_dist is not None and dist>touching_dist: continue
+      if touching_dist is not None and dist>touching_dist: 
+        continue
 
       bool_region_mask = ncs_group_obj.co.expand_mask(
         id_to_expand=ncs_group_obj.original_id_from_id[id],
@@ -2219,7 +2173,7 @@ def run(args,
 
 
   # get connectivity  (conn=connectivity_object.result)
-  co,conn_obj,sorted_by_volume,min_b,max_b=get_connectivity(params,
+  co,sorted_by_volume,min_b,max_b=get_connectivity(params,
      map_data=map_data,
      ncs_object=ncs_obj,
      n_residues=n_residues,
@@ -2235,8 +2189,9 @@ def run(args,
      params,sorted_by_volume=sorted_by_volume,
      unit_cell=crystal_symmetry.unit_cell(),
      crystal_symmetry=crystal_symmetry,
-     co=co, # perhaps use conn_obj or co and not both XXX
-     conn_obj=conn_obj,
+     co=co,
+     min_b=min_b,
+     max_b=max_b,
      ncs_obj=ncs_obj,
      origin_shift=origin_shift,
      out=out)
@@ -2253,6 +2208,16 @@ def run(args,
      ncs_group_obj=ncs_group_obj,
      target_scattered_points=target_scattered_points,
      out=out)
+
+  write_dummy_atoms=False
+  if write_dummy_atoms:
+    xrs,scatterers=set_up_xrs(crystal_symmetry=crystal_symmetry)
+    from cctbx import xray
+    unit_cell=crystal_symmetry.unit_cell()
+    for xyz_cart in scattered_points:
+      scatterers.append( xray.scatterer(scattering_type="O", label="O",
+        site=unit_cell.fractionalize(xyz_cart), u=0.1, occupancy=1.0))
+    write_xrs(xrs=xrs,scatterers=scatterers,file_name="atoms.pdb")
 
   # write out mask and map for all the selected regions...
 
