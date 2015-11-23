@@ -117,7 +117,7 @@ def exercise(rotamer_manager, sin_cos_table, d_min = 1.0,
   pdb_hierarchy_poor.adopt_xray_structure(xrs_poor)
   pdb_hierarchy_poor.write_pdb_file(file_name = "refined.pdb")
   dist = xrs_answer.max_distance(other = xrs_poor)
-  assert dist < 0.2, dist
+  assert dist < 0.23, dist
 
 if(__name__ == "__main__"):
   t0 = time.time()

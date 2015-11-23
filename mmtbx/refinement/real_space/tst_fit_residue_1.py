@@ -169,7 +169,7 @@ def exercise(pdb_poor_str, rotamer_manager, sin_cos_table, i_pdb, d_min = 1.0,
   pdb_hierarchy_poor.write_pdb_file(file_name = "refined_%s.pdb"%str(i_pdb))
   dist = xrs_answer.max_distance(other = xrs_poor)
   if(i_pdb==2): assert dist < 1.e-6, dist
-  else:         assert dist < 0.22,  dist
+  else:         assert dist < 0.24,  dist
 
 if(__name__ == "__main__"):
   t0 = time.time()
