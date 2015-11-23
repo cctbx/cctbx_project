@@ -104,6 +104,7 @@ class cumulative_intensity_distribution(object):
       f_obs_sq.use_binner_of(f_obs)
     else:
       assert f_obs_sq.binner() is not None
+      self.info = f_obs_sq.info()
     mean_f_obs_sq = f_obs_sq.mean(use_binning=True)
     mean_data = flex.double(mean_f_obs_sq.data[1:f_obs_sq.binner().n_bins_used()+1])
     bin_d_max = flex.double([mean_f_obs_sq.binner.bin_d_range(i)[1]
