@@ -177,7 +177,8 @@ def exercise_server_rotamer_iterator(mon_lib_srv, pdb_hierarchy, verbose):
         pdb_atoms_work.set_xyz(new_xyz=rotamer_sites_cart)
         pdb_atoms_work.reset_serial(first_value=atom_serial_first_value)
         atom_serial_first_value += pdb_atoms_work.size()
-        chain_id = (string.uppercase + string.lowercase)[i_rotamer]
+        nl = ''.join(['%i' % i for i in range(10)])
+        chain_id = (string.uppercase + string.lowercase + nl)[i_rotamer]
         pdb_hierarchy_work.only_chain().id = chain_id
         remark_strings.append(
           "REMARK %s %s = chain %s" % (resname, rotamer.id, chain_id))
@@ -334,6 +335,7 @@ def run(args):
     if (verbose): print
   exercise_pro_missing_hd1(mon_lib_srv=mon_lib_srv)
   print format_cpu_times()
+  print "OK"
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

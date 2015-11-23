@@ -124,7 +124,7 @@ def exercise_rotalyze():
  A   2 BTHR:0.33:90.4:298.1::::Favored:m
  A   3  CYS:1.00:12.9:310.5::::Favored:m
  A   4  CYS:1.00:91.6:293.1::::Favored:m
- A   5  PRO:1.00:78.8:30.2::::Favored:Cg_endo
+ A   5  PRO:1.00:78.8:30.2:319.7:33.8::Favored:Cg_endo
  A   6  SER:1.00:90.1:68.4::::Favored:p
  A   7 AILE:0.45:49.6:290.8:178.2:::Favored:mt
  A   7 BILE:0.55:6.5:284.4:298.4:::Favored:mm
@@ -143,9 +143,9 @@ def exercise_rotalyze():
  A  16  CYS:1.00:40.8:176.5::::Favored:t
  A  17  ARG:1.00:21.4:289.7:282.8:288.6:158.7:Favored:mmm160
  A  18  LEU:1.00:65.0:287.2:173.3:::Favored:mt
- A  19  PRO:1.00:43.6:24.4::::Favored:Cg_endo
+ A  19  PRO:1.00:43.6:24.4:324.8:31.6::Favored:Cg_endo
  A  21  THR:1.00:5.7:314.0::::Favored:m
- A  22 APRO:0.55:87.5:333.5::::Favored:Cg_exo
+ A  22 APRO:0.55:87.5:333.5:34.0:333.8::Favored:Cg_exo
  A  23 AGLU:0.50:86.9:290.9:187.1:341.8::Favored:mt-10
  A  23 BGLU:0.50:91.7:292.0:183.8:339.2::Favored:mt-10
  A  25 ALEU:0.50:95.7:294.4:173.6:::Favored:mt
@@ -160,11 +160,11 @@ def exercise_rotalyze():
  A  34 AILE:0.70:60.9:303.6:167.6:::Favored:mt
  A  34 BILE:0.30:31.4:308.5:296.8:::Favored:mm
  A  35  ILE:1.00:45.6:62.4:170.0:::Favored:pt
- A  36  PRO:1.00:36.2:22.5::::Favored:Cg_endo
+ A  36  PRO:1.00:36.2:22.5:330.5:24.8::Favored:Cg_endo
  A  39 ATHR:0.70:14.0:311.0::::Favored:m
  A  39 BTHR:0.30:13.1:288.8::::Favored:m
  A  40  CYS:1.00:81.4:294.4::::Favored:m
- A  41  PRO:1.00:35.4:34.4::::Favored:Cg_endo
+ A  41  PRO:1.00:35.4:34.4:317.5:33.1::Favored:Cg_endo
  A  43 AASP:0.75:24.8:56.5:340.3:::Favored:p0
  A  43 BASP:0.25:43.2:59.6:349.3:::Favored:p0
  A  44  TYR:1.00:85.3:290.9:85.1:::Favored:m-80
@@ -255,7 +255,7 @@ ATOM    476  NZ  LYS A  49       0.899   4.110  12.980  1.00 19.97           N
   r.show_old_output(out=out, verbose=False)
   output = out.getvalue()
   assert output == """\
- A  47  PRO:1.00:86.4:329.3::::Favored:Cg_exo
+ A  47  PRO:1.00:86.4:329.3:41.3:324.9::Favored:Cg_exo
  A  48  MSE:0.70:0.3:287.6:214.8:138.3::OUTLIER:OUTLIER
  A  49  LYS:1.00:0.1:288.6:263.2:251.7:233.0:OUTLIER:OUTLIER
 """, output
@@ -265,7 +265,7 @@ ATOM    476  NZ  LYS A  49       0.899   4.110  12.980  1.00 19.97           N
   out = StringIO()
   r.show_old_output(out=out, verbose=False)
   assert (out.getvalue() == """\
- A  47  PRO:1.00:86.4:329.3::::Favored:Cg_exo
+ A  47  PRO:1.00:86.4:329.3:41.3:324.9::Favored:Cg_exo
  A  48  MSE:0.70:0.3:287.6:214.8:138.3::OUTLIER:OUTLIER
  A  49  LYS:1.00:0.1:288.6:263.2:251.7:233.0:OUTLIER:OUTLIER
 """), out.getvalue()

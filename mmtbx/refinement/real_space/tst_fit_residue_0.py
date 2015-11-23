@@ -12,14 +12,14 @@ import mmtbx.idealized_aa_residues.rotamer_manager
 
 pdb_answer = """\
 CRYST1   15.538   12.841   13.194  90.00  90.00  90.00 P 1
-ATOM    369  N   MSE A  67       6.997   5.582   8.196  1.00  9.89           N
-ATOM    370  CA  MSE A  67       6.979   5.904   6.774  1.00 11.78           C
-ATOM    371  CB  MSE A  67       7.987   5.037   6.015  1.00 20.39           C
-ATOM    372  CG  MSE A  67       9.434   5.204   6.465  1.00 24.20           C
-ATOM    373 SE   MSE A  67      10.168   6.982   6.124  1.00 45.90          Se
-ATOM    374  CE  MSE A  67       9.820   7.813   7.855  1.00 13.67           C
-ATOM    375  C   MSE A  67       5.584   5.722   6.185  1.00  9.34           C
-ATOM    376  O   MSE A  67       4.995   6.665   5.656  1.00 10.34           O
+ATOM    369  N   MSE A  67       6.949   5.583   8.194  1.00  9.89           N  
+ATOM    370  CA  MSE A  67       6.974   5.900   6.771  1.00 11.78           C  
+ATOM    371  CB  MSE A  67       8.007   5.034   6.048  1.00 20.39           C  
+ATOM    372  CG  MSE A  67       9.434   5.367   6.373  1.00 24.20           C  
+ATOM    373 SE   MSE A  67       9.847   7.212   6.188  1.00 45.90          SE  
+ATOM    374  CE  MSE A  67      11.413   7.254   7.196  1.00 13.67           C  
+ATOM    375  C   MSE A  67       5.598   5.712   6.141  1.00  9.34           C  
+ATOM    376  O   MSE A  67       4.987   6.669   5.665  1.00 10.34           O
 TER
 """
 
