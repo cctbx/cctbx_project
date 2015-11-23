@@ -73,7 +73,7 @@ master_phil = iotbx.phil.parse("""
       .short_caption = Box buffer size
 
     au_output_file_stem = shifted_au
-      .type = str 
+      .type = str
       .help = File stem for output map files with one NCS asymmetric unit
       .short_caption = Output au file stem
 
@@ -1474,7 +1474,7 @@ def select_regions_in_au(params,
       starting_regions=ncs_group_obj.ncs_group_list[0]
 
     for starting_region in starting_regions: # try each au as seed
-      if starting_region and starting_region in ncs_group_obj.bad_region_list: 
+      if starting_region and starting_region in ncs_group_obj.bad_region_list:
         continue # do not use
       if starting_region:
         starting_region_list=[starting_region]
@@ -1964,7 +1964,7 @@ def bounds_overlap(lower=None,upper=None,
    for i in xrange(3):
      if       upper[i]+tol<other_lower[i]: return False
      if other_upper[i]+tol<lower[i]:       return False
-   return True 
+   return True
 
 def combine_with_iteration(params,
     map_data=None,
@@ -1993,7 +1993,7 @@ def combine_with_iteration(params,
     # Notice bounds of remainder region:
     r_lower,r_upper=get_bounds(
        ncs_group_obj=remainder_ncs_group_obj,id=id_remainder)
-    
+
     for id in ncs_group_obj.selected_regions:
 
       # Skip if not likely to be very close...
@@ -2002,10 +2002,10 @@ def combine_with_iteration(params,
           other_lower=r_lower,other_upper=r_upper):
         continue
 
-      
+
       test_centers=ncs_group_obj.region_scattered_points_dict[id]
       dist=get_closest_dist(test_centers,remainder_centers)
-      if touching_dist is not None and dist>touching_dist: 
+      if touching_dist is not None and dist>touching_dist:
         continue
 
       bool_region_mask = ncs_group_obj.co.expand_mask(
