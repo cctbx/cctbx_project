@@ -412,9 +412,9 @@ def get_ncs(params,out=sys.stdout):
       ncs_object.set_unit_ncs()
     print >>out,"\nTotal of %d NCS operators read\n" %(
       ncs_object.max_operators())
-    if ncs_object.is_helical_along_z():
+    if ncs_object.is_helical_along_z(abs_tol_t=.20):
       print >>out,"This NCS is helical symmetry"
-    elif ncs_object.is_point_group_symmetry():
+    elif ncs_object.is_point_group_symmetry(abs_tol_t=.20):
       print >>out,"This NCS is point-group symmetry"
     else:
       raise Sorry("Need point-group or helical symmetry.")
