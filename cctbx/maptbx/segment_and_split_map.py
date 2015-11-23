@@ -131,6 +131,10 @@ master_phil = iotbx.phil.parse("""
       .help = Threshold density for identifying regions of density. \
              Applied after normalizing the density in the region of \
              the molecule to an rms of 1 and mean of zero.
+    starting_density_threshold = None
+      .type = float
+      .short_caption = Starting density threshold
+      .help = Optional guess of threshold density 
     remove_bad_regions = True
       .type = bool
       .short_caption = Remove bad regions
@@ -535,15 +539,21 @@ def choose_threshold(params,map_data=None,
 
   # Assume any threshold that is lower than a threshold that gave a non-zero value
   #  and is zero is an upper bound on the best value.  Same the other way around
-  upper_bound=100
-  lower_bound=0.01
+  upper_bound=1000
+  lower_bound=0.0001
   best_nn=None
+  if params.segmentation.starting_density_threshold is not None:
+    starting_density_threshold=params.segmentation.starting_density_threshold
+  else:
+    starting_density_threshold=1.0
+  print >>out,"Starting density threshold is: %7.3f" %(
+     starting_density_threshold)
   for n_range_low,n_range_high in [[-16,4],[-32,16],[-64,80]]:
     last_score=None
     for nn in xrange(n_range_low,n_range_high+1):
       if nn in used_ranges: continue
       used_ranges.append(nn)
-      threshold=0.95**nn
+      threshold=starting_density_threshold*(0.95**nn)
       if threshold < lower_bound or threshold > upper_bound:
         continue
       co = maptbx.connectivity(map_data=map_data.deep_copy(),
@@ -616,6 +626,8 @@ def get_connectivity(params,
     else: # on iteration...ok
       print >>out,"Note: No threshold found"
       return None,None,None,None
+  else:
+    params.segmentation.starting_density_threshold=threshold # try it first
 
   co = maptbx.connectivity(map_data=map_data, threshold=threshold)
   z = zip(co.regions(),range(0,co.regions().size()))
