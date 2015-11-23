@@ -235,9 +235,9 @@ class ncs_group_object:
       origin_shift=None,
       edited_volume_list=None,
       region_range_dict=None,
-      selected_regions=[],
-      ncs_related_regions=[],
-      map_files_written=[],
+      selected_regions=None,
+      ncs_related_regions=None,
+      map_files_written=None,
       bad_region_list=None,
       region_centroid_dict=None,
       region_scattered_points_dict=None,
@@ -249,6 +249,9 @@ class ncs_group_object:
          ):
     from libtbx import adopt_init_args
     adopt_init_args(self, locals())
+    if not selected_regions: selected_regions=[]
+    if not ncs_related_regions: ncs_related_regions=[]
+    if not map_files_written: map_files_written=[]
 
   def as_info_object(self):
     return info_object(
@@ -401,6 +404,9 @@ def get_ncs(params,out=sys.stdout):
     except Exception,e: # try as regular ncs object
       ncs_object.read_ncs(file_name=file_name,log=out)
     #ncs_object.display_all(log=out)
+    if ncs_object.max_operators()==0:
+      ncs_object=ncs()
+      ncs_object.set_unit_ncs()
     print >>out,"\nTotal of %d NCS operators read\n" %(
       ncs_object.max_operators())
     if ncs_object.is_helical_along_z():
@@ -577,7 +583,9 @@ def choose_threshold(params,map_data=None,
      print >>out,"\nUsing input threshold of %5.2f " %(best_threshold)
   if best_threshold is not None:
     print >>out,"\nBest threshold: %5.2f\n" %(best_threshold)
-  return best_threshold
+    return best_threshold
+  else:
+    return None
 
 def get_connectivity(params,
      map_data=None,
@@ -604,7 +612,11 @@ def get_connectivity(params,
      solvent_fraction=solvent_fraction,
      out=out)
   if threshold is None:
-    return None,None,None,None,None
+    if params.segmentation.iterate_with_remainder: # on first try failed
+      raise Sorry("No threshold found...try with threshold=xxx")
+    else: # on iteration...ok
+      print >>out,"Note: No threshold found"
+      return None,None,None,None,None
 
   co = maptbx.connectivity(map_data=map_data, threshold=threshold)
   conn = co.result()
@@ -1675,11 +1687,13 @@ def get_selected_and_related_regions(params,
   min_b,max_b=ncs_group_obj.co.get_blobs_boundaries_tuples()
   lower_bounds=[None,None,None]
   upper_bounds=[None,None,None]
-  for id in ncs_group_obj.selected_regions:
-    lower,upper=get_bounds(min_b=min_b,max_b=max_b,ncs_group_obj=ncs_group_obj,
-       id=id)
-    lower_bounds=get_lower(lower_bounds,lower)
-    upper_bounds=get_upper(upper_bounds,upper)
+  if ncs_group_obj.selected_regions:
+    for id in ncs_group_obj.selected_regions:
+      lower,upper=get_bounds(
+        min_b=min_b,max_b=max_b,ncs_group_obj=ncs_group_obj,
+        id=id)
+      lower_bounds=get_lower(lower_bounds,lower)
+      upper_bounds=get_upper(upper_bounds,upper)
 
   return bool_selected_regions,bool_ncs_related_mask,lower_bounds,upper_bounds
 
@@ -1722,6 +1736,9 @@ def write_region_maps(params,
   if remainder_ncs_group_obj:
     r_min_b,r_max_b=remainder_ncs_group_obj.co.get_blobs_boundaries_tuples()
 
+
+  if not ncs_group_obj.selected_regions:
+    return map_files_written,remainder_regions_written
 
   for id in ncs_group_obj.selected_regions:
     if regions_to_skip and id in regions_to_skip:
@@ -2246,7 +2263,8 @@ def run(args,
     out=out)
 
   # Iterate if desired
-  if params.segmentation.iterate_with_remainder:
+  if params.segmentation.iterate_with_remainder and \
+      ncs_group_obj.selected_regions:
     remainder_ncs_group_obj=iterate_search(params,
       map_data=map_data,
       map_data_remaining=map_data_remaining,
@@ -2274,7 +2292,7 @@ def run(args,
   else:
     map_files_written=[]
 
-  if params.output_files.output_info_file:
+  if params.output_files.output_info_file and ncs_group_obj:
     from libtbx import easy_pickle
     info_obj=ncs_group_obj.as_info_object()
     easy_pickle.dump( params.output_files.output_info_file,
