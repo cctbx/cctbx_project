@@ -31,12 +31,15 @@ def is_identity(r,t,tol=1.e-2):
     if abs(t[i]-identity_t[i])>tol: return False
   return True
 
-def is_same_transform(r1,t1,r2,t2,tol=.05):
+def is_same_transform(r1,t1,r2,t2,tol_r=.01,abs_tol_t=.10,rel_tol_t=0.001):
     # require everything to be very similar
     for i in xrange(9):
-      if abs(r1[i]-r2[i])>tol: return False
+      if abs(r1[i]-r2[i])>tol_r: return False
     for i in xrange(3):
-      if abs(t1[i]-t2[i])>tol: return False
+      dd=abs(t1[i]-t2[i])
+      dd2=0.5*(abs(t1[i])+abs(t2[i]))
+      if dd>abs_tol_t and dd>rel_tol_t*dd2: # definitely does not match
+        return False
     return True
 
 class ncs_group:  # one group of NCS operators and center and where it applies
@@ -460,7 +463,8 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       rounded=-1.*rounded
     return rounded
 
-  def is_point_group_symmetry(self):
+  def is_point_group_symmetry(self,
+      tol_r=.01,abs_tol_t=.10,rel_tol_t=0.001):
     # return True if any 2 sequential operations is a member of the
     #  set.  Test by sequentially applying all pairs of
     # operators and verifying that the result is a member of the set
@@ -472,14 +476,16 @@ class ncs_group:  # one group of NCS operators and center and where it applies
         new_t = (r1 * t) + t1
         is_similar=False
         for r2,t2 in zip(self.rota_matrices_inv(),self.translations_orth_inv()):
-          if is_same_transform(new_r,new_t,r2,t2):
+          if is_same_transform(new_r,new_t,r2,t2,tol_r=tol_r,
+            abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t):
             is_similar=True
             break
         if not is_similar:
           return False
     return True
 
-  def is_helical_along_z(self,tol=0.01):
+  def is_helical_along_z(self,tol_z=0.01,
+     tol_r=.01,abs_tol_t=.10,rel_tol_t=0.001):
     # This assumes the operators are in order, but allow special case
     #   where the identity operator is placed at the beginning but belongs
     #   at the end
@@ -489,7 +495,8 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     # For helical symmetry sequential application of operators moves up or
     #  down the list by an index depending on the indices of the operators.
 
-    if self.is_point_group_symmetry():
+    if self.is_point_group_symmetry(tol_r=tol_r,
+            abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t):
       return False
 
     n=len(self.rota_matrices_inv())
@@ -521,7 +528,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
           delta_z=z-sorted_z[-1]
           if delta is None:
             delta=delta_z
-          elif abs(delta-delta_z)>tol:
+          elif abs(delta-delta_z)>tol_z:
             is_helical=False
         sorted_indices.append(i1)
         sorted_z.append(z)
@@ -539,7 +546,8 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       offset_list=[]
       n_missing_list=[]
       for i1 in xrange(n): # figure out offset made by this operator
-        offset,n_missing=self.oper_adds_offset(i1)
+        offset,n_missing=self.oper_adds_offset(i1,tol_r=tol_r,
+            abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t)
         offset_list.append(offset)
         n_missing_list.append(n_missing)
       # offset_list should be one instance of each value and will be 0 at the
@@ -571,7 +579,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     self.delete_inv() # remove the inv matrices/rotations so they regenerate
     return is_helical
 
-  def oper_adds_offset(self,i1):
+  def oper_adds_offset(self,i1,tol_r=None,abs_tol_t=None,rel_tol_t=None):
     # figure out what operator is created from operator i1 + any other one
     n=len(self.rota_matrices_inv())
     r1=self.rota_matrices_inv()[i1]
@@ -587,7 +595,8 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       for j in xrange(n):
         r2=self.rota_matrices_inv()[j]
         t2=self.translations_orth_inv()[j]
-        if is_same_transform(new_r,new_t,r2,t2):
+        if is_same_transform(new_r,new_t,r2,t2,tol_r=tol_r,
+            abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t):
           match_offset=j-i
       if match_offset is not None:
         if not match_offset in offset_list: offset_list.append(match_offset)
@@ -1091,19 +1100,21 @@ class ncs:
         n_max=ncs_group.n_ncs_oper()
     return n_max
 
-  def is_point_group_symmetry(self):
+  def is_point_group_symmetry(self,tol_r=.01,abs_tol_t=.10,rel_tol_t=0.001):
     if not self._ncs_groups:
       return False
     for ncs_group in self._ncs_groups:
-      if not ncs_group.is_point_group_symmetry():
+      if not ncs_group.is_point_group_symmetry(tol_r=tol_r,
+            abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t):
         return False
     return True
 
-  def is_helical_along_z(self):
+  def is_helical_along_z(self,tol_r=.01,abs_tol_t=.10,rel_tol_t=0.001):
     if not self._ncs_groups:
       return False
     for ncs_group in self._ncs_groups:
-      if not ncs_group.is_helical_along_z():
+      if not ncs_group.is_helical_along_z(tol_r=tol_r,
+            abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t):
         return False
     return True
 
