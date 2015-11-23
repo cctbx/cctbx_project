@@ -4667,6 +4667,7 @@ class array(set):
         anomalous_flag=anomalous_flag).map_to_asu()
       tmp_array = tmp_array.sort("packed_indices")
       return compute_cc_one_half(tmp_array, n_trials=n_trials)
+    assert self.binner() is not None
     data = []
     for i_bin in self.binner().range_all():
       sel = self.binner().selection(i_bin)
@@ -4706,6 +4707,7 @@ class array(set):
       dano2 = array2.anomalous_differences()
       assert dano1.indices().all_eq(dano2.indices())
       return dano1.correlation(other=dano2, use_binning=False).coefficient()
+    assert self.binner() is not None
     tmp_array.use_binning_of(other=self)
     data = []
     for i_bin in tmp_array.binner().range_all():
