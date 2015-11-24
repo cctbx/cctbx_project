@@ -121,6 +121,7 @@ class molprobity (slots_getstate_setstate) :
     "data_stats",
     "neutron_stats",
     "real_space",
+    "pdb_hierarchy",
     "crystal_symmetry",
     "model_stats",
     "waters",
@@ -167,6 +168,7 @@ class molprobity (slots_getstate_setstate) :
       setattr(self, name, None)
     # very important - the i_seq attributes may be extracted later
     pdb_hierarchy.atoms().reset_i_seq()
+    self.pdb_hierarchy = pdb_hierarchy
     if (xray_structure is None) :
       if (fmodel is not None) :
         xray_structure = fmodel.xray_structure
