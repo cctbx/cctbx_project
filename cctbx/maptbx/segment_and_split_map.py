@@ -282,6 +282,7 @@ class map_info_object:
     origin=None,
     all=None,
     crystal_symmetry=None,
+    is_map=None,
     ):
     from libtbx import adopt_init_args
     adopt_init_args(self, locals())
@@ -289,7 +290,10 @@ class map_info_object:
     self.init_asctime=time.asctime()
 
   def show_summary(self,out=sys.stdout):
-    print >>out,"Map file:%s" %(self.file_name)
+    if self.is_map:
+      print >>out,"Map file:%s" %(self.file_name)
+    else:
+      print >>out,"Mask file:%s" %(self.file_name)
     if self.origin and self.all:
       print >>out,"   Origin: %d  %d  %d   Extent: %d  %d  %d" %(
        tuple(self.origin)+tuple(self.all))
@@ -328,12 +332,14 @@ class info_object:
       output_ncs_au_mask_info=None,
       output_box_map_info=None,
       output_box_mask_info=None,
+      output_region_map_info_list=None,
     ):
-    from libtbx import adopt_init_args
-    adopt_init_args(self, locals())
     if not selected_regions: selected_regions=[]
     if not ncs_related_regions: ncs_related_regions=[]
     if not map_files_written: map_files_written=[]
+    if not output_region_map_info_list: output_region_map_info_list=[]
+    from libtbx import adopt_init_args
+    adopt_init_args(self, locals())
 
     self.object_type="segmentation_info"
     import time
@@ -362,7 +368,8 @@ class info_object:
     self.input_map_info=map_info_object(file_name=file_name,
       crystal_symmetry=crystal_symmetry,
       origin=origin,
-      all=all)
+      all=all,
+      is_map=True)
 
   def set_origin_shift(self,origin_shift=None):
     if not origin_shift: origin_shift=(0,0,0)
@@ -376,7 +383,8 @@ class info_object:
     self.shifted_map_info=map_info_object(file_name=file_name,
       crystal_symmetry=crystal_symmetry,
       origin=origin,
-      all=all)
+      all=all,
+      is_map=True)
 
   def set_shifted_pdb_info(self,file_name=None,n_residues=None):
     self.shifted_pdb_info=pdb_info_object(file_name=file_name,
@@ -397,29 +405,42 @@ class info_object:
     self.output_ncs_au_map_info=map_info_object(file_name=file_name,
       crystal_symmetry=crystal_symmetry,
       origin=origin,
-      all=all)
+      all=all,
+      is_map=True)
 
   def set_output_ncs_au_mask_info(self,file_name=None,crystal_symmetry=None,
     origin=None,all=None):
     self.output_ncs_au_mask_info=map_info_object(file_name=file_name,
       crystal_symmetry=crystal_symmetry,
       origin=origin,
-      all=all)
+      all=all,
+      is_map=False)
 
   def set_output_box_map_info(self,file_name=None,crystal_symmetry=None,
     origin=None,all=None):
     self.output_box_map_info=map_info_object(file_name=file_name,
       crystal_symmetry=crystal_symmetry,
       origin=origin,
-      all=all)
+      all=all,
+      is_map=True)
 
   def set_output_box_mask_info(self,file_name=None,crystal_symmetry=None,
     origin=None,all=None):
     self.output_box_mask_info=map_info_object(file_name=file_name,
       crystal_symmetry=crystal_symmetry,
       origin=origin,
-      all=all)
+      all=all,
+      is_map=False)
 
+  def add_output_region_map_info(self,file_name=None,crystal_symmetry=None,
+    origin=None,all=None):
+    self.output_region_map_info_list.append(map_info_object(
+      file_name=file_name,
+      crystal_symmetry=crystal_symmetry,
+      origin=origin,
+      all=all,
+      is_map=True)
+     )
 
 
   def show_summary(self,out=sys.stdout):
@@ -447,8 +468,6 @@ class info_object:
     if self.solvent_fraction:
       print >>out,"Estimated solvent fraction: %5.3f" %(self.solvent_fraction)
 
-
-
     if self.origin_shift and self.origin_shift != (0,0,0):
       print >>out,\
       "\nOrigin offset applied: %.1f  %.1f  %.1f" %(self.origin_shift)
@@ -465,12 +484,11 @@ class info_object:
       print >>out,"\nNo origin offset applied"
 
     if self.output_ncs_au_mask_info or self.output_ncs_au_map_info:
+      print >>out,"\nOutput map files showing just the NCS AU (same size",
       if self.origin_shift and self.origin_shift != (0,0,0):
-        print >>out,"\nOutput map files showing just the NCS AU (same size"+\
-         "\nand location as shifted map files:\n"
+        print >>out,"\nand location as shifted map files:\n"
       else:
-        print >>out,"\nOutput map files showing just the NCS AU (same size"+\
-         "\nand location as input map:\n"
+        print >>out,"\nand location as input map:\n"
 
       if self.output_ncs_au_mask_info:
         self.output_ncs_au_mask_info.show_summary(out=out)
@@ -478,18 +496,27 @@ class info_object:
         self.output_ncs_au_map_info.show_summary(out=out)
 
     if self.output_box_mask_info or self.output_box_map_info:
+      print >>out,"\nOutput cut-out map files trimmed to contain just "+\
+        "the \nNCS AU (superimposed on",
       if self.origin_shift and self.origin_shift != (0,0,0):
-        print >>out,"\nOutput cut-out map files trimmed to contain just "+\
-        "the \nNCS AU (superimposed on shifted map files, note origin offset)"+\
-        ":\n"
+        print >>out,"shifted map files, note origin offset):\n"
       else:
-        print >>out,"\nOutput cut-out map files trimmed to contain just "+\
-        "the \nNCS AU (superimposed on input map, note origin offset):\n"
+        print >>out,"input map, note origin offset):\n"
 
       if self.output_box_mask_info:
         self.output_box_mask_info.show_summary(out=out)
       if self.output_box_map_info:
         self.output_box_map_info.show_summary(out=out)
+
+    if self.output_region_map_info_list:
+      print >>out,"\nOutput cut-out map files trimmed to contain just "+\
+        "one region of \nconnected density (superimposed on",
+      if self.origin_shift and self.origin_shift != (0,0,0):
+        print >>out,"shifted map files, note origin offset):\n"
+      else:
+        print >>out," input map, note origin offset):\n"
+      for output_region_map_info in self.output_region_map_info_list:
+        output_region_map_info.show_summary()
 
     print >>out,"\n"+50*"="+"\n"
 
@@ -515,11 +542,11 @@ class ncs_group_object:
       remainder_id_dict=None,  # dict relating regions in a remainder object to
                                #  those in the original map
          ):
-    from libtbx import adopt_init_args
-    adopt_init_args(self, locals())
     if not selected_regions: selected_regions=[]
     if not ncs_related_regions: ncs_related_regions=[]
     if not map_files_written: map_files_written=[]
+    from libtbx import adopt_init_args
+    adopt_init_args(self, locals())
 
   def as_info_object(self):
     return info_object(
@@ -1958,7 +1985,7 @@ def adjust_bounds(params,lower_bounds,upper_bounds,map_data=None,out=sys.stdout)
 def write_region_maps(params,
     ncs_group_obj=None,
     map_data=None,
-    crystal_symmetry=None,
+    tracking_data=None,
     remainder_ncs_group_obj=None,
     regions_to_skip=None,
     out=sys.stdout):
@@ -2007,7 +2034,7 @@ def write_region_maps(params,
     lower_bounds,upper_bounds=adjust_bounds(params,lower_bounds,upper_bounds,
       map_data=map_data,out=out)
     box_map,box_crystal_symmetry=cut_out_map(
-       map_data=local_map_data, crystal_symmetry=crystal_symmetry,
+       map_data=local_map_data, crystal_symmetry=tracking_data.crystal_symmetry,
        min_point=lower_bounds, max_point=upper_bounds)
 
     if remainder_ncs_group_obj:
@@ -2022,6 +2049,12 @@ def write_region_maps(params,
     write_ccp4_map(box_crystal_symmetry,file_name, box_map)
     print >>out,"to %s" %(file_name)
     map_files_written.append(file_name)
+    tracking_data.add_output_region_map_info(
+      file_name=file_name,
+      crystal_symmetry=box_crystal_symmetry,
+      origin=box_map.origin(),
+      all=box_map.all())
+
   return map_files_written,remainder_regions_written
 
 def write_output_files(params,
@@ -2169,7 +2202,7 @@ def write_output_files(params,
 
   map_files_written,remainder_regions_written=write_region_maps(params,
     map_data=map_data,
-    crystal_symmetry=tracking_data.crystal_symmetry,
+    tracking_data=tracking_data,
     ncs_group_obj=ncs_group_obj,
     remainder_ncs_group_obj=remainder_ncs_group_obj,
     out=out)
@@ -2177,7 +2210,7 @@ def write_output_files(params,
   # and pick up the remainder regions not already written
   remainder_map_files_written,dummy_remainder=write_region_maps(params,
     map_data=map_data,
-    crystal_symmetry=tracking_data.crystal_symmetry,
+    tracking_data=tracking_data,
     ncs_group_obj=remainder_ncs_group_obj,
     regions_to_skip=remainder_regions_written,
     out=out)
