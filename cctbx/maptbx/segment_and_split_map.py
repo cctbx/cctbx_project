@@ -6,6 +6,7 @@ from cctbx import maptbx
 from libtbx.utils import Sorry
 import sys, os
 from cctbx.array_family import flex
+from copy import deepcopy
 
 master_phil = iotbx.phil.parse("""
 
@@ -26,6 +27,21 @@ master_phil = iotbx.phil.parse("""
     pdb_file = None
       .type = path
       .help = Optional PDB file matching ccp4_map_file to be offset
+
+    pdb_to_restore = None
+      .type = path
+      .help = Optional PDB file to restore to position matching original \
+              ccp4_map_file.  Used in combination with info_file=xxx.pkl \
+              and restored_pdb=yyyy.pdb
+      .short_caption = PDB to restore
+
+    info_file = None
+      .type = path
+      .help = Optional pickle file with information from a previous run.\
+              Can be used with pdb_to_restore to restore a PDB file to \
+              to position matching original \
+              ccp4_map_file. 
+      .short_caption = Info file
 
   }
 
@@ -92,10 +108,17 @@ master_phil = iotbx.phil.parse("""
       .help = output map file with remainder after initial regions identified
       .short_caption = Output remainder map file
 
-    output_info_file = None
+    output_info_file = segment_and_split_map_info.pkl
       .type = path
       .help = Output pickle file with information about map and masks
       .short_caption = Output pickle file
+
+    restored_pdb = None 
+      .type = path
+      .help = Output name of PDB restored to position matching original \
+              ccp4_map_file.  Used in combination with info_file=xxx.pkl \
+              and pdb_to_restore=xxxx.pdb
+      .short_caption = Restored PDB file 
   }
 
   crystal_info {
@@ -204,6 +227,76 @@ master_phil = iotbx.phil.parse("""
 """, process_includes=True)
 master_params = master_phil
 
+class pdb_info_object:
+  def __init__(self,
+    file_name=None,
+    n_residues=None,
+    ):
+    from libtbx import adopt_init_args
+    adopt_init_args(self, locals())
+    import time
+    self.init_asctime=time.asctime()
+
+  def show_summary(self,out=sys.stdout):
+    print >>out,"PDB file:%s" %(self.file_name),
+    if self.n_residues:
+      print >>out,"   Residues: %d" %(self.n_residues)
+    else:
+      print >>out
+
+class seq_info_object:
+  def __init__(self,
+    file_name=None,
+    n_residues=None,
+    ):
+    from libtbx import adopt_init_args
+    adopt_init_args(self, locals())
+    import time
+    self.init_asctime=time.asctime()
+
+  def show_summary(self,out=sys.stdout):
+    print >>out,"Sequence file:%s" %(self.file_name),
+    if self.n_residues:
+      print >>out,"   Residues: %d" %(self.n_residues)
+    else:
+      print >>out
+    
+
+class ncs_info_object:
+  def __init__(self,
+    file_name=None,
+    number_of_operators=None,
+    ):
+    from libtbx import adopt_init_args
+    adopt_init_args(self, locals())
+    import time
+    self.init_asctime=time.asctime()
+
+  def show_summary(self,out=sys.stdout):
+    print >>out,"NCS file:%s   Operators: %d" %(self.file_name,
+      self.number_of_operators)
+
+class map_info_object:
+  def __init__(self,
+    file_name=None,
+    origin=None,
+    all=None,
+    crystal_symmetry=None,
+    ):
+    from libtbx import adopt_init_args
+    adopt_init_args(self, locals())
+    import time
+    self.init_asctime=time.asctime()
+
+  def show_summary(self,out=sys.stdout):
+    print >>out,"Map file:%s" %(self.file_name)
+    if self.origin and self.all:
+      print >>out,"   Origin: %d  %d  %d   Extent: %d  %d  %d" %(
+       tuple(self.origin)+tuple(self.all))
+    if self.crystal_symmetry:
+      print >>out,"   Map unit cell: %.1f  %.1f  %.1f    %.1f  %.1f  %.1f " %(
+        self.crystal_symmetry.unit_cell().parameters())
+
 class info_object:
   def __init__(self,
       ncs_obj=None,
@@ -211,6 +304,7 @@ class info_object:
       max_b=None,
       ncs_group_list=None,
       origin_shift=None,
+      crystal_symmetry=None,
       edited_volume_list=None,
       region_range_dict=None,
       selected_regions=None,
@@ -220,12 +314,185 @@ class info_object:
       region_centroid_dict=None,
       original_id_from_id=None,
       remainder_id_dict=None,  # dict relating regions in a remainder object to
+      params=None, # input params
+      input_pdb_info=None,
+      input_map_info=None,
+      input_ncs_info=None,
+      input_seq_info=None,
+      shifted_pdb_info=None,
+      shifted_map_info=None,
+      shifted_ncs_info=None,
+      n_residues=None,
+      solvent_fraction=None,
+      output_ncs_au_map_info=None,
+      output_ncs_au_mask_info=None,
+      output_box_map_info=None,
+      output_box_mask_info=None,
     ):
     from libtbx import adopt_init_args
     adopt_init_args(self, locals())
     if not selected_regions: selected_regions=[]
     if not ncs_related_regions: ncs_related_regions=[]
     if not map_files_written: map_files_written=[]
+
+    self.object_type="segmentation_info"
+    import time
+    self.init_asctime=time.asctime()
+
+  def is_segmentation_info_object(self):
+    return True
+
+  def set_params(self,params):
+    self.params=deepcopy(params)
+
+  def set_input_seq_info(self,file_name=None,n_residues=None):
+    self.input_seq_info=seq_info_object(file_name=file_name,
+       n_residues=n_residues)
+
+  def set_input_pdb_info(self,file_name=None,n_residues=None):
+    self.input_pdb_info=pdb_info_object(file_name=file_name,
+     n_residues=n_residues)
+
+  def set_input_ncs_info(self,file_name=None,number_of_operators=None):
+    self.input_ncs_info=ncs_info_object(file_name=file_name,
+      number_of_operators=number_of_operators)
+
+  def set_input_map_info(self,file_name=None,crystal_symmetry=None,
+    origin=None,all=None):
+    self.input_map_info=map_info_object(file_name=file_name,
+      crystal_symmetry=crystal_symmetry,
+      origin=origin,
+      all=all)
+
+  def set_origin_shift(self,origin_shift=None):
+    if not origin_shift: origin_shift=(0,0,0)
+    self.origin_shift=tuple(origin_shift)
+
+  def set_crystal_symmetry(self,crystal_symmetry):
+    self.crystal_symmetry=deepcopy(crystal_symmetry)
+
+  def set_shifted_map_info(self,file_name=None,crystal_symmetry=None,
+    origin=None,all=None):
+    self.shifted_map_info=map_info_object(file_name=file_name,
+      crystal_symmetry=crystal_symmetry,
+      origin=origin,
+      all=all)
+
+  def set_shifted_pdb_info(self,file_name=None,n_residues=None):
+    self.shifted_pdb_info=pdb_info_object(file_name=file_name,
+     n_residues=n_residues)
+
+  def set_shifted_ncs_info(self,file_name=None,number_of_operators=None):
+    self.shifted_ncs_info=ncs_info_object(file_name=file_name,
+      number_of_operators=number_of_operators)
+
+  def set_solvent_fraction(self,solvent_fraction):
+    self.solvent_fraction=solvent_fraction
+
+  def set_n_residues(self,n_residues): # may not be the same as seq file
+    self.n_residues=n_residues
+
+  def set_output_ncs_au_map_info(self,file_name=None,crystal_symmetry=None,
+    origin=None,all=None):
+    self.output_ncs_au_map_info=map_info_object(file_name=file_name,
+      crystal_symmetry=crystal_symmetry,
+      origin=origin,
+      all=all)
+
+  def set_output_ncs_au_mask_info(self,file_name=None,crystal_symmetry=None,
+    origin=None,all=None):
+    self.output_ncs_au_mask_info=map_info_object(file_name=file_name,
+      crystal_symmetry=crystal_symmetry,
+      origin=origin,
+      all=all)
+
+  def set_output_box_map_info(self,file_name=None,crystal_symmetry=None,
+    origin=None,all=None):
+    self.output_box_map_info=map_info_object(file_name=file_name,
+      crystal_symmetry=crystal_symmetry,
+      origin=origin,
+      all=all)
+
+  def set_output_box_mask_info(self,file_name=None,crystal_symmetry=None,
+    origin=None,all=None):
+    self.output_box_mask_info=map_info_object(file_name=file_name,
+      crystal_symmetry=crystal_symmetry,
+      origin=origin,
+      all=all)
+
+
+
+  def show_summary(self,out=sys.stdout):
+    print >>out,"\n==========  Summary of %s: ========\n" %(self.object_type)
+    print >>out,"Created: %s" %(self.init_asctime)
+    print >>out,"\nInput files used:\n"
+    if self.input_map_info:
+      self.input_map_info.show_summary(out=out)
+    if self.input_pdb_info:
+      self.input_pdb_info.show_summary(out=out)
+    if self.input_ncs_info:
+      self.input_ncs_info.show_summary(out=out)
+    if self.input_seq_info:
+      self.input_seq_info.show_summary(out=out)
+
+    print >>out
+
+    if self.crystal_symmetry:
+      print >>out,"Working unit cell: %.1f  %.1f  %.1f    %.1f  %.1f  %.1f " %(
+        self.crystal_symmetry.unit_cell().parameters())
+
+    if self.n_residues:
+      print >>out,"Estimated total number of residues: %d" %(self.n_residues)
+
+    if self.solvent_fraction:
+      print >>out,"Estimated solvent fraction: %5.3f" %(self.solvent_fraction)
+
+
+      
+    if self.origin_shift and self.origin_shift != (0,0,0):
+      print >>out,\
+      "\nOrigin offset applied: %.1f  %.1f  %.1f" %(self.origin_shift)
+
+      print >>out,"\nShifted map, pdb and ncs files created "+\
+         "(after origin offset):\n"
+      if self.shifted_map_info:
+        self.shifted_map_info.show_summary(out=out)
+      if self.shifted_pdb_info:
+        self.shifted_pdb_info.show_summary(out=out)
+      if self.shifted_ncs_info:
+        self.shifted_ncs_info.show_summary(out=out)
+    else:
+      print >>out,"\nNo origin offset applied"
+
+    if self.output_ncs_au_mask_info or self.output_ncs_au_map_info: 
+      if self.origin_shift and self.origin_shift != (0,0,0):
+        print >>out,"\nOutput map files showing just the NCS AU (same size"+\
+         "\nand location as shifted map files:\n"
+      else:
+        print >>out,"\nOutput map files showing just the NCS AU (same size"+\
+         "\nand location as input map:\n"
+
+      if self.output_ncs_au_mask_info:
+        self.output_ncs_au_mask_info.show_summary(out=out)
+      if self.output_ncs_au_map_info:
+        self.output_ncs_au_map_info.show_summary(out=out)
+
+    if self.output_box_mask_info or self.output_box_map_info:
+      if self.origin_shift and self.origin_shift != (0,0,0):
+        print >>out,"\nOutput cut-out map files trimmed to contain just "+\
+        "the \nNCS AU (superimposed on shifted map files, note origin offset)"+\
+        ":\n"
+      else:
+        print >>out,"\nOutput cut-out map files trimmed to contain just "+\
+        "the \nNCS AU (superimposed on input map, note origin offset):\n"
+
+      if self.output_box_mask_info:
+        self.output_box_mask_info.show_summary(out=out)
+      if self.output_box_map_info:
+        self.output_box_map_info.show_summary(out=out)
+     
+    print >>out,"\n"+50*"="+"\n"
+      
 
 class ncs_group_object:
   def __init__(self,
@@ -271,15 +538,12 @@ class ncs_group_object:
       map_files_written=self.map_files_written,
      )
   def set_selected_regions(self,selected_regions):
-    from copy import deepcopy
     self.selected_regions=deepcopy(selected_regions)
 
   def set_ncs_related_regions(self,ncs_related_regions):
-    from copy import deepcopy
     self.ncs_related_regions=deepcopy(ncs_related_regions)
 
   def set_map_files_written(self,map_files_written):
-    from copy import deepcopy
     self.map_files_written=deepcopy(map_files_written)
 
 def write_ccp4_map(crystal_symmetry, file_name, map_data):
@@ -316,6 +580,7 @@ def write_xrs(xrs=None,scatterers=None,file_name="atoms.pdb"):
   print "Atoms written to %s" %file_name
 
 def get_params(args,out=sys.stdout):
+
   import mmtbx.utils
   inputs = mmtbx.utils.process_command_line_args(args = args,
     master_params = master_phil)
@@ -324,6 +589,18 @@ def get_params(args,out=sys.stdout):
   print >>out,"Command used: %s\n" %(
    " ".join(['segment_and_split_map']+args))
   master_params.format(python_object=params).show(out=out)
+
+  if params.input_files.info_file:
+    map_data=None
+    pdb_hierarchy=None
+    from libtbx import easy_pickle
+    print >>out,"Loading tracking data from %s" %(
+      params.input_files.info_file)
+    tracking_data=easy_pickle.load(params.input_files.info_file)
+    return params,map_data,pdb_hierarchy,tracking_data
+  else:
+    tracking_data=info_object()
+    tracking_data.set_params(params)
 
   # PDB file
   if params.input_files.pdb_file and not inputs.pdb_file_names:
@@ -336,6 +613,8 @@ def get_params(args,out=sys.stdout):
     pdb_hierarchy = pdb_inp.construct_hierarchy()
     pdb_atoms = pdb_hierarchy.atoms()
     pdb_atoms.reset_i_seq()
+    tracking_data.set_input_pdb_info(file_name=params.input_files.pdb_file,
+      n_residues=pdb_hierarchy.overall_counts().n_residues)
   else:
     pdb_hierarchy=None
 
@@ -352,7 +631,11 @@ def get_params(args,out=sys.stdout):
   map_data=inputs.ccp4_map.map_data()
   crystal_symmetry=crystal.symmetry(inputs.ccp4_map.unit_cell().parameters(),
     inputs.ccp4_map.space_group_number)
-
+  tracking_data.set_input_map_info(file_name=params.input_files.ccp4_map_file,
+    crystal_symmetry=crystal_symmetry,
+    origin=map_data.origin(),
+    all=map_data.all())
+  tracking_data.set_crystal_symmetry(crystal_symmetry=crystal_symmetry)
   shift_needed = not \
       (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
        map_data.is_0_based())
@@ -373,6 +656,7 @@ def get_params(args,out=sys.stdout):
     map_data=map_data.shift_origin()
   else:
     origin_shift=None
+  tracking_data.set_origin_shift(origin_shift)
 
   if params.segmentation.expand_size is None:
 
@@ -387,9 +671,9 @@ def get_params(args,out=sys.stdout):
     print >>out,"Expand size (grid units): %d (about %4.1f A) " %(
       nn,nn*abc[0]/N_[0])
 
-  return params,crystal_symmetry,map_data,origin_shift,pdb_hierarchy
+  return params,map_data,pdb_hierarchy,tracking_data
 
-def get_ncs(params,out=sys.stdout):
+def get_ncs(params,tracking_data=None,out=sys.stdout):
   file_name=params.input_files.ncs_file
   if not file_name: # No ncs supplied...use just 1 ncs copy..
     from mmtbx.ncs.ncs import ncs
@@ -412,15 +696,17 @@ def get_ncs(params,out=sys.stdout):
       ncs_object.set_unit_ncs()
     print >>out,"\nTotal of %d NCS operators read\n" %(
       ncs_object.max_operators())
-    if ncs_object.is_helical_along_z(abs_tol_t=.20):
+    if ncs_object.is_helical_along_z(abs_tol_t=.50):
       print >>out,"This NCS is helical symmetry"
-    elif ncs_object.is_point_group_symmetry(abs_tol_t=.20):
+    elif ncs_object.is_point_group_symmetry(abs_tol_t=.50):
       print >>out,"This NCS is point-group symmetry"
     else:
       raise Sorry("Need point-group or helical symmetry.")
   if not ncs_object or ncs_object.max_operators()<1:
     raise Sorry("Need ncs information from an ncs_info file")
-  return ncs_object
+  tracking_data.set_input_ncs_info(file_name=file_name,
+      number_of_operators=ncs_object.max_operators())
+  return ncs_object,tracking_data
 
 def score_threshold(threshold=None,
      sorted_by_volume=None,n_residues=None,
@@ -716,9 +1002,9 @@ def guess_chain_type(text,chain_type=None,out=sys.stdout):
        most_residues,best)
     return best,most_residues
 
-def get_solvent_fraction(params,crystal_symmetry=None,
-     ncs_object=None,out=sys.stdout):
-  map_volume=crystal_symmetry.unit_cell().volume()
+def get_solvent_fraction(params,
+     ncs_object=None,tracking_data=None,out=sys.stdout):
+  map_volume=tracking_data.crystal_symmetry.unit_cell().volume()
   ncs_copies=ncs_object.max_operators()
   if not params.crystal_info.seq_file:
     raise Sorry("Please specify a sequence file with seq_file=myseq.seq")
@@ -740,7 +1026,7 @@ def get_solvent_fraction(params,crystal_symmetry=None,
     volume_of_chains+=volume
     n_residues+=nres
   volume_of_molecules=volume_of_chains*ncs_copies
-  n_residues=n_residues*ncs_copies
+  n_residues_times_ncs=n_residues*ncs_copies
   solvent_fraction=1.-(volume_of_molecules/map_volume)
   solvent_fraction=max(0.001,solvent_fraction)
   print >>out, \
@@ -748,8 +1034,14 @@ def get_solvent_fraction(params,crystal_symmetry=None,
      map_volume,ncs_copies,volume_of_chains)
   print >>out,\
     "Total residues: %d  Volume of all chains: %.1f  Solvent fraction: %.3f "%(
-       n_residues,volume_of_molecules,solvent_fraction)
-  return solvent_fraction,n_residues
+       n_residues_times_ncs,volume_of_molecules,solvent_fraction)
+  tracking_data.set_input_seq_info(file_name=params.crystal_info.seq_file,
+    n_residues=n_residues)
+  tracking_data.set_solvent_fraction(solvent_fraction)
+  tracking_data.set_n_residues(
+      n_residues=n_residues_times_ncs)
+
+  return tracking_data
 
 def top_key(dd):
   if not dd:
@@ -828,13 +1120,12 @@ def run_get_duplicates_and_ncs(
    ncs_obj=None,
    min_b=None,
    max_b=None,
-   crystal_symmetry=None,
    edited_mask=None,
    original_id_from_id=None,
    edited_volume_list=None,
-   unit_cell=None,
    max_regions_to_consider=None,
    regions_left=None,
+   tracking_data=None,
    out=sys.stdout,
    ):
 
@@ -847,9 +1138,8 @@ def run_get_duplicates_and_ncs(
         edited_mask=edited_mask,
         edited_volume_list=edited_volume_list,
         original_id_from_id=original_id_from_id,
-        unit_cell=unit_cell,
-        crystal_symmetry=crystal_symmetry,
         max_regions_to_consider=max_regions_to_consider,
+        tracking_data=tracking_data,
         out=out)
 
   # check that we have region_centroid for all values
@@ -889,19 +1179,18 @@ def get_duplicates_and_ncs(
    edited_mask=None,
    original_id_from_id=None,
    edited_volume_list=None,
-   crystal_symmetry=None,
-   unit_cell=None,
    max_regions_to_consider=None,
    target_points_per_region=30,
    minimum_points_per_region=10,
    maximum_points_per_region=100,
+   tracking_data=None,
    out=sys.stdout,
    ):
 
   from scitbx.math import matrix
   origin=list(edited_mask.accessor().origin())
   all=list(edited_mask.accessor().all())
-
+  unit_cell=tracking_data.crystal_symmetry.unit_cell()
   # Get sampled points in each region
   sample_dict={}
   endpoint_dict={}
@@ -1181,9 +1470,7 @@ def identify_ncs_regions(params,
      min_b=None,
      max_b=None,
      ncs_obj=None,
-     unit_cell=None,
-     crystal_symmetry=None,
-     origin_shift=None,
+     tracking_data=None,
      out=sys.stdout):
 
   # 1.choose top regions to work with
@@ -1225,12 +1512,11 @@ def identify_ncs_regions(params,
       ncs_obj=ncs_obj,
       min_b=min_b,
       max_b=max_b,
-      crystal_symmetry=crystal_symmetry,
       edited_mask=edited_mask,
       original_id_from_id=original_id_from_id,
       edited_volume_list=edited_volume_list,
-      unit_cell=unit_cell,
       max_regions_to_consider=max_regions_to_consider,
+      tracking_data=tracking_data,
       out=out)
 
   # Remove any bad regions
@@ -1270,7 +1556,7 @@ def identify_ncs_regions(params,
      ncs_group_list=ncs_group_list,
      ncs_obj=ncs_obj,
      edited_mask=edited_mask,
-     origin_shift=origin_shift,
+     origin_shift=tracking_data.origin_shift,
      co=co,
      min_b=min_b,
      max_b=max_b,
@@ -1281,7 +1567,7 @@ def identify_ncs_regions(params,
      region_scattered_points_dict=region_scattered_points_dict,
      region_centroid_dict=region_centroid_dict)
 
-  return ncs_group_obj
+  return ncs_group_obj,tracking_data
 
 def get_center_list(regions,
     region_centroid_dict=None):
@@ -1292,7 +1578,6 @@ def get_center_list(regions,
 
 def get_average_center(regions,
     region_centroid_dict=None):
-  from copy import deepcopy
   center_list=get_center_list(regions,region_centroid_dict=region_centroid_dict)
   for region in regions:
     center_list.append(region_centroid_dict[region])
@@ -1390,7 +1675,6 @@ def get_closest_dist(test_center,target_centers):
 def select_from_seed(starting_regions,
       target_scattered_points=None,
       ncs_group_obj=None):
-  from copy import deepcopy
   selected_regions=single_list(deepcopy(starting_regions))
   # do not allow any region in ncs_group_obj.bad_region_list
 
@@ -1741,7 +2025,7 @@ def write_region_maps(params,
   return map_files_written,remainder_regions_written
 
 def write_output_files(params,
-    crystal_symmetry=None,
+    tracking_data=None,
     map_data=None,
     map_data_remaining=None,
     ncs_group_obj=None,
@@ -1816,11 +2100,14 @@ def write_output_files(params,
      ncs_group_obj=ncs_group_obj,mask_as_bool=bool_selected_regions)
 
   if au_mask_output_file: # Write out the mask (as int)
-    write_ccp4_map(crystal_symmetry,
+    write_ccp4_map(tracking_data.crystal_symmetry,
       au_mask_output_file,mask_data_ncs_au)
-    print >>out,\
-       "Output NCS AU mask:  %s" %(
-      au_mask_output_file)
+    print >>out,"Output NCS AU mask:  %s" %(au_mask_output_file)
+    tracking_data.set_output_ncs_au_mask_info(
+      file_name=au_mask_output_file,
+      crystal_symmetry=tracking_data.crystal_symmetry,
+      origin=mask_data_ncs_au.origin(),
+      all=mask_data_ncs_au.all())
 
   # Now write out NCS AU mask and map cut out, with box_crystal_symmetry
 
@@ -1829,35 +2116,49 @@ def write_output_files(params,
   map_data_ncs_au=map_data_ncs_au.set_selected(~s,-1.0)
 
   if au_map_output_file: # Write out the NCS au of density
-    write_ccp4_map(crystal_symmetry,au_map_output_file,
+    write_ccp4_map(tracking_data.crystal_symmetry,au_map_output_file,
       map_data_ncs_au)
-    print >>out,\
-       "Output NCS AU map:  %s" %(
-      au_map_output_file)
+    print >>out,"Output NCS AU map:  %s" %(au_map_output_file)
+    tracking_data.set_output_ncs_au_map_info(
+      file_name=au_map_output_file,
+      crystal_symmetry=tracking_data.crystal_symmetry,
+      origin=map_data_ncs_au.origin(),
+      all=map_data_ncs_au.all())
 
   box_mask_ncs_au,box_crystal_symmetry=cut_out_map(
-       map_data=mask_data_ncs_au.as_double(), crystal_symmetry=crystal_symmetry,
+       map_data=mask_data_ncs_au.as_double(),
+       crystal_symmetry=tracking_data.crystal_symmetry,
        min_point=lower_bounds, max_point=upper_bounds)
 
   if params.output_files.box_mask_file:
-    # write out NCS mask and mask as box_mask (cut out the region they enclose)
+    # write out NCS mask representing one AU of the NCS 
     write_ccp4_map(
      box_crystal_symmetry,params.output_files.box_mask_file,
       box_mask_ncs_au)
     print >>out,\
       "Output NCS au as box (cut out) mask:  %s " %(
       params.output_files.box_mask_file)
+    tracking_data.set_output_box_mask_info(
+      file_name=params.output_files.box_mask_file,
+      crystal_symmetry=box_crystal_symmetry,
+      origin=box_mask_ncs_au.origin(),
+      all=box_mask_ncs_au.all())
 
   if params.output_files.box_map_file:
-    # write out NCS map and mask as box_map (cut out the region they enclose)
+    # write out NCS map as box_map (cut out region of map enclosed in box_mask)
     box_map_ncs_au,box_crystal_symmetry=cut_out_map(
-       map_data=map_data_ncs_au.as_double(), crystal_symmetry=crystal_symmetry,
+       map_data=map_data_ncs_au.as_double(),
+       crystal_symmetry=tracking_data.crystal_symmetry,
        min_point=lower_bounds, max_point=upper_bounds)
     write_ccp4_map(box_crystal_symmetry,params.output_files.box_map_file,
       box_map_ncs_au)
-    print >>out,\
-      "Output NCS au as box (cut out) map:  %s " %(
+    print >>out,"Output NCS au as box (cut out) map:  %s " %(
       params.output_files.box_map_file)
+    tracking_data.set_output_box_map_info(
+      file_name=params.output_files.box_map_file,
+      crystal_symmetry=box_crystal_symmetry,
+      origin=box_map_ncs_au.origin(),
+      all=box_map_ncs_au.all())
 
   # Write out all the selected regions
   print >>out,"\nWriting out region maps. "+\
@@ -1868,7 +2169,7 @@ def write_output_files(params,
 
   map_files_written,remainder_regions_written=write_region_maps(params,
     map_data=map_data,
-    crystal_symmetry=crystal_symmetry,
+    crystal_symmetry=tracking_data.crystal_symmetry,
     ncs_group_obj=ncs_group_obj,
     remainder_ncs_group_obj=remainder_ncs_group_obj,
     out=out)
@@ -1876,7 +2177,7 @@ def write_output_files(params,
   # and pick up the remainder regions not already written
   remainder_map_files_written,dummy_remainder=write_region_maps(params,
     map_data=map_data,
-    crystal_symmetry=crystal_symmetry,
+    crystal_symmetry=tracking_data.crystal_symmetry,
     ncs_group_obj=remainder_ncs_group_obj,
     regions_to_skip=remainder_regions_written,
     out=out)
@@ -1884,14 +2185,15 @@ def write_output_files(params,
   return map_files_written
 
 def write_intermediate_maps(params,
-    crystal_symmetry=None,
     map_data=None,
     map_data_remaining=None,
     ncs_group_obj=None,
+    tracking_data=None,
     out=sys.stdout):
 
   if map_data_remaining and params.output_files.remainder_map_file:
-    write_ccp4_map(crystal_symmetry,params.output_files.remainder_map_file,
+    write_ccp4_map(
+       tracking_data.crystal_symmetry,params.output_files.remainder_map_file,
       map_data_remaining)
     print >>out,"Wrote output remainder map to %s" %(
        params.output_files.remainder_map_file)
@@ -1904,7 +2206,8 @@ def write_intermediate_maps(params,
       region_mask = region_mask.set_selected(s,1)
       region_mask = region_mask.set_selected(~s,0)
 
-      write_ccp4_map(crystal_symmetry,'mask_%d.ccp4' %id, region_mask)
+      write_ccp4_map(tracking_data.crystal_symmetry,
+          'mask_%d.ccp4' %id, region_mask)
       print >>out,"Wrote output mask for region %d to %s" %(id,
         "mask_%d.ccp4" %(id))
 
@@ -1912,25 +2215,22 @@ def write_intermediate_maps(params,
 def iterate_search(params,
       map_data_remaining=None,
       map_data=None,
-      n_residues=None,
-      solvent_fraction=None,
       ncs_obj=None,
       ncs_group_obj=None,
       scattered_points=None,
-      crystal_symmetry=None,
+      tracking_data=None,
       out=sys.stdout):
 
 
   # Write out intermediate maps if desired
   if params.output_files.write_intermediate_maps:
     write_intermediate_maps(params,
-      crystal_symmetry=crystal_symmetry,
       map_data=map_data,
       map_data_remaining=map_data_remaining,
       ncs_group_obj=ncs_group_obj,
+      tracking_data=tracking_data,
       out=out)
 
-  from copy import deepcopy
   new_params=deepcopy(params)
   new_params.segmentation.iterate_with_remainder=False
   new_params.segmentation.density_threshold=None
@@ -1943,18 +2243,23 @@ def iterate_search(params,
     new_params.output_files.au_output_file_stem=None
 
   fraction=0.2
-  new_n_residues=int(n_residues*fraction)
-  new_solvent_fraction=1- (1-solvent_fraction)*fraction
+  new_n_residues=int(tracking_data.n_residues*fraction)
+  new_solvent_fraction=1- (1-tracking_data.solvent_fraction)*fraction
+
+  new_tracking_data=deepcopy(tracking_data)
+  new_tracking_data.set_n_residues(new_n_residues)
+  new_tracking_data.set_solvent_fraction(new_solvent_fraction)
+  new_tracking_data.set_origin_shift() # sets it to zero
 
   print >>out,"\nIterating with remainder density"
   # NOTE: do not include pdb_hierarchy here unless you deep_copy it
-  remainder_ncs_group_obj,dummy_remainder=run(None,params=new_params,
+  remainder_ncs_group_obj,dummy_remainder,remainder_tracking_data=run(
+    None,params=new_params,
     map_data=map_data_remaining,
     ncs_obj=ncs_obj,
     target_scattered_points=scattered_points,
-    solvent_fraction=new_solvent_fraction,
-    n_residues=new_n_residues,
-    crystal_symmetry=crystal_symmetry,
+    tracking_data=new_tracking_data,
+    is_iteration=True,
     out=out)
   if not remainder_ncs_group_obj: # Nothing to do
     return None
@@ -1964,7 +2269,7 @@ def iterate_search(params,
 
   remainder_ncs_group_obj=combine_with_iteration(params,
      map_data=map_data,
-     crystal_symmetry=crystal_symmetry,
+     crystal_symmetry=tracking_data.crystal_symmetry,
      ncs_group_obj=ncs_group_obj,
      remainder_ncs_group_obj=remainder_ncs_group_obj,
      out=out)
@@ -2099,24 +2404,28 @@ def apply_shift_to_pdb_hierarchy(
 def apply_origin_shift(origin_shift=None,
     ncs_object=None,
     pdb_hierarchy=None,
-    crystal_symmetry=None,
     map_data=None,
     shifted_map_file=None,
     shifted_pdb_file=None,
     shifted_ncs_file=None,
+    tracking_data=None,
     out=sys.stdout):
 
   if origin_shift: # Note origin shift does not change crystal_symmetry
     if shifted_map_file:
-      write_ccp4_map(crystal_symmetry,shifted_map_file,
+      write_ccp4_map(tracking_data.crystal_symmetry,shifted_map_file,
       map_data)
       print >>out,"Wrote shifted map to %s" %(
         shifted_map_file)
+      tracking_data.set_shifted_map_info(file_name=shifted_map_file,
+        crystal_symmetry=tracking_data.crystal_symmetry,
+        origin=map_data.origin(),
+        all=map_data.all())
 
     if pdb_hierarchy:
       pdb_hierarchy=apply_shift_to_pdb_hierarchy(
        origin_shift=origin_shift,
-       crystal_symmetry=crystal_symmetry,
+       crystal_symmetry=tracking_data.crystal_symmetry,
        pdb_hierarchy=pdb_hierarchy,
        out=out)
 
@@ -2124,91 +2433,124 @@ def apply_origin_shift(origin_shift=None,
       import iotbx.pdb
       f=open(shifted_pdb_file,'w')
       print >>f, iotbx.pdb.format_cryst1_record(
-         crystal_symmetry=crystal_symmetry)
+         crystal_symmetry=tracking_data.crystal_symmetry)
       print >>f,pdb_hierarchy.as_pdb_string()
       f.close()
       print >>out,"Wrote shifted pdb file to %s" %(
         shifted_pdb_file)
+      tracking_data.set_shifted_pdb_info(file_name=shifted_pdb_file,
+      n_residues=pdb_hierarchy.overall_counts().n_residues)
 
     from scitbx.math import  matrix
     ncs_object=ncs_object.coordinate_offset(
        coordinate_offset=matrix.col(origin_shift))
-    #ncs_object.display_all(log=out)
     if shifted_ncs_file:
       ncs_object.format_all_for_group_specification(
          file_name=shifted_ncs_file)
       print >>out,"Wrote NCS operators for shifted map to %s" %(
        shifted_ncs_file)
+      tracking_data.set_shifted_ncs_info(file_name=shifted_ncs_file,
+        number_of_operators=ncs_object.max_operators())
 
-  return ncs_object,pdb_hierarchy
+  return ncs_object,pdb_hierarchy,tracking_data
+
+def restore_pdb(params,tracking_data=None,out=sys.stdout):
+  if not params.output_files.restored_pdb:
+    params.output_files.restored_pdb=\
+       params.input_files.pdb_to_restore[:-4]+"_restored.pdb"
+  print>>out,"Shifting origin of %s and writing to %s" %(
+    params.input_files.pdb_to_restore,
+    params.output_files.restored_pdb)
+  os=tracking_data.origin_shift
+  origin_shift=(-os[0],-os[1],-os[2])
+  print >>out,"Origin shift will be: %.1f  %.1f  %.1f "%(origin_shift)
+  
+  import iotbx.pdb
+  pdb_inp = iotbx.pdb.input(file_name=params.input_files.pdb_to_restore)
+  pdb_hierarchy = pdb_inp.construct_hierarchy()
+  pdb_hierarchy=apply_shift_to_pdb_hierarchy(
+    origin_shift=origin_shift,
+    crystal_symmetry=tracking_data.crystal_symmetry,
+    pdb_hierarchy=pdb_hierarchy,
+    out=out)
+
+  f=open(params.output_files.restored_pdb,'w')
+  print >>f, iotbx.pdb.format_cryst1_record(
+      crystal_symmetry=tracking_data.crystal_symmetry)
+  print >>f,pdb_hierarchy.as_pdb_string()
+  f.close()
+  print >>out,"Wrote restored pdb file to %s" %(
+     params.output_files.restored_pdb)
+
+
 
 def run(args,
      params=None,
      map_data=None,
      ncs_obj=None,
-     solvent_fraction=None,
-     n_residues=None,
-     crystal_symmetry=None,
+     tracking_data=None,
      target_scattered_points=None,
+     is_iteration=False,
      out=sys.stdout):
 
-  if params and  map_data and ncs_obj and solvent_fraction and \
-      n_residues and crystal_symmetry:  # have things ready to go
-    origin_shift=None
+  if is_iteration:
+    print >>out,"\nIteration tracking data:"
+    tracking_data.show_summary(out=out)
   else:
     # get the parameters
-    params,crystal_symmetry,map_data,origin_shift,pdb_hierarchy=get_params(
-        args,out=out)
+    params,map_data,pdb_hierarchy,tracking_data=get_params(args,out=out)
+
+    if params.input_files.pdb_to_restore:
+      restore_pdb(params,tracking_data=tracking_data,out=out)
+      return None,None,tracking_data
 
     # read and write the ncs (Normally point-group NCS)
-    ncs_obj=get_ncs(params)
+    ncs_obj,tracking_data=get_ncs(params,tracking_data,out=out)
 
-    if origin_shift:
+    if tracking_data.origin_shift:
       print >>out,"\nShifting map, model and NCS based on origin shift"
-      ncs_obj,pdb_hierarchy=apply_origin_shift(
+      ncs_obj,pdb_hierarchy,tracking_data=apply_origin_shift(
         shifted_map_file=params.output_files.shifted_map_file,
         shifted_ncs_file=params.output_files.shifted_ncs_file,
         shifted_pdb_file=params.output_files.shifted_pdb_file,
-        origin_shift=origin_shift,
+        origin_shift=tracking_data.origin_shift,
         ncs_object=ncs_obj,
         pdb_hierarchy=pdb_hierarchy,
-        crystal_symmetry=crystal_symmetry,
         map_data=map_data,
+        tracking_data=tracking_data,
         out=out)
     else:
       shifted_map_file=params.input_files.ccp4_map_file # but do not overwrite
 
     # get the chain types and therefore (using ncs_copies) volume fraction
-    solvent_fraction,n_residues=get_solvent_fraction(
-       params,crystal_symmetry=crystal_symmetry,
-       ncs_object=ncs_obj,out=out)
+    tracking_data=get_solvent_fraction(params, 
+      ncs_object=ncs_obj,tracking_data=tracking_data,out=out)
+    tracking_data.show_summary(out=out)
 
 
   # get connectivity  (conn=connectivity_object.result)
   co,sorted_by_volume,min_b,max_b=get_connectivity(params,
      map_data=map_data,
      ncs_object=ncs_obj,
-     n_residues=n_residues,
+     n_residues=tracking_data.n_residues,
      ncs_copies=ncs_obj.max_operators(),
-     solvent_fraction=solvent_fraction,out=out)
+     solvent_fraction=tracking_data.solvent_fraction,out=out)
   if co is None: # no luck
-    return None,None
+    return None,None,tracking_data
 
   # Check to see which regions are in more than one au of the NCS
   #   and set them aside.  Group ncs-related regions together
 
-  ncs_group_obj=identify_ncs_regions(
+  ncs_group_obj,tracking_data=identify_ncs_regions(
      params,sorted_by_volume=sorted_by_volume,
-     unit_cell=crystal_symmetry.unit_cell(),
-     crystal_symmetry=crystal_symmetry,
      co=co,
      min_b=min_b,
      max_b=max_b,
      ncs_obj=ncs_obj,
-     origin_shift=origin_shift,
+     tracking_data=tracking_data,
      out=out)
   if not ncs_group_obj:  # nothing to do
-    return None,None
+    return None,None,tracking_data
 
   # Choose one region or group of regions from each ncs_group in the list
   #  Optimize the closeness of centers
@@ -2223,9 +2565,9 @@ def run(args,
 
   write_dummy_atoms=False
   if write_dummy_atoms:
-    xrs,scatterers=set_up_xrs(crystal_symmetry=crystal_symmetry)
+    xrs,scatterers=set_up_xrs(crystal_symmetry=tracking_data.crystal_symmetry)
     from cctbx import xray
-    unit_cell=crystal_symmetry.unit_cell()
+    unit_cell=tracking_data.crystal_symmetry.unit_cell()
     for xyz_cart in scattered_points:
       scatterers.append( xray.scatterer(scattering_type="O", label="O",
         site=unit_cell.fractionalize(xyz_cart), u=0.1, occupancy=1.0))
@@ -2236,7 +2578,7 @@ def run(args,
   map_data_remaining=create_remaining_mask_and_map(params,
     ncs_group_obj=ncs_group_obj,
     map_data=map_data,
-    crystal_symmetry=crystal_symmetry,
+    crystal_symmetry=tracking_data.crystal_symmetry,
     out=out)
 
   # Iterate if desired
@@ -2245,12 +2587,10 @@ def run(args,
     remainder_ncs_group_obj=iterate_search(params,
       map_data=map_data,
       map_data_remaining=map_data_remaining,
-      n_residues=n_residues,
-      solvent_fraction=solvent_fraction,
       ncs_obj=ncs_obj,
       ncs_group_obj=ncs_group_obj,
       scattered_points=scattered_points,
-      crystal_symmetry=crystal_symmetry,
+      tracking_data=tracking_data,
       out=out)
   else:
     remainder_ncs_group_obj=None
@@ -2258,7 +2598,7 @@ def run(args,
   # Write out final maps
   if params.output_files.write_output_maps:
     map_files_written=write_output_files(params,
-      crystal_symmetry=crystal_symmetry,
+      tracking_data=tracking_data,
       map_data=map_data,
       map_data_remaining=map_data_remaining,
       ncs_group_obj=ncs_group_obj,
@@ -2271,11 +2611,17 @@ def run(args,
 
   if params.output_files.output_info_file and ncs_group_obj:
     from libtbx import easy_pickle
-    info_obj=ncs_group_obj.as_info_object()
-    easy_pickle.dump( params.output_files.output_info_file,
-       info_obj)
+    tracking_data.show_summary(out=out)
+    print >>out,"\nWriting summary information to: %s" %(
+      params.output_files.output_info_file)
+    print >>out,\
+      "\nTo restore original position of a PDB file built into these maps, use:"
+    print >>out,"phenix.segment_and_split_map info_file=%s" %(
+      params.output_files.output_info_file)+" pdb_to_restore=mypdb.pdb\n"
+    easy_pickle.dump(params.output_files.output_info_file,
+       tracking_data)
 
-  return ncs_group_obj,remainder_ncs_group_obj
+  return ncs_group_obj,remainder_ncs_group_obj,tracking_data
 
 
 if __name__=="__main__":
