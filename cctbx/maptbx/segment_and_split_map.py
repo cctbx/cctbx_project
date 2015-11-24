@@ -40,7 +40,7 @@ master_phil = iotbx.phil.parse("""
       .help = Optional pickle file with information from a previous run.\
               Can be used with pdb_to_restore to restore a PDB file to \
               to position matching original \
-              ccp4_map_file. 
+              ccp4_map_file.
       .short_caption = Info file
 
   }
@@ -113,12 +113,12 @@ master_phil = iotbx.phil.parse("""
       .help = Output pickle file with information about map and masks
       .short_caption = Output pickle file
 
-    restored_pdb = None 
+    restored_pdb = None
       .type = path
       .help = Output name of PDB restored to position matching original \
               ccp4_map_file.  Used in combination with info_file=xxx.pkl \
               and pdb_to_restore=xxxx.pdb
-      .short_caption = Restored PDB file 
+      .short_caption = Restored PDB file
   }
 
   crystal_info {
@@ -260,7 +260,7 @@ class seq_info_object:
       print >>out,"   Residues: %d" %(self.n_residues)
     else:
       print >>out
-    
+
 
 class ncs_info_object:
   def __init__(self,
@@ -448,7 +448,7 @@ class info_object:
       print >>out,"Estimated solvent fraction: %5.3f" %(self.solvent_fraction)
 
 
-      
+
     if self.origin_shift and self.origin_shift != (0,0,0):
       print >>out,\
       "\nOrigin offset applied: %.1f  %.1f  %.1f" %(self.origin_shift)
@@ -464,7 +464,7 @@ class info_object:
     else:
       print >>out,"\nNo origin offset applied"
 
-    if self.output_ncs_au_mask_info or self.output_ncs_au_map_info: 
+    if self.output_ncs_au_mask_info or self.output_ncs_au_map_info:
       if self.origin_shift and self.origin_shift != (0,0,0):
         print >>out,"\nOutput map files showing just the NCS AU (same size"+\
          "\nand location as shifted map files:\n"
@@ -490,9 +490,9 @@ class info_object:
         self.output_box_mask_info.show_summary(out=out)
       if self.output_box_map_info:
         self.output_box_map_info.show_summary(out=out)
-     
+
     print >>out,"\n"+50*"="+"\n"
-      
+
 
 class ncs_group_object:
   def __init__(self,
@@ -2131,7 +2131,7 @@ def write_output_files(params,
        min_point=lower_bounds, max_point=upper_bounds)
 
   if params.output_files.box_mask_file:
-    # write out NCS mask representing one AU of the NCS 
+    # write out NCS mask representing one AU of the NCS
     write_ccp4_map(
      box_crystal_symmetry,params.output_files.box_mask_file,
       box_mask_ncs_au)
@@ -2464,7 +2464,7 @@ def restore_pdb(params,tracking_data=None,out=sys.stdout):
   os=tracking_data.origin_shift
   origin_shift=(-os[0],-os[1],-os[2])
   print >>out,"Origin shift will be: %.1f  %.1f  %.1f "%(origin_shift)
-  
+
   import iotbx.pdb
   pdb_inp = iotbx.pdb.input(file_name=params.input_files.pdb_to_restore)
   pdb_hierarchy = pdb_inp.construct_hierarchy()
@@ -2523,7 +2523,7 @@ def run(args,
       shifted_map_file=params.input_files.ccp4_map_file # but do not overwrite
 
     # get the chain types and therefore (using ncs_copies) volume fraction
-    tracking_data=get_solvent_fraction(params, 
+    tracking_data=get_solvent_fraction(params,
       ncs_object=ncs_obj,tracking_data=tracking_data,out=out)
     tracking_data.show_summary(out=out)
 
