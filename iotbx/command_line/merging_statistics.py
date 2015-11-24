@@ -1,4 +1,5 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.merging_statistics
+# LIBTBX_SET_DISPATCHER_NAME iotbx.merging_statistics
 
 from __future__ import division
 import iotbx.merging_statistics
