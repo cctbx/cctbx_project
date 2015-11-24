@@ -188,6 +188,11 @@ master_phil = iotbx.phil.parse("""
       .help = Maximum ratio of grid points in top region to target
       .short_caption = Max ratio to target
 
+    min_ratio_to_target = 0.3
+      .type = float
+      .help = Minimum ratio of grid points in top region to target
+      .short_caption = Min ratio to target
+
     min_volume = 10
       .type = int
       .help = Minimum region size to consider (in grid points)
@@ -745,6 +750,7 @@ def score_threshold(threshold=None,
      min_volume=None,
      min_ratio=None,
      max_ratio_to_target=None,
+     min_ratio_to_target=None,
      weight_score_grid_points=1.,
      weight_score_ratio=1.0,
      weight_near_one=0.1,
@@ -769,6 +775,10 @@ def score_threshold(threshold=None,
 
    nn=len(sorted_by_volume)-1 # first one is total
    ok=True
+
+   too_low=None  # marker for way too low
+   too_high=None
+
    if nn < ncs_copies:
      ok=False #return  # not enough
 
@@ -779,6 +789,13 @@ def score_threshold(threshold=None,
 
    if v1 > max_ratio_to_target*target_in_top_regions:
      ok=False #return
+     if v1 > 10*max_ratio_to_target*target_in_top_regions: # way too low
+       too_low=True
+
+   if v1 < min_volume or v1 < 0.1*min_ratio_to_target*target_in_top_regions: 
+     # way too high
+     too_high=True
+
 
    # there should be about ncs_copies copies of each size region if ncs_copies>1
    if ncs_copies>1:
@@ -824,15 +841,16 @@ def score_threshold(threshold=None,
        has_sufficient_regions=False
        ratio=0.
 
+
    print >>out,\
     " %5.2f   %5d     %4d    %5d     %5d     %6.3f   %5s    %5.3f" %(
        threshold,target_in_top_regions,expected_regions,
        v1,median_number,ratio,has_sufficient_regions,overall_score)
 
    if ok:
-     return overall_score,has_sufficient_regions
+     return overall_score,has_sufficient_regions,too_low,too_high
    else:
-     return
+     return None,has_sufficient_regions,too_low,too_high
 
 
 def choose_threshold(params,map_data=None,
@@ -840,12 +858,15 @@ def choose_threshold(params,map_data=None,
      solvent_fraction=None,
      n_residues=None,
      ncs_copies=None,
+     scale=0.95,
      out=sys.stdout):
 
   best_threshold=None
+  best_threshold_has_sufficient_regions=None
   best_score=None
 
   print >>out,"\nChecking possible cutoffs for region identification"
+  print >>out,"Scale: %7.3f" %(scale)
   used_ranges=[]
   print >>out,\
     "Threshold  Target    N     Biggest   Median     Ratio    OK    Score"
@@ -866,7 +887,7 @@ def choose_threshold(params,map_data=None,
     for nn in xrange(n_range_low,n_range_high+1):
       if nn in used_ranges: continue
       used_ranges.append(nn)
-      threshold=starting_density_threshold*(0.95**nn)
+      threshold=starting_density_threshold*(scale**nn)
       if threshold < lower_bound or threshold > upper_bound:
         continue
       co = maptbx.connectivity(map_data=map_data.deep_copy(),
@@ -874,9 +895,9 @@ def choose_threshold(params,map_data=None,
       z = zip(co.regions(),range(0,co.regions().size()))
       sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
       if len(sorted_by_volume)<2:
-        info=None
+        score,has_sufficient_regions,too_low,too_high=None,None,None,None
       else:
-        info=score_threshold(
+        score,has_sufficient_regions,too_low,too_high=score_threshold(
          threshold=threshold,
          sorted_by_volume=sorted_by_volume,
          target_fraction=target_fraction,
@@ -884,20 +905,25 @@ def choose_threshold(params,map_data=None,
          min_volume=params.segmentation.min_volume,
          min_ratio=params.segmentation.min_ratio,
          max_ratio_to_target=params.segmentation.max_ratio_to_target,
+         min_ratio_to_target=params.segmentation.min_ratio_to_target,
          ncs_copies=ncs_copies,
          n_residues=n_residues,
          map_data=map_data,
          out=out)
-      if not info or not info[0]: # zero value
-        if best_threshold and threshold >best_threshold: # new upper bound
+      if too_high and threshold<upper_bound: 
+        upper_bound=threshold
+      if too_low and threshold>lower_bound: 
+        lower_bound=threshold
+      if score is None:
+        if best_threshold and best_threshold_has_sufficient_regions:
+          if threshold >best_threshold: # new upper bound
            upper_bound=threshold
-        elif best_threshold and threshold <best_threshold: # new upper bound
+          elif threshold <best_threshold: # new lower bound
            lower_bound=threshold
-        continue
 
-      score,has_sufficient_regions=info
-      if score and ( best_score is None or score > best_score):
+      elif ( best_score is None or score > best_score):
         best_threshold=threshold
+        best_threshold_has_sufficient_regions=has_sufficient_regions
         best_score=score
 
   if params.segmentation.density_threshold is not None: # use it
@@ -926,13 +952,20 @@ def get_connectivity(params,
 
   # Try connectivity at various thresholds
   # Choose one that has about the right number of grid points in top regions
-  threshold=choose_threshold(params,
+  scale=0.95
+  for ii in xrange(3):
+    threshold=choose_threshold(params,
      map_data=map_data,
      n_residues=n_residues,
      ncs_copies=ncs_copies,
      target_fraction=target_fraction,
      solvent_fraction=solvent_fraction,
+     scale=scale,
      out=out)
+    if threshold is None: 
+      scale=scale**0.333
+    else:
+      break
   if threshold is None:
     if params.segmentation.iterate_with_remainder: # on first try failed
       raise Sorry("No threshold found...try with threshold=xxx")
