@@ -38,6 +38,7 @@ def tar_extract(workdir, arx, modulename=None):
       cnt=0
       while os.path.exists(modulename):
         time.sleep(1)
+        cnt = cnt + 1
         if cnt > 5:
           break
     # using tarfile module rather than unix tar command which is not platform independent
