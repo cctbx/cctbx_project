@@ -215,6 +215,11 @@ master_phil = iotbx.phil.parse("""
       .help = Maximum fractional overlap allowed to density in another \
               asymmetric unit.
 
+    seeds_to_try = 10
+      .type = int
+      .help = Number of regions to try as centers
+      .short_caption = Seeds to try
+
     iterate_with_remainder = True
       .type = bool
       .short_caption = Iterate
@@ -780,7 +785,8 @@ def score_threshold(threshold=None,
    # we can.
 
    grid_points=map_data.size()
-   expected_regions=max(1,int(0.5+n_residues/residues_per_region))
+   expected_regions=max(ncs_copies,
+    max(1,int(0.5+n_residues/residues_per_region)))
 
    target_in_all_regions=float(grid_points)*fraction_occupied*(1-solvent_fraction)
    target_in_top_regions=target_in_all_regions/expected_regions
@@ -818,7 +824,7 @@ def score_threshold(threshold=None,
    else:
      score_ratio=1.0 # for ncs_copies=1
 
-   nn2=min(nn,max(1,(len(sorted_by_volume[1:expected_regions])+1)//2))
+   nn2=min(nn,max(1,(expected_regions+1)//2))
    median_number,iavg=sorted_by_volume[nn2]
 
    # number in each region should be about target_in_top_regions
@@ -879,8 +885,6 @@ def choose_threshold(params,map_data=None,
   print >>out,"\nChecking possible cutoffs for region identification"
   print >>out,"Scale: %7.3f" %(scale)
   used_ranges=[]
-  print >>out,\
-    "Threshold  Target    N     Biggest   Median     Ratio   Enough  Score   OK"
 
   # Assume any threshold that is lower than a threshold that gave a non-zero value
   #  and is zero is an upper bound on the best value.  Same the other way around
@@ -893,6 +897,8 @@ def choose_threshold(params,map_data=None,
     starting_density_threshold=1.0
   print >>out,"Starting density threshold is: %7.3f" %(
      starting_density_threshold)
+  print >>out,\
+    "Threshold  Target    N     Biggest   Median     Ratio   Enough  Score   OK"
   for n_range_low,n_range_high in [[-16,4],[-32,16],[-64,80]]:
     last_score=None
     for nn in xrange(n_range_low,n_range_high+1):
@@ -1839,8 +1845,10 @@ def select_regions_in_au(params,
       starting_regions=[None]
     else:
       starting_regions=ncs_group_obj.ncs_group_list[0]
-
+    ok_seeds_found=0
     for starting_region in starting_regions: # try each au as seed
+      if ok_seeds_found >= params.segmentation.seeds_to_try:
+        break # don't bother to keep trying
       if starting_region and starting_region in ncs_group_obj.bad_region_list:
         continue # do not use
       if starting_region:
@@ -1857,6 +1865,8 @@ def select_regions_in_au(params,
         best_selected_regions=selected_regions
         print >>out,"New best selected: rms: %7.1f: %s " %(
            rms,str(selected_regions))
+        out.flush()
+        ok_seeds_found+=1
     selected_regions=best_selected_regions
     if not selected_regions:
       raise Sorry("No NCS regions found from NCS groups")
