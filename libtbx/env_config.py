@@ -1,5 +1,6 @@
 from __future__ import division
 import libtbx.path
+from libtbx.auto_build import regenerate_module_files
 from libtbx.path import relocatable_path, absolute_path
 from libtbx.str_utils import show_string
 from libtbx.utils import detect_binary_file
@@ -244,6 +245,7 @@ class common_setpaths(object):
       self.u = StringIO() # /dev/null equivalent
 
   def all_and_debug(self):
+    self.set_module_paths()
     if (self.suffix == "_debug"):
       self.update_path("PYTHONPATH",
         os.pathsep.join([
@@ -252,6 +254,11 @@ class common_setpaths(object):
         ld_library_path_var_name(),
         os.pathsep.join([self.path_script_value(_)
           for _ in self.env.ld_library_path_additions()]))
+
+  def set_module_paths(self):
+    base_dir = os.path.join(abs(self.env.build_path.split()[0]), 'base')
+    self.setenv(var_name="PANGO_RC_FILE",
+      val=os.path.join(base_dir, 'etc', 'pango', 'pangorc'))
 
   def set_unset_vars(self):
     if (self.suffix != ""):
@@ -1522,6 +1529,7 @@ selfx:
     self.write_python_and_show_path_duplicates()
     self.process_exe()
     self.write_command_version_duplicates()
+    regenerate_module_files.run(libtbx.env.under_base('.'), only_if_needed=True)
     self.pickle()
     print >> completed_file_name.open("w"), "libtbx_refresh_is_completed"
 
