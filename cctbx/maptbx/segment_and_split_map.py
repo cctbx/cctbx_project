@@ -184,6 +184,12 @@ master_phil = iotbx.phil.parse("""
       .short_caption = Max regions in au
       .help = Maximum number of regions to be kept in the NCS asymmetric unit
 
+    max_per_au_ratio = 5.
+      .type = int
+      .short_caption = Max ratio of regions to expected
+      .help = Maximum ratio of number of regions to be kept in the \
+         NCS asymmetric unit to those expected
+
     min_ratio_of_ncs_copy_to_first = 0.5
       .type = float
       .short_caption = Minimum ratio of ncs copy to first
@@ -865,9 +871,9 @@ def score_threshold(threshold=None,
        v1,median_number,ratio,has_sufficient_regions,overall_score,ok)
 
    if ok:
-     return overall_score,has_sufficient_regions,too_low,too_high
+     return overall_score,has_sufficient_regions,too_low,too_high,expected_regions
    else:
-     return None,has_sufficient_regions,too_low,too_high
+     return None,has_sufficient_regions,too_low,too_high,expected_regions
 
 
 def choose_threshold(params,map_data=None,
@@ -891,20 +897,31 @@ def choose_threshold(params,map_data=None,
   upper_bound=1000
   lower_bound=0.0001
   best_nn=None
-  if params.segmentation.starting_density_threshold is not None:
-    starting_density_threshold=params.segmentation.starting_density_threshold
+
+  if params.segmentation.density_threshold is not None: # use it
+     print >>out,"\nUsing input threshold of %5.2f " %(
+      params.segmentation.density_threshold)
+     n_range_low_high_list=[[0,0]] # use as is
   else:
-    starting_density_threshold=1.0
-  print >>out,"Starting density threshold is: %7.3f" %(
-     starting_density_threshold)
+    n_range_low_high_list=[[-16,4],[-32,16],[-64,80]]
+    if params.segmentation.starting_density_threshold is not None:
+      starting_density_threshold=params.segmentation.starting_density_threshold
+      print >>out,"Starting density threshold is: %7.3f" %(
+         starting_density_threshold)
+    else:
+      starting_density_threshold=1.0
   print >>out,\
     "Threshold  Target    N     Biggest   Median     Ratio   Enough  Score   OK"
-  for n_range_low,n_range_high in [[-16,4],[-32,16],[-64,80]]:
+  unique_expected_regions=None
+  for n_range_low,n_range_high in n_range_low_high_list:
     last_score=None
     for nn in xrange(n_range_low,n_range_high+1):
       if nn in used_ranges: continue
       used_ranges.append(nn)
-      threshold=starting_density_threshold*(scale**nn)
+      if params.segmentation.density_threshold is not None:
+        threshold=params.segmentation.density_threshold
+      else:
+        threshold=starting_density_threshold*(scale**nn)
       if threshold < lower_bound or threshold > upper_bound:
         continue
       co = maptbx.connectivity(map_data=map_data.deep_copy(),
@@ -912,9 +929,11 @@ def choose_threshold(params,map_data=None,
       z = zip(co.regions(),range(0,co.regions().size()))
       sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
       if len(sorted_by_volume)<2:
-        score,has_sufficient_regions,too_low,too_high=None,None,None,None
+        score,has_sufficient_regions,too_low,too_high,expected_regions=\
+          None,None,None,None,None
       else:
-        score,has_sufficient_regions,too_low,too_high=score_threshold(
+        score,has_sufficient_regions,too_low,too_high,expected_regions=\
+           score_threshold(
          threshold=threshold,
          sorted_by_volume=sorted_by_volume,
          fraction_occupied=fraction_occupied,
@@ -929,6 +948,9 @@ def choose_threshold(params,map_data=None,
          n_residues=n_residues,
          map_data=map_data,
          out=out)
+      if expected_regions:
+        unique_expected_regions=max(1,
+         (ncs_copies-1+expected_regions)//ncs_copies)
       if too_high and threshold<upper_bound:
         upper_bound=threshold
       if too_low and threshold>lower_bound:
@@ -944,14 +966,11 @@ def choose_threshold(params,map_data=None,
         best_threshold_has_sufficient_regions=has_sufficient_regions
         best_score=score
 
-  if params.segmentation.density_threshold is not None: # use it
-     best_threshold=params.segmentation.density_threshold
-     print >>out,"\nUsing input threshold of %5.2f " %(best_threshold)
   if best_threshold is not None:
     print >>out,"\nBest threshold: %5.2f\n" %(best_threshold)
-    return best_threshold
+    return best_threshold,unique_expected_regions
   else:
-    return None
+    return None,unique_expected_regions
 
 def get_connectivity(params,
      map_data=None,
@@ -971,7 +990,7 @@ def get_connectivity(params,
   # Choose one that has about the right number of grid points in top regions
   scale=0.95
   for ii in xrange(3):
-    threshold=choose_threshold(params,
+    threshold,unique_expected_regions=choose_threshold(params,
      map_data=map_data,
      n_residues=n_residues,
      ncs_copies=ncs_copies,
@@ -1015,7 +1034,7 @@ def get_connectivity(params,
      min_b[i][2],max_b[i][2])
     """
     n_use=cntr
-  return co,sorted_by_volume,min_b,max_b
+  return co,sorted_by_volume,min_b,max_b,unique_expected_regions
 
 def get_volume_of_seq(text,vol=None,chain_type=None,out=sys.stdout):
   chain_type,n_residues=guess_chain_type(text,chain_type=chain_type,out=out)
@@ -1534,12 +1553,27 @@ def group_ncs_equivalents(
       if n_dup>max_duplicates:
         duplicate=True
     if not duplicate:
-      print >>out,"NCS GROUP:",equiv_group_as_list,":",total_grid_points
+      #print >>out,"NCS GROUP:",equiv_group_as_list,":",total_grid_points
       ncs_group_list.append(equiv_group_as_list)
       for equiv_group in equiv_group_as_list:
         for x in equiv_group: used_list.append(x)
   return ncs_group_list
 
+def make_group_list_unique(ncs_group_list):
+  # remove all groups that overlap an existing list
+  new_group_list=[]
+  new_group_list_single=[]
+  for ncs_group in ncs_group_list:
+    dup=False
+    ll=single_list(ncs_group)
+    for x in new_group_list_single:
+      if x in ll:
+        dup=True
+        break
+    if not dup:
+      new_group_list.append(ncs_group)
+      new_group_list_single+=ll
+  return new_group_list
 
 def identify_ncs_regions(params,
      sorted_by_volume=None,
@@ -1571,18 +1605,26 @@ def identify_ncs_regions(params,
   # Go through all grid points; discard if not in top regions
   #  Renumber regions in order of decreasing size
 
-  edited_mask,edited_volume_list,original_id_from_id=get_edited_mask(
+  if 1:
+    edited_mask,edited_volume_list,original_id_from_id=get_edited_mask(
      sorted_by_volume=sorted_by_volume,
      co=co,
      max_regions_to_consider=max_regions_to_consider,out=out)
+    if 0:
+      from libtbx import easy_pickle
+      easy_pickle.dump("edited_mask.pkl",[edited_mask,edited_volume_list,original_id_from_id])
+  else:
+    from libtbx import easy_pickle
+    [edited_mask,edited_volume_list,original_id_from_id]=easy_pickle.load("edited_mask.pkl")
+
   # edited_mask contains re-numbered region id's
 
   # Identify duplicate and ncs relationships between regions
   # duplicate_dict[id]= number of duplicates for that region
   # equiv_dict[id][other_id]=number_of points other_id matches
                    #  id through an ncs relationship
-
-  duplicate_dict,equiv_dict,equiv_dict_ncs_copy_dict,\
+  if 1:
+    duplicate_dict,equiv_dict,equiv_dict_ncs_copy_dict,\
       region_range_dict,region_centroid_dict,\
       region_scattered_points_dict=\
     run_get_duplicates_and_ncs(
@@ -1596,17 +1638,17 @@ def identify_ncs_regions(params,
       tracking_data=tracking_data,
       out=out)
 
-  # Remove any bad regions
-  region_list,region_volume_dict,new_sorted_by_volume,\
+    # Remove any bad regions
+    region_list,region_volume_dict,new_sorted_by_volume,\
       bad_region_list=remove_bad_regions(
     params=params,
     duplicate_dict=duplicate_dict,
     edited_volume_list=edited_volume_list,
     out=out)
 
-  # Identify groups of regions that are ncs-related
-  # equiv_dict_ncs_copy[id][id1]=ncs_copy of id that corresponds to id1
-  equiv_dict_ncs_copy=get_ncs_equivalents(
+    # Identify groups of regions that are ncs-related
+    # equiv_dict_ncs_copy[id][id1]=ncs_copy of id that corresponds to id1
+    equiv_dict_ncs_copy=get_ncs_equivalents(
     region_list=region_list,
     bad_region_list=bad_region_list,
     region_scattered_points_dict=region_scattered_points_dict,
@@ -1615,19 +1657,42 @@ def identify_ncs_regions(params,
     equiv_dict_ncs_copy_dict=equiv_dict_ncs_copy_dict,
     out=out)
 
+    if 0:
+      from libtbx import easy_pickle
+      easy_pickle.dump("save.pkl",[duplicate_dict,equiv_dict,region_range_dict,region_centroid_dict,region_scattered_points_dict,region_list,region_volume_dict,new_sorted_by_volume,bad_region_list,equiv_dict_ncs_copy,tracking_data])
+      print "Dumped save.pkl"
+  else:
+    from libtbx import easy_pickle
+    [duplicate_dict,equiv_dict,region_range_dict,region_centroid_dict,region_scattered_points_dict,region_list,region_volume_dict,new_sorted_by_volume,bad_region_list,equiv_dict_ncs_copy,tracking_data]=easy_pickle.load("save.pkl")
+    print "Loaded save.pkl"
+
   # Group together regions that are ncs-related. Also if one ncs
   #   copy has 2 or more regions linked together, group the other ones.
 
   # each entry in ncs_group_list is a list of regions for each ncs_copy:
   #  e.g.,  [[8], [9, 23], [10, 25], [11, 27], [12, 24], [13, 22], [14, 26]]
   #  May contain elements that are in bad_region_list (to exclude later)
-  ncs_group_list=group_ncs_equivalents(
+  if 1:
+    ncs_group_list=group_ncs_equivalents(
     split_if_possible=params.segmentation.split_if_possible,
     ncs_copies=ncs_obj.max_operators(),
     region_volume_dict=region_volume_dict,
     region_list=region_list,
     equiv_dict_ncs_copy=equiv_dict_ncs_copy,
     out=out)
+    if 0:
+      from libtbx import easy_pickle
+      easy_pickle.dump("group_list.pkl",ncs_group_list)
+      print "Dumped to group_list.pkl"
+  else:
+    from libtbx import easy_pickle
+    ncs_group_list=easy_pickle.load("group_list.pkl")
+    print "Loaded group_list.pkl"
+
+  n=len(ncs_group_list)
+  ncs_group_list=make_group_list_unique(ncs_group_list)
+  print >>out,"Obtained %d unique ncs groups from total of %d" %(
+    len(ncs_group_list),n)
 
   ncs_group_obj=ncs_group_object(
      ncs_group_list=ncs_group_list,
@@ -1751,11 +1816,13 @@ def get_closest_dist(test_center,target_centers):
 
 def select_from_seed(starting_regions,
       target_scattered_points=None,
+      max_length_of_group=None,
       ncs_group_obj=None):
   selected_regions=single_list(deepcopy(starting_regions))
   # do not allow any region in ncs_group_obj.bad_region_list
 
   for ncs_group in ncs_group_obj.ncs_group_list: # try adding from each group
+    if len(single_list(selected_regions))>=max_length_of_group: break
     best_ncs_set=None
     best_dist=None
     current_scattered_points_list=get_scattered_points_list(selected_regions,
@@ -1767,14 +1834,19 @@ def select_from_seed(starting_regions,
          has_intersection(ncs_group_obj.bad_region_list,ncs_set):
         continue
 
+
       skip=False
       for x in selected_regions: # does any ncs copy of x overlap?
-        if skip: continue
+        if skip: break
+        found_x=False
         for test_ncs_group in ncs_group_obj.ncs_group_list:
+          if found_x: break
           if x in single_list(test_ncs_group):
+            found_x=True
             if has_intersection(test_ncs_group,ncs_set):
               skip=True
-      if skip: continue
+      if skip:
+        continue
 
       # Get dist of this ncs_set (usually 1 region) to current center
 
@@ -1805,14 +1877,14 @@ def remove_one_item(input_list,item_to_remove=None):
 def get_ncs_related_regions(
     ncs_group_obj=None,
     selected_regions=None):
-
   ncs_related_regions=[]
   for ncs_group in ncs_group_obj.ncs_group_list:
     ids_in_group=single_list(ncs_group)
     for id in selected_regions:
       if id in ids_in_group:  # this group contains this selected id
         for i in ids_in_group:
-          if (not i==id) and (not i in ncs_related_regions):
+          if (not i==id) and (not i in selected_regions) and \
+             (not i in ncs_related_regions):
             ncs_related_regions.append(i)
 
   return ncs_related_regions
@@ -1826,47 +1898,52 @@ def all_elements_are_length_one(list_of_elements):
 def select_regions_in_au(params,
      ncs_group_obj=None,
      target_scattered_points=None,
+     unique_expected_regions=None,
      out=sys.stdout):
   # Choose one region or set of regions from each ncs_group
+  # up to about unique_expected_regions
   # Optimize closeness of centers...
   # If target scattered_points is supplied, include them as allowed target
 
   if not ncs_group_obj.ncs_group_list:
     return ncs_group_obj,[]
 
+  max_length_of_group=max(1,unique_expected_regions*
+     params.segmentation.max_per_au_ratio)
+  print >>out,"Maximum length of group: %d" %(max_length_of_group)
   if all_elements_are_length_one(ncs_group_obj.ncs_group_list):
     best_selected_regions=single_list(ncs_group_obj.ncs_group_list)
     best_rms=None
   else:
-
     best_selected_regions=None
     best_rms=None
     if target_scattered_points:
       starting_regions=[None]
     else:
       starting_regions=ncs_group_obj.ncs_group_list[0]
-    ok_seeds_found=0
+    ok_seeds_examined=0
     for starting_region in starting_regions: # try each au as seed
-      if ok_seeds_found >= params.segmentation.seeds_to_try:
+      if ok_seeds_examined >= params.segmentation.seeds_to_try:
         break # don't bother to keep trying
       if starting_region and starting_region in ncs_group_obj.bad_region_list:
         continue # do not use
-      if starting_region:
+      if starting_region: # NOTE: starting_region is a list itself
         starting_region_list=[starting_region]
       else:
         starting_region_list=[]
+
       selected_regions,rms=select_from_seed(starting_region_list,
         target_scattered_points=target_scattered_points,
+        max_length_of_group=max_length_of_group,
         ncs_group_obj=ncs_group_obj)
       if not selected_regions:
         continue
+      ok_seeds_examined+=1
       if best_rms is None or rms<best_rms:
         best_rms=rms
         best_selected_regions=selected_regions
         print >>out,"New best selected: rms: %7.1f: %s " %(
            rms,str(selected_regions))
-        out.flush()
-        ok_seeds_found+=1
     selected_regions=best_selected_regions
     if not selected_regions:
       raise Sorry("No NCS regions found from NCS groups")
@@ -1878,6 +1955,7 @@ def select_regions_in_au(params,
         starting_regions=remove_one_item(selected_regions,item_to_remove=x)
         new_selected_regions,rms=select_from_seed(starting_regions,
           target_scattered_points=target_scattered_points,
+          max_length_of_group=max_length_of_group,
           ncs_group_obj=ncs_group_obj)
         if not new_selected_regions: continue
         if best_rms is None or rms<best_rms-0.00001:
@@ -2114,7 +2192,6 @@ def write_region_maps(params,
 def write_output_files(params,
     tracking_data=None,
     map_data=None,
-    map_data_remaining=None,
     ncs_group_obj=None,
     remainder_ncs_group_obj=None,
     pdb_hierarchy=None,
@@ -2616,7 +2693,8 @@ def run(args,
 
 
   # get connectivity  (conn=connectivity_object.result)
-  co,sorted_by_volume,min_b,max_b=get_connectivity(params,
+  co,sorted_by_volume,min_b,max_b,unique_expected_regions=get_connectivity(
+     params,
      map_data=map_data,
      ncs_object=ncs_obj,
      n_residues=tracking_data.n_residues,
@@ -2642,12 +2720,13 @@ def run(args,
   # Choose one region or group of regions from each ncs_group in the list
   #  Optimize the closeness of centers
 
-  # Select group of regions that are close together and represent one
+  # Select group of regions that are close together and represent one au
   ncs_group_obj,scattered_points=\
      select_regions_in_au(
      params,
      ncs_group_obj=ncs_group_obj,
      target_scattered_points=target_scattered_points,
+     unique_expected_regions=unique_expected_regions,
      out=out)
 
   write_dummy_atoms=False
@@ -2662,15 +2741,17 @@ def run(args,
 
   # write out mask and map for all the selected regions...
 
-  map_data_remaining=create_remaining_mask_and_map(params,
-    ncs_group_obj=ncs_group_obj,
-    map_data=map_data,
-    crystal_symmetry=tracking_data.crystal_symmetry,
-    out=out)
-
   # Iterate if desired
   if params.segmentation.iterate_with_remainder and \
       ncs_group_obj.selected_regions:
+
+    print >>out,"\nCreating remaining mask and map"
+    map_data_remaining=create_remaining_mask_and_map(params,
+      ncs_group_obj=ncs_group_obj,
+      map_data=map_data,
+      crystal_symmetry=tracking_data.crystal_symmetry,
+      out=out)
+
     remainder_ncs_group_obj=iterate_search(params,
       map_data=map_data,
       map_data_remaining=map_data_remaining,
@@ -2684,10 +2765,10 @@ def run(args,
 
   # Write out final maps
   if params.output_files.write_output_maps:
+    print >>out,"\nWriting output maps"
     map_files_written=write_output_files(params,
       tracking_data=tracking_data,
       map_data=map_data,
-      map_data_remaining=map_data_remaining,
       ncs_group_obj=ncs_group_obj,
       remainder_ncs_group_obj=remainder_ncs_group_obj,
       pdb_hierarchy=pdb_hierarchy,
