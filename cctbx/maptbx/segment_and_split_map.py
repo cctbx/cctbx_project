@@ -792,7 +792,7 @@ def score_threshold(threshold=None,
      if v1 > 10*max_ratio_to_target*target_in_top_regions: # way too low
        too_low=True
 
-   if v1 < min_volume or v1 < 0.1*min_ratio_to_target*target_in_top_regions: 
+   if v1 < min_volume or v1 < 0.1*min_ratio_to_target*target_in_top_regions:
      # way too high
      too_high=True
 
@@ -910,9 +910,9 @@ def choose_threshold(params,map_data=None,
          n_residues=n_residues,
          map_data=map_data,
          out=out)
-      if too_high and threshold<upper_bound: 
+      if too_high and threshold<upper_bound:
         upper_bound=threshold
-      if too_low and threshold>lower_bound: 
+      if too_low and threshold>lower_bound:
         lower_bound=threshold
       if score is None:
         if best_threshold and best_threshold_has_sufficient_regions:
@@ -962,7 +962,7 @@ def get_connectivity(params,
      solvent_fraction=solvent_fraction,
      scale=scale,
      out=out)
-    if threshold is None: 
+    if threshold is None:
       scale=scale**0.333
     else:
       break
