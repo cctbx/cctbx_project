@@ -1556,24 +1556,9 @@ def group_ncs_equivalents(
       #print >>out,"NCS GROUP:",equiv_group_as_list,":",total_grid_points
       ncs_group_list.append(equiv_group_as_list)
       for equiv_group in equiv_group_as_list:
-        for x in equiv_group: used_list.append(x)
+        for x in equiv_group:
+          if not x in used_list: used_list.append(x)
   return ncs_group_list
-
-def make_group_list_unique(ncs_group_list):
-  # remove all groups that overlap an existing list
-  new_group_list=[]
-  new_group_list_single=[]
-  for ncs_group in ncs_group_list:
-    dup=False
-    ll=single_list(ncs_group)
-    for x in new_group_list_single:
-      if x in ll:
-        dup=True
-        break
-    if not dup:
-      new_group_list.append(ncs_group)
-      new_group_list_single+=ll
-  return new_group_list
 
 def identify_ncs_regions(params,
      sorted_by_volume=None,
@@ -1688,11 +1673,6 @@ def identify_ncs_regions(params,
     from libtbx import easy_pickle
     ncs_group_list=easy_pickle.load("group_list.pkl")
     print "Loaded group_list.pkl"
-
-  n=len(ncs_group_list)
-  ncs_group_list=make_group_list_unique(ncs_group_list)
-  print >>out,"Obtained %d unique ncs groups from total of %d" %(
-    len(ncs_group_list),n)
 
   ncs_group_obj=ncs_group_object(
      ncs_group_list=ncs_group_list,
