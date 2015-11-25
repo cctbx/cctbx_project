@@ -41,7 +41,9 @@ def fix_pango(base_dir, out):
 
   pango_dir = os.path.join(base_dir, "etc", "pango")
   if not os.path.isdir(pango_dir):
-    raise Exception("%s not present, could not regenerate pango files" % pango_dir)
+    print >> out, "%s not present, could not regenerate pango files" % pango_dir
+    # Should really be an exception, but cannot do that because of buildbot
+    return
 
   # pangorc
   pangorc = os.path.join(pango_dir, "pangorc")

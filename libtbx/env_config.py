@@ -256,7 +256,7 @@ class common_setpaths(object):
           for _ in self.env.ld_library_path_additions()]))
 
   def set_module_paths(self):
-    base_dir = os.path.join(abs(self.env.build_path.split()[0]), 'base')
+    base_dir = self.env.under_base('.')
     self.setenv(var_name="PANGO_RC_FILE",
       val=os.path.join(base_dir, 'etc', 'pango', 'pangorc'))
 
