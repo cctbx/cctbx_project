@@ -23,6 +23,10 @@ beam_x *= pixel_size
 beam_y += 3 # based on powder pattern/fit to unit cell
 beam_y *= pixel_size
 overload = detector[0].get_trusted_range()[1]
+from xfel.cxi.cspad_ana.cspad_tbx import xpp_active_areas
+active_areas = xpp_active_areas["Sacla.MPCCD.8tile"]["active_areas"]
+# the active areas are already determined for the cropped size
+# (ran once without active areas, then measured cropped active areas on image viewer)
 
 dest_base = os.path.basename(os.path.splitext(data_path)[0])
 
@@ -46,9 +50,12 @@ def do_work(img_no):
      beam_center_x=beam_x,
      beam_center_y=beam_y,
      ccd_image_saturation=overload,
-     saturated_value=overload
+     saturated_value=overload,
+     address="Sacla.MPCCD.8tile",
+     active_areas=active_areas
      )
-  imgdict = crop_image_pickle(imgdict)
+  imgdict = crop_image_pickle(imgdict,
+    preserve_active_areas_even_though_cropping_would_invalidate_them=True)
 
   dest_path = os.path.join(dest_dir, dest_base + "_%06d.pickle"%img_no)
   print "Saving image", img_no, "to", dest_path

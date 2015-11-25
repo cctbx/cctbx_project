@@ -1759,6 +1759,23 @@ _xpp_active_areas = {
                   ])
   },
 
+  #SOME BIG ISSUES REMAIN WITH Sacla.MPCCD.8tile format
+  # Evidently the data from Takanori 22 Sep 2015 already has slight rotation
+  # applied to the MPCCD modules, as the data rectangles displayed in cctbx.image_viewer are tilted
+  # This is inconsistent with the expectation that npy.py should get the raw data, not preprocessed.
+
+  'Sacla.MPCCD.8tile': { # as given by Takanori 22 Sep 2015
+    'active_areas': flex.int([
+           112,  189,  622, 1212,  647,  188, 1156, 1212,
+          1180,  140, 1691, 1163, 1714,  140, 2226, 1163,
+           159, 1231,  671, 2254,  694, 1230, 1206, 2253,
+          1229, 1180, 1740, 2203, 1762, 1180, 2274, 2202,
+     ]),
+    'rotations' : flex.int([
+                   0,0,0,0,0,0,0,0,
+                  ])
+  },
+
 }
 _xpp_active_areas['XPP 11.1'] = _xpp_active_areas['XPP 9.1'] = _xpp_active_areas['XPP 8.1']
 xpp_active_areas = _xpp_active_areas
