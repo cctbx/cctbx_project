@@ -32,7 +32,7 @@ def check_pango(base_dir):
     if settings != _generate_pangorc(base_dir):
       return False
     return True
-  except:
+  except Exception:
     return False
 
 
