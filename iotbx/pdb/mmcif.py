@@ -561,16 +561,18 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     serial_number = []
     coordinates_present = []
 
-    for i,sn in enumerate(self.cif_block.get('_struct_ncs_oper.id')):
-      serial_number.append((sn,i))
-      coordinates_present.append(
-        self.cif_block.get('_struct_ncs_oper.code')[i] == 'given')
-      r = [(self.cif_block.get('_struct_ncs_oper.matrix[%s][%s]' %(x,y))[i])
-        for x,y in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
-      rots.append(matrix.sqr(map(float,r)))
-      t = [(self.cif_block.get('_struct_ncs_oper.vector[%s]' %x)[i])
-        for x in '123']
-      trans.append(matrix.col(map(float,t)))
+    ncs_oper = self.cif_block.get('_struct_ncs_oper.id')
+    if ncs_oper is not None:
+      for i,sn in enumerate(ncs_oper):
+        serial_number.append((sn,i))
+        coordinates_present.append(
+          self.cif_block.get('_struct_ncs_oper.code')[i] == 'given')
+        r = [(self.cif_block.get('_struct_ncs_oper.matrix[%s][%s]' %(x,y))[i])
+          for x,y in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
+        rots.append(matrix.sqr(map(float,r)))
+        t = [(self.cif_block.get('_struct_ncs_oper.vector[%s]' %x)[i])
+          for x in '123']
+        trans.append(matrix.col(map(float,t)))
     # sort records by serial number
     serial_number.sort()
     items_order = [i for (_,i) in serial_number]
