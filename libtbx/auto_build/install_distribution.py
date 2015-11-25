@@ -501,7 +501,7 @@ class installer(object):
     if (self.flag_build_gui) and (sys.platform != "darwin") :
       os.environ["LD_LIBRARY_PATH"] = "lib:%s" % op.join(self.base_dir, "lib")
       regenerate_module_files.run(
-        args=["--build_dir=%s" % self.dest_dir],
+        os.path.join(self.dest_dir, 'base'),
         out=self.out)
 
     # Write dispatcher_include file.
