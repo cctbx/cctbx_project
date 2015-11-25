@@ -1,0 +1,60 @@
+from __future__ import division
+import sys, os, dxtbx
+from xfel.cxi.cspad_ana import cspad_tbx
+from libtbx import easy_pickle
+from libtbx import easy_mp
+from xfel.command_line.cxi_image2pickle import crop_image_pickle
+
+# Jiffy script to dump SACLA data processed by Cheetah into image pickles.  Usage:
+# libtbx.python dump_sacla_data.py <path to h5 file> <destination directory for pickles>.
+# Uses 4 processors, hardcoded at the end of the file
+
+data_path = sys.argv[1]
+dest_dir = sys.argv[2]
+
+data = dxtbx.load(data_path)
+detector = data.get_detector()
+distance = detector[0].get_distance()
+beam = data.get_beam()
+wavelength = beam.get_wavelength()
+pixel_size = detector[0].get_pixel_size()[0]
+beam_x, beam_y = detector[0].get_beam_centre_px(beam.get_s0())
+beam_x *= pixel_size
+beam_y += 3 # based on powder pattern/fit to unit cell
+beam_y *= pixel_size
+overload = detector[0].get_trusted_range()[1]
+
+dest_base = os.path.basename(os.path.splitext(data_path)[0])
+
+def do_work(img_no):
+  n_fails = 0
+  while True:
+    try:
+      raw_data = data.get_raw_data(img_no)
+      break
+    except KeyError, ValueError:
+      n_fails +=1
+      print "Fail to read, attempt number", n_fails
+      if n_fails > 100:
+        raise Exception("Couldn't read the data")
+    import time; time.sleep(n_fails * 0.1)
+
+  imgdict = cspad_tbx.dpack(data=raw_data,
+     distance=distance,
+     pixel_size=pixel_size,
+     wavelength=wavelength,
+     beam_center_x=beam_x,
+     beam_center_y=beam_y,
+     ccd_image_saturation=overload,
+     saturated_value=overload
+     )
+  imgdict = crop_image_pickle(imgdict)
+
+  dest_path = os.path.join(dest_dir, dest_base + "_%06d.pickle"%img_no)
+  print "Saving image", img_no, "to", dest_path
+  easy_pickle.dump(dest_path, imgdict)
+
+easy_mp.pool_map(
+            args=range(data.get_num_images()),
+            func=do_work,
+            processes=4)
