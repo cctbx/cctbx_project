@@ -119,7 +119,10 @@ Type=Threshold
     print "problem with installation, could not make index.theme file"
 
 
-def run(base_dir, out=sys.stdout):
+def run(base_dir, out=sys.stdout, only_if_needed=False):
+  if only_if_needed and check_pango(base_dir):
+    return
+
   if not sys.platform.startswith('linux'):
     print >> out, "This script is only applicable to Linux - exiting."
     return
@@ -138,7 +141,7 @@ if (__name__ == "__main__") :
   from optparse import OptionParser
   import libtbx.load_env
 
-  default_location = os.path.join(abs(libtbx.env.build_path.split()[0]), 'base')
+  default_location = libtbx.env.under_base('.')
 
   parser = OptionParser(
     description="Generate new config files for various third-party modules " +
@@ -149,9 +152,4 @@ if (__name__ == "__main__") :
     help="Only run if current files are not consistent", default=False)
 
   options, args = parser.parse_args(sys.argv[1:])
-
-  if options.check:
-    if check_pango(options.base_dir):
-      sys.exit(0)
-
-  run(options.base_dir)
+  run(options.base_dir, only_if_needed=options.check)
