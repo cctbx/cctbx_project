@@ -259,6 +259,8 @@ class common_setpaths(object):
     base_dir = self.env.under_base('.')
     self.setenv(var_name="PANGO_RC_FILE",
       val=os.path.join(base_dir, 'etc', 'pango', 'pangorc'))
+    self.setenv(var_name="FONTCONFIG_PATH",
+      val=os.path.join(base_dir, 'etc', 'fonts'))
 
   def set_unset_vars(self):
     if (self.suffix != ""):
