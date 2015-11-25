@@ -42,6 +42,11 @@ def _get_detector_format_version_dict():
       'start_time':None,
       'end_time':None
     },
+    'Sacla.MPCCD.8tile': {
+      'address':'Sacla.MPCCD.8tile',
+      'start_time':None,
+      'end_time':None
+    },
     # LCLS run 3: until Mar 8, 2011
     #
     # 'CXI 3.1' corresponds to a quirky, old, and deprecated version

@@ -854,5 +854,20 @@ def cxi_versioned_extract_detail(args):
     working_extract.distl.tile_translations = None
     return working_extract
 
+  elif cxi_version in ["Sacla.MPCCD.8tile"]:
+    working_extract = working_phil.command_extractor
+    working_extract.distl.quad_translations = None
+
+    from scitbx.array_family import flex
+    corrected_auxiliary_translations =flex.int([
+       0,  0,  0,  0,  0,  0,  0,  0,
+       0,  0,  0,  0,  0,  0,  0,  0,
+    ])
+
+    working_extract.distl.tile_translations = list(corrected_auxiliary_translations)
+
+    #working_extract.distl.tile_translations = None
+    return working_extract
+
   else:
     return working_phil.command_extractor

@@ -10,7 +10,7 @@ from xfel.cxi.cspad_ana.cspad_tbx import dpack, evt_timestamp
 from libtbx import easy_pickle
 from libtbx.utils import Usage
 
-def crop_image_pickle(data):
+def crop_image_pickle(data,preserve_active_areas_even_though_cropping_would_invalidate_them=False):
   """
   Given an image pickle dictionary, crop the pixels such that the beam center is as close
   as possile to the image center.  Then adjust SIZE1/SIZE2, ACTIVE_AREAS and the beam
@@ -19,8 +19,9 @@ def crop_image_pickle(data):
   """
   # only one active area is allowed, and it should be the size of the image.
   from scitbx.array_family import flex
-  test = flex.int([0,0,data['SIZE1'],data['SIZE2']]) == data['ACTIVE_AREAS']
-  assert test.all_eq(True)
+  if preserve_active_areas_even_though_cropping_would_invalidate_them is False:
+    test = flex.int([0,0,data['SIZE1'],data['SIZE2']]) == data['ACTIVE_AREAS']
+    assert test.all_eq(True)
 
   # retrieve parameters from the dictionary
   pixel_size = data['PIXEL_SIZE']
@@ -45,7 +46,8 @@ def crop_image_pickle(data):
   data['SIZE2'] = new_size
   data['BEAM_CENTER_X'] -= min_x * pixel_size
   data['BEAM_CENTER_Y'] -= min_y * pixel_size
-  data['ACTIVE_AREAS'] = flex.int([0,0,new_size,new_size])
+  if preserve_active_areas_even_though_cropping_would_invalidate_them is False:
+    data['ACTIVE_AREAS'] = flex.int([0,0,new_size,new_size])
 
   return data
 
