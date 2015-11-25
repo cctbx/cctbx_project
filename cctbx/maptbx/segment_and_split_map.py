@@ -173,10 +173,21 @@ master_phil = iotbx.phil.parse("""
       .short_caption = Write all regions
       .help = Write all regions to ccp4 map files.
 
+    fraction_occupied = 0.2
+      .type = float
+      .help = Fraction of volume inside macromolecule that should be above \
+             threshold density
+      .short_caption = Fraction occupied
+
     max_per_au = None
       .type = int
       .short_caption = Max regions in au
       .help = Maximum number of regions to be kept in the NCS asymmetric unit
+
+    min_ratio_of_ncs_copy_to_first = 0.5
+      .type = float
+      .short_caption = Minimum ratio of ncs copy to first
+      .help = Minimum ratio of the last ncs_copy region size to maximum
 
     min_ratio = 0.1
       .type = float
@@ -743,7 +754,7 @@ def get_ncs(params,tracking_data=None,out=sys.stdout):
 def score_threshold(threshold=None,
      sorted_by_volume=None,n_residues=None,
      ncs_copies=None,
-     target_fraction=None,
+     fraction_occupied=None,
      solvent_fraction=None,
      map_data=None,
      residues_per_region=50.,
@@ -754,7 +765,7 @@ def score_threshold(threshold=None,
      weight_score_grid_points=1.,
      weight_score_ratio=1.0,
      weight_near_one=0.1,
-     minimum_ratio_of_ncs_copy_to_first=0.5,
+     min_ratio_of_ncs_copy_to_first=None,
      out=sys.stdout):
 
    # We want about 1 region per 50-100 residues for the biggest region.
@@ -767,10 +778,11 @@ def score_threshold(threshold=None,
    # acid in the region...this gives us target_in_top_regions points.
    # So using this, make the median size as close to target_in_top_regions as
    # we can.
+
    grid_points=map_data.size()
    expected_regions=max(1,int(0.5+n_residues/residues_per_region))
 
-   target_in_all_regions=float(grid_points)*target_fraction*(1-solvent_fraction)
+   target_in_all_regions=float(grid_points)*fraction_occupied*(1-solvent_fraction)
    target_in_top_regions=target_in_all_regions/expected_regions
 
    nn=len(sorted_by_volume)-1 # first one is total
@@ -801,7 +813,7 @@ def score_threshold(threshold=None,
    if ncs_copies>1:
      v2,i2=sorted_by_volume[max(1,min(ncs_copies,nn))]
      score_ratio=v2/v1  # want it to be about 1
-     if score_ratio < minimum_ratio_of_ncs_copy_to_first:
+     if score_ratio < min_ratio_of_ncs_copy_to_first:
        ok=False #return  # not allowed
    else:
      score_ratio=1.0 # for ncs_copies=1
@@ -819,7 +831,6 @@ def score_threshold(threshold=None,
      score_near_one=1./threshold
    else:
      score_near_one=threshold
-
    overall_score=(
      (weight_score_ratio*score_ratio+
      weight_score_grid_points*score_grid_points+
@@ -843,9 +854,9 @@ def score_threshold(threshold=None,
 
 
    print >>out,\
-    " %5.2f   %5d     %4d    %5d     %5d     %6.3f   %5s    %5.3f" %(
+    " %5.2f   %5d     %4d    %5d     %5d     %6.3f   %5s    %5.3f  %s" %(
        threshold,target_in_top_regions,expected_regions,
-       v1,median_number,ratio,has_sufficient_regions,overall_score)
+       v1,median_number,ratio,has_sufficient_regions,overall_score,ok)
 
    if ok:
      return overall_score,has_sufficient_regions,too_low,too_high
@@ -854,7 +865,7 @@ def score_threshold(threshold=None,
 
 
 def choose_threshold(params,map_data=None,
-     target_fraction=0.2,
+     fraction_occupied=None,
      solvent_fraction=None,
      n_residues=None,
      ncs_copies=None,
@@ -869,7 +880,7 @@ def choose_threshold(params,map_data=None,
   print >>out,"Scale: %7.3f" %(scale)
   used_ranges=[]
   print >>out,\
-    "Threshold  Target    N     Biggest   Median     Ratio    OK    Score"
+    "Threshold  Target    N     Biggest   Median     Ratio   Enough  Score   OK"
 
   # Assume any threshold that is lower than a threshold that gave a non-zero value
   #  and is zero is an upper bound on the best value.  Same the other way around
@@ -900,12 +911,14 @@ def choose_threshold(params,map_data=None,
         score,has_sufficient_regions,too_low,too_high=score_threshold(
          threshold=threshold,
          sorted_by_volume=sorted_by_volume,
-         target_fraction=target_fraction,
+         fraction_occupied=fraction_occupied,
          solvent_fraction=solvent_fraction,
          min_volume=params.segmentation.min_volume,
          min_ratio=params.segmentation.min_ratio,
          max_ratio_to_target=params.segmentation.max_ratio_to_target,
          min_ratio_to_target=params.segmentation.min_ratio_to_target,
+         min_ratio_of_ncs_copy_to_first=\
+             params.segmentation.min_ratio_of_ncs_copy_to_first,
          ncs_copies=ncs_copies,
          n_residues=n_residues,
          map_data=map_data,
@@ -920,7 +933,6 @@ def choose_threshold(params,map_data=None,
            upper_bound=threshold
           elif threshold <best_threshold: # new lower bound
            lower_bound=threshold
-
       elif ( best_score is None or score > best_score):
         best_threshold=threshold
         best_threshold_has_sufficient_regions=has_sufficient_regions
@@ -939,7 +951,6 @@ def get_connectivity(params,
      map_data=None,
      ncs_object=None,
      solvent_fraction=None,
-     target_fraction=0.2,
      n_residues=None,
      ncs_copies=None,
      out=sys.stdout):
@@ -958,7 +969,7 @@ def get_connectivity(params,
      map_data=map_data,
      n_residues=n_residues,
      ncs_copies=ncs_copies,
-     target_fraction=target_fraction,
+     fraction_occupied=params.segmentation.fraction_occupied,
      solvent_fraction=solvent_fraction,
      scale=scale,
      out=out)
