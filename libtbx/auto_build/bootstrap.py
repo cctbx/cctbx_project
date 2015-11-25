@@ -26,6 +26,20 @@ import zipfile
 # Utililty function to be executed on slave machine or called directly by standalone bootstrap script
 def tar_extract(workdir, arx, modulename=None):
   try:
+    # delete tar target folder if it exists
+    if modulename and os.path.exists(modulename):
+      def remShut(*args):
+        func, path, _ = args # onerror returns a tuple containing function, path and exception info
+        os.chmod(path, stat.S_IREAD | stat.S_IWRITE)
+        os.remove(path)
+      shutil.rmtree(modulename, onerror=remShut)
+      # hack to work around possible race condition on Windows where deleted files may briefly
+      # exist as phantoms and result in "access denied" error by subsequent IO operations
+      cnt=0
+      while os.path.exists(modulename):
+        time.sleep(1)
+        if cnt > 5:
+          break
     # using tarfile module rather than unix tar command which is not platform independent
     tar = tarfile.open(os.path.join(workdir, arx))
     tar.extractall(path=workdir) # TODO: requires python 2.5!
@@ -41,8 +55,6 @@ def tar_extract(workdir, arx, modulename=None):
     # only rename if folder names differ
     if modulename:
       if modulename != tarfoldername:
-        if os.path.exists(modulename):
-          shutil.rmtree(modulename)
         os.rename(tarfoldername, modulename)
   except Exception, e:
     raise Exception("Extracting tar archive resulted in error: " + str(e))
