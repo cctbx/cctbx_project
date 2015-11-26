@@ -32,6 +32,7 @@ namespace cctbx { namespace maptbx { namespace boost_python {
   void wrap_mappers();
   void wrap_basic_map();
   void wrap_real_space_refinement();
+  void wrap_sample_mask_regions();
 
   template <typename FloatType, typename GridType>
   struct map_accumulator_wrapper
@@ -97,6 +98,7 @@ namespace {
     wrap_mappers();
     wrap_basic_map();
     wrap_real_space_refinement();
+    wrap_sample_mask_regions();
 
     {
       typedef target_and_gradients w_t;
