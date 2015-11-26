@@ -970,6 +970,8 @@ def choose_threshold(params,map_data=None,
   if best_threshold is not None:
     print >>out,"\nBest threshold: %5.2f\n" %(best_threshold)
     return best_threshold,unique_expected_regions
+  elif params.segmentation.density_threshold is not None: # use it anyhow
+    return params.segmentation.density_threshold,unique_expected_regions
   else:
     return None,unique_expected_regions
 
