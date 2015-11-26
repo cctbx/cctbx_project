@@ -20,7 +20,7 @@ wavelength = beam.get_wavelength()
 pixel_size = detector[0].get_pixel_size()[0]
 beam_x, beam_y = detector[0].get_beam_centre_px(beam.get_s0())
 beam_x *= pixel_size
-beam_y += 3 # based on powder pattern/fit to unit cell
+beam_y += 0 #earlier work required a 3 pixel shift based on powder pattern/fit to unit cell
 beam_y *= pixel_size
 overload = detector[0].get_trusted_range()[1]
 from xfel.cxi.cspad_ana.cspad_tbx import xpp_active_areas
