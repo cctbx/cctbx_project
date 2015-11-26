@@ -558,6 +558,7 @@ class ncs_group_object:
       region_range_dict=None,
       selected_regions=None,
       ncs_related_regions=None,
+      equiv_dict=None,
       map_files_written=None,
       bad_region_list=None,
       region_centroid_dict=None,
@@ -1473,6 +1474,7 @@ def get_ncs_equivalents(
 
   return equiv_dict_ncs_copy
 
+  # Skipping this below
   print >>out,"\nSets of NCS-related regions"
   keys=equiv_dict_ncs_copy.keys()
   keys.sort()
@@ -1595,12 +1597,14 @@ def identify_ncs_regions(params,
      sorted_by_volume=sorted_by_volume,
      co=co,
      max_regions_to_consider=max_regions_to_consider,out=out)
-    if 0:
+    if True:
       from libtbx import easy_pickle
-      easy_pickle.dump("edited_mask.pkl",[edited_mask,edited_volume_list,original_id_from_id])
+      easy_pickle.dump("edited_mask.pkl",
+        [edited_mask,edited_volume_list,original_id_from_id])
   else:
     from libtbx import easy_pickle
-    [edited_mask,edited_volume_list,original_id_from_id]=easy_pickle.load("edited_mask.pkl")
+    [edited_mask,edited_volume_list,original_id_from_id
+        ]=easy_pickle.load("edited_mask.pkl")
 
   # edited_mask contains re-numbered region id's
 
@@ -1642,7 +1646,7 @@ def identify_ncs_regions(params,
     equiv_dict_ncs_copy_dict=equiv_dict_ncs_copy_dict,
     out=out)
 
-    if 0:
+    if False:
       from libtbx import easy_pickle
       easy_pickle.dump("save.pkl",[duplicate_dict,equiv_dict,region_range_dict,region_centroid_dict,region_scattered_points_dict,region_list,region_volume_dict,new_sorted_by_volume,bad_region_list,equiv_dict_ncs_copy,tracking_data])
       print "Dumped save.pkl"
@@ -1665,7 +1669,7 @@ def identify_ncs_regions(params,
     region_list=region_list,
     equiv_dict_ncs_copy=equiv_dict_ncs_copy,
     out=out)
-    if 0:
+    if False:
       from libtbx import easy_pickle
       easy_pickle.dump("group_list.pkl",ncs_group_list)
       print "Dumped to group_list.pkl"
@@ -1682,6 +1686,7 @@ def identify_ncs_regions(params,
      co=co,
      min_b=min_b,
      max_b=max_b,
+     equiv_dict=equiv_dict,
      bad_region_list=bad_region_list,
      original_id_from_id=original_id_from_id,
      edited_volume_list=edited_volume_list,
@@ -1794,14 +1799,30 @@ def get_closest_dist(test_center,target_centers):
   closest_dist=test_center.min_distance_between_any_pair(target_centers)
   return closest_dist
 
+def region_lists_have_ncs_overlap(set1,set2,equiv_dict=None,cutoff=0):
+  for id1 in set1:
+    for id2 in set2:
+      if equiv_dict.get(id1,{}).get(id2,0) > cutoff:
+            return True
+  return False
+
 def select_from_seed(starting_regions,
       target_scattered_points=None,
       max_length_of_group=None,
+      ncs_groups_to_use=None,
       ncs_group_obj=None):
   selected_regions=single_list(deepcopy(starting_regions))
   # do not allow any region in ncs_group_obj.bad_region_list
+  # also do not allow any region that is in an ncs-related group to any region
+  #  already used.  Use ncs_group_obj.equiv_dict to identify these.
 
-  for ncs_group in ncs_group_obj.ncs_group_list: # try adding from each group
+  selected_regions_and_ncs_related=get_ncs_related_regions_specific_list(
+    ncs_group_obj=ncs_group_obj,
+    target_regions=selected_regions,
+    include_self=True)
+  if not ncs_groups_to_use:
+    ncs_groups_to_use=ncs_group_obj.ncs_group_list
+  for ncs_group in ncs_groups_to_use: # try adding from each group
     if len(single_list(selected_regions))>=max_length_of_group: break
     best_ncs_set=None
     best_dist=None
@@ -1814,18 +1835,11 @@ def select_from_seed(starting_regions,
          has_intersection(ncs_group_obj.bad_region_list,ncs_set):
         continue
 
-
-      skip=False
-      for x in selected_regions: # does any ncs copy of x overlap?
-        if skip: break
-        found_x=False
-        for test_ncs_group in ncs_group_obj.ncs_group_list:
-          if found_x: break
-          if x in single_list(test_ncs_group):
-            found_x=True
-            if has_intersection(test_ncs_group,ncs_set):
-              skip=True
-      if skip:
+      # does any ncs copy of anything in selected_regions actually overlap
+      #  with any member of ncs_set... might be efficient to delete the entire
+      #   ncs_group if any ncs_set overlaps, but could lose some.
+      if region_lists_have_ncs_overlap(ncs_set,selected_regions,
+          equiv_dict=ncs_group_obj.equiv_dict):
         continue
 
       # Get dist of this ncs_set (usually 1 region) to current center
@@ -1854,18 +1868,61 @@ def remove_one_item(input_list,item_to_remove=None):
       new_list.append(item)
   return new_list
 
+
+def get_ncs_related_regions_specific_list(
+    ncs_group_obj=None,
+    target_regions=None,
+    include_self=False):
+  all_regions=[]
+  for target_region in target_regions:
+    all_regions+=get_ncs_related_regions_specific_target(
+      ncs_group_obj=ncs_group_obj,
+      target_region=target_region,
+      other_regions=remove_one_item(
+         target_regions,item_to_remove=target_region),
+      include_self=include_self)
+  return all_regions
+
+def get_ncs_related_regions_specific_target(
+          ncs_group_obj=None,
+          target_region=None,
+          other_regions=None,
+          include_self=False):
+  # similar to get_ncs_related_regions, but find just one  ncs group that
+  #  contains x but does not contain any member of other_regions
+  for ncs_group in ncs_group_obj.ncs_group_list: # might this be the group
+    ids_in_group=single_list(ncs_group)
+    if not target_region in ids_in_group: continue # does not contain target
+    contains_others=False
+    for other_id in other_regions:
+      if other_id in ids_in_group:
+        contains_other=True
+        break# contains other members
+    if not contains_others:
+      # this is the group
+      if include_self:
+        return ids_in_group
+      else:
+        return remove_one_item(ids_in_group,item_to_remove=target_region)
+  return []
+
+
 def get_ncs_related_regions(
     ncs_group_obj=None,
-    selected_regions=None):
+    selected_regions=None,
+    first_only=False): # returns a simple list of region ids
   ncs_related_regions=[]
-  for ncs_group in ncs_group_obj.ncs_group_list:
-    ids_in_group=single_list(ncs_group)
-    for id in selected_regions:
+  for id in selected_regions:
+    found=False
+    for ncs_group in ncs_group_obj.ncs_group_list:
+      ids_in_group=single_list(ncs_group)
       if id in ids_in_group:  # this group contains this selected id
+        found=True
         for i in ids_in_group:
           if (not i==id) and (not i in selected_regions) and \
              (not i in ncs_related_regions):
             ncs_related_regions.append(i)
+        break # don't look at any more ncs groups
 
   return ncs_related_regions
 
@@ -1874,6 +1931,12 @@ def all_elements_are_length_one(list_of_elements):
     if type(x)==type([1,2,3]):
       if len(x)!=1: return False
   return True
+
+def as_list_of_lists(ll):
+  new_list=[]
+  for x in ll:
+    new_list.append([x])
+  return new_list
 
 def select_regions_in_au(params,
      ncs_group_obj=None,
@@ -1911,7 +1974,6 @@ def select_regions_in_au(params,
         starting_region_list=[starting_region]
       else:
         starting_region_list=[]
-
       selected_regions,rms=select_from_seed(starting_region_list,
         target_scattered_points=target_scattered_points,
         max_length_of_group=max_length_of_group,
@@ -1924,6 +1986,8 @@ def select_regions_in_au(params,
         best_selected_regions=selected_regions
         print >>out,"New best selected: rms: %7.1f: %s " %(
            rms,str(selected_regions))
+    print >>out,"Best selected so far: rms: %7.1f: %s " %(
+            best_rms,str(best_selected_regions))
     selected_regions=best_selected_regions
     if not selected_regions:
       raise Sorry("No NCS regions found from NCS groups")
@@ -1933,18 +1997,26 @@ def select_regions_in_au(params,
       changing=False
       for x in selected_regions:
         starting_regions=remove_one_item(selected_regions,item_to_remove=x)
+        # identify ncs_related regions to x, but not to other members of
+        #  selected_regions
+        ncs_related_regions=get_ncs_related_regions_specific_list(
+          ncs_group_obj=ncs_group_obj,
+          target_regions=[x])
+        if not ncs_related_regions: continue
+        ncs_groups_to_use=[as_list_of_lists(ncs_related_regions)]
         new_selected_regions,rms=select_from_seed(starting_regions,
           target_scattered_points=target_scattered_points,
           max_length_of_group=max_length_of_group,
+          ncs_groups_to_use=ncs_groups_to_use,
           ncs_group_obj=ncs_group_obj)
+
         if not new_selected_regions: continue
         if best_rms is None or rms<best_rms-0.00001:
           changing=True
           best_rms=rms
           best_selected_regions=new_selected_regions
           print >>out,"Optimized best selected: rms: %7.1f: %s " %(
-            rms,str(selected_regions))
-
+            best_rms,str(best_selected_regions))
   selected_regions=best_selected_regions
   selected_regions.sort()
 
@@ -2009,7 +2081,6 @@ def create_remaining_mask_and_map(params,
   if not ncs_group_obj.selected_regions:
     print >>out,"No regions selected"
     return map_data
-
 
   # create new remaining_map containing everything except the part that
   # has been interpreted (and all points in interpreted NCS-related copies)
@@ -2456,13 +2527,11 @@ def combine_with_iteration(params,
        ncs_group_obj=remainder_ncs_group_obj,id=id_remainder)
 
     for id in ncs_group_obj.selected_regions:
-
       # Skip if not likely to be very close...
       lower,upper=get_bounds(ncs_group_obj=ncs_group_obj,id=id)
       if not bounds_overlap(lower=lower,upper=upper,
           other_lower=r_lower,other_upper=r_upper):
         continue
-
 
       test_centers=ncs_group_obj.region_scattered_points_dict[id]
       dist=get_closest_dist(test_centers,remainder_centers)
