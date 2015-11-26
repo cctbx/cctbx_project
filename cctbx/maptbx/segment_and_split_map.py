@@ -625,6 +625,16 @@ def set_up_xrs(crystal_symmetry=None):  # dummy xrs to write out atoms
     site=xyz_frac, u=0.1, occupancy=1.0))
   """
 
+def write_atoms(tracking_data=None,sites=None,file_name=None):
+    xrs,scatterers=set_up_xrs(crystal_symmetry=tracking_data.crystal_symmetry)
+    from cctbx import xray
+    unit_cell=tracking_data.crystal_symmetry.unit_cell()
+    for xyz_cart in sites:
+      scatterers.append( xray.scatterer(scattering_type="O", label="O",
+        site=unit_cell.fractionalize(xyz_cart), u=0.1, occupancy=1.0))
+    write_xrs(xrs=xrs,scatterers=scatterers,file_name=file_name)
+
+
 def write_xrs(xrs=None,scatterers=None,file_name="atoms.pdb"):
   from cctbx import xray
   xrs = xray.structure(xrs, scatterers=scatterers)
@@ -1308,19 +1318,13 @@ def get_duplicates_and_ncs(
     count_dict[id]=0
     region_scattered_points_dict[id]=flex.vec3_double()
 
-
-  for i in xrange (all[0]):
-    for j in xrange (all[1]):
-      for k in xrange (all[2]):
-        id=edited_mask[i,j,k]
-        if id <1: continue
-        count_dict[id]+=1
-        ii=count_dict[id]
-        sampling=sample_dict[id]
-        if ii==1 or ii==endpoint_dict[id] or sampling*(ii//sampling)==ii:
-          xyz_frac=(i/all[0],j/all[1],k/all[2])
-          xyz_cart=unit_cell.orthogonalize(xyz_frac)
-          region_scattered_points_dict[id].append(xyz_cart)
+  for id in region_scattered_points_dict.keys():
+    region_scattered_points_dict[id]=maptbx.sample_mask_regions(
+      mask=edited_mask,
+      n_zone=id,
+      volume=endpoint_dict[id],
+      sampling_rate=sample_dict[id],
+      unit_cell=unit_cell)
 
   for i in xrange(len(edited_volume_list)):
     v=edited_volume_list[i]
