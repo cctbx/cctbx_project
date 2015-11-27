@@ -1,3 +1,4 @@
 {
-  "modules_required_for_use": ["labelit", "cma_es", "dxtbx", "dials"],
+  "modules_required_for_use": ["cma_es", "dxtbx", "dials"],
+  "optional_modules": ["labelit"],
 }
