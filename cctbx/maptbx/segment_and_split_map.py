@@ -2293,9 +2293,12 @@ def write_output_files(params,
   if params.output_files.au_output_file_stem:
     au_mask_output_file=params.output_files.au_output_file_stem+"_mask.ccp4"
     au_map_output_file=params.output_files.au_output_file_stem+"_map.ccp4"
+    au_atom_output_file=params.output_files.au_output_file_stem+"_atoms.pdb"
   else:
     au_mask_output_file=None
     au_map_output_file=None
+    au_atom_output_file=None
+
   print >>out,\
      "\nThe standard maps (%s, %s) have the \noriginal cell dimensions." %(
    au_mask_output_file,
@@ -2310,9 +2313,8 @@ def write_output_files(params,
    "\nunique part cut out.\n"
 
 
-  # Write out mask and map of NCS AU with shifted origin but
-  #  initial crystal_symmetry
-
+  # Write out NCS AU with shifted origin but initial crystal_symmetry
+  # Mask
   mask_data_ncs_au=get_bool_mask_as_int(
      ncs_group_obj=ncs_group_obj,mask_as_bool=bool_selected_regions)
 
@@ -2326,8 +2328,7 @@ def write_output_files(params,
       origin=mask_data_ncs_au.origin(),
       all=mask_data_ncs_au.all())
 
-  # Now write out NCS AU mask and map cut out, with box_crystal_symmetry
-
+  # Map
   map_data_ncs_au=map_data.deep_copy()
   s=(bool_selected_regions==True)
   map_data_ncs_au=map_data_ncs_au.set_selected(~s,-1.0)
@@ -2342,13 +2343,16 @@ def write_output_files(params,
       origin=map_data_ncs_au.origin(),
       all=map_data_ncs_au.all())
 
+  # Now box_map of cut out AU
+
   box_mask_ncs_au,box_crystal_symmetry=cut_out_map(
        map_data=mask_data_ncs_au.as_double(),
        crystal_symmetry=tracking_data.crystal_symmetry,
        min_point=lower_bounds, max_point=upper_bounds)
 
+  # Mask
   if params.output_files.box_mask_file:
-    # write out NCS mask representing one AU of the NCS
+    # write out box_map NCS mask representing one AU of the NCS
     write_ccp4_map(
      box_crystal_symmetry,params.output_files.box_mask_file,
       box_mask_ncs_au)
@@ -2361,6 +2365,7 @@ def write_output_files(params,
       origin=box_mask_ncs_au.origin(),
       all=box_mask_ncs_au.all())
 
+  # Map
   if params.output_files.box_map_file:
     # write out NCS map as box_map (cut out region of map enclosed in box_mask)
     box_map_ncs_au,box_crystal_symmetry=cut_out_map(
@@ -2376,6 +2381,18 @@ def write_output_files(params,
       crystal_symmetry=box_crystal_symmetry,
       origin=box_map_ncs_au.origin(),
       all=box_map_ncs_au.all())
+
+  # Write out pdb file with dummy atoms for the AU to au_atom_output_file
+  if au_atom_output_file:
+    sites=flex.vec3_double()
+    for id in ncs_group_obj.selected_regions:
+      sites.extend(ncs_group_obj.region_scattered_points_dict[id])
+    for id in remainder_ncs_group_obj.selected_regions:
+      sites.extend(remainder_ncs_group_obj.region_scattered_points_dict[id])
+    write_atoms(tracking_data=tracking_data,sites=sites,
+      file_name=au_atom_output_file)
+
+
 
   # Write out all the selected regions
   print >>out,"\nWriting out region maps. "+\
@@ -2780,15 +2797,9 @@ def run(args,
      unique_expected_regions=unique_expected_regions,
      out=out)
 
-  write_dummy_atoms=False
-  if write_dummy_atoms:
-    xrs,scatterers=set_up_xrs(crystal_symmetry=tracking_data.crystal_symmetry)
-    from cctbx import xray
-    unit_cell=tracking_data.crystal_symmetry.unit_cell()
-    for xyz_cart in scattered_points:
-      scatterers.append( xray.scatterer(scattering_type="O", label="O",
-        site=unit_cell.fractionalize(xyz_cart), u=0.1, occupancy=1.0))
-    write_xrs(xrs=xrs,scatterers=scatterers,file_name="atoms.pdb")
+  if False:
+    write_atoms(tracking_data=tracking_data,sites=scattered_points,
+      file_name="atoms.pdb")
 
   # write out mask and map for all the selected regions...
 
@@ -2814,7 +2825,7 @@ def run(args,
   else:
     remainder_ncs_group_obj=None
 
-  # Write out final maps
+  # Write out final maps and dummy atom files
   if params.output_files.write_output_maps:
     print >>out,"\nWriting output maps"
     map_files_written=write_output_files(params,
