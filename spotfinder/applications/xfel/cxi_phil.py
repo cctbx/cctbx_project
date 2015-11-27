@@ -4,8 +4,16 @@ from __future__ import division
 #Phil parameters required to process data from Stanford LCLS CXI instrument
 
 def cxi_basic_start():
-  from labelit import preferences
-  from rstbx.command_line.index import special_defaults_for_new_horizons
+  try:
+    from labelit import preferences
+    from rstbx.command_line.index import special_defaults_for_new_horizons
+  except Exception:
+    # option to view images or open pickle files without any LABELIT dependency
+    from rstbx.phil import preferences
+    def special_defaults_for_new_horizons(phil_scope):
+      # for integration, do not want 2x2 binning
+      phil_scope.merge_command_line(["distl_permit_binning=False"])
+
   new_horizons_phil = preferences.RunTimePreferences()
   special_defaults_for_new_horizons( new_horizons_phil )
 
