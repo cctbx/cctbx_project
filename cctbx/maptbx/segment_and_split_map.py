@@ -357,14 +357,17 @@ class info_object:
       solvent_fraction=None,
       output_ncs_au_map_info=None,
       output_ncs_au_mask_info=None,
+      output_ncs_au_pdb_info=None,
       output_box_map_info=None,
       output_box_mask_info=None,
       output_region_map_info_list=None,
+      output_region_pdb_info_list=None,
     ):
     if not selected_regions: selected_regions=[]
     if not ncs_related_regions: ncs_related_regions=[]
     if not map_files_written: map_files_written=[]
     if not output_region_map_info_list: output_region_map_info_list=[]
+    if not output_region_pdb_info_list: output_region_pdb_info_list=[]
     from libtbx import adopt_init_args
     adopt_init_args(self, locals())
 
@@ -443,6 +446,10 @@ class info_object:
       all=all,
       is_map=False)
 
+  def set_output_ncs_au_pdb_info(self,file_name=None,n_residues=None):
+    self.output_ncs_au_pdb_info=pdb_info_object(file_name=file_name,
+     n_residues=n_residues)
+
   def set_output_box_map_info(self,file_name=None,crystal_symmetry=None,
     origin=None,all=None):
     self.output_box_map_info=map_info_object(file_name=file_name,
@@ -467,6 +474,12 @@ class info_object:
       origin=origin,
       all=all,
       is_map=True)
+     )
+
+  def add_output_region_pdb_info(self,file_name=None,n_residues=None):
+    self.output_region_pdb_info_list.append(pdb_info_object(
+      file_name=file_name,
+      n_residues=n_residues)
      )
 
 
@@ -510,6 +523,10 @@ class info_object:
     else:
       print >>out,"\nNo origin offset applied"
 
+    if self.output_ncs_au_pdb_info:
+      print >>out,"\nOutput PDB file with dummy atoms representing the NCS AU:"
+      self.output_ncs_au_pdb_info.show_summary(out=out)
+
     if self.output_ncs_au_mask_info or self.output_ncs_au_map_info:
       print >>out,"\nOutput map files showing just the NCS AU (same size",
       if self.origin_shift and self.origin_shift != (0,0,0):
@@ -534,6 +551,13 @@ class info_object:
         self.output_box_mask_info.show_summary(out=out)
       if self.output_box_map_info:
         self.output_box_map_info.show_summary(out=out)
+
+    if self.output_region_pdb_info_list:
+      print >>out,"\nOutput PDB files representing one region of connected"+\
+        " density.\nThese are useful for marking where to look in cut-out map"+\
+        " files."
+      for output_region_pdb_info in self.output_region_pdb_info_list:
+        output_region_pdb_info.show_summary()
 
     if self.output_region_map_info_list:
       print >>out,"\nOutput cut-out map files trimmed to contain just "+\
@@ -2183,10 +2207,16 @@ def write_region_maps(params,
     return map_files_written,remainder_regions_written
 
   for id in ncs_group_obj.selected_regions:
+
+
     if regions_to_skip and id in regions_to_skip:
       print >>out,"Skipping remainder region %d (already written out)" %(id)
       continue
     print >>out,"Writing region %d" %(id),
+
+    # dummy atoms representing this region
+    sites=ncs_group_obj.region_scattered_points_dict[id]
+
     bool_region_mask = ncs_group_obj.co.expand_mask(
         id_to_expand=ncs_group_obj.original_id_from_id[id],
         expand_size=params.segmentation.expand_size)
@@ -2199,6 +2229,10 @@ def write_region_maps(params,
       for remainder_id in remainder_ncs_group_obj.remainder_id_dict.keys():
         if remainder_ncs_group_obj.remainder_id_dict[remainder_id]==id:
           remainder_regions_written.append(remainder_id)
+
+          sites.extend(
+            remainder_ncs_group_obj.region_scattered_points_dict[remainder_id])
+
           print >>out,"(including remainder region %d)" %(remainder_id),
           remainder_bool_region_mask = remainder_ncs_group_obj.co.expand_mask(
            id_to_expand=remainder_ncs_group_obj.original_id_from_id[remainder_id],
@@ -2208,6 +2242,7 @@ def write_region_maps(params,
             ncs_group_obj=remainder_ncs_group_obj,id=remainder_id)
           lower_bounds=get_lower(lower_bounds,lower)
           upper_bounds=get_upper(upper_bounds,upper)
+
 
     region_mask = map_data.deep_copy()
     region_mask = region_mask.set_selected(s,1)
@@ -2227,18 +2262,28 @@ def write_region_maps(params,
     else:
       text="_r"
     base_file='map%s_%d.ccp4' %(text, id)
+    base_pdb_file='atoms%s_%d.pdb' %(text, id)
     if params.output_files.output_map_directory:
       file_name=os.path.join(params.output_files.output_map_directory,base_file)
+      pdb_file_name=os.path.join(
+        params.output_files.output_map_directory,base_pdb_file)
     else:
       file_name=base_file
+      pdb_file_name=base_pdb_file
     write_ccp4_map(box_crystal_symmetry,file_name, box_map)
     print >>out,"to %s" %(file_name)
     map_files_written.append(file_name)
+
     tracking_data.add_output_region_map_info(
       file_name=file_name,
       crystal_symmetry=box_crystal_symmetry,
       origin=box_map.origin(),
       all=box_map.all())
+
+    print >>out,"Atoms representation written to %s" %(pdb_file_name)
+    write_atoms(tracking_data=tracking_data,sites=sites,file_name=pdb_file_name)
+    tracking_data.add_output_region_pdb_info(
+      file_name=pdb_file_name)
 
   return map_files_written,remainder_regions_written
 
@@ -2382,6 +2427,7 @@ def write_output_files(params,
       origin=box_map_ncs_au.origin(),
       all=box_map_ncs_au.all())
 
+
   # Write out pdb file with dummy atoms for the AU to au_atom_output_file
   if au_atom_output_file:
     sites=flex.vec3_double()
@@ -2391,7 +2437,7 @@ def write_output_files(params,
       sites.extend(remainder_ncs_group_obj.region_scattered_points_dict[id])
     write_atoms(tracking_data=tracking_data,sites=sites,
       file_name=au_atom_output_file)
-
+    tracking_data.set_output_ncs_au_pdb_info(file_name=au_atom_output_file)
 
 
   # Write out all the selected regions
