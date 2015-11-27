@@ -1822,10 +1822,6 @@ def select_from_seed(starting_regions,
   # also do not allow any region that is in an ncs-related group to any region
   #  already used.  Use ncs_group_obj.equiv_dict to identify these.
 
-  selected_regions_and_ncs_related=get_ncs_related_regions_specific_list(
-    ncs_group_obj=ncs_group_obj,
-    target_regions=selected_regions,
-    include_self=True)
   if not ncs_groups_to_use:
     ncs_groups_to_use=ncs_group_obj.ncs_group_list
   for ncs_group in ncs_groups_to_use: # try adding from each group
