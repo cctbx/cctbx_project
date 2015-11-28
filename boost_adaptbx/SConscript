@@ -242,6 +242,8 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
     # For Windows (c.f. point 2 above)
     env_boost_threads.Append(CPPDEFINES={'BOOST_THREAD_BUILD_DLL':1})
     libs = ['boost_system']
+    if sys.platform=="linux2": # require realtime extensions for clock_gettime
+      libs.append('rt')
     if boost_thread_uses_winthreads:
       libs.append('boost_chrono')
     env_boost_threads.SharedLibrary(
