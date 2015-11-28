@@ -587,6 +587,7 @@ class ncs_group_object:
       bad_region_list=None,
       region_centroid_dict=None,
       region_scattered_points_dict=None,
+      shared_group_dict=None,
       co=None,
       min_b=None,
       max_b=None,
@@ -1520,6 +1521,14 @@ def get_ncs_equivalents(
     print >>out
   print >>out
 
+def get_overlap(l1,l2):
+  overlap_list=[]
+  l1a=single_list(l1)
+  l2a=single_list(l2)
+  for i in l1a:
+    if i in l2a and not i in overlap_list: overlap_list.append(i)
+  return overlap_list
+
 def group_ncs_equivalents(
     region_list=None,
     region_volume_dict=None,
@@ -1569,6 +1578,9 @@ def group_ncs_equivalents(
   # 2015-11-07 allow a member to be in multiple groups though (for example
   #   one that spans several groups because it contains 2 region in other ncs
   #   copies)
+  #  Make sure that if there are duplicates they are all in the leading
+  #    positions of the list (these must be very big ones as they match 2
+  #    regions in other ncs copies) 
 
   max_duplicates=ncs_copies-1  # don't let there be all duplicates
   ncs_group_list=[]
@@ -1577,20 +1589,46 @@ def group_ncs_equivalents(
   used_regions=[]
   for total_grid_points,equiv_group_as_list in ncs_equiv_groups_as_list:
     duplicate=False
+    n_dup=0
     for equiv_group in equiv_group_as_list:
-      n_dup=0
       for x in equiv_group:
         if x in used_list:
           n_dup+=1
-      if n_dup>max_duplicates:
-        duplicate=True
+    if n_dup>max_duplicates or n_dup >len(equiv_group)-1:
+      duplicate=True
+    if not duplicate and n_dup>0:  # check carefully to make sure that all
+      # are leading entries
+      for ncs_group in ncs_group_list:
+        overlaps=get_overlap(ncs_group,equiv_group)
+        if not overlaps: continue
+        overlaps.sort()
+        expected_match=single_list(equiv_group)[:len(overlaps)]
+        expected_match.sort()
+        if overlaps!=expected_match: # not leading entries
+          duplicate=True
+          break
+        
     if not duplicate:
-      #print >>out,"NCS GROUP:",equiv_group_as_list,":",total_grid_points
+      print >>out,"NCS GROUP:",equiv_group_as_list,":",total_grid_points
       ncs_group_list.append(equiv_group_as_list)
       for equiv_group in equiv_group_as_list:
         for x in equiv_group:
           if not x in used_list: used_list.append(x)
-  return ncs_group_list
+  print >>out,"Total NCS groups: %d" %len(ncs_group_list)
+
+  # Make a dict that lists all ids that are in the same group as region x
+  shared_group_dict={}
+  for ncs_group in ncs_group_list:
+    for group_list in ncs_group:
+      for id1 in group_list:
+        if not id1 in shared_group_dict.keys(): shared_group_dict[id1]=[]
+        for other_group_list in ncs_group:
+          if other_group_list is group_list:continue
+          for other_id1 in other_group_list:
+            if not other_id1 in shared_group_dict [id1]:
+              shared_group_dict[id1].append(other_id1)
+
+  return ncs_group_list,shared_group_dict
 
 def identify_ncs_regions(params,
      sorted_by_volume=None,
@@ -1617,12 +1655,12 @@ def identify_ncs_regions(params,
     max_regions_to_consider)
   if max_regions_to_consider<1:
     print >>out,"\nUnable to identify any NCS regions"
-    return None
+    return None,None
 
   # Go through all grid points; discard if not in top regions
   #  Renumber regions in order of decreasing size
 
-  if 1:
+  if True:
     edited_mask,edited_volume_list,original_id_from_id=get_edited_mask(
      sorted_by_volume=sorted_by_volume,
      co=co,
@@ -1635,6 +1673,7 @@ def identify_ncs_regions(params,
     from libtbx import easy_pickle
     [edited_mask,edited_volume_list,original_id_from_id
         ]=easy_pickle.load("edited_mask.pkl")
+    print >>out,"Loading edited_mask.pkl"
 
   # edited_mask contains re-numbered region id's
 
@@ -1642,7 +1681,7 @@ def identify_ncs_regions(params,
   # duplicate_dict[id]= number of duplicates for that region
   # equiv_dict[id][other_id]=number_of points other_id matches
                    #  id through an ncs relationship
-  if 1:
+  if True:
     duplicate_dict,equiv_dict,equiv_dict_ncs_copy_dict,\
       region_range_dict,region_centroid_dict,\
       region_scattered_points_dict=\
@@ -1676,7 +1715,7 @@ def identify_ncs_regions(params,
     equiv_dict_ncs_copy_dict=equiv_dict_ncs_copy_dict,
     out=out)
 
-    if False:
+    if True:
       from libtbx import easy_pickle
       easy_pickle.dump("save.pkl",[duplicate_dict,equiv_dict,region_range_dict,region_centroid_dict,region_scattered_points_dict,region_list,region_volume_dict,new_sorted_by_volume,bad_region_list,equiv_dict_ncs_copy,tracking_data])
       print "Dumped save.pkl"
@@ -1691,25 +1730,27 @@ def identify_ncs_regions(params,
   # each entry in ncs_group_list is a list of regions for each ncs_copy:
   #  e.g.,  [[8], [9, 23], [10, 25], [11, 27], [12, 24], [13, 22], [14, 26]]
   #  May contain elements that are in bad_region_list (to exclude later)
-  if 1:
-    ncs_group_list=group_ncs_equivalents(
+  if True:
+    ncs_group_list,shared_group_dict=group_ncs_equivalents(
     split_if_possible=params.segmentation.split_if_possible,
     ncs_copies=ncs_obj.max_operators(),
     region_volume_dict=region_volume_dict,
     region_list=region_list,
     equiv_dict_ncs_copy=equiv_dict_ncs_copy,
     out=out)
-    if False:
+    if True:
       from libtbx import easy_pickle
-      easy_pickle.dump("group_list.pkl",ncs_group_list)
+      easy_pickle.dump("group_list.pkl",[ncs_group_list,shared_group_dict])
       print "Dumped to group_list.pkl"
   else:
     from libtbx import easy_pickle
-    ncs_group_list=easy_pickle.load("group_list.pkl")
+    [ncs_group_list,shared_group_dict]=easy_pickle.load("group_list.pkl")
     print "Loaded group_list.pkl"
+
 
   ncs_group_obj=ncs_group_object(
      ncs_group_list=ncs_group_list,
+     shared_group_dict=shared_group_dict,
      ncs_obj=ncs_obj,
      edited_mask=edited_mask,
      origin_shift=tracking_data.origin_shift,
@@ -1768,27 +1809,69 @@ def get_scattered_points_list(other_regions,
     scattered_points_list.extend(region_scattered_points_dict[x])
   return scattered_points_list
 
+def get_inter_region_dist_dict(ncs_group_obj=None,
+    selected_regions=None,target_scattered_points=None):
+  dd={}
+  for i in xrange(len(selected_regions)):
+    id=selected_regions[i]
+    if not id in dd.keys(): dd[id]={}
+    test_centers=ncs_group_obj.region_scattered_points_dict[id]
+    if i==0 and target_scattered_points: # put target_scattered_points here
+      test_centers.extend(target_scattered_points)
+    for j in xrange(i+1,len(selected_regions)):
+      id1=selected_regions[j]
+      test_centers1=ncs_group_obj.region_scattered_points_dict[id1]
+      dist=get_closest_dist(test_centers,test_centers1)
+      dd[id][id1]=dist
+      if not id1 in dd.keys(): dd[id1]={}
+      dd[id1][id]=dist
+  return dd
 
+def get_dist_to_first_dict(ncs_group_obj=None,
+     selected_regions=None,
+     inter_region_dist_dict=None,
+     target_scattered_points=None):
+  dist_to_first_dict={}
+  x0=selected_regions[0]
+  for x in selected_regions[1:]:
+    dist_to_first_dict[x]=inter_region_dist_dict[x0][x]
+
+  changing=True
+  while changing:
+    changing=False
+    for x in selected_regions[1:]:
+      for y in selected_regions[1:]:
+        if x==y: continue
+        if dist_to_first_dict[y]<dist_to_first_dict[x] and \
+            inter_region_dist_dict[x][y]<dist_to_first_dict[x]:
+          dist_to_first_dict[x]=max(
+            dist_to_first_dict[y],inter_region_dist_dict[x][y])
+          changing=True
+  return dist_to_first_dict
+      
 def get_closest_neighbor_rms(ncs_group_obj=None,selected_regions=None,
     target_scattered_points=None):
-  # return rms closest distance of each region center to nearest other
+  # return rms closest distance of each region center to lowest_numbered region,
+  #   allowing sequential tracking taking max of inter-region distances
+
+  inter_region_dist_dict=get_inter_region_dist_dict(ncs_group_obj=ncs_group_obj,
+     selected_regions=selected_regions)
+
+  dist_to_first_dict=get_dist_to_first_dict(ncs_group_obj=ncs_group_obj,
+     selected_regions=selected_regions,
+     inter_region_dist_dict=inter_region_dist_dict,
+     target_scattered_points=target_scattered_points)
 
   rms=0.
   rms_n=0.
-  for x in selected_regions:
-    test_centers=ncs_group_obj.region_scattered_points_dict[x]
-    other_regions=remove_one_item(selected_regions,item_to_remove=x)
-    other_center_list=get_scattered_points_list(other_regions,
-       region_scattered_points_dict=ncs_group_obj.region_scattered_points_dict)
-    if target_scattered_points:
-      other_center_list.extend(target_scattered_points)
-    dist=get_closest_dist(test_centers,other_center_list)
-    if dist is not None:
-      rms+=dist**2
-      rms_n+=1.
+  for x in selected_regions[1:]:
+    dist=dist_to_first_dict[x]
+    rms+=dist**2
+    rms_n+=1.
   if rms_n>1:
     rms/=rms_n
-  return rms**0.5
+  rms=rms**0.5
+  return rms
 
 
 def get_rms(selected_regions=None,
@@ -1829,11 +1912,11 @@ def get_closest_dist(test_center,target_centers):
   closest_dist=test_center.min_distance_between_any_pair(target_centers)
   return closest_dist
 
-def region_lists_have_ncs_overlap(set1,set2,equiv_dict=None,cutoff=0):
+def region_lists_have_ncs_overlap(set1,set2,ncs_group_obj=None,cutoff=0):
   for id1 in set1:
     for id2 in set2:
-      if equiv_dict.get(id1,{}).get(id2,0) > cutoff:
-            return True
+      if id2 in ncs_group_obj.shared_group_dict.get(id1,[]):
+        return True
   return False
 
 def select_from_seed(starting_regions,
@@ -1845,32 +1928,33 @@ def select_from_seed(starting_regions,
   # do not allow any region in ncs_group_obj.bad_region_list
   # also do not allow any region that is in an ncs-related group to any region
   #  already used.  Use ncs_group_obj.equiv_dict to identify these.
-
   if not ncs_groups_to_use:
     ncs_groups_to_use=ncs_group_obj.ncs_group_list
+  i1=-1
   for ncs_group in ncs_groups_to_use: # try adding from each group
-    if len(single_list(selected_regions))>=max_length_of_group: break
+    if max_length_of_group is not None and \
+       len(selected_regions)>=max_length_of_group: 
+      break
     best_ncs_set=None
     best_dist=None
+    if has_intersection(ncs_group,selected_regions): 
+      continue
     current_scattered_points_list=get_scattered_points_list(selected_regions,
        region_scattered_points_dict=ncs_group_obj.region_scattered_points_dict)
     if target_scattered_points:
       current_scattered_points_list.extend(target_scattered_points)
     for ncs_set in ncs_group: # pick the best ncs_set from this group
-      if has_intersection(selected_regions,ncs_set) or \
-         has_intersection(ncs_group_obj.bad_region_list,ncs_set):
-        continue
+      if has_intersection(ncs_group_obj.bad_region_list,ncs_set): continue
 
       # does any ncs copy of anything in selected_regions actually overlap
       #  with any member of ncs_set... might be efficient to delete the entire
       #   ncs_group if any ncs_set overlaps, but could lose some.
       if region_lists_have_ncs_overlap(ncs_set,selected_regions,
-          equiv_dict=ncs_group_obj.equiv_dict):
+          ncs_group_obj=ncs_group_obj):
         continue
 
       # Get dist of this ncs_set (usually 1 region) to current center
-
-      test_scattered_points=get_scattered_points_list(ncs_set,
+      test_scattered_points=get_scattered_points_list(single_list(ncs_set),
        region_scattered_points_dict=ncs_group_obj.region_scattered_points_dict)
 
       dist=get_closest_dist(test_scattered_points,
@@ -2295,6 +2379,28 @@ def write_output_files(params,
     pdb_hierarchy=None,
     out=sys.stdout):
 
+  if params.output_files.au_output_file_stem:
+    au_mask_output_file=params.output_files.au_output_file_stem+"_mask.ccp4"
+    au_map_output_file=params.output_files.au_output_file_stem+"_map.ccp4"
+    au_atom_output_file=params.output_files.au_output_file_stem+"_atoms.pdb"
+  else:
+    au_mask_output_file=None
+    au_map_output_file=None
+    au_atom_output_file=None
+
+  # Write out pdb file with dummy atoms for the AU to au_atom_output_file
+  if au_atom_output_file:
+    sites=flex.vec3_double()
+    for id in ncs_group_obj.selected_regions:
+      sites.extend(ncs_group_obj.region_scattered_points_dict[id])
+    if remainder_ncs_group_obj:
+      for id in remainder_ncs_group_obj.selected_regions:
+        sites.extend(remainder_ncs_group_obj.region_scattered_points_dict[id])
+    write_atoms(tracking_data=tracking_data,sites=sites,
+      file_name=au_atom_output_file)
+    tracking_data.set_output_ncs_au_pdb_info(file_name=au_atom_output_file)
+
+
   # Write out mask and map representing one NCS copy and none of
   #   other NCS copies.  Expand the mask to include neighboring points (but
   #   not those explicitly in other NCS copies
@@ -2335,14 +2441,6 @@ def write_output_files(params,
   print >>out,"Both types of maps have the same origin and overlay on %s" %(
    params.output_files.shifted_map_file)
 
-  if params.output_files.au_output_file_stem:
-    au_mask_output_file=params.output_files.au_output_file_stem+"_mask.ccp4"
-    au_map_output_file=params.output_files.au_output_file_stem+"_map.ccp4"
-    au_atom_output_file=params.output_files.au_output_file_stem+"_atoms.pdb"
-  else:
-    au_mask_output_file=None
-    au_map_output_file=None
-    au_atom_output_file=None
 
   print >>out,\
      "\nThe standard maps (%s, %s) have the \noriginal cell dimensions." %(
@@ -2427,17 +2525,6 @@ def write_output_files(params,
       origin=box_map_ncs_au.origin(),
       all=box_map_ncs_au.all())
 
-
-  # Write out pdb file with dummy atoms for the AU to au_atom_output_file
-  if au_atom_output_file:
-    sites=flex.vec3_double()
-    for id in ncs_group_obj.selected_regions:
-      sites.extend(ncs_group_obj.region_scattered_points_dict[id])
-    for id in remainder_ncs_group_obj.selected_regions:
-      sites.extend(remainder_ncs_group_obj.region_scattered_points_dict[id])
-    write_atoms(tracking_data=tracking_data,sites=sites,
-      file_name=au_atom_output_file)
-    tracking_data.set_output_ncs_au_pdb_info(file_name=au_atom_output_file)
 
 
   # Write out all the selected regions
@@ -2805,6 +2892,20 @@ def run(args,
       ncs_object=ncs_obj,tracking_data=tracking_data,out=out)
     tracking_data.show_summary(out=out)
 
+  # Make sure map has nothing going through the edges
+  all=map_data.all()
+  for j in xrange(all[1]):
+    for k in xrange(all[2]):
+      map_data[0,j,k]=0
+      map_data[all[0]-1,j,k]=0
+  for i in xrange(all[0]):
+    for k in xrange(all[2]):
+      map_data[i,0,k]=0
+      map_data[i,all[1]-1,k]=0
+  for i in xrange(all[0]):
+    for j in xrange(all[1]):
+      map_data[i,j,0]=0
+      map_data[i,j,all[2]-1]=0
 
   # get connectivity  (conn=connectivity_object.result)
   co,sorted_by_volume,min_b,max_b,unique_expected_regions=get_connectivity(
@@ -2843,7 +2944,7 @@ def run(args,
      unique_expected_regions=unique_expected_regions,
      out=out)
 
-  if False:
+  if True:
     write_atoms(tracking_data=tracking_data,sites=scattered_points,
       file_name="atoms.pdb")
 
