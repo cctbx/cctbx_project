@@ -17,6 +17,11 @@ from dxtbx.format.FormatCBFMiniPilatusHelpers import \
 from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
 from dxtbx.model import ParallaxCorrectedPxMmStrategy
 
+if 'DXTBX_OVERLOAD_SCALE' in os.environ:
+  dxtbx_overload_scale = float(os.environ['DXTBX_OVERLOAD_SCALE'])
+else:
+  dxtbx_overload_scale = 1
+
 class FormatCBFMiniPilatus(FormatCBFMini):
   '''A class for reading mini CBF format Pilatus images, and correctly
   constructing a model for the experiment from this.'''
@@ -112,7 +117,7 @@ class FormatCBFMiniPilatus(FormatCBFMini):
     ny = int(
         self._cif_header_dictionary['X-Binary-Size-Second-Dimension'])
 
-    overload = int(
+    overload = dxtbx_overload_scale * int(
         self._cif_header_dictionary['Count_cutoff'].split()[0])
     underload = -1
 
