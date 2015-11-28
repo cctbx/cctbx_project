@@ -1580,7 +1580,7 @@ def group_ncs_equivalents(
   #   copies)
   #  Make sure that if there are duplicates they are all in the leading
   #    positions of the list (these must be very big ones as they match 2
-  #    regions in other ncs copies) 
+  #    regions in other ncs copies)
 
   max_duplicates=ncs_copies-1  # don't let there be all duplicates
   ncs_group_list=[]
@@ -1607,7 +1607,7 @@ def group_ncs_equivalents(
         if overlaps!=expected_match: # not leading entries
           duplicate=True
           break
-        
+
     if not duplicate:
       print >>out,"NCS GROUP:",equiv_group_as_list,":",total_grid_points
       ncs_group_list.append(equiv_group_as_list)
@@ -1848,7 +1848,7 @@ def get_dist_to_first_dict(ncs_group_obj=None,
             dist_to_first_dict[y],inter_region_dist_dict[x][y])
           changing=True
   return dist_to_first_dict
-      
+
 def get_closest_neighbor_rms(ncs_group_obj=None,selected_regions=None,
     target_scattered_points=None):
   # return rms closest distance of each region center to lowest_numbered region,
@@ -1933,11 +1933,11 @@ def select_from_seed(starting_regions,
   i1=-1
   for ncs_group in ncs_groups_to_use: # try adding from each group
     if max_length_of_group is not None and \
-       len(selected_regions)>=max_length_of_group: 
+       len(selected_regions)>=max_length_of_group:
       break
     best_ncs_set=None
     best_dist=None
-    if has_intersection(ncs_group,selected_regions): 
+    if has_intersection(ncs_group,selected_regions):
       continue
     current_scattered_points_list=get_scattered_points_list(selected_regions,
        region_scattered_points_dict=ncs_group_obj.region_scattered_points_dict)
