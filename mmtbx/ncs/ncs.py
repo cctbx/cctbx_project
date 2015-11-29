@@ -658,6 +658,10 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     z_last,r_last,t_last,c_last=sort_list[-1]
     z_next_to_last,r_next_to_last,t_next_to_last,c_next_to_last=sort_list[-2]
     z_translation=self.get_helix_z_translation()
+    if not z_translation:
+      from libtbx.utils import Sorry
+      raise Sorry("Cannot apply extension of helical NCS operators with no"+
+        " Z-translation")
 
     # Figure out which direction to add single shifts to each end
     r_forwards,t_forwards,r_reverse,t_reverse=self.get_forwards_reverse_helix(
