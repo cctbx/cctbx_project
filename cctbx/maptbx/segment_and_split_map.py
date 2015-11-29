@@ -293,15 +293,33 @@ class ncs_info_object:
   def __init__(self,
     file_name=None,
     number_of_operators=None,
+    is_helical_symmetry=None,
+    original_number_of_operators=None,
     ):
     from libtbx import adopt_init_args
     adopt_init_args(self, locals())
     import time
     self.init_asctime=time.asctime()
+    if original_number_of_operators is None:
+       self.original_number_of_operators=number_of_operators
+
+    self._has_updated_operators=False
 
   def show_summary(self,out=sys.stdout):
     print >>out,"NCS file:%s   Operators: %d" %(self.file_name,
       self.number_of_operators)
+
+  def has_updated_operators(self):
+    return self._has_updated_operators
+
+  def update_number_of_operators(self,number_of_operators=None):
+    self.number_of_operators=number_of_operators
+    self._has_updated_operators=True
+
+  def update_is_helical_symmetry(self,is_helical_symmetry=None):
+    self.is_helical_symmetry=is_helical_symmetry
+    self._has_updated_operators=True
+
 
 class map_info_object:
   def __init__(self,
@@ -392,6 +410,15 @@ class info_object:
   def set_input_ncs_info(self,file_name=None,number_of_operators=None):
     self.input_ncs_info=ncs_info_object(file_name=file_name,
       number_of_operators=number_of_operators)
+
+  def update_ncs_info(self,number_of_operators=None,is_helical_symmetry=None):
+    assert self.input_ncs_info
+    if number_of_operators is not None:
+      self.input_ncs_info.update_number_of_operators(
+      number_of_operators=number_of_operators)
+    if is_helical_symmetry is not None:
+      self.input_ncs_info.update_is_helical_symmetry(
+      is_helical_symmetry=is_helical_symmetry)
 
   def set_input_map_info(self,file_name=None,crystal_symmetry=None,
     origin=None,all=None):
@@ -765,6 +792,7 @@ def get_params(args,out=sys.stdout):
 
 def get_ncs(params,tracking_data=None,out=sys.stdout):
   file_name=params.input_files.ncs_file
+  is_helical_symmetry=None
   if not file_name: # No ncs supplied...use just 1 ncs copy..
     from mmtbx.ncs.ncs import ncs
     ncs_object=ncs()
@@ -788,6 +816,7 @@ def get_ncs(params,tracking_data=None,out=sys.stdout):
       ncs_object.max_operators())
     if ncs_object.is_helical_along_z(abs_tol_t=.50):
       print >>out,"This NCS is helical symmetry"
+      is_helical_symmetry=True
     elif ncs_object.is_point_group_symmetry(abs_tol_t=.50):
       print >>out,"This NCS is point-group symmetry"
     else:
@@ -796,6 +825,20 @@ def get_ncs(params,tracking_data=None,out=sys.stdout):
     raise Sorry("Need ncs information from an ncs_info file")
   tracking_data.set_input_ncs_info(file_name=file_name,
       number_of_operators=ncs_object.max_operators())
+
+  if is_helical_symmetry:
+    tracking_data.update_ncs_info(is_helical_symmetry=True)
+
+    if tracking_data.input_map_info and tracking_data.input_map_info.all:
+      z_range=tracking_data.input_map_info.crystal_symmetry.unit_cell(). \
+         parameters()[2]
+      print >>out,"Extending NCS operators to entire cell (z_range=%.1f)" %(
+         z_range)
+      ncs_object.extend_helix_operators(z_range=z_range)
+      ncs_object.display_all()
+      tracking_data.update_ncs_info(
+        number_of_operators=ncs_object.max_operators())
+
   return ncs_object,tracking_data
 
 def score_threshold(threshold=None,
@@ -1020,9 +1063,26 @@ def get_connectivity(params,
   print >>out,"\nGetting connectivity"
 
   # get map data and normalize to SD of the part that is not solvent
+
   sd=map_data.sample_standard_deviation()
   scaled_sd=sd/(1-solvent_fraction)**0.5
   map_data=(map_data-map_data.as_1d().min_max_mean().mean)/scaled_sd
+
+  # Make sure map has nothing going through the edges. Set values to zero
+  # XXX remove this if there is a flag in connectivity.h to not use sg symmetry
+  nx,ny,nz=map_data.all()
+  for j in xrange(ny):
+    for k in xrange(nz):
+      map_data[0,j,k]=0
+      map_data[nx-1,j,k]=0
+  for i in xrange(nx):
+    for k in xrange(nz):
+      map_data[i,0,k]=0
+      map_data[i,ny-1,k]=0
+  for i in xrange(nx):
+    for j in xrange(ny):
+      map_data[i,j,0]=0
+      map_data[i,j,nz-1]=0
 
   # Try connectivity at various thresholds
   # Choose one that has about the right number of grid points in top regions
@@ -1139,7 +1199,7 @@ def guess_chain_type(text,chain_type=None,out=sys.stdout):
 def get_solvent_fraction(params,
      ncs_object=None,tracking_data=None,out=sys.stdout):
   map_volume=tracking_data.crystal_symmetry.unit_cell().volume()
-  ncs_copies=ncs_object.max_operators()
+  ncs_copies=tracking_data.input_ncs_info.original_number_of_operators
   if not params.crystal_info.seq_file:
     raise Sorry("Please specify a sequence file with seq_file=myseq.seq")
   elif not os.path.isfile(params.crystal_info.seq_file):
@@ -1533,7 +1593,7 @@ def group_ncs_equivalents(
     region_list=None,
     region_volume_dict=None,
     equiv_dict_ncs_copy=None,
-    ncs_copies=None,
+    tracking_data=None,
     split_if_possible=None,
     out=sys.stdout):
 
@@ -1550,20 +1610,39 @@ def group_ncs_equivalents(
       ncs_copy=equiv_dict_ncs_copy[id][id1]
       if not ncs_copy in equiv_group.keys(): equiv_group[ncs_copy]=[]
       equiv_group[ncs_copy].append(id1) # id1 is ncs_copy of id
-    complete=True
+
     all_single=True
     equiv_group_as_list=[]
     total_grid_points=0
-    for ncs_copy in xrange(ncs_copies): # goes 0 to ncs_copies-1
-      equiv_group_as_list.append(equiv_group.get(ncs_copy,[]))
-      if ncs_copy > 0 and \
-          len(equiv_group.get(ncs_copy,[]))>1 and len(equiv_group.get(0,[]))==1:
-        all_single=False
-      for id in equiv_group.get(ncs_copy,[]):
-        total_grid_points+=region_volume_dict[id]
-      if not ncs_copy in equiv_group.keys():
-        complete=False
+    missing_ncs_copies=[]
+    present_ncs_copies=[]
+    for ncs_copy in xrange(tracking_data.input_ncs_info.number_of_operators):
+        # goes 0 to ncs_copies-1 (including extra ones if present)
+      local_equiv_group=equiv_group.get(ncs_copy,[])
+      if local_equiv_group:
+        equiv_group_as_list.append(local_equiv_group)
+        present_ncs_copies.append(ncs_copy)
+        if ncs_copy > 0 and \
+          len(local_equiv_group)>1 and len(equiv_group.get(0,[]))==1:
+          all_single=False
+        for id in equiv_group.get(ncs_copy,[]):
+          total_grid_points+=region_volume_dict[id]
+      else:
+        missing_ncs_copies.append(ncs_copy)
     equiv_group_as_list.sort()
+
+    if tracking_data.input_ncs_info.is_helical_symmetry:
+      # complete if we have original_number_of_operators worth
+      if len(present_ncs_copies)>= \
+         tracking_data.input_ncs_info.original_number_of_operators:
+        complete=True
+      else:
+        complete=False
+    else:
+      if len(missing_ncs_copies)==0:
+        complete=True
+      else:
+        complete=False
     if complete and \
         (not str(equiv_group_as_list) in ncs_equiv_groups_as_dict.keys() or
          total_grid_points>ncs_equiv_groups_as_dict[str(equiv_group_as_list)]) \
@@ -1582,7 +1661,7 @@ def group_ncs_equivalents(
   #    positions of the list (these must be very big ones as they match 2
   #    regions in other ncs copies)
 
-  max_duplicates=ncs_copies-1  # don't let there be all duplicates
+  max_duplicates=tracking_data.input_ncs_info.number_of_operators-1 # not all duplicates
   ncs_group_list=[]
   used_list=[]
   print >>out,"All equiv groups:"
@@ -1594,15 +1673,15 @@ def group_ncs_equivalents(
       for x in equiv_group:
         if x in used_list:
           n_dup+=1
-    if n_dup>max_duplicates or n_dup >len(equiv_group)-1:
+    if n_dup>max_duplicates or n_dup >len(equiv_group_as_list)-1:
       duplicate=True
     if not duplicate and n_dup>0:  # check carefully to make sure that all
       # are leading entries
       for ncs_group in ncs_group_list:
-        overlaps=get_overlap(ncs_group,equiv_group)
+        overlaps=get_overlap(ncs_group,equiv_group_as_list)
         if not overlaps: continue
         overlaps.sort()
-        expected_match=single_list(equiv_group)[:len(overlaps)]
+        expected_match=single_list(equiv_group_as_list)[:len(overlaps)]
         expected_match.sort()
         if overlaps!=expected_match: # not leading entries
           duplicate=True
@@ -1648,7 +1727,7 @@ def identify_ncs_regions(params,
 
   max_regions_to_consider=choose_max_regions_to_consider(params,
     sorted_by_volume=sorted_by_volume,
-    ncs_copies=ncs_obj.max_operators())
+    ncs_copies=tracking_data.input_ncs_info.original_number_of_operators)
 
   print >>out,\
     "\nIdentifying NCS-related regions.Total regions to consider: %d" %(
@@ -1711,7 +1790,7 @@ def identify_ncs_regions(params,
     bad_region_list=bad_region_list,
     region_scattered_points_dict=region_scattered_points_dict,
     equiv_dict=equiv_dict,
-    ncs_copies=ncs_obj.max_operators(),
+    ncs_copies=tracking_data.input_ncs_info.number_of_operators,
     equiv_dict_ncs_copy_dict=equiv_dict_ncs_copy_dict,
     out=out)
 
@@ -1733,7 +1812,7 @@ def identify_ncs_regions(params,
   if True:
     ncs_group_list,shared_group_dict=group_ncs_equivalents(
     split_if_possible=params.segmentation.split_if_possible,
-    ncs_copies=ncs_obj.max_operators(),
+    tracking_data=tracking_data,
     region_volume_dict=region_volume_dict,
     region_list=region_list,
     equiv_dict_ncs_copy=equiv_dict_ncs_copy,
@@ -1746,6 +1825,7 @@ def identify_ncs_regions(params,
     from libtbx import easy_pickle
     [ncs_group_list,shared_group_dict]=easy_pickle.load("group_list.pkl")
     print "Loaded group_list.pkl"
+
 
 
   ncs_group_obj=ncs_group_object(
@@ -1923,6 +2003,7 @@ def select_from_seed(starting_regions,
       target_scattered_points=None,
       max_length_of_group=None,
       ncs_groups_to_use=None,
+      tracking_data=None,
       ncs_group_obj=None):
   selected_regions=single_list(deepcopy(starting_regions))
   # do not allow any region in ncs_group_obj.bad_region_list
@@ -1930,7 +2011,7 @@ def select_from_seed(starting_regions,
   #  already used.  Use ncs_group_obj.equiv_dict to identify these.
   if not ncs_groups_to_use:
     ncs_groups_to_use=ncs_group_obj.ncs_group_list
-  i1=-1
+
   for ncs_group in ncs_groups_to_use: # try adding from each group
     if max_length_of_group is not None and \
        len(selected_regions)>=max_length_of_group:
@@ -1943,6 +2024,7 @@ def select_from_seed(starting_regions,
        region_scattered_points_dict=ncs_group_obj.region_scattered_points_dict)
     if target_scattered_points:
       current_scattered_points_list.extend(target_scattered_points)
+
     for ncs_set in ncs_group: # pick the best ncs_set from this group
       if has_intersection(ncs_group_obj.bad_region_list,ncs_set): continue
 
@@ -2052,6 +2134,7 @@ def select_regions_in_au(params,
      ncs_group_obj=None,
      target_scattered_points=None,
      unique_expected_regions=None,
+     tracking_data=None,
      out=sys.stdout):
   # Choose one region or set of regions from each ncs_group
   # up to about unique_expected_regions
@@ -2076,6 +2159,7 @@ def select_regions_in_au(params,
       starting_regions=ncs_group_obj.ncs_group_list[0]
     ok_seeds_examined=0
     for starting_region in starting_regions: # try each au as seed
+      if not starting_region and not target_scattered_points:continue
       if ok_seeds_examined >= params.segmentation.seeds_to_try:
         break # don't bother to keep trying
       if starting_region and starting_region in ncs_group_obj.bad_region_list:
@@ -2087,6 +2171,7 @@ def select_regions_in_au(params,
       selected_regions,rms=select_from_seed(starting_region_list,
         target_scattered_points=target_scattered_points,
         max_length_of_group=max_length_of_group,
+        tracking_data=tracking_data,
         ncs_group_obj=ncs_group_obj)
       if not selected_regions:
         continue
@@ -2096,7 +2181,8 @@ def select_regions_in_au(params,
         best_selected_regions=selected_regions
         print >>out,"New best selected: rms: %7.1f: %s " %(
            rms,str(selected_regions))
-    print >>out,"Best selected so far: rms: %7.1f: %s " %(
+    if best_rms is not None:
+      print >>out,"Best selected so far: rms: %7.1f: %s " %(
             best_rms,str(best_selected_regions))
     selected_regions=best_selected_regions
     if not selected_regions:
@@ -2117,6 +2203,7 @@ def select_regions_in_au(params,
         new_selected_regions,rms=select_from_seed(starting_regions,
           target_scattered_points=target_scattered_points,
           max_length_of_group=max_length_of_group,
+          tracking_data=tracking_data,
           ncs_groups_to_use=ncs_groups_to_use,
           ncs_group_obj=ncs_group_obj)
 
@@ -2814,6 +2901,9 @@ def apply_origin_shift(origin_shift=None,
          file_name=shifted_ncs_file)
       print >>out,"Wrote NCS operators for shifted map to %s" %(
        shifted_ncs_file)
+      if tracking_data.input_ncs_info.has_updated_operators():
+        print >>out,\
+        "NOTE: these may include additional operators added to fill the cell"
       tracking_data.set_shifted_ncs_info(file_name=shifted_ncs_file,
         number_of_operators=ncs_object.max_operators())
 
@@ -2892,20 +2982,6 @@ def run(args,
       ncs_object=ncs_obj,tracking_data=tracking_data,out=out)
     tracking_data.show_summary(out=out)
 
-  # Make sure map has nothing going through the edges
-  all=map_data.all()
-  for j in xrange(all[1]):
-    for k in xrange(all[2]):
-      map_data[0,j,k]=0
-      map_data[all[0]-1,j,k]=0
-  for i in xrange(all[0]):
-    for k in xrange(all[2]):
-      map_data[i,0,k]=0
-      map_data[i,all[1]-1,k]=0
-  for i in xrange(all[0]):
-    for j in xrange(all[1]):
-      map_data[i,j,0]=0
-      map_data[i,j,all[2]-1]=0
 
   # get connectivity  (conn=connectivity_object.result)
   co,sorted_by_volume,min_b,max_b,unique_expected_regions=get_connectivity(
@@ -2913,8 +2989,9 @@ def run(args,
      map_data=map_data,
      ncs_object=ncs_obj,
      n_residues=tracking_data.n_residues,
-     ncs_copies=ncs_obj.max_operators(),
-     solvent_fraction=tracking_data.solvent_fraction,out=out)
+     ncs_copies=tracking_data.input_ncs_info.number_of_operators,
+     solvent_fraction=tracking_data.solvent_fraction,
+     out=out)
   if co is None: # no luck
     return None,None,tracking_data
 
@@ -2940,6 +3017,7 @@ def run(args,
      select_regions_in_au(
      params,
      ncs_group_obj=ncs_group_obj,
+     tracking_data=tracking_data,
      target_scattered_points=target_scattered_points,
      unique_expected_regions=unique_expected_regions,
      out=out)
