@@ -22,6 +22,11 @@ def abs(aa):
   if aa>=0:return aa
   return -aa
 
+def is_in_range(z,z_min,z_max):
+    if z<z_min or z>z_max: return False
+    return True
+
+
 def is_identity(r,t,tol=1.e-2):
   identity_r=[1,0,0,0,1,0,0,0,1]
   identity_t=[0,0,0]
@@ -65,6 +70,8 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
     self._exclude_h=exclude_h
     self._exclude_d=exclude_d
+    self._have_helical_symmetry=False
+    self._have_point_group_symmetry=False
 
   def apply_cob_to_vector(self,vector=None,
          change_of_basis_operator=None,
@@ -410,6 +417,14 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     if hasattr(self,"_translations_orth_inv"):
       del self._translations_orth_inv
 
+  def invert_matrices(self):
+    self.get_inverses()
+    from copy import deepcopy
+    # move the inverses to std
+    self._translations_orth=deepcopy(self._translations_orth_inv)
+    self._rota_matrices=deepcopy(self._rota_matrices_inv)
+    self.get_inverses()
+
   def get_inverses(self):
     self._translations_orth_inv=[]
     self._rota_matrices_inv=[]
@@ -417,7 +432,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       r_inv=r.inverse()
       t_inv=-1.*r_inv*t
       self._rota_matrices_inv.append(r_inv)
-      self._translations_orth_inv.append(-1.*r_inv*t)
+      self._translations_orth_inv.append(t_inv)
 
   def rotations_translations_forward_euler(self):
     # note usual rt is from molecule j to molecule 1. Here it is opposite.
@@ -431,7 +446,6 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       rotations_forward_euler.append(r_inv_euler)
       translations_forward_euler.append(t_inv)
     return rotations_forward_euler,translations_forward_euler
-
 
   def source_of_ncs_info(self):
     return self._source_of_ncs_info
@@ -469,7 +483,6 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     #  set.  Test by sequentially applying all pairs of
     # operators and verifying that the result is a member of the set
 
-
     for r,t in zip(self.rota_matrices_inv(),self.translations_orth_inv()):
       for r1,t1 in zip(self.rota_matrices_inv(),self.translations_orth_inv()):
         new_r = r1 * r
@@ -482,6 +495,10 @@ class ncs_group:  # one group of NCS operators and center and where it applies
             break
         if not is_similar:
           return False
+    self._have_point_group_symmetry=True
+    self.tol_r=tol_r
+    self.abs_tol_t=abs_tol_t
+    self.rel_tol_t=rel_tol_t
     return True
 
   def is_helical_along_z(self,tol_z=0.01,
@@ -534,6 +551,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
         sorted_z.append(z)
       if n_minus_one>n_plus_one:
         sorted_indices.reverse()
+      self._helix_z_translation=delta
 
       # Reorder the operators:
       self._rota_matrices=len(rota_matrices_sav)*[None]
@@ -545,11 +563,17 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
       offset_list=[]
       n_missing_list=[]
-      for i1 in xrange(n): # figure out offset made by this operator
+      self.helix_oper_forwards=None
+      self.helix_oper_reverse=None
+      self.helix_oper_identity=None
+      for i1 in xrange(n): # figure out offset made by this self.helix_operator
         offset,n_missing=self.oper_adds_offset(i1,tol_r=tol_r,
             abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t)
         offset_list.append(offset)
         n_missing_list.append(n_missing)
+        if offset==1:self.helix_oper_forwards=sorted_indices[i1]
+        if offset==-1:self.helix_oper_reverse=sorted_indices[i1]
+        if offset==0:self.helix_oper_identity=sorted_indices[i1]
       # offset_list should be one instance of each value and will be 0 at the
       #  operator that is unity
       if None in offset_list:
@@ -577,7 +601,146 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     self._rota_matrices=rota_matrices_sav
     self._translations_orth=translations_orth_sav
     self.delete_inv() # remove the inv matrices/rotations so they regenerate
-    return is_helical
+    if is_helical:
+      self._have_helical_symmetry=True
+      self.tol_z=tol_z
+      self.tol_r=tol_r
+      self.abs_tol_t=abs_tol_t
+      self.rel_tol_t=rel_tol_t
+      return True
+    else:
+      return False
+
+  def get_forwards_reverse_helix(self,r1=None,t1=None,r2=None,t2=None):
+    # get the forwards and reverse transforms, deciding which is which based
+    # on the order of operators supplied for r1 t1 and r2 t2
+    assert self._have_helical_symmetry
+    for dir in ['forwards','reverse']:
+      if dir=='forwards':
+        r_forwards,t_forwards=self.helix_rt_forwards()
+        r_reverse,t_reverse=self.helix_rt_reverse()
+      else:
+        r_forwards,t_forwards=self.helix_rt_reverse()
+        r_reverse,t_reverse=self.helix_rt_forwards()
+
+      # apply to n-1 and see if we get n:
+      new_r = r_forwards*r1
+      new_t= (r_forwards* t1) + t_forwards
+      if is_same_transform(new_r,new_t,r2,t2,
+         tol_r=self.tol_r,
+         abs_tol_t=self.abs_tol_t,
+         rel_tol_t=self.rel_tol_t):
+        return r_forwards,t_forwards,r_reverse,t_reverse
+    from libtbx.utils import Sorry
+    raise Sorry(
+     "Unable to find forward and reverse operators for this helical symmetry")
+
+  def extend_helix_operators(self,z_range=None):
+    assert self._have_helical_symmetry
+    # extend the operators to go from -z_range to z_range
+    from copy import deepcopy
+    rota_matrices_inv_sav=deepcopy(self.rota_matrices_inv())
+    translations_orth_inv_sav=deepcopy(self.translations_orth_inv())
+    # only apply centers if some existing ones are not zero
+    have_non_zero_c=False
+    from scitbx import matrix
+    for c in self._centers:
+      if list(c)!=[0,0,0]:
+        have_non_zero_c=True
+        break
+
+    sort_list=[]
+    for r,t,c in zip(rota_matrices_inv_sav,translations_orth_inv_sav,self._centers):
+      z_value=t[2]
+      sort_list.append([z_value,r,t,c])
+    sort_list.sort()
+    z_first,r_first,t_first,c_first=sort_list[0]
+    z_last,r_last,t_last,c_last=sort_list[-1]
+    z_next_to_last,r_next_to_last,t_next_to_last,c_next_to_last=sort_list[-2]
+    z_translation=self.get_helix_z_translation()
+
+    # Figure out which direction to add single shifts to each end
+    r_forwards,t_forwards,r_reverse,t_reverse=self.get_forwards_reverse_helix(
+      r1=r_next_to_last,t1=t_next_to_last,r2=r_last,t2=t_last)
+
+    # Add on at end until we get to z_max (or z_min if z_translation<0)
+    r_list=[r_last]
+    t_list=[t_last]
+    c_list=[c_last]
+    while 1:
+      new_r = r_forwards*r_list[-1]
+      new_t= (r_forwards * t_list[-1]) + t_forwards
+      new_c= (r_forwards*c_list[-1])+t_forwards
+      if is_in_range(new_t[2],-z_range,z_range):
+        r_list.append(new_r)
+        t_list.append(new_t)
+        c_list.append(new_c)
+      else:
+        break
+    rota_matrices_inv=rota_matrices_inv_sav+r_list[1:]
+    translations_orth_inv=translations_orth_inv_sav+t_list[1:]
+    centers=self._centers+c_list[1:]
+
+    # and for other end
+    r_list=[r_first]
+    t_list=[t_first]
+    c_list=[c_first]
+    while 1:
+      new_r = r_reverse*r_list[-1]
+      new_t= (r_reverse * t_list[-1]) + t_reverse
+      new_c= (r_reverse*c_list[-1])+t_reverse
+      if is_in_range(new_t[2],-z_range,z_range):
+        r_list.append(new_r)
+        t_list.append(new_t)
+        c_list.append(new_c)
+      else:
+        break
+    rota_matrices_inv+=r_list[1:]
+    translations_orth_inv+=t_list[1:]
+    centers+=c_list[1:]
+    # Now we have a new set...invert and save them
+    self._n_ncs_oper=len(rota_matrices_inv)
+    self._rota_matrices=[]
+    self._translations_orth=[]
+    self._centers=[]
+    for r_inv,t_inv,c in zip(rota_matrices_inv,translations_orth_inv,centers):
+      r_std=r_inv.inverse()
+      t_std=-1.*r_std*t_inv
+      self._rota_matrices.append(r_std)
+      self._translations_orth.append(t_std)
+      if have_non_zero_c:
+        self._centers.append(c)
+      else:
+        self._centers.append(matrix.col((0,0,0)))
+
+    self.delete_inv()
+
+
+  def get_helix_z_translation(self):
+    assert self._have_helical_symmetry
+    if hasattr(self,'_helix_z_translation'):
+      return self._helix_z_translation
+    return None
+
+  def helix_rt_reverse(self):
+    assert self._have_helical_symmetry
+    # Return r and t for moving one reverse in a helix
+    if not hasattr(self,'helix_oper_reverse'):
+      return None,None
+    i1=self.helix_oper_reverse
+    r1=self.rota_matrices_inv()[i1]
+    t1=self.translations_orth_inv()[i1]
+    return r1,t1
+
+  def helix_rt_forwards(self):
+    assert self._have_helical_symmetry
+    # Return r and t for moving one forwards in a helix
+    if not hasattr(self,'helix_oper_forwards'):
+      return None,None
+    i1=self.helix_oper_forwards
+    r1=self.rota_matrices_inv()[i1]
+    t1=self.translations_orth_inv()[i1]
+    return r1,t1
 
   def oper_adds_offset(self,i1,tol_r=None,abs_tol_t=None,rel_tol_t=None):
     # figure out what operator is created from operator i1 + any other one
@@ -595,8 +758,10 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       for j in xrange(n):
         r2=self.rota_matrices_inv()[j]
         t2=self.translations_orth_inv()[j]
-        if is_same_transform(new_r,new_t,r2,t2,tol_r=tol_r,
-            abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t):
+        if is_same_transform(new_r,new_t,r2,t2,
+           tol_r=tol_r,
+           abs_tol_t=abs_tol_t,
+           rel_tol_t=rel_tol_t):
           match_offset=j-i
       if match_offset is not None:
         if not match_offset in offset_list: offset_list.append(match_offset)
@@ -661,7 +826,8 @@ class ncs:
     else:
       return None
 
-  def ncs_from_pdb_input_BIOMT(self,pdb_inp=None,log=None,quiet=False):
+  def ncs_from_pdb_input_BIOMT(self,pdb_inp=None,log=None,quiet=False,
+     invert_matrices=True):
     p=pdb_inp.process_BIOMT_records()
     if not p:
       print >>log, "No BIOMT records available"
@@ -676,6 +842,10 @@ class ncs:
       self.save_oper()
 
     self.save_existing_group_info()
+    # Invert them (we use mapping from operator i to 1 ; biomt is 1 to i
+    if invert_matrices:
+      self.invert_matrices()
+
     self._ncs_read=True
 
 
@@ -1109,6 +1279,18 @@ class ncs:
         return False
     return True
 
+  def invert_matrices(self):
+    if not self._ncs_groups:
+      return
+    for ncs_group in self._ncs_groups:
+      ncs_group.invert_matrices()
+
+  def extend_helix_operators(self,z_range=None):
+    if not self._ncs_groups:
+      return
+    for ncs_group in self._ncs_groups:
+      ncs_group.extend_helix_operators(z_range=z_range)
+
   def is_helical_along_z(self,tol_r=.01,abs_tol_t=.10,rel_tol_t=0.001):
     if not self._ncs_groups:
       return False
@@ -1221,6 +1403,7 @@ if __name__=="__main__":
   elif len(args)>0 and args[0] and os.path.isfile(args[0]):
     ncs_object=ncs()
     ncs_object.read_ncs(args[0],source_info=args[0])
+    #ncs_object.ncs_groups()[0].invert_matrices() # ZZZ
     ncs_object.display_all()
     if 1:
       file2='OUTPUT.NCS'
