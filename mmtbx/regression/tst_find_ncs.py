@@ -855,7 +855,45 @@ REMARK 350   BIOMT2 106  0.001047 -0.999999  0.000000      299.84284
 REMARK 350   BIOMT3 106  0.000000  0.000000  1.000000       65.72000
 
 """
+
+text_helical_short="""
+new_operator
+
+rota_matrix    0.9270    0.3751    0.0000
+rota_matrix   -0.3751    0.9270    0.0000
+rota_matrix    0.0000    0.0000    1.0000
+tran_orth     0.0000    0.0000   -1.4100
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    1.0000   -0.0000    0.0000
+rota_matrix    0.0000    1.0000    0.0000
+rota_matrix    0.0000    0.0000    1.0000
+tran_orth     0.0000    0.0000   -0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.9270   -0.3751    0.0000
+rota_matrix    0.3751    0.9270    0.0000
+rota_matrix    0.0000    0.0000    1.0000
+tran_orth     0.0000    0.0000    1.4100
+
+center_orth    0.0000    0.0000    0.0000
+"""
 def tst_02():
+
+  print "Test short helical and point_group symmetry...",
+  from mmtbx.ncs.ncs import ncs
+  f=open('helical.ncs_spec','w')
+  print >>f,text_helical_short
+  f.close()
+  ncs_object=ncs()
+  ncs_object.read_ncs('helical.ncs_spec',quiet=True)
+  assert ncs_object.is_helical_along_z()
+  assert not ncs_object.is_point_group_symmetry()
+  print "OK"
 
   print "Test helical and point_group symmetry...",
   from mmtbx.ncs.ncs import ncs
@@ -898,8 +936,31 @@ def tst_02():
   ncs_object.read_ncs('helical_requires_reordering_2.ncs_spec',quiet=True)
   assert ncs_object.is_helical_along_z()
   assert not ncs_object.is_point_group_symmetry()
+  print "OK"
 
-
+  print "Test helical extending z_range...",
+  from mmtbx.ncs.ncs import ncs
+  f=open('helical.ncs_spec','w')
+  print >>f,text_helical_short
+  f.close()
+  ncs_object=ncs()
+  ncs_object.read_ncs('helical.ncs_spec',quiet=True)
+  assert ncs_object.is_helical_along_z()
+  ncs_object.invert_matrices()
+  assert ncs_object.is_helical_along_z()
+  ncs_group=ncs_object.ncs_groups()[0]
+  r_forwards,t_forwards=ncs_group.helix_rt_forwards()
+  found=False
+  from mmtbx.ncs.ncs import is_same_transform
+  for r2,t2 in zip(
+    ncs_group.rota_matrices_inv(),ncs_group.translations_orth_inv()):
+     if is_same_transform(r_forwards,t_forwards,r2,t2):
+       found=True
+       break
+  assert found
+  ncs_group.extend_helix_operators(z_range=40)
+  assert ncs_group.n_ncs_oper()==57
+  assert ncs_group.is_helical_along_z()
 
   print "OK"
 
