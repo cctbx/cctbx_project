@@ -25,9 +25,14 @@ out = None
   .optional = False
 """)
 
-if (__name__ == "__main__") :
+def run(args):
+  if ("--help" in args or "-h" in args) :
+    print "Write a CBF header from a SLAC metrology file. Parameters:"
+    master_phil.show(attributes_level=2)
+    return
+
   user_phil = []
-  for arg in sys.argv[1:]:
+  for arg in args:
     if (os.path.isfile(arg)) :
       user_phil.append(libtbx.phil.parse("""metrology_file=\"%s\"""" % arg))
     else :
@@ -48,3 +53,7 @@ if (__name__ == "__main__") :
   metro = read_slac_metrology(params.metrology_file, plot=params.plot)
 
   write_cspad_cbf(None, metro, 'cbf', None, params.out, None, 0, header_only=True)
+
+if (__name__ == "__main__") :
+  args = sys.argv[1:]
+  run(args)

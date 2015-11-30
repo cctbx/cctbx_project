@@ -123,10 +123,14 @@ class GeometryAccessFromCspadCBF(GeometryAccess):
 
     return GeometryObject(**d)
 
+def run(args):
+  if ("--help" in args or "-h" in args) :
+    print "Write a SLAC metrology file from a CSPAD CBF. Parameters:"
+    master_phil.show(attributes_level=2)
+    return
 
-if (__name__ == "__main__") :
   user_phil = []
-  for arg in sys.argv[1:]:
+  for arg in args:
     try :
       user_phil.append(libtbx.phil.parse(arg))
     except RuntimeError, e :
@@ -146,3 +150,6 @@ if (__name__ == "__main__") :
   geometry = GeometryAccessFromCspadCBF(params.cbf_header)
 
   geometry.save_pars_in_file(params.out_metrology_file)
+
+if (__name__ == "__main__") :
+  run(sys.argv[1:])
