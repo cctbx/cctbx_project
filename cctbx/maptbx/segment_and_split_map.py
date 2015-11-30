@@ -231,6 +231,12 @@ master_phil = iotbx.phil.parse("""
       .short_caption = Iterate
       .help = Iterate looking for regions based on remainder from first analysis
 
+    weight_rad_gyr = 0.2
+      .type = float
+      .short_caption = Weight on radius of gyration
+      .help = Weight on radius of gyration of group of regions in NCS AU \
+               relative to weight on closeness to neighbors
+
     expand_size = None
       .type = int
       .help = Grid points to expand size of regions when excluding for next \
@@ -1799,7 +1805,7 @@ def identify_ncs_regions(params,
     equiv_dict_ncs_copy_dict=equiv_dict_ncs_copy_dict,
     out=out)
 
-    if True:
+    if False:
       from libtbx import easy_pickle
       easy_pickle.dump("save.pkl",[duplicate_dict,equiv_dict,region_range_dict,region_centroid_dict,region_scattered_points_dict,region_list,region_volume_dict,new_sorted_by_volume,bad_region_list,equiv_dict_ncs_copy,tracking_data])
       print "Dumped save.pkl"
@@ -1934,8 +1940,19 @@ def get_dist_to_first_dict(ncs_group_obj=None,
           changing=True
   return dist_to_first_dict
 
+def get_radius_of_gyration(ncs_group_obj=None,
+    selected_regions=None):
+  # return radius of gyration of points in selected regions 
+  centers=flex.vec3_double()
+  for s in selected_regions:
+    centers.append(ncs_group_obj.region_centroid_dict[s])
+  centers=centers-centers.mean()
+  return centers.rms_length()
+
+
 def get_closest_neighbor_rms(ncs_group_obj=None,selected_regions=None,
     target_scattered_points=None):
+
   # return rms closest distance of each region center to lowest_numbered region,
   #   allowing sequential tracking taking max of inter-region distances
 
@@ -2004,7 +2021,22 @@ def region_lists_have_ncs_overlap(set1,set2,ncs_group_obj=None,cutoff=0):
         return True
   return False
 
-def select_from_seed(starting_regions,
+def get_effective_radius(ncs_group_obj=None,
+    target_scattered_points=None,
+    weight_rad_gyr=None,
+    selected_regions=None):
+  rad_gyr=get_radius_of_gyration(ncs_group_obj=ncs_group_obj,
+     selected_regions=selected_regions)
+
+  rms=get_closest_neighbor_rms(ncs_group_obj=ncs_group_obj,
+    target_scattered_points=target_scattered_points,
+    selected_regions=selected_regions)
+
+  effective_radius=(rms+weight_rad_gyr*rad_gyr)/(1.+weight_rad_gyr)
+  return effective_radius
+
+def select_from_seed(params,
+      starting_regions,
       target_scattered_points=None,
       max_length_of_group=None,
       ncs_groups_to_use=None,
@@ -2040,23 +2072,23 @@ def select_from_seed(starting_regions,
           ncs_group_obj=ncs_group_obj):
         continue
 
-      # Get dist of this ncs_set (usually 1 region) to current center
-      test_scattered_points=get_scattered_points_list(single_list(ncs_set),
-       region_scattered_points_dict=ncs_group_obj.region_scattered_points_dict)
+      dist=get_effective_radius(ncs_group_obj=ncs_group_obj,
+        target_scattered_points=target_scattered_points,
+        weight_rad_gyr=params.segmentation.weight_rad_gyr,
+        selected_regions=selected_regions+ncs_set)
 
-      dist=get_closest_dist(test_scattered_points,
-        target_centers=current_scattered_points_list)
       if best_dist is None or dist<best_dist:
         best_dist=dist
         best_ncs_set=ncs_set
     if best_ncs_set is not None:
       selected_regions+=best_ncs_set
 
-  rms=get_closest_neighbor_rms(ncs_group_obj=ncs_group_obj,
+  dist=get_effective_radius(ncs_group_obj=ncs_group_obj,
     target_scattered_points=target_scattered_points,
+    weight_rad_gyr=params.segmentation.weight_rad_gyr,
     selected_regions=selected_regions)
 
-  return selected_regions,rms
+  return selected_regions,dist
 
 def remove_one_item(input_list,item_to_remove=None):
   new_list=[]
@@ -2173,7 +2205,8 @@ def select_regions_in_au(params,
         starting_region_list=[starting_region]
       else:
         starting_region_list=[]
-      selected_regions,rms=select_from_seed(starting_region_list,
+      selected_regions,rms=select_from_seed(params,
+        starting_region_list,
         target_scattered_points=target_scattered_points,
         max_length_of_group=max_length_of_group,
         tracking_data=tracking_data,
@@ -2205,7 +2238,7 @@ def select_regions_in_au(params,
           target_regions=[x])
         if not ncs_related_regions: continue
         ncs_groups_to_use=[as_list_of_lists(ncs_related_regions)]
-        new_selected_regions,rms=select_from_seed(starting_regions,
+        new_selected_regions,rms=select_from_seed(params,starting_regions,
           target_scattered_points=target_scattered_points,
           max_length_of_group=max_length_of_group,
           tracking_data=tracking_data,
@@ -2501,7 +2534,7 @@ def write_output_files(params,
   bool_selected_regions,bool_ncs_related_mask,lower_bounds,upper_bounds=\
      get_selected_and_related_regions(
       params,ncs_group_obj=ncs_group_obj)
-  s=  (bool_ncs_related_mask==True)
+  s_ncs_related =  (bool_ncs_related_mask==True)
 
   # Add in remainder regions if present
   if remainder_ncs_group_obj:
@@ -2517,12 +2550,12 @@ def write_output_files(params,
     bool_selected_regions=bool_selected_regions.set_selected(
        s_remainder_au,True)
 
-    s |=  (bool_remainder_ncs_related_mask==True)
+    s_ncs_related |=  (bool_remainder_ncs_related_mask==True)
 
   # Now create NCS mask by eliminating all points in target (expanded) in
   #   NCS-related copies
 
-  bool_selected_regions=bool_selected_regions.set_selected(s,False)
+  bool_selected_regions=bool_selected_regions.set_selected(s_ncs_related,False)
 
   lower_bounds,upper_bounds=adjust_bounds(params,lower_bounds,upper_bounds,
     map_data=map_data,out=out)
