@@ -243,6 +243,11 @@ master_phil = iotbx.phil.parse("""
       .help = Target expansion of regions (A)
       .short_caption = Expand target
 
+    mask_additional_expand_size = 1
+      .type = int
+      .help = Mask expansion in addition to expand_size for final map
+      .short_caption = Mask additional expansion
+
 
   }
    control {
@@ -2283,8 +2288,8 @@ def create_remaining_mask_and_map(params,
   # has been interpreted (and all points in interpreted NCS-related copies)
 
   bool_all_used=get_bool_mask_of_regions(ncs_group_obj=ncs_group_obj,
-     region_list=ncs_group_obj.selected_regions+ncs_group_obj.ncs_related_regions,
-     expand_size=params.segmentation.expand_size)
+   region_list=ncs_group_obj.selected_regions+ncs_group_obj.ncs_related_regions,
+   expand_size=params.segmentation.expand_size)
   map_data_remaining=map_data.deep_copy()
   s=(bool_all_used==True)
   map_data_remaining=map_data_remaining.set_selected(s,-1.0)
@@ -2323,7 +2328,8 @@ def get_selected_and_related_regions(params,
   # Identify all points in the targeted regions
   bool_selected_regions=get_bool_mask_of_regions(ncs_group_obj=ncs_group_obj,
      region_list=ncs_group_obj.selected_regions,
-     expand_size=params.segmentation.expand_size)
+     expand_size=params.segmentation.expand_size+\
+      params.segmentation.mask_additional_expand_size)
   # and all points in NCS-related copies (to be excluded)
   bool_ncs_related_mask=get_bool_mask_of_regions(ncs_group_obj=ncs_group_obj,
        region_list=ncs_group_obj.ncs_related_regions)
@@ -2339,7 +2345,8 @@ def get_selected_and_related_regions(params,
 
   return bool_selected_regions,bool_ncs_related_mask,lower_bounds,upper_bounds
 
-def adjust_bounds(params,lower_bounds,upper_bounds,map_data=None,out=sys.stdout):
+def adjust_bounds(params,
+   lower_bounds,upper_bounds,map_data=None,out=sys.stdout):
   # range is lower_bounds to upper_bounds
   lower_bounds=list(lower_bounds)
   upper_bounds=list(upper_bounds)
@@ -2486,7 +2493,6 @@ def write_output_files(params,
     write_atoms(tracking_data=tracking_data,sites=sites,
       file_name=au_atom_output_file)
     tracking_data.set_output_ncs_au_pdb_info(file_name=au_atom_output_file)
-
 
   # Write out mask and map representing one NCS copy and none of
   #   other NCS copies.  Expand the mask to include neighboring points (but
