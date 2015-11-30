@@ -1942,7 +1942,7 @@ def get_dist_to_first_dict(ncs_group_obj=None,
 
 def get_radius_of_gyration(ncs_group_obj=None,
     selected_regions=None):
-  # return radius of gyration of points in selected regions 
+  # return radius of gyration of points in selected regions
   centers=flex.vec3_double()
   for s in selected_regions:
     centers.append(ncs_group_obj.region_centroid_dict[s])
