@@ -143,6 +143,10 @@ def run(base_dir, out=sys.stdout, only_if_needed=False):
 
   print >> out, "Regenerating module files in %s" % base_dir
   if not os.path.exists(base_dir):
+    if only_if_needed:
+      print >> out, "Base directory '%s' does not exist." % base_dir
+      print >> out, "  Assuming base-less installation, skipping module file regeneration"
+      return
     raise OSError("Base directory '%s' does not exist." % base_dir)
 
   fix_pango(base_dir, out)
