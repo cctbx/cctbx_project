@@ -101,10 +101,22 @@ class ShellCommand(object):
   def get_workdir(self):
     return self.kwargs.get('workdir', 'build')
 
+  def get_environment(self):
+    env = self.kwargs.get('env', None)
+    if env:
+      for key, item in env.items():
+        env[key] = os.path.abspath(item)
+      print 'adding environmental variables',env
+      rc = os.environ
+      rc.update(env)
+      env=rc
+    return env
+
   def run(self):
     command = self.get_command()
     description = self.get_description()
     workdir = self.get_workdir()
+    env = self.get_environment()
     if not self.kwargs.get("quiet", False):
       if description:
         print "===== Running in %s:"%workdir, description
@@ -130,6 +142,8 @@ class ShellCommand(object):
           except OSError, e:
             print "Strangely couldn't delete %s" % directory
       return 0
+    if 0:
+      print 'command',command
     try:
       #print "workdir, os.getcwd =", workdir, os.getcwd()
       #if not os.path.isabs(command[0]):
@@ -142,7 +156,8 @@ class ShellCommand(object):
         args=command,
         cwd=workdir,
         stdout=stdout,
-        stderr=stderr
+        stderr=stderr,
+        env=env,
       )
     except Exception, e: # error handling
       if not self.kwargs.get('haltOnFailure'):
@@ -382,6 +397,15 @@ class boost_module(SourceModule):
   # Resort to downloading the compressed archive on Windows
   authentarfile = ['%(cciuser)s@cci.lbl.gov', 'boost_hot.tar.gz', '/net/cci/auto_build/repositories/boost_hot/']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/boost_hot/']
+
+# external modules
+class amber_module(SourceModule):
+  module = 'amber'
+  # this doesn't work
+  anonymous = ['curl', 'http://cci.lbl.gov/externals/AmberTools15.gz']
+  # this doesn't work
+  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'AmberTools15.tar.gz', '/net/cci/auto_build/externals']
+  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/externals/amber14/']
 
 class libsvm_module(SourceModule):
   module = 'libsvm'
@@ -720,7 +744,10 @@ class Builder(object):
     #if sys.platform == "win32": # we can't currently compile cbflib for Windows
     if self.isPlatformWindows():
       return list(set(self.CODEBASES + self.CODEBASES_EXTRA) - set(['cbflib']))
-    return self.CODEBASES + self.CODEBASES_EXTRA
+    rc = self.CODEBASES + self.CODEBASES_EXTRA
+    if hasattr(self, "EXTERNAL_CODEBASES"):
+      rc += self.EXTERNAL_CODEBASES
+    return rc
 
   def get_hot(self):
     return self.HOT + self.HOT_EXTRA
@@ -1395,6 +1422,64 @@ class PhenixBuilder(CCIBuilder):
     #                      name="test wizards",
     #                     )
 
+class PhenixExternalRegression(PhenixBuilder):
+  EXTERNAL_CODEBASES = [
+    "amber"
+    ]
+
+  def add_tests(self):
+    pass
+
+  def add_make(self):
+    # pre Phenix compile
+    # Amber
+    amberhome = os.path.join('.', #os.getcwd(),
+                             "modules",
+                             "amber",
+                             )
+    env={"AMBERHOME": amberhome}
+    if 0:
+      self.add_step(self.shell(
+        name       = 'Amber update',
+        command    = ["./update_amber", "--update"],
+        workdir    = [amberhome],
+        description= "",
+        env        = env,
+      ))
+      self.add_step(self.shell(
+        name       = 'Amber configure',
+        command    = ["./configure",
+                      "--no-updates",
+                      "-noX11",
+                      "-macAccelerate",
+                      "clang", #"gnu",
+                    ],
+        workdir    = [amberhome],
+        description= "",
+        env        = env,
+      ))
+      self.add_step(self.shell(
+        name       = 'Amber compile',
+        command    = ["make", "install"],
+        workdir    = [amberhome],
+        description= "",
+        env        = env,
+      ))
+    # Phenix compile
+    PhenixBuilder.add_make(self)
+    # post Phenix compile
+    # Amber
+    self.add_step(self.shell(
+      name       = 'Amber interface',
+      command    = ["phenix.build_amber_interface"],
+      workdir    = [amberhome],
+      description= "",
+      env        = env,
+    ))
+
+  def add_tests(self):
+    self.add_test_command('amber.run_tests')
+
 def run(root=None):
   usage = """Usage: %prog [options] [actions]
 
@@ -1427,7 +1512,7 @@ def run(root=None):
 
   Example:
 
-    python bootstrap.py --builder=cctbx --sfuser=ianrees hot update build tests
+    python bootstrap.py --builder=cctbx --sfuser=metalheadd hot update build tests
 
   """
   parser = optparse.OptionParser(usage=usage)
@@ -1472,7 +1557,8 @@ def run(root=None):
     'phenix': PhenixBuilder,
     'xfel': XFELBuilder,
     'labelit': LABELITBuilder,
-    'dials': DIALSBuilder
+    'dials': DIALSBuilder,
+    'external': PhenixExternalRegression,
   }
   if options.builder not in builders:
     raise ValueError("Unknown builder: %s"%options.builder)
