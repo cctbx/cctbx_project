@@ -5,8 +5,8 @@ import iotbx.pdb
 from cctbx import maptbx
 from cctbx import miller
 
-def getvs(cmap, threshold):
-  co = maptbx.connectivity(map_data=cmap, threshold=threshold)
+def getvs(cmap, threshold, wrap=True):
+  co = maptbx.connectivity(map_data=cmap, threshold=threshold, wrapping=wrap)
   map_result = co.result()
   regs = co.regions()
   coors = co.maximum_coors()
@@ -77,8 +77,9 @@ END
   map_data = fft_map.real_map_unpadded()
   #all filled
   v, volumes = getvs(map_data, -100)
-  assert v == [0, 1000000, 0]
-  assert v[:2] == volumes
+  v2, volumes2 = getvs(map_data, -100, False)
+  assert v == v2 == [0, 1000000, 0]
+  assert v[:2] == v2[:2] == volumes == volumes2
   # can see one blob
   v, volumes = getvs(map_data, 5)
   assert v[0]+v[1]+v[2] == 1000000
@@ -102,14 +103,21 @@ def exercise4():
       for k in range(10,20):
         cmap[i,j,k] = 10
   v, volumes = getvs(cmap, 5)
-  assert v == [999000, 1000, 0]
-  assert v[:2] == volumes
+  v2, volumes2 = getvs(cmap, 5, False)
+  assert v == v2 == [999000, 1000, 0]
+  assert v[:2] == volumes == volumes2
   #print "all filled"
   v, volumes = getvs(cmap, -5)
+  v2, volumes2 = getvs(cmap, -5, False)
+  assert v == v2
+  assert volumes == volumes2
   assert v == [0,1000000,0]
   assert v[:2] == volumes
   #print "none filled"
   v, volumes = getvs(cmap, 20)
+  v2, volumes2 = getvs(cmap, 20, False)
+  assert v == v2
+  assert volumes == volumes2
   assert v == [1000000,0,0]
   assert v[:1] == volumes
 
@@ -146,6 +154,10 @@ def exercise5():
   v, volumes = getvs(cmap, 5)
   assert v == [992000, 8000, 0]
   assert v[:2] == volumes
+
+  # test wrapping = false - borders are not transparent
+  v, volumes = getvs(cmap, 5, False)
+  assert volumes == [992000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000]
 
   #print "2 blobs"
   cmap.fill(0)

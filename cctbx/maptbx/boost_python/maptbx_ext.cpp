@@ -211,17 +211,23 @@ namespace {
 
       class_<w_t>("connectivity", no_init)
         .def(init<af::const_ref<float, af::flex_grid<> > const&,
-                  float const& >(
+                  float const&,
+                  bool >(
                     (arg("map_data"),
-                     arg("threshold"))))
+                     arg("threshold"),
+                     arg("wrapping")=true)))
         .def(init<af::const_ref<double, af::flex_grid<> > const&,
-                  double const& >(
+                  double const&,
+                  bool >(
                     (arg("map_data"),
-                     arg("threshold"))))
+                     arg("threshold"),
+                     arg("wrapping")=true)))
         .def(init<af::const_ref<int, af::flex_grid<> > const&,
-                  int const& >(
+                  int const&,
+                  bool >(
                     (arg("map_data"),
-                     arg("threshold"))))
+                     arg("threshold"),
+                     arg("wrapping")=true)))
         .def("result",    &w_t::result)
         .def("regions",   &w_t::regions)
         .def("volume_cutoff_mask", &w_t::volume_cutoff_mask,
