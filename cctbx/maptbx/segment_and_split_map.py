@@ -1015,7 +1015,7 @@ def choose_threshold(params,map_data=None,
       if threshold < lower_bound or threshold > upper_bound:
         continue
       co = maptbx.connectivity(map_data=map_data.deep_copy(),
-         threshold=threshold)
+         threshold=threshold,wrapping=False)
       z = zip(co.regions(),range(0,co.regions().size()))
       sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
       if len(sorted_by_volume)<2:
@@ -1079,22 +1079,6 @@ def get_connectivity(params,
   scaled_sd=sd/(1-solvent_fraction)**0.5
   map_data=(map_data-map_data.as_1d().min_max_mean().mean)/scaled_sd
 
-  # Make sure map has nothing going through the edges. Set values to zero
-  # XXX remove this if there is a flag in connectivity.h to not use sg symmetry
-  nx,ny,nz=map_data.all()
-  for j in xrange(ny):
-    for k in xrange(nz):
-      map_data[0,j,k]=0
-      map_data[nx-1,j,k]=0
-  for i in xrange(nx):
-    for k in xrange(nz):
-      map_data[i,0,k]=0
-      map_data[i,ny-1,k]=0
-  for i in xrange(nx):
-    for j in xrange(ny):
-      map_data[i,j,0]=0
-      map_data[i,j,nz-1]=0
-
   # Try connectivity at various thresholds
   # Choose one that has about the right number of grid points in top regions
   scale=0.95
@@ -1120,7 +1104,7 @@ def get_connectivity(params,
   else:
     params.segmentation.starting_density_threshold=threshold # try it first
 
-  co = maptbx.connectivity(map_data=map_data, threshold=threshold)
+  co = maptbx.connectivity(map_data=map_data,threshold=threshold,wrapping=False)
   z = zip(co.regions(),range(0,co.regions().size()))
   sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
 
@@ -1907,8 +1891,6 @@ def get_inter_region_dist_dict(ncs_group_obj=None,
     id=selected_regions[i]
     if not id in dd.keys(): dd[id]={}
     test_centers=ncs_group_obj.region_scattered_points_dict[id]
-    if i==0 and target_scattered_points: # put target_scattered_points here
-      test_centers.extend(target_scattered_points)
     for j in xrange(i+1,len(selected_regions)):
       id1=selected_regions[j]
       test_centers1=ncs_group_obj.region_scattered_points_dict[id1]
@@ -1922,16 +1904,26 @@ def get_dist_to_first_dict(ncs_group_obj=None,
      selected_regions=None,
      inter_region_dist_dict=None,
      target_scattered_points=None):
+
+  # Get distance to region 0 ( or to target_scattered_points if supplied)
   dist_to_first_dict={}
-  x0=selected_regions[0]
-  for x in selected_regions[1:]:
-    dist_to_first_dict[x]=inter_region_dist_dict[x0][x]
+  if target_scattered_points:
+    start_region=0
+    for x in selected_regions:
+      dist_to_first_dict[x]=get_closest_dist(
+        ncs_group_obj.region_scattered_points_dict[x],
+        target_scattered_points)
+  else:
+    start_region=1
+    x0=selected_regions[0]
+    for x in selected_regions[1:]:
+      dist_to_first_dict[x]=inter_region_dist_dict[x0][x]
 
   changing=True
   while changing:
     changing=False
-    for x in selected_regions[1:]:
-      for y in selected_regions[1:]:
+    for x in selected_regions[start_region:]:
+      for y in selected_regions[start_region:]:
         if x==y: continue
         if dist_to_first_dict[y]<dist_to_first_dict[x] and \
             inter_region_dist_dict[x][y]<dist_to_first_dict[x]:
@@ -1964,9 +1956,14 @@ def get_closest_neighbor_rms(ncs_group_obj=None,selected_regions=None,
      inter_region_dist_dict=inter_region_dist_dict,
      target_scattered_points=target_scattered_points)
 
+  if target_scattered_points:
+    start_region=0 # we are getting dist to target_scattered_points
+  else:
+    start_region=1 # we are getting dist to region 0
+
   rms=0.
   rms_n=0.
-  for x in selected_regions[1:]:
+  for x in selected_regions[start_region:]:
     dist=dist_to_first_dict[x]
     rms+=dist**2
     rms_n+=1.
