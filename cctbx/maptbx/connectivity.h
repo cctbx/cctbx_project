@@ -20,57 +20,64 @@ private:
   int n_regions;
   bool border_wrapping;
 
-  void
+  int
   get_six_neighbours(
     int const& x,
     int const& y,
     int const& z,
     af::shared<scitbx::vec3<int> > neighbours)
+  // returns number of neigbours, coordinates are in neighbours, should be
+  // at least 6 long
   {
-    neighbours.resize(0);
-    //x+1
-    if (x+1<map_dimensions[0]) {
-      neighbours.push_back(scitbx::vec3<int>(x+1, y, z));
+    int n=0;
+    if (border_wrapping) {
+      // x+-1
+      neighbours[0][0] = ((x+1<map_dimensions[0]) ? x+1 : 0);
+      neighbours[1][0] = ((x-1>=0) ? x-1 : map_dimensions[0]-1);
+      neighbours[0][1] = neighbours[1][1] = y;
+      neighbours[0][2] = neighbours[1][2] = z;
+      // y+-1
+      neighbours[2][1] = ((y+1<map_dimensions[1]) ? y+1 : 0);
+      neighbours[3][1] = ((y-1>=0) ? y-1 : map_dimensions[1]-1);
+      neighbours[2][0] = neighbours[3][0] = x;
+      neighbours[2][2] = neighbours[3][2] = z;
+      // z+-1
+      neighbours[4][2] = ((z+1<map_dimensions[2]) ? z+1 : 0);
+      neighbours[5][2] = ((z-1>=0) ? z-1 : map_dimensions[2]-1);
+      neighbours[4][0] = neighbours[5][0] = x;
+      neighbours[4][1] = neighbours[5][1] = y;
+      n = 6;
     }
-    else if (border_wrapping) {
-        neighbours.push_back(scitbx::vec3<int>(0, y, z));
+    else {
+      //x+1
+      if (x+1<map_dimensions[0]) {
+        neighbours[n] = scitbx::vec3<int>(x+1, y, z);
+        n++;
       }
-    // x-1
-    if (x-1>=0) {
-      neighbours.push_back(scitbx::vec3<int>(x-1, y, z));
+      if (x-1>=0) {
+        neighbours[n] = scitbx::vec3<int>(x-1, y, z);
+        n++;
+      }
+      if (y+1<map_dimensions[1]) {
+        neighbours[n] = scitbx::vec3<int>(x, y+1, z);
+        n++;
+      }
+      if (y-1>=0) {
+        neighbours[n] = scitbx::vec3<int>(x, y-1, z);
+        n++;
+      }
+      if (z+1<map_dimensions[2]) {
+        neighbours[n] = scitbx::vec3<int>(x, y, z+1);
+        n++;
+      }
+      if (z-1>=0) {
+        neighbours[n] = scitbx::vec3<int>(x, y, z-1);
+        n++;
+      }
     }
-    else if (border_wrapping) {
-        neighbours.push_back(scitbx::vec3<int>(map_dimensions[0]-1, y, z));
-      }
-    //y+1
-    if (y+1<map_dimensions[1]) {
-      neighbours.push_back(scitbx::vec3<int>(x, y+1, z));
-    }
-    else if (border_wrapping) {
-        neighbours.push_back(scitbx::vec3<int>(x, 0, z));
-      }
-    // y-1
-    if (y-1>=0) {
-      neighbours.push_back(scitbx::vec3<int>(x, y-1, z));
-    }
-    else if (border_wrapping) {
-        neighbours.push_back(scitbx::vec3<int>(x, map_dimensions[1]-1, z));
-      }
-    //z+1
-    if (z+1<map_dimensions[2]) {
-      neighbours.push_back(scitbx::vec3<int>(x, y, z+1));
-    }
-    else if (border_wrapping) {
-        neighbours.push_back(scitbx::vec3<int>(x, y, 0));
-      }
-    // z-1
-    if (z-1>=0) {
-      neighbours.push_back(scitbx::vec3<int>(x, y, z-1));
-    }
-    else if (border_wrapping) {
-        neighbours.push_back(scitbx::vec3<int>(x, y, map_dimensions[2]-1));
-      }
+    return n;
   }
+
 
   inline
   int get_coordinate_in_boundaries(int x, int map_size)
@@ -117,7 +124,7 @@ public:
     af::shared<scitbx::vec3<int> > tempcoors(needed_size);
     // af::shared<scitbx::vec3<int> > tempcoors(needed_size);
     map_new.resize(af::c_grid<3>(map_dimensions), -1);
-    af::shared<scitbx::vec3<int> > neighbours;
+    af::shared<scitbx::vec3<int> > neighbours(6);
     region_vols.push_back(0);
     region_maximum_values.push_back(-10000000);
     region_maximum_coors.push_back(scitbx::vec3<int>(0,0,0));
@@ -138,12 +145,10 @@ public:
               pointer_empty = 1;
               pointer_current = 0;
               while (pointer_empty != pointer_current) {
-                get_six_neighbours(tempcoors[pointer_current][0],
+                int n_neib = get_six_neighbours(tempcoors[pointer_current][0],
                                    tempcoors[pointer_current][1],
                                    tempcoors[pointer_current][2],
                                    neighbours);
-                int n_neib = neighbours.size();
-                // std::cout << "n_neib: " << n_neib << "\n";
                 for (int l = 0; l < n_neib; l++) {
                   //processing neighbours
                   if (map_new(af::adapt(neighbours[l]))<0) {
