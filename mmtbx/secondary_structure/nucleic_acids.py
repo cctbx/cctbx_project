@@ -255,6 +255,14 @@ def get_h_bonds_for_basepair(a1, a2, distance_cutoff=100, log=sys.stdout, verbos
       for l in data[1:]:
         a1 = r1.get_atom(l[0])
         a2 = r2.get_atom(l[1])
+        # Bug notification: a2 could be None: bug report form
+        # ms@mrc-lmb.cam.ac.uk on Nov 30, 2015, file was not provided.
+        if a1 is None or a2 is None:
+          msg = "Something is wrong in .pdb file around '%s' or '%s'.\n" % (
+              a1.id_str(), a2.id_str())
+          msg += "If it is not clear to you, please contact developers and "
+          msg += "supply .pdb file used to recreate this crash."
+          raise Sorry(msg)
         d1 += abs(a1.distance(a2)-2.89)
       n_links_in_data = len(data[1:])
       if n_links_in_data < 1:
