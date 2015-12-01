@@ -93,11 +93,15 @@ def fix_fonts(base_dir, out): #--- Fonts
 
   os.environ['FONTCONFIG_PATH'] = fonts_etc_dir
 
-  print >> out, "running mkfontscale/mkfontdir on %s" % fonts_share_dir
-  call("mkfontscale %s" % fonts_share_dir, log=out)
-  call("mkfontdir %s" % fonts_share_dir, log=out)
-  print >> out, "rebuilding font cache"
-  call("%s/bin/fc-cache -v %s" % (base_dir, fonts_share_dir), log=out)
+  try:
+    print >> out, "running mkfontscale/mkfontdir on %s" % fonts_share_dir
+    call("mkfontscale %s" % fonts_share_dir, log=out)
+    call("mkfontdir %s" % fonts_share_dir, log=out)
+    print >> out, "rebuilding font cache"
+    call("%s/bin/fc-cache -v %s" % (base_dir, fonts_share_dir), log=out)
+  except Exception:
+    print >> out, "rebuilding fonts failed"
+    pass
 
 
 def fix_themes(base_dir, out): #--- Themes
