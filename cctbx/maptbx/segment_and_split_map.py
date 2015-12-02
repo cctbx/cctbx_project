@@ -1107,7 +1107,7 @@ def get_connectivity(params,
       raise Sorry("No threshold found...try with threshold=xxx")
     else: # on iteration...ok
       print >>out,"Note: No threshold found"
-      return None,None,None,None
+      return None,None,None,None,None
   else:
     params.segmentation.starting_density_threshold=threshold # try it first
 
