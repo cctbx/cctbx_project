@@ -200,10 +200,9 @@ def compare_dihedrals(
       file_name_extension,
       verbose):
   for resname in amino_acid_resnames:
-    if (resname in ["PRO","MSE"]):
+    if (resname in ["PRO"]):
       # compatible semi emp files not available (not important enough to
       # warrant extra effort)
-      # MSE defaults to MET, no need to test twice
       continue
     rotamer_info = mon_lib_srv.get_comp_comp_id_direct(
       comp_id=resname).rotamer_info()
