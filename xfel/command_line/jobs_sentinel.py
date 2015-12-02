@@ -208,7 +208,7 @@ def run(args):
           if run_id in submitted_run_ids:
             continue
 
-          print "Submitting run %d into trial %d using rungroup %d"%(run_id, trial_id, rungroup_id)
+          print "Submitting run %d into trial %d using rungroup %d"%(run_id, trial, rungroup_id)
 
           config_path = write_hitfind_cfg(params, dbobj, trial_id, trial, rungroup_id)
           if submit_job(params, dbobj, trial_id, trial, rungroup_id, run, config_path):
