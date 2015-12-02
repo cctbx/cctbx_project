@@ -142,7 +142,7 @@ master_phil = iotbx.phil.parse("""
                  group will be used. For example in P1 a point at one end of the \
                  unit cell is next to a point on the other end.  Normally for \
                  cryo-EM data this should be set to False.
-              
+
   }
 
   segmentation {
@@ -641,8 +641,8 @@ class ncs_group_object:
     adopt_init_args(self, locals())
 
     if self.crystal_symmetry and not self.max_cell_dim:
-      self.max_cell_dim=0. 
-      for x in self.crystal_symmetry.unit_cell().parameters()[:3]: 
+      self.max_cell_dim=0.
+      for x in self.crystal_symmetry.unit_cell().parameters()[:3]:
         self.max_cell_dim=max(max_cell_dim,x)
 
   def as_info_object(self):
@@ -1977,7 +1977,7 @@ def get_closest_neighbor_rms(ncs_group_obj=None,selected_regions=None,
     print >>out,"Inter-region distance dict:"
     keys=inter_region_dist_dict.keys()
     keys.sort()
-    for key in keys: 
+    for key in keys:
       for key2 in inter_region_dist_dict[key].keys():
         print >>out,"%s  %s  : %.1f " %(key,key2,inter_region_dist_dict[key][key2])
 
@@ -2059,7 +2059,7 @@ def get_effective_radius(ncs_group_obj=None,
     weight_rad_gyr=None,
     selected_regions=None):
   sr=deepcopy(selected_regions)
-  sr.sort() 
+  sr.sort()
   rad_gyr=get_radius_of_gyration(ncs_group_obj=ncs_group_obj,
      selected_regions=sr)
   rms=get_closest_neighbor_rms(ncs_group_obj=ncs_group_obj,
