@@ -222,20 +222,29 @@ class ExperimentList(object):
 
   def all_stills(self):
     ''' Check if all the experiments are stills '''
+    def is_still(e):
+      if e.goniometer is None or e.scan is None or e.scan.get_oscillation()[1] == 0:
+        return True
+      return False
     assert(len(self) > 0)
     result = True
     for e in self:
-      if e.goniometer is not None and e.scan is not None:
+      if not is_still(e):
         result = False
         break
+
     return result
 
   def all_sweeps(self):
     ''' Check if all the experiments are from sweeps '''
+    def is_still(e):
+      if e.goniometer is None or e.scan is None or e.scan.get_oscillation()[1] == 0:
+        return True
+      return False
     assert(len(self) > 0)
     result = True
     for e in self:
-      if e.goniometer is None or e.scan is None:
+      if is_still(e):
         result = False
         break
     return result
