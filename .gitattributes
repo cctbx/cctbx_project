@@ -171,7 +171,6 @@ cctbx/maptbx/asymmetric_map.h svneol=native#text/plain
 cctbx/maptbx/asymmetric_map_ext.cpp svneol=native#text/plain
 cctbx/maptbx/blobs_cmd.cpp svneol=native#text/plain
 cctbx/maptbx/boost_python/grid_indices_around_sites.cpp svneol=native#text/plain
-cctbx/maptbx/boost_python/mask_utils.cpp -text
 cctbx/maptbx/boost_python/time_grid_indices_around_sites.py svneol=native#text/x-python
 cctbx/maptbx/connectivity.h -text
 cctbx/maptbx/dijkstra.cpp svneol=native#text/plain

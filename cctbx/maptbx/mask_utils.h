@@ -10,44 +10,62 @@
 
 namespace cctbx { namespace maptbx {
 
-af::shared<scitbx::vec3<double> >
-sample_mask_regions(
-  af::const_ref<int, af::flex_grid<> > const& mask,
-  int n_zone,
-  int volume,
-  int sampling_rate,
-  cctbx::uctbx::unit_cell const& unit_cell)
+class sample_all_mask_regions {
+protected:
+  af::shared<af::shared<scitbx::vec3<double> > > result_cart_;
 
-{
-  CCTBX_ASSERT(mask.accessor().nd() == 3);
-  CCTBX_ASSERT(mask.accessor().all().all_gt(0));
-  af::shared <  scitbx::vec3<double> > result_cart;
-  af::c_grid<3> a = mask.accessor();
-  int n_sampled = 0;
-  for(int i = 0; i < a[0]; i++) {
-    for(int j = 0; j < a[1]; j++) {
-      for(int k = 0; k < a[2]; k++) {
-        if (mask(i,j,k) == n_zone) {
-          n_sampled += 1;
-          if (n_sampled == 1 ||
-              n_sampled == volume ||
-              n_sampled % sampling_rate == 0) {
-            cctbx::fractional<> grid_frac = cctbx::fractional<>(
-                double(i)/a[0],
-                double(j)/a[1],
-                double(k)/a[2]);
-            cctbx::cartesian<> site_cart = unit_cell.orthogonalize(grid_frac);
-            // result_cart[mask(i,j,k)].push_back(site_cart);
-            result_cart.push_back(site_cart);
-            // result_cart.push_back(scitbx::vec3<double>(i,j,k));
-          }
-        }
-      }
+public:
+  sample_all_mask_regions(
+    af::const_ref<int, af::flex_grid<> > const& mask,
+    af::shared<int> const& volumes,
+    af::shared<int> const& sampling_rates,
+    cctbx::uctbx::unit_cell const& unit_cell)
+  {
+    CCTBX_ASSERT(mask.accessor().nd() == 3);
+    CCTBX_ASSERT(mask.accessor().all().all_gt(0));
+    CCTBX_ASSERT(volumes.size() == sampling_rates.size());
+
+    // initializing result_cart_ array
+    for (int i=0; i<volumes.size(); i++)
+    {
+      af::shared<scitbx::vec3<double> > tmp;
+      result_cart_.push_back(tmp);
     }
-  }
-  return result_cart;
+    af::shared<int> count_dict(volumes.size(), 0);
 
-}
+    af::c_grid<3> a = mask.accessor();
+
+    for(int i = 0; i < a[0]; i++) {
+      for(int j = 0; j < a[1]; j++) {
+        for(int k = 0; k < a[2]; k++) {
+          int mv = mask(i,j,k);
+          if (mv > 0) {
+            count_dict[mv] += 1;
+            if (count_dict[mv] == 1 ||
+                count_dict[mv] == volumes[mv] ||
+                count_dict[mv] % sampling_rates[mv] == 0) {
+              cctbx::fractional<> grid_frac = cctbx::fractional<>(
+                  double(i)/a[0],
+                  double(j)/a[1],
+                  double(k)/a[2]);
+              cctbx::cartesian<> site_cart = unit_cell.orthogonalize(grid_frac);
+              result_cart_[mv].push_back(site_cart);
+            }
+          }
+
+        } //for k
+      } // for j
+    } // for i
+  } // constructor
+
+  af::shared<scitbx::vec3<double> >
+  get_array(int n)
+  {
+    CCTBX_ASSERT(n < result_cart_.size());
+    return result_cart_[n];
+  }
+
+}; // class sample_all_mask_regions
 
 }} // namespace cctbx::maptbx
 

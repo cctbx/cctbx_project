@@ -1326,26 +1326,33 @@ def exercise_gamma_compression():
   m = get_map()
   maptbx.gamma_compression(map_data=m, gamma=0.5)
 
-def exercise_sample_mask_regions():
+
+def exercise_sample_all_mask_regions():
   cmap = flex.double(flex.grid(30,30,30))
   cmap.fill(1)
-  for i in range(10,20):
-    for j in range(10,20):
-      for k in range(10,20):
+  for i in range(0,10):
+    for j in range(0,10):
+      for k in range(0,10):
         cmap[i,j,k] = 10
-  co = maptbx.connectivity(map_data=cmap, threshold=5)
+  for i in range(15,25):
+    for j in range(15,25):
+      for k in range(15,25):
+        cmap[i,j,k] = 20
+  co = maptbx.connectivity(map_data=cmap, threshold=5, wrapping=False)
   uc = uctbx.unit_cell((10,10,10))
   mask_result = co.result()
 
-  res = maptbx.sample_mask_regions(
+  sample_regs_obj = maptbx.sample_all_mask_regions(
       mask=mask_result,
-      n_zone=1,
-      volume=1000,
-      sampling_rate=10,
+      volumes=flex.int([0, 1000,1000]),
+      sampling_rates=flex.int([0, 10,10]),
       unit_cell=uc)
-  # print list(res)
-  # print len(res)
-  assert len(res) == 101
+  a = sample_regs_obj.get_array(1)
+  b = sample_regs_obj.get_array(2)
+
+  assert a.size() == b.size() == 101
+  assert approx_equal(a[0], (0,0,0))
+  assert approx_equal(b[0], (5,5,5))
 
 def run(args):
   assert args in [[], ["--timing"]]
@@ -1381,7 +1388,7 @@ def run(args):
   exercise_standard_devations_around_sites()
   exercise_region_density_correlation()
   exercise_hoppe_gassman_modification__and__convert_to_non_negative()
-  exercise_sample_mask_regions()
+  exercise_sample_all_mask_regions()
   print "OK"
 
 if (__name__ == "__main__"):

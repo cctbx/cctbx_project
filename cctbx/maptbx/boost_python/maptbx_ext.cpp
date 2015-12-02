@@ -15,6 +15,7 @@
 #include <cctbx/maptbx/mask.h>
 #include <cctbx/maptbx/utils.h>
 #include <cctbx/maptbx/connectivity.h>
+#include <cctbx/maptbx/mask_utils.h>
 #include <cctbx/maptbx/map_accumulator.h>
 #include <cctbx/maptbx/ft_analytical_1d_point_scatterer_at_origin.h>
 
@@ -32,7 +33,8 @@ namespace cctbx { namespace maptbx { namespace boost_python {
   void wrap_mappers();
   void wrap_basic_map();
   void wrap_real_space_refinement();
-  void wrap_sample_mask_regions();
+  // void wrap_sample_mask_regions();
+  // void wrap_sample_all_mask_regions();
 
   template <typename FloatType, typename GridType>
   struct map_accumulator_wrapper
@@ -98,7 +100,8 @@ namespace {
     wrap_mappers();
     wrap_basic_map();
     wrap_real_space_refinement();
-    wrap_sample_mask_regions();
+    // wrap_sample_mask_regions();
+    // wrap_sample_all_mask_regions();
 
     {
       typedef target_and_gradients w_t;
@@ -243,6 +246,22 @@ namespace {
                      arg("zero_all_interblob_region")=true))
         .def("maximum_coors", &w_t::maximum_coors)
         .def("maximum_values", &w_t::maximum_values)
+      ;
+    }
+
+    {
+      typedef sample_all_mask_regions w_t;
+      class_<w_t>("sample_all_mask_regions", no_init)
+        .def(init<af::const_ref<int, af::flex_grid<> > const&,
+            af::shared<int> const&,
+            af::shared<int> const&,
+            cctbx::uctbx::unit_cell const& > ((
+              arg("mask"),
+              arg("volumes"),
+              arg("sampling_rates"),
+              arg("unit_cell"))))
+        .def("get_array", &w_t::get_array,
+          (arg("n")))
       ;
     }
 
