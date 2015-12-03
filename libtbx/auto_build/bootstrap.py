@@ -102,6 +102,7 @@ class ShellCommand(object):
     return self.kwargs.get('workdir', 'build')
 
   def get_environment(self):
+    # gets environment from kwargs
     env = self.kwargs.get('env', None)
     if env:
       for key, item in env.items():
@@ -405,7 +406,12 @@ class amber_module(SourceModule):
   anonymous = ['curl', 'http://cci.lbl.gov/externals/AmberTools15.gz']
   # this doesn't work
   authentarfile = ['%(cciuser)s@cci.lbl.gov', 'AmberTools15.tar.gz', '/net/cci/auto_build/externals']
-  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/externals/amber14/']
+  authenticated = [
+    'rsync',
+    '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/externals/amber14/',
+    'externals', # not mapped yet!
+    'amber_rsync',
+  ]
 
 class libsvm_module(SourceModule):
   module = 'libsvm'
@@ -746,7 +752,7 @@ class Builder(object):
       return list(set(self.CODEBASES + self.CODEBASES_EXTRA) - set(['cbflib']))
     rc = self.CODEBASES + self.CODEBASES_EXTRA
     if hasattr(self, "EXTERNAL_CODEBASES"):
-      rc += self.EXTERNAL_CODEBASES
+      rc = self.EXTERNAL_CODEBASES + rc
     return rc
 
   def get_hot(self):
@@ -797,7 +803,7 @@ class Builder(object):
         #except: print '????'
       print "commands "*8
 
-  def add_module(self, module):
+  def add_module(self, module, workdir=None, module_directory=None):
     action = MODULES.get_module(module)().get_url(auth=self.get_auth())
     method, parameters = action[0], action[1:]
     if len(parameters) == 1: parameters = parameters[0]
@@ -808,7 +814,10 @@ class Builder(object):
       if module in ["cbflib",]: # can't currently compile cbflib for Windows due to lack of HDF5 component
         return
     if method == 'rsync' and not self.isPlatformWindows():
-      self._add_rsync(module, parameters)
+      self._add_rsync(module,
+                      parameters, # really the url
+                      workdir=workdir,
+                      module_directory=module_directory)
     elif self.isPlatformWindows() and method == 'pscp':
       self._add_pscp(module, parameters)
     elif self.isPlatformWindows() and tarurl:
@@ -827,9 +836,11 @@ class Builder(object):
     else:
       raise Exception('Unknown access method: %s %s'%(method, str(parameters)))
 
-  def _add_rsync(self, module, url):
+  def _add_rsync(self, module, url, workdir=None, module_directory=None):
     """Add packages not in source control."""
     # rsync the hot packages.
+    if not workdir: workdir=["modules"]
+    if not module_directory: module_directory=module
     self.add_step(self.shell(
       name='hot %s'%module,
       command=[
@@ -837,9 +848,9 @@ class Builder(object):
         '-aL',
         '--delete',
         url,
-        module,
+        module_directory,
       ],
-      workdir=['modules']
+      workdir=workdir,
     ))
 
   def _add_remote_make_tar(self, module, tarurl, arxname, dirpath):
@@ -1427,58 +1438,68 @@ class PhenixExternalRegression(PhenixBuilder):
     "amber"
     ]
 
+  def cleanup(self, dirs=None):
+    lt = time.localtime()
+    cleaning = ['dist', 'tests', 'doc', 'tmp', 'base_tmp']
+    if lt.tm_wday==5: # do a completer build on Saturday night
+      cleaning += ['base', 'build']
+    PhenixBuilder.cleanup(self, cleaning)
+
   def add_tests(self):
     pass
+
+  def get_environment(self):
+    amberhome = os.path.join("modules",
+                             "amber",
+                             )
+    env = {"AMBERHOME" : amberhome} # used to trigger Property on slave
+    return env
 
   def add_make(self):
     # pre Phenix compile
     # Amber
-    amberhome = os.path.join('.', #os.getcwd(),
-                             "modules",
-                             "amber",
-                             )
-    env={"AMBERHOME": amberhome}
-    if 0:
+    env = self.get_environment()
+    # not universal but works because only slave running this is same as master
+    c_comp = "clang"
+    if sys.platform == "linux2":
+      c_comp = "gnu"
+    for name, command, workdir in [
+        ['Amber update', ["./update_amber", "--update"], [env["AMBERHOME"]]],
+        ['Amber configure',
+          ["./configure",
+           "--no-updates",
+           "-noX11",
+           "-macAccelerate", # ignored if not on Mac
+           "-nofftw3", # because compilers on slave are 4.1 not 4.3
+           c_comp,
+           ],
+          [env["AMBERHOME"]]],
+        ['Amber compile', ["make", "install"], [env["AMBERHOME"]]],
+        #['Amber clean',   ["make", "clean"], [env["AMBERHOME"]]],
+        ]:
       self.add_step(self.shell(
-        name       = 'Amber update',
-        command    = ["./update_amber", "--update"],
-        workdir    = [amberhome],
+        name       = name,
+        command    = command,
+        workdir    = workdir,
         description= "",
         env        = env,
-      ))
-      self.add_step(self.shell(
-        name       = 'Amber configure',
-        command    = ["./configure",
-                      "--no-updates",
-                      "-noX11",
-                      "-macAccelerate",
-                      "clang", #"gnu",
-                    ],
-        workdir    = [amberhome],
-        description= "",
-        env        = env,
-      ))
-      self.add_step(self.shell(
-        name       = 'Amber compile',
-        command    = ["make", "install"],
-        workdir    = [amberhome],
-        description= "",
-        env        = env,
-      ))
+        ))
+    self.add_refresh()
     # Phenix compile
     PhenixBuilder.add_make(self)
     # post Phenix compile
     # Amber
-    self.add_step(self.shell(
-      name       = 'Amber interface',
-      command    = ["phenix.build_amber_interface"],
-      workdir    = [amberhome],
-      description= "",
-      env        = env,
-    ))
+    self.add_command(
+      'phenix.build_amber_interface',
+      name='phenix.build_amber_interface',
+      workdir=['.'],
+      env=env,
+    )
 
   def add_tests(self):
-    self.add_test_command('amber.run_tests')
+    self.add_test_command('amber.run_tests',
+                          env = self.get_environment()
+                        )
 
 def run(root=None):
   usage = """Usage: %prog [options] [actions]
