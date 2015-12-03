@@ -67,6 +67,8 @@ class installer (object) :
     parser.add_option("-g", "--debug", dest="debug", action="store_true",
       help="Build in debugging mode", default=False)
     # Package set options.
+    parser.add_option("--molprobity", dest="molprobity", action="store_true",
+      help="Build mmtbx dependencies - like --cctbx without gui dependencies")
     parser.add_option("--cctbx", dest="cctbx", action="store_true",
       help="Build CCTBX dependencies")
     parser.add_option("--phenix", dest="phenix", action="store_true",
@@ -193,6 +195,9 @@ class installer (object) :
   def configure_packages(self, options):
     packages = []
     # Package groups.
+    if options.molprobity:
+      options.build_gui = False
+      options.build_all = False
     if options.cctbx:
       options.build_gui = True
       options.build_all = True
