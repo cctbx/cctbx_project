@@ -574,8 +574,10 @@ Installation of Python packages may fail.
 
     if self.options.download_only:
       print >> self.log, "Downloading dependencies: %s"%(" ".join(packages_order))
+      action = "download"
     else:
       print >> self.log, "Building dependencies: %s"%(" ".join(packages_order))
+      action = "install"
 
     os.chdir(self.tmp_dir)
     for i in packages_order:
@@ -590,9 +592,10 @@ Installation of Python packages may fail.
         continue
       t0=time.time()
       getattr(self, 'build_%s'%i)()
-      print >> self.log, "  package %s took %0.1fs to install" % (
+      print >> self.log, "  package %s took %0.1fs to %s" % (
         i,
         time.time()-t0,
+        action
         )
 
     if self.options.download_only:
