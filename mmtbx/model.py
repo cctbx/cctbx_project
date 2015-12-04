@@ -384,11 +384,13 @@ class manager(object):
     get_class = iotbx.pdb.common_residue_names_get_class
     supported = ["common_water", "common_amino_acid", "common_rna_dna"]
     def cm_from_residue_non_hd(residue):
-     sites_cart = flex.vec3_double()
-     for atom in residue.atoms():
-       if(not atom.element_is_hydrogen()):
-         sites_cart.append(atom.xyz)
-     return sites_cart.mean()
+      sites_cart = flex.vec3_double()
+      for atom in residue.atoms():
+        if(not atom.element_is_hydrogen()):
+          sites_cart.append(atom.xyz)
+      if len(sites_cart):
+        return sites_cart.mean()
+      return None
     def dist(r1, r2):
       return math.sqrt((r1[0]-r2[0])**2+(r1[1]-r2[1])**2+(r1[2]-r2[2])**2)
     def is_supported(residue):
@@ -408,7 +410,9 @@ class manager(object):
             if(not is_supported(residue2)): continue
             residue1=reduce_residue_lookup[residue2.id_str()]
             cm1 = cm_from_residue_non_hd(residue=residue1)
+            if cm1 is None: continue
             cm2 = cm_from_residue_non_hd(residue=residue2)
+            if cm2 is None: continue
             if dist(cm1,cm2)<1.e-3:
               # skip proper alternative confromations
               is_ac = False
