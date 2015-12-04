@@ -75,7 +75,6 @@ if (__name__ == "__main__"):
   from prime.postrefine import read_input
   iparams, txt_out_input = read_input(sys.argv[:1])
   iparams.flag_volume_correction = False
-  iparams.flag_apply_b_by_frame = True
   print txt_out_input
   txt_out_verbose = 'Log verbose\n'+txt_out_input
 
