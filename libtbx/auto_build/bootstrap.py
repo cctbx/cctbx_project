@@ -585,6 +585,10 @@ class king_module(SourceModule):
   module = 'king'
   anonymous = ['svn', 'https://github.com/rlabduke/phenix_king_binaries.git/trunk']
 
+class molprobity_moodule(SourceModule):
+  module = 'molprobity'
+  anonymous = ['svn', 'https://github.com/rlabduke/MolProbity.git/trunk']
+
 MODULES = SourceModule()
 
 ###################################
@@ -972,29 +976,31 @@ class Builder(object):
 
 
   def _add_svn(self, module, url):
+    thisworkdir = 'modules'
+    if module == 'molprobity' : thisworkdir = '.'
     svnflags = []
     if self.isPlatformWindows():
       # avoid stalling bootstrap on Windows with the occasional prompt
       # whenever server certificates have been forgotten
       svnflags = ['--non-interactive', '--trust-server-cert']
-    if os.path.exists(self.opjoin(*['modules', module, '.svn'])):
+    if os.path.exists(self.opjoin(*[thisworkdir, module, '.svn'])):
       # print "using update..."
       self.add_step(self.shell(
           command=['svn', 'update', module] + svnflags,
-          workdir=['modules']
+          workdir=[thisworkdir]
       ))
       self.add_step(self.shell(
           command=['svn', 'status', module] + svnflags,
-          workdir=['modules'],
+          workdir=[thisworkdir],
           quiet=True,
       ))
-    elif os.path.exists(self.opjoin(*['modules', module])):
+    elif os.path.exists(self.opjoin(*[thisworkdir, module])):
       print "Existing non-svn directory -- don't know what to do. skipping: %s"%module
     else:
       # print "fresh checkout..."
       self.add_step(self.shell(
           command=['svn', 'co', url, module] + svnflags,
-          workdir=['modules']
+          workdir=[thisworkdir]
       ))
 
   def _add_git(self, module, parameters):
@@ -1272,6 +1278,53 @@ class CCIBuilder(Builder):
 
 ##### CCTBX-derived packages #####
 
+class MOLPROBITYBuilder(Builder):
+  BASE_PACKAGES = 'molprobity'
+  # Checkout these codebases
+  CODEBASES = [
+    'cbflib',
+    'cctbx_project',
+    'ccp4io_adaptbx',
+    'annlib_adaptbx',
+    'tntbx',
+  ]
+  CODEBASES_EXTRA = [
+    'molprobity',
+    'chem_data',
+    'reduce',
+    'probe',
+    'suitename'
+  ]
+  # Copy these sources from cci.lbl.gov
+  HOT = [
+    'annlib',
+    'boost',
+    'scons',
+    'ccp4io',
+    #"libsvm",
+  ]
+  HOT_EXTRA = []
+  # Configure for these cctbx packages
+  LIBTBX = [
+    'mmtbx',
+  ]
+  LIBTBX_EXTRA = [
+  ]
+
+  def add_tests(self):
+    pass
+
+# def add_base(self, extra_opts=[]):
+#   super(MOLPROBITYBuilder, self).add_base(
+#     extra_opts=['--molprobity',
+#                ] + extra_opts)
+
+  def add_dispatchers(self):
+    pass
+
+  def rebuild_docs(self):
+    pass
+
 class CCTBXBuilder(CCIBuilder):
   BASE_PACKAGES = 'cctbx'
   def add_tests(self):
@@ -1538,7 +1591,7 @@ def run(root=None):
   """
   parser = optparse.OptionParser(usage=usage)
   # parser.add_option("--root", help="Root directory; this will contain base, modules, build, etc.")
-  parser.add_option("--builder", help="Builder: cctbx, phenix, xfel, dials, labelit", default="cctbx")
+  parser.add_option("--builder", help="Builder: cctbx, phenix, xfel, dials, labelit, molprobity", default="cctbx")
   parser.add_option("--cciuser", help="CCI SVN username.")
   parser.add_option("--sfuser", help="SourceForge SVN username.")
   parser.add_option("--sfmethod", help="SourceForge SVN checkout method.", default="svn+ssh")
@@ -1580,6 +1633,7 @@ def run(root=None):
     'labelit': LABELITBuilder,
     'dials': DIALSBuilder,
     'external': PhenixExternalRegression,
+    'molprobity':MOLPROBITYBuilder,
   }
   if options.builder not in builders:
     raise ValueError("Unknown builder: %s"%options.builder)
