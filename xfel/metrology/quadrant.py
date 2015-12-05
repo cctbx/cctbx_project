@@ -56,7 +56,8 @@ class one_sensor(object):
     rot45 = sqr((sin(pi/4.),-cos(pi/4.),cos(pi/4.),sin(pi/4.)))
 
     from xfel.metrology.legacy_scale import quadrant_self_correlation
-    REF,ROT = quadrant_self_correlation(asic,asci_origin,beam_center,rot45)
+    min_value = self.image.get_detector()[0].get_trusted_range()[0]
+    REF,ROT = quadrant_self_correlation(asic,asci_origin,beam_center,rot45,min_value)
     CCRR = flex.linear_correlation(REF,ROT)
 
     """initial python implementation
@@ -142,7 +143,8 @@ class one_panel(object):
     rot45 = sqr((sin(pi/4.),-cos(pi/4.),cos(pi/4.),sin(pi/4.)))
 
     from xfel.metrology.legacy_scale import quadrant_self_correlation
-    REF,ROT = quadrant_self_correlation(asic.as_double(),asic_origin,beam_center,rot45)
+    min_value = self.image.get_detector()[0].get_trusted_range()[0]
+    REF,ROT = quadrant_self_correlation(asic.as_double(),asic_origin,beam_center,rot45,min_value)
     CCRR = flex.linear_correlation(REF,ROT)
 
     return CCRR.coefficient()

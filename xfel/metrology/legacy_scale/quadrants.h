@@ -30,7 +30,8 @@ boost::python::tuple
 qsc(scitbx::af::flex_double asic,
     vec2 const& asic_origin,
     vec2 const& beam_center,
-    mat2 const& rotmat){
+    mat2 const& rotmat,
+    double const min_px_value){
 
   int F0 = asic.accessor().focus()[0];
   int F1 = asic.accessor().focus()[1];
@@ -45,8 +46,10 @@ qsc(scitbx::af::flex_double asic,
       vec2 prime = rotmat*acoord + constant;
       vec2i primei(iround(prime[0]),iround(prime[1]));
       if (0<=primei[0] && primei[0]<F0 && 0<=primei[1] && primei[1]<F1) {
-        ref_data.push_back(asic[F1*xcoord+ycoord]);
-        rot_data.push_back(asic[F1*primei[0] + primei[1]]);
+        if (asic[F1*xcoord+ycoord] >= min_px_value && asic[F1*primei[0] + primei[1]] >= min_px_value) {
+          ref_data.push_back(asic[F1*xcoord+ycoord]);
+          rot_data.push_back(asic[F1*primei[0] + primei[1]]);
+        }
       }
     }
   }
