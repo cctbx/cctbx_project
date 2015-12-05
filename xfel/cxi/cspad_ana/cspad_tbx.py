@@ -95,6 +95,15 @@ def address_split(address):
   if m is not None:
     return (m.group('det'), m.group('det_id'), m.group('dev'), m.group('dev_id'))
 
+  # try to deal with aliases
+  known_aliases = {
+    'Ds1CsPad': 'CxiDs1-0|Cspad-0',
+    'Ds2CsPad': 'CxiDs2-0|Cspad-0'
+  }
+  address = known_aliases.get(address, None)
+  if address is not None:
+    return address_split(address)
+
   return (None, None, None, None)
 
 
