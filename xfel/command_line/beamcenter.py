@@ -56,6 +56,7 @@ if (__name__ == "__main__"):
 
       print "Assembling mask...",; sys.stdout.flush()
       mask = panel.get_trusted_range_mask(data)
+      trusted_min = panel.get_trusted_range()[0]
 
       mask_center = col((params.beam_center_slow,params.beam_center_fast))
       px_max = params.px_max
@@ -70,7 +71,7 @@ if (__name__ == "__main__"):
           if l < px_min or l > px_max:
             mask[x,y] = False
 
-      data.set_selected(~mask, 0)
+      data.set_selected(~mask, trusted_min-1)
       print "done"
       if params.show_plots:
         from matplotlib import pyplot as plt
@@ -87,7 +88,7 @@ if (__name__ == "__main__"):
         for yi in range(-grid_radius, grid_radius+1):
           test_bc = beam_center + col((xi,yi))
           print "Testing beam center", test_bc.elems,
-          REF,ROT = quadrant_self_correlation(data,panel_origin,test_bc,rot45)
+          REF,ROT = quadrant_self_correlation(data,panel_origin,test_bc,rot45,trusted_min)
           CCRR = flex.linear_correlation(REF,ROT)
           VV = CCRR.coefficient()
           if VV>gmax:
