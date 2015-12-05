@@ -3578,6 +3578,7 @@ xfel/clustering/singleframe.py -text
 xfel/command_line/FEE_average_plot.py -text
 xfel/command_line/__init__.py -text
 xfel/command_line/auto_submit.py -text
+xfel/command_line/beamcenter.py -text
 xfel/command_line/brehm_diederichs.py -text
 xfel/command_line/cluster_42.py -text
 xfel/command_line/cluster_intensity_statistics.py -text
