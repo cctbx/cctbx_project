@@ -4,18 +4,13 @@ from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.xtc_dump
 #
 import psana
-#import numpy as np
 from xfel.cftbx.detector import cspad_cbf_tbx
 from xfel.cxi.cspad_ana import cspad_tbx
-#import pycbf
 import os, sys
 import libtbx.load_env
 from libtbx.utils import Sorry, Usage
 from dials.util.options import OptionParser
 from libtbx.phil import parse
-#from dxtbx.imageset import MemImageSet
-#from dxtbx.datablock import DataBlockFactory
-#from scitbx.array_family import flex
 from libtbx import easy_pickle
 
 phil_scope = parse('''
@@ -39,6 +34,10 @@ phil_scope = parse('''
     address = None
       .type = str
       .help = Detector address, e.g. CxiDs2.0:Cspad.0 or detector alias, e.g. Ds1CsPad
+    override_energy = None
+      .type = float
+      .help = If not None, use the input energy for every event instead of the energy \
+              from the XTC stream
   }
   format {
     file_format = *cbf pickle
@@ -118,12 +117,8 @@ class Script(object):
     ds = psana.DataSource(dataset_name)
 
     if params.format.file_format == "cbf":
-      #src = psana.Source('DetInfo(%s)'%params.input.address)
-      psana_det = psana.Detector(params.input.address, ds.env())
-
-
-    env = ds.env()
-    #calib_dir = env.calibDir()
+      src = psana.Source('DetInfo(%s)'%params.input.address)
+      psana_det = psana.Detector(src, ds.env())
 
     # set this to sys.maxint to analyze all events
     if params.dispatch.max_events is None:
@@ -133,9 +128,9 @@ class Script(object):
 
     for run in ds.runs():
       # load a header only cspad cbf from the slac metrology
-      #base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run.env(), src)
-      #if base_dxtbx is None:
-      #  raise Sorry("Couldn't load calibration file for run %d"%run.run())
+      base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run, src)
+      if base_dxtbx is None:
+        raise Sorry("Couldn't load calibration file for run %d"%run.run())
 
       # list of all events
       times = run.times()
@@ -182,13 +177,26 @@ class Script(object):
             print "No distance, skipping shot"
             continue
 
-          wavelength = cspad_tbx.evt_wavelength(evt)
-          if wavelength is None:
-            print "No wavelength, skipping shot"
-            continue
+          if self.params.input.override_energy is None:
+            wavelength = cspad_tbx.evt_wavelength(evt)
+            if wavelength is None:
+              print "No wavelength, skipping shot"
+              continue
+          else:
+            wavelength = 12398.4187/self.params.input.override_energy
 
-          raise Sorry("CBF not done yet")
+          # stitch together the header, data and metadata into the final dxtbx format object
+          cspad_img = cspad_cbf_tbx.format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, params.input.address)
+          path = os.path.join(params.output.output_dir, "shot-" + s + ".cbf")
+          print "Saving", path
 
+          # write the file
+          import pycbf
+          cspad_img._cbf_handle.write_widefile(path, pycbf.CBF,\
+            pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)
+
+      run.end()
+    ds.end()
 
 if __name__ == "__main__":
   from dials.util import halraiser

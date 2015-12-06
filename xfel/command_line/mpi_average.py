@@ -362,7 +362,7 @@ the output images in the folder cxi49812.
           metro_path = command_line.options.calib_dir
         elif command_line.options.pickle_optical_metrology:
           from xfel.cftbx.detector.cspad_cbf_tbx import get_calib_file_path
-          metro_path = get_calib_file_path(run.env(), src)
+          metro_path = get_calib_file_path(run.env(), src, run)
         else:
           metro_path = libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0")
         sections = parse_calib.calib2sections(metro_path)
@@ -428,7 +428,7 @@ the output images in the folder cxi49812.
       # load a header only cspad cbf from the slac metrology
       from xfel.cftbx.detector import cspad_cbf_tbx
       import pycbf
-      base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run.env(), src)
+      base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run, src)
       if base_dxtbx is None:
         raise Sorry("Couldn't load calibration file for run %d"%run.run())
 

@@ -92,7 +92,7 @@ class basis(object):
                        r3[6],r3[7],r3[8],self.translation[2],
                        0,0,0,1))
 
-def read_slac_metrology(path, plot=False):
+def read_slac_metrology(path = None, geometry = None, plot=False):
   def basis_from_geo(geo):
     rotx = matrix.col((1,0,0)).axis_and_angle_as_r3_rotation_matrix(
       geo.rot_x + geo.tilt_x, deg=True)
@@ -106,15 +106,20 @@ def read_slac_metrology(path, plot=False):
     return basis(orientation = rot,
                  translation = matrix.col((geo.x0/1000, geo.y0/1000, geo.z0/1000)))
 
-  from PSCalib.GeometryAccess import GeometryAccess
+  if path is None and geometry is None:
+    raise Sorry("Need to provide a geometry object or a path to a geometry file")
+
+  if path is not None and geometry is not None:
+    raise Sorry("Cannot provide a geometry object and a geometry file. Ambiguous")
+
+  if geometry is None:
+    try:
+      from PSCalib.GeometryAccess import GeometryAccess
+      geometry = GeometryAccess(path)
+    except Exception, e:
+      raise Sorry("Can't parse this metrology file")
 
   metro = {}
-
-  try:
-    geometry = GeometryAccess(path)
-  except Exception, e:
-    raise Sorry("Can't parse this metrology file")
-
   pixel_size = geometry.get_pixel_scale_size()/1000
   null_ori = matrix.col((0,0,1)).axis_and_angle_as_unit_quaternion(0, deg=True)
 
@@ -173,12 +178,22 @@ def read_slac_metrology(path, plot=False):
 
   return metro
 
-def get_calib_file_path(env, src):
+def get_calib_file_path(env, src, run):
   """ Findes the path to the SLAC metrology file stored in a psana environment
       object's calibration store
       @param env psana environment object
-      @param env psana DataSource
+      @param src psana DataSource
+      @param run psana run object or run number
   """
+  from psana import Detector
+  try:
+    # try to get it from the detector interface
+    psana_det = Detector(src, ds.env())
+    return psana_det.pyda.geoaccess(run).path
+  except Exception, e:
+    pass
+
+  # try to get it from the calib store directly
   from psana import ndarray_uint8_1
   cls = env.calibStore()
   path_nda = cls.get(ndarray_uint8_1, src, 'geometry-calib')
@@ -186,18 +201,29 @@ def get_calib_file_path(env, src):
     return None
   return ''.join(map(chr, path_nda))
 
-def env_dxtbx_from_slac_metrology(env, src):
+def env_dxtbx_from_slac_metrology(run, src):
   """ Loads a dxtbx cspad cbf header only object from the metrology path stored
-      in a psana environment object's calibration store
-      @param env psana environment object
+      in a psana run object's calibration store
+      @param env psana run object
       @param env psana DataSource
   """
-  metro_path = get_calib_file_path(env, src)
+  from psana import Detector
+  try:
+    # try to load the geometry from the detector interface
+    psana_det = Detector(src, run.env())
+    geometry = psana_det.pyda.geoaccess(run)
+  except Exception, e:
+    geometry = None
 
-  if metro_path is None:
+  if geometry is None:
+    metro_path = get_calib_file_path(run.env(), src, run)
+  else:
+    metro_path = None
+
+  if metro_path is None and geometry is None:
     return None
 
-  metro = read_slac_metrology(metro_path)
+  metro = read_slac_metrology(metro_path, geometry)
   cbf = get_cspad_cbf_handle(None, metro, 'cbf', None, "test", None, 100, verbose = True, header_only = True)
 
   from dxtbx.format.FormatCBFCspad import FormatCBFCspadInMemory
