@@ -139,9 +139,15 @@ master_phil = iotbx.phil.parse("""
        .type = bool
        .short_caption = Use space-group symmetry
        .help = If you set use_sg_symmetry=True then the symmetry of the space\
-                 group will be used. For example in P1 a point at one end of the \
-                 unit cell is next to a point on the other end.  Normally for \
-                 cryo-EM data this should be set to False.
+               group will be used. For example in P1 a point at one end of the \
+               unit cell is next to a point on the other end.  Normally for \
+               cryo-EM data this should be set to False.
+
+     resolution = None
+       .type = float
+       .short_caption = resolution
+       .help = Nominal resolution of the map. This is used later to decide on\
+               resolution cutoffs for Fourier inversion of the map
 
   }
 
@@ -338,6 +344,7 @@ class map_info_object:
     all=None,
     crystal_symmetry=None,
     is_map=None,
+    id=None,
     ):
     from libtbx import adopt_init_args
     adopt_init_args(self, locals())
@@ -346,9 +353,13 @@ class map_info_object:
 
   def show_summary(self,out=sys.stdout):
     if self.is_map:
-      print >>out,"Map file:%s" %(self.file_name)
+      print >>out,"Map file:%s" %(self.file_name),
     else:
-      print >>out,"Mask file:%s" %(self.file_name)
+      print >>out,"Mask file:%s" %(self.file_name),
+    if self.id is not None:
+      print >>out,"ID: %s" %(self.id)
+    else:
+      print >>out
     if self.origin and self.all:
       print >>out,"   Origin: %d  %d  %d   Extent: %d  %d  %d" %(
        tuple(self.origin)+tuple(self.all))
@@ -436,6 +447,7 @@ class info_object:
       crystal_symmetry=crystal_symmetry,
       origin=origin,
       all=all,
+      id=id,
       is_map=True)
 
   def set_origin_shift(self,origin_shift=None):
@@ -488,11 +500,12 @@ class info_object:
      n_residues=n_residues)
 
   def set_output_box_map_info(self,file_name=None,crystal_symmetry=None,
-    origin=None,all=None):
+    origin=None,all=None,id=None):
     self.output_box_map_info=map_info_object(file_name=file_name,
       crystal_symmetry=crystal_symmetry,
       origin=origin,
       all=all,
+      id=id,
       is_map=True)
 
   def set_output_box_mask_info(self,file_name=None,crystal_symmetry=None,
@@ -504,12 +517,13 @@ class info_object:
       is_map=False)
 
   def add_output_region_map_info(self,file_name=None,crystal_symmetry=None,
-    origin=None,all=None):
+    origin=None,all=None,id=None):
     self.output_region_map_info_list.append(map_info_object(
       file_name=file_name,
       crystal_symmetry=crystal_symmetry,
       origin=origin,
       all=all,
+      id=id,
       is_map=True)
      )
 
@@ -2556,7 +2570,8 @@ def write_region_maps(params,
       file_name=file_name,
       crystal_symmetry=box_crystal_symmetry,
       origin=box_map.origin(),
-      all=box_map.all())
+      all=box_map.all(),
+      id=base_file)
 
     print >>out,"Atoms representation written to %s" %(pdb_file_name)
     write_atoms(tracking_data=tracking_data,sites=sites,file_name=pdb_file_name)
