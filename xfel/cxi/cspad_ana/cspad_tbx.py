@@ -98,7 +98,8 @@ def address_split(address):
   # try to deal with aliases
   known_aliases = {
     'Ds1CsPad': 'CxiDs1-0|Cspad-0',
-    'Ds2CsPad': 'CxiDs2-0|Cspad-0'
+    'Ds2CsPad': 'CxiDs2-0|Cspad-0',
+    'cspad'   : 'XppGon-0|Cspad-0'
   }
   address = known_aliases.get(address, None)
   if address is not None:

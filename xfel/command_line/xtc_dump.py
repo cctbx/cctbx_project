@@ -18,11 +18,6 @@ phil_scope = parse('''
     max_events = None
       .type = int
       .help = If not specified, process all events. Otherwise, only process this many
-    hit_finder = False
-      .type = bool
-      .help = If the number of strong reflections is less than \
-              refinement.reflections.minimum_number_of_reflections, hit_filter=True \
-              will discard the image. hit_finder=False: process all images
   }
   input {
     experiment = None
