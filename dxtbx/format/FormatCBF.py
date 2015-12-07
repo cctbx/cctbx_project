@@ -31,15 +31,15 @@ class FormatCBF(Format):
   def get_cbf_header(image_file):
     '''Obtain the text section of the header, which is assumed to be
     everything before --CIF-BINARY-FORMAT-SECTION-- - N.B. for reasons
-    of simplicity will read the file in 1k chunks.'''
+    of simplicity will read the file in 4k chunks.'''
 
     fin = FormatCBF.open_file(image_file, 'rb')
 
-    header = fin.read(1024)
+    header = fin.read(4096)
     # FIXME this is grim as it is searching over longer and longer
     # files
     while not '--CIF-BINARY-FORMAT-SECTION--' in header:
-      add = fin.read(1024)
+      add = fin.read(4096)
       if add:
         header += add
       else:
