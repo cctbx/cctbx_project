@@ -6,6 +6,7 @@ tst_list = (
     "$D/tests/tst_dxtbx.py",
     "$D/tests/tst_imageset.py",
     "$D/tests/tst_datablock.py",
+    "$D/tests/tst_filecache.py",
     "$D/tests/command_line/tst_to_xds.py",
     "$D/tests/model/tst_beam.py",
     "$D/tests/model/tst_detector.py",

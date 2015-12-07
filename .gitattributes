@@ -680,6 +680,7 @@ dxtbx/tests/test_goniometer.py -text
 dxtbx/tests/test_scan.py -text
 dxtbx/tests/tst_datablock.py -text
 dxtbx/tests/tst_dxtbx.py -text
+dxtbx/tests/tst_filecache.py -text
 dxtbx/tests/tst_imageset.py -text
 fable/SConscript -text
 fable/__init__.py svneol=native#text/x-python
