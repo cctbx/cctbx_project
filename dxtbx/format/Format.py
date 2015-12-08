@@ -349,7 +349,7 @@ class Format(object):
       fh = open(filename, mode)
 
 ##  To disable caching logic:
-#   return fh
+    return fh
 
     dxtbx_format._lazy_cache_filename = filename
     dxtbx_format._lazy_cache = lazy_file_cache(fh)
