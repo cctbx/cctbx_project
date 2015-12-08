@@ -28,7 +28,9 @@ except: # intentional
 
 import exceptions
 
-# first - import access to all of the factories that we will be needing
+from dxtbx.filecache import lazy_file_cache
+
+# import access to all of the factories that we will be needing
 
 from dxtbx.model.goniometer import Goniometer, goniometer_factory
 from dxtbx.model.detector import Detector, detector_factory
@@ -70,6 +72,8 @@ class Format(object):
   which will prove to be useful in other implementations.'''
 
   __metaclass__ = _MetaFormat
+  _lazy_cache_filename = None
+  _lazy_cache = None
 
   @staticmethod
   def understand(image_file):
@@ -315,25 +319,44 @@ class Format(object):
 
     return ord(magic[0]) == 0x1f and ord(magic[1]) == 0x8b
 
-  @staticmethod
-  def open_file(filename, mode='rb', url=False):
-    '''Open file for reading, decompressing silently if necessary.'''
+  @classmethod
+  def open_file(dxtbx_format, filename, mode='rb', url=False):
+    '''Open file for reading, decompressing silently if necessary,
+       caching transparently if possible.'''
+    if filename == dxtbx_format._lazy_cache_filename:
+      return dxtbx_format._lazy_cache.open()
 
-    if url:
-      if Format.is_url(filename):
-        import urllib2
-        return urllib2.urlopen(filename)
+    if dxtbx_format._lazy_cache is not None:
+      dxtbx_format._lazy_cache.close()
 
-    if Format.is_bz2(filename):
+    if url and Format.is_url(filename):
+      import urllib2
+      fh = urllib2.urlopen(filename)
+
+    elif Format.is_bz2(filename):
       if bz2 is None:
         raise RuntimeError, 'bz2 file provided without bz2 module'
 
-      return bz2.BZ2File(filename, mode)
+      fh = bz2.BZ2File(filename, mode)
 
-    if Format.is_gzip(filename):
+    elif Format.is_gzip(filename):
       if gzip is None:
         raise RuntimeError, 'gz file provided without gzip module'
 
-      return gzip.GzipFile(filename, mode)
+      fh = gzip.GzipFile(filename, mode)
 
-    return open(filename, mode)
+    else:
+      fh = open(filename, mode)
+
+##   For debugging file open operations
+#   if filename.endswith("2A4_1_0300.cbf"):
+#     import traceback
+#     sys.stderr.write("\n%s\n" % filename)
+#     traceback.print_stack()
+
+#   Caching logic not enabled yet
+    return fh
+
+    dxtbx_format._lazy_cache_filename = filename
+    dxtbx_format._lazy_cache = lazy_file_cache(fh)
+    return dxtbx_format._lazy_cache.open()
