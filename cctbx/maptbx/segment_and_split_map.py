@@ -344,7 +344,7 @@ class map_info_object:
     all=None,
     crystal_symmetry=None,
     is_map=None,
-    id=None,
+    map_id=None,
     ):
     from libtbx import adopt_init_args
     adopt_init_args(self, locals())
@@ -356,8 +356,8 @@ class map_info_object:
       print >>out,"Map file:%s" %(self.file_name),
     else:
       print >>out,"Mask file:%s" %(self.file_name),
-    if self.id is not None:
-      print >>out,"ID: %s" %(self.id)
+    if self.map_id is not None:
+      print >>out,"ID: %s" %(self.map_id)
     else:
       print >>out
     if self.origin and self.all:
@@ -447,7 +447,6 @@ class info_object:
       crystal_symmetry=crystal_symmetry,
       origin=origin,
       all=all,
-      id=id,
       is_map=True)
 
   def set_origin_shift(self,origin_shift=None):
@@ -500,12 +499,11 @@ class info_object:
      n_residues=n_residues)
 
   def set_output_box_map_info(self,file_name=None,crystal_symmetry=None,
-    origin=None,all=None,id=None):
+    origin=None,all=None):
     self.output_box_map_info=map_info_object(file_name=file_name,
       crystal_symmetry=crystal_symmetry,
       origin=origin,
       all=all,
-      id=id,
       is_map=True)
 
   def set_output_box_mask_info(self,file_name=None,crystal_symmetry=None,
@@ -517,13 +515,13 @@ class info_object:
       is_map=False)
 
   def add_output_region_map_info(self,file_name=None,crystal_symmetry=None,
-    origin=None,all=None,id=None):
+    origin=None,all=None,map_id=None):
     self.output_region_map_info_list.append(map_info_object(
       file_name=file_name,
       crystal_symmetry=crystal_symmetry,
       origin=origin,
       all=all,
-      id=id,
+      map_id=map_id,
       is_map=True)
      )
 
@@ -1404,8 +1402,6 @@ def get_duplicates_and_ncs(
   unit_cell=tracking_data.crystal_symmetry.unit_cell()
   # Get sampled points in each region
   sample_dict={}
-  endpoint_dict={}
-  count_dict={}
   region_scattered_points_dict={} # some points in each region
   sampling_rate=edited_volume_list[0]//target_points_per_region
   volumes=flex.int()
@@ -1424,11 +1420,9 @@ def get_duplicates_and_ncs(
       max(v//maximum_points_per_region,
           min(v//minimum_points_per_region,
               sampling_rate)  ))
-    endpoint_dict[id]=v-1
-    count_dict[id]=0
     region_scattered_points_dict[id]=flex.vec3_double()
 
-    volumes.append(v) # ZZZ check vs v-1
+    volumes.append(v)
     sampling_rates.append(max(1,
       max(v//maximum_points_per_region,
           min(v//minimum_points_per_region,
@@ -2571,7 +2565,7 @@ def write_region_maps(params,
       crystal_symmetry=box_crystal_symmetry,
       origin=box_map.origin(),
       all=box_map.all(),
-      id=base_file)
+      map_id=base_file)
 
     print >>out,"Atoms representation written to %s" %(pdb_file_name)
     write_atoms(tracking_data=tracking_data,sites=sites,file_name=pdb_file_name)
