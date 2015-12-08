@@ -497,7 +497,7 @@ class nqh_flips (validation) :
         resname = line[22:25]
         assert (resname in ["ASN", "GLN", "HIS"])
         flip = nqh_flip(
-          chain_id=line[16],
+          chain_id=line[15:17].strip(),
           resseq=line[17:21].strip(),
           icode=line[21],
           altloc=line[29],
