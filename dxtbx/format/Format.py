@@ -348,14 +348,8 @@ class Format(object):
     else:
       fh = open(filename, mode)
 
-##   For debugging file open operations
-#   if filename.endswith("2A4_1_0300.cbf"):
-#     import traceback
-#     sys.stderr.write("\n%s\n" % filename)
-#     traceback.print_stack()
-
-#   Caching logic not enabled yet
-    return fh
+##  To disable caching logic:
+#   return fh
 
     dxtbx_format._lazy_cache_filename = filename
     dxtbx_format._lazy_cache = lazy_file_cache(fh)
