@@ -54,6 +54,31 @@ def test_filecache():
   # Get a new cache object
   cache.close()
   cache = dxtbx.filecache.lazy_file_cache(open(image, 'rb'))
+  cache._page_size = 5
+  fh = dxtbx.filecache.pseudo_file(cache)
+
+  # readline stress test
+  sh = StringIO(correct_data)
+  with cache.open() as fh:
+    actual   = fh.readline()
+    expected = sh.readline()
+    assert(actual == expected)
+    
+    actual   = fh.read(68)
+    expected = sh.read(68)
+    assert(actual == expected)
+
+    actual   = fh.readline()
+    expected = sh.readline()
+    assert(actual == expected)
+
+    actual   = fh.read(1)
+    expected = sh.read(1)
+    assert(actual == expected)
+
+  # Get a new cache object
+  cache.close()
+  cache = dxtbx.filecache.lazy_file_cache(open(image, 'rb'))
 
   sh = StringIO(correct_data)
   fh = dxtbx.filecache.pseudo_file(cache)
