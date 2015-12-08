@@ -41,6 +41,7 @@
 
 from __future__ import division
 import os
+from cStringIO import StringIO
 
 class lazy_file_cache():
   '''An object providing shared cached access to files'''
@@ -53,8 +54,8 @@ class lazy_file_cache():
     self._all_cached = False
     self._file = file_object
 
-    # String containing cached information
-    self._cache = ""
+    # StringIO object containing cached information
+    self._cache_object = StringIO()
     self._cache_size = 0
 
     # Current status of lazy cache towards client objects.
@@ -96,8 +97,13 @@ class lazy_file_cache():
 
     expected_cache_size = self._cache_size + read_bytes
 
-    self._cache += self._file.read(read_bytes)
-    self._cache_size = len(self._cache)
+    data = self._file.read(read_bytes)
+    self._cache_object.seek(self._cache_size)
+    self._cache_object.write(data)
+    self._cache_size = self._cache_object.tell()
+
+    if self._debug:
+      print "Read %d bytes from file, cache size %d" % (len(data), self._cache_size)
 
     if (expected_cache_size != self._cache_size):
       # must have reached end of file
@@ -115,8 +121,12 @@ class lazy_file_cache():
 
     if self._debug:
       print "Reading remaining file into cache"
-    self._cache += self._file.read()
-    self._cache_size = len(self._cache)
+
+    data = self._file.read()
+    self._cache_object.seek(self._cache_size)
+    self._cache_object.write(data)
+    self._cache_size += len(data)
+
     self._all_cached = True
     self._close_file()
 
@@ -161,69 +171,71 @@ class lazy_file_cache():
       print "Instance disconnected from lazy cache"
     self._reference_counter -= 1
 
-  def read(self, start=0, tochar=None, maxbytes=None):
-    '''Basic read function to access data from cache or, if necessary,
-       the original file. The first byte is addressed with start=0.'''
-
+  def pass_read(self, start=0, maxbytes=None):
+    '''Read from position start up to maxbytes bytes from file.
+       If maxbytes is not set, read the entire file.'''
     self._check_not_closed()
-    if tochar is None:
-      # Simple case, no need for string processing.
-
+    if not self._all_cached:
+      # Ensure that relevant data is in cache
       if maxbytes is None:
-        # Ensure that all data is read
         self._cache_all()
-        data = self._cache[start:]
-
       else:
-        # Ensure that relevant data is in cache
         self._cache_up_to(start + maxbytes)
-        data = self._cache[start:(start + maxbytes)]
 
+    self._cache_object.seek(start)
+    if maxbytes is None:
+      return self._cache_object.read(), self._cache_object.tell()
     else:
-      # Find slice ending in substring, optionally up to a maximum length
+      return self._cache_object.read(maxbytes), self._cache_object.tell()
 
-      data_found = False
-      read_to = start + (len(tochar) - 1)
+  def pass_readline(self, start=0, maxbytes=None):
+    '''Read a line from file, but no more than maxbytes bytes.'''
+    self._check_not_closed()
 
-      # Check whether data needs to be read from file.
-      # This is the case if
-      #  - it is not entirely cached already
-      #  - when a maximum length is set, the entire slice
-      #    is not already in the cache
-      #  - the substring has not been found so far
-      while not self._all_cached \
-            and ((maxbytes is None) or (self._cache_size < start + maxbytes)) \
-            and not data_found:
-        # read another block from file, check for termination substring.
-        # checks must overlap block boundaries beyond the starting position
-        self._cache_up_to(read_to + self._page_size)
-        data_found = self._cache.find(tochar, max(start, read_to - len(tochar))) > 0
-        read_to += self._page_size
-
-      # Definitely can now find relevant slice without file access
-
+    if self._all_cached:
+      self._cache_object.seek(start)
       if maxbytes is None:
-        # When a match is found, return slice,
-        # otherwise return remainder of file.
-        pos = self._cache.find(tochar, start)
-        if pos > 0:
-          data = self._cache[start:(pos+len(tochar))]
-        else:
-          data = self._cache[start:]
-
+        return self._cache_object.readline(), self._cache_object.tell()
       else:
-        # When a match is found, return slice not larger than maxbytes,
-        # otherwise return slice of length maxbytes
-        pos = self._cache.find(tochar, start, start+maxbytes)
-        if pos > 0:
-          data = self._cache[start:(pos+len(tochar))]
-        else:
-          data = self._cache[start:(start+maxbytes)]
+        return self._cache_object.readline(maxbytes), self._cache_object.tell()
 
-    if self._debug:
-      print "%d bytes read from cache" % len(data)
-    return data
+    if self._cache_size <= start:
+      self._cache_up_to(start + self._page_size)
 
+    self._cache_object.seek(start)
+    if maxbytes is None:
+      line_candidate = self._cache_object.readline()
+    else:
+      line_candidate = self._cache_object.readline(maxbytes)
+
+    end_position = self._cache_object.tell()
+
+    if end_position < self._cache_size:
+      # Found a complete line within the cache
+      return line_candidate, end_position
+
+    if (maxbytes is not None) and (end_position == start + maxbytes):
+      # Fulfilled maxbytes condition within the cache
+      return line_candidate, end_position
+
+    while end_position == self._cache_size:
+      # Do we have a complete line?
+      if line_candidate.endswith('\n'):
+        return line_candidate, end_position
+
+      # Ran against cache limit. Extend cache
+      self._cache_up_to(self._cache_size + self._page_size)
+      self._cache_object.seek(end_position)
+
+      # Continue reading
+      if maxbytes is None:
+        line_candidate += self._cache_object.readline()
+      else:
+        foundbytes = end_position - start
+        line_candidate += self._cache_object.readline(maxbytes - foundbytes)
+      end_position = self._cache_object.tell()
+
+    return line_candidate, end_position
 
 
 class pseudo_file():
@@ -262,7 +274,6 @@ class pseudo_file():
     self._check_not_closed()
 
   def next(self):
-    self._check_not_closed()
     data = self.readline()
     if data == "":
       raise StopIteration()
@@ -272,30 +283,27 @@ class pseudo_file():
   def read(self, size=-1):
     self._check_not_closed()
     if size > 0:
-      data = self._cache_object.read(start=self._seek, maxbytes=size)
+      data, self._seek = self._cache_object.pass_read(start=self._seek, maxbytes=size)
     elif size == 0:
       data = ''
     else:
-      data = self._cache_object.read(start=self._seek)
-    self._seek += len(data)
+      data, self._seek = self._cache_object.pass_read(start=self._seek)
     return data
 
   def readline(self, size=-1):
     self._check_not_closed()
     if (size > 0):
-      data = self._cache_object.read(start=self._seek, tochar="\n", maxbytes=size)
+      data, self._seek = self._cache_object.pass_readline(start=self._seek, maxbytes=size)
     else:
-      data = self._cache_object.read(start=self._seek, tochar="\n")
-    self._seek += len(data)
+      data, self._seek = self._cache_object.pass_readline(start=self._seek)
     return data
 
   def readlines(self, sizehint=-1):
     self._check_not_closed()
     if (sizehint > 0):
-      data = self._cache_object.read(start=self._seek, maxbytes=sizehint)
+      data, self._seek = self._cache_object.pass_read(start=self._seek, maxbytes=sizehint)
     else:
-      data = self._cache_object.read(start=self._seek)
-    self._seek += len(data)
+      data, self._seek = self._cache_object.pass_read(start=self._seek)
     return data.splitlines(True)
 
   def seek(self, offset, whence=os.SEEK_SET):
