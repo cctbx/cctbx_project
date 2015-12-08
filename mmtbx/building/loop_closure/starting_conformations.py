@@ -2,7 +2,7 @@ from __future__ import division
 
 from mmtbx.rotamer import ramachandran_eval
 from mmtbx.building.loop_closure import utils
-from mmtbx.validation.ramalyze import ramalyze
+from mmtbx.validation.ramalyze import get_favored_regions
 from mmtbx.validation.ramalyze import RAMALYZE_FAVORED # import dependency
 from mmtbx.validation.ramalyze import RAMALYZE_ALLOWED # import dependency
 from mmtbx.validation.ramalyze import RAMALYZE_OUTLIER # import dependency
@@ -31,16 +31,16 @@ def set_rama_angles(moving_h, angles):
     # phi
     if target_angle_pair[0] is not None:
       utils.rotate_atoms_around_bond(
-          result_h,
+          result_h, 
           phi_psi_pair[0][1],
           phi_psi_pair[0][2],
           angle=-phi_psi_angles[0]+target_angle_pair[0])
     # psi
     if target_angle_pair[1] is not None:
       utils.rotate_atoms_around_bond(
-          result_h,
-          phi_psi_pair[1][1],
-          phi_psi_pair[1][2],
+          result_h, 
+          phi_psi_pair[1][1], 
+          phi_psi_pair[1][2], 
           angle=-phi_psi_angles[1]+target_angle_pair[1])
   return result_h
 
@@ -60,7 +60,7 @@ def get_all_starting_conformations(moving_h, change_radius, cutoff=50):
   # print "  change_angles", change_angles
   for i, (phi_psi_pair, rama_key) in enumerate(phi_psi_atoms):
     if i in change_angles or (utils.rama_evaluate(phi_psi_pair, r, rama_key) == RAMALYZE_OUTLIER):
-      variants.append(ramalyze.get_favored_regions(rama_key))
+      variants.append(get_favored_regions(rama_key))
     else:
       variants.append([(None, None)])
   print "variants", variants
@@ -84,7 +84,7 @@ def get_starting_conformations(moving_h, cutoff=50):
   phi_psi_atoms = utils.get_phi_psi_atoms(moving_h)
   for phi_psi_pair, rama_key in phi_psi_atoms:
     if (utils.rama_evaluate(phi_psi_pair, r, rama_key) == RAMALYZE_OUTLIER):
-      variants.append(ramalyze.get_favored_regions(rama_key))
+      variants.append(get_favored_regions(rama_key))
     else:
       variants.append([(None, None)])
   result = []
