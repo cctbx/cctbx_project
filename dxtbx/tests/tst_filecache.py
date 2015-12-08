@@ -63,7 +63,7 @@ def test_filecache():
     actual   = fh.readline()
     expected = sh.readline()
     assert(actual == expected)
-    
+
     actual   = fh.read(68)
     expected = sh.read(68)
     assert(actual == expected)
