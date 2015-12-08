@@ -245,7 +245,6 @@ class common_setpaths(object):
       self.u = StringIO() # /dev/null equivalent
 
   def all_and_debug(self):
-    self.set_module_paths()
     if (self.suffix == "_debug"):
       self.update_path("PYTHONPATH",
         os.pathsep.join([
@@ -254,13 +253,6 @@ class common_setpaths(object):
         ld_library_path_var_name(),
         os.pathsep.join([self.path_script_value(_)
           for _ in self.env.ld_library_path_additions()]))
-
-  def set_module_paths(self):
-    base_dir = self.env.under_base('.')
-    self.setenv(var_name="PANGO_RC_FILE",
-      val=os.path.join(base_dir, 'etc', 'pango', 'pangorc'))
-    self.setenv(var_name="FONTCONFIG_PATH",
-      val=os.path.join(base_dir, 'etc', 'fonts'))
 
   def set_unset_vars(self):
     if (self.suffix != ""):
@@ -1000,6 +992,16 @@ Wait for the command to finish, then try again.""" % vars())
       ld_library_path_var_name(),
       self.ld_library_path_additions()))
     essentials.append(("PATH", [self.bin_path]))
+
+    pangorc = abs(self.build_path / '..' / 'base' / 'etc' / 'pango' / 'pangorc')
+    if os.path.exists(pangorc):
+      print >> f, 'PANGO_RC_FILE="$LIBTBX_BUILD/../base/etc/pango/pangorc"'
+      print >> f, 'export PANGO_RC_FILE'
+    fontconfig = abs(self.build_path / '..' / 'base' / 'etc' / 'fonts')
+    if os.path.exists(fontconfig):
+      print >> f, 'FONTCONFIG_PATH="$LIBTBX_BUILD/../base/etc/fonts"'
+      print >> f, 'export FONTCONFIG_PATH'
+
     for n,v in essentials:
       if (len(v) == 0): continue
       v = ":".join([p.sh_value() for p in v])
