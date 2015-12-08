@@ -79,6 +79,16 @@ namespace boost_python {
               (arg("rama_table"),
                arg("sites_cart"),
                arg("proxy")));
+
+    def("target_phi_psi_from_angle_deg",
+         (af::tiny<double, 3>(*)
+           (af::const_ref<scitbx::vec3<double> > const&,
+            double,
+            double)) target_phi_psi_from_angle_deg,
+              (arg("rama_table"),
+               arg("phi"),
+               arg("psi")));
+
     // QUANTA-style harmonic restraints
     def("ramachandran_residual_sum",
         (double(*) (

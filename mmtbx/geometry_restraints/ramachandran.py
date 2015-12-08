@@ -38,10 +38,10 @@ master_phil = iotbx.phil.parse("""
     dist_weight_max = 10.0
       .type = float
       .expert_level = 2
-    dist_weight_min = 2.0
+    weight = None
       .type = float
       .expert_level = 2
-    weight = None
+    plot_cutoff = 0.027
       .type = float
       .expert_level = 2
   }
@@ -79,7 +79,8 @@ class ramachandran_manager(object):
     self.params = params
     if initialize:
       if(self.params.rama_potential == "oldfield"):
-        self.tables = ramachandran_plot_data()
+        self.tables = ramachandran_plot_data(
+            plot_cutoff=self.params.oldfield.plot_cutoff)
       else :
         self.tables = load_tables(params)
       # get proxies
@@ -261,7 +262,8 @@ def load_tables (params=None) :
   return tables
 
 class ramachandran_plot_data(object):
-  def __init__(self):
+  def __init__(self, plot_cutoff=0.027):
+    self.plot_cutoff = plot_cutoff
     self.general = None
     self.gly = None
     self.cispro = None
@@ -309,8 +311,8 @@ class ramachandran_plot_data(object):
   def select_good(self, data, step):
     phi, psi, val = self.split_array(data=data)
     # 0.02 is border for favored, 0.007 - arbitrary addition to ensure more
-    # residues in favored region
-    sel = (val>0.027)
+    # residues in favored region. Moved to plot_cutoff.
+    sel = (val>self.plot_cutoff)
     phi_values = set(list(phi))
     psi_values = set(list(psi))
     phi_list = sorted(phi_values)

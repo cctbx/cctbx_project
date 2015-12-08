@@ -904,8 +904,8 @@ def exercise_missing_atom_site_type_symbol():
 
 cif_with_atom_site_type_symbol = """\
 #------------------------------------------------------------------------------
-#$Date: 2013-05-05 10:21:46 -0400 (Sun, 05 May 2013) $
-#$Revision: 85285 $
+#$Date$
+#$Revision$
 #$URL: svn://www.crystallography.net/cod/cif/9/00/00/9000000.cif $
 #------------------------------------------------------------------------------
 #
