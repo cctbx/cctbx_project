@@ -177,11 +177,12 @@ class InMemScript(DialsProcessScript):
   """ Script to process XFEL data at LCLS """
   def __init__(self):
     """ Set up the option parser. Arguments come from the command line or a phil file """
-    self.usage = \
-    """ %s input.cfg=filename.cfg input.experiment=experimentname
-    input.run_num=N input.address=address input.detz_offset=N
-    """%libtbx.env.dispatcher_name
-
+    self.usage = """
+%s input.cfg=filename.cfg input.experiment=experimentname input.run_num=N input.address=address
+ format.file_format=cbf format.cbf.detz_offset=N
+%s input.cfg=filename.cfg input.experiment=experimentname input.run_num=N input.address=address
+format.file_format=pickle format.pickle.cfg=path
+    """%(libtbx.env.dispatcher_name, libtbx.env.dispatcher_name)
     self.parser = OptionParser(
       usage = self.usage,
       phil = phil_scope)
