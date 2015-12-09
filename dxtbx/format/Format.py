@@ -346,6 +346,6 @@ class Format(object):
       fh_func = lambda: open(filename, mode)
 
 ##  To disable caching logic:
-    return fh_func()
-#   return dxtbx_format.__metaclass__.get_cache_controller() \
-#     .check(filename, fh_func)
+#   return fh_func()
+    return dxtbx_format.__metaclass__.get_cache_controller() \
+      .check(filename, fh_func)
