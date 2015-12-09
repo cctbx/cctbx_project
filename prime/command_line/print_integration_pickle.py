@@ -117,8 +117,8 @@ def read_input(args):
 
 
 if (__name__ == "__main__"):
-  cc_bin_low_thres = 0.25
-  beam_thres = 3.0
+  cc_bin_low_thres = 0.5
+  beam_thres = 0.5
 
   #0 .read input parameters and frames (pickle files)
   data, hklrefin, pixel_size_mm, check_sys_absent_input, target_space_group, target_anomalous_flag, flag_plot, d_min, d_max = read_input(args = sys.argv[1:])
@@ -132,6 +132,8 @@ if (__name__ == "__main__"):
   cc_bins_set = []
   d_bins_set = []
   oodsqr_bins_set = []
+  print 'Summary of integration pickles:'
+  print '(image file, min. res., max. res, beamx, beamy, n_refl, cciso, <cciso_bin>, a, b, c, mosaicity, residual)'
   for pickle_filename in frame_files:
     check_sys_absent = check_sys_absent_input
     observations_pickle = pickle.load(open(pickle_filename,"rb"))
@@ -294,7 +296,7 @@ if (__name__ == "__main__"):
           if i_bin == 5:
             cc_bin_med = cc_bin
 
-          if flag_plot and len(frame_files)==1:
+          if flag_plot:
             plt.subplot(2,5,i_bin+1)
             plt.scatter(I_iso_bin, I_bin,s=10, marker='o', c='r')
             plt.title('Bin %2.0f (%6.2f-%6.2f A) CC=%6.2f'%(i_bin+1, np.max(d_bin), np.min(d_bin), cc_bin))
@@ -302,7 +304,7 @@ if (__name__ == "__main__"):
               plt.xlabel('I_ref')
               plt.ylabel('I_obs')
 
-        if flag_plot and len(frame_files)==1:
+        if flag_plot:
           plt.show()
 
 
@@ -315,7 +317,7 @@ if (__name__ == "__main__"):
 
     a, b, c, alpha, beta, gamma = observations.unit_cell().parameters()
 
-    txt_out_head= '{0:40} {1:5.2f} {2:5.2f} {3:5.2f} {4:5.2f} {5:5.0f} {6:6.2f} {7:6.2f} {8:6.2f} {9:6.2f} {10:6.2f} {11:6.2f} {12:6.2f}'.format(pickle_filename_only, observations.d_min(), np.max(observations.d_spacings().data()), xbeam, ybeam, len(observations.data()), cc_iso, np.mean(cc_bins), a, b, c, observations_pickle["mosaicity"], observations_pickle["residual"])
+    txt_out_head= '{0:80} {1:5.2f} {2:5.2f} {3:5.2f} {4:5.2f} {5:5.0f} {6:6.2f} {7:6.2f} {8:6.2f} {9:6.2f} {10:6.2f} {11:6.2f} {12:6.2f}'.format(pickle_filename_only, observations.d_min(), np.max(observations.d_spacings().data()), xbeam, ybeam, len(observations.data()), cc_iso, np.mean(cc_bins), a, b, c, observations_pickle["mosaicity"], observations_pickle["residual"])
     print txt_out_head
 
     cc_bin_low_set.append(cc_iso)
@@ -347,33 +349,44 @@ if (__name__ == "__main__"):
   sys_abs_all_filtered = flex.double()
   txt_out = ''
   txt_out_mix = ''
+  txt_out_report_beam_filter = 'Images with beam center displaced > 0.5 mm.:\n'
+  txt_out_report_cc_filter = 'Images with cc < %6.2f:\n'%(cc_bin_low_thres)
   for pickle_filename, xbeam, ybeam, sys_abs_lst, cc_bin_low in zip(frame_files, xbeam_set, \
     ybeam_set, sys_abs_set, cc_bin_low_set):
-    if abs(xbeam - xbeam_mean)/xbeam_std < beam_thres and \
-      abs(ybeam - ybeam_mean)/ybeam_std < beam_thres:
+    pickle_filename_arr = pickle_filename.split('/')
+    pickle_filename_only = pickle_filename_arr[len(pickle_filename_arr)-1]
+    txt_out_report_tmp = '{0:80} {1:6.2f} {2:6.2f} {3:6.0f} {4:6.2f} {5:6.2f} {6:6.2f} {7:6.2f}\n'.format(pickle_filename_only, xbeam, ybeam, len(observations.data()), cc_iso, a, b, c)
+    if abs(xbeam - xbeam_mean) < beam_thres and \
+      abs(ybeam - ybeam_mean) < beam_thres:
       xbeam_filtered_set.append(xbeam)
       ybeam_filtered_set.append(ybeam)
       frame_filtered_set.append(pickle_filename)
       txt_out += pickle_filename + '\n'
       sys_abs_all_filtered.extend(sys_abs_lst)
-      if cc_bin_low > cc_bin_low_thres:
-        txt_out_mix += pickle_filename + '\n'
-      else:
-        pass
     else:
-      print pickle_filename, cc_bin_low, xbeam, ybeam
+      txt_out_report_beam_filter += txt_out_report_tmp
 
+    if cc_bin_low > cc_bin_low_thres:
+      txt_out_mix += pickle_filename + '\n'
+    else:
+      txt_out_report_cc_filter += txt_out_report_tmp
+  print
   print 'Xbeam mean=%8.4f std=%6.4f'%(xbeam_mean, xbeam_std)
   print 'Ybeam mean=%8.4f std=%6.4f'%(ybeam_mean, ybeam_std)
-  print 'N_frames = %6.0f After filter = %6.0f'%(len(frame_files), len(frame_filtered_set))
+  print 'No. of frames: All = %6.0f Beam outliers = %6.0f CC filter=%6.0f'%(len(frame_files), len(frame_files) - (len(txt_out.split('\n'))-1), len(frame_files) - (len(txt_out_mix.split('\n'))-1))
+  print
+  print 'Reporting outliers (image name, xbeam, ybeam, n_refl, cciso, a, b, c)'
+  print txt_out_report_beam_filter
+  print txt_out_report_cc_filter
+
 
   #write out filtered beamxy pickle files
-  f = open('integration_pickle_beam_filtered.lst', 'w')
+  f = open('integration_pickle_beam_filter.lst', 'w')
   f.write(txt_out)
   f.close()
 
   #write out mix filter pickle files
-  f = open('integration_pickle_mixccall25_filter.lst', 'w')
+  f = open('integration_pickle_cc_filter.lst', 'w')
   f.write(txt_out_mix)
   f.close()
 
