@@ -29,10 +29,6 @@ phil_scope = parse('''
     address = None
       .type = str
       .help = Detector address, e.g. CxiDs2.0:Cspad.0 or detector alias, e.g. Ds1CsPad
-    override_energy = None
-      .type = float
-      .help = If not None, use the input energy for every event instead of the energy \
-              from the XTC stream
   }
   format {
     file_format = *cbf pickle
@@ -51,6 +47,10 @@ phil_scope = parse('''
         .type = int
         .help = Distance from back of detector rail to sample interaction region (CXI) \
                 or actual detector distance (XPP)
+      override_energy = None
+        .type = float
+        .help = If not None, use the input energy for every event instead of the energy \
+                from the XTC stream
       gain_mask_value = None
         .type = float
         .help = If not None, use the gain mask for the run to multiply the low-gain pixels by this number
@@ -183,13 +183,13 @@ class Script(object):
             print "No distance, skipping shot"
             continue
 
-          if self.params.input.override_energy is None:
+          if self.params.format.cbf.override_energy is None:
             wavelength = cspad_tbx.evt_wavelength(evt)
             if wavelength is None:
               print "No wavelength, skipping shot"
               continue
           else:
-            wavelength = 12398.4187/self.params.input.override_energy
+            wavelength = 12398.4187/self.params.format.cbf.override_energy
 
           # stitch together the header, data and metadata into the final dxtbx format object
           cspad_img = cspad_cbf_tbx.format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, params.input.address)

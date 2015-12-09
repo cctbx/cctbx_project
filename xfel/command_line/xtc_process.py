@@ -74,10 +74,6 @@ xtc_phil_str = '''
     address = None
       .type = str
       .help = Detector address, e.g. CxiDs2.0:Cspad.0, or detector alias, e.g. Ds1CsPad
-    override_energy = None
-      .type = float
-      .help = If not None, use the input energy for every event instead of the energy \
-              from the XTC stream
     override_trusted_max = None
       .type = int
       .help = During spot finding, override the saturation value for this data. \
@@ -111,6 +107,10 @@ xtc_phil_str = '''
         .type = int
         .help = Distance from back of detector rail to sample interaction region (CXI) \
                 or actual detector distance (XPP)
+      override_energy = None
+        .type = float
+        .help = If not None, use the input energy for every event instead of the energy \
+                from the XTC stream
       gain_mask_value = None
         .type = float
         .help = If not None, use the gain mask for the run to multiply the low-gain pixels by this number
@@ -399,17 +399,18 @@ class InMemScript(DialsProcessScript):
       if distance is None:
         print "No distance, skipping shot"
         return
-    else:
+
+      if self.params.format.cbf.override_energy is None:
+        wavelength = cspad_tbx.evt_wavelength(evt)
+        if wavelength is None:
+          print "No wavelength, skipping shot"
+          return
+      else:
+        wavelength = 12398.4187/self.params.format.cbf.override_energy
+
+    if self.params.format.file_format == 'pickle':
       image_dict = evt.get(self.params.format.pickle.out_key)
       data = image_dict['DATA']
-
-    if self.params.input.override_energy is None:
-      wavelength = cspad_tbx.evt_wavelength(evt)
-      if wavelength is None:
-        print "No wavelength, skipping shot"
-        return
-    else:
-      wavelength = 12398.4187/self.params.input.override_energy
 
     timestamp = cspad_tbx.evt_timestamp(cspad_tbx.evt_time(evt)) # human readable format
     if timestamp is None:
