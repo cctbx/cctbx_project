@@ -51,6 +51,9 @@ phil_scope = parse('''
         .type = int
         .help = Distance from back of detector rail to sample interaction region (CXI) \
                 or actual detector distance (XPP)
+      gain_mask_value = None
+        .type = float
+        .help = If not None, use the gain mask for the run to multiply the low-gain pixels by this number
     }
   }
   output {
@@ -113,7 +116,7 @@ class Script(object):
 
     if params.format.file_format == "cbf":
       src = psana.Source('DetInfo(%s)'%params.input.address)
-      psana_det = psana.Detector(src, ds.env())
+      psana_det = psana.Detector(params.input.address, ds.env())
 
     # set this to sys.maxint to analyze all events
     if params.dispatch.max_events is None:
@@ -122,10 +125,14 @@ class Script(object):
       max_events = params.dispatch.max_events
 
     for run in ds.runs():
-      # load a header only cspad cbf from the slac metrology
-      base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run, src)
-      if base_dxtbx is None:
-        raise Sorry("Couldn't load calibration file for run %d"%run.run())
+      if params.format.file_format == "cbf":
+        # load a header only cspad cbf from the slac metrology
+        base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run, params.input.address)
+        if base_dxtbx is None:
+          raise Sorry("Couldn't load calibration file for run %d"%run.run())
+
+        if params.format.cbf.gain_mask_value is not None:
+          gain_mask = psana_det.gain_mask(gain=params.format.cbf.gain_mask_value)
 
       # list of all events
       times = run.times()
@@ -166,6 +173,10 @@ class Script(object):
         elif params.format.file_format == "cbf":
           # get numpy array, 32x185x388
           data = psana_det.calib(evt) # applies psana's complex run-dependent calibrations
+
+          if params.format.cbf.gain_mask_value is not None:
+            # apply gain mask
+            data *= gain_mask
 
           distance = cspad_tbx.env_distance(params.input.address, run.env(), params.format.cbf.detz_offset)
           if distance is None:

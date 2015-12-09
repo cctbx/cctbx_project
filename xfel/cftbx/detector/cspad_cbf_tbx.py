@@ -178,17 +178,17 @@ def read_slac_metrology(path = None, geometry = None, plot=False):
 
   return metro
 
-def get_calib_file_path(env, src, run):
+def get_calib_file_path(env, address, run):
   """ Findes the path to the SLAC metrology file stored in a psana environment
       object's calibration store
       @param env psana environment object
-      @param src psana DataSource
+      @param address address string for a detector
       @param run psana run object or run number
   """
   from psana import Detector
   try:
     # try to get it from the detector interface
-    psana_det = Detector(src, ds.env())
+    psana_det = Detector(address, ds.env())
     return psana_det.pyda.geoaccess(run).path
   except Exception, e:
     pass
@@ -196,27 +196,28 @@ def get_calib_file_path(env, src, run):
   # try to get it from the calib store directly
   from psana import ndarray_uint8_1
   cls = env.calibStore()
+  src = Source('DetInfo(%s)'%address)
   path_nda = cls.get(ndarray_uint8_1, src, 'geometry-calib')
   if path_nda is None:
     return None
   return ''.join(map(chr, path_nda))
 
-def env_dxtbx_from_slac_metrology(run, src):
+def env_dxtbx_from_slac_metrology(run, address):
   """ Loads a dxtbx cspad cbf header only object from the metrology path stored
       in a psana run object's calibration store
       @param env psana run object
-      @param env psana DataSource
+      @param address address string for a detector
   """
   from psana import Detector
   try:
     # try to load the geometry from the detector interface
-    psana_det = Detector(src, run.env())
+    psana_det = Detector(address, run.env())
     geometry = psana_det.pyda.geoaccess(run)
   except Exception, e:
     geometry = None
 
   if geometry is None:
-    metro_path = get_calib_file_path(run.env(), src, run)
+    metro_path = get_calib_file_path(run.env(), address, run)
   else:
     metro_path = None
 
