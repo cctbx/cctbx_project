@@ -267,7 +267,7 @@ class InMemScript(DialsProcessScript):
     for run in ds.runs():
       if params.input.format == "cbf":
         # load a header only cspad cbf from the slac metrology
-        self.base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run, self.src)
+        self.base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run, params.input.address)
         if self.base_dxtbx is None:
           raise Sorry("Couldn't load calibration file for run %d"%run.run())
 
