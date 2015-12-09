@@ -26,9 +26,8 @@ try:
 except: # intentional
   gzip = None
 
+import dxtbx.filecache_controller
 import exceptions
-
-from dxtbx.filecache import lazy_file_cache
 
 # import access to all of the factories that we will be needing
 
@@ -64,6 +63,11 @@ class _MetaFormat(type):
       base._children.append(self)
     return
 
+  _cache_controller = dxtbx.filecache_controller.simple_controller()
+  @classmethod
+  def get_cache_controller(self):
+    return self._cache_controller
+
 class Format(object):
   '''A base class for the representation and interrogation of diffraction
   image formats, from which all classes for reading the header should be
@@ -72,8 +76,6 @@ class Format(object):
   which will prove to be useful in other implementations.'''
 
   __metaclass__ = _MetaFormat
-  _lazy_cache_filename = None
-  _lazy_cache = None
 
   @staticmethod
   def understand(image_file):
@@ -323,34 +325,27 @@ class Format(object):
   def open_file(dxtbx_format, filename, mode='rb', url=False):
     '''Open file for reading, decompressing silently if necessary,
        caching transparently if possible.'''
-    if filename == dxtbx_format._lazy_cache_filename:
-      return dxtbx_format._lazy_cache.open()
-
-    if dxtbx_format._lazy_cache is not None:
-      dxtbx_format._lazy_cache.close()
 
     if url and Format.is_url(filename):
       import urllib2
-      fh = urllib2.urlopen(filename)
+      fh_func = lambda: urllib2.urlopen(filename)
 
     elif Format.is_bz2(filename):
       if bz2 is None:
         raise RuntimeError, 'bz2 file provided without bz2 module'
 
-      fh = bz2.BZ2File(filename, mode)
+      fh_func = lambda: bz2.BZ2File(filename, mode)
 
     elif Format.is_gzip(filename):
       if gzip is None:
         raise RuntimeError, 'gz file provided without gzip module'
 
-      fh = gzip.GzipFile(filename, mode)
+      fh_func = lambda: gzip.GzipFile(filename, mode)
 
     else:
-      fh = open(filename, mode)
+      fh_func = lambda: open(filename, mode)
 
 ##  To disable caching logic:
-    return fh
-
-    dxtbx_format._lazy_cache_filename = filename
-    dxtbx_format._lazy_cache = lazy_file_cache(fh)
-    return dxtbx_format._lazy_cache.open()
+    return fh_func()
+#   return dxtbx_format.__metaclass__.get_cache_controller() \
+#     .check(filename, fh_func)
