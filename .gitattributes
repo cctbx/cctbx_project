@@ -493,6 +493,7 @@ dxtbx/error.h -text
 dxtbx/example/resolution_corners.py -text
 dxtbx/example/to_xds.py -text
 dxtbx/filecache.py -text
+dxtbx/filecache_controller.py -text
 dxtbx/format/FormatBruker.py -text
 dxtbx/format/FormatCBF.py -text
 dxtbx/format/FormatCBFFull.py -text
