@@ -4,10 +4,9 @@ from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.xtc_process
 #
 try:
-  from psana import *
+  import psana
 except ImportError:
   pass # for running at home without psdm build
-import numpy as np
 from xfel.cftbx.detector import cspad_cbf_tbx
 from xfel.cxi.cspad_ana import cspad_tbx
 import pycbf, os, sys, copy, socket
@@ -74,11 +73,7 @@ xtc_phil_str = '''
       .help = Run number or run range to process
     address = None
       .type = str
-      .help = Detector address, e.g. CxiDs2.0:Cspad.0
-    detz_offset = None
-      .type = int
-      .help = Distance from back of detector rail to sample interaction region (CXI) \
-              or actual detector distance (XPP)
+      .help = Detector address, e.g. CxiDs2.0:Cspad.0, or detector alias, e.g. Ds1CsPad
     override_energy = None
       .type = float
       .help = If not None, use the input energy for every event instead of the energy \
@@ -91,9 +86,6 @@ xtc_phil_str = '''
       .type = int
       .help = During spot finding and indexing, override the minimum pixel value \
               for this data. This does not affect integration.
-    format = *cbf pickle
-      .type = choice
-      .help = File format, either CBF or image pickle
     use_ffb = False
       .type = bool
       .help = Run on the ffb if possible. Only for active users!
@@ -101,6 +93,28 @@ xtc_phil_str = '''
       .type = str
       .help = Optional path to data directory if it's non-standard. Only needed if xtc \
               streams are not in the standard location for your PSDM installation.
+  }
+  format {
+    file_format = *cbf pickle
+      .type = choice
+      .help = Output file format, 64 tile segmented CBF or image pickle
+    pickle {
+      cfg = None
+        .type = str
+        .help = Path to psana config file with a mod_image_dict module
+      out_key = cctbx.xfel.image_dict
+        .type = str
+        .help = Key name that mod_image_dict uses to put image data in each psana event
+    }
+    cbf {
+      detz_offset = None
+        .type = int
+        .help = Distance from back of detector rail to sample interaction region (CXI) \
+                or actual detector distance (XPP)
+      gain_mask_value = None
+        .type = float
+        .help = If not None, use the gain mask for the run to multiply the low-gain pixels by this number
+    }
   }
   output {
     output_dir = .
@@ -182,11 +196,19 @@ class InMemScript(DialsProcessScript):
     from dials.util import log
     log.config(params.verbosity)
 
-    if params.input.cfg is None or \
-        params.input.experiment is None or \
-        params.input.run_num is None or \
-        params.input.address is None or \
-        params.input.detz_offset is None:
+    # Check inputs
+    if params.input.experiment is None or \
+       params.input.run_num is None or \
+       params.input.address is None:
+      raise Usage(self.usage)
+
+    if params.format.file_format == "cbf":
+      if params.format.cbf.detz_offset is None:
+        raise Usage(self.usage)
+    elif params.format.file_format == "pickle":
+      if params.format.pickle.cfg is None:
+        raise Usage(self.usage)
+    else:
       raise Usage(self.usage)
 
     if not os.path.exists(params.output.output_dir):
@@ -243,7 +265,8 @@ class InMemScript(DialsProcessScript):
 
 
     # set up psana
-    setConfigFile(params.input.cfg)
+    if params.format.file_format=="pickle":
+      psana.setConfigFile(params.format.pickle.cfg)
     dataset_name = "exp=%s:run=%s:idx"%(params.input.experiment,params.input.run_num)
     if params.input.xtc_dir is not None:
       if params.input.use_ffb:
@@ -252,11 +275,11 @@ class InMemScript(DialsProcessScript):
     elif params.input.use_ffb:
       # as ffb is only at SLAC, ok to hardcode /reg/d here
       dataset_name += ":dir=/reg/d/ffb/%s/%s/xtc"%(params.input.experiment[0:3],params.input.experiment)
-    ds = DataSource(dataset_name)
-    self.src = Source('DetInfo(%s)'%params.input.address)
+    ds = psana.DataSource(dataset_name)
 
-    env = ds.env()
-    calib_dir = env.calibDir()
+    if params.format.file_format == "cbf":
+      self.src = psana.Source('DetInfo(%s)'%params.input.address)
+      self.psana_det = psana.Detector(params.input.address, ds.env())
 
     # set this to sys.maxint to analyze all events
     if params.dispatch.max_events is None:
@@ -265,11 +288,14 @@ class InMemScript(DialsProcessScript):
       max_events = params.dispatch.max_events
 
     for run in ds.runs():
-      if params.input.format == "cbf":
+      if params.format.file_format == "cbf":
         # load a header only cspad cbf from the slac metrology
         self.base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run, params.input.address)
         if self.base_dxtbx is None:
           raise Sorry("Couldn't load calibration file for run %d"%run.run())
+
+        if params.format.cbf.gain_mask_value is not None:
+          self.gain_mask = self.psana_det.gain_mask(gain=params.format.cbf.gain_mask_value)
 
       # list of all events
       times = run.times()
@@ -352,28 +378,30 @@ class InMemScript(DialsProcessScript):
     self.params = copy.deepcopy(self.params_cache)
 
     evt = run.event(timestamp)
-    id = evt.get(EventId)
+    id = evt.get(psana.EventId)
     if evt.get("skip_event"):
       print "Skipping event",id
       return
 
     # the data needs to have already been processed and put into the event by psana
-    if self.params.input.format == 'cbf':
-      data = evt.get(ndarray_float64_3, self.src, 'image0')
+    if self.params.format.file_format == 'cbf':
+      # get numpy array, 32x185x388
+      data = self.psana_det.calib(evt) # applies psana's complex run-dependent calibrations
       if data is None:
         print "No data"
         return
-      data = data.astype(np.int32)
-      #print "MEAN", np.mean(data)
-      #return
-    else:
-      image_dict = evt.get('cctbx.xfel.image_dict')
-      data = image_dict['DATA']
 
-    distance = cspad_tbx.env_distance(self.params.input.address, run.env(), self.params.input.detz_offset)
-    if distance is None:
-      print "No distance, skipping shot"
-      return
+      if self.params.format.cbf.gain_mask_value is not None:
+        # apply gain mask
+        data *= self.gain_mask
+
+      distance = cspad_tbx.env_distance(self.params.input.address, run.env(), self.params.format.cbf.detz_offset)
+      if distance is None:
+        print "No distance, skipping shot"
+        return
+    else:
+      image_dict = evt.get(self.params.format.pickle.out_key)
+      data = image_dict['DATA']
 
     if self.params.input.override_energy is None:
       wavelength = cspad_tbx.evt_wavelength(evt)
@@ -392,10 +420,10 @@ class InMemScript(DialsProcessScript):
     s = t[0:4] + t[5:7] + t[8:10] + t[11:13] + t[14:16] + t[17:19] + t[20:23]
     print "Processing shot", s
 
-    if self.params.input.format == 'cbf':
+    if self.params.format.file_format == 'cbf':
       # stitch together the header, data and metadata into the final dxtbx format object
       cspad_img = cspad_cbf_tbx.format_object_from_data(self.base_dxtbx, data, distance, wavelength, timestamp, self.params.input.address)
-    else:
+    elif self.params.format.file_format == 'pickle':
       from dxtbx.format.FormatPYunspecifiedStill import FormatPYunspecifiedStillInMemory
       cspad_img = FormatPYunspecifiedStillInMemory(image_dict)
 
@@ -498,16 +526,16 @@ class InMemScript(DialsProcessScript):
     @param root_path output file path without extension
     """
 
-    if params.input.format == 'cbf':
+    if params.format.file_format == 'cbf':
       dest_path = root_path + ".cbf"
-    else:
+    elif params.format.file_format == 'pickle':
       dest_path = root_path + ".pickle"
 
     try:
-      if params.input.format == 'cbf':
+      if params.format.file_format == 'cbf':
         image._cbf_handle.write_widefile(dest_path, pycbf.CBF,\
           pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)
-      else:
+      elif params.format.file_format == 'pickle':
         from libtbx import easy_pickle
         easy_pickle.dump(dest_path, image._image_file)
     except Exception:
