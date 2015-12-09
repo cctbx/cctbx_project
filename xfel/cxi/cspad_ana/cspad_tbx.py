@@ -66,17 +66,14 @@ ypos_sec2x1 = [[   0,    0,  214,    1,  425,  425,  615,  402],  # 2:5 were not
                [   0,    0,  214,    1,  425,  425,  615,  403]] # 2:5 were not measured
 
 
-def address_split(address):
+def address_split(address, env=None):
   """The address_split() function splits an address into its four
   components.  Address strings are on the form
   detector-detectorID|device-deviceID, where the detectors must be in
   dir(xtc.DetInfo.Detector) and device must be in
-  (xtc.DetInfo.Device).  XXX Does not handle wildcards!  XXX
-  Documentation XXX I have the sneaky suspicion that code like this
-  already exists somewhere in pyana.  XXX Return dictionary or some
-  such instead?
-
+  (xtc.DetInfo.Device).
   @param address Full data source address of the DAQ device
+  @param env     Optional env to dereference an alias into an address
   @return        Four-tuple of detector name, detector ID, device, and
                  device ID
   """
@@ -95,15 +92,21 @@ def address_split(address):
   if m is not None:
     return (m.group('det'), m.group('det_id'), m.group('dev'), m.group('dev_id'))
 
-  # try to deal with aliases
-  known_aliases = {
-    'Ds1CsPad': 'CxiDs1-0|Cspad-0',
-    'Ds2CsPad': 'CxiDs2-0|Cspad-0',
-    'cspad'   : 'XppGon-0|Cspad-0'
-  }
-  address = known_aliases.get(address, None)
-  if address is not None:
-    return address_split(address)
+  # psana DetInfo string
+  m = re.match(
+    '^DetInfo\((?P<det>\S+)\.(?P<det_id>\d+)\:(?P<dev>\S+)\.(?P<dev_id>\d+)\)$', address)
+  if m is not None:
+    return (m.group('det'), m.group('det_id'), m.group('dev'), m.group('dev_id'))
+
+  if env is not None:
+    # Try to see if this is a detector alias, and if so, dereference it. Code from psana's Detector/PyDetector.py
+    amap = env.aliasMap()
+    alias_src = amap.src(address) # string --> DAQ-style psana.Src
+
+    # if it is an alias, look up the full name
+    if amap.alias(alias_src) != '':         # alias found
+      address = str(alias_src)
+      return address_split(address)
 
   return (None, None, None, None)
 
@@ -896,7 +899,7 @@ def env_detz(address, env):
   """
 
   if env is not None:
-    detector = address_split(address)[0]
+    detector = address_split(address, env)[0]
     if detector is None:
       return None
     elif detector == 'CxiDs1':
