@@ -31,16 +31,16 @@ def set_rama_angles(moving_h, angles):
     # phi
     if target_angle_pair[0] is not None:
       utils.rotate_atoms_around_bond(
-          result_h, 
+          result_h,
           phi_psi_pair[0][1],
           phi_psi_pair[0][2],
           angle=-phi_psi_angles[0]+target_angle_pair[0])
     # psi
     if target_angle_pair[1] is not None:
       utils.rotate_atoms_around_bond(
-          result_h, 
-          phi_psi_pair[1][1], 
-          phi_psi_pair[1][2], 
+          result_h,
+          phi_psi_pair[1][1],
+          phi_psi_pair[1][2],
           angle=-phi_psi_angles[1]+target_angle_pair[1])
   return result_h
 
