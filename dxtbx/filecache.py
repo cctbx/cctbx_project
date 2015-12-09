@@ -35,7 +35,10 @@
 #
 # To flush the cache and free the memory you can use
 #     cache.close()
-# Further access attempts will result in an exception.
+# This will drop the cache when all associated file handles are closed.
+# To instantly drop the cache you can use
+#     cache.force_close()
+# Any further access attempts will then result in an exception.
 
 from __future__ import division
 from cStringIO import StringIO
@@ -59,6 +62,8 @@ class lazy_file_cache():
     self._cache_size = 0
 
     # Current status of lazy cache towards client objects.
+    # Opening new file handles is disallowed when the object is closing.
+    self._closing = False
     # When the lazy cache object is closed no further access is allowed,
     # and cached information is dropped.
     self._closed = False
@@ -72,11 +77,14 @@ class lazy_file_cache():
 
     # Number of currently registered client objects
     self._reference_counter = 0
+    self._reference_counter_lock = Lock()
+
+    if self._debug:
+      print "Created cache object for %s: %s" % (str(file_object), str(self))
 
   def __del__(self):
     '''Close file handles and drop cache on garbage collection.'''
-    self._close_access()
-    self._close_file()
+    self.force_close()
 
   def _cache_up_to(self, position):
     '''Ensure that the file has been read up to "position"'''
@@ -135,15 +143,7 @@ class lazy_file_cache():
 
   def _check_not_closed(self):
     if self._closed:
-      raise IOError('Accessing lazy file cache after closing is not allowed')
-
-  def _close_access(self):
-    if not self._closed:
-      self._closed = True
-    if self._debug:
-      print "Closing lazy cache"
-      if self._reference_counter > 0:
-        print " Warning: %d connected instances remain" % self._reference_counter
+      raise IOError('Accessing lazy file cache %s after closing is not allowed' % str(self))
 
   def _close_file(self):
     if self._file is not None:
@@ -157,22 +157,44 @@ class lazy_file_cache():
     return pseudo_file(self)
 
   def close(self):
+    if not self._closing:
+      self._closing = True
+      if self._debug:
+        print "Closing lazy cache %s" % str(self)
+      with self._reference_counter_lock:
+        if self._reference_counter == 0:
+          self.force_close()
+
+  def force_close(self):
     '''Close encapsulated file handle, drop cache and prevent further reads.'''
-    self._close_access()
-    self._close_file()
+    if not self._closed:
+      self._closing = True
+      self._closed = True
+      self._close_file()
+      if self._debug and (self._reference_counter > 0):
+        print "Warning: %d connected instances remain" % self._reference_counter
+      if self._cache_object is not None:
+        self._cache_object.close()
+        self._cache_object = None
 
   def register(self):
     '''Register a client object. Reference counting for debug purposes.'''
-    self._check_not_closed()
+    with self._reference_counter_lock:
+      self._check_not_closed()
+      if self._closing:
+        raise IOError('Cannot open new file handle: lazy file cache is closing')
+      self._reference_counter += 1
     if self._debug:
       print "Instance connected to lazy cache"
-    self._reference_counter += 1
 
   def unregister(self):
     '''Unregister a client object. Reference counting for debug purposes.'''
     if self._debug:
       print "Instance disconnected from lazy cache"
-    self._reference_counter -= 1
+    with self._reference_counter_lock:
+      self._reference_counter -= 1
+      if self._closing and (self._reference_counter == 0):
+        self.force_close()
 
   def pass_read(self, start=0, maxbytes=None):
     '''Read from position start up to maxbytes bytes from file.
@@ -330,4 +352,3 @@ class pseudo_file():
 
   def writelines(self, sequence):
     raise NotImplementedError('Writing to lazy file caches is not allowed')
-
