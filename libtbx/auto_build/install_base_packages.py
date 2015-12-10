@@ -648,6 +648,34 @@ Installation of Python packages may fail.
       # Parallel build of python 2.7 needs to be limited to cope with race conditions
       self.call('make install', log=log, cwd=python_dir)
     python_exe = op.abspath(op.join(self.base_dir, "bin", "python"))
+
+    # Make python relocatable
+    python_sysconfig = op.abspath(op.join(self.base_dir, "lib", "python2.7", "_sysconfigdata.py"))
+    fh = open(python_sysconfig, 'r')
+    python_config = fh.read()
+    fh.close()
+    if 'relocatable' not in python_config:
+      fh = open(python_sysconfig, 'a')
+      fh.write("""
+#
+# Fix to make python installation relocatable
+#
+
+def _replacement_path():
+  from os import environ
+  from os.path import dirname
+  python_exe = environ.get('LIBTBX_PYEXE', None)
+  if python_exe is None:
+    from sys import executable
+    return dirname(executable)
+  return dirname(dirname(python_exe))
+_replacement_path = _replacement_path()
+for k, v in build_time_vars.iteritems():
+  if isinstance(v, basestring) and '%s' in v:
+    build_time_vars[k] = v.replace('%s', _replacement_path)
+""" % (self.base_dir, self.base_dir))
+      fh.close()
+
     self.set_python(op.abspath(python_exe))
     log.close()
 
