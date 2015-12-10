@@ -66,9 +66,6 @@ phil_scope = parse('''
     .help = If True, the program will create the trial directory but not submit the job, \
             and will show the command that would have been executed.
   input {
-    cfg = None
-      .type = str
-      .help = Path to psana config file
     experiment = None
       .type = str
       .help = Experiment identifier, e.g. cxi84914
@@ -82,10 +79,6 @@ phil_scope = parse('''
       .type = int
       .help = Optional. If used, will add _rgXXX to the trial path. Useful for organizing \
               runs with similar parameters into logical groupings.
-    xtc_dir = None
-      .type = str
-      .help = Optional path to data directory if it's non-standard. Only needed if xtc \
-              streams are not in the standard location for your PSDM installation.
     dispatcher = cxi.xtc_process
       .type = str
       .help = Which program to run. cxi.xtc_process is for module only based processing, \
@@ -142,6 +135,56 @@ phil_scope = parse('''
   }
 ''', process_includes=True)
 
+def copy_config(config, dest_dir, root_name, params, target_num):
+  """ Copy a config file to a directory, and all of its referenced phil files. Recurively
+  copies the files and changes the includes statements to match the new file names.
+  @param target config file to copy
+  @param dest_dir Full path to directory to copy file to
+  @param root_name Name to give to copied file. Included phil files will be given
+  this name + _N where N is incremented for each file included in the phil file
+  """
+   # make a copy of the original cfg file
+  shutil.copy(config, os.path.join(dest_dir, "%s_orig.cfg"%root_name))
+
+  config_path = os.path.join(dest_dir, "%s.cfg"%root_name)
+
+  # Re-write the config file, changing paths to be relative to the trial directory.
+  # Also copy and re-write included phil files, while updating the config file to
+  # the new paths
+  # Note, some legacy rewrites done by cxi.lsf are not included here.
+  f = open(config_path, 'w')
+  for line in open(config).readlines():
+    if "[pyana]" in line:
+      raise Sorry("Pyana not supported. Check your config file.")
+    if "RUN_NO" in line:
+      line = line.replace("RUN_NO", str(params.input.run_num))
+    if "RUN_STR" in line:
+      line = line.replace("RUN_STR", "r%04d"%(params.input.run_num))
+    if "trial_id" in line:
+      key, val = line.split("=")
+      line = "%s= %d\n"%(key,params.input.trial)
+    if "rungroup_id" in line:
+      key, val = line.split("=")
+      line = "%s= %s\n"%(key,params.input.rungroup) # None ok
+    elif "_dirname" in line:
+      key, val = line.split("=")
+      val = os.path.join(dest_dir, os.path.basename(val.strip()))
+      if not os.path.exists(val):
+        os.mkdir(val)
+      line = "%s= %s\n"%(key,val)
+    elif "xtal_target" in line:
+      key, val = line.split("=")
+      val = val.strip()
+      if not os.path.exists(val):
+        raise Sorry("One of the xtal_target files in the cfg file doesn't exist: %s"%val)
+      new_target = "params_%d"%target_num
+      copy_target(val, dest_dir, new_target)
+      target_num += 1
+      line = "%s= %s.phil\n"%(key,os.path.join(dest_dir, new_target))
+    f.write(line)
+  f.close()
+  return target_num
+
 def copy_target(target, dest_dir, root_name):
   """ Copy a phil file to a directory, and all of its included phil files. Recurively
   copies the files and changes the includes statements to match the new file names.
@@ -172,10 +215,10 @@ class Script(object):
     pass
 
   def run(self, argv = None):
+    """ Set up run folder and submit the job. """
     if argv is None:
       argv = sys.argv[1:]
 
-    """ Set up run folder and submit the job. """
     if len(argv) == 0 or "-h" in argv or "--help" in argv or "-c" in argv:
       print help_str
       print "Showing phil parameters:"
@@ -183,6 +226,7 @@ class Script(object):
       return
 
     user_phil = []
+    dispatcher_args = []
     for arg in argv:
       if (os.path.isfile(arg)):
         user_phil.append(parse(file_name=arg))
@@ -190,18 +234,15 @@ class Script(object):
         try:
           user_phil.append(parse(arg))
         except RuntimeError, e:
-          raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
+          dispatcher_args.append(arg)
+    scope, unused = phil_scope.fetch(sources=user_phil, track_unused_definitions=True)
+    params = scope.extract()
+    dispatcher_args = ["%s=%s"%(u.path,u.object.words[0].value) for u in unused]
 
-    params = phil_scope.fetch(sources=user_phil).extract()
-
-    assert params.input.cfg is not None
     assert params.input.experiment is not None
     assert params.input.run_num is not None
 
-    if not os.path.exists(params.input.cfg):
-      raise Sorry("Config file not found: %s"%params.input.cfg)
-
-    print "Submitting run %d of experiment %s using config file %s"%(params.input.run_num, params.input.experiment, params.input.cfg)
+    print "Submitting run %d of experiment %s"%(params.input.run_num, params.input.experiment)
 
     if not os.path.exists(params.output.output_dir):
        os.makedirs(params.output.output_dir)
@@ -243,47 +284,38 @@ class Script(object):
         log_files = os.path.join(stdoutdir,"log_rank%04d.out"%i)
         open(log_files,'a').close()
         open(error_files,'a').close()
-    # make a copy of the original cfg file
-    shutil.copy(params.input.cfg, os.path.join(trialdir, "psana_orig.cfg"))
+      logging_str = "output.logging_dir=%s"%stdoutdir
+    else:
+      logging_str = ""
 
-    config_path = os.path.join(trialdir, "psana.cfg")
-
-    # Re-write the config file, changing paths to be relative to the trial directory.
-    # Also copy and re-write included phil files, while updating the config file to
-    # the new paths
-    # Note, some legacy rewrites done by cxi.lsf are not included here.
+    # Copy any config or phil files specified
     target_num = 1
-    f = open(config_path, 'w')
-    for line in open(params.input.cfg).readlines():
-      if "[pyana]" in line:
-        raise Sorry("Pyana not supported. Check your config file.")
-      if "RUN_NO" in line:
-        line = line.replace("RUN_NO", str(params.input.run_num))
-      if "RUN_STR" in line:
-        line = line.replace("RUN_STR", "r%04d"%(params.input.run_num))
-      if "trial_id" in line:
-        key, val = line.split("=")
-        line = "%s= %d\n"%(key,params.input.trial)
-      if "rungroup_id" in line:
-        key, val = line.split("=")
-        line = "%s= %s\n"%(key,params.input.rungroup) # None ok
-      elif "_dirname" in line:
-        key, val = line.split("=")
-        val = os.path.join(trialdir, os.path.basename(val.strip()))
-        if not os.path.exists(val):
-          os.mkdir(val)
-        line = "%s= %s\n"%(key,val)
-      elif "xtal_target" in line:
-        key, val = line.split("=")
-        val = val.strip()
-        if not os.path.exists(val):
-          raise Sorry("One of the xtal_target files in the cfg file doesn't exist: %s"%val)
-        new_target = "params_%d"%target_num
-        copy_target(val, trialdir, new_target)
+    has_config = False
+    redone_args = []
+    for arg in dispatcher_args:
+      if not len(arg.split('=')) == 2:
+        continue
+      name, value = arg.split('=')
+
+      if "cfg" in name and os.path.splitext(value)[1].lower() == ".cfg":
+        cfg = value
+        if not os.path.exists(cfg):
+          raise Sorry("Config file doesn't exist: %s"%cfg)
+        if has_config:
+          raise Sorry("Multiple config files found")
+        has_config = True
+        target_num = copy_config(cfg, trialdir, "psana", params, target_num)
+        redone_args.append("%s=%s"%(name, os.path.join(trialdir, "psana.cfg")))
+      elif "target" in name or os.path.splitext(value)[1].lower() == ".phil":
+        phil = value
+        if not os.path.exists(phil):
+          raise Sorry("Phil file doesn't exist: %s"%phil)
+        copy_target(phil, trialdir, "params_%d"%target_num)
+        redone_args.append("%s=%s"%(name, os.path.join(trialdir, "params_%d.phil"%target_num)))
         target_num += 1
-        line = "%s= %s.phil\n"%(key,os.path.join(trialdir, new_target))
-      f.write(line)
-    f.close()
+      else:
+        redone_args.append(arg)
+    dispatcher_args = redone_args
 
     # If additional phil params are provided, copy them over too
     if params.input.target is not None:
@@ -303,14 +335,14 @@ class Script(object):
     submit_path = os.path.join(trialdir, "submit.sh")
 
     if params.mp.method == "mpi":
-      command = "bsub -a mympi -n %d -o %s -q %s %s input.cfg=%s input.experiment=%s input.run_num=%d output.logging_dir=%s"%( \
-        params.mp.nproc, os.path.join(stdoutdir, "log.out"), params.mp.queue, params.input.dispatcher, config_path,
-        params.input.experiment, params.input.run_num,stdoutdir)
+      command = "bsub -a mympi -n %d -o %s -q %s %s input.experiment=%s input.run_num=%d %s"%( \
+        params.mp.nproc, os.path.join(stdoutdir, "log.out"), params.mp.queue, params.input.dispatcher,
+        params.input.experiment, params.input.run_num, logging_str)
+
+      for arg in dispatcher_args:
+        command += " %s"%arg
 
       command += " output.output_dir=%s"%output_dir
-
-      if params.input.xtc_dir is not None:
-        command += " input.xtc_dir=%s"%params.input.xtc_dir
 
       if params.input.target is not None:
         command += " %s"%params.input.target
@@ -344,16 +376,15 @@ class Script(object):
       f.write(". %s\n"%setpaths_path)
       f.write("\n")
 
-      if params.input.xtc_dir is None:
-        extra_str = ""
-      else:
-        extra_str = "input.xtc_dir=%s"%params.input.xtc_dir
+      extra_str = ""
+      for arg in dispatcher_args:
+        extra_str += " %s"%arg
 
       if params.input.target is not None:
         extra_str += " %s"%params.input.target
 
-      f.write("%s input.cfg=%s input.experiment=%s input.run_num=%d output.output_dir=%s mp.method=sge %s 1> %s 2> %s\n"%( \
-        params.input.dispatcher, config_path, params.input.experiment, params.input.run_num, output_dir, extra_str,
+      f.write("%s input.experiment=%s input.run_num=%d output.output_dir=%s mp.method=sge %s 1> %s 2> %s %s\n"%( \
+        params.input.dispatcher, params.input.experiment, params.input.run_num, output_dir, extra_str, logging_str,
         os.path.join(stdoutdir, "log_$SGE_TASK_ID.out"), os.path.join(stdoutdir, "log_$SGE_TASK_ID.err")))
       f.close()
     elif params.mp.method == "pbs":
@@ -385,16 +416,15 @@ class Script(object):
       f.write("source %s\n"%setpaths_path)
       f.write("sit_setup\n")
 
-      if params.input.xtc_dir is None:
-        extra_str = ""
-      else:
-        extra_str = "input.xtc_dir=%s"%params.input.xtc_dir
+      extra_str = ""
+      for arg in dispatcher_args:
+        extra_str += " %s"%arg
 
       if params.input.target is not None:
         extra_str += " %s"%params.input.target
 
-      f.write("aprun -n %d %s input.cfg=%s input.experiment=%s input.run_num=%d output.output_dir=%s mp.method=mpi %s\n"%( \
-        params.mp.nproc, params.input.dispatcher, config_path, params.input.experiment, params.input.run_num, output_dir, extra_str))
+      f.write("aprun -n %d %s input.experiment=%s input.run_num=%d output.output_dir=%s mp.method=mpi %s %s\n"%( \
+        params.mp.nproc, params.input.dispatcher, params.input.experiment, params.input.run_num, output_dir, extra_str, logging_str))
       f.close()
     elif params.mp.method == "custom":
       if not os.path.exists(params.mp.custom.submit_template):
@@ -403,18 +433,17 @@ class Script(object):
       # Use the input script as a template and fill in the missing info needed
       submit_path = os.path.join(trialdir, "submit.sh")
 
-      if params.input.xtc_dir is None:
-        extra_str = ""
-      else:
-        extra_str = "input.xtc_dir=%s"%params.input.xtc_dir
+      extra_str = ""
+      for arg in dispatcher_args:
+        extra_str += " %s"%arg
 
       if params.input.target is not None:
         extra_str += " %s"%params.input.target
 
       command = "qsub -o %s %s %s"%(os.path.join(stdoutdir, "log.out"), params.mp.custom.extra_args, submit_path)
 
-      processing_command = "%s input.cfg=%s input.experiment=%s input.run_num=%d output.output_dir=%s mp.method=mpi %s output.logging_dir=%s\n"%( \
-         params.input.dispatcher, config_path, params.input.experiment, params.input.run_num, output_dir, extra_str, stdoutdir)
+      processing_command = "%s input.experiment=%s input.run_num=%d output.output_dir=%s mp.method=mpi %s %s\n"%( \
+         params.input.dispatcher, config_path, params.input.experiment, params.input.run_num, output_dir, extra_str, logging_str)
 
       f = open(submit_path, 'w')
       for line in open(params.mp.custom.submit_template).readlines():
