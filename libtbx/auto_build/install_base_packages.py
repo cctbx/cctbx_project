@@ -652,13 +652,14 @@ Installation of Python packages may fail.
     # Make python relocatable
     python_sysconfig = check_output([ python_exe, '-c',
       'import sys; import os; print os.path.join(sys.exec_prefix, "lib", "python2.7", "_sysconfigdata.py")'
-      ])
-    fh = open(python_sysconfig, 'r')
-    python_config = fh.read()
-    fh.close()
-    if 'relocatable' not in python_config:
-      fh = open(python_sysconfig, 'a')
-      fh.write("""
+      ]).rstrip()
+    try:
+      fh = open(python_sysconfig, 'r')
+      python_config = fh.read()
+      fh.close()
+      if 'relocatable' not in python_config:
+        fh = open(python_sysconfig, 'a')
+        fh.write("""
 #
 # Fix to make python installation relocatable
 #
@@ -676,7 +677,10 @@ for k, v in build_time_vars.iteritems():
   if isinstance(v, basestring) and '%s' in v:
     build_time_vars[k] = v.replace('%s', _replacement_path)
 """ % (self.base_dir, self.base_dir))
-      fh.close()
+        fh.close()
+    except Exception, e:
+      print >> log, "Could not make python relocatable:"
+      print >> log, e
 
     self.set_python(op.abspath(python_exe))
     log.close()
