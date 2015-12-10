@@ -650,7 +650,9 @@ Installation of Python packages may fail.
     python_exe = op.abspath(op.join(self.base_dir, "bin", "python"))
 
     # Make python relocatable
-    python_sysconfig = op.abspath(op.join(self.base_dir, "lib", "python2.7", "_sysconfigdata.py"))
+    python_sysconfig = check_output([ python_exe, '-c',
+      'import sys; import os; print os.path.join(sys.exec_prefix, "lib", "python2.7", "_sysconfigdata.py")'
+      ])
     fh = open(python_sysconfig, 'r')
     python_config = fh.read()
     fh.close()
