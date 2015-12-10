@@ -379,6 +379,7 @@ class info_object:
       region_range_dict=None,
       selected_regions=None,
       ncs_related_regions=None,
+      self_and_ncs_related_regions=None,
       map_files_written=None,
       bad_region_list=None,
       region_centroid_dict=None,
@@ -404,6 +405,7 @@ class info_object:
     ):
     if not selected_regions: selected_regions=[]
     if not ncs_related_regions: ncs_related_regions=[]
+    if not self_and_ncs_related_regions: self_and_ncs_related_regions=[]
     if not map_files_written: map_files_written=[]
     if not output_region_map_info_list: output_region_map_info_list=[]
     if not output_region_pdb_info_list: output_region_pdb_info_list=[]
@@ -633,6 +635,7 @@ class ncs_group_object:
       region_range_dict=None,
       selected_regions=None,
       ncs_related_regions=None,
+      self_and_ncs_related_regions=None,
       equiv_dict=None,
       map_files_written=None,
       bad_region_list=None,
@@ -648,6 +651,7 @@ class ncs_group_object:
          ):
     if not selected_regions: selected_regions=[]
     if not ncs_related_regions: ncs_related_regions=[]
+    if not self_and_ncs_related_regions: self_and_ncs_related_regions=[]
     if not map_files_written: map_files_written=[]
     from libtbx import adopt_init_args
     adopt_init_args(self, locals())
@@ -668,6 +672,7 @@ class ncs_group_object:
       region_range_dict=self.region_range_dict,
       selected_regions=self.selected_regions,
       ncs_related_regions=self.ncs_related_regions,
+      self_and_ncs_related_regions=self.self_and_ncs_related_regions,
       bad_region_list=self.bad_region_list,
       region_centroid_dict=self.region_centroid_dict,
       original_id_from_id=self.original_id_from_id,
@@ -678,6 +683,9 @@ class ncs_group_object:
 
   def set_ncs_related_regions(self,ncs_related_regions):
     self.ncs_related_regions=deepcopy(ncs_related_regions)
+
+  def set_self_and_ncs_related_regions(self,self_and_ncs_related_regions):
+    self.self_and_ncs_related_regions=deepcopy(self_and_ncs_related_regions)
 
   def set_map_files_written(self,map_files_written):
     self.map_files_written=deepcopy(map_files_written)
@@ -1500,7 +1508,6 @@ def get_duplicates_and_ncs(
             if not n in equiv_dict_ncs_copy_dict[id][value].keys():
               equiv_dict_ncs_copy_dict[id][value][n]=0
             equiv_dict_ncs_copy_dict[id][value][n]+=1  # how many are ncs copy n
-
   return duplicate_dict,equiv_dict,equiv_dict_ncs_copy_dict,\
       region_range_dict,region_centroid_dict,region_scattered_points_dict
 
@@ -1711,7 +1718,8 @@ def group_ncs_equivalents(
           break
 
     if not duplicate:
-      # print >>out,"NCS GROUP:",equiv_group_as_list,":",total_grid_points
+      #print >>out,"NCS GROUP:",equiv_group_as_list,":",total_grid_points
+
       ncs_group_list.append(equiv_group_as_list)
       for equiv_group in equiv_group_as_list:
         for x in equiv_group:
@@ -2185,19 +2193,36 @@ def get_ncs_related_regions_specific_target(
 def get_ncs_related_regions(
     ncs_group_obj=None,
     selected_regions=None,
-    first_only=False): # returns a simple list of region ids
+    include_self=False):
+  # returns a simple list of region ids
+  # if include_self then include selected regions and all ncs-related
+  #   otherwise do not include selected regions or anything that might
+  #   overlap with them
+
   ncs_related_regions=[]
-  for id in selected_regions:
-    found=False
-    for ncs_group in ncs_group_obj.ncs_group_list:
-      ids_in_group=single_list(ncs_group)
-      if id in ids_in_group:  # this group contains this selected id
-        found=True
-        for i in ids_in_group:
-          if (not i==id) and (not i in selected_regions) and \
-             (not i in ncs_related_regions):
-            ncs_related_regions.append(i)
-        break # don't look at any more ncs groups
+  if include_self:
+    for id in selected_regions:
+      if not id in ncs_related_regions:
+        ncs_related_regions.append(id)
+      for ncs_group in ncs_group_obj.ncs_group_list:
+        ids_in_group=single_list(ncs_group)
+        if id in ids_in_group:  # this group contains this selected id
+          for i in ids_in_group:
+            if not i in ncs_related_regions:
+              ncs_related_regions.append(i)
+
+  else:
+    for id in selected_regions:
+      found=False
+      for ncs_group in ncs_group_obj.ncs_group_list:
+        ids_in_group=single_list(ncs_group)
+        if id in ids_in_group:  # this group contains this selected id
+          found=True
+          for i in ids_in_group:
+            if (not i==id) and (not i in selected_regions) and \
+               (not i in ncs_related_regions):
+              ncs_related_regions.append(i)
+          break # don't look at any more ncs groups
 
   return ncs_related_regions
 
@@ -2344,11 +2369,19 @@ def select_regions_in_au(params,
      region_scattered_points_dict=ncs_group_obj.region_scattered_points_dict)
 
   # Identify ncs-related regions for all the selected regions
+  self_and_ncs_related_regions=get_ncs_related_regions(
+    ncs_group_obj=ncs_group_obj,
+    selected_regions=selected_regions,
+    include_self=True)
+
   ncs_related_regions=get_ncs_related_regions(
     ncs_group_obj=ncs_group_obj,
-    selected_regions=selected_regions)
+    selected_regions=selected_regions,
+    include_self=False)
+
   print >>out,"NCS-related regions (not used): %d " %(len(ncs_related_regions))
   ncs_group_obj.set_selected_regions(selected_regions)
+  ncs_group_obj.set_self_and_ncs_related_regions(self_and_ncs_related_regions)
   ncs_group_obj.set_ncs_related_regions(ncs_related_regions)
 
   return ncs_group_obj,scattered_points
@@ -2396,7 +2429,8 @@ def create_remaining_mask_and_map(params,
   # has been interpreted (and all points in interpreted NCS-related copies)
 
   bool_all_used=get_bool_mask_of_regions(ncs_group_obj=ncs_group_obj,
-   region_list=ncs_group_obj.selected_regions+ncs_group_obj.ncs_related_regions,
+   region_list=ncs_group_obj.selected_regions+
+       ncs_group_obj.self_and_ncs_related_regions,
    expand_size=params.segmentation.expand_size)
   map_data_remaining=map_data.deep_copy()
   s=(bool_all_used==True)
@@ -2441,6 +2475,7 @@ def get_selected_and_related_regions(params,
   # and all points in NCS-related copies (to be excluded)
   bool_ncs_related_mask=get_bool_mask_of_regions(ncs_group_obj=ncs_group_obj,
        region_list=ncs_group_obj.ncs_related_regions)
+     # NOTE: using ncs_related_regions here NOT self_and_ncs_related_regions
 
   lower_bounds=[None,None,None]
   upper_bounds=[None,None,None]
