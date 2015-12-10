@@ -664,19 +664,17 @@ Installation of Python packages may fail.
 # Fix to make python installation relocatable
 #
 
-def _replacement_path():
+def _replace_sysconfig_paths(d):
   from os import environ
-  from os.path import dirname
-  python_exe = environ.get('LIBTBX_PYEXE', None)
-  if python_exe is None:
-    from sys import executable
-    return dirname(executable)
-  return dirname(dirname(python_exe))
-_replacement_path = _replacement_path()
-for k, v in build_time_vars.iteritems():
-  if isinstance(v, basestring) and '%s' in v:
-    build_time_vars[k] = v.replace('%s', _replacement_path)
-""" % (self.base_dir, self.base_dir))
+  from sys import executable
+  path = environ.get('LIBTBX_PYEXE', executable)
+  if '/base/' in path:
+    path = path[:path.rfind('/base/')+5]
+    for k, v in d.iteritems():
+      if isinstance(v, basestring):
+        d[k] = v.replace('%s', path)
+_replace_sysconfig_paths(build_time_vars)
+""" % self.base_dir)
         fh.close()
     except Exception, e:
       print >> log, "Could not make python relocatable:"
