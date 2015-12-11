@@ -152,26 +152,42 @@ master_phil = iotbx.phil.parse("""
   }
 
   segmentation {
+
     density_threshold = None
       .type = float
       .short_caption = Density threshold
       .help = Threshold density for identifying regions of density. \
              Applied after normalizing the density in the region of \
              the molecule to an rms of 1 and mean of zero.
+
     starting_density_threshold = None
       .type = float
       .short_caption = Starting density threshold
       .help = Optional guess of threshold density
-    remove_bad_regions = True
+
+    max_overlap_fraction = 0.05
+      .type = float
+      .short_caption = Max overlap
+      .help = Maximum fractional overlap allowed to density in another \
+              asymmetric unit. Definition of a bad region.
+
+    remove_bad_regions_percent = 1
+      .type = float
+      .short_caption = Remove worst overlapping regions
+      .help = Remove the worst regions that are part of more than one NCS \
+           asymmetric unit, up to remove_bad_regions_percent of the total
+
+    require_complete = True
       .type = bool
-      .short_caption = Remove bad regions
-      .help = Remove regions that are bigger than the NCS asymmetric unit.\
+      .short_caption = Require all NCS copies to be represented for a region
+      .help =  Require all NCS copies to be represented for a region
 
     split_if_possible = True
       .type = bool
       .short_caption = Split regions if mixed
       .help = Split regions that are split in some NCS copies.\
               If None, split if most copies are split.
+
     write_all_regions = False
       .type = bool
       .short_caption = Write all regions
@@ -218,12 +234,6 @@ master_phil = iotbx.phil.parse("""
       .type = int
       .help = Minimum region size to consider (in grid points)
       .short_caption = Minimum region size
-
-    max_overlap_fraction = 0.01
-      .type = float
-      .short_caption = Max overlap
-      .help = Maximum fractional overlap allowed to density in another \
-              asymmetric unit.
 
     seeds_to_try = 10
       .type = int
@@ -929,8 +939,7 @@ def score_threshold(threshold=None,
 
    if v1 > max_ratio_to_target*target_in_top_regions:
      ok=False #return
-     if v1 > 10*max_ratio_to_target*target_in_top_regions: # way too low
-       too_low=True
+     too_low=True
 
    if v1 < min_volume or v1 < 0.1*min_ratio_to_target*target_in_top_regions:
      # way too high
@@ -950,17 +959,30 @@ def score_threshold(threshold=None,
    median_number,iavg=sorted_by_volume[nn2]
 
    # number in each region should be about target_in_top_regions
+
    if median_number > target_in_top_regions:
      score_grid_points=target_in_top_regions/max(1.,median_number)
    else:
      score_grid_points=median_number/target_in_top_regions
 
+   if v1> target_in_top_regions:
+     score_grid_points_b=target_in_top_regions/max(1.,v1)
+   else:
+     score_grid_points_b=v1/target_in_top_regions
+
+   score_grid_points=0.5*(score_grid_points+score_grid_points_b)
+
+   score_grid_points=score_grid_points**2  # maybe even **3
+
    if threshold>1.:
      score_near_one=1./threshold
    else:
      score_near_one=threshold
+
+   # Normalize weight_score_ratio by target_in_top_regions:
+   sc=min(1.,0.5*median_number/max(1,target_in_top_regions))
    overall_score=(
-     (weight_score_ratio*score_ratio+
+     (sc*weight_score_ratio*score_ratio+
      weight_score_grid_points*score_grid_points+
      weight_near_one*score_near_one
        ) /
@@ -986,10 +1008,8 @@ def score_threshold(threshold=None,
        threshold,target_in_top_regions,expected_regions,
        v1,median_number,ratio,has_sufficient_regions,overall_score,ok)
 
-   if ok:
-     return overall_score,has_sufficient_regions,too_low,too_high,expected_regions
-   else:
-     return None,has_sufficient_regions,too_low,too_high,expected_regions
+   return overall_score,has_sufficient_regions,\
+      too_low,too_high,expected_regions,ok
 
 
 def choose_threshold(params,map_data=None,
@@ -1003,6 +1023,7 @@ def choose_threshold(params,map_data=None,
   best_threshold=None
   best_threshold_has_sufficient_regions=None
   best_score=None
+  best_ok=None
 
   print >>out,"\nChecking possible cutoffs for region identification"
   print >>out,"Scale: %7.3f" %(scale)
@@ -1046,10 +1067,10 @@ def choose_threshold(params,map_data=None,
       z = zip(co.regions(),range(0,co.regions().size()))
       sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
       if len(sorted_by_volume)<2:
-        score,has_sufficient_regions,too_low,too_high,expected_regions=\
-          None,None,None,None,None
+        score,has_sufficient_regions,too_low,too_high,expected_regions,ok=\
+          None,None,None,None,None,None
       else:
-        score,has_sufficient_regions,too_low,too_high,expected_regions=\
+        score,has_sufficient_regions,too_low,too_high,expected_regions,ok=\
            score_threshold(
          threshold=threshold,
          sorted_by_volume=sorted_by_volume,
@@ -1078,18 +1099,21 @@ def choose_threshold(params,map_data=None,
            upper_bound=threshold
           elif threshold <best_threshold: # new lower bound
            lower_bound=threshold
-      elif ( best_score is None or score > best_score):
+      elif  (ok or not best_ok) and  \
+            (best_score is None or score > best_score):
         best_threshold=threshold
         best_threshold_has_sufficient_regions=has_sufficient_regions
         best_score=score
+        best_ok=ok
 
   if best_threshold is not None:
     print >>out,"\nBest threshold: %5.2f\n" %(best_threshold)
-    return best_threshold,unique_expected_regions
+    return best_threshold,unique_expected_regions,best_score,best_ok
   elif params.segmentation.density_threshold is not None: # use it anyhow
-    return params.segmentation.density_threshold,unique_expected_regions
+    return params.segmentation.density_threshold,\
+      unique_expected_regions,None,None
   else:
-    return None,unique_expected_regions
+    return None,unique_expected_regions,None,None
 
 def get_connectivity(params,
      map_data=None,
@@ -1109,8 +1133,12 @@ def get_connectivity(params,
   # Try connectivity at various thresholds
   # Choose one that has about the right number of grid points in top regions
   scale=0.95
+  best_threshold=None
+  best_score=None
+  best_ok=None
+  best_unique_expected_regions=None
   for ii in xrange(3):
-    threshold,unique_expected_regions=choose_threshold(params,
+    threshold,unique_expected_regions,score,ok=choose_threshold(params,
      map_data=map_data,
      n_residues=n_residues,
      ncs_copies=ncs_copies,
@@ -1118,20 +1146,28 @@ def get_connectivity(params,
      solvent_fraction=solvent_fraction,
      scale=scale,
      out=out)
-    if threshold is None:
-      scale=scale**0.333
-    else:
+    # Take it if it improves (score, ok)
+    if best_score is None or  \
+      ((ok or not best_ok) and (score > best_score)):
+      best_score=score
+      best_unique_expected_regions=unique_expected_regions
+      best_ok=ok
+      best_threshold=threshold
+    if best_ok or params.segmentation.density_threshold is not None:
       break
-  if threshold is None:
+    else:
+      scale=scale**0.333 # keep trying
+  if best_threshold is None:
     if params.segmentation.iterate_with_remainder: # on first try failed
-      raise Sorry("No threshold found...try with threshold=xxx")
+      raise Sorry("No threshold found...try with density_threshold=xxx")
     else: # on iteration...ok
       print >>out,"Note: No threshold found"
       return None,None,None,None,None
   else:
-    params.segmentation.starting_density_threshold=threshold # try it first
+    params.segmentation.starting_density_threshold=best_threshold
+    # try it next time
 
-  co = maptbx.connectivity(map_data=map_data,threshold=threshold,
+  co = maptbx.connectivity(map_data=map_data,threshold=best_threshold,
          wrapping=params.crystal_info.use_sg_symmetry)
   z = zip(co.regions(),range(0,co.regions().size()))
   sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
@@ -1155,7 +1191,7 @@ def get_connectivity(params,
      min_b[i][2],max_b[i][2])
     """
     n_use=cntr
-  return co,sorted_by_volume,min_b,max_b,unique_expected_regions
+  return co,sorted_by_volume,min_b,max_b,best_unique_expected_regions
 
 def get_volume_of_seq(text,vol=None,chain_type=None,out=sys.stdout):
   chain_type,n_residues=guess_chain_type(text,chain_type=chain_type,out=out)
@@ -1516,32 +1552,36 @@ def remove_bad_regions(params=None,
   edited_volume_list=None,
   out=sys.stdout):
 
-  new_duplicate_dict={}
+  worst_list=[]
   for id in duplicate_dict.keys():
-    if duplicate_dict[id]:
-      new_duplicate_dict[id]=duplicate_dict[id]
-  duplicate_dict=new_duplicate_dict
-  dups=duplicate_dict.keys()
+    fract=duplicate_dict[id]/edited_volume_list[id-1]
+    if duplicate_dict[id] and fract >=params.segmentation.max_overlap_fraction:
+      worst_list.append([fract,id])
+    else:
+      del duplicate_dict[id]
+  worst_list.sort()
+  worst_list.reverse()
+
   bad_region_list=[]
-  if dups:
+  max_number_to_remove=int(0.5+
+    0.01*params.segmentation.remove_bad_regions_percent*len(edited_volume_list))
+  if worst_list:
     print >>out,"\nRegions that span multiple NCS au:"
-    dups.sort()
-    for id in dups:
-      print >>out,"ID: %d  Duplicate points: %d " %(
-        id,duplicate_dict[id])
+    for fract,id in worst_list:
+      print >>out,"ID: %d  Duplicate points: %d (%.1f %%)" %(
+        id,duplicate_dict[id],100.*fract),
+      if  len(bad_region_list)<max_number_to_remove:
+         bad_region_list.append(id)
+         print >>out," (removed)"
+      else:
+         print >>out
 
   new_sorted_by_volume=[]
-  cntr=0
   region_list=[]
   region_volume_dict={}
   for i in xrange(len(edited_volume_list)):
     id=i+1
-    cntr+=1
     v=edited_volume_list[i]
-    if cntr in dups and \
-       duplicate_dict[cntr]>params.segmentation.max_overlap_fraction*v \
-        and params.segmentation.remove_bad_regions: #  mark it for not using
-      bad_region_list.append(id)
     new_sorted_by_volume.append([v,id])
     region_list.append(id)
     region_volume_dict[id]=v
@@ -1619,7 +1659,7 @@ def get_overlap(l1,l2):
     if i in l2a and not i in overlap_list: overlap_list.append(i)
   return overlap_list
 
-def group_ncs_equivalents(
+def group_ncs_equivalents(params,
     region_list=None,
     region_volume_dict=None,
     equiv_dict_ncs_copy=None,
@@ -1663,7 +1703,8 @@ def group_ncs_equivalents(
 
     if tracking_data.input_ncs_info.is_helical_symmetry:
       # complete if we have original_number_of_operators worth
-      if len(present_ncs_copies)>= \
+      if (not params.segmentation.require_complete) or \
+         len(present_ncs_copies)>= \
          tracking_data.input_ncs_info.original_number_of_operators:
         complete=True
       else:
@@ -1843,7 +1884,7 @@ def identify_ncs_regions(params,
   #  e.g.,  [[8], [9, 23], [10, 25], [11, 27], [12, 24], [13, 22], [14, 26]]
   #  May contain elements that are in bad_region_list (to exclude later)
   if not load_saved_files:
-    ncs_group_list,shared_group_dict=group_ncs_equivalents(
+    ncs_group_list,shared_group_dict=group_ncs_equivalents(params,
     split_if_possible=params.segmentation.split_if_possible,
     tracking_data=tracking_data,
     region_volume_dict=region_volume_dict,
