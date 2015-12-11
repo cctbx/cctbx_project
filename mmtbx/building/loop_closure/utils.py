@@ -6,6 +6,7 @@ from mmtbx.validation.ramalyze import ramalyze, RAMALYZE_FAVORED
 from mmtbx.validation.ramalyze import RAMALYZE_ALLOWED # import dependency
 from mmtbx.validation.ramalyze import RAMALYZE_OUTLIER # import dependency
 import math
+from cStringIO import StringIO
 
 def get_phi_psi_atoms(hierarchy):
   phi_psi_atoms = []
@@ -35,20 +36,23 @@ def pair_info(phi_psi_pair):
 
 def list_rama_outliers_h(hierarchy, r):
   phi_psi_atoms = get_phi_psi_atoms(hierarchy)
-  list_rama_outliers(phi_psi_atoms, r)
+  outp = list_rama_outliers(phi_psi_atoms, r)
+  return outp
+
 
 def list_rama_outliers(phi_psi_atoms, r):
+  result = ""
   for phi_psi_pair, rama_key in phi_psi_atoms:
     rama_score = get_rama_score(phi_psi_pair, r, rama_key)
     if rama_evaluate(phi_psi_pair, r, rama_key) == RAMALYZE_OUTLIER:
-      print "  !!! OUTLIER", pair_info(phi_psi_pair), "score=", rama_score
+      result += "  !!! OUTLIER %s, score=%f\n" % (pair_info(phi_psi_pair), rama_score)
     # print_rama_stats(phi_psi_atoms, r)
+  return result
 
 
 def get_rama_score(phi_psi_pair, r, rama_key):
   phi_psi_angles = get_pair_angles(phi_psi_pair)
   rama_score = r.evaluate(rama_key, phi_psi_angles)
-  # print "in get_rama_score", rama_score
   return rama_score
 
 def rama_evaluate(phi_psi_pair, r, rama_key):
@@ -62,15 +66,18 @@ def get_pair_angles(phi_psi_pair):
   return phi_psi_angles
 
 def print_rama_stats(phi_psi_atoms, r):
+  result = StringIO()
   for phi_psi_pair, rama_key in phi_psi_atoms:
     for i, atoms in enumerate(phi_psi_pair):
       for a in atoms:
-        print a.id_str()
+        print >> result, a.id_str()
     rama_score = get_rama_score(phi_psi_pair, r, rama_key)
-    print "rama score:", get_pair_angles(phi_psi_pair), rama_score,
-    print rama_score_evaluate(rama_key, rama_score), rama_key
-    print "="*20
-  print "*"*80
+    print >> result, "rama score:", get_pair_angles(phi_psi_pair), rama_score,
+    print >> result, rama_score_evaluate(rama_key, rama_score), rama_key
+    print >> result, "="*20
+  print >> result, "*"*80
+  r = result.getvalue()
+  return r
 
 def get_rmsd(fixed_points, moving_points):
   rmsd = 0
