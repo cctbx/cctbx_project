@@ -46,7 +46,7 @@ class loop_idealization():
     self.r = ramachandran_eval.RamachandranEval()
     self.ref_exclusion_selection = ""
     for chain in pdb_hierarchy.only_model().chains():
-      print "Idealizing chain %s" % chain.id
+      print >> self.log, "Idealizing chain %s" % chain.id
       sel = asc.selection("chain %s" % chain.id)
       exclusions, ch_h = self.idealize_chain(hierarchy=self.original_pdb_h.select(sel))
       if ch_h is not None:
@@ -58,11 +58,12 @@ class loop_idealization():
         self.ref_exclusion_selection += "(%s) or " % selection
     if len(self.ref_exclusion_selection) > 0:
       self.ref_exclusion_selection = self.ref_exclusion_selection[:-3]
+    self.resulting_pdb_h.write_pdb_file(file_name="%s_before_minization.pdb" % self.params.output_prefix)
     if self.params.minimize_whole:
-      print "minimizing whole thing..."
-      print "self.ref_exclusion_selection", self.ref_exclusion_selection
+      print >> self.log, "minimizing whole thing..."
+      print >> self.log, "self.ref_exclusion_selection", self.ref_exclusion_selection
       minimize_hierarchy(self.resulting_pdb_h, xrs, self.original_pdb_h, self.ref_exclusion_selection, log=None)
-      self.resulting_pdb_h.write_pdb_file(file_name="%s_all_minized.pdb" % self.params.output_prefix)
+      # self.resulting_pdb_h.write_pdb_file(file_name="%s_all_minized.pdb" % self.params.output_prefix)
     # return new_h
 
   def process_params(self, params):
@@ -88,31 +89,138 @@ class loop_idealization():
     working_h.reset_atom_i_seqs()
     rama_results = []
     ranges_for_idealization = []
-    print "rama outliers for input hierarchy:"
-    rama_out_resnums = get_resnums_of_chain_rama_outliers(
+    print >> self.log, "rama outliers for input hierarchy:"
+    rama_out_resnums = self.get_resnums_of_chain_rama_outliers(
         working_h, self.r)
     if len(rama_out_resnums) == 0:
       return None, None
-    list_of_reference_exclusion = get_list_of_exclusions_for_reference(
-        rama_out_resnums)
+    # get list of residue numbers that should be excluded from reference
+    list_of_reference_exclusion = []
+    for resnum in rama_out_resnums:
+      list_of_reference_exclusion += [resnum-1, resnum, resnum+1]
     out_i = 0
     for rama_out_resnum in rama_out_resnums:
-      print
-      print "Fixing outlier:", rama_out_resnum
-      new_h = fix_rama_outlier(
+      print >> self.log
+      print >> self.log, "Fixing outlier:", rama_out_resnum
+      new_h = self.fix_rama_outlier(
         pdb_hierarchy=working_h,
         out_res_num=rama_out_resnum,
         prefix=self.params.output_prefix,
         minimize=False)
-      print "listing outliers after loop minimization"
-      utils.list_rama_outliers_h(new_h, self.r)
+      print >> self.log, "listing outliers after loop minimization"
+      outp = utils.list_rama_outliers_h(new_h, self.r)
+      print >> self.log, outp
       fn = "%s_after_loop_%d.pdb" % (self.params.output_prefix, out_i)
-      print "  writing file %s" % fn
-      new_h.write_pdb_file(file_name=fn)
+      # print >> self.log, "  writing file %s" % fn
+      # new_h.write_pdb_file(file_name=fn)
       working_h = new_h
       out_i += 1
     return list_of_reference_exclusion, new_h
 
+  def fix_rama_outlier(self,
+      pdb_hierarchy, out_res_num, prefix="", minimize=True):
+
+    adaptive_mc_rmsd = {1:3.0, 2:3.5, 3:4.0}
+
+    original_pdb_h = pdb_hierarchy.deep_copy()
+    rotamer_manager = RotamerEval()
+    all_results = []
+    for ccd_radius, change_all, change_radius in [
+        (1, False, 0),
+        (2, False, 0),
+        # (3, False, 0),
+        (2, True, 1),
+        # (3, True, 1),
+        ]:
+    # while ccd_radius <= 3:
+      print >> self.log, "  Starting optimization with radius, change_all:", ccd_radius, change_all
+      moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms = get_fixed_moving_parts(
+          pdb_hierarchy=pdb_hierarchy,
+          start_res_num=out_res_num-ccd_radius,
+          end_res_num=out_res_num+ccd_radius)
+      moving_h_set = None
+      if change_all:
+        moving_h_set = starting_conformations.get_all_starting_conformations(moving_h, change_radius, log=self.log)
+      else:
+        moving_h_set = starting_conformations.get_starting_conformations(moving_h, log=self.log)
+
+      if len(moving_h_set) == 0:
+        # outlier was fixed before somehow...
+        return original_pdb_h
+
+      rotamer_manager = RotamerEval()
+      for i, h in enumerate(moving_h_set):
+        ccd_obj = ccd_python(fixed_ref_atoms, h, moving_ref_atoms_iseqs)
+        ccd_obj.run()
+        resulting_rmsd = ccd_obj.resulting_rmsd
+        states = ccd_obj.states
+        n_iter = ccd_obj.n_iter
+
+        # resulting_rmsd, states, n_iter = ccd(
+        #     fixed_ref_atoms, h, moving_ref_atoms_iseqs, moving_h)
+
+        mc_rmsd = get_main_chain_rmsd_range(moving_h, h, all_atoms=True)
+        print >> self.log, "Resulting anchor and backbone RMSDs, n_iter for model %d:" % i,
+        print >> self.log, resulting_rmsd, ",", mc_rmsd, ",", n_iter
+        all_results.append((h.deep_copy(), mc_rmsd, resulting_rmsd, n_iter))
+        #
+        # setting new coordinates
+        #
+        moved_with_side_chains_h = pdb_hierarchy.deep_copy()
+        set_xyz_smart(moved_with_side_chains_h, h)
+        #
+        # placing side-chains
+        #
+        # moved_with_side_chains_h.write_pdb_file(
+        #     file_name="%s_before_sc_placement_%d.pdb" % (prefix, i))
+        place_side_chains(moved_with_side_chains_h, original_pdb_h,
+            rotamer_manager, out_res_num-ccd_radius, out_res_num+ccd_radius)
+        # moved_with_side_chains_h.write_pdb_file(
+        #     file_name="%s_after_sc_placement_%d.pdb" % (prefix, i))
+
+
+        #
+        # finalizing with geometry_minimization
+        #
+        if mc_rmsd < adaptive_mc_rmsd[ccd_radius]:
+          if minimize:
+            print >> self.log, "minimizing..."
+            moved_with_side_chains_h.write_pdb_file(
+                file_name="%s_result_before_min_%d.pdb" % (prefix, i))
+            minimize_hierarchy(moved_with_side_chains_h, xrs, original_pdb_h, self.log)
+          moved_with_side_chains_h.write_pdb_file(
+              file_name="%s_result_minimized_%d.pdb" % (prefix, i))
+          final_rmsd = get_main_chain_rmsd_range(moved_with_side_chains_h,
+              original_pdb_h, out_res_num-ccd_radius, out_res_num+ccd_radius)
+          print >> self.log, "FINAL RMSD after minimization:", final_rmsd
+          return moved_with_side_chains_h
+      ccd_radius += 1
+
+
+    print >> self.log, "Epic FAIL: failed to fix rama outlier"
+    all_results.sort(key=lambda tup: tup[1])
+    print >> self.log, "  Options were: (mc_rmsd, resultign_rmsd, n_iter)"
+    for i in all_results:
+      print >> self.log, i[1:]
+    # STOP()
+    return original_pdb_h
+
+  def get_resnums_of_chain_rama_outliers(self, pdb_hierarchy, r):
+    phi_psi_atoms = utils.get_phi_psi_atoms(pdb_hierarchy)
+    result = []
+    rama_results = []
+    ranges_for_idealization = []
+    print >> self.log, "rama outliers for input hierarchy:"
+    list_of_reference_exclusion = []
+    outp = utils.list_rama_outliers_h(pdb_hierarchy, r)
+    print >> self.log, outp
+    for phi_psi_pair, rama_key in phi_psi_atoms:
+      ev = utils.rama_evaluate(phi_psi_pair, r, rama_key)
+      rama_results.append(ev)
+      if ev == RAMALYZE_OUTLIER:
+        resnum = phi_psi_pair[0][2].parent().parent().resseq_as_int()
+        result.append(resnum)
+    return result
 
 
 def get_main_chain_rmsd_range(
@@ -143,14 +251,17 @@ def minimize_hierarchy(hierarchy, xrs, original_pdb_h,
   params_line = grand_master_phil_str
   params = iotbx.phil.parse(
       input_string=params_line, process_includes=True).extract()
+  params.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
   params.pdb_interpretation.peptide_link.ramachandran_restraints = True
-  params.pdb_interpretation.peptide_link.oldfield.weight_scale=10
+  params.pdb_interpretation.peptide_link.oldfield.weight_scale=3
+  params.pdb_interpretation.peptide_link.oldfield.plot_cutoff=0.03
   params.pdb_interpretation.c_beta_restraints=True
 
   processed_pdb_files_srv = mmtbx.utils.\
       process_pdb_file_srv(
           crystal_symmetry= xrs.crystal_symmetry(),
           pdb_interpretation_params = params.pdb_interpretation,
+          stop_for_unknowns         = False,
           log=log,
           cif_objects=None)
   processed_pdb_file, junk = processed_pdb_files_srv.\
@@ -221,17 +332,23 @@ def get_fixed_moving_parts(pdb_hierarchy, start_res_num, end_res_num):
   # print "len moving_h atoms", moving_h.atoms().size()
   moving_ref_atoms_iseqs = []
   # here we need N, CA, C atoms from the end_res_num residue
-  sel = m_cache.selection("resid %d and name N" % end_res_num)
+  eff_end_resnum = end_res_num
+  sel = m_cache.selection("resid %d" % eff_end_resnum)
+  while len(moving_h.select(sel).atoms()) == 0:
+    eff_end_resnum -= 1
+    sel = m_cache.selection("resid %d" % eff_end_resnum)
+
+  sel = m_cache.selection("resid %d and name N" % eff_end_resnum)
   a = moving_h.select(sel).atoms()[0]
   moving_ref_atoms_iseqs.append(a.i_seq)
   fixed_N = a.detached_copy()
 
-  sel = m_cache.selection("resid %d and name CA" % end_res_num)
+  sel = m_cache.selection("resid %d and name CA" % eff_end_resnum)
   a = moving_h.select(sel).atoms()[0]
   moving_ref_atoms_iseqs.append(a.i_seq)
   fixed_CA = a.detached_copy()
 
-  sel = m_cache.selection("resid %d and name C" % end_res_num)
+  sel = m_cache.selection("resid %d and name C" % eff_end_resnum)
   a = moving_h.select(sel).atoms()[0]
   moving_ref_atoms_iseqs.append(a.i_seq)
   fixed_C = a.detached_copy()
@@ -240,127 +357,19 @@ def get_fixed_moving_parts(pdb_hierarchy, start_res_num, end_res_num):
 
   return moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms
 
-def fix_rama_outlier(
-    pdb_hierarchy, out_res_num, prefix="", minimize=True):
-
-  adaptive_mc_rmsd = {1:3.0, 2:3.5, 3:4.0}
-
-  original_pdb_h = pdb_hierarchy.deep_copy()
-  rotamer_manager = RotamerEval()
-  all_results = []
-  for ccd_radius, change_all, change_radius in [
-      (1, False, 0),
-      (2, False, 0),
-      # (3, False, 0),
-      (2, True, 1),
-      # (3, True, 1),
-      ]:
-  # while ccd_radius <= 3:
-    print "  Starting optimization with radius, change_all:", ccd_radius, change_all
-    moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms = get_fixed_moving_parts(
-        pdb_hierarchy=pdb_hierarchy,
-        start_res_num=out_res_num-ccd_radius,
-        end_res_num=out_res_num+ccd_radius)
-    moving_h_set = None
-    if change_all:
-      moving_h_set = starting_conformations.get_all_starting_conformations(moving_h, change_radius)
-    else:
-      moving_h_set = starting_conformations.get_starting_conformations(moving_h)
-
-    if len(moving_h_set) == 0:
-      # outlier was fixed before somehow...
-      return original_pdb_h
-
-    rotamer_manager = RotamerEval()
-    for i, h in enumerate(moving_h_set):
-      ccd_obj = ccd_python(fixed_ref_atoms, h, moving_ref_atoms_iseqs)
-      ccd_obj.run()
-      resulting_rmsd = ccd_obj.resulting_rmsd
-      states = ccd_obj.states
-      n_iter = ccd_obj.n_iter
-
-      # resulting_rmsd, states, n_iter = ccd(
-      #     fixed_ref_atoms, h, moving_ref_atoms_iseqs, moving_h)
-
-      mc_rmsd = get_main_chain_rmsd_range(moving_h, h, all_atoms=True)
-      print "Resulting anchor and backbone RMSDs, n_iter for model %d:" % i,
-      print resulting_rmsd, ",", mc_rmsd, ",", n_iter
-      all_results.append((h.deep_copy(), mc_rmsd, resulting_rmsd, n_iter))
-      #
-      # setting new coordinates
-      #
-      moved_with_side_chains_h = pdb_hierarchy.deep_copy()
-      set_xyz_smart(moved_with_side_chains_h, h)
-      #
-      # placing side-chains
-      #
-      # moved_with_side_chains_h.write_pdb_file(
-      #     file_name="%s_before_sc_placement_%d.pdb" % (prefix, i))
-      place_side_chains(moved_with_side_chains_h, original_pdb_h,
-          rotamer_manager, out_res_num-ccd_radius, out_res_num+ccd_radius)
-      # moved_with_side_chains_h.write_pdb_file(
-      #     file_name="%s_after_sc_placement_%d.pdb" % (prefix, i))
-
-
-      #
-      # finalizing with geometry_minimization
-      #
-      if mc_rmsd < adaptive_mc_rmsd[ccd_radius]:
-        if minimize:
-          print "minimizing..."
-          moved_with_side_chains_h.write_pdb_file(
-              file_name="%s_result_before_min_%d.pdb" % (prefix, i))
-          minimize_hierarchy(moved_with_side_chains_h, xrs, original_pdb_h)
-        moved_with_side_chains_h.write_pdb_file(
-            file_name="%s_result_minimized_%d.pdb" % (prefix, i))
-        final_rmsd = get_main_chain_rmsd_range(moved_with_side_chains_h,
-            original_pdb_h, out_res_num-ccd_radius, out_res_num+ccd_radius)
-        print "FINAL RMSD after minimization:", final_rmsd
-        return moved_with_side_chains_h
-    ccd_radius += 1
-
-
-  print "Epic FAIL: failed to fix rama outlier"
-  all_results.sort(key=lambda tup: tup[1])
-  print "  Options were: (mc_rmsd, resultign_rmsd, n_iter)"
-  for i in all_results:
-    print i[1:]
-  # STOP()
-  return original_pdb_h
 
 
 
 
 
 
-def get_resnums_of_chain_rama_outliers(pdb_hierarchy, r):
-  phi_psi_atoms = utils.get_phi_psi_atoms(pdb_hierarchy)
-  result = []
-  rama_results = []
-  ranges_for_idealization = []
-  print "rama outliers for input hierarchy:"
-  list_of_reference_exclusion = []
-  utils.list_rama_outliers_h(pdb_hierarchy, r)
-  for phi_psi_pair, rama_key in phi_psi_atoms:
-    ev = utils.rama_evaluate(phi_psi_pair, r, rama_key)
-    rama_results.append(ev)
-    if ev == RAMALYZE_OUTLIER:
-      resnum = phi_psi_pair[0][2].parent().parent().resseq_as_int()
-      result.append(resnum)
-  return result
-
-def get_list_of_exclusions_for_reference(resnums_of_rama_outliers):
-  result = []
-  for resnum in resnums_of_rama_outliers:
-    result += [resnum-1, resnum, resnum+1]
-  return result
 
 
-def run(args):
+
+
+def run(args, log=sys.stdout):
   # print "args", args
 
-
-  log = sys.stdout
   inputs = mmtbx.utils.process_command_line_args(args=args,
       master_params=master_phil)
   work_params = inputs.params.extract()

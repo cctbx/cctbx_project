@@ -7,6 +7,7 @@ from mmtbx.validation.ramalyze import RAMALYZE_FAVORED # import dependency
 from mmtbx.validation.ramalyze import RAMALYZE_ALLOWED # import dependency
 from mmtbx.validation.ramalyze import RAMALYZE_OUTLIER # import dependency
 import itertools
+from libtbx.utils import null_out
 
 
 def set_rama_angles(moving_h, angles):
@@ -51,7 +52,7 @@ def is_not_none_combination(comb):
   return False
 
 # Refactoring idea: combine these two functions
-def get_all_starting_conformations(moving_h, change_radius, cutoff=50):
+def get_all_starting_conformations(moving_h, change_radius, cutoff=50, log=null_out):
   variants = []
   r = ramachandran_eval.RamachandranEval()
   phi_psi_atoms = utils.get_phi_psi_atoms(moving_h)
@@ -63,19 +64,19 @@ def get_all_starting_conformations(moving_h, change_radius, cutoff=50):
       variants.append(get_favored_regions(rama_key))
     else:
       variants.append([(None, None)])
-  print "variants", variants
+  print >> log, "variants", variants
   all_angles_combination = list(itertools.product(*variants))
   result = []
   i = 0
   for comb in all_angles_combination:
     if is_not_none_combination(comb):
       result.append(set_rama_angles(moving_h, list(comb)))
-      print "Model %d, angles:" % i, comb
+      print >> log, "Model %d, angles:" % i, comb
       i += 1
   # STOP()
   return result[:cutoff]
 
-def get_starting_conformations(moving_h, cutoff=50):
+def get_starting_conformations(moving_h, cutoff=50, log=null_out):
   """
   modify only ramachandran outliers.
   """
@@ -88,14 +89,14 @@ def get_starting_conformations(moving_h, cutoff=50):
     else:
       variants.append([(None, None)])
   result = []
-  print "variants", variants
+  print >> log, "variants", variants
   if variants.count([(None, None)]) == len(variants):
     print "Nothing to CCD"
     return result
   all_angles_combination = list(itertools.product(*variants))
   i = 0
   for comb in all_angles_combination:
-    print "Model %d, angles:" % i, comb
+    print >> log, "Model %d, angles:" % i, comb
     if is_not_none_combination(comb):
       result.append(set_rama_angles(moving_h, list(comb)))
     i += 1
