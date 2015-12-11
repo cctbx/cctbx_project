@@ -191,7 +191,7 @@ def side_chain_placement(ag_to_place, current_reference_ag, rotamer_manager):
   ideal_correct_ag.atoms().set_xyz(
       rotamer_manager.nearest_rotamer_sites_cart(ideal_correct_ag))
   ag_to_place.pre_allocate_atoms(number_of_additional_atoms=\
-                                              len(ideal_correct_ag.atoms())-5)
+                                              len(ideal_correct_ag.atoms())-4)
   for a in ideal_correct_ag.atoms():
     if a.name.strip() not in ["N","CA","C","O"]:
       at = a.detached_copy()
