@@ -612,6 +612,7 @@ Signal  %Solved   N  PredSignal  %Solved  N   BayesEstSignal  %Solved  N
 
 
 def get_estimators(estimator_type='signal',
+    min_in_bin=50,
     resolution_cutoffs=None,out=sys.stdout):
   # get estimators for signal from est_signal or cc_ano from cc*_ano
   local_file_name,no_resolution=get_local_file_name(estimator_type)
@@ -626,6 +627,7 @@ def get_estimators(estimator_type='signal',
   from mmtbx.scaling.bayesian_estimator import estimator_group
   if no_resolution: resolution_cutoffs=None
   estimators=estimator_group(
+    min_in_bin=min_in_bin,
     resolution_cutoffs=resolution_cutoffs,out=out)
   estimators.set_up_estimators(
     file_name=file_name,select_only_complete=False)
@@ -665,6 +667,7 @@ def get_b_value_anomalous_and_resolution(
      data=None,
      data_labels=None,
      b_value_anomalous=None,
+     min_in_bin=50,
      i_obs=None):
   # use bayesian estimator to get b_value from resolution or vice_versa
   # (need one or the other)
@@ -680,16 +683,20 @@ def get_b_value_anomalous_and_resolution(
     pass # do nothing
   elif b_value is None and resolution is not None:
      b_value_estimators=get_estimators(
+       min_in_bin=min_in_bin,
        estimator_type='b_from_dmin',out=null_out())
      b_value,sig_b_value=b_value_estimators.apply_estimators(
          value_list=[resolution],data_items=['dmin_resol'])
   else:
-     dmin_estimators=get_estimators(estimator_type='dmin_from_b',out=sys.stdout)
+     dmin_estimators=get_estimators(estimator_type='dmin_from_b',
+       min_in_bin=min_in_bin,
+       out=sys.stdout)
      resolution,sig_resolution=dmin_estimators.apply_estimators(
          value_list=[b_value],data_items=['B'])
 
   if b_value_anomalous is None:  # estimate it from b_value
      b_value_anomalous_estimators=get_estimators(
+       min_in_bin=min_in_bin,
        estimator_type='ha_b_from_wilson',out=null_out())
      b_value_anomalous,sig_b_value_anomalous=\
          b_value_anomalous_estimators.apply_estimators(
@@ -737,9 +744,11 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
       ratio_for_failure=0.95,
       i_over_sigma=None,
       max_i_over_sigma=None,
+      min_in_bin=50,
       data=None,
       data_labels=None,
       quiet=False) :
+    self.min_in_bin = min_in_bin
     self.chain_type = chain_type
     self.residues = residues
     self.solvent_fraction = solvent_fraction
@@ -761,7 +770,8 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
          get_b_value_anomalous_and_resolution(
      b_value=b_value,
      resolution=resolution,
-     data=data,
+     data=data, 
+     min_in_bin=self.min_in_bin,
      data_labels=data_labels,
      b_value_anomalous=b_value_anomalous)
     self.resolution=resolution
@@ -844,10 +854,12 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
 
        # estimate cc_perfect from pred_cc_perfect
        self.cc_ano_estimators=get_estimators(estimator_type='cc_ano',
+         min_in_bin=self.min_in_bin,
          resolution_cutoffs=self.dmin_ranges,out=null_out())
 
        # estimate true signal from estimated signal
        self.signal_estimators=get_estimators(estimator_type='signal',
+         min_in_bin=self.min_in_bin,
          resolution_cutoffs=self.dmin_ranges,out=null_out())
 
     else:
@@ -857,6 +869,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
     # estimate fom of phasing from cc_perfect
     # key    d_min cc_exptl cc_perfect
     self.fom_estimators=get_estimators(estimator_type='cc_exptl',
+      min_in_bin=self.min_in_bin,
       resolution_cutoffs=self.dmin_ranges,out=null_out())
 
     # solved (probability of hyss finding >=50% of sites) is just a table
@@ -1014,10 +1027,12 @@ FOM:      %3.2f
   def is_solvable (self) :
     return (self.representative_values is not None)
 
-  def _show_impl (self, out) :
-    out.show_header("SAD experiment planning")
-    out.show_sub_header(
-      "Dataset overall I/sigma required to solve a structure")
+  def show_characteristics(self, out):
+    from mmtbx.scaling import printed_output
+    if out is None:
+      out=sys.stdout
+    if (not isinstance(out, printed_output)) :
+      out = printed_output(out)
 
     out.show_paragraph_header(
       "\nDataset characteristics:")
@@ -1043,8 +1058,8 @@ FOM:      %3.2f
     contribution=self.fpp*math.sqrt(self.nsites)
     out.show_preformatted_text("""\
 Target anomalous scatterer:
-  Atom: %2s  f": %4.2f  n:%5.0f   rmsF:%7.1f""" %(
-         t,self.fpp,self.nsites,contribution))
+  Atom: %2s  f": %4.2f  n:%5.0f   rmsF:%7.1f  rmsF/rms(Total F) (%%):%5.1f""" %(
+         t,self.fpp,self.nsites,contribution,100.*math.sqrt(self.fa2)))
     if self.noise_table_rows:
       out.show_preformatted_text("""\
 
@@ -1063,6 +1078,13 @@ Normalized anomalous scattering:
   From other anomalous atoms rms(e**2)/rms(F**2):   %7.2f
   Correlation of useful to total anomalous scattering: %4.2f
 """ % (fa,fb,fab))
+
+  def _show_impl (self, out) :
+    out.show_header("SAD experiment planning")
+    out.show_sub_header(
+      "Dataset overall I/sigma required to solve a structure")
+
+    self.show_characteristics(out=out)
 
     out.show_preformatted_text("""
 -------Targets for entire dataset-------  ----------Likely outcome-----------""")

@@ -123,6 +123,20 @@ crystal_info {
           atoms that matters.
     .input_size = 64
 
+  sites_min = None
+    .type = int
+    .short_caption = Low bound for sites
+    .help = If you set sites_min and sites_max and not sites the sites will\
+            be varied from sites_min to sites_max
+    .input_size = 64
+
+  sites_max = None
+    .type = int
+    .short_caption = Upper bound for sites
+    .help = If you set sites_min and sites_max and not sites the sites will\
+            be varied from sites_min to sites_max
+    .input_size = 64
+
   occupancy = 1
     .type = float
     .short_caption = Occupancy of anomalously-scattering atoms
@@ -143,6 +157,30 @@ crystal_info {
      .help = Limit search of necessary I/sigI to less than this value.  \
              You might increase this if you plan to do a very careful or very \
              high-multiplicity experiment.
+
+   i_over_sigma_range_low = None
+     .type = float
+     .short_caption = Lower range for i_over_sigma
+     .help = If you set i_over_sigma_range_low and i_over_sigma_range_high \
+         then the value of i_over_sigma will be varied between these limits
+
+   i_over_sigma_range_high = None
+     .type = float
+     .short_caption = Upper range for i_over_sigma
+     .help = If you set i_over_sigma_range_low and i_over_sigma_range_high \
+         then the value of i_over_sigma will be varied between these limits
+
+   steps = 20
+     .type = int
+     .short_caption = Steps
+     .help = Number of steps for sampling ranges (i.e., i_over_sigma_low to \
+        i_over_sigma_high)
+
+   min_in_bin = 50
+     .type = int
+     .short_caption = Minimum point per bin
+     .help = Minimum data points per bin in Bayesian estimation. Higher values \
+             smooth the predictor.
 
    target_signal = 30.
        .type = float
@@ -301,9 +339,50 @@ def setup_params (params, out) :
 
   if not params.crystal_info.residues:
     raise Sorry("Please specify number of residues (residues=500) or a sequence file")
-  if not params.crystal_info.sites:
+  if params.crystal_info.sites:
+    pass # OK
+  elif (params.crystal_info.sites_min and params.crystal_info.sites_max):
+    pass # OK
+  else:
     raise Sorry(
       "Please specify number of sites or a sequence file and atom_type")
+
+
+class result_table:
+  def __init__(self):
+    self.table_rows=[] 
+    self.table_header=[] 
+    self.number_of_columns=0
+
+  def add_table_header(self,header): # must be first
+    self.table_header=header
+    self.number_of_columns=len(header)
+  
+  def add_table_row(self,row):
+    assert self.table_header and len(row)==len(self.table_header)
+    self.table_rows.append(row)
+ 
+  def get_formats(self,buffer=0):
+    self.widths=[]
+    self.formats=[]
+    for i in xrange(self.number_of_columns):
+      w=len(self.table_header[i])
+      for tr in self.table_rows:
+        w=max(w,len(tr[i]))
+      self.widths.append(w)
+      self.formats.append("%s%ss" %("%",w+buffer))
+
+  def show_summary(self,buffer=3,gui_output=False,out=sys.stdout):
+    assert not gui_output # not implemented yet
+    self.get_formats(buffer=buffer)
+    for i in xrange(self.number_of_columns):
+      print >>out,self.formats[i] %(self.table_header[i]),
+    print >>out
+
+    for tr in self.table_rows:
+      for i in xrange(self.number_of_columns):
+        print >>out,self.formats[i] %(tr[i]),
+      print >>out
 
 def run(args,params=None,return_plan=False,out=sys.stdout):
   # NOTE: can call with params and skip reading any files.
@@ -312,6 +391,98 @@ def run(args,params=None,return_plan=False,out=sys.stdout):
 
   setup_params(params, out=out)
 
+  if params.crystal_info.sites_min and params.crystal_info.sites_max:
+    return run_varying_sites(params,out=out)
+  elif params.i_over_sigma_range_low and params.i_over_sigma_range_high:
+    return run_varying_i_over_sigma(params,out=out)
+  else:
+    return run_with_params(params,out=out)
+ 
+def run_varying_i_over_sigma(params,out=sys.stdout):
+  from copy import deepcopy
+  local_params=deepcopy(params)
+  local_params.i_over_sigma_range_low=None
+  local_params.i_over_sigma_range_high=None
+  local_params.control.fixed_resolution=True
+
+  local_params.control.show_summary=True
+  t=result_table()
+  t.add_table_header([
+     "I/sigI",
+     "cc_half",
+     "cc*_anom",
+     "Signal",
+     "p(Substr)",
+     "FOM",
+   ])
+
+  delta=max(0.001,
+    (params.i_over_sigma_range_high-params.i_over_sigma_range_low)/max(1,
+     params.steps))
+  i_over_sigma=params.i_over_sigma_range_low
+  while i_over_sigma <= params.i_over_sigma_range_high+0.01:
+    local_params.i_over_sigma=i_over_sigma
+    plan=run_with_params(local_params,quiet=True,out=out)
+    [dmin,nsites,nrefl,fpp,local_i_over_sigma,
+        sigf,cc_half_weak,cc_half,cc_ano_weak,cc_ano,s_ano,solved,fom]=\
+      plan.representative_values
+    t.add_table_row([
+        "%6.2f" % (i_over_sigma),
+        "%6.3f" % (cc_half),
+        "%6.3f" % ( cc_ano),
+        "%5.2f" % ( s_ano),
+        "%5.2f" % (solved),
+        "%4.3f" % (fom),
+      ])
+    i_over_sigma+=delta
+
+  plan.show_characteristics(out=out)
+  print >>out,"\nExpected data utility varying the value of overall I/sigI"
+  t.show_summary(out=out)
+   
+def run_varying_sites(params,out=sys.stdout):
+  if not params.i_over_sigma:
+    raise Sorry("For varying sites you need to set i_over_sigma")
+  from copy import deepcopy
+  local_params=deepcopy(params)
+  local_params.crystal_info.sites_min=None
+  local_params.crystal_info.sites_max=None
+  local_params.control.show_summary=True
+  local_params.control.fixed_resolution=True
+  t=result_table()
+  t.add_table_header([
+     "Sites",
+     "cc_half",
+     "cc*_anom",
+     "Signal",
+     "p(Substr)",
+     "FOM",
+   ])
+
+  if params.crystal_info.sites_min>params.crystal_info.sites_max:
+    raise Sorry("Please set sites_min < sites_max") 
+  for sites in xrange(params.crystal_info.sites_min,
+     params.crystal_info.sites_max+1):
+    local_params.crystal_info.sites=sites
+    plan=run_with_params(local_params,quiet=True,out=out)
+    [dmin,nsites,nrefl,fpp,local_i_over_sigma,
+        sigf,cc_half_weak,cc_half,cc_ano_weak,cc_ano,s_ano,solved,fom]=\
+      plan.representative_values
+    t.add_table_row([
+        "%3d" % (nsites),
+        "%6.3f" % (cc_half),
+        "%6.3f" % ( cc_ano),
+        "%5.2f" % ( s_ano),
+        "%5.1f" % (solved),
+        "%4.3f" % (fom),
+      ])
+  plan.show_characteristics(out=out)
+
+  print >>out,"\nExpected data utility varying the number of sites"
+  t.show_summary(out=out)
+   
+
+def run_with_params(params,quiet=False,out=sys.stdout):
   plan=mmtbx.scaling.plan_sad_experiment.estimate_necessary_i_sigi(
     chain_type=params.crystal_info.chain_type,
     residues=params.crystal_info.residues,
@@ -325,6 +496,7 @@ def run(args,params=None,return_plan=False,out=sys.stdout):
     i_over_sigma=params.i_over_sigma,
     max_i_over_sigma=params.max_i_over_sigma,
     min_cc_ano=params.min_cc_ano,
+    min_in_bin=params.min_in_bin,
     data=params.input_files.data,
     data_labels=params.input_files.data_labels,
     resolution=params.crystal_info.resolution,
@@ -336,7 +508,9 @@ def run(args,params=None,return_plan=False,out=sys.stdout):
     bayesian_updates=params.bayesian_updates,
     include_weak_anomalous_scattering=params.include_weak_anomalous_scattering,
     intrinsic_scatterers_as_noise=params.intrinsic_scatterers_as_noise,)
-  if params.control.show_summary:
+  if quiet:
+    return plan
+  elif params.control.show_summary:
     plan.show_summary()
   else:
     return plan.show(out=out)
