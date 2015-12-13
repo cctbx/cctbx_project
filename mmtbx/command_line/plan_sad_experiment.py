@@ -350,18 +350,18 @@ def setup_params (params, out) :
 
 class result_table:
   def __init__(self):
-    self.table_rows=[] 
-    self.table_header=[] 
+    self.table_rows=[]
+    self.table_header=[]
     self.number_of_columns=0
 
   def add_table_header(self,header): # must be first
     self.table_header=header
     self.number_of_columns=len(header)
-  
+
   def add_table_row(self,row):
     assert self.table_header and len(row)==len(self.table_header)
     self.table_rows.append(row)
- 
+
   def get_formats(self,buffer=0):
     self.widths=[]
     self.formats=[]
@@ -397,7 +397,7 @@ def run(args,params=None,return_plan=False,out=sys.stdout):
     return run_varying_i_over_sigma(params,out=out)
   else:
     return run_with_params(params,out=out)
- 
+
 def run_varying_i_over_sigma(params,out=sys.stdout):
   from copy import deepcopy
   local_params=deepcopy(params)
@@ -439,7 +439,7 @@ def run_varying_i_over_sigma(params,out=sys.stdout):
   plan.show_characteristics(out=out)
   print >>out,"\nExpected data utility varying the value of overall I/sigI"
   t.show_summary(out=out)
-   
+
 def run_varying_sites(params,out=sys.stdout):
   if not params.i_over_sigma:
     raise Sorry("For varying sites you need to set i_over_sigma")
@@ -460,7 +460,7 @@ def run_varying_sites(params,out=sys.stdout):
    ])
 
   if params.crystal_info.sites_min>params.crystal_info.sites_max:
-    raise Sorry("Please set sites_min < sites_max") 
+    raise Sorry("Please set sites_min < sites_max")
   for sites in xrange(params.crystal_info.sites_min,
      params.crystal_info.sites_max+1):
     local_params.crystal_info.sites=sites
@@ -480,7 +480,7 @@ def run_varying_sites(params,out=sys.stdout):
 
   print >>out,"\nExpected data utility varying the number of sites"
   t.show_summary(out=out)
-   
+
 
 def run_with_params(params,quiet=False,out=sys.stdout):
   plan=mmtbx.scaling.plan_sad_experiment.estimate_necessary_i_sigi(
