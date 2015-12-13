@@ -770,7 +770,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
          get_b_value_anomalous_and_resolution(
      b_value=b_value,
      resolution=resolution,
-     data=data, 
+     data=data,
      min_in_bin=self.min_in_bin,
      data_labels=data_labels,
      b_value_anomalous=b_value_anomalous)
