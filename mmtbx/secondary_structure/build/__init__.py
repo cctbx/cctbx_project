@@ -190,13 +190,18 @@ def side_chain_placement(ag_to_place, current_reference_ag, rotamer_manager):
       lsq_fit_obj.t.elems)
   ideal_correct_ag.atoms().set_xyz(
       rotamer_manager.nearest_rotamer_sites_cart(ideal_correct_ag))
-  ag_to_place.pre_allocate_atoms(number_of_additional_atoms=\
-                                              len(ideal_correct_ag.atoms())-4)
-  for a in ideal_correct_ag.atoms():
-    if a.name.strip() not in ["N","CA","C","O"]:
-      at = a.detached_copy()
-      at.uij_erase()
-      ag_to_place.append_atom(atom=at)
+  if len(ideal_correct_ag.atoms()) > 4:
+    ag_to_place.pre_allocate_atoms(number_of_additional_atoms=\
+                                                len(ideal_correct_ag.atoms())-4)
+    for a in ideal_correct_ag.atoms():
+      if a.name.strip() not in ["N","CA","C","O"]:
+        at = a.detached_copy()
+        at.uij_erase()
+        ag_to_place.append_atom(atom=at)
+  else:
+    # This means something wrong with input model, e.g. only 3 atoms in
+    # the residue and they happened to be N, CA, C
+    pass
 
 
 def secondary_structure_from_sequence(pdb_str,
