@@ -46,12 +46,12 @@ class parallel_driver (object) :
     return summary(pdb_hierarchy=model_hierarchy)
 
 molprobity_stat_labels = [
-  "Ramachandran outliers",
-  "Ramachandran favored",
-  "Rotamer outliers",
-  "C-beta outliers",
+  "Ramachandran Outliers",
+  "Ramachandran Favored",
+  "Rotamer Outliers",
+  "C-beta Outliers",
   "Clashscore",
-  "MolProbity score",
+  "MolProbity Score",
 ]
 
 class ensemble (slots_getstate_setstate) :
