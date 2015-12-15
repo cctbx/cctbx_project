@@ -25,7 +25,7 @@ loop_idealization
   change_non_rama_outliers = True
     .type = bool
     .help = Allow changing non-outlier ramachandran residues angles
-  output_prefix = bchain_2
+  output_prefix = rama_fixed
     .type = str
   minimize_whole = True
     .type = bool
@@ -36,6 +36,8 @@ master_phil = iotbx.phil.parse(loop_idealization_aster_phil_str)
 
 class loop_idealization():
   def __init__(self, pdb_hierarchy, params=None, log=null_out(), verbose=True):
+    if len(pdb_hierarchy.models()) > 1:
+      raise Sorry("Multi-model files are not supported")
     self.original_pdb_h = pdb_hierarchy
     xrs = pdb_hierarchy.extract_xray_structure()
     asc = pdb_hierarchy.atom_selection_cache()
@@ -47,15 +49,23 @@ class loop_idealization():
     self.ref_exclusion_selection = ""
     for chain in pdb_hierarchy.only_model().chains():
       print >> self.log, "Idealizing chain %s" % chain.id
+      selection = "protein and chain %s and (name N or name CA or name C or name O)" % chain.id
       sel = asc.selection("chain %s" % chain.id)
-      exclusions, ch_h = self.idealize_chain(hierarchy=self.original_pdb_h.select(sel))
+      chain_h = self.original_pdb_h.select(sel)
+      print >> self.log, "WARNING!!! Duplicating chain ids! Only the first chain will be processed."
+      m = chain_h.only_model()
+      i = 0
+      for c in m.chains():
+        if i > 0:
+          print >> self.log, "  Removing chain %s with %d residues" % (c.id, len(c.residues()))
+          m.remove_chain(c)
+        i += 1
+      exclusions, ch_h = self.idealize_chain(hierarchy=chain_h)
       if ch_h is not None:
         set_xyz_smart(self.resulting_pdb_h, ch_h)
-        selection = ""
         for resnum in exclusions:
-          selection += " and not resseq %d" % resnum
-        selection = "chain %s and name N or name CA or name C or name O %s" % (chain.id, selection)
-        self.ref_exclusion_selection += "(%s) or " % selection
+          selection += " and not resseq %s" % resnum
+      self.ref_exclusion_selection += "(%s) or " % selection
     if len(self.ref_exclusion_selection) > 0:
       self.ref_exclusion_selection = self.ref_exclusion_selection[:-3]
     self.resulting_pdb_h.write_pdb_file(file_name="%s_before_minization.pdb" % self.params.output_prefix)
@@ -82,9 +92,10 @@ class loop_idealization():
     return p_pars
 
   def idealize_chain(self, hierarchy):
-    occ_groups = hierarchy.occupancy_groups_simple()
-    if len(occ_groups) > 0:
-      raise Sorry("Alternative conformations are not supported.")
+    # check no ac:
+    for c in hierarchy.chains():
+      if len(c.conformers()) > 1:
+        raise Sorry("Alternative conformations are not supported.")
     working_h = hierarchy.deep_copy()
     working_h.reset_atom_i_seqs()
     rama_results = []
@@ -97,7 +108,8 @@ class loop_idealization():
     # get list of residue numbers that should be excluded from reference
     list_of_reference_exclusion = []
     for resnum in rama_out_resnums:
-      list_of_reference_exclusion += [resnum-1, resnum, resnum+1]
+      start_rn, prev_rn = get_res_nums_around(hierarchy, resnum, 1, 1)
+      list_of_reference_exclusion += [start_rn, resnum, prev_rn]
     out_i = 0
     for rama_out_resnum in rama_out_resnums:
       print >> self.log
@@ -136,8 +148,9 @@ class loop_idealization():
       print >> self.log, "  Starting optimization with radius, change_all:", ccd_radius, change_all
       moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms = get_fixed_moving_parts(
           pdb_hierarchy=pdb_hierarchy,
-          start_res_num=out_res_num-ccd_radius,
-          end_res_num=out_res_num+ccd_radius)
+          out_res_num=out_res_num,
+          n_following=ccd_radius,
+          n_previous=ccd_radius)
       moving_h_set = None
       if change_all:
         moving_h_set = starting_conformations.get_all_starting_conformations(moving_h, change_radius, log=self.log)
@@ -173,8 +186,13 @@ class loop_idealization():
         #
         # moved_with_side_chains_h.write_pdb_file(
         #     file_name="%s_before_sc_placement_%d.pdb" % (prefix, i))
+        placing_range = get_res_nums_around(moved_with_side_chains_h,
+            center_resnum=out_res_num,
+            n_following=ccd_radius,
+            n_previous=ccd_radius,
+            include_intermediate=True)
         place_side_chains(moved_with_side_chains_h, original_pdb_h,
-            rotamer_manager, out_res_num-ccd_radius, out_res_num+ccd_radius)
+            rotamer_manager, placing_range)
         # moved_with_side_chains_h.write_pdb_file(
         #     file_name="%s_after_sc_placement_%d.pdb" % (prefix, i))
 
@@ -191,7 +209,7 @@ class loop_idealization():
           moved_with_side_chains_h.write_pdb_file(
               file_name="%s_result_minimized_%d.pdb" % (prefix, i))
           final_rmsd = get_main_chain_rmsd_range(moved_with_side_chains_h,
-              original_pdb_h, out_res_num-ccd_radius, out_res_num+ccd_radius)
+              original_pdb_h, placing_range)
           print >> self.log, "FINAL RMSD after minimization:", final_rmsd
           return moved_with_side_chains_h
       ccd_radius += 1
@@ -218,13 +236,13 @@ class loop_idealization():
       ev = utils.rama_evaluate(phi_psi_pair, r, rama_key)
       rama_results.append(ev)
       if ev == RAMALYZE_OUTLIER:
-        resnum = phi_psi_pair[0][2].parent().parent().resseq_as_int()
+        resnum = phi_psi_pair[0][2].parent().parent().resseq
         result.append(resnum)
     return result
 
 
 def get_main_chain_rmsd_range(
-    hierarchy, original_h, all_atoms=False, start_res_num=None, end_res_num=None):
+    hierarchy, original_h, all_atoms=False, placing_range=None):
   rmsd = 0
   mc_atoms = None
   if all_atoms:
@@ -233,9 +251,8 @@ def get_main_chain_rmsd_range(
     mc_atoms = ["N", "CA", "C"]
   for m_atom, ref_atom in zip(hierarchy.atoms(), original_h.atoms()):
     if m_atom.name.strip() in mc_atoms:
-      if (start_res_num is None or
-          end_res_num is None or
-          m_atom.parent().parent().resseq_as_int() in range(start_res_num, end_res_num+1)):
+      if (placing_range is None or
+          m_atom.parent().parent().resseq in placing_range):
         rmsd += m_atom.distance(ref_atom)**2
   return rmsd**0.5
 
@@ -295,12 +312,12 @@ def minimize_hierarchy(hierarchy, xrs, original_pdb_h,
 
 
 def place_side_chains(hierarchy, original_h,
-    rotamer_manager, start_res_num, end_res_num):
+    rotamer_manager, placing_range):
   ideal_res_dict = idealized_aa.residue_dict()
   asc = original_h.atom_selection_cache()
   gly_atom_names = set([" N  ", " CA ", " C  ", " O  "])
   for rg in hierarchy.residue_groups():
-    if rg.resseq_as_int() in range(start_res_num, end_res_num+1):
+    if rg.resseq in placing_range:
       # cut extra atoms
       ag = rg.only_atom_group()
       for atom in ag.atoms():
@@ -316,13 +333,35 @@ def place_side_chains(hierarchy, original_h,
       # print "got to placement"
       side_chain_placement(ag, orig_ag, rotamer_manager)
 
-def get_fixed_moving_parts(pdb_hierarchy, start_res_num, end_res_num):
+def get_res_nums_around(pdb_hierarchy, center_resnum, n_following, n_previous,
+    include_intermediate=False):
+  residue_list = list(pdb_hierarchy.only_model().only_chain().only_conformer().residues())
+  center_index = None
+  for i in range(len(residue_list)):
+    if residue_list[i].resseq == center_resnum:
+      center_index = i
+      break
+  # print "start/end resids", residue_list[i-n_previous].resseq, residue_list[i+n_following].resseq
+  if not include_intermediate:
+    return residue_list[center_index-n_previous].resseq, residue_list[center_index+n_following].resseq
+  else:
+    res = []
+    for i in range(center_index-n_previous, center_index+n_following+1):
+      res.append(residue_list[i].resseq)
+    return res
+
+
+def get_fixed_moving_parts(pdb_hierarchy, out_res_num, n_following, n_previous):
+  # limitation: only one  chain in pdb_hierarchy!!!
   original_pdb_h = pdb_hierarchy.deep_copy()
+  start_res_num, end_res_num = get_res_nums_around(
+      pdb_hierarchy, out_res_num, n_following, n_previous)
+
   xrs = original_pdb_h.extract_xray_structure()
   truncate_to_poly_gly(pdb_hierarchy, start_res_num, end_res_num)
   cache = pdb_hierarchy.atom_selection_cache()
   # print "selectioin:", "resid %d through %d" % (start_res_num, end_res_num)
-  m_selection = cache.selection("resid %d through %d" % (start_res_num, end_res_num))
+  m_selection = cache.selection("resid %s through %s" % (start_res_num, end_res_num))
   moving_h = pdb_hierarchy.select(m_selection)
   moving_h.reset_atom_i_seqs()
   # print dir(moving_h)
@@ -333,22 +372,22 @@ def get_fixed_moving_parts(pdb_hierarchy, start_res_num, end_res_num):
   moving_ref_atoms_iseqs = []
   # here we need N, CA, C atoms from the end_res_num residue
   eff_end_resnum = end_res_num
-  sel = m_cache.selection("resid %d" % eff_end_resnum)
+  sel = m_cache.selection("resid %s" % eff_end_resnum)
   while len(moving_h.select(sel).atoms()) == 0:
     eff_end_resnum -= 1
-    sel = m_cache.selection("resid %d" % eff_end_resnum)
+    sel = m_cache.selection("resid %s" % eff_end_resnum)
 
-  sel = m_cache.selection("resid %d and name N" % eff_end_resnum)
+  sel = m_cache.selection("resid %s and name N" % eff_end_resnum)
   a = moving_h.select(sel).atoms()[0]
   moving_ref_atoms_iseqs.append(a.i_seq)
   fixed_N = a.detached_copy()
 
-  sel = m_cache.selection("resid %d and name CA" % eff_end_resnum)
+  sel = m_cache.selection("resid %s and name CA" % eff_end_resnum)
   a = moving_h.select(sel).atoms()[0]
   moving_ref_atoms_iseqs.append(a.i_seq)
   fixed_CA = a.detached_copy()
 
-  sel = m_cache.selection("resid %d and name C" % eff_end_resnum)
+  sel = m_cache.selection("resid %s and name C" % eff_end_resnum)
   a = moving_h.select(sel).atoms()[0]
   moving_ref_atoms_iseqs.append(a.i_seq)
   fixed_C = a.detached_copy()
