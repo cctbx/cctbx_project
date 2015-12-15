@@ -104,7 +104,7 @@ class ensemble_validation_panel (wx.Panel) :
       n_bins = self.n_bins_ctrl.GetValue()
       try:
         n_bins = int(n_bins)
-      except:
+      except ValueError:
         raise Sorry('Please enter an integer for the number of histogram bins.')
     else:
       self.n_bins_ctrl.Disable()
