@@ -16,6 +16,8 @@ import urllib2
 import urlparse
 import zipfile
 
+rosetta_version="rosetta_src_2015.39.58186_bundle"
+
 # To download this file:
 # svn export svn://svn.code.sf.net/p/cctbx/code/trunk/libtbx/auto_build/bootstrap.py
 
@@ -107,13 +109,13 @@ class ShellCommand(object):
     if env:
       for key, item in env.items():
         env[key] = os.path.abspath(item)
-      print 'adding environmental variables',env
       rc = os.environ
       rc.update(env)
       env=rc
     return env
 
   def run(self):
+    t0=time.time()
     command = self.get_command()
     description = self.get_description()
     workdir = self.get_workdir()
@@ -145,6 +147,7 @@ class ShellCommand(object):
       return 0
     if 0:
       print 'command',command
+      print 'workdir',workdir
     try:
       #print "workdir, os.getcwd =", workdir, os.getcwd()
       #if not os.path.isabs(command[0]):
@@ -175,6 +178,12 @@ class ShellCommand(object):
     if p.returncode != 0 and self.kwargs.get('haltOnFailure'):
       print "Process failed with return code %s"%(p.returncode)
       sys.exit(1)
+    if 0:
+      if description:
+        outl = "%s - %s" % (workdir, description)
+      else:
+        outl = "%s - %s" % (workdir, " ".join(command))
+      print '===== Time to %s : %0.1f' % (outl, time.time()-t0)
     return p.returncode
 
 # Download URL to local file
@@ -412,6 +421,16 @@ class amber_module(SourceModule):
     'externals', # not mapped yet!
     'amber_rsync',
   ]
+
+class rosetta_class(SourceModule):
+  module = 'rosetta'
+  authenticated = [
+    'rsync',
+    '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/externals/'+rosetta_version+'/',
+  ]
+  authenticated = [
+    'scp',
+    '%(cciuser)s@cci.lbl.gov:/net/cci-filer2/raid1/auto_build/externals/'+rosetta_version+'.tgz']
 
 class libsvm_module(SourceModule):
   module = 'libsvm'
@@ -831,6 +850,8 @@ class Builder(object):
       self._add_remote_make_tar(module, tarurl, randarxname, dirpath)
       self._add_pscp(module, tarurl + ':' + randarxname)
       self._add_remote_rm_tar(module, tarurl, randarxname)
+    elif method == 'scp':
+      self._add_scp(module, parameters)
     elif method == 'curl':
       self._add_curl(module, parameters)
     elif method == 'svn':
@@ -849,7 +870,7 @@ class Builder(object):
       name='hot %s'%module,
       command=[
         'rsync',
-        '-aL',
+        '-rptgoDLK', #'-aL',
         '--delete',
         url,
         module_directory,
@@ -922,6 +943,19 @@ class Builder(object):
       ],
       workdir=['modules'],
       description="getting remote file %s" %url1,
+    ))
+
+  def _add_scp(self, module, url):
+    self.add_step(self.shell(
+      name='hot %s'%module,
+      command=[
+        'scp',
+        '-r',
+        url,
+        '.',
+      ],
+      workdir=['modules'],
+      description="getting remote file %s" %url.split("/")[-1],
     ))
 
   def _add_download(self, url, to_file):
@@ -1212,7 +1246,6 @@ class Builder(object):
       description="save configure command",
     ))
 
-
   def add_make(self):
     self.add_command('libtbx.scons', args=['-j',
                                            str(self.nproc),
@@ -1488,7 +1521,8 @@ class PhenixBuilder(CCIBuilder):
 
 class PhenixExternalRegression(PhenixBuilder):
   EXTERNAL_CODEBASES = [
-    "amber"
+    "rosetta",
+    "amber",
     ]
 
   def cleanup(self, dirs=None):
@@ -1505,18 +1539,85 @@ class PhenixExternalRegression(PhenixBuilder):
     amberhome = os.path.join("modules",
                              "amber",
                              )
-    env = {"AMBERHOME" : amberhome} # used to trigger Property on slave
+    phenix_rosetta_path = os.path.join("modules",
+                                       'rosetta',
+                                     )
+    rosetta_bin = os.path.join(phenix_rosetta_path,
+                               "main",
+                               "source",
+                               "bin",
+                              )
+    rosetta3_db = os.path.join(phenix_rosetta_path,
+                               "main",
+                               "database",
+                              )
+    env = {
+      "AMBERHOME"           : amberhome, # used to trigger Property on slave
+      "PHENIX_ROSETTA_PATH" : phenix_rosetta_path,
+      "ROSETTA_BIN"         : rosetta_bin,
+      "ROSETTA3_DB"         : rosetta3_db,
+           }
+    # need to write these to a .csh file
     return env
+
+  def write_environment(self,
+                        env,
+                        filename="phenix_externals",
+                       ):
+    outl = ""
+    for key, path in env.items():
+      #path = os.path.join(os.getcwd(), path)
+      outl += 'setenv %(key)s "%%(PWD)s/../%(path)s"\n' % locals()
+    print outl
+    fname="%s.csh" % filename
+    self.add_step(self.shell(command=[
+      'python',
+      '-c',
+      'import os; open("%s","w").write("""%s""" %% os.environ)' %(fname, outl)
+      ],
+      workdir=['build'],
+      description="save csh external paths",
+    ))
+    outl = ""
+    for key, path in env.items():
+      #path = os.path.join(os.getcwd(), path)
+      outl += 'export %(key)s="%%(PWD)s/../%(path)s"\n' % locals()
+    print outl
+    fname="%s.sh" % filename
+    self.add_step(self.shell(command=[
+      'python',
+      '-c',
+      'import os; open("%s","w").write("""%s""" %% os.environ)' %(fname, outl)
+      ],
+      workdir=['build'],
+      description="save sh external paths",
+    ))
 
   def add_make(self):
     # pre Phenix compile
     # Amber
+    # Rosetta
     env = self.get_environment()
+    self.write_environment(env)
     # not universal but works because only slave running this is same as master
-    c_comp = "clang"
+    amber_c_comp = "clang"
     if sys.platform == "linux2":
-      c_comp = "gnu"
+      amber_c_comp = "gnu"
     for name, command, workdir in [
+        ['Rosetta - untar',
+         ['tar', 'xvf', '%s.tgz' % rosetta_version],
+         ['modules']],
+        ['Rosetta - link',
+         # not windows compatible
+         ['ln', '-sf', '%s' % rosetta_version, "rosetta"],
+         ['modules']],
+        ['Rosetta compile',
+         ["./scons.py",
+          "-j", 
+          self.nproc,
+          #"mode=release",
+         ],
+         ["modules", 'rosetta', "main", "source"]],
         ['Amber update', ["./update_amber", "--update"], [env["AMBERHOME"]]],
         ['Amber configure',
           ["./configure",
@@ -1524,12 +1625,16 @@ class PhenixExternalRegression(PhenixBuilder):
            "-noX11",
            "-macAccelerate", # ignored if not on Mac
            "-nofftw3", # because compilers on slave are 4.1 not 4.3
-           c_comp,
+           amber_c_comp,
            ],
           [env["AMBERHOME"]]],
-        ['Amber compile', ["make", "install"], [env["AMBERHOME"]]],
+        ['Amber compile',
+         ["make", "-j", self.nproc, "install"],
+         [env["AMBERHOME"]]],
         #['Amber clean',   ["make", "clean"], [env["AMBERHOME"]]],
         ]:
+      #if name.find("Amber")>=1: continue
+      #if name.find("Rosetta")>=1: continue
       self.add_step(self.shell(
         name       = name,
         command    = command,
@@ -1537,6 +1642,7 @@ class PhenixExternalRegression(PhenixBuilder):
         description= "",
         env        = env,
         ))
+
     self.add_refresh()
     # Phenix compile
     PhenixBuilder.add_make(self)
@@ -1548,9 +1654,32 @@ class PhenixExternalRegression(PhenixBuilder):
       workdir=['.'],
       env=env,
     )
+    # Rosetta
+    self.add_command(
+      'rosetta.build_phenix_interface',
+      args = ["nproc=%s" % self.nproc],
+      name='rosetta.build_phenix_interface',
+      workdir=['.'],
+      env=env,
+    )
 
   def add_tests(self):
     self.add_test_command('amber.run_tests',
+                          env = self.get_environment()
+                        )
+    # rosetta refine
+    self.add_test_command('rosetta.run_tests',
+                          env = self.get_environment()
+                        )
+    # MR rosetta
+    self.add_test_command([
+      'phenix_regression.wizards.test_command_line_rosetta_quick',
+      'test_relax'],
+                          env = self.get_environment()
+                        )
+    self.add_test_command([
+      'phenix_regression.wizards.test_command_line_rosetta_quick',
+      'test_fixed_model'],
                           env = self.get_environment()
                         )
 
