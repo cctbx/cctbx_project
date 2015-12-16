@@ -16,7 +16,7 @@ class ensemble_validation_plot (plots.histogram) :
   def show_plot (self,
       values,
       as_histogram=False,
-      n_bins=20,
+      n_bins=10,
       reference_value=None,
       title=None) :
     if (as_histogram) :
@@ -56,6 +56,7 @@ class ensemble_validation_panel (wx.Panel) :
       choices=validation_summary.molprobity_stat_labels)
     self.Bind(wx.EVT_CHOICE, self.OnSelectPlot, self.stats_menu)
     box1.Add(self.stats_menu, 0, style, 5)
+    self.stats_menu.SetSelection(0)
     self.hist_box = wx.CheckBox(self, label="Display as histogram")
     box1.Add(self.hist_box, 0, style, 5)
     self.Bind(wx.EVT_CHECKBOX, self.OnSelectPlot, self.hist_box)
@@ -64,7 +65,7 @@ class ensemble_validation_panel (wx.Panel) :
     box1.Add(n_bins_txt, 0, style, 5)
     self.n_bins_ctrl = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER,
                                    name="n_bins", size=(60, -1))
-    self.n_bins_ctrl.SetValue("20")
+    self.n_bins_ctrl.SetValue("10")
     box1.Add(self.n_bins_ctrl, 0, style, 5)
     self.Bind(wx.EVT_TEXT_ENTER, self.OnSelectPlot, self.n_bins_ctrl)
     self.n_bins_ctrl.Disable()
@@ -97,7 +98,7 @@ class ensemble_validation_panel (wx.Panel) :
   def OnSelectPlot (self, event) :
 
     # plot line graph or histogram
-    n_bins = 20
+    n_bins = 10
     as_histogram = self.hist_box.GetValue()
     if (as_histogram):
       self.n_bins_ctrl.Enable()
