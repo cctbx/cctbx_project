@@ -52,15 +52,18 @@ class loop_idealization():
       selection = "protein and chain %s and (name N or name CA or name C or name O)" % chain.id
       sel = asc.selection("chain %s" % chain.id)
       chain_h = self.original_pdb_h.select(sel)
-      print >> self.log, "WARNING!!! Duplicating chain ids! Only the first chain will be processed."
       m = chain_h.only_model()
       i = 0
+      cutted_chain_h = None
       for c in m.chains():
-        if i > 0:
+        if i == 0:
+          cutted_chain_h = iotbx.pdb.hierarchy.new_hierarchy_from_chain(c)
+        else:
+          print >> self.log, "WARNING!!! Duplicating chain ids! Only the first chain will be processed."
           print >> self.log, "  Removing chain %s with %d residues" % (c.id, len(c.residues()))
           m.remove_chain(c)
         i += 1
-      exclusions, ch_h = self.idealize_chain(hierarchy=chain_h)
+      exclusions, ch_h = self.idealize_chain(hierarchy=(cutted_chain_h if cutted_chain_h else chain_h))
       if ch_h is not None:
         set_xyz_smart(self.resulting_pdb_h, ch_h)
         for resnum in exclusions:
@@ -228,7 +231,7 @@ class loop_idealization():
     result = []
     rama_results = []
     ranges_for_idealization = []
-    print >> self.log, "rama outliers for input hierarchy:"
+    # print >> self.log, "rama outliers for input hierarchy:"
     list_of_reference_exclusion = []
     outp = utils.list_rama_outliers_h(pdb_hierarchy, r)
     print >> self.log, outp
@@ -343,7 +346,7 @@ def get_res_nums_around(pdb_hierarchy, center_resnum, n_following, n_previous,
       break
   # print "start/end resids", residue_list[i-n_previous].resseq, residue_list[i+n_following].resseq
   if not include_intermediate:
-    return residue_list[center_index-n_previous].resseq, residue_list[center_index+n_following].resseq
+    return residue_list[max(0,center_index-n_previous)].resseq, residue_list[min(len(residue_list)-1,center_index+n_following)].resseq
   else:
     res = []
     for i in range(center_index-n_previous, center_index+n_following+1):
@@ -372,7 +375,7 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num, n_following, n_previous):
   moving_ref_atoms_iseqs = []
   # here we need N, CA, C atoms from the end_res_num residue
   eff_end_resnum = end_res_num
-  sel = m_cache.selection("resid %s" % eff_end_resnum)
+  sel = m_cache.selection("resid %s" % end_res_num)
   while len(moving_h.select(sel).atoms()) == 0:
     eff_end_resnum -= 1
     sel = m_cache.selection("resid %s" % eff_end_resnum)

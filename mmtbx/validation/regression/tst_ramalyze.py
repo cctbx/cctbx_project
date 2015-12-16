@@ -205,8 +205,7 @@ ATOM   1495  O   LYS A 222      -1.856  14.424  10.883  1.00 14.32           O
   assert (len(r.results) == 3)
 
 def exercise_favored_regions():
-  assert ramalyze.get_favored_regions("bla") is None
-  assert ramalyze.get_favored_regions("general") == [(-99, 119), (-63, -43), (53, 43)]
+  assert ramalyze.get_favored_regions(0) == [(-99, 119), (-63, -43), (53, 43)]
 
 if (__name__ == "__main__") :
   t0=time.time()

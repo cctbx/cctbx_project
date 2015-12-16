@@ -7,6 +7,7 @@ import sys
 import os
 import boost.python
 from scitbx.array_family import flex
+from mmtbx.validation import ramalyze
 
 ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
 from mmtbx_ramachandran_restraints_ext import lookup_table, \
@@ -112,11 +113,13 @@ class ramachandran_manager(object):
       i_seqs = [atom.i_seq for atom in phi_atoms] + [psi_atoms[-1].i_seq]
       resnames = three.get_resnames()
       r_name = resnames[1]
-      assert rama_key in ["general", "glycine", "cis-proline", "trans-proline",
+      assert rama_key in range(6)
+      text_rama_key = ramalyze.res_types[rama_key]
+      assert text_rama_key in ["general", "glycine", "cis-proline", "trans-proline",
                  "pre-proline", "isoleucine or valine"]
       proxy = ext.phi_psi_proxy(
           residue_name=r_name,
-          residue_type=rama_key,
+          residue_type=text_rama_key,
           i_seqs=i_seqs)
       if not is_proxy_present(self.proxies, n_seq, proxy):
         self.proxies.append(proxy)
