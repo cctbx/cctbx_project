@@ -24,9 +24,6 @@ def get_dihedral_angle(atoms):
       deg=True)
 
 def rama_score_evaluate(resType, value):
-  # copy-paste from cctbx_project/mmtbx/validation/ramalyze.py
-  # added 0.002 -> 0.0021, 0.0005 -> 0.00051, etc
-
   return ramalyze.ramalyze.evalScore(resType, value)
 
 def pair_info(phi_psi_pair):
