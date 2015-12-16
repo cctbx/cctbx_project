@@ -27,6 +27,9 @@ class _(boost.python.injector, dps_extended):
       reciprocal_space_vectors = self.raw_spot_positions_mm_to_reciprocal_space(
         self.raw_spot_input, self.detector, self.inv_wave, self.S0_vector, self.axis,
         self.panelID)
+    else:
+      # some hard protection against floating point error
+      assert len(reciprocal_space_vectors) > 7 # no chance of 1DFFT indexing with 7 or fewer spots
 
     if self.max_cell is None:
       from rstbx.indexing_api.nearest_neighbor import neighbor_analysis
