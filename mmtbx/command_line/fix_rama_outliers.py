@@ -8,9 +8,7 @@ from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx.monomer_library import idealized_aa
 from libtbx.utils import Sorry, null_out
 from mmtbx.command_line.geometry_minimization import get_geometry_restraints_manager
-from mmtbx.validation.ramalyze import RAMALYZE_OUTLIER
-from mmtbx.validation.ramalyze import RAMALYZE_ALLOWED # import dependency
-from mmtbx.validation.ramalyze import RAMALYZE_OUTLIER # import dependency
+from mmtbx.validation import ramalyze
 from mmtbx.building.loop_closure.ccd import ccd_python
 from mmtbx.building.loop_closure import utils, starting_conformations
 from mmtbx.pdbtools import truncate_to_poly_gly
@@ -46,6 +44,10 @@ class loop_idealization():
     self.log = log
     self.verbose = verbose
     self.r = ramachandran_eval.RamachandranEval()
+    ram = ramalyze.ramalyze(pdb_hierarchy=pdb_hierarchy)
+    self.p_initial_rama_outliers = ram.out_percent
+    self.p_before_minimization_rama_outliers = None
+    self.p_after_minimiaztion_rama_outliers = None
     self.ref_exclusion_selection = ""
     for chain in pdb_hierarchy.only_model().chains():
       print >> self.log, "Idealizing chain %s" % chain.id
@@ -72,11 +74,15 @@ class loop_idealization():
     if len(self.ref_exclusion_selection) > 0:
       self.ref_exclusion_selection = self.ref_exclusion_selection[:-3]
     self.resulting_pdb_h.write_pdb_file(file_name="%s_before_minization.pdb" % self.params.output_prefix)
+    ram = ramalyze.ramalyze(pdb_hierarchy=self.resulting_pdb_h)
+    self.p_before_minimization_rama_outliers = ram.out_percent
     if self.params.minimize_whole:
       print >> self.log, "minimizing whole thing..."
       print >> self.log, "self.ref_exclusion_selection", self.ref_exclusion_selection
       minimize_hierarchy(self.resulting_pdb_h, xrs, self.original_pdb_h, self.ref_exclusion_selection, log=None)
       # self.resulting_pdb_h.write_pdb_file(file_name="%s_all_minized.pdb" % self.params.output_prefix)
+      ram = ramalyze.ramalyze(pdb_hierarchy=self.resulting_pdb_h)
+      self.p_after_minimiaztion_rama_outliers = ram.out_percent
     # return new_h
 
   def process_params(self, params):
@@ -105,7 +111,7 @@ class loop_idealization():
     ranges_for_idealization = []
     print >> self.log, "rama outliers for input hierarchy:"
     rama_out_resnums = self.get_resnums_of_chain_rama_outliers(
-        working_h, self.r)
+        working_h)
     if len(rama_out_resnums) == 0:
       return None, None
     # get list of residue numbers that should be excluded from reference
@@ -226,19 +232,19 @@ class loop_idealization():
     # STOP()
     return original_pdb_h
 
-  def get_resnums_of_chain_rama_outliers(self, pdb_hierarchy, r):
+  def get_resnums_of_chain_rama_outliers(self, pdb_hierarchy):
     phi_psi_atoms = utils.get_phi_psi_atoms(pdb_hierarchy)
     result = []
     rama_results = []
     ranges_for_idealization = []
     # print >> self.log, "rama outliers for input hierarchy:"
     list_of_reference_exclusion = []
-    outp = utils.list_rama_outliers_h(pdb_hierarchy, r)
+    outp = utils.list_rama_outliers_h(pdb_hierarchy, self.r)
     print >> self.log, outp
     for phi_psi_pair, rama_key in phi_psi_atoms:
-      ev = utils.rama_evaluate(phi_psi_pair, r, rama_key)
+      ev = utils.rama_evaluate(phi_psi_pair, self.r, rama_key)
       rama_results.append(ev)
-      if ev == RAMALYZE_OUTLIER:
+      if ev == ramalyze.RAMALYZE_OUTLIER:
         resnum = phi_psi_pair[0][2].parent().parent().resseq
         result.append(resnum)
     return result
@@ -400,15 +406,6 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num, n_following, n_previous):
   return moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms
 
 
-
-
-
-
-
-
-
-
-
 def run(args, log=sys.stdout):
   # print "args", args
 
@@ -432,6 +429,11 @@ def run(args, log=sys.stdout):
   loop_ideal = loop_idealization(pdb_h, work_params.loop_idealization, log)
   loop_ideal.resulting_pdb_h.write_pdb_file(
       file_name="%s_very_final.pdb" % work_params.loop_idealization.output_prefix)
+  print >> log, "Outlier percentages: initial, after ccd, after minimization:"
+  print >> log, loop_ideal.p_initial_rama_outliers,
+  print >> log, loop_ideal.p_before_minimization_rama_outliers,
+  print >> log, loop_ideal.p_after_minimiaztion_rama_outliers
+
 
 
 if (__name__ == "__main__"):
