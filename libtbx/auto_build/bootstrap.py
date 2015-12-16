@@ -1613,7 +1613,7 @@ class PhenixExternalRegression(PhenixBuilder):
          ['modules']],
         ['Rosetta compile',
          ["./scons.py",
-          "-j", 
+          "-j",
           self.nproc,
           #"mode=release",
          ],
