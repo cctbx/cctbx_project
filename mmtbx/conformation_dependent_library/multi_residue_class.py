@@ -260,18 +260,18 @@ class ThreeProteinResidues(list):
   def get_ramalyze_key(self,
                        verbose=False,
                        ):
-
+    from mmtbx.validation import ramalyze
     # defined in mmtbx.validation.ramalyze:
     # res_types = ["general", "glycine", "cis-proline", "trans-proline",
     #              "pre-proline", "isoleucine or valine"]
     #
     if self[1].resname == "PRO":
-      if self.cis_group(): return "cis-proline"
-      else: return "trans-proline"
-    elif self[2].resname == "PRO": return 'pre-proline'
-    elif self[1].resname in ["ILE", "VAL"]: return "isoleucine or valine"
-    elif self[1].resname == "GLY": return "glycine"
-    else: return "general"
+      if self.cis_group(): return ramalyze.RAMA_CISPRO #"cis-proline"
+      else: return ramalyze.RAMA_TRANSPRO # "trans-proline"
+    elif self[2].resname == "PRO": return ramalyze.RAMA_PREPRO # 'pre-proline'
+    elif self[1].resname in ["ILE", "VAL"]: return ramalyze.RAMA_ILE_VAL # "isoleucine or valine"
+    elif self[1].resname == "GLY": return ramalyze.RAMA_GLYCINE #"glycine"
+    else: return ramalyze.RAMA_GENERAL #"general"
 
   def get_dummy_dihedral_proxies(self, only_psi_phi_pairs=True):
     from cctbx.geometry_restraints import dihedral_proxy

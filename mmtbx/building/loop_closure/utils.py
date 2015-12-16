@@ -2,9 +2,7 @@ from __future__ import division
 
 from mmtbx.conformation_dependent_library import generate_protein_threes
 from scitbx.matrix import rotate_point_around_axis
-from mmtbx.validation.ramalyze import ramalyze, RAMALYZE_FAVORED
-from mmtbx.validation.ramalyze import RAMALYZE_ALLOWED # import dependency
-from mmtbx.validation.ramalyze import RAMALYZE_OUTLIER # import dependency
+from mmtbx.validation import ramalyze #, RAMALYZE_FAVORED
 import math
 from cStringIO import StringIO
 
@@ -29,7 +27,7 @@ def rama_score_evaluate(resType, value):
   # copy-paste from cctbx_project/mmtbx/validation/ramalyze.py
   # added 0.002 -> 0.0021, 0.0005 -> 0.00051, etc
 
-  return ramalyze.evalScore(resType, value)
+  return ramalyze.ramalyze.evalScore(resType, value)
 
 def pair_info(phi_psi_pair):
   return phi_psi_pair[0][2].id_str()
@@ -44,7 +42,7 @@ def list_rama_outliers(phi_psi_atoms, r):
   result = ""
   for phi_psi_pair, rama_key in phi_psi_atoms:
     rama_score = get_rama_score(phi_psi_pair, r, rama_key)
-    if rama_evaluate(phi_psi_pair, r, rama_key) == RAMALYZE_OUTLIER:
+    if rama_evaluate(phi_psi_pair, r, rama_key) == ramalyze.RAMALYZE_OUTLIER:
       result += "  !!! OUTLIER %s, score=%f\n" % (pair_info(phi_psi_pair), rama_score)
     # print_rama_stats(phi_psi_atoms, r)
   return result
@@ -52,7 +50,7 @@ def list_rama_outliers(phi_psi_atoms, r):
 
 def get_rama_score(phi_psi_pair, r, rama_key):
   phi_psi_angles = get_pair_angles(phi_psi_pair)
-  rama_score = r.evaluate(rama_key, phi_psi_angles)
+  rama_score = r.evaluate(ramalyze.res_types[rama_key], phi_psi_angles)
   return rama_score
 
 def rama_evaluate(phi_psi_pair, r, rama_key):
@@ -127,5 +125,5 @@ def find_nearest_non_outlier_region(phi_psi_pair, r, rama_key):
   for dx,dy in spiral(360, 360):
     angles = [phi_psi_angles[0]+dx, phi_psi_angles[1]+dy]
     rama_score = r.evaluate(rama_key, angles)
-    if rama_score_evaluate(rama_key, rama_score) == RAMALYZE_FAVORED:
+    if rama_score_evaluate(rama_key, rama_score) == ramalyze.RAMALYZE_FAVORED:
       return angles

@@ -543,18 +543,20 @@ def get_favored_regions(rama_key):
   It is not the best idea to use strings, but it is not clear how
   conviniently use constants defined in the beginning of the file.
   """
-  if rama_key == "general":
+  assert rama_key in range(6)
+
+  if rama_key == RAMA_GENERAL:
     return [(-99, 119), (-63, -43), (53, 43)]
-  if rama_key == "glycine":
+  if rama_key == RAMA_GLYCINE:
     return [(63, 41), (-63, -41), (79, -173), (-79, 173)]
-  if rama_key == "cis-proline":
+  if rama_key == RAMA_CISPRO:
     return [(-75, 155), (-89, 5)]
-  if rama_key == "trans-proline":
+  if rama_key == RAMA_TRANSPRO:
     # return [(-56, -55), (-55, 135)]
     return [(-57, -37), (-59, 143), (-81, 65)]
-  if rama_key == "pre-proline":
+  if rama_key == RAMA_PREPRO:
     return [(-57, -45), (-100, 120), (49, 57)]
-  if rama_key == "isoleucine or valine":
+  if rama_key == RAMA_ILE_VAL:
     return [(-63, -45), (-119, 127)]
   return None
 
