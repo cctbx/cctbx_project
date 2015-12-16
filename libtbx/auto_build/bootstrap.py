@@ -1664,6 +1664,7 @@ class PhenixExternalRegression(PhenixBuilder):
     )
 
   def add_tests(self):
+    # amber
     self.add_test_command('amber.run_tests',
                           env = self.get_environment()
                         )
@@ -1672,14 +1673,8 @@ class PhenixExternalRegression(PhenixBuilder):
                           env = self.get_environment()
                         )
     # MR rosetta
-    self.add_test_command([
+    self.add_test_command(
       'phenix_regression.wizards.test_command_line_rosetta_quick',
-      'test_relax'],
-                          env = self.get_environment()
-                        )
-    self.add_test_command([
-      'phenix_regression.wizards.test_command_line_rosetta_quick',
-      'test_fixed_model'],
                           env = self.get_environment()
                         )
 
