@@ -70,25 +70,12 @@ def exercise_synthetic () :
   open("tst_molprobity_misc1.pdb", "w").write(tst_build_alt_confs.pdb_raw)
   args = [
     "tst_molprobity_1.pdb",
-    "rotamer_library=500",
-    "outliers_only=False",
-    "flags.clashscore=False",
-  ]
-  result = molprobity.run(args=args,
-    ignore_missing_modules=True,
-    out=null_out()).validation
-  out = StringIO()
-  result.show(outliers_only=False, out=out)
-  assert ("""A   7  TYR              m-80  91.83   299.6,92.0""" in
-          out.getvalue())
-  args2 = [
-    "tst_molprobity_1.pdb",
     "rotamer_library=8000",
     "outliers_only=False",
     "flags.clashscore=False",
   ]
   out = StringIO()
-  result = molprobity.run(args=args2,
+  result = molprobity.run(args=args,
     ignore_missing_modules=True,
     out=null_out()).validation
   result.show(outliers_only=False, out=out)

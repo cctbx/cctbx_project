@@ -67,6 +67,7 @@ def exercise_clashscore ():
     bad_clashes_list = cs.results
     assert ([ c.format_old() for c in bad_clashes_list ] ==
       [' A  72  ARG  HG2  A  72  ARG  O   :-1.038',
+       ' A  72  ARG  CG   A  72  ARG  O   :-0.465',
        ' A  71  LEU  HA   A  71  LEU HD12 :-0.446'])
 
   #test nuclear distances
@@ -79,7 +80,10 @@ def exercise_clashscore ():
     bad_clashes_list = cs.results
     assert ([ c.format_old() for c in bad_clashes_list ] ==
       [ ' A  72  ARG  HG2  A  72  ARG  O   :-1.082',
-        ' A  71  LEU  HA   A  71  LEU HD12 :-0.535'])
+        ' A  72  ARG  CG   A  72  ARG  O   :-0.622',
+        ' A  71  LEU  HA   A  71  LEU HD12 :-0.535',
+        ' A  72  ARG  HB3  A  72  ARG  HE  :-0.475',
+        ' A  72  ARG  HD3  A  72  ARG HH11 :-0.451'])
 
   #test B factor cutoff
   cs = clashscore.clashscore(pdb_hierarchy=pdb_hierarchy, b_factor_cutoff=40)
@@ -93,6 +97,7 @@ def exercise_clashscore ():
     bad_clashes_list = cs.results
     assert ([ c.format_old() for c in bad_clashes_list ] ==
       [' A  72  ARG  HG2  A  72  ARG  O   :-1.038',
+       ' A  72  ARG  CG   A  72  ARG  O   :-0.465',
        ' A  71  LEU  HA   A  71  LEU HD12 :-0.446'])
 
 # TODO

@@ -16,10 +16,10 @@ def run():
     return
   target_db = rotamer_eval.open_rotarama_dlite(
     rotarama_data_dir=rotamer_data_dir)
-  rebuild_pickle_files(data_dir=rotamer_data_dir,
-    file_prefix="rota500-",
-    target_db=target_db,
-    amino_acids=rotamer_eval.aminoAcids)
+# rebuild_pickle_files(data_dir=rotamer_data_dir,
+#   file_prefix="rota500-",
+#   target_db=target_db,
+#   amino_acids=rotamer_eval.aminoAcids)
   rebuild_pickle_files(data_dir=rotamer_data_dir,
     file_prefix="rota8000-",
     target_db=target_db,
@@ -32,10 +32,10 @@ def run():
     file_prefix="rama8000-",
     target_db=target_db,
     amino_acids=ramachandran_eval.aminoAcids_8000)
-  rebuild_pickle_files(data_dir=rotamer_data_dir,
-    file_prefix="rama500-",
-    target_db=target_db,
-    amino_acids=ramachandran_eval.aminoAcids)
+# rebuild_pickle_files(data_dir=rotamer_data_dir,
+#   file_prefix="rama500-",
+#   target_db=target_db,
+#   amino_acids=ramachandran_eval.aminoAcids)
   os.chdir(initial_current_working_directory)
   print format_cpu_times()
 

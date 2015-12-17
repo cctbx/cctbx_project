@@ -310,6 +310,7 @@ class probe_clashscore_manager(object):
     self.bad_clashes = []
     for clash_obj in sorted(temp) :
       test_key = clash_obj.id_str_no_atom_name()
+      test_key = clash_obj.id_str()
       if test_key not in used:
         used.append(test_key)
         self.bad_clashes.append(clash_obj)

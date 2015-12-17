@@ -164,6 +164,7 @@ class molprobity (slots_getstate_setstate) :
       file_name=None,
       ligand_selection=None,
       rotamer_library="8000") :
+    assert rotamer_library == "8000", "data_version given to RotamerEval not recognized."
     for name in self.__slots__ :
       setattr(self, name, None)
     # very important - the i_seq attributes may be extracted later
