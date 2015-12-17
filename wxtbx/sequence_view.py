@@ -949,12 +949,9 @@ class sequence_window (object) :
           seq = seq[50:]
           ss = ss[50:]
         else :
-          print "seq:", seq[offset:offset+50]
+          # print "seq:", seq[offset:offset+50]
           break
         offset += 50
-      print seq
-      print ss
-      print offset, n_res
       self.set_sequence(seq, resseq_offset=offset)
       self.set_structure(ss)
       self.reset_layout()
