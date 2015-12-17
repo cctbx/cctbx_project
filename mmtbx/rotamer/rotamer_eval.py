@@ -149,10 +149,7 @@ class RotamerEval:
     if log is None:
       log = sys.stdout
     self.data_version = data_version
-    if self.data_version == "500":
-      self.outlier_threshold = 0.01
-      fileprefix = "rota500-"
-    elif self.data_version == "8000":
+    if self.data_version == "8000":
       self.outlier_threshold = 0.003
       fileprefix = "rota8000-"
     else: raise Sorry("data_version given to RotamerEval not recognized.")
@@ -402,12 +399,7 @@ def exercise(args):
     #
     assert tbl.whereIs([0.5]) == [0]
     assert tbl.bin2index([0]) == 0
-    if r.data_version == '500' :
-      aeql = [0, 5.468854, 5.202081, 4.935307, 4.935307, 4.801921,
-              4.535147, 4.268374, 3.734827, 3.468054, 3.20128,
-              2.534347, 2.40096, 2.40096, 2.267574, 2.134187,
-              2.0008, 2.0008, 2.0008, 1.734027]
-    elif r.data_version == '8000' :
+    if r.data_version == '8000' :
       aeql = [0.0000000, 0.8926509, 0.8296402, 0.7876331,
               0.7351242, 0.6721136, 0.6511100, 0.6406083,
               0.5670958, 0.4620781, 0.4200710, 0.3885657,

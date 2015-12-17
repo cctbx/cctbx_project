@@ -32,6 +32,7 @@ def generate_rotamer_data(pdb_hierarchy,
                           exclude_outliers=True,
                           data_version="8000",
                           ):
+  assert data_version == "8000","data_version not recognized."
   r = rotalyze.rotalyze(pdb_hierarchy=pdb_hierarchy,
                         data_version=data_version)
   for rot in r.results:
@@ -56,6 +57,7 @@ def adjust_rotamer_restraints(pdb_hierarchy,
                               verbose=False,
                               data_version="8000",
                               ):
+  assert data_version == "8000","data_version not recognized."
   assert 0
   if log is None: log = sys.stdout
   t0=time.time()
@@ -167,6 +169,7 @@ def update_restraints(hierarchy,
                       verbose=False,
                       data_version="8000",
                       ):
+  assert data_version == "8000","data_version not recognized."
   assert not exclude_backbone
   loud=True and False
   if loud:

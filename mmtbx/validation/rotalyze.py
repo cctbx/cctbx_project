@@ -97,7 +97,6 @@ class rotalyze (validation) :
 
   def __init__ (self, pdb_hierarchy,
       data_version="8000",
-#     data_version="500",
       outliers_only=False,
       show_errors=False,
       out=sys.stdout,
@@ -110,8 +109,8 @@ class rotalyze (validation) :
     from mmtbx.rotamer.rotamer_eval import RotamerID
     from mmtbx.validation import utils
     self.data_version = data_version
-    if self.data_version == "500":    self.outlier_threshold = 0.01
-    elif self.data_version == "8000": self.outlier_threshold = 0.003
+#   if self.data_version == "500":    self.outlier_threshold = 0.01
+    if self.data_version == "8000": self.outlier_threshold = 0.003
     else: raise ValueError(
       "data_version given to RotamerEval not recognized (%s)." % data_version)
     sidechain_angles = SidechainAngles(show_errors)
@@ -207,8 +206,9 @@ class rotalyze (validation) :
       (self.out_percent, self.get_outliers_goal())
 
   def get_outliers_goal(self):
-    if self.data_version == '500' : return "< 1%"
-    else: return "< 0.3%"
+#   if self.data_version == '500' : return "< 1%"
+    return "< 0.3%"
+    
 
   def get_favored_goal(self):
     return "> 98%"
@@ -313,12 +313,10 @@ def evaluate_residue(
       sa,
       r,
       all_dict,
-      data_version="500",
       sites_cart=None):
   is_outlier = False
-  if data_version == "500":    outlier_threshold = 0.01
-  elif data_version == "8000": outlier_threshold = 0.003
-  else: raise Sorry("data_version given to RotamerEval not recognized.")
+  data_version = "8000"
+  outlier_threshold = 0.003
   for ag in residue_group.atom_groups():
     atom_dict = all_dict.get(ag.altloc)
     try:
@@ -339,12 +337,11 @@ def evaluate_residue(
       return is_outlier, value
 
 class residue_evaluator (object) :
-  def __init__ (self,
-        data_version="500") :
+  def __init__ (self) :
     from mmtbx.rotamer.sidechain_angles import SidechainAngles
     from mmtbx.rotamer import rotamer_eval
     self.sa = SidechainAngles(False)
-    self.data_version = data_version
+    self.data_version = "8000"
     self.r = rotamer_eval.RotamerEval(data_version=self.data_version)
 
   def evaluate_residue (self, residue_group) :
