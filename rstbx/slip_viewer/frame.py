@@ -25,8 +25,19 @@ class chooser_wrapper:
   def __str__(self):
     return "%s [%d]"%(self.path,self.index)
 
+  def get_detector(self):  return self.image_set.get_detector()
+  def get_scan(self):  return self.image_set.get_scan()
+  def get_beam(self):  return self.image_set.get_beam()
+  def get_mask(self):  raise Exception("implement get mask")
+
+  def get_raw_data(self):
+    return self.image_set.get_raw_data(self.index)[0]
+
   def get_detectorbase(self):
     return self.image_set.get_detectorbase(self.index)
+
+  def show_header(self):
+    return self.image_set.get_detectorbase(self.index).show_header()
 
 from rstbx.slip_viewer.slip_display import AppFrame
 class XrayFrame (AppFrame,XFBaseClass) :
@@ -225,10 +236,13 @@ class XrayFrame (AppFrame,XFBaseClass) :
       self.OnShowSettings(None)
     self.Layout()
 
-    try:
-      img = rv_image(file_name_or_data.get_detectorbase())
-    except AttributeError:
-      img = rv_image(os.path.abspath(file_name_or_data))
+    if (isinstance(file_name_or_data, chooser_wrapper)):
+      img = rv_image(file_name_or_data)
+    else :
+      try:
+        img = rv_image(file_name_or_data.get_detectorbase())
+      except AttributeError:
+        img = rv_image(os.path.abspath(file_name_or_data))
 
     try:
       title = file_name_or_data.full_path
