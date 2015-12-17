@@ -70,6 +70,7 @@ class ThreeProteinResidues(list):
     cis_peptide_bond = False
     for i, residue in enumerate(self):
       if i==0: continue
+      if i==2: continue # only check the middle omega angle
       ccn1, outl1 = get_c_ca_n(residue)
       ccn2, outl2 = get_c_ca_n(self[i-1])
       ca1 = ccn1[1]
