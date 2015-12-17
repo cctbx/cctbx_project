@@ -1568,7 +1568,6 @@ class PhenixExternalRegression(PhenixBuilder):
     for key, path in env.items():
       #path = os.path.join(os.getcwd(), path)
       outl += 'setenv %(key)s "%%(PWD)s/../%(path)s"\n' % locals()
-    print outl
     fname="%s.csh" % filename
     self.add_step(self.shell(command=[
       'python',
@@ -1582,7 +1581,6 @@ class PhenixExternalRegression(PhenixBuilder):
     for key, path in env.items():
       #path = os.path.join(os.getcwd(), path)
       outl += 'export %(key)s="%%(PWD)s/../%(path)s"\n' % locals()
-    print outl
     fname="%s.sh" % filename
     self.add_step(self.shell(command=[
       'python',
@@ -1675,8 +1673,9 @@ class PhenixExternalRegression(PhenixBuilder):
     # MR rosetta
     self.add_test_command(
       'phenix_regression.wizards.test_command_line_rosetta_quick',
-                          env = self.get_environment()
-                        )
+      name="test rosetta quick all",
+      env = self.get_environment()
+    )
 
 def run(root=None):
   usage = """Usage: %prog [options] [actions]
