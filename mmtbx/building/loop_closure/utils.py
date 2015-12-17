@@ -2,7 +2,7 @@ from __future__ import division
 
 from mmtbx.conformation_dependent_library import generate_protein_threes
 from scitbx.matrix import rotate_point_around_axis
-from mmtbx.validation import ramalyze #, RAMALYZE_FAVORED
+from mmtbx.validation import ramalyze
 import math
 from cStringIO import StringIO
 

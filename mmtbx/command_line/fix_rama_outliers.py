@@ -83,7 +83,7 @@ class loop_idealization():
       # self.resulting_pdb_h.write_pdb_file(file_name="%s_all_minized.pdb" % self.params.output_prefix)
       ram = ramalyze.ramalyze(pdb_hierarchy=self.resulting_pdb_h)
       self.p_after_minimiaztion_rama_outliers = ram.out_percent
-    # return new_h
+    # return new_h      
 
   def process_params(self, params):
     if params is None:
@@ -138,18 +138,23 @@ class loop_idealization():
       out_i += 1
     return list_of_reference_exclusion, new_h
 
-  def fix_rama_outlier(self,
-      pdb_hierarchy, out_res_num, prefix="", minimize=True):
-
+  def ccd_solution_is_ok(self, 
+      anchor_rmsd, mc_rmsd, ccd_radius, change_all_angles, change_radius):
     adaptive_mc_rmsd = {1:3.0, 2:3.5, 3:4.0}
+    return mc_rmsd < adaptive_mc_rmsd[ccd_radius] and anchor_rmsd < 0.3
+
+
+  def fix_rama_outlier(self, 
+      pdb_hierarchy, out_res_num, prefix="", minimize=True):
+    
 
     original_pdb_h = pdb_hierarchy.deep_copy()
     rotamer_manager = RotamerEval()
     all_results = []
     for ccd_radius, change_all, change_radius in [
-        (1, False, 0),
-        (2, False, 0),
-        # (3, False, 0),
+        (1, False, 0), 
+        (2, False, 0), 
+        # (3, False, 0), 
         (2, True, 1),
         # (3, True, 1),
         ]:
@@ -157,8 +162,8 @@ class loop_idealization():
       print >> self.log, "  Starting optimization with radius, change_all:", ccd_radius, change_all
       moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms = get_fixed_moving_parts(
           pdb_hierarchy=pdb_hierarchy,
-          out_res_num=out_res_num,
-          n_following=ccd_radius,
+          out_res_num=out_res_num, 
+          n_following=ccd_radius, 
           n_previous=ccd_radius)
       moving_h_set = None
       if change_all:
@@ -182,7 +187,7 @@ class loop_idealization():
         #     fixed_ref_atoms, h, moving_ref_atoms_iseqs, moving_h)
 
         mc_rmsd = get_main_chain_rmsd_range(moving_h, h, all_atoms=True)
-        print >> self.log, "Resulting anchor and backbone RMSDs, n_iter for model %d:" % i,
+        print >> self.log, "Resulting anchor and backbone RMSDs, n_iter for model %d:" % i, 
         print >> self.log, resulting_rmsd, ",", mc_rmsd, ",", n_iter
         all_results.append((h.deep_copy(), mc_rmsd, resulting_rmsd, n_iter))
         #
@@ -195,12 +200,12 @@ class loop_idealization():
         #
         # moved_with_side_chains_h.write_pdb_file(
         #     file_name="%s_before_sc_placement_%d.pdb" % (prefix, i))
-        placing_range = get_res_nums_around(moved_with_side_chains_h,
-            center_resnum=out_res_num,
-            n_following=ccd_radius,
-            n_previous=ccd_radius,
+        placing_range = get_res_nums_around(moved_with_side_chains_h, 
+            center_resnum=out_res_num, 
+            n_following=ccd_radius, 
+            n_previous=ccd_radius, 
             include_intermediate=True)
-        place_side_chains(moved_with_side_chains_h, original_pdb_h,
+        place_side_chains(moved_with_side_chains_h, original_pdb_h, 
             rotamer_manager, placing_range)
         # moved_with_side_chains_h.write_pdb_file(
         #     file_name="%s_after_sc_placement_%d.pdb" % (prefix, i))
@@ -209,7 +214,14 @@ class loop_idealization():
         #
         # finalizing with geometry_minimization
         #
-        if mc_rmsd < adaptive_mc_rmsd[ccd_radius]:
+        # !!! This is the condition of acceptance of transformation!
+        # if mc_rmsd < adaptive_mc_rmsd[ccd_radius]:
+        if self.ccd_solution_is_ok(
+            anchor_rmsd=resulting_rmsd, 
+            mc_rmsd=mc_rmsd,
+            ccd_radius=ccd_radius, 
+            change_all_angles=change_all,
+            change_radius=change_radius):
           if minimize:
             print >> self.log, "minimizing..."
             moved_with_side_chains_h.write_pdb_file(
@@ -217,7 +229,7 @@ class loop_idealization():
             minimize_hierarchy(moved_with_side_chains_h, xrs, original_pdb_h, self.log)
           moved_with_side_chains_h.write_pdb_file(
               file_name="%s_result_minimized_%d.pdb" % (prefix, i))
-          final_rmsd = get_main_chain_rmsd_range(moved_with_side_chains_h,
+          final_rmsd = get_main_chain_rmsd_range(moved_with_side_chains_h, 
               original_pdb_h, placing_range)
           print >> self.log, "FINAL RMSD after minimization:", final_rmsd
           return moved_with_side_chains_h
@@ -234,6 +246,7 @@ class loop_idealization():
 
   def get_resnums_of_chain_rama_outliers(self, pdb_hierarchy):
     phi_psi_atoms = utils.get_phi_psi_atoms(pdb_hierarchy)
+    # print "len phi psi atoms", len(phi_psi_atoms)
     result = []
     rama_results = []
     ranges_for_idealization = []
@@ -242,7 +255,9 @@ class loop_idealization():
     outp = utils.list_rama_outliers_h(pdb_hierarchy, self.r)
     print >> self.log, outp
     for phi_psi_pair, rama_key in phi_psi_atoms:
+      # print "resseq:", phi_psi_pair[0][2].parent().parent().resseq
       ev = utils.rama_evaluate(phi_psi_pair, self.r, rama_key)
+      # print "  ev", ev
       rama_results.append(ev)
       if ev == ramalyze.RAMALYZE_OUTLIER:
         resnum = phi_psi_pair[0][2].parent().parent().resseq
@@ -260,13 +275,13 @@ def get_main_chain_rmsd_range(
     mc_atoms = ["N", "CA", "C"]
   for m_atom, ref_atom in zip(hierarchy.atoms(), original_h.atoms()):
     if m_atom.name.strip() in mc_atoms:
-      if (placing_range is None or
+      if (placing_range is None or 
           m_atom.parent().parent().resseq in placing_range):
         rmsd += m_atom.distance(ref_atom)**2
   return rmsd**0.5
 
 
-def minimize_hierarchy(hierarchy, xrs, original_pdb_h,
+def minimize_hierarchy(hierarchy, xrs, original_pdb_h, 
     excl_string_selection, log=None):
   from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
   from mmtbx.refinement.geometry_minimization import run2
@@ -274,7 +289,7 @@ def minimize_hierarchy(hierarchy, xrs, original_pdb_h,
 
   if log is None:
     log = null_out()
-  params_line = grand_master_phil_str
+  params_line = grand_master_phil_str  
   params = iotbx.phil.parse(
       input_string=params_line, process_includes=True).extract()
   params.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
@@ -302,7 +317,7 @@ def minimize_hierarchy(hierarchy, xrs, original_pdb_h,
   grm.geometry.append_reference_coordinate_restraints_in_place(
       reference.add_coordinate_restraints(
           sites_cart = original_pdb_h.atoms().extract_xyz().select(sel),
-          selection  = sel,
+          selection  = sel, 
           sigma      = 0.5))
   obj = run2(
       restraints_manager       = grm,
@@ -317,10 +332,10 @@ def minimize_hierarchy(hierarchy, xrs, original_pdb_h,
       chirality                = True,
       planarity                = True,
       fix_rotamer_outliers     = True,
-      log                      = log)
+      log                      = log)  
 
 
-def place_side_chains(hierarchy, original_h,
+def place_side_chains(hierarchy, original_h, 
     rotamer_manager, placing_range):
   ideal_res_dict = idealized_aa.residue_dict()
   asc = original_h.atom_selection_cache()
@@ -333,7 +348,6 @@ def place_side_chains(hierarchy, original_h,
         if (atom.name not in gly_atom_names):
           ag.remove_atom(atom=atom)
       # get ag from original hierarchy
-
       orig_ag = original_h.select(asc.selection("resseq %d" % rg.resseq_as_int())
           ).models()[0].chains()[0].residue_groups()[0].atom_groups()[0]
       # get ideal
@@ -344,18 +358,22 @@ def place_side_chains(hierarchy, original_h,
 
 def get_res_nums_around(pdb_hierarchy, center_resnum, n_following, n_previous,
     include_intermediate=False):
-  residue_list = list(pdb_hierarchy.only_model().only_chain().only_conformer().residues())
+  residue_list = list(
+      pdb_hierarchy.only_model().only_chain().only_conformer().residues())
   center_index = None
   for i in range(len(residue_list)):
     if residue_list[i].resseq == center_resnum:
       center_index = i
       break
   # print "start/end resids", residue_list[i-n_previous].resseq, residue_list[i+n_following].resseq
+  # print "center i, len", center_index, len(residue_list)
   if not include_intermediate:
-    return residue_list[max(0,center_index-n_previous)].resseq, residue_list[min(len(residue_list)-1,center_index+n_following)].resseq
+    return residue_list[max(0,center_index-n_previous)].resseq, \
+        residue_list[min(len(residue_list)-1,center_index+n_following)].resseq
   else:
     res = []
-    for i in range(center_index-n_previous, center_index+n_following+1):
+    for i in range(max(0,center_index-n_previous), 
+        min(len(residue_list)-1,center_index+n_following+1)):
       res.append(residue_list[i].resseq)
     return res
 
@@ -430,7 +448,7 @@ def run(args, log=sys.stdout):
   loop_ideal.resulting_pdb_h.write_pdb_file(
       file_name="%s_very_final.pdb" % work_params.loop_idealization.output_prefix)
   print >> log, "Outlier percentages: initial, after ccd, after minimization:"
-  print >> log, loop_ideal.p_initial_rama_outliers,
+  print >> log, loop_ideal.p_initial_rama_outliers, 
   print >> log, loop_ideal.p_before_minimization_rama_outliers,
   print >> log, loop_ideal.p_after_minimiaztion_rama_outliers
 
