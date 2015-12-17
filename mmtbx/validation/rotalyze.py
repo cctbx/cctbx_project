@@ -208,7 +208,7 @@ class rotalyze (validation) :
   def get_outliers_goal(self):
 #   if self.data_version == '500' : return "< 1%"
     return "< 0.3%"
-    
+
 
   def get_favored_goal(self):
     return "> 98%"
