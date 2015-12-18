@@ -52,6 +52,7 @@ def get_rama_score(phi_psi_pair, r, rama_key):
 
 def rama_evaluate(phi_psi_pair, r, rama_key):
   score = get_rama_score(phi_psi_pair, r, rama_key)
+  # print "  score, rama_key", score, rama_key
   return rama_score_evaluate(rama_key, score)
 
 def get_pair_angles(phi_psi_pair):
