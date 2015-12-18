@@ -105,6 +105,8 @@ class loop_idealization():
     for c in hierarchy.chains():
       if len(c.conformers()) > 1:
         raise Sorry("Alternative conformations are not supported.")
+      if "UNK" in c.get_residue_names_padded():
+        raise Sorry("UNK residues are not supported.")
     working_h = hierarchy.deep_copy()
     working_h.reset_atom_i_seqs()
     rama_results = []
