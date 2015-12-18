@@ -47,19 +47,36 @@ xtc_phil_str = '''
       .type = bool
       .help = All frames will be saved to cbf format if set to True
   }
- debug {
-    write_debug_files = False
+  debug
+    .help = Use these flags to track down problematic events that cause unhandled exceptions. \
+            Here, a bad event means it caused an unhandled exception, not that the image \
+            failed to index. \
+            Examples: \
+            Process only unprocessed events (excluding bad events): \
+              skip_processed_events=True, skip_unprocessed_events=False skip_bad_events=True \
+            Process only bad events (for debugging): \
+              skip_processed_events=True, skip_unprocessed_events=True skip_bad_events=False \
+            Note, due to how MPI works, if an unhandled exception occurrs, some bad events \
+            will be marked as bad that were simply in process when the program terminated \
+            due to a bad event. Try processing only bad events single process to find the \
+            culprit and alert the program authors.
+  {
+    skip_processed_events = False
       .type = bool
-      .help = "If true, will write out a tiny diagnostic file for each event before"
-      .help = "and after the event is processed"
-    use_debug_files = False
+      .help = If True, will look for diagnostic files in the output directory and use \
+              them to skip events that had already been processed (succesfully or not)
+    skip_unprocessed_events = False
       .type = bool
-      .help = "If true, will look for debug diagnostic files in the output_dir and"
-      .help = "only process events that crashed previously"
+      .help = If True, will look for diagnostic files in the output directory and use \
+              them to skip events that had haven't been processed
+    skip_bad_events = False
+      .type = bool
+      .help = If True, will look for diagnostic files in the output directory and use \
+              them to skip events that had caused unhandled exceptions previously
     event_timestamp = None
       .type = str
       .multiple = True
-      .help = List of timestamps. If set, will only process the events that matches them
+      .help = List of timestamps. If set, will only process the events that match them
   }
   input {
     cfg = None
@@ -260,10 +277,28 @@ format.file_format=pickle format.pickle.cfg=path
       sys.stdout = open(log_path,'a', buffering=0)
       sys.stderr = open(error_path,'a',buffering=0)
       print "Should be redirected now"
-    #log_path = os.path.join(params.output.output_dir, "log_rank%04d.out"%rank)
-    #print "Redirecting stdout to %s"%log_path
-    #sys.stdout = open(log_path,'w')
 
+    debug_dir = os.path.join(params.output.output_dir, "debug")
+    if not os.path.exists(debug_dir):
+      os.makedirs(debug_dir)
+
+    if params.debug.skip_processed_events or params.debug.skip_processed_events or params.debug.skip_bad_events:
+      print "Reading debug files..."
+      self.known_events = {}
+      for filename in os.listdir(debug_dir):
+        # format: hostname,timestamp,status
+        for line in open(os.path.join(debug_dir, filename)):
+          vals = line.strip().split(',')
+          if len(vals) == 2:
+            self.known_events[vals[1]] = "unknown"
+          elif len(vals) == 3:
+            self.known_events[vals[1]] = vals[2]
+
+    debug_file_path = os.path.join(debug_dir, "debug_%d.txt"%rank)
+    write_newline = os.path.exists(debug_file_path)
+    self.debug_file_handle = open(debug_file_path, 'a', 0) # 0 for unbuffered
+    if write_newline: # needed if the there was a crash
+      self.debug_file_handle.write("\n")
 
     # set up psana
     if params.format.file_format=="pickle":
@@ -321,53 +356,17 @@ format.file_format=pickle format.pickle.cfg=path
             comm.send(rank,dest=0)
             evttime = comm.recv(source=0)
             if evttime == 'endrun': break
-            self.process_event_wrapper(run, evttime)
+            self.process_event(run, evttime)
       else:
         # chop the list into pieces, depending on rank.  This assigns each process
         # events such that the get every Nth event where N is the number of processes
         mytimes = [times[i] for i in xrange(nevents) if (i+rank)%size == 0]
 
         for i in xrange(len(mytimes)):
-          self.process_event_wrapper(run, mytimes[i])
+          self.process_event(run, mytimes[i])
 
       run.end()
     ds.end()
-
-  def process_event_wrapper(self, run, timestamp):
-    """
-    Wrapper to check the event and handle debug file management
-    @param run psana run object
-    @param timestamp psana timestamp object
-    """
-    ts = cspad_tbx.evt_timestamp((timestamp.seconds(),timestamp.nanoseconds()/1e6))
-    if len(self.params_cache.debug.event_timestamp) > 0 and ts not in self.params_cache.debug.event_timestamp:
-      return
-
-    ts_path = os.path.join(self.params_cache.output.output_dir, "debug-" + ts + ".txt")
-
-    if self.params_cache.debug.use_debug_files:
-      if not os.path.exists(ts_path):
-        print "Skipping event %s: no debug file found"%ts
-        return
-
-      f = open(ts_path, "r")
-      if len(f.readlines()) > 1:
-        print "Skipping event %s: processed successfully previously"%ts
-        return
-      f.close()
-      print "Accepted", ts
-
-    if self.params_cache.debug.write_debug_files:
-      f = open(ts_path, "w")
-      f.write("%s about to process %s\n"%(socket.gethostname(), ts))
-      f.close()
-
-    self.process_event(run, timestamp)
-
-    if self.params_cache.debug.write_debug_files:
-      f = open(ts_path, "a")
-      f.write("done\n")
-      f.close()
 
   def process_event(self, run, timestamp):
     """
@@ -375,6 +374,31 @@ format.file_format=pickle format.pickle.cfg=path
     @param run psana run object
     @param timestamp psana timestamp object
     """
+    ts = cspad_tbx.evt_timestamp((timestamp.seconds(),timestamp.nanoseconds()/1e6))
+    if ts is None:
+      print "No timestamp, skipping shot"
+      return
+
+    if len(self.params_cache.debug.event_timestamp) > 0 and ts not in self.params_cache.debug.event_timestamp:
+      return
+
+    if self.params_cache.debug.skip_processed_events or self.params_cache.debug.skip_unprocessed_events or self.params_cache.debug.skip_bad_events:
+      if ts in self.known_events:
+        if self.known_events[ts] == "unknown":
+          if self.params_cache.debug.skip_bad_events and self.known_events[ts] == "unknown":
+            print "Skipping event %s: possibly caused an unknown exception previously"%ts
+            return
+        elif self.params_cache.debug.skip_processed_events:
+          print "Skipping event %s: processed successfully previously"%ts
+          return
+      else:
+        if self.params_cache.debug.skip_unprocessed_events:
+          print "Skipping event %s: not processed previously"%ts
+          return
+
+    print "Accepted", ts
+
+    self.debug_file_handle.write("%s,%s"%(socket.gethostname(), ts))
 
     self.params = copy.deepcopy(self.params_cache)
 
@@ -382,6 +406,7 @@ format.file_format=pickle format.pickle.cfg=path
     id = evt.get(psana.EventId)
     if evt.get("skip_event"):
       print "Skipping event",id
+      self.debug_file_handle.write(",psana_skip\n")
       return
 
     # the data needs to have already been processed and put into the event by psana
@@ -390,6 +415,7 @@ format.file_format=pickle format.pickle.cfg=path
       data = self.psana_det.calib(evt) # applies psana's complex run-dependent calibrations
       if data is None:
         print "No data"
+        self.debug_file_handle.write(",no_data\n")
         return
 
       if self.params.format.cbf.gain_mask_value is not None:
@@ -399,12 +425,14 @@ format.file_format=pickle format.pickle.cfg=path
       distance = cspad_tbx.env_distance(self.params.input.address, run.env(), self.params.format.cbf.detz_offset)
       if distance is None:
         print "No distance, skipping shot"
+        self.debug_file_handle.write(",no_distance\n")
         return
 
       if self.params.format.cbf.override_energy is None:
         wavelength = cspad_tbx.evt_wavelength(evt)
         if wavelength is None:
           print "No wavelength, skipping shot"
+          self.debug_file_handle.write(",no_wavelength\n")
           return
       else:
         wavelength = 12398.4187/self.params.format.cbf.override_energy
@@ -413,12 +441,7 @@ format.file_format=pickle format.pickle.cfg=path
       image_dict = evt.get(self.params.format.pickle.out_key)
       data = image_dict['DATA']
 
-    timestamp = cspad_tbx.evt_timestamp(cspad_tbx.evt_time(evt)) # human readable format
-    if timestamp is None:
-      print "No timestamp, skipping shot"
-      return
-
-    t = timestamp
+    timestamp = t = ts
     s = t[0:4] + t[5:7] + t[8:10] + t[11:13] + t[14:16] + t[17:19] + t[20:23]
     print "Processing shot", s
 
@@ -459,13 +482,15 @@ format.file_format=pickle format.pickle.cfg=path
       observed = self.find_spots(datablock)
     except Exception, e:
       import traceback; traceback.print_exc()
-      print str(e)
+      print str(e), "event", timestamp
+      self.debug_file_handle.write(",spotfinding_exception\n")
       return
 
     print "Found %d bright spots"%len(observed)
 
     if self.params.dispatch.hit_finder.enable and len(observed) < self.params.dispatch.hit_finder.minimum_number_of_reflections:
       print "Not enough spots to index"
+      self.debug_file_handle.write(",not_enough_spots_%d\n"%len(observed))
       return
 
     self.restore_ranges(cspad_img, self.params)
@@ -491,6 +516,7 @@ format.file_format=pickle format.pickle.cfg=path
             len(observed), os.path.basename(strong_filename)))
 
     if not self.params.dispatch.index:
+      self.debug_file_handle.write(",strong_shot_%d\n"%len(observed))
       return
 
     # index and refine
@@ -499,6 +525,7 @@ format.file_format=pickle format.pickle.cfg=path
     except Exception, e:
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
+      self.debug_file_handle.write(",indexing_failed_%d\n"%len(observed))
       return
 
     if self.params.dispatch.dump_indexed:
@@ -508,10 +535,12 @@ format.file_format=pickle format.pickle.cfg=path
       experiments = self.refine(experiments, indexed)
     except Exception, e:
       import traceback; traceback.print_exc()
-      print str(e)
+      print str(e), "event", timestamp
+      self.debug_file_handle.write(",refine_failed_%d\n"%len(indexed))
       return
 
     if not self.params.dispatch.integrate:
+      self.debug_file_handle.write(",index_ok_%d\n"%len(indexed))
       return
 
     # integrate
@@ -519,7 +548,10 @@ format.file_format=pickle format.pickle.cfg=path
       integrated = self.integrate(experiments, indexed)
     except Exception, e:
       import traceback; traceback.print_exc()
-      print str(e)
+      print str(e), "event", timestamp
+      self.debug_file_handle.write(",integrate_failed_%d\n"%len(indexed))
+
+    self.debug_file_handle.write(",integrate_ok_%d\n"%len(integrated))
 
   def save_image(self, image, params, root_path):
     """ Save an image, in either cbf or pickle format.
