@@ -235,6 +235,21 @@ class eigen_helper(base_class,levenberg_common,normal_eqns.non_linear_ls_mixin):
 
 class eigen_worker(object):
 
+  def get_helper_normal_matrix(self):
+    norm_mat_packed_upper = self.helper.get_normal_matrix()
+    # convert upper triangle to all elements:
+    Nx = len(self.helper.x)
+    all_elems = flex.double(Nx*Nx)
+    ctr = 0
+    for x in xrange(Nx):
+      x_0 = ctr
+      for y in xrange(Nx-1,x-1,-1):
+        all_elems[ Nx*x+y ] = norm_mat_packed_upper[x_0+(y-x)]
+        ctr += 1
+        if x!= y:
+          all_elems[ Nx*y+x ] = norm_mat_packed_upper[x_0+(y-x)]
+    return all_elems
+
   def __init__(self,x_obs,y_obs,w_obs,initial):
     self.counter = 0
     self.x = initial.deep_copy()
@@ -249,7 +264,12 @@ class eigen_worker(object):
     )
     ###### get esd's
     self.helper.build_up()
-    self.error_diagonal = self.helper.solve_returning_error_mat_diagonal()
+    NM = sqr(self.get_helper_normal_matrix())
+    from scitbx.linalg.svd import inverse_via_svd
+    svd_inverse,sigma = inverse_via_svd(NM.as_flex_double_matrix())
+    IA = sqr(svd_inverse)
+    self.error_diagonal = flex.double([IA(i,i) for i in xrange(self.helper.x.size())])
+
     print "End of minimization: Converged", self.helper.counter,"cycles"
 
 def eigen_example(verbose):
