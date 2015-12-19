@@ -934,7 +934,8 @@ def run(args, command_name="phenix.pdbtools", out=sys.stdout,
     mso = model_statistics.geometry(
       pdb_hierarchy      = ph,
       molprobity_scores  = use_molprobity,
-      restraints_manager = rm)
+      restraints_manager = rm,
+      cdl_restraints     = params.pdb_interpretation.restraints_library.cdl)
     print >> log
     mso.show(out = log, prefix="")
     utils.print_header("ADP statistics", out = log)
