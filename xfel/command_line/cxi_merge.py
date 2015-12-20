@@ -34,6 +34,9 @@ data = None
   .multiple = True
   .help = Directory containing integrated data in pickle format.  Repeat to \
     specify additional directories.
+filename_extension = "pickle"
+  .type = str
+  .help = Filename extension for integration pickle files. Usually pickle but can be otherwise.
 data_subset = 0
   .type = int
   .help = 0: use all data / 1: use odd-numbered frames / 2: use even-numbered frames
@@ -205,22 +208,31 @@ isoform_name = None
   .help = Only accept this isoform
 """ + mysql_master_phil
 
-def get_observations (data_dirs,data_subset, subsubset, subsubset_total):
+def get_observations (work_params):
+  try:
+    data_dirs = work_params.data
+    data_subset = work_params.data_subset
+    subsubset = work_params.data_subsubsets.subsubset
+    subsubset_total = work_params.data_subsubsets.subsubset_total
+    extension = work_params.filename_extension
+  except Exception,e:
+    exit("Changed the interface for get_observations, please contact authors "+str(e))
+
   print "Step 1.  Get a list of all files"
   file_names = []
   for dir_name in data_dirs :
     if not os.path.isdir(dir_name):
       continue
     for file_name in os.listdir(dir_name):
-      if (file_name.endswith("_00000.pickle")):
+      if (file_name.endswith("_00000."+extension)):
         if data_subset==0 or \
-          (data_subset==1 and (int(os.path.basename(file_name).split("_00000.pickle")[0][-1])%2==1)) or \
-          (data_subset==2 and (int(os.path.basename(file_name).split("_00000.pickle")[0][-1])%2==0)):
+          (data_subset==1 and (int(os.path.basename(file_name).split("_00000."+extension)[0][-1])%2==1)) or \
+          (data_subset==2 and (int(os.path.basename(file_name).split("_00000."+extension)[0][-1])%2==0)):
           file_names.append(os.path.join(dir_name, file_name))
-      elif (file_name.endswith(".pickle")):
+      elif (file_name.endswith("."+extension)):
         if data_subset==0 or \
-          (data_subset==1 and (int(os.path.basename(file_name).split(".pickle")[0][-1])%2==1)) or \
-          (data_subset==2 and (int(os.path.basename(file_name).split(".pickle")[0][-1])%2==0)):
+          (data_subset==1 and (int(os.path.basename(file_name).split("."+extension)[0][-1])%2==1)) or \
+          (data_subset==2 and (int(os.path.basename(file_name).split("."+extension)[0][-1])%2==0)):
           file_names.append(os.path.join(dir_name, file_name))
   if subsubset is not None and subsubset_total is not None:
     file_names = [file_names[i] for i in xrange(len(file_names)) if (i+subsubset)%subsubset_total == 0]
@@ -1753,7 +1765,7 @@ def run(args):
     assert not matches.have_singles()
     miller_set = miller_set.select(matches.permutation())
 
-  frame_files = get_observations(work_params.data, work_params.data_subset, work_params.data_subsubsets.subsubset, work_params.data_subsubsets.subsubset_total)
+  frame_files = get_observations(work_params)
   scaler = scaling_manager(
     miller_set=miller_set,
     i_model=i_model,
