@@ -17,6 +17,12 @@ import urlparse
 import zipfile
 
 rosetta_version="rosetta_src_2015.39.58186_bundle"
+envs = {
+  "AMBERHOME"           : ["modules", "amber"],
+  "PHENIX_ROSETTA_PATH" : ["modules", "rosetta"],
+  "ROSETTA_BIN"         : ["modules", "rosetta", "main", "source", "bin"],
+  "ROSETTA3_DB"         : ["modules", "rosetta", "main", "database"],
+}
 
 # To download this file:
 # svn export svn://svn.code.sf.net/p/cctbx/code/trunk/libtbx/auto_build/bootstrap.py
@@ -149,7 +155,6 @@ class ShellCommand(object):
       print 'command',command
       print 'workdir',workdir
     try:
-      #print "workdir, os.getcwd =", workdir, os.getcwd()
       #if not os.path.isabs(command[0]):
         # executable path isn't located relative to workdir
       #  command[0] = os.path.join(workdir, command[0])
@@ -448,6 +453,7 @@ class cbflib_module(SourceModule):
   module = 'cbflib'
   anonymous = ['svn', 'svn://svn.code.sf.net/p/cbflib/code-0/trunk/CBFlib_bleeding_edge']
   authenticated = ['svn', '%(sfmethod)s://%(sfuser)s@svn.code.sf.net/p/cbflib/code-0/trunk/CBFlib_bleeding_edge']
+  authenticated = anonymous
 
 class ccp4io_adaptbx(SourceModule):
   module = 'ccp4io_adaptbx'
@@ -1018,7 +1024,6 @@ class Builder(object):
       # whenever server certificates have been forgotten
       svnflags = ['--non-interactive', '--trust-server-cert']
     if os.path.exists(self.opjoin(*[thisworkdir, module, '.svn'])):
-      # print "using update..."
       self.add_step(self.shell(
           command=['svn', 'update', module] + svnflags,
           workdir=[thisworkdir]
@@ -1536,29 +1541,17 @@ class PhenixExternalRegression(PhenixBuilder):
     pass
 
   def get_environment(self):
-    amberhome = os.path.join("modules",
-                             "amber",
-                             )
-    phenix_rosetta_path = os.path.join("modules",
-                                       'rosetta',
-                                     )
-    rosetta_bin = os.path.join(phenix_rosetta_path,
-                               "main",
-                               "source",
-                               "bin",
-                              )
-    rosetta3_db = os.path.join(phenix_rosetta_path,
-                               "main",
-                               "database",
-                              )
-    env = {
+    amberhome = os.path.join(*envs["AMBERHOME"])
+    phenix_rosetta_path = os.path.join(*envs["PHENIX_ROSETTA_PATH"])
+    rosetta_bin = os.path.join(*envs["ROSETTA_BIN"])
+    rosetta3_db = os.path.join(*envs["ROSETTA3_DB"])
+    environment = {
       "AMBERHOME"           : amberhome, # used to trigger Property on slave
       "PHENIX_ROSETTA_PATH" : phenix_rosetta_path,
       "ROSETTA_BIN"         : rosetta_bin,
       "ROSETTA3_DB"         : rosetta3_db,
            }
-    # need to write these to a .csh file
-    return env
+    return environment
 
   def write_environment(self,
                         env,
@@ -1566,8 +1559,7 @@ class PhenixExternalRegression(PhenixBuilder):
                        ):
     outl = ""
     for key, path in env.items():
-      #path = os.path.join(os.getcwd(), path)
-      outl += 'setenv %(key)s "%%(PWD)s/../%(path)s"\n' % locals()
+      outl += 'setenv %(key)s "%%(PWD)s/%(path)s"\n' % locals()
     fname="%s.csh" % filename
     self.add_step(self.shell(command=[
       'python',
@@ -1579,8 +1571,7 @@ class PhenixExternalRegression(PhenixBuilder):
     ))
     outl = ""
     for key, path in env.items():
-      #path = os.path.join(os.getcwd(), path)
-      outl += 'export %(key)s="%%(PWD)s/../%(path)s"\n' % locals()
+      outl += 'export %(key)s="%%(PWD)s/%(path)s"\n' % locals()
     fname="%s.sh" % filename
     self.add_step(self.shell(command=[
       'python',
@@ -1602,6 +1593,21 @@ class PhenixExternalRegression(PhenixBuilder):
     if sys.platform == "linux2":
       amber_c_comp = "gnu"
     for name, command, workdir in [
+        ['Amber update', ["./update_amber", "--update"], [env["AMBERHOME"]]],
+        ['Amber configure',
+          ["./configure",
+           "--no-updates",
+           "-noX11",
+           "-macAccelerate", # ignored if not on Mac
+           "-nofftw3", # because compilers on slave are 4.1 not 4.3
+           #"-noamber", # this is for the "real" amber
+           amber_c_comp,
+           ],
+          [env["AMBERHOME"]]],
+        ['Amber compile',
+         ["make", "-j", self.nproc, "install"],
+         [env["AMBERHOME"]]],
+        #['Amber clean',   ["make", "clean"], [env["AMBERHOME"]]],
         ['Rosetta - untar',
          ['tar', 'xvf', '%s.tgz' % rosetta_version],
          ['modules']],
@@ -1616,20 +1622,6 @@ class PhenixExternalRegression(PhenixBuilder):
           #"mode=release",
          ],
          ["modules", 'rosetta', "main", "source"]],
-        ['Amber update', ["./update_amber", "--update"], [env["AMBERHOME"]]],
-        ['Amber configure',
-          ["./configure",
-           "--no-updates",
-           "-noX11",
-           "-macAccelerate", # ignored if not on Mac
-           "-nofftw3", # because compilers on slave are 4.1 not 4.3
-           amber_c_comp,
-           ],
-          [env["AMBERHOME"]]],
-        ['Amber compile',
-         ["make", "-j", self.nproc, "install"],
-         [env["AMBERHOME"]]],
-        #['Amber clean',   ["make", "clean"], [env["AMBERHOME"]]],
         ]:
       #if name.find("Amber")>=1: continue
       #if name.find("Rosetta")>=1: continue
