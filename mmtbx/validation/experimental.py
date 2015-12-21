@@ -36,6 +36,10 @@ class residue_real_space (residue) :
     return "%-20s  %6.2f  %4.2f  %6.2f  %6.2f  %5.3f" % (self.id_str(),
       self.b_iso, self.occupancy, self.two_fofc, self.fmodel, self.score)
 
+  def as_table_row_phenix (self) :
+    return [ self.id_str(), self.b_iso, self.occupancy, self.two_fofc,
+             self.fmodel, self.score ]
+
 class data_statistics (slots_getstate_setstate) :
   __slots__ = [
     "d_max",
@@ -138,13 +142,36 @@ class data_statistics (slots_getstate_setstate) :
 
 class real_space (validation) :
   """
-  Real-space correlation calculation for residues with at least two atoms.
+  Real-space correlation calculation for residues
   """
+
+  __slots__ = validation.__slots__ + \
+              [ 'everything', 'protein', 'other', 'water',
+                'multicriterion_plot_data', 'multicriterion_plot_limits']
+  program_description = "Analyze real space correlation"
+  output_header = None
+  gui_list_headers = [ "Residue", "B_iso", "Occupancy", "2Fo-Fc", "Fmodel", "CC" ]
+  gui_formats = [ "%s", "%6.2f", "%4.2f", "%6.2f", "%6.2f", "%5.3f" ]
+  wx_column_widths = [120] * 6
+
   def get_result_class (self) : return residue_real_space
 
   def __init__ (self, fmodel, pdb_hierarchy, cc_min=0.8) :
-    validation.__init__(self)
+
+    from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
     from mmtbx import real_space_correlation
+
+    validation.__init__(self)
+
+    # arrays for different components
+    self.everything = list()
+    self.protein = list()
+    self.other = list()
+    self.water = list()
+    aa_codes = one_letter_given_three_letter.keys()
+    self.multicriterion_plot_data = list()
+    self.multicriterion_plot_limits = None
+
     try :
       rsc_params = real_space_correlation.master_params().extract()
       rsc_params.detail="residue"
@@ -156,13 +183,9 @@ class real_space (validation) :
         params=rsc_params,
         log=null_out())
     except Exception, e :
-      print "Error: %s" % str(e)
-      #raise
+      raise "Error: %s" % str(e)
     else :
-      rsc_by_res = []
       for i, result_ in enumerate(rsc) :
-        if (result_.n_atoms == 1) or (result_.residue.resname == "HOH") :
-          continue
         result = residue_real_space(
           chain_id=result_.chain_id,
           resname=result_.residue.resname,
@@ -182,7 +205,49 @@ class real_space (validation) :
         # the real-space correlation, since these are used as the basis for
         # the multi-criterion plot in Phenix.  The show() method will only
         # print outliers, however.
-        self.results.append(result)
+        if (result_.residue.resname != 'HOH'): # water is handled by waters.py
+          self.everything.append(result)
+          if (result_.residue.resname in aa_codes):
+            self.protein.append(result)
+          else:
+            self.other.append(result)
+        self.everything += self.water
+        self.results = self.protein
+
+        # # store data for multicriterion plot
+        # self.multicriterion_plot_data.append(
+        #   [ result.chain_id, result.resname,
+        #     result_.residue.resid(), result.score, result.b_iso,
+        #     result_.occupancy,
+        #     result.fmodel, result.two_fofc,
+        #     result.atom_selection_string(),
+        #     result.xyz ] )
+        # cc_min = b_min = 1.0e6
+        # cc_max = b_max = rho_max = -1.0e6
+        # if (result_.cc < cc_min):
+        #   cc_min = result_.cc
+        # elif (result_.cc > cc_max):
+        #   cc_max = result_.cc
+        # if (result_.map_value_1 > rho_max):
+        #   rho_max = result_.map_value_1
+        # if (result_.map_value_2 > rho_max):
+        #   rho_max = result_.map_value_2
+        # if (result_.b < b_min):
+        #   b_min = result_.b
+        # elif (result_.b > b_max):
+        #   b_max = result_.tb = b
+        # self.multicriterion_plot_limits = {
+        #   'rho': (0, rho_max),
+        #   'b': (b_min, b_max),
+        #   'cc': (cc_min, cc_max) }
+
+  def add_water (self, water=None):
+    """
+    Function for incorporating water results from water.py
+    """
+    if (water is not None):
+      self.water = water
+      self.everything += water
 
   def show_summary (self, out=sys.stdout, prefix="") :
     print >> out, prefix + "%d residues with CC(Fc,2mFo-DFc) < 0.8" % \

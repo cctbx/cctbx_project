@@ -16,6 +16,7 @@ class water (atom) :
     "nearest_contact",
     "nearest_atom",
     "n_hbonds",
+    "fmodel"
   ]
 
   @property
@@ -45,6 +46,10 @@ class water (atom) :
 
   def is_heavy_atom (self) :
     return (self.fofc > 3.0) or (self.anom > 3.0) or (self.b_iso == 0)
+
+  def as_table_row_phenix (self) :
+    return [ self.id_str(), self.b_iso, self.occupancy, self.two_fofc,
+             self.fmodel, self.score]
 
 class waters (validation) :
   """
@@ -114,6 +119,7 @@ class waters (validation) :
           nearest_contact=nearest_contact,
           nearest_atom=nearest_atom,
           score=map_stats.two_fofc_ccs[i_seq],
+          fmodel=map_stats.fmodel_values[i_seq],
           two_fofc=map_stats.two_fofc_values[i_seq],
           fofc=map_stats.fofc_values[i_seq],
           anom=map_stats.anom_values[i_seq],
