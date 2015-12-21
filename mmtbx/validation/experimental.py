@@ -146,8 +146,7 @@ class real_space (validation) :
   """
 
   __slots__ = validation.__slots__ + \
-              [ 'everything', 'protein', 'other', 'water',
-                'multicriterion_plot_data', 'multicriterion_plot_limits']
+              [ 'everything', 'protein', 'other', 'water' ]
   program_description = "Analyze real space correlation"
   output_header = None
   gui_list_headers = [ "Residue", "B_iso", "Occupancy", "2Fo-Fc", "Fmodel", "CC" ]
@@ -169,8 +168,6 @@ class real_space (validation) :
     self.other = list()
     self.water = list()
     aa_codes = one_letter_given_three_letter.keys()
-    self.multicriterion_plot_data = list()
-    self.multicriterion_plot_limits = None
 
     try :
       rsc_params = real_space_correlation.master_params().extract()
@@ -214,33 +211,6 @@ class real_space (validation) :
         self.everything += self.water
         self.results = self.protein
 
-        # # store data for multicriterion plot
-        # self.multicriterion_plot_data.append(
-        #   [ result.chain_id, result.resname,
-        #     result_.residue.resid(), result.score, result.b_iso,
-        #     result_.occupancy,
-        #     result.fmodel, result.two_fofc,
-        #     result.atom_selection_string(),
-        #     result.xyz ] )
-        # cc_min = b_min = 1.0e6
-        # cc_max = b_max = rho_max = -1.0e6
-        # if (result_.cc < cc_min):
-        #   cc_min = result_.cc
-        # elif (result_.cc > cc_max):
-        #   cc_max = result_.cc
-        # if (result_.map_value_1 > rho_max):
-        #   rho_max = result_.map_value_1
-        # if (result_.map_value_2 > rho_max):
-        #   rho_max = result_.map_value_2
-        # if (result_.b < b_min):
-        #   b_min = result_.b
-        # elif (result_.b > b_max):
-        #   b_max = result_.tb = b
-        # self.multicriterion_plot_limits = {
-        #   'rho': (0, rho_max),
-        #   'b': (b_min, b_max),
-        #   'cc': (cc_min, cc_max) }
-
   def add_water (self, water=None):
     """
     Function for incorporating water results from water.py
@@ -250,13 +220,14 @@ class real_space (validation) :
       self.everything += water
 
   def show_summary (self, out=sys.stdout, prefix="") :
-    print >> out, prefix + "%d residues with CC(Fc,2mFo-DFc) < 0.8" % \
+    print >> out, prefix +\
+      "%d residues (including water) with CC(Fc,2mFo-DFc) < 0.8" % \
       self.n_outliers
 
   def show (self, out=sys.stdout, prefix="  ", verbose=True) :
     if (self.n_outliers > 0) :
       print >> out, prefix + self.get_result_class().header()
-      for result in self.results :
+      for result in (self.protein + self.other) :
         if result.is_outlier() :
           print >> out, prefix + str(result)
     self.show_summary(out=out, prefix=prefix)
