@@ -459,6 +459,31 @@ namespace {
     return std::sqrt(min_length_sq);
   }
 
+
+  boost::python::tuple
+  min_distance_between_any_pair_with_id(
+    af::const_ref<vec3<double> > const& lhs,
+    af::const_ref<vec3<double> > const& rhs)
+  {
+    if (lhs.size() == 0) return boost::python::make_tuple(0, 0, 0);
+    if (rhs.size() == 0) return boost::python::make_tuple(0, 0, 0);
+    double min_length_sq = (lhs[0]-rhs[0]).length_sq();
+    double working_length_sq = 0;
+    int best_i=0;
+    int best_j=0;
+    for(std::size_t i=0;i<lhs.size();i++) {
+      for(std::size_t j=0;j<rhs.size();j++) {
+        working_length_sq=(lhs[i]-rhs[j]).length_sq();
+        if (working_length_sq < min_length_sq) {
+          best_i=i;
+          best_j=j;
+          min_length_sq=working_length_sq;
+        }
+      }
+    }
+    return boost::python::make_tuple(std::sqrt(min_length_sq), best_i, best_j);
+  }
+
   double
   max_distance(
     af::const_ref<vec3<double> > const& lhs,
@@ -595,6 +620,8 @@ namespace boost_python {
       .def("each_normalize", each_normalize, (
         arg("raise_if_length_zero")=true))
       .def("min_distance_between_any_pair", min_distance_between_any_pair)
+      .def("min_distance_between_any_pair_with_id",
+            min_distance_between_any_pair_with_id)
       .def("max_distance", max_distance)
       .def("rms_difference", rms_difference)
       .def("rms_length", rms_length)
