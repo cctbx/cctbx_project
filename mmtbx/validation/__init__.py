@@ -360,11 +360,15 @@ class validation (slots_getstate_setstate) :
   output_header = None
   gui_list_headers = [] # for Phenix GUI ListCtrl widgets
   gui_formats = []      # for Phenix GUI ListCtrl widgets
+  wx_column_widths = []
+
   def __init__ (self) :
     self.n_outliers = 0
     self.n_total = 0
     self.results = []
     self._cache = None
+    assert (len(self.gui_list_headers) == len(self.gui_formats) ==
+            len(self.wx_column_widths))
 
   def get_outliers_count_and_fraction(self):
     if (self.n_total != 0):
@@ -446,9 +450,25 @@ class validation (slots_getstate_setstate) :
       if (include_zoom) :
         extra = result.zoom_info()
       row = result.as_table_row_phenix()
-      assert (len(row) == len(self.gui_list_headers) == len(self.gui_formats))
+      assert (len(row) == len(self.gui_list_headers))
       table.append(row + extra)
     return table
+
+  def save_table_data (self, file_name=None):
+    """
+    Save all results as a comma separated, text file
+    """
+    if (file_name is not None):
+      outliers_only = False
+      table = self.as_gui_table_data(outliers_only=outliers_only)
+      if (len(table) > 0):
+        f = open(file_name, 'w')
+        f.write('%s\n' % ', '.join(self.gui_list_headers))
+        for row in table:
+          f.write('%s\n' % ', '.join([str(x) for x in row]))
+        f.close()
+        return True
+    return False
 
   def find_residue (self, other=None, residue_id_str=None) :
     assert ([other, residue_id_str].count(None) == 1)

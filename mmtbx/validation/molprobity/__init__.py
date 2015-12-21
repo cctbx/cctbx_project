@@ -266,7 +266,7 @@ class molprobity (slots_getstate_setstate) :
           pdb_hierarchy=pdb_hierarchy,
           xray_structure=xray_structure,
           fmodel=fmodel,
-          collect_all=False)
+          collect_all=True)
       if (flags.real_space) :
         self.real_space = experimental.real_space(
           fmodel=fmodel,
