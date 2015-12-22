@@ -520,6 +520,7 @@ Residue classes
           ):
         if verbose:
           print "is not linked", atom1.quote(),atom2.quote(),key
+          print 'link_metals',link_metals
         if ( atom1.element.strip().upper() in hydrogens or
              atom2.element.strip().upper() in hydrogens):
           pass
@@ -794,9 +795,14 @@ Residue classes
       custom_links.setdefault(ii, [])
       custom_links[ii].append([atom_group1, atom_group2, atom1, atom2])
       # simple
-      bond_name = "h-dna" if ((classes1.common_rna_dna or
+      bond_name = "bond"
+      if ((classes1.common_rna_dna or
         classes1.ccp4_mon_lib_rna_dna) and
-       (classes2.common_rna_dna or classes2.ccp4_mon_lib_rna_dna)) else "bond"
+       (classes2.common_rna_dna or classes2.ccp4_mon_lib_rna_dna)):
+        bond_name = "h-dna"
+      elif (linking_utils.get_classes(atom1, important_only=True)=="metal" or
+            linking_utils.get_classes(atom2, important_only=True)=="metal"):
+        bond_name = "metal-coordination"
       if sym_op:
         sym_bonds += 1
         bond_data.append( (atoms[i_seq].id_str(),
@@ -842,8 +848,10 @@ Residue classes
     #  print atoms[sym_pair.i_seq].quote(), atoms[sym_pair.j_seq].quote()
     n_simple, n_symmetry = 0, 0
     self.pdb_link_records.setdefault("LINK", [])
-    for sym_pair in pair_sym_table.iterator():
+    for ijk, sym_pair in enumerate(pair_sym_table.iterator()):
       i_seq, j_seq = sym_pair.i_seqs()
+      origin_id=0
+      if bond_data[ijk][-1]=="metal-coordination": origin_id=2
       # adding link to PDB
       #assert len(bond_i_seqs)==1
       self.pdb_link_records["LINK"].append([self.pdb_atoms[i_seq],
@@ -877,7 +885,9 @@ Residue classes
         params=geometry_restraints.bond_params(
           distance_ideal=equil,
           weight=1.0/weight**2,
-          slack=slack))
+          slack=slack,
+          origin_id=origin_id,
+        ))
       bond_asu_table.add_pair(
         i_seq=i_seq,
         j_seq=j_seq,
@@ -961,7 +971,10 @@ Residue classes
         simple_bonds,
         sym_bonds,
         )
-      for caption, bond_type in [("Other bonds",'bond')]:
+      for caption, bond_type in [
+          ("Coordination",'metal-coordination'),
+          ("Other bonds",'bond'),
+        ]:
         print >> log, "  %s:" % caption
         for label1, label2, sym_op, bt in sorted(bond_data):
           if sym_op is None and bt == bond_type:
