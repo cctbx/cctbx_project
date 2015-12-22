@@ -1,0 +1,36 @@
+import libtbx.load_env
+
+Import("env_etc")
+
+env_etc.fast_linalg_dist = libtbx.env.dist_path("fast_linalg")
+env_etc.fast_linalg_include = libtbx.env.under_dist("fast_linalg", "..")
+env_etc.fast_linalg_common_includes = [
+  env_etc.libtbx_include,
+  env_etc.fast_linalg_include,
+  env_etc.boost_include,
+]
+
+Import("env_base")
+envs = [env_base]
+if not env_etc.no_boost_python:
+  Import("env_no_includes_boost_python_ext")
+  envs.append(env_no_includes_boost_python_ext)
+fast_linalg_envs = []
+for env, extra_inc in zip(envs, ([], [env_etc.python_include])):
+  e = env.Clone()
+  env_etc.include_registry.append(
+    env=e,
+    paths=env_etc.fast_linalg_common_includes + extra_inc)
+  if env_etc.compiler == "win32_cl":
+    e.Append(LIBS=['openblas'])
+    flag = "-DCCTBX_FAST_LINALG_USES_OPENBLAS"
+    e.Append(CXXFLAGS=flag)
+    e.Append(SHCXXFLAGS=flag)
+  fast_linalg_envs.append(e)
+env_fast_linalg_base = fast_linalg_envs[0]
+Export("env_fast_linalg_base")
+if not env_etc.no_boost_python:
+  env_fast_linalg_boost_python_ext = fast_linalg_envs[1]
+  Export("env_fast_linalg_boost_python_ext")
+
+SConscript("tests/SConscript")
