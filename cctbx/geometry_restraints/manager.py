@@ -28,6 +28,7 @@ from scitbx_array_family_flex_ext import reindexing_array
 # So the list of origin_id:
 # bonds: 0 - covalent geometry
 #        1 - hydrogen bonds, both for protein SS and for NA basepairs
+#        2 - metal coordination
 # angles: 0 - covalent geometry
 #         1 - angle restraints associated with NA basepair hydrogen bonds
 # dihedral(torsion): 0 - covalent geometry
@@ -1345,15 +1346,18 @@ class manager(object):
           f=f,
           origin_id=0)
       print >> f
-      tempbuffer = StringIO.StringIO()
-      pair_proxies.bond_proxies.show_sorted(
-          by_value="residual",
-          sites_cart=sites_cart,
-          site_labels=site_labels,
-          f=tempbuffer,
-          prefix="",
-          origin_id=1)
-      print >> f, "Bond-like", tempbuffer.getvalue()[5:]
+      for label, origin_id in [["Bond-like", 1],
+                               ["Metal coordination", 2],
+                               ]:
+        tempbuffer = StringIO.StringIO()
+        pair_proxies.bond_proxies.show_sorted(
+            by_value="residual",
+            sites_cart=sites_cart,
+            site_labels=site_labels,
+            f=tempbuffer,
+            prefix="",
+            origin_id=origin_id)
+        print >> f, label, tempbuffer.getvalue()[5:]
 
     if (self.angle_proxies is not None):
       self.angle_proxies.show_sorted(

@@ -2,7 +2,27 @@ from __future__ import division
 import os
 from libtbx import easy_run
 
-pdbs = {"linking_test_NAG-NAG.pdb" : """
+pdbs = {"linking_test_CYS_CYS_alt_loc.pdb" : """
+ATOM    274  N   CYS A  27      17.541   4.439  12.897  1.00 13.99           N
+ATOM    275  CA  CYS A  27      16.566   5.527  12.862  1.00 14.57           C
+ATOM    276  C   CYS A  27      16.236   6.026  11.467  1.00 14.53           C
+ATOM    277  O   CYS A  27      15.254   6.760  11.351  1.00 16.95           O
+ATOM    278  CB  CYS A  27      17.114   6.698  13.662  1.00 15.77           C
+ATOM    279  SG  CYS A  27      17.230   6.332  15.443  1.00 17.57           S
+ATOM   1225  CB  CYS A 123      14.607   7.591  16.260  1.00 24.16           C
+ATOM   1226  SG  CYS A 123      15.316   5.939  15.946  1.00 20.05           S
+ATOM   1217  N  ACYS A 123      15.023   7.279  18.624  0.58 26.40           N
+ATOM   1219  CA ACYS A 123      15.266   8.190  17.491  0.58 25.69           C
+ATOM   1221  C  ACYS A 123      14.764   9.599  17.776  0.58 26.33           C
+ATOM   1223  O  ACYS A 123      14.197  10.238  16.886  0.58 28.70           O
+ATOM   1227  OXTACYS A 123      14.975  10.081  18.878  0.58 28.31           O
+ATOM   1218  N  BCYS A 123      15.023   7.288  18.685  0.42 25.68           N
+ATOM   1220  CA BCYS A 123      15.108   8.205  17.548  0.42 25.86           C
+ATOM   1222  C  BCYS A 123      14.270   9.460  17.813  0.42 26.42           C
+ATOM   1224  O  BCYS A 123      13.915  10.125  16.837  0.42 27.75           O
+ATOM   1228  OXTBCYS A 123      13.981   9.728  18.968  0.42 28.04           O
+""",
+        "linking_test_NAG-NAG.pdb" : """
 ATOM    982  N   ASN A 131      59.894  31.406  61.164  1.00  8.27           N
 ATOM    983  CA  ASN A 131      60.727  32.209  60.265  1.00  8.51           C
 ATOM    984  C   ASN A 131      62.218  31.862  60.359  1.00  9.14           C
@@ -2155,6 +2175,8 @@ links = {
   "linking_test_ASN-NAG-not-THR.pdb" : [32,33],
   #
   "linking_test_HEM_TYR.pdb" : [63,63],
+  #
+  "linking_test_CYS_CYS_alt_loc.pdb" : [17,17],
   }
 
 def run_and_test(cmd, pdb, i):
@@ -2232,8 +2254,8 @@ def run(only_i=None):
     if pdb in [
         "linking_test_CD_GHE_A_B.pdb",
         "linking_test_NAG-FU4.pdb", # get_alpha_beta seems to be broken
-        ]: continue
-    #if pdb.find("HEM_TYR")==-1: continue
+        ] and 0: continue
+    #if pdb.find("CD_GHE")==-1: continue
     j+=1
     if only_i is not None and only_i!=j: continue
     for i in range(2):

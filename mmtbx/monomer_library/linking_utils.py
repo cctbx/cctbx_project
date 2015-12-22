@@ -226,13 +226,19 @@ def get_classes(atom, important_only=False, verbose=False):
   classes = empty()
   for attr in attrs:
     setattr(classes, attr, False)
+  # only consider ccp4 names if not single atom - CD/Cd
+  consider_ccp4_mon_lib_rna_dna=True
+  if len(atom_group.atoms())==1:
+    consider_ccp4_mon_lib_rna_dna=False
+  gc = get_class(atom_group.resname,
+                 consider_ccp4_mon_lib_rna_dna=consider_ccp4_mon_lib_rna_dna)
   if verbose:
     print '    atom_group1: altloc="%s" resname="%s" class="%s"' % (
       atom_group.altloc,
       atom_group.resname,
-      get_class(atom_group.resname, consider_ccp4_mon_lib_rna_dna=True),
+      get_class(atom_group.resname,
+                consider_ccp4_mon_lib_rna_dna=consider_ccp4_mon_lib_rna_dna),
       )
-  gc = get_class(atom_group.resname, consider_ccp4_mon_lib_rna_dna=True)
   gc = redirect.get(gc,gc)
   for i, attr in enumerate(attrs):
     rc = None
@@ -363,9 +369,9 @@ def is_atom_pair_linked(atom1,
   if verbose: print 'checking common_saccharide',lookup
   if "common_saccharide" in lookup:
     limit = saccharide_bond_cutoff*saccharide_bond_cutoff
-    if verbose: print 'd2,limit',d2,limit
     if "metal" in lookup:
       limit = metal_coordination_cutoff*metal_coordination_cutoff
+    if verbose: print 'd2,limit',d2,limit
     if d2>limit:
       return False
     return True
@@ -506,55 +512,6 @@ def get_angles_from_included_bonds(hierarchy,
       print get_distance2(angle[0], angle[1]),
       print get_distance2(angle[1], angle[2])
   return tmp
-
-# def process_atom_groups_for_linking(pdb_hierarchy,
-#                                     atom1,
-#                                     atom2,
-#                                     classes1,
-#                                     classes2,
-#                                     #bond_cutoff=2.75,
-#                                     amino_acid_bond_cutoff=1.9,
-#                                     rna_dna_bond_cutoff=3.4,
-#                                     intra_residue_bond_cutoff=1.99,
-#                                     verbose=False,
-#                                     ):
-#   assert 0
-#   #bond_cutoff *= bond_cutoff
-#   intra_residue_bond_cutoff *= intra_residue_bond_cutoff
-#   atom_group1 = atom1.parent()
-#   atom_group2 = atom2.parent()
-#   residue_group1 = atom_group1.parent()
-#   residue_group2 = atom_group2.parent()
-#   if(atom1.element.upper().strip() in ad_hoc_single_metal_residue_element_types or
-#      atom2.element.upper().strip() in ad_hoc_single_metal_residue_element_types):
-#     if verbose: print "Returning None because of metal"
-#     return None # if metal
-#     link_atoms = get_link_atoms(residue_group1, residue_group2)
-#     if link_atoms:
-#       return process_atom_groups_for_linking_multiple_links(pdb_hierarchy,
-#                                                             link_atoms,
-#                                                             verbose=verbose,
-#                                                             )
-#     else: return None
-#   else:
-#     atom1, atom2 = get_closest_atoms(residue_group1, residue_group2)
-#     #if get_distance2(atom1, atom2)>bond_cutoff:
-#     if atom1 is None or atom2 is None: return None
-#     if get_distance2(atom1, atom2)>intra_residue_bond_cutoff:
-#       if verbose: print "atoms too far apart %s %s %0.1f %0.1f" % (
-#         atom1.quote(),
-#         atom2.quote(),
-#         get_distance2(atom1, atom2),
-#         intra_residue_bond_cutoff,
-#         )
-#       return None
-#     return process_atom_groups_for_linking_single_link(
-#       pdb_hierarchy,
-#       atom1,
-#       atom2,
-#       intra_residue_bond_cutoff=intra_residue_bond_cutoff,
-#       verbose=verbose,
-#       )
 
 def process_atom_groups_for_linking_single_link(pdb_hierarchy,
                                                 atom1,
