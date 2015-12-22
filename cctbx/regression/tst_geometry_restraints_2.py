@@ -415,6 +415,9 @@ bond 0
 Bond-like restraints: 0
 Sorted by residual:
 
+Metal coordination restraints: 0
+Sorted by residual:
+
 """
   assert not show_diff(sio.getvalue(), expected_first_part + """\
 Nonbonded interactions: 0
