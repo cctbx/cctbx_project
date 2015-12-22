@@ -90,18 +90,18 @@ class linear_ls_eigen_wrapper
     }
 
     void show_eigen_summary() const {
-      int matsize = eigen_normal_matrix.cols() * (eigen_normal_matrix.cols()+1)/2;
-      printf("Number of parameters      %10d\n",n_parameters());
-      printf("Normal matrix square size %10d\n",eigen_normal_matrix.cols() * eigen_normal_matrix.cols());
-      printf("Upper triangle size       %10d\n",matsize);
-      printf("Normal matrix non-zeros   %10d, %6.2f%%\n",
-              eigen_normal_matrix.nonZeros(),
-              100. * eigen_normal_matrix.nonZeros()/double(matsize));
+      long matsize = long(eigen_normal_matrix.cols()) * (eigen_normal_matrix.cols()+1)/2;
+      printf("Number of parameters      %12d\n",n_parameters());
+      printf("Normal matrix square size %12ld\n",long(eigen_normal_matrix.cols()) * eigen_normal_matrix.cols());
+      printf("Upper triangle size       %12ld\n",matsize);
+      printf("Normal matrix non-zeros   %12ld, %6.2f%%\n",
+              long(eigen_normal_matrix.nonZeros()),
+              100. * long(eigen_normal_matrix.nonZeros())/double(matsize));
       Eigen::SimplicialLDLT<sparse_matrix_t> chol(eigen_normal_matrix.transpose());
       sparse_matrix_t lower = chol.matrixL();
-      printf("Cholesky factor non-zeros %10d, %6.2f%%\n",
-              lower.nonZeros(),
-              100. * lower.nonZeros()/double(matsize));
+      printf("Cholesky factor non-zeros %12ld, %6.2f%%\n",
+              long(lower.nonZeros()),
+              100. * long(lower.nonZeros())/double(matsize));
     }
 
     scitbx::af::shared<double> get_cholesky_diagonal() const {
