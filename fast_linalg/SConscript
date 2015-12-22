@@ -1,0 +1,60 @@
+import libtbx.load_env
+import sys
+from os import path
+
+Import("env_etc")
+
+env_etc.fast_linalg_dist = libtbx.env.dist_path("fast_linalg")
+env_etc.fast_linalg_include = libtbx.env.under_dist("fast_linalg", "..")
+env_etc.fast_linalg_common_includes = [
+  env_etc.libtbx_include,
+  env_etc.fast_linalg_include,
+  env_etc.boost_include,
+]
+
+# It is assumed OpenBLAS was installed inside Python
+# This is how conda installs it for example
+openblas_inc = path.join(sys.prefix, 'include')
+openblas_lib = path.join(sys.prefix, 'lib')
+
+def enable_fast_linalg(env):
+  if not libtbx.env.has_module('fast_linalg'):
+    return
+  test_code = """\
+    #include <cblas.h>
+    #include <lapacke.h>
+    int threads() { return openblas_get_num_threads(); }
+  """
+  env_etc.include_registry.append(
+    env=env,
+    paths=env_etc.fast_linalg_common_includes + [openblas_inc])
+  env.Append(LIBS=['openblas'], LIBPATH=openblas_lib)
+  for flag in ("CCTBX_FAST_LINALG_USES_OPENBLAS",
+               "CCTBX_HAS_CBLAS", "CCTBX_HAS_LAPACKE"):
+    flag = "-D" + flag
+    env.Append(CXXFLAGS=flag)
+    env.Append(SHCXXFLAGS=flag)
+  conf = env.Configure()
+  flag = conf.TryCompile(test_code, extension='.cpp')
+  conf.Finish()
+  assert flag, "OpenBLAS is not available but it is necessary for fast_linalg"
+env_etc.enable_fast_linalg = enable_fast_linalg
+
+Import("env_base")
+envs = [env_base]
+if not env_etc.no_boost_python:
+  Import("env_no_includes_boost_python_ext")
+  envs.append(env_no_includes_boost_python_ext)
+fast_linalg_envs = []
+for env, extra_inc in zip(envs, ([], [env_etc.python_include])):
+  e = env.Clone()
+  env_etc.enable_fast_linalg(e)
+  env_etc.include_registry.append(env=e, paths=extra_inc)
+  fast_linalg_envs.append(e)
+env_fast_linalg_base = fast_linalg_envs[0]
+Export("env_fast_linalg_base")
+if not env_etc.no_boost_python:
+  env_fast_linalg_boost_python_ext = fast_linalg_envs[1]
+  Export("env_fast_linalg_boost_python_ext")
+
+SConscript("tests/SConscript")
