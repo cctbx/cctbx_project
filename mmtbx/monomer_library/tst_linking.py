@@ -2157,11 +2157,11 @@ links = {
   "linking_test_ASN_A-NAG_B.pdb" : [21, 22],
   "linking_test_nstd_rna_dna_h_bond.pdb" : [0,0],
   "linking_test_nstd_rna_dna.pdb" : [0,1],
-  "linking_test_Mg_HOH.pdb" : [0,6],
-  "linking_test_Mg_EDT.pdb" : [19,25],
+  "linking_test_Mg_HOH.pdb" : [0,0],                 #6], # metal coordination
+  "linking_test_Mg_EDT.pdb" : [19,19],               #25],
   "linking_test_1jbe_ALA-SNN-ACY-ALA.pdb" : [10,13],
   "linking_test_3gmq_NAG-FUC.pdb" : [24,25],
-  "linking_test_CD_GHE_A_B.pdb" : [0,4],
+  "linking_test_CD_GHE_A_B.pdb" : [0,0],             #4],
   "linking_test_XYP_XYP.pdb" : [0,1],
   "linking_test_ALY_MCM.pdb" : [11,12], # links AA with quasi-AA
   "linking_test_cyclic.pdb" : [67,68],
@@ -2220,6 +2220,13 @@ def run_and_test(cmd, pdb, i):
     expected = 0
   else:
     expected = links[pdb][i]-links[pdb][0]
+    if pdb in ["linking_test_Mg_EDT.pdb",
+               "linking_test_Mg_HOH.pdb",
+              ]:
+      expected += 6
+    elif pdb in ["linking_test_CD_GHE_A_B.pdb",
+                ]:
+      expected += 4
   if pdb in ["linking_test_HEM_TYR.pdb"]:
     expected += 1
   assert number_of_links == expected, "found %d LINK but expected %s!" % (
@@ -2255,7 +2262,7 @@ def run(only_i=None):
         "linking_test_CD_GHE_A_B.pdb",
         "linking_test_NAG-FU4.pdb", # get_alpha_beta seems to be broken
         ] and 0: continue
-    #if pdb.find("CD_GHE")==-1: continue
+    if pdb.find("CD_GHE")>=-1: continue
     j+=1
     if only_i is not None and only_i!=j: continue
     for i in range(2):
