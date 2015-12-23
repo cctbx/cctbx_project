@@ -2111,6 +2111,7 @@ class plot_statistics (object) :
     self.plot_statistics_histograms(
       figure=fig,
       n_slots=n_slots)
+    plt.show()
 
   def plot_unit_cell_histograms (self,
       figure,
@@ -2142,7 +2143,7 @@ class plot_statistics (object) :
     ax3 = figure.add_axes([0.1, 0.7, 0.8, 0.25])
     ax1.hist(self.correlations, n_slots, color=[1.0,0.0,0.0])
     ax2.hist(self.rejected_fractions, n_slots, color=[0.0,1.0,0.0])
-    ax3.hist(self.d_min_values, n_slots, color=[0.0,0.5,1.0])
+    ax3.hist(self.frame_d_min, n_slots, color=[0.0,0.5,1.0])
     ax1.axvline(self.min_corr, linestyle='.', linewidth=2, color='k')
     ax1.set_xlabel("Correlation to reference dataset")
     ax2.set_xlabel("Fraction of rejected zero or negative intensities")
@@ -2150,7 +2151,6 @@ class plot_statistics (object) :
     ax1.set_title("Correlation by frame (%s)" % self.prefix)
     ax2.set_title("Rejected reflections by frame (%s)" % self.prefix)
     ax3.set_title("Resolution by frame (%s)" % self.prefix)
-    plt.show()
 
 if (__name__ == "__main__"):
   show_plots = False
