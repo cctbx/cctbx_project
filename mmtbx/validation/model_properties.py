@@ -333,7 +333,7 @@ class xray_structure_statistics (validation) :
               self.n_outliers += 1
 
       # analyze occupancies for first model
-      model = pdb_hierarchy.only_model()
+      model = pdb_hierarchy.models()[0]
       for chain in model.chains() :
         residue_groups = chain.residue_groups()
         for residue_group in chain.residue_groups() :

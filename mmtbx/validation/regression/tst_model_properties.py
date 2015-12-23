@@ -121,7 +121,7 @@ Overall:
   B_iso: mean =  96.0  max = 269.8  min =   0.0
   Occupancy: mean = 0.47  max = 1.00  min = 0.00
     warning: 22 atoms with zero occupancy
-  15 total B-factor or occupancy problem(s) detected
+  67 total B-factor or occupancy problem(s) detected
   Atoms or residues with zero occupancy:
    LYS A  82   CG    occ=0.00
    LYS A  82   CD    occ=0.00
@@ -139,19 +139,19 @@ Macromolecules:
   B_iso: mean = 108.0  max = 269.8  min =  60.7
   Occupancy: mean = 0.51  max = 1.00  min = 0.00
     warning: 16 atoms with zero occupancy
-  11 total B-factor or occupancy problem(s) detected
+  57 total B-factor or occupancy problem(s) detected
 Ligands:
   Number of atoms = 5  (anisotropic = 0)
   B_iso: mean =   8.0  max =   9.3  min =   7.0
   Occupancy: mean = 0.00  max = 0.00  min = 0.00
     warning: 5 atoms with zero occupancy
-  1 total B-factor or occupancy problem(s) detected
+  6 total B-factor or occupancy problem(s) detected
 Waters:
   Number of atoms = 3  (anisotropic = 0)
   B_iso: mean =  74.3  max = 202.9  min =   0.0
   Occupancy: mean = 0.67  max = 1.00  min = 0.00
     warning: 1 atoms with zero occupancy
-  3 total B-factor or occupancy problem(s) detected
+  4 total B-factor or occupancy problem(s) detected
 (Hydrogen atoms not included in overall counts.)
 """)
   assert (len(mstats.all.bad_adps) == 1)
@@ -173,7 +173,7 @@ Waters:
   assert (out2.getvalue() != out.getvalue())
   assert ("""   LYS A  83   HZ3   occ=0.00""" in out2.getvalue())
   outliers = mstats3.all.as_gui_table_data(include_zoom=True)
-  assert (len(outliers) == 32)
+  assert (len(outliers) == 84)
   # test with all_chain_proxies undefined
   mstats4 = model_properties.model_statistics(
     pdb_hierarchy=pdb_in.hierarchy,
@@ -181,7 +181,7 @@ Waters:
     all_chain_proxies=None,
     ignore_hd=False)
   outliers = mstats4.all.as_gui_table_data(include_zoom=True)
-  assert (len(outliers) == 32)
+  assert (len(outliers) == 84)
 
 # corner case: deuterium as ligand (from 3qza)
 def exercise_2 () :
