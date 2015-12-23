@@ -29,7 +29,9 @@ def plot_it(fit, sim, mode=None):
       plt.axes().set_xlim(0,5E7)
     if max(sub_fit)>1E8:
       plt.axes().set_ylim(0,5E7)
-  if mode=="B":
+  if mode=="G":
+    plt.title("Fitted scale-factor G vs. simulated scale-factor")
+  elif mode=="B":
     plt.axes().set_ylim(-12,12)
     plt.title("Fitted B-factor vs. simulated B-factor")
 

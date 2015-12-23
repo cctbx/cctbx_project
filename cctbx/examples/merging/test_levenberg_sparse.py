@@ -314,8 +314,8 @@ class execute_case(object):
   Fit_I_stddev, Fit_G_stddev, Fit_B_stddev = minimizer.e_unpack_stddev()
 
   if plot:
-    plot_it(Fit_G, model_G)
-    plot_it(Fit_B, model_B,mode="B")
+    plot_it(Fit_G, model_G, mode="G")
+    plot_it(Fit_B, model_B, mode="B")
     plot_it(Fit_I, model_I, mode="I")
   print
 
