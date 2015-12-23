@@ -485,8 +485,13 @@ def run(args):
     appropriate_min_corr = -1.1 # lowest possible c.c.
   else:
     appropriate_min_corr = work_params.min_corr
-  col_count1 = results.count_frames(appropriate_min_corr, miller_set_avg.binner().selection(1))
-  print "colcount1",col_count1
+  iselect = 1
+  while iselect<work_params.output.n_bins:
+    col_count1 = results.count_frames(appropriate_min_corr, miller_set_avg.binner().selection(iselect))
+    print "colcount1",col_count1
+    if col_count1>0: break
+    iselect +=1
+  if col_count1==0: raise Exception("no reflections in any bins")
   for i_bin in miller_set_avg.binner().range_used():
     col_count = '%8d' % results.count_frames(
       appropriate_min_corr, miller_set_avg.binner().selection(i_bin))
