@@ -131,7 +131,7 @@ class residue (entity) :
       setattr(self, attr, getattr(other, attr))
 
   def assert_all_attributes_defined (self) :
-    for name in self.__residue_attr__ :
+    for name in self.__slots__ :
       assert (getattr(self, name) is not None) or (name == "segid")
 
   def id_str (self, ignore_altloc=False) :
@@ -286,14 +286,14 @@ class atom_base (slots_getstate_setstate) :
     assert isinstance(other, atom_base), type(other)
     return self.id_str() == other.id_str()
 
-  def id_str (self, ignore_altloc=False) :
+  def id_str (self, ignore_altloc=False, ignore_segid=False) :
     base = "%2s%4s%1s" % (self.chain_id, self.resseq, self.icode)
     if (not ignore_altloc) :
       base += "%1s" % self.altloc
     else :
       base += " "
     base += "%3s %4s" % (self.resname, self.name)
-    if (self.segid is not None) :
+    if ( (self.segid is not None) and (not ignore_segid) ) :
       base += " segid='%4s'" % self.segid
     return base
 

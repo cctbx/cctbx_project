@@ -150,6 +150,9 @@ class atom_occupancy (atom) :
   Container for single-atom occupancy outliers (usually atoms with zero
   occupancy).
   """
+  def id_str (self):
+    return super(atom_occupancy, self).id_str(ignore_segid=True)
+
   def as_string (self, prefix="") :
     return "%s %4s   occ=%.2f" % (self.atom_group_id_str(), self.name,
       self.occupancy)
@@ -328,36 +331,38 @@ class xray_structure_statistics (validation) :
                 outlier=True)
               self.bad_adps.append(outlier)
               self.n_outliers += 1
-      # FIXME not totally confident that this will always work...
-      first_model = pdb_hierarchy.models()[0]
-      for chain in first_model.chains() :
-        is_protein = chain.is_protein()
-        is_na = False
-        chain_type = "other"
-        if (not is_protein) :
-          is_na = chain.is_na()
-          chain_type = "nucleic acid"
-        else :
-          chain_type = "protein"
+
+      # analyze occupancies for first model
+      model = pdb_hierarchy.only_model()
+      for chain in model.chains() :
         residue_groups = chain.residue_groups()
         for residue_group in chain.residue_groups() :
-          atom_groups = residue_group.atom_groups()
-          if ((len(atom_groups) > 1) and (len(atom_groups[0].atoms()) != 1) and
-              (len(set([ ag.resname for ag in atom_groups ])) == 1)) :
-            total_occ = sum([ ag.atoms()[0].occ for ag in atom_groups ])
-            if (total_occ != 1) and (total_occ != 0) :
-              xyz = residue_group.atoms().extract_xyz().mean()
-              outlier = residue_occupancy(
-                chain_id=chain.id,
-                resseq=residue_group.resseq,
-                icode=residue_group.icode,
-                resname=atom_groups[0].resname,
-                occupancy=total_occ,
-                chain_type=chain_type,
-                outlier=True,
-                xyz=xyz)
-              self.partial_occ.append(outlier)
-              self.n_outliers += 1
+          # get unique set of atom names
+          atom_names = set()
+          for atom in residue_group.atoms():
+            atom_names.add(atom.name.strip())
+
+          # check total occupancy for each atom
+          for name in atom_names:
+            occupancy = 0.0
+            atoms = list()
+            for atom_group in residue_group.atom_groups():
+              atom = atom_group.get_atom(name)
+              if (atom is not None):
+                occupancy += atom.occ
+                atoms.append(atom)
+
+            occupancy = round(occupancy,2)
+            if ( (occupancy < 1.0) or (occupancy > 1.0) ):
+              for atom in atoms:
+                outlier = atom_occupancy(
+                  pdb_atom=atom,
+                  occupancy=atom.occ,
+                  b_iso=adptbx.u_as_b(atom.b),
+                  xyz=atom.xyz,
+                  outlier=True)
+                self.partial_occ.append(outlier)
+                self.n_outliers += 1
 
   def show_summary (self, out=sys.stdout, prefix="") :
     print >> out, prefix + "Number of atoms = %d  (anisotropic = %d)" % \
