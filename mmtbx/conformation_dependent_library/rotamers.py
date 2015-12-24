@@ -6,6 +6,10 @@ from libtbx.utils import Sorry
 from mmtbx.conformation_dependent_library.rdl_database import rdl_database
 from mmtbx.validation import rotalyze
 
+substitute_residue_lookup = {
+  "MSE" : "MET",
+  }
+
 def get_rotamer_data(atom_group,
                      sa,
                      rotamer_evaluator,
@@ -13,8 +17,11 @@ def get_rotamer_data(atom_group,
                      all_dict,
                      sites_cart,
                      ):
-  if atom_group.resname not in rdl_database.keys(): return None
-  if atom_group.resname in ["PRO", "GLY"]: return None
+  resname=substitute_residue_lookup.get(atom_group.resname,
+                                        atom_group.resname,
+                                        )
+  if resname not in rdl_database.keys(): return None
+  if resname in ["PRO", "GLY"]: return None
   model_rot, m_chis, value = rotalyze.evaluate_rotamer(
     atom_group=atom_group,
     sidechain_angles=sa,
@@ -285,18 +292,21 @@ def update_restraints(hierarchy,
               )
           if loud: print 'exclude_backbone',exclude_backbone
           if rotamer_name in ["OUTLIER"]: continue
-          if rotamer_name not in rdl_database[atom_group.resname]:
+          resname_lookup = substitute_residue_lookup.get(atom_group.resname,
+                                                         atom_group.resname,
+                                                         )
+          if rotamer_name not in rdl_database[resname_lookup]:
             if assert_rotamer_found:
               raise Sorry("rotamer %s not found in db" % rotamer_name)
             else:
               continue
           if loud: print 'not outlier'
-          if rotamer_name not in rdl_database[atom_group.resname]:
+          if rotamer_name not in rdl_database[resname_lookup]:
             if loud: print "rotamer_name %s not in RDL db" % rotamer_name
             continue
           if loud: print 'rotamer_name %s found' % rotamer_name
-          restraints = rdl_database[atom_group.resname][rotamer_name]
-          defaults = rdl_database[atom_group.resname]["default"]
+          restraints = rdl_database[resname_lookup][rotamer_name]
+          defaults = rdl_database[resname_lookup]["default"]
           rdl_proxies.append(atom_group.id_str())
           for names, values in restraints.items():
             i_seqs = []
