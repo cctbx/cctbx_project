@@ -36,16 +36,16 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 <http://www.gnu.org/licenses/>.  */
 """
 
-def run(build, stage, install, package, platform_info):
+def run(build, stage, install, package, platform_info, bits):
   # Build a distro which can optimally run on any machine
   # with Intel or AMD processors
   if build:
     subprocess.check_call(['make',
                            'USE_THREAD=1',
                            'NUM_THREADS=16',
-                           'DYNAMIC_ARCH=1',
-                           'BINARY=32',
-                           'NO_STATIC=1'])
+                           'DYNAMIC_ARCH=1'] +
+                           (['BINARY=%i' % bits] if bits else []) +
+                           ['NO_STATIC=1'])
 
   # Stage it one level up from the current build directory
   stage_dir = path.join(abs(libtbx.env.build_path.dirname()), 'openblas')
@@ -59,7 +59,7 @@ def run(build, stage, install, package, platform_info):
   # We also install a README
   if install:
     openblas_inc = abs(libtbx.env.include_path / 'openblas')
-    shutil.rmtree(openblas_inc)
+    if path.isdir(openblas_inc): shutil.rmtree(openblas_inc)
     shutil.copytree(path.join(stage_dir, 'include'), openblas_inc)
     if platform_info['platform'].startswith('mingw'):
       shutil.copy(path.join(stage_dir, 'bin', 'libopenblas.dll'),
@@ -134,6 +134,9 @@ if __name__ == '__main__':
     p.add_argument('--%s' % arg, dest=arg, action='store_true')
     p.add_argument('--no-%s' % arg, dest=arg, action='store_false')
   p.set_defaults(**dict((arg, False) for arg in features))
+  p.add_argument('--bits', type=int, choices=(None, 32, 64), default=None,
+                 help='Whether to build a 32- or 64-bit library '
+                      '(None means that OpenBLAS build system shall decide)')
   args = vars(p.parse_args())
 
   # Run
