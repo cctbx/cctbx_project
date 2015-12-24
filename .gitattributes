@@ -1832,6 +1832,7 @@ mmtbx/conformation_dependent_library/omega_database.py -text
 mmtbx/conformation_dependent_library/rdl_database.py -text
 mmtbx/conformation_dependent_library/rotamers.py -text
 mmtbx/conformation_dependent_library/test_cdl.py -text
+mmtbx/conformation_dependent_library/test_hpdl.py -text
 mmtbx/conformation_dependent_library/test_interpolation.py -text
 mmtbx/conformation_dependent_library/test_omega_cdl.py -text
 mmtbx/conformation_dependent_library/test_rdl.py -text
