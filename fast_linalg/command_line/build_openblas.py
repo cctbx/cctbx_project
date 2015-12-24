@@ -1,5 +1,6 @@
 from os import path
 import os
+import re
 import subprocess
 import shutil
 import zipfile
@@ -35,6 +36,23 @@ a copy of the GCC Runtime Library Exception along with this program;
 see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 <http://www.gnu.org/licenses/>.  */
 """
+
+objdump_arch_pat = re.compile(r'^architecture:\s+(\w+)')
+def get_arch_with_objdump():
+  p = subprocess.Popen(
+    ['objdump', '-x', abs(libtbx.env.lib_path / 'libopenblas.dll')],
+    stdout=subprocess.PIPE
+  )
+  try:
+    for li in p.stdout:
+      m = objdump_arch_pat.search(li)
+      if m:
+        return m.group(1)
+    raise RuntimeError('Objdump did not output the architecture'
+                       ' of libopenblas.dll')
+  finally:
+    p.terminate()
+
 
 def run(build, stage, install, package, platform_info, bits):
   # Build a distro which can optimally run on any machine
@@ -86,8 +104,10 @@ def run(build, stage, install, package, platform_info, bits):
   # Package the files added to the CCTBX build directory
   if package:
     if platform_info['platform'].startswith('mingw'):
+      arch = get_arch_with_objdump()
       archive = zipfile.ZipFile(
-        abs(libtbx.env.build_path.dirname() / 'openblas.zip'), mode="w")
+        abs(libtbx.env.build_path.dirname() / ('openblas-windows-%s.zip' % arch)),
+        mode="w")
       try:
         openblas_inc = libtbx.env.include_path / 'openblas'
         for p in ([openblas_inc] +
