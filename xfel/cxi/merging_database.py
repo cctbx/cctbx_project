@@ -2,11 +2,12 @@ from __future__ import division
 from cctbx.array_family import flex
 
 mysql_master_phil = """
-backend = FS *MySQL SQLite
+backend = FS *MySQL SQLite Flex
   .type = choice
   .help = "Back end database; FS for flat-file ASCII data storage,
            MySQL and SQLite for the respective proper database
-           backends."
+           backends. Flex gives in-memory flex arrays instead of disk-based storage,
+           which are ultimately written as pickle files at the final join()"
 mysql {
   # MySQL database v5.1 data store.
   # mysql -u root -p # Steps to be taken by the database administrator
