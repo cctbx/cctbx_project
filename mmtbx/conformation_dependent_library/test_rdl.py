@@ -1,11 +1,13 @@
 from __future__ import division
-import sys
+import os, sys
 import time
 
 from mmtbx.conformation_dependent_library.rdl_database import rdl_database
 from mmtbx.conformation_dependent_library import rotamers as rdl
 
 from iotbx import pdb
+
+import libtbx.load_env
 
 pdbs = {
   "3sgs" : """
@@ -56,6 +58,40 @@ ATOM     43  CG2 VAL A   6       2.539   1.722  -6.216  1.00 16.27           C
 ATOM     44  OXT VAL A   6       0.534  -0.718  -9.323  1.00 17.23           O
 END
 """,
+  "mse.pdb" : """
+HETATM  104  N   MSE A  15       9.964  48.917  17.420  1.00  8.74           N
+HETATM  105  CA  MSE A  15      10.216  47.479  17.369  1.00  8.79           C
+HETATM  106  C   MSE A  15      11.068  47.049  18.526  1.00  8.17           C
+HETATM  107  O   MSE A  15      10.735  46.094  19.248  1.00  8.75           O
+HETATM  108  CB  MSE A  15      10.919  47.112  16.062  1.00  9.55           C
+HETATM  109  CG  MSE A  15      10.029  47.299  14.827  1.00 10.59           C
+HETATM  110 SE   MSE A  15       8.751  45.831  14.563  1.00 15.23          SE
+HETATM  111  CE  MSE A  15      10.035  44.485  13.975  1.00 10.87           C
+""",
+  "met.pdb" : """
+ATOM    104  N   MET A  15       9.964  48.917  17.420  1.00  8.74           N
+ATOM    105  CA  MET A  15      10.216  47.479  17.369  1.00  8.79           C
+ATOM    106  C   MET A  15      11.068  47.049  18.526  1.00  8.17           C
+ATOM    107  O   MET A  15      10.735  46.094  19.248  1.00  8.75           O
+ATOM    108  CB  MET A  15      10.919  47.112  16.062  1.00  9.55           C
+ATOM    109  CG  MET A  15      10.029  47.299  14.827  1.00 10.59           C
+ATOM    110  SD  MET A  15       8.751  45.831  14.563  1.00 15.23           S
+ATOM    111  CE  MET A  15      10.035  44.485  13.975  1.00 10.87           C
+""",
+  "tyr.pdb" : """
+ATOM   1235  N   TYR A 150       9.126  58.830  20.254  1.00 12.80           N
+ATOM   1236  CA  TYR A 150       8.222  58.422  19.190  1.00 12.53           C
+ATOM   1237  C   TYR A 150       8.121  56.907  19.022  1.00 13.12           C
+ATOM   1238  O   TYR A 150       9.136  56.226  18.861  1.00 14.16           O
+ATOM   1239  CB  TYR A 150       8.667  59.045  17.856  1.00 14.51           C
+ATOM   1240  CG  TYR A 150       7.875  58.505  16.688  1.00 14.22           C
+ATOM   1241  CD1 TYR A 150       6.561  58.914  16.461  1.00 17.43           C
+ATOM   1242  CD2 TYR A 150       8.415  57.534  15.849  1.00 14.20           C
+ATOM   1243  CE1 TYR A 150       5.825  58.388  15.409  1.00 19.08           C
+ATOM   1244  CE2 TYR A 150       7.692  57.012  14.796  1.00 17.26           C
+ATOM   1245  CZ  TYR A 150       6.401  57.437  14.581  1.00 18.47           C
+ATOM   1246  OH  TYR A 150       5.685  56.901  13.541  1.00 20.26           O
+""",
   }
 
 def get_geometry_restraints_manager(pdb_filename,
@@ -92,6 +128,21 @@ def run(filename):
           print "      %s : %s" % (names, values)
     assert 0
   #
+  if filename=="3sgs.pdb":
+    from libtbx import easy_run
+    f=file("mse.pdb", "wb")
+    f.write(pdbs["mse.pdb"])
+    f.close()
+    f=file("met.pdb", "wb")
+    f.write(pdbs["met.pdb"])
+    f.close()
+    cmd="phenix.pdb_interpretation rdl=True write_geo=1 mse.pdb"
+    print cmd
+    easy_run.call(cmd)
+    cmd="phenix.pdb_interpretation rdl=True write_geo=1 met.pdb"
+    print cmd
+    easy_run.call(cmd)
+  #
   pdb_inp = pdb.input(filename)
   pdb_hierarchy = pdb_inp.construct_hierarchy()
   geometry_restraints_manager = get_geometry_restraints_manager(filename)
@@ -102,6 +153,21 @@ def run(filename):
                         verbose=True,
     )
   print "OK"
+
+
+  mmtbx_dir = libtbx.env.dist_path("mmtbx")
+  props = os.path.join(mmtbx_dir,"rotamer","rotamer_names.props")
+  f=file(props, "rb")
+  props = f.readlines()
+  f.close()
+  for prop in props:
+    print prop
+    key = prop.split("=")[0]
+    residue, rotamer_name = key.split()
+    residue = residue.upper()
+    if residue in ["MSE"]: continue
+    assert residue in rdl_database
+    assert rotamer_name in rdl_database[residue]
 
 if __name__=="__main__":
   if len(sys.argv)==1:
