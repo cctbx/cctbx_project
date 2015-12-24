@@ -2,7 +2,7 @@ from __future__ import division
 import sys
 import time
 
-from mmtbx.conformation_dependent_library.hpdl_database import hpdl_database
+from mmtbx.conformation_dependent_library.hpdl_database import get_hpdl_database
 
 def get_histidine_protonation(ag):
   lookup = {"HD1" : 0, # ND1
@@ -38,11 +38,12 @@ def update_restraints(hierarchy,
       bond=geometry.bond_params_table.lookup(*list(i_seqs))
       assert bond
       if verbose:
-        print " i_seqs %-15s initial %12.3f %12.3f final %12.3f" % (
+        print " i_seqs %-15s initial %12.3f %12.3f final %12.3f %12.3f" % (
           i_seqs,
           bond.distance_ideal,
           bond.weight,
-          values,
+          values[0],
+          1/values[1]**2,
         )
       bond.distance_ideal=values[0]
       bond.weight = 1/values[1]**2
@@ -60,12 +61,12 @@ def update_restraints(hierarchy,
           angle_proxy.i_seqs,
           angle_proxy.angle_ideal,
           angle_proxy.weight,
-          )
+          ),
         assert angle_proxy.angle_ideal<181
         angle_proxy.angle_ideal = lookup[angle_proxy.i_seqs][0]
         angle_proxy.weight = esd_factor/lookup[angle_proxy.i_seqs][1]**2
-        if verbose: print " i_seqs %-15s final   %12.3f %12.3f" % (
-          angle_proxy.i_seqs,
+        if verbose: print "final   %12.3f %12.3f" % (
+          #angle_proxy.i_seqs,
           angle_proxy.angle_ideal,
           angle_proxy.weight,
           )
@@ -84,6 +85,7 @@ def update_restraints(hierarchy,
       if ag.altloc.strip()=="" or ag.altloc.strip()==atom_group.altloc.strip():
         for atom in ag.atoms(): yield atom
   #
+  hpdl_database = get_hpdl_database() #include_hydrogens=False)
   count=0
   counts = {}
   for model in hierarchy.models():
@@ -91,7 +93,6 @@ def update_restraints(hierarchy,
     for chain in model.chains():
       #if verbose: print 'chain: "%s"' % chain.id
       for residue_group in chain.residue_groups():
-        #all_dict = rotalyze.construct_complete_sidechain(residue_group)
         for atom_group in residue_group.atom_groups():
           if atom_group.resname!="HIS": continue
           protonation = get_histidine_protonation(atom_group)
@@ -129,9 +130,11 @@ def update_restraints(hierarchy,
 
   count_b = _set_or_reset_bond_restraints(geometry,
                                           i_seqs_restraints,
+                                          verbose=verbose,
                                           )
   count_a = _set_or_reset_angle_restraints(geometry,
                                            i_seqs_restraints,
+                                           verbose=verbose,
                                            )
   #
   print >> log, "    Number of bonds, angles adjusted : %d, %d in %s HIS" % (

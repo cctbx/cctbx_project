@@ -49,12 +49,48 @@ hpdl_database = {
     },
   }
 """
- This value seems to be in error. The corrected value for the EH99 NE2", "CD2 bond length is 1.372  .
+ This value seems to be in error. The corrected value for the EH99 NE2-CD2 bond length is 1.372  .
 }
 """
 
+def geometric_hydrogens():
+  angles = [
+    ("HD1", "ND1", "CG"),
+    ("HD1", "ND1", "CE1"),
+    ("HE1", "CE1", "ND1"),
+    ("HE1", "CE1", "NE2"),
+    ("HE2", "NE2", "CE1"),
+    ("HE2", "NE2", "CD2"),
+    ("HD2", "CD2", "NE2"),
+    ("HD2", "CD2", "CG"),
+    ]
+  def _geometric_hydrogens(protonation):
+    tmp = {}
+    for angle in angles:
+      for key, item in hpdl_database[protonation].items():
+        if len(key)!=3: continue
+        if angle[1]==key[1]:
+          esd = item[1]
+          na = (360-item[0])/2
+          tmp[angle]=[na, esd]
+    #for key in sorted(tmp):
+    #  print key, tmp[key]
+    return tmp
+
+  hpdl_h_database = {}
+  for key in hpdl_database:
+    hpdl_database[key].update(_geometric_hydrogens(key))
+
+def get_hpdl_database(include_hydrogens=True):
+  if include_hydrogens: geometric_hydrogens()
+  return hpdl_database
+
 def run(args):
   assert len(args) == 0
+  print hpdl_database["Only ND1 protonated"] #[("N", "CA", "C")]
+  for res_type in sorted(hpdl_database):
+    print res_type, len(hpdl_database[res_type])
+  geometric_hydrogens()
   print hpdl_database["Only ND1 protonated"] #[("N", "CA", "C")]
   for res_type in sorted(hpdl_database):
     print res_type, len(hpdl_database[res_type])
