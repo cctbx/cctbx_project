@@ -3,7 +3,6 @@ import time
 
 from mmtbx.conformation_dependent_library.hpdl_database import get_hpdl_database
 from iotbx import pdb
-import libtbx.load_env
 from libtbx import easy_run
 from elbow.formats import refine_geo_parser
 
