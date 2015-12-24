@@ -1,5 +1,4 @@
 from __future__ import division
-import os, sys
 import time
 
 from mmtbx.conformation_dependent_library.hpdl_database import get_hpdl_database
@@ -10,68 +9,68 @@ from elbow.formats import refine_geo_parser
 
 pdbs = {
   "his_double" : """
-HETATM    1  N   HIS A   1      -1.844  -0.558   1.760  1.00 20.00      A    N  
-HETATM    2  CA  HIS A   1      -0.434  -0.568   1.417  1.00 20.00      A    C  
-HETATM    3  C   HIS A   1       0.399  -0.690   2.691  1.00 20.00      A    C  
-HETATM    4  O   HIS A   1       0.256   0.148   3.620  1.00 20.00      A    O  
-HETATM    5  CB  HIS A   1      -0.076   0.731   0.698  1.00 20.00      A    C  
-HETATM    6  CG  HIS A   1       0.278   0.426  -0.756  1.00 20.00      A    C  
+HETATM    1  N   HIS A   1      -1.844  -0.558   1.760  1.00 20.00      A    N
+HETATM    2  CA  HIS A   1      -0.434  -0.568   1.417  1.00 20.00      A    C
+HETATM    3  C   HIS A   1       0.399  -0.690   2.691  1.00 20.00      A    C
+HETATM    4  O   HIS A   1       0.256   0.148   3.620  1.00 20.00      A    O
+HETATM    5  CB  HIS A   1      -0.076   0.731   0.698  1.00 20.00      A    C
+HETATM    6  CG  HIS A   1       0.278   0.426  -0.756  1.00 20.00      A    C
 HETATM    7  ND1 HIS A   1       1.450   0.029  -1.199  1.00 20.00      A    N+1
-HETATM    8  CD2 HIS A   1      -0.547   0.574  -1.828  1.00 20.00      A    C  
-HETATM    9  CE1 HIS A   1       1.375  -0.076  -2.534  1.00 20.00      A    C  
-HETATM   10  NE2 HIS A   1       0.133   0.264  -2.909  1.00 20.00      A    N  
+HETATM    8  CD2 HIS A   1      -0.547   0.574  -1.828  1.00 20.00      A    C
+HETATM    9  CE1 HIS A   1       1.375  -0.076  -2.534  1.00 20.00      A    C
+HETATM   10  NE2 HIS A   1       0.133   0.264  -2.909  1.00 20.00      A    N
 HETATM   11  OXT HIS A   1       1.247  -1.615   2.803  1.00 20.00      A    O-1
-HETATM   12  H   HIS A   1      -2.107   0.359   2.068  1.00 20.00      A    H  
-HETATM   13  H2  HIS A   1      -2.386  -0.808   0.954  1.00 20.00      A    H  
-HETATM   14  HA  HIS A   1      -0.226  -1.410   0.768  1.00 20.00      A    H  
-HETATM   15  HB2 HIS A   1       0.774   1.193   1.188  1.00 20.00      A    H  
-HETATM   16  HB3 HIS A   1      -0.923   1.407   0.730  1.00 20.00      A    H  
-HETATM   17  HD1 HIS A   1       2.256  -0.162  -0.638  1.00 20.00      A    H  
-HETATM   18  HD2 HIS A   1      -1.591   0.861  -1.793  1.00 20.00      A    H  
-HETATM   19  HE1 HIS A   1       2.177  -0.383  -3.194  1.00 20.00      A    H  
-HETATM   20  HE2 HIS A   1      -0.215   0.280  -3.847  1.00 20.00      A    H  
+HETATM   12  H   HIS A   1      -2.107   0.359   2.068  1.00 20.00      A    H
+HETATM   13  H2  HIS A   1      -2.386  -0.808   0.954  1.00 20.00      A    H
+HETATM   14  HA  HIS A   1      -0.226  -1.410   0.768  1.00 20.00      A    H
+HETATM   15  HB2 HIS A   1       0.774   1.193   1.188  1.00 20.00      A    H
+HETATM   16  HB3 HIS A   1      -0.923   1.407   0.730  1.00 20.00      A    H
+HETATM   17  HD1 HIS A   1       2.256  -0.162  -0.638  1.00 20.00      A    H
+HETATM   18  HD2 HIS A   1      -1.591   0.861  -1.793  1.00 20.00      A    H
+HETATM   19  HE1 HIS A   1       2.177  -0.383  -3.194  1.00 20.00      A    H
+HETATM   20  HE2 HIS A   1      -0.215   0.280  -3.847  1.00 20.00      A    H
 """,
   "his_nd1" : """
-HETATM    1  N   HIS A   1      -1.844  -0.558   1.760  1.00 20.00      A    N  
-HETATM    2  CA  HIS A   1      -0.434  -0.568   1.417  1.00 20.00      A    C  
-HETATM    3  C   HIS A   1       0.399  -0.690   2.691  1.00 20.00      A    C  
-HETATM    4  O   HIS A   1       0.256   0.148   3.620  1.00 20.00      A    O  
-HETATM    5  CB  HIS A   1      -0.076   0.731   0.698  1.00 20.00      A    C  
-HETATM    6  CG  HIS A   1       0.278   0.426  -0.756  1.00 20.00      A    C  
+HETATM    1  N   HIS A   1      -1.844  -0.558   1.760  1.00 20.00      A    N
+HETATM    2  CA  HIS A   1      -0.434  -0.568   1.417  1.00 20.00      A    C
+HETATM    3  C   HIS A   1       0.399  -0.690   2.691  1.00 20.00      A    C
+HETATM    4  O   HIS A   1       0.256   0.148   3.620  1.00 20.00      A    O
+HETATM    5  CB  HIS A   1      -0.076   0.731   0.698  1.00 20.00      A    C
+HETATM    6  CG  HIS A   1       0.278   0.426  -0.756  1.00 20.00      A    C
 HETATM    7  ND1 HIS A   1       1.450   0.029  -1.199  1.00 20.00      A    N+1
-HETATM    8  CD2 HIS A   1      -0.547   0.574  -1.828  1.00 20.00      A    C  
-HETATM    9  CE1 HIS A   1       1.375  -0.076  -2.534  1.00 20.00      A    C  
-HETATM   10  NE2 HIS A   1       0.133   0.264  -2.909  1.00 20.00      A    N  
+HETATM    8  CD2 HIS A   1      -0.547   0.574  -1.828  1.00 20.00      A    C
+HETATM    9  CE1 HIS A   1       1.375  -0.076  -2.534  1.00 20.00      A    C
+HETATM   10  NE2 HIS A   1       0.133   0.264  -2.909  1.00 20.00      A    N
 HETATM   11  OXT HIS A   1       1.247  -1.615   2.803  1.00 20.00      A    O-1
-HETATM   12  H   HIS A   1      -2.107   0.359   2.068  1.00 20.00      A    H  
-HETATM   13  H2  HIS A   1      -2.386  -0.808   0.954  1.00 20.00      A    H  
-HETATM   14  HA  HIS A   1      -0.226  -1.410   0.768  1.00 20.00      A    H  
-HETATM   15  HB2 HIS A   1       0.774   1.193   1.188  1.00 20.00      A    H  
-HETATM   16  HB3 HIS A   1      -0.923   1.407   0.730  1.00 20.00      A    H  
-HETATM   17  HD1 HIS A   1       2.256  -0.162  -0.638  1.00 20.00      A    H  
-HETATM   18  HD2 HIS A   1      -1.591   0.861  -1.793  1.00 20.00      A    H  
-HETATM   19  HE1 HIS A   1       2.177  -0.383  -3.194  1.00 20.00      A    H  
+HETATM   12  H   HIS A   1      -2.107   0.359   2.068  1.00 20.00      A    H
+HETATM   13  H2  HIS A   1      -2.386  -0.808   0.954  1.00 20.00      A    H
+HETATM   14  HA  HIS A   1      -0.226  -1.410   0.768  1.00 20.00      A    H
+HETATM   15  HB2 HIS A   1       0.774   1.193   1.188  1.00 20.00      A    H
+HETATM   16  HB3 HIS A   1      -0.923   1.407   0.730  1.00 20.00      A    H
+HETATM   17  HD1 HIS A   1       2.256  -0.162  -0.638  1.00 20.00      A    H
+HETATM   18  HD2 HIS A   1      -1.591   0.861  -1.793  1.00 20.00      A    H
+HETATM   19  HE1 HIS A   1       2.177  -0.383  -3.194  1.00 20.00      A    H
 """,
   "his_ne2" : """
-HETATM    1  N   HIS A   1      -1.844  -0.558   1.760  1.00 20.00      A    N  
-HETATM    2  CA  HIS A   1      -0.434  -0.568   1.417  1.00 20.00      A    C  
-HETATM    3  C   HIS A   1       0.399  -0.690   2.691  1.00 20.00      A    C  
-HETATM    4  O   HIS A   1       0.256   0.148   3.620  1.00 20.00      A    O  
-HETATM    5  CB  HIS A   1      -0.076   0.731   0.698  1.00 20.00      A    C  
-HETATM    6  CG  HIS A   1       0.278   0.426  -0.756  1.00 20.00      A    C  
+HETATM    1  N   HIS A   1      -1.844  -0.558   1.760  1.00 20.00      A    N
+HETATM    2  CA  HIS A   1      -0.434  -0.568   1.417  1.00 20.00      A    C
+HETATM    3  C   HIS A   1       0.399  -0.690   2.691  1.00 20.00      A    C
+HETATM    4  O   HIS A   1       0.256   0.148   3.620  1.00 20.00      A    O
+HETATM    5  CB  HIS A   1      -0.076   0.731   0.698  1.00 20.00      A    C
+HETATM    6  CG  HIS A   1       0.278   0.426  -0.756  1.00 20.00      A    C
 HETATM    7  ND1 HIS A   1       1.450   0.029  -1.199  1.00 20.00      A    N+1
-HETATM    8  CD2 HIS A   1      -0.547   0.574  -1.828  1.00 20.00      A    C  
-HETATM    9  CE1 HIS A   1       1.375  -0.076  -2.534  1.00 20.00      A    C  
-HETATM   10  NE2 HIS A   1       0.133   0.264  -2.909  1.00 20.00      A    N  
+HETATM    8  CD2 HIS A   1      -0.547   0.574  -1.828  1.00 20.00      A    C
+HETATM    9  CE1 HIS A   1       1.375  -0.076  -2.534  1.00 20.00      A    C
+HETATM   10  NE2 HIS A   1       0.133   0.264  -2.909  1.00 20.00      A    N
 HETATM   11  OXT HIS A   1       1.247  -1.615   2.803  1.00 20.00      A    O-1
-HETATM   12  H   HIS A   1      -2.107   0.359   2.068  1.00 20.00      A    H  
-HETATM   13  H2  HIS A   1      -2.386  -0.808   0.954  1.00 20.00      A    H  
-HETATM   14  HA  HIS A   1      -0.226  -1.410   0.768  1.00 20.00      A    H  
-HETATM   15  HB2 HIS A   1       0.774   1.193   1.188  1.00 20.00      A    H  
-HETATM   16  HB3 HIS A   1      -0.923   1.407   0.730  1.00 20.00      A    H  
-HETATM   18  HD2 HIS A   1      -1.591   0.861  -1.793  1.00 20.00      A    H  
-HETATM   19  HE1 HIS A   1       2.177  -0.383  -3.194  1.00 20.00      A    H  
-HETATM   20  HE2 HIS A   1      -0.215   0.280  -3.847  1.00 20.00      A    H  
+HETATM   12  H   HIS A   1      -2.107   0.359   2.068  1.00 20.00      A    H
+HETATM   13  H2  HIS A   1      -2.386  -0.808   0.954  1.00 20.00      A    H
+HETATM   14  HA  HIS A   1      -0.226  -1.410   0.768  1.00 20.00      A    H
+HETATM   15  HB2 HIS A   1       0.774   1.193   1.188  1.00 20.00      A    H
+HETATM   16  HB3 HIS A   1      -0.923   1.407   0.730  1.00 20.00      A    H
+HETATM   18  HD2 HIS A   1      -1.591   0.861  -1.793  1.00 20.00      A    H
+HETATM   19  HE1 HIS A   1       2.177  -0.383  -3.194  1.00 20.00      A    H
+HETATM   20  HE2 HIS A   1      -0.215   0.280  -3.847  1.00 20.00      A    H
 """,
   }
 
@@ -101,9 +100,9 @@ def check_ideals(geo_filename, restraints):
   for restraint, values in restraints.items():
     if len(restraint)==2:
       for i, bond in enumerate(bonds):
-        if ((bond[0].find(" %s " % restraint[0])>-1 and 
-             bond[1].find(" %s " % restraint[1])>-1) or 
-            (bond[0].find(" %s " % restraint[1])>-1 and 
+        if ((bond[0].find(" %s " % restraint[0])>-1 and
+             bond[1].find(" %s " % restraint[1])>-1) or
+            (bond[0].find(" %s " % restraint[1])>-1 and
              bond[1].find(" %s " % restraint[0])>-1)):
           assert float(bond[2][0])==values[0]
           bond_remove.append(i)
@@ -111,9 +110,9 @@ def check_ideals(geo_filename, restraints):
     elif len(restraint)==3:
       for i, angle in enumerate(angles):
         if angle[1].find(" %s " % restraint[1])==-1: continue
-        if ((angle[0].find(" %s " % restraint[0])>-1 and 
-             angle[2].find(" %s " % restraint[2])>-1) or 
-            (angle[0].find(" %s " % restraint[2])>-1 and 
+        if ((angle[0].find(" %s " % restraint[0])>-1 and
+             angle[2].find(" %s " % restraint[2])>-1) or
+            (angle[0].find(" %s " % restraint[2])>-1 and
              angle[2].find(" %s " % restraint[0])>-1)):
           assert float(angle[3][0])==values[0], "mismatch %s %s to %s" % (
             restraint,
