@@ -1,8 +1,7 @@
 from __future__ import division
-import time
+import sys
 
 from mmtbx.conformation_dependent_library.hpdl_database import get_hpdl_database
-from iotbx import pdb
 from libtbx import easy_run
 from elbow.formats import refine_geo_parser
 
@@ -72,22 +71,6 @@ HETATM   19  HE1 HIS A   1       2.177  -0.383  -3.194  1.00 20.00      A    H
 HETATM   20  HE2 HIS A   1      -0.215   0.280  -3.847  1.00 20.00      A    H
 """,
   }
-
-def get_geometry_restraints_manager(pdb_filename):
-  t0=time.time()
-  from mmtbx.monomer_library import server
-  from mmtbx.monomer_library import pdb_interpretation
-  mon_lib_srv = server.server()
-  ener_lib = server.ener_lib()
-  processed_pdb = pdb_interpretation.process(
-    mon_lib_srv,
-    ener_lib,
-    #raw_records=lines,
-    file_name=pdb_filename,
-    )
-  geometry_restraints_manager = processed_pdb.geometry_restraints_manager()
-  print 'time',time.time()-t0
-  return geometry_restraints_manager
 
 def check_ideals(geo_filename, restraints):
   rc = refine_geo_parser.run(geo_filename,
