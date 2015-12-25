@@ -21,7 +21,7 @@ def plot_it(fit, sim, mode=None):
       sub_sim.append(sim[i])
   from matplotlib import pyplot as plt
   if mode=="I":
-    plt.loglog(sub_sim, sub_fit, "b.")
+    plt.loglog(sub_sim, sub_fit, "b,")
     plt.title("Log plot of fitted intensity vs. simulated intensity")
   else:
     plt.plot(sub_sim, sub_fit, "b.")
