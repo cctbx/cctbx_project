@@ -36,7 +36,7 @@ class n_frames_worker(object):
   def all_meas(self): return flex.sum(self.n_meas_cache)
   def all_neg(self): return flex.sum(self.n_neg_cache)
 
-def show_overall_observations(Fit_I,Fit_I_stddev,model_I,I_visited,ordered,frames,sim,
+def show_overall_observations(Fit_I,Fit_I_stddev,model_I,I_visited,ordered,sim,
   out = None,title = None,work_params = None):
 
   # at minimum we need the Miller set of merged intensities and sigmas
@@ -44,7 +44,7 @@ def show_overall_observations(Fit_I,Fit_I_stddev,model_I,I_visited,ordered,frame
     # have to assert this because the "ordered" indices may not in fact be ordered.
   model_subset = ordered[0:len(Fit_I)]
   uc = ordered.unit_cell()
-  model_subset.show_summary()
+  model_subset.crystal_symmetry().show_summary()
 
   d_min = flex.min(uc.d(model_subset.indices())) # extent of data
   n_bins = min( len(Fit_I)//20, 15 )

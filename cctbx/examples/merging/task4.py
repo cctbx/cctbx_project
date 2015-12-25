@@ -38,6 +38,7 @@ def prepare_simulation_with_noise(sim, transmittance,
   print "<I> / <sigma>", (mean_signal/ mean_sigma)
 
   scale_factor = mean_signal/10.
+  print "Mean signal is",mean_signal,"Applying a constant scale factor of ",scale_factor
 
   #most important line; puts input data on a numerically reasonable scale
   result.raw_obs = raw_obs / scale_factor
@@ -52,6 +53,47 @@ def prepare_simulation_with_noise(sim, transmittance,
     stol_sq = flex.double()
     for i in xrange(len(result.miller)):
       this_hkl = ordered_intensities.indices()[result.miller[i]]
+      stol_sq_item = uc.stol_sq(this_hkl)
+      stol_sq.append(stol_sq_item)
+    result.stol_sq = stol_sq
+  return result
+
+def prepare_observations_for_scaling(obs,reference_intensities=None,
+                                       half_data_flag = 0):
+  result = intensity_data()
+  result.frame = obs["frame_lookup"]
+  result.miller= obs['miller_lookup']
+  raw_obs = obs["observed_intensity"]
+  sigma_obs = obs["observed_sigI"]
+
+  if half_data_flag in [1,2]:  # apply selection after random numbers have been applied
+    half_data_selection = (obs["frame_lookup"]%2)==(half_data_flag%2)
+    result.frame  = obs["frame_lookup"].select(half_data_selection)
+    result.miller = obs['miller_lookup'].select(half_data_selection)
+    raw_obs       = raw_obs.select(half_data_selection)
+    sigma_obs     = sigma_obs.select(half_data_selection)
+
+  mean_signal = flex.mean(raw_obs)
+  mean_sigma = flex.mean(sigma_obs)
+  print "<I> / <sigma>", (mean_signal/ mean_sigma)
+
+  scale_factor = mean_signal/10.
+  print "Mean signal is",mean_signal,"Applying a constant scale factor of ",scale_factor
+  SDFAC_FROM_CHISQ = 4.
+  #most important line; puts input data on a numerically reasonable scale
+  # XXX
+  result.raw_obs = raw_obs / scale_factor
+  scaled_sigma = SDFAC_FROM_CHISQ * sigma_obs / scale_factor
+
+  result.exp_var = scaled_sigma * scaled_sigma
+
+  #reference intensities gets us the unit cell & miller indices to
+  # gain a static array of (sin theta over lambda)**2
+  if reference_intensities is not None:
+    uc = reference_intensities.unit_cell()
+    stol_sq = flex.double()
+    for i in xrange(len(result.miller)):
+      this_hkl = reference_intensities.indices()[result.miller[i]]
       stol_sq_item = uc.stol_sq(this_hkl)
       stol_sq.append(stol_sq_item)
     result.stol_sq = stol_sq
