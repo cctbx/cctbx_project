@@ -3698,6 +3698,7 @@ xfel/graph_proc/multiproc_temp_parame_opt.py -text
 xfel/graph_proc/parameter_optimizer.py -text
 xfel/libtbx_config -text
 xfel/libtbx_refresh.py -text
+xfel/merging/__init__.py -text
 xfel/metrology/__init__.py -text
 xfel/metrology/legacy_scale/__init__.py -text
 xfel/metrology/legacy_scale/a_g_conversion.h -text
