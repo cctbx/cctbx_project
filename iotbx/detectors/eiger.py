@@ -16,8 +16,8 @@ class EIGERImage(DetectorImageBase):
       self.hdf5File = h5py.File(masterFilename, 'r')
       params = self.hdf5File['entry']['instrument']['detector']
       dparams = self.hdf5File['entry']['instrument']['detector']['detectorSpecific']
-      mparams = self.hdf5File['entry']['instrument']['monochromator']
-      sparams = self.hdf5File['entry']['sample']
+      mparams = self.hdf5File['entry']['instrument'].get('monochromator',None)
+      sparams = self.hdf5File['entry'].get('sample',None)
 
       self.LUT = {} #look up table
       entry = self.hdf5File['entry']

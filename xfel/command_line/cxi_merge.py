@@ -1732,7 +1732,7 @@ def run(args):
   out.register("stdout", sys.stdout)
   print >> out, "I model"
   if work_params.model is not None:
-    from xfel.cxi.merging.general_fcalc import run
+    from xfel.merging.general_fcalc import run
     i_model = run(work_params)
     work_params.target_unit_cell = i_model.unit_cell()
     work_params.target_space_group = i_model.space_group_info()

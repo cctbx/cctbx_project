@@ -30,7 +30,7 @@ def run(args):
     ).build_miller_set(
       anomalous_flag=not work_params.merge_anomalous,
       d_min=work_params.d_min)
-  from xfel.cxi.merging.general_fcalc import random_structure
+  from xfel.merging.general_fcalc import random_structure
   i_model = random_structure(work_params)
 
 # ---- Augment this code with any special procedures for x scaling
