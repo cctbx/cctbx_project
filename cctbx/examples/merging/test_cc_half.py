@@ -54,7 +54,7 @@ if __name__=="__main__":
               "merge_anomalous=True","scaling.show_plots=False","log_cutoff=-20"]
       phil = iotbx.phil.process_command_line(args=args, master_string=master_phil)# .show()
       work_params = phil.work.extract()
-      from xfel.cxi.merging.phil_validation import application
+      from xfel.merging.phil_validation import application
       application(work_params)
       get_model_intensities(work_params,case.ordered_intensities)
       from xfel.cxi.cxi_cc import run_cc
