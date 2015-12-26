@@ -88,7 +88,7 @@ class execute_case(object):
 
   from cctbx.examples.merging.show_results import show_overall_observations
   table1,self.n_bins,self.d_min = show_overall_observations(
-           Fit_I,Fit_I_stddev,model_I,I_visited,
+           Fit_I,Fit_I_stddev,I_visited,
            reference_data,FOBS,title="Statistics for all reflections",
            work_params = work_params)
 

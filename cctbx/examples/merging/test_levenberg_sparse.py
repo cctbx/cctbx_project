@@ -324,7 +324,7 @@ class execute_case(object):
 
   from cctbx.examples.merging.show_results import show_overall_observations
   table1,self.n_bins,self.d_min = show_overall_observations(
-           Fit_I,Fit_I_stddev,model_I,I_visited,
+           Fit_I,Fit_I_stddev,I_visited,
            ordered_intensities,FSIM,title="Statistics for all reflections")
 
   self.FSIM=FSIM
