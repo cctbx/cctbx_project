@@ -100,6 +100,7 @@ cctbx/command_line/cod_select_and_pickle.py svneol=native#text/x-python
 cctbx/command_line/diffuse.py -text
 cctbx/command_line/find_reticular_twin_laws.py -text
 cctbx/command_line/precession_view.py -text
+cctbx/command_line/samosa_join.py -text
 cctbx/command_line/segment_and_split_map.py -text
 cctbx/command_line/space_group_info.py svneol=native#text/x-python
 cctbx/command_line/subgroups.py -text
@@ -137,6 +138,8 @@ cctbx/examples/merging/data_subset.py -text
 cctbx/examples/merging/data_utilities.py -text
 cctbx/examples/merging/large_scale_merging_ext.cpp -text
 cctbx/examples/merging/read_me -text
+cctbx/examples/merging/samosa/__init__.py -text
+cctbx/examples/merging/samosa/join.py -text
 cctbx/examples/merging/show_results.py -text
 cctbx/examples/merging/sigma_correction.py -text
 cctbx/examples/merging/task4.py -text
