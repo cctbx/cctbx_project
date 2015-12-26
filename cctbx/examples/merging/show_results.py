@@ -36,7 +36,7 @@ class n_frames_worker(object):
   def all_meas(self): return flex.sum(self.n_meas_cache)
   def all_neg(self): return flex.sum(self.n_neg_cache)
 
-def show_overall_observations(Fit_I,Fit_I_stddev,model_I,I_visited,ordered,sim,
+def show_overall_observations(Fit_I,Fit_I_stddev,I_visited,ordered,sim,
   out = None,title = None,work_params = None):
 
   # at minimum we need the Miller set of merged intensities and sigmas
