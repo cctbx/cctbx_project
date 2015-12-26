@@ -46,8 +46,12 @@ def show_overall_observations(Fit_I,Fit_I_stddev,model_I,I_visited,ordered,sim,
   uc = ordered.unit_cell()
   model_subset.crystal_symmetry().show_summary()
 
-  d_min = flex.min(uc.d(model_subset.indices())) # extent of data
-  n_bins = min( len(Fit_I)//20, 15 )
+  if work_params is not None:
+    d_min = work_params.d_min
+    n_bins = work_params.output.n_bins
+  else:
+    d_min = flex.min(uc.d(model_subset.indices())) # extent of data
+    n_bins = min( len(Fit_I)//20, 15 )
 
   #obs, redundancy, summed_wt_I, summed_weight, ISIGI, n_bins=15, out=None, title=None, work_params=None):
   if out is None:

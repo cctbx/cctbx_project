@@ -58,7 +58,7 @@ def prepare_simulation_with_noise(sim, transmittance,
     result.stol_sq = stol_sq
   return result
 
-def prepare_observations_for_scaling(obs,reference_intensities=None,
+def prepare_observations_for_scaling(work_params,obs,reference_intensities=None,
                                        half_data_flag = 0):
   result = intensity_data()
   result.frame = obs["frame_lookup"]
@@ -79,7 +79,7 @@ def prepare_observations_for_scaling(obs,reference_intensities=None,
 
   scale_factor = mean_signal/10.
   print "Mean signal is",mean_signal,"Applying a constant scale factor of ",scale_factor
-  SDFAC_FROM_CHISQ = 4.
+  SDFAC_FROM_CHISQ = work_params.levmar.sdfac_value
   #most important line; puts input data on a numerically reasonable scale
   # XXX
   result.raw_obs = raw_obs / scale_factor
