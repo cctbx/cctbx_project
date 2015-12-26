@@ -206,6 +206,15 @@ data_subsubsets {
 isoform_name = None
   .type = str
   .help = Only accept this isoform
+memory {
+  shared_array_allocation = None
+    .type = int
+    .help = Yes, it's true. Python shared arrays don't seem to be dynamic in size,
+    .help = so we have to allocate them just like in Fortran.  Take your best guess
+    .help = as to how many total measurements you are joining.  Only for the levmar
+    .help = algorithm for now. Insufficient allocation generates
+    .help = ValueError: Can only assign sequence of same size
+}
 """ + mysql_master_phil
 
 def get_observations (work_params):
@@ -1223,7 +1232,7 @@ class scaling_manager (intensity_data) :
       miller_indices=observations.indices())
 
     use_weights = False # New facility for getting variance-weighted correlation
-    if self.params.scaling.algorithm == 'mark1':
+    if self.params.scaling.algorithm in ['mark1','levmar']:
       # Because no correlation is computed, the correlation
       # coefficient is fixed at zero.  Setting slope = 1 means
       # intensities are added without applying a scale factor.
