@@ -215,6 +215,15 @@ memory {
     .help = algorithm for now. Insufficient allocation generates
     .help = ValueError: Can only assign sequence of same size
 }
+levmar {
+  compute_cc_half = True
+    .type = bool
+    .help = Double the work, but only way to get reportable results. False for debug.
+  sdfac_value = 1.0
+    .type = float
+    .help = Multiply all input sigmas by a constant factor so as to adjust the final
+    .help = values of chisq/dof to about 1.0.  Still trial and error after 30 years.
+}
 """ + mysql_master_phil
 
 def get_observations (work_params):
