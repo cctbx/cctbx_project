@@ -16,6 +16,8 @@ class execute_case(object):
   casetag = work_params.output.prefix
   # read the ground truth values back in
   import cPickle as pickle
+  # it is assumed (for now) that the reference millers contain a complete asymmetric unit
+  # of indices, within the (d_max,d_min) region of interest and possibly outside the region.
   reference_millers = pickle.load(open(os.path.join(datadir,casetag+"_miller.pickle"),"rb"))
 
   obs = pickle.load(open(os.path.join(datadir,casetag+"_observation.pickle"),"rb"))
@@ -66,7 +68,7 @@ class execute_case(object):
   T = Timer("%d frames"%(len(G), ))
 
   mapper = mapper_factory(xscale6e)
-  minimizer = mapper(I,G,I_visited,G_visited,FOBS)
+  minimizer = mapper(I,G,I_visited,G_visited,FOBS,params=work_params)
 
   del T
   minimizer.show_summary()
@@ -142,4 +144,3 @@ def run(show_plots,args):
 
   else:
     execute_case(datadir, work_params, plot=show_plots)
-

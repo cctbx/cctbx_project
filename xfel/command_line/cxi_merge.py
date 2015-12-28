@@ -223,6 +223,19 @@ levmar {
     .type = float
     .help = Multiply all input sigmas by a constant factor so as to adjust the final
     .help = values of chisq/dof to about 1.0.  Still trial and error after 30 years.
+  termination
+    .help = Adjust the termination criteria for LevMar non-linear least squares refinement.
+  {
+    step_threshold = 0.0001
+      .type = float
+      .help = threshold for ||step||/||parameters||.  Very sensitive, 0.0001 is comprehensive
+      .help = refinement, 0.001 is short refinement, 0.01 is abortive.
+    objective_decrease_threshold = None
+      .type = float
+      .help = threshold for the fractional decrease of the objective function. Convenient
+      .help = parameter for fine tuning very large parameter optimizations.  1.E-7 is a
+      .help = reasonably comprehensive refinement, 1.E-4 is a good (short) choice for >10E5 parameters.
+  }
 }
 """ + mysql_master_phil
 

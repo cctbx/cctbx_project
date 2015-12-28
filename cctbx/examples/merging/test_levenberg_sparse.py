@@ -45,7 +45,7 @@ class levenberg_helper(base_class, normal_eqns.non_linear_ls_mixin):
 
 class xscale6e(object):
 
-  def __init__(self,Ibase,Gbase,FSIM,curvatures=False):
+  def __init__(self,Ibase,Gbase,FSIM,curvatures=False,**kwargs):
     self.counter = 0
     self.x = flex.double(list(Ibase) + list(Gbase) + list(flex.double(len(Gbase), 0.0)))
     self.N_I = len(Ibase)
@@ -57,11 +57,19 @@ class xscale6e(object):
     self.helper.set_cpp_data(FSIM, self.N_I, self.N_G)
     self.helper.restart()
 
+    if "params" in kwargs.keys():
+      step_threshold = kwargs["params"].levmar.termination.step_threshold
+      objective_decrease_threshold = kwargs["params"].levmar.termination.objective_decrease_threshold
+    else:
+      step_threshold = 0.0001
+      objective_decrease_threshold = None
+
     iterations = normal_eqns_solving.levenberg_marquardt_iterations_encapsulated_eqns(
                non_linear_ls = self.helper,
                n_max_iterations = 5000,
                track_all=True,
-               step_threshold = 0.0001
+               step_threshold = step_threshold,
+               objective_decrease_threshold = objective_decrease_threshold
     )
     print "End of minimisation: Converged", self.helper.counter,"cycles"
     chi_squared = self.helper.objective() * 2.
