@@ -241,7 +241,9 @@ class spotfinder_image_files(image_files):
     if self.phil_params.autoindex_override_deltaphi != None:
         if self.verbose:
           print "Overriding deltaphi not fully supported: contact authors"
+        print "Altering deltaphi",(filenameobject.number-1)*self.phil_params.autoindex_override_deltaphi
         imageobject.parameters['OSC_RANGE']=self.phil_params.autoindex_override_deltaphi
+        imageobject.parameters['OSC_START']=(filenameobject.number-1)*self.phil_params.autoindex_override_deltaphi
 
     # override twotheta angle
     if self.phil_params.autoindex_override_twotheta != None:
