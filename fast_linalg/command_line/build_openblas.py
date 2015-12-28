@@ -54,7 +54,9 @@ def get_arch_with_objdump():
     p.terminate()
 
 
-def run(build, stage, install, package, platform_info, bits):
+def run(platform_info,
+        build=False, stage=False, install=False, package=False,
+        bits=None):
   # Build a distro which can optimally run on any machine
   # with Intel or AMD processors
   if build:
