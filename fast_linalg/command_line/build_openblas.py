@@ -1,10 +1,13 @@
 from os import path
+import sys
 import os
-import re
+import re, fnmatch
+import operator
 import subprocess
 import shutil
 import zipfile
 
+from libtbx.utils import Sorry
 import libtbx.load_env
 
 licence_text = """\
@@ -37,35 +40,42 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 <http://www.gnu.org/licenses/>.  */
 """
 
-objdump_arch_pat = re.compile(r'^architecture:\s+(\w+)')
-def get_arch_with_objdump():
-  p = subprocess.Popen(
-    ['objdump', '-x', abs(libtbx.env.lib_path / 'libopenblas.dll')],
-    stdout=subprocess.PIPE
-  )
-  try:
-    for li in p.stdout:
-      m = objdump_arch_pat.search(li)
-      if m:
-        return m.group(1)
-    raise RuntimeError('Objdump did not output the architecture'
-                       ' of libopenblas.dll')
-  finally:
-    p.terminate()
-
 
 def run(platform_info,
         build=False, stage=False, install=False, package=False,
-        bits=None):
+        bits=None, procs_for_build=1):
   # Build a distro which can optimally run on any machine
   # with Intel or AMD processors
   if build:
-    subprocess.check_call(['make',
-                           'USE_THREAD=1',
-                           'NUM_THREADS=16',
-                           'DYNAMIC_ARCH=1'] +
-                           (['BINARY=%i' % bits] if bits else []) +
-                           ['NO_STATIC=1'])
+    compilers = {}
+    try:
+      compilers['FC'] = subprocess.check_output(
+        [os.environ['SHELL'], '-c', 'which gfortran']).strip()
+    except subprocess.CalledProcessError:
+      raise Sorry("No working gfortran. Please install one.\n\n"
+                  "On MacOS, we recommend using MacPorts:\n"
+                  "~> sudo port install gcc5\n"
+                  "~> sudo port select --set gcc mp-gcc5\n\n"
+                  "On Windows, please use the MinGW GUI.\n\n"
+                  "On Linux, please use your platform package manager.\n")
+    if platform_info.is_darwin():
+      try:
+        # we need clang to generate correct AVX code
+        # (thanks to MacPorts portfile!)
+        compilers['CC'] = subprocess.check_output(
+          [os.environ['SHELL'], '-c', 'which clang']).strip()
+      except subprocess.CalledProcessError:
+        raise Sorry("Please install Apple Developer tools.")
+    args = ['make', '-j%i' % procs_for_build,
+            'USE_THREAD=1',
+            'NUM_THREADS=16',
+            'DYNAMIC_ARCH=1',
+            'NO_STATIC=1']
+    if bits:
+      args.append('BINARY=%i' % bits)
+    args.extend('%s=%s' % item for item in compilers.iteritems())
+    cmd = ' '.join(args)
+    subprocess.check_call(cmd, shell=True)
 
   # Stage it one level up from the current build directory
   stage_dir = path.join(abs(libtbx.env.build_path.dirname()), 'openblas')
@@ -81,7 +91,7 @@ def run(platform_info,
     openblas_inc = abs(libtbx.env.include_path / 'openblas')
     if path.isdir(openblas_inc): shutil.rmtree(openblas_inc)
     shutil.copytree(path.join(stage_dir, 'include'), openblas_inc)
-    if platform_info['platform'].startswith('mingw'):
+    if platform_info.is_mingw():
       shutil.copy(path.join(stage_dir, 'bin', 'libopenblas.dll'),
                   abs(libtbx.env.lib_path))
       shutil.copy(path.join(stage_dir, 'lib', 'libopenblas.dll.a'),
@@ -90,7 +100,7 @@ def run(platform_info,
                   'libgcc_s_dw2-1.dll'):
         shutil.copy(path.join('c:/mingw/bin', dll), abs(libtbx.env.lib_path))
     for f in ('COPYING3', 'COPYING.RUNTIME'):
-      if platform_info['platform'].startswith('mingw'):
+      if platform_info.is_mingw():
         fmt = {'filename':f}
         fmt.update(platform_info)
         shutil.copy(
@@ -105,8 +115,8 @@ def run(platform_info,
 
   # Package the files added to the CCTBX build directory
   if package:
-    if platform_info['platform'].startswith('mingw'):
-      arch = get_arch_with_objdump()
+    arch = platform_info.arch_of_libopenblas()
+    if platform_info.is_mingw():
       archive = zipfile.ZipFile(
         abs(libtbx.env.build_path.dirname() / ('openblas-windows-%s.zip' % arch)),
         mode="w")
@@ -127,21 +137,73 @@ def run(platform_info,
       finally:
         archive.close()
 
+
+class platform_info(object):
+  """ Information about architecture and compilers """
+
+  supported_platforms = ('mingw32', 'mingw64',
+                         'x86_64-apple-darwin15')
+
+  darwin_mask = re.compile(r'^(\w+-apple-darwin\d+)')
+
+  def __init__(self):
+    self.c_compiler = 'gcc' if sys.platform != 'darwin' else 'clang'
+    self.c_compiler_version = subprocess.check_output(
+      [self.c_compiler, '-dumpversion']).strip()
+    self.platform = subprocess.check_output(
+      [self.c_compiler, '-dumpmachine']).strip()
+    if sys.platform == 'darwin':
+      m = self.darwin_mask.search(self.platform)
+      self.platform = m.group(1)
+
+  def check_support(self):
+    if not reduce(
+      operator.or_,
+      (fnmatch.fnmatch(self.platform, p) for p in self.supported_platforms)):
+      raise Sorry("The platform %s is not supported." % self.platform)
+
+  def is_mingw(self):
+    return self.platform.startswith('mingw')
+
+  def is_darwin(self):
+    return 'apple-darwin' in self.platform
+
+  def is_linux(self):
+    return 'linux' in self.platform
+
+  def shared_library_suffix(self):
+    return ('dll'   if self.is_mingw()  else
+            'dylib' if self.is_darwin() else
+            'so'    if self.is_linux()  else
+            None)
+
+  def arch_of_libopenblas(self):
+    if self.is_mingw():
+      ext = 'dll'
+    elif self.is_darwin():
+      ext = 'dylib'
+    elif self.is_linux():
+      ext = 'so'
+    else:
+      return None
+    description = subprocess.check_output(
+      ['file', abs(libtbx.env.lib_path /
+                   ('libopenblas.%s' % self.shared_library_suffix()))])
+    if '32-bit' in description:
+      return '32'
+    elif '64-bit' in description:
+      return '64'
+    else:
+      return None
+
+
 if __name__ == '__main__':
   import argparse
   import sys
 
   # Gather platform information and check we support it
-  platform_info = {
-    'gcc_version': subprocess.check_output(['gcc', '-dumpversion']),
-    'platform': subprocess.check_output(['gcc', '-dumpmachine'])
-  }
-  platform_info = dict((k,v.strip()) for k,v in platform_info.iteritems())
-  supported_platforms = ('mingw32', 'mingw64')
-  if platform_info['platform'] not in supported_platforms:
-    print ("*** Only the following platforms are supported: " +
-           ",".join(supported_platforms) + ' ***')
-    sys.exit(1)
+  info = platform_info()
+  info.check_support()
 
   # Parse arguments
   p = argparse.ArgumentParser(
@@ -159,11 +221,13 @@ if __name__ == '__main__':
   p.add_argument('--bits', type=int, choices=(None, 32, 64), default=None,
                  help='Whether to build a 32- or 64-bit library '
                       '(None means that OpenBLAS build system shall decide)')
+  p.add_argument('-j', dest='procs_for_build', type=int, default=1,
+                 help='Number of cores to use for building')
   args = vars(p.parse_args())
 
   # Run
   try:
-    run(platform_info=platform_info, **args)
+    run(platform_info=info, **args)
   except subprocess.CalledProcessError, e:
     print "\n*** Error %i ***\n" % e.returncode
     print "--- Reminder ---\n"
