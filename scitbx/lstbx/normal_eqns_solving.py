@@ -253,7 +253,10 @@ class levenberg_marquardt_iterations(iterations):
 class levenberg_marquardt_iterations_encapsulated_eqns(
       levenberg_marquardt_iterations):
 
+  objective_decrease_threshold = None
+
   def __init__(self, non_linear_ls, **kwds):
+    print "Iteration      Objective        Mu     ||Gradient||       Step"
     iterations.__init__(self, non_linear_ls, **kwds)
     """NKS 7/17/2015 Differs from Luc's original code two ways:
       1) unbreak the encapsulation of the normal matrix; enforce access
@@ -263,6 +266,17 @@ class levenberg_marquardt_iterations_encapsulated_eqns(
       2) avoid a memory leak by deleting the following circular reference to self:
     """
     del self.non_linear_ls.journal
+
+  def had_too_small_a_step(self):
+    print "%12.3f"%(self.gradient_norm_history[-1]),
+    x = self.parameter_vector_norm_history[-1]
+    h = self.step_norm_history[-1]
+    import math
+    root = (-x + math.sqrt(x*x+4.*h))/2.
+    form_p = int(-math.log10(self.step_threshold))
+    format = "%%12.%df"%(form_p+1)
+    print format%(root)
+    return iterations.had_too_small_a_step(self)
 
   def do(self):
     self.mu_history = flex.double()
@@ -276,7 +290,7 @@ class levenberg_marquardt_iterations_encapsulated_eqns(
     while self.n_iterations < self.n_max_iterations:
       self.non_linear_ls.add_constant_to_diagonal(self.mu)
       objective = self.non_linear_ls.objective()
-      #print "iteration %d OBJECTIVE %.4f"%(self.n_iterations,objective)
+      print "%5d %18.4f"%(self.n_iterations,objective), "%12.7f"%(self.mu),
       g = -self.non_linear_ls.opposite_of_gradient()
       self.non_linear_ls.solve()
       if self.had_too_small_a_step(): break
@@ -288,6 +302,8 @@ class levenberg_marquardt_iterations_encapsulated_eqns(
       objective_new = self.non_linear_ls.objective()
       actual_decrease = objective - objective_new
       rho = actual_decrease/expected_decrease
+      if self.objective_decrease_threshold is not None:
+        if actual_decrease/objective < self.objective_decrease_threshold: break
       if rho > 0:
         if self.has_gradient_converged_to_zero(): break
         self.mu *= max(1/3, 1 - (2*rho - 1)**3)
