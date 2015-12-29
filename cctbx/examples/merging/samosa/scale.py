@@ -58,8 +58,8 @@ class execute_case(object):
                                           reference_intensities=reference_data,
                                           half_data_flag=half_data_flag)
 
-  I,I_visited,G,G_visited = I_and_G_base_estimate(FOBS)
-  print "I length",len(I), "G length",len(G)
+  I,I_visited,G,G_visited = I_and_G_base_estimate(FOBS,params=work_params)
+  print "I length",len(I), "G length",len(G), "(Reference set; entire asymmetric unit)"
   assert len(reference_data.data()) == len(I)
 
   #presumably these assertions fail when half data are taken for CC1/2 or d_min is cut

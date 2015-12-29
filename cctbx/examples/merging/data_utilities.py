@@ -1,15 +1,20 @@
 from __future__ import division
 from scitbx.array_family import flex
 
-def I_and_G_base_estimate(data):
+def I_and_G_base_estimate(data,params=None):
   """Estimate I and G, based on simple weighted averages, nothing fancy"""
   Nframes = flex.max(data.frame) + 1
   Nmiller = flex.max(data.miller) + 1
-  print "%d frames, %d Miller indices"%(Nframes, Nmiller)
 
-  G,G_visited = data.estimate_G(Nframes)
+  # figure out if d_max, d_min were requested
+  inv_d_max_sq = 0.0
+  inv_d_min_sq = 0.0
+  if params is not None:
+    if params.d_max is not None: inv_d_max_sq = (1./params.d_max)*(1./params.d_max)
+    inv_d_min_sq = (1./params.d_min)*(1./params.d_min)
 
-  I,I_visited = data.estimate_I(Nmiller)
+  G,G_visited = data.estimate_G(Nframes,inv_d_max_sq,inv_d_min_sq)
+  I,I_visited = data.estimate_I(Nmiller,inv_d_max_sq,inv_d_min_sq)
   return I,I_visited,G,G_visited
 
 def plot_it(fit, sim, mode=None):
