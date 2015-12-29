@@ -10,6 +10,20 @@ env_etc.fast_linalg_common_includes = [
   env_etc.boost_include,
 ]
 
+def enable_fast_linalg(env):
+  if not libtbx.env.has_module('fast_linalg'):
+    return
+  env_etc.include_registry.append(
+    env=env,
+    paths=env_etc.fast_linalg_common_includes)
+  env.Append(LIBS=['openblas'])
+  for flag in ("CCTBX_FAST_LINALG_USES_OPENBLAS",
+               "CCTBX_HAS_CBLAS", "CCTBX_HAS_LAPACKE"):
+    flag = "-D" + flag
+    env.Append(CXXFLAGS=flag)
+    env.Append(SHCXXFLAGS=flag)
+env_etc.enable_fast_linalg = enable_fast_linalg
+
 Import("env_base")
 envs = [env_base]
 if not env_etc.no_boost_python:
@@ -18,14 +32,8 @@ if not env_etc.no_boost_python:
 fast_linalg_envs = []
 for env, extra_inc in zip(envs, ([], [env_etc.python_include])):
   e = env.Clone()
-  env_etc.include_registry.append(
-    env=e,
-    paths=env_etc.fast_linalg_common_includes + extra_inc)
-  if env_etc.compiler == "win32_cl":
-    e.Append(LIBS=['openblas'])
-    flag = "-DCCTBX_FAST_LINALG_USES_OPENBLAS"
-    e.Append(CXXFLAGS=flag)
-    e.Append(SHCXXFLAGS=flag)
+  env_etc.enable_fast_linalg(e)
+  env_etc.include_registry.append(env=e, paths=extra_inc)
   fast_linalg_envs.append(e)
 env_fast_linalg_base = fast_linalg_envs[0]
 Export("env_fast_linalg_base")
