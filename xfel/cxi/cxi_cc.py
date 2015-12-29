@@ -313,13 +313,17 @@ def load_cc_data(params,reindexing_op,output):
   for x in [0,1,2,3]:
     if not have_iso_ref and x == 0:
       continue
-    print >>output, uniform[x].size()
+    print >>output, "%6d indices:"%uniform[x].size(),{0:"Reference intensities",
+                     1:"Merged structure factors",
+                     2:"Semi-dataset 1",
+                     3:"Semi-dataset 2"}[x]
     uniform[x] = uniform[x].customized_copy(
       crystal_symmetry = crystal.symmetry(unit_cell=uniform[1].unit_cell(),
                                           space_group_info=sgi),
-      ).resolution_filter(d_min=uniform[1].d_min()
-      ).complete_array(d_min=uniform[1].d_min()).map_to_asu()
-    print >>output, uniform[x].size()
+      ).resolution_filter(d_min=uniform[1].d_min(),d_max=params.d_max,
+      ).complete_array(d_min=uniform[1].d_min(),d_max=params.d_max).map_to_asu()
+  print >>output, "%6d indices: An asymmetric unit in the resolution interval %.2f - %.2f Angstrom"%(
+     uniform[1].size(),d_max_min[0],uniform[1].d_min())
 
   if have_iso_ref:
     uniform[0] = uniform[0].common_set(uniform[1])
@@ -343,21 +347,31 @@ def load_cc_data(params,reindexing_op,output):
 
   selected_uniform = []
   if have_iso_ref:
-    uniformA = (uniform[0].data() > cutoff).__and__(uniform[1].data() > cutoff)
+    if params.include_negatives:
+      uniformA = (uniform[1].sigmas() > 0.)
+    elif params.scaling.log_cutoff is None:
+      uniformA = (uniform[0].data() > 0.).__and__(uniform[1].data() > 0.)
+    else:
+      uniformA = (uniform[0].data() > cutoff).__and__(uniform[1].data() > cutoff)
     for x in [0, 1]:
       selected_uniform.append(uniform[x].select(uniformA))
       selected_uniform[x].setup_binner(
-        d_max=100000, d_min=params.d_min, n_bins=NBIN)
+        d_max=(params.d_max or 100000), d_min=params.d_min, n_bins=NBIN)
 
   else:
     selected_uniform = [None, None]
 
-  uniformB = (uniform[2].data()>cutoff).__and__(uniform[3].data() > cutoff)
+  if params.include_negatives:
+      uniformB = (uniform[2].sigmas() > 0.).__and__(uniform[3].sigmas() > 0.)
+  elif params.scaling.log_cutoff is None:
+      uniformB = (uniform[2].data() > 0.).__and__(uniform[3].data() > 0.)
+  else:
+      uniformB = (uniform[2].data() > cutoff).__and__(uniform[3].data() > cutoff)
 
   for x in [2, 3]:
     selected_uniform.append(uniform[x].select(uniformB))
     selected_uniform[x].setup_binner(
-      d_max=100000, d_min=params.d_min, n_bins=NBIN)
+      d_max=(params.d_max or 100000), d_min=params.d_min, n_bins=NBIN)
 
   return uniform, selected_uniform, have_iso_ref
 
@@ -371,7 +385,7 @@ def run_cc(params,reindexing_op,output):
     print >> output, "C.C. iso is %.1f%% on %d indices" % (
       100 * corr_iso, N_iso)
 
-  slope,offset,corr_int,N_int = correlation(uniform[2],uniform[3], params.include_negatives)
+  slope,offset,corr_int,N_int = correlation(selected_uniform[2],selected_uniform[3], params.include_negatives)
   print >>output, "C.C. int is %.1f%% on %d indices"%(100.*corr_int, N_int)
 
   if have_iso_ref:
@@ -439,8 +453,8 @@ def run_cc(params,reindexing_op,output):
     print >> output, "Table of Scaling Results Reindexing as %s:"%reindexing_op
 
   from libtbx import table_utils
-  table_header = ["","","","CC","","CC","","R","R","R","Scale","Scale","SpSig"]
-  table_header2 = ["Bin","Resolution Range","Completeness","int","N","iso","N","int","split","iso","int","iso","Test"]
+  table_header = ["","","","CC"," N","CC"," N","R","R","R","Scale","Scale","SpSig"]
+  table_header2 = ["Bin","Resolution Range","Completeness","int","int","iso","iso","int","split","iso","int","iso","Test"]
   table_data = []
   table_data.append(table_header)
   table_data.append(table_header2)
@@ -448,7 +462,8 @@ def run_cc(params,reindexing_op,output):
   items = binned_cc_int.binner.range_used()
 
   # XXX Make it clear what the completeness here actually is!
-
+  cumulative_counts_given = 0
+  cumulative_counts_complete = 0
   for bin in items:
     table_row = []
     table_row.append("%3d"%bin)
@@ -456,6 +471,8 @@ def run_cc(params,reindexing_op,output):
                                                  show_d_range=True, show_counts=False))
     table_row.append("%13s"%binned_cc_int.binner.bin_legend(i_bin=bin,show_bin_number=False,show_bin_range=False,
                                                  show_d_range=False, show_counts=True))
+    cumulative_counts_given += binned_cc_int.binner._counts_given[bin]
+    cumulative_counts_complete += binned_cc_int.binner._counts_complete[bin]
     table_row.append("%.1f%%"%(100.*binned_cc_int.data[bin]))
     table_row.append("%7d"%(binned_cc_int_N.data[bin]))
 
@@ -465,7 +482,7 @@ def run_cc(params,reindexing_op,output):
       table_row.append("--")
 
     if have_iso_ref and binned_cc_ref_N.data[bin] is not None:
-      table_row.append("%7d" % (binned_cc_ref_N.data[bin]))
+      table_row.append("%6d" % (binned_cc_ref_N.data[bin]))
     else:
       table_row.append("--")
 
@@ -504,13 +521,14 @@ def run_cc(params,reindexing_op,output):
 
   table_row = [format_value("%3s",   "All"),
                format_value("%-13s", "                 "),
-               format_value("%13s",  ""),
+               format_value("%13s",  "[%d/%d]"%(cumulative_counts_given,
+                                                cumulative_counts_complete)),
                format_value("%.1f%%", 100 * corr_int),
                format_value("%7d", N_int)]
 
   if have_iso_ref:
     table_row.extend((format_value("%.1f%%", 100 * corr_iso),
-                      format_value("%7d", N_iso)))
+                      format_value("%6d", N_iso)))
   else:
     table_row.extend(("--", "--"))
 
@@ -536,9 +554,23 @@ def run_cc(params,reindexing_op,output):
 
   print >>output
   print >>output,table_utils.format(table_data,has_header=2,justify='center',delim=" ")
-  print >>output,"""CCint is the CC-1/2 defined by Diedrichs; correlation between odd/even images.
+  print >>output,"""CCint is the CC-1/2 defined by Diederichs; correlation between odd/even images.
   Similarly, Scale int and R int are the scaling factor and scaling R factor between odd/even images.
   "iso" columns compare the whole XFEL dataset to the isomorphous reference."""
+
+  print >>output,"""Niso: result vs. reference common set""",
+  if params.include_negatives:
+    print >>output,"""including negative merged intensities (set by phil parameter)."""
+  elif params.scaling.log_cutoff is None:
+    print >>output
+  else:
+    print >>output,"""with intensites < %7.2g filtered out (controlled by
+    scaling.log_cutoff phil parameter set to %5.1f)"""%(math.exp(params.scaling.log_cutoff),
+    params.scaling.log_cutoff)
+
+  if have_iso_ref:
+    assert N_iso == flex.sum(flex.double([x for x in binned_cc_ref_N.data if x is not None]))
+  assert N_int == flex.sum(flex.double([x for x in binned_cc_int_N.data if x is not None]))
 
   if params.scaling.show_plots:
     from matplotlib import pyplot as plt
