@@ -2515,13 +2515,15 @@ class manager(manager_mixin):
     self = self.select(sel)
     return self
 
-  def filter_by_delta_fofc(self):
+  def filter_by_delta_fofc(self, n):
     deltas = flex.double()
+    assert self.f_model_scaled_with_k1().data().size() == self.f_obs().data().size()
     for fc, fo in zip(self.f_model_scaled_with_k1().data(), self.f_obs().data()):
       deltas.append(abs(fo - abs(fc)))
     sel = flex.sort_permutation(deltas, reverse=True)
     self = self.select(sel)
-    sel = flex.size_t(range(100, deltas.size()))
+    sel = flex.size_t(range(n, deltas.size()))
+    sel = flex.bool(deltas.size(), sel)
     self = self.select(sel)
     return self
 
