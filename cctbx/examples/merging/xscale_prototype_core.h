@@ -25,12 +25,14 @@ struct intensity_data {
 
   inline
   boost::python::tuple
-  estimate_G(const size_t& Nframe) const {
+  estimate_G(const size_t& Nframe, const double& inv_d_sq_max, const double& inv_d_sq_min) const {
     /* simple weighted sum of observations to give the scale factor G */
     vecd result(Nframe);
     vecd weights(Nframe);
     veci visited(Nframe);
     for (size_t i = 0; i<raw_obs.size(); ++i){
+      if ((inv_d_sq_max > 0.) && (inv_d_sq_max > 4.*stol_sq[i])) {continue;}
+      if ((inv_d_sq_min > 0.) && (inv_d_sq_min < 4.*stol_sq[i])) {continue;}
       double weight = 1./exp_var[i];
       result[ frame[i] ] += weight * raw_obs[i];
       weights[ frame[i] ] += weight;
@@ -46,12 +48,14 @@ struct intensity_data {
 
   inline
   boost::python::tuple
-  estimate_I(const size_t& Nmiller) const {
+  estimate_I(const size_t& Nmiller, const double& inv_d_sq_max, const double& inv_d_sq_min) const {
     /* simple weighted sum of observations to give the scale factor G */
     vecd result(Nmiller);
     vecd weights(Nmiller);
     veci visited(Nmiller);
     for (size_t i = 0; i<raw_obs.size(); ++i){
+      if ((inv_d_sq_max > 0.) && (inv_d_sq_max > 4.*stol_sq[i])) {continue;}
+      if ((inv_d_sq_min > 0.) && (inv_d_sq_min < 4.*stol_sq[i])) {continue;}
       double weight = 1./exp_var[i];
       result[ miller[i] ] += weight * raw_obs[i];
       weights[ miller[i] ] += weight;

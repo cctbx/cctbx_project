@@ -51,7 +51,7 @@ class xscale6e(object):
     self.N_I = len(Ibase)
     self.N_G = len(Gbase)
     self.N_raw_obs = FSIM.raw_obs.size()
-    print "# structure factors:",self.N_I, "# frames:",self.N_G
+    print "# structure factors:",self.N_I, "# frames:",self.N_G, "(Visited set; refined parameters)"
 
     self.helper = levenberg_helper(initial_estimates = self.x)
     self.helper.set_cpp_data(FSIM, self.N_I, self.N_G)
