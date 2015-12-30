@@ -374,8 +374,45 @@ class scaling_manager (scaling_manager_base) :
     #observations.show_summary(f=out, prefix="  ")
     show_observations(observations, out=out)
 
-    if self.params.significance_filter.apply is True:
-      raise Exception("significance filter not implemented in samosa")
+    #if self.params.significance_filter.apply is True:
+    #  raise Exception("significance filter not implemented in samosa")
+    if self.params.significance_filter.apply is True: #------------------------------------
+      # Apply an I/sigma filter ... accept resolution bins only if they
+      #   have significant signal; tends to screen out higher resolution observations
+      #   if the integration model doesn't quite fit
+      N_obs_pre_filter = observations.size()
+      N_bins_small_set = N_obs_pre_filter // self.params.significance_filter.min_ct
+      N_bins_large_set = N_obs_pre_filter // self.params.significance_filter.max_ct
+
+      # Ensure there is at least one bin.
+      N_bins = max(
+        [min([self.params.significance_filter.n_bins,N_bins_small_set]),
+         N_bins_large_set, 1]
+      )
+      print "Total obs %d Choose n bins = %d"%(N_obs_pre_filter,N_bins)
+      bin_results = show_observations(observations, out=out, n_bins=N_bins)
+      #show_observations(observations, out=sys.stdout, n_bins=N_bins)
+      acceptable_resolution_bins = [
+        bin.mean_I_sigI > self.params.significance_filter.sigma for bin in bin_results]
+      acceptable_nested_bin_sequences = [i for i in xrange(len(acceptable_resolution_bins))
+                                         if False not in acceptable_resolution_bins[:i+1]]
+      if len(acceptable_nested_bin_sequences)==0:
+        return null_data(
+          file_name=file_name, log_out=out.getvalue(), low_signal=True)
+      else:
+        N_acceptable_bins = max(acceptable_nested_bin_sequences) + 1
+        imposed_res_filter = float(bin_results[N_acceptable_bins-1].d_range.split()[2])
+        imposed_res_sel = observations.resolution_filter_selection(
+          d_min=imposed_res_filter)
+        observations = observations.select(
+          imposed_res_sel)
+        observations_original_index = observations_original_index.select(
+          imposed_res_sel)
+        print "New resolution filter at %7.2f"%imposed_res_filter,file_name
+      print "N acceptable bins",N_acceptable_bins
+      print "Old n_obs: %d, new n_obs: %d"%(N_obs_pre_filter,observations.size())
+      print "Step 5. Frame by frame resolution filter"
+      # Finished applying the binwise I/sigma filter---------------------------------------
 
     if self.params.raw_data.sdfac_auto is True:
       raise Exception("sdfac auto not implemented in samosa.")
