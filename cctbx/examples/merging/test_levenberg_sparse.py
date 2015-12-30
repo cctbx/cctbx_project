@@ -1,6 +1,7 @@
 from __future__ import division
 import os
 import math
+import iotbx.phil
 from libtbx.development.timers import Timer
 from scitbx.array_family import flex
 from cctbx.examples.merging.task4 import prepare_simulation_with_noise
@@ -46,23 +47,31 @@ class levenberg_helper(base_class, normal_eqns.non_linear_ls_mixin):
 class xscale6e(object):
 
   def __init__(self,Ibase,Gbase,FSIM,curvatures=False,**kwargs):
+    # For backward compatibility handle the case where phil is undefined
+    if "params" in kwargs.keys():
+      self.params = kwargs["params"]
+    else:
+      from xfel.command_line.cxi_merge import master_phil
+      phil = iotbx.phil.process_command_line(args=[], master_string=master_phil).show()
+      self.params = phil.work.extract()
+
     self.counter = 0
-    self.x = flex.double(list(Ibase) + list(Gbase) + list(flex.double(len(Gbase), 0.0)))
+
+    self.x = flex.double(list(Ibase) + list(Gbase))
     self.N_I = len(Ibase)
     self.N_G = len(Gbase)
     self.N_raw_obs = FSIM.raw_obs.size()
     print "# structure factors:",self.N_I, "# frames:",self.N_G, "(Visited set; refined parameters)"
 
+    step_threshold = self.params.levmar.termination.step_threshold
+    objective_decrease_threshold = self.params.levmar.termination.objective_decrease_threshold
+    if self.params.levmar.parameter_flags.BFACTOR is True:
+        self.x = self.x.concatenate(flex.double(len(Gbase),0.0))
+
     self.helper = levenberg_helper(initial_estimates = self.x)
     self.helper.set_cpp_data(FSIM, self.N_I, self.N_G)
+    self.helper.set_parameter_flags(self.params.levmar.parameter_flags.BFACTOR)
     self.helper.restart()
-
-    if "params" in kwargs.keys():
-      step_threshold = kwargs["params"].levmar.termination.step_threshold
-      objective_decrease_threshold = kwargs["params"].levmar.termination.objective_decrease_threshold
-    else:
-      step_threshold = 0.0001
-      objective_decrease_threshold = None
 
     iterations = normal_eqns_solving.levenberg_marquardt_iterations_encapsulated_eqns(
                non_linear_ls = self.helper,
@@ -75,7 +84,7 @@ class xscale6e(object):
     chi_squared = self.helper.objective() * 2.
     print "obj",chi_squared
     print "# of obs:",FSIM.raw_obs.size()
-    dof = FSIM.raw_obs.size() - ( self.N_I + 2 * self.N_G )
+    dof = FSIM.raw_obs.size() - ( len(self.x) )
     print "degrees of freedom =",dof
     print "chisq/dof: %7.3f"%(chi_squared / dof)
     print
@@ -258,6 +267,7 @@ class xscale6e(object):
       self.helper.x[ self.N_I : self.N_I + self.N_G ],# fitted G
       self.helper.x[ self.N_I + self.N_G : ]          # fitted B
     )
+    # Later, convert to a datatype to optionally hold more parameter types
 
   def unpack_stddev(self):
     # the data-to_parameter ratio will control which method for returning e.s.d's
