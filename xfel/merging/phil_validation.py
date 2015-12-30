@@ -30,9 +30,9 @@ class samosa:
     if not self.param.scaling.algorithm in ['mark1','levmar']:
       raise Sorry("""Must specify either mark1 or levmar algorithm for scaling.
       (Both algorithms have the same effect within samosa.""")
-    if self.param.significance_filter.apply is True:
-      raise Sorry("""No significance filter for samosa.  Variance weighting is
-      used to downweight weak data.""")
+    #if self.param.significance_filter.apply is True:
+    #  raise Sorry("""No significance filter for samosa.  Variance weighting is
+    #  used to downweight weak data.""")
     if self.param.raw_data.sdfac_auto or self.param.raw_data.sdfac_refine:
       raise Sorry("""SDFAC manipulation not implemented for samosa.""")
     if self.param.postrefinement.enable:
