@@ -48,15 +48,17 @@ def show_overall_observations(Fit_I,Fit_I_stddev,I_visited,ordered,sim,
 
   if work_params is not None:
     d_min = work_params.d_min
+    d_max = work_params.d_max
     n_bins = work_params.output.n_bins
   else:
     d_min = flex.min(uc.d(model_subset.indices())) # extent of data
+    d_max = None
     n_bins = min( len(Fit_I)//20, 15 )
 
   #obs, redundancy, summed_wt_I, summed_weight, ISIGI, n_bins=15, out=None, title=None, work_params=None):
   if out is None:
     out = sys.stdout
-  model_subset.setup_binner(d_max=100000, d_min=d_min, n_bins=n_bins)
+  model_subset.setup_binner(d_max=(d_max or 100000), d_min=d_min, n_bins=n_bins)
   result = []
   multiplicity = flex.int(len(Fit_I))
   for iraw in xrange(len(sim.miller)):
@@ -68,7 +70,7 @@ def show_overall_observations(Fit_I,Fit_I_stddev,I_visited,ordered,sim,
   cumulative_I      = 0.0
   cumulative_Isigma = 0.0
   frame_worker = n_frames_worker(obs_arrays=sim, unique_set=model_subset,
-                                 d_max=100000,d_min=d_min,n_bins=n_bins)
+                                 d_max=(d_max or 100000),d_min=d_min,n_bins=n_bins)
 
   for i_bin in model_subset.binner().range_used():
     sel_w = model_subset.binner().selection(i_bin)
@@ -101,37 +103,7 @@ def show_overall_observations(Fit_I,Fit_I_stddev,I_visited,ordered,sim,
     assert selected_stddev.count(0.) == 0
     I_sigI_sum = flex.sum(selected_intensity / selected_stddev)
     I_n = sel_o.count(True)
-    '''
-    # Per-bin sum of I and I/sig(I) for each observation.
-    # R-merge statistics have been removed because
-    #  >> R-merge is defined on whole structure factor intensities, either
-    #     full observations or summed partials from the rotation method.
-    #     For XFEL data all reflections are assumed to be partial; no
-    #     method exists now to convert partials to fulls.
-    if work_params.plot_single_index_histograms: import numpy as np
-    for i in obs.binner().array_indices(i_bin) :
-      index = obs.indices()[i]
-      if (index in ISIGI) :
-        # Compute m, the "merged" intensity, as the average intensity
-        # of all observations of the reflection with the given index.
-        N = 0
-        m = 0
-        for t in ISIGI[index] :
-          N += 1
-          m += t[0]
-        if work_params is not None and \
-           (work_params.plot_single_index_histograms and \
-            N >= 30 and \
-            work_params.data_subset == 0):
-          print "Miller %20s n-obs=%4d  sum-I=%10.0f"%(index, N, m)
-          plot_n_bins = N//10
-          hist,bins = np.histogram([t[0] for t in ISIGI[index]],bins=25)
-          width = 0.7*(bins[1]-bins[0])
-          center = (bins[:-1]+bins[1:])/2
-          import matplotlib.pyplot as plt
-          plt.bar(center, hist, align="center", width=width)
-          plt.show()
-    '''
+
     assert sel_measurements == frame_worker.per_bin_meas(i_bin)
 
     if sel_measurements > 0:
