@@ -93,17 +93,24 @@ struct scaling_common_functions {
       const double* Bptr = Gptr + N_G;
       for (int ix = 0; ix < fsim.raw_obs.size(); ++ix) {
         double Gitem  = Gptr[ fsim.frame[ix] ];
-        double Bitem  = std::exp(-2.* Bptr[ fsim.frame[ix] ] * fsim.stol_sq[ix]); // :=exp(beta)
+        double Bitem  = 1.;
+        if (BFACTOR){
+          Bitem  = std::exp(-2.* Bptr[ fsim.frame[ix] ] * fsim.stol_sq[ix]); // :=exp(beta)
+        }
         double Iitem  = Iptr[ fsim.miller[ix] ];
 
         residuals[ix] = fsim.raw_obs[ix] - Gitem * Bitem * Iitem;
       }
+    }
+    inline void set_parameter_flags(const bool& b){
+      BFACTOR = b;
     }
 
   protected:
     scitbx::af::shared<double> residuals, weights;
     intensity_data fsim;
     int N_I, N_G;
+    bool BFACTOR;
 };
 
 class xscale6e: public scitbx::example::non_linear_ls_eigen_wrapper, public scaling_common_functions {
@@ -134,7 +141,10 @@ class xscale6e: public scitbx::example::non_linear_ls_eigen_wrapper, public scal
         for (int ix = 0; ix < fsim.raw_obs.size(); ++ix) {
 
           double Gitem  = Gptr[ fsim.frame[ix] ];
-          double Bitem  = std::exp(-2.* Bptr[ fsim.frame[ix] ] * fsim.stol_sq[ix]); // :=exp(beta)
+          double Bitem  = 1.;
+          if (BFACTOR){
+          Bitem  = std::exp(-2.* Bptr[ fsim.frame[ix] ] * fsim.stol_sq[ix]); // :=exp(beta)
+          }
           double Iitem  = Iptr[ fsim.miller[ix] ];
 
           scitbx::af::shared<std::size_t> jacobian_one_row_indices;
@@ -149,8 +159,10 @@ class xscale6e: public scitbx::example::non_linear_ls_eigen_wrapper, public scal
           jacobian_one_row_data.push_back(-Bitem * Iitem);
 
           //derivative with respect to B ... must be indexed third
+          if (BFACTOR){
           jacobian_one_row_indices.push_back(N_I + N_G + fsim.frame[ix]);
           jacobian_one_row_data.push_back(Bitem * Gitem * Iitem * 2. * fsim.stol_sq[ix]);
+          }
 
           //add_equation(residuals[ix], jacobian_one_row.const_ref(), weights[ix]);
           add_residual(residuals[ix], weights[ix]);

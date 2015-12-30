@@ -45,15 +45,22 @@ def mapper_factory(base_class):
       fitted_I_stddev,fitted_G_stddev,fitted_B_stddev = self.unpack_stddev()
 
       self.expanded_G = flex.double(len(Gbase))
-      self.expanded_B = flex.double(len(Gbase))
       self.expanded_G_stddev = flex.double(len(Gbase))
-      self.expanded_B_stddev = flex.double(len(Gbase))
       for s in xrange(len(G_visited)):
         if G_visited[s]:
           self.expanded_G[s]=fitted_G[ forward_map_G[s] ]
-          self.expanded_B[s]=fitted_B[ forward_map_G[s] ]
           self.expanded_G_stddev[s]=fitted_G_stddev[ forward_map_G[s] ]
-          self.expanded_B_stddev[s]=fitted_B_stddev[ forward_map_G[s] ]
+
+      if len(fitted_B)==0:
+        self.expanded_B = flex.double()
+        self.expanded_B_stddev = flex.double()
+      else:
+        self.expanded_B = flex.double(len(Gbase))
+        self.expanded_B_stddev = flex.double(len(Gbase))
+        for s in xrange(len(G_visited)):
+          if G_visited[s]:
+            self.expanded_B[s]=fitted_B[ forward_map_G[s] ]
+            self.expanded_B_stddev[s]=fitted_B_stddev[ forward_map_G[s] ]
 
       self.expanded_I = flex.double(len(Ibase))
       self.expanded_I_stddev = flex.double(len(Ibase))

@@ -127,6 +127,7 @@ namespace boost_python { namespace {
       "scaling_common_functions", no_init)
       .def("set_cpp_data",&scf::set_cpp_data,
         (arg("fsim")))
+      .def("set_parameter_flags", &scf::set_parameter_flags)
     ;
 
     typedef scitbx::example::non_linear_ls_eigen_wrapper nllsew;
