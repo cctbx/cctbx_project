@@ -292,7 +292,8 @@ class afitt_object:
           if res == id:
             assert not cif_object_d.has_key(res), "More than one cif file containing residue %s!" %res
             cif_object_d[res] = cif_object
-      assert cif_object_d.has_key(res), "No cif file containing residue %s!" %res
+      if not cif_object_d.has_key(res):
+        raise Sorry("No restraints file containing residue %s!" %res)
 
     for res in self.resname:
       cif_object = cif_object_d[res]
