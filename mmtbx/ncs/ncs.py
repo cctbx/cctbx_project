@@ -780,7 +780,6 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
 
   def offset_inside_zero_one(self,x):
-    import math
     if x >=0.0:
       return -1.0*int(x)  # 2.1 gives -2 to place inside (0,1)
     else:
