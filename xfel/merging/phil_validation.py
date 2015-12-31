@@ -39,3 +39,5 @@ class samosa:
       raise Sorry("""Postrefinement not currently available in samosa.""")
     if not self.param.include_negatives:
       raise Sorry("""Normally negative values are included in samosa.""")
+    if not self.param.scaling.report_ML:
+      raise Sorry("""Must have 'report_ML' estimates of mosaic model from integration program""")

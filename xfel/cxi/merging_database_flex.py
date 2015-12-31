@@ -21,6 +21,27 @@ def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore, X):
     lastrowid_key = command[2]
 
     if table == 'frame':
+      order_dict = {'wavelength': 0,
+                  'beam_x': 1,
+                  'beam_y': 2,
+                  'distance': 3,
+                  'res_ori_1': 4,
+                  'res_ori_2': 5,
+                  'res_ori_3': 6,
+                  'res_ori_4': 7,
+                  'res_ori_5': 8,
+                  'res_ori_6': 9,
+                  'res_ori_7': 10,
+                  'res_ori_8': 11,
+                  'res_ori_9': 12,
+                  'half_mosaicity_deg': 13,
+                  'domain_size_ang':14,
+                  'unique_file_name': 15}
+      items = [0]*len(order_dict)
+      for key,val in data.items():
+        items[order_dict[key]]=val
+      characters = ' '.join([str(i) for i in items])+'\n'
+      X["xtal_proxy"].get_obj()[rows_frame*600:rows_frame*600+len(characters)]=characters
       rows_frame += 1
       lastrowid_value = rows_frame
 
@@ -31,6 +52,9 @@ def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore, X):
       X["sigma_proxy"].get_obj()[rows_observation:new_rows_observation]=data["sigi"]
       X["miller_proxy"].get_obj()[rows_observation:new_rows_observation]=data["hkl_id_0_base"]
       X["frame_proxy"].get_obj()[rows_observation:new_rows_observation]=data["frame_id_0_base"]
+      X["H_proxy"].get_obj()[rows_observation:new_rows_observation]=data["original_h"]
+      X["K_proxy"].get_obj()[rows_observation:new_rows_observation]=data["original_k"]
+      X["L_proxy"].get_obj()[rows_observation:new_rows_observation]=data["original_l"]
       X["rows"].get_obj()[0] = new_rows_observation
       lastrowid_value = new_rows_observation
 
@@ -114,10 +138,15 @@ class manager:
       observed_intensity = flex.double(data_dict["intensity_proxy"].get_obj()[:nrows]),
       observed_sigI =      flex.double(data_dict["sigma_proxy"].get_obj()[:nrows]),
       frame_lookup =       flex.size_t(data_dict["frame_proxy"].get_obj()[:nrows]),
+      original_H =         flex.int   (data_dict["H_proxy"].get_obj()[:nrows]),
+      original_K =         flex.int   (data_dict["K_proxy"].get_obj()[:nrows]),
+      original_L =         flex.int   (data_dict["L_proxy"].get_obj()[:nrows]),
     )
     import cPickle as pickle
     pickle.dump(kwargs, open(self.params.output.prefix+"_observation.pickle","wb"),
                 pickle.HIGHEST_PROTOCOL)
     pickle.dump(self.miller, open(self.params.output.prefix+"_miller.pickle","wb"),
                 pickle.HIGHEST_PROTOCOL)
+    pickle.dump(data_dict["xtal_proxy"].get_obj().raw,
+                        open(self.params.output.prefix+"_frame.pickle","wb"),pickle.HIGHEST_PROTOCOL)
     return kwargs
