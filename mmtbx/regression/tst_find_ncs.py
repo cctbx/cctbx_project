@@ -6,7 +6,7 @@ from mmtbx.ncs import ncs
 def remove_blank(text):
   return text.replace("\n"," ").replace(".0 "," ").replace(". "," ").replace(" ","")
 
-text="""
+text1="""
 
 Summary of NCS information
 Wed Jul  1 10:54:17 2015
@@ -42,7 +42,7 @@ MATCHING 7
 
 """
 
-expected_text_group_specification=text
+expected_text_group_specification=text1
 
 expected_text_resolve="""
 new_ncs_group
@@ -71,9 +71,8 @@ refinement.pdb_interpretation.ncs_group {
 
 def tst_01():
   print "Read ncs-spec file and write out text...",
-
   f=open('ncs.ncs_spec','w')
-  print >>f,text
+  print >>f,text1
   f.close()
 
 
@@ -964,6 +963,199 @@ def tst_02():
 
   print "OK"
 
+text2="""
+Summary of NCS information
+Wed Dec 30 10:36:10 2015
+/Users/terwill/unix/misc/cryo/emd_3063
+
+source_info temp_dir/pseudo_ha.pdb
+
+
+
+
+new_ncs_group
+NCS_CC 0.99
+new_operator
+
+rota_matrix    1.0000    0.0000    0.0000
+rota_matrix    0.0000    1.0000    0.0000
+rota_matrix    0.0000    0.0000    1.0000
+tran_orth    -0.0000   -0.0000   -0.0000
+
+center_orth  -72.7684  -30.3322  -82.7957
+new_operator
+
+rota_matrix   -1.0000   -0.0023   -0.0059
+rota_matrix    0.0024   -0.9998   -0.0209
+rota_matrix   -0.0059   -0.0209    0.9998
+tran_orth    -1.9886   -2.6166    1.3404
+
+center_orth   71.2074   29.6271  -83.1177
+new_operator
+
+rota_matrix    0.0108   -0.9999    0.0007
+rota_matrix    0.9997    0.0108   -0.0241
+rota_matrix    0.0241    0.0009    0.9997
+tran_orth    -0.7179   -2.8574    0.9201
+
+center_orth  -30.2612   71.6728  -83.0767
+new_operator
+
+rota_matrix   -0.0108    0.9999    0.0018
+rota_matrix   -0.9997   -0.0108   -0.0241
+rota_matrix   -0.0241   -0.0021    0.9997
+tran_orth     0.4240   -3.6743    0.8246
+
+center_orth   29.4566  -72.7242  -83.0880
+"""
+
+expected_text2="""
+source_info temp_dir/pseudo_ha.pdb
+
+
+
+
+new_ncs_group
+NCS_CC 0.99
+new_operator
+
+rota_matrix    1.0000    0.0000    0.0000
+rota_matrix    0.0000    1.0000    0.0000
+rota_matrix    0.0000    0.0000    1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth  100.9116  143.3478  102.3243
+new_operator
+
+rota_matrix   -1.0000   -0.0023   -0.0059
+rota_matrix    0.0024   -0.9998   -0.0209
+rota_matrix   -0.0059   -0.0209    0.9998
+tran_orth   172.7836  174.9324    1.3774
+
+center_orth   71.2074   29.6271  102.0023
+new_operator
+
+rota_matrix    0.0108   -0.9999    0.0007
+rota_matrix    0.9997    0.0108   -0.0241
+rota_matrix    0.0241    0.0009    0.9997
+tran_orth   170.9568    1.6561   -3.2101
+
+center_orth  143.4188   71.6728  102.0433
+new_operator
+
+rota_matrix   -0.0108    0.9999    0.0018
+rota_matrix   -0.9997   -0.0108   -0.0241
+rota_matrix   -0.0241   -0.0021    0.9997
+tran_orth     0.1082  176.3428    1.2449
+
+center_orth   29.4566  100.9558  102.0320
+"""
+
+expected_text2b="""
+Summary of NCS information
+Wed Dec 30 19:56:31 2015
+/Users/terwill/unix/misc/junk
+
+source_info temp_dir/pseudo_ha.pdb
+
+
+
+
+new_ncs_group
+NCS_CC 0.99
+new_operator
+
+rota_matrix    1.0000    0.0000    0.0000
+rota_matrix    0.0000    1.0000    0.0000
+rota_matrix    0.0000    0.0000    1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth   27.2316   69.6678  -182.7957
+new_operator
+
+rota_matrix   -1.0000   -0.0023   -0.0059
+rota_matrix    0.0024   -0.9998   -0.0209
+rota_matrix   -0.0059   -0.0209    0.9998
+tran_orth   197.6514  195.0334    4.0004
+
+center_orth  171.2074  129.6271  -183.1177
+new_operator
+
+rota_matrix    0.0108   -0.9999    0.0007
+rota_matrix    0.9997    0.0108   -0.0241
+rota_matrix    0.0241    0.0009    0.9997
+tran_orth   198.2621   -6.3174   -1.6099
+
+center_orth   69.7388  171.6728  -183.0767
+new_operator
+
+rota_matrix   -0.0108    0.9999    0.0018
+rota_matrix   -0.9997   -0.0108   -0.0241
+rota_matrix   -0.0241   -0.0021    0.9997
+tran_orth     1.6940  194.9657    3.4146
+
+center_orth  129.4566   27.2758  -183.0880
+"""
+def tst_03():
+  print "Map NCS operators to place them in (0,1)"
+
+  f=open('ncs.ncs_spec','w')
+  print >>f,text2
+  f.close()
+
+
+  from mmtbx.ncs.ncs import ncs
+  ncs_object=ncs()
+  ncs_object.read_ncs('ncs.ncs_spec',quiet=True)
+
+  from cctbx import uctbx
+  uc=uctbx.unit_cell((173.680,173.680,185.120,90.00,90.00,90.00))
+  f=StringIO()
+  ncs_object.format_all_for_group_specification(out=f)
+  start_text=f.getvalue()
+  ncs_object.map_inside_unit_cell(unit_cell=uc)
+  f=StringIO()
+  ncs_object.format_all_for_group_specification(out=f)
+  found_text=f.getvalue()
+
+  if remove_blank(" ".join(found_text.split("source_info")[1:]) ) != \
+     remove_blank(" ".join(expected_text2.split("source_info")[1:])):
+    print "Expected: \n%s \nFound: \n%s" %(expected_text_group_specification,found_text)
+    raise AssertionError, "FAILED"
+
+
+  print "OK"
+
+def tst_04():
+  print "Offset NCS operators"
+
+  f=open('ncs.ncs_spec','w')
+  print >>f,text2
+  f.close()
+
+
+  from mmtbx.ncs.ncs import ncs
+  ncs_object=ncs()
+  ncs_object.read_ncs('ncs.ncs_spec',quiet=True)
+
+  f=StringIO()
+  ncs_object.format_all_for_group_specification(out=f)
+  start_text=f.getvalue()
+  ncs_object=ncs_object.coordinate_offset(coordinate_offset=(100.,100.,-100.))
+  f=StringIO()
+  ncs_object.format_all_for_group_specification(out=f)
+  found_text=f.getvalue()
+
+  if remove_blank(" ".join(found_text.split("source_info")[1:]) ) != \
+     remove_blank(" ".join(expected_text2b.split("source_info")[1:])):
+    print "Expected: \n%s \nFound: \n%s" %(expected_text_group_specification,found_text)
+    raise AssertionError, "FAILED"
+
+
+  print "OK"
+
 if __name__=="__main__":
   tst_01()
   tst_02()
+  tst_03()
+  tst_04()
