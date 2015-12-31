@@ -116,6 +116,10 @@ class scaling_manager (scaling_manager_base) :
     frame_proxy = multiprocessing.Array('l',self.params.memory.shared_array_allocation,lock=True)
     print "Allocating miller_id"
     miller_proxy = multiprocessing.Array('l',self.params.memory.shared_array_allocation,lock=True)
+    H_proxy = multiprocessing.Array('i',self.params.memory.shared_array_allocation,lock=True)
+    K_proxy = multiprocessing.Array('i',self.params.memory.shared_array_allocation,lock=True)
+    L_proxy = multiprocessing.Array('i',self.params.memory.shared_array_allocation,lock=True)
+    xtal_proxy = multiprocessing.Array('c',self.params.memory.shared_array_allocation,lock=True)
     print "Finished allocating"
     rows_observation = multiprocessing.Array('l',[0],lock=True)
 
@@ -123,7 +127,11 @@ class scaling_manager (scaling_manager_base) :
                      sigma_proxy=sigma_proxy,
                      frame_proxy=frame_proxy,
                      miller_proxy=miller_proxy,
-                     rows=rows_observation
+                     H_proxy=H_proxy,
+                     K_proxy=K_proxy,
+                     L_proxy=L_proxy,
+                     rows=rows_observation,
+                     xtal_proxy=xtal_proxy
                      )
     db_mgr = manager(self.params,data_dict)
     db_mgr.initialize_db(self.miller_set)
@@ -456,10 +464,6 @@ class scaling_manager (scaling_manager_base) :
           sum_y += observations.data()[pair[1]]
       N = data.n_obs - data.n_rejected
 
-      slope = 1
-      offset = 0
-      corr = 0
-
     # Early return if there are no positive reflections on the frame.
     if data.n_obs <= data.n_rejected:
       return null_data(
@@ -468,7 +472,6 @@ class scaling_manager (scaling_manager_base) :
     # Update the count for each matched reflection.  This counts
     # reflections with non-positive intensities, too.
     data.completeness += matches.number_of_matches(0).as_int()
-    data.corr = corr
     data.wavelength = wavelength
 
     if not self.params.scaling.enable: # Do not scale anything
@@ -483,29 +486,23 @@ class scaling_manager (scaling_manager_base) :
               'beam_x': result['xbeam'],
               'beam_y': result['ybeam'],
               'distance': result['distance'],
-              'c_c': corr,
-              'slope': slope,
-              'offset': offset,
               'unique_file_name': data.file_name}
 
-    res_ori_direct = matrix.sqr(
-      data.indexed_cell.orthogonalization_matrix()).transpose().elems
+    ORI = result["current_orientation"][0]
+    Astar = matrix.sqr(ORI.reciprocal_matrix())
 
-    kwargs['res_ori_1'] = res_ori_direct[0]
-    kwargs['res_ori_2'] = res_ori_direct[1]
-    kwargs['res_ori_3'] = res_ori_direct[2]
-    kwargs['res_ori_4'] = res_ori_direct[3]
-    kwargs['res_ori_5'] = res_ori_direct[4]
-    kwargs['res_ori_6'] = res_ori_direct[5]
-    kwargs['res_ori_7'] = res_ori_direct[6]
-    kwargs['res_ori_8'] = res_ori_direct[7]
-    kwargs['res_ori_9'] = res_ori_direct[8]
-    if self.params.scaling.report_ML:
-      kwargs['half_mosaicity_deg'] = result["ML_half_mosaicity_deg"][0]
-      kwargs['domain_size_ang'] = result["ML_domain_size_ang"][0]
-    else:
-      kwargs['half_mosaicity_deg'] =float("NaN")
-      kwargs['domain_size_ang'] =float("NaN")
+    kwargs['res_ori_1'] = Astar[0]
+    kwargs['res_ori_2'] = Astar[1]
+    kwargs['res_ori_3'] = Astar[2]
+    kwargs['res_ori_4'] = Astar[3]
+    kwargs['res_ori_5'] = Astar[4]
+    kwargs['res_ori_6'] = Astar[5]
+    kwargs['res_ori_7'] = Astar[6]
+    kwargs['res_ori_8'] = Astar[7]
+    kwargs['res_ori_9'] = Astar[8]
+    assert self.params.scaling.report_ML is True
+    kwargs['half_mosaicity_deg'] = result["ML_half_mosaicity_deg"][0]
+    kwargs['domain_size_ang'] = result["ML_domain_size_ang"][0]
 
     frame_id_0_base = db_mgr.insert_frame(**kwargs)
 
@@ -537,8 +534,7 @@ class scaling_manager (scaling_manager_base) :
 
     db_mgr.insert_observation(**kwargs)
 
-    print >> out, "For %d reflections, got slope %f, correlation %f" % \
-        (data.n_obs - data.n_rejected, slope, corr)
+    print >> out, "Lattice: %d reflections" % (data.n_obs - data.n_rejected)
     print >> out, "average obs", sum_y / (data.n_obs - data.n_rejected), \
       "average calc", sum_x / (data.n_obs - data.n_rejected)
     print >> out, "Rejected %d reflections with negative intensities" % \
@@ -548,7 +544,7 @@ class scaling_manager (scaling_manager_base) :
     for pair in matches.pairs():
       if not self.params.include_negatives and (observations.data()[pair[1]] <= 0) :
         continue
-      Intensity = observations.data()[pair[1]] / slope
+      Intensity = observations.data()[pair[1]]
       # Super-rare exception. If saved sigmas instead of I/sigmas in the ISIGI dict, this wouldn't be needed.
       if Intensity == 0:
         continue
@@ -558,13 +554,13 @@ class scaling_manager (scaling_manager_base) :
       index = self.miller_set.indices()[pair[0]]
       isigi = (Intensity,
                observations.data()[pair[1]] / observations.sigmas()[pair[1]],
-               slope)
+               1.0)
       if index in data.ISIGI:
         data.ISIGI[index].append(isigi)
       else:
         data.ISIGI[index] = [isigi]
 
-      sigma = observations.sigmas()[pair[1]] / slope
+      sigma = observations.sigmas()[pair[1]]
       variance = sigma * sigma
       data.summed_N[pair[0]] += 1
       data.summed_wt_I[pair[0]] += Intensity / variance
