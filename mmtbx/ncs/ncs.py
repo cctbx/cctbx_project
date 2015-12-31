@@ -797,7 +797,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     return unit_cell.orthogonalize(matrix.col(offset_frac))
 
   def map_inside_unit_cell(self,unit_cell=None):
-    # map all the operators inside the unit cell.  Must be supplied 
+    # map all the operators inside the unit cell.  Must be supplied
     assert unit_cell is not None
     if len(self._centers)==0: return
 
@@ -875,7 +875,7 @@ class ncs:
     # centers for the operators must exist and not be zero
     for ncs_group in self._ncs_groups:
       ncs_group.map_inside_unit_cell(unit_cell=unit_cell)
-    
+
 
   def ncs_read(self):
     return self._ncs_read
