@@ -86,6 +86,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       new_vector=new_unit_cell.orthogonalize(new_frac)
     return new_vector
 
+
   def copy_rot_trans(self,list_of_matrices,list_of_translations,
       change_of_basis_operator=None,
       coordinate_offset=None,
@@ -111,6 +112,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
         # R' =  R
         # T' =  T + t - R t
         new_list_of_matrices.append(deepcopy(ncs_r))  # these are the same
+        from scitbx import matrix
         delta = ncs_r * coordinate_offset
         t_prime=matrix.col(ncs_t) + \
           matrix.col(coordinate_offset) - matrix.col(delta)
@@ -776,6 +778,56 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     else:
       return None,None
 
+
+  def offset_inside_zero_one(self,x):
+    import math
+    if x >=0.0:
+      return -1.0*int(x)  # 2.1 gives -2 to place inside (0,1)
+    else:
+      return 1.0-int(x)   # -2.1 gives + 3 to place inside (0,1)
+
+  def offset_inside_cell(self,center,unit_cell):
+    # put the center inside (0,1)
+    from scitbx.math import  matrix
+    c=matrix.col(center)
+    c_frac=unit_cell.fractionalize(c)
+    offset_frac=[]
+    for x in c_frac:
+     offset_frac.append(self.offset_inside_zero_one(x))
+    return unit_cell.orthogonalize(matrix.col(offset_frac))
+
+  def map_inside_unit_cell(self,unit_cell=None):
+    # map all the operators inside the unit cell.  Must be supplied 
+    assert unit_cell is not None
+    if len(self._centers)==0: return
+
+    new_centers=[]
+    new_translations_orth=[]
+    from scitbx.math import  matrix
+    #rotation matrices do not change, just translations
+    # find the identity:
+    first_coordinate_offset=None
+    for center,trans_orth,ncs_rota_matr in zip (
+       self._centers, self._translations_orth,self._rota_matrices):
+      if is_identity(ncs_rota_matr,trans_orth):
+        first_coordinate_offset=matrix.col(self.offset_inside_cell(
+          center,unit_cell=unit_cell))
+        break
+    if first_coordinate_offset is None:
+      raise Sorry("Identity not found in NCS matrices?")
+    for center,trans_orth,ncs_rota_matr in zip (
+       self._centers, self._translations_orth,self._rota_matrices):
+      coordinate_offset=self.offset_inside_cell(center,unit_cell=unit_cell)
+
+      new_centers.append(matrix.col(center)+matrix.col(coordinate_offset))
+      #  T'=T - R x_i + x_1
+      delta = matrix.col(ncs_rota_matr * coordinate_offset)
+      t_prime=matrix.col(trans_orth) - delta + first_coordinate_offset
+      new_translations_orth.append(t_prime)
+
+    self._centers=new_centers
+    self._translations_orth=new_translations_orth
+
 class ncs:
   def __init__(self,exclude_h=None,exclude_d=None):
     self._ncs_groups=[]  # each group is an ncs_group object
@@ -817,6 +869,13 @@ class ncs:
     if coordinate_offset is None:
        raise Sorry("For coordinate_offset an offset is required.")
     return self.deep_copy(coordinate_offset=coordinate_offset)
+
+  def map_inside_unit_cell(self,unit_cell=None):
+    # map all the operators inside the unit cell.  Must be supplied and the
+    # centers for the operators must exist and not be zero
+    for ncs_group in self._ncs_groups:
+      ncs_group.map_inside_unit_cell(unit_cell=unit_cell)
+    
 
   def ncs_read(self):
     return self._ncs_read
@@ -1407,7 +1466,6 @@ if __name__=="__main__":
   elif len(args)>0 and args[0] and os.path.isfile(args[0]):
     ncs_object=ncs()
     ncs_object.read_ncs(args[0],source_info=args[0])
-    #ncs_object.ncs_groups()[0].invert_matrices() # ZZZ
     ncs_object.display_all()
     if 1:
       file2='OUTPUT.NCS'
