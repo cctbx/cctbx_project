@@ -117,6 +117,9 @@ namespace boost_python { namespace {
       .add_property("stol_sq",
                     make_getter(&cmid::stol_sq, rbv()),
                     make_setter(&cmid::stol_sq, dcp()))
+      .add_property("origHKL",
+                    make_getter(&cmid::origHKL, rbv()),
+                    make_setter(&cmid::origHKL, dcp()))
       .def("estimate_G", &cmid::estimate_G,(arg("Nframes"),arg("inv_d_sq_max")=0.,arg("inv_d_sq_min")=0.))
       .def("estimate_I", &cmid::estimate_I,(arg("Gframes"),arg("inv_d_sq_max")=0.,arg("inv_d_sq_min")=0.))
       .def("reset_mem", &cmid::reset_mem)
@@ -128,6 +131,9 @@ namespace boost_python { namespace {
       .def("set_cpp_data",&scf::set_cpp_data,
         (arg("fsim")))
       .def("set_parameter_flags", &scf::set_parameter_flags)
+      .def("set_wavelength", &scf::set_wavelength)
+      .def("set_domain_size", &scf::set_domain_size)
+      .def("set_Astar_matrix", &scf::set_Astar_matrix)
     ;
 
     typedef scitbx::example::non_linear_ls_eigen_wrapper nllsew;

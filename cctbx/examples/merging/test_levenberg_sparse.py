@@ -3,7 +3,7 @@ import os
 import math
 import iotbx.phil
 from libtbx.development.timers import Timer
-from scitbx.array_family import flex
+from dials.array_family import flex
 from cctbx.examples.merging.task4 import prepare_simulation_with_noise
 from cctbx.examples.merging.data_utilities import I_and_G_base_estimate, plot_it, show_correlation
 from cctbx.examples.merging.data_subset import mapper_factory
@@ -70,6 +70,10 @@ class xscale6e(object):
 
     self.helper = levenberg_helper(initial_estimates = self.x)
     self.helper.set_cpp_data(FSIM, self.N_I, self.N_G)
+    if kwargs.has_key("experiments"):
+      self.helper.set_wavelength([e.beam.get_wavelength() for e in kwargs["experiments"]])
+      self.helper.set_domain_size([e.crystal.domain_size for e in kwargs["experiments"]])
+      self.helper.set_Astar_matrix([e.crystal.get_A() for e in kwargs["experiments"]])
     self.helper.set_parameter_flags(self.params.levmar.parameter_flags.BFACTOR)
     self.helper.restart()
 

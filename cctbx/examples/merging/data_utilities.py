@@ -4,6 +4,9 @@ from scitbx.array_family import flex
 def I_and_G_base_estimate(data,params=None):
   """Estimate I and G, based on simple weighted averages, nothing fancy"""
   Nframes = flex.max(data.frame) + 1
+  # worth some explanation.  For a half_data_set on 1000 images, one of the
+  # halves will only have a data.frame max of 999. An apparent discrepancy,
+  # not functionally important.
   Nmiller = flex.max(data.miller) + 1
 
   # figure out if d_max, d_min were requested

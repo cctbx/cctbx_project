@@ -63,6 +63,7 @@ def prepare_observations_for_scaling(work_params,obs,reference_intensities=None,
   result = intensity_data()
   result.frame = obs["frame_lookup"]
   result.miller= obs['miller_lookup']
+  result.origHKL = flex.miller_index(obs["original_H"],obs["original_K"],obs["original_L"])
   raw_obs = obs["observed_intensity"]
   sigma_obs = obs["observed_sigI"]
 
@@ -70,6 +71,7 @@ def prepare_observations_for_scaling(work_params,obs,reference_intensities=None,
     half_data_selection = (obs["frame_lookup"]%2)==(half_data_flag%2)
     result.frame  = obs["frame_lookup"].select(half_data_selection)
     result.miller = obs['miller_lookup'].select(half_data_selection)
+    result.origHKL = result.origHKL.select(half_data_selection)
     raw_obs       = raw_obs.select(half_data_selection)
     sigma_obs     = sigma_obs.select(half_data_selection)
 
