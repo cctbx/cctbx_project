@@ -1,6 +1,8 @@
 #ifndef CCTBX_EXAMOKE_EXAMPLES_H
 #define CCTBX_EXAMOKE_EXAMPLES_H
 #include <scitbx/examples/bevington/prototype_core.h>
+#include <scitbx/mat3.h>
+#include <cctbx/miller.h>
 
 using std::size_t;
 
@@ -9,12 +11,14 @@ namespace merging{
 struct intensity_data {
   typedef scitbx::af::shared<std::size_t> veci;
   typedef scitbx::af::shared<double> vecd;
+  typedef scitbx::af::shared<cctbx::miller::index<int> > milleri;
 
   veci frame;   // integer pointer to the frame or experiment (frame number)
   veci miller;  // integer pointer to the Miller index
   vecd raw_obs; // raw observation Bragg spot intensity
   vecd exp_var; // estimate of the measurement variance
   vecd stol_sq; // invariant array of (sin theta over lambda)**2
+  milleri origHKL; // original index
 
   inline
   void
@@ -102,8 +106,18 @@ struct scaling_common_functions {
         residuals[ix] = fsim.raw_obs[ix] - Gitem * Bitem * Iitem;
       }
     }
+
     inline void set_parameter_flags(const bool& b){
       BFACTOR = b;
+    }
+    inline void set_wavelength(scitbx::af::shared<double> b){
+      wavelength = b;
+    }
+    inline void set_domain_size(scitbx::af::shared<double> b){
+      domain_size = b;
+    }
+    inline void set_Astar_matrix(scitbx::af::shared<scitbx::mat3<double> > b){
+      Astar_matrix = b;
     }
 
   protected:
@@ -111,6 +125,10 @@ struct scaling_common_functions {
     intensity_data fsim;
     int N_I, N_G;
     bool BFACTOR;
+    scitbx::af::shared<double> wavelength;
+    scitbx::af::shared<double> domain_size;
+    scitbx::af::shared<scitbx::mat3<double> > Astar_matrix;
+
 };
 
 class xscale6e: public scitbx::example::non_linear_ls_eigen_wrapper, public scaling_common_functions {

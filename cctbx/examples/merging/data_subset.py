@@ -37,8 +37,19 @@ def mapper_factory(base_class):
       remapped_FSIM.raw_obs = FSIM.raw_obs
       remapped_FSIM.exp_var = FSIM.exp_var
       remapped_FSIM.stol_sq = FSIM.stol_sq
+      remapped_FSIM.origHKL = FSIM.origHKL
       remapped_FSIM.frame   = remapped_frame
       remapped_FSIM.miller  = remapped_miller
+
+      if kwargs.has_key('experiments'):
+        # XXX seems like we need to implement a proper select statement for ExperimentList
+        # kwargs["experiments"] = kwargs["experiments"].select(G_visited==1)
+        from dxtbx.model.experiment.experiment_list import ExperimentList
+        new_experiments = ExperimentList()
+        for idx in xrange(len(G_visited)):
+          if G_visited[idx]==1:
+            new_experiments.append(kwargs["experiments"][idx])
+        kwargs["experiments"] = new_experiments
 
       base_class.__init__(self,subsetIbase,subsetGbase,remapped_FSIM,**kwargs)
       fitted_I,fitted_G,fitted_B = self.unpack()

@@ -21,22 +21,6 @@ def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore, X):
     lastrowid_key = command[2]
 
     if table == 'frame':
-      order_dict = {'wavelength': 0,
-                  'beam_x': 1,
-                  'beam_y': 2,
-                  'distance': 3,
-                  'res_ori_1': 4,
-                  'res_ori_2': 5,
-                  'res_ori_3': 6,
-                  'res_ori_4': 7,
-                  'res_ori_5': 8,
-                  'res_ori_6': 9,
-                  'res_ori_7': 10,
-                  'res_ori_8': 11,
-                  'res_ori_9': 12,
-                  'half_mosaicity_deg': 13,
-                  'domain_size_ang':14,
-                  'unique_file_name': 15}
       items = [0]*len(order_dict)
       for key,val in data.items():
         items[order_dict[key]]=val
@@ -147,6 +131,98 @@ class manager:
                 pickle.HIGHEST_PROTOCOL)
     pickle.dump(self.miller, open(self.params.output.prefix+"_miller.pickle","wb"),
                 pickle.HIGHEST_PROTOCOL)
-    pickle.dump(data_dict["xtal_proxy"].get_obj().raw,
+    pickle.dump(data_dict["xtal_proxy"].get_obj().raw.replace('\0','').strip(),
                         open(self.params.output.prefix+"_frame.pickle","wb"),pickle.HIGHEST_PROTOCOL)
     return kwargs
+
+order_dict = {'wavelength': 0,
+                  'beam_x': 1,
+                  'beam_y': 2,
+                  'distance': 3,
+                  'res_ori_1': 4,
+                  'res_ori_2': 5,
+                  'res_ori_3': 6,
+                  'res_ori_4': 7,
+                  'res_ori_5': 8,
+                  'res_ori_6': 9,
+                  'res_ori_7': 10,
+                  'res_ori_8': 11,
+                  'res_ori_9': 12,
+                  'half_mosaicity_deg': 13,
+                  'domain_size_ang':14,
+                  'unique_file_name': 15}
+class read_experiments(object):
+  def __init__(self,params):
+    import cPickle as pickle
+    from dxtbx.model.beam import beam_factory
+    from dxtbx.model.detector import detector_factory
+    from dxtbx.model.crystal import crystal_model
+    from cctbx.crystal_orientation import crystal_orientation,basis_type
+    from dxtbx.model.experiment.experiment_list import Experiment, ExperimentList
+    from scitbx import matrix
+    self.experiments = ExperimentList()
+
+    self.params = params
+    data = pickle.load(open(self.params.output.prefix+"_frame.pickle","rb"))
+    frames_text = data.split("\n")
+    self.beams = []
+    self.crystals = []
+
+    for item in frames_text:
+      tokens = item.split(' ')
+      wavelength = float(tokens[order_dict["wavelength"]])
+
+      beam = beam_factory.simple(wavelength = wavelength)
+
+      detector = detector_factory.simple(
+        sensor = detector_factory.sensor("PAD"), # XXX shouldn't hard code for XFEL
+        distance = float(tokens[order_dict["distance"]]),
+        beam_centre = [float(tokens[order_dict["beam_x"]]), float(tokens[order_dict["beam_y"]])],
+        fast_direction = "+x",
+        slow_direction = "+y",
+        pixel_size = [self.params.pixel_size,self.params.pixel_size],
+        image_size = [1795,1795],  # XXX obviously need to figure this out
+        )
+
+      reciprocal_matrix = matrix.sqr([float(tokens[order_dict[k]]) for k in [
+'res_ori_1','res_ori_2','res_ori_3','res_ori_4','res_ori_5','res_ori_6','res_ori_7','res_ori_8','res_ori_9']])
+      ORI = crystal_orientation(reciprocal_matrix, basis_type.reciprocal)
+      direct = matrix.sqr(ORI.direct_matrix())
+      crystal = crystal_model(
+        real_space_a = matrix.row(direct[0:3]),
+        real_space_b = matrix.row(direct[3:6]),
+        real_space_c = matrix.row(direct[6:9]),
+        space_group_symbol = "P63",  # XXX obviously another gap in the database paradigm
+        mosaicity = float(tokens[order_dict["half_mosaicity_deg"]]),
+      )
+      crystal.domain_size = float(tokens[order_dict["domain_size_ang"]])
+      #if isoform is not None:
+      #  newB = matrix.sqr(isoform.fractionalization_matrix()).transpose()
+      #  crystal.set_B(newB)
+
+      self.experiments.append(Experiment(beam=beam,
+                                  detector=None, #dummy for now
+                                  crystal=crystal))
+
+    self.show_summary()
+
+  def get_experiments(self):
+    return self.experiments
+
+  def show_summary(self):
+    w = flex.double([e.beam.get_wavelength() for e in self.experiments])
+    stats=flex.mean_and_variance(w)
+    print "Wavelength mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation()
+    uc = [e.crystal.get_unit_cell().parameters() for e in self.experiments]
+    a = flex.double([u[0] for u in uc])
+    stats=flex.mean_and_variance(a)
+    print "Unit cell a mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation()
+    b = flex.double([u[1] for u in uc])
+    stats=flex.mean_and_variance(b)
+    print "Unit cell b mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation()
+    c = flex.double([u[2] for u in uc])
+    stats=flex.mean_and_variance(c)
+    print "Unit cell c mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation()
+    d = flex.double([e.crystal.domain_size for e in self.experiments])
+    stats=flex.mean_and_variance(d)
+    print "Domain size mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation()

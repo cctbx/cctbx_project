@@ -8,7 +8,7 @@ from cctbx.examples.merging.task4 import prepare_observations_for_scaling
 from cctbx.examples.merging.data_utilities import I_and_G_base_estimate, plot_it, show_correlation
 from cctbx.examples.merging.data_subset import mapper_factory
 from cctbx import miller
-
+from xfel.cxi.merging_database_flex import read_experiments
 from cctbx.examples.merging.test_levenberg_sparse import xscale6e
 
 class execute_case(object):
@@ -19,6 +19,7 @@ class execute_case(object):
   # it is assumed (for now) that the reference millers contain a complete asymmetric unit
   # of indices, within the (d_max,d_min) region of interest and possibly outside the region.
   reference_millers = pickle.load(open(os.path.join(datadir,casetag+"_miller.pickle"),"rb"))
+  experiment_manager = read_experiments(work_params)
 
   obs = pickle.load(open(os.path.join(datadir,casetag+"_observation.pickle"),"rb"))
   print "Read in %d observations"%(len(obs["observed_intensity"]))
@@ -68,7 +69,8 @@ class execute_case(object):
   T = Timer("%d frames"%(len(G), ))
 
   mapper = mapper_factory(xscale6e)
-  minimizer = mapper(I,G,I_visited,G_visited,FOBS,params=work_params)
+  minimizer = mapper(I,G,I_visited,G_visited,FOBS,params=work_params,
+                     experiments=experiment_manager.get_experiments())
 
   del T
   minimizer.show_summary()
