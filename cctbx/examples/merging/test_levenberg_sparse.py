@@ -15,6 +15,18 @@ from cctbx.uctbx import unit_cell
 uc_params = (281,281,165,90,90,120)
 uc = unit_cell(uc_params)
 
+def choice_as_bitflag(choices):
+  from cctbx.examples.merging import ParameterFlags as p
+  flags = 0
+  for choice in choices:
+    flags |= dict(Bfactor = p.Bfactor,
+                  Rxy = p.Rxy,
+                  Eta = p.Eta,
+                  Deff = p.Deff,
+                  PartialityDeff = p.PartialityDeff,
+                  PartialityEtaDeff = p.PartialityEtaDeff)[choice]
+  return flags
+
 from cctbx.examples.merging import xscale6e as base_class
 class levenberg_helper(base_class, normal_eqns.non_linear_ls_mixin):
   def __init__(pfh, initial_estimates):
@@ -65,16 +77,18 @@ class xscale6e(object):
 
     step_threshold = self.params.levmar.termination.step_threshold
     objective_decrease_threshold = self.params.levmar.termination.objective_decrease_threshold
-    if self.params.levmar.parameter_flags.BFACTOR is True:
+    if "Bfactor" in self.params.levmar.parameter_flags:
         self.x = self.x.concatenate(flex.double(len(Gbase),0.0))
 
     self.helper = levenberg_helper(initial_estimates = self.x)
     self.helper.set_cpp_data(FSIM, self.N_I, self.N_G)
     if kwargs.has_key("experiments"):
       self.helper.set_wavelength([e.beam.get_wavelength() for e in kwargs["experiments"]])
-      self.helper.set_domain_size([e.crystal.domain_size for e in kwargs["experiments"]])
+      self.helper.set_domain_size([2.*e.crystal.domain_size for e in kwargs["experiments"]])#ad hoc factor of 2
       self.helper.set_Astar_matrix([e.crystal.get_A() for e in kwargs["experiments"]])
-    self.helper.set_parameter_flags(self.params.levmar.parameter_flags.BFACTOR)
+
+    bitflags = choice_as_bitflag(self.params.levmar.parameter_flags)
+    self.helper.set_parameter_flags(bitflags)
     self.helper.restart()
 
     iterations = normal_eqns_solving.levenberg_marquardt_iterations_encapsulated_eqns(

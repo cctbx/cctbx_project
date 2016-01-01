@@ -3,6 +3,7 @@
 #include <scitbx/examples/bevington/prototype_core.h>
 #include <scitbx/mat3.h>
 #include <cctbx/miller.h>
+#include <scitbx/vec3.h>
 
 using std::size_t;
 
@@ -75,6 +76,15 @@ struct intensity_data {
 
 };
 
+enum ParameterFlags {
+  PartialityDeff = (1 << 0),     // Partiality is expressed in terms of mosaic block size only
+  PartialityEtaDeff = (1 << 1), // Partiality is expressed in terms of both eta and Deff
+  Bfactor = (1 << 2),             // Refine Bfactors for each lattice
+  Deff = (1 << 3),                // Refine mosaic block size for each lattice
+  Eta  = (1 << 4),                // Refine mosaic rotation for each lattice
+  Rxy  = (1 << 5),                // Refine rotation angles on two axes perpendicular to the beam
+};
+
 struct scaling_common_functions {
 
     inline
@@ -89,26 +99,8 @@ struct scaling_common_functions {
         N_I = ni; N_G = ng;
     }
 
-    inline
-    void
-    fvec_callable(scitbx::af::shared<double> &current_values) {
-      const double* Iptr = current_values.begin(); //indices into the array of parameters
-      const double* Gptr = Iptr + N_I;
-      const double* Bptr = Gptr + N_G;
-      for (int ix = 0; ix < fsim.raw_obs.size(); ++ix) {
-        double Gitem  = Gptr[ fsim.frame[ix] ];
-        double Bitem  = 1.;
-        if (BFACTOR){
-          Bitem  = std::exp(-2.* Bptr[ fsim.frame[ix] ] * fsim.stol_sq[ix]); // :=exp(beta)
-        }
-        double Iitem  = Iptr[ fsim.miller[ix] ];
-
-        residuals[ix] = fsim.raw_obs[ix] - Gitem * Bitem * Iitem;
-      }
-    }
-
-    inline void set_parameter_flags(const bool& b){
-      BFACTOR = b;
+    inline void set_parameter_flags(const int& b){
+      bitflags = b;
     }
     inline void set_wavelength(scitbx::af::shared<double> b){
       wavelength = b;
@@ -120,15 +112,55 @@ struct scaling_common_functions {
       Astar_matrix = b;
     }
 
+    scitbx::af::shared<double>
+    get_rh_rs_ratio() const {
+      scitbx::af::shared<double>result;
+      for (int ix = 0; ix < fsim.raw_obs.size(); ++ix) {
+        size_t frameno = fsim.frame[ix];
+        double Rs  = 1./domain_size[ frameno ];
+        scitbx::vec3<double> q = Astar_matrix[frameno] * fsim.origHKL[ix];
+        double wave = wavelength[ frameno ];
+        scitbx::vec3<double> s0 = scitbx::vec3<double>(0,0,-1/wave);
+        double Rh  = (q+s0).length() - (1./wave);
+        result.push_back(Rh/Rs);
+      }
+      return result;
+    }
+
+    inline
+    void
+    fvec_callable(scitbx::af::shared<double> &current_values) {
+      const double* Iptr = current_values.begin(); //indices into the array of parameters
+      const double* Gptr = Iptr + N_I;
+      const double* Bptr = Gptr + N_G;
+      scitbx::af::shared<double> rh_rs;
+      if ((bitflags & PartialityDeff) == PartialityDeff){
+        rh_rs = get_rh_rs_ratio();
+      }
+      for (int ix = 0; ix < fsim.raw_obs.size(); ++ix) {
+        double Gitem  = Gptr[ fsim.frame[ix] ];
+        double Bitem  = 1.;
+        if ((bitflags & Bfactor) == Bfactor){ //note the necessary parentheses
+          Bitem  = std::exp(-2.* Bptr[ fsim.frame[ix] ] * fsim.stol_sq[ix]); // :=exp(beta)
+        }
+        double Iitem  = Iptr[ fsim.miller[ix] ];
+
+        double Pitem  = 1.;
+        if ((bitflags & PartialityDeff) == PartialityDeff){
+          Pitem -= rh_rs[ix]*rh_rs[ix];
+        }
+        residuals[ix] = fsim.raw_obs[ix] - Pitem * Gitem * Bitem * Iitem;
+      }
+    }
+
   protected:
     scitbx::af::shared<double> residuals, weights;
     intensity_data fsim;
     int N_I, N_G;
-    bool BFACTOR;
+    int bitflags;
     scitbx::af::shared<double> wavelength;
     scitbx::af::shared<double> domain_size;
     scitbx::af::shared<scitbx::mat3<double> > Astar_matrix;
-
 };
 
 class xscale6e: public scitbx::example::non_linear_ls_eigen_wrapper, public scaling_common_functions {
@@ -155,31 +187,39 @@ class xscale6e: public scitbx::example::non_linear_ls_eigen_wrapper, public scal
         const double* Iptr = current_values.begin(); //indices into the array of parameters
         const double* Gptr = Iptr + N_I;
         const double* Bptr = Gptr + N_G;
+        scitbx::af::shared<double> rh_rs;
+        if ((bitflags & PartialityDeff) == PartialityDeff){
+          rh_rs = get_rh_rs_ratio();
+        }
         // add one of the normal equations per each observation
         for (int ix = 0; ix < fsim.raw_obs.size(); ++ix) {
 
           double Gitem  = Gptr[ fsim.frame[ix] ];
           double Bitem  = 1.;
-          if (BFACTOR){
+          if ((bitflags & Bfactor) == Bfactor){ //note the necessary parentheses
           Bitem  = std::exp(-2.* Bptr[ fsim.frame[ix] ] * fsim.stol_sq[ix]); // :=exp(beta)
           }
           double Iitem  = Iptr[ fsim.miller[ix] ];
+          double Pitem  = 1.;
+          if ((bitflags & PartialityDeff) == PartialityDeff){
+            Pitem -= rh_rs[ix]*rh_rs[ix];
+          }
 
           scitbx::af::shared<std::size_t> jacobian_one_row_indices;
           scitbx::af::shared<double> jacobian_one_row_data;
 
           //derivative with respect to I ... must be indexed first
           jacobian_one_row_indices.push_back( fsim.miller[ix] );
-          jacobian_one_row_data.push_back(-Bitem * Gitem);
+          jacobian_one_row_data.push_back(-Bitem * Gitem * Pitem);
 
           //derivative with respect to G ... must be indexed second
           jacobian_one_row_indices.push_back(N_I + fsim.frame[ix]);
-          jacobian_one_row_data.push_back(-Bitem * Iitem);
+          jacobian_one_row_data.push_back(-Bitem * Iitem * Pitem);
 
           //derivative with respect to B ... must be indexed third
-          if (BFACTOR){
+          if ((bitflags & Bfactor) == Bfactor){ //note the necessary parentheses
           jacobian_one_row_indices.push_back(N_I + N_G + fsim.frame[ix]);
-          jacobian_one_row_data.push_back(Bitem * Gitem * Iitem * 2. * fsim.stol_sq[ix]);
+          jacobian_one_row_data.push_back(Bitem * Gitem * Iitem * Pitem * 2. * fsim.stol_sq[ix]);
           }
 
           //add_equation(residuals[ix], jacobian_one_row.const_ref(), weights[ix]);

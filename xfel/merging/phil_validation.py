@@ -41,3 +41,6 @@ class samosa:
       raise Sorry("""Normally negative values are included in samosa.""")
     if not self.param.scaling.report_ML:
       raise Sorry("""Must have 'report_ML' estimates of mosaic model from integration program""")
+    if "PartialityDeff" in self.param.levmar.parameter_flags and \
+       "PartialityEtaDeff" in self.param.levmar.parameter_flags:
+      raise Sorry("""Only one partiality model""")

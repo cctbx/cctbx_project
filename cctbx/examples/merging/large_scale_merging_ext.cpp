@@ -1,5 +1,5 @@
 #include <cctbx/boost_python/flex_fwd.h>
-
+#include <boost/python/enum.hpp>
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
@@ -125,6 +125,15 @@ namespace boost_python { namespace {
       .def("reset_mem", &cmid::reset_mem)
     ;
 
+    enum_<ParameterFlags>("ParameterFlags")
+      .value("PartialityDeff", PartialityDeff)
+      .value("PartialityEtaDeff", PartialityEtaDeff)
+      .value("Bfactor", Bfactor)
+      .value("Deff", Deff)
+      .value("Eta", Eta)
+      .value("Rxy", Rxy)
+    ;
+
     typedef scaling_common_functions scf;
     class_<scf >(
       "scaling_common_functions", no_init)
@@ -134,6 +143,7 @@ namespace boost_python { namespace {
       .def("set_wavelength", &scf::set_wavelength)
       .def("set_domain_size", &scf::set_domain_size)
       .def("set_Astar_matrix", &scf::set_Astar_matrix)
+      .def("get_rh_rs_ratio", &scf::get_rh_rs_ratio)
     ;
 
     typedef scitbx::example::non_linear_ls_eigen_wrapper nllsew;
