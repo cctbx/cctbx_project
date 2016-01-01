@@ -78,7 +78,7 @@ class execute_case(object):
   Fit_I, Fit_G, Fit_B = minimizer.e_unpack()
   Gstats=flex.mean_and_variance(Fit_G.select(G_visited==1))
   print "G mean and standard deviation:",Gstats.mean(),Gstats.unweighted_sample_standard_deviation()
-  if work_params.levmar.parameter_flags.BFACTOR is True:
+  if "Bfactor" in work_params.levmar.parameter_flags:
     Bstats=flex.mean_and_variance(Fit_B.select(G_visited==1))
     print "B mean and standard deviation:",Bstats.mean(),Bstats.unweighted_sample_standard_deviation()
   show_correlation(Fit_I,model_I,I_visited,"Correlation of I:")

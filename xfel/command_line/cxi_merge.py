@@ -236,13 +236,12 @@ levmar {
       .help = parameter for fine tuning very large parameter optimizations.  1.E-7 is a
       .help = reasonably comprehensive refinement, 1.E-4 is a good (short) choice for >10E5 parameters.
     }
-  parameter_flags
-    .help = select which parameters to refine XXX reimplement later with bitflags
-    {
-    BFACTOR = True
-      .type = bool
-      .help = refine one B-factor for each lattice
-    }
+  parameter_flags = PartialityDeff PartialityEtaDeff Bfactor Deff Eta Rxy
+    .help = choices for the refinement
+    .help = PartialityDeff and PartialityEtaDeff are mutually exclusize mosaic models (or don't use)
+    .help = Others are refineable parameters to choose from, default is only refine G and I.
+    .type = choice
+    .multiple = True
 }
 """ + mysql_master_phil
 
@@ -318,6 +317,18 @@ def load_result (file_name,
   else:
     for idx in xrange(len(obj["observations"])):
       obj["observations"][idx] = obj["observations"][idx].change_basis(reindex_op)
+    from cctbx.sgtbx import change_of_basis_op
+    cb_op = change_of_basis_op(reindex_op)
+    ORI = obj["current_orientation"][0]
+    Astar = matrix.sqr(ORI.reciprocal_matrix())
+    CB_OP_sqr = matrix.sqr(cb_op.c().r().as_double()).transpose()
+    from cctbx.crystal_orientation import crystal_orientation
+    ORI_new = crystal_orientation((Astar*CB_OP_sqr).elems, True)
+    obj["current_orientation"][0] = ORI_new
+    # unexpected, first since cxi_merge had a previous postrefinement implementation that
+    #  apparently failed to apply the reindex_op (XXX still must be fixed), and secondly
+    #  that the crystal_orientation.change basis() implementation fails to work because
+    #  it does not use the transpose:  obj["current_orientation"][0].change_basis(cb_op)
     pass
     #raise WrongBravaisError("Skipping file with alternate indexing %s"%reindex_op)
 
