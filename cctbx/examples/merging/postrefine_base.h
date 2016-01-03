@@ -131,7 +131,7 @@ class postrefine_base: public xscale6e {
 
     void access_cpp_build_up_directly_eigen_eqn(bool objective_only, scitbx::af::shared<double> current_values) {
         get_index_into_array(current_values);//indices into the array of parameters
-        set_rotational_derivatives();
+        if ((bitflags & Rxy) == Rxy){ set_rotational_derivatives(); }
         fvec_callable(current_values); // also calls Rh_rs ratio
         if (objective_only){
           add_residuals(residuals.const_ref(), weights.const_ref());

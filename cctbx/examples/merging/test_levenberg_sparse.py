@@ -72,6 +72,7 @@ class xscale6e(object):
       from xfel.command_line.cxi_merge import master_phil
       phil = iotbx.phil.process_command_line(args=[], master_string=master_phil).show()
       self.params = phil.work.extract()
+      self.params.levmar.parameter_flags.append("Bfactor") # default example refines Bfactor
 
     self.counter = 0
 
@@ -305,14 +306,27 @@ class xscale6e(object):
         i, self.helper.x[i], math.sqrt(1./diagonal_curvatures[i]), math.sqrt(IA(i,i))),
       print "svd err diag: %10.4f"%(IA(i,i)),"eigen: %15.4f"%(Variance_diagonal[ordering[i]])
 
+  def fitted_as_annotated(self,data):
+    result = {}
+    result["I"] = data[ 0 : self.N_I ] # intensity data always packed first
+    last = self.N_I
+    result["G"] = data[ last : last+self.N_G ] # scale factor next
+    last += self.N_G
+    if "Bfactor" in self.params.levmar.parameter_flags:
+      result["B"] = data[ last : last+self.N_G ] # B factor
+      last += self.N_G
+    if "Deff" in self.params.levmar.parameter_flags:
+      result["D"] = data[ last : last+self.N_G ] # mosaic block size
+      last += self.N_G
+    if "Rxy" in self.params.levmar.parameter_flags:
+      result["Ax"] = data[ last : last+self.N_G ] # Rotation-x in degrees
+      last += self.N_G
+      result["Ay"] = data[ last : last+self.N_G ] # Rotation-y in degrees
+      last += self.N_G
+    return result
 
   def unpack(self):
-    return (
-      self.helper.x[ 0 : self.N_I ],                  # fitted intensity
-      self.helper.x[ self.N_I : self.N_I + self.N_G ],# fitted G
-      self.helper.x[ self.N_I + self.N_G : ]          # fitted B
-    )
-    # Later, convert to a datatype to optionally hold more parameter types
+    return self.fitted_as_annotated(self.helper.x)
 
   def unpack_stddev(self):
     # the data-to_parameter ratio will control which method for returning e.s.d's
@@ -331,11 +345,7 @@ class xscale6e(object):
       # estimate standard deviations by normal matrix curvatures
       diagonal_curvatures = self.helper.get_normal_matrix_diagonal()
       estimated_stddev = flex.sqrt(1./diagonal_curvatures)
-    return (
-      estimated_stddev[ 0 : self.N_I ],                  # fitted intensity
-      estimated_stddev[ self.N_I : self.N_I + self.N_G ],# fitted G
-      estimated_stddev[ self.N_I + self.N_G : ]          # fitted B
-    )
+    return self.fitted_as_annotated(estimated_stddev)
 
   def show_summary(self):
     print "%d cycles"%self.counter
@@ -370,16 +380,16 @@ class execute_case(object):
   del T
   minimizer.show_summary()
 
-  Fit_I, Fit_G, Fit_B = minimizer.e_unpack()
-  show_correlation(Fit_G,model_G,G_visited,"Correlation of G:")
-  show_correlation(Fit_B,model_B,G_visited,"Correlation of B:")
-  show_correlation(Fit_I,model_I,I_visited,"Correlation of I:")
-  Fit_I_stddev, Fit_G_stddev, Fit_B_stddev = minimizer.e_unpack_stddev()
+  Fit = minimizer.e_unpack()
+  show_correlation(Fit["G"],model_G,G_visited,"Correlation of G:")
+  show_correlation(Fit["B"],model_B,G_visited,"Correlation of B:")
+  show_correlation(Fit["I"],model_I,I_visited,"Correlation of I:")
+  Fit_stddev = minimizer.e_unpack_stddev()
 
   if plot:
-    plot_it(Fit_G, model_G, mode="G")
-    plot_it(Fit_B, model_B, mode="B")
-    plot_it(Fit_I, model_I, mode="I")
+    plot_it(Fit["G"], model_G, mode="G")
+    plot_it(Fit["B"], model_B, mode="B")
+    plot_it(Fit["I"], model_I, mode="I")
   print
 
   if esd_plot:
@@ -387,13 +397,13 @@ class execute_case(object):
 
   from cctbx.examples.merging.show_results import show_overall_observations
   table1,self.n_bins,self.d_min = show_overall_observations(
-           Fit_I,Fit_I_stddev,I_visited,
+           Fit["I"],Fit_stddev["I"],I_visited,
            ordered_intensities,FSIM,title="Statistics for all reflections")
 
   self.FSIM=FSIM
   self.ordered_intensities=ordered_intensities
-  self.Fit_I=Fit_I
-  self.Fit_I_stddev=Fit_I_stddev
+  self.Fit_I=Fit["I"]
+  self.Fit_I_stddev=Fit_stddev["I"]
   self.I_visited=I_visited
 
 if __name__=="__main__":

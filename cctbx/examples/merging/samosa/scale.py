@@ -6,6 +6,7 @@ from libtbx.development.timers import Timer
 from cctbx.array_family import flex
 from cctbx.examples.merging.task4 import prepare_observations_for_scaling
 from cctbx.examples.merging.data_utilities import I_and_G_base_estimate, plot_it, show_correlation
+from cctbx.examples.merging.data_utilities import show_histogram
 from cctbx.examples.merging.data_subset import mapper_factory
 from cctbx import miller
 from xfel.cxi.merging_database_flex import read_experiments
@@ -76,17 +77,20 @@ class execute_case(object):
   del T
   minimizer.show_summary()
 
-  Fit_I, Fit_G, Fit_B = minimizer.e_unpack()
-  Gstats=flex.mean_and_variance(Fit_G.select(G_visited==1))
+  Fit = minimizer.e_unpack()
+  Gstats=flex.mean_and_variance(Fit["G"].select(G_visited==1))
   print "G mean and standard deviation:",Gstats.mean(),Gstats.unweighted_sample_standard_deviation()
   if "Bfactor" in work_params.levmar.parameter_flags:
-    Bstats=flex.mean_and_variance(Fit_B.select(G_visited==1))
+    Bstats=flex.mean_and_variance(Fit["B"].select(G_visited==1))
     print "B mean and standard deviation:",Bstats.mean(),Bstats.unweighted_sample_standard_deviation()
-  show_correlation(Fit_I,model_I,I_visited,"Correlation of I:")
-  Fit_I_stddev, Fit_G_stddev, Fit_B_stddev = minimizer.e_unpack_stddev()
+  show_correlation(Fit["I"],model_I,I_visited,"Correlation of I:")
+  Fit_stddev = minimizer.e_unpack_stddev()
 
   if plot:
-    plot_it(Fit_I, model_I, mode="I")
+    plot_it(Fit["I"], model_I, mode="I")
+    if "Rxy" in work_params.levmar.parameter_flags:
+      show_histogram(Fit["Ax"],"Histogram of x rotation (degrees)")
+      show_histogram(Fit["Ay"],"Histogram of y rotation (degrees)")
   print
 
   if esd_plot:
@@ -94,15 +98,15 @@ class execute_case(object):
 
   from cctbx.examples.merging.show_results import show_overall_observations
   table1,self.n_bins,self.d_min = show_overall_observations(
-           Fit_I,Fit_I_stddev,I_visited,
+           Fit["I"],Fit_stddev["I"],I_visited,
            reference_data,FOBS,title="Statistics for all reflections",
            work_params = work_params)
 
   self.FSIM=FOBS
   self.ordered_intensities=reference_data
   self.reference_millers=reference_millers
-  self.Fit_I=Fit_I
-  self.Fit_I_stddev=Fit_I_stddev
+  self.Fit_I=Fit["I"]
+  self.Fit_I_stddev=Fit_stddev["I"]
   self.I_visited=I_visited
 
 def run(show_plots,args):
