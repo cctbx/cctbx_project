@@ -27,8 +27,13 @@ def choice_as_bitflag(choices):
                   PartialityEtaDeff = p.PartialityEtaDeff)[choice]
   return flags
 
-from cctbx.examples.merging import xscale6e as base_class
-class levenberg_helper(base_class, normal_eqns.non_linear_ls_mixin):
+def choice_as_helper_base(choices):
+ if "Deff" in choices or "Rxy" in choices:
+    from cctbx.examples.merging import postrefine_base as base_class
+ else:
+    from cctbx.examples.merging import xscale6e as base_class
+
+ class levenberg_helper(base_class, normal_eqns.non_linear_ls_mixin):
   def __init__(pfh, initial_estimates):
     super(levenberg_helper, pfh).__init__(n_parameters=len(initial_estimates))
     pfh.x_0 = flex.double(initial_estimates)
@@ -55,6 +60,7 @@ class levenberg_helper(base_class, normal_eqns.non_linear_ls_mixin):
     if not objective_only: pfh.counter+=1
     pfh.reset()
     pfh.access_cpp_build_up_directly_eigen_eqn(objective_only, current_values = pfh.x)
+ return levenberg_helper
 
 class xscale6e(object):
 
@@ -79,7 +85,11 @@ class xscale6e(object):
     objective_decrease_threshold = self.params.levmar.termination.objective_decrease_threshold
     if "Bfactor" in self.params.levmar.parameter_flags:
         self.x = self.x.concatenate(flex.double(len(Gbase),0.0))
+    if "Deff" in self.params.levmar.parameter_flags:
+        D_values = flex.double([2.*e.crystal.domain_size for e in kwargs["experiments"]])
+        self.x = self.x.concatenate(D_values)
 
+    levenberg_helper = choice_as_helper_base(self.params.levmar.parameter_flags)
     self.helper = levenberg_helper(initial_estimates = self.x)
     self.helper.set_cpp_data(FSIM, self.N_I, self.N_G)
     if kwargs.has_key("experiments"):
@@ -98,6 +108,11 @@ class xscale6e(object):
                step_threshold = step_threshold,
                objective_decrease_threshold = objective_decrease_threshold
     )
+    if "Deff" in self.params.levmar.parameter_flags:
+      newDeff = self.x[self.N_I+self.N_G:] # XXX specific
+      Dstats=flex.mean_and_variance(newDeff)
+      print "Refined Deff mean & standard deviation:",Dstats.mean(),Dstats.unweighted_sample_standard_deviation()
+
     print "End of minimisation: Converged", self.helper.counter,"cycles"
     chi_squared = self.helper.objective() * 2.
     print "obj",chi_squared

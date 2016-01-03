@@ -138,6 +138,7 @@ cctbx/examples/merging/__init__.py -text
 cctbx/examples/merging/data_subset.py -text
 cctbx/examples/merging/data_utilities.py -text
 cctbx/examples/merging/large_scale_merging_ext.cpp -text
+cctbx/examples/merging/postrefine_base.h -text
 cctbx/examples/merging/read_me -text
 cctbx/examples/merging/samosa/__init__.py -text
 cctbx/examples/merging/samosa/join.py -text

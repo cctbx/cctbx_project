@@ -10,6 +10,7 @@
 #include <scitbx/math/mean_and_variance.h>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <cctbx/examples/merging/xscale_prototype_core.h>
+#include <cctbx/examples/merging/postrefine_base.h>
 #include <Eigen/Sparse>
 #include <boost/python/return_internal_reference.hpp>
 #include <boost/math/tools/precision.hpp>
@@ -156,6 +157,16 @@ namespace boost_python { namespace {
         (arg("objective_only"),arg("current_values")))
       .def("reset_mem", &wt6e::reset_mem)
     ;
+
+    typedef postrefine_base prb;
+    class_<prb,
+           bases<wt6e  > >(
+      "postrefine_base", no_init)
+      .def(init<int>(arg("n_parameters")))
+      .def("access_cpp_build_up_directly_eigen_eqn",&prb::access_cpp_build_up_directly_eigen_eqn,
+        (arg("objective_only"),arg("current_values")))
+    ;
+
 
   }
 
