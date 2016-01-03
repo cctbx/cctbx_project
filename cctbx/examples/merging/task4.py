@@ -68,7 +68,7 @@ def prepare_observations_for_scaling(work_params,obs,reference_intensities=None,
   sigma_obs = obs["observed_sigI"]
 
   if half_data_flag in [1,2]:  # apply selection after random numbers have been applied
-    if True or files==None:
+    if files==None:
       half_data_selection = (obs["frame_lookup"]%2)==(half_data_flag%2)
     else:
       # if file names are available, base half data selection on the last digit in filename.
