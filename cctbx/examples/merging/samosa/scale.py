@@ -29,7 +29,7 @@ class execute_case(object):
   max_frameno = flex.max(obs["frame_lookup"])
 
   from iotbx import mtz
-  mtz_object = mtz.object(file_name="1jb0_Fright.mtz")
+  mtz_object = mtz.object(file_name=work_params.scaling.mtz_file)
   #for array in mtz_object.as_miller_arrays():
   #  this_label = array.info().label_string()
   #  print this_label, array.observation_type()
@@ -57,6 +57,7 @@ class execute_case(object):
 
   FOBS = prepare_observations_for_scaling(work_params,obs=obs,
                                           reference_intensities=reference_data,
+                                          files = experiment_manager.get_files(),
                                           half_data_flag=half_data_flag)
 
   I,I_visited,G,G_visited = I_and_G_base_estimate(FOBS,params=work_params)
