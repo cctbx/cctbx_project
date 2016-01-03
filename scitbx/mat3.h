@@ -330,6 +330,17 @@ namespace scitbx {
           -v[1],  v[0],     0);
       }
 
+      //! Returns the outer product, or tensor product of one and other
+      static
+      mat3
+      outer_product( vec3<NumType> const& one, vec3<NumType> const& other )
+      {
+        return mat3 ( one[0]*other[0], one[0]*other[1], one[0]*other[2],
+                      one[1]*other[0], one[1]*other[1], one[1]*other[2],
+                      one[2]*other[0], one[2]*other[1], one[2]*other[2]
+        );
+      }
+
     /// Matrix associated with symmetric rank-2 tensor transform
     /** The change of basis of such a tensor U reads
         \f[ U' = R U R^T \f]
