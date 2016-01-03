@@ -50,3 +50,17 @@ def show_correlation(A, B, selection, message):
   data_B = B.select(selection==1)
   LC = flex.linear_correlation(data_A,data_B)
   print message,LC.coefficient(),"on %d values"%LC.n()
+
+def show_histogram(data,title):
+  from matplotlib import pyplot as plt
+
+  nbins = 40
+  n,bins,patches = plt.hist(data,
+    nbins, normed=0, facecolor="orange", alpha=0.75)
+
+  plt.xlabel("Rotational angle (degrees)")
+  plt.title(title)
+  #plt.axis([0,maxangle,0,1450])
+  #plt.plot([median],[1375],"b|")
+  #plt.plot([rmsd],[1375],"b|")
+  plt.show()

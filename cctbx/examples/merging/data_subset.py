@@ -1,7 +1,6 @@
 from __future__ import division
 from scitbx.array_family import flex
 
-
 """The mapper_unmapper class solves the problem of selecting a subset of the data
    that is "visited" in the simulation.  In other words, selecting
    Miller indices that are actually measured, and frames that actually have observations.
@@ -52,38 +51,34 @@ def mapper_factory(base_class):
         kwargs["experiments"] = new_experiments
 
       base_class.__init__(self,subsetIbase,subsetGbase,remapped_FSIM,**kwargs)
-      fitted_I,fitted_G,fitted_B = self.unpack()
-      fitted_I_stddev,fitted_G_stddev,fitted_B_stddev = self.unpack_stddev()
+      fitted = self.unpack()
+      fitted_stddev = self.unpack_stddev()
 
-      self.expanded_G = flex.double(len(Gbase))
-      self.expanded_G_stddev = flex.double(len(Gbase))
-      for s in xrange(len(G_visited)):
-        if G_visited[s]:
-          self.expanded_G[s]=fitted_G[ forward_map_G[s] ]
-          self.expanded_G_stddev[s]=fitted_G_stddev[ forward_map_G[s] ]
-
-      if len(fitted_B)==0:
-        self.expanded_B = flex.double()
-        self.expanded_B_stddev = flex.double()
-      else:
-        self.expanded_B = flex.double(len(Gbase))
-        self.expanded_B_stddev = flex.double(len(Gbase))
-        for s in xrange(len(G_visited)):
-          if G_visited[s]:
-            self.expanded_B[s]=fitted_B[ forward_map_G[s] ]
-            self.expanded_B_stddev[s]=fitted_B_stddev[ forward_map_G[s] ]
-
-      self.expanded_I = flex.double(len(Ibase))
-      self.expanded_I_stddev = flex.double(len(Ibase))
-      for s in xrange(len(I_visited)):
-        if I_visited[s]:
-          self.expanded_I[s]=fitted_I[ forward_map_I[s] ]
-          self.expanded_I_stddev[s]=fitted_I_stddev[ forward_map_I[s] ]
-
+      def help_expand_data(data):
+        result = {}
+        for key in data.keys():
+          if key=="I":
+            ex = flex.double(len(Ibase))
+            for s in xrange(len(I_visited)):
+              if I_visited[s]:
+                ex[s] = data[key][forward_map_I[s]]
+            result[key]=ex
+          elif key in ["G", "B", "D", "Ax", "Ay"]:
+            ex = flex.double(len(Gbase))
+            for s in xrange(len(G_visited)):
+              if G_visited[s]:
+                ex[s] = data[key][forward_map_G[s]]
+            result[key]=ex
+        return result
+      self.expanded = help_expand_data(fitted)
+      self.expanded_stddev = help_expand_data(fitted_stddev)
       print "DONE UNMAPPING HERE"
 
-    def e_unpack(self): return (self.expanded_I, self.expanded_G, self.expanded_B)
-    def e_unpack_stddev(self): return (self.expanded_I_stddev, self.expanded_G_stddev, self.expanded_B_stddev)
+    def e_unpack(self):
+      return self.expanded
+
+    def e_unpack_stddev(self):
+      return self.expanded_stddev
 
   return mapper_unmapper
 
