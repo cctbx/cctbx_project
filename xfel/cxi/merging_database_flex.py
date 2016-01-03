@@ -161,12 +161,11 @@ class read_experiments(object):
     from dxtbx.model.experiment.experiment_list import Experiment, ExperimentList
     from scitbx import matrix
     self.experiments = ExperimentList()
+    self.unique_file_names = []
 
     self.params = params
     data = pickle.load(open(self.params.output.prefix+"_frame.pickle","rb"))
     frames_text = data.split("\n")
-    self.beams = []
-    self.crystals = []
 
     for item in frames_text:
       tokens = item.split(' ')
@@ -203,11 +202,14 @@ class read_experiments(object):
       self.experiments.append(Experiment(beam=beam,
                                   detector=None, #dummy for now
                                   crystal=crystal))
+      self.unique_file_names.append(tokens[order_dict["unique_file_name"]])
 
     self.show_summary()
 
   def get_experiments(self):
     return self.experiments
+  def get_files(self):
+    return self.unique_file_names
 
   def show_summary(self):
     w = flex.double([e.beam.get_wavelength() for e in self.experiments])
@@ -225,4 +227,5 @@ class read_experiments(object):
     print "Unit cell c mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation()
     d = flex.double([e.crystal.domain_size for e in self.experiments])
     stats=flex.mean_and_variance(d)
-    print "Domain size mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation()
+    # NOTE XXX FIXME:  cxi.index seems to record the half-domain size; report here the full domain size
+    print "Domain size mean and standard deviation:",2.*stats.mean(),2.*stats.unweighted_sample_standard_deviation()

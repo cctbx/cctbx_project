@@ -59,7 +59,7 @@ def prepare_simulation_with_noise(sim, transmittance,
   return result
 
 def prepare_observations_for_scaling(work_params,obs,reference_intensities=None,
-                                       half_data_flag = 0):
+                                       half_data_flag = 0,files = None):
   result = intensity_data()
   result.frame = obs["frame_lookup"]
   result.miller= obs['miller_lookup']
@@ -68,7 +68,17 @@ def prepare_observations_for_scaling(work_params,obs,reference_intensities=None,
   sigma_obs = obs["observed_sigI"]
 
   if half_data_flag in [1,2]:  # apply selection after random numbers have been applied
-    half_data_selection = (obs["frame_lookup"]%2)==(half_data_flag%2)
+    if True or files==None:
+      half_data_selection = (obs["frame_lookup"]%2)==(half_data_flag%2)
+    else:
+      # if file names are available, base half data selection on the last digit in filename.
+      extension = work_params.filename_extension
+      frame_selection = flex.bool([
+          (half_data_flag==1 and (int(item.split("."+extension)[0][-1])%2==1)) or \
+          (half_data_flag==2 and (int(item.split("."+extension)[0][-1])%2==0))
+           for item in files])
+      half_data_selection = frame_selection.select(obs["frame_lookup"])
+
     result.frame  = obs["frame_lookup"].select(half_data_selection)
     result.miller = obs['miller_lookup'].select(half_data_selection)
     result.origHKL = result.origHKL.select(half_data_selection)
