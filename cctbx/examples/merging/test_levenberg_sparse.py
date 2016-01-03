@@ -88,6 +88,8 @@ class xscale6e(object):
     if "Deff" in self.params.levmar.parameter_flags:
         D_values = flex.double([2.*e.crystal.domain_size for e in kwargs["experiments"]])
         self.x = self.x.concatenate(D_values)
+    if "Rxy" in self.params.levmar.parameter_flags:
+        self.x = self.x.concatenate(flex.double(2*len(Gbase),0.0))
 
     levenberg_helper = choice_as_helper_base(self.params.levmar.parameter_flags)
     self.helper = levenberg_helper(initial_estimates = self.x)
@@ -109,9 +111,19 @@ class xscale6e(object):
                objective_decrease_threshold = objective_decrease_threshold
     )
     if "Deff" in self.params.levmar.parameter_flags:
-      newDeff = self.x[self.N_I+self.N_G:] # XXX specific
+      newDeff = self.helper.x[self.N_I+self.N_G:] # XXX specific
       Dstats=flex.mean_and_variance(newDeff)
-      print "Refined Deff mean & standard deviation:",Dstats.mean(),Dstats.unweighted_sample_standard_deviation()
+      print "Refined Deff mean & standard deviation:",
+      print Dstats.mean(),Dstats.unweighted_sample_standard_deviation()
+    if "Rxy" in self.params.levmar.parameter_flags:
+      AX = self.helper.x[self.N_I+self.N_G:self.N_I+2*self.N_G] # XXX specific
+      AY = self.helper.x[self.N_I+2*self.N_G:self.N_I+3*self.N_G] # XXX specific
+      stats=flex.mean_and_variance(AX)
+      print "Rx rotational increments in degrees: %8.6f +/- %8.6f"%(
+           stats.mean(),stats.unweighted_sample_standard_deviation())
+      stats=flex.mean_and_variance(AY)
+      print "Ry rotational increments in degrees: %8.6f +/- %8.6f"%(
+           stats.mean(),stats.unweighted_sample_standard_deviation())
 
     print "End of minimisation: Converged", self.helper.counter,"cycles"
     chi_squared = self.helper.objective() * 2.
