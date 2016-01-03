@@ -127,12 +127,21 @@ struct scaling_common_functions {
       return result;
     }
 
+    void
+    get_index_into_array(const scitbx::af::shared<double>& array){
+      Iptr = array.begin();
+      Gptr = Iptr + N_I;
+      const double* last = Gptr;
+      if ((bitflags & Bfactor) == Bfactor) {
+        Bptr = last + N_G;
+        last = Bptr;
+      }
+    }
+
     inline
     void
     fvec_callable(scitbx::af::shared<double> &current_values) {
-      const double* Iptr = current_values.begin(); //indices into the array of parameters
-      const double* Gptr = Iptr + N_I;
-      const double* Bptr = Gptr + N_G;
+      get_index_into_array(current_values);//indices into the array of parameters
       scitbx::af::shared<double> rh_rs;
       if ((bitflags & PartialityDeff) == PartialityDeff){
         rh_rs = get_rh_rs_ratio();
@@ -161,6 +170,11 @@ struct scaling_common_functions {
     scitbx::af::shared<double> wavelength;
     scitbx::af::shared<double> domain_size;
     scitbx::af::shared<scitbx::mat3<double> > Astar_matrix;
+  protected:
+    const double* Iptr;
+    const double* Gptr;
+    const double* Bptr;
+
 };
 
 class xscale6e: public scitbx::example::non_linear_ls_eigen_wrapper, public scaling_common_functions {
@@ -184,9 +198,7 @@ class xscale6e: public scitbx::example::non_linear_ls_eigen_wrapper, public scal
           add_residuals(residuals.const_ref(), weights.const_ref());
           return;
         }
-        const double* Iptr = current_values.begin(); //indices into the array of parameters
-        const double* Gptr = Iptr + N_I;
-        const double* Bptr = Gptr + N_G;
+        get_index_into_array(current_values);//indices into the array of parameters
         scitbx::af::shared<double> rh_rs;
         if ((bitflags & PartialityDeff) == PartialityDeff){
           rh_rs = get_rh_rs_ratio();
@@ -213,12 +225,14 @@ class xscale6e: public scitbx::example::non_linear_ls_eigen_wrapper, public scal
           jacobian_one_row_data.push_back(-Bitem * Gitem * Pitem);
 
           //derivative with respect to G ... must be indexed second
-          jacobian_one_row_indices.push_back(N_I + fsim.frame[ix]);
+          std::size_t jidx = N_I + fsim.frame[ix];
+          jacobian_one_row_indices.push_back( jidx );
           jacobian_one_row_data.push_back(-Bitem * Iitem * Pitem);
 
           //derivative with respect to B ... must be indexed third
           if ((bitflags & Bfactor) == Bfactor){ //note the necessary parentheses
-          jacobian_one_row_indices.push_back(N_I + N_G + fsim.frame[ix]);
+          jidx += N_G;
+          jacobian_one_row_indices.push_back( jidx );
           jacobian_one_row_data.push_back(Bitem * Gitem * Iitem * Pitem * 2. * fsim.stol_sq[ix]);
           }
 
