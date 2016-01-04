@@ -86,6 +86,9 @@ class execute_case(object):
   show_correlation(Fit["I"],model_I,I_visited,"Correlation of I:")
   Fit_stddev = minimizer.e_unpack_stddev()
 
+  # XXX FIXME known bug:  the length of Fit["G"] could be smaller than the length of experiment_manager.get_files()
+  # Not sure if this has any operational drawbacks.  It's a result of half-dataset selection.
+
   if plot:
     plot_it(Fit["I"], model_I, mode="I")
     if "Rxy" in work_params.levmar.parameter_flags:
@@ -108,6 +111,8 @@ class execute_case(object):
   self.Fit_I=Fit["I"]
   self.Fit_I_stddev=Fit_stddev["I"]
   self.I_visited=I_visited
+  self.Fit = Fit
+  self.experiments = experiment_manager
 
 def run(show_plots,args):
   from xfel.command_line.cxi_merge import master_phil
@@ -141,12 +146,27 @@ def run(show_plots,args):
       print "OK s%1d"%half_data_flag
       #raw_input("OK?")
 
-    work_params.scaling.algorithm="levmar"
-    print case.d_min,work_params.d_min
-    # XXX FIXME. Put a filter on input data such that the execute_case() function respects work_params.d_min
-    # XXX FIXME. Regardless of the tabular output, the levmar analysis is done on the unfiltered set.
-    #assert case.d_min == work_params.d_min
+    """Guest code to retrieve the modified orientations after rotational fitting is done"""
+    if "Rxy" in work_params.levmar.parameter_flags:
+      all_A = [e.crystal.get_A() for e in case.experiments.get_experiments()]
+      all_files = case.experiments.get_files()
+      all_x = case.Fit["Ax"]
+      all_y = case.Fit["Ay"]
 
+      from scitbx import matrix
+      x_axis = matrix.col((1.,0.,0.))
+      y_axis = matrix.col((0.,1.,0.))
+      out = open("aaaaa","w")
+      for x in xrange(len(all_A)):
+        Rx = x_axis.axis_and_angle_as_r3_rotation_matrix(angle=all_x[x], deg=True)
+        Ry = y_axis.axis_and_angle_as_r3_rotation_matrix(angle=all_y[x], deg=True)
+        modified_A = Rx * Ry * all_A[x]
+        filename = all_files[x]
+        print >>out, filename, " ".join([str(a) for a in modified_A.elems])
+
+
+
+    work_params.scaling.algorithm="levmar"
     from xfel.cxi.cxi_cc import run_cc
     run_cc(work_params,work_params.model_reindex_op,sys.stdout)
 
