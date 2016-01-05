@@ -1,4 +1,5 @@
 from __future__ import division
+import libtbx.load_env
 from scitbx.array_family import flex
 from scitbx import sparse
 from scitbx.lstbx import normal_eqns, normal_eqns_solving
@@ -40,112 +41,122 @@ def exercise_linear_normal_equations():
     list(eqs_0.right_hand_side()), [ 11, -6, -2 ], eps=1e-15)
 
 
+non_linear_ls_with_separable_scale_factor__impls = (
+  normal_eqns.non_linear_ls_with_separable_scale_factor__level_2_blas_impl,
+)
+if libtbx.env.has_module('fast_linalg'):
+  non_linear_ls_with_separable_scale_factor__impls += (
+    normal_eqns.non_linear_ls_with_separable_scale_factor__level_3_blas_impl,
+  )
+
 
 def exercise_non_linear_ls_with_separable_scale_factor():
-  test = test_problems.polynomial_fit(normalised=False)
-  test.build_up()
+  for impl in non_linear_ls_with_separable_scale_factor__impls:
+    test = test_problems.polynomial_fit(impl)(normalised=False)
+    test.build_up()
 
-  assert test.n_equations == test.n_data;
+    assert test.n_equations == test.n_data;
 
-  # Reference values computed in tst_normal_equations.nb
-  eps = 5e-14
-  assert approx_equal(test.optimal_scale_factor(), 0.6148971786833856, eps)
-  assert approx_equal(test.objective(), 0.039642707534326034, eps)
-  assert approx_equal(test.chi_sq(), 0.011326487866950296, eps)
+    # Reference values computed in tst_normal_equations.nb
+    eps = 5e-14
+    assert approx_equal(test.optimal_scale_factor(), 0.6148971786833856, eps)
+    assert approx_equal(test.objective(), 0.039642707534326034, eps)
+    assert approx_equal(test.chi_sq(), 0.011326487866950296, eps)
 
 
-  assert not test.step_equations().solved
-  try:
-    test.step_equations().cholesky_factor_packed_u()
-    raise Exception_expected
-  except RuntimeError:
-    pass
-  try:
-    test.step_equations().solution()
-    raise Exception_expected
-  except RuntimeError:
-    pass
+    assert not test.step_equations().solved
+    try:
+      test.step_equations().cholesky_factor_packed_u()
+      raise Exception_expected
+    except RuntimeError:
+      pass
+    try:
+      test.step_equations().solution()
+      raise Exception_expected
+    except RuntimeError:
+      pass
 
-  assert approx_equal(
-    list(test.step_equations().normal_matrix_packed_u()),
-    [ 0.371944193675858, 0.39066546997866547  , 0.10797294655500618,
-                           0.41859250354804045, 0.08077629438075473,
-                                                0.19767268057900367 ],
-    eps)
-  assert approx_equal(
-    list(test.step_equations().right_hand_side()),
-    [ 0.12149917297914861, 0.13803759252793774, -0.025190641142579157 ],
-    eps)
+    assert approx_equal(
+      list(test.step_equations().normal_matrix_packed_u()),
+      [ 0.371944193675858, 0.39066546997866547  , 0.10797294655500618,
+                             0.41859250354804045, 0.08077629438075473,
+                                                  0.19767268057900367 ],
+      eps)
+    assert approx_equal(
+      list(test.step_equations().right_hand_side()),
+      [ 0.12149917297914861, 0.13803759252793774, -0.025190641142579157 ],
+      eps)
 
-  test.step_equations().solve()
+    test.step_equations().solve()
 
-  assert test.step_equations().solved
-  try:
-    test.step_equations().normal_matrix_packed_u()
-    raise Exception_expected
-  except RuntimeError:
-    pass
-  try:
-    test.step_equations().right_hand_side()
-    raise Exception_expected
-  except RuntimeError:
-    pass
+    assert test.step_equations().solved
+    try:
+      test.step_equations().normal_matrix_packed_u()
+      raise Exception_expected
+    except RuntimeError:
+      pass
+    try:
+      test.step_equations().right_hand_side()
+      raise Exception_expected
+    except RuntimeError:
+      pass
 
-  assert approx_equal(
-    list(test.step_equations().cholesky_factor_packed_u()),
-    [ 0.6098722765266986, 0.6405693208478925   ,  0.1770418999366983 ,
-                            0.09090351333425013, -0.3589664912436558 ,
-                                                  0.19357661121640218 ],
-    eps)
-  assert approx_equal(
-    list(test.step_equations().solution()),
-    [ 1.2878697604109028, -0.7727798877778043, -0.5151113342942297 ],
-    eps=1e-12)
+    assert approx_equal(
+      list(test.step_equations().cholesky_factor_packed_u()),
+      [ 0.6098722765266986, 0.6405693208478925   ,  0.1770418999366983 ,
+                              0.09090351333425013, -0.3589664912436558 ,
+                                                    0.19357661121640218 ],
+      eps)
+    assert approx_equal(
+      list(test.step_equations().solution()),
+      [ 1.2878697604109028, -0.7727798877778043, -0.5151113342942297 ],
+      eps=1e-12)
 
-  test_bis = test_problems.polynomial_fit(normalised=True)
-  test_bis.build_up()
-  assert approx_equal(test_bis.objective(),
-                      test.objective()/test.sum_w_yo_sq(),
-                      eps=1e-15)
-  assert approx_equal(test_bis.chi_sq(), test.chi_sq(), eps=1e-15)
+    test_bis = test_problems.polynomial_fit(impl)(normalised=True)
+    test_bis.build_up()
+    assert approx_equal(test_bis.objective(),
+                        test.objective()/test.sum_w_yo_sq(),
+                        eps=1e-15)
+    assert approx_equal(test_bis.chi_sq(), test.chi_sq(), eps=1e-15)
 
 
 def exercise_non_linear_ls_with_separable_scale_factor_plus_penalty():
-  test = test_problems.polynomial_fit_with_penalty(normalised=False)
-  test.build_up()
-  assert test.n_equations == test.n_data + 1
+  for impl in non_linear_ls_with_separable_scale_factor__impls:
+    test = test_problems.polynomial_fit_with_penalty(impl)(normalised=False)
+    test.build_up()
+    assert test.n_equations == test.n_data + 1
 
-  eps = 5e-14
-  # reference values from tst_normal_equations.nb again
+    eps = 5e-14
+    # reference values from tst_normal_equations.nb again
 
-  assert approx_equal(test.optimal_scale_factor(), 0.6148971786833856, eps)
-  redu = test.reduced_problem()
-  assert test.objective() == redu.objective()
-  assert test.step_equations().right_hand_side()\
-         .all_eq(redu.step_equations().right_hand_side())
-  assert test.step_equations().normal_matrix_packed_u()\
-         .all_eq(redu.step_equations().normal_matrix_packed_u())
+    assert approx_equal(test.optimal_scale_factor(), 0.6148971786833856, eps)
+    redu = test.reduced_problem()
+    assert test.objective() == redu.objective()
+    assert test.step_equations().right_hand_side()\
+           .all_eq(redu.step_equations().right_hand_side())
+    assert test.step_equations().normal_matrix_packed_u()\
+           .all_eq(redu.step_equations().normal_matrix_packed_u())
 
-  assert approx_equal(test.objective(), 1.3196427075343262, eps)
-  assert approx_equal(test.chi_sq(), 0.32991067688358156, eps)
-  assert approx_equal(
-    test.step_equations().right_hand_side(),
-    (1.7214991729791487, -1.4619624074720623, 1.5748093588574208),
-    eps)
-  assert approx_equal(
-    test.step_equations().normal_matrix_packed_u(),
-    (1.371944193675858, -0.6093345300213344,  1.107972946555006,
-                         1.4185925035480405, -0.9192237056192452,
-                                              1.1976726805790037),
-    eps)
+    assert approx_equal(test.objective(), 1.3196427075343262, eps)
+    assert approx_equal(test.chi_sq(), 0.32991067688358156, eps)
+    assert approx_equal(
+      test.step_equations().right_hand_side(),
+      (1.7214991729791487, -1.4619624074720623, 1.5748093588574208),
+      eps)
+    assert approx_equal(
+      test.step_equations().normal_matrix_packed_u(),
+      (1.371944193675858, -0.6093345300213344,  1.107972946555006,
+                           1.4185925035480405, -0.9192237056192452,
+                                                1.1976726805790037),
+      eps)
 
-  test_bis = test_problems.polynomial_fit_with_penalty(normalised=True)
-  test_bis.build_up()
-  assert approx_equal(test_bis.chi_sq(), test.chi_sq(), eps=1e-15)
+    test_bis = test_problems.polynomial_fit_with_penalty(impl)(normalised=True)
+    test_bis.build_up()
+    assert approx_equal(test_bis.chi_sq(), test.chi_sq(), eps=1e-15)
 
-  n_equations = test.n_equations
-  test.build_up()
-  assert test.n_equations == n_equations
+    n_equations = test.n_equations
+    test.build_up()
+    assert test.n_equations == n_equations
 
 def exercise_levenberg_marquardt(non_linear_ls, plot=False):
   non_linear_ls.restart()
