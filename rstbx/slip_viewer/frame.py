@@ -28,7 +28,7 @@ class chooser_wrapper:
   def get_detector(self):  return self.image_set.get_detector()
   def get_scan(self):  return self.image_set.get_scan()
   def get_beam(self):  return self.image_set.get_beam()
-  def get_mask(self):  raise Exception("implement get mask")
+  def get_mask(self):  pass # raise Exception("implement get mask")
 
   def get_raw_data(self):
     return self.image_set.get_raw_data(self.index)[0]
