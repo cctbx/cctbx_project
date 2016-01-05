@@ -11,8 +11,8 @@ from libtbx.utils import Sorry
 import libtbx.load_env
 
 licence_text = """\
-This CCTBX build make use of OpenBLAS and of its dependency libgfortran.
-We reproduce below the licence of both.
+This CCTBX build make use of OpenBLAS and of its dependency libgfortran and
+libquadmath. We reproduce below the licence of all of them.
 
 OpenBLAS
 --------
@@ -38,6 +38,25 @@ You should have received a copy of the GNU General Public License and
 a copy of the GCC Runtime Library Exception along with this program;
 see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 <http://www.gnu.org/licenses/>.  */
+
+libquadmath
+-----------
+/* GCC Quad-Precision Math Library
+   Copyright (C) 2010, 2011 Free Software Foundation, Inc.
+   Written by Francois-Xavier Coudert  <fxcoudert@gcc.gnu.org>
+This file is part of the libquadmath library.
+Libquadmath is free software; you can redistribute it and/or
+modify it under the terms of the GNU Library General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
+Libquadmath is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Library General Public License for more details.
+You should have received a copy of the GNU Library General Public
+License along with libquadmath; see the file COPYING.LIB.  If
+not, write to the Free Software Foundation, Inc., 51 Franklin Street -
+Fifth Floor, Boston, MA 02110-1301, USA.  */
 """
 
 
@@ -99,7 +118,6 @@ def run(platform_info,
       for dll in ('libgfortran-3.dll', 'libquadmath-0.dll',
                   'libgcc_s_dw2-1.dll'):
         shutil.copy(path.join('c:/mingw/bin', dll), abs(libtbx.env.lib_path))
-    for f in ('COPYING3', 'COPYING.RUNTIME'):
     elif platform_info.is_darwin():
       openblas_dylib = path.join(stage_dir, 'lib', 'libopenblas.dylib')
       shutil.copy(openblas_dylib, abs(libtbx.env.lib_path))
@@ -107,6 +125,7 @@ def run(platform_info,
         if 'libgfortran' in li or 'libquadmath' in li:
           dylib = li.split()[0]
           shutil.copy(dylib, abs(libtbx.env.lib_path))
+    for f in ('COPYING3', 'COPYING.RUNTIME', 'COPYING.LIB'):
       if platform_info.is_mingw():
         fmt = {'filename':f}
         fmt.update(platform_info)
