@@ -100,6 +100,13 @@ def run(platform_info,
                   'libgcc_s_dw2-1.dll'):
         shutil.copy(path.join('c:/mingw/bin', dll), abs(libtbx.env.lib_path))
     for f in ('COPYING3', 'COPYING.RUNTIME'):
+    elif platform_info.is_darwin():
+      openblas_dylib = path.join(stage_dir, 'lib', 'libopenblas.dylib')
+      shutil.copy(openblas_dylib, abs(libtbx.env.lib_path))
+      for li in subprocess.check_output(['otool', '-L', openblas_dylib]).split():
+        if 'libgfortran' in li or 'libquadmath' in li:
+          dylib = li.split()[0]
+          shutil.copy(dylib, abs(libtbx.env.lib_path))
       if platform_info.is_mingw():
         fmt = {'filename':f}
         fmt.update(platform_info)
