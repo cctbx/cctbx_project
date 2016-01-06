@@ -34,6 +34,10 @@ class rna_bond (validation.residue) :
   def as_string (self, prefix="") :
     return prefix + self.format_values()
 
+  def as_table_row_phenix (self) :
+    return [ self.id_str(), self.atoms_info[0].name, self.atoms_info[1].name,
+             self.score ]
+
 class rna_angle (validation.residue) :
   __slots__ = validation.residue.__slots__ + ["atoms_info", "sigma", "delta"]
 
@@ -49,6 +53,10 @@ class rna_angle (validation.residue) :
 
   def as_string (self, prefix="") :
     return prefix + self.format_values()
+
+  def as_table_row_phenix (self) :
+    return [ self.id_str(), self.atoms_info[0].name, self.atoms_info[1].name,
+             self.atoms_info[2].name, self.score ]
 
 class rna_pucker (validation.residue) :
   """
@@ -104,6 +112,9 @@ class rna_suite (validation.residue) :
   def as_string (self, prefix="") :
     return prefix + self.format_values()
 
+  def as_table_row_phenix (self) :
+    return [ self.suite_id, self.suite, self.suiteness, self.triaged_angle ]
+
 class rna_geometry (validation.validation) :
   def show (self, out=sys.stdout, prefix="  ", verbose=True) :
     if (len(self.results) > 0) :
@@ -116,9 +127,9 @@ class rna_geometry (validation.validation) :
 class rna_bonds (rna_geometry) :
   output_header = "#residue:atom_1:atom_2:num_sigmas"
   label = "Backbone bond lenths"
-  gui_list_headers = ["Chain", "Residue", "Altloc", "Bad bonds", "Max. sigma"]
-  gui_formats = ["%s", "%s", "%s", "%d", "%.1f"]
-  wx_column_widths = [160] * 5
+  gui_list_headers = ["Residue", "Atom 1", "Atom 2", "Sigmas"]
+  gui_formats = ["%s", "%s", "%s", "%.2f"]
+  wx_column_widths = [160] * 4
   def __init__ (self, pdb_hierarchy, pdb_atoms, geometry_restraints_manager) :
     rna_geometry.__init__(self)
     cutoff = 4
@@ -141,7 +152,8 @@ class rna_bonds (rna_geometry) :
       self.n_total += 1
       sigma = sqrt(1 / restraint.weight)
       num_sigmas = restraint.delta / sigma
-      if abs(num_sigmas) >= cutoff:
+      is_outlier = (abs(num_sigmas) >= cutoff)
+      if (is_outlier):
         self.n_outliers += 1
         self.results.append(rna_bond(
           chain_id=labels.chain_id,
@@ -152,7 +164,8 @@ class rna_bonds (rna_geometry) :
           atoms_info=validation.get_atoms_info(pdb_atoms, proxy.i_seqs),
           sigma=sigma,
           score=num_sigmas,
-          delta=restraint.delta))
+          delta=restraint.delta,
+          outlier=is_outlier))
 
   def get_result_class (self) : return rna_bond
 
@@ -168,8 +181,8 @@ class rna_bonds (rna_geometry) :
 class rna_angles (rna_geometry) :
   output_header = "#residue:atom_1:atom_2:atom_3:num_sigmas"
   label = "Backbone bond angles"
-  gui_list_headers = ["Chain", "Residue", "Altloc", "Bad angles", "Max. sigma"]
-  gui_formats = ["%s", "%s", "%s", "%d", "%.1f"]
+  gui_list_headers = ["Residue", "Atom 1", "Atom 2", "Atom 3", "Sigmas"]
+  gui_formats = ["%s", "%s", "%s", "%s", "%.2f"]
   wx_column_widths = [160] * 5
   def __init__ (self, pdb_hierarchy, pdb_atoms, geometry_restraints_manager) :
     rna_geometry.__init__(self)
@@ -192,7 +205,8 @@ class rna_angles (rna_geometry) :
       self.n_total += 1
       sigma = sqrt(1 / restraint.weight)
       num_sigmas = restraint.delta / sigma
-      if abs(num_sigmas) >= cutoff:
+      is_outlier = (abs(num_sigmas) >= cutoff)
+      if (is_outlier):
         self.n_outliers += 1
         self.results.append(rna_angle(
           chain_id=labels.chain_id,
@@ -203,7 +217,8 @@ class rna_angles (rna_geometry) :
           atoms_info=validation.get_atoms_info(pdb_atoms, proxy.i_seqs),
           sigma=sigma,
           score=num_sigmas,
-          delta=restraint.delta))
+          delta=restraint.delta,
+          outlier=is_outlier))
 
   def get_result_class (self) : return rna_angle
 
@@ -300,7 +315,7 @@ class rna_puckers (rna_geometry) :
 class rna_suites (rna_geometry) :
   output_header = "#suiteID:suite:suiteness:triaged_angle"
   label = "Backbone torsion suites"
-  gui_list_headers = ["Chain", "Residue", "Altloc", "Triaged angles",]
+  gui_list_headers = ["Suite ID", "Suite", "Suiteness", "Triaged angles",]
   gui_formats = ["%s"] * 4
   wx_column_widths = [200] * 4
   __slots__ = rna_geometry.__slots__ + ["n_incomplete", "n_triaged",
