@@ -89,6 +89,9 @@ class rna_pucker (validation.residue) :
   def as_string (self, prefix="") :
     return prefix + self.format_values()
 
+  def as_table_row_phenix (self) :
+    return [ self.id_str(), self.delta_angle, self.epsilon_angle ]
+
 class rna_suite (validation.residue) :
   """
   RNA backbone "suite", analyzed using the external program 'suitename'.
@@ -130,7 +133,8 @@ class rna_bonds (rna_geometry) :
   gui_list_headers = ["Residue", "Atom 1", "Atom 2", "Sigmas"]
   gui_formats = ["%s", "%s", "%s", "%.2f"]
   wx_column_widths = [160] * 4
-  def __init__ (self, pdb_hierarchy, pdb_atoms, geometry_restraints_manager) :
+  def __init__ (self, pdb_hierarchy, pdb_atoms, geometry_restraints_manager,
+                outliers_only=True) :
     rna_geometry.__init__(self)
     cutoff = 4
     sites_cart = pdb_atoms.extract_xyz()
@@ -153,7 +157,7 @@ class rna_bonds (rna_geometry) :
       sigma = sqrt(1 / restraint.weight)
       num_sigmas = restraint.delta / sigma
       is_outlier = (abs(num_sigmas) >= cutoff)
-      if (is_outlier):
+      if (is_outlier or not outliers_only):
         self.n_outliers += 1
         self.results.append(rna_bond(
           chain_id=labels.chain_id,
@@ -184,7 +188,8 @@ class rna_angles (rna_geometry) :
   gui_list_headers = ["Residue", "Atom 1", "Atom 2", "Atom 3", "Sigmas"]
   gui_formats = ["%s", "%s", "%s", "%s", "%.2f"]
   wx_column_widths = [160] * 5
-  def __init__ (self, pdb_hierarchy, pdb_atoms, geometry_restraints_manager) :
+  def __init__ (self, pdb_hierarchy, pdb_atoms, geometry_restraints_manager,
+                outliers_only=True) :
     rna_geometry.__init__(self)
     cutoff = 4
     sites_cart = pdb_atoms.extract_xyz()
@@ -206,7 +211,7 @@ class rna_angles (rna_geometry) :
       sigma = sqrt(1 / restraint.weight)
       num_sigmas = restraint.delta / sigma
       is_outlier = (abs(num_sigmas) >= cutoff)
-      if (is_outlier):
+      if (is_outlier or not outliers_only):
         self.n_outliers += 1
         self.results.append(rna_angle(
           chain_id=labels.chain_id,
@@ -239,9 +244,9 @@ class rna_puckers (rna_geometry) :
   ]
   output_header = "#residue:delta_angle:is_delta_outlier:epsilon_angle:is_epsilon_outler"
   label = "Sugar pucker"
-  gui_list_headers = ["Chain", "Residue", "Altloc", "Bad angles"]
-  gui_formats = ["%s", "%s", "%s", "%s"]
-  wx_column_widths = [200]*4
+  gui_list_headers = ["Residue", "Delta", "Epsilon"]
+  gui_formats = ["%s", "%.2f", "%.2f"]
+  wx_column_widths = [200]*3
   def __init__ (self, pdb_hierarchy, params=None, outliers_only=True) :
     if (params is None) :
       params = rna_sugar_pucker_analysis.master_phil.extract()
@@ -354,7 +359,7 @@ class rna_suites (rna_geometry) :
             self.n_triaged += 1
           is_outlier = True
           self.n_outliers += 1
-        if (is_outlier) or (not outliers_only) :
+        if (is_outlier or not outliers_only) :
           self.results.append(rna_suite(
             altloc = temp[5],
             chain_id = temp[2],
@@ -418,11 +423,13 @@ class rna_validation (slots_getstate_setstate):
     self.bonds = rna_bonds(
       pdb_hierarchy=pdb_hierarchy,
       pdb_atoms=pdb_atoms,
-      geometry_restraints_manager=geometry_restraints_manager)
+      geometry_restraints_manager=geometry_restraints_manager,
+      outliers_only=outliers_only)
     self.angles = rna_angles(
       pdb_hierarchy=pdb_hierarchy,
       pdb_atoms=pdb_atoms,
-      geometry_restraints_manager=geometry_restraints_manager)
+      geometry_restraints_manager=geometry_restraints_manager,
+      outliers_only=outliers_only)
     self.puckers = rna_puckers(
       pdb_hierarchy=pdb_hierarchy,
       params=getattr(params, "rna_sugar_pucker_analysis", None),
