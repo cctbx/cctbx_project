@@ -1,0 +1,12 @@
+import libtbx.load_env
+
+Import("env_base", "env_etc")
+env = env_base.Clone()
+# TODO env_etc.enable_more_warnings(env=env)
+env_etc.include_registry.append(
+  env=env,
+  paths=["."] + env_etc.scitbx_common_includes)
+env = env_base.Clone()
+if libtbx.env.has_module('fast_linalg'):
+  env_etc.enable_fast_linalg(env)
+  env.Program(target='bench', source='bench.cpp')
