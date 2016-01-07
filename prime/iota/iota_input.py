@@ -289,7 +289,7 @@ def process_input(args,
     params.analysis.heatmap = None
 
   final_phil = master_phil.format(python_object=params)
-  
+
   temp_phil = [final_phil]
   diff_phil = master_phil.fetch_diff(sources=temp_phil)
 
