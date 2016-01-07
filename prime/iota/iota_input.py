@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 11/02/2015
+Last Changed: 01/06/2016
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -49,6 +49,9 @@ image_conversion
   beamstop = 0
     .type = float
     .help = Beamstop shadow threshold, zero to skip
+  distance = 0
+    .type = float
+    .help = Alternate crystal-to-detector distance (set to zero to leave the same)
   beam_center
     .help = Alternate beam center coordinates (set to zero to leave the same)
   {
@@ -74,13 +77,9 @@ cctbx
   grid_search
     .help = "Parameters for the grid search."
   {
-    flag_on = True
-      .type = bool
-      .help = Set to false to only use median spotfinding parameters
-    smart = False
-      .type = bool
-      .help = Set to True to perform a pseudo-gradient search instead of brute
-      .help = force grid search
+    type = None *brute_force smart
+      .type = choice
+      .help = Set to None to only use median spotfinding parameters
     area_median = 5
       .type = int
       .help = Median spot area.
@@ -114,7 +113,7 @@ cctbx
     min_sigma = 5
       .type = int
       .help = minimum I/sigma(I) cutoff for "strong spots"
-    select_by = *mosaicity epv
+    select_by = *epv mosaicity
       .type = choice
       .help = Use mosaicity or Ewald proximal volume for optimal parameter selection
     prefilter
@@ -162,7 +161,7 @@ analysis
   charts = False
     .type = bool
     .help = If True, outputs PDF files w/ charts of mosaicity, rmsd, etc.
-  heatmap = *None show file both
+  heatmap = None *file show both
     .type = choice
     .help = Show / output to file a heatmap of grid search results
 }
@@ -241,6 +240,26 @@ def process_input(args,
     params.description = 'IOTA parameters auto-generated on {}'.format(now)
     params.input = [input_file]
 
+  final_phil = master_phil.format(python_object=params)
+
+  # Parse in-line params into phil
+  argument_interpreter = argument_interpreter(master_phil=master_phil)
+  consume = []
+  for arg in phil_args:
+    try:
+      command_line_params = argument_interpreter.process(arg=arg)
+      final_phil = final_phil.fetch(sources=[command_line_params,])
+      consume.append(arg)
+    except Sorry,e:
+      pass
+  for item in consume:
+    phil_args.remove(item)
+  if len(phil_args) > 0:
+    raise Sorry("Not all arguments processed, remaining: {}".format(phil_args))
+
+  # Perform command line check and modify params accordingly
+  params = final_phil.extract()
+
   # Check for -r option and set random subset parameter
   if args.random > 0:
     params.advanced.random_sample.flag_on = True
@@ -265,24 +284,13 @@ def process_input(args,
   if args.select:
     params.cctbx.selection.select_only.flag_on = True
 
+  # Check if grid search has been turned off and turn off heatmap
+  if params.cctbx.grid_search.type == None:
+    params.analysis.heatmap = None
+
   final_phil = master_phil.format(python_object=params)
-
-  argument_interpreter = argument_interpreter(master_phil=master_phil)
-  consume = []
-  for arg in phil_args:
-    try:
-      command_line_params = argument_interpreter.process(arg=arg)
-      final_phil = final_phil.fetch(sources=[command_line_params,])
-      consume.append(arg)
-    except Sorry,e:
-      pass
-  for item in consume:
-    phil_args.remove(item)
-  if len(phil_args) > 0:
-    raise Sorry("Not all arguments processed, remaining: {}".format(phil_args))
-
+  
   temp_phil = [final_phil]
-  params = final_phil.extract()
   diff_phil = master_phil.fetch_diff(sources=temp_phil)
 
   with Capturing() as output:
@@ -323,7 +331,6 @@ def write_defaults(current_path, txt_out):
                     'distl_highres_limit = 2.5',
                     'distl_lowres_limit=50.0',
                     'distl{',
-                    '  #verbose=True',
                     '  res.outer=2.5',
                     '  res.inner=50.0',
                     '  peak_intensity_maximum_factor=1000',
@@ -333,6 +340,7 @@ def write_defaults(current_path, txt_out):
                     '}',
                     'integration {',
                     '  background_factor=2',
+                    '  enable_one_to_one_safeguard=True',
                     '  model=user_supplied',
                     '  spotfinder_subset=spots_non-ice',
                     '  mask_pixel_value=-2',
@@ -349,7 +357,7 @@ def write_defaults(current_path, txt_out):
                     'mosaicity_limit=2.0',
                     'distl_minimum_number_spots_for_indexing=16',
                     'distl_permit_binning=False',
-                    'beam_search_scope=5'
+                    'beam_search_scope=0.5'
                     ]
   with open(def_target_file, 'w') as targ:
     for line in default_target:

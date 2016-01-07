@@ -99,6 +99,7 @@ class Integrator(object):
 
       try:
         easy_run.fully_buffered(command,join_stdout_stderr=True).show_stdout()
+        print "XXXXXXXXXXXXXXXXXX"
         if not os.path.exists(tmppath):
           raise Exception("Indexing failed for an unknown reason")
 
@@ -119,7 +120,6 @@ class Integrator(object):
           print "Integration error for %s:"%self.img,
           error_message = "{}".format(str(e).replace('\n', ' ')[:50])
         print e
-
 
     # Output results of integration (from the "info" object returned by
     # run_one_index_core)
