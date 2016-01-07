@@ -68,8 +68,11 @@ def run(platform_info,
   if build:
     compilers = {}
     try:
-      compilers['FC'] = subprocess.check_output(
-        [os.environ['SHELL'], '-c', 'which gfortran']).strip()
+      if platform_info.is_mingw():
+        compilers['FC'] = r'C:\mingw\bin\gfortran.exe'
+      else:
+        compilers['FC'] = subprocess.check_output(
+          [os.environ['SHELL'], '-c', 'which gfortran']).strip()
     except subprocess.CalledProcessError:
       raise Sorry("No working gfortran. Please install one.\n\n"
                   "On MacOS, we recommend using MacPorts:\n"
@@ -138,10 +141,9 @@ def run(platform_info,
           shutil.copy(dylib, abs(libtbx.env.lib_path))
     for f in ('COPYING3', 'COPYING.RUNTIME', 'COPYING.LIB'):
       if platform_info.is_mingw():
-        fmt = {'filename':f}
-        fmt.update(platform_info)
         shutil.copy(
-          'c:/mingw/share/doc/gcc/%(gcc_version)s/%(filename)s' % fmt,
+          'c:/mingw/share/doc/gcc/%s/%s' %
+          (platform_info.c_compiler_version, f),
           abs(libtbx.env.build_path))
     licences = {
       'openblas_licence': open('LICENSE').read(),
