@@ -260,11 +260,15 @@ if __name__ == '__main__':
                       '(None means that OpenBLAS build system shall decide)')
   p.add_argument('-j', dest='procs_for_build', type=int, default=1,
                  help='Number of cores to use for building')
-  args = vars(p.parse_args())
+  args = p.parse_args()
+  # On MinGW, at least on my virtual machine, -jn with n > 1 stalls the build
+  if info.is_mingw() and args.procs_for_build > 1:
+    print "\n*** Parallel build with -jn is not supported on MinGW ***\n"
+    sys.exit(1)
 
   # Run
   try:
-    run(platform_info=info, **args)
+    run(platform_info=info, **vars(args))
   except subprocess.CalledProcessError, e:
     print "\n*** Error %i ***\n" % e.returncode
     print "--- Reminder ---\n"
