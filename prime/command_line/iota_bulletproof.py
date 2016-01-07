@@ -15,6 +15,7 @@ from xfel.phil_preferences import load_cxi_phil
 from xfel.cxi.display_spots import run_one_index_core
 from libtbx import easy_pickle
 
+
 if __name__ == "__main__":
   # should be invoked like this: "iota.bulletproof tmppath target args"
   tmppath = sys.argv[1]

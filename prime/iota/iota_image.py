@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 11/02/2015
+Last Changed: 01/06/2016
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -65,11 +65,11 @@ class SingleImage(object):
     self.viz_path = None
 
     if self.params.advanced.integrate_with == 'cctbx':
-      if not self.params.cctbx.grid_search.flag_on:
+      if self.params.cctbx.grid_search.type == None:
         self.params.cctbx.grid_search.area_range = 0
         self.params.cctbx.grid_search.height_range = 0
         self.params.cctbx.grid_search.sig_height_search = False
-      if self.params.cctbx.grid_search.smart:
+      if self.params.cctbx.grid_search.type == 'smart':
         self.hrange = 1
         self.arange = 1
       else:
@@ -78,7 +78,7 @@ class SingleImage(object):
       self.grid_points = []
       self.grid, self.final = self.generate_grid()
     elif self.params.advanced.integrate_with == 'dials':
-      self.final = {'img':self.conv_img, 'sih':0, 'sph':0, 'spa':0, 'a':0,
+      self.final = {'img':self.conv_img, 'sih':999, 'sph':0, 'spa':0, 'a':0,
                     'b':0, 'c':0, 'alpha':0, 'beta':0, 'gamma':0, 'sg':'',
                     'strong':0, 'res':0, 'mos':0, 'epv':0, 'info':'',
                     'final':None, 'program':'dials'}
@@ -164,7 +164,7 @@ class SingleImage(object):
                              'strong':0, 'res':0, 'mos':0,
                              'epv':0, 'info':'', 'ok':True})
 
-    int_line = {'img':self.conv_img, 'sih':0, 'sph':0, 'spa':0, 'a':0, 'b':0,
+    int_line = {'img':self.conv_img, 'sih':666, 'sph':0, 'spa':0, 'a':0, 'b':0,
                 'c':0, 'alpha':0, 'beta':0, 'gamma':0, 'sg':'', 'strong':0,
                 'res':0, 'mos':0, 'epv':0, 'info':'', 'final':None,
                 'program':'cctbx'}
@@ -206,6 +206,13 @@ class SingleImage(object):
         msec, sec = math.modf(scan.get_epochs()[0])
         timestamp = evt_timestamp((sec,msec))
 
+      if self.params.image_conversion.beamstop != 0 or\
+         self.params.image_conversion.beam_center.x != 0 or\
+         self.params.image_conversion.beam_center.y != 0 or\
+         self.params.image_conversion.rename_pickle_prefix != 'Auto' or\
+         self.params.image_conversion.rename_pickle_prefix != None:
+        img_type = 'unconverted'
+
       # Assemble datapack
       data = dpack(data=raw_data,
                    distance=distance,
@@ -217,6 +224,17 @@ class SingleImage(object):
                    saturated_value=overload,
                    timestamp=timestamp
                    )
+
+      #print "data: ", type(raw_data)
+      #print "pixel size: ", type(pixel_size)
+      #print 'wavelength: ', type(wavelength)
+      #print "beamX: ", type(beam_x)
+      #print "saturation: ", type(overload)
+      #print "timestamp: ", type(timestamp)
+
+      #for i in dir(raw_data): print i
+
+      #exit()
 
       if scan is not None:
         osc_start, osc_range = scan.get_oscillation()
@@ -362,6 +380,11 @@ class SingleImage(object):
     beam_stop_sel = img_raw_bytes <= img_thresh
     img_masked = img_raw_bytes.set_selected(beam_stop_sel, -2)
 
+    # mask extensive overloads, too
+    #top_thresh = data['SATURATED_VALUE']
+    #beam_stop_sel = img_raw_bytes >= top_thresh
+    #img_masked_2 = img_masked.set_selected(beam_stop_sel, -2)
+
     data['DATA'] = img_masked
     return data
 
@@ -385,6 +408,13 @@ class SingleImage(object):
                                             img_data['SIZE2'],
                                             img_data['DISTANCE']))
 
+    if self.params.image_conversion.beamstop != 0 or\
+       self.params.image_conversion.beam_center.x != 0 or\
+       self.params.image_conversion.beam_center.y != 0 or\
+       self.params.image_conversion.distance != 0 or\
+       self.params.image_conversion.rename_pickle_prefix != 'Auto' or\
+       self.params.image_conversion.rename_pickle_prefix != None:
+      self.status = 'unconverted'
 
     if self.img_type == 'unconverted':
       # Check for and/or create a converted pickles folder
@@ -419,6 +449,7 @@ class SingleImage(object):
 
       # Convert raw image to image pickle
       beamstop = self.params.image_conversion.beamstop
+      distance = self.params.image_conversion.distance
       beam_center = [self.params.image_conversion.beam_center.x,
                      self.params.image_conversion.beam_center.y]
       square = self.params.image_conversion.square_mode
@@ -426,6 +457,8 @@ class SingleImage(object):
         pixel_size = img_data['PIXEL_SIZE']
         img_data['BEAM_CENTER_X'] = int(round(beam_center[0] * pixel_size))
         img_data['BEAM_CENTER_Y'] = int(round(beam_center[1] * pixel_size))
+      if distance != 0:
+        img_data['DISTANCE'] = distance
       if square != "None":
         img_data = self.square_pickle(img_data)
       if beamstop != 0:
@@ -680,7 +713,7 @@ class SingleImage(object):
           self.select_cctbx()
 
         # If smart grid search is active run multiple rounds until convergence
-        if self.params.cctbx.grid_search.smart:
+        if self.params.cctbx.grid_search.type == 'smart':
           if self.fail == None and self.final['epv'] < prev_epv:
             prev_epv = self.final['epv']
             prev_final = self.final
@@ -691,6 +724,9 @@ class SingleImage(object):
             self.grid, self.final = self.generate_grid()
             self.final['final'] = self.fin_file
             if len(self.grid) == 0:
+              self.final = prev_final
+              self.status = prev_status
+              self.fail = prev_fail
               terminate = True
               continue
             if self.verbose:

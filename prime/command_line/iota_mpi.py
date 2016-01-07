@@ -4,12 +4,12 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 09/23/2015
+Last Changed: 01/06/2016
 Description : IOTA command-line module for running modules in order.
-              Version 2.20
+              Version 2.24
 '''
 
-iota_version = '2.23'
+iota_version = '2.24'
 help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 
@@ -25,7 +25,8 @@ iota.mpi iota.param --mpi analyze
 Run IOTA in three separate batches (initialization, image processing,
 analysis); can use MPI (mpirun) to run the image processing step.
 Can run these in sequence in a shell script or any other kind of a
-submission script. Useful for huge datasets.
+submission script. Useful for huge datasets. (NOTE: make sure that,
+in iota.param, mp_method = mpi)
 
 """
 
@@ -126,7 +127,7 @@ def run_one_image(image, init, progbar=True):
       gs_prog.finished()
 
   if 'imp' in args.mpi:
-    single_image = img.SingleImage(image, init, verbose=False)
+    single_image = img.SingleImage(image, init, verbose=True)
 
     # Import / check / convert / triage image
     if progbar:
@@ -144,7 +145,7 @@ def run_one_image(image, init, progbar=True):
     if single_image.fail == None:
       if progbar:
         advance_progbar(image[0], image[1])
-      img_object = single_image.integrate_cctbx('split grid', grid_point)
+      img_object = single_image.integrate_cctbx(tag='split grid', grid_point=grid_point)
     else:
       return single_image
 
@@ -198,44 +199,43 @@ if __name__ == "__main__":
       print 'This run not initialized. Use "--mpi init" option'
       misc.iota_exit(iota_version, True)
 
-
-  # if necessary, read in saved image objects
-  if 'imp' in args.mpi:
-    inp_list = init.input_list
-    msg = "Importing {} images".format(len(inp_list))
-
-  elif 'gri' in args.mpi:
-
-    obj_list = [ep.load(os.path.join(init.gs_base, i)) for i in os.listdir(init.gs_base)]
-    inp_list = [[obj, item] for obj in obj_list for item in range(len(obj.grid))]
-
-  elif 'sel' in args.mpi or 'fin' in args.mpi:
-    inp_list = [ep.load(os.path.join(init.gs_base, i)) for i in os.listdir(init.gs_base)]
-
-  # Run all modules in order in multiprocessor mode
-  img_list = [[i, len(inp_list) + 1, j] for i, j in enumerate(inp_list, 1)]
-  if init.params.n_processors > len(img_list):
-    init.params.n_processors = len(img_list)
-  img_objects = parallel_map(iterable  = img_list,
-                             func      = run_wrapper,
-                             processes = init.params.n_processors,
-                             method    = init.params.mp_method,
-                             preserve_order = False)
-  misc.iota_exit(iota_version, True)
-
   if 'ana' in args.mpi:
-    img_objects = [ep.load(os.path.join(init.gs_base, i)) for i in os.listdir(init.gs_base)]
-    int_objects = [i for i in img_objects if i.final['final'] != None]
+    img_objects = [ep.load(os.path.join(init.obj_base, i)) for i in os.listdir(init.obj_base)]
+    int_objects = [i for i in img_objects if i.fail == None]
     if len(int_objects) != 0:
 
       # Analysis of integration results
       analysis = Analyzer(int_objects, init.logfile, iota_version, init.now)
       analysis.print_results()
-      analysis.unit_cell_analysis(init.params.advanced.cluster_threshold,
+      analysis.unit_cell_analysis(init.params.analysis.cluster_threshold,
                                   init.int_base)
       analysis.print_summary(init.int_base)
       analysis.make_prime_input(init.int_base)
     else:
       print "No images integrated"
 
-  misc.iota_exit(iota_version)
+  else:
+
+    if 'imp' in args.mpi:
+      inp_list = init.input_list
+      msg = "Importing {} images".format(len(inp_list))
+
+    elif 'gri' in args.mpi:
+      obj_list = [ep.load(os.path.join(init.obj_base, i)) for i in os.listdir(init.obj_base)]
+      inp_list = [[obj, item] for obj in obj_list for item in range(len(obj.grid))]
+
+    elif 'sel' in args.mpi or 'fin' in args.mpi:
+      inp_list = [ep.load(os.path.join(init.obj_base, i)) for i in os.listdir(init.obj_base)]
+
+    # Run all modules in order in multiprocessor mode
+    img_list = [[i, len(inp_list) + 1, j] for i, j in enumerate(inp_list, 1)]
+    if init.params.n_processors > len(img_list):
+      init.params.n_processors = len(img_list)
+    img_objects = parallel_map(iterable  = img_list,
+                               func      = run_wrapper,
+                               processes = init.params.n_processors,
+                               method    = init.params.mp_method,
+                               preserve_order = False)
+    misc.iota_exit(iota_version, True)
+
+misc.iota_exit(iota_version)
