@@ -85,6 +85,17 @@ def run(platform_info,
           [os.environ['SHELL'], '-c', 'which clang']).strip()
       except subprocess.CalledProcessError:
         raise Sorry("Please install Apple Developer tools.")
+
+    # clean build to avoid issues
+    subprocess.check_call(['make', 'clean'], shell=True)
+    # the export library libopenblas.dll.a is built from this file
+    # but it is not removed by make clean, which can result in mismatches
+    try:
+      os.remove('exports/libopenblas.def')
+    except Exception:
+      pass
+
+    # Let's build now!
     args = ['make', '-j%i' % procs_for_build,
             'USE_THREAD=1',
             'NUM_THREADS=16',
