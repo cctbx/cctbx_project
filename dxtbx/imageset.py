@@ -17,7 +17,7 @@ class ReaderBase(object):
   def __init__(self):
     pass
 
-  def __cmp__(self, other):
+  def __eq__(self, other):
     pass
 
   def get_image_paths(self, indices=None):
@@ -64,7 +64,7 @@ class NullReader(ReaderBase):
     ReaderBase.__init__(self)
     self._filenames = filenames
 
-  def __cmp__(self, other):
+  def __eq__(self, other):
     ''' Compare with another reader. '''
     return isinstance(other, NullReader)
 
@@ -122,7 +122,7 @@ class SingleFileReader(ReaderBase):
     # Set the format instance
     self._format = format_instance
 
-  def __cmp__(self, other):
+  def __eq__(self, other):
     '''Compare the reader to another reader.'''
     return self._format == other._format
 
@@ -270,7 +270,7 @@ class MultiFileReader(ReaderBase):
     else:
       self._is_format_valid = NullFormatChecker()
 
-  def __cmp__(self, other):
+  def __eq__(self, other):
     '''Compare the reader by format class and filename list.'''
     return (self.get_format_class() == other.get_format_class() and
             self.get_image_paths() == other.get_image_paths())
@@ -376,7 +376,7 @@ class MemReader(ReaderBase):
   def __init__(self, images):
     self._images = images
 
-  def __cmp__(self, other):
+  def __eq__(self, other):
     return self.get_format_class() == other.get_format_class()
 
   def get_image_paths(self, indices=None):
@@ -608,10 +608,12 @@ class ImageSet(object):
     for f in self._indices:
       yield self.reader().read(f)
 
-  def __cmp__(self, other):
+  def __eq__(self, other):
     ''' Compare this image set to another. '''
     if other is None:
       return False
+    if other is self:
+      return True
     return self.reader() == other.reader()
 
   def indices(self):
@@ -799,10 +801,12 @@ class MemImageSet(ImageSet):
       else:
         yield tuple([img.get_raw_data(i) for i in xrange(npanels)])
 
-  def __cmp__(self, other):
+  def __eq__(self, other):
     ''' Compare this image set to another. '''
     if other is None:
       return False
+    if other is self:
+      return True
     return self._images == other._images
 
   def indices(self):
