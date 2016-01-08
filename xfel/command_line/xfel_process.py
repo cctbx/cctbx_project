@@ -246,7 +246,7 @@ class Script(object):
     info('*' * 80)
 
 
-    indexed = self.process_reference(indexed)
+    indexed,_ = self.process_reference(indexed)
 
     # Get the integrator from the input parameters
     info('Configuring integrator from input parameters')
@@ -303,26 +303,39 @@ class Script(object):
     from dials.array_family import flex
     from logging import info
     from time import time
+    from libtbx.utils import Sorry
     if reference is None:
-      return None
+      return None, None
     st = time()
     assert("miller_index" in reference)
     assert("id" in reference)
-    info('Removing reference spots with invalid coordinates')
-    info(' using %d reference spots' % len(reference))
-    mask = flex.bool([x == (0, 0, 0) for x in reference['xyzcal.mm']])
-    reference.del_selected(mask)
-    info(' removed %d with no coordinates' % mask.count(True))
-    mask = flex.bool([h == (0, 0, 0) for h in reference['miller_index']])
-    reference.del_selected(mask)
-    info(' removed %d with no miller indices' % mask.count(True))
-    mask = flex.bool([x < 0 for x in reference['id']])
-    reference.del_selected(mask)
-    reference['id'] = flex.size_t(list(reference['id']))
-    info(' removed %d with negative experiment id' % mask.count(True))
-    info(' using %d reference spots' % len(reference))
+    info('Processing reference reflections')
+    info(' read %d strong spots' % len(reference))
+    mask = reference.get_flags(reference.flags.indexed)
+    rubbish = reference.select(mask == False)
+    if mask.count(False) > 0:
+      reference.del_selected(mask == False)
+      info(' removing %d unindexed reflections' %  mask.count(True))
+    if len(reference) == 0:
+      raise Sorry('''
+        Invalid input for reference reflections.
+        Expected > %d indexed spots, got %d
+      ''' % (0, len(reference)))
+    mask = reference['miller_index'] == (0, 0, 0)
+    if mask.count(True) > 0:
+      rubbish.extend(reference.select(mask))
+      reference.del_selected(mask)
+      info(' removing %d reflections with hkl (0,0,0)' %  mask.count(True))
+    mask = reference['id'] < 0
+    if mask.count(True) > 0:
+      raise Sorry('''
+        Invalid input for reference reflections.
+        %d reference spots have an invalid experiment id
+      ''' % mask.count(True))
+    info(' using %d indexed reflections' % len(reference))
+    info(' found %d junk reflections' % len(rubbish))
     info(' time taken: %g' % (time() - st))
-    return reference
+    return reference, rubbish
 
   def save_reflections(self, reflections, filename):
     ''' Save the reflections to file. '''
