@@ -23,7 +23,7 @@ class chooser_wrapper:
     self.index = index
 
   def __str__(self):
-    return "%s [%d]"%(self.path,self.index)
+    return "%s [%d]"%(self.path,self.index+1)
 
   def get_detector(self):  return self.image_set.get_detector()
   def get_scan(self):  return self.image_set.get_scan()
