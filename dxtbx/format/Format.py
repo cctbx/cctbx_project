@@ -179,12 +179,14 @@ class Format(object):
   def get_raw_data(self):
     '''Get the pixel intensities (i.e. read the image and return as a
     flex array.'''
+    try:
+      image = self.detectorbase
+      image.read()
+      raw_data = image.get_raw_data()
 
-    image = self.detectorbase
-    image.read()
-    raw_data = image.get_raw_data()
-
-    return raw_data
+      return raw_data
+    except Exception:
+      return None
 
   def get_detectorbase(self):
     '''Return the instance of detector base.'''
@@ -238,25 +240,25 @@ class Format(object):
   def _goniometer(self):
     '''Overload this method to read the image file however you like so
     long as the result is an goniometer.'''
-
+    return None
     raise RuntimeError, 'overload me'
 
   def _detector(self):
     '''Overload this method to read the image file however you like so
     long as the result is an detector.'''
-
+    return None
     raise RuntimeError, 'overload me'
 
   def _beam(self):
     '''Overload this method to read the image file however you like so
     long as the result is an beam.'''
-
+    return None
     raise RuntimeError, 'overload me'
 
   def _scan(self):
     '''Overload this method to read the image file however you like so
     long as the result is an scan.'''
-
+    return None
     raise RuntimeError, 'overload me'
 
   def get_mask(self):
