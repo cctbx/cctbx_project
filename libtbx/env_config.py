@@ -409,6 +409,9 @@ class environment:
     assert self.python_exe.access(os.X_OK)
 
     self.read_command_version_suffix()
+    # the following are modules explicitly specified on the command-line
+    # --only reset the list and --exclude prunes from it
+    self.explicitly_requested_modules = set()
     self.build_options = None
     self.repository_paths = []
     self.command_line_redirections = {}
@@ -739,14 +742,19 @@ Wait for the command to finish, then try again.""" % vars())
         self.command_line_redirections[module_name] = dist_path
       module_names.append(module_name)
     if (pre_processed_args.warm_start):
+      self.explicitly_requested_modules |= set(module_names)
       if (not command_line.options.only):
         excludes = []
         if (command_line.options.exclude) :
           excludes = command_line.options.exclude.split(",")
+        self.explicitly_requested_modules -= set(excludes)
         for module in self.module_list:
           if (not module.name in excludes) :
             module_names.append(module.name)
+      else:
+        self.explicitly_requested_modules = set(module_names)
     else:
+      self.explicitly_requested_modules = set(module_names)
       self.build_options = build_options(
         compiler=command_line.options.compiler,
         mode=command_line.options.build,
@@ -2316,6 +2324,9 @@ def unpickle():
   # XXX backward compatibility 2015-09-05
   if not hasattr(env.build_options, "enable_boost_threads"):
     env.build_options.enable_boost_threads = default_enable_boost_threads
+  # XXX backward compatibility 2016-01-08
+  if not hasattr(env, 'explicitly_requested_modules'):
+    env.explicitly_requested_modules = set()
   return env
 
 def warm_start(args):
