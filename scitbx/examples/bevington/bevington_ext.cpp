@@ -51,6 +51,7 @@ namespace boost_python { namespace {
       .def("get_cholesky_lower", &nllsew::get_cholesky_lower)
       .def("get_cholesky_diagonal", &nllsew::get_cholesky_diagonal)
       .def("get_eigen_permutation_ordering", &nllsew::get_eigen_permutation_ordering)
+      .def("add_equations", &nllsew::add_equations)
     ;
 
     typedef bevington_silver silver;
