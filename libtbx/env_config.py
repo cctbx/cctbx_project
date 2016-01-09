@@ -1641,6 +1641,9 @@ class module:
             "modules_required_for_use", []))
           self.optional.extend(config.get(
             "optional_modules", []))
+          self.optional.extend(
+            set(config.get("optional_modules_only_if_explicit_request", [])) &
+            self.env.explicitly_requested_modules)
           sep = os.sep
           for re_pattern in config.get("exclude_from_binary_bundle", []):
             if (sep != "/"):
