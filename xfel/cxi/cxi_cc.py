@@ -348,7 +348,7 @@ def load_cc_data(params,reindexing_op,output):
   selected_uniform = []
   if have_iso_ref:
     if params.include_negatives:
-      uniformA = (uniform[1].sigmas() > 0.)
+      uniformA = (uniform[0].sigmas() > 0.).__and__(uniform[1].sigmas() > 0.)
     elif params.scaling.log_cutoff is None:
       uniformA = (uniform[0].data() > 0.).__and__(uniform[1].data() > 0.)
     else:
