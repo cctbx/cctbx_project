@@ -4,6 +4,7 @@
 #include <scitbx/array_family/shared.h>
 #include <boost/python/tuple.hpp>
 #include <scitbx/lstbx/normal_equations.h>
+#include <scitbx/sparse/matrix.h>
 #include <vector>
 #include <Eigen/Sparse>
 
@@ -227,6 +228,40 @@ class non_linear_ls_eigen_wrapper:  public scitbx::lstbx::normal_equations::non_
         }
       }
       return result;
+    }
+
+    /// Add equations A x = b given a CCTBX-sparse matrix jacobian
+    /** w[i] weights the i-th equation, i.e. the row \f$ A_{i.} \f$.
+        The right_hand_side is negated, see lstbx/normal_equations.h
+        Function intended for use within SparseLevMar algorithm of DIALS refinement.
+     */
+    inline
+    void add_equations(af::const_ref<scalar_t> const &r,
+                       sparse::matrix<scalar_t> const &jacobian,
+                       af::const_ref<scalar_t> const &w)
+    {
+      typedef sparse::matrix<scalar_t>::row_iterator row_iterator;
+      SCITBX_ASSERT(   r.size() == jacobian.n_rows()
+                    && (!w.size() || r.size() == w.size()))
+                   (r.size())(jacobian.n_rows())(w.size());
+      SCITBX_ASSERT(jacobian.n_cols() == eigen_wrapper.n_parameters())
+                   (jacobian.n_cols())(eigen_wrapper.n_parameters());
+      add_residuals(r, w);
+      sparse::matrix<scalar_t> a = jacobian.transpose();
+      for (int ieqn = 0; ieqn < a.n_cols(); ++ieqn){
+        int ndata = a.col(ieqn).non_zeroes();
+        row_iterator iend = a.col(ieqn).end();
+        for (row_iterator i = a.col(ieqn).begin(); i != iend; ++i)  {
+          std::size_t idx_i = i.index();
+          eigen_wrapper.right_hand_side_[idx_i] -= w[ieqn] * (*i) * r[ieqn];
+
+          for (row_iterator j=i; j != iend; ++j) {
+            tripletList.push_back( triplet_t(idx_i, j.index(), w[ieqn] * (*i) * (*j)) );
+          }
+        }
+      }
+      set_from_triplets();
+      wipe_triplets();
     }
 
     /// Add the equation \f$ A_{i.} x = b_i \f$ with the given weight
