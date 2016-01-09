@@ -307,6 +307,21 @@ def warn_if_unexpected_md5_hexdigest(
   print >> out, "*"*width
   return True
 
+def md5_hexdigest(filename=None, blocksize=256):
+  """ Compute the MD5 hexdigest of the content of the given file,
+      efficiently even for files much larger than the available RAM.
+
+      The file is read by chunks of `blocksize` MB.
+  """
+  blocksize *= 1024**2
+  m = hashlib_md5()
+  f = open(filename, 'rb')
+  buf = f.read(blocksize)
+  while buf:
+    m.update(buf)
+    buf = f.read(blocksize)
+  return m.hexdigest()
+
 def get_memory_from_string(mem_str):
   """
   Converts a string of a memory or file size (i.e. "10G") into a number.
