@@ -66,31 +66,19 @@ def run(platform_info,
   # Build a distro which can optimally run on any machine
   # with Intel or AMD processors
   if build:
-    compilers = {}
-    try:
-      if platform_info.is_mingw():
-        compilers['FC'] = r'C:\mingw\bin\gfortran.exe'
-      else:
-        compilers['FC'] = subprocess.check_output(
-          [os.environ['SHELL'], '-c', 'which gfortran']).strip()
-    except subprocess.CalledProcessError:
-      raise Sorry("No working gfortran. Please install one.\n\n"
-                  "On MacOS, we recommend using MacPorts:\n"
-                  "~> sudo port install gcc5\n"
-                  "~> sudo port select --set gcc mp-gcc5\n\n"
-                  "On Windows, please use the MinGW GUI.\n\n"
-                  "On Linux, please use your platform package manager.\n")
-    if platform_info.is_darwin():
-      try:
-        # we need clang to generate correct AVX code
-        # (thanks to MacPorts portfile!)
-        compilers['CC'] = subprocess.check_output(
-          [os.environ['SHELL'], '-c', 'which clang']).strip()
-      except subprocess.CalledProcessError:
-        raise Sorry("Please install Apple Developer tools.")
+    # Arguments for building with make
+    make_build_args = ['-j%i' % procs_for_build,
+                       'CC=%s' % platform_info.c_compiler,
+                       'FC=%s' % platform_info.fortran_compiler,
+                       'USE_THREAD=1',
+                       'NUM_THREADS=16',
+                       'DYNAMIC_ARCH=1',
+                       'NO_STATIC=1']
+    if bits:
+      make_build_args.append('BINARY=%i' % bits)
 
     # clean build to avoid issues
-    subprocess.check_call(['make', 'clean'], shell=True)
+    subprocess.check_call(['make', 'clean'])
     # the export library libopenblas.dll.a is built from this file
     # but it is not removed by make clean, which can result in mismatches
     try:
@@ -99,23 +87,12 @@ def run(platform_info,
       pass
 
     # Let's build now!
-    args = ['make', '-j%i' % procs_for_build,
-            'USE_THREAD=1',
-            'NUM_THREADS=16',
-            'DYNAMIC_ARCH=1',
-            'NO_STATIC=1']
-    if bits:
-      args.append('BINARY=%i' % bits)
-    args.extend('%s=%s' % item for item in compilers.iteritems())
-    cmd = ' '.join(args)
-    subprocess.check_call(cmd, shell=True)
+    subprocess.check_call(['make'] + make_build_args)
 
   # Stage it one level up from the current build directory
   stage_dir = path.join(abs(libtbx.env.build_path.dirname()), 'openblas')
   if stage:
-    subprocess.check_call(['make',
-                           'PREFIX=%s' % stage_dir,
-                           'install'])
+    subprocess.check_call(['make', 'PREFIX=%s' % stage_dir, 'install'])
 
   # Install the headers and the DLL's in the CCTBX build directory
   # Note that we need to install the runtime library for GNU Fortran and GCC
@@ -186,14 +163,32 @@ class platform_info(object):
   darwin_mask = re.compile(r'^(\w+-apple-darwin\d+)')
 
   def __init__(self):
-    self.c_compiler = 'gcc' if sys.platform != 'darwin' else 'clang'
-    self.c_compiler_version = subprocess.check_output(
-      [self.c_compiler, '-dumpversion']).strip()
-    self.platform = subprocess.check_output(
-      [self.c_compiler, '-dumpmachine']).strip()
-    if sys.platform == 'darwin':
-      m = self.darwin_mask.search(self.platform)
-      self.platform = m.group(1)
+    try:
+      self.c_compiler = 'clang' if sys.platform == 'darwin' else 'gcc'
+      self.c_compiler_version = subprocess.check_output(
+        [self.c_compiler, '-dumpversion']).strip()
+      self.platform = subprocess.check_output(
+        [self.c_compiler, '-dumpmachine']).strip()
+      if sys.platform == 'darwin':
+        m = self.darwin_mask.search(self.platform)
+        self.platform = m.group(1)
+      self.fortran_compiler = 'gfortran'
+      self.fortran_compiler_version = subprocess.check_output(
+        [self.fortran_compiler, '-dumpversion']).strip()
+    except subprocess.CalledProcessError:
+      if not hasattr(self, 'c_compiler_version'):
+        raise Sorry('No working C compiler. Please install one.\n\n'
+                    'On MacOS, it has to be clang: please install the'
+                    'latest Xcode from the AppStore.\n\n'
+                    "On Windows, please use the MinGW GUI.\n\n"
+                    'On Linux, please use your platform package manager.\n')
+      if not hasattr(self, 'fortran_compiler_version'):
+        raise Sorry("No working gfortran. Please install one.\n\n"
+                    "On MacOS, we recommend using MacPorts:\n"
+                    "~> sudo port install gcc5\n"
+                    "~> sudo port select --set gcc mp-gcc5\n\n"
+                    "On Windows, please use the MinGW GUI.\n\n"
+                    "On Linux, please use your platform package manager.\n")
 
   def check_support(self):
     if not reduce(
