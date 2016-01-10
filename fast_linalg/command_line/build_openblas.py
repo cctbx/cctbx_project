@@ -134,26 +134,36 @@ def run(platform_info,
   # Package the files added to the CCTBX build directory
   if package:
     arch = platform_info.arch_of_libopenblas()
+    name = 'openblas-%s-%s.zip' % ('windows' if platform_info.is_mingw() else
+                                   'macos' if platform_info.is_darwin() else
+                                   'linux', arch)
+    archive = zipfile.ZipFile(
+      abs(libtbx.env.build_path.dirname() / name),
+      mode="w")
+    openblas_inc = libtbx.env.include_path / 'openblas'
     if platform_info.is_mingw():
-      archive = zipfile.ZipFile(
-        abs(libtbx.env.build_path.dirname() / ('openblas-windows-%s.zip' % arch)),
-        mode="w")
-      try:
-        openblas_inc = libtbx.env.include_path / 'openblas'
-        for p in ([openblas_inc] +
-                  [openblas_inc / f for f in os.listdir(abs(openblas_inc))] +
-                  [libtbx.env.lib_path / lib
-                   for lib in ('libopenblas.dll', 'openblas.lib',
-                               'libgfortran-3.dll', 'libquadmath-0.dll',
-                               'libgcc_s_dw2-1.dll')] +
-                  [libtbx.env.build_path / f
-                   for f in ('copying3', 'copying.runtime',
-                             'openblas_licence')]):
-          archive.write(
-            abs(p),
-            arcname=path.relpath(abs(p), abs(libtbx.env.build_path)))
-      finally:
-        archive.close()
+      libraries = ('libopenblas.dll', 'openblas.lib',
+                   'libgfortran-3.dll', 'libquadmath-0.dll',
+                   'libgcc_s_dw2-1.dll')
+    elif platform_info.is_darwin():
+      libraries = filter(lambda f: 'libgfortran' in f or 'libquadmath' in f,
+                         os.listdir(abs(libtbx.env.lib_path)))
+      libraries.append('libopenblas.dylib')
+    else:
+      libraries = ()
+    for p in ([openblas_inc] +
+              [openblas_inc / f for f in os.listdir(abs(openblas_inc))] +
+              [libtbx.env.lib_path / lib
+               for lib in libraries] +
+              [libtbx.env.build_path / f
+               for f in ('copying3', 'copying.runtime',
+                         'openblas_licence')]):
+      p = abs(p)
+      if not os.path.exists(p):
+        continue
+      archive.write(
+        p,
+        arcname=path.relpath(p, abs(libtbx.env.build_path)))
 
 
 class platform_info(object):
