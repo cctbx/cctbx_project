@@ -92,7 +92,9 @@ def run(platform_info,
   # Stage it one level up from the current build directory
   stage_dir = path.join(abs(libtbx.env.build_path.dirname()), 'openblas')
   if stage:
-    subprocess.check_call(['make', 'PREFIX=%s' % stage_dir, 'install'])
+    subprocess.check_call(['make',
+                           'PREFIX=%s' % platform_info.fix_path(stage_dir),
+                           'install'])
 
   # Install the headers and the DLL's in the CCTBX build directory
   # Note that we need to install the runtime library for GNU Fortran and GCC
@@ -229,6 +231,14 @@ class platform_info(object):
       return '64'
     else:
       return None
+
+  def fix_path(self, p):
+    if self.is_mingw():
+      # Python believes it runs on vanilla Windows and produces Windows path
+      # we need to fix them for make
+      p = re.sub(r'^([A-Za-z]):\\', r'/\1/', p)
+      p = p.replace('\\', '/')
+    return p
 
 
 if __name__ == '__main__':
