@@ -27,8 +27,9 @@ def check_pango(base_dir):
     pangorc = os.path.join(base_dir, "etc", "pango", "pangorc")
     if not os.path.isfile(pangorc):
       return False
-    with open(pangorc, 'r') as pango_file:
-      settings = pango_file.read()
+    pango_file = open(pangorc, 'r')
+    settings = pango_file.read()
+    pango_file.close()
     if settings != _generate_pangorc(base_dir):
       return False
     return True
