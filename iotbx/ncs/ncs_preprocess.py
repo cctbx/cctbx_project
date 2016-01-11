@@ -667,7 +667,7 @@ class ncs_group_object(object):
       ph = pdb_hierarchy_inp
     # print "in build_ncs_obj_from_group_dict, group_dict"
     # for k,v in group_dict.iteritems():
-    #   print "  ", k, 
+    #   print "  ", k,
     #   for a in v.iselections:
     #     print "      ", list(a[0])
     #   print "    ", v.residue_index_list
