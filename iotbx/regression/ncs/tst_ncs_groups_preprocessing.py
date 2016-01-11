@@ -38,6 +38,8 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
   def test_create_ncs_domain_pdb_files(self):
     """ check that files are created for each NCS group as expected """
+    # it should create 3 files (by number of found NCS groups) and write
+    # there all atoms from NCS groups except chains excluded in exclude_chains
     if have_phenix:
       fn = 'SimpleNCSFromPDB_test.pdb'
       open(fn,'w').write(pdb_str_3)
@@ -52,12 +54,15 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
       fn_gr0 = prefix + '_group_1.pdb'
       fn_gr1 = prefix + '_group_2.pdb'
+      fn_gr2 = prefix + '_group_3.pdb'
 
-      self.assertEqual(obj.ncs_obj.number_of_ncs_groups,2)
+      self.assertEqual(obj.ncs_obj.number_of_ncs_groups,3)
       pdb_inp_0 = pdb.input(file_name=fn_gr0)
       pdb_inp_1 = pdb.input(file_name=fn_gr1)
-      self.assertEqual(pdb_inp_0.atoms().size(),10)
+      pdb_inp_2 = pdb.input(file_name=fn_gr2)
+      self.assertEqual(pdb_inp_0.atoms().size(),6)
       self.assertEqual(pdb_inp_1.atoms().size(),8)
+      self.assertEqual(pdb_inp_2.atoms().size(),4)
     else:
       print "phenix not available, skipping test_create_ncs_domain_pdb_files()"
       pass
@@ -250,7 +255,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     r2 = trans_obj.ncs_transform['002'].r
     #
     self.assertEqual(len(group_ids),5)
-    self.assertEqual(set(group_ids),{1,2})
+    self.assertEqual(set(group_ids),{0,1})
     self.assertEqual(tran_sn,{1,2,3,4,5})
     self.assertEqual(group_keys,{'001', '002', '003', '004', '005'})
     #
@@ -832,7 +837,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_correct_grouping']
+  tests = ['test_processing_of_asu_2']
   suite = unittest.TestSuite(map(TestNcsGroupPreprocessing,tests))
   return suite
 

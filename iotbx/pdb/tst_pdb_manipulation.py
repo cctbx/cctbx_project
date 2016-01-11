@@ -359,6 +359,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     pdb_strings = [pdb_test_data7,pdb_test_data8]
     methods = ['ba','cau']
     for method,pdb_string in zip(methods,pdb_strings):
+      print "method:", method
       pdb_inp = pdb.input(source_info=None, lines=pdb_string)
       crystal_symmetry = pdb_inp.crystal_symmetry()
       m = multimer(
@@ -388,7 +389,9 @@ class TestMultimerReconstruction(unittest.TestCase):
       self.assertTrue(the_same)
       # Look at the rotation and translation found by the NCS search
       s = m.assembled_multimer.as_pdb_string(crystal_symmetry=crystal_symmetry)
+      print "new h:", s
       ncs_obj = ncs.input(pdb_string=s)
+      print "ncs_obj.number_of_ncs_groups", ncs_obj.number_of_ncs_groups
       r1 = ncs_obj.ncs_transform['002'].r
       t1 = ncs_obj.ncs_transform['002'].t
       r2 = ncs_obj.ncs_transform['003'].r
@@ -397,7 +400,10 @@ class TestMultimerReconstruction(unittest.TestCase):
       self.assertTrue(the_same)
       (the_same, transpose)= is_same_transform(r2,t2,r2_expected,t2_expected)
       self.assertTrue(the_same)
-      self.assertEqual(ncs_obj.number_of_ncs_groups,1)
+      if method == 'ba':
+        self.assertEqual(ncs_obj.number_of_ncs_groups,1)
+      elif method == 'cau':
+        self.assertEqual(ncs_obj.number_of_ncs_groups,2)
 
   # @unittest.SkipTest
   def test_ignoring_mtrix_rec(self):
@@ -897,7 +903,7 @@ def run_selected_tests():
 if __name__=='__main__':
   exercise_ss_multiplication()
   # use for individual tests
-  # unittest.TextTestRunner().run(run_selected_tests())
+  unittest.TextTestRunner().run(run_selected_tests())
 
   # Use to run all tests
-  unittest.main(verbosity=0)
+  # unittest.main(verbosity=0)
