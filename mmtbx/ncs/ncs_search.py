@@ -85,6 +85,20 @@ class Chains_info(object):
     self.no_altloc = []
     self.center_of_coordinates = None
 
+  def __str__(self):
+    from StringIO import StringIO
+    assert 0
+    res = StringIO()
+    print >> res, "res_names:", self.res_names
+    print >> res, "self.resid", self.resid
+    print >> res, "self.atom_names", self.atom_names
+    print >> res, "self.atom_selection", self.atom_selection
+    print >> res, "self.chains_atom_number", self.chains_atom_number
+    print >> res, "self.no_altloc", self.no_altloc
+    print >> res, "self.center_of_coordinates", self.center_of_coordinates
+    return res.getvalue()
+
+
 def find_ncs_in_hierarchy(ph,
                           min_contig_length=10,
                           min_percent=0.95,
@@ -150,14 +164,32 @@ def find_ncs_in_hierarchy(ph,
     exclude_misaligned_residues=exclude_misaligned_residues,
     match_radius=match_radius,
     similarity_threshold=similarity_threshold)
+  # print "match_dict.keys()", match_dict.keys()
+  # print "match_dict"
+  # for k, v in match_dict.iteritems():
+  #   print "  ", k, list(v[0]), list(v[1])
+  # assert 0
   #
+
+  # new, the basic way of processing, by Oleg.
+  return ncs_grouping_and_group_dict(match_dict, ph)
+
+
   if use_minimal_master_ncs:
-    transform_to_group,match_dict = minimal_master_ncs_grouping(match_dict)
+    transform_to_group,match_dict = minimal_master_ncs_grouping(match_dict, ph)
   else:
     transform_to_group,match_dict = minimal_ncs_operators_grouping(match_dict)
   #
+  # print "match_dict"
+  # for k, v in match_dict.iteritems():
+  #   print "  ", k, list(v[0]), list(v[1])
+
+
   group_dict = build_group_dict(transform_to_group,match_dict,chains_info)
-  return group_dict
+  # print "group_dict"
+  # for k, v in group_dict.iteritems():
+  #   print "  ", k, v
+  # return group_dict
 
 def minimal_ncs_operators_grouping(match_dict):
   """
@@ -250,6 +282,18 @@ def minimal_ncs_operators_grouping(match_dict):
   transform_to_group = remove_overlapping_selection(transform_to_group,chain_ids)
   return transform_to_group,match_dict
 
+def get_rmsds2(master_xyz, copy_xyz, cur_ttg):
+  xyz = cur_ttg[2][0].elems * master_xyz + cur_ttg[2][1]
+  # rmsd1 = 0
+  # if copy_xyz.size() == xyz.size():
+  rmsd1 = copy_xyz.rms_difference(xyz)
+  xyz = cur_ttg[2][0].elems * master_xyz + cur_ttg[2][1]
+  # rmsd2 = 0
+  # if copy_xyz.size() == xyz.size():
+  rmsd2 = copy_xyz.rms_difference(xyz)
+  # print "rmsds:", rmsd1, rmsd2
+  return rmsd1, rmsd2
+
 def get_rmsds(hierarchy, cache, cur_ttg, master, copy):
   """
   This function is for debugging purposes and not called.
@@ -260,25 +304,285 @@ def get_rmsds(hierarchy, cache, cur_ttg, master, copy):
   str_sel_c = "chain "+" or chain ".join(cur_ttg[1]+[copy])
   sel1 = cache.selection("chain "+" or chain ".join(cur_ttg[0]+[master]))
   sel2 = cache.selection("chain "+" or chain ".join(cur_ttg[1]+[copy]))
-  print "sel1, sel2", str_sel_m, "|", str_sel_c
+  # print "sel1, sel2", str_sel_m, "|", str_sel_c
   master_xyz = hierarchy.select(sel1).atoms().extract_xyz()
   copy_xyz = hierarchy.select(sel2).atoms().extract_xyz()
   xyz = cur_ttg[2][0].elems * master_xyz + cur_ttg[2][1]
-  rmsd1 = copy_xyz.rms_difference(xyz)
+  rmsd1 = 0
+  if copy_xyz.size() == xyz.size():
+    rmsd1 = copy_xyz.rms_difference(xyz)
 
   str_sel_m = "chain "+" or chain ".join(cur_ttg[0]+[copy])
   str_sel_c = "chain "+" or chain ".join(cur_ttg[1]+[master])
-  print "sel1, sel2", str_sel_m, "|", str_sel_c
+  # print "sel1, sel2", str_sel_m, "|", str_sel_c
   sel1 = cache.selection("chain "+" or chain ".join(cur_ttg[0]+[copy]))
   sel2 = cache.selection("chain "+" or chain ".join(cur_ttg[1]+[master]))
   # print "sel1, sel2", sel1, sel2
   master_xyz = hierarchy.select(sel1).atoms().extract_xyz()
   copy_xyz = hierarchy.select(sel2).atoms().extract_xyz()
   xyz = cur_ttg[2][0].elems * master_xyz + cur_ttg[2][1]
-  rmsd2 = copy_xyz.rms_difference(xyz)
+  rmsd2 = 0
+  if copy_xyz.size() == xyz.size():
+    rmsd2 = copy_xyz.rms_difference(xyz)
   return rmsd1, rmsd2
 
-def minimal_master_ncs_grouping(match_dict):
+
+def get_info_from_match_dict(match_dict, key, chain):
+  assert chain in key, "Mismatch between key and chain"
+  [sel_1,sel_2,res_1,res_2,_,_,rmsd] = match_dict[key]
+  # print "sel_1,sel_2,res_1,res_2,_,_,rmsd", sel_1,sel_2,res_1,res_2,rmsd
+  if chain == key[0]:
+    return sel_1, res_1, rmsd
+  else:
+    return sel_2, res_2, rmsd
+
+
+def get_bool_selection_to_keep(big_selection, small_selection):
+  assert big_selection.size >= small_selection.size()
+  # print dir(big_selection)
+  result = flex.bool(big_selection.size(), False)
+  i_in_big = 0
+  i_in_small = 0
+  size_small = small_selection.size()
+  size_big = big_selection.size()
+  n_matches = 0
+  nw = 0
+  while (i_in_big < size_big) and (i_in_small < size_small):
+    # print "    in gbstk:", i_in_big, i_in_small,  big_selection[i_in_big], small_selection[i_in_small]
+    if big_selection[i_in_big] == small_selection[i_in_small]:
+      result[i_in_big] = True
+      i_in_big += 1
+      i_in_small += 1
+      n_matches += 1
+    elif big_selection[i_in_big] > small_selection[i_in_small]:
+      i_in_small += 1
+      nw += 1
+      # print "  Warning!", nw
+    else:
+      i_in_big += 1
+  # print list(big_selection.intersection(small_selection))
+  # print big_selection.intersection(small_selection).size()
+  assert n_matches == size_small, "%d %d" % (n_matches, size_small)
+  return result
+
+def ncs_grouping_and_group_dict(match_dict, hierarchy):
+  """
+  The implementation of simplest way to do NCS grouping. Maximum one chain
+  in selection.
+  Do the job of minimal_master_ncs_grouping/minimal_ncs_operators_grouping
+  and build_group_dict.
+  """
+  group_dict = {}
+  # temp storages
+  # [{chain id: key to match_dict}, {...} ... ]
+  preliminary_ncs_groups = []
+  for chain_pair, info in match_dict.iteritems():
+    [sel_1,sel_2,res_1,res_2,r,t,rmsd] = info
+    # if sel_1.size() < len_of_smallest_selection:
+    #   len_of_smallest_selection = sel_1.size()
+    #   key_with_smallest_selection = chain_pair
+    # print "selection sizes:",chain_pair, sel_1.size(), sel_2.size()
+    i_existing = None
+    i_found_gr = None
+    i = 0
+    while i < 2 and i_existing is None:
+      for n_gr, prel_ncs_group in enumerate(preliminary_ncs_groups):
+        # print "checking ", chain_pair[i], prel_ncs_group.keys()
+        if chain_pair[i] in prel_ncs_group.keys():
+          i_existing = i
+          i_found_gr = n_gr
+          break
+      i += 1
+    if i_existing is None:
+      assert i_found_gr is None
+      # add new preliminary ncs group
+      preliminary_ncs_groups.append({
+          chain_pair[0]:chain_pair,
+          chain_pair[1]:chain_pair})
+    else:
+      # add other chain to found ncs group
+      preliminary_ncs_groups[i_found_gr][chain_pair[1-i_existing]] = chain_pair
+  # print "preliminary_ncs_groups", preliminary_ncs_groups
+
+
+  # now we need to just transform preliminary_ncs_groups using match_dict
+  # into group_dict. This means that for every dict in preliminary_ncs_groups
+  # we need to determine master, and find out rot and transl functions for all
+  # the rest chains (selections). Master is going to be the first in
+  # alphabetical order.
+
+  group_id = 0
+  tr_sn = 1
+
+  for prel_gr_dict in preliminary_ncs_groups:
+    # print "==============="
+    sorted_gr_chains = sorted(prel_gr_dict.keys())
+
+    # master should be the chain with minimal number of selected atoms
+    # just to make it easier filter out the rest of chains
+    # print "sorted_gr_chains", sorted_gr_chains
+    # print "prel_gr_dict", prel_gr_dict
+    min_n_atoms = 1e100
+    master = None
+    for ch in sorted_gr_chains:
+      sel, _,_ = get_info_from_match_dict(match_dict, prel_gr_dict[ch], ch)
+      if sel.size() < min_n_atoms:
+        min_n_atoms = sel.size()
+        master = ch
+    assert master is not None
+    # print "selected master first:", master
+
+    # second option to master selection:
+    # let's try to select common chain to be a master. I'm not sure that this
+    # will be always possible though
+    # also, we should try to determine the smallest selection for the master
+    # chain straight away
+    all_pairs = prel_gr_dict.values()
+    left = set(all_pairs[0])
+    # print "left", left
+    # print "all_pairs", all_pairs
+    for i in all_pairs[1:]:
+      left = left & set(i)
+    # should be 1 (a lot of chains) or 2 (if there only 2 chains)
+    assert len(left) > 0
+    # print "left", left
+    if len(left) > 1:
+      master = sorted(left)[0]
+    else:
+      master = left.pop()
+
+    # print "selected master second:", master
+
+    # selecting smallest master key - for no reason actually
+    key_with_smallest_selection = None
+    len_of_smallest_selection = 1e100
+    for ch, key in prel_gr_dict.iteritems():
+      master_sel, master_res, master_rmsd = get_info_from_match_dict(
+              match_dict, key, master)
+      if master_sel.size() < len_of_smallest_selection:
+        len_of_smallest_selection = master_sel.size()
+        key_with_smallest_selection = key
+    # print "key_with_smallest_selection, len_of_smallest_selection",key_with_smallest_selection, len_of_smallest_selection
+
+    assert master is not None
+    assert master in key_with_smallest_selection, "%s, %s" % (master, key_with_smallest_selection)
+
+    #
+    # Let's do intersection of all master selection to determine
+    # the minimum selection suitable to all copies.
+    min_master_selection = None
+    for ch, key in prel_gr_dict.iteritems():
+      master_sel, master_res, master_rmsd = get_info_from_match_dict(
+              match_dict, key, master)
+      if min_master_selection is None:
+        min_master_selection = master_sel
+      else:
+        min_master_selection = min_master_selection.intersection(master_sel)
+    # print "size of min_master_selection", min_master_selection.size()
+
+    #
+    #
+    # create a new group
+    new_ncs_group = NCS_groups_container()
+    tr = Transform(
+        rotation=matrix.sqr([1,0,0,0,1,0,0,0,1]),
+        translation=matrix.col([0,0,0]),
+        serial_num=tr_sn,
+        coordinates_present=True,
+        ncs_group_id=group_id,
+        rmsd=0)
+    tr_sn += 1
+
+    # master_sel, master_res, master_rmsd = get_info_from_match_dict(
+    #     match_dict,key_with_smallest_selection, master)
+    new_ncs_group.iselections.append([min_master_selection])
+    new_ncs_group.residue_index_list.append([master_res])
+    new_ncs_group.copies.append([master])
+    new_ncs_group.transforms.append(tr)
+
+    for ch_copy in sorted_gr_chains:
+      # master_size = new_ncs_group.iselections[0][0].size()
+      master_size = min_master_selection.size()
+      if ch_copy == master:
+        continue
+      # check whether the master is the same XXX Do this later
+      # otherwise just calculate new r,t
+      # key = prel_gr_dict[ch_copy]
+      copy_sel, copy_res, copy_rmsd = get_info_from_match_dict(
+          match_dict,prel_gr_dict[ch_copy], ch_copy)
+      from iotbx.pdb.atom_selection import selection_string_from_selection
+      # print "master_sel:", selection_string_from_selection(hierarchy, master_sel)
+      # print "copy_sel:", selection_string_from_selection(hierarchy, copy_sel)
+      # print "master_sel:", list(master_sel)
+      # print "copy_sel:", list(copy_sel)
+      new_copy_sel = copy_sel
+      new_master_sel = min_master_selection
+      m_sel, m_res, m_rmsd = get_info_from_match_dict(
+          match_dict, prel_gr_dict[ch_copy], master)
+      # print "m_sel:", list(m_sel)
+      if copy_sel.size() > min_master_selection.size():
+        # clean copy sel
+        # print "copy is bigger", copy_sel.size(), min_master_selection.size()
+        # print "sizes:", master_sel.size(), m_sel.size()
+        filter_sel = get_bool_selection_to_keep(
+            big_selection=m_sel,
+            small_selection=min_master_selection)
+        new_copy_sel = copy_sel.select(filter_sel)
+      elif copy_sel.size() < min_master_selection.size():
+        # clean master sel and all other copies...
+        # should never be the case anymore
+        # print "master is bigger", copy_sel.size(), master_sel.size()
+        # print "sizes:", master_sel.size(), m_sel.size()
+        # print "master:", list(master_sel)
+        filter_sel = get_bool_selection_to_keep(
+            big_selection=master_sel,
+            small_selection=m_sel)
+        # print list(filter_sel)
+        new_master_sel = master_sel.select(filter_sel)
+        # print "len new_master_sel", len(new_master_sel)
+        for i in range(len(new_ncs_group.iselections)):
+          # print "new_ncs_group.iselections", new_ncs_group.iselections
+          new_ncs_group.iselections[i] = [new_ncs_group.iselections[i][0].select(filter_sel)]
+        master_sel = new_master_sel
+        master_size = master_sel.size()
+        assert 0
+
+      # STOP()
+      r,t,copy_rmsd = my_get_rot_trans(
+          ph=hierarchy,
+          master_selection=new_master_sel,
+          copy_selection=new_copy_sel)
+      tr = Transform(
+          rotation=r,
+          translation=t,
+          serial_num=tr_sn,
+          coordinates_present=True,
+          ncs_group_id=group_id,
+          rmsd=copy_rmsd)
+      assert master_size == new_copy_sel.size(), "%d %d" % (master_size, new_copy_sel.size())
+      new_ncs_group.iselections.append([new_copy_sel])
+      new_ncs_group.residue_index_list.append([copy_res])
+      new_ncs_group.copies.append([ch_copy])
+      new_ncs_group.transforms.append(tr)
+      tr_sn += 1
+    group_dict[tuple(master)] = new_ncs_group
+    master_size = new_ncs_group.iselections[0][0].size()
+    for isel_arr in new_ncs_group.iselections[1:]:
+      assert master_size ==isel_arr[0].size(), "%d %d" % (master_size, isel_arr[0].size().size())
+
+    # print "new_ncs_group.ise", new_ncs_group.iselections
+    # for isele_arr in new_ncs_group.iselections:
+    #   print "final selections are:", list(isele_arr[0])
+    # print "new_ncs_group.copies", new_ncs_group.copies
+    # print "new_ncs_group.residue_index_list", new_ncs_group.residue_index_list
+    group_id += 1
+
+  # print "group_dict", group_dict
+  # STOP()
+  return group_dict
+
+
+def minimal_master_ncs_grouping(match_dict, hierarchy):
   """
   Look for NCS groups with the smallest number of chains in the master copy
   This is not the minimal number of NCS operations
@@ -301,23 +605,35 @@ def minimal_master_ncs_grouping(match_dict):
   """
   # get a sorted list of match_dict key (by chain names)
   sorted_chain_groups_keys = sorted(match_dict)
+  # sorted_chain_groups_keys = match_dict.keys()
+  # print "sorted_chain_groups_keys", sorted_chain_groups_keys
   # collect all chain IDs
   chain_ids = {c_id for key in sorted_chain_groups_keys for c_id in key}
   chain_ids = sorted(chain_ids)
+  # print "chain_ids", chain_ids
+  # STOP()
   # for each group in chain_groups find the transforms and group them
   transform_to_group = {}
   chains_in_groups = set()
   tr_sn = 0
+  cache = hierarchy.atom_selection_cache()
   #
   for (master_id, copy_id) in sorted_chain_groups_keys:
     [sel_1,sel_2,res_1,res_2,r,t,rmsd] = match_dict[master_id,copy_id]
     # check that master and copy are not a copies in another group
+    # print "tr_sn:", tr_sn
+    # print "  master, copy, chains_in_groups:", master_id, copy_id, chains_in_groups
+    # print "  transform_to_group",
+    # for k, v in transform_to_group.iteritems():
+    #   print "    ", k, v[:2]
     if (master_id in chains_in_groups) or (copy_id in chains_in_groups):
       match_dict.pop((master_id, copy_id),None)
+      # print "!!! Popping", master_id, copy_id
       continue
     # check if the chains related by ncs operation
     tr_num, is_transpose = find_same_transform(r,t,transform_to_group)
-    if is_transpose:
+    # print "tr_num", tr_num, is_transpose
+    if is_transpose and ((master_id in chains_in_groups) or (copy_id in chains_in_groups)):
       # master and copy related by transpose of the rotation r
       if master_id in transform_to_group[tr_num][0]:
         # master_id is already a master for transform tr_num
@@ -337,6 +653,10 @@ def minimal_master_ncs_grouping(match_dict):
     if tr_num and temp_master not in transform_to_group[tr_num][0]:
       # Here we want to make sure that this update won't violate
       # order of atoms, if not, we are changing the order...
+      rmsd1, rmsd2 = get_rmsds2(
+          master_xyz=hierarchy.select(sel_1).atoms().extract_xyz(),
+          copy_xyz=hierarchy.select(sel_2).atoms().extract_xyz(),
+          cur_ttg=transform_to_group[tr_num])
       # rmsd1, rmsd2 = get_rmsds(
       #     hierarchy,
       #     cache,
@@ -344,6 +664,9 @@ def minimal_master_ncs_grouping(match_dict):
       #     temp_master,
       #     temp_copy)
       # print "RMSDs:", rmsd1, rmsd2
+      if rmsd1 > 10 or rmsd2 > 10:
+        tr_sn += 1
+        transform_to_group[tr_sn] = [[temp_master],[temp_copy],(r,t)]
       # update dictionaries with additions to master and copies
       transform_to_group[tr_num][0].append(temp_master)
       transform_to_group[tr_num][1].append(temp_copy)
@@ -953,6 +1276,14 @@ def find_same_transform(r,t,transforms):
         return k, False
   return tr_num, is_transpose
 
+def get_sequence_from_array(arr):
+  from iotbx.pdb import amino_acid_codes
+  aa_3_as_1 = amino_acid_codes.one_letter_given_three_letter
+  res = ""
+  for r in arr:
+    res += aa_3_as_1.get(r)
+  return res
+
 def search_ncs_relations(ph=None,
                          chains_info = None,
                          min_contig_length=10,
@@ -1000,6 +1331,7 @@ def search_ncs_relations(ph=None,
       similarity (float): similarity between chains
     We use sel_2 to avoid problems when residues have different number of atoms
   """
+  # print "searching ncs relations..."
   if not log: log = sys.stdout
   if not chains_info:
     assert bool(ph)
@@ -1013,6 +1345,7 @@ def search_ncs_relations(ph=None,
     sorted_ch = sort_by_dist(chains_info)
   n_chains = len(sorted_ch)
   chains_in_copies = set()
+  # print "sorted_ch", sorted_ch
   # loop over all chains
   for i in xrange(n_chains-1):
     if use_minimal_master_ncs:
@@ -1029,11 +1362,13 @@ def search_ncs_relations(ph=None,
       c_ch_id = sorted_ch[j]
       copy_n_res = len(chains_info[c_ch_id].res_names)
       frac_d = min(copy_n_res,master_n_res)/max(copy_n_res,master_n_res)
+      # print "  copy_n_res,master_n_res", copy_n_res,master_n_res
       if frac_d < min_percent:
         if (min_percent == 1):
           msg = 'NCS copies are not identical'
           break
         else:
+          # print "Strange exit"
           continue
       seq_c = chains_info[c_ch_id].res_names
       # get residue lists for copy
@@ -1051,6 +1386,7 @@ def search_ncs_relations(ph=None,
         rec = [m_ch_id,c_ch_id,sel_m,sel_c,res_sel_m,res_sel_c,similarity]
         chain_match_list.append(rec)
       # Collect only very good matches, to allow better similarity search
+      # print "similarity", similarity
       if similarity > 0.9: chains_in_copies.add(c_ch_id)
   if write and msg:
     print >> log,msg
@@ -1082,8 +1418,16 @@ def res_alignment(seq_a, seq_b,
     aligned_sel_b (list): the indices of the aligned components of seq_b
     similarity (float): actual similarity between hierarchies
   """
+  # print "inputs in res_alignment, seq_a:", seq_a
+  # print "inputs in res_alignment, seq_b:", seq_b
+  # print "inputs in res_alignment:", min_contig_length, min_percent
+  # print "seq_a", get_sequence_from_array(seq_a)
+  # print "====="
+  # print "seq_b", get_sequence_from_array(seq_b)
+
   a = len(seq_a)
   b = len(seq_b)
+  # print "a,b", a,b
   # Check for the basic cases
   if (a == 0) or (b == 0): return [],[],0
   if seq_a == seq_b: return range(a),range(a),1.0
@@ -1124,6 +1468,7 @@ def res_alignment(seq_a, seq_b,
   #
   aligned_sel_a, aligned_sel_b, similarity = get_matching_res_indices(
     R=R,row=a,col=b,min_percent=min_percent,min_contig_length=min_matches)
+  # print "aligned_sel_a, aligned_sel_b, similarity", list(aligned_sel_a), list(aligned_sel_b), similarity
   return aligned_sel_a, aligned_sel_b, similarity
 
 def gap_score(r,min_matches):
@@ -1453,12 +1798,8 @@ def inverse_transform(r,t):
 def angle_between_rotations(v1,v2):
   """ get angle between two vectors"""
   cos_angle = v1.dot(v2)
-  if cos_angle > 1.0:
-    cos_angle = 1.0
-  elif cos_angle < -1.0:
-    cos_angle = -1.0
-  result = math.acos(cos_angle)
-  result *= 180./math.pi
+  result = math.acos(min(1,cos_angle))
+  result *= 180/math.pi
   return result
 
 def get_rotation_vec(r):
@@ -1573,7 +1914,13 @@ def  update_chain_ids_search_order(chains_info,sorted_ch,chains_in_copies,i):
 
   23/09/2015 Oleg. Disabled because arbitrary tossing chains may cause
   selection problems in future execution. The test exercising it is in:
-  cctbx_project/iotbx/regression/ncs/tst_ncs_input.py, exersice_23()
+  cctbx_project/iotbx/regression/ncs/tst_ncs_input.py, exersice_23().
+  In nutshell:
+  given chain order in pdb file: ADEFCB and groups are ABC and DEF, where
+  matches are A-D, B-E, C-F
+  selections are going to extract atoms in the following order:
+  ACB, DEF and they will be not atom-to-atom matched (the resulting matching
+  is A-D, C-E, B-F)
   """
   return sorted_ch
   if i == 0:
@@ -1599,3 +1946,118 @@ def  update_chain_ids_search_order(chains_info,sorted_ch,chains_in_copies,i):
     # sorted_ch.insert(i, min_ch_id)
     sorted_ch[i], sorted_ch[min_indx] = sorted_ch[min_indx], sorted_ch[i]
     return sorted_ch
+
+
+def my_get_rot_trans(
+    ph,
+    master_selection,
+    copy_selection):
+  m_atoms = ph.select(master_selection).atoms()
+  c_atoms = ph.select(copy_selection).atoms()
+  # print "selection master:", list(master_selection)
+  # print "selection copy:", list(copy_selection)
+  # Check that master and copy are identical
+  assert len(m_atoms) == len(c_atoms), "%d, %d" % (len(m_atoms), len(c_atoms))
+  # master
+  other_sites = m_atoms.extract_xyz()
+  # copy
+  ref_sites = c_atoms.extract_xyz()
+  if ref_sites.size() > 0:
+    lsq_fit_obj = superpose.least_squares_fit(
+        reference_sites = ref_sites,
+        other_sites     = other_sites)
+    r = lsq_fit_obj.r
+    t = lsq_fit_obj.t
+    rmsd = ref_sites.rms_difference(lsq_fit_obj.other_sites_best_fit())
+    return r,t,rmsd
+  else:
+    assert 0, "strange thing..."
+
+def get_rot_trans(ph,
+                  master_selection,
+                  copy_selection,
+                  max_rmsd=0.02):
+  """
+  Get rotation and translation using superpose.
+
+  This function is used only when phil parameters are provided. In this case
+  we require the selection of NCS master and copies to be correct.
+  Correct means:
+    1) residue sequence in master and copies is exactly the same
+    2) the number of atoms in master and copies is exactly the same
+
+  One can get exact selection strings by ncs_object.show(verbose=True)
+
+  Args:
+    ph : pdb hierarchy input object
+    master/copy_selection (str): master and copy selection strings
+    max_rmsd (float): limit of rms difference between chains to be considered
+      as copies
+
+  Returns:
+    r: rotation matrix
+    t: translation vector
+    rmsd (float): RMSD between master and copy
+    msg (str): error messages
+  """
+  msg = ''
+  r_zero = matrix.sqr([0]*9)
+  t_zero = matrix.col([0,0,0])
+  #
+  if hasattr(ph,'hierarchy'):
+    ph = ph.hierarchy
+  if ph:
+    cache = ph.atom_selection_cache().selection
+    master_ncs_ph = ph.select(cache(master_selection))
+    ncs_copy_ph = ph.select(cache(copy_selection))
+    seq_m,res_ids_m  = get_residue_sequence(master_ncs_ph)
+    seq_c,res_ids_c = get_residue_sequence(ncs_copy_ph)
+    res_sel_m, res_sel_c, similarity = res_alignment(
+      seq_a=seq_m,seq_b=seq_c,
+      min_contig_length=0,min_percent=0)
+    #
+    m_atoms = master_ncs_ph.atoms()
+    c_atoms = ncs_copy_ph.atoms()
+    # Check that master and copy are identical
+    if (similarity != 1) or (m_atoms.size() != c_atoms.size()) :
+      return r_zero,t_zero,0,'Master and Copy selection do not exactly match'
+    # master
+    other_sites = m_atoms.extract_xyz()
+    # copy
+    ref_sites = c_atoms.extract_xyz()
+    if ref_sites.size() > 0:
+      lsq_fit_obj = superpose.least_squares_fit(
+          reference_sites = ref_sites,
+          other_sites     = other_sites)
+      r = lsq_fit_obj.r
+      t = lsq_fit_obj.t
+      rmsd = ref_sites.rms_difference(lsq_fit_obj.other_sites_best_fit())
+      if rmsd > max_rmsd:
+        return r_zero,t_zero,0,msg
+    else:
+      return r_zero,t_zero,0,'No sites to compare.\n'
+    return r,t,round(rmsd,4),msg
+  else:
+    return r_zero,t_zero,0,msg
+
+def get_residue_sequence(ph):
+  """
+  Get a list of residues numbers and names from hierarchy "ph", excluding
+  water molecules
+
+  Args:
+    ph (hierarchy): hierarchy of a single chain
+
+  Returns:
+    res_list_new (list of str): list of residues names
+    resid_list_new (list of str): list of residues number
+  """
+  res_list_new = []
+  resid_list_new = []
+  for res_info in ph.atom_groups():
+    x = res_info.resname
+    if x.lower() != 'hoh':
+      # Exclude water
+      res_list_new.append(x)
+      resid_list_new.append(res_info.parent().resseq)
+  return res_list_new,resid_list_new

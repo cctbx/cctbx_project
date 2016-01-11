@@ -1,7 +1,6 @@
 from __future__ import division
 from iotbx.pdb.atom_selection import selection_string_from_selection
 from scitbx.array_family import flex
-from scitbx.math import superpose
 from mmtbx.ncs import ncs_search
 import mmtbx.ncs.ncs_utils as nu
 from libtbx.utils import Sorry
@@ -377,7 +376,7 @@ class ncs_group_object(object):
             similarity_threshold=0.5,
             )
         transform_to_group,match_dict = \
-            ncs_search.minimal_master_ncs_grouping(match_dict)
+            ncs_search.minimal_master_ncs_grouping(match_dict, pdb_hierarchy_inp.hierarchy)
         group_dict = ncs_search.build_group_dict(
             transform_to_group,match_dict,chain_info)
         # hopefully, we will get only 1 ncs group
@@ -550,7 +549,7 @@ class ncs_group_object(object):
       asu_locations = []
       for asu_select in group.selection:
         unique_selections = uniqueness_test(unique_selections,asu_select)
-        r, t, rmsd, msg = get_rot_trans(
+        r, t, rmsd, msg = ncs_search.get_rot_trans(
           ph=pdb_hierarchy_inp,
           master_selection=gns,
           copy_selection=asu_select,
@@ -666,6 +665,18 @@ class ncs_group_object(object):
       ph = pdb_hierarchy_inp.hierarchy
     else:
       ph = pdb_hierarchy_inp
+    # print "in build_ncs_obj_from_group_dict, group_dict"
+    # for k,v in group_dict.iteritems():
+    #   print "  ", k, 
+    #   for a in v.iselections:
+    #     print "      ", list(a[0])
+    #   print "    ", v.residue_index_list
+    #   print "    ", v.copies
+    #   for z in v.transforms:
+    #     print "    ", z.serial_num, z.ncs_group_id, z.coordinates_present
+      # print "    ", v.transforms
+
+
     self.ncs_atom_selection = flex.bool([False]*self.total_asu_length)
     chains_info = ncs_search.get_chains_info(ph)
     ncs_related_atoms = flex.bool([False]*self.total_asu_length)
@@ -1238,6 +1249,7 @@ class ncs_group_object(object):
           gr.append(sel_str)
           break
     self.transform_order = sort_dict_keys(self.transform_to_ncs)
+    # print "number_of_ncs_groups in finalize", self.number_of_ncs_groups
 
   def set_common_res_dict(self):
     """
@@ -1311,24 +1323,34 @@ class ncs_group_object(object):
       raise_sorry (bool): When True, raise Sorry if NCS copies don't match
     """
     ncs_restraints_group_list = []
+    # assert 0number_of_ncs_groups
     group_id_list = sort_dict_keys(self.ncs_group_map)
+    # print "self.ncs_group_map", self.ncs_group_map
+    # print "self.asu_to_ncs_map", self.asu_to_ncs_map
+    # print "group_id_list", group_id_list
+    # print "self.transform_to_ncs", self.transform_to_ncs
     for k in group_id_list:
+      # print "group id", k
       v = self.ncs_group_map[k]
       master_isel = flex.size_t([])
       # Iterate over sorted master selection strings, collect master selection
+      # print "sorted v0, v1", sorted(v[0]), sorted(v[1])
       for key in sorted(v[0]):
         if self.asu_to_ncs_map.has_key(key):
           master_isel.extend(self.asu_to_ncs_map[key])
       new_nrg = NCS_restraint_group(flex.sorted(master_isel))
       # iterate over transform numbers in the group, collect copies selections
       for tr in sorted(v[1]):
+        # print "  tr", tr
         if self.transform_to_ncs.has_key(tr):
           r = self.ncs_transform[tr].r
           t = self.ncs_transform[tr].t
           ncs_isel = flex.size_t([])
           for sel in self.transform_to_ncs[tr]:
             ncs_isel.extend(self.ncs_to_asu_map[sel])
+            # print "    ncs_isel", list(ncs_isel)
           ncs_isel = flex.sorted(ncs_isel)
+          # print "    ncs_isel", list(ncs_isel)
           new_ncs_copy = NCS_copy(copy_iselection=ncs_isel, rot=r, tran=t)
           new_nrg.copies.append(new_ncs_copy)
       # compare master_isel_test and master_isel
@@ -1741,6 +1763,7 @@ class ncs_group_object(object):
     if len(pdb_hierarchy.models()) > 1:
       raise Sorry('Multi-model PDB (with MODEL-ENDMDL) is not supported.')
     # Build only for PDB when there is a single NCS group
+    # print "self.number_of_ncs_groups in build_asu_hierarchy", self.number_of_ncs_groups
     assert self.number_of_ncs_groups < 2
     new_ph = pdb_hierarchy.deep_copy()
     ncs_restraints_group_list = self.get_ncs_restraints_group_list()
@@ -1766,6 +1789,7 @@ class ncs_group_object(object):
         new_chain.append_residue_group(res.detached_copy())
       model.append_chain(new_chain)
     new_ph.atoms().set_xyz(new_sites)
+    # print "self.number_of_ncs_groups in build_asu_hierarchy", self.number_of_ncs_groups
     return new_ph
 
   def show(self,
@@ -2036,28 +2060,6 @@ def format_80(s):
       ss += ' \ \n'
   return ss
 
-def get_residue_sequence(ph):
-  """
-  Get a list of residues numbers and names from hierarchy "ph", excluding
-  water molecules
-
-  Args:
-    ph (hierarchy): hierarchy of a single chain
-
-  Returns:
-    res_list_new (list of str): list of residues names
-    resid_list_new (list of str): list of residues number
-  """
-  res_list_new = []
-  resid_list_new = []
-  for res_info in ph.atom_groups():
-    x = res_info.resname
-    if x.lower() != 'hoh':
-      # Exclude water
-      res_list_new.append(x)
-      resid_list_new.append(res_info.parent().resseq)
-  return res_list_new,resid_list_new
-
 def inverse_transform(r,t):
   r = r.transpose()
   t = - r*t
@@ -2256,73 +2258,6 @@ def uniqueness_test(unique_selection_set,new_item):
   else:
     unique_selection_set.add(new_item)
     return unique_selection_set
-
-def get_rot_trans(ph=None,
-                  master_selection=None,
-                  copy_selection=None,
-                  max_rmsd=0.02):
-  """
-  Get rotation and translation using superpose.
-
-  This function is used only when phil parameters are provided. In this case
-  we require the selection of NCS master and copies to be correct.
-  Correct means:
-    1) residue sequence in master and copies is exactly the same
-    2) the number of atoms in master and copies is exactly the same
-
-  One can get exact selection strings by ncs_object.show(verbose=True)
-
-  Args:
-    ph : pdb hierarchy input object
-    master/copy_selection (str): master and copy selection strings
-    max_rmsd (float): limit of rms difference between chains to be considered
-      as copies
-
-  Returns:
-    r: rotation matrix
-    t: translation vector
-    rmsd (float): RMSD between master and copy
-    msg (str): error messages
-  """
-  msg = ''
-  r_zero = matrix.sqr([0]*9)
-  t_zero = matrix.col([0,0,0])
-  #
-  if hasattr(ph,'hierarchy'):
-    ph = ph.hierarchy
-  if ph:
-    cache = ph.atom_selection_cache().selection
-    master_ncs_ph = ph.select(cache(master_selection))
-    ncs_copy_ph = ph.select(cache(copy_selection))
-    seq_m,res_ids_m  = get_residue_sequence(master_ncs_ph)
-    seq_c,res_ids_c = get_residue_sequence(ncs_copy_ph)
-    res_sel_m, res_sel_c, similarity = ncs_search.res_alignment(
-      seq_a=seq_m,seq_b=seq_c,
-      min_contig_length=0,min_percent=0)
-    #
-    m_atoms = master_ncs_ph.atoms()
-    c_atoms = ncs_copy_ph.atoms()
-    # Check that master and copy are identical
-    if (similarity != 1) or (m_atoms.size() != c_atoms.size()) :
-      return r_zero,t_zero,0,'Master and Copy selection do not exactly match'
-    # master
-    other_sites = m_atoms.extract_xyz()
-    # copy
-    ref_sites = c_atoms.extract_xyz()
-    if ref_sites.size() > 0:
-      lsq_fit_obj = superpose.least_squares_fit(
-          reference_sites = ref_sites,
-          other_sites     = other_sites)
-      r = lsq_fit_obj.r
-      t = lsq_fit_obj.t
-      rmsd = ref_sites.rms_difference(lsq_fit_obj.other_sites_best_fit())
-      if rmsd > max_rmsd:
-        return r_zero,t_zero,0,msg
-    else:
-      return r_zero,t_zero,0,'No sites to compare.\n'
-    return r,t,round(rmsd,4),msg
-  else:
-    return r_zero,t_zero,0,msg
 
 def update_selection_ref(selection_ref,new_selection):
   """

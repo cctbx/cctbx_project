@@ -74,7 +74,7 @@ class TestNcsPreprocessingFunctions(unittest.TestCase):
     sel_str2 = selection_string_from_selection(pdb_inp,isel2)
 
     self.assertEqual(sel_str1,'chain A or (chain B and resseq 153:154)')
-    s = '(chain A and (resseq 151 or (resid 152 and (name N or name CA or '
+    s = '(chain A and (resid 151 or (resid 152 and (name N or name CA or '
     s += 'name C or name O or name CB or name CG or name CD or name NE or '
     s += 'name CZ )))) or chain B'
     self.assertEqual(sel_str2,s)
@@ -91,7 +91,7 @@ class TestNcsPreprocessingFunctions(unittest.TestCase):
     pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_2)
     isel1 = flex.size_t([0,1,2,3,4,5,6,7,8])
     sel_str1 = selection_string_from_selection(pdb_inp,isel1)
-    s = '(chain A and resseq 151)'
+    s = '(chain A and resid 151)'
     self.assertEqual(sel_str1,s)
 
   def test_avoid_chain_selection2(self):
@@ -99,12 +99,12 @@ class TestNcsPreprocessingFunctions(unittest.TestCase):
     pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_3)
     isel1 = flex.size_t(range(6,46))
     sel_str1 = selection_string_from_selection(pdb_inp,isel1)
-    s = '(chain H and (resseq 48 or resid 49 or resid 49A or resseq 50:52))'
+    s = '(chain H and (resid 48 or resid 49 or resid 49A or resseq 50:52))'
     self.assertEqual(sel_str1,s)
     #
     l1 = range(6,25) + range(29,46)
     isel1 = flex.size_t(l1)
-    s = '(chain H and (resseq 48 or resid 49 or resseq 50:52))'
+    s = '(chain H and (resid 48 or resid 49 or resseq 50:52))'
     sel_str1 = selection_string_from_selection(pdb_inp,isel1)
     self.assertEqual(sel_str1,s)
 
@@ -388,7 +388,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_selection_with_alternative_conformers']
+  tests = ['test_avoid_chain_selection2']
   suite = unittest.TestSuite(map(TestNcsPreprocessingFunctions,tests))
   return suite
 

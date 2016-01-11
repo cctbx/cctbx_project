@@ -235,7 +235,7 @@ class TestSimpleAlignment(unittest.TestCase):
     match_dict = ncs_search.clean_chain_matching(
       chain_match_list=chain_match_list,ph=ph)
     transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
-      match_dict)
+      match_dict, ph)
     group_dict = ncs_search.build_group_dict(
       transform_to_group,match_dict,chains_info)
     #
@@ -284,7 +284,7 @@ class TestSimpleAlignment(unittest.TestCase):
       chain_match_list=chain_match_list,ph=ph,
       similarity_threshold=0.1)
     transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
-      match_dict)
+      match_dict, ph)
     group_dict = ncs_search.build_group_dict(
       transform_to_group,match_dict,chains_info)
 
@@ -351,11 +351,18 @@ class TestSimpleAlignment(unittest.TestCase):
     # print sys._getframe().f_code.co_name
     pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_6)
     ncs_results = ncs_search.find_ncs_in_hierarchy(ph=pdb_inp.hierarchy)
-    answer = ncs_results[('H','I')].residue_index_list
-    residue_index_list = [[[0, 1, 2], [0]], [[0, 1, 2], [0]], [[0, 1, 2], [0]]]
+    # answer = ncs_results[('H','I')].residue_index_list
+    # residue_index_list = [[[0, 1, 2], [0]], [[0, 1, 2], [0]], [[0, 1, 2], [0]]]
+    # self.assertEqual(answer,residue_index_list)
+    # answer = ncs_results[('H','I')].copies
+    # self.assertEqual(answer,[['H', 'I'], ['J', 'K'], ['L', 'M']])
+    answer = ncs_results[('H',)].residue_index_list
+    # print answer
+    residue_index_list = [[[0, 1, 2]], [[0, 1, 2]], [[0, 1, 2]]]
     self.assertEqual(answer,residue_index_list)
-    answer = ncs_results[('H','I')].copies
-    self.assertEqual(answer,[['H', 'I'], ['J', 'K'], ['L', 'M']])
+    answer = ncs_results[('H',)].copies
+    # print answer
+    self.assertEqual(answer,[['H'], ['J'], ['L']])
 
   def test_iselection_is_in_correct_order(self):
     """ Make sure can calling get_ncs_restraints_group_list does not raise
@@ -382,7 +389,7 @@ class TestSimpleAlignment(unittest.TestCase):
       chain_match_list=chain_match_list,ph=ph,
       similarity_threshold=0.1)
     transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
-      match_dict)
+      match_dict, ph)
     #
     r = transform_to_group[1][2][0]
     t = transform_to_group[1][2][1]
@@ -1532,7 +1539,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_file_formats','test_iselection_is_in_correct_order']
+  tests = ['test_groups_with_chains_of_different_size']
   suite = unittest.TestSuite(map(TestSimpleAlignment,tests))
   return suite
 

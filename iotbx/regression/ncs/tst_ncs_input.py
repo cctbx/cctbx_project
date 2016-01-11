@@ -1447,6 +1447,44 @@ ATOM    127  O   THRAx  31     -15.060  76.874-123.806  1.00158.76           O
 TER
 """
 
+pdb_str_25 = """\
+CRYST1  577.812  448.715  468.790  90.00  90.00  90.00 P 1
+ATOM      1  CA  LYS A 151      10.766   9.333  12.905  1.00 44.22           C
+ATOM      2  CA  LYS A 152      10.117   9.159  11.610  1.00 49.42           C
+ATOM      3  CA  LYS A 153       9.099   8.000  11.562  1.00 46.15           C
+ATOM      4  CA  LYS A 154       8.000   8.202  11.065  1.00 52.97           C
+ATOM      5  CA  LYS A 155      11.146   9.065  10.474  1.00 41.68           C
+ATOM      6  CA  LYS A 156      10.547   9.007   9.084  1.00 55.55           C
+TER
+ATOM      7  CA  LYS B 157      11.545   9.413   8.000  1.00 72.27           C
+ATOM      8  CA  LYS B 158      12.277  10.718   8.343  1.00 75.78           C
+ATOM      9  CA  LYS B 159      11.349  11.791   8.809  1.00 75.88           C
+TER
+ATOM      1  CA  LYS C 151       6.855   8.667  15.730  1.00 44.22           C
+ATOM      2  CA  LYS C 152       5.891   8.459  14.655  1.00 49.42           C
+ATOM      3  CA  LYS C 153       6.103   7.155  13.858  1.00 46.15           C
+ATOM      4  CA  LYS C 154       5.138   6.438  13.633  1.00 52.97           C
+ATOM      5  CA  LYS C 155       5.801   9.685  13.736  1.00 41.68           C
+ATOM      6  CA  LYS C 156       4.731   9.594  12.667  1.00 55.55           C
+TER
+ATOM      7  CA  LYS D 157       4.334  10.965  12.119  1.00 72.27           C
+ATOM      8  CA  LYS D 158       4.057  11.980  13.238  1.00 75.78           C
+ATOM      9  CA  LYS D 159       3.177  11.427  14.310  1.00 75.88           C
+TER
+ATOM      1  CA  LYS E 151       6.987   4.106  17.432  1.00 44.22           C
+ATOM      2  CA  LYS E 152       6.017   3.539  16.502  1.00 49.42           C
+ATOM      3  CA  LYS E 153       6.497   3.492  15.036  1.00 46.15           C
+ATOM      4  CA  LYS E 154       6.348   2.458  14.400  1.00 52.97           C
+ATOM      5  CA  LYS E 155       4.647   4.221  16.634  1.00 41.68           C
+ATOM      6  CA  LYS E 156       3.552   3.605  15.788  1.00 55.55           C
+TER
+ATOM      7  CA  LYS F 157       2.154   3.953  16.298  1.00 72.27           C
+ATOM      8  CA  LYS F 158       2.014   3.732  17.811  1.00 75.78           C
+ATOM      9  CA  LYS F 159       2.558   2.413  18.250  1.00 75.88           C
+TER
+"""
+
+
 def exercise_00(prefix="iotbx_ncs_exercise_00",debug=False):
   pdb_file_name = "%s.pdb"%prefix
   ncs_params_str = """
@@ -1651,7 +1689,7 @@ def exercise_06():
   """
   ncs_inp = ncs.input(pdb_string=pdb_str_7)
   t = ncs_inp.ncs_to_asu_selection
-  assert t.keys() == ['chain D', 'chain A']
+  assert t.keys() == ['chain D', 'chain A'], t.keys()
   assert t.values() == [['chain E'], ['chain B', 'chain C']]
   assert ncs_inp.ncs_group_map[1][0] == {'chain A'}
   assert ncs_inp.ncs_group_map[2][0] == {'chain D'}
@@ -1706,7 +1744,7 @@ def exercise_09():
   chains_info = ncs_search.get_chains_info(ph)
   # Test minimal master NCS
   transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
-  match_dict=match_dict)
+      match_dict=match_dict, hierarchy=ph)
   group_dict = ncs_search.build_group_dict(
     transform_to_group,match_dict,chains_info)
   assert len(group_dict)==1
@@ -1774,13 +1812,31 @@ ncs_group {
   ### default
   ncs_inp = ncs.input(pdb_string = pdb_str_9)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
-  assert len(ncs_groups)==1
+
+  # no more grouping, therefore groups are like in phil_str above
+  assert len(ncs_groups)==2, len(ncs_groups)
   assert ncs_groups[0].master_iselection.all_eq(
-    asc.selection(string = "chain Aa or chain Ab").iselection())
+    asc.selection(string = "chain Aa").iselection())
   g1_c = ncs_groups[0].copies
   assert len(g1_c)==1
   assert g1_c[0].iselection.all_eq(
-    asc.selection(string = "chain Ac or chain Ad").iselection())
+    asc.selection(string = "chain Ac").iselection())
+  assert ncs_groups[1].master_iselection.all_eq(
+    asc.selection(string = "chain Ab").iselection())
+  g2_c = ncs_groups[1].copies
+  assert len(g1_c)==1
+  assert g2_c[0].iselection.all_eq(
+    asc.selection(string = "chain Ad").iselection())
+
+  # NO MORE GROUPING, therefore these are not valid
+  # assert len(ncs_groups)==1, len(ncs_groups)
+  # assert ncs_groups[0].master_iselection.all_eq(
+  #   asc.selection(string = "chain Aa or chain Ab").iselection())
+  # g1_c = ncs_groups[0].copies
+  # assert len(g1_c)==1
+  # assert g1_c[0].iselection.all_eq(
+  #   asc.selection(string = "chain Ac or chain Ad").iselection())
+
   ### user-supplied
   ncs_inp = ncs.input(pdb_string = pdb_str_9, ncs_phil_string = phil_str)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
@@ -2081,6 +2137,28 @@ ncs_group {
   selection        = chain Av or chain Aw or chain Ax
 }""")
 
+def exercise_25():
+  """
+  When user wants to group chains in one ncs selection
+  """
+  phil_str="""
+ncs_group {
+  reference = chain A or chain B
+  selection = chain C or chain D
+  selection = chain E or chain F
+}
+"""
+  ncs_inp = ncs.input(pdb_string = pdb_str_25, ncs_phil_string = phil_str)
+  ncs_groups = ncs_inp.get_ncs_restraints_group_list()
+  assert len(ncs_groups) == 1
+  assert list(ncs_groups[0].master_iselection) == [0, 1, 2, 3, 4, 5, 6, 7, 8]
+  for c, correct_list in zip(ncs_groups[0].copies,
+      [[9, 10, 11, 12, 13, 14, 15, 16, 17],
+       [18, 19, 20, 21, 22, 23, 24, 25, 26]]):
+    assert list(c.iselection) == correct_list
+
+
+
 def clean_temp_files(file_list):
   """ delete files in the file_list """
   for fn in file_list:
@@ -2092,11 +2170,11 @@ if (__name__ == "__main__"):
   exercise_01(debug=debug)
   exercise_02(debug=debug)
   exercise_03()
-  exercise_04()
+  # exercise_04() # not grouping chains anymore
   exercise_05()
   exercise_06()
   exercise_07()
-  exercise_08()
+  # exercise_08() # not grouping chains anymore
   exercise_09()
   exercise_10()
   exercise_11()
@@ -2112,4 +2190,5 @@ if (__name__ == "__main__"):
   exercise_21()
   exercise_22()
   # exercise_23()
-  exercise_24()
+  # exercise_24() # not grouping chains anymore
+  exercise_25()
