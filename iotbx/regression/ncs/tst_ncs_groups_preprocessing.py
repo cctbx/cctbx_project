@@ -348,9 +348,9 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       min_percent=0.2)
     t = ncs_inp.ncs_to_asu_selection
     exp_t1 = {
-      '(chain A and (resid 1 and (name N or name CA or name C or name O )))':
+      '(chain A and (name N or name CA or name C or name O ))':
         ['chain B',
-         '(chain C and (resid 1 and (name N or name CA or name C or name O )))']}
+         '(chain C and (name N or name CA or name C or name O ))']}
     self.assertEqual(t,exp_t1)
     #
     ncs_inp = ncs.input(

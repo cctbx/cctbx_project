@@ -869,127 +869,73 @@ def selection_string_from_selection(pdb_hierarchy_inp,
     # exclude residues with alternative locations
     complete_ch_not_present |= no_altloc_present
     res_sel = []
-    first_n = None
-    pre_res_n = -10000
-    prev_all_atoms_present = True
+    first_resid = None
+    prev_resid = None
+    cur_resid = None
+    prev_all_atoms_present = None
     cur_all_atoms_present = False
     previous_res_selected_atom_names = None
     cur_res_selected_atom_names = None
+    seqence_was_broken = False
     # print "complete_ch_not_present", complete_ch_not_present
     if complete_ch_not_present:
       # collect continuous ranges of residues when possible
       res_len = len(chains_info[ch_id].resid)
+      # print "res_len", res_len
       for i in xrange(res_len):
         # test that all atoms in residue are included in selection
         a_sel = set(chains_info[ch_id].atom_selection[i])
+        # print "a_sel", a_sel
         test_set = a_sel.intersection(selection_set)
-        if not bool(test_set): continue
-        if no_altloc_present and not no_altloc[i]: continue
+        # if not bool(test_set): continue
+        if len(test_set) == 0:
+          # print "Breaking 1"
+          seqence_was_broken = True
+          continue
+        if no_altloc_present and not no_altloc[i]:
+          # print "Breaking 2"
+          seqence_was_broken = True
+          continue
         all_atoms_present = (test_set == a_sel)
         prev_all_atoms_present = cur_all_atoms_present
         cur_all_atoms_present = all_atoms_present
-        # print "all_atoms_present, test_set", chains_info[ch_id].resid[i], cur_all_atoms_present, prev_all_atoms_present, test_set
+        # print "all_atoms_present, test_set", chains_info[ch_id].resid[i], cur_all_atoms_present, prev_all_atoms_present, test_set, chains_info[ch_id].atom_names[i]
         previous_res_selected_atom_names = cur_res_selected_atom_names
-        cur_res_selected_atom_names = get_atom_names_from_test_set(test_set, chains_info[ch_id].atom_names[i])
-        res_id = chains_info[ch_id].resid[i]
-        # ensure that insertion are not included if shouldn't
-        next_res_id = '0'
-        if i < (res_len - 1):
-          next_res_id = chains_info[ch_id].resid[i+1]
-        try:
-          # check that res_id is a number and not insertion residue
-          res_num = int(res_id)
-          # int will fail if the next residue is insertion
-          int(next_res_id)
-        except ValueError:
-          # res_id is an insertion type residue
-          # print "conversion to int failed for ", res_id, next_res_id
-          res_num = -10000
-        # print "res_num,pre_res_n,first_n", res_num, pre_res_n, first_n
-        # print "prev/cur res_selected_atom_names",  previous_res_selected_atom_names, cur_res_selected_atom_names,
-        if cur_all_atoms_present:
-          if not prev_all_atoms_present:
-            res_sel,first_n,pre_res_n =update_res_sel(
-                res_sel,first_n,pre_res_n, get_atom_str(previous_res_selected_atom_names))
-          if res_num != -10000:
-            # normal case, current residue 'without' insertion code
-            if pre_res_n == -10000: # or atom selection is the same
-              # start new range
-              first_n = res_num
-              pre_res_n = res_num
-            elif res_num == (pre_res_n + 1):
-              # continue range
-              pre_res_n += 1
-            else:
-              # terminate range
-              # res_seq = resseq_string(first_n,pre_res_n, get_atom_str(previous_res_selected_atom_names))
-              res_seq = resseq_string(first_n,pre_res_n, "")
-              res_sel.append(res_seq)
-              first_n = res_num
-              pre_res_n = res_num
-          else:
-            # insertion in sequence, insert only this residue
-            if prev_all_atoms_present:
-              res_sel,first_n,pre_res_n =update_res_sel(res_sel,first_n,pre_res_n, "")
-            else:
-              res_sel,first_n,pre_res_n =update_res_sel(res_sel,first_n,pre_res_n, get_atom_str(previous_res_selected_atom_names))
-            # STOP()
-            res_sel.append('resid ' + res_id )
-        else:
-          # not all residue's atoms are needed
-          # check if we need to terminate previous sequence:
-          if res_num != -10000:
-            # normal case, current residue 'without' insertion code
-            # print "  cur/prev_res_anames", cur_res_selected_atom_names, previous_res_selected_atom_names
-            if (cur_res_selected_atom_names != previous_res_selected_atom_names
-                or cur_all_atoms_present != prev_all_atoms_present):
-              # atom_str = 'name ' + ' or name '.join(previous_res_selected_atom_names)
-              if prev_all_atoms_present:
-                res_sel,first_n,pre_res_n = update_res_sel(res_sel,first_n,pre_res_n, "")
-              else:
-                res_sel,first_n,pre_res_n = update_res_sel(res_sel,first_n,pre_res_n, get_atom_str(previous_res_selected_atom_names))
-            # start new sequence
-            if pre_res_n == -10000:
-              # start new range
-              first_n = res_num
-              pre_res_n = res_num
-              # s = '(resid ' + res_id + ' and (name '
-              # s += ' or name '.join(cur_res_selected_atom_names)
-              # atom_str = ' or name '.join(cur_res_selected_atom_names)
-              # res_sel.append(s + '))')
-            elif res_num == (pre_res_n + 1):
-              # continue range
-              pre_res_n += 1
-            else:
-              # dump previous, start new
-              res_sel,first_n,pre_res_n = update_res_sel(res_sel,first_n,pre_res_n, get_atom_str(previous_res_selected_atom_names))
-              first_n = res_num
-              pre_res_n = res_num
-          else:
-            # insertion in sequence, insert only this residue
-            res_sel,first_n,pre_res_n =update_res_sel(res_sel,first_n,pre_res_n)
-            s = '(resid ' + res_id + ' and (name '
-            s += 'name ' + ' or name '.join(cur_res_selected_atom_names)
-            # atom_str = 'name ' + ' or name '.join(cur_res_selected_atom_names)
-            res_sel.append(s + '))')
+        cur_res_selected_atom_names = get_atom_names_from_test_set(
+            test_set, a_sel, chains_info[ch_id].atom_names[i])
+        # print "cur_res_selected_atom_names", cur_res_selected_atom_names
+        prev_resid = cur_resid
+        cur_resid = chains_info[ch_id].resid[i]
 
-          # get present atoms
-          # atom_names = chains_info[ch_id].atom_names[i]
-          # test_set = sorted(test_set)
-          # dx = test_set[0]
-          # selected_atoms = [atom_names[x-dx] for x in test_set]
-          # ???atom_str = ' or name '.join(cur_res_selected_atom_names)
-          # ???res_sel.append(s + atom_str + '))')
-        # print "current res_sel", res_sel
-      # atom_str = ""
-      # if cur_res_selected_atom_names is not None:
-      #   atom_str = 'name ' + ' or name '.join(cur_res_selected_atom_names)
-      # print "before final update res_sel,first_n,pre_res_n, get_atom_str(cur_res_selected_atom_names)",
-      # print res_sel,first_n,pre_res_n, get_atom_str(cur_res_selected_atom_names)
-      if cur_all_atoms_present:
-        res_sel,first_n,pre_res_n = update_res_sel(res_sel,first_n,pre_res_n, "")
-      else:
-        res_sel,first_n,pre_res_n = update_res_sel(res_sel,first_n,pre_res_n, get_atom_str(cur_res_selected_atom_names))
+        # new range is needed when previous selection doesn't match current
+        # selection.
+        continue_range = False
+        continue_range = ((cur_all_atoms_present and prev_all_atoms_present)
+          or (cur_res_selected_atom_names == previous_res_selected_atom_names))
+        # residues are consequtive
+        continue_range = continue_range and not seqence_was_broken
+        seqence_was_broken = False
+
+        if continue_range:
+          # continue range
+          # print "Continuing range"
+          prev_resid = cur_resid
+        else:
+          # dump previous range, start new one
+          # print "Dumping range"
+          atoms_sel = "" if prev_all_atoms_present else get_atom_str(previous_res_selected_atom_names)
+          res_sel = update_res_sel(
+              res_sel=res_sel,
+              first_resid=first_resid,
+              last_resid=prev_resid,
+              atoms_selection=atoms_sel)
+          first_resid = cur_resid
+      atoms_sel = "" if cur_all_atoms_present else get_atom_str(cur_res_selected_atom_names)
+      omit_resids = (first_resid == chains_info[ch_id].resid[0]
+          and cur_resid == chains_info[ch_id].resid[-1])
+      res_sel = update_res_sel(
+          res_sel,first_resid,cur_resid, atoms_sel, omit_resids)
+
     s = get_clean_selection_string(ch_sel,res_sel)
     sel_list.append(s)
   # add parenthesis what selection is more than just a chain
@@ -1010,13 +956,13 @@ def selection_string_from_selection(pdb_hierarchy_inp,
   return sel_str
 
 def get_atom_str(atom_str):
-  if atom_str is not None:
+  if atom_str is not None and len(atom_str) > 0:
     return 'name ' + ' or name '.join(atom_str)
   return ""
 
-def get_atom_names_from_test_set(test_set, atom_names):
+def get_atom_names_from_test_set(test_set, a_sel, atom_names):
   t_s = sorted(test_set)
-  dx = t_s[0]
+  dx = min(a_sel)
   selected_atoms = [atom_names[x-dx] for x in t_s]
   return selected_atoms
 
@@ -1042,26 +988,26 @@ def get_clean_selection_string(ch_sel,res_selection):
   s = s.replace('  ',' ')
   return s
 
-def resseq_string(first_res_num,previous_res_num, atoms_selection=""):
-  """ Creates resseq string """
-  res_seq = ""
-  if atoms_selection == "":
-    if previous_res_num > first_res_num:
-      res_seq = 'resseq {}:{}'.format(first_res_num,previous_res_num)
-    else:
-      res_seq = 'resid {}'.format(first_res_num)
-  else:
-    if previous_res_num > first_res_num:
-      res_seq = '(resseq {}:{} and ({}))'.format(first_res_num,previous_res_num, atoms_selection)
-    else:
-      res_seq = '(resid {} and ({}))'.format(first_res_num, atoms_selection)
-  return res_seq
-
-def update_res_sel(res_sel,first_res_n,pre_res_n, atoms_selection=""):
+def update_res_sel(
+    res_sel,
+    first_resid,
+    last_resid,
+    atoms_selection="",
+    omit_resids=False):
   """ update the residue selection list and markers of continuous section """
-  if pre_res_n != -10000:
-    res_seq = resseq_string(first_res_n,pre_res_n, atoms_selection)
-    first_res_n = None
-    pre_res_n = -10000
-    res_sel.append(res_seq)
-  return res_sel,first_res_n,pre_res_n
+  if first_resid is None or last_resid is None:
+    return res_sel
+
+  res_seq = ""
+  if last_resid != first_resid:
+    res_seq = 'resid {}:{}'.format(first_resid.strip(),last_resid.strip())
+  else:
+    res_seq = 'resid {}'.format(first_resid.strip())
+  if len(atoms_selection) > 0:
+    if not omit_resids:
+      res_seq = '(%s and (%s))' % (res_seq, atoms_selection)
+    else:
+      res_seq = '(%s)' % (atoms_selection)
+
+  res_sel.append(res_seq)
+  return res_sel
