@@ -1050,8 +1050,13 @@ class Builder(object):
       git_available = False
 
     if git_available and os.path.exists(self.opjoin(*['modules', module, '.git'])):
+      # This may fail for unclean trees and merge problems. In this case manual
+      # user intervention will be required.
+      # For the record, you can clean up the tree and *discard ALL changes* with
+      #   git reset --hard origin/master
+      #   git clean -dffx
       self.add_step(self.shell(
-        command=['git', 'pull', '--ff-only'],
+        command=['git', 'pull', '--rebase'],
         workdir=[os.path.join('modules', module)]
       ))
       return
