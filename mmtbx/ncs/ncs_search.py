@@ -175,6 +175,7 @@ def find_ncs_in_hierarchy(ph,
   return ncs_grouping_and_group_dict(match_dict, ph)
 
 
+  # this is not used anymore
   if use_minimal_master_ncs:
     transform_to_group,match_dict = minimal_master_ncs_grouping(match_dict, ph)
   else:
@@ -283,6 +284,9 @@ def minimal_ncs_operators_grouping(match_dict):
   return transform_to_group,match_dict
 
 def get_rmsds2(master_xyz, copy_xyz, cur_ttg):
+  """
+  This function is for debugging purposes and not called.
+  """
   xyz = cur_ttg[2][0].elems * master_xyz + cur_ttg[2][1]
   # rmsd1 = 0
   # if copy_xyz.size() == xyz.size():
@@ -338,8 +342,13 @@ def get_info_from_match_dict(match_dict, key, chain):
 
 
 def get_bool_selection_to_keep(big_selection, small_selection):
+  """
+  given 2 iselections (they are sorted), returns bool selection of size
+  big selection showing what are the matches with small selection.
+  Rather fast algorithm but may be beneficial to transfer to C++
+  O(n+m), where n,m - sizes of selections
+  """
   assert big_selection.size >= small_selection.size()
-  # print dir(big_selection)
   result = flex.bool(big_selection.size(), False)
   i_in_big = 0
   i_in_small = 0
@@ -348,7 +357,6 @@ def get_bool_selection_to_keep(big_selection, small_selection):
   n_matches = 0
   nw = 0
   while (i_in_big < size_big) and (i_in_small < size_small):
-    # print "    in gbstk:", i_in_big, i_in_small,  big_selection[i_in_big], small_selection[i_in_small]
     if big_selection[i_in_big] == small_selection[i_in_small]:
       result[i_in_big] = True
       i_in_big += 1
@@ -357,11 +365,10 @@ def get_bool_selection_to_keep(big_selection, small_selection):
     elif big_selection[i_in_big] > small_selection[i_in_small]:
       i_in_small += 1
       nw += 1
-      # print "  Warning!", nw
     else:
       i_in_big += 1
-  # print list(big_selection.intersection(small_selection))
-  # print big_selection.intersection(small_selection).size()
+  # this assert is optional, in general case it is not guaranteed that
+  # all numbers from small selection are present in big selection.
   assert n_matches == size_small, "%d %d" % (n_matches, size_small)
   return result
 
@@ -584,6 +591,9 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
 
 def minimal_master_ncs_grouping(match_dict, hierarchy):
   """
+  XXX
+  XXX still used in ncs_preprocess.py:validate_ncs_phil_groups()
+  XXX
   Look for NCS groups with the smallest number of chains in the master copy
   This is not the minimal number of NCS operations
 
