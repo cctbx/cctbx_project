@@ -1,19 +1,19 @@
 #!/usr/bin/env python
-# FormatSMVRigakuPilatus200L.py
+# FormatSMVRigakuPilatus300K.py
 #   Copyright (C) 2013 Diamond Light Source, Graeme Winter
 #
 #   This code is distributed under the BSD license, a copy of which is
 #   included in the root directory of this package.
 #
-# An implementation of the SMV image reader for Rigaku Pilatus 200L images.
+# An implementation of the SMV image reader for Rigaku Pilatus 300K images.
 # Inherits from FormatSMVRigaku.
 
 from __future__ import division
 
 from dxtbx.format.FormatSMVRigaku import FormatSMVRigaku
 
-class FormatSMVRigakuPilatus200L(FormatSMVRigaku):
-  '''A class for reading SMV format Rigaku Pilatus 200L images.'''
+class FormatSMVRigakuPilatus300K(FormatSMVRigaku):
+  '''A class for reading SMV format Rigaku Pilatus 300K images.'''
 
   @staticmethod
   def understand(image_file):
@@ -26,7 +26,7 @@ class FormatSMVRigakuPilatus200L(FormatSMVRigaku):
     if not 'DETECTOR_TYPE' in header:
       return False
 
-    if header['DETECTOR_TYPE'] != 'Pilatus 200K':
+    if header['DETECTOR_TYPE'] != 'Pilatus 300K':
       return False
 
     return True
@@ -189,4 +189,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatSMVRigakuPilatus200L.understand(arg)
+    print FormatSMVRigakuPilatus300K.understand(arg)
