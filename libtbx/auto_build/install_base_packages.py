@@ -229,6 +229,7 @@ class installer (object) :
     # Always build hdf5 and numpy.
     packages += ['cython', 'hdf5', 'numpy', 'setuptools', 'pip', 'pythonextra', 'docutils']
     packages += ["libsvm"]
+    packages += ['lz4_plugin']
     # GUI packages.
     if options.build_gui or options.build_all or options.download_only:
       packages += [
@@ -547,6 +548,7 @@ Installation of Python packages may fail.
       'scipy',
       'py2app',
       'misc',
+      'lz4_plugin',
       # ...
       'png',
       'freetype',
@@ -782,6 +784,33 @@ _replace_sysconfig_paths(build_time_vars)
       pkg_name_label="imaging",
       callback_before_build=patch_imaging_src,
       confirm_import_module="Image")
+
+  def build_lz4_plugin (self, patch_src=True):
+    log = self.start_building_package("lz4_plugin")
+    repos = ["hdf5_lz4", "bitshuffle"]
+    for repo in repos:
+      fetch_remote_package(repo, log=log)
+    if (patch_src) :
+      print >> log, "Patching hdf5_lz4/Makefile"
+      self.patch_src(src_file="hdf5_lz4/Makefile",
+                     target="HDF5_INSTALL = /home/det/hdf5-1.8.11/hdf5/",
+                     replace_with="HDF5_INSTALL = %s"%self.base_dir)
+      print >> log, "Patching bitshuffle/setup.py"
+      self.patch_src(src_file="bitshuffle/setup.py",
+                     target=["COMPILE_FLAGS = ['-Ofast', '-march=native', '-std=c99', '-fopenmp']",
+                             "INCLUDE_DIRS = []",
+                             "LIBRARY_DIRS = []"],
+                     replace_with=["COMPILE_FLAGS = ['-march=native', '-std=c99']",
+                             "INCLUDE_DIRS = ['%s/include']"%self.base_dir,
+                             "LIBRARY_DIRS = ['%s/lib']"%self.base_dir])
+    self.chdir("hdf5_lz4",log=log)
+    self.call("make", log=log)
+    self.chdir("../bitshuffle",log=log)
+    self.call("%s setup.py build"%self.python_exe,log=log)
+    self.call("%s setup.py install --h5plugin --h5plugin-dir=../hdf5_lz4"%(self.python_exe),log=log)
+    self.chdir("../hdf5_lz4",log=log)
+    print >> log, "Copying new libraries to base/lib folder"
+    self.call("cp -v *.so %s/lib"%self.base_dir,log=log)
 
   def build_scipy(self):
     # requires Fortran compiler.
