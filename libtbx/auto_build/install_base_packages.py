@@ -799,10 +799,17 @@ _replace_sysconfig_paths(build_time_vars)
       self.patch_src(src_file="bitshuffle/setup.py",
                      target=["COMPILE_FLAGS = ['-Ofast', '-march=native', '-std=c99', '-fopenmp']",
                              "INCLUDE_DIRS = []",
-                             "LIBRARY_DIRS = []"],
-                     replace_with=["COMPILE_FLAGS = ['-march=native', '-std=c99']",
+                             "LIBRARY_DIRS = []",
+                             "'/opt/local/include'",
+                             "'/opt/local/lib'",
+                             "'/usr/local/include'",
+                             "'/usr/local/lib'",
+                             "['gomp']",", 'gomp'"],
+                     replace_with=["COMPILE_FLAGS = ['-std=c99']",
                              "INCLUDE_DIRS = ['%s/include']"%self.base_dir,
-                             "LIBRARY_DIRS = ['%s/lib']"%self.base_dir])
+                             "LIBRARY_DIRS = ['%s/lib']"%self.base_dir,
+                             "","","","",
+                             "[]",""])
     self.chdir("hdf5_lz4",log=log)
     self.call("make", log=log)
     self.chdir("../bitshuffle",log=log)
