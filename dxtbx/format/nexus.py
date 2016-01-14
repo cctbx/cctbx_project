@@ -1098,3 +1098,26 @@ class DataFactory(object):
     for key in sorted(list(obj.handle.iterkeys())):
       datasets.append(obj.handle[key])
     self.model = DataList(datasets)
+
+
+class MaskFactory(object):
+  '''
+  A class to create an object to hold the pixel mask data
+
+  '''
+
+  def __init__(self, obj):
+    handle = obj.handle
+    def make_mask(dset):
+      from dials.array_family import flex
+      height, width = dset.shape
+      mask_data = flex.int(dset[:,:].flatten()) != 0
+      mask_data.reshape(flex.grid(height, width))
+      return mask_data
+    self.mask = None
+    if "pixel_mask_applied" in handle and handle['pixel_mask_applied']:
+      if "pixel_mask" in handle:
+        self.mask = make_mask(handle['pixel_mask'])
+      elif "detectorSpecific" in handle:
+        if "pixel_mask" in handle["detectorSpecific"]:
+          self.mask = make_mask(handle["detectorSpecific"]["pixel_mask"])
