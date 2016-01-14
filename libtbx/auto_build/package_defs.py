@@ -109,6 +109,12 @@ subversion_repositories = {
   "amber_adaptbx": "http://cci.lbl.gov/svn/amber_adaptbx/trunk",
 }
 
+git_repositories = {
+  # lz4 and bitshuffle compressions for HDF5
+  "hdf5_lz4": "https://github.com/dectris/HDF5Plugin.git",
+  "bitshuffle": "https://github.com/kiyo-masui/bitshuffle.git",
+}
+
 class fetch_packages (object) :
   """
   Download manager for the packages defined by this module - this is used by
@@ -207,7 +213,7 @@ def fetch_all_dependencies (dest_dir,
     for pkg_name in [ HDF5_PKG, H5PY_PKG, PYOPENGL_PKG ] :
       fetch_package(pkg_name, BASE_XIA_PKG_URL)
 
-def fetch_repository (pkg_name, pkg_url=None, working_copy=True,
+def fetch_svn_repository (pkg_name, pkg_url=None, working_copy=True,
     delete_if_present=False) :
   """
   Download an SVN repository, with or without metadata required for ongoing
@@ -226,6 +232,26 @@ def fetch_repository (pkg_name, pkg_url=None, working_copy=True,
     call("svn export %s %s" % (pkg_url, pkg_name), sys.stdout)
   assert op.isdir(pkg_name)
 
+def fetch_git_repository (pkg_name, pkg_url=None, working_copy=True,
+    delete_if_present=False) :
+  """
+  Download an git repository, with or without metadata required for ongoing
+  development.
+  """
+  if op.exists(pkg_name) :
+    if delete_if_present :
+      shutil.rmtree(pkg_name)
+    else :
+      raise OSError("Directory '%s' already exists.")
+  if (pkg_url is None) :
+    pkg_url = optional_repositories[pkg_name]
+  #if working_copy :
+  call("git clone %s %s" % (pkg_url, pkg_name), sys.stdout)
+  #else :
+  #  call("git clone %s %s" % (pkg_url, pkg_name), sys.stdout)
+  assert op.isdir(pkg_name)
+
+
 def fetch_remote_package (module_name, log=sys.stdout, working_copy=False) :
   if op.isdir(module_name) :
     shutil.rmtree(module_name)
@@ -242,7 +268,13 @@ def fetch_remote_package (module_name, log=sys.stdout, working_copy=False) :
     os.remove(tarfile)
   elif (module_name in subversion_repositories) :
     pkg_url = subversion_repositories[module_name]
-    fetch_repository(
+    fetch_svn_repository(
+      pkg_name=module_name,
+      pkg_url=pkg_url,
+      working_copy=working_copy)
+  elif (module_name in git_repositories) :
+    pkg_url = git_repositories[module_name]
+    fetch_git_repository(
       pkg_name=module_name,
       pkg_url=pkg_url,
       working_copy=working_copy)
