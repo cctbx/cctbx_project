@@ -46,6 +46,18 @@ class XrayFrame (AppFrame,XFBaseClass) :
     if "params" in kwds:
       del kwds["params"] #otherwise wx complains
 
+    ### Collect any plugins
+    import libtbx.load_env
+    import imp
+    slip_viewer_dir = os.path.join(libtbx.env.dist_path("rstbx"), "slip_viewer")
+    contents = os.listdir(slip_viewer_dir)
+    plugin_names = [f.split(".py")[0] for f in contents if f.endswith("_frame_plugin.py")]
+    self.plugins = {}
+    for name in plugin_names:
+      self.plugins[name] = imp.load_source(name, os.path.join(slip_viewer_dir, name + ".py"))
+    if len(plugin_names) > 0:
+      print "Loaded plugins: " + ", ".join(plugin_names)
+
     wx.Frame.__init__(self,*args,**kwds)
     self.settings = rv_settings()
 
@@ -66,6 +78,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self._ring_frame = None
     self._uc_frame = None
     self._score_frame = None
+    self._plugins_frame = {key:None for key in self.plugins}
     self.zoom_frame = None
     self.plot_frame = None
 
@@ -99,6 +112,9 @@ class XrayFrame (AppFrame,XFBaseClass) :
               id=self._id_uc)
     self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIScore,
               id=self._id_score)
+    for p in self.plugins:
+      self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIPluginWrapper(p),
+              id=self._id_plugins[p])
 
   # consolidate initialization of PySlip object into a single function
   def init_pyslip(self):
@@ -188,6 +204,12 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self._id_score = wx.NewId()
     item = actions_menu.Append(self._id_score, " ")
     self.Bind(wx.EVT_MENU, self.OnScore, source=item)
+
+    self._id_plugins = {}
+    for p in self.plugins:
+      self._id_plugins[p] = wx.NewId()
+      item = actions_menu.Append(self._id_plugins[p], " ")
+      self.Bind(wx.EVT_MENU, self.OnPluginWrapper(p), source=item)
 
   def has_four_quadrants(self):
     d = self.pyslip.tiles.raw_image.get_detector()
@@ -337,6 +359,12 @@ class XrayFrame (AppFrame,XFBaseClass) :
       self.pyslip.DeleteLayer(self.tile_text_layer)
     self.tile_text_layer = None
 
+    # if hasattr(self, 'plugins_layer') and hasattr(self.plugins_layer, "__iter__"):
+    #   for key in self.plugins_layer:
+    #     if self.plugins_layer[key] is not None:
+    #       self.pyslip.DeleteLayer(self.plugins_layer[key])
+    # self.plugins_layer = {key:None for key in self.plugins}
+
     self.update_settings()
 
     # Destroy the calibration frame if it present but unsupported for
@@ -471,6 +499,18 @@ class XrayFrame (AppFrame,XFBaseClass) :
     else:
       self._score_frame.Destroy()
 
+  def OnPluginWrapper(self, p):
+    def OnPlugin(event):
+      if not self._plugins_frame[p]:
+        helper = self.plugins[p].PluginHelper
+        self._plugins_frame[p] = helper._plugin_settings_frame(
+          self, wx.ID_ANY, helper._plugin_title,
+          style=wx.CAPTION | wx.CLOSE_BOX)
+        self._plugins_frame[p].Show()
+        self._plugins_frame[p].Raise()
+      else:
+        self._plugins_frame[p].Destroy()
+    return OnPlugin
 
   def OnUpdateUICalibration(self, event):
     # If quadrant calibration is not supported for this image, disable
@@ -527,6 +567,17 @@ class XrayFrame (AppFrame,XFBaseClass) :
       event.SetText("Hide score tool")
     else:
       event.SetText("Show score tool")
+
+  def OnUpdateUIPluginWrapper(self, p):
+    def OnUpdateUIPlugin(event):
+      # Toggle the menu item text depending on the state of the tool.
+
+      helper = self.plugins[p].PluginHelper
+      if self._plugins_frame[p]:
+        event.SetText(helper._plugin_hide_text)
+      else:
+        event.SetText(helper._plugin_show_text)
+    return OnUpdateUIPlugin
 
 
   def OnSaveAs (self, event) :
