@@ -6,7 +6,8 @@
 #   included in the root directory of this package.
 #
 # An implementation of the SMV image reader for Rigaku Pilatus 200L images.
-# Inherits from FormatSMVRigaku.
+# Inherits from FormatSMVRigaku. Be aware: this is completely unrelated
+# to the HDF5 Eiger format.
 
 from __future__ import division
 
