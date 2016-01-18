@@ -1049,11 +1049,11 @@ class sequential_alignment_parser(generic_alignment_parser):
 CLUSTAL_BODY = re.compile(
   r"""
   ^
-  (?P<name> [\S]+ ) \s+
+  (?P<name> .+? ) \s+
   (?P<alignment> [A-Z\-]+ )
   (?P<number> \s+ \d+ )? \s* $
   """,
-  re.VERBOSE | re.MULTILINE
+  re.VERBOSE
   )
 CLUSTAL_MIDLINE = re.compile( r"^ \s* [:.* ]+ \s* $", re.VERBOSE )
 CLUSTAL_HEADER = re.compile( r"\A(.*) multiple sequence alignment$" )
