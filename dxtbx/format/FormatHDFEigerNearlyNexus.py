@@ -20,7 +20,6 @@ from dxtbx.model import Beam # import dependency
 from dxtbx.model import Detector # import dependency
 from dxtbx.model import Goniometer # import dependency
 from dxtbx.model import Scan # import dependency
-from dxtbx.format.nexus import is_nexus_file
 from dxtbx.format.nexus import NXmxReader
 from dxtbx.format.nexus import BeamFactory
 from dxtbx.format.nexus import DetectorFactory
