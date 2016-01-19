@@ -790,6 +790,7 @@ _replace_sysconfig_paths(build_time_vars)
     repos = ["hdf5_lz4", "bitshuffle"]
     for repo in repos:
       fetch_remote_package(repo, log=log)
+    if self.check_download_only("lz4 plugin"): return
     if (patch_src) :
       print >> log, "Patching hdf5_lz4/Makefile"
       self.patch_src(src_file="hdf5_lz4/Makefile",
