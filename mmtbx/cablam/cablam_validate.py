@@ -974,10 +974,10 @@ def oneline(hierarchy, peptide_cutoff=0.05, peptide_bad_cutoff=0.01, ca_cutoff=0
       elif resname.upper() == 'PRO':
         if ('omega' not in residue.measures) or (residue.measures['omega'] >= 90) or (residue.measures['omega'] <= -90):
           peptide_percentile = peptide_expectations['transpro'].valueAt(peptide_point)
-          ca_geom_percentile = ca_expectations['transpro'].valueAt(ca_point)
+          ca_percentile = ca_expectations['transpro'].valueAt(ca_point)
         else:
           peptide_percentile = peptide_expectations['cispro'].valueAt(peptide_point)
-          ca_geom_percentile = ca_expectations['cispro'].valueAt(ca_point)
+          ca_percentile = ca_expectations['cispro'].valueAt(ca_point)
       #elif resname.upper() == 'PRO':
       #  peptide_percentile = peptide_expectations['pro'].valueAt(peptide_point)
       #  ca_percentile = ca_expectations['pro'].valueAt(ca_point)
