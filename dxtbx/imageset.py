@@ -121,23 +121,28 @@ class SingleFileReader(ReaderBase):
 
     # Set the format instance
     self._format = format_instance
+    self._recover = self.__getstate__()
 
   def __eq__(self, other):
     '''Compare the reader to another reader.'''
-    return self._format == other._format
+    return self.get_format() == other.get_format()
 
   def __getstate__(self):
-    return self._format.__class__, self._format.get_image_file()
+    return self.get_format().__class__, self.get_format().get_image_file()
 
   def __setstate__(self, state):
     self._format = state[0](state[1])
+
+  def nullify_format_instance(self):
+    self._recover = self.__getstate__()
+    self._format = None
 
   def get_image_paths(self, indices=None):
     '''Get the image paths within the file.'''
 
     # Get paths for each file
-    filenames = [self._format.get_image_file(i)
-                 for i in range(self._format.get_num_images())]
+    filenames = [self.get_format().get_image_file(i)
+                 for i in range(self.get_format().get_num_images())]
 
     # Return within the given range
     if indices == None:
@@ -147,15 +152,17 @@ class SingleFileReader(ReaderBase):
 
   def get_format(self, index=None):
     '''Get the format instance'''
+    if self._format is None and self._recover is not None:
+      self.__setstate__(self._recover)
     return self._format
 
   def get_format_class(self, index=None):
     '''Get the format class'''
-    return self._format.__class__
+    return self.get_format().__class__
 
   def get_path(self, index=None):
     '''Get the image file for the given index.'''
-    return self._format.get_image_file(index)
+    return self.get_format().get_image_file(index)
 
   def is_valid(self, indices=None):
     '''Ensure the reader is valid.'''
@@ -163,27 +170,27 @@ class SingleFileReader(ReaderBase):
 
   def read(self, index=None):
     '''Get the image data.'''
-    return self._format.get_raw_data(index)
+    return self.get_format().get_raw_data(index)
 
   def get_detectorbase(self, index=None):
     '''Get the detector base instance.'''
-    return self._format.get_detectorbase(index)
+    return self.get_format().get_detectorbase(index)
 
   def get_detector(self, index=None):
     '''Get the detector instance.'''
-    return self._format.get_detector(index)
+    return self.get_format().get_detector(index)
 
   def get_beam(self, index=None):
     '''Get the beam instance.'''
-    return self._format.get_beam(index)
+    return self.get_format().get_beam(index)
 
   def get_goniometer(self, index=None):
     '''Get the goniometer instance.'''
-    return self._format.get_goniometer(index)
+    return self.get_format().get_goniometer(index)
 
   def get_scan(self, index=None):
     '''Get the scan instance.'''
-    return self._format.get_scan(index)
+    return self.get_format().get_scan(index)
 
 
 class MultiFileState(object):
