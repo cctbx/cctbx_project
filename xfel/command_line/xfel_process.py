@@ -50,9 +50,9 @@ phil_scope = parse('''
       .type = str
       .help = "The filename for output reflection profile parameters"
 
-    mtz_filename = integrated.mtz
+    integration_pickle = int-%s_%d.pickle
       .type = str
-      .help = "The filename for output mtz"
+      .help = Output integration results for each color data to separate cctbx.xfel-style pickle files
   }
 
   include scope dials.algorithms.peak_finding.spotfinder_factory.phil_scope
@@ -145,11 +145,6 @@ class Script(object):
     experiments, indexed = self.index(datablock, observed)
     experiments = self.refine(experiments, indexed)
     integrated = self.integrate(experiments, indexed)
-    mtz = self.mtz(integrated, experiments)
-    from StringIO import StringIO
-    buf = StringIO()
-    mtz.show_summary(buf)
-    info(buf.getvalue())
 
     # Total Time
     info("")
@@ -209,29 +204,12 @@ class Script(object):
     return experiments, indexed
 
   def refine(self, experiments, centroids):
-    from dials.algorithms.refinement import RefinerFactory
-    from logging import info
-    from time import time
-    st = time()
-
-    info('*' * 80)
-    info('Refining Model')
-    info('*' * 80)
-
-    refiner = RefinerFactory.from_parameters_data_experiments(
-      self.params, centroids, experiments)
-
-    refiner.run()
-    experiments = refiner.get_experiments()
-
+    print "Skipping refinement because the crystal orientation is refined during indexing"
     # Dump experiments to disk
     if self.params.output.refined_experiments_filename:
       from dxtbx.model.experiment.experiment_list import ExperimentListDumper
       dump = ExperimentListDumper(experiments)
       dump.as_json(self.params.output.refined_experiments_filename)
-
-    info('')
-    info('Time Taken = %f seconds' % (time() - st))
 
     return experiments
 
@@ -275,28 +253,80 @@ class Script(object):
     integrator = IntegratorFactory.create(self.params, experiments, predicted)
 
     # Integrate the reflections
-    reflections = integrator.integrate()
+    integrated = integrator.integrate()
+
+    if integrated.has_key('intensity.prf.value'):
+      method = 'prf' # integration by profile fitting
+    elif integrated.has_key('intensity.sum.value'):
+      method = 'sum' # integration by simple summation
+    integrated = integrated.select(integrated['intensity.' + method + '.variance'] > 0) # keep only spots with sigmas above zero
 
     if self.params.output.integrated_filename:
       # Save the reflections
-      self.save_reflections(reflections, self.params.output.integrated_filename)
+      self.save_reflections(integrated, self.params.output.integrated_filename)
+
+    self.write_integration_pickles(integrated, experiments)
+    from dials.algorithms.indexing.stills_indexer import calc_2D_rmsd_and_displacements
+    rmsd_indexed, _ = calc_2D_rmsd_and_displacements(indexed)
+    rmsd_integrated, _ = calc_2D_rmsd_and_displacements(integrated)
+    crystal_model = experiments.crystals()[0]
+    print "Integrated. RMSD indexed,", rmsd_indexed, "RMSD integrated", rmsd_integrated, \
+      "Final ML model: domain size angstroms: %f, half mosaicity degrees: %f"%(crystal_model._ML_domain_size_ang, crystal_model._ML_half_mosaicity_deg)
 
     info('')
     info('Time Taken = %f seconds' % (time() - st))
-    return reflections
+    return integrated
 
-  def mtz(self, integrated, experiments):
-    from dials.util.export_mtz import export_mtz
-    from time import time
-    from logging import info
-    st = time()
-    info('*' * 80)
-    info('Exporting measurements to %s' % self.params.output.mtz_filename)
-    info('*' * 80)
-    m = export_mtz(integrated, experiments, self.params.output.mtz_filename)
-    info('')
-    info('Time Taken = %f seconds' % (time() - st))
-    return m
+  def write_integration_pickles(self, integrated, experiments, callback = None):
+    """
+    Write a serialized python dictionary with integrated intensities and other information
+    suitible for use by cxi.merge or prime.postrefine.
+    @param integrated Reflection table with integrated intensities
+    @param experiments Experiment list. One integration pickle for each experiment will be created.
+    @param callback Deriving classes can use callback to make further modifications to the dictionary
+    before it is serialized. Callback should be a function with this signature:
+    def functionname(params, outfile, frame), where params is the phil scope, outfile is the path
+    to the pickle that will be saved, and frame is the python dictionary to be serialized.
+    """
+    try:
+      picklefilename = self.params.output.integration_pickle
+    except AttributeError:
+      return
+
+    if self.params.output.integration_pickle is not None:
+
+      from libtbx import easy_pickle
+      import os
+      from xfel.command_line.frame_extractor import ConstructFrame
+      from dials.array_family import flex
+
+      # Split everything into separate experiments for pickling
+      for e_number in xrange(len(experiments)):
+        experiment = experiments[e_number]
+        e_selection = flex.bool( [r['id']==e_number for r in integrated])
+        reflections = integrated.select(e_selection)
+
+        frame = ConstructFrame(reflections, experiment).make_frame()
+        frame["pixel_size"] = experiment.detector[0].get_pixel_size()[0]
+
+        try:
+          # if the data was a file on disc, get the path
+          event_timestamp = os.path.splitext(experiments[0].imageset.paths()[0])[0]
+        except NotImplementedError:
+          # if the data is in memory only, check if the reader set a timestamp on the format object
+          event_timestamp = experiment.imageset.reader().get_format(0).timestamp
+        event_timestamp = os.path.basename(event_timestamp)
+        if event_timestamp.find("shot-")==0:
+           event_timestamp = os.path.splitext(event_timestamp)[0] # micromanage the file name
+        if hasattr(self.params.output, "output_dir"):
+          outfile = os.path.join(self.params.output.output_dir, self.params.output.integration_pickle%(event_timestamp,e_number))
+        else:
+          outfile = os.path.join(os.path.dirname(self.params.output.integration_pickle), self.params.output.integration_pickle%(event_timestamp,e_number))
+
+        if callback is not None:
+          callback(self.params, outfile, frame)
+
+        easy_pickle.dump(outfile, frame)
 
   def process_reference(self, reference):
     ''' Load the reference spots. '''
