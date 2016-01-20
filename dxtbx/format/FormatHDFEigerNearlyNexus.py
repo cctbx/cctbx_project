@@ -175,11 +175,12 @@ class EigerNXmxFixer(object):
     group['module_offset'].attrs['depends_on'] = '/entry/instrument/detector/transformations/translation'
 
     # Create detector depends_on
+    depends_on = '/entry/instrument/detector/transformations/translation'
     create_scalar(
       handle['/entry/instrument/detector'],
       'depends_on',
-      'S1',
-      '/entry/instrument/detector/transformations/translation')
+      'S%d' % len(depends_on),
+      depends_on)
 
     # Add detector position
     # print "Using /entry/instrument/detector/geometry/translation/distances as transformation"
