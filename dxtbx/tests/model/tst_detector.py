@@ -125,6 +125,10 @@ def tst_set_mosflm_beam_centre(detector):
 
   print 'OK'
 
+def tst_detector_comparison_operator(detA, detB):
+  '''Equality operator on detector objects must find differences in origin'''
+  assert(detA != detB)
+  print 'OK'
 
 def tst_detector():
   from dxtbx.model import ParallaxCorrectedPxMmStrategy
@@ -158,6 +162,20 @@ def tst_detector():
   table = attenuation_coefficient.get_table("Si")
   mu = table.mu_at_angstrom(1) / 10
   t0 = 0.320
+
+  # Create another detector with different origin
+  detector_moved = Detector(Panel(
+      "",                 # Type
+      "Panel",            # Name
+      (10, 0, 0),         # Fast axis
+      (0, 10, 0),         # Slow axis
+      (100, 100, 100),        # different origin to original detector
+      (0.172, 0.172),     # Pixel size
+      (512, 512),         # Image size
+      (0, 1000),          # Trusted range
+      0.1,                # Thickness
+      "Si"))              # Material
+  tst_detector_comparison_operator(detector, detector_moved)
 
   # Create the detector
   detector = Detector(Panel(
