@@ -107,7 +107,11 @@ class DataBlock(object):
     return obj.keys()
 
   def unique_detectors(self):
-    ''' Iterate through unique detectors. '''
+    ''' Returns a list of detector objects. '''
+    return self._unique_detectors_dict.keys()
+
+  def _unique_detectors_dict(self):
+    ''' Returns an ordered dictionary of detector objects. '''
     from dxtbx.imageset import ImageSweep
     from libtbx.containers import OrderedDict
     obj = OrderedDict()
@@ -117,7 +121,11 @@ class DataBlock(object):
       else:
         for i in range(len(iset)):
           obj[iset.get_detector(i)] = None
-    return obj.keys()
+    detector_id = 0
+    for detector in obj.keys():
+      obj[detector] = detector_id
+      detector_id = detector_id + 1
+    return obj
 
   def unique_goniometers(self):
     ''' Iterate through unique goniometers. '''
@@ -170,7 +178,7 @@ class DataBlock(object):
 
     # Get a list of all the unique models
     b = list(self.unique_beams())
-    d = list(self.unique_detectors())
+    d = self._unique_detectors_dict()
     g = list(self.unique_goniometers())
     s = list(self.unique_scans())
 
@@ -194,7 +202,7 @@ class DataBlock(object):
             ("gain", abspath_or_none(iset.external_lookup.gain.filename)),
             ("pedestal", abspath_or_none(iset.external_lookup.pedestal.filename)),
             ('beam',       b.index(iset.get_beam())),
-            ('detector',   d.index(iset.get_detector())),
+            ('detector',   d[iset.get_detector()]),
             ('goniometer', g.index(iset.get_goniometer())),
             ('scan',       s.index(iset.get_scan()))
           ]))
@@ -211,7 +219,7 @@ class DataBlock(object):
           except Exception:
             pass
           try:
-            image_dict['detector'] = d.index(iset.get_detector())
+            image_dict['detector'] = d[iset.get_detector()]
           except Exception:
             pass
           try:
@@ -230,7 +238,7 @@ class DataBlock(object):
 
     # Add the models to the dictionary
     result['beam'] = [bb.to_dict() for bb in b]
-    result['detector'] = [dd.to_dict() for dd in d]
+    result['detector'] = [dd.to_dict() for dd in d.keys()]
     result['goniometer'] = [gg.to_dict() for gg in g]
     result['scan'] = [ss.to_dict() for ss in s]
 
