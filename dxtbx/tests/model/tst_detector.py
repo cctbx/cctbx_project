@@ -177,7 +177,7 @@ def tst_detector():
   detector_moved = create_detector(offset=100)
   tst_detectors_are_different(detector, detector_moved)
 
-  detector_moved_copy = create_detector(offset=0)
+  detector_moved_copy = create_detector(offset=100)
   tst_detectors_are_same(detector_moved, detector_moved_copy)
 
   # Create the detector
