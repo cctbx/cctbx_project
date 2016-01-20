@@ -841,7 +841,7 @@ def selection_string_from_selection(pdb_hierarchy_inp,
   if isinstance(selection,flex.bool): selection = selection.iselection(True)
   selection_set = set(selection)
   sel_list = []
-  # pdb_hierarchy_inp.select(selection).write_pdb_file("selected.pdb")
+  # pdb_hierarchy_inp.select(selection).write_pdb_file("selected_in.pdb")
   # using chains_info to improve performance
   if not chains_info:
     chains_info = get_chains_info(pdb_hierarchy_inp,exclude_water=False)
@@ -868,27 +868,35 @@ def selection_string_from_selection(pdb_hierarchy_inp,
       no_altloc_present = False
     # exclude residues with alternative locations
     complete_ch_not_present |= no_altloc_present
-    res_sel = []
-    first_resid = None
-    prev_resid = None
-    cur_resid = None
-    prev_all_atoms_present = None
-    cur_all_atoms_present = False
-    previous_res_selected_atom_names = None
-    cur_res_selected_atom_names = None
-    seqence_was_broken = False
     # print "complete_ch_not_present", complete_ch_not_present
+    res_sel = []
     if complete_ch_not_present:
       # collect continuous ranges of residues when possible
       res_len = len(chains_info[ch_id].resid)
-      # print "res_len", res_len
+
+      # prev_resid = None
+      prev_all_atoms_present = None
+      cur_all_atoms_present = None
+      atoms_for_dumping = []
+      # all_prev_atoms_in_range
+      previous_res_selected_atom_names = []
+      a_sel = set(chains_info[ch_id].atom_selection[0])
+      cur_res_selected_atom_names = get_atom_names_from_test_set(
+          a_sel.intersection(selection_set), a_sel, chains_info[ch_id].atom_names[0])
+      atoms_in_current_range = cur_res_selected_atom_names
+      seqence_was_broken = False
+
+      first_resid = chains_info[ch_id].resid[0]
+      last_resid = None
       for i in xrange(res_len):
+        cur_resid = chains_info[ch_id].resid[i]
         # test that all atoms in residue are included in selection
         a_sel = set(chains_info[ch_id].atom_selection[i])
         # print "a_sel", a_sel
         test_set = a_sel.intersection(selection_set)
         # if not bool(test_set): continue
         if len(test_set) == 0:
+          # None of residue's atoms are selected
           # print "Breaking 1"
           seqence_was_broken = True
           continue
@@ -899,42 +907,71 @@ def selection_string_from_selection(pdb_hierarchy_inp,
         all_atoms_present = (test_set == a_sel)
         prev_all_atoms_present = cur_all_atoms_present
         cur_all_atoms_present = all_atoms_present
-        # print "all_atoms_present, test_set", chains_info[ch_id].resid[i], cur_all_atoms_present, prev_all_atoms_present, test_set, chains_info[ch_id].atom_names[i]
         previous_res_selected_atom_names = cur_res_selected_atom_names
         cur_res_selected_atom_names = get_atom_names_from_test_set(
             test_set, a_sel, chains_info[ch_id].atom_names[i])
-        # print "cur_res_selected_atom_names", cur_res_selected_atom_names
-        prev_resid = cur_resid
+
+        # print "all_atoms_present (cur/prev), test_set", chains_info[ch_id].resid[i], cur_all_atoms_present, prev_all_atoms_present, test_set, chains_info[ch_id].atom_names[i]
+        # prev_resid = cur_resid
         cur_resid = chains_info[ch_id].resid[i]
+        # print "prev_resid, cur_resid", prev_resid, cur_resid
 
         # new range is needed when previous selection doesn't match current
         # selection.
+        # print "cur/prev res_sel", cur_res_selected_atom_names, previous_res_selected_atom_names
+        # print "atoms_for_dumping", atoms_for_dumping
+        # print "atoms_in_current_range", atoms_in_current_range
+        # print "intersecting sets:", set(cur_res_selected_atom_names) ^ set(previous_res_selected_atom_names)
         continue_range = False
         continue_range = ((cur_all_atoms_present and prev_all_atoms_present)
-          or (cur_res_selected_atom_names == previous_res_selected_atom_names))
+          or (len(set(cur_res_selected_atom_names) ^ set(atoms_in_current_range))==0))
+        # print "continue range 1", continue_range
         # residues are consequtive
         continue_range = continue_range and not seqence_was_broken
+        # print "continue range 2", continue_range
+        if len(atoms_for_dumping) > 0:
+          continue_range = continue_range and (
+              len(set(atoms_for_dumping)^set(cur_res_selected_atom_names))==0)
         seqence_was_broken = False
+        # print "continue range 3", continue_range
 
         if continue_range:
           # continue range
           # print "Continuing range"
-          prev_resid = cur_resid
+          last_resid = cur_resid
+          atoms_in_current_range = list(set(atoms_in_current_range)|set(cur_res_selected_atom_names))
+          if not cur_all_atoms_present:
+            # all_prev_atoms_in_range |= set(cur_res_selected_atom_names)
+            atoms_for_dumping = cur_res_selected_atom_names
         else:
           # dump previous range, start new one
           # print "Dumping range"
-          atoms_sel = "" if prev_all_atoms_present else get_atom_str(previous_res_selected_atom_names)
+          if len(atoms_for_dumping) > 0:
+            atoms_sel = get_atom_str(previous_res_selected_atom_names)
+          else:
+            atoms_sel = "" if prev_all_atoms_present else get_atom_str(previous_res_selected_atom_names)
+            if prev_all_atoms_present is None:
+              atoms_sel = "" if cur_all_atoms_present else get_atom_str(cur_res_selected_atom_names)
           res_sel = update_res_sel(
               res_sel=res_sel,
               first_resid=first_resid,
-              last_resid=prev_resid,
+              last_resid=last_resid,
               atoms_selection=atoms_sel)
+          # print "res_sel", res_sel
           first_resid = cur_resid
+          last_resid = cur_resid
+          atoms_in_current_range = cur_res_selected_atom_names
+          if not cur_all_atoms_present:
+            atoms_for_dumping = cur_res_selected_atom_names
+          else:
+            atoms_for_dumping = []
+          prev_all_atoms_present = None
+
       atoms_sel = "" if cur_all_atoms_present else get_atom_str(cur_res_selected_atom_names)
       omit_resids = (first_resid == chains_info[ch_id].resid[0]
-          and cur_resid == chains_info[ch_id].resid[-1])
+          and last_resid == chains_info[ch_id].resid[-1])
       res_sel = update_res_sel(
-          res_sel,first_resid,cur_resid, atoms_sel, omit_resids)
+          res_sel,first_resid,last_resid, atoms_sel, omit_resids)
 
     s = get_clean_selection_string(ch_sel,res_sel)
     sel_list.append(s)
@@ -947,8 +984,9 @@ def selection_string_from_selection(pdb_hierarchy_inp,
     s_l.append(s)
   sel_str = ' or '.join(s_l)
   isel = pdb_hierarchy_inp.atom_selection_cache().iselection(sel_str)
+  # pdb_hierarchy_inp.select(isel).write_pdb_file("selected_out.pdb")
   assert len(isel) == len(selection), ""+\
-      "%d != %d: conversion to string selects different number of atoms!.\n" \
+      "%d (result) != %d (input): conversion to string selects different number of atoms!.\n" \
       % (len(isel), len(selection)) +\
       "String lead to error: '%s'" % sel_str
   # print "sel_str", sel_str
@@ -997,7 +1035,6 @@ def update_res_sel(
   """ update the residue selection list and markers of continuous section """
   if first_resid is None or last_resid is None:
     return res_sel
-
   res_seq = ""
   if last_resid != first_resid:
     res_seq = 'resid {}:{}'.format(first_resid.strip(),last_resid.strip())
@@ -1008,6 +1045,5 @@ def update_res_sel(
       res_seq = '(%s and (%s))' % (res_seq, atoms_selection)
     else:
       res_seq = '(%s)' % (atoms_selection)
-
   res_sel.append(res_seq)
   return res_sel
