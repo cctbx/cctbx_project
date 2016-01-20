@@ -141,10 +141,7 @@ namespace dxtbx { namespace model {
 
     /** @returns True/False this is the same as the other */
     bool operator==(const PanelData &rhs) const {
-      return VirtualPanel::operator==(rhs)
-          && image_size_.const_ref().all_eq(rhs.image_size_.const_ref())
-          && pixel_size_.const_ref().all_approx_equal(rhs.pixel_size_.const_ref(), 1e-3)
-          && trusted_range_.const_ref().all_approx_equal(rhs.trusted_range_.const_ref(), 1e-6);
+      return VirtualPanel::operator==(rhs) && is_similar_to(rhs, 1e-5, 1e-5, 1e-5, false);
     }
 
     /** @returns True/False this is not the same as the other */
@@ -157,12 +154,16 @@ namespace dxtbx { namespace model {
                         double slow_axis_tolerance,
                         double origin_tolerance,
                         bool static_only) const {
-      bool result = image_size_.const_ref().all_eq(
+      bool result =
+             image_size_.const_ref().all_eq(
               rhs.image_size_.const_ref())
           && pixel_size_.const_ref().all_approx_equal(
-              rhs.pixel_size_.const_ref(), 1e-7);
+              rhs.pixel_size_.const_ref(), 1e-7)
+          && trusted_range_.const_ref().all_approx_equal(
+              rhs.trusted_range_.const_ref(), 1e-7);
       if (!static_only) {
-        result = result && get_fast_axis().const_ref().all_approx_equal(
+        result = result
+          && get_fast_axis().const_ref().all_approx_equal(
               rhs.get_fast_axis().const_ref(), fast_axis_tolerance)
           && get_slow_axis().const_ref().all_approx_equal(
               rhs.get_slow_axis().const_ref(), slow_axis_tolerance)
