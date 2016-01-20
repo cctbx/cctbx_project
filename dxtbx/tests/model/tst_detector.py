@@ -125,7 +125,12 @@ def tst_set_mosflm_beam_centre(detector):
 
   print 'OK'
 
-def tst_detector_comparison_operator(detA, detB):
+def tst_detectors_are_same(detA, detB):
+  '''Equality operator on detector objects must identify identical detectors'''
+  assert(detA == detB)
+  print 'OK'
+
+def tst_detectors_are_different(detA, detB):
   '''Equality operator on detector objects must find differences in origin'''
   assert(detA != detB)
   print 'OK'
@@ -133,18 +138,23 @@ def tst_detector_comparison_operator(detA, detB):
 def tst_detector():
   from dxtbx.model import ParallaxCorrectedPxMmStrategy
 
-  # Create the detector
-  detector = Detector(Panel(
+  def create_detector(offset = 0):
+    # Create the detector
+    detector = Detector(Panel(
       "",                 # Type
       "Panel",            # Name
       (10, 0, 0),         # Fast axis
       (0, 10, 0),         # Slow axis
-      (0, 0, 200),        # Origin
+      (0 + offset, 0 + offset, 200 - offset),
+                          # Origin
       (0.172, 0.172),     # Pixel size
       (512, 512),         # Image size
       (0, 1000),          # Trusted range
       0.1,                # Thickness
       "Si"))              # Material
+    return detector
+
+  detector = create_detector()
 
   # Perform some tests
   tst_set_mosflm_beam_centre(detector)
@@ -164,18 +174,11 @@ def tst_detector():
   t0 = 0.320
 
   # Create another detector with different origin
-  detector_moved = Detector(Panel(
-      "",                 # Type
-      "Panel",            # Name
-      (10, 0, 0),         # Fast axis
-      (0, 10, 0),         # Slow axis
-      (100, 100, 100),        # different origin to original detector
-      (0.172, 0.172),     # Pixel size
-      (512, 512),         # Image size
-      (0, 1000),          # Trusted range
-      0.1,                # Thickness
-      "Si"))              # Material
-  tst_detector_comparison_operator(detector, detector_moved)
+  detector_moved = create_detector(offset=100)
+  tst_detectors_are_different(detector, detector_moved)
+
+  detector_moved_copy = create_detector(offset=0)
+  tst_detectors_are_same(detector_moved, detector_moved_copy)
 
   # Create the detector
   detector = Detector(Panel(
