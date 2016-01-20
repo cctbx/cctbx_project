@@ -108,7 +108,7 @@ class DataBlock(object):
 
   def unique_detectors(self):
     ''' Returns a list of detector objects. '''
-    return self._unique_detectors_dict.keys()
+    return self._unique_detectors_dict().keys()
 
   def _unique_detectors_dict(self):
     ''' Returns an ordered dictionary of detector objects. '''
