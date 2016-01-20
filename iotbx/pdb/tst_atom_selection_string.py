@@ -262,6 +262,104 @@ ATOM     24  OD1 ASP A  17      -4.995 129.243 197.491  1.00 57.38           O
 ATOM     25  OD2 ASP A  17      -3.733 129.619 199.249  1.00 57.63           O1-
 """
 
+test_pdb_8 = """\
+ATOM      1  N   ALA A 125     -29.026  54.443 -42.502  1.00 32.57           N
+ATOM      2  CA  ALA A 125     -27.931  53.547 -42.137  1.00 31.14           C
+ATOM      3  C   ALA A 125     -28.182  52.145 -42.679  1.00 31.38           C
+ATOM      4  O   ALA A 125     -27.272  51.499 -43.215  1.00 39.47           O
+ATOM      5  CB  ALA A 125     -27.774  53.497 -40.615  1.00 27.41           C
+ATOM      6  N   SER A 126     -29.423  51.670 -42.564  1.00 30.06           N
+ATOM      7  CA  SER A 126     -29.767  50.337 -43.032  1.00 32.18           C
+ATOM      8  C   SER A 126     -29.602  50.216 -44.538  1.00 38.36           C
+ATOM      9  O   SER A 126     -29.386  49.109 -45.039  1.00 45.79           O
+ATOM     10  CB  SER A 126     -31.190  49.988 -42.605  1.00 29.70           C
+ATOM     11  OG  SER A 126     -31.370  48.579 -42.545  1.00 40.98           O
+ATOM     12  N   ALA A 127     -29.671  51.312 -45.252  1.00 45.06           N
+ATOM     13  CA  ALA A 127     -29.521  51.369 -46.685  1.00 48.16           C
+ATOM     14  C   ALA A 127     -28.142  51.136 -47.248  1.00 53.02           C
+ATOM     15  O   ALA A 127     -28.024  50.717 -48.363  1.00 58.10           O
+ATOM     16  CB  ALA A 127     -30.098  52.647 -47.231  1.00 47.36           C
+ATOM     17  N   LYS A 128     -27.105  51.433 -46.492  1.00 54.75           N
+ATOM     18  CA  LYS A 128     -25.742  51.247 -46.964  1.00 57.26           C
+ATOM     19  C   LYS A 128     -25.482  49.795 -47.340  1.00 52.16           C
+ATOM     20  O   LYS A 128     -25.996  48.893 -46.720  1.00 45.54           O
+ATOM     21  CB  LYS A 128     -24.759  51.535 -45.843  1.00 30.00           C
+ATOM     22  CG  LYS A 128     -24.496  52.960 -45.461  1.00 30.00           C
+ATOM     23  CD  LYS A 128     -22.989  53.226 -45.366  1.00 30.00           C
+ATOM     24  CE  LYS A 128     -22.248  52.508 -44.239  1.00 30.00           C
+ATOM     25  NZ  LYS A 128     -20.903  53.077 -43.987  1.00 30.00           N
+"""
+
+test_pdb_9 = """\
+ATOM      1  N   ARG A 124     -31.625  55.204 -43.320  1.00 36.06           N
+ATOM      2  CA  ARG A 124     -30.475  55.601 -44.092  1.00 34.32           C
+ATOM      3  C   ARG A 124     -29.278  54.709 -43.767  1.00 36.61           C
+ATOM      4  O   ARG A 124     -28.616  54.266 -44.645  1.00 40.69           O
+ATOM      5  CB  ARG A 124     -30.122  57.063 -43.899  1.00 30.00           C
+ATOM      6  CG  ARG A 124     -28.740  57.425 -44.418  1.00 30.00           C
+ATOM      7  CD  ARG A 124     -28.283  58.842 -44.132  1.00 30.00           C
+ATOM      8  NE  ARG A 124     -28.977  59.388 -42.992  1.00 30.00           N
+ATOM      9  CZ  ARG A 124     -28.813  60.609 -42.544  1.00 30.00           C
+ATOM     10  NH1 ARG A 124     -27.970  61.414 -43.148  1.00 30.00           N
+ATOM     11  NH2 ARG A 124     -29.492  61.020 -41.504  1.00 30.00           N
+ATOM     12  N   ALA A 125     -29.026  54.443 -42.502  1.00 32.57           N
+ATOM     13  CA  ALA A 125     -27.931  53.547 -42.137  1.00 31.14           C
+ATOM     14  C   ALA A 125     -28.182  52.145 -42.679  1.00 31.38           C
+ATOM     15  O   ALA A 125     -27.272  51.499 -43.215  1.00 39.47           O
+ATOM     16  CB  ALA A 125     -27.774  53.497 -40.615  1.00 27.41           C
+ATOM     17  N   SER A 126     -29.423  51.670 -42.564  1.00 30.06           N
+ATOM     18  CA  SER A 126     -29.767  50.337 -43.032  1.00 32.18           C
+ATOM     19  C   SER A 126     -29.602  50.216 -44.538  1.00 38.36           C
+ATOM     20  O   SER A 126     -29.386  49.109 -45.039  1.00 45.79           O
+ATOM     21  CB  SER A 126     -31.190  49.988 -42.605  1.00 29.70           C
+ATOM     22  OG  SER A 126     -31.370  48.579 -42.545  1.00 40.98           O
+ATOM     23  N   ALA A 127     -29.671  51.312 -45.252  1.00 45.06           N
+ATOM     24  CA  ALA A 127     -29.521  51.369 -46.685  1.00 48.16           C
+ATOM     25  C   ALA A 127     -28.142  51.136 -47.248  1.00 53.02           C
+ATOM     26  O   ALA A 127     -28.024  50.717 -48.363  1.00 58.10           O
+ATOM     27  CB  ALA A 127     -30.098  52.647 -47.231  1.00 47.36           C
+"""
+
+test_pdb_10 = """\
+ATOM    885  N   ASP A 117     -38.120  61.598 -35.985  1.00 24.56           N
+ATOM    886  CA  ASP A 117     -37.446  61.205 -37.186  1.00 24.60           C
+ATOM    887  C   ASP A 117     -36.374  60.119 -37.011  1.00 26.59           C
+ATOM    888  O   ASP A 117     -35.562  59.977 -37.870  1.00 19.99           O
+ATOM    889  CB  ASP A 117     -36.851  62.414 -37.878  1.00 33.00           C
+ATOM    890  CG  ASP A 117     -37.507  62.725 -39.182  1.00 46.28           C
+ATOM    891  OD1 ASP A 117     -38.553  62.190 -39.479  1.00 53.20           O
+ATOM    892  OD2 ASP A 117     -36.964  63.519 -39.921  1.00 54.16           O
+ATOM      1  N   ARG A 124     -31.625  55.204 -43.320  1.00 36.06           N
+ATOM      2  CA  ARG A 124     -30.475  55.601 -44.092  1.00 34.32           C
+ATOM      3  C   ARG A 124     -29.278  54.709 -43.767  1.00 36.61           C
+ATOM      4  O   ARG A 124     -28.616  54.266 -44.645  1.00 40.69           O
+ATOM      5  CB  ARG A 124     -30.122  57.063 -43.899  1.00 30.00           C
+ATOM      6  CG  ARG A 124     -28.740  57.425 -44.418  1.00 30.00           C
+ATOM      7  CD  ARG A 124     -28.283  58.842 -44.132  1.00 30.00           C
+ATOM      8  NE  ARG A 124     -28.977  59.388 -42.992  1.00 30.00           N
+ATOM      9  CZ  ARG A 124     -28.813  60.609 -42.544  1.00 30.00           C
+ATOM     10  NH1 ARG A 124     -27.970  61.414 -43.148  1.00 30.00           N
+ATOM     11  NH2 ARG A 124     -29.492  61.020 -41.504  1.00 30.00           N
+ATOM     12  N   ALA A 125     -29.026  54.443 -42.502  1.00 32.57           N
+ATOM     13  CA  ALA A 125     -27.931  53.547 -42.137  1.00 31.14           C
+ATOM     14  C   ALA A 125     -28.182  52.145 -42.679  1.00 31.38           C
+ATOM     15  O   ALA A 125     -27.272  51.499 -43.215  1.00 39.47           O
+ATOM     16  CB  ALA A 125     -27.774  53.497 -40.615  1.00 27.41           C
+ATOM     17  N   SER A 126     -29.423  51.670 -42.564  1.00 30.06           N
+ATOM     18  CA  SER A 126     -29.767  50.337 -43.032  1.00 32.18           C
+ATOM     19  C   SER A 126     -29.602  50.216 -44.538  1.00 38.36           C
+ATOM     20  O   SER A 126     -29.386  49.109 -45.039  1.00 45.79           O
+ATOM     21  CB  SER A 126     -31.190  49.988 -42.605  1.00 29.70           C
+ATOM     22  OG  SER A 126     -31.370  48.579 -42.545  1.00 40.98           O
+ATOM     23  N   ALA A 127     -29.671  51.312 -45.252  1.00 45.06           N
+ATOM     24  CA  ALA A 127     -29.521  51.369 -46.685  1.00 48.16           C
+ATOM     25  C   ALA A 127     -28.142  51.136 -47.248  1.00 53.02           C
+ATOM     26  O   ALA A 127     -28.024  50.717 -48.363  1.00 58.10           O
+ATOM     27  CB  ALA A 127     -30.098  52.647 -47.231  1.00 47.36           C
+"""
+
+
+
 def test_get_clean_selection_string():
   """ Check get_clean_selection_string  """
   # print sys._getframe().f_code.co_name
@@ -501,6 +599,33 @@ def test_5():
   tsel = selection_string_from_selection(pdb_h, isel)
   assert tsel == "(chain A and ((resid 14 and (name N or name CA or name C )) or (resid 15:17 and (name N or name CA ))))", tsel
 
+def test_6():
+  """
+  previous range is all atoms selected, next residue is not, but selected
+  atoms are the same as for the last residue. In this case the range with all
+  atoms should be dumped.
+  """
+  pdb_h = pdb.hierarchy.input(pdb_string=test_pdb_8).hierarchy
+  isel = flex.size_t(range(21))
+  tsel = selection_string_from_selection(pdb_h, isel)
+  # print "tsel", tsel
+  assert tsel == "(chain A and (resid 125:127 or (resid 128 and (name N or name CA or name C or name O or name CB ))))" , tsel
+
+def test_7():
+  """
+  """
+  pdb_h = pdb.hierarchy.input(pdb_string=test_pdb_9).hierarchy
+  isel = flex.size_t([0,1,2,3,4]+range(11,27))
+  tsel = selection_string_from_selection(pdb_h, isel)
+  assert tsel == "(chain A and ((resid 124:125 and (name N or name CA or name C or name O or name CB )) or resid 126:127))", tsel
+  # print "tsel", tsel
+
+def test_8():
+  pdb_h = pdb.hierarchy.input(pdb_string=test_pdb_10).hierarchy
+  isel = flex.size_t(range(8)+[8,9,10,11,12]+range(19,35))
+  tsel = selection_string_from_selection(pdb_h, isel)
+  assert tsel == "(chain A and (resid 117 or (resid 124:125 and (name N or name CA or name C or name O or name CB )) or resid 126:127))", tsel
+
 
 
 if __name__=='__main__':
@@ -517,5 +642,8 @@ if __name__=='__main__':
   test_3()
   test_4()
   test_5()
+  test_6()
+  test_7()
+  test_8()
 
   print "OK"
