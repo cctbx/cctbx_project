@@ -6,6 +6,7 @@ import warnings
 import random
 import time
 import os
+import tempfile
 
 def exercise_forward_compatibility():
   import itertools
@@ -164,12 +165,14 @@ import os.path
 def foo () :
   print "bar"
 """
-  open("tst_libtbx_utils_python_script.py", "w").write(script)
-  f = open("tst_libtbx_utils_python_script2.py", "w")
-  utils.concatenate_python_script(out=f,
-    file_name="tst_libtbx_utils_python_script.py")
+  d = tempfile.mkdtemp()
+  name = os.path.join(d, "tst_libtbx_utils_python_script.py")
+  name2 = os.path.join(d, "tst_libtbx_utils_python_script2.py")
+  open(name, "w").write(script)
+  f = open(name2, "w")
+  utils.concatenate_python_script(out=f, file_name=name)
   f.close()
-  lines = open("tst_libtbx_utils_python_script2.py").readlines()
+  lines = open(name2).readlines()
   have_def = False
   for line in lines :
     assert (not "__future__" in line)
@@ -241,7 +244,7 @@ def exercise_approx_equal():
                       [ 2.4+0.1j, 3.5+5.9j, 7.90], eps=0.2)
 
 def exercise_file_utils () :
-  dir_name = "tmp_files_%d" % os.getpid()
+  dir_name = tempfile.mkdtemp()
   if (not os.path.exists(dir_name)) :
     os.mkdir(dir_name)
   sorted_files = []
