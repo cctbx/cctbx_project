@@ -300,8 +300,30 @@ def exercise_dir_utils () :
   target_dir = os.path.join(host_info.homedir, "data", "lysozyme")
   assert utils.allow_delete_directory(target_dir)
 
+def exercise_retrieve_unless_exists():
+  f = tempfile.NamedTemporaryFile(prefix='kings_of_france')
+  f.write('Henri IV, Louis XIII, Louis XIV, Louis XV, Louis XVI, Louis XVIII')
+  h = os.path.join(os.path.dirname(f.name), 'digests.txt')
+  open(h, 'w').writelines([
+    ('%s %s\n') %
+    (os.path.basename(f.name), utils.md5_hexdigest(f.name)),
+    'something_else  yyyyyyy',
+  ])
+  d = tempfile.mkdtemp()
+  t = os.path.join(d, 'target')
+  try: os.remove(t)
+  except Exception: pass
+  assert (utils.retrieve_unless_exists(url='file://%s' % f.name, filename=t) ==
+          "Downloaded")
+  assert f.file.read() == open(t).read()
+  assert (utils.retrieve_unless_exists(url='file://%s' % f.name, filename=t) ==
+          "Cached")
+  assert f.file.read() == open(t).read()
+
+
 def run(args):
   assert len(args) == 0
+  exercise_retrieve_unless_exists()
   exercise_forward_compatibility()
   exercise_misc()
   assert utils.sequence_index_dict(["a", "b"]) == {"a": 0, "b": 1}

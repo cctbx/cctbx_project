@@ -2064,6 +2064,37 @@ def urlopen (*args, **kwds) :
   import urllib2
   return urllib2.urlopen(*args, **kwds)
 
+def retrieve_unless_exists(url, filename, digests=None):
+  """ Download the file at the given url to the given local filename,
+      unless that file is already here. This is asserted by computed a digest
+      and comparing it to the entries in the file at the url digests. The latter
+      shall have the following format:
+
+      some-file.txt      xxxxxxxxxx
+      another-file.txt   yyyyyyyyyy
+
+      If url is ..../some-file.txt, then the expected digest is xxxxxxxxxx.
+
+      If digests is None, then the url of the digest file is expected to be
+      named 'digests.txt' and to be next to the downloaded file.
+  """
+  import urlparse
+  from os import path
+  import urllib
+  if digests is None:
+    digests = urlparse.urljoin(url, 'digests.txt')
+  digest_of = dict(tuple(li.split()) for li in urllib.urlopen(digests))
+  src_name = os.path.basename(urlparse.urlparse(url).path)
+  if (not os.path.isfile(filename)
+      or md5_hexdigest(filename) != digest_of[src_name]):
+    urllib.urlretrieve(url, filename)
+    return "Downloaded"
+  else:
+    return "Cached"
+
+
+
+
 class download_progress (object) :
   """
   Simple proxy for displaying download status - here with methods for
