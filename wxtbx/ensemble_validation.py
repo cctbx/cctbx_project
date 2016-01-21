@@ -5,10 +5,11 @@ files, used in GUI for phenix.ensemble_refinement.
 """
 
 from __future__ import division
+from cctbx.array_family import flex
 from libtbx.utils import Sorry
 from wxtbx import plots, app
 from mmtbx.command_line import validation_summary
-from wxGUI2 import Base
+from wxGUI2 import AdvancedWidgets, Base
 import wx
 import sys
 
@@ -138,6 +139,214 @@ class ensemble_validation_panel (wx.Panel) :
       reference_value=mean,
       title=label)
     self.Refresh()
+
+class ensemble_chi_panel (wx.Panel) :
+  '''
+  Automatic sequence of function calls
+  load_data -> UpdateTable -> UpdatePlot
+  OnSelect -> UpdatePlot
+
+  load_data - initially loads data and sets up data
+  UpdateTable - call this after changing threshold
+  UpdatePlot - call this after changing number of histogram bins or autoscale
+  '''
+  def __init__ (self, *args, **kwds) :
+
+    wx.Panel.__init__(self, *args, **kwds)
+    self.main_window = self.GetParent().main_window
+    sizer = wx.BoxSizer(wx.VERTICAL)
+    self.SetSizer(sizer)
+
+    # controls
+    control_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    sizer.Add(control_sizer)
+
+    self.add_text(control_sizer, 'Threshold:')
+    self.threshold_control = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER,
+                                         name='threshold', size=(60,-1))
+    self.add_control(control_sizer, self.threshold_control)
+    self.Bind(wx.EVT_TEXT_ENTER, self.UpdateTable, self.threshold_control)
+
+    self.add_text(control_sizer, 'Number of bins:')
+    self.histogram_control = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER,
+                                         name='n_bins', size=(60,-1))
+    self.add_control(control_sizer, self.histogram_control)
+    self.Bind(wx.EVT_TEXT_ENTER, self.UpdatePlot, self.histogram_control)
+
+    self.autoscale_control = wx.CheckBox(self, label='Autoscale x-axis')
+    self.add_control(control_sizer, self.autoscale_control)
+    self.Bind(wx.EVT_CHECKBOX, self.UpdatePlot, self.autoscale_control)
+
+    # table
+    self.table = AdvancedWidgets.OutlierList(
+      parent=self,
+      column_labels=[ 'Residue', 'Chi1', 'Chi2', 'Chi3', 'Chi4', 'Chi5' ],
+      size=(600,100),
+      column_formats=[ '%s', '%.2f', '%.2f', '%.2f', '%.2f', '%.2f' ],
+      style=wx.LC_REPORT|wx.LC_SINGLE_SEL|wx.LC_VIRTUAL|wx.SUNKEN_BORDER)
+    self.table.SetColumnWidths([200] + [100] * 5)
+    sizer.Add(self.table, 0, wx.EXPAND)
+    self.table.Bind(wx.EVT_LEFT_DOWN, self.OnSelect)
+
+    # plot
+    self.plot = plots.histogram(parent=self, transparent=False)
+    sizer.Add(self.plot, 1, wx.EXPAND|wx.ALL, 0)
+
+    # set defaults
+    self.threshold_control.SetValue('0.95')
+    self.histogram_control.SetValue('10')
+    self.autoscale_control.SetValue(False)
+    self.chi_angles = None
+    self.meets_threshold = None
+    self.row = 0
+    self.col = 1
+
+  def OnSelect(self, event=None):
+    self.row, self.col = self.table.GetRowCol(event)
+    if (self.col == 0):
+      self.col = 1
+    self.UpdatePlot()
+
+  def load_data(self, chi_angles=None):
+    # reorganize data from
+    # a list of all dihedrals for each atom_group per model
+    # to
+    # atom_group -> list of grouped dihedral angles (e.g. all chi1 in one list)
+    if (chi_angles is not None):
+      n_models = len(chi_angles)
+      n_groups = len(chi_angles[0]['id_str'])
+
+      id_str = chi_angles[0]['id_str']
+      id_str_map = dict()
+      all_angles = [ list() for i in xrange(n_groups) ]
+      for i in xrange(n_groups):           # loop over atom_groups
+        n_dihedrals = len(chi_angles[0]['chi_angles'][i])
+        angles = [ list() for j in xrange(n_dihedrals) ]
+        for j in xrange(n_models):
+          dihedrals = chi_angles[j]['chi_angles'][i]
+          for k in xrange(n_dihedrals):
+            dihedral = dihedrals[k]
+            if (dihedral < 0.0):
+              dihedral += 360
+            angles[k].append(dihedral)
+        all_angles[i] = angles
+
+        # build map matching id_str with row index for fast random access
+        id_str_map[id_str[i]] = i
+
+      self.chi_angles = { 'id_str': id_str,
+                          'id_str_map': id_str_map,
+                          'values': all_angles }
+      self.meets_threshold = [ False for i in
+                               xrange(len(self.chi_angles['id_str'])) ]
+      self.UpdateTable()
+      self.UpdatePlot()
+
+  def UpdateTable(self, event=None):
+    '''
+    Construct table of residues that satisfy threshold
+    '''
+
+    # check threshold
+    threshold = self.threshold_control.GetValue()
+    threshold_error = 'Please enter a fraction, between 0.0 and 1.0, for the threshold.'
+    try:
+      threshold = float(threshold)
+    except ValueError:
+      raise Sorry(threshold_error)
+    if ( (threshold < 0.0) or (threshold > 1.0) ):
+      raise Sorry(threshold_error)
+    threshold = 1.0 - threshold
+
+    # check if dihedrals lie within 2 standard deviations of the mean.
+    # for Gaussian distributions, 95% of the sample is within 2 standard
+    # deviations of the mean (default threshold value)
+    # set atom_group to be displayed if fraction is below threshold.
+    # actual check is n_outliers/n_total > (1 - input_threshold)
+    for i in xrange(len(self.chi_angles['id_str'])): # loop over model
+      self.meets_threshold[i] = False
+      for j in xrange(len(self.chi_angles['values'][i])): # loop over group
+        dihedrals = flex.double(self.chi_angles['values'][i][j])
+        mean_stddev = flex.mean_and_variance(dihedrals)
+        mean = mean_stddev.mean()
+        stddev = mean_stddev.unweighted_sample_standard_deviation()
+        n_outliers = 0
+        chi_min = mean - 2.0*stddev
+        chi_max = mean + 2.0*stddev
+        for k in xrange(len(dihedrals)):
+          if ( (dihedrals[k] < chi_min) or (dihedrals[k] > chi_max) ):
+            n_outliers += 1
+        is_outlier = (float(n_outliers)/len(dihedrals) > threshold)
+        if (is_outlier):
+          self.meets_threshold[i] = True
+          break
+
+    # refresh table
+    table_data = list()
+    for i in xrange(len(self.meets_threshold)):
+      if (self.meets_threshold[i]):
+        row = [ '---' for j in xrange(8) ]
+        row[0] = self.chi_angles['id_str'][i]
+        row[6] = None     # sel_str for model viewer
+        row[7] = None     # xyz for model viewer
+        for j in xrange(len(self.chi_angles['values'][i])):
+          chi = self.chi_angles['values'][i][j]
+          if (None not in chi):
+            row[j+1] = flex.mean(flex.double(chi))
+        table_data.append(row)
+    self.table.ReloadData(table_data)
+    self.table.Refresh()
+
+  def UpdatePlot(self, event=None):
+    '''
+    Plot histogram of chi angle for residue and angle selected in table
+    '''
+    n_bins = self.histogram_control.GetValue()
+    try:
+      n_bins = int(n_bins)
+    except ValueError:
+      raise Sorry('Please enter an integer for the number of histogram bins.')
+
+    # check that n_bins is reasonable
+    min_n_bins = 1
+    max_n_bins = 1000
+    if (n_bins < min_n_bins):
+      n_bins = min_n_bins
+    if (n_bins > max_n_bins):
+      n_bins = max_n_bins
+    self.histogram_control.SetValue(str(n_bins))
+
+    # check autoscale option
+    autoscale = self.autoscale_control.GetValue()
+    x_lim = (0.0, 360.0)
+    if (autoscale):
+      x_lim = None
+
+    # update plot with data from currently selected cell
+    if (True in self.meets_threshold):
+      reference_value = self.table.get_item_text(self.row, self.col)
+      if (reference_value != '---'):
+        id_str = self.table.get_item_text(self.row, 0)
+        actual_row = self.chi_angles['id_str_map'].get(id_str, 0)
+        x_label = 'Chi %i (degrees)' % self.col
+        y_label = 'Numer of Models'
+        title = '%s Chi %i histogram' % (id_str, self.col)
+        self.plot.show_histogram(
+          data=self.chi_angles['values'][actual_row][self.col-1],
+          n_bins=n_bins,reference_value=float(reference_value),
+          x_label=x_label, y_label=y_label, title=title, x_lim=x_lim)
+
+  # convenience functions for placing text and widgets
+  def add_text(self, sizer, label,
+               style=wx.LEFT|wx.TOP|wx.BOTTOM|wx.ALIGN_CENTER_VERTICAL):
+    text = wx.StaticText(self, label=label)
+    sizer.Add(text, 0, style, 5)
+
+  def add_control(self, sizer, control,
+                  style=wx.LEFT|wx.TOP|wx.BOTTOM|wx.ALIGN_CENTER_VERTICAL,
+                  spacer=40):
+    sizer.Add(control, 0, style, 5)
+    sizer.AddSpacer(spacer)
 
 if (__name__ == "__main__") :
   result = validation_summary.run(sys.argv[1:])

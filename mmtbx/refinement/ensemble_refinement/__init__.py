@@ -2067,7 +2067,7 @@ class trial (slots_getstate_setstate) :
 class result (slots_getstate_setstate) :
   __slots__ = [
     "directory", "r_work", "r_free",
-    "number_of_models", "pdb_file", "mtz_file","validation",
+    "number_of_models", "pdb_file", "mtz_file","validation", "chi_angles"
   ]
   def __init__ (self,
       best_trial,
@@ -2085,6 +2085,13 @@ class result (slots_getstate_setstate) :
         args=[self.pdb_file],
         out=log)
       assert (type(self.validation).__name__ == 'ensemble')
+
+      # calculate chi angles for each model
+      # each model is assumed to have the same number of protein residues
+      self.chi_angles = list()
+      hierarchy = pdb.input(self.pdb_file).construct_hierarchy()
+      for model in hierarchy.models():
+        self.chi_angles.append(calculate_chi_angles(model))
 
   def get_result_files (self, output_dir=None) :
     if (output_dir is None) :
@@ -2116,3 +2123,59 @@ def validate_params (params) :
   elif (len(params.input.xray_data.labels[0].split(",")) > 2) :
     raise Sorry("Anomalous data are not allowed in this program.")
   return mmtbx.command_line.validate_input_params(params)
+
+
+# =============================================================================
+from mmtbx.validation import rotalyze
+from mmtbx.rotamer import sidechain_angles
+
+def calculate_chi_angles(model=None):
+  '''
+
+  =============================================================================
+  Function for calculating all dihedral angles for each protein residue in a
+  model.
+
+  Parameters:
+  -----------
+  model - from hierarchy.models()
+
+  Return:
+  -------
+  dictionary - where 'id_str' is a list containing residue ids
+               (atom_group.id_str()) and 'chi_angles' is a list containing
+               a list of dihedral angles for each residue (list of lists)
+
+  Notes:
+  ------
+  The list for an amino acid is of size 0 if it has no defined dihedral angles.
+  A dihedral angle in the list for an atom_group can be None if there are
+  missing atoms. A protein residue is defined as common_amino_acid or
+  modified_amino_acid.
+
+  =============================================================================
+
+  '''
+
+  id_str = list()
+  chi_angles = list()
+
+  if (model is not None):
+    get_class = pdb.common_residue_names_get_class
+    angles = sidechain_angles.SidechainAngles(False)
+
+    # loop over all atom groups in chain
+    for chain in model.chains():
+      for rg in chain.residue_groups():
+        all_dict = rotalyze.construct_complete_sidechain(rg)
+        for ag in rg.atom_groups():
+          residue_class = get_class(ag.resname)
+          if ( (residue_class == 'common_amino_acid') or
+               (residue_class == 'modified_amino_acid') ):
+            atom_dict = all_dict.get(ag.altloc)
+            id_str.append(ag.id_str())
+            chi_angles.append(angles.measureChiAngles(
+              res=ag,atom_dict=atom_dict))
+
+  return { 'id_str': id_str,
+           'chi_angles': chi_angles }
