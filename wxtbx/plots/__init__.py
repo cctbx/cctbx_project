@@ -151,7 +151,8 @@ class plot_container (wx.BoxSizer, wxtbx.MouseWheelTransparencyMixin) :
 
 class histogram (plot_container) :
   def show_histogram (self, data, n_bins, reference_value=None, pos=(1,1,1),
-      draw_now=True, x_label=None, y_label=None, title=None, log_scale=False) :
+                      draw_now=True, x_label=None, y_label=None, title=None,
+                      log_scale=False, x_lim=None, y_lim=None) :
     assert len(pos) == 3
     self.figure.clear()
     p = self.figure.add_subplot(*pos)
@@ -162,6 +163,10 @@ class histogram (plot_container) :
       p.set_xlabel(x_label)
     if (y_label is not None) :
       p.set_ylabel(y_label)
+    if (x_lim is not None):
+      p.set_xlim(x_lim[0], x_lim[1])
+    if (y_lim is not None):
+      p.set_ylim(y_lim[0], y_lim[1])
     if (title is not None) :
       p.set_title(title)
     if draw_now :
