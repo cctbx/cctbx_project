@@ -191,7 +191,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
 
     return detector
 
-  def get_raw_data(self, index=None):
+  def get_raw_data(self):
     if self._raw_data is None:
       data = read_cbf_image(self._image_file)
       self._raw_data = []
@@ -210,10 +210,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
               = i * shift_x, j * shift_y, i * shift_x + 487, j * shift_y + 195
             self._raw_data.append(data[ymin:ymax,xmin:xmax])
 
-    if index is not None:
-      return self._raw_data[index]
-
-    return self._raw_data[0]
+    return tuple(self._raw_data)
 
   def _goniometer(self):
     '''Return a model for a simple single-axis goniometer. This should

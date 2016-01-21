@@ -4,8 +4,15 @@ def saturation(image_file):
   from dxtbx import load
   i = load(image_file)
   d = i.get_detector()
-  return i.get_scan().get_image_range()[0], \
-         max(i.get_raw_data()) / d.get_trusted_range()[1]
+  raw_data = i.get_raw_data()
+  if not isinstance(raw_data, tuple):
+    raw_data = (raw_data,)
+  if i.get_scan() is None:
+    return 0, \
+         max([max(raw_data[pid]) / d[pid].get_trusted_range()[1] for pid in xrange(len(d))])
+  else:
+    return i.get_scan().get_image_range()[0], \
+         max([max(raw_data[pid]) / d[pid].get_trusted_range()[1] for pid in xrange(len(d))])
 
 if __name__ == '__main__':
   import sys

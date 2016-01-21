@@ -285,7 +285,7 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
 
   if not single_panel:
 
-    def get_raw_data(self, index=None):
+    def get_raw_data(self):
       if self._raw_data is None:
         raw_data = read_cbf_image(self._image_file)
 
@@ -297,9 +297,7 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
           xmin, ymin, xmax, ymax = self.coords[panel.get_name()]
           self._raw_data.append(raw_data[ymin:ymax,xmin:xmax])
 
-      if index is not None:
-        return self._raw_data[index]
-      return self._raw_data[0]
+      return tuple(self._raw_data)
 
 if __name__ == '__main__':
 

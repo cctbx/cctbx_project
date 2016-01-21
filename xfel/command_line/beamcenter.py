@@ -47,12 +47,13 @@ if (__name__ == "__main__"):
     beam = img.get_beam()
     s0 = beam.get_s0()
 
+    raw_data = img.get_raw_data()
+    if not isinstance(raw_data, tuple):
+      raw_data = (raw_data,)
+
     for panel_id, panel in enumerate(img.get_detector()):
       beam_center = col(panel.get_beam_centre_px(s0))
-      if panel_id > 0:
-        data = img.get_raw_data(panel_id)
-      else:
-        data = img.get_raw_data()
+      data = raw_data[panel_id]
 
       print "Assembling mask...",; sys.stdout.flush()
       mask = panel.get_trusted_range_mask(data)

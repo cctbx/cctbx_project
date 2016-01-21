@@ -241,17 +241,20 @@ class _Tiles(object):
         if len(detector) > 1 and metrology_matrices is not None:
           self.raw_image.apply_metrology_from_matrices(metrology_matrices)
 
+        raw_data = self.raw_image.get_raw_data()
+        if not isinstance(raw_data, tuple):
+          raw_data = (raw_data,)
+
         if len(detector) > 1:
           self.flex_image = _get_flex_image_multipanel(
             brightness=self.current_brightness / 100,
             panels=detector,
             show_untrusted=self.show_untrusted,
-            raw_data=[self.raw_image.get_raw_data(i)
-                      for i in range(len(self.raw_image.get_detector()))])
+            raw_data=raw_data)
         else:
           self.flex_image = _get_flex_image(
             brightness=self.current_brightness / 100,
-            data=self.raw_image.get_raw_data(),
+            data=raw_data[0],
             saturation=self.raw_image.get_detector()[0].get_trusted_range()[1],
             vendortype=self.raw_image.__class__.__name__,
             show_untrusted=self.show_untrusted
@@ -286,6 +289,10 @@ class _Tiles(object):
       self.flex_image.adjust(color_scheme=self.current_color_scheme)
 
     def update_brightness(self,b,color_scheme=0):
+        raw_data = self.raw_image.get_raw_data()
+        if not isinstance(raw_data, tuple):
+          raw_data = (raw_data,)
+
         if len(self.raw_image.get_detector()) > 1:
           # XXX Special-case read of new-style images until multitile
           # images are fully supported in dxtbx.
@@ -293,12 +300,11 @@ class _Tiles(object):
             brightness=b / 100,
             panels=self.raw_image.get_detector(),
             show_untrusted=self.show_untrusted,
-            raw_data=[self.raw_image.get_raw_data(i)
-                      for i in range(len(self.raw_image.get_detector()))])
+            raw_data=raw_data)
         else:
           self.flex_image = _get_flex_image(
             brightness=b / 100,
-            data=self.raw_image.get_raw_data(),
+            data=raw_data[0],
             saturation=self.raw_image.get_detector()[0].get_trusted_range()[1],
             vendortype=self.raw_image.__class__.__name__,
             show_untrusted=self.show_untrusted

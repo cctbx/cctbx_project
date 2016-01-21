@@ -35,9 +35,11 @@ def print_header():
     from dxtbx.format.FormatMultiImage import FormatMultiImage
     if not issubclass(format_class, FormatMultiImage):
       try:
-        d = i.get_raw_data()
-        d.set_selected((d < 0), 0)
-        print 'Total Counts: %d' % flex.sum(d)
+        raw_data = i.get_raw_data()
+        if not isinstance(raw_data, tuple):
+          raw_data = (raw_data,)
+        d = [p.as_1d() for p in raw_data]
+        print 'Total Counts: %d' % sum([flex.sum(p.select(p >= 0)) for p in d])
       except AttributeError, e:
         print "Could not read image data"
 

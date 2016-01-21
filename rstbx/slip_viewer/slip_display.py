@@ -1555,14 +1555,16 @@ class AppFrame(wx.Frame):
                 detector = fi.get_detector()
                 ifs = (int(coords[1]), int(coords[0])) # int fast slow
                 isf = (int(coords[0]), int(coords[1])) # int slow fast
+                raw_data = fi.get_raw_data()
+                if not isinstance(raw_data, tuple):
+                  raw_data = (raw_data,)
                 if len(detector) > 1:
-                    if readout >= 0:
-                        panel = detector[readout]
-                        if panel.is_coord_valid(ifs):
-                            possible_intensity = fi.get_raw_data(readout)[isf]
+                  if readout >= 0:
+                    if detector[readout].is_coord_valid(ifs):
+                        possible_intensity = raw_data[readout][isf]
                 else:
-                    if detector[0].is_coord_valid(ifs):
-                        possible_intensity = fi.get_raw_data()[isf]
+                  if detector[0].is_coord_valid(ifs):
+                      possible_intensity = raw_data[0][isf]
 
                 if possible_intensity is not None:
                     if possible_intensity == 0:
