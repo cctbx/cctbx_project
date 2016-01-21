@@ -1,6 +1,7 @@
 from __future__ import division
 import sys
 import fileinput
+from fast_linalg.precompiled import install_precompiled_openblas
 
 if sys.platform == 'win32':
   # We need to run fast_blas.build_openblas from the MSYS shell
@@ -21,3 +22,12 @@ if sys.platform == 'win32':
       li = li.replace('c:\\', '/c/').replace('\\', '/')\
         .replace(lpb.lower(), lpb)
     print li,
+
+  install_precompiled_openblas('windows')
+
+elif sys.platform == 'darwin':
+  install_precompiled_openblas('osx')
+
+else:
+  raise libtbx.utils.Sorry("Module fast_linalg is not available on platform %s" %
+                           sys.platform())
