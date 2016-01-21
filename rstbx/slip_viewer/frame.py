@@ -31,7 +31,7 @@ class chooser_wrapper:
   def get_mask(self):  return self.image_set.get_mask(self.index)
 
   def get_raw_data(self):
-    return self.image_set.get_raw_data(self.index)[0]
+    return self.image_set[self.index]
 
   def get_detectorbase(self):
     return self.image_set.get_detectorbase(self.index)
@@ -612,8 +612,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
           flex_img = _get_flex_image_multipanel(
             brightness=self.settings.brightness / 100,
             panels=detector,
-            raw_data=[raw_img.get_raw_data(i)
-                      for i in range(len(detector))])
+            raw_data=raw_img.get_raw_data())
         else:
           from tile_generation import _get_flex_image
           flex_img = _get_flex_image(

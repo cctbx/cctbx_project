@@ -159,6 +159,10 @@ class RingSettingsPanel(wx.Panel):
     bestc = [self._center[0],self._center[1]]
     bestr = self._radius
 
+    raw_data = self._pyslip.tiles.raw_image.get_raw_data()
+    if not isinstance(raw_data, tuple):
+      raw_data = (raw_data,)
+
     for j in range(-jitter, jitter, 1):
       j /= 2
       for i in range(-jitter, jitter, 1):
@@ -170,10 +174,10 @@ class RingSettingsPanel(wx.Panel):
             mm = detector[0].pixel_to_millimeter(point)
             mm = (mm[0],mm[1],avg_distance)
             pid = detector.get_panel_intersection(mm)
-            if pid > 0:
+            if pid >= 0:
               px = detector[pid].get_ray_intersection_px(mm)
               px = [int(round(px[0])),int(round(px[1]))]
-              data = self._pyslip.tiles.raw_image.get_raw_data(pid)
+              data = raw_data[pid]
               if px[0] >= 0 and px[0] < data.focus()[1] and px[1] >= 0 and px[1] < data.focus()[0]:
                 total += data[px[1],px[0]]
           if total > best:

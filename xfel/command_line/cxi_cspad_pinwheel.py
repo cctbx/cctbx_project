@@ -48,7 +48,7 @@ def run(argv=None):
       src_sensor = 1
       dest_sensor = 0
       for asic in range(2):
-        tiles[(0,quad,dest_sensor,asic)] = img.get_raw_data((quad*16)+(src_sensor*2)+asic) # FIXME get the panel ID from dxtbx
+        tiles[(0,quad,dest_sensor,asic)] = img.get_raw_data()[(quad*16)+(src_sensor*2)+asic] # FIXME get the panel ID from dxtbx
 
     destpath = os.path.splitext(path)[0] + "_pinwheel.cbf"
 

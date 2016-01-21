@@ -129,7 +129,7 @@ class one_panel(object):
     detector = self.image.get_detector()
     angle = [0,3,2,1][self.i_quad] #
 
-    asic = self.image.get_raw_data(list(detector.get_names()).index(self.panel.get_name())).matrix_rot90(angle)
+    asic = self.image.get_raw_data()[list(detector.get_names()).index(self.panel.get_name())].matrix_rot90(angle)
 
     p_w, p_h = self.panel.get_image_size()
     b = [self.panel.get_pixel_lab_coord((0    ,0    )),

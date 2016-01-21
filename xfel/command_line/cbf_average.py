@@ -98,7 +98,7 @@ def run(argv=None):
       else:
         detector = img.get_detector()
 
-      data = [img.get_raw_data(i).as_1d().as_double() for i in xrange(len(detector))]
+      data = [img.get_raw_data()[i].as_1d().as_double() for i in xrange(len(detector))]
       wavelength = img.get_beam().get_wavelength()
       distance = flex.mean(flex.double([d.get_distance() for d in detector]))
 

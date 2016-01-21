@@ -327,17 +327,10 @@ class MultiFileReader(ReaderBase):
   def read(self, index=None):
     '''Read the image frame at the given index.'''
 
-    # Get the format instance and the number of panels
+    # Get the format instance
     format_instance = self.get_format(index)
-    npanels = len(format_instance.get_detector())
 
-    # Return a flex array for single panels and a tuple of flex arrays
-    # for multiple panels
-    assert(npanels > 0)
-    if npanels == 1:
-      return format_instance.get_raw_data()
-    else:
-      return tuple([format_instance.get_raw_data(i) for i in range(npanels)])
+    return format_instance.get_raw_data()
 
   def get_format(self, index=None):
     '''Get the format at the given index.'''
@@ -405,17 +398,10 @@ class MemReader(ReaderBase):
     return True
 
   def read(self, index=None):
-    # Get the format instance and the number of panels
+    # Get the format instance
     format_instance = self.get_format(index)
-    npanels = len(format_instance.get_detector())
 
-    # Return a flex array for single panels and a tuple of flex arrays
-    # for multiple panels
-    assert(npanels > 0)
-    if npanels == 1:
-      return format_instance.get_raw_data()
-    else:
-      return tuple([format_instance.get_raw_data(i) for i in range(npanels)])
+    return format_instance.get_raw_data()
 
   def get_detectorbase(self, index=None):
     return self._images[index].get_detectorbase()
@@ -797,16 +783,9 @@ class MemImageSet(ImageSet):
     ''' Iterate over the array indices and read each image in turn. '''
     for j in self._indices:
       img = self._images[j]
-      # Get the number of panels
-      npanels = len(img.get_detector())
 
-      # Yield a flex array for single panels and a tuple of flex arrays
-      # for multiple panels
-      assert(npanels > 0)
-      if npanels == 1:
-        yield img.get_raw_data()
-      else:
-        yield tuple([img.get_raw_data(i) for i in xrange(npanels)])
+      # Yield a tuple of flex arrays
+      yield img.get_raw_data()
 
   def __eq__(self, other):
     ''' Compare this image set to another. '''
