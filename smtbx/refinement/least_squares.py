@@ -6,6 +6,7 @@ from smtbx_refinement_least_squares_ext import *
 
 import smtbx.refinement.weighting_schemes # import dependency
 from cctbx import xray
+import libtbx.load_env
 from libtbx import adopt_optional_init_args
 from scitbx import linalg
 from scitbx.lstbx import normal_eqns
@@ -15,13 +16,15 @@ from smtbx.refinement.restraints import origin_fixing_restraints
 
 import math
 
-def crystallographic_ls(
-  observations, reparametrisation,
-  non_linear_ls_with_separable_scale_factor=
-  normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_3,
-  **kwds):
+def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
+  """ Construct a class for crystallographic L.S. based on the given engine
+  """
+  nls = (non_linear_ls_with_separable_scale_factor or
+         (normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_3
+          if libtbx.env.has_module('fast_linalg') else
+          normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_2))
 
-  class klass(non_linear_ls_with_separable_scale_factor):
+  class klass(nls):
 
     default_weighting_scheme = mainstream_shelx_weighting
     weighting_scheme = "default"
@@ -208,7 +211,15 @@ def crystallographic_ls(
         self.covariance_matrix(jacobian_transpose=jac_tr),
         self.reparametrisation.component_annotations)
 
-  return klass(observations, reparametrisation, **kwds)
+  return klass
+
+
+def crystallographic_ls(
+  observations, reparametrisation,
+  non_linear_ls_with_separable_scale_factor=None,
+  **kwds):
+  return crystallographic_ls_class(non_linear_ls_with_separable_scale_factor
+                                   )(observations, reparametrisation, **kwds)
 
 
 class covariance_matrix_and_annotations(object):
