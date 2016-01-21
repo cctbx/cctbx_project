@@ -12,7 +12,7 @@ from scitbx.array_family import flex
 asic_dimension = (194,185)
 asic_gap = 3
 pixel_size = 0.10992
-from xfel.cxi.cspad_ana.cspad_tbx import cspad_saturated_value
+from xfel.cxi.cspad_ana.cspad_tbx import cspad_saturated_value, cspad_min_trusted_value
 
 from dxtbx.format.FormatCBFMultiTile import cbf_wrapper as dxtbx_cbf_wrapper
 class cbf_wrapper(dxtbx_cbf_wrapper):
@@ -256,7 +256,7 @@ def format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, a
 
   n_asics = data.focus()[0] * data.focus()[1]
   add_frame_specific_cbf_tables(cbf, wavelength,timestamp,
-    [cspad_saturated_value]*n_asics)
+    [(cspad_min_trusted_value,cspad_saturated_value)]*n_asics)
 
   # Set the distance, I.E., the length translated along the Z axis
   cbf.find_category("diffrn_scan_frame_axis")
@@ -582,11 +582,11 @@ def metro_phil_to_basis_dict(metro):
 
   return bd
 
-def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, saturations):
+def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, trusted_ranges):
   """ Adds tables to cbf handle that won't already exsist if the cbf file is just a header
   @ param wavelength Wavelength in angstroms
   @ param timestamp String formatted timestamp for the image
-  @ param saturations Array of satruation values, one for each element """
+  @ param trusted_ranges Array of trusted range tuples (min, max), one for each element """
 
   """Data items in the DIFFRN_RADIATION category describe
    the radiation used for measuring diffraction intensities,
@@ -638,7 +638,7 @@ def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, saturations):
 
   cbf.add_category("array_intensities",["array_id","binary_id","linearity","gain","gain_esd","overload","undefined_value"])
   for i, array_name in enumerate(array_names):
-    cbf.add_row([array_name,str(i+1),"linear","1.0","0.1",str(saturations[i]),"0.0"])
+    cbf.add_row([array_name,str(i+1),"linear","1.0","0.1",str(trusted_ranges[i][1]),str(trusted_ranges[i][0])])
 
 def add_tiles_to_cbf(cbf, tiles, verbose = False):
   """
@@ -807,7 +807,7 @@ def get_cspad_cbf_handle(tiles, metro, metro_style, timestamp, cbf_root, wavelen
       basis.depends_on = "FS_D%dQ%dS%d"%key[0:3]
       basis.pixel_size = (pixel_size,pixel_size)
       basis.dimension = asic_dimension
-      basis.saturation = cspad_saturated_value
+      basis.trusted_range = (cspad_min_trusted_value, cspad_saturated_value)
     else:
       assert False # shouldn't be reached as it would indicate more than four levels of hierarchy for this detector
     basis.axis_name = detector_axes_names[-1]
@@ -873,7 +873,7 @@ def get_cspad_cbf_handle(tiles, metro, metro_style, timestamp, cbf_root, wavelen
     cbf.add_row(["FRAME1","ELE_"+quadname,"ARRAY_"+quadname,"%d"%(i+1)])
 
   if not header_only:
-    add_frame_specific_cbf_tables(cbf, wavelength, timestamp, [metro[k].saturation for k in tilekeys])
+    add_frame_specific_cbf_tables(cbf, wavelength, timestamp, [metro[k].trusted_range for k in tilekeys])
 
   """Data items in the AXIS category record the information required
      to describe the various goniometer, detector, source and other
