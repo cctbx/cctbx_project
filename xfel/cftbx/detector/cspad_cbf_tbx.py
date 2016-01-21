@@ -968,7 +968,7 @@ def get_cspad_cbf_handle(tiles, metro, metro_style, timestamp, cbf_root, wavelen
     else:
       assert z_dim == sensor_quad_keys.count(quadkey)
 
-  cbf.add_category("array_structure_list",["array_section","array_section_id","index","dimension","precedence","direction","axis_set_id"])
+  cbf.add_category("array_structure_list",["array_id","array_section_id","index","dimension","precedence","direction","axis_set_id"])
   for quadname in quadstrs:
     cbf.add_row(["ARRAY_"+quadname,".","1","%d"%(2*x_dim),"1","increasing","."])
     cbf.add_row(["ARRAY_"+quadname,".","2","%d"%y_dim,"2","increasing","."])
