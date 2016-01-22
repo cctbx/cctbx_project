@@ -14,20 +14,18 @@ from libtbx.utils import Sorry
 from cctbx.uctbx import unit_cell
 
 class intensities_scaler(object):
-  '''
+  """
   Author      : Uervirojnangkoorn, M.
   Created     : 7/13/2014
   Merge equivalent reflections and report intensity and refinement statistics.
-  '''
-
+  """
   def __init__(self):
-    '''
+    """
     Constructor
-    '''
+    """
     self.CONST_SE_MIN_WEIGHT = 0.17
     self.CONST_SE_MAX_WEIGHT = 1.0
     self.CONST_SIG_I_FACTOR = 1.5
-
   def calc_avg_I_cpp(self, group_no, group_id_list, miller_index, miller_indices_ori, I, sigI, G, B,
                      p_set, rs_set, wavelength_set, sin_theta_over_lambda_sq, SE, avg_mode,
                      iparams, pickle_filename_set):
@@ -36,20 +34,15 @@ class intensities_scaler(object):
     elif avg_mode == 'weighted': avg_mode_cpp = Average_Mode.Weighted
     elif avg_mode == 'final': avg_mode_cpp = Average_Mode.Final
     else: raise Sorry("Bad averaging mode selected: %s"%avg_mode)
-
     sigma_max = iparams.sigma_rejection
-
     engine = averaging_engine(group_no, group_id_list, miller_index, miller_indices_ori, I, sigI, G, B,p_set, rs_set, wavelength_set, sin_theta_over_lambda_sq, SE, pickle_filename_set)
     engine.avg_mode = avg_mode_cpp
     engine.sigma_max = sigma_max
     engine.flag_volume_correction = iparams.flag_volume_correction
     engine.n_rejection_cycle = iparams.n_rejection_cycle
     engine.flag_output_verbose = iparams.flag_output_verbose
-
     results = engine.calc_avg_I()
-
     return results.miller_index, results.I_avg, results.sigI_avg, (results.r_meas_w_top, results.r_meas_w_btm, results.r_meas_top, results.r_meas_btm, results.multiplicity), (results.I_avg_even, results.I_avg_odd, results.I_avg_even_h, results.I_avg_odd_h, results.I_avg_even_k, results.I_avg_odd_k, results.I_avg_even_l, results.I_avg_odd_l), results.txt_obs_out, results.txt_reject_out
-
 
   def calc_mean_unit_cell(self, results):
     a_all = flex.double()
@@ -66,11 +59,9 @@ class intensities_scaler(object):
         alpha_all.append(pres.uc_params[3])
         beta_all.append(pres.uc_params[4])
         gamma_all.append(pres.uc_params[5])
-
     uc_mean = flex.double([np.mean(a_all), np.mean(b_all), np.mean(c_all), np.mean(alpha_all), np.mean(beta_all), np.mean(gamma_all)])
     uc_med = flex.double([np.median(a_all), np.median(b_all), np.median(c_all), np.median(alpha_all), np.median(beta_all), np.median(gamma_all)])
     uc_std = flex.double([np.std(a_all), np.std(b_all), np.std(c_all), np.std(alpha_all), np.std(beta_all), np.std(gamma_all)])
-
     return uc_mean, uc_med, uc_std
 
   def calc_mean_postref_parameters(self, results):
@@ -187,7 +178,7 @@ class intensities_scaler(object):
         if math.isnan(pres.SE) or np.isinf(pres.SE):
           flag_pres_ok = False
 
-        if flag_pres_ok and SE_med > 0:
+        if flag_pres_ok and SE_std > 0:
           if abs(pres.SE-SE_med)/SE_std > std_filter:
             flag_pres_ok = False
             cn_bad_frame_SE += 1
@@ -463,6 +454,18 @@ class intensities_scaler(object):
       miller_array_merge_unique.export_as_cns_hkl(file_object=f_cns)
       f_cns.close()
 
+    #calculate isotropic B-factor
+    try:
+      from mod_util import mx_handler
+      mxh = mx_handler()
+      asu_contents = mxh.get_asu_contents(iparams.n_residues)
+      observations_as_f = miller_array_merge.as_amplitude_array()
+      observations_as_f.setup_binner(auto_binning=True)
+      from cctbx import statistics
+      wp = statistics.wilson_plot(observations_as_f, asu_contents, e_statistics=True)
+      B_merged = wp.wilson_b
+    except Exception:
+      B_merged = 0
 
     #calculate total cc_anom for two halves
     cc_anom_acentric, cc_anom_centric, nrefl_anom_acentric, nrefl_anom_centric = (0,0,0,0)
@@ -515,6 +518,7 @@ class intensities_scaler(object):
     binner_template_asu_indices = binner_template_asu.bin_indices()
 
     txt_out = '\n'
+    txt_out += 'Isotropic B-factor:  %7.2f\n'%(B_merged)
     txt_out += 'No. of reflections\n'
     txt_out += ' all:                %7.0f\n'%(n_refl_all)
     txt_out += ' outside resolution: %7.0f\n'%(n_refl_out_resolutions)
@@ -1243,3 +1247,20 @@ class mx_handler(object):
                      }
 
     return asu_contents
+
+class misc_handler(object):
+  """
+  Author      : Uervirojnangkoorn, M.
+  Created     : 1/6/2016
+  A collection of misc. functions
+  """
+
+  def __init__(self):
+    """
+    Constructor
+    """
+
+  def get_resolution_step_for_B(self, iparams):
+    resolution_gap = 7 - iparams.scale.d_min
+    resolution_step = resolution_gap/ iparams.n_bins
+    return resolution_step
