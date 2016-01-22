@@ -110,22 +110,21 @@ def run(platform_info,
                   path.join(abs(libtbx.env.lib_path), 'openblas.lib'))
       dependency_search = [openblas_dll]
       searched = set()
-      dependencies = set()
+      dll_dependencies = set()
       while(dependency_search):
         dll = dependency_search.pop()
         searched.add(dll)
         for li in subprocess.check_output(['objdump', '-x', dll]).split('\n'):
-          m = re.search(r'DLL [ ] Name \s* : \s* (lib \S+ \. dll)', 
+          m = re.search(r'DLL [ ] Name \s* : \s* (lib \S+ \. dll)',
                         li, flags=re.X)
           if m:
             dll_dep = path.join(platform_info.mingw_root(), 'bin', m.group(1))
             if path.isfile(dll_dep):
-              dependencies.add(dll_dep)
+              dll_dependencies.add(dll_dep)
               if dll_dep not in searched:
                 dependency_search.append(dll_dep)
-      for dll in dependencies:
-        shutil.copy(path.join(platform_info.mingw_root(), 'bin', dll), 
-                    abs(libtbx.env.lib_path))
+      for dll in dll_dependencies:
+        shutil.copy(dll, abs(libtbx.env.lib_path))
     elif platform_info.is_darwin():
       openblas_dylib = path.join(stage_dir, 'lib', 'libopenblas.dylib')
       shutil.copy(openblas_dylib, abs(libtbx.env.lib_path))
@@ -140,10 +139,9 @@ def run(platform_info,
                         'openblas_licence'), 'w') as license:
       license.write(licence_text % licences)
 
-  # Package the files added to the CCTBX build directory
-  if package:
+    # Package the files just added to the CCTBX build directory
     arch = platform_info.arch_of_libopenblas()
-    name = 'openblas-%s-%s.zip' % ('windows' if platform_info.is_mingw() else
+    name = 'openblas-%s-%sbit.zip' % ('windows' if platform_info.is_mingw() else
                                    'macos' if platform_info.is_darwin() else
                                    'linux', arch)
     archive = zipfile.ZipFile(
@@ -151,9 +149,7 @@ def run(platform_info,
       mode="w")
     openblas_inc = libtbx.env.include_path / 'openblas'
     if platform_info.is_mingw():
-      libraries = ('libopenblas.dll', 'openblas.lib',
-                   'libgfortran-3.dll', 'libquadmath-0.dll')
-      libraries += 'libgcc_s_dw2-1.dll' 
+      libraries = [path.basename(dll) for dll in dll_dependencies]
     elif platform_info.is_darwin():
       libraries = filter(lambda f: 'libgfortran' in f or 'libquadmath' in f,
                          os.listdir(abs(libtbx.env.lib_path)))
@@ -219,10 +215,10 @@ class platform_info(object):
 
   def is_mingw(self):
     return self.platform.find('mingw') >= 0
-  
+
   def is_mingw64(self):
     return self.is_mingw() and self.platform.find('64') >= 0
-    
+
   def mingw_root(self):
     return (r'c:\msys64\mingw64' if self.is_mingw64() else
             r'c:\mingw' if self.is_mingw() else
@@ -286,7 +282,7 @@ if __name__ == '__main__':
                  'need GNU C++ and Fortran compiler installed, using '
                  'MinGW to do so on Windows.')
   )
-  features = ('build', 'stage', 'install', 'package')
+  features = ('build', 'stage', 'install')
   for arg in features:
     p.add_argument('--%s' % arg, dest=arg, action='store_true')
     p.add_argument('--no-%s' % arg, dest=arg, action='store_false')
