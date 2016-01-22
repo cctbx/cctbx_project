@@ -104,13 +104,28 @@ def run(platform_info,
     if path.isdir(openblas_inc): shutil.rmtree(openblas_inc)
     shutil.copytree(path.join(stage_dir, 'include'), openblas_inc)
     if platform_info.is_mingw():
-      shutil.copy(path.join(stage_dir, 'bin', 'libopenblas.dll'),
-                  abs(libtbx.env.lib_path))
+      openblas_dll = path.join(stage_dir, 'bin', 'libopenblas.dll')
+      shutil.copy(openblas_dll, abs(libtbx.env.lib_path))
       shutil.copy(path.join(stage_dir, 'lib', 'libopenblas.dll.a'),
                   path.join(abs(libtbx.env.lib_path), 'openblas.lib'))
-      for dll in ('libgfortran-3.dll', 'libquadmath-0.dll',
-                  'libgcc_s_dw2-1.dll'):
-        shutil.copy(path.join('c:/mingw/bin', dll), abs(libtbx.env.lib_path))
+      dependency_search = [openblas_dll]
+      searched = set()
+      dependencies = set()
+      while(dependency_search):
+        dll = dependency_search.pop()
+        searched.add(dll)
+        for li in subprocess.check_output(['objdump', '-x', dll]).split('\n'):
+          m = re.search(r'DLL [ ] Name \s* : \s* (lib \S+ \. dll)', 
+                        li, flags=re.X)
+          if m:
+            dll_dep = path.join(platform_info.mingw_root(), 'bin', m.group(1))
+            if path.isfile(dll_dep):
+              dependencies.add(dll_dep)
+              if dll_dep not in searched:
+                dependency_search.append(dll_dep)
+      for dll in dependencies:
+        shutil.copy(path.join(platform_info.mingw_root(), 'bin', dll), 
+                    abs(libtbx.env.lib_path))
     elif platform_info.is_darwin():
       openblas_dylib = path.join(stage_dir, 'lib', 'libopenblas.dylib')
       shutil.copy(openblas_dylib, abs(libtbx.env.lib_path))
@@ -118,12 +133,6 @@ def run(platform_info,
         if 'libgfortran' in li or 'libquadmath' in li:
           dylib = li.split()[0]
           shutil.copy(dylib, abs(libtbx.env.lib_path))
-    for f in ('COPYING3', 'COPYING.RUNTIME', 'COPYING.LIB'):
-      if platform_info.is_mingw():
-        shutil.copy(
-          'c:/mingw/share/doc/gcc/%s/%s' %
-          (platform_info.c_compiler_version, f),
-          abs(libtbx.env.build_path))
     licences = {
       'openblas_licence': open('LICENSE').read(),
     }
@@ -143,8 +152,8 @@ def run(platform_info,
     openblas_inc = libtbx.env.include_path / 'openblas'
     if platform_info.is_mingw():
       libraries = ('libopenblas.dll', 'openblas.lib',
-                   'libgfortran-3.dll', 'libquadmath-0.dll',
-                   'libgcc_s_dw2-1.dll')
+                   'libgfortran-3.dll', 'libquadmath-0.dll')
+      libraries += 'libgcc_s_dw2-1.dll' 
     elif platform_info.is_darwin():
       libraries = filter(lambda f: 'libgfortran' in f or 'libquadmath' in f,
                          os.listdir(abs(libtbx.env.lib_path)))
@@ -169,7 +178,7 @@ def run(platform_info,
 class platform_info(object):
   """ Information about architecture and compilers """
 
-  supported_platforms = ('mingw32', 'mingw64',
+  supported_platforms = ('mingw32', 'x86_64-w64-mingw32',
                          'x86_64-apple-darwin15')
 
   darwin_mask = re.compile(r'^(\w+-apple-darwin\d+)')
@@ -209,7 +218,15 @@ class platform_info(object):
       raise Sorry("The platform %s is not supported." % self.platform)
 
   def is_mingw(self):
-    return self.platform.startswith('mingw')
+    return self.platform.find('mingw') >= 0
+  
+  def is_mingw64(self):
+    return self.is_mingw() and self.platform.find('64') >= 0
+    
+  def mingw_root(self):
+    return (r'c:\msys64\mingw64' if self.is_mingw64() else
+            r'c:\mingw' if self.is_mingw() else
+            None)
 
   def is_darwin(self):
     return 'apple-darwin' in self.platform
