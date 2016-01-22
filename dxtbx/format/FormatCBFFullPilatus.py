@@ -52,14 +52,14 @@ class FormatCBFFullPilatus(FormatCBFFull):
   def _beam(self):
     '''Return a working beam instance. Override polarization to be 0.999.'''
 
-    beam = self._beam_factory.imgCIF_H(self._cbf_handle)
+    beam = self._beam_factory.imgCIF_H(self._get_cbf_handle())
     beam.set_polarization_fraction(0.999)
     return beam
 
   def _detector(self):
     '''Return a working detector instance, with added mask regions.'''
 
-    detector = self._detector_factory.imgCIF_H(self._cbf_handle,
+    detector = self._detector_factory.imgCIF_H(self._get_cbf_handle(),
                                                'PAD')
 
     for f0, s0, f1, s1 in determine_pilatus_mask(detector):

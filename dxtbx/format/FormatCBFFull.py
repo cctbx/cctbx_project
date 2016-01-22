@@ -46,32 +46,37 @@ class FormatCBFFull(FormatCBF):
 
     FormatCBF._start(self)
 
-    self._cbf_handle = pycbf.cbf_handle_struct()
-    self._cbf_handle.read_widefile(self._image_file, pycbf.MSG_DIGEST)
-
     from iotbx.detectors.cbf import CBFImage
     self.detectorbase = CBFImage(self._image_file)
     self.detectorbase.readHeader()
 
+  def _get_cbf_handle(self):
+    try:
+      return self._cbf_handle
+    except AttributeError:
+      self._cbf_handle = pycbf.cbf_handle_struct()
+      self._cbf_handle.read_widefile(self._image_file, pycbf.MSG_DIGEST)
+      return self._cbf_handle
+
   def _goniometer(self):
     '''Return a working goniometer instance.'''
 
-    return self._goniometer_factory.imgCIF_H(self._cbf_handle)
+    return self._goniometer_factory.imgCIF_H(self._get_cbf_handle())
 
   def _detector(self):
     '''Return a working detector instance.'''
 
-    return self._detector_factory.imgCIF_H(self._cbf_handle, 'unknown')
+    return self._detector_factory.imgCIF_H(self._get_cbf_handle(), 'unknown')
 
   def _beam(self):
     '''Return a working beam instance.'''
 
-    return self._beam_factory.imgCIF_H(self._cbf_handle)
+    return self._beam_factory.imgCIF_H(self._get_cbf_handle())
 
   def _scan(self):
     '''Return a working scan instance.'''
 
-    return self._scan_factory.imgCIF_H(self._image_file, self._cbf_handle)
+    return self._scan_factory.imgCIF_H(self._image_file, self._get_cbf_handle())
 
 if __name__ == '__main__':
 
