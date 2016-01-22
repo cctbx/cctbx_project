@@ -947,7 +947,7 @@ class run_ensemble_refinement(object):
         count_h = 0
         for atom in chain.atoms():
           if atom.element_is_hydrogen(): count_h+=1
-        chain_id_non_h = (chain.id, chain.atoms_size() - count_h)
+        chain_id_non_h = ("'" + chain.id + "'", chain.atoms_size() - count_h)
         chains_info.append(chain_id_non_h)
       # Check all chains > 63 heavy atoms for TLS fitting
       chains_size = flex.int(zip(*chains_info)[1])
