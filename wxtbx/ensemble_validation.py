@@ -7,7 +7,7 @@ files, used in GUI for phenix.ensemble_refinement.
 from __future__ import division
 from cctbx.array_family import flex
 from libtbx.utils import Sorry
-from wxtbx import plots, app
+from wxtbx import app, path_dialogs, plots
 from mmtbx.command_line import validation_summary
 from wxGUI2 import AdvancedWidgets, Base
 import wx
@@ -41,6 +41,7 @@ class ensemble_validation_plot (plots.histogram) :
         p.set_title(title)
       self.canvas.draw()
 
+# =============================================================================
 class ensemble_validation_panel (wx.Panel) :
   def __init__ (self, *args, **kwds) :
     wx.Panel.__init__(self, *args, **kwds)
@@ -70,6 +71,10 @@ class ensemble_validation_panel (wx.Panel) :
     box1.Add(self.n_bins_ctrl, 0, style, 5)
     self.Bind(wx.EVT_TEXT_ENTER, self.OnSelectPlot, self.n_bins_ctrl)
     self.n_bins_ctrl.Disable()
+    self.save_ctrl = wx.Button(parent=self, label='Export raw data')
+    box1.AddSpacer(40)
+    box1.Add(self.save_ctrl, 0, style, 5)
+    self.Bind(wx.EVT_BUTTON, self.OnSave, self.save_ctrl)
 
     # Data display
     box2 = wx.BoxSizer(wx.HORIZONTAL)
@@ -95,6 +100,26 @@ class ensemble_validation_panel (wx.Panel) :
   def set_ensemble (self, ensemble) :
     assert (type(ensemble).__name__ == 'ensemble')
     self.ensemble = ensemble
+
+  def OnSave (self, event) :
+    filename = path_dialogs.manager().select_file(
+      parent=self,
+      message='Save statistics as a CSV file',
+      wildcard='CSV files (*.csv)|*.csv',
+      current_file='statistics.csv',
+      save=True)
+    if (filename is not None):
+      f = open(filename, 'w')
+      labels = validation_summary.molprobity_stat_labels
+      f.write('Statistic, Model 1, Model 2, ...\n')
+      for label in labels:
+        i_label = validation_summary.molprobity_stat_labels.index(label)
+        stat = self.ensemble.__slots__[i_label]
+        values = getattr(self.ensemble, stat)
+        if ( (len(values) != 0) and (values.count(None) != len(values)) ):
+          f.write('%s, ' % label +
+                  ', '.join([str(v) for v in values]) + '\n')
+      f.close()
 
   def OnSelectPlot (self, event) :
 
@@ -140,7 +165,8 @@ class ensemble_validation_panel (wx.Panel) :
       title=label)
     self.Refresh()
 
-class ensemble_chi_panel (wx.Panel) :
+# =============================================================================
+class ensemble_chi_panel(wx.Panel):
   '''
   Automatic sequence of function calls
   load_data -> UpdateTable -> UpdatePlot
@@ -150,7 +176,7 @@ class ensemble_chi_panel (wx.Panel) :
   UpdateTable - call this after changing threshold
   UpdatePlot - call this after changing number of histogram bins or autoscale
   '''
-  def __init__ (self, *args, **kwds) :
+  def __init__(self, *args, **kwds):
 
     wx.Panel.__init__(self, *args, **kwds)
     self.main_window = self.GetParent().main_window
@@ -177,6 +203,10 @@ class ensemble_chi_panel (wx.Panel) :
     self.add_control(control_sizer, self.autoscale_control)
     self.Bind(wx.EVT_CHECKBOX, self.UpdatePlot, self.autoscale_control)
 
+    self.save_control = wx.Button(parent=self, label='Export raw data')
+    self.add_control(control_sizer, self.save_control)
+    self.Bind(wx.EVT_BUTTON, self.OnSave, self.save_control)
+
     # table
     self.table = AdvancedWidgets.OutlierList(
       parent=self,
@@ -200,12 +230,6 @@ class ensemble_chi_panel (wx.Panel) :
     self.meets_threshold = None
     self.row = 0
     self.col = 1
-
-  def OnSelect(self, event=None):
-    self.row, self.col = self.table.GetRowCol(event)
-    if (self.col == 0):
-      self.col = 1
-    self.UpdatePlot()
 
   def load_data(self, chi_angles=None):
     # reorganize data from
@@ -241,6 +265,33 @@ class ensemble_chi_panel (wx.Panel) :
                                xrange(len(self.chi_angles['id_str'])) ]
       self.UpdateTable()
       self.UpdatePlot()
+
+  def OnSelect(self, event=None):
+    self.row, self.col = self.table.GetRowCol(event)
+    if (self.col == 0):
+      self.col = 1
+    self.UpdatePlot()
+
+  def OnSave(self, event=None):
+    filename = path_dialogs.manager().select_file(
+      parent=self,
+      message='Save dihedral angles as a CSV file',
+      wildcard='CSV files (*.csv)|*.csv',
+      current_file='dihedrals.csv',
+      save=True)
+    if (filename is not None):
+      f = open(filename, 'w')
+      id_str = self.chi_angles['id_str']
+      dihedrals = self.chi_angles['values']
+      for i in xrange(5):
+        f.write('Chi %i\n' % (i+1))
+        f.write('Residue, Model 1, Model 2, ...\n')
+        for j in xrange(len(id_str)):
+          if (i < len(dihedrals[j])):
+            f.write('%s, ' % id_str[j] +
+                    ', '.join([str(d) for d in dihedrals[j][i]]) + '\n')
+        f.write('\n\n')
+      f.close()
 
   def UpdateTable(self, event=None):
     '''
@@ -348,6 +399,7 @@ class ensemble_chi_panel (wx.Panel) :
     sizer.Add(control, 0, style, 5)
     sizer.AddSpacer(spacer)
 
+# =============================================================================
 if (__name__ == "__main__") :
   result = validation_summary.run(sys.argv[1:])
   if (type(result).__name__ != 'ensemble') :
