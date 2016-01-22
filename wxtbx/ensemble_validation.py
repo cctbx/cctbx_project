@@ -250,9 +250,23 @@ class ensemble_chi_panel(wx.Panel):
           dihedrals = chi_angles[j]['chi_angles'][i]
           for k in xrange(n_dihedrals):
             dihedral = dihedrals[k]
-            if (dihedral < 0.0):
-              dihedral += 360
             angles[k].append(dihedral)
+
+        # check if adding 360 to negative angles is helpful
+        # avoids issues where angles are clustered only near 0 and 360
+        for j in xrange(len(angles)):
+          stddev_a = flex.mean_and_variance(
+            flex.double(angles[j])).unweighted_sample_variance()
+          dihedrals_b = flex.double(angles[j])
+          for k in xrange(len(dihedrals_b)):
+            if (dihedrals_b[k] < 0.0):
+              dihedrals_b[k] += 360
+          stddev_b = flex.mean_and_variance(
+            dihedrals_b).unweighted_sample_variance()
+          if ( (stddev_b < stddev_a) or (max(angles[j]) < 0.0) ):
+            angles[j] = list(dihedrals_b)
+
+        # store reorganized data
         all_angles[i] = angles
 
         # build map matching id_str with row index for fast random access
@@ -352,6 +366,8 @@ class ensemble_chi_panel(wx.Panel):
     '''
     Plot histogram of chi angle for residue and angle selected in table
     '''
+
+    # check n_bins
     n_bins = self.histogram_control.GetValue()
     try:
       n_bins = int(n_bins)
@@ -369,9 +385,6 @@ class ensemble_chi_panel(wx.Panel):
 
     # check autoscale option
     autoscale = self.autoscale_control.GetValue()
-    x_lim = (0.0, 360.0)
-    if (autoscale):
-      x_lim = None
 
     # update plot with data from currently selected cell
     if (True in self.meets_threshold):
@@ -382,9 +395,14 @@ class ensemble_chi_panel(wx.Panel):
         x_label = 'Chi %i (degrees)' % self.col
         y_label = 'Numer of Models'
         title = '%s Chi %i histogram' % (id_str, self.col)
+        data=self.chi_angles['values'][actual_row][self.col-1]
+        x_lim = (0.0, 360.0)
+        if (autoscale):
+          x_lim = None
+        elif(min(data) < 0.0):
+          x_lim = (-180.0, 180.0)
         self.plot.show_histogram(
-          data=self.chi_angles['values'][actual_row][self.col-1],
-          n_bins=n_bins,reference_value=float(reference_value),
+          data=data, n_bins=n_bins, reference_value=float(reference_value),
           x_label=x_label, y_label=y_label, title=title, x_lim=x_lim)
 
   # convenience functions for placing text and widgets
