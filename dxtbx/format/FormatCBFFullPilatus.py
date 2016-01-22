@@ -9,8 +9,6 @@
 
 from __future__ import division
 
-import pycbf
-
 from dxtbx.format.FormatCBFFull import FormatCBFFull
 from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
 
