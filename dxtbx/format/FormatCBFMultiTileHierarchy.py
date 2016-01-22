@@ -60,7 +60,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
     """ Get the 4x4 homogenous coordinate matrix for a given axis.  Assumes
     the cbf handle has been intialized
     @param axis_id axis name of basis to get """
-    cbf = self._cbf_handle
+    cbf = self._get_cbf_handle()
     axis_type = cbf.get_axis_type(axis_id)
 
     offset = col(cbf.get_axis_offset(axis_id))
@@ -96,7 +96,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
     is ".".  Parent is the axis that the top level axis in this chain of dependent axis depends on
     """
 
-    cbf = self._cbf_handle
+    cbf = self._get_cbf_handle()
     cob = self._get_change_of_basis(axis_id)
 
     parent_id = cbf.get_axis_depends_on(axis_id)
@@ -160,7 +160,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
   def _detector(self):
     '''Return a working detector instance.'''
 
-    cbf = self._cbf_handle
+    cbf = self._get_cbf_handle()
 
     d = HierarchicalDetector()
 
@@ -268,7 +268,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
   def _beam(self):
     '''Return a working beam instance.'''
 
-    return self._beam_factory.imgCIF_H(self._cbf_handle)
+    return self._beam_factory.imgCIF_H(self._get_cbf_handle())
 
   def get_raw_data(self):
     if self._raw_data is None:
@@ -277,7 +277,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
 
       self._raw_data = []
 
-      cbf = self._cbf_handle
+      cbf = self._get_cbf_handle()
       cbf.find_category('array_structure')
       cbf.find_column('encoding_type')
       cbf.select_row(0)

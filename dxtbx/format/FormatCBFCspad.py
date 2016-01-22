@@ -155,7 +155,7 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatStill):
     root = detector.hierarchy()
     assert len(root) == 4
 
-    cbf = self._cbf_handle
+    cbf = self._get_cbf_handle()
     if cbf.has_sections():
       """
       when using sections, the order of the panels in the detector object doesn't match the

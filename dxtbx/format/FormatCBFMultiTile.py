@@ -80,14 +80,18 @@ class FormatCBFMultiTile(FormatCBFFull):
     from dxtbx.format.FormatCBF import FormatCBF
     FormatCBF._start(self) # Note, skip up an inhieritance level
 
-    self._cbf_handle = cbf_wrapper()
-
-    self._cbf_handle.read_widefile(self._image_file, pycbf.MSG_DIGEST)
+  def _get_cbf_handle(self):
+    try:
+      return self._cbf_handle
+    except AttributeError:
+      self._cbf_handle = cbf_wrapper()
+      self._cbf_handle.read_widefile(self._image_file, pycbf.MSG_DIGEST)
+      return self._cbf_handle
 
   def _detector(self):
     '''Return a working detector instance.'''
 
-    cbf = self._cbf_handle
+    cbf = self._get_cbf_handle()
 
     d = Detector()
 
@@ -138,13 +142,13 @@ class FormatCBFMultiTile(FormatCBFFull):
   def _beam(self):
     '''Return a working beam instance.'''
 
-    return self._beam_factory.imgCIF_H(self._cbf_handle)
+    return self._beam_factory.imgCIF_H(self._get_cbf_handle())
 
   def get_raw_data(self):
     if self._raw_data is None:
       self._raw_data = []
 
-      cbf = self._cbf_handle
+      cbf = self._get_cbf_handle()
 
       # find the data
       cbf.select_category(0)
