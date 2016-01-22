@@ -150,6 +150,7 @@ def run(platform_info,
     openblas_inc = libtbx.env.include_path / 'openblas'
     if platform_info.is_mingw():
       libraries = [path.basename(dll) for dll in dll_dependencies]
+      libraries.append(abs(libtbx.env.lib_path / 'openblas.lib'))
     elif platform_info.is_darwin():
       libraries = filter(lambda f: 'libgfortran' in f or 'libquadmath' in f,
                          os.listdir(abs(libtbx.env.lib_path)))
