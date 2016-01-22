@@ -240,6 +240,8 @@ class platform_info(object):
             'so'    if self.is_linux()  else
             None)
 
+  arch_32_pat = re.compile(r'i386|i686|32-bit')
+  arch_64_pat = re.compile(r'x86_64|64-bit')
   def arch_of_libopenblas(self):
     if self.is_mingw():
       ext = 'dll'
@@ -254,7 +256,7 @@ class platform_info(object):
                    ('libopenblas.%s' % self.shared_library_suffix()))])
     if '32-bit' in description:
       return '32'
-    elif '64-bit' in description:
+    elif '64-bit' in description or 'x86_64':
       return '64'
     else:
       return None
