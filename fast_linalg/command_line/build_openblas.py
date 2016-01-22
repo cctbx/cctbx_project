@@ -282,11 +282,17 @@ if __name__ == '__main__':
                  'need GNU C++ and Fortran compiler installed, using '
                  'MinGW to do so on Windows.')
   )
-  features = ('build', 'stage', 'install')
-  for arg in features:
-    p.add_argument('--%s' % arg, dest=arg, action='store_true')
+  features = (('build', 'Build OpenBLAS in the current source directory'),
+              ('stage', 'Install OpenBLAS to a staging area one directory '
+                        'up from cctbx build directory'),
+              ('install', 'Install headers and directories in cctbx build '
+                          'directory, and create a zip containing all '
+                          'that is installed one directory up'))
+  for arg, doc in features:
+    p.add_argument('--%s' % arg, dest=arg, action='store_true',
+                   help=doc)
     p.add_argument('--no-%s' % arg, dest=arg, action='store_false')
-  p.set_defaults(**dict((arg, False) for arg in features))
+  p.set_defaults(**dict((arg, False) for arg, _ in features))
   p.add_argument('--bits', type=int, choices=(None, 32, 64), default=None,
                  help='Whether to build a 32- or 64-bit library '
                       '(None means that OpenBLAS build system shall decide)')
