@@ -1,7 +1,7 @@
 from __future__ import division
 import urlparse
 import exceptions
-import os
+import os,cgi
 
 class FormatError(exceptions.Exception): pass
 
@@ -41,7 +41,7 @@ def inp_from_form(form, keys):
   inp = empty()
   for key in keys:
     if (form.has_key(key[0])):
-      v = form[key[0]].value.strip()
+      v = cgi.escape(form[key[0]].value,True).strip()
       if (v == ""): v = key[1]
       inp.__dict__[key[0]] = v
     else:
@@ -54,7 +54,7 @@ def coordinates_from_form(form, suffix=None):
     if (suffix is None): key = key_root
     else:                key = key_root + "_" + suffix
     if (form.has_key(key)):
-      lines = form[key].value.replace("\015", "\012").split("\012")
+      lines = cgi.escape(form[key].value,True).replace("\015", "\012").split("\012")
       for l in lines:
         s = l.strip()
         if (len(s) != 0): coordinates.append(s)
