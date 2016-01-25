@@ -1,5 +1,6 @@
 #include <fast_linalg/cblas.h>
 #include <fast_linalg/lapacke.h>
+#include <fast_linalg/environment.h>
 #include <iostream>
 
 bool check_full_full(int N, const double *x, const double *y) {
@@ -46,6 +47,16 @@ bool check_packed_full(int N, const double *x, const double *y) {
 }
 
 int main() {
+  bool all_correct = true;
+
+  // First let's print some info about OpenBLAS
+  fast_linalg::environment env;
+  std::cout << "This library was build with the following options:\n";
+  std::cout << env.build_config() << "\n";
+  std::cout << "Running on " << env.physical_cores()
+            << " " << env.cpu_family() << " cores\n";
+  std::cout << "We will use " << env.threads() << " threads\n";
+
   const int N = 6;
   const int K = 4;
   double a[N*K] = { 1,  2,  3,  4,
@@ -54,8 +65,6 @@ int main() {
                    13, 14, 15, 16,
                    17, 18, 19, 20,
                    21, 22, 23, 24};
-
-  bool all_correct = true;
 
   // C := A A^T with A being row-major and C being rectangular using CBLAS
   std::cout << "Rectangular Full Data # "
