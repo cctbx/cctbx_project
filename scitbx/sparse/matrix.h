@@ -503,6 +503,26 @@ public:
     return result;
   }
 
+  /// A W A^T where W is a diagonal matrix
+  matrix
+  this_times_diagonal_times_this_transpose(af::const_ref<value_type> const &w)
+  const
+  {
+    compact();
+    SCITBX_ASSERT(w.size() == n_cols())(w.size())(n_cols());
+    index_type n = n_cols();
+    matrix result(n_rows(), n_rows());
+    for(index_type k=0; k<n; ++k) {
+      for(const_row_iterator p = col(k).begin(); p != col(k).end(); ++p) {
+        for(const_row_iterator q = col(k).begin(); q != col(k).end(); ++q) {
+          result(p.index(), q.index()) += w[k] * (*p) * (*q);
+        }
+      }
+    }
+    result.compact();
+    return result;
+  }
+
 private:
   typedef af::shared<column_type> container_type;
   typedef af::ref<column_type> ref_type;

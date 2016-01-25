@@ -351,32 +351,29 @@ def exercise_a_tr_a():
   bb = b.as_dense_matrix()
   assert bb.all_eq(aa.matrix_transpose().matrix_multiply(aa))
 
-def exercise_a_tr_diag_a():
-  a = sparse.matrix(9, 7)
-  for i in xrange(a.n_rows):
-    for j in xrange(a.n_cols):
-      if (2*i + j) % 3 == 1: a[i,j] = 1
-  w = flex.double([ (-1)**i*i for i in xrange(a.n_rows) ])
-  b = a.self_transpose_times_diagonal_times_self(w)
-  b0 = sparse.matrix(7, 7)
-  b0[0, 0] = 5.
-  b0[0, 3] = 5.
-  b0[0, 6] = 5.
-  b0[1, 1] = 3.
-  b0[1, 4] = 3.
-  b0[2, 2] = -4.
-  b0[2, 5] = -4.
-  b0[3, 0] = 5.
-  b0[3, 3] = 5.
-  b0[3, 6] = 5.
-  b0[4, 1] = 3.
-  b0[4, 4] = 3.
-  b0[5, 2] = -4.
-  b0[5, 5] = -4.
-  b0[6, 0] = 5.
-  b0[6, 3] = 5.
-  b0[6, 6] = 5.
-  assert sparse.approx_equal(tolerance=1e-12)(b, b0)
+def exercise_a_tr_diag_a_and_a_diag_a_tr():
+  from scitbx.random import variate, uniform_distribution
+  for m,n in [(5,5), (3,5), (5,3)]:
+    random_matrices = variate(
+      sparse.matrix_distribution(
+        m, n, density=0.6,
+        elements=uniform_distribution(min=-3, max=10)))
+    w = flex.double_range(0, m)
+    ww = flex.double(m*m)
+    ww.resize(flex.grid(m,m))
+    ww.matrix_diagonal_set_in_place(diagonal=w)
+    for n_test in xrange(50):
+      a = random_matrices.next()
+      b = a.self_transpose_times_diagonal_times_self(w)
+      aa = a.as_dense_matrix()
+      bb = b.as_dense_matrix()
+      assert approx_equal(
+        bb,
+        aa.matrix_transpose().matrix_multiply(ww).matrix_multiply(aa)
+      )
+      c = a.transpose().self_times_diagonal_times_self_transpose(w)
+      cc = c.as_dense_matrix()
+      assert approx_equal(cc, bb)
 
 def exercise_column_selection():
   columns = [ { 0:1, 3:3 },
@@ -440,7 +437,7 @@ def run():
   exercise_block_assignment()
   exercise_column_selection()
   exercise_a_tr_a()
-  exercise_a_tr_diag_a()
+  exercise_a_tr_diag_a_and_a_diag_a_tr()
   exercise_dot_product()
   exercise_vector()
   exercise_matrix()
