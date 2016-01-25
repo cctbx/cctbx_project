@@ -172,6 +172,7 @@ class linear_ls_eigen_wrapper
 class non_linear_ls_eigen_wrapper:  public scitbx::lstbx::normal_equations::non_linear_ls<double> {
   public:
     typedef Eigen::Triplet<double> triplet_t;
+    typedef std::vector<triplet_t> triplet_list_t;
 
     non_linear_ls_eigen_wrapper(int const& n_parameters):
       scitbx::lstbx::normal_equations::non_linear_ls<double>(0),
@@ -182,7 +183,7 @@ class non_linear_ls_eigen_wrapper:  public scitbx::lstbx::normal_equations::non_
     reset(){
       scitbx::lstbx::normal_equations::non_linear_ls<double>::reset();
       eigen_wrapper.reset();
-      tripletList = scitbx::af::shared<triplet_t>();
+      tripletList = triplet_list_t();
     }
 
     linear_ls_eigen_wrapper& step_equations() {
@@ -253,10 +254,19 @@ class non_linear_ls_eigen_wrapper:  public scitbx::lstbx::normal_equations::non_
         row_iterator iend = a.col(ieqn).end();
         for (row_iterator i = a.col(ieqn).begin(); i != iend; ++i)  {
           std::size_t idx_i = i.index();
-          eigen_wrapper.right_hand_side_[idx_i] -= w[ieqn] * (*i) * r[ieqn];
+          /* Need to skip over zero values, since the sparse::matrix Jacobian does
+             not guarantee that it contains only non-zeroes.  For true sparse
+             problems it creates a MemoryError to fill up the tripletList with
+             > 10^9 entries.
+          */
+          if ( (*i)!=0. ){
+            eigen_wrapper.right_hand_side_[idx_i] -= w[ieqn] * (*i) * r[ieqn];
 
-          for (row_iterator j=i; j != iend; ++j) {
-            tripletList.push_back( triplet_t(idx_i, j.index(), w[ieqn] * (*i) * (*j)) );
+            for (row_iterator j=i; j != iend; ++j) {
+              if ( (*j)!=0. ) {
+                tripletList.push_back( triplet_t(idx_i, j.index(), w[ieqn] * (*i) * (*j)) );
+              }
+            }
           }
         }
       }
@@ -289,7 +299,7 @@ class non_linear_ls_eigen_wrapper:  public scitbx::lstbx::normal_equations::non_
 
     inline void wipe_triplets(){
       //critical to release this memory
-      tripletList = scitbx::af::shared<triplet_t>();
+      tripletList = triplet_list_t();
     }
     void show_eigen_summary(){
       eigen_wrapper.show_eigen_summary();
@@ -307,7 +317,7 @@ class non_linear_ls_eigen_wrapper:  public scitbx::lstbx::normal_equations::non_
     linear_ls_eigen_wrapper eigen_wrapper;
 
   private:
-    scitbx::af::shared<triplet_t> tripletList;
+    triplet_list_t tripletList;
 };
 
 class bevington_silver {
