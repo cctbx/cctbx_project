@@ -4,14 +4,14 @@ from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME cxi.mpi_average
 #
 
-from psana import *
+import psana
 import numpy as np
 from xfel.cxi.cspad_ana import cspad_tbx, parse_calib
 import libtbx
 from libtbx import easy_pickle
 import libtbx.option_parser
 from scitbx.array_family import flex
-import sys
+import sys, os
 from libtbx.utils import Sorry
 
 def average(argv=None):
@@ -157,7 +157,6 @@ the output images in the folder cxi49812.
 
   if len(command_line.args) > 0 or \
       command_line.options.as_pickle is None or \
-      command_line.options.config is None or \
       command_line.options.experiment is None or \
       command_line.options.run is None or \
       command_line.options.address is None or \
@@ -179,7 +178,8 @@ the output images in the folder cxi49812.
   rank = comm.Get_rank()
   size = comm.Get_size()
 
-  setConfigFile(command_line.options.config)
+  if command_line.options.config is not None:
+    psana.setConfigFile(command_line.options.config)
   dataset_name = "exp=%s:run=%d:idx"%(command_line.options.experiment, command_line.options.run)
   if command_line.options.xtc_dir is not None:
     if command_line.options.use_ffb:
@@ -188,9 +188,11 @@ the output images in the folder cxi49812.
   elif command_line.options.use_ffb:
     # as ffb is only at SLAC, ok to hardcode /reg/d here
     dataset_name += ":dir=/reg/d/ffb/%s/%s/xtc"%(command_line.options.experiment[0:3],command_line.options.experiment)
-  ds = DataSource(dataset_name)
+  ds = psana.DataSource(dataset_name)
   address = command_line.options.address
-  src = Source('DetInfo(%s)'%address)
+  src = psana.Source('DetInfo(%s)'%address)
+  if not command_line.options.as_pickle:
+    psana_det = psana.Detector(address, ds.env())
 
   nevent = np.array([0.])
 
@@ -215,11 +217,14 @@ the output images in the folder cxi49812.
           print "No data"
           continue
         data=data.data16().astype(np.float64)
+      elif command_line.options.as_pickle:
+        data = evt.get(psana.ndarray_float64_3, src, 'image0')
       else:
-        data = evt.get(ndarray_float64_3, src, 'image0')
-        if data is None:
-          print "No data"
-          continue
+        # get numpy array, 32x185x388
+        data = psana_det.calib(evt) # applies psana's complex run-dependent calibrations
+      if data is None:
+        print "No data"
+        continue
 
       d = cspad_tbx.env_distance(address, run.env(), command_line.options.detz_offset)
       if d is None:
@@ -272,22 +277,22 @@ the output images in the folder cxi49812.
   if rank == 0 and totevent[0] == 0:
     raise Sorry("No events found in the run")
 
-  sumall = np.zeros(sum.shape)
+  sumall = np.zeros(sum.shape).astype(sum.dtype)
   comm.Reduce(sum,sumall)
 
-  sumsqall = np.zeros(sumsq.shape)
+  sumsqall = np.zeros(sumsq.shape).astype(sumsq.dtype)
   comm.Reduce(sumsq,sumsqall)
 
-  maxall = np.zeros(maximum.shape)
+  maxall = np.zeros(maximum.shape).astype(maximum.dtype)
   comm.Reduce(maximum,maxall, op=MPI.MAX)
 
-  waveall = np.zeros(wavelength.shape)
+  waveall = np.zeros(wavelength.shape).astype(wavelength.dtype)
   comm.Reduce(wavelength,waveall)
 
-  distall = np.zeros(distance.shape)
+  distall = np.zeros(distance.shape).astype(distance.dtype)
   comm.Reduce(distance,distall)
 
-  timeall = np.zeros(timestamp.shape)
+  timeall = np.zeros(timestamp.shape).astype(timestamp.dtype)
   comm.Reduce(timestamp,timeall)
 
   if rank==0:

@@ -314,7 +314,6 @@ format.file_format=pickle format.pickle.cfg=path
     ds = psana.DataSource(dataset_name)
 
     if params.format.file_format == "cbf":
-      self.src = psana.Source('DetInfo(%s)'%params.input.address)
       self.psana_det = psana.Detector(params.input.address, ds.env())
 
     # set this to sys.maxint to analyze all events
