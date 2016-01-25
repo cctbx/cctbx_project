@@ -63,11 +63,23 @@ class _(boost.python.injector, linear_ls):
     yield self.right_hand_side()
 
 
+non_linear_ls_with_separable_scale_factor_description = """\
+* non-linear L.S. by optimising the overall scale factor alone first
+  and then the other parameters alone
+"""
+
 class non_linear_ls_with_separable_scale_factor_BLAS_2(
   ext.non_linear_ls_with_separable_scale_factor__level_2_blas_impl,
   non_linear_ls_mixin):
 
-  pass
+  @property
+  def description(self):
+    return (non_linear_ls_with_separable_scale_factor_description +
+            "* slow normal matrix computation\n")
+
+  @property
+  def debug_info(self):
+    return ""
 
 
 if libtbx.env.has_module('fast_linalg'):
@@ -75,7 +87,23 @@ if libtbx.env.has_module('fast_linalg'):
     ext.non_linear_ls_with_separable_scale_factor__level_3_blas_impl,
     non_linear_ls_mixin):
 
-    pass
+    @property
+    def description(self):
+      return (non_linear_ls_with_separable_scale_factor_description +
+              "* fast normal matrix computation")
+
+    @property
+    def debug_info(self):
+      import fast_linalg
+      e = fast_linalg.env
+      return '\n'.join((
+        "\n", "*"*80,
+        "*** Using OpenBLAS with %i threads on a machine with %i %s cores" %
+        (e.threads, e.physical_cores, e.cpu_family),
+        "*** OpenBLAS was built with the following options:",
+        "*** %s" % e.build_config,
+        "*"*80, "\n",
+      ))
 
 
 non_linear_ls_with_separable_scale_factor = \
