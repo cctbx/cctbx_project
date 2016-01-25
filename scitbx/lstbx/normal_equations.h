@@ -102,7 +102,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
                     && b.size()   == w.size())(a.n_rows())(b.size())(w.size());
       SCITBX_ASSERT(a.n_cols() == n_parameters());
       sparse::matrix<scalar_t>
-      at_w_a = a.this_transpose_times_diagonal_times_this(w);
+      at_w_a = a.transpose().this_times_diagonal_times_this_transpose(w);
       vector_t a_t_w_b = a.transpose_times((w * b).const_ref());
       normal_matrix_ += sparse::upper_diagonal_of(at_w_a);
       if (negate_right_hand_side) right_hand_side_ -= a_t_w_b.const_ref();
