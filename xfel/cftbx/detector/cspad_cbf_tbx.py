@@ -188,13 +188,13 @@ def get_calib_file_path(env, address, run):
   from psana import Detector
   try:
     # try to get it from the detector interface
-    psana_det = Detector(address, ds.env())
+    psana_det = Detector(address, run.env())
     return psana_det.pyda.geoaccess(run).path
   except Exception, e:
     pass
 
   # try to get it from the calib store directly
-  from psana import ndarray_uint8_1
+  from psana import ndarray_uint8_1, Source
   cls = env.calibStore()
   src = Source('DetInfo(%s)'%address)
   path_nda = cls.get(ndarray_uint8_1, src, 'geometry-calib')
