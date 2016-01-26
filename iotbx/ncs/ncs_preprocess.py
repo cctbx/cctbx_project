@@ -296,8 +296,6 @@ class ncs_group_object(object):
         spec_ncs_groups=spec_ncs_groups,
         quiet=quiet)
     elif pdb_hierarchy_inp:
-      # check and rename chain with the blank or ** name
-      rename_blank_chain_name(pdb_hierarchy_inp)
       self.build_ncs_obj_from_pdb_asu(pdb_hierarchy_inp=pdb_hierarchy_inp)
     else:
       raise Sorry('Please provide one of the supported input')
@@ -629,7 +627,6 @@ class ncs_group_object(object):
     ph = pdb_hierarchy_inp.hierarchy
     if len(ph.models()) > 1:
       raise Sorry('Multi-model PDB (with MODEL-ENDMDL) is not supported.')
-    clean_chain_id(ph.models()[0])
     chain_ids = {x.id for x in ph.models()[0].chains()}
     self.total_asu_length = ph.atoms().size()
     if len(chain_ids) > 1:
