@@ -1017,7 +1017,10 @@ class ScanFactory(object):
     # Get the image and oscillation range
     phi = obj.handle.file[obj.handle['depends_on'][()]]
     image_range = (1, len(phi))
-    oscillation = (float(phi[0]), float(phi[1]-phi[0]))
+    if len(phi) > 1:
+      oscillation = (float(phi[0]), float(phi[1]-phi[0]))
+    else:
+      oscillation = (float(phi[0]), 0.0)
 
     # Construct the model
     self.model = Scan(
