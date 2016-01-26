@@ -66,7 +66,8 @@ def run(filenames, options):
                                    reflections=reflections_filename)
   else:
     xm = refinement.model.from_shelx(ins_or_res=input_filename,
-                                     hkl=reflections_filename)
+                                     hkl=reflections_filename,
+                                     strictly_shelxl=False)
 
   # At last...
   for sc in xm.xray_structure.scatterers():
