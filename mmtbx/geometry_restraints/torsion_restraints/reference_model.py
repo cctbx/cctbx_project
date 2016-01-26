@@ -281,7 +281,7 @@ class reference_model(object):
           ncs_h = combined_h.select(isel)
           chain_sel_str = ""
           for ch_id in chain_ids:
-            chain_sel_str += "chain \"%s\" or " % ch_id
+            chain_sel_str += "chain %s or " % ch_id
           chain_sel_str = chain_sel_str[:-4]
           ncs_h = ncs_h.select(ncs_h.atom_selection_cache().selection(
               chain_sel_str))

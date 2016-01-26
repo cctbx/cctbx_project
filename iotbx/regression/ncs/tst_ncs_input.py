@@ -1489,7 +1489,7 @@ def exercise_00(prefix="iotbx_ncs_exercise_00",debug=False):
   pdb_file_name = "%s.pdb"%prefix
   ncs_params_str = """
 ncs_group {
-  reference = chain A
+  reference = chain  A
   selection = chain B
   selection = chain C
 }
@@ -1689,10 +1689,11 @@ def exercise_06():
   """
   ncs_inp = ncs.input(pdb_string=pdb_str_7)
   t = ncs_inp.ncs_to_asu_selection
-  assert t.keys() == ['chain D', 'chain A'], t.keys()
-  assert t.values() == [['chain E'], ['chain B', 'chain C']]
-  assert ncs_inp.ncs_group_map[1][0] == {'chain A'}
-  assert ncs_inp.ncs_group_map[2][0] == {'chain D'}
+  # assert t.keys() == ['chain D', 'chain A'], t.keys()
+  assert t.keys() == ["chain 'A'", "chain 'D'"], t.keys()
+  assert t.values() == [["chain 'B'", "chain 'C'"], ["chain 'E'"]], t.values()
+  assert ncs_inp.ncs_group_map[1][0] == {"chain 'A'"}, ncs_inp.ncs_group_map[1][0]
+  assert ncs_inp.ncs_group_map[2][0] == {"chain 'D'"}, ncs_inp.ncs_group_map[2][0]
 
 def exercise_07():
   """
@@ -1701,10 +1702,10 @@ def exercise_07():
   """
   ncs_inp = ncs.input(pdb_string=pdb_str_8)
   t = ncs_inp.ncs_to_asu_selection
-  assert t.keys() == ['chain A']
+  assert t.keys() == ["chain 'A'"], t.keys()
   assert t.values() == \
-    [['chain B', 'chain C', 'chain D', 'chain E',
-      'chain F', 'chain G', 'chain H', 'chain I']]
+      [["chain 'B'", "chain 'C'", "chain 'D'", "chain 'E'", "chain 'F'",
+        "chain 'G'", "chain 'H'", "chain 'I'"]], t.values()
 
 def exercise_08():
   """
@@ -1863,7 +1864,11 @@ def exercise_12():
   ncs_obj_stars = ncs.input(pdb_string=pdb_stars)
   ncs_obj_str_and_spc = ncs.input(pdb_string=pdb_stars_and_spaces)
   #
-  for ncs_obj in [ncs_obj_AB,ncs_obj_space,ncs_obj_stars,ncs_obj_str_and_spc]:
+  for ncs_obj in [
+      ncs_obj_AB,
+      ncs_obj_space,
+      ncs_obj_stars,
+      ncs_obj_str_and_spc]:
     keys = ncs_obj.common_res_dict.keys()
     assert len(keys) == 2
     for key in keys:
@@ -2039,10 +2044,12 @@ ncs_group {
 def exercise_21():
   """
   PDB file with blank chain ID and segID.
+  XXX No support for segID in search procedure anymore.
   """
   # both chain ID blank. segID non-blank
   ncs_inp = ncs.input(pdb_string = pdb_str_18)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
+  # STOP()
   assert len(ncs_groups)==0 # it does not care about segID
   # blank and non-blank chain ID, non-blank segID
   ncs_inp = ncs.input(pdb_string = pdb_str_19)
@@ -2051,11 +2058,11 @@ def exercise_21():
   asc = iotbx.pdb.input(source_info=None,
     lines=pdb_str_19).construct_hierarchy().atom_selection_cache()
   assert ncs_groups[0].master_iselection.all_eq(asc.selection(
-    string = "chain A").iselection())
+    string = "chain ' '").iselection())
   g1_c = ncs_groups[0].copies
   assert len(g1_c)==1
   assert g1_c[0].iselection.all_eq(asc.selection(
-    string = "chain ' '").iselection())
+    string = "chain 'A'").iselection()), list(g1_c[0].iselection)
 
 def exercise_22():
   """
@@ -2187,8 +2194,9 @@ if (__name__ == "__main__"):
   exercise_18()
   exercise_19()
   exercise_20()
-  exercise_21()
+  exercise_21() # No support for segID in search procedure anymore.
   exercise_22()
   # exercise_23()
   # exercise_24() # not grouping chains anymore
   exercise_25()
+  print "OK"

@@ -1696,7 +1696,7 @@ def get_chains_info(ph,selection_list=None,exclude_water=True,
       if ch.id in ignore_chains: continue
       if not chains_info.has_key(ch.id):
         chains_info[ch.id] = Chains_info()
-        ph_sel = ph.select(cache('chain ' + ch.id))
+        ph_sel = ph.select(cache("chain '%s'" % ch.id))
         coc = flex.vec3_double([ph_sel.atoms().extract_xyz().mean()])
         chains_info[ch.id].center_of_coordinates = coc
       chains_info[ch.id].chains_atom_number += ch.atoms().size()

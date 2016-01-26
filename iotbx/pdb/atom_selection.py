@@ -801,6 +801,11 @@ def expand_selection_to_entire_atom_groups (selection, pdb_atoms) :
     selection_complete.set_selected(group_atoms, True)
   return selection_complete
 
+def convert_wildcards_in_chain_id(chain_id):
+  chain_id = chain_id.replace("?", "\?")
+  chain_id = chain_id.replace("*", "\*")
+  return chain_id
+
 def selection_string_from_selection(pdb_hierarchy_inp,
                                     selection,
                                     chains_info=None):
@@ -855,7 +860,7 @@ def selection_string_from_selection(pdb_hierarchy_inp,
     # this "unfolds" the atom_selection array which is [[],[],[],[]...] into
     # a set
     a_sel = {x for xi in chains_info[ch_id].atom_selection for x in xi}
-    ch_sel = 'chain {}'.format(ch_id)
+    ch_sel = "chain '%s'" % convert_wildcards_in_chain_id(ch_id)
     test_set = a_sel.intersection(selection_set)
     if not test_set: continue
     # if there is water in chain, specify residues numbers
@@ -979,10 +984,14 @@ def selection_string_from_selection(pdb_hierarchy_inp,
   s_l = []
   sel_list.sort()
   for s in sel_list:
-    if len(s) > 8:
+    if len(s) > 10:
       s = '(' + s + ')'
     s_l.append(s)
   sel_str = ' or '.join(s_l)
+  # This check could take up to ~90% of runtime of this function...
+  # Nevertheless, this helps to spot bugs early. So this should remain
+  # here, let's say for a year. If no bugs discovered, this could be removed.
+  # Current removal date: Jan 22, 2017
   isel = pdb_hierarchy_inp.atom_selection_cache().iselection(sel_str)
   # pdb_hierarchy_inp.select(isel).write_pdb_file("selected_out.pdb")
   assert len(isel) == len(selection), ""+\

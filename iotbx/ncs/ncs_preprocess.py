@@ -1,5 +1,5 @@
 from __future__ import division
-from iotbx.pdb.atom_selection import selection_string_from_selection
+from iotbx.pdb.atom_selection import selection_string_from_selection, convert_wildcards_in_chain_id
 from scitbx.array_family import flex
 from mmtbx.ncs import ncs_search
 import mmtbx.ncs.ncs_utils as nu
@@ -326,6 +326,7 @@ class ncs_group_object(object):
             empty_cntr += 1
       if(empty_cntr>0): ncs_phil_groups=None
     # Verify NCS selections
+    # print "ncs_phil_groups", ncs_phil_groups
     if(ncs_phil_groups is not None and len(ncs_phil_groups)>0):
       msg="Empty selection in NCS group definition: %s"
       asc = pdb_hierarchy_inp.hierarchy.atom_selection_cache()
@@ -346,6 +347,23 @@ class ncs_group_object(object):
             n_copy = sel.size()
             if(n_copy==0):
               raise Sorry(msg%s_string)
+
+
+
+        #
+        # The idea for user's groups is to pick them one by one,
+        # select only reference and selections from the model,
+        # If there are multiple chains in ref or selection -
+        # combine them in one chain,
+        # save atom original i_seq in atom.tmp
+        # run searching procedure for the resulting hierarchy
+        # if the user's selections were more or less OK - there should be
+        # one group, get atom.tmp values for the selected atoms and using
+        # original hierarchy convert them into string selections when needed.
+        # If multiple groups produced - use them, most likely the user
+        # provided something really wrong.
+        #
+
 
         # XXX Here we will regenerate phil selections using the mechanism
         # for finding NCS in this module. Afterwards we should have perfectly
@@ -375,10 +393,12 @@ class ncs_group_object(object):
             match_radius=4.0,
             similarity_threshold=0.5,
             )
-        transform_to_group,match_dict = \
-            ncs_search.minimal_master_ncs_grouping(match_dict, pdb_hierarchy_inp.hierarchy)
-        group_dict = ncs_search.build_group_dict(
-            transform_to_group,match_dict,chain_info)
+        # transform_to_group,match_dict = \
+        #     ncs_search.minimal_master_ncs_grouping(match_dict, pdb_hierarchy_inp.hierarchy)
+        # group_dict = ncs_search.build_group_dict(
+        #     transform_to_group,match_dict,chain_info)
+        group_dict = ncs_search.ncs_grouping_and_group_dict(
+            match_dict, pdb_hierarchy_inp.hierarchy)
         # hopefully, we will get only 1 ncs group
         ncs_group.selection = []
         # User triggered the fail of this assert!
@@ -398,6 +418,9 @@ class ncs_group_object(object):
               ncs_group.selection.append(all_m_select_str)
         # Finally, we may check the number of atoms in selections that will
         # go further
+
+
+
 
         s_string = ncs_group.reference
         if(s_string is not None):
@@ -608,7 +631,6 @@ class ncs_group_object(object):
       raise Sorry('Multi-model PDB (with MODEL-ENDMDL) is not supported.')
     clean_chain_id(ph.models()[0])
     chain_ids = {x.id for x in ph.models()[0].chains()}
-    # print "chain_ids", chain_ids
     self.total_asu_length = ph.atoms().size()
     if len(chain_ids) > 1:
       min_contig_length = self.min_contig_length
@@ -710,7 +732,8 @@ class ncs_group_object(object):
           c_select_str = selection_string_from_selection(
             ph,c_isel,chains_info=chains_info)
           transform_id.add(tr_id)
-          key0 = 'chain {}_{}'.format(m_ch_id,tr_id)
+          key0 = "chain '{}'_{}".format(
+              convert_wildcards_in_chain_id(m_ch_id),tr_id)
           key1 = m_select_str
           key2 = key1 + '_' + tr_id
           self.asu_to_ncs_map[key1] = m_isel.deep_copy()
@@ -961,7 +984,7 @@ class ncs_group_object(object):
         chain_id = get_list_of_chains_selection(select)
         assert len(chain_id) == 1
         chain_id = chain_id[0]
-        self.tr_id_to_selection[chain_id + '_' + key] = (select,select)
+        self.tr_id_to_selection[chain_id + "'%s'_%s" %(chain_id, key)] = (select,select)
       self.ncs_group_map = update_ncs_group_map(
         ncs_group_map=self.ncs_group_map,
         ncs_group_id = 1,
@@ -1258,6 +1281,7 @@ class ncs_group_object(object):
     for each chain - transform pair
     """
     # collect all master chain IDs
+
     sorted_keys = sort_dict_keys(self.ncs_copies_chains_names)
     only_master_ncs_in_hierarchy = False
     if self.ncs_atom_selection.count(True) == self.truncated_hierarchy.atoms().size():
@@ -2073,11 +2097,21 @@ def get_list_of_chains_selection(selection_str):
   Returns:
     (list of str) of the format ['chain X', 'chain Y',...]
   """
+  # selection_str = "chain ' '"
   sstr = selection_str.replace(')',' ')
   sstr = sstr.replace('CHAIN','chain')
   sstr = sstr.replace('Chain','chain') + ' '
   pos_list = [x.end() for x in re.finditer('chain ',sstr)]
-  ch_id_list = [sstr[i:sstr.find(' ',i)] for i in pos_list]
+  ch_id_list = []
+  # sstr[i:sstr.find(' ',i)]
+  for i in pos_list:
+    new_el = None
+    if sstr.find("'",i+1) > 0:
+      new_el = sstr[i:sstr.find("'",i+1)+1]
+    else:
+      new_el = sstr[i:sstr.find(' ',i)]
+    ch_id_list.append(new_el)
+  # ch_id_list = [sstr[i:sstr.find("'",i+1)+1] for i in pos_list]
   chain_list = ['chain ' + x for x in ch_id_list]
   return chain_list
 
@@ -2364,54 +2398,57 @@ def insure_identity_is_in_transform_info(transform_info):
   ti.coordinates_present = t_cp
   return ti
 
-def make_chain_names_list(unique_chain_names):
-  """ make new chain names
+# def make_chain_names_list(unique_chain_names):
+#   """ make new chain names
 
-  Args:
-    unique_chain_names (list of str): a list of existing chain names
+#   Args:
+#     unique_chain_names (list of str): a list of existing chain names
 
-  Returns:
-    (list of str): a list of potential new names
-    """
-  chr_list1 = list(set(string.ascii_uppercase) - set(unique_chain_names))
-  chr_list2 = list(set(string.ascii_lowercase) - set(unique_chain_names))
-  chr_list1.sort()
-  chr_list2.sort()
-  return chr_list1 + chr_list2
+#   Returns:
+#     (list of str): a list of potential new names
+#     """
+#   chr_list1 = list(set(string.ascii_uppercase) - set(unique_chain_names))
+#   chr_list2 = list(set(string.ascii_lowercase) - set(unique_chain_names))
+#   chr_list1.sort()
+#   chr_list2.sort()
+#   return chr_list1 + chr_list2
 
-def rename_blank_chain_name(pdb_hierarchy_inp):
-  """
-  when there is a blank chain name, rename it and mutate the
-  pdb_hierarchy_inp object
-  """
-  if hasattr(pdb_hierarchy_inp,'hierarchy'):
-    ph = pdb_hierarchy_inp.hierarchy
-  else:
-    ph = pdb_hierarchy_inp
-  model  = ph.models()[0]
-  existing_ch_ids = set()
-  for ch in model.chains():
-      existing_ch_ids.add(ch.id)
-  has_blank_name = ('' in existing_ch_ids)
-  has_blank_name |= (' ' in existing_ch_ids)
-  has_stars_name = ('**' in existing_ch_ids)
-  if has_blank_name or has_stars_name:
-    new_names_list = make_chain_names_list(existing_ch_ids)
-    new_ch_spc_id = new_names_list[0]
-    new_ch_str_id = new_names_list[1]
-    for ch in model.chains():
-      if ch.id in ['', ' ']:
-        ch.id = new_ch_spc_id
-      elif ch.id == '**':
-        ch.id = new_ch_str_id
+# def rename_blank_chain_name(pdb_hierarchy_inp):
+#   """
+#   when there is a blank chain name, rename it and mutate the
+#   pdb_hierarchy_inp object
+#   """
+#   return
+#   if hasattr(pdb_hierarchy_inp,'hierarchy'):
+#     ph = pdb_hierarchy_inp.hierarchy
+#   else:
+#     ph = pdb_hierarchy_inp
+#   model  = ph.models()[0]
+#   existing_ch_ids = set()
+#   for ch in model.chains():
+#       existing_ch_ids.add(ch.id)
+#   has_blank_name = ('' in existing_ch_ids)
+#   has_blank_name |= (' ' in existing_ch_ids)
+#   has_stars_name = ('**' in existing_ch_ids)
+#   if has_blank_name or has_stars_name:
+#     new_names_list = make_chain_names_list(existing_ch_ids)
+#     new_ch_spc_id = new_names_list[0]
+#     new_ch_str_id = new_names_list[1]
+#     for ch in model.chains():
+#       if ch.id in ['', ' ']:
+#         ch.id = new_ch_spc_id
+#       elif ch.id == '**':
+#         ch.id = new_ch_str_id
 
-def clean_chain_id(ph_model):
-  '''
-  Make sure chain names do not contain leading or trailing spaces
-  '''
-  for ch in ph_model.chains():
-    ch.id = ch.id.strip()
-  return ph_model
+# def clean_chain_id(ph_model):
+#   '''
+#   Make sure chain names do not contain leading or trailing spaces
+#   '''
+#   # XXXX WHY????
+#   return
+#   for ch in ph_model.chains():
+#     ch.id = ch.id.strip()
+#   return ph_model
 
 class NCS_copy():
 

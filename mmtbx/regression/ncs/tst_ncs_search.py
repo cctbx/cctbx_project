@@ -418,8 +418,8 @@ class TestSimpleAlignment(unittest.TestCase):
     spec = ncs_obj.get_ncs_info_as_spec(write=False)
     gr = spec.ncs_groups()
     self.assertEqual(len(gr),2)
-    self.assertEqual(gr[0].chain_residue_id()[0],['A', 'D', 'F'])
-    self.assertEqual(gr[1].chain_residue_id()[0],['B', 'E', 'G', 'X'])
+    self.assertEqual(gr[0].chain_residue_id()[0],["'A'", "'D'", "'F'"])
+    self.assertEqual(gr[1].chain_residue_id()[0],["'B'", "'E'", "'G'", "'X'"])
 
   def test_chain_exclusion(self):
     """ Test that chain are being excluded when asked for """
@@ -509,7 +509,7 @@ class TestSimpleAlignment(unittest.TestCase):
     '''  Test processing of overlapping identical chains  '''
     ncs_inp = ncs.input(pdb_string=pdb_str10)
     t = ncs_inp.ncs_group_map[1]
-    self.assertEqual(t,[{'chain A'}, {'001', '002', '003'}, 'chain A'])
+    self.assertEqual(t,[{"chain 'A '"}, {'001', '002', '003'}, "chain 'A '"])
 
 
 test_pdb_1 = '''\
