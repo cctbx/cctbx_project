@@ -276,7 +276,7 @@ def sort_models_and_sequences(models,sequences):
     new_sequences.append(s)
   return new_models,new_sequences
 
-    
+
 def merge_hierarchies_from_models(models=None,resid_offset=None,
     renumber=None,first_residue_number=None,
     sequences=None,chain_id=None,trim_side_chains=None,
