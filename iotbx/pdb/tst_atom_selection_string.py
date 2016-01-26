@@ -358,6 +358,22 @@ ATOM     26  O   ALA A 127     -28.024  50.717 -48.363  1.00 58.10           O
 ATOM     27  CB  ALA A 127     -30.098  52.647 -47.231  1.00 47.36           C
 """
 
+test_pdb_11 = """\
+ATOM      1  CA  MET A 480     -10.152  -1.677  37.457  1.00 28.90      AA-  C
+ATOM      2  CG  MET A 480      -9.517   0.607  38.489  1.00 49.21      AA-  C
+ATOM      3  CA  VAL A 481     -11.857  -5.041  37.936  1.00 23.15      AA-  C
+ATOM      4  CA  VAL A 482     -13.580  -5.715  41.251  1.00 34.23      AA-  C
+ATOM      5  CA  ARG A 483     -14.378  -9.189  42.566  1.00 30.50      AA-  C
+ATOM      6  CG  ARG A 483     -12.194 -10.275  42.051  1.00 28.52      AA-  C
+ATOM      7  CA  ARG A 484     -17.677  -9.381  44.419  1.00 41.14      AA-  C
+ATOM      8  CA  MET B 480     -16.603   9.979   4.769  1.00 32.68      BA-  C
+ATOM      9  CG  MET B 480     -16.554   7.723   3.530  1.00 54.69      BA-  C
+ATOM     10  CA  VAL B 481     -17.675  13.614   4.970  1.00 34.88      BA-  C
+ATOM     11  CA  VAL B 482     -20.607  14.715   2.834  1.00 35.95      BA-  C
+ATOM     12  CA  ARG B 483     -21.481  18.297   1.835  1.00 23.95      BA-  C
+ATOM     13  CA  ARG B 484     -25.162  19.109   1.469  1.00 47.03      BA-  C
+ATOM     14  CG  ARG B 484     -25.746  17.004   2.827  1.00 47.49      BA-  C
+"""
 
 
 def test_get_clean_selection_string():
@@ -626,6 +642,14 @@ def test_8():
   tsel = selection_string_from_selection(pdb_h, isel)
   assert tsel == "(chain 'A' and (resid 117 or (resid 124:125 and (name N or name CA or name C or name O or name CB )) or resid 126:127))", tsel
 
+def test_11():
+  """
+  outputting name selection at the end of hierarchy?..
+  """
+  pdb_h = pdb.hierarchy.input(pdb_string=test_pdb_11).hierarchy
+  isel = flex.size_t(range(5)+[6])
+  tsel = selection_string_from_selection(pdb_h, isel)
+  assert tsel == "(chain 'A' and (resid 480:482 or (resid 483:484 and (name CA ))))", tsel
 
 
 if __name__=='__main__':
@@ -645,5 +669,6 @@ if __name__=='__main__':
   test_6()
   test_7()
   test_8()
+  test_11()
 
   print "OK"
