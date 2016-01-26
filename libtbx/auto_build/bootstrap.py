@@ -17,11 +17,14 @@ import urlparse
 import zipfile
 
 rosetta_version="rosetta_src_2015.39.58186_bundle"
+rosetta_version="rosetta_src_2016.02.58402_bundle"
+afitt_version="AFITT-2.4.0.4-redhat-RHEL7-x64" # binary bundle specific to cci-vm-1
 envs = {
   "AMBERHOME"           : ["modules", "amber"],
   "PHENIX_ROSETTA_PATH" : ["modules", "rosetta"],
   "ROSETTA_BIN"         : ["modules", "rosetta", "main", "source", "bin"],
   "ROSETTA3_DB"         : ["modules", "rosetta", "main", "database"],
+#  "OE_EXE"              : ["modules", "afitt"],
 }
 
 # To download this file:
@@ -424,7 +427,7 @@ class amber_module(SourceModule):
     'rsync',
     '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/externals/amber14/',
     'externals', # not mapped yet!
-    'amber_rsync',
+    'amber_rsync', # not plumbed ...
   ]
 
 class rosetta_class(SourceModule):
@@ -436,6 +439,12 @@ class rosetta_class(SourceModule):
   authenticated = [
     'scp',
     '%(cciuser)s@cci.lbl.gov:/net/cci-filer2/raid1/auto_build/externals/'+rosetta_version+'.tgz']
+
+class afitt_class(SourceModule):
+  module = 'afitt'
+  authenticated = [
+    'scp',
+    '%(cciuser)s@cci.lbl.gov:/net/cci-filer2/raid1/auto_build/externals/'+afitt_version+'.gz']
 
 class libsvm_module(SourceModule):
   module = 'libsvm'
@@ -1531,6 +1540,7 @@ class PhenixBuilder(CCIBuilder):
 
 class PhenixExternalRegression(PhenixBuilder):
   EXTERNAL_CODEBASES = [
+    "afitt",
     "rosetta",
     "amber",
     ]
@@ -1546,25 +1556,30 @@ class PhenixExternalRegression(PhenixBuilder):
     pass
 
   def get_environment(self):
-    amberhome = os.path.join(*envs["AMBERHOME"])
-    phenix_rosetta_path = os.path.join(*envs["PHENIX_ROSETTA_PATH"])
-    rosetta_bin = os.path.join(*envs["ROSETTA_BIN"])
-    rosetta3_db = os.path.join(*envs["ROSETTA3_DB"])
-    environment = {
-      "AMBERHOME"           : amberhome, # used to trigger Property on slave
-      "PHENIX_ROSETTA_PATH" : phenix_rosetta_path,
-      "ROSETTA_BIN"         : rosetta_bin,
-      "ROSETTA3_DB"         : rosetta3_db,
-           }
+    environment = {}
+    for env, dirs in envs.items():
+      environment[env] = os.path.join(*dirs)
+    print environment
+    #amberhome = os.path.join(*envs["AMBERHOME"])
+    #phenix_rosetta_path = os.path.join(*envs["PHENIX_ROSETTA_PATH"])
+    #rosetta_bin = os.path.join(*envs["ROSETTA_BIN"])
+    #rosetta3_db = os.path.join(*envs["ROSETTA3_DB"])
+    #environment = {
+    #  "AMBERHOME"           : amberhome, # used to trigger Property on slave
+    #  "PHENIX_ROSETTA_PATH" : phenix_rosetta_path,
+    #  "ROSETTA_BIN"         : rosetta_bin,
+    #  "ROSETTA3_DB"         : rosetta3_db,
+    #       }
     return environment
 
   def write_environment(self,
                         env,
                         filename="phenix_externals",
                        ):
+    # called by add_make which is called in build
     outl = ""
     for key, path in env.items():
-      outl += 'setenv %(key)s "%%(PWD)s/%(path)s"\n' % locals()
+      outl += 'setenv %(key)s "%%(PWD)s/../%(path)s"\n' % locals()
     fname="%s.csh" % filename
     self.add_step(self.shell(command=[
       'python',
@@ -1576,7 +1591,7 @@ class PhenixExternalRegression(PhenixBuilder):
     ))
     outl = ""
     for key, path in env.items():
-      outl += 'export %(key)s="%%(PWD)s/%(path)s"\n' % locals()
+      outl += 'export %(key)s="%%(PWD)s/../%(path)s"\n' % locals()
     fname="%s.sh" % filename
     self.add_step(self.shell(command=[
       'python',
