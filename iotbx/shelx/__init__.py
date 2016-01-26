@@ -22,7 +22,7 @@ def cctbx_xray_structure_from(cls, file=None, filename=None,
   return builder.structure
 
 def smtbx_refinement_model_from(cls, ins_or_res=None, hkl=None,
-                                fo_sq=None):
+                                fo_sq=None, strictly_shelxl=True):
   import os
   from iotbx.reflection_file_reader import any_reflection_file
   import iotbx.builders
@@ -47,7 +47,8 @@ def smtbx_refinement_model_from(cls, ins_or_res=None, hkl=None,
   stream = command_stream(filename=ins_or_res)
   stream = crystal_symmetry_parser(stream, builder)
   stream = afix_parser(stream.filtered_commands(), builder)
-  stream = atom_parser(stream.filtered_commands(), builder)
+  stream = atom_parser(stream.filtered_commands(), builder,
+                       strictly_shelxl=strictly_shelxl)
   stream = restraint_parser(stream.filtered_commands(), builder)
   stream = instruction_parser(stream.filtered_commands(), builder)
   stream.parse()
