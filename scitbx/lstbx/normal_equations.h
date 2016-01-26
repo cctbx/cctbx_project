@@ -486,7 +486,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
         grad_k_star[i] = inv_yc_sq*(r_dot_grad_yc_i - k_star*yc_dot_grad_yc[i]);
         b[i] = k_star*r_dot_grad_yc_i + grad_k_star[i]*r_dot_yc;
       }
-      double *pa = a.begin();
+      scalar_t *pa = a.begin();
       for (int i=0; i<n_params; ++i) for (int j=i; j<n_params; ++j) {
         scalar_t a_ij = *pa;
         a_ij = k_star_sq*a_ij
