@@ -193,7 +193,10 @@ class EigerNXmxFixer(object):
       "float32",
       detector_offset_vector.length())
     group['translation'].attrs['transformation_type'] = 'translation'
-    group['translation'].attrs['vector'] = detector_offset_vector.normalize()
+    if detector_offset_vector.length() > 0:
+      group['translation'].attrs['vector'] = detector_offset_vector.normalize()
+    else:
+      group['translation'].attrs['vector'] = detector_offset_vector
     group['translation'].attrs['offset'] = 0
     group['translation'].attrs['units'] = "m"
     group['translation'].attrs['depends_on'] = '.'
