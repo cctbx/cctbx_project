@@ -22,7 +22,7 @@ namespace scitbx { namespace matrix {
     {}
 
     /// Add \f$\alpha x x^T\f$ to the sum
-    void add(af::const_ref<double> const &x, double alpha) {
+    void add(af::const_ref<T> const &x, T alpha) {
       SCITBX_ASSERT(x.size() == a.accessor().n_rows())
       (x.size())
       (a.accessor().n_rows());
@@ -30,7 +30,7 @@ namespace scitbx { namespace matrix {
     }
 
     /// Add \f$\alpha x x^T\f$ (overload without size checks for speed)
-    void add(double const *x, double alpha) {
+    void add(T const *x, T alpha) {
       symmetric_packed_u_rank_1_update(a.accessor().n_rows(), a.begin(), x, alpha);
     }
 
@@ -46,7 +46,7 @@ namespace scitbx { namespace matrix {
 
     /// The resulting (symmetric) matrix
     /** It returns a meaningful result only after finalise() has been called */
-    operator af::versa<double, af::packed_u_accessor>() {
+    operator af::versa<T, af::packed_u_accessor>() {
       return a;
     }
   };

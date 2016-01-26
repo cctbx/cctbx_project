@@ -198,7 +198,7 @@ namespace scitbx { namespace matrix { namespace cholesky {
           *a++ = a_ij / a_ii;
         }
 
-        symmetric_packed_u_rank_1_update(n-i-1, a, u, -1.);
+        symmetric_packed_u_rank_1_update(n-i-1, a, u, scalar_t(-1));
       }
     }
 
