@@ -301,25 +301,34 @@ def exercise_dir_utils () :
   assert utils.allow_delete_directory(target_dir)
 
 def exercise_retrieve_unless_exists():
-  f = tempfile.NamedTemporaryFile(prefix='kings_of_france')
-  f.write('Henri IV, Louis XIII, Louis XIV, Louis XV, Louis XVI, Louis XVIII')
-  h = os.path.join(os.path.dirname(f.name), 'digests.txt')
-  open(h, 'w').writelines([
-    ('%s %s\n') %
-    (os.path.basename(f.name), utils.md5_hexdigest(f.name)),
-    'something_else  yyyyyyy',
-  ])
+  import urllib
+  filehandle, filename = tempfile.mkstemp(prefix='kings_of_france')
+  # we will need to pass filename to functions which will open it
+  # on Windows this causes a permission exception
+  os.close(filehandle)
+  with open(filename, 'w') as f:
+    f.write(
+      'Henri IV, Louis XIII, Louis XIV, Louis XV, Louis XVI, Louis XVIII')
+  digestname = os.path.join(os.path.dirname(f.name), 'digests.txt')
+  with open(digestname, 'w') as f:
+    f.writelines([
+      ('%s %s\n') %
+      (os.path.basename(filename), utils.md5_hexdigest(filename)),
+      'something_else  yyyyyyy',
+    ])
   d = tempfile.mkdtemp()
-  t = os.path.join(d, 'target')
-  try: os.remove(t)
+  targetname = os.path.join(d, 'target')
+  try: os.remove(targetname)
   except Exception: pass
-  assert (utils.retrieve_unless_exists(url='file://%s' % f.name, filename=t) ==
+  url = 'file:' + urllib.pathname2url(filename)
+  assert (utils.retrieve_unless_exists(url=url, filename=targetname) ==
           "Downloaded")
-  assert f.file.read() == open(t).read()
-  assert (utils.retrieve_unless_exists(url='file://%s' % f.name, filename=t) ==
+  with open(filename) as source, open(targetname) as target:
+    assert source.read() == target.read()
+  assert (utils.retrieve_unless_exists(url=url, filename=targetname) ==
           "Cached")
-  assert f.file.read() == open(t).read()
-
+  with open(filename) as source, open(targetname) as target:
+    assert source.read() == target.read()
 
 def run(args):
   assert len(args) == 0
