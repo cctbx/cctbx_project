@@ -492,8 +492,8 @@ class twin_test(object):
       track_all=True)
     assert approx_equal(
       [twin.value for twin in normal_eqns.twin_fractions],
-      self.twin_fractions)
-    assert approx_equal(normal_eqns.objective(), 0, eps=1e-14)
+      self.twin_fractions, eps=1e-2)
+    assert approx_equal(normal_eqns.objective(), 0, eps=1e-5)
     assert normal_eqns.n_parameters == 64
     # now with fixed twin fraction
     xs.shake_sites_in_place(rms_difference=0.15)
