@@ -391,9 +391,9 @@ def test_selection_string_from_selection():
   sel_str1 = selection_string_from_selection(pdb_inp,isel1)
   sel_str2 = selection_string_from_selection(pdb_inp,isel2)
   sel_str3 = selection_string_from_selection(pdb_inp,isel3)
-  assert sel_str1 == 'chain D', sel_str1
-  assert sel_str2 == '(chain D and (resid 1:3 or resid 5:7))', sel_str2
-  assert sel_str3 == '(chain D and resid 1:6)', sel_str3
+  assert sel_str1 == "chain 'D'", sel_str1
+  assert sel_str2 == "(chain 'D' and (resid 1:3 or resid 5:7))", sel_str2
+  assert sel_str3 == "(chain 'D' and resid 1:6)", sel_str3
   #
   atom_cache = pdb_inp.hierarchy.atom_selection_cache().selection
   sel1 = list(atom_cache(sel_str1).iselection())
@@ -416,10 +416,10 @@ def test_selection_string_from_selection2():
   #
   sel_str1 = selection_string_from_selection(pdb_inp,isel1)
   sel_str2 = selection_string_from_selection(pdb_inp,isel2)
-  assert sel_str1 == 'chain A or (chain B and resid 153:154)', sel_str1
-  s = '(chain A and (resid 151 or (resid 152 and (name N or name CA or '
-  s += 'name C or name O or name CB or name CG or name CD or name NE or '
-  s += 'name CZ )))) or chain B'
+  assert sel_str1 == "chain 'A' or (chain 'B' and resid 153:154)", sel_str1
+  s = "(chain 'A' and (resid 151 or (resid 152 and (name N or name CA or "
+  s += "name C or name O or name CB or name CG or name CD or name NE or "
+  s += "name CZ )))) or chain 'B'"
   assert sel_str2 == s, sel_str2
   #
   atom_cache = pdb_inp.hierarchy.atom_selection_cache().selection
@@ -433,7 +433,7 @@ def test_avoid_chain_selection():
   pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_2)
   isel1 = flex.size_t([0,1,2,3,4,5,6,7,8])
   sel_str1 = selection_string_from_selection(pdb_inp,isel1)
-  s = '(chain A and resid 151)'
+  s = "(chain 'A' and resid 151)"
   assert sel_str1 == s, sel_str1
 
 def test_avoid_chain_selection2():
@@ -442,14 +442,14 @@ def test_avoid_chain_selection2():
   sel_str1 = selection_string_from_selection(pdb_inp,isel1)
   # s = '(chain H and (resid 48 or resid 49 or resid 49A or resid 50:52))'
   # better way:
-  s = '(chain H and resid 48:52)'
+  s = "(chain 'H' and resid 48:52)"
   assert sel_str1 == s, sel_str1
   #
   l1 = range(6,25) + range(29,46)
   isel1 = flex.size_t(l1)
   # s = '(chain H and (resid 48 or resid 49 or resid 50:52))'
   # better way:
-  s = '(chain H and (resid 48:49 or resid 50:52))'
+  s = "(chain 'H' and (resid 48:49 or resid 50:52))"
   sel_str1 = selection_string_from_selection(pdb_inp,isel1)
   assert sel_str1 == s, sel_str1
 
@@ -457,7 +457,7 @@ def test_avoid_hoh():
   pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_4)
   isel1 = flex.size_t(range(7))
   sel_str1 = selection_string_from_selection(pdb_inp,isel1)
-  s = '(chain A and resid 151:157)'
+  s = "(chain 'A' and resid 151:157)"
   assert sel_str1 == s, sel_str1
   #
   cache = pdb_inp.hierarchy.atom_selection_cache().selection
@@ -470,7 +470,7 @@ def test_include_hoh():
   isel1 = flex.size_t(range(7))
   sel_str1 = selection_string_from_selection(
     pdb_inp,isel1,chains_info=chains_info)
-  s = '(chain A and resid 151:157)'
+  s = "(chain 'A' and resid 151:157)"
   assert sel_str1 == s, sel_str1
   #
   cache = pdb_inp.hierarchy.atom_selection_cache().selection
@@ -481,7 +481,7 @@ def test_include_hoh():
   isel1 = flex.size_t(range(12))
   sel_str1 = selection_string_from_selection(
     pdb_inp,isel1,chains_info=chains_info)
-  assert sel_str1 == 'chain A', sel_str
+  assert sel_str1 == "chain 'A'", sel_str
 
 def test_selection_with_alternative_conformers():
   pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_5)
@@ -498,11 +498,11 @@ def test_insertions():
   pdb_h = pdb.hierarchy.input(pdb_string=test_pdb_6).hierarchy
   isel = flex.size_t(range(15))
   tsel = selection_string_from_selection(pdb_h, isel)
-  assert tsel == "(chain H and (resid 48:49 or (resid 49A and (name N or name CA or name C ))))"
+  assert tsel == "(chain 'H' and (resid 48:49 or (resid 49A and (name N or name CA or name C ))))"
 
   isel = flex.size_t(range(16))
   tsel = selection_string_from_selection(pdb_h, isel)
-  assert tsel == "(chain H and resid 48:49A)", tsel
+  assert tsel == "(chain 'H' and resid 48:49A)", tsel
 
 def test_2():
   """
@@ -514,7 +514,7 @@ def test_2():
   pdb_h = pdb.hierarchy.input(pdb_string=test_pdb_7).hierarchy
   isel = flex.size_t([0,1,2,3,8,9,10,11,13,14,15,16,17,18,19,20])
   tsel = selection_string_from_selection(pdb_h, isel)
-  assert tsel == "(chain A and (name N or name CA or name C or name O ))" , tsel
+  assert tsel == "(chain 'A' and (name N or name CA or name C or name O ))" , tsel
 
 def test_3():
   """
@@ -522,26 +522,26 @@ def test_3():
   """
   pdb_h = pdb.hierarchy.input(pdb_string=test_pdb_6).hierarchy
   for i, answ in zip(range(20), [
-      "(chain H and (resid 48 and (name N )))",
-      "(chain H and (resid 48 and (name CA )))",
-      "(chain H and (resid 48 and (name C )))",
-      "(chain H and (resid 48 and (name O )))",
-      "(chain H and (resid 49 and (name N )))",
-      "(chain H and (resid 49 and (name CA )))",
-      "(chain H and (resid 49 and (name C )))",
-      "(chain H and (resid 49 and (name O )))",
-      "(chain H and (resid 49 and (name CB )))",
-      "(chain H and (resid 49 and (name CG )))",
-      "(chain H and (resid 49 and (name CD1)))",
-      "(chain H and (resid 49 and (name CD2)))",
-      "(chain H and (resid 49A and (name N )))",
-      "(chain H and (resid 49A and (name CA )))",
-      "(chain H and (resid 49A and (name C )))",
-      "(chain H and (resid 49A and (name O )))",
-      "(chain H and (resid 50 and (name N )))",
-      "(chain H and (resid 50 and (name CA )))",
-      "(chain H and (resid 50 and (name C )))",
-      "(chain H and (resid 50 and (name O )))"]):
+      "(chain 'H' and (resid 48 and (name N )))",
+      "(chain 'H' and (resid 48 and (name CA )))",
+      "(chain 'H' and (resid 48 and (name C )))",
+      "(chain 'H' and (resid 48 and (name O )))",
+      "(chain 'H' and (resid 49 and (name N )))",
+      "(chain 'H' and (resid 49 and (name CA )))",
+      "(chain 'H' and (resid 49 and (name C )))",
+      "(chain 'H' and (resid 49 and (name O )))",
+      "(chain 'H' and (resid 49 and (name CB )))",
+      "(chain 'H' and (resid 49 and (name CG )))",
+      "(chain 'H' and (resid 49 and (name CD1)))",
+      "(chain 'H' and (resid 49 and (name CD2)))",
+      "(chain 'H' and (resid 49A and (name N )))",
+      "(chain 'H' and (resid 49A and (name CA )))",
+      "(chain 'H' and (resid 49A and (name C )))",
+      "(chain 'H' and (resid 49A and (name O )))",
+      "(chain 'H' and (resid 50 and (name N )))",
+      "(chain 'H' and (resid 50 and (name CA )))",
+      "(chain 'H' and (resid 50 and (name C )))",
+      "(chain 'H' and (resid 50 and (name O )))"]):
     isel = flex.size_t([i])
     tsel = selection_string_from_selection(pdb_h, isel)
     assert tsel == answ, "%s != %s" % (tsel, answ)
@@ -552,30 +552,30 @@ def test_4():
   """
   pdb_h = pdb.hierarchy.input(pdb_string=test_pdb_6).hierarchy
   for i, answ in zip(range(0,20,2), [
-      "(chain H and (resid 48 and (name N or name CA )))",
-      "(chain H and (resid 48 and (name C or name O )))",
-      "(chain H and (resid 49 and (name N or name CA )))",
-      "(chain H and (resid 49 and (name C or name O )))",
-      "(chain H and (resid 49 and (name CB or name CG )))",
-      "(chain H and (resid 49 and (name CD1 or name CD2)))",
-      "(chain H and (resid 49A and (name N or name CA )))",
-      "(chain H and (resid 49A and (name C or name O )))",
-      "(chain H and (resid 50 and (name N or name CA )))",
-      "(chain H and (resid 50 and (name C or name O )))"]):
+      "(chain 'H' and (resid 48 and (name N or name CA )))",
+      "(chain 'H' and (resid 48 and (name C or name O )))",
+      "(chain 'H' and (resid 49 and (name N or name CA )))",
+      "(chain 'H' and (resid 49 and (name C or name O )))",
+      "(chain 'H' and (resid 49 and (name CB or name CG )))",
+      "(chain 'H' and (resid 49 and (name CD1 or name CD2)))",
+      "(chain 'H' and (resid 49A and (name N or name CA )))",
+      "(chain 'H' and (resid 49A and (name C or name O )))",
+      "(chain 'H' and (resid 50 and (name N or name CA )))",
+      "(chain 'H' and (resid 50 and (name C or name O )))"]):
     isel = flex.size_t([i,i+1])
     tsel = selection_string_from_selection(pdb_h, isel)
     assert tsel == answ, "%s != %s" % (tsel, answ)
   # and now odd:
   for i, answ in zip(range(1,19,2), [
-      "(chain H and (resid 48 and (name CA or name C )))",
-      "(chain H and ((resid 48 and (name O )) or (resid 49 and (name N ))))",
-      "(chain H and (resid 49 and (name CA or name C )))",
-      "(chain H and (resid 49 and (name O or name CB )))",
-      "(chain H and (resid 49 and (name CG or name CD1)))",
-      "(chain H and ((resid 49 and (name CD2)) or (resid 49A and (name N ))))",
-      "(chain H and (resid 49A and (name CA or name C )))",
-      "(chain H and ((resid 49A and (name O )) or (resid 50 and (name N ))))",
-      "(chain H and (resid 50 and (name CA or name C )))"]):
+      "(chain 'H' and (resid 48 and (name CA or name C )))",
+      "(chain 'H' and ((resid 48 and (name O )) or (resid 49 and (name N ))))",
+      "(chain 'H' and (resid 49 and (name CA or name C )))",
+      "(chain 'H' and (resid 49 and (name O or name CB )))",
+      "(chain 'H' and (resid 49 and (name CG or name CD1)))",
+      "(chain 'H' and ((resid 49 and (name CD2)) or (resid 49A and (name N ))))",
+      "(chain 'H' and (resid 49A and (name CA or name C )))",
+      "(chain 'H' and ((resid 49A and (name O )) or (resid 50 and (name N ))))",
+      "(chain 'H' and (resid 50 and (name CA or name C )))"]):
     isel = flex.size_t([i,i+1])
     tsel = selection_string_from_selection(pdb_h, isel)
     assert tsel == answ, "%s != %s" % (tsel, answ)
@@ -588,16 +588,16 @@ def test_5():
   pdb_h = pdb.hierarchy.input(pdb_string=test_pdb_7).hierarchy
   isel = flex.size_t(range(25))
   tsel = selection_string_from_selection(pdb_h, isel)
-  assert tsel == "chain A", tsel
+  assert tsel == "chain 'A'", tsel
   isel = flex.size_t([0,8,13,17])
   tsel = selection_string_from_selection(pdb_h, isel)
-  assert tsel == "(chain A and (name N ))", tsel
+  assert tsel == "(chain 'A' and (name N ))", tsel
   isel = flex.size_t([0,1,8,9,13,14,17,18])
   tsel = selection_string_from_selection(pdb_h, isel)
-  assert tsel == "(chain A and (name N or name CA ))", tsel
+  assert tsel == "(chain 'A' and (name N or name CA ))", tsel
   isel = flex.size_t([0,1,2,8,9,13,14,17,18])
   tsel = selection_string_from_selection(pdb_h, isel)
-  assert tsel == "(chain A and ((resid 14 and (name N or name CA or name C )) or (resid 15:17 and (name N or name CA ))))", tsel
+  assert tsel == "(chain 'A' and ((resid 14 and (name N or name CA or name C )) or (resid 15:17 and (name N or name CA ))))", tsel
 
 def test_6():
   """
@@ -609,7 +609,7 @@ def test_6():
   isel = flex.size_t(range(21))
   tsel = selection_string_from_selection(pdb_h, isel)
   # print "tsel", tsel
-  assert tsel == "(chain A and (resid 125:127 or (resid 128 and (name N or name CA or name C or name O or name CB ))))" , tsel
+  assert tsel == "(chain 'A' and (resid 125:127 or (resid 128 and (name N or name CA or name C or name O or name CB ))))" , tsel
 
 def test_7():
   """
@@ -617,14 +617,14 @@ def test_7():
   pdb_h = pdb.hierarchy.input(pdb_string=test_pdb_9).hierarchy
   isel = flex.size_t([0,1,2,3,4]+range(11,27))
   tsel = selection_string_from_selection(pdb_h, isel)
-  assert tsel == "(chain A and ((resid 124:125 and (name N or name CA or name C or name O or name CB )) or resid 126:127))", tsel
+  assert tsel == "(chain 'A' and ((resid 124:125 and (name N or name CA or name C or name O or name CB )) or resid 126:127))", tsel
   # print "tsel", tsel
 
 def test_8():
   pdb_h = pdb.hierarchy.input(pdb_string=test_pdb_10).hierarchy
   isel = flex.size_t(range(8)+[8,9,10,11,12]+range(19,35))
   tsel = selection_string_from_selection(pdb_h, isel)
-  assert tsel == "(chain A and (resid 117 or (resid 124:125 and (name N or name CA or name C or name O or name CB )) or resid 126:127))", tsel
+  assert tsel == "(chain 'A' and (resid 117 or (resid 124:125 and (name N or name CA or name C or name O or name CB )) or resid 126:127))", tsel
 
 
 

@@ -192,17 +192,17 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
       # test created object
       self.assertEqual(len(trans_obj.transform_chain_assignment),3)
-      expected = '(chain A and (resseq 151:159)) or (chain D and (resseq 1:7))'
+      expected = "(chain 'A' and (resseq 151:159)) or (chain 'D' and (resseq 1:7))"
       self.assertEqual(trans_obj.ncs_selection_str,expected)
       # check that static parts are included in NCS and ASU
       self.assertEqual(len(trans_obj.ncs_atom_selection),3*9+2*7+3+3)
       self.assertEqual(trans_obj.ncs_atom_selection.count(True),9+7+3+3)
       #
       expected = {
-        'chain A and (resseq 151:159)':
-          ['chain B and (resseq 151:159)','chain C and (resseq 151:159)'],
-        'chain D and (resseq 1:7)':
-          ['chain E and (resseq 1:7)']}
+        "chain 'A' and (resseq 151:159)":
+          ["chain 'B' and (resseq 151:159)","chain 'C' and (resseq 151:159)"],
+        "chain 'D' and (resseq 1:7)":
+          ["chain 'E' and (resseq 1:7)"]}
       self.assertEqual(trans_obj.ncs_to_asu_selection,expected)
 
       # check ncs_transform
@@ -236,15 +236,15 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
     # test created object
     self.assertEqual(len(trans_obj.transform_chain_assignment),3)
-    expected = '(chain A) or (chain D)'
+    expected = "(chain 'A') or (chain 'D')"
     self.assertEqual(trans_obj.ncs_selection_str,expected)
     # check that static parts are included in NCS and ASU
     self.assertEqual(len(trans_obj.ncs_atom_selection),3*9+2*7+3+3)
     self.assertEqual(trans_obj.ncs_atom_selection.count(True),9+7+3+3)
     #
     expected = {
-      'chain A': ['chain B', 'chain C'],
-      'chain D': ['chain E']}
+      "chain 'A'": ["chain 'B'", "chain 'C'"],
+      "chain 'D'": ["chain 'E'"]}
     self.assertEqual(trans_obj.ncs_to_asu_selection,expected)
 
     # check ncs_transform
@@ -280,17 +280,17 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     t1 = trans_obj.ncs_to_asu_selection
     t2 = trans_obj2.ncs_to_asu_selection
     # Selection does not include the resseq if all the chain is selected
-    t1_exp = {'chain A': ['chain B', 'chain C'], 'chain D': ['chain E']}
+    t1_exp = {"chain 'A'": ["chain 'B'", "chain 'C'"], "chain 'D'": ["chain 'E'"]}
     self.assertEqual(t1,t1_exp)
-    t2_exp = {'chain A and (resseq 151:159)':
-                ['chain B and (resseq 151:159)','chain C and (resseq 151:159)'],
-              'chain D and (resseq 1:7)': ['chain E and (resseq 1:7)']}
+    t2_exp = {"chain 'A' and (resseq 151:159)":
+                ["chain 'B' and (resseq 151:159)","chain 'C' and (resseq 151:159)"],
+              "chain 'D' and (resseq 1:7)": ["chain 'E' and (resseq 1:7)"]}
     self.assertEqual(t2,t2_exp)
     #
-    t1 = trans_obj.tr_id_to_selection['chain A_003']
-    t2 = trans_obj2.tr_id_to_selection['chain A_003']
-    self.assertEqual(t1,('chain A', 'chain C'))
-    t2_exp = ('chain A and (resseq 151:159)', 'chain C and (resseq 151:159)')
+    t1 = trans_obj.tr_id_to_selection["chain 'A'_003"]
+    t2 = trans_obj2.tr_id_to_selection["chain 'A'_003"]
+    self.assertEqual(t1,("chain 'A'", "chain 'C'"))
+    t2_exp = ("chain 'A' and (resseq 151:159)", "chain 'C' and (resseq 151:159)")
     self.assertEqual(t2,t2_exp)
 
   def test_rotaion_translation_input(self):
@@ -348,9 +348,9 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       min_percent=0.2)
     t = ncs_inp.ncs_to_asu_selection
     exp_t1 = {
-      '(chain A and (name N or name CA or name C or name O ))':
-        ['chain B',
-         '(chain C and (name N or name CA or name C or name O ))']}
+      "(chain 'A' and (name N or name CA or name C or name O ))":
+        ["chain 'B'",
+         "(chain 'C' and (name N or name CA or name C or name O ))"]}
     self.assertEqual(t,exp_t1)
     #
     ncs_inp = ncs.input(
@@ -358,7 +358,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       check_atom_order=False,
       allow_different_size_res=False)
     t = ncs_inp.ncs_to_asu_selection
-    exp_t2 = {'chain A': ['chain C']}
+    exp_t2 = {"chain 'A'": ["chain 'C'"]}
     self.assertEqual(t,exp_t2)
     #
     ncs_inp = ncs.input(
