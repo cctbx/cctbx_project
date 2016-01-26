@@ -972,7 +972,9 @@ def selection_string_from_selection(pdb_hierarchy_inp,
             atoms_for_dumping = []
           prev_all_atoms_present = None
 
-      atoms_sel = "" if cur_all_atoms_present else get_atom_str(cur_res_selected_atom_names)
+      atoms_sel = "" if prev_all_atoms_present else get_atom_str(previous_res_selected_atom_names)
+      if prev_all_atoms_present or prev_all_atoms_present is None:
+        atoms_sel = "" if cur_all_atoms_present else get_atom_str(cur_res_selected_atom_names)
       omit_resids = (first_resid == chains_info[ch_id].resid[0]
           and last_resid == chains_info[ch_id].resid[-1])
       res_sel = update_res_sel(
