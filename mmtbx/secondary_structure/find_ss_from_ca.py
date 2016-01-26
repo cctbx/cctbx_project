@@ -262,6 +262,21 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
         m.hierarchy.overall_counts().n_residues)
   return model_list
 
+def sort_models_and_sequences(models,sequences):
+  # sort based on chain type if available
+  sort_list=[]
+  for m,s in zip(models,sequences):
+    sort_list.append([m.info.get('chain_type'),m,s])
+  sort_list.sort()
+  sort_list.reverse()
+  new_models=[]
+  new_sequences=[]
+  for c,m,s in sort_list:
+    new_models.append(m)
+    new_sequences.append(s)
+  return new_models,new_sequences
+
+    
 def merge_hierarchies_from_models(models=None,resid_offset=None,
     renumber=None,first_residue_number=None,
     sequences=None,chain_id=None,trim_side_chains=None,
@@ -272,6 +287,7 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
   #  consecutively
   # If sequence or chain_id are supplied, use them
   # Trim off side chains (and CB for GLY) if trim_side_chains
+  # sort by chain_type if provided in one or more
 
   new_hierarchy=iotbx.pdb.pdb_input(
          source_info="Model", lines="").construct_hierarchy()
@@ -299,7 +315,9 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
   info={}
   from iotbx.pdb import resseq_encode
 
+
   if not sequences: sequences=len(models)*[None]
+  models,sequences=sort_models_and_sequences(models,sequences)
   for model,sequence in zip(models,sequences):
     if not model: continue
     if not info: info=model.info
