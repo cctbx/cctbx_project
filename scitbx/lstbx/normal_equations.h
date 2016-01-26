@@ -333,11 +333,12 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
    and references therein.
   */
   template <typename FloatType,
-            template<typename> class SumOfRank1UpdatesType=matrix::sum_of_symmetric_rank_1_updates>
+            template<typename> class SumOfRank1Updates=matrix::sum_of_symmetric_rank_1_updates>
   class non_linear_ls_with_separable_scale_factor
   {
   public:
     SCITBX_LSTBX_DECLARE_ARRAY_TYPE(FloatType);
+    typedef SumOfRank1Updates<FloatType> sum_of_rank_1_updates_t;
 
     /// Construct a least-squares problem with the given number of parameters.
     /** That is the length of the vector \f$ x \f$. The flag normalised
@@ -547,7 +548,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     int n_params;
     std::size_t n_data;
     bool normalised_;
-    SumOfRank1UpdatesType<scalar_t> grad_yc_dot_grad_yc;
+    sum_of_rank_1_updates_t grad_yc_dot_grad_yc;
     symmetric_matrix_owning_ref_t a; // normal matrix stored
                                      // as packed upper diagonal
     vector_owning_ref_t yo_dot_grad_yc, yc_dot_grad_yc, grad_k_star;
