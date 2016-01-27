@@ -250,21 +250,23 @@ class ensemble_chi_panel(wx.Panel):
           dihedrals = chi_angles[j]['chi_angles'][i]
           for k in xrange(n_dihedrals):
             dihedral = dihedrals[k]
-            angles[k].append(dihedral)
+            if (dihedral is not None):
+              angles[k].append(dihedral)
 
         # check if adding 360 to negative angles is helpful
         # avoids issues where angles are clustered only near 0 and 360
         for j in xrange(len(angles)):
-          stddev_a = flex.mean_and_variance(
-            flex.double(angles[j])).unweighted_sample_variance()
-          dihedrals_b = flex.double(angles[j])
-          for k in xrange(len(dihedrals_b)):
-            if (dihedrals_b[k] < 0.0):
-              dihedrals_b[k] += 360
-          stddev_b = flex.mean_and_variance(
-            dihedrals_b).unweighted_sample_variance()
-          if ( (stddev_b < stddev_a) or (max(angles[j]) < 0.0) ):
-            angles[j] = list(dihedrals_b)
+          if (len(angles[j]) > 0):
+            stddev_a = flex.mean_and_variance(
+              flex.double(angles[j])).unweighted_sample_variance()
+            dihedrals_b = flex.double(angles[j])
+            for k in xrange(len(dihedrals_b)):
+              if (dihedrals_b[k] < 0.0):
+                dihedrals_b[k] += 360
+            stddev_b = flex.mean_and_variance(
+              dihedrals_b).unweighted_sample_variance()
+            if ( (stddev_b < stddev_a) or (max(angles[j]) < 0.0) ):
+              angles[j] = list(dihedrals_b)
 
         # store reorganized data
         all_angles[i] = angles
@@ -332,19 +334,20 @@ class ensemble_chi_panel(wx.Panel):
       self.meets_threshold[i] = False
       for j in xrange(len(self.chi_angles['values'][i])): # loop over group
         dihedrals = flex.double(self.chi_angles['values'][i][j])
-        mean_stddev = flex.mean_and_variance(dihedrals)
-        mean = mean_stddev.mean()
-        stddev = mean_stddev.unweighted_sample_standard_deviation()
-        n_outliers = 0
-        chi_min = mean - 2.0*stddev
-        chi_max = mean + 2.0*stddev
-        for k in xrange(len(dihedrals)):
-          if ( (dihedrals[k] < chi_min) or (dihedrals[k] > chi_max) ):
-            n_outliers += 1
-        is_outlier = (float(n_outliers)/len(dihedrals) > threshold)
-        if (is_outlier):
-          self.meets_threshold[i] = True
-          break
+        if (len(dihedrals) > 0):
+          mean_stddev = flex.mean_and_variance(dihedrals)
+          mean = mean_stddev.mean()
+          stddev = mean_stddev.unweighted_sample_standard_deviation()
+          n_outliers = 0
+          chi_min = mean - 2.0*stddev
+          chi_max = mean + 2.0*stddev
+          for k in xrange(len(dihedrals)):
+            if ( (dihedrals[k] < chi_min) or (dihedrals[k] > chi_max) ):
+              n_outliers += 1
+          is_outlier = (float(n_outliers)/len(dihedrals) > threshold)
+          if (is_outlier):
+            self.meets_threshold[i] = True
+            break
 
     # refresh table
     table_data = list()
@@ -356,7 +359,7 @@ class ensemble_chi_panel(wx.Panel):
         row[7] = None     # xyz for model viewer
         for j in xrange(len(self.chi_angles['values'][i])):
           chi = self.chi_angles['values'][i][j]
-          if (None not in chi):
+          if ( (None not in chi) and (len(chi) > 0) ):
             row[j+1] = flex.mean(flex.double(chi))
         table_data.append(row)
     self.table.ReloadData(table_data)
