@@ -54,7 +54,7 @@ def get_f_obs_freer(d_min, k_sol, b_sol, b_cart, xray_structure,
   fmodel_kbu = fmodel.fmodel_kbu()
   fmodel_kbu.update(
     k_sols = k_sol,
-    b_sol  = b_sol,
+    b_sols = b_sol,
     b_cart = b_cart)
   f_obs = abs(fmodel_kbu.f_model)
   return f_obs, r_free_flags
@@ -72,8 +72,8 @@ def exercise_01_general(d_mins = [1.6,],
         for b_cart in b_carts:
           f_obs, r_free_flags = \
             get_f_obs_freer(d_min  = d_min,
-                            k_sol  = kb[0],
-                            b_sol  = kb[1],
+                            k_sol  = [kb[0]],
+                            b_sol  = [kb[1]],
                             b_cart = b_cart,
                             xray_structure = xray_structure)
           #
@@ -96,8 +96,8 @@ def exercise_01_general(d_mins = [1.6,],
           else:
             assert fmodel.r_work() < 0.005
           assert approx_equal(result.fmodels.r_factor(), 0.0, eps = 1.e-6)
-          assert approx_equal(result.k_sol(0), kb[0],  eps = 1.e-6)
-          assert approx_equal(result.b_sol(),  kb[1],  eps = 1.e-6)
+          assert approx_equal(result.k_sols()[0], kb[0],  eps = 1.e-6)
+          assert approx_equal(result.b_sols()[0], kb[1],  eps = 1.e-6)
           assert approx_equal(result.b_cart(), b_cart, eps = 1.e-6)
 
 def exercise_02_b_cart_sym_constr(d_min = 2.0, tolerance = 1.e-6):
@@ -171,8 +171,8 @@ def exercise_03_do_nothing(d_min = 2.0):
   assert r_work_start > 0.0
   assert approx_equal(r_work1, r_work_start, eps = 1.e-6)
   assert approx_equal(r_work2, r_work_start, eps = 1.e-6)
-  assert approx_equal(result.k_sol(0), 0, eps = 1.e-6)
-  assert approx_equal(result.b_sol(), 0, eps = 1.e-6)
+  assert approx_equal(result.k_sols()[0], 0, eps = 1.e-6)
+  assert approx_equal(result.b_sols()[0], 0, eps = 1.e-6)
   assert approx_equal(result.b_cart(), [0,0,0,0,0,0], eps = 1.e-6)
 
 def exercise_04_fix_k_sol_b_sol_b_cart(d_min = 2.0):
@@ -208,8 +208,8 @@ def exercise_04_fix_k_sol_b_sol_b_cart(d_min = 2.0):
   assert r_work_start > 0.0
   assert approx_equal(r_work,          0.0, eps = 1.e-6)
   assert approx_equal(fmodel.r_work(), result.fmodels.r_factor())
-  assert approx_equal(result.k_sol(0), k_sol, eps = 1.e-6)
-  assert approx_equal(result.b_sol(),  b_sol, eps = 1.e-6)
+  assert approx_equal(result.k_sols()[0], k_sol, eps = 1.e-6)
+  assert approx_equal(result.b_sols()[0], b_sol, eps = 1.e-6)
   assert approx_equal(result.b_cart(), b_cart, eps = 1.e-6)
 
 def exercise_05_k_sol_b_sol_only(d_min = 2.0):
@@ -244,10 +244,10 @@ def exercise_05_k_sol_b_sol_only(d_min = 2.0):
     fmodel_kbu = fmodel_kbu, params = params)
   r_work = result.fmodels.r_factor()*100.
   assert r_work_start > 0.05
-  assert approx_equal(r_work,          0.0,    eps = 1.e-6)
-  assert approx_equal(result.k_sol(0), k_sol,  eps = 1.e-6)
-  assert approx_equal(result.b_sol(),  b_sol,  eps = 1.e-6)
-  assert approx_equal(result.b_cart(), b_cart, eps = 1.e-6)
+  assert approx_equal(r_work,              0.0,   eps = 1.e-6)
+  assert approx_equal(result.k_sols()[0], k_sol,  eps = 1.e-6)
+  assert approx_equal(result.b_sols()[0], b_sol,  eps = 1.e-6)
+  assert approx_equal(result.b_cart(),    b_cart, eps = 1.e-6)
 
 def exercise_06_b_cart_only(d_min = 2.0):
   xray_structure = get_xray_structure_from_file()
@@ -272,7 +272,7 @@ def exercise_06_b_cart_only(d_min = 2.0):
     f_part2 = fmodel.arrays.core.f_part2,
     ss      = fmodel.ss,
     k_sols  = [k_sol],
-    b_sol   = b_sol)
+    b_sols  = [b_sol])
   r_work_start = fmodel_kbu.r_factor()*100.
   params = bss.master_params.extract()
   params.bulk_solvent = False
@@ -280,14 +280,16 @@ def exercise_06_b_cart_only(d_min = 2.0):
     fmodel_kbu = fmodel_kbu, params  = params)
   r_work = result.fmodels.r_factor()*100.
   assert r_work_start > 0.0
-  assert approx_equal(r_work,          0.0,    eps = 1.e-6)
-  assert approx_equal(result.k_sol(0), k_sol,  eps = 1.e-6)
-  assert approx_equal(result.b_sol(),  b_sol,  eps = 1.e-6)
-  assert approx_equal(result.b_cart(), b_cart, eps = 1.e-6)
+  assert approx_equal(r_work,               0.0,  eps = 1.e-6)
+  assert approx_equal(result.k_sols()[0], k_sol,  eps = 1.e-6)
+  assert approx_equal(result.b_sols()[0], b_sol,  eps = 1.e-6)
+  assert approx_equal(result.b_cart(),    b_cart, eps = 1.e-6)
 
-def exercise_radial_shells(k_sol=0.33,d_min=2,grid_search=False,shell_width=0.3):
+def exercise_radial_shells(k_sol=0.33,d_min=2.,grid_search=False,shell_width=0.6):
   xray_structure = get_xray_structure_from_file()
   b_sol = 34.0
+  if( type(k_sol) is list ):
+    b_sol = [b_sol,]*len(k_sol)
   b_cart = [1,2,3,0,4,0]
   f_obs, r_free_flags = get_f_obs_freer(
     d_min  = d_min,
@@ -331,7 +333,7 @@ def exercise_radial_shells(k_sol=0.33,d_min=2,grid_search=False,shell_width=0.3)
   print 'R-work: ', r_work
   print 'Solvent radius: ', fmodel.mask_params.solvent_radius
   assert r_work_start > 0.0
-  assert approx_equal(r_work, 0.0, eps = 1.e-4)
+  assert approx_equal(r_work, 0.0, eps = 1.e-3)
   if( type(k_sol) is list ):
     ksols = list(result.fmodels.fmodel.k_sols())
     # XXX if layer_volume_fractions=0, then ksol is more or less undefined ?
@@ -341,11 +343,13 @@ def exercise_radial_shells(k_sol=0.33,d_min=2,grid_search=False,shell_width=0.3)
         ksols[i] = 0.
     assert len(k_sol) == len(ksols)
     for ik in range(len(k_sol)):
-      assert approx_equal(ksols[ik], k_sol[ik], eps=1.e-6)
+      assert approx_equal(ksols[ik], k_sol[ik], eps=0.005),[ksols[ik],k_sol[ik]]
   else:
     for ksol in result.fmodels.fmodel.k_sols():
       assert approx_equal(ksol,   k_sol, eps = 1.e-6)
-  assert approx_equal(result.b_sol(),   b_sol, eps = 1.e-6)
+  n=len(result.b_sols())
+  if(n>1 and type(b_sol) is float): b_sol = [b_sol,]*n
+  assert approx_equal(result.b_sols(), b_sol,  eps = 1.)
   assert approx_equal(result.b_cart(), b_cart, eps = 1.e-6)
 
 def run():
@@ -356,9 +360,8 @@ def run():
   exercise_05_k_sol_b_sol_only()
   exercise_06_b_cart_only()
   exercise_radial_shells()
-  exercise_radial_shells(k_sol=[0.33,0.1, 0.9])
-  exercise_radial_shells(k_sol=[0.33,0.1,0.9],grid_search=True,shell_width=1.)
-  exercise_radial_shells(k_sol=[0.33,0.1,0.9,0.25],grid_search=True,shell_width=1.)
+  exercise_radial_shells(k_sol=[0.33,0.5, 0.9])
+  exercise_radial_shells(k_sol=[0.3,0.4,0.5],grid_search=True,shell_width=0.3)
   print "OK: ",format_cpu_times()
 
 if (__name__ == "__main__"):

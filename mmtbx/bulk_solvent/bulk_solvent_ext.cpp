@@ -19,27 +19,6 @@ namespace {
     using boost::python::arg;
     typedef return_value_policy<return_by_value> rbv;
 
-    class_<target_gradients_aniso_ml>("target_gradients_aniso_ml",
-                             init<af::const_ref<double> const&,
-                                  af::const_ref< std::complex<double> > const&,
-                                  af::const_ref< std::complex<double> > const&,
-                                  sym_mat3<double> const&,
-                                  double const&,
-                                  double const&,
-                                  af::const_ref<cctbx::miller::index<> > const&,
-                                  cctbx::uctbx::unit_cell const&,
-                                  cctbx::sgtbx::space_group const&,
-                                  af::const_ref<bool> const&,
-                                  af::const_ref<double> const&,
-                                  af::const_ref<double> const&,
-                                  double const&>())
-      .def("target", &target_gradients_aniso_ml::target)
-      .def("grad_b_cart", &target_gradients_aniso_ml::grad_b_cart)
-      .def("grad_ksol", &target_gradients_aniso_ml::grad_ksol)
-      .def("grad_bsol", &target_gradients_aniso_ml::grad_bsol)
-      .def("grad_k", &target_gradients_aniso_ml::grad_k)
-    ;
-    //
     class_<bulk_solvent_and_aniso_scale_target_and_grads_ls<> >(
       "bulk_solvent_and_aniso_scale_target_and_grads_ls")
       .def(init<
@@ -71,7 +50,7 @@ namespace {
       .def("target", &bulk_solvent_and_aniso_scale_target_and_grads_ls<>::target)
       .def("grad_u_star", &bulk_solvent_and_aniso_scale_target_and_grads_ls<>::grad_u_star)
       .def("grad_k_sols", &bulk_solvent_and_aniso_scale_target_and_grads_ls<>::grad_k_sols)
-      .def("grad_b_sol", &bulk_solvent_and_aniso_scale_target_and_grads_ls<>::grad_b_sol)
+      .def("grad_b_sols", &bulk_solvent_and_aniso_scale_target_and_grads_ls<>::grad_b_sols)
    ;
    //
    class_<overall_and_bulk_solvent_scale_coefficients_analytical<> >(
@@ -188,7 +167,7 @@ namespace {
          af::const_ref<bool>   const& selection,
          af::shared<double>           data)) set_to_linear_interpolated);
    ;
-   //
+
     def("r_factor",
       (double(*)
         (af::const_ref<double> const&,
