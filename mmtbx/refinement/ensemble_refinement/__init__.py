@@ -2159,6 +2159,7 @@ def calculate_chi_angles(model=None):
 
   id_str = list()
   chi_angles = list()
+  xyz = list()
 
   if (model is not None):
     get_class = pdb.common_residue_names_get_class
@@ -2174,8 +2175,10 @@ def calculate_chi_angles(model=None):
                (residue_class == 'modified_amino_acid') ):
             atom_dict = all_dict.get(ag.altloc)
             id_str.append(ag.id_str())
+            xyz.append(ag.atoms().extract_xyz().mean())
             chi_angles.append(angles.measureChiAngles(
               res=ag,atom_dict=atom_dict))
 
   return { 'id_str': id_str,
+           'xyz': xyz,
            'chi_angles': chi_angles }

@@ -241,6 +241,7 @@ class ensemble_chi_panel(wx.Panel):
       n_groups = len(chi_angles[0]['id_str'])
 
       id_str = chi_angles[0]['id_str']
+      xyz = chi_angles[0]['xyz']
       id_str_map = dict()
       all_angles = [ list() for i in xrange(n_groups) ]
       for i in xrange(n_groups):           # loop over atom_groups
@@ -276,6 +277,7 @@ class ensemble_chi_panel(wx.Panel):
 
       self.chi_angles = { 'id_str': id_str,
                           'id_str_map': id_str_map,
+                          'xyz': xyz,
                           'values': all_angles }
       self.meets_threshold = [ False for i in
                                xrange(len(self.chi_angles['id_str'])) ]
@@ -355,8 +357,8 @@ class ensemble_chi_panel(wx.Panel):
       if (self.meets_threshold[i]):
         row = [ '---' for j in xrange(8) ]
         row[0] = self.chi_angles['id_str'][i]
-        row[6] = None     # sel_str for model viewer
-        row[7] = None     # xyz for model viewer
+        row[6] = None                          # sel_str for model viewer
+        row[7] = self.chi_angles['xyz'][i]     # xyz for model viewer
         for j in xrange(len(self.chi_angles['values'][i])):
           chi = self.chi_angles['values'][i][j]
           if ( (None not in chi) and (len(chi) > 0) ):
