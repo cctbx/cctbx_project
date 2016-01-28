@@ -192,17 +192,17 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
       # test created object
       self.assertEqual(len(trans_obj.transform_chain_assignment),3)
-      expected = "(chain 'A' and (resseq 151:159)) or (chain 'D' and (resseq 1:7))"
+      expected = "(chain A and (resseq 151:159)) or (chain D and (resseq 1:7))"
       self.assertEqual(trans_obj.ncs_selection_str,expected)
       # check that static parts are included in NCS and ASU
       self.assertEqual(len(trans_obj.ncs_atom_selection),3*9+2*7+3+3)
       self.assertEqual(trans_obj.ncs_atom_selection.count(True),9+7+3+3)
       #
       expected = {
-        "chain 'A' and (resseq 151:159)":
-          ["chain 'B' and (resseq 151:159)","chain 'C' and (resseq 151:159)"],
-        "chain 'D' and (resseq 1:7)":
-          ["chain 'E' and (resseq 1:7)"]}
+        "chain A and (resseq 151:159)":
+          ["chain B and (resseq 151:159)","chain C and (resseq 151:159)"],
+        "chain D and (resseq 1:7)":
+          ["chain E and (resseq 1:7)"]}
       self.assertEqual(trans_obj.ncs_to_asu_selection,expected)
 
       # check ncs_transform
@@ -282,15 +282,16 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     # Selection does not include the resseq if all the chain is selected
     t1_exp = {"chain 'A'": ["chain 'B'", "chain 'C'"], "chain 'D'": ["chain 'E'"]}
     self.assertEqual(t1,t1_exp)
-    t2_exp = {"chain 'A' and (resseq 151:159)":
-                ["chain 'B' and (resseq 151:159)","chain 'C' and (resseq 151:159)"],
-              "chain 'D' and (resseq 1:7)": ["chain 'E' and (resseq 1:7)"]}
+    t2_exp = {"chain A and (resseq 151:159)":
+                ["chain B and (resseq 151:159)","chain C and (resseq 151:159)"],
+              "chain D and (resseq 1:7)": ["chain E and (resseq 1:7)"]}
     self.assertEqual(t2,t2_exp)
     #
+    print trans_obj2.tr_id_to_selection.keys()
     t1 = trans_obj.tr_id_to_selection["chain 'A'_003"]
-    t2 = trans_obj2.tr_id_to_selection["chain 'A'_003"]
+    t2 = trans_obj2.tr_id_to_selection["chain A_003"]
     self.assertEqual(t1,("chain 'A'", "chain 'C'"))
-    t2_exp = ("chain 'A' and (resseq 151:159)", "chain 'C' and (resseq 151:159)")
+    t2_exp = ("chain A and (resseq 151:159)", "chain C and (resseq 151:159)")
     self.assertEqual(t2,t2_exp)
 
   def test_rotaion_translation_input(self):

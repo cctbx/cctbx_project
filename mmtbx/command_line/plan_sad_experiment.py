@@ -277,6 +277,11 @@ def get_params(args,out=sys.stdout):
   return params
 
 def setup_params (params, out) :
+  if not params.crystal_info.wavelength:
+    raise Sorry("Please supply a wavelength for data collection.")
+  if not params.crystal_info.atom_type:
+    raise Sorry(
+      "Please supply an atom_type for the anomalously-scattering atom.")
   if not params.crystal_info.f_double_prime:
      fp_fdp=get_fp_fdp(
       atom_type=params.crystal_info.atom_type,
