@@ -628,13 +628,6 @@ class pdb_input_from_any(object):
     else:
       file_inputs = (pdb_input, cif_input)
     exc_info = None
-
-    if lines is not None:
-      if (isinstance(lines, str)):
-        lines = flex.split_lines(lines)
-      elif (isinstance(lines, (list, tuple))):
-        lines = flex.std_string(lines)
-
     for file_input in file_inputs:
       try:
         content = file_input(
@@ -693,6 +686,10 @@ def pdb_input(
       else :
         raise
   assert source_info is not Please_pass_string_or_None
+  if (isinstance(lines, str)):
+    lines = flex.split_lines(lines)
+  elif (isinstance(lines, (list, tuple))):
+    lines = flex.std_string(lines)
   try :
     return ext.input(source_info=source_info, lines=lines)
   except ValueError, e :
