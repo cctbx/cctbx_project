@@ -281,7 +281,11 @@ class InMemScript(DialsProcessScript):
 
     debug_dir = os.path.join(params.output.output_dir, "debug")
     if not os.path.exists(debug_dir):
-      os.makedirs(debug_dir)
+      try:
+        os.makedirs(debug_dir)
+      except OSError, e:
+        pass # due to multiprocessing, makedirs can sometimes fail
+    assert os.path.exists(debug_dir)
 
     if params.debug.skip_processed_events or params.debug.skip_processed_events or params.debug.skip_bad_events:
       print "Reading debug files..."
@@ -300,6 +304,13 @@ class InMemScript(DialsProcessScript):
     self.debug_file_handle = open(debug_file_path, 'a', 0) # 0 for unbuffered
     if write_newline: # needed if the there was a crash
       self.debug_file_handle.write("\n")
+
+    if rank == 0:
+      mpi_log_file_path = os.path.join(debug_dir, "mpilog.out")
+      write_newline = os.path.exists(mpi_log_file_path)
+      self.mpi_log_file_handle = open(mpi_log_file_path, 'a', 0) # 0 for unbuffered
+      if write_newline: # needed if the there was a crash
+        self.mpi_log_file_handle.write("\n")
 
     # set up psana
     if params.input.cfg is not None:
@@ -341,13 +352,20 @@ class InMemScript(DialsProcessScript):
         # only do this if there are more than 2 processes, as one process will be a server
         if rank == 0:
           # server process
+          self.mpi_log_file_handle.write("MPI START\n")
           for t in times[:nevents]:
             # a client process will indicate it's ready by sending its rank
+            self.mpi_log_file_handle.write("Getting next available process\n")
             rankreq = comm.recv(source=MPI.ANY_SOURCE)
+            ts = cspad_tbx.evt_timestamp((t.seconds(),t.nanoseconds()/1e6))
+            self.mpi_log_file_handle.write("Process %s is ready, sending ts %s\n"%(rankreq, ts))
             comm.send(t,dest=rankreq)
           # send a stop command to each process
+          self.mpi_log_file_handle.write("MPI DONE, sending stops\n")
           for rankreq in range(size-1):
+            self.mpi_log_file_handle.write("Getting next available process\n")
             rankreq = comm.recv(source=MPI.ANY_SOURCE)
+            self.mpi_log_file_handle.write("Sending stop to %d\n"%rankreq)
             comm.send('endrun',dest=rankreq)
         else:
           # client process
