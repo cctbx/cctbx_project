@@ -3,7 +3,10 @@ import sys
 
 from mmtbx.conformation_dependent_library.hpdl_database import get_hpdl_database
 from libtbx import easy_run
-from elbow.formats import refine_geo_parser
+try:
+  from elbow.formats import refine_geo_parser
+except ImportError, e:
+  refine_geo_parser = None
 
 pdbs = {
   "his_double" : """
@@ -134,7 +137,8 @@ def run(filename=None):
     if filename.find("his_double")>-1: key="ND1 and NE2 protonated"
     elif filename.find("his_nd1")>-1: key="Only ND1 protonated"
     elif filename.find("his_ne2")>-1: key="Only NE2 protonated"
-    check_ideals("%s.geo" % filename, hpdl_database[key])
+    if refine_geo_parser:
+      check_ideals("%s.geo" % filename, hpdl_database[key])
   print "OK"
 
 if __name__=="__main__":
