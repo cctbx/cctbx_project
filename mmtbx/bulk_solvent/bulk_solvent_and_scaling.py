@@ -123,7 +123,6 @@ class kbu_minimizer(object):
     self.n_shells = self.fmodel_core_data.data.n_shells()
     if not self.fmodel_core_data_twin is None:
       assert self.fmodel_core_data_twin.data.n_shells() == self.n_shells
-    assert self.n_shells > 0  and self.n_shells <= 10
     self.k_min = self.k_initial
     assert len(self.k_min) == self.n_shells
     self.b_min = self.b_initial
@@ -169,7 +168,7 @@ class kbu_minimizer(object):
     v = []
     if (self.refine_u): v += [ui*u_factor for ui in u]
     if (self.refine_k): v += k
-    if (self.refine_b): v.append(b)
+    if (self.refine_b): v += b
     return flex.double(v)
 
   def unpack_x(self):
@@ -186,18 +185,19 @@ class kbu_minimizer(object):
       assert len(self.k_min)==self.n_shells
       i += self.n_shells
     if(self.refine_b):
-      self.b_min = self.x[i]
+      self.b_min = list(iter(self.x[i:i+self.n_shells]))
 
   def compute_functional_and_gradients(self):
     self.unpack_x()
     self.u_min = tuple([max(self.u_min_min, min(self.u_min_max, v))
       for v in self.u_min])
-    if(self.b_min > self.b_sol_max): self.b_min = self.b_sol_max
-    if(self.b_min < self.b_sol_min): self.b_min = self.b_sol_min
+    for i in xrange(len(self.b_min)):
+      if(self.b_min[i] > self.b_sol_max): self.b_min[i] = self.b_sol_max
+      if(self.b_min[i] < self.b_sol_min): self.b_min[i] = self.b_sol_min
     self.k_min = [max(self.k_sol_min, min(self.k_sol_max, v))
       for v in self.k_min]
     if(self.twin_fraction is None):
-      self.fmodel_core_data.update(k_sols = self.k_min, b_sol = self.b_min,
+      self.fmodel_core_data.update(k_sols = self.k_min, b_sols = self.b_min,
         u_star = self.u_min)
       tg = bulk_solvent.bulk_solvent_and_aniso_scale_target_and_grads_ls(
         fm                  = self.fmodel_core_data.data,
@@ -206,9 +206,9 @@ class kbu_minimizer(object):
         compute_b_sol_grad  = self.refine_b,
         compute_u_star_grad = self.refine_u)
     else:
-      self.fmodel_core_data.update(k_sols = self.k_min, b_sol = self.b_min,
+      self.fmodel_core_data.update(k_sols = self.k_min, b_sols = self.b_min,
         u_star = self.u_min)
-      self.fmodel_core_data_twin.update(k_sols = self.k_min, b_sol = self.b_min,
+      self.fmodel_core_data_twin.update(k_sols = self.k_min, b_sols= self.b_min,
         u_star = self.u_min)
       tg = bulk_solvent.bulk_solvent_and_aniso_scale_target_and_grads_ls(
         fm1                 = self.fmodel_core_data.data,
@@ -225,7 +225,7 @@ class kbu_minimizer(object):
     if(self.refine_k or self.refine_b):
       gk = list(tg.grad_k_sols())
       assert len(gk) == self.n_shells
-      gb = tg.grad_b_sol()
+      gb = tg.grad_b_sols()
     if(self.refine_u): gu = list(tg.grad_u_star())
     if(self.symmetry_constraints_on_b_cart and self.refine_u):
       independent_params = flex.double(
@@ -256,7 +256,7 @@ def k_sol_b_sol_b_cart_minimizer(
     twin_fraction    = fmodels.twin_fraction,
     f_obs            = fmodels.fmodel.f_obs,
     k_initial        = fmodel_core_data_work.data.k_sols(),
-    b_initial        = fmodel_core_data_work.data.b_sol,
+    b_initial        = fmodel_core_data_work.data.b_sols(),
     u_initial        = fmodel_core_data_work.data.u_star,
     refine_k         = refine_k_sol,
     refine_b         = refine_b_sol,
@@ -278,9 +278,12 @@ class fmodels_kbu(object):
       assert self.fmodel.f_obs.indices().all_eq(self.fmodel_twin.f_obs.indices())
 
   def update(self, k_sols=None, b_sol=None, b_cart=None):
-    self.fmodel.update(k_sols = k_sols, b_sol = b_sol, b_cart = b_cart)
+    if( type(k_sols) is list and not type(b_sol) is list and not type(b_sol) is
+        tuple and not type(b_sol) is flex.double):
+      b_sol = [b_sol,]*len(k_sols)
+    self.fmodel.update(k_sols = k_sols, b_sols = b_sol, b_cart = b_cart)
     if(self.fmodel_twin is not None):
-      self.fmodel_twin.update(k_sols = k_sols, b_sol = b_sol, b_cart = b_cart)
+      self.fmodel_twin.update(k_sols = k_sols, b_sols = b_sol, b_cart = b_cart)
 
   def r_factor(self):
     if(self.fmodel_twin is None):
@@ -342,7 +345,7 @@ class bulk_solvent_and_scales(object):
         assert not self.params.k_sol_b_sol_grid_search
         assert not self.params.minimization_k_sol_b_sol
         self.fmodels.update(b_sol = self.params.fix_b_sol)
-      fix_b_cart = _extract_fix_b_cart(fix_b_cart_scope = self.params.fix_b_cart)
+      fix_b_cart = _extract_fix_b_cart(fix_b_cart_scope= self.params.fix_b_cart)
       if(fix_b_cart is not None):
         assert self.params.anisotropic_scaling
         assert not self.params.minimization_b_cart
@@ -372,14 +375,11 @@ class bulk_solvent_and_scales(object):
           bsol = 0.
         self.fmodels.update(k_sols = ksols, b_sol = bsol)
 
-  def k_sol(self, i):
-    return self.fmodels.fmodel.k_sol(i)
-
   def k_sols(self):
     return self.fmodels.fmodel.k_sols()
 
-  def b_sol(self):
-    return self.fmodels.fmodel.b_sol()
+  def b_sols(self):
+    return self.fmodels.fmodel.b_sols()
 
   def b_cart(self):
     return self.fmodels.fmodel.b_cart()
@@ -401,7 +401,7 @@ class bulk_solvent_and_scales(object):
   def _ksol_bsol_grid_search(self, nproc=None):
     start_r_factor = self.fmodels.r_factor()
     final_ksol   = self.fmodels.fmodel.data.k_sols()
-    final_bsol   = self.fmodels.fmodel.data.b_sol
+    final_bsol   = self.fmodels.fmodel.data.b_sols()
     final_b_cart = self.fmodels.fmodel.b_cart()
     final_r_factor = start_r_factor
     self._ksol_len = len(final_ksol)
@@ -452,13 +452,13 @@ class bulk_solvent_and_scales(object):
     return ksol_bsol_result(
       r_factor = self.fmodels.r_factor(),
       k_sol    = self.fmodels.fmodel.data.k_sols(),
-      b_sol    = self.fmodels.fmodel.data.b_sol,
+      b_sol    = self.fmodels.fmodel.data.b_sols(),
       b_cart   = self.fmodels.fmodel.b_cart())
 
   def _ksol_bsol_cart_minimizer(self):
     start_r_factor = self.fmodels.r_factor()
     final_ksol     = self.fmodels.fmodel.data.k_sols()
-    final_bsol     = self.fmodels.fmodel.data.b_sol
+    final_bsol     = self.fmodels.fmodel.data.b_sols()
     final_r_factor = self.fmodels.r_factor()
     ksol, bsol     = self._k_sol_b_sol_minimization_helper()
     self.fmodels.update(k_sols = ksol, b_sol = bsol)
@@ -502,7 +502,7 @@ class bulk_solvent_and_scales(object):
 
   def _k_sol_b_sol_minimization_helper(self):
     ksol_orig = self.fmodels.fmodel.data.k_sols()
-    bsol_orig = self.fmodels.fmodel.data.b_sol
+    bsol_orig = self.fmodels.fmodel.data.b_sols()
     r_start   = self.fmodels.r_factor()
     minimizer_obj = k_sol_b_sol_b_cart_minimizer(
       fmodels      = self.fmodels,
@@ -514,8 +514,9 @@ class bulk_solvent_and_scales(object):
     assert len(ksol) >= 1
     ksol = [max(self.params.k_sol_min, min(self.params.k_sol_max, v))
       for v in ksol]
-    if(bsol < self.params.b_sol_min): bsol = self.params.b_sol_min
-    if(bsol > self.params.b_sol_max): bsol = self.params.b_sol_max
+    for i in xrange(len(bsol)):
+      if(bsol[i] > self.params.b_sol_max): bsol[i] = self.params.b_sol_max
+      if(bsol[i] < self.params.b_sol_min): bsol[i] = self.params.b_sol_min
     self.fmodels.update(k_sols = ksol, b_sol = bsol)
     r_end = self.fmodels.r_factor()
     if(r_end >= r_start):
@@ -596,7 +597,7 @@ class u_star_minimizer(object):
     self.unpack_x()
     self.u_min = tuple([max(self.u_min_min, min(self.u_min_max, v))
       for v in self.u_min])
-    self.fmodel_core_data.update(k_sols = [0], b_sol = 0, u_star = self.u_min)
+    self.fmodel_core_data.update(k_sols = [0], b_sols= [0], u_star = self.u_min)
     tg = bulk_solvent.bulk_solvent_and_aniso_scale_target_and_grads_ls(
       fm                  = self.fmodel_core_data.data,
       fo                  = self.f_obs.data(),

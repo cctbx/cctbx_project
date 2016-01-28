@@ -26,30 +26,30 @@ public:
   d_f_model_d_k_sol_and_d_b_sol_one_h(
     f_model::core<FloatType,ComplexType> const& fm, std::size_t i)
   {
-    grad_b_sol = 0;
     grad_k_sols.resize(fm.n_shells(), 0.);
+    grad_b_sols.resize(fm.n_shells(), 0.);
     ComplexType f_mdl = fm.f_model[i];
     FloatType f_model_abs = std::abs(f_mdl);
     if(f_model_abs > 0){
-      FloatType f_b = fm.f_b_sol[i];
       ComplexType k_f_mask(0.,0.);
       for(unsigned short j=0; j<fm.n_shells(); ++j)
       {
         ComplexType f_m = fm.shell_f_mask(j)[i];
         FloatType ksol = fm.k_sol(j);
         FloatType uvs_plus_usv = std::real(f_mdl*std::conj(f_m)+f_m*std::conj(f_mdl));
-        k_f_mask += ksol * f_m;
+        k_f_mask  = ksol * f_m;
         FloatType theta = (uvs_plus_usv)/(f_model_abs*2);
         FloatType coeff = theta * fm.k_anisotropic[i];
+        FloatType f_b = f_model::f_b_exp_one_h<FloatType>(fm.ss[i], fm.b_sol(j));
         grad_k_sols[j] =  coeff * f_b;
+        FloatType uvs_plus_usv_bsol =
+          std::real(f_mdl*std::conj(k_f_mask)+k_f_mask*std::conj(f_mdl));
+        grad_b_sols[j] =-uvs_plus_usv_bsol*fm.k_anisotropic[i]*f_b*fm.ss[i]/(f_model_abs*2);
       }
-      FloatType uvs_plus_usv_bsol =
-        std::real(f_mdl*std::conj(k_f_mask)+k_f_mask*std::conj(f_mdl));
-      grad_b_sol =-uvs_plus_usv_bsol*fm.k_anisotropic[i]*f_b*fm.ss[i]/(f_model_abs*2);
     }
   }
-  FloatType grad_b_sol;
-  af::small<FloatType,mmtbx::f_model::max_n_shells> grad_k_sols;
+  af::shared<FloatType> grad_k_sols;
+  af::shared<FloatType> grad_b_sols;
 };
 
 template <typename FloatType, typename ComplexType>
@@ -86,6 +86,7 @@ public:
            bool const& compute_u_star_grad)
   {
     grad_k_sols.resize(fm.n_shells(), 0.);
+    grad_b_sols.resize(fm.n_shells(), 0.);
     FloatType f_model_abs = std::abs(fm.f_model[i]);
     diff = fo - scale * f_model_abs;
     FloatType mtsd = 0;
@@ -98,8 +99,8 @@ public:
       for(unsigned short j=0; j<grad_k_sols.size(); ++j)
       {
         grad_k_sols[j] = mtsd*kbsol_grads.grad_k_sols[j];
+        grad_b_sols[j] = mtsd*kbsol_grads.grad_b_sols[j];
       }
-      grad_b_sol = mtsd * kbsol_grads.grad_b_sol;
     }
     if(compute_u_star_grad) {
       scitbx::af::tiny<FloatType, 6> usg = d_f_model_d_u_star_one_h(fm,i);
@@ -119,6 +120,7 @@ public:
   {
     MMTBX_ASSERT( fm1.n_shells() == fm2.n_shells() );
     grad_k_sols.resize(fm1.n_shells(), 0.);
+    grad_b_sols.resize(fm1.n_shells(), 0.);
     FloatType f_model_abs1 = std::abs(fm1.f_model[i]);
     FloatType f_model_abs2 = std::abs(fm2.f_model[i]);
     FloatType f_model_abs = std::sqrt(
@@ -141,10 +143,10 @@ public:
         grad_k_sols[j] = mtsd *
         ((1-twin_fraction)*kbsol_grads1.grad_k_sols[j]*fmi1+
             twin_fraction *kbsol_grads2.grad_k_sols[j]*fmi2);
+        grad_b_sols[j] = mtsd *
+        ((1-twin_fraction)*kbsol_grads1.grad_b_sols[j]*fmi1+
+            twin_fraction *kbsol_grads2.grad_b_sols[j]*fmi2);
       }
-      grad_b_sol = mtsd *
-        ((1-twin_fraction)*kbsol_grads1.grad_b_sol*fmi1+
-            twin_fraction *kbsol_grads2.grad_b_sol*fmi2);
     }
     if(compute_u_star_grad) {
       scitbx::af::tiny<FloatType, 6> usg1 = d_f_model_d_u_star_one_h(fm1,i);
@@ -156,9 +158,10 @@ public:
     }
   }
 
-  FloatType diff, grad_b_sol;
+  FloatType diff;
   scitbx::af::tiny<FloatType, 6> grad_u_star;
-  scitbx::af::small<FloatType,mmtbx::f_model::max_n_shells> grad_k_sols;
+  scitbx::af::shared<FloatType> grad_k_sols;
+  scitbx::af::shared<FloatType> grad_b_sols;
 };
 
 template <typename FloatType=double,
@@ -245,7 +248,6 @@ scale(af::const_ref<FloatType> const& fo,
     return (denum == 0 ? 0 : num/denum);
 };
 
-
 template <typename FloatType>
 FloatType
 scale(af::const_ref<FloatType> const& fo,
@@ -280,7 +282,6 @@ scale(
   }
   return scale(fo,fc_abs.const_ref());
 };
-
 
 template <typename FloatType>
 FloatType
@@ -417,7 +418,6 @@ r_factor(
   return r_factor(fo,fc_abs.const_ref(),scale);
 };
 
-
 using scitbx::vec3;
 using scitbx::mat3;
 using scitbx::sym_mat3;
@@ -442,10 +442,11 @@ public:
     MMTBX_ASSERT(fo.size() == fm2.f_calc.size());
     MMTBX_ASSERT(fm1.n_shells() == fm2.n_shells());
     grad_k_sols_.resize(fm1.n_shells(),0.);
+    grad_b_sols_.resize(fm1.n_shells(),0.);
     overall_scale =
       detail::overall_scale<FloatType,ComplexType>(fo, fm1, fm2, twin_fraction);
     grad_u_star_ = scitbx::af::tiny<FloatType, 6>(0,0,0,0,0,0);
-    target_ = 0., grad_b_sol_ = 0.;
+    target_ = 0.;
     for(std::size_t i=0; i < fo.size(); i++) {
       detail::one_h_ls<FloatType, ComplexType> one_h =
         detail::one_h_ls<FloatType,ComplexType>(fo[i],fm1,fm2,twin_fraction,i,
@@ -459,8 +460,8 @@ public:
         for(unsigned short j=0; j<grad_k_sols_.size(); ++j)
         {
           grad_k_sols_[j] += one_h.grad_k_sols[j];
+          grad_b_sols_[j] += one_h.grad_b_sols[j];
         }
-        grad_b_sol_ += one_h.grad_b_sol;
       }
     }
     for(std::size_t i=0; i < 6; i++) grad_u_star_[i] /= overall_scale.sum_fo_sq;
@@ -475,9 +476,10 @@ public:
   {
     MMTBX_ASSERT(fo.size() == fm.f_calc.size());
     grad_k_sols_.resize(fm.n_shells(),0.);
+    grad_b_sols_.resize(fm.n_shells(),0.);
     overall_scale = detail::overall_scale<FloatType,ComplexType>(fo, fm);
     grad_u_star_ = scitbx::af::tiny<FloatType, 6>(0,0,0,0,0,0);
-    target_ = 0., grad_b_sol_ = 0.;
+    target_ = 0.;
     for(std::size_t i=0; i < fo.size(); i++) {
       detail::one_h_ls<FloatType, ComplexType> one_h =
         detail::one_h_ls<FloatType,ComplexType>(fo[i],fm,i,overall_scale.scale,
@@ -490,8 +492,8 @@ public:
         for(unsigned short j=0; j<grad_k_sols_.size(); ++j)
         {
           grad_k_sols_[j] += one_h.grad_k_sols[j];
+          grad_b_sols_[j] += one_h.grad_b_sols[j];
         }
-        grad_b_sol_ += one_h.grad_b_sol;
       }
     }
     for(std::size_t i=0; i < 6; i++) grad_u_star_[i] /= overall_scale.sum_fo_sq;
@@ -511,10 +513,9 @@ public:
     return grad_k_sols_[j]/overall_scale.sum_fo_sq;
   }
 
-  scitbx::af::small<FloatType,mmtbx::f_model::max_n_shells> grad_k_sols()
-    const
+  scitbx::af::shared<FloatType> grad_k_sols() const
   {
-    scitbx::af::small<FloatType,mmtbx::f_model::max_n_shells>
+    scitbx::af::shared<FloatType>
       result(grad_k_sols_.size(),0.);
     for(unsigned short j=0; j<grad_k_sols_.size(); ++j)
     {
@@ -523,13 +524,23 @@ public:
     return result;
   }
 
-  FloatType grad_b_sol() { return grad_b_sol_/overall_scale.sum_fo_sq; }
+  scitbx::af::shared<FloatType> grad_b_sols() const
+  {
+    scitbx::af::shared<FloatType>
+      result(grad_b_sols_.size(),0.);
+    for(unsigned short j=0; j<grad_b_sols_.size(); ++j)
+    {
+      result[j] = grad_b_sols_[j]/overall_scale.sum_fo_sq;
+    }
+    return result;
+  }
 
 private:
-  FloatType target_, grad_b_sol_;
+  FloatType target_;
   scitbx::af::tiny<FloatType, 6> grad_u_star_;
   detail::overall_scale<FloatType, ComplexType> overall_scale;
-  scitbx::af::small<FloatType,mmtbx::f_model::max_n_shells> grad_k_sols_;
+  scitbx::af::shared<FloatType> grad_k_sols_;
+  scitbx::af::shared<FloatType> grad_b_sols_;
 };
 
 //------------------------------------------------------------------------------
@@ -1044,13 +1055,9 @@ void
     }
   }
 
-
-
 af::shared<double> fb_cart(sym_mat3<double> const& b_cart,
                             af::const_ref<cctbx::miller::index<> > const& hkl,
                             cctbx::uctbx::unit_cell const& uc);
-
-
 
 class target_gradients_aniso_ml {
 public:
