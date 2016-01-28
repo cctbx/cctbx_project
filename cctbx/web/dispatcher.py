@@ -45,6 +45,8 @@ def run():
   status.in_table = False
   try:
     target.run(server_info, inp, status)
+  except ValueError, ve:
+    print ve.__class__.__name__ # guard against XSS attack
   except Exception:
     if (status.in_table): print "</table><pre>"
     ei = sys.exc_info()
