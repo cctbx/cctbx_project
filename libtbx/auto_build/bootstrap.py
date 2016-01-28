@@ -18,13 +18,15 @@ import zipfile
 
 rosetta_version="rosetta_src_2015.39.58186_bundle"
 rosetta_version="rosetta_src_2016.02.58402_bundle"
-afitt_version="AFITT-2.4.0.4-redhat-RHEL7-x64" # binary bundle specific to cci-vm-1
+# LICENSE REQUIRED
+afitt_version="AFITT-2.4.0.4-redhat-RHEL7-x64" #binary specific to cci-vm-1
 envs = {
   "AMBERHOME"           : ["modules", "amber"],
   "PHENIX_ROSETTA_PATH" : ["modules", "rosetta"],
   "ROSETTA_BIN"         : ["modules", "rosetta", "main", "source", "bin"],
   "ROSETTA3_DB"         : ["modules", "rosetta", "main", "database"],
-#  "OE_EXE"              : ["modules", "afitt"],
+  "OE_EXE"              : ["modules", "openeye", "bin"],
+  "OE_LICENSE"          : ["oe_license.txt"], # needed for license
 }
 
 # To download this file:
@@ -1606,6 +1608,7 @@ class PhenixExternalRegression(PhenixBuilder):
     # pre Phenix compile
     # Amber
     # Rosetta
+    # AFITT
     env = self.get_environment()
     self.write_environment(env)
     # not universal but works because only slave running this is same as master
@@ -1613,6 +1616,9 @@ class PhenixExternalRegression(PhenixBuilder):
     if sys.platform == "linux2":
       amber_c_comp = "gnu"
     for name, command, workdir in [
+        ['AFITT - untar',
+         ['tar', 'xvf', '%s.gz' % afitt_version],
+         ['modules']],
         ['Amber update', ["./update_amber", "--update"], [env["AMBERHOME"]]],
         ['Amber configure',
           ["./configure",
@@ -1688,6 +1694,14 @@ class PhenixExternalRegression(PhenixBuilder):
       name="test rosetta quick all",
       env = self.get_environment()
     )
+    # afitt
+    self.add_test_command('afitt.run_tests',
+                          env = self.get_environment()
+                        )
+    # erraser
+    self.add_test_command('erraser.run_tests',
+                          env = self.get_environment()
+                        )
 
 def run(root=None):
   usage = """Usage: %prog [options] [actions]
