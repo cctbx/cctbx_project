@@ -64,6 +64,7 @@ namespace boost_python {
   void wrap_correlation();
   void wrap_interpolation();
   void wrap_tetrahedron();
+  void wrap_angle_derivative();
 
 namespace {
 
@@ -456,6 +457,7 @@ namespace {
     wrap_correlation();
     wrap_interpolation();
     wrap_tetrahedron();
+    wrap_angle_derivative();
 
     def("superpose_kearsley_rotation", superpose_kearsley_rotation, (
       arg("reference_sites"), arg("other_sites")));

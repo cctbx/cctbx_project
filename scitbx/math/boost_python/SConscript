@@ -35,5 +35,6 @@ env.SharedLibrary(
     "rotation.cpp",
     "interpolation.cpp",
     "tetrahedron.cpp",
+    "angle_derivative.cpp"
     ]
 )
