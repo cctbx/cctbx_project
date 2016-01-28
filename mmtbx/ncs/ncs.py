@@ -32,7 +32,7 @@ def remove_quotes_from_chain_id(chain_residue_id):
   new_group=[]
   for chain_id in group:
     new_group.append(remove_single_quotes(chain_id))
-  return [new_group,list_of_resseq_list] 
+  return [new_group,list_of_resseq_list]
 
 def remove_single_quotes(text):
   # Remove single quotes from ends of a string if they occur on both ends.
@@ -284,7 +284,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     # Get the new order of chain IDs
     new_group,first_op=self.get_new_group(
       hierarchy_to_match_order=hierarchy_to_match_order)
-    
+
     from mmtbx.ncs.ncs import ncs
     from copy import deepcopy
     new=ncs_group()
@@ -299,7 +299,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     #  Rx + T =  Rinv_fo (Rj x + Tj) + Tinv_fo
     #  ==> R= Rinv_fo Rj   T = Rinv_fo Tj + Tinv_fo
     # check: if fo=0 then Rinv_fo=U Tinv_fo=0 -> R=Rj and T=Tj ok.
-    
+
     # centers are the same
     new._centers=deepcopy(self._centers)
     new._rota_matrices=[]
@@ -310,7 +310,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     for r,t in zip(self._rota_matrices,self._translations_orth):
       new_r=r_first_op_inv*r
       new_t=r_first_op_inv*t - t_first_op
- 
+
       new._rota_matrices.append(new_r)
       new._translations_orth.append(new_t)
     new._n_ncs_oper=deepcopy(self._n_ncs_oper)
