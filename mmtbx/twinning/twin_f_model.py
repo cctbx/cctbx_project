@@ -800,7 +800,7 @@ the percentage of R-free reflections).
       update_f_part1=False)
     self.update_core(
       k_sol = result.k_sols()[0], # XXX not implemented (see above)
-      b_sol = result.b_sol(),
+      b_sol = result.b_sols()[0],
       twin_fraction = self.fmodel_ts1.twin_fraction,
       b_cart = result.b_cart(),
       k_overall = self.fmodel_ts1.scale_k1_w_for_twin_targets())
