@@ -305,11 +305,11 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     new._rota_matrices=[]
     new._translations_orth=[]
     r_first_op_inv=self._rota_matrices[first_op].inverse()
-    t_first_op=self._translations_orth[first_op]
+    t_first_op_inv=-1.*r_first_op_inv*self._translations_orth[first_op]
 
     for r,t in zip(self._rota_matrices,self._translations_orth):
       new_r=r_first_op_inv*r
-      new_t=r_first_op_inv*t - t_first_op
+      new_t=r_first_op_inv*t + t_first_op_inv
 
       new._rota_matrices.append(new_r)
       new._translations_orth.append(new_t)
