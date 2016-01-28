@@ -282,6 +282,7 @@ def get_fo(atom_type=None,wavelength=None,out=sys.stdout):
     table = sasaki.table(atom_type)
     fo=table.atomic_number()
   except ValueError :
+    ab=b
     raise Sorry("Unable to get scattering factors for %s" %(atom_type))
   return fo
 
@@ -400,9 +401,12 @@ def get_fo_list(chain_type="PROTEIN",wavelength=1.0,
        atoms_number_list[2]+=1 # an extra O in RNA
 
   # decide if we include the intrinsic scatterers
-  if intrinsic_scatterers_as_noise or (
-      intrinsic_scatterers_as_noise is None and include_intrinsic_scatterers(
-          intrinsic_scatterers_list,target_fpp,wavelength) ):
+  if intrinsic_scatterers_as_noise is None:
+    force_include=include_intrinsic_scatterers(
+          intrinsic_scatterers_list,target_fpp,wavelength)
+  else:
+    force_include=False
+  if intrinsic_scatterers_as_noise or force_include:
        atoms_list+=intrinsic_scatterers_list
        atoms_number_list+=intrinsic_scatterers_number_list
 
@@ -820,7 +824,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
 
 
     # get real scattering from anomalous substructure
-    if not self.atom_type:
+    if not self.atom_type or self.atom_type=="-":
      fo=0.
     else:
       fo=get_fo(atom_type=self.atom_type,wavelength=self.wavelength)

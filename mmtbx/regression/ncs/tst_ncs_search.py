@@ -418,8 +418,8 @@ class TestSimpleAlignment(unittest.TestCase):
     spec = ncs_obj.get_ncs_info_as_spec(write=False)
     gr = spec.ncs_groups()
     self.assertEqual(len(gr),2)
-    self.assertEqual(gr[0].chain_residue_id()[0],["'A'", "'D'", "'F'"])
-    self.assertEqual(gr[1].chain_residue_id()[0],["'B'", "'E'", "'G'", "'X'"])
+    self.assertEqual(gr[0].chain_residue_id()[0],["A", "D", "F"])
+    self.assertEqual(gr[1].chain_residue_id()[0],["B", "E", "G", "X"])
 
   def test_chain_exclusion(self):
     """ Test that chain are being excluded when asked for """

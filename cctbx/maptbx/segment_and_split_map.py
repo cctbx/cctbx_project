@@ -2475,6 +2475,8 @@ def create_remaining_mask_and_map(params,
    expand_size=params.segmentation.expand_size)
   map_data_remaining=map_data.deep_copy()
   s=(bool_all_used==True)
+  print "ZZ types:",type(s),type(bool_all_used),type(map_data_remaining),type(-1.)
+
   map_data_remaining=map_data_remaining.set_selected(s,-1.0)
   return map_data_remaining
 

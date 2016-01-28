@@ -26,6 +26,22 @@ def is_in_range(z,z_min,z_max):
     if z<z_min or z>z_max: return False
     return True
 
+def remove_quotes_from_chain_id(chain_residue_id):
+  # remove the quotes from the chain names in group:
+  [group,list_of_resseq_list]=chain_residue_id
+  new_group=[]
+  for chain_id in group:
+    new_group.append(remove_single_quotes(chain_id))
+  return [new_group,list_of_resseq_list] 
+
+def remove_single_quotes(text):
+  # Remove single quotes from ends of a string if they occur on both ends.
+  if not text: return text
+  if not type(text)==type("abc"): return text
+  if text.startswith("'") and text.endswith("'"):
+    text=text[1:-1]
+  return text
+
 
 def is_identity(r,t,tol=1.e-2):
   identity_r=[1,0,0,0,1,0,0,0,1]
@@ -182,9 +198,20 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
   def deep_copy(self,change_of_basis_operator=None,unit_cell=None,
       coordinate_offset=None,
-      new_unit_cell=None):  # make full copy;
+      new_unit_cell=None,
+      hierarchy_to_match_order=None):  # make full copy;
     # optionally apply change-of-basis operator (requires old, new unit cells)
     # optionally apply coordinate_offset (adding coordinate_offset to coords)
+    # optionally sort operators to match order in hierarchy
+
+    # Can do only one of the above three things
+    assert [change_of_basis_operator,
+      coordinate_offset,hierarchy_to_match_order].count(None)>=2
+
+    if hierarchy_to_match_order and self._chain_residue_id is not None:
+
+      return self.deep_copy_order(
+        hierarchy_to_match_order=hierarchy_to_match_order)
 
     from mmtbx.ncs.ncs import ncs
     from copy import deepcopy
@@ -213,6 +240,124 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     new._exclude_d=self._exclude_d
     return new
 
+  def get_order_dict(self,hierarchy_to_match_order=None):
+    self.chain_id_from_index={}
+    self.index_from_chain_id={}
+    i=0
+    for m in hierarchy_to_match_order.models()[:1]:
+      for chain in m.chains():
+        id=remove_single_quotes(chain.id)
+        self.chain_id_from_index[i]=id
+        self.index_from_chain_id[id]=i
+        i+=1
+
+  def get_new_group(self,hierarchy_to_match_order=None):
+    # change the order of the operators to match hierarchy
+    self.get_order_dict(hierarchy_to_match_order=hierarchy_to_match_order)
+
+    # figure out what is the new order of groups
+    sort_list=[]
+    [group,residue_range_list] = self._chain_residue_id
+    for x in group:
+      id=self.index_from_chain_id.get(x)
+      assert id is not None
+      sort_list.append([id,x])
+    sort_list.sort()
+    new_group=[]
+    for [id,x] in sort_list:
+      new_group.append(x)
+
+    # Identify which operator is the new first one
+    first_chain_id=new_group[0]
+    i=0
+    first_op=None
+    for chain_id in group:
+      if chain_id==first_chain_id:
+        first_op=i
+      i+=1
+    assert first_op is not None
+    return new_group,first_op
+
+  def deep_copy_order(self,hierarchy_to_match_order=None):  # make full copy;
+    assert self._chain_residue_id is not None
+
+    # Get the new order of chain IDs
+    new_group,first_op=self.get_new_group(
+      hierarchy_to_match_order=hierarchy_to_match_order)
+    
+    from mmtbx.ncs.ncs import ncs
+    from copy import deepcopy
+    new=ncs_group()
+    new._chain_residue_id=self._chain_residue_id
+    new._rmsd_list=deepcopy(self._rmsd_list)
+    new._residues_in_common_list=deepcopy(self._residues_in_common_list)
+
+    # now adjust all the operators so that the reference is first_op
+    # operator j maps copy j on to copy 0.
+    # we want operator j to map copy j onto copy first_op. First map to
+    #  copy 0 then map copy 0 to copy first_op
+    #  Rx + T =  Rinv_fo (Rj x + Tj) + Tinv_fo
+    #  ==> R= Rinv_fo Rj   T = Rinv_fo Tj + Tinv_fo
+    # check: if fo=0 then Rinv_fo=U Tinv_fo=0 -> R=Rj and T=Tj ok.
+    
+    # centers are the same
+    new._centers=deepcopy(self._centers)
+    new._rota_matrices=[]
+    new._translations_orth=[]
+    r_first_op_inv=self._rota_matrices[first_op].inverse()
+    t_first_op=self._translations_orth[first_op]
+
+    for r,t in zip(self._rota_matrices,self._translations_orth):
+      new_r=r_first_op_inv*r
+      new_t=r_first_op_inv*t - t_first_op
+ 
+      new._rota_matrices.append(new_r)
+      new._translations_orth.append(new_t)
+    new._n_ncs_oper=deepcopy(self._n_ncs_oper)
+    new._source_of_ncs_info=self._source_of_ncs_info
+    new._ncs_domain_pdb=deepcopy(self._ncs_domain_pdb)
+    new._cc=deepcopy(self._cc)
+    new._exclude_h=self._exclude_h
+    new._exclude_d=self._exclude_d
+
+    # Now just change the order of everything
+    translations_orth=[]
+    rota_matrices=[]
+    centers=[]
+    rmsd_list=[]
+    residues_in_common_list=[]
+    group=[]
+    residue_range_list=[]
+    # NOTE: [group,residue_range_list] = new._chain_residue_id
+
+    for chain_id in new_group:
+      for t,r,c,rmsd,res_in_common,g,res_range in zip(
+          new._translations_orth,
+          new._rota_matrices,
+          new._centers,
+          new._rmsd_list,
+          new._residues_in_common_list,
+          new._chain_residue_id[0],
+          new._chain_residue_id[1]):
+        if g==chain_id: # this is the one
+          translations_orth.append(t)
+          rota_matrices.append(r)
+          centers.append(c)
+          rmsd_list.append(rmsd)
+          residues_in_common_list.append(res_in_common)
+          group.append(g)
+          residue_range_list.append(res_range)
+
+    new._translations_orth=translations_orth
+    new._rota_matrices=rota_matrices
+    new._centers=centers
+    new._rmsd_list=rmsd_list  # NOTE will not be correct perhaps leave out
+    new._residues_in_common_list=residues_in_common_list
+    new._chain_residue_id=[group,residue_range_list]
+
+    assert group==new_group
+    chain_residue_id=[group,residue_range_list]
+    return new
 
   def display_summary(self):
     text=""
@@ -838,20 +983,21 @@ class ncs:
 
   def deep_copy(self,change_of_basis_operator=None,unit_cell=None,
       coordinate_offset=None,
-      new_unit_cell=None):  # make a copy
+      new_unit_cell=None,
+      hierarchy_to_match_order=None):  # make a copy
     from mmtbx.ncs.ncs import ncs
 
     # make new ncs object with same overall params as this one:
     new=ncs(exclude_h=self._exclude_h,exclude_d=self._exclude_d)
     new.source_info=self.source_info
     new._ncs_read=self._ncs_read
-
     # deep_copy over all the ncs groups:
     for ncs_group in self._ncs_groups:
       new._ncs_groups.append(ncs_group.deep_copy(
          change_of_basis_operator=change_of_basis_operator,
          coordinate_offset=coordinate_offset,
-         unit_cell=unit_cell,new_unit_cell=new_unit_cell))
+         unit_cell=unit_cell,new_unit_cell=new_unit_cell,
+         hierarchy_to_match_order=hierarchy_to_match_order))
     return new
 
   def change_of_basis(self,change_of_basis_operator=None,unit_cell=None,
@@ -1129,7 +1275,7 @@ class ncs:
        ncs_rota_matr=ncs_rota_matr,
        center_orth=center_orth,
        trans_orth=trans_orth,
-       chain_residue_id=chain_residue_id,
+       chain_residue_id=remove_quotes_from_chain_id(chain_residue_id),
        residues_in_common_list=residues_in_common_list,
        rmsd_list=rmsd_list,
        source_of_ncs_info=source_of_ncs_info,
