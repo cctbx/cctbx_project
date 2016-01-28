@@ -222,7 +222,7 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
         "Please use phenix.pdbtools to select just one model from your file.")
     for chain in m.chains():
       new_hierarchy=iotbx.pdb.pdb_input(
-         source_info="Model", lines="").construct_hierarchy()
+         source_info="Model", lines=flex.split_lines("")).construct_hierarchy()
       mm=iotbx.pdb.hierarchy.model()
       cc=iotbx.pdb.hierarchy.chain()
       cc.id=chain.id  # copy chain ID
@@ -238,7 +238,8 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
 
           # and make a new one
           new_hierarchy=iotbx.pdb.pdb_input(
-             source_info="Model", lines="").construct_hierarchy()
+             source_info="Model", 
+             lines=flex.split_lines("")).construct_hierarchy()
           mm=iotbx.pdb.hierarchy.model()
           cc=iotbx.pdb.hierarchy.chain()
           cc.id=chain.id  # copy chain ID
@@ -290,7 +291,8 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
   # sort by chain_type if provided in one or more
 
   new_hierarchy=iotbx.pdb.pdb_input(
-         source_info="Model", lines="").construct_hierarchy()
+         source_info="Model", 
+             lines=flex.split_lines("")).construct_hierarchy()
   mm=iotbx.pdb.hierarchy.model()
   new_hierarchy.append_model(mm)
   if renumber:  # just get chain once in advance
@@ -353,7 +355,7 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
     new_hierarchy=apply_atom_selection(atom_selection,hierarchy=new_hierarchy)
 
   if remove_ter_records:
-    new_records=[]
+    new_records=flex.split_lines("")
     for line in new_hierarchy.as_pdb_string().splitlines():
       if not line.startswith("TER"):
         new_records.append(line)
