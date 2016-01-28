@@ -238,7 +238,7 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
 
           # and make a new one
           new_hierarchy=iotbx.pdb.pdb_input(
-             source_info="Model", 
+             source_info="Model",
              lines=flex.split_lines("")).construct_hierarchy()
           mm=iotbx.pdb.hierarchy.model()
           cc=iotbx.pdb.hierarchy.chain()
@@ -291,7 +291,7 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
   # sort by chain_type if provided in one or more
 
   new_hierarchy=iotbx.pdb.pdb_input(
-         source_info="Model", 
+         source_info="Model",
              lines=flex.split_lines("")).construct_hierarchy()
   mm=iotbx.pdb.hierarchy.model()
   new_hierarchy.append_model(mm)
