@@ -17,7 +17,7 @@ namespace {
     return boost::python::make_tuple(self.f_calc,
                                      self.f_mask(),
                                      self.k_sols(),
-                                     self.b_sol,
+                                     self.b_sols(),
                                      self.f_part1,
                                      self.f_part2,
                                      self.u_star,
@@ -26,7 +26,6 @@ namespace {
                                      self.f_model,
                                      self.f_bulk,
                                      self.k_anisotropic,
-                                     self.f_b_sol,
                                      self.ss,
                                      self.f_model_no_aniso_scale);
   }
@@ -37,21 +36,22 @@ namespace {
     using boost::python::arg;
 
     boost::python::to_python_converter<
-      af::small< af::shared<std::complex<double> >, max_n_shells> ,
+      af::shared< af::shared<std::complex<double> > > ,
       scitbx::boost_python::container_conversions::to_tuple<
-        af::small< af::shared<std::complex<double> >, max_n_shells>   > >();
+        af::shared< af::shared<std::complex<double> > >   > >();
 
     scitbx::boost_python::container_conversions::from_python_sequence<
-      af::small< af::shared<std::complex<double> >, max_n_shells>,
+      af::shared< af::shared<std::complex<double> > >,
       scitbx::boost_python::container_conversions::fixed_capacity_policy>();
+
 
     typedef return_value_policy<return_by_value> rbv;
     class_<core<> >("core")
       .def(init<
            af::shared<std::complex<double> >      const&,
-           af::small< af::shared<std::complex<double> >, max_n_shells > const&,
-           af::small< double, max_n_shells>       const&,
-           double                                 const&,
+           af::shared< af::shared<std::complex<double> > > const&,
+           af::shared< double>       const&,
+           af::shared< double >       const&,
            af::shared<std::complex<double> >      const&,
            af::shared<std::complex<double> >      const&,
            scitbx::sym_mat3<double>               const&,
@@ -61,7 +61,7 @@ namespace {
                                                         (arg("f_calc"),
                                                          arg("shell_f_masks"),
                                                          arg("k_sols"),
-                                                         arg("b_sol"),
+                                                         arg("b_sols"),
                                                          arg("f_part1"),
                                                          arg("f_part2"),
                                                          arg("u_star"),
@@ -84,7 +84,6 @@ namespace {
                                           arg("f_part1"),
                                           arg("f_part2"))))
       .add_property("f_calc",        make_getter(&core<>::f_calc,       rbv()))
-      .add_property("b_sol",         make_getter(&core<>::b_sol,        rbv()))
       .add_property("f_part1",       make_getter(&core<>::f_part1,      rbv()))
       .add_property("f_part2",       make_getter(&core<>::f_part2,      rbv()))
       .add_property("u_star",        make_getter(&core<>::u_star,       rbv()))
@@ -93,12 +92,13 @@ namespace {
       .add_property("f_model",       make_getter(&core<>::f_model,      rbv()))
       .add_property("f_bulk",        make_getter(&core<>::f_bulk,       rbv()))
       .add_property("k_anisotropic", make_getter(&core<>::k_anisotropic,rbv()))
-      .add_property("f_b_sol",       make_getter(&core<>::f_b_sol,      rbv()))
       .add_property("ss",            make_getter(&core<>::ss,           rbv()))
       .add_property("f_model_no_aniso_scale", make_getter(&core<>::f_model_no_aniso_scale, rbv()))
       .def("n_shells", &core<>::n_shells)
       .def("k_sol", &core<>::k_sol)
       .def("k_sols", &core<>::k_sols)
+      .def("b_sols", &core<>::b_sols)
+      .def("b_sols", &core<>::b_sols)
       .def("f_mask", &core<>::f_mask)
       .def("shell_f_mask", &core<>::shell_f_mask)   // XXX re-name to f_mask
       .def("shell_f_masks", &core<>::shell_f_masks) // XXX re-name to f_masks
