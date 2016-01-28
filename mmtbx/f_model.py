@@ -193,7 +193,7 @@ class manager_kbu(object):
                f_part1=None,
                f_part2=None,
                k_sols = [0.],
-               b_sol  = 0.,
+               b_sols = [0.],
                u_star = [0,0,0,0,0,0]):
     self.f_obs   = f_obs
     self.f_calc  = f_calc
@@ -211,6 +211,7 @@ class manager_kbu(object):
     if(len(f_masks)>1):
       if(len(k_sols)==1 and abs(k_sols[0])<1.e-6):
         k_sols = [0]*len(f_masks)
+        b_sols = [0]*len(f_masks)
     #
     typfm = type(f_masks)
     if( not((typfm is list) or (typfm is None)) ):
@@ -227,11 +228,12 @@ class manager_kbu(object):
     if(self.f_part2 is None):
       self.f_part2 = self.f_calc.customized_copy(data =
         flex.complex_double(self.f_calc.data().size(), 0))
+    assert len(k_sols)==len(b_sols), [k_sols, b_sols]
     self.data = ext.core(
       f_calc        = self.f_calc.data(),
       shell_f_masks = self.fmdata,
       k_sols        = k_sols,
-      b_sol         = b_sol,
+      b_sols        = b_sols,
       f_part1       = self.f_part1.data(),
       f_part2       = self.f_part2.data(),
       u_star        = u_star,
@@ -241,14 +243,16 @@ class manager_kbu(object):
     self.f_model = miller.array(miller_set=self.f_calc, data=self.data.f_model)
     self.uc = self.data.uc
 
-  def update(self, k_sols=None, b_sol=None, b_cart=None, u_star=None):
+  def update(self, k_sols=None, b_sols=None, b_cart=None, u_star=None):
     if(k_sols is None): k_sols = self.data.k_sols()
-    if(b_sol is None):  b_sol  = self.data.b_sol
+    if(b_sols is None): b_sols = self.data.b_sols()
     if(u_star is None): u_star = self.data.u_star
     if(b_cart is not None):
       u_star = u_star = adptbx.u_cart_as_u_star(
         self.f_obs.unit_cell(),adptbx.b_as_u(b_cart))
     if(type(k_sols) is int or type(k_sols) is float): k_sols=[k_sols]
+    if(type(b_sols) is int or type(b_sols) is float): b_sols=[b_sols]
+    assert len(k_sols)==len(b_sols), [k_sols, b_sols]
     self = self.__init__(
       f_obs   = self.f_obs,
       f_calc  = self.f_calc,
@@ -257,7 +261,7 @@ class manager_kbu(object):
       f_part2 = self.f_part2,
       ss      = self.ss,
       k_sols  = list(k_sols),
-      b_sol   = b_sol,
+      b_sols  = list(b_sols),
       u_star  = u_star)
 
   def select(self, selection):
@@ -269,7 +273,7 @@ class manager_kbu(object):
       f_part2 = self.f_part2.select(selection=selection),
       ss      = self.ss.select(selection),
       k_sols  = list(self.k_sols()),
-      b_sol   = self.b_sol(),
+      b_sols  = list(self.b_sols()),
       u_star  = self.u_star())
 
   def deep_copy(self):
@@ -278,9 +282,8 @@ class manager_kbu(object):
   def k_sols(self):
     return self.data.k_sols()
 
-  def k_sol(self, i): return self.data.k_sol(i)
-
-  def b_sol(self): return self.data.b_sol
+  def b_sols(self):
+    return self.data.b_sols()
 
   def u_star(self): return self.data.u_star
 
@@ -304,12 +307,12 @@ class manager_kbu(object):
 
   def k_mask(self):
     assert len(self.k_sols()) == 1
-    return ext.k_mask(self.ss, self.data.k_sol(0), self.b_sol())
+    return ext.k_mask(self.ss, self.data.k_sol(0), self.b_sol(0))
 
   def k_masks(self):
     result = []
-    for k_sol in self.data.k_sols():
-      result.append( ext.k_mask(self.ss, k_sol, self.b_sol()) )
+    for k_sol, b_sol in zip(self.data.k_sols(), self.data.b_sols()):
+      result.append( ext.k_mask(self.ss, k_sol, b_sol) )
     return result
 
   def k_anisotropic(self):
@@ -428,7 +431,8 @@ class manager(manager_mixin):
       assert f_calc.data().size() <= f_obs.data().size()
       for fm in f_mask:
         assert fm.is_complex_array()
-        assert fm.data().size() <= f_obs.data().size()
+        assert fm.data().size() <= f_obs.data().size(), \
+          [fm.data().size(),f_obs.data().size()]
         assert fm.data().size() == f_calc.data().size()
       f_calc_twin = None
       f_mask_twin = None
@@ -1132,7 +1136,7 @@ class manager(manager_mixin):
       fmodel_core_data      = fmodel_core_data,
       f_obs                 = self.f_obs(),
       k_initial             = [0],
-      b_initial             = 0,
+      b_initial             = [0],
       u_initial             = [0,0,0,0,0,0],
       refine_k              = True,
       refine_b              = True,
@@ -1150,7 +1154,7 @@ class manager(manager_mixin):
     def f_k_exp_scaled(k,b,ss,f):
       return f.customized_copy(data = k*flex.exp(-b*ss)*f.data())
     ss = self.ss
-    kbest, bbest = minimized.k_min[0], minimized.b_min
+    kbest, bbest = minimized.k_min[0], minimized.b_min[0]
     fh_kb = f_k_exp_scaled(k = kbest, b = bbest, ss = ss, f = fh)
     fh = fh_kb
     # scale again using finer scaler and filtered F_H, then update fmodel
@@ -1786,7 +1790,7 @@ class manager(manager_mixin):
         nproc           = nproc)
       if(len(result.k_sols())==1):
         self.k_sol  = result.k_sols()[0]
-        self.b_sol  = result.b_sol()
+        self.b_sol  = result.b_sols()[0]
         self.b_cart = result.b_cart()
       u_star = adptbx.u_cart_as_u_star(self.f_obs().unit_cell(), adptbx.b_as_u(result.b_cart()))
       k_anisotropic = mmtbx.f_model.ext.k_anisotropic(self.f_obs().indices(),u_star)
@@ -1821,7 +1825,7 @@ class manager(manager_mixin):
       if(apply_back_trace and len(result.k_sols())==1):
         k_masks, k_anisotropic, xrs = apply_back_b_iso(
           xrs=self.xray_structure, k_sol=result.k_sols()[0],
-          b_sol=result.b_sol(), b_cart=result.b_cart(), ss=self.ss,
+          b_sol=result.b_sols()[0], b_cart=result.b_cart(), ss=self.ss,
           f_obs=self.f_obs(), f_model=self.f_model())
         k_isotropic = flex.double(self.f_obs().data().size(), self.scale_k1())
         self.update_core(

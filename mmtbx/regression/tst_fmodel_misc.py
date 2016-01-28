@@ -33,10 +33,9 @@ def exercise () :
   anom_diffs = array.anomalous_differences()
   assert approx_equal(flex.max(anom_diffs.data()), 5.72, eps=0.01)
   # mmtbx.fmodel_simple
-  result = easy_run.fully_buffered(
+  result = easy_run.call(
     "mmtbx.fmodel_simple \"%s\" tst_fmodel_anomalous.mtz high_resolution=2.0"
-      % pdb_file).raise_if_errors()
-  assert (result.return_code == 0)
+      % pdb_file)
   print "OK"
 
 def exercise_intensity_output () :

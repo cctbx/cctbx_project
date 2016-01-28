@@ -124,6 +124,7 @@ class geometry(object):
       sites_cart = sites_cart,
       proxies    = rmg.angle_proxies)
     nonbonded_distances = esg.nonbonded_distances()
+    self.number_of_worst_clashes = (nonbonded_distances<0.5).count(True)
     self.bond_deltas_histogram = \
       flex.histogram(data = flex.abs(bond_deltas), n_slots = n_histogram_slots)
     self.angle_deltas_histogram = \

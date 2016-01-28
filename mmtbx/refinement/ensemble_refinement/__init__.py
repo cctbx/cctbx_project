@@ -1385,7 +1385,7 @@ class run_ensemble_refinement(object):
               self.fmodel_total.r_free(),
               self.fmodel_total.scale_k1(),
               self.fmodel_total.fmodel_kbu().k_sols()[0],
-              self.fmodel_total.fmodel_kbu().b_sol() )
+              self.fmodel_total.fmodel_kbu().b_sols()[0])
     #Update self.er_data.xray_structures and self.er_data.pdb_hierarchys to correspond to optimum fmodel_total
     self.er_data.xray_structures = []
     self.er_data.xray_structures_diff_map =[]
@@ -1413,7 +1413,7 @@ class run_ensemble_refinement(object):
         .format('Fmodel current',
                 self.macro_cycle,
                 self.fmodel_current.scale_k1(),
-                self.fmodel_current.fmodel_kbu().b_sol(),
+                self.fmodel_current.fmodel_kbu().b_sols()[0],
                 self.fmodel_current.fmodel_kbu().k_sols()[0],
                 )
     if self.fmodel_running is not None:
@@ -1421,14 +1421,14 @@ class run_ensemble_refinement(object):
         .format('Fmodel running',
                 self.macro_cycle,
                 self.fmodel_running.scale_k1(),
-                self.fmodel_running.fmodel_kbu().b_sol(),
+                self.fmodel_running.fmodel_kbu().b_sols()[0],
                 self.fmodel_running.fmodel_kbu().k_sols()[0] )
     if self.fmodel_total is not None:
       print >> self.log, "{0:<23}: {1:8d} {2:8.3f} {3:8.3f} {4:8.3f}"\
         .format('Fmodel_Total',
                 self.macro_cycle,
                 self.fmodel_total.scale_k1(),
-                self.fmodel_total.fmodel_kbu().b_sol(),
+                self.fmodel_total.fmodel_kbu().b_sols()[0],
                 self.fmodel_total.fmodel_kbu().k_sols()[0] )
     if self.fmodel_current is not None:
       print >> self.log, "Fmodel current bcart   : {0:14.2f} {1:5.2f} {2:5.2f} {3:5.2f} {4:5.2f} {5:5.2f}".format(*self.fmodel_current.fmodel_kbu().b_cart())
@@ -1624,7 +1624,7 @@ def show_model_vs_data(fmodel, log):
   if(flags_pc == 0): r_free = None
   else: r_free = fmodel.r_free()
   k_sol = format_value("%-5.2f",fmodel.fmodel_kbu().k_sols()[0])
-  b_sol = format_value("%-7.2f",fmodel.fmodel_kbu().b_sol())
+  b_sol = format_value("%-7.2f",fmodel.fmodel_kbu().b_sols()[0])
   b_cart = " ".join([("%8.2f"%v).strip() for v in fmodel.fmodel_kbu().b_cart()])
   print >> log, "Model vs data statistics"
   result = " \n    ".join([

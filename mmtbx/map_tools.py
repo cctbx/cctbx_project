@@ -462,7 +462,7 @@ class model_missing_reflections(object):
         f_obs          = self.complete_set,
         xray_structure = xrs,
         k_sol          = r.k_sols()[0],
-        b_sol          = r.b_sol(),
+        b_sol          = r.b_sols()[0],
         b_cart         = r.b_cart())
       result = fm.f_model_no_scales()
     else:
