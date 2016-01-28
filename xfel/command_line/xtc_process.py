@@ -81,7 +81,8 @@ xtc_phil_str = '''
   input {
     cfg = None
       .type = str
-      .help = Path to psana config file
+      .help = Path to psana config file. Genearlly not needed for CBFs. For image pickles, \
+              the psana config file should have a mod_image_dict module.
     experiment = None
       .type = str
       .help = Experiment identifier, e.g. cxi84914
@@ -195,10 +196,10 @@ class InMemScript(DialsProcessScript):
   def __init__(self):
     """ Set up the option parser. Arguments come from the command line or a phil file """
     self.usage = """
-%s input.cfg=filename.cfg input.experiment=experimentname input.run_num=N input.address=address
+%s input.experiment=experimentname input.run_num=N input.address=address
  format.file_format=cbf format.cbf.detz_offset=N
-%s input.cfg=filename.cfg input.experiment=experimentname input.run_num=N input.address=address
-format.file_format=pickle format.pickle.cfg=path
+%s input.experiment=experimentname input.run_num=N input.address=address
+ format.file_format=pickle input.cfg=filename
     """%(libtbx.env.dispatcher_name, libtbx.env.dispatcher_name)
     self.parser = OptionParser(
       usage = self.usage,
@@ -224,7 +225,7 @@ format.file_format=pickle format.pickle.cfg=path
       if params.format.cbf.detz_offset is None:
         raise Usage(self.usage)
     elif params.format.file_format == "pickle":
-      if params.format.pickle.cfg is None:
+      if params.input.cfg is None:
         raise Usage(self.usage)
     else:
       raise Usage(self.usage)
@@ -301,8 +302,8 @@ format.file_format=pickle format.pickle.cfg=path
       self.debug_file_handle.write("\n")
 
     # set up psana
-    if params.format.file_format=="pickle":
-      psana.setConfigFile(params.format.pickle.cfg)
+    if params.input.cfg is not None:
+      psana.setConfigFile(params.input.cfg)
     dataset_name = "exp=%s:run=%s:idx"%(params.input.experiment,params.input.run_num)
     if params.input.xtc_dir is not None:
       if params.input.use_ffb:
