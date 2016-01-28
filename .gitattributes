@@ -2760,10 +2760,12 @@ scitbx/lstbx/normal_equations.h -text
 scitbx/lstbx/tests/tst_normal_equations.nb -text
 scitbx/lstbx/tests/tst_normal_equations.py -text
 scitbx/math/2d_zernike_moments.h -text
+scitbx/math/angle_derivative.h -text
 scitbx/math/approx_equal.h -text
 scitbx/math/besselk.py -text
 scitbx/math/boost_python/2d_zernike_moments.cpp -text
 scitbx/math/boost_python/__init__.py -text
+scitbx/math/boost_python/angle_derivative.cpp -text
 scitbx/math/boost_python/continued_fraction.cpp -text
 scitbx/math/boost_python/exp_functions.cpp svneol=native#text/plain
 scitbx/math/boost_python/interpolation.cpp -text
@@ -2816,6 +2818,7 @@ scitbx/math/superpose.h -text
 scitbx/math/tests/SConscript -text
 scitbx/math/tests/__init__.py -text
 scitbx/math/tests/tst.cpp -text
+scitbx/math/tests/tst_angle_derivative.py -text
 scitbx/math/tests/tst_bessel.py -text
 scitbx/math/tests/tst_clustering.py -text
 scitbx/math/tests/tst_cubic_equation.py -text

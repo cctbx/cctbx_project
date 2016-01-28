@@ -76,6 +76,7 @@ tst_list = (
   "$D/math/tests/tst_clustering.py",
   "$D/math/tests/tst_orthonormal_basis.py",
   "$D/math/tests/tst_g_function.py",
+  "$D/math/tests/tst_angle_derivative.py",
   "$D/minpack/tst.py",
   ["$D/lbfgs/tst_ext.py"],
   "$D/lbfgs/tst_curvatures.py",
