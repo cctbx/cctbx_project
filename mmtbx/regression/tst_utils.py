@@ -364,7 +364,7 @@ ATOM      4  O   GLY A  34     -72.196  12.128 -25.997  1.00  0.00           O
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
-  exercise_corrupt_cryst1()
+  # exercise_corrupt_cryst1()
   exercise_d_data_target_d_atomic_params()
   exercise_d_data_target_d_atomic_params2()
   exercise_get_atom_selections(verbose=verbose)
