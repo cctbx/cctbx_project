@@ -55,7 +55,7 @@ def tar_extract(workdir, arx, modulename=None):
         if cnt > 5:
           break
     # using tarfile module rather than unix tar command which is not platform independent
-    tar = tarfile.open(os.path.join(workdir, arx))
+    tar = tarfile.open(os.path.join(workdir, arx), errorlevel=2)
     tar.extractall(path=workdir) # TODO: requires python 2.5!
     tarfoldername = os.path.join(workdir, os.path.commonprefix(tar.getnames()).split('/')[0])
     tar.close()
