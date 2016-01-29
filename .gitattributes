@@ -1681,6 +1681,7 @@ mmtbx/bulk_solvent/scaler.py -text
 mmtbx/bulk_solvent/tst_aniso_scaler.py -text
 mmtbx/bulk_solvent/tst_bulk_solvent_and_scaling.py -text
 mmtbx/bulk_solvent/tst_fit_kexpb_to_ktotal.py -text
+mmtbx/bulk_solvent/tst_flat_nonuniform.py -text
 mmtbx/bulk_solvent/tst_scaler.py -text
 mmtbx/cablam/SConscript -text
 mmtbx/cablam/__init__.py -text

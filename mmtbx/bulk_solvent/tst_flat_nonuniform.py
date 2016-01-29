@@ -1,0 +1,182 @@
+from __future__ import division
+from iotbx import pdb
+from cctbx.array_family import flex
+from libtbx.test_utils import approx_equal
+import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
+import mmtbx.f_model
+from cctbx import adptbx
+import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
+import iotbx.pdb
+from mmtbx import f_model
+from cctbx import maptbx
+
+pdb_str = """
+CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P1
+ATOM      1  O   HOH A   1       2.500   2.500   2.500  1.00 10.00           O
+ATOM      1  O   HOH A   1       5.500   2.500   2.500  1.00 10.00           O
+"""
+
+def get_mask_data(xrs, d_min):
+  crystal_gridding = maptbx.crystal_gridding(
+    unit_cell          = xrs.unit_cell(),
+    d_min              = d_min,
+    resolution_factor  = 1./4,
+    symmetry_flags     = maptbx.use_space_group_symmetry,
+    space_group_info   = xrs.space_group_info())
+  mp = mmtbx.masks.mask_master_params.extract()
+  return mmtbx.masks.mask_from_xray_structure(
+    xray_structure           = xrs,
+    p1                       = True,
+    solvent_radius           = mp.solvent_radius,
+    shrink_truncation_radius = mp.shrink_truncation_radius,
+    for_structure_factors    = True,
+    n_real                   = crystal_gridding.n_real()).mask_data
+
+def fd_k_sols(kbu, f_obs):
+  p = flex.double([0.1, 0.2])
+  kbu.update(k_sols = p)
+  tg = bss.bulk_solvent.bulk_solvent_and_aniso_scale_target_and_grads_ls(
+        fm                  = kbu.data,
+        fo                  = f_obs.data(),
+        compute_k_sol_grad  = True,
+        compute_b_sol_grad  = False,
+        compute_u_star_grad = False)
+  g_k_sols_anal = list(tg.grad_k_sols())
+  #
+  g_k_sols_fd = []
+  for shift in [flex.double([1.e-3,0]),
+                flex.double([0,1.e-3])]:
+    # plus shift
+    kbu.update(k_sols = p+shift)
+    tg = bss.bulk_solvent.bulk_solvent_and_aniso_scale_target_and_grads_ls(
+          fm                  = kbu.data,
+          fo                  = f_obs.data(),
+          compute_k_sol_grad  = True,
+          compute_b_sol_grad  = False,
+          compute_u_star_grad = False)
+    t1 = tg.target()
+    # minus shift
+    kbu.update(k_sols = p-shift)
+    tg = bss.bulk_solvent.bulk_solvent_and_aniso_scale_target_and_grads_ls(
+          fm                  = kbu.data,
+          fo                  = f_obs.data(),
+          compute_k_sol_grad  = True,
+          compute_b_sol_grad  = False,
+          compute_u_star_grad = False)
+    t2 = tg.target()
+    g_k_sols_fd.append( (t1-t2)/(2*1.e-3) )
+  #
+  assert approx_equal(g_k_sols_anal, g_k_sols_fd, 1.e-4)
+
+def fd_b_sols(kbu, f_obs):
+  p = flex.double([10, 20])
+  kbu.update(b_sols = p)
+  tg = bss.bulk_solvent.bulk_solvent_and_aniso_scale_target_and_grads_ls(
+        fm                  = kbu.data,
+        fo                  = f_obs.data(),
+        compute_k_sol_grad  = False,
+        compute_b_sol_grad  = True,
+        compute_u_star_grad = False)
+  g_b_sols_anal = list(tg.grad_b_sols())
+  #
+  g_b_sols_fd = []
+  for shift in [flex.double([1.e-3,0]),
+                flex.double([0,1.e-3])]:
+    # plus shift
+    kbu.update(b_sols = p+shift)
+    tg = bss.bulk_solvent.bulk_solvent_and_aniso_scale_target_and_grads_ls(
+          fm                  = kbu.data,
+          fo                  = f_obs.data(),
+          compute_k_sol_grad  = False,
+          compute_b_sol_grad  = True,
+          compute_u_star_grad = False)
+    t1 = tg.target()
+    # minus shift
+    kbu.update(b_sols = p-shift)
+    tg = bss.bulk_solvent.bulk_solvent_and_aniso_scale_target_and_grads_ls(
+          fm                  = kbu.data,
+          fo                  = f_obs.data(),
+          compute_k_sol_grad  = False,
+          compute_b_sol_grad  = True,
+          compute_u_star_grad = False)
+    t2 = tg.target()
+    g_b_sols_fd.append( (t1-t2)/(2*1.e-3) )
+    #
+  assert approx_equal(g_b_sols_anal, g_b_sols_fd)
+
+def run(d_min  = 2.0,
+        b_cart = [1,2,3,0,4,0],
+        k_sols = [0.3, 0.5],
+        b_sols = [50., 20.]):
+  xrs=iotbx.pdb.input(source_info=None, lines=pdb_str).xray_structure_simple()
+  #
+  f_calc = xrs.structure_factors(d_min=d_min).f_calc()
+  #
+  mask_data = get_mask_data(xrs=xrs, d_min=d_min)
+  n = mask_data.all()
+  mask_data1 = flex.double(flex.grid(n), 0)
+  mask_data2 = flex.double(flex.grid(n), 0)
+  I,J,K = xrange(n[0]), xrange(n[1]), xrange(n[2])
+  for i in I:
+    for j in J:
+      for k in K:
+        if(i < n[0]//2 and j < n[1]//2 and k < n[2]//2):
+          mask_data1[i,j,k]=mask_data[i,j,k]
+        else:
+          mask_data2[i,j,k]=mask_data[i,j,k]
+  f_mask1 = f_calc.structure_factors_from_map(map=mask_data1,
+    use_scale = True, anomalous_flag = False, use_sg = False)
+  f_mask2 = f_calc.structure_factors_from_map(map=mask_data2,
+    use_scale = True, anomalous_flag = False, use_sg = False)
+  #
+  u_star = adptbx.u_cart_as_u_star(xrs.unit_cell(), adptbx.b_as_u(b_cart))
+  k_total = mmtbx.f_model.ext.k_anisotropic(f_calc.indices(), u_star)
+  #
+  d_spacings = f_calc.d_spacings().data()
+  ss = 1./flex.pow2(d_spacings) / 4.
+  k_mask1 = mmtbx.f_model.ext.k_mask(ss, k_sols[0], b_sols[0])
+  k_mask2 = mmtbx.f_model.ext.k_mask(ss, k_sols[1], b_sols[1])
+  #
+  f_obs_data = flex.abs( k_total*(f_calc.data()+k_mask1*f_mask1.data() +
+                                                k_mask2*f_mask2.data()) )
+  f_obs = f_calc.array(data = f_obs_data)
+  #
+  kbu = f_model.manager_kbu(
+    f_obs   = f_obs,
+    f_calc  = f_calc,
+    f_masks = [f_mask1, f_mask2],
+    ss      = ss,
+    k_sols  = k_sols,
+    b_sols  = b_sols)
+  #
+  fd_k_sols(kbu=kbu, f_obs=f_obs)
+  fd_b_sols(kbu=kbu, f_obs=f_obs)
+  #
+  kbu = f_model.manager_kbu(
+    f_obs   = f_obs,
+    f_calc  = f_calc,
+    f_masks = [f_mask1, f_mask2],
+    ss      = ss,
+    k_sols  = k_sols,
+    b_sols  = b_sols)
+  u_star_ini = adptbx.u_cart_as_u_star(xrs.unit_cell(),
+    adptbx.b_as_u([0.1,0.2,0.3,0,0.4,0]))
+  res = bss.kbu_minimizer(
+    fmodel_core_data = kbu,
+    f_obs            = f_obs,
+    k_initial        = [0.1,0.1],
+    b_initial        = [10,10],
+    u_initial        = u_star_ini,
+    refine_k         = True,
+    refine_b         = True,
+    refine_u         = True,
+    min_iterations   = 500,
+    max_iterations   = 500)
+  assert approx_equal(res.k_min, k_sols)
+  assert approx_equal(res.b_min, b_sols)
+  assert approx_equal(
+    adptbx.u_as_b(adptbx.u_star_as_u_cart(f_obs.unit_cell(), res.u_min)),b_cart)
+
+if (__name__ == "__main__"):
+  run()
+  print "OK"
