@@ -265,23 +265,29 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
 
 def sort_models_and_sequences(models,sequences):
   # sort based on chain type if available
-  sort_list=[]
+  sort_dict={}
   for m,s in zip(models,sequences):
-    sort_list.append([m.info.get('chain_type'),m,s])
-  sort_list.sort()
-  sort_list.reverse()
+    chain_type=str(m.info.get('chain_type'))
+    if not chain_type in sort_dict.keys(): sort_dict[chain_type]=[]
+    sort_dict[chain_type].append([m,s])
+  keys=sort_dict.keys()
+  if len(keys)<2:
+    return models,sequences # do nothing if only one chain type
+
+  keys.sort()
+  keys.reverse()
   new_models=[]
   new_sequences=[]
-  for c,m,s in sort_list:
-    new_models.append(m)
-    new_sequences.append(s)
+  for key in keys:
+    for [m,s] in sort_dict[key]:
+      new_models.append(m)
+      new_sequences.append(s)
   return new_models,new_sequences
-
 
 def merge_hierarchies_from_models(models=None,resid_offset=None,
     renumber=None,first_residue_number=None,
     sequences=None,chain_id=None,trim_side_chains=None,
-    remove_ter_records=False):
+    remove_ter_records=False,):
   # assumes one chain from each model
   # if resid_offset, space by to next even n of this number of residues
   # otherwise if renumber, start at first_residue_number and sequence
@@ -316,7 +322,6 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
 
   info={}
   from iotbx.pdb import resseq_encode
-
 
   if not sequences: sequences=len(models)*[None]
   models,sequences=sort_models_and_sequences(models,sequences)
