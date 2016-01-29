@@ -16,6 +16,9 @@ def generate_torsion_restraints(
       chi_angles_only=False,
       top_out_potential=False,
       origin_id=2):
+  torsion_proxies = geometry_restraints.shared_dihedral_proxy()
+  if pdb_hierarchy.atoms().size() < 4:
+    return torsion_proxies
   assert not pdb_hierarchy.atoms().extract_i_seq().all_eq(0)
   bool_pdbh_selection = flex.bool(pdb_hierarchy.atoms_size(), False)
   if (selection is not None):
@@ -28,7 +31,6 @@ def generate_torsion_restraints(
   actual_selection = bool_pdbh_selection.iselection()
   assert len(sites_cart) == len(actual_selection)
   weight = 1.0 / (sigma**2)
-  torsion_proxies = geometry_restraints.shared_dihedral_proxy()
   selection_to_sites_map = get_selection_to_sites_map(
                              sites_cart=sites_cart,
                              selection=actual_selection)
