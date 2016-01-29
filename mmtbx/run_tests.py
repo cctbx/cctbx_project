@@ -106,6 +106,7 @@ tst_list = (
   "$D/bulk_solvent/tst_bulk_solvent_and_scaling.py",
   "$D/bulk_solvent/tst_fit_kexpb_to_ktotal.py",
   "$D/bulk_solvent/tst_scaler.py",
+  "$D/bulk_solvent/tst_flat_nonuniform.py",
   "$D/alignment.py",
   "$D/invariant_domain.py",
   # restraints
