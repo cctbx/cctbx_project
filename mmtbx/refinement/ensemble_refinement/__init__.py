@@ -2162,8 +2162,7 @@ def calculate_chi_angles(model=None):
   ------
   The list for an amino acid is of size 0 if it has no defined dihedral angles.
   A dihedral angle in the list for an atom_group can be None if there are
-  missing atoms. A protein residue is defined as common_amino_acid or
-  modified_amino_acid.
+  missing atoms. A protein residue is defined as common_amino_acid.
 
   =============================================================================
 
@@ -2183,8 +2182,7 @@ def calculate_chi_angles(model=None):
         all_dict = rotalyze.construct_complete_sidechain(rg)
         for ag in rg.atom_groups():
           residue_class = get_class(ag.resname)
-          if ( (residue_class == 'common_amino_acid') or
-               (residue_class == 'modified_amino_acid') ):
+          if (residue_class == 'common_amino_acid'):
             atom_dict = all_dict.get(ag.altloc)
             id_str.append(ag.id_str())
             xyz.append(ag.atoms().extract_xyz().mean())
