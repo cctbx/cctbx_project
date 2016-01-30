@@ -1,7 +1,7 @@
 from __future__ import division
-from iotbx.ncs.ncs_preprocess import insure_identity_is_in_transform_info
-from  iotbx.ncs.ncs_preprocess import ncs_group_object
-from  iotbx.ncs.ncs_preprocess import ncs_only
+from iotbx.ncs import insure_identity_is_in_transform_info
+from  iotbx.ncs import input as ncs_group_object
+from  iotbx.ncs import ncs_only
 from iotbx import crystal_symmetry_from_any
 from libtbx.utils import Sorry
 # import iotbx.pdb.hierarchy

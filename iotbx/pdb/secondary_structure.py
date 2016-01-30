@@ -522,7 +522,7 @@ class annotation(structure_base):
     return cls(helices=helices, sheets=sheets)
 
   def multiply_to_asu(self, ncs_copies_chain_names, n_copies):
-    from iotbx.ncs.ncs_preprocess import format_num_as_str
+    from iotbx.ncs import format_num_as_str
     import copy
     # ncs_copies_chain_names = {'chain B_022':'CD' ...}
     def make_key(chain_id, n):

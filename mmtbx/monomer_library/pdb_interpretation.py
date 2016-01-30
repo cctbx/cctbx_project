@@ -418,7 +418,7 @@ master_params_str = """\
     fatal_problem_max_lines = 10
       .type=int
   }
-  include scope iotbx.ncs.ncs_preprocess.basic_phil_str
+  include scope iotbx.ncs.ncs_group_phil_str
   include scope iotbx.ncs.ncs_search_options
   %(clash_guard_params_str)s
 """ % vars()
@@ -5409,6 +5409,7 @@ class process(object):
     ncs_phil_groups = self.all_chain_proxies.params.ncs_group
     # This function may alter pdb_hierarchy, e.g. when chain_id is blank
     # it substitutes them with "A". Therefore deep_copy() is necessary.
+    # ! Should no longer be the case.
     new_h = hierarchy.deep_copy()
     new_h.atoms().reset_i_seq()
     ncs_obj = iotbx.ncs.input(

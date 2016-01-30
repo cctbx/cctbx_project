@@ -181,21 +181,22 @@ class TestSimpleAlignment(unittest.TestCase):
                       ph=ph,
                       selection_list=selection_list)
 
-  def test_remove_masters_if_appear_in_copies(self):
-    # print sys._getframe().f_code.co_name
-    transform_to_group = {1:[['A','B','E'],['B','C','F']]}
-    tg = ncs_search.remove_masters_if_appear_in_copies(transform_to_group)
-    self.assertEqual(tg.values(),[[['A','E'],['B','F']]])
-    #
-    transform_to_group = {
-    1:[['A'],['B']],2:[['B'],['C']],3:[['A'],['D']],4:[['A'],['E']],
-    5:[['A'],['C']],6:[['B'],['D']],7:[['G'],['J']],8:[['C'],['H']],
-    9:[['A','1'],['X','2']]}
-    tg = ncs_search.remove_masters_if_appear_in_copies(transform_to_group)
-    expected = [
-      [['A'], ['B']], [['A'], ['C']], [['A'], ['D']], [['A'], ['E']],
-      [['A', '1'], ['X', '2']], [['G'], ['J']]]
-    self.assertEqual(sorted(tg.values()),expected)
+  # def test_remove_masters_if_appear_in_copies(self):
+  # Function removed, test obsoleted
+  #   # print sys._getframe().f_code.co_name
+  #   transform_to_group = {1:[['A','B','E'],['B','C','F']]}
+  #   tg = ncs_search.remove_masters_if_appear_in_copies(transform_to_group)
+  #   self.assertEqual(tg.values(),[[['A','E'],['B','F']]])
+  #   #
+  #   transform_to_group = {
+  #   1:[['A'],['B']],2:[['B'],['C']],3:[['A'],['D']],4:[['A'],['E']],
+  #   5:[['A'],['C']],6:[['B'],['D']],7:[['G'],['J']],8:[['C'],['H']],
+  #   9:[['A','1'],['X','2']]}
+  #   tg = ncs_search.remove_masters_if_appear_in_copies(transform_to_group)
+  #   expected = [
+  #     [['A'], ['B']], [['A'], ['C']], [['A'], ['D']], [['A'], ['E']],
+  #     [['A', '1'], ['X', '2']], [['G'], ['J']]]
+  #   self.assertEqual(sorted(tg.values()),expected)
 
   def test_remove_far_atoms(self):
     # print sys._getframe().f_code.co_name
@@ -225,52 +226,56 @@ class TestSimpleAlignment(unittest.TestCase):
     self.assertEqual([0, 1, 5, 7, 8],res_n_a)
     self.assertEqual([1, 2, 6, 8, 9],res_n_b)
 
-  def test_update_res_list(self):
-    # print sys._getframe().f_code.co_name
-    pdb_inp = pdb.hierarchy.input(pdb_string=pdb_str_2)
-    ph = pdb_inp.hierarchy
-    chains_info = ncs_search.get_chains_info(ph)
-    chain_match_list = ncs_search.search_ncs_relations(
-      chains_info=chains_info,min_percent=0.20,min_contig_length=1)
-    match_dict = ncs_search.clean_chain_matching(
-      chain_match_list=chain_match_list,ph=ph)
-    transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
-      match_dict, ph)
-    group_dict = ncs_search.build_group_dict(
-      transform_to_group,match_dict,chains_info)
-    #
-    m_res_list = group_dict[('A',)].residue_index_list[0]
-    c_res_list = group_dict[('A',)].residue_index_list[1]
-    self.assertEqual(m_res_list,[[0, 1, 2, 3, 4, 5, 6, 7, 8]])
-    self.assertEqual(c_res_list,[[4, 5, 6, 7, 8, 9, 10, 11, 12]])
-    adjust_residue_lists = {('A',)}
-    s = 109 # start of chain B
-    # change selection -> not include part of a residue
-    m_sel = range(29) + range(37,66)
-    c_sel = range(29+s) + range(37+s,66+s)
-    m_sel = flex.size_t(m_sel)
-    c_sel = flex.size_t(c_sel)
-    group_dict[('A',)].iselections[0][0] = m_sel
-    group_dict[('A',)].iselections[1][0] = c_sel
-    #
-    ncs_search.update_res_list(group_dict,chains_info,adjust_residue_lists)
-    m_res_list = group_dict[('A',)].residue_index_list[0]
-    c_res_list = group_dict[('A',)].residue_index_list[1]
-    self.assertEqual(m_res_list,[[0, 1, 2, 3, 5, 6, 7, 8]])
-    self.assertEqual(c_res_list,[[4, 5, 6, 7, 9, 10, 11, 12]])
-    # change selection -> not include a residue
-    m_sel = range(29) + range(37,66)
-    c_sel = range(29+s) + range(37+s,66+s)
-    m_sel = flex.size_t(m_sel)
-    c_sel = flex.size_t(c_sel)
-    group_dict[('A',)].iselections[0][0] = m_sel
-    group_dict[('A',)].iselections[1][0] = c_sel
-    #
-    ncs_search.update_res_list(group_dict,chains_info,adjust_residue_lists)
-    m_res_list = group_dict[('A',)].residue_index_list[0]
-    c_res_list = group_dict[('A',)].residue_index_list[1]
-    self.assertEqual(m_res_list,[[0, 1, 2, 3, 5, 6, 7, 8]])
-    self.assertEqual(c_res_list,[[4, 5, 6, 7, 9, 10, 11, 12]])
+  # def test_update_res_list(self):
+  #   """
+  #   Function deleted, test obsoleted
+  #   """
+  #   # print sys._getframe().f_code.co_name
+  #   pdb_inp = pdb.hierarchy.input(pdb_string=pdb_str_2)
+  #   ph = pdb_inp.hierarchy
+  #   chains_info = ncs_search.get_chains_info(ph)
+  #   chain_match_list = ncs_search.search_ncs_relations(
+  #     chains_info=chains_info,min_percent=0.20,min_contig_length=1)
+  #   match_dict = ncs_search.clean_chain_matching(
+  #     chain_match_list=chain_match_list,ph=ph)
+  #   # transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
+  #   #   match_dict, ph)
+  #   # group_dict = ncs_search.build_group_dict(
+  #   #   transform_to_group,match_dict,chains_info)
+  #   group_dict = ncs_search.ncs_grouping_and_group_dict(match_dict, ph)
+  #   #
+  #   m_res_list = group_dict[('A',)].residue_index_list[0]
+  #   c_res_list = group_dict[('A',)].residue_index_list[1]
+  #   self.assertEqual(m_res_list,[[0, 1, 2, 3, 4, 5, 6, 7, 8]])
+  #   self.assertEqual(c_res_list,[[4, 5, 6, 7, 8, 9, 10, 11, 12]])
+  #   adjust_residue_lists = {('A',)}
+  #   s = 109 # start of chain B
+  #   # change selection -> not include part of a residue
+  #   m_sel = range(29) + range(37,66)
+  #   c_sel = range(29+s) + range(37+s,66+s)
+  #   m_sel = flex.size_t(m_sel)
+  #   c_sel = flex.size_t(c_sel)
+  #   group_dict[('A',)].iselections[0][0] = m_sel
+  #   group_dict[('A',)].iselections[1][0] = c_sel
+  #   #
+  #   ncs_search.update_res_list(group_dict,chains_info,adjust_residue_lists)
+  #   m_res_list = group_dict[('A',)].residue_index_list[0]
+  #   c_res_list = group_dict[('A',)].residue_index_list[1]
+  #   self.assertEqual(m_res_list,[[0, 1, 2, 3, 5, 6, 7, 8]])
+  #   self.assertEqual(c_res_list,[[4, 5, 6, 7, 9, 10, 11, 12]])
+  #   # change selection -> not include a residue
+  #   m_sel = range(29) + range(37,66)
+  #   c_sel = range(29+s) + range(37+s,66+s)
+  #   m_sel = flex.size_t(m_sel)
+  #   c_sel = flex.size_t(c_sel)
+  #   group_dict[('A',)].iselections[0][0] = m_sel
+  #   group_dict[('A',)].iselections[1][0] = c_sel
+  #   #
+  #   ncs_search.update_res_list(group_dict,chains_info,adjust_residue_lists)
+  #   m_res_list = group_dict[('A',)].residue_index_list[0]
+  #   c_res_list = group_dict[('A',)].residue_index_list[1]
+  #   self.assertEqual(m_res_list,[[0, 1, 2, 3, 5, 6, 7, 8]])
+  #   self.assertEqual(c_res_list,[[4, 5, 6, 7, 9, 10, 11, 12]])
 
   def test_update_atom_selections(self):
     # print sys._getframe().f_code.co_name
@@ -283,10 +288,11 @@ class TestSimpleAlignment(unittest.TestCase):
     match_dict = ncs_search.clean_chain_matching(
       chain_match_list=chain_match_list,ph=ph,
       similarity_threshold=0.1)
-    transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
-      match_dict, ph)
-    group_dict = ncs_search.build_group_dict(
-      transform_to_group,match_dict,chains_info)
+    # transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
+    #   match_dict, ph)
+    # group_dict = ncs_search.build_group_dict(
+    #   transform_to_group,match_dict,chains_info)
+    group_dict = ncs_search.ncs_grouping_and_group_dict(match_dict, ph)
 
     a_res_list = group_dict[('A',)].residue_index_list[0]
     b_res_list = group_dict[('A',)].residue_index_list[1]
@@ -388,28 +394,29 @@ class TestSimpleAlignment(unittest.TestCase):
     match_dict = ncs_search.clean_chain_matching(
       chain_match_list=chain_match_list,ph=ph,
       similarity_threshold=0.1)
-    transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
-      match_dict, ph)
+    # transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
+    #   match_dict, ph)
+    group_dict = ncs_search.ncs_grouping_and_group_dict(match_dict, ph)
     #
-    r = transform_to_group[1][2][0]
-    t = transform_to_group[1][2][1]
-    rt = r.transpose()
-    tt = - rt*t
+    # r = transform_to_group[1][2][0]
+    # t = transform_to_group[1][2][1]
+    # rt = r.transpose()
+    # tt = - rt*t
+    # #
+    # xyz_A = ph.select(flex.size_t_range(0,6)).atoms().extract_xyz()
+    # xyz_B = ph.select(flex.size_t_range(6,10)).atoms().extract_xyz()
+    # xyz_F = ph.select(flex.size_t_range(20,26)).atoms().extract_xyz()
+    # xyz_G = ph.select(flex.size_t_range(26,30)).atoms().extract_xyz()
+    # #
+    # xyz_F_expected = (rt.elems * xyz_A + tt)
+    # xyz_G_expected = (rt.elems * xyz_B + tt)
+    # #
+    # self.assertEqual(list(xyz_F.round(3)),list(xyz_F_expected.round(3)))
+    # self.assertEqual(list(xyz_G.round(3)),list(xyz_G_expected.round(3)))
     #
-    xyz_A = ph.select(flex.size_t_range(0,6)).atoms().extract_xyz()
-    xyz_B = ph.select(flex.size_t_range(6,10)).atoms().extract_xyz()
-    xyz_F = ph.select(flex.size_t_range(20,26)).atoms().extract_xyz()
-    xyz_G = ph.select(flex.size_t_range(26,30)).atoms().extract_xyz()
-    #
-    xyz_F_expected = (rt.elems * xyz_A + tt)
-    xyz_G_expected = (rt.elems * xyz_B + tt)
-    #
-    self.assertEqual(list(xyz_F.round(3)),list(xyz_F_expected.round(3)))
-    self.assertEqual(list(xyz_G.round(3)),list(xyz_G_expected.round(3)))
-    #
-    group_dict = ncs_search.build_group_dict(
-      transform_to_group,match_dict,chains_info)
-    self.assertEqual(group_dict.keys(),[('A','B')])
+    # group_dict = ncs_search.build_group_dict(
+    #   transform_to_group,match_dict,chains_info)
+    self.assertEqual(group_dict.keys(),[('A',), ('B',)])
 
   def test_split_groups_to_spec(self):
     # print sys._getframe().f_code.co_name
