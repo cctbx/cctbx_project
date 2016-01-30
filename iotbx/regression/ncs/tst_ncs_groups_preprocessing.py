@@ -1,5 +1,5 @@
 from __future__ import division
-from iotbx.ncs.ncs_preprocess import format_80
+from iotbx.ncs import format_80
 from libtbx.utils import null_out
 from libtbx.utils import Sorry
 from datetime import datetime
@@ -10,6 +10,7 @@ import iotbx.phil
 import unittest
 import shutil
 import os
+from iotbx.ncs import ncs_group_master_phil
 
 __author__ = 'Youval'
 
@@ -77,15 +78,19 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       {'chain A': ['chain C', 'chain E'], 'chain B': ['chain D', 'chain F']}]
     expected_ncs_chains = [['chain A'],['chain A', 'chain B']]
     for i,phil_case in enumerate([user_phil1,user_phil2]):
-      trans_obj = ncs.input(
-        ncs_phil_string = phil_case)
+      phil_groups = ncs_group_master_phil.fetch(iotbx.phil.parse(phil_case)).extract()
+      trans_obj = iotbx.ncs.input(
+        ncs_phil_groups=phil_groups.ncs_group)
       self.assertEqual(trans_obj.ncs_selection_str,expected_ncs_selection[i])
       self.assertEqual(trans_obj.ncs_to_asu_selection,expected_ncs_to_asu[i])
       self.assertEqual(trans_obj.ncs_chain_selection,expected_ncs_chains[i])
     # error reporting
     for pc in [user_phil3,user_phil4,user_phil5]:
+      phil_groups = ncs_group_master_phil.fetch(iotbx.phil.parse(pc)).extract()
       self.assertRaises(
-        IOError,ncs.input,ncs_phil_string=pc)
+        IOError,iotbx.ncs.input,
+        # ncs_phil_string=pc
+        ncs_phil_groups=phil_groups.ncs_group)
 
   def test_phil_processing(self):
     """ Verify that phil parameters are properly processed
@@ -94,17 +99,19 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     # print sys._getframe().f_code.co_name
     # read file and create pdb object
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
-    trans_obj = ncs.input(
-        ncs_phil_string = pdb_test_data2_phil,
+    phil_groups = ncs_group_master_phil.fetch(
+        iotbx.phil.parse(pdb_test_data2_phil)).extract()
+    trans_obj = iotbx.ncs.input(
+        ncs_phil_groups=phil_groups.ncs_group,
         pdb_hierarchy_inp=pdb_obj,
         exclude_selection=None)
 
-    expected = '(chain A) or (chain B or chain C)'
+    expected = "(chain 'A') or (chain 'B' or chain 'C')"
     self.assertEqual(trans_obj.ncs_selection_str,expected)
 
-    expected = {'chain A': ['chain D', 'chain G'],
-                'chain B or chain C': ['chain E or chain F',
-                                       'chain H or chain I']}
+    expected = {"chain 'A'": ["chain 'D'", "chain 'G'"],
+                "chain 'B' or chain 'C'": ["chain 'E' or chain 'F'",
+                                       "chain 'H' or chain 'I'"]}
     self.assertEqual(trans_obj.ncs_to_asu_selection,expected)
     # check ncs_transform
     group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.itervalues()]
@@ -124,14 +131,18 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     # print sys._getframe().f_code.co_name
     # read file and create pdb object
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data1)
+    phil_groups = ncs_group_master_phil.fetch(
+        iotbx.phil.parse(pdb_test_data1_phil)).extract()
     trans_obj = ncs.input(
-        ncs_phil_string = pdb_test_data1_phil,
+        ncs_phil_groups=phil_groups.ncs_group,
         pdb_hierarchy_inp=pdb_obj,
         exclude_selection=None)
 
-    self.assertEqual(trans_obj.ncs_selection_str,'(chain A) or (chain B)')
-    expected = {'chain A': ['chain C', 'chain E'],
-                'chain B': ['chain D', 'chain F']}
+    # print "trans_obj.ncs_selection_str", trans_obj.ncs_selection_str
+    # print "trans_obj.ncs_to_asu_selection", trans_obj.ncs_to_asu_selection
+    self.assertEqual(trans_obj.ncs_selection_str,"(chain 'A') or (chain 'B')")
+    expected = {"chain 'A'": ["chain 'C'", "chain 'E'"],
+                "chain 'B'": ["chain 'D'", "chain 'F'"]}
     self.assertEqual(trans_obj.ncs_to_asu_selection,expected)
     # check ncs_transform
     group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.itervalues()]
@@ -153,19 +164,20 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertTrue(max(d)<0.01)
 
     # test that ncs_asu does not contain the identity transforms
-    expected = {'chain A_002', 'chain A_003', 'chain B_005', 'chain B_006'}
+    expected = {"chain 'A'_002", "chain 'A'_003", "chain 'B'_005", "chain 'B'_006"}
     self.assertEqual(expected,set(trans_obj.ncs_to_asu_map.keys()))
 
     # test mapping of the different selection in the NCS
-    self.assertEqual(list(trans_obj.asu_to_ncs_map['chain A']),[0,1])
-    self.assertEqual(list(trans_obj.asu_to_ncs_map['chain B']),[2])
+    self.assertEqual(list(trans_obj.asu_to_ncs_map["chain 'A'"]),[0,1])
+    self.assertEqual(list(trans_obj.asu_to_ncs_map["chain 'B'"]),[2])
 
     # test that transform_chain_assignment contains all transforms
-    expected = {'chain A_002', 'chain A_003', 'chain B_005', 'chain B_006'}
     self.assertEqual(expected,set(trans_obj.transform_chain_assignment))
 
   def test_spec_reading(self):
-    """ verify creating and processing spec """
+    """ verify creating and processing spec
+    This is ncs.ncs - specific functionality
+    """
     if have_phenix:
       # print sys._getframe().f_code.co_name
       # creating a spec file
@@ -229,7 +241,9 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
   def test_processing_of_asu_2(self):
     """ processing complete ASU
-    If MTRIX records are present, they are ignored """
+    If MTRIX records are present, they are ignored
+    This maybe ncs.ncs - specific functionality, not clear yet.
+    """
     # print sys._getframe().f_code.co_name
     # reading and processing the spec file
     trans_obj = ncs.input(pdb_hierarchy_inp = self.pdb_obj)
@@ -287,7 +301,9 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
               "chain D and (resseq 1:7)": ["chain E and (resseq 1:7)"]}
     self.assertEqual(t2,t2_exp)
     #
-    print trans_obj2.tr_id_to_selection.keys()
+    # print "trans_obj.tr_id_to_selection", trans_obj.tr_id_to_selection
+    # print "trans_obj2.tr_id_to_selection", trans_obj2.tr_id_to_selection
+    # STOP()
     t1 = trans_obj.tr_id_to_selection["chain 'A'_003"]
     t2 = trans_obj2.tr_id_to_selection["chain A_003"]
     self.assertEqual(t1,("chain 'A'", "chain 'C'"))
@@ -326,11 +342,17 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     residues. """
     # print sys._getframe().f_code.co_name
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
+    phil_groups = ncs_group_master_phil.fetch(
+        iotbx.phil.parse(pdb_test_data2_phil)).extract()
     trans_obj = ncs.input(
-      ncs_phil_string = pdb_test_data2_phil,
+      ncs_phil_groups=phil_groups.ncs_group,
       pdb_hierarchy_inp=pdb_obj,
       exclude_selection=None)
     result = trans_obj.print_ncs_phil_param(write=False)
+    # print "="*50
+    # print "resutl"
+    # print result
+    # print "="*50
     test = (pdb_test_data2_phil == result)
     test = test or (pdb_test_data2_phil_reverse == result)
     self.assertTrue(test)
@@ -401,7 +423,9 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertEqual(ncs_obj.number_of_ncs_groups,1)
     gr = ncs_obj.print_ncs_phil_param()
     self.assertEqual(gr,answer_4)
-    ncs_obj = iotbx.ncs.input(ncs_phil_string=answer_4)
+    phil_groups = ncs_group_master_phil.fetch(
+        iotbx.phil.parse(answer_4)).extract()
+    ncs_obj = iotbx.ncs.input(ncs_phil_groups=phil_groups.ncs_group)
     self.assertEqual(ncs_obj.number_of_ncs_groups,1)
     gr = ncs_obj.print_ncs_phil_param()
     self.assertEqual(gr,answer_4)
@@ -519,14 +543,14 @@ ncs_group {
 
 pdb_test_data2_phil_reverse = '''\
 ncs_group {
-  reference = chain B or chain C
-  selection = chain E or chain F
-  selection = chain H or chain I
+  reference = chain 'B' or chain 'C'
+  selection = chain 'E' or chain 'F'
+  selection = chain 'H' or chain 'I'
 }
 ncs_group {
-  reference = chain A
-  selection = chain D
-  selection = chain G
+  reference = chain 'A'
+  selection = chain 'D'
+  selection = chain 'G'
 }
 '''
 
@@ -838,7 +862,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_processing_of_asu_2']
+  tests = ['test_print_ncs_phil_param']
   suite = unittest.TestSuite(map(TestNcsGroupPreprocessing,tests))
   return suite
 

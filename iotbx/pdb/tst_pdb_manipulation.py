@@ -1,7 +1,7 @@
 from __future__ import division
 from  iotbx.pdb.multimer_reconstruction import multimer
-from iotbx.ncs.ncs_preprocess import format_num_as_str
-from iotbx.ncs.ncs_preprocess import ncs_group_object
+from iotbx.ncs import format_num_as_str
+import iotbx.ncs
 from mmtbx.ncs.ncs_search import is_same_transform
 from mmtbx.ncs.ncs_utils import apply_transforms
 from libtbx.test_utils import approx_equal
@@ -114,7 +114,7 @@ class TestMultimerReconstruction(unittest.TestCase):
   # @unittest.SkipTest
   def test_ncs_copies_naming(self):
     # print sys._getframe().f_code.co_name
-    transforms_obj = ncs_group_object()
+    transforms_obj = iotbx.ncs_input()
     result =  transforms_obj.make_chains_names(
       ['chain A_001','chain B_001','chain A_002','chain B_002'],('A','B'))
     expected = {'chain A_001': 'C', 'chain B_001': 'D', 'chain A_002': 'E',
@@ -240,7 +240,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     No inception of the output is done.
     To view the output change the write=False to ,write=True
     """
-    transforms_obj = ncs_group_object()
+    transforms_obj = iotbx.ncs.input()
     pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
     transform_info = pdb_inp.process_mtrix_records()
@@ -337,7 +337,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     No inception of the output is done. Just making sure it does not break
     To view the output change the write=False to ,write=True
     """
-    transforms_obj = ncs_group_object()
+    transforms_obj = iotbx.ncs.input()
     pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
     transform_info = pdb_inp.process_mtrix_records()

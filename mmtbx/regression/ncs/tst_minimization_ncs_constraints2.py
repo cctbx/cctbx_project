@@ -6,6 +6,8 @@ import iotbx.ncs as ncs
 import mmtbx.utils
 import iotbx.pdb
 import time
+from iotbx.ncs import ncs_group_master_phil
+import iotbx.phil
 
 pdb_answer_0 = """\
 CRYST1   18.415   14.419   12.493  90.00  90.00  90.00 P 1
@@ -237,9 +239,16 @@ def get_inputs(prefix, pdb_answer, pdb_poor, ncs_params_str, real_space, d_min):
     normalization = True)
   restraints_manager.geometry.remove_c_beta_torsion_restraints_in_place()
   #
+  phil_groups = ncs_group_master_phil.fetch(
+      iotbx.phil.parse(ncs_params_str)).extract()
+
   ncs_inp = ncs.input(
-    pdb_string=pdb_poor, ncs_phil_string=ncs_params_str)
+    pdb_string=pdb_poor, ncs_phil_groups=phil_groups.ncs_group)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
+  # print "ncs_groups:", len(ncs_groups)
+  # print "master isel:", list(ncs_groups[0].master_iselection)
+  # for c in ncs_groups[0].copies:
+  #   print "copy isel:", list(c.iselection)
   #
   set_scattering_dictionary(xray_structure = xrs_answer, d_min = d_min)
   set_scattering_dictionary(xray_structure = xrs_poor,   d_min = d_min)
@@ -376,6 +385,7 @@ def run():
       #
       # Refine NCS operators only.
       #
+      print "groups are normal"
       prefix = "tst_%s_TransformsOnly_1"%suffix
       rf = call(
         prefix           = prefix,
@@ -395,10 +405,11 @@ def run():
         assert r[1]<0.005
         assert r[2]<0.001
         assert rf < 1.e-4
-    if(1):
+    if(0):
       #
       # Refine NCS operators only (same as above with NCS groups permutted).
       #
+      print "groups permutted"
       prefix = "tst_%s_TransformsOnly_2"%suffix
       rf = call(
         prefix           = prefix,
@@ -411,9 +422,9 @@ def run():
         d_min            = d_min)
       r = check_result(result_file_name=prefix+".pdb")
       if(real_space):
-        assert r[1]<0.1
-        assert r[2]<0.05
-        assert rf is None
+        assert r[1]<0.1, r[1]
+        assert r[2]<0.05, r[2]
+        assert rf is None, rf
       else:
         assert r[1]<0.005
         assert r[2]<0.001

@@ -180,10 +180,6 @@ def find_ncs_in_hierarchy(ph,
     transform_to_group,match_dict = minimal_master_ncs_grouping(match_dict, ph)
   else:
     transform_to_group,match_dict = minimal_ncs_operators_grouping(match_dict)
-  #
-  # print "match_dict"
-  # for k, v in match_dict.iteritems():
-  #   print "  ", k, list(v[0]), list(v[1])
 
 
   group_dict = build_group_dict(transform_to_group,match_dict,chains_info)
@@ -331,16 +327,6 @@ def get_rmsds(hierarchy, cache, cur_ttg, master, copy):
   return rmsd1, rmsd2
 
 
-def get_info_from_match_dict(match_dict, key, chain):
-  assert chain in key, "Mismatch between key and chain"
-  [sel_1,sel_2,res_1,res_2,_,_,rmsd] = match_dict[key]
-  # print "sel_1,sel_2,res_1,res_2,_,_,rmsd", sel_1,sel_2,res_1,res_2,rmsd
-  if chain == key[0]:
-    return sel_1, res_1, rmsd
-  else:
-    return sel_2, res_2, rmsd
-
-
 def get_bool_selection_to_keep(big_selection, small_selection):
   """
   given 2 iselections (they are sorted), returns bool selection of size
@@ -372,6 +358,63 @@ def get_bool_selection_to_keep(big_selection, small_selection):
   assert n_matches == size_small, "%d %d" % (n_matches, size_small)
   return result
 
+def get_preliminary_ncs_groups(match_dict):
+  pairs = sorted(match_dict.keys())
+  chains_in_groups = []
+  preliminary_ncs_groups = []
+  while len(pairs) > 0:
+    # print "  pairs", pairs
+    # take the first one, should be new group
+    n_not_in_groups = 0
+    n_not_in_groups += pairs[0][0] not in chains_in_groups
+    n_not_in_groups += pairs[0][1] not in chains_in_groups
+    # print "n_not_in_groups", n_not_in_groups
+    if n_not_in_groups == 2:
+      # make new group
+      preliminary_ncs_groups.append({
+          pairs[0][0]:pairs[0],
+          pairs[0][1]:pairs[0]})
+      chains_in_groups.append(pairs[0][0])
+      chains_in_groups.append(pairs[0][1])
+      curr_masters = pairs[0]
+      pairs.pop(0)
+      # print "  curr_masters", curr_masters
+      # check all the rest pairs to see if they can add something to this group
+      pairs_to_remove = []
+      for pair in pairs:
+        # print "    checking", pair
+        if pair[0] == curr_masters[0]:
+          if pair[1] not in curr_masters:
+            # add pair[1]
+            # print "      adding 0"
+            if pair[1] not in chains_in_groups:
+              preliminary_ncs_groups[-1][pair[1]] = pair
+              chains_in_groups.append(pair[1])
+            pairs_to_remove.append(pair)
+
+        if pair[1] == curr_masters[0]:
+          if pair[0] not in curr_masters:
+            # print "      adding 1"
+            # add pair[1]
+            if pair[0] not in chains_in_groups:
+              preliminary_ncs_groups[-1][pair[0]] = pair
+              chains_in_groups.append(pair[0])
+            pairs_to_remove.append(pair)
+      for p in pairs_to_remove:
+        pairs.remove(p)
+
+    elif n_not_in_groups == 0:
+      # print "    popping the first"
+      pairs.pop(0)
+    elif n_not_in_groups == 1:
+      # should never happen
+      # print "    n_not_in_groups==1"
+      pairs.pop(0)
+      # assert 0
+    # print "prel_ncs_gr", preliminary_ncs_groups
+  return preliminary_ncs_groups
+
+
 def ncs_grouping_and_group_dict(match_dict, hierarchy):
   """
   The implementation of simplest way to do NCS grouping. Maximum one chain
@@ -380,37 +423,7 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
   and build_group_dict.
   """
   group_dict = {}
-  # temp storages
-  # [{chain id: key to match_dict}, {...} ... ]
-  preliminary_ncs_groups = []
-  for chain_pair, info in match_dict.iteritems():
-    [sel_1,sel_2,res_1,res_2,r,t,rmsd] = info
-    # if sel_1.size() < len_of_smallest_selection:
-    #   len_of_smallest_selection = sel_1.size()
-    #   key_with_smallest_selection = chain_pair
-    # print "selection sizes:",chain_pair, sel_1.size(), sel_2.size()
-    i_existing = None
-    i_found_gr = None
-    i = 0
-    while i < 2 and i_existing is None:
-      for n_gr, prel_ncs_group in enumerate(preliminary_ncs_groups):
-        # print "checking ", chain_pair[i], prel_ncs_group.keys()
-        if chain_pair[i] in prel_ncs_group.keys():
-          i_existing = i
-          i_found_gr = n_gr
-          break
-      i += 1
-    if i_existing is None:
-      assert i_found_gr is None
-      # add new preliminary ncs group
-      preliminary_ncs_groups.append({
-          chain_pair[0]:chain_pair,
-          chain_pair[1]:chain_pair})
-    else:
-      # add other chain to found ncs group
-      preliminary_ncs_groups[i_found_gr][chain_pair[1-i_existing]] = chain_pair
-  # print "preliminary_ncs_groups", preliminary_ncs_groups
-
+  preliminary_ncs_groups = get_preliminary_ncs_groups(match_dict)
 
   # now we need to just transform preliminary_ncs_groups using match_dict
   # into group_dict. This means that for every dict in preliminary_ncs_groups
@@ -420,7 +433,6 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
 
   group_id = 0
   tr_sn = 1
-
   for prel_gr_dict in preliminary_ncs_groups:
     # print "==============="
     sorted_gr_chains = sorted(prel_gr_dict.keys())
@@ -451,25 +463,37 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
     for i in all_pairs[1:]:
       left = left & set(i)
     # should be 1 (a lot of chains) or 2 (if there only 2 chains)
-    assert len(left) > 0
+    # if len
+    if len(left) == 0:
+      # means that all something like
+      # all_pairs = [('chain C', 'chain E'), ('chain A', 'chain E'),
+      #              ('chain A', 'chain C')]
+      # any should work then?...
+
+      # master = all_pairs[0][0]
+      master = sorted_gr_chains[0]
+
+    # assert len(left) > 0
     # print "left", left
-    if len(left) > 1:
+    elif len(left) > 1:
       master = sorted(left)[0]
     else:
       master = left.pop()
 
-    # print "selected master second:", master
 
     # selecting smallest master key - for no reason actually
     key_with_smallest_selection = None
     len_of_smallest_selection = 1e100
     for ch, key in prel_gr_dict.iteritems():
-      master_sel, master_res, master_rmsd = get_info_from_match_dict(
-              match_dict, key, master)
-      if master_sel.size() < len_of_smallest_selection:
-        len_of_smallest_selection = master_sel.size()
-        key_with_smallest_selection = key
+      # print "ch, master, key:", ch, master, key
+      if master in key:
+        master_sel, master_res, master_rmsd = get_info_from_match_dict(
+                match_dict, key, master)
+        if master_sel.size() < len_of_smallest_selection:
+          len_of_smallest_selection = master_sel.size()
+          key_with_smallest_selection = key
     # print "key_with_smallest_selection, len_of_smallest_selection",key_with_smallest_selection, len_of_smallest_selection
+    # print "selected master second:", master
 
     assert master is not None
     assert master in key_with_smallest_selection, "%s, %s" % (master, key_with_smallest_selection)
@@ -479,12 +503,13 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
     # the minimum selection suitable to all copies.
     min_master_selection = None
     for ch, key in prel_gr_dict.iteritems():
-      master_sel, master_res, master_rmsd = get_info_from_match_dict(
-              match_dict, key, master)
-      if min_master_selection is None:
-        min_master_selection = master_sel
-      else:
-        min_master_selection = min_master_selection.intersection(master_sel)
+      if master in key:
+        master_sel, master_res, master_rmsd = get_info_from_match_dict(
+                match_dict, key, master)
+        if min_master_selection is None:
+          min_master_selection = master_sel
+        else:
+          min_master_selection = min_master_selection.intersection(master_sel)
     # print "size of min_master_selection", min_master_selection.size()
 
     #
@@ -499,7 +524,6 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
         ncs_group_id=group_id,
         rmsd=0)
     tr_sn += 1
-
     # master_sel, master_res, master_rmsd = get_info_from_match_dict(
     #     match_dict,key_with_smallest_selection, master)
     new_ncs_group.iselections.append([min_master_selection])
@@ -508,25 +532,15 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
     new_ncs_group.transforms.append(tr)
 
     for ch_copy in sorted_gr_chains:
-      # master_size = new_ncs_group.iselections[0][0].size()
       master_size = min_master_selection.size()
-      if ch_copy == master:
+      copy_sel, copy_res, m_sel = get_copy_master_selections_from_match_dict(
+          match_dict, prel_gr_dict, master, ch_copy)
+      if copy_sel is None:
+        # print " Continue"
         continue
-      # check whether the master is the same XXX Do this later
-      # otherwise just calculate new r,t
-      # key = prel_gr_dict[ch_copy]
-      copy_sel, copy_res, copy_rmsd = get_info_from_match_dict(
-          match_dict,prel_gr_dict[ch_copy], ch_copy)
-      from iotbx.pdb.atom_selection import selection_string_from_selection
-      # print "master_sel:", selection_string_from_selection(hierarchy, master_sel)
-      # print "copy_sel:", selection_string_from_selection(hierarchy, copy_sel)
-      # print "master_sel:", list(master_sel)
-      # print "copy_sel:", list(copy_sel)
       new_copy_sel = copy_sel
       new_master_sel = min_master_selection
-      m_sel, m_res, m_rmsd = get_info_from_match_dict(
-          match_dict, prel_gr_dict[ch_copy], master)
-      # print "m_sel:", list(m_sel)
+
       if copy_sel.size() > min_master_selection.size():
         # clean copy sel
         # print "copy is bigger", copy_sel.size(), min_master_selection.size()
@@ -541,6 +555,7 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
         # print "master is bigger", copy_sel.size(), master_sel.size()
         # print "sizes:", master_sel.size(), m_sel.size()
         # print "master:", list(master_sel)
+        assert 0
         filter_sel = get_bool_selection_to_keep(
             big_selection=master_sel,
             small_selection=m_sel)
@@ -552,9 +567,7 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
           new_ncs_group.iselections[i] = [new_ncs_group.iselections[i][0].select(filter_sel)]
         master_sel = new_master_sel
         master_size = master_sel.size()
-        assert 0
 
-      # STOP()
       r,t,copy_rmsd = my_get_rot_trans(
           ph=hierarchy,
           master_selection=new_master_sel,
@@ -571,6 +584,7 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
       new_ncs_group.residue_index_list.append([copy_res])
       new_ncs_group.copies.append([ch_copy])
       new_ncs_group.transforms.append(tr)
+      # print "  appended new copy:", ch_copy
       tr_sn += 1
     group_dict[tuple(master)] = new_ncs_group
     master_size = new_ncs_group.iselections[0][0].size()
@@ -589,511 +603,543 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
   return group_dict
 
 
-def minimal_master_ncs_grouping(match_dict, hierarchy):
-  """
-  XXX
-  XXX still used in ncs_preprocess.py:validate_ncs_phil_groups()
-  XXX
-  Look for NCS groups with the smallest number of chains in the master copy
-  This is not the minimal number of NCS operations
+def get_info_from_match_dict(match_dict, key, chain):
+  # print "    chain, key in get_info:", chain, key
+  assert chain in key, "Mismatch between key and chain %s %s" % (chain, key)
+  [sel_1,sel_2,res_1,res_2,_,_,rmsd] = match_dict[key]
+  # print "sel_1,sel_2,res_1,res_2,_,_,rmsd", sel_1,sel_2,res_1,res_2,rmsd
+  if chain == key[0]:
+    return sel_1, res_1, rmsd
+  else:
+    return sel_2, res_2, rmsd
 
-  Args:
-    match_dict(dict):
-      key:(chains_id_1,chains_id_2)
-      val:[select_1,select_2,res_list_1,res_list_2,rot,trans,rmsd]
-      chain_ID (str), selection_1/2 (flex.size_t)
-      res_list_1/2 (list): list of matching residues indices
-      rot (matrix obj): rotation matrix
-      tran (matrix obj): translation vector
-      rmsd (float)
+def get_copy_master_selections_from_match_dict(
+    match_dict, prel_gr_dict, master, ch_copy):
+  # copy_sel, copy_res, copy_rmsd = get_info_from_match_dict(
+  #     match_dict,prel_gr_dict[ch_copy], ch_copy if ch_copy1 is None else ch_copy1)
+  # in prel_gr_dict we want to find value with both master and ch_copy
+  # return copy_sel, copy_res, m_sel
+  key = None
+  for v in prel_gr_dict.itervalues():
+    if v == (master, ch_copy) or v == (ch_copy, master):
+      key = v
+      break
+  if key is None:
+    # print "  key is None, master, ch_copy", master, ch_copy
+    return None, None, None
+  # print "  key:", key
+  [sel_1,sel_2,res_1,res_2,_,_,rmsd] = match_dict[key]
+  if master == key[0]:
+    return sel_2, res_2, sel_1
+  else:
+    return sel_1, res_1, sel_2
 
-  Returns:
-    transform_to_group (dict):
-      keys: tuple of master chain IDs
-      values: NCS_groups_container objects
-    match_dict (dict): updated match_dict
-  """
-  # get a sorted list of match_dict key (by chain names)
-  sorted_chain_groups_keys = sorted(match_dict)
-  # sorted_chain_groups_keys = match_dict.keys()
-  # print "sorted_chain_groups_keys", sorted_chain_groups_keys
-  # collect all chain IDs
-  chain_ids = {c_id for key in sorted_chain_groups_keys for c_id in key}
-  chain_ids = sorted(chain_ids)
-  # print "chain_ids", chain_ids
-  # STOP()
-  # for each group in chain_groups find the transforms and group them
-  transform_to_group = {}
-  chains_in_groups = set()
-  tr_sn = 0
-  cache = hierarchy.atom_selection_cache()
-  #
-  for (master_id, copy_id) in sorted_chain_groups_keys:
-    [sel_1,sel_2,res_1,res_2,r,t,rmsd] = match_dict[master_id,copy_id]
-    # check that master and copy are not a copies in another group
-    # print "tr_sn:", tr_sn
-    # print "  master, copy, chains_in_groups:", master_id, copy_id, chains_in_groups
-    # print "  transform_to_group",
-    # for k, v in transform_to_group.iteritems():
-    #   print "    ", k, v[:2]
-    if (master_id in chains_in_groups) or (copy_id in chains_in_groups):
-      match_dict.pop((master_id, copy_id),None)
-      # print "!!! Popping", master_id, copy_id
-      continue
-    # check if the chains related by ncs operation
-    tr_num, is_transpose = find_same_transform(r,t,transform_to_group)
-    # print "tr_num", tr_num, is_transpose
-    if is_transpose and ((master_id in chains_in_groups) or (copy_id in chains_in_groups)):
-      # master and copy related by transpose of the rotation r
-      if master_id in transform_to_group[tr_num][0]:
-        # master_id is already a master for transform tr_num
-        tr_num = None
-        temp_master, temp_copy = master_id, copy_id
-      else:
-        temp_master, temp_copy = copy_id, master_id
-        # flip the key in match_dict
-        match_dict.pop((master_id, copy_id),None)
-        # replace rotation and translation
-        r,t = inverse_transform(r,t)
-        match_dict[copy_id,master_id] = [sel_2,sel_1,res_2,res_1,r,t,rmsd]
-    else:
-      temp_master, temp_copy = master_id, copy_id
-    #
-    chains_in_groups.add(temp_copy)
-    if tr_num and temp_master not in transform_to_group[tr_num][0]:
-      # Here we want to make sure that this update won't violate
-      # order of atoms, if not, we are changing the order...
-      rmsd1, rmsd2 = get_rmsds2(
-          master_xyz=hierarchy.select(sel_1).atoms().extract_xyz(),
-          copy_xyz=hierarchy.select(sel_2).atoms().extract_xyz(),
-          cur_ttg=transform_to_group[tr_num])
-      # rmsd1, rmsd2 = get_rmsds(
-      #     hierarchy,
-      #     cache,
-      #     transform_to_group[tr_num],
-      #     temp_master,
-      #     temp_copy)
-      # print "RMSDs:", rmsd1, rmsd2
-      if rmsd1 > 10 or rmsd2 > 10:
-        tr_sn += 1
-        transform_to_group[tr_sn] = [[temp_master],[temp_copy],(r,t)]
-      # update dictionaries with additions to master and copies
-      transform_to_group[tr_num][0].append(temp_master)
-      transform_to_group[tr_num][1].append(temp_copy)
-    else:
-      # create a new transform object and update groups
-      tr_sn += 1
-      transform_to_group[tr_sn] = [[temp_master],[temp_copy],(r,t)]
-  # If a chain is a master or a copy for more than one transform,
-  # choose only the one with the smaller number of chains in master
-  master_size = [[len(v[0]),k] for k,v in transform_to_group.iteritems()]
-  # sort list by the number of chains in master for each transform
-  master_size.sort()
-  chain_left_to_add = set(chain_ids)
-  transform_to_use = set()
-  # Collect the transforms, starting with the smallest master
-  while bool(chain_left_to_add) and bool(master_size):
-    [_,k] = master_size.pop(0)
-    tr = transform_to_group[k]
-    # make sure ALL copies from transform need to be added
-    if not bool(set(tr[1]) - chain_left_to_add):
-      transform_to_use.add(k)
-      chain_left_to_add -= set(tr[1])
-      chain_left_to_add -= set(tr[0])
-  # delete all transforms that are not being used
-  tr_sns = transform_to_group.keys()
-  for tr_sn in tr_sns:
-    if not tr_sn in transform_to_use:
-      transform_to_group.pop(tr_sn)
-  return transform_to_group,match_dict
 
-def remove_masters_if_appear_in_copies(transform_to_group):
-  """
-  remove masters if appear in copies of the same transform
-  and of another transform
+# def minimal_master_ncs_grouping(match_dict, hierarchy):
+#   """
+#   XXX
+#   XXX still used in ncs_preprocess.py:validate_ncs_phil_groups()
+#   XXX
+#   Look for NCS groups with the smallest number of chains in the master copy
+#   This is not the minimal number of NCS operations
 
-  Args:
-    transform_to_group (dict):
-      keys: tuple of master chain IDs
-      values: NCS_groups_container objects
-    chain_ids (list): sorted list of chains IDs
+#   Args:
+#     match_dict(dict):
+#       key:(chains_id_1,chains_id_2)
+#       val:[select_1,select_2,res_list_1,res_list_2,rot,trans,rmsd]
+#       chain_ID (str), selection_1/2 (flex.size_t)
+#       res_list_1/2 (list): list of matching residues indices
+#       rot (matrix obj): rotation matrix
+#       tran (matrix obj): translation vector
+#       rmsd (float)
 
-  Returns:
-    updated transform_to_group
-  """
-  # clean transforms
-  for k,v in transform_to_group.iteritems():
-    masters = v[0]
-    copies = v[1]
-    keep_items = []
-    for i,ch_id in enumerate(masters):
-      if not (ch_id in copies):
-        keep_items.append(i)
-    transform_to_group[k][0] = [masters[x] for x in keep_items]
-    transform_to_group[k][1] = [copies[x] for x in keep_items]
-  # clean other transforms once the transforms are clean
-  all_copies = []
-  remove_items = []
-  keys = sorted(transform_to_group,key=lambda k:transform_to_group[k][0])
-  for k in keys:
-    copy_id = transform_to_group[k][1]
-    master_id = transform_to_group[k][0]
-    if (copy_id in all_copies) or (master_id in all_copies):
-      remove_items.append(k)
-    else:
-      all_copies.append(copy_id)
-  for k in remove_items:
-    transform_to_group.pop(k)
-  return transform_to_group
+#   Returns:
+#     transform_to_group (dict):
+#       keys: tuple of master chain IDs
+#       values: NCS_groups_container objects
+#     match_dict (dict): updated match_dict
+#   """
+#   # get a sorted list of match_dict key (by chain names)
+#   sorted_chain_groups_keys = sorted(match_dict)
+#   # sorted_chain_groups_keys = match_dict.keys()
+#   # print "sorted_chain_groups_keys", sorted_chain_groups_keys
+#   # collect all chain IDs
+#   chain_ids = {c_id for key in sorted_chain_groups_keys for c_id in key}
+#   chain_ids = sorted(chain_ids)
+#   # print "chain_ids", chain_ids
+#   # STOP()
+#   # for each group in chain_groups find the transforms and group them
+#   transform_to_group = {}
+#   chains_in_groups = set()
+#   tr_sn = 0
+#   cache = hierarchy.atom_selection_cache()
+#   #
+#   for (master_id, copy_id) in sorted_chain_groups_keys:
+#     [sel_1,sel_2,res_1,res_2,r,t,rmsd] = match_dict[master_id,copy_id]
+#     # check that master and copy are not a copies in another group
+#     # print "tr_sn:", tr_sn
+#     # print "  master, copy, chains_in_groups:", master_id, copy_id, chains_in_groups
+#     # print "  transform_to_group",
+#     # for k, v in transform_to_group.iteritems():
+#     #   print "    ", k, v[:2]
+#     if (master_id in chains_in_groups) or (copy_id in chains_in_groups):
+#       match_dict.pop((master_id, copy_id),None)
+#       # print "!!! Popping", master_id, copy_id
+#       continue
+#     # check if the chains related by ncs operation
+#     tr_num, is_transpose = find_same_transform(r,t,transform_to_group)
+#     # print "tr_num", tr_num, is_transpose
+#     if is_transpose and ((master_id in chains_in_groups) or (copy_id in chains_in_groups)):
+#       # master and copy related by transpose of the rotation r
+#       if master_id in transform_to_group[tr_num][0]:
+#         # master_id is already a master for transform tr_num
+#         tr_num = None
+#         temp_master, temp_copy = master_id, copy_id
+#       else:
+#         temp_master, temp_copy = copy_id, master_id
+#         # flip the key in match_dict
+#         match_dict.pop((master_id, copy_id),None)
+#         # replace rotation and translation
+#         r,t = inverse_transform(r,t)
+#         match_dict[copy_id,master_id] = [sel_2,sel_1,res_2,res_1,r,t,rmsd]
+#     else:
+#       temp_master, temp_copy = master_id, copy_id
+#     #
+#     chains_in_groups.add(temp_copy)
+#     if tr_num and temp_master not in transform_to_group[tr_num][0]:
+#       # Here we want to make sure that this update won't violate
+#       # order of atoms, if not, we are changing the order...
+#       rmsd1, rmsd2 = get_rmsds2(
+#           master_xyz=hierarchy.select(sel_1).atoms().extract_xyz(),
+#           copy_xyz=hierarchy.select(sel_2).atoms().extract_xyz(),
+#           cur_ttg=transform_to_group[tr_num])
+#       # rmsd1, rmsd2 = get_rmsds(
+#       #     hierarchy,
+#       #     cache,
+#       #     transform_to_group[tr_num],
+#       #     temp_master,
+#       #     temp_copy)
+#       # print "RMSDs:", rmsd1, rmsd2
+#       if rmsd1 > 10 or rmsd2 > 10:
+#         tr_sn += 1
+#         transform_to_group[tr_sn] = [[temp_master],[temp_copy],(r,t)]
+#       # update dictionaries with additions to master and copies
+#       transform_to_group[tr_num][0].append(temp_master)
+#       transform_to_group[tr_num][1].append(temp_copy)
+#     else:
+#       # create a new transform object and update groups
+#       tr_sn += 1
+#       transform_to_group[tr_sn] = [[temp_master],[temp_copy],(r,t)]
+#   # If a chain is a master or a copy for more than one transform,
+#   # choose only the one with the smaller number of chains in master
+#   master_size = [[len(v[0]),k] for k,v in transform_to_group.iteritems()]
+#   # sort list by the number of chains in master for each transform
+#   master_size.sort()
+#   chain_left_to_add = set(chain_ids)
+#   transform_to_use = set()
+#   # Collect the transforms, starting with the smallest master
+#   while bool(chain_left_to_add) and bool(master_size):
+#     [_,k] = master_size.pop(0)
+#     tr = transform_to_group[k]
+#     # make sure ALL copies from transform need to be added
+#     if not bool(set(tr[1]) - chain_left_to_add):
+#       transform_to_use.add(k)
+#       chain_left_to_add -= set(tr[1])
+#       chain_left_to_add -= set(tr[0])
+#   # delete all transforms that are not being used
+#   tr_sns = transform_to_group.keys()
+#   for tr_sn in tr_sns:
+#     if not tr_sn in transform_to_use:
+#       transform_to_group.pop(tr_sn)
+#   return transform_to_group,match_dict
 
-def remove_overlapping_selection(transform_to_group,chain_ids):
-  """
-  remove overlapping selection and keep largest groups
+# def remove_masters_if_appear_in_copies(transform_to_group):
+#   """
+#   remove masters if appear in copies of the same transform
+#   and of another transform
 
-  Args:
-    transform_to_group (dict):
-      keys: tuple of master chain IDs
-      values: NCS_groups_container objects
-    chain_ids (list): sorted list of chains IDs
+#   Args:
+#     transform_to_group (dict):
+#       keys: tuple of master chain IDs
+#       values: NCS_groups_container objects
+#     chain_ids (list): sorted list of chains IDs
 
-  Returns:
-    updated transform_to_group
-  """
-  # remove overlapping selection, keep largest groups
-  master_size = [[len(v[0]),k] for k,v in transform_to_group.iteritems()]
-  master_size.sort()
-  chain_left_to_add = set(chain_ids)
-  transform_to_use = set()
-  chains_in_master = set()
-  chains_in_copies = set()
-  while bool(chain_left_to_add) and bool(master_size):
-    [_,k] = master_size.pop()
-    [masters,copies,_] = transform_to_group[k]
-    # check that all chains in copies still need to be added
-    test1 = len(set(copies).intersection(chain_left_to_add)) == len(copies)
-    # check that copies are not in masters
-    test2 = not bool(set(copies).intersection(chains_in_master))
-    # check that masters are not in copies
-    test3 = not bool(set(masters).intersection(chains_in_copies))
-    if test1 and test2 and test3:
-      transform_to_use.add(k)
-      chains_in_master.update(set(masters))
-      chains_in_copies.update(set(copies))
-      chain_left_to_add -= set(copies)
-      chain_left_to_add -= set(masters)
+#   Returns:
+#     updated transform_to_group
+#   """
+#   # clean transforms
+#   for k,v in transform_to_group.iteritems():
+#     masters = v[0]
+#     copies = v[1]
+#     keep_items = []
+#     for i,ch_id in enumerate(masters):
+#       if not (ch_id in copies):
+#         keep_items.append(i)
+#     transform_to_group[k][0] = [masters[x] for x in keep_items]
+#     transform_to_group[k][1] = [copies[x] for x in keep_items]
+#   # clean other transforms once the transforms are clean
+#   all_copies = []
+#   remove_items = []
+#   keys = sorted(transform_to_group,key=lambda k:transform_to_group[k][0])
+#   for k in keys:
+#     copy_id = transform_to_group[k][1]
+#     master_id = transform_to_group[k][0]
+#     if (copy_id in all_copies) or (master_id in all_copies):
+#       remove_items.append(k)
+#     else:
+#       all_copies.append(copy_id)
+#   for k in remove_items:
+#     transform_to_group.pop(k)
+#   return transform_to_group
 
-  # delete all but transform_to_use
-  keys = transform_to_group.keys()
-  for key in keys:
-    if not key in transform_to_use:
-      transform_to_group.pop(key)
-  return transform_to_group
+# def remove_overlapping_selection(transform_to_group,chain_ids):
+#   """
+#   remove overlapping selection and keep largest groups
 
-def clean_singles(transform_to_group,chains_in_groups):
-  """
-  When a NCS copy of a transform contains a single chains, but those chains are
-  also a part of a transform with several chains in the NCS group,
-  remove the single transform
+#   Args:
+#     transform_to_group (dict):
+#       keys: tuple of master chain IDs
+#       values: NCS_groups_container objects
+#     chain_ids (list): sorted list of chains IDs
 
-  Args:
-    transform_to_group (dict):
-      keys: tuple of master chain IDs
-      values: NCS_groups_container objects
-    chains_in_groups (set): Set of chain IDs that are in some NCS group
+#   Returns:
+#     updated transform_to_group
+#   """
+#   # remove overlapping selection, keep largest groups
+#   master_size = [[len(v[0]),k] for k,v in transform_to_group.iteritems()]
+#   master_size.sort()
+#   chain_left_to_add = set(chain_ids)
+#   transform_to_use = set()
+#   chains_in_master = set()
+#   chains_in_copies = set()
+#   while bool(chain_left_to_add) and bool(master_size):
+#     [_,k] = master_size.pop()
+#     [masters,copies,_] = transform_to_group[k]
+#     # check that all chains in copies still need to be added
+#     test1 = len(set(copies).intersection(chain_left_to_add)) == len(copies)
+#     # check that copies are not in masters
+#     test2 = not bool(set(copies).intersection(chains_in_master))
+#     # check that masters are not in copies
+#     test3 = not bool(set(masters).intersection(chains_in_copies))
+#     if test1 and test2 and test3:
+#       transform_to_use.add(k)
+#       chains_in_master.update(set(masters))
+#       chains_in_copies.update(set(copies))
+#       chain_left_to_add -= set(copies)
+#       chain_left_to_add -= set(masters)
 
-  Returns:
-    updated transform_to_group
-  """
-  #clean up singles
-  multiple_tr_num = [k for k,v in transform_to_group.iteritems() if
-                    (len(v[0]) > 1)]
-  singles_tr_num = [k for k,v in transform_to_group.iteritems() if
-                    (len(v[0]) == 1)]
-  for m_tr_num in multiple_tr_num:
-    m_m = transform_to_group[m_tr_num][0]
-    m_c = transform_to_group[m_tr_num][1]
-    for s_tr_num in singles_tr_num:
-      if transform_to_group.has_key(s_tr_num):
-        s_m = transform_to_group[s_tr_num][0][0]
-        s_c = transform_to_group[s_tr_num][1][0]
-        # test if the single transform is part of a larger one
-        t1 = (s_m in m_m) and (s_c in m_c)
-        t2 = (s_c in m_m) and (s_m in m_c)
-        t3 = (s_c in m_c) and (s_m in m_c)
-        t4 = (s_c in m_m) and (s_m in m_m)
-        t5 = (s_c in chains_in_groups) and (s_m in chains_in_groups)
-        if t1 or t2 or t3 or t4 or t5:
-          transform_to_group.pop(s_tr_num,None)
-  return transform_to_group
+#   # delete all but transform_to_use
+#   keys = transform_to_group.keys()
+#   for key in keys:
+#     if not key in transform_to_use:
+#       transform_to_group.pop(key)
+#   return transform_to_group
 
-def build_group_dict(transform_to_group,match_dict,chains_info):
-  """
-  find all transforms with common masters and organize the chains
-  in the same order as the master and build groups transform dictionary
+# def clean_singles(transform_to_group,chains_in_groups):
+#   """
+#   When a NCS copy of a transform contains a single chains, but those chains are
+#   also a part of a transform with several chains in the NCS group,
+#   remove the single transform
 
-  Args:
-    transform_to_group (dict):
-      key: temporary transform number
-      values:[masters],[copies],(rotation,translation)]
-    match_dict(dict):
-      key:(chains_id_1,chains_id_2)
-        chain_ID (str)
-      val:[selection_a,selection_b,res_list_a,res_list_b,rot,trans,rmsd]
-          select_1/select_2 (flex.size_t)
-          residue_index_list_1/2 (list): matching residues indices
-          rot (matrix obj): rotation matrix
-          tran (matrix obj): translation vector
-          rmsd (float)
-    chains_info : object containing
-      chains (str): chain IDs OR selections string
-      res_name (list of str): list of residues names
-      resid (list of str): list of residues sequence number, resid
-      atom_names (list of list of str): list of atoms in residues
-      atom_selection (list of list of list of int): the location of atoms in ph
-      chains_atom_number (list of int): list of number of atoms in each chain
+#   Args:
+#     transform_to_group (dict):
+#       keys: tuple of master chain IDs
+#       values: NCS_groups_container objects
+#     chains_in_groups (set): Set of chain IDs that are in some NCS group
 
-  Returns:
-    group_dict (dict):
-      keys: tuple of master chain IDs
-      values: NCS_groups_container objects
-  """
-  group_dict = {}
-  group_id = 0
-  tr_sn = 0
-  adjust_key_lists = set()
-  for k,v in transform_to_group.iteritems():
-    [masters,copies,_] = v
-    key = tuple(masters)
-    m_isel_list,c_isel_list,res_l_m,res_l_c,rmsd,r,t = \
-      collect_info(masters,copies,match_dict)
-    if group_dict.has_key(key):
-      # update existing group master with minimal NCS selection
-      c_isel_list = update_group_dict(
-        group_dict,key,adjust_key_lists,m_isel_list,c_isel_list)
-      tr_sn += 1
-      tr = Transform(
-        rotation=r,
-        translation=t,
-        serial_num=tr_sn,
-        coordinates_present=True,
-        ncs_group_id=group_id,
-        rmsd=rmsd)
-      group_dict[key].iselections.append(c_isel_list)
-      group_dict[key].residue_index_list.append(res_l_c)
-      group_dict[key].copies.append(copies)
-      group_dict[key].transforms.append(tr)
-    else:
-      # create a new group
-      tr_sn += 1
-      group_id += 1
-      _,_,res_l_m,res_l_c,rmsd,r,t = collect_info(masters,copies,match_dict)
-      # add master as first copy (identity transform)
-      new_ncs_group = NCS_groups_container()
-      #
-      tr = Transform(
-        rotation=matrix.sqr([1,0,0,0,1,0,0,0,1]),
-        translation=matrix.col([0,0,0]),
-        serial_num=tr_sn,
-        coordinates_present=True,
-        ncs_group_id=group_id,
-        rmsd=0)
-      new_ncs_group.iselections.append(m_isel_list)
-      new_ncs_group.residue_index_list.append(res_l_m)
-      new_ncs_group.copies.append(masters)
-      new_ncs_group.transforms.append(tr)
-      # add the copy
-      tr_sn += 1
-      tr = Transform(
-        rotation=r,
-        translation=t,
-        serial_num=tr_sn,
-        coordinates_present=True,
-        ncs_group_id=group_id,
-        rmsd=rmsd)
-      new_ncs_group.iselections.append(c_isel_list)
-      new_ncs_group.residue_index_list.append(res_l_c)
-      new_ncs_group.copies.append(copies)
-      new_ncs_group.transforms.append(tr)
-      #
-      group_dict[key] = new_ncs_group
-  # adjust residue_index_list according to the new iselections
-  if adjust_key_lists:
-    update_res_list(group_dict,chains_info,adjust_key_lists)
-  return group_dict
+#   Returns:
+#     updated transform_to_group
+#   """
+#   #clean up singles
+#   multiple_tr_num = [k for k,v in transform_to_group.iteritems() if
+#                     (len(v[0]) > 1)]
+#   singles_tr_num = [k for k,v in transform_to_group.iteritems() if
+#                     (len(v[0]) == 1)]
+#   for m_tr_num in multiple_tr_num:
+#     m_m = transform_to_group[m_tr_num][0]
+#     m_c = transform_to_group[m_tr_num][1]
+#     for s_tr_num in singles_tr_num:
+#       if transform_to_group.has_key(s_tr_num):
+#         s_m = transform_to_group[s_tr_num][0][0]
+#         s_c = transform_to_group[s_tr_num][1][0]
+#         # test if the single transform is part of a larger one
+#         t1 = (s_m in m_m) and (s_c in m_c)
+#         t2 = (s_c in m_m) and (s_m in m_c)
+#         t3 = (s_c in m_c) and (s_m in m_c)
+#         t4 = (s_c in m_m) and (s_m in m_m)
+#         t5 = (s_c in chains_in_groups) and (s_m in chains_in_groups)
+#         if t1 or t2 or t3 or t4 or t5:
+#           transform_to_group.pop(s_tr_num,None)
+#   return transform_to_group
 
-def update_group_dict(group_dict,key,adjust_key_lists,m_isel_list,c_isel_list):
-  """
-  Updates group_dict with the minimal common selection for all NCS copies
-  Updates adjust_key_lists, a set that collect all records that where
-  adjusted
+# def build_group_dict(transform_to_group,match_dict,chains_info):
+#   """
+#   find all transforms with common masters and organize the chains
+#   in the same order as the master and build groups transform dictionary
 
-  Args:
-    group_dict (dict):
-      keys: tuple of master chain IDs
-      values: NCS_groups_container objects
-    key : a key of group_dict
-    adjust_key_lists (set): set of key
-    m_isel_list,c_isel_list (list of flex.size_t): list of master and copy
-     iselections
+#   Args:
+#     transform_to_group (dict):
+#       key: temporary transform number
+#       values:[masters],[copies],(rotation,translation)]
+#     match_dict(dict):
+#       key:(chains_id_1,chains_id_2)
+#         chain_ID (str)
+#       val:[selection_a,selection_b,res_list_a,res_list_b,rot,trans,rmsd]
+#           select_1/select_2 (flex.size_t)
+#           residue_index_list_1/2 (list): matching residues indices
+#           rot (matrix obj): rotation matrix
+#           tran (matrix obj): translation vector
+#           rmsd (float)
+#     chains_info : object containing
+#       chains (str): chain IDs OR selections string
+#       res_name (list of str): list of residues names
+#       resid (list of str): list of residues sequence number, resid
+#       atom_names (list of list of str): list of atoms in residues
+#       atom_selection (list of list of list of int): the location of atoms in ph
+#       chains_atom_number (list of int): list of number of atoms in each chain
 
-  Returns:
-    new_copy (flex.size_t): selection on the new NCS copy
-  """
-  new_master = []
-  new_copy = []
-  for i in xrange(len(m_isel_list)):
-    m_sel = m_isel_list[i]
-    c_sel = c_isel_list[i]
-    current_master = group_dict[key].iselections[0][i]
-    # for each chain, check if the master have the same selection
-    if current_master.size() != m_sel.size():
-      adjust_master = True
-    else:
-      # make sure the same atoms are selected
-      temp = (m_sel == current_master)
-      adjust_master = (temp.count(False) != 0)
-    if adjust_master:
-      # find atoms that are only in the old or new master and remove them
-      remove_from_new = set(m_sel) - set(current_master)
-      remove_from_old = set(current_master) - set(m_sel)
-      #
-      sel_to_keep = selection_to_keep(m_sel,remove_from_new)
-      m_sel = m_sel.select(sel_to_keep)
-      c_sel = c_sel.select(sel_to_keep)
-      #
-      new_master.append(flex.size_t(m_sel))
-      new_copy.append(flex.size_t(c_sel))
-      adjust_key_lists.add(key)
-      # update all existing copies
-      n = len(group_dict[key].iselections)
-      sel_to_keep = selection_to_keep(current_master,remove_from_old)
-      for j in range(n):
-        isel = group_dict[key].iselections[j][i]
-        isel = isel.select(sel_to_keep)
-        group_dict[key].iselections[j][i] = isel
-    else:
-      new_master.append(m_sel)
-      new_copy.append(c_sel)
-  return new_copy
+#   Returns:
+#     group_dict (dict):
+#       keys: tuple of master chain IDs
+#       values: NCS_groups_container objects
+#   """
+#   group_dict = {}
+#   group_id = 0
+#   tr_sn = 0
+#   adjust_key_lists = set()
+#   for k,v in transform_to_group.iteritems():
+#     [masters,copies,_] = v
+#     key = tuple(masters)
+#     m_isel_list,c_isel_list,res_l_m,res_l_c,rmsd,r,t = \
+#       collect_info(masters,copies,match_dict)
+#     if group_dict.has_key(key):
+#       # update existing group master with minimal NCS selection
+#       c_isel_list = update_group_dict(
+#         group_dict,key,adjust_key_lists,m_isel_list,c_isel_list)
+#       tr_sn += 1
+#       tr = Transform(
+#         rotation=r,
+#         translation=t,
+#         serial_num=tr_sn,
+#         coordinates_present=True,
+#         ncs_group_id=group_id,
+#         rmsd=rmsd)
+#       group_dict[key].iselections.append(c_isel_list)
+#       group_dict[key].residue_index_list.append(res_l_c)
+#       group_dict[key].copies.append(copies)
+#       group_dict[key].transforms.append(tr)
+#     else:
+#       # create a new group
+#       tr_sn += 1
+#       group_id += 1
+#       _,_,res_l_m,res_l_c,rmsd,r,t = collect_info(masters,copies,match_dict)
+#       # add master as first copy (identity transform)
+#       new_ncs_group = NCS_groups_container()
+#       #
+#       tr = Transform(
+#         rotation=matrix.sqr([1,0,0,0,1,0,0,0,1]),
+#         translation=matrix.col([0,0,0]),
+#         serial_num=tr_sn,
+#         coordinates_present=True,
+#         ncs_group_id=group_id,
+#         rmsd=0)
+#       new_ncs_group.iselections.append(m_isel_list)
+#       new_ncs_group.residue_index_list.append(res_l_m)
+#       new_ncs_group.copies.append(masters)
+#       new_ncs_group.transforms.append(tr)
+#       # add the copy
+#       tr_sn += 1
+#       tr = Transform(
+#         rotation=r,
+#         translation=t,
+#         serial_num=tr_sn,
+#         coordinates_present=True,
+#         ncs_group_id=group_id,
+#         rmsd=rmsd)
+#       new_ncs_group.iselections.append(c_isel_list)
+#       new_ncs_group.residue_index_list.append(res_l_c)
+#       new_ncs_group.copies.append(copies)
+#       new_ncs_group.transforms.append(tr)
+#       #
+#       group_dict[key] = new_ncs_group
+#   # adjust residue_index_list according to the new iselections
+#   if adjust_key_lists:
+#     update_res_list(group_dict,chains_info,adjust_key_lists)
+#   return group_dict
 
-def selection_to_keep(m_sel,remove_selection):
-  """
-  Get the selection of the selection to keep from flex.size_t array
+# def update_group_dict(group_dict,key,adjust_key_lists,m_isel_list,c_isel_list):
+#   """
+#   Updates group_dict with the minimal common selection for all NCS copies
+#   Updates adjust_key_lists, a set that collect all records that where
+#   adjusted
 
-  Args:
-    m_sel (flex.size_t): the array from which we want to remove items
-    remove_selection (flex.size_t): the values of items to remove
-  Returns:
-    sel_to_keep (flex.size_t)
-  """
-  msel = list(m_sel)
-  # find values location
-  remove_sel = {msel.index(x) for x in remove_selection}
-  sel_to_keep = set(range(m_sel.size())) - remove_sel
-  sel_to_keep = list(sel_to_keep)
-  sel_to_keep.sort()
-  return flex.size_t(sel_to_keep)
+#   Args:
+#     group_dict (dict):
+#       keys: tuple of master chain IDs
+#       values: NCS_groups_container objects
+#     key : a key of group_dict
+#     adjust_key_lists (set): set of key
+#     m_isel_list,c_isel_list (list of flex.size_t): list of master and copy
+#      iselections
 
-def update_res_list(group_dict,chains_info,group_key_lists):
-  """
-  Remove residues from residues list according the the atom selection
-  (Atom selection might have changed to reflect the smallest common set of
-  NCS related atoms in all NCS copies)
+#   Returns:
+#     new_copy (flex.size_t): selection on the new NCS copy
+#   """
+#   new_master = []
+#   new_copy = []
+#   for i in xrange(len(m_isel_list)):
+#     m_sel = m_isel_list[i]
+#     c_sel = c_isel_list[i]
+#     current_master = group_dict[key].iselections[0][i]
+#     # for each chain, check if the master have the same selection
+#     if current_master.size() != m_sel.size():
+#       adjust_master = True
+#     else:
+#       # make sure the same atoms are selected
+#       temp = (m_sel == current_master)
+#       adjust_master = (temp.count(False) != 0)
+#     if adjust_master:
+#       # find atoms that are only in the old or new master and remove them
+#       remove_from_new = set(m_sel) - set(current_master)
+#       remove_from_old = set(current_master) - set(m_sel)
+#       #
+#       sel_to_keep = selection_to_keep(m_sel,remove_from_new)
+#       m_sel = m_sel.select(sel_to_keep)
+#       c_sel = c_sel.select(sel_to_keep)
+#       #
+#       new_master.append(flex.size_t(m_sel))
+#       new_copy.append(flex.size_t(c_sel))
+#       adjust_key_lists.add(key)
+#       # update all existing copies
+#       n = len(group_dict[key].iselections)
+#       sel_to_keep = selection_to_keep(current_master,remove_from_old)
+#       for j in range(n):
+#         isel = group_dict[key].iselections[j][i]
+#         isel = isel.select(sel_to_keep)
+#         group_dict[key].iselections[j][i] = isel
+#     else:
+#       new_master.append(m_sel)
+#       new_copy.append(c_sel)
+#   return new_copy
 
-  Args:
-    group_dict (dict):
-      keys: tuple of master chain IDs
-      values: NCS_groups_container objects
-    chains_info : object containing
-      chains (str): chain IDs OR selections string
-      res_name (list of str): list of residues names
-      resid (list of str): list of residues sequence number, resid
-      atom_names (list of list of str): list of atoms in residues
-      atom_selection (list of list of list of int): the location of atoms in ph
-      chains_atom_number (list of int): list of number of atoms in each chain
-    group_key_lists (list): set of group_dict keys to update
-  """
-  res_list = []
-  # process all groups
-  for key in group_key_lists:
-    gr = group_dict[key]
-    # iterate over the NCS copies in the group
-    copies = []
-    iselections = []
-    transforms = []
-    for i,ch_keys in enumerate(gr.copies):
-      c_res_list = []
-      atoms_in_copy = set()
-      {atoms_in_copy.update(x) for x in gr.iselections[i]}
-      # keep only none-zero copies
-      if len(atoms_in_copy) > 0:
-        copies.append(gr.copies[i])
-        iselections.append(gr.iselections[i])
-        transforms.append(gr.transforms[i])
-      else: continue
-      copy_res_lists = gr.residue_index_list[i]
-      # iterate over the chains in each NCS group
-      n_ch = len(ch_keys)
-      for i_ch in range(n_ch):
-        ch_key = ch_keys[i_ch]
-        ch_res_list = copy_res_lists[i_ch]
-        ch_info = chains_info[ch_key]
-        c_res = []
-        for res_num in ch_res_list:
-          # iterate over residues and add them if they are in atoms_in_copy
-          atoms_in_rs = set(ch_info.atom_selection[res_num])
-          if bool(atoms_in_rs.intersection(atoms_in_copy)):
-            # if some atoms in the residue present, include residue
-            c_res.append(res_num)
-        c_res_list.append(c_res)
-      res_list.append(c_res_list)
-    if len(res_list) > 0:
-      group_dict[key].residue_index_list = res_list
-      group_dict[key].copies = copies
-      group_dict[key].iselections = iselections
-      group_dict[key].transforms = transforms
-    else:
-      group_dict.pop(key,None)
+# def selection_to_keep(m_sel,remove_selection):
+#   """
+#   Get the selection of the selection to keep from flex.size_t array
 
-def collect_info(sorted_masters,copies,match_dict):
-  """
-  Combine iselection of all chains in NCS master and NCS copy to a single
-  iselelction
+#   Args:
+#     m_sel (flex.size_t): the array from which we want to remove items
+#     remove_selection (flex.size_t): the values of items to remove
+#   Returns:
+#     sel_to_keep (flex.size_t)
+#   """
+#   msel = list(m_sel)
+#   # find values location
+#   remove_sel = {msel.index(x) for x in remove_selection}
+#   sel_to_keep = set(range(m_sel.size())) - remove_sel
+#   sel_to_keep = list(sel_to_keep)
+#   sel_to_keep.sort()
+#   return flex.size_t(sel_to_keep)
 
-  Args:
-    sorted_masters (list): list of master chain IDs
-    copies (list): list of copies chain IDs
-    match_dict(dict):
-      key:(chains_id_1,chains_id_2)
-        chain_ID (str)
-      val:[selection_a,selection_b,res_list_a,res_list_b,rot,trans,rmsd]
-          select_1/select_2(flex.size_t)
-          residue_index_list_1/2 (list): matching residues indices
-          rot (matrix obj): rotation matrix
-          tran (matrix obj): translation vector
-          rmsd (float)
+# def update_res_list(group_dict,chains_info,group_key_lists):
+#   """
+#   Remove residues from residues list according the the atom selection
+#   (Atom selection might have changed to reflect the smallest common set of
+#   NCS related atoms in all NCS copies)
 
-  Returns:
-    m_sel,c_sel (list of flex.size_t): list of selected atoms per chain
-    m_res,c_res (list of lists): list of residue number per chain
-    worst_rmsd (float): worst rmsd of the matching chains pairs
-    r (3x3 matrix): rotation matrix
-    t (3x1 matrix): translation vector
-  """
-  m_sel = []
-  c_sel = []
-  c_res = []
-  m_res = []
-  worst_rmsd = 0.0
-  for key in zip(sorted_masters,copies):
-    [sel_1,sel_2,res_1,res_2,_,_,rmsd] = match_dict[key]
-    m_sel.append(sel_1)
-    c_sel.append(sel_2)
-    m_res.append(res_1)
-    c_res.append(res_2)
-    worst_rmsd = max(worst_rmsd,rmsd)
-  [_,_,_,_,r,t,_] = match_dict[sorted_masters[0],copies[0]]
-  return m_sel,c_sel,m_res,c_res,worst_rmsd,r,t
+#   Args:
+#     group_dict (dict):
+#       keys: tuple of master chain IDs
+#       values: NCS_groups_container objects
+#     chains_info : object containing
+#       chains (str): chain IDs OR selections string
+#       res_name (list of str): list of residues names
+#       resid (list of str): list of residues sequence number, resid
+#       atom_names (list of list of str): list of atoms in residues
+#       atom_selection (list of list of list of int): the location of atoms in ph
+#       chains_atom_number (list of int): list of number of atoms in each chain
+#     group_key_lists (list): set of group_dict keys to update
+#   """
+#   res_list = []
+#   # process all groups
+#   for key in group_key_lists:
+#     gr = group_dict[key]
+#     # iterate over the NCS copies in the group
+#     copies = []
+#     iselections = []
+#     transforms = []
+#     for i,ch_keys in enumerate(gr.copies):
+#       c_res_list = []
+#       atoms_in_copy = set()
+#       {atoms_in_copy.update(x) for x in gr.iselections[i]}
+#       # keep only none-zero copies
+#       if len(atoms_in_copy) > 0:
+#         copies.append(gr.copies[i])
+#         iselections.append(gr.iselections[i])
+#         transforms.append(gr.transforms[i])
+#       else: continue
+#       copy_res_lists = gr.residue_index_list[i]
+#       # iterate over the chains in each NCS group
+#       n_ch = len(ch_keys)
+#       for i_ch in range(n_ch):
+#         ch_key = ch_keys[i_ch]
+#         ch_res_list = copy_res_lists[i_ch]
+#         ch_info = chains_info[ch_key]
+#         c_res = []
+#         for res_num in ch_res_list:
+#           # iterate over residues and add them if they are in atoms_in_copy
+#           atoms_in_rs = set(ch_info.atom_selection[res_num])
+#           if bool(atoms_in_rs.intersection(atoms_in_copy)):
+#             # if some atoms in the residue present, include residue
+#             c_res.append(res_num)
+#         c_res_list.append(c_res)
+#       res_list.append(c_res_list)
+#     if len(res_list) > 0:
+#       group_dict[key].residue_index_list = res_list
+#       group_dict[key].copies = copies
+#       group_dict[key].iselections = iselections
+#       group_dict[key].transforms = transforms
+#     else:
+#       group_dict.pop(key,None)
+
+# def collect_info(sorted_masters,copies,match_dict):
+#   """
+#   Combine iselection of all chains in NCS master and NCS copy to a single
+#   iselelction
+
+#   Args:
+#     sorted_masters (list): list of master chain IDs
+#     copies (list): list of copies chain IDs
+#     match_dict(dict):
+#       key:(chains_id_1,chains_id_2)
+#         chain_ID (str)
+#       val:[selection_a,selection_b,res_list_a,res_list_b,rot,trans,rmsd]
+#           select_1/select_2(flex.size_t)
+#           residue_index_list_1/2 (list): matching residues indices
+#           rot (matrix obj): rotation matrix
+#           tran (matrix obj): translation vector
+#           rmsd (float)
+
+#   Returns:
+#     m_sel,c_sel (list of flex.size_t): list of selected atoms per chain
+#     m_res,c_res (list of lists): list of residue number per chain
+#     worst_rmsd (float): worst rmsd of the matching chains pairs
+#     r (3x3 matrix): rotation matrix
+#     t (3x1 matrix): translation vector
+#   """
+#   m_sel = []
+#   c_sel = []
+#   c_res = []
+#   m_res = []
+#   worst_rmsd = 0.0
+#   for key in zip(sorted_masters,copies):
+#     [sel_1,sel_2,res_1,res_2,_,_,rmsd] = match_dict[key]
+#     m_sel.append(sel_1)
+#     c_sel.append(sel_2)
+#     m_res.append(res_1)
+#     c_res.append(res_2)
+#     worst_rmsd = max(worst_rmsd,rmsd)
+#   [_,_,_,_,r,t,_] = match_dict[sorted_masters[0],copies[0]]
+#   return m_sel,c_sel,m_res,c_res,worst_rmsd,r,t
 
 def clean_chain_matching(chain_match_list,ph,
                          max_rmsd=10.0,
@@ -1358,11 +1404,13 @@ def search_ncs_relations(ph=None,
   # print "sorted_ch", sorted_ch
   # loop over all chains
   for i in xrange(n_chains-1):
-    if use_minimal_master_ncs:
-      if (sorted_ch[i] in chains_in_copies): continue
-      # update sorted_ch list according to distance between master copies
-      sorted_ch = update_chain_ids_search_order(
-        chains_info,sorted_ch,chains_in_copies,i)
+    # this is disabled, see comment in update_chain_ids_search_order
+    # if use_minimal_master_ncs:
+    #   print "are we getting here at all?"
+    #   if (sorted_ch[i] in chains_in_copies): continue
+    #   # update sorted_ch list according to distance between master copies
+    #   sorted_ch = update_chain_ids_search_order(
+    #     chains_info,sorted_ch,chains_in_copies,i)
     m_ch_id = sorted_ch[i]
     master_n_res = len(chains_info[m_ch_id].res_names)
     seq_m = chains_info[m_ch_id].res_names
@@ -1370,6 +1418,7 @@ def search_ncs_relations(ph=None,
     # get residue lists for master
     for j in xrange(i+1,n_chains):
       c_ch_id = sorted_ch[j]
+      # print "matching", m_ch_id, c_ch_id,
       copy_n_res = len(chains_info[c_ch_id].res_names)
       frac_d = min(copy_n_res,master_n_res)/max(copy_n_res,master_n_res)
       # print "  copy_n_res,master_n_res", copy_n_res,master_n_res
@@ -1397,7 +1446,9 @@ def search_ncs_relations(ph=None,
         chain_match_list.append(rec)
       # Collect only very good matches, to allow better similarity search
       # print "similarity", similarity
-      if similarity > 0.9: chains_in_copies.add(c_ch_id)
+      if similarity > 0.9:
+        chains_in_copies.add(c_ch_id)
+        # print "  good"
   if write and msg:
     print >> log,msg
   if (min_percent == 1) and msg:

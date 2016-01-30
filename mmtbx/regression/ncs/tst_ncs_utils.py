@@ -12,6 +12,8 @@ from iotbx import pdb
 import unittest
 import string
 import math
+from iotbx.ncs import ncs_group_master_phil
+import iotbx.phil
 
 __author__ = 'Youval'
 
@@ -542,9 +544,11 @@ class Test_ncs_utils(unittest.TestCase):
 
   def test_check_ncs_group_list(self):
     """ Test that ncs_restraints_group_list test is working properly """
+    phil_groups = ncs_group_master_phil.fetch(
+        iotbx.phil.parse(phil_str)).extract()
     ncs_obj_phil = ncs.input(
         pdb_string=test_pdb_str_2,
-        ncs_phil_string=phil_str)
+        ncs_phil_groups=phil_groups.ncs_group)
     nrgl = ncs_obj_phil.get_ncs_restraints_group_list()
     pdb_inp = pdb.input(lines=test_pdb_str_2,source_info=None)
     ph = pdb_inp.construct_hierarchy()
@@ -568,7 +572,10 @@ class Test_ncs_utils(unittest.TestCase):
 
   def test_ncs_group_iselection(self):
     """ selection of a complete NCS group """
-    ncs_obj = ncs.input(pdb_string=test_pdb_str_2,ncs_phil_string=phil_str)
+    phil_groups = ncs_group_master_phil.fetch(
+        iotbx.phil.parse(phil_str)).extract()
+    ncs_obj = ncs.input(pdb_string=test_pdb_str_2,
+        ncs_phil_groups=phil_groups.ncs_group)
     nrgl = ncs_obj.get_ncs_restraints_group_list()
     self.assertEqual(len(nrgl),2)
     isel = nu.ncs_group_iselection(nrgl,1)
