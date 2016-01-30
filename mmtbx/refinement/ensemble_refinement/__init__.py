@@ -2118,12 +2118,24 @@ class launcher (runtime_utils.target_with_save_result) :
       validate=True)
 
 def validate_params (params) :
+  mmtbx.command_line.validate_input_params(params)
   if (params.ensemble_refinement.ptls is None) :
     raise Sorry("You must specify a fraction of atoms to use for TLS fitting.")
   elif (len(params.input.xray_data.labels[0].split(",")) > 2) :
     raise Sorry("Anomalous data are not allowed in this program.")
-  return mmtbx.command_line.validate_input_params(params)
 
+  # check files
+  mmtbx.command_line.check_files(
+    params.input.pdb.file_name, 'pdb',
+    'Please provide a valid structure for the Input model.')
+  mmtbx.command_line.check_files(
+    params.input.monomers.file_name, 'cif',
+    'Please provide valid restraints')
+  mmtbx.command_line.check_files(
+    params.extra_restraints_file, 'phil',
+    'Please provide a valid file containing custom restraints.')
+
+  return params
 
 # =============================================================================
 from mmtbx.validation import rotalyze

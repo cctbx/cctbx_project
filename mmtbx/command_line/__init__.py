@@ -13,6 +13,7 @@ automatically.  This is superficially similar to the setup for phenix.refine
 """
 
 from __future__ import division
+from iotbx import file_reader
 from libtbx.str_utils import make_header, make_sub_header
 from libtbx.utils import Sorry, Usage, multi_out, null_out
 from libtbx import Auto
@@ -269,7 +270,6 @@ class load_model_and_data (object) :
     import mmtbx.monomer_library.server
     import mmtbx.utils
     from iotbx import crystal_symmetry_from_any
-    from iotbx import file_reader
     import iotbx.phil
     if generate_input_phil :
       assert isinstance(master_phil, basestring)
@@ -644,6 +644,18 @@ def show_symmetry_error (file1, file2, symm1, symm2) :
   symm2.show_summary(f=symm_out2, prefix="  ")
   raise Sorry("Incompatible symmetry definitions:\n%s:\n%s\n%s\n%s" %
     (file1, symm_out1.getvalue(), file2, symm_out2.getvalue()))
+
+def check_files(phil_scope, file_type, error_message):
+  if (phil_scope is not None):
+    if (isinstance(phil_scope, list)):
+      for file_name in phil_scope:
+        f = file_reader.any_file(file_name)
+        if (f.file_type != file_type):
+          raise Sorry(error_message)
+    else:
+      f = file_reader.any_file(phil_scope)
+      if (f.file_type != file_type):
+        raise Sorry(error_message)
 
 def validate_input_params (params) :
   """
