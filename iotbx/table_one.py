@@ -36,6 +36,7 @@ keywords = [
   ("wilson_b", "Wilson B-factor", "%.2f", "_reflns.B_iso_Wilson_estimate"),
   ("r_sym", "R-merge", "%.4g", "_reflns.pdbx_Rmerge_I_obs"),
   ("r_meas", "R-meas", "%.4g", "_reflns.pdbx_Rrim_I_obs"),
+  ("r_pim", "R-pim", "%.4g", "_reflns.pdbx_Rpim_I_obs"),
   ("cc_one_half", "CC1/2", "%.3g", "_reflns.phenix_cc_1/2"),
   ("cc_star", "CC*", "%.3g", "_reflns.phenix_cc_star"),
   # refinement statistics
