@@ -159,6 +159,9 @@ xtc_phil_str = '''
     profile_filename = None
       .type = str
       .help = The filename for output reflection profile parameters
+    integration_pickle = int-%d-%s.pickle
+      .type = str
+      .help = Filename for cctbx.xfel-style integration pickle files
   }
   mp {
     method = *mpi sge

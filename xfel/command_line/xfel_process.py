@@ -50,9 +50,9 @@ phil_scope = parse('''
       .type = str
       .help = "The filename for output reflection profile parameters"
 
-    integration_pickle = int-%s_%d.pickle
+    integration_pickle = int-%d-%s.pickle
       .type = str
-      .help = Output integration results for each color data to separate cctbx.xfel-style pickle files
+      .help = Filename for cctbx.xfel-style integration pickle files
   }
 
   include scope dials.algorithms.peak_finding.spotfinder_factory.phil_scope
@@ -319,9 +319,9 @@ class Script(object):
         if event_timestamp.find("shot-")==0:
            event_timestamp = os.path.splitext(event_timestamp)[0] # micromanage the file name
         if hasattr(self.params.output, "output_dir"):
-          outfile = os.path.join(self.params.output.output_dir, self.params.output.integration_pickle%(event_timestamp,e_number))
+          outfile = os.path.join(self.params.output.output_dir, self.params.output.integration_pickle%(e_number,event_timestamp))
         else:
-          outfile = os.path.join(os.path.dirname(self.params.output.integration_pickle), self.params.output.integration_pickle%(event_timestamp,e_number))
+          outfile = os.path.join(os.path.dirname(self.params.output.integration_pickle), self.params.output.integration_pickle%(e_number,event_timestamp))
 
         if callback is not None:
           callback(self.params, outfile, frame)
