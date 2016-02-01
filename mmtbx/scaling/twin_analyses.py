@@ -1219,12 +1219,12 @@ class ml_murray_rust_with_ncs(object):
   def _show_results (self, out) :
     if (not isinstance(out, scaling.xtriage_output)) :
       out = scaling.printed_output(out)
-    out.show("""\
+    out.show("""
   Cycle : %(cycle)3i
   Log[likelihood]: %(log_likelihood)15.3f
   twin fraction: %(twin_fraction)4.3f
   D_ncs in resolution ranges:
-""")
+"""%{"cycle":self.cycle,"log_likelihood":self.log_likelihood,"twin_fraction":self.twin_fraction})
     out.show_table(self.table, indent=2)
 
   def _show_impl (self, out) :
