@@ -827,6 +827,8 @@ def make_joined_set (miller_arrays) :
   if(len(miller_arrays)==0): return None
   cs0 = miller_arrays[0].crystal_symmetry()
   for ma in miller_arrays:
+    if([ma.crystal_symmetry().unit_cell(), cs0.unit_cell()].count(None)>0):
+      return None
     if(not ma.crystal_symmetry().is_similar_symmetry(cs0)): return None
   from cctbx import miller
   master_set = miller.set(
