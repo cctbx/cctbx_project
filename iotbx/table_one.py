@@ -54,7 +54,7 @@ keywords = [
   ("n_atoms", "Number of non-hydrogen atoms", "%d", None),
   ("n_macro_atoms", "  macromolecules", "%d", None),
   ("n_ligand_atoms", "  ligands", "%d", None),
-  ("n_waters", "  water", "%d", None),
+  ("n_waters", "  solvent", "%d", None),
   ("n_residues", "Protein residues", "%d", None),
   ("n_nuc", "Nucleic acid bases", "%d", None),
   ("bond_rmsd", "RMS(bonds)", "%.3f", None),
