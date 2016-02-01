@@ -68,6 +68,11 @@ def run(args, log=sys.stdout):
     d_min = maptbx.resolution_from_map_and_model(
       map_data=map_data, xray_structure=xrs)
   print >> log, "  d_min: %6.4f"%d_min
+  # Compute FSC(map, model)
+  broadcast(m="Model-map FSC:", log=log)
+  mmtbx.maps.correlation.fsc_model_map(
+    xray_structure=xrs, map=map_data, d_min=d_min, log=log)
+  #
   # various CC
   cc_calculator = mmtbx.maps.correlation.from_map_and_xray_structure_or_fmodel(
     xray_structure = xrs,

@@ -3,6 +3,29 @@ from libtbx import adopt_init_args
 from scitbx.array_family import flex
 from cctbx import maptbx
 from cctbx import miller
+import sys
+
+def fsc_model_map(xray_structure, map, d_min, log=sys.stdout, prefix=""):
+  f_calc = xray_structure.structure_factors(d_min=d_min).f_calc()
+  mc = f_calc.structure_factors_from_map(
+    map            = map,
+    use_scale      = True,
+    anomalous_flag = False,
+    use_sg         = False)
+  print >> log, prefix, "OVERALL: %7.4f"%f_calc.map_correlation(other = mc)
+  bin_selections = f_calc.log_binning()
+  dsd = f_calc.d_spacings().data()
+  print >> log, prefix, "BIN# RESOLUTION (A)     CC"
+  fmt="%2d: %7.3f-%-7.3f %7.4f"
+  for i_bin, sel in enumerate(bin_selections):
+    d     = dsd.select(sel)
+    d_min = flex.min(d)
+    d_max = flex.max(d)
+    n     = d.size()
+    fc    = f_calc.select(sel)
+    fo    = mc.select(sel)
+    cc    = fc.map_correlation(other = fo)
+    print >> log, prefix, fmt%(i_bin, d_max, d_min, cc)
 
 def assert_same_gridding(map_1, map_2):
   assert map_1.focus()==map_2.focus()
