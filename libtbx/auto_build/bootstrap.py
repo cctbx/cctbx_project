@@ -1483,6 +1483,8 @@ class PhenixBuilder(CCIBuilder):
     'probe',
     'king',
     'suitename',
+    'dials',
+    'xia2',
   ]
   HOT_EXTRA = [
     'phaser',
@@ -1502,12 +1504,15 @@ class PhenixBuilder(CCIBuilder):
     'amber_adaptbx',
     'reduce',
     'probe',
+    'dials',
+    'xia2',
   ]
 
   def add_base(self, extra_opts=[]):
     super(PhenixBuilder, self).add_base(
       extra_opts=['--phenix',
-                  '--labelit'
+                  '--labelit',
+                  '--dials'
                  ] + extra_opts)
 
   def add_install(self):
@@ -1539,6 +1544,7 @@ class PhenixBuilder(CCIBuilder):
     #self.add_test_command('phenix_regression.wizards.test_all_parallel',
     #                      name="test wizards",
     #                     )
+    self.add_test_parallel('dials', flunkOnFailure=False, warnOnFailure=True)
 
 class PhenixExternalRegression(PhenixBuilder):
   EXTERNAL_CODEBASES = [
