@@ -60,8 +60,8 @@ h_y = 3
 def run (args, source_data = None) :
   from xfel import radial_average
   from scitbx.array_family import flex
-  from xfel.detector_formats import reverse_timestamp
-  from xfel.detector_formats import detector_format_version as detector_format_function
+  from iotbx.detectors.cspad_detector_formats import reverse_timestamp
+  from iotbx.detectors.cspad_detector_formats import detector_format_version as detector_format_function
   from spotfinder.applications.xfel import cxi_phil
   from iotbx.detectors.npy import NpyImage
   import os, sys

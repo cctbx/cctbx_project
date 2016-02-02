@@ -77,7 +77,7 @@ if (__name__ == "__main__") :
       (str(params.detector_format_version), params.resolution, params.distance, params.wavelength)
 
   from xfel.cxi.cspad_ana.cspad_tbx import dpack, evt_timestamp, cbcaa, pixel_size, CsPadDetector
-  from xfel.detector_formats import address_and_timestamp_from_detector_format_version
+  from iotbx.detectors.cspad_detector_formats import address_and_timestamp_from_detector_format_version
   from convert_gain_map import fake_env, fake_config, fake_evt, fake_cspad_ElementV2
   address, timestamp = address_and_timestamp_from_detector_format_version(params.detector_format_version)
   timestamp = evt_timestamp((timestamp,0))

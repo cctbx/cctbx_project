@@ -16,7 +16,7 @@ from xfel.cxi.cspad_ana import common_mode
 from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana import rayonix_tbx
 from xfel.cxi.cspad_ana import skip_event_flag
-from xfel.detector_formats import detector_format_version as detector_format_function
+from iotbx.detectors.cspad_detector_formats import detector_format_version as detector_format_function
 #import getpass
 
 # import matplotlib

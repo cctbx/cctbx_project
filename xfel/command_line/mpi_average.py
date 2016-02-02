@@ -356,7 +356,7 @@ the output images in the folder cxi49812.
       if xpp:
         evt_time = cspad_tbx.evt_time(evt) # tuple of seconds, milliseconds
         timestamp = cspad_tbx.evt_timestamp(evt_time) # human readable format
-        from xfel.detector_formats import detector_format_version, reverse_timestamp
+        from iotbx.detectors.cspad_detector_formats import detector_format_version, reverse_timestamp
         from xfel.cxi.cspad_ana.cspad_tbx import xpp_active_areas
         version_lookup = detector_format_version(old_style_address, reverse_timestamp(timestamp)[0])
         assert version_lookup is not None

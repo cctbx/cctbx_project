@@ -24,7 +24,7 @@ def run(argv=None):
   from dxtbx.format.Registry import Registry
   from xfel.cftbx.detector.cspad_cbf_tbx import cbf_file_to_basis_dict, write_cspad_cbf
 #  from xfel.cxi.cspad_ana import cspad_tbx
-#  from xfel.detector_formats import reverse_timestamp
+#  from iotbx.detectors.cspad_detector_formats import reverse_timestamp
 
   if argv is None:
     argv = sys.argv

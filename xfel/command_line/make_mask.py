@@ -104,7 +104,7 @@ def run(argv=None):
     address = timestamp = None
   else:
     from xfel.cxi.cspad_ana.cspad_tbx import evt_timestamp
-    from xfel.detector_formats import address_and_timestamp_from_detector_format_version
+    from iotbx.detectors.cspad_detector_formats import address_and_timestamp_from_detector_format_version
     address, timestamp = address_and_timestamp_from_detector_format_version(command_line.options.detector_format_version)
     timestamp = evt_timestamp((timestamp,0))
 

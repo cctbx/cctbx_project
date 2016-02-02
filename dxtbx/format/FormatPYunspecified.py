@@ -50,9 +50,9 @@ class FormatPYunspecified(FormatPY):
         self.LCLS_detector_address = 'CxiDsd-0|Cspad-0'
     else:
       self.LCLS_detector_address = data["DETECTOR_ADDRESS"]
-    from xfel.detector_formats import reverse_timestamp
+    from iotbx.detectors.cspad_detector_formats import reverse_timestamp
     self._timesec = reverse_timestamp( data["TIMESTAMP"] )[0]
-    from xfel.detector_formats import detector_format_version as detector_format_function
+    from iotbx.detectors.cspad_detector_formats import detector_format_version as detector_format_function
     version_lookup = detector_format_function(self.LCLS_detector_address,self._timesec)
     self.start_helper(version_token="distl.detector_format_version=%s"%version_lookup)
 

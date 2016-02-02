@@ -10,8 +10,8 @@ Simple utility for printing the contents of a cctbx.xfel pickle file
 
 from libtbx import easy_pickle
 import sys, os
-from xfel.detector_formats import detector_format_version as detector_format_function
-from xfel.detector_formats import reverse_timestamp
+from iotbx.detectors.cspad_detector_formats import detector_format_version as detector_format_function
+from iotbx.detectors.cspad_detector_formats import reverse_timestamp
 from cctbx import sgtbx # import dependency
 from cctbx.array_family import flex
 

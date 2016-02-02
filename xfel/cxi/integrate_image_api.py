@@ -7,8 +7,8 @@ def integrate_one_image(data, **kwargs):
   from libtbx.utils import Sorry
   from spotfinder.exception import SpotfinderError
   from labelit.exception import AutoIndexError
-  from xfel.detector_formats import detector_format_version as detector_format_function
-  from xfel.detector_formats import reverse_timestamp
+  from iotbx.detectors.cspad_detector_formats import detector_format_version as detector_format_function
+  from iotbx.detectors.cspad_detector_formats import reverse_timestamp
 
   basename = kwargs.get("integration_basename")
   if (basename is None):
