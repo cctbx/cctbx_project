@@ -425,7 +425,7 @@ class xray_structure_statistics (validation) :
 
   def iter_results (self, property_type=None, outliers_only=True) :
     if (property_type is None) :
-      outliers = self.zero_occ + self.partial_occ + +self.different_occ +\
+      outliers = self.zero_occ + self.partial_occ + self.different_occ +\
                  self.bad_adps
     elif (property_type == "occupancy") :
       outliers = self.zero_occ + self.partial_occ + self.different_occ
