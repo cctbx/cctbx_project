@@ -130,10 +130,11 @@ xtc_phil_str = '''
         .type = float
         .help = If not None, use the gain mask for the run to multiply the low-gain pixels by this number
       common_mode {
-        algorithm = *default custom None
+        algorithm = default custom
           .type = choice
-          .help = Choice of SLAC's common mode correction algorithms. Default: use the default common_mode \
-                  correction. None: use no common mode correction, only dark pedestal subtraction. Custom, see  \
+          .help = Choice of SLAC's common mode correction algorithms. If not specified, use no common \
+                  mode correction, only dark pedestal subtraction. Default: use the default common_mode \
+                  correction. Custom, see \
                   https://confluence.slac.stanford.edu/display/PSDM/Common+mode+correction+algorithms
         custom_parameterization = None
           .type = ints
