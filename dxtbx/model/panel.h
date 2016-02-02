@@ -150,6 +150,18 @@ namespace dxtbx { namespace model {
     }
 
     /**
+     * Get the 2theta angle at a given pixel.
+     * @param s0 The incident beam vector
+     * @param xy The pixel coordinate
+     * @returns The 2theta angle at that point.
+     */
+    double get_two_theta_at_pixel(vec3<double> s0, vec2<double> xy) const {
+      DXTBX_ASSERT(s0.length() > 0);
+      vec3<double> xyz = get_pixel_lab_coord(xy);
+      return angle_safe(s0, xyz);
+    }
+
+    /**
      * Get the resolution at a given pixel.
      * @param s0 The incident beam vector
      * @param xy The pixel coordinate
