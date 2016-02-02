@@ -9,8 +9,8 @@ import math
 from scitbx.array_family import flex
 from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana import rayonix_tbx
-from xfel.detector_formats import detector_format_version as detector_format_function
-from xfel.detector_formats import reverse_timestamp
+from iotbx.detectors.cspad_detector_formats import detector_format_version as detector_format_function
+from iotbx.detectors.cspad_detector_formats import reverse_timestamp
 
 # alternate implementation of hitfinder, use the idea of running spotfinder
 #   on the data from the innermost four sensors.  Once this is done, a hit is

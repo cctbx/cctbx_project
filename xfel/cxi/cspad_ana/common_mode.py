@@ -231,7 +231,7 @@ class common_mode_correction(mod_event_info):
     elif self.address == 'XppGon-0|Cspad-0':
       evt_time = cspad_tbx.evt_time(evt) # tuple of seconds, milliseconds
       timestamp = cspad_tbx.evt_timestamp(evt_time) # human readable format
-      from xfel.detector_formats import detector_format_version, reverse_timestamp
+      from iotbx.detectors.cspad_detector_formats import detector_format_version, reverse_timestamp
       from xfel.cxi.cspad_ana.cspad_tbx import xpp_active_areas
       version_lookup = detector_format_version(self.address, reverse_timestamp(timestamp)[0])
       assert version_lookup is not None
@@ -335,7 +335,7 @@ class common_mode_correction(mod_event_info):
         pass # bc and aa set in the beginjob function
       elif self.address == 'XppGon-0|Cspad-0':
         # Load the active areas as determined from the optical metrology
-        from xfel.detector_formats import detector_format_version, reverse_timestamp
+        from iotbx.detectors.cspad_detector_formats import detector_format_version, reverse_timestamp
         from xfel.cxi.cspad_ana.cspad_tbx import xpp_active_areas
         version_lookup = detector_format_version(self.address, reverse_timestamp(self.timestamp)[0])
         assert version_lookup is not None

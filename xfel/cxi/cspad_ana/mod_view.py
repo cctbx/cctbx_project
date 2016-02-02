@@ -68,7 +68,7 @@ class _Format(FormatPYunspecified):
     from dxtbx.model.scan import Scan, scan_factory
 
     from spotfinder.applications.xfel import cxi_phil
-    from xfel.detector_formats import detector_format_version
+    from iotbx.detectors.cspad_detector_formats import detector_format_version
 
     # From Format.__init__().
     self._goniometer_factory = goniometer_factory

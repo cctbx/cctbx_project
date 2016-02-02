@@ -7,7 +7,7 @@ from __future__ import division
 #
 
 import sys
-from xfel.detector_formats import _detector_format_version_dict
+from iotbx.detectors.cspad_detector_formats import _detector_format_version_dict
 
 def print_version(version):
   """

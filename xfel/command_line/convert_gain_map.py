@@ -12,7 +12,7 @@ from libtbx.option_parser import option_parser
 from scitbx.array_family import flex
 from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana import parse_calib
-from xfel.detector_formats import address_and_timestamp_from_detector_format_version
+from iotbx.detectors.cspad_detector_formats import address_and_timestamp_from_detector_format_version
 from xfel.cxi.cspad_ana.cspad_tbx import evt_timestamp
 
 # Fake objects to emulate the minimal functionality so that we can reuse the
