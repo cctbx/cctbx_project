@@ -6,6 +6,7 @@ import warnings
 import random
 import time
 import os
+import stat
 import tempfile
 
 def exercise_forward_compatibility():
@@ -316,6 +317,8 @@ def exercise_retrieve_unless_exists():
       (os.path.basename(filename), utils.md5_hexdigest(filename)),
       'something_else  yyyyyyy',
     ])
+  os.chmod(digestname,
+           os.stat(digestname).st_mode | stat.S_IWGRP | stat.S_IWOTH)
   d = tempfile.mkdtemp()
   targetname = os.path.join(d, 'target')
   try: os.remove(targetname)
