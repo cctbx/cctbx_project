@@ -386,7 +386,9 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
       reader = iotbx.cif.reader(file_path=file_name)
       self.cif_model = reader.model()
     elif lines is not None:
-      reader = iotbx.cif.reader(input_string="\n".join(lines))
+      if not isinstance( lines, str ):
+        lines = "\n".join(lines)
+      reader = iotbx.cif.reader(input_string=lines)
       self.cif_model = reader.model()
     elif cif_object is not None:
       self.cif_model = cif_object
