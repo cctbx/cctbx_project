@@ -16,6 +16,11 @@ import urllib2
 import urlparse
 import zipfile
 
+windows_remove_list = ['cbflib',
+                       'dials',
+                       'xia2',
+                      ]
+
 rosetta_version="rosetta_src_2015.39.58186_bundle"
 rosetta_version="rosetta_src_2016.02.58402_bundle"
 # LICENSE REQUIRED
@@ -586,7 +591,10 @@ class labelit_regression_module(SourceModule):
 
 class dials_module(SourceModule):
   module = 'dials'
-  anonymous = ['git', 'git@github.com:dials/dials.git', 'https://github.com/dials/dials.git', 'https://github.com/dials/dials/archive/master.zip']
+  anonymous = ['git',
+               'git@github.com:dials/dials.git',
+               'https://github.com/dials/dials.git',
+               'https://github.com/dials/dials/archive/master.zip']
 
 class dials_regression_module(SourceModule):
   module = 'dials_regression'
@@ -598,11 +606,17 @@ class xfel_regression_module(SourceModule):
 
 class xia2_module(SourceModule):
   module = 'xia2'
-  anonymous = ['git', 'git@github.com:xia2/xia2.git', 'https://github.com/xia2/xia2.git', 'https://github.com/xia2/xia2/archive/master.zip']
+  anonymous = ['git',
+               'git@github.com:xia2/xia2.git',
+               'https://github.com/xia2/xia2.git',
+               'https://github.com/xia2/xia2/archive/master.zip']
 
 class xia2_regression_module(SourceModule):
   module = 'xia2_regression'
-  anonymous = ['git', 'git@github.com:xia2/xia2_regression.git', 'https://github.com/xia2/xia2_regression.git', 'https://github.com/xia2/xia2_regression/archive/master.zip']
+  anonymous = ['git',
+               'git@github.com:xia2/xia2_regression.git',
+               'https://github.com/xia2/xia2_regression.git',
+               'https://github.com/xia2/xia2_regression/archive/master.zip']
 
 # Duke repositories
 class probe_module(SourceModule):
@@ -787,9 +801,11 @@ class Builder(object):
     return os.path.join(*args)
 
   def get_codebases(self):
-    #if sys.platform == "win32": # we can't currently compile cbflib for Windows
+    # we can't currently compile cbflib for Windows
     if self.isPlatformWindows():
-      return list(set(self.CODEBASES + self.CODEBASES_EXTRA) - set(['cbflib']))
+      rc = set(self.CODEBASES+self.CODEBASES_EXTRA)
+      for r in windows_remove_list: rc = rc - set([r])
+      return list(rc)
     rc = self.CODEBASES + self.CODEBASES_EXTRA
     if hasattr(self, "EXTERNAL_CODEBASES"):
       rc = self.EXTERNAL_CODEBASES + rc
@@ -799,9 +815,11 @@ class Builder(object):
     return self.HOT + self.HOT_EXTRA
 
   def get_libtbx_configure(self):
-    #if sys.platform == "win32": # we can't currently compile cbflib for Windows
+    # we can't currently compile cbflib for Windows
     if self.isPlatformWindows():
-      return list(set(self.LIBTBX + self.LIBTBX_EXTRA) - set(['cbflib']))
+      rc = set(self.LIBTBX+self.LIBTBX_EXTRA)
+      for r in windows_remove_list: rc = rc - set([r])
+      return list(rc)
     return self.LIBTBX + self.LIBTBX_EXTRA
 
   def add_init(self):
@@ -851,7 +869,7 @@ class Builder(object):
     if self.isPlatformWindows():
       tarurl, arxname, dirpath = MODULES.get_module(module)().get_tarauthenticated(auth=self.get_auth())
     if self.isPlatformWindows():
-      if module in ["cbflib",]: # can't currently compile cbflib for Windows due to lack of HDF5 component
+      if module in windows_remove_list: # can't currently compile cbflib for Windows due to lack of HDF5 component
         return
     if method == 'rsync' and not self.isPlatformWindows():
       self._add_rsync(module,
@@ -1077,7 +1095,9 @@ class Builder(object):
       return
 
     for source_candidate in parameters:
-      if not source_candidate.lower().startswith('http') and not self.auth.get('git_ssh',False):
+      if(not source_candidate.lower().startswith('http') and
+         not self.auth.get('git_ssh',False)
+         ):
         continue
       if source_candidate.lower().endswith('.git'):
         if not git_available:
@@ -1087,10 +1107,13 @@ class Builder(object):
           workdir=['modules']
         ))
         return
-      filename = "%s-%s" % (module, urlparse.urlparse(source_candidate).path.split('/')[-1])
+      filename = "%s-%s" % (module,
+                            urlparse.urlparse(source_candidate).path.split('/')[-1])
       filename = os.path.join('modules', filename)
       self._add_download(source_candidate, filename)
-      self._add_unzip(filename, os.path.join('modules', module), trim_directory=1)
+      self._add_unzip(filename,
+                      os.path.join('modules', module),
+                      trim_directory=1)
       return
 
     error = "Cannot satisfy git dependency for module %s: None of the sources are available." % module
