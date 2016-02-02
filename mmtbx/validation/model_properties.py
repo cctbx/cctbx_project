@@ -6,6 +6,7 @@ Analysis of model properties, independent of data.
 from __future__ import division
 from mmtbx.validation import atom, residue, validation, dummy_validation
 from libtbx import slots_getstate_setstate
+from libtbx.test_utils import approx_equal
 import sys
 
 class model_statistics (slots_getstate_setstate) :
@@ -193,6 +194,7 @@ class xray_structure_statistics (validation) :
     "o_max",
     "zero_occ",
     "partial_occ",
+    "different_occ",
     "bad_adps",
     "b_histogram",
   ]
@@ -245,7 +247,8 @@ class xray_structure_statistics (validation) :
     self.n_outliers = self.n_aniso_h + self.n_npd
     self.zero_occ = []
     self.partial_occ = []
-    self.bad_adps = [] # TODO
+    self.different_occ = []
+    self.bad_adps = []
     self.b_histogram = None # TODO
     def is_u_iso_outlier (u) :
       return (u < u_cutoff_low) or (u > u_cutoff_high) or (u <= 0)
@@ -352,8 +355,7 @@ class xray_structure_statistics (validation) :
                 occupancy += atom.occ
                 atoms.append(atom)
 
-            occupancy = round(occupancy,2)
-            if ( (occupancy < 1.0) or (occupancy > 1.0) ):
+            if ( not approx_equal(occupancy, 1.0, out=None, eps=1.0e-3) ):
               for atom in atoms:
                 outlier = atom_occupancy(
                   pdb_atom=atom,
@@ -363,6 +365,33 @@ class xray_structure_statistics (validation) :
                   outlier=True)
                 self.partial_occ.append(outlier)
                 self.n_outliers += 1
+
+          # check that atoms in an atom group have the same occupancy
+          for atom_group in residue_group.atom_groups():
+            residue_is_okay = True
+            base_occupancy = atom_group.atoms()[0].occ
+            for atom in atom_group.atoms():
+              if (not approx_equal(base_occupancy, atom.occ,
+                                   out=None, eps=1.0e-3)):
+                labels = atom.fetch_labels()
+                i_seqs = atom_group.atoms().extract_i_seq()
+                b_mean = adptbx.u_as_b(flex.mean(u_isos.select(i_seqs)))
+                outlier = residue_occupancy(
+                  chain_id=labels.chain_id,
+                  resseq=labels.resseq,
+                  icode=labels.icode,
+                  altloc=labels.altloc,
+                  resname=labels.resname,
+                  occupancy=occ,
+                  outlier=True,
+                  xyz=atom_group.atoms().extract_xyz().mean(),
+                  b_iso=b_mean)
+                self.different_occ.append(outlier)
+                self.n_outliers += 1
+                residue_is_okay = False
+                break
+            if (not residue_is_okay):
+              break
 
   def show_summary (self, out=sys.stdout, prefix="") :
     print >> out, prefix + "Number of atoms = %d  (anisotropic = %d)" % \
@@ -396,9 +425,10 @@ class xray_structure_statistics (validation) :
 
   def iter_results (self, property_type=None, outliers_only=True) :
     if (property_type is None) :
-      outliers = self.zero_occ + self.partial_occ + self.bad_adps
+      outliers = self.zero_occ + self.partial_occ + +self.different_occ +\
+                 self.bad_adps
     elif (property_type == "occupancy") :
-      outliers = self.zero_occ + self.partial_occ
+      outliers = self.zero_occ + self.partial_occ + self.different_occ
     elif (property_type == "b_factor") :
       outliers = self.bad_adps
     else :
