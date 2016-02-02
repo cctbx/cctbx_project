@@ -66,23 +66,27 @@ namespace {
                 double,
                 double,
                 double,
-                af::shared<double> >((
+                af::shared<double>,
+                int >((
                   arg("r"),
                   arg("t"),
                   arg("radius"),
                   arg("radius_estimate"),
                   arg("fracscat"),
-                  arg("rho_mn"))))
+                  arg("rho_mn"),
+                  arg("id"))))
       .add_property("r",      make_getter(&pair<>::r,      rbv()))
       .add_property("t",      make_getter(&pair<>::t,      rbv()))
       .add_property("radius", make_getter(&pair<>::radius, rbv()))
       .add_property("radius_estimate", make_getter(&pair<>::radius_estimate, rbv()))
       .add_property("fracscat", make_getter(&pair<>::fracscat, rbv()))
       .add_property("rho_mn", make_getter(&pair<>::rho_mn, rbv()))
+      .add_property("id", make_getter(&pair<>::id, rbv()))
       .enable_pickling()
       .def("__getinitargs__", getinitargs)
       .def("set_radius", &pair<>::set_radius)
       .def("set_rhoMN", &pair<>::set_rhoMN)
+      .def("set_id", &pair<>::set_id)
     ;
 
   }
