@@ -113,9 +113,6 @@ xtc_phil_str = '''
       .type = choice
       .help = Output file format, 64 tile segmented CBF or image pickle
     pickle {
-      cfg = None
-        .type = str
-        .help = Path to psana config file with a mod_image_dict module
       out_key = cctbx.xfel.image_dict
         .type = str
         .help = Key name that mod_image_dict uses to put image data in each psana event
@@ -132,6 +129,18 @@ xtc_phil_str = '''
       gain_mask_value = None
         .type = float
         .help = If not None, use the gain mask for the run to multiply the low-gain pixels by this number
+      common_mode {
+        algorithm = *default custom None
+          .type = choice
+          .help = Choice of SLAC's common mode correction algorithms. Default: use the default common_mode \
+                  correction. None: use no common mode correction, only dark pedestal subtraction. Custom, see  \
+                  https://confluence.slac.stanford.edu/display/PSDM/Common+mode+correction+algorithms
+        custom_parameterization = None
+          .type = ints
+          .help = Parameters to control SLAC's common mode correction algorithms. Should be None if \
+                  common_mode.algorithm is default or None.  See \
+                  https://confluence.slac.stanford.edu/display/PSDM/Common+mode+correction+algorithms
+      }
     }
   }
   output {
@@ -347,6 +356,9 @@ class InMemScript(DialsProcessScript):
         if params.format.cbf.gain_mask_value is not None:
           self.gain_mask = self.psana_det.gain_mask(gain=params.format.cbf.gain_mask_value)
 
+        if params.format.cbf.common_mode.algorithm is None or params.format.cbf.common_mode.algorithm == "custom":
+          self.pedestal = self.psana_det.pedestals(run)
+
       # list of all events
       times = run.times()
       nevents = min(len(times),max_events)
@@ -433,7 +445,14 @@ class InMemScript(DialsProcessScript):
     # the data needs to have already been processed and put into the event by psana
     if self.params.format.file_format == 'cbf':
       # get numpy array, 32x185x388
-      data = self.psana_det.calib(evt) # applies psana's complex run-dependent calibrations
+      if self.params.format.cbf.common_mode.algorithm == "default":
+        data = self.psana_det.calib(evt) # applies psana's complex run-dependent calibrations
+      elif self.params.format.cbf.common_mode.algorithm is None:
+        data = self.psana_det.raw_data(evt) - self.pedestal
+      else:
+        assert self.params.format.cbf.common_mode.algorithm == "custom" and self.params.format.cbf.common_mode.custom_parameterization is not None
+        data = self.psana_det.raw_data(evt) - self.pedestal
+        self.psana_det.common_mode_apply(evt.run(), data, self.params.format.cbf.common_mode.custom_parameterization)
       if data is None:
         print "No data"
         self.debug_file_handle.write(",no_data\n")
