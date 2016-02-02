@@ -14,6 +14,17 @@ from scitbx.math import superpose
 import mmtbx.alignment
 from libtbx.test_utils import approx_equal
 
+def similarity_indices(x, eps=0.01):
+  y = []
+  for i, xi in enumerate(x):
+    cntr=1
+    for j, xj in enumerate(x):
+      if(i!=j):
+        if(abs(xi-xj)<eps):
+          cntr+=1
+    y.append(cntr)
+  return y
+
 class groups(object):
 
   def __init__(self,
@@ -94,8 +105,15 @@ class groups(object):
         radius=rad,
         radius_estimate=rad,
         fracscat=fs,
-        rho_mn=flex.double()) # rho_mn undefined, needs to be set later
+        rho_mn=flex.double(),
+        id=-1) # rho_mn undefined, needs to be set later
       self.ncs_pairs.append(ncs_pair)
+    # set id flag
+    frac_scats = [p.fracscat for p in self.ncs_pairs]
+    sis = similarity_indices(x=frac_scats)
+    #print frac_scats, sis
+    for si, p in zip(sis, self.ncs_pairs):
+      p.set_id(si)
 
 def initialize_rho_mn(ncs_pairs, d_spacings_data, binner, rms=0.5):
   """

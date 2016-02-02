@@ -36,6 +36,7 @@ class pair
     FloatType radius_estimate;
     FloatType fracscat;
     af::shared<FloatType> rho_mn;
+    int id;
     pair() {
       r.fill(0);
       t.fill(0);
@@ -43,20 +44,23 @@ class pair
       radius_estimate=0;
       fracscat=0;
       rho_mn.fill(0);
+      id=-1;
     }
     pair(scitbx::mat3<FloatType> const& r_,
          scitbx::vec3<FloatType> const& t_,
          FloatType radius_,
          FloatType radius_estimate_,
          FloatType fracscat_,
-         af::shared<FloatType> rho_mn_)
+         af::shared<FloatType> rho_mn_,
+         int id_)
     :
       r(r_),t(t_),radius(radius_),radius_estimate(radius_estimate_),
-      fracscat(fracscat_), rho_mn(rho_mn_)
+      fracscat(fracscat_), rho_mn(rho_mn_), id(id_)
     {}
 
     void set_radius(FloatType _) { radius = _; }
     void set_rhoMN(af::shared<FloatType> _) { rho_mn = _; }
+    void set_id(int _) { id = _; }
 };
 
 // --------------------------------------------------------------------------
