@@ -185,7 +185,8 @@ class FormatCBFMiniPilatus(FormatCBFMini):
     if len(detector) == 1:
       raw_data = [self.get_raw_data()]
     else:
-      raw_data = [self.get_raw_data(i) for i in range(len(detector))]
+      raw_data = self.get_raw_data()
+      assert(len(raw_data) ==  len(detector))
     trusted_mask = [
       p.get_trusted_range_mask(im) for im, p in zip(raw_data, detector)]
 
