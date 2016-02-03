@@ -482,10 +482,9 @@ def test_avoid_hoh():
 
 def test_include_hoh():
   pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_4)
-  chains_info = get_chains_info(pdb_inp.hierarchy,exclude_water=True)
   isel1 = flex.size_t(range(7))
   sel_str1 = selection_string_from_selection(
-    pdb_inp,isel1,chains_info=chains_info)
+    pdb_inp,isel1)
   s = "(chain 'A' and resid 151:157)"
   assert sel_str1 == s, sel_str1
   #
@@ -493,10 +492,9 @@ def test_include_hoh():
   sel = cache(s).iselection()
   assert sel.size() == 7, sel.size()
   #
-  chains_info = get_chains_info(pdb_inp.hierarchy,exclude_water=False)
   isel1 = flex.size_t(range(12))
   sel_str1 = selection_string_from_selection(
-    pdb_inp,isel1,chains_info=chains_info)
+    pdb_inp,isel1)
   assert sel_str1 == "chain 'A'", sel_str
 
 def test_selection_with_alternative_conformers():

@@ -102,7 +102,7 @@ class Chains_info(object):
 def find_ncs_in_hierarchy(ph,
                           min_contig_length=10,
                           min_percent=0.95,
-                          use_minimal_master_ncs=True,
+                          # use_minimal_master_ncs=True,
                           max_rmsd=5.0,
                           write=False,
                           log=None,
@@ -153,7 +153,7 @@ def find_ncs_in_hierarchy(ph,
     write=write,
     log=log,
     check_atom_order=check_atom_order,
-    use_minimal_master_ncs=use_minimal_master_ncs,
+    # use_minimal_master_ncs=use_minimal_master_ncs,
     allow_different_size_res=allow_different_size_res,
     ignore_chains=ignore_chains)
   #
@@ -171,15 +171,16 @@ def find_ncs_in_hierarchy(ph,
   # assert 0
   #
 
+
   # new, the basic way of processing, by Oleg.
   return ncs_grouping_and_group_dict(match_dict, ph)
 
 
   # this is not used anymore
-  if use_minimal_master_ncs:
-    transform_to_group,match_dict = minimal_master_ncs_grouping(match_dict, ph)
-  else:
-    transform_to_group,match_dict = minimal_ncs_operators_grouping(match_dict)
+  # if use_minimal_master_ncs:
+  #   transform_to_group,match_dict = minimal_master_ncs_grouping(match_dict, ph)
+  # else:
+  #   transform_to_group,match_dict = minimal_ncs_operators_grouping(match_dict)
 
 
   group_dict = build_group_dict(transform_to_group,match_dict,chains_info)
@@ -1348,7 +1349,6 @@ def search_ncs_relations(ph=None,
                          log=None,
                          check_atom_order=False,
                          allow_different_size_res=True,
-                         use_minimal_master_ncs=True,
                          ignore_chains=None):
   """
   Search for NCS relations between chains or parts of chains, in a protein
@@ -1371,9 +1371,6 @@ def search_ncs_relations(ph=None,
     check_atom_order (bool): check atom order in matching residues.
         When False, matching residues with different number of atoms will be
         excluded from matching set
-    use_minimal_master_ncs (bool): use maximal or minimal common chains
-        in master ncs groups (when True, search does not need to be done all
-        all chains -> can be significantly faster on large structures)
     allow_different_size_res (bool): keep matching residue with different
       number of atoms
     ignore_chains (set of str): set of chain IDs to exclude
@@ -1395,13 +1392,10 @@ def search_ncs_relations(ph=None,
   # collect all chain IDs
   chain_match_list = []
   msg = ''
-  if use_minimal_master_ncs:
-    sorted_ch = sorted(chains_info)
-  else:
-    sorted_ch = sort_by_dist(chains_info)
+  sorted_ch = sorted(chains_info)
+
   n_chains = len(sorted_ch)
   chains_in_copies = set()
-  # print "sorted_ch", sorted_ch
   # loop over all chains
   for i in xrange(n_chains-1):
     # this is disabled, see comment in update_chain_ids_search_order
@@ -1418,7 +1412,6 @@ def search_ncs_relations(ph=None,
     # get residue lists for master
     for j in xrange(i+1,n_chains):
       c_ch_id = sorted_ch[j]
-      # print "matching", m_ch_id, c_ch_id,
       copy_n_res = len(chains_info[c_ch_id].res_names)
       frac_d = min(copy_n_res,master_n_res)/max(copy_n_res,master_n_res)
       # print "  copy_n_res,master_n_res", copy_n_res,master_n_res
@@ -1445,7 +1438,6 @@ def search_ncs_relations(ph=None,
         rec = [m_ch_id,c_ch_id,sel_m,sel_c,res_sel_m,res_sel_c,similarity]
         chain_match_list.append(rec)
       # Collect only very good matches, to allow better similarity search
-      # print "similarity", similarity
       if similarity > 0.9:
         chains_in_copies.add(c_ch_id)
         # print "  good"
@@ -1712,8 +1704,9 @@ def make_selection_from_lists(sel_list):
   sel_list_extended.sort()
   return flex.size_t(sel_list_extended)
 
-def get_chains_info(ph,selection_list=None,exclude_water=True,
-                    ignore_chains=None):
+def get_chains_info(ph,selection_list=None,
+    # exclude_water=True,
+    ignore_chains=None):
   """
   Collect information about chains or segments of the hierarchy according to
   selection strings
@@ -1762,7 +1755,7 @@ def get_chains_info(ph,selection_list=None,exclude_water=True,
         conf = ch.conformers()[0]
         for res in conf.residues():
           x = res.resname
-          if exclude_water and (x.lower() == 'hoh'): continue
+          # if exclude_water and (x.lower() == 'hoh'): continue
           resids.append(res.resid())
           res_names.append(x)
           atoms = res.atoms()
@@ -1773,7 +1766,7 @@ def get_chains_info(ph,selection_list=None,exclude_water=True,
         for res in ch.residue_groups():
           for atoms in res.atom_groups():
             x = atoms.resname
-            if exclude_water and (x.lower() == 'hoh'): continue
+            # if exclude_water and (x.lower() == 'hoh'): continue
             resids.append(res.resid())
             res_names.append(x)
             atom_names.append(list(atoms.atoms().extract_name()))
@@ -1805,7 +1798,7 @@ def get_chains_info(ph,selection_list=None,exclude_water=True,
           for res in ch.residue_groups():
             for atoms in res.atom_groups():
               x = atoms.resname
-              if exclude_water and (x.lower() == 'hoh'): continue
+              # if exclude_water and (x.lower() == 'hoh'): continue
               chains_info[sel_str].resid.append(res.resid())
               chains_info[sel_str].res_names.append(x)
               atom_list = list(atoms.atoms().extract_name())
@@ -1913,100 +1906,100 @@ def is_same_transform(r1,t1,r2,t2):
   else:
     return False, False
 
-def sort_by_dist(chains_info):
-  """
-  The process of grouping chains is not exhaustive, meaning that is does not
-  consider every possible chains grouping, due to potential computation time
-  such a search might take. To improve the the probability of getting
-  preferred grouping, instead of searching using the order of the chain
-  names, we arrange chains by distance.
-  Starting from the first chain look for the closest chain to it, then
-  the closest to the second chain, and so one.
+# def sort_by_dist(chains_info):
+#   """
+#   The process of grouping chains is not exhaustive, meaning that is does not
+#   consider every possible chains grouping, due to potential computation time
+#   such a search might take. To improve the the probability of getting
+#   preferred grouping, instead of searching using the order of the chain
+#   names, we arrange chains by distance.
+#   Starting from the first chain look for the closest chain to it, then
+#   the closest to the second chain, and so one.
 
-  Note that this only improve but does not guarantee optimal grouping
+#   Note that this only improve but does not guarantee optimal grouping
 
-  This function is used only when minimizing number of NCS operators
+#   This function is used only when minimizing number of NCS operators
 
-  Args:
-    chains_info (obj): Chain_info object
+#   Args:
+#     chains_info (obj): Chain_info object
 
-  Return:
-    ch_id_list (lst): ordered list of chain IDs
-  """
-  sorted_list = sorted(chains_info)
-  if sorted_list:
-    ch_id_list = [sorted_list.pop(0)]
-    while sorted_list:
-      coc1 = chains_info[ch_id_list[-1]].center_of_coordinates
-      min_d = 10000000
-      min_ch_id = ''
-      min_indx = None
-      for i,ch_id in enumerate(sorted_list):
-        coc2 = chains_info[ch_id].center_of_coordinates
-        d = coc1.max_distance(coc2)
-        if d < min_d:
-          min_d = d
-          min_ch_id = ch_id
-          min_indx = i
-      if min_ch_id:
-        ch_id_list.append(sorted_list.pop(min_indx))
-    return ch_id_list
-  else:
-    return []
-
-
-def  update_chain_ids_search_order(chains_info,sorted_ch,chains_in_copies,i):
-  """
-  This function is used only when minimizing number of chains in master NCS.
-  It design to improve grouping by choosing masters that are near by.
-
-  Replace chain ID i in the list sorted_ch with the closest chain i-1 in
-  sorted_ch, ignoring chains that are already in NCS groups
-
-  Args:
-    chains_info (obj): Chain_info object
-    sorted_ch (list): chain IDs list
-    chains_in_copies (set): chain already in NCS groups
-    i (int): position in the list
+#   Return:
+#     ch_id_list (lst): ordered list of chain IDs
+#   """
+#   sorted_list = sorted(chains_info)
+#   if sorted_list:
+#     ch_id_list = [sorted_list.pop(0)]
+#     while sorted_list:
+#       coc1 = chains_info[ch_id_list[-1]].center_of_coordinates
+#       min_d = 10000000
+#       min_ch_id = ''
+#       min_indx = None
+#       for i,ch_id in enumerate(sorted_list):
+#         coc2 = chains_info[ch_id].center_of_coordinates
+#         d = coc1.max_distance(coc2)
+#         if d < min_d:
+#           min_d = d
+#           min_ch_id = ch_id
+#           min_indx = i
+#       if min_ch_id:
+#         ch_id_list.append(sorted_list.pop(min_indx))
+#     return ch_id_list
+#   else:
+#     return []
 
 
-  Return:
-    ch_id_list (list): ordered list of chain IDs
+# def  update_chain_ids_search_order(chains_info,sorted_ch,chains_in_copies,i):
+#   """
+#   This function is used only when minimizing number of chains in master NCS.
+#   It design to improve grouping by choosing masters that are near by.
 
-  23/09/2015 Oleg. Disabled because arbitrary tossing chains may cause
-  selection problems in future execution. The test exercising it is in:
-  cctbx_project/iotbx/regression/ncs/tst_ncs_input.py, exersice_23().
-  In nutshell:
-  given chain order in pdb file: ADEFCB and groups are ABC and DEF, where
-  matches are A-D, B-E, C-F
-  selections are going to extract atoms in the following order:
-  ACB, DEF and they will be not atom-to-atom matched (the resulting matching
-  is A-D, C-E, B-F)
-  """
-  return sorted_ch
-  if i == 0:
-    return sorted_ch
-  else:
-    ref = chains_info[sorted_ch[i-1]].center_of_coordinates
-    min_d = 10000000
-    min_ch_id = None
-    # use only potential masters
-    test_list = list(set(sorted_ch[i:]) - chains_in_copies)
-    while test_list:
-      ch_id = test_list.pop(0)
-      c_of_c = chains_info[ch_id].center_of_coordinates
-      d = ref.max_distance(c_of_c)
-      if d < min_d:
-        min_d = d
-        min_ch_id = ch_id
-    # flip the i position with the min_indx position
-    min_indx = sorted_ch.index(min_ch_id)
-    # alternatively, just place chain in front of current instead of flipping
-    # Doesn't really help.
-    # sorted_ch.remove(min_ch_id)
-    # sorted_ch.insert(i, min_ch_id)
-    sorted_ch[i], sorted_ch[min_indx] = sorted_ch[min_indx], sorted_ch[i]
-    return sorted_ch
+#   Replace chain ID i in the list sorted_ch with the closest chain i-1 in
+#   sorted_ch, ignoring chains that are already in NCS groups
+
+#   Args:
+#     chains_info (obj): Chain_info object
+#     sorted_ch (list): chain IDs list
+#     chains_in_copies (set): chain already in NCS groups
+#     i (int): position in the list
+
+
+#   Return:
+#     ch_id_list (list): ordered list of chain IDs
+
+#   23/09/2015 Oleg. Disabled because arbitrary tossing chains may cause
+#   selection problems in future execution. The test exercising it is in:
+#   cctbx_project/iotbx/regression/ncs/tst_ncs_input.py, exersice_23().
+#   In nutshell:
+#   given chain order in pdb file: ADEFCB and groups are ABC and DEF, where
+#   matches are A-D, B-E, C-F
+#   selections are going to extract atoms in the following order:
+#   ACB, DEF and they will be not atom-to-atom matched (the resulting matching
+#   is A-D, C-E, B-F)
+#   """
+#   return sorted_ch
+#   if i == 0:
+#     return sorted_ch
+#   else:
+#     ref = chains_info[sorted_ch[i-1]].center_of_coordinates
+#     min_d = 10000000
+#     min_ch_id = None
+#     # use only potential masters
+#     test_list = list(set(sorted_ch[i:]) - chains_in_copies)
+#     while test_list:
+#       ch_id = test_list.pop(0)
+#       c_of_c = chains_info[ch_id].center_of_coordinates
+#       d = ref.max_distance(c_of_c)
+#       if d < min_d:
+#         min_d = d
+#         min_ch_id = ch_id
+#     # flip the i position with the min_indx position
+#     min_indx = sorted_ch.index(min_ch_id)
+#     # alternatively, just place chain in front of current instead of flipping
+#     # Doesn't really help.
+#     # sorted_ch.remove(min_ch_id)
+#     # sorted_ch.insert(i, min_ch_id)
+#     sorted_ch[i], sorted_ch[min_indx] = sorted_ch[min_indx], sorted_ch[i]
+#     return sorted_ch
 
 
 def my_get_rot_trans(
