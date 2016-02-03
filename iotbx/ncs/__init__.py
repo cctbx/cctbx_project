@@ -312,6 +312,7 @@ class input(object):
         # print "old iseqs:", list(self.old_i_seqs)
         # pdb_hierarchy_inp.hierarchy.write_pdb_file("in_ncs_pre_after.pdb")
       if pdb_hierarchy_inp.hierarchy.atoms().size() == 0:
+        self.total_asu_length = 0
         return
     #
     # print "ncs_groups before validation", ncs_phil_groups
@@ -868,7 +869,6 @@ class input(object):
     #   for z in v.transforms:
     #     print "    ", z.serial_num, z.ncs_group_id, z.coordinates_present
       # print "    ", v.transforms
-
 
     self.ncs_atom_selection = flex.bool([False]*self.total_asu_length)
     chains_info = ncs_search.get_chains_info(ph)
