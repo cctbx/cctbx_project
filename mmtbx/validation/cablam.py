@@ -1054,7 +1054,9 @@ class cablamalyze(validation):
     from iotbx.pdb import secondary_structure
     helix_i = 0
     sheet_i = 0
-    return_records = []
+    helix_records = []
+    strand_records = []
+    #return_records = []
 
     chain_list = self.all_results.keys()
     chain_list.sort()
@@ -1086,7 +1088,8 @@ class cablamalyze(validation):
             helix_class    = helix_class,
             comment = "",
             length = record.segment_length)
-          return_records.append(return_record)
+          helix_records.append(return_record)
+          #return_records.append(return_record)
         if record.segment_type == 'beta':
           sheet_i += 1
           strand_record = secondary_structure.pdb_strand(
@@ -1109,8 +1112,10 @@ class cablamalyze(validation):
             registrations = [None],
             hbond_list = []
             )
-          return_records.append(return_record)
-    return return_records
+          strand_records.append(return_record)
+          #return_records.append(return_record)
+    return secondary_structure.annotation(helices=helix_records,sheets=strand_records)
+    #return return_records
   #-----------------------------------------------------------------------------
   #}}}
 
@@ -1122,8 +1127,7 @@ class cablamalyze(validation):
     #By default, this returns the first conformation (alt) in each chain
     #Other conformations can be accessed with conf_request
     records = self.as_secondary_structure(conf_request=conf_request)
-    for record in records:
-      self.out.write(record.as_pdb_str()+'\n')
+    self.out.write(records.as_pdb_str()+'\n')
   #-----------------------------------------------------------------------------
   #}}}
 
