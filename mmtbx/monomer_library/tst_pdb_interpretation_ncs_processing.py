@@ -1,5 +1,5 @@
 from __future__ import division
-import mmtbx.monomer_library.pdb_interpretation as pdb_inter
+import mmtbx.monomer_library.pdb_interpretation as pdb_interpretation
 from libtbx.utils import null_out
 from datetime import datetime
 import iotbx.phil
@@ -101,7 +101,7 @@ class TestPDBinterpretationNCSSearch(unittest.TestCase):
     # Turn on NCS search and adjust one of the parameters
     params.ncs_search.enabled = True
     params.ncs_search.check_atom_order = True
-    pdb_processed_file = pdb_inter.run(
+    pdb_processed_file = pdb_interpretation.run(
     args=['test.pdb'],
     params=params,
     log=null_out())
