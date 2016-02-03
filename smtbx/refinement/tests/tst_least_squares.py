@@ -18,10 +18,30 @@ import math
 import sys
 import random
 
+tested_ls_engines = (
+  least_squares.normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_2,
+  least_squares.normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_3,
+)
+
+# we use a wrapper to make sure non_linear_ls_with_separable_scale_factor
+# is not an argument with a default value, so as to protect ourself from
+# forgetting to specify that argument in the tests, which would result
+# in the wrong feature to be tested, potentially.
+def tested_crystallographic_ls(
+  observations, reparametrisation,
+  non_linear_ls_with_separable_scale_factor,
+  **kwds):
+  return least_squares.crystallographic_ls(
+    observations, reparametrisation,
+    non_linear_ls_with_separable_scale_factor,
+    **kwds)
 
 class refinement_test(object):
 
   ls_cycle_repeats = 1
+
+  def __init__(self, ls_engine):
+    self.ls_engine = ls_engine
 
   def run(self):
     if self.ls_cycle_repeats == 1:
@@ -44,7 +64,8 @@ class site_refinement_test(refinement_test):
     self.exercise_ls_cycles()
     self.exercise_floating_origin_restraints()
 
-  def __init__(self):
+  def __init__(self, ls_engine):
+    refinement_test.__init__(self, ls_engine)
     sgi = sgtbx.space_group_info("Hall: %s" % self.hall)
     cs = sgi.any_compatible_crystal_symmetry(volume=1000)
     xs = xray.structure(crystal.special_position_settings(cs))
@@ -69,8 +90,9 @@ class site_refinement_test(refinement_test):
       constraints=[],
       connectivity_table=connectivity_table)
     obs = self.fo_sq.as_xray_observations()
-    ls = least_squares.crystallographic_ls(
+    ls = tested_crystallographic_ls(
       obs, reparametrisation,
+      non_linear_ls_with_separable_scale_factor=self.ls_engine,
       weighting_scheme=least_squares.unit_weighting(),
       origin_fixing_restraints_type=oop.null())
     ls.build_up()
@@ -81,9 +103,10 @@ class site_refinement_test(refinement_test):
     unrestrained_eigenval = ev.values()
     unrestrained_eigenvec = ev.vectors()
 
-    ls = least_squares.crystallographic_ls(
+    ls = tested_crystallographic_ls(
       obs,
       reparametrisation,
+      non_linear_ls_with_separable_scale_factor=self.ls_engine,
       weighting_scheme=least_squares.unit_weighting(),
       origin_fixing_restraints_type=
       origin_fixing_restraints.homogeneous_weighting)
@@ -166,9 +189,10 @@ class site_refinement_test(refinement_test):
 
     # Do the floating origin restraints prevent the structure from floating?
     xs = self.xray_structure.deep_copy_scatterers()
-    ls = least_squares.crystallographic_ls(
+    ls = tested_crystallographic_ls(
       obs,
       reparametrisation,
+      non_linear_ls_with_separable_scale_factor=self.ls_engine,
       weighting_scheme=least_squares.unit_weighting(),
       origin_fixing_restraints_type=
       origin_fixing_restraints.atomic_number_weighting
@@ -216,8 +240,9 @@ class site_refinement_test(refinement_test):
       structure=xs,
       constraints=[],
       connectivity_table=connectivity_table)
-    ls = least_squares.crystallographic_ls(
+    ls = tested_crystallographic_ls(
       self.fo_sq.as_xray_observations(), reparametrisation,
+      non_linear_ls_with_separable_scale_factor=self.ls_engine,
       weighting_scheme=least_squares.mainstream_shelx_weighting(a=0),
       origin_fixing_restraints_type=
       origin_fixing_restraints.atomic_number_weighting)
@@ -245,7 +270,8 @@ class adp_refinement_test(refinement_test):
   class refinement_diverged(RuntimeError):
     pass
 
-  def __init__(self):
+  def __init__(self, ls_engine):
+    refinement_test.__init__(self, ls_engine)
     sgi = sgtbx.space_group_info("Hall: %s" % self.hall)
     cs = sgi.any_compatible_crystal_symmetry(volume=1000)
     xs = xray.structure(crystal.special_position_settings(cs))
@@ -276,8 +302,9 @@ class adp_refinement_test(refinement_test):
       structure=xs,
       constraints=[],
       connectivity_table=connectivity_table)
-    ls = least_squares.crystallographic_ls(
+    ls = tested_crystallographic_ls(
       self.fo_sq.as_xray_observations(), reparametrisation,
+      non_linear_ls_with_separable_scale_factor=self.ls_engine,
       weighting_scheme=least_squares.mainstream_shelx_weighting(a=0),
       origin_fixing_restraints_type=oop.null())
 
@@ -365,7 +392,8 @@ class all_special_position_test(object):
 
 class twin_test(object):
 
-  def __init__(self):
+  def __init__(self, ls_engine):
+    self.ls_engine = ls_engine
     # Let's start from some X-ray structure
     self.structure = xs = xray.structure(
       crystal_symmetry=crystal.symmetry(
@@ -497,8 +525,9 @@ class twin_test(object):
       connectivity_table=connectivity_table,
       twin_fractions=twin_components)
     obs = self.fo_sq.as_xray_observations(twin_components=twin_components)
-    ls = least_squares.crystallographic_ls(
+    ls = tested_crystallographic_ls(
       obs, reparametrisation,
+      non_linear_ls_with_separable_scale_factor=self.ls_engine,
       weighting_scheme=least_squares.unit_weighting(),
       origin_fixing_restraints_type=
       origin_fixing_restraints.atomic_number_weighting)
@@ -546,15 +575,15 @@ class adp_refinement_in_p2_test(p2_test, adp_refinement_test): pass
 class adp_refinement_in_pm_test(pm_test, adp_refinement_test): pass
 
 
-def exercise_normal_equations():
-  site_refinement_with_all_on_special_positions().run()
+def exercise_normal_equations(ls_engine):
+  site_refinement_with_all_on_special_positions(ls_engine).run()
 
   for klass in (adp_refinement_in_p1_test,
                 adp_refinement_in_pm_test,
                 adp_refinement_in_p2_test):
     for i in xrange(4):
       try:
-        klass().run()
+        klass(ls_engine).run()
         break
       except adp_refinement_test.refinement_diverged:
         print "Warning: ADP refinement diverged, retrying..."
@@ -562,17 +591,18 @@ def exercise_normal_equations():
       print ("Error: ADP refinement diverged four times in a row (%s)"
              % klass.__name__)
 
-  site_refinement_in_p1_test().run()
-  site_refinement_in_pm_test().run()
-  site_refinement_in_p2_test().run()
+  site_refinement_in_p1_test(ls_engine).run()
+  site_refinement_in_pm_test(ls_engine).run()
+  site_refinement_in_p2_test(ls_engine).run()
 
 class special_positions_test(object):
 
   delta_site   = 0.1 # % (of unit cell c for constrained atoms)
   delta_u_star = 0.1 # %
 
-  def __init__(self, n_runs, **kwds):
+  def __init__(self, ls_engine, n_runs, **kwds):
     libtbx.adopt_optional_init_args(self, kwds)
+    self.ls_engine = ls_engine
     self.n_runs = n_runs
     self.crystal_symmetry = crystal.symmetry(
       unit_cell=uctbx.unit_cell((5.1534, 5.1534, 8.6522, 90, 90, 120)),
@@ -655,8 +685,9 @@ class special_positions_test(object):
       structure=xs,
       constraints=[],
       connectivity_table=connectivity_table)
-    ls = least_squares.crystallographic_ls(
+    ls = tested_crystallographic_ls(
       self.fo_sq.as_xray_observations(), reparametrisation,
+      non_linear_ls_with_separable_scale_factor=self.ls_engine,
       weighting_scheme=least_squares.unit_weighting(),
       origin_fixing_restraints_type=
       origin_fixing_restraints.atomic_number_weighting)
@@ -705,7 +736,7 @@ class special_positions_test(object):
       assert approx_equal(cov[i, i+1]/cov[i, i], 1, eps=1e-12)
       assert approx_equal(cov[i, i+3]/cov[i, i], 0.5, eps=1e-12)
 
-def exercise_floating_origin_dynamic_weighting(verbose=False):
+def exercise_floating_origin_dynamic_weighting(ls_engine, verbose=False):
   from cctbx import covariance
   import scitbx.math
 
@@ -725,12 +756,13 @@ def exercise_floating_origin_dynamic_weighting(verbose=False):
   xs.shake_sites_in_place(rms_difference=0.1)
   for sc in xs.scatterers():
     sc.flags.set_grad_site(True).set_grad_u_aniso(True)
-  ls = least_squares.crystallographic_ls(
+  ls = tested_crystallographic_ls(
     fo_sq.as_xray_observations(),
     constraints.reparametrisation(
       structure=xs,
       constraints=[],
       connectivity_table=smtbx.utils.connectivity_table(xs)),
+    non_linear_ls_with_separable_scale_factor=ls_engine,
     weighting_scheme=least_squares.unit_weighting(),
     origin_fixing_restraints_type=
     origin_fixing_restraints.atomic_number_weighting)
@@ -759,12 +791,13 @@ def exercise_floating_origin_dynamic_weighting(verbose=False):
   xs.shake_sites_in_place(rms_difference=0.1)
   for sc in xs.scatterers():
     sc.flags.set_grad_site(True).set_grad_u_aniso(True)
-  ls = least_squares.crystallographic_ls(
+  ls = tested_crystallographic_ls(
     fo_sq.as_xray_observations(),
     constraints.reparametrisation(
       structure=xs,
       constraints=[],
       connectivity_table=smtbx.utils.connectivity_table(xs)),
+    non_linear_ls_with_separable_scale_factor=ls_engine,
     weighting_scheme=least_squares.mainstream_shelx_weighting(),
     origin_fixing_restraints_type=
     origin_fixing_restraints.atomic_number_weighting)
@@ -1098,12 +1131,13 @@ def exercise_floating_origin_dynamic_weighting(verbose=False):
     xs.shake_sites_in_place(rms_difference=0.1)
     for sc in xs.scatterers():
       sc.flags.set_grad_site(True).set_grad_u_aniso(False)
-    ls = least_squares.crystallographic_ls(
+    ls = tested_crystallographic_ls(
       fo_sq.as_xray_observations(),
       constraints.reparametrisation(
         structure=xs,
         constraints=[],
         connectivity_table=smtbx.utils.connectivity_table(xs)),
+      non_linear_ls_with_separable_scale_factor=ls_engine,
       weighting_scheme=least_squares.unit_weighting(),
       origin_fixing_restraints_type=
       origin_fixing_restraints.atomic_number_weighting)
@@ -1161,11 +1195,14 @@ def run():
   n_runs = command_line.options.runs
   if n_runs > 1: refinement_test.ls_cycle_repeats = n_runs
 
-  exercise_normal_equations()
-  exercise_floating_origin_dynamic_weighting(command_line.options.verbose)
-  special_positions_test(n_runs).run()
+  for ls_engine in tested_ls_engines:
+    print "Testing %s" % ls_engine
+    exercise_normal_equations(ls_engine)
+    exercise_floating_origin_dynamic_weighting(ls_engine,
+                                               command_line.options.verbose)
+    special_positions_test(ls_engine, n_runs).run()
   if not command_line.options.skip_twin_test:
-    twin_test().run()
+      twin_test(ls_engine).run()
 
 if __name__ == '__main__':
   run()
