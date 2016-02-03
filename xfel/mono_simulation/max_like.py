@@ -118,7 +118,7 @@ class minimizer:
       expB = exp( B * (psi_i + psi_model) )
       expBneg = exp( -B * (psi_i - psi_model) )
 
-      if expB > 1e100 or expBneg < -1e100:
+      if expB > 1e100 or expBneg < -1e100 or expBneg > 1e100:
         from libtbx.utils import Sorry
         raise Sorry("Model has diverged, cannot continue")
 
