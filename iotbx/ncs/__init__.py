@@ -4,7 +4,7 @@ from scitbx.array_family import flex
 from mmtbx.ncs import ncs_search
 import mmtbx.ncs.ncs_utils as nu
 from libtbx.utils import Sorry
-from libtbx.phil import parse
+import libtbx.phil
 import iotbx.pdb.hierarchy
 from mmtbx.ncs import ncs
 from scitbx import matrix
@@ -105,7 +105,7 @@ ncs_group
   }
 '''
 
-ncs_group_master_phil = parse(ncs_group_phil_str)
+ncs_group_master_phil = libtbx.phil.parse(ncs_group_phil_str)
 
 class input(object):
   def __init__(self,
@@ -115,7 +115,7 @@ class input(object):
           transform_info=None,
           rotations = None,
           translations = None,
-          # ncs_phil_string = None,
+          # XXX warning, ncs_phil_groups can be changed inside...
           ncs_phil_groups = None,
           file_name=None,
           file_path='',
@@ -314,9 +314,15 @@ class input(object):
       if pdb_hierarchy_inp.hierarchy.atoms().size() == 0:
         return
     #
-    ncs_phil_groups = self.validate_ncs_phil_groups(
+    # print "ncs_groups before validation", ncs_phil_groups
+    validated_ncs_phil_groups = None
+    validated_ncs_phil_groups = self.validate_ncs_phil_groups(
       pdb_hierarchy_inp = pdb_hierarchy_inp,
       ncs_phil_groups   = ncs_phil_groups)
+    # print "ncs_phil_groups", ncs_phil_groups
+    # if ncs_phil_groups is not None:
+    #   print "Number of ncs groups after validation:", len(ncs_phil_groups)
+    # print "validated_ncs_phil_groups", validated_ncs_phil_groups
     #
     if pdb_hierarchy_inp and (not transform_info):
       transform_info = pdb_hierarchy_inp.input.process_mtrix_records(eps=0.01)
@@ -337,10 +343,10 @@ class input(object):
       else:
         # in the case that all ncs copies are in pdb
         self.build_ncs_obj_from_pdb_asu(pdb_hierarchy_inp=pdb_hierarchy_inp)
-    elif ncs_phil_groups:
+    elif validated_ncs_phil_groups:
       self.build_ncs_obj_from_phil(
         # ncs_phil_string=ncs_phil_string,
-        ncs_phil_groups=ncs_phil_groups,
+        ncs_phil_groups=validated_ncs_phil_groups,
         pdb_hierarchy_inp=pdb_hierarchy_inp)
     elif extension.lower() == '.ncs_spec' or \
             spec_file_str or spec_source_info or spec_ncs_groups:
@@ -352,7 +358,9 @@ class input(object):
         pdb_hierarchy_inp=pdb_hierarchy_inp,
         spec_ncs_groups=spec_ncs_groups,
         quiet=quiet)
-    elif pdb_hierarchy_inp:
+    elif (pdb_hierarchy_inp
+        and validated_ncs_phil_groups is None):
+      # print "Last chance, building from hierarchy"
       self.build_ncs_obj_from_pdb_asu(pdb_hierarchy_inp=pdb_hierarchy_inp)
     else:
       pass
@@ -368,12 +376,58 @@ class input(object):
       if self.messages != '':
         print >> log,self.messages
 
+  def pdb_h_into_chain(self, pdb_h, ch_id="A"):
+
+    new_chain = iotbx.pdb.hierarchy.chain(id=ch_id)
+    # print "iseqs in pdb_h_into_chain", list(pdb_h.atoms().extract_i_seq())
+    n_res_groups = 0
+    for chain in pdb_h.only_model().chains():
+      n_res_groups += chain.residue_groups_size()
+    new_chain.pre_allocate_residue_groups(
+        number_of_additional_residue_groups=n_res_groups)
+    new_resseq = 1
+    for chain in pdb_h.only_model().chains():
+      for rg in chain.residue_groups():
+        new_rg = rg.detached_copy()
+        new_rg.resseq = new_resseq
+        original_iseqs = rg.atoms().extract_i_seq()
+        for atom, orig_iseq in zip(new_rg.atoms(), original_iseqs):
+          atom.tmp = orig_iseq
+        new_resseq += 1
+        new_chain.append_residue_group(residue_group=new_rg)
+    # print "iseqs2 in pdb_h_into_chain", list(new_chain.atoms().extract_i_seq())
+    # print "tmp2 in pdb_h_into_chain", list(new_chain.atoms().extract_tmp_as_size_t())
+    return new_chain
+
+  def get_next_ch_id(self, cur_ch_id):
+    if len(cur_ch_id) == 1 and cur_ch_id < 'Z':
+      return chr(ord(cur_ch_id) + 1)
+    elif len(cur_ch_id) == 1 and cur_ch_id == 'Z':
+      return "AA"
+    elif len(cur_ch_id) == 2 and cur_ch_id[1] < 'Z':
+      return cur_ch_id[0] + chr(ord(cur_ch_id[1]) + 1)
+    elif len(cur_ch_id) == 2 and cur_ch_id[1] == 'Z':
+      return chr(ord(cur_ch_id[0]) + 1) + 'A'
+
+
   def validate_ncs_phil_groups(self, pdb_hierarchy_inp, ncs_phil_groups):
+    """
+    Note that the result of this procedure is corrected ncs_phil_groups.
+    These groups will be later submitted to build_ncs_obj_from_phil
+    procedure. This is sub-optimal and should be changed because
+    everything is already processed here and ready to build proper
+    NCS_restraint_group object.
+    """
     # Massage NCS groups
     # return ncs_phil_groups
     # print "ncs_phil_groups", ncs_phil_groups
+    validated_ncs_groups = []
+    if ncs_phil_groups is None:
+      return None
     if(ncs_phil_groups is not None and len(ncs_phil_groups)==0):
+      # print "exiting here"
       ncs_phil_groups=None
+      return None
     if(ncs_phil_groups is not None):
       empty_cntr = 0
       for ng in ncs_phil_groups:
@@ -382,10 +436,15 @@ class input(object):
         for s in ng.selection:
           if s is None or len(s.strip())==0:
             empty_cntr += 1
-      if(empty_cntr>0): ncs_phil_groups=None
+      if(empty_cntr>0):
+        # print "empty found"
+        ncs_phil_groups=None
+        return None
     # Verify NCS selections
     # print "ncs_phil_groups", ncs_phil_groups
     if pdb_hierarchy_inp is None:
+      # if we are here and there is no pdb_hierarchy, we just return
+      # user-selections.
       return ncs_phil_groups
     if(ncs_phil_groups is not None and len(ncs_phil_groups)>0):
       msg="Empty selection in NCS group definition: %s"
@@ -407,9 +466,6 @@ class input(object):
             n_copy = sel.size()
             if(n_copy==0):
               raise Sorry(msg%s_string)
-
-
-
         #
         # The idea for user's groups is to pick them one by one,
         # select only reference and selections from the model,
@@ -425,6 +481,34 @@ class input(object):
         # Need to pay some attention to what came out as master and what order
         # of references.
         #
+        combined_h = iotbx.pdb.hierarchy.root()
+        combined_h.append_model(iotbx.pdb.hierarchy.model())
+        cur_ch_id = 'A'
+        master_chain = self.pdb_h_into_chain(pdb_hierarchy_inp.hierarchy.select(
+            asc.selection(ncs_group.reference)),ch_id=cur_ch_id)
+        # print "tmp in master chain:", list(master_chain.atoms().extract_tmp_as_size_t())
+        cur_ch_id = self.get_next_ch_id(cur_ch_id)
+        combined_h.only_model().append_chain(master_chain)
+
+        # combined_h = iotbx.pdb.hierarchy.new_hierarchy_from_chain(master_chain)
+        # print "tmp combined_h1:", list(combined_h.atoms().extract_tmp_as_size_t())
+        for s_string in ncs_group.selection:
+          # print "adding selection to combined:", s_string
+          sel_chain = self.pdb_h_into_chain(pdb_hierarchy_inp.hierarchy.select(
+            asc.selection(s_string)),ch_id=cur_ch_id)
+          combined_h.only_model().append_chain(sel_chain)
+          cur_ch_id = self.get_next_ch_id(cur_ch_id)
+
+        # save old i_seqs in tmp
+        # for chain in combined_h.only_model().chains():
+        #   for rg in chain.residue_groups():
+        #     for ag in rg.atom_groups():
+        #       for atom in ag.atoms():
+        #         atom.tmp = atom.i_seq
+        #         print "  atom.tmp", atom.tmp
+        combined_h.reset_atom_i_seqs()
+        # combined_h.write_pdb_file("combined_in_validation.pdb")
+        # print "tmp:", list(combined_h.atoms().extract_tmp_as_size_t())
 
 
         # XXX Here we will regenerate phil selections using the mechanism
@@ -435,8 +519,8 @@ class input(object):
 
         # selection_list
         chain_info = ncs_search.get_chains_info(
-            ph = pdb_hierarchy_inp.hierarchy,
-            selection_list=selection_list)
+            ph = combined_h,
+            selection_list=None)
         # print "chain_info", chain_info
         # Here we want to use relaxed criteria to extract maximum from
         # user's selection
@@ -446,54 +530,64 @@ class input(object):
             min_percent=0.5,
             check_atom_order=False,
             allow_different_size_res=True,
-            use_minimal_master_ncs=False,
+            # use_minimal_master_ncs=False,
             )
         # print "match_list", match_list
         match_dict = ncs_search.clean_chain_matching(
             chain_match_list=match_list,
-            ph = pdb_hierarchy_inp.hierarchy,
+            ph = combined_h,
             max_rmsd=10.0,
             exclude_misaligned_residues=False,
             match_radius=4.0,
             similarity_threshold=0.5,
             )
-        # transform_to_group,match_dict = \
-        #     ncs_search.minimal_master_ncs_grouping(match_dict, pdb_hierarchy_inp.hierarchy)
-        # group_dict = ncs_search.build_group_dict(
-        #     transform_to_group,match_dict,chain_info)
         # print "="*80
         # print "="*80
         group_dict = ncs_search.ncs_grouping_and_group_dict(
             match_dict, pdb_hierarchy_inp.hierarchy)
         # print "group_dict", group_dict
         # hopefully, we will get only 1 ncs group
-        ncs_group.selection = []
+        # ncs_group.selection = []
         if len(group_dict) == 0:
           # this means that user's selection doesn't match
+          # print "ZERO NCS groups found"
           continue
         # User triggered the fail of this assert!
+        # print "  N found ncs_groups:", len(group_dict)
         assert len(group_dict) == 1, "Got %d" % len(group_dict)
         for key, ncs_gr in group_dict.iteritems():
+          # print "dir ncs_gr:", dir(ncs_gr)
+          new_ncs_group = ncs_group_master_phil.extract().ncs_group[0]
+          # print "  new reference:", new_ncs_group.reference
+          # print "  new selection:", new_ncs_group.selection
+
           for i, isel in enumerate(ncs_gr.iselections):
             m_all_list = [x for ix in isel for x in list(ix)]
             m_all_list.sort()
             m_all_isel = flex.size_t(m_all_list)
+            # print "tmp:", list(combined_h.atoms().extract_tmp_as_size_t())
+            original_m_all_isel = combined_h.atoms().\
+                select(m_all_isel).extract_tmp_as_size_t()
+            # print "new isels", list(m_all_isel)
+            # print "old isels", list(original_m_all_isel)
             all_m_select_str = selection_string_from_selection(
                 pdb_hierarchy_inp=pdb_hierarchy_inp.hierarchy,
-                selection=m_all_isel,
+                selection=original_m_all_isel,
                 chains_info=None)
             # print "all_m_select_str", all_m_select_str
             if i == 0:
-              ncs_group.reference=all_m_select_str
+              new_ncs_group.reference=all_m_select_str
             else:
-              ncs_group.selection.append(all_m_select_str)
+              new_ncs_group.selection.append(all_m_select_str)
+          new_ncs_group.selection = new_ncs_group.selection[1:]
+          validated_ncs_groups.append(new_ncs_group)
         # Finally, we may check the number of atoms in selections that will
         # go further
 
 
 
 
-        s_string = ncs_group.reference
+        s_string = new_ncs_group.reference
         # print "after validation user's phil:"
         # print "  reference:", s_string
         if(s_string is not None):
@@ -502,7 +596,7 @@ class input(object):
           n_reference = sel.size()
           if(n_reference==0):
             raise Sorry(msg%s_string)
-        for s_string in ncs_group.selection:
+        for s_string in new_ncs_group.selection:
           # print "  selection:", s_string
           if(s_string is not None):
             sel = asc.iselection(s_string)
@@ -512,7 +606,11 @@ class input(object):
                 "Bad NCS group selections: Natoms(copy)!=Natoms(reference)")
             if(n_copy==0):
               raise Sorry(msg%s_string)
-    return ncs_phil_groups
+    # print "len(validated_ncs_groups)", len(validated_ncs_groups)
+    # for ncs_gr in validated_ncs_groups:
+    #   print "  reference:", ncs_gr.reference
+    #   print "  selection:", ncs_gr.selection
+    return validated_ncs_groups
 
   def build_ncs_obj_from_pdb_ncs(self,
                                  pdb_hierarchy_inp,
@@ -717,7 +815,7 @@ class input(object):
         min_contig_length=min_contig_length,
         min_percent=min_percent,
         similarity_threshold=self.similarity_threshold,
-        use_minimal_master_ncs=self.use_minimal_master_ncs,
+        # use_minimal_master_ncs=self.use_minimal_master_ncs,
         max_rmsd=self.max_rmsd,
         write=self.write_messages,
         log=self.log,
@@ -1130,7 +1228,8 @@ class input(object):
         self.all_master_ncs_selections = self.ncs_atom_selection.iselection(True)
         self.ncs_atom_selection |= ~selection_ref
         assert set(self.non_ncs_region_selection).intersection(
-          set(self.all_master_ncs_selections)) == set()
+          set(self.all_master_ncs_selections)) == set(), "%s" % (set(self.non_ncs_region_selection).intersection(
+              set(self.all_master_ncs_selections)))
       elif pdb_length == ncs_length:
         # this case is when the pdb hierarchy contain only the master NCS copy
         self.total_asu_length = self.get_asu_length(temp)

@@ -405,7 +405,7 @@ def run():
         assert r[1]<0.005
         assert r[2]<0.001
         assert rf < 1.e-4
-    if(0):
+    if(1):
       #
       # Refine NCS operators only (same as above with NCS groups permutted).
       #

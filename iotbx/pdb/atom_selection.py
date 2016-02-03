@@ -849,7 +849,7 @@ def selection_string_from_selection(pdb_hierarchy_inp,
   # pdb_hierarchy_inp.select(selection).write_pdb_file("selected_in.pdb")
   # using chains_info to improve performance
   if not chains_info:
-    chains_info = get_chains_info(pdb_hierarchy_inp,exclude_water=False)
+    chains_info = get_chains_info(pdb_hierarchy_inp)
   # print "chains_info"
   # for k, v in chains_info.iteritems():
   #   print k, v

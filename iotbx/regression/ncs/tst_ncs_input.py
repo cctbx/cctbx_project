@@ -6,7 +6,6 @@ import sys
 import os
 from iotbx.ncs import ncs_group_master_phil
 import iotbx.phil
-from libtbx.utils import Sorry
 
 pdb_str_1 = """
 CRYST1  399.000  399.000  399.000  90.00  90.00  90.00 P 1
@@ -47,44 +46,6 @@ ATOM     11  C   GLY C  34     188.920 271.622 173.510  1.00  0.00           C
 ATOM     12  O   GLY C  34     189.986 271.004 173.508  1.00  0.00           O
 TER
 ATOM      9  O   TYR D   4     189.583 273.076 175.423  1.00  0.00           O
-TER
-"""
-
-pdb_str_3 = """
-CRYST1  399.000  399.000  399.000  90.00  90.00  90.00 P 1
-ATOM      1  N   GLY A  34     125.208 211.886 175.417  1.00  0.00           N
-ATOM      2  CA  GLY A  34     125.035 211.123 174.168  1.00  0.00           C
-ATOM      3  C   GLY A  34     126.386 210.806 173.507  1.00  0.00           C
-ATOM      4  O   GLY A  34     127.304 211.628 173.503  1.00  0.00           O
-TER
-ATOM      5  N   GLY B  34     251.532 143.432 175.422  1.00  0.00           N
-ATOM      6  CA  GLY B  34     252.120 143.948 174.173  1.00  0.00           C
-ATOM      7  C   GLY B  34     251.212 144.998 173.512  1.00  0.00           C
-ATOM      8  O   GLY B  34     249.986 144.872 173.510  1.00  0.00           O
-TER
-ATOM      9  O   HOH C  34     189.583 273.076 175.423  1.00  0.00           O
-ATOM     10  O   HOH C  34     188.804 273.006 174.173  1.00  0.00           O
-ATOM     11  O   HOH C  34     188.920 271.622 173.510  1.00  0.00           O
-ATOM     12  O   HOH C  34     189.986 271.004 173.508  1.00  0.00           O
-TER
-"""
-
-pdb_str_4 = """
-CRYST1  399.000  399.000  399.000  90.00  90.00  90.00 P 1
-ATOM      1  N   GLY A  34     125.208 211.886 175.417  1.00  0.00           N
-ATOM      2  CA  GLY A  34     125.035 211.123 174.168  1.00  0.00           C
-ATOM      3  C   GLY A  34     126.386 210.806 173.507  1.00  0.00           C
-ATOM      4  O   GLY A  34     127.304 211.628 173.503  1.00  0.00           O
-TER
-ATOM      5  N   GLY B  34     251.532 143.432 175.422  1.00  0.00           N
-ATOM      6  CA  GLY B  34     252.120 143.948 174.173  1.00  0.00           C
-ATOM      7  C   GLY B  34     251.212 144.998 173.512  1.00  0.00           C
-ATOM      8  O   GLY B  34     249.986 144.872 173.510  1.00  0.00           O
-TER
-ATOM      9  N   TYR C  34     189.583 273.076 175.423  1.00  0.00           N
-ATOM     10  CA  TYR C  34     188.804 273.006 174.173  1.00  0.00           C
-ATOM     11  C   TYR C  34     188.920 271.622 173.510  1.00  0.00           C
-ATOM     12  O   TYR C  34     189.986 271.004 173.508  1.00  0.00           O
 TER
 """
 
@@ -1450,49 +1411,12 @@ ATOM    127  O   THRAx  31     -15.060  76.874-123.806  1.00158.76           O
 TER
 """
 
-pdb_str_25 = """\
-CRYST1  577.812  448.715  468.790  90.00  90.00  90.00 P 1
-ATOM      1  CA  LYS A 151      10.766   9.333  12.905  1.00 44.22           C
-ATOM      2  CA  LYS A 152      10.117   9.159  11.610  1.00 49.42           C
-ATOM      3  CA  LYS A 153       9.099   8.000  11.562  1.00 46.15           C
-ATOM      4  CA  LYS A 154       8.000   8.202  11.065  1.00 52.97           C
-ATOM      5  CA  LYS A 155      11.146   9.065  10.474  1.00 41.68           C
-ATOM      6  CA  LYS A 156      10.547   9.007   9.084  1.00 55.55           C
-TER
-ATOM      7  CA  LYS B 157      11.545   9.413   8.000  1.00 72.27           C
-ATOM      8  CA  LYS B 158      12.277  10.718   8.343  1.00 75.78           C
-ATOM      9  CA  LYS B 159      11.349  11.791   8.809  1.00 75.88           C
-TER
-ATOM      1  CA  LYS C 151       6.855   8.667  15.730  1.00 44.22           C
-ATOM      2  CA  LYS C 152       5.891   8.459  14.655  1.00 49.42           C
-ATOM      3  CA  LYS C 153       6.103   7.155  13.858  1.00 46.15           C
-ATOM      4  CA  LYS C 154       5.138   6.438  13.633  1.00 52.97           C
-ATOM      5  CA  LYS C 155       5.801   9.685  13.736  1.00 41.68           C
-ATOM      6  CA  LYS C 156       4.731   9.594  12.667  1.00 55.55           C
-TER
-ATOM      7  CA  LYS D 157       4.334  10.965  12.119  1.00 72.27           C
-ATOM      8  CA  LYS D 158       4.057  11.980  13.238  1.00 75.78           C
-ATOM      9  CA  LYS D 159       3.177  11.427  14.310  1.00 75.88           C
-TER
-ATOM      1  CA  LYS E 151       6.987   4.106  17.432  1.00 44.22           C
-ATOM      2  CA  LYS E 152       6.017   3.539  16.502  1.00 49.42           C
-ATOM      3  CA  LYS E 153       6.497   3.492  15.036  1.00 46.15           C
-ATOM      4  CA  LYS E 154       6.348   2.458  14.400  1.00 52.97           C
-ATOM      5  CA  LYS E 155       4.647   4.221  16.634  1.00 41.68           C
-ATOM      6  CA  LYS E 156       3.552   3.605  15.788  1.00 55.55           C
-TER
-ATOM      7  CA  LYS F 157       2.154   3.953  16.298  1.00 72.27           C
-ATOM      8  CA  LYS F 158       2.014   3.732  17.811  1.00 75.78           C
-ATOM      9  CA  LYS F 159       2.558   2.413  18.250  1.00 75.88           C
-TER
-"""
-
 
 def exercise_00(prefix="iotbx_ncs_exercise_00",debug=False):
   pdb_file_name = "%s.pdb"%prefix
   ncs_params_str = """
 ncs_group {
-  reference = chain  A
+  reference = chain A
   selection = chain B
   selection = chain C
 }
@@ -1504,7 +1428,7 @@ ncs_group {
       l1, l2, l3 = [1,2,3,4], [5,6,7,8], [9,10,11,12]
     else: assert 0
     ncs_groups = ncs_inp.get_ncs_restraints_group_list()
-    assert len(ncs_groups) == 1
+    assert len(ncs_groups) == 1, len(ncs_groups)
     ncs_group = ncs_groups[0]
     assert approx_equal(ncs_group.master_iselection, l1)
     assert len(ncs_group.copies) == 2
@@ -1530,29 +1454,6 @@ ncs_group {
     check_result(ncs_inp,test_i)
     # using pdb string
     ncs_inp = ncs.input(pdb_string = pdb_str)
-    check_result(ncs_inp,test_i)
-    # using combination of pdb_inp and Phil parameter string
-
-    phil_groups = ncs_group_master_phil.fetch(
-        iotbx.phil.parse(ncs_params_str)).extract()
-    ncs_inp = ncs.input(pdb_inp = pdb_inp,
-      ncs_phil_groups=phil_groups.ncs_group)
-    check_result(ncs_inp,test_i)
-    # using combination of pdb_hierarchy and Phil parameter string
-    # !!! Construct hierarchy again because it gets distorted in previous
-    # ncs.input() runs!
-    pdb_hierarchy = iotbx.pdb.input(
-      file_name = pdb_file_name).construct_hierarchy()
-    ncs_inp = ncs.input(hierarchy = pdb_hierarchy,
-      ncs_phil_groups=phil_groups.ncs_group)
-    check_result(ncs_inp,test_i)
-    # using combination of pdb file name and Phil parameter string
-    ncs_inp = ncs.input(file_name = pdb_file_name,
-      ncs_phil_groups=phil_groups.ncs_group)
-    check_result(ncs_inp,test_i)
-    # using combination of pdb string and Phil parameter string
-    ncs_inp = ncs.input(pdb_string = pdb_str,
-      ncs_phil_groups=phil_groups.ncs_group)
     check_result(ncs_inp,test_i)
   # cleanup
   if not debug:
@@ -1580,9 +1481,9 @@ ncs_group {
     ncs_group = ncs_groups[0]
     # print  "master sel:", list(ncs_group.master_iselection), l1
     # print "copy sel:", list(ncs_group.copies[0].iselection), l2
-    assert approx_equal(ncs_group.master_iselection, l2)
+    assert approx_equal(ncs_group.master_iselection, l1)
     assert len(ncs_group.copies) == 1
-    assert approx_equal(ncs_group.copies[0].iselection, l1)
+    assert approx_equal(ncs_group.copies[0].iselection, l2)
   files_to_delete = []
   for test_i, pdb_str in enumerate([pdb_str_1, pdb_str_2]):
     files_to_delete.append(pdb_file_name)
@@ -1590,6 +1491,7 @@ ncs_group {
     print >> of, pdb_str
     of.close()
     pdb_inp = iotbx.pdb.input(file_name = pdb_file_name)
+
     # using combination of pdb_inp and Phil parameter string
     phil_groups = ncs_group_master_phil.fetch(
         iotbx.phil.parse(ncs_params_str)).extract()
@@ -1597,53 +1499,17 @@ ncs_group {
       ncs_phil_groups=phil_groups.ncs_group)
     check_result(ncs_inp,test_i)
     # using combination of pdb file name and Phil parameter string
+    phil_groups = ncs_group_master_phil.fetch(
+        iotbx.phil.parse(ncs_params_str)).extract()
     ncs_inp = ncs.input(file_name = pdb_file_name,
       ncs_phil_groups=phil_groups.ncs_group)
     check_result(ncs_inp,test_i)
     # using combination of pdb string and Phil parameter string
+    phil_groups = ncs_group_master_phil.fetch(
+        iotbx.phil.parse(ncs_params_str)).extract()
     ncs_inp = ncs.input(pdb_string = pdb_str,
       ncs_phil_groups=phil_groups.ncs_group)
     check_result(ncs_inp,test_i)
-  if not debug:
-    clean_temp_files(files_to_delete)
-
-def exercise_02(prefix="iotbx_ncs_exercise_02", debug=False):
-  """
-  This is expected to fail as requested chains cannot be matched.
-  """
-  pdb_file_name = "%s.pdb"%prefix
-  ncs_params_str = """
-ncs_group {
-  reference = chain C
-  selection = chain A
-}
-  """
-  files_to_delete = []
-  for test_i, pdb_str in enumerate([pdb_str_3, pdb_str_4]):
-    files_to_delete.append(pdb_file_name)
-    of = open(pdb_file_name, "w")
-    print >> of, pdb_str
-    of.close()
-    pdb_inp = iotbx.pdb.input(file_name = pdb_file_name)
-    # using combination of pdb_inp and Phil parameter string
-    phil_groups = ncs_group_master_phil.fetch(
-        iotbx.phil.parse(ncs_params_str)).extract()
-    try:
-      ncs_inp = ncs.input(pdb_inp = pdb_inp,
-        ncs_phil_groups=phil_groups.ncs_group)
-      ncs_groups = ncs_inp.get_ncs_restraints_group_list(max_delta=310)
-      # using combination of pdb file name and Phil parameter string
-      ncs_inp = ncs.input(file_name = pdb_file_name,
-        ncs_phil_groups=phil_groups.ncs_group)
-      ncs_groups = ncs_inp.get_ncs_restraints_group_list(max_delta=310)
-      # using combination of pdb string and Phil parameter string
-      ncs_inp = ncs.input(pdb_string = pdb_str,
-        ncs_phil_groups=phil_groups.ncs_group)
-      ncs_groups = ncs_inp.get_ncs_restraints_group_list(max_delta=310)
-    except Sorry:
-      pass
-    else:
-      raise
   if not debug:
     clean_temp_files(files_to_delete)
 
@@ -1732,8 +1598,7 @@ def exercise_08():
   (not the minimal number of chains)
   """
   ncs_inp = ncs.input(
-    pdb_string=pdb_str_8,
-    use_minimal_master_ncs=False)
+    pdb_string=pdb_str_8)
   t = ncs_inp.ncs_to_asu_selection
   assert t.keys()==['chain A or chain B or chain C']
   assert t.values()==\
@@ -1793,8 +1658,7 @@ def exercise_10():
   #
   chain_match_list = ncs_search.search_ncs_relations(
     ph=ph,min_contig_length=0,
-    min_percent=0,
-    use_minimal_master_ncs=False)
+    min_percent=0)
   #
   match_dict = ncs_search.clean_chain_matching(chain_match_list,ph)
   chains_info = ncs_search.get_chains_info(ph)
@@ -1976,52 +1840,6 @@ def exercise_17():
   assert g1_c[1].iselection.all_eq(asc.selection(
     string = "chain C").iselection())
 
-def exercise_18():
-  """
-  Include water if requested by user.
-  Oleg. Not anymore. Just fixing
-  """
-  phil_str="""
-ncs_group {
-  reference = chain A
-  selection = chain B
-}
-"""
-  asc = iotbx.pdb.input(source_info=None,
-    lines=pdb_str_15).construct_hierarchy().atom_selection_cache()
-  ### user-supplied
-  phil_groups = ncs_group_master_phil.fetch(
-      iotbx.phil.parse(phil_str)).extract()
-  ncs_inp = ncs.input(pdb_string = pdb_str_15,
-      ncs_phil_groups=phil_groups.ncs_group,
-      exclude_selection=None)
-  ncs_groups = ncs_inp.get_ncs_restraints_group_list()
-  assert len(ncs_groups)==1
-  # group 1
-  assert ncs_groups[0].master_iselection.all_eq(
-    asc.selection(string = "chain A").iselection())
-  g1_c = ncs_groups[0].copies
-  assert len(g1_c)==1
-  assert g1_c[0].iselection.all_eq(
-    asc.selection(string = "chain B").iselection())
-
-  ncs_inp = ncs.input(pdb_string = pdb_str_15,
-      ncs_phil_groups=phil_groups.ncs_group,
-      exclude_selection=None)
-  ncs_groups = ncs_inp.get_ncs_restraints_group_list()
-  assert len(ncs_groups)==1
-  # group 1
-  assert ncs_groups[0].master_iselection.all_eq(
-      asc.selection(
-          string = "chain A"
-      ).iselection())
-  g1_c = ncs_groups[0].copies
-  assert len(g1_c)==1
-  assert g1_c[0].iselection.all_eq(
-      asc.selection(
-          string = "chain B"
-      ).iselection())
-
 def exercise_19():
   """
   PDB file with insertion codes, resseqs are different.
@@ -2173,30 +1991,6 @@ ncs_group {
   selection        = chain Av or chain Aw or chain Ax
 }""")
 
-def exercise_25():
-  """
-  When user wants to group chains in one ncs selection
-  """
-  phil_str="""
-ncs_group {
-  reference = chain A or chain B
-  selection = chain C or chain D
-  selection = chain E or chain F
-}
-"""
-  phil_groups = ncs_group_master_phil.fetch(
-      iotbx.phil.parse(phil_str)).extract()
-  ncs_inp = ncs.input(pdb_string = pdb_str_25,
-      ncs_phil_groups=phil_groups.ncs_group)
-  ncs_groups = ncs_inp.get_ncs_restraints_group_list()
-  assert len(ncs_groups) == 1
-  assert list(ncs_groups[0].master_iselection) == [0, 1, 2, 3, 4, 5, 6, 7, 8]
-  for c, correct_list in zip(ncs_groups[0].copies,
-      [[9, 10, 11, 12, 13, 14, 15, 16, 17],
-       [18, 19, 20, 21, 22, 23, 24, 25, 26]]):
-    assert list(c.iselection) == correct_list
-
-
 
 def clean_temp_files(file_list):
   """ delete files in the file_list """
@@ -2207,7 +2001,6 @@ if (__name__ == "__main__"):
   debug = ('debug' in sys.argv[1:])
   exercise_00(debug=debug)
   exercise_01(debug=debug)
-  # exercise_02(debug=debug) # TEMPORARILY: user's selections
   exercise_03()
   # # exercise_04() # not grouping chains anymore
   exercise_05()
@@ -2223,12 +2016,10 @@ if (__name__ == "__main__"):
   exercise_15()
   exercise_16()
   exercise_17()
-  # exercise_18() # TEMPORARILY: user's selections
   exercise_19()
   exercise_20()
   exercise_21() # No support for segID in search procedure anymore.
   exercise_22()
-  # exercise_23()
+  # exercise_23() # not grouping chains anymore
   # exercise_24() # not grouping chains anymore
-  exercise_25()
   print "OK"

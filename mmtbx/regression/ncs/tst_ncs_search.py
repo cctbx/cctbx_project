@@ -89,11 +89,14 @@ class TestSimpleAlignment(unittest.TestCase):
 
   def test_search_ncs_relations(self):
     # print sys._getframe().f_code.co_name
+    asc = self.ph.atom_selection_cache()
+    no_water_h = self.ph.select(asc.selection("not water"))
     chain_match_list = ncs_search.search_ncs_relations(
-      ph=self.ph,
+      ph=no_water_h,
       min_percent=0.70,
       min_contig_length=3,
       check_atom_order=True)
+
     [chain_a_id,chain_b_id,sel_a,sel_b,r1,r2,_] = chain_match_list[0]
     #
     self.assertEqual(chain_a_id,'A')
@@ -1546,7 +1549,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_groups_with_chains_of_different_size']
+  tests = ['test_search_ncs_relations']
   suite = unittest.TestSuite(map(TestSimpleAlignment,tests))
   return suite
 
