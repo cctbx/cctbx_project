@@ -246,7 +246,7 @@ class reference_model(object):
     temp_h.atoms().reset_i_seq()
 
     search_options = self.params.search_options
-    # combined_h.write_pdb_file("combined.pdb")
+    # combined_h.write_pdb_file(fn+"_combined.pdb")
     ncs_obj = iotbx.ncs.input(
         hierarchy=temp_h,
         use_minimal_master_ncs=search_options.minimize_param == 'chains',
