@@ -2375,6 +2375,7 @@ mmtbx/validation/omegalyze.py -text
 mmtbx/validation/ramalyze.py svneol=native#text/x-python
 mmtbx/validation/regression/__init__.py svneol=native#text/x-python
 mmtbx/validation/regression/run_restraints.py svneol=native#text/x-python
+mmtbx/validation/regression/tst_cablam.py -text
 mmtbx/validation/regression/tst_cbetadev.py -text
 mmtbx/validation/regression/tst_clashscore.py svneol=native#text/x-python
 mmtbx/validation/regression/tst_experimental.py svneol=native#text/x-python
