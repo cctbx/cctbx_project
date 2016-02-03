@@ -420,8 +420,12 @@ class boost_module(SourceModule):
   anonymous = ['curl', 'http://cci.lbl.gov/repositories/boost.gz']
   # Compared to rsync pscp is very slow when downloading multiple files
   # Resort to downloading the compressed archive on Windows
-  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'boost_hot.tar.gz', '/net/cci/auto_build/repositories/boost_hot/']
-  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/boost_hot/']
+  authentarfile = ['%(cciuser)s@cci.lbl.gov',
+                   'boost_hot.tar.gz',
+                   '/net/cci/auto_build/repositories/boost_hot/']
+  authenticated = [
+    'rsync',
+    '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/boost_hot/']
 
 # external modules
 class amber_module(SourceModule):
@@ -570,15 +574,23 @@ class phaser_module(SourceModule):
   module = 'phaser'
   # Compared to rsync pscp is very slow when downloading multiple files
   # Resort to downloading a compressed archive on Windows. Must create it first
-  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'phaser.tar.gz', '/net/cci/auto_build/repositories/phaser']
-  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/phaser/']
+  authentarfile = ['%(cciuser)s@cci.lbl.gov',
+                   'phaser.tar.gz',
+                   '/net/cci/auto_build/repositories/phaser']
+  authenticated = [
+    'rsync',
+    '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/phaser/']
 
 class phaser_regression_module(SourceModule):
   module = 'phaser_regression'
   # Compared to rsync pscp is very slow when downloading multiple files
   # Resort to downloading a compressed archive on Windows. Must create it first
-  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'phaser_regression.tar.gz', '/net/cci/auto_build/repositories/phaser_regression']
-  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/phaser_regression/']
+  authentarfile = ['%(cciuser)s@cci.lbl.gov',
+                   'phaser_regression.tar.gz',
+                   '/net/cci/auto_build/repositories/phaser_regression']
+  authenticated = [
+    'rsync',
+    '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/phaser_regression/']
 
 # DIALS repositories
 class labelit_module(SourceModule):
@@ -598,11 +610,13 @@ class dials_module(SourceModule):
 
 class dials_regression_module(SourceModule):
   module = 'dials_regression'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/dials_regression/trunk']
+  authenticated = ['svn',
+                   'svn+ssh://%(cciuser)s@cci.lbl.gov/dials_regression/trunk']
 
 class xfel_regression_module(SourceModule):
   module = 'xfel_regression'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/xfel_regression/trunk']
+  authenticated = ['svn',
+                   'svn+ssh://%(cciuser)s@cci.lbl.gov/xfel_regression/trunk']
 
 class xia2_module(SourceModule):
   module = 'xia2'
@@ -633,7 +647,8 @@ class reduce_module(SourceModule):
 
 class king_module(SourceModule):
   module = 'king'
-  anonymous = ['svn', 'https://github.com/rlabduke/phenix_king_binaries.git/trunk']
+  anonymous = ['svn',
+               'https://github.com/rlabduke/phenix_king_binaries.git/trunk']
 
 class molprobity_moodule(SourceModule):
   module = 'molprobity'
@@ -1567,7 +1582,12 @@ class PhenixBuilder(CCIBuilder):
     #self.add_test_command('phenix_regression.wizards.test_all_parallel',
     #                      name="test wizards",
     #                     )
-    self.add_test_parallel('dials', flunkOnFailure=False, warnOnFailure=True)
+    run_dials_tests=True
+    if self.isPlatformWindows():
+      if 'dials' in windows_remove_list:
+        run_dials_tests=False
+    if run_dials_tests:
+      self.add_test_parallel('dials', flunkOnFailure=False, warnOnFailure=True)
 
 class PhenixExternalRegression(PhenixBuilder):
   EXTERNAL_CODEBASES = [
@@ -1587,20 +1607,10 @@ class PhenixExternalRegression(PhenixBuilder):
     pass
 
   def get_environment(self):
+    #  "AMBERHOME"           : amberhome, # used to trigger Property on slave
     environment = {}
     for env, dirs in envs.items():
       environment[env] = os.path.join(*dirs)
-    print environment
-    #amberhome = os.path.join(*envs["AMBERHOME"])
-    #phenix_rosetta_path = os.path.join(*envs["PHENIX_ROSETTA_PATH"])
-    #rosetta_bin = os.path.join(*envs["ROSETTA_BIN"])
-    #rosetta3_db = os.path.join(*envs["ROSETTA3_DB"])
-    #environment = {
-    #  "AMBERHOME"           : amberhome, # used to trigger Property on slave
-    #  "PHENIX_ROSETTA_PATH" : phenix_rosetta_path,
-    #  "ROSETTA_BIN"         : rosetta_bin,
-    #  "ROSETTA3_DB"         : rosetta3_db,
-    #       }
     return environment
 
   def write_environment(self,
@@ -1769,15 +1779,37 @@ def run(root=None):
   """
   parser = optparse.OptionParser(usage=usage)
   # parser.add_option("--root", help="Root directory; this will contain base, modules, build, etc.")
-  parser.add_option("--builder", help="Builder: cctbx, phenix, xfel, dials, labelit, molprobity", default="cctbx")
+  parser.add_option(
+    "--builder",
+    help="Builder: cctbx, phenix, xfel, dials, labelit, molprobity",
+    default="cctbx")
   parser.add_option("--cciuser", help="CCI SVN username.")
   parser.add_option("--sfuser", help="SourceForge SVN username.")
-  parser.add_option("--sfmethod", help="SourceForge SVN checkout method.", default="svn+ssh")
-  parser.add_option("--git-ssh", dest="git_ssh", action="store_true", help="Use ssh connections for git. This allows you to commit changes without changing remotes.", default=False)
-  parser.add_option("--with-python", dest="with_python", help="Use specified Python interpreter")
-  parser.add_option("--nproc", help="number of parallel processes in compile step.")
-  parser.add_option("--download-only", dest="download_only", action="store_true", help="Do not build, only download prerequisites", default=False)
-  parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Verbose output", default=False)
+  parser.add_option("--sfmethod",
+                    help="SourceForge SVN checkout method.",
+                    default="svn+ssh")
+  parser.add_option(
+    "--git-ssh",
+    dest="git_ssh",
+    action="store_true",
+    help="Use ssh connections for git. This allows you to commit changes without changing remotes.",
+    default=False)
+  parser.add_option("--with-python",
+                    dest="with_python",
+                    help="Use specified Python interpreter")
+  parser.add_option("--nproc",
+                    help="number of parallel processes in compile step.")
+  parser.add_option("--download-only",
+                    dest="download_only",
+                    action="store_true",
+                    help="Do not build, only download prerequisites",
+                    default=False)
+  parser.add_option("-v",
+                    "--verbose",
+                    dest="verbose",
+                    action="store_true",
+                    help="Verbose output",
+                    default=False)
   parser.add_option("--skip-base-packages",
                     dest="skip_base",
                     action="store",
