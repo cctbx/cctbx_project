@@ -1,3 +1,4 @@
+from __future__ import division
 import time
 from iotbx.ncs import ncs_group_master_phil
 import iotbx.phil
