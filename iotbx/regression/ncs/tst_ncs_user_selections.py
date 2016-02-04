@@ -974,6 +974,231 @@ ncs_group {
   assert approx_equal(ncs_groups[1].copies[1].iselection,
       asc.iselection("chain Av"))
 
+def exercise_12():
+  """
+  User's ncs_group is separated into several groups by validation procedure.
+  """
+  pdb_str = """\
+CRYST1  595.620  595.620  595.620  90.00  90.00  90.00 I 2 3
+SCALE1      0.001679  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.001679  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.001679        0.00000
+ATOM    266  N   LEU 1  20     -63.533-187.068-206.553  1.00 47.37           N
+ATOM    267  CA  LEU 1  20     -64.594-187.999-206.894  1.00 38.42           C
+ATOM    268  C   LEU 1  20     -64.792-189.093-205.863  1.00 40.45           C
+ATOM    269  O   LEU 1  20     -65.844-189.739-205.864  1.00 37.26           O
+ATOM    270  CB  LEU 1  20     -64.312-188.680-208.230  1.00 38.09           C
+ATOM    271  CG  LEU 1  20     -63.920-187.774-209.381  1.00 40.19           C
+ATOM    272  CD1 LEU 1  20     -63.950-188.678-210.596  1.00 39.43           C
+ATOM    273  CD2 LEU 1  20     -64.787-186.534-209.581  1.00 33.28           C
+ATOM    285  N   THR 1  21     -63.827-189.307-204.987  1.00 45.58           N
+ATOM    286  CA  THR 1  21     -63.813-190.421-204.050  1.00 39.34           C
+ATOM    287  C   THR 1  21     -63.827-189.887-202.615  1.00 39.90           C
+ATOM    288  O   THR 1  21     -63.742-188.677-202.358  1.00 36.18           O
+ATOM    289  CB  THR 1  21     -62.584-191.313-204.320  1.00 49.62           C
+ATOM    290  OG1 THR 1  21     -61.390-190.515-204.234  1.00 52.31           O
+ATOM    291  CG2 THR 1  21     -62.664-191.988-205.729  1.00 38.87           C
+ATOM    299  N   ARG 1  22     -63.976-190.808-201.669  1.00 47.15           N
+ATOM    300  CA  ARG 1  22     -64.297-190.439-200.299  1.00 45.35           C
+ATOM    301  C   ARG 1  22     -63.888-191.595-199.403  1.00 44.05           C
+ATOM    302  O   ARG 1  22     -64.251-192.746-199.674  1.00 47.23           O
+ATOM    303  CB  ARG 1  22     -65.799-190.145-200.267  1.00 50.32           C
+ATOM    304  CG  ARG 1  22     -66.470-189.595-199.030  1.00 48.26           C
+ATOM    305  CD  ARG 1  22     -67.916-189.242-199.482  1.00 71.42           C
+ATOM    306  NE  ARG 1  22     -68.807-188.659-198.474  1.00 89.96           N
+ATOM    307  CZ  ARG 1  22     -70.012-188.139-198.752  1.00 89.76           C
+ATOM    308  NH1 ARG 1  22     -70.490-188.125-200.004  1.00 72.83           N
+ATOM    309  NH2 ARG 1  22     -70.755-187.629-197.765  1.00 72.15           N
+ATOM    323  N   ALA 1  23     -63.090-191.310-198.380  1.00 31.79           N
+ATOM    324  CA  ALA 1  23     -62.661-192.357-197.458  1.00 37.78           C
+ATOM    325  C   ALA 1  23     -63.777-192.758-196.478  1.00 41.29           C
+ATOM    326  O   ALA 1  23     -64.556-191.929-195.997  1.00 41.52           O
+ATOM    327  CB  ALA 1  23     -61.432-191.902-196.679  1.00 34.84           C
+ATOM    333  N   LEU 1  24     -63.865-194.045-196.194  1.00 37.34           N
+ATOM    334  CA  LEU 1  24     -64.861-194.553-195.277  1.00 27.60           C
+ATOM    335  C   LEU 1  24     -64.182-195.423-194.245  1.00 35.82           C
+ATOM    336  O   LEU 1  24     -63.148-196.034-194.520  1.00 42.04           O
+ATOM    337  CB  LEU 1  24     -65.902-195.408-195.995  1.00 41.37           C
+ATOM    338  CG  LEU 1  24     -66.637-194.703-197.121  1.00 45.57           C
+ATOM    339  CD1 LEU 1  24     -67.524-195.709-197.954  1.00 28.75           C
+ATOM    340  CD2 LEU 1  24     -67.430-193.557-196.482  1.00 26.24           C
+ATOM    352  N   PRO 1  25     -64.769-195.542-193.072  1.00 43.07           N
+ATOM    353  CA  PRO 1  25     -64.203-196.455-192.080  1.00 45.02           C
+ATOM    354  C   PRO 1  25     -64.368-197.875-192.575  1.00 28.49           C
+ATOM    355  O   PRO 1  25     -65.337-198.184-193.276  1.00 23.83           O
+ATOM    356  CB  PRO 1  25     -65.031-196.189-190.827  1.00 42.63           C
+ATOM    357  CG  PRO 1  25     -66.337-195.696-191.405  1.00 34.61           C
+ATOM    358  CD  PRO 1  25     -65.960-194.851-192.567  1.00 25.43           C
+TER
+ATOM  A0BF2  N   THRGA  20     -52.224 -82.892-121.524  1.00 32.92           N
+ATOM  A0BF3  CA  THRGA  20     -53.561 -83.049-120.966  1.00 35.79           C
+ATOM  A0BF4  C   THRGA  20     -54.347 -84.185-121.629  1.00 43.91           C
+ATOM  A0BF5  O   THRGA  20     -55.534 -84.024-121.903  1.00 55.90           O
+ATOM  A0BF6  CB  THRGA  20     -54.363 -81.742-121.088  1.00 32.17           C
+ATOM  A0BF7  OG1 THRGA  20     -54.607 -81.451-122.480  1.00 27.96           O
+ATOM  A0BF8  CG2 THRGA  20     -53.683 -80.551-120.374  1.00 31.79           C
+ATOM  A0BFG  N   GLUGA  21     -53.739 -85.326-121.965  1.00 56.34           N
+ATOM  A0BFH  CA  GLUGA  21     -54.586 -86.501-122.243  1.00 51.10           C
+ATOM  A0BFI  C   GLUGA  21     -54.919 -87.215-120.943  1.00 54.73           C
+ATOM  A0BFJ  O   GLUGA  21     -54.108 -87.260-120.010  1.00 42.85           O
+ATOM  A0BFK  CB  GLUGA  21     -54.002 -87.549-123.220  1.00 30.90           C
+ATOM  A0BFL  CG  GLUGA  21     -54.033 -87.190-124.724  1.00 50.79           C
+ATOM  A0BFM  CD  GLUGA  21     -52.748 -86.608-125.203  1.00 85.38           C
+ATOM  A0BFN  OE1 GLUGA  21     -52.055 -85.975-124.369  1.00 95.33           O
+ATOM  A0BFO  OE2 GLUGA  21     -52.502 -86.706-126.435  1.00 76.32           O
+ATOM  A0BFV  N   GLYGA  22     -56.107 -87.813-120.913  1.00 62.38           N
+ATOM  A0BFW  CA  GLYGA  22     -56.653 -88.413-119.710  1.00 46.07           C
+ATOM  A0BFX  C   GLYGA  22     -57.080 -87.396-118.680  1.00 65.93           C
+ATOM  A0BFY  O   GLYGA  22     -56.984 -87.663-117.475  1.00 63.56           O
+ATOM  A0BG2  N   SERGA  23     -57.542 -86.227-119.121  1.00 75.27           N
+ATOM  A0BG3  CA  SERGA  23     -57.933 -85.143-118.234  1.00 63.26           C
+ATOM  A0BG4  C   SERGA  23     -59.451 -85.070-118.142  1.00 85.09           C
+ATOM  A0BG5  O   SERGA  23     -60.193 -85.512-119.030  1.00 74.26           O
+ATOM  A0BG6  CB  SERGA  23     -57.360 -83.796-118.689  1.00 62.39           C
+ATOM  A0BG7  OG  SERGA  23     -55.986 -83.921-119.034  1.00 78.01           O
+ATOM  A0BGD  N   THRGA  24     -59.887 -84.512-117.033  1.00103.11           N
+ATOM  A0BGE  CA  THRGA  24     -61.286 -84.324-116.713  1.00 96.25           C
+ATOM  A0BGF  C   THRGA  24     -61.901 -83.158-117.487  1.00 95.46           C
+ATOM  A0BGG  O   THRGA  24     -63.067 -82.845-117.236  1.00 94.00           O
+ATOM  A0BGH  CB  THRGA  24     -61.420 -84.124-115.185  1.00 96.30           C
+ATOM  A0BGI  OG1 THRGA  24     -62.797 -83.996-114.836  1.00102.74           O
+ATOM  A0BGJ  CG2 THRGA  24     -60.614 -82.887-114.622  1.00 80.83           C
+ATOM  A0BGR  N   ILEGA  25     -61.158 -82.541-118.421  1.00 92.73           N
+ATOM  A0BGS  CA  ILEGA  25     -61.639 -81.451-119.271  1.00 85.74           C
+ATOM  A0BGT  C   ILEGA  25     -61.603 -81.911-120.740  1.00 81.39           C
+ATOM  A0BGU  O   ILEGA  25     -60.740 -82.708-121.136  1.00 75.57           O
+ATOM  A0BGV  CB  ILEGA  25     -60.844 -80.121-119.029  1.00 78.83           C
+ATOM  A0BGW  CG1 ILEGA  25     -60.850 -79.715-117.527  1.00 81.73           C
+ATOM  A0BGX  CG2 ILEGA  25     -61.406 -78.934-119.840  1.00 76.17           C
+ATOM  A0BGY  CD1 ILEGA  25     -59.934 -78.530-117.162  1.00 70.88           C
+TER
+ATOM  A1OYJ  N   THRAB  20     -34.601-167.170-165.019  1.00 47.42           N
+ATOM  A1OYK  CA  THRAB  20     -35.664-166.423-165.675  1.00 38.19           C
+ATOM  A1OYL  C   THRAB  20     -36.920-166.289-164.808  1.00 43.55           C
+ATOM  A1OYM  O   THRAB  20     -38.028-166.342-165.336  1.00 58.60           O
+ATOM  A1OYN  CB  THRAB  20     -36.026-167.082-167.013  1.00 37.29           C
+ATOM  A1OYO  OG1 THRAB  20     -36.609-168.396-166.811  1.00 34.65           O
+ATOM  A1OYP  CG2 THRAB  20     -34.819-167.200-167.905  1.00 47.27           C
+ATOM  A1OYX  N   GLUAB  21     -36.809-166.114-163.487  1.00 40.30           N
+ATOM  A1OYY  CA  GLUAB  21     -37.997-165.653-162.772  1.00 40.72           C
+ATOM  A1OYZ  C   GLUAB  21     -38.098-164.151-162.911  1.00 56.45           C
+ATOM  A1OZ0  O   GLUAB  21     -37.095-163.439-163.057  1.00 48.83           O
+ATOM  A1OZ1  CB  GLUAB  21     -38.090-166.019-161.270  1.00 35.24           C
+ATOM  A1OZ2  CG  GLUAB  21     -38.502-167.478-160.944  1.00 54.14           C
+ATOM  A1OZ3  CD  GLUAB  21     -37.345-168.335-160.677  1.00 80.61           C
+ATOM  A1OZ4  OE1 GLUAB  21     -36.278-168.016-161.240  1.00 92.19           O
+ATOM  A1OZ5  OE2 GLUAB  21     -37.542-169.372-160.000  1.00 74.27           O
+ATOM  A1OZC  N   GLYAB  22     -39.335-163.681-162.903  1.00 58.92           N
+ATOM  A1OZD  CA  GLYAB  22     -39.594-162.287-163.140  1.00 48.41           C
+ATOM  A1OZE  C   GLYAB  22     -39.333-161.886-164.568  1.00 61.25           C
+ATOM  A1OZF  O   GLYAB  22     -38.868-160.772-164.828  1.00 52.03           O
+ATOM  A1OZJ  N   SERAB  23     -39.573-162.785-165.504  1.00 81.16           N
+ATOM  A1OZK  CA  SERAB  23     -39.313-162.516-166.905  1.00 71.05           C
+ATOM  A1OZL  C   SERAB  23     -40.624-162.236-167.624  1.00 79.99           C
+ATOM  A1OZM  O   SERAB  23     -41.718-162.618-167.190  1.00 75.06           O
+ATOM  A1OZN  CB  SERAB  23     -38.567-163.682-167.576  1.00 68.18           C
+ATOM  A1OZO  OG  SERAB  23     -37.509-164.144-166.746  1.00 77.85           O
+ATOM  A1OZU  N   THRAB  24     -40.481-161.521-168.708  1.00 89.58           N
+ATOM  A1OZV  CA  THRAB  24     -41.586-161.179-169.573  1.00 91.58           C
+ATOM  A1OZW  C   THRAB  24     -42.024-162.351-170.470  1.00 98.61           C
+ATOM  A1OZX  O   THRAB  24     -42.893-162.146-171.321  1.00100.89           O
+ATOM  A1OZY  CB  THRAB  24     -41.175-159.953-170.402  1.00 91.75           C
+ATOM  A1OZZ  OG1 THRAB  24     -42.261-159.554-171.238  1.00103.20           O
+ATOM  A1P00  CG2 THRAB  24     -39.878-160.193-171.260  1.00 77.23           C
+ATOM  A1P08  N   ILEAB  25     -41.467-163.557-170.293  1.00 96.60           N
+ATOM  A1P09  CA  ILEAB  25     -41.834-164.747-171.060  1.00 81.06           C
+ATOM  A1P0A  C   ILEAB  25     -42.395-165.793-170.099  1.00 77.96           C
+ATOM  A1P0B  O   ILEAB  25     -41.993-165.860-168.929  1.00 71.48           O
+ATOM  A1P0C  CB  ILEAB  25     -40.641-165.307-171.895  1.00 82.14           C
+ATOM  A1P0D  CG1 ILEAB  25     -40.019-164.206-172.805  1.00 85.32           C
+ATOM  A1P0E  CG2 ILEAB  25     -41.071-166.508-172.747  1.00 75.75           C
+ATOM  A1P0F  CD1 ILEAB  25     -38.682-164.562-173.521  1.00 64.61           C
+TER
+ATOM  A1ZO1  N   LEUFB  20    -117.661-248.006-174.897  1.00 48.46           N
+ATOM  A1ZO2  CA  LEUFB  20    -116.344-247.393-174.779  1.00 31.10           C
+ATOM  A1ZO3  C   LEUFB  20    -115.899-246.648-176.028  1.00 42.66           C
+ATOM  A1ZO4  O   LEUFB  20    -114.898-245.929-175.971  1.00 40.76           O
+ATOM  A1ZO5  CB  LEUFB  20    -115.276-248.441-174.508  1.00 31.04           C
+ATOM  A1ZO6  CG  LEUFB  20    -115.569-249.438-173.423  1.00 43.61           C
+ATOM  A1ZO7  CD1 LEUFB  20    -114.283-250.230-173.234  1.00 48.24           C
+ATOM  A1ZO8  CD2 LEUFB  20    -116.061-248.825-172.115  1.00 38.75           C
+ATOM  A1ZOK  N   THRFB  21    -116.547-246.866-177.163  1.00 55.85           N
+ATOM  A1ZOL  CA  THRFB  21    -116.140-246.297-178.441  1.00 43.47           C
+ATOM  A1ZOM  C   THRFB  21    -117.270-245.418-178.984  1.00 51.67           C
+ATOM  A1ZON  O   THRFB  21    -118.375-245.353-178.434  1.00 50.72           O
+ATOM  A1ZOO  CB  THRFB  21    -115.774-247.401-179.425  1.00 33.43           C
+ATOM  A1ZOP  OG1 THRFB  21    -116.920-248.240-179.614  1.00 50.93           O
+ATOM  A1ZOQ  CG2 THRFB  21    -114.581-248.247-178.851  1.00 26.17           C
+ATOM  A1ZOY  N   ARGFB  22    -116.980-244.715-180.072  1.00 49.13           N
+ATOM  A1ZOZ  CA  ARGFB  22    -117.818-243.600-180.478  1.00 35.40           C
+ATOM  A1ZP0  C   ARGFB  22    -117.553-243.328-181.949  1.00 44.20           C
+ATOM  A1ZP1  O   ARGFB  22    -116.395-243.146-182.343  1.00 41.59           O
+ATOM  A1ZP2  CB  ARGFB  22    -117.441-242.430-179.578  1.00 49.27           C
+ATOM  A1ZP3  CG  ARGFB  22    -118.165-241.112-179.677  1.00 59.06           C
+ATOM  A1ZP4  CD  ARGFB  22    -117.649-240.290-178.480  1.00 81.73           C
+ATOM  A1ZP5  NE  ARGFB  22    -118.235-238.966-178.278  1.00 93.03           N
+ATOM  A1ZP6  CZ  ARGFB  22    -118.016-238.230-177.181  1.00 94.32           C
+ATOM  A1ZP7  NH1 ARGFB  22    -117.217-238.667-176.191  1.00 76.59           N
+ATOM  A1ZP8  NH2 ARGFB  22    -118.595-237.036-177.072  1.00 78.59           N
+ATOM  A1ZPM  N   ALAFB  23    -118.604-243.290-182.762  1.00 39.74           N
+ATOM  A1ZPN  CA  ALAFB  23    -118.401-243.076-184.189  1.00 40.06           C
+ATOM  A1ZPO  C   ALAFB  23    -118.078-241.613-184.495  1.00 42.35           C
+ATOM  A1ZPP  O   ALAFB  23    -118.587-240.687-183.861  1.00 44.55           O
+ATOM  A1ZPQ  CB  ALAFB  23    -119.627-243.535-184.974  1.00 39.71           C
+ATOM  A1ZPW  N   LEUFB  24    -117.174-241.404-185.439  1.00 44.81           N
+ATOM  A1ZPX  CA  LEUFB  24    -116.769-240.066-185.835  1.00 35.11           C
+ATOM  A1ZPY  C   LEUFB  24    -116.826-239.893-187.335  1.00 40.09           C
+ATOM  A1ZPZ  O   LEUFB  24    -116.660-240.858-188.085  1.00 51.80           O
+ATOM  A1ZQ0  CB  LEUFB  24    -115.345-239.756-185.414  1.00 42.69           C
+ATOM  A1ZQ1  CG  LEUFB  24    -115.154-239.849-183.909  1.00 55.89           C
+ATOM  A1ZQ2  CD1 LEUFB  24    -113.661-239.714-183.568  1.00 33.93           C
+ATOM  A1ZQ3  CD2 LEUFB  24    -116.049-238.781-183.220  1.00 35.88           C
+ATOM  A1ZQF  N   PROFB  25    -117.004-238.671-187.801  1.00 40.39           N
+ATOM  A1ZQG  CA  PROFB  25    -117.007-238.457-189.243  1.00 49.95           C
+ATOM  A1ZQH  C   PROFB  25    -115.622-238.648-189.848  1.00 35.64           C
+ATOM  A1ZQI  O   PROFB  25    -114.604-238.253-189.273  1.00 21.90           O
+ATOM  A1ZQJ  CB  PROFB  25    -117.529-237.028-189.377  1.00 36.12           C
+ATOM  A1ZQK  CG  PROFB  25    -117.210-236.413-188.096  1.00 26.49           C
+ATOM  A1ZQL  CD  PROFB  25    -117.424-237.464-187.089  1.00 32.95           C
+TER
+END
+"""
+  phil_str1 = """\
+ncs_group {
+  reference        = chain 1
+  selection        = chain FB
+  selection        = chain AB
+  selection        = chain GA
+  }
+"""
+  pdb_h = iotbx.pdb.input(
+      source_info=None,lines=pdb_str.split('\n')).\
+      construct_hierarchy()
+  # show file:
+  # pdb_h.write_pdb_file("user_ncs_phil_ex12.pdb")
+  asc = pdb_h.atom_selection_cache()
+
+
+  ncs_groups = get_ncs_groups(phil_str1, pdb_str)
+  assert len(ncs_groups) == 2
+  assert len(ncs_groups[0].copies) == 1
+  assert len(ncs_groups[1].copies) == 1
+  # from iotbx.pdb.atom_selection import selection_string_from_selection
+  # print list(ncs_groups[0].master_iselection)
+  # print list(asc.iselection("chain 1"))
+  # print selection_string_from_selection(pdb_h, ncs_groups[0].master_iselection)
+  # print selection_string_from_selection(pdb_h, ncs_groups[0].copies[0].iselection)
+  # STOP()
+  assert approx_equal(ncs_groups[0].master_iselection,
+      asc.iselection("chain AB"))
+  assert approx_equal(ncs_groups[0].copies[0].iselection,
+      asc.iselection("chain GA"))
+  assert approx_equal(ncs_groups[1].master_iselection,
+      asc.iselection("chain 1"))
+  assert approx_equal(ncs_groups[1].copies[0].iselection,
+      asc.iselection("chain FB"))
+
+
 
 if (__name__ == "__main__"):
   t0=time.time()
@@ -990,6 +1215,7 @@ if (__name__ == "__main__"):
   exercise_9()
   exercise_10()
   exercise_11()
+  exercise_12()
 
   print "Time: %6.4f"%(time.time()-t0)
   print "OK"

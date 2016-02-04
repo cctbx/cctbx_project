@@ -555,7 +555,7 @@ class input(object):
           continue
         # User triggered the fail of this assert!
         # print "  N found ncs_groups:", len(group_dict)
-        assert len(group_dict) == 1, "Got %d" % len(group_dict)
+        # assert len(group_dict) == 1, "Got %d" % len(group_dict)
         for key, ncs_gr in group_dict.iteritems():
           # print "dir ncs_gr:", dir(ncs_gr)
           new_ncs_group = ncs_group_master_phil.extract().ncs_group[0]
