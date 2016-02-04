@@ -591,6 +591,7 @@ class InMemScript(DialsProcessScript):
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
       self.debug_file_handle.write(",integrate_failed_%d\n"%len(indexed))
+      return
 
     self.debug_file_handle.write(",integrate_ok_%d\n"%len(integrated))
 
