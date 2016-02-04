@@ -405,18 +405,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
                '3435363738394041424344 \\ \n4546474849'
     self.assertEqual(result,expected)
 
-  def test_phenix_refine_ncs_file(self):
-    """ Check that we get file with "refinement.ncs.constraint_group"
-    for phenix refine"""
-    ncs_obj = ncs.input(pdb_string=pdb_str)
-    self.assertTrue(ncs_obj.number_of_ncs_groups>0)
-    ncs_obj.get_ncs_info_as_spec(
-      write=True,
-      log=null_out())
-    file_data = open('simple_ncs_from_pdb.ncs','r').read().splitlines()
-    test = ['ncs_group' in x for x in file_data]
-    self.assertTrue(test.count(True)==1)
-
   def test_correct_grouping(self):
     """ test correct representation of groups in .ncs file"""
     ncs_obj = iotbx.ncs.input(pdb_string=pdb_str_4)
