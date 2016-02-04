@@ -224,17 +224,12 @@ class site_refinement_test(refinement_test):
 
     cycles = normal_eqns_solving.naive_iterations(
       ls,
-      n_max_iterations=5,
+      gradient_threshold=1e-12,
+      step_threshold=1e-7,
       track_all=True)
 
     assert approx_equal(ls.scale_factor(), 1, eps=1e-5)
     assert approx_equal(ls.objective(), 0)
-    # skip next-to-last one to allow for no progress and rounding error
-    assert (
-      cycles.objective_history[0]
-      >= cycles.objective_history[1]
-      >= cycles.objective_history[3]), numstr(cycles.objective_history)
-    assert approx_equal(cycles.gradient_norm_history[-1], 0, eps=5e-8)
 
     match = emma.model_matches(emma_ref, xs.as_emma_model()).refined_matches[0]
     assert match.rt.r == matrix.identity(3)
@@ -285,16 +280,12 @@ class adp_refinement_test(refinement_test):
 
     cycles = normal_eqns_solving.naive_iterations(
       ls,
-      n_max_iterations=10,
+      gradient_threshold=1e-12,
       track_all=True)
 
     assert approx_equal(ls.scale_factor(), 1, eps=1e-4)
     assert approx_equal(ls.objective(), 0)
-    # skip next-to-last one to allow for no progress and rounding error
-    n = len(cycles.objective_history)
-    assert cycles.objective_history[0] > cycles.objective_history[n-1],\
-           cycles.objective_history
-    assert approx_equal(cycles.gradient_norm_history[-1], 0, eps=1e-6)
+    assert cycles.gradient_norm_history[-1] < cycles.gradient_threshold
 
     for sc0, sc1 in zip(self.xray_structure.scatterers(), xs.scatterers()):
       assert approx_equal(sc0.u_star, sc1.u_star)
@@ -649,10 +640,10 @@ class special_positions_test(object):
       origin_fixing_restraints_type=
       origin_fixing_restraints.atomic_number_weighting)
 
-    cycles = normal_eqns_solving.naive_iterations(
+    cycles = normal_eqns_solving.levenberg_marquardt_iterations(
       ls,
-      gradient_threshold=1e-6,
-      step_threshold=1e-6,
+      gradient_threshold=1e-12,
+      step_threshold=1e-7,
       track_all=True)
 
     ## Test whether refinement brought back the shaked structure to its
