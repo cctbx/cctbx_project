@@ -25,11 +25,11 @@ class refinement_test(object):
 
   def run(self):
     if self.ls_cycle_repeats == 1:
-      self.exercise_ls_cycles()
+      self.do_run()
     else:
       print "%s in %s" % (self.purpose, self.hall)
       for n in xrange(self.ls_cycle_repeats):
-        self.exercise_ls_cycles()
+        self.do_run()
         print '.',
         sys.stdout.flush()
       print
@@ -40,8 +40,8 @@ class site_refinement_test(refinement_test):
   debug = 1
   purpose = "site refinement"
 
-  def run(self):
-    refinement_test.run(self)
+  def do_run(self):
+    self.exercise_ls_cycles()
     self.exercise_floating_origin_restraints()
 
   def __init__(self):
@@ -265,6 +265,9 @@ class adp_refinement_test(refinement_test):
     ma = mi.structure_factors_from_scatterers(xs, algorithm="direct").f_calc()
     self.fo_sq = ma.norm().customized_copy(
       sigmas=flex.double(ma.size(), 1.))
+
+  def do_run(self):
+    self.exercise_ls_cycles()
 
   def exercise_ls_cycles(self):
     xs = self.xray_structure.deep_copy_scatterers()
