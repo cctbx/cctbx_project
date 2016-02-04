@@ -1693,8 +1693,7 @@ class input(object):
           exclude_d=None,
           create_ncs_domain_pdb=False,
           stem='',
-          log = None,
-          show_ncs_phil=False):
+          log = None):
     """
     Returns ncs spec object and can prints ncs info in a ncs_spec,
     format_all_for_resolve or format_all_for_phenix_refine format
@@ -1819,6 +1818,9 @@ class input(object):
         chain_residue_id = [chain_residue_id_list,chain_residue_range_list],
         residues_in_common_list = residues_in_common_list,
         ncs_domain_pdb = ncs_domain_pdb)
+    #
+    # There is absolutely no need to put self into spec object.
+    #
     spec_object._ncs_obj = self
     if write:
       if file_name_prefix: file_name_prefix += '_'
@@ -1829,20 +1831,6 @@ class input(object):
       f=open(file_name_prefix + "simple_ncs_from_pdb.ncs_spec",'w')
       spec_object.format_all_for_group_specification(log=log,out=f)
       f.close()
-      fn  = file_name_prefix + "simple_ncs_from_pdb.ncs"
-      f=open(fn,'w')
-      spec_object.format_phil_for_phenix_refine(log=log,out=f)
-      f.close()
-      if show_ncs_phil:
-        fn = file_name_prefix + 'simple_ncs_from_pdb.phil'
-        f=open(fn,'w')
-        phil_str = spec_object.format_phil_for_ncs(log=log,out=f)
-        f.close()
-        if phil_str:
-          print>>log,'\n\nNCS selection\n','-'*14
-          print >> log,phil_str + '\n'
-          open(fn,'w').write(phil_str)
-      print >>log,''
     return spec_object
 
   def print_ncs_phil_param(self,write=False,log=None):

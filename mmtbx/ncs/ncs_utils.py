@@ -1014,6 +1014,10 @@ def ncs_group_iselection(ncs_restraints_group_list,group_num):
 
 def convert_phil_format(phil_str,to_type='ncs'):
   """
+  There is no more different formats,
+  so this function should be removed completely.
+
+
   Convert ncs Phil format according tot the to_type
   between 'ncs', 'restraints', 'constraints' and 'pdb_interpretation'
 
