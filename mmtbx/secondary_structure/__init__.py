@@ -35,7 +35,7 @@ secondary_structure
     enabled = True
       .type = bool
       .help = Turn on secondary structure restraints for protein
-    search_method = *ksdssp mmtbx_dssp from_ca
+    search_method = *ksdssp mmtbx_dssp from_ca cablam
       .type = choice
       .help = Particular method to search protein secondary structure.
     distance_ideal_n_o = 2.9
@@ -252,6 +252,15 @@ class manager (object) :
           hierarchy=pdb_hierarchy,
           out=null_out())
       return fss.get_annotation()
+    elif self.params.secondary_structure.protein.search_method == "cablam":
+      from mmtbx.validation import cablam
+      print >> self.log, "  running cablam..."
+      cablam_results = cablam.cablamalyze(
+          pdb_hierarchy = pdb_hierarchy,
+          outliers_only=False,
+          out=null_out(),
+          quiet=False)
+      return cablam_results.as_secondary_structure()
     else:
       print >> self.log, "  WARNING: Unknown search method for SS. No SS found."
       return iotbx.pdb.secondary_structure.annotation.from_records()
