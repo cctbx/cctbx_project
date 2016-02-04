@@ -4,6 +4,7 @@ from scitbx.linalg import eigensystem, svd
 from scitbx import matrix
 from scitbx.lstbx import normal_eqns_solving
 from cctbx import sgtbx, crystal, xray, adptbx, uctbx
+import cctbx.sgtbx.lattice_symmetry
 from cctbx import euclidean_model_matching as emma
 from cctbx.array_family import flex
 from cctbx.xray import observations
@@ -350,7 +351,8 @@ class all_special_position_test(object):
 class twin_test(object):
 
   def __init__(self):
-    self.structure = xray.structure(
+    # Let's start from some X-ray structure
+    self.structure = xs = xray.structure(
       crystal_symmetry=crystal.symmetry(
       unit_cell=(7.6338, 7.6338, 9.8699, 90, 90, 120),
       space_group_symbol='hall:  P 3 -2c'),
@@ -412,110 +414,104 @@ class twin_test(object):
       u=(0.000566, 0.000582, 0.000354,
          0.000007, 0.000022, 0.000146))
       )))
-    self.twin_laws = (sgtbx.rot_mx((0,1,0,1,0,0,0,0,-1)),)
-    self.twin_fractions = flex.double((flex.random_double(),))
-    self.scale_factor = 0.05 + 10 * flex.random_double()
-    self.crystal_symmetry = self.structure.crystal_symmetry()
-    mi = self.crystal_symmetry.build_miller_set(anomalous_flag=False,
-                                                d_min=0.5)
-    fo_sq = mi.structure_factors_from_scatterers(
-      self.structure, algorithm="direct").f_calc().norm()
-    fo_sq = fo_sq.customized_copy(
-      data=fo_sq.data()*self.scale_factor,
-      sigmas=flex.double(fo_sq.size(), 1))
-    twin_completion = xray.twin_completion(
-      mi.indices(),
-      mi.space_group(),
-      mi.anomalous_flag(),
-      self.twin_laws[0].as_double())
-    sigmas = flex.double(fo_sq.size(), 1)
-    from cctbx import miller
-    twin_complete_set = miller.set(
-      crystal_symmetry=self.crystal_symmetry,
-      indices=twin_completion.twin_complete(),
-      anomalous_flag=mi.anomalous_flag()).map_to_asu()
-    detwinner = xray.hemihedral_detwinner(
-      hkl_obs=fo_sq.indices(),
-      hkl_calc=twin_complete_set.indices(),
-      space_group=mi.space_group(),
-      anomalous_flag=mi.anomalous_flag(),
-      twin_law=self.twin_laws[0].as_double())
-    twinned_i, twinned_s = detwinner.twin_with_twin_fraction(
-      fo_sq.data(),
-      sigmas,
-      twin_fraction=self.twin_fractions[0])
-    self.fo_sq = fo_sq.customized_copy(data=twinned_i, sigmas=twinned_s)
+
+    # We could use miller.array.twin_data below but we want to make
+    # a few extra checks along the way. So we do it by hand...
+
+    # Start by producing indices and Fo^2 for a 1st domain,
+    # with an overall scale factor
+    mi_1 = self.structure.build_miller_set(d_min=0.5, anomalous_flag=False
+                                           ).map_to_asu()
+    fo_sq_1 = mi_1.structure_factors_from_scatterers(
+        self.structure, algorithm='direct').f_calc().norm()
+
+    # Then introduce a twin law ...
+    self.twin_law = sgtbx.rt_mx('y,x,-z')
+    # For the record, we have a twinning by merohedry:
+    assert self.twin_law not in xs.space_group().build_derived_laue_group()
+    assert self.twin_law in sgtbx.lattice_symmetry.group(xs.unit_cell())
+    # ... and compute the indices and Fo^2 for the 2nd domain
+    fo_sq_2 = fo_sq_1.change_basis(sgtbx.change_of_basis_op(self.twin_law)
+                                   ).map_to_asu()
+
+    # Then add the two domains together with a twin fraction
+    self.twin_fraction = 0.3 + 0.2*(1 + flex.random_double())
+    matches = fo_sq_1.match_indices(fo_sq_2)
+    # sanity check for a merohedral twin
+    assert matches.singles(0).size() == 0
+    assert matches.singles(1).size() == 0
+    pairs = matches.pairs()
+    fo_sq_1 = fo_sq_1.select(pairs.column(1))
+    fo_sq_2 = fo_sq_2.select(pairs.column(0))
+    self.fo_sq = fo_sq_1.customized_copy(
+      data=(fo_sq_1.data()*(1 - self.twin_fraction) +
+            fo_sq_2.data()*self.twin_fraction),
+      sigmas=flex.double(fo_sq_1.size(), 1))
 
   def run(self):
     self.fo_sq = self.fo_sq.sort(by_value="packed_indices")
-    self.exercise()
+    self.exercise(fixed_twin_fraction=True)
+    self.exercise(fixed_twin_fraction=False)
     self.fo_sq = self.fo_sq.sort(by_value="resolution")
-    self.exercise()
+    self.exercise(fixed_twin_fraction=True)
+    self.exercise(fixed_twin_fraction=False)
 
-  def exercise(self):
+  def exercise(self, fixed_twin_fraction):
+    # Create a shaken structure xs ready for refinement
     xs0 = self.structure
+    emma_ref = xs0.as_emma_model()
     xs = xs0.deep_copy_scatterers()
     xs.shake_sites_in_place(rms_difference=0.15)
     xs.shake_adp()
-
     for sc in xs.scatterers():
       sc.flags.set_use_u_iso(False).set_use_u_aniso(True)
       sc.flags.set_grad_site(True).set_grad_u_aniso(True)
+
+    # Setup L.S. problem
     connectivity_table = smtbx.utils.connectivity_table(xs)
-    if self.twin_fractions[0] < 0.5:
-      twin_fractions = self.twin_fractions.deep_copy() + 0.1
-    else:
-      twin_fractions = self.twin_fractions.deep_copy() - 0.1
-    twin_components = tuple(
-      [xray.twin_component(law, fraction, grad=True)
-       for law, fraction in zip(self.twin_laws, twin_fractions)])
+    shaken_twin_fraction = (
+      self.twin_fraction if fixed_twin_fraction else
+      self.twin_fraction + 0.1*flex.random_double())
+    # 2nd domain in __init__
+    twin_components = (xray.twin_component(
+        twin_law=self.twin_law.r(), value=shaken_twin_fraction,
+        grad=not fixed_twin_fraction),)
     reparametrisation = constraints.reparametrisation(
       structure=xs,
       constraints=[],
       connectivity_table=connectivity_table,
       twin_fractions=twin_components)
     obs = self.fo_sq.as_xray_observations(twin_components=twin_components)
-    normal_eqns = least_squares.crystallographic_ls(
+    ls = least_squares.crystallographic_ls(
       obs, reparametrisation,
       weighting_scheme=least_squares.unit_weighting(),
       origin_fixing_restraints_type=
       origin_fixing_restraints.atomic_number_weighting)
-    cycles = normal_eqns_solving.naive_iterations(
-      normal_eqns,
-      n_max_iterations=10,
+
+    # Refine till we get back the original structure (so we hope)
+    cycles = normal_eqns_solving.levenberg_marquardt_iterations(
+      ls,
+      gradient_threshold=1e-12,
+      step_threshold=1e-6,
       track_all=True)
-    assert approx_equal(
-      [twin.value for twin in normal_eqns.twin_fractions],
-      self.twin_fractions, eps=1e-2)
-    assert approx_equal(normal_eqns.objective(), 0, eps=1e-5)
-    assert normal_eqns.n_parameters == 64
-    # now with fixed twin fraction
-    xs.shake_sites_in_place(rms_difference=0.15)
-    xs.shake_adp()
-    twin_components = tuple(
-      [xray.twin_component(law, fraction, grad=False)
-       for law, fraction in zip(self.twin_laws, twin_fractions)])
-    #change the twin_components of the observations...
-    obs = observations.customized_copy(obs, twin_components=twin_components)
-    reparametrisation = constraints.reparametrisation(
-      structure=xs,
-      constraints=[],
-      connectivity_table=connectivity_table,
-      twin_fractions=twin_components)
-    normal_eqns = least_squares.crystallographic_ls(
-      obs, reparametrisation,
-      weighting_scheme=least_squares.unit_weighting(),
-      origin_fixing_restraints_type=
-      origin_fixing_restraints.atomic_number_weighting)
-    cycles = normal_eqns_solving.naive_iterations(
-      normal_eqns,
-      n_max_iterations=10,
-      track_all=True)
-    assert approx_equal(
-      [twin.value for twin in normal_eqns.twin_fractions],
-      twin_fractions)
-    assert normal_eqns.objective() != 0 # since the twin fraction is not refined
-    assert normal_eqns.n_parameters == 63
+
+    # Now let's start to check it all worked
+    assert ls.n_parameters == 63 if fixed_twin_fraction else 64
+
+    match = emma.model_matches(emma_ref, xs.as_emma_model()).refined_matches[0]
+    assert match.rt.r == matrix.identity(3)
+    for pair in match.pairs:
+      assert approx_equal(match.calculate_shortest_dist(pair), 0, eps=1e-4), pair
+
+    if fixed_twin_fraction:
+      assert ls.twin_fractions[0].value == self.twin_fraction
+    else:
+      assert approx_equal(ls.twin_fractions[0].value, self.twin_fraction,
+                          eps=1e-2)
+
+    assert approx_equal(ls.scale_factor(), 1, eps=1e-5)
+    assert approx_equal(ls.objective(), 0)
+
 
 class site_refinement_in_p1_test(p1_test, site_refinement_test): pass
 
