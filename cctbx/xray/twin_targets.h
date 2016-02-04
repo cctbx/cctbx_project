@@ -747,12 +747,12 @@ namespace cctbx { namespace xray { namespace twin_targets {
   class hemihedral_detwinner
   {
     public:
-    hemihedral_detwinner( scitbx::af::const_ref< cctbx::miller::index<> > const& hkl_obs,
-                          scitbx::af::const_ref< cctbx::miller::index<> > const& hkl_calc,
-                          cctbx::sgtbx::space_group                       const& space_group,
-                          bool                                            const& anomalous_flag,
-                          scitbx::mat3<FloatType>                         const& twin_law
-                        )
+    hemihedral_detwinner(
+      scitbx::af::const_ref< cctbx::miller::index<> > const& hkl_obs,
+      scitbx::af::const_ref< cctbx::miller::index<> > const& hkl_calc,
+      cctbx::sgtbx::space_group                       const& space_group,
+      bool                                            const& anomalous_flag,
+      scitbx::mat3<FloatType>                         const& twin_law)
     :
     twin_completeness_(0)
     {
