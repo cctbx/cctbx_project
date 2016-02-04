@@ -41,8 +41,8 @@ class site_refinement_test(refinement_test):
   purpose = "site refinement"
 
   def run(self):
-    self.exercise_floating_origin_restraints()
     refinement_test.run(self)
+    self.exercise_floating_origin_restraints()
 
   def __init__(self):
     sgi = sgtbx.space_group_info("Hall: %s" % self.hall)
