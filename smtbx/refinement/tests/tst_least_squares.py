@@ -1130,6 +1130,10 @@ def run():
     .option(None, "--verbose",
             action="store_true",
             default=False)
+    .option(None, "--skip-twin-test",
+            dest='skip_twin_test',
+            action="store_true",
+            default=False)
   ).process(args=sys.argv[1:])
   if command_line.options.fix_random_seeds:
     flex.set_random_seed(1)
@@ -1140,7 +1144,8 @@ def run():
   exercise_normal_equations()
   exercise_floating_origin_dynamic_weighting(command_line.options.verbose)
   special_positions_test(n_runs).run()
-  twin_test().run()
+  if not command_line.options.skip_twin_test:
+    twin_test().run()
 
 if __name__ == '__main__':
   run()
