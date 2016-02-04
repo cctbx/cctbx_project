@@ -332,11 +332,16 @@ class structure_base (object) :
 
 
   @staticmethod
-  def parse_chain_id (chars) :
-    assert len(chars) == 2
-    if chars == "  " :
+  def parse_chain_id(chars):
+    # assert len(chars) == 2
+    if chars == "":
+      # most likely somebody stripped empty chain id
       return " "
-    else :
+    if len(chars) == 1:
+      return chars
+    if chars == "  ":
+      return " "
+    else:
       return chars.strip()
 
   @staticmethod
@@ -1154,6 +1159,8 @@ class pdb_helix (structure_base) :
     assert (self.helix_class in self._helix_class_array), \
         "Bad helix class: %s" % helix_class
 
+    self.start_chain_id = self.parse_chain_id(start_chain_id)
+    self.end_chain_id = self.parse_chain_id(end_chain_id)
     if isinstance(self.helix_id, int):
       self.helix_id = "%s" % self.helix_id
       self.helix_id = self.helix_id[:3]
@@ -1402,6 +1409,8 @@ class pdb_strand(structure_base):
     adopt_init_args(self, locals())
     assert (sheet_id > 0) and (strand_id > 0)
     assert (sense in [-1, 0, 1]), "Bad sense."
+    self.start_chain_id = self.parse_chain_id(start_chain_id)
+    self.end_chain_id = self.parse_chain_id(end_chain_id)
     if self.start_chain_id != self.end_chain_id:
       raise RuntimeError("Don't know how to deal with helices with multiple "+
         "chain IDs ('%s' vs. '%s')." % (self.start_chain_id, self.end_chain_id))
