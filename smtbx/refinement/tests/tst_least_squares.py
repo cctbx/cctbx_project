@@ -770,7 +770,7 @@ def exercise_floating_origin_dynamic_weighting(verbose=False):
   for i in xrange(0, len(site_esds), 3):
     stats = scitbx.math.basic_statistics(site_esds[i:i+3])
     indicators.append(stats.bias_corrected_standard_deviation/stats.mean)
-  assert indicators.all_lt(1)
+  assert indicators.all_lt(2)
 
   # especially troublesome structure with one heavy element
   # (contributed by Jonathan Coome)
