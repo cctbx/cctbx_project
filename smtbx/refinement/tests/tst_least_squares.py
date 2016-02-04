@@ -547,7 +547,7 @@ def exercise_normal_equations():
 
 class special_positions_test(object):
 
-  delta_site   = 0.1 # angstrom
+  delta_site   = 0.1 # % (of unit cell c for constrained atoms)
   delta_u_star = 0.1 # %
 
   def __init__(self, n_runs, **kwds):
@@ -603,7 +603,7 @@ class special_positions_test(object):
 
   def run(self):
     if self.n_runs > 1:
-      print 'small inorganic refinement'
+      print 'small inorganic refinement with many special positions'
       for i in xrange(self.n_runs):
         print '.',
         self.exercise()
@@ -693,6 +693,10 @@ def exercise_floating_origin_dynamic_weighting(verbose=False):
   # light elements only
   xs0 = random_structure.xray_structure(elements=['C', 'C', 'C', 'O', 'N'],
                                         use_u_aniso=True)
+  msg = "light elements in %s ..." % (
+    xs0.space_group_info().type().hall_symbol())
+  if verbose:
+    print msg,
   fo_sq = xs0.structure_factors(d_min=0.8).f_calc().norm()
   fo_sq = fo_sq.customized_copy(sigmas=flex.double(fo_sq.size(), 1.))
   xs = xs0.deep_copy_scatterers()
@@ -714,8 +718,8 @@ def exercise_floating_origin_dynamic_weighting(verbose=False):
     ls.normal_matrix_packed_u().matrix_packed_u_as_symmetric()).values()
   # assert the restrained L.S. problem is not too ill-conditionned
   cond = math.log10(lambdas[0]/lambdas[-1])
-  msg = "light elements: %.1f" % cond
-  if verbose: print msg
+  if verbose:
+    print "normal matrix condition: %.1f" % cond
   assert cond < worst_condition_number_acceptable, msg
 
   # one heavy element
@@ -723,6 +727,10 @@ def exercise_floating_origin_dynamic_weighting(verbose=False):
     space_group_info=sgtbx.space_group_info('hall: P 2yb'),
     elements=['Zn', 'C', 'C', 'C', 'O', 'N'],
     use_u_aniso=True)
+  msg = "one heavy element + light elements (synthetic data) in %s ..." % (
+    xs0.space_group_info().type().hall_symbol())
+  if verbose:
+    print msg,
   fo_sq = xs0.structure_factors(d_min=0.8).f_calc().norm()
   fo_sq = fo_sq.customized_copy(sigmas=flex.double(fo_sq.size(), 1.))
   xs = xs0.deep_copy_scatterers()
@@ -744,8 +752,8 @@ def exercise_floating_origin_dynamic_weighting(verbose=False):
     ls.normal_matrix_packed_u().matrix_packed_u_as_symmetric()).values()
   # assert the restrained L.S. problem is not too ill-conditionned
   cond = math.log10(lambdas[0]/lambdas[-1])
-  msg = "one heavy element + light elements (synthetic data): %.1f" % cond
-  if verbose: print msg
+  if verbose:
+    print "normal matrix condition: %.1f" % cond
   assert cond < worst_condition_number_acceptable, msg
 
   # are esd's for x,y,z coordinates of the same order of magnitude?
