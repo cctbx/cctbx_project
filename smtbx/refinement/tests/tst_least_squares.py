@@ -7,7 +7,6 @@ from cctbx import sgtbx, crystal, xray, adptbx, uctbx
 import cctbx.sgtbx.lattice_symmetry
 from cctbx import euclidean_model_matching as emma
 from cctbx.array_family import flex
-from cctbx.xray import observations
 from cctbx.development import random_structure
 from smtbx.refinement import least_squares
 from smtbx.refinement import constraints
