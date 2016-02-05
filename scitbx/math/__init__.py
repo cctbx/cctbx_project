@@ -419,3 +419,30 @@ class sin_cos_table(object):
     for i in xrange(self.n):
       self.sin_table.append(math.sin(i*self.step))
       self.cos_table.append(math.cos(i*self.step))
+
+def similarity_indices(x, eps):
+  """
+  Best explained by examples:
+    for array [0.232, 0.002, 0.45, 1.2, 0.233, 1.2, 0.5, 0.231, 0,0,0,0,0]
+    return    [0,     1,     2,    3,   0,     3,   4,   0,     1,1,1,1,1]
+    if eps=0.01.
+  Other examples:
+    [0, 2, 0, 2]
+    [0, 1, 0, 1]
+
+    [0, 0, 0, 0]
+    [0, 0, 0, 0]
+
+    [1, 2, 3, 4]
+    [0, 1, 2, 3]
+  """
+  ii_all = []
+  for i, xi in enumerate(x):
+    ii = []
+    for j, xj in enumerate(x):
+      if(abs(xi-xj)<eps): ii.append(j)
+    if(not ii in ii_all): ii_all.append(ii)
+  y = x[:]
+  for i, ii in enumerate(ii_all):
+    for iii in ii: y[iii]=i
+  return y
