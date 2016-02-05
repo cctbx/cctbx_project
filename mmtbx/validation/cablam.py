@@ -622,15 +622,11 @@ class cablam_result(residue):
   def is_same_as_other_result(self,other_result):
     #Compare this result object to another to see if they are effectively the
     #  same.  Identical cablam geometry (mu_in, mu_out, and nu) is assumed to
-    #  mean identical residues
-    try:
-      if (self.measures.mu_in != other_result.measures.mu_in
-        or self.measures.mu_out != other_result.measures.mu_out
-        or self.measures.nu != other_result.measures.nu):
-        return False
-    except AttributeError:
-      print self.mp_id(), self.measures.mu_in, self.measures.mu_out, self.measures.nu
-      print other_result.mp_id(), other_result.measures.mu_in, other_result.measures.mu_out, other_result.measures.nu
+    #  mean identical residues:
+    if (self.measures.mu_in != other_result.measures.mu_in
+      or self.measures.mu_out != other_result.measures.mu_out
+      or self.measures.nu != other_result.measures.nu):
+      return False
     return True
   #-----------------------------------------------------------------------------
   #}}}
@@ -685,6 +681,9 @@ class cablamalyze(validation):
       for chain in model.chains():
         if not chain.is_protein():
           continue
+        for conf in chain.conformers():
+          if conf.is_protein(): break #at least one conformer must be protein
+        else: continue
         if use_segids:
           chain_id = utils.get_segid_as_chainid(chain=chain)
         else:
@@ -718,7 +717,14 @@ class cablamalyze(validation):
               )
             result.check_atoms()
             result.link_residues(previous_result)
-            current_conf.results[result.sorting_id()] = result
+            #Occasionally a conformer may have more than one "residue" that has
+            # the same sorting_id (sorting_id is just chain+resseq+icode)
+            # see phenix_regression/pdb/lysozyme_nohoh_plus6H.pdb, where WAT 14
+            # and ARG 14 have the same sorting_id
+            #This check my not be the correct behavior to catch such a
+            # formatting error.
+            if result.sorting_id() not in current_conf.results:
+              current_conf.results[result.sorting_id()] = result
             previous_result = result
     for chain in self.all_results:
       for conf in self.all_results[chain].confs:
@@ -867,6 +873,7 @@ class cablamalyze(validation):
         for other_conf in chain.conf_names[1:]:
           if result.sorting_id() in chain.confs[other_conf].results:
             other_result = chain.confs[other_conf].results[result.sorting_id()]
+            if not other_result.has_ca: continue
             if not result.is_same_as_other_result(other_result):
               self.results.append(other_result)
               found_meaningful_alt = True
