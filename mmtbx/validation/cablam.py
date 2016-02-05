@@ -441,7 +441,7 @@ class cablam_result(residue):
       self.has_ca = True
       for atom_name in [' N  ',' C  ',' O  ']:
         if self.get_atom(atom_name) is None:
-          pass
+          break
       else:
         self.has_mc = True
   #-----------------------------------------------------------------------------
