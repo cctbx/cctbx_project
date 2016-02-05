@@ -685,9 +685,10 @@ class cablamalyze(validation):
           if conf.is_protein(): break #at least one conformer must be protein
         else: continue
         if use_segids:
-          chain_id = utils.get_segid_as_chainid(chain=chain)
+          chain_id = utils.get_segid_as_chainid(chain=chain).rjust(2)
         else:
-          chain_id = chain.id
+          chain_id = chain.id.rjust(2)
+        #The above .rjust(2)'s are to force 2-char chain ids
         current_chain = cablam_chain()
         self.all_results[chain_id] = current_chain
         previous_result = None
@@ -704,9 +705,10 @@ class cablamalyze(validation):
               resseq=residue.resseq,
               icode=residue.icode,
               alt=conf.altloc,
-              #chain=chain.id, #chain.id is returning a single character
+              chain=chain_id,
               #formatting note: residue.id_str() = 'pdbres="THR B 182 "'
-              chain=residue.id_str()[11:13],
+              #chain=residue.id_str()[11:13],
+              #residue.id_str() turned out to break on some segid formatting
               prevres=None,
               nextres=None,
               has_ca=False,
@@ -1192,7 +1194,7 @@ def run(args):
     sys.exit()
 
   if not os.path.isfile(params.pdb_infile):
-    sys.stderr.write(params.pdb_infile + "is not a file or could not be found")
+    sys.stderr.write(params.pdb_infile + " is not a file or could not be found")
     sys.exit()
   else:
     pdb_infile = params.pdb_infile
