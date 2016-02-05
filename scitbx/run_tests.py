@@ -53,6 +53,7 @@ tst_list = (
   "$D/math/incremental_SO3_sampling.py",
   "$D/math/tests/tst_curve_fitting.py",
   "$D/math/tests/tst_weighted_correlation.py",
+  "$D/math/tests/tst_similarity_indices.py",
   "$D/math/tests/tst_exp_functions.py",
   "$D/math/tests/tst_fit_quadratic_function.py",
   "$D/math/tests/tst_gcd.py",
