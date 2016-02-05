@@ -17,6 +17,7 @@ import libtbx.utils
 import math
 import sys
 import random
+import re
 
 tested_ls_engines = (
   least_squares.normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_2,
@@ -1196,7 +1197,8 @@ def run():
   if n_runs > 1: refinement_test.ls_cycle_repeats = n_runs
 
   for ls_engine in tested_ls_engines:
-    print "Testing %s" % ls_engine
+    m = re.search(r'BLAS_(\d)', ls_engine.__name__)
+    print "Normal matrix accumulation with BLAS level %s" % m.group(1)
     exercise_normal_equations(ls_engine)
     exercise_floating_origin_dynamic_weighting(ls_engine,
                                                command_line.options.verbose)
