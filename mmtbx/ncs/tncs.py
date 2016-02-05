@@ -14,17 +14,6 @@ from scitbx.math import superpose
 import mmtbx.alignment
 from libtbx.test_utils import approx_equal
 
-def similarity_indices(x, eps=0.01):
-  y = []
-  for i, xi in enumerate(x):
-    cntr=1
-    for j, xj in enumerate(x):
-      if(i!=j):
-        if(abs(xi-xj)<eps):
-          cntr+=1
-    y.append(cntr)
-  return y
-
 class groups(object):
 
   def __init__(self,
@@ -110,7 +99,7 @@ class groups(object):
       self.ncs_pairs.append(ncs_pair)
     # set id flag
     frac_scats = [p.fracscat for p in self.ncs_pairs]
-    sis = similarity_indices(x=frac_scats)
+    sis = scitbx.math.similarity_indices(x=frac_scats, eps=0.01)
     #print frac_scats, sis
     for si, p in zip(sis, self.ncs_pairs):
       p.set_id(si)
@@ -438,5 +427,6 @@ class compute_eps_factor(object):
       print >> log, "  Radius: %-6.1f"%ncs_pair.radius
       print >> log, "  Radius (estimate): %-6.1f"%ncs_pair.radius_estimate
       print >> log, "  fracscat:", ncs_pair.fracscat
+      print >> log, "  id:", ncs_pair.id
     print >> log, "tNCS eps factor: min,max,mean: %6.4f %6.4f %6.4f"%\
       self.epsfac.min_max_mean().as_tuple()

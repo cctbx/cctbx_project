@@ -31,6 +31,76 @@ import iotbx.pdb
 
 time_model_show = 0.0
 
+def rebuild_bad_hydrogens(
+      pdb_hierarchy,
+      xray_structure,
+      nuclear             = False,
+      deviation_threshold = 1.0):
+  assert libtbx.env.has_module("reduce")
+  hd_selection = xray_structure.hd_selection()
+  if(nuclear): cmd = "phenix.reduce -quiet -allalt -NUClear -"
+  else:        cmd = "phenix.reduce -quiet -allalt -"
+  r = easy_run.fully_buffered(
+    command=cmd,
+    stdin_lines=pdb_hierarchy.select(~hd_selection).as_pdb_string(append_end=True)
+  )
+  ph = iotbx.pdb.input(source_info=None,
+    lines=r.stdout_lines).construct_hierarchy()
+  get_class = iotbx.pdb.common_residue_names_get_class
+  supported = ["common_water", "common_amino_acid", "common_rna_dna"]
+  def cm_from_residue_non_hd(residue):
+    sites_cart = flex.vec3_double()
+    for atom in residue.atoms():
+      if(not atom.element_is_hydrogen()):
+        sites_cart.append(atom.xyz)
+    if len(sites_cart):
+      return sites_cart.mean()
+    return None
+  def dist(r1, r2):
+    return math.sqrt((r1[0]-r2[0])**2+(r1[1]-r2[1])**2+(r1[2]-r2[2])**2)
+  def is_supported(residue):
+    return get_class(name=residue.resname) in supported
+  counter = 0
+  reduce_residue_lookup = {}
+  for model1 in ph.models():
+    for chain1 in model1.chains():
+      for conformer1 in chain1.conformers():
+        for residue1 in conformer1.residues():
+          if(not is_supported(residue1)): continue
+          reduce_residue_lookup[residue1.id_str()]=residue1.standalone_copy()
+  for model2 in pdb_hierarchy.models():
+    for chain2 in model2.chains():
+      for conformer2 in chain2.conformers():
+        for residue2 in conformer2.residues():
+          if(not is_supported(residue2)): continue
+          residue1=reduce_residue_lookup[residue2.id_str()]
+          cm1 = cm_from_residue_non_hd(residue=residue1)
+          if cm1 is None: continue
+          cm2 = cm_from_residue_non_hd(residue=residue2)
+          if cm2 is None: continue
+          if dist(cm1,cm2)<1.e-3:
+            # skip proper alternative confromations
+            is_ac = False
+            for a1, a2 in zip(residue1.atoms(), residue2.atoms()):
+              if((a1.parent().altloc !=""
+                  and not a1.element_is_hydrogen()) or
+                 (a2.parent().altloc !=""
+                  and not a2.element_is_hydrogen())):
+                is_ac=True
+                break
+            if(not is_ac):
+              for a1 in residue1.atoms():
+                if(a1.element_is_hydrogen()):
+                  n1 = a1.name.strip()[1:]
+                  for a2 in residue2.atoms():
+                    n2 = a2.name.strip()[1:]
+                    if(a2.element_is_hydrogen() and n1 == n2):
+                      if(dist(a1.xyz, a2.xyz)>deviation_threshold):
+                        a2.set_xyz(a1.xyz)
+                        counter += 1
+  xray_structure.set_sites_cart(pdb_hierarchy.atoms().extract_xyz())
+  return counter, pdb_hierarchy
+
 def find_common_water_resseq_max(pdb_hierarchy):
   get_class = iotbx.pdb.common_residue_names_get_class
   hy36decode = iotbx.pdb.hy36decode
@@ -370,71 +440,12 @@ class manager(object):
 
   def rebuild_bad_hydrogens_with_reduce(self, nuclear = False,
         deviation_threshold = 1.0):
-    assert libtbx.env.has_module("reduce")
-    pdb_hierarchy = self._pdb_hierarchy
-    hd_selection = self.xray_structure.hd_selection()
-    if(nuclear): cmd = "phenix.reduce -quiet -allalt -NUClear -"
-    else:        cmd = "phenix.reduce -quiet -allalt -"
-    r = easy_run.fully_buffered(
-      command=cmd,
-      stdin_lines=pdb_hierarchy.select(~hd_selection).as_pdb_string(append_end=True)
-    )
-    ph = iotbx.pdb.input(source_info=None,
-      lines=r.stdout_lines).construct_hierarchy()
-    get_class = iotbx.pdb.common_residue_names_get_class
-    supported = ["common_water", "common_amino_acid", "common_rna_dna"]
-    def cm_from_residue_non_hd(residue):
-      sites_cart = flex.vec3_double()
-      for atom in residue.atoms():
-        if(not atom.element_is_hydrogen()):
-          sites_cart.append(atom.xyz)
-      if len(sites_cart):
-        return sites_cart.mean()
-      return None
-    def dist(r1, r2):
-      return math.sqrt((r1[0]-r2[0])**2+(r1[1]-r2[1])**2+(r1[2]-r2[2])**2)
-    def is_supported(residue):
-      return get_class(name=residue.resname) in supported
-    counter = 0
-    reduce_residue_lookup = {}
-    for model1 in ph.models():
-      for chain1 in model1.chains():
-        for conformer1 in chain1.conformers():
-          for residue1 in conformer1.residues():
-            if(not is_supported(residue1)): continue
-            reduce_residue_lookup[residue1.id_str()]=residue1.standalone_copy()
-    for model2 in pdb_hierarchy.models():
-      for chain2 in model2.chains():
-        for conformer2 in chain2.conformers():
-          for residue2 in conformer2.residues():
-            if(not is_supported(residue2)): continue
-            residue1=reduce_residue_lookup[residue2.id_str()]
-            cm1 = cm_from_residue_non_hd(residue=residue1)
-            if cm1 is None: continue
-            cm2 = cm_from_residue_non_hd(residue=residue2)
-            if cm2 is None: continue
-            if dist(cm1,cm2)<1.e-3:
-              # skip proper alternative confromations
-              is_ac = False
-              for a1, a2 in zip(residue1.atoms(), residue2.atoms()):
-                if((a1.parent().altloc !=""
-                    and not a1.element_is_hydrogen()) or
-                   (a2.parent().altloc !=""
-                    and not a2.element_is_hydrogen())):
-                  is_ac=True
-                  break
-              if(not is_ac):
-                for a1 in residue1.atoms():
-                  if(a1.element_is_hydrogen()):
-                    n1 = a1.name.strip()[1:]
-                    for a2 in residue2.atoms():
-                      n2 = a2.name.strip()[1:]
-                      if(a2.element_is_hydrogen() and n1 == n2):
-                        if(dist(a1.xyz, a2.xyz)>deviation_threshold):
-                          a2.set_xyz(a1.xyz)
-                          counter += 1
-    self.xray_structure.set_sites_cart(pdb_hierarchy.atoms().extract_xyz())
-    self._pdb_hierarchy = pdb_hierarchy
+    counter, ph = rebuild_bad_hydrogens(
+      pdb_hierarchy       = self._pdb_hierarchy,
+      xray_structure      = self.xray_structure,
+      nuclear             = False,
+      deviation_threshold = 1.0)
+    self._pdb_hierarchy = ph
     return counter
 
   def idealize_h(self, correct_special_position_tolerance=1.0,
