@@ -623,10 +623,14 @@ class cablam_result(residue):
     #Compare this result object to another to see if they are effectively the
     #  same.  Identical cablam geometry (mu_in, mu_out, and nu) is assumed to
     #  mean identical residues
-    if (self.measures.mu_in != other_result.measures.mu_in
-      or self.measures.mu_out != other_result.measures.mu_out
-      or self.measures.nu != other_result.measures.nu):
-      return False
+    try:
+      if (self.measures.mu_in != other_result.measures.mu_in
+        or self.measures.mu_out != other_result.measures.mu_out
+        or self.measures.nu != other_result.measures.nu):
+        return False
+    except AttributeError:
+      print self.mp_id(), self.measures.mu_in, self.measures.mu_out, self.measures.nu
+      print other_result.mp_id(), other_result.measures.mu_in, other_result.measures.mu_out, other_result.measures.nu
     return True
   #-----------------------------------------------------------------------------
   #}}}
@@ -855,6 +859,9 @@ class cablamalyze(validation):
       #for result_id in conf.results:
       for result_id in result_ids:
         result = conf.results[result_id]
+        if not result.has_ca: continue
+        #results without CAs have measures=None and break the
+        #  is_same_as_other_result check. Also, they aren't evaluable residues.
         self.results.append(result)
         found_meaningful_alt = False
         for other_conf in chain.conf_names[1:]:
