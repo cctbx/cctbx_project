@@ -196,7 +196,7 @@ class Analyzer(object):
 #       with open('{}/beamxy_selection.lst'.format(output_folder), 'w') as f_clean:
 #         for i in clean:
 #           f_clean.write('\n{}'.format(i[0]))
-# 
+#
 #       with open('{}/beamxy_outliers.lst'.format(output_folder), 'w') as f_out:
 #         for i in outliers:
 #           f_out.write('\n{}'.format(i[0]))

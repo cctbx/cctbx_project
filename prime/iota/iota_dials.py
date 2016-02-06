@@ -129,7 +129,7 @@ class Integrator(object):
 
   def refine(self):
     # From Aaron Brewster: refinement step skipped as it's done in indexing
-    # This writes out experiments to disc 
+    # This writes out experiments to disc
     if self.phil.output.refined_experiments_filename:
       from dxtbx.model.experiment.experiment_list import ExperimentListDumper
       dump = ExperimentListDumper(self.experiments)
