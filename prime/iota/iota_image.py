@@ -105,10 +105,9 @@ class SingleImage(object):
             os.path.basename(self.conv_img).split('.')[0] + "_int.pickle"))
     self.final['final'] = self.fin_file
     self.final['img'] = self.conv_img
-    if self.viz_base != None:
-      self.viz_path = misc.make_image_path(self.raw_img, self.input_base, self.viz_base)
-      self.viz_file = os.path.join(self.viz_path,
-                   os.path.basename(self.conv_img).split('.')[0] + "_int.png")
+    self.viz_path = misc.make_image_path(self.raw_img, self.input_base, self.viz_base)
+    self.viz_file = os.path.join(self.viz_path,
+                    os.path.basename(self.conv_img).split('.')[0] + "_int.png")
 
     # Generate output folders and files:
     # Grid search subfolder or final integration subfolder
@@ -122,7 +121,7 @@ class SingleImage(object):
                           os.path.basename(self.conv_img).split('.')[0] + '.log')
 
     # Visualization subfolder
-    if self.viz_path != None and not os.path.isdir(self.viz_path):
+    if not os.path.isdir(self.viz_path):
         os.makedirs(self.viz_path)
 
     # Reset status to 'grid search' to pick up at selection (if no fail)
@@ -206,12 +205,12 @@ class SingleImage(object):
         msec, sec = math.modf(scan.get_epochs()[0])
         timestamp = evt_timestamp((sec,msec))
 
-      if self.params.image_conversion.beamstop != 0 or\
-         self.params.image_conversion.beam_center.x != 0 or\
-         self.params.image_conversion.beam_center.y != 0 or\
-         self.params.image_conversion.rename_pickle_prefix != 'Auto' or\
-         self.params.image_conversion.rename_pickle_prefix != None:
-        img_type = 'unconverted'
+#       if self.params.image_conversion.beamstop != 0 or\
+#          self.params.image_conversion.beam_center.x != 0 or\
+#          self.params.image_conversion.beam_center.y != 0 or\
+#          self.params.image_conversion.rename_pickle_prefix != 'Auto' or\
+#          self.params.image_conversion.rename_pickle_prefix != None:
+#         img_type = 'unconverted'
 
       # Assemble datapack
       data = dpack(data=raw_data,
@@ -224,17 +223,6 @@ class SingleImage(object):
                    saturated_value=overload,
                    timestamp=timestamp
                    )
-
-      #print "data: ", type(raw_data)
-      #print "pixel size: ", type(pixel_size)
-      #print 'wavelength: ', type(wavelength)
-      #print "beamX: ", type(beam_x)
-      #print "saturation: ", type(overload)
-      #print "timestamp: ", type(timestamp)
-
-      #for i in dir(raw_data): print i
-
-      #exit()
 
       if scan is not None:
         osc_start, osc_range = scan.get_oscillation()
@@ -412,9 +400,9 @@ class SingleImage(object):
        self.params.image_conversion.beam_center.x != 0 or\
        self.params.image_conversion.beam_center.y != 0 or\
        self.params.image_conversion.distance != 0 or\
-       self.params.image_conversion.rename_pickle_prefix != 'Auto' or\
-       self.params.image_conversion.rename_pickle_prefix != None:
-      self.status = 'unconverted'
+       (str(self.params.image_conversion.rename_pickle_prefix).lower() != "auto" and\
+       self.params.image_conversion.rename_pickle_prefix != None):
+      self.img_type = 'unconverted'
 
     if self.img_type == 'unconverted':
       # Check for and/or create a converted pickles folder
@@ -497,9 +485,8 @@ class SingleImage(object):
       self.final['img'] = self.conv_img
       self.int_log = os.path.join(self.fin_path,
                         os.path.basename(self.conv_img).split('.')[0] + '.log')
-      if self.viz_base != None:
-        self.viz_path = misc.make_image_path(self.conv_img, self.input_base, self.viz_base)
-        self.viz_file = os.path.join(self.viz_path,
+      self.viz_path = misc.make_image_path(self.conv_img, self.input_base, self.viz_base)
+      self.viz_file = os.path.join(self.viz_path,
             "int_{}.png".format(os.path.basename(self.conv_img).split('.')[0]))
 
       # Create actual folders (if necessary)
@@ -508,9 +495,8 @@ class SingleImage(object):
           os.makedirs(self.obj_path)
         if not os.path.isdir(self.fin_path):
           os.makedirs(self.fin_path)
-        if self.viz_base != None:
-          if not os.path.isdir(self.viz_path):
-            os.makedirs(self.viz_path)
+        if not os.path.isdir(self.viz_path):
+          os.makedirs(self.viz_path)
       except OSError:
         pass
 
@@ -768,10 +754,8 @@ class SingleImage(object):
                               self.params)
 
       # Run DIALS test
-      integrator.find_spots()
-      integrator.index()
+      integrator.run()
 
     return self
-
 
 # **************************************************************************** #

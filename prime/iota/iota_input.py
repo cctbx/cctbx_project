@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 01/06/2016
+Last Changed: 01/20/2016
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -144,6 +144,10 @@ dials
   .help = Options for DIALS-based image processing
   .help = This option is not yet ready for general use!
 {
+  target = None
+    .type = str
+    .multiple = False
+    .help = Target (.phil) file with integration parameters for DIALS
   min_spot_size = 6
     .type = int
     .help = Minimal spot size
@@ -161,9 +165,6 @@ analysis
   charts = False
     .type = bool
     .help = If True, outputs PDF files w/ charts of mosaicity, rmsd, etc.
-  heatmap = None *file show both
-    .type = choice
-    .help = Show / output to file a heatmap of grid search results
 }
 advanced
   .help = "Advanced, debugging and experimental options."
@@ -171,7 +172,7 @@ advanced
   integrate_with = *cctbx dials
     .type = choice
     .help = Choose image processing software package
-  estimate_gain = True
+  estimate_gain = False
     .type = bool
     .help = Estimates detector gain (sometimes helps indexing)
   debug = False
@@ -284,10 +285,6 @@ def process_input(args,
   if args.select:
     params.cctbx.selection.select_only.flag_on = True
 
-  # Check if grid search has been turned off and turn off heatmap
-  if params.cctbx.grid_search.type == None:
-    params.analysis.heatmap = None
-
   final_phil = master_phil.format(python_object=params)
 
   temp_phil = [final_phil]
@@ -365,47 +362,6 @@ def write_defaults(current_path, txt_out):
 
   with open('{}/iota.param'.format(current_path), 'w') as default_settings_file:
     default_settings_file.write(txt_out)
-
-
-def write_dials_defaults(current_path):
-  """ Generate default DIALS params; MAY BE UNNECESSARY IN LONG TERM """
-
-  from iotbx.phil import parse
-  from dials.command_line.process import phil_scope
-
-  phil_scope = parse('''
-    include scope xfel.command_line.xtc_process.phil_scope
-  ''', process_includes=True)
-
-  sub_phil_scope = parse('''
-    output {
-      cxi_merge_picklefile = None
-        .type = str
-        .help = Output integration results for each color data to separate cctbx.xfel-style pickle files
-    }
-    indexing {
-      stills {
-        ewald_proximity_resolution_cutoff = 2.0
-          .type = float
-          .help = For calculating the area under the green curve, or the acceptable
-          .help = volume of reciprocal space for spot prediction, use this high-resolution cutoff
-      }
-    }
-    cxi_merge {
-      include scope xfel.command_line.cxi_merge.master_phil
-    }
-  ''', process_includes=True)
-
-  phil_scope.adopt_scope(sub_phil_scope)
-
-  with Capturing() as output:
-    phil_scope.show()
-
-  def_target_file = '{}/dials_target.phil'.format(current_path)
-
-  with open(def_target_file, 'w') as targ:
-    for one_output in output:
-      targ.write('{}\n'.format(one_output))
 
 
 def print_params():

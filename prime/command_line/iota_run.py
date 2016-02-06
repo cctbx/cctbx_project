@@ -4,11 +4,11 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 01/06/2016
-Description : IOTA command-line module. Version 2.24
+Last Changed: 02/05/2016
+Description : IOTA command-line module. Version 2.25
 '''
 
-iota_version = '2.24'
+iota_version = '2.25'
 help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 
@@ -36,7 +36,6 @@ ensure that beam center is in center of image. Can also blank out
 beam stop shadow.
 
 """
-
 from prime.iota.iota_analysis import Analyzer
 from prime.iota.iota_init import InitAll
 import prime.iota.iota_image as img
@@ -118,9 +117,11 @@ if __name__ == "__main__":
       misc.main_log(init.logfile, 'No images have diffraction!', True)
       misc.iota_exit(iota_version)
     else:
-      misc.main_log(init.logfile, "{} out of {} images have diffraction"\
-                                         "".format(len(acc_img_objects),
-                                                   len(img_objects)))
+      misc.main_log(init.logfile, "{} out of {} images have diffraction (at "\
+                                  "least {} Bragg peaks)"\
+                                  "".format(len(acc_img_objects),
+                                  len(img_objects),
+                                  init.params.image_triage.min_Bragg_peaks))
 
     # Check for -c option and exit if true
     if init.params.image_conversion.convert_only:
@@ -146,21 +147,10 @@ if __name__ == "__main__":
     print 'No images successfully integrated!'
     misc.iota_exit(iota_version)
 
-  analysis = Analyzer(img_objects, init.logfile, iota_version, init.now)
+  analysis = Analyzer(init, img_objects, iota_version)
   analysis.print_results()
-  analysis.unit_cell_analysis(init.params.analysis.cluster_threshold,
-                              init.int_base)
-  analysis.print_summary(init.int_base)
-  analysis.make_prime_input(init.int_base)
-
-  # Spotfinding heatmap
-  if init.params.analysis.heatmap != None:
-    hm_file = "{}/{}".format(init.viz_base, 'heatmap.pdf')
-    if init.params.analysis.heatmap == 'show':
-      analysis.show_heatmap()
-    elif init.params.analysis.heatmap == 'file':
-      analysis.show_heatmap(show=False, hm_file=hm_file)
-    elif init.params.analysis.heatmap == 'both':
-      analysis.show_heatmap(hm_file=hm_file)
+  analysis.unit_cell_analysis()
+  analysis.print_summary()
+  analysis.make_prime_input()
 
   misc.iota_exit(iota_version)
