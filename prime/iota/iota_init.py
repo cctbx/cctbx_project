@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 10/28/2015
+Last Changed: 01/20/2015
 Description : Reads command line arguments. Initializes all IOTA starting
               parameters. Starts main log.
 '''
@@ -202,14 +202,13 @@ class InitAll(object):
 
     if os.path.isdir(int_folder):
       int_list = [os.path.join(int_folder, i) for i in os.listdir(int_folder)]
-      img_objects = [ep.load(i) for i in int_list]
+      img_objects = [ep.load(i) for i in int_list if i.endswith('.int')]
+      self.logfile = os.path.abspath(os.path.join(int_folder, 'iota.log'))
 
-      analysis = Analyzer(img_objects, None, self.iver, self.now)
+      analysis = Analyzer(self, img_objects, self.iver)
       analysis.print_results()
-      analysis.unit_cell_analysis(self.params.analysis.cluster_threshold,
-                                  int_folder, False)
-      analysis.print_summary(None)
-      analysis.show_heatmap()
+      analysis.unit_cell_analysis(write_files=False)
+      analysis.print_summary(write_files=False)
     else:
       print 'No results found in {}'.format(int_folder)
 
@@ -279,18 +278,6 @@ class InitAll(object):
     if msg != '':
       print msg
 
-    # Check for -l option, output list of input files and exit
-    if self.args.list:
-      list_file = os.path.abspath("{}/input.lst".format(os.curdir))
-      print '\nIOTA will run in LIST INPUT ONLY mode'
-      print 'Input list in {} \n\n'.format(list_file)
-      with open(list_file, "w") as lf:
-        for i, input_file in enumerate(input_list, 1):
-          print "{}: {}".format(i, input_file)
-          lf.write('{}\n'.format(input_file))
-      print '\nExiting...\n\n'
-      misc.iota_exit(self.iver)
-
     if self.args.analyze != None:
       self.analyze_prior_results('{:003d}'.format(int(self.args.analyze)))
       misc.iota_exit(self.iver)
@@ -309,6 +296,18 @@ class InitAll(object):
     else:
       self.input_list = self.make_input_list()
 
+    # Check for -l option, output list of input files and exit
+    if self.args.list:
+      list_file = os.path.abspath("{}/input.lst".format(os.curdir))
+      print '\nINPUT LIST ONLY option selected'
+      print 'Input list in {} \n\n'.format(list_file)
+      with open(list_file, "w") as lf:
+        for i, input_file in enumerate(self.input_list, 1):
+          print "{}: {}".format(i, input_file)
+          lf.write('{}\n'.format(input_file))
+      print '\nExiting...\n\n'
+      misc.iota_exit(self.iver)
+
     # If fewer images than requested processors are supplied, set the number of
     # processors to the number of images
     if self.params.n_processors > len(self.input_list):
@@ -320,12 +319,7 @@ class InitAll(object):
     self.obj_base = os.path.join(self.int_base, 'image_objects')
     self.fin_base = os.path.join(self.int_base, 'final')
     self.tmp_base = os.path.join(self.int_base, 'tmp')
-    if self.params.analysis.viz != 'None' or\
-       self.params.analysis.heatmap != 'None' or\
-       self.params.analysis.charts:
-      self.viz_base = os.path.join(self.int_base, 'visualization')
-    else:
-      self.viz_base = None
+    self.viz_base = os.path.join(self.int_base, 'visualization')
 
     # Generate base folders
     os.makedirs(self.int_base)
