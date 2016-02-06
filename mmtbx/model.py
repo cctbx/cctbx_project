@@ -74,6 +74,14 @@ def rebuild_bad_hydrogens(
         for residue2 in conformer2.residues():
           if(not is_supported(residue2)): continue
           residue1=reduce_residue_lookup[residue2.id_str()]
+          # check if all H names in both residues are identical (guard against
+          # v2.3 vs v3.2 related failure)
+          n1 = list(residue1.atoms().extract_name())
+          n1.sort()
+          n2 = list(residue2.atoms().extract_name())
+          n2.sort()
+          if(n1 != n2): continue
+          #
           cm1 = cm_from_residue_non_hd(residue=residue1)
           if cm1 is None: continue
           cm2 = cm_from_residue_non_hd(residue=residue2)
