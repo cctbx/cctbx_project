@@ -86,7 +86,7 @@ def output_map(f_obs,r_free_flags, xray_structure, mask_data, filename):
       fill_missing     = False)
   #return mc_diff
   ccp4_map(file_name="mask_"+filename+".ccp4", uc=f_obs.unit_cell(),
-    sg=f_obs.space_group(), map_data=mask_data)  
+    sg=f_obs.space_group(), map_data=mask_data)
   return mc_diff
   #mtz_object = mtz_dataset.mtz_object()
   #mtz_object.write(file_name = "polder_map_coeffs.mtz")
@@ -114,7 +114,7 @@ def mask_modif(f_obs, mask_data, sites_cart, params):
   return mask
 
 def polder(f_obs, r_free_flags, xray_structure, pdb_hierarchy, params):
-  print 'now selecting atoms...' 
+  print 'now selecting atoms...'
   #no_H_select = params.solvent_exclusion_mask_selection + ' and not element H'
   selection_bool = pdb_hierarchy.atom_selection_cache().selection(string = params.solvent_exclusion_mask_selection)
   #print no_H_select
@@ -131,14 +131,14 @@ def polder(f_obs, r_free_flags, xray_structure, pdb_hierarchy, params):
   sites_cart_ligand = xray_structure.select(selection_bool).expand_to_p1(sites_mod_positive=True).sites_cart()
   # xray structure object without ligand/selection
   xray_structure_noligand = xray_structure.select(selection_bool,negate = True)
-  print 'now calculating solvent mask...' 
+  print 'now calculating solvent mask...'
   print "*"*79
   resolution_factor = 0.25
   crystal_gridding = f_obs.crystal_gridding(
-    d_min             = f_obs.d_min(),    
+    d_min             = f_obs.d_min(),
     symmetry_flags    = maptbx.use_space_group_symmetry,
     resolution_factor = resolution_factor)
-  # calculate mask using ALL atoms 
+  # calculate mask using ALL atoms
   mask_data_all = mmtbx.masks.mask_from_xray_structure(
     xray_structure           = xray_structure,
     p1                       = True,
@@ -148,7 +148,7 @@ def polder(f_obs, r_free_flags, xray_structure, pdb_hierarchy, params):
     n_real                   = crystal_gridding.n_real()).mask_data
   maptbx.unpad_in_place(map = mask_data_all)
   print "R factors for unmodified input model and data:"
-  mc_diff_all = output_map(f_obs,r_free_flags, xray_structure, 
+  mc_diff_all = output_map(f_obs,r_free_flags, xray_structure,
     mask_data_all, filename = "all")
   # This map is not necessary for final version, but useful for tests
   print "R factor when ligand is used for mask calculation:" #del
@@ -157,8 +157,8 @@ def polder(f_obs, r_free_flags, xray_structure, pdb_hierarchy, params):
   #------
   mask_polder = mask_modif(f_obs, mask_data_all, sites_cart_ligand, params)
   print "R factor for polder map"
-  mc_diff_polder = output_map(f_obs,r_free_flags, xray_structure_noligand, 
-    mask_polder, filename = "polder")  
+  mc_diff_polder = output_map(f_obs,r_free_flags, xray_structure_noligand,
+    mask_polder, filename = "polder")
   # calculate mask for structure without ligand
   mask_data_omit = mmtbx.masks.mask_from_xray_structure(
     xray_structure           = xray_structure_noligand,
@@ -169,15 +169,15 @@ def polder(f_obs, r_free_flags, xray_structure, pdb_hierarchy, params):
     n_real                   = crystal_gridding.n_real()).mask_data
   maptbx.unpad_in_place(map = mask_data_omit)
   print "R factor when ligand is excluded for mask calculation:"
-  mc_diff_omit = output_map(f_obs,r_free_flags, xray_structure_noligand, 
-    mask_data_omit, filename = "omit")  
+  mc_diff_omit = output_map(f_obs,r_free_flags, xray_structure_noligand,
+    mask_data_omit, filename = "omit")
   mtz_dataset = mc_diff_polder.as_mtz_dataset(column_root_label="mFo-DFc_polder")
   mtz_dataset.add_miller_array(
     miller_array = mc_diff_lig_omit,
     column_root_label = "mFo-DFc_lig-omit")
   mtz_dataset.add_miller_array(
     miller_array = mc_diff_omit,
-    column_root_label = "mFo-DFc_omit") 
+    column_root_label = "mFo-DFc_omit")
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name = "polder_map_coeffs.mtz")
   print "Finished"
@@ -228,7 +228,7 @@ def run(params):
     r_free_flags = determine_data_and_flags_result.r_free_flags
     # add something if no rfree
     if(r_free_flags is None):
-    	raise Sorry("No Rfree flags found in input file.")
+        raise Sorry("No Rfree flags found in input file.")
       #r_free_flags=f_obs.array(data=flex.bool(f_obs.data().size(), False))
       #test_flag_value=None
     f_obs, r_free_flags = f_obs.common_sets(r_free_flags) #DL
@@ -251,7 +251,7 @@ def cmd_run(args, command_name):
   msg = "Tool for improvement of ligand omit map."
   print msg
   #if len(args) != 3:
-  #	raise Sorry("Sorry, wrong number of parameters.") 
+  #     raise Sorry("Sorry, wrong number of parameters.")
   master_params = master_phil_string
   master_phil = phil.parse(master_phil_string, process_includes=True)
   #print args #checkprint
@@ -267,8 +267,8 @@ def cmd_run(args, command_name):
       if iotbx.pdb.is_pdb_file(arg):
         pdb.append(arg)
       elif arg.lower().endswith(".mtz"):
-      	mtz.append(arg)
-      else: 
+        mtz.append(arg)
+      else:
         try :
           file_phil = phil.parse(file_name=arg)
         except RuntimeError :
@@ -288,12 +288,12 @@ def cmd_run(args, command_name):
     if len(pdb) == 1:
       working_params.model_file_name = pdb[0]
     else:
-  	  raise Sorry("Exactly one model file should be given.")
+          raise Sorry("Exactly one model file should be given.")
   if working_params.reflection_file_name is None:
     if len(mtz) == 1:
-  	  working_params.reflection_file_name = mtz[0]
+          working_params.reflection_file_name = mtz[0]
     else:
-  	  raise Sorry("Exactly one mtz file should be given.")
+          raise Sorry("Exactly one mtz file should be given.")
   #print working_phil.format(python_object=working_params).as_str() #checkprint
   run(working_params)
 
