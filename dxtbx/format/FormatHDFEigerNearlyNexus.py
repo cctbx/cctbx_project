@@ -76,6 +76,7 @@ class EigerNXmxFixer(object):
     # print "Opening %s to perform fixes" % (
     #   output_filename)
     #
+    handle_orig = h5py.File(input_filename, 'r')
     handle = h5py.File(output_filename, 'r+')
 
     # Add some simple datasets
@@ -131,8 +132,8 @@ class EigerNXmxFixer(object):
     # Create detector data size
     # print "Adding dataset %s with value %s" % (join(group.name, "data_size"), str((1030, 1065)))
     dataset = group.create_dataset("data_size", (2,), dtype="int32")
-    dataset[0] = handle['/entry/data/data_000001'].shape[2]
-    dataset[1] = handle['/entry/data/data_000001'].shape[1]
+    dataset[0] = handle_orig['/entry/data/data_000001'].shape[2]
+    dataset[1] = handle_orig['/entry/data/data_000001'].shape[1]
 
     # Add fast_pixel_size dataset
     # print "Using /entry/instrument/detector/geometry/orientation/value as fast/slow pixel directions"
@@ -214,7 +215,7 @@ class EigerNXmxFixer(object):
     # Get the number of images
     num_images = 0
     for name in handle['/entry/data'].iterkeys():
-      num_images += len(handle[join('/entry/data', name)])
+      num_images += len(handle_orig[join('/entry/data', name)])
     dataset = group.create_dataset('omega', (num_images,), dtype="float32")
     dataset.attrs['units'] = 'degree'
     dataset.attrs['transformation_type'] = 'rotation'
@@ -234,6 +235,11 @@ class EigerNXmxFixer(object):
       'depends_on',
       'S%d' % len(dataset.name),
       str(dataset.name))
+
+    # Change relative paths to absolute paths
+    for name in handle_orig['/entry/data'].iterkeys():
+      del handle['entry/data'][name]
+      handle['entry/data'][name] = h5py.ExternalLink(handle_orig['entry/data'][name].file.filename, 'entry/data/data')
 
 class FormatEigerNearlyNexus(FormatHDF5):
 
