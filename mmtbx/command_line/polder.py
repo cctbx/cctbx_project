@@ -211,9 +211,7 @@ def run(params):
       log                    = StringIO())
     f_obs = determine_data_and_flags_result.f_obs
     r_free_flags = determine_data_and_flags_result.r_free_flags
-    if(r_free_flags is not None):
-      f_obs, r_free_flags = f_obs.common_sets(r_free_flags)
-  assert [f_obs, r_free_flags].count(None)>0
+  assert [f_obs, r_free_flags].count(None)<=1
   pdb_input = iotbx.pdb.input(file_name = params.model_file_name)
   pdb_hierarchy = pdb_input.construct_hierarchy()
   xray_structure = pdb_input.xray_structure_simple()
