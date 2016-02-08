@@ -76,11 +76,19 @@ def rebuild_bad_hydrogens(
           residue1=reduce_residue_lookup[residue2.id_str()]
           # check if all H names in both residues are identical (guard against
           # v2.3 vs v3.2 related failure)
+          def d2h(x):
+            for i, xi in enumerate(x):
+              if(xi[1]=="D"): x[i] = xi[0]+"H"+xi[2:]
+              if(xi[0]=="D"): x[i] = "H"+xi[1:]
+            return x
           n1 = list(residue1.atoms().extract_name())
+          n1 = d2h(n1)
           n1.sort()
           n2 = list(residue2.atoms().extract_name())
+          n2 = d2h(n2)
           n2.sort()
-          if(n1 != n2): continue
+          if(n1 != n2):
+            continue
           #
           cm1 = cm_from_residue_non_hd(residue=residue1)
           if cm1 is None: continue
