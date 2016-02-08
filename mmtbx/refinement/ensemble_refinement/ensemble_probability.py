@@ -1,3 +1,4 @@
+from __future__ import division
 import sys
 import os
 import math
@@ -84,7 +85,7 @@ class map_cc_funct(object):
       self.selection = flex.bool(scatterers.size(), True)
     real_map_unpadded = fft_map.real_map_unpadded()
     sites_cart = self.xray_structure.sites_cart()
-    
+
     if not self.residue_detail:
       self.gifes = [None,]*scatterers.size()
       self._result = [None,]*scatterers.size()
@@ -113,12 +114,12 @@ class map_cc_funct(object):
           self._result[i_seq] = group_args(atom = a, m1 = m1, ed1 = ed1,
             xyz=site_cart)
       self.xray_structure.set_occupancies(sigma_occ)
-      
+
       ### For testing other residue averaging options
       residues = self.extract_residues(model_i = model_i,
                                        number_previous_scatters = number_previous_scatters)
       self.xray_structure.residue_selections = residues
-      
+
     # Residue detail
     if self.residue_detail:
       assert self.pdb_hierarchy is not None
@@ -181,7 +182,7 @@ class map_cc_funct(object):
             resid     = rg.resid(),
             chain_id  = chain.id))
     result.append(rm)
-    
+
     if(combine):
       r0 = result[0]
       for r in result[1:]:
@@ -194,7 +195,7 @@ class map_cc_funct(object):
         r0.extend(r)
 
     return r0
-    
+
 
 def get_map_sigma(ens_pdb_hierarchy,
                            ens_pdb_xrs,
@@ -313,7 +314,7 @@ class ensemble_probability(object):
       atexit_send_to=None)
     sys.stderr = self.log
     log_file = open(pdb_file_names[0].split('/')[-1].replace('.pdb','') + '_pensemble.log', "w")
-    
+
     self.log.replace_stringio(
         old_label="log_buffer",
         new_label="log",
@@ -324,7 +325,7 @@ class ensemble_probability(object):
     f_obs = None
     r_free_flags = None
     reflection_files = processed_args.reflection_files
-    
+
     if self.params.fobs_vs_fcalc_post_nll:
       if len(reflection_files) == 0:
         raise Sorry("Fobs from input MTZ required for fobs_vs_fcalc_post_nll")
@@ -353,7 +354,7 @@ class ensemble_probability(object):
       test_flag_value = determine_data_and_flags_result.test_flag_value
       if(r_free_flags is None):
         r_free_flags=f_obs.array(data=flex.bool(f_obs.data().size(), False))
-    
+
     # process PDB
     pdb_file.assert_file_type("pdb")
     #
@@ -366,7 +367,7 @@ class ensemble_probability(object):
 
     # Calculate sigmas from input map only
     if self.params.assign_sigma_from_map and self.params.ensemble_sigma_map_input is not None:
-      # process MTZ 
+      # process MTZ
       input_file = file_reader.any_file(self.params.ensemble_sigma_map_input)
       if input_file.file_type == "hkl" :
         if input_file.file_object.file_type() != "ccp4_mtz" :
@@ -450,13 +451,13 @@ class ensemble_probability(object):
         if self.params.output_model_and_model_ave_mtz:
           fcalc_mtz_dataset.mtz_object().write(file_name = str(model+1)+"_Fc.mtz")
         model_map_coeffs.append(fcalc_map_coeffs.deep_copy())
-      
+
       fmodel.update(f_calc = f_calc_ave.array(f_calc_ave_total / number_structures))
       print >> self.log, "\nEnsemble vs real Fobs (no bulk solvent or scaling)"
       print >> self.log, 'Rwork          : %5.4f '%fmodel.r_work()
       print >> self.log, 'Rfree          : %5.4f '%fmodel.r_free()
       print >> self.log, 'K1             : %5.4f '%fmodel.scale_k1()
-      
+
       # Get <Fcalc> map
       fcalc_ave_edm        = fmodel.electron_density_map()
       fcalc_ave_map_coeffs = fcalc_ave_edm.map_coefficients(map_type = 'Fc').deep_copy()
@@ -472,9 +473,9 @@ class ensemble_probability(object):
       fcalc_ave_map_stats.show_summary(f = self.log)
       offset = fcalc_ave_map_stats.min()
       model_neg_ll = []
-      
+
       number_previous_scatters = 0
-      
+
       # Run through structure list again and get probability
       xrs_list = []
       for model, ens_pdb_xrs in enumerate(ens_pdb_xrs_s):
@@ -488,7 +489,7 @@ class ensemble_probability(object):
         if self.params.verbose:
           print >> self.log, "Fcalc map stats         :"
         fcalc_map_stats.show_summary(f = self.log)
-        
+
         xrs = get_map_sigma(ens_pdb_hierarchy = ens_pdb_hierarchy,
                             ens_pdb_xrs       = ens_pdb_xrs,
                             fft_map_1         = fcalc_map,
@@ -508,10 +509,10 @@ class ensemble_probability(object):
                             ignore_hd         = self.params.ignore_hd,
                             number_previous_scatters = number_previous_scatters,
                             log               = self.log)
-        
+
         ### For testing other residue averaging options
         #print xrs.residue_selections
-        
+
         fcalc_ave_sigmas = xrs.scatterers().extract_occupancies()
         # Probability of model given <model>
         prob = fcalc_ave_sigmas / fcalc_sigmas
@@ -534,16 +535,16 @@ class ensemble_probability(object):
           print >> self.log, prob.min_max_mean().show()
           print >> self.log, '  Count < 0.0 : ', prob_lss_zero.count(True)
           print >> self.log, '  Count > 1.0 : ', prob_grt_one.count(True)
-        
+
         # For averaging by residue
         number_previous_scatters += ens_pdb_xrs.sites_cart().size()
-        
+
       # write ensemble pdb file, occupancies as sigma level
       write_ensemble_pdb(filename = pdb_file_names[0].split('/')[-1].replace('.pdb','') + '_pensemble.pdb',
                        xrs_list = xrs_list,
                        ens_pdb_hierarchy = ens_pdb_hierarchy
                        )
-      
+
       # XXX Test ordering models by nll
       # XXX Test removing nth percentile atoms
       if self.params.sort_ensemble_by_nll_score or self.params.fobs_vs_fcalc_post_nll:
@@ -554,7 +555,7 @@ class ensemble_probability(object):
           for i_neg_ll in model_neg_ll:
             xrs = xrs_list[i_neg_ll[1]]
             nll_occ = xrs.scatterers().extract_occupancies()
-            
+
             # Set q=0 nth percentile atoms
             sorted_nll_occ = sorted(nll_occ, reverse=True)
             number_atoms = len(sorted_nll_occ)
@@ -573,12 +574,12 @@ class ensemble_probability(object):
               print cutoff_nll_occ.count(0.0)
               print 'Count q = 1           : ', cutoff_nll_occ.count(1.0)
               print 'Count scatterers size : ', cutoff_nll_occ.size()
-            
+
             xrs.set_occupancies(cutoff_nll_occ)
             fmodel.update_xray_structure(xray_structure  = xrs,
                                          update_f_calc   = True,
                                          update_f_mask   = True)
-            
+
             if f_calc_ave_total_reordered == None:
               f_calc_ave_total_reordered = fmodel.f_calc().data().deep_copy()
               f_mask_ave_total_reordered = fmodel.f_masks()[0].data().deep_copy()
@@ -603,7 +604,7 @@ class ensemble_probability(object):
             # k1 updated vs Fobs
             if self.params.fobs_vs_fcalc_post_nll:
               print_list.append([cntr, i_neg_ll[0], i_neg_ll[1], fmodel.r_work(), fmodel.r_free()])
-          
+
           # Order models by nll and print summary
           print >> self.log, '\nModels ranked by nll <Fcalc> R-factors recalculated'
           print >> self.log, 'Percentile cutoff : {0:5.3f}'.format(percentile)
@@ -618,9 +619,9 @@ class ensemble_probability(object):
               info[2]+1,
               )
             xrs_list_sorted_nll.append(xrs_list[info[2]])
-          
+
         # Output nll ordered ensemble
-        
+
         write_ensemble_pdb(filename = 'nll_ordered_' + pdb_file_names[0].split('/')[-1].replace('.pdb','') + '_pensemble.pdb',
                        xrs_list = xrs_list_sorted_nll,
                        ens_pdb_hierarchy = ens_pdb_hierarchy

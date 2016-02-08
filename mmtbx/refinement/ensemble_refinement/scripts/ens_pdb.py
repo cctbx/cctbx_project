@@ -1,3 +1,4 @@
+from __future__ import division
 # PDB manipulation tools for ensemble models
 # Tom Burnley
 
@@ -23,11 +24,11 @@ def find_number_model(open_pdb):
       model_number = int(line.split()[-1])
       if model_number > max_model_number:
         max_model_number = model_number
-  
+
   print "Number of models in PDB file : ", max_model_number
   return max_model_number
 
-def find_header(open_pdb, num_pdb):  
+def find_header(open_pdb, num_pdb):
   print "Getting header info..................."
   find_CRYST1 = re.compile('CRYST')
   find_SCALE = re.compile('SCALE')
@@ -52,9 +53,9 @@ def model_parse(open_pdb, num_pdb, model_num, new_model_num, start_pdb):
         elif new_model_num < 100:
           new_line = str('MODEL       '+ newN+'\n')
         elif new_model_num < 1000:
-          new_line = str('MODEL      '+ newN+'\n')  
+          new_line = str('MODEL      '+ newN+'\n')
         num_pdb.write(new_line)
-        for line in open_pdb:  
+        for line in open_pdb:
           if find_ENDMDL.search(line):
             num_pdb.write(line)
             return
@@ -66,9 +67,9 @@ def remove_specific_HOH(open_pdb,open_water_list,wat_pdb):
   for wat_num in open_water_list:
     x = wat_num.split()
     water_list.append(x[0])
-  
+
   find_HOH = re.compile('HOH')
-  
+
   for line in open_pdb:
     if not find_HOH.search(line):
       wat_pdb.write(line)
@@ -125,10 +126,10 @@ def parse_specific_pdb(open_pdb, start_pdb, num_pdb, last_model, new_model_num=1
         elif new_model_num < 100:
           new_line = str('MODEL       '+ newN+'\n')
         elif new_model_num < 1000:
-          new_line = str('MODEL      '+ newN+'\n')  
-          
+          new_line = str('MODEL      '+ newN+'\n')
+
         num_pdb.write(new_line)
-        for line in open_pdb:  
+        for line in open_pdb:
           if find_ENDMDL.search(line):
             num_pdb.write(line)
             return
@@ -140,17 +141,17 @@ def col_swap(open_pdb, open_second_pdb, get_col, replace_col, new_pdb):
     get_range = [54,60]
   else:
     get_range = [60,66]
-  
+
   if replace_col == 'q':
     replace_range = [54,60]
   else:
     replace_range = [60,66]
-  
+
   get_col_info=[]
   for line in open_second_pdb:
     if len(line) > 66:
       get_col_info.append(line[get_range[0]:get_range[1]])
-  
+
   n = 0
   for line in open_pdb:
     if len(line) > 66:
@@ -158,9 +159,9 @@ def col_swap(open_pdb, open_second_pdb, get_col, replace_col, new_pdb):
       n+=1
     else:
       new_pdb.write(line)
-  
+
   print "Replaced : ",  replace_col, " with : ", get_col
-  
+
 def remove_anisou(start_pdb, fin_pdb):
   print "Removing ANISOU..."
   openpdb = open(start_pdb,"r")
@@ -174,10 +175,10 @@ def remove_anisou(start_pdb, fin_pdb):
 def phxgro_to_phx(start_pdb, fin_pdb):
   openpdb = open(start_pdb,"r")
   finpdb = open(fin_pdb, 'w')
-  
+
   #Change res names
   residue_to_change = {'CY2':'CYS', 'HIB':'HIS', 'LYH':'LYS', 'TRY':'TRP'}
-  
+
   for line in openpdb:
     if len(line) > 66:
       residue_name =  line[17:20]
@@ -194,10 +195,10 @@ def phxgro_to_phx(start_pdb, fin_pdb):
 def phx_to_phxgro(start_pdb, fin_pdb):
   openpdb = open(start_pdb,"r")
   finpdb = open(fin_pdb, 'w')
-  
+
   #Change res names
   residue_to_change = {'CYS':'CY2', 'HIS':'HIB', 'LYS':'LYH', 'TRP':'TRY'}
-  
+
   for line in openpdb:
     if len(line) > 66:
       residue_name =  line[17:20]
@@ -218,9 +219,9 @@ def phx_to_phxgro(start_pdb, fin_pdb):
 def extra_conformation(start_pdb, fin_pdb):
   open_pdb = open(start_pdb,"r")
   fin_pdb = open(fin_pdb, 'w')
-  
+
   find_ATOM = re.compile('ATOM')
-  
+
   for line in open_pdb:
     if len(line) > 66 and find_ATOM.search(line):
       print line
@@ -233,7 +234,7 @@ def extra_conformation(start_pdb, fin_pdb):
     else:
       fin_pdb.write(line)
 def main():
-  
+
   print "\n\n\
 =========================== Ensemble PDB Display Tools ========================="
   if len(sys.argv) < 2:
@@ -253,13 +254,13 @@ def main():
 #    print "10. Convert phx to phx_gro"
 #    print "11. Add extra conformation"
     option = str(raw_input("Input option number : "))
-    
+
     if option == str("1") or option == str("3"):
       start_pdb = sys.argv[1]
       open_pdb = open(start_pdb,"r")
-      
+
       number_models = find_number_model(open_pdb)
-      
+
       target_number = raw_input("Number models for output (default 25) : ")
       try:
         target_number = int(target_number)
@@ -267,26 +268,26 @@ def main():
       except ValueError:
         target_number = 25
         div = int(number_models / 25)
-      
+
       fin_pdb = str(str(target_number) + "_dwnsmp_" + start_pdb)
       num_pdb = open(fin_pdb, 'w')
-      
+
       open_pdb = open(start_pdb,"r")
       find_header(open_pdb = open_pdb, num_pdb = num_pdb)
-      
+
       model_num = int(1)
       new_model_num = int(1)
-      
+
       while new_model_num <= target_number:
         print "Parsing model  :", model_num
         model_parse(open_pdb, num_pdb, model_num, new_model_num, start_pdb)
         model_num = model_num + div
         new_model_num += 1
-      
+
       num_pdb.close()
       if option == str("1"):
         return
-      
+
     if option == str("2"):
       start_pdb = sys.argv[1]
       fin_pdb = str("noHOH_" + start_pdb)
@@ -297,7 +298,7 @@ def main():
       noHOH_pdb = str("noHOH_" + fin_pdb)
       remove_HOH(fin_pdb, noHOH_pdb)
       return
-    
+
     if option == str("4"):
       print "Remove specific HOH"
       if len(sys.argv) < 3:
@@ -309,7 +310,7 @@ def main():
       open_water_list = open(water_list,"r")
       wat_pdb = open('goodHOH.pdb', 'w')
       remove_specific_HOH(open_pdb,open_water_list,wat_pdb)
-    
+
     if option == str("5"):
       start_pdb = sys.argv[1]
       open_pdb = open(start_pdb,"r")
@@ -323,7 +324,7 @@ def main():
       num_pdb = open(fin_pdb, 'w')
       find_header(open_pdb, num_pdb)
       parse_specific_pdb(open_pdb, start_pdb, num_pdb, last_model, new_model_num=1)
-    
+
     if option == str("7"):
       start_pdb = sys.argv[1]
       open_pdb = open(start_pdb,"r")
@@ -342,35 +343,34 @@ def main():
       new_pdb_name = start_pdb + "_swap_" + replace_col + "_with_" + get_col + ".pdb"
       new_pdb = open(new_pdb_name, 'w')
       col_swap(open_pdb, open_second_pdb, get_col, replace_col, new_pdb)
-    
+
     if option == str("8"):
       start_pdb = sys.argv[1]
       fin_pdb = str("noANISOU_" + start_pdb)
       remove_anisou(start_pdb, fin_pdb)
       return
-    
+
     if option == str("9"):
       start_pdb = sys.argv[1]
       fin_pdb = str("phxgro_to_phx_" + start_pdb)
       phxgro_to_phx(start_pdb, fin_pdb)
       return
-            
+
     if option == str("10"):
       start_pdb = sys.argv[1]
       fin_pdb = str("phx_to_phxgro" + start_pdb)
       phx_to_phxgro(start_pdb, fin_pdb)
       return
-    
+
     if option == str("11"):
       start_pdb = sys.argv[1]
       fin_pdb = str("extra_con" + start_pdb)
       extra_conformation(start_pdb, fin_pdb)
       return
-    
+
     else:
       print "\n\nPlease choose from list : "
-      main() 
+      main()
 
 if __name__ == '__main__':
   main()
-
