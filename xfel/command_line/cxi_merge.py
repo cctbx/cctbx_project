@@ -123,6 +123,9 @@ raw_data {
     .type = bool
     .help = Correct merged sigmas by refining sdfac, sdb and sdadd according to Evans 2011. Not \
             compatible with sdfac_auto.
+  errors_from_sample_residuals = False
+    .type = bool
+    .help = Use sample residuals as error estimates. Not compatible with sdfac_auto or sdfac_refine.
 }
 output {
   n_bins = 10
@@ -596,6 +599,9 @@ class scaling_manager (intensity_data) :
     if self.params.raw_data.sdfac_refine:
       self.scale_errors()
 
+    if self.params.raw_data.errors_from_sample_residuals:
+      self.errors_from_residuals()
+
   def _scale_all_parallel (self, file_names, db_mgr) :
     import multiprocessing
     import libtbx.introspection
@@ -993,6 +999,30 @@ class scaling_manager (intensity_data) :
       from matplotlib import pyplot as plt
       plt.plot(binned_intensities, binned_rms_normalized_sigmas, 'o')
       plt.show()
+
+  def errors_from_residuals(self):
+    """
+    """
+    print "Computing error estimates from sample residuals"
+    self.summed_weight= flex.double(self.n_refl, 0.)
+    self.summed_wt_I  = flex.double(self.n_refl, 0.)
+
+    for hkl_id in xrange(self.n_refl):
+      hkl = self.miller_set.indices()[hkl_id]
+      if hkl not in self.ISIGI: continue
+
+      n = len(self.ISIGI[hkl])
+      if n > 1:
+        variance = flex.mean_and_variance(flex.double([self.ISIGI[hkl][i][0] for i in xrange(n)])).unweighted_sample_variance()
+      else:
+        continue
+
+      for i in xrange(n):
+        Intensity = self.ISIGI[hkl][i][0] # scaled intensity
+        self.summed_wt_I[hkl_id] += Intensity / variance
+        self.summed_weight[hkl_id] += 1 / variance
+    print "Done computing error estimates"
+
 
   def finalize_and_save_data (self) :
     """
@@ -1770,8 +1800,8 @@ def run(args):
       (not work_params.set_average_unit_cell)) :
     raise Usage("If rescale_with_average_cell=True, you must also specify "+
       "set_average_unit_cell=True.")
-  if work_params.raw_data.sdfac_auto and work_params.raw_data.sdfac_refine:
-    raise Usage("Cannot specify both sdfac_auto and sdfac_refine")
+  if [work_params.raw_data.sdfac_auto, work_params.raw_data.sdfac_refine, work_params.raw_data.errors_from_sample_residuals].count(True) > 1:
+    raise Usage("Specify only one of sdfac_auto, sdfac_refine or errors_from_sample_residuals.")
 
   # Read Nat's reference model from an MTZ file.  XXX The observation
   # type is given as F, not I--should they be squared?  Check with Nat!

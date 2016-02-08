@@ -422,6 +422,8 @@ def run(args):
 
     if work_params.raw_data.sdfac_refine:
       scaler.scale_errors()
+    if work_params.raw_data.errors_from_sample_residuals:
+      scaler.errors_from_residuals()
 
     miller_set_avg = miller_set.customized_copy(
       unit_cell=work_params.target_unit_cell)
