@@ -1,3 +1,4 @@
+from __future__ import division
 # Ensemble tools for pymol
 # Tom Burnley
 
@@ -43,23 +44,23 @@ def ens_measure(pk1 = None,
                 verbose = True):
     '''
 DESCRIPTION
- 
+
     Statistics from ensemble structure measurements.  If:
       2 selections give = distance
       3 selections give = angle
       4 selections give = dihedral angle
- 
+
 USAGE
- 
+
     ens_measure pk1, pk2, pk3, pk4, name, log, verbose
- 
+
 ARGUMENTS
- 
+
     log = name of log file
     verbose = prints individual measurements
- 
+
  EXAMPLE
- 
+
     ens_measure atom1, atom2, name = 'measure', log 'ens.log'
   '''
     print >> log, '\nEnsemble measurement'
@@ -69,7 +70,7 @@ ARGUMENTS
         return
     number_models = cmd.count_states(pk1)
     measurements = []
-    
+
     # distance
     if [pk1, pk2, pk3, pk4].count(None) == 2:
         print >> log, 'Distance'
@@ -96,9 +97,9 @@ ARGUMENTS
 
         # get individual values
         for n in xrange(number_models):
-            measurements.append( cmd.get_angle(atom1 = pk1, 
-                                               atom2 = pk2, 
-                                               atom3 = pk3, 
+            measurements.append( cmd.get_angle(atom1 = pk1,
+                                               atom2 = pk2,
+                                               atom3 = pk3,
                                                state = n+1) )
         assert len(measurements) == number_models
 
@@ -137,28 +138,28 @@ def ens_rmsd(ens_selection,
              log_name = None):
     '''
 DESCRIPTION
- 
+
     Prints RMSD per structure in ensemble w.r.t. a reference structure
- 
+
 USAGE
- 
+
     ens_rmsd ensemble_selection, reference_selection, name, log,
- 
+
 ARGUMENTS
- 
+
     log = name of log file
     verbose = calculates structure by structure RMSD for ensemble w.r.t. a single reference structure
- 
+
  EXAMPLE
- 
+
     ens_rmsd ensemble_selection, reference_selection, name = 'rmsd', log 'ens.log'
   '''
-    
+
     if log_name == None:
       log = LogWriter(sys.stdout, 'log.txt')
     else:
       log = LogWriter(sys.stdout, log_name+'.txt')
-    
+
     # initialize arrays
     ens_selection = ens_selection + ' and not resn hoh'
     ref_selection = ref_selection + ' and not resn hoh'
@@ -180,8 +181,8 @@ ARGUMENTS
       rmsd = math.sqrt(sum(atom_sqr_dev) / len(atom_sqr_dev))
       rmsd_states.append(rmsd)
       print >> log, ' %5d | %5.3f '%(i+1, rmsd)
-    
-    
+
+
     print_array_stats(array                 = rmsd_states,
                       log                   = log)
     print '\nRMSD all states : %5.3f '%(cmd.rms(ens_selection, ref_selection))
@@ -193,22 +194,22 @@ def ens_rmsf(selection,
              log_name = None):
     '''
 DESCRIPTION
- 
+
     Generates and colors structure by RMSF statistics, calculated from mulistate ensembles
- 
+
 USAGE
- 
+
     ens_rmsf selection, sigma_rmsf_spectrum, mean_structure, histogram_number_bins, log_name
- 
+
 ARGUMENTS
- 
+
     sigma_rmsf_spectrum = overwrite q col with sigma RMSF (per atom), color by q
     mean_structure = generate new single state structure with mean coords
     histogram_number_bins = number of bins for output histograms
     log_name = name of log file
- 
+
 EXAMPLE
- 
+
     ens_rmsf protein, True, True, 25, 'ens_rmsf.log'
   '''
     if log_name == None:
@@ -280,7 +281,7 @@ EXAMPLE
 
       if mean_structure:
         cmd.spectrum('q', selection = mean_structure_name)
-    
+
     else:
       for n, atom in enumerate(models[0].atom):
         atom_sel = 'id ' + str(atom.id)
@@ -289,7 +290,7 @@ EXAMPLE
 
       print "\n\nQ infomation updated with RMSF (Angstrom)\n"
       cmd.spectrum('q',selection = selection)
-    
+
     # array stats
     print >> log, '\nB_atom (A^2): '
     print_array_stats(array                 = atom_b,
@@ -334,7 +335,7 @@ EXAMPLE
                 sum(res_b) / len(res_b),
                 sum(res_b_rmsf) / len(res_b_rmsf),
                 sum(res_b_atom_plus_b_rsmf) / len(res_b_atom_plus_b_rsmf) )
-              
+
       current_resi = models[0].atom[0].resi
       current_resn = models[0].atom[0].resn
       res_rmsf = []
