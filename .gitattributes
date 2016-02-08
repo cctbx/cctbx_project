@@ -2088,6 +2088,8 @@ mmtbx/real_space_correlation.py -text
 mmtbx/refinement/ensemble_refinement/__init__.py svneol=native#text/x-python
 mmtbx/refinement/ensemble_refinement/ensemble_utils.py svneol=native#text/x-python
 mmtbx/refinement/ensemble_refinement/maps.params -text
+mmtbx/refinement/ensemble_refinement/scripts/ens_pdb.py -text
+mmtbx/refinement/ensemble_refinement/scripts/ens_tools.py -text
 mmtbx/refinement/fit_rotamers.py -text
 mmtbx/refinement/flip_peptides.py -text
 mmtbx/refinement/geometry_minimization.py -text
