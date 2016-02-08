@@ -268,6 +268,7 @@ tst_list = (
   "$D/regression/tncs/tst_moments.py",
   #
   "$D/regression/tst_rank_scale_map.py",
+  "$D/regression/tst_polder.py",
   )
 
 def run():
