@@ -26,6 +26,7 @@ tst_list = (
   ["$D/pdb/hybrid_36.py", "exercise"],
   "$B/pdb/hybrid_36_fem",
   "$D/pdb/tst_hierarchy.py",
+  "$D/pdb/tst_hierarchy_atom_sort.py",
   "$D/pdb/tst_ext.py",
   "$D/pdb/tst_atom_selection.py",
   "$D/pdb/tst_rna_dna_atom_names.py",
