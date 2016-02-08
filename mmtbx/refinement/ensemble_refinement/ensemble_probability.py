@@ -1,11 +1,7 @@
 from __future__ import division
 import sys
-import os
-import math
 from iotbx.option_parser import iotbx_option_parser
 from mmtbx import utils
-import mmtbx
-from libtbx.utils import Usage, Sorry
 from iotbx import file_reader
 from iotbx.pdb import hierarchy
 import iotbx.phil
@@ -15,11 +11,9 @@ from cctbx import maptbx
 from cctbx.array_family import flex
 from libtbx import group_args
 from cctbx import adptbx
-import scitbx.math
 from iotbx import pdb
-from libtbx.utils import Sorry, user_plus_sys_time, multi_out, show_total_time
+from libtbx.utils import Sorry, multi_out
 from cStringIO import StringIO
-import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 
 master_phil = iotbx.phil.parse("""\
 ensemble_probability {

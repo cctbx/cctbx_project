@@ -2,7 +2,7 @@ from __future__ import division
 # PDB manipulation tools for ensemble models
 # Tom Burnley
 
-import sys, os.path, re, pickle
+import sys, re, pickle
 
 def remove_HOH(start_pdb, noHOH_pdb):
 
