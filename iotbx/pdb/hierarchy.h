@@ -923,6 +923,12 @@ namespace hierarchy {
       std::string
       confid() const;
 
+      void
+      sort_atoms_in_place();
+
+      boost::optional<atom>
+      get_atom(char const* name) const;
+
       //! Not available in Python.
       str4
       confid_small_str() const;

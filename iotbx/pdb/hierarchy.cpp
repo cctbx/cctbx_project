@@ -1101,6 +1101,164 @@ namespace {
     return std::string(result);
   }
 
+namespace {
+  int pos_in_vector(std::vector<str4> vec, str4 elem)
+  {
+    str4 up_elem = elem;
+    up_elem.upper_in_place();
+    int pos = std::find(
+      vec.begin(), vec.end(), up_elem)-vec.begin();
+    return pos;
+  }
+
+  bool sorting_general(atom a1, atom a2, std::vector<str4> ordered_names) {
+    str4 name1 = a1.data->name.strip();
+    name1.replace_in_place('*', '\'');
+    str4 name2 = a2.data->name.strip();
+    name2.replace_in_place('*', '\'');
+    // hydrogens to the end first, no looking into tables
+    if (name1.elems[0] == 'H' && name2.elems[0] != 'H') return false;
+    if (name2.elems[0] == 'H' && name1.elems[0] != 'H') return true;
+    int pos1 = pos_in_vector(ordered_names, name1);
+    int pos2 = pos_in_vector(ordered_names, name2);
+    // if (pos1 >= ordered_names.size()) {
+    //   std::cout << "WARNING, unknown name:" << name1.elems << "\n";
+    // }
+    // if (pos2 >= ordered_names.size()) {
+    //   std::cout << "WARNING, unknown name:" << name2.elems << "\n";
+    // }
+    if (pos1 == pos2) {
+      // The both atoms are not in lists.
+      return a1.data->name < a2.data->name;
+    }
+    return pos1 < pos2;
+  }
+
+  bool sorting_function_general (atom a1, atom a2) {
+    // Not all these names necessarily exist
+    static const str4 arr[] = {
+        "N", "CA", "C", "O",
+
+        "CB", "NB", "OB", "SB", "CB1", "NB1", "OB1", "SB1", "CB2", "NB2", "OB2", "SB2", "CB3", "NB3", "OB3", "SB3",
+        "CG", "NG", "OG", "SG", "CG1", "NG1", "OG1", "SG1", "CG2", "NG2", "OG2", "SG2", "CG3", "NG3", "OG3", "SG3",
+        "CD", "ND", "OD", "SD", "CD1", "ND1", "OD1", "SD1", "CD2", "ND2", "OD2", "SD2", "CD3", "ND3", "OD3", "SD3",
+        "SE",
+        "CE", "NE", "OE", "SE", "CE1", "NE1", "OE1", "SE1", "CE2", "NE2", "OE2", "SE2", "CE3", "NE3", "OE3", "SE3",
+        "CZ", "NZ", "OZ", "SZ", "CZ1", "NZ1", "OZ1", "SZ1", "CZ2", "NZ2", "OZ2", "SZ2", "CZ3", "NZ3", "OZ3", "SZ3",
+        "CH", "NH", "OH", "SH", "CH1", "NH1", "OH1", "SH1", "CH2", "NH2", "OH2", "SH2", "CH3", "NH3", "OH3", "SH3",
+        "OXT",
+
+        "H",
+        "HA",
+        "HA1", "HA11", "HA12", "HA13",
+        "HA2", "HA21", "HA22", "HA23",
+        "HA3", "HA33", "HA33", "HA33",
+        "HB",
+        "HB1", "HB11", "HB12", "HB13",
+        "HB2", "HB21", "HB22", "HB23",
+        "HB3", "HB33", "HB33", "HB33",
+        "HG",
+        "HG1", "HG11", "HG12", "HG13",
+        "HG2", "HG21", "HG22", "HG23",
+        "HG3", "HG33", "HG33", "HG33",
+        "HD",
+        "HD1", "HD11", "HD12", "HD13",
+        "HD2", "HD21", "HD22", "HD23",
+        "HD3", "HD33", "HD33", "HD33",
+        "HE",
+        "HE1", "HE11", "HE12", "HE13",
+        "HE2", "HE21", "HE22", "HE23",
+        "HE3", "HE33", "HE33", "HE33",
+        "HZ",
+        "HZ1", "HZ11", "HZ12", "HZ13",
+        "HZ2", "HZ21", "HZ22", "HZ23",
+        "HZ3", "HZ33", "HZ33", "HZ33",
+        "HH",
+        "HH1", "HH11", "HH12", "HH13",
+        "HH2", "HH21", "HH22", "HH23",
+        "HH3", "HH33", "HH33", "HH33",
+
+        // Nucleic acids C, T
+        // main chain
+        "P",
+        "OP1", "O1P",
+        "OP2", "O2P",
+        "O5'", "C5'", "C4'", "O4'", "C3'", "O3'", "C2'", "O2'", "C1'",
+        // side chain
+        "N1", "C2", "O2", "N2", "N3", "C4", "O4", "N4", "C5", "C7",
+        "C6", "N6", "O6", "N7", "C8", "N9",
+        // hydrogens
+        "H5'", "H5''", "H4'", "H3'", "HO3'", "H2'", "H2''", "HO2'",
+        "H1'", "H8", "H41", "H42", "H5", "H5'1", "H5'2",
+        "H3", "H5M1", "H5M2", "H5M3", "H71", "H72", "H73",
+        "H6", "H61", "H62", "H1", "H2", "H21", "H22", "HO5'", "H2'1", "H2'2",
+    };
+    std::vector<str4> ordered_names(arr, arr + sizeof(arr) / sizeof(arr[0]) );
+    return sorting_general(a1, a2, ordered_names);
+  }
+
+  bool sorting_function_big_na (atom a1, atom a2) {
+    // Not all these names necessarily exist
+    static const str4 arr[] = {
+        // Nucleic acids A,G
+        // main chain
+        "P",
+        "OP1", "O1P",
+        "OP2", "O2P",
+        "O5'", "C5'", "C4'", "O4'", "C3'", "O3'", "C2'", "O2'", "C1'",
+        // side chain
+        "N9", "C8", "N7", "C7", "C5", "C6", "N6", "O6",
+        "N1", "C2", "O2", "N2", "N3", "C4", "O4", "N4",
+        // hydrogens
+        "H5'", "H5''", "H4'", "H3'", "HO3'", "H2'", "H2''", "HO2'",
+        "H1'", "H8", "H41", "H42", "H5", "H5'1", "H5'2", "H3",
+        "H5M1", "H5M2", "H5M3", "H71", "H72", "H73",
+        "H6", "H61", "H62", "H1",  "H2", "H21", "H22", "HO5'", "H2'1","H2'2",
+    };
+    std::vector<str4> ordered_names(arr, arr + sizeof(arr) / sizeof(arr[0]) );
+    return sorting_general(a1, a2, ordered_names);
+  }
+
+
+
+} // namespace <anonymous>
+
+  void
+  atom_group::sort_atoms_in_place()
+  {
+    if (!get_atom("N9")) {
+      std::sort(
+          data->atoms.begin(),
+          data->atoms.end(),
+          sorting_function_general);
+    }
+    else {
+      std::sort(
+          data->atoms.begin(),
+          data->atoms.end(),
+          sorting_function_big_na);
+    }
+  }
+
+
+  boost::optional<atom>
+  atom_group::get_atom(char const* name) const
+  {
+    boost::optional<atom> result;
+
+    if (name != 0) {
+      std::vector<atom> const& ats = data->atoms;
+      unsigned n = static_cast<unsigned>(ats.size());
+      for (unsigned i=0;i<n;i++) {
+        atom const& a = ats[i];
+        if (std::strcmp(a.data->name.strip().elems, name) == 0) {
+          return boost::optional<atom>(a);
+        }
+      }
+    }
+    return boost::optional<atom>();
+  }
+
   str4
   atom_group::confid_small_str() const
   {

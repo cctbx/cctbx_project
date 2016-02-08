@@ -93,6 +93,8 @@ namespace {
         .def("append_atom_with_other_parent",
           &w_t::append_atom_with_other_parent, (arg("atom")))
         .def("confid", &w_t::confid)
+        .def("sort_atoms_in_place", &w_t::sort_atoms_in_place)
+        .def("get_atom", &w_t::get_atom, (arg("name")))
       ;
     }
   };
