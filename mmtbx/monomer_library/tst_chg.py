@@ -348,7 +348,7 @@ def run():
   ero.show_stdout(out=err)
 
   for line in err.getvalue().split("\n"):
-    if line.find("Number of hydrogens corrected")>-1:
+    if line.find("Number of corrected H:")>-1:
       print line
       break
   else:
