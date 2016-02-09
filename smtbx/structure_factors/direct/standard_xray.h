@@ -10,6 +10,7 @@
 #include <smtbx/import_cctbx.h>
 #include <smtbx/import_scitbx_af.h>
 
+#include <boost/shared_ptr.hpp>
 #include <iostream>
 
 namespace smtbx { namespace structure_factors { namespace direct {
@@ -453,8 +454,11 @@ namespace smtbx { namespace structure_factors { namespace direct {
         array of xray::scatterer passed to the constructor.
 
         This class is a CRTP: class Heir should be a heir of this class
-        and provide a member exp_i_2pi of type ExpI2PiFunctor to compute
-        \f$\exp i2\pi x\f$.
+        and provide
+
+        - a member exp_i_2pi of type ExpI2PiFunctor to compute
+          \f$\exp i2\pi x\f$;
+        - a member function raw_fork to implement member function fork.
      */
     template <typename FloatType,
               template<typename> class ObservableType,
@@ -467,6 +471,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
       typedef std::complex<float_type> complex_type;
       typedef ObservableType<float_type> observable_type;
       typedef ExpI2PiFunctor<float_type> exp_i_2pi_functor;
+      typedef boost::shared_ptr<Heir> pointer_type;
 
     protected:
       cctbx::xray::scatterer_grad_flags_counts grad_flags_counts;
@@ -521,6 +526,17 @@ namespace smtbx { namespace structure_factors { namespace direct {
           has_computed_grad(false)
       {}
 
+      /// A functor able to independently perform the same crystallographic
+      /// computation as this
+      /** That is to say that it shares with this the same unit cell,
+          space group, scatterers and scattering factors but it has its own
+          storage for f_calc and its gradients, as well as the observable and
+          its gradients.
+       */
+      pointer_type fork() {
+        Heir &heir = static_cast<Heir &>(*this);
+        return pointer_type(heir.raw_fork());
+      }
       /// Evaluate the structure factors
       void evaluate(miller::index<> const &h,
                     boost::optional<complex_type> const &f_mask=boost::none)
@@ -648,6 +664,14 @@ namespace smtbx { namespace structure_factors { namespace direct {
         : base_t(unit_cell, space_group, scatterers, scattering_type_registry),
           exp_i_2pi(exp_i_2pi)
       {}
+
+      custom_trigonometry *raw_fork() {
+        return new custom_trigonometry(this->unit_cell,
+                                       this->space_group,
+                                       this->scatterers.array(),
+                                       this->scattering_type_registry,
+                                       exp_i_2pi);
+      }
     };
 
 
@@ -677,8 +701,14 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
         : base_t(unit_cell, space_group, scatterers, scattering_type_registry)
       {}
-    };
 
+      std_trigonometry *raw_fork() {
+        return new std_trigonometry(this->unit_cell,
+                                    this->space_group,
+                                    this->scatterers.array(),
+                                    this->scattering_type_registry);
+      }
+    };
 
     template <typename FloatType>
     struct modulus_squared
