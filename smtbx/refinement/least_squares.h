@@ -14,6 +14,9 @@
 #include <smtbx/structure_factors/direct/standard_xray.h>
 
 #include <algorithm>
+#include <vector>
+#include <boost/shared_ptr.hpp>
+#include <boost/thread.hpp>
 
 
 namespace smtbx { namespace refinement { namespace least_squares {
@@ -45,7 +48,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
       scitbx::sparse::matrix<FloatType> const
         &jacobian_transpose_matching_grad_fc,
       cctbx::xray::extinction_correction<FloatType> const &exti,
-      bool objective_only=false)
+      bool objective_only=false,
+      bool may_parallelise_=false)
     :
       f_calc_(reflections.size()),
       observables_(reflections.size()),
@@ -54,18 +58,61 @@ namespace smtbx { namespace refinement { namespace least_squares {
       typedef accumulate_reflection_chunk<
                 NormalEquations, WeightingScheme, OneMillerIndexFcalc>
               accumulate_reflection_chunk_t;
+      typedef boost::shared_ptr<NormalEquations>
+              normal_equations_ptr_t;
+      typedef boost::shared_ptr<accumulate_reflection_chunk_t>
+              accumulate_reflection_chunk_ptr_t;
+      typedef boost::shared_ptr<OneMillerIndexFcalc>
+              one_miller_index_fcalc_ptr_t;
 
       // Accumulate equations Fo(h) ~ Fc(h)
       SMTBX_ASSERT(!(reflections.has_twin_components() && f_mask.size()));
       SMTBX_ASSERT((!f_mask.size() || f_mask.size() == reflections.size()))
                   (f_mask.size())(reflections.size());
       reflections.update_prime_fraction();
-      accumulate_reflection_chunk_t(
-        0, reflections.size(),
-        normal_equations, reflections, f_mask, weighting_scheme, scale_factor,
-        f_calc_function, jacobian_transpose_matching_grad_fc, exti,
-        objective_only, f_calc_.ref(), observables_.ref(), weights_.ref())();
-      normal_equations.finalise(objective_only);
+      if(may_parallelise_) {
+        int thread_count = boost::thread::physical_concurrency();
+        int equi_chunk_size = reflections.size()/thread_count;
+        int number_of_threads_doing_one_more = reflections.size() % thread_count;
+        boost::thread_group pool;
+        std::vector<accumulate_reflection_chunk_ptr_t> accumulators;
+        std::size_t chunk_end = 0;
+        for(int thread_idx=0; thread_idx<thread_count; thread_idx++) {
+          std::size_t chunk_start = chunk_end;
+          chunk_end +=
+            thread_idx < number_of_threads_doing_one_more ? equi_chunk_size + 1
+                                                          : equi_chunk_size;
+          normal_equations_ptr_t chunk_normal_equations(
+            new NormalEquations(normal_equations.n_parameters()));
+          accumulate_reflection_chunk_ptr_t accumulator(
+            new accumulate_reflection_chunk_t(
+              chunk_start, chunk_end,
+              chunk_normal_equations,
+              reflections, f_mask, weighting_scheme, scale_factor,
+              one_miller_index_fcalc_ptr_t(f_calc_function.fork()),
+              jacobian_transpose_matching_grad_fc,
+              exti, objective_only,
+              f_calc_.ref(), observables_.ref(), weights_.ref()));
+          accumulators.push_back(accumulator);
+          pool.create_thread(boost::ref(*accumulator));
+        }
+        pool.join_all();
+        for(int thread_idx=0; thread_idx<thread_count; thread_idx++) {
+          normal_equations += accumulators[thread_idx]->normal_equations;
+        }
+        normal_equations.finalise(objective_only);
+      }
+      else {
+        accumulate_reflection_chunk_t(
+          0, reflections.size(),
+          normal_equations_ptr_t(&normal_equations, null_deleter()),
+          reflections, f_mask, weighting_scheme, scale_factor,
+          one_miller_index_fcalc_ptr_t(&f_calc_function, null_deleter()),
+          jacobian_transpose_matching_grad_fc,
+          exti, objective_only,
+          f_calc_.ref(), observables_.ref(), weights_.ref())();
+        normal_equations.finalise(objective_only);
+      }
     }
 
     af::shared<std::complex<FloatType> > f_calc() { return f_calc_; }
@@ -83,29 +130,30 @@ namespace smtbx { namespace refinement { namespace least_squares {
     struct accumulate_reflection_chunk {
 
       int begin, end;
+      boost::shared_ptr<NormalEquations> normal_equations_ptr;
       NormalEquations &normal_equations;
       cctbx::xray::observations<FloatType> const &reflections;
       af::const_ref<std::complex<FloatType> > const &f_mask;
       WeightingScheme<FloatType> const &weighting_scheme;
       boost::optional<FloatType> scale_factor;
+      boost::shared_ptr<OneMillerIndexFcalc> f_calc_function_ptr;
       OneMillerIndexFcalc &f_calc_function;
       scitbx::sparse::matrix<FloatType> const
         &jacobian_transpose_matching_grad_fc;
       cctbx::xray::extinction_correction<FloatType> const &exti;
       bool objective_only, compute_grad;
-      af::shared<FloatType> gradients;
       af::ref<std::complex<FloatType> > f_calc;
       af::ref<FloatType> observables;
       af::ref<FloatType> weights;
 
       accumulate_reflection_chunk(
         int begin, int end,
-        NormalEquations &normal_equations,
+        boost::shared_ptr<NormalEquations> const &normal_equations_ptr,
         cctbx::xray::observations<FloatType> const &reflections,
         af::const_ref<std::complex<FloatType> > const &f_mask,
         WeightingScheme<FloatType> const &weighting_scheme,
         boost::optional<FloatType> scale_factor,
-        OneMillerIndexFcalc &f_calc_function,
+        boost::shared_ptr<OneMillerIndexFcalc> const &f_calc_function_ptr,
         scitbx::sparse::matrix<FloatType> const
           &jacobian_transpose_matching_grad_fc,
         cctbx::xray::extinction_correction<FloatType> const &exti,
@@ -114,9 +162,10 @@ namespace smtbx { namespace refinement { namespace least_squares {
         af::ref<FloatType> observables,
         af::ref<FloatType> weights)
       : begin(begin), end(end),
-        normal_equations(normal_equations), reflections(reflections),
-        f_mask(f_mask), weighting_scheme(weighting_scheme),
-        scale_factor(scale_factor), f_calc_function(f_calc_function),
+        normal_equations_ptr(normal_equations_ptr), normal_equations(*normal_equations_ptr),
+        reflections(reflections), f_mask(f_mask), weighting_scheme(weighting_scheme),
+        scale_factor(scale_factor),
+        f_calc_function_ptr(f_calc_function_ptr), f_calc_function(*f_calc_function_ptr),
         jacobian_transpose_matching_grad_fc(jacobian_transpose_matching_grad_fc),
         exti(exti),
         objective_only(objective_only), compute_grad(!objective_only),
@@ -124,6 +173,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       {}
 
       void operator()() {
+        af::shared<FloatType> gradients;
         if(compute_grad)
           gradients.resize(jacobian_transpose_matching_grad_fc.n_rows());
         for (int i_h=begin; i_h<end; ++i_h) {
@@ -140,7 +190,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
           }
           // sort out twinning
           FloatType observable =
-            process_twinning(i_h);
+            process_twinning(i_h, gradients);
           // extinction correction
           af::tiny<FloatType,2> exti_k = exti.compute(h, observable, compute_grad);
           observable *= exti_k[0];
@@ -166,7 +216,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         }
       }
 
-      FloatType process_twinning(int i_h) {
+      FloatType process_twinning(int i_h, af::shared<FloatType> &gradients) {
         FloatType obs = f_calc_function.observable;
         if (reflections.has_twin_components()) {
           typename cctbx::xray::observations<FloatType>::iterator_ itr =
@@ -215,6 +265,10 @@ namespace smtbx { namespace refinement { namespace least_squares {
     };
 
   private:
+    struct null_deleter {
+      void operator()(void const *) const {}
+    };
+
     af::shared<std::complex<FloatType> > f_calc_;
     af::shared<FloatType> observables_;
     af::shared<FloatType> weights_;
