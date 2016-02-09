@@ -116,9 +116,12 @@ def run (args, out=sys.stdout, log=sys.stderr) :
   pdb_hierarchy.atoms().reset_i_seq()
   if len(pdb_hierarchy.models()) != 1 :
     raise Sorry("Multiple models not supported.")
+  ss_from_file = None
+  if hasattr(pdb_structure, "extract_secondary_structure"):
+    ss_from_file = pdb_structure.extract_secondary_structure()
   m = manager(pdb_hierarchy=pdb_hierarchy,
     geometry_restraints_manager=geometry,
-    sec_str_from_pdb_file=pdb_structure.extract_secondary_structure(),
+    sec_str_from_pdb_file=ss_from_file,
     params=work_params.secondary_structure,
     verbose=work_params.verbose)
 
