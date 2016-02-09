@@ -33,11 +33,12 @@ namespace smtbx { namespace refinement { namespace least_squares {
           scitbx::sparse::matrix<FloatType> const &,
             // jacobian_transpose_matching_grad_fc
           cctbx::xray::extinction_correction<FloatType> const &, // exti
-          optional<bool> // objective_only=false
+          optional<bool, bool> // objective_only=false, may_parallelise_=false
         >((arg("normal_equations"), arg("reflections"), arg("f_mask"),
            arg("weighting_scheme"), arg("scale_factor"),
            arg("f_calc_function"), arg("jacobian_transpose_matching_grad_fc"),
-           arg("extinction"), arg("objective_only")=false)));
+           arg("extinction"), arg("objective_only")=false,
+           arg("may_parallelise")=false)));
     }
 
 

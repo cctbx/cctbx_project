@@ -26,6 +26,8 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
 
   class klass(nls):
 
+    non_linear_ls_engine = nls
+
     default_weighting_scheme = mainstream_shelx_weighting
     weighting_scheme = "default"
     origin_fixing_restraints_type = (
@@ -34,6 +36,7 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
     restraints_manager=None
     n_restraints = None
     initial_scale_factor = None
+    may_parallelise = False
 
     def __init__(self, observations, reparametrisation,
                  **kwds):
@@ -70,36 +73,35 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
       if extinction_correction is None:
         extinction_correction = xray.dummy_extinction_correction()
 
-      def args(scale_factor, weighting_scheme, objective_only):
-        args = (self,
-                self.observations,
-                f_mask,
-                weighting_scheme,
-                scale_factor,
-                self.one_h_linearisation,
-                self.reparametrisation.jacobian_transpose_matching_grad_fc(),
-                extinction_correction
-                )
-        if objective_only:
-          args += (True,)
-        return args
+      def build_normal_eqns(scale_factor, weighting_scheme, objective_only):
+        return ext.build_normal_equations(
+          self,
+          self.observations,
+          f_mask,
+          weighting_scheme,
+          scale_factor,
+          self.one_h_linearisation,
+          self.reparametrisation.jacobian_transpose_matching_grad_fc(),
+          extinction_correction,
+          objective_only,
+          self.may_parallelise)
 
       if not self.finalised: #i.e. never been called
         self.reparametrisation.linearise()
         self.reparametrisation.store()
         scale_factor = self.initial_scale_factor
         if scale_factor is None: # we haven't got one from previous refinement
-          result = ext.build_normal_equations(
-            *args(scale_factor=None, weighting_scheme=sigma_weighting(),
-                  objective_only=True))
+          result = build_normal_eqns(scale_factor=None,
+                                     weighting_scheme=sigma_weighting(),
+                                     objective_only=True)
           scale_factor = self.scale_factor()
       else: # use scale factor from the previous step
         scale_factor = self.scale_factor()
 
       self.reset()
-      result = ext.build_normal_equations(*args(scale_factor,
-                                                self.weighting_scheme,
-                                                objective_only))
+      result = build_normal_eqns(scale_factor,
+                                 self.weighting_scheme,
+                                 objective_only)
       self.f_calc = self.observations.fo_sq.array(
         data=result.f_calc(), sigmas=None)
       self.fc_sq = self.observations.fo_sq.array(
@@ -217,9 +219,11 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
 def crystallographic_ls(
   observations, reparametrisation,
   non_linear_ls_with_separable_scale_factor=None,
+  may_parallelise=True,
   **kwds):
   return crystallographic_ls_class(non_linear_ls_with_separable_scale_factor
-                                   )(observations, reparametrisation, **kwds)
+                                   )(observations, reparametrisation,
+                                     may_parallelise=may_parallelise, **kwds)
 
 
 class covariance_matrix_and_annotations(object):
