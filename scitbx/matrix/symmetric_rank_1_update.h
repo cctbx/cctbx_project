@@ -36,6 +36,14 @@ namespace scitbx { namespace matrix {
       symmetric_packed_u_rank_1_update(a.accessor().n_rows(), a.begin(), x, alpha);
     }
 
+    /// Add s in-place
+    sum_of_symmetric_rank_1_updates
+    &operator+=(sum_of_symmetric_rank_1_updates const &s) {
+      af::ref<T> a_r = a.ref().as_1d();
+      a_r += s.a.const_ref().as_1d();
+      return *this;
+    }
+
     /// Cancel all the rank-1 updates
     /** The sum is reset to the zero matrix */
     void reset() {
@@ -85,6 +93,12 @@ namespace scitbx { namespace matrix {
       SCITBX_ASSERT(alpha >= 0)(alpha);
       a.extend(x, x + cols);
       matrix::scale_vector(cols, a.end()-cols, std::sqrt(alpha));
+    }
+
+    /// Add u in-place
+    rank_n_update &operator+=(rank_n_update const &u) {
+      a.extend(u.a.begin(), u.a.end());
+      return *this;
     }
 
     /// Cancel all the rank-1 updates
