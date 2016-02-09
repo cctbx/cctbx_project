@@ -335,7 +335,10 @@ def exercise_retrieve_unless_exists():
 
 def run(args):
   assert len(args) == 0
-  exercise_retrieve_unless_exists()
+  if '--exercise-retrieve-unless-exists' in args:
+    exercise_retrieve_unless_exists()
+  else:
+    print 'Skipping exercise_retrieve_unless_exists'
   exercise_forward_compatibility()
   exercise_misc()
   assert utils.sequence_index_dict(["a", "b"]) == {"a": 0, "b": 1}
