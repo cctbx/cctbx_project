@@ -35,18 +35,25 @@ def run(args):
   pdb_h = pdb_input.construct_hierarchy()
   pdb_h.sort_atoms_in_place()
 
-  out_fn = inp_fn.strip(".pdb") + "_sorted.pdb"
-  write_whole_pdb_file(
-      file_name=out_fn,
-      output_file=None,
-      processed_pdb_file=None,
-      pdb_hierarchy=pdb_h,
-      crystal_symmetry=pdb_input.crystal_symmetry(),
-      ss_annotation=pdb_input.extract_secondary_structure(),
-      atoms_reset_serial_first_value=None,
-      link_records=None,
-      )
+  out_fn_prefix = inp_fn.strip(".pdb").strip(".cif")
 
+  if hasattr(pdb_input, "extract_secondary_structure"):
+    ss_annotation = pdb_input.extract_secondary_structure()
+    write_whole_pdb_file(
+        file_name=out_fn_prefix + "_sorted.pdb",
+        output_file=None,
+        processed_pdb_file=None,
+        pdb_hierarchy=pdb_h,
+        crystal_symmetry=pdb_input.crystal_symmetry(),
+        ss_annotation=ss_annotation,
+        atoms_reset_serial_first_value=None,
+        link_records=None)
+  else:
+    # This was a mmcif file, so outputting mmcif
+    pdb_h.write_mmcif_file(
+        file_name = out_fn_prefix + "_sorted.cif",
+        crystal_symmetry=pdb_input.crystal_symmetry(),
+    )
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])

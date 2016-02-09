@@ -6,8 +6,13 @@ import os
 from libtbx.test_utils import show_diff
 
 def exercise_1(prefix="tst_sort_atoms_1"):
+  """
+  In an ideal world, this program should preserve everything that was in
+  input pdb file: HEADER, TITLE, REMARKs, CONNECT, etc.
+  Right now it preserves only atoms, CRYST1 and HELIX/SHEET records.
+  """
+
   input_pdb_str = """\
-USER  MOD reduce.3.15.091106 H: found=0, std=0, add=1858, rem=0, adj=39
 HEADER    UNKNOWN FUNCTION                        17-FEB-05   1YWF
 TITLE     CRYSTAL STRUCTURE OF MYCOBACTERIUM TUBERCULOSIS PROTEIN
 TITLE    2 TYROSINE PHOSPHATASE PTPB
@@ -524,52 +529,6 @@ ORIGX3      0.000000  0.000000  1.000000        0.00000
 SCALE1      0.008844  0.000000  0.000000        0.00000
 SCALE2      0.000000  0.008844  0.000000        0.00000
 SCALE3      0.000000  0.000000  0.018765        0.00000
-USER  MOD -----------------------------------------------------------------
-USER  MOD scores for adjustable sidechains, with "set" totals for H,N and Q
-USER  MOD "o" means original, "f" means flipped, "180deg" is methyl default
-USER  MOD "!" flags a clash with an overlap of 0.40A or greater
-USER  MOD flip categories: "K"=keep, "C"=clashes, "X"=uncertain, "F"=flip
-USER  MOD Set 1.1: A 263 SER OG  :   rot -167:sc=    1.99
-USER  MOD Set 1.2: A 266 THR OG1 :   rot   79:sc=    1.31
-USER  MOD Set 2.1: A 160 CYS SG  :   rot  160:sc=    2.43
-USER  MOD Set 2.2: A 167 THR OG1 :   rot   85:sc=    1.23
-USER  MOD Set 3.1: A 130 TYR OH  :   rot    2:sc=    1.09
-USER  MOD Set 3.2: A 189 TYR OH  :   rot   -6:sc=    1.06
-USER  MOD Single : A  18 THR OG1 :   rot   86:sc=    2.26
-USER  MOD Single : A  20 THR OG1 :   rot  -89:sc=   0.577
-USER  MOD Single : A  30 SER OG  :   rot   88:sc=    1.22
-USER  MOD Single : A  31 SER OG  :   rot  160:sc=    1.25
-USER  MOD Single : A  34 SER OG  :   rot -106:sc=    1.39
-USER  MOD Single : A  43 THR OG1 :   rot   74:sc=   0.793
-USER  MOD Single : A  50 THR OG1 :   rot   79:sc=    1.07
-USER  MOD Single : A  57 SER OG  :   rot -150:sc=   0.208
-USER  MOD Single : A  58 SER OG  :   rot  -25:sc=   0.315
-USER  MOD Single : A 117 SER OG  :   rot   31:sc=    1.11
-USER  MOD Single : A 123 THR OG1 :   rot  180:sc=       0
-USER  MOD Single : A 125 TYR OH  :   rot -148:sc=    1.29
-USER  MOD Single : A 126 MET CE  :methyl  180:sc=       0   (180deg=0)
-USER  MOD Single : A 127 THR OG1 :   rot   80:sc=    1.07
-USER  MOD Single : A 135 THR OG1 :   rot  180:sc=       0
-USER  MOD Single : A 148 THR OG1 :   rot   79:sc=    2.06
-USER  MOD Single : A 158 THR OG1 :   rot  180:sc=       0
-USER  MOD Single : A 164 LYS NZ  :NH3+    169:sc=  -0.134   (180deg=-0.301)
-USER  MOD Single : A 192 SER OG  :   rot  145:sc=    1.72
-USER  MOD Single : A 195 SER OG  :   rot  110:sc=  -0.357
-USER  MOD Single : A 204 SER OG  :   rot   72:sc=   0.102
-USER  MOD Single : A 206 MET CE  :methyl -128:sc=       0   (180deg=-0.6)
-USER  MOD Single : A 213 THR OG1 :   rot  180:sc=       0
-USER  MOD Single : A 221 THR OG1 :   rot  -90:sc=   -0.15
-USER  MOD Single : A 223 THR OG1 :   rot   84:sc=   0.473
-USER  MOD Single : A 224 LYS NZ  :NH3+   -179:sc=   0.663   (180deg=0.663)
-USER  MOD Single : A 228 SER OG  :   rot -140:sc=       0
-USER  MOD Single : A 238 TYR OH  :   rot -166:sc=    1.14
-USER  MOD Single : A 245 THR OG1 :   rot   78:sc=  0.0938
-USER  MOD Single : A 249 THR OG1 :   rot   86:sc=  0.0375
-USER  MOD Single : A 250 TYR OH  :   rot   30:sc= -0.0588
-USER  MOD Single : A 252 SER OG  :   rot  180:sc=  0.0895
-USER  MOD Single : A 256 TYR OH  :   rot   20:sc=   0.874
-USER  MOD Single : A 270 MET CE  :methyl  138:sc=  -0.425   (180deg=-1.36)
-USER  MOD -----------------------------------------------------------------
 ATOM      1  N   ARG A   4       7.511  46.981  14.258  1.00 46.91           N
 ATOM      2  CA  ARG A   4       7.057  47.032  12.837  1.00 47.14           C
 ATOM      3  C   ARG A   4       7.149  48.454  12.261  1.00 44.77           C
