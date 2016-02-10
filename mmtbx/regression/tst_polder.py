@@ -190,7 +190,7 @@ def exercise_00(prefix="tst_polder"):
     "%s.pdb" % prefix,
     "%s.mtz" % prefix,
     "sphere_radius=3",
-    "solvent_exclusion_mask_selection='chain A' ",
+    'solvent_exclusion_mask_selection="chain A" ',
     "> %s.log" % prefix
   ])
   print cmd
