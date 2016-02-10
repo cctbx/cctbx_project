@@ -235,6 +235,39 @@ namespace {
     return i_seq;
   }
 
+  void
+  root::sort_atoms_in_place()
+  {
+      unsigned m_size = data->models.size();
+      for(unsigned i_md=0; i_md<m_size; i_md++) {
+        data->models[i_md].sort_atoms_in_place();
+      }
+  }
+  void
+  model::sort_atoms_in_place()
+  {
+      unsigned c_size = data->chains.size();
+      for(unsigned i_c=0; i_c<c_size; i_c++) {
+        data->chains[i_c].sort_atoms_in_place();
+      }
+  }
+  void
+  chain::sort_atoms_in_place()
+  {
+      unsigned rg_size = data->residue_groups.size();
+      for(unsigned i_rg=0; i_rg<rg_size; i_rg++) {
+        data->residue_groups[i_rg].sort_atoms_in_place();
+      }
+  }
+  void
+  residue_group::sort_atoms_in_place()
+  {
+      unsigned ag_size = data->atom_groups.size();
+      for(unsigned i_ag=0; i_ag<ag_size; i_ag++) {
+        data->atom_groups[i_ag].sort_atoms_in_place();
+      }
+  }
+
 
   unsigned
   model::atoms_size() const
@@ -1134,7 +1167,7 @@ namespace {
     return pos1 < pos2;
   }
 
-  bool sorting_function_general (atom a1, atom a2) {
+  bool sorting_function_aa (atom a1, atom a2) {
     // Not all these names necessarily exist
     static const str4 arr[] = {
         "N", "CA", "C", "O",
@@ -1148,7 +1181,7 @@ namespace {
         "CH", "NH", "OH", "SH", "CH1", "NH1", "OH1", "SH1", "CH2", "NH2", "OH2", "SH2", "CH3", "NH3", "OH3", "SH3",
         "OXT",
 
-        "H",
+        "H", "H1", "H2", "H3",
         "HA",
         "HA1", "HA11", "HA12", "HA13",
         "HA2", "HA21", "HA22", "HA23",
@@ -1178,6 +1211,13 @@ namespace {
         "HH2", "HH21", "HH22", "HH23",
         "HH3", "HH33", "HH33", "HH33",
 
+    };
+    std::vector<str4> ordered_names(arr, arr + sizeof(arr) / sizeof(arr[0]) );
+    return sorting_general(a1, a2, ordered_names);
+  }
+
+  bool sorting_function_small_na (atom a1, atom a2) {
+    static const str4 arr[] = {
         // Nucleic acids C, T
         // main chain
         "P",
@@ -1195,8 +1235,8 @@ namespace {
     };
     std::vector<str4> ordered_names(arr, arr + sizeof(arr) / sizeof(arr[0]) );
     return sorting_general(a1, a2, ordered_names);
-  }
 
+  }
   bool sorting_function_big_na (atom a1, atom a2) {
     // Not all these names necessarily exist
     static const str4 arr[] = {
@@ -1226,17 +1266,28 @@ namespace {
   void
   atom_group::sort_atoms_in_place()
   {
-    if (!get_atom("N9")) {
-      std::sort(
-          data->atoms.begin(),
-          data->atoms.end(),
-          sorting_function_general);
+    std::string ag_class;
+    ag_class = common_residue_names::get_class(data->resname);
+    if (ag_class == "common_rna_dna" || ag_class == "modified_rna_dna") {
+      if (!get_atom("N9")) {
+        std::sort(
+            data->atoms.begin(),
+            data->atoms.end(),
+            sorting_function_small_na);
+      }
+      else {
+        std::sort(
+            data->atoms.begin(),
+            data->atoms.end(),
+            sorting_function_big_na);
+      }
     }
     else {
       std::sort(
           data->atoms.begin(),
           data->atoms.end(),
-          sorting_function_big_na);
+          sorting_function_aa);
+
     }
   }
 
