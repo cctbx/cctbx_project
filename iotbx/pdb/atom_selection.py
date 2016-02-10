@@ -839,9 +839,6 @@ def selection_string_from_selection(pdb_hierarchy_inp,
     sel_str (str): atom selection string
   """
   if selection.size() == 0: raise Sorry('Empty atom selection')
-  # create a hierarchy from the selection
-  if hasattr(pdb_hierarchy_inp,"hierarchy"):
-    pdb_hierarchy_inp = pdb_hierarchy_inp.hierarchy
   # pdb_hierarchy_inp is a hierarchy
   if isinstance(selection,flex.bool): selection = selection.iselection(True)
   selection_set = set(selection)
