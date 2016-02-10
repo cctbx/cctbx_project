@@ -3,6 +3,7 @@ from iotbx.pdb.atom_selection import selection_string_from_selection
 from iotbx.pdb.atom_selection import get_clean_selection_string
 from mmtbx.ncs.ncs_search import get_chains_info
 from scitbx.array_family import flex
+import iotbx.pdb
 from iotbx import pdb
 
 test_pdb_1 = '''\
@@ -185,18 +186,18 @@ ATOM   2920  O   VAL D  27     -20.745  68.387  55.199  1.00 26.51           O
 ATOM   2921  CB  VAL D  27     -20.183  67.930  52.109  1.00 25.99           C
 ATOM   2922  CG1 VAL D  27     -19.069  68.049  51.032  1.00 23.04           C
 ATOM   2923  CG2 VAL D  27     -21.399  67.121  51.609  1.00 21.43           C
-ATOM   2924  N  AASP D  28     -21.219  66.203  54.890  0.50 22.16           N
-ATOM   2925  N  BASP D  28     -21.261  66.213  54.799  0.50 23.07           N
-ATOM   2926  CA AASP D  28     -22.200  66.120  55.994  0.50 24.54           C
-ATOM   2927  CA BASP D  28     -22.155  66.024  55.923  0.50 25.72           C
-ATOM   2928  C  AASP D  28     -21.780  65.239  57.184  0.50 21.81           C
-ATOM   2929  C  BASP D  28     -21.575  64.885  56.777  0.50 24.87           C
-ATOM   2930  O  AASP D  28     -22.627  64.713  57.901  0.50 22.07           O
-ATOM   2931  O  BASP D  28     -21.997  63.731  56.681  0.50 28.18           O
 ATOM   2932  CB  ASP D  28     -23.555  65.658  55.450  1.00 25.04           C
 ATOM   2933  CG  ASP D  28     -24.173  66.689  54.514  1.00 28.36           C
 ATOM   2934  OD1 ASP D  28     -23.934  67.903  54.695  1.00 27.71           O
 ATOM   2935  OD2 ASP D  28     -24.948  66.267  53.632  1.00 24.68           O
+ATOM   2924  N  AASP D  28     -21.219  66.203  54.890  0.50 22.16           N
+ATOM   2926  CA AASP D  28     -22.200  66.120  55.994  0.50 24.54           C
+ATOM   2928  C  AASP D  28     -21.780  65.239  57.184  0.50 21.81           C
+ATOM   2930  O  AASP D  28     -22.627  64.713  57.901  0.50 22.07           O
+ATOM   2925  N  BASP D  28     -21.261  66.213  54.799  0.50 23.07           N
+ATOM   2927  CA BASP D  28     -22.155  66.024  55.923  0.50 25.72           C
+ATOM   2929  C  BASP D  28     -21.575  64.885  56.777  0.50 24.87           C
+ATOM   2931  O  BASP D  28     -21.997  63.731  56.681  0.50 28.18           O
 ATOM   2936  N   SER D  29     -20.479  65.193  57.444  1.00 26.01           N
 ATOM   2937  CA  SER D  29     -19.892  64.371  58.495  1.00 24.17           C
 ATOM   2938  C   SER D  29     -19.715  65.264  59.716  1.00 23.31           C
@@ -400,21 +401,21 @@ def test_get_clean_selection_string():
 
 def test_selection_string_from_selection():
   """ Test selection_string_from_selection """
-  pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_1)
+  pdb_h = iotbx.pdb.input(source_info=None, lines=test_pdb_1).construct_hierarchy()
   isel1 = flex.size_t([12, 13, 14, 15, 16, 17, 18])
   isel2 = flex.size_t([12, 13, 14, 16, 17, 18])
   isel3 = flex.size_t([12, 13, 14, 15, 16, 17])
-  sel_str1 = selection_string_from_selection(pdb_inp,isel1)
-  sel_str2 = selection_string_from_selection(pdb_inp,isel2)
-  sel_str3 = selection_string_from_selection(pdb_inp,isel3)
+  sel_str1 = selection_string_from_selection(pdb_h,isel1)
+  sel_str2 = selection_string_from_selection(pdb_h,isel2)
+  sel_str3 = selection_string_from_selection(pdb_h,isel3)
   assert sel_str1 == "chain 'D'", sel_str1
   assert sel_str2 == "(chain 'D' and (resid 1:3 or resid 5:7))", sel_str2
   assert sel_str3 == "(chain 'D' and resid 1:6)", sel_str3
   #
-  atom_cache = pdb_inp.hierarchy.atom_selection_cache().selection
-  sel1 = list(atom_cache(sel_str1).iselection())
-  sel2 = list(atom_cache(sel_str2).iselection())
-  sel3 = list(atom_cache(sel_str3).iselection())
+  asc = pdb_h.atom_selection_cache()
+  sel1 = list(asc.iselection(sel_str1))
+  sel2 = list(asc.iselection(sel_str2))
+  sel3 = list(asc.iselection(sel_str3))
   #
   assert sel1 == list(isel1), sel1
   assert sel2 == list(isel2), sel2
@@ -422,7 +423,7 @@ def test_selection_string_from_selection():
 
 def test_selection_string_from_selection2():
   """ Test selection_string_from_selection """
-  pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_2)
+  pdb_h = iotbx.pdb.input(source_info=None, lines=test_pdb_2).construct_hierarchy()
   l1 = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,
         26,27,28,29,30,31]
   l2 = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17      ,20,21,22,23,24,25,
@@ -430,17 +431,17 @@ def test_selection_string_from_selection2():
   isel1 = flex.size_t(l1)
   isel2 = flex.size_t(l2)
   #
-  sel_str1 = selection_string_from_selection(pdb_inp,isel1)
-  sel_str2 = selection_string_from_selection(pdb_inp,isel2)
+  sel_str1 = selection_string_from_selection(pdb_h,isel1)
+  sel_str2 = selection_string_from_selection(pdb_h,isel2)
   assert sel_str1 == "chain 'A' or (chain 'B' and resid 153:154)", sel_str1
   s = "(chain 'A' and (resid 151 or (resid 152 and (name N or name CA or "
   s += "name C or name O or name CB or name CG or name CD or name NE or "
   s += "name CZ )))) or chain 'B'"
   assert sel_str2 == s, sel_str2
   #
-  atom_cache = pdb_inp.hierarchy.atom_selection_cache().selection
-  sel1 = list(atom_cache(sel_str1).iselection())
-  sel2 = list(atom_cache(sel_str2).iselection())
+  asc = pdb_h.atom_selection_cache()
+  sel1 = list(asc.iselection(sel_str1))
+  sel2 = list(asc.iselection(sel_str2))
   #
   assert sel1 == list(isel1), sel1
   assert sel2 == list(isel2), sel2
@@ -498,15 +499,16 @@ def test_include_hoh():
   assert sel_str1 == "chain 'A'", sel_str
 
 def test_selection_with_alternative_conformers():
-  pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_5)
-  cache = pdb_inp.hierarchy.atom_selection_cache().selection
-  chains_info = get_chains_info(pdb_inp.hierarchy)
+  pdb_h = iotbx.pdb.input(
+      source_info=None, lines=test_pdb_5).construct_hierarchy(sort_atoms=True)
+  asc = pdb_h.atom_selection_cache()
+  chains_info = get_chains_info(pdb_h)
   ch_D = chains_info['D']
   # test conditions verification
   assert ch_D.no_altloc == [True, True, True, False, True, True]
   select_all = sorted([x for xi in ch_D.atom_selection for x in xi])
-  test_list = range(23) + range(27,42)
-  assert select_all == test_list
+  test_list = list(asc.iselection("not altloc B"))
+  assert select_all == test_list, "%s" % select_all
 
 def test_insertions():
   pdb_h = pdb.hierarchy.input(pdb_string=test_pdb_6).hierarchy
