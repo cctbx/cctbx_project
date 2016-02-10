@@ -964,21 +964,6 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       self.atoms().reset_i_seq()
     return n_removed
 
-  def sort_atoms_in_place(self):
-    """
-    Sort atoms within a residue so that they will be in the following order:
-    N, CA, C, O, CB, CG, CD, ...
-    Generally, backbone first, then side chain, then hydrogen atoms.
-    """
-    for model in self.models():
-      for chain in model.chains():
-        for rg in chain.residue_groups():
-          for ag in rg.atom_groups():
-            ag.sort_atoms_in_place()
-    self.reset_atom_i_seqs()
-    self.atoms_reset_serial()
-
-
 class _(boost.python.injector, ext.model, __hash_eq_mixin):
   """
   Class representing MODEL blocks in a PDB file (or equivalent mmCIF).  There

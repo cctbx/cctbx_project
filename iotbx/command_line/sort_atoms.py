@@ -32,8 +32,7 @@ def run(args):
       file_name=inp_fn,
       source_info=None,
       raise_sorry_if_format_error=True)
-  pdb_h = pdb_input.construct_hierarchy()
-  pdb_h.sort_atoms_in_place()
+  pdb_h = pdb_input.construct_hierarchy(sort_atoms=True)
 
   out_fn_prefix = inp_fn.strip(".pdb").strip(".cif")
 

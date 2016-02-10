@@ -69,7 +69,8 @@ namespace iotbx { namespace pdb {
   hierarchy::root
   input::construct_hierarchy(
     bool residue_group_post_processing,
-    bool set_atom_i_seq)
+    bool set_atom_i_seq,
+    bool sort_atoms)
   {
     af::const_ref<std::string>
       model_ids = model_ids_.const_ref();
@@ -182,6 +183,15 @@ namespace iotbx { namespace pdb {
       next_chain_range_begin = ch_r.end;
     }
     IOTBX_ASSERT(break_index == break_indices_end);
+
+    if (sort_atoms) {
+      result.sort_atoms_in_place();
+      if (set_atom_i_seq) {
+        result.reset_atom_i_seqs();
+      }
+      result.atoms_reset_serial();
+
+    }
     return result;
   }
 

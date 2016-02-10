@@ -1090,6 +1090,9 @@ namespace hierarchy {
 
       af::shared<std::string>
       unique_resnames() const;
+
+      void
+      sort_atoms_in_place();
   };
 
   //! Chain attributes.
@@ -1215,6 +1218,9 @@ namespace hierarchy {
       af::shared<atom>
       atoms(
         int interleaved_conf=0) const;
+
+      void
+      sort_atoms_in_place();
   };
 
   //! Model attributes.
@@ -1323,6 +1329,9 @@ namespace hierarchy {
       void
       transfer_chains_from_other(
         model& other);
+
+      void
+      sort_atoms_in_place();
   };
 
   //! Root attributes.
@@ -1428,6 +1437,9 @@ namespace hierarchy {
       select(
         af::const_ref<std::size_t> const& atom_selection,
         bool copy_atoms=false) const;
+
+      void
+      sort_atoms_in_place();
   };
 
   //! label_formatter chain_id must be set before this function is called.

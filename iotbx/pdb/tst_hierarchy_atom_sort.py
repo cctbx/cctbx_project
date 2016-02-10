@@ -112,18 +112,18 @@ ATOM     23 HH21 ARG A  16      19.040  -6.527   0.127  1.00164.32           H
 ATOM     24 HH22 ARG A  16      18.393  -5.362  -0.538  1.00164.32           H
 TER
   """
-  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy()
-  out_h = iotbx.pdb.input(source_info=None, lines=out_pdb_str).construct_hierarchy()
+  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy(sort_atoms=True)
+  out_h = iotbx.pdb.input(source_info=None, lines=out_pdb_str).construct_hierarchy(sort_atoms=False)
   # print in_h.as_pdb_string()
-  in_h.sort_atoms_in_place()
+  # in_h.sort_atoms_in_place()
   # print "="*50
   # print in_h.as_pdb_string()
   validate_result(in_h, out_h)
 
-  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str1).construct_hierarchy()
-  out_h = iotbx.pdb.input(source_info=None, lines=out_pdb_str1).construct_hierarchy()
+  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str1).construct_hierarchy(sort_atoms=True)
+  out_h = iotbx.pdb.input(source_info=None, lines=out_pdb_str1).construct_hierarchy(sort_atoms=False)
   # print in_h.as_pdb_string()
-  in_h.sort_atoms_in_place()
+  # in_h.sort_atoms_in_place()
   # print "="*50
   # print in_h.as_pdb_string()
   validate_result(in_h, out_h)
@@ -156,10 +156,10 @@ ATOM    692  CD  GLN B   3       7.158  20.850   3.831  1.00 55.64           C
 ATOM    693  OE1 GLN B   3       7.843  21.020   4.834  1.00 56.71           O
 ATOM    694  NE2 GLN B   3       5.812  20.762   3.876  1.00 54.75           N
   """
-  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy()
-  out_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy()
+  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy(sort_atoms=True)
+  out_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy(sort_atoms=False)
   # print in_h.as_pdb_string()
-  in_h.sort_atoms_in_place()
+  # in_h.sort_atoms_in_place()
   # print "="*50
   # print in_h.as_pdb_string()
   validate_result(in_h, out_h)
@@ -192,10 +192,10 @@ ATOM    701  CD1 LEU B   4       5.232  19.472  -5.480  1.00 41.90           C
 ATOM    702  CD2 LEU B   4       4.267  17.162  -5.271  1.00 42.51           C
 ENDMDL
   """
-  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy()
-  out_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy()
+  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy(sort_atoms=True)
+  out_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy(sort_atoms=False)
   # print in_h.as_pdb_string()
-  in_h.sort_atoms_in_place()
+  # in_h.sort_atoms_in_place()
   # print "="*50
   # print in_h.as_pdb_string()
   validate_result(in_h, out_h)
@@ -270,10 +270,10 @@ ATOM     29  CZ3BTRP A   9      16.994  21.984  29.037  0.25  8.89           C
 ATOM     30  CH2BTRP A   9      16.699  23.238  29.593  0.25 10.35           C
 ATOM     31  HZ2BTRP A   9      16.380  24.223  31.300  0.25 11.77           H
   """
-  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy()
-  out_h = iotbx.pdb.input(source_info=None, lines=out_pdb_str).construct_hierarchy()
+  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy(sort_atoms=True)
+  out_h = iotbx.pdb.input(source_info=None, lines=out_pdb_str).construct_hierarchy(sort_atoms=False)
   # print in_h.as_pdb_string()
-  in_h.sort_atoms_in_place()
+  # in_h.sort_atoms_in_place()
   # print "="*50
   # print in_h.as_pdb_string()
   validate_result(in_h, out_h)
@@ -317,10 +317,10 @@ ATOM     13 HG21 THR B  97A     -2.574 -17.378  13.544  1.00169.78           H
 ATOM     14 HG22 THR B  97A     -1.701 -18.391  14.383  1.00169.78           H
 ATOM     15 HG23 THR B  97A     -2.073 -18.723  12.885  1.00169.78           H
 """
-  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy()
-  out_h = iotbx.pdb.input(source_info=None, lines=out_pdb_str).construct_hierarchy()
+  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy(sort_atoms=True)
+  out_h = iotbx.pdb.input(source_info=None, lines=out_pdb_str).construct_hierarchy(sort_atoms=False)
   # print in_h.as_pdb_string()
-  in_h.sort_atoms_in_place()
+  # in_h.sort_atoms_in_place()
   # print "="*50
   # print in_h.as_pdb_string()
   validate_result(in_h, out_h)
@@ -339,10 +339,10 @@ ATOM   1275  CG  ASP B  78      17.134  17.633  -6.986  1.00 27.72      seg1 C
 ATOM   1276  OD1 ASP B  78      17.487  16.952  -7.962  1.00 29.41      seg1 O
 ATOM   1277  OD2 ASP B  78      16.728  17.173  -5.867  1.00 26.25      seg1 O
   """
-  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy()
-  out_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy()
+  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy(sort_atoms=True)
+  out_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy(sort_atoms=False)
   # print in_h.as_pdb_string()
-  in_h.sort_atoms_in_place()
+  # in_h.sort_atoms_in_place()
   # print "="*50
   # print in_h.as_pdb_string()
   validate_result(in_h, out_h)
@@ -489,10 +489,10 @@ ATOM    314  H62  DA A  10     -27.549  37.425 -10.670  1.00 20.35           H
 ATOM    315  H2   DA A  10     -24.549  35.393  -6.866  1.00 18.44           H
 TER     316       DA A  10
 """
-  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy()
-  out_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy()
+  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy(sort_atoms=True)
+  out_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy(sort_atoms=False)
   # print in_h.as_pdb_string()
-  in_h.sort_atoms_in_place()
+  # in_h.sort_atoms_in_place()
   # print "="*50
   # print in_h.as_pdb_string()
   validate_result(in_h, out_h)
@@ -577,67 +577,67 @@ HETATM  388  H37 RKL A 101     -45.110  35.918   7.266  1.00 13.33           H
 HETATM  389  H38 RKL A 101     -45.080  34.177   8.985  1.00 12.40           H
   """
   out_pdb_str = """\
-HETATM    1  N9  RKL A 101     -46.411  30.168   7.131  1.00 12.05           N
-HETATM    2  C8  RKL A 101     -47.602  28.226  11.544  1.00 12.98           C
-HETATM    3  N7  RKL A 101     -40.923  30.190   8.359  1.00 13.01           N
-HETATM    4  C7  RKL A 101     -48.821  28.435  12.352  1.00 14.81           C
-HETATM    5  C5  RKL A 101     -49.247  30.585  11.175  1.00 13.25           C
-HETATM    6  C6  RKL A 101     -49.612  29.548  12.140  1.00 13.75           C
-HETATM    7  N6  RKL A 101     -43.259  32.778  12.684  1.00 12.22           N
-HETATM    8  N1  RKL A 101     -45.981  29.249   9.992  1.00 12.74           N
-HETATM    9  C2  RKL A 101     -48.390  32.534   9.306  1.00 13.81           C
-HETATM   10  N2  RKL A 101     -47.647  31.370   9.494  1.00 12.55           N
-HETATM   11  N3  RKL A 101     -50.738  29.726  12.856  1.00 17.18           N
-HETATM   12  C4  RKL A 101     -50.018  31.694  10.923  1.00 14.13           C
-HETATM   13  N4  RKL A 101     -49.115  27.508  13.253  1.00 15.38           N
-HETATM   14  C1  RKL A 101     -48.034  30.452  10.475  1.00 12.70           C
-HETATM   15  C10 RKL A 101     -47.205  29.296  10.658  1.00 12.10           C
-HETATM   16  C11 RKL A 101     -45.601  27.081  10.913  1.00 15.50           C
-HETATM   17  C12 RKL A 101     -45.267  28.146  10.066  1.00 13.34           C
-HETATM   18  C13 RKL A 101     -50.267  27.698  13.961  1.00 16.97           C
-HETATM   19  C14 RKL A 101     -50.609  26.747  14.957  1.00 19.35           C
-HETATM   20  C15 RKL A 101     -51.059  28.835  13.799  1.00 16.91           C
-HETATM   21  C16 RKL A 101     -52.245  29.002  14.481  1.00 20.28           C
-HETATM   22  C17 RKL A 101     -52.569  28.079  15.430  1.00 23.24           C
-HETATM   23  C18 RKL A 101     -51.794  26.934  15.688  1.00 21.56           C
-HETATM   24  C19 RKL A 101     -43.507  31.662  10.584  1.00 10.71           C
-HETATM   25  C20 RKL A 101     -45.376  32.439  11.617  1.00 11.87           C
-HETATM   26  C21 RKL A 101     -44.567  32.925  12.651  1.00 12.51           C
-HETATM   27  C22 RKL A 101     -42.684  32.140  11.626  1.00 11.32           C
-HETATM   28  C23 RKL A 101     -41.303  31.988  11.513  1.00 12.15           C
-HETATM   29  C24 RKL A 101     -40.725  31.347  10.488  1.00 13.05           C
-HETATM   30  C25 RKL A 101     -41.510  30.844   9.435  1.00 11.47           C
-HETATM   31  C26 RKL A 101     -42.921  30.994   9.454  1.00 11.14           C
-HETATM   32  C27 RKL A 101     -41.729  29.778   7.405  1.00 13.49           C
-HETATM   33  C28 RKL A 101     -43.083  29.942   7.445  1.00 13.01           C
-HETATM   34  C29 RKL A 101     -46.319  31.052   6.034  1.00 12.42           C
-HETATM   35  C3  RKL A 101     -49.604  32.642   9.975  1.00 15.19           C
-HETATM   36  C30 RKL A 101     -46.800  28.962   6.755  1.00 13.67           C
-HETATM   37  C31 RKL A 101     -47.105  28.610   5.449  1.00 13.99           C
-HETATM   38  C32 RKL A 101     -46.768  30.756   4.742  1.00 12.91           C
-HETATM   39  C33 RKL A 101     -46.730  31.799   3.746  1.00 14.57           C
-HETATM   40  C34 RKL A 101     -46.337  33.061   4.020  1.00 14.44           C
-HETATM   41  C35 RKL A 101     -45.965  33.375   5.400  1.00 12.98           C
-HETATM   42  C36 RKL A 101     -45.993  32.378   6.378  1.00 12.30           C
-HETATM   43  C37 RKL A 101     -45.377  34.905   6.995  1.00 13.47           C
-HETATM   44  C38 RKL A 101     -45.343  33.911   7.972  1.00 12.15           C
-HETATM   45  C9  RKL A 101     -46.771  27.130  11.684  1.00 15.35           C
-HETATM   46  N10 RKL A 101     -47.092  29.427   4.483  1.00 15.48           N
-HETATM   47  N11 RKL A 101     -45.706  34.628   5.712  1.00 14.17           N
-HETATM   48  N12 RKL A 101     -45.589  32.653   7.699  1.00 11.42           N
-HETATM   49  N5  RKL A 101     -44.888  31.813  10.555  1.00 11.82           N
-HETATM   50  N8  RKL A 101     -43.748  30.550   8.401  1.00 11.93           N
+HETATM    1  C1  RKL A 101     -48.034  30.452  10.475  1.00 12.70           C
+HETATM    2  C10 RKL A 101     -47.205  29.296  10.658  1.00 12.10           C
+HETATM    3  C11 RKL A 101     -45.601  27.081  10.913  1.00 15.50           C
+HETATM    4  C12 RKL A 101     -45.267  28.146  10.066  1.00 13.34           C
+HETATM    5  C13 RKL A 101     -50.267  27.698  13.961  1.00 16.97           C
+HETATM    6  C14 RKL A 101     -50.609  26.747  14.957  1.00 19.35           C
+HETATM    7  C15 RKL A 101     -51.059  28.835  13.799  1.00 16.91           C
+HETATM    8  C16 RKL A 101     -52.245  29.002  14.481  1.00 20.28           C
+HETATM    9  C17 RKL A 101     -52.569  28.079  15.430  1.00 23.24           C
+HETATM   10  C18 RKL A 101     -51.794  26.934  15.688  1.00 21.56           C
+HETATM   11  C19 RKL A 101     -43.507  31.662  10.584  1.00 10.71           C
+HETATM   12  C2  RKL A 101     -48.390  32.534   9.306  1.00 13.81           C
+HETATM   13  C20 RKL A 101     -45.376  32.439  11.617  1.00 11.87           C
+HETATM   14  C21 RKL A 101     -44.567  32.925  12.651  1.00 12.51           C
+HETATM   15  C22 RKL A 101     -42.684  32.140  11.626  1.00 11.32           C
+HETATM   16  C23 RKL A 101     -41.303  31.988  11.513  1.00 12.15           C
+HETATM   17  C24 RKL A 101     -40.725  31.347  10.488  1.00 13.05           C
+HETATM   18  C25 RKL A 101     -41.510  30.844   9.435  1.00 11.47           C
+HETATM   19  C26 RKL A 101     -42.921  30.994   9.454  1.00 11.14           C
+HETATM   20  C27 RKL A 101     -41.729  29.778   7.405  1.00 13.49           C
+HETATM   21  C28 RKL A 101     -43.083  29.942   7.445  1.00 13.01           C
+HETATM   22  C29 RKL A 101     -46.319  31.052   6.034  1.00 12.42           C
+HETATM   23  C3  RKL A 101     -49.604  32.642   9.975  1.00 15.19           C
+HETATM   24  C30 RKL A 101     -46.800  28.962   6.755  1.00 13.67           C
+HETATM   25  C31 RKL A 101     -47.105  28.610   5.449  1.00 13.99           C
+HETATM   26  C32 RKL A 101     -46.768  30.756   4.742  1.00 12.91           C
+HETATM   27  C33 RKL A 101     -46.730  31.799   3.746  1.00 14.57           C
+HETATM   28  C34 RKL A 101     -46.337  33.061   4.020  1.00 14.44           C
+HETATM   29  C35 RKL A 101     -45.965  33.375   5.400  1.00 12.98           C
+HETATM   30  C36 RKL A 101     -45.993  32.378   6.378  1.00 12.30           C
+HETATM   31  C37 RKL A 101     -45.377  34.905   6.995  1.00 13.47           C
+HETATM   32  C38 RKL A 101     -45.343  33.911   7.972  1.00 12.15           C
+HETATM   33  C4  RKL A 101     -50.018  31.694  10.923  1.00 14.13           C
+HETATM   34  C5  RKL A 101     -49.247  30.585  11.175  1.00 13.25           C
+HETATM   35  C6  RKL A 101     -49.612  29.548  12.140  1.00 13.75           C
+HETATM   36  C7  RKL A 101     -48.821  28.435  12.352  1.00 14.81           C
+HETATM   37  C8  RKL A 101     -47.602  28.226  11.544  1.00 12.98           C
+HETATM   38  C9  RKL A 101     -46.771  27.130  11.684  1.00 15.35           C
+HETATM   39  N1  RKL A 101     -45.981  29.249   9.992  1.00 12.74           N
+HETATM   40  N10 RKL A 101     -47.092  29.427   4.483  1.00 15.48           N
+HETATM   41  N11 RKL A 101     -45.706  34.628   5.712  1.00 14.17           N
+HETATM   42  N12 RKL A 101     -45.589  32.653   7.699  1.00 11.42           N
+HETATM   43  N2  RKL A 101     -47.647  31.370   9.494  1.00 12.55           N
+HETATM   44  N3  RKL A 101     -50.738  29.726  12.856  1.00 17.18           N
+HETATM   45  N4  RKL A 101     -49.115  27.508  13.253  1.00 15.38           N
+HETATM   46  N5  RKL A 101     -44.888  31.813  10.555  1.00 11.82           N
+HETATM   47  N6  RKL A 101     -43.259  32.778  12.684  1.00 12.22           N
+HETATM   48  N7  RKL A 101     -40.923  30.190   8.359  1.00 13.01           N
+HETATM   49  N8  RKL A 101     -43.748  30.550   8.401  1.00 11.93           N
+HETATM   50  N9  RKL A 101     -46.411  30.168   7.131  1.00 12.05           N
 HETATM   51 RU   RKL A 101     -45.719  30.968   8.877  1.00 11.71          RU
-HETATM   52  H3  RKL A 101     -50.188  33.545   9.851  1.00 15.11           H
-HETATM   53  H2  RKL A 101     -48.084  33.276   8.582  1.00 13.86           H
-HETATM   54  H21 RKL A 101     -45.048  33.419  13.484  1.00 12.20           H
-HETATM   55  H11 RKL A 101     -44.895  26.277  11.066  1.00 15.11           H
-HETATM   56  H12 RKL A 101     -44.365  28.076   9.472  1.00 13.69           H
-HETATM   57  H14 RKL A 101     -50.016  25.860  15.060  1.00 21.31           H
-HETATM   58  H16 RKL A 101     -52.865  29.872  14.310  1.00 20.48           H
-HETATM   59  H17 RKL A 101     -53.510  28.186  15.956  1.00 21.59           H
-HETATM   60  H18 RKL A 101     -52.149  26.171  16.370  1.00 20.40           H
-HETATM   61  H20 RKL A 101     -46.445  32.574  11.671  1.00 11.96           H
+HETATM   52  H2  RKL A 101     -48.084  33.276   8.582  1.00 13.86           H
+HETATM   53  H3  RKL A 101     -50.188  33.545   9.851  1.00 15.11           H
+HETATM   54  H11 RKL A 101     -44.895  26.277  11.066  1.00 15.11           H
+HETATM   55  H12 RKL A 101     -44.365  28.076   9.472  1.00 13.69           H
+HETATM   56  H14 RKL A 101     -50.016  25.860  15.060  1.00 21.31           H
+HETATM   57  H16 RKL A 101     -52.865  29.872  14.310  1.00 20.48           H
+HETATM   58  H17 RKL A 101     -53.510  28.186  15.956  1.00 21.59           H
+HETATM   59  H18 RKL A 101     -52.149  26.171  16.370  1.00 20.40           H
+HETATM   60  H20 RKL A 101     -46.445  32.574  11.671  1.00 11.96           H
+HETATM   61  H21 RKL A 101     -45.048  33.419  13.484  1.00 12.20           H
 HETATM   62  H23 RKL A 101     -40.679  32.343  12.322  1.00 11.86           H
 HETATM   63  H24 RKL A 101     -39.653  31.221  10.464  1.00 12.19           H
 HETATM   64  H27 RKL A 101     -41.296  29.269   6.554  1.00 12.47           H
@@ -650,11 +650,12 @@ HETATM   70  H37 RKL A 101     -45.110  35.918   7.266  1.00 13.33           H
 HETATM   71  H38 RKL A 101     -45.080  34.177   8.985  1.00 12.40           H
 HETATM   72  H4  RKL A 101     -50.905  31.887  11.513  1.00 13.58           H
 HETATM   73  H9  RKL A 101     -46.944  26.390  12.455  1.00 15.01           H
+TER
   """
-  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy()
-  out_h = iotbx.pdb.input(source_info=None, lines=out_pdb_str).construct_hierarchy()
+  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy(sort_atoms=True)
+  out_h = iotbx.pdb.input(source_info=None, lines=out_pdb_str).construct_hierarchy(sort_atoms=False)
   # print in_h.as_pdb_string()
-  in_h.sort_atoms_in_place()
+  # in_h.sort_atoms_in_place()
   # print "="*50
   # print in_h.as_pdb_string()
   validate_result(in_h, out_h)
@@ -752,10 +753,10 @@ HETATM   40 HD13CDLE A  10      17.223  12.487  32.102  0.30 22.83           H
 HETATM   41 HD21CDLE A  10      15.860  14.014  33.935  0.30 10.12           H
 HETATM   42 HD22CDLE A  10      14.534  14.774  33.069  0.30 19.10           H
 HETATM   43 HD23CDLE A  10      15.007  13.925  34.299  0.30 19.10           H  """
-  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy()
-  out_h = iotbx.pdb.input(source_info=None, lines=out_pdb_str).construct_hierarchy()
+  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy(sort_atoms=True)
+  out_h = iotbx.pdb.input(source_info=None, lines=out_pdb_str).construct_hierarchy(sort_atoms=False)
   # print in_h.as_pdb_string()
-  in_h.sort_atoms_in_place()
+  # in_h.sort_atoms_in_place()
   # print "="*50
   # print in_h.as_pdb_string()
   validate_result(in_h, out_h)
@@ -871,10 +872,10 @@ ATOM    163  H62   A A   5     -50.244 115.650 -55.071  1.00  0.00           H
 ATOM    164  H2    A A   5     -52.341 115.756 -59.891  1.00  0.00           H
 TER     262        C A   8
 """
-  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy()
-  out_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy()
+  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy(sort_atoms=True)
+  out_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy(sort_atoms=False)
   # print in_h.as_pdb_string()
-  in_h.sort_atoms_in_place()
+  # in_h.sort_atoms_in_place()
   # print "="*50
   # print in_h.as_pdb_string()
   validate_result(in_h, out_h)
@@ -911,12 +912,37 @@ ATOM    280  HZ2 TRP A  16      34.096  31.477  61.936  1.00 16.81           H
 ATOM    281  HZ3 TRP A  16      32.278  27.917  62.268  1.00 14.23           H
 ATOM    282  HH2 TRP A  16      32.212  30.179  62.470  1.00 12.97           H
   """
-  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy()
-  out_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy()
+  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy(sort_atoms=True)
+  out_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy(sort_atoms=False)
   # print in_h.as_pdb_string()
-  in_h.sort_atoms_in_place()
+  # in_h.sort_atoms_in_place()
   # print "="*50
   # print in_h.as_pdb_string()
+  validate_result(in_h, out_h)
+
+def exercise_12():
+  """
+  Beginning of a chain, CA with 3 hydrogens: H1, H2, H3
+  """
+  in_pdb_str = """\
+ATOM      1  N   PHE A   1       2.305   1.496  17.812  1.00  1.22           N
+ATOM      2  CA  PHE A   1       1.374   2.648  17.647  1.00  1.07           C
+ATOM      3  C   PHE A   1       2.067   3.806  16.938  1.00  1.09           C
+ATOM      4  O   PHE A   1       3.294   3.909  16.951  1.00  1.16           O
+ATOM      5  CB  PHE A   1       0.850   3.108  19.009  1.00  1.41           C
+ATOM      6  CG  PHE A   1       1.930   3.539  19.961  1.00  1.13           C
+ATOM      7  CD1 PHE A   1       2.323   4.866  20.029  1.00  1.42           C
+ATOM      8  CD2 PHE A   1       2.552   2.618  20.787  1.00  1.48           C
+ATOM      9  CE1 PHE A   1       3.316   5.265  20.903  1.00  1.70           C
+ATOM     10  CE2 PHE A   1       3.546   3.011  21.663  1.00  1.44           C
+ATOM     11  CZ  PHE A   1       3.928   4.336  21.721  1.00  1.76           C
+ATOM     12  H1  PHE A   1       2.118   1.070  18.571  1.00  1.40           H
+ATOM     13  H2  PHE A   1       2.210   0.937  17.126  1.00  1.40           H
+ATOM     14  H3  PHE A   1       3.143   1.794  17.838  1.00  1.40           H
+ATOM     15  HA  PHE A   1       0.616   2.372  17.108  1.00  1.25           H
+  """
+  in_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy(sort_atoms=True)
+  out_h = iotbx.pdb.input(source_info=None, lines=in_pdb_str).construct_hierarchy(sort_atoms=False)
   validate_result(in_h, out_h)
 
 if (__name__ == "__main__"):
