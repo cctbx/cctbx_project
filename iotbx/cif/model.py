@@ -108,6 +108,7 @@ class block_base(DictMixin):
       raise Sorry("%s is not a valid data name" %key)
     if isinstance(value, loop):
       self.loops[key] = value
+      self.keys_lower[key.lower()] = key
       for k in value.keys():
         self.keys_lower[k.lower()] = k
     elif isinstance(value, basestring):
@@ -254,7 +255,7 @@ class block_base(DictMixin):
       self.setdefault('_'+str(hash(tuple(loop.keys()))), loop)
 
   def get_loop(self, loop_name, default=None):
-    loop_ = self.loops.get(loop_name.lower())
+    loop_ = self.loops.get(self.keys_lower.get(loop_name.lower(), loop_name))
     if loop_ is None:
       return default
     return loop_

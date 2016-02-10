@@ -492,6 +492,10 @@ loop_
   assert list(cif_block["_a.2"]) == ['2', '4', '6', '?', '.']
   assert list(cif_block["_a.3"]) == ['?', '?', '?', 'a', 'c']
   assert list(cif_block["_a.4"]) == ['.', '.', '.', 'b', 'd']
+  loop_B = model.loop(header=("_B.1", "_B.2", "_B.3"), data=(1,2,3,4,5,6))
+  cif_block.add_loop(loop_B)
+  assert cif_block.get_loop("_B") is loop_B
+  assert cif_block.get_loop("_b") is loop_B
   #
   cif_block = model.block()
   cif_block['_a'] = """\
