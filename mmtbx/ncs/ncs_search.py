@@ -1704,9 +1704,7 @@ def make_selection_from_lists(sel_list):
   sel_list_extended.sort()
   return flex.size_t(sel_list_extended)
 
-def get_chains_info(ph,selection_list=None,
-    # exclude_water=True,
-    ignore_chains=None):
+def get_chains_info(ph, selection_list=None, ignore_chains=None):
   """
   Collect information about chains or segments of the hierarchy according to
   selection strings
@@ -1714,7 +1712,7 @@ def get_chains_info(ph,selection_list=None,
   When there are alternate conformations, we use the first one
 
   Args:
-    ph : protein hierarchy
+    ph : pdb_hierarchy
     selection_list (list of str): specific selection of hierarchy segments
     ignore_chains (set of str): set of chain IDs to exclude
 
@@ -1732,7 +1730,7 @@ def get_chains_info(ph,selection_list=None,
   if not ignore_chains: ignore_chains = set()
   #
   chains_info =  {}
-  cache = ph.atom_selection_cache().selection
+  asc = ph.atom_selection_cache()
   if use_chains:
     model  = ph.models()[0]
     # build chains_info from hierarchy
@@ -1740,7 +1738,7 @@ def get_chains_info(ph,selection_list=None,
       if ch.id in ignore_chains: continue
       if not chains_info.has_key(ch.id):
         chains_info[ch.id] = Chains_info()
-        ph_sel = ph.select(cache("chain '%s'" % ch.id))
+        ph_sel = ph.select(asc.selection("chain '%s'" % ch.id))
         coc = flex.vec3_double([ph_sel.atoms().extract_xyz().mean()])
         chains_info[ch.id].center_of_coordinates = coc
       chains_info[ch.id].chains_atom_number += ch.atoms().size()
@@ -1755,7 +1753,6 @@ def get_chains_info(ph,selection_list=None,
         conf = ch.conformers()[0]
         for res in conf.residues():
           x = res.resname
-          # if exclude_water and (x.lower() == 'hoh'): continue
           resids.append(res.resid())
           res_names.append(x)
           atoms = res.atoms()
@@ -1766,7 +1763,6 @@ def get_chains_info(ph,selection_list=None,
         for res in ch.residue_groups():
           for atoms in res.atom_groups():
             x = atoms.resname
-            # if exclude_water and (x.lower() == 'hoh'): continue
             resids.append(res.resid())
             res_names.append(x)
             atom_names.append(list(atoms.atoms().extract_name()))
@@ -1785,7 +1781,7 @@ def get_chains_info(ph,selection_list=None,
     chain_ids = sorted(selection_list)
 
     for sel_str in chain_ids:
-      ph_sel = ph.select(cache(sel_str))
+      ph_sel = ph.select(asc.selection(sel_str))
       model =  ph_sel.models()
       if model:
         # check that none-empty selection
