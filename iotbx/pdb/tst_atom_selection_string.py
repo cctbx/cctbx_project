@@ -4,7 +4,6 @@ from iotbx.pdb.atom_selection import get_clean_selection_string
 from mmtbx.ncs.ncs_search import get_chains_info
 from scitbx.array_family import flex
 import iotbx.pdb
-from iotbx import pdb
 
 test_pdb_1 = '''\
 CRYST1  577.812  448.715  468.790  90.00  90.00  90.00 P 1
@@ -516,7 +515,8 @@ def test_selection_with_alternative_conformers():
   assert select_all == test_list, "%s" % select_all
 
 def test_insertions():
-  pdb_h = pdb.hierarchy.input(pdb_string=test_pdb_6).hierarchy
+  pdb_h = iotbx.pdb.input(
+      source_info=None, lines=test_pdb_6).construct_hierarchy()
   isel = flex.size_t(range(15))
   tsel = selection_string_from_selection(pdb_h, isel)
   assert tsel == "(chain 'H' and (resid 48:49 or (resid 49A and (name N or name CA or name C ))))"
@@ -532,7 +532,8 @@ def test_2():
   selection range just because there is GLY and it doesn't need names.
   And we even skip the residue range here, tested extensively in test_5
   """
-  pdb_h = pdb.hierarchy.input(pdb_string=test_pdb_7).hierarchy
+  pdb_h = iotbx.pdb.input(
+      source_info=None, lines=test_pdb_7).construct_hierarchy()
   isel = flex.size_t([0,1,2,3,8,9,10,11,13,14,15,16,17,18,19,20])
   tsel = selection_string_from_selection(pdb_h, isel)
   assert tsel == "(chain 'A' and (name N or name CA or name C or name O ))" , tsel
@@ -541,7 +542,8 @@ def test_3():
   """
   single atom selections
   """
-  pdb_h = pdb.hierarchy.input(pdb_string=test_pdb_6).hierarchy
+  pdb_h = iotbx.pdb.input(
+      source_info=None, lines=test_pdb_6).construct_hierarchy()
   for i, answ in zip(range(20), [
       "(chain 'H' and (resid 48 and (name N )))",
       "(chain 'H' and (resid 48 and (name CA )))",
@@ -571,7 +573,8 @@ def test_4():
   """
   double atoms selections
   """
-  pdb_h = pdb.hierarchy.input(pdb_string=test_pdb_6).hierarchy
+  pdb_h = iotbx.pdb.input(
+      source_info=None, lines=test_pdb_6).construct_hierarchy()
   for i, answ in zip(range(0,20,2), [
       "(chain 'H' and (resid 48 and (name N or name CA )))",
       "(chain 'H' and (resid 48 and (name C or name O )))",
@@ -606,7 +609,8 @@ def test_5():
   Don't output the residue range if it covers whole chain, even if
   there is atom name selection
   """
-  pdb_h = pdb.hierarchy.input(pdb_string=test_pdb_7).hierarchy
+  pdb_h = iotbx.pdb.input(
+      source_info=None, lines=test_pdb_7).construct_hierarchy()
   isel = flex.size_t(range(25))
   tsel = selection_string_from_selection(pdb_h, isel)
   assert tsel == "chain 'A'", tsel
@@ -626,7 +630,8 @@ def test_6():
   atoms are the same as for the last residue. In this case the range with all
   atoms should be dumped.
   """
-  pdb_h = pdb.hierarchy.input(pdb_string=test_pdb_8).hierarchy
+  pdb_h = iotbx.pdb.input(
+      source_info=None, lines=test_pdb_8).construct_hierarchy()
   isel = flex.size_t(range(21))
   tsel = selection_string_from_selection(pdb_h, isel)
   # print "tsel", tsel
@@ -635,14 +640,16 @@ def test_6():
 def test_7():
   """
   """
-  pdb_h = pdb.hierarchy.input(pdb_string=test_pdb_9).hierarchy
+  pdb_h = iotbx.pdb.input(
+      source_info=None, lines=test_pdb_9).construct_hierarchy()
   isel = flex.size_t([0,1,2,3,4]+range(11,27))
   tsel = selection_string_from_selection(pdb_h, isel)
   assert tsel == "(chain 'A' and ((resid 124:125 and (name N or name CA or name C or name O or name CB )) or resid 126:127))", tsel
   # print "tsel", tsel
 
 def test_8():
-  pdb_h = pdb.hierarchy.input(pdb_string=test_pdb_10).hierarchy
+  pdb_h = iotbx.pdb.input(
+      source_info=None, lines=test_pdb_10).construct_hierarchy()
   isel = flex.size_t(range(8)+[8,9,10,11,12]+range(19,35))
   tsel = selection_string_from_selection(pdb_h, isel)
   assert tsel == "(chain 'A' and (resid 117 or (resid 124:125 and (name N or name CA or name C or name O or name CB )) or resid 126:127))", tsel
@@ -651,7 +658,8 @@ def test_11():
   """
   outputting name selection at the end of hierarchy?..
   """
-  pdb_h = pdb.hierarchy.input(pdb_string=test_pdb_11).hierarchy
+  pdb_h = iotbx.pdb.input(
+      source_info=None, lines=test_pdb_11).construct_hierarchy()
   isel = flex.size_t(range(5)+[6])
   tsel = selection_string_from_selection(pdb_h, isel)
   assert tsel == "(chain 'A' and (resid 480:482 or (resid 483:484 and (name CA ))))", tsel
