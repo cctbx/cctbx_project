@@ -423,7 +423,8 @@ def test_selection_string_from_selection():
 
 def test_selection_string_from_selection2():
   """ Test selection_string_from_selection """
-  pdb_h = iotbx.pdb.input(source_info=None, lines=test_pdb_2).construct_hierarchy()
+  pdb_h = iotbx.pdb.input(
+      source_info=None, lines=test_pdb_2).construct_hierarchy()
   l1 = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,
         26,27,28,29,30,31]
   l2 = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17      ,20,21,22,23,24,25,
@@ -447,16 +448,18 @@ def test_selection_string_from_selection2():
   assert sel2 == list(isel2), sel2
 
 def test_avoid_chain_selection():
-  pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_2)
+  pdb_h = iotbx.pdb.input(
+      source_info=None, lines=test_pdb_2).construct_hierarchy()
   isel1 = flex.size_t([0,1,2,3,4,5,6,7,8])
-  sel_str1 = selection_string_from_selection(pdb_inp,isel1)
+  sel_str1 = selection_string_from_selection(pdb_h,isel1)
   s = "(chain 'A' and resid 151)"
   assert sel_str1 == s, sel_str1
 
 def test_avoid_chain_selection2():
-  pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_3)
+  pdb_h = iotbx.pdb.input(
+      source_info=None, lines=test_pdb_3).construct_hierarchy()
   isel1 = flex.size_t(range(6,46))
-  sel_str1 = selection_string_from_selection(pdb_inp,isel1)
+  sel_str1 = selection_string_from_selection(pdb_h,isel1)
   # s = '(chain H and (resid 48 or resid 49 or resid 49A or resid 50:52))'
   # better way:
   s = "(chain 'H' and resid 48:52)"
@@ -467,35 +470,37 @@ def test_avoid_chain_selection2():
   # s = '(chain H and (resid 48 or resid 49 or resid 50:52))'
   # better way:
   s = "(chain 'H' and (resid 48:49 or resid 50:52))"
-  sel_str1 = selection_string_from_selection(pdb_inp,isel1)
+  sel_str1 = selection_string_from_selection(pdb_h,isel1)
   assert sel_str1 == s, sel_str1
 
 def test_avoid_hoh():
-  pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_4)
+  pdb_h = iotbx.pdb.input(
+      source_info=None, lines=test_pdb_4).construct_hierarchy()
   isel1 = flex.size_t(range(7))
-  sel_str1 = selection_string_from_selection(pdb_inp,isel1)
+  sel_str1 = selection_string_from_selection(pdb_h,isel1)
   s = "(chain 'A' and resid 151:157)"
   assert sel_str1 == s, sel_str1
   #
-  cache = pdb_inp.hierarchy.atom_selection_cache().selection
-  sel = cache(s).iselection()
+  asc = pdb_h.atom_selection_cache()
+  sel = asc.iselection(s)
   assert sel.size() == 7, sel.size()
 
 def test_include_hoh():
-  pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_4)
+  pdb_h = iotbx.pdb.input(
+      source_info=None, lines=test_pdb_4).construct_hierarchy()
   isel1 = flex.size_t(range(7))
   sel_str1 = selection_string_from_selection(
-    pdb_inp,isel1)
+    pdb_h,isel1)
   s = "(chain 'A' and resid 151:157)"
   assert sel_str1 == s, sel_str1
   #
-  cache = pdb_inp.hierarchy.atom_selection_cache().selection
-  sel = cache(s).iselection()
+  asc = pdb_h.atom_selection_cache()
+  sel = asc.iselection(s)
   assert sel.size() == 7, sel.size()
   #
   isel1 = flex.size_t(range(12))
   sel_str1 = selection_string_from_selection(
-    pdb_inp,isel1)
+    pdb_h,isel1)
   assert sel_str1 == "chain 'A'", sel_str
 
 def test_selection_with_alternative_conformers():
