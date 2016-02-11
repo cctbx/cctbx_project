@@ -218,7 +218,7 @@ class site_refinement_test(refinement_test):
       connectivity_table=connectivity_table)
     ls = least_squares.crystallographic_ls(
       self.fo_sq.as_xray_observations(), reparametrisation,
-      weighting_scheme=least_squares.unit_weighting(),
+      weighting_scheme=least_squares.mainstream_shelx_weighting(a=0),
       origin_fixing_restraints_type=
       origin_fixing_restraints.atomic_number_weighting)
 
@@ -275,7 +275,7 @@ class adp_refinement_test(refinement_test):
       connectivity_table=connectivity_table)
     ls = least_squares.crystallographic_ls(
       self.fo_sq.as_xray_observations(), reparametrisation,
-      weighting_scheme=least_squares.unit_weighting(),
+      weighting_scheme=least_squares.mainstream_shelx_weighting(a=0),
       origin_fixing_restraints_type=oop.null())
 
     cycles = normal_eqns_solving.naive_iterations(
