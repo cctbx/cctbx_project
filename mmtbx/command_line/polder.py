@@ -24,9 +24,10 @@ from libtbx.utils import Sorry
 legend = """\
 
 phenix.polder:
-Computes ligand omit maps by excluding the bulk solvent in the ligand area.
-This tool can be helpful if ligand density is weak and obscured by bulk
-solvent in conventional omit maps.
+Computes omit maps by excluding the bulk solvent in the area around a
+selection. One example of application are ligand omit maps. Polder omit maps
+can be helpful if the ligand density is weak and obscured by bulk solvent
+in conventional omit maps (where the ligand is deleted from the model).
 
 Inputs:
   - File with reflection data (Fobs or Iobs) and R-free flags. It can
@@ -34,13 +35,13 @@ Inputs:
   - label(s) selecting which reflection data arrays should be used (in case
     there are multiple choices in input file; otherwise there is no need to
     provide labels);
-  - Model file (PDB format) with ligand;
-  - Ligand selection
+  - Model file;
+  - Atom selection (such as ligand)
 
 Usage examples:
-  1. phenix.polder model.pdb data.mtz selection="chain A and resseq 1"
+  1. phenix.polder model.cif data.mtz selection="chain A and resseq 1"
   2. phenix.polder model.pdb data.hkl data_labels="FP" selection="chain A"
-  3. phenix.polder a.hkl b.hkl model.pdb selection="chain F"
+  3. phenix.polder a.hkl b.hkl model.pdb selection="resseq 435"
 
 Output:
   MTZ file with map coefficients:
