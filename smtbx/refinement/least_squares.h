@@ -162,12 +162,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
         f_calc_func(f_calc_function, use_cache);
       bool compute_grad = !objective_only;
       reflections.update_prime_fraction();
-      af::shared<FloatType> gradients =
-        compute_grad ? af::shared<FloatType> (
-                         jacobian_transpose_matching_grad_fc.n_rows(),
-                         af::init_functor_null<FloatType>())
-                      :
-                        af::shared<FloatType>();
+      af::shared<FloatType> gradients;
+      if(compute_grad)
+        gradients.resize(jacobian_transpose_matching_grad_fc.n_rows());
       for (int i_h=0; i_h<reflections.size(); ++i_h) {
         miller::index<> const &h = reflections.index(i_h);
         if (f_mask.size()) {
