@@ -8,8 +8,14 @@ import smtbx.refinement.constraints.geometrical.hydrogens \
        as geometrical_hydrogens
 
 class random_xray_structure(random_structure.xray_structure):
+  """ Various tweaks to suit our needs in testing smtbx """
 
   def __init__(self, space_group_info, u_iso_xor_u_aniso=True, **kwds):
+    """ In the superclass, if use_u_iso=True (resp. use_u_aniso=True)
+        then only U_iso (resp. only U_aniso) will be used to compute
+        structure factors. By passing u_iso_xor_u_aniso=False, one ensures that
+        both U_iso and U_aniso are used.
+    """
     super(random_xray_structure, self).__init__(space_group_info, **kwds)
     if u_iso_xor_u_aniso: return
     if kwds['use_u_iso'] and kwds['use_u_aniso']:
