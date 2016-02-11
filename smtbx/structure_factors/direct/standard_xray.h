@@ -619,6 +619,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
     };
 
 
+    /// Specialisation of class base computing trigonometric functions
+    /// with a custom functor of type ExpI2PiFunctor
     template <typename FloatType,
               template<typename> class ObservableType,
               template<typename> class ExpI2PiFunctor>
@@ -649,6 +651,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
     };
 
 
+    /// Specialisation of class base computing trigonometric functions
+    /// with the C++ standard library
     template <typename FloatType,
               template<typename> class ObservableType>
     class std_trigonometry
