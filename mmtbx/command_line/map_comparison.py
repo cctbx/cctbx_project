@@ -84,8 +84,11 @@ def show_citation(out=sys.stdout):
 def run(args, out=sys.stdout, validated=False):
   show_citation(out=out)
   if (len(args) == 0):
+    master_phil.show(out=out)
     print >> out,\
-      '\nUsage: phenix.map_comparison <first file> <second file>\n'
+      '\nUsage: phenix.map_comparison <CCP4> <CCP4>\n',\
+      '       phenix.map_comparison <CCP4> <MTZ> mtz_label_1=<label>\n',\
+      '       phenix.map_comparison <MTZ 1> mtz_label_1=<label 1> <MTZ 2> mtz_label_2=<label 2>\n'
     sys.exit()
 
   # process arguments
