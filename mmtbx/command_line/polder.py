@@ -2,7 +2,6 @@ from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.polder
 import time
 import sys
-import os
 from cStringIO import StringIO
 import mmtbx.f_model
 import mmtbx.utils
@@ -11,9 +10,8 @@ from mmtbx import utils
 from mmtbx import map_tools
 from iotbx import pdb
 from iotbx import ccp4_map
-from iotbx import reflection_file_reader
+from iotbx import file_reader
 from iotbx import reflection_file_utils
-from iotbx import crystal_symmetry_from_any
 import iotbx.phil
 import iotbx.pdb
 import iotbx.mtz
@@ -21,10 +19,45 @@ from cctbx import xray
 from cctbx import maptbx
 from cctbx.array_family import flex
 from libtbx import phil
-import libtbx.phil.command_line
 from libtbx.utils import Sorry
 
-master_phil_string = """
+legend = """\
+
+phenix.polder:
+Computes ligand omit maps by excluding the bulk solvent in the ligand area.
+This tool can be helpful if ligand density is weak and obscured by bulk
+solvent in conventional omit maps.
+
+Inputs:
+  - File with reflection data (Fobs or Iobs) and R-free flags. It can
+    be in most of known formats and spread across multiple files;
+  - label(s) selecting which reflection data arrays should be used (in case
+    there are multiple choices in input file; otherwise there is no need to
+    provide labels);
+  - Model file (PDB format) with ligand;
+  - Ligand selection
+
+Usage examples:
+  1. phenix.polder model.pdb data.mtz selection="chain A and resseq 1"
+  2. phenix.polder model.pdb data.hkl data_labels="FP" selection="chain A"
+  3. phenix.polder a.hkl b.hkl model.pdb selection="chain F"
+
+Output:
+  MTZ file with map coefficients:
+
+  - mFo-DFc_polder    : polder difference map coefficients
+  - PHImFo-DFc_polder : corresponding phases
+  - mFo-DFc_omit      : omit difference map coefficients
+  - PHImFo-DFc_omit   : corresponding phases
+
+  CCP4 files with mask data:
+
+  - mask_all.ccp4    : mask of original model
+  - mask_omit.ccp4   : mask when ligand is omitted
+  - mask_polder.ccp4 : mask obtained by polder procedure
+"""
+
+master_params_str = """
 model_file_name = None
   .type = str
   .multiple = False
@@ -38,6 +71,9 @@ reflection_file_name = None
 data_labels = None
   .type = str
   .help = Labels for experimental data.
+r_free_flags_labels = None
+  .type = str
+  .help = Labels for free reflections.
 sphere_radius = 5
   .type = float
   .help = radius of sphere around atoms, where solvent mask is reset to zero
@@ -45,8 +81,6 @@ high_resolution = None
   .type = float
 low_resolution = None
   .type = float
-output_file_name_prefix = None
-  .type = str
 scattering_table = *n_gaussian wk1995 it1992 neutron electron
   .type = choice
   .help = Scattering table for structure factors calculations
@@ -140,27 +174,28 @@ def polder(f_obs, r_free_flags, xray_structure, pdb_hierarchy, params):
   print "R factors for unmodified input model and data:"
   mc_diff_all = output_map(f_obs, r_free_flags, xray_structure,
     mask_data_all, filename = "all")
+  # biased map - for developers
   if(params.debug):
-    print "R factor when ligand is used for mask calculation:"
-    mc_diff_lig_omit = output_map(f_obs, r_free_flags, xray_structure_noligand,
-      mask_data_all, filename = "lig_omit")
+    print "R factor when ligand is used for mask calculation (biased map):"
+    mc_diff_bias_omit = output_map(f_obs, r_free_flags, xray_structure_noligand,
+      mask_data_all, filename = "bias_omit")
   #------
   mask_polder = mask_modif(f_obs, mask_data_all, sites_cart_ligand,
     sphere_radius = params.sphere_radius)
   print "R factor for polder map"
-  mc_diff_polder = output_map(f_obs,r_free_flags, xray_structure_noligand,
+  mc_diff_polder = output_map(f_obs, r_free_flags, xray_structure_noligand,
     mask_polder, filename = "polder")
   # calculate mask for structure without ligand
   mask_data_omit = mask_from_xrs_unpadded(xray_structure=xray_structure_noligand,
     n_real = crystal_gridding.n_real())
   print "R factor when ligand is excluded for mask calculation:"
-  mc_diff_omit = output_map(f_obs,r_free_flags, xray_structure_noligand,
+  mc_diff_omit = output_map(f_obs, r_free_flags, xray_structure_noligand,
     mask_data_omit, filename = "omit")
-  mtz_dataset=mc_diff_polder.as_mtz_dataset(column_root_label="mFo-DFc_polder")
+  mtz_dataset = mc_diff_polder.as_mtz_dataset(column_root_label="mFo-DFc_polder")
   if(params.debug):
     mtz_dataset.add_miller_array(
-      miller_array = mc_diff_lig_omit,
-      column_root_label = "mFo-DFc_lig-omit")
+      miller_array = mc_diff_bias_omit,
+      column_root_label = "mFo-DFc_bias_omit")
   mtz_dataset.add_miller_array(
     miller_array = mc_diff_omit,
     column_root_label = "mFo-DFc_omit")
@@ -168,50 +203,71 @@ def polder(f_obs, r_free_flags, xray_structure, pdb_hierarchy, params):
   mtz_object.write(file_name = "polder_map_coeffs.mtz")
   print "Finished."
 
-def reflection_file_server(crystal_symmetry, reflection_files):
-  return reflection_file_utils.reflection_file_server(
-    crystal_symmetry=crystal_symmetry,
-    force_symmetry=True,
-    reflection_files=reflection_files,
-    err=StringIO())
-
-def run(params):
+# parse through command line arguments
+def cmd_run(args, command_name):
+  if(len(args)==0):
+    print legend
+    return
   print "phenix.polder is running..."
+  master_params = master_params_str
+  parsed = phil.parse(master_params_str, process_includes=True)
+  inputs = mmtbx.utils.process_command_line_args(args = args,
+    master_params = parsed)
+  #inputs.params.show() #check
+  params = inputs.params.extract()
   if(params.scattering_table not in ["n_gaussian","wk1995","it1992","neutron",
     "electron"]):
     raise Sorry("Incorrect scattering_table.")
-  crystal_symmetry = None
-  crystal_symmetries = []
-  for f in [str(params.model_file_name), str(params.reflection_file_name)]:
-    cs = crystal_symmetry_from_any.extract_from(f)
-    if(cs is not None): crystal_symmetries.append(cs)
-  if(len(crystal_symmetries) == 1): crystal_symmetry = crystal_symmetries[0]
-  elif(len(crystal_symmetries) == 0):
-    raise Sorry("No crystal symmetry found.")
-  else:
-    if(not crystal_symmetries[0].is_similar_symmetry(crystal_symmetries[1])):
-      raise Sorry("Crystal symmetry mismatch between different files.")
-    crystal_symmetry = crystal_symmetries[0]
   if(params.solvent_exclusion_mask_selection is None):
     raise Sorry("No selection for mask calculation found.")
+  # check model file
+  if(len(inputs.pdb_file_names) == 0):
+    if(params.model_file_name is None):
+      raise Sorry("No model file found.")
+  elif(len(inputs.pdb_file_names) == 1):
+    params.model_file_name = inputs.pdb_file_names[0]
+  else:
+    raise Sorry("Only one model file should be given")
+  # check reflection file
+  reflection_files = inputs.reflection_files
+  if(len(reflection_files) == 0):
+    if(params.reflection_file_name is None):
+      raise Sorry("No reflection file found.")
+    else:
+      hkl_in = file_reader.any_file(params.reflection_file_name,
+        force_type="hkl")
+      hkl_in.assert_file_type("hkl")
+      reflection_files = [ hkl_in.file_object ]
+  # crystal symmetry
+  crystal_symmetry = None
+  crystal_symmetry = inputs.crystal_symmetry
+  if(crystal_symmetry is None):
+    raise Sorry("No crystal symmetry found.")
   f_obs, r_free_flags = None, None
-  if(params.reflection_file_name is not None):
-    reflection_file = reflection_file_reader.any_reflection_file(
-      file_name = params.reflection_file_name, ensure_read_access = True)
-    rfs = reflection_file_server(
-      crystal_symmetry = crystal_symmetry,
-      reflection_files = [reflection_file])
-    parameters = utils.data_and_flags_master_params().extract()
-    if(params.data_labels is not None):
-      parameters.labels = [processed_args.data_labels]
-    determine_data_and_flags_result = utils.determine_data_and_flags(
-      reflection_file_server = rfs,
-      parameters             = parameters,
-      keep_going             = True,
-      log                    = StringIO())
-    f_obs = determine_data_and_flags_result.f_obs
-    r_free_flags = determine_data_and_flags_result.r_free_flags
+  rfs = reflection_file_utils.reflection_file_server(
+    crystal_symmetry = crystal_symmetry,
+    force_symmetry   = True,
+    reflection_files = reflection_files,
+    err              = StringIO())
+  parameters = mmtbx.utils.data_and_flags_master_params().extract()
+  if(params.data_labels is not None):
+    parameters.labels = params.data_labels
+  if(params.r_free_flags_labels is not None):
+    parameters.r_free_flags.label = params.r_free_flags_labels
+  determine_data_and_flags_result = mmtbx.utils.determine_data_and_flags(
+    reflection_file_server = rfs,
+    parameters             = parameters,
+    keep_going             = True,
+    log                    = StringIO())
+  f_obs = determine_data_and_flags_result.f_obs
+  r_free_flags = determine_data_and_flags_result.r_free_flags
   assert [f_obs, r_free_flags].count(None)<=1
+  print "Input data:"
+  print "  Iobs or Fobs:", f_obs.info().labels
+  if(r_free_flags is not None):
+    print "  Free-R flags:", r_free_flags.info().labels
+  else:
+    print "  Free-R flags: Not present"
   pdb_input = iotbx.pdb.input(file_name = params.model_file_name)
   pdb_hierarchy = pdb_input.construct_hierarchy()
   xray_structure = pdb_input.xray_structure_simple()
@@ -230,49 +286,6 @@ def run(params):
          xray_structure = xray_structure,
          pdb_hierarchy  = pdb_hierarchy,
          params         = params)
-
-# parses through command line arguments
-def cmd_run(args, command_name):
-  msg = "Tool for improvement of ligand omit map."
-  print msg
-  master_params = master_phil_string
-  master_phil = phil.parse(master_phil_string, process_includes=True)
-  argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_phil,
-    home_scope="polder")
-  pdb = []
-  mtz = []
-  phils = []
-  phil_args = []
-  for arg in args:
-    if(os.path.isfile(arg)):
-      if(iotbx.pdb.is_pdb_file(arg)):
-        pdb.append(arg)
-      elif(arg.lower().endswith(".mtz")):
-        mtz.append(arg)
-      else:
-        try:
-          file_phil = phil.parse(file_name=arg)
-        except RuntimeError:
-          pass
-        else:
-          phils.append(file_phil)
-    else:
-      phil_args.append(arg)
-      phils.append(argument_interpreter.process(arg))
-  working_phil = master_phil.fetch(sources=phils)
-  working_params = working_phil.extract()
-  if(working_params.model_file_name is None):
-    if(len(pdb) == 1):
-      working_params.model_file_name = pdb[0]
-    else:
-      raise Sorry("Exactly one model file should be given.")
-  if(working_params.reflection_file_name is None):
-    if(len(mtz) == 1):
-      working_params.reflection_file_name = mtz[0]
-    else:
-      raise Sorry("Exactly one mtz file should be given.")
-  run(working_params)
 
 if(__name__ == "__main__"):
   t0 = time.time()
