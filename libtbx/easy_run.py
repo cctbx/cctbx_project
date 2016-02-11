@@ -283,7 +283,7 @@ def exercise(args=None):
       command="%s -V" % pyexe,
       stdout_splitlines=stdout_splitlines).raise_if_output()
     if (verbose): print result.stderr_lines
-    assert result.stderr_lines == ["Python " + sys.version.split()[0]]
+    assert result.stderr_lines[0].startswith("Python " + sys.version.split()[0])
     if (stdout_splitlines):
       assert result.stdout_buffer is None
       assert result.stdout_lines == []
@@ -292,7 +292,7 @@ def exercise(args=None):
       assert result.stdout_lines is None
   result = go(command="%s -V" % pyexe)
   if (verbose): print result.stdout_lines
-  assert result.stdout_lines == ["Python " + sys.version.split()[0]]
+  assert result.stdout_lines[0].startswith("Python " + sys.version.split()[0])
   result = fb(
     command='%s -c "print 3+4"' % pyexe).raise_if_errors()
   if (verbose): print result.stdout_lines
