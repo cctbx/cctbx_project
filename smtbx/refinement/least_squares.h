@@ -220,7 +220,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     template <class OneMillerIndexFcalc>
     FloatType process_twinning(
       cctbx::xray::observations<FloatType> const &reflections,
-      int h_i,
+      int i_h,
       f_calc_function_with_cache<FloatType, OneMillerIndexFcalc> &f_calc_func,
       af::shared<FloatType> &gradients,
       scitbx::sparse::matrix<FloatType> const
@@ -230,11 +230,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
       FloatType obs = f_calc_func.observable;
       if (reflections.has_twin_components()) {
         typename cctbx::xray::observations<FloatType>::iterator_ itr =
-          reflections.iterator(h_i);
+          reflections.iterator(i_h);
         scitbx::af::shared<cctbx::xray::twin_fraction<FloatType> const*>
           to_update;
         FloatType identity_part = 0,
-          obs_scale = reflections.scale(h_i);
+          obs_scale = reflections.scale(i_h);
         obs *= obs_scale;
         if (compute_grad) {
           gradients *= obs_scale;
