@@ -5,6 +5,7 @@ from __future__ import division
 
 import libtbx
 from scitbx.array_family import flex
+from timeit import default_timer as current_time
 
 
 class journaled_non_linear_ls(object):
@@ -38,12 +39,17 @@ class journaled_non_linear_ls(object):
       self.journal.scale_factor_history = flex.double()
     else:
       self.journal.scale_factor_history = None
+    self.normal_equations_building_time = 0
+    self.normal_equations_solving_time = 0
 
   def __getattr__(self, name):
     return getattr(self.actual, name)
 
   def build_up(self, objective_only=False):
+    t0 = current_time()
     self.actual.build_up(objective_only)
+    t1 = current_time()
+    self.normal_equations_building_time += t1 - t0
     if objective_only: return
     self.journal.parameter_vector_norm_history.append(
       self.actual.parameter_vector_norm())
@@ -56,7 +62,10 @@ class journaled_non_linear_ls(object):
       self.journal.scale_factor_history.append(self.actual.scale_factor())
 
   def solve(self):
+    t0 = current_time()
     self.actual.solve()
+    t1 = current_time()
+    self.normal_equations_solving_time += t1 - t0
     self.journal.step_norm_history.append(self.actual.step().norm())
     if self.journal.step_history is not None:
       self.journal.step_history.append(self.actual.step().deep_copy())
