@@ -155,8 +155,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
     {
       // Accumulate equations Fo(h) ~ Fc(h)
       SMTBX_ASSERT(!(reflections.has_twin_components() && f_mask.size()));
-      SMTBX_ASSERT((!f_mask.size() || f_mask.size() == reflections.size()) ||
-                  (f_mask.size()==reflections.size()));
+      SMTBX_ASSERT((!f_mask.size() || f_mask.size() == reflections.size()))
+                  (f_mask.size())(reflections.size());
       const bool use_cache = false; //reflections.has_twin_components();
       f_calc_function_with_cache<FloatType, OneMillerIndexFcalc>
         f_calc_func(f_calc_function, use_cache);
