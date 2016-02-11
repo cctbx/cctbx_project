@@ -20,16 +20,21 @@ namespace smtbx { namespace refinement { namespace least_squares {
     template <template<typename> class WeightingSchemeType>
     static void def_init(boost::python::class_<wt> &klass) {
       using namespace boost::python;
-      klass.def(init<NormalEquations &,                    // normal_equations
-                cctbx::xray::observations<FloatType> const &,         // miller_indices+data+sigmas
-                af::const_ref<std::complex<FloatType> > const &,      // f_mask
-                WeightingSchemeType<FloatType> const &,               // weighting_scheme
-                boost::optional<FloatType>,                           // scale_factor
-                OneMillerIndexLinearisation &,                        // f_calc_function
-                scitbx::sparse::matrix<FloatType> const &,            // jacobian_transpose_matching_grad_fc
-                cctbx::xray::extinction_correction<FloatType> &,      // extinction
-                optional<bool> >                                      // objective_only=false
-                ());
+      // below the comment after each type is the argument name
+      // (c.f. smtbx::refinement::build_normal_equations)
+      klass.def(
+        init<
+          NormalEquations &, // normal_equations
+          cctbx::xray::observations<FloatType> const &, // reflections
+          af::const_ref<std::complex<FloatType> > const &, // f_mask
+          WeightingSchemeType<FloatType> const &, // weighting_scheme
+          boost::optional<FloatType>, // scale_factor
+          OneMillerIndexLinearisation &, // f_calc_function
+          scitbx::sparse::matrix<FloatType> const &,
+            // jacobian_transpose_matching_grad_fc
+          cctbx::xray::extinction_correction<FloatType> &, // exti
+          optional<bool> // objective_only=false
+        >());
     }
 
     static void wrap(char const *name) {
