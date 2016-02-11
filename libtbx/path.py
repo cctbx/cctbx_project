@@ -458,7 +458,7 @@ class clean_out_directory (object) :
       shutil.rmtree(dir_name)
 
   def get_freed_space (self) :
-    locale.setlocale(locale.LC_ALL, 'en_US')
+    locale.setlocale(locale.LC_ALL, 'C')
     n_kb = self.n_bytes / 1000
     if (n_kb > 10000) :
       return locale.format("%.1f", n_kb / 1000, grouping=True) + " MB"
