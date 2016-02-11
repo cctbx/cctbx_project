@@ -198,23 +198,23 @@ def exercise_00(prefix="tst_polder"):
   #
   miller_arrays = reflection_file_reader.any_reflection_file(file_name =
     "polder_map_coeffs.mtz").as_miller_arrays()
-  mc_polder, mc_lig_omit, mc_omit = [None,]*3
+  mc_polder, mc_bias_omit, mc_omit = [None,]*3
   for ma in miller_arrays:
     lbl = ma.info().label_string()
     if(lbl == "mFo-DFc_polder,PHImFo-DFc_polder"):
       mc_polder = ma.deep_copy()
-    if(lbl == "mFo-DFc_lig-omit,PHImFo-DFc_lig-omit"):
-      mc_lig_omit = ma.deep_copy()
+    if(lbl == "mFo-DFc_bias_omit,PHImFo-DFc_bias_omit"):
+      mc_bias_omit = ma.deep_copy()
     if(lbl == "mFo-DFc_omit,PHImFo-DFc_omit"):
       mc_omit = ma.deep_copy()
-  assert [mc_polder, mc_lig_omit, mc_omit].count(None)==0
+  assert [mc_polder, mc_bias_omit, mc_omit].count(None)==0
   cg = maptbx.crystal_gridding(
     unit_cell         = mc_polder.unit_cell(),
     d_min             = mc_polder.d_min(),
     resolution_factor = 0.25,
     space_group_info  = mc_polder.space_group_info())
   map_polder   = get_map(cg=cg, mc=mc_polder)
-  map_lig_omit = get_map(cg=cg, mc=mc_lig_omit)
+  map_bias_omit = get_map(cg=cg, mc=mc_bias_omit)
   map_omit     = get_map(cg=cg, mc=mc_omit)
   pdb_hierarchy = iotbx.pdb.input(
     source_info=None, lines=pdb_str).construct_hierarchy()
@@ -222,13 +222,13 @@ def exercise_00(prefix="tst_polder"):
   sites_cart_lig = pdb_hierarchy.atoms().extract_xyz().select(sel)
   sites_frac_lig = mc_polder.unit_cell().fractionalize(sites_cart_lig)
   mp  = get_map_stats(map=map_polder,   sites_frac=sites_frac_lig)
-  mlo = get_map_stats(map=map_lig_omit, sites_frac=sites_frac_lig)
+  mlo = get_map_stats(map=map_bias_omit, sites_frac=sites_frac_lig)
   mo  = get_map_stats(map=map_omit,     sites_frac=sites_frac_lig)
   #
   mmm_mp = mp.min_max_mean().as_tuple()
   mmm_o = mo.min_max_mean().as_tuple()
   print "Polder map : %7.3f %7.3f %7.3f"%mmm_mp
-  print "Ligand-omit: %7.3f %7.3f %7.3f"%mlo.min_max_mean().as_tuple()
+  print "Biased map : %7.3f %7.3f %7.3f"%mlo.min_max_mean().as_tuple()
   print "Omit       : %7.3f %7.3f %7.3f"%mmm_o
   #
   assert approx_equal(mmm_mp, [1.810, 5.869, 4.168], eps=0.1)
