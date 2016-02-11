@@ -66,17 +66,30 @@ def run(filenames, options):
                                      hkl=reflections_filename,
                                      strictly_shelxl=False)
 
+  sgi = xm.xray_structure.space_group_info()
+  sg = sgi.group()
+  print "Space group: %s" % sgi.type().hall_symbol()
+  print "\t* %scentric" % ('non-','')[sg.is_centric()]
+  print "\t* %schiral" % ('a','')[sg.is_chiral()]
+  print "%i reflections" % len(xm.fo_sq.indices)
+
   # At last...
   for sc in xm.xray_structure.scatterers():
     sc.flags.set_grad_site(True)
     if sc.flags.use_u_iso(): sc.flags.set_grad_u_iso(True)
     if sc.flags.use_u_aniso(): sc.flags.set_grad_u_aniso(True)
+  ls = xm.least_squares()
+  print "%i atoms" % len(ls.reparametrisation.structure.scatterers())
+  print "%i refined parameters" % ls.reparametrisation.n_independents
   steps = lstbx.normal_eqns_solving.naive_iterations(
-    non_linear_ls=xm.least_squares(),
+    non_linear_ls=ls,
     n_max_iterations=options.max_cycles,
     gradient_threshold=options.stop_if_max_derivative_below,
     step_threshold=options.stop_if_shift_norm_below)
-  steps.do()
+  print "Normal equations building time: %.3f s" % \
+        steps.non_linear_ls.normal_equations_building_time
+  print "Normal equations solving time: %.3f s" % \
+        steps.non_linear_ls.normal_equations_solving_time
 
   # Write result to disk
   if out_ext != '.cif':
@@ -106,6 +119,8 @@ A certain amount of guessing is done by the program:
 """
 
 if __name__ == '__main__':
+  from timeit import default_timer as current_time
+  t0 = current_time()
   import sys, optparse
   parser = optparse.OptionParser(
     usage=here_usage,
@@ -142,3 +157,5 @@ if __name__ == '__main__':
     print >>sys.stderr, "\nERROR: %s\n" % err
     parser.print_help()
     sys.exit(1)
+  t1 = current_time()
+  print "Total time: %.3f s" % (t1 - t0)
