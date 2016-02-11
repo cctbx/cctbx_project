@@ -25,7 +25,6 @@ def smtbx_refinement_model_from(cls, ins_or_res=None, hkl=None,
                                 fo_sq=None, strictly_shelxl=True):
   import os
   from iotbx.reflection_file_reader import any_reflection_file
-  import iotbx.builders
 
   if ins_or_res is None:
     assert hkl is not None
@@ -38,20 +37,8 @@ def smtbx_refinement_model_from(cls, ins_or_res=None, hkl=None,
     if res_exists: ins_or_res = res
     elif ins_exists: ins_or_res = ins
 
-  builder = iotbx.builders.mixin_builder_class(
-    "smtbx_builder",
-    iotbx.builders.weighted_constrained_restrained_crystal_structure_builder,
-    iotbx.builders.reflection_data_source_builder,
-    iotbx.builders.twinning_builder)()
-
-  stream = command_stream(filename=ins_or_res)
-  stream = crystal_symmetry_parser(stream, builder)
-  stream = afix_parser(stream.filtered_commands(), builder)
-  stream = atom_parser(stream.filtered_commands(), builder,
-                       strictly_shelxl=strictly_shelxl)
-  stream = restraint_parser(stream.filtered_commands(), builder)
-  stream = instruction_parser(stream.filtered_commands(), builder)
-  stream.parse()
+  builder = parse_smtbx_refinement_model(filename=ins_or_res,
+                                         strictly_shelxl=strictly_shelxl)
 
   if fo_sq is None:
     if hkl is None:
@@ -65,9 +52,28 @@ def smtbx_refinement_model_from(cls, ins_or_res=None, hkl=None,
   else:
     assert hkl is None
 
-
   return cls(fo_sq.as_xray_observations(),
              builder.structure,
              builder.constraints,
              builder.restraints_manager,
              builder.weighting_scheme)
+
+
+def parse_smtbx_refinement_model(file=None, filename=None,
+                                 strictly_shelxl=True):
+  import iotbx.builders
+  builder = iotbx.builders.mixin_builder_class(
+    "smtbx_builder",
+    iotbx.builders.weighted_constrained_restrained_crystal_structure_builder,
+    iotbx.builders.reflection_data_source_builder,
+    iotbx.builders.twinning_builder)()
+
+  stream = command_stream(file=file, filename=filename)
+  stream = crystal_symmetry_parser(stream, builder)
+  stream = afix_parser(stream.filtered_commands(), builder)
+  stream = atom_parser(stream.filtered_commands(), builder,
+                       strictly_shelxl=strictly_shelxl)
+  stream = restraint_parser(stream.filtered_commands(), builder)
+  stream = instruction_parser(stream.filtered_commands(), builder)
+  stream.parse()
+  return builder
