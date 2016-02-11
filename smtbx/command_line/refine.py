@@ -52,10 +52,7 @@ def run(filenames, options):
     if not os.path.isfile(filename):
       raise command_line_error("No such file %s" % filename)
   if os.path.isfile(output_filename):
-    if options.overwrite:
-      print >>sys.stderr, ("\nWARNING: file %s will be overwritten.\n"
-                           % output_filename)
-    else:
+    if not options.overwrite:
       raise command_line_error(
         "refuse to overwrite file %s (use option 'overwrite' to force it)"
         % output_filename)
