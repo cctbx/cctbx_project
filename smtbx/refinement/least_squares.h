@@ -157,16 +157,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
       SMTBX_ASSERT(!(reflections.has_twin_components() && f_mask.size()));
       SMTBX_ASSERT((!f_mask.size() || f_mask.size() == reflections.size()) ||
                   (f_mask.size()==reflections.size()));
-      SMTBX_ASSERT(scale_factor || weighting_scheme.f_calc_independent());
       const bool use_cache = false; //reflections.has_twin_components();
       f_calc_function_with_cache<FloatType, OneMillerIndexFcalc>
         f_calc_func(f_calc_function, use_cache);
       bool compute_grad = !objective_only;
       reflections.update_prime_fraction();
-      /* Quite hackish but the assert above makes it safe providing
-         the weighting scheme class plays ball.
-       */
-      FloatType scale_factor_ = scale_factor ? *scale_factor : 0;
       af::shared<FloatType> gradients =
         compute_grad ? af::shared<FloatType> (
                          jacobian_transpose_matching_grad_fc.n_rows(),
@@ -196,7 +191,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         observables_[i_h] = observable;
 
         FloatType weight = weighting_scheme(reflections.fo_sq(i_h),
-          reflections.sig(i_h), observable, scale_factor_);
+          reflections.sig(i_h), observable, scale_factor);
         weights_[i_h] = weight;
         if (objective_only) {
           normal_equations.add_residual(observable,

@@ -32,10 +32,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
   template <typename T>
   struct sigma_weighting
   {
-    /// Whether each weight is independent of the calculated structure factor
-    bool f_calc_independent() const { return true; }
-
-    T operator()(T fo_sq, T sigma, T fc_sq, T scale_factor) const {
+    T operator()(T fo_sq, T sigma, T fc_sq,
+                 boost::optional<T> scale_factor) const
+    {
       SMTBX_ASSERT(sigma > 0);
       return std::pow(sigma, -2);
     }
@@ -45,10 +44,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
   template <typename T>
   struct unit_weighting
   {
-    /// Whether each weight is independent of the calculated structure factor
-    bool f_calc_independent() const { return true; }
-
-    T operator()(T fo_sq, T sigma, T fc_sq, T scale_factor) const {
+    T operator()(T fo_sq, T sigma, T fc_sq,
+                 boost::optional<T> scale_factor) const
+    {
       return 1.;
     }
   };
@@ -79,14 +77,13 @@ namespace smtbx { namespace refinement { namespace least_squares {
       : a(a), b(b)
     {}
 
-    /// Whether each weight is independent of the calculated structure factor
-    bool f_calc_independent() const { return false; }
-
-
-
-    T operator()(T fo_sq, T sigma, T fc_sq, T scale_factor) const {
-      T p = (std::max(fo_sq, 0.) + 2*scale_factor*fc_sq)/3.;
-      return 1./(sigma*sigma + std::pow(a*p, 2) + b*scale_factor*p);
+    T operator()(T fo_sq, T sigma, T fc_sq,
+                 boost::optional<T> scale_factor) const
+    {
+      SMTBX_ASSERT(scale_factor);
+      T k = *scale_factor;
+      T p = (std::max(fo_sq, 0.) + 2*k*fc_sq)/3.;
+      return 1./(sigma*sigma + std::pow(a*p, 2) + b*k*p);
     }
   };
 
