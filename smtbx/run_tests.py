@@ -21,6 +21,7 @@ tst_list = (
     "$D/refinement/constraints/tests/tst_occupancies.py",
     ["$D/refinement/constraints/tests/tst_constrained_structure.py",
      '--normal_eqns_solving_method=naive'],
+    "$D/refinement/constraints/tests/tst_disorder.py",
     ["$D/refinement/constraints/tests/tst_constrained_structure.py",
      '--normal_eqns_solving_method=levenberg-marquardt'],
     "$D/refinement/constraints/tests/tst_rigid.py",

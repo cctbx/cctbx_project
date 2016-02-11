@@ -56,7 +56,9 @@ def smtbx_refinement_model_from(cls, ins_or_res=None, hkl=None,
              builder.structure,
              builder.constraints,
              builder.restraints_manager,
-             builder.weighting_scheme)
+             builder.weighting_scheme,
+             builder.temperature_in_celsius,
+             builder.conformer_indices)
 
 
 def parse_smtbx_refinement_model(file=None, filename=None,
