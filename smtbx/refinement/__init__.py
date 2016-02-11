@@ -34,14 +34,19 @@ class model(object):
   from_cif=classmethod(from_cif)
 
   def __init__(self, fo_sq, xray_structure,
-               constraints, restraints_manager, weighting_scheme):
+               constraints, restraints_manager, weighting_scheme,
+               temperature_in_celsius=20,
+               conformer_indices=None):
     self.fo_sq = fo_sq
     self.xray_structure = xray_structure
     self.constraints = constraints
     self.restraints_manager = restraints_manager
     self.weighting_scheme = weighting_scheme
     self.connectivity_table = smtbx.utils.connectivity_table(
-      self.xray_structure)
+      self.xray_structure,
+      conformer_indices=conformer_indices
+    )
+    self.temperature_in_celsius = temperature_in_celsius
 
   def make_anisotropic(self):
     self.xray_structure.convert_to_anisotropic()
