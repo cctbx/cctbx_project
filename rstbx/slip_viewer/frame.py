@@ -296,7 +296,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
     beam     = self.get_beam()
 
     # FIXME assumes all detector elements use the same millimeter-to-pixel convention
-    if detector[0].get_distance() > 0:
+    if abs(detector[0].get_distance()) > 0:
 
       def map_coords(x, y, p):
         if len(self.pyslip.tiles.raw_image.get_detector()) > 1:
