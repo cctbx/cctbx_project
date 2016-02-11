@@ -10,13 +10,47 @@ import smtbx.refinement.constraints.geometrical.hydrogens \
 class random_xray_structure(random_structure.xray_structure):
   """ Various tweaks to suit our needs in testing smtbx """
 
-  def __init__(self, space_group_info, u_iso_xor_u_aniso=True, **kwds):
-    """ In the superclass, if use_u_iso=True (resp. use_u_aniso=True)
+  def __init__(self, space_group_info=None, u_iso_xor_u_aniso=True,
+               proportion_of_elements={}, **kwds):
+    """ 1. In the superclass, if use_u_iso=True (resp. use_u_aniso=True)
         then only U_iso (resp. only U_aniso) will be used to compute
         structure factors. By passing u_iso_xor_u_aniso=False, one ensures that
         both U_iso and U_aniso are used.
+        2. proportion_of_elements gives the desired elements and their relative
+        proportions. E.g. {'C':5, 'O':2, 'N':1} requests elements C, O and N
+        with the ratios 5 : 2 : 1. Depending on the value of n_scatterers,
+        they may be only approximately achieved.
     """
-    super(random_xray_structure, self).__init__(space_group_info, **kwds)
+    n_scatterers = kwds.pop('n_scatterers', None)
+    elements = kwds.pop('elements', None)
+    assert not proportion_of_elements or elements is None
+    if proportion_of_elements:
+      assert n_scatterers is not None
+      normalisation = sum(proportion_of_elements.values())
+      from_smallest = sorted(
+        (p, elt) for elt, p in proportion_of_elements.items())
+      populations = {}
+      p0, elt0 = from_smallest[0]
+      populations[elt0] = max(n_scatterers*p0//normalisation, 1)
+      r0 = populations[elt0]/proportion_of_elements[elt0]
+      total = populations[elt0]
+      for p, elt in from_smallest[1:]:
+        if total >= n_scatterers:
+          break
+        populations[elt] = min(int(round(proportion_of_elements[elt]*r0)),
+                               n_scatterers - total)
+        total += populations[elt]
+      else:
+        _, elt = from_smallest[-1]
+        populations[elt] += n_scatterers - total
+      elements = []
+      for elt, p in populations.items():
+        elements.extend([elt]*p)
+    super(random_xray_structure, self).__init__(
+      space_group_info=space_group_info,
+      elements=elements,
+      n_scatterers=n_scatterers,
+      **kwds)
     if u_iso_xor_u_aniso: return
     if kwds['use_u_iso'] and kwds['use_u_aniso']:
       for sc in self.scatterers():
