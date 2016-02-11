@@ -146,7 +146,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       OneMillerIndexFcalc &f_calc_function,
       scitbx::sparse::matrix<FloatType> const
         &jacobian_transpose_matching_grad_fc,
-      cctbx::xray::extinction_correction<FloatType> &exti,
+      cctbx::xray::extinction_correction<FloatType> const &exti,
       bool objective_only=false)
     :
       f_calc_(reflections.size()),
