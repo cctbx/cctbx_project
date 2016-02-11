@@ -13,7 +13,7 @@ namespace cctbx { namespace xray {
     // return multiplier for Fc_sq
     virtual af::tiny<FloatType,2> compute(miller::index<> const &h,
       FloatType fc_sq,
-      bool compute_gradient) = 0;
+      bool compute_gradient) const = 0;
     virtual FloatType& get_value() = 0;
     virtual bool grad_value() const = 0;
     virtual int get_grad_index() const = 0;
@@ -31,7 +31,7 @@ namespace cctbx { namespace xray {
     dummy_extinction_correction() {}
     virtual af::tiny<FloatType,2> compute(miller::index<> const &h,
       FloatType fc_sq,
-      bool compute_gradient)
+      bool compute_gradient) const
       {
         return extinction_correction<FloatType>::build_return_value(1);
       }
@@ -61,7 +61,7 @@ namespace cctbx { namespace xray {
 
     virtual af::tiny<FloatType,2> compute(miller::index<> const &h,
       FloatType fc_sq,
-      bool compute_grad)
+      bool compute_grad) const
     {
       const FloatType
         p = calc_factor(h, fc_sq),

@@ -32,7 +32,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
           OneMillerIndexLinearisation &, // f_calc_function
           scitbx::sparse::matrix<FloatType> const &,
             // jacobian_transpose_matching_grad_fc
-          cctbx::xray::extinction_correction<FloatType> &, // exti
+          cctbx::xray::extinction_correction<FloatType> const &, // exti
           optional<bool> // objective_only=false
         >());
     }
