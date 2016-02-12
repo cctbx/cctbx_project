@@ -87,6 +87,9 @@ cbflib_adaptbx/detectors/tst_memory.cpp -text
 cbflib_adaptbx/excercise_compression.py -text
 cbflib_adaptbx/libtbx_config -text
 cbflib_adaptbx/libtbx_refresh.py svneol=native#text/x-python
+cbflib_adaptbx/msvc_include/changelog.txt -text
+cbflib_adaptbx/msvc_include/inttypes.h -text
+cbflib_adaptbx/msvc_include/stdint.h -text
 cbflib_adaptbx/run_bison.csh -text
 cbflib_adaptbx/run_tests.py svneol=native#text/x-python
 cctbx/adp_restraints/aniso_restraints.h svneol=native#text/plain

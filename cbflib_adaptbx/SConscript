@@ -39,8 +39,12 @@ else:
     # if you have CBFlib from bleeding edge this will not work, but an old version
     # may be fine...
     # raise RuntimeError, 'cannot build CBFlib without hdf5.h'
-    pass
-
+    #pass
+ if (sys.platform == "win32"):
+    env_etc.cbflib_common_includes.append(os.path.join(env_etc.base_include, 'HDF5-1.8.16'))
+ if (env_etc.compiler == "win32_cl"):
+    env_etc.cbflib_common_includes.append(os.path.join(env_etc.cbflib_adaptbx_dist,'msvc_include'))
+    
 env = env_base.Clone(
   SHLINKFLAGS=env_etc.shlinkflags)
 if (env_etc.compiler == "win32_cl"):
