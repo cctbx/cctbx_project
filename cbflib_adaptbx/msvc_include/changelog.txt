@@ -88,7 +88,7 @@ All (U)INT* types changed to (unsigned) __int*. This should make stdint.h compat
 ------------------------------------------------------------------------
 r10 | 2006-12-13 16:20:57 +0300 | 3 lines
 
-Added INLINE_IMAXDIV define switch. 
+Added INLINE_IMAXDIV define switch.
 If INLINE_IMAXDIV is defined imaxdiv() have static modifier. If not - it is _inline.
 
 ------------------------------------------------------------------------
