@@ -15,11 +15,9 @@ import time
 import urllib2
 import urlparse
 import zipfile
+import traceback
 
-windows_remove_list = ['cbflib',
-                       'dials',
-                       'xia2',
-                      ]
+windows_remove_list = []
 
 rosetta_version="rosetta_src_2015.39.58186_bundle"
 rosetta_version="rosetta_src_2016.02.58402_bundle"
@@ -76,7 +74,8 @@ def tar_extract(workdir, arx, modulename=None):
       if modulename != tarfoldername:
         os.rename(tarfoldername, modulename)
   except Exception, e:
-    raise Exception("Extracting tar archive resulted in error: " + str(e))
+    raise Exception("Extracting tar archive resulted in error: " + str(e) + "\n" \
+      + traceback.format_exc())
     return 1
   return 0
 
