@@ -754,6 +754,44 @@ TER
       "Expecting 124 proxies, got %d" % rm.get_n_proxies()
   os.remove("ref_0.pdb")
 
+  # reference on self and make sure it is chains A<->A, B<->B etc
+  log = cStringIO.StringIO()
+  def_pars = reference_model_params
+  all_pars = def_pars.fetch().extract()
+  all_pars.reference_model.enabled = True
+  all_pars.reference_model.use_starting_model_as_reference = True
+  rm = reference_model(
+      processed_pdb_file=processed_pdb_file,
+      reference_hierarchy_list=\
+          [processed_pdb_file.all_chain_proxies.pdb_hierarchy],
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
+      params=all_pars.reference_model,
+      log=log)
+  rm.show_reference_summary(log=log)
+  log_strings = log.getvalue().split("\n")
+  # print rm.get_n_proxies()
+  # print "=========="
+  # print "\n".join(log_strings)
+  # print "=========="
+  assert rm.get_n_proxies() == 124, \
+      "Expecting 124 proxies, got %d" % rm.get_n_proxies()
+  for needed_string in [
+      "GLN A   6  <=====>  GLN A   6",
+      "ALA A   9  <=====>  ALA A   9",
+      "ASN A  10  <=====>  ASN A  10",
+      "THR B   3  <=====>  THR B   3",
+      "GLN B   6  <=====>  GLN B   6",
+      "ALA B   9  <=====>  ALA B   9",
+      "ASN B  10  <=====>  ASN B  10",
+      "THR C   3  <=====>  THR C   3",
+      "GLN C   6  <=====>  GLN C   6",
+      "ALA D   5  <=====>  ALA D   5",
+      "GLN D   6  <=====>  GLN D   6",
+      ]:
+    assert needed_string in log_strings, "'%s' not in log!" % needed_string
+
+
 
 def exercise_multiple_ncs_groups_found(mon_lib_srv, ener_lib):
   pdb_str_original = """\
@@ -1519,12 +1557,18 @@ END
   assert rm.get_n_proxies() == 141, \
       "Expecting 141 proxies, got %d" % rm.get_n_proxies()
   log_strings = log.getvalue().split("\n")
+  # print "========"
+  # print "\n".join(log_strings)
+  # print "========"
   for needed_string in [
       "GLY A   8  <=====>  GLY A   8",
       "PRO A   9  <=====>  PRO A   9",
       "GLY A  10  <=====>  GLY A  10",
       "ASP B   1  <=====>  ASP B   1",
       "ILE B   2  <=====>  ILE B   2",
+      "SER B  10  <=====>  SER B  10",
+      "GLN C   1  <=====>  GLN C   1",
+      "VAL C   2  <=====>  VAL C   2",
       ]:
     assert needed_string in log_strings, "'%s' not in log!" % needed_string
 
