@@ -87,6 +87,8 @@ scattering_table = *n_gaussian wk1995 it1992 neutron electron
   .help = Scattering table for structure factors calculations
 resolution_factor = 0.25
   .type = float
+output_file_name_prefix = None
+  .type = str
 debug = True
   .type = bool
   .expert_level=3
@@ -201,7 +203,10 @@ def polder(f_obs, r_free_flags, xray_structure, pdb_hierarchy, params):
     miller_array = mc_diff_omit,
     column_root_label = "mFo-DFc_omit")
   mtz_object = mtz_dataset.mtz_object()
-  mtz_object.write(file_name = "polder_map_coeffs.mtz")
+  polder_file_name = "polder_map_coeffs.mtz"
+  if (params.output_file_name_prefix is not None):
+    polder_file_name = params.output_file_name_prefix + "_" + polder_file_name
+  mtz_object.write(file_name = polder_file_name)
   print "Finished."
 
 # parse through command line arguments
