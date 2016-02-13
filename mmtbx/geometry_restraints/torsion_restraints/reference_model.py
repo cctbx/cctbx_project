@@ -222,12 +222,32 @@ class reference_model(object):
     # This takes 80% of constructor time!!!
     self.residue_match_hash = {} # {key_model: ('file_name', key_ref)}
     self.match_map = {} # {'file_name':{i_seq_model:i_seq_ref}}
-    self.get_matching_from_ncs()
+    if params.use_starting_model_as_reference:
+      self.get_matching_from_self()
+    else:
+      self.get_matching_from_ncs()
     if self.match_map == {}:
+      # making empty container
       new_ref_dih_proxies = self.reference_dihedral_proxies = \
           cctbx.geometry_restraints.shared_dihedral_proxy()
     else:
       new_ref_dih_proxies = self.get_reference_dihedral_proxies()
+
+  def get_matching_from_self(self):
+    """ Shortcut for the case when restraining on starting model """
+    if self.reference_file_list[0] not in self.match_map.keys():
+      self.match_map[self.reference_file_list[0]] = {}
+    for chain in self.pdb_hierarchy.only_model().chains():
+      for rg in chain.residue_groups():
+        # Filling out self.residue_match_hash
+        key_model = "%s %s" % (rg.unique_resnames()[0], rg.id_str().strip())
+        if key_model not in self.residue_match_hash:
+          self.residue_match_hash[key_model] = (self.reference_file_list[0], key_model)
+        # Filling out self.match_map
+        for atom in rg.atoms():
+          self.match_map[self.reference_file_list[0]][atom.i_seq] = atom.i_seq
+
+
 
   def _make_matching_and_fill_dictionaries(self, model_h, ref_h, fn,
       m_cache, model_selection_str="all", ref_selection_str="all"):
@@ -526,19 +546,9 @@ class reference_model(object):
         ref_ss_m[file] = secondary_structure.manager(
           pdb_hierarchy=self.pdb_hierarchy_ref[file],
           sec_str_from_pdb_file=None)
-        pdb_str = self.pdb_hierarchy_ref[file].as_pdb_string()
-        (records, stderr) = secondary_structure.run_ksdssp_direct(pdb_str)
-        sec_str_from_pdb_file = iotbx.pdb.secondary_structure.\
-            annotation.from_records(
-                records=records,
-                log=self.log)
+        sec_str_from_pdb_file = ref_ss_m[file].actual_sec_str
         if sec_str_from_pdb_file != None:
-          overall_helix_selection = \
-            sec_str_from_pdb_file.overall_helix_selection()
-          overall_sheet_selection = \
-            sec_str_from_pdb_file.overall_sheet_selection()
-          overall_selection = \
-            overall_helix_selection +' or ' + overall_sheet_selection
+          overall_selection = sec_str_from_pdb_file.overall_selection()
           sel_cache_ref = self.pdb_hierarchy_ref[file].atom_selection_cache()
           bsel = sel_cache_ref.selection(string=overall_selection)
           if bsel.all_eq(False):
@@ -570,8 +580,7 @@ class reference_model(object):
             if ref_match:
               map_part = self.match_map[file].get(i_seq)
               if map_part is not None:
-                key_part = \
-                  self.i_seq_name_hash_ref[file].get(map_part)
+                key_part = self.i_seq_name_hash_ref[file].get(map_part)
                 if key_part is None:
                   ref_match = False
                   key = None
