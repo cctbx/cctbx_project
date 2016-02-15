@@ -423,7 +423,7 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
           keep_going              = True,
           parameters              = parameters,
           log                     = null_out())
-      except:
+      except: # intentional
         parameters = utils.data_and_flags_master_params().extract()
         if(params.f_obs_2_label is not None):
           parameters.labels = [params.f_obs_2_label]
