@@ -55,6 +55,7 @@ from cctbx import maptbx
 from cctbx import uctbx
 from cctbx import xray
 from iotbx.cns.miller_array import crystal_symmetry_as_cns_comments
+from iotbx.file_reader import any_file
 
 import boost.python
 utils_ext = boost.python.import_ext("mmtbx_utils_ext")
@@ -1637,8 +1638,12 @@ class process_command_line_args(object):
                master_params=None,
                log=None,
                home_scope=None,
+               absolute_angle_tolerance=1.e-2,
+               absolute_length_tolerance=1.e-2,
                suppress_symmetry_related_errors=False):
     self.log = log
+    self.absolute_angle_tolerance=absolute_angle_tolerance
+    self.absolute_length_tolerance=absolute_length_tolerance
     self.pdb_file_names   = []
     self.cif_objects      = []
     self.cif_file_names   = []
@@ -1659,26 +1664,29 @@ class process_command_line_args(object):
     parsed_params = []
     command_line_params = []
     for arg in args:
-      #
-      is_ccp4_map = [
-        arg.endswith(".mrc"),
-        arg.endswith(".ccp4"),
-        arg.endswith(".map")].count(True)>0
-      #
       arg_is_processed = False
       arg_file = arg
       is_parameter = False
       if(arg.count("=")==1):
         arg_file = arg[arg.index("=")+1:]
         is_parameter = True
-      try:
-        if(not suppress_symmetry_related_errors):
-          if(not is_ccp4_map):
-            crystal_symmetries.append(
-              [arg_file, crystal_symmetry_from_any.extract_from(arg_file)])
-      except KeyboardInterrupt: raise
-      except RuntimeError: pass
+      #
+      if(self.cmd_cs is not None and self.cmd_cs.unit_cell() is not None):
+        crystal_symmetries.append(["cmd_line", self.cmd_cs])
+      cs = crystal_symmetry_from_any.extract_from(arg_file)
+      if(cs is not None and cs.unit_cell() is not None):
+        crystal_symmetries.append([arg_file, cs])
+      #
       if(os.path.isfile(arg_file)):
+        af = any_file(file_name = arg_file)
+        #### NEW, no idea why this does not work.
+        #if(af.file_type=="phil"):
+        #  params = af.file_content.objects
+        #  parsed_params.extend(params)
+        #  self.phil_file_names.append(arg_file)
+        #  print parsed_params, "'%s'"%params[0].name, "'%s'"%str(master_params.name), arg_file
+        #  arg_is_processed = True
+        #### OLD
         params = None
         try: params = iotbx.phil.parse(file_name=arg_file)
         except KeyboardInterrupt: raise
@@ -1690,55 +1698,26 @@ class process_command_line_args(object):
           parsed_params.append(params)
           arg_is_processed = True
           self.phil_file_names.append(arg_file)
-        elif(pdb.is_pdb_file(file_name=arg_file) or
-             pdb.is_pdb_mmcif_file(file_name=arg_file)):
-          # This "if(not is_parameter):" may have adverse effect when main file
-          # is provided like file=xxx.pdb in which case it will be treatd as
-          # parameter
+          #print parsed_params, "'%s'"%params.name, "'%s'"%str(master_params.name), arg_file
+        elif(af.file_type=="pdb"): # which may be mmcif too!
           if(not is_parameter):
             self.pdb_file_names.append(arg_file)
             arg_is_processed = True
-        elif(is_ccp4_map):
-          assert [self.ccp4_map, self.ccp4_map_file_name].count(None)==2
-          from iotbx import ccp4_map
-          self.ccp4_map = iotbx.ccp4_map.map_reader(file_name=arg_file)
+        elif(af.file_type=="ccp4_map"):
+          self.ccp4_map = af.file_content
           self.ccp4_map_file_name = arg_file
-          space_group_number = self.ccp4_map.space_group_number
-          if(space_group_number==0): space_group_number=1 # ad hoc fix
-          try:
-            if(not suppress_symmetry_related_errors):
-              cs = crystal.symmetry(self.ccp4_map.unit_cell().parameters(),
-                space_group_number)
-              crystal_symmetries.append([arg_file, cs])
-          except KeyboardInterrupt: raise
-          except RuntimeError: pass
+          crystal_symmetries.append([arg_file, af.crystal_symmetry()])
           arg_is_processed = True
-        else:
-          try:
-            cif_object = []
-            if(arg_file.endswith(".cif") or arg_file.endswith(".cif.gz")):
-              reflection_file = reflection_file_reader.any_reflection_file(
-                file_name = arg, ensure_read_access = False)
-              if reflection_file.file_type() is not None:
-                self.reflection_files.append(reflection_file)
-                self.reflection_file_names.append(arg)
-                arg_is_processed = True
-              else:
-                cif_object = cif.reader(file_path=arg, strict=False).model()
-          except KeyboardInterrupt: raise
-          except Exception: pass
-          else:
-            if(len(cif_object) > 0):
-              self.cif_objects.append((arg_file, cif_object))
-              self.cif_file_names.append(os.path.abspath(arg_file))
-              arg_is_processed = True
-      if(not arg_is_processed):
-        reflection_file = reflection_file_reader.any_reflection_file(
-          file_name = arg, ensure_read_access = False)
-        if(reflection_file.file_type() is not None):
-          self.reflection_files.append(reflection_file)
+        elif(af.file_type=="hkl"):
+          self.reflection_files.append(af.file_content)
           self.reflection_file_names.append(arg)
           arg_is_processed = True
+        elif(af.file_type=="cif"):
+          cif_object = af.file_object.model()
+          if(len(cif_object) > 0):
+            self.cif_objects.append((arg_file, cif_object))
+            self.cif_file_names.append(os.path.abspath(arg_file))
+            arg_is_processed = True
       if(master_params is not None and is_parameter):
         try:
           params = parameter_interpreter.process(arg = arg)
@@ -1762,37 +1741,22 @@ class process_command_line_args(object):
         raise Sorry("Unused parameter definitions.")
     else:
       assert len(command_line_params) == 0
+    # Crystal symmetry: validate and finalize consensus object
     if(len(crystal_symmetries)>1):
-      cs0 = None
+      assert self.crystal_symmetry is None # make sure it's undefined from start
+      cs0, cs0_source = crystal_symmetries[0][1], crystal_symmetries[0][0]
       for cs in crystal_symmetries:
-        if(cs[1] is not None and cs[1].unit_cell() is not None):
-          cs0 = cs[1]
-          break
-      if(cs0 is not None and cs0.unit_cell() is not None):
-        for cs in crystal_symmetries:
-         if(cs[1] is not None and cs[1].unit_cell() is not None):
-           is_similar_cs = cs0.is_similar_symmetry(cs[1],
-             absolute_angle_tolerance=1.e-2,
-             absolute_length_tolerance=1.e-2)
-           if(not is_similar_cs):
-             for cs in crystal_symmetries:
-               if(cs[1] is not None):
-                 print >> self.log, cs[0], cs[1].unit_cell(), cs[1].space_group_info()
-             if(self.cmd_cs is None or self.cmd_cs.unit_cell() is None):
-               msg = "Crystal symmetry mismatch between different files."
-               raise Sorry("%s\n"%(msg))
-             else:
-               cs0 = self.cmd_cs
-               break
-        self.crystal_symmetry = cs0
+         is_similar_cs = cs0.is_similar_symmetry(cs[1],
+           absolute_angle_tolerance=self.absolute_angle_tolerance,
+           absolute_length_tolerance=self.absolute_angle_tolerance)
+         if(not is_similar_cs and not suppress_symmetry_related_errors):
+           print >> self.log, cs0_source, cs0.unit_cell(), cs0.space_group_info()
+           print >> self.log, cs[0], cs[1].unit_cell(), cs[1].space_group_info()
+           msg = "Crystal symmetry mismatch between different files."
+           raise Sorry("%s\n"%(msg))
+      self.crystal_symmetry = cs0
     elif(len(crystal_symmetries) == 1):
       self.crystal_symmetry = crystal_symmetries[0][1]
-    if(self.cmd_cs is not None and self.cmd_cs.unit_cell() is not None):
-      self.crystal_symmetry = self.cmd_cs
-    if(self.crystal_symmetry is not None):
-      if([self.crystal_symmetry.unit_cell(),
-          self.crystal_symmetry.space_group()].count(None)>0):
-         raise Sorry("Corrupt crystal symmetry.")
 
   def get_reflection_file_server (self) :
     if (self.reflection_file_server is None) :

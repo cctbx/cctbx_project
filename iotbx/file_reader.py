@@ -26,9 +26,6 @@ Examples
 # MTZ file handling is kludgy, but unfortunately there are circumstances
 # where only an MTZ file will do, so it requires some extra code to work
 # around the automatic behavior
-#
-# XXX note that there is some cross-importing from mmtbx here, but it is done
-# inline, not globally
 
 from libtbx.utils import Sorry
 import cPickle
@@ -241,7 +238,6 @@ class any_file_input (object) :
     file_name_clean = strip_shelx_format_extension(file_name)
     self.file_size = os.path.getsize(file_name_clean)
     self.get_processed_file = get_processed_file
-
     (file_base, file_ext) = splitext(file_name)
     file_ext = file_ext.lower()
     if (force_type not in [None, "None"]) :
@@ -362,7 +358,6 @@ class any_file_input (object) :
     assert (not file_ext in [".ccp4", ".img", ".osc", ".mccd"])
     import iotbx.cif
     from iotbx.reflection_file_reader import any_reflection_file
-    from iotbx.reflection_file_utils import reflection_file_server
     cif_file = any_reflection_file(str(self.file_name))
     if cif_file.file_type() is not None:
       self._file_object = cif_file
@@ -474,16 +469,24 @@ class any_file_input (object) :
         if self._file_type is not None :
           break
 
-  def crystal_symmetry (self) :
+  def crystal_symmetry(self):
     """
     Extract the crystal symmetry (if any).  Only valid for model (PDB/mmCIF)
     and reflection files.
     """
-    if (self._file_type == "pdb") :
+    from cctbx import crystal
+    if(self._file_type == "pdb"):
       return self._file_object.input.crystal_symmetry()
-    elif (self._file_type == "hkl") :
-      return self._file_object.file_content().crystal_symmetry()
-    else :
+    elif(self._file_type == "hkl"):
+      try:
+        return self._file_object.file_content().crystal_symmetry()
+      except AttributeError:
+        return self._file_object.as_miller_arrays()[0].crystal_symmetry()
+    elif(self._file_type == "ccp4_map"):
+      ucp = self._file_object.unit_cell_parameters
+      sgn = max(1, self._file_object.space_group_number)
+      return crystal.symmetry(ucp, sgn)
+    else:
       raise NotImplementedError()
 
   def file_info (self, show_file_size=True) :

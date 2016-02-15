@@ -348,6 +348,8 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
     args=command_line.args,
     cmd_cs=command_line.symmetry,
     master_params=fo_minus_fo_master_params(),
+    absolute_angle_tolerance=5,
+    absolute_length_tolerance=1,
     log=log,
     suppress_symmetry_related_errors=True)
   working_phil = processed_args.params
@@ -391,6 +393,8 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
       args=command_line.args,
       cmd_cs=command_line.symmetry,
       master_params=fo_minus_fo_master_params(),
+      absolute_angle_tolerance=5,
+      absolute_length_tolerance=1,
       log=StringIO())
     crystal_symmetry = processed_args.crystal_symmetry
   #
@@ -409,10 +413,25 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
         force_symmetry   = True,
         reflection_files = [reflection_file],
         err              = null_out())
-      determine_data_and_flags_result = utils.determine_data_and_flags(
-        reflection_file_server  = reflection_file_server,
-        keep_going              = True,
-        log                     = null_out())
+      # XXX UGLY !!!
+      try:
+        parameters = utils.data_and_flags_master_params().extract()
+        if(params.f_obs_1_label is not None):
+          parameters.labels = [params.f_obs_1_label]
+        determine_data_and_flags_result = utils.determine_data_and_flags(
+          reflection_file_server  = reflection_file_server,
+          keep_going              = True,
+          parameters              = parameters,
+          log                     = null_out())
+      except:
+        parameters = utils.data_and_flags_master_params().extract()
+        if(params.f_obs_2_label is not None):
+          parameters.labels = [params.f_obs_2_label]
+        determine_data_and_flags_result = utils.determine_data_and_flags(
+          reflection_file_server  = reflection_file_server,
+          keep_going              = True,
+          parameters              = parameters,
+          log                     = null_out())
       f_obss.append(determine_data_and_flags_result.f_obs)
   else:
     if([params.f_obs_1_file_name,params.f_obs_2_file_name].count(None)==2):
