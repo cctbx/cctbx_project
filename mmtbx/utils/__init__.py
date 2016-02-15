@@ -20,7 +20,6 @@ from cctbx.array_family import flex
 from libtbx.utils import \
   Sorry, date_and_time, host_and_user, multi_out, null_out
 import iotbx.phil
-from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx import crystal_symmetry_from_any
 from iotbx.pdb import xray_structure
