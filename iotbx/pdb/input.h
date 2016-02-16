@@ -399,7 +399,7 @@ namespace detail {
       construct_hierarchy(
         bool residue_group_post_processing=true,
         bool set_atom_i_seq=true,
-        bool sort_atoms=false);
+        bool sort_atoms=true);
 
     protected:
       std::string source_info_;

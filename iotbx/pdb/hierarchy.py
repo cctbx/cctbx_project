@@ -375,7 +375,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     import iotbx.pdb
     models = iotbx.pdb.input(
       source_info="pickle",
-      lines=flex.split_lines(state[-1])).construct_hierarchy().models()
+      lines=flex.split_lines(state[-1])).construct_hierarchy(sort_atoms=False).models()
     self.pre_allocate_models(number_of_additional_models=len(models))
     for model in models:
       self.append_model(model=model)
@@ -1650,10 +1650,11 @@ class _(boost.python.injector, ext.atom_with_labels):
 
 class input_hierarchy_pair(object):
 
-  def __init__(self, input, hierarchy=None):
+  def __init__(self, input, hierarchy=None, sort_atoms=False):
     self.input = input
     if (hierarchy is None):
-      hierarchy = self.input.construct_hierarchy(set_atom_i_seq=True)
+      hierarchy = self.input.construct_hierarchy(
+          set_atom_i_seq=True, sort_atoms=sort_atoms)
     self.hierarchy = hierarchy
 
   def __getinitargs__(self):
@@ -1723,7 +1724,8 @@ class input(input_hierarchy_pair):
   "")
   """
 
-  def __init__(self, file_name=None, pdb_string=None, source_info=Auto):
+  def __init__(self, file_name=None,
+      pdb_string=None, source_info=Auto, sort_atoms=True):
     """
     Initializes an input from a file or string.
 
@@ -1743,7 +1745,7 @@ class input(input_hierarchy_pair):
       if (source_info is Auto): source_info = "string"
       pdb_inp = iotbx.pdb.input(
         source_info=source_info, lines=flex.split_lines(pdb_string))
-    super(input, self).__init__(input=pdb_inp)
+    super(input, self).__init__(input=pdb_inp, sort_atoms=sort_atoms)
 
 class show_summary(input):
 

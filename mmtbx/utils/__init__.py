@@ -1057,7 +1057,8 @@ class process_pdb_file_srv(object):
                      cif_parameters            = None,
                      mon_lib_srv               = None,
                      ener_lib                  = None,
-                     use_neutron_distances     = False):
+                     use_neutron_distances     = False,
+                     sort_atoms                = True):
     self.raw_records               = None
     self.crystal_symmetry          = crystal_symmetry
     self.pdb_parameters            = pdb_parameters
@@ -1067,6 +1068,7 @@ class process_pdb_file_srv(object):
     self.cif_parameters            = cif_parameters
     self.log                       = log
     self.use_neutron_distances     = use_neutron_distances
+    self.sort_atoms                = sort_atoms
     if(mon_lib_srv is None): self.mon_lib_srv = monomer_library.server.server()
     else: self.mon_lib_srv = mon_lib_srv
     if(ener_lib is None):
@@ -1116,7 +1118,7 @@ class process_pdb_file_srv(object):
           msg.append("  %s" % show_string(file_name))
       raise Sorry("\n".join(msg))
     if(stop_if_duplicate_labels):
-      pdb_inp.construct_hierarchy().overall_counts() \
+      pdb_inp.construct_hierarchy(sort_atoms=self.sort_atoms).overall_counts() \
         .raise_duplicate_atom_labels_if_necessary()
     #
     # converge pdb_interpretation_params and use_neutron from scattering
@@ -1142,7 +1144,8 @@ class process_pdb_file_srv(object):
       force_symmetry           = True,
       log                      = self.log,
       restraints_loading_flags = restraints_loading_flags,
-      substitute_non_crystallographic_unit_cell_if_necessary=allow_missing_symmetry)
+      substitute_non_crystallographic_unit_cell_if_necessary=allow_missing_symmetry,
+      sort_atoms               = self.sort_atoms)
     processed_pdb_file.xray_structure(show_summary=True)
     if self.stop_for_unknowns == False:
       ignore_unknown_nonbonded_energy_types=True # only ignore if specified

@@ -12,7 +12,7 @@ def run(args, out=sys.stdout):
       assert os.path.exists(file_name)
       print >> out, "Converting %s to mmCIF format." %file_name
       pdb_input = iotbx.pdb.pdb_input(file_name=file_name)
-      hierarchy = pdb_input.construct_hierarchy()
+      hierarchy = pdb_input.construct_hierarchy(sort_atoms=False)
       pdb_atoms = hierarchy.atoms()
       pdb_atoms.set_chemical_element_simple_if_necessary()
       elements = pdb_atoms.extract_element().strip()

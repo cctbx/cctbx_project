@@ -2735,6 +2735,7 @@ class build_all_chain_proxies(linking_mixins):
         carbohydrate_callback=None,
         #use_neutron_distances=False,
         restraints_loading_flags=None,
+        sort_atoms=True,
                ):
     import iotbx.cif.model
     self.cif = iotbx.cif.model.cif()
@@ -2762,12 +2763,12 @@ class build_all_chain_proxies(linking_mixins):
         assert raw_records is not None
         raw_records = flex.std_string(raw_records)
       self.pdb_inp = pdb.input(source_info=None, lines=raw_records)
-    self.pdb_hierarchy = self.pdb_inp.construct_hierarchy()
+    self.pdb_hierarchy = self.pdb_inp.construct_hierarchy(sort_atoms=sort_atoms)
     if atom_selection_string is not None:
       sel = self.pdb_hierarchy.atom_selection_cache().selection(atom_selection_string)
       temp_string = self.pdb_hierarchy.select(sel).as_pdb_string()
       self.pdb_inp = pdb.input(source_info=None, lines=temp_string)
-      self.pdb_hierarchy = self.pdb_inp.construct_hierarchy()
+      self.pdb_hierarchy = self.pdb_inp.construct_hierarchy(sort_atoms=sort_atoms)
     self.pdb_atoms = self.pdb_hierarchy.atoms()
     self.pdb_atoms.reset_i_seq()
     self.counts = self.pdb_hierarchy.overall_counts()
@@ -4956,6 +4957,7 @@ class process(object):
         carbohydrate_callback=None,
         #use_neutron_distances=False,
         restraints_loading_flags=None,
+        sort_atoms=True,
         ):
     self.mon_lib_srv = mon_lib_srv
     self.ener_lib = ener_lib
@@ -4985,6 +4987,7 @@ class process(object):
       carbohydrate_callback=carbohydrate_callback,
       #use_neutron_distances=use_neutron_distances,
       restraints_loading_flags=restraints_loading_flags,
+      sort_atoms=sort_atoms,
       )
     if (log is not None
         and self.all_chain_proxies.time_building_chain_proxies is not None):
@@ -5440,6 +5443,7 @@ def run(
       assume_hydrogens_all_missing=True,
       hard_minimum_nonbonded_distance=0.001,
       nonbonded_distance_threshold=0.5,
+      sort_atoms=True,
       log=None):
   if (log is None): log = sys.stdout
   mon_lib_srv = server.server()
@@ -5472,6 +5476,7 @@ def run(
       substitute_non_crystallographic_unit_cell_if_necessary
         =substitute_non_crystallographic_unit_cell_if_necessary,
       max_atoms=max_atoms,
+      sort_atoms=sort_atoms,
       log=log)
     processed_pdb_file.geometry_restraints_manager(
       assume_hydrogens_all_missing=assume_hydrogens_all_missing,
