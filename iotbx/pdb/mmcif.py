@@ -402,7 +402,10 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
   def file_type (self) :
     return "mmcif"
 
-  def construct_hierarchy(self, set_atom_i_seq=True):
+  def construct_hierarchy(self, set_atom_i_seq=True, sort_atoms=True):
+    """
+    sort_atoms is not applicable here, introduced for call compatibility
+    """
     if (set_atom_i_seq) :
       self.hierarchy.reset_atom_i_seqs()
     return self.hierarchy
