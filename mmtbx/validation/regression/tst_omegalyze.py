@@ -5,16 +5,17 @@ from iotbx import pdb
 import libtbx.load_env
 import os
 
-ref_omegalyze_give_text = """residue:type:omega:conformation
- A  41  PRO:Pro:-14.27:Cis
- A 207  LEU:General:123.05:Twisted
- A 505  PRO:Pro:-0.31:Cis
- A 585  LYS:General:-12.68:Cis
- A 604  GLY:General:-144.84:Twisted
- B 930  LEU:General:-136.14:Twisted
- B1332  ASP:General:134.92:Twisted
- B1475  LYS:General:-19.25:Cis
- B1594  PRO:Pro:8.04:Cis
+ref_omegalyze_give_text = """residues:type:omega:conformation:mc_bmax
+ A  40  PHE to  A  41  PRO: Pro     : -14.27:Cis     :28.76
+ A 206  VAL to  A 207  LEU: non-Pro : 123.05:Twisted :29.35
+ A 504  ILE to  A 505  PRO: Pro     :  -0.31:Cis     :27.55
+ A 584  ASN to  A 585  LYS: non-Pro : -12.68:Cis     :26.39
+ A 603  ILE to  A 604  GLY: non-Pro :-144.84:Twisted :27.51
+ B 929  ARG to  B 930  LEU: non-Pro :-136.14:Twisted :26.97
+ B1331  LYS to  B1332  ASP: non-Pro : 134.92:Twisted :27.81
+ B1474  GLU to  B1475  LYS: non-Pro : -19.25:Cis     :43.95
+ B1593  LYS to  B1594  PRO: Pro     :   8.04:Cis     :26.47
+
 SUMMARY: 3 cis prolines out of 77 PRO
 SUMMARY: 0 twisted prolines out of 77 PRO
 SUMMARY: 2 other cis residues out of 1464 nonPRO

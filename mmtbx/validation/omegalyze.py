@@ -87,8 +87,8 @@ OMEGALYZE_TRANS   =0
 OMEGALYZE_CIS     =1
 OMEGALYZE_TWISTED =2
 
-res_types = ["general", "proline"]
-res_type_labels = ["General", "Pro"]
+res_types = ["non-proline", "proline"] #used in GUI table
+res_type_labels = ["non-Pro", "Pro    "] #used in text output for MolProbity
 res_type_kin = ["nonPro", "Pro"]
 omega_types = ["Trans", "Cis", "Twisted"]
 #}}}
@@ -109,7 +109,12 @@ class omega_result(residue):
     "omega_type",
     "omega",
     "is_nontrans",
-    "markup_atoms"
+    "markup_atoms",
+    "highest_mc_b",
+    "prev_resseq",
+    "prev_icode",
+    "prev_resname",
+    "prev_altloc"
   ]
   __slots__ = residue.__slots__ + __omega_attr__
 
@@ -126,6 +131,11 @@ class omega_result(residue):
   def residue_type_kin(self):
     return res_type_kin[self.res_type]
 
+  def prev_id_str(self):
+    return "%2s%4s%1s%1s%3s" % (
+      self.chain_id, self.prev_resseq, self.prev_icode, self.prev_altloc,
+      self.prev_resname)
+
   def as_string(self):
     return "%-20s %-12s %6.2f %-20s" % (self.id_str(), self.residue_type(),
       self.omega, self.omegalyze_type())
@@ -136,8 +146,8 @@ class omega_result(residue):
       self.altloc, self.resname)
 
   def format_old(self):
-    return "%s:%s:%.2f:%s" % (self.id_str(), self.residue_type(),
-      self.omega, self.omegalyze_type())
+    return "%s to %s: %s :%s:%s:%s" % (self.prev_id_str(),self.id_str(), self.residue_type(),
+      ('%.2f'%self.omega).rjust(7), self.omegalyze_type().ljust(8),self.highest_mc_b)
 
   def as_kinemage(self, triangles=False, vectors=False):
     if triangles:
@@ -186,8 +196,13 @@ class omega_result(residue):
       out_this = vector_line1 + vector_line2
     return out_this
 
+  #def as_table_row_phenix(self):
+  #  return [ self.chain_id, "%s %s" % (self.resname, self.resid),
+  #           res_types[self.res_type], self.omega, omega_types[self.omega_type] ]
+
   def as_table_row_phenix(self):
-    return [ self.chain_id, "%s %s" % (self.resname, self.resid),
+    #'%4s%1s' string formatting for previous residue matched string formatting within self.resid
+    return [ self.chain_id, "%s %4s%1s to %s %s" % (self.prev_resname, self.prev_resseq, self.prev_icode, self.resname, self.resid),
              res_types[self.res_type], self.omega, omega_types[self.omega_type] ]
 
 #the ramachandran_ensemble class is only called in mmtbx/validation/ensembles
@@ -205,10 +220,11 @@ class omegalyze(validation):
     ]
 
   program_description = "Analyze protein backbone peptide dihedrals (omega)"
-  output_header = "residue:type:omega:conformation"
-  gui_list_headers = ["Chain","Residue","Residue type","omega","conformation"]
+  output_header = "residues:type:omega:conformation:mc_bmax"
+
+  gui_list_headers = ["Chain","Residues","Residue type","omega","conformation"]
   gui_formats = ["%s", "%s", "%s", "%.2f", "%s"]
-  wx_column_widths = [125]*5
+  wx_column_widths = [75,200,125,125,125]
 
   def get_result_class(self): return omega_result
 
@@ -279,6 +295,7 @@ class omegalyze(validation):
                 prev_keys = sorted(prev_rezes.keys())
                 prev_atom_list = prev_rezes.get(prev_keys[0])
             omega=get_omega(prev_atom_list, atom_list)
+            highest_mc_b = get_highest_mc_b(prev_atom_list, atom_list)
             if omega is not None:
               resname = atom_group.resname[0:3]
               coords = get_center(atom_group)
@@ -314,18 +331,39 @@ class omegalyze(validation):
                     markup_atoms[3] = kin_atom(
                       id_str=a_.atom_group_id_str(),xyz=a_.xyz)
                 #------------
+              #prevres=residues[i-1]
+              #find prev res identities for printing
+              prev_alts = []
+              prev_resnames = {}
+              for ag in residues[i-1].atom_groups():
+                prev_alts.append(ag.altloc)
+                prev_resnames[ag.altloc] = ag.resname
+              if alt_conf in prev_alts:
+                prev_altloc = alt_conf
+              else:
+                if len(prev_alts) > 1:
+                  prev_altloc = prev_alts[1]
+                else:
+                  prev_altloc = prev_alts[0]
+              prev_resname = prev_resnames[prev_altloc]
+              #done finding prev res identities
               result = omega_result(
                 chain_id=chain_id,
                 resseq=residue_group.resseq,
                 icode=residue_group.icode,
                 resname=atom_group.resname,
                 altloc=atom_group.altloc,
+                prev_resseq=residues[i-1].resseq,
+                prev_icode=residues[i-1].icode,
+                prev_resname=prev_resname,
+                prev_altloc=prev_altloc,
                 segid=None,
                 omega=omega,
                 omega_type=omega_type,
                 res_type=res_type,
                 is_nontrans=is_nontrans,
                 outlier=is_nontrans,
+                highest_mc_b=highest_mc_b,
                 xyz=coords,
                 markup_atoms=markup_atoms)
               if is_nontrans or not nontrans_only: #(not nontrans_only or is_nontrans)
@@ -352,13 +390,13 @@ class omegalyze(validation):
     cisnonprovectorlist = []
     twistlist = []
     twistvectorlist = []
-    cisprohead = ["@subgroup {Cis peptides} dominant master= {Cis proline}\n",
+    cisprohead = ["@subgroup {Cis proline} dominant master= {Cis proline} off\n",
       "@trianglelist {cis pro omega triangles} color= sea\n"]
     cisnonprohead = [
-      "@subgroup {Cis peptides} dominant master= {Cis non-proline}\n",
+      "@subgroup {Cis peptides} dominant master= {Cis non-proline} off\n",
       "@trianglelist {cis nonpro omega triangles} color= lime\n"]
     twisthead = [
-      "@subgroup {Twisted peptides} dominant master= {Twisted peptides}\n",
+      "@subgroup {Twisted peptides} dominant master= {Twisted peptides} off\n",
       "@trianglelist {twisted omega triangles} color= yellow\n"]
     cisprovectorhead = ["@vectorlist {cis pro omega vectors} color= sea width=3\n"]
     cisnonprovectorhead = ["@vectorlist {cis nonpro omega vectors} color= lime width=3\n"]
@@ -384,36 +422,6 @@ class omegalyze(validation):
     return "".join(outlist)
     #it's my understanding that .join(list) is more efficient than string concat
 
-##################################################
-#gui_list_headers = ["Chain","Residue","Residue type","omega","conformation"]
-# GUI output
-###  def as_table_row_phenix(self):
-###    return [ self.chain_id, "%s %s" % (self.resname, self.resid),
-###             res_types[self.res_type], self.omega, omega_types[self.omega_type] ]
-
-#from validation
-##  def as_gui_table_data (self, outliers_only=True, include_zoom=False) :
-##    """
-##    Format results for display in the Phenix GUI.
-##    """
-##    table = []
-##    for result in self.iter_results(outliers_only) :
-##      extra = []
-##      if (include_zoom) :
-##        extra = result.zoom_info()
-##      row = result.as_table_row_phenix()
-##      assert (len(row) == len(self.gui_list_headers) == len(self.gui_formats))
-##      table.append(row + extra)
-##    return table
-
-#from entity
-##def zoom_info (self) :
-##    """
-##    Returns data needed to zoom/recenter the graphics programs from the Phenix
-##    GUI.
-##    """
-##    return [ self.as_selection_string(), self.xyz ]
-
   def as_coot_data(self):
     data = []
     for result in self.results:
@@ -422,7 +430,7 @@ class omegalyze(validation):
     return data
 
   def show_summary(self, out=sys.stdout, prefix=""):
-    print >> out, prefix + 'SUMMARY: %i cis prolines out of %i PRO' % (
+    print >> out, prefix + '\nSUMMARY: %i cis prolines out of %i PRO' % (
       self.omega_count[OMEGA_PRO][OMEGALYZE_CIS],
       self.residue_count[OMEGA_PRO])
     print >> out, prefix + 'SUMMARY: %i twisted prolines out of %i PRO' % (
@@ -444,7 +452,7 @@ class omegalyze(validation):
     if self.omega_count[OMEGA_PRO][OMEGALYZE_TWISTED] == 0:
       out.write("0:")
     else:
-      out.write('%.3f' % (self.omega_count[OMEGA_PRO][OMEGALYZE_TWISTED]/self.residue_count[OMEGA_GENERAL]*100)+":")
+      out.write('%.3f' % (self.omega_count[OMEGA_PRO][OMEGALYZE_TWISTED]/self.residue_count[OMEGA_PRO]*100)+":")
     out.write("%i" % self.residue_count[OMEGA_PRO] + ":")
     if self.omega_count[OMEGA_GENERAL][OMEGALYZE_CIS] == 0:
       out.write("0:")
@@ -527,10 +535,24 @@ def get_omega(prev_atoms, atoms):
   else:
     return None
 
+def get_highest_mc_b(prev_atoms, atoms):
+  highest_mc_b = 0
+  if (prev_atoms is not None):
+    for atom in prev_atoms:
+      if atom is not None and atom.name in [" CA "," C  "," N  "," O  ","CB"]:
+        if atom.b > highest_mc_b:
+          highest_mc_b = atom.b
+  if (atoms is not None):
+    for atom in atoms:
+      if atom is not None and atom.name in [" CA "," C  "," N  "," O  ","CB"]:
+        if atom.b > highest_mc_b:
+          highest_mc_b = atom.b
+  return highest_mc_b
+
 def get_center(ag):
   coords = None
   for atom in ag.atoms():
-    if (atom.name == " CA "):
+    if (atom.name == " N  "):
       coords = atom.xyz
   return coords
 
@@ -554,10 +576,9 @@ def run (args, out=sys.stdout, quiet=False) :
   if params.kinemage:
     print >> out, result.as_kinemage()
   elif params.oneline:
-    result.summary_only(pdbid=params.model)
+    result.summary_only(out=out, pdbid=params.model)
   elif params.text:
     result.show_old_output(out=out, verbose=True)
-
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
