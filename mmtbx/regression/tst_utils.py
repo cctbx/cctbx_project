@@ -320,7 +320,8 @@ HETATM 6015  HO6 NAG A 467      40.829 -15.206  30.746  1.00 55.81           H
 
 def exercise_corrupt_cryst1():
   """
-  Inspired by PDB code 2y9k.
+  Consistency check for cs derived in different scenarious (inspired by PDB code 
+  2y9k).
   """
   pdb_str = """
 CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1          15
@@ -338,33 +339,14 @@ ATOM      4  O   GLY A  34     -72.196  12.128 -25.997  1.00  0.00           O
   of = open("tmp_exercise_corrupt_cryst1.pdb", "w")
   print >> of, pdb_str
   of.close()
-  exception_message = None
-  try:
-    utils.process_command_line_args(args=["tmp_exercise_corrupt_cryst1.pdb"])
-  except Exception, e:
-    exception_message = str(e)
-  assert exception_message == "Corrupt crystal symmetry."
-
-  # Ensure the same behavior if there is more parameters
-  exception_message2 = None
-  try:
-    utils.process_command_line_args(args=["tmp_exercise_corrupt_cryst1.pdb",
-        "bla=bla"])
-  except Exception, e:
-    exception_message2 = str(e)
-  assert exception_message2 == "Corrupt crystal symmetry."
-
-  exception_message3 = None
-  try:
-    utils.process_command_line_args(args=["tmp_exercise_corrupt_cryst1.pdb",
-        "bla"])
-  except Exception, e:
-    exception_message3 = str(e)
-  assert exception_message3 == "Corrupt crystal symmetry."
+  base_arg = ["tmp_exercise_corrupt_cryst1.pdb"]
+  for extra_arg in [[], ["bla=bla"], ["bla"]]:
+    o = utils.process_command_line_args(args=base_arg+extra_arg)
+    assert o.crystal_symmetry is None
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
-  # exercise_corrupt_cryst1()
+  exercise_corrupt_cryst1()
   exercise_d_data_target_d_atomic_params()
   exercise_d_data_target_d_atomic_params2()
   exercise_get_atom_selections(verbose=verbose)
