@@ -17,6 +17,7 @@ class SpaceGroupCtrl (wx.ComboBox, phil_controls.PhilCtrl) :
     self.SetWindowStyle(style | wx.TE_PROCESS_ENTER)
     self.SetValidator(SpaceGroupValidator())
     self.Bind(wx.EVT_TEXT_ENTER, lambda evt: self.Validate(), self)
+    self.Bind(wx.EVT_KILL_FOCUS , lambda evt: self.OnKillFocus(evt), self)
     if (saved_value is not None) :
       self.SetSpaceGroup(saved_value)
     self.SetToolTip(wx.ToolTip("You may use any valid space group symbol, "+
@@ -54,6 +55,15 @@ class SpaceGroupCtrl (wx.ComboBox, phil_controls.PhilCtrl) :
 
   def GetStringValue (self) :
     return str(self.GetPhilValue())
+
+  def OnKillFocus(self, evt):
+    if hasattr(self.GetParent(), 'get_philhandler_and_object'):
+      # validate on Phaser MR whenever we loose focus
+      philhandler, philobject = self.GetParent().get_philhandler_and_object()
+      philvalue = self.GetPhilValue()
+      from wxGUI2.Programs import Extensions
+      Extensions.check_point_group(philhandler, philobject, philvalue)
+    evt.Skip()
 
   def Validate (self) :
     # XXX why doesn't self.Validate() work?
