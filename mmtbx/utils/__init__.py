@@ -1267,7 +1267,7 @@ def assert_xray_structures_equal(
     sct1 = x1.scatterers().extract_scattering_types()
     sct2 = x2.scatterers().extract_scattering_types()
     for sct1_, sct2_ in zip(sct1, sct2):
-      assert sct1_ == sct2_
+      assert sct1_ == sct2_, [sct1_, sct2_]
   if(scattering_types):
     sr1 = x1.scattering_type_registry().unique_gaussians_as_list()
     sr2 = x2.scattering_type_registry().unique_gaussians_as_list()

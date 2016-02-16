@@ -157,7 +157,7 @@ def exercise_01():
   for s1, s2 in zip(xrs1.scatterers(), xrs2.scatterers()):
     if(s1.element_symbol().strip() not in ['H','D']):
       assert s1.element_symbol().strip() == s2.element_symbol().strip()
-      assert approx_equal(s1.site, s2.site)
+      assert approx_equal(s1.site, s2.site, 0.03)
       cntr += 1
   assert cntr == 19
 
@@ -270,8 +270,12 @@ def exercise_02():
     tmp_f.close()
   xrs_exact = iotbx.pdb.pdb_input(
     file_name = "m_good.pdb").xray_structure_simple()
-  xrs_part = iotbx.pdb.pdb_input(
-    file_name = "m_bad.pdb").xray_structure_simple()
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv              = monomer_library.server.server(),
+    ener_lib                 = monomer_library.server.ener_lib(),
+    file_name                = "m_bad.pdb")
+  ph_part = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  xrs_part = processed_pdb_file.xray_structure()
   miller_set = miller.build_set(
     crystal_symmetry = xrs_exact.crystal_symmetry(),
     anomalous_flag   = False,
@@ -289,16 +293,10 @@ def exercise_02():
     target_name                  = "ls_wunit_k1",
     f_obs                        = f_obs)
   #
-  mon_lib_srv = monomer_library.server.server()
-  ener_lib = monomer_library.server.ener_lib()
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-    mon_lib_srv              = mon_lib_srv,
-    ener_lib                 = ener_lib,
-    file_name                = "m_bad.pdb")
   model = mmtbx.model.manager(
-    xray_structure             = xrs_part,
-    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy,
-    log                        = None)
+    xray_structure = xrs_part,
+    pdb_hierarchy  = ph_part,
+    log            = None)
   #
   out = StringIO()
   params = find_hydrogens.all_master_params().extract()
