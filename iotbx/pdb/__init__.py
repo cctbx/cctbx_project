@@ -1567,7 +1567,7 @@ class join_fragment_files(object):
         info.append("REMARK %s" % iotbx.pdb.format_cryst1_record(cs, z=z_))
         self.crystal_symmetry = self.crystal_symmetry.join_symmetry(
           cs, force=True)
-      roots.append(pdb_inp.construct_hierarchy())
+      roots.append(pdb_inp.construct_hierarchy(sort_atoms=False))
     if self.crystal_symmetry.unit_cell() is not None:
       info.append(iotbx.pdb.format_cryst1_record(
         crystal_symmetry=self.crystal_symmetry, z=z))

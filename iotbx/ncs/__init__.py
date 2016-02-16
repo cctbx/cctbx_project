@@ -140,6 +140,11 @@ class input(object):
           match_radius=4.0,
           ignore_chains=None):
     """
+    TODO:
+    1. switch from iotbx.pdb.hierarchy.input to iotbx.pdb.input
+    2. Get rid of file_name, file_path
+
+
     Select method to build ncs_group_object
 
     order of implementation:

@@ -1150,10 +1150,10 @@ namespace {
     str4 name2 = a2.data->name.strip();
     name2.replace_in_place('*', '\'');
     // hydrogens to the end first, no looking into tables
-    if (name1.elems[0] == 'H' && name2.elems[0] != 'H') return false;
-    if (name2.elems[0] == 'H' && name1.elems[0] != 'H') return true;
     int pos1 = pos_in_vector(ordered_names, name1);
     int pos2 = pos_in_vector(ordered_names, name2);
+    bool a1_is_hydrogen = name1.elems[0] == 'H';
+    bool a2_is_hydrogen = name2.elems[0] == 'H';
     // if (pos1 >= ordered_names.size()) {
     //   std::cout << "WARNING, unknown name:" << name1.elems << "\n";
     // }
@@ -1162,8 +1162,13 @@ namespace {
     // }
     if (pos1 == pos2) {
       // The both atoms are not in lists.
+      // Don't put this check before because of 1HG1 type hydrogens...
+      if (name1.elems[0] == 'H' && name2.elems[0] != 'H') return false;
+      if (name2.elems[0] == 'H' && name1.elems[0] != 'H') return true;
       return a1.data->name < a2.data->name;
     }
+    if (a1_is_hydrogen && !a2_is_hydrogen) return false;
+    if (!a1_is_hydrogen && a2_is_hydrogen) return true;
     return pos1 < pos2;
   }
 
@@ -1181,35 +1186,35 @@ namespace {
         "CH", "NH", "OH", "SH", "CH1", "NH1", "OH1", "SH1", "CH2", "NH2", "OH2", "SH2", "CH3", "NH3", "OH3", "SH3",
         "OXT",
 
-        "H", "H1", "H2", "H3",
+        "H", "H1", "1H", "H2", "2H", "H3", "3H",
         "HA",
-        "HA1", "HA11", "HA12", "HA13",
-        "HA2", "HA21", "HA22", "HA23",
-        "HA3", "HA33", "HA33", "HA33",
+        "HA1", "1HA", "HA11", "1HA1", "HA12", "2HA1", "HA13", "3HA1",
+        "HA2", "2HA", "HA21", "1HA2", "HA22", "2HA2", "HA23", "3HA2",
+        "HA3", "3HA", "HA31", "1HA3", "HA32", "2HA3", "HA33", "3HA3",
         "HB",
-        "HB1", "HB11", "HB12", "HB13",
-        "HB2", "HB21", "HB22", "HB23",
-        "HB3", "HB33", "HB33", "HB33",
+        "HB1", "1HB", "HB11", "1HB1", "HB12", "2HB1", "HB13", "3HB1",
+        "HB2", "2HB", "HB21", "1HB2", "HB22", "2HB2", "HB23", "3HB2",
+        "HB3", "3HB", "HB31", "1HB3", "HB32", "2HB3", "HB33", "3HB3",
         "HG",
-        "HG1", "HG11", "HG12", "HG13",
-        "HG2", "HG21", "HG22", "HG23",
-        "HG3", "HG33", "HG33", "HG33",
+        "HG1", "1HG", "HG11", "1HG1", "HG12", "2HG1", "HG13", "3HG1",
+        "HG2", "2HG", "HG21", "1HG2", "HG22", "2HG2", "HG23", "3HG2",
+        "HG3", "3HG", "HG31", "1HG3", "HG32", "2HG3", "HG33", "3HG3",
         "HD",
-        "HD1", "HD11", "HD12", "HD13",
-        "HD2", "HD21", "HD22", "HD23",
-        "HD3", "HD33", "HD33", "HD33",
+        "HD1", "1HD", "HD11", "1HD1", "HD12", "2HD1", "HD13", "3HD1",
+        "HD2", "2HD", "HD21", "1HD2", "HD22", "2HD2", "HD23", "3HD2",
+        "HD3", "3HD", "HD31", "1HD3", "HD32", "2HD3", "HD33", "3HD3",
         "HE",
-        "HE1", "HE11", "HE12", "HE13",
-        "HE2", "HE21", "HE22", "HE23",
-        "HE3", "HE33", "HE33", "HE33",
+        "HE1", "1HE", "HE11", "1HE1", "HE12", "2HE1", "HE13", "3HE1",
+        "HE2", "2HE", "HE21", "1HE2", "HE22", "2HE2", "HE23", "3HE2",
+        "HE3", "3HE", "HE31", "1HE3", "HE32", "2HE3", "HE33", "3HE3",
         "HZ",
-        "HZ1", "HZ11", "HZ12", "HZ13",
-        "HZ2", "HZ21", "HZ22", "HZ23",
-        "HZ3", "HZ33", "HZ33", "HZ33",
+        "HZ1", "1HZ", "HZ11", "1HZ1", "HZ12", "2HZ1", "HZ13", "3HZ1",
+        "HZ2", "2HZ", "HZ21", "1HZ2", "HZ22", "2HZ2", "HZ23", "3HZ2",
+        "HZ3", "3HZ", "HZ31", "1HZ3", "HZ32", "2HZ3", "HZ33", "3HZ3",
         "HH",
-        "HH1", "HH11", "HH12", "HH13",
-        "HH2", "HH21", "HH22", "HH23",
-        "HH3", "HH33", "HH33", "HH33",
+        "HH1", "1HH", "HH11", "1HH1", "HH12", "2HH1", "HH13", "3HH1",
+        "HH2", "2HH", "HH21", "1HH2", "HH22", "2HH2", "HH23", "3HH2",
+        "HH3", "3HH", "HH31", "1HH3", "HH32", "2HH3", "HH33", "3HH3",
 
     };
     std::vector<str4> ordered_names(arr, arr + sizeof(arr) / sizeof(arr[0]) );
