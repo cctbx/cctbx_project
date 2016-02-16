@@ -343,6 +343,8 @@ ATOM      4  O   GLY A  34     -72.196  12.128 -25.997  1.00  0.00           O
   for extra_arg in [[], ["bla=bla"], ["bla"]]:
     o = utils.process_command_line_args(args=base_arg+extra_arg)
     assert o.crystal_symmetry is None
+    o = utils.process_command_line_args(args=extra_arg+base_arg)
+    assert o.crystal_symmetry is None
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
