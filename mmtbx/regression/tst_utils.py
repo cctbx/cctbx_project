@@ -320,7 +320,7 @@ HETATM 6015  HO6 NAG A 467      40.829 -15.206  30.746  1.00 55.81           H
 
 def exercise_corrupt_cryst1():
   """
-  Consistency check for cs derived in different scenarious (inspired by PDB code 
+  Consistency check for cs derived in different scenarious (inspired by PDB code
   2y9k).
   """
   pdb_str = """
