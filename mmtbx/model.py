@@ -27,7 +27,6 @@ import iotbx.pdb
 from libtbx import group_args
 from libtbx import easy_run
 import libtbx.load_env
-import iotbx.pdb
 
 time_model_show = 0.0
 
@@ -700,10 +699,15 @@ class manager(object):
       show_summary = False).deep_copy_scatterers()
     new_pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
     new_pdb_atoms = processed_pdb_file.all_chain_proxies.pdb_atoms
-    old_pdb_atoms = self._pdb_hierarchy.atoms()
+    # Need to reconstruct hierarchy here, because new_pdb_atoms are sorted
+    # differently
+    # old_pdb_atoms = self._pdb_hierarchy.atoms()
+    old_pdb_atoms = iotbx.pdb.input(
+        source_info=None, lines=self._pdb_hierarchy.as_pdb_string()).\
+            construct_hierarchy().atoms()
     assert len(new_pdb_atoms) == len(old_pdb_atoms)
     for a1, a2 in zip(old_pdb_atoms, new_pdb_atoms):
-      assert a1.name.strip() == a2.name.strip()
+      assert a1.name.strip() == a2.name.strip(), "%s != %s" % (a1.name.strip(), a2.name.strip())
       assert a1.element.strip() == a2.element.strip()
       assert approx_equal(a1.xyz, a2.xyz, 0.001)
     self._pdb_hierarchy = new_pdb_hierarchy
