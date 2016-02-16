@@ -403,10 +403,6 @@ ATOM     53  CD  PRO A 108      21.676  18.668  -0.477  1.00  4.48           C
 from libtbx import easy_run
 
 def assert_lines(s1, s2):
-  print 's1'
-  print s1
-  print 's2'
-  print s2
   def generate_lines(string):
     for line in string.split("\n"):
       if line.find("TER")>-1: continue
