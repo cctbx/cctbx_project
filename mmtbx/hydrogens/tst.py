@@ -598,7 +598,7 @@ def exercise_00(debug=False):
       print l[2]
     ppf.all_chain_proxies.pdb_inp.write_pdb_file(file_name = "m%s.pdb"%str(i))
     if(debug): print "-"*80
-    assert sel == l[2]
+    assert sel == l[2], "%s != %s" % (sel, l[2])
     assert hydrogens.count_rotatable(sel) == l[1]
 
 def exercise_01():
