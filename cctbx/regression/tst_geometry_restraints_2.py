@@ -334,7 +334,8 @@ def exercise_with_pdb(verbose):
   processed_pdb_file = pdb_interpretation.run(
     args=["tmp_cctbx_geometry_restraints.pdb"],
     strict_conflict_handling=False,
-    log=out)
+    sort_atoms=False,
+    log=out,)
   geo = processed_pdb_file.geometry_restraints_manager()
   site_labels = processed_pdb_file.xray_structure().scatterers() \
     .extract_labels()

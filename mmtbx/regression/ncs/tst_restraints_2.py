@@ -445,7 +445,7 @@ NCS restraints selections produce only one pair of matching atoms:
       assert not show_diff(str(e), '''\
 NCS selection includes an atom on a special position:
   Selection: "chain A"
-    "ATOM    456  NE  ARG A  60 .*.     N  "''')
+    "ATOM      8  NE  ARG A  60 .*.     N  "''')
     else: raise Exception_expected
     log = StringIO()
     group = ncs.restraints.group.from_atom_selections(
@@ -459,7 +459,7 @@ NCS selection includes an atom on a special position:
     assert not show_diff(log.getvalue(), '''\
 WARNING: NCS selection includes an atom on a special position:
   Selection: "chain A"
-    "ATOM    456  NE  ARG A  60 .*.     N  "
+    "ATOM      8  NE  ARG A  60 .*.     N  "
 ''')
     assert len(group.selection_pairs) == 1
     assert list(group.selection_pairs[0][0]) == [0,1,2,3,4,5,6,8,9,10]
@@ -469,6 +469,7 @@ WARNING: NCS selection includes an atom on a special position:
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
       file_name=os.path.join(ncs_dir, "two_models_with_holes.pdb"),
+      sort_atoms=False,
       log=log)
     try:
       ncs.restraints.group.from_atom_selections(

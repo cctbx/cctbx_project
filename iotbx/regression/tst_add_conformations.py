@@ -31,7 +31,7 @@ def exercise () :
   pdb_in = file_reader.any_file("1ywf_split.pdb", force_type="pdb").file_object
   assert contains_lines(out.getvalue(), """\
 WARNING: zero-occupancy atom:
-HETATM 1941  O  AHOH A 354      -0.009  56.525  -3.872  0.25 29.17           O\
+HETATM 1940  O  AHOH A 354      -0.009  56.525  -3.872  0.25 29.17           O\
 """)
   atoms = pdb_in.input.atoms()
   assert (atoms.size() == 6381)
