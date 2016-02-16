@@ -282,7 +282,7 @@ class TestSimpleAlignment(unittest.TestCase):
 
   def test_update_atom_selections(self):
     # print sys._getframe().f_code.co_name
-    pdb_inp = pdb.hierarchy.input(pdb_string=pdb_str_3)
+    pdb_inp = pdb.hierarchy.input(pdb_string=pdb_str_3, sort_atoms=False)
     ph = pdb_inp.hierarchy
     chains_info = ncs_search.get_chains_info(ph)
     chain_match_list = ncs_search.search_ncs_relations(

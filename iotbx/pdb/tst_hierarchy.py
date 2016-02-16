@@ -1504,7 +1504,7 @@ def exercise_construct_hierarchy():
         level_id=None,
         prefix=""):
     pdb_inp = pdb.input(source_info=None, lines=flex.split_lines(pdb_string))
-    root = pdb_inp.construct_hierarchy()
+    root = pdb_inp.construct_hierarchy(sort_atoms=False)
     if (expected_root_as_str is not None):
       s = root.as_str(prefix=prefix, level_id=level_id)
       if (len(expected_root_as_str) == 0):
@@ -2291,7 +2291,7 @@ ATOM     71  HD2 LEU B 441
 ATOM     72  HD2 LEU B 441
 ATOM     73  HD2 LEU B 441
 """))
-  oc = pdb_inp.construct_hierarchy().overall_counts()
+  oc = pdb_inp.construct_hierarchy(sort_atoms=False).overall_counts()
   assert oc.errors() == ['### ERROR: duplicate atom labels ###']
   assert len(oc.warnings()) == 0
   oc.raise_improper_alt_conf_if_necessary()
@@ -2364,7 +2364,7 @@ number of groups of duplicate atom labels: 4
     oc = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM     68  HD1 LEU   441                                             %s
 ATOM     72  HD1 LEU   441
-""" % segid)).construct_hierarchy().overall_counts()
+""" % segid)).construct_hierarchy(sort_atoms=False).overall_counts()
     if (segid != ""):
       oc.raise_duplicate_atom_labels_if_necessary()
     else:
@@ -2695,7 +2695,7 @@ ATOM         N1 AR02     2
 ATOM         N1 BR02     2
 ATOM         N2  R02     2
 """))
-  oc = pdb_inp.construct_hierarchy().overall_counts()
+  oc = pdb_inp.construct_hierarchy(sort_atoms=False).overall_counts()
   assert len(oc.warnings()) == 0
   oc.raise_duplicate_atom_labels_if_necessary()
   try: oc.raise_improper_alt_conf_if_necessary()
@@ -2770,7 +2770,7 @@ ATOM         C   ALA    10
 ATOM         O   TIP    11
 ATOM         O   TIP    12
 """))
-  oc = pdb_inp.construct_hierarchy().overall_counts()
+  oc = pdb_inp.construct_hierarchy(sort_atoms=False).overall_counts()
   assert oc.resname_classes == {
     'common_water': 5, 'other': 3, 'common_rna_dna': 1, 'common_amino_acid': 3}
   #
@@ -2782,7 +2782,7 @@ ATOM         CA AGLY     1
 ATOM         CA AASN     2
 ATOM         CA AGLY     2
 """))
-  oc = pdb_inp.construct_hierarchy().overall_counts()
+  oc = pdb_inp.construct_hierarchy(sort_atoms=False).overall_counts()
   assert not show_diff(oc.as_str(), """\
 total number of:
   models:     1
@@ -2830,7 +2830,7 @@ ATOM         CA AGLY     1
 ATOM         CA AASN     2
 ATOM         CA AGLY     2
 """))
-  oc = pdb_inp.construct_hierarchy().overall_counts()
+  oc = pdb_inp.construct_hierarchy(sort_atoms=False).overall_counts()
   try: oc \
    .raise_residue_groups_with_multiple_resnames_using_same_altloc_if_necessary(
       max_show=1)
@@ -3061,7 +3061,7 @@ ATOM   9723  O  CLEU   190      25.693   5.796  20.563  0.70  3.68           O
 def exercise_merge_atom_groups():
   lines = []
   root = exercise_merge_pdb_inp.construct_hierarchy(
-    residue_group_post_processing=False)
+    residue_group_post_processing=False, sort_atoms=False)
   chain = root.models()[0].chains()[0]
   residue_groups = chain.residue_groups()
   assert len(residue_groups) == 3
@@ -3124,7 +3124,7 @@ ATOM   1836  O  BLEU   190      25.418   5.939  20.669  0.30  5.91           O
 
 def exercise_merge_residue_groups():
   root = exercise_merge_pdb_inp.construct_hierarchy(
-    residue_group_post_processing=False)
+    residue_group_post_processing=False, sort_atoms=False)
   chain = root.models()[0].chains()[0]
   residue_groups = chain.residue_groups()
   assert len(residue_groups) == 3
@@ -3719,7 +3719,7 @@ def exercise_occupancy_groups_simple():
         pdb_inp,
         common_residue_name_class_only="common_amino_acid",
         always_group_adjacent=True):
-    hierarchy = pdb_inp.construct_hierarchy()
+    hierarchy = pdb_inp.construct_hierarchy(sort_atoms=False)
     atoms = hierarchy.atoms()
     sentinel = atoms.reset_tmp_for_occupancy_groups_simple()
     chain = hierarchy.only_chain()
@@ -3870,7 +3870,7 @@ ATOM      2  O  BHOH A   1                                                   O
 ATOM      3  O  AHOH B   1                                                   O
 ATOM      4  O  BHOH B   1                                                   O
 """))
-  hierarchy = pdb_inp.construct_hierarchy()
+  hierarchy = pdb_inp.construct_hierarchy(sort_atoms=False)
   list_of_groups = hierarchy.occupancy_groups_simple(
     common_residue_name_class_only="common_amino_acid")
   assert list_of_groups == [[[0], [1]], [[2], [3]]]
@@ -3897,7 +3897,7 @@ def exercise_conformers():
   #
   def check(pdb_string, expected):
     pdb_inp = pdb.input(source_info=None, lines=flex.split_lines(pdb_string))
-    chain = pdb_inp.construct_hierarchy().only_chain()
+    chain = pdb_inp.construct_hierarchy(sort_atoms=False).only_chain()
     conformers = chain.conformers()
     s = conformers_as_str(conformers)
     if (len(expected) == 0):
@@ -4448,7 +4448,7 @@ ATOM      3  N   GLY A   2                                                    X
 ATOM      4  CA  GLY A   2
 ENDMDL
 """))
-  models = pdb_inp.construct_hierarchy().models()
+  models = pdb_inp.construct_hierarchy(sort_atoms=False).models()
   assert models[0].is_identical_hierarchy(models[1])
   assert models[1].is_identical_hierarchy(models[0])
   assert models[0].only_chain().is_identical_hierarchy(
@@ -4644,7 +4644,7 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
   assert approx_equal(atoms.extract_fp(), new_fp)
   assert approx_equal(atoms.extract_fdp(), new_fdp)
   #
-  h = pdb_inp.construct_hierarchy(set_atom_i_seq=False)
+  h = pdb_inp.construct_hierarchy(set_atom_i_seq=False, sort_atoms=False)
   for i in xrange(2):
     s = h.as_pdb_string()
     d = hashlib_md5(s).hexdigest()
@@ -4656,7 +4656,7 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
     assert not show_diff(open("tmp_tst_hierarchy.pdb").read(), s)
     h = pdb.input(
       source_info=None, lines=flex.split_lines(s)).construct_hierarchy(
-        set_atom_i_seq=False)
+        set_atom_i_seq=False, sort_atoms=False)
   #
   atoms = h.atoms().select(indices=flex.size_t([2,5,3,0]))
   assert [a.name for a in atoms] == [" Q  ", "CA  ", " O  ", " N  "]
@@ -4718,7 +4718,7 @@ ATOM      9  C  BTYR A   1I
 ATOM      7  O  CPHE A   1I
 ATOM     10  O  BTYR A   1I
 """))
-  hierarchy = pdb_inp.construct_hierarchy()
+  hierarchy = pdb_inp.construct_hierarchy(sort_atoms=False)
   for obj in [hierarchy.only_residue_group(),
               hierarchy.only_chain(),
               hierarchy.only_model(),
@@ -4794,7 +4794,7 @@ ATOM      9  C  BTRP A   1I
 ATOM      7  O  CPHE A   1I
 ATOM     10  O  BTRP A   1I
 """))
-  hierarchy = pdb_inp.construct_hierarchy()
+  hierarchy = pdb_inp.construct_hierarchy(sort_atoms=False)
   rs = [atom.format_atom_record(replace_floats_with="")
     for atom in hierarchy.only_residue_group().atoms(interleaved_conf=1)]
   assert not show_diff("\n".join([r[:-8] for r in rs]), """\
@@ -4894,7 +4894,7 @@ HETATM  145  C21 DA7  3014      18.627   3.558  25.202  0.50 29.50           C
 ATOM    146  C8 ADA7  3015       9.021 -13.845  22.131  0.50 26.57           C
 """
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines(pdb_string))
-  hierarchy = pdb_inp.construct_hierarchy()
+  hierarchy = pdb_inp.construct_hierarchy(sort_atoms=False)
   check_wpf(hierarchy, expected=pdb_string+"TER\n")
   rem = "REMARK EXERCISE"
   for obj in [pdb_inp, hierarchy]:
@@ -4945,7 +4945,7 @@ ATOM   1555  O  CCYS A 211      12.770  11.031  16.051  0.05  0.00           O
 ATOM   1556  CB CCYS A 211      11.540  14.072  16.172  0.05  0.00           C
 ATOM   1557  SG CCYS A 211      24.361  15.163  26.341  0.16  0.00           S
 """))
-  h1 = i1.construct_hierarchy()
+  h1 = i1.construct_hierarchy(sort_atoms=False)
   s1 = h1.as_pdb_string(interleaved_conf=1)
   assert not show_diff(s1, """\
 ATOM   1549  O  ACYS A 211      24.080  12.057  26.978  0.95  0.00           O
@@ -4960,7 +4960,7 @@ ATOM   1556  CB CCYS A 211      11.540  14.072  16.172  0.05  0.00           C
 TER
 """)
   i2 = pdb.input(source_info=None, lines=flex.split_lines(s1))
-  h2 = i2.construct_hierarchy()
+  h2 = i2.construct_hierarchy(sort_atoms=False)
   s2 = h2.as_pdb_string(interleaved_conf=1)
   assert not show_diff(s2, """\
 ATOM   1549  O  ACYS A 211      24.080  12.057  26.978  0.95  0.00           O
@@ -4994,10 +4994,10 @@ CRYST1    2.000    3.000    4.000  90.00  80.00  90.00 P 1 2 1
 SCALE1      0.500000  0.000000 -0.088163        0.00000
 SCALE2      0.000000  0.333333  0.000000        0.00000
 SCALE3      0.000000  0.000000  0.253857        0.00000
-ATOM      1  S   SO4     0       3.302   8.419   8.560  1.00 10.00           S
-ATOM      2  O1  SO4     0       3.497   8.295   7.118  1.00 10.00           O
-ATOM      3  O3  SO4     0       4.481   9.037   9.159  1.00 10.00           O
-ATOM      4  O4  SO4     0       2.131   9.251   8.823  1.00 10.00           O
+ATOM      1  O1  SO4     0       3.497   8.295   7.118  1.00 10.00           O
+ATOM      2  O3  SO4     0       4.481   9.037   9.159  1.00 10.00           O
+ATOM      3  O4  SO4     0       2.131   9.251   8.823  1.00 10.00           O
+ATOM      4  S   SO4     0       3.302   8.419   8.560  1.00 10.00           S
 ATOM      5  O2 ASO4     0       3.098   7.095   9.140  0.80 10.00           O
 ATOM      6  O2 BSO4     0       3.498   7.495   9.440  0.20 10.00           O
 TER
@@ -5010,12 +5010,12 @@ END
     keep_original_atom_serial=True)
   assert not show_diff(open("tmp_norm.pdb").read(), """\
 CRYST1    2.000    3.000    4.000  90.00  80.00  90.00 P 2           5
-ATOM      0  S   SO4     0       3.302   8.419   8.560  1.00 10.00           S
 ATOM      1  O1  SO4     0       3.497   8.295   7.118  1.00 10.00           O
-ATOM      4  O3  SO4     0       4.481   9.037   9.159  1.00 10.00           O
-ATOM      5  O4  SO4     0       2.131   9.251   8.823  1.00 10.00           O
-ATOM      2  O2 ASO4     0       3.098   7.095   9.140  0.80 10.00           O
-ATOM      3  O2 BSO4     0       3.498   7.495   9.440  0.20 10.00           O
+ATOM      2  O3  SO4     0       4.481   9.037   9.159  1.00 10.00           O
+ATOM      3  O4  SO4     0       2.131   9.251   8.823  1.00 10.00           O
+ATOM      4  S   SO4     0       3.302   8.419   8.560  1.00 10.00           S
+ATOM      5  O2 ASO4     0       3.098   7.095   9.140  0.80 10.00           O
+ATOM      6  O2 BSO4     0       3.498   7.495   9.440  0.20 10.00           O
 TER
 END
 """)
@@ -5187,7 +5187,7 @@ invalid residue sequence number:
   #
   h = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM                    1B
-""")).construct_hierarchy()
+""")).construct_hierarchy(sort_atoms=False)
   for r in [h.only_residue_group(), h.only_residue()]:
     try: r.resseq_as_int()
     except (RuntimeError, ValueError), e:
@@ -5279,7 +5279,7 @@ HETATMB1234 NaMeLResChUvwqI      1.300   2.100   3.200  0.40  4.80      sEgIElcH
 ENDMDL
 """)
   pdb_inp = pdb.input(source_info=None, lines=lines)
-  hierarchy = pdb_inp.construct_hierarchy()
+  hierarchy = pdb_inp.construct_hierarchy(sort_atoms=False)
   awl = hierarchy.atoms()[0].fetch_labels()
   assert not show_diff(awl.format_atom_record(), lines[1])
   assert awl.model_id == "SKDI"
@@ -5433,7 +5433,7 @@ ATOM     16
 ATOM     17
 ATOM     18
 ENDMDL
-""")).construct_hierarchy()
+""")).construct_hierarchy(sort_atoms=False)
   try: h_all.select(atom_selection=flex.bool())
   except (ValueError, RuntimeError), e:
     assert str(e) == "atom_selection array too short."
@@ -5539,7 +5539,7 @@ ATOM     10  O
     pdb_inp = pdb.input(
       source_info=None,
       lines=lines.select(flex.random_permutation(size=lines.size())))
-    hierarchy = pdb_inp.construct_hierarchy()
+    hierarchy = pdb_inp.construct_hierarchy(sort_atoms=False)
     atoms = hierarchy.atoms()
     ai = dict([(k,sorted([int(atoms[i].serial) for i in v]))
       for k,v in hierarchy.altloc_indices().items()])
@@ -5642,7 +5642,7 @@ ATOM      3  O2 BSO4     0       3.498   7.495   9.440  0.20 50.00           O
 TER
 END
 """)
-  hierarchy = pdb_inp.construct_hierarchy()
+  hierarchy = pdb_inp.construct_hierarchy(sort_atoms=False)
   xray_structure = hierarchy.extract_xray_structure()
   assert xray_structure.sites_cart().size() == hierarchy.atoms().size()
   xray_structure.scale_adps(2.0)
@@ -5682,7 +5682,7 @@ ATOM      1  O1  SO4 C   4       3.497   8.295   7.118  1.00 10.00           O
 ATOM      4  O3  SO4 C   4       4.481   9.037   9.159  1.00 10.00           O
 ATOM      5  O4  SO4 C   4       2.131   9.251   8.823  1.00 10.00           O
 """)
-  hierarchy = pdb_inp.construct_hierarchy()
+  hierarchy = pdb_inp.construct_hierarchy(sort_atoms=False)
   pdb_inp_new = pdb.input(source_info=None, lines="""\
 ATOM      5  N   ASN B   2      -7.656   2.923   3.155  1.00 15.02           N
 ATOM      6  CA  ASN B   2      -6.522   2.038   2.831  1.00 14.10           C
@@ -5697,7 +5697,7 @@ ATOM     10  CA BASN B   3      -3.193   1.904   4.589  1.00 11.74           C
 ATOM     11  C  BASN B   3      -1.955   1.332   3.895  1.00 11.10           C
 ATOM     12  O  BASN B   3      -1.872   0.119   3.648  1.00 10.42           O
 """)
-  h2 = pdb_inp_new.construct_hierarchy()
+  h2 = pdb_inp_new.construct_hierarchy(sort_atoms=False)
   chain_b = h2.models()[0].chains()[0]
   partial_hierarchy = pdb.hierarchy.new_hierarchy_from_chain(chain_b)
   assert not show_diff(partial_hierarchy.as_pdb_string(), h2.as_pdb_string())
@@ -5754,7 +5754,7 @@ ATOM     21 H073 LIG A   1       3.835  -0.047  -0.090  1.00 20.00      A    H
 ATOM     22 H111 LIG A   1       0.508   0.861  -3.756  1.00 20.00      A    H
 ATOM     23 H112 LIG A   1      -1.076   0.113  -3.560  1.00 20.00      A    H
 ATOM     24 H113 LIG A   1       0.358  -0.896  -3.748  1.00 20.00      A    H
-""").construct_hierarchy()
+""").construct_hierarchy(sort_atoms=False)
   bonds = pdb_hierarchy.distance_based_simple_two_way_bond_sets()
   assert bonds.size() == pdb_hierarchy.atoms().size()
   #print list(bonds[0])
@@ -5773,7 +5773,7 @@ ATOM     10 1H2 BEOH     1       5.198   0.305  -8.963  1.00  0.00           H
 ATOM     11 2H2 BEOH     1       4.751   0.037  -7.261  1.00  0.00           H
 ATOM     12  OH BEOH     1       4.988   2.012  -7.818  1.00  0.00           O
 ATOM     13  HH BEOH     1       5.916   2.025  -7.573  1.00  0.00           H
-""").construct_hierarchy()
+""").construct_hierarchy(sort_atoms=False)
   pdb_hierarchy.atoms().reset_i_seq()
   bonds = pdb_hierarchy.distance_based_simple_two_way_bond_sets()
   assert (list(bonds[7]) == [1,8])
@@ -5810,12 +5810,13 @@ ATOM     11  OH BEOH     1       4.988   2.012  -7.818  1.00  0.00           O
 ATOM     12  HH AEOH     1       5.850   1.958  -7.320  1.00  0.00           H
 ATOM     13  HH BEOH     1       5.916   2.025  -7.573  1.00  0.00           H
 """
+  # This does not guaranteed
   pdb_in = pdb.hierarchy.input(pdb_string=pdb_str)
   xrs = pdb_in.xray_structure_simple()
   assert (xrs.sites_cart().size() == 13)
-  assert (approx_equal(xrs.sites_cart()[-3][-1], -7.261, eps=0.0001))
+  # assert (approx_equal(xrs.sites_cart()[-3][-1], -7.261, eps=0.0001))
   pdb_in = pdb.input(source_info=None, lines=pdb_str)
-  hierarchy = pdb_in.construct_hierarchy()
+  hierarchy = pdb_in.construct_hierarchy(sort_atoms=False)
   xrs = hierarchy.extract_xray_structure(
     crystal_symmetry=pdb_in.crystal_symmetry())
   assert (xrs.sites_cart().size() == 13)
@@ -6285,7 +6286,7 @@ ATOM      0 1HB  ASN A   6       7.137   4.100   3.163  1.00 12.13           H
 ATOM      0 2HB  ASN A   6       8.027   2.692   2.570  1.00 12.13           H
 ATOM      0 1HD2 ASN A   6       4.439   3.617   1.038  1.00 10.07           H
 ATOM      0 2HD2 ASN A   6       5.366   4.650   2.073  1.00 10.07           H
-""").construct_hierarchy()
+""").construct_hierarchy(sort_atoms=False)
   hierarchy2 = pdb.input(source_info=None, lines="""\
 ATOM     47  N   TYR A   7       8.292   1.817   6.147  1.00 14.70           N
 ATOM     48  CA  TYR A   7       9.159   2.144   7.299  1.00 15.18           C
@@ -6300,7 +6301,7 @@ ATOM     56  CE2 TYR A   7       5.904   1.649  10.416  1.00 14.33           C
 ATOM     57  CZ  TYR A   7       5.047   0.729   9.831  1.00 15.09           C
 ATOM     58  OH  TYR A   7       3.766   0.589  10.291  1.00 14.39           O
 ATOM     59  OXT TYR A   7      11.358   2.999   7.612  1.00 17.49           O
-""").construct_hierarchy()
+""").construct_hierarchy(sort_atoms=False)
   chain1 = hierarchy1.models()[0].chains()[0]
   chain2 = hierarchy2.models()[0].chains()[0]
   current_group = chain1.residue_groups()[0].atom_groups()[0]

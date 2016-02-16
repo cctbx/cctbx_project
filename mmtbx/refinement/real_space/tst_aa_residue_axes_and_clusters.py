@@ -33,9 +33,9 @@ ATOM      9  NH1 ARG A   1       5.435   9.001  10.036  1.00 18.00           N
 ATOM      3  O   ARG A   1       8.347   7.471   4.200  1.00 14.00           O
 """
 
-def get_object(pdb_str, backbone_sample):
+def get_object(pdb_str, backbone_sample, sort_atoms=True):
   pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str)
-  pdb_hierarchy = pdb_inp.construct_hierarchy()
+  pdb_hierarchy = pdb_inp.construct_hierarchy(sort_atoms=sort_atoms)
   pdb_atoms = pdb_hierarchy.atoms()
   pdb_atoms.reset_i_seq()
   residue = pdb_hierarchy.only_residue()
@@ -56,8 +56,8 @@ def exercise_00():
   aa = get_object(pdb_str = arg, backbone_sample=False)
   assert aa[0].vector == [1, 4, 5, 6, 7, flex.size_t([8, 9, 10])], aa[0].vector
   #
-  aa = get_object(pdb_str = arg_different_order, backbone_sample=True)
-  assert aa[0].vector == [7, 2, 3, 4, 5, flex.size_t([0, 8, 9])]
+  aa = get_object(pdb_str = arg_different_order, backbone_sample=True, sort_atoms=False)
+  assert aa[0].vector == [7, 2, 3, 4, 5, flex.size_t([0, 8, 9])], aa[0].vector
 
 
 if (__name__ == "__main__"):

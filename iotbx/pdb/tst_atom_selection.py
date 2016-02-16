@@ -105,7 +105,7 @@ ATOM   2017  A1  AAAUU  1K       8.753  29.755  61.685  1.00 49.13
 ENDMDL
 END
 """))
-  hierarchy = pdb_inp.construct_hierarchy()
+  hierarchy = pdb_inp.construct_hierarchy(sort_atoms=False)
   sel_cache = hierarchy.atom_selection_cache(
     special_position_settings=pdb_inp.special_position_settings())
   assert sel_cache.n_seq == hierarchy.atoms_size()
@@ -283,7 +283,7 @@ ATOM     22  CA  GLN a   4       0.384   1.888   3.199  1.00 10.53           C
 ATOM     31  CA  GLN a   5       3.270   2.361   5.640  1.00 11.39           C
 ATOM     40  CA  ASN a   6       6.831   2.310   4.318  1.00 12.30           C
 END
-""")).construct_hierarchy()
+""")).construct_hierarchy(sort_atoms=False)
   sel_cache = hierarchy.atom_selection_cache()
   isel = sel_cache.iselection
   assert list(isel("chain A")) == [0,1,2]
@@ -301,7 +301,7 @@ ATOM     22  CA  GLN b   4       0.384   1.888   3.199  1.00 10.53           C
 ATOM     31  CA  GLN b   5       3.270   2.361   5.640  1.00 11.39           C
 ATOM     40  CA  ASN b   6       6.831   2.310   4.318  1.00 12.30           C
 END
-""")).construct_hierarchy()
+""")).construct_hierarchy(sort_atoms=False)
   sel_cache = hierarchy.atom_selection_cache()
   isel = sel_cache.iselection
   assert list(isel("resname asn")) == [1,2,5]
@@ -326,7 +326,7 @@ ATOM     41  N   PRO     5      13.947  29.997  64.680  1.00 22.94
 ATOM     42  CA  PRO     5      14.902  31.100  64.827  1.00 20.19
 ATOM     44  O   PRO     5      16.545  29.521  64.086  1.00 19.76
 ATOM     45  CA  CA      6      16.545  29.521  64.086  1.00 19.76
-""")).construct_hierarchy()
+""")).construct_hierarchy(sort_atoms=False)
   sel_cache = hierarchy.atom_selection_cache()
   isel = sel_cache.iselection
   assert list(isel("pepnames")) == [0,1,5,6,7,8,9,10,11]
@@ -363,7 +363,7 @@ ATOM      6  CA  ASN B 777      -6.522   2.038   2.831  1.00 14.10           C
 ATOM     14  CA  ASN B   1      -3.193   1.904   4.589  1.00 11.74           C
 ATOM     22  CA  GLN B   2       0.384   1.888   3.199  1.00 10.53           C
 END
-""")).construct_hierarchy()
+""")).construct_hierarchy(sort_atoms=False)
   sel_cache = hierarchy.atom_selection_cache()
   sele = sel_cache.iselection("resid 777 through 3 and chain A")
   assert (sele.size() == 4)
@@ -389,7 +389,7 @@ ATOM     40  CA AASN A   4       6.831   2.310   4.318  1.00 12.30           C
 ATOM     41  CA BASN A   4       6.831   2.310   4.318  1.00 12.30           C
 TER
 END
-""")).construct_hierarchy()
+""")).construct_hierarchy(sort_atoms=False)
   sel_cache = hierarchy.atom_selection_cache()
   sele = sel_cache.iselection("resid 2 through 4")
   assert (list(sele) == [2,6,7,8,9])
@@ -405,7 +405,7 @@ ATOM     42  CA  PRO     5      14.902  31.100  64.827  1.00 20.19
 ATOM     44  O   PRO     5      16.545  29.521  64.086  1.00 19.76
 HETATM   45  O  ZHOH     6      16.545  29.521  64.086  0.00 19.76
 HETATM   4   O  KHOH     6      16.545  29.521  64.086  0.00 19.76
-""")).construct_hierarchy()
+""")).construct_hierarchy(sort_atoms=False)
   sel_cache = hierarchy.atom_selection_cache()
   isel = sel_cache.iselection
   assert list(isel("water")) == [1,2,6,7]
@@ -442,7 +442,7 @@ ATOM    217  N   SER A  33      20.230 -10.407  -3.567  1.00  4.02           N
 ATOM    223  N   GLY A  34      21.415 -13.600  -2.283  1.00  4.96           N
 ATOM    227  N   THR A  35      21.521 -17.105  -1.329  1.00  4.35           N
 ATOM    234  N   SER A  35A     23.294 -20.178  -1.426  1.00  4.63           N
-""")).construct_hierarchy()
+""")).construct_hierarchy(sort_atoms=False)
   sel_cache = hierarchy.atom_selection_cache()
   isel = sel_cache.iselection
   assert list(isel("resid A13L through A13N")) == [0, 1, 2]
@@ -465,7 +465,7 @@ ATOM     41  N   PRO     5      13.947  29.997  64.680  1.00 22.94
 ATOM     42  CA  HOH     6      14.902  31.100  64.827  1.00 20.19
 ATOM     44  O   HOH     7      16.545  29.521  64.086  1.00 19.76
 ATOM     45  CA  CA      8      16.545  29.521  64.086  1.00 19.76
-""")).construct_hierarchy()
+""")).construct_hierarchy(sort_atoms=False)
   sel_cache = hierarchy.atom_selection_cache()
   isel = sel_cache.iselection
   for s in ["peptide", "protein"]:
@@ -486,7 +486,7 @@ ATOM     41  N   PRO     5      13.947  29.997  64.680  1.00 22.94
 ATOM     42  CA  HOH     6      14.902  31.100  64.827  1.00 20.19
 ATOM     44  O   HOH     7      16.545  29.521  64.086  1.00 19.76
 ATOM     45  CA  CA      8      16.545  29.521  64.086  1.00 19.76
-""")).construct_hierarchy()
+""")).construct_hierarchy(sort_atoms=False)
   sel_cache = hierarchy.atom_selection_cache()
   isel = sel_cache.iselection
   assert list(isel("nucleotide")) == [0,1,2,3,4,5,6,7,8], 'found %s' % list(isel("nucleotide"))
