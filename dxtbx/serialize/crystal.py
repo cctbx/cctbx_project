@@ -105,6 +105,11 @@ def to_dict(crystal):
                               for i in range(crystal.num_scan_points)])
     xl_dict['A_at_scan_points'] = A_at_scan_points
 
+  # Add in covariance of B if present
+  cov_B = crystal.get_B_covariance()
+  if cov_B is not None:
+    xl_dict['B_covariance'] = cov_B.elems
+
   return xl_dict
 
 
@@ -152,6 +157,13 @@ def from_dict(d):
   try:
     A_at_scan_points = d['A_at_scan_points']
     xl.set_A_at_scan_points(A_at_scan_points)
+  except KeyError:
+    pass
+
+  # Extract covariance of B, if present
+  try:
+    cov_B = d['B_covariance']
+    xl.set_B_covariance(cov_B)
   except KeyError:
     pass
 
