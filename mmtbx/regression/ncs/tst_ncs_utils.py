@@ -8,7 +8,7 @@ import mmtbx.maps.correlation
 from scitbx import matrix
 import scitbx.rigid_body
 import iotbx.ncs as ncs
-from iotbx import pdb
+import iotbx.pdb
 import unittest
 import string
 import math
@@ -194,13 +194,13 @@ class Test_ncs_utils(unittest.TestCase):
                 [self.rotation2, self.translation2],
                 [self.rotation3, self.translation3]]
 
-    self.pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_str)
+    self.pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb_str)
     self.tr_obj1 = ncs.input(
-      pdb_hierarchy_inp=self.pdb_obj,
+      pdb_inp=self.pdb_inp,
       rotations=[self.rotation1,self.rotation2],
       translations=[self.translation1,self.translation2])
     self.tr_obj2 = ncs.input(
-      pdb_hierarchy_inp=self.pdb_obj,
+      pdb_inp=self.pdb_inp,
       rotations=[self.rotation1,self.rotation2,self.rotation3],
       translations=[self.translation1,self.translation2,self.translation3])
     self.ncs_restraints_group_list = \
@@ -383,14 +383,14 @@ class Test_ncs_utils(unittest.TestCase):
     """
     # print sys._getframe().f_code.co_name
 
-    xrs = self.pdb_obj.xray_structure_simple()
+    xrs = self.pdb_inp.xray_structure_simple()
     nrg = self.ncs_restraints_group_list
 
     shifts = nu.get_ncs_groups_centers(
       xray_structure = xrs,
       ncs_restraints_group_list=nrg)
 
-    xyz = self.pdb_obj.hierarchy.atoms().extract_xyz()
+    xyz = self.pdb_inp.atoms().extract_xyz()
     center_of_coor = (flex.vec3_double([xyz.sum()]) * (1/xyz.size())).round(8)
     # test shifts
     t1 = shifts[0].round(8)
@@ -490,15 +490,16 @@ class Test_ncs_utils(unittest.TestCase):
     # print sys._getframe().f_code.co_name
 
     d_min = 1.0
-    ncs_inp = ncs.input(pdb_string=pdb_poor_0)
+    pdb_inp = iotbx.pdb.input(lines=pdb_poor_0,source_info=None)
+    ncs_inp = ncs.input(pdb_inp=pdb_inp)
     ncs_restraints_group_list = ncs_inp.get_ncs_restraints_group_list()
 
-    pdb_inp_poor = pdb.input(lines=pdb_poor_0,source_info=None)
-    ph_poor = pdb_inp_poor.construct_hierarchy()
+    pdb_inp_poor = iotbx.pdb.input(lines=pdb_poor_0,source_info=None)
+    ph_poor = pdb_inp_poor.construct_hierarchy(sort_atoms=False)
     ph_poor.atoms().reset_i_seq()
     xrs_poor = pdb_inp_poor.xray_structure_simple()
 
-    pdb_inp_answer = pdb.input(lines=pdb_answer_0,source_info=None)
+    pdb_inp_answer = iotbx.pdb.input(lines=pdb_answer_0,source_info=None)
     ph_answer = pdb_inp_answer.construct_hierarchy()
     ph_answer.atoms().reset_i_seq()
     xrs_answer = pdb_inp_answer.xray_structure_simple()
@@ -526,7 +527,7 @@ class Test_ncs_utils(unittest.TestCase):
 
   def test_iselection_ncs_to_asu(self):
     # print sys._getframe().f_code.co_name
-    pdb_inp = pdb.input(lines=pdb_answer_0,source_info=None)
+    pdb_inp = iotbx.pdb.input(lines=pdb_answer_0,source_info=None)
     ph = pdb_inp.construct_hierarchy()
     isel_asu = flex.size_t([8,9,13])
     isel_ncs = isel_asu - 7
@@ -535,7 +536,7 @@ class Test_ncs_utils(unittest.TestCase):
 
   def test_iselection_asu_to_ncs(self):
     # print sys._getframe().f_code.co_name
-    pdb_inp = pdb.input(lines=pdb_answer_0,source_info=None)
+    pdb_inp = iotbx.pdb.input(lines=pdb_answer_0,source_info=None)
     ph = pdb_inp.construct_hierarchy()
     isel_asu = flex.size_t([8,9,13])
     isel_ncs = isel_asu - 7
@@ -546,11 +547,12 @@ class Test_ncs_utils(unittest.TestCase):
     """ Test that ncs_restraints_group_list test is working properly """
     phil_groups = ncs_group_master_phil.fetch(
         iotbx.phil.parse(phil_str)).extract()
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb_str_2)
     ncs_obj_phil = ncs.input(
-        pdb_string=test_pdb_str_2,
+        pdb_inp=pdb_inp,
         ncs_phil_groups=phil_groups.ncs_group)
     nrgl = ncs_obj_phil.get_ncs_restraints_group_list()
-    pdb_inp = pdb.input(lines=test_pdb_str_2,source_info=None)
+    pdb_inp = iotbx.pdb.input(lines=test_pdb_str_2,source_info=None)
     ph = pdb_inp.construct_hierarchy()
     # passing test
     self.assertTrue(nu.check_ncs_group_list(nrgl,ph,max_delta=1))
@@ -574,7 +576,8 @@ class Test_ncs_utils(unittest.TestCase):
     """ selection of a complete NCS group """
     phil_groups = ncs_group_master_phil.fetch(
         iotbx.phil.parse(phil_str)).extract()
-    ncs_obj = ncs.input(pdb_string=test_pdb_str_2,
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb_str_2)
+    ncs_obj = ncs.input(pdb_inp=pdb_inp,
         ncs_phil_groups=phil_groups.ncs_group)
     nrgl = ncs_obj.get_ncs_restraints_group_list()
     self.assertEqual(len(nrgl),2)
@@ -610,8 +613,9 @@ class Test_ncs_utils(unittest.TestCase):
 
   def test_transform_update(self):
     """ Test update of rotation and translation using selection """
-    ncs_obj = ncs.input(pdb_string=pdb_answer_0)
-    pdb_inp = pdb.input(lines=pdb_answer_0,source_info=None)
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_answer_0)
+    ncs_obj = ncs.input(pdb_inp=pdb_inp)
+    pdb_inp = iotbx.pdb.input(lines=pdb_answer_0,source_info=None)
     nrgl = ncs_obj.get_ncs_restraints_group_list()
     asu_site_cart = pdb_inp.atoms().extract_xyz()
     # reference matrices

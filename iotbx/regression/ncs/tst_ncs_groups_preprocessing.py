@@ -321,7 +321,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     t1 = matrix.col([167.54320,-4.09250,41.98070])
     t2 = matrix.col([176.73730,27.41760,-5.85930])
     trans_obj = ncs.input(
-      pdb_string=pdb_str2,
+      pdb_inp=iotbx.pdb.input(source_info=None, lines=pdb_str2),
       rotations=[r1,r2],
       translations=[t1,t2])
     nrg = trans_obj.get_ncs_restraints_group_list()[0]
@@ -366,7 +366,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
   def test_finding_partial_ncs(self):
     # print sys._getframe().f_code.co_name
     ncs_inp = ncs.input(
-      pdb_string=pdb_str,
+      pdb_inp=iotbx.pdb.input(source_info=None, lines=pdb_str),
       check_atom_order=True,
       min_percent=0.2)
     t = ncs_inp.ncs_to_asu_selection
@@ -377,7 +377,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertEqual(t,exp_t1)
     #
     ncs_inp = ncs.input(
-      pdb_string=pdb_str,
+      pdb_inp=iotbx.pdb.input(source_info=None, lines=pdb_str),
       check_atom_order=False,
       allow_different_size_res=False)
     t = ncs_inp.ncs_to_asu_selection
@@ -385,14 +385,14 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertEqual(t,exp_t2)
     #
     ncs_inp = ncs.input(
-      pdb_string=pdb_str,
+      pdb_inp=iotbx.pdb.input(source_info=None, lines=pdb_str),
       check_atom_order=False,
       allow_different_size_res=True)
     t = ncs_inp.ncs_to_asu_selection
     self.assertEqual(t,exp_t1)
     #
     self.assertRaises(Sorry,ncs.input,
-                      pdb_string=pdb_str,
+                      pdb_inp=iotbx.pdb.input(source_info=None, lines=pdb_str),
                       process_similar_chains=False)
 
   def test_format_string_longer_than_80(self):
@@ -407,7 +407,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
   def test_correct_grouping(self):
     """ test correct representation of groups in .ncs file"""
-    ncs_obj = iotbx.ncs.input(pdb_string=pdb_str_4)
+    ncs_obj = iotbx.ncs.input(pdb_inp=iotbx.pdb.input(source_info=None, lines=pdb_str_4))
     self.assertEqual(ncs_obj.number_of_ncs_groups,1)
     gr = ncs_obj.print_ncs_phil_param()
     self.assertEqual(gr,answer_4)

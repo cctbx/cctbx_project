@@ -1,7 +1,7 @@
 from __future__ import division
 import mmtbx.ncs.ncs_utils as nu
 import iotbx.ncs as ncs
-from iotbx import pdb
+import iotbx.pdb
 import unittest
 import sys
 
@@ -12,8 +12,13 @@ class TestMtrixRecFromCif(unittest.TestCase):
   # @unittest.SkipTest
   def test_compare_rotation_and_translation(self):
     print 'Running ',sys._getframe().f_code.co_name
-    trans_obj1 = ncs.input(pdb_string=test_pdb)
-    trans_obj2 = ncs.input(cif_string=test_cif)
+    pdb_inp1 = iotbx.pdb.input(source_info=None, lines=test_pdb)
+    pdb_inp2 = iotbx.pdb.input(source_info=None, lines=test_cif)
+    trans_obj1 = ncs.input(pdb_inp=pdb_inp1)
+    trans_obj2 = ncs.input(pdb_inp=pdb_inp2)
+
+    # trans_obj1 = ncs.input(pdb_string=test_pdb)
+    # trans_obj2 = ncs.input(cif_string=test_cif)
     #
     nrg1 = trans_obj1.get_ncs_restraints_group_list()
     nrg2 = trans_obj2.get_ncs_restraints_group_list()
@@ -24,12 +29,12 @@ class TestMtrixRecFromCif(unittest.TestCase):
     x = (x1 - x2).as_double()
     self.assertEqual(x.min_max_mean().as_tuple(), (0,0,0))
     #
-    pdb_hierarchy_inp = pdb.hierarchy.input(pdb_string=test_cif)
-    transform_info = pdb_hierarchy_inp.input.process_mtrix_records()
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=test_cif)
+    transform_info = pdb_inp.process_mtrix_records()
     results = transform_info.as_pdb_string()
 
-    pdb_hierarchy_inp = pdb.hierarchy.input(pdb_string=test_pdb)
-    transform_info = pdb_hierarchy_inp.input.process_mtrix_records()
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb)
+    transform_info = pdb_inp.process_mtrix_records()
     expected = transform_info.as_pdb_string()
 
     self.assertEqual(results,expected)

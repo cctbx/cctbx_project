@@ -121,11 +121,8 @@ class input(object):
           file_path='',
           spec_file_str='',
           spec_source_info='',
-          cif_string = '',
           quiet=True,
           spec_ncs_groups=None,
-          pdb_string=None,
-          use_minimal_master_ncs=True,
           exclude_selection="not (protein or nucleotide) or element H or element D",
           max_rmsd=2.0,
           write_messages=False,
@@ -177,9 +174,6 @@ class input(object):
       spec_source_info:
       quiet: (bool) When True -> quiet output when processing files
       spec_ncs_groups: ncs_groups object as produced by simple_ncs_from_pdb
-      cif_string: (str) string of cif type data
-      use_minimal_master_ncs (bool): use maximal or minimal common chains
-        in master ncs groups
       max_rmsd (float): limit of rms difference between chains to be considered
         as copies
       write_messages (bool): When True, write messages to log
@@ -260,7 +254,6 @@ class input(object):
     self.write_messages = write_messages
     self.check_atom_order = check_atom_order
     self.allow_different_size_res = allow_different_size_res
-    self.use_minimal_master_ncs = use_minimal_master_ncs
     self.min_contig_length = min_contig_length
     self.exclude_selection = exclude_selection
     self.max_rmsd = max_rmsd
@@ -274,10 +267,6 @@ class input(object):
     if not log: log = sys.stdout
     self.log = log
     if file_name: extension = os.path.splitext(file_name)[1]
-    if (pdb_string or cif_string):
-      if pdb_string: input_str = pdb_string
-      else: input_str = cif_string
-      pdb_hierarchy_inp = pdb.hierarchy.input(pdb_string=input_str)
     if pdb_inp:
       self.crystal_symmetry = pdb_inp.crystal_symmetry()
     elif pdb_hierarchy_inp:
@@ -535,7 +524,6 @@ class input(object):
             min_percent=0.5,
             check_atom_order=False,
             allow_different_size_res=True,
-            # use_minimal_master_ncs=False,
             )
         # print "match_list", match_list
         match_dict = ncs_search.clean_chain_matching(
@@ -818,7 +806,6 @@ class input(object):
         min_contig_length=min_contig_length,
         min_percent=min_percent,
         similarity_threshold=self.similarity_threshold,
-        # use_minimal_master_ncs=self.use_minimal_master_ncs,
         max_rmsd=self.max_rmsd,
         write=self.write_messages,
         log=self.log,
@@ -1199,7 +1186,7 @@ class input(object):
     t3 = not bool(self.ncs_to_asu_map)
     if t1 and t2 and t3:
       temp = pdb_h.atom_selection_cache()
-      # check if pdb_hierarchy_inp contain only the master NCS copy
+      # check if pdb_h contain only the master NCS copy
       pdb_length = len(pdb_h.atoms())
       self.ncs_atom_selection = temp.selection(self.ncs_selection_str)
       ncs_length = self.ncs_atom_selection.count(True)
@@ -2067,7 +2054,7 @@ class input(object):
         each line
     """
     list_of_values = [
-      'use_minimal_master_ncs','min_contig_length','max_rmsd',
+      'min_contig_length','max_rmsd',
       'check_atom_order','exclude_misaligned_residues','match_radius',
       'min_percent','similarity_threshold']
     str_out = ['\n{}NCS search parameters:'.format(prefix),'-'*51]
@@ -2392,7 +2379,7 @@ def sensible_unit_cell_volume(
 
   Args:
     crystal_symmetry
-    pdb_hierarchy_inp
+    pdb_h
     transform_info
     rotations
 
