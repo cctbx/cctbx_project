@@ -112,10 +112,6 @@ class input(object):
           translations = None,
           # XXX warning, ncs_phil_groups can be changed inside...
           ncs_phil_groups = None,
-          file_name=None,
-          file_path='',
-          spec_file_str='',
-          spec_source_info='',
           quiet=True,
           spec_ncs_groups=None,
           exclude_selection="not (protein or nucleotide) or element H or element D",
@@ -134,7 +130,6 @@ class input(object):
     """
     TODO:
     1. switch from iotbx.pdb.hierarchy.input to iotbx.pdb.input
-    2. Get rid of file_name, file_path
 
 
     Select method to build ncs_group_object
@@ -163,12 +158,14 @@ class input(object):
            }
       ncs_phil_groups: a list of ncs_groups_container object, containing
         master NCS selection and a list of NCS copies selection
-      file_name: (str) .ncs_spec or .mmcif  or .pdb file name
-      file_path: (str)
-      spec_file_str: (str) spec format data
-      spec_source_info:
+
+      # file_name: (str) .ncs_spec or .mmcif  or .pdb file name
+      # file_path: (str)
+      # spec_file_str: (str) spec format data
+      # spec_source_info:
+
       quiet: (bool) When True -> quiet output when processing files
-      spec_ncs_groups: ncs_groups object as produced by simple_ncs_from_pdb
+      spec_ncs_groups: ncs_groups object of class mmtbx.ncs.ncs.ncs
       max_rmsd (float): limit of rms difference between chains to be considered
         as copies
       write_messages (bool): When True, write messages to log
@@ -261,7 +258,6 @@ class input(object):
     #
     if not log: log = sys.stdout
     self.log = log
-    if file_name: extension = os.path.splitext(file_name)[1]
     if pdb_inp:
       self.crystal_symmetry = pdb_inp.crystal_symmetry()
     elif pdb_hierarchy_inp:
@@ -278,8 +274,6 @@ class input(object):
       pdb_inp = hierarchy.as_pdb_input()
       pdb_hierarchy_inp = iotbx.pdb.hierarchy.input_hierarchy_pair(
         pdb_inp,hierarchy)
-    if extension.lower() in ['.pdb','.cif', '.mmcif', '.gz']:
-      pdb_hierarchy_inp = pdb.hierarchy.input(file_name=file_name)
 
     # truncating hierarchy
     if pdb_hierarchy_inp:
@@ -337,13 +331,8 @@ class input(object):
       self.build_ncs_obj_from_phil(
         ncs_phil_groups=validated_ncs_phil_groups,
         pdb_h= None if not pdb_hierarchy_inp else pdb_hierarchy_inp.hierarchy)
-    elif extension.lower() == '.ncs_spec' or \
-            spec_file_str or spec_source_info or spec_ncs_groups:
+    elif spec_ncs_groups:
       self.build_ncs_obj_from_spec_file(
-        file_name=file_name,
-        file_path=file_path,
-        file_str=spec_file_str,
-        source_info=spec_source_info,
         pdb_h= None if not pdb_hierarchy_inp else pdb_hierarchy_inp.hierarchy,
         spec_ncs_groups=spec_ncs_groups,
         quiet=quiet)
@@ -936,33 +925,21 @@ class input(object):
     self.ncs_atom_selection = self.ncs_atom_selection | (~ncs_related_atoms)
     self.finalize_pre_process(pdb_h=pdb_h)
 
-  def build_ncs_obj_from_spec_file(self,file_name=None,file_path='',
-                                   file_str='',source_info="",quiet=True,
-                                   pdb_h=None,
+  def build_ncs_obj_from_spec_file(self,
                                    spec_ncs_groups=None,
+                                  quiet=True,
+                                   pdb_h=None,
                                    join_same_spec_groups = True):
     """
     read .spec files and build transforms object and NCS <-> ASU mapping
 
     Arguments:
-    spec file information using a file, file_str (str) of a source_info (str)
     quiet: (bool) quite output when True
     pdb_h: pdb hierarchy
-    spec_ncs_groups: ncs_groups object
+    spec_ncs_groups: ncs_groups object or mmtbx.ncs.ncs.ncs object
     join_same_spec_groups: (bool) True: combine groups with similar transforms
     """
     if not spec_ncs_groups: spec_ncs_groups = []
-    if (not bool(spec_ncs_groups)) and (file_name or file_str):
-      fn = ""
-      if file_name:
-        fn = os.path.join(file_path,file_name)
-      lines = file_str.splitlines()
-      assert lines != [] or os.path.isfile(fn)
-      spec_object = ncs.ncs()
-      spec_object.read_ncs(
-        file_name=fn,lines=lines,source_info=source_info,quiet=quiet)
-      spec_ncs_groups = spec_object.ncs_groups()
-
     if isinstance(spec_ncs_groups, ncs.ncs):
       spec_ncs_groups = spec_ncs_groups.ncs_groups()
     if spec_ncs_groups:

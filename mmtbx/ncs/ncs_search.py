@@ -102,7 +102,6 @@ class Chains_info(object):
 def find_ncs_in_hierarchy(ph,
                           min_contig_length=10,
                           min_percent=0.95,
-                          # use_minimal_master_ncs=True,
                           max_rmsd=5.0,
                           write=False,
                           log=None,
