@@ -5,6 +5,8 @@ import os
 from scitbx import lstbx
 import scitbx.lstbx.normal_eqns_solving
 from smtbx import refinement
+from timeit import default_timer as current_time
+
 
 allowed_input_file_extensions = ('.ins', '.res', '.cif')
 
@@ -90,6 +92,9 @@ def run(filenames, options):
         steps.non_linear_ls.normal_equations_building_time
   print "Normal equations solving time: %.3f s" % \
         steps.non_linear_ls.normal_equations_solving_time
+  t0 = current_time()
+  cov = ls.covariance_matrix_and_annotations()
+  print "Covariance matrix building: %.3f" % (current_time() - t0)
 
   # Write result to disk
   if out_ext != '.cif':
