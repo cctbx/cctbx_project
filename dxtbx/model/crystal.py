@@ -60,6 +60,9 @@ class crystal_model(object):
     # set up attributes for scan-varying model
     self.reset_scan_points()
 
+    # set up attributes for unit cell errors
+    self.reset_unit_cell_errors()
+
     return
 
   @property
