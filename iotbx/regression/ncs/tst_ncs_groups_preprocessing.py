@@ -11,6 +11,7 @@ import unittest
 import shutil
 import os
 from iotbx.ncs import ncs_group_master_phil
+import mmtbx.ncs.ncs
 
 __author__ = 'Youval'
 
@@ -33,9 +34,10 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     if not os.path.isdir(self.tempdir):
       os.mkdir(self.tempdir)
     os.chdir(self.tempdir)
-    self.pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_ncs_spec)
+    # self.pdb_obj = pdb.hierarchy.input(pdb_string=test_pdb_ncs_spec)
     self.pdb_inp = pdb.input(source_info=None, lines=test_pdb_ncs_spec)
     self.ph = self.pdb_inp.construct_hierarchy()
+    self.pdb_inp = pdb.input(source_info=None, lines=test_pdb_ncs_spec)
 
   def test_create_ncs_domain_pdb_files(self):
     """ check that files are created for each NCS group as expected """
@@ -98,12 +100,12 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     residues. """
     # print sys._getframe().f_code.co_name
     # read file and create pdb object
-    pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
+    pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
     phil_groups = ncs_group_master_phil.fetch(
         iotbx.phil.parse(pdb_test_data2_phil)).extract()
     trans_obj = iotbx.ncs.input(
         ncs_phil_groups=phil_groups.ncs_group,
-        pdb_hierarchy_inp=pdb_obj,
+        pdb_inp=pdb_inp,
         exclude_selection=None)
 
     expected = "(chain 'A') or (chain 'B' or chain 'C')"
@@ -130,12 +132,12 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     residues. """
     # print sys._getframe().f_code.co_name
     # read file and create pdb object
-    pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data1)
+    pdb_inp = pdb.input(source_info=None, lines=pdb_test_data1)
     phil_groups = ncs_group_master_phil.fetch(
         iotbx.phil.parse(pdb_test_data1_phil)).extract()
     trans_obj = ncs.input(
         ncs_phil_groups=phil_groups.ncs_group,
-        pdb_hierarchy_inp=pdb_obj,
+        pdb_inp=pdb_inp,
         exclude_selection=None)
 
     # print "trans_obj.ncs_selection_str", trans_obj.ncs_selection_str
@@ -197,10 +199,13 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
         params=params)
 
       # reading and processing the spec file
+
+      spec_object = mmtbx.ncs.ncs.ncs()
+      spec_object.read_ncs(file_name="simple_ncs_from_pdb.ncs_spec")
       trans_obj = ncs.input(
-        file_name="simple_ncs_from_pdb.ncs_spec",
+        spec_ncs_groups=spec_object,
         # spec_file_str=test_ncs_spec,  # use output string directly
-        pdb_hierarchy_inp = self.pdb_obj)
+        pdb_inp = self.pdb_inp)
 
       # test created object
       self.assertEqual(len(trans_obj.transform_chain_assignment),3)
@@ -246,7 +251,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     """
     # print sys._getframe().f_code.co_name
     # reading and processing the spec file
-    trans_obj = ncs.input(pdb_hierarchy_inp = self.pdb_obj)
+    trans_obj = ncs.input(pdb_inp = self.pdb_inp)
 
     # test created object
     self.assertEqual(len(trans_obj.transform_chain_assignment),3)
@@ -283,7 +288,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
     # Verify that spec object are produced properly
     spec_output = trans_obj.get_ncs_info_as_spec(
-      pdb_hierarchy_asu=self.pdb_obj.hierarchy,
+      pdb_hierarchy_asu=self.ph,
       write=False)
     trans_obj2 = ncs.input(spec_ncs_groups=spec_output)
 
@@ -341,12 +346,12 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     need to supply exclude_selection=None because model consist only from UNK
     residues. """
     # print sys._getframe().f_code.co_name
-    pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_test_data2)
     phil_groups = ncs_group_master_phil.fetch(
         iotbx.phil.parse(pdb_test_data2_phil)).extract()
     trans_obj = ncs.input(
       ncs_phil_groups=phil_groups.ncs_group,
-      pdb_hierarchy_inp=pdb_obj,
+      pdb_inp=pdb_inp,
       exclude_selection=None)
     result = trans_obj.print_ncs_phil_param(write=False)
     # print "="*50
@@ -357,9 +362,13 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     test = test or (pdb_test_data2_phil_reverse == result)
     self.assertTrue(test)
     #
+
+
+    spec_object = mmtbx.ncs.ncs.ncs()
+    spec_object.read_ncs(lines=test_ncs_spec.splitlines())
     trans_obj = ncs.input(
-      spec_file_str=test_ncs_spec,
-      pdb_hierarchy_inp = self.pdb_obj)
+      spec_ncs_groups=spec_object,
+      pdb_inp = self.pdb_inp)
     result = trans_obj.print_ncs_phil_param(write=False)
     self.assertEqual(result,test_phil_3)
 
