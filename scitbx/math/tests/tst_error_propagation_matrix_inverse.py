@@ -8,7 +8,6 @@
 #  included in the root directory of this package.
 
 from __future__ import division
-import math
 from scitbx import matrix
 from scitbx.array_family import flex
 import random
