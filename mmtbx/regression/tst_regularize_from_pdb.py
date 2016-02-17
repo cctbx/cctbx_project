@@ -47,7 +47,7 @@ def tst_01():
     out=null_out())
 
   expected_text="""
-ID: 1 ChainID: 'U'  RMSD:  1.29 A  (n=24) Junction RMSD:  0.69 A (n=7)
+ID: 1 ChainID: 'U'  RMSD:  1.31 A  (n=22) Junction RMSD:  0.68 A (n=7)
 Complete: True  Insertions/deletions: True
 Input model start: 111  end: 135  length: 25
 Replacement start: 111  end: 136  length: 26
@@ -73,10 +73,10 @@ def tst_02():
     out=null_out())
 
   expected_text="""
-ID: 1 ChainID: 'U'  RMSD:  1.29 A  (n=24) Junction RMSD:  0.69 A (n=6)
-Complete: False  Insertions/deletions: False
-Input model start: 111  end: 135  length: 25
-Replacement start: 112  end: 135  length: 24
+ID: 1 ChainID: 'U'  RMSD:  1.28 A  (n=25) Junction RMSD:  0.68 A (n=8)
+Complete: True  Insertions/deletions: False
+Input model start: 111  end: 135  length: 25 
+Replacement start: 111  end: 135  length: 25
 """
   f=StringIO()
   for rss in r.model_replacement_segment_summaries:
