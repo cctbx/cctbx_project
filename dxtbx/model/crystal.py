@@ -173,9 +173,17 @@ class crystal_model(object):
     self.reset_unit_cell_errors()
 
   def get_B_covariance(self):
+    '''Return the 9*9 covariance matrix of elements of B, if available,
+    otherwise None. The order of elements of this matrix are determined by
+    'flattening' B to form a 1D vector using row major ordering.
+
+    :rtype: :py:class:`scitbx.matrix.sqr`
+    '''
     return self._cov_B
 
   def set_B_covariance(self, cov):
+
+    cov = matrix.sqr(cov)
 
     # check cov is of the right size. No other checks made
     assert cov.n == (9, 9)
@@ -296,6 +304,11 @@ class crystal_model(object):
     return
 
   def get_cell_parameter_sd(self):
+    '''Return the estimated standard deviations of unit cell parameters in
+    units of Angstroms and degrees, if available, otherwise None.
+
+    :rtype: :py:class:`tuple`
+    '''
     return self._cell_sd
 
   def set_A(self, A):
