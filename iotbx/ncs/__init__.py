@@ -323,7 +323,7 @@ class input(object):
     # print "ncs_groups before validation", ncs_phil_groups
     validated_ncs_phil_groups = None
     validated_ncs_phil_groups = self.validate_ncs_phil_groups(
-      pdb_hierarchy_inp = pdb_hierarchy_inp,
+      pdb_h = None if not pdb_hierarchy_inp else pdb_hierarchy_inp.hierarchy,
       ncs_phil_groups   = ncs_phil_groups)
     # print "ncs_phil_groups", ncs_phil_groups
     # if ncs_phil_groups is not None:
@@ -338,22 +338,21 @@ class input(object):
     if transform_info or rotations:
       if ncs_only(transform_info) or rotations:
         if not sensible_unit_cell_volume(
-                pdb_hierarchy_inp=pdb_hierarchy_inp,
+                pdb_h=pdb_hierarchy_inp.hierarchy,
                 crystal_symmetry=self.crystal_symmetry):
           raise Sorry('Unit cell is to small to contain all NCS copies')
         self.build_ncs_obj_from_pdb_ncs(
-          pdb_hierarchy_inp = pdb_hierarchy_inp,
+          pdb_h = pdb_hierarchy_inp.hierarchy,
           rotations=rotations,
           translations=translations,
           transform_info=transform_info)
       else:
         # in the case that all ncs copies are in pdb
-        self.build_ncs_obj_from_pdb_asu(pdb_hierarchy_inp=pdb_hierarchy_inp)
+        self.build_ncs_obj_from_pdb_asu(pdb_h=pdb_hierarchy_inp.hierarchy)
     elif validated_ncs_phil_groups:
       self.build_ncs_obj_from_phil(
-        # ncs_phil_string=ncs_phil_string,
         ncs_phil_groups=validated_ncs_phil_groups,
-        pdb_hierarchy_inp=pdb_hierarchy_inp)
+        pdb_h= None if not pdb_hierarchy_inp else pdb_hierarchy_inp.hierarchy)
     elif extension.lower() == '.ncs_spec' or \
             spec_file_str or spec_source_info or spec_ncs_groups:
       self.build_ncs_obj_from_spec_file(
@@ -361,13 +360,13 @@ class input(object):
         file_path=file_path,
         file_str=spec_file_str,
         source_info=spec_source_info,
-        pdb_hierarchy_inp=pdb_hierarchy_inp,
+        pdb_h= None if not pdb_hierarchy_inp else pdb_hierarchy_inp.hierarchy,
         spec_ncs_groups=spec_ncs_groups,
         quiet=quiet)
     elif (pdb_hierarchy_inp
         and validated_ncs_phil_groups is None):
       # print "Last chance, building from hierarchy"
-      self.build_ncs_obj_from_pdb_asu(pdb_hierarchy_inp=pdb_hierarchy_inp)
+      self.build_ncs_obj_from_pdb_asu(pdb_h=pdb_hierarchy_inp.hierarchy)
     else:
       pass
       # raise Sorry('Please provide one of the supported input')
@@ -416,7 +415,7 @@ class input(object):
       return chr(ord(cur_ch_id[0]) + 1) + 'A'
 
 
-  def validate_ncs_phil_groups(self, pdb_hierarchy_inp, ncs_phil_groups):
+  def validate_ncs_phil_groups(self, pdb_h, ncs_phil_groups):
     """
     Note that the result of this procedure is corrected ncs_phil_groups.
     These groups will be later submitted to build_ncs_obj_from_phil
@@ -448,13 +447,13 @@ class input(object):
         return None
     # Verify NCS selections
     # print "ncs_phil_groups", ncs_phil_groups
-    if pdb_hierarchy_inp is None:
+    if pdb_h is None:
       # if we are here and there is no pdb_hierarchy, we just return
       # user-selections.
       return ncs_phil_groups
     if(ncs_phil_groups is not None and len(ncs_phil_groups)>0):
       msg="Empty selection in NCS group definition: %s"
-      asc = pdb_hierarchy_inp.hierarchy.atom_selection_cache()
+      asc = pdb_h.atom_selection_cache()
       for ncs_group in ncs_phil_groups:
         selection_list = []
         # first, check for selections producing 0 atoms
@@ -490,7 +489,7 @@ class input(object):
         combined_h = iotbx.pdb.hierarchy.root()
         combined_h.append_model(iotbx.pdb.hierarchy.model())
         cur_ch_id = 'A'
-        master_chain = self.pdb_h_into_chain(pdb_hierarchy_inp.hierarchy.select(
+        master_chain = self.pdb_h_into_chain(pdb_h.select(
             asc.selection(ncs_group.reference)),ch_id=cur_ch_id)
         # print "tmp in master chain:", list(master_chain.atoms().extract_tmp_as_size_t())
         cur_ch_id = self.get_next_ch_id(cur_ch_id)
@@ -500,7 +499,7 @@ class input(object):
         # print "tmp combined_h1:", list(combined_h.atoms().extract_tmp_as_size_t())
         for s_string in ncs_group.selection:
           # print "adding selection to combined:", s_string
-          sel_chain = self.pdb_h_into_chain(pdb_hierarchy_inp.hierarchy.select(
+          sel_chain = self.pdb_h_into_chain(pdb_h.select(
             asc.selection(s_string)),ch_id=cur_ch_id)
           combined_h.only_model().append_chain(sel_chain)
           cur_ch_id = self.get_next_ch_id(cur_ch_id)
@@ -550,7 +549,7 @@ class input(object):
         # print "="*80
         # print "="*80
         group_dict = ncs_search.ncs_grouping_and_group_dict(
-            match_dict, pdb_hierarchy_inp.hierarchy)
+            match_dict, pdb_h)
         # print "group_dict", group_dict
         # hopefully, we will get only 1 ncs group
         # ncs_group.selection = []
@@ -577,7 +576,7 @@ class input(object):
             # print "new isels", list(m_all_isel)
             # print "old isels", list(original_m_all_isel)
             all_m_select_str = selection_string_from_selection(
-                pdb_hierarchy_inp=pdb_hierarchy_inp.hierarchy,
+                pdb_h=pdb_h,
                 selection=original_m_all_isel,
                 chains_info=None)
             # print "all_m_select_str", all_m_select_str
@@ -619,7 +618,7 @@ class input(object):
     return validated_ncs_groups
 
   def build_ncs_obj_from_pdb_ncs(self,
-                                 pdb_hierarchy_inp,
+                                 pdb_h,
                                  transform_info=None,
                                  rotations = None,
                                  translations = None):
@@ -628,12 +627,12 @@ class input(object):
     a single NCS copy and MTRIX  or BIOMT records
 
     Args:
-      pdb_hierarchy_inp : iotbx.pdb.hierarchy.input
+      pdb_h : iotbx.pdb.hierarchy
       transform_info : an object containing MTRIX or BIOMT transformation info
       rotations : matrix.sqr 3x3 object
       translations : matrix.col 3x1 object
     """
-    self.collect_basic_info_from_pdb(pdb_hierarchy_inp=pdb_hierarchy_inp)
+    self.collect_basic_info_from_pdb(pdb_h=pdb_h)
     if bool(transform_info or (rotations and translations)):
       if rotations:
         # add rotations,translations to ncs_refinement_groups
@@ -685,16 +684,15 @@ class input(object):
           sel = key.split('_')[0]
           self.tr_id_to_selection[key] = (sel,sel)
       self.number_of_ncs_groups = 1
-      # self.finalize_pre_process(pdb_hierarchy_inp=pdb_hierarchy_inp)
+      # self.finalize_pre_process(pdb_h=pdb_h)
     else:
       # No NCS transform information
       pass
-    self.finalize_pre_process(pdb_hierarchy_inp=pdb_hierarchy_inp)
+    self.finalize_pre_process(pdb_h=pdb_h)
 
   def build_ncs_obj_from_phil(self,
-                              # ncs_phil_string = None,
                               ncs_phil_groups = None,
-                              pdb_hierarchy_inp = None):
+                              pdb_h = None):
     """
     Build transforms objects and NCS <-> ASU mapping using phil selection
     strings and complete ASU
@@ -702,7 +700,7 @@ class input(object):
     Args:
       ncs_phil_string : Phil parameters
       ncs_phil_groups :
-      pdb_hierarchy_inp : iotbx.pdb.hierarchy.input
+      pdb_h : iotbx.pdb.hierarchy
 
     Phil structure
     ncs_group (multiple)
@@ -751,7 +749,7 @@ class input(object):
       for asu_select in group.selection:
         unique_selections = uniqueness_test(unique_selections,asu_select)
         r, t, rmsd, msg = ncs_search.get_rot_trans(
-          ph=pdb_hierarchy_inp,
+          ph=pdb_h,
           master_selection=gns,
           copy_selection=asu_select,
           max_rmsd=100)
@@ -793,22 +791,21 @@ class input(object):
       self.ncs_selection_str += ' or (' + self.ncs_chain_selection[i] + ')'
 
     self.transform_chain_assignment = get_transform_order(self.transform_to_ncs)
-    self.finalize_pre_process(pdb_hierarchy_inp=pdb_hierarchy_inp)
+    self.finalize_pre_process(pdb_h=pdb_h)
 
-  def build_ncs_obj_from_pdb_asu(self,pdb_hierarchy_inp):
+  def build_ncs_obj_from_pdb_asu(self,pdb_h):
     """
     Build transforms objects and NCS <-> ASU mapping from a complete ASU
     Note that the MTRIX record are ignored, they are produced in the
     process of identifying the master NCS
 
     Args::
-      pdb_hierarchy_inp : iotbx.pdb.hierarchy.input
+      pdb_h : pdb_hierarchy
     """
-    ph = pdb_hierarchy_inp.hierarchy
-    if len(ph.models()) > 1:
+    if len(pdb_h.models()) > 1:
       raise Sorry('Multi-model PDB (with MODEL-ENDMDL) is not supported.')
-    chain_ids = {x.id for x in ph.models()[0].chains()}
-    self.total_asu_length = ph.atoms().size()
+    chain_ids = {x.id for x in pdb_h.models()[0].chains()}
+    self.total_asu_length = pdb_h.atoms().size()
     if len(chain_ids) > 1:
       min_contig_length = self.min_contig_length
       min_percent = self.min_percent
@@ -817,7 +814,7 @@ class input(object):
         min_contig_length = 100000
         self.check_atom_order = True
       group_dict = ncs_search.find_ncs_in_hierarchy(
-        ph=ph,
+        ph=pdb_h,
         min_contig_length=min_contig_length,
         min_percent=min_percent,
         similarity_threshold=self.similarity_threshold,
@@ -831,19 +828,19 @@ class input(object):
         match_radius=self.match_radius,
         ignore_chains=self.ignore_chains)
       # process atom selections
-      self.total_asu_length = ph.atoms().size()
-      self.build_ncs_obj_from_group_dict(group_dict,pdb_hierarchy_inp)
+      self.total_asu_length = pdb_h.atoms().size()
+      self.build_ncs_obj_from_group_dict(group_dict,pdb_h)
       if not self.model_unique_chains_ids:
-        model = ph.models()[0]
+        model = pdb_h.models()[0]
         chain_ids = {x.id for x in model.chains()}
         self.model_unique_chains_ids = tuple(sorted(chain_ids))
 
-  def build_ncs_obj_from_group_dict(self,group_dict,pdb_hierarchy_inp):
+  def build_ncs_obj_from_group_dict(self,group_dict,pdb_h):
     """
     Use group_dict to build ncs object
 
     Args:
-      pdb_hierarchy_inp : iotbx.pdb.hierarchy.input
+      pdb_h : pdb_hierarchy
       group_dict (dict):
         keys: tuple of master chain IDs
         values: NCS_groups_container objects with Attributes:
@@ -860,10 +857,7 @@ class input(object):
               ncs_group_id (int): group ID of the group containing this transform
               rmsd (float): RMS distance between ncs copies
     """
-    if hasattr(pdb_hierarchy_inp,"hierarchy"):
-      ph = pdb_hierarchy_inp.hierarchy
-    else:
-      ph = pdb_hierarchy_inp
+    ph = pdb_h
     # print "in build_ncs_obj_from_group_dict, group_dict"
     # for k,v in group_dict.iteritems():
     #   print "  ", k,
@@ -958,11 +952,11 @@ class input(object):
     self.all_master_ncs_selections = self.ncs_atom_selection.iselection(True)
     # add the ncs_atom_selection all the regions that are not NCS related
     self.ncs_atom_selection = self.ncs_atom_selection | (~ncs_related_atoms)
-    self.finalize_pre_process(pdb_hierarchy_inp=pdb_hierarchy_inp)
+    self.finalize_pre_process(pdb_h=pdb_h)
 
   def build_ncs_obj_from_spec_file(self,file_name=None,file_path='',
                                    file_str='',source_info="",quiet=True,
-                                   pdb_hierarchy_inp=None,
+                                   pdb_h=None,
                                    spec_ncs_groups=None,
                                    join_same_spec_groups = True):
     """
@@ -971,7 +965,7 @@ class input(object):
     Arguments:
     spec file information using a file, file_str (str) of a source_info (str)
     quiet: (bool) quite output when True
-    pdb_hierarchy_inp: pdb hierarchy input
+    pdb_h: pdb hierarchy
     spec_ncs_groups: ncs_groups object
     join_same_spec_groups: (bool) True: combine groups with similar transforms
     """
@@ -1043,7 +1037,7 @@ class input(object):
       for i in range(1,len(self.ncs_chain_selection)):
         self.ncs_selection_str += ' or (' + self.ncs_chain_selection[i] + ')'
       self.transform_chain_assignment=get_transform_order(self.transform_to_ncs)
-      self.finalize_pre_process(pdb_hierarchy_inp=pdb_hierarchy_inp)
+      self.finalize_pre_process(pdb_h=pdb_h)
 
   def look_and_combine_groups(self,gr_new,spec_group_list):
     """
@@ -1167,46 +1161,46 @@ class input(object):
         selection_ids = self.ncs_chain_selection,
         transform_id = key)
 
-  def collect_basic_info_from_pdb(self,pdb_hierarchy_inp):
+  def collect_basic_info_from_pdb(self,pdb_h):
     """
     Build chain selection string and collect chains IDs from pdb
     Consider that chains can be not continuous
     """
-    if len(pdb_hierarchy_inp.hierarchy.models()) > 1:
+    assert pdb_h is not None
+    if len(pdb_h.models()) > 1:
       raise Sorry('Multi-model PDB (with MODEL-ENDMDL) is not supported.')
-    if pdb_hierarchy_inp:
-      model  = pdb_hierarchy_inp.hierarchy.models()[0]
-      chain_ids = {x.id for x in model.chains()}
-      # Collect order if chains IDs and unique IDs
-      self.model_unique_chains_ids = tuple(sorted(chain_ids))
-      model_order_ch_ids = [(x.id,x.atoms().size()) for x in model.chains()]
-      ch_n_atoms = {x:None for x in self.model_unique_chains_ids}
-      for (ch,n) in model_order_ch_ids:
-        if ch_n_atoms[ch] is None:
-          ch_n_atoms[ch] = [(0,n)]
-        else:
-          _,last_n = ch_n_atoms[ch][-1]
-          ch_n_atoms[ch].append((last_n, last_n + n))
-      for ch,n in model_order_ch_ids:
-        selection_range = ch_n_atoms[ch].pop(0)
-        self.model_order_chain_ids.append((ch,selection_range))
-      s = ' or chain '.join(self.model_unique_chains_ids)
-      self.ncs_selection_str = 'chain ' + s
-      assert self.ncs_chain_selection == []
-      self.ncs_chain_selection =\
-        ['chain ' + s for s in self.model_unique_chains_ids]
-      self.ncs_chain_selection.sort()
+    model  = pdb_h.models()[0]
+    chain_ids = {x.id for x in model.chains()}
+    # Collect order if chains IDs and unique IDs
+    self.model_unique_chains_ids = tuple(sorted(chain_ids))
+    model_order_ch_ids = [(x.id,x.atoms().size()) for x in model.chains()]
+    ch_n_atoms = {x:None for x in self.model_unique_chains_ids}
+    for (ch,n) in model_order_ch_ids:
+      if ch_n_atoms[ch] is None:
+        ch_n_atoms[ch] = [(0,n)]
+      else:
+        _,last_n = ch_n_atoms[ch][-1]
+        ch_n_atoms[ch].append((last_n, last_n + n))
+    for ch,n in model_order_ch_ids:
+      selection_range = ch_n_atoms[ch].pop(0)
+      self.model_order_chain_ids.append((ch,selection_range))
+    s = ' or chain '.join(self.model_unique_chains_ids)
+    self.ncs_selection_str = 'chain ' + s
+    assert self.ncs_chain_selection == []
+    self.ncs_chain_selection =\
+      ['chain ' + s for s in self.model_unique_chains_ids]
+    self.ncs_chain_selection.sort()
 
-  def compute_ncs_asu_coordinates_map(self,pdb_hierarchy_inp):
+  def compute_ncs_asu_coordinates_map(self,pdb_h):
     """ Calculates coordinates maps from ncs to asu and from asu to ncs """
     # check is coordinates maps already calculated
     t1 = not bool(self.ncs_atom_selection)
     t2 = not bool(self.asu_to_ncs_map)
     t3 = not bool(self.ncs_to_asu_map)
     if t1 and t2 and t3:
-      temp = pdb_hierarchy_inp.hierarchy.atom_selection_cache()
+      temp = pdb_h.atom_selection_cache()
       # check if pdb_hierarchy_inp contain only the master NCS copy
-      pdb_length = len(pdb_hierarchy_inp.hierarchy.atoms())
+      pdb_length = len(pdb_h.atoms())
       self.ncs_atom_selection = temp.selection(self.ncs_selection_str)
       ncs_length = self.ncs_atom_selection.count(True)
       # keep track on the asu copy number
@@ -1413,12 +1407,12 @@ class input(object):
           new_names_dictionary[ch_sel+'_'+tr_str] = ch_sel.replace('chain ','')
     return new_names_dictionary
 
-  def finalize_pre_process(self,pdb_hierarchy_inp=None):
+  def finalize_pre_process(self,pdb_h=None):
     """
     Steps that are common to most method of transform info
     """
-    if pdb_hierarchy_inp:
-      self.compute_ncs_asu_coordinates_map(pdb_hierarchy_inp=pdb_hierarchy_inp)
+    if pdb_h:
+      self.compute_ncs_asu_coordinates_map(pdb_h=pdb_h)
       # print "self.old_i_seqs", list(self.old_i_seqs)
       # print "self.ncs_to_asu_map in finalize"
       # for k, v in self.ncs_to_asu_map.iteritems():
@@ -1435,9 +1429,8 @@ class input(object):
           for i in range(len(v)):
             # print v[i], "-->", self.old_i_seqs[v[i]]
             v[i] = self.old_i_seqs[v[i]]
-      # self.compute_ncs_asu_coordinates_map(pdb_hierarchy_inp=pdb_hierarchy_inp)
       # keep hierarchy for writing
-      self.truncated_hierarchy = pdb_hierarchy_inp.hierarchy
+      self.truncated_hierarchy = pdb_h
       self.set_common_res_dict()
     # add group selection to ncs_group_map
     for gr_num in self.ncs_group_map.iterkeys():
@@ -2052,7 +2045,7 @@ class input(object):
     if header:
       msg = '\n{}NCS phil parameters:'
       str_out = [msg.format(prefix),'-'*len(msg)]
-    str_line = prefix + '  {:<16s} = {}'
+    str_line = prefix + '  {:s} = {}'
     str_ncs_group =  prefix + group_prefix + 'ncs_group {\n%s' + prefix + '\n}'
     master_sel_str = sorted(self.ncs_to_asu_selection)
     for m_str in master_sel_str:
@@ -2386,7 +2379,7 @@ def all_ncs_copies_present(transform_info):
   return test
 
 def sensible_unit_cell_volume(
-        pdb_hierarchy_inp=None,
+        pdb_h=None,
         pdb_inp=None,
         crystal_symmetry=None,
         transform_info=None,
@@ -2407,22 +2400,21 @@ def sensible_unit_cell_volume(
     (bool): False indicates that the complete ASU does not fit in the unit cell
   """
   # fixme : finish function and add test
-  if  [bool(pdb_hierarchy_inp),bool(pdb_inp)].count(True) == 0:
-    raise Sorry('Need to provide pdb_hierarchy_inp or pdb_inp object')
+  if pdb_h is None and pdb_inp is None:
+    raise Sorry('Need to provide pdb_h or pdb_inp object')
   n_transforms = 0
-  if pdb_inp:
-    n_atoms_in_ncs = pdb_inp.atoms().size()
-    inp_obj = pdb_inp
-  else:
-    n_atoms_in_ncs = pdb_hierarchy_inp.hierarchy.atoms().size()
-    inp_obj = pdb_hierarchy_inp
-  if not crystal_symmetry:
-    crystal_symmetry = inp_obj.crystal_symmetry()
+  cs = crystal_symmetry
+  hierarchy = pdb_h
+  if pdb_inp is not None:
+    cs = pdb_inp.crystal_symmetry()
+    hierarchy = pdb_inp.construct_hierarchy()
+
   # todo:  check units of unit_cell().volume()
-  if crystal_symmetry:
-    unit_cell_volume = crystal_symmetry.unit_cell().volume()
+  if cs:
+    n_atoms_in_ncs = hierarchy.atoms().size()
+    unit_cell_volume = cs.unit_cell().volume()
     # get z, the number of ASU in the cell unit
-    space_group = crystal_symmetry.space_group_info()
+    space_group = cs.space_group_info()
     z = space_group.type().number()
     if transform_info:
       for r,cp in zip(transform_info.r,transform_info.coordinates_present):
@@ -2563,57 +2555,6 @@ def insure_identity_is_in_transform_info(transform_info):
   ti.coordinates_present = t_cp
   return ti
 
-# def make_chain_names_list(unique_chain_names):
-#   """ make new chain names
-
-#   Args:
-#     unique_chain_names (list of str): a list of existing chain names
-
-#   Returns:
-#     (list of str): a list of potential new names
-#     """
-#   chr_list1 = list(set(string.ascii_uppercase) - set(unique_chain_names))
-#   chr_list2 = list(set(string.ascii_lowercase) - set(unique_chain_names))
-#   chr_list1.sort()
-#   chr_list2.sort()
-#   return chr_list1 + chr_list2
-
-# def rename_blank_chain_name(pdb_hierarchy_inp):
-#   """
-#   when there is a blank chain name, rename it and mutate the
-#   pdb_hierarchy_inp object
-#   """
-#   return
-#   if hasattr(pdb_hierarchy_inp,'hierarchy'):
-#     ph = pdb_hierarchy_inp.hierarchy
-#   else:
-#     ph = pdb_hierarchy_inp
-#   model  = ph.models()[0]
-#   existing_ch_ids = set()
-#   for ch in model.chains():
-#       existing_ch_ids.add(ch.id)
-#   has_blank_name = ('' in existing_ch_ids)
-#   has_blank_name |= (' ' in existing_ch_ids)
-#   has_stars_name = ('**' in existing_ch_ids)
-#   if has_blank_name or has_stars_name:
-#     new_names_list = make_chain_names_list(existing_ch_ids)
-#     new_ch_spc_id = new_names_list[0]
-#     new_ch_str_id = new_names_list[1]
-#     for ch in model.chains():
-#       if ch.id in ['', ' ']:
-#         ch.id = new_ch_spc_id
-#       elif ch.id == '**':
-#         ch.id = new_ch_str_id
-
-# def clean_chain_id(ph_model):
-#   '''
-#   Make sure chain names do not contain leading or trailing spaces
-#   '''
-#   # XXXX WHY????
-#   return
-#   for ch in ph_model.chains():
-#     ch.id = ch.id.strip()
-#   return ph_model
 
 class NCS_copy():
 

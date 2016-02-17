@@ -98,8 +98,8 @@ class multimer(object):
     self.transforms_obj = ncs_group_object()
     # Read the relevant transformation matrices
     self.transforms_obj.build_ncs_obj_from_pdb_ncs(
-      transform_info=transform_info,
-      pdb_hierarchy_inp=pdb_obj)
+      pdb_h=pdb_obj.hierarchy,
+      transform_info=transform_info)
 
     # Calculate ASU (if there are any transforms to apply)
     self.number_of_transforms = len(self.transforms_obj.transform_to_be_used)

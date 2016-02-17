@@ -2039,7 +2039,7 @@ def get_rot_trans(ph,
   One can get exact selection strings by ncs_object.show(verbose=True)
 
   Args:
-    ph : pdb hierarchy input object
+    ph : pdb.hierarchy
     master/copy_selection (str): master and copy selection strings
     max_rmsd (float): limit of rms difference between chains to be considered
       as copies
@@ -2054,8 +2054,6 @@ def get_rot_trans(ph,
   r_zero = matrix.sqr([0]*9)
   t_zero = matrix.col([0,0,0])
   #
-  if hasattr(ph,'hierarchy'):
-    ph = ph.hierarchy
   if ph:
     cache = ph.atom_selection_cache().selection
     master_ncs_ph = ph.select(cache(master_selection))

@@ -806,7 +806,7 @@ def convert_wildcards_in_chain_id(chain_id):
   chain_id = chain_id.replace("*", "\*")
   return chain_id
 
-def selection_string_from_selection(pdb_hierarchy_inp,
+def selection_string_from_selection(pdb_h,
                                     selection,
                                     chains_info=None):
   """
@@ -821,11 +821,11 @@ def selection_string_from_selection(pdb_hierarchy_inp,
   residues IDs
 
   Limitations:
-    When pdb_hierarchy_inp contains multiple conformations, selection must
+    When pdb_h contains multiple conformations, selection must
     not include residues with alternate locations
 
   Args:
-    pdb_hierarchy_inp : iotbx.pdb.hierarchy.input (or iotbx.pdb.hierarchy)
+    pdb_h : iotbx.pdb.hierarchy
     selection (flex.bool or flex.size_t)
     chains_info : object containing
       chains (str): chain IDs OR selections string
@@ -843,10 +843,10 @@ def selection_string_from_selection(pdb_hierarchy_inp,
   if isinstance(selection,flex.bool): selection = selection.iselection(True)
   selection_set = set(selection)
   sel_list = []
-  # pdb_hierarchy_inp.select(selection).write_pdb_file("selected_in.pdb")
+  # pdb_h.select(selection).write_pdb_file("selected_in.pdb")
   # using chains_info to improve performance
   if not chains_info:
-    chains_info = get_chains_info(pdb_hierarchy_inp)
+    chains_info = get_chains_info(pdb_h)
   # print "chains_info"
   # for k, v in chains_info.iteritems():
   #   print k, v
@@ -991,8 +991,8 @@ def selection_string_from_selection(pdb_hierarchy_inp,
   # Nevertheless, this helps to spot bugs early. So this should remain
   # here, let's say for a year. If no bugs discovered, this could be removed.
   # Current removal date: Jan 22, 2017
-  isel = pdb_hierarchy_inp.atom_selection_cache().iselection(sel_str)
-  # pdb_hierarchy_inp.select(isel).write_pdb_file("selected_out.pdb")
+  isel = pdb_h.atom_selection_cache().iselection(sel_str)
+  # pdb_h.select(isel).write_pdb_file("selected_out.pdb")
   assert len(isel) == len(selection), ""+\
       "%d (result) != %d (input): conversion to string selects different number of atoms!.\n" \
       % (len(isel), len(selection)) +\
