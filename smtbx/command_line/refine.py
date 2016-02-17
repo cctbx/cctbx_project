@@ -152,9 +152,20 @@ if __name__ == '__main__':
     default=8,
     help='Stop refinement as soon as the given number of cycles have been '
          'performed')
+  parser.add_option(
+    '--profile',
+    action='store_true',
+    help='Run with a profiler to find hotspots (for the author-eyes mostly!)')
   options, args = parser.parse_args()
   try:
-    run(args, options)
+    if not options.profile:
+      run(args, options)
+    else:
+      import cProfile, pstats
+      prof = cProfile.Profile()
+      prof.runcall(run, args, options)
+      stats = pstats.Stats(prof)
+      stats.strip_dirs().sort_stats('time').print_stats(6)
   except number_of_arguments_error:
     parser.print_usage()
     sys.exit(1)
