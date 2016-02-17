@@ -61,11 +61,6 @@ ncs_search
   min_contig_length = 10
     .type=int
     .help = "segments < min_contig_length rejected"
-  minimize_param = *chains transforms
-    .type = choice(multi=False)
-    .help = '''chains : minimize the number of NCS related chains in each NCS
-      groups. Transforms : minimize the number of NCS operations'''
-    .style = noauto
   min_percent = 85.
     .help = '''Threshold for similarity between chains, where similarity
     define as: (number of matching res) / (number of res in longer chain)'''
