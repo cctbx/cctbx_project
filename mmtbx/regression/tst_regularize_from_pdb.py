@@ -75,7 +75,7 @@ def tst_02():
   expected_text="""
 ID: 1 ChainID: 'U'  RMSD:  1.28 A  (n=25) Junction RMSD:  0.68 A (n=8)
 Complete: True  Insertions/deletions: False
-Input model start: 111  end: 135  length: 25 
+Input model start: 111  end: 135  length: 25
 Replacement start: 111  end: 135  length: 25
 """
   f=StringIO()
