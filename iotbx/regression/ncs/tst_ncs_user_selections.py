@@ -3,6 +3,7 @@ import time
 from iotbx.ncs import ncs_group_master_phil
 import iotbx.phil
 import iotbx.ncs
+import iotbx.pdb
 from libtbx.test_utils import approx_equal
 
 pdb_str_a_lot_of_ncs = """\
@@ -163,7 +164,8 @@ TER
 def get_ncs_groups(phil_str, pdb_str, **kwargs):
   phil_groups = ncs_group_master_phil.fetch(
       iotbx.phil.parse(phil_str)).extract()
-  ncs_inp = iotbx.ncs.input(pdb_string = pdb_str,
+  pdb_inp = iotbx.pdb.input(lines=pdb_str,source_info=None)
+  ncs_inp = iotbx.ncs.input(pdb_inp = pdb_inp,
       ncs_phil_groups=phil_groups.ncs_group, **kwargs)
   return ncs_inp.get_ncs_restraints_group_list()
 

@@ -269,7 +269,6 @@ class reference_model(object):
     # combined_h.write_pdb_file(fn+"_combined.pdb")
     ncs_obj = iotbx.ncs.input(
         hierarchy=temp_h,
-        use_minimal_master_ncs=search_options.minimize_param == 'chains',
         exclude_misaligned_residues=search_options.exclude_misaligned_residues,
         check_atom_order=search_options.check_atom_order,
         allow_different_size_res=search_options.allow_different_size_res,

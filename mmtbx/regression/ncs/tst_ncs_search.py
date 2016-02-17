@@ -4,7 +4,7 @@ from scitbx.array_family import flex
 from mmtbx.ncs import ncs_search
 from libtbx.utils import Sorry
 import iotbx.ncs as ncs
-from iotbx import pdb
+import iotbx.pdb
 import unittest
 
 __author__ = 'Youval'
@@ -23,8 +23,8 @@ class TestSimpleAlignment(unittest.TestCase):
     # Gaps needed for the inserted, not aligned, letters
     self.gaps_needed = 4 + 3 + 4
     #
-    pdb_obj = pdb.hierarchy.input(pdb_string=pdb_str)
-    self.ph = pdb_obj.hierarchy
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+    self.ph = pdb_inp.construct_hierarchy()
     cache = self.ph.atom_selection_cache()
     self.chain_a = self.ph.models()[0].chains()[0]
     self.chain_b = self.ph.models()[0].chains()[1]
@@ -129,8 +129,8 @@ class TestSimpleAlignment(unittest.TestCase):
 
   def test_get_chains_info(self):
     # print sys._getframe().f_code.co_name
-    pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_1)
-    ph = pdb_inp.hierarchy
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb_1)
+    ph = pdb_inp.construct_hierarchy()
     # test without selection
     chains_info1 = ncs_search.get_chains_info(ph)
     self.assertEqual(sorted(chains_info1),['A', 'D', 'X'])
@@ -184,29 +184,12 @@ class TestSimpleAlignment(unittest.TestCase):
                       ph=ph,
                       selection_list=selection_list)
 
-  # def test_remove_masters_if_appear_in_copies(self):
-  # Function removed, test obsoleted
-  #   # print sys._getframe().f_code.co_name
-  #   transform_to_group = {1:[['A','B','E'],['B','C','F']]}
-  #   tg = ncs_search.remove_masters_if_appear_in_copies(transform_to_group)
-  #   self.assertEqual(tg.values(),[[['A','E'],['B','F']]])
-  #   #
-  #   transform_to_group = {
-  #   1:[['A'],['B']],2:[['B'],['C']],3:[['A'],['D']],4:[['A'],['E']],
-  #   5:[['A'],['C']],6:[['B'],['D']],7:[['G'],['J']],8:[['C'],['H']],
-  #   9:[['A','1'],['X','2']]}
-  #   tg = ncs_search.remove_masters_if_appear_in_copies(transform_to_group)
-  #   expected = [
-  #     [['A'], ['B']], [['A'], ['C']], [['A'], ['D']], [['A'], ['E']],
-  #     [['A', '1'], ['X', '2']], [['G'], ['J']]]
-  #   self.assertEqual(sorted(tg.values()),expected)
-
   def test_remove_far_atoms(self):
     # print sys._getframe().f_code.co_name
-    pdb_inp = pdb.hierarchy.input(pdb_string=AB112_116)
-    ph = pdb_inp.hierarchy
-    pdb_inp_b = pdb.hierarchy.input(pdb_string=B112_116_fitted)
-    ph_b = pdb_inp_b.hierarchy
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=AB112_116)
+    ph = pdb_inp.construct_hierarchy()
+    pdb_inp_b = iotbx.pdb.input(source_info=None, lines=B112_116_fitted)
+    ph_b = pdb_inp_b.construct_hierarchy()
     info_ab =  ncs_search.get_chains_info(ph)
     # matching residues
     res_n_a = [0, 1, 2, 3, 4, 5, 6, 7, 8]
@@ -229,61 +212,10 @@ class TestSimpleAlignment(unittest.TestCase):
     self.assertEqual([0, 1, 5, 7, 8],res_n_a)
     self.assertEqual([1, 2, 6, 8, 9],res_n_b)
 
-  # def test_update_res_list(self):
-  #   """
-  #   Function deleted, test obsoleted
-  #   """
-  #   # print sys._getframe().f_code.co_name
-  #   pdb_inp = pdb.hierarchy.input(pdb_string=pdb_str_2)
-  #   ph = pdb_inp.hierarchy
-  #   chains_info = ncs_search.get_chains_info(ph)
-  #   chain_match_list = ncs_search.search_ncs_relations(
-  #     chains_info=chains_info,min_percent=0.20,min_contig_length=1)
-  #   match_dict = ncs_search.clean_chain_matching(
-  #     chain_match_list=chain_match_list,ph=ph)
-  #   # transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
-  #   #   match_dict, ph)
-  #   # group_dict = ncs_search.build_group_dict(
-  #   #   transform_to_group,match_dict,chains_info)
-  #   group_dict = ncs_search.ncs_grouping_and_group_dict(match_dict, ph)
-  #   #
-  #   m_res_list = group_dict[('A',)].residue_index_list[0]
-  #   c_res_list = group_dict[('A',)].residue_index_list[1]
-  #   self.assertEqual(m_res_list,[[0, 1, 2, 3, 4, 5, 6, 7, 8]])
-  #   self.assertEqual(c_res_list,[[4, 5, 6, 7, 8, 9, 10, 11, 12]])
-  #   adjust_residue_lists = {('A',)}
-  #   s = 109 # start of chain B
-  #   # change selection -> not include part of a residue
-  #   m_sel = range(29) + range(37,66)
-  #   c_sel = range(29+s) + range(37+s,66+s)
-  #   m_sel = flex.size_t(m_sel)
-  #   c_sel = flex.size_t(c_sel)
-  #   group_dict[('A',)].iselections[0][0] = m_sel
-  #   group_dict[('A',)].iselections[1][0] = c_sel
-  #   #
-  #   ncs_search.update_res_list(group_dict,chains_info,adjust_residue_lists)
-  #   m_res_list = group_dict[('A',)].residue_index_list[0]
-  #   c_res_list = group_dict[('A',)].residue_index_list[1]
-  #   self.assertEqual(m_res_list,[[0, 1, 2, 3, 5, 6, 7, 8]])
-  #   self.assertEqual(c_res_list,[[4, 5, 6, 7, 9, 10, 11, 12]])
-  #   # change selection -> not include a residue
-  #   m_sel = range(29) + range(37,66)
-  #   c_sel = range(29+s) + range(37+s,66+s)
-  #   m_sel = flex.size_t(m_sel)
-  #   c_sel = flex.size_t(c_sel)
-  #   group_dict[('A',)].iselections[0][0] = m_sel
-  #   group_dict[('A',)].iselections[1][0] = c_sel
-  #   #
-  #   ncs_search.update_res_list(group_dict,chains_info,adjust_residue_lists)
-  #   m_res_list = group_dict[('A',)].residue_index_list[0]
-  #   c_res_list = group_dict[('A',)].residue_index_list[1]
-  #   self.assertEqual(m_res_list,[[0, 1, 2, 3, 5, 6, 7, 8]])
-  #   self.assertEqual(c_res_list,[[4, 5, 6, 7, 9, 10, 11, 12]])
-
   def test_update_atom_selections(self):
     # print sys._getframe().f_code.co_name
-    pdb_inp = pdb.hierarchy.input(pdb_string=pdb_str_3, sort_atoms=False)
-    ph = pdb_inp.hierarchy
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_3)
+    ph = pdb_inp.construct_hierarchy(sort_atoms=False)
     chains_info = ncs_search.get_chains_info(ph)
     chain_match_list = ncs_search.search_ncs_relations(
       chains_info=chains_info,min_percent=0.10,
@@ -346,20 +278,20 @@ class TestSimpleAlignment(unittest.TestCase):
 
   def test_split_chain_with_altloc(self):
     # print sys._getframe().f_code.co_name
-    pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_4)
-    chains_info = ncs_search.get_chains_info(pdb_inp.hierarchy)
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb_4)
+    chains_info = ncs_search.get_chains_info(pdb_inp.construct_hierarchy())
     ch_A = chains_info['A']
     self.assertEqual(len(ch_A.res_names),len(ch_A.no_altloc))
     #
-    pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_5)
-    chains_info = ncs_search.get_chains_info(pdb_inp.hierarchy)
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb_5)
+    chains_info = ncs_search.get_chains_info(pdb_inp.construct_hierarchy())
     ch_A = chains_info['A']
     self.assertEqual(len(ch_A.res_names),len(ch_A.no_altloc))
 
   def test_groups_with_chains_of_different_size(self):
     # print sys._getframe().f_code.co_name
-    pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_6)
-    ncs_results = ncs_search.find_ncs_in_hierarchy(ph=pdb_inp.hierarchy)
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb_6)
+    ncs_results = ncs_search.find_ncs_in_hierarchy(ph=pdb_inp.construct_hierarchy())
     # answer = ncs_results[('H','I')].residue_index_list
     # residue_index_list = [[[0, 1, 2], [0]], [[0, 1, 2], [0]], [[0, 1, 2], [0]]]
     # self.assertEqual(answer,residue_index_list)
@@ -376,7 +308,8 @@ class TestSimpleAlignment(unittest.TestCase):
   def test_iselection_is_in_correct_order(self):
     """ Make sure can calling get_ncs_restraints_group_list does not raise
     error when atom selection in NCS group are out of order"""
-    ncs_obj = ncs.input(pdb_string=test_pdb_6)
+    h = iotbx.pdb.input(source_info=None, lines=test_pdb_6).construct_hierarchy()
+    ncs_obj = ncs.input(hierarchy=h)
     ncs_obj.get_ncs_restraints_group_list()
     pass
 
@@ -388,8 +321,8 @@ class TestSimpleAlignment(unittest.TestCase):
     make sure the non-transform match is selected
     """
     # print sys._getframe().f_code.co_name
-    pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_7)
-    ph = pdb_inp.hierarchy
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb_7)
+    ph = pdb_inp.construct_hierarchy()
     chains_info = ncs_search.get_chains_info(ph)
     chain_match_list = ncs_search.search_ncs_relations(
       chains_info=chains_info,min_percent=0.10,
@@ -424,7 +357,8 @@ class TestSimpleAlignment(unittest.TestCase):
   def test_split_groups_to_spec(self):
     # print sys._getframe().f_code.co_name
     pdb_str = test_pdb_7 + test_pdb_7_addition
-    ncs_obj = ncs.input(pdb_string=pdb_str)
+    h = iotbx.pdb.input(source_info=None, lines=pdb_str).construct_hierarchy()
+    ncs_obj = ncs.input(hierarchy=h)
     spec = ncs_obj.get_ncs_info_as_spec(write=False)
     gr = spec.ncs_groups()
     self.assertEqual(len(gr),2)
@@ -434,21 +368,23 @@ class TestSimpleAlignment(unittest.TestCase):
   def test_chain_exclusion(self):
     """ Test that chain are being excluded when asked for """
     exclude = {'L', 'M'}
-    ncs_obj = ncs.input(pdb_string=test_pdb_6,ignore_chains=exclude)
+    h = iotbx.pdb.input(source_info=None, lines=test_pdb_6).construct_hierarchy()
+    ncs_obj = ncs.input(hierarchy=h,ignore_chains=exclude)
     self.assertEqual(len(ncs_obj.ncs_copies_chains_names),4)
-    ncs_obj = ncs.input(pdb_string=test_pdb_6)
+    ncs_obj = ncs.input(hierarchy=h)
     self.assertEqual(len(ncs_obj.ncs_copies_chains_names),6)
 
   def test_processing_ncs_with_hierarchy_input(self):
-    pdb_inp = pdb.input(lines=test_pdb_6,source_info=None)
+    pdb_inp = iotbx.pdb.input(lines=test_pdb_6,source_info=None)
     ph = pdb_inp.construct_hierarchy()
     ncs_obj = ncs.input(hierarchy=ph)
     self.assertEqual(len(ncs_obj.ncs_copies_chains_names),6)
 
   def test_min_contig_length(self):
     """ Test correct handling of min_contig_length and min_percent """
+    h = iotbx.pdb.input(source_info=None, lines=test_pdb_8).construct_hierarchy()
     ncs_obj = ncs.input(
-        pdb_string=test_pdb_8,
+        hierarchy=h,
         max_rmsd=10,
         min_percent=0.50,
         exclude_misaligned_residues=False,
@@ -458,14 +394,14 @@ class TestSimpleAlignment(unittest.TestCase):
     self.assertEqual(n_atoms_in_copy,15)
 
     ncs_obj = ncs.input(
-        pdb_string=test_pdb_8,
+        hierarchy=h,
         max_rmsd=10,
         min_percent=0.80,
         min_contig_length=10)
     self.assertEqual(ncs_obj.number_of_ncs_groups,0)
 
     ncs_obj = ncs.input(
-        pdb_string=test_pdb_8,
+        hierarchy=h,
         exclude_misaligned_residues=False,
         max_rmsd=10,
         min_percent=0.50,
@@ -484,8 +420,9 @@ class TestSimpleAlignment(unittest.TestCase):
       'ATOM      3  O   ASP A   5      89.553 -29.857  72.225  1.00 77.56           O',
       'ATOM      4  C   ASP A   5      90.136 -30.762  71.617  1.00 77.70           C'
     ]
+    h = iotbx.pdb.input(source_info=None, lines='\n'.join(pdb_lines)).construct_hierarchy()
     ncs_obj = ncs.input(
-        pdb_string='\n'.join(pdb_lines),
+        hierarchy=h,
         check_atom_order=True,
         max_rmsd=10,
         min_percent=0.20,
@@ -493,31 +430,15 @@ class TestSimpleAlignment(unittest.TestCase):
     # x = ncs_obj.get_ncs_info_as_spec(write=True,show_ncs_phil=True)
     # x = ncs_obj.show(format='spec')
     # check another pdb string
-    ncs_obj = ncs.input(pdb_string=test_pdb_6)
+    h = iotbx.pdb.input(source_info=None, lines=test_pdb_6).construct_hierarchy()
+    ncs_obj = ncs.input(hierarchy=h)
     ncs_obj.get_ncs_restraints_group_list()
     # x = ncs_obj.get_ncs_info_as_spec(write=True,show_ncs_phil=True)
 
-  def test_ncs_search_order(self):
-    """
-    verify correct order of chains are selected for the NCS search
-    9/23/2015. Oleg. This test is turned off due to disabling sorting, which
-    is tested by this test.
-    """
-    pass
-    # pdb_inp = pdb.hierarchy.input(pdb_string=test_pdb_9)
-    # ph = pdb_inp.hierarchy
-    # chains_info = ncs_search.get_chains_info(ph)
-    # chains_in_copies = {'B','E'}
-    # i = 1
-    # sorted_ch = sorted(chains_info)
-    # self.assertEqual(sorted_ch,['A', 'B', 'C', 'D', 'E', 'F'])
-    # sorted_ch = ncs_search.update_chain_ids_search_order(
-    #     chains_info,sorted_ch,chains_in_copies,i)
-    # self.assertEqual(sorted_ch,['A', 'D', 'C', 'B', 'E', 'F'])
-
   def test_overlapping_chains(self):
     '''  Test processing of overlapping identical chains  '''
-    ncs_inp = ncs.input(pdb_string=pdb_str10)
+    h = iotbx.pdb.input(source_info=None, lines=pdb_str10).construct_hierarchy()
+    ncs_inp = ncs.input(hierarchy=h)
     t = ncs_inp.ncs_group_map[1]
     self.assertEqual(t,[{"chain 'A '"}, {'001', '002', '003'}, "chain 'A '"])
 

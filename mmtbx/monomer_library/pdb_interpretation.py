@@ -5424,7 +5424,6 @@ class process(object):
       exclude_selection           = params.exclude_selection,
       max_rmsd                    = params.max_rmsd,
       match_radius                = params.match_radius,
-      use_minimal_master_ncs      = params.minimize_param == 'chains',
       process_similar_chains      = params.process_similar_chains,
       allow_different_size_res    = params.allow_different_size_res,
       exclude_misaligned_residues = params.exclude_misaligned_residues,
