@@ -21,7 +21,8 @@ def generator(xray_structure,
               conjugate_gradient_least_squares_cycles=None,
               overall_scale_factor=None,
               weighting_scheme_params=None,
-              sort_scatterers = True,
+              sort_scatterers=True,
+              unit_cell_esds=None
               ):
   space_group = xray_structure.space_group()
   assert not space_group.is_centric() or space_group.is_origin_centric(),\
@@ -39,7 +40,10 @@ def generator(xray_structure,
   yield 'CELL %.5f %s\n' % (
     wavelength,
     ' '.join(('%.4f ',)*3 + ('%.3f',)*3) % uc.parameters())
-  yield 'ZERR %i 0. 0. 0. 0. 0. 0.\n' % sgi.group().order_z()
+  if unit_cell_esds:
+    yield 'ZERR %i %f %f %f %f %f %f\n' % ((sgi.group().order_z(),) + unit_cell_esds)
+  else:
+    yield 'ZERR %i 0. 0. 0. 0. 0. 0.\n' % sgi.group().order_z()
 
   latt = 1 + 'PIRFABC'.find(sgi.group().conventional_centring_type_symbol())
   if not space_group.is_origin_centric(): latt = -latt
