@@ -121,7 +121,7 @@ struct hilbert
   }
 
   void check_failure(int n, cholesky::failure_info<double> const &fail) {
-    SCITBX_ASSERT(n >= 14);
+    SCITBX_ASSERT(n >= 13)(n);
     SCITBX_ASSERT(fail.index == 13 || fail.index == 14);
   }
 };
@@ -158,7 +158,7 @@ struct condition_1 : random_test
   virtual void fill_eigenvalues() {
     vec_ref_t l = lambda.ref();
     for (int i=0; i<l.size(); ++i) {
-      l[i] = std::pow(10., i);
+      l[i] = std::pow(1.2, i);
     }
   }
 };
@@ -168,7 +168,7 @@ struct condition_2 : random_test
   virtual void fill_eigenvalues() {
     vec_ref_t l = lambda.ref();
     for (int i=0; i<l.size(); ++i) {
-      l[i] = std::pow(10., -i);
+      l[i] = std::pow(1.2, -i);
     }
   }
 };
@@ -178,10 +178,10 @@ struct condition_3 : random_test
   virtual void fill_eigenvalues() {
     vec_ref_t l = lambda.ref();
     for (int i=0; i<l.size()/2; ++i) {
-      l[i] = std::pow(10., -i);
+      l[i] = std::pow(1.2, -i);
     }
     for (int i=l.size()/2; i<l.size(); ++i) {
-      l[i] = std::pow(10., i);
+      l[i] = std::pow(1.2, i);
     }
   }
 };
@@ -191,7 +191,7 @@ struct condition_4 : random_test
   virtual void fill_eigenvalues() {
     vec_ref_t l = lambda.ref();
     for (int i=0; i<l.size(); ++i) {
-      l[i] = std::pow(10., i);
+      l[i] = std::pow(1.2, i);
     }
     scitbx::random::mersenne_twister gen;
     af::shared<std::size_t> perm = gen.random_permutation(l.size());
@@ -200,35 +200,35 @@ struct condition_4 : random_test
 };
 
 int main() {
-  const int N = 12;
+  const int N = 100;
   std::cout << "Exercising sizes up to " << N << std::endl;
 
   std::cout << "Hilbert" << std::endl;
-  for (int n=1; n<N; ++n) {
+  for (int n=1; n<N; n<20 ? n++ : n+=10) {
     test_case<hilbert> t(n);
     t.exercise();
   }
 
   std::cout << "Condition 1" << std::endl;
-  for (int n=2; n<N; ++n) {
+  for (int n=2; n<N; n<20 ? n++ : n+=10) {
     test_case<condition_1> t(n);
     t.exercise();
   }
 
   std::cout << "Condition 2" << std::endl;
-  for (int n=2; n<N; ++n) {
+  for (int n=2; n<N; n<20 ? n++ : n+=10) {
     test_case<condition_2> t(n);
     t.exercise();
   }
 
   std::cout << "Condition 3" << std::endl;
-  for (int n=2; n<N; ++n) {
+  for (int n=2; n<N; n<20 ? n++ : n+=10) {
     test_case<condition_3> t(n);
     t.exercise();
   }
 
   std::cout << "Condition 4" << std::endl;
-  for (int n=2; n<N; ++n) {
+  for (int n=2; n<N; n<20 ? n++ : n+=10) {
     test_case<condition_4> t(n);
     t.exercise();
   }
