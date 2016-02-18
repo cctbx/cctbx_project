@@ -108,7 +108,6 @@ def exercise_protein () :
     eps=0.0001)
   assert approx_equal(result.b_iso_mean(), 31.11739)
   assert op.isfile("tst_molprobity_maps.mtz")
-  assert approx_equal(result.atoms_to_observations_ratio(), 0.0975493)
   bins = result.fmodel_statistics_by_resolution()
   #bins.show()
   bin_plot = result.fmodel_statistics_graph_data()
