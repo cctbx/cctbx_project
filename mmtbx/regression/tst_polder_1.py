@@ -185,7 +185,7 @@ def exercise_01(fobs_1, fobs_2, flags_1, flags_2, prefix):
   print cmd
   easy_run.call(cmd)
   #
-  check(tuple=[12.444, 17.073, 14.804], selection=selection)
+  check(tuple_calc=[12.444, 17.073, 14.804], selection=selection)
 
 def exercise_02(fobs_1, flags_1, prefix):
   fobs_1.export_as_cns_hkl(
@@ -210,7 +210,7 @@ def exercise_02(fobs_1, flags_1, prefix):
   ])
   print cmd
   easy_run.call(cmd)
-  check(tuple=[13.328, 17.174, 15.153], selection=selection)
+  check(tuple_calc=[13.328, 17.174, 15.153], selection=selection)
 
 def exercise_03(fobs_2, flags_2, prefix):
   mtz = fobs_2.as_mtz_dataset(column_root_label="FP1")
@@ -232,7 +232,7 @@ def exercise_03(fobs_2, flags_2, prefix):
   ])
   print cmd
   easy_run.call(cmd)
-  check(tuple=[18.505, 29.354, 23.711], selection=selection)
+  check(tuple_calc=[18.505, 29.354, 23.711], selection=selection)
 
 def exercise(prefix="tst_polder_01"):
   """
@@ -269,8 +269,8 @@ def exercise(prefix="tst_polder_01"):
   print "command success"
   print '*'*79
 
-def check(tuple, selection):
-  #print tuple
+def check(tuple_calc, selection):
+  #print tuple_calc
   miller_arrays = reflection_file_reader.any_reflection_file(file_name =
     "polder_map_coeffs.mtz").as_miller_arrays()
   mc_polder = None
@@ -293,8 +293,10 @@ def check(tuple, selection):
   mp  = get_map_stats(map=map_polder,   sites_frac=sites_frac_lig)
   #
   mmm_mp = mp.min_max_mean().as_tuple()
-  print "Polder map : %7.3f %7.3f %7.3f"%mmm_mp
-  assert approx_equal(mmm_mp, tuple, eps=1.0)
+  print "Polder map : %7.3f %7.3f %7.3f" % mmm_mp
+  assert approx_equal(
+        mmm_mp, tuple_calc, eps=1.0), "calculated is %s and expected is %s" % (
+        mmm_mp, tuple_calc)
 
 if (__name__ == "__main__"):
   t0 = time.time()
