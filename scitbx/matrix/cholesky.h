@@ -8,6 +8,12 @@
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/accessors/packed_matrix.h>
 #include <vector>
+#include <algorithm>
+
+#ifdef CCTBX_HAS_LAPACKE
+#include <boost_adaptbx/floating_point_exceptions.h>
+#include <fast_linalg/lapacke.h>
+#endif
 
 namespace scitbx { namespace matrix { namespace cholesky {
 
@@ -66,13 +72,35 @@ namespace scitbx { namespace matrix { namespace cholesky {
 
 
   /// Inverse of U^T U
-  /** This uses the alternative method presented at the end of section 2.8.3
-      in Ake Bjorck's classic book.
+  /** If LAPACKE is available (through module fast_linalg), then use XPPTRI.
+      Otherwise, use an implementation of the alternative method presented
+      at the end of section 2.8.3 in Ake Bjorck's classic book. Never use the
+      latter in production code where speed matters because it is horrendously
+      inefficient.
    */
   template <typename FloatType>
   af::versa<FloatType, af::packed_u_accessor>
   inverse_of_u_transpose_u(af::ref<FloatType, af::packed_u_accessor> const &u) {
     typedef FloatType f_t;
+#ifdef CCTBX_HAS_LAPACKE
+    // Usual trick: U^T U = L L^T where L = U^T is stored columnwise
+    // since U is stored rowwise
+    using namespace fast_linalg;
+    unsigned n = u.accessor().n;
+    af::versa<f_t, af::packed_u_accessor> result(
+      n, af::init_functor_null<f_t>());
+    af::shared<f_t> l_rfp(n*(n+1)/2, af::init_functor_null<f_t>());
+    tpttf(LAPACK_COL_MAJOR, 'N', 'L', n, u.begin(), l_rfp.begin());
+    {
+      using namespace boost_adaptbx::floating_point;
+      exception_trapping guard(exception_trapping::dont_trap);
+      lapack_int info =
+        pftri(LAPACK_COL_MAJOR, 'N', 'L', n, l_rfp.begin());
+      SCITBX_ASSERT(!info)(info);
+    }
+    tfttp(LAPACK_COL_MAJOR, 'N', 'L', n, l_rfp.begin(), result.begin());
+    return result;
+#else
     af::versa<f_t, af::packed_u_accessor> result(u.accessor(),
                                                  af::init_functor_null<f_t>());
     af::ref<f_t, af::packed_u_accessor> c = result.ref();
@@ -93,8 +121,8 @@ namespace scitbx { namespace matrix { namespace cholesky {
       }
     }
     return result;
+#endif
   }
-
 
   /// Cholesky decomposition A = L L^T in place
   template <typename FloatType>
