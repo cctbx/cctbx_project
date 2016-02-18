@@ -184,7 +184,11 @@ namespace scitbx { namespace matrix { namespace cholesky {
 
 
   /// Cholesky decomposition A = U^T U in place
-  /** Reference: algorithm 4.2.2 in Golub and Van Loan */
+  /** If module fast_linalg is available, use  LAPACK dpftrf and consort.
+      Otherwise, use a handcrafted implementation of algorithm 4.2.2
+      in Golub and Van Loan. The former is orders of magnitude faster than
+      the latter.
+  */
   template <typename FloatType>
   struct u_transpose_u_decomposition_in_place
   {
@@ -207,6 +211,18 @@ namespace scitbx { namespace matrix { namespace cholesky {
     u_transpose_u_decomposition_in_place(matrix_u_ref const &a_)
       : u(a_)
     {
+#ifdef CCTBX_HAS_LAPACKE
+      using namespace fast_linalg;
+      unsigned n = u.accessor().n;
+      af::shared<scalar_t> l(u.size(), af::init_functor_null<scalar_t>());
+      tpttf(LAPACK_COL_MAJOR, 'N', 'L', n, a_.begin(), l.begin());
+      lapack_int info = pftrf(LAPACK_COL_MAJOR, 'N', 'L', n, l.begin());
+      SCITBX_ASSERT(info >= 0);
+      if(info > 0) {
+        failure = failure_info<scalar_t>(info, 0);
+      }
+      tfttp(LAPACK_COL_MAJOR, 'N', 'L', n, l.begin(), u.begin());
+#else
       scalar_t *a = a_.begin();
       int n = a_.n_columns();
       for (int i=0; i<n; ++i) {
@@ -228,6 +244,7 @@ namespace scitbx { namespace matrix { namespace cholesky {
 
         symmetric_packed_u_rank_1_update(n-i-1, a, u, scalar_t(-1));
       }
+#endif
     }
 
     /// Solve A x = b in place
