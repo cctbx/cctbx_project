@@ -1,6 +1,7 @@
 import libtbx.load_env
 import os
 op = os.path
+from libtbx.utils import Sorry
 
 Import("env_scitbx_boost_python_ext", "env_etc")
 
@@ -29,6 +30,12 @@ for src in source: shared_obj.extend(env.SharedObject(src))
 if (libtbx.env.has_module("fable")):
   lapack_fem_dir = libtbx.env.find_in_repositories(relative_path="lapack_fem")
   if (lapack_fem_dir is not None):
+    if libtbx.env.has_module('fast_linalg'):
+      raise Sorry("Module lapack_fem is incompatible with module fast_linalg."
+                  "\n\n"
+                  "Since the former is automatically configured if it is "
+                  "present, your best option is to remove it if you want "
+                  "to keep fast_linalg.")
     env_etc.include_registry.append(
       env=env_fem,
       paths=[
@@ -38,11 +45,17 @@ if (libtbx.env.has_module("fable")):
 
 lapack_for_a = libtbx.env.under_build(path="lib/lapack_for.a")
 if (op.isfile(lapack_for_a)):
+  raise Sorry("Module fast_linalg is incompatible with a the presence of "
+              "lapack_for.a in the lib directory inside the build directoy. "
+              "Please remove lapack_for.a if you wish to keep using "
+              "fast_linalg")
   env_fem.Append(SHCXXFLAGS=["-DSCITBX_LAPACK_FOR"])
   env.Prepend(LIBS=[File(lapack_for_a)])
 
 for src in fem_source:
   shared_obj.extend(env_fem.SharedObject(source=src))
+
+env_etc.enable_fast_linalg(env)
 
 # TODO env_etc.enable_more_warnings(env=env)
 env.SharedLibrary(target="#lib/scitbx_linalg_ext", source=shared_obj)
