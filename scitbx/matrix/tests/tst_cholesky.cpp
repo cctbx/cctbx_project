@@ -1,6 +1,7 @@
 #include <scitbx/array_family/shared_algebra.h>
 #include <scitbx/array_family/shared_reductions.h>
 #include <scitbx/array_family/selections.h>
+#include <scitbx/array_family/simple_io.h>
 #include <scitbx/matrix/tests.h>
 #include <scitbx/matrix/tests/utils.h>
 #include <scitbx/matrix/cholesky.h>
@@ -139,6 +140,7 @@ struct random_test
   symmetric_matrix_packed_u_t create_packed_u(int n)
   {
     random_householder_gen_t gen(urng, n, n);
+    lambda = vec_t(n);
     fill_eigenvalues();
     return gen.symmetric_matrix_with_eigenvalues(lambda.ref());
   }
@@ -146,7 +148,9 @@ struct random_test
   virtual void fill_eigenvalues()=0;
 
   virtual void check_failure(int n, cholesky::failure_info<double> const &fail)
-  {}
+  {
+    SCITBX_ASSERT(!fail.failed)(n)(fail.index)(fail.value);
+  }
 };
 
 struct condition_1 : random_test
@@ -196,35 +200,38 @@ struct condition_4 : random_test
 };
 
 int main() {
-  {
-    for (int n=1; n<20; ++n) {
-      test_case<hilbert> t(n);
-      t.exercise();
-    }
+  const int N = 12;
+  std::cout << "Exercising sizes up to " << N << std::endl;
+
+  std::cout << "Hilbert" << std::endl;
+  for (int n=1; n<N; ++n) {
+    test_case<hilbert> t(n);
+    t.exercise();
   }
-  {
-    for (int n=2; n<20; ++n) {
-      test_case<condition_1> t(n);
-      t.exercise();
-    }
+
+  std::cout << "Condition 1" << std::endl;
+  for (int n=2; n<N; ++n) {
+    test_case<condition_1> t(n);
+    t.exercise();
   }
-  {
-    for (int n=2; n<20; ++n) {
-      test_case<condition_2> t(n);
-      t.exercise();
-    }
+
+  std::cout << "Condition 2" << std::endl;
+  for (int n=2; n<N; ++n) {
+    test_case<condition_2> t(n);
+    t.exercise();
   }
-  {
-    for (int n=2; n<20; ++n) {
-      test_case<condition_3> t(n);
-      t.exercise();
-    }
+
+  std::cout << "Condition 3" << std::endl;
+  for (int n=2; n<N; ++n) {
+    test_case<condition_3> t(n);
+    t.exercise();
   }
-  {
-    for (int n=2; n<20; ++n) {
-      test_case<condition_4> t(n);
-      t.exercise();
-    }
+
+  std::cout << "Condition 4" << std::endl;
+  for (int n=2; n<N; ++n) {
+    test_case<condition_4> t(n);
+    t.exercise();
   }
+
   std::cout << "OK\n";
 }
