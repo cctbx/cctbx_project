@@ -518,6 +518,7 @@ class InMemScript(DialsProcessScript):
       mask = generator.generate(imgset)
 
       self.params.spotfinder.lookup.mask = mask
+      self.params.integration.lookup.mask = mask
 
     try:
       observed = self.find_spots(datablock)
