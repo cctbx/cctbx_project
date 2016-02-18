@@ -26,8 +26,9 @@ def run():
   f=file("tst_keep_hydrogens.pdb", "wb")
   f.write(pdb)
   f.close()
-  for keep in range(2):
-    print keep
+  #for keep in range(2):
+  for keep in [False,True]:
+    print "keep_hydrogens=", str(keep)
     for prog in [
       "phenix.clashscore",
       "phenix.molprobity",
@@ -44,8 +45,8 @@ def run():
           break
       print 'clashscore',cs
       if cs is None: continue
-      if keep: assert cs==71.43, "clashscore is not 71.43 %s" % cs
-      else: assert cs==0, "clashscore is not 0 %s" % cs
+      if keep: assert cs==71.43, "%s: clashscore is not 71.43 %s" % (prog, cs)
+      else: assert cs==0, "%s: clashscore is not 0 %s" % (prog, cs)
 
 if __name__=="__main__":
   args = sys.argv[1:]
