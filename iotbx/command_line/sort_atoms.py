@@ -34,12 +34,15 @@ def run(args):
       raise_sorry_if_format_error=True)
   pdb_h = pdb_input.construct_hierarchy(sort_atoms=True)
 
-  out_fn_prefix = inp_fn.strip(".pdb").strip(".cif")
+  out_fn_prefix = inp_fn
+  if inp_fn.endswith(".pdb") or inp_fn.endswith(".cif"):
+    out_fn_prefix = inp_fn[:-4]
+  out_fn = out_fn_prefix + "_sorted.pdb"
 
   if hasattr(pdb_input, "extract_secondary_structure"):
     ss_annotation = pdb_input.extract_secondary_structure()
     write_whole_pdb_file(
-        file_name=out_fn_prefix + "_sorted.pdb",
+        file_name=out_fn,
         output_file=None,
         processed_pdb_file=None,
         pdb_hierarchy=pdb_h,
@@ -50,7 +53,7 @@ def run(args):
   else:
     # This was a mmcif file, so outputting mmcif
     pdb_h.write_mmcif_file(
-        file_name = out_fn_prefix + "_sorted.cif",
+        file_name = out_fn,
         crystal_symmetry=pdb_input.crystal_symmetry(),
     )
 
