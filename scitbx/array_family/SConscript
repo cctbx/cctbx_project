@@ -54,5 +54,10 @@ env_wd.Program(target="tst_accessors", source="tst_accessors.cpp")
 env_wd.Program(target="tst_unsigned_float_arithmetic",
             source="tst_unsigned_float_arithmetic.cpp")
 env_wd.Program(target="tst_optional_copy", source="tst_optional_copy.cpp")
+
+env_fast_linalg = env.Clone()
+env_etc.enable_fast_linalg(env_fast_linalg)
+env_fast_linalg.Program(target='tst_rectangular_full_packed',
+                        source='tst_rectangular_full_packed.cpp')
 env_wd.Program(target="tst_pmr", source="tst_pmr.cpp")
 env_pmr.Program(target="tst_pmr_2", source="tst_pmr_02.cpp")
