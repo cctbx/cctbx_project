@@ -11,13 +11,13 @@ namespace smtbx { namespace refinement { namespace least_squares {
   namespace boost_python {
 
   template <typename FloatType,
-            class NormalEquations,
             class OneMillerIndexLinearisation>
   struct normal_equation_building
   {
     typedef build_normal_equations<FloatType> wt;
 
-    template <template<typename> class WeightingSchemeType>
+    template <class NormalEquations,
+              template<typename> class WeightingSchemeType>
     static void def_init(boost::python::class_<wt> &klass) {
       using namespace boost::python;
       // below the comment after each type is the argument name
@@ -40,12 +40,32 @@ namespace smtbx { namespace refinement { namespace least_squares {
            arg("extinction"), arg("objective_only")=false)));
     }
 
+
     static void wrap(char const *name) {
       using namespace boost::python;
+
       class_<wt> klass(name, no_init);
-        def_init<mainstream_shelx_weighting>(klass);
-        def_init<unit_weighting            >(klass);
-        def_init<sigma_weighting           >(klass);
+
+      typedef
+        lstbx::normal_equations::non_linear_ls_with_separable_scale_factor<
+          FloatType,
+          scitbx::matrix::sum_of_symmetric_rank_1_updates>
+        NormalEquations_BLAS2;
+      def_init<NormalEquations_BLAS2, mainstream_shelx_weighting>(klass);
+      def_init<NormalEquations_BLAS2, unit_weighting            >(klass);
+      def_init<NormalEquations_BLAS2, sigma_weighting           >(klass);
+
+#ifdef CCTBX_HAS_LAPACKE
+      typedef
+        lstbx::normal_equations::non_linear_ls_with_separable_scale_factor<
+          FloatType,
+          scitbx::matrix::rank_n_update>
+        NormalEquations_BLAS3;
+      def_init<NormalEquations_BLAS3, mainstream_shelx_weighting>(klass);
+      def_init<NormalEquations_BLAS3, unit_weighting            >(klass);
+      def_init<NormalEquations_BLAS3, sigma_weighting           >(klass);
+#endif
+
       klass
         .def("observables", &wt::observables)
         .def("f_calc", &wt::f_calc)
@@ -59,7 +79,6 @@ namespace smtbx { namespace refinement { namespace least_squares {
 
     normal_equation_building<
       double,
-      lstbx::normal_equations::non_linear_ls_with_separable_scale_factor<double>,
       structure_factors::direct::one_h::std_trigonometry<
         double,
         structure_factors::direct::one_h::modulus_squared
