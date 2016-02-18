@@ -5,7 +5,7 @@ from iotbx import reflection_file_reader
 from cctbx import maptbx
 from cctbx.array_family import flex
 from libtbx.utils import Sorry
-import sys, math
+import sys, math, time
 from scitbx import regular_grid_on_unit_sphere
 
 def one_d_image_along_axis(n, step, uc_length):
@@ -122,6 +122,7 @@ def run(args):
       compute(miller_array=ma)
       print
 
-
 if (__name__ == "__main__"):
+  t0 = time.time()
   run(args=sys.argv[1:])
+  print "Time: %8.3f"%(time.time()-t0)
