@@ -41,7 +41,8 @@ def inp_from_form(form, keys):
   inp = empty()
   for key in keys:
     if (form.has_key(key[0])):
-      v = cgi.escape(form[key[0]].value,True).strip()
+      #v = cgi.escape(form[key[0]].value,True).strip()
+      v = form[key[0]].value.strip()
       if (v == ""): v = key[1]
       inp.__dict__[key[0]] = v
     else:

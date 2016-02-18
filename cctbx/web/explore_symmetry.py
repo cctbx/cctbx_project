@@ -155,7 +155,6 @@ def expand_shelx_latt(sg, n_fld):
 
 def run(server_info, inp, status):
   print "<pre>"
-  io_utils.show_input_symbol(inp.sgsymbol, inp.convention)
 
   symbols_inp = None
   lookup_symbol = inp.sgsymbol
@@ -181,6 +180,7 @@ def run(server_info, inp, status):
     print ("-" * (ps.where() + 3)) + "^"
     raise
 
+  io_utils.show_input_symbol(inp.sgsymbol, inp.convention)
   if (len(inp.shelx_latt) != 0):
     for n_fld in inp.shelx_latt:
       expand_shelx_latt(sg, n_fld)

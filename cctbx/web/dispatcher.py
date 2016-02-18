@@ -47,6 +47,8 @@ def run():
     target.run(server_info, inp, status)
   except ValueError, ve:
     print ve.__class__.__name__ # guard against XSS attack
+  except RuntimeError, re:
+    print re.__class__.__name__
   except Exception:
     if (status.in_table): print "</table><pre>"
     ei = sys.exc_info()
