@@ -196,11 +196,11 @@ class Test_ncs_utils(unittest.TestCase):
 
     self.pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb_str)
     self.tr_obj1 = ncs.input(
-      pdb_inp=self.pdb_inp,
+      hierarchy=self.pdb_inp.construct_hierarchy(),
       rotations=[self.rotation1,self.rotation2],
       translations=[self.translation1,self.translation2])
     self.tr_obj2 = ncs.input(
-      pdb_inp=self.pdb_inp,
+      hierarchy=self.pdb_inp.construct_hierarchy(),
       rotations=[self.rotation1,self.rotation2,self.rotation3],
       translations=[self.translation1,self.translation2,self.translation3])
     self.ncs_restraints_group_list = \
@@ -491,7 +491,7 @@ class Test_ncs_utils(unittest.TestCase):
 
     d_min = 1.0
     pdb_inp = iotbx.pdb.input(lines=pdb_poor_0,source_info=None)
-    ncs_inp = ncs.input(pdb_inp=pdb_inp)
+    ncs_inp = ncs.input(hierarchy=pdb_inp.construct_hierarchy())
     ncs_restraints_group_list = ncs_inp.get_ncs_restraints_group_list()
 
     pdb_inp_poor = iotbx.pdb.input(lines=pdb_poor_0,source_info=None)
@@ -549,7 +549,7 @@ class Test_ncs_utils(unittest.TestCase):
         iotbx.phil.parse(phil_str)).extract()
     pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb_str_2)
     ncs_obj_phil = ncs.input(
-        pdb_inp=pdb_inp,
+        hierarchy=pdb_inp.construct_hierarchy(),
         ncs_phil_groups=phil_groups.ncs_group)
     nrgl = ncs_obj_phil.get_ncs_restraints_group_list()
     pdb_inp = iotbx.pdb.input(lines=test_pdb_str_2,source_info=None)
@@ -577,7 +577,7 @@ class Test_ncs_utils(unittest.TestCase):
     phil_groups = ncs_group_master_phil.fetch(
         iotbx.phil.parse(phil_str)).extract()
     pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb_str_2)
-    ncs_obj = ncs.input(pdb_inp=pdb_inp,
+    ncs_obj = ncs.input(hierarchy=pdb_inp.construct_hierarchy(),
         ncs_phil_groups=phil_groups.ncs_group)
     nrgl = ncs_obj.get_ncs_restraints_group_list()
     self.assertEqual(len(nrgl),2)
@@ -614,7 +614,7 @@ class Test_ncs_utils(unittest.TestCase):
   def test_transform_update(self):
     """ Test update of rotation and translation using selection """
     pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_answer_0)
-    ncs_obj = ncs.input(pdb_inp=pdb_inp)
+    ncs_obj = ncs.input(hierarchy=pdb_inp.construct_hierarchy())
     pdb_inp = iotbx.pdb.input(lines=pdb_answer_0,source_info=None)
     nrgl = ncs_obj.get_ncs_restraints_group_list()
     asu_site_cart = pdb_inp.atoms().extract_xyz()

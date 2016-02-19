@@ -650,8 +650,11 @@ class pdb_input_from_any(object):
         n_unknown_records = content.unknown_section().size()
         n_records = sum(content.record_type_counts().values())
         n_blank_records = content.record_type_counts().get('      ', 0)
-        if (n_unknown_records == n_records or
-            n_unknown_records == (n_records - n_blank_records)):
+        # n_records > 0 for empty input, to get empty pdb_input object instead
+        # of Sorry from cif_input
+        if ((n_unknown_records == n_records or
+            n_unknown_records == (n_records - n_blank_records))
+            and n_records>0):
           continue
         self.file_format = "pdb"
       else :

@@ -390,7 +390,7 @@ class TestMultimerReconstruction(unittest.TestCase):
       # Look at the rotation and translation found by the NCS search
       s = m.assembled_multimer.as_pdb_string(crystal_symmetry=crystal_symmetry)
       print "new h:", s
-      ncs_obj = ncs.input(pdb_inp=pdb.input(source_info=None, lines=s))
+      ncs_obj = ncs.input(hierarchy=pdb.input(source_info=None, lines=s).construct_hierarchy())
       print "ncs_obj.number_of_ncs_groups", ncs_obj.number_of_ncs_groups
       r1 = ncs_obj.ncs_transform['002'].r
       t1 = ncs_obj.ncs_transform['002'].t

@@ -244,7 +244,8 @@ def get_inputs(prefix, pdb_answer, pdb_poor, ncs_params_str, real_space, d_min):
 
   pdb_inp = iotbx.pdb.input(lines=pdb_poor,source_info=None)
   ncs_inp = ncs.input(
-    pdb_inp=pdb_inp, ncs_phil_groups=phil_groups.ncs_group)
+      hierarchy=pdb_inp.construct_hierarchy(),
+      ncs_phil_groups=phil_groups.ncs_group)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
   # print "ncs_groups:", len(ncs_groups)
   # print "master isel:", list(ncs_groups[0].master_iselection)
