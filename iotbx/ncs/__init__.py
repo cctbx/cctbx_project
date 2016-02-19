@@ -104,9 +104,8 @@ ncs_group_master_phil = libtbx.phil.parse(ncs_group_phil_str)
 
 class input(object):
   def __init__(self,
-          pdb_hierarchy_inp=None,
-          pdb_inp=None,
           hierarchy=None,
+          crystal_symmetry=None, # if sensible_unit_cell_volume() check is needed
           transform_info=None,
           rotations = None,
           translations = None,
@@ -131,6 +130,35 @@ class input(object):
     TODO:
     1. switch from iotbx.pdb.hierarchy.input to iotbx.pdb.input
 
+    SUGGESTIONS:
+    1. Remove process_similar_chains, leaving it with present(True) behavior.
+      Setting this to false will result in skipping even slightly different
+      chains
+    2. Remove check_atom_order, leaving it with present(True) behavior.
+      In addition to checking atom order in residues (which should not
+      be necessary now), it is used if
+      one of the matching residues doesn't have all atoms.
+    3. Remove allow_different_size_res, leaving it with present(True) behavior.
+    4. At least combine match_radius with exclude_misaligned_residues, because
+      match_radius is numerical value used to exclude misaligned_residues.
+      Could be set to big value resulting in effectively
+      exclude_misaligned_residues=False.
+    5. Remove ignore_chains. Could be easily defined as supplement to
+      exclude_selection.
+    6. Remove min_contig_length, setting it to 1. The parameters screws
+      alignment similarity in a complicated way (we are excluding well-aligned
+      regions with length less than this number).
+    7. Combine or remove entirely quiet and write_messages. If somebody doesn't
+      want output, he may supply appropriate object to log parameter and never
+      print it out (like StringIO)
+    8. Combine similarity_threshold and min_percent. min_percent - preliminary
+      filtering value, similarity_threshold - further down somewhere in
+      procedure?..
+
+    This will leave us with 3 easy to understand parameters:
+      - similarity_threshold+min_percent : alignment percent filter by chain
+      - max_rmsd : coordinate filter by chain
+      - match_radius+exclude_misaligned_residues : coordinate filter by residue.
 
     Select method to build ncs_group_object
 
@@ -147,6 +175,8 @@ class input(object):
     -----
       pdb_hierarchy_inp: iotbx.pdb.hierarchy.input
       transform_info: object containing MTRIX or BIOMT transformation info
+        iotbx.pdb._mtrix_and_biomt_records_container, obtainable by
+        iotbx.pdb.input.process_mtrix_records() function.
       rotations: matrix.sqr 3x3 object
       translations: matrix.col 3x1 object
       ncs_phil_string: Phil parameters
@@ -158,12 +188,6 @@ class input(object):
            }
       ncs_phil_groups: a list of ncs_groups_container object, containing
         master NCS selection and a list of NCS copies selection
-
-      # file_name: (str) .ncs_spec or .mmcif  or .pdb file name
-      # file_path: (str)
-      # spec_file_str: (str) spec format data
-      # spec_source_info:
-
       quiet: (bool) When True -> quiet output when processing files
       spec_ncs_groups: ncs_groups object of class mmtbx.ncs.ncs.ncs
       max_rmsd (float): limit of rms difference between chains to be considered
@@ -258,88 +282,70 @@ class input(object):
     #
     if not log: log = sys.stdout
     self.log = log
-    if pdb_inp:
-      self.crystal_symmetry = pdb_inp.crystal_symmetry()
-    elif pdb_hierarchy_inp:
-      self.crystal_symmetry = pdb_hierarchy_inp.input.crystal_symmetry()
-    else:
-      self.crystal_symmetry = None
-    if pdb_hierarchy_inp:
-      msg = 'pdb_hierarchy_inp is not iotbx.pdb.hierarchy.input object\n'
-      assert isinstance(pdb_hierarchy_inp,iotbx.pdb.hierarchy.input),msg
-    elif pdb_inp:
-      ph = pdb_inp.construct_hierarchy()
-      pdb_hierarchy_inp = iotbx.pdb.hierarchy.input_hierarchy_pair(pdb_inp,ph)
-    elif hierarchy:
-      pdb_inp = hierarchy.as_pdb_input()
-      pdb_hierarchy_inp = iotbx.pdb.hierarchy.input_hierarchy_pair(
-        pdb_inp,hierarchy)
 
-    # truncating hierarchy
-    if pdb_hierarchy_inp:
-      # for a in pdb_hierarchy_inp.hierarchy.atoms():
-      #   print "o", a.i_seq, a.id_str()
+    self.crystal_symmetry=crystal_symmetry
+
+    if hierarchy:
+      # for a in hierarchy.atoms():
+      #   print "oo", a.i_seq, a.id_str()
       # print "====="
-      self.original_hierarchy = pdb_hierarchy_inp.hierarchy.deep_copy()
+      self.original_hierarchy = hierarchy.deep_copy()
+      self.original_hierarchy.reset_atom_i_seqs()
       if self.exclude_selection is not None:
         # pdb_hierarchy_inp.hierarchy.write_pdb_file("in_ncs_pre_before.pdb")
-        cache = pdb_hierarchy_inp.hierarchy.atom_selection_cache()
+        cache = hierarchy.atom_selection_cache()
         sel = cache.selection("not (%s)" % self.exclude_selection)
-        pdb_hierarchy_inp.hierarchy = pdb_hierarchy_inp.hierarchy.select(sel)
-        self.truncated_hierarchy = pdb_hierarchy_inp.hierarchy
-        self.old_i_seqs = pdb_hierarchy_inp.hierarchy.atoms().extract_i_seq()
-        pdb_hierarchy_inp.hierarchy.atoms().reset_i_seq()
-        # for a in pdb_hierarchy_inp.hierarchy.atoms():
-        #   print "o", a.i_seq, a.id_str()
-        # print "====="
-        # print "old iseqs:", list(self.old_i_seqs)
-        # pdb_hierarchy_inp.hierarchy.write_pdb_file("in_ncs_pre_after.pdb")
-      if pdb_hierarchy_inp.hierarchy.atoms().size() == 0:
+        self.truncated_hierarchy = hierarchy.select(sel)
+      else:
+        self.truncated_hierarchy = hierarchy.select(flex.size_t_range(hierarchy.atoms().size()))
+      self.old_i_seqs = self.truncated_hierarchy.atoms().extract_i_seq()
+      # print "self.old_i_seqs", list(self.old_i_seqs)
+      # self.truncated_hierarchy.atoms().reset_i_seq()
+      self.truncated_hierarchy.reset_atom_i_seqs()
+      # self.truncated_hierarchy.hierarchy.write_pdb_file("in_ncs_pre_after.pdb")
+
+      if self.truncated_hierarchy.atoms().size() == 0:
         self.total_asu_length = 0
         return
+
     #
     # print "ncs_groups before validation", ncs_phil_groups
     validated_ncs_phil_groups = None
     validated_ncs_phil_groups = self.validate_ncs_phil_groups(
-      pdb_h = None if not pdb_hierarchy_inp else pdb_hierarchy_inp.hierarchy,
+      pdb_h = self.truncated_hierarchy,
       ncs_phil_groups   = ncs_phil_groups)
     # print "ncs_phil_groups", ncs_phil_groups
     # if ncs_phil_groups is not None:
     #   print "Number of ncs groups after validation:", len(ncs_phil_groups)
     # print "validated_ncs_phil_groups", validated_ncs_phil_groups
-    #
-    if pdb_hierarchy_inp and (not transform_info):
-      transform_info = pdb_hierarchy_inp.input.process_mtrix_records(eps=0.01)
-      if transform_info.as_pdb_string() == '': transform_info = None
-      else:
-        transform_info = insure_identity_is_in_transform_info(transform_info)
+    transform_info = insure_identity_is_in_transform_info(transform_info)
     if transform_info or rotations:
       if ncs_only(transform_info) or rotations:
         if not sensible_unit_cell_volume(
-                pdb_h=pdb_hierarchy_inp.hierarchy,
+                pdb_h=self.truncated_hierarchy,
                 crystal_symmetry=self.crystal_symmetry):
           raise Sorry('Unit cell is to small to contain all NCS copies')
         self.build_ncs_obj_from_pdb_ncs(
-          pdb_h = pdb_hierarchy_inp.hierarchy,
+          pdb_h = self.truncated_hierarchy,
           rotations=rotations,
           translations=translations,
           transform_info=transform_info)
       else:
         # in the case that all ncs copies are in pdb
-        self.build_ncs_obj_from_pdb_asu(pdb_h=pdb_hierarchy_inp.hierarchy)
+        self.build_ncs_obj_from_pdb_asu(pdb_h=self.truncated_hierarchy)
     elif validated_ncs_phil_groups:
       self.build_ncs_obj_from_phil(
         ncs_phil_groups=validated_ncs_phil_groups,
-        pdb_h= None if not pdb_hierarchy_inp else pdb_hierarchy_inp.hierarchy)
+        pdb_h= self.truncated_hierarchy)
     elif spec_ncs_groups:
       self.build_ncs_obj_from_spec_file(
-        pdb_h= None if not pdb_hierarchy_inp else pdb_hierarchy_inp.hierarchy,
+        pdb_h= self.truncated_hierarchy,
         spec_ncs_groups=spec_ncs_groups,
         quiet=quiet)
-    elif (pdb_hierarchy_inp
+    elif (self.truncated_hierarchy
         and validated_ncs_phil_groups is None):
       # print "Last chance, building from hierarchy"
-      self.build_ncs_obj_from_pdb_asu(pdb_h=pdb_hierarchy_inp.hierarchy)
+      self.build_ncs_obj_from_pdb_asu(pdb_h=self.truncated_hierarchy)
     else:
       pass
       # raise Sorry('Please provide one of the supported input')
@@ -1389,7 +1395,7 @@ class input(object):
             # print v[i], "-->", self.old_i_seqs[v[i]]
             v[i] = self.old_i_seqs[v[i]]
       # keep hierarchy for writing
-      self.truncated_hierarchy = pdb_h
+      # self.truncated_hierarchy = pdb_h
       self.set_common_res_dict()
     # add group selection to ncs_group_map
     for gr_num in self.ncs_group_map.iterkeys():
@@ -1413,7 +1419,8 @@ class input(object):
 
     sorted_keys = sort_dict_keys(self.ncs_copies_chains_names)
     only_master_ncs_in_hierarchy = False
-    if self.ncs_atom_selection.count(True) == self.truncated_hierarchy.atoms().size():
+    if (self.truncated_hierarchy is not None and
+        self.ncs_atom_selection.count(True) == self.truncated_hierarchy.atoms().size()):
       only_master_ncs_in_hierarchy = True
     sc = self.truncated_hierarchy.atom_selection_cache()
     #
@@ -2482,6 +2489,8 @@ def insure_identity_is_in_transform_info(transform_info):
     transform_info : Add or reorder the transform_info so that the
       identity matrix has serial number 1
   """
+  if transform_info is None:
+    return None
   ti = transform_info
   ti_zip =  zip(ti.r,ti.t,ti.serial_number,ti.coordinates_present)
   identity_sn = []

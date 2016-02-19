@@ -105,7 +105,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
         iotbx.phil.parse(pdb_test_data2_phil)).extract()
     trans_obj = iotbx.ncs.input(
         ncs_phil_groups=phil_groups.ncs_group,
-        pdb_inp=pdb_inp,
+        hierarchy=pdb_inp.construct_hierarchy(),
         exclude_selection=None)
 
     expected = "(chain 'A') or (chain 'B' or chain 'C')"
@@ -137,7 +137,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
         iotbx.phil.parse(pdb_test_data1_phil)).extract()
     trans_obj = ncs.input(
         ncs_phil_groups=phil_groups.ncs_group,
-        pdb_inp=pdb_inp,
+        hierarchy=pdb_inp.construct_hierarchy(),
         exclude_selection=None)
 
     # print "trans_obj.ncs_selection_str", trans_obj.ncs_selection_str
@@ -205,7 +205,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       trans_obj = ncs.input(
         spec_ncs_groups=spec_object,
         # spec_file_str=test_ncs_spec,  # use output string directly
-        pdb_inp = self.pdb_inp)
+        hierarchy = self.pdb_inp.construct_hierarchy())
 
       # test created object
       self.assertEqual(len(trans_obj.transform_chain_assignment),3)
@@ -251,7 +251,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     """
     # print sys._getframe().f_code.co_name
     # reading and processing the spec file
-    trans_obj = ncs.input(pdb_inp = self.pdb_inp)
+    trans_obj = ncs.input(hierarchy = self.pdb_inp.construct_hierarchy())
 
     # test created object
     self.assertEqual(len(trans_obj.transform_chain_assignment),3)
@@ -326,7 +326,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     t1 = matrix.col([167.54320,-4.09250,41.98070])
     t2 = matrix.col([176.73730,27.41760,-5.85930])
     trans_obj = ncs.input(
-      pdb_inp=iotbx.pdb.input(source_info=None, lines=pdb_str2),
+      hierarchy=iotbx.pdb.input(source_info=None, lines=pdb_str2).construct_hierarchy(),
       rotations=[r1,r2],
       translations=[t1,t2])
     nrg = trans_obj.get_ncs_restraints_group_list()[0]
@@ -351,7 +351,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
         iotbx.phil.parse(pdb_test_data2_phil)).extract()
     trans_obj = ncs.input(
       ncs_phil_groups=phil_groups.ncs_group,
-      pdb_inp=pdb_inp,
+      hierarchy=pdb_inp.construct_hierarchy(),
       exclude_selection=None)
     result = trans_obj.print_ncs_phil_param(write=False)
     # print "="*50
@@ -368,14 +368,14 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     spec_object.read_ncs(lines=test_ncs_spec.splitlines())
     trans_obj = ncs.input(
       spec_ncs_groups=spec_object,
-      pdb_inp = self.pdb_inp)
+      hierarchy = self.pdb_inp.construct_hierarchy())
     result = trans_obj.print_ncs_phil_param(write=False)
     self.assertEqual(result,test_phil_3)
 
   def test_finding_partial_ncs(self):
     # print sys._getframe().f_code.co_name
     ncs_inp = ncs.input(
-      pdb_inp=iotbx.pdb.input(source_info=None, lines=pdb_str),
+      hierarchy=iotbx.pdb.input(source_info=None, lines=pdb_str).construct_hierarchy(),
       check_atom_order=True,
       min_percent=0.2)
     t = ncs_inp.ncs_to_asu_selection
@@ -386,7 +386,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertEqual(t,exp_t1)
     #
     ncs_inp = ncs.input(
-      pdb_inp=iotbx.pdb.input(source_info=None, lines=pdb_str),
+      hierarchy=iotbx.pdb.input(source_info=None, lines=pdb_str).construct_hierarchy(),
       check_atom_order=False,
       allow_different_size_res=False)
     t = ncs_inp.ncs_to_asu_selection
@@ -394,14 +394,14 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertEqual(t,exp_t2)
     #
     ncs_inp = ncs.input(
-      pdb_inp=iotbx.pdb.input(source_info=None, lines=pdb_str),
+      hierarchy=iotbx.pdb.input(source_info=None, lines=pdb_str).construct_hierarchy(),
       check_atom_order=False,
       allow_different_size_res=True)
     t = ncs_inp.ncs_to_asu_selection
     self.assertEqual(t,exp_t1)
     #
     self.assertRaises(Sorry,ncs.input,
-                      pdb_inp=iotbx.pdb.input(source_info=None, lines=pdb_str),
+                      hierarchy=iotbx.pdb.input(source_info=None, lines=pdb_str).construct_hierarchy(),
                       process_similar_chains=False)
 
   def test_format_string_longer_than_80(self):
@@ -416,7 +416,11 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
   def test_correct_grouping(self):
     """ test correct representation of groups in .ncs file"""
-    ncs_obj = iotbx.ncs.input(pdb_inp=iotbx.pdb.input(source_info=None, lines=pdb_str_4))
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_4)
+    h = pdb_inp.construct_hierarchy()
+    ncs_obj = iotbx.ncs.input(
+        hierarchy=h,
+        transform_info=pdb_inp.process_mtrix_records(eps=0.01))
     self.assertEqual(ncs_obj.number_of_ncs_groups,1)
     gr = ncs_obj.print_ncs_phil_param()
     self.assertEqual(gr,answer_4)

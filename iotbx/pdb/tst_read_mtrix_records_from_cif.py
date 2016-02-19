@@ -14,8 +14,12 @@ class TestMtrixRecFromCif(unittest.TestCase):
     print 'Running ',sys._getframe().f_code.co_name
     pdb_inp1 = iotbx.pdb.input(source_info=None, lines=test_pdb)
     pdb_inp2 = iotbx.pdb.input(source_info=None, lines=test_cif)
-    trans_obj1 = ncs.input(pdb_inp=pdb_inp1)
-    trans_obj2 = ncs.input(pdb_inp=pdb_inp2)
+    trans_obj1 = ncs.input(
+        hierarchy=pdb_inp1.construct_hierarchy(),
+        transform_info=pdb_inp1.process_mtrix_records())
+    trans_obj2 = ncs.input(
+        hierarchy=pdb_inp2.construct_hierarchy(),
+        transform_info=pdb_inp2.process_mtrix_records())
 
     # trans_obj1 = ncs.input(pdb_string=test_pdb)
     # trans_obj2 = ncs.input(cif_string=test_cif)

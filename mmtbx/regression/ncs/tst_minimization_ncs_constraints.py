@@ -56,7 +56,6 @@ class ncs_minimization_test(object):
     self.test_files_names = [] # collect names of files for cleanup
     # 1 NCS copy: starting template to generate whole asu; place into P1 box
     pdb_inp = iotbx.pdb.input(source_info=None, lines=ncs_1_copy)
-    pdb_obj = iotbx.pdb.hierarchy.input(pdb_string=ncs_1_copy)
     mtrix_object = pdb_inp.process_mtrix_records()
     ph = pdb_inp.construct_hierarchy()
     xrs = pdb_inp.xray_structure_simple()
@@ -98,7 +97,7 @@ class ncs_minimization_test(object):
     if self.transformations:
       transforms_obj = ncs.input(
       transform_info = mtrix_object,
-      pdb_hierarchy_inp = pdb_obj)
+      hierarchy = ph)
       x = nu.concatenate_rot_tran(transforms_obj=transforms_obj)
       x = nu.shake_transformations(
         x = x,

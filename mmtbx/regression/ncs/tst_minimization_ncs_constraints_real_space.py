@@ -103,7 +103,7 @@ def run(prefix="tst", d_min=1.0):
   #
   pdb_inp_poor = iotbx.pdb.input(file_name=pdb_file_name_poor)
   ph_poor = pdb_inp_poor.construct_hierarchy()
-  ph_poor_obj = iotbx.pdb.hierarchy.input(pdb_string=pdb_str_poor2)
+  ph_poor_obj = iotbx.pdb.input(source_info=None, lines=pdb_str_poor2)
   ph_poor.atoms().reset_i_seq()
   xrs_poor = pdb_inp_poor.xray_structure_simple()
   #
@@ -131,7 +131,7 @@ def run(prefix="tst", d_min=1.0):
   it = [tv[0]]
   # create transformation object
   transforms_obj = ncs.input(
-    pdb_hierarchy_inp = ph_poor_obj,
+    hierarchy = ph_poor_obj.construct_hierarchy(),
     rotations=rm,
     translations=tv)
   x = nu.concatenate_rot_tran(transforms_obj=transforms_obj)

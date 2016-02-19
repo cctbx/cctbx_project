@@ -95,10 +95,9 @@ class multimer(object):
       raise Sorry('Sorry, this feature currently supports on single models ' +
                   'hierarchies')
 
-    self.transforms_obj = ncs_group_object()
     # Read the relevant transformation matrices
-    self.transforms_obj.build_ncs_obj_from_pdb_ncs(
-      pdb_h=pdb_obj.hierarchy,
+    self.transforms_obj = ncs_group_object(
+      hierarchy=pdb_obj.hierarchy,
       transform_info=transform_info)
 
     # Calculate ASU (if there are any transforms to apply)

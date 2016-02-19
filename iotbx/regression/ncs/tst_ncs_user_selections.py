@@ -165,7 +165,7 @@ def get_ncs_groups(phil_str, pdb_str, **kwargs):
   phil_groups = ncs_group_master_phil.fetch(
       iotbx.phil.parse(phil_str)).extract()
   pdb_inp = iotbx.pdb.input(lines=pdb_str,source_info=None)
-  ncs_inp = iotbx.ncs.input(pdb_inp = pdb_inp,
+  ncs_inp = iotbx.ncs.input(hierarchy = pdb_inp.construct_hierarchy(),
       ncs_phil_groups=phil_groups.ncs_group, **kwargs)
   return ncs_inp.get_ncs_restraints_group_list()
 
