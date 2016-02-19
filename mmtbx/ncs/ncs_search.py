@@ -6,6 +6,7 @@ from libtbx.utils import Sorry
 from scitbx import matrix
 import math
 import sys
+import StringIO
 
 __author__ = 'Youval'
 
@@ -103,14 +104,10 @@ def find_ncs_in_hierarchy(ph,
                           min_contig_length=10,
                           min_percent=0.95,
                           max_rmsd=5.0,
-                          write=False,
                           log=None,
-                          check_atom_order=False,
-                          allow_different_size_res=True,
                           exclude_misaligned_residues=False,
                           similarity_threshold=0.95,
-                          match_radius=4.0,
-                          ignore_chains=None):
+                          match_radius=4.0):
   """
   Find NCS relation in hierarchy
 
@@ -123,18 +120,11 @@ def find_ncs_in_hierarchy(ph,
     use_minimal_master_ncs (bool): use maximal or minimal common chains
         in master ncs groups
     max_rmsd (float): limit of rms difference chains when aligned together
-    write (bool): when true, write ncs search messages to log
-    check_atom_order (bool): check atom order in matching residues.
-        When False, matching residues with different number of atoms will be
-        excluded from matching set
     exclude_misaligned_residues (bool): check and exclude individual residues
       alignment quality
     match_radius (float): max allow distance difference between pairs of matching
       atoms of two residues
-    allow_different_size_res (bool): keep matching residue with different
-      number of atoms
     similarity_threshold (float): min similarity between matching chains
-    ignore_chains (set of str): set of chain IDs to exclude
 
   Return:
     groups_list (list of NCS_groups_container objects)
@@ -143,18 +133,13 @@ def find_ncs_in_hierarchy(ph,
       values: NCS_groups_container objects
   """
   if not log: log = sys.stdout
-  chains_info = get_chains_info(ph,ignore_chains=ignore_chains)
+  chains_info = get_chains_info(ph)
   # Get the list of matching chains
   chain_match_list = search_ncs_relations(
     chains_info=chains_info,
     min_contig_length=min_contig_length,
     min_percent=min_percent,
-    write=write,
-    log=log,
-    check_atom_order=check_atom_order,
-    # use_minimal_master_ncs=use_minimal_master_ncs,
-    allow_different_size_res=allow_different_size_res,
-    ignore_chains=ignore_chains)
+    log=None)
   #
   match_dict = clean_chain_matching(
     chain_match_list=chain_match_list,
@@ -182,102 +167,102 @@ def find_ncs_in_hierarchy(ph,
   #   transform_to_group,match_dict = minimal_ncs_operators_grouping(match_dict)
 
 
-  group_dict = build_group_dict(transform_to_group,match_dict,chains_info)
+  # group_dict = build_group_dict(transform_to_group,match_dict,chains_info)
   # print "group_dict"
   # for k, v in group_dict.iteritems():
   #   print "  ", k, v
   # return group_dict
 
-def minimal_ncs_operators_grouping(match_dict):
-  """
-  Look for NCS groups with the smallest number of chains in the master copy
-  This is not the minimal number of NCS operations
+# def minimal_ncs_operators_grouping(match_dict):
+#   """
+#   Look for NCS groups with the smallest number of chains in the master copy
+#   This is not the minimal number of NCS operations
 
-  Args:
-    match_dict(dict):
-      key:(chains_id_1,chains_id_2)
-      val:[select_1,select_2,res_list_1,res_list_2,rot,trans,rmsd]
-      chain_ID (str), selection_1/2 (flex.size_t)
-      res_list_1/2 (list): list of matching residues indices
-      rot (matrix obj): rotation matrix
-      tran (matrix obj): translation vector
-      rmsd (float)
+#   Args:
+#     match_dict(dict):
+#       key:(chains_id_1,chains_id_2)
+#       val:[select_1,select_2,res_list_1,res_list_2,rot,trans,rmsd]
+#       chain_ID (str), selection_1/2 (flex.size_t)
+#       res_list_1/2 (list): list of matching residues indices
+#       rot (matrix obj): rotation matrix
+#       tran (matrix obj): translation vector
+#       rmsd (float)
 
-  Returns:
-    transform_to_group (dict):
-      keys: tuple of master chain IDs
-      values: NCS_groups_container objects
-    match_dict (dict): updated match_dict
-  """
-  # get a sorted list of match_dict key (by chain names)
-  sorted_chain_groups_keys = sorted(match_dict)
-  # collect all chain IDs
-  chain_ids = {c_id for key in sorted_chain_groups_keys for c_id in key}
-  chain_ids = sorted(chain_ids)
-  # for each group in chain_groups find the transforms and group them
-  transform_to_group = {}
-  copy_to_transform = {}
-  chains_in_groups = set()
-  tr_sn = 0
-  #
-  for (master_id, copy_id) in sorted_chain_groups_keys:
-    [sel_1,sel_2,res_1,res_2,r,t,rmsd] = match_dict[master_id,copy_id]
-    # check if master is not a copy in another group
-    if master_id in chains_in_groups: continue
-    if copy_id in chains_in_groups: continue
-    # check if the chains related by ncs operation
-    tr_num, is_transpose = find_same_transform(r,t,transform_to_group)
-    if is_transpose:
-      # master and copy related by transpose of the rotation r
-      if master_id in transform_to_group[tr_num][0]:
-        # master_id is already a master for transform tr_num
-        tr_num = None
-        temp_master, temp_copy = master_id, copy_id
-      else:
-        temp_master, temp_copy = copy_id, master_id
-        # flip the key in match_dict
-        match_dict.pop((master_id, copy_id))
-        # replace rotation and translation
-        r,t = inverse_transform(r,t)
-        match_dict[copy_id,master_id] = [sel_2,sel_1,res_2,res_1,r,t,rmsd]
-    else:
-      temp_master, temp_copy = master_id, copy_id
-    if tr_num:
-      # get chain IDs of all copies sharing this transform
-      copies_ids = transform_to_group[tr_num][1]
-      if not (temp_master in copies_ids):
-        if copy_to_transform.has_key(temp_copy):
-          # get the transforms that are leading to temp_copy
-          tr_list = copy_to_transform.pop(temp_copy,[])
-          for tr in tr_list:
-            # since we increase the number of copies using the transform
-            # we can remove the transform from its previous group
-            transform_to_group.pop(tr,None)
-          # update with new transform number
-          copy_to_transform[temp_copy] = [tr_num]
-        # remove transforms for which the new master was a copy,
-        if copy_to_transform.has_key(temp_master):
-          tr_list = copy_to_transform.pop(temp_master,[])
-          for tr in tr_list:
-            transform_to_group.pop(tr,None)
-        # update dictionaries with additions to master and copies
-        transform_to_group[tr_num][0].append(temp_master)
-        transform_to_group[tr_num][1].append(temp_copy)
-        chains_in_groups.update(set(transform_to_group[tr_num][1]))
-    else:
-      # create a new transform object and update groups
-      tr_sn += 1
-      transform_to_group[tr_sn] = [[temp_master],[temp_copy],(r,t)]
-      # for each copy, collect all the transforms used to make it
-      if copy_to_transform.has_key(temp_copy):
-        copy_to_transform[temp_copy].append(tr_sn)
-      else:
-        copy_to_transform[temp_copy] = [tr_sn]
-  # Clean solution
-  transform_to_group = remove_masters_if_appear_in_copies(transform_to_group)
-  transform_to_group = clean_singles(transform_to_group,chains_in_groups)
-  transform_to_group = remove_overlapping_selection(transform_to_group,chain_ids)
-  return transform_to_group,match_dict
+#   Returns:
+#     transform_to_group (dict):
+#       keys: tuple of master chain IDs
+#       values: NCS_groups_container objects
+#     match_dict (dict): updated match_dict
+#   """
+#   # get a sorted list of match_dict key (by chain names)
+#   sorted_chain_groups_keys = sorted(match_dict)
+#   # collect all chain IDs
+#   chain_ids = {c_id for key in sorted_chain_groups_keys for c_id in key}
+#   chain_ids = sorted(chain_ids)
+#   # for each group in chain_groups find the transforms and group them
+#   transform_to_group = {}
+#   copy_to_transform = {}
+#   chains_in_groups = set()
+#   tr_sn = 0
+#   #
+#   for (master_id, copy_id) in sorted_chain_groups_keys:
+#     [sel_1,sel_2,res_1,res_2,r,t,rmsd] = match_dict[master_id,copy_id]
+#     # check if master is not a copy in another group
+#     if master_id in chains_in_groups: continue
+#     if copy_id in chains_in_groups: continue
+#     # check if the chains related by ncs operation
+#     tr_num, is_transpose = find_same_transform(r,t,transform_to_group)
+#     if is_transpose:
+#       # master and copy related by transpose of the rotation r
+#       if master_id in transform_to_group[tr_num][0]:
+#         # master_id is already a master for transform tr_num
+#         tr_num = None
+#         temp_master, temp_copy = master_id, copy_id
+#       else:
+#         temp_master, temp_copy = copy_id, master_id
+#         # flip the key in match_dict
+#         match_dict.pop((master_id, copy_id))
+#         # replace rotation and translation
+#         r,t = inverse_transform(r,t)
+#         match_dict[copy_id,master_id] = [sel_2,sel_1,res_2,res_1,r,t,rmsd]
+#     else:
+#       temp_master, temp_copy = master_id, copy_id
+#     if tr_num:
+#       # get chain IDs of all copies sharing this transform
+#       copies_ids = transform_to_group[tr_num][1]
+#       if not (temp_master in copies_ids):
+#         if copy_to_transform.has_key(temp_copy):
+#           # get the transforms that are leading to temp_copy
+#           tr_list = copy_to_transform.pop(temp_copy,[])
+#           for tr in tr_list:
+#             # since we increase the number of copies using the transform
+#             # we can remove the transform from its previous group
+#             transform_to_group.pop(tr,None)
+#           # update with new transform number
+#           copy_to_transform[temp_copy] = [tr_num]
+#         # remove transforms for which the new master was a copy,
+#         if copy_to_transform.has_key(temp_master):
+#           tr_list = copy_to_transform.pop(temp_master,[])
+#           for tr in tr_list:
+#             transform_to_group.pop(tr,None)
+#         # update dictionaries with additions to master and copies
+#         transform_to_group[tr_num][0].append(temp_master)
+#         transform_to_group[tr_num][1].append(temp_copy)
+#         chains_in_groups.update(set(transform_to_group[tr_num][1]))
+#     else:
+#       # create a new transform object and update groups
+#       tr_sn += 1
+#       transform_to_group[tr_sn] = [[temp_master],[temp_copy],(r,t)]
+#       # for each copy, collect all the transforms used to make it
+#       if copy_to_transform.has_key(temp_copy):
+#         copy_to_transform[temp_copy].append(tr_sn)
+#       else:
+#         copy_to_transform[temp_copy] = [tr_sn]
+#   # Clean solution
+#   transform_to_group = remove_masters_if_appear_in_copies(transform_to_group)
+#   transform_to_group = clean_singles(transform_to_group,chains_in_groups)
+#   transform_to_group = remove_overlapping_selection(transform_to_group,chain_ids)
+#   return transform_to_group,match_dict
 
 def get_rmsds2(master_xyz, copy_xyz, cur_ttg):
   """
@@ -1300,6 +1285,9 @@ def update_match_dicts(best_matches,match_dict,
 
 def find_same_transform(r,t,transforms):
   """
+
+  Not used.
+
   Check if the rotation r and translation t exist in the transform dictionary.
   Note that there can be both inverse and regular match. Return the
   non-transpose if exist.
@@ -1313,6 +1301,7 @@ def find_same_transform(r,t,transforms):
     tr_num: (str) transform serial number
     is_transpose: (bool) True if the matching transform is transpose
   """
+
   is_transpose = False
   tr_num = None
   for k,v in transforms.iteritems():
@@ -1344,11 +1333,7 @@ def search_ncs_relations(ph=None,
                          chains_info = None,
                          min_contig_length=10,
                          min_percent=0.95,
-                         write=False,
-                         log=None,
-                         check_atom_order=False,
-                         allow_different_size_res=True,
-                         ignore_chains=None):
+                         log=None):
   """
   Search for NCS relations between chains or parts of chains, in a protein
   hierarchy
@@ -1366,13 +1351,6 @@ def search_ncs_relations(ph=None,
     min_percent (float): Threshold for similarity between chains.
       similarity define as:
       (number of matching res) / (number of res in longer chain)
-    write (bool): when true, write ncs search messages to log
-    check_atom_order (bool): check atom order in matching residues.
-        When False, matching residues with different number of atoms will be
-        excluded from matching set
-    allow_different_size_res (bool): keep matching residue with different
-      number of atoms
-    ignore_chains (set of str): set of chain IDs to exclude
 
   Returns:
     msg (str): message regarding matching residues with different atom number
@@ -1384,10 +1362,10 @@ def search_ncs_relations(ph=None,
     We use sel_2 to avoid problems when residues have different number of atoms
   """
   # print "searching ncs relations..."
-  if not log: log = sys.stdout
+  if not log: log = StringIO.StringIO()
   if not chains_info:
     assert bool(ph)
-    chains_info = get_chains_info(ph,ignore_chains=ignore_chains)
+    chains_info = get_chains_info(ph)
   # collect all chain IDs
   chain_match_list = []
   msg = ''
@@ -1428,9 +1406,7 @@ def search_ncs_relations(ph=None,
         min_contig_length=min_contig_length,
         min_percent=min_percent)
       sel_m, sel_c,res_sel_m,res_sel_c,new_msg = get_matching_atoms(
-        chains_info,m_ch_id,c_ch_id,res_sel_m,res_sel_c,
-        check_atom_order=check_atom_order,
-        allow_different_size_res=allow_different_size_res)
+        chains_info,m_ch_id,c_ch_id,res_sel_m,res_sel_c)
       msg += new_msg
       if res_sel_m:
         # add only non empty matches
@@ -1440,7 +1416,7 @@ def search_ncs_relations(ph=None,
       if similarity > 0.9:
         chains_in_copies.add(c_ch_id)
         # print "  good"
-  if write and msg:
+  if msg:
     print >> log,msg
   if (min_percent == 1) and msg:
     # must be identical
@@ -1608,9 +1584,7 @@ def get_matching_res_indices(R,row,col,min_percent,min_contig_length):
   assert len(sel_a) == len(sel_b)
   return sel_a, sel_b, similarity
 
-def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
-                       check_atom_order=False,
-                       allow_different_size_res=True):
+def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b):
   """
   Get selection of matching chains, match residues atoms
   We keep only residues with continuous matching atoms
@@ -1627,11 +1601,6 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
       chains_atom_number (list of int): list of number of atoms in each chain
     a_id,b_id (str): Chain IDs
     res_num_a/b (list of int): indices of matching residues position
-    check_atom_order (bool): check atom order in matching residues.
-        When False, matching residues with different number of atoms will be
-        excluded from matching set
-    allow_different_size_res (bool): keep matching residue with different
-      number of atoms
 
   Returns:
     sel_a/b (list of lists): matching atoms selection
@@ -1660,14 +1629,14 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
     atoms_names_a = chains_info[a_id].atom_names[i]
     atoms_names_b = chains_info[b_id].atom_names[j]
     resid_a = chains_info[a_id].resid[i]
-    force_check_atom_order = dif_res_size and allow_different_size_res
+    force_check_atom_order = dif_res_size
     altloc = False
     if test_altloc:
       if a_altloc:
         altloc |= (not chains_info[a_id].no_altloc[i])
       if b_altloc:
         altloc |= (not chains_info[b_id].no_altloc[j])
-    if check_atom_order or force_check_atom_order:
+    if force_check_atom_order:
       # select only atoms that exist in both residues
       atoms_a,atoms_b,similarity = res_alignment(
         seq_a=atoms_names_a, seq_b=atoms_names_b,
@@ -1677,7 +1646,7 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b,
       sb = flex.size_t(atoms_b) + sb[0]
     if dif_res_size or altloc:
       residues_with_different_n_atoms.append(resid_a)
-      if (not allow_different_size_res) or altloc:
+      if altloc:
         sa = flex.size_t([])
         sb = flex.size_t([])
     # keep only residues with continuous matching atoms
@@ -1703,7 +1672,7 @@ def make_selection_from_lists(sel_list):
   sel_list_extended.sort()
   return flex.size_t(sel_list_extended)
 
-def get_chains_info(ph, selection_list=None, ignore_chains=None):
+def get_chains_info(ph, selection_list=None):
   """
   Collect information about chains or segments of the hierarchy according to
   selection strings
@@ -1713,7 +1682,6 @@ def get_chains_info(ph, selection_list=None, ignore_chains=None):
   Args:
     ph : pdb_hierarchy
     selection_list (list of str): specific selection of hierarchy segments
-    ignore_chains (set of str): set of chain IDs to exclude
 
   Returns:
     chains_info (dict): values are object containing
@@ -1726,7 +1694,6 @@ def get_chains_info(ph, selection_list=None, ignore_chains=None):
     exclude_water (bool): exclude water
   """
   use_chains = not bool(selection_list)
-  if not ignore_chains: ignore_chains = set()
   #
   chains_info =  {}
   asc = ph.atom_selection_cache()
@@ -1734,7 +1701,6 @@ def get_chains_info(ph, selection_list=None, ignore_chains=None):
     model  = ph.models()[0]
     # build chains_info from hierarchy
     for ch in model.chains():
-      if ch.id in ignore_chains: continue
       if not chains_info.has_key(ch.id):
         chains_info[ch.id] = Chains_info()
         ph_sel = ph.select(asc.selection("chain '%s'" % ch.id))

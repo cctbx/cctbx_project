@@ -270,9 +270,6 @@ class reference_model(object):
     ncs_obj = iotbx.ncs.input(
         hierarchy=temp_h,
         exclude_misaligned_residues=search_options.exclude_misaligned_residues,
-        check_atom_order=search_options.check_atom_order,
-        allow_different_size_res=search_options.allow_different_size_res,
-        process_similar_chains=search_options.process_similar_chains,
         match_radius=search_options.match_radius,
         similarity_threshold=search_options.similarity_threshold,
         min_contig_length=search_options.min_contig_length,
