@@ -251,8 +251,8 @@ def exercise(prefix="tst_polder_01"):
   #
   fobs_1 = abs(xrs.structure_factors(d_min=2.5).f_calc())
   fobs_2 = abs(xrs.structure_factors(d_min=2.0).f_calc())
-  flags_1 = fobs_1.generate_r_free_flags()
-  flags_2 = fobs_2.generate_r_free_flags()
+  flags_1 = fobs_1.generate_r_free_flags(fraction=0.05)
+  flags_2 = fobs_2.generate_r_free_flags(fraction=0.05)
   #
   print '*'*79
   print 'Test reading one mtz with different choices for F and Rfree'
