@@ -120,7 +120,7 @@ class omega_result(residue):
 
   @staticmethod
   def header():
-    return "%-20s %-12s %6s %-20s" % ("Residue", "Type", "Omega","Conformation")
+    return "%-31s %-12s %6s %-13s %6s" % ("Residues", "Type", "Omega","Conformation","MC_high_b")
 
   def residue_type(self):
     return res_type_labels[self.res_type]
@@ -137,8 +137,8 @@ class omega_result(residue):
       self.prev_resname)
 
   def as_string(self):
-    return "%-20s %-12s %6.2f %-20s" % (self.id_str(), self.residue_type(),
-      self.omega, self.omegalyze_type())
+    return "%-12s to %-15s %-12s %6.2f %-13s %6.2f" % (
+      self.prev_id_str(),self.id_str(),self.residue_type(),self.omega, self.omegalyze_type(),self.highest_mc_b)
 
   #For backwards compatibility
   def id_str_old(self):
