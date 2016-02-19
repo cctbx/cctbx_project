@@ -1,9 +1,3 @@
-from __future__ import division
-# run these commands in the "amokXXXX" directory
-
-# mpirun -n 2 libtbx.python mpi_fxs_launch.py -j correlation -e amo86615 -r 120 -a pnccdBack -d 581.0
-# in batch:
-# bsub -q psanaq -n 2 -o %J.log -a mympi libtbx.python mpi_fxs_launch.py -j correlation -e amo86615 -r 120 -a pnccdBack -d 581.0
 import os
 import sys
 import glob
@@ -11,9 +5,66 @@ import libtbx.option_parser
 from xfel.amo.pnccd_ana                 import mpi_fxs_index
 from xfel.amo.pnccd_ana                 import mpi_fxs_c2
 from xfel.amo.pnccd_ana                 import mpi_fxs_bg
-
+from xfel.amo.pnccd_ana                 import mpi_fxs_calib
+from xfel.amo.pnccd_ana                 import mpi_fxs_mask
 
 def launch(argv=None) :
+
+  """Function to launch: Single CPU, Multi-Processor interactive jobs or MPI batch jobs
+       for the purpose of:
+
+       1. Indexing                (mpi_fxs_index.py)
+       2. Masking                 (mpi_fxs_mask.py)
+       3. Background computation  (mpi_fxs_bg.py)
+       4. Calibration             (mpi_fxs_calib.py)
+       5. C2 computation          (mpi_fxs_c2.py)
+
+     Example tcsh-file for launching Single, Interactive or Batch jobs:
+
+     #!/bin/tcsh
+
+     # Provide Run number in input (eg ./run.csh 111)
+     #echo $1
+
+     # Batch parameters
+     set processing_q  = psanaq
+     set nr_cpu        = 120
+     set job_name      = run_$1
+
+     # Processing parameters
+     set file_type     = idx
+     set job_type      = correlation
+     set experiment    = amok5415
+     set detector      = pnccdFront
+     set distance      = 369.0
+     set mask_thr      = 2.0
+     set wavelength    = 7.094
+     set x             = 513
+     set y             = 662
+     set dx            = 5
+     set dy            = 5
+
+     set mask          = /reg/neh/home1/malmerbe/develop/amok5415_files/processing/masks/Mask_map_61_2.dat
+     set index         = /reg/neh/home1/malmerbe/develop/amok5415_files/index_files/Selected_run111_COM.dat
+
+     set first         = 0
+     set last          = 20
+
+     # Launch Batch Job
+
+     bsub -q ${processing_q} -a mympi -n ${nr_cpu} -o log_files/${job_name}_${detector}%J.log -J ${job_name}_${detector} mpi_fxs_launch -j ${job_type} -e ${experiment} -r $1 -a ${detector} -d ${distance} -t ${mask_thr} -f ${file_type} -w ${wavelength}  -x ${x} -y ${y} --dx ${dx} --dy ${dy} --index ${index} -m ${mask}
+
+     # Launch Interactive job
+
+     mpirun -n ${nr_cpu}   mpi_fxs_launch -j ${job_type} -e ${experiment} -r $1 -a ${detector} -d ${distance} -t ${mask_thr}  -f ${file_type} -w ${wavelength} -x ${x} -y ${y} --dx ${dx} --dy ${dy} --index ${index} --first ${first} --last ${last} -m ${mask}
+
+     # Launch single CPU
+
+     mpi_fxs_launch -j ${job_type} -e ${experiment} -r $1 -a ${detector} -d ${distance} -t ${mask_thr} -f ${file_type} -w ${wavelength}  -x ${x} -y ${y} --dx ${dx} --dy ${dy}  --first ${first} --last ${last} -m ${mask} --index ${index}
+
+
+  """
+
   if argv == None:
      argv = sys.argv[1:]
 
@@ -26,14 +77,12 @@ def launch(argv=None) :
   rank = comm.Get_rank()
   size = comm.Get_size()
 
-#  from IPython import embed; embed()
-
   command_line = (libtbx.option_parser.option_parser(
     usage="""
 
 %s    -j job type -e  experiment  -r  run  -a  address -d  detector distance  [-o  outputdir]
                [-I first frame] [-F last frame] [-H  hit intensity]   [-m  mask path]
-               [-B background image path]  [-M  background mask path]  [-i  index path]
+               [-B background image path]  [-M  background mask path]  [-i  index path] [-G geometry path]
                [-u  pixel size]  [-w  wavelength override]  [-t  threshold for masking]  [-q  nr of q bins]
                [-p  nr of phi bins]  [-Q  sampled stepsize q]  [-P  sampled stepsize phi]  [-x beam center x] [-y beam center y]
                [-z rmax for beam c]  [-Z  sample step size in r]  [-x  bound in x for beam c ]  [-y  bound in y for beam c],
@@ -43,7 +92,7 @@ def launch(argv=None) :
                         type="string",
                         default=None,
                         dest="job",
-                        help="job type: index | background |correlation ")
+                        help="job type: index | background |correlation |calibration |mask ")
                 .option(None, "--experiment", "-e",
                         type="string",
                         default=None,
@@ -104,6 +153,12 @@ def launch(argv=None) :
                         dest="param_path",
                         metavar="PATH",
                         help="index file")
+                .option(None, "--geometry", "-G",
+                        type="string",
+                        default=None,
+                        dest="geom_path",
+                        metavar="PATH",
+                        help="geometry file")
                 .option(None, "--distance", "-d",
                         type="float",
                         default=None,
@@ -161,7 +216,7 @@ def launch(argv=None) :
                         help="r_max for beam center refinement")
                 .option(None, "--dr", "-Z",
                         type="int",
-                        default=10,
+                        default=1,
                         dest="dr",
                         help="step size for beam center refinement")
                 .option(None, "--dx", "-X",
@@ -197,9 +252,9 @@ def launch(argv=None) :
                         help="Alternative path to xtc or h5 directory")
                 .option(None, "--file type", "-f",
                         type="string",
-                        default='xtc',
+                        default='idx',
                         dest="ftype",
-                        help="Type of file (xtc, ffb, h5 etc)")
+                        help="Type of file (idx, smd, idx_ffb, smd_ffb, h5, xtc)")
                 ).process(args=argv)
 
   # Check mandatory parameters
@@ -242,6 +297,10 @@ def launch(argv=None) :
      mpi_fxs_bg.compute_bg(cargs)
   elif command_line.options.job == 'correlation' :
      mpi_fxs_c2.compute_c2(cargs)
+  elif command_line.options.job == 'calibration' :
+     mpi_fxs_calib.compute_calib(cargs)
+  elif command_line.options.job == 'mask' :
+     mpi_fxs_mask.compute_mask(cargs)
   else:
      print "*** No recognizable job type chose: index | background | correlation ***"
      command_line.parser.show_help()
