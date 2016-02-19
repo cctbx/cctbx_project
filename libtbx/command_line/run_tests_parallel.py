@@ -87,6 +87,7 @@ def run (args) :
     all_tests.extend(module_tests)
   if (len(all_tests) == 0) :
     raise Sorry("No test scripts found in %s." % params.directory)
+  # all_tests = ['libtbx.python "/net/anaconda/raid1/olegs/phenix_test/modules/phenix_regression/real_space_refine/tst_24.py"']
   if (params.shuffle) :
     random.shuffle(all_tests)
   if (params.quiet) :
