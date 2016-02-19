@@ -1,7 +1,6 @@
 from __future__ import division
 from iotbx.ncs import format_80
 from libtbx.utils import null_out
-from libtbx.utils import Sorry
 from datetime import datetime
 from scitbx import matrix
 import iotbx.ncs as ncs
@@ -49,9 +48,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       prefix = 'test_create_ncs_domain_pdb_files'
       obj = simple_ncs_from_pdb(
         pdb_file=fn,
-        quiet=True,
-        exclude_chains=['D','E'],
-        suppress_print=True,
         write_ncs_domain_pdb=True,
         ncs_domain_pdb_stem=prefix)
 
@@ -63,9 +59,9 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       pdb_inp_0 = pdb.input(file_name=fn_gr0)
       pdb_inp_1 = pdb.input(file_name=fn_gr1)
       pdb_inp_2 = pdb.input(file_name=fn_gr2)
-      self.assertEqual(pdb_inp_0.atoms().size(),6)
+      self.assertEqual(pdb_inp_0.atoms().size(),12)
       self.assertEqual(pdb_inp_1.atoms().size(),8)
-      self.assertEqual(pdb_inp_2.atoms().size(),4)
+      self.assertEqual(pdb_inp_2.atoms().size(),8)
     else:
       print "phenix not available, skipping test_create_ncs_domain_pdb_files()"
       pass
@@ -194,7 +190,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       # create a spec file
       ncs_from_pdb=simple_ncs_from_pdb(
         pdb_file="test_ncs_spec.pdb",
-        quiet=True,
         log=null_out(),
         params=params)
 
@@ -376,7 +371,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     # print sys._getframe().f_code.co_name
     ncs_inp = ncs.input(
       hierarchy=iotbx.pdb.input(source_info=None, lines=pdb_str).construct_hierarchy(),
-      check_atom_order=True,
       min_percent=0.2)
     t = ncs_inp.ncs_to_asu_selection
     exp_t1 = {
@@ -385,24 +379,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
          "(chain 'C' and (name N or name CA or name C or name O ))"]}
     self.assertEqual(t,exp_t1)
     #
-    ncs_inp = ncs.input(
-      hierarchy=iotbx.pdb.input(source_info=None, lines=pdb_str).construct_hierarchy(),
-      check_atom_order=False,
-      allow_different_size_res=False)
-    t = ncs_inp.ncs_to_asu_selection
-    exp_t2 = {"chain 'A'": ["chain 'C'"]}
-    self.assertEqual(t,exp_t2)
-    #
-    ncs_inp = ncs.input(
-      hierarchy=iotbx.pdb.input(source_info=None, lines=pdb_str).construct_hierarchy(),
-      check_atom_order=False,
-      allow_different_size_res=True)
-    t = ncs_inp.ncs_to_asu_selection
-    self.assertEqual(t,exp_t1)
-    #
-    self.assertRaises(Sorry,ncs.input,
-                      hierarchy=iotbx.pdb.input(source_info=None, lines=pdb_str).construct_hierarchy(),
-                      process_similar_chains=False)
 
   def test_format_string_longer_than_80(self):
     """ Check that strings longer that 80 characters are split correctly """

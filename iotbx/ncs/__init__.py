@@ -30,24 +30,10 @@ ncs_search
     .type = atom_selection
     .help = Atoms selected by this selection will be excluded from the model \
       before NCS search procedures will run.
-  check_atom_order = True
-    .type = bool
-    .help = '''check atom order in matching residues'''
-    .style = noauto
   exclude_misaligned_residues = True
     .type = bool
     .help = '''check and exclude individual residues
         alignment quality'''
-    .style = noauto
-  allow_different_size_res = True
-    .type = bool
-    .help = '''keep matching residue with different
-        number of atoms'''
-    .style = noauto
-  process_similar_chains = True
-    .type = bool
-    .help = '''When True, process chains that are close
-       in length without raising errors'''
     .style = noauto
   match_radius = 4.0
     .type = float
@@ -111,44 +97,38 @@ class input(object):
           translations = None,
           # XXX warning, ncs_phil_groups can be changed inside...
           ncs_phil_groups = None,
-          quiet=True,
           spec_ncs_groups=None,
           exclude_selection="not (protein or nucleotide) or element H or element D",
           max_rmsd=2.0,
-          write_messages=False,
           log=sys.stdout,
-          process_similar_chains=True,
           min_percent=0.85,
           similarity_threshold=0.95,
           min_contig_length=10,
-          check_atom_order=True,
-          allow_different_size_res=True,
           exclude_misaligned_residues=True,
-          match_radius=4.0,
-          ignore_chains=None):
+          match_radius=4.0):
     """
     TODO:
     1. switch from iotbx.pdb.hierarchy.input to iotbx.pdb.input
 
     SUGGESTIONS:
-    1. Remove process_similar_chains, leaving it with present(True) behavior.
+done    1. Remove process_similar_chains, leaving it with present(True) behavior.
       Setting this to false will result in skipping even slightly different
       chains
-    2. Remove check_atom_order, leaving it with present(True) behavior.
+done    2. Remove check_atom_order, leaving it with present(True) behavior.
       In addition to checking atom order in residues (which should not
       be necessary now), it is used if
       one of the matching residues doesn't have all atoms.
-    3. Remove allow_different_size_res, leaving it with present(True) behavior.
+done    3. Remove allow_different_size_res, leaving it with present(True) behavior.
     4. At least combine match_radius with exclude_misaligned_residues, because
       match_radius is numerical value used to exclude misaligned_residues.
       Could be set to big value resulting in effectively
       exclude_misaligned_residues=False.
-    5. Remove ignore_chains. Could be easily defined as supplement to
+done    5. Remove ignore_chains. Could be easily defined as supplement to
       exclude_selection.
     6. Remove min_contig_length, setting it to 1. The parameters screws
       alignment similarity in a complicated way (we are excluding well-aligned
       regions with length less than this number).
-    7. Combine or remove entirely quiet and write_messages. If somebody doesn't
+done    7. Combine or remove entirely quiet and write_messages. If somebody doesn't
       want output, he may supply appropriate object to log parameter and never
       print it out (like StringIO)
     8. Combine similarity_threshold and min_percent. min_percent - preliminary
@@ -188,30 +168,18 @@ class input(object):
            }
       ncs_phil_groups: a list of ncs_groups_container object, containing
         master NCS selection and a list of NCS copies selection
-      quiet: (bool) When True -> quiet output when processing files
       spec_ncs_groups: ncs_groups object of class mmtbx.ncs.ncs.ncs
       max_rmsd (float): limit of rms difference between chains to be considered
         as copies
-      write_messages (bool): When True, write messages to log
-        nearly the same length (but not exactly the same) and are NCS related.
-        Raise error if NCS relations are not found
-      process_similar_chains (bool): When True, process chains that are close
-       in length without raising errors
       min_percent (float): Threshold for similarity between chains
         similarity define as:
         (number of matching res) / (number of res in longer chain)
       similarity_threshold (float): min similarity between matching chains
       min_contig_length (int): minimum length of matching chain segments
-      check_atom_order (bool): check atom order in matching residues.
-        When False, matching residues with different number of atoms will be
-        excluded from matching set
-      allow_different_size_res (bool): keep matching residue with different
-        number of atoms
       exclude_misaligned_residues (bool): check and exclude individual residues
         alignment quality
       match_radius (float): max allow distance difference between pairs of matching
         atoms of two residues
-      ignore_chains (set of str): set of chain IDs to exclude
     """
     self.total_asu_length = None
     # iselection maps, each master ncs to its copies position in the asu
@@ -257,7 +225,6 @@ class input(object):
     self.found_ncs_transforms = False
     # Collect messages, recommendation and errors
     self.messages = ''
-    self.write_messages = False
     self.old_i_seqs = None
     self.exclude_selection = None
     self.original_hierarchy = None
@@ -267,9 +234,6 @@ class input(object):
     if min_percent > 1: min_percent /= 100
     extension = ''
     # set search parameters
-    self.write_messages = write_messages
-    self.check_atom_order = check_atom_order
-    self.allow_different_size_res = allow_different_size_res
     self.min_contig_length = min_contig_length
     self.exclude_selection = exclude_selection
     self.max_rmsd = max_rmsd
@@ -277,8 +241,6 @@ class input(object):
     self.match_radius = match_radius
     self.min_percent = min_percent
     self.similarity_threshold = similarity_threshold
-    self.process_similar_chains = process_similar_chains
-    self.ignore_chains = ignore_chains
     #
     if not log: log = sys.stdout
     self.log = log
@@ -340,8 +302,7 @@ class input(object):
     elif spec_ncs_groups:
       self.build_ncs_obj_from_spec_file(
         pdb_h= self.truncated_hierarchy,
-        spec_ncs_groups=spec_ncs_groups,
-        quiet=quiet)
+        spec_ncs_groups=spec_ncs_groups)
     elif (self.truncated_hierarchy
         and validated_ncs_phil_groups is None):
       # print "Last chance, building from hierarchy"
@@ -354,11 +315,10 @@ class input(object):
 
     # error handling
     self.found_ncs_transforms = (len(self.transform_to_be_used) > 0)
-    if self.write_messages:
-      if self.found_ncs_transforms == 0:
-        print >> log,'No NCS relation were found !!!\n'
-      if self.messages != '':
-        print >> log,self.messages
+    if self.found_ncs_transforms == 0:
+      print >> log,'No NCS relation were found !!!\n'
+    if self.messages != '':
+      print >> log,self.messages
 
   def pdb_h_into_chain(self, pdb_h, ch_id="A"):
 
@@ -512,8 +472,6 @@ class input(object):
             chains_info=chain_info,
             min_contig_length=5,
             min_percent=0.5,
-            check_atom_order=False,
-            allow_different_size_res=True,
             )
         # print "match_list", match_list
         match_dict = ncs_search.clean_chain_matching(
@@ -690,8 +648,6 @@ class input(object):
     # if(ncs_phil_string is not None):
     #   ncs_phil_string = nu.convert_phil_format(ncs_phil_string)
     min_percent = self.min_percent
-    if not self.process_similar_chains:
-      min_percent = 1.0
     # process params
     # if ncs_phil_string:
     #   if isinstance(ncs_phil_string,str):
@@ -787,23 +743,15 @@ class input(object):
     if len(chain_ids) > 1:
       min_contig_length = self.min_contig_length
       min_percent = self.min_percent
-      if not self.process_similar_chains:
-        min_percent = 1.0
-        min_contig_length = 100000
-        self.check_atom_order = True
       group_dict = ncs_search.find_ncs_in_hierarchy(
         ph=pdb_h,
         min_contig_length=min_contig_length,
         min_percent=min_percent,
         similarity_threshold=self.similarity_threshold,
         max_rmsd=self.max_rmsd,
-        write=self.write_messages,
         log=self.log,
-        check_atom_order=self.check_atom_order,
-        allow_different_size_res=self.allow_different_size_res,
         exclude_misaligned_residues=self.exclude_misaligned_residues,
-        match_radius=self.match_radius,
-        ignore_chains=self.ignore_chains)
+        match_radius=self.match_radius)
       # process atom selections
       self.total_asu_length = pdb_h.atoms().size()
       self.build_ncs_obj_from_group_dict(group_dict,pdb_h)
@@ -933,14 +881,12 @@ class input(object):
 
   def build_ncs_obj_from_spec_file(self,
                                    spec_ncs_groups=None,
-                                  quiet=True,
                                    pdb_h=None,
                                    join_same_spec_groups = True):
     """
     read .spec files and build transforms object and NCS <-> ASU mapping
 
     Arguments:
-    quiet: (bool) quite output when True
     pdb_h: pdb hierarchy
     spec_ncs_groups: ncs_groups object or mmtbx.ncs.ncs.ncs object
     join_same_spec_groups: (bool) True: combine groups with similar transforms
@@ -2034,7 +1980,7 @@ class input(object):
     """
     list_of_values = [
       'min_contig_length','max_rmsd',
-      'check_atom_order','exclude_misaligned_residues','match_radius',
+      'exclude_misaligned_residues','match_radius',
       'min_percent','similarity_threshold']
     str_out = ['\n{}NCS search parameters:'.format(prefix),'-'*51]
     str_line = prefix + '{:<35s}:   {}'

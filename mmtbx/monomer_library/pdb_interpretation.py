@@ -5424,11 +5424,7 @@ class process(object):
       exclude_selection           = params.exclude_selection,
       max_rmsd                    = params.max_rmsd,
       match_radius                = params.match_radius,
-      process_similar_chains      = params.process_similar_chains,
-      allow_different_size_res    = params.allow_different_size_res,
       exclude_misaligned_residues = params.exclude_misaligned_residues,
-      check_atom_order            = params.check_atom_order,
-      write_messages              = False,
       log                         = self.log)
     return ncs_obj
 
