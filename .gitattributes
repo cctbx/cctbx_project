@@ -3598,8 +3598,10 @@ xfel/amo/pnccd_ana/__init__.py -text
 xfel/amo/pnccd_ana/fxs.py -text
 xfel/amo/pnccd_ana/mpi_fxs_bg.py -text
 xfel/amo/pnccd_ana/mpi_fxs_c2.py -text
+xfel/amo/pnccd_ana/mpi_fxs_calib.py -text
 xfel/amo/pnccd_ana/mpi_fxs_index.py -text
 xfel/amo/pnccd_ana/mpi_fxs_launch.py -text
+xfel/amo/pnccd_ana/mpi_fxs_mask.py -text
 xfel/amo/pnccd_ana/pnccd_hit.py -text
 xfel/amo/pnccd_ana/pnccd_tbx.py -text
 xfel/cftbx/__init__.py -text
