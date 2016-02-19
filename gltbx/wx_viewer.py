@@ -70,6 +70,8 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     return kw
 
   def __init__(self, parent, *args, **kw):
+    kw['attribList'] = kw.get('attribList', [])
+    kw['attribList'].append(wx.glcanvas.WX_GL_DOUBLEBUFFER)
     kw = self.process_keyword_arguments(**kw)
     self.GL_uninitialised = 1
     wx.glcanvas.GLCanvas.__init__(*((self, parent)+args), **kw)
