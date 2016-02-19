@@ -1,3 +1,7 @@
+# -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
+#
+# LIBTBX_SET_DISPATCHER_NAME cspad.cbf_metrology
+#
 from __future__ import division
 import os, sys, random
 from iotbx.phil import parse
@@ -15,6 +19,11 @@ phil_scope = parse("""
   n_subset = None
     .type = int
     .help = Refine a random subset of the provided files
+  split_dataset = False
+    .type = bool
+    .help = Whether to split the data in two using odd and even file numbers. Each \
+            half is refined seperately and _1 or _2 is appended to the tag. If used \
+            with n_subset, each half will have n_subset images.
 """, process_includes=True)
 
 def run(args):
@@ -52,6 +61,33 @@ def run(args):
         all_exp.append(exp_path)
         all_ref.append(os.path.join(path, filename))
 
+  if params.split_dataset:
+    import re
+    even_exp = []
+    odd_exp = []
+    even_ref = []
+    odd_ref = []
+    for exp, ref in zip(all_exp, all_ref):
+      if int(re.findall(r'\d+', exp)[-1][-1]) % 2 == 0:
+        even_exp.append(exp)
+        even_ref.append(ref)
+      else:
+        odd_exp.append(exp)
+        odd_ref.append(ref)
+
+    base_tag = params.tag
+
+    params.tag = base_tag + "_1"
+    print "Refining odd numbered data using tag", params.tag
+    refine(params, refine_phil_file, odd_exp, odd_ref)
+
+    params.tag = base_tag + "_2"
+    print "Refining even numbered data using tag", params.tag
+    refine(params, refine_phil_file, even_exp, even_ref)
+  else:
+    refine(params, refine_phil_file, all_exp, all_ref)
+
+def refine(params, refine_phil_file, all_exp, all_ref):
   if params.n_subset is not None:
     subset_all_exp = []
     subset_all_ref = []
@@ -62,6 +98,7 @@ def run(args):
       subset_all_exp.append(all_exp.pop(idx))
       subset_all_ref.append(all_ref.pop(idx))
       n_picked += 1
+
     all_exp = subset_all_exp
     all_ref = subset_all_ref
 
@@ -108,7 +145,7 @@ def run(args):
   result = easy_run.fully_buffered(command=command).raise_if_errors()
   result.show_stdout()
 
-  print "Done. Soft link 0-end.data.%s to 0-end.data in the geometry folder of your calibration folder for your experiment to deploy this metrology."
+  print "Done. Soft link 0-end.data.%s to 0-end.data in the geometry folder of your calibration folder for your experiment to deploy this metrology."%params.tag
 
 if __name__ == "__main__":
   run(sys.argv[1:])
