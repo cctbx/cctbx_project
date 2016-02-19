@@ -33,6 +33,60 @@ def tst_dxtbx():
 
   print 'OK'
 
+
+def tst_dxtbx_compressed():
+  import libtbx.load_env
+  try:
+    dials_regression = libtbx.env.dist_path('dials_regression')
+  except KeyError, e:
+    print 'FAIL: dials_regression not configured'
+    return
+
+  import os
+  from dxtbx.format.Registry import Registry
+
+  from dials_regression.image_examples.get_all_working_images import \
+      get_all_working_images
+
+  # test that reading gz or bz2 compressed files works: it doesn't!
+
+  from libtbx import smart_open
+  from libtbx.test_utils import open_tmp_directory
+  import shutil
+
+  tmp_dir = open_tmp_directory()
+  print tmp_dir
+
+  for directory, image in get_all_working_images():
+    file_path = os.path.join(dials_regression, 'image_examples',
+                             directory, image)
+    for ext in ('.gz', '.bz2')[:]:
+      compressed_path = os.path.join(tmp_dir, os.path.basename(file_path)) + ext
+      with open(file_path, 'rb') as f_in, smart_open.for_writing(compressed_path) as f_out:
+        shutil.copyfileobj(f_in, f_out)
+      print file_path, compressed_path
+      format = Registry.find(compressed_path)
+      try:
+        i = format(compressed_path)
+      except Exception, e:
+        print 'Error reading compressed file: %s' %compressed_path
+        import traceback
+        traceback.print_exc()
+      else:
+        print 'Successfully read compressed file: %s' %compressed_path
+        det = i.get_detector()
+        if det is not None:
+          size = det[0].get_image_size()
+        b = i.get_beam()
+        g = i.get_goniometer()
+        s = i.get_scan()
+        try:
+          d = i.get_raw_data()
+        except IOError:
+          pass
+
+  print 'OK'
+
 def tst_dxtbx_models():
 
   from dxtbx.tests.test_beam import test_beam
@@ -71,3 +125,4 @@ def tst_sweep():
 if __name__ == '__main__':
   tst_dxtbx()
   tst_dxtbx_models()  # these tests are failing in the misc_build.  Disable them until they can be debugged.
+  #tst_dxtbx_compressed()
