@@ -12,13 +12,13 @@ class Test(object):
 
   def tst_temp_chdir(self):
     from os import getcwd
-    from os.path import join
+    from os.path import join, realpath
     import libtbx
-    cwd = getcwd()
-    new_path = join(libtbx.env.dist_path('dxtbx'), 'serialize')
+    cwd = realpath(getcwd())
+    new_path = realpath(join(libtbx.env.dist_path('dxtbx'), 'serialize'))
     with temp_chdir(new_path):
-      assert(getcwd() == new_path)
-    assert(getcwd() == cwd)
+      assert(realpath(getcwd()) == new_path)
+    assert(realpath(getcwd()) == cwd)
     print 'OK'
 
   def tst_load_path(self):
