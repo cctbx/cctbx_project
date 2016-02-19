@@ -94,8 +94,14 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.Bind(wx.EVT_RIGHT_DOWN, self.OnRightClick)
     self.Bind(wx.EVT_MOTION, self.OnMouseMotion)
     self.Bind(wx.EVT_IDLE, self.OnIdle)
+    self.Bind(wx.EVT_TIMER, self.OnTimer)
     self.Bind(wx.EVT_MOUSEWHEEL, self.OnMouseWheel)
     self.Connect(-1, -1, VIEWER_UPDATE_ID, self.OnUpdate)
+
+    self.spintimer_id = 100 # any number
+    self.spintimer_maxfps = 30
+    self.spintimer = wx.Timer(self, self.spintimer_id)
+    self.spintimer.Start(1000 / self.spintimer_maxfps)
 
     self.w, self.h = self.GetClientSizeTuple()
 
@@ -145,10 +151,11 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       glViewport(0, 0, self.w, self.h)
 
   def OnIdle(self,event):
+    pass
+
+  def OnTimer(self, event):
     if (self.autospin):
-      wx.WakeUpIdle()
       self.do_AutoSpin()
-      event.Skip(1)
 
   def OnChar(self,event):
     key = event.GetKeyCode()
@@ -913,7 +920,8 @@ class OpenGLSettingsToolbox (wx.MiniFrame) :
     self.parent.flag_show_fog = self.fog_box.GetValue()
     self.parent.OnRedrawGL()
 
-  def OnClose (self, event=None) :
+  def OnClose (self, event=None):
+    self.spintimer.Stop()
     self.Destroy()
     self.parent._settings_widget = None
 
