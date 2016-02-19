@@ -221,7 +221,7 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
       raise Sorry("Sorry, find_ss_from_ca cannot use multi-model files. "+\
         "Please use phenix.pdbtools to select just one model from your file.")
     for chain in m.chains():
-      new_hierarchy=iotbx.pdb.pdb_input(
+      new_hierarchy=iotbx.pdb.input(
          source_info="Model", lines=flex.split_lines("")).construct_hierarchy()
       mm=iotbx.pdb.hierarchy.model()
       cc=iotbx.pdb.hierarchy.chain()
@@ -237,7 +237,7 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
           new_model_info.info['chain_number']=len(model_list)
 
           # and make a new one
-          new_hierarchy=iotbx.pdb.pdb_input(
+          new_hierarchy=iotbx.pdb.input(
              source_info="Model",
              lines=flex.split_lines("")).construct_hierarchy()
           mm=iotbx.pdb.hierarchy.model()
@@ -296,7 +296,7 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
   # Trim off side chains (and CB for GLY) if trim_side_chains
   # sort by chain_type if provided in one or more
 
-  new_hierarchy=iotbx.pdb.pdb_input(
+  new_hierarchy=iotbx.pdb.input(
          source_info="Model",
              lines=flex.split_lines("")).construct_hierarchy()
   mm=iotbx.pdb.hierarchy.model()
@@ -365,7 +365,7 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
       if not line.startswith("TER"):
         new_records.append(line)
 
-    new_hierarchy=iotbx.pdb.pdb_input(
+    new_hierarchy=iotbx.pdb.input(
          source_info="Model", lines=new_records).construct_hierarchy()
 
   new_model=model_info(hierarchy=new_hierarchy,info=info)
