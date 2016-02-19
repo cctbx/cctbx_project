@@ -682,6 +682,7 @@ class Builder(object):
       cleanup=False,
       hot=True,
       update=True,
+      revert=None,
       base=True,
       build=True,
       tests=True,
@@ -740,6 +741,7 @@ class Builder(object):
       map(self.add_module, self.get_hot())
 
     # Add svn sources.
+    self.revert=revert
     if update:
       map(self.add_module, self.get_codebases())
 
@@ -1059,6 +1061,11 @@ class Builder(object):
 
 
   def _add_svn(self, module, url):
+    update_list = ['update']
+    if module in ["reduce", "probe", "king", "suitename"]:
+      pass
+    elif self.revert:
+      update_list = ['update', '-r', self.revert]
     thisworkdir = 'modules'
     if module == 'molprobity' : thisworkdir = '.'
     svnflags = []
@@ -1068,7 +1075,7 @@ class Builder(object):
       svnflags = ['--non-interactive', '--trust-server-cert']
     if os.path.exists(self.opjoin(*[thisworkdir, module, '.svn'])):
       self.add_step(self.shell(
-          command=['svn', 'update', module] + svnflags,
+          command=['svn'] + update_list +[module] + svnflags,
           workdir=[thisworkdir]
       ))
       self.add_step(self.shell(
@@ -1784,6 +1791,7 @@ def run(root=None):
     default="cctbx")
   parser.add_option("--cciuser", help="CCI SVN username.")
   parser.add_option("--sfuser", help="SourceForge SVN username.")
+  parser.add_option("--revert", help="SVN string to revert all SVN trees")
   parser.add_option("--sfmethod",
                     help="SourceForge SVN checkout method.",
                     default="svn+ssh")
@@ -1864,6 +1872,7 @@ def run(root=None):
     auth=auth,
     hot=('hot' in actions),
     update=('update' in actions),
+    revert=options.revert,
     base=('base' in actions),
     build=('build' in actions),
     tests=('tests' in actions),
