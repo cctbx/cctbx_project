@@ -1079,11 +1079,13 @@ def exercise_sym_excl_indices(mon_lib_srv, ener_lib):
       "input file not available:", file_name
     return
   log = StringIO()
+  pdb_interpretation_params = monomer_library.pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
   processed_pdb_file = monomer_library.pdb_interpretation.process(
     mon_lib_srv=mon_lib_srv,
     ener_lib=ener_lib,
     file_name=file_path,
-    sort_atoms=False,
+    params=pdb_interpretation_params,
     log=log)
   processed_pdb_file.geometry_restraints_manager()
   lines = log.getvalue().splitlines()
@@ -1146,8 +1148,10 @@ def exercise_d_amino_acid_chain_perfect_in_box():
       "input file not available: d_amino_acid_chain_perfect_in_box.pdb"
     return
   log = StringIO()
+  pdb_interpretation_params = monomer_library.pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
   processed_pdb_file = monomer_library.pdb_interpretation.run(
-    args=[file_path], sort_atoms=False, log=log)
+    args=[file_path], params=pdb_interpretation_params, log=log)
   grm = processed_pdb_file.geometry_restraints_manager()
   lv = log.getvalue()
   assert lv.find("Classifications: {'peptide': 16}") >= 0
