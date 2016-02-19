@@ -71,7 +71,14 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
 
   def __init__(self, parent, *args, **kw):
     kw['attribList'] = kw.get('attribList', [])
-    kw['attribList'].append(wx.glcanvas.WX_GL_DOUBLEBUFFER)
+    if hasattr(wx.glcanvas, 'WX_GL_DOUBLEBUFFER'):
+      kw['attribList'].append(wx.glcanvas.WX_GL_DOUBLEBUFFER)
+    if hasattr(wx.glcanvas, 'WX_GL_SAMPLE_BUFFERS'):
+      kw['attribList'].append(wx.glcanvas.WX_GL_SAMPLE_BUFFERS)
+      kw['attribList'].append(GL_TRUE)
+    if hasattr(wx.glcanvas, 'WX_GL_SAMPLES'):
+      kw['attribList'].append(wx.glcanvas.WX_GL_SAMPLES)
+      kw['attribList'].append(4)
     kw = self.process_keyword_arguments(**kw)
     self.GL_uninitialised = 1
     wx.glcanvas.GLCanvas.__init__(*((self, parent)+args), **kw)
