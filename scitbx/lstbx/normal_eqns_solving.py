@@ -112,6 +112,7 @@ class iterations(object):
   damping_value = 0.0007
   max_shift_over_esd = 15
   convergence_as_shift_over_esd = 1e-5
+  verbose_iterations = False
 
   def __init__(self, non_linear_ls, **kwds):
     """
@@ -277,14 +278,16 @@ class levenberg_marquardt_iterations_encapsulated_eqns(
     del self.non_linear_ls.journal
 
   def had_too_small_a_step(self):
-    print "%12.3f"%(self.gradient_norm_history[-1]),
-    x = self.parameter_vector_norm_history[-1]
-    h = self.step_norm_history[-1]
-    import math
-    root = (-x + math.sqrt(x*x+4.*h))/2.
-    form_p = int(-math.log10(self.step_threshold))
-    format = "%%12.%df"%(form_p+1)
-    print format%(root)
+    if self.verbose_iterations:
+      print "%5d %18.4f"%(self.n_iterations,self.objective_history[-1]),
+      print "%12.7f"%(self.mu),"%12.3f"%(self.gradient_norm_history[-1]),
+      x = self.parameter_vector_norm_history[-1]
+      h = self.step_norm_history[-1]
+      import math
+      root = (-x + math.sqrt(x*x+4.*h))/2.
+      form_p = int(-math.log10(self.step_threshold))
+      format = "%%12.%df"%(form_p+1)
+      print format%(root)
     return iterations.had_too_small_a_step(self)
 
   def do(self):
@@ -299,7 +302,6 @@ class levenberg_marquardt_iterations_encapsulated_eqns(
     while self.n_iterations < self.n_max_iterations:
       self.non_linear_ls.add_constant_to_diagonal(self.mu)
       objective = self.non_linear_ls.objective()
-      print "%5d %18.4f"%(self.n_iterations,objective), "%12.7f"%(self.mu),
       g = -self.non_linear_ls.opposite_of_gradient()
       self.non_linear_ls.solve()
       if self.had_too_small_a_step(): break
