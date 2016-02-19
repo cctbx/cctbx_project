@@ -30,6 +30,8 @@ def for_writing(file_name, mode="w", gzip_mode="wb"):
   file_name = os.path.expanduser(file_name)
   if (file_name.endswith(".gz")):
     return gzip_open(file_name=file_name, mode=gzip_mode)
+  elif (file_name.endswith(".bz2")):
+    return bz2_open(file_name=file_name, mode=mode)
   try:
     return open(file_name, mode)
   except IOError, e:
