@@ -109,7 +109,8 @@ class xscale6e(object):
                n_max_iterations = 5000,
                track_all=True,
                step_threshold = step_threshold,
-               objective_decrease_threshold = objective_decrease_threshold
+               objective_decrease_threshold = objective_decrease_threshold,
+               verbose_iterations = True,
     )
     if "Deff" in self.params.levmar.parameter_flags:
       newDeff = self.helper.x[self.N_I+self.N_G:] # XXX specific

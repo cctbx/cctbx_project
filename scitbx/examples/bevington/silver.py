@@ -260,7 +260,8 @@ class eigen_worker(object):
                non_linear_ls = self.helper,
                n_max_iterations = 5000,
                track_all=True,
-               step_threshold = 0.0001
+               step_threshold = 0.0001,
+               verbose_iterations = True
     )
     ###### get esd's
     self.helper.build_up()
