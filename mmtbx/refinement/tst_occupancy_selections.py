@@ -36,8 +36,10 @@ def exercise_00(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
   processed_pdb_files_srv = utils.process_pdb_file_srv(
-      sort_atoms=False, log=log)
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   #
@@ -126,8 +128,10 @@ def exercise_01(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
   processed_pdb_files_srv = utils.process_pdb_file_srv(
-      sort_atoms=False, log=log)
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   #
@@ -145,8 +149,10 @@ def exercise_02(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
   processed_pdb_files_srv = utils.process_pdb_file_srv(
-      sort_atoms=False, log=log)
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   #
@@ -164,7 +170,10 @@ def exercise_03(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   #
@@ -182,7 +191,10 @@ def exercise_05(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   #
@@ -203,8 +215,10 @@ def exercise_06(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,
-      log = log, stop_for_unknowns=False)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log, stop_for_unknowns=False)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   #
@@ -224,7 +238,10 @@ def exercise_07(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   xray_structure = processed_pdb_file.xray_structure()
@@ -244,7 +261,10 @@ def exercise_08(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   xray_structure = processed_pdb_file.xray_structure()
@@ -282,7 +302,10 @@ def exercise_09(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   xray_structure = processed_pdb_file.xray_structure()
@@ -317,7 +340,10 @@ def exercise_10(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   xray_structure = processed_pdb_file.xray_structure()
@@ -340,7 +366,10 @@ def exercise_11(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   xray_structure = processed_pdb_file.xray_structure()
@@ -373,7 +402,10 @@ def exercise_12(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   xray_structure = processed_pdb_file.xray_structure()
@@ -403,7 +435,10 @@ def exercise_13(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   xray_structure = processed_pdb_file.xray_structure()
@@ -425,7 +460,10 @@ def exercise_14(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   xray_structure = processed_pdb_file.xray_structure()
@@ -449,7 +487,10 @@ def exercise_15(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   xray_structure = processed_pdb_file.xray_structure()
@@ -472,7 +513,10 @@ def exercise_16(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   xray_structure = processed_pdb_file.xray_structure()
@@ -494,7 +538,10 @@ def exercise_17(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   xray_structure = processed_pdb_file.xray_structure()
@@ -516,7 +563,10 @@ def exercise_18(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   xray_structure = processed_pdb_file.xray_structure()
@@ -538,7 +588,10 @@ def exercise_19(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   xray_structure = processed_pdb_file.xray_structure()
@@ -566,7 +619,10 @@ def exercise_20(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   xray_structure = processed_pdb_file.xray_structure()
@@ -583,7 +639,10 @@ def exercise_21(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   #
@@ -620,7 +679,10 @@ def exercise_22(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   #
@@ -638,7 +700,10 @@ def exercise_23(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   #
@@ -802,7 +867,10 @@ END
   if (verbose): log = sys.stdout
   else: log = StringIO()
   for pdb_str in [pdb_str1, pdb_str2]:
-    processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+    pdb_interpretation_params = pdb_interpretation.master_params.extract()
+    pdb_interpretation_params.sort_atoms=False
+    processed_pdb_files_srv = utils.process_pdb_file_srv(
+        pdb_interpretation_params=pdb_interpretation_params, log=log)
     processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
       raw_records = pdb_str.splitlines())
     res = occupancy_selections(
@@ -854,7 +922,10 @@ END
 """
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     raw_records = pdb_str.splitlines())
   res = occupancy_selections(
@@ -904,7 +975,10 @@ ATOM    129  D  BLEU L   6       0.595  12.387  14.715  0.50 13.93           D
 """
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     raw_records = pdb_str.splitlines())
   res = occupancy_selections(
@@ -966,7 +1040,10 @@ ATOM     45  HE3BMET A   0      18.343  15.241  22.899  0.51 40.99           H
 """
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     raw_records = pdb_str.splitlines())
   res = occupancy_selections(
@@ -1053,7 +1130,10 @@ END
 """
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     raw_records = pdb_str.splitlines())
   res = occupancy_selections(
@@ -1130,7 +1210,10 @@ END
 """
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     raw_records = pdb_str.splitlines())
   res = occupancy_selections(
@@ -1187,7 +1270,10 @@ END
 """
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(sort_atoms=False,log=log)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+      pdb_interpretation_params=pdb_interpretation_params, log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     raw_records = pdb_str.splitlines())
   res = occupancy_selections(

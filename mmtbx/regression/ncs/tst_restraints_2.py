@@ -465,11 +465,15 @@ WARNING: NCS selection includes an atom on a special position:
     assert list(group.selection_pairs[0][0]) == [0,1,2,3,4,5,6,8,9,10]
     assert list(group.selection_pairs[0][1]) == [11,12,13,14,15,16,17,19,20,21]
     #
+
+    pdb_interpretation_params = monomer_library.pdb_interpretation.master_params.extract()
+    pdb_interpretation_params.sort_atoms=False
+
     processed_pdb = monomer_library.pdb_interpretation.process(
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
+      params=pdb_interpretation_params,
       file_name=os.path.join(ncs_dir, "two_models_with_holes.pdb"),
-      sort_atoms=False,
       log=log)
     try:
       ncs.restraints.group.from_atom_selections(

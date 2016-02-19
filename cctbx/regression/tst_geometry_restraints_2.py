@@ -331,10 +331,12 @@ def exercise_with_pdb(verbose):
   else:
     out = StringIO()
   open("tmp_cctbx_geometry_restraints.pdb", "w").write(enk_pdb)
+  pdb_interpretation_params = pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
   processed_pdb_file = pdb_interpretation.run(
     args=["tmp_cctbx_geometry_restraints.pdb"],
     strict_conflict_handling=False,
-    sort_atoms=False,
+    params=pdb_interpretation_params,
     log=out,)
   geo = processed_pdb_file.geometry_restraints_manager()
   site_labels = processed_pdb_file.xray_structure().scatterers() \
