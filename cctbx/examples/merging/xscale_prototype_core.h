@@ -240,8 +240,6 @@ class xscale6e: public scitbx::example::non_linear_ls_eigen_wrapper, public scal
           add_residual(residuals[ix], weights[ix]);
           add_equation_eigen(-residuals[ix], jacobian_one_row_indices.const_ref(), jacobian_one_row_data.const_ref(), weights[ix]);
         }
-        set_from_triplets();
-        wipe_triplets();
     }
 };
 
