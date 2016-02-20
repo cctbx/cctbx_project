@@ -3,9 +3,9 @@ from __future__ import division
 from psana import *
 import sys
 import numpy as np
-from xfel.amo.pnccd_ana_smd             import pnccd_tbx
-from xfel.amo.pnccd_ana_smd             import pnccd_hit
-from xfel.amo.pnccd_ana_smd             import fxs_smd as fxs
+from xfel.amo.pnccd_ana             import pnccd_tbx
+from xfel.amo.pnccd_ana             import pnccd_hit
+from xfel.amo.pnccd_ana             import fxs
 import matplotlib.pyplot as plt
 
 
@@ -123,7 +123,7 @@ def compute_c2(argv=None) :
        extracted from xtc (smd,idx,xtc format) or h5 files.
        Works for Single CPU, Multi-Processor interactive jobs and MPI batch jobs
 
-       For a definition of input arguments argv and batch processing instructions see  ***  mpi_fxs_launch_smd.py ***
+       For a definition of input arguments argv and batch processing instructions see  ***  mpi_fxs_launch.py ***
 
        compute_c2 produces the following output files:
 
@@ -256,8 +256,8 @@ def compute_c2(argv=None) :
                                     detector_address                 = argv.address,
                                     data_type                        = argv.ftype,
                                     mask_path                        = argv.mask_path,
-                                    mask_angles                      = None, #np.array([88, 270]),    # static masking at 88 and 270 deg
-                                    mask_widths                      = None, #np.array([6,  10]),     # +/- degrees
+                                    mask_angles                      = np.array([88, 270]),    # static masking at 88 and 270 deg
+                                    mask_widths                      = np.array([6,  10]),     # +/- degrees
                                     backimg_path                     = argv.bg_img_path,
                                     backmsk_path                     = argv.bg_msk_path,
                                     geom_path                        = argv.geom_path,
