@@ -13,6 +13,36 @@ using std::size_t;
 namespace scitbx{
 namespace example{
 
+/* Enforce a standard workflow from triplets to normal matrix to Cholesky factor:
+
+Any time:
+  n_parameters()
+  reset()
+  solved()
+  formed_normal_matrix()
+
+Upon instantiation, !solved(), !formed_normal_matrix():
+  non_linear::add_equations()
+  non_linear::add_equation_eigen()
+  non_linear::form_normal_matrix()--> set_from_triplets() + wipe_triplets()
+
+After formation of eigen_normal_matrix, !solved():
+  solve()
+  normal_matrix()
+  show_eigen_summary()
+  get_cholesky_diagonal()
+  get_cholesky_lower()
+  get_eigen_permutation_ordering()
+  non_linear::add_constant_to_diagonal()
+  non_linear::get_normal_matrix()
+  non_linear::get_normal_matrix_diagonal()
+
+After solution:
+  solution()
+
+Note: non_linear_ls_eigen_wrapper *has a* linear_ls_eigen_wrapper (not *is_a*)
+*/
+
 class linear_ls_eigen_wrapper
   {
 
@@ -22,6 +52,7 @@ class linear_ls_eigen_wrapper
     /// Construct a least-squares problem with the given number of unknowns.
     linear_ls_eigen_wrapper(int n_parameters)
       : solved_(false),
+        formed_normal_matrix_(false),
         eigen_normal_matrix(n_parameters,n_parameters),
         scitbx_normal_matrix(0),
         right_hand_side_(n_parameters),
@@ -35,6 +66,7 @@ class linear_ls_eigen_wrapper
     /// Reset the state to construction time, i.e. no equations accumulated
     void reset() {
       solved_ = false;
+      formed_normal_matrix_ = false;
       eigen_normal_matrix = sparse_matrix_t(n_parameters(),n_parameters());
       std::fill(scitbx_normal_matrix.begin(), scitbx_normal_matrix.end(), double(0));
       std::fill(right_hand_side_.begin(), right_hand_side_.end(), double(0));
@@ -48,6 +80,7 @@ class linear_ls_eigen_wrapper
     }
 
     void solve() {
+      SCITBX_ASSERT(formed_normal_matrix());
       int N = n_parameters();
       Eigen::SimplicialCholesky<sparse_matrix_t> chol(eigen_normal_matrix.transpose());
       // XXX pack the right hand side in a eigen vector type
@@ -70,6 +103,7 @@ class linear_ls_eigen_wrapper
     // Only available if the equations have not been solved yet
     scitbx::af::versa<double, scitbx::af::packed_u_accessor> normal_matrix() const {
       SCITBX_ASSERT(!solved());
+      SCITBX_ASSERT(formed_normal_matrix());
       int N = n_parameters();
 
       scitbx::af::versa<double, scitbx::af::packed_u_accessor> result(n_parameters());
@@ -91,6 +125,7 @@ class linear_ls_eigen_wrapper
     }
 
     void show_eigen_summary() const {
+      SCITBX_ASSERT(formed_normal_matrix());
       long matsize = long(eigen_normal_matrix.cols()) * (eigen_normal_matrix.cols()+1)/2;
       printf("Number of parameters      %12d\n",n_parameters());
       printf("Normal matrix square size %12ld\n",long(eigen_normal_matrix.cols()) * eigen_normal_matrix.cols());
@@ -107,6 +142,7 @@ class linear_ls_eigen_wrapper
 
     scitbx::af::shared<double> get_cholesky_diagonal() const {
       SCITBX_ASSERT (!solved_);
+      SCITBX_ASSERT(formed_normal_matrix());
       int N = n_parameters();
       scitbx::af::shared<double> diagonal = scitbx::af::shared<double>(N);
       Eigen::SimplicialLDLT<sparse_matrix_t> chol(eigen_normal_matrix.transpose());
@@ -120,6 +156,7 @@ class linear_ls_eigen_wrapper
 
     scitbx::af::shared<double> get_cholesky_lower() const {
       SCITBX_ASSERT (!solved_);
+      SCITBX_ASSERT(formed_normal_matrix());
       int N = n_parameters();
       scitbx::af::versa<double, scitbx::af::packed_l_accessor> triangular_result(n_parameters());
       Eigen::SimplicialLDLT<sparse_matrix_t> chol(eigen_normal_matrix.transpose());
@@ -140,6 +177,7 @@ class linear_ls_eigen_wrapper
 
     scitbx::af::shared<int> get_eigen_permutation_ordering() const {
       SCITBX_ASSERT (!solved_);
+      SCITBX_ASSERT(formed_normal_matrix());
       int N = n_parameters();
       scitbx::af::shared<int> one_D_result(n_parameters());
       Eigen::SimplicialLDLT<sparse_matrix_t> chol(eigen_normal_matrix.transpose());
@@ -153,6 +191,10 @@ class linear_ls_eigen_wrapper
       return solved_;
     }
 
+    bool formed_normal_matrix() const {
+      return formed_normal_matrix_;
+    }
+
     /// Only available after the equations have been solved
     scitbx::af::shared<double> solution() const {
       SCITBX_ASSERT(solved());
@@ -161,6 +203,7 @@ class linear_ls_eigen_wrapper
 
   public:
     bool solved_;
+    bool formed_normal_matrix_;
     sparse_matrix_t eigen_normal_matrix;
     scitbx::af::ref_owning_versa<double, scitbx::af::packed_u_accessor>
                                                                  scitbx_normal_matrix;
@@ -192,6 +235,7 @@ class non_linear_ls_eigen_wrapper:  public scitbx::lstbx::normal_equations::non_
 
     /// Respecting encapsulation, add constant to all diagonal elements.
     void add_constant_to_diagonal(double const& increment) {
+      form_normal_matrix();
       // loop only thru non-zero elements to update the eigen array.
       // column major, so outer (slow) means loop over column
       for (int k=0; k<eigen_wrapper.eigen_normal_matrix.outerSize(); ++k) { // column major, so outer (slow) means loop over column
@@ -205,14 +249,16 @@ class non_linear_ls_eigen_wrapper:  public scitbx::lstbx::normal_equations::non_
     }
 
     /// get normal matrix
-    scitbx::af::versa<double, scitbx::af::packed_u_accessor> get_normal_matrix() const {
+    scitbx::af::versa<double, scitbx::af::packed_u_accessor> get_normal_matrix() {
       SCITBX_ASSERT(!eigen_wrapper.solved());
+      form_normal_matrix();
       return eigen_wrapper.normal_matrix();
     }
 
     /// get diagonal elements of the normal matrix
-    scitbx::af::shared<double> get_normal_matrix_diagonal() const {
+    scitbx::af::shared<double> get_normal_matrix_diagonal() {
       SCITBX_ASSERT(!eigen_wrapper.solved());
+      form_normal_matrix();
       int N = eigen_wrapper.n_parameters();
 
       scitbx::af::shared<double> result(N, scitbx::af::init_functor_null<double>());
@@ -242,6 +288,7 @@ class non_linear_ls_eigen_wrapper:  public scitbx::lstbx::normal_equations::non_
                        af::const_ref<scalar_t> const &w)
     {
       typedef sparse::matrix<scalar_t>::row_iterator row_iterator;
+      SCITBX_ASSERT(!eigen_wrapper.formed_normal_matrix());
       SCITBX_ASSERT(   r.size() == jacobian.n_rows()
                     && (!w.size() || r.size() == w.size()))
                    (r.size())(jacobian.n_rows())(w.size());
@@ -270,8 +317,6 @@ class non_linear_ls_eigen_wrapper:  public scitbx::lstbx::normal_equations::non_
           }
         }
       }
-      set_from_triplets();
-      wipe_triplets();
     }
 
     /// Add the equation \f$ A_{i.} x = b_i \f$ with the given weight
@@ -281,6 +326,7 @@ class non_linear_ls_eigen_wrapper:  public scitbx::lstbx::normal_equations::non_
                              scitbx::af::const_ref<double> const &row_data,
                              double w)
     {
+      SCITBX_ASSERT(!eigen_wrapper.formed_normal_matrix());
       int ndata = row_idx.size();
       for (int i=0; i<ndata; i++)  {
         std::size_t idx_i = row_idx[i];
@@ -292,25 +338,39 @@ class non_linear_ls_eigen_wrapper:  public scitbx::lstbx::normal_equations::non_
       }
     }
 
+    inline void form_normal_matrix() {
+      if (!eigen_wrapper.formed_normal_matrix()){
+        set_from_triplets();
+        wipe_triplets();
+      }
+    }
+
     inline
     void set_from_triplets(){
+      SCITBX_ASSERT(!eigen_wrapper.formed_normal_matrix());
       eigen_wrapper.eigen_normal_matrix.setFromTriplets(tripletList.begin(), tripletList.end());
+      eigen_wrapper.formed_normal_matrix_=true;
     }
 
     inline void wipe_triplets(){
+      SCITBX_ASSERT(eigen_wrapper.formed_normal_matrix());
       //critical to release this memory
       tripletList = triplet_list_t();
     }
     void show_eigen_summary(){
+      form_normal_matrix();
       eigen_wrapper.show_eigen_summary();
     }
     scitbx::af::shared<double> get_cholesky_lower(){
+      form_normal_matrix();
       return eigen_wrapper.get_cholesky_lower();
     }
     scitbx::af::shared<double> get_cholesky_diagonal(){
+      form_normal_matrix();
       return eigen_wrapper.get_cholesky_diagonal();
     }
     scitbx::af::shared<int> get_eigen_permutation_ordering(){
+      form_normal_matrix();
       return eigen_wrapper.get_eigen_permutation_ordering();
     }
   public: /* data */
@@ -469,8 +529,6 @@ class eigen_base_class: public bevington_silver, public non_linear_ls_eigen_wrap
           add_residual(-residuals[ix], w_obs[ix]);
           add_equation_eigen(residuals[ix], jacobian_one_row_indices.const_ref(), jacobian_one_row_data.const_ref(), w_obs[ix]);
         }
-        set_from_triplets();
-        wipe_triplets();
     }
 };
 

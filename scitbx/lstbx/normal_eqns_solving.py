@@ -266,7 +266,6 @@ class levenberg_marquardt_iterations_encapsulated_eqns(
   objective_decrease_threshold = None
 
   def __init__(self, non_linear_ls, **kwds):
-    print "Iteration      Objective        Mu     ||Gradient||       Step"
     iterations.__init__(self, non_linear_ls, **kwds)
     """NKS 7/17/2015 Differs from Luc's original code two ways:
       1) unbreak the encapsulation of the normal matrix; enforce access
@@ -275,6 +274,8 @@ class levenberg_marquardt_iterations_encapsulated_eqns(
          data structure that will change in future sparse matrix implementation.
       2) avoid a memory leak by deleting the following circular reference to self:
     """
+    if self.verbose_iterations:
+      print "Iteration      Objective        Mu     ||Gradient||       Step"
     del self.non_linear_ls.journal
 
   def had_too_small_a_step(self):

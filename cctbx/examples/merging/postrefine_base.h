@@ -213,8 +213,6 @@ class postrefine_base: public xscale6e {
               jacobian_one_row_indices.const_ref(), jacobian_one_row_data.const_ref(), weights[ix]);
 
         }
-        set_from_triplets();
-        wipe_triplets();
     }
 };
 
