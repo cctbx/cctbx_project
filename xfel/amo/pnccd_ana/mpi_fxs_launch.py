@@ -22,6 +22,7 @@ def launch(argv=None) :
 
      Example tcsh-file for launching Single, Interactive or Batch jobs:
 
+     #################################################################
      #!/bin/tcsh
 
      # Provide Run number in input (eg ./run.csh 111)
@@ -63,6 +64,12 @@ def launch(argv=None) :
 
      mpi_fxs_launch -j ${job_type} -e ${experiment} -r $1 -a ${detector} -d ${distance} -t ${mask_thr} -f ${file_type} -w ${wavelength}  -x ${x} -y ${y} --dx ${dx} --dy ${dy}  --first ${first} --last ${last} -m ${mask} --index ${index}
 
+     ######################################################################
+
+     Instructions for viewing intermediate results using psplot
+
+     1. In terminal type: bjobs -w                              (to get the id of the first analysis node (psanaXXXX))
+     2. In terminal type: psplot -s psanaXXXX IND AVE SAXS C2   (to select the type of results to view)
 
   """
 
