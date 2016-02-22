@@ -3,7 +3,7 @@ from psana import *
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy as sp
-from mpl_toolkits.mplot3d import Axes3D			# implicit import 
+from mpl_toolkits.mplot3d import Axes3D                 # implicit import
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter
 
