@@ -71,14 +71,20 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
 
   def __init__(self, parent, *args, **kw):
     kw['attribList'] = kw.get('attribList', [])
+
+    # Create a temporary canvas to safely identify supported attributes
+    capabilities_test = wx.glcanvas.GLCanvas(parent)
     if hasattr(wx.glcanvas, 'WX_GL_DOUBLEBUFFER'):
-      kw['attribList'].append(wx.glcanvas.WX_GL_DOUBLEBUFFER)
+      if capabilities_test.IsDisplaySupported(wx.glcanvas.WX_GL_DOUBLEBUFFER):
+        kw['attribList'].append(wx.glcanvas.WX_GL_DOUBLEBUFFER)
     if hasattr(wx.glcanvas, 'WX_GL_SAMPLE_BUFFERS'):
-      kw['attribList'].append(wx.glcanvas.WX_GL_SAMPLE_BUFFERS)
-      kw['attribList'].append(GL_TRUE)
+      if capabilities_test.IsDisplaySupported([wx.glcanvas.WX_GL_SAMPLE_BUFFERS, GL_TRUE]):
+        kw['attribList'].extend([wx.glcanvas.WX_GL_SAMPLE_BUFFERS, GL_TRUE])
     if hasattr(wx.glcanvas, 'WX_GL_SAMPLES'):
-      kw['attribList'].append(wx.glcanvas.WX_GL_SAMPLES)
-      kw['attribList'].append(4)
+      if capabilities_test.IsDisplaySupported([wx.glcanvas.WX_GL_SAMPLES, 4]):
+        kw['attribList'].extend([wx.glcanvas.WX_GL_SAMPLES, 4])
+    capabilities_test.Destroy()
+
     kw = self.process_keyword_arguments(**kw)
     self.GL_uninitialised = 1
     wx.glcanvas.GLCanvas.__init__(*((self, parent)+args), **kw)
