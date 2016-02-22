@@ -72,7 +72,7 @@ class FormatCBFMiniPilatus(FormatCBFMini):
     try:
       from iotbx.detectors.pilatus_minicbf import PilatusImage
       self.detectorbase = PilatusImage(self._image_file)
-      self.detectorbase.readHeader()
+      #self.detectorbase.readHeader()
     except KeyError, e:
       pass
 
@@ -83,8 +83,6 @@ class FormatCBFMiniPilatus(FormatCBFMini):
 
     if 'Phi' in self._cif_header_dictionary:
       phi_value = float(self._cif_header_dictionary['Phi'].split()[0])
-      # NKS remove assertion that phi == 0 so those data can be processed
-      # assert( phi_value == 0.0)
 
     return self._goniometer_factory.single_axis()
 
@@ -171,6 +169,45 @@ class FormatCBFMiniPilatus(FormatCBFMini):
     return self._scan_factory.single(
         self._image_file, format, exposure_time,
         osc_start, osc_range, timestamp)
+
+  def read_cbf_image(self, cbf_image):
+    from cbflib_adaptbx import uncompress
+    import binascii
+    from scitbx.array_family import flex
+
+    start_tag = binascii.unhexlify('0c1a04d5')
+
+    data = self.open_file(cbf_image, 'rb').read()
+    data_offset = data.find(start_tag) + 4
+    cbf_header = data[:data_offset - 4]
+
+    fast = 0
+    slow = 0
+    length = 0
+
+    for record in cbf_header.split('\n'):
+      if 'X-Binary-Size-Fastest-Dimension' in record:
+        fast = int(record.split()[-1])
+      elif 'X-Binary-Size-Second-Dimension' in record:
+        slow = int(record.split()[-1])
+      elif 'X-Binary-Number-of-Elements' in record:
+        length = int(record.split()[-1])
+      elif 'X-Binary-Size:' in record:
+        size = int(record.split()[-1])
+
+    assert(length == fast * slow)
+
+    pixel_values = uncompress(packed = data[data_offset:data_offset + size],
+                              fast = fast, slow = slow)
+
+    return pixel_values
+
+  def get_raw_data(self):
+    if self._raw_data is None:
+      data = self.read_cbf_image(self._image_file)
+      self._raw_data = data
+
+    return self._raw_data
 
   def get_mask(self):
     from scitbx.array_family import flex
