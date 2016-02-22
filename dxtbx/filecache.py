@@ -50,6 +50,13 @@ class lazy_file_cache():
 
   def __init__(self, file_object):
     '''Create a shared cache based on a single file handle.'''
+    # Uncomment this line to print debug information
+    # self._debug = self._debug_enable
+
+    # Size of a block to read. This should not be smaller than 4k, which is the
+    # default block size on many systems.
+    self._page_size = 4096
+
     # Reference to the underlying file object. When no further information can
     # be gained from the file (ie. it has been read once completely), it may
     # be closed.
@@ -68,19 +75,17 @@ class lazy_file_cache():
     # and cached information is dropped.
     self._closed = False
 
-    # Print debug information
-    self._debug = False
-
-    # Size of a block to read. This should not be smaller than 4k, which is the
-    # default block size on many systems.
-    self._page_size = 4096
-
     # Number of currently registered client objects
     self._reference_counter = 0
     self._reference_counter_lock = Lock()
 
-    if self._debug:
-      print "Created cache object for %s: %s" % (str(file_object), str(self))
+    self._debug("Created cache object for %s: %s" % (str(file_object), str(self)))
+
+  def _debug(self, string):
+    pass
+
+  def _debug_enable(self, string):
+    print "%s: %s" % (format(id(self), '#x'), string)
 
   def __del__(self):
     '''Close file handles and drop cache on garbage collection.'''
@@ -102,8 +107,7 @@ class lazy_file_cache():
       # Do not read less than a memory page, round up read size to a
       # multiple of page sizes if necessary.
       read_bytes = self._page_size * ((read_bytes + self._page_size - 1) // self._page_size)
-      if self._debug:
-        print "Reading %d bytes from file" % read_bytes
+      self._debug("Reading %d bytes from file" % read_bytes)
 
       expected_cache_size = self._cache_size + read_bytes
 
@@ -112,13 +116,11 @@ class lazy_file_cache():
       self._cache_object.write(data)
       self._cache_size = self._cache_object.tell()
 
-      if self._debug:
-        print "Read %d bytes from file, cache size %d" % (len(data), self._cache_size)
+      self._debug("Read %d bytes from file, cache size %d" % (len(data), self._cache_size))
 
       if (expected_cache_size != self._cache_size):
         # must have reached end of file
-        if self._debug:
-          print "Lazy cache reached EOF (%d != %d)" % (expected_cache_size, self._cache_size)
+        self._debug("Lazy cache reached EOF (%d != %d)" % (expected_cache_size, self._cache_size))
         self._all_cached = True
         self._close_file()
 
@@ -130,12 +132,15 @@ class lazy_file_cache():
       return
 
     with self._file_lock:
-      if self._debug:
-        print "Reading remaining file into cache"
+      # Check again with lock held, required for concurrency
+      if self._all_cached: return
+
+      self._debug("Reading remaining file into cache")
 
       data = self._file.read()
       self._cache_object.seek(self._cache_size)
       self._cache_object.write(data)
+      self._debug("Read %d bytes" % len(data))
       self._cache_size += len(data)
 
       self._all_cached = True
@@ -143,12 +148,12 @@ class lazy_file_cache():
 
   def _check_not_closed(self):
     if self._closed:
+      self._debug("Instance tried to access closed cache")
       raise IOError('Accessing lazy file cache %s after closing is not allowed' % str(self))
 
   def _close_file(self):
     if self._file is not None:
-      if self._debug:
-        print "Closing lazy cache internal file handle (%d bytes read)" % self._cache_size
+      self._debug("Closing lazy cache internal file handle (%d bytes read)" % self._cache_size)
       self._file.close()
       self._file = None
 
@@ -159,8 +164,7 @@ class lazy_file_cache():
   def close(self):
     if not self._closing:
       self._closing = True
-      if self._debug:
-        print "Closing lazy cache %s" % str(self)
+      self._debug("Closing lazy cache %s" % str(self))
       with self._reference_counter_lock:
         if self._reference_counter == 0:
           self.force_close()
@@ -171,8 +175,8 @@ class lazy_file_cache():
       self._closing = True
       self._closed = True
       self._close_file()
-      if self._debug and (self._reference_counter > 0):
-        print "Warning: %d connected instances remain" % self._reference_counter
+      if self._reference_counter > 0:
+        self._debug("Warning: %d connected instances remain" % self._reference_counter)
       if self._cache_object is not None:
         self._cache_object.close()
         self._cache_object = None
@@ -182,15 +186,14 @@ class lazy_file_cache():
     with self._reference_counter_lock:
       self._check_not_closed()
       if self._closing:
+        self._debug("Instance tried to connect to closing cache")
         raise IOError('Cannot open new file handle: lazy file cache is closing')
       self._reference_counter += 1
-    if self._debug:
-      print "Instance connected to lazy cache"
+    self._debug("Instance connected to lazy cache")
 
   def unregister(self):
     '''Unregister a client object. Reference counting for debug purposes.'''
-    if self._debug:
-      print "Instance disconnected from lazy cache"
+    self._debug("Instance disconnected from lazy cache")
     with self._reference_counter_lock:
       self._reference_counter -= 1
       if self._closing and (self._reference_counter == 0):

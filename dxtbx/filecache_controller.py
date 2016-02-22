@@ -40,9 +40,9 @@ class simple_controller():
     with self._lock:
       if tag != self._cache_tag:
         if self._cache is not None:
-#         print "Closing previous cache on %s" % self._cache_tag
+#         print "Controller %s closing previous cache on %s" % (format(id(self), '#x'), self._cache_tag)
           self._cache.close()
         self._cache_tag = tag
-#       print "Opening cache on %s" % self._cache_tag
+#       print "Controller %s opening cache on %s" % (format(id(self), '#x'), self._cache_tag)
         self._cache = dxtbx.filecache.lazy_file_cache(open_method())
       return self._cache.open()
