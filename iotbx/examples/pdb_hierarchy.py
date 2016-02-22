@@ -110,6 +110,8 @@ def run(args):
     atom = iotbx.pdb.hierarchy.atom()
     atom.name = "NEW"
     atom_group.append_atom(atom=atom)
+    # need for more complicated functions such as selections
+    hierarchy.reset_atom_i_seqs()
     #
     print """
     # Format entire hierarchy as pdb string and pdb file."""
