@@ -1068,11 +1068,9 @@ class Builder(object):
       update_list = ['update', '-r', self.revert]
     thisworkdir = 'modules'
     if module == 'molprobity' : thisworkdir = '.'
-    svnflags = []
-    if self.isPlatformWindows():
-      # avoid stalling bootstrap on Windows with the occasional prompt
-      # whenever server certificates have been forgotten
-      svnflags = ['--non-interactive', '--trust-server-cert']
+    # avoid stalling bootstrap with prompts
+    # or when encountering unknown server certificates
+    svnflags = ['--non-interactive', '--trust-server-cert']
     if os.path.exists(self.opjoin(*[thisworkdir, module, '.svn'])):
       self.add_step(self.shell(
           command=['svn'] + update_list +[module] + svnflags,
