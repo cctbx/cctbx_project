@@ -109,12 +109,12 @@ subversion_repositories = {
   "muscle": "http://cci.lbl.gov/svn/muscle/trunk",
   # adding for amber
   "amber_adaptbx": "http://cci.lbl.gov/svn/amber_adaptbx/trunk",
+  # lz4 and bitshuffle compressions for HDF5
+  "hdf5_lz4": "https://github.com/dectris/HDF5Plugin.git/trunk",
+  "bitshuffle": "https://github.com/kiyo-masui/bitshuffle.git/trunk",
 }
 
 git_repositories = {
-  # lz4 and bitshuffle compressions for HDF5
-  "hdf5_lz4": "https://github.com/dectris/HDF5Plugin.git",
-  "bitshuffle": "https://github.com/kiyo-masui/bitshuffle.git",
 }
 
 class fetch_packages (object) :
