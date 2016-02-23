@@ -1629,6 +1629,7 @@ libtbx/try_hello_world_c.py svneol=native#text/x-python
 libtbx/tst_binary_search.py svneol=native#text/x-python
 libtbx/tst_containers.py svneol=native#text/x-python
 libtbx/tst_easy_mp.py svneol=native#text/x-python
+libtbx/tst_easy_mp_state.py -text
 libtbx/tst_easy_pickle.py svneol=native#text/x-python
 libtbx/tst_lzw.py -text
 libtbx/tst_math_utils.py svneol=native#text/x-python
