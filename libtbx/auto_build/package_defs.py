@@ -221,6 +221,8 @@ def fetch_svn_repository (pkg_name, pkg_url=None, working_copy=True,
   Download an SVN repository, with or without metadata required for ongoing
   development.
   """
+  ## TODO: Merge this with _add_svn in bootstrap.py.
+  #        Unnecessary code duplication
   if op.exists(pkg_name) :
     if delete_if_present :
       shutil.rmtree(pkg_name)
@@ -229,9 +231,9 @@ def fetch_svn_repository (pkg_name, pkg_url=None, working_copy=True,
   if (pkg_url is None) :
     pkg_url = optional_repositories[pkg_name]
   if working_copy :
-    call("svn co %s %s" % (pkg_url, pkg_name), sys.stdout)
+    call("svn co --non-interactive --trust-server-cert %s %s" % (pkg_url, pkg_name), sys.stdout)
   else :
-    call("svn export %s %s" % (pkg_url, pkg_name), sys.stdout)
+    call("svn export --non-interactive --trust-server-cert %s %s" % (pkg_url, pkg_name), sys.stdout)
   assert op.isdir(pkg_name)
 
 def fetch_git_repository (pkg_name, pkg_url=None, working_copy=True,
@@ -240,6 +242,10 @@ def fetch_git_repository (pkg_name, pkg_url=None, working_copy=True,
   Download an git repository, with or without metadata required for ongoing
   development.
   """
+  ## TODO: Merge this with _add_git in bootstrap.py.
+  #        Unnecessary code duplication, and _add_git can handle
+  #        both authenticated, unauthenticated access and
+  #        downloading the repository without having git installed
   if op.exists(pkg_name) :
     if delete_if_present :
       shutil.rmtree(pkg_name)
