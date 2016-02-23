@@ -508,6 +508,9 @@ def contains_lines(lines, expected):
 
 def assert_lines_in_file(file_name, lines,
     remove_white_spaces=True, remove_newline=True):
+  """
+  lines here is a text, not a list of lines.
+  """
   import os
   f = open(file_name, "r")
   f_lines = f.read()
