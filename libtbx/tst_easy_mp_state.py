@@ -50,8 +50,22 @@ def exercise_multiprocessing(mp_nproc=1, mp_threads=1, mp_method="multiprocessin
   # Did it change?
   assert initial_state != final_state
 
-exercise_multiprocessing(mp_nproc=1)
+exercise_multiprocessing(mp_nproc=1, mp_method="threading")
 print "OK"
 
-exercise_multiprocessing(mp_nproc=2)
+exercise_multiprocessing(mp_nproc=2, mp_method="threading")
 print "OK"
+
+exercise_multiprocessing(mp_nproc=1, mp_method="multiprocessing")
+print "OK"
+
+#exercise_multiprocessing(mp_nproc=2, mp_method="multiprocessing")
+#
+# This will fail. Multiprocessing creates copy-on-write copies of the
+# initial object. Later changes in the state are lost.
+# Problems can occur when an instance of state_object does not check
+# that it has been copied, and when it carries an internal reference to
+# something that cannot be copied properly, possibly a C object, eg.
+# a BZ2File()-instance or, more probably, a file handle.
+# State_objects can not directly detect that it has been copied, so
+# as a fallback it could check whether os.getpid() has changed.

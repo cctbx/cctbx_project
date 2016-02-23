@@ -11,6 +11,7 @@ tst_list = (
   "$D/introspection.py",
   "$D/tst_thread_utils.py",
   "$D/tst_easy_mp.py",
+  "$D/tst_easy_mp_state.py",
   "$D/tst_easy_pickle.py",
   "$D/easy_run.py",
   "$D/tst_containers.py",
