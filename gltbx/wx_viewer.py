@@ -81,7 +81,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
         # IsDisplaySupported may not be present for wxPython < 2.9
         # Still attempt to enable double buffering
         kw['attribList'].append(wx.glcanvas.WX_GL_DOUBLEBUFFER)
-      
+
     try:
       if hasattr(wx.glcanvas, 'WX_GL_SAMPLE_BUFFERS'):
         if self.IsDisplaySupported([wx.glcanvas.WX_GL_SAMPLE_BUFFERS, GL_TRUE]):
