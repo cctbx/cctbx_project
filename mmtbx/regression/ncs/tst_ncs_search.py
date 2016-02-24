@@ -93,8 +93,7 @@ class TestSimpleAlignment(unittest.TestCase):
     no_water_h = self.ph.select(asc.selection("not water"))
     chain_match_list = ncs_search.search_ncs_relations(
       ph=no_water_h,
-      min_percent=0.70,
-      min_contig_length=3)
+      chain_similarity_threshold=0.70)
 
     [chain_a_id,chain_b_id,sel_a,sel_b,r1,r2,_] = chain_match_list[0]
     #
@@ -206,7 +205,7 @@ class TestSimpleAlignment(unittest.TestCase):
         list_a, list_b,
         res_n_a,res_n_b,
         ref_sites,other_sites,
-        match_radius=4.0)
+        residue_match_radius=4.0)
     #
     self.assertEqual([0, 1, 5, 7, 8],res_n_a)
     self.assertEqual([1, 2, 6, 8, 9],res_n_b)
@@ -217,11 +216,10 @@ class TestSimpleAlignment(unittest.TestCase):
     ph = pdb_inp.construct_hierarchy(sort_atoms=False)
     chains_info = ncs_search.get_chains_info(ph)
     chain_match_list = ncs_search.search_ncs_relations(
-      chains_info=chains_info,min_percent=0.10,
-      min_contig_length=1)
+      chains_info=chains_info,chain_similarity_threshold=0.10)
     match_dict = ncs_search.clean_chain_matching(
       chain_match_list=chain_match_list,ph=ph,
-      similarity_threshold=0.1)
+      chain_similarity_threshold=0.1)
     # transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
     #   match_dict, ph)
     # group_dict = ncs_search.build_group_dict(
@@ -325,11 +323,10 @@ class TestSimpleAlignment(unittest.TestCase):
     ph = pdb_inp.construct_hierarchy()
     chains_info = ncs_search.get_chains_info(ph)
     chain_match_list = ncs_search.search_ncs_relations(
-      chains_info=chains_info,min_percent=0.10,
-      min_contig_length=1)
+      chains_info=chains_info,chain_similarity_threshold=0.10)
     match_dict = ncs_search.clean_chain_matching(
       chain_match_list=chain_match_list,ph=ph,
-      similarity_threshold=0.1)
+      chain_similarity_threshold=0.1)
     # transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
     #   match_dict, ph)
     group_dict = ncs_search.ncs_grouping_and_group_dict(match_dict, ph)
@@ -376,27 +373,9 @@ class TestSimpleAlignment(unittest.TestCase):
     h = iotbx.pdb.input(source_info=None, lines=test_pdb_8).construct_hierarchy()
     ncs_obj = ncs.input(
         hierarchy=h,
-        max_rmsd=10,
-        min_percent=0.50,
-        exclude_misaligned_residues=False,
-        min_contig_length=10)
-    self.assertEqual(ncs_obj.number_of_ncs_groups,1)
-    n_atoms_in_copy = ncs_obj.common_res_dict.values()[0][0][1].size()
-    self.assertEqual(n_atoms_in_copy,15)
-
-    ncs_obj = ncs.input(
-        hierarchy=h,
-        max_rmsd=10,
-        min_percent=0.80,
-        min_contig_length=10)
-    self.assertEqual(ncs_obj.number_of_ncs_groups,0)
-
-    ncs_obj = ncs.input(
-        hierarchy=h,
-        exclude_misaligned_residues=False,
-        max_rmsd=10,
-        min_percent=0.50,
-        min_contig_length=1)
+        chain_max_rmsd=10,
+        residue_match_radius=1000,
+        chain_similarity_threshold=0.50)
     self.assertEqual(ncs_obj.number_of_ncs_groups,1)
     n_atoms_in_copy = ncs_obj.common_res_dict.values()[0][0][1].size()
     self.assertEqual(n_atoms_in_copy,31)
@@ -414,9 +393,8 @@ class TestSimpleAlignment(unittest.TestCase):
     h = iotbx.pdb.input(source_info=None, lines='\n'.join(pdb_lines)).construct_hierarchy()
     ncs_obj = ncs.input(
         hierarchy=h,
-        max_rmsd=10,
-        min_percent=0.20,
-        min_contig_length=1)
+        chain_max_rmsd=10,
+        chain_similarity_threshold=0.20)
     # x = ncs_obj.get_ncs_info_as_spec(write=True,show_ncs_phil=True)
     # x = ncs_obj.show(format='spec')
     # check another pdb string
