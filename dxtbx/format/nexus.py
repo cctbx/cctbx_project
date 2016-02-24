@@ -893,6 +893,7 @@ class DetectorFactory(object):
   def __init__(self, obj, beam):
     from dxtbx.model import Detector, Panel
     from cctbx.eltbx import attenuation_coefficient
+    from dxtbx.model import ParallaxCorrectedPxMmStrategy
     from scitbx import matrix
 
     # Get the handles
@@ -986,6 +987,10 @@ class DetectorFactory(object):
         thickness_value,
         material,
         mu))
+
+    # The the parallax correction
+    for panel in self.model:
+      panel.set_px_mm_strategy(ParallaxCorrectedPxMmStrategy(mu, thickness_value))
 
 
 class GoniometerFactory(object):
