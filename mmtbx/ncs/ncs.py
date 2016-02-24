@@ -1,6 +1,6 @@
 from __future__ import division
 #! /usr/bin/env python
-from mmtbx.ncs.ncs_utils import convert_phil_format
+# from mmtbx.ncs.ncs_utils import convert_phil_format
 import sys, os, string
 from libtbx.utils import Sorry
 from libtbx.utils import null_out
@@ -1392,7 +1392,7 @@ class ncs:
       elif out is None:
         out=sys.stdout
       all_text = self._ncs_obj.show(format='phil',log=null_out(),header=False)
-      all_text = convert_phil_format(all_text,to_type=prefix)
+      # all_text = convert_phil_format(all_text,to_type=prefix)
       if all_text:
         if not quiet:
           print >> out, all_text + '\n'
@@ -1413,7 +1413,8 @@ class ncs:
     """ Writes NCS phil selection in phenix_refine format """
     if out==None: out=sys.stdout
     phil_str = self._ncs_obj.show(format='phil',log=null_out(),header=False)
-    ncs_str = convert_phil_format(phil_str,to_type="ncs")
+    # ncs_str = convert_phil_format(phil_str,to_type="ncs")
+    ncs_str = phil_str
     if ncs_str:
       if not quiet: out.write(ncs_str + '\n')
     return ncs_str
