@@ -988,7 +988,7 @@ class DetectorFactory(object):
         material,
         mu))
 
-    # The the parallax correction
+    # Set the parallax correction
     for panel in self.model:
       panel.set_px_mm_strategy(ParallaxCorrectedPxMmStrategy(mu, thickness_value))
 
