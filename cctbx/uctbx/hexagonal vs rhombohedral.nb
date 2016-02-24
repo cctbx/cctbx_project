@@ -235,19 +235,120 @@ Cell[BoxData[{
                RowBox[{"c1", "+", "a1"}]}], "}"}], ",", 
              RowBox[{"{", 
               RowBox[{"c1", ",", 
-               RowBox[{"c1", "+", "b1"}]}], "}"}]}], "}"}], "]"}]}], 
+               RowBox[{"c1", "+", "b1"}]}], "}"}]}], "}"}], "]"}], ",", 
+          "\[IndentingNewLine]", 
+          RowBox[{"Line", "[", 
+           RowBox[{"{", 
+            RowBox[{
+             RowBox[{"a1", "+", "b1"}], ",", 
+             RowBox[{"a1", "+", "b1", "+", "c1"}], ",", 
+             RowBox[{"b1", "+", "c1"}]}], "}"}], "]"}], ",", 
+          "\[IndentingNewLine]", 
+          RowBox[{"Line", "[", 
+           RowBox[{"{", 
+            RowBox[{
+             RowBox[{"a1", "+", "c1"}], ",", 
+             RowBox[{"a1", "+", "b1", "+", "c1"}]}], "}"}], "]"}]}], 
          "\[IndentingNewLine]", "}"}], ",", "\[IndentingNewLine]", 
         RowBox[{"{", 
          RowBox[{"Red", ",", "Dashed", ",", "\[IndentingNewLine]", 
           RowBox[{"Line", "[", 
            RowBox[{"{", 
+            RowBox[{"a1", ",", 
+             RowBox[{"a1", "-", "b1"}]}], "}"}], "]"}], ",", 
+          "\[IndentingNewLine]", 
+          RowBox[{"Line", "[", 
+           RowBox[{"{", 
+            RowBox[{"b1", ",", 
+             RowBox[{"b1", "-", "c1"}]}], "}"}], "]"}], ",", 
+          "\[IndentingNewLine]", 
+          RowBox[{"Line", "[", 
+           RowBox[{"{", 
+            RowBox[{"a1", ",", 
+             RowBox[{"a1", "-", "c1"}], ",", 
+             RowBox[{
+              RowBox[{"2", "a1"}], "-", "c1"}], ",", 
+             RowBox[{
+              RowBox[{"2", "a1"}], "-", 
+              RowBox[{"2", "c1"}]}]}], "}"}], "]"}], ",", 
+          "\[IndentingNewLine]", 
+          RowBox[{"Line", "[", 
+           RowBox[{"{", 
             RowBox[{
-             RowBox[{"{", 
-              RowBox[{"a1", ",", "a"}], "}"}], ",", 
-             RowBox[{"{", 
-              RowBox[{"b1", ",", "b"}], "}"}]}], "}"}], "]"}]}], "}"}]}], 
-       "\[IndentingNewLine]", "}"}], "\[IndentingNewLine]", "}"}], ",", 
-     "\[IndentingNewLine]", 
+             RowBox[{"a1", "-", "c1"}], ",", 
+             RowBox[{"a1", "+", "b1", "-", "c1"}], ",", 
+             RowBox[{"a1", "+", "b1", "-", 
+              RowBox[{"2", "c1"}]}]}], "}"}], "]"}], ",", 
+          "\[IndentingNewLine]", 
+          RowBox[{"Line", "[", 
+           RowBox[{"{", 
+            RowBox[{
+             RowBox[{"a1", "+", "b1", "-", "c1"}], ",", 
+             RowBox[{"b1", "-", "c1"}]}], "}"}], "]"}], ",", 
+          "\[IndentingNewLine]", 
+          RowBox[{"Line", "[", 
+           RowBox[{"{", 
+            RowBox[{
+             RowBox[{
+              RowBox[{"2", "a1"}], "-", "c1"}], ",", 
+             RowBox[{
+              RowBox[{"2", "a1"}], "-", "b1", "-", "c1"}]}], "}"}], "]"}], 
+          ",", "\[IndentingNewLine]", 
+          RowBox[{"Line", "[", 
+           RowBox[{"{", 
+            RowBox[{"a1", ",", 
+             RowBox[{"2", "a1"}], ",", 
+             RowBox[{
+              RowBox[{"2", "a1"}], "-", "c1"}]}], "}"}], "]"}], ",", 
+          "\[IndentingNewLine]", 
+          RowBox[{"Line", "[", 
+           RowBox[{"{", 
+            RowBox[{
+             RowBox[{"2", "a1"}], ",", 
+             RowBox[{
+              RowBox[{"2", "a1"}], "-", "b1"}], ",", 
+             RowBox[{
+              RowBox[{"2", "a1"}], "-", "b1", "-", "c1"}]}], "}"}], "]"}], 
+          ",", "\[IndentingNewLine]", 
+          RowBox[{"Line", "[", 
+           RowBox[{"{", 
+            RowBox[{
+             RowBox[{
+              RowBox[{"2", "a1"}], "-", "b1"}], ",", 
+             RowBox[{"a1", "-", "b1"}]}], "}"}], "]"}], ",", 
+          "\[IndentingNewLine]", 
+          RowBox[{"Line", "[", 
+           RowBox[{"{", 
+            RowBox[{
+             RowBox[{
+              RowBox[{"2", "a1"}], "-", "c1"}], ",", 
+             RowBox[{
+              RowBox[{"2", "a1"}], "-", "c1", "+", "b1"}], ",", 
+             RowBox[{
+              RowBox[{"2", "a1"}], "-", 
+              RowBox[{"2", "c1"}], "+", "b1"}], ",", 
+             RowBox[{"a1", "-", 
+              RowBox[{"2", "c1"}], "+", "b1"}]}], "}"}], "]"}], ",", 
+          "\[IndentingNewLine]", 
+          RowBox[{"Line", "[", 
+           RowBox[{"{", 
+            RowBox[{
+             RowBox[{
+              RowBox[{"2", "a1"}], "-", 
+              RowBox[{"2", "c1"}], "+", "b1"}], ",", 
+             RowBox[{
+              RowBox[{"2", "a1"}], "-", 
+              RowBox[{"2", "c1"}]}]}], "}"}], "]"}], ",", 
+          "\[IndentingNewLine]", 
+          RowBox[{"Line", "[", 
+           RowBox[{"{", 
+            RowBox[{
+             RowBox[{
+              RowBox[{"2", "a1"}], "-", "c1", "+", "b1"}], ",", 
+             RowBox[{"a1", "-", "c1", "+", "b1"}], ",", 
+             RowBox[{"a1", "+", "b1"}]}], "}"}], "]"}]}], 
+         "\[IndentingNewLine]", "}"}]}], "\[IndentingNewLine]", "}"}], 
+      "\[IndentingNewLine]", "}"}], ",", "\[IndentingNewLine]", 
      RowBox[{"Boxed", "\[Rule]", "False"}], ",", 
      RowBox[{"PlotLabel", "\[Rule]", 
       RowBox[{"Style", "[", 
@@ -256,7 +357,7 @@ Cell[BoxData[{
 red\\nLines of same colour have the same length\>\"", ",", "18"}], "]"}]}]}], 
     "]"}], "/.", "Rall"}], "/.", 
   RowBox[{"h", "\[Rule]", 
-   RowBox[{"3", "/", "2"}]}]}], "\[IndentingNewLine]"}], "Input"],
+   RowBox[{"3", "/", "2", "\[IndentingNewLine]"}]}]}]}], "Input"],
 
 Cell[BoxData[
  RowBox[{"Assert", "[", 
@@ -382,7 +483,7 @@ Cell[BoxData[{
 }, Open  ]]
 },
 WindowSize->{950, 1006},
-WindowMargins->{{Automatic, 39}, {Automatic, 4}},
+WindowMargins->{{Automatic, 399}, {Automatic, 0}},
 PrivateNotebookOptions->{"FileOutlineCache"->False},
 TrackCellChangeTimes->False,
 FrontEndVersion->"9.0 for Mac OS X x86 (32-bit, 64-bit Kernel) (November 20, \
