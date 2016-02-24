@@ -3,7 +3,6 @@ from mmtbx.ncs.ncs_search import is_same_transform
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
 import mmtbx.ncs.ncs_utils as nu
-from libtbx.utils import Sorry
 import mmtbx.maps.correlation
 from scitbx import matrix
 import scitbx.rigid_body
@@ -587,29 +586,6 @@ class Test_ncs_utils(unittest.TestCase):
     isel = nu.ncs_group_iselection(nrgl,0)
     expected = [0, 1, 2, 3, 8, 9, 10, 11, 16, 17, 18, 19]
     self.assertEqual(list(isel),expected)
-
-  def test_convert_phil_format(self):
-    """ test Phil format conversion """
-    self.assertRaises(Sorry,nu.convert_phil_format,
-                      phil_str=ncs_phil,
-                      to_type='xxx')
-    out_str = nu.convert_phil_format(ncs_phil,to_type='ncs')
-    self.assertEqual(out_str,ncs_phil)
-    #
-    out_str = nu.convert_phil_format(ncs_phil,to_type='restraints')
-    self.assertEqual(out_str,restraints_phil)
-    #
-    out_str = nu.convert_phil_format(ncs_phil,to_type='constraints')
-    self.assertEqual(out_str,constraints_phil)
-    #
-    out_str = nu.convert_phil_format(constraints_phil,to_type='restraints')
-    self.assertEqual(out_str,restraints_phil)
-    #
-    out_str = nu.convert_phil_format(constraints_phil,to_type='ncs')
-    self.assertEqual(out_str,ncs_phil)
-    #
-    out_str = nu.convert_phil_format(restraints_phil,to_type='ncs')
-    self.assertEqual(out_str,ncs_phil)
 
   def test_transform_update(self):
     """ Test update of rotation and translation using selection """

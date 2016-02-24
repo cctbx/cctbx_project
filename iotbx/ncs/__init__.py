@@ -1881,6 +1881,7 @@ done    7. Combine or remove entirely quiet and write_messages. If somebody does
     """
     if not log: log = self.log
     out_str = ''
+    # assert 0
     if (not format) or (format.lower() == 'cctbx'):
       out_str = self.__repr__(prefix)
       print >> log, out_str
@@ -1889,14 +1890,14 @@ done    7. Combine or remove entirely quiet and write_messages. If somebody does
     elif format.lower() == 'phil':
       out_str = self.show_phil_format(prefix=prefix,header=header)
       print >> log, out_str
-    elif format.lower() == 'restraints':
-      out_str = self.show_phil_format(prefix=prefix,header=header)
-      out_str = nu.convert_phil_format(out_str,to_type='restraints')
-      print >> log, out_str
-    elif format.lower() == 'constraints':
-      out_str = self.show_phil_format(prefix=prefix,header=header)
-      out_str = nu.convert_phil_format(out_str,to_type='constraints')
-      print >> log, out_str
+    # elif format.lower() == 'restraints':
+    #   out_str = self.show_phil_format(prefix=prefix,header=header)
+    #   out_str = nu.convert_phil_format(out_str,to_type='restraints')
+    #   print >> log, out_str
+    # elif format.lower() == 'constraints':
+    #   out_str = self.show_phil_format(prefix=prefix,header=header)
+    #   out_str = nu.convert_phil_format(out_str,to_type='constraints')
+    #   print >> log, out_str
     elif format.lower() == 'spec':
       # Does not add prefix in SPEC format
       out_str = self.show_search_parameters_values(prefix) + '/n'
