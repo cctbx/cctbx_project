@@ -185,7 +185,7 @@ def exercise_01(fobs_1, fobs_2, flags_1, flags_2, prefix):
   print cmd
   easy_run.call(cmd)
   #
-  check(tuple_calc=[12.444, 17.073, 14.804], selection=selection)
+  check(tuple_calc=[10.6, 16.0, 13.5], selection=selection)
 
 def exercise_02(fobs_1, flags_1, prefix):
   fobs_1.export_as_cns_hkl(
@@ -210,7 +210,7 @@ def exercise_02(fobs_1, flags_1, prefix):
   ])
   print cmd
   easy_run.call(cmd)
-  check(tuple_calc=[13.328, 17.174, 15.153], selection=selection)
+  check(tuple_calc=[10.7, 15.1, 13.4], selection=selection)
 
 def exercise_03(fobs_2, flags_2, prefix):
   mtz = fobs_2.as_mtz_dataset(column_root_label="FP1")
@@ -232,7 +232,7 @@ def exercise_03(fobs_2, flags_2, prefix):
   ])
   print cmd
   easy_run.call(cmd)
-  check(tuple_calc=[18.505, 29.354, 23.711], selection=selection)
+  check(tuple_calc=[13.7, 20.3, 18.4], selection=selection)
 
 def exercise(prefix="tst_polder_01"):
   """
@@ -249,8 +249,8 @@ def exercise(prefix="tst_polder_01"):
   pdb_hierarchy.write_mmcif_file(
     file_name="tst_polder_01.cif", crystal_symmetry=xrs.crystal_symmetry())
   #
-  fobs_1 = abs(xrs.structure_factors(d_min=1.5).f_calc())
-  fobs_2 = abs(xrs.structure_factors(d_min=2.0).f_calc())
+  fobs_1 = abs(xrs.structure_factors(d_min=3.0).f_calc())
+  fobs_2 = abs(xrs.structure_factors(d_min=2.5).f_calc())
   flags_1 = fobs_1.generate_r_free_flags(fraction=0.05)
   flags_2 = fobs_2.generate_r_free_flags(fraction=0.05)
   #
