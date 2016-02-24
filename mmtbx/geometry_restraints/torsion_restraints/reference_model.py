@@ -21,9 +21,9 @@ TOP_OUT_FLAG = True
 renamed_ncs_search_str = iotbx.ncs.ncs_search_options.replace(
     "ncs_search", "search_options")
 renamed_ncs_search_str = renamed_ncs_search_str.replace(
-    "max_rmsd = 2.", "max_rmsd = 5.")
+    "chain_max_rmsd = 2.", "chain_max_rmsd = 100.")
 renamed_ncs_search_str = renamed_ncs_search_str.replace(
-    "exclude_misaligned_residues = True", "exclude_misaligned_residues = False")
+    "residue_match_radius = 4.0", "residue_match_radius = 1000")
 
 reference_model_str = """
 reference_model
@@ -269,12 +269,9 @@ class reference_model(object):
     # combined_h.write_pdb_file(fn+"_combined.pdb")
     ncs_obj = iotbx.ncs.input(
         hierarchy=temp_h,
-        exclude_misaligned_residues=search_options.exclude_misaligned_residues,
-        match_radius=search_options.match_radius,
-        similarity_threshold=search_options.similarity_threshold,
-        min_contig_length=search_options.min_contig_length,
-        min_percent=search_options.min_percent,
-        max_rmsd=search_options.max_rmsd,
+        residue_match_radius=search_options.residue_match_radius,
+        chain_similarity_threshold=search_options.chain_similarity_threshold,
+        chain_max_rmsd=search_options.chain_max_rmsd,
         )
     spec_obj = ncs_obj.get_ncs_info_as_spec()
     ncs_groups_from_spec = spec_obj._ncs_groups

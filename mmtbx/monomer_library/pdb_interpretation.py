@@ -5418,13 +5418,10 @@ class process(object):
     ncs_obj = iotbx.ncs.input(
       ncs_phil_groups             = ncs_phil_groups,
       hierarchy                   = new_h,
-      similarity_threshold        = params.similarity_threshold,
-      min_contig_length           = params.min_contig_length,
-      min_percent                 = params.min_percent,
+      chain_similarity_threshold  = params.chain_similarity_threshold,
       exclude_selection           = params.exclude_selection,
-      max_rmsd                    = params.max_rmsd,
-      match_radius                = params.match_radius,
-      exclude_misaligned_residues = params.exclude_misaligned_residues,
+      chain_max_rmsd              = params.chain_max_rmsd,
+      residue_match_radius        = params.residue_match_radius,
       log                         = self.log)
     return ncs_obj
 

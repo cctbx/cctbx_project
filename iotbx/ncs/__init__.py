@@ -30,31 +30,16 @@ ncs_search
     .type = atom_selection
     .help = Atoms selected by this selection will be excluded from the model \
       before NCS search procedures will run.
-  exclude_misaligned_residues = True
-    .type = bool
-    .help = '''check and exclude individual residues
-        alignment quality'''
-    .style = noauto
-  match_radius = 4.0
+  residue_match_radius = 4.0
     .type = float
     .help = '''max allow distance difference between pairs of matching
         atoms of two residues'''
-  similarity_threshold = 0.95
+  chain_similarity_threshold = 0.85
     .type=float
     .help='''Threshold for similarity between matching chains.
       A smaller value cause more chains to be grouped together and can lower
       the number of common residues'''
-  min_contig_length = 10
-    .type=int
-    .help = "segments < min_contig_length rejected"
-  min_percent = 85.
-    .help = '''Threshold for similarity between chains, where similarity
-    define as: (number of matching res) / (number of res in longer chain)'''
-    .type = float
-    .short_caption = Min. percent identity
-    .expert_level = 0
-    .style = bold noauto
-  max_rmsd = 2.
+  chain_max_rmsd = 2.
     .type = float
     .short_caption = Max. RMSD
     .help = '''limit of rms difference between chains to be considered
@@ -99,13 +84,10 @@ class input(object):
           ncs_phil_groups = None,
           spec_ncs_groups=None,
           exclude_selection="not (protein or nucleotide) or element H or element D",
-          max_rmsd=2.0,
+          chain_max_rmsd=2.0,
           log=sys.stdout,
-          min_percent=0.85,
-          similarity_threshold=0.95,
-          min_contig_length=10,
-          exclude_misaligned_residues=True,
-          match_radius=4.0):
+          chain_similarity_threshold=0.85,
+          residue_match_radius=4.0):
     """
     TODO:
     1. switch from iotbx.pdb.hierarchy.input to iotbx.pdb.input
@@ -119,25 +101,25 @@ done    2. Remove check_atom_order, leaving it with present(True) behavior.
       be necessary now), it is used if
       one of the matching residues doesn't have all atoms.
 done    3. Remove allow_different_size_res, leaving it with present(True) behavior.
-    4. At least combine match_radius with exclude_misaligned_residues, because
-      match_radius is numerical value used to exclude misaligned_residues.
-      Could be set to big value resulting in effectively
-      exclude_misaligned_residues=False.
 done    5. Remove ignore_chains. Could be easily defined as supplement to
       exclude_selection.
-    6. Remove min_contig_length, setting it to 1. The parameters screws
-      alignment similarity in a complicated way (we are excluding well-aligned
-      regions with length less than this number).
 done    7. Combine or remove entirely quiet and write_messages. If somebody doesn't
       want output, he may supply appropriate object to log parameter and never
       print it out (like StringIO)
     8. Combine similarity_threshold and min_percent. min_percent - preliminary
       filtering value, similarity_threshold - further down somewhere in
       procedure?..
+    4. At least combine match_radius with exclude_misaligned_residues, because
+      match_radius is numerical value used to exclude misaligned_residues.
+      Could be set to big value resulting in effectively
+      exclude_misaligned_residues=False.
+    6. Remove min_contig_length, setting it to 1. The parameters screws
+      alignment similarity in a complicated way (we are excluding well-aligned
+      regions with length less than this number).
 
     This will leave us with 3 easy to understand parameters:
       - similarity_threshold+min_percent : alignment percent filter by chain
-      - max_rmsd : coordinate filter by chain
+      - chain_max_rmsd : coordinate filter by chain
       - match_radius+exclude_misaligned_residues : coordinate filter by residue.
 
     Select method to build ncs_group_object
@@ -169,7 +151,7 @@ done    7. Combine or remove entirely quiet and write_messages. If somebody does
       ncs_phil_groups: a list of ncs_groups_container object, containing
         master NCS selection and a list of NCS copies selection
       spec_ncs_groups: ncs_groups object of class mmtbx.ncs.ncs.ncs
-      max_rmsd (float): limit of rms difference between chains to be considered
+      chain_max_rmsd (float): limit of rms difference between chains to be considered
         as copies
       min_percent (float): Threshold for similarity between chains
         similarity define as:
@@ -231,16 +213,12 @@ done    7. Combine or remove entirely quiet and write_messages. If somebody does
     self.truncated_hierarchy = None
     self.log = sys.stdout
 
-    if min_percent > 1: min_percent /= 100
     extension = ''
     # set search parameters
-    self.min_contig_length = min_contig_length
     self.exclude_selection = exclude_selection
-    self.max_rmsd = max_rmsd
-    self.exclude_misaligned_residues = exclude_misaligned_residues
-    self.match_radius = match_radius
-    self.min_percent = min_percent
-    self.similarity_threshold = similarity_threshold
+    self.chain_max_rmsd = chain_max_rmsd
+    self.residue_match_radius = residue_match_radius
+    self.chain_similarity_threshold = chain_similarity_threshold
     #
     if not log: log = sys.stdout
     self.log = log
@@ -470,17 +448,15 @@ done    7. Combine or remove entirely quiet and write_messages. If somebody does
         # user's selection
         match_list = ncs_search.search_ncs_relations(
             chains_info=chain_info,
-            min_contig_length=5,
-            min_percent=0.5,
+            chain_similarity_threshold=0.5,
             )
         # print "match_list", match_list
         match_dict = ncs_search.clean_chain_matching(
             chain_match_list=match_list,
             ph = combined_h,
-            max_rmsd=10.0,
-            exclude_misaligned_residues=False,
-            match_radius=4.0,
-            similarity_threshold=0.5,
+            chain_max_rmsd=10.0,
+            residue_match_radius=1000.0,
+            chain_similarity_threshold=0.5,
             )
         # print "="*80
         # print "="*80
@@ -647,7 +623,6 @@ done    7. Combine or remove entirely quiet and write_messages. If somebody does
     """
     # if(ncs_phil_string is not None):
     #   ncs_phil_string = nu.convert_phil_format(ncs_phil_string)
-    min_percent = self.min_percent
     # process params
     # if ncs_phil_string:
     #   if isinstance(ncs_phil_string,str):
@@ -686,7 +661,7 @@ done    7. Combine or remove entirely quiet and write_messages. If somebody does
           ph=pdb_h,
           master_selection=gns,
           copy_selection=asu_select,
-          max_rmsd=100)
+          chain_max_rmsd=100)
         self.messages += msg
         if r.is_zero():
           msg = 'Master NCS and Copy are very poorly related, check selection.'
@@ -741,17 +716,12 @@ done    7. Combine or remove entirely quiet and write_messages. If somebody does
     chain_ids = {x.id for x in pdb_h.models()[0].chains()}
     self.total_asu_length = pdb_h.atoms().size()
     if len(chain_ids) > 1:
-      min_contig_length = self.min_contig_length
-      min_percent = self.min_percent
       group_dict = ncs_search.find_ncs_in_hierarchy(
         ph=pdb_h,
-        min_contig_length=min_contig_length,
-        min_percent=min_percent,
-        similarity_threshold=self.similarity_threshold,
-        max_rmsd=self.max_rmsd,
+        chain_similarity_threshold=self.chain_similarity_threshold,
+        chain_max_rmsd=self.chain_max_rmsd,
         log=self.log,
-        exclude_misaligned_residues=self.exclude_misaligned_residues,
-        match_radius=self.match_radius)
+        residue_match_radius=self.residue_match_radius)
       # process atom selections
       self.total_asu_length = pdb_h.atoms().size()
       self.build_ncs_obj_from_group_dict(group_dict,pdb_h)
@@ -1979,9 +1949,9 @@ done    7. Combine or remove entirely quiet and write_messages. If somebody does
         each line
     """
     list_of_values = [
-      'min_contig_length','max_rmsd',
-      'exclude_misaligned_residues','match_radius',
-      'min_percent','similarity_threshold']
+      'chain_max_rmsd',
+      'residue_match_radius',
+      'chain_similarity_threshold']
     str_out = ['\n{}NCS search parameters:'.format(prefix),'-'*51]
     str_line = prefix + '{:<35s}:   {}'
     for val in list_of_values:

@@ -371,7 +371,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     # print sys._getframe().f_code.co_name
     ncs_inp = ncs.input(
       hierarchy=iotbx.pdb.input(source_info=None, lines=pdb_str).construct_hierarchy(),
-      min_percent=0.2)
+      chain_similarity_threshold=0.2)
     t = ncs_inp.ncs_to_asu_selection
     exp_t1 = {
       "(chain 'A' and (name N or name CA or name C or name O ))":
