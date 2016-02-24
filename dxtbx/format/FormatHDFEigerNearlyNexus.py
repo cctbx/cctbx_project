@@ -61,23 +61,15 @@ class EigerNXmxFixer(object):
   A hacky class to read an NXmx file
 
   '''
-  def __init__(self, input_filename, output_filename):
+  def __init__(self, input_filename, memory_mapped_name):
     import h5py
-    import shutil
     from os.path import join
     from scitbx import matrix
 
-    # print "Copying %s to %s to fix NXmx file" % (
-    #   input_filename,
-    #   output_filename)
-    shutil.copy(input_filename, output_filename)
-
-    #
-    # print "Opening %s to perform fixes" % (
-    #   output_filename)
-    #
+    # Copy the master file to the in memory handle
     handle_orig = h5py.File(input_filename, 'r')
-    handle = h5py.File(output_filename, 'r+')
+    handle = h5py.File(name=memory_mapped_name, driver='core', backing_store=False)
+    handle_orig.copy('entry', handle)
 
     # Add some simple datasets
     def create_scalar(handle, path, dtype, value):
@@ -228,7 +220,6 @@ class EigerNXmxFixer(object):
       angle = omega_range_average * i
       dataset[i] = angle
 
-
     # Create sample depends_on
     create_scalar(
       handle['/entry/sample'],
@@ -240,6 +231,8 @@ class EigerNXmxFixer(object):
     for name in handle_orig['/entry/data'].iterkeys():
       del handle['entry/data'][name]
       handle['entry/data'][name] = h5py.ExternalLink(handle_orig['entry/data'][name].file.filename, 'entry/data/data')
+
+    self.handle = handle
 
 class FormatEigerNearlyNexus(FormatHDF5):
 
@@ -258,15 +251,11 @@ class FormatEigerNearlyNexus(FormatHDF5):
   def _start(self):
 
     # Read the file structure
-    import tempfile
-    path = tempfile.gettempdir()
     from os.path import join
     import uuid
-
-    temp_file = join(path, "tmp_master_%s.nxs" % uuid.uuid1().hex)
-
+    temp_file = "tmp_master_%s.nxs" % uuid.uuid1().hex
     fixer = EigerNXmxFixer(self._image_file, temp_file)
-    reader = NXmxReader(temp_file)
+    reader = NXmxReader(handle=fixer.handle)
 
     # Only support 1 set of models at the moment
     assert len(reader.entries) == 1, \
@@ -343,3 +332,10 @@ class FormatEigerNearlyNexus(FormatHDF5):
 
   def get_detectorbase(self, index=None):
     return None
+
+if __name__ == '__main__':
+  import sys
+
+  f = FormatEigerNearlyNexus(sys.argv[1])
+  for i in range(10):
+    print f.get_raw_data(i)
