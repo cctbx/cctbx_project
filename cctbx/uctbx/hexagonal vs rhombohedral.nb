@@ -1,0 +1,392 @@
+Notebook[{
+
+Cell[CellGroupData[{
+Cell["\<\
+Unit Cells:
+Rhombohedral \[LeftRightArrow] Hexagonal\
+\>", "Title"],
+
+Cell[BoxData[
+ RowBox[{"On", "[", "Assert", "]"}]], "Input"],
+
+Cell[CellGroupData[{
+
+Cell["Transformations", "Section"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"P", "[", "a", "]"}], "=", 
+  RowBox[{
+   RowBox[{
+    RowBox[{"2", "/", "3"}], "a"}], "+", 
+   RowBox[{
+    RowBox[{"1", "/", "3"}], "b"}], "+", 
+   RowBox[{
+    RowBox[{"1", "/", "3"}], "c"}]}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"P", "[", "b", "]"}], "=", 
+  RowBox[{
+   RowBox[{
+    RowBox[{
+     RowBox[{"-", "1"}], "/", "3"}], "a"}], "+", 
+   RowBox[{
+    RowBox[{"1", "/", "3"}], "b"}], "+", 
+   RowBox[{
+    RowBox[{"1", "/", "3"}], "c"}]}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"P", "[", "c", "]"}], "=", 
+  RowBox[{
+   RowBox[{
+    RowBox[{
+     RowBox[{"-", "1"}], "/", "3"}], "a"}], "-", 
+   RowBox[{
+    RowBox[{"2", "/", "3"}], "b"}], "+", 
+   RowBox[{
+    RowBox[{"1", "/", "3"}], "c"}]}]}]}], "Input"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{
+    RowBox[{"P", "[", "a", "]"}], "\[Equal]", "a1"}], "&&", 
+   RowBox[{
+    RowBox[{"P", "[", "b", "]"}], "\[Equal]", "b1"}], "&&", 
+   RowBox[{
+    RowBox[{"P", "[", "c", "]"}], "\[Equal]", "c1"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"sol", "=", 
+   RowBox[{
+    RowBox[{"Solve", "[", 
+     RowBox[{"%", ",", 
+      RowBox[{"{", 
+       RowBox[{"a", ",", "b", ",", "c"}], "}"}]}], "]"}], "[", 
+    RowBox[{"[", "1", "]"}], "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"{", 
+   RowBox[{
+    RowBox[{"Q", "[", "a1", "]"}], ",", 
+    RowBox[{"Q", "[", "b1", "]"}], ",", 
+    RowBox[{"Q", "[", "c1", "]"}]}], "}"}], "=", 
+  RowBox[{
+   RowBox[{"{", 
+    RowBox[{"a", ",", "b", ",", "c"}], "}"}], "/.", "sol"}]}]}], "Input"],
+
+Cell[TextData[StyleBox["From hexagonal to rhombohedral", "Section"]], "Text"],
+
+Cell[BoxData[{
+ RowBox[{"RH", "=", 
+  RowBox[{"{", "\[IndentingNewLine]", 
+   RowBox[{
+    RowBox[{"a", "->", 
+     RowBox[{
+      RowBox[{"1", "/", "2"}], 
+      RowBox[{"{", 
+       RowBox[{"1", ",", 
+        RowBox[{"Sqrt", "[", "3", "]"}], ",", "0"}], "}"}]}]}], ",", 
+    "\[IndentingNewLine]", 
+    RowBox[{"b", "->", 
+     RowBox[{
+      RowBox[{"1", "/", "2"}], 
+      RowBox[{"{", 
+       RowBox[{"1", ",", 
+        RowBox[{"-", 
+         RowBox[{"Sqrt", "[", "3", "]"}]}], ",", "0"}], "}"}]}]}], ",", 
+    "\[IndentingNewLine]", 
+    RowBox[{"c", "->", 
+     RowBox[{"{", 
+      RowBox[{"0", ",", "0", ",", "h"}], "}"}]}]}], "\[IndentingNewLine]", 
+   "}"}]}], "\[IndentingNewLine]", 
+ RowBox[{"Assert", "[", 
+  RowBox[{
+   RowBox[{
+    RowBox[{
+     RowBox[{"a", ".", "b"}], "\[Equal]", 
+     RowBox[{
+      RowBox[{"-", "1"}], "/", "2"}]}], "&&", 
+    RowBox[{
+     RowBox[{"a", ".", "c"}], "\[Equal]", "0"}], "&&", 
+    RowBox[{
+     RowBox[{"b", ".", "c"}], "\[Equal]", "0"}]}], "/.", "RH"}], 
+  "]"}]}], "Input"],
+
+Cell[BoxData[{
+ RowBox[{"RR", "=", 
+  RowBox[{
+   RowBox[{"{", "\[IndentingNewLine]", 
+    RowBox[{
+     RowBox[{"a1", "->", 
+      RowBox[{"P", "[", "a", "]"}]}], ",", "\[IndentingNewLine]", 
+     RowBox[{"b1", "->", 
+      RowBox[{"P", "[", "b", "]"}]}], ",", "\[IndentingNewLine]", 
+     RowBox[{"c1", "->", 
+      RowBox[{"P", "[", "c", "]"}]}]}], "\[IndentingNewLine]", "}"}], "/.", 
+   "RH"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"Rall", "=", 
+   RowBox[{"Join", "[", 
+    RowBox[{"RH", ",", "RR"}], "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{"Assert", "[", 
+  RowBox[{
+   RowBox[{
+    RowBox[{"a1", ".", "a1"}], "\[Equal]", 
+    RowBox[{"b1", ".", "b1"}], "\[Equal]", 
+    RowBox[{"c1", ".", "c1"}]}], "/.", "Rall"}], "]"}]}], "Input"],
+
+Cell[TextData[StyleBox["Rhombehedral unit cell angle as a function of the \
+height of the hexagonal cell",
+ FontWeight->"Bold"]], "Text"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   RowBox[{
+    RowBox[{
+     RowBox[{"a1", ".", "b1"}], "/", 
+     RowBox[{"a1", ".", "a1"}]}], "/", 
+    RowBox[{"b1", ".", "b1"}]}], "/.", "Rall"}], "//", "Simplify"}]], "Input"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"OO", "=", 
+   RowBox[{"{", 
+    RowBox[{"0", ",", "0", ",", "0"}], "}"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"Graphics3D", "[", 
+    RowBox[{
+     RowBox[{"{", "\[IndentingNewLine]", 
+      RowBox[{"{", 
+       RowBox[{
+        RowBox[{"AbsoluteThickness", "[", "3", "]"}], ",", 
+        "\[IndentingNewLine]", 
+        RowBox[{"{", "\[IndentingNewLine]", 
+         RowBox[{
+          RowBox[{"Arrow", "[", 
+           RowBox[{"{", 
+            RowBox[{
+             RowBox[{"{", 
+              RowBox[{"OO", ",", "a"}], "}"}], ",", 
+             RowBox[{"{", 
+              RowBox[{"OO", ",", "b"}], "}"}]}], "}"}], "]"}], ",", 
+          "\[IndentingNewLine]", 
+          RowBox[{"{", 
+           RowBox[{
+            RowBox[{"Darker", "[", "Blue", "]"}], ",", 
+            RowBox[{"Arrow", "[", 
+             RowBox[{"{", 
+              RowBox[{"OO", ",", "c"}], "}"}], "]"}]}], "}"}], ",", 
+          "\[IndentingNewLine]", 
+          RowBox[{"Line", "[", 
+           RowBox[{"{", 
+            RowBox[{
+             RowBox[{"{", 
+              RowBox[{"a", ",", 
+               RowBox[{
+                RowBox[{"2", "a"}], "+", "b"}]}], "}"}], ",", 
+             RowBox[{"{", 
+              RowBox[{"b", ",", 
+               RowBox[{
+                RowBox[{"2", "b"}], "+", "a"}]}], "}"}], ",", 
+             RowBox[{"{", 
+              RowBox[{
+               RowBox[{
+                RowBox[{"2", "a"}], "+", "b"}], ",", 
+               RowBox[{
+                RowBox[{"2", "a"}], "+", 
+                RowBox[{"2", "b"}]}]}], "}"}], ",", 
+             RowBox[{"{", 
+              RowBox[{
+               RowBox[{
+                RowBox[{"2", "b"}], "+", "a"}], ",", 
+               RowBox[{
+                RowBox[{"2", "b"}], "+", 
+                RowBox[{"2", "a"}]}]}], "}"}]}], "}"}], "]"}]}], 
+         "\[IndentingNewLine]", "}"}], ",", "\[IndentingNewLine]", 
+        RowBox[{"{", 
+         RowBox[{"Red", ",", "\[IndentingNewLine]", 
+          RowBox[{"Arrow", "[", 
+           RowBox[{"{", 
+            RowBox[{
+             RowBox[{"{", 
+              RowBox[{"OO", ",", "a1"}], "}"}], ",", 
+             RowBox[{"{", 
+              RowBox[{"OO", ",", "b1"}], "}"}], ",", 
+             RowBox[{"{", 
+              RowBox[{"OO", ",", "c1"}], "}"}]}], "}"}], "]"}], ",", 
+          RowBox[{"Line", "[", 
+           RowBox[{"{", 
+            RowBox[{
+             RowBox[{"{", 
+              RowBox[{"a1", ",", 
+               RowBox[{"a1", "+", "b1"}]}], "}"}], ",", 
+             RowBox[{"{", 
+              RowBox[{"a1", ",", 
+               RowBox[{"a1", "+", "c1"}]}], "}"}], ",", 
+             RowBox[{"{", 
+              RowBox[{"b1", ",", 
+               RowBox[{"b1", "+", "a1"}]}], "}"}], ",", 
+             RowBox[{"{", 
+              RowBox[{"b1", ",", 
+               RowBox[{"b1", "+", "c1"}]}], "}"}], ",", 
+             RowBox[{"{", 
+              RowBox[{"c1", ",", 
+               RowBox[{"c1", "+", "a1"}]}], "}"}], ",", 
+             RowBox[{"{", 
+              RowBox[{"c1", ",", 
+               RowBox[{"c1", "+", "b1"}]}], "}"}]}], "}"}], "]"}]}], 
+         "\[IndentingNewLine]", "}"}], ",", "\[IndentingNewLine]", 
+        RowBox[{"{", 
+         RowBox[{"Red", ",", "Dashed", ",", "\[IndentingNewLine]", 
+          RowBox[{"Line", "[", 
+           RowBox[{"{", 
+            RowBox[{
+             RowBox[{"{", 
+              RowBox[{"a1", ",", "a"}], "}"}], ",", 
+             RowBox[{"{", 
+              RowBox[{"b1", ",", "b"}], "}"}]}], "}"}], "]"}]}], "}"}]}], 
+       "\[IndentingNewLine]", "}"}], "\[IndentingNewLine]", "}"}], ",", 
+     "\[IndentingNewLine]", 
+     RowBox[{"Boxed", "\[Rule]", "False"}], ",", 
+     RowBox[{"PlotLabel", "\[Rule]", 
+      RowBox[{"Style", "[", 
+       RowBox[{
+       "\"\<Hexagonal cell in black and blue\\nRhombohedral cell in plain and \
+red\\nLines of same colour have the same length\>\"", ",", "18"}], "]"}]}]}], 
+    "]"}], "/.", "Rall"}], "/.", 
+  RowBox[{"h", "\[Rule]", 
+   RowBox[{"3", "/", "2"}]}]}], "\[IndentingNewLine]"}], "Input"],
+
+Cell[BoxData[
+ RowBox[{"Assert", "[", 
+  RowBox[{
+   RowBox[{
+    RowBox[{"Norm", "[", 
+     RowBox[{"a", "-", "a1"}], "]"}], "\[Equal]", 
+    RowBox[{"Norm", "[", "a1", "]"}]}], "/.", "Rall"}], "]"}]], "Input"],
+
+Cell[TextData[StyleBox["From rhombohedral to hexagonal", "Section"]], "Text"],
+
+Cell[BoxData[{
+ RowBox[{"RR1", "=", 
+  RowBox[{"{", "\[IndentingNewLine]", 
+   RowBox[{
+    RowBox[{"a1", "->", 
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"Cos", "[", "\[Theta]", "]"}], " ", 
+        RowBox[{
+         RowBox[{"Sqrt", "[", "3", "]"}], "/", "2"}]}], ",", 
+       RowBox[{
+        RowBox[{"-", 
+         RowBox[{"Cos", "[", "\[Theta]", "]"}]}], "/", "2"}], ",", 
+       RowBox[{"Sin", "[", "\[Theta]", "]"}]}], "}"}]}], ",", 
+    "\[IndentingNewLine]", 
+    RowBox[{"b1", "->", 
+     RowBox[{"{", 
+      RowBox[{"0", ",", 
+       RowBox[{"Cos", "[", "\[Theta]", "]"}], ",", 
+       RowBox[{"Sin", "[", "\[Theta]", "]"}]}], "}"}]}], ",", 
+    "\[IndentingNewLine]", 
+    RowBox[{"c1", "\[Rule]", 
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"-", 
+         RowBox[{"Cos", "[", "\[Theta]", "]"}]}], " ", 
+        RowBox[{
+         RowBox[{"Sqrt", "[", "3", "]"}], "/", "2"}]}], ",", 
+       RowBox[{
+        RowBox[{"-", 
+         RowBox[{"Cos", "[", "\[Theta]", "]"}]}], "/", "2"}], ",", 
+       RowBox[{"Sin", "[", "\[Theta]", "]"}]}], "}"}]}]}], 
+   "\[IndentingNewLine]", "}"}]}], "\[IndentingNewLine]", 
+ RowBox[{"Assert", "[", 
+  RowBox[{"Simplify", "[", 
+   RowBox[{
+    RowBox[{
+     RowBox[{
+      RowBox[{
+       RowBox[{"a1", ".", "a1"}], "\[Equal]", "1"}], "&&", 
+      RowBox[{
+       RowBox[{"b1", ".", "b1"}], "\[Equal]", "1"}], "&&", 
+      RowBox[{
+       RowBox[{"c1", ".", "c1"}], "\[Equal]", "1"}], "&&", 
+      RowBox[{
+       RowBox[{"a1", ".", "b1"}], "\[Equal]", 
+       RowBox[{"b1", ".", "c1"}], "\[Equal]", 
+       RowBox[{"c1", ".", "a1"}]}]}], "/.", "RR1"}], ",", 
+    RowBox[{"Assumptions", "\[RuleDelayed]", 
+     RowBox[{"\[Theta]", " ", "\[Epsilon]", " ", "Reals"}]}]}], "]"}], 
+  "]"}], "\[IndentingNewLine]"}], "Input"],
+
+Cell["\<\
+Rhombohedral unit cell angle as a function of the elevation angle shared by \
+the 3 sides\
+\>", "Text"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   RowBox[{
+    RowBox[{
+     RowBox[{"a1", ".", "b1"}], "/", 
+     RowBox[{"a1", ".", "a1"}]}], "/", 
+    RowBox[{"b1", ".", "b1"}]}], "/.", "RR1"}], "//", "Simplify"}]], "Input"],
+
+Cell[BoxData[{
+ RowBox[{"RH1", "=", 
+  RowBox[{
+   RowBox[{"{", "\[IndentingNewLine]", 
+    RowBox[{
+     RowBox[{"a", "->", 
+      RowBox[{"Q", "[", "a1", "]"}]}], ",", "\[IndentingNewLine]", 
+     RowBox[{"b", "->", 
+      RowBox[{"Q", "[", "b1", "]"}]}], ",", "\[IndentingNewLine]", 
+     RowBox[{"c", "->", 
+      RowBox[{"Q", "[", "c1", "]"}]}]}], "\[IndentingNewLine]", "}"}], "/.", 
+   "RR1"}]}], "\[IndentingNewLine]", 
+ RowBox[{"Assert", "[", 
+  RowBox[{
+   RowBox[{
+    RowBox[{"a", ".", "a"}], "\[Equal]", 
+    RowBox[{"b", ".", "b"}]}], "/.", "RH1"}], "]"}], "\[IndentingNewLine]", 
+ RowBox[{"Assert", "[", 
+  RowBox[{
+   RowBox[{
+    RowBox[{"a", ".", "c"}], "\[Equal]", "0"}], "/.", "RH1"}], 
+  "]"}], "\[IndentingNewLine]", 
+ RowBox[{"Assert", "[", 
+  RowBox[{
+   RowBox[{
+    RowBox[{"b", ".", "c"}], "\[Equal]", "0"}], "/.", "RH1"}], 
+  "]"}], "\[IndentingNewLine]", 
+ RowBox[{"Assert", "[", 
+  RowBox[{"Simplify", "[", 
+   RowBox[{
+    RowBox[{
+     RowBox[{
+      RowBox[{
+       RowBox[{
+        RowBox[{"a", ".", "b"}], "/", 
+        RowBox[{"Norm", "[", "a", "]"}]}], "/", 
+       RowBox[{"Norm", "[", "b", "]"}]}], "\[Equal]", 
+      RowBox[{
+       RowBox[{"-", "1"}], "/", "2"}]}], "/.", "RH1"}], ",", 
+    RowBox[{"Assumptions", "\[RuleDelayed]", 
+     RowBox[{"0", "<", "\[Theta]", "<", 
+      RowBox[{"Pi", "/", "2"}]}]}]}], "]"}], "]"}]}], "Input"]
+}, Open  ]]
+}, Open  ]]
+},
+WindowSize->{950, 1006},
+WindowMargins->{{Automatic, 39}, {Automatic, 4}},
+PrivateNotebookOptions->{"FileOutlineCache"->False},
+TrackCellChangeTimes->False,
+FrontEndVersion->"9.0 for Mac OS X x86 (32-bit, 64-bit Kernel) (November 20, \
+2012)",
+StyleDefinitions->"Default.nb"
+]
+
