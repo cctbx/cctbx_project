@@ -72,18 +72,27 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
   def __init__(self, parent, *args, **kw):
     kw['attribList'] = kw.get('attribList', [])
 
-    # Create a temporary canvas to safely identify supported attributes
-    capabilities_test = wx.glcanvas.GLCanvas(parent)
+    # Safely identify supported attributes
     if hasattr(wx.glcanvas, 'WX_GL_DOUBLEBUFFER'):
-      if capabilities_test.IsDisplaySupported(wx.glcanvas.WX_GL_DOUBLEBUFFER):
+      try:
+        if self.IsDisplaySupported(wx.glcanvas.WX_GL_DOUBLEBUFFER):
+          kw['attribList'].append(wx.glcanvas.WX_GL_DOUBLEBUFFER)
+      except AttributeError:
+        # IsDisplaySupported may not be present for wxPython < 2.9
+        # Still attempt to enable double buffering
         kw['attribList'].append(wx.glcanvas.WX_GL_DOUBLEBUFFER)
-    if hasattr(wx.glcanvas, 'WX_GL_SAMPLE_BUFFERS'):
-      if capabilities_test.IsDisplaySupported([wx.glcanvas.WX_GL_SAMPLE_BUFFERS, GL_TRUE]):
-        kw['attribList'].extend([wx.glcanvas.WX_GL_SAMPLE_BUFFERS, GL_TRUE])
-    if hasattr(wx.glcanvas, 'WX_GL_SAMPLES'):
-      if capabilities_test.IsDisplaySupported([wx.glcanvas.WX_GL_SAMPLES, 4]):
-        kw['attribList'].extend([wx.glcanvas.WX_GL_SAMPLES, 4])
-    capabilities_test.Destroy()
+      
+    try:
+      if hasattr(wx.glcanvas, 'WX_GL_SAMPLE_BUFFERS'):
+        if self.IsDisplaySupported([wx.glcanvas.WX_GL_SAMPLE_BUFFERS, GL_TRUE]):
+          kw['attribList'].extend([wx.glcanvas.WX_GL_SAMPLE_BUFFERS, GL_TRUE])
+      if hasattr(wx.glcanvas, 'WX_GL_SAMPLES'):
+        if self.IsDisplaySupported([wx.glcanvas.WX_GL_SAMPLES, 4]):
+          kw['attribList'].extend([wx.glcanvas.WX_GL_SAMPLES, 4])
+    except AttributeError:
+      # IsDisplaySupported may not be present for wxPython < 2.9
+      # In that case do not attempt to use multi-/supersampling
+      pass
 
     kw = self.process_keyword_arguments(**kw)
     self.GL_uninitialised = 1
