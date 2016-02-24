@@ -302,6 +302,10 @@ namespace dxtbx { namespace model {
       // Get the normal etc
       normal_ = get_fast_axis().cross(get_slow_axis());
       distance_ = get_origin() * get_normal();
+      if (distance_ < 0) {
+        normal_ = -normal_;
+        distance_ = -distance_;
+      }
       try {
         normal_origin_ = get_bidirectional_ray_intersection(get_normal());
       } catch(dxtbx::error) {
