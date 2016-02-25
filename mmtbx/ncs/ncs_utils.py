@@ -492,44 +492,6 @@ def get_weight(fmodel=None,
   weight =min(weight,1e6) # limit the weight max value
   return weight
 
-def get_restraints_manager(pdb_file_name=None,pdb_string=None,
-                           normalization=True,return_data_num=False):
-  """  Generate restraint manager from a PDB file or a PDB string
-
-  Args:
-    return_data_num (bool): when True, return the number of restraints
-  """
-  import mmtbx.monomer_library.server
-  from mmtbx import monomer_library
-  assert [pdb_file_name,pdb_string].count(None)==1
-  mon_lib_srv = monomer_library.server.server()
-  ener_lib = monomer_library.server.ener_lib()
-  if pdb_string: pdb_lines = pdb_string.splitlines()
-  else: pdb_lines = None
-  # processed_pdb_file : ppf
-  ppf = monomer_library.pdb_interpretation.process(
-    mon_lib_srv    = mon_lib_srv,
-    ener_lib       = ener_lib,
-    file_name      = pdb_file_name,
-    raw_records    = pdb_lines,
-    force_symmetry = True)
-
-  # plain_pairs_radius is set to 5.0 for u_iso_refinement
-  geometry = ppf.geometry_restraints_manager(
-    show_energies = False, plain_pairs_radius = 5.0)
-
-  restraints_manager = mmtbx.restraints.manager(
-    geometry = geometry,
-    normalization = normalization)
-
-  if return_data_num:
-    proxies = [x for x in dir(geometry) if ('proxies' in x) and (x[0] != '_')]
-    len_str = lambda x: 'geometry' + '.' + x + '.__sizeof__()'
-    n_data = sum([eval(len_str(x)) for x in proxies])
-    return restraints_manager, n_data
-  else:
-    return restraints_manager
-
 def apply_transforms(ncs_coordinates,
                      ncs_restraints_group_list,
                      total_asu_length,
