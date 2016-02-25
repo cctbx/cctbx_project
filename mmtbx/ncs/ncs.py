@@ -28,6 +28,9 @@ def is_in_range(z,z_min,z_max):
 
 def remove_quotes_from_chain_id(chain_residue_id):
   # remove the quotes from the chain names in group:
+  if chain_residue_id is None:
+     return
+
   [group,list_of_resseq_list]=chain_residue_id
   new_group=[]
   for chain_id in group:
