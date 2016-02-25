@@ -95,7 +95,7 @@ def run(args, out=sys.stdout, validated=False):
 
   # process arguments
   params = None
-  input_attributes = ['map_1', 'map_2', 'mtz_1', 'mtz_2']
+  input_attributes = ['map_1', 'mtz_1', 'map_2', 'mtz_2']
   try: # automatic parsing
     params = phil.process_command_line_with_files(
       args=args, master_phil=master_phil).work.extract()
@@ -330,7 +330,7 @@ def get_mtz_labels(file_handle):
 def validate_params(params):
 
   # check that only 2 files, in any combination, are provided
-  input_attributes = ['map_1', 'map_2', 'mtz_1', 'mtz_2']
+  input_attributes = ['map_1', 'mtz_1', 'map_2', 'mtz_2']
   n_defined = 0
   for attribute in input_attributes:
     if (getattr(params.input, attribute) is not None):
@@ -369,15 +369,13 @@ def validate_params(params):
       raise Sorry('The gridding of the two maps is not compatible.')
   else:
   # check if MTZ files have complex arrays and labels
-    i_map = 1
     for i in xrange(len(maps)):
       if (maps[i].file_type == 'hkl'):
         labels = get_mtz_labels(maps[i])
         if (len(labels) == 0):
           raise Sorry('%s does not have complex map coefficients' %
                       maps[i].file_name)
-        label_phil = getattr(params.input, 'mtz_label_' + str(i_map))
-        i_map += 1
+        label_phil = getattr(params.input, 'mtz_label_' + str(i+1))
         if (label_phil is None):
           raise Sorry('No labels were specified for %s.' % maps[i].file_name)
         elif (label_phil not in labels):
