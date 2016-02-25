@@ -146,9 +146,11 @@ def run(args, out=sys.stdout, validated=False):
   # check if maps need to be generated from mtz
   n_maps = 0
   maps = list()
+  map_names = list()
   for attribute in input_attributes:
     filename = getattr(params.input, attribute)
     if (filename is not None):
+      map_names.append(filename)
       current_map = file_reader.any_file(filename)
       maps.append(current_map)
       if (current_map.file_type == 'ccp4_map'):
@@ -216,8 +218,8 @@ def run(args, out=sys.stdout, validated=False):
   # show general statistics
   s1 = maptbx.more_statistics(m1)
   s2 = maptbx.more_statistics(m2)
-  show_overall_statistics(s=s1, header="Map 1 (%s):"%params.input.map_1)
-  show_overall_statistics(s=s2, header="Map 2 (%s):"%params.input.map_2)
+  show_overall_statistics(out=out, s=s1, header="Map 1 (%s):"%map_names[0])
+  show_overall_statistics(out=out, s=s2, header="Map 2 (%s):"%map_names[1])
   cc_input_maps = flex.linear_correlation(x = m1.as_1d(),
                                           y = m2.as_1d()).coefficient()
   print >> out, "CC, input maps: %6.4f" % cc_input_maps
