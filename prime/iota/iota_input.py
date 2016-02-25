@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 01/20/2016
+Last Changed: 02/24/2016
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -151,6 +151,9 @@ dials
   min_spot_size = 6
     .type = int
     .help = Minimal spot size
+  global_threshold = 0
+    .type = int
+    .help = Global threshold
 }
 analysis
   .help = "Analysis / visualization options."

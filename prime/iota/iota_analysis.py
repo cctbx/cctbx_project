@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 02/05/2016
+Last Changed: 02/24/2016
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes unit cell analysis by hierarchical clustering
               (Zeldin, et al., Acta Cryst D, 2013). In case of multiple clusters
@@ -12,8 +12,6 @@ Description : Analyzes integration results and outputs them in an accessible
               integration results (e.g. unit cell, resolution, data path, etc.)
 '''
 
-import matplotlib
-matplotlib.use('pdf')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
@@ -53,13 +51,17 @@ class Analyzer(object):
     self.cons_uc = None
 
     self.pickles = [i.final['final'] for i in self.final_objects]
-    self.h = [i.final['sph'] for i in self.final_objects]
-    self.s = [i.final['sih'] for i in self.final_objects]
-    self.a = [i.final['spa'] for i in self.final_objects]
     self.res = [i.final['res'] for i in self.final_objects]
     self.spots = [i.final['strong'] for i in self.final_objects]
     self.mos = [i.final['mos'] for i in self.final_objects]
-
+    if self.params.advanced.integrate_with == 'cctbx':
+      self.h = [i.final['sph'] for i in self.final_objects]
+      self.s = [i.final['sih'] for i in self.final_objects]
+      self.a = [i.final['spa'] for i in self.final_objects]
+    else:
+      self.s = [0]
+      self.h = [0]
+      self.a = [0]
 
   def grid_search_heatmap(self):
 
@@ -185,21 +187,12 @@ class Analyzer(object):
     ax2.set_xlabel('Distance from median (mm)', fontsize=15)
     ax2.set_ylabel('No. of images', fontsize=15)
 
-    plt.tight_layout()
+ #   plt.tight_layout()
 
     if self.args.analyze == None:
       bc_file = os.path.join(self.output_dir, 'visualization/beam_center.pdf')
       fig.savefig(bc_file, format='pdf', bbox_inches=0)
 
-    # If selected, output two lists of images: good images and outliers
-    # if output_lists:
-#       with open('{}/beamxy_selection.lst'.format(output_folder), 'w') as f_clean:
-#         for i in clean:
-#           f_clean.write('\n{}'.format(i[0]))
-#
-#       with open('{}/beamxy_outliers.lst'.format(output_folder), 'w') as f_out:
-#         for i in outliers:
-#           f_out.write('\n{}'.format(i[0]))
 
     return np.median(beamX), np.median(beamY)
 
@@ -213,18 +206,20 @@ class Analyzer(object):
     final_table = []
     final_table.append("\n\n{:-^80}\n".format('ANALYSIS OF RESULTS'))
     final_table.append("Total images:          {}".format(len(self.final_objects)))
-    final_table.append("Avg. signal height:    {:<8.3f}  std. dev:    {:<6.2f}"\
-                       "  max: {:<3}  min: {:<3}  consensus: {:<3}"\
-                       "".format(np.mean(self.s), np.std(self.s),
-                                 max(self.s), min(self.s), cons_s))
-    final_table.append("Avg. spot height:      {:<8.3f}  std. dev:    {:<6.2f}"\
-                       "  max: {:<3}  min: {:<3}  consensus: {:<3}"\
-                       "".format(np.mean(self.h), np.std(self.h),
-                                 max(self.h), min(self.h), cons_h))
-    final_table.append("Avg. spot areas:       {:<8.3f}  std. dev:    {:<6.2f}"\
-                      "  max: {:<3}  min: {:<3}  consensus: {:<3}"\
-                      "".format(np.mean(self.a), np.std(self.a),
-                                max(self.a), min(self.a), cons_a))
+
+    if self.params.advanced.integrate_with == 'cctbx':
+      final_table.append("Avg. signal height:    {:<8.3f}  std. dev:    {:<6.2f}"\
+                         "  max: {:<3}  min: {:<3}  consensus: {:<3}"\
+                         "".format(np.mean(self.s), np.std(self.s),
+                                   max(self.s), min(self.s), cons_s))
+      final_table.append("Avg. spot height:      {:<8.3f}  std. dev:    {:<6.2f}"\
+                         "  max: {:<3}  min: {:<3}  consensus: {:<3}"\
+                         "".format(np.mean(self.h), np.std(self.h),
+                                   max(self.h), min(self.h), cons_h))
+      final_table.append("Avg. spot areas:       {:<8.3f}  std. dev:    {:<6.2f}"\
+                        "  max: {:<3}  min: {:<3}  consensus: {:<3}"\
+                        "".format(np.mean(self.a), np.std(self.a),
+                                  max(self.a), min(self.a), cons_a))
     final_table.append("Avg. resolution:       {:<8.3f}  std. dev:    {:<6.2f}"\
                        "  lowest: {:<6.3f}  highest: {:<6.3f}"\
                       "".format(np.mean(self.res), np.std(self.res),
@@ -235,7 +230,10 @@ class Analyzer(object):
                       "".format(np.mean(self.mos), np.std(self.mos)))
 
     if len(self.final_objects) > 1:
-      self.grid_search_heatmap()
+      if ( self.params.advanced.integrate_with == 'cctbx' and
+             self.params.cctbx.grid_search.type != None
+          ):
+        self.grid_search_heatmap()
       med_beamX, med_beamY = self.plot_beam_centers()
       final_table.append("Median Beam Center:    X = {:<4.2f}, Y = {:<4.2f}"\
                          "".format(med_beamX, med_beamY))
@@ -373,9 +371,10 @@ class Analyzer(object):
     summary.append('raw images not integrated:           {}'\
                    ''.format(len(not_int_objects)))
 
-    prefilter_fail_objects = [i for i in self.all_objects if i.fail == 'failed prefilter']
-    summary.append('images failed prefilter:             {}'\
-                   ''.format(len(prefilter_fail_objects)))
+    if self.params.advanced.integrate_with == 'cctbx':
+      prefilter_fail_objects = [i for i in self.all_objects if i.fail == 'failed prefilter']
+      summary.append('images failed prefilter:             {}'\
+                     ''.format(len(prefilter_fail_objects)))
 
     final_images = sorted(self.final_objects, key=lambda i: i.final['mos'])
     summary.append('final integrated pickles:            {}'\
@@ -415,7 +414,7 @@ class Analyzer(object):
           for obj in not_int_objects:
             nif.write('{}\n'.format(obj.conv_img))
 
-      if len(prefilter_fail_objects) > 0:
+      if self.params.advanced.integrate_with == 'cctbx' and len(prefilter_fail_objects) > 0:
         with open(prefilter_fail_file, 'w') as pff:
           for obj in prefilter_fail_objects:
             pff.write('{}\n'.format(obj.conv_img))
@@ -427,8 +426,6 @@ class Analyzer(object):
         with open(int_images_file, 'w') as ipf:
           for obj in final_images:
             ipf.write('{}\n'.format(obj.final['img']))
-
-
 
 
   def make_prime_input(self):
