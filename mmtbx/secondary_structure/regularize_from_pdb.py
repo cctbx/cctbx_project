@@ -333,18 +333,6 @@ master_phil = iotbx.phil.parse("""
 
   }
   control {
-      multiprocessing = *multiprocessing
-        .type = choice
-        .short_caption = multiprocessing type
-        .help = Only multiprocessing (single machine) supported for now
-      queue_run_command = None
-        .type = str
-        .short_caption = Queue run command
-        .help = run command for queue jobs (not supported). For example qsub.
-      nproc = 1
-        .type = int
-        .short_caption = Number of processors
-        .help = Number of processors to use
       resolve_size = None
         .type = str
         .help = "Size of resolve to use. "
