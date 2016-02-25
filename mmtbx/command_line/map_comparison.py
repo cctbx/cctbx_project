@@ -49,7 +49,7 @@ options
 {
   resolution_factor = 0.25
     .type = float
-    .short_caption = Resolution factor
+    .short_caption = Resolution gridding factor
     .help = Determines grid spacing in map
 }
 """, process_includes=True)
@@ -381,6 +381,11 @@ def validate_params(params):
         elif (label_phil not in labels):
           raise Sorry('%s does not exist in %s' %
                       (label_phil, maps[i].file_name))
+
+  # check for valid resolution gridding
+  if (params.options.resolution_factor < 0.0):
+    raise Sorry(
+      'Please use a positive value for the resolution gridding factor.')
 
   return True
 
