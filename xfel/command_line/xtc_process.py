@@ -46,6 +46,10 @@ xtc_phil_str = '''
     dump_all = False
       .type = bool
       .help = All frames will be saved to cbf format if set to True
+    reindex_strong = False
+      .type = bool
+      .help = If true, after indexing and refinement, re-index the strong reflections with \
+              no outlier rejection
   }
   debug
     .help = Use these flags to track down problematic events that cause unhandled exceptions. \
@@ -172,6 +176,9 @@ xtc_phil_str = '''
     integration_pickle = int-%d-%s.pickle
       .type = str
       .help = Filename for cctbx.xfel-style integration pickle files
+    reindexedstrong_filename = %s_reindexedstrong.pickle
+      .type = str
+      .help = The file name for re-indexed strong reflections
   }
   mp {
     method = *mpi sge
@@ -252,6 +259,7 @@ class InMemScript(DialsProcessScript):
     self.indexed_filename_template             = params.output.indexed_filename
     self.refined_experiments_filename_template = params.output.refined_experiments_filename
     self.integrated_filename_template          = params.output.integrated_filename
+    self.reindexedstrong_filename_template     = params.output.reindexedstrong_filename
 
     # Don't allow the strong reflections to be written unless there are enough to
     # process
@@ -510,6 +518,8 @@ class InMemScript(DialsProcessScript):
       self.params.output.refined_experiments_filename = os.path.join(self.params.output.output_dir, self.refined_experiments_filename_template%("idx-" + s))
     if "%s" in self.integrated_filename_template:
       self.params.output.integrated_filename = os.path.join(self.params.output.output_dir, self.integrated_filename_template%("idx-" + s))
+    if "%s" in self.reindexedstrong_filename_template:
+      self.params.output.reindexedstrong_filename = os.path.join(self.params.output.output_dir, self.reindexedstrong_filename_template%("idx-" + s))
 
     # if border is requested, generate a border only mask
     if self.params.border_mask.border > 0:
@@ -581,6 +591,15 @@ class InMemScript(DialsProcessScript):
       self.debug_file_handle.write(",refine_failed_%d\n"%len(indexed))
       return
 
+    if self.params.dispatch.reindex_strong:
+      try:
+        self.reindex_strong(experiments, observed)
+      except Exception, e:
+        import traceback; traceback.print_exc()
+        print str(e), "event", timestamp
+        self.debug_file_handle.write(",reindexstrong_failed_%d\n"%len(indexed))
+        return
+
     if not self.params.dispatch.integrate:
       self.debug_file_handle.write(",index_ok_%d\n"%len(indexed))
       return
@@ -649,6 +668,29 @@ class InMemScript(DialsProcessScript):
     detector = cspad_img.get_detector()
     for cached_range, panel in zip(self.cached_ranges, detector):
       panel.set_trusted_range(cached_range)
+
+  def reindex_strong(self, experiments, strong):
+    from dials.algorithms.indexing import index_reflections
+    from dials.algorithms.indexing.indexer import indexer_base
+    from dials.array_family import flex
+
+    print "Reindexing strong reflections using refined experimental models and no outlier rejection..."
+
+    exp = experiments[0]
+    reflections = indexer_base.map_spots_pixel_to_mm_rad(strong, exp.detector, exp.scan)
+
+    indexer_base.map_centroids_to_reciprocal_space(
+      reflections, exp.detector, exp.beam, exp.goniometer,)
+
+    reflections['id'] = flex.int(len(reflections), -1)
+    reflections['imageset_id'] = flex.int(len(reflections), 0)
+
+    index_reflections(reflections,
+                      experiments, d_min = None,
+                      tolerance=self.params.indexing.index_assignment.simple.hkl_tolerance)
+    indexed_reflections = reflections.select(reflections.get_flags(reflections.flags.indexed))
+    print "Indexed %d strong reflections out of %d"%(len(indexed_reflections), len(reflections))
+    self.save_reflections(indexed_reflections, self.params.output.reindexedstrong_filename)
 
 if __name__ == "__main__":
   from dials.util import halraiser
