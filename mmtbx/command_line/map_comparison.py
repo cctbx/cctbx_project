@@ -28,20 +28,22 @@ input
     .type = path
     .short_caption = Map 1
     .help = MTZ file containing map
-    .style = file_type:hkl bold input_file
+    .style = file_type:hkl bold input_file process_hkl child:map_labels:mtz_label_1
   mtz_2 = None
     .type = path
     .short_caption = Map 2
     .help = MTZ file containing map
-    .style = file_type:hkl bold input_file
+    .style = file_type:hkl bold input_file process_hkl child:map_labels:mtz_label_2
   mtz_label_1 = None
     .type = str
     .short_caption = Data label
     .help = Data label for complex map coefficients in MTZ file
+    .style = renderer:draw_map_arrays_widget
   mtz_label_2 = None
     .type = str
     .short_caption = Data label
     .help = Data label for complex map coefficients in MTZ file
+    .style = renderer:draw_map_arrays_widget
 }
 options
 {
@@ -196,11 +198,11 @@ def run(args, out=sys.stdout, validated=False):
     m1 = miller.fft_map(
       crystal_gridding=crystal_gridding,
       fourier_coefficients=maps[0].file_server.get_miller_array(
-        params.input.mtz_label_1)).apply_sigma_scaling.real_map_unpadded()
+        params.input.mtz_label_1)).apply_sigma_scaling().real_map_unpadded()
     m2 = miller.fft_map(
       crystal_gridding=crystal_gridding,
       fourier_coefficients=maps[1].file_server.get_miller_array(
-        params.input.mtz_label_2)).apply_sigma_scaling.real_map_unpadded()
+        params.input.mtz_label_2)).apply_sigma_scaling().real_map_unpadded()
 
   # 2 maps
   else:
@@ -261,7 +263,13 @@ def run(args, out=sys.stdout, validated=False):
   s1_dict = create_statistics_dict(s=s1)
   s2_dict = create_statistics_dict(s=s2)
   results = dict()
-  results['map_files'] = (params.input.map_1, params.input.map_2)
+  inputs = list()
+  for attribute in input_attributes:
+    filename = getattr(params.input,attribute)
+    if (filename is not None):
+      inputs.append(filename)
+  assert (len(inputs) == 2)
+  results['map_files'] = inputs
   results['map_statistics'] = (s1_dict, s2_dict)
   results['cc_input_maps'] = cc_input_maps
   results['cc_quantile'] = cc_quantile
@@ -381,8 +389,6 @@ def validate_params(params):
 from libtbx import runtime_utils
 class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
-    # os.mkdir(self.output_dir)
-    # os.chdir(self.output_dir)
     result = run(args=self.args, validated=True)
     return result
 
