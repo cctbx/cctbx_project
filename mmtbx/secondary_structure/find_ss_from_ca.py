@@ -249,6 +249,7 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
         # add on a residue...
         cc.append_residue_group(r.detached_copy())
         last_resseq=r.resseq_as_int()
+      new_hierarchy.reset_atom_i_seqs()
       new_model_info=model_info(hierarchy=new_hierarchy,info=deepcopy(info))
       model_list.append(new_model_info)
       new_model_info.info['chain_number']=len(model_list)
@@ -353,7 +354,7 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
         nn=resid_offset*((resid+resid_offset-1)//resid_offset)
         if nn-resid<2: nn+=resid_offset
         resid=nn
-
+  new_hierarchy.reset_atom_i_seqs()
   if trim_side_chains:
     atom_selection=\
       "name ca or name c or name o or name n or (name cb and not resname gly)"
