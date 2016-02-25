@@ -4,11 +4,11 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 01/12/2016
-Description : Single-image IOTA module. Version 2.24
+Last Changed: 02/24/2016
+Description : Single-image IOTA module. Version 2.31
 '''
 
-iota_version = '2.25'
+iota_version = '2.31'
 help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 
@@ -29,7 +29,7 @@ def run_one_image(image, init):
 
   # Import image
   single_image = img.SingleImage(image, init, verbose=True)
-  img_object = single_image.convert_image()
+  img_object = single_image.import_image()
 
   # Exit if the image does not have diffraction
   if img_object.fail == 'failed triage':

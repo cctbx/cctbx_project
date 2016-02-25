@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 02/05/2015
+Last Changed: 02/24/2015
 Description : Runs cctbx.xfel integration module either in grid-search or final
               integration mode. Has options to output diagnostic visualizations.
               Includes selector class for best integration result selection
@@ -17,6 +17,66 @@ import numpy as np
 import iota_vis_integration as viz
 import prime.iota.iota_misc as misc
 from libtbx import easy_pickle, easy_run
+
+class Empty: pass
+
+class Triage(object):
+  """ Currently only runs a single DISTL instance with default parameters and accepts or
+      rejects an image based on number of spots found. In the works: a crude, wide, sparse
+      grid search to establish starting spotfinding parameters.
+  """
+
+  def __init__(self,
+               img,
+               gain,  # Currently not used by DISTL, how awkward!
+               params):
+    self.img = img
+    self.params = params
+
+  def triage_image(self):
+    """ Performs a quick DISTL spotfinding without grid search.
+    """
+
+    import spotfinder
+    from spotfinder.command_line.signal_strength import master_params as sf_params
+    from spotfinder.applications.wrappers import DistlOrganizer
+
+    sf_params = sf_params.extract()
+    sf_params.distl.image = self.img
+
+    E = Empty()
+    E.argv=['Empty']
+    E.argv.append(sf_params.distl.image)
+
+    selected_output = []
+    total_output = []
+    bragg_spots = []
+    spotfinding_log = ['{}\n'.format(self.img)]
+
+    # set spotfinding parameters for DISTL spotfinder
+    sf_params.distl.minimum_spot_area = self.params.cctbx.grid_search.area_median
+    sf_params.distl.minimum_spot_height = self.params.cctbx.grid_search.height_median
+    sf_params.distl.minimum_signal_height = int(self.params.cctbx.grid_search.height_median / 2)
+
+    # run DISTL spotfinder
+    with misc.Capturing() as junk_output:
+      Org = DistlOrganizer(verbose = False, argument_module=E,
+                           phil_params=sf_params)
+
+      Org.printSpots()
+
+    # Extract relevant spotfinding info & make selection
+    for frame in Org.S.images.keys():
+      Bragg_spots = Org.S.images[frame]['N_spots_inlier']
+
+    if Bragg_spots >= self.params.image_triage.min_Bragg_peaks:
+      log_info = 'ACCEPTED! {} good Bragg peaks'.format(Bragg_spots)
+      status = None
+    else:
+      log_info = 'REJECTED!'
+      status = 'failed triage'
+
+    return status, log_info
 
 
 class Integrator(object):
@@ -318,9 +378,6 @@ class Selector(object):
                   if j[0] <= len(sorted_entries) * 0.25]
         sub_spots = [sp['strong'] for sp in subset]
         self.best.update(subset[np.argmax(sub_spots)])
-
-
-
 
         cell = '{:>8.2f}, {:>8.2f}, {:>8.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}'\
                  ''.format(self.best['a'], self.best['b'], self.best['c'],

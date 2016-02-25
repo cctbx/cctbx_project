@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 02/05/2015
+Last Changed: 02/24/2015
 Description : Runs DIALS spotfinding, indexing, refinement and integration
               modules. So far, only spotfinding works. This is very much a work
               in progress
@@ -13,11 +13,12 @@ import os
 import sys
 import prime.iota.iota_misc as misc
 from iotbx.phil import parse
+from dials.array_family import flex
 
 # TEMPORARY: The settings in the phil_scope will eventually be constructed from
 # settings in IOTA, reasonable defaults and an optional *.phil file
 phil_scope = parse('''
-  verbosity = 1
+  verbosity = 10
     .type = int(value_min=0)
     .help = "The verbosity level"
 
@@ -67,18 +68,71 @@ phil_scope = parse('''
 
 ''', process_includes=True)
 
+
+class Triage(object):
+  """ Performs quick spotfinding (with mostly defaults) and determines if the number of
+      found reflections is above the minimum, and thus if the image should be accepted
+      for further processing.
+  """
+
+  def __init__(self, img, gain, params):
+    """ Initialization and data read-in
+    """
+    from dxtbx.datablock import DataBlockFactory
+
+    self.gain = gain
+    self.params = params
+
+    # Read settings from the DIALS target (.phil) file
+    # If none is provided, use default settings (and may God have mercy)
+    if self.params.dials.target != None:
+      with open(self.params.dials.target, 'r') as settings_file:
+        settings_file_contents = settings_file.read()
+      settings = parse(settings_file_contents)
+      current_phil = phil_scope.fetch(sources=[settings])
+      self.phil = current_phil.extract()
+    else:
+      self.phil = phil_scope.extract()
+
+    # Convert raw image into single-image datablock
+    with misc.Capturing() as junk_output:
+      self.datablock = DataBlockFactory.from_filenames([img])[0]
+
+  def triage_image(self):
+    """ Perform triage by running spotfinding and analyzing results
+    """
+
+    # Set spotfinding params
+    self.phil.spotfinder.threshold.xds.global_threshold = self.params.dials.global_threshold
+    self.phil.spotfinder.threshold.xds.gain = self.gain
+
+    # Perform spotfinding
+    observed = flex.reflection_table.from_observations(self.datablock, self.phil)
+
+    # Triage the image
+    if len(observed) >= self.params.image_triage.min_Bragg_peaks:
+      log_info = 'ACCEPTED! {} observed reflections.'.format(len(observed))
+      status = None
+    else:
+      log_info = 'REJECTED!'
+      status = 'failed triage'
+
+    return status, log_info
+
+
 class Integrator(object):
   """ A class for indexing, integration, etc. using DIALS modules """
 
   def __init__(self,
-               source_image=None,
-               object_folder=None,
+               source_image,
+               object_folder,
+               final_folder,
+               final_filename,
+               final,
                gain = 0.32,
                params=None):
     '''Initialise the script.'''
-    from dials.util.options import OptionParser
     from dxtbx.datablock import DataBlockFactory
-    from dials.array_family import flex
 
     self.params = params
 
@@ -93,22 +147,42 @@ class Integrator(object):
     else:
       self.phil = phil_scope.extract()
 
-    # Create the parser
-    self.parser = OptionParser(
-      phil=current_phil,
-      read_datablocks=True,
-      read_datablocks_from_images=True)
+    # Create the parser - probably don't need!
+#     from dials.util.options import OptionParser
+#     self.parser = OptionParser(
+#       phil=current_phil,
+#       read_datablocks=True,
+#       read_datablocks_from_images=True)
 
+    # Set general file-handling settings
+    file_basename = os.path.basename(source_image).split('.')[0]
+    self.phil.output.datablock_filename = "{}/{}.json".format(object_folder, file_basename)
+    self.phil.output.indexed_filename = "{}/{}_indexed.pickle".format(object_folder, file_basename)
+    self.phil.output.strong_filename = "{}/{}_strong.pickle".format(object_folder, file_basename)
+    self.phil.output.refined_experiments_filename = "{}/{}_refined_experiments.json".format(object_folder, file_basename)
+    self.phil.output.integrated_filename = "{}/{}_integrated.pickle".format(object_folder, file_basename)
+    self.phil.output.profile_filename = "{}/{}_profile.phil".format(object_folder, file_basename)
+    self.phil.output.integration_pickle = final_filename
+    self.int_log = "{}/int_{}.log".format(final_folder, file_basename)
 
     self.img = [source_image]
     self.obj_base = object_folder
     self.gain = gain
+    self.fail = None
+    self.frame = None
+    self.final = final
+    self.final['final'] = final_filename
     with misc.Capturing() as junk_output:
       self.datablock = DataBlockFactory.from_filenames(self.img)[0]
     self.obj_filename = "int_{}".format(os.path.basename(self.img[0]))
 
   def find_spots(self):
-    from dials.array_family import flex
+
+    # Set spotfinding params (NEED TO SCREEN OR DETERMINE)
+    self.phil.spotfinder.threshold.xds.global_threshold = self.params.dials.global_threshold
+    self.phil.spotfinder.threshold.xds.gain = self.gain
+
+    # Perform spotfinding
     self.observed = flex.reflection_table.from_observations(self.datablock, self.phil)
 
   def index(self):
@@ -121,6 +195,13 @@ class Integrator(object):
     # Necessary settings for stills processing
     self.phil.refinement.parameterisation.crystal.scan_varying = False
     self.phil.indexing.scan_range=[]
+
+    # Check if unit cell / space group have been provided
+    if self.phil.indexing.known_symmetry.space_group == None or \
+       self.phil.indexing.known_symmetry.unit_cell == None:
+      self.phil.indexing.method = 'fft1d'
+    else:
+      self.phil.indexing.method == 'real_space_grid_search'
 
     # Run indexing
     idxr = indexer_base.from_parameters(self.observed, imagesets, params=self.phil)
@@ -143,7 +224,6 @@ class Integrator(object):
     # Get integrator from input params
     from dials.algorithms.profile_model.factory import ProfileModelFactory
     from dials.algorithms.integration.integrator import IntegratorFactory
-    from dials.array_family import flex
 
     # Compute the profile model
     self.experiments = ProfileModelFactory.create(self.phil, self.experiments, self.indexed)
@@ -181,53 +261,20 @@ class Integrator(object):
     rmsd_integrated, _ = calc_2D_rmsd_and_displacements(self.integrated)
     crystal_model = self.experiments.crystals()[0]
 
-  def write_integration_pickles(self, callback=None):
+  def write_integration_pickles(self):
+    ''' This is streamlined vs. the code in stills_indexer, since the filename
+        convention is set up upstream.
+    '''
+    from libtbx import easy_pickle
+    from xfel.command_line.frame_extractor import ConstructFrame
 
-    try:
-      picklefilename = self.phil.output.integration_pickle
-    except AttributeError:
-      return
-
-    if self.phil.output.integration_pickle is not None:
-
-      from libtbx import easy_pickle
-      from xfel.command_line.frame_extractor import ConstructFrame
-      from dials.array_family import flex
-
-      # Split everything into separate experiments for pickling
-      # Is NOT NECESSARY as only a single experiment is always present. Need to
-      # work on this later
-      for e_number in xrange(len(self.experiments)):
-        experiment = self.experiments[e_number]
-        e_selection = flex.bool( [r['id']==e_number for r in self.integrated])
-        reflections = self.integrated.select(e_selection)
-
-        frame = ConstructFrame(reflections, experiment).make_frame()
-        frame["pixel_size"] = experiment.detector[0].get_pixel_size()[0]
-
-        try:
-          # if the data was a file on disc, get the path
-          event_timestamp = os.path.splitext(self.experiments[0].imageset.paths()[0])[0]
-        except NotImplementedError:
-          # if the data is in memory only, check if the reader set a timestamp on the format object
-          event_timestamp = experiment.imageset.reader().get_format(0).timestamp
-        event_timestamp = os.path.basename(event_timestamp)
-        if event_timestamp.find("shot-")==0:
-           event_timestamp = os.path.splitext(event_timestamp)[0] # micromanage the file name
-        if hasattr(self.phil.output, "output_dir"):
-          outfile = os.path.join(self.phil.output.output_dir, self.phil.output.integration_pickle%(event_timestamp,e_number))
-        else:
-          outfile = os.path.join(os.path.dirname(self.phil.output.integration_pickle), self.phil.output.integration_pickle%(event_timestamp,e_number))
-
-        if callback is not None:
-          callback(self.phil, outfile, frame)
-
-        easy_pickle.dump(outfile, frame)
+    self.frame = ConstructFrame(self.integrated, self.experiments[0]).make_frame()
+    self.frame["pixel_size"] = self.experiments[0].detector[0].get_pixel_size()[0]
+    easy_pickle.dump(self.phil.output.integration_pickle, self.frame)
 
 
   def process_reference(self, reference):
     ''' Load the reference spots. - from xfel_process.py'''
-    from dials.array_family import flex
     from libtbx.utils import Sorry
     if reference is None:
       return None, None
@@ -260,16 +307,119 @@ class Integrator(object):
 
 
   def run(self):
-    with misc.Capturing() as output:
-      self.find_spots()
-      self.index()
-      self.refine()
-      self.integrate()
 
-    with open('test.txt', 'w') as tf:
+    log_entry = ['\n']
+    with misc.Capturing() as output:
+      e = None
+      try:
+        print "{:-^100}\n".format(" SPOTFINDING: ")
+        self.find_spots()
+        print "{:-^100}\n\n".format(" FOUND {} SPOTS: ".format(len(self.observed)))
+      except Exception, e:
+        if hasattr(e, "classname"):
+          print e.classname, "for %s:"%self.img[0],
+          error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
+        else:
+          print "Spotfinding error for %s:"%self.img[0],
+          error_message = "{}".format(str(e).replace('\n', ' ')[:50])
+        print e
+        self.fail = 'failed spotfinding'
+
+      if self.fail == None:
+        try:
+          print "{:-^100}\n".format(" INDEXING: ")
+          self.index()
+          print "{:-^100}\n\n".format(" USED {} INDEXED REFLECTIONS: ".format(len(self.indexed)))
+        except Exception, e:
+          if hasattr(e, "classname"):
+            print e.classname, "for %s:"%self.img[0],
+            error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
+          else:
+            print "Indexing error for %s:"%self.img[0],
+            error_message = "{}".format(str(e).replace('\n', ' ')[:50])
+          print e
+          self.fail = 'failed indexing'
+
+      if self.fail == None:
+        try:
+          self.refine()
+          print "{:-^100}\n".format(" INTEGRATING: ")
+          self.integrate()
+          print "{:-^100}\n\n".format(" FINAL {} INTEGRATED REFLECTIONS: ".format(len(self.integrated)))
+        except Exception, e:
+          if hasattr(e, "classname"):
+            print e.classname, "for %s:"%self.img[0],
+            error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
+          else:
+            print "Integration error for %s:"%self.img[0],
+            error_message = "{}".format(str(e).replace('\n', ' ')[:50])
+          print e
+          self.fail = 'failed integration'
+
+    with open(self.int_log, 'w') as tf:
+
       for i in output:
-        tf.write('\n{}'.format(i))
-      tf.write('\n\n{} {} {}'.format(len(self.observed), len(self.indexed), len(self.integrated)))
+        if 'cxi_version' not in i:
+          tf.write('\n{}'.format(i))
+
+    if self.fail == None:
+      # Collect information
+      obs = self.frame['observations'][0]
+      Bravais_lattice = self.frame['pointgroup']
+      cell = obs.unit_cell().parameters()
+      res = obs.d_min()
+
+      # Calculate number of spots w/ high I / sigmaI
+      Is = obs.data()
+      sigmas = obs.sigmas()
+      I_over_sigI = Is / sigmas
+      spots = len(Is)
+      strong_spots = len([i for i in I_over_sigI if i >= self.params.cctbx.selection.min_sigma])
+
+      # Mosaicity parameters
+      mosaicity = round((self.frame.get('ML_half_mosaicity_deg', [0])[0]), 6)
+      dom_size = self.frame.get('ML_domain_size_ang', [0])[0]
+      ewald_proximal_volume = self.frame.get('ewald_proximal_volume', [0])[0]
+
+      # Assemble output for log file and/or integration result file
+      p_cell = "{:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}, {:>6.2f}"\
+             "".format(cell[0], cell[1], cell[2], cell[3], cell[4], cell[5])
+
+      int_status = 'RES: {:<4.2f}  NSREF: {:<4}  SG: {:<5}  CELL: {}'\
+                   ''.format(res, strong_spots, Bravais_lattice, p_cell)
+
+      int_results = {'sg':Bravais_lattice, 'a':cell[0], 'b':cell[1], 'c':cell[2],
+                      'alpha':cell[3], 'beta':cell[4], 'gamma':cell[5],
+                      'strong':strong_spots, 'res':res, 'mos':mosaicity,
+                      'epv':ewald_proximal_volume, 'info':int_status,
+                      'ok':True}
+
+      # Generate log summary of integration results
+      log_entry.append('{:^9}{:^8}{:^55}{:^12}{:^14}{:^14}'\
+                       ''.format('RES', 'SG.', 'UNIT CELL', 'SPOTS', 'MOS', 'EPV'))
+      log_entry.append('{:-^4}{:-^4}{:-^4}{:-^9}{:-^8}{:-^55}{:-^16}{:-^14}{:-^14}'\
+                       ''.format('', '', '', '', '','', '', '', ''))
+      log_entry.append('\n{:^9.2f}{:^8}{:^55}{:^12}{:^14.8f}{:^14.8f}\n'\
+                    ''.format(res, Bravais_lattice, p_cell, strong_spots,
+                              mosaicity, ewald_proximal_volume))
+      self.final.update(int_results)
+
+    else:
+      # Generate log summary of integration results
+      if 'spotfinding' in self.fail:
+        step_id = 'SPOTFINDING'
+      elif 'indexing' in self.fail:
+        step_id = 'INDEXING'
+      elif 'integration' in self.fail:
+        step_id = 'INTEGRATION'
+      log_entry.append('\n {} FAILED - {}'.format(step_id, e))
+      int_status = 'not integrated -- {}'.format(e)
+      int_results = {'info':int_status}
+      self.final['final'] = None
+
+    log_entry = "\n".join(log_entry)
+
+    return self.fail, self.final, log_entry
 
 # ============================================================================ #
 

@@ -3,13 +3,14 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 01/06/2016
+Last Changed: 02/24/2016
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
-              cxi_image2pickle.py by Aaron Brewster.) If selected, checks image
-              for diffraction. Creates instances of integrator and selector
-              objects.
+              cxi_image2pickle.py by Aaron Brewster.) If selected, estimates gain
+              (from dials.estimate_gain by Richard Gildea). If selected, checks image
+              for diffraction. Creates and runs instances of integrator (and selector,
+              in case of cctbx.xfel) objects.
 '''
 
 import os
@@ -25,8 +26,6 @@ from xfel.cxi.cspad_ana.cspad_tbx import dpack, evt_timestamp
 import prime.iota.iota_misc as misc
 import prime.iota.iota_vis_integration as viz
 
-class Empty: pass
-
 class SingleImage(object):
 
   def __init__(self, img, init, verbose=True, imported_grid=None):
@@ -39,7 +38,6 @@ class SingleImage(object):
     self.raw_img = img[2]
     self.conv_img = img[2]
     self.img_index = img[0]
-    self.img_type = None
     self.status = None
     self.fail = None
     self.Bragg = 0
@@ -64,6 +62,7 @@ class SingleImage(object):
     self.fin_file = None
     self.viz_path = None
 
+    # Generate integration result dictionary for cctbx.xfel or DIALS
     if self.params.advanced.integrate_with == 'cctbx':
       if self.params.cctbx.grid_search.type == None:
         self.params.cctbx.grid_search.area_range = 0
@@ -76,13 +75,14 @@ class SingleImage(object):
         self.hrange = self.params.cctbx.grid_search.height_range
         self.arange = self.params.cctbx.grid_search.area_range
       self.grid_points = []
-      self.grid, self.final = self.generate_grid()
+      self.generate_grid()
     elif self.params.advanced.integrate_with == 'dials':
-      self.final = {'img':self.conv_img, 'sih':999, 'sph':0, 'spa':0, 'a':0,
-                    'b':0, 'c':0, 'alpha':0, 'beta':0, 'gamma':0, 'sg':'',
-                    'strong':0, 'res':0, 'mos':0, 'epv':0, 'info':'',
+      self.final = {'img':self.conv_img, 'a':0, 'b':0, 'c':0, 'alpha':0, 'beta':0,
+                    'gamma':0, 'sg':'','strong':0, 'res':0, 'mos':0, 'epv':0, 'info':'',
                     'final':None, 'program':'dials'}
 
+
+# ============================== SELECTION-ONLY FUNCTIONS ============================== #
 
   def import_int_file(self, init):
     """ Replaces path settings in imported image object with new settings
@@ -105,24 +105,24 @@ class SingleImage(object):
             os.path.basename(self.conv_img).split('.')[0] + "_int.pickle"))
     self.final['final'] = self.fin_file
     self.final['img'] = self.conv_img
-    self.viz_path = misc.make_image_path(self.raw_img, self.input_base, self.viz_base)
+    self.viz_path = misc.make_image_path(self.conv_img, self.input_base, self.viz_base)
     self.viz_file = os.path.join(self.viz_path,
                     os.path.basename(self.conv_img).split('.')[0] + "_int.png")
 
-    # Generate output folders and files:
-    # Grid search subfolder or final integration subfolder
-    if not os.path.isdir(self.obj_path):
-      os.makedirs(self.obj_path)
-    if not os.path.isdir(self.fin_path):
-      os.makedirs(self.fin_path)
+    # Create actual folders (if necessary)
+    try:
+      if not os.path.isdir(self.obj_path):
+        os.makedirs(self.obj_path)
+      if not os.path.isdir(self.fin_path):
+        os.makedirs(self.fin_path)
+      if not os.path.isdir(self.viz_path):
+        os.makedirs(self.viz_path)
+    except OSError:
+      pass
 
     # Grid search / integration log file
     self.int_log = os.path.join(self.fin_path,
                           os.path.basename(self.conv_img).split('.')[0] + '.log')
-
-    # Visualization subfolder
-    if not os.path.isdir(self.viz_path):
-        os.makedirs(self.viz_path)
 
     # Reset status to 'grid search' to pick up at selection (if no fail)
     if self.fail == None:
@@ -130,46 +130,19 @@ class SingleImage(object):
 
     return self
 
+  def determine_gs_result_file(self):
+    """ For 'selection-only' cctbx.xfel runs, determine where the image objects are """
+    if self.params.cctbx.selection.select_only.grid_search_path != None:
+      obj_path = os.path.abspath(self.params.cctbx.selection.select_only.grid_search_path)
+    else:
+      run_number = int(os.path.basename(self.int_base)) - 1
+      obj_path = "{}/integration/{:03d}/image_objects"\
+                "".format(os.path.abspath(os.curdir), run_number)
+    gs_result_file = os.path.join(obj_path, os.path.basename(self.obj_file))
+    return gs_result_file
 
-  def generate_grid(self):
-    """ Function to generate grid search parameters for this image object """
 
-    gs_block = []
-    h_min = self.hmed - self.hrange
-    h_max = self.hmed + self.hrange
-    a_min = self.amed - self.arange
-    a_max = self.amed + self.arange
-    h_std = self.params.cctbx.grid_search.height_range
-    a_std = self.params.cctbx.grid_search.area_range
-
-    for spot_area in range(a_min, a_max + 1):
-      for spot_height in range (h_min, h_max + 1):
-        if self.params.cctbx.grid_search.sig_height_search:
-          if spot_height >= 1 + h_std:
-            sigs = range(spot_height - h_std, spot_height + 1)
-          elif spot_height < 1 + h_std:
-            sigs = range(1, spot_height + 1)
-          elif spot_height == 1:
-            sigs = [1]
-        else:
-          sigs = [spot_height]
-
-        for sig_height in sigs:
-          if (spot_area, spot_height, sig_height) not in self.grid_points:
-            self.grid_points.append((spot_area, spot_height, sig_height))
-            gs_block.append({'sih':sig_height, 'sph':spot_height,
-                             'spa':spot_area, 'a':0, 'b':0, 'c':0,
-                             'alpha':0, 'beta':0, 'gamma':0, 'sg':'',
-                             'strong':0, 'res':0, 'mos':0,
-                             'epv':0, 'info':'', 'ok':True})
-
-    int_line = {'img':self.conv_img, 'sih':666, 'sph':0, 'spa':0, 'a':0, 'b':0,
-                'c':0, 'alpha':0, 'beta':0, 'gamma':0, 'sg':'', 'strong':0,
-                'res':0, 'mos':0, 'epv':0, 'info':'', 'final':None,
-                'program':'cctbx'}
-
-    return gs_block, int_line
-
+# =============================== IMAGE IMPORT FUNCTIONS =============================== #
 
   def load_image(self):
     """ Reads raw image file and extracts data for conversion into pickle
@@ -197,20 +170,11 @@ class SingleImage(object):
 
       if scan is None:
         timestamp = None
-        if abs(beam_x - beam_y) <= 0.1 or self.params.image_conversion.square_mode == "None":
-          img_type = 'converted'
-        else:
-          img_type = 'unconverted'
+        img_type = 'pickle'
       else:
+        img_type = 'raw'
         msec, sec = math.modf(scan.get_epochs()[0])
         timestamp = evt_timestamp((sec,msec))
-
-#       if self.params.image_conversion.beamstop != 0 or\
-#          self.params.image_conversion.beam_center.x != 0 or\
-#          self.params.image_conversion.beam_center.y != 0 or\
-#          self.params.image_conversion.rename_pickle_prefix != 'Auto' or\
-#          self.params.image_conversion.rename_pickle_prefix != None:
-#         img_type = 'unconverted'
 
       # Assemble datapack
       data = dpack(data=raw_data,
@@ -226,72 +190,105 @@ class SingleImage(object):
 
       if scan is not None:
         osc_start, osc_range = scan.get_oscillation()
-        img_type = 'unconverted'
         if osc_start != osc_range:
           data['OSC_START'] = osc_start
           data['OSC_RANGE'] = osc_range
           data['TIME'] = scan.get_exposure_times()[0]
-
-      # Estimate gain (or set gain to 1.00 if cannot calculate)
-      # Cribbed from estimate_gain.py by Richard Gildea
-      if self.params.advanced.estimate_gain:
-        try:
-          from dials.algorithms.image.threshold import KabschDebug
-          raw_data = [raw_data]
-
-          gain_value = 1
-          kernel_size=(10,10)
-          gain_map = [flex.double(raw_data[i].accessor(), gain_value)
-                      for i in range(len(loaded_img.get_detector()))]
-          mask = loaded_img.get_mask()
-          min_local = 0
-
-          # dummy values, shouldn't affect results
-          nsigma_b = 6
-          nsigma_s = 3
-          global_threshold = 0
-
-          kabsch_debug_list = []
-          for i_panel in range(len(loaded_img.get_detector())):
-            kabsch_debug_list.append(
-              KabschDebug(
-                raw_data[i_panel].as_double(), mask[i_panel], gain_map[i_panel],
-                kernel_size, nsigma_b, nsigma_s, global_threshold, min_local))
-
-          dispersion = flex.double()
-          for kabsch in kabsch_debug_list:
-            dispersion.extend(kabsch.coefficient_of_variation().as_1d())
-
-          sorted_dispersion = flex.sorted(dispersion)
-          from libtbx.math_utils import nearest_integer as nint
-
-          q1 = sorted_dispersion[nint(len(sorted_dispersion)/4)]
-          q2 = sorted_dispersion[nint(len(sorted_dispersion)/2)]
-          q3 = sorted_dispersion[nint(len(sorted_dispersion)*3/4)]
-          iqr = q3-q1
-
-          inlier_sel = (sorted_dispersion > (q1 - 1.5*iqr)) & (sorted_dispersion < (q3 + 1.5*iqr))
-          sorted_dispersion = sorted_dispersion.select(inlier_sel)
-          self.gain = sorted_dispersion[nint(len(sorted_dispersion)/2)]
-        except IndexError:
-          self.gain = 1.0
-      else:
-        self.gain = 1.0
-
     else:
       data = None
+
+    # Estimate gain (or set gain to 1.00 if cannot calculate)
+    # Cribbed from estimate_gain.py by Richard Gildea
+    if self.params.advanced.estimate_gain:
+      try:
+        from dials.algorithms.image.threshold import KabschDebug
+        raw_data = [raw_data]
+
+        gain_value = 1
+        kernel_size=(10,10)
+        gain_map = [flex.double(raw_data[i].accessor(), gain_value)
+                    for i in range(len(loaded_img.get_detector()))]
+        mask = loaded_img.get_mask()
+        min_local = 0
+
+        # dummy values, shouldn't affect results: REPLACE WITH SETTINGS!
+        nsigma_b = 6
+        nsigma_s = 3
+        global_threshold = 0
+
+        kabsch_debug_list = []
+        for i_panel in range(len(loaded_img.get_detector())):
+          kabsch_debug_list.append(
+            KabschDebug(
+              raw_data[i_panel].as_double(), mask[i_panel], gain_map[i_panel],
+              kernel_size, nsigma_b, nsigma_s, global_threshold, min_local))
+
+        dispersion = flex.double()
+        for kabsch in kabsch_debug_list:
+          dispersion.extend(kabsch.coefficient_of_variation().as_1d())
+
+        sorted_dispersion = flex.sorted(dispersion)
+        from libtbx.math_utils import nearest_integer as nint
+
+        q1 = sorted_dispersion[nint(len(sorted_dispersion)/4)]
+        q2 = sorted_dispersion[nint(len(sorted_dispersion)/2)]
+        q3 = sorted_dispersion[nint(len(sorted_dispersion)*3/4)]
+        iqr = q3-q1
+
+        inlier_sel = (sorted_dispersion > (q1 - 1.5*iqr)) & (sorted_dispersion < (q3 + 1.5*iqr))
+        sorted_dispersion = sorted_dispersion.select(inlier_sel)
+        self.gain = sorted_dispersion[nint(len(sorted_dispersion)/2)]
+      except IndexError:
+        self.gain = 1.0
+    else:
+      self.gain = 1.0
+
 
     return data, img_type
 
 
+  def generate_grid(self):
+    """ Function to generate grid search parameters for this image object
+        CCTBX.XFEL ONLY """
+
+    self.grid = []
+    h_min = self.hmed - self.hrange
+    h_max = self.hmed + self.hrange
+    a_min = self.amed - self.arange
+    a_max = self.amed + self.arange
+    h_std = self.params.cctbx.grid_search.height_range
+    a_std = self.params.cctbx.grid_search.area_range
+
+    for spot_area in range(a_min, a_max + 1):
+      for spot_height in range (h_min, h_max + 1):
+        if self.params.cctbx.grid_search.sig_height_search:
+          if spot_height >= 1 + h_std:
+            sigs = range(spot_height - h_std, spot_height + 1)
+          elif spot_height < 1 + h_std:
+            sigs = range(1, spot_height + 1)
+          elif spot_height == 1:
+            sigs = [1]
+        else:
+          sigs = [spot_height]
+
+        for sig_height in sigs:
+          if (spot_area, spot_height, sig_height) not in self.grid_points:
+            self.grid_points.append((spot_area, spot_height, sig_height))
+            self.grid.append({'sih':sig_height, 'sph':spot_height,
+                                  'spa':spot_area, 'a':0, 'b':0, 'c':0,
+                                  'alpha':0, 'beta':0, 'gamma':0, 'sg':'',
+                                  'strong':0, 'res':0, 'mos':0,
+                                  'epv':0, 'info':'', 'ok':True})
+
+    self.final = {'img':self.conv_img, 'sih':0, 'sph':0, 'spa':0, 'a':0, 'b':0,
+                  'c':0, 'alpha':0, 'beta':0, 'gamma':0, 'sg':'', 'strong':0,
+                  'res':0, 'mos':0, 'epv':0, 'info':'', 'final':None,
+                  'program':'cctbx'}
+
   def square_pickle(self, data):
     """ A function to crop the image pickle to a square such that the beam center
         is in the center of image (mostly copied from cxi_image2pickle.py)
-
-        input: data - image data
-
-        output: data - amended image data
-    """
+        CCTBX.XFEL ONLY """
 
     # only one active area is allowed, and it should be the size of the image.
 
@@ -351,15 +348,10 @@ class SingleImage(object):
 
     return data
 
-
   def mask_image(self, data):
     """ Identifies beamstop shadow and sets pixels inside to -2 (to be ignored by
         processing software). Clunky now (merely finds all pixels with intensity
         less than 0.4 * image average intensity), to be refined later.
-
-        input: data - image data
-
-        output: data - modified image data
     """
     img_raw_bytes = data['DATA']
     beamstop = self.params.image_conversion.beamstop
@@ -376,15 +368,24 @@ class SingleImage(object):
     data['DATA'] = img_masked
     return data
 
+  def import_image(self):
+    """ Image conversion:
+          - Writes out data in pickle format (cctbx.xfel only)
+          - Moves beam center into center of image, crops / pads image (cctbx.xfel only)
+          - Adjusts beam center and distance (optional)
+          - Thresholds and masks beamstop shadow (optional)
+    """
 
-  def convert_image(self):
-    """ Converts images into pickle format; crops and masks out beamstop if
-        selected """
-
-    self.status = 'imported'
-    img_data, self.img_type = self.load_image()
+    # Load image
+    img_data, img_type = self.load_image()
+    self.status = 'loaded'
     info = []
 
+    # if DIALS is selected, change image type to skip conversion step
+    if self.params.advanced.integrate_with == 'dials':
+      img_type = 'dials_input'
+
+    # Log initial image information
     self.log_info.append('\n{:-^100}\n'.format(self.raw_img))
     self.log_info.append('Imported image  : {}'.format(self.raw_img))
     self.log_info.append('Parameters      : BEAM_X = {:<4.2f}, BEAM_Y = {:<4.2f}, '\
@@ -396,15 +397,16 @@ class SingleImage(object):
                                             img_data['SIZE2'],
                                             img_data['DISTANCE']))
 
-    if self.params.image_conversion.beamstop != 0 or\
-       self.params.image_conversion.beam_center.x != 0 or\
-       self.params.image_conversion.beam_center.y != 0 or\
-       self.params.image_conversion.distance != 0 or\
-       (str(self.params.image_conversion.rename_pickle_prefix).lower() != "auto" and\
-       self.params.image_conversion.rename_pickle_prefix != None):
-      self.img_type = 'unconverted'
+    # Check if conversion/modification is required and carry them out
+    if (                                               img_type == 'raw' or
+                      self.params.image_conversion.square_mode != "None" or
+        abs(img_data['BEAM_CENTER_X'] - img_data['BEAM_CENTER_Y']) > 0.1 or
+                         self.params.image_conversion.beam_center.x != 0 or
+                         self.params.image_conversion.beam_center.y != 0 or
+                              self.params.image_conversion.beamstop != 0 or
+                              self.params.image_conversion.distance != 0
+        ):
 
-    if self.img_type == 'unconverted':
       # Check for and/or create a converted pickles folder
       try:
         if not os.path.isdir(self.conv_base):
@@ -412,23 +414,22 @@ class SingleImage(object):
       except OSError:
         pass
 
-
       # Generate converted image pickle filename
       if self.params.image_conversion.rename_pickle_prefix != None:
         if str(self.params.image_conversion.rename_pickle_prefix).lower() == "auto":
-          prefix = os.getlogin()
-          suffix = int(os.path.basename(self.conv_base))
+          try:
+            prefix = os.getlogin()
+          except Exception:
+            prefix = 'converted'
         else:
           prefix = self.params.image_conversion.rename_pickle_prefix
-          suffix = int(os.path.basename(self.conv_base))
+        number = int(os.path.basename(self.conv_base))
         self.conv_img = os.path.abspath(os.path.join(self.conv_base,
-                    "{}_{}_{:05d}.pickle".format(prefix, suffix, self.img_index)))
-      else:
+                    "{}_{}_{:05d}.pickle".format(prefix, number, self.img_index)))
+      else:  # This option preserves the input directory structure
         img_path = misc.make_image_path(self.raw_img, self.input_base, self.conv_base)
         self.conv_img = os.path.abspath(os.path.join(img_path,
              os.path.basename(self.raw_img).split('.')[0] + ".pickle"))
-
-        # Make subfolder for converted pickles
         try:
           if not os.path.isdir(img_path):
             os.makedirs(img_path)
@@ -451,6 +452,8 @@ class SingleImage(object):
         img_data = self.square_pickle(img_data)
       if beamstop != 0:
         img_data = self.mask_image(img_data)
+
+      # Log converted image information
       self.log_info.append('Converted image : {}'.format(self.conv_img))
       self.log_info.append('Parameters      : BEAM_X = {:<4.2f}, BEAM_Y = {:<4.2f}, '\
                            'PIXEL_SIZE = {:<8.6f}, IMG_SIZE = {:<4} X {:<4}, '\
@@ -460,15 +463,21 @@ class SingleImage(object):
                                               img_data['SIZE1'],
                                               img_data['SIZE2'],
                                               img_data['DISTANCE']))
-      self.img_type = 'converted'
       self.input_base = self.conv_base
+      self.status = 'converted'
 
       # Save converted image pickle
       ep.dump(self.conv_img, img_data)
 
-    self.status = 'converted'
-    if self.params.image_triage.flag_on and self.status == 'converted':
-      self.fail = self.triage_image()
+    # Triage image (i.e. check for usable diffraction, using selected method)
+    if self.params.image_triage.flag_on:
+      if self.params.advanced.integrate_with == 'cctbx':
+        from prime.iota.iota_cctbx import Triage
+      elif self.params.advanced.integrate_with == 'dials':
+        from prime.iota.iota_dials import Triage
+      triage = Triage(self.conv_img, self.gain, self.params)
+      self.fail, log_entry = triage.triage_image()
+      self.log_info.append(log_entry)
       self.status = 'triaged'
     else:
       self.fail = None
@@ -503,67 +512,11 @@ class SingleImage(object):
       # Save image object to file
       ep.dump(self.obj_file, self)
 
+    self.status = 'imported'
     return self
 
 
-  def triage_image(self):
-    """ Performs a quick DISTL spotfinding without grid search.
-        NOTE: Convert to DIALS spotfinder when ready! (Even for CCTBX runs.)
-    """
-
-    import spotfinder
-    from spotfinder.command_line.signal_strength import master_params as sf_params
-    from spotfinder.applications.wrappers import DistlOrganizer
-
-    sf_params = sf_params.extract()
-    sf_params.distl.image = self.conv_img
-
-    E = Empty()
-    E.argv=['Empty']
-    E.argv.append(sf_params.distl.image)
-
-    selected_output = []
-    total_output = []
-    bragg_spots = []
-    spotfinding_log = ['{}\n'.format(self.conv_img)]
-
-    # set spotfinding parameters for DISTL spotfinder
-    sf_params.distl.minimum_spot_area = self.params.cctbx.grid_search.area_median
-    sf_params.distl.minimum_spot_height = self.params.cctbx.grid_search.height_median
-    sf_params.distl.minimum_signal_height = int(self.params.cctbx.grid_search.height_median / 2)
-
-    # run DISTL spotfinder
-    with misc.Capturing() as junk_output:
-      Org = DistlOrganizer(verbose = False, argument_module=E,
-                           phil_params=sf_params)
-
-      Org.printSpots()
-
-    # Extract relevant spotfinding info & make selection
-    for frame in Org.S.images.keys():
-      self.Bragg = Org.S.images[frame]['N_spots_inlier']
-
-    if self.Bragg >= self.params.image_triage.min_Bragg_peaks:
-      self.log_info.append('ACCEPTED! {} good Bragg peaks'\
-                            ''.format(self.Bragg))
-      status = None
-    else:
-      self.log_info.append('REJECTED')
-      status = 'failed triage'
-
-    return status
-
-
-  def determine_gs_result_file(self):
-    if self.params.cctbx.selection.select_only.grid_search_path != None:
-      obj_path = os.path.abspath(self.params.cctbx.selection.select_only.grid_search_path)
-    else:
-      run_number = int(os.path.basename(self.int_base)) - 1
-      obj_path = "{}/integration/{:03d}/grid_search"\
-                "".format(os.path.abspath(os.curdir), run_number)
-    gs_result_file = os.path.join(obj_path, os.path.basename(self.obj_file))
-    return gs_result_file
-
+# ================================= IMAGE INTEGRATORS ================================== #
 
   def integrate_cctbx(self, tag, grid_point=0, single_image=False):
     """ Runs integration using the Integrator class """
@@ -743,18 +696,25 @@ class SingleImage(object):
          misc.main_log(self.main_log, log_entry)
          misc.main_log(self.main_log, '\n{:-^100}\n'.format(''))
 
-    # For DIALS integration (DOES NOT YET WORK)
+    # For DIALS integration (WORK IN PROGRESS)
     elif self.params.advanced.integrate_with == 'dials':
 
       # Create DIALS integrator object
       from prime.iota.iota_dials import Integrator
       integrator = Integrator(self.conv_img,
                               self.obj_base,
+                              self.fin_base,
+                              self.fin_file,
+                              self.final,
                               self.gain,
                               self.params)
 
       # Run DIALS test
-      integrator.run()
+      self.fail, self.final, int_log = integrator.run()
+      self.log_info.append(int_log)
+      log_entry = "\n".join(self.log_info)
+      misc.main_log(self.main_log, log_entry)
+      misc.main_log(self.main_log, '\n{:-^100}\n'.format(''))
 
     return self
 
