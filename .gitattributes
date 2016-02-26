@@ -1676,6 +1676,7 @@ mmtbx/building/alternate_conformations/tst_shear_conformers.py svneol=native#tex
 mmtbx/building/alternate_conformations/tst_sliding_window.py svneol=native#text/x-python
 mmtbx/building/extend_sidechains.py -text
 mmtbx/building/loop_closure/__init__.py -text
+mmtbx/building/loop_closure/berkeley_ramalyze.py -text
 mmtbx/building/loop_closure/ccd.py -text
 mmtbx/building/loop_closure/starting_conformations.py -text
 mmtbx/building/loop_closure/utils.py -text
