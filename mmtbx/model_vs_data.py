@@ -16,7 +16,6 @@ from cStringIO import StringIO
 from mmtbx import model_statistics
 from libtbx import group_args
 import mmtbx.restraints
-import mmtbx.find_peaks
 import mmtbx.maps
 import mmtbx.masks
 
@@ -35,7 +34,6 @@ class mvd(object):
     self.misc          = None
     self.pdb_file      = None
     self.fmodel        = None
-    self.maps          = None
 
   def collect(self,
               crystal       = None,
@@ -43,15 +41,13 @@ class mvd(object):
               data          = None,
               model_vs_data = None,
               pdb_header    = None,
-              misc          = None,
-              maps          = None):
+              misc          = None):
     if(crystal       is not None): self.crystal       = crystal
     if(models        is not None): self.models        = models
     if(data          is not None): self.data          = data
     if(model_vs_data is not None): self.model_vs_data = model_vs_data
     if(pdb_header    is not None): self.pdb_header    = pdb_header
     if(misc          is not None): self.misc          = misc
-    if(maps          is not None): self.maps          = maps
 
   def get_summary (self) :
     return summarize_results(self)
@@ -174,21 +170,19 @@ class mvd(object):
     print >> log, "  Model_vs_Data:"
     result = [
       "r_work(re-computed)                : %s"%format_value("%-6.4f",self.model_vs_data.r_work).strip(),
-      "r_free(re-computed)                : %s"%format_value("%-6.4f",self.model_vs_data.r_free).strip()]
+      "r_free(re-computed)                : %s"%format_value("%-6.4f",self.model_vs_data.r_free).strip(),
+      "mean phase error estimate (deg)    : %s"%format_value("%-7.2f",self.model_vs_data.mean_phase_error).strip(),
+    ]
+    ml_err = self.model_vs_data.ml_coordinate_error
+    if(ml_err is not None):
+      result.append("ml coordinate error estimate (A)   : %s"%
+        format_value("%-6.2f",ml_err).strip())
     sc = self.model_vs_data.solvent_content_via_mask
     if (sc is not None): sc *= 100
     result.append("solvent_content_estimated_via_mask : %-s %%"
       % format_value("%.1f", sc))
     result = " \n    ".join(result)
     print >> log, "   ", result
-    if(self.maps is not None):
-      print >> log, "    mFo-DFc map: positive and negative peak numbers:"
-      print >> log, "      >  3 sigma: ", self.maps.peaks_plus_3
-      print >> log, "      >  6 sigma: ", self.maps.peaks_plus_6
-      print >> log, "      >  9 sigma: ", self.maps.peaks_plus_9
-      print >> log, "      < -3 sigma: ", self.maps.peaks_minus_3
-      print >> log, "      < -6 sigma: ", self.maps.peaks_minus_6
-      print >> log, "      < -9 sigma: ", self.maps.peaks_minus_9
     #
     if(self.pdb_header is not None):
       print >> log, "  Information extracted from PDB file header:"
@@ -495,44 +489,9 @@ def show_model_vs_data(fmodel):
     r_free                   = r_free,
     r_work_outer_shell       = r_work_outer_shell,
     r_free_outer_shell       = r_free_outer_shell,
+    ml_coordinate_error      = fmodel.model_error_ml(),
+    mean_phase_error         = fmodel.phase_errors().min_max_mean().as_tuple()[2],
     solvent_content_via_mask = sc)
-
-def maps(fmodel, mvd_obj, map_cutoff = 3.0, map_type = "mFo-DFc"):
-  result = group_args(
-    peaks_plus_3  = 0,
-    peaks_plus_6  = 0,
-    peaks_plus_9  = 0,
-    peaks_minus_3 = 0,
-    peaks_minus_6 = 0,
-    peaks_minus_9 = 0)
-  params = mmtbx.find_peaks.master_params.extract()
-  params.peak_search.min_cross_distance = 1.2
-  if(fmodel.twin and fmodel.r_free_flags().data().count(True)==0): # XXX
-    rff = fmodel.r_free_flags().generate_r_free_flags()
-    fmodel.update(r_free_flags = rff) # XXX
-  peaks_plus = mmtbx.find_peaks.manager(
-    fmodel     = fmodel,
-    map_type   = map_type,
-    map_cutoff = map_cutoff,
-    params     = params,
-    silent     = True).peaks()
-  if(peaks_plus is not None): peaks_plus = peaks_plus.heights
-  peaks_minus = mmtbx.find_peaks.manager(
-    fmodel     = fmodel,
-    map_type   = map_type,
-    map_cutoff = -1.*map_cutoff,
-    params     = params,
-    silent     = True).peaks()
-  if(peaks_minus is not None): peaks_minus = peaks_minus.heights
-  if([peaks_minus,peaks_plus].count(None) == 0):
-    result = group_args(
-      peaks_plus_3  = (peaks_plus > 3).count(True),
-      peaks_plus_6  = (peaks_plus > 6).count(True),
-      peaks_plus_9  = (peaks_plus > 9).count(True),
-      peaks_minus_3 = (peaks_minus < -3).count(True),
-      peaks_minus_6 = (peaks_minus < -6).count(True),
-      peaks_minus_9 = (peaks_minus < -9).count(True))
-  return result
 
 msg="""\
 
@@ -821,9 +780,6 @@ def run(args,
               test_flag_value = test_flag_value,
               f_obs_labels    = f_obs_labels,
               fmodel_cut      = fmodel_cut))
-  # map statistics
-  if(len(xray_structures)==1): # XXX no multi-model support yet
-    mvd_obj.collect(maps = maps(fmodel = fmodel, mvd_obj = mvd_obj))
   # CC* and friends
   cc_star_stats = None
   if (params.unmerged_data is not None) :
