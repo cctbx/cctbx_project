@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.pdb
 from mmtbx.building.loop_closure.utils import list_rama_outliers_h
 from mmtbx.rotamer import ramachandran_eval
