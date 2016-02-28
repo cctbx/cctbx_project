@@ -66,12 +66,11 @@ master_phil = iotbx.phil.parse("""
       .short_caption = Output NCS info file
 
 
-    output_map_directory =  None
+    output_directory =  None
       .type = path
-      .help = Directory where output maps are to be written \
+      .help = Directory where output files are to be written \
                 applied.
-      .short_caption = Output map directory
-
+      .short_caption = Output directory
 
     box_map_file = box_map_au.ccp4
       .type = path
@@ -355,6 +354,7 @@ class map_info_object:
     crystal_symmetry=None,
     is_map=None,
     map_id=None,
+    id=None,
     ):
     from libtbx import adopt_init_args
     adopt_init_args(self, locals())
@@ -366,8 +366,10 @@ class map_info_object:
       print >>out,"Map file:%s" %(self.file_name),
     else:
       print >>out,"Mask file:%s" %(self.file_name),
+    if self.id is not None:
+      print >>out,"ID: %d" %(self.id),
     if self.map_id is not None:
-      print >>out,"ID: %s" %(self.map_id)
+      print >>out,"Map ID: %s" %(self.map_id)
     else:
       print >>out
     if self.origin and self.all:
@@ -533,6 +535,7 @@ class info_object:
       crystal_symmetry=crystal_symmetry,
       origin=origin,
       all=all,
+      id=len(self.output_region_map_info_list)+1,
       map_id=map_id,
       is_map=True)
      )
@@ -754,6 +757,12 @@ def get_params(args,out=sys.stdout):
    " ".join(['segment_and_split_map']+args))
   master_params.format(python_object=params).show(out=out)
 
+  if params.output_files.output_directory and  \
+     not os.path.isdir(params.output_files.output_directory):
+      os.mkdir(params.output_files.output_directory)
+  if not params.output_files.output_directory:
+    params.output_files.output_directory=""
+
   if params.input_files.info_file:
     map_data=None
     pdb_hierarchy=None
@@ -819,7 +828,7 @@ def get_params(args,out=sys.stdout):
 
     map_data=map_data.shift_origin()
   else:
-    origin_shift=None
+    origin_shift=(0.,0.,0.) # ZZZNone
   tracking_data.set_origin_shift(origin_shift)
 
   if params.segmentation.expand_size is None:
@@ -2475,7 +2484,6 @@ def create_remaining_mask_and_map(params,
    expand_size=params.segmentation.expand_size)
   map_data_remaining=map_data.deep_copy()
   s=(bool_all_used==True)
-  print "ZZ types:",type(s),type(bool_all_used),type(map_data_remaining),type(-1.)
 
   map_data_remaining=map_data_remaining.set_selected(s,-1.0)
   return map_data_remaining
@@ -2627,10 +2635,12 @@ def write_region_maps(params,
       text="_r"
     base_file='map%s_%d.ccp4' %(text, id)
     base_pdb_file='atoms%s_%d.pdb' %(text, id)
-    if params.output_files.output_map_directory:
-      file_name=os.path.join(params.output_files.output_map_directory,base_file)
+    if tracking_data.params.output_files.output_directory:
+      if not os.path.isdir(tracking_data.params.output_files.output_directory):
+        os.mkdir(tracking_data.params.output_files.output_directory)
+      file_name=os.path.join(tracking_data.params.output_files.output_directory,base_file)
       pdb_file_name=os.path.join(
-        params.output_files.output_map_directory,base_pdb_file)
+        tracking_data.params.output_files.output_directory,base_pdb_file)
     else:
       file_name=base_file
       pdb_file_name=base_pdb_file
@@ -2661,9 +2671,9 @@ def write_output_files(params,
     out=sys.stdout):
 
   if params.output_files.au_output_file_stem:
-    au_mask_output_file=params.output_files.au_output_file_stem+"_mask.ccp4"
-    au_map_output_file=params.output_files.au_output_file_stem+"_map.ccp4"
-    au_atom_output_file=params.output_files.au_output_file_stem+"_atoms.pdb"
+    au_mask_output_file=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.au_output_file_stem+"_mask.ccp4")
+    au_map_output_file=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.au_output_file_stem+"_map.ccp4")
+    au_atom_output_file=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.au_output_file_stem+"_atoms.pdb")
   else:
     au_mask_output_file=None
     au_map_output_file=None
@@ -2719,19 +2729,20 @@ def write_output_files(params,
       "buffer of %d grid units \nin each direction around AU" %(
       params.output_files.box_buffer)
   print >>out,"Both types of maps have the same origin and overlay on %s" %(
-   params.output_files.shifted_map_file)
+   os.path.join(tracking_data.params.output_files.output_directory,
+     params.output_files.shifted_map_file))
 
 
   print >>out,\
      "\nThe standard maps (%s, %s) have the \noriginal cell dimensions." %(
-   au_mask_output_file,
-   au_map_output_file)+\
+   os.path.join(tracking_data.params.output_files.output_directory,au_mask_output_file),
+   os.path.join(tracking_data.params.output_files.output_directory,au_map_output_file))+\
    "\nThese maps show only the unique (NCS AU) part of the map."
 
   print >>out,\
      "\nThe cut out box_maps (%s, %s) have \nsmaller cell dimensions." %(
-      params.output_files.box_mask_file,
-      params.output_files.box_map_file,) +\
+      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_mask_file),
+      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_map_file),) +\
    "\nThese maps also show only the unique part of the map and have this"+\
    "\nunique part cut out.\n"
 
@@ -2777,13 +2788,14 @@ def write_output_files(params,
   if params.output_files.box_mask_file:
     # write out box_map NCS mask representing one AU of the NCS
     write_ccp4_map(
-     box_crystal_symmetry,params.output_files.box_mask_file,
+     box_crystal_symmetry,
+      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_mask_file),
       box_mask_ncs_au)
     print >>out,\
       "Output NCS au as box (cut out) mask:  %s " %(
-      params.output_files.box_mask_file)
+      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_mask_file))
     tracking_data.set_output_box_mask_info(
-      file_name=params.output_files.box_mask_file,
+      file_name=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_mask_file),
       crystal_symmetry=box_crystal_symmetry,
       origin=box_mask_ncs_au.origin(),
       all=box_mask_ncs_au.all())
@@ -2795,12 +2807,13 @@ def write_output_files(params,
        map_data=map_data_ncs_au.as_double(),
        crystal_symmetry=tracking_data.crystal_symmetry,
        min_point=lower_bounds, max_point=upper_bounds)
-    write_ccp4_map(box_crystal_symmetry,params.output_files.box_map_file,
+    write_ccp4_map(box_crystal_symmetry,
+      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_map_file),
       box_map_ncs_au)
     print >>out,"Output NCS au as box (cut out) map:  %s " %(
-      params.output_files.box_map_file)
+      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_map_file))
     tracking_data.set_output_box_map_info(
-      file_name=params.output_files.box_map_file,
+      file_name=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_map_file),
       crystal_symmetry=box_crystal_symmetry,
       origin=box_map_ncs_au.origin(),
       all=box_map_ncs_au.all())
@@ -2811,8 +2824,8 @@ def write_output_files(params,
   print >>out,"\nWriting out region maps. "+\
     "These superimpose on the NCS AU map \nand "+\
     "mask %s,%s\n" %(
-      params.output_files.box_map_file,
-      params.output_files.box_mask_file,)
+      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_map_file),
+      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_mask_file),)
 
   map_files_written,remainder_regions_written=write_region_maps(params,
     map_data=map_data,
@@ -3058,11 +3071,13 @@ def apply_origin_shift(origin_shift=None,
 
   if origin_shift: # Note origin shift does not change crystal_symmetry
     if shifted_map_file:
-      write_ccp4_map(tracking_data.crystal_symmetry,shifted_map_file,
+      write_ccp4_map(tracking_data.crystal_symmetry,
+      shifted_map_file,
       map_data)
       print >>out,"Wrote shifted map to %s" %(
         shifted_map_file)
-      tracking_data.set_shifted_map_info(file_name=shifted_map_file,
+      tracking_data.set_shifted_map_info(file_name=
+        shifted_map_file,
         crystal_symmetry=tracking_data.crystal_symmetry,
         origin=map_data.origin(),
         all=map_data.all())
@@ -3158,9 +3173,9 @@ def run(args,
     if tracking_data.origin_shift:
       print >>out,"\nShifting map, model and NCS based on origin shift"
       ncs_obj,pdb_hierarchy,tracking_data=apply_origin_shift(
-        shifted_map_file=params.output_files.shifted_map_file,
-        shifted_ncs_file=params.output_files.shifted_ncs_file,
-        shifted_pdb_file=params.output_files.shifted_pdb_file,
+        shifted_map_file=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.shifted_map_file),
+        shifted_ncs_file=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.shifted_ncs_file),
+        shifted_pdb_file=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.shifted_pdb_file),
         origin_shift=tracking_data.origin_shift,
         ncs_object=ncs_obj,
         pdb_hierarchy=pdb_hierarchy,
@@ -3257,12 +3272,12 @@ def run(args,
     from libtbx import easy_pickle
     tracking_data.show_summary(out=out)
     print >>out,"\nWriting summary information to: %s" %(
-      params.output_files.output_info_file)
+      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.output_info_file))
     print >>out,\
       "\nTo restore original position of a PDB file built into these maps, use:"
     print >>out,"phenix.segment_and_split_map info_file=%s" %(
-      params.output_files.output_info_file)+" pdb_to_restore=mypdb.pdb\n"
-    easy_pickle.dump(params.output_files.output_info_file,
+      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.output_info_file))+" pdb_to_restore=mypdb.pdb\n"
+    easy_pickle.dump(os.path.join(tracking_data.params.output_files.output_directory,params.output_files.output_info_file),
        tracking_data)
 
   return ncs_group_obj,remainder_ncs_group_obj,tracking_data

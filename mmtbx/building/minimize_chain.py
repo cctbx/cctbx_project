@@ -259,6 +259,7 @@ def run_one_cycle(
     states             = states,
     mode               = params.control.mode,
     nproc              = params.control.nproc,
+    show               = False,
     log                = out)
   return ear.pdb_hierarchy_overall_best(), \
          ear.ensemble_pdb_hierarchy_refined()
