@@ -44,14 +44,21 @@ def list_rama_outliers_h(hierarchy, r):
   outp = list_rama_outliers(phi_psi_atoms, r)
   return outp
 
+def pair_selection(phi_psi_pair):
+  resnum = phi_psi_pair[0][2].parent().parent().resseq_as_int()
+  return "(chain %s and resid %s:%s)" % (phi_psi_pair[0][2].parent().parent().parent().id,
+      resnum-1, resnum+1)
 
 def list_rama_outliers(phi_psi_atoms, r):
   result = ""
+  out_sel = ""
   for phi_psi_pair, rama_key in phi_psi_atoms:
     rama_score = get_rama_score(phi_psi_pair, r, rama_key)
     if rama_evaluate(phi_psi_pair, r, rama_key) == ramalyze.RAMALYZE_OUTLIER:
       result += "  !!! OUTLIER %s, score=%f\n" % (pair_info(phi_psi_pair), rama_score)
+      out_sel += " or %s" % (pair_selection(phi_psi_pair))
     # print_rama_stats(phi_psi_atoms, r)
+  # print out_sel
   return result
 
 
