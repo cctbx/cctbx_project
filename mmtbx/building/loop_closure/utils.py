@@ -6,6 +6,7 @@ from mmtbx.validation import ramalyze
 import math
 from cStringIO import StringIO
 from mmtbx.validation.ramalyze import res_types
+from mmtbx.rotamer import ramachandran_eval
 
 def get_phi_psi_atoms(hierarchy):
   phi_psi_atoms = []
@@ -44,20 +45,35 @@ def list_rama_outliers_h(hierarchy, r):
   outp = list_rama_outliers(phi_psi_atoms, r)
   return outp
 
-def pair_selection(phi_psi_pair):
+def pair_selection(phi_psi_pair, margin=1):
   resnum = phi_psi_pair[0][2].parent().parent().resseq_as_int()
   return "(chain %s and resid %s:%s)" % (phi_psi_pair[0][2].parent().parent().parent().id,
-      resnum-1, resnum+1)
+      resnum-margin, resnum+margin)
+
+def rama_outliers_selection(hierarchy, r=None, margin=1):
+  if r is None:
+    r = ramachandran_eval.RamachandranEval()
+
+  out_sel = []
+  phi_psi_atoms = get_phi_psi_atoms(hierarchy)
+  for phi_psi_pair, rama_key in phi_psi_atoms:
+    rama_score = get_rama_score(phi_psi_pair, r, rama_key)
+    if rama_evaluate(phi_psi_pair, r, rama_key) == ramalyze.RAMALYZE_OUTLIER:
+      out_sel.append(pair_selection(phi_psi_pair, margin))
+  out_sel_txt = " or ".join(out_sel)
+  return out_sel_txt
+
 
 def list_rama_outliers(phi_psi_atoms, r):
   result = ""
-  out_sel = ""
+  # out_sel = []
   for phi_psi_pair, rama_key in phi_psi_atoms:
     rama_score = get_rama_score(phi_psi_pair, r, rama_key)
     if rama_evaluate(phi_psi_pair, r, rama_key) == ramalyze.RAMALYZE_OUTLIER:
       result += "  !!! OUTLIER %s, score=%f\n" % (pair_info(phi_psi_pair), rama_score)
-      out_sel += " or %s" % (pair_selection(phi_psi_pair))
+      # out_sel.append(pair_selection(phi_psi_pair))
     # print_rama_stats(phi_psi_atoms, r)
+  # out_sel.txt = " or ".join(out_sel)
   # print out_sel
   return result
 

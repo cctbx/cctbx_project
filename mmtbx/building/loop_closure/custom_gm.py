@@ -3,10 +3,8 @@ from mmtbx.command_line.geometry_minimization import get_geometry_restraints_man
 import iotbx.pdb
 import sys
 import mmtbx.utils
+import mmtbx.building.loop_closure.utils
 from scitbx.array_family import flex
-
-exclude_selection_string_for_3j7x = "not ((chain A and resid 18:20) or (chain A and resid 199:201) or (chain B and resid 44:46) or (chain B and resid 117:119) or (chain B and resid 198:200) or (chain B and resid 199:201) or (chain B and resid 205:207) or (chain B and resid 231:233) or (chain B and resid 238:240) or (chain B and resid 241:243) or (chain B and resid 295:297) or (chain C and resid 18:20) or (chain C and resid 117:119) or (chain C and resid 238:240) or (chain C and resid 243:245) or (chain C and resid 280:282) or (chain C and resid 297:299) or (chain D and resid 117:119) or (chain D and resid 141:143) or (chain D and resid 199:201) or (chain D and resid 295:297) or (chain E and resid 17:19) or (chain E and resid 18:20) or (chain E and resid 117:119) or (chain E and resid 199:201) or (chain E and resid 234:236) or (chain E and resid 235:237) or (chain E and resid 238:240) or (chain E and resid 295:297) or (chain F and resid 18:20) or (chain F and resid 117:119) or (chain F and resid 177:179) or (chain F and resid 178:180) or (chain F and resid 199:201) or (chain F and resid 205:207) or (chain F and resid 238:240) or (chain F and resid 246:248) or (chain F and resid 295:297) or (chain G and resid 51:53) or (chain G and resid 155:157) or (chain G and resid 203:205) or (chain G and resid 231:233) or (chain G and resid 233:235) or (chain G and resid 297:299))"
-
 
 def minimize_hierarchy(hierarchy, xrs, original_pdb_h,
     excl_string_selection, log=None):
@@ -26,6 +24,9 @@ def minimize_hierarchy(hierarchy, xrs, original_pdb_h,
   # params.pdb_interpretation.peptide_link.oldfield.weight_scale=3
   # params.pdb_interpretation.peptide_link.oldfield.plot_cutoff=0.03
   params.pdb_interpretation.c_beta_restraints=True
+
+  outlier_selection_txt = mmtbx.building.loop_closure.utils.\
+      rama_outliers_selection(hierarchy, None, 1)
 
   processed_pdb_files_srv = mmtbx.utils.\
       process_pdb_file_srv(
@@ -58,7 +59,7 @@ def minimize_hierarchy(hierarchy, xrs, original_pdb_h,
 
 
   asc = original_pdb_h.atom_selection_cache()
-  sel = asc.selection(excl_string_selection)
+  sel = asc.selection("not (%s)" % outlier_selection_txt)
 
 
   grm.geometry.append_reference_coordinate_restraints_in_place(
@@ -69,6 +70,7 @@ def minimize_hierarchy(hierarchy, xrs, original_pdb_h,
 
 
   print "Runnning second minimization"
+  print "excluded selection:", outlier_selection_txt
   obj = run2(
       restraints_manager       = grm,
       pdb_hierarchy            = hierarchy,
