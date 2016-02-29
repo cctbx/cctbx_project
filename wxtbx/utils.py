@@ -161,6 +161,7 @@ class LogViewer (wx.TextCtrl) :
       except UnicodeDecodeError, e :
         print "warning: %s (string = '%s')" % (str(e), text)
         return
+    self.SetFont(wx.Font(self.font_size, wx.MODERN, wx.NORMAL, wx.NORMAL))
     wx.TextCtrl.AppendText(self, text)
     # keep text to be a certain size for performance
     if (self.GetLastPosition() > self.character_limit):
