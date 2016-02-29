@@ -95,15 +95,18 @@ def evaluate_output (cmd_result) :
   return bad_lines
 
 def reconstruct_test_name (command) :
-  pattern = '^[^"]*"([^"]*)"([^"]*)$'
   import re
+  if "-m pytest" in command:
+    m = re.search('-m pytest ([^:]*)::(.*)$', command)
+    command = 'libtbx.python "%s" %s' % (m.group(1), m.group(2))
+  pattern = '^[^"]*"([^"]*)"([^"]*)$'
   m = re.search(pattern, command)
   # command =  libtbx.python "/file.py" 90000
   #            \-- ignore --/ \--m1--/ \-m2-/
   if m:
     file = m.group(1)
     parameter = m.group(2).lstrip()
-    filtered_parameter = re.sub(r"[^A-Za-z0-9\-]", '', parameter)
+    filtered_parameter = re.sub(r"[^A-Za-z0-9\-_]", '', parameter)
     if filtered_parameter == '':
       test_name = file
     else:
