@@ -670,26 +670,12 @@ class InMemScript(DialsProcessScript):
       panel.set_trusted_range(cached_range)
 
   def reindex_strong(self, experiments, strong):
-    from dials.algorithms.indexing import index_reflections
-    from dials.algorithms.indexing.indexer import indexer_base
-    from dials.array_family import flex
-
     print "Reindexing strong reflections using refined experimental models and no outlier rejection..."
+    from dials.algorithms.indexing.stills_indexer import stills_indexer_known_orientation
+    indexer = stills_indexer_known_orientation(strong, experiments.imagesets(), self.params, experiments.crystals())
+    indexed_reflections = indexer.reflections.select(indexer.indexed_reflections)
 
-    exp = experiments[0]
-    reflections = indexer_base.map_spots_pixel_to_mm_rad(strong, exp.detector, exp.scan)
-
-    indexer_base.map_centroids_to_reciprocal_space(
-      reflections, exp.detector, exp.beam, exp.goniometer,)
-
-    reflections['id'] = flex.int(len(reflections), -1)
-    reflections['imageset_id'] = flex.int(len(reflections), 0)
-
-    index_reflections(reflections,
-                      experiments, d_min = None,
-                      tolerance=self.params.indexing.index_assignment.simple.hkl_tolerance)
-    indexed_reflections = reflections.select(reflections.get_flags(reflections.flags.indexed))
-    print "Indexed %d strong reflections out of %d"%(len(indexed_reflections), len(reflections))
+    print "Indexed %d strong reflections out of %d"%(len(indexed_reflections), len(strong))
     self.save_reflections(indexed_reflections, self.params.output.reindexedstrong_filename)
 
 if __name__ == "__main__":
