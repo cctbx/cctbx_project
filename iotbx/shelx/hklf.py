@@ -7,7 +7,8 @@ from cctbx.array_family import flex
 def miller_array_export_as_shelx_hklf(
       miller_array,
       file_object=None,
-      normalise_if_format_overflow=False):
+      normalise_if_format_overflow=False,
+      scale_range=None):
   """\
   If the maximum data value does not fit into the f8.2/f8.0 format:
   normalise_if_format_overflow=False: RuntimeError is thrown
@@ -28,18 +29,16 @@ def miller_array_export_as_shelx_hklf(
     max_val = max(max_val, flex.max(sigmas))
   min_sc = 1
   max_sc = 1
-  if (min_val < 0):
-    s = "%8.0f" % min_val
-    if (len(s) > 8):
-      if (not normalise_if_format_overflow):
-        raise_f8_overflow(min_val)
-      min_sc = -9999999. / min_val
-  if (max_val > 0):
-    s = "%8.0f" % max_val
-    if (len(s) > 8):
-      if (not normalise_if_format_overflow):
-        raise_f8_overflow(max_val)
-      max_sc = 99999999. / max_val
+  if scale_range is None:
+    scale_range = (-999999., 9999999.)
+  if (min_val < scale_range[0]):
+    if not normalise_if_format_overflow:
+      raise_f8_overflow(min_val)
+    min_sc = scale_range[0] / min_val
+  if (max_val > scale_range[1]):
+    if (not normalise_if_format_overflow):
+      raise_f8_overflow(max_val)
+    max_sc = scale_range[1] / max_val
   scale = min(min_sc, max_sc)
   sigmas = miller_array.sigmas()
   s = 0.01
