@@ -58,7 +58,7 @@ typedef fractional<double> frac_t;
 typedef scitbx::sym_mat3<double> tensor_rank_2_t;
 
 
-/// A range of index [fist, first+size)
+/// A range of index [first, first+size)
 /** The member valid tells whether the members first and size have any meaning
     at all. An invalid instance is mapped to an empty tuple in Python,
     and to a tuple (first, size) otherwise.
