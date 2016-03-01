@@ -3,6 +3,7 @@ from __future__ import division
 import mmtbx.utils
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
+from iotbx.file_reader import any_file
 import iotbx.phil
 import iotbx.pdb
 from cctbx.array_family import flex
@@ -10,6 +11,9 @@ from cctbx import miller
 from cctbx import maptbx
 from libtbx.utils import Sorry, null_out
 from libtbx import group_args
+from mmtbx.command_line.map_comparison import get_mtz_labels, get_d_min,\
+  get_crystal_symmetry
+from cctbx.sgtbx import space_group_info
 from cStringIO import StringIO
 import os
 import sys
@@ -28,6 +32,22 @@ resolution_factor = 1./4
   .type = float
 use_hydrogens = None
   .type = bool
+"""
+
+map_files_params_str = """\
+map_file_name = None
+  .type = path
+  .help = A CCP4-formatted map
+  .style = file_type:ccp4_map input_file
+map_coefficients_file_name = None
+  .type = path
+  .help = MTZ file containing map
+  .style = file_type:ccp4_map input_file process_hkl child:map_labels:map_coefficients_label
+map_coefficients_label = None
+  .type = str
+  .short_caption = Data label
+  .help = Data label for complex map coefficients in MTZ file
+  .style = renderer:draw_map_arrays_widget
 """
 
 master_params_str = """\
@@ -77,7 +97,8 @@ high_resolution = None
   .type=float
 low_resolution = None
   .type=float
-"""%core_params_str
+%s
+"""%(core_params_str, map_files_params_str)
 
 def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=False)
@@ -146,18 +167,71 @@ def extract_input_pdb(pdb_file, params):
   params.pdb_file_name = result
 
 def extract_input_data(hkl_file, params):
-  fn1, fn2 = None,None
-  if(hkl_file is not None and os.path.isfile(hkl_file.file_name)):
-    fn1 = hkl_file.file_name
-  if(params.reflection_file_name is not None and
-     os.path.isfile(params.reflection_file_name)):
-    fn2 = params.reflection_file_name
+  fn1, fn2, fn3 = None,None,None
+  for f in hkl_file:
+    if ( (f is not None) and (os.path.isfile(f.file_name)) ):
+      miller_arrays = f.file_object.as_miller_arrays()
+      for miller_array in miller_arrays:
+        if (miller_array.is_xray_data_array()):
+          fn1 = f.file_name
+        elif (miller_array.is_complex_array()):
+          fn3 = f.file_name
+
+  # check that reflection file exists
+  if (params.reflection_file_name is not None):
+    if (os.path.isfile(params.reflection_file_name)):
+      fn2 = params.reflection_file_name
   if([fn1, fn2].count(None)!=1):
     raise Sorry("Reflection file must be provided.")
   result = None
   if(fn1 is not None): result = fn1
   else: result = fn2
   params.reflection_file_name = result
+
+  # check if map coefficients exist
+  if (params.map_coefficients_file_name is not None):
+    if (os.path.isfile(params.map_coefficients_file_name) == False):
+      raise Sorry("Specified map coefficients file cannot be found.")
+  elif (fn3 is not None):
+    if ( (params.map_file_name is None) and
+         (params.map_coefficients_label is not None) ):
+      params.map_coefficients_file_name = fn3
+
+def check_map_file(map_file, params):
+  if ( (params.map_coefficients_file_name is not None) and
+       (params.map_file_name is not None) ):
+    raise Sorry('Please use map coefficients or the map, not both.')
+  elif (params.map_coefficients_file_name is not None):
+    file_handle = any_file(params.map_coefficients_file_name)
+    if (file_handle.file_type != 'hkl'):
+      raise Sorry('%s is not in MTZ format.' % file_handle.file_name)
+    labels = get_mtz_labels(file_handle)
+    if (params.map_coefficients_label is None):
+      raise Sorry('Data labels for map coefficients are not specified for %s' %
+                  params.map_coefficients_file_name)
+    elif (params.map_coefficients_label not in labels):
+      raise Sorry('%s labels for map_coefficients were not found in %s' %
+                  (params.map_coefficients_label,
+                   params.map_coefficients_file_name))
+  elif (params.map_file_name is not None):
+    file_handle = any_file(params.map_file_name)
+    if (file_handle.file_type != 'ccp4_map'):
+      raise Sorry('%s is not a CCP4-formatted map file.' %
+                  file_handle.file_name)
+  elif (map_file is not None):
+    params.map_file_name = map_file.file_name
+
+  # check crystal symmetry
+  map_name = ( (params.map_coefficients_file_name) or
+               (params.map_file_name) )
+  if (map_name is not None):
+    fobs_handle = any_file(params.reflection_file_name)
+    map_handle = any_file(map_name)
+    cs1 = get_crystal_symmetry(fobs_handle)
+    cs2 = get_crystal_symmetry(map_handle)
+    if (cs1.is_similar_symmetry(cs2) is False):
+      raise Sorry('The symmetry of the two files, %s and %s, is not similar' %
+                  (fobs_handle.file_name, map_handle.file_name))
 
 def broadcast(m, log):
   print >> log, "-"*79
@@ -183,20 +257,21 @@ Examples:
 """
   if(len(args) == 0) or (args == ["--help"]) or (args == ["--options"]):
     print >> log, msg
-    broadcast(m="Default parameres:", log = log)
+    broadcast(m="Default parameters:", log = log)
     master_params().show(out = log, prefix="  ")
     return
   else :
-    from iotbx.file_reader import any_file
     pdb_file = None
-    reflection_file = None
+    reflection_file = list()
+    map_file = None
     phil_objects = []
     for arg in args :
       if(os.path.isfile(arg)) :
         inp = any_file(arg)
         if(  inp.file_type == "phil"): phil_objects.append(inp.file_object)
         elif(inp.file_type == "pdb"):  pdb_file = inp
-        elif(inp.file_type == "hkl"):  reflection_file = inp
+        elif(inp.file_type == "hkl"):  reflection_file.append(inp)
+        elif(inp.file_type == "ccp4_map"): map_file = inp
         else:
           raise Sorry(("Don't know how to deal with the file %s - unrecognized "+
             "format '%s'.  Please verify that the syntax is correct.") % (arg,
@@ -214,18 +289,30 @@ Examples:
         print str(u)
       raise Sorry("Unused parameters: see above.")
     params = working_phil.extract()
+
     # PDB file
     extract_input_pdb(pdb_file=pdb_file, params=params)
     broadcast(m="Input PDB file name: %s"%params.pdb_file_name, log=log)
     pdbo = pdb_to_xrs(pdb_file_name=params.pdb_file_name,
       scattering_table=params.scattering_table)
     pdbo.xray_structure.show_summary(f=log, prefix="  ")
+
     # data file
+    # set params.reflection_file_name and params.map_coefficients_file_name
     extract_input_data(hkl_file=reflection_file, params=params)
     broadcast(
       m="Input reflection file name: %s"%params.reflection_file_name, log=log)
     data_and_flags = extract_data_and_flags(params = params)
     data_and_flags.f_obs.show_comprehensive_summary(f=log, prefix="  ")
+
+    # map file (if available)
+    # set params.map_file_name
+    check_map_file(map_file, params)
+    map_name = ( (params.map_coefficients_file_name) or
+                 (params.map_file_name) )
+    if (map_name is not None):
+      broadcast(m='Input map file name: %s' % map_name, log=log)
+
     # create fmodel
     r_free_flags = data_and_flags.f_obs.array(
       data = flex.bool(data_and_flags.f_obs.size(), False))
@@ -236,16 +323,7 @@ Examples:
       r_free_flags        = r_free_flags)
     broadcast(m="R-factors, reflection counts and scales", log=log)
     fmodel.show(log=log, show_header=False)
-    # compute map coefficients
-    e_map_obj = fmodel.electron_density_map()
-    coeffs_1 = e_map_obj.map_coefficients(
-      map_type     = params.map_1.type,
-      fill_missing = params.map_1.fill_missing_reflections,
-      isotropize   = params.map_1.isotropize)
-    coeffs_2 = e_map_obj.map_coefficients(
-      map_type     = params.map_2.type,
-      fill_missing = params.map_2.fill_missing_reflections,
-      isotropize   = params.map_2.isotropize)
+
     # compute cc
     results = simple(
       fmodel        = fmodel,
@@ -255,28 +333,64 @@ Examples:
       log           = log)
 
 def simple(fmodel, pdb_hierarchy, params=None, log=None, show_results=False):
-  if(params is None): params =master_params().extract()
+  if(params is None): params = master_params().extract()
   if(log is None): log = sys.stdout
-  # compute map coefficients
+
   e_map_obj = fmodel.electron_density_map()
+
+  # compute map_2 if necessary (usually 2mFo-DFc)
+  crystal_gridding = None
+  map_2 = None
+  if ( (params.map_file_name is None) and
+       (params.map_coefficients_file_name is None) ):
+    coeffs_2 = e_map_obj.map_coefficients(
+      map_type     = params.map_2.type,
+      fill_missing = params.map_2.fill_missing_reflections,
+      isotropize   = params.map_2.isotropize)
+    fft_map_2 = coeffs_2.fft_map(resolution_factor = params.resolution_factor)
+    crystal_gridding = fft_map_2
+    fft_map_2.apply_sigma_scaling()
+    map_2 = fft_map_2.real_map_unpadded()
+
+  # or read map coefficents
+  elif (params.map_coefficients_file_name is not None):
+    fobs_handle = any_file(params.reflection_file_name)
+    map_handle = any_file(params.map_coefficients_file_name)
+    crystal_symmetry = get_crystal_symmetry(map_handle)
+    d_min = min(get_d_min(fobs_handle), get_d_min(map_handle))
+    crystal_gridding = maptbx.crystal_gridding(
+      crystal_symmetry.unit_cell(), d_min=d_min,
+      resolution_factor=params.resolution_factor,
+      space_group_info=crystal_symmetry.space_group_info())
+    coeffs_2 = map_handle.file_server.get_miller_array(
+      params.map_coefficients_label)
+    fft_map_2 = miller.fft_map(crystal_gridding=crystal_gridding,
+                               fourier_coefficients=coeffs_2)
+    fft_map_2.apply_sigma_scaling()
+    map_2 = fft_map_2.real_map_unpadded()
+
+  # or read CCP4 map
+  else:
+    map_handle = any_file(params.map_file_name)
+    unit_cell = map_handle.file_object.unit_cell()
+    sg_info = space_group_info(map_handle.file_object.space_group_number)
+    n_real = map_handle.file_object.unit_cell_grid
+    crystal_gridding = maptbx.crystal_gridding(
+      unit_cell, space_group_info=sg_info, pre_determined_n_real=n_real)
+    map_2 = map_handle.file_object.map_data()
+
+  # compute map_1 (Fc)
   coeffs_1 = e_map_obj.map_coefficients(
     map_type     = params.map_1.type,
     fill_missing = params.map_1.fill_missing_reflections,
     isotropize   = params.map_1.isotropize)
-  coeffs_2 = e_map_obj.map_coefficients(
-    map_type     = params.map_2.type,
-    fill_missing = params.map_2.fill_missing_reflections,
-    isotropize   = params.map_2.isotropize)
-  # compute maps
-  fft_map_1 = coeffs_1.fft_map(resolution_factor = params.resolution_factor)
+  fft_map_1 = miller.fft_map(crystal_gridding = crystal_gridding,
+                             fourier_coefficients = coeffs_1)
   fft_map_1.apply_sigma_scaling()
   map_1 = fft_map_1.real_map_unpadded()
-  fft_map_2 = miller.fft_map(
-    crystal_gridding     = fft_map_1,
-    fourier_coefficients = coeffs_2)
-  fft_map_2.apply_sigma_scaling()
-  map_2 = fft_map_2.real_map_unpadded()
+
   # compute cc
+  assert ( (map_1 is not None) and (map_2 is not None) )
   broadcast(m="Map correlation and map values", log=log)
   overall_cc = flex.linear_correlation(x = map_1.as_1d(),
     y = map_2.as_1d()).coefficient()
