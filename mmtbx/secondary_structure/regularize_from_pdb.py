@@ -1565,7 +1565,8 @@ class replacement_segment_summary:
 class replace_with_segments_from_pdb:
 
   def __init__(self,pdb_hierarchy=None,args=None,
-       helices_are_alpha=None,out=sys.stdout):
+       helices_are_alpha=None,resid_offset=None,
+       out=sys.stdout):
 
     self.replacement_model=model_info() # empty object
     self.model_output_number_of_residues_by_segment={}
@@ -1593,7 +1594,7 @@ class replace_with_segments_from_pdb:
         helix_lib=helix_lib,strand_lib=strand_lib,other_lib=other_lib,
          out=out)
     replacement_model=merge_hierarchies_from_models(
-       models=all_replacement_models, resid_offset=None)
+       models=all_replacement_models, resid_offset=resid_offset)
 
     # write out results
     if params.output_files.pdb_out:
