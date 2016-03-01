@@ -188,10 +188,14 @@ namespace dxtbx { namespace model {
     int get_panel_intersection(vec3<double> s1) {
       int found_panel = -1;
       for (std::size_t i = 0; i < panel_list_->size(); ++i) {
-        vec2<double> intersection = (*panel_list_)[i].get_ray_intersection(s1);
-        if ((*panel_list_)[i].is_coord_valid_mm(intersection)) {
-          DXTBX_ASSERT(found_panel < 0);
-          found_panel = (int)i;
+        try {
+          vec2<double> intersection = (*panel_list_)[i].get_ray_intersection(s1);
+          if ((*panel_list_)[i].is_coord_valid_mm(intersection)) {
+            found_panel = (int)i;
+            break;
+          }
+        } catch(dxtbx::error) {
+          // pass
         }
       }
       return found_panel;
