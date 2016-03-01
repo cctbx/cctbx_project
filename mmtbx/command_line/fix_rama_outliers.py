@@ -298,6 +298,7 @@ def minimize_hierarchy(hierarchy, xrs, original_pdb_h,
   params.pdb_interpretation.peptide_link.ramachandran_restraints = True
   params.pdb_interpretation.peptide_link.oldfield.weight_scale=3
   params.pdb_interpretation.peptide_link.oldfield.plot_cutoff=0.03
+  params.pdb_interpretation.nonbonded_weight = 500
   params.pdb_interpretation.c_beta_restraints=True
 
   processed_pdb_files_srv = mmtbx.utils.\
