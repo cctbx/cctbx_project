@@ -143,7 +143,13 @@ class loop_idealization():
   def ccd_solution_is_ok(self,
       anchor_rmsd, mc_rmsd, ccd_radius, change_all_angles, change_radius):
     adaptive_mc_rmsd = {1:3.0, 2:3.5, 3:4.0}
-    return mc_rmsd < adaptive_mc_rmsd[ccd_radius] and anchor_rmsd < 0.3
+    if (mc_rmsd < adaptive_mc_rmsd[ccd_radius] and anchor_rmsd < 0.3):
+      return True
+    elif ccd_radius == 3 and change_all_angles and change_radius == 2:
+      # we are desperate and trying the most extensive search,
+      # this deserves relaxed criteria...
+      return mc_rmsd < 5 and anchor_rmsd < 0.4
+
 
 
   def fix_rama_outlier(self,
@@ -156,12 +162,13 @@ class loop_idealization():
     for ccd_radius, change_all, change_radius in [
         (1, False, 0),
         (2, False, 0),
-        # (3, False, 0),
+        (3, False, 0),
         (2, True, 1),
-        # (3, True, 1),
+        (3, True, 1),
+        (3, True, 2),
         ]:
     # while ccd_radius <= 3:
-      print >> self.log, "  Starting optimization with radius, change_all:", ccd_radius, change_all
+      print >> self.log, "  Starting optimization with radius, change_all, change_radius:", ccd_radius, change_all, change_radius
       moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms = get_fixed_moving_parts(
           pdb_hierarchy=pdb_hierarchy,
           out_res_num=out_res_num,
@@ -169,9 +176,11 @@ class loop_idealization():
           n_previous=ccd_radius)
       moving_h_set = None
       if change_all:
-        moving_h_set = starting_conformations.get_all_starting_conformations(moving_h, change_radius, log=self.log)
+        moving_h_set = starting_conformations.get_all_starting_conformations(
+            moving_h, change_radius, cutoff=500, log=self.log)
       else:
-        moving_h_set = starting_conformations.get_starting_conformations(moving_h, log=self.log)
+        moving_h_set = starting_conformations.get_starting_conformations(
+            moving_h,  cutoff=500, log=self.log)
 
       if len(moving_h_set) == 0:
         # outlier was fixed before somehow...
