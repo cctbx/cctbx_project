@@ -110,8 +110,8 @@ def exercise_miller_export_as_shelx_hklf():
    2  -3   9   12.45    6.12
 99999999999999999.9999999.99
 -999-999-999-9999.99-9999.99
-   3   4   5999999.999999999
-   3   4   5-99999.9-9999999
+   3   4   5999999.99999999.
+   3   4   5-99999.9-999999.
 """
   ma = hklf.reader(file_object=StringIO(s)).as_miller_arrays()[0]
   sio = StringIO()
@@ -134,14 +134,14 @@ def exercise_miller_export_as_shelx_hklf():
     try: ma2.export_as_shelx_hklf(sio)
     except RuntimeError: pass
     else: raise Exception_expected
-  check(-12345678, 1, "-9999999    0.81")
-  check(-12345678, None, "-9999999    0.01")
-  check(2, -12345678, "    1.62-9999999")
-  check(123456789, 3, "99999999    2.43")
-  check(123456789, None, "99999999    0.01")
-  check(4, 123456789, "    3.2499999999")
-  check(-23456789, 123456789, "-999999952631576")
-  check(123456789, -23456789, "52631576-9999999")
+  check(-12345678, 1, "-999999.    0.08")
+  check(-12345678, None, "-999999.    0.00")
+  check(2, -12345678, "    0.16-999999.")
+  check(123456789, 30, "9999999.    2.43")
+  check(123456789, None, "9999999.    0.00")
+  check(40, 123456789, "    3.249999999.")
+  check(-23456789, 123456789, "-999999.5263153.")
+  check(123456789, -23456789, "5263153.-999999.")
   #
   ma = hklf.reader(file_object=StringIO(s)).as_miller_arrays()[0]
   ma = ma.select(flex.size_t([0,1]))
@@ -149,16 +149,16 @@ def exercise_miller_export_as_shelx_hklf():
   sio = StringIO()
   ma2.export_as_shelx_hklf(sio, normalise_if_format_overflow=True)
   assert not show_diff(sio.getvalue(), """\
-   1   2  -152631576    0.00
-   2  -3   9-9999999    0.00
+   1   2  -15263153.    0.00
+   2  -3   9-999999.    0.00
    0   0   0    0.00    0.00
 """)
   ma2 = ma.array(data=flex.double([-23456789, 823456789]))
   sio = StringIO()
   ma2.export_as_shelx_hklf(sio, normalise_if_format_overflow=True)
   assert not show_diff(sio.getvalue(), """\
-   1   2  -1-2848576    0.00
-   2  -3   999999999    0.00
+   1   2  -1-284858.    0.00
+   2  -3   99999999.    0.00
    0   0   0    0.00    0.00
 """)
 

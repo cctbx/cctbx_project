@@ -55,7 +55,7 @@ def miller_array_export_as_shelx_hklf(
       if (len(result) != 8):
         result = "%8.1f" % v
         if (len(result) != 8):
-          result = "%8.0f" % v
+          result = "%7d." % round(v)
           assert len(result) == 8
       return result
     line = fmt_3i4(h) + fmt_f8(data[i]*scale) + fmt_f8(s*scale)
