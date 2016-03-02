@@ -167,39 +167,35 @@ def extract_input_pdb(pdb_file, params):
   params.pdb_file_name = result
 
 def extract_input_data(hkl_file, params):
-  fn1, fn2 = None, None
-  if (hkl_file is not None):
-    miller_arrays = hkl_file.file_object.as_miller_arrays()
-    for miller_array in miller_arrays:
-      if (miller_array.is_xray_data_array()):
-        fn1 = hkl_file.file_name
-      elif (miller_array.is_complex_array()):
-        fn2 = hkl_file.file_name
+  fn1, fn2, fn3 = None,None,None
+  for f in hkl_file:
+    if ( (f is not None) and (os.path.isfile(f.file_name)) ):
+      miller_arrays = f.file_object.as_miller_arrays()
+      for miller_array in miller_arrays:
+        if (miller_array.is_xray_data_array()):
+          fn1 = f.file_name
+        elif (miller_array.is_complex_array()):
+          fn3 = f.file_name
 
-  # check if defined reflection file exists
+  # check that reflection file exists
   if (params.reflection_file_name is not None):
-    if (os.path.isfile(params.reflection_file_name) == False):
-      raise Sorry('%s cannot be found.' % params.reflection_file_name)
-  elif (fn1 is not None):
-    # set reflections_file_name only if no map files are defined (default)
-    if ( (params.map_file_name is None) and
-         (params.map_coefficients_file_name is None) and
-         (params.map_coefficients_label is None) ):
-      params.reflection_file_name = fn1
+    if (os.path.isfile(params.reflection_file_name)):
+      fn2 = params.reflection_file_name
+  if([fn1, fn2].count(None)!=1):
+    raise Sorry("Reflection file must be provided.")
+  result = None
+  if(fn1 is not None): result = fn1
+  else: result = fn2
+  params.reflection_file_name = result
 
   # check if map coefficients exist
   if (params.map_coefficients_file_name is not None):
     if (os.path.isfile(params.map_coefficients_file_name) == False):
-      raise Sorry('%s cannot be found.' % params.map_coefficients_file_name)
-  elif (fn2 is not None):
-    # set map_coefficients file_name only if no other map file is defined
-    if ( (params.reflection_file_name is None) and
-         (params.map_file_name is None) ):
-      params.map_coefficients_file_name = fn2
-  if ( (params.map_coefficients_file_name is not None) and
-       (params.map_coefficients_label is None) ):
-    raise Sorry('Please specify map coefficient labels for %s.' %
-                params.map_coefficients_file_name)
+      raise Sorry("Specified map coefficients file cannot be found.")
+  elif (fn3 is not None):
+    if ( (params.map_file_name is None) and
+         (params.map_coefficients_label is not None) ):
+      params.map_coefficients_file_name = fn3
 
 def check_map_file(map_file, params):
   if ( (params.map_coefficients_file_name is not None) and
@@ -225,6 +221,18 @@ def check_map_file(map_file, params):
   elif (map_file is not None):
     params.map_file_name = map_file.file_name
 
+  # check crystal symmetry
+  map_name = ( (params.map_coefficients_file_name) or
+               (params.map_file_name) )
+  if (map_name is not None):
+    fobs_handle = any_file(params.reflection_file_name)
+    map_handle = any_file(map_name)
+    cs1 = get_crystal_symmetry(fobs_handle)
+    cs2 = get_crystal_symmetry(map_handle)
+    if (cs1.is_similar_symmetry(cs2) is False):
+      raise Sorry('The symmetry of the two files, %s and %s, is not similar' %
+                  (fobs_handle.file_name, map_handle.file_name))
+
 def broadcast(m, log):
   print >> log, "-"*79
   print >> log, m
@@ -246,9 +254,6 @@ Examples:
   phenix.real_space_correlation m.pdb d.mtz scattering_table=neutron
   phenix.real_space_correlation m.pdb d.mtz detail=atom use_hydrogens=true
   phenix.real_space_correlation m.pdb d.mtz map_1.type=Fc map_2.type="2mFo-DFc"
-
-  phenix.real_space_correlation m.pdb d.mtz map_coefficients_label="2FOFCWT,PH2FOFCWT"
-  phenix.real_space_correlation m.pdb d.ccp4
 """
   if(len(args) == 0) or (args == ["--help"]) or (args == ["--options"]):
     print >> log, msg
@@ -257,30 +262,26 @@ Examples:
     return
   else :
     pdb_file = None
-    reflection_file = None
+    reflection_file = list()
     map_file = None
     phil_objects = []
-    n_files = 0
     for arg in args :
       if(os.path.isfile(arg)) :
         inp = any_file(arg)
         if(  inp.file_type == "phil"): phil_objects.append(inp.file_object)
         elif(inp.file_type == "pdb"):  pdb_file = inp
-        elif(inp.file_type == "hkl"):  reflection_file = inp
+        elif(inp.file_type == "hkl"):  reflection_file.append(inp)
         elif(inp.file_type == "ccp4_map"): map_file = inp
         else:
           raise Sorry(("Don't know how to deal with the file %s - unrecognized "+
             "format '%s'.  Please verify that the syntax is correct.") % (arg,
               str(inp.file_type)))
-        n_files += 1
       else:
         try:
           phil_objects.append(iotbx.phil.parse(arg))
         except RuntimeError, e:
           raise Sorry("Unrecognized parameter or command-line argument '%s'." %
             arg)
-    if (n_files != 2):
-      raise Sorry('Only 2 files are needed, a structure and the data')
     working_phil, unused = master_params().fetch(sources=phil_objects,
       track_unused_definitions=True)
     if(len(unused)>0):
@@ -299,12 +300,10 @@ Examples:
     # data file
     # set params.reflection_file_name and params.map_coefficients_file_name
     extract_input_data(hkl_file=reflection_file, params=params)
-    data_and_flags = None
-    if (params.reflection_file_name is not None):
-      broadcast(
-        m="Input reflection file name: %s"%params.reflection_file_name, log=log)
-      data_and_flags = extract_data_and_flags(params = params)
-      data_and_flags.f_obs.show_comprehensive_summary(f=log, prefix="  ")
+    broadcast(
+      m="Input reflection file name: %s"%params.reflection_file_name, log=log)
+    data_and_flags = extract_data_and_flags(params = params)
+    data_and_flags.f_obs.show_comprehensive_summary(f=log, prefix="  ")
 
     # map file (if available)
     # set params.map_file_name
@@ -312,55 +311,18 @@ Examples:
     map_name = ( (params.map_coefficients_file_name) or
                  (params.map_file_name) )
     if (map_name is not None):
-      map_handle = any_file(map_name)
       broadcast(m='Input map file name: %s' % map_name, log=log)
-      print >> log, '  Map type: ',
-      if (map_handle.file_type == 'hkl'):
-        print >> log, 'map coefficients'
-        print >> log, '  Map labels:', params.map_coefficients_label
-      else:
-        print >> log, 'CCP4-format'
 
-      # check crystal symmetry
-      cs1 = pdbo.xray_structure.crystal_symmetry()
-      cs2 = get_crystal_symmetry(map_handle)
-      if (cs1.is_similar_symmetry(cs2) is False):
-        raise Sorry('The symmetry of the two files, %s and %s, is not similar' %
-                    (fobs_handle.file_name, map_handle.file_name))
-
-      # get d_min
-      d_min = 1.0
-      if (map_handle.file_type == 'hkl'):
-        d_min = get_d_min(map_handle)
-      else:
-        d_min = 1.0
-
-    # check that only one data file is defined
-    if ( (map_name is not None) and
-         (params.reflection_file_name is not None) ):
-      raise Sorry('Please use F_obs or a map, not both.')
-
-    # create fmodel with f_obs
-    if (params.reflection_file_name is not None):
-      r_free_flags = data_and_flags.f_obs.array(
-        data = flex.bool(data_and_flags.f_obs.size(), False))
-      fmodel = mmtbx.utils.fmodel_simple(
-        xray_structures     = [pdbo.xray_structure],
-        scattering_table    = params.scattering_table,
-        f_obs               = data_and_flags.f_obs,
-        r_free_flags        = r_free_flags)
-      broadcast(m="R-factors, reflection counts and scales", log=log)
-      fmodel.show(log=log, show_header=False)
-
-    # or create fmodel with calculated f_calc (when a map is used)
-    else:
-      f_calc = pdbo.xray_structure.structure_factors(d_min=d_min).f_calc().\
-               as_amplitude_array()
-      fmodel = mmtbx.utils.fmodel_simple(
-        xray_structures     = [pdbo.xray_structure],
-        scattering_table    = params.scattering_table,
-        f_obs               = f_calc,
-        r_free_flags        = None)
+    # create fmodel
+    r_free_flags = data_and_flags.f_obs.array(
+      data = flex.bool(data_and_flags.f_obs.size(), False))
+    fmodel = mmtbx.utils.fmodel_simple(
+      xray_structures     = [pdbo.xray_structure],
+      scattering_table    = params.scattering_table,
+      f_obs               = data_and_flags.f_obs,
+      r_free_flags        = r_free_flags)
+    broadcast(m="R-factors, reflection counts and scales", log=log)
+    fmodel.show(log=log, show_header=False)
 
     # compute cc
     results = simple(
@@ -392,9 +354,10 @@ def simple(fmodel, pdb_hierarchy, params=None, log=None, show_results=False):
 
   # or read map coefficents
   elif (params.map_coefficients_file_name is not None):
+    fobs_handle = any_file(params.reflection_file_name)
     map_handle = any_file(params.map_coefficients_file_name)
     crystal_symmetry = get_crystal_symmetry(map_handle)
-    d_min = get_d_min(map_handle)
+    d_min = min(get_d_min(fobs_handle), get_d_min(map_handle))
     crystal_gridding = maptbx.crystal_gridding(
       crystal_symmetry.unit_cell(), d_min=d_min,
       resolution_factor=params.resolution_factor,
