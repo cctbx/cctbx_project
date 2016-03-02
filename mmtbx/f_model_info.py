@@ -546,7 +546,7 @@ def export_bins_table_data (bins, title="Statistics by resolution bin") :
     table_stats.insert(3, "cc_free")
     labels.insert(3, "CC(work)")
     labels.insert(4, "CC(free)")
-    graph_columns.append([0,7,8])
+    graph_columns = [ [0,1,2], [0,3,4], [0,5], [0,6], [0,7], [0,8] ]
     graph_names.insert(1, "CC-work/CC-free vs. resolution")
   data_rows = []
   for bin in bins :
