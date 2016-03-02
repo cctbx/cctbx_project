@@ -31,9 +31,6 @@ input {
   monomers {
     include scope mmtbx.utils.cif_params
   }
-  maps {
-    include scope mmtbx.real_space_correlation.map_files_params_str
-  }
   sequence = None
     .type = path
   scattering_table = wk1995  it1992  *n_gaussian  neutron
