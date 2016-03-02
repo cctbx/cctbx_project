@@ -155,7 +155,8 @@ class real_space (validation) :
 
   def get_result_class (self) : return residue_real_space
 
-  def __init__ (self, fmodel, pdb_hierarchy, cc_min=0.8) :
+  def __init__ (self, fmodel, pdb_hierarchy, cc_min=0.8,
+                molprobity_map_params=None) :
 
     from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
     from mmtbx import real_space_correlation
@@ -169,11 +170,18 @@ class real_space (validation) :
     self.water = list()
     aa_codes = one_letter_given_three_letter.keys()
 
+    # redo real_space_corelation.simple to use map objects instead of filenames
     try :
       rsc_params = real_space_correlation.master_params().extract()
       rsc_params.detail="residue"
       rsc_params.map_1.fill_missing_reflections = False
       rsc_params.map_2.fill_missing_reflections = False
+      if (molprobity_params is not None):
+        rsc_params.map_file_name = molprobity_map_params.map_file_name
+        rsc_params.map_coefficients_file_name = \
+          molprobity_map_params.map_coefficients_file_name
+        rsc_params.map_coefficients_label = \
+          molprobity_map_params.map_coefficients_label
       rsc = real_space_correlation.simple(
         fmodel=fmodel,
         pdb_hierarchy=pdb_hierarchy,

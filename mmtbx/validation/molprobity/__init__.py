@@ -163,7 +163,8 @@ class molprobity (slots_getstate_setstate) :
       use_pdb_header_resolution_cutoffs=False,
       file_name=None,
       ligand_selection=None,
-      rotamer_library="8000") :
+      rotamer_library="8000",
+      map_params=None) :
     assert rotamer_library == "8000", "data_version given to RotamerEval not recognized."
     for name in self.__slots__ :
       setattr(self, name, None)
