@@ -907,16 +907,20 @@ def selection_string_from_selection(pdb_h,
           seqence_was_broken = True
           continue
         all_atoms_present = (test_set == a_sel)
-        prev_all_atoms_present = cur_all_atoms_present
+        if prev_all_atoms_present is None:
+          prev_all_atoms_present = cur_all_atoms_present
+        else:
+          prev_all_atoms_present = cur_all_atoms_present and prev_all_atoms_present
         cur_all_atoms_present = all_atoms_present
         previous_res_selected_atom_names = cur_res_selected_atom_names
         cur_res_selected_atom_names = get_atom_names_from_test_set(
             test_set, a_sel, chains_info[ch_id].atom_names[i])
 
         # print "all_atoms_present (cur/prev), test_set", chains_info[ch_id].resid[i], cur_all_atoms_present, prev_all_atoms_present, test_set, chains_info[ch_id].atom_names[i]
+
         # prev_resid = cur_resid
         cur_resid = chains_info[ch_id].resid[i]
-        # print "prev_resid, cur_resid", prev_resid, cur_resid
+        # print "cur_resid", cur_resid
 
         # new range is needed when previous selection doesn't match current
         # selection.
@@ -969,9 +973,12 @@ def selection_string_from_selection(pdb_h,
             atoms_for_dumping = []
           prev_all_atoms_present = None
 
+      # print "DUMPING THE LAST RANGE"
+      # print "prev_all_atoms_present", prev_all_atoms_present
       atoms_sel = "" if prev_all_atoms_present else get_atom_str(previous_res_selected_atom_names)
       if prev_all_atoms_present or prev_all_atoms_present is None:
         atoms_sel = "" if cur_all_atoms_present else get_atom_str(cur_res_selected_atom_names)
+      # print "atoms_sel", atoms_sel
       omit_resids = (first_resid == chains_info[ch_id].resid[0]
           and last_resid == chains_info[ch_id].resid[-1])
       res_sel = update_res_sel(
@@ -992,7 +999,8 @@ def selection_string_from_selection(pdb_h,
   # here, let's say for a year. If no bugs discovered, this could be removed.
   # Current removal date: Jan 22, 2017
   isel = pdb_h.atom_selection_cache().iselection(sel_str)
-  # pdb_h.select(isel).write_pdb_file("selected_out.pdb")
+  pdb_h.select(isel).write_pdb_file("selected_string.pdb")
+  pdb_h.select(selection).write_pdb_file("selected_isel.pdb")
   assert len(isel) == len(selection), ""+\
       "%d (result) != %d (input): conversion to string selects different number of atoms!.\n" \
       % (len(isel), len(selection)) +\
