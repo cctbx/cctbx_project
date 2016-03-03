@@ -80,9 +80,15 @@ class loop_idealization():
       self.ref_exclusion_selection += "(%s) or " % selection
     if len(self.ref_exclusion_selection) > 0:
       self.ref_exclusion_selection = self.ref_exclusion_selection[:-3]
-    self.resulting_pdb_h.write_pdb_file(file_name="%s_before_minization.pdb" % self.params.output_prefix)
+    self.resulting_pdb_h.write_pdb_file(file_name="%s_before_minimization.pdb" % self.params.output_prefix)
     ram = ramalyze.ramalyze(pdb_hierarchy=self.resulting_pdb_h)
     self.p_before_minimization_rama_outliers = ram.out_percent
+
+    berkeley_count = utils.list_rama_outliers_h(self.resulting_pdb_h).count("\n")
+    duke_count = ram.get_outliers_count_and_fraction()[0]
+    if berkeley_count != duke_count:
+      print >> self.log, "Discrepancy between berkeley and duke:", berkeley_count, duke_count
+
     if self.params.minimize_whole:
       print >> self.log, "minimizing whole thing..."
       print >> self.log, "self.ref_exclusion_selection", self.ref_exclusion_selection
@@ -90,6 +96,10 @@ class loop_idealization():
       # self.resulting_pdb_h.write_pdb_file(file_name="%s_all_minized.pdb" % self.params.output_prefix)
       ram = ramalyze.ramalyze(pdb_hierarchy=self.resulting_pdb_h)
       self.p_after_minimiaztion_rama_outliers = ram.out_percent
+      berkeley_count = utils.list_rama_outliers_h(self.resulting_pdb_h).count("\n")
+      duke_count = ram.get_outliers_count_and_fraction()[0]
+      if berkeley_count != duke_count:
+        print >> self.log, "Discrepancy between berkeley and duke:", berkeley_count, duke_count
     # return new_h
 
   def process_params(self, params):
