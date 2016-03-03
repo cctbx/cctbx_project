@@ -155,6 +155,11 @@ def run (args,
   if (params.output.probe_dots) or (params.output.kinemage) :
     probe_file = params.output.prefix + "_probe.txt"
   raw_data = cmdline.raw_data
+
+  # check map parameters
+  from mmtbx.real_space_correlation import check_map_file
+  check_map_file(None, params.input.maps)
+
   validation = mmtbx.validation.molprobity.molprobity(
     pdb_hierarchy=cmdline.pdb_hierarchy,
     xray_structure=cmdline.xray_structure,
@@ -178,7 +183,8 @@ def run (args,
       params.molprobity.count_anomalous_pairs_separately,
     file_name=params.input.pdb.file_name[0],
     ligand_selection=params.molprobity.ligand_selection,
-    rotamer_library=params.molprobity.rotamer_library)
+    rotamer_library=params.molprobity.rotamer_library,
+    map_params=params)
   map_file = None
   if (not params.output.quiet) :
     out2 = multi_out()
