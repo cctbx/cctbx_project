@@ -1097,15 +1097,17 @@ class DataList(object):
 
 
 class DataFactory(object):
-  '''
-  A class to create an object to hold the raw data
-
-  '''
-
   def __init__(self, obj):
+    import h5py
     datasets = []
     for key in sorted(list(obj.handle.iterkeys())):
-      datasets.append(obj.handle[key])
+      if key.startswith("_filename_"):
+        continue
+      try:
+        datasets.append(obj.handle[key])
+      except KeyError: # If we cannot follow links due to lack of a write permission
+        datasets.append(h5py.File(obj.handle["_filename_" + key].value, "r")["/entry/data/data"])
+
     self.model = DataList(datasets)
 
 
