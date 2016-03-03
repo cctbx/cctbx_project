@@ -1203,6 +1203,7 @@ iotbx/bioinformatics/test/tst_ncbi_blast_xml.py -text
 iotbx/bioinformatics/xmlbuild.py -text
 iotbx/ccp4_map/SConscript -text
 iotbx/ccp4_map/__init__.py svneol=native#text/x-python
+iotbx/ccp4_map/crystal_symmetry_from_ccp4_map.py -text
 iotbx/ccp4_map/ext.cpp svneol=native#text/plain
 iotbx/ccp4_map/tst.py svneol=native#text/x-python
 iotbx/ccp4_map/tst_input.map -text
