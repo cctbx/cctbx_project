@@ -27,6 +27,13 @@ loop_idealization
     .type = str
   minimize_whole = True
     .type = bool
+  force_rama_fixes = True
+    .type = bool
+    .help = If true, the procedure will pick and apply the best variant even \
+      if all of them are above thresholds to be picked straight away. \
+      Alternatively, when False, the procedure will accept failure and leave \
+      a ramachandran outlier intact.
+
 }
 """
 
@@ -164,8 +171,8 @@ class loop_idealization():
         (2, False, 0),
         (3, False, 0),
         (2, True, 1),
-        (3, True, 1),
-        (3, True, 2),
+        # (3, True, 1),
+        # (3, True, 2),
         ]:
     # while ccd_radius <= 3:
       print >> self.log, "  Starting optimization with radius, change_all, change_radius:", ccd_radius, change_all, change_radius
@@ -200,7 +207,6 @@ class loop_idealization():
         mc_rmsd = get_main_chain_rmsd_range(moving_h, h, all_atoms=True)
         print >> self.log, "Resulting anchor and backbone RMSDs, n_iter for model %d:" % i,
         print >> self.log, resulting_rmsd, ",", mc_rmsd, ",", n_iter
-        all_results.append((h.deep_copy(), mc_rmsd, resulting_rmsd, n_iter))
         #
         # setting new coordinates
         #
@@ -227,6 +233,7 @@ class loop_idealization():
         #
         # !!! This is the condition of acceptance of transformation!
         # if mc_rmsd < adaptive_mc_rmsd[ccd_radius]:
+        all_results.append((moved_with_side_chains_h.deep_copy(), mc_rmsd, resulting_rmsd, n_iter))
         if self.ccd_solution_is_ok(
             anchor_rmsd=resulting_rmsd,
             mc_rmsd=mc_rmsd,
@@ -247,11 +254,41 @@ class loop_idealization():
       ccd_radius += 1
 
 
-    print >> self.log, "Epic FAIL: failed to fix rama outlier"
     all_results.sort(key=lambda tup: tup[1])
-    print >> self.log, "  Options were: (mc_rmsd, resultign_rmsd, n_iter)"
-    for i in all_results:
-      print >> self.log, i[1:]
+    if self.params.force_rama_fixes:
+      # find and apply the best varian from all_results. This would be the one
+      # with the smallest rmsd given satisfactory closure
+      print >> self.log, "Applying the best found variant:",
+      i = 0
+      while i < len(all_results) and all_results[i][2] > 0.4:
+        i += 1
+      # apply
+      # === duplication!!!!
+      if i < len(all_results):
+        print >> self.log, all_results[i][1:]
+        if minimize:
+          print >> self.log, "minimizing..."
+          all_results[i][0].write_pdb_file(
+              file_name="%s_result_before_min_%d.pdb" % (prefix, i))
+          minimize_hierarchy(all_results[i][0], xrs, original_pdb_h, self.log)
+        all_results[i][0].write_pdb_file(
+            file_name="%s_result_minimized_%d.pdb" % (prefix, i))
+        final_rmsd = get_main_chain_rmsd_range(all_results[i][0],
+            original_pdb_h, placing_range)
+        print >> self.log, "FINAL RMSD after minimization:", final_rmsd
+        return moved_with_side_chains_h
+      else:
+        print >> self.log, " NOT FOUND!"
+        for i in all_results:
+          print >> self.log, i[1:]
+      # === end of duplication!!!!
+
+
+    else:
+      print >> self.log, "Epic FAIL: failed to fix rama outlier"
+      print >> self.log, "  Options were: (mc_rmsd, resultign_rmsd, n_iter)"
+      for i in all_results:
+        print >> self.log, i[1:]
     # STOP()
     return original_pdb_h
 
