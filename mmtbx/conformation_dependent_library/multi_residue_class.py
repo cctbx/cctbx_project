@@ -266,12 +266,14 @@ class ThreeProteinResidues(list):
     # res_types = ["general", "glycine", "cis-proline", "trans-proline",
     #              "pre-proline", "isoleucine or valine"]
     #
+    # This should be consistent with mmtbx/validation/ramalyze.py,
+    # lines 219-240. Particularly, prepro comes before ile/val
     if self[1].resname == "PRO":
       if self.cis_group(): return ramalyze.RAMA_CISPRO
       else: return ramalyze.RAMA_TRANSPRO
+    elif self[2].resname == "PRO": return ramalyze.RAMA_PREPRO
     elif self[1].resname in ["ILE", "VAL"]: return ramalyze.RAMA_ILE_VAL
     elif self[1].resname == "GLY": return ramalyze.RAMA_GLYCINE
-    elif self[2].resname == "PRO": return ramalyze.RAMA_PREPRO
     else: return ramalyze.RAMA_GENERAL
 
   def get_dummy_dihedral_proxies(self, only_psi_phi_pairs=True):
