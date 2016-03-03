@@ -230,7 +230,9 @@ class EigerNXmxFixer(object):
     # Change relative paths to absolute paths
     for name in handle_orig['/entry/data'].iterkeys():
       del handle['entry/data'][name]
-      handle['entry/data'][name] = h5py.ExternalLink(handle_orig['entry/data'][name].file.filename, 'entry/data/data')
+      filename = handle_orig['entry/data'][name].file.filename
+      handle['entry/data'][name] = h5py.ExternalLink(filename, 'entry/data/data')
+      handle['entry/data']["_filename_" + name] = filename # Store file namesa
 
     self.handle = handle
 
