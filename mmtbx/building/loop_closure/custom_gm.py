@@ -59,7 +59,10 @@ def minimize_hierarchy(hierarchy, xrs, original_pdb_h,
 
 
   asc = original_pdb_h.atom_selection_cache()
-  sel = asc.selection("not (%s)" % outlier_selection_txt)
+  negate_selection = None
+  if outlier_selection_txt != "":
+    negate_selection = "not (%s)" % outlier_selection_txt
+  sel = asc.selection(negate_selection)
 
 
   grm.geometry.append_reference_coordinate_restraints_in_place(
