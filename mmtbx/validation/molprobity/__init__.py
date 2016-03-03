@@ -254,9 +254,11 @@ class molprobity (slots_getstate_setstate) :
         extract_coordinates=True)
     if ( (flags.real_space) and (xray_structure is not None) ):
       real_space_fmodel = fmodel
-      params = map_params.input.maps
-      map_name = ( (params.map_coefficients_file_name) or
-                   (params.map_file_name) )
+      map_name = None
+      if (map_params is not None):
+        params = map_params.input.maps
+        map_name = ( (params.map_coefficients_file_name) or
+                     (params.map_file_name) )
       if ( (real_space_fmodel is None) and (map_name is not None) ):
         d_min = 1.0
         if (header_info is not None):
