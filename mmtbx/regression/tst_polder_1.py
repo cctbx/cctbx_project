@@ -249,10 +249,16 @@ def exercise(prefix="tst_polder_01"):
   pdb_hierarchy.write_mmcif_file(
     file_name="tst_polder_01.cif", crystal_symmetry=xrs.crystal_symmetry())
   #
+  def generate_r_free_flags_systematic(miller_array):
+    result = flex.bool()
+    for i in xrange(miller_array.indices().size()):
+      if(i%10==0): result.append(True)
+      else: result.append(False)
+    return miller_array.array(data = result)
   fobs_1 = abs(xrs.structure_factors(d_min=3.0).f_calc())
   fobs_2 = abs(xrs.structure_factors(d_min=2.5).f_calc())
-  flags_1 = fobs_1.generate_r_free_flags(fraction=0.05)
-  flags_2 = fobs_2.generate_r_free_flags(fraction=0.05)
+  flags_1 = generate_r_free_flags_systematic(miller_array=fobs_1)
+  flags_2 = generate_r_free_flags_systematic(miller_array=fobs_2)
   #
   print '*'*79
   print 'Test reading one mtz with different choices for F and Rfree'
@@ -294,9 +300,7 @@ def check(tuple_calc, selection):
   #
   mmm_mp = mp.min_max_mean().as_tuple()
   print "Polder map : %7.3f %7.3f %7.3f" % mmm_mp
-  assert approx_equal(
-        mmm_mp, tuple_calc, eps=1.0), "calculated is %s and expected is %s" % (
-        mmm_mp, tuple_calc)
+  assert approx_equal(mmm_mp, tuple_calc, eps=1.0)
 
 if (__name__ == "__main__"):
   t0 = time.time()
