@@ -254,16 +254,16 @@ class molprobity (slots_getstate_setstate) :
         extract_coordinates=True)
     if ( (flags.real_space) and (xray_structure is not None) ):
       real_space_fmodel = fmodel
-      if (real_space_fmodel is None):
+      params = map_params.input.maps
+      map_name = ( (params.map_coefficients_file_name) or
+                   (params.map_file_name) )
+      if ( (real_space_fmodel is None) and (map_name is not None) ):
         d_min = 1.0
         if (header_info is not None):
           d_min = header_info.d_min
         else:
           from mmtbx.command_line.map_comparison import get_d_min
           from iotbx.file_reader import any_file
-          params = map_params.input.maps
-          map_name = ( (params.map_coefficients_file_name) or
-                       (params.map_file_name) )
           map_handle = any_file(map_name)
           if (map_handle.file_type == 'hkl'):
             d_min = get_d_min(map_handle)
@@ -275,10 +275,11 @@ class molprobity (slots_getstate_setstate) :
           scattering_table    = map_params.input.scattering_table,
           f_obs               = f_calc,
           r_free_flags        = None)
-      self.real_space = experimental.real_space(
-        fmodel=real_space_fmodel,
-        pdb_hierarchy=pdb_hierarchy,
-        cc_min=min_cc_two_fofc)
+      if (real_space_fmodel is not None):
+        self.real_space = experimental.real_space(
+          fmodel=real_space_fmodel,
+          pdb_hierarchy=pdb_hierarchy,
+          cc_min=min_cc_two_fofc)
     if (fmodel is not None) :
       if (use_pdb_header_resolution_cutoffs) and (header_info is not None) :
         fmodel = fmodel.resolution_filter(
