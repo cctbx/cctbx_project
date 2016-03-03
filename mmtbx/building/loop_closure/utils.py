@@ -40,7 +40,9 @@ def rama_score_evaluate(resType, value):
 def pair_info(phi_psi_pair):
   return phi_psi_pair[0][2].id_str()
 
-def list_rama_outliers_h(hierarchy, r):
+def list_rama_outliers_h(hierarchy, r=None):
+  if r is None:
+    r = ramachandran_eval.RamachandranEval()
   phi_psi_atoms = get_phi_psi_atoms(hierarchy)
   outp = list_rama_outliers(phi_psi_atoms, r)
   return outp
