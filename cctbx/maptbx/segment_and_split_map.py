@@ -12,7 +12,16 @@ master_phil = iotbx.phil.parse("""
 
   input_files {
 
-    ccp4_map_file = None
+     seq_file = None
+       .type = path
+       .short_caption = Sequence file
+       .help = Sequence file (unique chains only,  \
+               1-letter code, chains separated by \
+               blank line or greater-than sign.)  \
+               Can have chains that are DNA/RNA/protein and\
+               all can be present in one file.
+
+    map_file = None
       .type = path
       .help = File with CCP4-style map
       .short_caption = Map file
@@ -24,14 +33,14 @@ master_phil = iotbx.phil.parse("""
               Can also be a .ncs_spec file from phenix.
       .short_caption = NCS info file
 
-    pdb_file = None
+    pdb_in = None
       .type = path
-      .help = Optional PDB file matching ccp4_map_file to be offset
+      .help = Optional PDB file matching map_file to be offset
 
     pdb_to_restore = None
       .type = path
       .help = Optional PDB file to restore to position matching original \
-              ccp4_map_file.  Used in combination with info_file=xxx.pkl \
+              map_file.  Used in combination with info_file=xxx.pkl \
               and restored_pdb=yyyy.pdb
       .short_caption = PDB to restore
 
@@ -40,7 +49,7 @@ master_phil = iotbx.phil.parse("""
       .help = Optional pickle file with information from a previous run.\
               Can be used with pdb_to_restore to restore a PDB file to \
               to position matching original \
-              ccp4_map_file.
+              map_file.
       .short_caption = Info file
 
   }
@@ -115,20 +124,12 @@ master_phil = iotbx.phil.parse("""
     restored_pdb = None
       .type = path
       .help = Output name of PDB restored to position matching original \
-              ccp4_map_file.  Used in combination with info_file=xxx.pkl \
+              map_file.  Used in combination with info_file=xxx.pkl \
               and pdb_to_restore=xxxx.pdb
       .short_caption = Restored PDB file
   }
 
   crystal_info {
-     seq_file = None
-       .type = path
-       .short_caption = Sequence file
-       .help = Sequence file (unique chains only,  \
-               1-letter code, chains separated by \
-               blank line or greater-than sign.)  \
-               Can have chains that are DNA/RNA/protein and\
-               all can be present in one file.
      chain_type = *None PROTEIN RNA DNA
        .type = choice
        .short_caption = Chain type
@@ -749,9 +750,15 @@ def write_xrs(xrs=None,scatterers=None,file_name="atoms.pdb"):
 def get_params(args,out=sys.stdout):
 
   import mmtbx.utils
-  inputs = mmtbx.utils.process_command_line_args(args = args,
-    master_params = master_phil)
-  params = inputs.params.extract()
+  command_line = iotbx.phil.process_command_line_with_files(
+    reflection_file_def="input_files.map_coeffs_file",
+    map_file_def="input_files.map_file",
+    seq_file_def="input_files.seq_file",
+    pdb_file_def="input_files.pdb_in",
+    args=args,
+    master_phil=master_phil)
+
+  params = command_line.work.extract()
   print >>out,"\nSegment_and_split_map\n"
   print >>out,"Command used: %s\n" %(
    " ".join(['segment_and_split_map']+args))
@@ -776,35 +783,28 @@ def get_params(args,out=sys.stdout):
     tracking_data.set_params(params)
 
   # PDB file
-  if params.input_files.pdb_file and not inputs.pdb_file_names:
-    inputs.pdb_file_names=[params.input_files.pdb_file]
-  if inputs.pdb_file_names:
-    params.input_files.pdb_file=inputs.pdb_file_names[0]
-  print >>out,"\nInput PDB file: %s\n" %(params.input_files.pdb_file)
-  if params.input_files.pdb_file:
-    pdb_inp = iotbx.pdb.input(file_name=params.input_files.pdb_file)
+  print >>out,"\nInput PDB file: %s\n" %(params.input_files.pdb_in)
+  if params.input_files.pdb_in:
+    pdb_inp = iotbx.pdb.input(file_name=params.input_files.pdb_in)
     pdb_hierarchy = pdb_inp.construct_hierarchy()
     pdb_atoms = pdb_hierarchy.atoms()
     pdb_atoms.reset_i_seq()
-    tracking_data.set_input_pdb_info(file_name=params.input_files.pdb_file,
+    tracking_data.set_input_pdb_info(file_name=params.input_files.pdb_in,
       n_residues=pdb_hierarchy.overall_counts().n_residues)
   else:
     pdb_hierarchy=None
 
-  if inputs.ccp4_map:
-    params.input_files.ccp4_map_file=inputs.ccp4_map_file_name
+  if params.input_files.map_file:
+    from iotbx import ccp4_map
+    ccp4_map=iotbx.ccp4_map.map_reader(
+    file_name=params.input_files.map_file)
   else:
-    if params.input_files.ccp4_map_file:
-      from iotbx import ccp4_map
-      inputs.ccp4_map=iotbx.ccp4_map.map_reader(
-       file_name=params.input_files.ccp4_map_file)
-  if not inputs.ccp4_map:
     raise Sorry("Need ccp4 map")
 
-  map_data=inputs.ccp4_map.map_data()
-  crystal_symmetry=crystal.symmetry(inputs.ccp4_map.unit_cell().parameters(),
-    inputs.ccp4_map.space_group_number)
-  tracking_data.set_input_map_info(file_name=params.input_files.ccp4_map_file,
+  map_data=ccp4_map.map_data()
+  crystal_symmetry=crystal.symmetry(ccp4_map.unit_cell().parameters(),
+    ccp4_map.space_group_number)
+  tracking_data.set_input_map_info(file_name=params.input_files.map_file,
     crystal_symmetry=crystal_symmetry,
     origin=map_data.origin(),
     all=map_data.all())
@@ -1268,12 +1268,12 @@ def get_solvent_fraction(params,
      ncs_object=None,tracking_data=None,out=sys.stdout):
   map_volume=tracking_data.crystal_symmetry.unit_cell().volume()
   ncs_copies=tracking_data.input_ncs_info.original_number_of_operators
-  if not params.crystal_info.seq_file:
+  if not params.input_files.seq_file:
     raise Sorry("Please specify a sequence file with seq_file=myseq.seq")
-  elif not os.path.isfile(params.crystal_info.seq_file):
+  elif not os.path.isfile(params.input_files.seq_file):
     raise Sorry(
-     "The sequence file '%s' is missing." %(params.crystal_info.seq_file))
-  seq_as_string=open(params.crystal_info.seq_file).read()
+     "The sequence file '%s' is missing." %(params.input_files.seq_file))
+  seq_as_string=open(params.input_files.seq_file).read()
   seq_as_string=">\n"+seq_as_string  # so it always starts with >
   seq_as_string=seq_as_string.replace("\n\n","\n>\n") # blank lines are like >
   spl=seq_as_string.split(">")
@@ -1297,7 +1297,7 @@ def get_solvent_fraction(params,
   print >>out,\
     "Total residues: %d  Volume of all chains: %.1f  Solvent fraction: %.3f "%(
        n_residues_times_ncs,volume_of_molecules,solvent_fraction)
-  tracking_data.set_input_seq_info(file_name=params.crystal_info.seq_file,
+  tracking_data.set_input_seq_info(file_name=params.input_files.seq_file,
     n_residues=n_residues)
   tracking_data.set_solvent_fraction(solvent_fraction)
   tracking_data.set_n_residues(
@@ -3183,7 +3183,7 @@ def run(args,
         tracking_data=tracking_data,
         out=out)
     else:
-      shifted_map_file=params.input_files.ccp4_map_file # but do not overwrite
+      shifted_map_file=params.input_files.map_file # but do not overwrite
 
     # get the chain types and therefore (using ncs_copies) volume fraction
     tracking_data=get_solvent_fraction(params,
