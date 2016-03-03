@@ -749,7 +749,6 @@ def write_xrs(xrs=None,scatterers=None,file_name="atoms.pdb"):
 
 def get_params(args,out=sys.stdout):
 
-  import mmtbx.utils
   command_line = iotbx.phil.process_command_line_with_files(
     reflection_file_def="input_files.map_coeffs_file",
     map_file_def="input_files.map_file",
