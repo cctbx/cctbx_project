@@ -375,6 +375,53 @@ ATOM     13  CA  ARG B 484     -25.162  19.109   1.469  1.00 47.03      BA-  C
 ATOM     14  CG  ARG B 484     -25.746  17.004   2.827  1.00 47.49      BA-  C
 """
 
+test_pdb_12 = """\
+ATOM      1  N   ASP A 279     148.294 135.256  14.514  1.00361.90           N
+ATOM      2  CA  ASP A 279     148.944 135.688  13.244  1.00363.91           C
+ATOM      3  C   ASP A 279     150.116 136.660  13.498  1.00311.37           C
+ATOM      4  O   ASP A 279     150.890 136.977  12.584  1.00265.25           O
+ATOM      5  CB  ASP A 279     147.909 136.283  12.247  1.00340.39           C
+ATOM      6  CG  ASP A 279     148.544 136.866  10.940  1.00317.09           C
+ATOM      7  OD1 ASP A 279     149.462 136.253  10.337  1.00271.02           O
+ATOM      8  OD2 ASP A 279     148.085 137.945  10.494  1.00309.85           O
+ATOM      9  N   ARG A 280     150.240 137.122  14.743  1.00282.66           N
+ATOM     10  CA  ARG A 280     151.405 137.889  15.191  1.00243.53           C
+ATOM     11  C   ARG A 280     152.420 136.982  15.887  1.00239.61           C
+ATOM     12  O   ARG A 280     153.345 137.464  16.539  1.00231.28           O
+ATOM     13  CB  ARG A 280     150.976 139.011  16.137  1.00252.04           C
+ATOM     14  N   LEU A 281     152.236 135.669  15.740  1.00271.48           N
+ATOM     15  CA  LEU A 281     153.120 134.676  16.348  1.00298.95           C
+ATOM     16  C   LEU A 281     153.688 133.669  15.334  1.00293.08           C
+ATOM     17  O   LEU A 281     154.558 132.864  15.675  1.00325.01           O
+ATOM     18  CB  LEU A 281     152.411 133.959  17.495  1.00294.06           C
+ATOM     19  CG  LEU A 281     153.236 133.921  18.776  1.00316.57           C
+ATOM     20  CD1 LEU A 281     153.263 135.296  19.436  1.00243.06           C
+ATOM     21  CD2 LEU A 281     152.663 132.873  19.709  1.00298.46           C
+ATOM     22  N   GLU A 282     153.167 133.706  14.106  1.00247.81           N
+ATOM     23  CA  GLU A 282     153.827 133.132  12.921  1.00294.79           C
+ATOM     24  C   GLU A 282     154.887 134.153  12.467  1.00320.33           C
+ATOM     25  O   GLU A 282     155.953 133.788  11.917  1.00233.13           O
+ATOM     26  CB  GLU A 282     152.782 132.842  11.808  1.00321.01           C
+ATOM     27  CG  GLU A 282     153.279 132.850  10.343  1.00432.99           C
+ATOM     28  CD  GLU A 282     152.275 133.402   9.306  1.00369.39           C
+ATOM     29  OE1 GLU A 282     151.087 133.604   9.642  1.00323.25           O
+ATOM     30  OE2 GLU A 282     152.674 133.646   8.135  1.00284.42           O
+ATOM     31  N   ARG A 283     154.572 135.429  12.728  1.00357.16           N
+ATOM     32  CA  ARG A 283     155.454 136.572  12.483  1.00384.53           C
+ATOM     33  C   ARG A 283     156.436 136.825  13.640  1.00275.79           C
+ATOM     34  O   ARG A 283     157.288 137.710  13.545  1.00265.14           O
+ATOM     35  CB  ARG A 283     154.626 137.840  12.208  1.00316.05           C
+ATOM     36  N   ARG A 284     156.321 136.051  14.722  1.00266.18           N
+ATOM     37  CA  ARG A 284     157.243 136.156  15.872  1.00255.82           C
+ATOM     38  C   ARG A 284     158.154 134.935  16.094  1.00314.62           C
+ATOM     39  O   ARG A 284     159.154 135.024  16.825  1.00253.48           O
+ATOM     40  CB  ARG A 284     156.469 136.452  17.153  1.00230.14           C
+ATOM     41  N   SER A 285     157.800 133.808  15.471  1.00393.24           N
+ATOM     42  CA  SER A 285     158.572 132.562  15.569  1.00358.40           C
+ATOM     43  C   SER A 285     159.419 132.307  14.317  1.00418.23           C
+ATOM     44  O   SER A 285     158.898 132.157  13.204  1.00380.17           O
+ATOM     45  CB  SER A 285     157.651 131.363  15.841  1.00264.20           C
+"""
 
 def test_get_clean_selection_string():
   """ Check get_clean_selection_string  """
@@ -654,6 +701,7 @@ def test_8():
   tsel = selection_string_from_selection(pdb_h, isel)
   assert tsel == "(chain 'A' and (resid 117 or (resid 124:125 and (name N or name CA or name C or name O or name CB )) or resid 126:127))", tsel
 
+
 def test_11():
   """
   outputting name selection at the end of hierarchy?..
@@ -664,6 +712,19 @@ def test_11():
   tsel = selection_string_from_selection(pdb_h, isel)
   assert tsel == "(chain 'A' and (resid 480:482 or (resid 483:484 and (name CA ))))", tsel
 
+def test_12():
+  """
+  Not the first range in hierarchy, some atoms are absent for the first residue
+  in the range, but atoms of the several next residues are coniside with
+  present atoms of the first residue. And hierarchy ends. Make sure list
+  of atoms is outputted for the last range.
+  """
+  pdb_h = iotbx.pdb.input(
+      source_info=None, lines=test_pdb_12).construct_hierarchy()
+  isel = flex.size_t(range(26)+range(30,45))
+  tsel = selection_string_from_selection(pdb_h, isel)
+  assert tsel == "(chain 'A' and (resid 279:281 or (resid 282:285 and (name N or name CA or name C or name O or name CB ))))"
+  # print tsel
 
 if __name__=='__main__':
   test_get_clean_selection_string()
@@ -683,5 +744,6 @@ if __name__=='__main__':
   test_7()
   test_8()
   test_11()
+  test_12()
 
   print "OK"
