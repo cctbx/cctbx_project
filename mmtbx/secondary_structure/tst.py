@@ -200,8 +200,11 @@ ATOM    123  CB  ALA A  98      -1.627   2.343  20.021  1.00 20.00           C
     sec_str_from_pdb_file=None)
   # m.params.secondary_structure.use_ksdssp = False
   m.params.secondary_structure.protein.remove_outliers = False
-  proxies = m.create_protein_hbond_proxies(annotation=None, log=null_out())
-  assert proxies.size() == 12
+  log = open("exercise_sheet_ends.log", "w")
+  proxies = m.create_protein_hbond_proxies(annotation=None, log=log)
+  log.close()
+  # probably the determination of SS by ksdssp is not stable.
+  assert proxies.size() == 12, proxies.size()
 
 
 def exercise_helix_bonding_pattern():
