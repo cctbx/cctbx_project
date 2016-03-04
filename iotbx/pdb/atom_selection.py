@@ -999,8 +999,8 @@ def selection_string_from_selection(pdb_h,
   # here, let's say for a year. If no bugs discovered, this could be removed.
   # Current removal date: Jan 22, 2017
   isel = pdb_h.atom_selection_cache().iselection(sel_str)
-  pdb_h.select(isel).write_pdb_file("selected_string.pdb")
-  pdb_h.select(selection).write_pdb_file("selected_isel.pdb")
+  # pdb_h.select(isel).write_pdb_file("selected_string.pdb")
+  # pdb_h.select(selection).write_pdb_file("selected_isel.pdb")
   assert len(isel) == len(selection), ""+\
       "%d (result) != %d (input): conversion to string selects different number of atoms!.\n" \
       % (len(isel), len(selection)) +\
