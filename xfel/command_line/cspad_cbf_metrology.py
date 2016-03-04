@@ -6,10 +6,14 @@ from __future__ import division
 import os, sys, random
 from iotbx.phil import parse
 from libtbx import easy_run
+from libtbx.utils import Sorry
 from xfel.cftbx.detector.cspad_cbf_tbx import write_cspad_cbf, map_detector_to_basis_dict
 from dials.phil import ExperimentListConverters
 
 phil_scope = parse("""
+  reflections = reindexedstrong *indexed integrated
+    .type = choice
+    .help = Which subset of reflections
   tag = cspad
     .type = str
     .help = Name of this refinement run. Output filenames will use this tag.
@@ -24,6 +28,11 @@ phil_scope = parse("""
     .help = Whether to split the data in two using odd and even file numbers. Each \
             half is refined seperately and _1 or _2 is appended to the tag. If used \
             with n_subset, each half will have n_subset images.
+  data_phil = None
+    .type = str
+    .help = Optional phil file with all experiments and reflections for use during \
+            refinement.  If not provided, the program will use whatever directories \
+            were specified.
 """, process_includes=True)
 
 def run(args):
@@ -32,20 +41,20 @@ def run(args):
   paths = []
   refine_phil_file = None
   for arg in args:
-    try:
-      if os.path.splitext(arg)[1] == ".phil":
-        refine_phil_file = arg
-        continue
-    except Exception, e:
-      pass
+    if os.path.isfile(arg):
+      try:
+        if os.path.splitext(arg)[1] == ".phil":
+          refine_phil_file = arg
+          continue
+      except Exception, e:
+        raise Sorry("Unrecognized file %s"%arg)
     if os.path.isdir(arg):
       paths.append(arg)
     else:
       try:
         user_phil.append(parse(arg))
       except Exception, e:
-        print "Unrecognized argument:", arg
-        return
+        raise Sorry("Unrecognized argument: %s"%arg)
 
   params = phil_scope.fetch(sources=user_phil).extract()
 
@@ -53,41 +62,50 @@ def run(args):
   all_exp = []
   all_ref = []
 
-  for path in paths:
-    for filename in os.listdir(path):
-      if "indexed" in filename:
-        exp_path = os.path.join(path, filename.rstrip("_indexed.pickle") + "_refined_experiments.json")
-        if not os.path.exists(exp_path): continue
-        all_exp.append(exp_path)
-        all_ref.append(os.path.join(path, filename))
+  if params.data_phil is None:
+    for path in paths:
+      for filename in os.listdir(path):
+        if params.reflections in filename:
+          exp_path = os.path.join(path, filename.rstrip("_%s.pickle"%params.reflections) + "_refined_experiments.json")
+          if not os.path.exists(exp_path): continue
+          all_exp.append(exp_path)
+          all_ref.append(os.path.join(path, filename))
 
-  if params.split_dataset:
-    import re
-    even_exp = []
-    odd_exp = []
-    even_ref = []
-    odd_ref = []
-    for exp, ref in zip(all_exp, all_ref):
-      if int(re.findall(r'\d+', exp)[-1][-1]) % 2 == 0:
-        even_exp.append(exp)
-        even_ref.append(ref)
-      else:
-        odd_exp.append(exp)
-        odd_ref.append(ref)
+    if params.split_dataset:
+      import re
+      even_exp = []
+      odd_exp = []
+      even_ref = []
+      odd_ref = []
+      for exp, ref in zip(all_exp, all_ref):
+        if int(re.findall(r'\d+', exp)[-1][-1]) % 2 == 0:
+          even_exp.append(exp)
+          even_ref.append(ref)
+        else:
+          odd_exp.append(exp)
+          odd_ref.append(ref)
 
-    base_tag = params.tag
+      base_tag = params.tag
 
-    params.tag = base_tag + "_1"
-    print "Refining odd numbered data using tag", params.tag
-    refine(params, refine_phil_file, odd_exp, odd_ref)
+      params.tag = base_tag + "_1"
+      print "Refining odd numbered data using tag", params.tag
+      combine_phil = generate_combine_phil(params, odd_exp, odd_ref)
+      refine(params, refine_phil_file, combine_phil)
 
-    params.tag = base_tag + "_2"
-    print "Refining even numbered data using tag", params.tag
-    refine(params, refine_phil_file, even_exp, even_ref)
+      params.tag = base_tag + "_2"
+      print "Refining even numbered data using tag", params.tag
+      combine_phil = generate_combine_phil(params, even_exp, even_ref)
+      refine(params, refine_phil_file, combine_phil)
+    else:
+      combine_phil = generate_combine_phil(params, all_exp, all_ref)
+      refine(params, refine_phil_file, combine_phil)
   else:
-    refine(params, refine_phil_file, all_exp, all_ref)
+    assert len(paths) == 0
+    assert params.n_subset is None
+    assert not params.split_dataset
+    refine(params, refine_phil_file, params.data_phil)
 
-def refine(params, refine_phil_file, all_exp, all_ref):
+def generate_combine_phil(params, all_exp, all_ref):
   if params.n_subset is not None:
     subset_all_exp = []
     subset_all_ref = []
@@ -102,7 +120,8 @@ def refine(params, refine_phil_file, all_exp, all_ref):
     all_exp = subset_all_exp
     all_ref = subset_all_ref
 
-  f = open("%s_combine.phil"%params.tag, 'w')
+  combine_phil = "%s_combine.phil"%params.tag
+  f = open(combine_phil, 'w')
   for exp_path, ref_path in zip(all_exp, all_ref):
     f.write("input {\n")
     f.write("  experiments = %s\n"%exp_path)
@@ -110,8 +129,11 @@ def refine(params, refine_phil_file, all_exp, all_ref):
     f.write("}\n")
   f.close()
 
+  return combine_phil
+
+def refine(params, refine_phil_file, combine_phil):
   print "Combining experiments..."
-  command = "dials.combine_experiments reference_from_experiment.average_detector=True reference_from_experiment.average_hierarchy_level=0 output.experiments_filename=%s_combined_experiments.json output.reflections_filename=%s_combined_reflections.pickle %s_combine.phil"%(params.tag, params.tag, params.tag)
+  command = "dials.combine_experiments reference_from_experiment.average_detector=True reference_from_experiment.average_hierarchy_level=0 output.experiments_filename=%s_combined_experiments.json output.reflections_filename=%s_combined_reflections.pickle %s"%(params.tag, params.tag, combine_phil)
   print command
   result = easy_run.fully_buffered(command=command).raise_if_errors()
   result.show_stdout()
