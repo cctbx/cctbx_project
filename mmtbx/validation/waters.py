@@ -62,7 +62,8 @@ class waters (validation) :
   def get_result_class (self) : return water
 
   def __init__ (self, pdb_hierarchy, xray_structure, fmodel,
-      distance_cutoff=4.0, collect_all=True) :
+                distance_cutoff=4.0, collect_all=True,
+                molprobity_map_params=None) :
     validation.__init__(self)
     from mmtbx.real_space_correlation import extract_map_stats_for_single_atoms
     from cctbx import adptbx
@@ -87,7 +88,8 @@ class waters (validation) :
       pdb_atoms=pdb_atoms,
       xray_structure=xray_structure,
       fmodel=fmodel,
-      selection=water_sel)
+      selection=water_sel,
+      user_map=user_map)
     waters = []
     for i_seq, atom in enumerate(pdb_atoms) :
       if (water_sel[i_seq]) :
