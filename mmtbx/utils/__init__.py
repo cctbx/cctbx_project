@@ -1672,11 +1672,15 @@ class process_command_line_args(object):
       #
       if(self.cmd_cs is not None and self.cmd_cs.unit_cell() is not None):
         crystal_symmetries.append(["cmd_line", self.cmd_cs])
-      cs = crystal_symmetry_from_any.extract_from(arg_file)
-      if(cs is not None and cs.unit_cell() is not None):
-        crystal_symmetries.append([arg_file, cs])
       #
       if(os.path.isfile(arg_file)):
+        arg_added_to_crystal_symmetry=False
+        # Get crystal symmetry
+        cs = crystal_symmetry_from_any.extract_from(arg_file)
+        if(cs is not None and cs.unit_cell() is not None):
+          crystal_symmetries.append([arg_file, cs])
+          arg_added_to_crystal_symmetry=True
+
         af = any_file(file_name = arg_file)
         #### NEW, no idea why this does not work.
         #if(af.file_type=="phil"):
@@ -1705,7 +1709,8 @@ class process_command_line_args(object):
         elif(af.file_type=="ccp4_map"):
           self.ccp4_map = af.file_content
           self.ccp4_map_file_name = arg_file
-          crystal_symmetries.append([arg_file, af.crystal_symmetry()])
+          if not arg_added_to_crystal_symmetry:
+            crystal_symmetries.append([arg_file, af.crystal_symmetry()])
           arg_is_processed = True
         elif(af.file_type=="hkl"):
           self.reflection_files.append(af.file_content)
