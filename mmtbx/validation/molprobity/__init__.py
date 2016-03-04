@@ -252,20 +252,13 @@ class molprobity (slots_getstate_setstate) :
         log=null_out(),
         include_secondary_structure=True,
         extract_coordinates=True)
-
-    # modified real_space and waters to handle user-provided maps
-    # improve interace, waters just needs a map, real_space needs parameters
-    # avoid usage of fmodel for maps
-    if ( ( (flags.real_space) or (flags.waters) )and
-         (xray_structure is not None) ):
+    if ( (flags.real_space) and (xray_structure is not None) ):
       real_space_fmodel = fmodel
       map_name = None
-      molprobity_map_params = None
       if (map_params is not None):
         params = map_params.input.maps
         map_name = ( (params.map_coefficients_file_name) or
                      (params.map_file_name) )
-        molprobity_map_params = map_params.input.maps
       if ( (real_space_fmodel is None) and (map_name is not None) ):
         d_min = 1.0
         if (header_info is not None):
@@ -284,22 +277,11 @@ class molprobity (slots_getstate_setstate) :
           scattering_table    = map_params.input.scattering_table,
           f_obs               = f_calc,
           r_free_flags        = None)
-
       if (real_space_fmodel is not None):
-        if (flags.real_space):
-          self.real_space = experimental.real_space(
-            fmodel=real_space_fmodel,
-            pdb_hierarchy=pdb_hierarchy,
-            cc_min=min_cc_two_fofc,
-            molprobity_map_params=molprobity_map_params)
-        if (flags.waters):
-          self.waters = waters.waters(
-            pdb_hierarchy=pdb_hierarchy,
-            xray_structure=xray_structure,
-            fmodel=fmodel,
-            collect_all=True,
-            molprobity_map_params=molprobity_map_params)
-
+        self.real_space = experimental.real_space(
+          fmodel=real_space_fmodel,
+          pdb_hierarchy=pdb_hierarchy,
+          cc_min=min_cc_two_fofc)
     if (fmodel is not None) :
       if (use_pdb_header_resolution_cutoffs) and (header_info is not None) :
         fmodel = fmodel.resolution_filter(
@@ -310,6 +292,12 @@ class molprobity (slots_getstate_setstate) :
           raw_data=raw_data,
           n_bins=n_bins_data,
           count_anomalous_pairs_separately=count_anomalous_pairs_separately)
+      if (flags.waters) :
+        self.waters = waters.waters(
+          pdb_hierarchy=pdb_hierarchy,
+          xray_structure=xray_structure,
+          fmodel=fmodel,
+          collect_all=True)
       if (unmerged_data is not None) :
         self.merging = experimental.merging_and_model_statistics(
           f_obs=fmodel.f_obs(),
