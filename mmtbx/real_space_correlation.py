@@ -142,10 +142,12 @@ def extract_data_and_flags(params, crystal_symmetry=None):
   return data_and_flags
 
 def compute_map_from_model(high_resolution, low_resolution, xray_structure,
-                           grid_resolution_factor, crystal_gridding = None):
+                           grid_resolution_factor=None,
+                           crystal_gridding = None):
   f_calc = xray_structure.structure_factors(d_min = high_resolution).f_calc()
-  f_calc = f_calc.resolution_filter(d_max = low_resolution)
-  if(crystal_gridding is None):
+  if (low_resolution is not None):
+    f_calc = f_calc.resolution_filter(d_max = low_resolution)
+  if (crystal_gridding is None):
     return f_calc.fft_map(
       resolution_factor = min(0.5,grid_resolution_factor),
       symmetry_flags    = None)
@@ -279,7 +281,7 @@ Examples:
         except RuntimeError, e:
           raise Sorry("Unrecognized parameter or command-line argument '%s'." %
             arg)
-    if (n_files != 2):
+    if (n_files > 2):
       raise Sorry('Only 2 files are needed, a structure and the data')
     working_phil, unused = master_params().fetch(sources=phil_objects,
       track_unused_definitions=True)
@@ -328,19 +330,16 @@ Examples:
         raise Sorry('The symmetry of the two files, %s and %s, is not similar' %
                     (fobs_handle.file_name, map_handle.file_name))
 
-      # get d_min
-      d_min = 1.0
-      if (map_handle.file_type == 'hkl'):
-        d_min = get_d_min(map_handle)
-      else:
-        d_min = 1.0
-
     # check that only one data file is defined
     if ( (map_name is not None) and
          (params.reflection_file_name is not None) ):
       raise Sorry('Please use F_obs or a map, not both.')
+    if ( (params.reflection_file_name is None) and
+         (map_name is None) ):
+      raise Sorry('A data file is required.')
 
-    # create fmodel with f_obs
+    # create fmodel with f_obs (if available)
+    fmodel = None
     if (params.reflection_file_name is not None):
       r_free_flags = data_and_flags.f_obs.array(
         data = flex.bool(data_and_flags.f_obs.size(), False))
@@ -351,16 +350,6 @@ Examples:
         r_free_flags        = r_free_flags)
       broadcast(m="R-factors, reflection counts and scales", log=log)
       fmodel.show(log=log, show_header=False)
-
-    # or create fmodel with calculated f_calc (when a map is used)
-    else:
-      f_calc = pdbo.xray_structure.structure_factors(d_min=d_min).f_calc().\
-               as_amplitude_array()
-      fmodel = mmtbx.utils.fmodel_simple(
-        xray_structures     = [pdbo.xray_structure],
-        scattering_table    = params.scattering_table,
-        f_obs               = f_calc,
-        r_free_flags        = None)
 
     # compute cc
     results = simple(
@@ -374,13 +363,17 @@ def simple(fmodel, pdb_hierarchy, params=None, log=None, show_results=False):
   if(params is None): params = master_params().extract()
   if(log is None): log = sys.stdout
 
-  e_map_obj = fmodel.electron_density_map()
-
-  # compute map_2 if necessary (usually 2mFo-DFc)
   crystal_gridding = None
+  unit_cell = None
+  d_min = 1.0
+  map_1 = None
   map_2 = None
+
+  # compute map_1 and map_2 if given F_obs (fmodel exists)
   if ( (params.map_file_name is None) and
-       (params.map_coefficients_file_name is None) ):
+       (params.map_coefficients_file_name is None) and
+       (fmodel is not None) ):
+    e_map_obj = fmodel.electron_density_map()
     coeffs_2 = e_map_obj.map_coefficients(
       map_type     = params.map_2.type,
       fill_missing = params.map_2.fill_missing_reflections,
@@ -390,10 +383,23 @@ def simple(fmodel, pdb_hierarchy, params=None, log=None, show_results=False):
     fft_map_2.apply_sigma_scaling()
     map_2 = fft_map_2.real_map_unpadded()
 
+    coeffs_1 = e_map_obj.map_coefficients(
+      map_type     = params.map_1.type,
+      fill_missing = params.map_1.fill_missing_reflections,
+      isotropize   = params.map_1.isotropize)
+    fft_map_1 = miller.fft_map(crystal_gridding = crystal_gridding,
+                               fourier_coefficients = coeffs_1)
+    fft_map_1.apply_sigma_scaling()
+    map_1 = fft_map_1.real_map_unpadded()
+
+    unit_cell = fmodel.xray_structure.unit_cell()
+    d_min = fmodel.f_obs().d_min()
+
   # or read map coefficents
   elif (params.map_coefficients_file_name is not None):
     map_handle = any_file(params.map_coefficients_file_name)
     crystal_symmetry = get_crystal_symmetry(map_handle)
+    unit_cell = crystal_symmetry.unit_cell()
     d_min = get_d_min(map_handle)
     crystal_gridding = maptbx.crystal_gridding(
       crystal_symmetry.unit_cell(), d_min=d_min,
@@ -416,15 +422,14 @@ def simple(fmodel, pdb_hierarchy, params=None, log=None, show_results=False):
       unit_cell, space_group_info=sg_info, pre_determined_n_real=n_real)
     map_2 = map_handle.file_object.map_data()
 
-  # compute map_1 (Fc)
-  coeffs_1 = e_map_obj.map_coefficients(
-    map_type     = params.map_1.type,
-    fill_missing = params.map_1.fill_missing_reflections,
-    isotropize   = params.map_1.isotropize)
-  fft_map_1 = miller.fft_map(crystal_gridding = crystal_gridding,
-                             fourier_coefficients = coeffs_1)
-  fft_map_1.apply_sigma_scaling()
-  map_1 = fft_map_1.real_map_unpadded()
+  # compute map_1 (Fc) if given a map (fmodel does not exist)
+  if (map_1 is None):
+    xray_structure = pdb_hierarchy.extract_xray_structure(
+      crystal_symmetry=crystal_gridding.crystal_symmetry())
+    fft_map_1 = compute_map_from_model(d_min, None, xray_structure,
+                                       crystal_gridding=crystal_gridding)
+    fft_map_1.apply_sigma_scaling()
+    map_1 = fft_map_1.real_map_unpadded()
 
   # compute cc
   assert ( (map_1 is not None) and (map_2 is not None) )
@@ -434,11 +439,11 @@ def simple(fmodel, pdb_hierarchy, params=None, log=None, show_results=False):
   print >> log, "  Overall map cc(%s,%s): %6.4f"%(params.map_1.type,
     params.map_2.type, overall_cc)
   detail, atom_radius = params.detail, params.atom_radius
-  detail, atom_radius = set_detail_level_and_radius(detail=detail,
-    atom_radius=atom_radius, d_min=fmodel.f_obs().d_min())
+  detail, atom_radius = set_detail_level_and_radius(
+    detail=detail, atom_radius=atom_radius, d_min=d_min)
   use_hydrogens = params.use_hydrogens
   if(use_hydrogens is None):
-    if(params.scattering_table == "neutron" or fmodel.f_obs().d_min() <= 1.2):
+    if(params.scattering_table == "neutron" or d_min <= 1.2):
       use_hydrogens = True
     else:
       use_hydrogens = False
@@ -450,7 +455,7 @@ def simple(fmodel, pdb_hierarchy, params=None, log=None, show_results=False):
       hydrogen_atom_radius = 1
   results = compute(
     pdb_hierarchy        = pdb_hierarchy,
-    unit_cell            = fmodel.xray_structure.unit_cell(),
+    unit_cell            = unit_cell,
     fft_n_real           = map_1.focus(),
     fft_m_real           = map_1.all(),
     map_1                = map_1,
