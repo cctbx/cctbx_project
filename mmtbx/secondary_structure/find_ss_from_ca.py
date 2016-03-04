@@ -268,6 +268,7 @@ def sort_models_and_sequences(models,sequences):
   # sort based on chain type if available
   sort_dict={}
   for m,s in zip(models,sequences):
+    if not m or not m.hierarchy: continue
     chain_type=str(m.info.get('chain_type'))
     if not chain_type in sort_dict.keys(): sort_dict[chain_type]=[]
     sort_dict[chain_type].append([m,s])
