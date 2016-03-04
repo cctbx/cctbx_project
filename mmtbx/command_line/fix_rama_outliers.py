@@ -55,6 +55,8 @@ class loop_idealization():
     self.p_initial_rama_outliers = ram.out_percent
     self.p_before_minimization_rama_outliers = None
     self.p_after_minimiaztion_rama_outliers = None
+    self.berkeley_p_before_minimization_rama_outliers = None
+    self.berkeley_p_after_minimiaztion_rama_outliers = None
     self.ref_exclusion_selection = ""
     for chain in pdb_hierarchy.only_model().chains():
       print >> self.log, "Idealizing chain %s" % chain.id
@@ -83,11 +85,13 @@ class loop_idealization():
     self.resulting_pdb_h.write_pdb_file(file_name="%s_before_minimization.pdb" % self.params.output_prefix)
     ram = ramalyze.ramalyze(pdb_hierarchy=self.resulting_pdb_h)
     self.p_before_minimization_rama_outliers = ram.out_percent
-
     berkeley_count = utils.list_rama_outliers_h(self.resulting_pdb_h).count("\n")
+    self.berkeley_p_before_minimization_rama_outliers = \
+        berkeley_count/float(self.resulting_pdb_h.overall_counts().n_residues)*100
+
     duke_count = ram.get_outliers_count_and_fraction()[0]
     if berkeley_count != duke_count:
-      print >> self.log, "Discrepancy between berkeley and duke:", berkeley_count, duke_count
+      print >> self.log, "Discrepancy between berkeley and duke after ccd:", berkeley_count, duke_count
 
     if self.params.minimize_whole:
       print >> self.log, "minimizing whole thing..."
@@ -98,8 +102,10 @@ class loop_idealization():
       self.p_after_minimiaztion_rama_outliers = ram.out_percent
       berkeley_count = utils.list_rama_outliers_h(self.resulting_pdb_h).count("\n")
       duke_count = ram.get_outliers_count_and_fraction()[0]
+      self.berkeley_p_after_minimiaztion_rama_outliers = \
+          berkeley_count/float(self.resulting_pdb_h.overall_counts().n_residues)*100
       if berkeley_count != duke_count:
-        print >> self.log, "Discrepancy between berkeley and duke:", berkeley_count, duke_count
+        print >> self.log, "Discrepancy between berkeley and duke after min:", berkeley_count, duke_count
     # return new_h
 
   def process_params(self, params):
@@ -506,10 +512,12 @@ def run(args, log=sys.stdout):
   loop_ideal = loop_idealization(pdb_h, work_params.loop_idealization, log)
   loop_ideal.resulting_pdb_h.write_pdb_file(
       file_name="%s_very_final.pdb" % work_params.loop_idealization.output_prefix)
-  print >> log, "Outlier percentages: initial, after ccd, after minimization:"
+  print >> log, "Outlier percentages: initial, after ccd, after minimization, berkeley after ccd, berkeley after minimization:"
   print >> log, loop_ideal.p_initial_rama_outliers,
   print >> log, loop_ideal.p_before_minimization_rama_outliers,
-  print >> log, loop_ideal.p_after_minimiaztion_rama_outliers
+  print >> log, loop_ideal.p_after_minimiaztion_rama_outliers,
+  print >> log, loop_ideal.berkeley_p_before_minimization_rama_outliers,
+  print >> log, loop_ideal.berkeley_p_after_minimiaztion_rama_outliers
 
 
 
