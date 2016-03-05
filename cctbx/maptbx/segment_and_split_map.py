@@ -164,7 +164,7 @@ master_phil = iotbx.phil.parse("""
 
     density_select_threshold = None
       .type = float
-      .help = threshold to use in trim_map_to_density 
+      .help = threshold to use in trim_map_to_density
       .short_caption = Density select threshold
 
     density_threshold = None
@@ -846,8 +846,8 @@ def get_params(args,out=sys.stdout):
     map_data=box.map_box.as_double()
     print >>out, "Moving origin to (0,0,0)"
     print >>out,"Adding (%8.2f,%8.2f,%8.2f) to all coordinates\n"%(sx,sy,sz)
-    
-  else:  # shift if necessary... 
+
+  else:  # shift if necessary...
     shift_needed = not \
         (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
          map_data.is_0_based())
@@ -867,7 +867,7 @@ def get_params(args,out=sys.stdout):
 
       map_data=map_data.shift_origin()
     else:
-      origin_shift=(0.,0.,0.) 
+      origin_shift=(0.,0.,0.)
 
 
   tracking_data.set_origin_shift(origin_shift)
