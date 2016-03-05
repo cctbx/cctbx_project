@@ -1658,6 +1658,8 @@ class find_segment: # class to look for a type of segment
     for i in keys:
       norms_used=norms[i:segment_dict[i]+1]
       mean_norm=norms_used.min_max_mean().mean
+      if mean_norm is None: # give up
+        return optimal_delta_length_dict,norm_dict
       # guess number of residues it should be: standard rise
       segment_rise=mean_norm/self.span  # we used mean of i+3 and i+4 for helix
       segment_length=segment_dict[i]+1+self.last_residue_offset-i

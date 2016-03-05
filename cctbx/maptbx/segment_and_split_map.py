@@ -1,5 +1,6 @@
 from __future__ import division
 import iotbx.phil
+import iotbx.pdb
 import iotbx.ccp4_map
 from cctbx import crystal
 from cctbx import maptbx
@@ -152,6 +153,19 @@ master_phil = iotbx.phil.parse("""
   }
 
   segmentation {
+
+    density_select = False
+      .type = bool
+      .help = Run map_box with density_select=True to cut out the region \
+              in the input map that contains density. Useful if the input map \
+              is much larger than the structure. Done before segmentation is\
+              carried out.
+      .short_caption = Trim map to density
+
+    density_select_threshold = None
+      .type = float
+      .help = threshold to use in trim_map_to_density 
+      .short_caption = Density select threshold
 
     density_threshold = None
       .type = float
@@ -715,7 +729,6 @@ def write_ccp4_map(crystal_symmetry, file_name, map_data):
 def set_up_xrs(crystal_symmetry=None):  # dummy xrs to write out atoms
 
   lines=["ATOM     92  SG  CYS A  10       8.470  28.863  18.423  1.00 22.05           S"] # just a random line to set up x-ray structure
-  import iotbx.pdb
   from cctbx.array_family import flex
   from cctbx import xray
   pdb_inp=iotbx.pdb.input(source_info="",lines=lines)
@@ -808,26 +821,55 @@ def get_params(args,out=sys.stdout):
     origin=map_data.origin(),
     all=map_data.all())
   tracking_data.set_crystal_symmetry(crystal_symmetry=crystal_symmetry)
-  shift_needed = not \
-      (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
-       map_data.is_0_based())
 
-  a,b,c = crystal_symmetry.unit_cell().parameters()[:3]
-  N_ = map_data.all()
-  O_ =map_data.origin()
-  sx,sy,sz = (a/N_[0])*O_[0], (b/N_[1])*O_[1], (c/N_[2])*O_[2]
-  print >>out,"Origin for map is at (%8.2f,%8.2f,%8.2f)" % (-sx,-sy,-sz)
-  print >>out,"Cell dimensions of this map are: (%8.2f,%8.2f,%8.2f)" % (a,b,c)
-  if shift_needed:
-    if(not crystal_symmetry.space_group().type().number() in [0,1]):
-        raise RuntimeError("Not implemented")
-    origin_shift=[-sx,-sy,-sz]
+  # either use map_box with density_select=True or just shift the map
+  if  params.segmentation.density_select:
+    print >>out,"\nTrimming map to density..."
+    args=["density_select=True","output_format=ccp4"]
+    if params.segmentation.density_select_threshold is not None:
+      print >>out,"Threshold for density selection will be: %6.2f \n"%(
+       params.segmentation.density_select_threshold)
+      args.append("density_select_threshold=%s" %(
+         params.segmentation.density_select_threshold))
+    if params.input_files.ncs_file:
+      args.append("ncs_file=%s" %(params.input_files.ncs_file))
+    if params.input_files.pdb_in:
+      args.append("pdb_file=%s" %(params.input_files.pdb_in))
+    args.append("ccp4_map_file=%s" %(params.input_files.map_file))
+    file_name_prefix=os.path.join(params.output_files.output_directory,
+       "density_select")
+    args.append("output_file_name_prefix=%s" %(file_name_prefix))
+    from mmtbx.command_line.map_box import run as run_map_box
+    box=run_map_box(args,crystal_symmetry=crystal_symmetry,log=out)
+    (sx,sy,sz)=box.total_shift
+    origin_shift=(-sx,-sy,-sz)
+    map_data=box.map_box.as_double()
     print >>out, "Moving origin to (0,0,0)"
     print >>out,"Adding (%8.2f,%8.2f,%8.2f) to all coordinates\n"%(sx,sy,sz)
+    
+  else:  # shift if necessary... 
+    shift_needed = not \
+        (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
+         map_data.is_0_based())
 
-    map_data=map_data.shift_origin()
-  else:
-    origin_shift=(0.,0.,0.) # ZZZNone
+    a,b,c = crystal_symmetry.unit_cell().parameters()[:3]
+    N_ = map_data.all()
+    O_ =map_data.origin()
+    sx,sy,sz = (a/N_[0])*O_[0], (b/N_[1])*O_[1], (c/N_[2])*O_[2]
+    print >>out,"Origin for map is at (%8.2f,%8.2f,%8.2f)" % (-sx,-sy,-sz)
+    print >>out,"Cell dimensions of this map are: (%8.2f,%8.2f,%8.2f)" % (a,b,c)
+    if shift_needed:
+      if(not crystal_symmetry.space_group().type().number() in [0,1]):
+          raise RuntimeError("Not implemented")
+      origin_shift=[-sx,-sy,-sz]
+      print >>out, "Moving origin to (0,0,0)"
+      print >>out,"Adding (%8.2f,%8.2f,%8.2f) to all coordinates\n"%(sx,sy,sz)
+
+      map_data=map_data.shift_origin()
+    else:
+      origin_shift=(0.,0.,0.) 
+
+
   tracking_data.set_origin_shift(origin_shift)
 
   if params.segmentation.expand_size is None:
@@ -840,7 +882,8 @@ def get_params(args,out=sys.stdout):
       nn+=params.segmentation.expand_target/delta
     nn=max(1,int(0.5+nn/3.))
     params.segmentation.expand_size=nn
-    print >>out,"Expand size (grid units): %d (about %4.1f A) " %(
+    print >>out,\
+      "Expand size for segmentation (grid units): %d (about %4.1f A) " %(
       nn,nn*abc[0]/N_[0])
 
   return params,map_data,pdb_hierarchy,tracking_data
@@ -1055,7 +1098,12 @@ def choose_threshold(params,map_data=None,
          starting_density_threshold)
     else:
       starting_density_threshold=1.0
-  print >>out,\
+  if params.control.verbose:
+    local_out=out
+  else:
+    from libtbx.utils import null_out
+    local_out=null_out()
+  print >>local_out,\
     "Threshold  Target    N     Biggest   Median     Ratio   Enough  Score   OK"
   unique_expected_regions=None
   for n_range_low,n_range_high in n_range_low_high_list:
@@ -1093,7 +1141,7 @@ def choose_threshold(params,map_data=None,
          ncs_copies=ncs_copies,
          n_residues=n_residues,
          map_data=map_data,
-         out=out)
+         out=local_out)
       if expected_regions:
         unique_expected_regions=max(1,
          (ncs_copies-1+expected_regions)//ncs_copies)
