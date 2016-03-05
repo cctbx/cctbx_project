@@ -1364,6 +1364,10 @@ def search_ncs_relations(ph=None,
     #   sorted_ch = update_chain_ids_search_order(
     #     chains_info,sorted_ch,chains_in_copies,i)
     m_ch_id = sorted_ch[i]
+
+    if m_ch_id in chains_in_copies:
+      continue
+
     master_n_res = len(chains_info[m_ch_id].res_names)
     seq_m = chains_info[m_ch_id].res_names
     if master_n_res == 0:
@@ -1393,7 +1397,7 @@ def search_ncs_relations(ph=None,
         rec = [m_ch_id,c_ch_id,sel_m,sel_c,res_sel_m,res_sel_c,similarity]
         chain_match_list.append(rec)
       # Collect only very good matches, to allow better similarity search
-      if similarity > 0.9:
+      if similarity > chain_similarity_threshold:
         chains_in_copies.add(c_ch_id)
         # print "  good"
   if msg:

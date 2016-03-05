@@ -1452,9 +1452,7 @@ def exercise_09():
   n_chains = len(chain_ids)
   assert n_chains==9
   # print chain_match_list
-  # assert len(chain_match_list)==8, len(chain_match_list)
-  # because we turned off 'use_minimal_master_ncs'
-  assert len(chain_match_list)==36, len(chain_match_list)
+  assert len(chain_match_list)==8, len(chain_match_list)
   #
   match_dict = ncs_search.clean_chain_matching(chain_match_list,ph)
   chains_info = ncs_search.get_chains_info(ph)
