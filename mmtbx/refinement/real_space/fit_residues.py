@@ -39,12 +39,12 @@ class run(object):
   def __init__(self,
                pdb_hierarchy,
                crystal_symmetry,
-               map_data,
                rotamer_manager,
                sin_cos_table,
                mon_lib_srv,
                do_all=False,
                backbone_sample=True,
+               map_data=None,
                diff_map_data=None,
                massage_map=True,
                log = None):
@@ -57,13 +57,20 @@ class run(object):
     self.special_position_indices = self.get_special_position_indices()
     self.selection_water_as_set = set(self.pdb_hierarchy.\
       atom_selection_cache().selection(string = "water"))
-    if(self.massage_map):
-      self.target_map = self.prepare_target_map()
-    else:
-      self.target_map = map_data
+    if(self.map_data is not None):
+      if(self.massage_map):
+        self.target_map = self.prepare_target_map()
+      else:
+        self.target_map = map_data
     print >> self.log, \
       "outliers start: %d (percent: %6.2f)"%self.count_outliers()
-    self.fit_residues()
+    if(self.map_data is not None):  
+      self.loop(function = self.one_residue_iteration)
+      self.pdb_hierarchy.atoms().set_xyz(self.sites_cart)
+      print >> self.log, \
+        "outliers after map fit: %d (percent: %6.2f)"%self.count_outliers()
+    print >> self.log, "tune up"
+    self.loop(function = self.one_residue_tune_up)
     print >> self.log, \
       "outliers final: %d (percent: %6.2f)"%self.count_outliers()
 
@@ -200,14 +207,6 @@ class run(object):
         target_map      = self.target_map,
         mon_lib_srv     = self.mon_lib_srv,
         rotamer_manager = self.rotamer_manager.rotamer_evaluator)
-
-  def fit_residues(self):
-    self.loop(function = self.one_residue_iteration)
-    self.pdb_hierarchy.atoms().set_xyz(self.sites_cart)
-    print >> self.log, \
-      "outliers after fit: %d (percent: %6.2f)"%self.count_outliers()
-    print >> self.log, "tune up"
-    self.loop(function = self.one_residue_tune_up)
 
 class fix_outliers(object):
   def __init__(self,
