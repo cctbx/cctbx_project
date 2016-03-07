@@ -64,6 +64,7 @@ namespace {
                          arg("n"))))
 
       .def("result", &fit<>::result)
+      .def("score", &fit<>::score)
     ;
 
   }

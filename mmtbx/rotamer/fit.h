@@ -19,23 +19,26 @@ public:
   af::shared<af::shared<std::size_t> > axes;
   af::shared<af::shared<std::size_t> > rotatable_points_indices;
   af::shared<af::shared<FloatType> > angles_array;
-  af::shared<scitbx::vec3<double> > all_points_result;
+  af::shared<scitbx::vec3<FloatType> > all_points_result;
+  FloatType score_;
 
   fit() {}
 
   fit(
-    double target_value,
+    FloatType target_value,
     boost::python::list const& axes_,
     boost::python::list const& rotatable_points_indices_,
     boost::python::list const& angles_array_,
-    af::const_ref<double, af::c_grid_padded<3> > const& density_map,
-    af::shared<scitbx::vec3<double> > all_points,
+    af::const_ref<FloatType, af::c_grid_padded<3> > const& density_map,
+    af::shared<scitbx::vec3<FloatType> > all_points,
     cctbx::uctbx::unit_cell const& unit_cell,
     af::const_ref<std::size_t> const& selection,
-    af::const_ref<double> const& sin_table,
-    af::const_ref<double> const& cos_table,
-    double const& step,
+    af::const_ref<FloatType> const& sin_table,
+    af::const_ref<FloatType> const& cos_table,
+    FloatType const& step,
     int const& n)
+  :
+  score_(target_value)
   {
     SCITBX_ASSERT(boost::python::len(axes_)==
                   boost::python::len(rotatable_points_indices_));
@@ -48,12 +51,11 @@ public:
     }
     for(std::size_t i=0;i<boost::python::len(angles_array_);i++) {
       angles_array.push_back(
-        boost::python::extract<af::shared<double> >(angles_array_[i])());
+        boost::python::extract<af::shared<FloatType> >(angles_array_[i])());
     }
-    double mv_best = target_value;
     for(std::size_t j=0;j<angles_array.size();j++) {
-      af::shared<double> angles = angles_array[j];
-      af::shared<scitbx::vec3<double> > all_points_cp = all_points.deep_copy();
+      af::shared<FloatType> angles = angles_array[j];
+      af::shared<scitbx::vec3<FloatType> > all_points_cp = all_points.deep_copy();
       for(std::size_t i=0;i<angles.size();i++) {
        scitbx::math::rotate_points_around_axis(
           axes[i][0],
@@ -66,14 +68,14 @@ public:
           step,
           n);
       }
-      double mv = cctbx::maptbx::real_space_target_simple<double, double>(
+      FloatType mv = cctbx::maptbx::real_space_target_simple<FloatType, FloatType>(
         unit_cell,
         density_map,
         all_points_cp.ref(),
         selection);
-      if(mv>mv_best) {
+      if(mv>score_) {
         all_points_result = all_points_cp.deep_copy();
-        mv_best = mv;
+        score_ = mv;
       }
     }
   }
@@ -131,6 +133,8 @@ public:
   }
 
   af::shared<scitbx::vec3<double> > result() { return all_points_result; }
+
+  FloatType score() { return score_;}
 
 };
 
