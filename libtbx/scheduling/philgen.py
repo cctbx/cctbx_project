@@ -33,7 +33,7 @@ class cluster_file_queue(object):
 
   def __call__(self, params):
 
-    from libtbx.queuing_system_utils import file_queue
+    from libtbx.scheduling import file_queue
     qfac = file_queue.QFactory(
       prefix = self.prefix,
       folder = self.folder,
@@ -58,7 +58,7 @@ class cluster_socket_queue(object):
 
   def __call__(self, params):
 
-    from libtbx.queuing_system_utils import socket_queue
+    from libtbx.scheduling import socket_queue
     qfac = socket_queue.QFactory( port = self.port, keylength = self.keylength )
 
     return ( qfac , qfac, qfac )
