@@ -157,7 +157,7 @@ class Queue(object):
   def read_one_and_transfer_remanining_put_contents(self, fget, timeout):
 
     import shutil
-    
+
     with open( self._put_file, "r+b" ) as fput:
       _lock( fput, timeout )
 
