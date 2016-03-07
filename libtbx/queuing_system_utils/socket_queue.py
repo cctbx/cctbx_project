@@ -77,7 +77,7 @@ class Queue(object):
 
   def put_nowait(self, value):
 
-    return self.server.multiqueue.putt_nowait( self.identifier, value )
+    return self.server.multiqueue.put_nowait( self.identifier, value )
 
 
   def get_nowait(self):

@@ -106,7 +106,7 @@ class Queue(object):
     self._offset_file = temp_name( prefix = prefix, suffix = ".offset", folder = folder )
 
     # No need for locking, as queue has not been constructed yet
-    with open( self._offset_file, "w" ) as foff:
+    with open( self._offset_file, "wb" ) as foff:
       pickle.dump( 0, foff )
 
 
@@ -156,20 +156,14 @@ class Queue(object):
 
   def read_one_and_transfer_remanining_put_contents(self, fget, timeout):
 
+    import shutil
+    
     with open( self._put_file, "r+b" ) as fput:
       _lock( fput, timeout )
 
       try:
         value = pickle.load( fput )
-        chunksize = 1024
-
-        while True:
-          data = fput.read( chunksize )
-          fget.write( data )
-
-          if len( data ) < chunksize:
-            break
-
+        shutil.copyfileobj( fput, fget )
         fput.seek( 0, os.SEEK_SET )
         fput.truncate()
         fput.flush()
