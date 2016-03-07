@@ -43,7 +43,7 @@ def torsion_search_nested(residue, clusters, rotamer_eval, states):
   xyz_moved_dc = residue.atoms().extract_xyz().deep_copy()
   nested_loop = []
   if(n_angles==1):
-    for a1 in range(0,370,10):#range(0, 363, 3):
+    for a1 in range(0,363,3):
       nested_loop.append([a1])
   elif(n_angles==2):
     for a1 in range(0,370,10):#range(0,363,3):
@@ -89,7 +89,7 @@ def torsion_search_nested(residue, clusters, rotamer_eval, states):
     residue.atoms().set_xyz(xyz_moved)
     #if(rotamer_eval.evaluate_residue(residue = residue) ==rid):
     fl = rotamer_eval.evaluate_residue(residue = residue)
-    if(fl != "OUTLIER"):
+    if(fl != "OUTLIER" and str(fl).upper() != "NONE"):
       states.add(sites_cart=xyz_moved)
       good.append(angles)
   return states, good, nested_loop
