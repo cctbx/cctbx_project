@@ -36,6 +36,84 @@ namespace dxtbx { namespace model {
   using scitbx::af::int4;
 
 
+  namespace detail {
+
+    /**
+     * @return True/False is point p of the left of the line between a and b
+     */
+    inline
+    bool is_left(const vec2<double> &a, const vec2<double> &b, const vec2<double> &p) {
+      return ((b[0] - a[0])*(p[1] - a[1]) - (b[1] - a[1])*(p[0] - a[0])) > 0;
+    }
+
+    /**
+     * Compute the convex hull using the "gift wrapping" algorithm
+     * @param x The set of input points
+     * @return The points in the convex hull
+     */
+    inline
+    scitbx::af::shared< vec2<double> > convex_hull(const scitbx::af::const_ref< vec2<double> > &x) {
+
+      DXTBX_ASSERT(x.size() > 2);
+
+      scitbx::af::shared< vec2<double> > result;
+
+      // Find the leftmost point
+      std::size_t current = 0;
+      for (std::size_t i = 1 ; i < x.size(); ++i) {
+        if (x[i][0] < x[current][0]) {
+          current = i;
+        }
+      }
+
+      // Save the starting index
+      std::size_t first = current;
+      while (true) {
+
+        // Add the current point to the results
+        result.push_back(x[current]);
+
+        // Find the next point in the convex hull
+        std::size_t last = 0;
+        for (std::size_t i = 1; i < x.size(); ++i) {
+          if (last == current || is_left(x[current], x[last], x[i])) {
+            last = i;
+          }
+        }
+        current = last;
+
+        // Break the loop if we're back at the start
+        if (last == first) {
+          break;
+        }
+      }
+
+      // Return the convex hull
+      return result;
+    }
+
+    /**
+     * Compute the distance from a point P to a line segment defined by points a
+     * and b
+     */
+    inline
+    double distance_to_line_segment(const vec2<double> &a, const vec2<double> &b, const vec2<double> &p) {
+      vec2<double> l = (b - a);
+      double t = l * (p - a) / l.length_sq();
+      double distance = 0.0;
+      if (t <= 0) {
+        distance = (p - a).length();
+      } else if (t >= 1.0) {
+        distance = (p - (a + l)).length();
+      } else {
+        distance = (p - (a + t * l)).length();
+      }
+      return distance;
+    }
+
+  }
+
+
   /**
   * A class representing a detector made up of multiple flat panel detectors.
   * The detector elements can be accessed in the same way as an array:
@@ -155,6 +233,75 @@ namespace dxtbx { namespace model {
         if (d < d_min || i == 0) d_min = d;
       }
       return d_min;
+    }
+
+    /**
+     * Compute a sensible "inscribed" resolution that works in the case of
+     * multiple panel detectors. This function does a stereographic projection
+     * of the corners of each panel in the detector and then computes the
+     * convex hull around the resulting points. Then for each line segment in
+     * the convex hull, the shortest distance to zero is computed. The smallest
+     * distance is then taken and converted back to an angle to compute the
+     * maximum resolution.
+     * @param s0 The incident beam vector
+     * @returns The maximum resolution
+     */
+    double get_max_inscribed_resolution(vec3<double> s0) const {
+
+      // Save the length of the s0 vector
+      double s0_length = s0.length();
+
+      // Choose some axes orthogonal s0
+      vec3<double> za = -s0.normalize();
+      vec3<double> ya = ((za * vec3<double>(1,0,0) < 0.9)
+        ? za.cross(vec3<double>(1,0,0))
+        : za.cross(vec3<double>(0,1,0))).normalize();
+      vec3<double> xa = za.cross(ya).normalize();
+
+      // Compute the stereographic projection of panel corners
+      scitbx::af::shared< vec2<double> > points;
+      for (std::size_t i = 0; i < panel_list_->size(); ++i) {
+        std::size_t width = (*panel_list_)[i].get_image_size()[0];
+        std::size_t height = (*panel_list_)[i].get_image_size()[1];
+        scitbx::af::tiny< vec2<double>, 4 > corners;
+        corners[0] = vec2<double>(0,0);
+        corners[1] = vec2<double>(width,0);
+        corners[2] = vec2<double>(0,height);
+        corners[3] = vec2<double>(width,height);
+        for (std::size_t j = 0; j < 4; ++j) {
+          vec3<double> p = (*panel_list_)[i].get_pixel_lab_coord(corners[j]).normalize();
+          double pdotx = p * xa;
+          double pdoty = p * ya;
+          double pdotz = p * za;
+          points.push_back(
+              vec2<double>(
+                2.0 * pdotx / (1.0 - pdotz),
+                2.0 * pdoty / (1.0 - pdotz)));
+        }
+      }
+
+      // Compute the convex hull of points
+      scitbx::af::shared< vec2<double> > hull = detail::convex_hull(points.const_ref());
+      DXTBX_ASSERT(hull.size() >= 4);
+
+      // Compute the minimum distance to the line segments
+      double min_distance = -1;
+      std::size_t first = hull.size() - 1;
+      for (std::size_t last = 0; last < hull.size(); ++last) {
+        vec2<double> zero(0,0);
+        double d = detail::distance_to_line_segment(hull[first], hull[last], zero);
+        if (min_distance < 0 || d < min_distance) {
+          min_distance = d;
+        }
+        first = last;
+      }
+      DXTBX_ASSERT(min_distance > 0);
+
+      // Compute and return the resolution
+      double angle = 2.0 * std::atan(min_distance / 2.0);
+      double den = (2.0 * s0_length * std::sin(0.5 * angle));
+      DXTBX_ASSERT(den != 0);
+      return 1.0 / den;
     }
 
     /** Get ray intersection with detector */

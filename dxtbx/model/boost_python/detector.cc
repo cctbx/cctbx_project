@@ -114,6 +114,8 @@ namespace dxtbx { namespace model { namespace boost_python {
             arg("static_only")=false))
       .def("get_max_resolution",
         &Detector::get_max_resolution, (arg("s0")))
+      .def("get_max_inscribed_resolution",
+        &Detector::get_max_inscribed_resolution, (arg("s0")))
       .def("get_ray_intersection",
         &Detector::get_ray_intersection, (arg("s1")))
       .def("get_panel_intersection",
