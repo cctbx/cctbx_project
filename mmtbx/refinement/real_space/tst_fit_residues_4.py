@@ -4,7 +4,6 @@ import iotbx.mtz
 from cctbx.array_family import flex
 import time
 from mmtbx import monomer_library
-from libtbx import group_args
 import mmtbx.restraints
 import mmtbx.refinement.real_space
 import mmtbx.refinement.real_space.fit_residues
@@ -174,26 +173,20 @@ def exercise(rotamer_manager, sin_cos_table, d_min=1.5, resolution_factor=0.1):
   sites_cart_poor = xrs_poor.sites_cart()
   pdb_hierarchy_poor.write_pdb_file(file_name = "poor.pdb")
   #
-  target_map_object = group_args(
-    data             = target_map,
-    f_map_diff       = None,
-    miller_array     = f_calc,
-    crystal_gridding = fft_map)
   grm = mmtbx.restraints.manager(
     geometry=processed_pdb_file.geometry_restraints_manager(show_energies=False),
     normalization = True)
-  sm = mmtbx.refinement.real_space.structure_monitor(
-    pdb_hierarchy               = pdb_hierarchy_poor,
-    xray_structure              = xrs_poor,
-    target_map_object           = target_map_object,
-    geometry_restraints_manager = grm.geometry)
-  result = mmtbx.refinement.real_space.fit_residues.manager(
-    structure_monitor = sm,
+  result = mmtbx.refinement.real_space.fit_residues.run(
+    pdb_hierarchy     = pdb_hierarchy_poor,
+    crystal_symmetry  = xrs_poor.crystal_symmetry(),
+    map_data          = target_map,
+    do_all            = True,
+    massage_map       = False,
+    backbone_sample   = False,
     rotamer_manager   = rotamer_manager,
     sin_cos_table     = sin_cos_table,
     mon_lib_srv       = mon_lib_srv)
-  #
-  sm.pdb_hierarchy.write_pdb_file(file_name = "refined.pdb")
+  result.pdb_hierarchy.write_pdb_file(file_name = "refined.pdb")
 
 
 if(__name__ == "__main__"):

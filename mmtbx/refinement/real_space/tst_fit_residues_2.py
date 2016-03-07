@@ -4,7 +4,6 @@ import iotbx.mtz
 from cctbx.array_family import flex
 import time
 from mmtbx import monomer_library
-from libtbx import group_args
 import mmtbx.restraints
 import mmtbx.refinement.real_space
 import mmtbx.refinement.real_space.fit_residues
@@ -121,35 +120,27 @@ def exercise(rotamer_manager, sin_cos_table,
   sites_cart_poor = xrs_poor.sites_cart()
   pdb_hierarchy_poor.write_pdb_file(file_name = "poor.pdb")
   #
-  target_map_object = group_args(
-    data             = target_map,
-    f_map_diff       = None,
-    miller_array     = f_calc,
-    crystal_gridding = fft_map)
   grm = mmtbx.restraints.manager(
     geometry=processed_pdb_file.geometry_restraints_manager(show_energies=False),
     normalization = True)
-  sm = mmtbx.refinement.real_space.structure_monitor(
-    pdb_hierarchy               = pdb_hierarchy_poor,
-    xray_structure              = xrs_poor,
-    target_map_object           = target_map_object,
-    geometry_restraints_manager = grm.geometry)
-  sm.show(prefix="start")
-  sm.show_residues(map_cc_all=1.0)
-  for i in [1]:
-    result = mmtbx.refinement.real_space.fit_residues.manager(
-      structure_monitor = sm,
+  for i in [1,2]:
+    print "-"*10
+    result = mmtbx.refinement.real_space.fit_residues.run(
+      pdb_hierarchy     = pdb_hierarchy_poor,
+      crystal_symmetry  = xrs_poor.crystal_symmetry(),
+      map_data          = target_map,
+      do_all            = True,
+      massage_map       = False,
+      backbone_sample   = False,
       rotamer_manager   = rotamer_manager,
       sin_cos_table     = sin_cos_table,
       mon_lib_srv       = mon_lib_srv)
-    print
-    sm.show(prefix="MC %s"%str(i))
-    print
-    sm.show_residues(map_cc_all=1.0)
+    pdb_hierarchy_poor = result.pdb_hierarchy
   #
-  sm.pdb_hierarchy.write_pdb_file(file_name = "refined.pdb")
-  dist = xrs_answer.mean_distance(other = sm.xray_structure)
-  # assert dist < 0.07, dist # this works on chevy
+  result.pdb_hierarchy.write_pdb_file(file_name = "refined.pdb",
+    crystal_symmetry=xrs_poor.crystal_symmetry())
+  dist = flex.max(flex.sqrt((xrs_answer.sites_cart() -
+    result.pdb_hierarchy.atoms().extract_xyz()).dot()))
   assert dist < 0.75, dist # to make it work on marbles
 
 if(__name__ == "__main__"):

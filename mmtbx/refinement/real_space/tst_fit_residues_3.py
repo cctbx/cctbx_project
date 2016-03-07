@@ -4,7 +4,6 @@ import iotbx.mtz
 from cctbx.array_family import flex
 import time
 from mmtbx import monomer_library
-from libtbx import group_args
 import mmtbx.restraints
 import mmtbx.refinement.real_space
 import mmtbx.refinement.real_space.fit_residues
@@ -115,7 +114,15 @@ def exercise(i_pdb, pdb_for_map, rotamer_manager, sin_cos_table,
   # answer PDB
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_answer)
   pdb_inp.write_pdb_file(file_name = "answer.pdb")
-  xrs_answer = pdb_inp.xray_structure_simple()
+  mon_lib_srv = monomer_library.server.server()
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv              = mon_lib_srv,
+    ener_lib                 = monomer_library.server.ener_lib(),
+    raw_records              = flex.std_string(pdb_answer.splitlines()),
+    strict_conflict_handling = True,
+    force_symmetry           = True,
+    log                      = None)
+  xrs_answer = processed_pdb_file.xray_structure()
   # answer map
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_for_map)
   pdb_inp.write_pdb_file(file_name = "for_map.pdb")
@@ -141,28 +148,27 @@ def exercise(i_pdb, pdb_for_map, rotamer_manager, sin_cos_table,
   sites_cart_poor = xrs_poor.sites_cart()
   pdb_hierarchy_poor.write_pdb_file(file_name = "poor.pdb")
   #
-  target_map_object = group_args(
-    data             = target_map,
-    f_map_diff       = None,
-    miller_array     = f_calc,
-    crystal_gridding = fft_map)
   grm = mmtbx.restraints.manager(
     geometry=processed_pdb_file.geometry_restraints_manager(show_energies=False),
     normalization = True)
-  sm = mmtbx.refinement.real_space.structure_monitor(
-    pdb_hierarchy               = pdb_hierarchy_poor,
-    xray_structure              = xrs_poor,
-    target_map_object           = target_map_object,
-    geometry_restraints_manager = grm.geometry)
-  result = mmtbx.refinement.real_space.fit_residues.manager(
-    structure_monitor = sm,
-    rotamer_manager   = rotamer_manager,
-    sin_cos_table     = sin_cos_table,
-    mon_lib_srv       = mon_lib_srv)
+  for i in [1,]:
+    print "-"*10
+    result = mmtbx.refinement.real_space.fit_residues.run(
+      pdb_hierarchy     = pdb_hierarchy_poor,
+      crystal_symmetry  = xrs_poor.crystal_symmetry(),
+      map_data          = target_map,
+      do_all            = True,
+      massage_map       = False,
+      backbone_sample   = False,
+      rotamer_manager   = rotamer_manager,
+      sin_cos_table     = sin_cos_table,
+      mon_lib_srv       = mon_lib_srv)
+    pdb_hierarchy_poor = result.pdb_hierarchy
   #
-  sm.pdb_hierarchy.write_pdb_file(file_name = "refined_%s.pdb"%str(i_pdb))
-
-  dist = xrs_answer.mean_distance(other = sm.xray_structure)
+  result.pdb_hierarchy.write_pdb_file(file_name = "refined_%s.pdb"%str(i_pdb),
+    crystal_symmetry=xrs_poor.crystal_symmetry())
+  dist = flex.max(flex.sqrt((xrs_answer.sites_cart() -
+    result.pdb_hierarchy.atoms().extract_xyz()).dot()))
   assert dist < 0.3, dist
 
 if(__name__ == "__main__"):
