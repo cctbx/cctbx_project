@@ -1,6 +1,6 @@
 from __future__ import division
 
-class Success(object):
+class success(object):
   """
   Valid result
   """
@@ -15,7 +15,12 @@ class Success(object):
     return self.value
 
 
-class Error(object):
+  def __str__(self):
+
+    return "success( value = %s )" % self.value
+
+
+class regular_exception(object):
   """
   Unexpected result
   """
@@ -30,9 +35,14 @@ class Error(object):
     raise self.exception
 
 
-class Sorry(object):
+  def __str__(self):
+
+    return "%s( message = '%s' )" % ( self.exception.__class__.__name__, self.exception )
+
+
+class sorry_exception(object):
   """
-  Unpickleable exception
+  Special handling for Sorry
   """
 
   def __init__(self, exception):
@@ -42,16 +52,57 @@ class Sorry(object):
 
   def __call__(self):
 
+    raise self.exception_class()( *self.args )
+
+
+  def __str__(self):
+
+    return "Sorry( message = '%s' )" % self.exception_class()( *self.args )
+
+
+  @classmethod
+  def exception_class(self):
+
     from libtbx.utils import Sorry
-    raise Sorry( *self.args )
+    return Sorry
 
 
-def AnyException(exception):
+class exception_to_result_registry(object):
+  """
+  Translates unpickleable exceptions
+  """
 
-  import libtbx.utils
+  def __init__(self):
 
-  if isinstance( exception, libtbx.utils.Sorry ):
-    return Sorry( exception = exception )
+    self.handlers = []
 
-  else:
-    return Error( exception = exception )
+
+  def add_handler(self, handler_class):
+
+    self.handlers.append( handler_class )
+
+
+  def convert(self, exception):
+
+    for handler_class in self.handlers:
+      if isinstance( exception, handler_class.exception_class() ):
+        return handler_class( exception = exception )
+
+    else:
+      return regular_exception( exception = exception )
+
+
+TRANSLATOR = exception_to_result_registry()
+
+
+def register_unpickleable_exception(handler):
+
+  TRANSLATOR.add_handler( handler_class = handler )
+
+
+def error(exception):
+
+  return TRANSLATOR.convert( exception = exception )
+
+
+register_unpickleable_exception( handler = sorry_exception )

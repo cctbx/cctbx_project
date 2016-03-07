@@ -456,10 +456,10 @@ class python_exception_safe_run(object):
     from libtbx.queuing_system_utils import result
 
     try:
-      r = result.Success( value = self.func( *args, **kwargs ) )
+      r = result.success( value = self.func( *args, **kwargs ) )
 
     except Exception, e:
-      r = result.AnyException( exception = e )
+      r = result.error( exception = e )
 
     return r
 

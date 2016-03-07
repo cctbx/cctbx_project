@@ -63,7 +63,7 @@ class NullProcessor(object):
   @staticmethod
   def finalize(identifier):
 
-    return Result( identifier = identifier, value = result.Success( value = None ) )
+    return Result( identifier = identifier, value = result.success( value = None ) )
 
 
   @staticmethod
@@ -419,7 +419,7 @@ class WorkerJob(object):
         return True
 
       except Exception, e:
-        self.result = result.Error( exception = e )
+        self.result = result.error( exception = e )
         self.exitcode = 1
         self.err = e
 
@@ -462,7 +462,7 @@ class RunningState(object):
 
     else:
       err = getattr( self.job, "err", RuntimeError( "exit code = %s" % exit_code ) )
-      job.status = ValueState( value = result.Error( exception = err ) )
+      job.status = ValueState( value = result.error( exception = err ) )
 
 
   def perform_postprocessing(self, job):
@@ -505,13 +505,13 @@ class PostprocessingState(object):
   def perform_postprocessing(self, job):
 
     try:
-      value = result.Success( value = job.unit.finalize( job = self.job ) )
+      value = result.success( value = job.unit.finalize( job = self.job ) )
 
     except ProcessingException, e:
       raise
 
     except Exception, e:
-      value = result.Error( exception = e )
+      value = result.error( exception = e )
 
     job.status = ValueState( value = value )
 
@@ -1373,7 +1373,7 @@ class ProcessRegister(object):
       raise RuntimeError, "Inconsistent register information: jobid/pid mismatch"
 
     self.running_on[ pid ] = None
-    self.results.append( ( jobid, result.Success( value = value ) ) )
+    self.results.append( ( jobid, result.success( value = value ) ) )
 
 
   def record_process_shutdown(self, pid):
@@ -1406,7 +1406,7 @@ class ProcessRegister(object):
     jobid = self.running_on[ pid ]
 
     if jobid is not None:
-      self.results.append( ( jobid, result.Error( exception = exception ) ) )
+      self.results.append( ( jobid, result.error( exception = exception ) ) )
 
     del self.running_on[ pid ]
     self.terminateds.append( pid )
@@ -1868,10 +1868,10 @@ class MainthreadPool(object):
         value = current.target( *current.args, **current.kwargs )
 
       except Exception, e:
-        res = result.Error( exception = e )
+        res = result.error( exception = e )
 
       else:
-        res = result.Success( value = value )
+        res = result.success( value = value )
 
       self.completed_results.append( Result( identifier = current, value = res ) )
 
@@ -1989,7 +1989,7 @@ class PooledRun(object):
         [
           Result(
             identifier = i,
-            value = result.Error( exception = e ),
+            value = result.error( exception = e ),
             )
           for i in self.identifiers
           ]
@@ -2001,12 +2001,12 @@ class PooledRun(object):
       for ( identifier, ( failure, data ) ) in zip( self.identifiers, res ):
         if failure:
           results.append(
-            Result( identifier = identifier, value = result.Error( exception = data ) )
+            Result( identifier = identifier, value = result.error( exception = data ) )
             )
 
         else:
           results.append(
-            Result( identifier = identifier, value = result.Success( value = data ) )
+            Result( identifier = identifier, value = result.success( value = data ) )
             )
 
     return results

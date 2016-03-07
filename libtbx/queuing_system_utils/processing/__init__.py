@@ -205,7 +205,9 @@ class Job(object):
       print stdout
 
     if stderr and self.qinterface.display_stderr:
-      print stderr
+      import sys
+      sys.stderr.write( stderr )
+      sys.stderr.write( "\n" )
 
     if self.qinterface.save_error:
       if self.exitcode != 0:
