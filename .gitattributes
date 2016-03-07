@@ -1615,6 +1615,15 @@ libtbx/queuing_system_utils/sge_utils.py svneol=native#text/x-python
 libtbx/queuing_system_utils/socket_queue.py -text
 libtbx/queuing_system_utils/tst.py svneol=native#text/x-python
 libtbx/runtime_utils.py -text
+libtbx/scheduling/__init__.py -text
+libtbx/scheduling/cluster_handler.py -text
+libtbx/scheduling/job_scheduler.py -text
+libtbx/scheduling/mainthread.py -text
+libtbx/scheduling/mp_handler.py -text
+libtbx/scheduling/parallel_for.py -text
+libtbx/scheduling/philgen.py -text
+libtbx/scheduling/process_pool.py -text
+libtbx/scheduling/thread_handler.py -text
 libtbx/simplexml.py -text
 libtbx/smart_open.py svneol=native#text/x-python
 libtbx/sphinx/__init__.py -text
