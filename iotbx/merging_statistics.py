@@ -406,6 +406,9 @@ class dataset_statistics (object) :
       i_obs = i_obs.customized_copy(anomalous_flag=False).set_info(info)
       self.anom_extra = " (non-anomalous)"
     overall_d_max_min = None
+    # eliminate_sys_absent() before setting up binner to ensure consistency
+    # between reported overall d_min/max and d_min/max for resolution bins"
+    i_obs = i_obs.eliminate_sys_absent()
     if extend_d_max_min :
       i_obs.setup_binner(
         n_bins=n_bins,
@@ -414,7 +417,6 @@ class dataset_statistics (object) :
       overall_d_max_min = d_max_cutoff, d_min_cutoff
     else :
       i_obs.setup_binner(n_bins=n_bins)
-    #merge = i_obs.merge_equivalents()
     self.overall = merging_stats(i_obs,
       d_max_min=overall_d_max_min,
       model_arrays=model_arrays,
