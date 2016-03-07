@@ -38,15 +38,16 @@ negate_map_table = {
 class run(object):
   def __init__(self,
                pdb_hierarchy,
+               map_data,
                crystal_symmetry,
                rotamer_manager,
                sin_cos_table,
                mon_lib_srv,
                do_all=False,
                backbone_sample=True,
-               map_data=None,
                diff_map_data=None,
                massage_map=True,
+               tune_up_only=False,
                log = None):
     adopt_init_args(self, locals())
     self.number_of_outliers = None
@@ -57,14 +58,14 @@ class run(object):
     self.special_position_indices = self.get_special_position_indices()
     self.selection_water_as_set = set(self.pdb_hierarchy.\
       atom_selection_cache().selection(string = "water"))
-    if(self.map_data is not None):
-      if(self.massage_map):
-        self.target_map = self.prepare_target_map()
-      else:
-        self.target_map = map_data
+    if(self.massage_map):
+      self.target_map = self.prepare_target_map()
+    else:
+      self.target_map = map_data
     print >> self.log, \
       "outliers start: %d (percent: %6.2f)"%self.count_outliers()
-    if(self.map_data is not None):
+    #
+    if(not self.tune_up_only):
       self.loop(function = self.one_residue_iteration)
       self.pdb_hierarchy.atoms().set_xyz(self.sites_cart)
       print >> self.log, \
