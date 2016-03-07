@@ -48,6 +48,9 @@ anomalous = False
   .type = bool
   .short_caption = Keep anomalous pairs separate in merging statistics
 %s
+use_internal_variance = True
+  .type = bool
+  .short_caption = Use internal variance of the data in the calculation of the merged sigmas
 """ % sigma_filtering_phil_str
 
 class model_based_arrays (object) :
@@ -126,11 +129,11 @@ class filter_intensities_by_sigma (object) :
   note that ctruncate and cctbx.french_wilson (any others?) do their own
   filtering, e.g. discarding I < -4*sigma in cctbx.french_wilson.
   """
-  def __init__ (self, array, sigma_filtering=Auto) :
+  def __init__ (self, array, sigma_filtering=Auto, use_internal_variance=True) :
     sigma_filtering = get_filtering_convention(array, sigma_filtering)
     assert (sigma_filtering in ["scala","scalepack","xds", None])
     self.n_rejected_before_merge = self.n_rejected_after_merge = 0
-    merge = array.merge_equivalents()
+    merge = array.merge_equivalents(use_internal_variance=use_internal_variance)
     array_merged = merge.array()
     reject_sel = None
     self.observed_criterion_sigma_I = None
@@ -174,7 +177,8 @@ class merging_stats (object) :
       model_arrays=None,
       anomalous=False,
       debug=None,
-      sigma_filtering="scala") :
+      sigma_filtering="scala",
+      use_internal_variance=True) :
     import cctbx.miller
     from scitbx.array_family import flex
     assert (array.sigmas() is not None)
@@ -191,7 +195,8 @@ class merging_stats (object) :
     array = array.sort("packed_indices")
     filter = filter_intensities_by_sigma(
       array=array,
-      sigma_filtering=sigma_filtering)
+      sigma_filtering=sigma_filtering,
+      use_internal_variance=use_internal_variance)
     if (d_max_min is None) :
       d_max_min = array.d_max_min()
     self.d_max, self.d_min = d_max_min
@@ -363,6 +368,7 @@ class dataset_statistics (object) :
       file_name=None,
       model_arrays=None,
       sigma_filtering=Auto,
+      use_internal_variance=True,
       d_min_tolerance=1.e-6,
       extend_d_max_min=False,
       log=None) :
@@ -408,13 +414,14 @@ class dataset_statistics (object) :
       overall_d_max_min = d_max_cutoff, d_min_cutoff
     else :
       i_obs.setup_binner(n_bins=n_bins)
-    merge = i_obs.merge_equivalents()
+    #merge = i_obs.merge_equivalents()
     self.overall = merging_stats(i_obs,
       d_max_min=overall_d_max_min,
       model_arrays=model_arrays,
       anomalous=anomalous,
       debug=debug,
-      sigma_filtering=sigma_filtering)
+      sigma_filtering=sigma_filtering,
+      use_internal_variance=use_internal_variance)
     self.bins = []
     title = "Intensity merging statistics"
     column_labels = ["1/d**2","N(obs)","N(unique)","Redundancy","Completeness",
@@ -445,7 +452,8 @@ class dataset_statistics (object) :
         model_arrays=model_arrays,
         anomalous=anomalous,
         debug=debug,
-        sigma_filtering=sigma_filtering)
+        sigma_filtering=sigma_filtering,
+        use_internal_variance=use_internal_variance)
       self.bins.append(bin_stats)
       self.table.add_row(bin_stats.table_data())
 

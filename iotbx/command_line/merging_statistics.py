@@ -116,6 +116,7 @@ already be on a common scale, but with individual observations unmerged.
     debug=params.debug,
     file_name=params.file_name,
     sigma_filtering=params.sigma_filtering,
+    use_internal_variance=params.use_internal_variance,
     extend_d_max_min=params.extend_d_max_min,
     log=out)
   result.show(out=out)
