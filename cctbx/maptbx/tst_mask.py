@@ -263,7 +263,7 @@ TER
 """
 
 def exercise():
-  """ Compare simple mask (mmtbx/utils.h) with classic mask. Does not account
+  """ Compare simple mask (maptbx/mask.h) with classic mask. Does not account
       for site multiplicity due to symmetry. Also, this is an alternative
       exercise for asu mask.
   """

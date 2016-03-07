@@ -17,12 +17,15 @@ af::versa<FloatType, af::c_grid<3> > mask(
   af::const_ref<scitbx::vec3<FloatType> > const& sites_frac,
   uctbx::unit_cell const& unit_cell,
   af::tiny<int, 3> const& n_real,
+  FloatType const& mask_value_inside_molecule,
+  FloatType const& mask_value_outside_molecule,
   af::const_ref<FloatType> const& radii)
 {
   int nx = n_real[0];
   int ny = n_real[1];
   int nz = n_real[2];
-  af::versa<FloatType, af::c_grid<3> > result(af::c_grid<3>(nx,ny,nz),1);
+  af::versa<FloatType, af::c_grid<3> >
+    result(af::c_grid<3>(nx,ny,nz), mask_value_outside_molecule);
   af::ref<FloatType, af::c_grid<3> > result_ref = result.ref();
   af::tiny<FloatType, 6> ucp = unit_cell.parameters();
   FloatType ucs = unit_cell.volume() / (ucp[0]*ucp[1]*ucp[2]);
@@ -46,7 +49,7 @@ af::versa<FloatType, af::c_grid<3> > mask(
             cctbx::fractional<>(xn,yn,zn));
           int kz_ = sm::mod_positive(kz, n_real[2]);
           if(distance < radii[j]) {
-            result_ref(kx_,ky_,kz_)=0;
+            result_ref(kx_,ky_,kz_)=mask_value_inside_molecule;
           }
     }}}
   }

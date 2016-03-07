@@ -462,10 +462,14 @@ namespace {
         (af::const_ref<scitbx::vec3<double> > const&,
           uctbx::unit_cell const&,
           af::tiny<int, 3> const&,
+          double const&,
+          double const&,
           af::const_ref<double> const&)) mask, (
       arg("sites_frac"),
       arg("unit_cell"),
       arg("n_real"),
+      arg("mask_value_inside_molecule"),
+      arg("mask_value_outside_molecule"),
       arg("radii")));
 
     def("convert_to_non_negative",
@@ -752,6 +756,7 @@ namespace {
         (af::const_ref<double, af::flex_grid<> > const&,
          crystal::direct_space_asu::asu_mappings<double> &,
          fractional<double> const&)) asu_eight_point_interpolation);
+
     def("real_space_target_simple",
       (double(*)
         (uctbx::unit_cell const&,

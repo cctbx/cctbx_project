@@ -127,16 +127,25 @@ def truncate(map_data, by_sigma_less_than, scale_by, set_value=0):
     scale_by           = scale_by,
     set_value          = set_value)
 
-def mask(xray_structure, n_real, solvent_radius):
+def mask(xray_structure,
+         n_real,
+         mask_value_inside_molecule=0,
+         mask_value_outside_molecule=1,
+         solvent_radius=0,
+         atom_radius=None):
   xrs_p1 = xray_structure.expand_to_p1(sites_mod_positive=True)
-  from cctbx.masks import vdw_radii_from_xray_structure
-  radii = vdw_radii_from_xray_structure(xray_structure = xrs_p1)
-  radii = radii + solvent_radius
+  if(atom_radius is None):
+    from cctbx.masks import vdw_radii_from_xray_structure
+    atom_radii = vdw_radii_from_xray_structure(xray_structure = xrs_p1)
+  else:
+    atom_radii = flex.double(xrs_p1.scatterers().size(), atom_radius)
   return ext.mask(
-    sites_frac = xrs_p1.sites_frac(),
-    unit_cell  = xrs_p1.unit_cell(),
-    n_real     = n_real,
-    radii      = radii)
+    sites_frac                  = xrs_p1.sites_frac(),
+    unit_cell                   = xrs_p1.unit_cell(),
+    n_real                      = n_real,
+    mask_value_inside_molecule  = mask_value_inside_molecule,
+    mask_value_outside_molecule = mask_value_outside_molecule,
+    radii                       = atom_radii + solvent_radius)
 
 class statistics(ext.statistics):
 
