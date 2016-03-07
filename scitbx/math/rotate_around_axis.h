@@ -33,10 +33,10 @@ rotate_point_around_axis(
   FloatType dlsq = xlsq + ylsq + zlsq;
   // Use faster approximate functions instead. Standard functions can be enabled
   // by overload.
-  //FloatType dl  = std::sqrt(dlsq);
+  FloatType dl  = std::sqrt(dlsq);
   //FloatType ca  = std::cos(angle_rad);
   //FloatType dsa = std::sin(angle_rad)/dl;
-  FloatType dl  = math::approx_sqrt(dlsq);
+  //FloatType dl  = math::approx_sqrt(dlsq);
   FloatType ca  = math::cos_table(cos_table,angle_rad,step,n,false);
   FloatType dsa = math::sin_table(sin_table,angle_rad,step,n,false)/dl;
   FloatType oca = (1-ca)/dlsq;
