@@ -135,6 +135,15 @@ def tst_detectors_are_different(detA, detB):
   assert(detA != detB)
   print 'OK'
 
+def tst_resolution(detector):
+
+  from dxtbx.model import Beam
+  beam = Beam(direction=(0,0,1), wavelength=1.0)
+  d_min1 = detector.get_max_resolution(beam.get_s0())
+  d_min2 = detector.get_max_inscribed_resolution(beam.get_s0())
+  assert d_min1 < d_min2
+  print 'OK'
+
 def tst_detector():
   from dxtbx.model import ParallaxCorrectedPxMmStrategy
 
@@ -166,6 +175,7 @@ def tst_detector():
   tst_get_names(detector)
   tst_get_thickness(detector)
   tst_get_material(detector)
+  tst_resolution(detector)
 
   # Attenuation length
   from cctbx.eltbx import attenuation_coefficient
