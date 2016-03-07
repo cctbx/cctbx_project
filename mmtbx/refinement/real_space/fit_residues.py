@@ -64,7 +64,7 @@ class run(object):
         self.target_map = map_data
     print >> self.log, \
       "outliers start: %d (percent: %6.2f)"%self.count_outliers()
-    if(self.map_data is not None):  
+    if(self.map_data is not None):
       self.loop(function = self.one_residue_iteration)
       self.pdb_hierarchy.atoms().set_xyz(self.sites_cart)
       print >> self.log, \
