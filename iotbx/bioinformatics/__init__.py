@@ -129,6 +129,11 @@ class sequence(object):
     return len( self.sequence )
 
 
+  def __getitem__(self, index):
+
+    return self.sequence[ index ]
+
+
 class fasta_sequence(sequence):
   """
   Fasta sequence
@@ -273,8 +278,9 @@ class alignment(object):
 
 
   def shortest_seqlen(self): # returns the number of aligned residues
+
     if not self.alignments:
-      return 0.0
+      return 0
 
     alignment_length = len( self.alignments[0] )
     shortest_sequence_length = min(
@@ -283,16 +289,12 @@ class alignment(object):
     return shortest_sequence_length
 
 
-
   def identity_fraction(self):
 
     if not self.alignments:
       return 1.0
 
-    alignment_length = len( self.alignments[0] )
-    shortest_sequence_length = min(
-      [ alignment_length - seq.count( self.gap ) for seq in self.alignments ]
-      )
+    shortest_sequence_length = self.shortest_seqlen()
 
     if shortest_sequence_length == 0:
       return 1.0
@@ -1300,6 +1302,26 @@ class homology_search_hit(object):
     self.alignment = alignment
 
 
+  def target_alignment_index(self):
+
+    return 0
+
+
+  def model_alignment_index(self):
+
+    return 1
+
+
+  def target_alignment_sequence(self):
+
+    return self.alignment.alignments[ self.target_alignment_index() ]
+
+
+  def model_alignment_sequence(self):
+
+    return self.alignment.alignments[ self.model_alignment_index() ]
+
+
 class hhpred_parser(object):
   """
   Parses .hhr files from HHPred
@@ -1632,6 +1654,11 @@ class hhsearch_parser(hhpred_parser):
         annotation = annotation,
         alignment = alignment
         )
+
+
+  def __len__(self):
+
+    return len( self.pdbs )
 
 
 class hhalign_parser(hhpred_parser):
