@@ -347,6 +347,19 @@ class symmetry(object):
     import iotbx.cif
     return iotbx.cif.crystal_symmetry_as_cif_block(self).cif_block
 
+  def expand_to_p1(self, sites_cart):
+    from scitbx import matrix
+    result = flex.vec3_double()
+    for site_cart in sites_cart:
+      for smx in self.space_group().smx():
+        m3 = smx.r().as_double()
+        m3 = matrix.sqr(m3)
+        t = smx.t().as_double()
+        t = matrix.col((t[0],t[1],t[2]))
+        site_frac=flex.vec3_double([self.unit_cell().fractionalize(site_cart),])
+        result.append(self.unit_cell().orthogonalize(m3.elems*site_frac+t)[0])
+    return result
+
 def select_crystal_symmetry(
       from_command_line     = None,
       from_parameter_file   = None,
