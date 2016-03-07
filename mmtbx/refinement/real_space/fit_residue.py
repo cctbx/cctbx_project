@@ -48,7 +48,6 @@ class run(object):
     self.fit_side_chain(clusters = co.clusters[1:])
     # Final state
     if(target_map is not None):
-      rotamer_final = rotamer_manager.rotamer(residue=self.residue)
       target_final = self.get_target_value(
         sites_cart=self.residue.atoms().extract_xyz())
       # Sanity and consistency check
