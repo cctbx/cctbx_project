@@ -51,6 +51,9 @@ anomalous = False
 use_internal_variance = True
   .type = bool
   .short_caption = Use internal variance of the data in the calculation of the merged sigmas
+eliminate_sys_absent = True
+  .type = bool
+  .short_caption = Eliminate systematically absent reflections before computation of merging statistics.
 """ % sigma_filtering_phil_str
 
 class model_based_arrays (object) :
@@ -182,7 +185,6 @@ class merging_stats (object) :
     import cctbx.miller
     from scitbx.array_family import flex
     assert (array.sigmas() is not None)
-    array = array.eliminate_sys_absent()
     non_negative_sel = array.sigmas() >= 0
     self.n_neg_sigmas = non_negative_sel.count(False)
     positive_sel = array.sigmas() > 0
@@ -369,6 +371,7 @@ class dataset_statistics (object) :
       model_arrays=None,
       sigma_filtering=Auto,
       use_internal_variance=True,
+      eliminate_sys_absent=True,
       d_min_tolerance=1.e-6,
       extend_d_max_min=False,
       log=None) :
@@ -408,7 +411,8 @@ class dataset_statistics (object) :
     overall_d_max_min = None
     # eliminate_sys_absent() before setting up binner to ensure consistency
     # between reported overall d_min/max and d_min/max for resolution bins"
-    i_obs = i_obs.eliminate_sys_absent()
+    if eliminate_sys_absent:
+      i_obs = i_obs.eliminate_sys_absent()
     if extend_d_max_min :
       i_obs.setup_binner(
         n_bins=n_bins,
