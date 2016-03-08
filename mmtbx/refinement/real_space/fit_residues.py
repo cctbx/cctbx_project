@@ -251,7 +251,6 @@ class fix_outliers(object):
                   mmtbx.refinement.real_space.fit_residue.run(
                     residue         = residue,
                     backbone_sample = False,
-                    target_map      = None,
                     mon_lib_srv     = self.mon_lib_srv,
                     rotamer_manager = self.rotamer_manager,
                     sin_cos_table   = self.sin_cos_table,

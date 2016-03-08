@@ -184,6 +184,7 @@ class run_with_minimization(object):
     self.residue_backbone_selection = flex.bool(
       xray_structure.scatterers().size(), self.residue_backbone_selection)
     self.target_map_work = target_map
+    self.target_map_orig = target_map.deep_copy()
     self.fit_backbone()
     negate_selection = mmtbx.refinement.real_space.selection_around_to_negate(
       xray_structure          = self.xray_structure,
@@ -208,12 +209,13 @@ class run_with_minimization(object):
   def fit_rotamers(self):
     sps = self.xray_structure.special_position_settings()
     mmtbx.refinement.real_space.fit_residue.run(
-      target_map      = self.target_map_work,
-      mon_lib_srv     = self.mon_lib_srv,
-      unit_cell       = self.xray_structure.unit_cell(),
-      residue         = self.residue,
-      sin_cos_table   = self.sin_cos_table,
-      rotamer_manager = self.rotamer_manager)
+      target_map        = self.target_map_work,
+      target_map_for_cb = self.target_map_orig,
+      mon_lib_srv       = self.mon_lib_srv,
+      unit_cell         = self.xray_structure.unit_cell(),
+      residue           = self.residue,
+      sin_cos_table     = self.sin_cos_table,
+      rotamer_manager   = self.rotamer_manager)
     sites_cart_poor = self.xray_structure.sites_cart()
     sites_cart_poor.set_selected(self.residue_iselection,
       self.residue.atoms().extract_xyz())
