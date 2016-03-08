@@ -24,23 +24,35 @@ def mp_managed_queue():
 # Cluster queue options
 class cluster_file_queue(object):
 
-  def __init__(self, prefix = "tmp", folder = ".", waittime = 0.1):
+  def __init__(self, prefix = "tmp", folder = ".", waittime = 0.1, multifile = None):
 
     self.prefix = prefix
     self.folder = folder
     self.waittime = waittime
+    self.multifile = None
 
 
   def __call__(self, params):
 
     from libtbx.scheduling import file_queue
-    qfac = file_queue.QFactory(
+    qfac = file_queue.qfactory(
       prefix = self.prefix,
       folder = self.folder,
       waittime = self.waittime,
       )
 
-    return ( qfac , qfac, qfac )
+    if self.multifile is not None:
+      mqfac = file_queue.mqfactory(
+        count = self.multifile,
+        prefix = self.prefix,
+        fodler = self.folder,
+        waittime = self.waittime,
+        )
+
+    else:
+      mqfac = qfac
+
+    return ( mqfac , qfac, mqfac )
 
 
   def __str__(self):

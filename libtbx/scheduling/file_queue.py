@@ -7,7 +7,7 @@ import tempfile
 import os
 
 
-class Instant(object):
+class instant(object):
   """
   Timeout immediately
   """
@@ -17,7 +17,7 @@ class Instant(object):
     raise Empty, "No data found in queue"
 
 
-class Timed(object):
+class timed(object):
   """
   Timeout after given time
   """
@@ -40,7 +40,7 @@ class Timed(object):
       raise Empty, "No data found in queue within timeout"
 
 
-class Eternal(object):
+class eternal(object):
   """
   No timeout
   """
@@ -59,14 +59,14 @@ class Eternal(object):
 def get_timeout_object(block, timeout, waittime):
 
   if not block:
-    return Instant()
+    return instant()
 
   else:
     if timeout is not None:
-      return Timed( timeout = timeout, waittime = waittime )
+      return timed( timeout = timeout, waittime = waittime )
 
     else:
-      return Eternal( waittime = waittime )
+      return eternal( waittime = waittime )
 
 
 def temp_name(prefix, suffix, folder):
@@ -205,7 +205,84 @@ class Queue(object):
         os.remove( fname )
 
 
-class QFactory(object):
+class MultiFileQueue(object):
+  """
+  File-based queue using multiple files for better throughput
+
+  CAVEAT: does not preserve strict data order
+  """
+
+  def __init__(self, count, prefix = "tmp", folder = ".", waittime = 0.1):
+
+    assert 0 < count
+
+    from collections import deque
+    self.queues = deque(
+      [
+        Queue(
+          prefix = "%s_channel_%s" % ( prefix, i ),
+          folder = folder,
+          waittime = waittime,
+          )
+        for i in range( count )
+        ]
+      )
+    self.waittime = waittime
+
+
+  def put(self, value, block = True, timeout = None):
+
+    timeout = get_timeout_object(
+      block = block,
+      timeout = timeout,
+      waittime = self.waittime,
+      )
+
+    while True:
+      for ( i, q ) in enumerate( self.queues ):
+        try:
+          q.put( value, block = False )
+
+        except Empty:
+          pass
+
+        else:
+          self.queues.rotate( i )
+          return
+
+      timeout()
+
+
+  def get(self, block = True, timeout = None):
+
+    timeout = get_timeout_object(
+      block = block,
+      timeout = timeout,
+      waittime = self.waittime,
+      )
+
+    while True:
+      for ( i, q ) in enumerate( self.queues ):
+        try:
+          value = q.get( block = False )
+
+        except Empty:
+          pass
+
+        else:
+          self.queues.rotate( i )
+          return value
+
+      timeout()
+
+
+  def close(self):
+
+    for q in self.queues:
+      q.close()
+
+
+class qfactory(object):
   """
   Creator pattern for file queue, also include destruction
   """
@@ -220,6 +297,36 @@ class QFactory(object):
   def create(self):
 
     return Queue( prefix = self.prefix, folder = self.folder, waittime = self.waittime )
+
+
+  @staticmethod
+  def destroy(queue):
+
+    queue.close()
+
+
+class mqfactory(object):
+  """
+  Creator pattern for multi-file queue, also include destruction
+  """
+
+  def __init__(self, count, prefix = "tmp", folder = ".", waittime = 0.1):
+
+    assert 0 < count
+    self.count = count,
+    self.prefix = prefix
+    self.folder = folder
+    self.waittime = waittime
+
+
+  def create(self):
+
+    return MultiFileQueue(
+      count = self.count,
+      prefix = self.prefix,
+      folder = self.folder,
+      waittime = self.waittime,
+      )
 
 
   @staticmethod
