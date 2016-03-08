@@ -252,36 +252,21 @@ class molprobity (slots_getstate_setstate) :
         log=null_out(),
         include_secondary_structure=True,
         extract_coordinates=True)
-    if ( (flags.real_space) and (xray_structure is not None) ):
-      real_space_fmodel = fmodel
-      map_name = None
-      if (map_params is not None):
-        params = map_params.input.maps
-        map_name = ( (params.map_coefficients_file_name) or
-                     (params.map_file_name) )
-      if ( (real_space_fmodel is None) and (map_name is not None) ):
-        d_min = 1.0
-        if (header_info is not None):
-          d_min = header_info.d_min
-        else:
-          from mmtbx.command_line.map_comparison import get_d_min
-          from iotbx.file_reader import any_file
-          map_handle = any_file(map_name)
-          if (map_handle.file_type == 'hkl'):
-            d_min = get_d_min(map_handle)
-        f_calc = xray_structure.structure_factors(d_min=d_min).f_calc().\
-                 as_amplitude_array()
-        from mmtbx.utils import fmodel_simple
-        real_space_fmodel = fmodel_simple(
-          xray_structures     = [xray_structure],
-          scattering_table    = map_params.input.scattering_table,
-          f_obs               = f_calc,
-          r_free_flags        = None)
-      if (real_space_fmodel is not None):
+
+    # use maps
+    use_maps = False
+    if (map_params is not None):
+      use_maps = ( (map_params.input.maps.map_file_name) or
+                   ( (map_params.input.maps.map_coefficients_file_name) and
+                     (map_params.input.maps.maps_coefficients_label) ) )
+    if (use_maps):
+      if (flags.real_space):
         self.real_space = experimental.real_space(
-          fmodel=real_space_fmodel,
+          fmodel=fmodel,
           pdb_hierarchy=pdb_hierarchy,
-          cc_min=min_cc_two_fofc)
+          cc_min=min_cc_two_fofc,
+          molprobity_map_params=map_params.input.maps)
+
     if (fmodel is not None) :
       if (use_pdb_header_resolution_cutoffs) and (header_info is not None) :
         fmodel = fmodel.resolution_filter(
@@ -292,6 +277,11 @@ class molprobity (slots_getstate_setstate) :
           raw_data=raw_data,
           n_bins=n_bins_data,
           count_anomalous_pairs_separately=count_anomalous_pairs_separately)
+      if (flags.real_space):
+        self.real_space = experimental.real_space(
+          fmodel=fmodel,
+          pdb_hierarchy=pdb_hierarchy,
+          cc_min=min_cc_two_fofc)
       if (flags.waters) :
         self.waters = waters.waters(
           pdb_hierarchy=pdb_hierarchy,
