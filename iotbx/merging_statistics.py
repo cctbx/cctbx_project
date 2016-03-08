@@ -835,8 +835,9 @@ def select_data (file_name, data_labels, log=None,
     # need original miller indices otherwise we don't get correct anomalous
     # merging statistics
     mtz_object = hkl_in.file_content()
-    indices = mtz_object.extract_original_index_miller_indices()
-    i_obs = i_obs.customized_copy(indices=indices, info=i_obs.info())
+    if "M_ISYM" in mtz_object.column_labels():
+      indices = mtz_object.extract_original_index_miller_indices()
+      i_obs = i_obs.customized_copy(indices=indices, info=i_obs.info())
   if (not i_obs.is_xray_intensity_array()) :
     raise Sorry("%s is not an intensity array." % i_obs.info().label_string())
   return i_obs
