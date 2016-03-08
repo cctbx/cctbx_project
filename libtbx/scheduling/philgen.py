@@ -29,7 +29,7 @@ class cluster_file_queue(object):
     self.prefix = prefix
     self.folder = folder
     self.waittime = waittime
-    self.multifile = None
+    self.multifile = multifile
 
 
   def __call__(self, params):
@@ -414,7 +414,9 @@ class cluster(object):
       save_error = self.capture_stderr,
       )
 
-    ( qfac, inqfac, outqfac ) = self.queue_philgen_for[ params.channel ]
+    ( qfac, inqfac, outqfac ) = self.queue_philgen_for[ params.channel.use ](
+      params = getattr( params.channel, params.channel.use, None ),
+      )
 
     if params.limit.type is None:
       lifecycle = self.default_lifecycle_factory
