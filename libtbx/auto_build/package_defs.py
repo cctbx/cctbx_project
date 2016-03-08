@@ -11,14 +11,14 @@ import os.path as op
 import os
 import sys
 
-BASE_CCI_PKG_URL = "http://cci.lbl.gov/cctbx_dependencies"
+BASE_CCI_PKG_URL = "https://cdn.rawgit.com/dials/dependencies/dials-1.1"
 BASE_XIA_PKG_URL = "http://www.ccp4.ac.uk/xia"
-BASE_H5PY_PKG_URL = "http://pypi.python.org/packages/source/h/h5py"
-BASE_HDF5_PKG_URL = "http://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.8.15-patch1/src"
-BASE_CYTHON_PKG_URL = "http://pypi.python.org/packages/source/C/Cython"
+BASE_H5PY_PKG_URL = "https://cdn.rawgit.com/dials/dependencies/dials-1.1"
+BASE_HDF5_PKG_URL = "https://cdn.rawgit.com/dials/dependencies/dials-1.1"
+BASE_CYTHON_PKG_URL = "https://cdn.rawgit.com/dials/dependencies/dials-1.1"
 
 # OpenSSL - needed for Mac OS X 10.11
-BASE_OPENSSL_PKG_URL = "http://www.openssl.org/source/old/1.0.2"
+BASE_OPENSSL_PKG_URL = "https://cdn.rawgit.com/dials/dependencies/dials-1.1"
 OPENSSL_PKG = "openssl-1.0.2d.tar.gz"
 
 # from CCI
@@ -110,8 +110,8 @@ subversion_repositories = {
   # adding for amber
   "amber_adaptbx": "http://cci.lbl.gov/svn/amber_adaptbx/trunk",
   # lz4 and bitshuffle compressions for HDF5
-  "hdf5_lz4": "https://github.com/dectris/HDF5Plugin.git/trunk",
-  "bitshuffle": "https://github.com/kiyo-masui/bitshuffle.git/trunk",
+  "hdf5_lz4": "https://github.com/cctbx/HDF5Plugin.git/branches/dials-1.1",
+  "bitshuffle": "https://github.com/cctbx/bitshuffle.git/branches/dials-1.1",
 }
 
 git_repositories = {

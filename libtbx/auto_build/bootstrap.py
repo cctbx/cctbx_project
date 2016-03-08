@@ -33,11 +33,9 @@ envs = {
 }
 
 # To download this file:
-# svn export svn://svn.code.sf.net/p/cctbx/code/trunk/libtbx/auto_build/bootstrap.py
-
-# Note: to relocate an SVN repo:
-# svn relocate svn+ssh://<username>@svn.code.sf.net/p/cctbx/code/trunk
-
+# wget https://raw.githubusercontent.com/xia2/cctbx/dials-1.1/libtbx/auto_build/bootstrap.py
+# or
+# curl https://raw.githubusercontent.com/xia2/cctbx/dials-1.1/libtbx/auto_build/bootstrap.py > bootstrap.py
 
 # Utililty function to be executed on slave machine or called directly by standalone bootstrap script
 def tar_extract(workdir, arx, modulename=None):
@@ -398,33 +396,19 @@ class SourceModule(object):
 # On Windows due to absence of rsync we use pscp from the Putty programs.
 class ccp4io_module(SourceModule):
   module = 'ccp4io'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/ccp4io.gz']
-  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'ccp4io.tar.gz', '/net/cci/auto_build/repositories/ccp4io']
-  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/ccp4io/']
+  anonymous = ['git', '-b dials-1.1', 'https://github.com/cctbx/%s/archive/dials-1.1.zip' % module ]
 
 class annlib_module(SourceModule):
   module = 'annlib'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/annlib.gz']
-  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'annlib.tar.gz', '/net/cci/auto_build/repositories/annlib']
-  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/annlib/']
+  anonymous = ['git', '-b dials-1.1', 'https://github.com/cctbx/%s/archive/dials-1.1.zip' % module ]
 
 class scons_module(SourceModule):
   module = 'scons'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/scons.gz']
-  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'scons.tar.gz', '/net/cci/auto_build/repositories/scons']
-  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/scons/']
+  anonymous = ['git', '-b dials-1.1', 'https://github.com/cctbx/%s/archive/dials-1.1.zip' % module ]
 
 class boost_module(SourceModule):
   module = 'boost'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/boost.gz']
-  # Compared to rsync pscp is very slow when downloading multiple files
-  # Resort to downloading the compressed archive on Windows
-  authentarfile = ['%(cciuser)s@cci.lbl.gov',
-                   'boost_hot.tar.gz',
-                   '/net/cci/auto_build/repositories/boost_hot/']
-  authenticated = [
-    'rsync',
-    '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/boost_hot/']
+  anonymous = ['git', '-b dials-1.1', 'https://github.com/cctbx/%s/archive/dials-1.1.zip' % module ]
 
 # external modules
 class amber_module(SourceModule):
@@ -465,39 +449,34 @@ class libsvm_module(SourceModule):
 # These must all provide anonymous access.
 class cctbx_module(SourceModule):
   module = 'cctbx_project'
-  anonymous = ['svn','svn://svn.code.sf.net/p/cctbx/code/trunk']
-  authenticated = ['svn', '%(sfmethod)s://%(sfuser)s@svn.code.sf.net/p/cctbx/code/trunk']
+  anonymous = ['git', '-b dials-1.1',
+               'git@github.com:xia2/cctbx.git',
+               'https://github.com/xia2/cctbx.git',
+               'https://github.com/xia2/cctbx/archive/dials-1.1.zip']
 
 class cbflib_module(SourceModule):
   module = 'cbflib'
-  anonymous = ['svn', 'svn://svn.code.sf.net/p/cbflib/code-0/trunk/CBFlib_bleeding_edge']
-  authenticated = ['svn', '%(sfmethod)s://%(sfuser)s@svn.code.sf.net/p/cbflib/code-0/trunk/CBFlib_bleeding_edge']
-  authenticated = anonymous
+  anonymous = ['git', '-b dials-1.1', 'https://github.com/dials/%s/archive/dials-1.1.zip' % module ]
 
 class ccp4io_adaptbx(SourceModule):
   module = 'ccp4io_adaptbx'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/ccp4io_adaptbx.gz']
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/ccp4io_adaptbx/trunk']
+  anonymous = ['git', '-b dials-1.1', 'https://github.com/cctbx/%s/archive/dials-1.1.zip' % module ]
 
 class annlib_adaptbx(SourceModule):
   module = 'annlib_adaptbx'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/annlib_adaptbx.gz']
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/annlib_adaptbx/trunk']
+  anonymous = ['git', '-b dials-1.1', 'https://github.com/cctbx/%s/archive/dials-1.1.zip' % module ]
 
 class tntbx_module(SourceModule):
   module = 'tntbx'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/tntbx.gz']
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/tntbx/trunk']
+  anonymous = ['git', '-b dials-1.1', 'https://github.com/cctbx/%s/archive/dials-1.1.zip' % module ]
 
 class clipper_module(SourceModule):
   module = 'clipper'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/clipper.gz']
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/clipper/trunk']
+  anonymous = ['git', '-b dials-1.1', 'https://github.com/cctbx/%s/archive/dials-1.1.zip' % module ]
 
 class gui_resources_module(SourceModule):
   module = 'gui_resources'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/gui_resources.gz']
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/gui_resources/trunk']
+  anonymous = ['git', '-b dials-1.1', 'https://github.com/cctbx/%s/archive/dials-1.1.zip' % module ]
 
 class opt_resources_module(SourceModule):
   module = 'opt_resources'
@@ -602,10 +581,10 @@ class labelit_regression_module(SourceModule):
 
 class dials_module(SourceModule):
   module = 'dials'
-  anonymous = ['git',
+  anonymous = ['git', '-b release-1.1',
                'git@github.com:dials/dials.git',
                'https://github.com/dials/dials.git',
-               'https://github.com/dials/dials/archive/master.zip']
+               'https://github.com/dials/dials/archive/release-1.1.zip']
 
 class dials_regression_module(SourceModule):
   module = 'dials_regression'
@@ -619,10 +598,10 @@ class xfel_regression_module(SourceModule):
 
 class xia2_module(SourceModule):
   module = 'xia2'
-  anonymous = ['git',
+  anonymous = ['git', '-b dials-1.1',
                'git@github.com:xia2/xia2.git',
                'https://github.com/xia2/xia2.git',
-               'https://github.com/xia2/xia2/archive/master.zip']
+               'https://github.com/xia2/xia2/archive/dials-1.1.zip']
 
 class xia2_regression_module(SourceModule):
   module = 'xia2_regression'
@@ -1113,7 +1092,13 @@ class Builder(object):
       print "Existing non-git directory -- don't know what to do. skipping: %s"%module
       return
 
+    if isinstance(parameters, basestring):
+      parameters = [ parameters ]
+    git_parameters = []
     for source_candidate in parameters:
+      if source_candidate.startswith('-'):
+        git_parameters = source_candidate.split(' ')
+        continue
       if(not source_candidate.lower().startswith('http') and
          not self.auth.get('git_ssh',False)
          ):
@@ -1121,8 +1106,9 @@ class Builder(object):
       if source_candidate.lower().endswith('.git'):
         if not git_available:
           continue
+        cmd = [ 'git', 'clone' ] + git_parameters + [ source_candidate, module ]
         self.add_step(self.shell(
-          command=['git', 'clone', source_candidate, module],
+          command=cmd,
           workdir=['modules']
         ))
         return

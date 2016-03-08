@@ -703,6 +703,38 @@ _replace_sysconfig_paths(build_time_vars)
 
     python_extra_dir = 'python_extra'
     python_extra_full_path = os.path.join(self.tmp_dir, python_extra_dir)
+
+    from bootstrap import Downloader
+    basepath_remote = 'https://cdn.rawgit.com/dials/dependencies/dials-1.1/python_extra/'
+    for pkg in [
+        "Jinja2-2.7.3.tar.gz",
+        "MarkupSafe-0.23.tar.gz",
+        "Pygments-2.0.2.tar.gz",
+        "altgraph-0.12.tar.gz",
+        "backports.ssl_match_hostname-3.4.0.2.tar.gz",
+        "certifi-2015.04.28.tar.gz",
+        "colorama-0.3.6.tar.gz",
+        "coverage-4.1b2.tar.gz",
+        "install.order",
+        "junit-xml-1.6.tar.gz",
+        "macholib-1.7.tar.gz",
+        "mock-1.0.1.tar.gz",
+        "modulegraph-0.12.1.tar.gz",
+        "nose-1.3.7.tar.gz",
+        "py-1.4.31.tar.gz",
+        "pyparsing-2.0.3.tar.gz",
+        "pytest-2.8.7.tar.gz",
+        "pytest-cov-2.2.1.tar.gz",
+        "python-dateutil-2.4.2.tar.gz",
+        "six-1.9.0.tar.gz",
+        "tornado-4.2.tar.gz" ]:
+      print "Downloading %s:" % pkg,
+      size = Downloader().download_to_file(
+        basepath_remote + pkg,
+        os.path.join(python_extra_full_path, pkg))
+      if size <= 0 and size != -2:
+        raise Exception("Download error")
+
     if os.path.exists(python_extra_full_path):
       print >> self.log, "Installing further python packages...\n"
     else:
