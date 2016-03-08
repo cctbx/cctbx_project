@@ -52,7 +52,7 @@ class ccd_python():
     change angle found by minimization. Primary use - to avoid huge turns
     in first phi-psi angles.
     """
-    threshold = 3
+    threshold = 1
     if abs(angle) > threshold:
       if angle > 0:
         return threshold
@@ -121,7 +121,7 @@ class ccd_python():
       # list_rama_outliers(phi_psi_atoms, r)
 
       for phi_psi_pair, rama_key in phi_psi_atoms:
-        before_rama_score = utils.get_rama_score(phi_psi_pair, self.r, rama_key)
+        before_rama_score = utils.get_rama_score(phi_psi_pair, self.r, rama_key, round_coords=True)
         rama_score = before_rama_score
         # print "rama score:", rama_score, "->",
         for i, atoms in enumerate(phi_psi_pair):
@@ -134,7 +134,7 @@ class ccd_python():
           angle_modified = self.modify_angle_procedure(ccd_angle)
 
           phi_psi_angles = utils.get_pair_angles(phi_psi_pair)
-          before_rotation_rama_score = utils.get_rama_score(phi_psi_pair, self.r, rama_key)
+          before_rotation_rama_score = utils.get_rama_score(phi_psi_pair, self.r, rama_key, round_coords=True)
           if (ramalyze.evalScore(rama_key, before_rotation_rama_score) == RAMALYZE_OUTLIER):
               # or ramalyze.evalScore(rama_key, before_rotation_rama_score) == RAMALYZE_ALLOWED):
             # assert i == 0
@@ -149,7 +149,7 @@ class ccd_python():
 
             # correct it to the nearest non-outlier region
             target_phi_psi = utils.find_nearest_non_outlier_region(phi_psi_pair, self.r, rama_key)
-            print "For outlier:", phi_psi_angles, target_phi_psi
+            # print "For outlier:", phi_psi_angles, target_phi_psi
             # here we want to correct outlier regardless the target function
             # outcome and proceed to the next phi-psi pair
             now_psi_angle0 = utils.get_dihedral_angle(phi_psi_pair[1])
@@ -158,7 +158,7 @@ class ccd_python():
             # now psi angle
             now_psi_angle = utils.get_dihedral_angle(phi_psi_pair[1])
 
-            print "psi angles:", now_psi_angle0, now_psi_angle
+            # print "psi angles:", now_psi_angle0, now_psi_angle
             angles_ok = (approx_equal(now_psi_angle0-now_psi_angle, 0) or
                 approx_equal(now_psi_angle0-now_psi_angle, 360) or
                 approx_equal(now_psi_angle0-now_psi_angle, -360))
@@ -177,15 +177,17 @@ class ccd_python():
           # rotate the whole thing around
           utils.rotate_atoms_around_bond(self.moving_h, atoms[1], atoms[2],
               angle=angle_modified)
-          after_rotation_rama_score = utils.get_rama_score(phi_psi_pair, self.r, rama_key)
+          after_rotation_rama_score = utils.get_rama_score(phi_psi_pair, self.r, rama_key, round_coords=True)
           # print "before/after rotation rama:", before_rotation_rama_score, after_rotation_rama_score
           # if before_rotation_rama_score > after_rotation_rama_score:
           if ramalyze.evalScore(rama_key, after_rotation_rama_score) == RAMALYZE_OUTLIER:
             # rotate back!!! / not always
+            # print "  rotate back"
             if True: # always
               utils.rotate_atoms_around_bond(self.moving_h, atoms[1], atoms[2],
                   angle=-angle_modified)
-          assert utils.rama_evaluate(phi_psi_pair, self.r, rama_key) != RAMALYZE_OUTLIER
+          s = utils.get_rama_score(phi_psi_pair, self.r, rama_key,round_coords=True)
+          assert utils.rama_score_evaluate(rama_key, s) != RAMALYZE_OUTLIER, s
 
         # new rama score:
         after_rama_score = utils.get_rama_score(phi_psi_pair, self.r, rama_key)

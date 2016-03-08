@@ -48,6 +48,18 @@ def is_not_none_combination(comb):
       return True
   return False
 
+def get_sampled_rama_favored_angles(rama_key, r=None, step=20):
+  if r is None:
+    r = ramachandran_eval.RamachandranEval()
+  result = []
+  for i in range(0, 360, step):
+    for j in range(0, 360, step):
+      score = r.evaluate(ramalyze.res_types[rama_key], (i,j))
+      r_ev = ramalyze.ramalyze.evalScore(ramalyze.res_types[rama_key], score)
+      if r_ev == ramalyze.RAMALYZE_FAVORED:
+        result.append((i,j))
+  return result
+
 # Refactoring idea: combine these two functions
 def get_all_starting_conformations(moving_h, change_radius, cutoff=50, log=null_out):
   variants = []
@@ -58,7 +70,12 @@ def get_all_starting_conformations(moving_h, change_radius, cutoff=50, log=null_
   # print "  change_angles", change_angles
   for i, (phi_psi_pair, rama_key) in enumerate(phi_psi_atoms):
     if i in change_angles or (utils.rama_evaluate(phi_psi_pair, r, rama_key) == ramalyze.RAMALYZE_OUTLIER):
-      variants.append(ramalyze.get_favored_regions(rama_key))
+      if utils.rama_evaluate(phi_psi_pair, r, rama_key) == ramalyze.RAMALYZE_OUTLIER:
+        vs = get_sampled_rama_favored_angles(rama_key, r)
+      else:
+        vs = ramalyze.get_favored_regions(rama_key)
+      variants.append(vs)
+      # variants.append(ramalyze.get_favored_regions(rama_key))
     else:
       variants.append([(None, None)])
   print >> log, "variants", variants
@@ -82,7 +99,12 @@ def get_starting_conformations(moving_h, cutoff=50, log=null_out):
   phi_psi_atoms = utils.get_phi_psi_atoms(moving_h)
   for phi_psi_pair, rama_key in phi_psi_atoms:
     if (utils.rama_evaluate(phi_psi_pair, r, rama_key) == ramalyze.RAMALYZE_OUTLIER):
-      variants.append(ramalyze.get_favored_regions(rama_key))
+      vs = get_sampled_rama_favored_angles(rama_key, r)
+      # print len(vs)
+      # print vs
+      # STOP()
+      variants.append(vs)
+      # variants.append(ramalyze.get_favored_regions(rama_key))
     else:
       variants.append([(None, None)])
   result = []

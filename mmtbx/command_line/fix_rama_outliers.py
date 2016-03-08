@@ -55,39 +55,58 @@ class loop_idealization():
     self.p_initial_rama_outliers = ram.out_percent
     self.p_before_minimization_rama_outliers = None
     self.p_after_minimiaztion_rama_outliers = None
-    self.berkeley_p_before_minimization_rama_outliers = None
+
+    berkeley_count = utils.list_rama_outliers_h(self.resulting_pdb_h).count("\n")
+    self.berkeley_p_before_minimization_rama_outliers = \
+        berkeley_count/float(self.resulting_pdb_h.overall_counts().n_residues)*100
+
+    # self.berkeley_p_before_minimization_rama_outliers = None
     self.berkeley_p_after_minimiaztion_rama_outliers = None
     self.ref_exclusion_selection = ""
-    for chain in pdb_hierarchy.only_model().chains():
-      print >> self.log, "Idealizing chain %s" % chain.id
-      selection = "protein and chain %s and (name N or name CA or name C or name O)" % chain.id
-      sel = asc.selection("chain %s" % chain.id)
-      chain_h = self.original_pdb_h.select(sel)
-      m = chain_h.only_model()
-      i = 0
-      cutted_chain_h = None
-      for c in m.chains():
-        if i == 0:
-          cutted_chain_h = iotbx.pdb.hierarchy.new_hierarchy_from_chain(c)
-        else:
-          print >> self.log, "WARNING!!! Duplicating chain ids! Only the first chain will be processed."
-          print >> self.log, "  Removing chain %s with %d residues" % (c.id, len(c.residues()))
-          m.remove_chain(c)
-        i += 1
-      exclusions, ch_h = self.idealize_chain(hierarchy=(cutted_chain_h if cutted_chain_h else chain_h))
-      if ch_h is not None:
-        set_xyz_smart(self.resulting_pdb_h, ch_h)
-        for resnum in exclusions:
-          selection += " and not resseq %s" % resnum
-      self.ref_exclusion_selection += "(%s) or " % selection
+    number_of_ccd_trials = 0
+    print "logic expr outcome:", (number_of_ccd_trials < 10 and self.berkeley_p_before_minimization_rama_outliers > 0.001)
+    print number_of_ccd_trials < 10
+    print self.berkeley_p_before_minimization_rama_outliers > 0.001
+    while (number_of_ccd_trials < 10
+        and self.berkeley_p_before_minimization_rama_outliers > 0.001):
+      print "CCD try number, outliers:", number_of_ccd_trials, self.berkeley_p_before_minimization_rama_outliers
+      number_of_ccd_trials += 1
+      for chain in self.resulting_pdb_h.only_model().chains():
+        print >> self.log, "Idealizing chain %s" % chain.id
+        selection = "protein and chain %s and (name N or name CA or name C or name O)" % chain.id
+        sel = asc.selection("chain %s" % chain.id)
+        chain_h = self.resulting_pdb_h.select(sel)
+        m = chain_h.only_model()
+        i = 0
+        cutted_chain_h = None
+        for c in m.chains():
+          if i == 0:
+            cutted_chain_h = iotbx.pdb.hierarchy.new_hierarchy_from_chain(c)
+          else:
+            print >> self.log, "WARNING!!! Duplicating chain ids! Only the first chain will be processed."
+            print >> self.log, "  Removing chain %s with %d residues" % (c.id, len(c.residues()))
+            m.remove_chain(c)
+          i += 1
+        exclusions, ch_h = self.idealize_chain(hierarchy=(cutted_chain_h if cutted_chain_h else chain_h))
+        if ch_h is not None:
+          print "Setting new coordinates"
+          set_xyz_smart(self.resulting_pdb_h, ch_h)
+          for resnum in exclusions:
+            selection += " and not resseq %s" % resnum
+        self.ref_exclusion_selection += "(%s) or " % selection
+      #
+      # dumping and reloading hierarchy to do proper rounding of coordinates
+      self.resulting_pdb_h = iotbx.pdb.input(
+          source_info=None,
+          lines=self.resulting_pdb_h.as_pdb_string()).construct_hierarchy()
+      berkeley_count = utils.list_rama_outliers_h(self.resulting_pdb_h).count("\n")
+      self.berkeley_p_before_minimization_rama_outliers = \
+          berkeley_count/float(self.resulting_pdb_h.overall_counts().n_residues)*100
     if len(self.ref_exclusion_selection) > 0:
       self.ref_exclusion_selection = self.ref_exclusion_selection[:-3]
     self.resulting_pdb_h.write_pdb_file(file_name="%s_before_minimization.pdb" % self.params.output_prefix)
     ram = ramalyze.ramalyze(pdb_hierarchy=self.resulting_pdb_h)
     self.p_before_minimization_rama_outliers = ram.out_percent
-    berkeley_count = utils.list_rama_outliers_h(self.resulting_pdb_h).count("\n")
-    self.berkeley_p_before_minimization_rama_outliers = \
-        berkeley_count/float(self.resulting_pdb_h.overall_counts().n_residues)*100
 
     duke_count = ram.get_outliers_count_and_fraction()[0]
     if berkeley_count != duke_count:
@@ -187,7 +206,7 @@ class loop_idealization():
         (2, False, 0),
         (3, False, 0),
         (2, True, 1),
-        # (3, True, 1),
+        (3, True, 1),
         # (3, True, 2),
         ]:
     # while ccd_radius <= 3:
@@ -256,6 +275,7 @@ class loop_idealization():
             ccd_radius=ccd_radius,
             change_all_angles=change_all,
             change_radius=change_radius):
+          print "Choosen result (mc_rmsd, anchor_rmsd, n_iter):", mc_rmsd, resulting_rmsd, n_iter
           if minimize:
             print >> self.log, "minimizing..."
             moved_with_side_chains_h.write_pdb_file(
@@ -267,16 +287,26 @@ class loop_idealization():
               original_pdb_h, placing_range)
           print >> self.log, "FINAL RMSD after minimization:", final_rmsd
           return moved_with_side_chains_h
-      ccd_radius += 1
 
 
     all_results.sort(key=lambda tup: tup[1])
+    print "ALL RESULTS:"
+    i = 0
+    for ar in all_results:
+      print ar[1:],
+      if ar[2] < 0.4:
+        fn = "variant_%d.pdb" % i
+        ar[0].write_pdb_file(file_name=fn)
+        print fn
+        i += 1
+      else:
+        print "  no output"
     if self.params.force_rama_fixes:
       # find and apply the best varian from all_results. This would be the one
       # with the smallest rmsd given satisfactory closure
       print >> self.log, "Applying the best found variant:",
       i = 0
-      while i < len(all_results) and all_results[i][2] > 0.4:
+      while i < len(all_results) and all_results[i][2] > 0.1:
         i += 1
       # apply
       # === duplication!!!!
@@ -383,7 +413,8 @@ def minimize_hierarchy(hierarchy, xrs, original_pdb_h,
       reference.add_coordinate_restraints(
           sites_cart = original_pdb_h.atoms().extract_xyz().select(sel),
           selection  = sel,
-          sigma      = 0.5))
+          sigma      = 0.5,
+          top_out_potential=True))
   obj = run2(
       restraints_manager       = grm,
       pdb_hierarchy            = hierarchy,

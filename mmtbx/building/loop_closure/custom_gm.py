@@ -26,7 +26,7 @@ def minimize_hierarchy(hierarchy, xrs, original_pdb_h,
   params.pdb_interpretation.c_beta_restraints=True
 
   outlier_selection_txt = mmtbx.building.loop_closure.utils.\
-      rama_outliers_selection(hierarchy, None, 1)
+      rama_outliers_selection(original_pdb_h, None, 1)
 
   processed_pdb_files_srv = mmtbx.utils.\
       process_pdb_file_srv(
@@ -60,7 +60,7 @@ def minimize_hierarchy(hierarchy, xrs, original_pdb_h,
 
   asc = original_pdb_h.atom_selection_cache()
   negate_selection = None
-  if outlier_selection_txt != "":
+  if outlier_selection_txt != "" and outlier_selection_txt is not None:
     negate_selection = "not (%s)" % outlier_selection_txt
   sel = asc.selection(negate_selection)
 
@@ -69,7 +69,8 @@ def minimize_hierarchy(hierarchy, xrs, original_pdb_h,
       reference.add_coordinate_restraints(
           sites_cart = original_pdb_h.atoms().extract_xyz().select(sel),
           selection  = sel,
-          sigma      = 0.5))
+          sigma      = 0.5,
+          top_out_potential=True))
 
 
   print "Runnning second minimization"
@@ -94,18 +95,19 @@ def run(args):
   print args
   print args[0]
   print args[1]
+  print args[2]
   pdb_inp = iotbx.pdb.input(source_info=None, file_name=args[0])
   pdb_h = pdb_inp.construct_hierarchy()
+  ref_h = iotbx.pdb.input(source_info=None, file_name=args[1]).construct_hierarchy()
   # print dir(pdb_inp)
   xrs = pdb_inp.xray_structure_simple()
   minimize_hierarchy(
       pdb_h,
       xrs,
-      pdb_h.deep_copy(),
-      # excl_string_selection=exclude_selection_string_for_3j7x,
+      ref_h,
       excl_string_selection="all",
       )
-  pdb_h.write_pdb_file(file_name=args[1])
+  pdb_h.write_pdb_file(file_name=args[2])
 
 
 if (__name__ == "__main__"):
