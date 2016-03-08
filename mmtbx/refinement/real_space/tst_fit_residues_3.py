@@ -159,7 +159,6 @@ def exercise(i_pdb, pdb_for_map, rotamer_manager, sin_cos_table,
       map_data          = target_map,
       do_all            = True,
       massage_map       = False,
-      backbone_sample   = False,
       rotamer_manager   = rotamer_manager,
       sin_cos_table     = sin_cos_table,
       mon_lib_srv       = mon_lib_srv)

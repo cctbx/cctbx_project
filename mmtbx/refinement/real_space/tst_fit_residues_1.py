@@ -812,7 +812,6 @@ def exercise(pdb_str_answer, pdb_str_poor, rotamer_manager, sin_cos_table,
       map_data          = target_map,
       do_all            = True,
       massage_map       = False,
-      backbone_sample   = False,
       rotamer_manager   = rotamer_manager,
       sin_cos_table     = sin_cos_table,
       mon_lib_srv       = mon_lib_srv)
@@ -822,7 +821,7 @@ def exercise(pdb_str_answer, pdb_str_poor, rotamer_manager, sin_cos_table,
     crystal_symmetry=xrs_poor.crystal_symmetry())
   dist = flex.max(flex.sqrt((xrs_answer.sites_cart() -
     result.pdb_hierarchy.atoms().extract_xyz()).dot()))
-  assert dist < 0.38, dist
+  assert dist < 0.48, dist
 
 if(__name__ == "__main__"):
   t0 = time.time()

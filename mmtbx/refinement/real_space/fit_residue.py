@@ -23,6 +23,7 @@ class run(object):
                rotamer_manager,
                sin_cos_table,
                target_map=None,
+               target_map_for_cb=None,
                unit_cell=None,
                backbone_sample=True,
                accept_only_if_max_shift_is_smaller_than=None):
@@ -43,29 +44,28 @@ class run(object):
       residue         = self.residue,
       mon_lib_srv     = self.mon_lib_srv,
       backbone_sample = True)
-    if(backbone_sample):
-      self.fit_c_beta(c_beta_rotation_cluster = co.clusters[0])
-    self.fit_side_chain(clusters = co.clusters[1:])
-    # Final state
-    if(target_map is not None):
-      target_final = self.get_target_value(
-        sites_cart=self.residue.atoms().extract_xyz())
-      # Sanity and consistency check
-      #XXX not always hold due to approx fast math assert rotamer_final != "OUTLIER"
-      # Potentially this will keep an OUTLIER if no better fit found
-      if(target_start > target_final):
-        self.residue.atoms().set_xyz(sites_cart_start)
+    if(len(co.clusters)>0):
+      if(backbone_sample):
+        self.fit_c_beta(c_beta_rotation_cluster = co.clusters[0])
+      self.fit_side_chain(clusters = co.clusters[1:])
+      # Final state
+      if(target_map is not None):
+        target_final = self.get_target_value(
+          sites_cart=self.residue.atoms().extract_xyz())
+        if(target_start > target_final):
+          self.residue.atoms().set_xyz(sites_cart_start)
 
-  def get_target_value(self, sites_cart, selection=None):
+  def get_target_value(self, sites_cart, selection=None, target_map=None):
+    if(target_map is None): target_map = self.target_map
     if(selection is None):
       return maptbx.real_space_target_simple(
         unit_cell   = self.unit_cell,
-        density_map = self.target_map,
+        density_map = target_map,
         sites_cart  = sites_cart)
     else:
       return maptbx.real_space_target_simple(
         unit_cell   = self.unit_cell,
-        density_map = self.target_map,
+        density_map = target_map,
         sites_cart  = sites_cart,
         selection   = selection)
 
@@ -133,13 +133,14 @@ class run(object):
     sites_cart = self.residue.atoms().extract_xyz()
     start_target_value = self.get_target_value(
       sites_cart = sites_cart,
-      selection  = selection)
+      selection  = selection,
+      target_map = self.target_map_for_cb)
     ro = ext.fit(
       target_value             = start_target_value,
       axes                     = [c_beta_rotation_cluster.axis],
       rotatable_points_indices = [c_beta_rotation_cluster.atoms_to_rotate],
       angles_array             = [[i*math.pi/180] for i in range(-20,21,1)],
-      density_map              = self.target_map,
+      density_map              = self.target_map_for_cb,
       all_points               = sites_cart,
       unit_cell                = self.unit_cell,
       selection                = selection,

@@ -161,13 +161,14 @@ class run(object):
         map_data       = target_map_,
         labels         = flex.std_string(["DEBUG"]))
     mmtbx.refinement.real_space.fit_residue.run(
-      residue         = residue,
-      backbone_sample = self.backbone_sample,
-      unit_cell       = self.crystal_symmetry.unit_cell(),
-      target_map      = target_map_,
-      mon_lib_srv     = self.mon_lib_srv,
-      rotamer_manager = self.rotamer_manager,
-      sin_cos_table   = self.sin_cos_table)
+      residue           = residue,
+      backbone_sample   = self.backbone_sample,
+      unit_cell         = self.crystal_symmetry.unit_cell(),
+      target_map        = target_map_,
+      target_map_for_cb = self.target_map,
+      mon_lib_srv       = self.mon_lib_srv,
+      rotamer_manager   = self.rotamer_manager,
+      sin_cos_table     = self.sin_cos_table)
     self.sites_cart = self.sites_cart.set_selected(
       residue.atoms().extract_i_seq(),
       residue.atoms().extract_xyz())

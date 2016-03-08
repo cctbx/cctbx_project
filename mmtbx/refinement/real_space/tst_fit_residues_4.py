@@ -182,12 +182,10 @@ def exercise(rotamer_manager, sin_cos_table, d_min=1.5, resolution_factor=0.1):
     map_data          = target_map,
     do_all            = True,
     massage_map       = False,
-    backbone_sample   = False,
     rotamer_manager   = rotamer_manager,
     sin_cos_table     = sin_cos_table,
     mon_lib_srv       = mon_lib_srv)
   result.pdb_hierarchy.write_pdb_file(file_name = "refined.pdb")
-
 
 if(__name__ == "__main__"):
   t0 = time.time()
