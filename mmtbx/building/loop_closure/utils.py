@@ -7,6 +7,8 @@ import math
 from cStringIO import StringIO
 from mmtbx.validation.ramalyze import res_types
 from mmtbx.rotamer import ramachandran_eval
+from scitbx.math import dihedral_angle
+# from scitbx.matrix import _dihedral_angle # python implementation, but on flex arrays
 
 def get_phi_psi_atoms(hierarchy):
   phi_psi_atoms = []
@@ -20,7 +22,6 @@ def get_phi_psi_atoms(hierarchy):
   return phi_psi_atoms
 
 def get_dihedral_angle(atoms, round_coords=False):
-  from scitbx.math import dihedral_angle
   # round here is to emulate rounding when dumping to pdb, to get more
   # consistent result for rama outliers inside program and when calculating
   # from resulted pdb file.
@@ -73,6 +74,7 @@ def list_rama_outliers(phi_psi_atoms, r):
     rama_score = get_rama_score(phi_psi_pair, r, rama_key)
     if rama_evaluate(phi_psi_pair, r, rama_key) == ramalyze.RAMALYZE_OUTLIER:
       result += "  !!! OUTLIER %s, score=%f\n" % (pair_info(phi_psi_pair), rama_score)
+    # print "%s, %s, %s" % (pair_info(phi_psi_pair), get_rama_score(phi_psi_pair, r, rama_key), ramalyze.res_types[rama_key])
       # out_sel.append(pair_selection(phi_psi_pair))
     # print_rama_stats(phi_psi_atoms, r)
   # out_sel.txt = " or ".join(out_sel)
@@ -81,12 +83,15 @@ def list_rama_outliers(phi_psi_atoms, r):
 
 
 def get_rama_score(phi_psi_pair, r, rama_key, round_coords=False):
-  phi_psi_angles = get_pair_angles(phi_psi_pair, round_coords=round_coords)
+  # phi_psi_angles = get_pair_angles(phi_psi_pair, round_coords=round_coords)
+  phi_psi_angles = get_pair_angles(phi_psi_pair, round_coords=False)
   rama_score = r.evaluate(ramalyze.res_types[rama_key], phi_psi_angles)
+  if round_coords:
+    return rama_score*0.98
   return rama_score
 
 def rama_evaluate(phi_psi_pair, r, rama_key, round_coords=False):
-  score = get_rama_score(phi_psi_pair, r, rama_key)
+  score = get_rama_score(phi_psi_pair, r, rama_key, round_coords=round_coords)
   # print "  score, rama_key", score, rama_key
   return rama_score_evaluate(rama_key, score)
 
@@ -124,13 +129,14 @@ def rotate_atoms_around_bond(
   # find xyz based on i_seqs
   rotate_xyz1 = None
   rotate_xyz2 = None
-  for a in moving_h.atoms():
+  atoms = moving_h.atoms()
+  for a in atoms:
     if a.i_seq == atom_axis_point_1.i_seq:
       rotate_xyz1 = a.xyz
     elif a.i_seq == atom_axis_point_2.i_seq:
       rotate_xyz2 = a.xyz
   # rotate stuff
-  for a in moving_h.atoms():
+  for a in atoms:
     if a.i_seq > atom_axis_point_1.i_seq:
       new_xyz = rotate_point_around_axis(
           axis_point_1=rotate_xyz1,
