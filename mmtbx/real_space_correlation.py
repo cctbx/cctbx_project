@@ -39,6 +39,10 @@ map_file_name = None
   .type = path
   .help = A CCP4-formatted map
   .style = file_type:ccp4_map input_file
+d_min = None
+  .type = float
+  .short_caption = Resolution
+  .help = Resolution of map
 map_coefficients_file_name = None
   .type = path
   .help = MTZ file containing map
@@ -803,7 +807,8 @@ def find_suspicious_residues (
   return outliers
 
 def extract_map_stats_for_single_atoms (xray_structure, pdb_atoms, fmodel,
-    selection=None) :
+                                        selection=None, fc_map=None,
+                                        two_fofc_map=None):
   """
   Memory-efficient routine for harvesting map values for individual atoms
   (e.g. waters).  Only one FFT'd map at a time is in memory.
@@ -846,18 +851,34 @@ def extract_map_stats_for_single_atoms (xray_structure, pdb_atoms, fmodel,
     if (map_coeffs is not None) :
       return map_coeffs.fft_map(
         resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
-  two_fofc_map = get_map("2mFo-DFc")
-  two_fofc, two_fofc_sel = collect_map_values(two_fofc_map, get_selections=True)
-  del two_fofc_map
-  fofc_map = get_map("mFo-DFc")
-  fofc = collect_map_values(fofc_map)
-  del fofc_map
-  anom_map = get_map("anomalous")
-  anom = collect_map_values(anom_map)
-  del anom_map
-  fmodel_map = get_map("Fmodel")
-  f_model_val, f_model_sel = collect_map_values(fmodel_map, get_selections=True)
-  del fmodel_map
+
+  # use maps
+  if ( (fmodel is None) and (fc_map is not None) and
+       (two_fofc_map is not None) ):
+    fofc = [ 0.0 for i in xrange(len(pdb_atoms)) ]
+    anom = [ None for i in xrange(len(pdb_atoms)) ]
+    two_fofc, two_fofc_sel = collect_map_values(
+      two_fofc_map, get_selections=True)
+    f_model_val, f_model_sel = collect_map_values(
+      fc_map, get_selections=True)
+
+  # otherwise, use data to calculate maps
+  else:
+    two_fofc_map = get_map("2mFo-DFc")
+    two_fofc, two_fofc_sel = collect_map_values(
+      two_fofc_map, get_selections=True)
+    del two_fofc_map
+    fofc_map = get_map("mFo-DFc")
+    fofc = collect_map_values(fofc_map)
+    del fofc_map
+    anom_map = get_map("anomalous")
+    anom = collect_map_values(anom_map)
+    del anom_map
+    fmodel_map = get_map("Fmodel")
+    f_model_val, f_model_sel = collect_map_values(
+      fmodel_map, get_selections=True)
+    del fmodel_map
+
   two_fofc_ccs = []
   for i_seq, atom in enumerate(pdb_atoms) :
     if (selection[i_seq]) :

@@ -253,7 +253,7 @@ class molprobity (slots_getstate_setstate) :
         include_secondary_structure=True,
         extract_coordinates=True)
 
-    # use maps
+    # use maps (fmodel is not used)
     use_maps = False
     if (map_params is not None):
       use_maps = ( (map_params.input.maps.map_file_name) or
@@ -262,9 +262,16 @@ class molprobity (slots_getstate_setstate) :
     if (use_maps):
       if (flags.real_space):
         self.real_space = experimental.real_space(
-          fmodel=fmodel,
+          fmodel=None,
           pdb_hierarchy=pdb_hierarchy,
           cc_min=min_cc_two_fofc,
+          molprobity_map_params=map_params.input.maps)
+      if (flags.waters):
+        self.waters = waters.waters(
+          pdb_hierarchy=pdb_hierarchy,
+          xray_structure=xray_structure,
+          fmodel=None,
+          collect_all=True,
           molprobity_map_params=map_params.input.maps)
 
     if (fmodel is not None) :
@@ -277,17 +284,20 @@ class molprobity (slots_getstate_setstate) :
           raw_data=raw_data,
           n_bins=n_bins_data,
           count_anomalous_pairs_separately=count_anomalous_pairs_separately)
-      if (flags.real_space):
-        self.real_space = experimental.real_space(
-          fmodel=fmodel,
-          pdb_hierarchy=pdb_hierarchy,
-          cc_min=min_cc_two_fofc)
-      if (flags.waters) :
-        self.waters = waters.waters(
-          pdb_hierarchy=pdb_hierarchy,
-          xray_structure=xray_structure,
-          fmodel=fmodel,
-          collect_all=True)
+
+      if (not use_maps): # if maps are used, keep previous results
+        if (flags.real_space):
+          self.real_space = experimental.real_space(
+            fmodel=fmodel,
+            pdb_hierarchy=pdb_hierarchy,
+            cc_min=min_cc_two_fofc)
+        if (flags.waters) :
+          self.waters = waters.waters(
+            pdb_hierarchy=pdb_hierarchy,
+            xray_structure=xray_structure,
+            fmodel=fmodel,
+            collect_all=True)
+
       if (unmerged_data is not None) :
         self.merging = experimental.merging_and_model_statistics(
           f_obs=fmodel.f_obs(),

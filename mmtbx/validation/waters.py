@@ -1,5 +1,8 @@
 
 from __future__ import division
+from cctbx import maptbx, miller
+from cctbx.sgtbx import space_group_info
+from iotbx.file_reader import any_file
 from mmtbx.validation import atom, atom_info, validation
 from mmtbx.validation import experimental
 from libtbx.str_utils import format_value
@@ -62,7 +65,8 @@ class waters (validation) :
   def get_result_class (self) : return water
 
   def __init__ (self, pdb_hierarchy, xray_structure, fmodel,
-      distance_cutoff=4.0, collect_all=True) :
+                distance_cutoff=4.0, collect_all=True,
+                molprobity_map_params=None) :
     validation.__init__(self)
     from mmtbx.real_space_correlation import extract_map_stats_for_single_atoms
     from cctbx import adptbx
@@ -83,11 +87,57 @@ class waters (validation) :
     sites_frac = xray_structure.sites_frac()
     sel_cache = pdb_hierarchy.atom_selection_cache()
     water_sel = sel_cache.selection("resname HOH and name O")
-    map_stats = extract_map_stats_for_single_atoms(
-      pdb_atoms=pdb_atoms,
-      xray_structure=xray_structure,
-      fmodel=fmodel,
-      selection=water_sel)
+
+    if (molprobity_map_params is not None):
+      # assume parameters have been validated (symmetry of pdb and map matches)
+      two_fofc_map = None
+      fc_map = None
+      d_min = None
+      crystal_gridding = None
+
+      # read two_fofc_map
+      if (molprobity_map_params.map_file_name is not None):
+        f = any_file(molprobity_map_params.map_file_name)
+        two_fofc_map = f.file_object.map_data()
+        d_min = molprobity_map_params.d_min
+        crystal_gridding = maptbx.crystal_gridding(
+          f.file_object.unit_cell(),
+          space_group_info=space_group_info(f.file_object.space_group_number),
+          pre_determined_n_real=f.file_object.unit_cell_grid)
+      elif (molprobity_map_params.map_coefficients_file_name is not None):
+        f = any_file(molprobity_map_params.map_coefficients_file_name)
+        fourier_coefficients = f.file_server.get_miller_array(
+          molprobity_map_params.map_coefficients_label)
+        crystal_symmetry = fourier_coefficients.crystal_symmetry()
+        d_min = fourier_coefficients.d_min()
+        crystal_gridding = maptbx.crystal_gridding(
+          crystal_symmetry.unit_cell(), d_min, resolution_factor=0.25,
+          space_group_info=crystal_symmetry.space_group_info())
+        two_fofc_map = miller.fft_map(
+          crystal_gridding=crystal_gridding,
+          fourier_coefficients=fourier_coefficients).apply_sigma_scaling().\
+          real_map_unpadded()
+
+      # calculate fc_map
+      assert( (d_min is not None) and (crystal_gridding is not None) )
+      f_calc = xray_structure.structure_factors(d_min=d_min).f_calc()
+      fc_map = miller.fft_map(crystal_gridding=crystal_gridding,
+                              fourier_coefficients=f_calc)
+      fc_map = fc_map.apply_sigma_scaling().real_map_unpadded()
+
+      map_stats = extract_map_stats_for_single_atoms(
+        pdb_atoms=pdb_atoms,
+        xray_structure=xray_structure,
+        fmodel=None,
+        selection=water_sel,
+        fc_map=fc_map,
+        two_fofc_map=two_fofc_map)
+    else:
+      map_stats = extract_map_stats_for_single_atoms(
+        pdb_atoms=pdb_atoms,
+        xray_structure=xray_structure,
+        fmodel=fmodel,
+        selection=water_sel)
     waters = []
     for i_seq, atom in enumerate(pdb_atoms) :
       if (water_sel[i_seq]) :
