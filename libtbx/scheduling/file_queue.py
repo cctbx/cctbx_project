@@ -313,7 +313,7 @@ class mqfactory(object):
   def __init__(self, count, prefix = "tmp", folder = ".", waittime = 0.1):
 
     assert 0 < count
-    self.count = count,
+    self.count = count
     self.prefix = prefix
     self.folder = folder
     self.waittime = waittime
