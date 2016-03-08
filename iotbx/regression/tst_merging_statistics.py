@@ -116,6 +116,32 @@ def exercise (debug=False) :
   based on completeness >= 90%    :   2.000
   based on completeness >= 50%    :   2.000""".splitlines() :
     assert line in out.getvalue(), out.getvalue()
+  # check suitable error emitted given merged input mtz (not containing M_ISYM column)
+  out = StringIO()
+  hkl_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/reflection_files/i_anomalous.mtz",
+    test=os.path.isfile)
+  args = [hkl_file]
+  try:
+    result = merging_statistics.run(args, out=out)
+  except Sorry, e:
+    assert str(e) == 'The data in i_anomalous(+),SIGi_anomalous(+),i_anomalous(-),SIGi_anomalous(-) are already merged.  Only unmerged (but scaled) data may be used in this program.'
+  else: raise Exception_expected
+  # test use_internal_variance option
+  out = StringIO()
+  hkl_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/wizards/unmerged.mtz",
+    test=os.path.isfile)
+  args = [hkl_file, "use_internal_variance=False"]
+  result = merging_statistics.run(args, out=out)
+  assert approx_equal(result.overall.i_over_sigma_mean, 4.4867598237199)
+  #
+  args = [hkl_file,
+          #"use_internal_variance=True" # this is the default behaviour
+          ]
+  result = merging_statistics.run(args, out=out)
+  assert approx_equal(result.overall.i_over_sigma_mean, 4.063574245292925)
+
 
 if (__name__ == "__main__") :
   exercise(debug=("--debug" in sys.argv))
