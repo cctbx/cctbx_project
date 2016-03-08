@@ -81,13 +81,3 @@ def determine_pilatus_mask(xdetector):
 
   return mask
 
-  #if size == (2463, 2527):
-    #return pilatus_6M_mask()
-
-  #if size == (1475, 1679):
-    #return pilatus_2M_mask()
-
-  #if size == (487, 619):
-    #return pilatus_300K_mask()
-
-  #raise RuntimeError, 'unknown image size: %d %d' % size

@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-# FormatCBFMiniPilatus.py
+# FormatCBFMiniEigerPF.py
 #   Copyright (C) 2011 Diamond Light Source, Graeme Winter
 #
 #   This code is distributed under the BSD license, a copy of which is
 #   included in the root directory of this package.
 #
-# An implementation of the CBF image reader for Pilatus images. Inherits from
+# An implementation of the CBF image reader for EigerPF images. Inherits from
 # FormatCBFMini.
 
 from __future__ import division
@@ -14,7 +14,6 @@ import os
 from dxtbx.format.FormatCBFMini import FormatCBFMini
 from dxtbx.format.FormatCBFMiniPilatusHelpers import \
      get_pilatus_timestamp
-from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
 from dxtbx.model import ParallaxCorrectedPxMmStrategy
 
 if 'DXTBX_OVERLOAD_SCALE' in os.environ:
@@ -22,37 +21,54 @@ if 'DXTBX_OVERLOAD_SCALE' in os.environ:
 else:
   dxtbx_overload_scale = 1
 
-class FormatCBFMiniPilatus(FormatCBFMini):
-  '''A class for reading mini CBF format Pilatus images, and correctly
+def determine_eiger_mask(xdetector):
+  '''Return an appropriate pixel mask for a Eiger detector.'''
+
+  size = xdetector[0].get_image_size()
+
+  # Hardcoded module size and gap size
+  module_size_fast, module_size_slow = (1030, 514)
+  gap_size_fast, gap_size_slow = (10, 37)
+
+  # Edge dead areas not included, only gaps between modules matter
+  n_fast, remainder = divmod(size[0], module_size_fast)
+  assert (n_fast-1) * gap_size_fast == remainder
+
+  n_slow, remainder = divmod(size[1], module_size_slow)
+  assert (n_slow-1) * gap_size_slow == remainder
+
+  # Specify the dead areas between the modules, i.e. the rows and columns
+  # where there are no active pixels
+  mask = []
+  for i_fast in range(n_fast-1):
+    mask.append([
+      (i_fast+1) * module_size_fast + i_fast * gap_size_fast + 1,
+      (i_fast+1) * module_size_fast + i_fast * gap_size_fast + gap_size_fast,
+      1, size[1]
+    ])
+  for i_slow in range(n_slow-1):
+    mask.append([
+      1, size[0],
+      (i_slow+1) * module_size_slow + i_slow * gap_size_slow + 1,
+      (i_slow+1) * module_size_slow + i_slow * gap_size_slow + gap_size_slow
+    ])
+
+  return mask
+
+class FormatCBFMiniEigerPF(FormatCBFMini):
+  '''A class for reading mini CBF format EigerPF images, and correctly
   constructing a model for the experiment from this.'''
 
   @staticmethod
   def understand(image_file):
-    '''Check to see if this looks like an Pilatus mini CBF format image,
+    '''Check to see if this looks like an EigerPF mini CBF format image,
     i.e. we can make sense of it.'''
-
-    if 'ENABLE_PHOTON_FACTORY_TWO_EIGER' in os.environ:
-      return False
 
     header = FormatCBFMini.get_cbf_header(image_file)
 
     for record in header.split('\n'):
       if '# Detector' in record and \
-             'EIGER' in record.upper():
-        return False
-
-    for record in header.split('\n'):
-      if '_array_data.header_convention' in record and \
-             'PILATUS' in record:
-        return True
-      if '_array_data.header_convention' in record and \
-             'SLS' in record:
-        return True
-      if '_array_data.header_convention' in record and \
-             '?' in record:
-        return True
-      if '# Detector' in record and \
-             'PILATUS' in record:  #CBFlib v0.8.0 allowed
+             'eiger' in record.lower():
         return True
 
     return False
@@ -135,7 +151,7 @@ class FormatCBFMiniPilatus(FormatCBFMini):
         (nx, ny), (underload, overload), [],
         ParallaxCorrectedPxMmStrategy(mu, t0))
 
-    for f0, s0, f1, s1 in determine_pilatus_mask(detector):
+    for f0, s0, f1, s1 in determine_eiger_mask(detector):
       detector[0].add_mask(f0, s0, f1, s1)
 
     detector[0].set_thickness(thickness)
@@ -239,4 +255,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFMiniPilatus.understand(arg)
+    print FormatCBFMiniEigerPF.understand(arg)
