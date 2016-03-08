@@ -135,12 +135,26 @@ def exercise (debug=False) :
   args = [hkl_file, "use_internal_variance=False"]
   result = merging_statistics.run(args, out=out)
   assert approx_equal(result.overall.i_over_sigma_mean, 4.4867598237199)
-  #
   args = [hkl_file,
           #"use_internal_variance=True" # this is the default behaviour
           ]
   result = merging_statistics.run(args, out=out)
   assert approx_equal(result.overall.i_over_sigma_mean, 4.063574245292925)
+  # test eliminate_sys_absent option
+  out = StringIO()
+  hkl_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/reflection_files/AUTOMATIC_DEFAULT_scaled_unmerged_WAVE1.mtz",
+    test=os.path.isfile)
+  args = [hkl_file,
+          #"eliminate_sys_absent=True" # default behaviour
+          ]
+  result = merging_statistics.run(args, out=out)
+  assert approx_equal(result.overall.d_max, 43.069972142418365)
+  assert result.overall.n_obs == 118981, result.overall.n_obs
+  args = [hkl_file, "eliminate_sys_absent=False"]
+  result = merging_statistics.run(args, out=out)
+  assert approx_equal(result.overall.d_max, 52.445602416992195)
+  assert result.overall.n_obs == 119045, result.overall.n_obs
 
 
 if (__name__ == "__main__") :
