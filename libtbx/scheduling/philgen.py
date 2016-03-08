@@ -45,7 +45,7 @@ class cluster_file_queue(object):
       mqfac = file_queue.mqfactory(
         count = self.multifile,
         prefix = self.prefix,
-        fodler = self.folder,
+        folder = self.folder,
         waittime = self.waittime,
         )
 
