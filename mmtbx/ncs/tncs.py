@@ -100,7 +100,6 @@ class groups(object):
     # set id flag
     frac_scats = [p.fracscat for p in self.ncs_pairs]
     sis = scitbx.math.similarity_indices(x=frac_scats, eps=0.01)
-    #print frac_scats, sis
     for si, p in zip(sis, self.ncs_pairs):
       p.set_id(si)
 
