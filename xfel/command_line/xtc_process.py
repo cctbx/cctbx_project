@@ -192,9 +192,9 @@ dials_phil_str = '''
    .type = int(value_min=0)
    .help = The verbosity level
   border_mask {
-    include scope dials.command_line.generate_mask.phil_scope
+    include scope dials.util.masking.phil_scope
   }
-  include scope dials.algorithms.peak_finding.spotfinder_factory.phil_scope
+  include scope dials.algorithms.spot_finding.factory.phil_scope
   include scope dials.algorithms.indexing.indexer.index_only_phil_scope
   include scope dials.algorithms.refinement.refiner.phil_scope
   include scope dials.algorithms.profile_model.factory.phil_scope
@@ -523,7 +523,7 @@ class InMemScript(DialsProcessScript):
 
     # if border is requested, generate a border only mask
     if self.params.border_mask.border > 0:
-      from dials.command_line.generate_mask import MaskGenerator
+      from dials.util.masking import MaskGenerator
       generator = MaskGenerator(self.params.border_mask)
       mask = generator.generate(imgset)
 
