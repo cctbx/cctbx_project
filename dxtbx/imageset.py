@@ -1010,7 +1010,7 @@ class ImageSweep(ImageSet):
       subset.external_lookup = self.external_lookup
       return subset
     else:
-      return self.reader().read(self._indices[item])
+      return self.get_corrected_data(item)
 
   def get_template(self):
     ''' Get the template. '''
