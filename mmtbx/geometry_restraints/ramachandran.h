@@ -304,25 +304,19 @@ namespace mmtbx { namespace geometry_restraints {
     return af::tiny<double, 3> (phi_t,psi_t,dist_to_allowed) ;
   };
 
-  // QUANTA-like harmonic restraints (rama_potential=oldfield)
-  double
-  ramachandran_residual_sum(
+  af::shared<scitbx::vec3<double> >
+  phi_psi_targets(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     af::const_ref<phi_psi_proxy> const& proxies,
-    af::ref<scitbx::vec3<double> > const& gradient_array,
     af::const_ref<scitbx::vec3<double> > const& general_table,
     af::const_ref<scitbx::vec3<double> > const& gly_table,
     af::const_ref<scitbx::vec3<double> > const& cispro_table,
     af::const_ref<scitbx::vec3<double> > const& transpro_table,
     af::const_ref<scitbx::vec3<double> > const& prepro_table,
-    af::const_ref<scitbx::vec3<double> > const& ileval_table,
-    af::small<double, 5> weights,
-    af::ref<double > const& residuals_array)
+    af::const_ref<scitbx::vec3<double> > const& ileval_table)
   {
-    MMTBX_ASSERT(gradient_array.size() == sites_cart.size());
-    MMTBX_ASSERT(residuals_array.size() == proxies.size());
-    double res_sum = 0;
-
+    af::shared<scitbx::vec3<double> > result;
+    result.resize(proxies.size(), scitbx::vec3<double>(0,0,0));
     for (std::size_t i=0; i<proxies.size(); i++) {
       phi_psi_proxy const& proxy = proxies[i];
       af::tiny<double, 3> r;
@@ -344,14 +338,33 @@ namespace mmtbx { namespace geometry_restraints {
         error_msg += proxy.residue_type + "'";
         throw error(error_msg);
       }
-      double w;
-      if (weights[0] < 0) {
-        w = 1.0/weights[1]/weights[1] *
+      result[i]=r;
+    }
+      return result;
+  };
+
+  // QUANTA-like harmonic restraints (rama_potential=oldfield)
+  double
+  ramachandran_residual_sum(
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<phi_psi_proxy> const& proxies,
+    af::ref<scitbx::vec3<double> > const& gradient_array,
+    af::ref<scitbx::vec3<double> > const& phi_psi_targets,
+    af::small<double, 5> const& weights,
+    af::ref<double > const& residuals_array)
+  {
+    MMTBX_ASSERT(gradient_array.size() == sites_cart.size());
+    MMTBX_ASSERT(residuals_array.size() == proxies.size());
+    MMTBX_ASSERT(phi_psi_targets.size() == proxies.size());
+    double res_sum = 0;
+    for (std::size_t i=0; i<proxies.size(); i++) {
+      phi_psi_proxy const& proxy = proxies[i];
+      scitbx::vec3<double> r = phi_psi_targets[i];
+      double weight = weights[0];
+      if(weight < 0) {
+        weight = 1.0/weights[1]/weights[1] *
             (std::max(weights[3], std::min(r[2], weights[2]))) * weights[4];
       }
-      else w = weights[0];
-      double weight = w;
-
       af::tiny<scitbx::vec3<double>, 4> phi_sites;
       af::tiny<scitbx::vec3<double>, 4> psi_sites;
       af::tiny<unsigned, 5> const i_seqs = proxy.i_seqs;

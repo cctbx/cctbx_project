@@ -650,6 +650,10 @@ class manager(object):
   def set_ramachandran_restraints(self, manager):
     self.ramachandran_manager=manager
 
+  def update_ramachandran_restraints_phi_psi_targets(self, sites_cart):
+    if(self.ramachandran_manager is not None):
+      self.ramachandran_manager.update_phi_psi_targets(sites_cart = sites_cart)
+
   def remove_ramachandran_in_place(self):
     self.ramachandran_manager = None
 

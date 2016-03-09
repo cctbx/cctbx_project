@@ -11,7 +11,7 @@ from mmtbx.validation import ramalyze
 
 ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
 from mmtbx_ramachandran_restraints_ext import lookup_table, \
-    ramachandran_residual_sum
+    ramachandran_residual_sum, phi_psi_targets
 
 master_phil = iotbx.phil.parse("""
   rama_weight = 1.0
@@ -88,6 +88,8 @@ class ramachandran_manager(object):
       self.extract_proxies()
     else:
       assert proxies is not None
+    self.target_phi_psi = self.update_phi_psi_targets(
+      sites_cart = self.pdb_hierarchy.atoms().extract_xyz())
 
   def proxy_select(self, n_seq, iselection):
     result_proxies = self.proxies.proxy_select(n_seq, iselection)
@@ -127,11 +129,23 @@ class ramachandran_manager(object):
     print >> self.log, "  %d Ramachandran restraints generated." % (
         self.get_n_proxies())
 
-  def target_and_gradients (self,
+  def update_phi_psi_targets(self, sites_cart):
+    self.target_phi_psi = phi_psi_targets(
+      sites_cart=sites_cart,
+      proxies=self.proxies,
+      general_table=self.tables.general,
+      gly_table=self.tables.gly,
+      cispro_table=self.tables.cispro,
+      transpro_table=self.tables.transpro,
+      prepro_table=self.tables.prepro,
+      ileval_table=self.tables.ileval)
+    return self.target_phi_psi
+
+  def target_and_gradients(self,
       unit_cell,
       sites_cart,
       gradient_array=None,
-      residuals_array=None) :
+      residuals_array=None):
     assert self.proxies is not None
     if(gradient_array is None) :
       gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
@@ -144,17 +158,12 @@ class ramachandran_manager(object):
       if w is None:
         w = -1
       res = ramachandran_residual_sum(
-          sites_cart=sites_cart,
-          proxies=self.proxies,
-          gradient_array=gradient_array,
-          general_table=self.tables.general,
-          gly_table=self.tables.gly,
-          cispro_table=self.tables.cispro,
-          transpro_table=self.tables.transpro,
-          prepro_table=self.tables.prepro,
-          ileval_table=self.tables.ileval,
-          weights=(w, op.esd, op.dist_weight_max, 2.0, op.weight_scale),
-          residuals_array=residuals_array)
+        sites_cart=sites_cart,
+        proxies=self.proxies,
+        gradient_array=gradient_array,
+        phi_psi_targets = self.target_phi_psi,
+        weights=(w, op.esd, op.dist_weight_max, 2.0, op.weight_scale),
+        residuals_array=residuals_array)
       return res
     else: # emsley
       assert (self.params.rama_weight >= 0.0)
@@ -274,12 +283,13 @@ class ramachandran_plot_data(object):
     self.prepro = None
     self.ileval = None
     stuff = [None]*6
-    data = [("general", "rama8000-general-noGPIVpreP.data", 0),
-        ("glycine", "rama8000-gly-sym.data", 1),
-        ("cis-proline", "rama8000-cispro.data", 2),
-        ("trans-proline", "rama8000-transpro.data", 3),
-        ("pre-proline", "rama8000-prepro-noGP.data", 4),
-        ("isoleucine or valine", "rama8000-ileval-nopreP.data", 5)]
+    data = [
+      ("general",              "rama8000-general-noGPIVpreP.data", 0),
+      ("glycine",              "rama8000-gly-sym.data", 1),
+      ("cis-proline",          "rama8000-cispro.data", 2),
+      ("trans-proline",        "rama8000-transpro.data", 3),
+      ("pre-proline",          "rama8000-prepro-noGP.data", 4),
+      ("isoleucine or valine", "rama8000-ileval-nopreP.data", 5)]
 
     for (rama_key, file_name, selfstore) in data:
       file_name = libtbx.env.find_in_repositories(
@@ -293,23 +303,12 @@ class ramachandran_plot_data(object):
           phi_, psi_, val = float(line[0]),float(line[1]),float(line[2])
           triplet = [phi_, psi_, val]
           stuff[selfstore].append(triplet)
-
-    self.general  = self.select_good(data=stuff[0], step=2)
-    self.gly      = self.select_good(data=stuff[1], step=4)
+    self.general  = self.select_good(data=stuff[0], step=1)
+    self.gly      = self.select_good(data=stuff[1], step=1)
     self.cispro   = self.select_good(data=stuff[2], step=1)
     self.transpro = self.select_good(data=stuff[3], step=1)
-    self.prepro   = self.select_good(data=stuff[4], step=2)
-    self.ileval   = self.select_good(data=stuff[5], step=2)
-
-    # print "self.general ", len(self.general )
-    # print "self.gly     ", len(self.gly     )
-    # print "self.cispro  ", len(self.cispro  )
-    # print "self.transpro", len(self.transpro)
-    # for phi, psi, val in self.transpro:
-    #   print "%.1f, %.1f, %.5f" % (phi, psi, val)
-    # print "self.prepro  ", len(self.prepro  )
-    # print "self.ileval  ", len(self.ileval  )
-    # STOP()
+    self.prepro   = self.select_good(data=stuff[4], step=1)
+    self.ileval   = self.select_good(data=stuff[5], step=1)
 
   def select_good(self, data, step):
     phi, psi, val = self.split_array(data=data)
@@ -329,15 +328,6 @@ class ramachandran_plot_data(object):
         result.append([phi, psi, val])
     return result
 
-  # def norm_to_max(self, data, val, sel, threshold=0.5):
-  #   vmax = flex.max(val.select(sel))
-  #   sel1 = val > vmax*threshold
-  #   return data.select((sel1&sel))
-
-  # def thin_data(self, x, step = 1):
-  #   result = x.select(flex.size_t(range(0,x.size(),step)))
-  #   return result
-
   def split_array(self, data):
     phi = flex.double()
     psi = flex.double()
@@ -347,123 +337,3 @@ class ramachandran_plot_data(object):
       psi.append(y)
       val.append(z)
     return phi, psi, val
-
-  # def normalize_general(self, data):
-  #   phi, psi, val = self.split_array(data=data)
-  #   s0=(phi>0)&(phi< 180) & (psi<  -5)&(psi>-180)
-  #   s1=(phi>0)&(phi< 180) & (psi>  -5)&(psi< 65)
-  #   s2=(phi<0)&(phi>-180) & (psi<-100)&(psi>-180)
-  #   s3=(phi<0)&(phi>-180) & (psi> -65)&(psi<  50)
-  #   s4=(phi<0)&(phi>-180) & (psi>  50)&(psi< 180)
-  #   s5=(phi<0)&(phi>-180) & (psi<-65)&(psi>-100)
-  #   s6=(phi>0)&(phi< 180) & (psi>65)&(psi< 180)
-  #   d0 = self.norm_to_max(data=data, val=val, sel=s0, threshold=0.7)
-  #   d1 = self.norm_to_max(data=data, val=val, sel=s1, threshold=0.5)
-  #   d2 = self.norm_to_max(data=data, val=val, sel=s2, threshold=0.5)
-  #   d3 = self.norm_to_max(data=data, val=val, sel=s3, threshold=0.5)
-  #   d4 = self.norm_to_max(data=data, val=val, sel=s4, threshold=0.5)
-  #   d5 = self.norm_to_max(data=data, val=val, sel=s5, threshold=0.7)
-  #   d6 = self.norm_to_max(data=data, val=val, sel=s6, threshold=0.7)
-  #   d1.extend(d5)
-  #   d1.extend(d6)
-  #   d1.extend(d0)
-  #   d1.extend(d2)
-  #   d1.extend(d3)
-  #   d1.extend(d4)
-  #   return self.thin_data(d1)
-
-  # def normalize_prepro(self, data):
-  #   phi, psi, val = self.split_array(data=data)
-  #   s1 =(phi<0)&(phi>-180) & (psi<10)&(psi>-110)
-
-  #   s2 = (((phi<0)&(phi>-180) & (psi>10)&(psi<180)) |
-  #    ((phi<0)&(phi>-180)& (psi<-150)&(psi>-180)) |
-  #    ((phi>120)&(phi<180)& (psi>-180)&(psi<180)))
-
-  #   s3 =(phi>0)&(phi<90) & (psi> 0)&(psi< 110)
-  #   d1 = self.norm_to_max(data=data, val=val, sel=s1)
-  #   d2 = self.norm_to_max(data=data, val=val, sel=s2)
-  #   d3 = self.norm_to_max(data=data, val=val, sel=s3)
-  #   d1.extend(d2)
-  #   d1.extend(d3)
-  #   return self.thin_data(d1)
-
-  # def normalize_trans_pro(self, data):
-  #   phi, psi, val = self.split_array(data=data)
-  #   s1=(((phi<0)&(phi>-130)& (psi<-100)&(psi>-180)) |
-  #     ((phi<0)&(phi>-130)& (psi>  90)&(psi< 180)))
-  #   s2=(phi<0)&(phi>-130)& (psi>-100)&(psi<  30)
-  #   s3=(phi<0)&(phi>-130)& (psi>  30)&(psi<  90)
-  #   d1 = self.norm_to_max(data=data, val=val, sel=s1)
-  #   d2 = self.norm_to_max(data=data, val=val, sel=s2)
-  #   d3 = self.norm_to_max(data=data, val=val, sel=s3)
-  #   d1.extend(d2)
-  #   d1.extend(d3)
-  #   return self.thin_data(d1)
-
-  # def normalize_cis_pro(self, data):
-  #   phi, psi, val = self.split_array(data=data)
-  #   s1=(((phi<0)&(phi>-130)& (psi<-100)&(psi>-180)) |
-  #     ((phi<0)&(phi>-130)& (psi>  90)&(psi< 180)))
-  #   s2=(phi<0)&(phi>-130)& (psi>-100)&(psi<  80)
-  #   d1 = self.norm_to_max(data=data, val=val, sel=s1)
-  #   d2 = self.norm_to_max(data=data, val=val, sel=s2)
-  #   d1.extend(d2)
-  #   return self.thin_data(d1)
-
-  # def normalize_gly(self, data):
-  #   phi, psi, val = self.split_array(data=data)
-  #   s1=(phi<0)&(phi>-180)& (psi<-90)&(psi>-180)
-  #   s2=(phi>0)&(phi<180) & (psi<-90)&(psi>-180)
-  #   s3=(phi<0)&(phi>-180)& (psi>-90)&(psi<70)
-  #   s4=(phi>0)&(phi<180) & (psi>-90)&(psi<70)
-  #   s5=(phi<0)&(phi>-180)& (psi>70)&(psi<180)
-  #   s6=(phi>0)&(phi<180) & (psi>70)&(psi<180)
-  #   d1 = self.norm_to_max(data=data, val=val, sel=s1)
-  #   d2 = self.norm_to_max(data=data, val=val, sel=s2)
-  #   d3 = self.norm_to_max(data=data, val=val, sel=s3)
-  #   d4 = self.norm_to_max(data=data, val=val, sel=s4)
-  #   d5 = self.norm_to_max(data=data, val=val, sel=s5)
-  #   d6 = self.norm_to_max(data=data, val=val, sel=s6)
-  #   d1.extend(d2)
-  #   d1.extend(d3)
-  #   d1.extend(d4)
-  #   d1.extend(d5)
-  #   d1.extend(d6)
-  #   return self.thin_data(d1)
-
-
-# def process_refinement_settings (
-#     params,
-#     pdb_hierarchy,
-#     secondary_structure_manager,
-#     d_min=None,
-#     log=sys.stdout,
-#     scope_name="refinement.pdb_interpretation.peptide_link") :
-#   # seems that it is never used except in the test (which is not run...)
-#   make_header("Extracting atoms for Ramachandran restraints", out=log)
-#   from scitbx.array_family import flex
-#   if (params.rama_selection is None) :
-#     atom_selection = flex.bool(pdb_hierarchy.atoms().size(), True)
-#   else :
-#     cache = pdb_hierarchy.atom_selection_cache()
-#     try :
-#       sele = cache.selection(params.rama_selection)
-#     except Exception, e :
-#       raise Sorry("""Atom selection error:
-#   %s
-# Selection string resulting in error:
-#   %s""" % (str(e), params.rama_selection))
-#     else :
-#       if (sele.count(True) == 0) :
-#         raise Sorry("""Empty atom selection for %s.rama_selection.
-# Current selection string:
-#   %s""" % (scope_name, params.rama_selection))
-#       atom_selection = sele
-#   if params.rama_exclude_sec_str :
-#     secondary_structure_manager.initialize(log=log)
-#     alpha_sele = secondary_structure_manager.alpha_selection()
-#     beta_sele = secondary_structure_manager.beta_selection()
-#     ss_sele = alpha_sele | beta_sele
-#     atom_selection &= ~ss_sele
-#   return atom_selection
