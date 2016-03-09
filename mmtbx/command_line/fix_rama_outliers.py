@@ -232,6 +232,7 @@ class loop_idealization():
 
       if len(moving_h_set) == 0:
         # outlier was fixed before somehow...
+        # or there's a bug in get_starting_conformatiosn
         return original_pdb_h
 
       rotamer_manager = RotamerEval()
