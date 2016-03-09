@@ -1119,7 +1119,13 @@ class Builder(object):
       print "Existing non-git directory -- don't know what to do. skipping: %s"%module
       return
 
+    if isinstance(parameters, basestring):
+      parameters = [ parameters ]
+    git_parameters = []
     for source_candidate in parameters:
+      if source_candidate.startswith('-'):
+        git_parameters = source_candidate.split(' ')
+        continue
       if(not source_candidate.lower().startswith('http') and
          not self.auth.get('git_ssh',False)
          ):
@@ -1127,8 +1133,9 @@ class Builder(object):
       if source_candidate.lower().endswith('.git'):
         if not git_available:
           continue
+        cmd = [ 'git', 'clone' ] + git_parameters + [ source_candidate, module ]
         self.add_step(self.shell(
-          command=['git', 'clone', source_candidate, module],
+          command=cmd,
           workdir=['modules']
         ))
         return
