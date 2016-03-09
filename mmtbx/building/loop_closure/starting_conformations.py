@@ -52,8 +52,8 @@ def get_sampled_rama_favored_angles(rama_key, r=None, step=20):
   if r is None:
     r = ramachandran_eval.RamachandranEval()
   result = []
-  for i in range(0, 360, step):
-    for j in range(0, 360, step):
+  for i in range(-180, 180, step):
+    for j in range(-180, 180, step):
       score = r.evaluate(ramalyze.res_types[rama_key], (i,j))
       r_ev = ramalyze.ramalyze.evalScore(ramalyze.res_types[rama_key], score)
       if r_ev == ramalyze.RAMALYZE_FAVORED:
