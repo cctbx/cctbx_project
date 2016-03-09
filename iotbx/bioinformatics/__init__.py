@@ -1470,15 +1470,14 @@ class hhsearch_parser(hhpred_parser):
     )
   BLOCKS = re.compile(
     r"""
-    Q \s+ ss_pred \s+ ( [\w-]+ ) \s* (?: \n | \r\n | \r )
-    Q \s+ [\w:\.|-]* \s+ ( \d+ ) \s+ ( [\w-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* (?: \n | \r\n | \r )
-    Q \s+ Consensus \s+ ( \d+ ) \s+ ( [\w~-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* (?: \n | \r\n | \r )
-    \s* ( [ \.\-+|=]* ) (?: \n | \r\n | \r )
-    T \s+ Consensus \s+ ( \d+ ) \s+ ( [\w~-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* (?: \n | \r\n | \r )
-    T \s+ \w+ \s+ ( \d+ ) \s+ ( [\w-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* (?: \n | \r\n | \r )
-    (?: T \s+ ss_dssp \s+ ( [\w-]+ ) \s* (?: \n | \r\n | \r ) )?
-    (?: T \s+ ss_pred \s+ ( [\w-]+ ) \s* (?: \n | \r\n | \r ) )?
-    (?: Confidence \s+ ( [\w ]+ ) \s* (?: \n | \r\n | \r ))?
+    (?: Q .* (?: \n | \r\n | \r ) )*
+    Q \s+ [\w:\.|-]* \s+ ( \d+ ) \s+ ( [\w\.-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* (?: \n | \r\n | \r )
+    Q \s+ Consensus \s+ \d+ \s+ [\w\.~-]+ \s+ \d+ \s+ \( \d+ \) \s* (?: \n | \r\n | \r )
+    \s* [ \.\-+|=]* (?: \n | \r\n | \r )
+    T \s+ Consensus \s+ \d+ \s+ [\w\.~-]+ \s+ \d+ \s+ \( \d+ \) \s* (?: \n | \r\n | \r )
+    T \s+ \w+ \s+ ( \d+ ) \s+ ( [\w\.-]+ ) \s+ ( \d+ ) \s+ \( ( \d+ ) \) \s* (?: \n | \r\n | \r )
+    (?: T .* (?: \n | \r\n | \r ) )*
+    (?: Confidence .* (?: \n | \r\n | \r ))?
     """,
     re.VERBOSE
     )
@@ -1501,18 +1500,11 @@ class hhsearch_parser(hhpred_parser):
     self.query_ends = []
     self.query_others = []
     self.query_alignments = []
-    self.query_consensi = []
-    self.query_ss_preds = []
-
-    self.midlines = []
 
     self.hit_starts = []
     self.hit_ends = []
     self.hit_others = []
     self.hit_alignments = []
-    self.hit_consensi = []
-    self.hit_ss_preds = []
-    self.hit_ss_dssps = []
 
 
   def restrict(self, max_count):
@@ -1533,18 +1525,11 @@ class hhsearch_parser(hhpred_parser):
     self.query_ends = self.query_ends[:max_count]
     self.query_others = self.query_others[:max_count]
     self.query_alignments = self.query_alignments[:max_count]
-    self.query_consensi = self.query_consensi[:max_count]
-    self.query_ss_preds = self.query_ss_preds[:max_count]
-
-    self.midlines = self.midlines[:max_count]
 
     self.hit_starts = self.hit_starts[:max_count]
     self.hit_ends = self.hit_ends[:max_count]
     self.hit_others = self.hit_others[:max_count]
     self.hit_alignments = self.hit_alignments[:max_count]
-    self.hit_consensi = self.hit_consensi[:max_count]
-    self.hit_ss_preds = self.hit_ss_preds[:max_count]
-    self.hit_ss_dssps = self.hit_ss_dssps[:max_count]
 
 
   def add_match_to_hit_header_results(self, match):
@@ -1567,68 +1552,37 @@ class hhsearch_parser(hhpred_parser):
   def merge_and_process_block_hits(self, matches):
 
     data = zip( *matches )
-    assert len( data ) == 21
+    assert len( data ) == 8
 
-    sequences = [ data[0], data[2], data[6], data[11], data[15], data[18], data[19] ]
+    sequences = [ data[1], data[5] ]
 
-    if sequences[5] == ( None, ) * len( sequences[5] ):
-      sequences[5] = tuple( [ " " * len( d ) for d in sequences[0] ] )
-
-    if sequences[6] == ( None, ) * len( sequences[6] ):
-      sequences[6] = tuple( [ " " * len( d ) for d in sequences[0] ] )
-
-    midlines = []
-
-    for ( index , alis) in enumerate( zip( *sequences ) ):
-      count = len( alis[0] )
-
-      if not all([count == len( c ) for c in alis[1:]]):
+    for index in range( len( matches ) ):
+      if len( sequences[0][ index ] ) != len( sequences[1][ index ] ):
         raise ValueError, "Incorrect alignments"
 
-      midlines.append(
-        " " * ( count - len( data[9][ index ] ) ) + data[9][ index ]
-        )
-
-    merged = [ reduce( operator.add, a ) for a in sequences ]
-    assert len( midlines ) == len( matches )
-    midline = reduce( operator.add, midlines )
-
-    # Comment out consistency check
-    # if data[1] != data[5] or data[3] != data[7] or data[4] != data[8]:
-    #  raise ValueError, "Inconsistent query numbering"
+    mergeds = [ "".join( a ) for a in sequences ]
 
     q_indices = self.merge_sequence_numbers(
-      starts = [ int( d ) for d in data[1] ],
-      ends = [ int( d ) for d in data[3] ],
-      others = [ int( d ) for d in data[4] ]
+      starts = [ int( d ) for d in data[0] ],
+      ends = [ int( d ) for d in data[2] ],
+      others = [ int( d ) for d in data[3] ]
       )
 
-    # Comment out consistency check
-    # if data[10] != data[14] or data[12] != data[16] or data[13] != data[17]:
-    #  raise ValueError, "Inconsistent target numbering"
-
     t_indices = self.merge_sequence_numbers(
-      starts = [ int( d ) for d in data[10] ],
-      ends = [ int( d ) for d in data[12] ],
-      others = [ int( d ) for d in data[13] ]
+      starts = [ int( d ) for d in data[4] ],
+      ends = [ int( d ) for d in data[6] ],
+      others = [ int( d ) for d in data[7] ]
       )
 
     self.query_starts.append( q_indices[0] )
     self.query_ends.append( q_indices[1] )
     self.query_others.append( q_indices[2] )
-    self.query_ss_preds.append( merged[0] )
-    self.query_alignments.append( merged[1] )
-    self.query_consensi.append( merged[2] )
-
-    self.midlines.append( midline )
+    self.query_alignments.append( mergeds[0] )
 
     self.hit_starts.append( t_indices[0] )
     self.hit_ends.append( t_indices[1] )
     self.hit_others.append( t_indices[2] )
-    self.hit_consensi.append( merged[3] )
-    self.hit_alignments.append( merged[4] )
-    self.hit_ss_dssps.append( merged[5] )
-    self.hit_ss_preds.append( merged[6] )
+    self.hit_alignments.append( mergeds[1] )
 
 
   def hits(self):
