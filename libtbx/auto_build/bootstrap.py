@@ -503,6 +503,12 @@ class opt_resources_module(SourceModule):
   module = 'opt_resources'
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/opt_resources/trunk']
 
+class eigen_module(SourceModule):
+  module = 'eigen'
+  anonymous = ['curl', 'http://cci.lbl.gov/repositories/eigen.gz']
+  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'eigen.tar.gz', '/net/cci/auto_build/repositories/eigen']
+  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/eigen/']
+
 # Phenix repositories
 class phenix_module(SourceModule):
   module = 'phenix'
@@ -1354,6 +1360,7 @@ class CCIBuilder(Builder):
     'boost',
     'scons',
     'ccp4io',
+    'eigen',
     #"libsvm",
   ]
   HOT_EXTRA = []
