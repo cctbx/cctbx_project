@@ -7,6 +7,7 @@ from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.utils import null_out, Sorry
 import libtbx.load_env
+import warnings
 import os.path
 
 def exercise_emringer_residue_scan():
