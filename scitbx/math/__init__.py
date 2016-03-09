@@ -388,7 +388,10 @@ def five_number_summary(data):
   max) for a sequence of observations. This function gives the same results
   as R's fivenum function.
   """
-  sorts = sorted(data)
+  try:
+    sorts = flex.sorted(data)
+  except AttributeError:
+    sorts = sorted(data)
   n = len(sorts)
   if n % 2:
     med = sorts[n // 2]
