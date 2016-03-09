@@ -33,6 +33,11 @@ loop_idealization
       if all of them are above thresholds to be picked straight away. \
       Alternatively, when False, the procedure will accept failure and leave \
       a ramachandran outlier intact.
+  save_states = False
+    .type = bool
+    .help = Save states of CCD. Generates a states file for every model.
+
+
 
 }
 """
@@ -64,10 +69,10 @@ class loop_idealization():
     self.berkeley_p_after_minimiaztion_rama_outliers = None
     self.ref_exclusion_selection = ""
     number_of_ccd_trials = 0
-    print "logic expr outcome:", (number_of_ccd_trials < 10 and self.berkeley_p_before_minimization_rama_outliers > 0.001)
-    print number_of_ccd_trials < 10
-    print self.berkeley_p_before_minimization_rama_outliers > 0.001
-    while (number_of_ccd_trials < 10
+    # print "logic expr outcome:", (number_of_ccd_trials < 10 and self.berkeley_p_before_minimization_rama_outliers > 0.001)
+    # print number_of_ccd_trials < 10
+    # print self.berkeley_p_before_minimization_rama_outliers > 0.001
+    while (number_of_ccd_trials < 5
         and self.berkeley_p_before_minimization_rama_outliers > 0.001):
       print "CCD try number, outliers:", number_of_ccd_trials, self.berkeley_p_before_minimization_rama_outliers
       number_of_ccd_trials += 1
@@ -200,6 +205,7 @@ class loop_idealization():
 
     original_pdb_h = pdb_hierarchy.deep_copy()
     rotamer_manager = RotamerEval()
+    chain_id = original_pdb_h.only_model().only_chain().id
     all_results = []
     for ccd_radius, change_all, change_radius in [
         (1, False, 0),
@@ -207,7 +213,7 @@ class loop_idealization():
         (3, False, 0),
         (2, True, 1),
         (3, True, 1),
-        # (3, True, 2),
+        (3, True, 2),
         ]:
     # while ccd_radius <= 3:
       print >> self.log, "  Starting optimization with radius, change_all, change_radius:", ccd_radius, change_all, change_radius
@@ -235,6 +241,8 @@ class loop_idealization():
         resulting_rmsd = ccd_obj.resulting_rmsd
         states = ccd_obj.states
         n_iter = ccd_obj.n_iter
+        if self.params.save_states:
+          states.write(file_name="%s%s_%d_%s_%d_%i_states.pdb" % (chain_id, out_res_num, ccd_radius, change_all, change_radius, i))
 
         # resulting_rmsd, states, n_iter = ccd(
         #     fixed_ref_atoms, h, moving_ref_atoms_iseqs, moving_h)
