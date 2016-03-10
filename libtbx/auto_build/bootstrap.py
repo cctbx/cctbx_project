@@ -207,7 +207,8 @@ class Downloader(object):
        Returns -1 if the downloaded file size does not match the expected file
        size
        Returns -2 if the download is skipped due to the file at the URL not
-       being newer than the local copy (with matching file sizes).
+       being newer than the local copy (identified by A. matching timestamp and
+       size, or B. matching etag).
     """
 
     # Create directory structure if necessary
@@ -219,13 +220,33 @@ class Downloader(object):
 
     localcopy = os.path.isfile(file)
 
+    # Get existing ETag, if present
+    etag = None
+    tagfile = '%s/.%s.etag' % os.path.split(os.path.abspath(file))
+    if os.path.isfile(tagfile):
+      if not localcopy:
+        # Having an ETag without a file is pointless
+        os.remove(tagfile)
+      else:
+        tf = open(tagfile, 'r')
+        etag = tf.readline()
+        tf.close()
+
     # Open connection to remote server
     try:
+      url_request = urllib2.Request(url)
+      if etag:
+        url_request.add_header("If-None-Match", etag)
       if localcopy:
-        socket = urllib2.urlopen(url, None, 7)
+        # Shorten timeout to 7 seconds if a copy of the file is already present
+        socket = urllib2.urlopen(url_request, None, 7)
       else:
-        socket = urllib2.urlopen(url)
-    except (pysocket.timeout, urllib2.URLError), e:
+        socket = urllib2.urlopen(url_request)
+    except (pysocket.timeout, urllib2.URLError, urllib2.HTTPError), e:
+      if isinstance(e, urllib2.HTTPError) and etag and e.code == 304:
+        # When using ETag. a 304 error means everything is fine
+        log.write("local copy is current (etag)\n")
+        return -2
       if localcopy:
         # Download failed for some reason, but a valid local copy of
         # the file exists, so use that one instead.
@@ -238,6 +259,10 @@ class Downloader(object):
       file_size = int(socket.info().getheader('Content-Length'))
     except Exception:
       file_size = 0
+
+    if os.path.isfile(tagfile):
+      # ETag did not match, so delete any existing ETag.
+      os.remove(tagfile)
 
     remote_mtime = 0
     try:
@@ -309,6 +334,10 @@ class Downloader(object):
       st = os.stat(file)
       atime = st[ST_ATIME] # current access time
       os.utime(file,(atime,remote_mtime))
+
+    if socket.info().getheader('ETag'):
+      # If the server sent an ETAG, then keep it alongside the file
+      open(tagfile, 'w').write(socket.info().getheader('ETag'))
 
     return received
 
