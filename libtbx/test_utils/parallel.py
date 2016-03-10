@@ -15,7 +15,6 @@ import sys
 QUIET = 0
 DEFAULT_VERBOSITY = 1
 EXTRA_VERBOSE = 2 # for nightly builds
-MAX_TIME = 180 # XXX the lower the better
 
 def get_module_tests (module_name, valgrind=False) :
   dist_path = libtbx.env.dist_path(module_name)
@@ -138,7 +137,8 @@ class run_command_list (object) :
                 out=sys.stdout,
                 log=None,
                 verbosity=DEFAULT_VERBOSITY,
-                output_junit_xml=False) :
+                output_junit_xml=False,
+                max_time=180) :
     if (log is None) : log = null_out()
     self.out = multi_out()
     self.log = log
@@ -199,7 +199,7 @@ class run_command_list (object) :
     test_cases = []
     # Process results for errors and warnings.
     extra_stderr = len([result for result in self.results if result.stderr_lines])
-    longjobs = [result for result in self.results if result.wall_time > MAX_TIME]
+    longjobs = [result for result in self.results if result.wall_time > max_time]
     warnings = [result for result in self.results if self.check_alert(result) == 1]
     failures = [result for result in self.results if self.check_alert(result) == 2]
     self.finished = len(self.results)
@@ -249,7 +249,7 @@ class run_command_list (object) :
     # Long job warning.
     if longjobs:
       print >> self.out, ""
-      print >> self.out, "Warning: the following jobs took at least %d seconds:"%MAX_TIME
+      print >> self.out, "Warning: the following jobs took at least %d seconds:"%max_time
       for result in sorted(longjobs, key=lambda result:result.wall_time):
         print >> self.out, "  %s: %.1fs"%(result.command, result.wall_time)
       print >> self.out, "Please try to reduce overall runtime - consider splitting up these tests."

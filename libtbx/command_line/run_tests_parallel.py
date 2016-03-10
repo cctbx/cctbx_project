@@ -34,6 +34,10 @@ output_junit_xml = False
   .help = "Create junit-style xml output"
           "Requires junit_xml module:"
           "  https://pypi.python.org/pypi/junit-xml"
+max_time = 180
+  .type = float(value_min=0)
+  .help = "Print warning and timing for all tests that take longer"
+          "than max_time (in seconds) to run."
 """)
 
 def run (args) :
@@ -98,7 +102,8 @@ def run (args) :
     nprocs=params.nproc,
     log=log,
     verbosity=params.verbosity,
-    output_junit_xml=params.output_junit_xml)
+    output_junit_xml=params.output_junit_xml,
+    max_time=params.max_time)
   log.close()
   print """\nSee run_tests_parallel_zlog for full output.\n"""
   if (result.failure > 0) :
