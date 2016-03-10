@@ -155,8 +155,7 @@ def exercise_lbfgs_simple (mon_lib_srv, ener_lib, verbose=False) :
   # Note that the ramalyze score for the first actually gets slightly worse,
   # but it's still good and we're starting from an excellent score anyway.
   #
-  # residuals = [0.00024512, 307.616444, 294.913714]
-  residuals = [0.00168766995882, 186.24718562, 177.259069807]
+  residuals = [0.00168766995882, 170.84797160, 161.5214609]
   for i, peptide in enumerate([pdb1, pdb2, pdb3]) :
     pdb_in = iotbx.pdb.input(source_info="peptide",
       lines=flex.split_lines(peptide))
@@ -182,7 +181,7 @@ def exercise_lbfgs_simple (mon_lib_srv, ener_lib, verbose=False) :
       sites_cart=sites_cart_1,
       gradient_array=gradients_an)
     # print "comparing", residual_an
-    assert approx_equal(residual_an, residuals[i], eps=0.00001)
+    assert approx_equal(residual_an, residuals[i], eps=0.001)
   if verbose :
     print ""
   for i, peptide in enumerate([pdb1, pdb2, pdb3]) :
@@ -422,35 +421,21 @@ phi-psi angles formed by             residual
       site_labels=[a.id_str() for a in atoms],
       f=out)
   gv = out.getvalue()
-  # print out.getvalue()
-  # STOP()
   assert not show_diff(gv, """\
 Ramachandran plot restraints: 8
 Sorted by residual:
-phi-psi angles formed by             residual
-    pdb=" C   ALA     7 "            1.52e-01
-    pdb=" N   ALA     8 "
-    pdb=" CA  ALA     8 "
-    pdb=" C   ALA     8 "
-    pdb=" N   ALA     9 "
-phi-psi angles formed by             residual
-    pdb=" C   ALA     4 "            1.28e-01
-    pdb=" N   ALA     5 "
-    pdb=" CA  ALA     5 "
-    pdb=" C   ALA     5 "
-    pdb=" N   ALA     6 "
-phi-psi angles formed by             residual
-    pdb=" C   ALA     6 "            5.19e-02
-    pdb=" N   ALA     7 "
-    pdb=" CA  ALA     7 "
-    pdb=" C   ALA     7 "
-    pdb=" N   ALA     8 "
 phi-psi angles formed by             residual
     pdb=" C   ALA     5 "            3.46e-02
     pdb=" N   ALA     6 "
     pdb=" CA  ALA     6 "
     pdb=" C   ALA     6 "
     pdb=" N   ALA     7 "
+phi-psi angles formed by             residual
+    pdb=" C   ALA     6 "            2.86e-02
+    pdb=" N   ALA     7 "
+    pdb=" CA  ALA     7 "
+    pdb=" C   ALA     7 "
+    pdb=" N   ALA     8 "
 phi-psi angles formed by             residual
     pdb=" C   ALA     2 "            2.54e-02
     pdb=" N   ALA     3 "
@@ -470,11 +455,23 @@ phi-psi angles formed by             residual
     pdb=" C   ALA     2 "
     pdb=" N   ALA     3 "
 phi-psi angles formed by             residual
+    pdb=" C   ALA     4 "            1.00e-02
+    pdb=" N   ALA     5 "
+    pdb=" CA  ALA     5 "
+    pdb=" C   ALA     5 "
+    pdb=" N   ALA     6 "
+phi-psi angles formed by             residual
     pdb=" C   ALA     3 "            9.28e-03
     pdb=" N   ALA     4 "
     pdb=" CA  ALA     4 "
     pdb=" C   ALA     4 "
     pdb=" N   ALA     5 "
+phi-psi angles formed by             residual
+    pdb=" C   ALA     7 "            3.90e-03
+    pdb=" N   ALA     8 "
+    pdb=" CA  ALA     8 "
+    pdb=" C   ALA     8 "
+    pdb=" N   ALA     9 "
 
 """)
 

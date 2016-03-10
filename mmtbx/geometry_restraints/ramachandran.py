@@ -88,8 +88,9 @@ class ramachandran_manager(object):
       self.extract_proxies()
     else:
       assert proxies is not None
-    self.target_phi_psi = self.update_phi_psi_targets(
-      sites_cart = self.pdb_hierarchy.atoms().extract_xyz())
+    if(self.params.rama_potential == "oldfield"):
+      self.target_phi_psi = self.update_phi_psi_targets(
+        sites_cart = self.pdb_hierarchy.atoms().extract_xyz())
 
   def proxy_select(self, n_seq, iselection):
     result_proxies = self.proxies.proxy_select(n_seq, iselection)
@@ -130,6 +131,7 @@ class ramachandran_manager(object):
         self.get_n_proxies())
 
   def update_phi_psi_targets(self, sites_cart):
+    if(self.params.rama_potential != "oldfield"): return None
     self.target_phi_psi = phi_psi_targets(
       sites_cart=sites_cart,
       proxies=self.proxies,

@@ -1133,7 +1133,7 @@ HELIX    2   2 ARG A   23  GLN A   44  1                                  22
   # print "minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample()
   # assert dmmm[1] < 0.8
   assert dmmm[2] < 0.2
-  assert dist.standard_deviation_of_the_sample() < 0.2
+  assert dist.standard_deviation_of_the_sample() < 0.22
 
 def exercise_02(prefix="tst_2_exercise_02"):
   """
