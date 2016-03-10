@@ -81,8 +81,23 @@ def geometric_hydrogens():
   for key in hpdl_database:
     hpdl_database[key].update(_geometric_hydrogens(key))
 
-def get_hpdl_database(include_hydrogens=True):
+def get_hpdl_database(include_hydrogens=True,
+                      reasonable_esds=True,
+                      ):
   if include_hydrogens: geometric_hydrogens()
+  if reasonable_esds:
+    for key, item in hpdl_database.items():
+      for ic, values in item.items():
+        if len(ic)==2:
+          limit=0.01
+          factor=2
+        elif len(ic)==3:
+          limit=1.5
+          factor=2
+        if values[1]<limit:
+          values[1] = limit
+        else:
+          values[1] *= factor
   return hpdl_database
 
 def run(args):

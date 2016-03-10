@@ -30,6 +30,7 @@ def update_restraints(hierarchy,
   #
   def _set_or_reset_bond_restraints(geometry,
                                     lookup,
+                                    ignore_esd=True,
                                     verbose=False,
                                     ):
     count = 0
@@ -46,12 +47,14 @@ def update_restraints(hierarchy,
           1/values[1]**2,
         )
       bond.distance_ideal=values[0]
-      bond.weight = 1/values[1]**2
+      if not ignore_esd:
+        bond.weight = 1/values[1]**2
       count+=1
     return count
   #
   def _set_or_reset_angle_restraints(geometry,
                                      lookup,
+                                     ignore_esd=True,
                                      verbose=False,
                                      ):
     count = 0
@@ -64,7 +67,8 @@ def update_restraints(hierarchy,
           ),
         assert angle_proxy.angle_ideal<181
         angle_proxy.angle_ideal = lookup[angle_proxy.i_seqs][0]
-        angle_proxy.weight = esd_factor/lookup[angle_proxy.i_seqs][1]**2
+        if not ignore_esd:
+          angle_proxy.weight = esd_factor/lookup[angle_proxy.i_seqs][1]**2
         if verbose: print "final   %12.3f %12.3f" % (
           #angle_proxy.i_seqs,
           angle_proxy.angle_ideal,

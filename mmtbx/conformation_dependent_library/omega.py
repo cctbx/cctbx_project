@@ -139,7 +139,7 @@ def update_restraints(hierarchy,
                                         #verbose=verbose,
                                         ):
     threes.apply_updates = apply_updates
-    if threes.cis_group():
+    if threes.cis_group(omega_cdl=True):
       if verbose and 0:
         print 'cis '*20
         print threes

@@ -72,7 +72,9 @@ def rebuild_bad_hydrogens(
       for conformer2 in chain2.conformers():
         for residue2 in conformer2.residues():
           if(not is_supported(residue2)): continue
-          residue1=reduce_residue_lookup[residue2.id_str()]
+          #residue2=reduce_residue_lookup[residue2.id_str()]
+          residue1=reduce_residue_lookup.get(residue2.id_str(), None)
+          if residue1 is None: continue
           # check if all H names in both residues are identical (guard against
           # v2.3 vs v3.2 related failure)
           def d2h(x):
