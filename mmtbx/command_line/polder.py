@@ -286,6 +286,8 @@ def cmd_run(args, command_name):
     print "  Free-R flags:", r_free_flags.info().labels
   else:
     print "  Free-R flags: Not present"
+  if (params.sphere_radius < 3 or params.sphere_radius > 10):
+    raise Sorry("Sphere radius out of range: must be between 3 A and 10 A")
   pdb_input = iotbx.pdb.input(file_name = params.model_file_name)
   pdb_hierarchy = pdb_input.construct_hierarchy()
   xray_structure = pdb_input.xray_structure_simple()
