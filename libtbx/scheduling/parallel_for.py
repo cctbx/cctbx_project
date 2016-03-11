@@ -201,8 +201,8 @@ class iterator(object):
 
     while not self.resiter:
       self.process_next_one()
+      self.submit()
 
-    self.submit()
     return self.resiter.popleft()
 
 
