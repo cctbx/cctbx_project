@@ -18,8 +18,42 @@ def cmp_so(a, b):
     result = cmp(a, b)
   return result
 
+def import_modules():
+  # Search for __init__.py file and import those modules. This ensures all dependencies are loaded
+  # prior to import individual so files
+  import libtbx.load_env, os
+  # Modules in the form of X/X/__init__.py
+  doubled = ["elbow","phaser","phenix"]
+  # These modules are not dependencies not maintained by cctbx or should be skipped for other reasons
+  skip_modules = ["boost","cbflib","crys3d","PyQuante","phenix_html","tntbx","reel"]
+  # These modules fail to import
+  failing_modules = ["dials.framework.dftbx","dials.nexus"]
+  # These modules can only import if Eigen is available
+  ok_to_fail = ["scitbx.examples.bevington","cctbx.examples.merging","cctbx.examples.merging.samosa"]
+
+  for root_module in libtbx.env.module_list:
+    if root_module.name in skip_modules:
+      continue
+    root_path = libtbx.env.find_in_repositories(root_module.name)
+    if root_path is None:
+      continue
+    if root_module.name in doubled:
+      root_path = os.path.join(root_path, root_module.name)
+    for dirpath, dirnames, filenames in os.walk(root_path):
+      if "__init__.py" in filenames:
+        full_module = root_module.name + ".".join(dirpath.split(root_path)[-1].split(os.path.sep))
+        if full_module in failing_modules:
+          continue
+        print full_module
+        try:
+          exec("import %s" % full_module)
+        except ImportError, e:
+          if full_module not in ok_to_fail:
+            raise e
+
 def run(args):
   assert len(args) == 0
+  import_modules()
   import time
   t_start = time.time()
   from libtbx import introspection
