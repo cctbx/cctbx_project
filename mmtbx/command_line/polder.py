@@ -51,6 +51,7 @@ Output:
   - mFo-DFc_omit      : omit difference map coefficients
   - PHImFo-DFc_omit   : corresponding phases
 
+Optional output:
   CCP4 files with mask data:
 
   - mask_all.ccp4    : mask of original model
@@ -62,10 +63,10 @@ master_params_str = """
 model_file_name = None
   .type = str
   .multiple = False
-  .help = PDB file name
+  .help = Model file name
 solvent_exclusion_mask_selection = None
   .type = str
-  .help = atoms around which bulk solvent mask is set to zero
+  .help = Atoms around which bulk solvent mask is set to zero
 reflection_file_name = None
   .type = str
   .help = File with experimental data (most of formats: CNS, SHELX, MTZ, etc).
@@ -77,21 +78,31 @@ r_free_flags_labels = None
   .help = Labels for free reflections.
 sphere_radius = 5
   .type = float
-  .help = radius of sphere around atoms, where solvent mask is reset to zero
+  .help = Radius of sphere around atoms where solvent mask is reset to zero
 high_resolution = None
   .type = float
+  .help = High resolution limit
 low_resolution = None
   .type = float
+  .help = Low resolution limit
 scattering_table = *n_gaussian wk1995 it1992 neutron electron
   .type = choice
   .help = Scattering table for structure factors calculations
 resolution_factor = 0.25
   .type = float
+  .help = Used to determine the grid step = resolution_factor * high resolution
 output_file_name_prefix = None
   .type = str
-debug = True
+  .help = Prefix for output filename
+mask_output = False
+  .type = bool
+  .help = Additional output: ccp4 maps containing the solvent mask for inital \
+   model (mask_all.ccp4), when ligand is omitted (mask_omit.ccp4) and the mask \
+   used for polder (mask_polder.ccp4).
+debug = False
   .type = bool
   .expert_level=3
+  .help = Additional output: biased omit map (ligand used for mask calculation but omitted from model)
 """
 
 def ccp4_map(file_name, uc, sg, map_data):
@@ -103,7 +114,7 @@ def ccp4_map(file_name, uc, sg, map_data):
     map_data    = map_data,
     labels      = flex.std_string([""]))
 
-def output_map(f_obs,r_free_flags, xray_structure, mask_data, filename):
+def output_map(f_obs,r_free_flags, xray_structure, mask_data, filename, params):
   f_calc = f_obs.structure_factors_from_scatterers(
     xray_structure = xray_structure).f_calc()
   mask = f_obs.structure_factors_from_map(map = mask_data,
@@ -121,8 +132,9 @@ def output_map(f_obs,r_free_flags, xray_structure, mask_data, filename):
       map_type         = "mFo-DFc",
       isotropize       = True,
       fill_missing     = False)
-  ccp4_map(file_name="mask_"+filename+".ccp4", uc=f_obs.unit_cell(),
-    sg=f_obs.space_group(), map_data=mask_data)
+  if (params.mask_output and filename != 'bias_omit' ):
+    ccp4_map(file_name="mask_"+filename+".ccp4", uc=f_obs.unit_cell(),
+      sg=f_obs.space_group(), map_data=mask_data)
   return mc_diff
 
 def mask_modif(f_obs, mask_data, sites_cart, sphere_radius):
@@ -176,24 +188,24 @@ def polder(f_obs, r_free_flags, xray_structure, pdb_hierarchy, params):
     n_real = crystal_gridding.n_real())
   print "R factors for unmodified input model and data:"
   mc_diff_all = output_map(f_obs, r_free_flags, xray_structure,
-    mask_data_all, filename = "all")
+    mask_data_all, filename = "all", params = params)
   # biased map - for developers
   if(params.debug):
     print "R factor when ligand is used for mask calculation (biased map):"
     mc_diff_bias_omit = output_map(f_obs, r_free_flags, xray_structure_noligand,
-      mask_data_all, filename = "bias_omit")
+      mask_data_all, filename = "bias_omit", params = params)
   #------
   mask_polder = mask_modif(f_obs, mask_data_all, sites_cart_ligand,
     sphere_radius = params.sphere_radius)
   print "R factor for polder map"
   mc_diff_polder = output_map(f_obs, r_free_flags, xray_structure_noligand,
-    mask_polder, filename = "polder")
+    mask_polder, filename = "polder", params = params)
   # calculate mask for structure without ligand
   mask_data_omit = mask_from_xrs_unpadded(xray_structure=xray_structure_noligand,
     n_real = crystal_gridding.n_real())
   print "R factor when ligand is excluded for mask calculation:"
   mc_diff_omit = output_map(f_obs, r_free_flags, xray_structure_noligand,
-    mask_data_omit, filename = "omit")
+    mask_data_omit, filename = "omit", params = params)
   mtz_dataset = mc_diff_polder.as_mtz_dataset(column_root_label="mFo-DFc_polder")
   if(params.debug):
     mtz_dataset.add_miller_array(
@@ -298,4 +310,4 @@ if(__name__ == "__main__"):
   cmd_run(
     args         = sys.argv[1:],
     command_name = "phenix.polder")
-  print "Time:", time.time()-t0
+  print "Time:", round(time.time()-t0, 2)
