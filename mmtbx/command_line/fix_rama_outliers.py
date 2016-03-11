@@ -166,7 +166,7 @@ class loop_idealization():
     # get list of residue numbers that should be excluded from reference
     list_of_reference_exclusion = []
     for resnum in rama_out_resnums:
-      start_rn, prev_rn = get_res_nums_around(hierarchy, resnum, 1, 1)
+      start_rn, prev_rn = get_res_nums_around(hierarchy, resnum, 2, 2)
       list_of_reference_exclusion += [start_rn, resnum, prev_rn]
     out_i = 0
     for rama_out_resnum in rama_out_resnums:
@@ -422,7 +422,7 @@ def minimize_hierarchy(hierarchy, xrs, original_pdb_h,
       reference.add_coordinate_restraints(
           sites_cart = original_pdb_h.atoms().extract_xyz().select(sel),
           selection  = sel,
-          sigma      = 0.5,
+          sigma      = 0.7,
           top_out_potential=True))
   obj = run2(
       restraints_manager       = grm,

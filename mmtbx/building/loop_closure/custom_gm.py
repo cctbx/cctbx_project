@@ -64,6 +64,8 @@ def minimize_hierarchy(hierarchy, xrs, original_pdb_h,
     negate_selection = "not (%s)" % outlier_selection_txt
   sel = asc.selection(negate_selection)
 
+  hierarchy.write_pdb_file(file_name="intermediate.pdb")
+
 
   grm.geometry.append_reference_coordinate_restraints_in_place(
       reference.add_coordinate_restraints(
