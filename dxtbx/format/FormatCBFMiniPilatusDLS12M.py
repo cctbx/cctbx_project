@@ -159,6 +159,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
 
         # OBS! you need to set the panel to a root before set local frame...
         root.add_panel(p)
+        p.set_type('SENSOR_PAD')
         p.set_name('row-%02d' % j)
         p.set_image_size((2463, 195))
         p.set_trusted_range((-1, 1000000))
@@ -167,6 +168,9 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
           fast.elems,
           slow.elems,
           origin.elems)
+        p.set_thickness(thickness)
+        p.set_material('Si')
+        p.set_mu(mu)
         p.set_px_mm_strategy(px_mm)
 
       else:
@@ -179,6 +183,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
 
           # OBS! you need to set the panel to a root before set local frame...
           root.add_panel(p)
+          p.set_type('SENSOR_PAD')
           p.set_name('row-%02d' % j)
           p.set_image_size((487, 195))
           p.set_trusted_range((-1, 1000000))
@@ -187,6 +192,9 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
             fast.elems,
             slow.elems,
             origin.elems)
+          p.set_thickness(thickness)
+          p.set_material('Si')
+          p.set_mu(mu)
           p.set_px_mm_strategy(px_mm)
 
     return detector

@@ -218,7 +218,7 @@ class FormatCBFMiniPilatusDLS6MSN126(FormatCBFMiniPilatus):
 
       detector[0].set_thickness(thickness)
       detector[0].set_material('Si')
-      detector[0].set_mu(table.mu_at_angstrom(wavelength))
+      detector[0].set_mu(mu)
 
       return detector
 
@@ -267,12 +267,15 @@ class FormatCBFMiniPilatusDLS6MSN126(FormatCBFMiniPilatus):
         panel_idx += 1
 
         p = d.add_panel()
+        p.set_type("SENSOR_PAD")
+        p.set_px_mm_strategy(ParallaxCorrectedPxMmStrategy(mu, t0))
         p.set_name(panel_name)
         p.set_image_size((xmax-xmin, ymax-ymin))
         p.set_trusted_range((underload, overload))
         p.set_pixel_size((pixel_x,pixel_y))
         p.set_thickness(thickness)
         p.set_material('Si')
+        p.set_mu(mu)
         p.set_local_frame(
           fast.elems,
           slow.elems,
