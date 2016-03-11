@@ -202,6 +202,9 @@ END
   pdb_hierarchy = pdb_in.construct_hierarchy()
   pdb_hierarchy.atoms().reset_i_seq()
   ss_from_file = pdb_in.extract_secondary_structure()
+  if not libtbx.env.has_module(name="ksdssp"):
+    print "Skipping KSDSSP tests: ksdssp module not available."
+    return
   m = manager(pdb_hierarchy=pdb_hierarchy,
     sec_str_from_pdb_file=None)
   # m.params.secondary_structure.use_ksdssp = False
