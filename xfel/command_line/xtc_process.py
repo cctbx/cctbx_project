@@ -16,6 +16,7 @@ from dials.util.options import OptionParser
 from libtbx.phil import parse
 from dxtbx.imageset import MemImageSet
 from dxtbx.datablock import DataBlockFactory
+from scitbx.array_family import flex
 
 xtc_phil_str = '''
   dispatch {
@@ -368,6 +369,16 @@ class InMemScript(DialsProcessScript):
         if params.format.cbf.common_mode.algorithm is None or params.format.cbf.common_mode.algorithm == "custom":
           self.pedestal = self.psana_det.pedestals(run)
 
+        psana_mask = self.psana_det.mask(run,calib=True,status=True,edges=True,central=True,unbond=True,unbondnbrs=True)
+        psana_mask = flex.bool(psana_mask)
+        assert psana_mask.focus() == (32, 185, 388)
+        self.psana_mask = []
+        for i in xrange(32):
+          self.psana_mask.append(psana_mask[i:i+1,:,:194])
+          self.psana_mask[-1].reshape(flex.grid(185,194))
+          self.psana_mask.append(psana_mask[i:i+1,:,194:])
+          self.psana_mask[-1].reshape(flex.grid(185,194))
+
       # list of all events
       times = run.times()
       nevents = min(len(times),max_events)
@@ -521,14 +532,14 @@ class InMemScript(DialsProcessScript):
     if "%s" in self.reindexedstrong_filename_template:
       self.params.output.reindexedstrong_filename = os.path.join(self.params.output.output_dir, self.reindexedstrong_filename_template%("idx-" + s))
 
-    # if border is requested, generate a border only mask
-    if self.params.border_mask.border > 0:
-      from dials.util.masking import MaskGenerator
-      generator = MaskGenerator(self.params.border_mask)
-      mask = generator.generate(imgset)
+    # Load a dials mask from the trusted range and psana mask
+    from dials.util.masking import MaskGenerator
+    generator = MaskGenerator(self.params.border_mask)
+    mask = generator.generate(imgset)
+    mask = tuple([a&b for a, b in zip(mask,self.psana_mask)])
 
-      self.params.spotfinder.lookup.mask = mask
-      self.params.integration.lookup.mask = mask
+    self.params.spotfinder.lookup.mask = mask
+    self.params.integration.lookup.mask = mask
 
     try:
       observed = self.find_spots(datablock)
