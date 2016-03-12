@@ -1488,8 +1488,6 @@ def image_xpp(address, evt, env, aa, quads = None):
   @return        XXX
   """
 
-  from pypdsdata.xtc import TypeId
-
   if address != 'XppGon-0|Cspad-0':
     return None
 
