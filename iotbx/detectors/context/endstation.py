@@ -161,6 +161,22 @@ NULLPIX 0
      # BL32XU Mar MX225HE--Serial number 31
    # rely on detector serial number, uncertain how to decode geometric description
    # of rotation axis within the header.
+
+   if imageobject.parameters["DETECTOR_SN"] in [7]:
+     endstation.set_rotation_axis("ROTATION HORIZ CLOCK")
+     endstation.mos['mosflm_detector'] = """
+# Specific implementation for APS SER-CAT BM22, chi=180 setting
+DETECTOR MARCCD
+DETECTOR REVERSEPHI
+SIZE 4096 4096
+PIXEL 0.07324 0.07324
+"""
+     endstation.mos['mosflm_beamline'] = """GAIN 0.37
+POLARISATION 0.99
+DIVE 0.0001 0.00001
+DISPER 0.0001
+"""
+
    if imageobject.parameters["DETECTOR_SN"] in [31,40]:
      endstation.set_rotation_axis("ROTATION HORIZ CLOCK")
      endstation.mos['mosflm_detector'] = """
