@@ -260,6 +260,9 @@ class Script(object):
     elif integrated.has_key('intensity.sum.value'):
       method = 'sum' # integration by simple summation
     integrated = integrated.select(integrated['intensity.' + method + '.variance'] > 0) # keep only spots with sigmas above zero
+    len_all = len(integrated)
+    integrated = integrated.select(~integrated.get_flags(integrated.flags.foreground_includes_bad_pixels))
+    print "Filtering %d reflections with at least one bad foreground pixel out of %d"%(len_all-len(integrated), len_all)
 
     if self.params.output.integrated_filename:
       # Save the reflections
