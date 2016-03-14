@@ -230,7 +230,7 @@ def env_dxtbx_from_slac_metrology(run, address):
   from dxtbx.format.FormatCBFCspad import FormatCBFCspadInMemory
   return FormatCBFCspadInMemory(cbf)
 
-def format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, address):
+def format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, address, round_to_int=True):
   """
   Given a preloaded dxtbx format object and raw data, assemble the tiles
   and set the distance.
@@ -251,7 +251,10 @@ def format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, a
   base_dxtbx._cbf_handle = base_cbf # put it back
   cbf.set_datablockname(address + "_" + timestamp)
 
-  data = flex.int(data.astype(np.int32))
+  if round_to_int:
+    data = flex.double(data.astype(np.float64)).iround()
+  else:
+    data = flex.double(data.astype(np.float64))
   data.reshape(flex.grid((4,8,185,388)))
 
   n_asics = data.focus()[0] * data.focus()[1]
