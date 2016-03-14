@@ -48,6 +48,12 @@ anomalous = False
   .type = bool
   .short_caption = Keep anomalous pairs separate in merging statistics
 %s
+use_internal_variance = True
+  .type = bool
+  .short_caption = Use internal variance of the data in the calculation of the merged sigmas
+eliminate_sys_absent = True
+  .type = bool
+  .short_caption = Eliminate systematically absent reflections before computation of merging statistics.
 """ % sigma_filtering_phil_str
 
 class model_based_arrays (object) :
@@ -126,11 +132,11 @@ class filter_intensities_by_sigma (object) :
   note that ctruncate and cctbx.french_wilson (any others?) do their own
   filtering, e.g. discarding I < -4*sigma in cctbx.french_wilson.
   """
-  def __init__ (self, array, sigma_filtering=Auto) :
+  def __init__ (self, array, sigma_filtering=Auto, use_internal_variance=True) :
     sigma_filtering = get_filtering_convention(array, sigma_filtering)
     assert (sigma_filtering in ["scala","scalepack","xds", None])
     self.n_rejected_before_merge = self.n_rejected_after_merge = 0
-    merge = array.merge_equivalents()
+    merge = array.merge_equivalents(use_internal_variance=use_internal_variance)
     array_merged = merge.array()
     reject_sel = None
     self.observed_criterion_sigma_I = None
@@ -174,11 +180,11 @@ class merging_stats (object) :
       model_arrays=None,
       anomalous=False,
       debug=None,
-      sigma_filtering="scala") :
+      sigma_filtering="scala",
+      use_internal_variance=True) :
     import cctbx.miller
     from scitbx.array_family import flex
     assert (array.sigmas() is not None)
-    array = array.eliminate_sys_absent()
     non_negative_sel = array.sigmas() >= 0
     self.n_neg_sigmas = non_negative_sel.count(False)
     positive_sel = array.sigmas() > 0
@@ -191,7 +197,8 @@ class merging_stats (object) :
     array = array.sort("packed_indices")
     filter = filter_intensities_by_sigma(
       array=array,
-      sigma_filtering=sigma_filtering)
+      sigma_filtering=sigma_filtering,
+      use_internal_variance=use_internal_variance)
     if (d_max_min is None) :
       d_max_min = array.d_max_min()
     self.d_max, self.d_min = d_max_min
@@ -363,6 +370,8 @@ class dataset_statistics (object) :
       file_name=None,
       model_arrays=None,
       sigma_filtering=Auto,
+      use_internal_variance=True,
+      eliminate_sys_absent=True,
       d_min_tolerance=1.e-6,
       extend_d_max_min=False,
       log=None) :
@@ -400,6 +409,10 @@ class dataset_statistics (object) :
       i_obs = i_obs.customized_copy(anomalous_flag=False).set_info(info)
       self.anom_extra = " (non-anomalous)"
     overall_d_max_min = None
+    # eliminate_sys_absent() before setting up binner to ensure consistency
+    # between reported overall d_min/max and d_min/max for resolution bins"
+    if eliminate_sys_absent:
+      i_obs = i_obs.eliminate_sys_absent()
     if extend_d_max_min :
       i_obs.setup_binner(
         n_bins=n_bins,
@@ -408,13 +421,13 @@ class dataset_statistics (object) :
       overall_d_max_min = d_max_cutoff, d_min_cutoff
     else :
       i_obs.setup_binner(n_bins=n_bins)
-    merge = i_obs.merge_equivalents()
     self.overall = merging_stats(i_obs,
       d_max_min=overall_d_max_min,
       model_arrays=model_arrays,
       anomalous=anomalous,
       debug=debug,
-      sigma_filtering=sigma_filtering)
+      sigma_filtering=sigma_filtering,
+      use_internal_variance=use_internal_variance)
     self.bins = []
     title = "Intensity merging statistics"
     column_labels = ["1/d**2","N(obs)","N(unique)","Redundancy","Completeness",
@@ -445,7 +458,8 @@ class dataset_statistics (object) :
         model_arrays=model_arrays,
         anomalous=anomalous,
         debug=debug,
-        sigma_filtering=sigma_filtering)
+        sigma_filtering=sigma_filtering,
+        use_internal_variance=use_internal_variance)
       self.bins.append(bin_stats)
       self.table.add_row(bin_stats.table_data())
 
@@ -821,6 +835,13 @@ def select_data (file_name, data_labels, log=None,
         "\n".join(["  labels=%s"%a.info().label_string() for a in all_i_obs]))
     else :
       i_obs = all_i_obs[0]
+  if hkl_in.file_type() == 'ccp4_mtz':
+    # need original miller indices otherwise we don't get correct anomalous
+    # merging statistics
+    mtz_object = hkl_in.file_content()
+    if "M_ISYM" in mtz_object.column_labels():
+      indices = mtz_object.extract_original_index_miller_indices()
+      i_obs = i_obs.customized_copy(indices=indices, info=i_obs.info())
   if (not i_obs.is_xray_intensity_array()) :
     raise Sorry("%s is not an intensity array." % i_obs.info().label_string())
   return i_obs
