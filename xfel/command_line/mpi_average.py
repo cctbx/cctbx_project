@@ -156,7 +156,7 @@ the output images in the folder cxi49812.
                         type="float",
                         default=None,
                         dest="gain_mask_value",
-                        help="Ratio between low and high gain pixels, if CSPAD in mixed-gain mode")
+                        help="Ratio between low and high gain pixels, if CSPAD in mixed-gain mode. Only used in CBF averaging mode.")
                 ).process(args=argv)
 
 
