@@ -25,7 +25,7 @@ def average(argv=None):
 
   command_line = (libtbx.option_parser.option_parser(
     usage="""
-%s [-p] -c config -x experiment -a address -r run -d detz_offset [-o outputdir] [-A averagepath] [-S stddevpath] [-M maxpath] [-n numevents] [-s skipnevents] [-v] [-m] [-b bin_size] [-X override_beam_x] [-Y override_beam_y] [-D xtc_dir] [-f]
+%s [-p] -c config -x experiment -a address -r run -d detz_offset [-o outputdir] [-A averagepath] [-S stddevpath] [-M maxpath] [-n numevents] [-s skipnevents] [-v] [-m] [-b bin_size] [-X override_beam_x] [-Y override_beam_y] [-D xtc_dir] [-f] [-g gain_mask_value]
 
 To write image pickles use -p, otherwise the program writes CSPAD CBFs.
 Writing CBFs requires the geometry to be already deployed.
@@ -152,6 +152,11 @@ the output images in the folder cxi49812.
                         default=False,
                         dest="use_ffb",
                         help="Use the fast feedback filesystem at LCLS. Only for the active experiment!")
+                .option(None, "--gain_mask_value", "-g",
+                        type="float",
+                        default=None,
+                        dest="gain_mask_value",
+                        help="Ratio between low and high gain pixels, if CSPAD in mixed-gain mode")
                 ).process(args=argv)
 
 
@@ -193,6 +198,10 @@ the output images in the folder cxi49812.
   src = psana.Source('DetInfo(%s)'%address)
   if not command_line.options.as_pickle:
     psana_det = psana.Detector(address, ds.env())
+    if command_line.options.gain_mask_value is not None:
+      gain_mask = psana_det.gain_mask(gain=command_line.options.gain_mask_value)
+    else:
+      gain_mask = None
 
   nevent = np.array([0.])
 
@@ -222,6 +231,8 @@ the output images in the folder cxi49812.
       else:
         # get numpy array, 32x185x388
         data = psana_det.calib(evt) # applies psana's complex run-dependent calibrations
+        if gain_mask is not None:
+          data *= gain_mask
       if data is None:
         print "No data"
         continue
