@@ -22,8 +22,8 @@ from libtbx import phil # Second import. Previous is better.
 from libtbx.utils import Sorry
 
 # in general, imports as mmtbx.utils are preferable, because in is obvious
-# in the code what is called. There are surprising number of modules called 
-# "utils" in cctbx. On the opposite, from libtbx.utils import Sorry is 
+# in the code what is called. There are surprising number of modules called
+# "utils" in cctbx. On the opposite, from libtbx.utils import Sorry is
 # ok, because Sorry is rather unique, and it would be excessively long
 # call otherwise.
 
@@ -111,9 +111,9 @@ debug = False
   .help = Additional output: biased omit map (ligand used for mask calculation but omitted from model)
 """
 
-# it is not a good idea to call function exactly the same name as 
+# it is not a good idea to call function exactly the same name as
 # imported module. I'm not sure the presence of the function is justified
-# because it is literally a single call. On top of that, 
+# because it is literally a single call. On top of that,
 # the name is too general and
 # does not provide any clue about what the function is doing.
 def ccp4_map(file_name, uc, sg, map_data):
@@ -128,7 +128,7 @@ def ccp4_map(file_name, uc, sg, map_data):
 
 def output_map(f_obs,r_free_flags, xray_structure, mask_data, filename, params):
   f_calc = f_obs.structure_factors_from_scatterers(
-    xray_structure = xray_structure).f_calc() 
+    xray_structure = xray_structure).f_calc()
   mask = f_obs.structure_factors_from_map(map = mask_data,
     # strings should be 80 chars long if there is no strong reason to breake
     # this rule. Comment could be here.
@@ -144,7 +144,7 @@ def output_map(f_obs,r_free_flags, xray_structure, mask_data, filename, params):
   # Especially when it is a funciton. If it needs to output anything,
   # the "log" parameter could be supplied. If stdout output is desired,
   # sys.stdout could be passed as value of "log" parameter.
-  # Then it would be 
+  # Then it would be
   # print >> log, "r_work=" ... etc.
   print "r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(), fmodel.r_free())
   print "*"*79
@@ -182,8 +182,8 @@ def mask_from_xrs_unpadded(xray_structure, n_real):
   maptbx.unpad_in_place(map = mask)
   return mask
 
-# I think it would be useful to make it as convenient as possible to 
-# call this function from anywhere else. If it needs to return more than one 
+# I think it would be useful to make it as convenient as possible to
+# call this function from anywhere else. If it needs to return more than one
 # thing, it could be rewritted as a class. In this case (of using this
 # functionality from somewhere else), remark about printing to log
 # becomes even more relevant.
@@ -201,10 +201,10 @@ def polder(f_obs, r_free_flags, xray_structure, pdb_hierarchy, params):
     raise Sorry("No atoms where selected. Check selection syntax again.")
   print "Number of atoms selected:", n_selected
   ligand_str = pdb_hierarchy.select(selection_bool).as_pdb_string()
-  # I would strongly recommend against using "naked" prints at all, 
-  # i.e. print <variable name>. 
+  # I would strongly recommend against using "naked" prints at all,
+  # i.e. print <variable name>.
   # It is extremely difficult to find them later when they need to be removed.
-  # Put something meaningful in front of them, like 
+  # Put something meaningful in front of them, like
   # print "atoms selected\n", ligand_str
   print ligand_str
   # when extracting cartesian coordinates, xray_structure needs to be in P1!
@@ -345,12 +345,12 @@ def cmd_run(args, command_name):
     raise Sorry("Sphere radius out of range: must be between 3 A and 10 A")
   pdb_input = iotbx.pdb.input(file_name = params.model_file_name)
   pdb_hierarchy = pdb_input.construct_hierarchy()
-  # This way of extracting xray_structure is actually wrong. It will be 
+  # This way of extracting xray_structure is actually wrong. It will be
   # inconsistent with pdb_hierarchy, because pdb_hierarchy gets sorted and
   # pdb_input.xray_structure_simple is not. A way to test it would be to
   # put a side chain atoms in front of main chain in a residue and supply
-  # selection that would select side-chain atoms. It would actually make 
-  # a good test ;) I'm sure atoms selected in xray_structure 
+  # selection that would select side-chain atoms. It would actually make
+  # a good test ;) I'm sure atoms selected in xray_structure
   # (in polder function) will be wrong.
   # Use pdb_hierarchy.extract_xray_structure() instead.
   xray_structure = pdb_input.xray_structure_simple()
