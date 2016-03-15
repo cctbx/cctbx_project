@@ -71,12 +71,16 @@ class ThreeProteinResidues(list):
                 omega_cdl=False, # need last not middle
                 verbose=False):
     cis_peptide_bond = False
+    #
+    # this is very poor! there needs to be a better way to check for cis-
+    #
     for i, residue in enumerate(self):
       if i==0: continue
       if omega_cdl:
-        if i==1: continue
+        if len(self)==3:
+          if i==1: continue
       else:
-        if i==2: continue # only check the middle omega angle
+        if i==2: continue
       ccn1, outl1 = get_c_ca_n(residue)
       ccn2, outl2 = get_c_ca_n(self[i-1])
       ca1 = ccn1[1]
