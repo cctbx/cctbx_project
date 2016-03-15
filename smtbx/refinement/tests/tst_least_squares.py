@@ -228,8 +228,8 @@ class site_refinement_test(refinement_test):
       step_threshold=1e-7,
       track_all=True)
 
-    assert approx_equal(ls.scale_factor(), 1, eps=1e-5)
-    assert approx_equal(ls.objective(), 0)
+    assert approx_equal(ls.scale_factor(), 1, eps=1e-5), ls.scale_factor()
+    assert approx_equal(ls.objective(), 0), ls.objective()
 
     match = emma.model_matches(emma_ref, xs.as_emma_model()).refined_matches[0]
     assert match.rt.r == matrix.identity(3)
