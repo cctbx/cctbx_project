@@ -309,7 +309,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
         # determine if the beam intersects one of the panels
         panel_id, (x_mm,y_mm) = detector.get_ray_intersection(beam.get_s0())
       except RuntimeError, e:
-        if not "DXTBX_ASSERT(w_max > 0) failure" in str(e):
+        if not ("DXTBX_ASSERT(" in str(e) and ") failure" in str(e)):
           # unknown exception from dxtbx
           raise e
         if len(detector) > 1:
@@ -326,7 +326,17 @@ class XrayFrame (AppFrame,XFBaseClass) :
 
         else:
           panel_id = 0
-          x_mm,y_mm = detector[0].get_beam_centre(beam.get_s0())
+          # FIXME this is horrible but cannot find easier way without
+          # restructuring code - N.B. case I am debugging now is one
+          # panel detector *parallel to beam* for which the question is
+          # ill posed.
+          try:
+            x_mm,y_mm = detector[0].get_beam_centre(beam.get_s0())
+          except RuntimeError, e:
+            if 'DXTBX_ASSERT' in str(e):
+              x_mm, y_mm = 0.0, 0.0
+            else:
+              raise e
 
       beam_pixel_fast, beam_pixel_slow = detector[panel_id].millimeter_to_pixel(
         (x_mm, y_mm))
