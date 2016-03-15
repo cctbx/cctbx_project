@@ -880,9 +880,8 @@ class Builder(object):
     dirs = dirs or []
     cmd=['rm', '-rf'] + dirs
     if self.isPlatformWindows():
-      # rmdir sets the error flag if directory is not found. Mask it with cmd shell
       # deleting folders by copying an empty folder with robocopy is more reliable on Windows
-      cmd=['cmd', '/c', 'mkdir', 'empty', '&', '(FOR', '%d', 'IN', '('] + dirs + \
+      cmd=['mkdir', 'empty', '&', '(FOR', '%d', 'IN', '('] + dirs + \
        [')', 'DO', '(ROBOCOPY', 'empty', '%d', '/MIR', '>', 'nul', '&', 'rmdir', '%d))', '&', 'rmdir', 'empty']
     self.add_step(self.shell(
       name='cleanup',
