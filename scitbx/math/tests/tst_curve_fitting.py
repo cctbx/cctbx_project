@@ -129,7 +129,7 @@ def exercise_gaussian_fit():
   if have_cma_es:
     fit = curve_fitting.cma_es_minimiser(starting_gaussians, x, y)
     y_calc = fit.compute_y_calc()
-    assert approx_equal(y, y_calc, eps=1e-2)
+    assert approx_equal(y, y_calc, eps=5e-2)
 
 
 def exercise_skew_normal_fit():
