@@ -742,7 +742,6 @@ scitbx::vec2<int> const& lower_right) {
  * this file.
  */
 #include "merging.cpp"
-#include "project.cpp"
 
 namespace boost_python { namespace {
 
@@ -786,7 +785,6 @@ namespace boost_python { namespace {
     def("get_isigi_dict", &get_isigi_dict);
     def("compute_normalized_deviations", &compute_normalized_deviations);
     def("apply_sd_error_params", &apply_sd_error_params);
-    def("compute_projection", &compute_projection);
     class_<correction_vector_store>("correction_vector_store",init<>())
       .add_property("tiles",
         make_getter(&correction_vector_store::tiles, rbv()),
