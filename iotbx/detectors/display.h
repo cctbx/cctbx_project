@@ -237,7 +237,7 @@ public:
       double percentile = *(raw_active.begin()+nth_offset);
       double adjlevel = 0.4;
 
-      return (percentile>0.) ? brightness * adjlevel/percentile : 1.0;
+      return (percentile>0.) ? brightness * adjlevel/percentile : brightness / 5.0;
   }
 
   int binning; // either 1 (unbinned) or a power of 2 (binned)
