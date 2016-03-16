@@ -1642,9 +1642,6 @@ class manager(manager_mixin):
       print >> log, "overall anisotropic scale matrix:"
       russ.format_scale_matrix(log=log)
     print >> log
-    print >> log, "Target: work=%.6f free=%.6f"%(
-      self.target_w()*self.f_calc_w().data().size(),
-      self.target_t()*self.f_calc_t().data().size())
     self.apply_scale_k1_to_f_obs()
     return russ
 

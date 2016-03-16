@@ -117,6 +117,8 @@ class info(object):
     self.r_all = fmodel.r_all()
     self.target_work = fmodel.target_w()
     self.target_free = fmodel.target_t()
+    self.target_work_no_norm = fmodel.target_w()*fmodel.f_calc_w().data().size()
+    self.target_free_no_norm = fmodel.target_t()*fmodel.f_calc_t().data().size()
     self.overall_scale_k1 = fmodel.scale_k1()
     self.number_of_test_reflections = fmodel.f_calc_t().data().size()
     self.number_of_work_reflections = fmodel.f_calc_w().data().size()
@@ -431,11 +433,24 @@ class info(object):
     self._header_resolutions_nreflections(header=header, out=out)
     print >> out, "| "+"  "*38+"|"
     self._rfactors_and_bulk_solvent_and_scale_params(out=out)
-    line7="| x-ray target function (%s) for work reflections: %s"% (
+    line7="| normalized target function (%s) (work): %s"% (
       self.target_name, n_as_s("%15.6f",self.target_work))
     np = 79 - (len(line7) + 1)
     line7 = line7 + " "*np + "|"
     print >> out, line7
+    # no norm - work
+    line71="| target function (%s) not normalized (work): %s"% (
+      self.target_name, n_as_s("%15.6f",self.target_work_no_norm))
+    np = 79 - (len(line71) + 1)
+    line71 = line71 + " "*np + "|"
+    print >> out, line71
+    # no norm - free
+    line71="| target function (%s) not normalized (free): %s"% (
+      self.target_name, n_as_s("%15.6f",self.target_free_no_norm))
+    np = 79 - (len(line71) + 1)
+    line71 = line71 + " "*np + "|"
+    print >> out, line71
+    #
     if(self.twin_fraction is not None):
       line8="| twin fraction: "+format_value("%-4.2f",self.twin_fraction)+\
         "  twin operator: "+\
