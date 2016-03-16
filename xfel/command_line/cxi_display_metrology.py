@@ -189,6 +189,18 @@ if (__name__ == "__main__") :
 
         ax.set_xlim((-100, 100))
         ax.set_ylim((-100, 100))
+
+      if hasattr(detector, "hierarchy"):
+        def draw_arrow(pg, start):
+          o = pg.get_origin()
+          if o[0:2] != start[0:2]:
+            delta = col(o) - col(start)
+            ax.arrow(start[0], start[1], delta[0], delta[1], head_width=0.05, head_length=0.1, fc='k', ec='k')
+          if hasattr(pg, 'children'):
+            for child in pg:
+              draw_arrow(child, o)
+        draw_arrow(detector.hierarchy(), (0.0,0.0,0.0))
+
   elif params.metrology in xpp_active_areas:
     # Read the metrology from the XPP dictionary
     active_areas = xpp_active_areas[params.metrology]['active_areas']
