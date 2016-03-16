@@ -369,6 +369,32 @@ class cleanup_ext_class(object):
   def run(self):
     self.remove_ext_files()
 
+class cleanup_dirs_class(object):
+  def __init__(self, dirs, workdir=None):
+    self.dirs = dirs
+    self.workdir = workdir
+
+  def get_command(self):
+    return "cleanup dirs in %s" % (self.workdir).split()
+
+  def remove_dirs(self):
+    cwd=os.getcwd()
+    if self.workdir is not None:
+      if os.path.exists(self.workdir):
+        os.chdir(self.workdir)
+      else:
+        return
+    print "\n  removing dirs in %s" % (os.getcwd())
+    for d in self.dirs:
+      if os.path.exists(d): continue
+      print "    removing %s" % (os.path.join(os.getcwd(),d))
+      shutil.rmtree(d)
+    os.chdir(cwd)
+    print "  removed dirs" % self.dirs
+
+  def run(self):
+    self.remove_dirs()
+
 ##### Modules #####
 class SourceModule(object):
   _modules = {}
@@ -878,17 +904,7 @@ class Builder(object):
 
   def cleanup(self, dirs=None):
     dirs = dirs or []
-    cmd=['rm', '-rf'] + dirs
-    if self.isPlatformWindows():
-      # deleting folders by copying an empty folder with robocopy is more reliable on Windows
-      cmd=['cmd', '/c', 'mkdir', 'empty', '&', '(FOR', '%d', 'IN', '('] + dirs + \
-       [')', 'DO', '(ROBOCOPY', 'empty', '%d', '/MIR', '>', 'nul', '&', 'rmdir', '%d))', '&', 'rmdir', 'empty']
-    self.add_step(self.shell(
-      name='cleanup',
-      command =cmd,
-      workdir=['.'],
-      description="deleting " + ", ".join(dirs),
-    ))
+    self.add_step(cleanup_dirs_class(dirs, "modules"))
 
   def add_rm_bootstrap_on_slave(self):
     # if file is not found error flag is set. Mask it with cmd shell
@@ -1466,7 +1482,6 @@ class MOLPROBITYBuilder(Builder):
 class CCTBXBuilder(CCIBuilder):
   BASE_PACKAGES = 'cctbx'
   def add_tests(self):
-#    self.add_step(cleanup_ext_class(".pyc", "modules"))
     self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
     self.add_test_command('cctbx_regression.test_nightly')
 
