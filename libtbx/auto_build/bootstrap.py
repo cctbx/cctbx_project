@@ -881,7 +881,7 @@ class Builder(object):
     cmd=['rm', '-rf'] + dirs
     if self.isPlatformWindows():
       # deleting folders by copying an empty folder with robocopy is more reliable on Windows
-      cmd=['mkdir', 'empty', '&', '(FOR', '%d', 'IN', '('] + dirs + \
+      cmd=['cmd', '/c', 'mkdir', 'empty', '&', '(FOR', '%d', 'IN', '('] + dirs + \
        [')', 'DO', '(ROBOCOPY', 'empty', '%d', '/MIR', '>', 'nul', '&', 'rmdir', '%d))', '&', 'rmdir', 'empty']
     self.add_step(self.shell(
       name='cleanup',
