@@ -76,6 +76,8 @@ class FormatSMVRigakuA200(FormatSMVRigaku):
   def _start(self):
 
     FormatSMVRigaku._start(self)
+
+  def detectorbase_start(self):
     from iotbx.detectors.dtrek import DTREKImage
     self.detectorbase = DTREKImage(self._image_file)
     self.detectorbase.readHeader()

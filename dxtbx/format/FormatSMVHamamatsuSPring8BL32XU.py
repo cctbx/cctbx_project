@@ -31,6 +31,8 @@ class FormatSMVHamamatsuSPring8BL32XU(FormatSMVHamamatsu):
   def _start(self):
 
     FormatSMVHamamatsu._start(self)
+
+  def detectorbase_start(self):
     from iotbx.detectors.hamamatsu import HamamatsuImage
     self.detectorbase = HamamatsuImage(self._image_file)
     self.detectorbase.readHeader()

@@ -71,6 +71,8 @@ class FormatSMVNOIR(FormatSMVRigaku):
 
   def _start(self):
     FormatSMVRigaku._start(self)
+
+  def detectorbase_start(self):
     from iotbx.detectors.noir import NoirImage
     self.detectorbase = NoirImage(self._image_file)
     self.detectorbase.readHeader()

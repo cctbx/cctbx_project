@@ -46,12 +46,6 @@ class FormatCBFMiniEigerPhotonFactory(FormatCBFMini):
 
   def _start(self):
     FormatCBFMini._start(self)
-    try:
-      from iotbx.detectors.pilatus_minicbf import PilatusImage
-      self.detectorbase = PilatusImage(self._image_file)
-      self.detectorbase.readHeader()
-    except KeyError, e:
-      pass
 
   def _goniometer(self):
     return self._goniometer_factory.make_goniometer(
@@ -108,9 +102,6 @@ class FormatCBFMiniEigerPhotonFactory(FormatCBFMini):
     else:
       raise RuntimeError("Don't understand image")
 
-    self.detectorbase.parameters['SIZE1'] = 2167
-    self.detectorbase.parameters['SIZE2'] = 2070
-
     return detector
 
   def _beam(self):
@@ -140,6 +131,15 @@ class FormatCBFMiniEigerPhotonFactory(FormatCBFMini):
     return self._scan_factory.single(
       self._image_file, format, exposure_time,
       osc_start, osc_range, timestamp)
+
+  def detectorbase_start(self):
+
+    from iotbx.detectors.pilatus_minicbf import PilatusImage
+    self.detectorbase = PilatusImage(self._image_file)
+    self.detectorbase.readHeader()
+
+    self.detectorbase.parameters['SIZE1'] = 2167
+    self.detectorbase.parameters['SIZE2'] = 2070
 
 if __name__ == '__main__':
 

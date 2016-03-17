@@ -87,6 +87,8 @@ class FormatTIFFRayonix(FormatTIFF):
   def _start(self):
 
     FormatTIFF._start(self)
+
+  def detectorbase_start(self):
     from iotbx.detectors.mar import MARImage
     self.detectorbase = MARImage(self._image_file)
     self.detectorbase.readHeader()

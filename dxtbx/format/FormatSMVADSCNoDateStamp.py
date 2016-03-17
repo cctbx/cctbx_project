@@ -42,10 +42,6 @@ class FormatSMVADSCNoDateStamp(FormatSMVADSC):
 
   def _start(self):
 
-    from iotbx.detectors.adsc import ADSCImage
-    self.detectorbase = ADSCImage(self._image_file)
-    self.detectorbase.readHeader()
-
     FormatSMVADSC._start(self)
 
   def _scan(self):
@@ -64,6 +60,11 @@ class FormatSMVADSCNoDateStamp(FormatSMVADSC):
     return self._scan_factory.single(
         self._image_file, format, exposure_time,
         osc_start, osc_range, epoch)
+
+  def detectorbase_start(self):
+    from iotbx.detectors.adsc import ADSCImage
+    self.detectorbase = ADSCImage(self._image_file)
+    self.detectorbase.readHeader()
 
 if __name__ == '__main__':
 

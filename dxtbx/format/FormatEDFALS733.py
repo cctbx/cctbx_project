@@ -25,6 +25,7 @@ class FormatEDFALS733(Format):
 
     Format.__init__(self, image_file)
 
+  def detectorbase_start(self): pass
   def _start(self):
     '''Open the image file, read the image header, copy the key / value
     pairs into an internal dictionary self._header_dictionary along with

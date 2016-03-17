@@ -58,6 +58,7 @@ class FormatSMVADSC(FormatSMV):
 
     FormatSMV._start(self)
 
+  def detectorbase_start(self):
     if not hasattr(self, "detectorbase") or self.detectorbase is None:
       from iotbx.detectors import SMVImage
       self.detectorbase = SMVImage(self._image_file)

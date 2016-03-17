@@ -333,7 +333,7 @@ class FormatEigerNearlyNexus(FormatHDF5):
     return self._image_file
 
   def get_detectorbase(self, index=None):
-    return None
+    raise RuntimeError('Overload!')
 
 if __name__ == '__main__':
   import sys

@@ -26,6 +26,7 @@ class FormatDIP2030b(Format):
 
     Format.__init__(self, image_file)
 
+  def detectorbase_start(self): pass
   def _start(self):
     from iotbx.detectors.macscience import DIPImage
     self.detectorbase = DIPImage(self._image_file)

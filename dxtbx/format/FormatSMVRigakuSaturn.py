@@ -77,6 +77,8 @@ class FormatSMVRigakuSaturn(FormatSMVRigaku):
   def _start(self):
 
     FormatSMVRigaku._start(self)
+
+  def detectorbase_start(self):
     from iotbx.detectors.saturn import SaturnImage
     self.detectorbase = SaturnImage(self._image_file)
     self.detectorbase.readHeader()

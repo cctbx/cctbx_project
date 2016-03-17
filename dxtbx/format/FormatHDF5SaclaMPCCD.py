@@ -233,4 +233,4 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
     return self._beam_instance
 
   def get_detectorbase(self, index=None):
-    return None
+    raise RuntimeError('Overload!')

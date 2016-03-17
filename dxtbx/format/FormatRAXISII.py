@@ -20,6 +20,7 @@ class FormatRAXISII(Format):
 
     Format.__init__(self, image_file)
 
+  def detectorbase_start(self): pass
   def _start(self):
     from iotbx.detectors.raxis_nonsquare import NonSquareRAXISImage
     self.detectorbase = NonSquareRAXISImage(self._image_file)

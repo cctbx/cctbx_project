@@ -188,8 +188,13 @@ class Format(object):
     except Exception:
       return None
 
+  def detectorbase_start(self):
+    print "Overload detectorbase_start"
+    raise RuntimeError('Overload!')
+
   def get_detectorbase(self):
     '''Return the instance of detector base.'''
+    self.detectorbase_start()
 
     # XXX Temporary proxy to aid in the transition to dxtbx.  Remove
     # once completed.

@@ -46,10 +46,6 @@ class FormatCBFFull(FormatCBF):
 
     FormatCBF._start(self)
 
-    from iotbx.detectors.cbf import CBFImage
-    self.detectorbase = CBFImage(self._image_file)
-    self.detectorbase.readHeader()
-
   def _get_cbf_handle(self):
     try:
       return self._cbf_handle
@@ -77,6 +73,11 @@ class FormatCBFFull(FormatCBF):
     '''Return a working scan instance.'''
 
     return self._scan_factory.imgCIF_H(self._image_file, self._get_cbf_handle())
+
+  def detectorbase_start(self):
+    from iotbx.detectors.cbf import CBFImage
+    self.detectorbase = CBFImage(self._image_file)
+    self.detectorbase.readHeader()
 
 if __name__ == '__main__':
 

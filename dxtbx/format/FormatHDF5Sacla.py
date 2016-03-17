@@ -75,8 +75,7 @@ class FormatHDF5Sacla(FormatHDF5, FormatStill):
     return flex.float(data[:,:]).as_double()
 
   def get_detectorbase(self, index=None):
-    #self.detectorbase.img_number = index
-    return Format.get_detectorbase(self)
+    raise RuntimeError('Overload!')
 
   def get_image_file(self, index=None):
     return Format.get_image_file(self)

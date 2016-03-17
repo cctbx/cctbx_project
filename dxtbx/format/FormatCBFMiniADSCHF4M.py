@@ -59,12 +59,6 @@ class FormatCBFMiniADSCHF4M(FormatCBFMini):
 
   def _start(self):
     FormatCBFMini._start(self)
-    try:
-      from iotbx.detectors.adsc_minicbf import ADSCHF4MImage
-      self.detectorbase = ADSCHF4MImage(self._image_file)
-      self.detectorbase.readHeader()
-    except KeyError, e:
-      pass
 
   def _goniometer(self):
     '''Return a model for a simple single-axis goniometer. This should
@@ -159,6 +153,11 @@ class FormatCBFMiniADSCHF4M(FormatCBFMini):
         self._image_file, format, exposure_time,
         osc_start, osc_range, timestamp)
 
+  def detectorbase_start(self):
+
+    from iotbx.detectors.adsc_minicbf import ADSCHF4MImage
+    self.detectorbase = ADSCHF4MImage(self._image_file)
+    self.detectorbase.readHeader()
 
 if __name__ == '__main__':
 

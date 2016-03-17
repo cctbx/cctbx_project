@@ -123,4 +123,4 @@ class FormatNexus(FormatHDF5):
     return self._image_file
 
   def get_detectorbase(self, index=None):
-    return None
+    raise RuntimeError('Overload!')
