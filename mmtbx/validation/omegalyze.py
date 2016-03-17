@@ -393,10 +393,10 @@ class omegalyze(validation):
     cisprohead = ["@subgroup {Cis proline} dominant master= {Cis proline} off\n",
       "@trianglelist {cis pro omega triangles} color= sea\n"]
     cisnonprohead = [
-      "@subgroup {Cis peptides} dominant master= {Cis non-proline} off\n",
+      "@subgroup {Cis peptides} dominant master= {Cis non-proline}\n",
       "@trianglelist {cis nonpro omega triangles} color= lime\n"]
     twisthead = [
-      "@subgroup {Twisted peptides} dominant master= {Twisted peptides} off\n",
+      "@subgroup {Twisted peptides} dominant master= {Twisted peptides}\n",
       "@trianglelist {twisted omega triangles} color= yellow\n"]
     cisprovectorhead = ["@vectorlist {cis pro omega vectors} color= sea width=3\n"]
     cisnonprovectorhead = ["@vectorlist {cis nonpro omega vectors} color= lime width=3\n"]
@@ -430,7 +430,7 @@ class omegalyze(validation):
     return data
 
   def show_summary(self, out=sys.stdout, prefix=""):
-    print >> out, prefix + '\nSUMMARY: %i cis prolines out of %i PRO' % (
+    print >> out, prefix + 'SUMMARY: %i cis prolines out of %i PRO' % (
       self.omega_count[OMEGA_PRO][OMEGALYZE_CIS],
       self.residue_count[OMEGA_PRO])
     print >> out, prefix + 'SUMMARY: %i twisted prolines out of %i PRO' % (

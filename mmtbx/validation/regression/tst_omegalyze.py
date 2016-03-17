@@ -15,7 +15,6 @@ ref_omegalyze_give_text = """residues:type:omega:conformation:mc_bmax
  B1331  LYS to  B1332  ASP: non-Pro : 134.92:Twisted :27.81
  B1474  GLU to  B1475  LYS: non-Pro : -19.25:Cis     :43.95
  B1593  LYS to  B1594  PRO: Pro     :   8.04:Cis     :26.47
-
 SUMMARY: 3 cis prolines out of 77 PRO
 SUMMARY: 0 twisted prolines out of 77 PRO
 SUMMARY: 2 other cis residues out of 1464 nonPRO
