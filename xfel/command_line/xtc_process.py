@@ -449,18 +449,16 @@ class InMemScript(DialsProcessScript):
           print "Skipping event %s: not processed previously"%ts
           return
 
-    print "Accepted", ts
-
     self.debug_file_handle.write("%s,%s"%(socket.gethostname(), ts))
 
-    self.params = copy.deepcopy(self.params_cache)
-
     evt = run.event(timestamp)
-    id = evt.get(psana.EventId)
-    if evt.get("skip_event"):
-      print "Skipping event",id
+    if evt.get("skip_event") or "skip_event" in [key.key() for key in evt.keys()]:
+      print "Skipping event",ts
       self.debug_file_handle.write(",psana_skip\n")
       return
+
+    print "Accepted", ts
+    self.params = copy.deepcopy(self.params_cache)
 
     # the data needs to have already been processed and put into the event by psana
     if self.params.format.file_format == 'cbf':
