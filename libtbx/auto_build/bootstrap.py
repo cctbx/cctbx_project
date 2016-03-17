@@ -388,7 +388,8 @@ class cleanup_dirs_class(object):
     for d in self.dirs:
       if not os.path.exists(d): continue
       print "    removing %s" % (os.path.join(os.getcwd(),d))
-      shutil.rmtree(d)
+      if os.path.exists(d):
+        shutil.rmtree(d)
     os.chdir(cwd)
     print "  removed dirs" % self.dirs
 
