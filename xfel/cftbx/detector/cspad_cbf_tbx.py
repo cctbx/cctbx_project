@@ -79,7 +79,7 @@ class basis(object):
       self.orientation = r3.r3_rotation_matrix_as_unit_quaternion()
       self.translation = orig
 
-    if orientation is not None or translation is not None:
+    elif orientation is not None or translation is not None:
       assert orientation is not None and translation is not None
       self.orientation = orientation
       self.translation = translation

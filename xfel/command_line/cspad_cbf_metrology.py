@@ -7,8 +7,6 @@ import os, sys, random
 from iotbx.phil import parse
 from libtbx import easy_run
 from libtbx.utils import Sorry
-from xfel.cftbx.detector.cspad_cbf_tbx import write_cspad_cbf, map_detector_to_basis_dict
-from dials.phil import ExperimentListConverters
 
 phil_scope = parse("""
   reflections = reindexedstrong *indexed integrated
@@ -157,13 +155,13 @@ def refine(params, refine_phil_file, combine_phil):
   else:
     deploy_level = params.refine_to_hierarchy_level
 
-  converter = ExperimentListConverters(check_format=False)
-  detector = converter.from_string("%s_refined_experiments_level%d.json"%(params.tag, deploy_level)).data[0].detector
-
-  metro = map_detector_to_basis_dict(detector)
-  write_cspad_cbf(None, metro, 'cbf', None, '%s_refined_detector_level%d.def'%(params.tag, deploy_level), None, abs(detector.hierarchy().get_distance()), header_only=True)
+  command = "cxi.experiment_json_to_cbf_def %s_refined_experiments_level%d.json output_def_file=%s_refined_detector_level%d.def"%(params.tag, deploy_level, params.tag, deploy_level)
+  print command
+  result = easy_run.fully_buffered(command=command).raise_if_errors()
+  result.show_stdout()
 
   command = "cxi.cbfheader2slaccalib cbf_header=%s_refined_detector_level%d.def out_metrology_file=0-end.data.%s"%(params.tag, deploy_level, params.tag)
+  print command
   result = easy_run.fully_buffered(command=command).raise_if_errors()
   result.show_stdout()
 

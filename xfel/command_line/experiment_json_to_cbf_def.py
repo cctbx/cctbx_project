@@ -7,12 +7,21 @@ from __future__ import division
 from dials.util.options import OptionParser
 from dials.util.options import flatten_experiments
 from xfel.cftbx.detector.cspad_cbf_tbx import write_cspad_cbf, map_detector_to_basis_dict
+from libtbx import phil
+
+phil_scope = phil.parse("""
+  output_def_file = refined_detector.def
+    .type = str
+    .help = Name of output .def file
+""")
+
 
 class Script(object):
   def __init__(self):
     # Create the parser
     self.parser = OptionParser(
-      read_experiments=True)
+      phil = phil_scope,
+      read_experiments = True)
 
   def run(self):
     params, options = self.parser.parse_args(show_diff_phil=True)
@@ -21,7 +30,7 @@ class Script(object):
     detector = experiments[0].detector
 
     metro = map_detector_to_basis_dict(detector)
-    write_cspad_cbf(None, metro, 'cbf', None, 'refined_detector.def', None, 100, header_only=True)
+    write_cspad_cbf(None, metro, 'cbf', None, params.output_def_file, None, abs(detector.hierarchy().get_distance()), header_only=True)
 
     print "Done"
 
