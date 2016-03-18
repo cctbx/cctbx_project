@@ -25,11 +25,16 @@ class cbf_wrapper(dxtbx_cbf_wrapper):
     if angle == 0:
       axis = (0,0,1)
 
+    if basis.include_translation:
+      translation = basis.translation
+    else:
+      translation = (0,0,0)
+
     self.add_row([basis.axis_name,"rotation","detector",basis.depends_on,
                   str(axis[0]),str(axis[1]),str(axis[2]),
-                  str(basis.translation[0]),
-                  str(basis.translation[1]),
-                  str(basis.translation[2]),
+                  str(translation[0]),
+                  str(translation[1]),
+                  str(translation[2]),
                   basis.equipment_component])
 
     axis_settings.append([basis.axis_name, "FRAME1", str(angle), "0"])
@@ -64,6 +69,8 @@ class basis(object):
     @param homogenous_transformation 4x4 matrix.sqr object representing a translation
     and a rotation. Must not also contain a scale as this won't be decomposed properly.
     """
+    self.include_translation = True
+
     if panelgroup is not None:
       d_mat = panelgroup.get_local_d_matrix()
       fast = matrix.col((d_mat[0],d_mat[3],d_mat[6])).normalize()
@@ -546,7 +553,6 @@ def map_detector_to_basis_dict(detector):
 
   d = 0 # only allow one detector for now
   metro = {(d,):basis(panelgroup=root)}
-  metro[(d,)].translation = matrix.col((0,0,0))
 
   for q, quad in enumerate(root):
     metro[(d,q)] = basis(panelgroup=quad)
@@ -818,6 +824,8 @@ def get_cspad_cbf_handle(tiles, metro, metro_style, timestamp, cbf_root, wavelen
       for a in ["_X","_Y","_Z","_R"]: detector_axes_names.append(dname+a)
       basis.equipment_component = "detector_arm"
       basis.depends_on = dname+"_X"
+      basis.include_translation = False # don't include the translation in the rotation axis offset below, instead it will be
+                                        # included in the axis_settings table below
     elif len(key) == 2:
       detector_axes_names.append("FS_D%dQ%d"%key)
       basis.equipment_component = "detector_quadrant"
@@ -927,11 +935,13 @@ def get_cspad_cbf_handle(tiles, metro, metro_style, timestamp, cbf_root, wavelen
   cbf.add_row(("%s_Y         translation detector %s_Z     0  1  0 . . . detector_arm"%(dname,dname)).split()) ; axis_names.append("%s_Y"%dname)
   cbf.add_row(("%s_X         translation detector %s_Y     1  0  0 . . . detector_arm"%(dname,dname)).split()) ; axis_names.append("%s_X"%dname)
 
+  root_basis = metro[(0,)]
+
   axis_settings.append(["AXIS_SOURCE" ,"FRAME1","0","0"])
   axis_settings.append(["AXIS_GRAVITY","FRAME1","0","0"])
-  axis_settings.append([dname+"_X"    ,"FRAME1","0","0"])
-  axis_settings.append([dname+"_Y"    ,"FRAME1","0","0"])
-  axis_settings.append([dname+"_Z"    ,"FRAME1","0",str(-distance)])
+  axis_settings.append([dname+"_X"    ,"FRAME1","0",str(root_basis.translation[0])])
+  axis_settings.append([dname+"_Y"    ,"FRAME1","0",str(root_basis.translation[1])])
+  axis_settings.append([dname+"_Z"    ,"FRAME1","0",str(root_basis.translation[2])])
 
   for key in sorted(metro):
     basis = metro[key]
