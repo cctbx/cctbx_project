@@ -208,7 +208,8 @@ class FormatCBFMiniPilatus(FormatCBFMini):
   def get_mask(self):
     from scitbx.array_family import flex
     detector = self.get_detector()
-    mask = [flex.bool(flex.grid(reversed(p.get_image_size())), True) for p in detector]
+    mask = [flex.bool(flex.grid(reversed(p.get_image_size())), True)
+             for p in detector]
     for i, p in enumerate(detector):
       untrusted_regions = p.get_mask()
       for j, (f0, s0, f1, s1) in enumerate(untrusted_regions):
