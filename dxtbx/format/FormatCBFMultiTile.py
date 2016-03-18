@@ -57,8 +57,12 @@ class FormatCBFMultiTile(FormatCBFFull):
     '''Check to see if this looks like an CBF format image, i.e. we can
     make sense of it.'''
 
-    cbf_handle = pycbf.cbf_handle_struct()
-    cbf_handle.read_widefile(image_file, pycbf.MSG_DIGEST)
+    try:
+      cbf_handle = pycbf.cbf_handle_struct()
+      cbf_handle.read_widefile(image_file, pycbf.MSG_DIGEST)
+    except Exception, e:
+      if 'CBFlib Error' in str(e):
+        return False
 
     #check if multiple arrays
     return cbf_handle.count_elements() > 1
