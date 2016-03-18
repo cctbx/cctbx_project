@@ -135,3 +135,16 @@ class FormatRAXISIVSPring8(Format):
     return self._scan_factory.single(
         self._image_file, format, exposure_time,
         osc_start, osc_range, epoch)
+
+  def get_raw_data(self):
+    '''Get the pixel intensities (i.e. read the image and return as a
+    flex array.'''
+    self.detectorbase_start()
+    try:
+      image = self.detectorbase
+      image.read()
+      raw_data = image.get_raw_data()
+
+      return raw_data
+    except Exception:
+      return None

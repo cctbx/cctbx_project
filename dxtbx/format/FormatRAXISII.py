@@ -63,6 +63,19 @@ class FormatRAXISII(Format):
       osc_width = self.detectorbase.parameters["OSC_RANGE"],
       epoch = None)
 
+  def get_raw_data(self):
+    '''Get the pixel intensities (i.e. read the image and return as a
+    flex array.'''
+    self.detectorbase_start()
+    try:
+      image = self.detectorbase
+      image.read()
+      raw_data = image.get_raw_data()
+
+      return raw_data
+    except Exception:
+      return None
+
 if __name__ == '__main__':
 
   import sys

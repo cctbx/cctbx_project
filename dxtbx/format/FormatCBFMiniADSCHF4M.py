@@ -55,6 +55,8 @@ class FormatCBFMiniADSCHF4M(FormatCBFMini):
 
     FormatCBFMini.__init__(self, image_file)
 
+    self._raw_data = None
+
     return
 
   def _start(self):
@@ -158,6 +160,46 @@ class FormatCBFMiniADSCHF4M(FormatCBFMini):
     from iotbx.detectors.adsc_minicbf import ADSCHF4MImage
     self.detectorbase = ADSCHF4MImage(self._image_file)
     self.detectorbase.readHeader()
+
+  def read_cbf_image(self, cbf_image):
+    from cbflib_adaptbx import uncompress
+    import binascii
+    from scitbx.array_family import flex
+
+    start_tag = binascii.unhexlify('0c1a04d5')
+
+    data = self.open_file(cbf_image, 'rb').read()
+    data_offset = data.find(start_tag) + 4
+    cbf_header = data[:data_offset - 4]
+
+    fast = 0
+    slow = 0
+    length = 0
+
+    for record in cbf_header.split('\n'):
+      if 'X-Binary-Size-Fastest-Dimension' in record:
+        fast = int(record.split()[-1])
+      elif 'X-Binary-Size-Second-Dimension' in record:
+        slow = int(record.split()[-1])
+      elif 'X-Binary-Number-of-Elements' in record:
+        length = int(record.split()[-1])
+      elif 'X-Binary-Size:' in record:
+        size = int(record.split()[-1])
+
+    assert(length == fast * slow)
+
+    pixel_values = uncompress(packed = data[data_offset:data_offset + size],
+                              fast = fast, slow = slow)
+
+    return pixel_values
+
+  def get_raw_data(self):
+    if self._raw_data is None:
+      data = self.read_cbf_image(self._image_file)
+      self._raw_data = data
+
+    return self._raw_data
+
 
 if __name__ == '__main__':
 
