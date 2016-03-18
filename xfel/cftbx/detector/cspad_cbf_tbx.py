@@ -53,18 +53,16 @@ def center(coords):
 
 class basis(object):
   """ Bucket for detector element information """
-  def __init__(self, orientation = None, translation = None, panelgroup = None):
-    if orientation is None or translation is None:
-      """
-      Provide only orientation + translation or a panelgroup
+  def __init__(self, orientation = None, translation = None, panelgroup = None, homogenous_transformation = None):
+    """
+    Provide only orientation + translation or a panelgroup
 
-      @param orientation rotation in the form of a quarternion
-      @param translation vector translation in relation to the parent frame
-      @param panelgroup dxtbx panelgroup object whose local d matrix will represent the
-      basis shift
-      """
-      assert orientation is None and translation is None
-
+    @param orientation rotation in the form of a quarternion
+    @param translation vector translation in relation to the parent frame
+    @param panelgroup dxtbx panelgroup object whose local d matrix will represent the
+    basis shift
+    """
+    if panelgroup is not None:
       d_mat = panelgroup.get_local_d_matrix()
       fast = matrix.col((d_mat[0],d_mat[3],d_mat[6])).normalize()
       slow = matrix.col((d_mat[1],d_mat[4],d_mat[7])).normalize()
@@ -79,10 +77,21 @@ class basis(object):
       self.orientation = r3.r3_rotation_matrix_as_unit_quaternion()
       self.translation = orig
 
-    else:
-      assert panelgroup is None
+    if orientation is not None or translation is not None:
+      assert orientation is not None and translation is not None
       self.orientation = orientation
       self.translation = translation
+
+    else:
+      # Decompose the homegenous transformation assuming no scale factors were used
+      h = homogenous_transformation
+      self.orientation = matrix.sqr((h[0],h[1],h[2],
+                                     h[4],h[5],h[6],
+                                     h[8],h[9],h[10])).r3_rotation_matrix_as_unit_quaternion()
+      self.translation = matrix.col((h[3],
+                                     h[7],
+                                     h[11]))
+      assert h[12] == h[13] == h[14] == 0 and h[15] == 1
 
   def as_homogenous_transformation(self):
     """ Returns this basis change as a 4x4 transformation matrix in homogenous coordinates"""
@@ -92,8 +101,12 @@ class basis(object):
                        r3[6],r3[7],r3[8],self.translation[2],
                        0,0,0,1))
 
+  def __mul__(self, other):
+    """ Use homogenous matrices to multiply bases together """
+    return basis(homogenous_transformation = self.as_homogenous_transformation() * other.as_homogenous_transformation())
+
 def read_slac_metrology(path = None, geometry = None, plot=False):
-  def basis_from_geo(geo):
+  def basis_from_geo(geo, use_z = True):
     rotx = matrix.col((1,0,0)).axis_and_angle_as_r3_rotation_matrix(
       geo.rot_x + geo.tilt_x, deg=True)
     roty = matrix.col((0,1,0)).axis_and_angle_as_r3_rotation_matrix(
@@ -103,8 +116,12 @@ def read_slac_metrology(path = None, geometry = None, plot=False):
 
     rot = (rotx*roty*rotz).r3_rotation_matrix_as_unit_quaternion()
 
-    return basis(orientation = rot,
-                 translation = matrix.col((geo.x0/1000, geo.y0/1000, geo.z0/1000)))
+    if use_z:
+      trans = matrix.col((geo.x0/1000, geo.y0/1000, geo.z0/1000))
+    else:
+      trans = matrix.col((geo.x0/1000, geo.y0/1000, 0))
+
+    return basis(orientation = rot, translation = trans)
 
   if path is None and geometry is None:
     raise Sorry("Need to provide a geometry object or a path to a geometry file")
@@ -123,13 +140,16 @@ def read_slac_metrology(path = None, geometry = None, plot=False):
   pixel_size = geometry.get_pixel_scale_size()/1000
   null_ori = matrix.col((0,0,1)).axis_and_angle_as_unit_quaternion(0, deg=True)
 
+  # collapse any transformations above those of the quadrants into one X/Y offset,
+  # but don't keep Z transformations, as those come from the XTC stream
   root = geometry.get_top_geo()
+  root_basis = basis_from_geo(root, use_z=False)
   while len(root.get_list_of_children()) != 4 and len(root.get_list_of_children()) != 32:
     assert len(root.get_list_of_children()) == 1
     root = root.get_list_of_children()[0]
+    root_basis *= basis_from_geo(root, use_z=False)
 
-  #metro[(0,)] = basis_from_geo(root) # don't use any offsets or orientations from root, as we provide our own
-  metro[(0,)] = basis(orientation = null_ori, translation = matrix.col((0,0,0)))
+  metro[(0,)] = root_basis
 
   def add_sensor(quad_id, sensor_id, sensor):
     metro[(0,quad_id,sensor_id)] = basis_from_geo(sensor)
