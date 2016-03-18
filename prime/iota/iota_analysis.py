@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 02/24/2016
+Last Changed: 02/25/2016
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes unit cell analysis by hierarchical clustering
               (Zeldin, et al., Acta Cryst D, 2013). In case of multiple clusters
@@ -82,13 +82,24 @@ class Analyzer(object):
     fig, ax = plt.subplots()
     fig.canvas.draw()
     heatmap = plt.pcolor(hm_data, cmap='Reds')
-    plt.colorbar()
+    #plt.colorbar()  # Color bar not necessary with all cells annotated
     ax.set_yticks(np.arange(len(rows))+.5, minor=False)
     ax.set_xticks(np.arange(len(cols))+.5, minor=False)
     ax.set_yticklabels(row_labels, minor=False)
     ax.set_xticklabels(col_labels, minor=False)
     ax.set_xlabel('Spot area')
     ax.set_ylabel('Spot height')
+
+    plt.gca().set_xlim(0, len(cols))
+    plt.gca().set_ylim(0, len(rows))
+
+    # Annotate
+    for y in range(hm_data.shape[0]):
+        for x in range(hm_data.shape[1]):
+            plt.text(x + 0.5, y + 0.5, '%3d' % hm_data[y, x],
+                     horizontalalignment='center',
+                     verticalalignment='center',
+                     )
 
     if self.args.analyze == None:
       fig.savefig(os.path.join(self.output_dir, 'visualization/heatmap.pdf'),
@@ -271,7 +282,7 @@ class Analyzer(object):
     else:
       uc_table = []
       uc_summary = []
-      counter = 1
+      counter = 0
 
       # run hierarchical clustering analysis
       ucs = Cluster.from_files(self.pickles, use_b=True)
@@ -367,14 +378,27 @@ class Analyzer(object):
     summary.append('raw images with diffraction:         {}'\
                    ''.format(len(diff_objects)))
 
-    not_int_objects = [i for i in self.all_objects if i.fail == 'failed grid search']
-    summary.append('raw images not integrated:           {}'\
-                   ''.format(len(not_int_objects)))
-
     if self.params.advanced.integrate_with == 'cctbx':
+      not_int_objects = [i for i in self.all_objects if i.fail == 'failed grid search']
+      summary.append('failed indexing / integration:       {}'\
+                     ''.format(len(not_int_objects)))
+
       prefilter_fail_objects = [i for i in self.all_objects if i.fail == 'failed prefilter']
-      summary.append('images failed prefilter:             {}'\
+      summary.append('failed prefilter:                    {}'\
                      ''.format(len(prefilter_fail_objects)))
+
+    elif self.params.advanced.integrate_with == 'dials':
+      not_spf_objects = [i for i in self.all_objects if i.fail == 'failed spotfinding']
+      summary.append('failed spotfinding:                  {}'\
+                     ''.format(len(not_spf_objects)))
+
+      not_ind_objects = [i for i in self.all_objects if i.fail == 'failed indexing']
+      summary.append('failed indexing:                     {}'\
+                     ''.format(len(not_ind_objects)))
+
+      not_int_objects = [i for i in self.all_objects if i.fail == 'failed integration']
+      summary.append('failed integration:                  {}'\
+                     ''.format(len(not_int_objects)))
 
     final_images = sorted(self.final_objects, key=lambda i: i.final['mos'])
     summary.append('final integrated pickles:            {}'\
@@ -391,7 +415,9 @@ class Analyzer(object):
 
       input_list_file = os.path.join(self.output_dir, 'input_images.lst')
       blank_images_file = os.path.join(self.output_dir, 'blank_images.lst')
-      prefilter_fail_file = os.path.join(self.output_dir, 'failed_prefilter.lst')
+      prefilter_fail_file = os.path.join(self.output_dir, 'failed_cctbx_prefilter.lst')
+      spotfinding_fail_file = os.path.join(self.output_dir, 'failed_dials_spotfinding.lst')
+      indexing_fail_file = os.path.join(self.output_dir, 'failed_dials_indexing.lst')
       not_integrated_file = os.path.join(self.output_dir, 'not_integrated.lst')
       integrated_file = os.path.join(self.output_dir, 'integrated.lst')
       int_images_file = os.path.join(self.output_dir, 'int_image_pickles.lst')
@@ -418,6 +444,16 @@ class Analyzer(object):
         with open(prefilter_fail_file, 'w') as pff:
           for obj in prefilter_fail_objects:
             pff.write('{}\n'.format(obj.conv_img))
+
+      if self.params.advanced.integrate_with == 'dials':
+        if len(not_spf_objects) > 0:
+          with open(spotfinding_fail_file, 'w') as sff:
+            for obj in not_spf_objects:
+              sff.write('{}\n'.format(obj.conv_img))
+        if len(not_ind_objects) > 0:
+          with open(indexing_fail_file, 'w') as iff:
+            for obj in not_ind_objects:
+              iff.write('{}\n'.format(obj.conv_img))
 
       if len(self.final_objects) > 0:
         with open(integrated_file, 'w') as intf:

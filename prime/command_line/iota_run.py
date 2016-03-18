@@ -4,11 +4,11 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 02/24/2016
-Description : IOTA command-line module. Version 2.31
+Last Changed: 03/17/2016
+Description : IOTA command-line module. Version 2.32
 '''
 
-iota_version = '2.31'
+iota_version = '2.32'
 help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 
@@ -114,7 +114,7 @@ if __name__ == "__main__":
                     "".format(len(acc_img_objects), len(img_objects)))
 
     # Exit if none of the images have diffraction
-    if init.params.image_triage.flag_on:
+    if str(init.params.image_triage.type).lower() != 'none':
       if len(acc_img_objects) == 0:
         misc.main_log(init.logfile, 'No images have diffraction!', True)
         misc.iota_exit(iota_version)
@@ -136,11 +136,6 @@ if __name__ == "__main__":
                              processes = init.params.n_processors)
   cmd.Command.end("Processing {} images -- DONE ".format(len(img_objects)))
 
-
-  # DIALS TESTING SWITCH
-  #if init.params.advanced.integrate_with == 'dials':
-  #  print '\n DIALS trial finished, exiting... \n'
-  #  misc.iota_exit(iota_version)
 
   # Analysis of integration results
   final_objects = [i for i in img_objects if i.fail == None]

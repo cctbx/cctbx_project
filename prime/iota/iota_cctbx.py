@@ -14,6 +14,9 @@ import sys
 import uuid
 import numpy as np
 
+import spotfinder
+from spotfinder.array_family import flex
+
 import iota_vis_integration as viz
 import prime.iota.iota_misc as misc
 from libtbx import easy_pickle, easy_run
@@ -30,16 +33,30 @@ class Triage(object):
                img,
                gain,  # Currently not used by DISTL, how awkward!
                params):
+
     self.img = img
     self.params = params
+
+  def run_distl(self, params):
+    """ Performs a quick DISTL spotfinding and returns Bragg spots information.
+    """
+    from spotfinder.applications import signal_strength
+
+    # run DISTL spotfinder
+    with misc.Capturing() as distl_output:
+      Org = signal_strength.run_signal_strength(params)
+
+    # Extract relevant spotfinding info
+    for frame in Org.S.images.keys():
+      saturation = Org.Files.imageindex(frame).saturation
+      Bragg_spots = [flex.sum(spot.wts) for spot in Org.S.images[frame]['inlier_spots']]
+
+    return Bragg_spots
 
   def triage_image(self):
     """ Performs a quick DISTL spotfinding without grid search.
     """
-
-    import spotfinder
     from spotfinder.command_line.signal_strength import master_params as sf_params
-    from spotfinder.applications.wrappers import DistlOrganizer
 
     sf_params = sf_params.extract()
     sf_params.distl.image = self.img
@@ -48,35 +65,81 @@ class Triage(object):
     E.argv=['Empty']
     E.argv.append(sf_params.distl.image)
 
-    selected_output = []
-    total_output = []
-    bragg_spots = []
-    spotfinding_log = ['{}\n'.format(self.img)]
+    log_info = ['{}\n'.format(self.img)]
+    img_filename = os.path.basename(self.img)
 
-    # set spotfinding parameters for DISTL spotfinder
-    sf_params.distl.minimum_spot_area = self.params.cctbx.grid_search.area_median
-    sf_params.distl.minimum_spot_height = self.params.cctbx.grid_search.height_median
-    sf_params.distl.minimum_signal_height = int(self.params.cctbx.grid_search.height_median / 2)
+    # Perform spotfinding
+    # ... using spotfinding grid search
+    if self.params.image_triage.type == 'grid_search':
+      log_info.append('\n CCTBX TRIAGE grid search:')
+      # Determine grid search extent
+      a_min = self.params.image_triage.grid_search.area_min
+      a_max = self.params.image_triage.grid_search.area_max
+      a_step = (a_max - a_min) // self.params.image_triage.grid_search.step_size
+      h_min = self.params.image_triage.grid_search.height_min
+      h_max = self.params.image_triage.grid_search.height_max
+      h_step = (h_max - h_min) // self.params.image_triage.grid_search.step_size
 
-    # run DISTL spotfinder
-    with misc.Capturing() as junk_output:
-      Org = DistlOrganizer(verbose = False, argument_module=E,
-                           phil_params=sf_params)
+      # Cycle through grid points
+      spotlist = []
+      for spa in range(a_min, a_max + 1, a_step):
+        for sph in range(h_min, h_max + 1, h_step):
+          sf_params.distl.minimum_spot_area = spa
+          sf_params.distl.minimum_spot_height = sph
+          sf_params.distl.minimum_signal_height = sph
 
-      Org.printSpots()
+          # Perform spotfinding
+          Bragg_spots = self.run_distl(sf_params)
+          N_Bragg_spots = len(Bragg_spots)
 
-    # Extract relevant spotfinding info & make selection
-    for frame in Org.S.images.keys():
-      Bragg_spots = Org.S.images[frame]['N_spots_inlier']
+          if N_Bragg_spots > 0:
+            total_intensity = flex.sum(flex.double(Bragg_spots))
+          else:
+            total_intensity = 0
 
-    if Bragg_spots >= self.params.image_triage.min_Bragg_peaks:
-      log_info = 'ACCEPTED! {} good Bragg peaks'.format(Bragg_spots)
+          spotlist.append({'bragg':N_Bragg_spots, 'ti':total_intensity,
+                           'spa':spa, 'sph':sph})
+          log_info.append('{:<{w}}: H = {:<2}, A = {:<2}, Bragg = {:<6.0f}  '\
+                          'total intensity = {:<12.4f}'.format(img_filename, sph, spa,
+                          N_Bragg_spots, total_intensity, w = len(img_filename)))
+
+      # Pick best spotfinding result (highest total intensity seems to work for now
+      pick = sorted(spotlist, key = lambda j: j['ti'])[-1]
+      N_Bragg_spots = pick['bragg']
+      start_sph = pick['sph']
+      start_sih = pick['sph']
+      start_spa = pick['spa']
+
+    # ... using spotfinding without grid search
+    else:
+      # Set spotfinding params
+      sf_params.distl.minimum_spot_area = self.params.cctbx.grid_search.area_median
+      sf_params.distl.minimum_spot_height = self.params.cctbx.grid_search.height_median
+      sf_params.distl.minimum_signal_height = self.params.cctbx.grid_search.height_median
+
+      # Perform spotfinding
+      Bragg_spots = self.run_distl(sf_params)
+
+      # Extract spotfinding results
+      N_Bragg_spots = len(Bragg_spots)
+      start_sph = self.params.cctbx.grid_search.height_median
+      start_sih = self.params.cctbx.grid_search.height_median
+      start_spa = self.params.cctbx.grid_search.area_median
+
+    # Determine triage success
+    if N_Bragg_spots >= self.params.image_triage.min_Bragg_peaks:
+      log_info.append('ACCEPTED! Selected starting point:')
+      log_info.append('{:<{w}}: S = {:<2}, H = {:<2}, A = {:<2}, Bragg = {:<6.0f}'\
+                      ''.format(img_filename, start_sih, start_sph, start_spa,
+                                N_Bragg_spots, w = len(img_filename)))
       status = None
     else:
-      log_info = 'REJECTED!'
+      log_info.append('REJECTED!')
       status = 'failed triage'
 
-    return status, log_info
+    log_entry = "\n".join(log_info)
+
+    return status, log_entry, start_sph, start_spa
 
 
 class Integrator(object):

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 02/24/2016
+Last Changed: 03/15/2016
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -27,11 +27,6 @@ input = None
   .multiple = True
   .help = Path to folder with raw data in pickle format, list of files or single file
   .help = Can be a tree with folders
-  .optional = False
-target = target.phil
-  .type = str
-  .multiple = False
-  .help = Target (.phil) file with integration parameters
   .optional = False
 image_conversion
   .help = Parameters for raw image conversion to pickle format
@@ -64,16 +59,39 @@ image_conversion
 image_triage
   .help = Check if images have diffraction using basic spotfinding (-t option)
 {
-  flag_on = True
-    .type = bool
-    .help = Set to true to activate
+  type = None *simple grid_search
+    .type = choice
+    .help = Set to None to attempt integrating all images
   min_Bragg_peaks = 10
     .type = int
     .help = Minimum number of Bragg peaks to establish diffraction
+  grid_search
+    .help = "Parameters for the grid search."
+  {
+    area_min = 6
+      .type = int
+      .help = Minimal spot area.
+    area_max = 24
+      .type = int
+      .help = Maximal spot area.
+    height_min = 2
+      .type = int
+      .help = Minimal spot height.
+    height_max = 20
+      .type = int
+      .help = Maximal spot height.
+    step_size = 4
+      .type = int
+      .help = Grid search step size
+  }
 }
 cctbx
   .help = Options for CCTBX-based image processing
 {
+  target = cctbx.phil
+    .type = str
+    .multiple = False
+    .help = Target (.phil) file with integration parameters
   grid_search
     .help = "Parameters for the grid search."
   {
@@ -144,7 +162,7 @@ dials
   .help = Options for DIALS-based image processing
   .help = This option is not yet ready for general use!
 {
-  target = None
+  target = dials.phil
     .type = str
     .multiple = False
     .help = Target (.phil) file with integration parameters for DIALS
@@ -288,6 +306,12 @@ def process_input(args,
   if args.select:
     params.cctbx.selection.select_only.flag_on = True
 
+  # Check if grid search is turned off; if so, set everything to zero
+  if str(params.cctbx.grid_search.type).lower() == 'none':
+    params.cctbx.grid_search.area_range = 0
+    params.cctbx.grid_search.height_range = 0
+    params.cctbx.grid_search.sig_height_search = False
+
   final_phil = master_phil.format(python_object=params)
 
   temp_phil = [final_phil]
@@ -305,60 +329,110 @@ def process_input(args,
     txt_out = ''
     for one_output in diff_output:
       txt_out += one_output + '\n'
-    write_defaults(os.path.abspath(os.curdir), txt_out)
+    write_defaults(os.path.abspath(os.curdir), txt_out, params.advanced.integrate_with)
 
   return params, diff_out
 
 
-def write_defaults(current_path, txt_out):
-  """ Generates list of default parameters for a reasonable target file
-      (target.phil), which will be created in the folder from which IOTA is
-      being run. Also writes out the IOTA parameter file.
+def write_defaults(current_path, txt_out, method='cctbx'):
+  """ Generates list of default parameters for a reasonable target file:
+        - if cctbx.xfel, target.phil will be created in the folder from which IOTA is
+          being run.
+        - if DIALS, dials.phil will be created in the folder from which IOTA is being run.
+        - also writes out the IOTA parameter file.
 
       input: current_path - absolute path to current folder
              txt_out - IOTA parameters in text format
   """
 
-  def_target_file = '{}/target.phil'.format(current_path)
-  default_target = ['# -*- mode: conf -*-',
-                    '# target_cell = 79.4 79.4 38.1 90 90 90  # insert your own target unit cell if known',
-                    '# known_setting = 9                      # Triclinic = 1, monoclinic = 2,',
-                    '                                         # orthorhombic/rhombohedral = 5, tetragonal = 9,',
-                    '                                         # hexagonal = 12, cubic = 22,',
-                    '# target_cell_centring_type = *P C I R F',
-                    'difflimit_sigma_cutoff = 0.01',
-                    'force_method2_resolution_limit = 2.5',
-                    'distl_highres_limit = 2.5',
-                    'distl_lowres_limit=50.0',
-                    'distl{',
-                    '  res.outer=2.5',
-                    '  res.inner=50.0',
-                    '  peak_intensity_maximum_factor=1000',
-                    '  spot_area_maximum_factor=20',
-                    '  compactness_filter=False',
-                    '  method2_cutoff_percentage=2.5',
-                    '}',
-                    'integration {',
-                    '  background_factor=2',
-                    '  enable_one_to_one_safeguard=True',
-                    '  model=user_supplied',
-                    '  spotfinder_subset=spots_non-ice',
-                    '  mask_pixel_value=-2',
-                    '  greedy_integration_limit=True',
-                    '  combine_sym_constraints_and_3D_target=True',
-                    '  spot_prediction=dials',
-                    '  guard_width_sq=4.',
-                    '  mosaic {',
-                    '    refinement_target=*LSQ ML',
-                    '    domain_size_lower_limit=4.',
-                    '    enable_rotational_target_highsym=False',
-                    '  }',
-                    '}',
-                    'mosaicity_limit=2.0',
-                    'distl_minimum_number_spots_for_indexing=16',
-                    'distl_permit_binning=False',
-                    'beam_search_scope=0.5'
-                    ]
+  if method == 'cctbx':
+    def_target_file = '{}/cctbx.phil'.format(current_path)
+    default_target = ['# -*- mode: conf -*-',
+                      '# target_cell = 79.4 79.4 38.1 90 90 90  # insert your own target unit cell if known',
+                      '# known_setting = 9                      # Triclinic = 1, monoclinic = 2,',
+                      '                                         # orthorhombic/rhombohedral = 5, tetragonal = 9,',
+                      '                                         # hexagonal = 12, cubic = 22,',
+                      '# target_cell_centring_type = *P C I R F',
+                      'difflimit_sigma_cutoff = 0.01',
+                      'force_method2_resolution_limit = 2.5',
+                      'distl_highres_limit = 2.5',
+                      'distl_lowres_limit=50.0',
+                      'distl{',
+                      '  res.outer=2.5',
+                      '  res.inner=50.0',
+                      '  peak_intensity_maximum_factor=1000',
+                      '  spot_area_maximum_factor=20',
+                      '  compactness_filter=False',
+                      '  method2_cutoff_percentage=2.5',
+                      '}',
+                      'integration {',
+                      '  background_factor=2',
+                      '  enable_one_to_one_safeguard=True',
+                      '  model=user_supplied',
+                      '  spotfinder_subset=spots_non-ice',
+                      '  mask_pixel_value=-2',
+                      '  greedy_integration_limit=True',
+                      '  combine_sym_constraints_and_3D_target=True',
+                      '  spot_prediction=dials',
+                      '  guard_width_sq=4.',
+                      '  mosaic {',
+                      '    refinement_target=*LSQ ML',
+                      '    domain_size_lower_limit=4.',
+                      '    enable_rotational_target_highsym=False',
+                      '  }',
+                      '}',
+                      'mosaicity_limit=2.0',
+                      'distl_minimum_number_spots_for_indexing=16',
+                      'distl_permit_binning=False',
+                      'beam_search_scope=0.5'
+                      ]
+  elif method == 'dials':
+    def_target_file = '{}/dials.phil'.format(current_path)
+    default_target = ['verbosity=10',
+                      'indexing {',
+                      '  known_symmetry {',
+                      '    space_group = None',
+                      '    unit_cell = None',
+                      '  }',
+                      '  method=fft1d',
+                      '  #method=real_space_grid_search',
+                      '  refinement_protocol.n_macro_cycles = 1',
+                      '  refinement_protocol.d_min_start=2.5',
+                      '  #basis_vector_combinations.max_try=10',
+                      '}',
+                      'refinement {',
+                      '  parameterisation {',
+                      '    beam.fix=all',
+                      '    detector.hierarchy_level=0',
+                      '    auto_reduction {',
+                      '      action=fix',
+                      '      min_nref_per_parameter=1',
+                      '    }',
+                      '  }',
+                      '  reflections {',
+                      '    outlier.algorithm=null',
+                      '    weighting_strategy.override=stills',
+                      '    weighting_strategy.delpsi_constant=1000000',
+                      '  }',
+                      '}',
+                      'integration {',
+                      '  integrator=stills',
+                      '  profile.fitting=False',
+                      '  background {',
+                      '    simple {',
+                      '      outlier {',
+                      '        algorithm = null',
+                      '      }',
+                      '    }',
+                      '  }',
+                      '}',
+                      'profile {',
+                      '  gaussian_rs {',
+                      '    min_spots.overall = 0',
+                      '  }',
+                      '}'
+                      ]
+
   with open(def_target_file, 'w') as targ:
     for line in default_target:
       targ.write('{}\n'.format(line))
@@ -366,8 +440,8 @@ def write_defaults(current_path, txt_out):
   with open('{}/iota.param'.format(current_path), 'w') as default_settings_file:
     default_settings_file.write(txt_out)
 
-
 def print_params():
+  """ Print out master parameters for IOTA """
 
   #capture input read out by phil
   with Capturing() as output:

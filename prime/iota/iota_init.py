@@ -36,7 +36,7 @@ def parse_command_args(iver, help_message):
   parser.add_argument('-c', '--convert', action = 'store_true',
             help = 'Convert raw images to pickles and stop')
   parser.add_argument('-d', '--default', action = 'store_true',
-            help = 'Generate default iota.param and target.phil files and stop')
+            help = 'Generate default settings files and stop')
   parser.add_argument('-p', '--prefix', type=str, default="Auto",
             help = 'Specify custom prefix for converted pickles')
   parser.add_argument('-s', '--select', action = 'store_true',
@@ -338,10 +338,14 @@ class InitAll(object):
     misc.main_log(self.logfile, '{:-^100} \n'.format(' SETTINGS FOR THIS RUN '))
     misc.main_log(self.logfile, self.txt_out)
 
+    if self.params.advanced.integrate_with == 'cctbx':
+      target_file = self.params.cctbx.target
+    elif self.params.advanced.integrate_with == 'dials':
+      target_file = self.params.dials.target
     misc.main_log(self.logfile, '{:-^100} \n\n'
                                 ''.format(' TARGET FILE ({}) CONTENTS '
-                                ''.format(self.params.target)))
-    with open(self.params.target, 'r') as phil_file:
+                                ''.format(target_file)))
+    with open(target_file, 'r') as phil_file:
       phil_file_contents = phil_file.read()
     misc.main_log(self.logfile, phil_file_contents)
 

@@ -4,11 +4,11 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 02/24/2016
-Description : Single-image IOTA module. Version 2.31
+Last Changed: 02/25/2016
+Description : Single-image IOTA module. Version 2.32
 '''
 
-iota_version = '2.31'
+iota_version = '2.32'
 help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 
