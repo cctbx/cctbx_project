@@ -55,12 +55,14 @@ class basis(object):
   """ Bucket for detector element information """
   def __init__(self, orientation = None, translation = None, panelgroup = None, homogenous_transformation = None):
     """
-    Provide only orientation + translation or a panelgroup
+    Provide only orientation + translation or a panelgroup or a homogenous_transformation.
 
     @param orientation rotation in the form of a quarternion
     @param translation vector translation in relation to the parent frame
     @param panelgroup dxtbx panelgroup object whose local d matrix will represent the
     basis shift
+    @param homogenous_transformation 4x4 matrix.sqr object representing a translation
+    and a rotation. Must not also contain a scale as this won't be decomposed properly.
     """
     if panelgroup is not None:
       d_mat = panelgroup.get_local_d_matrix()
