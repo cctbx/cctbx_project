@@ -83,11 +83,11 @@ standard_file_descriptions = {
   'rosetta' : "Rosetta fragments",
 }
 
-supported_file_types = ["pdb","hkl","cif","pkl","ncs","seq","phil", 
+supported_file_types = ["pdb","hkl","cif","pkl","ncs","seq","phil",
   "aln", "txt", "xplor_map", "ccp4_map"]
 
 binary_types = ["hkl","ccp4_map","img","pkl"]
-ascii_types = ["hkl","xplor_map","pdb","cif","phil","hhr", "ncs", "aln", 
+ascii_types = ["hkl","xplor_map","pdb","cif","phil","hhr", "ncs", "aln",
    "seq", "xml", "txt"]
 
 def get_wildcard_string (format) :
@@ -469,7 +469,7 @@ class any_file_input (object) :
     except Exception,e: # try as regular ncs object
       ncs_object.read_ncs(file_name=self.file_name,log=sys.stdout,quiet=True)
     assert ncs_object.max_operators() > 0
-    self._file_object = ncs_object 
+    self._file_object = ncs_object
     self._file_type = "ncs"
 
   def try_all_types (self) :
