@@ -466,11 +466,15 @@ class InMemScript(DialsProcessScript):
       if self.params.format.cbf.common_mode.algorithm == "default":
         data = self.psana_det.calib(evt) # applies psana's complex run-dependent calibrations
       elif self.params.format.cbf.common_mode.algorithm is None:
-        data = self.psana_det.raw_data(evt) - self.pedestal
+        data = self.psana_det.raw_data(evt)
+        if data is not None:
+          data -= self.pedestal
       else:
         assert self.params.format.cbf.common_mode.algorithm == "custom" and self.params.format.cbf.common_mode.custom_parameterization is not None
-        data = self.psana_det.raw_data(evt) - self.pedestal
-        self.psana_det.common_mode_apply(evt.run(), data, self.params.format.cbf.common_mode.custom_parameterization)
+        data = self.psana_det.raw_data(evt)
+        if data is not None:
+          data -= self.pedestal
+          self.psana_det.common_mode_apply(evt.run(), data, self.params.format.cbf.common_mode.custom_parameterization)
       if data is None:
         print "No data"
         self.debug_file_handle.write(",no_data\n")
