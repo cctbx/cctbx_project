@@ -78,7 +78,41 @@ class GeometryAccessFromCspadCBF(GeometryAccess):
     for q, quad in enumerate(hierarchy):
       self.list_of_geos.append(self._load_geo(0,"CSPAD:V1",q,"QUAD:V1",quad))
 
+    # Add placeholder RAIL and IP vectors, including the XY component of the hierarchy's d0 vector
+    go = self._load_geo(0,'RAIL',0,'CSPAD:V1',hierarchy)
+    go.move_geo(0,0,-go.z0+1000000) # Placeholder
+    self.list_of_geos.append(go)
+    self.list_of_geos.append(self._null_geo(0,"IP",0,"RAIL"))
+
     self._set_relations()
+
+  def _null_geo(self, pindex, pname, oindex, oname):
+    """ Get a GeometryObject whose frameshift is zero
+        @param pindex Index of the parent object
+        @param pname  Name of the parent object
+        @param oindex Index of the current object
+        @param oname  Name of the current object
+
+        @return an assembled GeometryObject
+    """
+
+    d = {
+      'pname' :pname,
+      'pindex':pindex,
+      'oname' :oname,
+      'oindex':oindex,
+      'x0':    0,
+      'y0':    0,
+      'z0':    0,
+      'rot_z': 0,
+      'rot_y': 0,
+      'rot_x': 0,
+      'tilt_z':0,
+      'tilt_y':0,
+      'tilt_x':0
+    }
+
+    return GeometryObject(**d)
 
   def _load_geo(self, pindex, pname, oindex, oname, group):
     """ Given a dxtbx panel group, assemble the appropiate GeometryObject
