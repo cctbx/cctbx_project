@@ -167,6 +167,11 @@ master_phil = iotbx.phil.parse("""
       .help = threshold to use in trim_map_to_density
       .short_caption = Density select threshold
 
+    value_outside_mask = 0.0
+      .type = float
+      .help = Value to assign to density outside masks
+      .short_caption = Value outside mask
+
     density_threshold = None
       .type = float
       .short_caption = Density threshold
@@ -767,6 +772,7 @@ def get_params(args,out=sys.stdout):
     map_file_def="input_files.map_file",
     seq_file_def="input_files.seq_file",
     pdb_file_def="input_files.pdb_in",
+    ncs_file_def="input_files.ncs_file",
     args=args,
     master_phil=master_phil)
 
@@ -2532,7 +2538,8 @@ def create_remaining_mask_and_map(params,
   map_data_remaining=map_data.deep_copy()
   s=(bool_all_used==True)
 
-  map_data_remaining=map_data_remaining.set_selected(s,-1.0)
+  map_data_remaining=map_data_remaining.set_selected(s,
+    params.segmentation.value_outside_mask)
   return map_data_remaining
 
 def get_lower(lower_bounds,lower):
@@ -2812,7 +2819,8 @@ def write_output_files(params,
   # Map
   map_data_ncs_au=map_data.deep_copy()
   s=(bool_selected_regions==True)
-  map_data_ncs_au=map_data_ncs_au.set_selected(~s,-1.0)
+  map_data_ncs_au=map_data_ncs_au.set_selected(~s,
+    params.segmentation.value_outside_mask)
 
   if au_map_output_file: # Write out the NCS au of density
     write_ccp4_map(tracking_data.crystal_symmetry,au_map_output_file,

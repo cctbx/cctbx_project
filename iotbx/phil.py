@@ -111,6 +111,7 @@ class process_command_line_with_files (object) :
                 cif_file_def=None,
                 seq_file_def=None,
                 pickle_file_def=None,
+                ncs_file_def=None,
                 directory_def=None,
                 integer_def=None,
                 float_def=None,
@@ -138,6 +139,7 @@ Full parameters:
     self.map_file_def = map_file_def
     self.seq_file_def = seq_file_def
     self.pickle_file_def = pickle_file_def
+    self.ncs_file_def = ncs_file_def
     self.directory_def = directory_def
     self.integer_def = integer_def
     self.float_def = float_def
@@ -186,6 +188,8 @@ Full parameters:
         file_def_name = self.cif_file_def
       elif (f.file_type == "seq") and (self.seq_file_def is not None) :
         file_def_name = self.seq_file_def
+      elif (f.file_type == "ncs") and (self.ncs_file_def is not None) :
+        file_def_name = self.ncs_file_def
       elif (f.file_type == "pkl") and (self.pickle_file_def is not None) :
         file_def_name = self.pickle_file_def
       if (file_def_name is not None) :

@@ -202,6 +202,72 @@ unit_cell = None
   hkl_in = any_file(params.data, force_type="hkl")
   ma = hkl_in.file_server.miller_arrays[0]
   assert ma.is_xray_amplitude_array()
+
+  open("tst_iotbx_phil.ncs", "w").write("""
+REMARK 350   BIOMT1   1  1.000000  0.000000  0.000000        0.00000
+REMARK 350   BIOMT2   1  0.000000  1.000000  0.000000        0.00000
+REMARK 350   BIOMT3   1  0.000000  0.000000  1.000000        0.00000
+REMARK 350   BIOMT1   2  0.623490  0.781831  0.000000        0.00000
+REMARK 350   BIOMT2   2 -0.781831  0.623490  0.000000        0.00000
+REMARK 350   BIOMT3   2  0.000000  0.000000  1.000000        0.00000
+
+""")
+  master_phil_str = """
+ncs_file = None
+  .type = path
+"""
+  pcl = iotbx.phil.process_command_line_with_files(
+    args=[
+      "tst_iotbx_phil.ncs",
+    ],
+    master_phil_string=master_phil_str,
+    ncs_file_def="ncs_file")
+  params = pcl.work.extract()
+  assert (os.path.split(str(params.ncs_file))[-1] == "tst_iotbx_phil.ncs")
+
+
+  open("tst_iotbx_phil.ncs_spec", "w").write("""
+Summary of NCS information
+Wed Mar 16 15:02:22 2016
+/Users/terwill/Desktop/working/Jan_2015/phenix/cryo-pdb/3j9c/build
+
+source_info ncs_biomtr.ncs
+
+
+
+
+new_ncs_group
+new_operator
+
+rota_matrix    1.0000    0.0000    0.0000
+rota_matrix    0.0000    1.0000    0.0000
+rota_matrix    0.0000    0.0000    1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.6235   -0.7818    0.0000
+rota_matrix    0.7818    0.6235   -0.0000
+rota_matrix   -0.0000    0.0000    1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+""")
+  master_phil_str = """
+ncs_file = None
+  .type = path
+"""
+  pcl = iotbx.phil.process_command_line_with_files(
+    args=[
+      "tst_iotbx_phil.ncs_spec",
+    ],
+    master_phil_string=master_phil_str,
+    ncs_file_def="ncs_file")
+  params = pcl.work.extract()
+  assert (os.path.split(str(params.ncs_file))[-1] == "tst_iotbx_phil.ncs_spec")
+
+
+
   print "OK"
 
 if (__name__ == "__main__"):

@@ -34,7 +34,7 @@ import re
 import sys
 
 standard_file_types = ["hkl", "ccp4_map", "xplor_map", "pdb", "cif", "phil",
-  "hhr", "aln", "seq", "xml", "pkl", "txt",]
+  "hhr", "ncs", "aln", "seq", "xml", "pkl", "txt",]
 
 standard_file_extensions = {
   'pdb'  : ["pdb", "ent"],
@@ -51,6 +51,7 @@ standard_file_extensions = {
   'mtz'  : ["mtz"],
   'aln'  : ["aln", "ali", "clustal"],
   'hhr'  : ["hhr"],
+  'ncs'  : ["ncs","ncs_spec"],
   'img'  : ["img", "osc", "mccd", "cbf"],
   # XXX these are not supported by this module, but are used in Phenix, so we
   # need to be able to include them in GUI tools in wxtbx.
@@ -74,6 +75,7 @@ standard_file_descriptions = {
   'mtz'  : "Reflections (MTZ)",
   'aln'  : "Sequence alignment",
   'hhr'  : "HHpred alignment",
+  'ncs'  : "NCS information file",
   'img'  : "Detector image",
   # XXX see comment above
   'smi' : "SMILES",
@@ -81,12 +83,12 @@ standard_file_descriptions = {
   'rosetta' : "Rosetta fragments",
 }
 
-supported_file_types = ["pdb","hkl","cif","pkl","seq","phil", "aln", "txt",
-  "xplor_map", "ccp4_map"]
+supported_file_types = ["pdb","hkl","cif","pkl","ncs","seq","phil", 
+  "aln", "txt", "xplor_map", "ccp4_map"]
 
 binary_types = ["hkl","ccp4_map","img","pkl"]
-ascii_types = ["hkl","xplor_map","pdb","cif","phil","hhr", "aln", "seq", "xml",
-"txt"]
+ascii_types = ["hkl","xplor_map","pdb","cif","phil","hhr", "ncs", "aln", 
+   "seq", "xml", "txt"]
 
 def get_wildcard_string (format) :
   assert (format in standard_file_extensions), format
@@ -384,6 +386,10 @@ class any_file_input (object) :
   def _try_as_seq (self) :
     # XXX hack to avoid choking on CCP4 maps
     assert (not self.file_name.endswith(".ccp4"))
+    # XXX hack to avoid choking on NCS files:
+    assert (not self.file_name.endswith(".ncs"))
+    assert (not self.file_name.endswith(".ncs_spec"))
+
     from iotbx.bioinformatics import any_sequence_format
     objects, non_compliant = any_sequence_format(self.file_name)
     assert (objects is not None), "No sequence data found in file."
@@ -451,6 +457,20 @@ class any_file_input (object) :
     img.read()
     self._file_type = "img"
     self._file_object = img
+
+  def _try_as_ncs (self) :
+    from mmtbx.ncs.ncs import ncs
+    from libtbx.utils import null_out
+    ncs_object=ncs()
+    try: # see if we can read biomtr records
+      pdb_inp=iotbx.pdb.input(file_name=self.file_name)
+      ncs_object.ncs_from_pdb_input_BIOMT(pdb_inp=pdb_inp,log=null_out(),
+        quiet=True)
+    except Exception,e: # try as regular ncs object
+      ncs_object.read_ncs(file_name=self.file_name,log=sys.stdout,quiet=True)
+    assert ncs_object.max_operators() > 0
+    self._file_object = ncs_object 
+    self._file_type = "ncs"
 
   def try_all_types (self) :
     for filetype in self.valid_types :
