@@ -117,8 +117,12 @@ class info(object):
     self.r_all = fmodel.r_all()
     self.target_work = fmodel.target_w()
     self.target_free = fmodel.target_t()
-    self.target_work_no_norm = fmodel.target_w()*fmodel.f_calc_w().data().size()
-    self.target_free_no_norm = fmodel.target_t()*fmodel.f_calc_t().data().size()
+    self.target_work_no_norm = fmodel.target_w()
+    if(self.target_work_no_norm is not None):
+      self.target_work_no_norm *= fmodel.f_calc_w().data().size()
+    self.target_free_no_norm = fmodel.target_t()
+    if(self.target_free_no_norm is not None):
+      self.target_free_no_norm *= fmodel.f_calc_t().data().size()
     self.overall_scale_k1 = fmodel.scale_k1()
     self.number_of_test_reflections = fmodel.f_calc_t().data().size()
     self.number_of_work_reflections = fmodel.f_calc_w().data().size()
