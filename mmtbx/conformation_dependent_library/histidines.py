@@ -31,6 +31,7 @@ def update_restraints(hierarchy,
   def _set_or_reset_bond_restraints(geometry,
                                     lookup,
                                     ignore_esd=True,
+                                    log=None,
                                     verbose=False,
                                     ):
     count = 0
@@ -39,13 +40,25 @@ def update_restraints(hierarchy,
       bond=geometry.bond_params_table.lookup(*list(i_seqs))
       assert bond
       if verbose:
-        print " i_seqs %-15s initial %12.3f %12.3f final %12.3f %12.3f" % (
+        from math import sqrt
+        key = list(i_seqs)
+        key.append("names")
+        key = tuple(key)
+        names = lookup.get(key, "")
+        old_bond_ideal=bond.distance_ideal
+        old_bond_weight=bond.weight
+        print >> log, " i_seqs %-15s %s initial %8.3f %8.3f %8.3f final %8.3f %8.3f %8.3f" % (
           i_seqs,
+          names,
           bond.distance_ideal,
           bond.weight,
+          1/sqrt(bond.weight),
           values[0],
           1/values[1]**2,
+          values[1],
         )
+        if bond.distance_ideal!=old_bond_ideal or bond.weight!=old_bond_weight:
+          print >> log, 'RESETTING'
       bond.distance_ideal=values[0]
       if not ignore_esd:
         bond.weight = 1/values[1]**2
@@ -55,25 +68,31 @@ def update_restraints(hierarchy,
   def _set_or_reset_angle_restraints(geometry,
                                      lookup,
                                      ignore_esd=True,
+                                     log=None,
                                      verbose=False,
                                      ):
     count = 0
     for angle_proxy in geometry.angle_proxies:
       if angle_proxy.i_seqs in lookup:
-        if verbose: print " i_seqs %-15s initial %12.3f %12.3f" % (
-          angle_proxy.i_seqs,
-          angle_proxy.angle_ideal,
-          angle_proxy.weight,
-          ),
+        if verbose:
+          old_angle_ideal=angle_proxy.angle_ideal
+          old_angle_weight=angle_proxy.weight
+          print >> log, " i_seqs %-15s initial %12.3f %12.3f" % (
+            angle_proxy.i_seqs,
+            angle_proxy.angle_ideal,
+            angle_proxy.weight,
+            ),
         assert angle_proxy.angle_ideal<181
         angle_proxy.angle_ideal = lookup[angle_proxy.i_seqs][0]
         if not ignore_esd:
           angle_proxy.weight = esd_factor/lookup[angle_proxy.i_seqs][1]**2
-        if verbose: print "final   %12.3f %12.3f" % (
-          #angle_proxy.i_seqs,
-          angle_proxy.angle_ideal,
-          angle_proxy.weight,
+        if verbose:
+          print >> log, "final   %12.3f %12.3f" % (
+            angle_proxy.angle_ideal,
+            angle_proxy.weight,
           )
+          if old_angle_ideal!=angle_proxy.angle_ideal or old_angle_weight!=angle_proxy.weight:
+            print >> log, "RESETTING"
         count += 1
     return count
   #
@@ -120,25 +139,32 @@ def update_restraints(hierarchy,
           restraints = hpdl_database[protonation]
           for names, values in restraints.items():
             i_seqs = []
+            atoms = []
             for name in names:
               # need to test this...
               for atom in _alt_loc_atom_generator(residue_group, atom_group):
                 if name.strip()==atom.name.strip():
                   i_seqs.append(atom.i_seq)
+                  atoms.append(atom.name)
                   break
             if len(i_seqs)!=len(names): continue
             i_seqs_restraints[tuple(i_seqs)] = values
             if len(i_seqs)!=2:
               i_seqs.reverse()
               i_seqs_restraints[tuple(i_seqs)] = values
+            if verbose:
+              i_seqs.append("names")
+              i_seqs_restraints[tuple(i_seqs)]=atoms
 
   count_b = _set_or_reset_bond_restraints(geometry,
                                           i_seqs_restraints,
-                                          verbose=verbose,
+                                          log=log,
+                                          #verbose=verbose,
                                           )
   count_a = _set_or_reset_angle_restraints(geometry,
                                            i_seqs_restraints,
-                                           verbose=verbose,
+                                           log=log,
+                                           #verbose=verbose,
                                            )
   #
   print >> log, "    Number of bonds, angles adjusted : %d, %d in %s HIS" % (

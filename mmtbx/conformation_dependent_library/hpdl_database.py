@@ -69,6 +69,12 @@ def geometric_hydrogens():
     for angle in angles:
       for key, item in hpdl_database[protonation].items():
         if len(key)!=3: continue
+        has_h=False
+        for ta in angles:
+          if ta[0] in key:
+            has_h=True
+            break
+        if has_h: continue
         if angle[1]==key[1]:
           esd = item[1]
           na = (360-item[0])/2
@@ -96,17 +102,17 @@ def get_hpdl_database(include_hydrogens=True,
           factor=2
         if values[1]<limit:
           values[1] = limit
-        else:
-          values[1] *= factor
+        #else:
+        #  values[1] *= factor
   return hpdl_database
 
 def run(args):
   assert len(args) == 0
-  print hpdl_database["Only ND1 protonated"] #[("N", "CA", "C")]
+  print hpdl_database["Only ND1 protonated"]
   for res_type in sorted(hpdl_database):
     print res_type, len(hpdl_database[res_type])
   geometric_hydrogens()
-  print hpdl_database["Only ND1 protonated"] #[("N", "CA", "C")]
+  print hpdl_database["Only ND1 protonated"]
   for res_type in sorted(hpdl_database):
     print res_type, len(hpdl_database[res_type])
 
