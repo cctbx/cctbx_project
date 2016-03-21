@@ -61,6 +61,12 @@ def run(args, log=sys.stdout):
   if(inputs.ccp4_map is None): raise Sorry("Map file has to given.")
   inputs.ccp4_map.show_summary(prefix="  ")
   map_data = inputs.ccp4_map.map_data()
+  # shift origin if needed
+  shift_needed = not \
+    (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
+     map_data.is_0_based())
+  if(shift_needed):
+    map_data = map_data.shift_origin()
   # estimate resolution
   d_min = params.resolution
   broadcast(m="Map resolution:", log=log)
