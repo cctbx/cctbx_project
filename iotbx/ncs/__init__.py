@@ -295,7 +295,9 @@ done    7. Combine or remove entirely quiet and write_messages. If somebody does
     # error handling
     self.found_ncs_transforms = (len(self.transform_to_be_used) > 0)
     if self.found_ncs_transforms == 0:
-      print >> log,'No NCS relation were found !!!\n'
+      print >> log,'========== WARNING! ============\n'
+      print >> log,'  No NCS relation were found !!!\n'
+      print >> log,'================================\n'
     if self.messages != '':
       print >> log,self.messages
 
@@ -449,15 +451,15 @@ done    7. Combine or remove entirely quiet and write_messages. If somebody does
         # user's selection
         match_list = ncs_search.search_ncs_relations(
             chains_info=chain_info,
-            chain_similarity_threshold=0.5,
+            chain_similarity_threshold=min(self.chain_similarity_threshold, 0.5),
             )
         # print "match_list", match_list
         match_dict = ncs_search.clean_chain_matching(
             chain_match_list=match_list,
             ph = combined_h,
-            chain_max_rmsd=10.0,
-            residue_match_radius=1000.0,
-            chain_similarity_threshold=0.5,
+            chain_max_rmsd=max(self.chain_max_rmsd, 10.0),
+            residue_match_radius=max(self.residue_match_radius, 1000.0),
+            chain_similarity_threshold=min(self.chain_similarity_threshold, 0.5),
             )
         # print "="*80
         # print "="*80
