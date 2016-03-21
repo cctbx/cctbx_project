@@ -273,9 +273,6 @@ class reference_model(object):
         chain_similarity_threshold=search_options.chain_similarity_threshold,
         chain_max_rmsd=search_options.chain_max_rmsd,
         )
-    spec_obj = ncs_obj.get_ncs_info_as_spec()
-    ncs_groups_from_spec = spec_obj._ncs_groups
-
     # For each found NCS group we going to do matching procedure between
     # copies
     for group_list in ncs_obj.get_ncs_restraints_group_list(
@@ -312,7 +309,6 @@ class reference_model(object):
         # Reference model does not participate in particular found NCS copy.
         # If it is in another copy, that's fine.
         continue
-      ref_index=ref_indeces[0]
       for i in range(n_total_ncs_residue_groups):
         # Figuring out what is reference and what is model
         if i in ref_indeces:
@@ -320,7 +316,17 @@ class reference_model(object):
         a = ncs_residue_groups[i]
         for j in range(len_ncs_rg):
           model_rg = a[j]
-          reference_rg = ncs_residue_groups[ref_index][j]
+          # Here we want to be smarter and find more appropriate reference,
+          # in case A, Aref, B, Bref we want to match A-Aref, B-Bref
+          current_ref_index = ref_indeces[0]
+          if len(ref_indeces) > 1:
+            model_chain_id = model_rg.parent().id
+            for ri in ref_indeces:
+              ref_chain_id = ncs_residue_groups[ri][j].parent().id
+              if (ref_chain_id[:-3] == model_chain_id
+                  or ref_chain_id == model_chain_id):
+                current_ref_index = ri
+          reference_rg = ncs_residue_groups[current_ref_index][j]
           # Filling out self.residue_match_hash
           if reference_rg.parent().id > 2 and reference_rg.parent().id[-3:] == 'ref':
             reference_rg.parent().id = reference_rg.parent().id[:-3]
