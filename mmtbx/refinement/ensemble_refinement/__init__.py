@@ -1818,12 +1818,13 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
       processed_pdb_file, pdb_inp = \
       processed_pdb_files_srv.process_pdb_files(
         pdb_file_names = [pdb_file_removed_alt_confs])
+      hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
 
   d_min = f_obs.d_min()
   xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
     processed_pdb_file = processed_pdb_file,
     scattering_table   = "n_gaussian",
-    d_min               = d_min,
+    d_min              = d_min,
     log                = log)
   if(len(xsfppf.xray_structures) > 1):
     raise Sorry("Multiple models not supported.")
