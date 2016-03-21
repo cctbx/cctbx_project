@@ -206,8 +206,8 @@ class FormatCBFCspadInMemory(FormatCBFCspad):
 
   def __init__(self, cbf_handle):
     """ @param cbf_handle In memory cbf_handle, alredy initialized """
-    from dxtbx.model.detector import detector_factory
-    from dxtbx.model.beam import beam_factory
+    from dxtbx.model.detector import Detector, detector_factory
+    from dxtbx.model.beam import Beam, beam_factory
 
     self._goniometer_instance = None
     self._scan_instance = None
