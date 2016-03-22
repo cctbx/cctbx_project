@@ -326,8 +326,6 @@ class cablam_result(residue):
     "residue",
     "prevres",
     "nextres",
-    "alt",
-    "chain",
     "_outlier_i_seqs",
     "has_ca",
     "has_mc",
@@ -371,11 +369,11 @@ class cablam_result(residue):
     ##id_str = self.residue.id_str()
     ##| A  75 |
     ##chain = id_str[0:2]
-    chain = self.chain
+    chain = self.chain_id
     resnum = self.residue.resseq
     ins = self.residue.icode
-    resname = self.residue.resname
-    alt = self.alt
+    resname = self.resname
+    alt = self.altloc
     if alt == '':
       alt = ' '
     return chain + resnum + ins + alt + resname
@@ -390,7 +388,7 @@ class cablam_result(residue):
     #  c: 2-char Chain ID, space for none
     #  n: sequence number, right justified, space padded
     #  i: insertion code, space for none
-    chain = self.chain
+    chain = self.chain_id
     resnum = self.residue.resseq
     ins = self.residue.icode
     return chain + resnum + ins
@@ -529,7 +527,7 @@ class cablam_result(residue):
     #determines the category of the current residue so that it can be paired
     #  with the correct contours
     #these categories are: 'general', 'gly', 'transpro', 'cispro'
-    resname = self.residue.resname.upper()
+    resname = self.resname.upper()
     if resname == "GLY": return "gly"
     elif resname == "PRO":
       if self.measures.omega < 90 and self.measures.omega > -90:
@@ -737,7 +735,7 @@ class cablam_result(residue):
   #{{{ as_table_row_phenix
   #-----------------------------------------------------------------------------
   def as_table_row_phenix(self):
-    return [ self.chain,
+    return [ self.chain_id,
       "%s %s" % (self.resname, self.resid),
       self.find_single_outlier_type().strip(),
       self.scores.cablam,
@@ -827,8 +825,9 @@ class cablamalyze(validation):
               residue=residue,
               resseq=residue.resseq,
               icode=residue.icode,
-              alt=conf.altloc,
-              chain=chain_id,
+              altloc=conf.altloc,
+              chain_id=chain_id,
+              resname = residue.resname,
               #formatting note: residue.id_str() = 'pdbres="THR B 182 "'
               #chain=residue.id_str()[11:13],
               #residue.id_str() turned out to break on some segid formatting
@@ -986,7 +985,7 @@ class cablamalyze(validation):
       if len(chain.conf_names) == 0:
         for result_id in conf.results:
           result = conf.results[result_id]
-          result.alt = ''
+          result.altloc = ''
           #set self.results id
         continue #go to next chain
       #else, combine results into single list
@@ -1008,7 +1007,7 @@ class cablamalyze(validation):
               self.results.append(other_result)
               found_meaningful_alt = True
         if not found_meaningful_alt:
-          result.alt = ''
+          result.altloc = ''
           #set self.results id
           pass
   #-----------------------------------------------------------------------------
@@ -1240,13 +1239,13 @@ class cablamalyze(validation):
           return_record = secondary_structure.pdb_helix(
             serial = helix_i,
             helix_id = helix_i,
-            start_resname  = record.start.residue.resname,
-            start_chain_id = record.start.chain,
+            start_resname  = record.start.resname,
+            start_chain_id = record.start.chain_id,
             #start_chain_id = " A",
             start_resseq   = record.start.resseq,
             start_icode    = record.start.icode,
-            end_resname    = record.end.residue.resname,
-            end_chain_id   = record.end.chain,
+            end_resname    = record.end.resname,
+            end_chain_id   = record.end.chain_id,
             end_resseq     = record.end.resseq,
             end_icode      = record.end.icode,
             helix_class    = helix_class,
@@ -1258,12 +1257,12 @@ class cablamalyze(validation):
           strand_record = secondary_structure.pdb_strand(
             sheet_id       = sheet_i,
             strand_id      = 1,
-            start_resname  = record.start.residue.resname,
-            start_chain_id = record.start.chain,
+            start_resname  = record.start.resname,
+            start_chain_id = record.start.chain_id,
             start_resseq   = record.start.resseq,
             start_icode    = record.start.icode,
-            end_resname    = record.end.residue.resname,
-            end_chain_id   = record.end.chain,
+            end_resname    = record.end.resname,
+            end_chain_id   = record.end.chain_id,
             end_resseq     = record.end.resseq,
             end_icode      = record.end.icode,
             sense          = 1
@@ -1308,7 +1307,7 @@ class cablamalyze(validation):
     data = []
     for result in self.results:
       if result.is_outlier:
-        data.append((result.chain, result.resid, result.resname, result.scores.cablam, result.xyz))
+        data.append((result.chain_id, result.resid, result.resname, result.scores.cablam, result.xyz))
     return data
   #-----------------------------------------------------------------------------
   #}}}
