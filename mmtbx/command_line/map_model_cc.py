@@ -66,7 +66,16 @@ def run(args, log=sys.stdout):
     (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
      map_data.is_0_based())
   if(shift_needed):
+    N = map_data.all()
+    O=map_data.origin()
     map_data = map_data.shift_origin()
+    # apply same shift to the model
+    a,b,c = xrs.crystal_symmetry().unit_cell().parameters()[:3]
+    sites_cart = xrs.sites_cart()
+    sx,sy,sz = a/N[0]*O[0], b/N[1]*O[1], c/N[2]*O[2]
+    sites_cart_shifted = sites_cart-\
+      flex.vec3_double(sites_cart.size(), [sx,sy,sz])
+    xrs.set_sites_cart(sites_cart_shifted)
   # estimate resolution
   d_min = params.resolution
   broadcast(m="Map resolution:", log=log)
