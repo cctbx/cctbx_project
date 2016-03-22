@@ -112,26 +112,43 @@ class basis(object):
 
   def __mul__(self, other):
     """ Use homogenous matrices to multiply bases together """
-    return basis(homogenous_transformation = self.as_homogenous_transformation() * other.as_homogenous_transformation())
+    if hasattr(other, 'as_homogenous_transformation'):
+      return basis(homogenous_transformation = self.as_homogenous_transformation() * other.as_homogenous_transformation())
+    elif hasattr(other, 'n'):
+      if other.n == (3,1):
+        b = matrix.col((other[0], other[1], other[2], 1))
+      elif other.n == (4,1):
+        b = other
+      else:
+        raise TypeError(b, "Incompatible matrices")
+      p = self.as_homogenous_transformation() * b
+      if other.n == (3,1):
+        return matrix.col(p[0:3])
+      else:
+        return p
+    else:
+      raise TypeError(b)
+
+
+def basis_from_geo(geo, use_z = True):
+  """ Given a psana GeometryObject, construct a basis object """
+  rotx = matrix.col((1,0,0)).axis_and_angle_as_r3_rotation_matrix(
+    geo.rot_x + geo.tilt_x, deg=True)
+  roty = matrix.col((0,1,0)).axis_and_angle_as_r3_rotation_matrix(
+    geo.rot_y + geo.tilt_y, deg=True)
+  rotz = matrix.col((0,0,1)).axis_and_angle_as_r3_rotation_matrix(
+    geo.rot_z + geo.tilt_z, deg=True)
+
+  rot = (rotx*roty*rotz).r3_rotation_matrix_as_unit_quaternion()
+
+  if use_z:
+    trans = matrix.col((geo.x0/1000, geo.y0/1000, geo.z0/1000))
+  else:
+    trans = matrix.col((geo.x0/1000, geo.y0/1000, 0))
+
+  return basis(orientation = rot, translation = trans)
 
 def read_slac_metrology(path = None, geometry = None, plot=False):
-  def basis_from_geo(geo, use_z = True):
-    rotx = matrix.col((1,0,0)).axis_and_angle_as_r3_rotation_matrix(
-      geo.rot_x + geo.tilt_x, deg=True)
-    roty = matrix.col((0,1,0)).axis_and_angle_as_r3_rotation_matrix(
-      geo.rot_y + geo.tilt_y, deg=True)
-    rotz = matrix.col((0,0,1)).axis_and_angle_as_r3_rotation_matrix(
-      geo.rot_z + geo.tilt_z, deg=True)
-
-    rot = (rotx*roty*rotz).r3_rotation_matrix_as_unit_quaternion()
-
-    if use_z:
-      trans = matrix.col((geo.x0/1000, geo.y0/1000, geo.z0/1000))
-    else:
-      trans = matrix.col((geo.x0/1000, geo.y0/1000, 0))
-
-    return basis(orientation = rot, translation = trans)
-
   if path is None and geometry is None:
     raise Sorry("Need to provide a geometry object or a path to a geometry file")
 

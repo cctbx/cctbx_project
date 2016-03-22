@@ -89,8 +89,10 @@ if (__name__ == "__main__") :
         ax.set_ylim((0, 2000))
         ax.set_ylim(ax.get_ylim()[::-1])
       else:
+        from xfel.cftbx.detector.cspad_cbf_tbx import basis_from_geo
 
         root = geometry.get_top_geo()
+        root_basis = basis_from_geo(root)
 
         # get pixel mappings to real space.
         x, y, z = geometry.get_pixel_coords()
@@ -103,22 +105,37 @@ if (__name__ == "__main__") :
           assert len(x.shape) == 4
         sensor_slow = x.shape[2]
         sensor_fast = x.shape[3]
+        ori = matrix.col((0,0,0))
         while True:
           if len(root.get_list_of_children()) == 4 or len(root.get_list_of_children()) == 32:
             break
           assert len(root.get_list_of_children()) == 1
-          root = root.get_list_of_children()[0]
+          child = root.get_list_of_children()[0]
+          child_basis = root_basis * basis_from_geo(child)
+
+          arrow_end = child_basis * matrix.col((0,0,0))
+          dx, dy, _ = arrow_end - ori
+          if dx != 0 or dy != 0:
+            ax.arrow(ori[0], ori[1], dx, dy, head_width=0.5, head_length=1.0, fc='k', ec='k', length_includes_head=True)
+          ori = arrow_end
+          root = child
+          root_basis = child_basis
+
         if len(root.get_list_of_children()) == 4:
           for quad_id, quad in enumerate(root.get_list_of_children()):
-            ax.arrow(0, 0, quad.x0/1000, quad.y0/1000, head_width=0.05, head_length=0.1, fc='k', ec='k')
+            quad_basis = root_basis * basis_from_geo(quad)
+            arrow_end = quad_basis * matrix.col((0,0,0))
+            dx, dy, _ = arrow_end - ori
+            ax.arrow(ori[0], ori[1], dx, dy, head_width=0.5, head_length=1.0, fc='k', ec='k', length_includes_head=True)
+            arrow_start = arrow_end
             for sensor_id, sensor in enumerate(quad.get_list_of_children()):
               sensor_x, sensor_y, sensor_z = sensor.get_pixel_coords()
               transformed_x, transformed_y, transformed_z = quad.transform_geo_coord_arrays(sensor_x, sensor_y, sensor_z)
 
-              arrow_start = matrix.col((quad.x0/1000, quad.y0/1000))
-              arrow_end = matrix.col((transformed_x[0,0]/1000, transformed_y[0,0]/1000))
-              dx, dy = arrow_end - arrow_start
-              ax.arrow(quad.x0/1000, quad.y0/1000, dx, dy, head_width=0.05, head_length=0.1, fc='k', ec='k')
+              sensor_basis = quad_basis * basis_from_geo(sensor)
+              arrow_end = sensor_basis * matrix.col((0,0,0))
+              dx, dy, _ = arrow_end - arrow_start
+              ax.arrow(arrow_start[0], arrow_start[1], dx, dy, head_width=0.5, head_length=1.0, fc='k', ec='k', length_includes_head=True)
 
               p0 = col((x[quad_id,sensor_id,0,0]/1000,
                         y[quad_id,sensor_id,0,0]/1000))
@@ -195,7 +212,7 @@ if (__name__ == "__main__") :
           o = pg.get_origin()
           if o[0:2] != start[0:2]:
             delta = col(o) - col(start)
-            ax.arrow(start[0], start[1], delta[0], delta[1], head_width=0.05, head_length=0.1, fc='k', ec='k')
+            ax.arrow(start[0], start[1], delta[0], delta[1], head_width=0.05, head_length=0.1, fc='k', ec='k', length_includes_head=True)
           if hasattr(pg, 'children'):
             for child in pg:
               draw_arrow(child, o)
