@@ -47,12 +47,13 @@ cablam {
   pdb_infile = None
     .type = path
     .help = '''input PDB file'''
-  output = *text kin full_kin records records_and_pdb oneline
+  output = *text kin full_kin points_kin records records_and_pdb oneline
     .type = choice
     .help = '''choose output type:
     =text for default colon-separated residue-by-residue validation
     =kin for outlier markup in kinemage format
     =full_kin for outlier markup appended to structure - opens in KiNG
+    =points_kin for pointcloud in cablam space
     =records for PDB-style HELIX/SHEET records
     =records_and_pdb for PDB-style HELIX/SHEET records attached to a PDB file
     =oneline for a one-line structure summary
@@ -87,6 +88,8 @@ Options:
                         kin : prints kinemage markup for validation to screen
                         full_kin : prints kinemage markup and struture kinamge
                           to screen
+                        points_kin : prints point cloud of residues in cablam
+                          space in kinemage format
                         records : prints pdb-style HELIX and SHEET records to
                           screen, based on CaBLAM's identification of secondary
                           structure
@@ -331,12 +334,29 @@ class cablam_result(residue):
     "has_any_alts",
     "has_mc_alts",
     "mc_alts",
-    #"is_outlier",
     "alts",
     "measures",
     "scores",
     "feedback"
     ]
+
+  @staticmethod
+  def header():
+    return "%-12s %-19s %-7s %-7s %-17s %-7s %-7s %-7s" % (
+      'Residue','Outlier type','Cablam','CA geom',' Sec structure','Alpha','Strand','3-10')
+
+  #{{{ as_string
+  #-----------------------------------------------------------------------------
+  def as_string(self):
+    #print text output
+    outlist = self.as_list_for_text(outliers_only=False)
+    if outlist is None:
+      return ""
+    else:
+      return "%s %s %s %s %s %s %s %s" % (
+        outlist[0], outlist[1], outlist[2], outlist[3], outlist[4], outlist[5], outlist[6], outlist[7])
+  #-----------------------------------------------------------------------------
+  #}}}
 
   #{{{ mp_id
   #-----------------------------------------------------------------------------
@@ -586,6 +606,34 @@ class cablam_result(residue):
   #-----------------------------------------------------------------------------
   #}}}
 
+  #{{{ find_single_outlier_type, find_single_structure_suggestion
+  #-----------------------------------------------------------------------------
+  def find_single_outlier_type(self):
+    if self.feedback.c_alpha_geom_outlier:
+      outlier_type = ' CA Geom Outlier    '
+    elif self.feedback.cablam_outlier:
+      outlier_type = ' CaBLAM Outlier     '
+    elif self.feedback.cablam_disfavored:
+      outlier_type = ' CaBLAM Disfavored  '
+    else:
+      outlier_type = '                    '
+    return outlier_type
+
+  def find_single_structure_suggestion(self):
+    if self.feedback.c_alpha_geom_outlier:
+      suggestion = '                 '
+    elif self.feedback.threeten:
+      suggestion = ' try three-ten   '
+    elif self.feedback.alpha:
+      suggestion = ' try alpha helix '
+    elif self.feedback.beta:
+      suggestion = ' try beta sheet  '
+    else:
+      suggestion = '                 '
+    return suggestion
+  #-----------------------------------------------------------------------------
+  #}}}
+
   #{{{ as_kinemage
   #-----------------------------------------------------------------------------
   def as_kinemage(self, mode=None, out=sys.stdout):
@@ -617,17 +665,87 @@ class cablam_result(residue):
   #-----------------------------------------------------------------------------
   #}}}
 
+  #{{{ as_kinemage_point
+  #-----------------------------------------------------------------------------
+  def as_kinemage_point(self, out=sys.stdout):
+    #printing for pointcloud kinemage output
+    if not (self.measures.mu_in and self.measures.mu_out and self.measures.nu):
+      return
+    point_name = "{"+self.mp_id()+"}"
+    print >> out, point_name, "%.2f %.2f %.2f" % (self.measures.mu_in, self.measures.mu_out, self.measures.nu)
+  #-----------------------------------------------------------------------------
+  #}}}
+
   #{{{ is_same_as_other_result
   #-----------------------------------------------------------------------------
   def is_same_as_other_result(self,other_result):
     #Compare this result object to another to see if they are effectively the
     #  same.  Identical cablam geometry (mu_in, mu_out, and nu) is assumed to
     #  mean identical residues:
+    #This method will probably change
     if (self.measures.mu_in != other_result.measures.mu_in
       or self.measures.mu_out != other_result.measures.mu_out
       or self.measures.nu != other_result.measures.nu):
       return False
     return True
+  #-----------------------------------------------------------------------------
+  #}}}
+
+  #{{{ as_list_for_text
+  #-----------------------------------------------------------------------------
+  def as_list_for_text(self, outliers_only=False):
+    if not self.has_ca:
+      return None
+    if outliers_only:
+      if not (self.feedback.cablam_disfavored or self.feedback.c_alpha_geom_outlier):
+        return None
+
+    if self.feedback.c_alpha_geom_outlier:
+      outlier_type = ' CA Geom Outlier    '
+    elif self.feedback.cablam_outlier:
+      outlier_type = ' CaBLAM Outlier     '
+    elif self.feedback.cablam_disfavored:
+      outlier_type = ' CaBLAM Disfavored  '
+    else:
+      outlier_type = '                    '
+
+    if self.scores.cablam is not None:
+      cablam_level = '%.5f' %self.scores.cablam
+    else:
+      cablam_level = '       ' #default printing for CA-only models
+    if self.scores.c_alpha_geom is not None:
+      ca_geom_level = '%.5f' %self.scores.c_alpha_geom
+    else:
+      return None #if this is missing, there's nothing
+
+    if self.feedback.c_alpha_geom_outlier:
+      suggestion = '                 '
+    elif self.feedback.threeten:
+      suggestion = ' try three-ten   '
+    elif self.feedback.alpha:
+      suggestion = ' try alpha helix '
+    elif self.feedback.beta:
+      suggestion = ' try beta sheet  '
+    else:
+      suggestion = '                 '
+
+    outlist = [self.mp_id() ,outlier_type, cablam_level, ca_geom_level, suggestion, '%.5f' %self.scores.alpha, '%.5f' %self.scores.beta, '%.5f' %self.scores.threeten]
+    return outlist
+  #-----------------------------------------------------------------------------
+  #}}}
+
+  #{{{ as_table_row_phenix
+  #-----------------------------------------------------------------------------
+  def as_table_row_phenix(self):
+    return [ self.chain,
+      "%s %s" % (self.resname, self.resid),
+      self.find_single_outlier_type().strip(),
+      self.scores.cablam,
+      self.scores.c_alpha_geom,
+      self.find_single_structure_suggestion().strip(),
+      self.scores.alpha,
+      self.scores.beta,
+      self.scores.threeten ]
   #-----------------------------------------------------------------------------
   #}}}
 #-------------------------------------------------------------------------------
@@ -642,11 +760,16 @@ class cablamalyze(validation):
   __slots__ = validation.__slots__ + [
     "residue_count",
     "outlier_count",
-    "sec_struc_records",
     "out",
     "pdb_hierarchy",
     "all_results"
     ]
+
+  program_description = "Analyze protein CA geometry for secondary structure identification - recommended for low-resolution structures"
+
+  gui_list_headers = ["Chain","Residue","Evaluation","CaBLAM Score","CA Geometry Score","Secondary Structure","Helix Score","Beta Score","3-10 Score"]
+  gui_formats = ["%s", "%s", "%s", "%.5f", "%.5f", "%s", "%.5f", "%.5f", "%.5f"]
+  wx_column_widths = [125]*9
 
   def get_result_class(self): return cablam_result
 
@@ -665,7 +788,7 @@ class cablamalyze(validation):
     cablam_contours = fetch_peptide_expectations()
     ca_contours = fetch_ca_expectations()
     motif_contours = fetch_motif_contours()
-    self.pdb_hierarchy = pdb_hierarchy
+    self.pdb_hierarchy = pdb_hierarchy.deep_copy()
     pdb_atoms = pdb_hierarchy.atoms()
     all_i_seqs = pdb_atoms.extract_i_seq()
     if all_i_seqs.all_eq(0):
@@ -734,13 +857,18 @@ class cablamalyze(validation):
           if self.all_results[chain].confs[conf].results[result].has_ca:
             self.all_results[chain].confs[conf].results[result].calculate_cablam_geometry()
             self.all_results[chain].confs[conf].results[result].calculate_contour_values(cablam_contours, ca_contours, motif_contours)
+            self.all_results[chain].confs[conf].results[result].xyz = self.all_results[chain].confs[conf].results[result].get_atom(' CA ').xyz
+    self.outlier_count = 0
     for chain in self.all_results:
       for conf in self.all_results[chain].confs:
         for result in self.all_results[chain].confs[conf].results:
           if self.all_results[chain].confs[conf].results[result].has_ca:
             self.all_results[chain].confs[conf].results[result].set_cablam_feedback()
+            if self.all_results[chain].confs[conf].results[result].outlier:
+              self.outlier_count += 1
     self.assemble_secondary_structure()
     self.make_single_results_object(confs, all_keys)
+    self.residue_count = len(self.results)
   #-----------------------------------------------------------------------------
   #}}}
 
@@ -933,19 +1061,17 @@ class cablamalyze(validation):
         suggestion = '                 '
 
       outlist = [result.mp_id() ,outlier_type, cablam_level, ca_geom_level, suggestion, '%.5f' %result.scores.alpha, '%.5f' %result.scores.beta, '%.5f' %result.scores.threeten]
-      #outlist = [result.residue.id_str() ,outlier_type, cablam_level, ca_geom_level, suggestion, '%.5f' %result.scores.alpha, '%.5f' %result.scores.beta, '%.5f' %result.scores.threeten]
       self.out.write('\n'+':'.join(outlist))
     self.out.write('\n')
+    self.show_summary(out=self.out,prefix="")
   #-----------------------------------------------------------------------------
   #}}}
 
-  #{{{ as_oneline
+  #{{{ make_summary_stats
   #-----------------------------------------------------------------------------
-  def as_oneline(self):
-    #prints a one-line summary of cablam statistics for a structure
-    #for oneline purposes, alternates are collapsed: each residue contributes up
-    #  to 1 to each outlier count, regarless of how many outlier alternates it
-    #  may contain
+  def make_summary_stats(self):
+    #calculates whole-model stats used by show_summary, gui_summary, and
+    #  as_oneline
     residue_count = 0
     cablam_outliers = 0
     cablam_disfavored = 0
@@ -981,10 +1107,23 @@ class cablamalyze(validation):
     cablam_outliers  += is_cablam_outlier
     cablam_disfavored+= is_cablam_disfavored
     ca_geom_outliers += is_ca_geom_outlier
-    if residue_count == 0:
+    return {'residue_count':residue_count,'cablam_outliers':cablam_outliers,
+      'cablam_disfavored':cablam_disfavored,'ca_geom_outliers':ca_geom_outliers}
+  #-----------------------------------------------------------------------------
+  #}}}
+
+  #{{{ as_oneline
+  #-----------------------------------------------------------------------------
+  def as_oneline(self):
+    #prints a one-line summary of cablam statistics for a structure
+    #for oneline purposes, alternates are collapsed: each residue contributes up
+    #  to 1 to each outlier count, regarless of how many outlier alternates it
+    #  may contain
+    summary = self.make_summary_stats()
+    if summary['residue_count'] == 0:
       self.out.write('pdbid:0:0:0:0\n')
     else:
-      self.out.write('pdbid:%i:%.1f:%.1f:%.2f\n' %(residue_count, cablam_outliers/residue_count*100, cablam_disfavored/residue_count*100, ca_geom_outliers/residue_count*100) )
+      self.out.write('pdbid:%i:%.1f:%.1f:%.2f\n' %(summary['residue_count'], summary['cablam_outliers']/summary['residue_count']*100, summary['cablam_disfavored']/summary['residue_count']*100, summary['ca_geom_outliers']/summary['residue_count']*100) )
   #-----------------------------------------------------------------------------
   #}}}
 
@@ -1059,6 +1198,16 @@ class cablamalyze(validation):
   #-----------------------------------------------------------------------------
   #}}}
 
+  #{{{ as_pointcloud_kinemage
+  #-----------------------------------------------------------------------------
+  def as_pointcloud_kinemage(self):#, out=self.out):
+    print >> self.out, "@group {cablam-space points} dominant"
+    print >> self.out, "@dotlist (cablam-space points)"
+    for result in self.results:
+      result.as_kinemage_point()
+  #-----------------------------------------------------------------------------
+  #}}}
+
   #{{{ as_secondary_structure
   #-----------------------------------------------------------------------------
   def as_secondary_structure(self, conf_request=None):
@@ -1072,7 +1221,6 @@ class cablamalyze(validation):
     sheet_i = 0
     helix_records = []
     strand_records = []
-    #return_records = []
 
     chain_list = self.all_results.keys()
     chain_list.sort()
@@ -1105,7 +1253,6 @@ class cablamalyze(validation):
             comment = "",
             length = record.segment_length)
           helix_records.append(return_record)
-          #return_records.append(return_record)
         if record.segment_type == 'beta':
           sheet_i += 1
           strand_record = secondary_structure.pdb_strand(
@@ -1129,9 +1276,7 @@ class cablamalyze(validation):
             hbond_list = []
             )
           strand_records.append(return_record)
-          #return_records.append(return_record)
     return secondary_structure.annotation(helices=helix_records,sheets=strand_records)
-    #return return_records
   #-----------------------------------------------------------------------------
   #}}}
 
@@ -1154,6 +1299,41 @@ class cablamalyze(validation):
     #  the pdb file
     self.as_records(conf_request=conf_request)
     self.out.write(self.pdb_hierarchy.as_pdb_string())
+  #-----------------------------------------------------------------------------
+  #}}}
+
+  #{{{ as_coot_data
+  #-----------------------------------------------------------------------------
+  def as_coot_data(self):
+    data = []
+    for result in self.results:
+      if result.is_outlier:
+        data.append((result.chain, result.resid, result.resname, result.scores.cablam, result.xyz))
+    return data
+  #-----------------------------------------------------------------------------
+  #}}}
+
+  #{{{ show_summary
+  #-----------------------------------------------------------------------------
+  def show_summary(self, out=sys.stdout, prefix="  "):
+    #print whole-model cablam summary
+    summary_stats = self.make_summary_stats()
+    if summary_stats['residue_count'] == 0:
+      print >> out, "SUMMARY: CaBLAM found no evaluable protein residues."
+    else:
+      print >> out,prefix+"SUMMARY: Note: Regardless of number of alternates, each residue is counted as having at most one outlier."
+      print >> out,prefix+"SUMMARY: CaBLAM found %s evaluable residues." % (summary_stats['residue_count'])
+      print >> out,prefix+"SUMMARY: %.1f" % (summary_stats['cablam_disfavored']/summary_stats['residue_count']*100)+"% of these residues have disfavored conformations. (<=5% expected)"
+      print >> out,prefix+"SUMMARY: %.1f" % (summary_stats['cablam_outliers']/summary_stats['residue_count']*100)+"% of these residues have outlier conformations. (<=1% expected)"
+      print >> out,prefix+"SUMMARY: %.2f" % (summary_stats['ca_geom_outliers']/summary_stats['residue_count']*100)+"% of these residues have severe CA geometry outliers. (<=0.5% expected)"
+  #-----------------------------------------------------------------------------
+  #}}}
+
+  #{{{ gui_summary
+  #-----------------------------------------------------------------------------
+  def gui_summary(self):
+    output = []
+    return "GUI summary goes here!"
   #-----------------------------------------------------------------------------
   #}}}
 #-------------------------------------------------------------------------------
@@ -1212,13 +1392,15 @@ def run(args):
     out=sys.stdout,
     quiet=False)
 
-  #output = *text kin full_kin records records_and_pdb oneline
+  #output = *text kin full_kin points_kin records records_and_pdb oneline
   if params.output=='oneline':
     cablam.as_oneline()
   elif params.output=='kin':
     cablam.as_kinemage()
   elif params.output=='full_kin':
     cablam.as_full_kinemage(pdbid=pdbid)
+  elif params.output=='points_kin':
+    cablam.as_pointcloud_kinemage()
   elif params.output=='records':
     cablam.as_records()
   elif params.output=='records_and_pdb':
