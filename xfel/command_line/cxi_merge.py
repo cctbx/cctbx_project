@@ -560,6 +560,7 @@ class scaling_manager (intensity_data) :
     # all database commands have been processed.
     nproc = self.params.nproc
     if (nproc is None) or (nproc is Auto):
+      import libtbx.introspection
       nproc = libtbx.introspection.number_of_processors()
     if nproc > 1:
       try :
@@ -1780,13 +1781,13 @@ class scaling_manager (intensity_data) :
 
 #-----------------------------------------------------------------------
 def run(args):
+  if ("--help" in args) :
+    iotbx.phil.parse(master_phil).show()
+    return
   phil = iotbx.phil.process_command_line(args=args, master_string=master_phil).show()
   work_params = phil.work.extract()
   from xfel.merging.phil_validation import application
   application(work_params)
-  if ("--help" in args) :
-    libtbx.phil.parse(master_phil.show())
-    return
 
   if ((work_params.d_min is None) or
       (work_params.data is None) or
