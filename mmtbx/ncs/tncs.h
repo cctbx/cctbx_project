@@ -237,6 +237,16 @@ public:
     target_called=true;
     int nbins = pairs[0].rho_mn.size();
     int npars_ref = n_pairs*nbins;
+
+    // Tabulate lists of equivalent pairs for constrained gradients
+    int maxid(0);
+    for (int ipair = 0; ipair < n_pairs; ipair++)
+      maxid = std::max(maxid,pairs[ipair].id);
+    std::vector<af::shared<FloatType> > pairs_with_id(maxid+1);
+    if (do_rho_mn || do_radius)
+      for (int ipair = 0; ipair < n_pairs; ipair++)
+        pairs_with_id[pairs[ipair].id].push_back(ipair);
+
     // Reset gradient
     if(do_rho_mn) {
       Gradient_rhoMN.resize(npars_ref);
@@ -280,9 +290,22 @@ public:
       minusLL += cent_fac*(std::log(V) + f_obs_sq/V);
       dLL_by_dEps = cent_fac*SigmaN[r]*(V-f_obs_sq)/scitbx::fn::pow2(V);
       // <==
-      for(int ipair = 0; ipair < n_pairs; ipair++) {
-        if(do_rho_mn) Gradient_rhoMN[ipair*nbins+s] += dLL_by_dEps*dEps_by_drho[ipair];
-        if(do_radius) Gradient_radius[ipair] += dLL_by_dEps*dEps_by_dradius[ipair];
+      for (int ipair = 0; ipair < n_pairs; ipair++) {
+        int pair_id(pairs[ipair].id);
+        if(do_rho_mn) {
+          double gterm = dLL_by_dEps*dEps_by_drho[ipair];
+          for (int jpair = 0; jpair < pairs_with_id[pair_id].size(); jpair++) {
+            int this_pair = pairs_with_id[pair_id][jpair];
+            Gradient_rhoMN[this_pair*nbins+s] += gterm;
+          }
+        }
+        if(do_radius) {
+          double gterm = dLL_by_dEps*dEps_by_dradius[ipair];
+          for (int jpair = 0; jpair < pairs_with_id[pair_id].size(); jpair++) {
+            int this_pair = pairs_with_id[pair_id][jpair];
+            Gradient_radius[this_pair] += gterm;
+          }
+        }
       }
     }
     // sigma of 0.05 for rhoMN bin smoothness
@@ -290,20 +313,29 @@ public:
     if(do_rho_mn || do_radius) {
       for (int ipair = 0; ipair < n_pairs; ipair++) {
         // Weakly restrain radii to initial estimates, with sigma of estimate/4
+        int pair_id(pairs[ipair].id);
         if(do_radius) {
           double radiuswt(1./(2*scitbx::fn::pow2(pairs[ipair].radius_estimate/4.)));
           double delta_radius = pairs[ipair].radius - pairs[ipair].radius_estimate;
           minusLL += radiuswt*scitbx::fn::pow2(delta_radius);
-          Gradient_radius[ipair] += 2.*radiuswt*delta_radius;
+          double gterm(2.*radiuswt*delta_radius);
+          for (int jpair = 0; jpair < pairs_with_id[pair_id].size(); jpair++) {
+            int this_pair = pairs_with_id[pair_id][jpair];
+            Gradient_radius[this_pair] += gterm;
+          }
         }
         if(do_rho_mn) {
           for(int s = 1; s < nbins-1; s++) { // restraints over inner bins
             double dmean = (pairs[ipair].rho_mn[s-1] + pairs[ipair].rho_mn[s+1])/2.;
             double delta_rhoMN = pairs[ipair].rho_mn[s] - dmean;
             minusLL += rhoMNbinwt*scitbx::fn::pow2(delta_rhoMN);
-            Gradient_rhoMN[ipair*nbins+s-1] -= rhoMNbinwt*delta_rhoMN;
-            Gradient_rhoMN[ipair*nbins+s]   += 2.*rhoMNbinwt*delta_rhoMN;
-            Gradient_rhoMN[ipair*nbins+s+1] -= rhoMNbinwt*delta_rhoMN;
+            double gterm(rhoMNbinwt*delta_rhoMN);
+            for (int jpair = 0; jpair < pairs_with_id[pair_id].size(); jpair++) {
+              int this_pair = pairs_with_id[pair_id][jpair];
+              Gradient_rhoMN[this_pair*nbins+s-1] -= gterm;
+              Gradient_rhoMN[this_pair*nbins+s]   += 2.*gterm;
+              Gradient_rhoMN[this_pair*nbins+s+1] -= gterm;
+            }
           }
         }
       }

@@ -13,30 +13,38 @@ import sys
 from scitbx.math import superpose
 import mmtbx.alignment
 from libtbx.test_utils import approx_equal
+from boost_adaptbx import graph
+from boost_adaptbx.graph import connected_component_algorithm
+import iotbx.pdb
 
 class groups(object):
 
   def __init__(self,
                pdb_hierarchy,
                crystal_symmetry,
-               angular_difference_threshold_deg=10.,
+               angular_difference_threshold_deg=5.,
                sequence_identity_threshold=90.):
     h = pdb_hierarchy
+    superposition_threshold = 2*sequence_identity_threshold - 100.
     n_atoms_all = h.atoms_size()
     s_str = "altloc ' ' and (protein or nucleotide)"
     h = h.select(h.atom_selection_cache().selection(s_str))
-    h1 = h.deep_copy()
+    h1 = iotbx.pdb.hierarchy.root()
+    h1.append_model(h.models()[0].detached_copy())
     unit_cell = crystal_symmetry.unit_cell()
-    result = []
+    result = {}
+    print "Find groups of chains related by translational NCS"
     # double loop over chains to find matching pairs related by pure translation
     for c1 in h1.chains():
       c1.parent().remove_chain(c1)
+      nchains = len(h1.models()[0].chains())
       if([c1.is_protein(), c1.is_na()].count(True)==0): continue
       r1 = list(c1.residues())
       c1_seq = "".join(c1.as_sequence())
       sc_1_tmp = c1.atoms().extract_xyz()
       h1_p1 = h1.expand_to_p1(crystal_symmetry=crystal_symmetry)
-      for c2 in h1_p1.chains():
+      for (ii,c2) in enumerate(h1_p1.chains()):
+        orig_c2 = h1.models()[0].chains()[ii%nchains]
         r2 = list(c2.residues())
         c2_seq = "".join(c2.as_sequence())
         sites_cart_1, sites_cart_2 = None,None
@@ -45,6 +53,7 @@ class groups(object):
         if(c1_seq==c2_seq and sc_1_tmp.size()==sc_2_tmp.size()):
           sites_cart_1 = sc_1_tmp
           sites_cart_2 = sc_2_tmp
+          p_identity = 100.
         # chains are not identical, do alignment
         else:
           align_obj = mmtbx.alignment.align(seq_a = c1_seq, seq_b = c2_seq)
@@ -53,7 +62,7 @@ class groups(object):
           equal = matches.count("|")
           total = len(alignment.a) - alignment.a.count("-")
           p_identity = 100.*equal/max(1,total)
-          if(p_identity>sequence_identity_threshold):
+          if(p_identity>superposition_threshold):
             sites_cart_1 = flex.vec3_double()
             sites_cart_2 = flex.vec3_double()
             for i1, i2, match in zip(alignment.i_seqs_a, alignment.i_seqs_b,
@@ -73,40 +82,62 @@ class groups(object):
             reference_sites = sites_cart_1,
             other_sites     = sites_cart_2)
           angle = lsq_fit_obj.r.rotation_angle()
-          if(angle < angular_difference_threshold_deg):
-            t_frac = unit_cell.fractionalize((sites_cart_1-sites_cart_2).mean())
-            t_frac = [math.modf(t)[0] for t in t_frac] # put into [-1,1]
-            radius = flex.sum(flex.sqrt((sites_cart_1-
-              sites_cart_1.mean()).dot()))/sites_cart_1.size()*4./3.
-            fracscat = c1.atoms_size()/n_atoms_all
-            result.append([lsq_fit_obj.r, t_frac, angle, radius, fracscat])
-            # show tNCS group
-            fmt="chains %s <> %s angle: %4.2f trans.vect.: (%s) fracscat: %5.3f"
-            t = ",".join([("%6.3f"%t_).strip() for t_ in t_frac]).strip()
-            print fmt%(c1.id, c2.id, angle, t, fracscat)
-    # compose final tNCS pairs object
+          t_frac = unit_cell.fractionalize((sites_cart_1-sites_cart_2).mean())
+          t_frac = [math.modf(t)[0] for t in t_frac] # put into [-1,1]
+          radius = flex.sum(flex.sqrt((sites_cart_1-
+            sites_cart_1.mean()).dot()))/sites_cart_1.size()*4./3.
+          fracscat = c1.atoms_size()/n_atoms_all
+          result.setdefault( frozenset([c1,orig_c2]), [] ).append( [p_identity,[lsq_fit_obj.r, t_frac, angle, radius, fracscat]] )
+        else:
+          result.setdefault( frozenset([c1,orig_c2]), [] ).append( [p_identity,None] )
+    # Build graph
+    g = graph.adjacency_list()
+    vertex_handle = {}
+    for key in result:
+      seqid = result[key][0][0]
+      sup = min( result[key],key=lambda s:0 if s[1] is None else s[1][2])[1]
+      result[key] = [seqid,sup]
+      if ((seqid > sequence_identity_threshold) and (sup[2] < angular_difference_threshold_deg)):
+        (c1,c2) = key
+        if (c1 not in vertex_handle):
+          vertex_handle[c1] = g.add_vertex(label=c1)
+        if (c2 not in vertex_handle):
+          vertex_handle[c2] = g.add_vertex(label=c2)
+        g.add_edge(vertex1=vertex_handle[c1],vertex2=vertex_handle[c2])
+    # Do connected component analysis and compose final tNCS pairs object
+    components = connected_component_algorithm.connected_components(g)
+    import itertools
     self.ncs_pairs = []
-    for _ in result:
-      r, t, angle, rad, fs = _
-      ncs_pair = ext.pair(
-        r = r,
-        t = t,
-        radius=rad,
-        radius_estimate=rad,
-        fracscat=fs,
-        rho_mn=flex.double(),
-        id=-1) # rho_mn undefined, needs to be set later
-      self.ncs_pairs.append(ncs_pair)
-    # set id flag
-    frac_scats = [p.fracscat for p in self.ncs_pairs]
-    sis = scitbx.math.similarity_indices(x=frac_scats, eps=0.01)
-    for si, p in zip(sis, self.ncs_pairs):
-      p.set_id(si)
+    for (i,group) in enumerate(components):
+      chains = [g.vertex_label(vertex=v) for v in group]
+      fracscats = []
+      radii = []
+      for pair in itertools.combinations(chains,2):
+        sup = result[frozenset(pair)][1]
+        fracscats.append(sup[-1])
+        radii.append(sup[-2])
+      fs = sum(fracscats)/len(fracscats)
+      rad = sum(radii)/len(radii)
+      for pair in itertools.combinations(chains,2):
+        sup = result[frozenset(pair)][1]
+        ncs_pair = ext.pair(
+          r = sup[0],
+          t = sup[1],
+          radius = rad,
+          radius_estimate = rad,
+          fracscat = fs,
+          rho_mn = flex.double(), # rho_mn undefined, needs to be set later
+          id = i)
+        self.ncs_pairs.append(ncs_pair)
+        # show tNCS pairs in group
+        fmt="group %d chains %s <> %s angle: %4.2f trans.vect.: (%s) fracscat: %5.3f"
+        t = ",".join([("%6.3f"%t_).strip() for t_ in sup[1]]).strip()
+        print fmt%(i, pair[0].id, pair[1].id, sup[2], t, fs)
 
 def initialize_rho_mn(ncs_pairs, d_spacings_data, binner, rms=0.5):
   """
   Initialize rho_mn
-    rhoMN = exp(-(2*pi^2/3)*(rms/d)^2, and rms=0.4-0.8 is probably a good.
+    rhoMN = exp(-(2*pi^2/3)*(rms/d)^2, and rms=0.4-0.8 is probably a good guess.
   """
   n_bins = binner.n_bins_used()
   rho_mn_initial = flex.double(n_bins, 0)
@@ -413,7 +444,8 @@ class compute_eps_factor(object):
     if(self.epsfac is None): return None
     if(log is None): log = sys.stdout
     for i, ncs_pair in enumerate(self.ncs_pairs):
-      print >> log, "tNCS group: %d"%i
+      print >> log, "tNCS pair: %d"%i
+      print >> log, "  Group ID:", ncs_pair.id
       angle = matrix.sqr(ncs_pair.r).rotation_angle()
       t = ",".join([("%6.3f"%t_).strip() for t_ in ncs_pair.t]).strip()
       t_cart = ",".join([("%6.3f"%t_).strip()
@@ -423,9 +455,8 @@ class compute_eps_factor(object):
       print >> log, "  Translation (Cartesian):  (%s)"%t_cart
       print >> log, "  Rotation (deg): %-5.2f"%angle
       print >> log, "  Rotation matrix: (%s)"%r
-      print >> log, "  Radius: %-6.1f"%ncs_pair.radius
+      print >> log, "  Radius: %-6.3f"%ncs_pair.radius
       print >> log, "  Radius (estimate): %-6.1f"%ncs_pair.radius_estimate
       print >> log, "  fracscat:", ncs_pair.fracscat
-      print >> log, "  id:", ncs_pair.id
     print >> log, "tNCS eps factor: min,max,mean: %6.4f %6.4f %6.4f"%\
       self.epsfac.min_max_mean().as_tuple()
