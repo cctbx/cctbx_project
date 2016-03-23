@@ -1145,14 +1145,28 @@ def clean_chain_matching(chain_match_list,ph,
   best_matches = {}
   # Get rmsd
   match_dict = {}
+  # print "match_list", match_list
   for match in match_list:
     [ch_a_id,ch_b_id,list_a,list_b,res_list_a,res_list_b,similarity] = match
-    update_match_dicts(
-      best_matches,match_dict,ch_a_id,ch_b_id,similarity,chain_similarity_threshold)
+    # update_match_dicts(
+    #     best_matches,
+    #     match_dict,
+    #     ch_a_id,
+    #     ch_b_id,
+    #     similarity,
+    #     chain_similarity_threshold)
     sel_a = make_selection_from_lists(list_a)
     sel_b = make_selection_from_lists(list_b)
-    other_sites = ph.select(sel_a).atoms().extract_xyz()
-    ref_sites = ph.select(sel_b).atoms().extract_xyz()
+    other_h = ph.select(sel_a)
+    ref_h = ph.select(sel_b)
+    other_atoms = ph.select(sel_a).atoms()
+    ref_atoms = ph.select(sel_b).atoms()
+    #
+    # probably here we want to flip atom names, even before chain alignment
+    # it shouldn't matter inside one residue
+    #
+    other_sites = other_atoms.extract_xyz()
+    ref_sites = ref_atoms.extract_xyz()
     lsq_fit_obj = superpose.least_squares_fit(
       reference_sites = ref_sites,
       other_sites     = other_sites)
@@ -1162,6 +1176,7 @@ def clean_chain_matching(chain_match_list,ph,
     # use B = r*A + t, r_2*A = B , r_2 = B*A.inverse()
     other_sites_best = lsq_fit_obj.other_sites_best_fit()
     rmsd = round(ref_sites.rms_difference(other_sites_best),4)
+    # print "chain rmsd:", rmsd
     if rmsd <= chain_max_rmsd:
       # get the chains atoms and convert selection to flex bool
       sel_a,sel_b,res_list_a,res_list_b,ref_sites,other_sites_best = \
@@ -1200,6 +1215,11 @@ def remove_far_atoms(list_a, list_b,
       ref_sites_new,other_sites_new
   """
   # check every residue for consecutive distance
+  # print "list_a"
+  # print list(list_a[0])
+  # print "list_b", list(list_b)
+  # print "res_list_a", res_list_a
+  # print "res_list_b", res_list_b
   res_list_a_new = []
   res_list_b_new = []
   ref_sites_new = flex.vec3_double([])
@@ -1215,6 +1235,7 @@ def remove_far_atoms(list_a, list_b,
     current_pos += res_len
     xyz_diff = abs(res_ref_sites.as_double() - res_other_sites.as_double())
     (min_d,max_d,_) = xyz_diff.min_max_mean().as_tuple()
+    # print "current match radius:", max_d-min_d
     if (max_d - min_d) <= residue_match_radius:
       ref_sites_new.extend(res_ref_sites)
       other_sites_new.extend(res_other_sites)
@@ -1224,50 +1245,52 @@ def remove_far_atoms(list_a, list_b,
       res_list_b_new.append(res_list_b[i])
   return sel_a,sel_b,res_list_a_new,res_list_b_new,ref_sites_new,other_sites_new
 
-def update_match_dicts(best_matches,match_dict,
-                       ch_a_id,ch_b_id,similarity,
-                       chain_similarity_threshold=0.95):
-  """
-  Updates the best_matches dictionaries best_matches,match_dict to keep only
-  matches that are at least 95% of best match and
+# def update_match_dicts(best_matches,match_dict,
+#                        ch_a_id,ch_b_id,similarity,
+#                        chain_similarity_threshold=0.95):
+#   """
+#   Probably useless after merging 2 similarity parameters to 1.
 
-  Args:
-    best_matches (dict):
-      key: chain_ID (str)
-      Val: [[similarity,(chain_ID,chain_ID2)],[similarity,(chain_ID3,chain_ID)]]
-    match_dict (dict):
-      key: (chain_id_a,chain_id_b)
-      val: [selection_1,selection_2,res_list_1,res_list_2,rot,trans,rmsd]
-    ch_a_id,ch_b_id (str): chain IDs
-    similarity (float): similarity between chains
-    chain_similarity_threshold (float): min similarity between matching chains
-      Note that smaller value cause more chains to be grouped together and
-      can lower the number of common residues
-  """
-  records_to_remove = set()
-  for ch_id in [ch_a_id,ch_b_id]:
-    if best_matches.has_key(ch_id):
-      temp_rec = []
-      # records with largest similarity are last
-      max_sim = best_matches[ch_id][-1][0]
-      if similarity > max_sim:
-        for s,(a,b) in best_matches[ch_id]:
-          if s/similarity >= chain_similarity_threshold:
-            temp_rec.append([s,(a,b)])
-          else:
-            records_to_remove.add((a,b))
-        temp_rec.append([similarity,(ch_a_id,ch_b_id)])
-      elif similarity/max_sim >= 0.95:
-        temp_rec.insert(0,[similarity,(ch_a_id,ch_b_id)])
-      else:
-        temp_rec = best_matches[ch_id]
-      best_matches[ch_id] = temp_rec
-    else:
-      best_matches[ch_id] = [[similarity,(ch_a_id,ch_b_id)]]
-  # clean match_dict
-  if records_to_remove:
-    for key in records_to_remove:
-      match_dict.pop(key,None)
+#   Updates the best_matches dictionaries best_matches,match_dict to keep only
+#   matches that are at least 95% of best match and
+
+#   Args:
+#     best_matches (dict):
+#       key: chain_ID (str)
+#       Val: [[similarity,(chain_ID,chain_ID2)],[similarity,(chain_ID3,chain_ID)]]
+#     match_dict (dict):
+#       key: (chain_id_a,chain_id_b)
+#       val: [selection_1,selection_2,res_list_1,res_list_2,rot,trans,rmsd]
+#     ch_a_id,ch_b_id (str): chain IDs
+#     similarity (float): similarity between chains
+#     chain_similarity_threshold (float): min similarity between matching chains
+#       Note that smaller value cause more chains to be grouped together and
+#       can lower the number of common residues
+#   """
+#   records_to_remove = set()
+#   for ch_id in [ch_a_id,ch_b_id]:
+#     if best_matches.has_key(ch_id):
+#       temp_rec = []
+#       # records with largest similarity are last
+#       max_sim = best_matches[ch_id][-1][0]
+#       if similarity > max_sim:
+#         for s,(a,b) in best_matches[ch_id]:
+#           if s/similarity >= chain_similarity_threshold:
+#             temp_rec.append([s,(a,b)])
+#           else:
+#             records_to_remove.add((a,b))
+#         temp_rec.append([similarity,(ch_a_id,ch_b_id)])
+#       elif similarity/max_sim >= 0.95:
+#         temp_rec.insert(0,[similarity,(ch_a_id,ch_b_id)])
+#       else:
+#         temp_rec = best_matches[ch_id]
+#       best_matches[ch_id] = temp_rec
+#     else:
+#       best_matches[ch_id] = [[similarity,(ch_a_id,ch_b_id)]]
+#   # clean match_dict
+#   if records_to_remove:
+#     for key in records_to_remove:
+#       match_dict.pop(key,None)
 
 def find_same_transform(r,t,transforms):
   """
@@ -1662,7 +1685,6 @@ def get_chains_info(ph, selection_list=None):
 
   Args:
     ph : pdb_hierarchy
-    selection_list (list of str): specific selection of hierarchy segments
 
   Returns:
     chains_info (dict): values are object containing
@@ -1674,87 +1696,38 @@ def get_chains_info(ph, selection_list=None):
       chains_atom_number (list of int): list of number of atoms in each chain
     exclude_water (bool): exclude water
   """
-  use_chains = not bool(selection_list)
-  #
+
   chains_info =  {}
   asc = ph.atom_selection_cache()
-  if use_chains:
-    model  = ph.models()[0]
-    # build chains_info from hierarchy
-    for ch in model.chains():
-      if not chains_info.has_key(ch.id):
-        chains_info[ch.id] = Chains_info()
-        ph_sel = ph.select(asc.selection("chain '%s'" % ch.id))
-        coc = flex.vec3_double([ph_sel.atoms().extract_xyz().mean()])
-        chains_info[ch.id].center_of_coordinates = coc
-      chains_info[ch.id].chains_atom_number += ch.atoms().size()
-      resids = chains_info[ch.id].resid
-      res_names = chains_info[ch.id].res_names
-      atom_names = chains_info[ch.id].atom_names
-      atom_selection = chains_info[ch.id].atom_selection
-      no_altloc = chains_info[ch.id].no_altloc
-      # check for alternative conformers (also when chains are split)
-      if len(ch.conformers()) > 1:
-        # process cases with alternative locations
-        conf = ch.conformers()[0]
-        for res in conf.residues():
-          x = res.resname
-          resids.append(res.resid())
-          res_names.append(x)
-          atoms = res.atoms()
-          atom_names.append(list(atoms.extract_name()))
-          atom_selection.append(list(atoms.extract_i_seq()))
-          no_altloc.append(res.is_pure_main_conf)
-      else:
-        for res in ch.residue_groups():
-          for atoms in res.atom_groups():
-            x = atoms.resname
-            resids.append(res.resid())
-            res_names.append(x)
-            atom_names.append(list(atoms.atoms().extract_name()))
-            atom_selection.append(list(atoms.atoms().extract_i_seq()))
-            no_altloc.append(True)
-      #
-      chains_info[ch.id].resid = resids
-      chains_info[ch.id].res_names = res_names
-      chains_info[ch.id].atom_names = atom_names
-      chains_info[ch.id].atom_selection = atom_selection
-      chains_info[ch.id].no_altloc = no_altloc
-  else:
-    # build chains_info from selection
-    l = ph.atoms().size()
-    selection_test = flex.bool([False,] * l)
-    chain_ids = sorted(selection_list)
-
-    for sel_str in chain_ids:
-      ph_sel = ph.select(asc.selection(sel_str))
-      model =  ph_sel.models()
-      if model:
-        # check that none-empty selection
-        model = model[0]
-        chains_info[sel_str] = Chains_info()
-        chains_info[sel_str].chains_atom_number = ph_sel.atoms().size()
-        coc = flex.vec3_double([ph_sel.atoms().extract_xyz().mean()])
-        chains_info[sel_str].center_of_coordinates = coc
-        for ch in model.chains():
-          for res in ch.residue_groups():
-            for atoms in res.atom_groups():
-              x = atoms.resname
-              # if exclude_water and (x.lower() == 'hoh'): continue
-              chains_info[sel_str].resid.append(res.resid())
-              chains_info[sel_str].res_names.append(x)
-              atom_list = list(atoms.atoms().extract_name())
-              chains_info[sel_str].atom_names.append(atom_list)
-              i_seq_list = list(atoms.atoms().extract_i_seq())
-              chains_info[sel_str].atom_selection.append(i_seq_list)
-              # test that there are not overlapping selection
-              sel = flex.bool(l,flex.size_t(i_seq_list))
-              if (selection_test & sel).count(True) > 0:
-                raise Sorry('Overlapping NCS group selections!')
-              else:
-                selection_test |= sel
-      else:
-        raise Sorry('Empty NCS group selections!')
+  model  = ph.models()[0]
+  # build chains_info from hierarchy
+  for ch in model.chains():
+    if not chains_info.has_key(ch.id):
+      chains_info[ch.id] = Chains_info()
+      ph_sel = ph.select(asc.selection("chain '%s'" % ch.id))
+      coc = flex.vec3_double([ph_sel.atoms().extract_xyz().mean()])
+      chains_info[ch.id].center_of_coordinates = coc
+    chains_info[ch.id].chains_atom_number += ch.atoms().size()
+    resids = chains_info[ch.id].resid
+    res_names = chains_info[ch.id].res_names
+    atom_names = chains_info[ch.id].atom_names
+    atom_selection = chains_info[ch.id].atom_selection
+    no_altloc = chains_info[ch.id].no_altloc
+    conf = ch.conformers()[0]
+    len_conf = len(ch.conformers())
+    for res in conf.residues():
+      x = res.resname
+      resids.append(res.resid())
+      res_names.append(x)
+      atoms = res.atoms()
+      atom_names.append(list(atoms.extract_name()))
+      atom_selection.append(list(atoms.extract_i_seq()))
+      no_altloc.append(res.is_pure_main_conf or len_conf==1)
+    chains_info[ch.id].resid = resids
+    chains_info[ch.id].res_names = res_names
+    chains_info[ch.id].atom_names = atom_names
+    chains_info[ch.id].atom_selection = atom_selection
+    chains_info[ch.id].no_altloc = no_altloc
   return chains_info
 
 def initialize_score_matrix(row, col,max_score=1000):

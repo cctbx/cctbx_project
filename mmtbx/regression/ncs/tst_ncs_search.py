@@ -2,7 +2,6 @@ from __future__ import division
 from mmtbx.ncs.ncs_search import res_alignment
 from scitbx.array_family import flex
 from mmtbx.ncs import ncs_search
-from libtbx.utils import Sorry
 import iotbx.ncs as ncs
 import iotbx.pdb
 import unittest
@@ -132,55 +131,6 @@ class TestSimpleAlignment(unittest.TestCase):
     # test without selection
     chains_info1 = ncs_search.get_chains_info(ph)
     self.assertEqual(sorted(chains_info1),['A', 'D', 'X'])
-
-    # test with selection strings: compare to no selection
-    selection_list = ['chain A','chain x','chain D']
-    chains_info2 = ncs_search.get_chains_info(ph,selection_list)
-    self.assertEqual(sorted(chains_info2),['chain A', 'chain D', 'chain x'])
-
-    self.assertEqual(
-      chains_info1['A'].atom_names,chains_info2['chain A'].atom_names)
-    self.assertEqual(
-      chains_info1['A'].atom_selection,chains_info2['chain A'].atom_selection)
-    self.assertEqual(
-      chains_info1['A'].chains_atom_number,
-      chains_info2['chain A'].chains_atom_number)
-    self.assertEqual(
-      chains_info1['X'].res_names,chains_info2['chain x'].res_names)
-    self.assertEqual(
-      chains_info1['X'].resid,chains_info2['chain x'].resid)
-
-    # test with selection strings: multiple chain selection
-    selection_list = [
-      '(chain A and resseq 151:156) or (chain x and resname LEU)','chain D']
-    chains_info = ncs_search.get_chains_info(ph,selection_list)
-    self.assertEqual(
-      sorted(chains_info),
-      ['(chain A and resseq 151:156) or (chain x and resname LEU)', 'chain D'])
-
-    key = '(chain A and resseq 151:156) or (chain x and resname LEU)'
-    expected = [[' CA '],[' CA '],[' CA '],[' CA '],[' CA '],[' CA '],[' CA ']]
-    self.assertEqual(chains_info[key].atom_names,expected)
-    self.assertEqual(
-      chains_info[key].atom_selection,[[0],[1],[2],[3],[4],[5],[9]])
-    self.assertEqual(chains_info[key].chains_atom_number,7)
-    self.assertEqual(
-      chains_info[key].res_names,['LYS','LYS','LYS','LYS','LYS','LYS','LEU'])
-    self.assertEqual(
-      chains_info[key].resid,
-      [' 151 ',' 152 ',' 153 ',' 154 ',' 155 ',' 156 ','  40 '])
-
-    # test with selection strings: overlapping selection
-    selection_list = ['chain A and resseq 151:156','chain A or chain D']
-    self.assertRaises(Sorry,ncs_search.get_chains_info,
-                      ph=ph,
-                      selection_list=selection_list)
-
-    # test with selection strings: empty selection
-    selection_list = ['chain A and resseq 1:6']
-    self.assertRaises(Sorry,ncs_search.get_chains_info,
-                      ph=ph,
-                      selection_list=selection_list)
 
   def test_remove_far_atoms(self):
     # print sys._getframe().f_code.co_name
