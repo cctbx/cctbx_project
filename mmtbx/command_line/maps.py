@@ -276,7 +276,7 @@ def run (args, log = sys.stdout, use_output_directory=True,
   print >> log, "\nInput model file:", params.maps.input.pdb_file_name
   pdb_hierarchy = pdb_inp.construct_hierarchy(set_atom_i_seq=True)
   atom_selection_manager = pdb_hierarchy.atom_selection_cache()
-  xray_structure = pdb_inp.xray_structure_simple(
+  xray_structure = pdb_hierarchy.extract_xray_structure(
     crystal_symmetry = crystal_symmetry)
   # apply omit selection
   if(params.maps.omit.selection is not None):
