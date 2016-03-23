@@ -5,6 +5,8 @@
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_internal_reference.hpp>
 #include <boost/python/import.hpp>
+#include <boost/python/extract.hpp>
+#include <boost/python/object.hpp>
 
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/range/adaptor/filtered.hpp>
@@ -23,6 +25,7 @@
 #include <mmtbx/geometry/overlap.hpp>
 #include <mmtbx/geometry/containment.hpp>
 #include <mmtbx/geometry/sphere_surface_sampling.hpp>
+#include <mmtbx/geometry/calculator.hpp>
 
 #include <mmtbx/geometry/boost_python/indexing.hpp>
 #include <mmtbx/geometry/boost_python/containment.hpp>
@@ -33,6 +36,60 @@ namespace geometry
 {
 namespace asa
 {
+
+namespace python
+{
+
+template< typename Value >
+struct transformed_value_extract
+{
+public:
+  typedef Value value_type;
+
+private:
+  boost::python::object transformation_;
+
+public:
+  transformed_value_extract(boost::python::object transformation)
+  : transformation_( transformation )
+  {};
+
+  value_type operator () (boost::python::object obj) const
+  {
+    return boost::python::extract< value_type >( transformation_( obj ) );
+  }
+};
+
+template< typename Value >
+struct array_adaptor : private transformed_value_extract< Value >
+{
+public:
+  typedef Value value_type;
+  typedef std::size_t size_type;
+
+  typedef transformed_value_extract< value_type > transformer_type;
+
+private:
+  boost::python::object array_;
+
+public:
+  array_adaptor(boost::python::object array, boost::python::object transformation)
+  : transformer_type( transformation ), array_( array )
+  {};
+
+  value_type operator [](size_type const& index) const
+  {
+    return transformer_type::operator ()( array_[ index ] );
+  }
+
+  size_type size() const
+  {
+    return boost::python::len( array_ );
+  }
+};
+
+} // namespace python
+
 namespace
 {
 
@@ -193,6 +250,48 @@ struct python_export_traits
   #pragma clang diagnostic pop
 };
 
+struct python_calculator_export
+{
+  static void wrap()
+  {
+    using namespace boost::python;
+    typedef python::array_adaptor< scitbx::vec3< double > > coordinate_adaptor_type;
+    typedef python::array_adaptor< double > radius_adaptor_type;
+    typedef calculator::SimpleCalculator<
+      coordinate_adaptor_type,
+      radius_adaptor_type
+      > calculator_type;
+
+    class_< coordinate_adaptor_type >( "_coordinate_adaptor", no_init )
+      .def( init< object, object >( ( arg( "array" ), arg( "transformation" ) ) ) )
+      .def( "__getitem__", &coordinate_adaptor_type::operator [] )
+      .def( "__len__", &coordinate_adaptor_type::size )
+      ;
+    class_< radius_adaptor_type >( "_radius_adaptor", no_init )
+      .def( init< object, object >( ( arg( "array" ), arg( "transformation" ) ) ) )
+      .def( "__getitem__", &radius_adaptor_type::operator [] )
+      .def( "__len__", &radius_adaptor_type::size )
+      ;
+
+    class_< calculator_type >( "calculator", no_init )
+      .def(
+        init< coordinate_adaptor_type, radius_adaptor_type, double, std::size_t, double, int >(
+          (
+            arg( "coordinate_adaptor" ),
+            arg( "radius_adaptor" ),
+            arg( "probe" ) = 1.4,
+            arg( "sampling_point_count" ) = 960,
+            arg( "cubesize" ) = 7.0,
+            arg( "margin" ) = 1
+            )
+          )
+        )
+      .def( "__call__", &calculator_type::operator (), arg( "index" ) )
+      ;
+  }
+
+};
+
 } // namespace <anonymous>
 } // namespace asa
 } // namespace geometry
@@ -206,5 +305,6 @@ BOOST_PYTHON_MODULE(mmtbx_geometry_asa_ext)
   mmtbx::geometry::asa::python_exports<
     mmtbx::geometry::asa::python_export_traits< scitbx::vec3< double > >
     >::wrap();
+  mmtbx::geometry::asa::python_calculator_export::wrap();
 }
 

@@ -289,3 +289,17 @@ def calculate(
     unit = sampling.unit_area,
     )
 
+
+def identity(value):
+
+  return value
+
+
+def coordinate_adaptor(array, transformation = identity):
+
+  return ext._coordinate_adaptor( array = array, transformation = transformation )
+
+
+def radius_adaptor(array, transformation = identity):
+
+  return ext._radius_adaptor( array = array, transformation = transformation )

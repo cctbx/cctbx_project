@@ -1907,6 +1907,7 @@ mmtbx/geometry/boost_python/primitive_ext.cpp -text
 mmtbx/geometry/boost_python/shared_types_ext.cpp -text
 mmtbx/geometry/boost_python/sphere_surface_sampling_ext.cpp -text
 mmtbx/geometry/boost_python/volume_ext.cpp -text
+mmtbx/geometry/calculator.hpp -text
 mmtbx/geometry/clash.hpp -text
 mmtbx/geometry/clash.hxx -text
 mmtbx/geometry/clash.py -text

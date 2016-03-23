@@ -165,6 +165,13 @@ Checker< Neighbour, Algorithm >::~Checker()
 {}
 
 template< typename Neighbour, typename Algorithm >
+void
+Checker< Neighbour, Algorithm >::add(neighbour_type const& object)
+{
+  neighbours_.push_back( object );
+}
+
+template< typename Neighbour, typename Algorithm >
 template< typename InputIterator >
 void
 Checker< Neighbour, Algorithm >::add(InputIterator begin, InputIterator end)

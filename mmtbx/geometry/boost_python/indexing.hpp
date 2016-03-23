@@ -111,7 +111,7 @@ public:
   void operator ()(boost::mpl::identity< Export > myexport) const
   {
     typedef typename Export::first indexer_type;
-    typedef typename indexer_type::range_type range_type;;
+    typedef typename indexer_type::range_type range_type;
     typedef boost::filtered_range< predicate_type, range_type > filtered_range_type;
     typedef typename Export::second name_type;
 

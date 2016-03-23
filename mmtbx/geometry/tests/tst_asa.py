@@ -452,6 +452,51 @@ class TestAccessibleSurfaceArea(unittest.TestCase):
     self.asa_result_check( result = result )
 
 
+  def test_asa_calculator1(self):
+
+    myatoms = ATOMS[:12]
+    myatoms.extend( ATOMS[13:] )
+    myradii = RADII[:12] + RADII[13:]
+
+    calc = asa.calculator(
+      coordinate_adaptor = asa.coordinate_adaptor( array = myatoms.extract_xyz() ),
+      radius_adaptor = asa.radius_adaptor( array = myradii ),
+      probe = PROBE,
+      )
+    myvalues = self.ACCESSIBLES[:12] + self.ACCESSIBLES[13:]
+
+    for ( index, count, radius ) in zip( range( len( myatoms ) ), myvalues, myradii ):
+      self.assertAlmostEqual(
+        calc( index = index ),
+        SAMPLING_POINTS.unit_area * count * ( radius + PROBE ) ** 2,
+        7,
+        )
+
+
+  def test_asa_calculator2(self):
+
+    myatoms = ATOMS[:12]
+    myatoms.extend( ATOMS[13:] )
+    myradii = RADII[:12] + RADII[13:]
+
+    calc = asa.calculator(
+      coordinate_adaptor = asa.coordinate_adaptor(
+        array = myatoms,
+        transformation = lambda a: a.xyz,
+        ),
+      radius_adaptor = asa.radius_adaptor( array = myradii ),
+      probe = PROBE,
+      )
+    myvalues = self.ACCESSIBLES[:12] + self.ACCESSIBLES[13:]
+
+    for ( index, count, radius ) in zip( range( len( myatoms ) ), myvalues, myradii ):
+      self.assertAlmostEqual(
+        calc( index = index ),
+        SAMPLING_POINTS.unit_area * count * ( radius + PROBE ) ** 2,
+        7,
+        )
+
+
   def asa_result_check(self, result):
 
     self.assertEqual( len( result.values ), len( self.ACCESSIBLES ) )
@@ -513,4 +558,3 @@ def load_tests(loader, tests, pattern):
 
 if __name__ == "__main__":
     unittest.TextTestRunner( verbosity = 2 ).run( alltests )
-

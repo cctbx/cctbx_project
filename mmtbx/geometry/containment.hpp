@@ -118,6 +118,8 @@ public:
   Checker();
   ~Checker();
 
+  void add(neighbour_type const& object);
+
   template< typename InputIterator >
   void add(InputIterator begin, InputIterator end);
 
