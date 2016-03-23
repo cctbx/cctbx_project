@@ -33,7 +33,7 @@ public:
   typedef typename converter_type::value_type value_type;
 
 private:
-  array_type array_;
+  array_type const array_;
 
   TransformedArray(array_type const& array) : array_( array )
   {};

@@ -16,7 +16,7 @@ PDB = os.path.join(
   "tests",
   "1ahq_trunc.pdb"
   )
-ROOT = iotbx.pdb.input( PDB ).construct_hierarchy()
+ROOT = iotbx.pdb.input( PDB ).construct_hierarchy( sort_atoms = False )
 ATOMS = ROOT.atoms()
 
 from mmtbx.geometry import sphere_surface_sampling
