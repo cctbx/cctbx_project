@@ -943,6 +943,16 @@ class ncs_group:  # one group of NCS operators and center and where it applies
      offset_frac.append(self.offset_inside_zero_one(x))
     return unit_cell.orthogonalize(matrix.col(offset_frac))
 
+  def identity_op_id(self):
+    # return id of identity operator
+    id=0
+    for center,trans_orth,ncs_rota_matr in zip (
+       self._centers, self._translations_orth,self._rota_matrices):
+      if is_identity(ncs_rota_matr,trans_orth):
+         return id
+      id+=1
+    return None
+
   def map_inside_unit_cell(self,unit_cell=None):
     # map all the operators inside the unit cell.  Must be supplied
     assert unit_cell is not None
@@ -1030,6 +1040,12 @@ class ncs:
 
   def ncs_groups(self):
     return self._ncs_groups
+
+  def identity_op_id_in_first_group(self): # identity operartor in first (usually main) NCS group
+    if self._ncs_groups:
+      return self._ncs_groups[0].identity_op_id()
+    else:
+      return None
 
   def ncs_oper_in_first_group(self): # copies in first (usually main) NCS group
     if self._ncs_groups:
