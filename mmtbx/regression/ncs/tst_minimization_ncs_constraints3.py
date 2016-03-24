@@ -52,6 +52,26 @@ class TestMinimizationFunctions(unittest.TestCase):
         cl = list(g.select(flex.size_t(c)))
         self.assertEqual(ml,cl)
 
+#
+# same chain id for HETATM at the end is valid, see
+# http://deposit.rcsb.org/format-faq-v1.html
+# Q.  How are three-letter residue names and chain identifiers for residue
+#    modifications and ligands assigned?
+#
+# A.  There are four common cases: covalently bound ligands <...>
+# Covalently bound ligands:
+# Covalently bound ligands are assigned the chain identifier of the
+# polymer chain to which the ligand is bound. The bonding between the ligand
+# and the residue is specified in PDB LINK records. The ligand coordinates
+# appear as HETATM records following either the TER record for the bound chain
+# or after the TER record for the last polymer chain. The ligand is assigned
+# a unique residue number within chain to which it is bound. The residue that
+# binds the ligand retains its standard name in both coordinate and SEQRES
+# records. Additional PDB records MODRES/HET/HETNAM/FORMUL and CONECT are
+# provided to describe the ligand.
+
+
+#
 test_pdb_1 = '''\
 ATOM      1  N   ASP A   1      27.619  71.759 115.947  1.00138.20           N
 ATOM      2  CA  ASP A   1      27.294  72.259 114.616  1.00139.50           C
