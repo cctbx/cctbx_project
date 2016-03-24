@@ -153,22 +153,23 @@ class SBSettingsPanel(wx.Panel):
 
 
   def OnSaveMetrology(self, event):
-    import pycbf
+    import pycbf, os
 
     dialog = wx.FileDialog(
       self,
-      defaultDir="",
+      defaultDir=os.curdir,
+      defaultFile="quadrants.def",
       message="Save metrology file",
       style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
       wildcard="Phil files (*.def)|*.def")
     if dialog.ShowModal() == wx.ID_OK:
-      path = dialog.GetPath()
+      path = str(dialog.GetPath())
       if (path != "") :
         # The detector object of the format instance is adjusted when the quadrant calibration
         # arrows are clicked.  Sync those adjustments to the cbf handle, drop uneeded categories
         # (categories frame specific but not metrology specific) and write the file.
         frame = self.GetParent().GetParent()
-        img = frame.pyslip.tiles.raw_image
+        img = frame.pyslip.tiles.raw_image.image_set.reader().get_format()
 
         img.sync_detector_to_cbf()
         cbf = img._cbf_handle
