@@ -82,7 +82,8 @@ def run(prefix="tst_map_model_cc"):
   for opt in ["","resolution=1.5"]:
     cmd = " ".join([
       "phenix.map_model_cc",
-      "%s_shifted.{ccp4,pdb}"%prefix,
+      "%s_shifted.pdb"%prefix,
+      "%s_shifted.ccp4"%prefix,
       "%s"%opt,
       "> %s.zlog"%prefix
     ])
