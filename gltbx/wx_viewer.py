@@ -73,6 +73,9 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     kw['attribList'] = kw.get('attribList', [])
 
     # Safely identify supported attributes
+    if hasattr(wx.glcanvas, 'WX_GL_RGBA'):
+      kw['attribList'].append(wx.glcanvas.WX_GL_RGBA) # required on Windows
+
     if hasattr(wx.glcanvas, 'WX_GL_DOUBLEBUFFER'):
       try:
         if self.IsDisplaySupported(wx.glcanvas.WX_GL_DOUBLEBUFFER):
