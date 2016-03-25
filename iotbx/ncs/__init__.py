@@ -719,21 +719,23 @@ done    7. Combine or remove entirely quiet and write_messages. If somebody does
     chain_ids = {x.id for x in pdb_h.models()[0].chains()}
     self.total_asu_length = pdb_h.atoms().size()
     if len(chain_ids) > 1:
+      chains_info = ncs_search.get_chains_info(pdb_h)
       group_dict = ncs_search.find_ncs_in_hierarchy(
         ph=pdb_h,
+        chains_info=chains_info,
         chain_similarity_threshold=self.chain_similarity_threshold,
         chain_max_rmsd=self.chain_max_rmsd,
         log=self.log,
         residue_match_radius=self.residue_match_radius)
       # process atom selections
       self.total_asu_length = pdb_h.atoms().size()
-      self.build_ncs_obj_from_group_dict(group_dict,pdb_h)
+      self.build_ncs_obj_from_group_dict(group_dict, pdb_h, chains_info)
       if not self.model_unique_chains_ids:
         model = pdb_h.models()[0]
         chain_ids = {x.id for x in model.chains()}
         self.model_unique_chains_ids = tuple(sorted(chain_ids))
 
-  def build_ncs_obj_from_group_dict(self,group_dict,pdb_h):
+  def build_ncs_obj_from_group_dict(self,group_dict,pdb_h, chains_info=None):
     """
     Use group_dict to build ncs object
 
@@ -768,7 +770,8 @@ done    7. Combine or remove entirely quiet and write_messages. If somebody does
       # print "    ", v.transforms
 
     self.ncs_atom_selection = flex.bool([False]*self.total_asu_length)
-    chains_info = ncs_search.get_chains_info(ph)
+    if chains_info is None:
+      chains_info = ncs_search.get_chains_info(ph)
     ncs_related_atoms = flex.bool([False]*self.total_asu_length)
     sorted_group_keys = sorted(group_dict)
     for gr_n,key in enumerate(sorted_group_keys):

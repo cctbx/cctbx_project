@@ -7,6 +7,7 @@ from scitbx import matrix
 import math
 import sys
 import StringIO
+from scitbx.math import dihedral_angle
 
 __author__ = 'Youval'
 
@@ -101,6 +102,7 @@ class Chains_info(object):
 
 
 def find_ncs_in_hierarchy(ph,
+                          chains_info=None,
                           chain_max_rmsd=5.0,
                           log=None,
                           chain_similarity_threshold=0.85,
@@ -124,7 +126,8 @@ def find_ncs_in_hierarchy(ph,
       values: NCS_groups_container objects
   """
   if not log: log = sys.stdout
-  chains_info = get_chains_info(ph)
+  if chains_info is None:
+    chains_info = get_chains_info(ph)
   # Get the list of matching chains
   chain_match_list = search_ncs_relations(
     chains_info=chains_info,
@@ -1116,11 +1119,102 @@ def get_copy_master_selections_from_match_dict(
 #   return m_sel,c_sel,m_res,c_res,worst_rmsd,r,t
 
 
+def make_flips_if_necessary_torsion(const_h, flip_h):
+  """ 3 times faster than other procedure."""
+  # data_dict:
+  #   key: flippable residue name
+  #   value: list of 5 atom names: first 4 define one angle,
+  #          1st, 2nd, 3rd and 5th define another torsion angle
+  #          6th, 7th - additional atoms to flip
+  data_dict = {
+    "LEU":[" CA ", " CB ", " CG ", " CD1", " CD2"],
+    "GLU":[" CB ", " CG ", " CD ", " OE1", " OE2"],
+    "ASP":[" CA ", " CB ", " CG ", " OD1", " OD2"],
+    "ASN":[" CA ", " CB ", " CG ", " OD1", " ND2"],
+    "GLN":[" CB ", " CG ", " CD ", " OE1", " NE2"],
+    "ARG":[" CD ", " NE ", " CZ ", " NH1", " NH2"],
+    "VAL":[" C  ", " CA ", " CB ", " CG1", " CG2"],
+    "PHE":[" CA ", " CB ", " CG ", " CD1", " CD2", " CE1", " CE2"],
+    "HIS":[" CA ", " CB ", " CG ", " ND1", " CD2", " CE1", " NE2"],
+    "TYR":[" CA ", " CB ", " CG ", " CD1", " CD2", " CE1", " CE2"],
+  }
+  const_h.reset_atom_i_seqs()
+  flip_h.reset_atom_i_seqs()
+  ref_sites = const_h.atoms().extract_xyz()
+  other_sites = flip_h.atoms().extract_xyz()
+  assert const_h.atoms().size() == flip_h.atoms().size()
+  # we could get rid of it if it will be slow
+  # if not const_h.contains_protein():
+  #   return None
+  flipped_other_selection = flex.size_t([])
+  for ch in const_h.only_model().chains():
+    for residue in ch.only_conformer().residues():
+      if residue.resname in data_dict:
+        # print "HERE"
+        atom_list = []
+        fl_atom_list = data_dict[residue.resname]
+        present_none_in_atom_list = False
+        for aname in fl_atom_list:
+          a = residue.find_atom_by(name=aname)
+          if a is None:
+            present_none_in_atom_list = True
+            break
+          else:
+            atom_list.append(a)
+        # print "atom list", atom_list
+        if not present_none_in_atom_list:
+          # getting torsions: (1) using 0,1,2,3 atoms and ref_sites,
+          # (2) using 0,1,2,3 atoms and other_sites
+          # (3) using 0,1,2,4 atoms and other_sites.
+          # If (1) is closer to (2) then no flip, else flip
+          sites=[ref_sites[x.i_seq] for x in atom_list[:4]]
+          # print "sites",sites
+          tor1 = dihedral_angle(
+              sites=[ref_sites[x.i_seq] for x in atom_list[:4]],
+              deg=True)
+          tor2 = dihedral_angle(
+              sites=[other_sites[x.i_seq] for x in atom_list[:4]],
+              deg=True)
+          tor3 = dihedral_angle(
+              sites=[other_sites[x.i_seq] for x in atom_list[:3]+[atom_list[4]]],
+              deg=True)
+          # print "tors:", tor1, tor2, tor3
+          # print "condition:", abs(abs(tor1)-abs(tor2)), abs(abs(tor1)-abs(tor3))+5
+          if abs(abs(tor1)-abs(tor2)) > abs(abs(tor1)-abs(tor3))+5:
+            # print "flipping"
+            iseqs = [0]*residue.atoms().size()
+            for i, a in enumerate(residue.atoms()):
+              try:
+                ind = fl_atom_list.index(a.name)
+                if ind == 3 or ind == 5:
+                  iseqs[i+1] = a.i_seq
+                elif ind == 4 or ind == 6:
+                  iseqs[i-1] = a.i_seq
+                else:
+                  iseqs[i] = a.i_seq
+              except ValueError:
+                iseqs[i] = a.i_seq
+            for i in iseqs:
+              flipped_other_selection.append(i)
+          else:
+            for a in residue.atoms():
+              flipped_other_selection.append(a.i_seq)
+        else:
+          for a in residue.atoms():
+            flipped_other_selection.append(a.i_seq)
+      else:
+        for a in residue.atoms():
+          flipped_other_selection.append(a.i_seq)
+  # print "flipped_other_selection", list(flipped_other_selection)
+  assert flipped_other_selection.size() == const_h.atoms().size()
+  return flipped_other_selection
 
 def make_flips_if_necessary(const_h, flip_h):
+  """ 3 times slower than make_flips_if_necessary_torsion."""
   def dist(a,b):
     return math.sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2)
   assert const_h.atoms().size() == flip_h.atoms().size()
+  # this check takes quater of the runtime.
   if not const_h.contains_protein():
     return None
   asc = const_h.atom_selection_cache()
@@ -1145,8 +1239,8 @@ def make_flips_if_necessary(const_h, flip_h):
   flip_h.reset_atom_i_seqs()
   for ch in const_h.only_model().chains():
     for residue in ch.only_conformer().residues():
-      if (residue.resname in ["GLU", "ASP", "PHE", "HIS", "LEU", "ASN",
-                             "GLN", "ARG", "THR", "VAL", "TYR"] and
+      if (residue.resname in ["GLU", "ASP", "PHE", "HIS", "LEU",
+                              "ASN", "GLN", "ARG", "VAL", "TYR"] and
           residue.atoms().size() > 1):
         # find interesting pair and decide on flip straight away
         flippable_iseqs = []
@@ -1228,7 +1322,9 @@ def clean_chain_matching(chain_match_list,ph,
     #
     # Here we want to flip atom names, even before chain alignment, so
     # we will get correct chain RMSD
-    flipped_other_selection = make_flips_if_necessary(ref_h.deep_copy(), other_h.deep_copy())
+    flipped_other_selection = None
+    # flipped_other_selection = make_flips_if_necessary(ref_h.deep_copy(), other_h.deep_copy())
+    flipped_other_selection = make_flips_if_necessary_torsion(ref_h.deep_copy(), other_h.deep_copy())
     if flipped_other_selection is not None:
       flipped_other_atoms = other_atoms.select(flipped_other_selection)
       other_sites = flipped_other_atoms.extract_xyz()
@@ -1766,15 +1862,16 @@ def get_chains_info(ph, selection_list=None):
   """
 
   chains_info =  {}
-  asc = ph.atom_selection_cache()
+  # asc = ph.atom_selection_cache()
   model  = ph.models()[0]
   # build chains_info from hierarchy
   for ch in model.chains():
     if not chains_info.has_key(ch.id):
       chains_info[ch.id] = Chains_info()
-      ph_sel = ph.select(asc.selection("chain '%s'" % ch.id))
-      coc = flex.vec3_double([ph_sel.atoms().extract_xyz().mean()])
-      chains_info[ch.id].center_of_coordinates = coc
+      # ph_sel = ph.select(asc.selection("chain '%s'" % ch.id))
+      # coc = flex.vec3_double([ph_sel.atoms().extract_xyz().mean()])
+      # chains_info[ch.id].center_of_coordinates = coc
+      chains_info[ch.id].center_of_coordinates = None
     chains_info[ch.id].chains_atom_number += ch.atoms().size()
     resids = chains_info[ch.id].resid
     res_names = chains_info[ch.id].res_names
@@ -1994,7 +2091,9 @@ def my_get_rot_trans(
   # print "selection master:", list(master_selection)
   # print "selection copy:", list(copy_selection)
   # Check that master and copy are identical
-  assert len(m_atoms) == len(c_atoms), "%d, %d" % (len(m_atoms), len(c_atoms))
+  m_size = m_atoms.size()
+  c_size = c_atoms.size()
+  assert m_size == c_size, "%d, %d" % (m_size, c_size)
   # master
   other_sites = m_atoms.extract_xyz()
   # copy
