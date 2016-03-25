@@ -9,22 +9,15 @@ import mmtbx.masks
 from mmtbx import map_tools
 from iotbx import ccp4_map
 from iotbx import file_reader
+from iotbx import phil
 from iotbx import reflection_file_utils
-#import iotbx.phil
 import iotbx.pdb
 #import iotbx.mtz
 #from cctbx import xray
 from cctbx import maptbx
 from cctbx.array_family import flex
-from libtbx import phil # Second import. Previous is better.
 from libtbx.utils import Sorry
 from libtbx.utils import multi_out
-
-# in general, imports as mmtbx.utils are preferable, because in is obvious
-# in the code what is called. There are surprising number of modules called
-# "utils" in cctbx. On the opposite, from libtbx.utils import Sorry is
-# ok, because Sorry is rather unique, and it would be excessively long
-# call otherwise.
 
 legend = """\
 
@@ -65,52 +58,67 @@ Optional output:
 """
 
 master_params_str = """
+include scope libtbx.phil.interface.tracking_params
 model_file_name = None
   .type = str
+  .short_caption = model file
   .multiple = False
   .help = Model file name
 solvent_exclusion_mask_selection = None
   .type = str
+  .short_caption = omit selection
   .help = Atoms around which bulk solvent mask is set to zero
 reflection_file_name = None
   .type = str
+  .short_caption = data file
   .help = File with experimental data (most of formats: CNS, SHELX, MTZ, etc).
 data_labels = None
   .type = str
+  .short_caption = data labels
   .help = Labels for experimental data.
 r_free_flags_labels = None
   .type = str
+  .short_caption = Rfree labels
   .help = Labels for free reflections.
 sphere_radius = 5
   .type = float
+  .short_caption = solvent exclusion radius
   .help = Radius of sphere around atoms where solvent mask is reset to zero
 high_resolution = None
   .type = float
+  .short_caption = high resolution
   .help = High resolution limit
 low_resolution = None
   .type = float
+  .short_caption = low resolution
   .help = Low resolution limit
 scattering_table = *n_gaussian wk1995 it1992 neutron electron
   .type = choice
+  .short_caption = scattering table
   .help = Scattering table for structure factors calculations
 resolution_factor = 0.25
   .type = float
+  .short_caption = resolution factor
   .help = Used to determine the grid step = resolution_factor * high resolution
 output_file_name_prefix = None
   .type = str
+  .short_caption = prefix for output
   .help = Prefix for output filename
 mask_output = False
   .type = bool
+  .short_caption = output masks
   .help = Additional output: ccp4 maps containing the solvent mask for inital \
    model (mask_all.ccp4), when ligand is omitted (mask_omit.ccp4) and the mask \
    used for polder (mask_polder.ccp4).
 debug = False
   .type = bool
   .expert_level=3
+  .short_caption = output biased map
   .help = Additional output: biased omit map (ligand used for mask calculation \
    but omitted from model)
 """
 
+master_params = phil.parse(master_params_str, process_includes=True)
 
 def output_map(
   f_obs, r_free_flags, xray_structure, mask_data, filename, params, log):
@@ -168,14 +176,10 @@ def mask_from_xrs_unpadded(xray_structure, n_real):
   maptbx.unpad_in_place(map = mask)
   return mask
 
-# I think it would be useful to make it as convenient as possible to
-# call this function from anywhere else. If it needs to return more than one
-# thing, it could be rewritted as a class. In this case (of using this
-# functionality from somewhere else), remark about printing to log
-# becomes even more relevant.
+
 def compute_polder_map(
   f_obs, r_free_flags, xray_structure, pdb_hierarchy, params, log):
-  # see above the remark about print statements.
+  # output and apply atom selection
   print >> log, "selecting atoms..."
   print >> log, "Selection string:", params.solvent_exclusion_mask_selection
   selection_bool = pdb_hierarchy.atom_selection_cache().selection(
@@ -212,7 +216,7 @@ def compute_polder_map(
     log            = log)
   #------
   # biased map - for developers
-  if(params.debug):
+  if (params.debug):
     print >> log, "R factor when ligand is used for mask calculation (biased map):"
     mc_diff_bias_omit = output_map(
       f_obs          = f_obs,
@@ -223,7 +227,7 @@ def compute_polder_map(
       params         = params,
       log            = log)
   #------
-  # calculate polder mask
+  # compute polder mask
   mask_polder = mask_modif(
     f_obs         = f_obs,
     mask_data     = mask_data_all,
@@ -238,9 +242,9 @@ def compute_polder_map(
     filename       = "polder",
     params         = params,
     log            = log)
-  # calculate mask for structure without ligand
+  # compute mask for structure without ligand
   mask_data_omit = mask_from_xrs_unpadded(
-        xray_structure = xray_structure_noligand,
+    xray_structure = xray_structure_noligand,
     n_real         = crystal_gridding.n_real())
   print >> log, "R factor when ligand is excluded for mask calculation:"
   mc_diff_omit = output_map(
@@ -253,7 +257,8 @@ def compute_polder_map(
     log            = log)
   mtz_dataset = mc_diff_polder.as_mtz_dataset(
         column_root_label = "mFo-DFc_polder")
-  if params.debug:
+  # add biased map if debug=True
+  if (params.debug):
     mtz_dataset.add_miller_array(
       miller_array      = mc_diff_bias_omit,
       column_root_label = "mFo-DFc_bias_omit")
@@ -262,14 +267,37 @@ def compute_polder_map(
     column_root_label = "mFo-DFc_omit")
   mtz_object = mtz_dataset.mtz_object()
   polder_file_name = "polder_map_coeffs.mtz"
-  if params.output_file_name_prefix is not None:
+  if (params.output_file_name_prefix is not None):
     polder_file_name = params.output_file_name_prefix + "_" + polder_file_name
   mtz_object.write(file_name = polder_file_name)
   print >> log, "Finished."
 
+# validation for GUI
+def validate_params(params):
+  if (params.solvent_exclusion_mask_selection is None):
+    raise Sorry("No selection for mask calculation found.")
+  if (params.sphere_radius < 3 or params.sphere_radius > 150):
+    raise Sorry("Sphere radius out of range: must be between 3 A and 10 A")
+  if (params.model_file_name is None):
+    raise Sorry("Model file should be given")
+  if (params.reflection_file_name is None):
+    raise Sorry("Data file should be given")
+  # check if file type is OK
+  file_reader.any_file(
+    file_name = params.model_file_name).check_file_type(expected_type = 'pdb')
+  file_reader.any_file(
+    file_name = params.reflection_file_name).check_file_type(
+      expected_type = 'hkl')
+  if (params.data_labels is None):
+    raise Sorry("Data labels should be given")
+  if (params.resolution_factor < 0.0):
+    raise Sorry(
+      "Please use a positive value for the resolution gridding factor.")
+  return True
+
 # parse through command line arguments
-def cmd_run(args, out=sys.stdout):
-  if len(args) == 0:
+def cmd_run(args, validated=False, out=sys.stdout):
+  if (len(args) == 0):
     print legend
     return
   log = multi_out()
@@ -279,25 +307,23 @@ def cmd_run(args, out=sys.stdout):
   log.register("logfile", logfile)
   print >> log, "phenix.polder is running..."
   print >> log, "input parameters:\n", args
-  parsed = phil.parse(master_params_str)
+  parsed = master_params
   inputs = mmtbx.utils.process_command_line_args(args = args,
     master_params = parsed)
   #inputs.params.show() #check
   params = inputs.params.extract()
-  if params.solvent_exclusion_mask_selection is None:
-    raise Sorry("No selection for mask calculation found.")
   # check model file
   if len(inputs.pdb_file_names) == 0:
-    if(params.model_file_name is None):
+    if (params.model_file_name is None):
       raise Sorry("No model file found.")
-  elif len(inputs.pdb_file_names) == 1:
+  elif (len(inputs.pdb_file_names) == 1):
     params.model_file_name = inputs.pdb_file_names[0]
   else:
     raise Sorry("Only one model file should be given")
   # check reflection file
   reflection_files = inputs.reflection_files
-  if len(reflection_files) == 0:
-    if params.reflection_file_name is None:
+  if (len(reflection_files) == 0):
+    if (params.reflection_file_name is None):
       raise Sorry("No reflection file found.")
     else:
       hkl_in = file_reader.any_file(params.reflection_file_name,
@@ -305,10 +331,9 @@ def cmd_run(args, out=sys.stdout):
       hkl_in.assert_file_type("hkl")
       reflection_files = [ hkl_in.file_object ]
   # crystal symmetry
-  # What is the reason to assing crystal_symmetry to None first?
   crystal_symmetry = None
   crystal_symmetry = inputs.crystal_symmetry
-  if crystal_symmetry is None:
+  if (crystal_symmetry is None):
     raise Sorry("No crystal symmetry found.")
   f_obs, r_free_flags = None, None
   rfs = reflection_file_utils.reflection_file_server(
@@ -317,9 +342,9 @@ def cmd_run(args, out=sys.stdout):
     reflection_files = reflection_files,
     err              = StringIO())
   parameters = mmtbx.utils.data_and_flags_master_params().extract()
-  if params.data_labels is not None:
+  if (params.data_labels is not None):
     parameters.labels = params.data_labels
-  if params.r_free_flags_labels is not None:
+  if (params.r_free_flags_labels is not None):
     parameters.r_free_flags.label = params.r_free_flags_labels
   determined_data_and_flags = mmtbx.utils.determine_data_and_flags(
     reflection_file_server = rfs,
@@ -327,16 +352,23 @@ def cmd_run(args, out=sys.stdout):
     keep_going             = True,
     log                    = StringIO())
   f_obs = determined_data_and_flags.f_obs
+  if (params.data_labels is None):
+    params.data_labels = f_obs.info().label_string()
+  if (params.reflection_file_name is None):
+    params.reflection_file_name = parameters.file_name
   r_free_flags = determined_data_and_flags.r_free_flags
   assert f_obs != None
   print >> log,  "Input data:"
   print >> log, "  Iobs or Fobs:", f_obs.info().labels
-  if r_free_flags is not None:
+  if (r_free_flags is not None):
     print >> log, "  Free-R flags:", r_free_flags.info().labels
+    params.r_free_flags_labels = r_free_flags.info().label_string()
   else:
     print >> log, "  Free-R flags: Not present"
-  if (params.sphere_radius < 3 or params.sphere_radius > 150):
-    raise Sorry("Sphere radius out of range: must be between 3 A and 10 A")
+  #new_params =  master_params.format(python_object=params)
+  #new_params.show()
+  if (not validated):
+    validate_params(params)
   pdb_input = iotbx.pdb.input(file_name = params.model_file_name)
   pdb_hierarchy = pdb_input.construct_hierarchy()
   xray_structure = pdb_hierarchy.extract_xray_structure(
@@ -352,17 +384,28 @@ def cmd_run(args, out=sys.stdout):
   f_obs = f_obs.resolution_filter(
     d_min = params.high_resolution,
     d_max = params.low_resolution)
-  if r_free_flags is not None:
+  if (r_free_flags is not None):
     r_free_flags = r_free_flags.resolution_filter(
       d_min = params.high_resolution,
       d_max = params.low_resolution)
   compute_polder_map(
-        f_obs          = f_obs,
+    f_obs          = f_obs,
     r_free_flags   = r_free_flags,
     xray_structure = xray_structure,
     pdb_hierarchy  = pdb_hierarchy,
     params         = params,
     log            = log)
+
+
+# =============================================================================
+# GUI-specific class for running command
+from libtbx import runtime_utils
+class launcher (runtime_utils.target_with_save_result) :
+  def cmd_run (self) :
+    result = cmd_run(args=self.args, validated=True, out=sys.stdout)
+    return result
+
+# =============================================================================
 
 if(__name__ == "__main__"):
   t0 = time.time()
