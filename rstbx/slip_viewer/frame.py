@@ -241,6 +241,56 @@ class XrayFrame (AppFrame,XFBaseClass) :
         self.image_chooser.Insert(os.path.basename(key), i, key)
       return i
 
+  def get_beam_center_px(self):
+    """
+    Get the beam center in pixel coordinates relative to the tile closest to it.
+    @return panel_id, beam_center_fast, beam_center_slow. panel_id is the panel the
+    returned coordinates are relative to.
+    """
+    detector = self.get_detector()
+    beam     = self.get_beam()
+    if abs(detector[0].get_distance()) == 0:
+      return 0.0, 0.0
+
+    # FIXME assumes all detector elements use the same millimeter-to-pixel convention
+    try:
+      # determine if the beam intersects one of the panels
+      panel_id, (x_mm,y_mm) = detector.get_ray_intersection(beam.get_s0())
+    except RuntimeError, e:
+      if not ("DXTBX_ASSERT(" in str(e) and ") failure" in str(e)):
+        # unknown exception from dxtbx
+        raise e
+      if len(detector) > 1:
+        # find the panel whose center is closest to the beam.
+        panel_id = 0
+        lowest_res = 0
+        for p_id, panel in enumerate(detector):
+          w, h = panel.get_image_size()
+          res = panel.get_resolution_at_pixel(beam.get_s0(), (w//2,h//2))
+          if res > lowest_res:
+            panel_id = p_id
+            lowest_res = res
+        x_mm,y_mm = detector[panel_id].get_beam_centre(beam.get_s0())
+
+      else:
+        panel_id = 0
+        # FIXME this is horrible but cannot find easier way without
+        # restructuring code - N.B. case I am debugging now is one
+        # panel detector *parallel to beam* for which the question is
+        # ill posed.
+        try:
+          x_mm,y_mm = detector[0].get_beam_centre(beam.get_s0())
+        except RuntimeError, e:
+          if 'DXTBX_ASSERT' in str(e):
+            x_mm, y_mm = 0.0, 0.0
+          else:
+            raise e
+
+    beam_pixel_fast, beam_pixel_slow = detector[panel_id].millimeter_to_pixel(
+      (x_mm, y_mm))
+
+    return panel_id, beam_pixel_fast, beam_pixel_slow
+
   def load_image (self, file_name_or_data) :
     """The load_image() function displays the image from @p
     file_name_or_data.  The chooser is updated appropriately.
@@ -293,9 +343,6 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self.Layout()
 
     detector = self.get_detector()
-    beam     = self.get_beam()
-
-    # FIXME assumes all detector elements use the same millimeter-to-pixel convention
     if abs(detector[0].get_distance()) > 0:
 
       def map_coords(x, y, p):
@@ -305,42 +352,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
         return self.pyslip.tiles.picture_fast_slow_to_map_relative(
           x, y)
 
-      try:
-        # determine if the beam intersects one of the panels
-        panel_id, (x_mm,y_mm) = detector.get_ray_intersection(beam.get_s0())
-      except RuntimeError, e:
-        if not ("DXTBX_ASSERT(" in str(e) and ") failure" in str(e)):
-          # unknown exception from dxtbx
-          raise e
-        if len(detector) > 1:
-          # find the panel whose center is closest to the beam.
-          panel_id = 0
-          lowest_res = 0
-          for p_id, panel in enumerate(detector):
-            w, h = panel.get_image_size()
-            res = panel.get_resolution_at_pixel(beam.get_s0(), (w//2,h//2))
-            if res > lowest_res:
-              panel_id = p_id
-              lowest_res = res
-          x_mm,y_mm = detector[panel_id].get_beam_centre(beam.get_s0())
-
-        else:
-          panel_id = 0
-          # FIXME this is horrible but cannot find easier way without
-          # restructuring code - N.B. case I am debugging now is one
-          # panel detector *parallel to beam* for which the question is
-          # ill posed.
-          try:
-            x_mm,y_mm = detector[0].get_beam_centre(beam.get_s0())
-          except RuntimeError, e:
-            if 'DXTBX_ASSERT' in str(e):
-              x_mm, y_mm = 0.0, 0.0
-            else:
-              raise e
-
-      beam_pixel_fast, beam_pixel_slow = detector[panel_id].millimeter_to_pixel(
-        (x_mm, y_mm))
-
+      panel_id, beam_pixel_fast, beam_pixel_slow = self.get_beam_center_px()
       self.beam_center_cross_data = [
         ((map_coords(beam_pixel_fast + 3., beam_pixel_slow, panel_id),
           map_coords(beam_pixel_fast - 3., beam_pixel_slow, panel_id)),

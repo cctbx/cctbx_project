@@ -289,12 +289,12 @@ class UCSettingsPanel(wx.Panel):
     for tt in twotheta: L_mm.append(distance * math.tan(tt[1]))
     for lmm in L_mm: L_pixels.append(lmm/pixel_size)
 
+    xrayframe = self.GetParent().GetParent()
+    panel_id, beam_pixel_fast, beam_pixel_slow = xrayframe.get_beam_center_px()
+
     if len(detector) > 1:
-      beam_pixel_fast, beam_pixel_slow = detector[0].millimeter_to_pixel(  # FIXME assumes all detector elements use the same
-        detector.hierarchy().get_beam_centre(beam.get_s0()))               # millimeter-to-pixel convention
-    else:
-      beam_pixel_fast, beam_pixel_slow = detector[0].millimeter_to_pixel(
-        detector[0].get_beam_centre(beam.get_s0()))
+      beam_pixel_slow, beam_pixel_fast = xrayframe.pyslip.tiles.flex_image.tile_readout_to_picture(
+        panel_id, beam_pixel_slow - 0.5, beam_pixel_fast - 0.5)
 
     center = self._pyslip.tiles.picture_fast_slow_to_map_relative(
       beam_pixel_fast + self._center[0], beam_pixel_slow + self._center[1])
