@@ -181,6 +181,7 @@ def run (args,
       params.molprobity.use_pdb_header_resolution_cutoffs,
     count_anomalous_pairs_separately=\
       params.molprobity.count_anomalous_pairs_separately,
+    use_internal_variance=params.input.unmerged_data.use_internal_variance,
     file_name=params.input.pdb.file_name[0],
     ligand_selection=params.molprobity.ligand_selection,
     rotamer_library=params.molprobity.rotamer_library,

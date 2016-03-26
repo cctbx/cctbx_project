@@ -78,6 +78,9 @@ structure_params_str = """
       .type = str
       .input_size = 160
       .style = renderer:draw_unmerged_intensities_widget
+    use_internal_variance = False
+      .type = bool
+      .help = Estimate intensity variance for unmerged data
   }
 """
 
@@ -366,6 +369,8 @@ def run_single_structure (params,
     molprobity_args.extend([
       "unmerged_data.file_name=\"%s\"" % params.unmerged_data,
       "unmerged_data.labels=\"%s\"" % params.unmerged_labels,
+      "unmerged_data.use_internal_variance=\"%s\"" %
+      params.use_internal_variance
     ])
   if (params.data_type == "neutron") :
     molprobity_args.append(["scattering_table=neutron", "keep_hydrogens=True"])

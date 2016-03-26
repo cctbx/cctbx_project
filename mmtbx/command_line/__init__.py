@@ -117,6 +117,8 @@ def generate_master_phil_with_inputs (
           .type = path
         labels = None
           .type = str
+        use_internal_variance = True
+          .type = bool
       }"""
   if (enable_pdb_interpretation_params) or (enable_full_geometry_params) :
     stop_for_unknowns_params = ""

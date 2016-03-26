@@ -159,6 +159,7 @@ class molprobity (slots_getstate_setstate) :
       min_cc_two_fofc=0.8,
       n_bins_data=10,
       count_anomalous_pairs_separately=False,
+      use_internal_variance=True,
       outliers_only=True,
       use_pdb_header_resolution_cutoffs=False,
       file_name=None,
@@ -305,6 +306,7 @@ class molprobity (slots_getstate_setstate) :
           r_free_flags=fmodel.r_free_flags(),
           unmerged_i_obs=unmerged_data,
           anomalous=count_anomalous_pairs_separately,
+          use_internal_variance=use_internal_variance,
           n_bins=n_bins_data)
       if (flags.xtriage) :
         import mmtbx.scaling.xtriage

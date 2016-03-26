@@ -247,7 +247,8 @@ def merging_and_model_statistics (
     unmerged_i_obs,
     n_bins=20,
     sigma_filtering=Auto,
-    anomalous=False) :
+    anomalous=False,
+    use_internal_variance=True) :
   """
   Compute merging statistics - CC* in particular - together with measures of
   model quality using reciprocal-space data (R-factors and CCs).  See Karplus
@@ -300,4 +301,5 @@ def merging_and_model_statistics (
     n_bins=n_bins,
     model_arrays=model_arrays,
     anomalous=anomalous,
+    use_internal_variance=use_internal_variance,
     sigma_filtering=None) # no need, since it was done here
