@@ -3647,6 +3647,7 @@ xfel/command_line/cluster_visualise_orientations.py -text
 xfel/command_line/convert_gain_map.py -text
 xfel/command_line/cspad_cbf_metrology.py -text
 xfel/command_line/cspad_detector_congruence.py -text
+xfel/command_line/cspad_detector_shifts.py -text
 xfel/command_line/cspad_detector_statistics.py -text
 xfel/command_line/cxi_calibdir2cbfheader.py -text
 xfel/command_line/cxi_cbfheader2slaccalib.py -text
