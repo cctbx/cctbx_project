@@ -142,19 +142,24 @@ def run(argv=None):
 
   def make_tiles(data, detector):
     """
-    Assemble a tiles dictionary as required by write_cspad_cbf
-    Assumes the order in the data array matches the order of the enumerated detector panels
+    Assemble a tiles dictionary as required by write_cspad_cbf, consisting of 4 arrays of shape 8x185x388.
+    Assumes the order in the data array matches the order of the enumerated detector panels.
     """
     assert len(data) == 64
     tiles = {}
+    s, f = 185, 194
 
-    tile_id = 0
-    for p_id, p in enumerate(detector.hierarchy()):
-      for s_id, s in enumerate(p):
-        for a_id, a in enumerate(s):
-          data[tile_id].resize(flex.grid(a.get_image_size()[1], a.get_image_size()[0]))
-          tiles[(0, p_id, s_id, a_id)] = data[tile_id]
-          tile_id += 1
+    for q_id in xrange(4):
+      tiles[0,q_id] = flex.double((flex.grid(s*8, f*2)))
+      for s_id in xrange(8):
+        for a_id in xrange(2):
+          asic_idx = (q_id*16) + (s_id*2) + a_id
+          asic = data[asic_idx]
+          asic.reshape(flex.grid((s, f)))
+
+          tiles[0, q_id].matrix_paste_block_in_place(asic, s_id*s, a_id*f)
+      tiles[0, q_id].reshape(flex.grid((8, s, f*2)))
+
     return tiles
 
 
