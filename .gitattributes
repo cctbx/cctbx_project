@@ -1760,6 +1760,7 @@ mmtbx/command_line/compare_ligands.py -text
 mmtbx/command_line/compute_map_coefficients.py -text
 mmtbx/command_line/density_modification.py -text
 mmtbx/command_line/development_fem.py -text
+mmtbx/command_line/development_model_map_statistics.py -text
 mmtbx/command_line/development_support_tool_1.py -text
 mmtbx/command_line/distance_difference.py -text
 mmtbx/command_line/dssp.py -text
