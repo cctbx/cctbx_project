@@ -16,6 +16,7 @@ from __future__ import division
 from mmtbx.validation import residue, validation
 from scitbx.matrix import col, dihedral_angle, rotate_point_around_axis
 import sys
+from scitbx.array_family import flex
 
 class cbeta (residue) :
   """
@@ -53,7 +54,7 @@ class cbeta (residue) :
              self.deviation, self.dihedral_NABB ]
 
 class cbetadev (validation) :
-  __slots__ = validation.__slots__ + ["beta_ideal"]
+  __slots__ = validation.__slots__ + ["beta_ideal","_outlier_i_seqs"]
   program_description = "Analyze protein sidechain C-beta deviation"
   output_header = "pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:"
   gui_list_headers = ["Chain", "Residue","Altloc","Deviation","Angle"]
@@ -68,6 +69,7 @@ class cbetadev (validation) :
       collect_ideal=False,
       quiet=False) :
     validation.__init__(self)
+    self._outlier_i_seqs = flex.size_t()
     self.beta_ideal = {}
     relevant_atom_names = {
       " CA ": None, " N  ": None, " C  ": None, " CB ": None} # FUTURE: set
@@ -105,6 +107,7 @@ class cbetadev (validation) :
                 if(dev >=0.25 or outliers_only==False):
                   if(dev >=0.25):
                     self.n_outliers+=1
+                    self._outlier_i_seqs.append(atom.i_seq)
                   if (is_alt_conf):
                     altchar = cf.altloc
                   else:
