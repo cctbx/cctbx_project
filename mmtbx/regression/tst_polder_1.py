@@ -300,7 +300,8 @@ def check(tuple_calc, selection):
   #
   mmm_mp = mp.min_max_mean().as_tuple()
   print "Polder map : %7.3f %7.3f %7.3f" % mmm_mp
-  assert approx_equal(mmm_mp, tuple_calc, eps=1.0)
+  assert approx_equal(mmm_mp, tuple_calc, eps=1.0), "\
+   calculated is %s and expected is %s" % (mmm_mp, tuple_calc)
 
 if (__name__ == "__main__"):
   t0 = time.time()
