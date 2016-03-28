@@ -105,9 +105,11 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatStill):
       v3 = fast.cross(slow).normalize()
 
       if root:
-        # the distance is encoded in a different axis.
+        # use the X, Y, Z settings table to record root detector position instead of axis offsets
+        dx = orig[0]
+        dy = orig[1]
         distance = orig[2]
-        orig = col((orig[0],orig[1],0))
+        orig = col((0,0,0))
 
       cbf.find_category("axis")
       cbf.find_column("id")
@@ -138,11 +140,12 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatStill):
       cbf.set_axis_setting(axis_name, angle, 0)
 
       if root:
-        # synchronize the new distance
-        while not "_Z" in axis_name:
-          axis_name = cbf.get_axis_depends_on(axis_name)
-        assert cbf.get_axis_type(axis_name) == 'translation'
-        cbf.set_axis_setting(axis_name, distance, 0)
+        # synchronize the new root origin
+        for axis_id, setting_value in zip(['_X', '_Y', '_Z'], [dx, dy, distance]):
+          while not axis_id in axis_name:
+            axis_name = cbf.get_axis_depends_on(axis_name)
+          assert cbf.get_axis_type(axis_name) == 'translation'
+          cbf.set_axis_setting(axis_name, setting_value, 0)
 
       if not is_panel:
         for subgroup in iterator:
