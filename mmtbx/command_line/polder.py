@@ -11,6 +11,7 @@ from iotbx import ccp4_map
 from iotbx import file_reader
 from iotbx import phil
 from iotbx import reflection_file_utils
+from iotbx import crystal_symmetry_from_any
 import iotbx.pdb
 #import iotbx.mtz
 #from cctbx import xray
@@ -276,8 +277,8 @@ def compute_polder_map(
 def validate_params(params):
   if (params.solvent_exclusion_mask_selection is None):
     raise Sorry("No selection for mask calculation found.")
-  if (params.sphere_radius < 3 or params.sphere_radius > 150):
-    raise Sorry("Sphere radius out of range: must be between 3 A and 10 A")
+  if (params.sphere_radius < 3):
+    raise Sorry("Sphere radius out of range: must be larger than 3 A")
   if (params.model_file_name is None):
     raise Sorry("Model file should be given")
   if (params.reflection_file_name is None):
@@ -334,7 +335,17 @@ def cmd_run(args, validated=False, out=sys.stdout):
   crystal_symmetry = None
   crystal_symmetry = inputs.crystal_symmetry
   if (crystal_symmetry is None):
-    raise Sorry("No crystal symmetry found.")
+    crystal_symmetries = []
+    for f in [str(params.model_file_name), str(params.reflection_file_name)]:
+      cs = crystal_symmetry_from_any.extract_from(f)
+      if(cs is not None): crystal_symmetries.append(cs)
+    if(len(crystal_symmetries) == 1): crystal_symmetry = crystal_symmetries[0]
+    elif(len(crystal_symmetries) == 0):
+      raise Sorry("No crystal symmetry found.")
+    else:
+      if(not crystal_symmetries[0].is_similar_symmetry(crystal_symmetries[1])):
+        raise Sorry("Crystal symmetry mismatch between different files.")
+      crystal_symmetry = crystal_symmetries[0]
   f_obs, r_free_flags = None, None
   rfs = reflection_file_utils.reflection_file_server(
     crystal_symmetry = crystal_symmetry,
@@ -365,8 +376,8 @@ def cmd_run(args, validated=False, out=sys.stdout):
     params.r_free_flags_labels = r_free_flags.info().label_string()
   else:
     print >> log, "  Free-R flags: Not present"
-  #new_params =  master_params.format(python_object=params)
-  #new_params.show()
+  new_params =  master_params.format(python_object=params)
+  new_params.show()
   if (not validated):
     validate_params(params)
   pdb_input = iotbx.pdb.input(file_name = params.model_file_name)
