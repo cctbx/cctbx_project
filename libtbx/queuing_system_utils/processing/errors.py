@@ -6,7 +6,7 @@ class ProcessingError(Exception):
   """
 
 
-# Job control and infromation
+# Job control and information
 class BatchQueueError(ProcessingError):
   """
   Error with the underlying batch queuing system

@@ -259,23 +259,36 @@ class threading(object):
       )
 
 
-  def settings(self, params):
-
-    # No user-controlled parameters expected
-    from libtbx.scheduling import thread_handler
+  def jfactory(self):
 
     if self.capture_exception:
+      from libtbx.scheduling import thread_handler
       jfactory = thread_handler.exception_capturing_thread
 
     else:
       import threading
       jfactory = threading.Thread
 
+    return jfactory
+
+
+  def qfactory(self):
+
+    from libtbx.scheduling import thread_handler
+
+    return ( thread_handler.qfactory, ) * 3
+
+
+  def settings(self, params):
+
+    # No user-controlled parameters expected
+    ( qfac, inqfac, outqfac ) = self.qfactory()
+
     return setting(
-      jfactory = jfactory,
-      qfactory = thread_handler.qfactory,
-      inqfactory = thread_handler.qfactory,
-      outqfactory = thread_handler.qfactory,
+      jfactory = self.jfactory(),
+      qfactory = qfac,
+      inqfactory = inqfac,
+      outqfactory = outqfac,
       lifecycle = self.pool_lifecycle,
       )
 
@@ -298,7 +311,7 @@ class multiprocessing(object):
     ):
 
     self.capture_stderr = capture_stderr
-    self.qtype = mp_fifo_queue
+    self.qtype = qtype
     self.pool_lifecycle = pool_lifecycle
 
 
@@ -313,26 +326,35 @@ class multiprocessing(object):
       )
 
 
-  def settings(self, params):
-
-    # No user-controlled parameters expected
-    from libtbx.scheduling import mp_handler
+  def jfactory(self):
 
     if self.capture_stderr:
+      from libtbx.scheduling import mp_handler
       jfactory = mp_handler.stderr_capturing_process
 
     else:
       import multiprocessing
       jfactory = multiprocessing.Process
 
-    qfactory = self.qtype()
+    return jfactory
+
+
+  def qfactory(self):
+
+    return ( self.qtype(), ) * 3
+
+
+  def settings(self, params):
+
+    # No user-controlled parameters expected
+    ( qfac, inqfac, outqfac ) = self.qfactory()
 
     return setting(
-      jfactory = jfactory,
-      qfactory = qfactory,
-      inqfactory = qfactory,
-      outqfactory = qfactory,
-      lifecycle = pool_unlimited_lifecycle,
+      jfactory = self.jfactory(),
+      qfactory = qfac,
+      inqfactory = inqfac,
+      outqfactory = outqfac,
+      lifecycle = self.pool_lifecycle,
       )
 
 
@@ -398,14 +420,14 @@ class cluster(object):
       )
 
 
-  def settings(self, params):
+  def jfactory(self, platform, command):
 
     from libtbx.scheduling import cluster_handler
 
-    jfactory = cluster_handler.JobFactory(
-      platform = params.platform,
+    return cluster_handler.JobFactory(
+      platform = platform,
       name = self.name,
-      command = params.command,
+      command = command,
       asynchronous = self.asynchronous,
       use_target_file = self.use_target_file,
       include = self.include,
@@ -413,6 +435,9 @@ class cluster(object):
       handler = self.handler,
       save_error = self.capture_stderr,
       )
+
+
+  def settings(self, params):
 
     ( qfac, inqfac, outqfac ) = self.queue_philgen_for[ params.channel.use ](
       params = getattr( params.channel, params.channel.use, None ),
@@ -425,7 +450,7 @@ class cluster(object):
       lifecycle = self.lifecycle_factory_for[ params.limit.type ]( value = params.limit.value )
 
     return setting(
-      jfactory = jfactory,
+      jfactory = self.jfactory( platform = params.platform, command = params.command ),
       qfactory = qfac,
       inqfactory = inqfac,
       outqfactory = outqfac,

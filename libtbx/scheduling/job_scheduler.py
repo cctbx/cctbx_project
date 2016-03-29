@@ -112,7 +112,7 @@ class manager(object):
 
   def is_full(self):
 
-    return self.capacity.is_full( njobs = self.job_count() )
+    return self.capacity.is_full( njobs = self.process_count() )
 
 
   def results(self):
@@ -129,6 +129,7 @@ class manager(object):
 
     jobid = identifier()
     self.waiting_jobs.append( ( jobid, target, args, kwargs ) )
+    self.poll()
     return jobid
 
 
@@ -184,20 +185,6 @@ class manager(object):
       if not process.is_alive():
         self.finish_job( jobid = jobid )
 
-
-    # Submit new jobs
-    while ( not self.capacity.is_full( njobs = self.process_count() )
-      and self.waiting_jobs and self.active ):
-      ( jobid, target, args, kwargs ) = self.waiting_jobs.popleft()
-
-      process = self.job_factory(
-        target = job_cycle,
-        args = ( self.inqueue, jobid, target, args, kwargs ),
-        )
-
-      process.start()
-      self.process_data_for[ jobid ] = process
-
     # Collect results
     while True:
       try:
@@ -211,6 +198,19 @@ class manager(object):
 
       self.waiting_results.remove( jobid )
       self.completed_results.append( ( jobid, res ) )
+
+    # Submit new jobs
+    while ( not self.capacity.is_full( njobs = self.process_count() )
+      and self.waiting_jobs and self.active ):
+      ( jobid, target, args, kwargs ) = self.waiting_jobs.popleft()
+
+      process = self.job_factory(
+        target = job_cycle,
+        args = ( self.inqueue, jobid, target, args, kwargs ),
+        )
+
+      process.start()
+      self.process_data_for[ jobid ] = process
 
 
   def finish_job(self, jobid):
