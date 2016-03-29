@@ -1090,9 +1090,12 @@ class DataList(object):
 
   def __getitem__(self, index):
     from scitbx.array_family import flex
+    import numpy as np
     d = self.lookup[index]
     i = index - self.offset[d]
     data = self.datasets[d][i,:,:]
+    if data.dtype == np.uint16:
+      data = data.astype(np.uint32)
     return flex.int(data)
 
 
