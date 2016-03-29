@@ -1637,64 +1637,10 @@ class test_hhsearch_parser(unittest.TestCase):
           + "ILCRLLGGEFQPNSETVASGFFSLDDLPPLYLGKNTAEQLALCLEASR",
         ]
       )
-    self.assertEqual(
-      self.hss.query_consensi,
-      [
-        "~~~~~g---y~Tpkv~v~a~v~~d~kiLLv~~~~----g~W~lPGG~ve~gEs~~eaa~REv~EETGl~v~~~~ll~v~~"
-          + "~~~~~~~~~~~~~~~~~f~~~~~~~~~~~~~E~~e~~Wf~~deLp~Ls~~r~~~~~i~~~f~~~r~~~~~t~f",
-        "kv~v~a~v~~d~kiLLv~~~~g~W~lPGG~ve~gEs~~eaa~REv~EETGl~v~~~~ll~v~~~~~~~~~~~~~~~~~~~"
-          + "f~~~~~~~~~~~~~E~~e~~Wf~~deLp~Ls~~r~~~~~i~~~f~~~r",
-        ]
-      )
-    self.assertEqual(
-      self.hss.query_ss_preds,
-      [
-        "hccCCC---CCceEEEEEEEEEECCEEEEEEcCC----CEEECCceeeCCCCCHHHHHHHHHHHHhCCccccceEEEEEe"
-          + "eccccCCCCceEEEEEEEEEEecCCccCCCCCeEeEEEEcHHHCccccccCCCHHHHHHHHHHHhCCCCCCCc",
-        "EEEEEEEEEECCEEEEEEcCCCEEECCceeeCCCCCHHHHHHHHHHHHhCCccccceEEEEEeeccccCCCCceEEEEEE"
-          + "EEEEecCCccCCCCCeEeEEEEcHHHCccccccCCCHHHHHHHHHHHh",
-        ]
-      )
-    self.assertEqual(
-      self.hss.midlines,
-      [
-        " |+.||   |+.|++.|.++|.++++|||++|+.    |.|+||||++|.|||+++||+||++||||+++....+++++."
-          + "....       +...++|.|...++.+.++.|+.+++||++++||...+.-....+.-+.|...+..+....+",
-        "++.++|+|+++|+|||+++.+|.|++|||++|.|||+.+||+||++||||+++....+++..+.. +.......+...++"
-          + "|.+...++++.++.|+.+++|+++++++++....+....|..+++..+",
-        ]
-      )
 
     self.assertEqual( self.hss.hit_starts, [ 27, 4 ] )
     self.assertEqual( self.hss.hit_ends, [ 172, 130 ] )
     self.assertEqual( self.hss.hit_others, [ 189, 134 ] )
-    self.assertEqual(
-      self.hss.hit_ss_preds,
-      [
-        "eCCCCCCcccCCCceEEEEEeecCceEEEEeccCCCCCCCEeCCcccCcCCCCHHHHHHHHHHhhhceeeeeeEEEEEee"
-          + "cccc-------ceeEEEEEEEeccCcccCcccceeEEEEcHHHCCchhcCcHHHHHHHHHHHHHhhcCCCccc",
-        "EEEEEEEEEECCEEEEEEeCCCcEECceeEeCCCCCHHHHHHhhhhheeceeEEEeeeeeeeeee-ccCCCceEEEEEEE"
-          + "EEEeccCCcccCChhheEEEEEeHHHHHhhcCChHHHHHHHHHHHHHh",
-        ]
-      )
-    self.assertEqual(
-      self.hss.hit_ss_dssps,
-      [
-        "EETTTTEEECCCCEEEEEEEEEETTEEEEEEESSSSSTTCEECSEEECCTTCCHHHHHHHHHHHHHCCCEEEEEEEEEEE"
-          + "EGGG-------TEEEEEEEEEECCSCCCCCTTEEEEEEECTTTCCGGGBSCHHHHHHHHHHHHHHHHSSCCCE",
-        "EEEEEEEEEETTEEEEEECTTSCEECCEEECCTTCCHHHHHHHHHHHHHSEEEEEEEEEEEEEEE-EEETTEEEEEEEEE"
-          + "EEEEEEEECCCCCTTSSEEEEEEHHHHHHHCCSHHHHHHHHHHHHHHH",
-        ]
-      )
-    self.assertEqual(
-      self.hss.hit_consensi,
-      [
-        "~C~~C~~~~y~~P~v~v~~ii~~~~~vLLv~r~~~~~~g~W~lPGG~ve~GEs~e~aa~REv~EEtGl~v~~~~l~~~~~"
-          + "~~~~-------~~~~~~f~~~~~~~~~~~~~E~~e~~wf~~~elp~~~la~~~~~~~l~~~~~~~~~g~~~~~",
-        "~~aAg~vv~~~~~vLlv~r~~~~w~~PgG~ve~gEt~~~aa~RE~~EEtGl~~~~~~~~~~~~~~-~~~~~~~~~~~~~~"
-          + "f~~~~~~~~~~~~~E~~~~~W~~~~e~~~~l~~~~~r~il~~~~~l~~",
-        ]
-      )
     self.assertEqual(
       self.hss.hit_alignments,
       [
