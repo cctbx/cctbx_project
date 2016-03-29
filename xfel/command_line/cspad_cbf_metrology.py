@@ -35,6 +35,9 @@ phil_scope = parse("""
 
 def run(args):
   print "Parsing input..."
+  if "-c" in args or "-h" in args or "--help" in args:
+    phil_scope.show(attributes_level=2)
+    return
   user_phil = []
   paths = []
   refine_phil_file = None

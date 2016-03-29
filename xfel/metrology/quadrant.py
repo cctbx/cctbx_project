@@ -92,7 +92,7 @@ class one_sensor(object):
     #plt.show()
 
 class one_panel(object):
-  def __init__(self,image,panel,i_quad,quad):
+  def __init__(self,image,panel,i_quad,quad,plot=False):
     self.image = image
     self.panel = panel
     self.i_quad = i_quad
@@ -100,7 +100,7 @@ class one_panel(object):
 
     grid_radius = 20
     mapp = flex.double(flex.grid(2*grid_radius+1, 2*grid_radius+1))
-    print mapp.focus()
+    print "Searching a grid with dimensions", mapp.focus()
 
     beam = image.get_beam()
     beam_center = col(panel.get_beam_centre_lab(beam.get_s0())[0:2])
@@ -115,12 +115,17 @@ class one_panel(object):
           coordmax = delta
         mapp[(xi+grid_radius,yi+grid_radius)]=VV
 
-    print "max cc %7.4F is at "%gmax,
-    if False:
-      npy = mapp.as_numpy_array()
+    print "max cc %7.4F is at (%d, %d)"%(gmax, coordmax[0], coordmax[1])
+    if plot:
+      npy = mapp.as_numpy_array().T # T: transpose
       from matplotlib import pyplot as plt
-      plt.imshow(npy, cmap="hot")
-      plt.plot([coordmax[1]+grid_radius],[coordmax[0]+grid_radius],"k.")
+      plt.imshow(npy, cmap="hot", extent=[-grid_radius-1, grid_radius+1, grid_radius+1, -grid_radius-1])
+      ax = plt.colorbar()
+      ax.set_label("CC")
+      plt.plot([coordmax[0]],[coordmax[1]],"k.")
+      plt.title("Rotational autocorrelation of quadrant %d"%i_quad)
+      plt.xlabel("X offset (pixels)")
+      plt.ylabel("Y offset (pixels)")
       plt.show()
 
     self.coordmax = coordmax

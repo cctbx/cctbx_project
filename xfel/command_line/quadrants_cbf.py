@@ -13,10 +13,11 @@ from libtbx.utils import Usage
 
 if (__name__ == "__main__"):
   if len(sys.argv) == 1 or '-h' in sys.argv or '--help' in sys.argv or '-c' in sys.argv:
-    raise Usage("%s files"%libtbx.env.dispatcher_name)
+    raise Usage("%s [-p] files"%libtbx.env.dispatcher_name)
 
   files = [arg for arg in sys.argv[1:] if os.path.isfile(arg)]
   arguments = [arg for arg in sys.argv[1:] if not os.path.isfile(arg)]
+  plot = '-p' in arguments
 
   for file in files:
     message="""Based on the file %s,
@@ -58,8 +59,7 @@ if (__name__ == "__main__"):
           key_panel = panel
 
       print "Doing cross-correlation on panel", key_panel.get_name()
-      Q = one_panel(image,key_panel,i_quad,quad)
-      print Q.coordmax[0], Q.coordmax[1]
+      Q = one_panel(image,key_panel,i_quad,quad,plot)
       delta = panel.pixel_to_millimeter((Q.coordmax[0], Q.coordmax[1]))
 
       quad.set_frame(quad.get_fast_axis(),
