@@ -214,7 +214,8 @@ class Script(object):
     # Iterate through the detectors, computing the congruence statistics
     delta_normals = {}
     z_angles = {}
-    xy_deltas = {}
+    f_deltas = {}
+    s_deltas = {}
     z_deltas = {}
     z_offsets_d = {}
     refl_counts = {}
@@ -222,7 +223,8 @@ class Script(object):
     all_rdelta_normals = flex.double()
     all_tdelta_normals = flex.double()
     all_z_angles = flex.double()
-    all_xy_deltas = flex.double()
+    all_f_deltas = flex.double()
+    all_s_deltas = flex.double()
     all_z_deltas = flex.double()
     all_refls_count = flex.int()
 
@@ -244,7 +246,7 @@ class Script(object):
     pg_z_offset_sigmas = flex.double()
     all_weights = flex.double()
 
-    precision_table_data = []
+    congruence_table_data = []
     detector_table_data = []
     root1 = detectors[0].hierarchy()
     root2 = detectors[1].hierarchy()
@@ -253,7 +255,7 @@ class Script(object):
 
     for pg_id, (pg1, pg2) in enumerate(zip(iterate_detector_at_level(root1, 0, params.hierarchy_level),
                                            iterate_detector_at_level(root2, 0, params.hierarchy_level))):
-      """ First compute statistics for detector precision """
+      """ First compute statistics for detector congruence """
       # Count up the number of reflections in this panel group pair for use as a weighting scheme
       total_refls = 0
       pg1_refls = 0
@@ -308,22 +310,8 @@ class Script(object):
 
       # compute the angle between fast axes of these panel groups
       z_angle = col(pg1.get_fast_axis()[0:2]).angle(col(pg2.get_fast_axis()[0:2]), deg=True)
-
-      # xy and z offsets
-      v1 = get_center(pg1)
-      v2 = get_center(pg2)
-
-      delta = v1 - v2
-      xyd = col(delta[0:2]).length()*1000
-      zd = abs(delta[2])*1000
-
       all_z_angles.append(z_angle)
-      all_xy_deltas.append(xyd)
-      all_z_deltas.append(zd)
-
       z_angles[pg1.get_name()] = z_angle
-      xy_deltas[pg1.get_name()] = xyd
-      z_deltas[pg1.get_name()] = zd
 
       all_refls_count.append(total_refls)
       all_weights.append(pg1_refls)
@@ -352,6 +340,16 @@ class Script(object):
         f_offsets.append(r_fast.dot(delta_ori)*1000)
         s_offsets.append(r_slow.dot(delta_ori)*1000)
         z_offsets.append(r_norm.dot(delta_ori)*1000)
+
+      fd = abs(f_offsets[0]-f_offsets[1])
+      sd = abs(s_offsets[0]-s_offsets[1])
+      zd = abs(z_offsets[0]-z_offsets[1])
+      f_deltas[pg1.get_name()] = fd
+      s_deltas[pg1.get_name()] = sd
+      z_deltas[pg1.get_name()] = zd
+      all_f_deltas.append(fd)
+      all_s_deltas.append(sd)
+      all_z_deltas.append(zd)
 
       all_f_offsets.extend(f_offsets)
       all_s_offsets.extend(s_offsets)
@@ -416,7 +414,7 @@ class Script(object):
       dist_s = stats.gsl_stats_wsd()
       pg_bc_dists.append(dist_m)
       all_bc_dist.extend(dists)
-      precision_table_data.append(["%d"%pg_id, "%5.1f"%dist_m, "%.4f"%dist_s, "%.4f"%delta_norm_angle, "%.4f"%rdelta_norm_angle, "%.4f"%tdelta_norm_angle, "%.4f"%z_angle, "%4.1f"%xyd, "%4.1f"%zd, "%6d"%total_refls])
+      congruence_table_data.append(["%d"%pg_id, "%5.1f"%dist_m, "%.4f"%dist_s, "%.4f"%delta_norm_angle, "%.4f"%rdelta_norm_angle, "%.4f"%tdelta_norm_angle, "%.4f"%z_angle, "%4.1f"%fd, "%4.1f"%sd, "%4.1f"%zd, "%6d"%total_refls])
 
       stats = flex.mean_and_variance(norm_angles, pg_weights)
       norm_angle_m = stats.mean()
@@ -459,15 +457,15 @@ class Script(object):
                                   "%6.2f"%rotz_m, "%.4f"%rotz_s,
                                   "%9.1f"%fo_m, "%5.1f"%fo_s,
                                   "%9.1f"%so_m, "%5.1f"%so_s,
-                                  "%5.1f"%zo_m, "%5.1f"%zo_s, "%6d"%total_refls])
+                                  "%9.1f"%zo_m, "%5.1f"%zo_s, "%6d"%total_refls])
 
     # Set up table output
-    table_d = {d:row for d, row in zip(pg_bc_dists, precision_table_data)}
-    table_header = ["PanelG","Dist","Dist","Normal","RNormal","TNormal","Z rot","Delta","Delta","N"]
-    table_header2 = ["Id","","Sigma","Angle","Angle","Angle","Angle","XY","Z","Refls"]
+    table_d = {d:row for d, row in zip(pg_bc_dists, congruence_table_data)}
+    table_header = ["PanelG","Dist","Dist","Normal","RNormal","TNormal","Z rot","Delta","Delta","Delta","N"]
+    table_header2 = ["Id","","Sigma","Angle","Angle","Angle","Angle","F","S","Z","Refls"]
     table_header3 = ["", "(mm)","(mm)","(deg)","(deg)","(microns)","(microns)",""]
-    precision_table_data = [table_header, table_header2, table_header3]
-    precision_table_data.extend([table_d[key] for key in sorted(table_d)])
+    congruence_table_data = [table_header, table_header2, table_header3]
+    congruence_table_data.extend([table_d[key] for key in sorted(table_d)])
 
     table_d = {d:row for d, row in zip(pg_bc_dists, detector_table_data)}
     table_header = ["PanelG","Dist","Dist","Normal","Normal","RNormal","RNormal","TNormal","TNormal","RotZ", "RotZ","F Offset","F Offset","S Offset","S Offset","Z Offset","Z Offset","N"]
@@ -495,7 +493,10 @@ class Script(object):
       stats = flex.mean_and_variance(all_z_angles, all_refls_count.as_double())
       r1.append("%.4f"%stats.mean())
       r2.append("%.4f"%stats.gsl_stats_wsd())
-      stats = flex.mean_and_variance(all_xy_deltas, all_refls_count.as_double())
+      stats = flex.mean_and_variance(all_f_deltas, all_refls_count.as_double())
+      r1.append("%4.1f"%stats.mean())
+      r2.append("%4.1f"%stats.gsl_stats_wsd())
+      stats = flex.mean_and_variance(all_s_deltas, all_refls_count.as_double())
       r1.append("%4.1f"%stats.mean())
       r2.append("%4.1f"%stats.gsl_stats_wsd())
       stats = flex.mean_and_variance(all_z_deltas, all_refls_count.as_double())
@@ -503,13 +504,13 @@ class Script(object):
       r2.append("%4.1f"%stats.gsl_stats_wsd())
       r1.append("")
       r2.append("")
-      precision_table_data.append(r1)
-      precision_table_data.append(r2)
-      precision_table_data.append(["Mean", "", "", "", "", "", "", "", "", "%6.1f"%flex.mean(all_refls_count.as_double())])
+      congruence_table_data.append(r1)
+      congruence_table_data.append(r2)
+      congruence_table_data.append(["Mean", "", "", "", "", "", "", "", "", "", "%6.1f"%flex.mean(all_refls_count.as_double())])
 
     from libtbx import table_utils
-    print "Congruence statistics:"
-    print table_utils.format(precision_table_data,has_header=3,justify='center',delim=" ")
+    print "Congruence statistics, I.E. the differences between the input detectors:"
+    print table_utils.format(congruence_table_data,has_header=3,justify='center',delim=" ")
 
     print "PanelG Id: panel group id or panel id, depending on hierarchy_level. For each panel group, statistics are computed between the matching panel groups between the two input experiments."
     print "Dist: distance from center of panel group to the beam center"
@@ -518,8 +519,9 @@ class Script(object):
     print "RNormal angle: radial component of the angle between the normal vectors of matching panel groups"
     print "TNormal angle: transverse component of the angle between the normal vectors of matching panel groups"
     print "Z rot: angle between the XY components of the fast axes of the panel groups."
-    print "Delta XY: XY shift between matching panel groups."
-    print "Delta Z: Z shift between matching panel groups."
+    print "Delta F: shift between matching panel groups along the detector fast axis."
+    print "Delta S: shift between matching panel groups along the detector slow axis."
+    print "Delta Z: Z shift between matching panel groups along the detector normal."
     print "N refls: number of reflections summed between both matching panel groups. This number is used as a weight when computing means and standard deviations."
     print
     print
@@ -557,7 +559,7 @@ class Script(object):
       detector_table_data.append(r1)
       detector_table_data.append(r2)
 
-    print "Detector level statistics:"
+    print "Detector statistics, I.E. measurements of parameters relative to the detector plane:"
     print table_utils.format(detector_table_data,has_header=3,justify='center',delim=" ")
 
     print "PanelG Id: panel group id or panel id, depending on hierarchy_level. For each panel group, weighted means and weighted standard deviations (Sigmas) for the properties listed below are computed using the matching panel groups between the input experiments."
@@ -572,6 +574,9 @@ class Script(object):
     print "Z Offset: offset of panel group along the detector normal"
     print "N refls: number of reflections summed between both matching panel groups. This number is used as a weight when computing means and standard deviations."
     print "All: weighted mean of the values shown"
+    print
+    print "Sigmas in this table are computed using the standard deviation of 2 measurements (I.E. a panel's Z Offset is measured twice, once in each input dataset). This is related by a factor of sqrt(2)/2 to the mean of the Delta Z parameter in the congruence statistics table above, which is the difference between Z parameters."
+    print
 
     # Show stats for detector hierarchy root
     def _print_vector(v):
@@ -614,7 +619,8 @@ class Script(object):
       self.detector_plot_dict(detectors[0], refl_counts, u"%sN reflections"%tag, u"%6d", show=False)
       #self.detector_plot_dict(detectors[0], delta_normals, u"%sAngle between normal vectors (\N{DEGREE SIGN})"%tag, u"%.2f\N{DEGREE SIGN}", show=False)
       self.detector_plot_dict(detectors[0], z_angles, u"%sZ rotation angle between panels (\N{DEGREE SIGN})"%tag, u"%.2f\N{DEGREE SIGN}", show=False)
-      self.detector_plot_dict(detectors[0], xy_deltas, u"%sXY displacements between panels (microns)"%tag, u"%4.1f", show=False)
+      self.detector_plot_dict(detectors[0], f_deltas, u"%sFast displacements between panels (microns)"%tag, u"%4.1f", show=False)
+      self.detector_plot_dict(detectors[0], s_deltas, u"%sSlow displacements between panels (microns)"%tag, u"%4.1f", show=False)
       self.detector_plot_dict(detectors[0], z_offsets_d, u"%sZ offsets along detector normal (microns)"%tag, u"%4.1f", show=False)
       self.detector_plot_dict(detectors[0], z_deltas, u"%sZ displacements between panels (microns)"%tag, u"%4.1f", show=False)
       plt.show()
