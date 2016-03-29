@@ -18,7 +18,7 @@ from __future__ import division
 from collections import deque
 
 from libtbx.scheduling import identifier
-from libtbx.queuing_system_utils import result
+from libtbx.scheduling import result
 
 
 class manager(object):

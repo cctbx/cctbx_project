@@ -24,7 +24,7 @@ import time
 from collections import deque
 from Queue import Empty
 
-from libtbx.queuing_system_utils import result
+from libtbx.scheduling import result
 from libtbx.scheduling import identifier
 
 

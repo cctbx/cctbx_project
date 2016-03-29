@@ -26,7 +26,7 @@ from collections import deque
 from Queue import Empty, Full
 
 from libtbx.scheduling import SchedulingError, identifier
-from libtbx.queuing_system_utils import result
+from libtbx.scheduling import result
 
 # Accounting
 class process_register(object):

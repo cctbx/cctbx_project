@@ -1,6 +1,6 @@
 from __future__ import division
 
-from libtbx.queuing_system_utils import result
+from libtbx.scheduling import result
 
 import time
 from collections import deque

@@ -41,7 +41,7 @@ class pooled_run(object):
 
   def __call__(self):
 
-    from libtbx.queuing_system_utils import result
+    from libtbx.scheduling import result
     results = []
 
     for ( target, args, kwargs ) in self.calculations:
