@@ -452,7 +452,7 @@ def parallel_map (
     callback=None,
     preserve_order=True,
     preserve_exception_message=False,
-    use_manager=True) :
+    use_manager=False) :
   """
   Generic parallel map() implementation for a variety of platforms, including
   the multiprocessing module and supported queuing systems, via the module
