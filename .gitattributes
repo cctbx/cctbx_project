@@ -1778,7 +1778,6 @@ mmtbx/command_line/find_residue_in_pdb.py -text
 mmtbx/command_line/find_tls_groups.py -text
 mmtbx/command_line/find_torsion_angle_ncs_groups.py svneol=native#text/x-python
 mmtbx/command_line/fix_rama_outliers.py -text
-mmtbx/command_line/flip_peptides.py -text
 mmtbx/command_line/flipbase.py -text
 mmtbx/command_line/fmodel.py -text
 mmtbx/command_line/fmodel_simple.py -text
@@ -2118,7 +2117,6 @@ mmtbx/refinement/ensemble_refinement/maps.params -text
 mmtbx/refinement/ensemble_refinement/scripts/ens_pdb.py -text
 mmtbx/refinement/ensemble_refinement/scripts/ens_tools.py -text
 mmtbx/refinement/fit_rotamers.py -text
-mmtbx/refinement/flip_peptides.py -text
 mmtbx/refinement/geometry_minimization.py -text
 mmtbx/refinement/inspect_tardy_trajectory.py svneol=native#text/x-python
 mmtbx/refinement/minimization_ncs_constraints.py -text
