@@ -61,62 +61,76 @@ Optional output:
 master_params_str = """
 include scope libtbx.phil.interface.tracking_params
 model_file_name = None
-  .type = str
-  .short_caption = model file
+  .type = path
+  .short_caption = Model file
   .multiple = False
   .help = Model file name
+  .style = file_type:pdb bold input_file
 solvent_exclusion_mask_selection = None
   .type = str
-  .short_caption = omit selection
+  .short_caption = Omit selection
   .help = Atoms around which bulk solvent mask is set to zero
+  .input_size = 400
 reflection_file_name = None
-  .type = str
-  .short_caption = data file
+  .type = path
+  .short_caption = Data file
   .help = File with experimental data (most of formats: CNS, SHELX, MTZ, etc).
+  .style = file_type:hkl bold input_file process_hkl child:fobs:data_labels \
+           child:rfree:r_free_flags_labels child:d_min:high_resolution \
+           child:d_max:low_resolution
 data_labels = None
   .type = str
-  .short_caption = data labels
+  .short_caption = Data labels
   .help = Labels for experimental data.
+  .style = renderer:draw_fobs_label_widget parent:file_name:reflection_file_name
 r_free_flags_labels = None
   .type = str
   .short_caption = Rfree labels
   .help = Labels for free reflections.
+  .style = renderer:draw_rfree_label_widget parent:file_name:reflection_file_name
 sphere_radius = 5
   .type = float
   .short_caption = solvent exclusion radius
   .help = Radius of sphere around atoms where solvent mask is reset to zero
 high_resolution = None
   .type = float
-  .short_caption = high resolution
+  .short_caption = High resolution
   .help = High resolution limit
 low_resolution = None
   .type = float
-  .short_caption = low resolution
+  .short_caption = Low resolution
   .help = Low resolution limit
 scattering_table = *n_gaussian wk1995 it1992 neutron electron
   .type = choice
-  .short_caption = scattering table
+  .short_caption = Scattering table
   .help = Scattering table for structure factors calculations
 resolution_factor = 0.25
   .type = float
-  .short_caption = resolution factor
+  .short_caption = Resolution factor
   .help = Used to determine the grid step = resolution_factor * high resolution
 output_file_name_prefix = None
   .type = str
-  .short_caption = prefix for output
+  .short_caption = Output prefix
   .help = Prefix for output filename
 mask_output = False
   .type = bool
-  .short_caption = output masks
+  .short_caption = Output masks
   .help = Additional output: ccp4 maps containing the solvent mask for inital \
    model (mask_all.ccp4), when ligand is omitted (mask_omit.ccp4) and the mask \
    used for polder (mask_polder.ccp4).
 debug = False
   .type = bool
   .expert_level=3
-  .short_caption = output biased map
+  .short_caption = Output biased map
   .help = Additional output: biased omit map (ligand used for mask calculation \
    but omitted from model)
+gui
+  .help = "GUI-specific parameter required for output directory"
+{
+  output_dir = None
+  .type = path
+  .style = output_dir
+}
 """
 
 master_params = phil.parse(master_params_str, process_includes=True)
@@ -406,13 +420,17 @@ def cmd_run(args, validated=False, out=sys.stdout):
     pdb_hierarchy  = pdb_hierarchy,
     params         = params,
     log            = log)
-
+  return True
 
 # =============================================================================
 # GUI-specific class for running command
 from libtbx import runtime_utils
 class launcher (runtime_utils.target_with_save_result) :
-  def cmd_run (self) :
+  def run (self) :
+    import os
+    from wxGUI2 import utils
+    utils.safe_makedirs(self.output_dir)
+    os.chdir(self.output_dir)
     result = cmd_run(args=self.args, validated=True, out=sys.stdout)
     return result
 
