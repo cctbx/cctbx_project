@@ -7,7 +7,8 @@ from scitbx import matrix
 import math
 import sys
 import StringIO
-import mmtbx.ncs.ncs_utils
+from mmtbx.refinement.flip_peptide_side_chain import should_be_flipped, \
+    flippable_sidechains
 
 __author__ = 'Youval'
 
@@ -1121,23 +1122,7 @@ def get_copy_master_selections_from_match_dict(
 
 def make_flips_if_necessary_torsion(const_h, flip_h):
   """ 3 times faster than other procedure."""
-  # data_dict:
-  #   key: flippable residue name
-  #   value: list of 5 atom names: first 4 define one angle,
-  #          1st, 2nd, 3rd and 5th define another torsion angle
-  #          6th, 7th - additional atoms to flip
-  data_dict = {
-    "LEU":[" CA ", " CB ", " CG ", " CD1", " CD2"],
-    "GLU":[" CB ", " CG ", " CD ", " OE1", " OE2"],
-    "ASP":[" CA ", " CB ", " CG ", " OD1", " OD2"],
-    "ASN":[" CA ", " CB ", " CG ", " OD1", " ND2"],
-    "GLN":[" CB ", " CG ", " CD ", " OE1", " NE2"],
-    "ARG":[" CD ", " NE ", " CZ ", " NH1", " NH2"],
-    "VAL":[" C  ", " CA ", " CB ", " CG1", " CG2"],
-    "PHE":[" CA ", " CB ", " CG ", " CD1", " CD2", " CE1", " CE2"],
-    "HIS":[" CA ", " CB ", " CG ", " ND1", " CD2", " CE1", " NE2"],
-    "TYR":[" CA ", " CB ", " CG ", " CD1", " CD2", " CE1", " CE2"],
-  }
+
   const_h.reset_atom_i_seqs()
   flip_h.reset_atom_i_seqs()
   assert const_h.atoms().size() == flip_h.atoms().size()
@@ -1147,9 +1132,9 @@ def make_flips_if_necessary_torsion(const_h, flip_h):
 
   for ch_c, ch_f in zip(ch_const, ch_flip):
     for residue, res_flip in zip(ch_c.residues(), ch_f.residues()):
-      if (residue.resname in data_dict
-          and mmtbx.ncs.ncs_utils.should_be_flipped(residue, res_flip)):
-        fl_atom_list = data_dict[residue.resname]
+      if (residue.resname in flippable_sidechains
+          and should_be_flipped(residue, res_flip)):
+        fl_atom_list = flippable_sidechains[residue.resname]
         iseqs = [0]*residue.atoms().size()
         for i, a in enumerate(residue.atoms()):
           try:

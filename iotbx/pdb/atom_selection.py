@@ -843,6 +843,10 @@ def selection_string_from_selection(pdb_h,
   if isinstance(selection,flex.bool): selection = selection.iselection(True)
   selection_set = set(selection)
   sel_list = []
+  # print "pdb_h in atom_selection:"
+  # print pdb_h.as_pdb_string()
+  # for a in pdb_h.atoms():
+  #   print a.i_seq, a.id_str()
   # pdb_h.select(selection).write_pdb_file("selected_in.pdb")
   # using chains_info to improve performance
   if not chains_info:
@@ -998,13 +1002,13 @@ def selection_string_from_selection(pdb_h,
   # Nevertheless, this helps to spot bugs early. So this should remain
   # here, let's say for a year. If no bugs discovered, this could be removed.
   # Current removal date: Jan 22, 2017
-  isel = pdb_h.atom_selection_cache().iselection(sel_str)
-  # pdb_h.select(isel).write_pdb_file("selected_string.pdb")
-  # pdb_h.select(selection).write_pdb_file("selected_isel.pdb")
-  assert len(isel) == len(selection), ""+\
-      "%d (result) != %d (input): conversion to string selects different number of atoms!.\n" \
-      % (len(isel), len(selection)) +\
-      "String lead to error: '%s'" % sel_str
+  # isel = pdb_h.atom_selection_cache().iselection(sel_str)
+  # # pdb_h.select(isel).write_pdb_file("selected_string.pdb")
+  # # pdb_h.select(selection).write_pdb_file("selected_isel.pdb")
+  # assert len(isel) == len(selection), ""+\
+  #     "%d (result) != %d (input): conversion to string selects different number of atoms!.\n" \
+  #     % (len(isel), len(selection)) +\
+  #     "String lead to error: '%s'" % sel_str
   # print "sel_str", sel_str
   # STOP()
   return sel_str
