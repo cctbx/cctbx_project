@@ -811,7 +811,7 @@ _replace_sysconfig_paths(build_time_vars)
                      replace_with="HDF5_INSTALL = %s"%self.base_dir)
       print >> log, "Patching bitshuffle/setup.py"
       self.patch_src(src_file="bitshuffle/setup.py",
-                     target=["COMPILE_FLAGS = ['-Ofast', '-march=native', '-std=c99', '-fopenmp']",
+                     target=["COMPILE_FLAGS = ['-O3', '-ffast-math', '-march=native', '-std=c99', '-fopenmp']",
                              "INCLUDE_DIRS = []",
                              "LIBRARY_DIRS = []",
                              "'/opt/local/include'",
