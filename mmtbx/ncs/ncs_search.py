@@ -7,7 +7,7 @@ from scitbx import matrix
 import math
 import sys
 import StringIO
-from scitbx.math import dihedral_angle
+import mmtbx.ncs.ncs_utils
 
 __author__ = 'Youval'
 
@@ -1140,68 +1140,30 @@ def make_flips_if_necessary_torsion(const_h, flip_h):
   }
   const_h.reset_atom_i_seqs()
   flip_h.reset_atom_i_seqs()
-  ref_sites = const_h.atoms().extract_xyz()
-  other_sites = flip_h.atoms().extract_xyz()
   assert const_h.atoms().size() == flip_h.atoms().size()
-  # we could get rid of it if it will be slow
-  # if not const_h.contains_protein():
-  #   return None
   flipped_other_selection = flex.size_t([])
-  for ch in const_h.only_model().chains():
-    for residue in ch.only_conformer().residues():
-      if residue.resname in data_dict:
-        # print "HERE"
-        atom_list = []
+  ch_const = const_h.only_model().chains()
+  ch_flip = flip_h.only_model().chains()
+
+  for ch_c, ch_f in zip(ch_const, ch_flip):
+    for residue, res_flip in zip(ch_c.residues(), ch_f.residues()):
+      if (residue.resname in data_dict
+          and mmtbx.ncs.ncs_utils.should_be_flipped(residue, res_flip)):
         fl_atom_list = data_dict[residue.resname]
-        present_none_in_atom_list = False
-        for aname in fl_atom_list:
-          a = residue.find_atom_by(name=aname)
-          if a is None:
-            present_none_in_atom_list = True
-            break
-          else:
-            atom_list.append(a)
-        # print "atom list", atom_list
-        if not present_none_in_atom_list:
-          # getting torsions: (1) using 0,1,2,3 atoms and ref_sites,
-          # (2) using 0,1,2,3 atoms and other_sites
-          # (3) using 0,1,2,4 atoms and other_sites.
-          # If (1) is closer to (2) then no flip, else flip
-          sites=[ref_sites[x.i_seq] for x in atom_list[:4]]
-          # print "sites",sites
-          tor1 = dihedral_angle(
-              sites=[ref_sites[x.i_seq] for x in atom_list[:4]],
-              deg=True)
-          tor2 = dihedral_angle(
-              sites=[other_sites[x.i_seq] for x in atom_list[:4]],
-              deg=True)
-          tor3 = dihedral_angle(
-              sites=[other_sites[x.i_seq] for x in atom_list[:3]+[atom_list[4]]],
-              deg=True)
-          # print "tors:", tor1, tor2, tor3
-          # print "condition:", abs(abs(tor1)-abs(tor2)), abs(abs(tor1)-abs(tor3))+5
-          if abs(abs(tor1)-abs(tor2)) > abs(abs(tor1)-abs(tor3))+5:
-            # print "flipping"
-            iseqs = [0]*residue.atoms().size()
-            for i, a in enumerate(residue.atoms()):
-              try:
-                ind = fl_atom_list.index(a.name)
-                if ind == 3 or ind == 5:
-                  iseqs[i+1] = a.i_seq
-                elif ind == 4 or ind == 6:
-                  iseqs[i-1] = a.i_seq
-                else:
-                  iseqs[i] = a.i_seq
-              except ValueError:
-                iseqs[i] = a.i_seq
-            for i in iseqs:
-              flipped_other_selection.append(i)
-          else:
-            for a in residue.atoms():
-              flipped_other_selection.append(a.i_seq)
-        else:
-          for a in residue.atoms():
-            flipped_other_selection.append(a.i_seq)
+        iseqs = [0]*residue.atoms().size()
+        for i, a in enumerate(residue.atoms()):
+          try:
+            ind = fl_atom_list.index(a.name)
+            if ind == 3 or ind == 5:
+              iseqs[i+1] = a.i_seq
+            elif ind == 4 or ind == 6:
+              iseqs[i-1] = a.i_seq
+            else:
+              iseqs[i] = a.i_seq
+          except ValueError:
+            iseqs[i] = a.i_seq
+        for i in iseqs:
+          flipped_other_selection.append(i)
       else:
         for a in residue.atoms():
           flipped_other_selection.append(a.i_seq)
@@ -1313,6 +1275,7 @@ def clean_chain_matching(chain_match_list,ph,
   # print "match_list", match_list
   for match in match_list:
     [ch_a_id,ch_b_id,list_a,list_b,res_list_a,res_list_b,similarity] = match
+    # print "Filtering ", ch_a_id, ch_b_id
     sel_a = make_selection_from_lists(list_a)
     sel_b = make_selection_from_lists(list_b)
     other_h = ph.select(sel_a)
@@ -1407,6 +1370,9 @@ def remove_far_atoms(list_a, list_b,
       sel_b.extend(list_b[i])
       res_list_a_new.append(res_list_a[i])
       res_list_b_new.append(res_list_b[i])
+    else:
+      pass
+      # print "removing poorly matching residue:",i,max_d - min_d
   return sel_a,sel_b,res_list_a_new,res_list_b_new,ref_sites_new,other_sites_new
 
 # def update_match_dicts(best_matches,match_dict,

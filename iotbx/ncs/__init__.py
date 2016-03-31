@@ -8,8 +8,6 @@ import libtbx.phil
 import iotbx.pdb.hierarchy
 from mmtbx.ncs import ncs
 from scitbx import matrix
-from iotbx import pdb
-import string
 import math
 import re
 import os
@@ -91,37 +89,18 @@ class input(object):
           residue_match_radius=4.0):
     """
     TODO:
-    1. switch from iotbx.pdb.hierarchy.input to iotbx.pdb.input
+    1. Transfer get_ncs_info_as_spec() to ncs/ncs.py:ncs
+    2. Stop doing set_common_res_dict() by default because it is needed only
+       for spec object and takes a lot of time.
+       As usual, it is not straightforward to remove it and keep everything
+       else in working condition.
+    3. get_chains_info() takes a lot of time. Investigate if it is needed at
+       all or this info could be extracted from hierarchy in less time when
+       needed. This will result in rewriting a significant amount of code.
+    4. consider removing custom alighment functionality from ncs_search and
+       use one from mmtbx.alignment. It is faster.
 
-    SUGGESTIONS:
-done    1. Remove process_similar_chains, leaving it with present(True) behavior.
-      Setting this to false will result in skipping even slightly different
-      chains
-done    2. Remove check_atom_order, leaving it with present(True) behavior.
-      In addition to checking atom order in residues (which should not
-      be necessary now), it is used if
-      one of the matching residues doesn't have all atoms.
-done    3. Remove allow_different_size_res, leaving it with present(True) behavior.
-done    5. Remove ignore_chains. Could be easily defined as supplement to
-      exclude_selection.
-done    7. Combine or remove entirely quiet and write_messages. If somebody doesn't
-      want output, he may supply appropriate object to log parameter and never
-      print it out (like StringIO)
-    8. Combine similarity_threshold and min_percent. min_percent - preliminary
-      filtering value, similarity_threshold - further down somewhere in
-      procedure?..
-    4. At least combine match_radius with exclude_misaligned_residues, because
-      match_radius is numerical value used to exclude misaligned_residues.
-      Could be set to big value resulting in effectively
-      exclude_misaligned_residues=False.
-    6. Remove min_contig_length, setting it to 1. The parameters screws
-      alignment similarity in a complicated way (we are excluding well-aligned
-      regions with length less than this number).
 
-    This will leave us with 3 easy to understand parameters:
-      - similarity_threshold+min_percent : alignment percent filter by chain
-      - chain_max_rmsd : coordinate filter by chain
-      - match_radius+exclude_misaligned_residues : coordinate filter by residue.
 
     Select method to build ncs_group_object
 
@@ -1581,6 +1560,11 @@ done    7. Combine or remove entirely quiet and write_messages. If somebody does
           stem='',
           log = None):
     """
+    This function should be transfered to mmtbx/ncs/ncs.py:ncs class as
+    its classmethod, because it creates an object and this is the task of
+    a constructor. And it definetely should be decoupled from file creation!
+
+
     Returns ncs spec object and can prints ncs info in a ncs_spec,
     format_all_for_resolve or format_all_for_phenix_refine format
 
@@ -1598,15 +1582,13 @@ done    7. Combine or remove entirely quiet and write_messages. If somebody does
       fmodel: (fmodel object)
       write: (bool) when False, will not write to file or print
       exclude_h,exclude_d : parameters of the ncs object
-      restraint (bool): control the file format for phenix.refine
-                        when True, "refinement.ncs.restraint_group"
-                        when False,"refinement.ncs.constraint_group"
-      show_ncs_phil (bool): add NCS groups phil info to printout
     Return:
       spec_object
     """
     log = log or self.log
     spec_object = ncs.ncs(exclude_h=exclude_h,exclude_d=exclude_d)
+    # if len(self.common_res_dict) == 0 and self.truncated_hierarchy:
+    #   self.set_common_res_dict()
     if [bool(xrs),bool(pdb_hierarchy_asu),bool(fmodel)].count(True) == 0:
       # if not input containing coordinates is given
       if self.truncated_hierarchy:

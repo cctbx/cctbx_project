@@ -1584,11 +1584,10 @@ def exercise_12():
       ncs_obj_space,
       ncs_obj_stars,
       ncs_obj_str_and_spc]:
-    keys = ncs_obj.common_res_dict.keys()
-    assert len(keys) == 2
-    for key in keys:
-      ncs_sel = ncs_obj.common_res_dict[key][0][1]
-      assert ncs_sel.size() == 8
+    ncs_groups = ncs_obj.get_ncs_restraints_group_list()
+    assert len(ncs_groups) == 1
+    assert ncs_groups[0].master_iselection.size() == 8
+    assert ncs_groups[0].copies[0].iselection.size() == 8
 
 def exercise_13():
   """

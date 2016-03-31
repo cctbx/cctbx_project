@@ -327,8 +327,10 @@ class TestSimpleAlignment(unittest.TestCase):
         residue_match_radius=1000,
         chain_similarity_threshold=0.50)
     self.assertEqual(ncs_obj.number_of_ncs_groups,1)
-    n_atoms_in_copy = ncs_obj.common_res_dict.values()[0][0][1].size()
-    self.assertEqual(n_atoms_in_copy,31)
+    ncs_groups = ncs_obj.get_ncs_restraints_group_list()
+    assert len(ncs_groups) == 1
+    assert ncs_groups[0].master_iselection.size() == 31
+    assert ncs_groups[0].copies[0].iselection.size() == 31
 
   def test_file_formats(self):
     """ Make sure .ncs file format is as needed """
