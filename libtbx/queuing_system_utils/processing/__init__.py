@@ -32,7 +32,7 @@ class TimedTimeout(object):
 
   def __init__(self, max_delay):
 
-      self.max_delay = max_delay
+    self.max_delay = max_delay
 
 
   def delay(self, waittime):
@@ -151,7 +151,8 @@ class Job(object):
     self.args = args
     self.kwargs = kwargs
 
-    self.status = None
+    from libtbx.queuing_system_utils.processing import status
+    self.status = status.NotSubmitted
 
 
   @property
@@ -163,11 +164,18 @@ class Job(object):
   @property
   def jobid (self):
 
-    return getattr(self.status, "jobid", None)
+    return getattr( self.status, "jobid", None )
+
+
+  @property
+  def exitcode(self):
+
+    return self.status.exit_code()
+
 
   def start(self):
 
-    if self.status is not None:
+    if self.status.is_submitted():
       raise RuntimeError, "start called second time"
 
     data = self.qinterface.input(
@@ -188,9 +196,6 @@ class Job(object):
 
   def is_alive(self):
 
-    if self.status is None:
-      raise RuntimeError, "job has not been submitted yet"
-
     return not self.status.is_finished()
 
 
@@ -199,29 +204,40 @@ class Job(object):
     while self.is_alive():
       time.sleep( 0.1 )
 
-    ( stdout, stderr, self.exitcode ) = self.status.results()
+    outcome = self.status.outcome(
+      timeout = self.qinterface.join_timeout,
+      polltime = self.qinterface.polltime,
+      )
+    self.status.cleanup()
+    self.status = outcome
 
-    if stdout:
-      print stdout
+    if self.status.stdout:
+      print self.status.stdout
 
-    if stderr and self.qinterface.display_stderr:
+    if self.status.stderr and self.qinterface.display_stderr:
       import sys
-      sys.stderr.write( stderr )
+      sys.stderr.write( self.status.stderr )
       sys.stderr.write( "\n" )
 
     if self.qinterface.save_error:
       if self.exitcode != 0:
-        self.err = RuntimeError( stderr )
+        self.err = RuntimeError( self.status.stderr )
 
       else:
         self.err = None
 
-    self.status.cleanup()
+    self.status.strip()
 
 
   def terminate(self):
 
     self.status.terminate()
+    outcome = self.status.outcome(
+      timeout = self.qinterface.termination_timeout,
+      polltime = self.qinterface.polltime,
+      )
+    self.status.cleanup()
+    self.status = outcome
 
 
   def __str__(self):
@@ -250,6 +266,9 @@ target( *args, **kwargs )
     script = SCRIPT,
     save_error = False,
     display_stderr = True,
+    join_timeout = None,
+    termination_timeout = 5,
+    polltime = 1,
     ):
 
     self.submitter = submitter
@@ -262,6 +281,10 @@ target( *args, **kwargs )
 
     self.save_error = save_error
     self.display_stderr = display_stderr
+
+    self.join_timeout = join_timeout
+    self.termination_timeout = termination_timeout
+    self.polltime = polltime
 
 
   def Job(self, target, args = (), kwargs = {}):
