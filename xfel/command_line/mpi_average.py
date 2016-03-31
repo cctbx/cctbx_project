@@ -25,7 +25,7 @@ def average(argv=None):
 
   command_line = (libtbx.option_parser.option_parser(
     usage="""
-%s [-p] -c config -x experiment -a address -r run -d detz_offset [-o outputdir] [-A averagepath] [-S stddevpath] [-M maxpath] [-n numevents] [-s skipnevents] [-v] [-m] [-b bin_size] [-X override_beam_x] [-Y override_beam_y] [-D xtc_dir] [-f] [-g gain_mask_value]
+%s [-p] -c config -x experiment -a address -r run -d detz_offset [-o outputdir] [-A averagepath] [-S stddevpath] [-M maxpath] [-n numevents] [-s skipnevents] [-v] [-m] [-b bin_size] [-X override_beam_x] [-Y override_beam_y] [-D xtc_dir] [-f] [-g gain_mask_value] [--min] [--minpath minpath]
 
 To write image pickles use -p, otherwise the program writes CSPAD CBFs.
 Writing CBFs requires the geometry to be already deployed.
@@ -157,6 +157,17 @@ the output images in the folder cxi49812.
                         default=None,
                         dest="gain_mask_value",
                         help="Ratio between low and high gain pixels, if CSPAD in mixed-gain mode. Only used in CBF averaging mode.")
+                .option(None, "--min", None,
+                        action="store_true",
+                        default=False,
+                        dest="do_minimum_projection",
+                        help="Output a minimum projection")
+                .option(None, "--minpath", None,
+                        type="string",
+                        default="{experiment!l}_min-r{run:04d}",
+                        dest="minpath",
+                        metavar="PATH",
+                        help="Path to output minimum image without extension. String substitution allowed")
                 ).process(args=argv)
 
 
@@ -277,6 +288,12 @@ the output images in the folder cxi49812.
       else:
         maximum=np.array(data, copy=True)
 
+      if command_line.options.do_minimum_projection:
+        if 'minimum' in locals():
+          minimum=np.minimum(minimum,data)
+        else:
+          minimum=np.array(data, copy=True)
+
       nevent += 1
 
   #sum the images across mpi cores
@@ -296,6 +313,10 @@ the output images in the folder cxi49812.
 
   maxall = np.zeros(maximum.shape).astype(maximum.dtype)
   comm.Reduce(maximum,maxall, op=MPI.MAX)
+
+  if command_line.options.do_minimum_projection:
+    minall = np.zeros(maximum.shape).astype(minimum.dtype)
+    comm.Reduce(minimum,minall, op=MPI.MIN)
 
   waveall = np.zeros(wavelength.shape).astype(wavelength.dtype)
   comm.Reduce(wavelength,waveall)
@@ -336,8 +357,14 @@ the output images in the folder cxi49812.
     dest_paths = [cspad_tbx.pathsubst(command_line.options.averagepath + extension, evt, ds.env()),
                   cspad_tbx.pathsubst(command_line.options.stddevpath  + extension, evt, ds.env()),
                   cspad_tbx.pathsubst(command_line.options.maxpath     + extension, evt, ds.env())]
+    if command_line.options.do_minimum_projection:
+      dest_paths.append(cspad_tbx.pathsubst(command_line.options.minpath + extension, evt, ds.env()))
+
     dest_paths = [os.path.join(command_line.options.outputdir, path) for path in dest_paths]
     if 'Rayonix' in command_line.options.address:
+      all_data = [mean, stddev, maxall]
+      if command_line.options.do_minimum_projection:
+        all_data.append(minall)
       from xfel.cxi.cspad_ana import rayonix_tbx
       pixel_size = rayonix_tbx.get_rayonix_pixel_size(command_line.options.bin_size)
       beam_center = [command_line.options.override_beam_x,command_line.options.override_beam_y]
@@ -345,7 +372,7 @@ the output images in the folder cxi49812.
       active_areas = flex.int([0,0,detector_dimensions[0],detector_dimensions[1]])
       split_address = cspad_tbx.address_split(address)
       old_style_address = split_address[0] + "-" + split_address[1] + "|" + split_address[2] + "-" + split_address[3]
-      for data, path in zip([mean, stddev, maxall], dest_paths):
+      for data, path in zip(all_data, dest_paths):
         print "Saving", path
         d = cspad_tbx.dpack(
             active_areas=active_areas,
@@ -408,6 +435,11 @@ the output images in the folder cxi49812.
         quads = [fake_quad(i, maxall[i*8:(i+1)*8,:,:]) for i in xrange(4)]
         maxall = cspad_tbx.image_xpp(old_style_address, None, ds.env(), active_areas, quads = quads)
         maxall = flex.double(maxall.astype(np.float64))
+
+        if command_line.options.do_minimum_projection:
+          quads = [fake_quad(i, minall[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+          minall = cspad_tbx.image_xpp(old_style_address, None, ds.env(), active_areas, quads = quads)
+          minall = flex.double(minall.astype(np.float64))
       else:
         quads = [fake_quad(i, mean[i*8:(i+1)*8,:,:]) for i in xrange(4)]
         mean = cspad_tbx.CsPadDetector(
@@ -424,7 +456,17 @@ the output images in the folder cxi49812.
           address, evt, ds.env(), sections, quads=quads)
         maxall = flex.double(maxall.astype(np.float64))
 
-      for data, path in zip([mean, stddev, maxall], dest_paths):
+        if command_line.options.do_minimum_projection:
+          quads = [fake_quad(i, minall[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+          minall = cspad_tbx.CsPadDetector(
+            address, evt, ds.env(), sections, quads=quads)
+          minall = flex.double(minall.astype(np.float64))
+
+      all_data = [mean, stddev, maxall]
+      if command_line.options.do_minimum_projection:
+        all_data.append(minall)
+
+      for data, path in zip(all_data, dest_paths):
         print "Saving", path
 
         d = cspad_tbx.dpack(
@@ -448,7 +490,11 @@ the output images in the folder cxi49812.
       if base_dxtbx is None:
         raise Sorry("Couldn't load calibration file for run %d"%run.run())
 
-      for data, path in zip([mean, stddev, maxall], dest_paths):
+      all_data = [mean, stddev, maxall]
+      if command_line.options.do_minimum_projection:
+        all_data.append(minall)
+
+      for data, path in zip(all_data, dest_paths):
         print "Saving", path
 
         cspad_img = cspad_cbf_tbx.format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, address, round_to_int=False)
