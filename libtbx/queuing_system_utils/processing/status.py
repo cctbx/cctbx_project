@@ -188,7 +188,7 @@ class JobStatus(object):
 
       while True:
         try:
-          with open( self.outfile ) as infile:
+          with open( filename ) as infile:
             return infile.read().strip()
 
         except IOError:
