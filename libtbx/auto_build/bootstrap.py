@@ -200,9 +200,9 @@ class ShellCommand(object):
       print '===== Time to %s : %0.1f' % (outl, time.time()-t0)
     return p.returncode
 
-# Download URL to local file
-class Downloader(object):
-  def download_to_file(self, url, file, log=sys.stdout, status=True):
+class Toolbox(object):
+  @staticmethod
+  def download_to_file(url, file, log=sys.stdout, status=True):
     """Downloads a URL to file. Returns the file size.
        Returns -1 if the downloaded file size does not match the expected file
        size
@@ -341,7 +341,6 @@ class Downloader(object):
 
     return received
 
-class Toolbox(object):
   @staticmethod
   def unzip(archive, directory, trim_directory=0, verbose=False):
     '''unzip a file into a directory'''
@@ -422,7 +421,7 @@ class Toolbox(object):
       filename = os.path.join(destpath, filename)
       if verbose:
         print "===== Downloading %s: " % source_candidate,
-      Downloader().download_to_file(source_candidate, filename)
+      Toolbox.download_to_file(source_candidate, filename)
       Toolbox.unzip(filename, destination, trim_directory=1)
       return
 
@@ -1156,7 +1155,7 @@ class Builder(object):
     class _download(object):
       def run(self):
         print "===== Downloading %s: " % url,
-        Downloader().download_to_file(url, to_file)
+        Toolbox().download_to_file(url, to_file)
     self.add_step(_download())
 
   def _add_curl(self, module, url):

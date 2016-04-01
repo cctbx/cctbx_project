@@ -6,6 +6,7 @@ via the web (yet).
 """
 
 from __future__ import division
+from bootstrap import Toolbox
 from installer_utils import *
 import os.path as op
 import os
@@ -124,13 +125,12 @@ class fetch_packages (object) :
   """
   def __init__ (self, dest_dir, log, pkg_dirs=None, no_download=False,
       copy_files=False) :
-    from bootstrap import Downloader
     self.dest_dir = dest_dir
     self.log = log
     self.pkg_dirs = pkg_dirs
     self.no_download = no_download
     self.copy_files = copy_files
-    self.downloader = Downloader()
+    self.toolbox = Toolbox()
 
   def __call__ (self,
                 pkg_name,
@@ -170,7 +170,7 @@ class fetch_packages (object) :
     full_url = "%s/%s" % (pkg_url, pkg_name)
     self.log.write("    downloading from %s : " % pkg_url)
 
-    size = self.downloader.download_to_file(full_url, output_file, log=self.log)
+    size = self.toolbox.download_to_file(full_url, output_file, log=self.log)
     if (size == -2):
       print >> self.log, "    using ./%s (cached)" % pkg_name
       if return_file_and_status:
