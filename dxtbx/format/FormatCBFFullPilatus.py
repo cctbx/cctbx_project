@@ -93,8 +93,8 @@ class FormatCBFFullPilatus(FormatCBFFull):
         from dxtbx.model import ParallaxCorrectedPxMmStrategy
         # this will fail for undefined composite materials (ie all except CdTe)
         table = attenuation_coefficient.get_table(material)
-        # mu_at_angstrom returns cm^-1, but need mu in mm^-1
-        mu = table.mu_at_angstrom(wavelength) / 10.0
+        # mu_at_angstrom returns cm^-1
+        mu = table.mu_at_angstrom(wavelength)
 
         for panel in detector:
           panel.set_px_mm_strategy(ParallaxCorrectedPxMmStrategy(mu, thickness))
