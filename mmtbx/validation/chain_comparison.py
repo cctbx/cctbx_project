@@ -8,7 +8,7 @@ from __future__ import division
 
 from libtbx import adopt_init_args
 import iotbx.phil
-import os,sys
+import sys
 from phenix.autosol.build_model import best_match
 from libtbx.utils import Sorry
 
@@ -148,6 +148,8 @@ def run(args=None,
      target_file,target_hierarchy.overall_counts().n_residues)
     if verbose:
       print >>out,"Chain type is: %s" %(chain_type)
+  if crystal_symmetry is None:
+    raise Sorry("Need crystal symmetry in at least one input file")
   # get the CA residues
   if chain_type in ["RNA","DNA"]:
     atom_selection="name P"
