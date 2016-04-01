@@ -441,9 +441,52 @@ parallel_phil_str_no_threading = parallel_phil_str_base % (
   " ".join(parallel_methods), " ".join(parallel_captions))
 
 
+def single_argument(func):
+
+  return func
+
+
+class posiargs(object):
+
+  def __init__(self, func):
+
+    self.func = func
+
+
+  def __call__(self, arg):
+
+    return self.func( *arg )
+
+
+class kwargs(object):
+
+  def __init__(self, func):
+
+    self.func = func
+
+
+  def __call__(self, arg):
+
+    return self.func( **arg )
+
+
+class posi_and_kwargs(object):
+
+  def __init__(self, func):
+
+    self.func = func
+
+
+  def __call__(self, arg):
+
+    ( args, kwargs ) = arg
+    return self.func( *args, **kwargs )
+
+
 def parallel_map (
     func,
     iterable,
+    iterable_type = single_argument,
     params=None,
     processes=1,
     method="multiprocessing",
@@ -553,8 +596,9 @@ def parallel_map (
   results = []
 
   with holder( creator = creator ) as manager:
+    adfunc = iterable_type( func )
     pfi = parallel_for.iterator(
-      calculations = ( ( func, ( args, ), {} ) for args in iterable ),
+      calculations = ( ( adfunc, ( args, ), {} ) for args in iterable ),
       manager = manager,
       keep_input_order = preserve_order,
       )
