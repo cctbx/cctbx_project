@@ -958,7 +958,7 @@ class Builder(object):
     elif method == 'svn':
       self._add_svn(module, parameters)
     elif method == 'git':
-      self._add_git(module, parameters)
+      self.add_git(module, parameters)
     else:
       raise Exception('Unknown access method: %s %s'%(method, str(parameters)))
 
@@ -1140,7 +1140,7 @@ class Builder(object):
           workdir=[thisworkdir]
       ))
 
-  def _add_git(self, module, parameters):
+  def add_git(self, module, parameters):
     git_available = True
     try:
       subprocess.call(['git', '--version'], stdout=open(os.devnull, 'wb'), stderr=open(os.devnull, 'wb'))
