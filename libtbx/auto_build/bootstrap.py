@@ -341,25 +341,23 @@ class Downloader(object):
 
     return received
 
-class Unzipper(object):
-  def __init__(self, archive, directory, trim_directory=0):
-    self.archive = archive
-    self.directory = directory
-    self.trim_dir = trim_directory
-
-  def run(self):
-    print "===== Installing %s into %s" % (self.archive, self.directory)
-    if not zipfile.is_zipfile(self.archive):
-      raise Exception("%s is not a valid .zip file" % self.archive)
-    z = zipfile.ZipFile(self.archive, 'r')
+class Toolbox(object):
+  @staticmethod
+  def unzip(archive, directory, trim_directory=0, verbose=False):
+    '''unzip a file into a directory'''
+    if verbose:
+      print "===== Installing %s into %s" % (archive, directory)
+    if not zipfile.is_zipfile(archive):
+      raise Exception("%s is not a valid .zip file" % archive)
+    z = zipfile.ZipFile(archive, 'r')
     for member in z.infolist():
       is_directory = member.filename.endswith('/')
-      filename = os.path.join(*member.filename.split('/')[self.trim_dir:])
+      filename = os.path.join(*member.filename.split('/')[trim_directory:])
       if filename != '':
         filename = os.path.normpath(filename)
         if '../' in filename:
-          raise Exception('Archive %s contains invalid filename %s' % (self.archive, filename))
-        filename = os.path.join(self.directory, filename)
+          raise Exception('Archive %s contains invalid filename %s' % (archive, filename))
+        filename = os.path.join(directory, filename)
         upperdirs = os.path.dirname(filename)
         try:
           if is_directory and not os.path.exists(filename):
@@ -374,6 +372,65 @@ class Unzipper(object):
           target.close()
           source.close()
     z.close()
+
+  @staticmethod
+  def git(module, parameters, destination=None, use_ssh=False, verbose=False):
+    '''Retrieve a git repository, either by running git directly
+       or by downloading and unpacking an archive.'''
+    git_available = True
+    try:
+      subprocess.call(['git', '--version'], stdout=open(os.devnull, 'wb'), stderr=open(os.devnull, 'wb'))
+    except OSError:
+      git_available = False
+
+    if destination is None:
+      destination = os.path.join('modules', module)
+    destpath, destdir = os.path.split(destination)
+
+    if git_available and os.path.exists(os.path.join(destination, '.git')):
+      # This may fail for unclean trees and merge problems. In this case manual
+      # user intervention will be required.
+      # For the record, you can clean up the tree and *discard ALL changes* with
+      #   git reset --hard origin/master
+      #   git clean -dffx
+      return ShellCommand(
+        command=['git', 'pull', '--rebase'], workdir=destination, silent=False
+      ).run()
+
+    if os.path.exists(destination):
+      print "Existing non-git directory -- don't know what to do. skipping: %s" % module
+      return
+
+    if isinstance(parameters, basestring):
+      parameters = [ parameters ]
+    git_parameters = []
+    for source_candidate in parameters:
+      if source_candidate.startswith('-'):
+        git_parameters = source_candidate.split(' ')
+        continue
+      if (not source_candidate.lower().startswith('http') and not use_ssh):
+        continue
+      if source_candidate.lower().endswith('.git'):
+        if not git_available:
+          continue
+        cmd = [ 'git', 'clone' ] + git_parameters + [ source_candidate, destdir ]
+        return ShellCommand(
+          command=cmd, workdir=destpath, silent=False
+        ).run()
+      filename = "%s-%s" % (module,
+                            urlparse.urlparse(source_candidate).path.split('/')[-1])
+      filename = os.path.join(destpath, filename)
+      if verbose:
+        print "===== Downloading %s: " % source_candidate,
+      Downloader().download_to_file(source_candidate, filename)
+      Toolbox.unzip(filename, destination, trim_directory=1)
+      return
+
+    error = "Cannot satisfy git dependency for module %s: None of the sources are available." % module
+    if not git_available:
+      print error
+      error = "A git installation has not been found."
+    raise Exception(error)
 
 class cleanup_ext_class(object):
   def __init__(self, filename_ext, workdir=None):
@@ -994,7 +1051,7 @@ class Builder(object):
     elif method == 'svn':
       self._add_svn(module, parameters)
     elif method == 'git':
-      self.add_git(module, parameters)
+      self._add_git(module, parameters)
     else:
       raise Exception('Unknown access method: %s %s'%(method, str(parameters)))
 
@@ -1115,7 +1172,11 @@ class Builder(object):
     ))
 
   def _add_unzip(self, archive, directory, trim_directory=0):
-    self.add_step(Unzipper(archive, directory, trim_directory))
+    class _indirection(object):
+      def run(self):
+        print "===== Installing %s into %s" % (archive, directory)
+        Toolbox().unzip(archive, directory, trim_directory)
+    self.add_step(_indirection())
 
   def _add_svn(self, module, url):
     update_list = ['update']
@@ -1147,66 +1208,12 @@ class Builder(object):
           workdir=[thisworkdir]
       ))
 
-  def add_git(self, module, parameters, destination=None):
-    git_available = True
-    try:
-      subprocess.call(['git', '--version'], stdout=open(os.devnull, 'wb'), stderr=open(os.devnull, 'wb'))
-    except OSError:
-      git_available = False
-
-    if destination is None:
-      destination = self.op.join('modules', module)
-    destpath, destdir = self.op.split(destination)
-
-    if git_available and self.op.exists(self.op.join(destination, '.git')):
-      # This may fail for unclean trees and merge problems. In this case manual
-      # user intervention will be required.
-      # For the record, you can clean up the tree and *discard ALL changes* with
-      #   git reset --hard origin/master
-      #   git clean -dffx
-      self.add_step(self.shell(
-        command=['git', 'pull', '--rebase'],
-        workdir=[destination]
-      ))
-      return
-
-    if os.path.exists(destination):
-      print "Existing non-git directory -- don't know what to do. skipping: %s" % module
-      return
-
-    if isinstance(parameters, basestring):
-      parameters = [ parameters ]
-    git_parameters = []
-    for source_candidate in parameters:
-      if source_candidate.startswith('-'):
-        git_parameters = source_candidate.split(' ')
-        continue
-      if (not source_candidate.lower().startswith('http') and
-          not self.auth.get('git_ssh',False)):
-        continue
-      if source_candidate.lower().endswith('.git'):
-        if not git_available:
-          continue
-        cmd = [ 'git', 'clone' ] + git_parameters + [ source_candidate, destdir ]
-        self.add_step(self.shell(
-          command=cmd,
-          workdir=[destpath]
-        ))
-        return
-      filename = "%s-%s" % (module,
-                            urlparse.urlparse(source_candidate).path.split('/')[-1])
-      filename = self.op.join(destpath, filename)
-      self._add_download(source_candidate, filename)
-      self._add_unzip(filename,
-                      destination,
-                      trim_directory=1)
-      return
-
-    error = "Cannot satisfy git dependency for module %s: None of the sources are available." % module
-    if not git_available:
-      print error
-      error = "A git installation has not been found."
-    raise Exception(error)
+  def _add_git(self, module, parameters, destination=None):
+    use_git_ssh = self.auth.get('git_ssh',False)
+    class _indirection(object):
+      def run(self):
+        Toolbox().git(module, parameters, destination=destination, use_ssh=use_git_ssh, verbose=True)
+    self.add_step(_indirection())
 
   def _check_for_Windows_prerequisites(self):
     if self.isPlatformWindows():
