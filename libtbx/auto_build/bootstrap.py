@@ -341,6 +341,40 @@ class Downloader(object):
 
     return received
 
+class Unzipper(object):
+  def __init__(self, archive, directory, trim_directory=0):
+    self.archive = archive
+    self.directory = directory
+    self.trim_dir = trim_directory
+
+  def run(self):
+    print "===== Installing %s into %s" % (self.archive, self.directory)
+    if not zipfile.is_zipfile(self.archive):
+      raise Exception("%s is not a valid .zip file" % self.archive)
+    z = zipfile.ZipFile(self.archive, 'r')
+    for member in z.infolist():
+      is_directory = member.filename.endswith('/')
+      filename = os.path.join(*member.filename.split('/')[self.trim_dir:])
+      if filename != '':
+        filename = os.path.normpath(filename)
+        if '../' in filename:
+          raise Exception('Archive %s contains invalid filename %s' % (self.archive, filename))
+        filename = os.path.join(self.directory, filename)
+        upperdirs = os.path.dirname(filename)
+        try:
+          if is_directory and not os.path.exists(filename):
+            os.makedirs(filename)
+          elif upperdirs and not os.path.exists(upperdirs):
+            os.makedirs(upperdirs)
+        except Exception, e: pass
+        if not is_directory:
+          source = z.open(member)
+          target = file(filename, "wb")
+          shutil.copyfileobj(source, target)
+          target.close()
+          source.close()
+    z.close()
+
 class cleanup_ext_class(object):
   def __init__(self, filename_ext, workdir=None):
     self.filename_ext = filename_ext
@@ -1081,36 +1115,7 @@ class Builder(object):
     ))
 
   def _add_unzip(self, archive, directory, trim_directory=0):
-    class _unzipper(object):
-      def run(self):
-        print "===== Installing %s into %s" % (archive, directory)
-        if not zipfile.is_zipfile(archive):
-          raise Exception("%s is not a valid .zip file" % archive)
-        z = zipfile.ZipFile(archive, 'r')
-        for member in z.infolist():
-          is_directory = member.filename.endswith('/')
-          filename = os.path.join(*member.filename.split('/')[trim_directory:])
-          if filename != '':
-            filename = os.path.normpath(filename)
-            if '../' in filename:
-              raise Exception('Archive %s contains invalid filename %s' % (archive, filename))
-            filename = os.path.join(directory, filename)
-            upperdirs = os.path.dirname(filename)
-            try:
-              if is_directory and not os.path.exists(filename):
-                os.makedirs(filename)
-              elif upperdirs and not os.path.exists(upperdirs):
-                os.makedirs(upperdirs)
-            except Exception, e: pass
-            if not is_directory:
-              source = z.open(member)
-              target = file(filename, "wb")
-              shutil.copyfileobj(source, target)
-              target.close()
-              source.close()
-        z.close()
-    self.add_step(_unzipper())
-
+    self.add_step(Unzipper(archive, directory, trim_directory))
 
   def _add_svn(self, module, url):
     update_list = ['update']
