@@ -767,6 +767,10 @@ class Builder(object):
     self.steps = []
     self.category = category
     self.platform = platform
+    if self.isPlatformWindows():
+      self.op = ntpath
+    else:
+      self.op = os.path
     self.name = '%s-%s'%(self.category, self.platform)
     # Platform configuration.
     self.python_base = self.opjoin(*['..', 'base', 'bin', 'python'])
@@ -873,9 +877,7 @@ class Builder(object):
       i.run()
 
   def opjoin(self, *args):
-    if self.isPlatformWindows():
-      return ntpath.join(*args)
-    return os.path.join(*args)
+    return self.op.join(*args)
 
   def get_codebases(self):
     # we can't currently compile cbflib for Windows
@@ -1140,14 +1142,18 @@ class Builder(object):
           workdir=[thisworkdir]
       ))
 
-  def add_git(self, module, parameters):
+  def add_git(self, module, parameters, destination=None):
     git_available = True
     try:
       subprocess.call(['git', '--version'], stdout=open(os.devnull, 'wb'), stderr=open(os.devnull, 'wb'))
     except OSError:
       git_available = False
 
-    if git_available and os.path.exists(self.opjoin(*['modules', module, '.git'])):
+    if destination is None:
+      destination = self.op.join('modules', module)
+    destpath, destdir = self.op.split(destination)
+
+    if git_available and self.op.exists(self.op.join(destination, '.git')):
       # This may fail for unclean trees and merge problems. In this case manual
       # user intervention will be required.
       # For the record, you can clean up the tree and *discard ALL changes* with
@@ -1155,12 +1161,12 @@ class Builder(object):
       #   git clean -dffx
       self.add_step(self.shell(
         command=['git', 'pull', '--rebase'],
-        workdir=[os.path.join('modules', module)]
+        workdir=[destination]
       ))
       return
 
-    if os.path.exists(self.opjoin(*['modules', module])):
-      print "Existing non-git directory -- don't know what to do. skipping: %s"%module
+    if os.path.exists(destination):
+      print "Existing non-git directory -- don't know what to do. skipping: %s" % module
       return
 
     if isinstance(parameters, basestring):
@@ -1170,25 +1176,24 @@ class Builder(object):
       if source_candidate.startswith('-'):
         git_parameters = source_candidate.split(' ')
         continue
-      if(not source_candidate.lower().startswith('http') and
-         not self.auth.get('git_ssh',False)
-         ):
+      if (not source_candidate.lower().startswith('http') and
+          not self.auth.get('git_ssh',False)):
         continue
       if source_candidate.lower().endswith('.git'):
         if not git_available:
           continue
-        cmd = [ 'git', 'clone' ] + git_parameters + [ source_candidate, module ]
+        cmd = [ 'git', 'clone' ] + git_parameters + [ source_candidate, destdir ]
         self.add_step(self.shell(
           command=cmd,
-          workdir=['modules']
+          workdir=[destpath]
         ))
         return
       filename = "%s-%s" % (module,
                             urlparse.urlparse(source_candidate).path.split('/')[-1])
-      filename = os.path.join('modules', filename)
+      filename = self.op.join(destpath, filename)
       self._add_download(source_candidate, filename)
       self._add_unzip(filename,
-                      os.path.join('modules', module),
+                      destination,
                       trim_directory=1)
       return
 
