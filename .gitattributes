@@ -2242,6 +2242,7 @@ mmtbx/regression/tst_b_factor_statistics.py -text
 mmtbx/regression/tst_build_alt_confs.py -text
 mmtbx/regression/tst_cablam.py -text
 mmtbx/regression/tst_cc_star.py -text
+mmtbx/regression/tst_chain_comparison.py -text
 mmtbx/regression/tst_cif_as_mtz_wavelengths.py svneol=native#text/x-python
 mmtbx/regression/tst_clashes.py -text
 mmtbx/regression/tst_command_line_input.py svneol=native#text/x-python
