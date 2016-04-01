@@ -1188,7 +1188,7 @@ def get_connectivity(params,
 
   # get map data and normalize to SD of the part that is not solvent
 
-  sd=map_data.sample_standard_deviation()
+  sd=max(0.0001,map_data.sample_standard_deviation())
   scaled_sd=sd/(1-solvent_fraction)**0.5
   map_data=(map_data-map_data.as_1d().min_max_mean().mean)/scaled_sd
 
@@ -3269,7 +3269,7 @@ def run(args,
      ncs_obj=ncs_obj,
      tracking_data=tracking_data,
      out=out)
-  if not ncs_group_obj:  # nothing to do
+  if not ncs_group_obj or not ncs_group_obj.ncs_group_list:  # nothing to do
     return None,None,tracking_data
 
   # Choose one region or group of regions from each ncs_group in the list

@@ -46,7 +46,9 @@ def get_cc(f, hl):
   map_coeffs = abs(f).phase_transfer(phase_source = hl)
   return map_coeffs.map_correlation(other=f)
 
-def run(args, log=None, ccp4_map=None, return_as_miller_arrays=False, nohl=False,
+def run(args, log=None, ccp4_map=None, 
+    return_as_miller_arrays=False, nohl=False,
+    space_group_number=None,
     out=sys.stdout):
   if log is None: log=out
 
@@ -87,11 +89,18 @@ def run(args, log=None, ccp4_map=None, return_as_miller_arrays=False, nohl=False
 
   # generate complete set of Miller indices up to given high resolution d_min
   n_real = map_data.focus()
-  cs = crystal.symmetry(m.unit_cell_parameters, 1)
+  if not space_group_number:
+    space_group_number=1
+  if space_group_number <=1:
+     symmetry_flags=None
+  else:
+    symmetry_flags = maptbx.use_space_group_symmetry,
+
+  cs = crystal.symmetry(m.unit_cell_parameters, space_group_number)
   crystal_gridding = maptbx.crystal_gridding(
     unit_cell         = cs.unit_cell(),
     space_group_info  = cs.space_group_info(),
-    #symmetry_flags     = maptbx.use_space_group_symmetry,
+    symmetry_flags     = symmetry_flags,
     pre_determined_n_real = n_real)
   #
   d_min = params.d_min

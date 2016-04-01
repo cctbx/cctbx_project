@@ -214,6 +214,9 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
   else:
     return []  # nothing here
 
+  if not hierarchy or hierarchy.overall_counts().n_residues<1:
+    return [] # nothing to do
+
   total_models=0
   for m in hierarchy.models():
     total_models+=1
