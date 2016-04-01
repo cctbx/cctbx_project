@@ -9,7 +9,6 @@ from __future__ import division
 from libtbx import adopt_init_args
 import iotbx.phil
 import sys
-from phenix.autosol.build_model import best_match
 from libtbx.utils import Sorry
 
 master_phil = iotbx.phil.parse("""
@@ -65,37 +64,77 @@ def get_params(args,out=sys.stdout):
     master_phil.format(python_object=params).show(out=out)
     return params
 
+def best_match(sites1,sites2,crystal_symmetry=None,
+     reject_if_too_far=None,distance_per_site=None):
+  assert distance_per_site is not None
+  # if reject_if_too_far and the centers of the two are further than can
+  #  be reached by the remainders, skip
+
+  unit_cell=crystal_symmetry.unit_cell()
+  sps=crystal_symmetry.special_position_settings(min_distance_sym_equiv=0.5)
+  from scitbx.array_family import flex
+
+  # Match coordinates
+  from cctbx import sgtbx
+
+  # check central atoms if n>5 for each
+  if sites1.size()>5 and sites2.size()>5:
+    # what is distance?
+    index1=sites1.size()//2
+    index2=sites2.size()//2
+    x1_ses=sps.sym_equiv_sites(site=sites1[index1])
+    info=sgtbx.min_sym_equiv_distance_info(reference_sites=x1_ses,
+           other=sites2[index2])
+    dd=info.dist()
+
+    # what is distance spannable by ends of each?
+    max_dist=(index1+index2)*distance_per_site
+    if dd > max_dist:
+      info.i=index1
+      info.j=index2
+      return info  # hopeless
+
+  best_info=None
+  best_dist=None
+  i=0
+  for site in sites1:
+    x1_ses=sps.sym_equiv_sites(site=site)
+    j=0
+    for site2 in sites2:
+      info=sgtbx.min_sym_equiv_distance_info(reference_sites=x1_ses,
+           other=site2)
+      dd=info.dist()
+      if best_dist is None or dd<best_dist:
+         best_dist=dd
+         best_info=info
+         best_info.i=i  # just tack them on
+         best_info.j=j
+      j+=1
+    i+=1
+  return best_info
 
 def apply_atom_selection(atom_selection,hierarchy=None):
   asc=hierarchy.atom_selection_cache()
   sel = asc.selection(string = atom_selection)
-  return hierarchy.deep_copy().select(sel)  # deep copy is required
+  return hierarchy.select(sel)
 
-def select_atom_lines(lines):
-  new_lines=[]
-  for line in lines:
-    if line.startswith("ATOM "):
-      new_lines.append(line)
-  return new_lines
+def select_atom_lines(hierarchy):
+  lines=[]
+  for atom in hierarchy.atoms():
+    lines.append(atom.format_atom_record())
+  return lines
 
-class dummy_info:
-  def __init__(self,i=None,j=None, distance=None):
-    from libtbx import adopt_init_args
-    adopt_init_args(self, locals())
-
-  def dist(self):
-    return self.distance
-
-
-def get_best_match(xyz1,xyz2,crystal_symmetry=None):
+def get_best_match(xyz1,xyz2,crystal_symmetry=None,
+    distance_per_site=None):
   if crystal_symmetry:
     return best_match(
       xyz1,xyz2,
-      crystal_symmetry=crystal_symmetry)
+      crystal_symmetry=crystal_symmetry,
+      distance_per_site=distance_per_site)
   else: # do it without symmetry
     (distance,i,j)=xyz1.min_distance_between_any_pair_with_id(xyz2)
-    return dummy_info(i=i,j=j,distance=distance)
-
+    from libtbx import group_args
+    return group_args(i=i,j=j,distance=distance)
 
 def run(args=None,
    chain_hierarchy=None,
@@ -153,12 +192,14 @@ def run(args=None,
   # get the CA residues
   if chain_type in ["RNA","DNA"]:
     atom_selection="name P"
+    distance_per_site=8.
   else:
     atom_selection="name ca and (not element Ca)"
+    distance_per_site=3.8
   chain_ca=apply_atom_selection(atom_selection,chain_hierarchy)
-  chain_ca_lines=select_atom_lines(chain_ca.as_pdb_string().splitlines())
+  chain_ca_lines=select_atom_lines(chain_ca)
   target_ca=apply_atom_selection(atom_selection,target_hierarchy)
-  target_xyz_lines=select_atom_lines(target_ca.as_pdb_string().splitlines())
+  target_xyz_lines=select_atom_lines(target_ca)
   chain_xyz_cart=chain_ca.atoms().extract_xyz()
   target_xyz_cart=target_ca.atoms().extract_xyz()
 
@@ -182,7 +223,8 @@ def run(args=None,
     if working_crystal_symmetry:
       info=get_best_match(
         flex.vec3_double([chain_xyz_fract[i]]),target_xyz_fract,
-        crystal_symmetry=working_crystal_symmetry)
+        crystal_symmetry=working_crystal_symmetry,
+        distance_per_site=distance_per_site)
     else:
       info=get_best_match(
         flex.vec3_double([chain_xyz_cart[i]]),target_xyz_cart)
