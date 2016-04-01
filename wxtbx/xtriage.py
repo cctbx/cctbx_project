@@ -322,6 +322,12 @@ def DrawStatusLightControl (parent, message, name, level) :
   else :
     gc.SetBrush(wx.Brush((255,0,0)))
   gc.DrawEllipse(4, 4, 28, 28)
+
+  # delete contexts after drawing is complete and before setting mask
+  # (fixes Windows error, not an issue with OS X or Linux)
+  del gc
+  del dc
+
   bmp.SetMask(wx.Mask(bmp,wx.WHITE))
   btn = metallicbutton.MetallicButton(
     parent=parent,
