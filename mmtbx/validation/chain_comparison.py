@@ -6,7 +6,6 @@ from __future__ import division
 #
 
 
-from libtbx import adopt_init_args
 import iotbx.phil
 import sys
 from libtbx.utils import Sorry

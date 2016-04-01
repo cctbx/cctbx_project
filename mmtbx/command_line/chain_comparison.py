@@ -5,7 +5,7 @@ from __future__ import division
 # symmetry
 #
 
-import os,sys
+import sys
 from mmtbx.validation.chain_comparison import run
 
 if __name__=="__main__":
