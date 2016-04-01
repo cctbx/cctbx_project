@@ -46,7 +46,7 @@ def get_cc(f, hl):
   map_coeffs = abs(f).phase_transfer(phase_source = hl)
   return map_coeffs.map_correlation(other=f)
 
-def run(args, log=None, ccp4_map=None, 
+def run(args, log=None, ccp4_map=None,
     return_as_miller_arrays=False, nohl=False,
     space_group_number=None,
     out=sys.stdout):
