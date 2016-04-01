@@ -1189,6 +1189,7 @@ def get_connectivity(params,
   # get map data and normalize to SD of the part that is not solvent
 
   sd=max(0.0001,map_data.sample_standard_deviation())
+  assert solvent_fraction > 0
   scaled_sd=sd/(1-solvent_fraction)**0.5
   map_data=(map_data-map_data.as_1d().min_max_mean().mean)/scaled_sd
 
