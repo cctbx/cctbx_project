@@ -36,7 +36,7 @@ master_phil = iotbx.phil.parse("""
   comparison {
     max_dist = 3.
       .type = float
-      .short_caption = Maximum close distance 
+      .short_caption = Maximum close distance
       .caption = Maximum distance between atoms to be considered close
   }
   control {
@@ -96,7 +96,7 @@ def get_best_match(xyz1,xyz2,crystal_symmetry=None):
     (distance,i,j)=xyz1.min_distance_between_any_pair_with_id(xyz2)
     return dummy_info(i=i,j=j,distance=distance)
 
-    
+
 def run(args=None,
    chain_hierarchy=None,
    target_hierarchy=None,
@@ -112,7 +112,7 @@ def run(args=None,
   if not args: args=[]
   params=get_params(args,out=out)
 
- 
+
   if verbose is None:
     verbose=params.control.verbose
   if quiet is None:
@@ -210,10 +210,10 @@ def run(args=None,
   last_i=None
   last_j=None
   for [i,j,dd],[next_i,next_j,next_dd] in zip(
-      pair_list,pair_list[1:]+[[None,None,None]]): 
+      pair_list,pair_list[1:]+[[None,None,None]]):
     if i is None or j is None: continue
     found=False
-    if last_i is None: # first time 
+    if last_i is None: # first time
       if next_i==i+1: # starting a segment
         if next_j==j+1:
           n_forward+=1
@@ -242,7 +242,7 @@ def run(args=None,
       last_j=None
       unaligned_match_list.append([i,j])
       unaligned_match_rmsd_list.append(dd**2)
-    else: 
+    else:
       last_i=i
       last_j=j
 
