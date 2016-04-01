@@ -110,12 +110,21 @@ subversion_repositories = {
   "muscle": "http://cci.lbl.gov/svn/muscle/trunk",
   # adding for amber
   "amber_adaptbx": "http://cci.lbl.gov/svn/amber_adaptbx/trunk",
-  # lz4 and bitshuffle compressions for HDF5
-  "hdf5_lz4": "https://github.com/dectris/HDF5Plugin.git/trunk",
-  "bitshuffle": "https://github.com/kiyo-masui/bitshuffle.git/trunk",
 }
 
+# External GIT repositories that may be required for certain components of
+# CCTBX to work. Note that the format for git repositories can be more
+# sophisticated than that for SVN, and can include multiple possible sources,
+# including .zip archives to fall back on when git is not available, and git
+# command line parameters
 git_repositories = {
+  # lz4 and bitshuffle compressions for HDF5
+  "hdf5_lz4": ['git@github.com:dectris/HDF5Plugin.git',
+               'https://github.com/dectris/HDF5Plugin.git',
+               'https://github.com/dectris/HDF5Plugin/archive/master.zip'],
+  "bitshuffle": ['git@github.com:kiyo-masui/bitshuffle.git',
+                 'https://github.com/kiyo-masui/bitshuffle.git',
+                 'https://github.com/kiyo-masui/bitshuffle/archive/master.zip'],
 }
 
 class fetch_packages (object) :
@@ -236,34 +245,17 @@ def fetch_svn_repository (pkg_name, pkg_url=None, working_copy=True,
     call("svn export --non-interactive --trust-server-cert %s %s" % (pkg_url, pkg_name), sys.stdout)
   assert op.isdir(pkg_name)
 
-def fetch_git_repository (pkg_name, pkg_url=None, working_copy=True,
-    delete_if_present=False) :
-  """
-  Download an git repository, with or without metadata required for ongoing
-  development.
-  """
-  ## TODO: Merge this with _add_git in bootstrap.py.
-  #        Unnecessary code duplication, and _add_git can handle
-  #        both authenticated, unauthenticated access and
-  #        downloading the repository without having git installed
-  if op.exists(pkg_name) :
-    if delete_if_present :
-      shutil.rmtree(pkg_name)
-    else :
-      raise OSError("Directory '%s' already exists.")
-  if (pkg_url is None) :
-    pkg_url = optional_repositories[pkg_name]
-  #if working_copy :
-  call("git clone %s %s" % (pkg_url, pkg_name), sys.stdout)
-  #else :
-  #  call("git clone %s %s" % (pkg_url, pkg_name), sys.stdout)
-  assert op.isdir(pkg_name)
+def fetch_git_repository(package, use_ssh):
+  """ Download a git repository """
+  Toolbox.git(package, git_repositories[package], destination=os.path.join(os.getcwd(), package), use_ssh=use_ssh, verbose=True)
+  assert op.isdir(package)
 
-
-def fetch_remote_package (module_name, log=sys.stdout, working_copy=False) :
-  if op.isdir(module_name) :
-    shutil.rmtree(module_name)
-  if (module_name in dependency_tarballs) :
+def fetch_remote_package (module_name, log=sys.stdout, working_copy=False, use_ssh=False) :
+  if (module_name in git_repositories):
+    fetch_git_repository(module_name, use_ssh)
+  elif (module_name in dependency_tarballs) :
+    if op.isdir(module_name) :
+      shutil.rmtree(module_name)
     pkg_url, pkg_name = dependency_tarballs[module_name]
     tarfile = module_name + ".tar.gz"
     fetch_packages(
@@ -275,14 +267,10 @@ def fetch_remote_package (module_name, log=sys.stdout, working_copy=False) :
     untar(tarfile, log)
     os.remove(tarfile)
   elif (module_name in subversion_repositories) :
+    if op.isdir(module_name) :
+      shutil.rmtree(module_name)
     pkg_url = subversion_repositories[module_name]
     fetch_svn_repository(
-      pkg_name=module_name,
-      pkg_url=pkg_url,
-      working_copy=working_copy)
-  elif (module_name in git_repositories) :
-    pkg_url = git_repositories[module_name]
-    fetch_git_repository(
       pkg_name=module_name,
       pkg_url=pkg_url,
       working_copy=working_copy)

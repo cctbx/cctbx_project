@@ -1291,6 +1291,8 @@ class Builder(object):
       extra_opts.append('-v')
     if self.download_only:
       extra_opts.append('--download-only')
+    if self.auth.get('git_ssh',False):
+      extra_opts.append('--git-ssh')
     if self.skip_base:
       extra_opts.append('--skip-base=%s' % self.skip_base)
     if not self.force_base_build:

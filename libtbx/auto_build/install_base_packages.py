@@ -90,6 +90,8 @@ class installer (object) :
       help="Build IPython", default=False)
     parser.add_option("--wxpython3", dest="use_wxpython3", action="store_true",
       help="Use wxPython3", default=False)
+    parser.add_option("--git-ssh", dest="git_ssh", action="store_true",
+      help="Use ssh connections for git. This allows you to commit changes without changing remotes.", default=False)
 
     # Basic setup.
     options, args = parser.parse_args(args)
@@ -802,7 +804,7 @@ _replace_sysconfig_paths(build_time_vars)
     log = self.start_building_package("lz4_plugin")
     repos = ["hdf5_lz4", "bitshuffle"]
     for repo in repos:
-      fetch_remote_package(repo, log=log)
+      fetch_remote_package(repo, log=log, use_ssh=self.options.git_ssh)
     if self.check_download_only("lz4 plugin"): return
     if (patch_src) :
       print >> log, "Patching hdf5_lz4/Makefile"
