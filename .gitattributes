@@ -1753,6 +1753,7 @@ mmtbx/command_line/cablam_validate.py -text
 mmtbx/command_line/cbetadev.py -text
 mmtbx/command_line/cc_star.py -text
 mmtbx/command_line/cdl_lookup.py -text
+mmtbx/command_line/chain_comparison.py -text
 mmtbx/command_line/chains_as_models.py -text
 mmtbx/command_line/cif_as_mtz.py -text
 mmtbx/command_line/clashscore.py -text
@@ -2392,6 +2393,7 @@ mmtbx/validation/__init__.py svneol=native#text/x-python
 mmtbx/validation/analyze_peptides.py -text
 mmtbx/validation/cablam.py -text
 mmtbx/validation/cbetadev.py svneol=native#text/x-python
+mmtbx/validation/chain_comparison.py -text
 mmtbx/validation/clashscore.py svneol=native#text/x-python
 mmtbx/validation/convert_lists.py -text
 mmtbx/validation/datasets.py -text
