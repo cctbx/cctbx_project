@@ -215,7 +215,7 @@ class Script(object):
       print "N reflections total:", len(refls)
       refls = refls.select(refls.get_flags(refls.flags.used_in_refinement))
       print "N reflections used in refinement", len(refls)
-      print "Reporting only on those reflections used in refinement" 
+      print "Reporting only on those reflections used in refinement"
       tmp.append(refls)
     reflections = tmp
 
