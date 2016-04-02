@@ -210,6 +210,14 @@ class Script(object):
         for panel in iterate_panels(panelg):
           print panel.get_name()
     """
+    tmp = []
+    for refls in reflections:
+      print "N reflections total:", len(refls)
+      refls = refls.select(refls.get_flags(refls.flags.used_in_refinement))
+      print "N reflections used in refinement", len(refls)
+      print "Reporting only on those reflections used in refinement" 
+      tmp.append(refls)
+    reflections = tmp
 
     # Iterate through the detectors, computing the congruence statistics
     delta_normals = {}
