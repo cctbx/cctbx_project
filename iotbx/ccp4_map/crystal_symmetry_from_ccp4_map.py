@@ -19,7 +19,8 @@ def extract_from(file_name):
   ####
   try: # run application
     m = iotbx.ccp4_map.map_reader(file_name=file_name)
-  except: # restore sys.stdout
+  except: # intentional
+    # restore sys.stdout
     sys.stdout = save_stdout
     sys.stdout.flush()
     os.dup2(oldstdout_fno, 1)
