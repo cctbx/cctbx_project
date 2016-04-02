@@ -1,6 +1,7 @@
 from __future__ import division
 import iotbx.ccp4_map
 from cctbx import crystal
+import sys
 
 def extract_from(file_name):
   # XXX This is to hide stdout from ccp4io code (ccp4_cmap_open) about input

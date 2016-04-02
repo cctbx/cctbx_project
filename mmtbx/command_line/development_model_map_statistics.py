@@ -61,10 +61,13 @@ def run(args, log=sys.stdout):
   broadcast(m="Input PDB:", log=log)
   file_names = inputs.pdb_file_names
   if(len(file_names) != 1): raise Sorry("PDB file has to given.")
+  if(inputs.crystal_symmetry is None):
+    raise Sorry("No crystal symmetry defined.")
   processed_pdb_file = monomer_library.pdb_interpretation.process(
     mon_lib_srv    = monomer_library.server.server(),
     ener_lib       = monomer_library.server.ener_lib(),
     file_name      = file_names[0],
+    crystal_symmetry = inputs.crystal_symmetry,
     force_symmetry = True)
   ph = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   xrs = processed_pdb_file.xray_structure()
