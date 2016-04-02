@@ -1,16 +1,33 @@
 from __future__ import division
 import iotbx.ccp4_map
 from cctbx import crystal
-import sys
+import sys, os
 
 def extract_from(file_name):
   # XXX This is to hide stdout from ccp4io code (ccp4_cmap_open) about input
   # XXX being non-ccp4 map. That's why we never have io in c/c++ code!
-  import cStringIO
+  #
+  # redirect sys.stdout
   save_stdout = sys.stdout
-  sys.stdout = cStringIO.StringIO()
-  m = iotbx.ccp4_map.map_reader(file_name=file_name)
+  oldstdout_fno = os.dup(sys.stdout.fileno())
+  sys.stdout.flush()
+  newstdout = os.dup(1)
+  devnull = os.open(os.devnull, os.O_WRONLY)
+  os.dup2(devnull, 1)
+  os.close(devnull)
+  sys.stdout = os.fdopen(newstdout, 'w')
+  ####
+  try: # run application
+    m = iotbx.ccp4_map.map_reader(file_name=file_name)
+  except: # restore sys.stdout
+    sys.stdout = save_stdout
+    sys.stdout.flush()
+    os.dup2(oldstdout_fno, 1)
+  # restore sys.stdout
   sys.stdout = save_stdout
+  sys.stdout.flush()
+  os.dup2(oldstdout_fno, 1)
+  # continue as normal
   ucp = m.unit_cell_parameters
   sgn = max(1, m.space_group_number)
   return crystal.symmetry(ucp, sgn)
