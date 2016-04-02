@@ -34,8 +34,8 @@ max_hierarchy_level=Auto
   .help = Maximum hierarchy level to compute shifts to
 ''', process_includes=True)
 
-from dials_scratch.asb.detector_congruence import iterate_detector_at_level, iterate_panels, id_from_name
-from dials_scratch.asb.detector_congruence import Script as ParentScript
+from xfel.command_line.cspad_detector_congruence import iterate_detector_at_level, iterate_panels, id_from_name
+from xfel.command_line.cspad_detector_congruence import Script as ParentScript
 
 class Script(ParentScript):
   ''' Class to parse the command line options. '''
