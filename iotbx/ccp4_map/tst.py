@@ -32,6 +32,13 @@ def exercise_with_tst_input_map():
   assert approx_equal(m.grid_unit_cell().parameters(),
     (5.13094, 4.68175, 4.35225, 90, 101.476, 90))
 
+def exercise_crystal_symmetry_from_ccp4_map():
+  from iotbx.ccp4_map import crystal_symmetry_from_ccp4_map
+  file_name = libtbx.env.under_dist(
+    module_name="iotbx",
+    path="ccp4_map/tst_input.map")
+  cs = crystal_symmetry_from_ccp4_map.extract_from(file_name=file_name)
+
 def exercise(args):
   exercise_with_tst_input_map()
   for file_name in args:
@@ -111,17 +118,10 @@ def exercise_writer () :
       labels=flex.std_string(["iotbx.ccp4_map.tst"]))
 
 def run(args):
-  def have_ext():
-    for node in os.listdir(libtbx.env.under_build(path="lib")):
-      if (node.startswith("iotbx_ccp4_map_ext")):
-        return True
-    return False
-  if (not have_ext()): # XXX backward compatibility 2008-09-30
-    print "Skipping iotbx_ccp4_map tests: extension not available"
-  else:
-    import iotbx.ccp4_map
-    exercise(args=args)
-    exercise_writer()
+  import iotbx.ccp4_map
+  exercise(args=args)
+  exercise_writer()
+  exercise_crystal_symmetry_from_ccp4_map()
   print format_cpu_times()
 
 if (__name__ == "__main__"):
