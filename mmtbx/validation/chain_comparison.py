@@ -126,6 +126,7 @@ def select_atom_lines(hierarchy):
 def get_best_match(xyz1,xyz2,crystal_symmetry=None,
     distance_per_site=None):
   if crystal_symmetry:
+    assert distance_per_site is not None
     return best_match(
       xyz1,xyz2,
       crystal_symmetry=crystal_symmetry,
