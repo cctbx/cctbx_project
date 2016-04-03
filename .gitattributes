@@ -1753,7 +1753,6 @@ mmtbx/command_line/cablam_validate.py -text
 mmtbx/command_line/cbetadev.py -text
 mmtbx/command_line/cc_star.py -text
 mmtbx/command_line/cdl_lookup.py -text
-mmtbx/command_line/chain_comparison.py -text
 mmtbx/command_line/chains_as_models.py -text
 mmtbx/command_line/cif_as_mtz.py -text
 mmtbx/command_line/clashscore.py -text
