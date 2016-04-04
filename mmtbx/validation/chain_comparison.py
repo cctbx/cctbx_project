@@ -225,12 +225,13 @@ def run(args=None,
         flex.vec3_double([chain_xyz_fract[i]]),target_xyz_fract,
         crystal_symmetry=working_crystal_symmetry,
         distance_per_site=distance_per_site)
+      distance=info.dist()
     else:
       info=get_best_match(
         flex.vec3_double([chain_xyz_cart[i]]),target_xyz_cart)
-
-    if info and (best_dd is None or info.dist()<best_dd):
-        best_dd=info.dist()
+      distance=info.distance
+    if info and (best_dd is None or distance<best_dd):
+        best_dd=distance
         best_j=info.j
     if best_dd > max_dist:
       far_away_match_list.append(i)

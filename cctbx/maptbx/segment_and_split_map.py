@@ -288,7 +288,10 @@ master_phil = iotbx.phil.parse("""
       .help = Mask expansion in addition to expand_size for final map
       .short_caption = Mask additional expansion
 
-
+    exclude_points_in_ncs_copies = True
+      .type = bool
+      .help = Exclude points that are in NCS copies when creating NCS au
+      .short_caption = Exclude points in NCS copies
   }
    control {
       verbose = False
@@ -2579,9 +2582,12 @@ def get_selected_and_related_regions(params,
      expand_size=params.segmentation.expand_size+\
       params.segmentation.mask_additional_expand_size)
   # and all points in NCS-related copies (to be excluded)
-  bool_ncs_related_mask=get_bool_mask_of_regions(ncs_group_obj=ncs_group_obj,
+  if params.segmentation.exclude_points_in_ncs_copies:
+    bool_ncs_related_mask=get_bool_mask_of_regions(ncs_group_obj=ncs_group_obj,
        region_list=ncs_group_obj.ncs_related_regions)
      # NOTE: using ncs_related_regions here NOT self_and_ncs_related_regions
+  else:
+    bool_ncs_related_mask=None
 
   lower_bounds=[None,None,None]
   upper_bounds=[None,None,None]
@@ -2753,7 +2759,10 @@ def write_output_files(params,
   bool_selected_regions,bool_ncs_related_mask,lower_bounds,upper_bounds=\
      get_selected_and_related_regions(
       params,ncs_group_obj=ncs_group_obj)
-  s_ncs_related =  (bool_ncs_related_mask==True)
+  if bool_ncs_related_mask is not None:
+    s_ncs_related =  (bool_ncs_related_mask==True)
+  else:
+    s_ncs_related =  None
 
   # Add in remainder regions if present
   if remainder_ncs_group_obj:
@@ -2768,13 +2777,15 @@ def write_output_files(params,
     s_remainder_au =  (bool_remainder_selected_regions==True)
     bool_selected_regions=bool_selected_regions.set_selected(
        s_remainder_au,True)
-
-    s_ncs_related |=  (bool_remainder_ncs_related_mask==True)
+    if s_ncs_related is not None and \
+         bool_remainder_ncs_related_mask is not None:
+      s_ncs_related |=  (bool_remainder_ncs_related_mask==True)
 
   # Now create NCS mask by eliminating all points in target (expanded) in
   #   NCS-related copies
-
-  bool_selected_regions=bool_selected_regions.set_selected(s_ncs_related,False)
+  if s_ncs_related is not None:
+    bool_selected_regions=bool_selected_regions.set_selected(
+       s_ncs_related,False)
 
   lower_bounds,upper_bounds=adjust_bounds(params,lower_bounds,upper_bounds,
     map_data=map_data,out=out)
