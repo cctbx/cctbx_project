@@ -302,6 +302,8 @@ def evt_get_quads(address, evt, env):
     from psana import Source, CsPad
     src = Source(address)
     cspad = evt.get(CsPad.DataV2, src)
+    if cspad is None:
+      return None
     quads = [cspad.quads(i) for i in xrange(cspad.quads_shape()[0])]
   return quads
 
