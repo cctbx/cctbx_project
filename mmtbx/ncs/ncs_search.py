@@ -139,8 +139,7 @@ def find_ncs_in_hierarchy(ph,
     chain_match_list=chain_match_list,
     ph=ph,
     chain_max_rmsd=chain_max_rmsd,
-    residue_match_radius=residue_match_radius,
-    chain_similarity_threshold=chain_similarity_threshold)
+    residue_match_radius=residue_match_radius)
   # print "match_dict.keys()", match_dict.keys()
   # print "match_dict"
   # for k, v in match_dict.iteritems():
@@ -1229,8 +1228,7 @@ def make_flips_if_necessary(const_h, flip_h):
 
 def clean_chain_matching(chain_match_list,ph,
                          chain_max_rmsd=10.0,
-                         residue_match_radius=4.0,
-                         chain_similarity_threshold=0.95):
+                         residue_match_radius=4.0):
   """
   Remove all bad matches from chain_match_list
 
@@ -1253,31 +1251,29 @@ def clean_chain_matching(chain_match_list,ph,
   """
   # remove all non-matching pairs, where similarity == 0
   match_list = [x for x in chain_match_list if x[4] > 0]
-  # keep only best (or 95% of best) matches
-  best_matches = {}
-  # Get rmsd
   match_dict = {}
   # print "match_list", match_list
   for match in match_list:
     [ch_a_id,ch_b_id,list_a,list_b,res_list_a,res_list_b,similarity] = match
-    # print "Filtering ", ch_a_id, ch_b_id
+
     sel_a = make_selection_from_lists(list_a)
-    sel_b = make_selection_from_lists(list_b)
     other_h = ph.select(sel_a)
+    other_atoms = other_h.atoms()
+
+    sel_b = make_selection_from_lists(list_b)
     ref_h = ph.select(sel_b)
-    other_atoms = ph.select(sel_a).atoms()
-    ref_atoms = ph.select(sel_b).atoms()
+    ref_atoms = ref_h.atoms()
     #
     # Here we want to flip atom names, even before chain alignment, so
     # we will get correct chain RMSD
-    flipped_other_selection = None
+
     # flipped_other_selection = make_flips_if_necessary(ref_h.deep_copy(), other_h.deep_copy())
-    flipped_other_selection = make_flips_if_necessary_torsion(ref_h.deep_copy(), other_h.deep_copy())
-    if flipped_other_selection is not None:
-      flipped_other_atoms = other_atoms.select(flipped_other_selection)
-      other_sites = flipped_other_atoms.extract_xyz()
-    else:
-      other_sites = other_atoms.extract_xyz()
+    flipped_other_selection = make_flips_if_necessary_torsion(
+        ref_h.deep_copy(), other_h.deep_copy())
+    # if flipped_other_selection is not None:
+    other_sites = other_atoms.select(flipped_other_selection).extract_xyz()
+    # else:
+    #   other_sites = other_atoms.extract_xyz()
     ref_sites = ref_atoms.extract_xyz()
     lsq_fit_obj = superpose.least_squares_fit(
       reference_sites = ref_sites,
@@ -1291,14 +1287,14 @@ def clean_chain_matching(chain_match_list,ph,
     # print "chain rmsd:", rmsd
     if rmsd <= chain_max_rmsd:
       # get the chains atoms and convert selection to flex bool
-      sel_a,sel_b,res_list_a,res_list_b,ref_sites,other_sites_best = \
+      sel_aa,sel_bb,res_list_a,res_list_b,ref_sites,other_sites_best = \
         remove_far_atoms(
           list_a, list_b,
           res_list_a,res_list_b,
           ref_sites,lsq_fit_obj.other_sites_best_fit(),
           residue_match_radius=residue_match_radius)
       if sel_a.size() > 0:
-        match_dict[ch_a_id,ch_b_id]=[sel_a,sel_b,res_list_a,res_list_b,r,t,rmsd]
+        match_dict[ch_a_id,ch_b_id]=[sel_aa,sel_bb,res_list_a,res_list_b,r,t,rmsd]
   return match_dict
 
 def remove_far_atoms(list_a, list_b,
@@ -1524,9 +1520,36 @@ def search_ncs_relations(ph=None,
           continue
       seq_c = chains_info[c_ch_id].res_names
       # get residue lists for copy
-      res_sel_m, res_sel_c, similarity = res_alignment(
-        seq_a=seq_m,seq_b=seq_c,
-        min_percent=chain_similarity_threshold)
+
+      res_sel_m, res_sel_c, similarity = mmtbx_res_alignment(
+          seq_a=seq_m,seq_b=seq_c,
+          min_percent=chain_similarity_threshold)
+
+      # This is an original way to do alignment, left here for a short time
+      # for debugging purposes.
+      # res_sel_m, res_sel_c, similarity = res_alignment(
+      #     seq_a=seq_m,seq_b=seq_c,
+      #     min_percent=chain_similarity_threshold)
+
+      # res_sel_m2, res_sel_c2, similarity2 = res_alignment(
+      #     seq_a=seq_m,seq_b=seq_c,
+      #     min_percent=chain_similarity_threshold)
+      # if res_sel_m != res_sel_m2:
+      #   print "WARNING, res_sel_m"
+      #   print "seq m", seq_m
+      #   print "seq c", seq_c
+      #   print list(res_sel_m)
+      #   print list(res_sel_m2)
+      #   print similarity, similarity2
+      #
+      # if res_sel_c != res_sel_c2:
+      #   print "seq m", seq_m
+      #   print "seq c", seq_c
+      #   print "WARNING, res_sel_c"
+      #   print list(res_sel_c)
+      #   print list(res_sel_c2)
+      #   print similarity, similarity2
+
       sel_m, sel_c,res_sel_m,res_sel_c,new_msg = get_matching_atoms(
         chains_info,m_ch_id,c_ch_id,res_sel_m,res_sel_c)
       msg += new_msg
@@ -1544,6 +1567,50 @@ def search_ncs_relations(ph=None,
     # must be identical
     raise Sorry('NCS copies are not identical')
   return chain_match_list
+
+def mmtbx_res_alignment(seq_a, seq_b,
+                        min_percent=0.85):
+  # Check for the basic cases (shortcut for obvious cases)
+  a = len(seq_a)
+  b = len(seq_b)
+  if (a == 0) or (b == 0): return [], [], 0
+  if seq_a == seq_b: return range(a), range(a), 1.0
+
+  from iotbx.pdb.amino_acid_codes import \
+    one_letter_given_three_letter as one_three
+  from mmtbx.alignment import align
+  norm_seq_a = ""
+  norm_seq_b = ""
+  for l in seq_a:
+    one_letter = one_three.get(l, None)
+    if one_letter is not None:
+      norm_seq_a += one_letter
+    else:
+      norm_seq_a += "X"
+  for l in seq_b:
+    one_letter = one_three.get(l, None)
+    if one_letter is not None:
+      norm_seq_b += one_letter
+    else:
+      norm_seq_b += "X"
+  # print "norm seqa", norm_seq_a
+  # print "norm seqb", norm_seq_b
+  # print "min_percent", min_percent
+  obj = align(
+      norm_seq_a,
+      norm_seq_b,
+      gap_opening_penalty=1, # default
+      gap_extension_penalty=0.5, # default is 1
+      similarity_function="identity")
+  alignment = obj.extract_alignment()
+  sim1 = alignment.calculate_sequence_identity()
+  al_a, al_b = alignment.exact_match_selections()
+  # alignment.pretty_print()
+  if sim1 < min_percent:
+    # chains are to different, return empty arrays
+    return flex.size_t([]), flex.size_t([]), 0
+  return al_a, al_b, sim1
+
 
 def res_alignment(seq_a, seq_b,
                   min_contig_length=1,
@@ -2037,8 +2104,24 @@ def my_get_rot_trans(
     ph,
     master_selection,
     copy_selection):
-  m_atoms = ph.select(master_selection).atoms()
-  c_atoms = ph.select(copy_selection).atoms()
+  """
+  Get rotation and translation using superpose.
+
+  This function is used only when phil parameters are provided. In this case
+  we require the selection of NCS master and copies to be correct.
+  Correct means:
+    1) residue sequence in master and copies is exactly the same
+    2) the number of atoms in master and copies is exactly the same
+
+  One can get exact selection strings by ncs_object.show(verbose=True)
+
+  Args:
+    ph : hierarchy
+    master/copy_selection: master and copy iselections
+  """
+
+  m_atoms = ph.atoms().select(master_selection)
+  c_atoms = ph.atoms().select(copy_selection)
   # print "selection master:", list(master_selection)
   # print "selection copy:", list(copy_selection)
   # Check that master and copy are identical
@@ -2059,6 +2142,7 @@ def my_get_rot_trans(
     return r,t,rmsd
   else:
     assert 0, "strange thing..."
+
 
 def get_rot_trans(ph,
                   master_selection,
@@ -2124,6 +2208,7 @@ def get_rot_trans(ph,
     return r,t,round(rmsd,4),msg
   else:
     return r_zero,t_zero,0,msg
+
 
 def get_residue_sequence(ph):
   """

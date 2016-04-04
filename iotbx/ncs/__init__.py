@@ -217,6 +217,7 @@ class input(object):
         sel = cache.selection("not (%s)" % self.exclude_selection)
         self.truncated_hierarchy = hierarchy.select(sel)
       else:
+        # this could be to save iseqs but I'm not sure
         self.truncated_hierarchy = hierarchy.select(flex.size_t_range(hierarchy.atoms().size()))
       self.old_i_seqs = self.truncated_hierarchy.atoms().extract_i_seq()
       # print "self.old_i_seqs", list(self.old_i_seqs)
@@ -438,7 +439,6 @@ class input(object):
             ph = combined_h,
             chain_max_rmsd=max(self.chain_max_rmsd, 10.0),
             residue_match_radius=max(self.residue_match_radius, 1000.0),
-            chain_similarity_threshold=min(self.chain_similarity_threshold, 0.5),
             )
         # print "="*80
         # print "="*80
@@ -454,6 +454,7 @@ class input(object):
         # User triggered the fail of this assert!
         # print "  N found ncs_groups:", len(group_dict)
         # assert len(group_dict) == 1, "Got %d" % len(group_dict)
+        asc = pdb_h.atom_selection_cache()
         for key, ncs_gr in group_dict.iteritems():
           # print "dir ncs_gr:", dir(ncs_gr)
           new_ncs_group = ncs_group_master_phil.extract().ncs_group[0]
@@ -472,7 +473,8 @@ class input(object):
             all_m_select_str = selection_string_from_selection(
                 pdb_h=pdb_h,
                 selection=original_m_all_isel,
-                chains_info=None)
+                chains_info=None,
+                atom_selection_cache=asc)
             # print "all_m_select_str", all_m_select_str
             if i == 0:
               new_ncs_group.reference=all_m_select_str
@@ -737,6 +739,7 @@ class input(object):
               rmsd (float): RMS distance between ncs copies
     """
     ph = pdb_h
+    asc =  ph.atom_selection_cache()
     # print "in build_ncs_obj_from_group_dict, group_dict"
     # for k,v in group_dict.iteritems():
     #   print "  ", k,
@@ -764,7 +767,10 @@ class input(object):
       m_all_list.sort()
       m_all_isel = flex.size_t(m_all_list)
       all_m_select_str = selection_string_from_selection(
-        ph,m_all_isel,chains_info=chains_info)
+          ph,
+          m_all_isel,
+          chains_info=chains_info,
+          atom_selection_cache=asc)
       self.ncs_to_asu_selection[all_m_select_str] = []
       #
       for i in xrange(len(ncs_gr.copies)):
@@ -777,10 +783,16 @@ class input(object):
           m_isel = ncs_gr.iselections[0][j]
           m_ch_id = ncs_gr.copies[0][j]
           m_select_str = selection_string_from_selection(
-            ph,m_isel,chains_info=chains_info)
+              ph,
+              m_isel,
+              chains_info=chains_info,
+              atom_selection_cache=asc)
           c_isel = ncs_gr.iselections[i][j]
           c_select_str = selection_string_from_selection(
-            ph,c_isel,chains_info=chains_info)
+              ph,
+              c_isel,
+              chains_info=chains_info,
+              atom_selection_cache=asc)
           transform_id.add(tr_id)
           key0 = "chain '{}'_{}".format(
               convert_wildcards_in_chain_id(m_ch_id),tr_id)
@@ -818,7 +830,10 @@ class input(object):
           c_all_list.sort()
           c_all_isel = flex.size_t(c_all_list)
           c_select_str = selection_string_from_selection(
-            ph,c_all_isel,chains_info=chains_info)
+              ph,
+              c_all_isel,
+              chains_info=chains_info,
+              atom_selection_cache=asc)
           self.ncs_to_asu_selection[all_m_select_str].append(c_select_str)
     #
     self.number_of_ncs_groups = len(group_dict)
@@ -1329,10 +1344,10 @@ class input(object):
       master_sel_str, ncs_sel_str = self.tr_id_to_selection[key]
       if only_master_ncs_in_hierarchy:
         # use master ncs for ncs copy residues indices
-        copy_selection_indices = sc.selection(master_sel_str).iselection(True)
+        copy_selection_indices = sc.iselection(master_sel_str)
         rmsd = 0
       else:
-        copy_selection_indices = sc.selection(ncs_sel_str).iselection(True)
+        copy_selection_indices = sc.iselection(ncs_sel_str)
         tr_num = key.split('_')[1]
         tr = self.ncs_transform[tr_num]
         rmsd = tr.rmsd
@@ -1508,7 +1523,7 @@ class input(object):
       new_xyz = xrs.sites_cart()
       if new_xyz.size() > xyz.size():
         ncs_only = True
-        xrs = xrs.select(self.ncs_atom_selection.iselection(True))
+        xrs = xrs.select(self.ncs_atom_selection)
         new_xyz = xrs.sites_cart()
       assert new_xyz.size() == xyz.size()
       pdb_hierarchy.atoms().set_xyz(new_xyz)
@@ -1522,7 +1537,7 @@ class input(object):
       if not pdb_header_str:
        pdb_header_str = get_pdb_header(pdb_str)
       if ncs_only:
-        new_ph = ph.select(self.ncs_atom_selection.iselection(True))
+        new_ph = ph.select(self.ncs_atom_selection)
       else:
         msg = 'The complete ASU hierarchy need to be provided !!!\n'
         assert len(self.ncs_atom_selection) == len(ph.atoms()),msg

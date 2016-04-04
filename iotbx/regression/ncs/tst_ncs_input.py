@@ -1526,6 +1526,7 @@ ncs_group {
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
 
   # no more grouping, therefore groups are like in phil_str above
+  # ncs_inp.show(format='phil')
   assert len(ncs_groups)==2, len(ncs_groups)
   assert ncs_groups[0].master_iselection.all_eq(
     asc.selection(string = "chain Aa").iselection())

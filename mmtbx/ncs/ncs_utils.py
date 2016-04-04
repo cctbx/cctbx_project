@@ -899,9 +899,9 @@ def check_ncs_group_list(ncs_restraints_group_list,ph,max_delta=10.0,log=None):
   if not log: log = sys.stdout
   nrgl_ok = True
   for i,gr in enumerate(ncs_restraints_group_list):
-    master_xyz = ph.select(gr.master_iselection).atoms().extract_xyz()
+    master_xyz = ph.atoms().extract_xyz().select(gr.master_iselection)
     for j,cp in enumerate(gr.copies):
-      copy_xyz = ph.select(cp.iselection).atoms().extract_xyz()
+      copy_xyz = ph.atoms().extract_xyz().select(cp.iselection)
       xyz = cp.r.elems * master_xyz + cp.t
       rmsd = copy_xyz.rms_difference(xyz)
       nrgl_ok &= (rmsd <= max_delta)

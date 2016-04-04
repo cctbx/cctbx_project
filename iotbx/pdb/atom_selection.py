@@ -808,7 +808,8 @@ def convert_wildcards_in_chain_id(chain_id):
 
 def selection_string_from_selection(pdb_h,
                                     selection,
-                                    chains_info=None):
+                                    chains_info=None,
+                                    atom_selection_cache=None):
   """
   !!! if selection contains alternative conformations, the assertion in the
   end will fail. This is to prevent using this function with such selections.
@@ -997,8 +998,12 @@ def selection_string_from_selection(pdb_h,
   # This check could take up to ~90% of runtime of this function...
   # Nevertheless, this helps to spot bugs early. So this should remain
   # here, let's say for a year. If no bugs discovered, this could be removed.
+  # When ready to remove, don't forget to remove atom_selection_cache
+  # parameter as well.
   # Current removal date: Jan 22, 2017
-  isel = pdb_h.atom_selection_cache().iselection(sel_str)
+  if atom_selection_cache is None:
+    atom_selection_cache = pdb_h.atom_selection_cache()
+  isel = atom_selection_cache.iselection(sel_str)
   # pdb_h.select(isel).write_pdb_file("selected_string.pdb")
   # pdb_h.select(selection).write_pdb_file("selected_isel.pdb")
   assert len(isel) == len(selection), ""+\
