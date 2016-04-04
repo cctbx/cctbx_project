@@ -23,6 +23,10 @@ xtc_phil_str = '''
     max_events = None
       .type = int
       .help = If not specified, process all events. Otherwise, only process this many
+    estimate_gain_only = False
+      .type = bool
+      .help = Use to print estimated gain parameters for each event, then exit without attempting \
+              further processing.
     hit_finder{
       enable = True
         .type = bool
@@ -185,6 +189,16 @@ xtc_phil_str = '''
     method = *mpi sge
       .type = choice
       .help = Muliprocessing method
+    mpi {
+      method = *client_server striping
+        .type = choice
+        .help = Method of serving data to child processes in MPI. client_server:    \
+                use one process as a server that sends timestamps to each process.  \
+                All processes will stay busy at all times at the cost of MPI send/  \
+                recieve overhead. striping: each process uses its rank to determine \
+                which events to process. Some processes will finish early and go    \
+                idle, but no MPI overhead is incurred.
+    }
   }
 '''
 
@@ -296,7 +310,6 @@ class InMemScript(DialsProcessScript):
       error_path = os.path.join(params.output.logging_dir, "error_rank%04d.out"%rank)
       print "Redirecting stdout to %s"%log_path
       print "Redirecting stderr to %s"%error_path
-      assert os.path.exists(log_path)
       sys.stdout = open(log_path,'a', buffering=0)
       sys.stderr = open(error_path,'a',buffering=0)
       print "Should be redirected now"
@@ -327,12 +340,13 @@ class InMemScript(DialsProcessScript):
     if write_newline: # needed if the there was a crash
       self.debug_file_handle.write("\n")
 
-    if rank == 0:
-      mpi_log_file_path = os.path.join(debug_dir, "mpilog.out")
-      write_newline = os.path.exists(mpi_log_file_path)
-      self.mpi_log_file_handle = open(mpi_log_file_path, 'a', 0) # 0 for unbuffered
-      if write_newline: # needed if the there was a crash
-        self.mpi_log_file_handle.write("\n")
+    if params.mp.method != 'mpi' or params.mp.mpi.method == 'client_server':
+      if rank == 0:
+        mpi_log_file_path = os.path.join(debug_dir, "mpilog.out")
+        write_newline = os.path.exists(mpi_log_file_path)
+        self.mpi_log_file_handle = open(mpi_log_file_path, 'a', 0) # 0 for unbuffered
+        if write_newline: # needed if the there was a crash
+          self.mpi_log_file_handle.write("\n")
 
     # set up psana
     if params.input.cfg is not None:
@@ -382,7 +396,8 @@ class InMemScript(DialsProcessScript):
       # list of all events
       times = run.times()
       nevents = min(len(times),max_events)
-      if params.mp.method == "mpi" and size > 2:
+      if params.mp.method == "mpi" and params.mp.mpi.method == 'client_server' and size > 2:
+        print "Using MPI client server"
         # use a client/server approach to be sure every process is busy as much as possible
         # only do this if there are more than 2 processes, as one process will be a server
         if rank == 0:
@@ -413,6 +428,7 @@ class InMemScript(DialsProcessScript):
       else:
         # chop the list into pieces, depending on rank.  This assigns each process
         # events such that the get every Nth event where N is the number of processes
+        print "Striping events"
         mytimes = [times[i] for i in xrange(nevents) if (i+rank)%size == 0]
 
         for i in xrange(len(mytimes)):
@@ -522,6 +538,11 @@ class InMemScript(DialsProcessScript):
     self.cache_ranges(cspad_img, self.params)
 
     imgset = MemImageSet([cspad_img])
+    if self.params.dispatch.estimate_gain_only:
+      from dials.command_line.estimate_gain import estimate_gain
+      estimate_gain(imgset)
+      return
+
     datablock = DataBlockFactory.from_imageset(imgset)[0]
 
     # before calling DIALS for processing, set output paths according to the templates
