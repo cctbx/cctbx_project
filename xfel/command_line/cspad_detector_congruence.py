@@ -417,47 +417,57 @@ class Script(object):
 
       # Set up table rows using stats aggregated from above
       pg_weights = flex.double([pg1_refls, pg2_refls])
-      stats = flex.mean_and_variance(dists, pg_weights)
-      dist_m = stats.mean()
-      dist_s = stats.gsl_stats_wsd()
+      if 0 in pg_weights:
+        dist_m = dist_s = norm_angle_m = norm_angle_s = rnorm_angle_m = rnorm_angle_s = 0
+        tnorm_angle_m = tnorm_angle_s = rotz_m = rotz_s = 0
+        fo_m = fo_s = so_m = so_s = zo_m = zo_s = 0
+
+      else:
+        stats = flex.mean_and_variance(dists, pg_weights)
+        dist_m = stats.mean()
+        dist_s = stats.gsl_stats_wsd()
+
+        stats = flex.mean_and_variance(norm_angles, pg_weights)
+        norm_angle_m = stats.mean()
+        norm_angle_s = stats.gsl_stats_wsd()
+
+        stats = flex.mean_and_variance(rnorm_angles, pg_weights)
+        rnorm_angle_m = stats.mean()
+        rnorm_angle_s = stats.gsl_stats_wsd()
+
+        stats = flex.mean_and_variance(tnorm_angles, pg_weights)
+        tnorm_angle_m = stats.mean()
+        tnorm_angle_s = stats.gsl_stats_wsd()
+
+        stats = flex.mean_and_variance(pg_rotz, pg_weights)
+        rotz_m = stats.mean()
+        rotz_s = stats.gsl_stats_wsd()
+
+        stats = flex.mean_and_variance(f_offsets, pg_weights)
+        fo_m = stats.mean()
+        fo_s = stats.gsl_stats_wsd()
+        stats = flex.mean_and_variance(s_offsets, pg_weights)
+        so_m = stats.mean()
+        so_s = stats.gsl_stats_wsd()
+        stats = flex.mean_and_variance(z_offsets, pg_weights)
+        zo_m = stats.mean()
+        zo_s = stats.gsl_stats_wsd()
+
       pg_bc_dists.append(dist_m)
       all_bc_dist.extend(dists)
-      congruence_table_data.append(["%d"%pg_id, "%5.1f"%dist_m, "%.4f"%dist_s, "%.4f"%delta_norm_angle, "%.4f"%rdelta_norm_angle, "%.4f"%tdelta_norm_angle, "%.4f"%z_angle, "%4.1f"%fd, "%4.1f"%sd, "%4.1f"%zd, "%6d"%total_refls])
-
-      stats = flex.mean_and_variance(norm_angles, pg_weights)
-      norm_angle_m = stats.mean()
-      norm_angle_s = stats.gsl_stats_wsd()
       pg_normal_angle_sigmas.append(norm_angle_s)
-
-      stats = flex.mean_and_variance(rnorm_angles, pg_weights)
-      rnorm_angle_m = stats.mean()
-      rnorm_angle_s = stats.gsl_stats_wsd()
       pg_rnormal_angle_sigmas.append(rnorm_angle_s)
-
-      stats = flex.mean_and_variance(tnorm_angles, pg_weights)
-      tnorm_angle_m = stats.mean()
-      tnorm_angle_s = stats.gsl_stats_wsd()
       pg_tnormal_angle_sigmas.append(tnorm_angle_s)
-
-      stats = flex.mean_and_variance(pg_rotz, pg_weights)
-      rotz_m = stats.mean()
-      rotz_s = stats.gsl_stats_wsd()
       pg_rot_z_sigmas.append(rotz_s)
-
-      stats = flex.mean_and_variance(f_offsets, pg_weights)
-      fo_m = stats.mean()
-      fo_s = stats.gsl_stats_wsd()
       pg_f_offset_sigmas.append(fo_s)
-      stats = flex.mean_and_variance(s_offsets, pg_weights)
-      so_m = stats.mean()
-      so_s = stats.gsl_stats_wsd()
       pg_s_offset_sigmas.append(so_s)
-      stats = flex.mean_and_variance(z_offsets, pg_weights)
-      zo_m = stats.mean()
-      zo_s = stats.gsl_stats_wsd()
       pg_z_offset_sigmas.append(zo_s)
       z_offsets_d[pg1.get_name()] = zo_m
 
+      congruence_table_data.append(["%d"%pg_id, "%5.1f"%dist_m, "%.4f"%dist_s,
+                                    "%.4f"%delta_norm_angle, "%.4f"%rdelta_norm_angle,
+                                    "%.4f"%tdelta_norm_angle, "%.4f"%z_angle,
+                                    "%4.1f"%fd, "%4.1f"%sd, "%4.1f"%zd, "%6d"%total_refls])
       detector_table_data.append(["%d"%pg_id, "%5.1f"%dist_m, "%.4f"%dist_s,
                                   "%.4f"%norm_angle_m, "%.4f"%norm_angle_s,
                                   "%.4f"%rnorm_angle_m, "%.4f"%rnorm_angle_s,
