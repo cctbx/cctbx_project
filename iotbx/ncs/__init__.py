@@ -94,13 +94,6 @@ class input(object):
        for spec object and takes a lot of time.
        As usual, it is not straightforward to remove it and keep everything
        else in working condition.
-    3. get_chains_info() takes a lot of time. Investigate if it is needed at
-       all or this info could be extracted from hierarchy in less time when
-       needed. This will result in rewriting a significant amount of code.
-    4. consider removing custom alighment functionality from ncs_search and
-       use one from mmtbx.alignment. It is faster.
-
-
 
     Select method to build ncs_group_object
 

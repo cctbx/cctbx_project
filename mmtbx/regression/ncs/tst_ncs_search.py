@@ -1,5 +1,5 @@
 from __future__ import division
-from mmtbx.ncs.ncs_search import res_alignment
+from mmtbx.ncs.ncs_search import mmtbx_res_alignment
 from scitbx.array_family import flex
 from mmtbx.ncs import ncs_search
 import iotbx.ncs as ncs
@@ -32,54 +32,42 @@ class TestSimpleAlignment(unittest.TestCase):
 
   def test_1(self):
     # print sys._getframe().f_code.co_name
-    a = 'abcfadx'
-    b = 'cabfa'
-    seq_a = list(a)
-    seq_b = list(b)
+    seq_a = "AAKDVKFGVNVLADAVKVTVASKANDAAGDGTTTATVLAQAI"
+    seq_b = "AAKDVKFGNDARVKMLRGVNVLADAVKVTVASTATVLAQAI"
     # Test that aligned segments are at least min_contig_length long
-    sel_a, sel_b, similarity = res_alignment(
+    sel_a, sel_b, similarity = mmtbx_res_alignment(
       seq_a=seq_a, seq_b=seq_b,
-      min_percent =0.1,min_contig_length=3)
+      min_percent =0.1)
+    self.assertEqual([0,1,2,3,4,5,6,7,8,9,11,13,15,16,18,19,21,22,23,24,29,
+                      32,33,34,35,36,37,38,39,40,41],
+                    list(sel_a))
+    self.assertEqual([0,1,2,3,4,5,6,7,8,9,11,13,15,16,18,19,20,21,22,23,28,
+                      31,32,33,34,35,36,37,38,39,40,],
+                    list(sel_b))
+    # Without length limitation
+    sel_a, sel_b,similarity = mmtbx_res_alignment(
+      seq_a=seq_a, seq_b=seq_b,
+      min_percent =0.8)
     self.assertEqual([],list(sel_a))
     self.assertEqual([],list(sel_b))
-    # Without length limitation
-    sel_a, sel_b,similarity = res_alignment(
-      seq_a=seq_a, seq_b=seq_b,
-      min_percent =0.1,min_contig_length=2)
-    self.assertEqual([0,1,3,4],list(sel_a))
-    self.assertEqual([1,2,3,4],list(sel_b))
 
   def test_2(self):
     # print sys._getframe().f_code.co_name
-    sel_a, sel_b, similarity = res_alignment(
-      self.seq_a, self.seq_b, min_percent=0.9,min_contig_length=0)
-    expected_1 = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 18, 19,
-                  20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
-                  32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43,
-                  44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55,
-                  56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67,
-                  68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79,
-                  80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91,
-                  92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102,
-                  103, 104, 105, 106, 107, 108, 109, 110, 111, 112,
-                  113, 114, 115, 116, 117, 118, 119]
-    expected_2 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-                  14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
-                  26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37,
-                  38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
-                  50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61,
-                  62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73,
-                  74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85,
-                  86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97,
-                  98, 99, 100, 101, 102, 103, 104, 105, 106, 107,
-                  108, 109, 110, 111, 112]
+    seq_a = ["CB", "NB", "OB", "SB", "CB1", "NB1", "OB1", "SB1"]
+    seq_b = ["CB", "NB", "OB", "SB",        "NB1", "OB1", "SB1"]
+    sel_a, sel_b, similarity = mmtbx_res_alignment(
+      seq_a, seq_b, min_percent=0.6, atomnames=True)
+    expected_1 = [0,1,2,3,5,6,7]
+    expected_2 = [0,1,2,3,4,5,6]
+    # print "sela", list(sel_a)
+    self.assertEqual(similarity, 0.875)
     self.assertEqual(expected_1,list(sel_a))
     self.assertEqual(expected_2,list(sel_b))
 
   def test_3(self):
     # print sys._getframe().f_code.co_name
-    sel_a, sel_b, similarity = res_alignment(
-      self.seq_a,self.seq_b,min_percent=0.95,min_contig_length=0)
+    sel_a, sel_b, similarity = mmtbx_res_alignment(
+      self.seq_a,self.seq_b,min_percent=0.95)
     # difference is to large
     expected_1 = []
     expected_2 = []
@@ -1393,7 +1381,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_min_contig_length']
+  tests = ['test_2']
   suite = unittest.TestSuite(map(TestSimpleAlignment,tests))
   return suite
 

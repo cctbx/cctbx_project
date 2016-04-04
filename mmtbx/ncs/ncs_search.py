@@ -1569,33 +1569,43 @@ def search_ncs_relations(ph=None,
   return chain_match_list
 
 def mmtbx_res_alignment(seq_a, seq_b,
-                        min_percent=0.85):
+                        min_percent=0.85, atomnames=False):
   # Check for the basic cases (shortcut for obvious cases)
   a = len(seq_a)
   b = len(seq_b)
   if (a == 0) or (b == 0): return [], [], 0
   if seq_a == seq_b: return range(a), range(a), 1.0
-
-  from iotbx.pdb.amino_acid_codes import \
-    one_letter_given_three_letter as one_three
-  from mmtbx.alignment import align
-  norm_seq_a = ""
-  norm_seq_b = ""
-  for l in seq_a:
-    one_letter = one_three.get(l, None)
-    if one_letter is not None:
+  norm_seq_a = seq_a
+  norm_seq_b = seq_b
+  if not atomnames:
+    norm_seq_a = ""
+    norm_seq_b = ""
+    from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter, \
+        one_letter_given_three_letter_modified_aa
+    merged_one_given_three = one_letter_given_three_letter.copy()
+    merged_one_given_three.update(one_letter_given_three_letter_modified_aa)
+    merged_one_given_three.update({
+        "A": "A",
+        "C": "C",
+        "G": "G",
+        "U": "U",
+        "DA": "A",
+        "DC": "C",
+        "DG": "G",
+        "DT": "T"}
+    )
+    for l in seq_a:
+      one_letter = merged_one_given_three.get(l, 'X')
+      # print "l, one_letter", l, one_letter
       norm_seq_a += one_letter
-    else:
-      norm_seq_a += "X"
-  for l in seq_b:
-    one_letter = one_three.get(l, None)
-    if one_letter is not None:
+    for l in seq_b:
+      one_letter = merged_one_given_three.get(l, 'X')
+      # print "l, one_letter", l, one_letter
       norm_seq_b += one_letter
-    else:
-      norm_seq_b += "X"
   # print "norm seqa", norm_seq_a
   # print "norm seqb", norm_seq_b
   # print "min_percent", min_percent
+  from mmtbx.alignment import align
   obj = align(
       norm_seq_a,
       norm_seq_b,
@@ -1605,6 +1615,7 @@ def mmtbx_res_alignment(seq_a, seq_b,
   alignment = obj.extract_alignment()
   sim1 = alignment.calculate_sequence_identity()
   al_a, al_b = alignment.exact_match_selections()
+
   # alignment.pretty_print()
   if sim1 < min_percent:
     # chains are to different, return empty arrays
@@ -1612,163 +1623,163 @@ def mmtbx_res_alignment(seq_a, seq_b,
   return al_a, al_b, sim1
 
 
-def res_alignment(seq_a, seq_b,
-                  min_contig_length=1,
-                  min_percent=0.85):
-  """
-  Align two lists of strings (All lower case characters).
+# def res_alignment(seq_a, seq_b,
+#                   min_contig_length=1,
+#                   min_percent=0.85):
+#   """
+#   Align two lists of strings (All lower case characters).
+#
+#   Penalize misalignment, gaps, when contiguous section is less
+#   than min_contig_length and when the
+#   Do not give any points for alignment. (score only change when "bad" things
+#   happens)
+#
+#   Args:
+#     seq_a, seq_b (lists of str): list of characters to compare
+#     min_percent (float): min percent of similarity between hierarchies
+#       similarity define as:
+#       (number of matching res) / (number of res in longer chain)
+#     min_contig_length (int): domain < min_contig_length rejected
+#
+#   Returns:
+#     aligned_sel_a (list): the indices of the aligned components of seq_a
+#     aligned_sel_b (list): the indices of the aligned components of seq_b
+#     similarity (float): actual similarity between hierarchies
+#   """
+#   # print "inputs in res_alignment, seq_a:", seq_a
+#   # print "inputs in res_alignment, seq_b:", seq_b
+#   # print "inputs in res_alignment:", min_contig_length, min_percent
+#   # print "seq_a", get_sequence_from_array(seq_a)
+#   # print "====="
+#   # print "seq_b", get_sequence_from_array(seq_b)
+#
+#   a = len(seq_a)
+#   b = len(seq_b)
+#   # print "a,b", a,b
+#   # Check for the basic cases
+#   if (a == 0) or (b == 0): return [],[],0
+#   if seq_a == seq_b: return range(a),range(a),1.0
+#   min_matches = min(min_contig_length,min(a,b))
+#   misalign_penalty = 100000
+#   # limit the number of mis-alignments
+#   max_mis_align = int((1 - min_percent) * max(a,b))
+#   # Starting score according to the required similarity
+#   score = max_mis_align + 1
+#   # build score matrix
+#   R = initialize_score_matrix(row=a,col=b,max_score=score)
+#   # populate score matrix
+#   for j in xrange(1,b + 1):
+#     for i in xrange(1,a + 1):
+#       not_aligned = (seq_a[i-1].lower() != seq_b[j-1].lower())
+#       s1 = R[i-1,j-1].score - misalign_penalty * not_aligned
+#       s2,mc2 = gap_score(R[i-1,j],min_matches)
+#       s3,mc3 = gap_score(R[i,j-1],min_matches)
+#       if (s1 >= s2) and (s1 >= s3):
+#         s = s1
+#         i_temp,j_temp = i-1,j-1
+#         match_count = R[(i_temp,j_temp)].match_count + 1
+#         consecutive_matches = R[(i_temp,j_temp)].consecutive_matches + 1
+#       elif (s2 >= s1) and (s2 >= s3):
+#         i_temp,j_temp = i-1,j
+#         s = s2
+#         match_count = mc2
+#         consecutive_matches = 0
+#       else:
+#         i_temp,j_temp = i,j-1
+#         s = s3
+#         match_count = mc3
+#         consecutive_matches = 0
+#       R[i,j].score = s
+#       R[i,j].origin = (i_temp,j_temp)
+#       R[i,j].match_count = match_count
+#       R[i,j].consecutive_matches = consecutive_matches
+#   #
+#   aligned_sel_a, aligned_sel_b, similarity = get_matching_res_indices(
+#     R=R,row=a,col=b,min_percent=min_percent)
+#   # print "aligned_sel_a, aligned_sel_b, similarity", list(aligned_sel_a), list(aligned_sel_b), similarity
+#   return aligned_sel_a, aligned_sel_b, similarity
 
-  Penalize misalignment, gaps, when contiguous section is less
-  than min_contig_length and when the
-  Do not give any points for alignment. (score only change when "bad" things
-  happens)
+# def gap_score(r,min_matches):
+#   """
+#   Calculate the score in case of a gap, taking into account consecutive matches
+#   and the minimum matches required.
+#   If we have a short matching section, we need to adjust the match_count,
+#   so not to count it
+#
+#   Args:
+#     r (Score_record object)
+#     min_matches (int): minimum matches required between to sequences
+#
+#   Returns:
+#     s (int): score
+#     min_matches (int): adjusted match count
+#   """
+#   s = r.score - 1
+#   match_count = r.match_count
+#   if r.consecutive_matches < min_matches:
+#     s -= r.consecutive_matches
+#     match_count -= r.consecutive_matches
+#   return s,match_count
 
-  Args:
-    seq_a, seq_b (lists of str): list of characters to compare
-    min_percent (float): min percent of similarity between hierarchies
-      similarity define as:
-      (number of matching res) / (number of res in longer chain)
-    min_contig_length (int): domain < min_contig_length rejected
-
-  Returns:
-    aligned_sel_a (list): the indices of the aligned components of seq_a
-    aligned_sel_b (list): the indices of the aligned components of seq_b
-    similarity (float): actual similarity between hierarchies
-  """
-  # print "inputs in res_alignment, seq_a:", seq_a
-  # print "inputs in res_alignment, seq_b:", seq_b
-  # print "inputs in res_alignment:", min_contig_length, min_percent
-  # print "seq_a", get_sequence_from_array(seq_a)
-  # print "====="
-  # print "seq_b", get_sequence_from_array(seq_b)
-
-  a = len(seq_a)
-  b = len(seq_b)
-  # print "a,b", a,b
-  # Check for the basic cases
-  if (a == 0) or (b == 0): return [],[],0
-  if seq_a == seq_b: return range(a),range(a),1.0
-  min_matches = min(min_contig_length,min(a,b))
-  misalign_penalty = 100000
-  # limit the number of mis-alignments
-  max_mis_align = int((1 - min_percent) * max(a,b))
-  # Starting score according to the required similarity
-  score = max_mis_align + 1
-  # build score matrix
-  R = initialize_score_matrix(row=a,col=b,max_score=score)
-  # populate score matrix
-  for j in xrange(1,b + 1):
-    for i in xrange(1,a + 1):
-      not_aligned = (seq_a[i-1].lower() != seq_b[j-1].lower())
-      s1 = R[i-1,j-1].score - misalign_penalty * not_aligned
-      s2,mc2 = gap_score(R[i-1,j],min_matches)
-      s3,mc3 = gap_score(R[i,j-1],min_matches)
-      if (s1 >= s2) and (s1 >= s3):
-        s = s1
-        i_temp,j_temp = i-1,j-1
-        match_count = R[(i_temp,j_temp)].match_count + 1
-        consecutive_matches = R[(i_temp,j_temp)].consecutive_matches + 1
-      elif (s2 >= s1) and (s2 >= s3):
-        i_temp,j_temp = i-1,j
-        s = s2
-        match_count = mc2
-        consecutive_matches = 0
-      else:
-        i_temp,j_temp = i,j-1
-        s = s3
-        match_count = mc3
-        consecutive_matches = 0
-      R[i,j].score = s
-      R[i,j].origin = (i_temp,j_temp)
-      R[i,j].match_count = match_count
-      R[i,j].consecutive_matches = consecutive_matches
-  #
-  aligned_sel_a, aligned_sel_b, similarity = get_matching_res_indices(
-    R=R,row=a,col=b,min_percent=min_percent)
-  # print "aligned_sel_a, aligned_sel_b, similarity", list(aligned_sel_a), list(aligned_sel_b), similarity
-  return aligned_sel_a, aligned_sel_b, similarity
-
-def gap_score(r,min_matches):
-  """
-  Calculate the score in case of a gap, taking into account consecutive matches
-  and the minimum matches required.
-  If we have a short matching section, we need to adjust the match_count,
-  so not to count it
-
-  Args:
-    r (Score_record object)
-    min_matches (int): minimum matches required between to sequences
-
-  Returns:
-    s (int): score
-    min_matches (int): adjusted match count
-  """
-  s = r.score - 1
-  match_count = r.match_count
-  if r.consecutive_matches < min_matches:
-    s -= r.consecutive_matches
-    match_count -= r.consecutive_matches
-  return s,match_count
-
-def get_matching_res_indices(R,row,col,min_percent):
-  """
-  Trace back best solution and collect the indices of matching pairs
-
-  Args:
-    R (list of lists of int): the score matrix
-    row (int): number of rows
-    col (int): number of columns
-    min_percent (float): min percent of similarity between hierarchies
-      similarity define as:
-      (number of matching res) / (number of res in longer chain)
-
-  Returns:
-    sel_a (list): matching indices sequence a
-    sel_b (list): matching indices sequence b
-    similarity (float): actual similarity between hierarchies
-  """
-  # index of best score from last row
-  j_max = col
-  i_max = row
-  sel_a = []
-  sel_b = []
-  # test alignment quality
-  if not R.has_key((i_max,j_max)):
-    # alignment process was halted, return empty arrays
-    return flex.size_t([]), flex.size_t([]),0
-  #
-  similarity = R[i_max,j_max].match_count / max(i_max,j_max)
-  if similarity < min_percent:
-    # chains are to different, return empty arrays
-    return flex.size_t([]), flex.size_t([]), 0
-  # retrieve the matching sequences from the score matrix
-  stop_test = 1
-  domain_length = 0
-  temp_sel_a = []
-  temp_sel_b = []
-  while stop_test > 0:
-    if R[i_max,j_max].origin == (i_max - 1, j_max - 1):
-      temp_sel_a.append(i_max - 1)
-      temp_sel_b.append(j_max - 1)
-      domain_length +=1
-    else:
-      # domain ended, if it is long enough keep it
-      sel_a.extend(temp_sel_a)
-      sel_b.extend(temp_sel_b)
-      # restart domain length counting
-      domain_length = 0
-      temp_sel_a = []
-      temp_sel_b = []
-    i_max, j_max = R[i_max,j_max].origin
-    # i_max or j_max reach to zero -> stop
-    stop_test = i_max * j_max
-  # check if the last domain is long enough to keep
-  sel_a.extend(temp_sel_a)
-  sel_b.extend(temp_sel_b)
-  sel_a.reverse()
-  sel_b.reverse()
-  assert len(sel_a) == len(sel_b)
-  return sel_a, sel_b, similarity
+# def get_matching_res_indices(R,row,col,min_percent):
+#   """
+#   Trace back best solution and collect the indices of matching pairs
+#
+#   Args:
+#     R (list of lists of int): the score matrix
+#     row (int): number of rows
+#     col (int): number of columns
+#     min_percent (float): min percent of similarity between hierarchies
+#       similarity define as:
+#       (number of matching res) / (number of res in longer chain)
+#
+#   Returns:
+#     sel_a (list): matching indices sequence a
+#     sel_b (list): matching indices sequence b
+#     similarity (float): actual similarity between hierarchies
+#   """
+#   # index of best score from last row
+#   j_max = col
+#   i_max = row
+#   sel_a = []
+#   sel_b = []
+#   # test alignment quality
+#   if not R.has_key((i_max,j_max)):
+#     # alignment process was halted, return empty arrays
+#     return flex.size_t([]), flex.size_t([]),0
+#   #
+#   similarity = R[i_max,j_max].match_count / max(i_max,j_max)
+#   if similarity < min_percent:
+#     # chains are to different, return empty arrays
+#     return flex.size_t([]), flex.size_t([]), 0
+#   # retrieve the matching sequences from the score matrix
+#   stop_test = 1
+#   domain_length = 0
+#   temp_sel_a = []
+#   temp_sel_b = []
+#   while stop_test > 0:
+#     if R[i_max,j_max].origin == (i_max - 1, j_max - 1):
+#       temp_sel_a.append(i_max - 1)
+#       temp_sel_b.append(j_max - 1)
+#       domain_length +=1
+#     else:
+#       # domain ended, if it is long enough keep it
+#       sel_a.extend(temp_sel_a)
+#       sel_b.extend(temp_sel_b)
+#       # restart domain length counting
+#       domain_length = 0
+#       temp_sel_a = []
+#       temp_sel_b = []
+#     i_max, j_max = R[i_max,j_max].origin
+#     # i_max or j_max reach to zero -> stop
+#     stop_test = i_max * j_max
+#   # check if the last domain is long enough to keep
+#   sel_a.extend(temp_sel_a)
+#   sel_b.extend(temp_sel_b)
+#   sel_a.reverse()
+#   sel_b.reverse()
+#   assert len(sel_a) == len(sel_b)
+#   return sel_a, sel_b, similarity
 
 def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b):
   """
@@ -1824,9 +1835,9 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b):
         altloc |= (not chains_info[b_id].no_altloc[j])
     if force_check_atom_order:
       # select only atoms that exist in both residues
-      atoms_a,atoms_b,similarity = res_alignment(
+      atoms_a,atoms_b,similarity = mmtbx_res_alignment(
         seq_a=atoms_names_a, seq_b=atoms_names_b,
-        min_percent=0.2)
+        min_percent=0.2, atomnames=True)
       # get the number of the atom in the chain
       sa = flex.size_t(atoms_a) + sa[0]
       sb = flex.size_t(atoms_b) + sb[0]
@@ -1913,33 +1924,33 @@ def get_chains_info(ph, selection_list=None):
     chains_info[ch.id].no_altloc = no_altloc
   return chains_info
 
-def initialize_score_matrix(row, col,max_score=1000):
-  """
-  initialize a matrix in a dictionary form
-  The matrix values are initialized according the the gap penalties.
-
-  We initializing the zero row and column with descending score and the reset
-  of the matrix with -10000 score
-
-  Args:
-    row (int): number of rows
-    col (int): number of columns
-    max_score (int): the score assigned for perfect alignment
-
-  Returns:
-    R (dict): the score matrix in a form of a dictionary of Score_record objects
-  """
-  R = {}
-  for i in xrange(row + 1):
-    score_row = max_score - i
-    R[i,0] = Score_record(score=score_row,origin=(i-1,0))
-    for j in xrange(1,col + 1):
-      if i == 0:
-        score_col = max_score - j
-        R[i,j] = Score_record(score=score_col,origin=(0,j-1))
-      else:
-        R[i,j] = Score_record()
-  return R
+# def initialize_score_matrix(row, col,max_score=1000):
+#   """
+#   initialize a matrix in a dictionary form
+#   The matrix values are initialized according the the gap penalties.
+#
+#   We initializing the zero row and column with descending score and the reset
+#   of the matrix with -10000 score
+#
+#   Args:
+#     row (int): number of rows
+#     col (int): number of columns
+#     max_score (int): the score assigned for perfect alignment
+#
+#   Returns:
+#     R (dict): the score matrix in a form of a dictionary of Score_record objects
+#   """
+#   R = {}
+#   for i in xrange(row + 1):
+#     score_row = max_score - i
+#     R[i,0] = Score_record(score=score_row,origin=(i-1,0))
+#     for j in xrange(1,col + 1):
+#       if i == 0:
+#         score_col = max_score - j
+#         R[i,j] = Score_record(score=score_col,origin=(0,j-1))
+#       else:
+#         R[i,j] = Score_record()
+#   return R
 
 def inverse_transform(r,t):
   """ inverse rotation and translation """
@@ -2181,10 +2192,11 @@ def get_rot_trans(ph,
     ncs_copy_ph = ph.select(cache(copy_selection))
     seq_m,res_ids_m  = get_residue_sequence(master_ncs_ph)
     seq_c,res_ids_c = get_residue_sequence(ncs_copy_ph)
-    res_sel_m, res_sel_c, similarity = res_alignment(
-      seq_a=seq_m,seq_b=seq_c,
-      min_contig_length=0,min_percent=0)
-    #
+    res_sel_m, res_sel_c, similarity = mmtbx_res_alignment(
+        seq_m, seq_c, min_percent=0)
+    # res_sel_m, res_sel_c, similarity = res_alignment(
+    #   seq_a=seq_m,seq_b=seq_c,
+    #   min_contig_length=0,min_percent=0)
     m_atoms = master_ncs_ph.atoms()
     c_atoms = ncs_copy_ph.atoms()
     # Check that master and copy are identical

@@ -14,7 +14,7 @@ from mmtbx.refinement.flip_peptide_side_chain import should_be_flipped, \
     flip_residue
 
 
-__author__ = 'Youval and massive refactoring by Oleg'
+__author__ = 'Youval, massively rewritten by Oleg'
 
 def flip_atoms_in_ncs_groups(hierarchy, ncs_restraints_group_list, mon_lib_srv=None):
   """
