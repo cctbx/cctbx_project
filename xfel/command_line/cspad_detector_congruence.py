@@ -13,7 +13,7 @@
 # LIBTBX_SET_DISPATCHER_NAME cspad.detector_congruence
 #
 from __future__ import division
-from scitbx.array_family import flex
+from dials.array_family import flex
 from scitbx.matrix import col
 from matplotlib import pyplot as plt
 from matplotlib.patches import Polygon
@@ -22,6 +22,7 @@ from matplotlib import cm
 import numpy as np
 from libtbx.phil import parse
 import libtbx.load_env
+import math
 
 help_message = '''
 
@@ -216,6 +217,8 @@ class Script(object):
       refls = refls.select(refls.get_flags(refls.flags.used_in_refinement))
       print "N reflections used in refinement", len(refls)
       print "Reporting only on those reflections used in refinement"
+
+      refls['difference_vector_norms'] = (refls['xyzcal.mm']-refls['xyzobs.mm.value']).norms()
       tmp.append(refls)
     reflections = tmp
 
@@ -256,10 +259,55 @@ class Script(object):
 
     congruence_table_data = []
     detector_table_data = []
+    rmsds_table_data = []
     root1 = detectors[0].hierarchy()
     root2 = detectors[1].hierarchy()
 
     s0 = col(flex.vec3_double([col(b.get_s0()) for b in experiments.beams()]).mean())
+
+    # Compute a set of radial and transverse displacements for each reflection
+    print "Setting up stats..."
+    tmp_refls = []
+    for refls, expts in zip(reflections, [wrapper.data for wrapper in params.input.experiments]):
+      tmp = flex.reflection_table()
+      assert len(expts.detectors()) == 1
+      dect = expts.detectors()[0]
+      # Need to construct a variety of vectors
+      for panel_id, panel in enumerate(dect):
+        panel_refls = refls.select(refls['panel'] == panel_id)
+        bcl = flex.vec3_double()
+        tto = flex.double()
+        ttc = flex.double()
+        # Compute the beam center in lab space (a vector pointing from the origin to where the beam would intersect
+        # the panel, if it did intersect the panel)
+        for expt_id in set(panel_refls['id']):
+          beam = expts[expt_id].beam
+          s0 = beam.get_s0()
+          expt_refls = panel_refls.select(panel_refls['id'] == expt_id)
+          beam_centre = panel.get_beam_centre_lab(s0)
+          bcl.extend(flex.vec3_double(len(expt_refls), beam_centre))
+        panel_refls['beam_centre_lab'] = bcl
+
+        # Compute obs in lab space
+        x, y, _ = panel_refls['xyzobs.mm.value'].parts()
+        c = flex.vec2_double(x, y)
+        panel_refls['obs_lab_coords'] = panel.get_lab_coord(c)
+        # Compute deltaXY in panel space. This vector is relative to the panel origin
+        x, y, _ = (panel_refls['xyzcal.mm'] - panel_refls['xyzobs.mm.value']).parts()
+        # Convert deltaXY to lab space, subtracting off of the panel origin
+        panel_refls['delta_lab_coords'] = panel.get_lab_coord(flex.vec2_double(x,y)) - panel.get_origin()
+        tmp.extend(panel_refls)
+      refls = tmp
+      # The radial vector points from the center of the reflection to the beam center
+      radial_vectors = (refls['obs_lab_coords'] - refls['beam_centre_lab']).each_normalize()
+      # The transverse vector is orthogonal to the radial vector and the beam vector
+      transverse_vectors = radial_vectors.cross(refls['beam_centre_lab']).each_normalize()
+      # Compute the raidal and transverse components of each deltaXY
+      refls['radial_displacements']     = refls['delta_lab_coords'].dot(radial_vectors)
+      refls['transverse_displacements'] = refls['delta_lab_coords'].dot(transverse_vectors)
+
+      tmp_refls.append(refls)
+    reflections = tmp_refls
 
     for pg_id, (pg1, pg2) in enumerate(zip(iterate_detector_at_level(root1, 0, params.hierarchy_level),
                                            iterate_detector_at_level(root2, 0, params.hierarchy_level))):
@@ -280,6 +328,21 @@ class Script(object):
 
       assert pg1.get_name() == pg2.get_name()
       refl_counts[pg1.get_name()] = total_refls
+
+      row = ["%d"%pg_id]
+      for pg, refls, det in zip([pg1, pg2], reflections, detectors):
+        pg_refls = flex.reflection_table()
+        for p in iterate_panels(pg):
+          pg_refls.extend(refls.select(refls['panel'] == id_from_name(det, p.get_name())))
+        if len(pg_refls) == 0:
+          rmsd = r_rmsd = t_rmsd = 0
+        else:
+          rmsd = math.sqrt(flex.sum_sq(pg_refls['difference_vector_norms'])/len(pg_refls))*1000
+          r_rmsd = math.sqrt(flex.sum_sq(pg_refls['radial_displacements'])/len(pg_refls))*1000
+          t_rmsd = math.sqrt(flex.sum_sq(pg_refls['transverse_displacements'])/len(pg_refls))*1000
+
+        row.extend(["%6.1f"%rmsd, "%6.1f"%r_rmsd, "%6.1f"%t_rmsd, "%8d"%len(pg_refls)])
+      rmsds_table_data.append(row)
 
       # Angle between normals of pg1 and pg2
       delta_norm_angle = col(pg1.get_normal()).angle(col(pg2.get_normal()), deg=True)
@@ -492,6 +555,18 @@ class Script(object):
     detector_table_data = [table_header, table_header2, table_header3]
     detector_table_data.extend([table_d[key] for key in sorted(table_d)])
 
+    table_d = {d:row for d, row in zip(pg_bc_dists, rmsds_table_data)}
+    table_header = ["PanelG"]
+    table_header2 = ["Id"]
+    table_header3 = [""]
+    for i in xrange(len(detectors)):
+      table_header.extend(["D%d"%i]*4)
+      table_header2.extend(["RMSD", "rRMSD", "tRMSD", "N refls"])
+      table_header3.extend(["(microns)"]*3)
+      table_header3.append("")
+    rmsds_table_data = [table_header, table_header2, table_header3]
+    rmsds_table_data.extend([table_d[key] for key in sorted(table_d)])
+
     if len(all_refls_count) > 1:
       r1 = ["Weighted mean"]
       r2 = ["Weighted stddev"]
@@ -595,6 +670,22 @@ class Script(object):
     print
     print "Sigmas in this table are computed using the standard deviation of 2 measurements (I.E. a panel's Z Offset is measured twice, once in each input dataset). This is related by a factor of sqrt(2)/2 to the mean of the Delta Z parameter in the congruence statistics table above, which is the difference between Z parameters."
     print
+
+    row = ["Overall"]
+    for refls in reflections:
+      row.append("%6.1f"%(math.sqrt(flex.sum_sq(refls['difference_vector_norms'])/len(refls))*1000))
+      row.append("%6.1f"%(math.sqrt(flex.sum_sq(refls['radial_displacements'])/len(refls))*1000))
+      row.append("%6.1f"%(math.sqrt(flex.sum_sq(refls['transverse_displacements'])/len(refls))*1000))
+      row.append("%8d"%len(refls))
+    rmsds_table_data.append(row)
+
+    print "RMSDs by detector number"
+    print table_utils.format(rmsds_table_data,has_header=3,justify='center',delim=" ")
+    print "PanelG Id: panel group id or panel id, depending on hierarchy_level"
+    print "RMSD: root mean squared deviation between observed and predicted spot locations"
+    print "rRMSD: RMSD of radial components of the observed-predicted vectors"
+    print "tRMSD: RMSD of transverse components of the observed-predicted vectors"
+    print "N refls: number of reflections"
 
     # Show stats for detector hierarchy root
     def _print_vector(v):
