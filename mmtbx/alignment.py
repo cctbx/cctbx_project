@@ -82,8 +82,9 @@ class align(object):
     elif (isinstance(similarity_function, str)):
       raise RuntimeError(
         'Unknown similarity_function: "%s"' % similarity_function)
-    seq_a = seq_a.upper()
-    seq_b = seq_b.upper()
+    if isinstance(seq_a, basestring):
+      seq_a = seq_a.upper()
+      seq_b = seq_b.upper()
     adopt_init_args(self, locals())
     A,B = seq_a, seq_b
     m,n = self.m,self.n = len(A),len(B)
@@ -235,10 +236,12 @@ class align(object):
         v += 1
         ib.append(i)
         sb.append(self.seq_b[i])
-
+    if isinstance(self.seq_a, basestring):
+      sa = "".join(sa)
+      sb = "".join(sb)
     return alignment(
       similarity_function=self.similarity_function,
-      a="".join(sa), b="".join(sb),
+      a=sa, b=sb,
       i_seqs_a=ia, i_seqs_b=ib,
       match_codes=match_codes)
 
