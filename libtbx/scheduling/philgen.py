@@ -899,7 +899,7 @@ class manager(object):
 
     except ConfigurationError, e:
       from libtbx.utils import Sorry
-      raise Sorry, "Error setting up '%s': %s" % e
+      raise Sorry, "Error setting up '%s': %s" % ( technology, e )
 
 
   def __str__(self):
