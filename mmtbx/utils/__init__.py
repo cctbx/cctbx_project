@@ -2706,7 +2706,7 @@ class extract_box_around_model_and_map(object):
     self.box_crystal_symmetry=cs
     sp = crystal.special_position_settings(cs)
     # new xray_structure in the box
-    sites_frac_new = xray_structure_selected.sites_frac()+fs
+    sites_frac_new = xray_structure_selected.sites_frac()+self.secondary_shift
     xray_structure_box=xray_structure_selected.replace_sites_frac(sites_frac_new)
     sites_cart = xray_structure_box.sites_cart()
     sites_frac = new_unit_cell_box.fractionalize(sites_cart)
