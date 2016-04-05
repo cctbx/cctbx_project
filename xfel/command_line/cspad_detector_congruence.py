@@ -527,31 +527,33 @@ class Script(object):
       pg_z_offset_sigmas.append(zo_s)
       z_offsets_d[pg1.get_name()] = zo_m
 
-      congruence_table_data.append(["%d"%pg_id, "%5.1f"%dist_m, "%.4f"%dist_s,
+      congruence_table_data.append(["%d"%pg_id, "%5.1f"%dist_m, #"%.4f"%dist_s,
                                     "%.4f"%delta_norm_angle, "%.4f"%rdelta_norm_angle,
                                     "%.4f"%tdelta_norm_angle, "%.4f"%z_angle,
                                     "%4.1f"%fd, "%4.1f"%sd, "%4.1f"%zd, "%6d"%total_refls])
-      detector_table_data.append(["%d"%pg_id, "%5.1f"%dist_m, "%.4f"%dist_s,
+      detector_table_data.append(["%d"%pg_id, "%5.1f"%dist_m, #"%.4f"%dist_s,
                                   "%.4f"%norm_angle_m, "%.4f"%norm_angle_s,
                                   "%.4f"%rnorm_angle_m, "%.4f"%rnorm_angle_s,
                                   "%.4f"%tnorm_angle_m, "%.4f"%tnorm_angle_s,
-                                  "%6.2f"%rotz_m, "%.4f"%rotz_s,
-                                  "%9.1f"%fo_m, "%5.1f"%fo_s,
-                                  "%9.1f"%so_m, "%5.1f"%so_s,
-                                  "%9.1f"%zo_m, "%5.1f"%zo_s, "%6d"%total_refls])
+                                  "%10.6f"%rotz_m, "%.6f"%rotz_s,
+                                  #"%9.1f"%fo_m, "%5.3f"%fo_s,
+                                  #"%9.1f"%so_m, "%5.3f"%so_s,
+                                  "%9.3f"%fo_s,
+                                  "%9.3f"%so_s,
+                                  "%9.1f"%zo_m, "%9.1f"%zo_s, "%6d"%total_refls])
 
     # Set up table output
     table_d = {d:row for d, row in zip(pg_bc_dists, congruence_table_data)}
-    table_header = ["PanelG","Dist","Dist","Normal","RNormal","TNormal","Z rot","Delta","Delta","Delta","N"]
-    table_header2 = ["Id","","Sigma","Angle","Angle","Angle","Angle","F","S","Z","Refls"]
+    table_header = ["PanelG","Dist","Normal","RNormal","TNormal","Z rot","Delta","Delta","Delta","N"]
+    table_header2 = ["Id","","Angle","Angle","Angle","Angle","F","S","Z","Refls"]
     table_header3 = ["", "(mm)","(mm)","(deg)","(deg)","(microns)","(microns)",""]
     congruence_table_data = [table_header, table_header2, table_header3]
     congruence_table_data.extend([table_d[key] for key in sorted(table_d)])
 
     table_d = {d:row for d, row in zip(pg_bc_dists, detector_table_data)}
-    table_header = ["PanelG","Dist","Dist","Normal","Normal","RNormal","RNormal","TNormal","TNormal","RotZ", "RotZ","F Offset","F Offset","S Offset","S Offset","Z Offset","Z Offset","N"]
-    table_header2 = ["Id","","Sigma","","Sigma","","Sigma","","Sigma","","Sigma","","Sigma","","Sigma","","Sigma","Refls"]
-    table_header3 = ["", "(mm)","(mm)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)","(microns)","(microns)","(microns)","(microns)","(microns)","(microns)",""]
+    table_header = ["PanelG","Dist","Normal","Normal","RNormal","RNormal","TNormal","TNormal","RotZ", "RotZ","F Offset","S Offset","Z Offset","Z Offset","N"]
+    table_header2 = ["Id","","","Sigma","","Sigma","","Sigma","","Sigma","Sigma","Sigma","","Sigma","Refls"]
+    table_header3 = ["", "(mm)","(mm)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)","(microns)","(microns)","(microns)","(microns)",""]
     detector_table_data = [table_header, table_header2, table_header3]
     detector_table_data.extend([table_d[key] for key in sorted(table_d)])
 
@@ -572,8 +574,8 @@ class Script(object):
       r2 = ["Weighted stddev"]
       r1.append("")
       r2.append("")
-      r1.append("")
-      r2.append("")
+      #r1.append("")
+      #r2.append("")
       stats = flex.mean_and_variance(all_delta_normals, all_refls_count.as_double())
       r1.append("%.4f"%stats.mean())
       r2.append("%.4f"%stats.gsl_stats_wsd())
@@ -599,7 +601,7 @@ class Script(object):
       r2.append("")
       congruence_table_data.append(r1)
       congruence_table_data.append(r2)
-      congruence_table_data.append(["Mean", "", "", "", "", "", "", "", "", "", "%6.1f"%flex.mean(all_refls_count.as_double())])
+      congruence_table_data.append(["Mean", "", "", "", "", "", "", "", "", "%6.1f"%flex.mean(all_refls_count.as_double())])
 
     from libtbx import table_utils
     print "Congruence statistics, I.E. the differences between the input detectors:"
@@ -624,21 +626,21 @@ class Script(object):
       r1 = ["All"]
       r2 = ["Mean"]
       for data, weights, fmt in [[None,None,None],
-                                 [None,None,None],
+                                 #[None,None,None],
                                  [all_normal_angles,       all_weights.as_double(),     "%.4f"],
                                  [pg_normal_angle_sigmas,  all_refls_count.as_double(), "%.4f"],
                                  [all_rnormal_angles,      all_weights.as_double(),     "%.4f"],
                                  [pg_rnormal_angle_sigmas, all_refls_count.as_double(), "%.4f"],
                                  [all_tnormal_angles,      all_weights.as_double(),     "%.4f"],
                                  [pg_tnormal_angle_sigmas, all_refls_count.as_double(), "%.4f"],
-                                 [all_rot_z,               all_weights.as_double(),     "%.4f"],
-                                 [pg_rot_z_sigmas,         all_refls_count.as_double(), "%.4f"],
-                                 [all_f_offsets,           all_weights.as_double(),     "%9.1f"],
-                                 [pg_f_offset_sigmas,      all_refls_count.as_double(), "%5.1f"],
-                                 [all_s_offsets,           all_weights.as_double(),     "%9.1f"],
-                                 [pg_s_offset_sigmas,      all_refls_count.as_double(), "%5.1f"],
+                                 [all_rot_z,               all_weights.as_double(),     "%10.6f"],
+                                 [pg_rot_z_sigmas,         all_refls_count.as_double(), "%.6f"],
+                                 #[all_f_offsets,           all_weights.as_double(),     "%9.1f"],
+                                 [pg_f_offset_sigmas,      all_refls_count.as_double(), "%9.3f"],
+                                 #[all_s_offsets,           all_weights.as_double(),     "%9.1f"],
+                                 [pg_s_offset_sigmas,      all_refls_count.as_double(), "%9.3f"],
                                  [all_z_offsets,           all_weights.as_double(),     "%9.1f"],
-                                 [pg_z_offset_sigmas,      all_refls_count.as_double(), "%5.1f"]]:
+                                 [pg_z_offset_sigmas,      all_refls_count.as_double(), "%9.1f"]]:
 
         r2.append("")
         if data is None and weights is None:
