@@ -293,13 +293,10 @@ class refine_groups(object):
       #
       xrs_tmp = xray_structure.select(selection)
       box = mmtbx.utils.extract_box_around_model_and_map(
-        xray_structure   = xrs_tmp,
-        map_data         = map_data,
-        box_cushion      = 5,
-        selection_radius = 5,
-        selection_string = "all",
-        selection        = flex.bool(xrs_tmp.scatterers().size(), True),
-        pdb_hierarchy    = ph)
+        xray_structure = xrs_tmp,
+        map_data       = map_data,
+        box_cushion    = 5,
+        selection      = flex.bool(xrs_tmp.scatterers().size(), True))
       #
       shift_back = box.shift_to_map_boxed_sites_back
       ph_b       = box.pdb_hierarchy_box

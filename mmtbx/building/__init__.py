@@ -403,20 +403,17 @@ class box_build_refine_base (object) :
       selection = selection)
     self.box = mmtbx.utils.extract_box_around_model_and_map(
       xray_structure   = xray_structure,
-      pdb_hierarchy    = pdb_hierarchy,
       map_data         = target_map,
-      map_data_2       = target_map_rsr,
       selection        = self.selection_within,
-      box_cushion      = box_cushion,
-      assert_pdb_hierarchy_and_xray_structure_equal=False)
+      box_cushion      = box_cushion)
     self.hd_selection_box = self.box.xray_structure_box.hd_selection()
     self.n_sites_box = self.box.xray_structure_box.sites_cart().size()
     self.target_map_box = self.box.map_box
-    self.target_map_rsr_box = self.box.map_box_2
+    self.target_map_rsr_box = None
     if (self.target_map_rsr_box is None) :
       self.target_map_rsr_box = self.target_map_box
     self.unit_cell_box = self.box.xray_structure_box.unit_cell()
-    self.geo_box = grm.geometry.select(self.box.selection_within
+    self.geo_box = grm.geometry.select(self.box.selection
       ).discard_symmetry(new_unit_cell=self.unit_cell_box)
     self.box_restraints_manager = mmtbx.restraints.manager(
       geometry      = self.geo_box,
@@ -426,7 +423,11 @@ class box_build_refine_base (object) :
     self.others_in_box = flex.bool(self.n_sites_box, True).set_selected(
       self.selection_in_box, False).iselection()
     assert (len(self.selection_in_box.intersection(self.others_in_box)) == 0)
-    self.box_selected_hierarchy = self.box.pdb_hierarchy_box.select(
+
+    self.box_hierarchy = pdb_hierarchy.select(self.selection_within)
+    self.box_hierarchy.adopt_xray_structure(self.box.xray_structure_box)
+
+    self.box_selected_hierarchy = self.box_hierarchy.select(
       self.selection_in_box)
     self.box_selected_hierarchy.atoms().reset_i_seq()
     sites_cart_box = self.box.xray_structure_box.sites_cart()
@@ -450,7 +451,7 @@ class box_build_refine_base (object) :
     Will raise an exception if the selection covers more than one atom_group.
     """
     residue = None
-    box_atoms = self.box.pdb_hierarchy_box.atoms()
+    box_atoms = self.box_hierarchy.atoms()
     sel_atoms = box_atoms.select(self.selection_in_box)
     for atom in sel_atoms :
       parent = atom.parent()
@@ -522,7 +523,7 @@ class box_build_refine_base (object) :
     """
     assert (reference_sigma > 0)
     if isinstance(selection, str) :
-      selection = self.box.pdb_hierarchy_box.atom_selection_cache().selection(
+      selection = self.box_hierarchy.atom_selection_cache().selection(
         selection).iselection()
       assert (len(selection) > 0)
     sites_cart_box = self.box.xray_structure_box.sites_cart()
@@ -530,7 +531,7 @@ class box_build_refine_base (object) :
     if (reset_first) :
       self.geo_box.remove_reference_coordinate_restraints_in_place()
     self.geo_box.add_reference_coordinate_restraints_in_place(
-        pdb_hierarchy=self.box.pdb_hierarchy_box,
+        pdb_hierarchy=self.box_hierarchy,
         selection=selection,
         sigma=reference_sigma,
         limit=limit,
@@ -545,7 +546,7 @@ class box_build_refine_base (object) :
     if (selection is None) :
       selection = self.selection_all_box
     elif isinstance(selection, str) :
-      selection = self.box.pdb_hierarchy_box.atom_selection_cache().selection(
+      selection = self.box_hierarchy.atom_selection_cache().selection(
         selection).iselection()
     rsr_simple_refiner = mmtbx.refinement.real_space.individual_sites.simple(
       target_map                  = self.target_map_rsr_box,
@@ -598,7 +599,7 @@ class box_build_refine_base (object) :
     Set coordinates for the boxed xray_structure and pdb_hierarchy objects.
     """
     self.box.xray_structure_box.set_sites_cart(sites_cart)
-    self.box.pdb_hierarchy_box.atoms().set_xyz(sites_cart)
+    self.box_hierarchy.atoms().set_xyz(sites_cart)
 
   def update_original_coordinates (self) :
     """

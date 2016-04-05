@@ -334,8 +334,7 @@ class box_refinement_manager(object):
         selection      = selection_within,
         box_cushion    = box_cushion)
       new_unit_cell = box.xray_structure_box.unit_cell()
-      geo_box = \
-        self.geometry_restraints_manager.select(box.selection_within)
+      geo_box = self.geometry_restraints_manager.select(box.selection)
       geo_box = geo_box.discard_symmetry(new_unit_cell=new_unit_cell)
       geo_box.remove_reference_coordinate_restraints_in_place() # disaster happens otherwise
       map_box = box.map_box

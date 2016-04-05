@@ -139,14 +139,10 @@ Parameters:"""%h
    print_statistics.make_sub_header(
     "Extracting box around selected atoms and writing output files", out=log)
   #
-
-  #
   box = mmtbx.utils.extract_box_around_model_and_map(
     xray_structure   = xray_structure,
-    pdb_hierarchy    = pdb_hierarchy,
     map_data         = map_data.as_double(),
     box_cushion      = params.box_cushion,
-    crystal_symmetry = inputs.crystal_symmetry,
     selection        = selection,
     density_select   = params.density_select,
     threshold        = params.density_select_threshold)
@@ -167,8 +163,10 @@ Parameters:"""%h
   if(params.output_file_name_prefix is None):
     file_name = "%s_box.pdb"%output_prefix
   else: file_name = "%s.pdb"%params.output_file_name_prefix
-  if pdb_hierarchy is not None:
-    box.write_pdb_file(file_name=file_name)
+  ph_box = pdb_hierarchy.select(selection)
+  ph_box.adopt_xray_structure(box.xray_structure_box)
+  ph_box.write_pdb_file(file_name=file_name, crystal_symmetry =
+    box.xray_structure_box.crystal_symmetry())
 
   if("ccp4" in params.output_format):
     if(params.output_file_name_prefix is None):
