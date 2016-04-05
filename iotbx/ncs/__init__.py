@@ -90,10 +90,6 @@ class input(object):
     """
     TODO:
     1. Transfer get_ncs_info_as_spec() to ncs/ncs.py:ncs
-    2. Stop doing set_common_res_dict() by default because it is needed only
-       for spec object and takes a lot of time.
-       As usual, it is not straightforward to remove it and keep everything
-       else in working condition.
 
     Select method to build ncs_group_object
 
@@ -477,10 +473,6 @@ class input(object):
           validated_ncs_groups.append(new_ncs_group)
         # Finally, we may check the number of atoms in selections that will
         # go further
-
-
-
-
         s_string = new_ncs_group.reference
         # print "after validation user's phil:"
         # print "  reference:", s_string
@@ -1886,14 +1878,6 @@ class input(object):
     elif format.lower() == 'phil':
       out_str = self.show_phil_format(prefix=prefix,header=header)
       print >> log, out_str
-    # elif format.lower() == 'restraints':
-    #   out_str = self.show_phil_format(prefix=prefix,header=header)
-    #   out_str = nu.convert_phil_format(out_str,to_type='restraints')
-    #   print >> log, out_str
-    # elif format.lower() == 'constraints':
-    #   out_str = self.show_phil_format(prefix=prefix,header=header)
-    #   out_str = nu.convert_phil_format(out_str,to_type='constraints')
-    #   print >> log, out_str
     elif format.lower() == 'spec':
       # Does not add prefix in SPEC format
       out_str = self.show_search_parameters_values(prefix) + '/n'
