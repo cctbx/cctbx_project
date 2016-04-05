@@ -51,7 +51,6 @@ def run(args, log=None, ccp4_map=None,
     space_group_number=None,
     out=sys.stdout):
   if log is None: log=out
-
   inputs = mmtbx.utils.process_command_line_args(args = args,
     master_params = master_params())
   got_map = False
@@ -69,6 +68,8 @@ def run(args, log=None, ccp4_map=None,
     raise Sorry("Map file is needed.")
   #
   m = ccp4_map
+  if(m.space_group_number > 1):
+    raise Sorry("Input map space group: %d. Must be P1."%m.space_group_number)
   broadcast(m="Input map information:", log=log)
   print >>out,"m.all()   :", m.data.all()
   print >>out,"m.focus() :", m.data.focus()
