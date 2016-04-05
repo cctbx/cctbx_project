@@ -33,6 +33,30 @@ phil_scope = parse("""
             were specified.
 """, process_includes=True)
 
+refine_defaults_scope = parse("""
+refinement {
+  refinery.engine = SparseLevMar
+  parameterisation {
+    beam.fix=all
+    auto_reduction {
+      action=remove
+      min_nref_per_parameter=3
+    }
+  }
+  reflections {
+    outlier {
+      algorithm=sauter_poon
+      separate_panels=True
+      separate_experiments=False
+    }
+  }
+}
+""")
+
+refine_scope = parse("""
+  include scope dials.algorithms.refinement.refiner.phil_scope
+""", process_includes=True)
+
 def run(args):
   print "Parsing input..."
   if "-c" in args or "-h" in args or "--help" in args:
@@ -58,6 +82,10 @@ def run(args):
         raise Sorry("Unrecognized argument: %s"%arg)
 
   params = phil_scope.fetch(sources=user_phil).extract()
+
+  merged_scope = refine_scope.fetch(refine_defaults_scope)
+  if refine_phil_file is not None:
+    merged_scope = merged_scope.fetch(parse(file_name = refine_phil_file))
 
   print "Gathering file names..."
   all_exp = []
@@ -91,20 +119,20 @@ def run(args):
       params.tag = base_tag + "_1"
       print "Refining odd numbered data using tag", params.tag
       combine_phil = generate_combine_phil(params, odd_exp, odd_ref)
-      refine(params, refine_phil_file, combine_phil)
+      refine(params, merged_scope, combine_phil)
 
       params.tag = base_tag + "_2"
       print "Refining even numbered data using tag", params.tag
       combine_phil = generate_combine_phil(params, even_exp, even_ref)
-      refine(params, refine_phil_file, combine_phil)
+      refine(params, merged_scope, combine_phil)
     else:
       combine_phil = generate_combine_phil(params, all_exp, all_ref)
-      refine(params, refine_phil_file, combine_phil)
+      refine(params, merged_scope, combine_phil)
   else:
     assert len(paths) == 0
     assert params.n_subset is None
     assert not params.split_dataset
-    refine(params, refine_phil_file, params.data_phil)
+    refine(params, merged_scope, params.data_phil)
 
 def generate_combine_phil(params, all_exp, all_ref):
   if params.n_subset is not None:
@@ -132,7 +160,7 @@ def generate_combine_phil(params, all_exp, all_ref):
 
   return combine_phil
 
-def refine(params, refine_phil_file, combine_phil):
+def refine(params, merged_scope, combine_phil):
   print "Combining experiments..."
   command = "dials.combine_experiments reference_from_experiment.average_detector=True reference_from_experiment.average_hierarchy_level=0 output.experiments_filename=%s_combined_experiments.json output.reflections_filename=%s_combined_reflections.pickle %s"%(params.tag, params.tag, combine_phil)
   print command
@@ -141,13 +169,23 @@ def refine(params, refine_phil_file, combine_phil):
 
   for i in xrange(params.refine_to_hierarchy_level+1):
     print "Refining at hierarchy level", i
+    refine_phil_file = "%s_refine_level%d.phil"%(params.tag, i)
     if i == 0:
+      diff_phil = "refinement.parameterisation.detector.fix_list=Tau1\n" # fix detector rotz
       command = "dials.refine %s %s_combined_experiments.json %s_combined_reflections.pickle"%(refine_phil_file, params.tag, params.tag)
     else:
+      diff_phil = "refinement.parameterisation.detector.fix_list=None\n" # allow full freedom to refine
       command = "dials.refine %s %s_refined_experiments_level%d.json %s_refined_reflections_level%d.pickle"%(refine_phil_file, params.tag, i-1, params.tag, i-1)
+    diff_phil += "refinement.parameterisation.detector.hierarchy_level=%d\n"%i
+
     command += " output.experiments=%s_refined_experiments_level%d.json output.reflections=%s_refined_reflections_level%d.pickle"%( \
       params.tag, i, params.tag, i)
-    command += " refinement.parameterisation.detector.hierarchy_level=%d"%i
+
+    scope = merged_scope.fetch(parse(diff_phil))
+    f = open(refine_phil_file, 'w')
+    f.write(refine_scope.fetch_diff(scope).as_str())
+    f.close()
+
     print command
     result = easy_run.fully_buffered(command=command).raise_if_errors()
     result.show_stdout()
