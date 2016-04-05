@@ -1305,7 +1305,7 @@ class input(object):
             v[i] = self.old_i_seqs[v[i]]
       # keep hierarchy for writing
       # self.truncated_hierarchy = pdb_h
-      self.set_common_res_dict()
+      # self.set_common_res_dict()
     # add group selection to ncs_group_map
     for gr_num in self.ncs_group_map.iterkeys():
       gr = self.ncs_group_map[gr_num]
@@ -1328,7 +1328,7 @@ class input(object):
 
     sorted_keys = sort_dict_keys(self.ncs_copies_chains_names)
     only_master_ncs_in_hierarchy = False
-    if (self.truncated_hierarchy is not None and
+    if (self.truncated_hierarchy is not None and self.ncs_atom_selection is not None and
         self.ncs_atom_selection.count(True) == self.truncated_hierarchy.atoms().size()):
       only_master_ncs_in_hierarchy = True
     sc = self.truncated_hierarchy.atom_selection_cache()
@@ -1595,8 +1595,8 @@ class input(object):
     """
     log = log or self.log
     spec_object = ncs.ncs(exclude_h=exclude_h,exclude_d=exclude_d)
-    # if len(self.common_res_dict) == 0 and self.truncated_hierarchy:
-    #   self.set_common_res_dict()
+    if len(self.common_res_dict) == 0 and self.truncated_hierarchy:
+      self.set_common_res_dict()
     if [bool(xrs),bool(pdb_hierarchy_asu),bool(fmodel)].count(True) == 0:
       # if not input containing coordinates is given
       if self.truncated_hierarchy:

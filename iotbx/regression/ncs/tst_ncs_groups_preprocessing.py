@@ -180,6 +180,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       # print sys._getframe().f_code.co_name
       # creating a spec file
       params = master_params.extract()
+      params.simple_ncs_from_pdb.write_spec_files=True
       xrs = self.pdb_inp.xray_structure_simple()
       xrs_unit_cell = xrs.orthorhombic_unit_cell_around_centered_scatterers(
         buffer_size=8)
