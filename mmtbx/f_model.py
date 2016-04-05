@@ -13,7 +13,6 @@ from cctbx import xray
 from mmtbx import max_lik
 from mmtbx.max_lik import maxlik
 from mmtbx.scaling.sigmaa_estimation import sigmaa_estimator
-import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 from cctbx import miller
 import cctbx.xray.structure_factors
 from cctbx.array_family import flex
@@ -43,6 +42,8 @@ import scitbx.math
 from cctbx import maptbx
 from libtbx.test_utils import approx_equal
 import libtbx
+
+import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -125,17 +126,19 @@ class arrays(object):
 
 class manager_mixin(object):
 
-  def target_w(self):
+  def target_w(self, alpha_beta=None):
     global time_target
     timer = user_plus_sys_time()
-    result = self.target_functor()(compute_gradients=False).target_work()
+    result = self.target_functor(
+      alpha_beta=alpha_beta)(compute_gradients=False).target_work()
     time_target += timer.elapsed()
     return result
 
-  def target_t(self):
+  def target_t(self, alpha_beta=None):
     global time_target
     timer = user_plus_sys_time()
-    result = self.target_functor()(compute_gradients=False).target_test()
+    result = self.target_functor(
+      alpha_beta=alpha_beta)(compute_gradients=False).target_test()
     time_target += timer.elapsed()
     return result
 
@@ -1887,6 +1890,12 @@ class manager(manager_mixin):
     if (max_n_bins is not None):
       result = min(max_n_bins, result)
     return result
+
+  def target_unscaled_w(self, alpha_beta=None):
+    return self.target_w(alpha_beta=alpha_beta)*self.f_calc_w().data().size()
+
+  def target_unscaled_t(self, alpha_beta=None):
+    return self.target_t(alpha_beta=alpha_beta)*self.f_calc_t().data().size()
 
   def update(self, f_calc                       = None,
                    f_obs                        = None,

@@ -247,11 +247,12 @@ class fmodels(object):
     if(self.fmodel_n is not None):
       self.fmodel_n.update(target_name=target_name)
 
-  def create_target_functors(self):
+  def create_target_functors(self, alpha_beta=None):
     """
     ...
     """
-    self.target_functor_xray = self.fmodel_xray().target_functor()
+    self.target_functor_xray = self.fmodel_xray().target_functor(
+      alpha_beta = alpha_beta)
     self.target_functor_neutron = None
     if(self.fmodel_n is not None):
       self.target_functor_neutron = self.fmodel_neutron().target_functor()
