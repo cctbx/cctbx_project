@@ -68,9 +68,9 @@ class Script(object):
   def __init__(self):
     """ Set up the option parser. Arguments come from the command line or a phil file """
     self.usage = """
-%s input.cfg=filename.cfg input.experiment=experimentname input.run_num=N input.address=address
+%s input.experiment=experimentname input.run_num=N input.address=address
  format.file_format=cbf format.cbf.detz_offset=N
-%s input.cfg=filename.cfg input.experiment=experimentname input.run_num=N input.address=address
+%s input.experiment=experimentname input.run_num=N input.address=address
  format.file_format=pickle format.pickle.cfg=path
     """%(libtbx.env.dispatcher_name, libtbx.env.dispatcher_name)
 
