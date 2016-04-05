@@ -7,6 +7,7 @@ from libtbx.utils import Sorry
 from cctbx import maptbx
 from mmtbx.maps import fem
 import mmtbx.real_space
+import mmtbx.utils
 
 legend = """phenix.model_map: Given PDB file calculate model map
 
@@ -19,6 +20,9 @@ grid_step=0.3
   .type=float
 output_file_name_prefix = None
   .type=str
+scattering_table = *n_gaussian wk1995 it1992 electron neutron
+  .type = choice(multi=False)
+  .help = Choices of scattering table for structure factors calculations
 """
 
 def master_params():
@@ -34,6 +38,10 @@ def run(args, log=sys.stdout):
   if(len(file_names) != 1): raise Sorry("A PDB file is expected.")
   xrs = iotbx.pdb.input(file_name =
     file_names[0]).xray_structure_simple().expand_to_p1(sites_mod_positive=True)
+  mmtbx.utils.setup_scattering_dictionaries(
+    scattering_table = params.scattering_table,
+    xray_structure   = xrs,
+    d_min            = 0.5)
   params = inputs.params.extract()
   #
   crystal_gridding = maptbx.crystal_gridding(
