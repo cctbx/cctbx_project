@@ -38,11 +38,11 @@ def run(args, log=sys.stdout):
   if(len(file_names) != 1): raise Sorry("A PDB file is expected.")
   xrs = iotbx.pdb.input(file_name =
     file_names[0]).xray_structure_simple().expand_to_p1(sites_mod_positive=True)
+  params = inputs.params.extract()
   mmtbx.utils.setup_scattering_dictionaries(
     scattering_table = params.scattering_table,
     xray_structure   = xrs,
     d_min            = 0.5)
-  params = inputs.params.extract()
   #
   crystal_gridding = maptbx.crystal_gridding(
     unit_cell        = xrs.unit_cell(),
