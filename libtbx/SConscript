@@ -868,7 +868,14 @@ int main() {
       env_etc.cxxflags_base.append("-fcoalesce-templates")
     env_etc.cxxflags_base.append("-DBOOST_ALL_NO_LIB")
     if (libtbx.env.build_options.optimization):
-      opts = ["-DNDEBUG", "-O3", "-ffast-math"]
+      # XCode 7.3 compiler update results in some floating point exceptions with
+      # -ffast-math option enabled
+      # http://phenix-online.org/pipermail/cctbxbb/2016-April/001284.html
+      opts = [
+        "-DNDEBUG",
+        "-O3",
+        #"-ffast-math"
+      ]
       if (cxx == "c++" and env_etc.gcc_version
             and env_etc.gcc_version == 40000):
         opts[1] = "-O2" # Apple's optimizer is broken
