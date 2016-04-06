@@ -2657,7 +2657,7 @@ class extract_box_around_model_and_map(object):
       sx,sy,sz = O_[0]/N_[0],O_[1]/N_[1], O_[2]/N_[2]
       sx_cart,sy_cart,sz_cart = a*O_[0]/N_[0],b*O_[1]/N_[1],c*O_[2]/N_[2]
       self.initial_shift  = [-sx,-sy,-sz]
-      self.initial_shift_cart = [-sx_cart,-sy_cart,-sz_cart]
+      self.initial_shift_cart = cs.unit_cell().orthogonalize(self.initial_shift)
       self.map_data=self.map_data.shift_origin()
       # shift model
       sites_cart = xray_structure.sites_cart()
@@ -2688,8 +2688,7 @@ class extract_box_around_model_and_map(object):
     self.map_box = maptbx.copy(self.map_data, gridding_first, gridding_last)
     o = self.map_box.origin()
     self.secondary_shift = (-o[0]/all[0],-o[1]/all[1],-o[2]/all[2])
-    a,b,c = cs.unit_cell().parameters()[:3]
-    self.secondary_shift_cart = (-a*o[0]/all[0],-b*o[1]/all[1],-c*o[2]/all[2])
+    self.secondary_shift_cart = cs.unit_cell().orthogonalize(self.secondary_shift)
     ps=self.initial_shift_cart
     ss=self.secondary_shift_cart
     if ps is None:
