@@ -3110,7 +3110,7 @@ def cut_out_map(map_data=None, crystal_symmetry=None,
     parameters=(shrunk_uc[0],shrunk_uc[1],shrunk_uc[2],
         uc_params[3],uc_params[4],uc_params[5]))
   new_crystal_symmetry=crystal.symmetry(
-    unit_cell=new_unit_cell_box,space_group=crystal_symmetry.space_group())
+    unit_cell=new_unit_cell_box,space_group='p1')
   return new_map_data, new_crystal_symmetry
 
 def apply_shift_to_pdb_hierarchy(
