@@ -1447,7 +1447,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
     else:
       return(tmp_w,tmp_f)
 
-  def target_functor(self):
+  def target_functor(self, alpha_beta=None): #XXX fake
     return target_functor(manager=self)
 
   def target_f(self):
