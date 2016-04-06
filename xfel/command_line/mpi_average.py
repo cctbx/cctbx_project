@@ -232,7 +232,7 @@ the output images in the folder cxi49812.
       evt = run.event(mytimes[i])
       #print "Event #",rank*mylength+i," has id:",evt.get(EventId)
       if 'Rayonix' in command_line.options.address:
-        data = evt.get(Camera.FrameV1,src)
+        data = evt.get(psana.Camera.FrameV1,src)
         if data is None:
           print "No data"
           continue
@@ -242,6 +242,7 @@ the output images in the folder cxi49812.
       else:
         # get numpy array, 32x185x388
         data = psana_det.calib(evt) # applies psana's complex run-dependent calibrations
+        # data = psana_det.raw_data(evt) # uncorrected pixels XXX add flag to make uncorrected averages if desired
         if gain_mask is not None:
           data *= gain_mask
       if data is None:
