@@ -150,11 +150,12 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      return_value_policy<copy_const_reference> ccr;
       class_<w_t>("int")
         .def(init<w_t>())
         .def(init<int, optional<int> >())
-        .def("numerator", &w_t::numerator)
-        .def("denominator", &w_t::denominator)
+        .def("numerator", &w_t::numerator, ccr)
+        .def("denominator", &w_t::denominator, ccr)
         .def("__int__", as_int)
         .def("__float__", as_double)
         .def("as_tuple", as_tuple)
