@@ -34,6 +34,7 @@ phil_scope = parse("""
 """, process_includes=True)
 
 refine_defaults_scope = parse("""
+output.include_unused_reflections=False
 refinement {
   refinery.engine = SparseLevMar
   parameterisation {
@@ -54,7 +55,7 @@ refinement {
 """)
 
 refine_scope = parse("""
-  include scope dials.algorithms.refinement.refiner.phil_scope
+  include scope dials.command_line.refine.phil_scope
 """, process_includes=True)
 
 def run(args):
