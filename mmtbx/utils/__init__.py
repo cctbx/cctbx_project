@@ -2639,7 +2639,8 @@ class extract_box_around_model_and_map(object):
     adopt_init_args(self, locals())
     cs = xray_structure.crystal_symmetry()
     self.initial_shift = None
-    self.total_shift = None
+    self.initial_shift_cart = None
+    self.total_shift_cart = None
     ## Make sure map has origin at (0,0,0), that is zero_based. Otherwise shift
     ## origin.
     shift_needed = not \
@@ -2653,13 +2654,15 @@ class extract_box_around_model_and_map(object):
       N_ = self.map_data.all()
       O_ = self.map_data.origin()
       a,b,c = cs.unit_cell().parameters()[:3]
-      sx,sy,sz = a/N_[0]*O_[0], b/N_[1]*O_[1], c/N_[2]*O_[2]
-      self.initial_shift = [-sx,-sy,-sz]
+      sx,sy,sz = O_[0]/N_[0],O_[1]/N_[1], O_[2]/N_[2]
+      sx_cart,sy_cart,sz_cart = a*O_[0]/N_[0],b*O_[1]/N_[1],c*O_[2]/N_[2]
+      self.initial_shift  = [-sx,-sy,-sz]
+      self.initial_shift_cart = [-sx_cart,-sy_cart,-sz_cart]
       self.map_data=self.map_data.shift_origin()
       # shift model
       sites_cart = xray_structure.sites_cart()
       sites_cart_shifted = sites_cart+\
-          flex.vec3_double(sites_cart.size(), self.initial_shift)
+          flex.vec3_double(sites_cart.size(), self.initial_shift_cart)
       xray_structure.set_sites_cart(sites_cart = sites_cart_shifted)
     xray_structure_selected = xray_structure.select(selection=selection)
     cushion = flex.double(cs.unit_cell().fractionalize((box_cushion,)*3))
@@ -2686,14 +2689,15 @@ class extract_box_around_model_and_map(object):
     o = self.map_box.origin()
     self.secondary_shift = (-o[0]/all[0],-o[1]/all[1],-o[2]/all[2])
     a,b,c = cs.unit_cell().parameters()[:3]
-    ps=self.initial_shift
-    ss=self.secondary_shift
+    self.secondary_shift_cart = (-a*o[0]/all[0],-b*o[1]/all[1],-c*o[2]/all[2])
+    ps=self.initial_shift_cart
+    ss=self.secondary_shift_cart
     if ps is None:
-      self.total_shift=ss
+      self.total_shift_cart=ss
     elif ss is None:
-      self.total_shift=ps
+      self.total_shift_cart=ps
     else:
-      self.total_shift = (ps[0]+ss[0], ps[1]+ss[1], ps[2]+ss[2])
+      self.total_shift_cart = (ps[0]+ss[0], ps[1]+ss[1], ps[2]+ss[2])
     self.map_box.reshape(flex.grid(self.map_box.all()))
     # shrink unit cell to match the box
     p = cs.unit_cell().parameters()
@@ -2716,7 +2720,10 @@ class extract_box_around_model_and_map(object):
     # shift to map (boxed) sites back
     sc1 = xray_structure_selected.sites_cart()
     sc2 = self.xray_structure_box.sites_cart()
-    self.shift_to_map_boxed_sites_back = (sc1-sc2)[0]
+    if sc1.size()>0:
+      self.shift_to_map_boxed_sites_back = (sc1-sc2)[0]
+    else:
+      self.shift_to_map_boxed_sites_back = None
 
   def select_box(self,threshold,xrs=None):
     # Select box where data are positive (> threshold*max)

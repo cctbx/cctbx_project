@@ -850,11 +850,10 @@ def get_params(args,out=sys.stdout):
     args.append("output_file_name_prefix=%s" %(file_name_prefix))
     from mmtbx.command_line.map_box import run as run_map_box
     box=run_map_box(args,crystal_symmetry=crystal_symmetry,log=out)
-    (sx,sy,sz)=box.total_shift
-    origin_shift=(-sx,-sy,-sz)
+    origin_shift=box.total_shift_cart
     map_data=box.map_box.as_double()
     print >>out, "Moving origin to (0,0,0)"
-    print >>out,"Adding (%8.2f,%8.2f,%8.2f) to all coordinates\n"%(sx,sy,sz)
+    print >>out,"Adding (%8.2f,%8.2f,%8.2f) to all coordinates\n"%(-origin_shift[0],-origin_shift[1],-origin_shift[2])
 
   else:  # shift if necessary...
     shift_needed = not \

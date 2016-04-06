@@ -112,26 +112,26 @@ Parameters:"""%h
   else:
     output_prefix=map_or_map_coeffs_prefix
 
-  if pdb_hierarchy:
-    xray_structure = pdb_hierarchy.extract_xray_structure(
-      crystal_symmetry=inputs.crystal_symmetry)
-    xray_structure.show_summary(f=log)
-    #
-    print_statistics.make_sub_header("atom selection", out=log)
-    print >> log, "Selection string: selection='%s'"%params.selection
-    selection = pdb_hierarchy.atom_selection_cache().selection(
-      string = params.selection)
-    print >> log, "  selects %d atoms from total %d atoms."%(selection.count(True),
-      selection.size())
-    sites_cart_all = xray_structure.sites_cart()
-    sites_cart = sites_cart_all.select(selection)
-    selection = xray_structure.selection_within(
-      radius    = params.selection_radius,
-      selection = selection)
-  else:
-    xray_structure=None
-    selection=None
+  if not pdb_hierarchy: # get an empty hierarchy
+    from cctbx.array_family import flex
+    pdb_hierarchy=iotbx.pdb.input(
+      source_info='',lines=flex.split_lines('')).construct_hierarchy()
+  xray_structure = pdb_hierarchy.extract_xray_structure(
+    crystal_symmetry=inputs.crystal_symmetry)
+  xray_structure.show_summary(f=log)
   #
+  print_statistics.make_sub_header("atom selection", out=log)
+  print >> log, "Selection string: selection='%s'"%params.selection
+  selection = pdb_hierarchy.atom_selection_cache().selection(
+    string = params.selection)
+  print >> log, "  selects %d atoms from total %d atoms."%(selection.count(True),
+    selection.size())
+  sites_cart_all = xray_structure.sites_cart()
+  sites_cart = sites_cart_all.select(selection)
+  selection = xray_structure.selection_within(
+    radius    = params.selection_radius,
+    selection = selection)
+#
   if params.density_select:
     print_statistics.make_sub_header(
     "Extracting box around selected density and writing output files", out=log)
@@ -147,12 +147,12 @@ Parameters:"""%h
     density_select   = params.density_select,
     threshold        = params.density_select_threshold)
 
-  if box.initial_shift:
+  if box.initial_shift_cart:
     print >>log,"\nInitial coordinate shift will be (%.1f,%.1f,%.1f)\n" %(
-      -box.initial_shift[0],-box.initial_shift[1],-box.initial_shift[2])
-  if box.total_shift:
+     -box.initial_shift_cart[0],-box.initial_shift_cart[1],-box.initial_shift_cart[2])
+  if box.total_shift_cart:
     print >>log,"Final coordinate shift: (%.1f,%.1f,%.1f)" %(
-      -box.total_shift[0],-box.total_shift[1],-box.total_shift[2])
+      -box.total_shift_cart[0],-box.total_shift_cart[1],-box.total_shift_cart[2])
 
   print >>log,"Final cell dimensions: (%.1f,%.1f,%.1f)\n" %(
       box.box_crystal_symmetry.unit_cell().parameters()[:3])
@@ -205,11 +205,11 @@ Parameters:"""%h
     ncs_object.display_all(log=log)
     if not ncs_object or ncs_object.max_operators()<1:
       print >>log,"Skipping...no NCS available"
-    elif box.total_shift:
+    elif box.total_shift_cart:
       print >>log,"Shifting origin for NCS"
       from scitbx.math import  matrix
       ncs_object=ncs_object.coordinate_offset(
-       coordinate_offset=-1.0*matrix.col(box.total_shift))
+       coordinate_offset=-1.0*matrix.col(box.total_shift_cart))
       ncs_object.display_all(log=log)
     ncs_object.format_all_for_group_specification(
        file_name=output_ncs_file)
