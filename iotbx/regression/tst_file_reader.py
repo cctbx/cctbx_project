@@ -243,7 +243,9 @@ refinement {
   f.write(phil_data)
   f.close()
   phil = any_file("tmp1.phil")
-  assert phil.file_type == "phil"
+  # phil_data refers to mmtbx.utils. If mmtbx is not present reading the phil
+  # file as phil fails and any_file() opens it as the txt format.
+  assert phil.file_type == "phil", "Possibly due to missing mmtbx"
   params = phil.file_object.extract()
   assert params.refinement.main.number_of_macro_cycles == 3
   assert params.refinement.input.xray_data.r_free_flags.test_flag_value == None
