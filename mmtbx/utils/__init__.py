@@ -2596,7 +2596,7 @@ class shift_origin(object):
           O_ = (O[0]-inc2,O[1]-inc2,O[2]-inc2)
 
           sx,sy,sz = O_[0]/N_[0],O_[1]/N_[1], O_[2]/N_[2]
-          self.shift= cs.unit_cell().orthogonalize([sx,sy,sz])
+          self.shift= crystal_symmetry.unit_cell().orthogonalize([sx,sy,sz])
 
           sites_cart_shifted = sites_cart+\
             flex.vec3_double(sites_cart.size(), [-self.shift[0],-self.shift[1],-self.shift[2]])
