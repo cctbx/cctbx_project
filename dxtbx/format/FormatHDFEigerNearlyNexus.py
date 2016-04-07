@@ -92,7 +92,7 @@ class EigerNXmxFixer(object):
         handle['entry/instrument/detector'],
         "saturation_value",
         "int32",
-        handle['/entry/instrument/detector/detectorSpecific/countrate_correction'])
+        handle['/entry/instrument/detector/detectorSpecific/countrate_correction_count_cutoff'])
     except Exception:
       create_scalar(
         handle['entry/instrument/detector'],
