@@ -889,6 +889,32 @@ int main() {
       # https://gist.github.com/yamaya/2924292
       if env_etc.clang_version is None or ver(env_etc.clang_version)<=ver((7,0,2)):
         opts.append("-ffast-math")
+      else:
+        # Reading through gcc documentation and Clang source code,
+        # the -ffast-math can be broken into the finer flags below.
+        # Surprisingly enough, when doing so, the test failures in
+        # - scitbx/lbfgs/tst_lbfgs_fem.py
+        # - cctbx/maptbx/boost_python/tst_maptbx.py
+        # go away!!!!
+        # Note that the flags -ffast-math makes clang set a preprocessor macro
+        # __FAST_MATH__ instead of issueing the finer options. Perhaps the
+        # explanation lies therein.
+        #
+        opts.extend([
+          # Do not produce code to hande possible infinities in the computations
+          "-fno-honor-infinities",
+          # Do not produce code to hande +/- 0 in the computations
+          "-fno-signed-zeros",
+          # Do not produce code to hande possible NaN's in the computations
+          "-fno-honor-nans",
+          # Do not set errno in standard library math functions
+          # (this can be a big deal in multithreaded code)
+          "-fno-math-errno",
+          # Allow replacing a/b with a * (1/b) and a/sqrt(b) with a*sqrt(b)*1/b
+          "-freciprocal-math",
+          # Allow using associativity to re-order operations for speed
+          "-fassociative-math",
+        ])
       if (cxx == "c++" and env_etc.gcc_version
             and env_etc.gcc_version == 40000):
         opts[1] = "-O2" # Apple's optimizer is broken
