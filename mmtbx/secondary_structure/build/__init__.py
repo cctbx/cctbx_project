@@ -9,6 +9,8 @@ from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter as three_on
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx import secondary_structure
 from mmtbx.pdbtools import truncate_to_poly_gly
+from mmtbx.command_line.geometry_minimization import \
+  get_geometry_restraints_manager
 
 alpha_helix_str = """
 ATOM      1  N   GLY A   1      -5.606  -2.251 -12.878  1.00  0.00           N
@@ -502,42 +504,48 @@ def substitute_ss(real_h,
   from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
   params_line = grand_master_phil_str
   params_line += "secondary_structure {%s}" % secondary_structure.sec_str_master_phil_str
-  params = iotbx.phil.parse(input_string=params_line, process_includes=True)
+  # print "params_line"
+  # print params_line
+  params = iotbx.phil.parse(input_string=params_line, process_includes=True)#.extract()
+  # This does not the same way for a strange reason. Need to investigate.
+  # The number of resulting hbonds is different later.
+  # w_params = params.extract()
+  # w_params.pdb_interpretation.secondary_structure.protein.remove_outliers = False
+  # w_params.pdb_interpretation.peptide_link.ramachandran_restraints = True
+  # w_params.pdb_interpretation.c_beta_restraints = True
+  # w_params.pdb_interpretation.secondary_structure.enabled = True
+  # params.format(python_object=w_params)
+  # params.show()
+  # print "="*80
+  # print "="*80
+  # print "="*80
   custom_pars = params.fetch(source = iotbx.phil.parse("\n".join([
       "pdb_interpretation.secondary_structure {protein.remove_outliers = False\n%s}" \
           % phil_str,
       "pdb_interpretation.peptide_link.ramachandran_restraints = True",
       "c_beta_restraints = True",
       "pdb_interpretation.secondary_structure.enabled=True"]))).extract()
+  # params.format(python_object=custom_pars)
+  # params.show()
+  # STOP()
+  params = custom_pars
+  # params = w_params
+
 
   import mmtbx.utils
   processed_pdb_files_srv = mmtbx.utils.\
       process_pdb_file_srv(
           crystal_symmetry= xray_structure.crystal_symmetry(),
-          pdb_interpretation_params = custom_pars.pdb_interpretation,
+          pdb_interpretation_params = params.pdb_interpretation,
           log=null_out(),
           cif_objects=cif_objects)
   if verbose:
     print >> log, "Processing file..."
   processed_pdb_file, junk = processed_pdb_files_srv.\
       process_pdb_files(raw_records=flex.split_lines(real_h.as_pdb_string()))
-  has_hd = None
-  if(xray_structure is not None):
-    sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()
-    has_hd = "H" in sctr_keys or "D" in sctr_keys
-  if verbose:
-    print >> log, "Getting geometry_restraints_manager..."
-  geometry = processed_pdb_file.geometry_restraints_manager(
-    show_energies                = False,
-    params_edits                 = custom_pars.geometry_restraints.edits,
-    plain_pairs_radius           = 5,
-    assume_hydrogens_all_missing = not has_hd)
-  restraints_manager = mmtbx.restraints.manager(
-    geometry      = geometry,
-    normalization = True)
-  if(xray_structure is not None):
-    restraints_manager.crystal_symmetry = xray_structure.crystal_symmetry()
-  grm = restraints_manager
+
+  grm = get_geometry_restraints_manager(
+    processed_pdb_file, xray_structure)
 
   real_h.reset_i_seq_if_necessary()
   if verbose:
@@ -589,6 +597,7 @@ def substitute_ss(real_h,
   #     site_labels=[atom.id_str() for atom in real_h.atoms()],
   #     f=f)
   # f.close()
+  # STOP()
   refinement_log = null_out()
   log.write(
       "Refining geometry of substituted secondary structure elements...")
@@ -611,7 +620,7 @@ def substitute_ss(real_h,
       log                      = refinement_log)
   log.write(" Done\n")
 
-  #print_hbond_proxies(grm.geometry,real_h)
+  # print_hbond_proxies(grm.geometry,real_h)
   return grm.geometry.get_chi_torsion_proxies()
 
 

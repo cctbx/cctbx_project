@@ -9,6 +9,7 @@ from scitbx.array_family import flex
 from iotbx.pdb import write_whole_pdb_file
 import iotbx.phil
 from libtbx.utils import Sorry
+from mmtbx.building.loop_idealization import loop_idealization
 
 master_params_str = """
 file_name = None
@@ -18,6 +19,7 @@ file_name = None
   .style = file_type:pdb bold input_file
 include scope mmtbx.secondary_structure.build.model_idealization_master_phil_str
 include scope mmtbx.secondary_structure.sec_str_master_phil_str
+include scope mmtbx.building.loop_idealization.loop_idealization_master_phil_str
 """
 
 def master_params():
@@ -82,10 +84,19 @@ def run(args):
       )
   # Write resulting pdb file.
   write_whole_pdb_file(
-      file_name="%s_idealized.pdb" % os.path.basename(pdb_file_names[0]),
+      file_name="%s_ss_substituted.pdb" % os.path.basename(pdb_file_names[0]),
       pdb_hierarchy=pdb_h,
       crystal_symmetry=pdb_input.crystal_symmetry(),
       ss_annotation=ann)
+
+  loop_ideal = loop_idealization(pdb_h, work_params.loop_idealization, log)
+
+  write_whole_pdb_file(
+    file_name="%s_ss_all_idealized.pdb" % os.path.basename(pdb_file_names[0]),
+    pdb_hierarchy=loop_ideal.resulting_pdb_h,
+    crystal_symmetry=pdb_input.crystal_symmetry(),
+    ss_annotation=ann)
+
   print >> log, "All done."
 if __name__ == "__main__":
   run(sys.argv[1:])

@@ -55,8 +55,8 @@ HELIX    2   2 ARG A   23  GLN A   44  1                                  22
   for l in ["Replacing ss-elements with ideal ones:\n"]:
     assert l in log_lines, "'%s' not in log file." % l
   res_log.close()
-  assert os.path.isfile("%s_start.pdb_idealized.pdb" % prefix)
-  res_pdb = open("%s_start.pdb_idealized.pdb" % prefix, "r")
+  assert os.path.isfile("%s_start.pdb_ss_substituted.pdb" % prefix)
+  res_pdb = open("%s_start.pdb_ss_substituted.pdb" % prefix, "r")
   res_pdb_lines = res_pdb.readlines()
   res_pdb.close()
   for l in [

@@ -306,3 +306,89 @@ class run2(object):
       sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
       compute_gradients = False)
     es.show(prefix="    ", f=self.log)
+
+
+def minimize_wrapper_for_ramachandran(
+    hierarchy,
+    xrs,
+    original_pdb_h,
+    excl_string_selection,
+    log=None,
+    run_first_minimization_without_reference=False,
+    oldfield_weight_scale=3,
+    oldfield_plot_cutoff=0.03,
+    nonbonded_weight=500,
+    reference_sigma=0.7):
+  """ Wrapper around geometry minimization specifically tuned for eliminating
+  Ramachandran outliers.
+  """
+  from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
+  from mmtbx.geometry_restraints import reference
+  from mmtbx.command_line.geometry_minimization import \
+      get_geometry_restraints_manager
+  from libtbx.utils import null_out
+  from scitbx.array_family import flex
+  if log is None:
+    log = null_out()
+  params_line = grand_master_phil_str
+  params = iotbx.phil.parse(
+      input_string=params_line, process_includes=True).extract()
+  params.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+  params.pdb_interpretation.peptide_link.ramachandran_restraints = True
+  params.pdb_interpretation.peptide_link.oldfield.weight_scale=oldfield_weight_scale
+  params.pdb_interpretation.peptide_link.oldfield.plot_cutoff=oldfield_plot_cutoff
+  params.pdb_interpretation.nonbonded_weight = nonbonded_weight
+  params.pdb_interpretation.c_beta_restraints=True
+
+  processed_pdb_files_srv = mmtbx.utils.\
+      process_pdb_file_srv(
+          crystal_symmetry= xrs.crystal_symmetry(),
+          pdb_interpretation_params = params.pdb_interpretation,
+          stop_for_unknowns         = False,
+          log=log,
+          cif_objects=None)
+  processed_pdb_file, junk = processed_pdb_files_srv.\
+      process_pdb_files(raw_records=flex.split_lines(hierarchy.as_pdb_string()))
+  grm = get_geometry_restraints_manager(
+      processed_pdb_file, xrs)
+
+  if run_first_minimization_without_reference:
+    obj = run2(
+      restraints_manager=grm,
+      pdb_hierarchy=hierarchy,
+      correct_special_position_tolerance=1.0,
+      max_number_of_iterations=300,
+      number_of_macro_cycles=5,
+      bond=True,
+      nonbonded=True,
+      angle=True,
+      dihedral=True,
+      chirality=True,
+      planarity=True,
+      fix_rotamer_outliers=True,
+      log=log)
+
+  asc = original_pdb_h.atom_selection_cache()
+  sel = asc.selection(excl_string_selection)
+
+
+  grm.geometry.append_reference_coordinate_restraints_in_place(
+      reference.add_coordinate_restraints(
+          sites_cart = original_pdb_h.atoms().extract_xyz().select(sel),
+          selection  = sel,
+          sigma      = reference_sigma,
+          top_out_potential=True))
+  obj = run2(
+      restraints_manager       = grm,
+      pdb_hierarchy            = hierarchy,
+      correct_special_position_tolerance = 1.0,
+      max_number_of_iterations = 300,
+      number_of_macro_cycles   = 5,
+      bond                     = True,
+      nonbonded                = True,
+      angle                    = True,
+      dihedral                 = True,
+      chirality                = True,
+      planarity                = True,
+      fix_rotamer_outliers     = True,
+      log                      = log)

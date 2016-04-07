@@ -1694,6 +1694,7 @@ mmtbx/building/loop_closure/ccd.py -text
 mmtbx/building/loop_closure/custom_gm.py -text
 mmtbx/building/loop_closure/starting_conformations.py -text
 mmtbx/building/loop_closure/utils.py -text
+mmtbx/building/loop_idealization.py -text
 mmtbx/building/make_library.py -text
 mmtbx/building/merge_models.py -text
 mmtbx/building/minimize_chain.py -text
