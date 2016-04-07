@@ -150,8 +150,9 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-// The actual version is probably lower than that, but > 105600
-#define BOOST_ADAPTBX_RATIONAL_EXT_BOOST_VERSION_API_CHANGE 106000
+// From this version onward, numerator() and denominator() are constexpr
+// and this requires adjustments to Boost Python binding.
+#define BOOST_ADAPTBX_RATIONAL_EXT_BOOST_VERSION_API_CHANGE 105800
 #if BOOST_VERSION >= BOOST_ADAPTBX_RATIONAL_EXT_BOOST_VERSION_API_CHANGE
       return_value_policy<copy_const_reference> ccr;
 #endif
