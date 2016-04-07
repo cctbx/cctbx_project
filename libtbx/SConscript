@@ -11,6 +11,16 @@ op = os.path
 if (hasattr(Environment, "Clone")):
   Environment.Copy = Environment.Clone # XXX backward compatibility 2008_03_30
 
+def ver(tuple3):
+  if tuple3 is None:
+    return 0
+  if type(tuple3) is not tuple:
+    return tuple3
+  t = tuple3[0]*100*100 + tuple3[1]*100
+  if( len(tuple3)>2 ):
+    t = t + tuple3[2]
+  return t
+
 def SCons_Action_FunctionAction_get_contents(self, target, source, env,
                                                    dict=None):
   import cPickle, string
@@ -868,14 +878,17 @@ int main() {
       env_etc.cxxflags_base.append("-fcoalesce-templates")
     env_etc.cxxflags_base.append("-DBOOST_ALL_NO_LIB")
     if (libtbx.env.build_options.optimization):
-      # XCode 7.3 compiler update results in some floating point exceptions with
-      # -ffast-math option enabled
-      # http://phenix-online.org/pipermail/cctbxbb/2016-April/001284.html
       opts = [
         "-DNDEBUG",
         "-O3",
-        "-ffast-math"
       ]
+      # XCode 7.3 compiler update results in some test failures with -ffast-math option
+      # enabled, therefore disable option for clang_version > 7.0.2
+      # (XCode 7.3 distributes clang_version 7.3.0)
+      # http://phenix-online.org/pipermail/cctbxbb/2016-April/001284.html
+      # https://gist.github.com/yamaya/2924292
+      if env_etc.clang_version is None or ver(env_etc.clang_version)<=ver((7,0,2)):
+        opts.append("-ffast-math")
       if (cxx == "c++" and env_etc.gcc_version
             and env_etc.gcc_version == 40000):
         opts[1] = "-O2" # Apple's optimizer is broken
@@ -952,15 +965,6 @@ if( libtbx.env.build_options.use_environment_flags ):
 # C++11 flags for any compiler
 # XXX feautre duplication, see determine_cpp0x_flag
 if libtbx.env.build_options.enable_cxx11:
-  def ver(tuple3):
-    if tuple3 is None:
-      return 0
-    if type(tuple3) is not tuple:
-      return tuple3
-    t = tuple3[0]*100*100 + tuple3[1]*100
-    if( len(tuple3)>2 ):
-      t = t + tuple3[2]
-    return t
   if env_etc.compiler=='darwin_c++' and ver(env_etc.clang_version)>=ver((4,1)):
     # version numbers are inconsisternt between Apple clang and original clang
     cxx11_flags = ["-std=c++11", "-stdlib=libc++"]
