@@ -43,6 +43,9 @@ namespace cctbx { namespace xray {
       // Ideally this would be guarded by #ifdef's asserting this is
       // compiled by Xcode 7.3 but this code is not critical enough to
       // warrant sweating over that, I reckon.
+      // Note that the fix to libtbx/SConscript introduced in commit
+      // "Break -ffast-math in finer flags on OS X" does not solve the
+      // problem here.
       volatile FloatType f_sq_ = f_sq;
       if (f_sq_ > 0) f = std::sqrt(f_sq_);
       else f = 0;
