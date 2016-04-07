@@ -5,7 +5,7 @@
 
 */
 #ifndef CHILTBX_STRING_HPP
-#define CHILTBX_ZA_STRING_HPP
+#define CHILTBX_STRING_HPP
 
 #include<string>
 
