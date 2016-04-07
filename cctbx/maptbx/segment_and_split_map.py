@@ -863,15 +863,17 @@ def get_params(args,out=sys.stdout):
     a,b,c = crystal_symmetry.unit_cell().parameters()[:3]
     N_ = map_data.all()
     O_ =map_data.origin()
-    sx,sy,sz = (a/N_[0])*O_[0], (b/N_[1])*O_[1], (c/N_[2])*O_[2]
-    print >>out,"Origin for map is at (%8.2f,%8.2f,%8.2f)" % (-sx,-sy,-sz)
+    sx,sy,sz= O_[0]/N_[0], O_[1]/N_[1], O_[2]/N_[2]
+    sx_cart,sy_cart,sz_cart=crystal_symmetry.unit_cell().orthogonalize([sx,sy,sz])
+
+    print >>out,"Origin for map is at (%8.2f,%8.2f,%8.2f)" % (-sx_cart,-sy_cart,-sz_cart)
     print >>out,"Cell dimensions of this map are: (%8.2f,%8.2f,%8.2f)" % (a,b,c)
     if shift_needed:
       if(not crystal_symmetry.space_group().type().number() in [0,1]):
           raise RuntimeError("Not implemented")
-      origin_shift=[-sx,-sy,-sz]
+      origin_shift=[-sx_cart,-sy_cart,-sz_cart]
       print >>out, "Moving origin to (0,0,0)"
-      print >>out,"Adding (%8.2f,%8.2f,%8.2f) to all coordinates\n"%(sx,sy,sz)
+      print >>out,"Adding (%8.2f,%8.2f,%8.2f) to all coordinates\n"%(sx_cart,sy_cart,sz_cart)
 
       map_data=map_data.shift_origin()
     else:

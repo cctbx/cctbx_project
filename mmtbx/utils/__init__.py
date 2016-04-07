@@ -2594,10 +2594,12 @@ class shift_origin(object):
         for inc2 in [0]:#[-2,-1,0,1,2]:
           N_ = (N[0]-inc1,N[1]-inc1,N[2]-inc1)
           O_ = (O[0]-inc2,O[1]-inc2,O[2]-inc2)
-          sx,sy,sz = a/N_[0]*O_[0], b/N_[1]*O_[1], c/N_[2]*O_[2]
-          self.shift = sx,sy,sz
+
+          sx,sy,sz = O_[0]/N_[0],O_[1]/N_[1], O_[2]/N_[2]
+          self.shift= cs.unit_cell().orthogonalize([sx,sy,sz])
+
           sites_cart_shifted = sites_cart+\
-            flex.vec3_double(sites_cart.size(), [-sx,-sy,-sz])
+            flex.vec3_double(sites_cart.size(), [-self.shift[0],-self.shift[1],-self.shift[2]])
           sites_frac_shifted = fm*sites_cart_shifted
           t = maptbx.map_sum_at_sites_frac(map_data=self.map_data,
             sites_frac=sites_frac_shifted)
@@ -2653,9 +2655,7 @@ class extract_box_around_model_and_map(object):
       # shifting map only
       N_ = self.map_data.all()
       O_ = self.map_data.origin()
-      a,b,c = cs.unit_cell().parameters()[:3]
       sx,sy,sz = O_[0]/N_[0],O_[1]/N_[1], O_[2]/N_[2]
-      sx_cart,sy_cart,sz_cart = a*O_[0]/N_[0],b*O_[1]/N_[1],c*O_[2]/N_[2]
       self.initial_shift  = [-sx,-sy,-sz]
       self.initial_shift_cart = cs.unit_cell().orthogonalize(self.initial_shift)
       self.map_data=self.map_data.shift_origin()
