@@ -4098,9 +4098,15 @@ class build_all_chain_proxies(linking_mixins):
     sel_attrs = ["atom_selection"]
     print >> log, "  Custom planarities:"
     for planarity in params.planarity:
-      if (planarity.sigma is None) or (planarity.sigma <= 0) :
-        raise Sorry("Custom planarity sigma is undefined or zero/negative - "+
-          "this must be a positive decimal number.")
+      def show_atom_selections():
+        print >> log, "      %s = %s" % (
+            "atom_selection", planarity.atom_selection)
+      if (planarity.sigma is None) or (planarity.sigma <= 0):
+        print >> log, "    Warning: Ignoring planarity with with sigma <= 0:"
+        print >> log, show_atom_selections()
+        continue
+        # raise Sorry("Custom planarity sigma is undefined or zero/negative - "+
+        #   "this must be a positive decimal number.")
       i_seqs = self.phil_atom_selections_as_i_seqs_multiple(
         cache=sel_cache, scope_extract=planarity, sel_attrs=sel_attrs)
       weights = []
@@ -4126,6 +4132,10 @@ class build_all_chain_proxies(linking_mixins):
       return result
     print >> log, "  Custom parallelities:"
     for parallelity in params.parallelity:
+      if (parallelity.atom_selection_1 is None or
+          parallelity.atom_selection_2 is None):
+        print >> log, "Warning: Ignoring parallelity with empty atom selection."
+        continue
       if (parallelity.sigma is None) or (parallelity.sigma <= 0) :
         raise Sorry("Custom parallelity sigma is undefined or zero/negative - "+
           "this must be a positive decimal number.")
