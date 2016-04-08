@@ -150,11 +150,22 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+// From this version onward, numerator() and denominator() are constexpr
+// and this requires adjustments to Boost Python binding.
+#define BOOST_ADAPTBX_RATIONAL_EXT_BOOST_VERSION_API_CHANGE 105800
+#if BOOST_VERSION >= BOOST_ADAPTBX_RATIONAL_EXT_BOOST_VERSION_API_CHANGE
+      return_value_policy<copy_const_reference> ccr;
+#endif
       class_<w_t>("int")
         .def(init<w_t>())
         .def(init<int, optional<int> >())
+#if BOOST_VERSION >= BOOST_ADAPTBX_RATIONAL_EXT_BOOST_VERSION_API_CHANGE
+        .def("numerator", &w_t::numerator, ccr)
+        .def("denominator", &w_t::denominator, ccr)
+#else
         .def("numerator", &w_t::numerator)
         .def("denominator", &w_t::denominator)
+#endif
         .def("__int__", as_int)
         .def("__float__", as_double)
         .def("as_tuple", as_tuple)
