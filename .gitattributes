@@ -3671,6 +3671,7 @@ xfel/command_line/cxi_view.py -text
 xfel/command_line/cxi_xtc_process.py -text
 xfel/command_line/experiment_json_to_cbf_def.py -text
 xfel/command_line/experiment_manager.py -text
+xfel/command_line/filter_experiments_by_rmsd.py -text
 xfel/command_line/find_highres_shots.py -text
 xfel/command_line/frame_extractor.py -text
 xfel/command_line/frame_unpickler.py -text
