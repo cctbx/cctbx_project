@@ -34,19 +34,25 @@ loop_idealization
   save_states = False
     .type = bool
     .help = Save states of CCD. Generates a states file for every model.
-
-
-
+  number_of_ccd_trials = 5
+    .type = int
+    .help = How many times we are trying to fix outliers in the same chain
 }
 """
 
 master_phil = iotbx.phil.parse(loop_idealization_master_phil_str)
 
 class loop_idealization():
-  def __init__(self, pdb_hierarchy, params=None, log=null_out(), verbose=True):
+  def __init__(self,
+               pdb_hierarchy,
+               params=None,
+               secondary_structure_annotation=None,
+               log=null_out(),
+               verbose=True):
     if len(pdb_hierarchy.models()) > 1:
       raise Sorry("Multi-model files are not supported")
     self.original_pdb_h = pdb_hierarchy
+    self.secondary_structure_annotation=secondary_structure_annotation
     xrs = pdb_hierarchy.extract_xray_structure()
     asc = pdb_hierarchy.atom_selection_cache()
     self.resulting_pdb_h = pdb_hierarchy.deep_copy()
@@ -71,7 +77,7 @@ class loop_idealization():
     # print "logic expr outcome:", (number_of_ccd_trials < 10 and self.berkeley_p_before_minimization_rama_outliers > 0.001)
     # print number_of_ccd_trials < 10
     # print self.berkeley_p_before_minimization_rama_outliers > 0.001
-    while (number_of_ccd_trials < 5
+    while (number_of_ccd_trials < self.params.number_of_ccd_trials
         and self.berkeley_p_before_minimization_rama_outliers > 0.001):
       print "CCD try number, outliers:", number_of_ccd_trials, self.berkeley_p_before_minimization_rama_outliers
       number_of_ccd_trials += 1
@@ -119,7 +125,13 @@ class loop_idealization():
     if self.params.minimize_whole:
       print >> self.log, "minimizing whole thing..."
       print >> self.log, "self.ref_exclusion_selection", self.ref_exclusion_selection
-      minimize_wrapper_for_ramachandran(self.resulting_pdb_h, xrs, self.original_pdb_h, self.ref_exclusion_selection, log=None)
+      minimize_wrapper_for_ramachandran(
+          hierarchy=self.resulting_pdb_h,
+          xrs=xrs,
+          original_pdb_h=self.original_pdb_h,
+          excl_string_selection=self.ref_exclusion_selection,
+          log=None,
+          ss_annotation=self.secondary_structure_annotation)
       # self.resulting_pdb_h.write_pdb_file(file_name="%s_all_minized.pdb" % self.params.output_prefix)
       ram = ramalyze.ramalyze(pdb_hierarchy=self.resulting_pdb_h)
       self.p_after_minimiaztion_rama_outliers = ram.out_percent
@@ -290,7 +302,12 @@ class loop_idealization():
             print >> self.log, "minimizing..."
             moved_with_side_chains_h.write_pdb_file(
                 file_name="%s_result_before_min_%d.pdb" % (prefix, i))
-            minimize_wrapper_for_ramachandran(moved_with_side_chains_h, xrs, original_pdb_h, self.log)
+            minimize_wrapper_for_ramachandran(
+                hierarchy=moved_with_side_chains_h,
+                xrs=xrs,
+                original_pdb_h=original_pdb_h,
+                log=self.log,
+                ss_annotation=self.secondary_structure_annotation)
           moved_with_side_chains_h.write_pdb_file(
               file_name="%s_result_minimized_%d.pdb" % (prefix, i))
           final_rmsd = get_main_chain_rmsd_range(moved_with_side_chains_h,
@@ -326,7 +343,12 @@ class loop_idealization():
           print >> self.log, "minimizing..."
           all_results[i][0].write_pdb_file(
               file_name="%s_result_before_min_%d.pdb" % (prefix, i))
-          minimize_wrapper_for_ramachandran(all_results[i][0], xrs, original_pdb_h, self.log)
+          minimize_wrapper_for_ramachandran(
+              hierarchy=all_results[i][0],
+              xrs=xrs,
+              original_pdb_h=original_pdb_h,
+              log=self.log,
+              ss_annotation=self.secondary_structure_annotation)
         all_results[i][0].write_pdb_file(
             file_name="%s_result_minimized_%d.pdb" % (prefix, i))
         final_rmsd = get_main_chain_rmsd_range(all_results[i][0],
@@ -470,4 +492,3 @@ def get_main_chain_rmsd_range(
           m_atom.parent().parent().resseq in placing_range):
         rmsd += m_atom.distance(ref_atom)**2
   return rmsd**0.5
-

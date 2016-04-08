@@ -621,6 +621,9 @@ class manager(object):
           pdb_hierarchy=pdb_hierarchy,
           log=log)
 
+  #=================================================================
+  # DEN manager/proxies methods
+  #=================================================================
   def adopt_den_manager(self, den_manager):
     self.den_manager = den_manager
 
@@ -647,6 +650,9 @@ class manager(object):
     self.parallelity_proxies = self.parallelity_proxies.proxy_remove(
       selection=selection)
 
+  #=================================================================
+  # Ramachandran manager/proxies methods
+  #=================================================================
   def set_ramachandran_restraints(self, manager):
     self.ramachandran_manager=manager
 
@@ -661,6 +667,27 @@ class manager(object):
     if self.ramachandran_manager is not None:
       return self.ramachandran_manager.get_n_proixes()
     return 0
+
+  #=================================================================
+  # Secondary structure manager/proxies methods
+  #=================================================================
+  def set_secondary_structure_restraints(self, ss_manager, hierarchy, log):
+    (hb_proxies, hb_angle_proxies, planarity_proxies,
+    parallelity_proxies) = ss_manager.create_all_new_restraints(
+        pdb_hierarchy=hierarchy,
+        grm=self,
+        log=log)
+    # print >> self.log, "  Time for creating SS restraints: %.2f" % (t2-t1)
+    # print >> self.log, "  Adding SS restraints..."
+    self.add_new_hbond_restraints_in_place(
+        proxies=hb_proxies,
+        sites_cart=hierarchy.atoms().extract_xyz())
+    self.add_angles_in_place(hb_angle_proxies)
+    self.add_planarities_in_place(planarity_proxies)
+    self.add_parallelities_in_place(parallelity_proxies)
+
+  def remove_secondary_structure_restraints(self):
+    pass
 
   def set_external_energy_function (self, energy_function) :
     self.external_energy_function = energy_function

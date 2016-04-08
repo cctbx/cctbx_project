@@ -36,6 +36,7 @@ Usage examples:
 """
   print >> log, msg
   print >> log, "-"*79
+  print >> log, master_params().show()
 
 def run(args):
   log = sys.stdout
@@ -72,16 +73,18 @@ def run(args):
   if ann.get_n_helices() + ann.get_n_sheets() == 0:
     ann = pdb_input.extract_secondary_structure()
   if ann is None or ann.get_n_helices() + ann.get_n_sheets() == 0:
-    raise Sorry("No secondary structure annotations found.")
-  ssb.substitute_ss(
-      real_h=pdb_h,
-      xray_structure=pdb_input.xray_structure_simple(),
-      ss_annotation=ann,
-      params=work_params.model_idealization,
-      cif_objects=inputs.cif_objects,
-      verbose=True,
-      log=log,
-      )
+    print >> log, "No secondary structure annotations found."
+    print >> log, "Secondary structure substitution step will be skipped"
+  else:
+    ssb.substitute_ss(
+        real_h=pdb_h,
+        xray_structure=pdb_input.xray_structure_simple(),
+        ss_annotation=ann,
+        params=work_params.model_idealization,
+        cif_objects=inputs.cif_objects,
+        verbose=True,
+        log=log,
+        )
   # Write resulting pdb file.
   write_whole_pdb_file(
       file_name="%s_ss_substituted.pdb" % os.path.basename(pdb_file_names[0]),
@@ -89,7 +92,12 @@ def run(args):
       crystal_symmetry=pdb_input.crystal_symmetry(),
       ss_annotation=ann)
 
-  loop_ideal = loop_idealization(pdb_h, work_params.loop_idealization, log)
+  loop_ideal = loop_idealization(
+      pdb_hierarchy=pdb_h,
+      params=work_params.loop_idealization,
+      secondary_structure_annotation=ann,
+      log=log,
+      verbose=True)
 
   write_whole_pdb_file(
     file_name="%s_ss_all_idealized.pdb" % os.path.basename(pdb_file_names[0]),

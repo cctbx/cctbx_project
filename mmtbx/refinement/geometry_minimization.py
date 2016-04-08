@@ -314,6 +314,7 @@ def minimize_wrapper_for_ramachandran(
     original_pdb_h,
     excl_string_selection,
     log=None,
+    ss_annotation = None,
     run_first_minimization_without_reference=False,
     oldfield_weight_scale=3,
     oldfield_plot_cutoff=0.03,
@@ -351,6 +352,22 @@ def minimize_wrapper_for_ramachandran(
       process_pdb_files(raw_records=flex.split_lines(hierarchy.as_pdb_string()))
   grm = get_geometry_restraints_manager(
       processed_pdb_file, xrs)
+
+  # dealing with SS
+  if ss_annotation is not None:
+    from mmtbx.secondary_structure import manager
+    ss_manager = manager(
+        pdb_hierarchy=hierarchy,
+        geometry_restraints_manager=grm,
+        sec_str_from_pdb_file=ss_annotation,
+        params=None,
+        mon_lib_srv=None,
+        verbose=-1,
+        log=log)
+    grm.geometry.set_secondary_structure_restraints(
+        ss_manager=ss_manager,
+        hierarchy=hierarchy,
+        log=log)
 
   if run_first_minimization_without_reference:
     obj = run2(

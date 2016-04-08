@@ -5153,45 +5153,15 @@ class process(object):
         t1=time.time()
         print >> self.log, "    Time for finding SS restraints: %.2f" % (t1-t0)
         print >> self.log, "  Creating SS restraints..."
-        (hb_proxies, hb_angle_proxies, planarity_proxies,
-        parallelity_proxies) = self.ss_manager.create_all_new_restraints(
-            pdb_hierarchy=self.all_chain_proxies.pdb_hierarchy,
-            grm=self._geometry_restraints_manager,
+
+        self._geometry_restraints_manager.set_secondary_structure_restraints(
+            ss_manager=self.ss_manager,
+            hierarchy=self.all_chain_proxies.pdb_hierarchy,
             log=self.log)
-        pdb_h_atoms = self.all_chain_proxies.pdb_hierarchy.atoms()
 
-        # for p in hb_proxies:
-        #   print "H-bond:",p.i_seqs, pdb_h_atoms[p.i_seqs[0]].id_str(),pdb_h_atoms[p.i_seqs[1]].id_str(), p.origin_id
-        # max_hb_dist = 0
-        # for p in hb_proxies:
-        #   d = pdb_h_atoms[p.i_seqs[0]].distance(pdb_h_atoms[p.i_seqs[1]])
-        #   if d > 4.5:
-        #     print "H-bond:",p.i_seqs, pdb_h_atoms[p.i_seqs[0]].id_str(),pdb_h_atoms[p.i_seqs[1]].id_str()
-        #   if d > max_hb_dist:
-        #     max_hb_dist = d
-
-        t2=time.time()
-        print >> self.log, "  Time for creating SS restraints: %.2f" % (t2-t1)
-        print >> self.log, "  Adding SS restraints..."
-        self._geometry_restraints_manager.add_new_hbond_restraints_in_place(
-            proxies=hb_proxies,
-            sites_cart=self.all_chain_proxies.sites_cart)
-        t21 = time.time()
-        self._geometry_restraints_manager.add_angles_in_place(hb_angle_proxies)
-        t22 = time.time()
-        self._geometry_restraints_manager.add_planarities_in_place(
-            planarity_proxies)
-        t23 = time.time()
-        self._geometry_restraints_manager.add_parallelities_in_place(
-            parallelity_proxies)
         t3=time.time()
-        print >> self.log, "  Total time for adding SS restraints: %.2f" % (t3-t2)
+        print >> self.log, "  Total time for adding SS restraints: %.2f" % (t3-t1)
         print >> self.log
-        # print >> self.log, "    Bonds : %f" % (t21-t2)
-        # print >> self.log, "    Angles: %f" % (t22-t21)
-        # print >> self.log, "    Planes: %f" % (t23-t22)
-        # print >> self.log, "    Parall: %f" % (t3-t23)
-        # print >> self.log, "Done with SS restraints..."
       if (self.log is not None):
         print >> self.log, \
           "  Time building geometry restraints manager: %.2f seconds" % (
