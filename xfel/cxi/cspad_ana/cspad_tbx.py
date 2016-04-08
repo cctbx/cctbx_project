@@ -30,11 +30,13 @@ __version__ = "$Revision$"
 # around 90000. See xpp experiment xppe0314, run 184 as evidence.
 cspad_saturated_value = 90000
 
-# The dark average for the CSPAD detectors is around 1100-1500. In the
-# worst case, where a pixel goes dead in the middle of the run (I.E. after its
-# pedastal has been collected), the minimum a pixel could be is -1500 ADU.
-# We've included 500 ADUs as wiggle room.
-cspad_min_trusted_value = -2000
+# The dark average for the CSPAD detector is around 1100-1500. A pixel
+# histogram of a minimum projection of an uncorrected (raw) light run shows
+# a mostly flat tail up to ~800 ADU with a few bumps in the tail which
+# represent true underloads. Assume a dark average of 1200 ADU. After dark
+# subtraction, 800 - 1200 gives a minimum trusted value of -400. Reject
+# pixels less than this.
+cspad_min_trusted_value = -400
 
 # As long as the mask value is outside of the trusted range, the pixel should
 # be ignored by any downstream software.
