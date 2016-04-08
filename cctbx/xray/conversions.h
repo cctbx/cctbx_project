@@ -38,7 +38,16 @@ namespace cctbx { namespace xray {
     void
     init_f(FloatType f_sq)
     {
-      if (f_sq > 0) f = std::sqrt(f_sq);
+      // This classic volatile trick works around a bug in Xcode 7.3
+      // which eventually results in a crash in xray/boost/tst_xay.py
+      // Ideally this would be guarded by #ifdef's asserting this is
+      // compiled by Xcode 7.3 but this code is not critical enough to
+      // warrant sweating over that, I reckon.
+      // Note that the fix to libtbx/SConscript introduced in commit
+      // "Break -ffast-math in finer flags on OS X" does not solve the
+      // problem here.
+      FloatType f_sq_ = f_sq;
+      if (f_sq_ > 0) f = std::sqrt(f_sq_);
       else f = 0;
     }
 
