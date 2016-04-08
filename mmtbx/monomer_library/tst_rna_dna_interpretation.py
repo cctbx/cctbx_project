@@ -57,7 +57,10 @@ def run(args, residue_type, expected_results):
         print " ", str(result)+","
         print " ", str(expected_results[key])+","
       if (expected_results is not None):
-        assert result == expected_results[key]
+        assert result == expected_results[key], "%s not %s" % (
+          result,
+          expected_results[key],
+          )
   print "OK"
 
 expected_results = {

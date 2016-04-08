@@ -437,6 +437,8 @@ expected_results = {
   ['MSE%NH2NOTPRO', 19, [], 'peptide', None, None],
 "mse_nterm_all_h_1euw_v3":
   ['MSE%NH3', 19, [], 'peptide', True, None],
+"ile_cterm_all_h_4ek4_moe" :
+  ['ILE%CF-COH', 20, [], 'peptide', None, None],
 }
 
 if (__name__ == "__main__"):

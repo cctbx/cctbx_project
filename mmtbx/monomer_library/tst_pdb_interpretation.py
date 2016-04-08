@@ -2070,7 +2070,7 @@ END
     log=log)
   grm = processed_pdb_file.geometry_restraints_manager()
   assert grm.angle_proxies.size() == 21
-  assert grm.get_dihedral_proxies().size() == 8
+  assert grm.get_dihedral_proxies().size() == 9, "dihedrals %d" % grm.get_dihedral_proxies().size()
 
 def run(args):
   assert len(args) == 0

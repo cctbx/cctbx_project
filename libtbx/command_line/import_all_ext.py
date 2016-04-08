@@ -25,7 +25,9 @@ def import_modules():
   # Modules in the form of X/X/__init__.py
   doubled = ["elbow","phaser","phenix"]
   # These modules are not dependencies not maintained by cctbx or should be skipped for other reasons
-  skip_modules = ["boost","cbflib","crys3d","PyQuante","phenix_html","tntbx","reel"]
+  skip_modules = ["boost","cbflib","crys3d","PyQuante","phenix_html","tntbx","reel",
+                  "amber", # external
+                  ]
   # These modules fail to import
   failing_modules = ["dials.framework.dftbx","dials.nexus"]
   # These modules can only import if Eigen is available

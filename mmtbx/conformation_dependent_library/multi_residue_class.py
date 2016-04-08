@@ -66,6 +66,11 @@ class ThreeProteinResidues(list):
         outl += "\n%s" % atom.format_atom_record()
     return outl
 
+  def atoms(self):
+    for residue in self:
+      for atom in residue.atoms():
+        yield atom
+
   def cis_group(self,
                 limit=45.,
                 omega_cdl=False, # need last not middle

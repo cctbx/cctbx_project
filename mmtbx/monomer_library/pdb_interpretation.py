@@ -1234,7 +1234,7 @@ class monomer_mapping(slots_getstate_setstate):
           i_seq = u.get(given_name)
           if (i_seq is None): continue
           # special case for terminating breaks with HC hydrogen
-          if given_name in ["HC"]:
+          if given_name in ["HC"] and "OC" not in ani.atom_names:
             u_mon_lib[given_name]=i_seq
           elif (mon_lib_name is None):
             u_mon_lib[given_name] = i_seq
