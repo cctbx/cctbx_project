@@ -1233,7 +1233,10 @@ class monomer_mapping(slots_getstate_setstate):
                                            self.mon_lib_names):
           i_seq = u.get(given_name)
           if (i_seq is None): continue
-          if (mon_lib_name is None):
+          # special case for terminating breaks with HC hydrogen
+          if given_name in ["HC"]:
+            u_mon_lib[given_name]=i_seq
+          elif (mon_lib_name is None):
             u_mon_lib[given_name] = i_seq
           else:
             u_mon_lib[mon_lib_name] = i_seq
@@ -1242,6 +1245,8 @@ class monomer_mapping(slots_getstate_setstate):
         mod_mod_ids.append(mod_dict["COOH"])
       elif ("OXT" in u):
         mod_mod_ids.append(mod_dict["COO"])
+      elif ("HC" in u):
+        mod_mod_ids.append(mod_dict["CF-COH"])
       if (self.monomer.chem_comp.id == "GLU"):
         if ("HE2" in u):
           mod_mod_ids.append(mod_dict["ACID-GLU"])

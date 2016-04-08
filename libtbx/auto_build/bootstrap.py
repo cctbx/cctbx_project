@@ -474,13 +474,12 @@ class cleanup_dirs_class(object):
         os.chdir(self.workdir)
       else:
         return
-    print "\n  removing dirs in %s" % (os.getcwd())
+    print "===== Removing directories in %s" % (os.getcwd())
     for d in self.dirs:
       if os.path.exists(d):
-        print "    removing %s" % (os.path.join(os.getcwd(),d))
+        print "      removing %s" % (os.path.join(os.getcwd(),d))
         shutil.rmtree(d)
     os.chdir(cwd)
-    print "  removed dirs" % self.dirs
 
   def run(self):
     self.remove_dirs()

@@ -61,15 +61,15 @@ columns = [
   "sCO",
   ]
 headers = [
-  "statistical type",
-  "number",
-  "C(-1) - N(0)  - Ca(0)",
+  "statistical type",       # 0
+  "number",                 # 1
+  "C(-1) - N(0)  - Ca(0)",  # 2
   "",
-  "N(0)  - Ca(0) - Cb(0)",
+  "N(0)  - Ca(0) - Cb(0)",  # 4
   "",
-  "N(0)  - Ca(0) - C(0)",
+  "N(0)  - Ca(0) - C(0)",   # 6
   "",
-  "Cb(0) - Ca(0) - C(0)",
+  "Cb(0) - Ca(0) - C(0)",   # 8
   "",
   "Ca(0) - C(0)  - O(0)",
   "",
