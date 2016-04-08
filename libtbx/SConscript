@@ -880,10 +880,10 @@ int main() {
     if (libtbx.env.build_options.optimization):
       opts = [
         "-DNDEBUG",
-        "-O1",
+        "-O3",
       ]
-      # XCode 7.3 compiler update results in some test failures with -ffast-math option
-      # enabled, therefore disable option for clang_version > 7.0.2
+      # XCode 7.3 compiler update results in some test failures with -ffast-math
+      # option enabled, therefore disable option for clang_version > 7.0.2
       # (XCode 7.3 distributes clang_version 7.3.0)
       # http://phenix-online.org/pipermail/cctbxbb/2016-April/001284.html
       # https://gist.github.com/yamaya/2924292
