@@ -238,6 +238,7 @@ def run_one_cycle(
   pdb_inp_params = monomer_library.pdb_interpretation.master_params.extract()
   pdb_inp_params.clash_guard.nonbonded_distance_threshold=None
   pdb_inp_params.max_reasonable_bond_distance=None
+  pdb_inp_params.proceed_with_excessive_length_bonds=True
   processed_pdb_file = monomer_library.pdb_interpretation.process(
     mon_lib_srv              = monomer_library.server.server(),
     ener_lib                 = monomer_library.server.ener_lib(),
