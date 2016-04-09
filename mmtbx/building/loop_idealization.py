@@ -37,6 +37,12 @@ loop_idealization
   number_of_ccd_trials = 5
     .type = int
     .help = How many times we are trying to fix outliers in the same chain
+  variant_search_level = 2
+    .type = int
+    .help = how thoroughly variants will be explored (1-3)
+  variant_number_cutoff = 50
+    .type = int
+    .help = how many first variants to take from generated
 }
 """
 
@@ -218,14 +224,20 @@ class loop_idealization():
     original_pdb_h = pdb_hierarchy.deep_copy()
     chain_id = original_pdb_h.only_model().only_chain().id
     all_results = []
-    for ccd_radius, change_all, change_radius in [
-        (1, False, 0),
-        (2, False, 0),
-        # (3, False, 0),
-        (2, True, 1),
-        # (3, True, 1),
-        # (3, True, 2),
-        ]:
+    variants_searches = [
+        ((1, False, 0),1),
+        ((2, False, 0),1),
+        ((3, False, 0),2),
+        ((2, True, 1),1),
+        ((3, True, 1),2),
+        ((3, True, 2),3),
+    ]
+    decided_variants = []
+    for variant, level in variants_searches:
+      if level <= self.params.variant_search_level:
+        decided_variants.append(variant)
+
+    for ccd_radius, change_all, change_radius in decided_variants:
     # while ccd_radius <= 3:
       print >> self.log, "  Starting optimization with radius, change_all, change_radius:", ccd_radius, change_all, change_radius
       self.log.flush()
@@ -237,10 +249,17 @@ class loop_idealization():
       moving_h_set = None
       if change_all:
         moving_h_set = starting_conformations.get_all_starting_conformations(
-            moving_h, change_radius, cutoff=50, log=self.log)
+            moving_h,
+            change_radius,
+            cutoff=self.params.variant_number_cutoff,
+            # log=self.log,
+            )
       else:
         moving_h_set = starting_conformations.get_starting_conformations(
-            moving_h,  cutoff=50, log=self.log)
+            moving_h,
+            cutoff=self.params.variant_number_cutoff,
+            # log=self.log,
+            )
 
       if len(moving_h_set) == 0:
         # outlier was fixed before somehow...

@@ -27,7 +27,7 @@ from scitbx_array_family_flex_ext import reindexing_array
 # Ideally, nobody should access proxies directly and call any of their methods.
 # So the list of origin_id:
 # bonds: 0 - covalent geometry
-#        1 - hydrogen bonds, both for protein SS and for NA basepairs
+#        1 - hydrogen bonds: both for protein SS and for NA basepairs
 #        2 - metal coordination
 # angles: 0 - covalent geometry
 #         1 - angle restraints associated with NA basepair hydrogen bonds
@@ -677,8 +677,6 @@ class manager(object):
         pdb_hierarchy=hierarchy,
         grm=self,
         log=log)
-    # print >> self.log, "  Time for creating SS restraints: %.2f" % (t2-t1)
-    # print >> self.log, "  Adding SS restraints..."
     self.add_new_hbond_restraints_in_place(
         proxies=hb_proxies,
         sites_cart=hierarchy.atoms().extract_xyz())
@@ -687,6 +685,9 @@ class manager(object):
     self.add_parallelities_in_place(parallelity_proxies)
 
   def remove_secondary_structure_restraints(self):
+    # Not implemented. The problem here is to remove hbond restraints, which
+    # requires modification of pair_proxies and as complicated as addition
+    # of bond restraint.
     pass
 
   def set_external_energy_function (self, energy_function) :

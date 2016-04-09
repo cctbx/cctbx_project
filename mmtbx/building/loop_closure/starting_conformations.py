@@ -61,7 +61,7 @@ def get_sampled_rama_favored_angles(rama_key, r=None, step=20):
   return result
 
 # Refactoring idea: combine these two functions
-def get_all_starting_conformations(moving_h, change_radius, cutoff=50, log=null_out):
+def get_all_starting_conformations(moving_h, change_radius, cutoff=50, log=null_out()):
   variants = []
   r = ramachandran_eval.RamachandranEval()
   phi_psi_atoms = utils.get_phi_psi_atoms(moving_h)
@@ -82,15 +82,20 @@ def get_all_starting_conformations(moving_h, change_radius, cutoff=50, log=null_
   all_angles_combination = list(itertools.product(*variants))
   result = []
   i = 0
-  for comb in all_angles_combination:
+  n_added = 0
+  n_all_combination = len(all_angles_combination)
+  i_max = min(cutoff, n_all_combination)
+  while n_added < i_max:
+    comb = all_angles_combination[i]
     if is_not_none_combination(comb):
       result.append(set_rama_angles(moving_h, list(comb)))
       print >> log, "Model %d, angles:" % i, comb
-      i += 1
+      n_added += 1
+    i += 1
   # STOP()
-  return result[:cutoff]
+  return result
 
-def get_starting_conformations(moving_h, cutoff=50, log=null_out):
+def get_starting_conformations(moving_h, cutoff=50, log=null_out()):
   """
   modify only ramachandran outliers.
   """
@@ -114,9 +119,14 @@ def get_starting_conformations(moving_h, cutoff=50, log=null_out):
     return result
   all_angles_combination = list(itertools.product(*variants))
   i = 0
-  for comb in all_angles_combination:
-    print >> log, "Model %d, angles:" % i, comb
+  n_added = 0
+  n_all_combination = len(all_angles_combination)
+  i_max = min(cutoff, n_all_combination)
+  while n_added < i_max:
+    comb = all_angles_combination[i]
     if is_not_none_combination(comb):
       result.append(set_rama_angles(moving_h, list(comb)))
+      print >> log, "Model %d, angles:" % i, comb
+      n_added += 1
     i += 1
-  return result[:cutoff]
+  return result

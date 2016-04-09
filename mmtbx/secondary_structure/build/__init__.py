@@ -423,8 +423,10 @@ def substitute_ss(real_h,
 
   # Actually idelizing SS elements
   log.write("Replacing ss-elements with ideal ones:\n")
+  log.flush()
   for h in ann.helices:
     log.write("  %s\n" % h.as_pdb_str())
+    log.flush()
     selstring = h.as_atom_selections()
     isel = selection_cache.iselection(selstring[0])
     all_bsel = flex.bool(n_atoms_in_real_h, False)
@@ -439,6 +441,7 @@ def substitute_ss(real_h,
     s = "  %s\n" % sh.as_pdb_str()
     ss = s.replace("\n", "\n  ")
     log.write(ss[:-2])
+    log.flush()
     for st in sh.strands:
       selstring = st.as_atom_selections()
       isel = selection_cache.iselection(selstring)
@@ -601,6 +604,7 @@ def substitute_ss(real_h,
   refinement_log = null_out()
   log.write(
       "Refining geometry of substituted secondary structure elements...")
+  log.flush()
   if verbose:
     refinement_log = log
   from mmtbx.refinement.geometry_minimization import run2
@@ -619,6 +623,7 @@ def substitute_ss(real_h,
       fix_rotamer_outliers     = False,
       log                      = refinement_log)
   log.write(" Done\n")
+  log.flush()
 
   # print_hbond_proxies(grm.geometry,real_h)
   return grm.geometry.get_chi_torsion_proxies()
