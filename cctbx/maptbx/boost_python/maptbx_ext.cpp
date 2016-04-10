@@ -15,6 +15,7 @@
 #include <cctbx/maptbx/mask.h>
 #include <cctbx/maptbx/utils.h>
 #include <cctbx/maptbx/connectivity.h>
+#include <cctbx/maptbx/mask_expand.h>
 #include <cctbx/maptbx/mask_utils.h>
 #include <cctbx/maptbx/map_accumulator.h>
 #include <cctbx/maptbx/ft_analytical_1d_point_scatterer_at_origin.h>
@@ -242,6 +243,32 @@ namespace {
                      arg("zero_all_interblob_region")=true))
         .def("maximum_coors", &w_t::maximum_coors)
         .def("maximum_values", &w_t::maximum_values)
+      ;
+    }
+    {
+      typedef marked_grid_points w_t;
+
+      class_<w_t>("marked_grid_points", no_init)
+        .def(init<af::const_ref<bool, af::flex_grid<> > const&,
+                  int const&
+                  >(
+                    (arg("map_data"),
+                     arg("every_nth_point")
+                     )))
+        .def("result",    &w_t::result)
+      ;
+    }
+    {
+      typedef mask_expand w_t;
+
+      class_<w_t>("mask_expand", no_init)
+        .def(init<af::const_ref<bool, af::flex_grid<> > const&,
+                  bool const&,
+                  bool >(
+                    (arg("map_data"),
+                     arg("id_to_expand"),
+                     arg("wrapping")=true)))
+        .def("result",    &w_t::result)
       ;
     }
 

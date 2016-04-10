@@ -7,6 +7,7 @@ from cctbx import maptbx
 from libtbx.utils import Sorry
 import sys, os
 from cctbx.array_family import flex
+from scitbx.math import matrix
 from copy import deepcopy
 
 master_phil = iotbx.phil.parse("""
@@ -53,6 +54,12 @@ master_phil = iotbx.phil.parse("""
               map_file.
       .short_caption = Info file
 
+    target_ncs_au_file = None
+      .type = path
+      .help = Optional PDB file to partially define the ncs asymmetric \
+               unit of the map. The coordinates in this file will be used \
+               to mark part of the ncs au and all points nearby that are \
+               not part of another ncs au will be added.
   }
 
   output_files {
@@ -162,11 +169,21 @@ master_phil = iotbx.phil.parse("""
               carried out.
       .short_caption = Trim map to density
 
-    density_select_threshold = None
+    density_select_threshold = 0.05
       .type = float
-      .help = threshold to use in trim_map_to_density
+      .help = threshold in trim_map_to_density and identification of overall mask
       .short_caption = Density select threshold
 
+    grid_spacing_for_au = 3
+      .type = int
+      .help = Grid spacing for asymmetric unit when constructing asymmetric unit.
+      .short_caption = Grid spacing for constructing asymmetric unit 
+    
+    radius = None
+      .type = float
+      .help = Radius for constructing asymmetric unit.
+      .short_caption = Radius for constructing asymmetric unit
+    
     value_outside_mask = 0.0
       .type = float
       .help = Value to assign to density outside masks
@@ -485,6 +502,9 @@ class info_object:
       origin=origin,
       all=all,
       is_map=True)
+
+  def set_ncs_obj(self,ncs_obj=None):
+    self.ncs_obj=ncs_obj
 
   def set_origin_shift(self,origin_shift=None):
     if not origin_shift: origin_shift=(0,0,0)
@@ -977,11 +997,10 @@ def score_threshold(threshold=None,
    # So using this, make the median size as close to target_in_top_regions as
    # we can.
 
-   grid_points=map_data.size()
+   target_in_all_regions=map_data.size()*fraction_occupied*(1-solvent_fraction)
    expected_regions=max(ncs_copies,
     max(1,int(0.5+n_residues/residues_per_region)))
 
-   target_in_all_regions=float(grid_points)*fraction_occupied*(1-solvent_fraction)
    target_in_top_regions=target_in_all_regions/expected_regions
 
    nn=len(sorted_by_volume)-1 # first one is total
@@ -1190,8 +1209,7 @@ def get_connectivity(params,
      out=sys.stdout):
   print >>out,"\nGetting connectivity"
 
-  # get map data and normalize to SD of the part that is not solvent
-
+  # Normalize map data now to SD of the part that is not solvent
   sd=max(0.0001,map_data.sample_standard_deviation())
   assert solvent_fraction > 0
   scaled_sd=sd/(1-solvent_fraction)**0.5
@@ -1224,6 +1242,7 @@ def get_connectivity(params,
       break
     else:
       scale=scale**0.333 # keep trying
+
   if best_threshold is None:
     if params.segmentation.iterate_with_remainder: # on first try failed
       raise Sorry("No threshold found...try with density_threshold=xxx")
@@ -1507,7 +1526,6 @@ def get_duplicates_and_ncs(
    out=sys.stdout,
    ):
 
-  from scitbx.math import matrix
   origin=list(edited_mask.accessor().origin())
   all=list(edited_mask.accessor().all())
   unit_cell=tracking_data.crystal_symmetry.unit_cell()
@@ -1577,13 +1595,7 @@ def get_duplicates_and_ncs(
     equiv_dict_ncs_copy_dict[id]={}
 
   # Figure out which ncs operator is the identity
-  identity_op=None
-  from mmtbx.ncs.ncs import is_identity
-  for i in xrange(len(ncs_group.translations_orth())):
-    r=ncs_group.rota_matrices_inv()[i]
-    t=ncs_group.translations_orth_inv()[i]
-    if is_identity(r,t):
-      identity_op=i
+  identity_op=ncs_group.identity_op_id()
   print >>out,"Identity operator is %s" %(identity_op)
 
   if len(ncs_group.translations_orth())>1:
@@ -1915,7 +1927,6 @@ def identify_ncs_regions(params,
       max_regions_to_consider=max_regions_to_consider,
       tracking_data=tracking_data,
       out=out)
-
     # Remove any bad regions
     region_list,region_volume_dict,new_sorted_by_volume,\
       bad_region_list=remove_bad_regions(
@@ -1923,7 +1934,6 @@ def identify_ncs_regions(params,
     duplicate_dict=duplicate_dict,
     edited_volume_list=edited_volume_list,
     out=out)
-
     # Identify groups of regions that are ncs-related
     # equiv_dict_ncs_copy[id][id1]=ncs_copy of id that corresponds to id1
     equiv_dict_ncs_copy=get_ncs_equivalents(
@@ -1934,7 +1944,6 @@ def identify_ncs_regions(params,
     ncs_copies=tracking_data.input_ncs_info.number_of_operators,
     equiv_dict_ncs_copy_dict=equiv_dict_ncs_copy_dict,
     out=out)
-
     if dump_files:
       from libtbx import easy_pickle
       easy_pickle.dump("save.pkl",[duplicate_dict,equiv_dict,region_range_dict,region_centroid_dict,region_scattered_points_dict,region_list,region_volume_dict,new_sorted_by_volume,bad_region_list,equiv_dict_ncs_copy,tracking_data])
@@ -3130,6 +3139,7 @@ def apply_shift_to_pdb_hierarchy(
 def apply_origin_shift(origin_shift=None,
     ncs_object=None,
     pdb_hierarchy=None,
+    target_hierarchy=None,
     map_data=None,
     shifted_map_file=None,
     shifted_pdb_file=None,
@@ -3155,6 +3165,13 @@ def apply_origin_shift(origin_shift=None,
        origin_shift=origin_shift,
        crystal_symmetry=tracking_data.crystal_symmetry,
        pdb_hierarchy=pdb_hierarchy,
+       out=out)
+
+    if target_hierarchy:
+      target_hierarchy=apply_shift_to_pdb_hierarchy(
+       origin_shift=origin_shift,
+       crystal_symmetry=tracking_data.crystal_symmetry,
+       pdb_hierarchy=target_hierarchy,
        out=out)
 
     if shifted_pdb_file and pdb_hierarchy:
@@ -3183,7 +3200,7 @@ def apply_origin_shift(origin_shift=None,
       tracking_data.set_shifted_ncs_info(file_name=shifted_ncs_file,
         number_of_operators=ncs_object.max_operators())
 
-  return ncs_object,pdb_hierarchy,tracking_data
+  return ncs_object,pdb_hierarchy,target_hierarchy,tracking_data
 
 def restore_pdb(params,tracking_data=None,out=sys.stdout):
   if not params.output_files.restored_pdb:
@@ -3213,8 +3230,249 @@ def restore_pdb(params,tracking_data=None,out=sys.stdout):
   print >>out,"Wrote restored pdb file to %s" %(
      params.output_files.restored_pdb)
 
+def find_threshold_in_map(target_points=None,
+      map_data=None,
+      iter_max=10):
+  map_1d=map_data.as_1d()
+  map_mean=map_1d.min_max_mean().mean
+  map_max=map_1d.min_max_mean().max
+  map_min=map_1d.min_max_mean().min
+
+  cutoff=map_mean
+  low=map_min
+  high=map_max
+
+  for iter in xrange(iter_max):
+    s = (map_1d >cutoff)
+    n_cutoff=s.count(True)
+    if n_cutoff == target_points:
+      return cutoff
+    elif n_cutoff < target_points: # lower it
+      high=cutoff
+      cutoff=0.5*(cutoff+low)
+    else:  # raise it
+      low=cutoff
+      cutoff=0.5*(cutoff+high)
+  return cutoff
 
 
+def remove_points(mask,remove_points=None):
+  keep_points=(remove_points==False)
+  new_mask=(mask & keep_points)
+  return new_mask
+
+def get_ncs_sites_cart(sites_cart=None,
+     ncs_obj=None, unit_cell=None, ncs_in_cell_only=True):
+
+  ncs_sites_cart=flex.vec3_double()
+  if not ncs_obj or not ncs_obj.ncs_groups() or not ncs_obj.ncs_groups()[0] or \
+     not ncs_obj.ncs_groups()[0].translations_orth():
+    return ncs_sites_cart
+
+  # identify ncs-related points
+  ncs_group=ncs_obj.ncs_groups()[0]
+  identity_op=ncs_group.identity_op_id()
+  ncs_sites_cart=flex.vec3_double()
+  for xyz_cart in sites_cart:
+    for i0 in xrange(len(ncs_group.translations_orth())):
+      if i0==identity_op: continue
+      r=ncs_group.rota_matrices_inv()[i0] # inverse maps pos 0 on to pos i
+      t=ncs_group.translations_orth_inv()[i0]
+      new_xyz_cart=r * matrix.col(xyz_cart) + t
+      ncs_sites_cart.append(new_xyz_cart)
+  if ncs_in_cell_only:
+    new_sites_cart=flex.vec3_double()
+    ncs_sites_frac=unit_cell.fractionalize(ncs_sites_cart)
+    for site_frac,site_cart in zip(ncs_sites_frac,ncs_sites_cart):
+      if site_frac[0]>=0 and site_frac[0]<=1 and  \
+         site_frac[1]>=0 and site_frac[1]<=1 and  \
+         site_frac[2]>=0 and site_frac[2]<=1:
+        new_sites_cart.append(site_cart)
+    ncs_sites_cart=new_sites_cart
+    
+  return ncs_sites_cart
+
+def get_ncs_mask(map_data=None,unit_cell=None,ncs_object=None,
+   starting_mask=None,radius=None,expand_radius=None,overall_mask=None,
+   every_nth_point=None):
+
+  assert every_nth_point is not None
+  if not expand_radius: expand_radius=2.*radius
+
+  working_au_mask=starting_mask.deep_copy()
+
+  working_ncs_mask=mask_from_sites_and_map(  # empty ncs mask
+    map_data=map_data,unit_cell=unit_cell,
+    sites_cart=flex.vec3_double(),radius=radius,overall_mask=overall_mask)
+
+  au_points_last=working_au_mask.count(True)
+  ncs_points_last=working_ncs_mask.count(True)
+
+  max_tries=10000
+  for ii in xrange(max_tries): # just a big number; should take just a few
+
+    # Find all points in au (sample every_nth_point in grid)
+
+    au_sites_cart=get_marked_points_cart(mask_data=working_au_mask,
+     unit_cell=unit_cell,every_nth_point=every_nth_point)
+
+    # Find all points ncs-related to marked point in mask
+    ncs_sites_cart=get_ncs_sites_cart(sites_cart=au_sites_cart,
+       ncs_obj=ncs_object,unit_cell=unit_cell,ncs_in_cell_only=True)
+
+    # Expand au slightly with all points near to au_sites_cart
+    new_au_mask=mask_from_sites_and_map(
+      map_data=map_data,unit_cell=unit_cell,
+      sites_cart=au_sites_cart,radius=radius,overall_mask=overall_mask)
+    working_au_mask=(working_au_mask | new_au_mask) # add on to existing
+    keep_points=(working_ncs_mask==False)  # cross off those in  ncs
+    working_au_mask=(working_au_mask & keep_points) 
+
+    # mark ncs au with all points not in au that are close to ncs_sites_cart
+    new_ncs_mask=mask_from_sites_and_map(
+      map_data=map_data,unit_cell=unit_cell,
+      sites_cart=ncs_sites_cart,radius=radius,overall_mask=overall_mask)
+    keep_points=(working_au_mask==False)  # cross off those in au
+    new_ncs_mask=(new_ncs_mask & keep_points) 
+    working_ncs_mask=(new_ncs_mask | working_ncs_mask) # add on to existing
+
+    au_points=working_au_mask.count(True)
+    ncs_points=working_ncs_mask.count(True)
+    if au_points==au_points_last and ncs_points==ncs_points_last:
+      break
+    au_points_last=au_points
+    ncs_points_last=ncs_points
+    # Now expand the au and repeat
+    
+    working_au_mask=mask_from_sites_and_map(
+      map_data=map_data,unit_cell=unit_cell,
+      sites_cart=au_sites_cart,radius=expand_radius,overall_mask=overall_mask)
+    keep_points=(working_ncs_mask==False)  # cross off those in  ncs
+    working_au_mask=(working_au_mask & keep_points) 
+
+  return working_au_mask,working_ncs_mask
+
+def mask_from_sites_and_map(
+    map_data=None,unit_cell=None,
+    sites_cart=None,radius=None,overall_mask=None):
+  assert radius is not None
+  from cctbx import maptbx
+
+  sel = maptbx.grid_indices_around_sites(
+      unit_cell  = unit_cell,
+      fft_n_real = map_data.focus(),
+      fft_m_real = map_data.all(),
+      sites_cart = sites_cart,
+      site_radii = flex.double(sites_cart.size(), radius))
+  map_data_1d=map_data.as_1d()
+  mask=(map_data_1d==0 and map_data_1d==1)  # 1D bool array all False
+  mask.set_selected(sel, True)  # mark points around sites
+  mask.reshape(map_data.accessor())
+  if overall_mask:
+    assert overall_mask.all()==mask.all()
+    mask=(mask & overall_mask)
+  return mask
+
+def set_radius(unit_cell=None,map_data=None,every_nth_point=None):
+  # Set radius so that radius will capture all points on grid if sampled
+  #  on every_nth_point
+  a,b,c = unit_cell.parameters()[:3]
+  nx,ny,nz=map_data.all()
+  # furthest possible minimum distance between grid points
+  max_diagonal_between_sampled=every_nth_point*(
+      (a/nx)**2+(b/ny)**2+(c/nz)**2)**0.5
+  radius=max_diagonal_between_sampled*0.55  # big enough to cover everything
+  return radius
+
+def get_marked_points_cart(mask_data=None,unit_cell=None,
+   every_nth_point=3):
+  # return list of cartesian coordinates of grid points that are marked
+  # only sample every every_nth_point in each direction...
+  assert mask_data.origin() == (0,0,0)
+  nx,ny,nz=mask_data.all()
+  marked_points=maptbx.marked_grid_points(
+    map_data=mask_data,
+    every_nth_point=every_nth_point).result()
+  sites_frac=flex.vec3_double()
+  for grid_point in marked_points:
+    sites_frac.append( 
+        (grid_point[0]/nx,
+         grid_point[1]/ny,
+         grid_point[2]/nz))
+  sites_cart=unit_cell.orthogonalize(sites_frac)
+  return sites_cart
+
+def get_overall_mask(map_data=None,density_select_threshold=None,
+     out=sys.stdout):
+  # First mask out the map based on threshold
+  max_in_map=map_data.as_1d().min_max_mean().max
+  print >>out,"Highest value in map is %7.2f " %(max_in_map)
+
+  threshold=density_select_threshold*max_in_map
+  overall_mask=(map_data >= threshold)
+  print >>out,"Model region of map "+\
+       "(density above %5.2f of maximum) includes %7.1f%% of map" %(
+     density_select_threshold,
+    100.*overall_mask.count(True)/overall_mask.size())
+  return overall_mask,max_in_map
+  
+
+def get_one_au(tracking_data=None,
+    sites_cart=None,
+    ncs_obj=None,
+    map_data=None,
+    radius=None,
+    every_nth_point=None,
+    out=sys.stdout):
+
+  unit_cell=tracking_data.crystal_symmetry.unit_cell()
+
+  overall_mask,max_in_map=get_overall_mask(map_data=map_data,
+    density_select_threshold=\
+       tracking_data.params.segmentation.density_select_threshold,out=out)
+
+
+  if not sites_cart: # pick top of map
+    high_points_mask=(map_data >= 0.99*max_in_map)
+    for nth_point in [4,2,1]:
+      sites_cart=get_marked_points_cart(mask_data=high_points_mask,
+        unit_cell=unit_cell,every_nth_point=nth_point)
+      if sites_cart.size()>0: break
+    assert sites_cart.size()>0
+    del high_points_mask
+    sites_cart=sites_cart[:1]
+    xyz_frac=unit_cell.fractionalize(sites_cart[0])
+    value=map_data.value_at_closest_grid_point(xyz_frac)
+    print >>out,"High point in map at (%7.2f %7.2f %7.2f) with value of %7.2f " %(
+      sites_cart[0][0],sites_cart[0][1],sites_cart[0][1],value) 
+
+  every_nth_point=tracking_data.params.segmentation.grid_spacing_for_au
+  radius=tracking_data.params.segmentation.radius
+  if not radius:
+    radius=set_radius(unit_cell=unit_cell,map_data=map_data,
+     every_nth_point=every_nth_point)
+  print >>out,"Radius for AU identification: %7.2f A" %(radius)
+
+  starting_mask=mask_from_sites_and_map( # starting au mask
+    map_data=map_data,unit_cell=unit_cell,
+    sites_cart=sites_cart,radius=radius,
+    overall_mask=overall_mask)
+
+  au_mask,ncs_mask=get_ncs_mask(
+    map_data=map_data,unit_cell=unit_cell,ncs_object=ncs_obj,
+    starting_mask=starting_mask,
+    radius=radius,
+    overall_mask=overall_mask,
+    every_nth_point=every_nth_point)
+
+  print "Points in au: %d  in ncs: %d  (total %7.1f%%)   both: %d Not marked: %d" %(
+     au_mask.count(True),ncs_mask.count(True),
+     100.*float(au_mask.count(True)+ncs_mask.count(True))/au_mask.size(),
+     (au_mask & ncs_mask).count(True),
+     au_mask.size()-au_mask.count(True)-ncs_mask.count(True),) 
+
+  return au_mask
+ 
 def run(args,
      params=None,
      map_data=None,
@@ -3222,6 +3480,8 @@ def run(args,
      tracking_data=None,
      target_scattered_points=None,
      is_iteration=False,
+     pdb_hierarchy=None,
+     target_xyz=None,
      out=sys.stdout):
 
   if is_iteration:
@@ -3238,52 +3498,100 @@ def run(args,
     # read and write the ncs (Normally point-group NCS)
     ncs_obj,tracking_data=get_ncs(params,tracking_data,out=out)
 
+    if params.input_files.target_ncs_au_file: # read in target
+      import iotbx.pdb
+      target_hierarchy=iotbx.pdb.input(
+         file_name=params.input_files.target_ncs_au_file).construct_hierarchy()
+    else:
+      target_hierarchy=None
+
     if tracking_data.origin_shift:
       print >>out,"\nShifting map, model and NCS based on origin shift"
-      ncs_obj,pdb_hierarchy,tracking_data=apply_origin_shift(
+      ncs_obj,pdb_hierarchy,target_hierarchy,tracking_data=apply_origin_shift(
         shifted_map_file=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.shifted_map_file),
         shifted_ncs_file=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.shifted_ncs_file),
         shifted_pdb_file=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.shifted_pdb_file),
         origin_shift=tracking_data.origin_shift,
         ncs_object=ncs_obj,
         pdb_hierarchy=pdb_hierarchy,
+        target_hierarchy=target_hierarchy,
         map_data=map_data,
         tracking_data=tracking_data,
         out=out)
     else:
       shifted_map_file=params.input_files.map_file # but do not overwrite
+    if target_hierarchy:
+      target_xyz=target_hierarchy.atoms().extract_xyz()
+      del target_hierarchy
 
     # get the chain types and therefore (using ncs_copies) volume fraction
     tracking_data=get_solvent_fraction(params,
       ncs_object=ncs_obj,tracking_data=tracking_data,out=out)
     tracking_data.show_summary(out=out)
 
+  # Get overall mask marking generally where there is density for use later
+  #  (need to get it before normalizing the map in get_connectivity
+  #  to use density_select_threshold)
+  overall_mask,max_in_map=get_overall_mask(map_data=map_data,
+    density_select_threshold=\
+       tracking_data.params.segmentation.density_select_threshold,out=out)
 
-  # get connectivity  (conn=connectivity_object.result)
-  co,sorted_by_volume,min_b,max_b,unique_expected_regions=get_connectivity(
-     params,
-     map_data=map_data,
-     ncs_object=ncs_obj,
-     n_residues=tracking_data.n_residues,
-     ncs_copies=tracking_data.input_ncs_info.number_of_operators,
-     solvent_fraction=tracking_data.solvent_fraction,
-     out=out)
-  if co is None: # no luck
-    return None,None,tracking_data
+  original_ncs_obj=ncs_obj # in case we need it later...
+  original_input_ncs_info=tracking_data.input_ncs_info
+  removed_ncs=False
 
-  # Check to see which regions are in more than one au of the NCS
-  #   and set them aside.  Group ncs-related regions together
+  n_residues=tracking_data.n_residues
+  ncs_copies=tracking_data.input_ncs_info.number_of_operators
+  solvent_fraction=tracking_data.solvent_fraction
 
-  ncs_group_obj,tracking_data=identify_ncs_regions(
-     params,sorted_by_volume=sorted_by_volume,
-     co=co,
-     min_b=min_b,
-     max_b=max_b,
-     ncs_obj=ncs_obj,
-     tracking_data=tracking_data,
-     out=out)
-  if not ncs_group_obj or not ncs_group_obj.ncs_group_list:  # nothing to do
-    return None,None,tracking_data
+  for itry in xrange(2):
+    # get connectivity  (conn=connectivity_object.result)
+    co,sorted_by_volume,min_b,max_b,unique_expected_regions=get_connectivity(
+       params,
+       map_data=map_data,
+       ncs_object=ncs_obj,
+       n_residues=n_residues,
+       ncs_copies=ncs_copies,
+       solvent_fraction=solvent_fraction,
+       out=out)
+    if co is None: # no luck
+      return None,None,tracking_data
+
+    # Check to see which regions are in more than one au of the NCS
+    #   and set them aside.  Group ncs-related regions together
+
+    ncs_group_obj,tracking_data=identify_ncs_regions(
+       params,sorted_by_volume=sorted_by_volume,
+       co=co,
+       min_b=min_b,
+       max_b=max_b,
+       ncs_obj=ncs_obj,
+       tracking_data=tracking_data,
+       out=out)
+    if ncs_group_obj and ncs_group_obj.ncs_group_list: # ok
+      break
+    elif ncs_obj and itry==0:# try again
+      print >>out,"No NCS groups identified on first try...taking entire NCS AU."
+      # Identify ncs au
+      au_mask=get_one_au(tracking_data=tracking_data,
+        ncs_obj=ncs_obj,
+      map_data=map_data,out=out)
+      s=(au_mask==False)
+      min_in_map=map_data.as_1d().min_max_mean().min
+      map_data.set_selected(s,min_in_map)  # mask out all but au
+      from mmtbx.ncs.ncs import ncs
+      ncs_obj=ncs()
+      ncs_obj.set_unit_ncs()
+      tracking_data.set_ncs_obj(ncs_obj=None)
+      tracking_data.update_ncs_info(number_of_operators=1)
+      n_residues=n_residues/ncs_copies
+      solvent_fraction=1-((1-solvent_fraction)/ncs_copies)
+      ncs_copies=1
+      params.segmentation.iterate_with_remainder=False # so we do not iterate
+      removed_ncs=True
+      # Run again
+    else: # tried twice, give up
+      return None,None,tracking_data
 
   # Choose one region or group of regions from each ncs_group in the list
   #  Optimize the closeness of centers
@@ -3335,6 +3643,12 @@ def run(args,
     ncs_group_obj.set_map_files_written(map_files_written)
   else:
     map_files_written=[]
+
+  # Restore ncs info if we removed it
+  if removed_ncs:
+    print >>out,"\nRestoring original NCS info to tracking_data"
+    tracking_data.input_ncs_info=original_input_ncs_info
+
 
   if params.output_files.output_info_file and ncs_group_obj:
     from libtbx import easy_pickle
