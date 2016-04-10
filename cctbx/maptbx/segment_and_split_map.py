@@ -2731,6 +2731,27 @@ def write_region_maps(params,
 
   return map_files_written,remainder_regions_written
 
+def get_bounds_from_sites(sites_cart=None,map_data=None,
+    unit_cell=None):
+  lower_bounds=[None,None,None] 
+  upper_bounds=[None,None,None] 
+  sites_frac=unit_cell.fractionalize(sites_cart)
+  nx,ny,nz=map_data.all()
+  for x_frac in sites_frac:
+    x=[
+      int(0.5+nx*x_frac[0]),  
+      int(0.5+ny*x_frac[1]),  
+      int(0.5+nz*x_frac[2])]
+     
+    if lower_bounds[0] is None or x[0]<lower_bounds[0]: lower_bounds[0]=x[0]
+    if lower_bounds[1] is None or x[1]<lower_bounds[1]: lower_bounds[1]=x[1]
+    if lower_bounds[2] is None or x[2]<lower_bounds[2]: lower_bounds[2]=x[2]
+
+    if upper_bounds[0] is None or x[0]>upper_bounds[0]: upper_bounds[0]=x[0]
+    if upper_bounds[1] is None or x[1]>upper_bounds[1]: upper_bounds[1]=x[1]
+    if upper_bounds[2] is None or x[2]>upper_bounds[2]: upper_bounds[2]=x[2]
+  return lower_bounds,upper_bounds
+
 def write_output_files(params,
     tracking_data=None,
     map_data=None,
@@ -2759,6 +2780,7 @@ def write_output_files(params,
     write_atoms(tracking_data=tracking_data,sites=sites,
       file_name=au_atom_output_file)
     tracking_data.set_output_ncs_au_pdb_info(file_name=au_atom_output_file)
+
 
   # Write out mask and map representing one NCS copy and none of
   #   other NCS copies.  Expand the mask to include neighboring points (but
@@ -2794,6 +2816,29 @@ def write_output_files(params,
   if s_ncs_related is not None:
     bool_selected_regions=bool_selected_regions.set_selected(
        s_ncs_related,False)
+
+  # Identify full (possibly expanded) ncs au starting with what we have
+  au_mask=get_one_au(tracking_data=tracking_data,
+    starting_mask=bool_selected_regions,
+    ncs_obj=ncs_group_obj.ncs_obj,map_data=map_data,out=out)
+  print >>out,"\nExpanding NCS AU if necessary..."
+  print >>out,"Size of AU mask: %s  Current size of AU: %s" %(
+    au_mask.count(True),bool_selected_regions.count(True))
+  bool_selected_regions=(bool_selected_regions | au_mask)
+  print >>out,"New size of AU mask: %s" %(bool_selected_regions.count(True))
+
+  sites_cart=get_marked_points_cart(mask_data=bool_selected_regions,
+     unit_cell=ncs_group_obj.crystal_symmetry.unit_cell(),
+     every_nth_point=tracking_data.params.segmentation.grid_spacing_for_au)
+  sites_lower_bounds,sites_upper_bounds=get_bounds_from_sites(
+      unit_cell=ncs_group_obj.crystal_symmetry.unit_cell(),
+      sites_cart=sites_cart,map_data=map_data)
+  print >>out,"Original bounds: %7.2f  %7.2f  %7.2f  to %7.2f  %7.2f  %7.2f" %(
+    tuple(lower_bounds+upper_bounds))
+  lower_bounds=get_lower(lower_bounds,sites_lower_bounds)
+  upper_bounds=get_upper(upper_bounds,sites_upper_bounds)
+  print >>out,"Updated bounds:  %7.2f  %7.2f  %7.2f  to %7.2f  %7.2f  %7.2f" %(
+    tuple(lower_bounds+upper_bounds))
 
   lower_bounds,upper_bounds=adjust_bounds(params,lower_bounds,upper_bounds,
     map_data=map_data,out=out)
@@ -3403,15 +3448,22 @@ def get_marked_points_cart(mask_data=None,unit_cell=None,
 def get_overall_mask(map_data=None,density_select_threshold=None,
      out=sys.stdout):
   # First mask out the map based on threshold
-  max_in_map=map_data.as_1d().min_max_mean().max
-  print >>out,"Highest value in map is %7.2f " %(max_in_map)
+  mm=map_data.as_1d().min_max_mean()
+  max_in_map=mm.max
+  mean_in_map=mm.mean
+  min_in_map=mm.min
+  print >>out,"Highest value in map is %7.2f. Mean is %7.2f .  Lowest is %7.2f " %(
+    max_in_map,
+    mean_in_map,
+    min_in_map)
 
-  threshold=density_select_threshold*max_in_map
+  threshold=mean_in_map+density_select_threshold*(max_in_map-mean_in_map)
   overall_mask=(map_data >= threshold)
   print >>out,"Model region of map "+\
-       "(density above %5.2f of maximum) includes %7.1f%% of map" %(
-     density_select_threshold,
-    100.*overall_mask.count(True)/overall_mask.size())
+    "(density above %7.3f ;  %5.2f%% of maximum of %7.2f)" %(
+        threshold,100.*density_select_threshold,max_in_map)
+  print >>out, "includes %7.1f%% of map" %(
+      100.*overall_mask.count(True)/overall_mask.size())
   return overall_mask,max_in_map
 
 
@@ -3419,6 +3471,7 @@ def get_one_au(tracking_data=None,
     sites_cart=None,
     ncs_obj=None,
     map_data=None,
+    starting_mask=None,
     radius=None,
     every_nth_point=None,
     out=sys.stdout):
@@ -3429,32 +3482,39 @@ def get_one_au(tracking_data=None,
     density_select_threshold=\
        tracking_data.params.segmentation.density_select_threshold,out=out)
 
-
-  if not sites_cart: # pick top of map
-    high_points_mask=(map_data >= 0.99*max_in_map)
-    for nth_point in [4,2,1]:
-      sites_cart=get_marked_points_cart(mask_data=high_points_mask,
-        unit_cell=unit_cell,every_nth_point=nth_point)
-      if sites_cart.size()>0: break
-    assert sites_cart.size()>0
-    del high_points_mask
-    sites_cart=sites_cart[:1]
-    xyz_frac=unit_cell.fractionalize(sites_cart[0])
-    value=map_data.value_at_closest_grid_point(xyz_frac)
-    print >>out,"High point in map at (%7.2f %7.2f %7.2f) with value of %7.2f " %(
-      sites_cart[0][0],sites_cart[0][1],sites_cart[0][1],value)
-
   every_nth_point=tracking_data.params.segmentation.grid_spacing_for_au
   radius=tracking_data.params.segmentation.radius
   if not radius:
     radius=set_radius(unit_cell=unit_cell,map_data=map_data,
      every_nth_point=every_nth_point)
-  print >>out,"Radius for AU identification: %7.2f A" %(radius)
+  print >>out,"\nRadius for AU identification: %7.2f A" %(radius)
+  print "Points in starting mask:",starting_mask.count(True)
+  print "Points in overall mask:",overall_mask.count(True)
+  print "Points in both:",(starting_mask & overall_mask).count(True)
+  if starting_mask:
+    # make sure overall mask is at least as big..
+    overall_mask=(overall_mask | starting_mask)
+    print >>out,"New size of overall mask: ",overall_mask.count(True)
+  else:
+    if not sites_cart: # pick top of map
+      high_points_mask=(map_data >= 0.99*max_in_map)
+      for nth_point in [4,2,1]:
+        sites_cart=get_marked_points_cart(mask_data=high_points_mask,
+          unit_cell=unit_cell,every_nth_point=nth_point)
+        if sites_cart.size()>0: break
+      assert sites_cart.size()>0
+      del high_points_mask
+      sites_cart=sites_cart[:1]
+      xyz_frac=unit_cell.fractionalize(sites_cart[0])
+      value=map_data.value_at_closest_grid_point(xyz_frac)
+      print >>out,"High point in map at (%7.2f %7.2f %7.2f) with value of %7.2f " %(
+        sites_cart[0][0],sites_cart[0][1],sites_cart[0][1],value)
 
-  starting_mask=mask_from_sites_and_map( # starting au mask
-    map_data=map_data,unit_cell=unit_cell,
-    sites_cart=sites_cart,radius=radius,
-    overall_mask=overall_mask)
+
+    starting_mask=mask_from_sites_and_map( # starting au mask
+      map_data=map_data,unit_cell=unit_cell,
+      sites_cart=sites_cart,radius=radius,
+      overall_mask=overall_mask)
 
   au_mask,ncs_mask=get_ncs_mask(
     map_data=map_data,unit_cell=unit_cell,ncs_object=ncs_obj,
@@ -3527,13 +3587,6 @@ def run(args,
       ncs_object=ncs_obj,tracking_data=tracking_data,out=out)
     tracking_data.show_summary(out=out)
 
-  # Get overall mask marking generally where there is density for use later
-  #  (need to get it before normalizing the map in get_connectivity
-  #  to use density_select_threshold)
-  overall_mask,max_in_map=get_overall_mask(map_data=map_data,
-    density_select_threshold=\
-       tracking_data.params.segmentation.density_select_threshold,out=out)
-
   original_ncs_obj=ncs_obj # in case we need it later...
   original_input_ncs_info=tracking_data.input_ncs_info
   removed_ncs=False
@@ -3573,7 +3626,7 @@ def run(args,
       # Identify ncs au
       au_mask=get_one_au(tracking_data=tracking_data,
         ncs_obj=ncs_obj,
-      map_data=map_data,out=out)
+        map_data=map_data,out=out)
       s=(au_mask==False)
       min_in_map=map_data.as_1d().min_max_mean().min
       map_data.set_selected(s,min_in_map)  # mask out all but au
@@ -3628,6 +3681,7 @@ def run(args,
       out=out)
   else:
     remainder_ncs_group_obj=None
+
 
   # Write out final maps and dummy atom files
   if params.output_files.write_output_maps:
