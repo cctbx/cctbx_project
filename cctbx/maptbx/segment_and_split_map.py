@@ -177,13 +177,13 @@ master_phil = iotbx.phil.parse("""
     grid_spacing_for_au = 3
       .type = int
       .help = Grid spacing for asymmetric unit when constructing asymmetric unit.
-      .short_caption = Grid spacing for constructing asymmetric unit 
-    
+      .short_caption = Grid spacing for constructing asymmetric unit
+
     radius = None
       .type = float
       .help = Radius for constructing asymmetric unit.
       .short_caption = Radius for constructing asymmetric unit
-    
+
     value_outside_mask = 0.0
       .type = float
       .help = Value to assign to density outside masks
@@ -1759,7 +1759,6 @@ def group_ncs_equivalents(params,
       ncs_copy=equiv_dict_ncs_copy[id][id1]
       if not ncs_copy in equiv_group.keys(): equiv_group[ncs_copy]=[]
       equiv_group[ncs_copy].append(id1) # id1 is ncs_copy of id
-
     all_single=True
     equiv_group_as_list=[]
     total_grid_points=0
@@ -1779,7 +1778,6 @@ def group_ncs_equivalents(params,
       else:
         missing_ncs_copies.append(ncs_copy)
     equiv_group_as_list.sort()
-
     if tracking_data.input_ncs_info.is_helical_symmetry:
       # complete if we have original_number_of_operators worth
       if (not params.segmentation.require_complete) or \
@@ -3289,7 +3287,7 @@ def get_ncs_sites_cart(sites_cart=None,
          site_frac[2]>=0 and site_frac[2]<=1:
         new_sites_cart.append(site_cart)
     ncs_sites_cart=new_sites_cart
-    
+
   return ncs_sites_cart
 
 def get_ncs_mask(map_data=None,unit_cell=None,ncs_object=None,
@@ -3326,14 +3324,14 @@ def get_ncs_mask(map_data=None,unit_cell=None,ncs_object=None,
       sites_cart=au_sites_cart,radius=radius,overall_mask=overall_mask)
     working_au_mask=(working_au_mask | new_au_mask) # add on to existing
     keep_points=(working_ncs_mask==False)  # cross off those in  ncs
-    working_au_mask=(working_au_mask & keep_points) 
+    working_au_mask=(working_au_mask & keep_points)
 
     # mark ncs au with all points not in au that are close to ncs_sites_cart
     new_ncs_mask=mask_from_sites_and_map(
       map_data=map_data,unit_cell=unit_cell,
       sites_cart=ncs_sites_cart,radius=radius,overall_mask=overall_mask)
     keep_points=(working_au_mask==False)  # cross off those in au
-    new_ncs_mask=(new_ncs_mask & keep_points) 
+    new_ncs_mask=(new_ncs_mask & keep_points)
     working_ncs_mask=(new_ncs_mask | working_ncs_mask) # add on to existing
 
     au_points=working_au_mask.count(True)
@@ -3343,12 +3341,12 @@ def get_ncs_mask(map_data=None,unit_cell=None,ncs_object=None,
     au_points_last=au_points
     ncs_points_last=ncs_points
     # Now expand the au and repeat
-    
+
     working_au_mask=mask_from_sites_and_map(
       map_data=map_data,unit_cell=unit_cell,
       sites_cart=au_sites_cart,radius=expand_radius,overall_mask=overall_mask)
     keep_points=(working_ncs_mask==False)  # cross off those in  ncs
-    working_au_mask=(working_au_mask & keep_points) 
+    working_au_mask=(working_au_mask & keep_points)
 
   return working_au_mask,working_ncs_mask
 
@@ -3395,7 +3393,7 @@ def get_marked_points_cart(mask_data=None,unit_cell=None,
     every_nth_point=every_nth_point).result()
   sites_frac=flex.vec3_double()
   for grid_point in marked_points:
-    sites_frac.append( 
+    sites_frac.append(
         (grid_point[0]/nx,
          grid_point[1]/ny,
          grid_point[2]/nz))
@@ -3415,7 +3413,7 @@ def get_overall_mask(map_data=None,density_select_threshold=None,
      density_select_threshold,
     100.*overall_mask.count(True)/overall_mask.size())
   return overall_mask,max_in_map
-  
+
 
 def get_one_au(tracking_data=None,
     sites_cart=None,
@@ -3444,7 +3442,7 @@ def get_one_au(tracking_data=None,
     xyz_frac=unit_cell.fractionalize(sites_cart[0])
     value=map_data.value_at_closest_grid_point(xyz_frac)
     print >>out,"High point in map at (%7.2f %7.2f %7.2f) with value of %7.2f " %(
-      sites_cart[0][0],sites_cart[0][1],sites_cart[0][1],value) 
+      sites_cart[0][0],sites_cart[0][1],sites_cart[0][1],value)
 
   every_nth_point=tracking_data.params.segmentation.grid_spacing_for_au
   radius=tracking_data.params.segmentation.radius
@@ -3469,10 +3467,10 @@ def get_one_au(tracking_data=None,
      au_mask.count(True),ncs_mask.count(True),
      100.*float(au_mask.count(True)+ncs_mask.count(True))/au_mask.size(),
      (au_mask & ncs_mask).count(True),
-     au_mask.size()-au_mask.count(True)-ncs_mask.count(True),) 
+     au_mask.size()-au_mask.count(True)-ncs_mask.count(True),)
 
   return au_mask
- 
+
 def run(args,
      params=None,
      map_data=None,
@@ -3587,6 +3585,7 @@ def run(args,
       n_residues=n_residues/ncs_copies
       solvent_fraction=1-((1-solvent_fraction)/ncs_copies)
       ncs_copies=1
+      params.segmentation.require_complete=False
       params.segmentation.iterate_with_remainder=False # so we do not iterate
       removed_ncs=True
       # Run again

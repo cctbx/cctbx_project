@@ -188,8 +188,8 @@ cctbx/maptbx/ft_analytical_1d_point_scatterer_at_origin.h -text
 cctbx/maptbx/grid_indices_around_sites.h svneol=native#text/plain
 cctbx/maptbx/histogram.h -text
 cctbx/maptbx/map_accumulator.h -text
+cctbx/maptbx/marked_grid_points.h -text
 cctbx/maptbx/mask.h -text
-cctbx/maptbx/mask_expand.h -text
 cctbx/maptbx/mask_utils.h -text
 cctbx/maptbx/mem.py -text
 cctbx/maptbx/real_space_gradients_simple.h svneol=native#text/plain
