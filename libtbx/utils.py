@@ -2260,22 +2260,37 @@ def cmd_exists(cmd):
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE) == 0
 
-def try_send_to_trash (path_name, delete_if_not_available=False) :
+def remove_path(path_name):
+  """
+  Bypasses trash and deletes file or directory immediately.
+  """
+  try:
+    if op.isdir(path_name) :
+      shutil.rmtree(path_name)
+    elif op.isfile(path_name) :
+      os.remove(path_name)
+    else:
+      raise Sorry('%s is not a file nor a directory.' % path_name)
+  except OSError:
+    raise Sorry('Unable to delete %s.' % path_name)
+
+def try_send_to_trash (path_name, delete_if_not_available=False,
+                       delete_immediately=False) :
   """
   Wrapper for deleting a path
   """
-  try :
-    import send2trash
-  except ImportError :
-    if delete_if_not_available :
-      warnings.warn("send2trash not available; will delete path instead.",
-        ImportWarning)
-      if op.isdir(path_name) :
-        shutil.rmtree(path_name)
+  if (delete_immediately):
+    remove_path(path_name)
+  else:
+    try :
+      import send2trash
+    except ImportError :
+      if delete_if_not_available :
+        warnings.warn("send2trash not available; will delete path instead.",
+          ImportWarning)
+        remove_path(path_name)
       else :
-        os.remove(path_name)
+        raise Sorry("This function not supported because the required module is "+
+          "not installed.")
     else :
-      raise Sorry("This function not supported because the required module is "+
-        "not installed.")
-  else :
-    send2trash.send2trash(path_name)
+      send2trash.send2trash(path_name)
