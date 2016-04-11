@@ -2833,11 +2833,11 @@ def write_output_files(params,
   sites_lower_bounds,sites_upper_bounds=get_bounds_from_sites(
       unit_cell=ncs_group_obj.crystal_symmetry.unit_cell(),
       sites_cart=sites_cart,map_data=map_data)
-  print >>out,"Original bounds: %7.2f  %7.2f  %7.2f  to %7.2f  %7.2f  %7.2f" %(
+  print >>out,"Original bounds: %5s  %5s  %5s  to %5s  %5s  %5s" %(
     tuple(lower_bounds+upper_bounds))
   lower_bounds=get_lower(lower_bounds,sites_lower_bounds)
   upper_bounds=get_upper(upper_bounds,sites_upper_bounds)
-  print >>out,"Updated bounds:  %7.2f  %7.2f  %7.2f  to %7.2f  %7.2f  %7.2f" %(
+  print >>out,"Updated bounds:  %5s  %5s  %5s  to %5s  %5s  %5s" %(
     tuple(lower_bounds+upper_bounds))
 
   lower_bounds,upper_bounds=adjust_bounds(params,lower_bounds,upper_bounds,
@@ -3488,10 +3488,10 @@ def get_one_au(tracking_data=None,
     radius=set_radius(unit_cell=unit_cell,map_data=map_data,
      every_nth_point=every_nth_point)
   print >>out,"\nRadius for AU identification: %7.2f A" %(radius)
-  print "Points in starting mask:",starting_mask.count(True)
-  print "Points in overall mask:",overall_mask.count(True)
-  print "Points in both:",(starting_mask & overall_mask).count(True)
   if starting_mask:
+    print "Points in starting mask:",starting_mask.count(True)
+    print "Points in overall mask:",overall_mask.count(True)
+    print "Points in both:",(starting_mask & overall_mask).count(True)
     # make sure overall mask is at least as big..
     overall_mask=(overall_mask | starting_mask)
     print >>out,"New size of overall mask: ",overall_mask.count(True)
