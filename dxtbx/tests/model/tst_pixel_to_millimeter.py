@@ -23,7 +23,7 @@ class Test(object):
     self.t0 = 0.320
     from cctbx.eltbx import attenuation_coefficient
     table = attenuation_coefficient.get_table("Si")
-    self.mu = table.mu_at_angstrom(self.beam.get_wavelength()) / 10
+    self.mu = table.mu_at_angstrom(self.beam.get_wavelength()) / 10.0
     self.distance = self.detector[0].get_distance()
     self.origin = self.detector[0].get_ray_intersection(
         self.detector[0].get_normal())[1]
