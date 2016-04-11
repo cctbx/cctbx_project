@@ -884,14 +884,18 @@ def iselection_asu_to_ncs(iselection_asu,ncs_chain_id,hierarchy_asu):
   chain_start =  min(list(ph_ncs_select.iselection(True)))
   return iselection_asu - chain_start
 
-def check_ncs_group_list(ncs_restraints_group_list,ph,max_delta=10.0,log=None):
+def check_ncs_group_list(
+    ncs_restraints_group_list,
+    ph,
+    chain_max_rmsd=10.0,
+    log=None):
   """
   Check that all copies relate correctly to master via the transforms
 
   Args:
     ncs_restraints_group_list : list of ncs restraints group objects
     ph: Hierarchy object
-    max_delta (float): maximum allowed rmsd between coordinates copies
+    chain_max_rmsd (float): maximum allowed rmsd between coordinates copies
 
   Returns:
     nrgl_ok (bool): True when ncs_restraints_group_list is OK
@@ -904,9 +908,9 @@ def check_ncs_group_list(ncs_restraints_group_list,ph,max_delta=10.0,log=None):
       copy_xyz = ph.atoms().extract_xyz().select(cp.iselection)
       xyz = cp.r.elems * master_xyz + cp.t
       rmsd = copy_xyz.rms_difference(xyz)
-      nrgl_ok &= (rmsd <= max_delta)
-      if (rmsd > max_delta):
-        print >>log,'Allowed rmsd : {}, rmsd: {}'.format(max_delta,rmsd)
+      nrgl_ok &= (rmsd <= chain_max_rmsd)
+      if (rmsd > chain_max_rmsd):
+        print >>log,'Allowed rmsd : {}, rmsd: {}'.format(chain_max_rmsd,rmsd)
   return nrgl_ok
 
 def make_unique_chain_names(unique_chain_names,number_of_names=1):

@@ -1372,18 +1372,18 @@ class input(object):
       range_list.sort()
       self.common_res_dict[key] = ([range_list,copy_selection_indices],rmsd)
 
-  def get_ncs_restraints_group_list(self,max_delta=10.0,raise_sorry=True):
+  def get_ncs_restraints_group_list(self,chain_max_rmsd=10, raise_sorry=True):
     """
     Create a list of ncs_restraint_group objects
 
     When using phil parameters or badly related copies, consider increasing
-    "max_delta" value
+    "chain_max_rmsd" value
 
     Args:
-      max_delta (float): maximum allowed deviation between copies coordinates
       raise_sorry (bool): When True, raise Sorry if NCS copies don't match
     """
     ncs_restraints_group_list = []
+    chain_max_rmsd = max(self.chain_max_rmsd, chain_max_rmsd)
     # assert 0number_of_ncs_groups
     group_id_list = sort_dict_keys(self.ncs_group_map)
     # print "self.ncs_group_map", self.ncs_group_map
@@ -1424,9 +1424,10 @@ class input(object):
         nrgl_ok = nu.check_ncs_group_list(
           ncs_restraints_group_list,
           self.original_hierarchy,
-          max_delta=max_delta,
+          chain_max_rmsd=chain_max_rmsd,
           log=self.log)
         if not nrgl_ok:
+          assert 0
           raise Sorry('NCS copies do not match well')
     return ncs_restraints_group_list
 

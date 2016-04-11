@@ -554,10 +554,10 @@ class Test_ncs_utils(unittest.TestCase):
     pdb_inp = iotbx.pdb.input(lines=test_pdb_str_2,source_info=None)
     ph = pdb_inp.construct_hierarchy()
     # passing test
-    self.assertTrue(nu.check_ncs_group_list(nrgl,ph,max_delta=1))
+    self.assertTrue(nu.check_ncs_group_list(nrgl,ph,chain_max_rmsd=1))
     # make sure test fails when it suppose to
     nrgl[0].copies[1].t = matrix.col([100, -89.7668, 5.8996])
-    self.assertFalse(nu.check_ncs_group_list(nrgl,ph,max_delta=1))
+    self.assertFalse(nu.check_ncs_group_list(nrgl,ph,chain_max_rmsd=1))
 
   def test_make_unique_chain_names(self):
     """ Test that new chain names are produced properly """
