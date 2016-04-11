@@ -156,7 +156,7 @@ class FormatCBFMiniEigerPF(FormatCBFMini):
 
     detector[0].set_thickness(thickness)
     detector[0].set_material('Si')
-    detector[0].set_mu(table.mu_at_angstrom(wavelength))
+    detector[0].set_mu(mu)
 
     return detector
 

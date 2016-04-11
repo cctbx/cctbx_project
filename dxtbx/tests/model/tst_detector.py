@@ -180,7 +180,7 @@ def tst_detector():
   # Attenuation length
   from cctbx.eltbx import attenuation_coefficient
   table = attenuation_coefficient.get_table("Si")
-  mu = table.mu_at_angstrom(1) / 10
+  mu = table.mu_at_angstrom(1) / 10.0
   t0 = 0.320
 
   # Create another detector with different origin
