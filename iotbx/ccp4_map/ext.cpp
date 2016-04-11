@@ -71,6 +71,9 @@ namespace ccp4_map {
         CMap_io::ccp4_cmap_get_cell(mfile.get(), cell_float);
         std::copy(cell_float, cell_float+6, unit_cell_parameters.begin());
         space_group_number = CMap_io::ccp4_cmap_get_spacegroup(mfile.get());
+        if (space_group_number < 1) {
+          space_group_number = 1;
+        }
         int origin[3];
         CMap_io::ccp4_cmap_get_origin(mfile.get(), origin);
         int dim[3];
