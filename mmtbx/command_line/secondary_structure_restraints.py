@@ -52,8 +52,6 @@ def run (args, out=sys.stdout, log=sys.stderr) :
     show_usage()
     return
   pdb_files = []
-  sources = []
-  force_new_annotation = False
   pcl = iotbx.phil.process_command_line_with_files(
     args=args,
     master_phil_string=master_phil_str,
