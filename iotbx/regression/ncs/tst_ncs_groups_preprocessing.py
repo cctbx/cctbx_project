@@ -18,7 +18,6 @@ import libtbx.load_env
 have_phenix = False
 if libtbx.env.has_module(name="phenix"):
   from phenix.command_line.simple_ncs_from_pdb import simple_ncs_from_pdb
-  from phenix.command_line.simple_ncs_from_pdb import master_params
   have_phenix = True
 
 
@@ -47,7 +46,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       open(fn,'w').write(pdb_str_3)
       prefix = 'test_create_ncs_domain_pdb_files'
       obj = simple_ncs_from_pdb(
-        pdb_file=fn,
+        args=["pdb_in=%s" % fn],
         write_ncs_domain_pdb=True,
         ncs_domain_pdb_stem=prefix)
 
@@ -177,10 +176,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     This is ncs.ncs - specific functionality
     """
     if have_phenix:
-      # print sys._getframe().f_code.co_name
-      # creating a spec file
-      params = master_params.extract()
-      params.simple_ncs_from_pdb.write_spec_files=True
       xrs = self.pdb_inp.xray_structure_simple()
       xrs_unit_cell = xrs.orthorhombic_unit_cell_around_centered_scatterers(
         buffer_size=8)
@@ -190,14 +185,13 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       of.close()
       # create a spec file
       ncs_from_pdb=simple_ncs_from_pdb(
-        pdb_file="test_ncs_spec.pdb",
-        log=null_out(),
-        params=params)
+        args=["pdb_in=test_ncs_spec.pdb", "write_spec_files=True"],
+        log=null_out())
 
       # reading and processing the spec file
 
       spec_object = mmtbx.ncs.ncs.ncs()
-      spec_object.read_ncs(file_name="simple_ncs_from_pdb.ncs_spec")
+      spec_object.read_ncs(file_name="test_ncs_spec_simple_ncs_from_pdb.ncs_spec")
       trans_obj = ncs.input(
         spec_ncs_groups=spec_object,
         # spec_file_str=test_ncs_spec,  # use output string directly
@@ -840,7 +834,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_correct_grouping']
+  tests = ['test_spec_reading']
   suite = unittest.TestSuite(map(TestNcsGroupPreprocessing,tests))
   return suite
 
