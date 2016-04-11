@@ -2733,16 +2733,16 @@ def write_region_maps(params,
 
 def get_bounds_from_sites(sites_cart=None,map_data=None,
     unit_cell=None):
-  lower_bounds=[None,None,None] 
-  upper_bounds=[None,None,None] 
+  lower_bounds=[None,None,None]
+  upper_bounds=[None,None,None]
   sites_frac=unit_cell.fractionalize(sites_cart)
   nx,ny,nz=map_data.all()
   for x_frac in sites_frac:
     x=[
-      int(0.5+nx*x_frac[0]),  
-      int(0.5+ny*x_frac[1]),  
+      int(0.5+nx*x_frac[0]),
+      int(0.5+ny*x_frac[1]),
       int(0.5+nz*x_frac[2])]
-     
+
     if lower_bounds[0] is None or x[0]<lower_bounds[0]: lower_bounds[0]=x[0]
     if lower_bounds[1] is None or x[1]<lower_bounds[1]: lower_bounds[1]=x[1]
     if lower_bounds[2] is None or x[2]<lower_bounds[2]: lower_bounds[2]=x[2]
