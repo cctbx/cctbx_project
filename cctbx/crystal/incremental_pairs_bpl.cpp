@@ -1,5 +1,6 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
+#include <boost/python.hpp>
 #include <boost/python/class.hpp>
 #include <scitbx/boost_python/is_polymorphic_workaround.h>
 #include <cctbx/crystal/incremental_pairs.h>
@@ -11,9 +12,19 @@ SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(
 namespace cctbx { namespace crystal {
 namespace {
 
-  struct incremental_pairs_wrappers
+  struct incremental_pairs_wrappers : boost::python::pickle_suite
   {
     typedef incremental_pairs<> w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.init_space_group, 
+        self.init_asu,
+        self.init_distance_cutoff,
+        self.init_asu_mappings_buffer_thickness,
+        self.init_cubicle_epsilon);
+    }
 
     static void
     wrap()
@@ -66,7 +77,8 @@ namespace {
             &w_t::process_sites_cart, (
               arg("original_sites")))
         .def("cubicle_size_counts", &w_t::cubicle_size_counts)
-      ;
+        .def_pickle(incremental_pairs_wrappers())
+        ;
     }
   };
 

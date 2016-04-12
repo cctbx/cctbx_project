@@ -314,7 +314,7 @@ namespace direct_space_asu {
       cartesian<FloatType> const&
       mapped_site() const { return mapped_site_; }
 
-    private:
+    //private:
       unsigned i_sym_op_;
       scitbx::vec3<IntShiftType> unit_shifts_;
       cartesian<FloatType> mapped_site_;

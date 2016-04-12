@@ -16,9 +16,15 @@ namespace cctbx { namespace crystal { namespace direct_space_asu {
 
 namespace {
 
-  struct float_cut_plane_wrappers
+    struct float_cut_plane_wrappers : boost::python::pickle_suite
   {
     typedef float_cut_plane<> w_t;
+
+    static boost::python::tuple
+        getinitargs(w_t const& self)
+    {
+        return boost::python::make_tuple(self.n, self.c);
+    }
 
     static void
     wrap()
@@ -38,13 +44,22 @@ namespace {
         .def("get_point_in_plane", &w_t::get_point_in_plane)
         .def("add_buffer", &w_t::add_buffer,
           (arg("unit_cell"), arg("thickness")))
+        .def_pickle(float_cut_plane_wrappers())
       ;
     }
   };
 
-  struct float_asu_wrappers
+  struct float_asu_wrappers : boost::python::pickle_suite
   {
     typedef float_asu<> w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.unit_cell(), 
+        self.cuts(),
+        self.is_inside_epsilon());
+    }
 
     static void
     wrap()
@@ -72,6 +87,7 @@ namespace {
           arg("epsilon")=1e-6))
         .def("box_min", &w_t::box_min, (arg("cartesian")=false), ccr())
         .def("box_max", &w_t::box_max, (arg("cartesian")=false), ccr())
+        .def_pickle(float_asu_wrappers())
       ;
       {
         using namespace scitbx::boost_python::container_conversions;
@@ -80,9 +96,27 @@ namespace {
     }
   };
 
-  struct asu_mapping_wrappers
+  struct asu_mapping_wrappers : boost::python::pickle_suite
   {
     typedef asu_mapping<> w_t;
+
+    static boost::python::tuple
+      getstate(w_t const& self)
+    {
+      return boost::python::make_tuple(
+        self.i_sym_op(),
+        self.unit_shifts(),
+        self.mapped_site()
+        );
+    }
+
+    static void
+      setstate(w_t& self, boost::python::tuple state)
+    {
+      self.i_sym_op_ = boost::python::extract< unsigned >(state[0]);
+      self.unit_shifts_ = boost::python::extract< scitbx::vec3<int> >(state[1]);
+      self.mapped_site_ = boost::python::extract< cartesian<double> >(state[2]);
+    }
 
     static void
     wrap()
@@ -93,13 +127,32 @@ namespace {
         .def("i_sym_op", &w_t::i_sym_op)
         .def("unit_shifts", &w_t::unit_shifts, ccr())
         .def("mapped_site", &w_t::mapped_site, ccr())
+        .def_pickle(asu_mapping_wrappers())
       ;
     }
   };
 
-  struct asu_mapping_index_pair_wrappers
+  struct asu_mapping_index_pair_wrappers : boost::python::pickle_suite
   {
     typedef asu_mapping_index_pair w_t;
+
+    static boost::python::tuple
+      getstate(w_t const& self)
+    {
+      return boost::python::make_tuple(
+        self.i_seq,
+        self.j_seq,
+        self.j_sym
+        );
+    }
+
+    static void
+      setstate(w_t& self, boost::python::tuple state)
+    {
+      self.i_seq = boost::python::extract< unsigned >(state[0]);
+      self.j_seq = boost::python::extract< unsigned >(state[1]);
+      self.j_sym = boost::python::extract< unsigned >(state[2]);
+    }
 
     static void
     wrap()
@@ -110,13 +163,30 @@ namespace {
         .def_readonly("j_seq", &w_t::j_seq)
         .def_readonly("j_sym", &w_t::j_sym)
         .def("is_active", &w_t::is_active, (arg("minimal")=false))
+        .def_pickle(asu_mapping_index_pair_wrappers())
       ;
     }
   };
 
-  struct asu_mapping_index_pair_and_diff_wrappers
+  struct asu_mapping_index_pair_and_diff_wrappers : boost::python::pickle_suite
   {
     typedef asu_mapping_index_pair_and_diff<> w_t;
+
+    static boost::python::tuple
+      getstate(w_t const& self)
+    {
+      return boost::python::make_tuple(
+        self.diff_vec,
+        self.dist_sq
+        );
+    }
+
+    static void
+      setstate(w_t& self, boost::python::tuple state)
+    {
+      self.diff_vec = boost::python::extract< cartesian<double> >(state[0]);
+      self.dist_sq = boost::python::extract< double >(state[1]);
+    }
 
     static void
     wrap()
@@ -127,13 +197,23 @@ namespace {
         "direct_space_asu_asu_mapping_index_pair_and_diff", no_init)
         .add_property("diff_vec", make_getter(&w_t::diff_vec, rbv()))
         .def_readonly("dist_sq", &w_t::dist_sq)
+        .def_pickle(asu_mapping_index_pair_and_diff_wrappers())
       ;
     }
   };
 
-  struct asu_mappings_wrappers
+  struct asu_mappings_wrappers : boost::python::pickle_suite
   {
     typedef asu_mappings<> w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.space_group(),
+        self.asu(),
+        self.buffer_thickness()
+        );
+    }
 
     static void
     wrap()
@@ -224,6 +304,7 @@ namespace {
         .def("make_pair", &w_t::make_pair, (
           arg("i_seq"), arg("j_seq"), arg("j_sym")))
         .def("find_i_sym", &w_t::find_i_sym, (arg("i_seq"), arg("rt_mx")))
+        .def_pickle(asu_mappings_wrappers())
       ;
       {
         using namespace scitbx::boost_python::container_conversions;

@@ -14,9 +14,22 @@
 namespace cctbx { namespace geometry_restraints {
 namespace {
 
-  struct dihedral_proxy_wrappers
+  struct dihedral_proxy_wrappers : boost::python::pickle_suite
   {
     typedef dihedral_proxy w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.i_seqs,
+        self.angle_ideal,
+        self.weight,
+        self.periodicity,
+        self.top_out,
+        self.slack,
+        self.origin_id
+        );
+    }
 
     static void
     wrap()
@@ -60,7 +73,8 @@ namespace {
           make_getter(&w_t::alt_angle_ideals, rbv()),
           make_setter(&w_t::alt_angle_ideals, dcp()))
         .add_property("sym_ops", make_getter(&w_t::sym_ops, rbv()))
-      ;
+        .def_pickle(dihedral_proxy_wrappers())
+        ;
       {
         typedef return_internal_reference<> rir;
         scitbx::af::boost_python::shared_wrapper<w_t, rir>::wrap(
@@ -102,9 +116,23 @@ namespace {
     }
   };
 
-  struct dihedral_wrappers
+  struct dihedral_wrappers : boost::python::pickle_suite
   {
     typedef dihedral w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.sites,
+        self.angle_ideal,
+        self.weight,
+        self.periodicity,
+        self.alt_angle_ideals,
+        self.limit,
+        self.top_out,
+        self.slack
+        );
+    }
 
     static void
     wrap()
@@ -143,7 +171,8 @@ namespace {
         .def_readonly("delta", &w_t::delta)
         .def("residual", &w_t::residual)
         .def("gradients", &w_t::gradients, (arg("epsilon")=1e-100))
-      ;
+        .def_pickle(dihedral_wrappers())
+        ;
     }
   };
 

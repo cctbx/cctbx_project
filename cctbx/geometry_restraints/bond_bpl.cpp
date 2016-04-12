@@ -1,5 +1,6 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
+#include <boost/python.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
@@ -35,9 +36,21 @@ namespace scitbx { namespace af { namespace boost_python {
 namespace cctbx { namespace geometry_restraints {
 namespace {
 
-  struct bond_params_wrappers
+  struct bond_params_wrappers : boost::python::pickle_suite
   {
     typedef bond_params w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+        return boost::python::make_tuple(self.distance_ideal,
+          self.weight,
+          self.slack,
+          self.limit,
+          self.top_out,
+          self.origin_id
+          );
+    }
 
     static void
     wrap()
@@ -45,18 +58,18 @@ namespace {
       using namespace boost::python;
       class_<w_t>("bond_params", no_init)
         .def(init<
-          double,
-          double,
-          double,
-          double,
-          bool,
-          unsigned char >((
-            arg("distance_ideal"),
-            arg("weight"),
-            arg("slack")=0,
-            arg("limit")=-1.0,
-            arg("top_out")=false,
-            arg("origin_id")=0)))
+        double,
+        double,
+        double,
+        double,
+        bool,
+        unsigned char >((
+        arg("distance_ideal"),
+        arg("weight"),
+        arg("slack") = 0,
+        arg("limit") = -1.0,
+        arg("top_out") = false,
+        arg("origin_id") = 0)))
         .def("scale_weight", &w_t::scale_weight, (arg("factor")))
         .def_readwrite("distance_ideal", &w_t::distance_ideal)
         .def_readwrite("weight", &w_t::weight)
@@ -64,7 +77,8 @@ namespace {
         .def_readwrite("limit", &w_t::limit)
         .def_readwrite("top_out", &w_t::top_out)
         .def_readwrite("origin_id", &w_t::origin_id)
-      ;
+        .def_pickle(bond_params_wrappers())
+        ;
     }
   };
 
@@ -136,9 +150,22 @@ namespace {
     }
   };
 
-  struct bond_simple_proxy_wrappers
+  struct bond_simple_proxy_wrappers : boost::python::pickle_suite
   {
     typedef bond_simple_proxy w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+        return boost::python::make_tuple(self.i_seqs, 
+          self.distance_ideal,
+          self.weight,
+          self.slack,
+          self.limit,
+          self.top_out,
+          self.origin_id
+          );
+    }
 
     static void
     wrap()
@@ -194,7 +221,8 @@ namespace {
         .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .add_property("rt_mx_ji", make_getter(&w_t::rt_mx_ji, rbv()))
-      ;
+        .def_pickle(bond_simple_proxy_wrappers())
+        ;
       {
         typedef return_internal_reference<> rir;
         scitbx::af::boost_python::shared_wrapper<bond_simple_proxy, rir>::wrap(
@@ -210,9 +238,23 @@ namespace {
     }
   };
 
-  struct bond_sym_proxy_wrappers
+  struct bond_sym_proxy_wrappers : boost::python::pickle_suite
   {
     typedef bond_sym_proxy w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+        return boost::python::make_tuple(self.i_seqs,
+          self.rt_mx_ji,
+          self.distance_ideal,
+          self.weight,
+          self.slack,
+          self.limit,
+          self.top_out,
+          self.origin_id
+          );
+    }
 
     static void
     wrap()
@@ -239,13 +281,27 @@ namespace {
             arg("origin_id")=0)))
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .def_readonly("rt_mx_ji", &w_t::rt_mx_ji)
-      ;
+        .def_pickle(bond_sym_proxy_wrappers())
+        ;
     }
   };
 
-  struct bond_asu_proxy_wrappers
+  struct bond_asu_proxy_wrappers : boost::python::pickle_suite
   {
     typedef bond_asu_proxy w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+        return boost::python::make_tuple(self.init_pair,
+          self.distance_ideal,
+          self.weight,
+          self.slack,
+          self.limit,
+          self.top_out,
+          self.origin_id
+          );
+    }
 
     static void
     wrap()
@@ -271,7 +327,8 @@ namespace {
         .def(init<asu_mapping_index_pair const&, bond_params const&>(
           (arg("pair"), arg("params"))))
         .def("as_simple_proxy", &w_t::as_simple_proxy)
-      ;
+        .def_pickle(bond_asu_proxy_wrappers())
+        ;
       {
         typedef return_internal_reference<> rir;
         scitbx::af::boost_python::shared_wrapper<bond_asu_proxy, rir>::wrap(
@@ -287,9 +344,22 @@ namespace {
     }
   };
 
-  struct bond_wrappers
+  struct bond_wrappers : boost::python::pickle_suite
   {
     typedef bond w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+        return boost::python::make_tuple(self.sites,
+          self.distance_ideal,
+          self.weight,
+          self.slack,
+          self.limit,
+          self.top_out,
+          self.origin_id
+          );
+    }
 
     static void
     wrap()
@@ -335,7 +405,8 @@ namespace {
         .def_readonly("origin_id", &w_t::origin_id)
         .def("residual", &w_t::residual)
         .def("gradients", &w_t::gradients)
-      ;
+        .def_pickle(bond_wrappers())
+        ;
     }
   };
 

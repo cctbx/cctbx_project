@@ -16,67 +16,87 @@
 namespace mmtbx { namespace geometry_restraints {
 namespace boost_python {
 
-  void wrap_reference_coordinate_proxies ()
+  struct reference_coordinate_proxies_wrappers : boost::python::pickle_suite
   {
-    using namespace boost::python;
-    typedef return_value_policy<return_by_value> rbv;
     typedef reference_coordinate_proxy w_t;
-    class_<w_t>("reference_coordinate_proxy", no_init)
-      .def(init<
-        // This is an array just for compatibility with
-        // cctbx::geometry_restraints::shared_proxy_select function!
-        af::tiny<unsigned, 1> const&,
-        scitbx::vec3<double>, double,
-        double, bool>((
-          arg("i_seqs"),
-          arg("ref_sites"),
-          arg("weight"),
-          arg("limit")=-1.0,
-          arg("top_out")=false)))
-      .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
-      .add_property("ref_sites", make_getter(&w_t::ref_sites, rbv()))
-      .def_readwrite("weight", &w_t::weight)
-    ;
+    
+    static boost::python::tuple
+      getinitargs(w_t const& self)
     {
-      typedef return_internal_reference<> rir;
-      scitbx::af::boost_python::shared_wrapper<reference_coordinate_proxy, rir>::wrap(
-        "shared_reference_coordinate_proxy")
-        .def("proxy_select",
-          (af::shared<w_t>(*)(
-           af::const_ref<w_t> const&,
-           std::size_t,
-           af::const_ref<std::size_t> const&))
-           cctbx::geometry_restraints::shared_proxy_select, (
-         arg("n_seq"), arg("iselection")))
-        .def("proxy_remove",
-          (af::shared<w_t>(*)(
-           af::const_ref<w_t> const&,
-           af::const_ref<bool> const&))
-           cctbx::geometry_restraints::shared_proxy_remove, (
-         arg("selection")))
-         .def("proxy_remove",
-          (af::shared<w_t>(*)(
-           af::const_ref<w_t> const&,
-           af::const_ref<size_t> const&))
-           cctbx::geometry_restraints::shared_proxy_remove, (
-         arg("selection")))
-      ;
+      return boost::python::make_tuple(self.i_seqs,
+        self.ref_sites,
+        self.weight,
+        self.limit,
+        self.top_out
+        );
     }
 
-    def("reference_coordinate_residual_sum",
-      (double(*)(
-        af::const_ref<scitbx::vec3<double> > const&,
-        af::const_ref<reference_coordinate_proxy> const&,
-        af::ref<scitbx::vec3<double> > const&))
-      reference_coordinate_residual_sum, (
-      arg("sites_cart"),
-      arg("proxies"),
-      arg("gradient_array")));
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<return_by_value> rbv;
+      typedef reference_coordinate_proxy w_t;
+      class_<w_t>("reference_coordinate_proxy", no_init)
+        .def(init<
+          // This is an array just for compatibility with
+          // cctbx::geometry_restraints::shared_proxy_select function!
+          af::tiny<unsigned, 1> const&,
+          scitbx::vec3<double>, double,
+          double, bool>((
+            arg("i_seqs"),
+            arg("ref_sites"),
+            arg("weight"),
+            arg("limit") = -1.0,
+            arg("top_out") = false)))
+        .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
+        .add_property("ref_sites", make_getter(&w_t::ref_sites, rbv()))
+        .def_readwrite("weight", &w_t::weight)
+        .def_pickle(reference_coordinate_proxies_wrappers())
+        ;
+      {
+        typedef return_internal_reference<> rir;
+        scitbx::af::boost_python::shared_wrapper<reference_coordinate_proxy, rir>::wrap(
+          "shared_reference_coordinate_proxy")
+          .def("proxy_select",
+            (af::shared<w_t>(*)(
+              af::const_ref<w_t> const&,
+              std::size_t,
+              af::const_ref<std::size_t> const&))
+            cctbx::geometry_restraints::shared_proxy_select, (
+              arg("n_seq"), arg("iselection")))
+          .def("proxy_remove",
+            (af::shared<w_t>(*)(
+              af::const_ref<w_t> const&,
+              af::const_ref<bool> const&))
+            cctbx::geometry_restraints::shared_proxy_remove, (
+              arg("selection")))
+          .def("proxy_remove",
+            (af::shared<w_t>(*)(
+              af::const_ref<w_t> const&,
+              af::const_ref<size_t> const&))
+            cctbx::geometry_restraints::shared_proxy_remove, (
+              arg("selection")))
+          ;
+      }
+
+      def("reference_coordinate_residual_sum",
+        (double(*)(
+          af::const_ref<scitbx::vec3<double> > const&,
+          af::const_ref<reference_coordinate_proxy> const&,
+          af::ref<scitbx::vec3<double> > const&))
+        reference_coordinate_residual_sum, (
+          arg("sites_cart"),
+          arg("proxies"),
+          arg("gradient_array")));
+
+    }
   }
+  ;
 
   void wrap_reference ()
   {
-    wrap_reference_coordinate_proxies();
+    reference_coordinate_proxies_wrappers::wrap();
   }
 
 }}} // namespace mmtbx::geometry_restraints::boost_python

@@ -31,9 +31,17 @@ namespace {
     }
   };
 
-  struct simple_pair_generator_wrappers
+  struct simple_pair_generator_wrappers : boost::python::pickle_suite
   {
     typedef simple_pair_generator<> w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+        return boost::python::make_tuple(self.asu_mappings(), 
+          sqrt(self.distance_cutoff_sq()),
+          self.minimal());
+    }
 
     static void
     wrap()
@@ -58,13 +66,24 @@ namespace {
         .def("max_distance_sq", &w_t::max_distance_sq)
         .def("neighbors_of", &w_t::neighbors_of, (arg("primary_selection")))
         .def("is_simple_interaction", &w_t::is_simple_interaction)
-      ;
+        .def_pickle(simple_pair_generator_wrappers())
+        ;
     }
   };
 
-  struct fast_pair_generator_wrappers
+  struct fast_pair_generator_wrappers : boost::python::pickle_suite
   {
     typedef fast_pair_generator<> w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+        return boost::python::make_tuple(self.asu_mappings(),
+          sqrt(self.distance_cutoff_sq()),
+          self.minimal(),
+          self.min_cubicle_edge_,
+          self.epsilon());
+    }
 
     static void
     wrap()
@@ -99,7 +118,8 @@ namespace {
             arg("vdw_radii"),
             arg("fallback_expected_bond_length"),
             arg("tolerance_factor_expected_bond_length")))
-      ;
+        .def_pickle(fast_pair_generator_wrappers())
+        ;
     }
   };
 

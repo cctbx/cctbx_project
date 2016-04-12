@@ -60,7 +60,17 @@ namespace cctbx { namespace crystal {
       {
         CCTBX_ASSERT(distance_cutoff_ > 0);
         CCTBX_ASSERT(asu_mappings_->buffer_thickness() >= distance_cutoff_);
+        init_space_group = space_group;
+        init_asu = asu;
+        init_distance_cutoff = distance_cutoff;
+        init_asu_mappings_buffer_thickness = asu_mappings_buffer_thickness;
+        init_cubicle_epsilon = cubicle_epsilon;
       }
+      sgtbx::space_group init_space_group;
+      direct_space_asu::float_asu<FloatType> init_asu;
+      FloatType init_distance_cutoff;
+      FloatType init_asu_mappings_buffer_thickness;
+      FloatType init_cubicle_epsilon;
 
       boost::shared_ptr<
         direct_space_asu::asu_mappings<FloatType, IntShiftType> >

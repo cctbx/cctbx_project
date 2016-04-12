@@ -54,6 +54,7 @@ namespace cctbx { namespace crystal { namespace neighbors {
         FloatType const& epsilon=1e-6)
       :
         epsilon_(epsilon),
+        min_cubicle_edge_(min_cubicle_edge),
         cubicles_(
           asu_mappings.get()->mapped_sites_min(),
           asu_mappings.get()->mapped_sites_span(),
@@ -83,7 +84,7 @@ namespace cctbx { namespace crystal { namespace neighbors {
       //! Value as passed to the constructor.
       FloatType
       epsilon() const { return epsilon_; }
-
+      FloatType min_cubicle_edge_;
       //! Number of boxes in each dimension.
       scitbx::vec3<unsigned> const&
       n_boxes() const { return n_boxes_; }

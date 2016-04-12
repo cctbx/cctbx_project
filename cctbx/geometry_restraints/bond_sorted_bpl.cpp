@@ -1,5 +1,6 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
+#include <boost/python.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
@@ -10,9 +11,15 @@
 namespace cctbx { namespace geometry_restraints {
 namespace {
 
-  struct bond_sorted_asu_proxies_base_wrappers
+  struct bond_sorted_asu_proxies_base_wrappers : boost::python::pickle_suite
   {
     typedef bond_sorted_asu_proxies_base w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+        return boost::python::make_tuple(self.asu_mappings());
+    }
 
     static void
     process_bond_asu_proxy(
@@ -53,13 +60,20 @@ namespace {
         .def("n_total", &w_t::n_total)
         .def_readonly("simple", &w_t::simple)
         .def_readonly("asu", &w_t::asu)
-      ;
+        .def_pickle(bond_sorted_asu_proxies_base_wrappers())
+        ;
     }
   };
 
-  struct bond_sorted_asu_proxies_wrappers
+  struct bond_sorted_asu_proxies_wrappers : boost::python::pickle_suite
   {
     typedef bond_sorted_asu_proxies w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+        return boost::python::make_tuple(self.asu_mappings());
+    }
 
     static void
     wrap()
@@ -81,7 +95,8 @@ namespace {
           .def(init<
             crystal::pair_asu_table<> const&>(
               (arg("pair_asu_table"))))
-      ;
+          .def_pickle(bond_sorted_asu_proxies_wrappers())
+          ;
     }
   };
 

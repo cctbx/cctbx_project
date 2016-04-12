@@ -1,5 +1,6 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
+#include <boost/python.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
@@ -9,9 +10,15 @@
 namespace cctbx { namespace geometry_restraints {
 namespace {
 
-  struct nonbonded_sorted_asu_proxies_base_wrappers
+  struct nonbonded_sorted_asu_proxies_base_wrappers : boost::python::pickle_suite
   {
     typedef nonbonded_sorted_asu_proxies_base w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+        return boost::python::make_tuple(self.asu_mappings());
+    }
 
     static void
     wrap()
@@ -40,13 +47,20 @@ namespace {
         .def("n_total", &w_t::n_total)
         .def_readonly("simple", &w_t::simple)
         .def_readonly("asu", &w_t::asu)
-      ;
+        .def_pickle(nonbonded_sorted_asu_proxies_base_wrappers())
+        ;
     }
   };
 
-  struct nonbonded_sorted_asu_proxies_wrappers
+  struct nonbonded_sorted_asu_proxies_wrappers : boost::python::pickle_suite
   {
     typedef nonbonded_sorted_asu_proxies w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+        return boost::python::make_tuple(self.asu_mappings());
+    }
 
     static void
     wrap()
@@ -82,7 +96,8 @@ namespace {
           &w_t::n_unknown_nonbonded_type_pairs)
         .def_readonly("min_vdw_distance", &w_t::min_vdw_distance)
         .def_readonly("max_vdw_distance", &w_t::max_vdw_distance)
-      ;
+        .def_pickle(nonbonded_sorted_asu_proxies_wrappers())
+        ;
     }
   };
 

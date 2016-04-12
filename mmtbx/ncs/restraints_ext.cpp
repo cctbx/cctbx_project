@@ -18,9 +18,17 @@ namespace {
     to_tuple_mapping<std::vector<af::tiny<af::shared<std::size_t>, 2> > >();
   }
 
-  struct pair_registry_wrappers
+  struct pair_registry_wrappers : boost::python::pickle_suite
   {
     typedef pair_registry w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.n_seq(),
+        self.init_n_ncs
+        );
+    }
 
     static void
     wrap()
@@ -44,6 +52,7 @@ namespace {
           arg("u_isos"),
           arg("u_average_min"),
           arg("gradients")))
+        .def_pickle(pair_registry_wrappers())
       ;
       register_ptr_to_python<std::auto_ptr<pair_registry> >();
     }

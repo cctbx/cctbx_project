@@ -17,9 +17,20 @@ SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(cctbx::geometry_restraints::angle)
 namespace cctbx { namespace geometry_restraints {
 namespace {
 
-  struct angle_proxy_wrappers
+  struct angle_proxy_wrappers : boost::python::pickle_suite
   {
     typedef angle_proxy w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.i_seqs,
+        self.angle_ideal,
+        self.weight,
+        self.slack,
+        self.origin_id
+        );
+    }
 
     static void
     wrap()
@@ -55,7 +66,8 @@ namespace {
         .def_readwrite("weight", &w_t::weight)
         .def_readwrite("slack", &w_t::slack)
         .def_readwrite("origin_id", &w_t::origin_id)
-      ;
+        .def_pickle(angle_proxy_wrappers())
+        ;
       {
         typedef return_internal_reference<> rir;
         scitbx::af::boost_python::shared_wrapper<w_t, rir>::wrap(
@@ -90,9 +102,20 @@ namespace {
     }
   };
 
-  struct angle_wrappers
+  struct angle_wrappers : boost::python::pickle_suite
   {
     typedef angle w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.sites,
+        self.angle_ideal,
+        self.weight,
+        self.slack,
+        self.origin_id
+        );
+    }
 
     static void
     wrap()
@@ -128,7 +151,8 @@ namespace {
           arg("epsilon")=1e-100))
         .def("gradients", &w_t::gradients, (
           arg("epsilon")=1e-100))
-      ;
+        .def_pickle(angle_wrappers())
+        ;
     }
   };
 

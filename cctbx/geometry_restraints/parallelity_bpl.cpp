@@ -14,9 +14,23 @@
 namespace cctbx { namespace geometry_restraints {
 namespace {
 
-  struct parallelity_proxy_wrappers
+  struct parallelity_proxy_wrappers : boost::python::pickle_suite
   {
     typedef parallelity_proxy w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.i_seqs,
+        self.j_seqs,
+        self.weight,
+        self.target_angle_deg,
+        self.slack,
+        self.limit,
+        self.top_out,
+        self.origin_id
+        );
+    }
 
     static void
     wrap()
@@ -60,6 +74,7 @@ namespace {
         .add_property("top_out", make_getter(&w_t::top_out, rbv()))
         .add_property("sym_ops", make_getter(&w_t::sym_ops, rbv()))
         .def_readwrite("origin_id", &w_t::origin_id)
+        .def_pickle(parallelity_proxy_wrappers())
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
@@ -94,9 +109,22 @@ namespace {
     }
   };
 
-  struct parallelity_wrappers
+  struct parallelity_wrappers : boost::python::pickle_suite
   {
     typedef parallelity w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.i_sites,
+        self.j_sites,
+        self.weight,
+        self.target_angle_deg,
+        self.slack,
+        self.limit,
+        self.top_out
+        );
+    }
 
     static void
     wrap()
@@ -139,6 +167,7 @@ namespace {
         .add_property("delta", make_getter(&w_t::delta, rbv()))
         .def("residual", &w_t::residual)
         .def("gradients", &w_t::gradients)
+        .def_pickle(parallelity_wrappers())
       ;
     }
   };

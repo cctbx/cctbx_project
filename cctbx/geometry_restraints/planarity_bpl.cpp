@@ -14,9 +14,18 @@
 namespace cctbx { namespace geometry_restraints {
 namespace {
 
-  struct planarity_proxy_wrappers
+  struct planarity_proxy_wrappers : boost::python::pickle_suite
   {
     typedef planarity_proxy w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.i_seqs,
+        self.weights,
+        self.origin_id
+        );
+    }
 
     static void
     wrap()
@@ -45,6 +54,7 @@ namespace {
         .add_property("weights", make_getter(&w_t::weights, rbv()))
         .add_property("sym_ops", make_getter(&w_t::sym_ops, rbv()))
         .def_readwrite("origin_id", &w_t::origin_id)
+        .def_pickle(planarity_proxy_wrappers())
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
@@ -79,9 +89,17 @@ namespace {
     }
   };
 
-  struct planarity_wrappers
+  struct planarity_wrappers : boost::python::pickle_suite
   {
     typedef planarity w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.sites,
+        self.weights
+        );
+    }
 
     static void
     wrap()
@@ -113,6 +131,7 @@ namespace {
         .def("center_of_mass", &w_t::center_of_mass, ccr())
         .def("residual_tensor", &w_t::residual_tensor, ccr())
         .def("eigensystem", &w_t::eigensystem, rir())
+        .def_pickle(planarity_wrappers())
       ;
     }
   };

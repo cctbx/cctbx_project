@@ -246,7 +246,8 @@ namespace cctbx { namespace geometry_restraints {
       double vdw_distance_)
     :
       asu_mapping_index_pair(pair_),
-      vdw_distance(vdw_distance_)
+      vdw_distance(vdw_distance_),
+      init_pair(pair_)
     {}
 
     //! Constructor.
@@ -262,6 +263,7 @@ namespace cctbx { namespace geometry_restraints {
 
     //! VDW distance.
     double vdw_distance;
+    asu_mapping_index_pair init_pair; // used for pickling in getinitargs()
   };
 
   //! General repulsive function (see PROLSQ and CNS).

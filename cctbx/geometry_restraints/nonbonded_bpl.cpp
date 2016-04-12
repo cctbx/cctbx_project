@@ -12,9 +12,20 @@
 namespace cctbx { namespace geometry_restraints {
 namespace {
 
-  struct nonbonded_params_wrappers
+  struct nonbonded_params_wrappers : boost::python::pickle_suite
   {
     typedef nonbonded_params w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.factor_1_4_interactions,
+        self.const_shrink_1_4_interactions,
+        self.default_distance,
+        self.minimum_distance,
+        self.const_shrink_donor_acceptor
+        );
+    }
 
     static void
     wrap()
@@ -41,13 +52,22 @@ namespace {
         .def_readwrite("minimum_distance", &w_t::minimum_distance)
         .def_readwrite("const_shrink_donor_acceptor",
                   &w_t::const_shrink_donor_acceptor)
+        .def_pickle(nonbonded_params_wrappers())
       ;
     }
   };
 
-  struct nonbonded_simple_proxy_wrappers
+  struct nonbonded_simple_proxy_wrappers : boost::python::pickle_suite
   {
     typedef nonbonded_simple_proxy w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.i_seqs,
+        self.vdw_distance
+        );
+    }
 
     static void
     wrap()
@@ -62,6 +82,7 @@ namespace {
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .add_property("rt_mx_ji", make_getter(&w_t::rt_mx_ji, rbv()))
         .def_readwrite("vdw_distance", &w_t::vdw_distance)
+        .def_pickle(nonbonded_simple_proxy_wrappers())
       ;
       {
         typedef return_internal_reference<> rir;
@@ -72,9 +93,17 @@ namespace {
     }
   };
 
-  struct nonbonded_asu_proxy_wrappers
+  struct nonbonded_asu_proxy_wrappers : boost::python::pickle_suite
   {
     typedef nonbonded_asu_proxy w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.init_pair,
+        self.vdw_distance
+        );
+    }
 
     static void
     wrap()
@@ -85,6 +114,7 @@ namespace {
         .def(init<asu_mapping_index_pair const&, double>(
           (arg("pair"), arg("vdw_distance"))))
         .def_readwrite("vdw_distance", &w_t::vdw_distance)
+        .def_pickle(nonbonded_asu_proxy_wrappers())
       ;
       {
         typedef return_internal_reference<> rir;
@@ -94,9 +124,19 @@ namespace {
     }
   };
 
-  struct prolsq_repulsion_function_wrappers
+  struct prolsq_repulsion_function_wrappers : boost::python::pickle_suite
   {
     typedef prolsq_repulsion_function w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.c_rep,
+        self.k_rep,
+        self.irexp,
+        self.rexp
+        );
+    }
 
     static void
     wrap()
@@ -115,13 +155,23 @@ namespace {
         .def("residual",
           (double (w_t::*)(double, double) const) &w_t::residual,
             (arg("vdw_distance"), arg("delta")))
+        .def_pickle(prolsq_repulsion_function_wrappers())
       ;
     }
   };
 
-  struct inverse_power_repulsion_function_wrappers
+  struct inverse_power_repulsion_function_wrappers : boost::python::pickle_suite
   {
     typedef inverse_power_repulsion_function w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.nonbonded_distance_cutoff,
+        self.k_rep,
+        self.irexp
+        );
+    }
 
     static void
     wrap()
@@ -139,13 +189,22 @@ namespace {
         .def("residual",
           (double (w_t::*)(double, double) const) &w_t::residual,
             (arg("vdw_distance"), arg("delta")))
+        .def_pickle(prolsq_repulsion_function_wrappers())
       ;
     }
   };
 
-  struct cos_repulsion_function_wrappers
+  struct cos_repulsion_function_wrappers : boost::python::pickle_suite
   {
     typedef cos_repulsion_function w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.max_residual,
+        self.exponent
+        );
+    }
 
     static void
     wrap()
@@ -160,13 +219,22 @@ namespace {
         .def("residual",
           (double (w_t::*)(double, double) const) &w_t::residual,
             (arg("vdw_distance"), arg("delta")))
+        .def_pickle(cos_repulsion_function_wrappers())
       ;
     }
   };
 
-  struct gaussian_repulsion_function_wrappers
+  struct gaussian_repulsion_function_wrappers : boost::python::pickle_suite
   {
     typedef gaussian_repulsion_function w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.max_residual,
+        self.norm_height_at_vdw_distance()
+        );
+    }
 
     static void
     wrap()
@@ -181,14 +249,24 @@ namespace {
         .def("residual",
           (double (w_t::*)(double, double) const) &w_t::residual,
             (arg("vdw_distance"), arg("delta")))
+        .def_pickle(gaussian_repulsion_function_wrappers())
       ;
     }
   };
 
   template <typename NonbondedFunction>
-  struct nonbonded_wrappers
+  struct nonbonded_wrappers : boost::python::pickle_suite
   {
     typedef nonbonded<NonbondedFunction> w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.sites,
+        self.vdw_distance,
+        self.function
+        );
+    }
 
     static void
     wrap(const char* python_name)
@@ -217,6 +295,7 @@ namespace {
         .def_readonly("delta", &w_t::delta)
         .def("residual", &w_t::residual)
         .def("gradients", &w_t::gradients)
+        .def_pickle(nonbonded_wrappers())
       ;
     }
   };

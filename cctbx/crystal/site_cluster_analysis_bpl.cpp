@@ -1,5 +1,6 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
+#include <boost/python.hpp>
 #include <boost/python/class.hpp>
 #include <scitbx/boost_python/is_polymorphic_workaround.h>
 #include <cctbx/crystal/site_cluster_analysis.h>
@@ -11,9 +12,24 @@ SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(
 namespace cctbx { namespace crystal {
 namespace {
 
-  struct site_cluster_analysis_wrappers
+  struct site_cluster_analysis_wrappers : boost::python::pickle_suite
   {
     typedef site_cluster_analysis<> w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+        return boost::python::make_tuple(self.init_space_group,
+          self.init_asu,
+          self.min_cross_distance,
+          self.min_self_distance,
+          self.general_positions_only,
+          self.estimated_reduction_factor,
+          self.init_asu_mappings_buffer_thickness,
+          self.init_min_cubicle_edge,
+          self.cubicle_epsilon_
+          );
+    }
 
     static void
     wrap()
@@ -101,7 +117,8 @@ namespace {
               &w_t::process_sites_cart, (
                 arg("original_sites"),
                 arg("max_clusters")=0))
-      ;
+         .def_pickle(site_cluster_analysis_wrappers())
+        ;
     }
   };
 

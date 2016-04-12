@@ -50,10 +50,16 @@ namespace {
     }
   };
 
-  struct pair_asu_table_wrappers
+  struct pair_asu_table_wrappers : boost::python::pickle_suite
   {
     typedef pair_asu_table<> w_t;
-
+    
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+        return boost::python::make_tuple(self.asu_mappings());
+    }
+    
     static void
     wrap()
     {
@@ -110,13 +116,39 @@ namespace {
           arg("skip_j_seq_less_than_i_seq")=true,
           arg("all_interactions_from_inside_asu")=false))
         .def("angle_pair_asu_table", &w_t::angle_pair_asu_table)
-      ;
+        .def_pickle(pair_asu_table_wrappers())
+        ;
     }
   };
 
-  struct adp_iso_local_sphere_restraints_energies_wrappers
+  struct adp_iso_local_sphere_restraints_energies_wrappers : boost::python::pickle_suite
   {
     typedef adp_iso_local_sphere_restraints_energies w_t;
+
+
+    static boost::python::tuple
+      getstate(w_t const& self)
+    {
+      return boost::python::make_tuple(
+        self.number_of_restraints,
+        self.residual_sum,
+        self.gradients,
+        self.u_i,
+        self.u_j,
+        self.r_ij
+        );
+    }
+
+    static void
+      setstate(w_t& self, boost::python::tuple state)
+    {
+      self.number_of_restraints = boost::python::extract< unsigned >(state[0]);
+      self.residual_sum = boost::python::extract< double >(state[1]);
+      self.gradients = boost::python::extract< af::shared<double> >(state[2]);
+      self.u_i = boost::python::extract< af::shared<double> >(state[3]);
+      self.u_j = boost::python::extract< af::shared<double> >(state[3]);
+      self.r_ij = boost::python::extract< af::shared<double> >(state[3]);
+    }
 
     static void
     wrap()
@@ -158,7 +190,8 @@ namespace {
         .add_property("u_i", make_getter(&w_t::u_i, rbv()))
         .add_property("u_j", make_getter(&w_t::u_j, rbv()))
         .add_property("r_ij", make_getter(&w_t::r_ij, rbv()))
-      ;
+        .def_pickle(adp_iso_local_sphere_restraints_energies_wrappers())
+        ;
     }
   };
 

@@ -14,9 +14,17 @@
 namespace cctbx { namespace geometry_restraints {
 namespace {
 
-  struct bond_similarity_proxy_wrappers
+  struct bond_similarity_proxy_wrappers : boost::python::pickle_suite
   {
     typedef bond_similarity_proxy w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.i_seqs, 
+        self.sym_ops,
+        self.weights);
+    }
 
     static void
     wrap()
@@ -39,7 +47,8 @@ namespace {
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .add_property("weights", make_getter(&w_t::weights, rbv()))
         .add_property("sym_ops", make_getter(&w_t::sym_ops, rbv()))
-      ;
+        .def_pickle(bond_similarity_proxy_wrappers())
+        ;
       {
         typedef return_internal_reference<> rir;
         scitbx::af::boost_python::shared_wrapper<
@@ -49,9 +58,16 @@ namespace {
     }
   };
 
-  struct bond_similarity_wrappers
+  struct bond_similarity_wrappers : boost::python::pickle_suite
   {
     typedef bond_similarity w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.sites_array,
+        self.weights);
+    }
 
     static void
     wrap()
@@ -83,7 +99,8 @@ namespace {
         .def("residual", &w_t::residual)
         .def("gradients", &w_t::gradients)
         .def("mean_distance", &w_t::mean_distance)
-      ;
+        .def_pickle(bond_similarity_wrappers())
+        ;
     }
   };
 

@@ -206,8 +206,10 @@ namespace cctbx { namespace geometry_restraints {
     :
       bond_params(distance_ideal_, weight_, slack_, limit_,
           top_out_, origin_id_),
-      asu_mapping_index_pair(pair_)
+      asu_mapping_index_pair(pair_),
+      init_pair(pair_) // used for pickling in getinitargs()
     {}
+    asu_mapping_index_pair init_pair;
 
     //! Constructor.
     bond_asu_proxy(

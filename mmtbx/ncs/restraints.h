@@ -29,11 +29,13 @@ namespace mmtbx { namespace ncs { namespace restraints {
       tab_ref_i_seqs_(n_seq, n_seq),
       tab_i_ncs_(n_seq, n_ncs),
       counts_(n_ncs, 0),
-      number_of_additional_isolated_sites(0)
+      number_of_additional_isolated_sites(0),
+      init_n_ncs(n_ncs)
     {}
 
     std::size_t
     n_seq() const { return tab_i_seqs_.size(); }
+    unsigned init_n_ncs;
 
     void
     register_additional_isolated_sites(unsigned number)

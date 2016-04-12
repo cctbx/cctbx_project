@@ -17,9 +17,20 @@ SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(cctbx::geometry_restraints::chirality)
 namespace cctbx { namespace geometry_restraints {
 namespace {
 
-  struct chirality_proxy_wrappers
+  struct chirality_proxy_wrappers : boost::python::pickle_suite
   {
     typedef chirality_proxy w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.i_seqs,
+        self.volume_ideal,
+        self.both_signs,
+        self.weight,
+        self.origin_id
+        );
+    }
 
     static void
     wrap()
@@ -44,7 +55,8 @@ namespace {
         .def_readonly("both_signs", &w_t::both_signs)
         .def_readwrite("weight", &w_t::weight)
         .def_readwrite("origin_id", &w_t::origin_id)
-      ;
+        .def_pickle(chirality_proxy_wrappers())
+        ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
           "shared_chirality_proxy")
@@ -78,9 +90,19 @@ namespace {
     }
   };
 
-  struct chirality_wrappers
+  struct chirality_wrappers : boost::python::pickle_suite
   {
     typedef chirality w_t;
+
+    static boost::python::tuple
+      getinitargs(w_t const& self)
+    {
+      return boost::python::make_tuple(self.sites,
+        self.volume_ideal,
+        self.both_signs,
+        self.weight
+        );
+    }
 
     static void
     wrap()
@@ -106,7 +128,8 @@ namespace {
         .def_readonly("delta", &w_t::delta)
         .def("residual", &w_t::residual)
         .def("gradients", &w_t::gradients)
-      ;
+        .def_pickle(chirality_wrappers())
+        ;
     }
   };
 

@@ -16,11 +16,15 @@ namespace cctbx { namespace crystal {
       FloatType min_distance_sym_equiv;
       bool assert_min_distance_sym_equiv;
       unsigned estimated_reduction_factor;
+      sgtbx::space_group init_space_group;
+      direct_space_asu::float_asu<FloatType> init_asu;
+      FloatType init_asu_mappings_buffer_thickness;
+      FloatType init_min_cubicle_edge;
+      FloatType cubicle_epsilon_;
 
     protected:
       FloatType min_cross_distance_sq_;
       FloatType min_self_distance_sq_;
-      FloatType cubicle_epsilon_;
       typedef
         direct_space_asu::asu_mappings<FloatType, IntShiftType>
           asu_mappings_t;
@@ -72,7 +76,11 @@ namespace cctbx { namespace crystal {
           std::max(
             std::max(min_cross_distance, min_self_distance),
             min_cubicle_edge),
-          cubicle_epsilon_)
+          cubicle_epsilon_),
+          init_space_group(space_group),
+          init_asu(asu),
+          init_asu_mappings_buffer_thickness(asu_mappings_buffer_thickness),
+          init_min_cubicle_edge(min_cubicle_edge)
       {
         CCTBX_ASSERT(min_cross_distance > 0);
         CCTBX_ASSERT(min_self_distance >= 0);
