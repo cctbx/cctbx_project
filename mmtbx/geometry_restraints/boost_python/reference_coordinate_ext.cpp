@@ -19,7 +19,7 @@ namespace boost_python {
   struct reference_coordinate_proxies_wrappers : boost::python::pickle_suite
   {
     typedef reference_coordinate_proxy w_t;
-    
+
     static boost::python::tuple
       getinitargs(w_t const& self)
     {
