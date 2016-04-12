@@ -17,7 +17,7 @@ __author__ = 'Youval'
 import libtbx.load_env
 have_phenix = False
 if libtbx.env.has_module(name="phenix"):
-  from phenix.command_line.simple_ncs_from_pdb import simple_ncs_from_pdb
+  from phenix.command_line import simple_ncs_from_pdb
   have_phenix = True
 
 
@@ -45,7 +45,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       fn = 'SimpleNCSFromPDB_test.pdb'
       open(fn,'w').write(pdb_str_3)
       prefix = 'test_create_ncs_domain_pdb_files'
-      obj = simple_ncs_from_pdb(
+      obj = simple_ncs_from_pdb.run(
         args=["pdb_in=%s" % fn,
               "write_ncs_domain_pdb=True",
               "ncs_domain_pdb_stem=%s" % prefix])
@@ -184,7 +184,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       print >> of, self.ph.as_pdb_string(crystal_symmetry=xrs.crystal_symmetry())
       of.close()
       # create a spec file
-      ncs_from_pdb=simple_ncs_from_pdb(
+      ncs_from_pdb=simple_ncs_from_pdb.run(
         args=["pdb_in=test_ncs_spec.pdb", "write_spec_files=True"],
         log=null_out())
 
