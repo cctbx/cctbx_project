@@ -1557,8 +1557,6 @@ class input(object):
           fmodel=None,
           exclude_h=None,
           exclude_d=None,
-          # create_ncs_domain_pdb=False,
-          # stem='',
           log = None):
     """
     This function should be transfered to mmtbx/ncs/ncs.py:ncs class as
@@ -1619,11 +1617,6 @@ class input(object):
     # for gr in self.ncs_group_map.itervalues(): old method 2015-05-03 TT
     # run in same order as get_ncs_restraints_group_list()
     group_number = -1
-
-    # self.ncs_domain_pdb_file_name_dict={} # 2015-05-03 TT
-    # if not stem : stem =''
-    # else: stem += '_'
-
     for k in sort_dict_keys(self.ncs_group_map):
       gr = self.ncs_group_map[k]
       for gr_chains in gr[0]:
@@ -1675,10 +1668,6 @@ class input(object):
         residues_in_common_list.append(res_num)
       # build group
       group_number += 1
-      # if create_ncs_domain_pdb:
-      #   ncs_domain_pdb = stem+'group_'+str(group_number+1)+'.pdb'# 2015-05-04 TT
-      #   self.ncs_domain_pdb_file_name_dict[group_number]=ncs_domain_pdb # 2015-05-03 TT
-      # else:
       ncs_domain_pdb=None
       spec_object.import_ncs_group(
         center_orth = center_orth,
@@ -1773,23 +1762,10 @@ class input(object):
 
     if self.number_of_ncs_groups == 0: return None
     nrgl = self.get_ncs_restraints_group_list()
-
-    # 2015-05-03 save pdb file names in ncs objects
-    # group_id_list = sort_dict_keys(self.ncs_group_map)
-    # for k in group_id_list:
-    #    v = self.ncs_group_map[k]
-
     for group_number in range(len(nrgl)):
       group_isel = nu.ncs_group_iselection(nrgl,group_number)
-
       file_name = stem+'group_'+str(group_number+1)+'.pdb'
-
-      # file_name=self.ncs_domain_pdb_file_name_dict[group_number] # 2015-05-03 TT
-      # assert file_name # make sure we set it earlier
-
-
       full_file_name=os.path.join(temp_dir,file_name)
-      # f=open(full_file_name,'w')
       ph = hierarchy.select(group_isel)
       if exclude_chains is not None and len(exclude_chains) > 0:
         asc = ph.atom_selection_cache()
@@ -1800,17 +1776,6 @@ class input(object):
       ph.write_pdb_file(
           file_name=full_file_name,
           crystal_symmetry=self.crystal_symmetry)
-      # if self.crystal_symmetry:
-      #   print >> f, iotbx.pdb.format_cryst1_record(
-      #     crystal_symmetry=self.crystal_symmetry)
-      # for model in ph.models():
-      #   for chain in model.chains():
-      #     if chain.id in exclude_chains: continue
-      #     for conformer in chain.conformers():
-      #       for residue in conformer.residues():
-      #          for atom in residue.atoms():
-      #             print >>f, atom.format_atom_record()
-      # f.close()
 
   def build_asu_hierarchy(self,
                           pdb_hierarchy,
