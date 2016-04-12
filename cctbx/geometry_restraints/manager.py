@@ -688,7 +688,7 @@ class manager(object):
     # Not implemented. The problem here is to remove hbond restraints, which
     # requires modification of pair_proxies and as complicated as addition
     # of bond restraint.
-    pass
+    raise NotImplementedError
 
   def set_external_energy_function (self, energy_function) :
     self.external_energy_function = energy_function
