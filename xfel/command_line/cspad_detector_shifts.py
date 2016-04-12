@@ -230,7 +230,7 @@ class Script(ParentScript):
         local_dnorm.append(ldn)
 
         row = ["%3d"%pg_id, "%6.1f"%bc_dist, "%6.1f"%dxy,
-               "%6.1f"%r_offset, "%6.1f"%t_offset, "%6.1f"%t_offset,
+               "%6.1f"%r_offset, "%6.1f"%t_offset, "%6.1f"%z_off,
                "%.4f"%drn, "%.4f"%dtn, "%.4f"%ldn, "%.4f"%rz, "%8d"%weight]
         rows.append(row)
 

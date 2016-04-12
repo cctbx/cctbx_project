@@ -276,8 +276,6 @@ class Script(object):
       for panel_id, panel in enumerate(dect):
         panel_refls = refls.select(refls['panel'] == panel_id)
         bcl = flex.vec3_double()
-        tto = flex.double()
-        ttc = flex.double()
         # Compute the beam center in lab space (a vector pointing from the origin to where the beam would intersect
         # the panel, if it did intersect the panel)
         for expt_id in set(panel_refls['id']):
@@ -553,7 +551,7 @@ class Script(object):
     table_d = {d:row for d, row in zip(pg_bc_dists, detector_table_data)}
     table_header = ["PanelG","Dist","Normal","Normal","RNormal","RNormal","TNormal","TNormal","RotZ", "RotZ","F Offset","S Offset","Z Offset","Z Offset","N"]
     table_header2 = ["Id","","","Sigma","","Sigma","","Sigma","","Sigma","Sigma","Sigma","","Sigma","Refls"]
-    table_header3 = ["", "(mm)","(mm)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)","(microns)","(microns)","(microns)","(microns)",""]
+    table_header3 = ["", "(mm)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)","(microns)","(microns)","(microns)","(microns)",""]
     detector_table_data = [table_header, table_header2, table_header3]
     detector_table_data.extend([table_d[key] for key in sorted(table_d)])
 

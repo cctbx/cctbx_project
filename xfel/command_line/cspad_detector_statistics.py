@@ -70,7 +70,7 @@ class Script(object):
       "sensors, I.E. 2x1s",
       "ASICs, I.E. individual tiles"]
 
-    for i in xrange(4):
+    for i in xrange(3):
       c = command%(level_json%(params.tag, 1, i),
                    level_pickle%(params.tag, 1, i),
                    level_json%(params.tag, 2, i),
