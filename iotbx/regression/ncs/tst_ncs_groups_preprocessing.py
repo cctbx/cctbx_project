@@ -46,9 +46,9 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       open(fn,'w').write(pdb_str_3)
       prefix = 'test_create_ncs_domain_pdb_files'
       obj = simple_ncs_from_pdb(
-        args=["pdb_in=%s" % fn],
-        write_ncs_domain_pdb=True,
-        ncs_domain_pdb_stem=prefix)
+        args=["pdb_in=%s" % fn,
+              "write_ncs_domain_pdb=True",
+              "ncs_domain_pdb_stem=%s" % prefix])
 
       fn_gr0 = prefix + '_group_1.pdb'
       fn_gr1 = prefix + '_group_2.pdb'
