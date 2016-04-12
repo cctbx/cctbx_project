@@ -300,7 +300,7 @@ namespace {
     getstate(w_t const& self)
     {
       return boost::python::make_tuple(
-         self.id, 
+         self.id,
          self.description,
          self.info,
          self.manipulation_ids,

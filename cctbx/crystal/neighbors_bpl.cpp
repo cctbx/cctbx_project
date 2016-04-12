@@ -38,7 +38,7 @@ namespace {
     static boost::python::tuple
       getinitargs(w_t const& self)
     {
-        return boost::python::make_tuple(self.asu_mappings(), 
+        return boost::python::make_tuple(self.asu_mappings(),
           sqrt(self.distance_cutoff_sq()),
           self.minimal());
     }

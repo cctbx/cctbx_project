@@ -53,13 +53,13 @@ namespace {
   struct pair_asu_table_wrappers : boost::python::pickle_suite
   {
     typedef pair_asu_table<> w_t;
-    
+
     static boost::python::tuple
       getinitargs(w_t const& self)
     {
         return boost::python::make_tuple(self.asu_mappings());
     }
-    
+
     static void
     wrap()
     {

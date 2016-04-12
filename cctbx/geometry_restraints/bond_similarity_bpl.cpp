@@ -21,7 +21,7 @@ namespace {
     static boost::python::tuple
       getinitargs(w_t const& self)
     {
-      return boost::python::make_tuple(self.i_seqs, 
+      return boost::python::make_tuple(self.i_seqs,
         self.sym_ops,
         self.weights);
     }

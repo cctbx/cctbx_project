@@ -56,7 +56,7 @@ namespace {
     static boost::python::tuple
       getinitargs(w_t const& self)
     {
-      return boost::python::make_tuple(self.unit_cell(), 
+      return boost::python::make_tuple(self.unit_cell(),
         self.cuts(),
         self.is_inside_epsilon());
     }

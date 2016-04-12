@@ -19,7 +19,7 @@ namespace {
     static boost::python::tuple
       getinitargs(w_t const& self)
     {
-      return boost::python::make_tuple(self.init_space_group, 
+      return boost::python::make_tuple(self.init_space_group,
         self.init_asu,
         self.init_distance_cutoff,
         self.init_asu_mappings_buffer_thickness,
