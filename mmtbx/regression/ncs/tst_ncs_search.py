@@ -292,7 +292,7 @@ class TestSimpleAlignment(unittest.TestCase):
     pdb_str = test_pdb_7 + test_pdb_7_addition
     h = iotbx.pdb.input(source_info=None, lines=pdb_str).construct_hierarchy()
     ncs_obj = ncs.input(hierarchy=h)
-    spec = ncs_obj.get_ncs_info_as_spec(write=False)
+    spec = ncs_obj.get_ncs_info_as_spec()
     gr = spec.ncs_groups()
     self.assertEqual(len(gr),2)
     self.assertEqual(gr[0].chain_residue_id()[0],["A", "D", "F"])
