@@ -120,12 +120,14 @@ Parameters:"""%h
     crystal_symmetry=inputs.crystal_symmetry)
   xray_structure.show_summary(f=log)
   #
-  print_statistics.make_sub_header("atom selection", out=log)
-  print >> log, "Selection string: selection='%s'"%params.selection
   selection = pdb_hierarchy.atom_selection_cache().selection(
     string = params.selection)
-  print >> log, "  selects %d atoms from total %d atoms."%(selection.count(True),
-    selection.size())
+  if selection.size():
+    print_statistics.make_sub_header("atom selection", out=log)
+    print >> log, "Selection string: selection='%s'"%params.selection
+    print >> log, \
+        "  selects %d atoms from total %d atoms."%(selection.count(True),
+        selection.size())
   sites_cart_all = xray_structure.sites_cart()
   sites_cart = sites_cart_all.select(selection)
   selection = xray_structure.selection_within(

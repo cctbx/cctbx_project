@@ -2762,7 +2762,8 @@ class extract_box_around_model_and_map(object):
     frac_max=(x_max,y_max,z_max)
 
     self.pdb_outside_box_msg=""
-    if xrs is not None: # warn if outside box chosen
+    if xrs is not None and xrs.sites_frac().size()>0: 
+      # warn if outside box chosen
       c_min= xrs.sites_frac().min()
       c_max= xrs.sites_frac().max()
       if c_min[0]<frac_min[0] or \
