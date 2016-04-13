@@ -1776,7 +1776,7 @@ class input(object):
       ph = hierarchy.select(group_isel)
       if exclude_chains is not None and len(exclude_chains) > 0:
         asc = ph.atom_selection_cache()
-        excl_ch_arr = ["not chain '%s'" % x for x in exlcude_chains ]
+        excl_ch_arr = ["not chain '%s'" % x for x in exclude_chains ]
         excl_str = " and ".join(excl_ch_arr)
         sel = asc.selection(excl_str)
         ph = ph.select(sel)
