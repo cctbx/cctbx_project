@@ -1557,6 +1557,7 @@ class input(object):
           fmodel=None,
           exclude_h=None,
           exclude_d=None,
+          stem=None,
           log = None):
     """
     This function should be transfered to mmtbx/ncs/ncs.py:ncs class as
@@ -1585,6 +1586,8 @@ class input(object):
       spec_object
     """
     log = log or self.log
+    if not stem : stem =''
+    else: stem += '_'
     spec_object = ncs.ncs(exclude_h=exclude_h,exclude_d=exclude_d)
     if len(self.common_res_dict) == 0 and self.truncated_hierarchy:
       self.set_common_res_dict()
@@ -1668,7 +1671,9 @@ class input(object):
         residues_in_common_list.append(res_num)
       # build group
       group_number += 1
-      ncs_domain_pdb=None
+      # XXX This should be consistent with full_file_name parameter in
+      # create_ncs_domain_pdb_files()
+      ncs_domain_pdb=stem+'group_'+str(group_number+1)+'.pdb'
       spec_object.import_ncs_group(
         center_orth = center_orth,
         ncs_rota_matr = rotations,
@@ -1764,6 +1769,8 @@ class input(object):
     nrgl = self.get_ncs_restraints_group_list()
     for group_number in range(len(nrgl)):
       group_isel = nu.ncs_group_iselection(nrgl,group_number)
+      # XXX This should be consistent with ncs_domain_pdb parameter in
+      # get_ncs_info_as_spec()
       file_name = stem+'group_'+str(group_number+1)+'.pdb'
       full_file_name=os.path.join(temp_dir,file_name)
       ph = hierarchy.select(group_isel)
