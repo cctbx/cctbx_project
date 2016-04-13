@@ -1558,6 +1558,7 @@ class input(object):
           exclude_h=None,
           exclude_d=None,
           stem=None,
+          write_ncs_domain_pdb=False,
           log = None):
     """
     This function should be transfered to mmtbx/ncs/ncs.py:ncs class as
@@ -1673,7 +1674,11 @@ class input(object):
       group_number += 1
       # XXX This should be consistent with full_file_name parameter in
       # create_ncs_domain_pdb_files()
-      ncs_domain_pdb=stem+'group_'+str(group_number+1)+'.pdb'
+      # This is here just because we need to output filename of the domain
+      # into the spec file if pdb file is going to be created...
+      ncs_domain_pdb = None
+      if write_ncs_domain_pdb:
+        ncs_domain_pdb = stem+'group_'+str(group_number+1)+'.pdb'
       spec_object.import_ncs_group(
         center_orth = center_orth,
         ncs_rota_matr = rotations,
