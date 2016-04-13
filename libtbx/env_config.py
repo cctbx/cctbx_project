@@ -1485,12 +1485,6 @@ selfx:
     self.pythonpath = unique_paths(paths=pythonpath)
 
   def is_development_environment(self):
-    libtbx_cvs_root = self.under_dist("libtbx", "CVS/Root",
-                                      return_relocatable_path=True)
-    if libtbx_cvs_root.isfile():
-      try: libtbx_cvs_root = open(libtbx_cvs_root).read()
-      except IOError: pass
-
     for module in self.module_list:
       if (module.is_version_controlled()):
         return True
