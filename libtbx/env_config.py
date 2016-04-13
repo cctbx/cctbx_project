@@ -1490,8 +1490,7 @@ selfx:
     if libtbx_cvs_root.isfile():
       try: libtbx_cvs_root = open(libtbx_cvs_root).read()
       except IOError: pass
-      else:
-        if (libtbx_cvs_root.lower().find("ccp") >= 0): return False
+
     for module in self.module_list:
       if (module.is_version_controlled()):
         return True
