@@ -1,0 +1,40 @@
+IOTA v1.0.000P (Phenix version 1)
+
+Integration Optimization, Triage and Analysis tool for the processing of serial diffraction images.
+This is the first version intended to be included in the Phenix suite.
+
+Major Features:
+
+1. Semi-automated image pre-processing:
+   a. Conversion from raw image format to image pickles
+   b. Modification of image pickles (optional):
+      - image cropping / padding to place beam x,y into the center of image
+      - modification of beam x,y and distance parameters
+      - thresholding of beamstop shadow
+   c. Image "triage" (i.e. finding images that have diffraction, optional):
+      - simple (i.e. using user-supplied spot-finding parameters)
+      - grid search of spot-finding parameters (best pair of params used for processing)
+   d. Converted / triaged image pickles saved in separate folder
+
+2. Integration optimization:
+   a. Choice of cctbx.xfel or DIALS packages for image processing
+   b. Grid search of spot-finding parameters (cctbx.xfel):
+      - Brute force or "smart" options available; can be turned off altogether
+      - Best pairwise combo of spot height / spot area selected and used for integration
+      - Can also try several "signal height" values (3D grid search)
+
+3. Analysis of processed data:
+   a. Visualization of processed images vs. integration predictions
+   b. Hierarchical unit cell clustering
+   c. Summary of processing parameters
+   d. Summary of integration success
+   e. Optional charts: mosaicity plot, lattice model residuals, etc.
+   f. Grid search heatmap output for cctbx.xfel grid search
+   g. Beam x,y diagram for diagnosing mis-indexing
+   h. cctbx.xfel / DIALS logs saved for every image for advanced user's perusal
+
+Known Issues:
+
+1. Visualization of images may not work well; removing scipy dependencies
+2. Unit cell clustering currently not active; removing scipy dependencies
+3. Because of #2, median unit cell parameters returned; we are aware that this is woefully inadequate
