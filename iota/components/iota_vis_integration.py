@@ -1,14 +1,13 @@
 from __future__ import division
 
 '''
-Author      : Zeldin O.B.
+Author      : Zeldin O.B., Lyubimov A.Y.
 Created     : 10/12/2014
 Last Changed: 04/13/2015
-Description : Creates a PNG file visualizing integration results. (Testing w/o scipy.)
+Description : Creates a PNG file visualizing integration results.
 '''
 
 from libtbx import easy_pickle as ep
-#import scipy.misc as spm
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -31,8 +30,6 @@ def make_png(image_pickle, integration_pickle, file_name=None, res=600,
   # Load image pickle, and convert to image
   img_dict = ep.load(image_pickle)
   img_data = img_dict['DATA'].as_numpy_array()
-  #print img_data.max()
-  #image = spm.toimage(img_data, high=img_data.max())
 
   # Load integration pickle, and get coordinates of predictions
   int_d = ep.load(integration_pickle)
@@ -61,7 +58,11 @@ def make_png(image_pickle, integration_pickle, file_name=None, res=600,
   ax.set_xlim(0, len(img_data[1]))
   ax.set_ylim(0, len(img_data[0]))
   ax.set_aspect('equal')
-  ax.imshow(img_data, origin=None, cmap='Greys')
+
+  # To display image properly, need to set img limit to 0.01th percentile
+  # a few maxed-out pixels will make the entire image appear blank white
+  clim = (img_data.min(), np.percentile(img_data, 99.99))
+  ax.imshow(img_data, origin=None, cmap='Greys', clim=clim)
 
   # 2nd set of axes for the predictions
   ax2 = fig.add_axes(ax.get_position(), frameon=False)  # superimposed axes
@@ -103,7 +104,6 @@ def cv_png(image_pickle, integration_pickle, file_name=None, res=600,
   # Load image pickle, and convert to image
   img_dict = ep.load(image_pickle)
   img_data = img_dict['DATA'].as_numpy_array()
-  #image = spm.toimage(img_data, high=img_data.max())
 
   # Load integration pickle, and get coordinates of predictions
   int_d = ep.load(integration_pickle)
@@ -129,7 +129,11 @@ def cv_png(image_pickle, integration_pickle, file_name=None, res=600,
   ax.set_xlim(0, len(img_data[1]))
   ax.set_ylim(0, len(img_data[0]))
   ax.set_aspect('equal')
-  ax.imshow(img_data, origin=None, cmap='Greys')
+
+  # To display image properly, need to set img limit to 0.01th percentile
+  # a few maxed-out pixels will make the entire image appear blank white
+  clim = (img_data.min(), np.percentile(img_data, 99.99))
+  ax.imshow(img_data, origin=None, cmap='Greys', clim=clim)
 
   # 2nd set of axes for the predictions
   ax2 = fig.add_axes(ax.get_position(), frameon=False)  # superimposed axes

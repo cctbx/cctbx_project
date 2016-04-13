@@ -25,7 +25,7 @@ import math
 import cPickle as pickle
 from cctbx.uctbx import unit_cell
 
-import prime.iota.iota_misc as misc
+import iota.components.iota_misc as misc
 from iota.components.iota_misc import Capturing
 from prime.postrefine import mod_input
 
