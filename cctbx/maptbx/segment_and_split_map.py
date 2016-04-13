@@ -169,9 +169,10 @@ master_phil = iotbx.phil.parse("""
               carried out.
       .short_caption = Trim map to density
 
-    density_select_threshold = 0.05
+    mask_threshold = None
       .type = float
-      .help = threshold in trim_map_to_density and identification of overall mask
+      .help = threshold in identification of overall mask. If None, guess \
+               volume of molecule from sequence and NCS copies.
       .short_caption = Density select threshold
 
     grid_spacing_for_au = 3
@@ -855,11 +856,11 @@ def get_params(args,out=sys.stdout):
   if  params.segmentation.density_select:
     print >>out,"\nTrimming map to density..."
     args=["density_select=True","output_format=ccp4"]
-    if params.segmentation.density_select_threshold is not None:
+    if params.segmentation.mask_threshold is not None:
       print >>out,"Threshold for density selection will be: %6.2f \n"%(
-       params.segmentation.density_select_threshold)
-      args.append("density_select_threshold=%s" %(
-         params.segmentation.density_select_threshold))
+       params.segmentation.mask_threshold)
+      args.append("mask_threshold=%s" %(
+         params.segmentation.mask_threshold))
     if params.input_files.ncs_file:
       args.append("ncs_file=%s" %(params.input_files.ncs_file))
     if params.input_files.pdb_in:
@@ -2758,6 +2759,7 @@ def write_output_files(params,
     ncs_group_obj=None,
     remainder_ncs_group_obj=None,
     pdb_hierarchy=None,
+    removed_ncs=None,
     out=sys.stdout):
 
   if params.output_files.au_output_file_stem:
@@ -2820,7 +2822,9 @@ def write_output_files(params,
   # Identify full (possibly expanded) ncs au starting with what we have
   au_mask=get_one_au(tracking_data=tracking_data,
     starting_mask=bool_selected_regions,
+    removed_ncs=removed_ncs,
     ncs_obj=ncs_group_obj.ncs_obj,map_data=map_data,out=out)
+
   print >>out,"\nExpanding NCS AU if necessary..."
   print >>out,"Size of AU mask: %s  Current size of AU: %s" %(
     au_mask.count(True),bool_selected_regions.count(True))
@@ -3276,6 +3280,7 @@ def restore_pdb(params,tracking_data=None,out=sys.stdout):
 def find_threshold_in_map(target_points=None,
       map_data=None,
       iter_max=10):
+
   map_1d=map_data.as_1d()
   map_mean=map_1d.min_max_mean().mean
   map_max=map_1d.min_max_mean().max
@@ -3445,8 +3450,11 @@ def get_marked_points_cart(mask_data=None,unit_cell=None,
   sites_cart=unit_cell.orthogonalize(sites_frac)
   return sites_cart
 
-def get_overall_mask(map_data=None,density_select_threshold=None,
-     out=sys.stdout):
+def get_overall_mask(
+    map_data=None,
+    mask_threshold=None,
+    solvent_fraction=None,
+    out=sys.stdout):
   # First mask out the map based on threshold
   mm=map_data.as_1d().min_max_mean()
   max_in_map=mm.max
@@ -3457,12 +3465,19 @@ def get_overall_mask(map_data=None,density_select_threshold=None,
     mean_in_map,
     min_in_map)
 
-  threshold=mean_in_map+density_select_threshold*(max_in_map-mean_in_map)
+  if mask_threshold:
+    print >>out,"Cutoff for mask will be input threshold"
+    threshold=mask_threshold
+  else:  # guess based on solvent_fraction
+    threshold=find_threshold_in_map(target_points=int(
+      (1.-solvent_fraction)*map_data.size()),
+      map_data=map_data)
+    print >>out,"Cutoff will be threshold marking about %7.1f%% of cell" %(
+      100.*(1.-solvent_fraction))
+
   overall_mask=(map_data >= threshold)
   print >>out,"Model region of map "+\
-    "(density above %7.3f ;  %5.2f%% of maximum of %7.2f)" %(
-        threshold,100.*density_select_threshold,max_in_map)
-  print >>out, "includes %7.1f%% of map" %(
+    "(density above %7.3f )" %( threshold) +" includes %7.1f%% of map" %(
       100.*overall_mask.count(True)/overall_mask.size())
   return overall_mask,max_in_map
 
@@ -3474,13 +3489,21 @@ def get_one_au(tracking_data=None,
     starting_mask=None,
     radius=None,
     every_nth_point=None,
+    removed_ncs=None,
     out=sys.stdout):
 
   unit_cell=tracking_data.crystal_symmetry.unit_cell()
 
+  if removed_ncs: # take everything left
+    mm=map_data.as_1d().min_max_mean()
+    mask_threshold=mm.min+max(0.00001,0.0001*(mm.mean-mm.min)) # just above min
+  else:
+    mask_threshold=tracking_data.params.segmentation.mask_threshold
+
   overall_mask,max_in_map=get_overall_mask(map_data=map_data,
-    density_select_threshold=\
-       tracking_data.params.segmentation.density_select_threshold,out=out)
+    mask_threshold=mask_threshold,
+    solvent_fraction=tracking_data.solvent_fraction,
+    out=out)
 
   every_nth_point=tracking_data.params.segmentation.grid_spacing_for_au
   radius=tracking_data.params.segmentation.radius
@@ -3692,6 +3715,7 @@ def run(args,
       ncs_group_obj=ncs_group_obj,
       remainder_ncs_group_obj=remainder_ncs_group_obj,
       pdb_hierarchy=pdb_hierarchy,
+      removed_ncs=removed_ncs,
       out=out)
     ncs_group_obj.set_map_files_written(map_files_written)
   else:
