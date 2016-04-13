@@ -82,6 +82,9 @@ def exercise_box_rebuild () :
   assert (box_builder.mean_density_at_sites() > 3)
 
 def exercise_map_utils () :
+  #
+  # UNSTABLE
+  #
   hierarchy, fmodel = get_1yjp_pdb_and_fmodel()
   sel_cache = hierarchy.atom_selection_cache()
   sele = sel_cache.selection("resseq 5 and (name CD or name OE1 or name NE2)")
