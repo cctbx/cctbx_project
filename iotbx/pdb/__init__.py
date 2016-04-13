@@ -2024,7 +2024,7 @@ def write_whole_pdb_file(
     if ss_records[-1] != "\n":
       ss_records += "\n"
     out.write(ss_records)
-  if link_records is not None:
+  if link_records is not None and len(link_records)>0:
     out.write("%s\n" % link_records)
   if pdb_hierarchy is not None:
     out.write(pdb_hierarchy.as_pdb_string(
