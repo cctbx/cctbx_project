@@ -25,6 +25,8 @@ namespace {
         self.angle_ideal,
         self.weight,
         self.periodicity,
+        self.alt_angle_ideals,
+        self.limit,
         self.top_out,
         self.slack,
         self.origin_id

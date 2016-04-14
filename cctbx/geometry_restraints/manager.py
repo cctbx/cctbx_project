@@ -85,6 +85,16 @@ class manager(object):
     adopt_init_args(self, locals())
     self.reset_internals()
 
+# implement __getstate__, __setstate__ for pickling of the log member since StringIO has no pickling support
+  def __getstate__(self):
+    state = self.__dict__.copy()
+    state[ "log" ] = self.log.getvalue()
+    return state
+
+  def __setstate__(self, state):
+    state[ "log" ] = StringIO.StringIO( state[ "log" ] )
+    self.__dict__.update( state )
+
   def reset_internals(self):
     self._sites_cart_used_for_pair_proxies = None
     self._flags_bond_used_for_pair_proxies = False
