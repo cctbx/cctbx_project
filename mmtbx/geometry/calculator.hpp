@@ -1,3 +1,6 @@
+#ifndef MMTBX_GEOMETRY_ASA_CALCULATOR_H
+#define MMTBX_GEOMETRY_ASA_CALCULATOR_H
+
 #include <mmtbx/geometry/sphere_surface_sampling.hpp>
 #include <mmtbx/geometry/indexing.hpp>
 #include <mmtbx/geometry/asa.hpp>
@@ -228,3 +231,5 @@ private:
 } // namespace geometry
 
 } // namespace mmtbx
+
+#endif // MMTBX_GEOMETRY_ASA_CALCULATOR_H
