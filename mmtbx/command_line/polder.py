@@ -311,18 +311,18 @@ def validate_params(params):
   return True
 
 def prepare_f_obs_and_flags(f_obs, r_free_flags):
-    sel = f_obs.data()>0
-    f_obs = f_obs.select(sel)
-    r_free_flags = r_free_flags.select(sel)
-    #
-    merged = f_obs.as_non_anomalous_array().merge_equivalents()
-    f_obs = merged.array().set_observation_type(f_obs)
-    #
-    merged = r_free_flags.as_non_anomalous_array().merge_equivalents()
-    r_free_flags = merged.array().set_observation_type(r_free_flags)
-    #
-    f_obs, r_free_flags = f_obs.common_sets(r_free_flags)
-    return f_obs, r_free_flags
+  sel = f_obs.data()>0
+  f_obs = f_obs.select(sel)
+  r_free_flags = r_free_flags.select(sel)
+  #
+  merged = f_obs.as_non_anomalous_array().merge_equivalents()
+  f_obs = merged.array().set_observation_type(f_obs)
+  #
+  merged = r_free_flags.as_non_anomalous_array().merge_equivalents()
+  r_free_flags = merged.array().set_observation_type(r_free_flags)
+  #
+  f_obs, r_free_flags = f_obs.common_sets(r_free_flags)
+  return f_obs, r_free_flags
 
 # parse through command line arguments
 def cmd_run(args, validated=False, out=sys.stdout):
@@ -430,7 +430,7 @@ def cmd_run(args, validated=False, out=sys.stdout):
 # Grab case that data are anomalous
   if (f_obs.anomalous_flag()):
     f_obs, r_free_flags = prepare_f_obs_and_flags(
-      f_obs        = f_obs, 
+      f_obs        = f_obs,
       r_free_flags = r_free_flags)
   compute_polder_map(
     f_obs          = f_obs,
