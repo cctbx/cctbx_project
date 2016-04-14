@@ -60,7 +60,7 @@ class linear_ls_eigen_wrapper
     {}
 
     /// Number of unknown parameters
-    int n_parameters() const { return right_hand_side_.size(); }
+    long n_parameters() const { return right_hand_side_.size(); }
 
 
     /// Reset the state to construction time, i.e. no equations accumulated
@@ -82,7 +82,7 @@ class linear_ls_eigen_wrapper
     void solve() {
       SCITBX_ASSERT(formed_normal_matrix());
       int N = n_parameters();
-      Eigen::SimplicialCholesky<sparse_matrix_t> chol(eigen_normal_matrix.transpose());
+      Eigen::SimplicialLDLT<sparse_matrix_t> chol(eigen_normal_matrix.transpose());
       // XXX pack the right hand side in a eigen vector type
       Eigen::VectorXd b(n_parameters());
       double* rhsptr = right_hand_side_.begin();
@@ -91,6 +91,11 @@ class linear_ls_eigen_wrapper
       }
 
       Eigen::VectorXd x = chol.solve(b);
+
+      //Try to record state of lower Cholesky factor without incurring cost of computing # non-Zeros again
+      sparse_matrix_t lower = chol.matrixL();
+      last_computed_matrixL_nonZeros_ = lower.nonZeros();
+      // XXX Not sure if this adds measurable time, if so it should be refactored to a separate function
 
       //  XXX put the solution in the solution_ variable
       double* solnptr = solution_.begin();
@@ -127,7 +132,7 @@ class linear_ls_eigen_wrapper
     void show_eigen_summary() const {
       SCITBX_ASSERT(formed_normal_matrix());
       long matsize = long(eigen_normal_matrix.cols()) * (eigen_normal_matrix.cols()+1)/2;
-      printf("Number of parameters      %12d\n",n_parameters());
+      printf("Number of parameters      %12ld\n",n_parameters());
       printf("Normal matrix square size %12ld\n",long(eigen_normal_matrix.cols()) * eigen_normal_matrix.cols());
       printf("Upper triangle size       %12ld\n",matsize);
       printf("Normal matrix non-zeros   %12ld, %6.2f%%\n",
@@ -204,6 +209,7 @@ class linear_ls_eigen_wrapper
   public:
     bool solved_;
     bool formed_normal_matrix_;
+    long last_computed_matrixL_nonZeros_;
     sparse_matrix_t eigen_normal_matrix;
     scitbx::af::ref_owning_versa<double, scitbx::af::packed_u_accessor>
                                                                  scitbx_normal_matrix;
@@ -373,6 +379,22 @@ class non_linear_ls_eigen_wrapper:  public scitbx::lstbx::normal_equations::non_
       form_normal_matrix();
       return eigen_wrapper.get_eigen_permutation_ordering();
     }
+    bool solved() const{
+      return eigen_wrapper.solved();
+    }
+    long get_normal_matrix_ncols() const{
+      return long(eigen_wrapper.eigen_normal_matrix.cols());
+    }
+    long n_parameters() const{
+      return long(eigen_wrapper.n_parameters());
+    }
+    long get_normal_matrix_nnonZeros() const{
+      return long(eigen_wrapper.eigen_normal_matrix.nonZeros());
+    }
+    long get_lower_cholesky_nnonZeros() const{
+      return long(eigen_wrapper.last_computed_matrixL_nonZeros_);
+    }
+
   public: /* data */
     linear_ls_eigen_wrapper eigen_wrapper;
 
