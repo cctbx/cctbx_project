@@ -1191,11 +1191,14 @@ gltbx/wx_motion_on_tab.py svneol=native#text/x-python
 gltbx/wx_viewer_example.py -text
 gltbx/wx_viewer_leapmotion.py -text
 gltbx/wx_viewers_images.py -text
+iota/__init__.py -text
+iota/command_line/__init__.py -text
 iota/command_line/iota_bulletproof.py -text
 iota/command_line/iota_mpi.py -text
 iota/command_line/iota_mpi_submit.py -text
 iota/command_line/iota_run.py -text
 iota/command_line/iota_single_image.py -text
+iota/components/__init__.py -text
 iota/components/iota_analysis.py -text
 iota/components/iota_cctbx.py -text
 iota/components/iota_cmd.py -text
