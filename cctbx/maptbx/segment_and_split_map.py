@@ -873,8 +873,13 @@ def get_params(args,out=sys.stdout):
     box=run_map_box(args,crystal_symmetry=crystal_symmetry,log=out)
     origin_shift=box.total_shift_cart
     map_data=box.map_box.as_double()
+    crystal_symmetry=box.box_crystal_symmetry
+    print >>out,"New unit cell: %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f " %(
+      crystal_symmetry.unit_cell().parameters())
+    tracking_data.set_crystal_symmetry(crystal_symmetry=crystal_symmetry)
     print >>out, "Moving origin to (0,0,0)"
     print >>out,"Adding (%8.2f,%8.2f,%8.2f) to all coordinates\n"%(-origin_shift[0],-origin_shift[1],-origin_shift[2])
+    # XXX NOTE: size and cell params are now different!
 
   else:  # shift if necessary...
     shift_needed = not \
