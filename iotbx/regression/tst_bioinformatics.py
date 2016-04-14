@@ -1780,7 +1780,48 @@ class test_hhalign_parser(unittest.TestCase):
     for ( o, e ) in zip( i1, i2 ):
       self.assertAlmostEqual( o, e, digits )
 
+def exercise_guess_chain_types () :
+  from iotbx.bioinformatics import guess_chain_types_from_sequences
+  print "Testing guess_chain_types ...",
+  text_rna="""
+>4a17.pdb|Chain=2
+AGAAAAUUUUCAACGGUGGAUAUCUAGGUUCCCGUGACGAUGAAGAACGCAGCGAAAUGCGAUACGCAAUGCGAAUUGCA
+GAACCGCGAGUCAUCAGAUCUUUGAACGCAAGUGGUGGAGGUGUAAAAACCUUCAUGUUUGUUUCAGUGUGGAA
+  """
+  text_protein="""
+>4a17.pdb|Chain=A
+GRVIRAQRKGRANGVYKSHKSGRIAPAQYRVYDFAERQGYIRGCIRDIVHEPGRGAPLAEVAFRDPYRYKTNKEHFIAAE
+GQYSGQYVYCGLKAQIAVGNVLPINRIPEGTVVCNVEEKVGDRGTFSRASGCYATIIGHSEDGDKTRIRLPSGARKTIPG
+SCRATVGIVAGGGRTDKPILKAGNQFHKYARKRKSWPRVRGVAMNPVDHPHGGGNHQHIGHPATVSKWASAGQKVGLRAA
+RRTGLVRGGQKEKMAMK
+  """
+  text_dna="""
+>4a17.pdb|Chain=B
+GATCCCTTTCCC
+  """
+  text_misc="""
+UGGAGAGUUUGAUCCU
+
+asdfaafasdfafsdea
+"""
+  assert guess_chain_types_from_sequences(text=text_protein)==["PROTEIN"]
+  assert guess_chain_types_from_sequences(text=text_dna)==["DNA"]
+  assert guess_chain_types_from_sequences(text=text_rna)==["RNA"]
+  assert guess_chain_types_from_sequences(
+    text=text_protein+text_rna)==["PROTEIN","RNA"]
+  assert guess_chain_types_from_sequences(
+    text=text_protein+text_dna)==["DNA","PROTEIN"]
+  assert guess_chain_types_from_sequences(
+    text=text_rna+text_protein+text_dna)==["DNA","PROTEIN","RNA"]
+  assert guess_chain_types_from_sequences(
+    text=text_rna+text_dna)==["DNA","RNA"]
+  assert guess_chain_types_from_sequences(text="XX")==[]
+  assert guess_chain_types_from_sequences(text=text_misc)==["PROTEIN","RNA"]
+
+  print "OK"
+
 def exercise_merge_sequences () :
+  print "Testing merge_sequences ...",
   open("tmp_iotbx_bioinfo.fa", "w").write("""\
 > 9zzz
 ARGLYS
@@ -1793,6 +1834,7 @@ PHETYR""")
     sequences=["SERTHR"])
   seq_in, nc = bioinformatics.any_sequence_format(output_file)
   assert (len(seq_in) == 3) and (len(nc) == 0)
+  print "OK"
 
 suite_sequence = unittest.TestLoader().loadTestsFromTestCase(
   test_sequence
@@ -1849,5 +1891,6 @@ alltests = unittest.TestSuite(
   )
 
 if __name__ == "__main__":
+  exercise_guess_chain_types()
   exercise_merge_sequences()
   unittest.TextTestRunner( stream=sys.stdout, verbosity = 2 ).run( alltests )

@@ -885,9 +885,11 @@ def parse_sequence(data):
   return min( results, key = lambda p: len( p[1] ) )
 
 # XXX test needed
-def any_sequence_format (file_name, assign_name_if_not_defined=False) :
+def any_sequence_format (file_name, assign_name_if_not_defined=False,
+    data=None) :
   format_parser = sequence_parser_for(file_name)
-  data = open(file_name, "r").read()
+  if data is None:
+    data = open(file_name, "r").read()
   seq_object = None
   if (format_parser is not None) :
     try :
@@ -1808,3 +1810,117 @@ def composition_from_sequence (sequence) :
   else :
     n_residues += len(seq)
   return n_residues, n_bases
+
+def guess_chain_types_from_sequences(file_name=None,text=None):
+  # Guess what chain types are in this sequence file
+  if not text:
+    text=open(file_name).read()
+  chain_types=[]
+  ( sequences, unknowns ) = parse_sequence( text )
+  for sequence in sequences:
+    chain_type,n_residues=chain_type_and_residues(text=sequence.sequence)
+    if not chain_type in chain_types:
+      chain_types.append(chain_type)
+  chain_types.sort()
+  return chain_types
+
+def count_letters(letters="",text="",only_count_non_allowed=None):
+  n=0
+  if only_count_non_allowed: # count the ones that are not there
+    for t in text:
+      if not t in letters:
+        n+=1
+
+  else: # usual
+    for let in letters:
+      n+=text.count(let)
+  return n
+
+def chain_type_and_residues(text=None,chain_type=None):
+  # guess the type of chain from text string containing 1-letter codes
+  # and count residues
+  # if chain_type is specified, just use it
+  # 
+  # Assumptions: 
+  #  1. few or no letters that are not part of the correct dict (there
+  #    may be a few like X or other unknowns)
+  #  2. if it can be DNA or protein it is DNA (because chance is very high
+  #     that if it were protein there would be a non-DNA letter)
+  # Method:  Choose the chain-type that matches the most letters in text.
+  #  If a tie, take the chain type that has the fewest letters.
+
+  text=text.replace(" ","").replace("\n","").lower()
+  if not text:
+    return None,None
+  letter_dict={
+    'PROTEIN':"acdefghiklmnpqrstvwy",
+    'DNA':"gact",
+    'RNA':"gacu",}
+  if chain_type not in [None,'None']:
+    for key in letter_dict.keys():
+      if key != chain_type:
+        del letter_dict[key]
+  # Get all allowed letters
+  all_letters=[]
+  for chain_type in letter_dict.keys():
+    for let in letter_dict[chain_type]:
+      if not let in all_letters: all_letters.append(let)
+
+  # remove non-allowed letters from text
+  new_text=""
+  for let in text:
+    if let in all_letters:
+      new_text+=let
+  text=new_text
+
+  # See which chain_type matches best
+  count_dict={}
+  non_allowed_count_dict={}
+  for chain_type in letter_dict.keys():
+    count_dict[chain_type]=count_letters(letters=letter_dict[chain_type],
+      text=text)
+    non_allowed_count_dict[chain_type]=count_letters(
+      letters=letter_dict[chain_type],
+      text=text,only_count_non_allowed=True)
+
+  # Take max count_dict. If tie, take minimum non-allowed. If tie take the one
+  #  with fewer letters (i.e., DNA instead of protein if matches both)
+  score_list=[]
+  for chain_type in letter_dict.keys():
+    score_list.append([count_dict[chain_type],chain_type])
+  score_list.sort()
+  score_list.reverse()
+  ok_list=[]
+  best_score=score_list[0][0]
+  for score,chain_type in score_list:
+    if score==best_score:
+      ok_list.append(chain_type)
+  residues=best_score
+  if len(ok_list)<1: return None,None
+  if len(ok_list)==1: return ok_list[0],residues
+
+  # decide which of the ones with the most matches is best..
+  score_list=[]
+  for chain_type in ok_list:
+    score_list.append([non_allowed_count_dict[chain_type],chain_type])
+  score_list.sort()
+  ok_list=[]
+  best_score=score_list[0][0]
+  for score,chain_type in score_list:
+    if score==best_score:
+      ok_list.append(chain_type)
+  if len(ok_list)<1: return None,None
+  if len(ok_list)==1: return ok_list[0],residues
+
+  score_list=[]
+  for chain_type in ok_list:
+    score_list.append([len(letter_dict[chain_type]),chain_type])
+  score_list.sort()
+  ok_list=[]
+  best_score=score_list[0][0]
+  for score,chain_type in score_list:
+    if score==best_score:
+      ok_list.append(chain_type)
+  if len(ok_list)<1: return None,None
+  if len(ok_list)==1: return ok_list[0],residues
+  return None,None # no idea

@@ -142,7 +142,8 @@ master_phil = iotbx.phil.parse("""
        .type = choice
        .short_caption = Chain type
        .help = Chain type. Determined automatically from sequence file if \
-               not given.
+               not given. Mixed chain types are fine (leave blank if so).
+
      use_sg_symmetry = False
        .type = bool
        .short_caption = Use space-group symmetry
@@ -1286,66 +1287,24 @@ def get_connectivity(params,
   return co,sorted_by_volume,min_b,max_b,best_unique_expected_regions
 
 def get_volume_of_seq(text,vol=None,chain_type=None,out=sys.stdout):
-  chain_type,n_residues=guess_chain_type(text,chain_type=chain_type,out=out)
+  from iotbx.bioinformatics import chain_type_and_residues
+  # get chain type and residues (or use given chain type and count residues)
+  chain_type,n_residues=chain_type_and_residues(text=text,chain_type=chain_type)
   if chain_type is None and n_residues is None:
-    return None,None
-
+    return None,None,None
   if chain_type=='PROTEIN':
     mw_residue=110.0  # from $CDOC/matthews.doc
     density_factor=1.23   # 1.66/DENSITY-OF-PROTEIN=1.66/1.35
   else:
-    mw_residue=330.0  # guess for DNA
+    mw_residue=330.0  # guess for DNA/RNA
     density_factor=1.15   # 1.66/DENSITY-OF-DNA=1.66/1.45
-  return len(text)*density_factor*mw_residue,len(text)
+  return len(text)*density_factor*mw_residue,len(text),chain_type
 
 def create_rna_dna(cns_dna_rna_residue_names):
   dd={}
   for key in cns_dna_rna_residue_names.keys():
     dd[cns_dna_rna_residue_names[key]]=key
   return dd
-
-def guess_chain_type(text,chain_type=None,out=sys.stdout):
-    if chain_type in ['None',None]:
-      test_types=['RNA','PROTEIN']
-    else:
-      test_types=[chain_type]
-    from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter
-    from iotbx.pdb import cns_dna_rna_residue_names
-    three_letter_rna_dna_given_one_letter=create_rna_dna(
-       cns_dna_rna_residue_names)
-
-    residues_dict={}
-    most_residues=0
-    best="RNA" # start with DNA so we separate RNA/DNA first, then protein
-    found_non_gly_non_ala=False
-    text=text.upper()
-    for test_chain_type in test_types:
-      residues_dict[test_chain_type]=0
-      seq_text=""
-      for c in text:
-        if test_chain_type in ['RNA','DNA']:
-          three_char=three_letter_rna_dna_given_one_letter.get(c,"")
-        else:
-          three_char=three_letter_given_one_letter.get(c,"")
-        if not three_char:continue
-        seq_text+=c
-        if test_chain_type=='PROTEIN' and three_char not in ['GLY','ALA']:
-          found_non_gly_non_ala=True
-
-      residues_dict[test_chain_type]=len(seq_text)
-      if residues_dict[test_chain_type]>most_residues:
-        most_residues=residues_dict[test_chain_type]
-        best=test_chain_type
-
-    if best in ['RNA','DNA'] and \
-        residues_dict.get('PROTEIN',0)==most_residues and \
-        not found_non_gly_non_ala:  # guess protein here
-      best='PROTEIN'
-    if most_residues<1:
-      return None,None
-    print >>out,"\nChain type for chain with %d residues set to %s" %(
-       most_residues,best)
-    return best,most_residues
 
 def get_solvent_fraction(params,
      ncs_object=None,tracking_data=None,out=sys.stdout):
@@ -1362,14 +1321,20 @@ def get_solvent_fraction(params,
   spl=seq_as_string.split(">")
   volume_of_chains=0.
   n_residues=0
+  chain_types_considered=[]
   for s in spl:
     if not s: continue
     ss="".join(s.splitlines()[1:])
-    volume,nres=get_volume_of_seq(ss,vol=map_volume,
+    volume,nres,chain_type=get_volume_of_seq(ss,vol=map_volume,
       chain_type=params.crystal_info.chain_type,out=out)
     if volume is None: continue
     volume_of_chains+=volume
     n_residues+=nres
+    if not chain_type in chain_types_considered:
+      chain_types_considered.append(chain_type)
+  chain_types_considered.sort()
+  print >>out,"\nChain types considered: %s\n" %(
+      " ".join(chain_types_considered))
   volume_of_molecules=volume_of_chains*ncs_copies
   n_residues_times_ncs=n_residues*ncs_copies
   solvent_fraction=1.-(volume_of_molecules/map_volume)
