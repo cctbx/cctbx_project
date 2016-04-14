@@ -10,11 +10,11 @@ from scitbx.array_family import flex
 
 pdb_str = """\
 CRYST1   28.992   28.409   27.440  90.00  90.00  90.00 P 1
-ATOM      1  N   ALA E   1       9.731  23.364   9.222  1.00 20.00           N
-ATOM      2  CA  ALA E   1      10.928  22.678   9.693  1.00 20.00           C
-ATOM      3  C   ALA E   1      10.619  21.229  10.055  1.00 20.00           C
-ATOM      4  O   ALA E   1      11.301  20.629  10.886  1.00 20.00           O
-ATOM      5  CB  ALA E   1      11.522  23.409  10.887  1.00 20.00           C
+ATOM      1  N   ALA E   1       9.731  23.364   9.222  0.20 20.00           N
+ATOM      2  CA  ALA E   1      10.928  22.678   9.693  0.20 20.00           C
+ATOM      3  C   ALA E   1      10.619  21.229  10.055  0.20 20.00           C
+ATOM      4  O   ALA E   1      11.301  20.629  10.886  0.20 20.00           O
+ATOM      5  CB  ALA E   1      11.522  23.409  10.887  0.20 20.00           C
 ATOM      6  N   HIS E   2       9.586  20.672   9.419  1.00 20.00           N
 ATOM      7  CA  HIS E   2       9.202  19.291   9.695  1.00 20.00           C
 ATOM      8  C   HIS E   2      10.295  18.321   9.264  1.00 20.00           C
@@ -68,7 +68,46 @@ def get_map_stats(map, sites_frac):
 def format_map_stat(m):
   return m.min_max_mean().as_tuple(), (m>flex.mean(m)).count(True)
 
+# Test reading mtz with anomalous arrays for F and Rfree
 def exercise_01(fobs_1, flags_1, prefix):
+  mtz = fobs_1.as_mtz_dataset(column_root_label="FP1")
+  mtz.add_miller_array(flags_1, column_root_label="R-free-flags")
+  mtz.mtz_object().write(prefix+".mtz")
+  #
+  selection = "chain A"
+  cmd = " ".join([
+    "phenix.polder",
+    "tst_polder_02.pdb",
+    "%s.mtz" % prefix,
+    "sphere_radius=3",
+    'solvent_exclusion_mask_selection="%s"' % selection,
+    "> %s.log" % prefix
+  ])
+  print cmd
+  easy_run.call(cmd)
+  # exact values: 11.129  16.152  13.006
+  check(tuple_calc=[11.1, 16.2, 13.0], selection=selection)
+
+# Test reading mtz with anomalous array for F (no Rfree present)
+def exercise_02(fobs_1, prefix):
+  mtz = fobs_1.as_mtz_dataset(column_root_label="FP1")
+  mtz.mtz_object().write(prefix+".mtz")
+  #
+  selection = "chain E and resseq 1"
+  cmd = " ".join([
+    "phenix.polder",
+    "tst_polder_02.pdb",
+    "%s.mtz" % prefix,
+    "sphere_radius=3",
+    'solvent_exclusion_mask_selection="%s"' % selection,
+    "> %s.log" % prefix
+  ])
+  print cmd
+  easy_run.call(cmd)
+  check(tuple_calc=[12.7, 22.7, 17.7], selection=selection)
+
+# Mixture: mtz with anomalous F and "normal" Rfree
+def exercise_03(fobs_1, flags_1, prefix):
   mtz = fobs_1.as_mtz_dataset(column_root_label="FP1")
   mtz.add_miller_array(flags_1, column_root_label="R-free-flags")
   mtz.mtz_object().write(prefix+".mtz")
@@ -89,7 +128,7 @@ def exercise_01(fobs_1, flags_1, prefix):
 
 def exercise():
   """
-  Test for phenix.polder: coping with anomalous data labels.
+  Test for phenix.polder: accepting anomalous data labels.
   """
   # write simple pdb file from pdb_str
   f = open("tst_polder_02.pdb", "w")
@@ -100,7 +139,7 @@ def exercise():
   xrs = pdb_in.xray_structure_simple()
   pdb_hierarchy = iotbx.pdb.input(
     source_info=None, lines=pdb_str).construct_hierarchy()
-  # map values are not reproducible if not systematic Rfree
+  # map values are not reproducible if not systematic Rfree!
   def generate_r_free_flags_systematic(miller_array):
     result = flex.bool()
     for i in xrange(miller_array.indices().size()):
@@ -115,12 +154,26 @@ def exercise():
   #
   print '*'*79
   print 'Test reading one mtz with F and Rfree as anomalous arrays'
-  exercise_01(f_anom, flags_anom, prefix="tst_polder_02_1")
+  exercise_01(
+    fobs_1  = f_anom,
+    flags_1 = flags_anom,
+    prefix  = "tst_polder_02_1")
+  print "command success"
+  print '*'*79
+  print 'Test reading one mtz with F as anomalous array (no Rfree present)'
+  exercise_02(
+    fobs_1 = f_anom,
+    prefix = "tst_polder_02_2")
+  print "command success"
+  print '*'*79
+  print 'Test reading mtz with F as anomalous array and Rfree is usual array'
+  exercise_03(
+    fobs_1  = f_anom,
+    flags_1 = flags_obs,
+    prefix  = "tst_polder_02_3")
   print "command success"
 
-
 def check(tuple_calc, selection):
-  #print tuple_calc
   miller_arrays = reflection_file_reader.any_reflection_file(file_name =
     "polder_map_coeffs.mtz").as_miller_arrays()
   mc_polder = None
