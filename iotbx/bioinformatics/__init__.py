@@ -1840,8 +1840,8 @@ def chain_type_and_residues(text=None,chain_type=None):
   # guess the type of chain from text string containing 1-letter codes
   # and count residues
   # if chain_type is specified, just use it
-  # 
-  # Assumptions: 
+  #
+  # Assumptions:
   #  1. few or no letters that are not part of the correct dict (there
   #    may be a few like X or other unknowns)
   #  2. if it can be DNA or protein it is DNA (because chance is very high
