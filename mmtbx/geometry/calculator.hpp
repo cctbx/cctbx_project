@@ -6,6 +6,8 @@
 #include <boost/range.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/range/adaptor/filtered.hpp>
+#include <boost/type_traits/remove_reference.hpp>
+#include <boost/type_traits/remove_const.hpp>
 
 namespace mmtbx
 {
@@ -29,16 +31,21 @@ public:
   typedef Array array_type;
   typedef Converter converter_type;
 
-  typedef typename array_type::size_type size_type;
-  typedef typename converter_type::value_type value_type;
+  typedef typename boost::remove_reference< array_type >::type::size_type size_type;
+  typedef typename converter_type::value_type return_value_type;
+  typedef typename boost::remove_const<
+    typename boost::remove_reference< return_value_type >::type
+    >::type
+    value_type;
 
 private:
   array_type const array_;
 
+public:
   TransformedArray(array_type const& array) : array_( array )
   {};
 
-  value_type operator [](size_type const& index) const
+  return_value_type operator [](size_type const& index) const
   {
     return converter_type::operator ()( array_[ index ] );
   }
@@ -86,9 +93,9 @@ public:
   typedef RadiusAccess radius_access_type;
   typedef Discrete discrete_type;
 
-  typedef typename coordinate_access_type::size_type size_type;
-  typedef typename coordinate_access_type::value_type coordinate_type;
-  typedef typename radius_access_type::value_type radius_type;
+  typedef typename boost::remove_reference< coordinate_access_type >::type::size_type size_type;
+  typedef typename boost::remove_reference< coordinate_access_type >::type::value_type coordinate_type;
+  typedef typename boost::remove_reference< radius_access_type >::type::value_type radius_type;
 
   typedef mmtbx::geometry::sphere_surface_sampling::GoldenSpiral< coordinate_type > sampling_type;
   typedef mmtbx::geometry::indexing::Hash< size_type, coordinate_type, discrete_type > indexer_type;
