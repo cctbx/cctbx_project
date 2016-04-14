@@ -32,11 +32,11 @@ def calc_wilson(observations_full, n_residues):
     binner_template_asu = observations_as_f.setup_binner(auto_binning=True)
     wp = statistics.wilson_plot(observations_as_f, asu_contents, e_statistics=True)
     G = wp.wilson_intensity_scale_factor
-    B = wp.wilson_b    
+    B = wp.wilson_b
   except Exception:
     G,B  = (0,0)
   return G, B
-  
+
 def get_miller_array_from_mtz(mtz_filename):
   flag_hklisoin_found = False
   miller_array_iso = None
