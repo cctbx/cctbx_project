@@ -310,6 +310,20 @@ def validate_params(params):
       "Please use a positive value for the resolution gridding factor.")
   return True
 
+def prepare_f_obs_and_flags(f_obs, r_free_flags):
+    sel = f_obs.data()>0
+    f_obs = f_obs.select(sel)
+    r_free_flags = r_free_flags.select(sel)
+    #
+    merged = f_obs.as_non_anomalous_array().merge_equivalents()
+    f_obs = merged.array().set_observation_type(f_obs)
+    #
+    merged = r_free_flags.as_non_anomalous_array().merge_equivalents()
+    r_free_flags = merged.array().set_observation_type(r_free_flags)
+    #
+    f_obs, r_free_flags = f_obs.common_sets(r_free_flags)
+    return f_obs, r_free_flags
+
 # parse through command line arguments
 def cmd_run(args, validated=False, out=sys.stdout):
   if (len(args) == 0):
@@ -413,6 +427,11 @@ def cmd_run(args, validated=False, out=sys.stdout):
     r_free_flags = r_free_flags.resolution_filter(
       d_min = params.high_resolution,
       d_max = params.low_resolution)
+# Grab case that data are anomalous
+  if (f_obs.anomalous_flag()):
+    f_obs, r_free_flags = prepare_f_obs_and_flags(
+      f_obs        = f_obs, 
+      r_free_flags = r_free_flags)
   compute_polder_map(
     f_obs          = f_obs,
     r_free_flags   = r_free_flags,
