@@ -141,7 +141,7 @@ def check(tuple_calc, selection):
   sites_cart_lig = pdb_hierarchy.atoms().extract_xyz().select(sel)
   sites_frac_lig = mc_polder.unit_cell().fractionalize(sites_cart_lig)
   mp  = get_map_stats(
-    map        = map_polder,   
+    map        = map_polder,
     sites_frac = sites_frac_lig)
   #
   mmm_mp = mp.min_max_mean().as_tuple()
