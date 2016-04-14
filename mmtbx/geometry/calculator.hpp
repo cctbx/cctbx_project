@@ -138,12 +138,31 @@ public:
     }
   }
 
-  radius_type operator()(size_type const& index) const
+  std::ptrdiff_t accessible_points(size_type const& index) const
   {
-    namespace mxg = mmtbx::geometry;
-
     coordinate_type const& centre( coordinate_accessor_[ index ] );
     radius_type radius( radius_accessor_[ index ] + probe_ );
+
+    return calculate_accessible_points( centre, radius, index );
+  }
+
+  radius_type accessible_surface_area(size_type const& index) const
+  {
+    coordinate_type const& centre( coordinate_accessor_[ index ] );
+    radius_type radius( radius_accessor_[ index ] + probe_ );
+    std::ptrdiff_t dist = calculate_accessible_points( centre, radius, index );
+    return sampling_.unit_area() * radius * radius * dist;
+  }
+
+
+private:
+  std::ptrdiff_t calculate_accessible_points(
+    coordinate_type const& centre,
+    radius_type const& radius,
+    size_type const& index
+    ) const
+  {
+    namespace mxg = mmtbx::geometry;
 
     typedef typename indexer_type::range_type close_objects_range_type;
     close_objects_range_type cor( indexer_.close_to( centre ) );
@@ -179,17 +198,7 @@ public:
       }
     }
 
-    std::ptrdiff_t dist = boost::distance(
-        boost::adaptors::filter(
-          boost::adaptors::transform(
-            sampling_.points(),
-            mxg::asa::Transform< coordinate_type >( centre, radius )
-            ),
-          checker
-          )
-        );
-
-    return sampling_.unit_area() * radius * radius * boost::distance(
+    return boost::distance(
       boost::adaptors::filter(
         boost::adaptors::transform(
           sampling_.points(),
@@ -200,7 +209,6 @@ public:
       );
   }
 
-private:
   bool overlap_between_spheres(
     coordinate_type left_c,
     radius_type left_r,

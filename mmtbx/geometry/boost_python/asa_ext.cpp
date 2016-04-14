@@ -286,7 +286,8 @@ struct python_calculator_export
             )
           )
         )
-      .def( "__call__", &calculator_type::operator (), arg( "index" ) )
+      .def( "accessible_points", &calculator_type::accessible_points, arg( "index" ) )
+      .def( "accessible_surface_area", &calculator_type::accessible_surface_area, arg( "index" ) )
       ;
   }
 

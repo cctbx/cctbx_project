@@ -466,8 +466,9 @@ class TestAccessibleSurfaceArea(unittest.TestCase):
     myvalues = self.ACCESSIBLES[:12] + self.ACCESSIBLES[13:]
 
     for ( index, count, radius ) in zip( range( len( myatoms ) ), myvalues, myradii ):
+      self.assertEqual( calc.accessible_points( index = index ), count )
       self.assertAlmostEqual(
-        calc( index = index ),
+        calc.accessible_surface_area( index = index ),
         SAMPLING_POINTS.unit_area * count * ( radius + PROBE ) ** 2,
         7,
         )
@@ -490,8 +491,9 @@ class TestAccessibleSurfaceArea(unittest.TestCase):
     myvalues = self.ACCESSIBLES[:12] + self.ACCESSIBLES[13:]
 
     for ( index, count, radius ) in zip( range( len( myatoms ) ), myvalues, myradii ):
+      self.assertEqual( calc.accessible_points( index = index ), count )
       self.assertAlmostEqual(
-        calc( index = index ),
+        calc.accessible_surface_area( index = index ),
         SAMPLING_POINTS.unit_area * count * ( radius + PROBE ) ** 2,
         7,
         )
