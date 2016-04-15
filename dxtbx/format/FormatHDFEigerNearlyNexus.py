@@ -11,6 +11,10 @@
 
 from __future__ import division
 
+# Pick up Dectris's LZ4 and bitshuffle compression plugins
+import os, libtbx.load_env
+os.environ['HDF5_PLUGIN_PATH']=os.path.abspath(abs(libtbx.env.python_exe) + "/../../lib")
+
 from dxtbx.format.FormatHDF5 import FormatHDF5
 from dxtbx.model import Beam # import dependency
 from dxtbx.model import Detector # import dependency
@@ -130,6 +134,15 @@ class EigerNXmxFixer(object):
     dataset[0] = handle_orig['/entry/data/data_000001'].shape[2]
     dataset[1] = handle_orig['/entry/data/data_000001'].shape[1]
 
+    # cope with badly structured chunk information i.e. many more data entries than there]
+    # are in real life...
+    for k in sorted(handle_orig['/entry/data'].iterkeys()):
+      try:
+        shape = handle_orig[join('/entry/data', k)].shape
+      except KeyError, e:
+        del(handle_orig[join('/entry/data', k)])
+        del(handle[join('/entry/data', k)])
+
     # Add fast_pixel_size dataset
     # print "Using /entry/instrument/detector/geometry/orientation/value as fast/slow pixel directions"
     fast_axis = handle['/entry/instrument/detector/geometry/orientation/value'][0:3]
@@ -209,7 +222,7 @@ class EigerNXmxFixer(object):
 
     # Get the number of images
     num_images = 0
-    for name in handle['/entry/data'].iterkeys():
+    for name in sorted(handle['/entry/data'].iterkeys()):
       num_images += len(handle_orig[join('/entry/data', name)])
     dataset = group.create_dataset('omega', (num_images,), dtype="float32")
     dataset.attrs['units'] = 'degree'
