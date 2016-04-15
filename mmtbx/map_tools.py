@@ -457,13 +457,13 @@ class model_missing_reflections(object):
       # This is slower but better
       # Never change this unless checked with CK case
       fm = self.fmodel.deep_copy()
-      r = fm.update_solvent_and_scale(fast=False)
+      r = fm.update_all_scales(fast=False)
       fm = mmtbx.f_model.manager(
         f_obs          = self.complete_set,
         xray_structure = xrs,
-        k_sol          = r.k_sols()[0],
-        b_sol          = r.b_sols()[0],
-        b_cart         = r.b_cart())
+        k_sol          = r.k_sol[0],
+        b_sol          = r.b_sol[0],
+        b_cart         = r.b_cart)
       result = fm.f_model_no_scales()
     else:
       if(random.choice([True, False])):

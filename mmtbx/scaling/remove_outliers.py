@@ -408,7 +408,7 @@ def run(args, command_name="phenix.remove_outliers"):
       print >> log, "================================"
       print >> log, "Maximum likelihood bulk solvent scaling."
       print >> log
-      f_model_object.update_solvent_and_scale(out=log)
+      f_model_object.update_all_scales(log=log)
       plot_out = StringIO()
       model_based_array = outlier_manager.model_based_outliers(
         f_model_object.f_model(),

@@ -762,13 +762,12 @@ the percentage of R-free reflections).
                         optimize_mask=False, nproc=None, fast=False,
                         remove_outliers=False,refine_hd_scattering=False,
                         apply_back_trace=False, update_f_part1=False):
-    self.update_solvent_and_scale(show=show, log=log,
+    self.update_solvent_and_scale(log=log,
       apply_back_trace=apply_back_trace,
       update_f_part1=update_f_part1)
 
   def update_solvent_and_scale(self,
-                               update_f_part1,
-                               show=False,
+                               update_f_part1=False,
                                apply_back_trace=False,
                                optimize_mask=True,
                                optimize_mask_thorough=False, # XXX ignored
@@ -795,14 +794,13 @@ the percentage of R-free reflections).
     #  params = bss.master_params.extract()
     #params.k_sol_b_sol_grid_search = False # XXX too slow otherwise
     #params.number_of_macro_cycles=1 # XXX too slow otherwise, let's see may be ok
-    result = self.fmodel_ts1.update_all_scales(show=show, fast=False, # XXX
-      params=params, log=log, apply_back_trace=apply_back_trace,
-      update_f_part1=False)
+    result = self.fmodel_ts1.update_all_scales(fast=False, # XXX
+      params=params, log=log, apply_back_trace=apply_back_trace)
     self.update_core(
-      k_sol = result.k_sols()[0], # XXX not implemented (see above)
-      b_sol = result.b_sols()[0],
+      k_sol = result.k_sol, # XXX not implemented (see above)
+      b_sol = result.b_sol,
       twin_fraction = self.fmodel_ts1.twin_fraction,
-      b_cart = result.b_cart(),
+      b_cart = result.b_cart,
       k_overall = self.fmodel_ts1.scale_k1_w_for_twin_targets())
     self.mask_params = self.fmodel_ts1.mask_params
     self.arrays = self.fmodel_ts1.arrays

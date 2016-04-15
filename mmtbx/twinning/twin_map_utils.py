@@ -293,7 +293,7 @@ def run(args, command_name="phenix.twin_map_utils"):
 
 
       print >> log, "--- bulk solvent scaling ---"
-      twin_model.update_solvent_and_scale(update_f_part1=False)
+      twin_model.update_all_scales()
       twin_model.r_values()
       twin_model.target()
       twin_model.show_k_sol_b_sol_b_cart_target()
@@ -339,7 +339,7 @@ def run(args, command_name="phenix.twin_map_utils"):
         f_obs = miller_array,
         r_free_flags = free_flags,
         xray_structure = model )
-      f_model_object.update_solvent_and_scale(out=log)
+      f_model_object.update_all_scales(log=log)
       tfofc =  f_model_object.map_coefficients(map_type="2mFobs-DFmodel")
       fofc = f_model_object.map_coefficients(map_type="mFobs-DFmodel")
       mtz_dataset = tfofc.as_mtz_dataset(
