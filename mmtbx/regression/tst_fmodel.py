@@ -10,7 +10,7 @@ import mmtbx
 from cctbx import adptbx
 import mmtbx.masks
 import mmtbx.f_model
-import os.path
+import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 
 random.seed(0)
 flex.set_random_seed(0)
@@ -160,162 +160,51 @@ def t_1(xray_structure, d_min=3.5):
                 fmodel_ = fmodel.resolution_filter(d_max=fmodel.f_obs().d_max_min()[0]-1.)
                 assert fmodel_.f_obs().size() < fmodel.f_obs().size()
 
-def t_exercise_3_1(x, f_obs, fc1, fc2, r_free_flags, sfg_params):
-  #
-  assert not fc1.data().all_eq(fc2.data())
-  #
-  for case in [1,2,3]:
-    print "case:",case
-    fmodel = mmtbx.f_model.manager(
-      xray_structure = x,
-      f_obs          = f_obs,
-      r_free_flags   = r_free_flags,
-      sf_and_grads_accuracy_params = sfg_params)
-    r1 = fmodel.r_work()
-    #
-    if(case==1):
-      fmodel2 = mmtbx.f_model.manager(
-        xray_structure = x,
-        f_obs          = f_obs,
-        f_part1        = fc1,
-        r_free_flags   = r_free_flags,
-        sf_and_grads_accuracy_params = sfg_params)
-    elif(case==2):
-      fmodel2 = fmodel.deep_copy()
-      fmodel2.update_core(f_part1=fc1)
-    elif(case==3):
-      fmodel2 = fmodel.deep_copy()
-      fmodel2.update_core(f_part1=fc1)
-      fmodel2 = fmodel2.deep_copy()
-      fmodel2.update_xray_structure(xray_structure=x, update_f_calc=True)
-    assert fmodel2.f_part1().data().all_eq(fc1.data())
-    r2 = fmodel2.r_work()
-    #
-    if(case==1):
-      fmodel3 = mmtbx.f_model.manager(
-        xray_structure = x,
-        f_obs          = f_obs,
-        f_part2        = fc1,
-        r_free_flags   = r_free_flags,
-        sf_and_grads_accuracy_params = sfg_params)
-    elif(case==2):
-      fmodel3 = fmodel.deep_copy()
-      fmodel3.update_core(f_part2=fc1)
-    elif(case==3):
-      fmodel3 = fmodel.deep_copy()
-      fmodel3.update_core(f_part2=fc1)
-      fmodel3 = fmodel3.deep_copy()
-      fmodel3.update_xray_structure(update_f_calc=True)
-    assert fmodel3.f_part2().data().all_eq(fc1.data())
-    r3 = fmodel3.r_work()
-    #
-    if(case==1):
-      fmodel4 = mmtbx.f_model.manager(
-        xray_structure = x,
-        f_obs          = f_obs,
-        f_part1        = fc1,
-        f_part2        = fc2,
-        r_free_flags   = r_free_flags,
-        sf_and_grads_accuracy_params = sfg_params)
-    elif(case==2):
-      fmodel4 = fmodel.deep_copy()
-      fmodel4.update_core(f_part1=fc1, f_part2=fc2)
-    elif(case==3):
-      fmodel4 = fmodel.deep_copy()
-      fmodel4.update_core(f_part1=fc1, f_part2=fc2)
-      fmodel4 = fmodel4.deep_copy()
-      fmodel2.update_xray_structure(xray_structure=x, update_f_calc=True)
-    assert fmodel4.f_part1().data().all_eq(fc1.data())
-    assert fmodel4.f_part2().data().all_eq(fc2.data())
-    r4 = fmodel4.r_work()
-    #
-    assert r1>0.3
-    assert approx_equal(r2, r3)
-    assert r2 < r1
-    assert approx_equal(r4, 0)
-
-def exercise_3_f_part1_and_f_part2():
-  x = random_structure.xray_structure(
-    space_group_info       = sgtbx.space_group_info("P 4"),
-    elements               =(("O","N","C")*10),
-    volume_per_atom        = 200,
-    min_distance           = 1.5,
-    general_positions_only = True,
-    random_u_iso           = True,
-    random_occupancy       = False)
-  x.scattering_type_registry(table="wk1995")
-  fc = x.structure_factors(d_min = 2.0, algorithm="direct").f_calc()
-  #
-  x1 = random_structure.xray_structure(
-    space_group_info       = sgtbx.space_group_info("P 4"),
-    unit_cell              = x.unit_cell(),
-    elements               =(("C")*10),
-    volume_per_atom        = 200,
-    min_distance           = 1.5,
-    general_positions_only = True,
-    random_u_iso           = True,
-    random_occupancy       = False)
-  x1.scattering_type_registry(table="wk1995")
-  fc1 = x1.structure_factors(d_min = 2.0, algorithm="direct").f_calc()
-  #
-  x2 = random_structure.xray_structure(
-    space_group_info       = sgtbx.space_group_info("P 4"),
-    unit_cell              = x.unit_cell(),
-    elements               =(("C")*10),
-    volume_per_atom        = 200,
-    min_distance           = 1.5,
-    general_positions_only = True,
-    random_u_iso           = True,
-    random_occupancy       = False)
-  x2.scattering_type_registry(table="wk1995")
-  fc2 = x2.structure_factors(d_min = 2.0, algorithm="direct").f_calc()
-  #
-  fc_all = fc.customized_copy(data = fc.data()+fc1.data()+fc2.data())
-  f_obs = abs(fc_all.deep_copy())
-  r_free_flags = f_obs.generate_r_free_flags(fraction = 0.1)
-  sfg_params = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
-  sfg_params.algorithm = "direct"
-  #
-  t_exercise_3_1(x=x, f_obs=f_obs, fc1=fc1, fc2=fc2, r_free_flags=r_free_flags,
-    sfg_params=sfg_params)
-
 def exercise_4_f_hydrogens():
-  x = random_structure.xray_structure(
-    space_group_info       = sgtbx.space_group_info("P 4"),
-    elements               =(("O","N","C")*5 + ("H",)*95),
-    volume_per_atom        = 200,
-    min_distance           = 1.5,
-    general_positions_only = True,
-    random_u_iso           = True,
-    random_occupancy       = False)
-  x.scattering_type_registry(table="wk1995")
-  x.set_occupancies(value=0.9, selection = x.hd_selection())
-  fc = x.structure_factors(d_min = 2.5, algorithm="direct").f_calc()
-  f_obs = abs(fc)
-  x = x.deep_copy_scatterers()
-  x.set_occupancies(value=0.0, selection = x.hd_selection())
-  sfg_params = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
-  sfg_params.algorithm = "direct"
-  r_free_flags = f_obs.generate_r_free_flags(fraction = 0.1)
-  fmodel = mmtbx.f_model.manager(
-    xray_structure = x,
-    f_obs          = f_obs,
-    r_free_flags   = r_free_flags,
-    sf_and_grads_accuracy_params = sfg_params)
-  fmodel_dc = fmodel.deep_copy()
-  assert fmodel.r_work() > 0.15
-  assert approx_equal(fmodel.r_work(), fmodel_dc.r_work())
-  fmodel.update_f_hydrogens_grid_search()
-  assert approx_equal(fmodel.k_h, 0.9)
-  assert approx_equal(fmodel.b_h, 0)
-  assert approx_equal(fmodel.r_work(), 0)
-  fmodel_dc.update_f_hydrogens()
-  assert fmodel_dc.r_work() < 0.002
-  # test map convenience functions
-  map1 = fmodel.two_fofc_map()
-  map2 = fmodel.fofc_map()
-  map3 = fmodel.anomalous_map()
-  assert (not None in [map1, map2]) and (map3 is None)
+  for d_min in [1,2,3]:
+    for q in [0, 0.9, 1]:
+      random.seed(0)
+      flex.set_random_seed(0)
+      x = random_structure.xray_structure(
+        space_group_info       = sgtbx.space_group_info("P 4"),
+        elements               =(("O","N","C")*5 + ("H",)*95),
+        volume_per_atom        = 200,
+        min_distance           = 1.5,
+        general_positions_only = True,
+        random_u_iso           = True,
+        random_occupancy       = False)
+      hd_sel = x.hd_selection()
+      b_isos = x.select(~hd_sel).extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+      mmm = b_isos.min_max_mean().as_tuple()
+      b_mean = int(mmm[2])
+      x = x.set_b_iso(value=b_mean, selection = hd_sel)
+      x.scattering_type_registry(table="wk1995")
+      x.set_occupancies(value=q, selection = hd_sel)
+      fc = x.structure_factors(d_min = d_min, algorithm="direct").f_calc()
+      f_obs = abs(fc)
+      x = x.deep_copy_scatterers()
+      x.set_occupancies(value=0.0, selection = x.hd_selection())
+      sfg_params = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
+      sfg_params.algorithm = "direct"
+      r_free_flags = f_obs.generate_r_free_flags(fraction = 0.1)
+      fmodel = mmtbx.f_model.manager(
+        xray_structure = x,
+        f_obs          = f_obs,
+        r_free_flags   = r_free_flags,
+        sf_and_grads_accuracy_params = sfg_params)
+      if(q==0):
+        assert approx_equal(fmodel.r_work(), 0)
+      else:
+        assert fmodel.r_work() > 0.05, fmodel.r_work()
+      params = bss.master_params.extract()
+      params.bulk_solvent=False
+      params.anisotropic_scaling=False
+      o = fmodel.update_all_scales(fast=False, params=params)
+      assert approx_equal(o.k_sol[0],0)
+      assert approx_equal(o.b_sol[0],0)
+      assert approx_equal(o.b_cart,[0,0,0,0,0,0])
+      assert approx_equal(o.k_h, q)
+      assert approx_equal(fmodel.r_work(), 0)
 
 def exercise_1():
   n_elements = 70
@@ -358,7 +247,8 @@ def exercise_2():
       delta = flex.abs(f_calc_1-f_calc_2)
       assert approx_equal(flex.sum(delta), 0.0)
 
-def exercise_5_bulk_sol_and_scaling(symbol = "C 2"):
+def exercise_5_bulk_sol_and_scaling(d_min, symbol = "C 2", k_sol = 0.37,
+                                    b_sol = 64.0):
   x = random_structure.xray_structure(
     space_group_info       = sgtbx.space_group_info(symbol=symbol),
     elements               =(("O","N","C")*150),
@@ -368,7 +258,7 @@ def exercise_5_bulk_sol_and_scaling(symbol = "C 2"):
     random_u_iso           = True,
     random_occupancy       = False)
   x.scattering_type_registry(table="wk1995")
-  f_calc = x.structure_factors(d_min = 2.5, algorithm="direct").f_calc()
+  f_calc = x.structure_factors(d_min = d_min, algorithm="direct").f_calc()
   mask_manager = mmtbx.masks.manager(miller_array = f_calc)
   f_mask = mask_manager.shell_f_masks(xray_structure = x)[0]
   assert flex.mean(abs(f_mask).data()) > 0
@@ -376,7 +266,7 @@ def exercise_5_bulk_sol_and_scaling(symbol = "C 2"):
   u_star = adptbx.u_cart_as_u_star(x.unit_cell(), adptbx.b_as_u(b_cart))
   k_anisotropic = mmtbx.f_model.ext.k_anisotropic(f_calc.indices(), u_star)
   ss = 1./flex.pow2(f_calc.d_spacings().data()) / 4.
-  k_mask = mmtbx.f_model.ext.k_mask(ss, 0.37, 64.0)
+  k_mask = mmtbx.f_model.ext.k_mask(ss, k_sol, b_sol)
   scale = 17.
   k_isotropic = flex.double(f_calc.data().size(), scale)
   f_model_data = scale*k_anisotropic*(f_calc.data()+k_mask*f_mask.data())
@@ -429,6 +319,8 @@ def exercise_5_bulk_sol_and_scaling(symbol = "C 2"):
   assert fmodel.f_calc().data().all_eq(f_calc.data())
   assert fmodel.f_masks()[0].data().all_eq(f_mask.data())
   # test 3
+  params = bss.master_params.extract()
+  params.number_of_macro_cycles=5
   fmodel = mmtbx.f_model.manager(
     f_calc       = f_calc,
     f_mask       = f_mask,
@@ -437,11 +329,12 @@ def exercise_5_bulk_sol_and_scaling(symbol = "C 2"):
     bin_selections = bin_selections,
     sf_and_grads_accuracy_params = sfg_params)
   assert fmodel.r_work() > 0.3
-  fmodel.update_solvent_and_scale(fast=False)
-  assert approx_equal(fmodel.r_work(), 0)
-  assert approx_equal(fmodel.r_free(), 0)
-  assert approx_equal(fmodel.k_masks()[0], k_mask, 1.e-4)
-  assert approx_equal(fmodel.k_anisotropic(), k_anisotropic, 1.e-4)
+  o = fmodel.update_all_scales(fast=False, params=params, remove_outliers=False)
+  assert approx_equal(o.k_sol[0], k_sol,  0.01 )
+  assert approx_equal(o.b_sol[0], b_sol,  0.1)
+  assert approx_equal(o.b_cart,  b_cart,  1.e-1)
+  assert approx_equal(fmodel.r_work(), 0, 1.e-3)
+  assert approx_equal(fmodel.r_free(), 0, 1.e-3)
   # test 4 - part 1
   fmodel = mmtbx.f_model.manager(
     f_calc       = f_calc,
@@ -451,8 +344,8 @@ def exercise_5_bulk_sol_and_scaling(symbol = "C 2"):
     bin_selections = bin_selections,
     sf_and_grads_accuracy_params = sfg_params)
   assert fmodel.r_work() > 0.3
-  fmodel.update_solvent_and_scale(fast=True)
-  assert fmodel.r_work() < 0.0031, fmodel.r_work()
+  fmodel.update_all_scales(fast=True, remove_outliers=False)
+  assert fmodel.r_work() < 0.04, [fmodel.r_work(), d_min]
   # part 2 of test 4
   d=fmodel.k_isotropic()*fmodel.k_anisotropic()*(
     f_calc.data()+fmodel.k_masks()[0]*f_mask.data())
@@ -464,89 +357,8 @@ def exercise_5_bulk_sol_and_scaling(symbol = "C 2"):
     bin_selections = bin_selections,
     sf_and_grads_accuracy_params = sfg_params)
   assert fmodel.r_work() > 0.3
-  fmodel.update_solvent_and_scale(fast=True)
-  assert fmodel.r_work() < 0.0006
-
-def exercise_5_bulk_sol_and_scaling_and_H(symbol = "C 2"):
-  random.seed(0)
-  flex.set_random_seed(0)
-  x = random_structure.xray_structure(
-    space_group_info       = sgtbx.space_group_info(symbol=symbol),
-    elements               =(("O","N","C")*5+("H",)*10),
-    volume_per_atom        = 200,
-    min_distance           = 1.5,
-    general_positions_only = True,
-    random_u_iso           = True,
-    random_occupancy       = False)
-  x.scattering_type_registry(table="wk1995")
-  x.set_occupancies(value=0.6, selection = x.hd_selection())
-  f_calc = x.structure_factors(d_min = 1.5, algorithm="direct").f_calc()
-  mask_manager = mmtbx.masks.manager(miller_array = f_calc)
-  f_mask = mask_manager.shell_f_masks(xray_structure = x)[0]
-  assert flex.mean(abs(f_mask).data()) > 0
-  b_cart=adptbx.random_traceless_symmetry_constrained_b_cart(crystal_symmetry=x.crystal_symmetry())
-  u_star = adptbx.u_cart_as_u_star(x.unit_cell(), adptbx.b_as_u(b_cart))
-  k_anisotropic = mmtbx.f_model.ext.k_anisotropic(f_calc.indices(), u_star)
-  ss = 1./flex.pow2(f_calc.d_spacings().data()) / 4.
-  k_mask = mmtbx.f_model.ext.k_mask(ss, 0.37, 64.0)
-  scale = 17.
-  k_isotropic = flex.double(f_calc.data().size(), scale)
-  f_model_data = scale*k_anisotropic*(f_calc.data()+k_mask*f_mask.data())
-  f_model = f_calc.customized_copy(data = f_model_data)
-  f_obs = abs(f_model)
-  r_free_flags = f_obs.generate_r_free_flags()
-  sfg_params = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
-  sfg_params.algorithm = "direct"
-  for it in [(0,0.6), (1,-0.4), (0.2,0.4), (-0.2,0.8)]:
-    value, k_h_ = it
-    x.set_occupancies(value=value, selection = x.hd_selection())
-    fmodel = mmtbx.f_model.manager(
-      xray_structure = x,
-      f_obs          = f_obs,
-      k_mask         = k_mask,
-      k_anisotropic  = k_anisotropic,
-      k_isotropic    = k_isotropic,
-      r_free_flags   = r_free_flags,
-      sf_and_grads_accuracy_params = sfg_params)
-    fmodel_dc = fmodel.deep_copy()
-    assert fmodel.r_work() > 0.02, fmodel.r_work()
-    fmodel.update_f_hydrogens_grid_search()
-    assert approx_equal(fmodel.k_h, k_h_), [it, fmodel.k_h, fmodel.r_work()]
-    assert approx_equal(fmodel.b_h, 0)
-    assert approx_equal(fmodel.r_work(), 0)
-    fmodel_dc.update_f_hydrogens()
-    assert fmodel_dc.r_work() < 0.01
-    # test 2
-    fmodel = mmtbx.f_model.manager(
-      xray_structure = x,
-      f_obs          = f_obs,
-      r_free_flags   = r_free_flags,
-      sf_and_grads_accuracy_params = sfg_params)
-    fmodel_dc = fmodel.deep_copy()
-    assert fmodel.r_work() > 0.25
-    fmodel.update_all_scales(cycles=6, fast=False, update_f_part1=False,
-      refine_hd_scattering_method="slow")
-    assert approx_equal(fmodel.k_h, k_h_)
-    assert approx_equal(fmodel.b_h, 0)
-    assert approx_equal(fmodel.r_work(), 0)
-    fmodel_dc.update_all_scales(update_f_part1=False,
-      refine_hd_scattering_method="fast")
-    assert fmodel_dc.r_work() < 0.05
-    # test 3
-    fmodel = mmtbx.f_model.manager(
-      xray_structure = x,
-      f_obs          = f_obs,
-      r_free_flags   = r_free_flags,
-      sf_and_grads_accuracy_params = sfg_params)
-    assert fmodel.r_work() > 0.25
-    fmodel.update_all_scales(cycles=6, fast=True, show=False,
-      update_f_part1=False, refine_hd_scattering_method="slow")
-    assert approx_equal(fmodel.k_h, k_h_)
-    assert approx_equal(fmodel.b_h, 0)
-    assert fmodel.r_work() < 0.025
-  map_coeffs = fmodel.map_coefficients(map_type="2mFo-DFc")
-  fmodel.export_f_obs_flags_as_mtz(file_name="tmp_tst_fmodel.mtz")
-  assert os.path.isfile("tmp_tst_fmodel.mtz")
+  fmodel.update_all_scales(fast=True)
+  assert fmodel.r_work() < 0.04, [fmodel.r_work(), d_min]
 
 def exercise_top_largest_f_obs_f_model_differences(threshold_percent=10,
       symbol = "C 2"):
@@ -618,7 +430,6 @@ def exercise_6_instantiate_consistency(symbol = "C 2"):
               x.scattering_type_registry(table="wk1995")
               x.set_occupancies(value=0.8, selection = x.hd_selection())
               f_calc = x.structure_factors(d_min = 2.0).f_calc()
-              print f_calc.data().size()
               mask_manager = mmtbx.masks.manager(miller_array = f_calc)
               f_mask = mask_manager.shell_f_masks(xray_structure = x)[0]
               assert flex.mean(abs(f_mask).data()) > 0
@@ -677,14 +488,13 @@ def exercise_6_instantiate_consistency(symbol = "C 2"):
               assert approx_equal(r1, r2), [r1, r2]
 
 def run():
-  exercise_5_bulk_sol_and_scaling()
+  for d_min in [2, 4]:
+    exercise_5_bulk_sol_and_scaling(d_min = d_min)
   exercise_6_instantiate_consistency()
   exercise_f_model_no_scales()
   exercise_top_largest_f_obs_f_model_differences()
-  exercise_5_bulk_sol_and_scaling_and_H()
   exercise_1()
   exercise_2()
-  exercise_3_f_part1_and_f_part2()
   exercise_4_f_hydrogens()
   print format_cpu_times()
 
