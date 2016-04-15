@@ -1,4 +1,5 @@
 #include <cctbx/boost_python/flex_fwd.h>
+#include <cctbx/geometry_restraints/shared_wrapper_pickle.hpp>
 
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
@@ -58,6 +59,7 @@ namespace {
         .def_pickle(chirality_proxy_wrappers())
         ;
       {
+        typedef scitbx::af::boost_python::shared_wrapper<w_t> shared_w_t;
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
           "shared_chirality_proxy")
           .def("proxy_select",
@@ -85,6 +87,7 @@ namespace {
               unsigned char))
                 shared_proxy_remove, (
             arg("origin_id")))
+          .def_pickle(shared_wrapper_pickle_suite< shared_w_t::w_t >())
         ;
       }
     }

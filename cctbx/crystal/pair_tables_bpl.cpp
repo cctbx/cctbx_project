@@ -1,4 +1,5 @@
 #include <cctbx/boost_python/flex_fwd.h>
+#include <cctbx/geometry_restraints/shared_wrapper_pickle.hpp>
 
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
@@ -25,13 +26,15 @@ namespace {
       typedef return_internal_reference<> rir;
       scitbx::stl::boost_python::map_wrapper<pair_sym_dict, rir>::wrap(
         "pair_sym_dict");
-      scitbx::af::boost_python::shared_wrapper<pair_sym_dict, rir>::wrap(
+      typedef scitbx::af::boost_python::shared_wrapper<pair_sym_dict, rir> shared_w_t;
+      shared_w_t::wrap(
         "pair_sym_table")
         .def("proxy_select",
           (pair_sym_table(*)(
             af::const_ref<pair_sym_dict> const&,
             af::const_ref<std::size_t> const&))
               scitbx::af::array_of_map_proxy_select)
+        .def_pickle(shared_wrapper_pickle_suite< shared_w_t::w_t >())
       ;
     }
   };

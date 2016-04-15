@@ -1,4 +1,5 @@
 #include <cctbx/boost_python/flex_fwd.h>
+#include <cctbx/geometry_restraints/shared_wrapper_pickle.hpp>
 
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
@@ -56,36 +57,37 @@ namespace {
         .def_readwrite("origin_id", &w_t::origin_id)
         .def_pickle(planarity_proxy_wrappers())
       ;
-      {
-        scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
-          "shared_planarity_proxy")
-          .def("proxy_select",
-            (af::shared<w_t>(*)(
-              af::const_ref<w_t> const&,
-              std::size_t,
-              af::const_ref<std::size_t> const&))
-                shared_planarity_proxy_select, (
-            arg("n_seq"), arg("iselection")))
-          .def("proxy_select",
-            (af::shared<w_t>(*)(
-              af::const_ref<w_t> const&,
-              unsigned char))
-                shared_proxy_select_origin, (
-            arg("origin_id")))
-          .def("proxy_remove",
-            (af::shared<w_t>(*)(
-              af::const_ref<w_t> const&,
-              af::const_ref<bool> const&))
-                shared_proxy_remove, (
-            arg("selection")))
-          .def("proxy_remove",
-            (af::shared<w_t>(*)(
-              af::const_ref<w_t> const&,
-              unsigned char))
-                shared_proxy_remove, (
-            arg("origin_id")))
-        ;
-      }
+
+      typedef scitbx::af::boost_python::shared_wrapper<w_t> shared_w_t;
+      shared_w_t::wrap(
+        "shared_planarity_proxy")
+        .def("proxy_select",
+          (af::shared<w_t>(*)(
+            af::const_ref<w_t> const&,
+            std::size_t,
+            af::const_ref<std::size_t> const&))
+              shared_planarity_proxy_select, (
+          arg("n_seq"), arg("iselection")))
+        .def("proxy_select",
+          (af::shared<w_t>(*)(
+            af::const_ref<w_t> const&,
+            unsigned char))
+              shared_proxy_select_origin, (
+          arg("origin_id")))
+        .def("proxy_remove",
+          (af::shared<w_t>(*)(
+            af::const_ref<w_t> const&,
+            af::const_ref<bool> const&))
+              shared_proxy_remove, (
+          arg("selection")))
+        .def("proxy_remove",
+          (af::shared<w_t>(*)(
+            af::const_ref<w_t> const&,
+            unsigned char))
+              shared_proxy_remove, (
+          arg("origin_id")))
+        .def_pickle(shared_wrapper_pickle_suite< shared_w_t::w_t >())
+      ;
     }
   };
 

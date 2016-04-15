@@ -171,6 +171,7 @@ cctbx/geometry_restraints/gradients.tex -text
 cctbx/geometry_restraints/nonbonded_overlaps.py -text
 cctbx/geometry_restraints/parallelity.h -text
 cctbx/geometry_restraints/parallelity_bpl.cpp -text
+cctbx/geometry_restraints/shared_wrapper_pickle.hpp -text
 cctbx/geometry_restraints/tst_angle_derivs.py svneol=native#text/x-python
 cctbx/geometry_restraints/tst_nonbonded_overlaps.py -text
 cctbx/geometry_restraints/tst_proxy_registry.py svneol=native#text/x-python
