@@ -213,7 +213,7 @@ def grow_density(f_obs,
         target_name    = "ml",
         mask_params    = mask_params,
         f_obs          = f_obs)
-      fmodel.update_solvent_and_scale(optimize_mask=False)
+      fmodel.update_all_scales()
       print "START R-work and R-free: %6.4f %6.4f"%(fmodel.r_work(),
         fmodel.r_free())
     xray_structure_current = xray_structure_start.deep_copy_scatterers()

@@ -452,7 +452,7 @@ def simul_utils(args):
         f_obs = miller_array,
         r_free_flags = free_flags,
         xray_structure = model )
-    f_model_object.update_solvent_and_scale(out=log)
+    f_model_object.update_all_scales(log=log)
     fmodel = abs( f_model_object.f_model() ).set_observation_type( miller_array )
 
     mockfmodel = None

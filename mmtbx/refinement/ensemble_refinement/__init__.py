@@ -754,12 +754,10 @@ class run_ensemble_refinement(object):
       self.optimise_multiple_fmodel()
     else:
       self.fmodel_total.set_scale_switch = 0
-      self.fmodel_total.update_solvent_and_scale(
-                            verbose       = self.params.verbose,
-                            out           = self.log,
-                            params        = self.bsp,
-                            optimize_mask = False)
-
+      self.fmodel_total.update_all_scales(
+        log    = self.log,
+        remove_outliers=False,
+        params = self.bsp)
     #Minimize number of ensemble models
     if self.params.ensemble_reduction:
       self.ensemble_utils.ensemble_reduction()
@@ -767,12 +765,10 @@ class run_ensemble_refinement(object):
     #Optimise fmodel_total k, b_aniso, k_sol, b_sol
     self.fmodel_total.set_scale_switch = 0
     self.print_fmodels_scale_and_solvent_stats()
-    self.fmodel_total.update_solvent_and_scale(
-                          verbose       = self.params.verbose,
-                          out           = self.log,
-                          params        = self.bsp,
-                          optimize_mask = False
-                          )
+    self.fmodel_total.update_all_scales(
+      log    = self.log,
+      remove_outliers=False,
+      params = self.bsp)
     self.print_fmodels_scale_and_solvent_stats()
     print >> self.log, "FINAL Rwork = %6.4f Rfree = %6.4f Rf/Rw = %6.4f"\
         %(self.fmodel_total.r_work(),
@@ -868,12 +864,11 @@ class run_ensemble_refinement(object):
     make_header("Setup bulk solvent and scale", out = self.log)
     self.show_overall(message = "pre solvent and scale")
     #
-    self.fmodel_running.update_solvent_and_scale(
-        params        = self.bsp,
-        verbose       = self.params.verbose,
-        out           = self.log,
-        optimize_mask = True)
-
+    self.fmodel_running.update_all_scales(
+      params = self.bsp,
+      remove_outliers=False,
+      log    = self.log)
+    self.fmodel_running.optimize_mask(params = self.bsp)
     #Fixes scale factor for rolling average #ESSENTIAL for LSQ
     if self.fix_scale == True:
       self.er_data.fix_scale_factor = self.fmodel_running.scale_k1()
@@ -1344,11 +1339,10 @@ class run_ensemble_refinement(object):
         self.fmodel_total.update(
           f_calc = self.copy_ma.array(data = (fcalc_tot / cntr)),
           f_mask = self.copy_ma.array(data = (fmask_tot / cntr)) )
-        self.fmodel_total.update_solvent_and_scale(
-          verbose = self.params.verbose,
+        self.fmodel_total.update_all_scales(
           params = self.bsp,
-          out = self.log,
-          optimize_mask = False)
+          remove_outliers=False,
+          log = self.log)
         print >> self.log, "  {0:8d} {1:8d} {2:8.3f} {3:8.3f}"\
           .format(x+1,
                   y,
@@ -1371,11 +1365,10 @@ class run_ensemble_refinement(object):
     self.fmodel_total.update(
       f_calc = self.copy_ma.array(data = best_r_work_fcalc),
       f_mask = self.copy_ma.array(data = best_r_work_fmask) )
-    self.fmodel_total.update_solvent_and_scale(
-          verbose       = self.params.verbose,
-          params        = self.bsp,
-          out           = self.log,
-          optimize_mask = False)
+    self.fmodel_total.update_all_scales(
+          params = self.bsp,
+          remove_outliers=False,
+          log    = self.log)
 
     print >> self.log, "\nOptimium block :"
     print >> self.log, "  {0:8d} {1:8d} {2:8.3f} {3:8.3f} {4:8.3f} {5:8.3f}"\

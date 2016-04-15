@@ -157,8 +157,7 @@ class compute_fo_minus_fo_map (object) :
         r_free_flags   = r_free_flags,
         target_name    = "ls_wunit_k1",
         f_obs          = d)
-      fmodel.remove_outliers(log=log)
-      fmodel.update_solvent_and_scale(out=log)
+      fmodel.update_all_scales(log=None)
       if(not silent):
         fmodel.info().show_rfactors_targets_scales_overall(out=log)
         print >> log

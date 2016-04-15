@@ -589,9 +589,7 @@ class ensemble_probability(object):
             # Update solvent and scale
             # XXX Will need to apply_back_trace on latest version
             fmodel.set_scale_switch = 0
-            fmodel.update_solvent_and_scale(optimize_mask    = False,
-#                                            apply_back_trace = False
-                                            )
+            fmodel.update_all_scales()
 
             # Reset occ for outout
             xrs.set_occupancies(nll_occ)

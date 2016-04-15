@@ -293,11 +293,10 @@ class manager(object):
             self.fmodel_ens.update(
               f_calc = self.ensemble_obj.copy_ma.array(data = (fcalc_total / cntr)),
               f_mask = self.ensemble_obj.copy_ma.array(data = (fmask_total / cntr)) )
-            self.fmodel_ens.update_solvent_and_scale(
-                                     verbose       = 0,
-                                     out           = self.ensemble_obj.log,
-                                     params        = self.ensemble_obj.bsp,
-                                     optimize_mask = False)
+            self.fmodel_ens.update_all_scales(
+              log    = self.ensemble_obj.log,
+              remove_outliers=False,
+              params = self.ensemble_obj.bsp)
             if cntr < 4:
               break
             print >> self.ensemble_obj.log, "Ens: {0:8d} {1:8.3f} {2:8.3f} {3:8.3f}"\
@@ -319,11 +318,10 @@ class manager(object):
       #Update fmodel_total
       self.ensemble_obj.fmodel_total.update(f_calc = final_f_calc,
                                       f_mask = final_f_mask)
-      self.ensemble_obj.fmodel_total.update_solvent_and_scale(
-                                verbose       = 0,
-                                out           = self.ensemble_obj.log,
-                                params        = self.ensemble_obj.bsp,
-                                optimize_mask = False)
+      self.ensemble_obj.fmodel_total.update_all_scales(
+        log    = self.ensemble_obj.log,
+        remove_outliers=False,
+        params = self.ensemble_obj.bsp)
       #Parse arrays for output PDB
       copy_ed_data_xray_structures = []
       copy_pdb_hierarchys = []
