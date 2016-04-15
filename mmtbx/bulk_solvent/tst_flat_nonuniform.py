@@ -2,13 +2,14 @@ from __future__ import division
 from iotbx import pdb
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
-import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 import mmtbx.f_model
 from cctbx import adptbx
-import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 import iotbx.pdb
 from mmtbx import f_model
 from cctbx import maptbx
+from mmtbx.bulk_solvent import kbu_refinery
+import time
+from mmtbx import bulk_solvent
 
 pdb_str = """
 CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P1
@@ -32,76 +33,94 @@ def get_mask_data(xrs, d_min):
     for_structure_factors    = True,
     n_real                   = crystal_gridding.n_real()).mask_data
 
-def fd_k_sols(kbu, f_obs):
+def fd_k_sols(kbu, f_obs, eps=1.e-3):
   p = flex.double([0.1, 0.2])
   kbu.update(k_sols = p)
-  tg = bss.bulk_solvent.bulk_solvent_and_aniso_scale_target_and_grads_ls(
-        fm                  = kbu.data,
-        fo                  = f_obs.data(),
-        compute_k_sol_grad  = True,
-        compute_b_sol_grad  = False,
-        compute_u_star_grad = False)
+  tg = bulk_solvent.ls_kb_sol_u_star(
+    f_model     = kbu.data,
+    f_obs       = f_obs.data(),
+    scale       = 1.0,
+    kb_sol_grad = True,
+    u_star_grad = True,
+    kb_sol_curv = True)
   g_k_sols_anal = list(tg.grad_k_sols())
+  c_k_sols_anal = list(tg.curv_k_sols())
+  print "C anal k:", c_k_sols_anal
   #
   g_k_sols_fd = []
-  for shift in [flex.double([1.e-3,0]),
-                flex.double([0,1.e-3])]:
+  c_k_sols_fd = []
+  t0 = tg.target()
+  for shift in [flex.double([eps,0]),
+                flex.double([0,eps])]:
     # plus shift
     kbu.update(k_sols = p+shift)
-    tg = bss.bulk_solvent.bulk_solvent_and_aniso_scale_target_and_grads_ls(
-          fm                  = kbu.data,
-          fo                  = f_obs.data(),
-          compute_k_sol_grad  = True,
-          compute_b_sol_grad  = False,
-          compute_u_star_grad = False)
+    tg = bulk_solvent.ls_kb_sol_u_star(
+      f_model     = kbu.data,
+      f_obs       = f_obs.data(),
+      scale       = 1.0,
+      kb_sol_grad = True,
+      u_star_grad = True,
+      kb_sol_curv = True)
     t1 = tg.target()
     # minus shift
     kbu.update(k_sols = p-shift)
-    tg = bss.bulk_solvent.bulk_solvent_and_aniso_scale_target_and_grads_ls(
-          fm                  = kbu.data,
-          fo                  = f_obs.data(),
-          compute_k_sol_grad  = True,
-          compute_b_sol_grad  = False,
-          compute_u_star_grad = False)
+    tg = bulk_solvent.ls_kb_sol_u_star(
+      f_model     = kbu.data,
+      f_obs       = f_obs.data(),
+      scale       = 1.0,
+      kb_sol_grad = True,
+      u_star_grad = True,
+      kb_sol_curv = True)
     t2 = tg.target()
-    g_k_sols_fd.append( (t1-t2)/(2*1.e-3) )
+    g_k_sols_fd.append( (t1-t2)/(2*eps) )
+    c_k_sols_fd.append( (t1+t2-2*t0)/eps**2 )
   #
+  print "C df:",c_k_sols_fd
   assert approx_equal(g_k_sols_anal, g_k_sols_fd, 1.e-4)
 
 def fd_b_sols(kbu, f_obs):
   p = flex.double([10, 20])
   kbu.update(b_sols = p)
-  tg = bss.bulk_solvent.bulk_solvent_and_aniso_scale_target_and_grads_ls(
-        fm                  = kbu.data,
-        fo                  = f_obs.data(),
-        compute_k_sol_grad  = False,
-        compute_b_sol_grad  = True,
-        compute_u_star_grad = False)
+  tg = bulk_solvent.ls_kb_sol_u_star(
+    f_model     = kbu.data,
+    f_obs       = f_obs.data(),
+    scale       = 1.0,
+    kb_sol_grad = True,
+    u_star_grad = True,
+    kb_sol_curv = True)
   g_b_sols_anal = list(tg.grad_b_sols())
+  c_b_sols_anal = list(tg.curv_b_sols())
+  print "C anal b:", c_b_sols_anal
   #
   g_b_sols_fd = []
+  c_b_sols_fd = []
+  t0 = tg.target()
   for shift in [flex.double([1.e-3,0]),
                 flex.double([0,1.e-3])]:
     # plus shift
     kbu.update(b_sols = p+shift)
-    tg = bss.bulk_solvent.bulk_solvent_and_aniso_scale_target_and_grads_ls(
-          fm                  = kbu.data,
-          fo                  = f_obs.data(),
-          compute_k_sol_grad  = False,
-          compute_b_sol_grad  = True,
-          compute_u_star_grad = False)
+    tg = bulk_solvent.ls_kb_sol_u_star(
+      f_model     = kbu.data,
+      f_obs       = f_obs.data(),
+      scale       = 1.0,
+      kb_sol_grad = True,
+      u_star_grad = True,
+      kb_sol_curv = True)
     t1 = tg.target()
     # minus shift
     kbu.update(b_sols = p-shift)
-    tg = bss.bulk_solvent.bulk_solvent_and_aniso_scale_target_and_grads_ls(
-          fm                  = kbu.data,
-          fo                  = f_obs.data(),
-          compute_k_sol_grad  = False,
-          compute_b_sol_grad  = True,
-          compute_u_star_grad = False)
+    tg = bulk_solvent.ls_kb_sol_u_star(
+      f_model     = kbu.data,
+      f_obs       = f_obs.data(),
+      scale       = 1.0,
+      kb_sol_grad = True,
+      u_star_grad = True,
+      kb_sol_curv = True)
     t2 = tg.target()
     g_b_sols_fd.append( (t1-t2)/(2*1.e-3) )
+    c_b_sols_fd.append( (t1+t2-2*t0)/1.e-3**2 *2)
     #
+  print "C df:",c_b_sols_fd
   assert approx_equal(g_b_sols_anal, g_b_sols_fd)
 
 def run(d_min  = 2.0,
@@ -152,31 +171,24 @@ def run(d_min  = 2.0,
   fd_k_sols(kbu=kbu, f_obs=f_obs)
   fd_b_sols(kbu=kbu, f_obs=f_obs)
   #
-  kbu = f_model.manager_kbu(
+  u_star_ini = adptbx.u_cart_as_u_star(xrs.unit_cell(),
+    adptbx.b_as_u([0.1,0.2,0.3,0,0.4,0]))
+  TGCO = kbu_refinery.tgc(
     f_obs   = f_obs,
     f_calc  = f_calc,
     f_masks = [f_mask1, f_mask2],
     ss      = ss,
-    k_sols  = k_sols,
-    b_sols  = b_sols)
-  u_star_ini = adptbx.u_cart_as_u_star(xrs.unit_cell(),
-    adptbx.b_as_u([0.1,0.2,0.3,0,0.4,0]))
-  res = bss.kbu_minimizer(
-    fmodel_core_data = kbu,
-    f_obs            = f_obs,
-    k_initial        = [0.1,0.1],
-    b_initial        = [10,10],
-    u_initial        = u_star_ini,
-    refine_k         = True,
-    refine_b         = True,
-    refine_u         = True,
-    min_iterations   = 500,
-    max_iterations   = 500)
-  assert approx_equal(res.k_min, k_sols)
-  assert approx_equal(res.b_min, b_sols)
-  assert approx_equal(
-    adptbx.u_as_b(adptbx.u_star_as_u_cart(f_obs.unit_cell(), res.u_min)),b_cart)
+    k_sols  = [0.1,0.1],
+    b_sols  = [10,10],
+    u_star  = u_star_ini)
+  TGCO.minimize_kbu(n_cycles=100)
+  TGCO.show_kbu()
+  assert approx_equal(TGCO.kbu.k_sols(), k_sols, 1.e-3)
+  assert approx_equal(TGCO.kbu.b_sols(), b_sols, 1.e-3)
+  assert approx_equal(TGCO.kbu.b_cart(), b_cart, 1.e-4)
 
 if (__name__ == "__main__"):
+  t0 = time.time()
   run()
+  print "Time: %6.4f"%(time.time()-t0)
   print "OK"
