@@ -6,7 +6,7 @@ from cctbx import adptbx
 import boost.python
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 from cctbx import sgtbx
-from mmtbx.bulk_solvent import bulk_solvent_and_scaling
+from mmtbx.bulk_solvent import kbu_refinery
 import mmtbx.f_model
 import math
 from libtbx import group_args
@@ -33,6 +33,17 @@ def moving_average(x):
         result[i] = (x_[i-1]+x_[i]+x_[i+1])/3.
     x_ = result[:]
   return result[1:len(result)-1]
+
+def run_simple(fmodel_kbu, bin_selections, r_free_flags, bulk_solvent):
+  return run(
+    f_obs            = fmodel_kbu.f_obs,
+    f_calc           = fmodel_kbu.f_calc,
+    f_mask           = fmodel_kbu.f_masks,
+    r_free_flags     = r_free_flags,
+    bulk_solvent     = bulk_solvent,
+    ss               = fmodel_kbu.ss,
+    number_of_cycles = 100,
+    bin_selections   = bin_selections)
 
 class run(object):
   def __init__(self,
@@ -236,6 +247,10 @@ class run(object):
     else:
       return cctbx.xray.r_factor(
         self.f_obs.data().select(sel), c.f_model.data().select(sel)).value()
+
+  def r_all(self):
+    return bulk_solvent.r_factor(self.f_obs.data(),
+      self.core.f_model.data())
 
   def r_factor(self, use_scale=False):
     if(use_scale):
@@ -585,16 +600,16 @@ class run(object):
     k_anisotropic_expanal, k_anisotropic_poly, \
       k_anisotropic_expmin = None, None, None
     scale_matrix_expanal, scale_matrix_poly, scale_matrix_expmin= None,None,None
-    sel     = self.selection_work.data()
-    f_model = self.core.f_model_no_aniso_scale.data().select(sel)
-    f_obs   = self.f_obs.data().select(sel)
-    mi      = self.f_obs.indices().select(sel)
-    uc      = self.f_obs.unit_cell()
-    mi_all  = self.f_obs.indices()
+    sel         = self.selection_work.data()
+    f_model_abs = flex.abs(self.core.f_model_no_aniso_scale.data().select(sel))
+    f_obs       = self.f_obs.data().select(sel)
+    mi          = self.f_obs.indices().select(sel)
+    uc          = self.f_obs.unit_cell()
+    mi_all      = self.f_obs.indices()
     # try exp_anal
     if(self.try_expanal):
       obj = bulk_solvent.aniso_u_scaler(
-        f_model        = f_model,
+        f_model_abs    = f_model_abs,
         f_obs          = f_obs,
         miller_indices = mi,
         adp_constraint_matrix = self.adp_constraints.gradient_sum_matrix())
@@ -607,7 +622,7 @@ class run(object):
     # try poly
     if(self.try_poly):
       obj = bulk_solvent.aniso_u_scaler(
-        f_model        = f_model,
+        f_model_abs    = f_model_abs,
         f_obs          = f_obs,
         miller_indices = mi,
         unit_cell      = uc)
@@ -633,17 +648,16 @@ class run(object):
         f_part1       = zero,
         f_part2       = zero,
         ss            = self.ss)
-      obj = bulk_solvent_and_scaling.u_star_minimizer(
-        fmodel_core_data = fm,
-        f_obs            = self.f_obs.select(sel),
-        u_initial        = [0,0,0,0,0,0],
-        refine_u         = True,
-        min_iterations   = 500,
-        max_iterations   = 500,
-        symmetry_constraints_on_b_cart = True,
-        u_min_max = 500.,
-        u_min_min =-500.)
-      u_star = obj.u_min
+      obj = kbu_refinery.tgc(
+        f_obs   = self.f_obs.select(sel),
+        f_calc  = self.core.f_model_no_aniso_scale.select(sel),
+        f_masks = [zero],
+        ss      = self.ss,
+        k_sols  = [0,],
+        b_sols  = [0,],
+        u_star  = [0,0,0,0,0,0])
+      obj.minimize_u()
+      u_star = obj.kbu.u_star()
       scale_matrix_expmin = adptbx.u_as_b(adptbx.u_star_as_u_cart(uc, u_star))
       k_anisotropic_expmin = ext.k_anisotropic(mi_all, u_star)
       r_expmin = self.try_scale(k_anisotropic = k_anisotropic_expmin)
@@ -683,31 +697,44 @@ class run(object):
     r = scitbx.math.gaussian_fit_1d_analytical(x=flex.sqrt(self.ss), y=k_total)
     return r.a, r.b
 
+  def k_masks(self):
+    return self.core.k_masks
+
+  def k_isotropic(self):
+    return self.core.k_isotropic*self.core.k_isotropic_exp
+
+  def k_anisotropic(self):
+    return self.core.k_anisotropic
+
   def apply_back_trace_of_overall_exp_scale_matrix(self, xray_structure=None):
-    result = None
     k,b=self.overall_isotropic_kb_estimate()
     k_total = self.core.k_isotropic * self.core.k_anisotropic * \
       self.core.k_isotropic_exp
     k,b,r = mmtbx.bulk_solvent.fit_k_exp_b_to_k_total(k_total, self.ss, k, b)
-    if(r<0.5): self.k_exp_overall,self.b_exp_overall = k,b
-    if(xray_structure is not None):
-      if([self.k_exp_overall,self.b_exp_overall].count(None)==0 and k != 0):
-        bs1 = xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
-        def split(b_trace, xray_structure):
-          b_min = xray_structure.min_u_cart_eigenvalue()*adptbx.u_as_b(1.)
-          b_res = min(0, b_min + b_trace+1.e-6)
-          b_adj = b_trace-b_res
-          xray_structure.shift_us(b_shift = b_adj)
-          return b_adj, b_res
-        b_adj,b_res=split(b_trace=self.b_exp_overall,xray_structure=xray_structure)
-        k_new = self.k_exp_overall*flex.exp(-self.ss*b_adj)
-        result = group_args(
-          xray_structure= xray_structure,
-          k_isotropic = self.core.k_isotropic/k_new*self.core.k_isotropic_exp,
-          k_mask      = [m*flex.exp(-self.ss*b_adj) for m in self.core.k_masks],
-          k_anisotropic = self.core.k_anisotropic)
-        bs2 = xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
-        diff = bs2-bs1
-        assert approx_equal(flex.min(diff), flex.max(diff))
-        assert approx_equal(flex.max(diff), b_adj)
-    return result
+    if(r<0.7): self.k_exp_overall,self.b_exp_overall = k,b
+    if(xray_structure is None): return None
+    b_adj = 0
+    if([self.k_exp_overall,self.b_exp_overall].count(None)==0 and k != 0):
+      bs1 = xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+      def split(b_trace, xray_structure):
+        b_min = xray_structure.min_u_cart_eigenvalue()*adptbx.u_as_b(1.)
+        b_res = min(0, b_min + b_trace+1.e-6)
+        b_adj = b_trace-b_res
+        xray_structure.shift_us(b_shift = b_adj)
+        return b_adj, b_res
+      b_adj,b_res=split(b_trace=self.b_exp_overall,xray_structure=xray_structure)
+      k_new = self.k_exp_overall*flex.exp(-self.ss*b_adj)
+      bs2 = xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+      diff = bs2-bs1
+      assert approx_equal(flex.min(diff), flex.max(diff))
+      assert approx_equal(flex.max(diff), b_adj)
+      self.core = self.core.update(
+        k_isotropic = self.core.k_isotropic,
+        k_isotropic_exp = self.core.k_isotropic_exp/k_new,
+        k_masks = [m*flex.exp(-self.ss*b_adj) for m in self.core.k_masks])
+    return group_args(
+      xray_structure = xray_structure,
+      k_isotropic    = self.k_isotropic(),
+      k_anisotropic  = self.k_anisotropic(),
+      k_mask         = self.k_masks(),
+      b_adj          = b_adj)
