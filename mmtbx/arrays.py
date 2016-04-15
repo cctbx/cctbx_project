@@ -5,7 +5,7 @@ import boost.python
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 from cctbx import miller
 
-class init(object):
+class init(object): # XXX PVA: Why Fobs, HL and r_free_flags are not here?
   def __init__(self,
                f_calc,
                f_masks=None,
@@ -109,6 +109,8 @@ class init(object):
     assert len(state) == 1
     self.__init__(*state["args"])
 
+  # XXX PVA: returns new object, not itself updated. This is misleading!
+  # See fmodel_kbu where this is done rigth.
   def update(self,
              f_calc=None,
              f_masks=None,
