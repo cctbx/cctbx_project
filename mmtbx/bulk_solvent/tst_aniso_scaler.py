@@ -50,14 +50,24 @@ def run_00():
     fc = F.structure_factors_from_scatterers(xray_structure=xrs).f_calc()
     f_obs = F.customized_copy(data = flex.abs(fc.data()*fbc))
     t0 = time.time()
+    #
     obj = bulk_solvent.aniso_u_scaler(
-      f_model        = fc.data(),
+      f_model_abs    = flex.abs(fc.data()),
       f_obs          = f_obs.data(),
       miller_indices = f_obs.indices(),
       adp_constraint_matrix = adp_constraints.gradient_sum_matrix())
     time_aniso_u_scaler += (time.time()-t0)
     b_cart_final = adptbx.u_as_b(adptbx.u_star_as_u_cart(f_obs.unit_cell(),
       adp_constraints.all_params(tuple(obj.u_star_independent))))
+    #
+    obj = bulk_solvent.aniso_u_scaler(
+      f_model_abs    = flex.abs(fc.data()),
+      f_obs          = f_obs.data(),
+      miller_indices = f_obs.indices())
+    b_cart_final2 = adptbx.u_as_b(adptbx.u_star_as_u_cart(f_obs.unit_cell(),
+      tuple(obj.u_star)))
+    #
+    assert approx_equal(b_cart_final, b_cart_final2)
     #print "Output b_cart:", " ".join(["%8.4f"%i for i in b_cart_final])
     assert approx_equal(b_cart_start, b_cart_final, 1.e-4)
   print "Time (aniso_u_scaler only): %6.4f"%time_aniso_u_scaler
@@ -99,7 +109,7 @@ def run_01():
     f_obs = F.customized_copy(data = flex.abs(fc.data()*fbc))
     #print bulk_solvent.r_factor(f_obs.data(), fmodel.f_model().data())
     obj = bulk_solvent.aniso_u_scaler(
-      f_model        = fc.data(),
+      f_model_abs    = flex.abs(fc.data()),
       f_obs          = f_obs.data(),
       miller_indices = f_obs.indices(),
       unit_cell      = f_obs.unit_cell())
@@ -115,7 +125,7 @@ def run_01():
     #print bulk_solvent.r_factor(f_obs.data(), fmodel.f_model().data())
     t0 = time.time()
     obj = bulk_solvent.aniso_u_scaler(
-      f_model        = fc.data(),
+      f_model_abs    = flex.abs(fc.data()),
       f_obs          = f_obs.data(),
       miller_indices = f_obs.indices(),
       unit_cell      = f_obs.unit_cell())
@@ -173,7 +183,7 @@ def run_02():
     f_obs = F.customized_copy(data = flex.abs(fc.data()*fbc))
     #print bulk_solvent.r_factor(f_obs.data(), fmodel.f_model().data())
     obj = bulk_solvent.aniso_u_scaler(
-      f_model        = fc.data(),
+      f_model_abs    = flex.abs(fc.data()),
       f_obs          = f_obs.data(),
       miller_indices = f_obs.indices(),
       unit_cell      = f_obs.unit_cell())
@@ -189,7 +199,7 @@ def run_02():
     #print bulk_solvent.r_factor(f_obs.data(), fmodel.f_model().data())
     t0 = time.time()
     obj = bulk_solvent.aniso_u_scaler(
-      f_model        = fc.data(),
+      f_model_abs    = flex.abs(fc.data()),
       f_obs          = f_obs.data(),
       miller_indices = f_obs.indices(),
       unit_cell      = f_obs.unit_cell())
