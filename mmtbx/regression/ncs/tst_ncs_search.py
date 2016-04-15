@@ -351,7 +351,7 @@ class TestSimpleAlignment(unittest.TestCase):
     h = iotbx.pdb.input(source_info=None, lines=pdb_str10).construct_hierarchy()
     ncs_inp = ncs.input(hierarchy=h)
     t = ncs_inp.ncs_group_map[1]
-    self.assertEqual(t,[{"chain 'A '"}, {'001', '002', '003'}, "chain 'A '"])
+    self.assertEqual(t,[{"chain 'A '"}, {'1', '2', '3'}, "chain 'A '"])
 
 
 test_pdb_1 = '''\

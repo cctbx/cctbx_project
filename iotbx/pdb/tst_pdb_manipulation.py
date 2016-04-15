@@ -1,6 +1,5 @@
 from __future__ import division
 from  iotbx.pdb.multimer_reconstruction import multimer
-from iotbx.ncs import format_num_as_str
 import iotbx.ncs
 from mmtbx.ncs.ncs_search import is_same_transform
 from mmtbx.ncs.ncs_utils import apply_transforms
@@ -225,13 +224,6 @@ class TestMultimerReconstruction(unittest.TestCase):
     self.assertEqual(len(transforms_obj.ncs_atom_selection),21)
     self.assertEqual(transforms_obj.ncs_atom_selection.count(True),7)
 
-  # @unittest.SkipTest
-  def test_num_to_str(self):
-    # print sys._getframe().f_code.co_name
-    self.assertEqual(format_num_as_str(946),'946')
-    self.assertEqual(format_num_as_str(46),'046')
-    self.assertEqual(format_num_as_str(6),'006')
-    self.assertEqual(format_num_as_str(0),'000')
 
   def test_pdb_writing(self):
     # print sys._getframe().f_code.co_name
@@ -392,10 +384,10 @@ class TestMultimerReconstruction(unittest.TestCase):
       print "new h:", s
       ncs_obj = ncs.input(hierarchy=pdb.input(source_info=None, lines=s).construct_hierarchy())
       print "ncs_obj.number_of_ncs_groups", ncs_obj.number_of_ncs_groups
-      r1 = ncs_obj.ncs_transform['002'].r
-      t1 = ncs_obj.ncs_transform['002'].t
-      r2 = ncs_obj.ncs_transform['003'].r
-      t2 = ncs_obj.ncs_transform['003'].t
+      r1 = ncs_obj.ncs_transform['2'].r
+      t1 = ncs_obj.ncs_transform['2'].t
+      r2 = ncs_obj.ncs_transform['3'].r
+      t2 = ncs_obj.ncs_transform['3'].t
       (the_same, transpose) = is_same_transform(r1,t1,r1_expected,t1_expected)
       self.assertTrue(the_same)
       (the_same, transpose)= is_same_transform(r2,t2,r2_expected,t2_expected)

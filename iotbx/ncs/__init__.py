@@ -618,7 +618,7 @@ class input(object):
         ncs_selection=gns,
         ncs_group_id=ncs_group_id,
         transform_sn=transform_sn)
-      key = format_num_as_str(transform_sn)
+      key = str(int(transform_sn))
       # update with identity transform
       self.update_ncs_copies_chains_names(
             masters = gns,copies = gns, tr_id = key)
@@ -637,7 +637,7 @@ class input(object):
           self.messages += msg + '\n'
         asu_locations.append(asu_select)
         transform_sn += 1
-        key = format_num_as_str(transform_sn)
+        key = str(int(transform_sn))
         self.update_tr_id_to_selection(gns,asu_select,key)
         tr = Transform(
           rotation = r,
@@ -761,7 +761,7 @@ class input(object):
       for i in xrange(len(ncs_gr.copies)):
         # iterate of ncs copies in group
         tr = ncs_gr.transforms[i]
-        tr_id = format_num_as_str(tr.serial_num)
+        tr_id = str(int(tr.serial_num))
         self.ncs_transform[tr_id] = tr
         for j in xrange(len(ncs_gr.copies[i])):
           # iterate over chains in ncs copy
@@ -870,7 +870,7 @@ class input(object):
           r,t = inverse_transform(r,t)
           rmsd = round(gr.rmsd_list()[i],4)
           transform_sn += 1
-          key = format_num_as_str(transform_sn)
+          key = str(int(transform_sn))
           self.update_tr_id_to_selection(gs,ncs_copy_select,key)
           if not is_identity(r,t):
             asu_locations.append(ncs_copy_select)
@@ -1003,7 +1003,7 @@ class input(object):
         tr_sn = n
       else:
         tr_sn = 1
-      key = format_num_as_str(tr_sn)
+      key = str(int(tr_sn))
       tr = Transform(
         rotation = r,
         translation = t,
@@ -1128,7 +1128,7 @@ class input(object):
       serial_num = transform_sn,
       coordinates_present = True,
       ncs_group_id = ncs_group_id)
-    id_str = format_num_as_str(transform_sn)
+    id_str = str(int(transform_sn))
     self.ncs_transform[id_str] = transform_obj
     self.build_transform_dict(
       transform_id = id_str,
@@ -1158,7 +1158,7 @@ class input(object):
       ti = transform_info
       for (r,t,n,cp) in zip(ti.r,ti.t,ti.serial_number,ti.coordinates_present):
         n = int(n)
-        key = format_num_as_str(n)
+        key = str(n)
         tr = Transform(
           rotation = r,
           translation = t,
@@ -1197,7 +1197,7 @@ class input(object):
     """
     if not is_identity(transform.r,transform.t):
       self.transform_to_be_used.add(transform.serial_num)
-      key = selection_id + '_' + format_num_as_str(transform.serial_num)
+      key = selection_id + '_' + str(int(transform.serial_num))
       # example key: "chain A_002"
       self.transform_to_ncs = add_to_dict(
         d=self.transform_to_ncs,k=transform_id,v=key)
@@ -1263,7 +1263,7 @@ class input(object):
     zippedlists = zip(transform_assignment,dictionary_values)
     new_names_dictionary = {x:y for (x,y) in zippedlists}
     # add the master NCS to dictionary
-    tr_set  = {format_num_as_str(x) for x in self.transform_to_be_used}
+    tr_set  = {str(int(x)) for x in self.transform_to_be_used}
     for k,v in self.ncs_group_map.iteritems():
       tr_str = (v[1] - tr_set)
       assert len(tr_str) == 1
@@ -1402,6 +1402,7 @@ class input(object):
         if self.asu_to_ncs_map.has_key(key):
           master_isel.extend(self.asu_to_ncs_map[key])
       new_nrg = NCS_restraint_group(flex.sorted(master_isel))
+      # print "master isel ", list(master_isel)
       # iterate over transform numbers in the group, collect copies selections
       for tr in sorted(v[1]):
         # print "  tr", tr
@@ -2181,16 +2182,6 @@ def get_center_orth(xyz,selection):
   except RuntimeError:
     mean = (-100,-100,-100)
   return mean
-
-def format_num_as_str(n):
-  """  return a 3 digit string of n  """
-  if n > 999 or n < 0:
-    raise IOError('Input out of the range 0 - 999.')
-  else:
-    s1 = n//100
-    s2 = (n%100)//10
-    s3 = n%10
-    return str(s1) + str(s2) + str(s3)
 
 def ncs_only(transform_info):
   """
