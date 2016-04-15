@@ -59,13 +59,81 @@ def get_f_obs_freer(d_min, k_sol, b_sol, b_cart, xray_structure,
   f_obs = abs(fmodel_kbu.f_model)
   return f_obs, r_free_flags
 
+def get_sf(k_sol, b_sol, b_cart, xrs, miller_set=None, d_min=None, twin_law=None,
+           sfg_params=None):
+  random.seed(0)
+  flex.set_random_seed(0)
+  if(miller_set is None):
+    assert d_min is not None
+    f_dummy = abs(xrs.structure_factors(d_min = d_min,
+      anomalous_flag = False).f_calc())
+  else:
+    f_dummy = miller_set
+    assert d_min is None
+  r_free_flags = f_dummy.generate_r_free_flags(fraction = 0.1)
+  fmodel = mmtbx.f_model.manager(
+    r_free_flags   = r_free_flags,
+    f_obs          = f_dummy,
+    sf_and_grads_accuracy_params = sfg_params,
+    xray_structure = xrs,
+    twin_law       = twin_law)
+  ss = 1./flex.pow2(r_free_flags.d_spacings().data()) / 4.
+  k_mask = mmtbx.f_model.ext.k_mask(ss, k_sol, b_sol)
+  u_star = adptbx.u_cart_as_u_star(xrs.unit_cell(), adptbx.b_as_u(b_cart))
+  k_anisotropic = mmtbx.f_model.ext.k_anisotropic(r_free_flags.indices(),u_star)
+  fmodel.update_xray_structure(
+    xray_structure = xrs,
+    update_f_calc  = True,
+    update_f_mask  = True)
+  fmodel.update_core(
+    k_mask        = k_mask,
+    k_anisotropic = k_anisotropic)
+  f_obs = abs(fmodel.f_model())
+  return f_obs, r_free_flags
+
+def exercise_00(d_min = 3.0, k_sol = 0.35, b_sol = 50.0,
+                b_cart = [2.78, -1.54, 8.55, 0, 0, 0],):
+  """
+  Recover k_sol, b_sol and b_cart up to eps=1.e-6. Somewhat duplication with
+  existing tests.
+  """
+  xrs = random_structure.xray_structure(
+    space_group_info       = sgtbx.space_group_info(symbol="P212121"),
+    elements               =(("O","N","C")*100),
+    volume_per_atom        = 100,
+    min_distance           = 1.5,
+    general_positions_only = True,
+    random_u_iso           = True,
+    random_occupancy       = False)
+  f_obs, r_free_flags = get_sf(
+    d_min  = d_min,
+    k_sol  = k_sol,
+    b_sol  = b_sol,
+    b_cart = b_cart,
+    xrs    = xrs)
+  fmodel = mmtbx.f_model.manager(
+    r_free_flags   = r_free_flags,
+    f_obs          = f_obs,
+    xray_structure = xrs)
+  r_work_start = fmodel.r_work()
+  assert r_work_start > 0.3
+  params = bss.master_params.extract()
+  params.number_of_macro_cycles=4
+  r = fmodel.update_all_scales(params=params, fast=False)
+  r_work_final = fmodel.r_work()
+  assert approx_equal(r_work_final, 0)
+  assert approx_equal(r.k_sol[0], k_sol)
+  assert approx_equal(r.b_sol[0], b_sol)
+  assert approx_equal(r.b_cart, b_cart)
+
 def exercise_01_general(d_mins = [1.6,],
-             solvkb = [(0,0),(0.1,80.0),(0.6,10.0),(0.1,10.0),(0.6,80.0),
-                       (0.1,6.),(0.12,89.),(0.57,17.),(0.14,14.),(0.54,87.)],
+             solvkb = [(0,0), (0.39,58.0), (0.1,6.),(0.54,87.)],
              b_carts = [(4., 10., -14., 0, 5., 0.),
                         (0., 0., 0., 0., 0., 0.)],
-             nproc=None):
+             ):
   xray_structure = get_xray_structure_from_file()
+  params = bss.master_params.extract()
+  params.number_of_macro_cycles=3
   for fast in [True, False]:
     for d_min in d_mins:
       for kb in solvkb:
@@ -88,17 +156,17 @@ def exercise_01_general(d_mins = [1.6,],
             f_obs          = f_obs,
             xray_structure = xray_structure,
             bin_selections = bin_selections)
-          fmodel.update_solvent_and_scale(nproc=nproc, fast=fast)
+          fmodel.update_all_scales(fast=fast, params=params)
           result = bss.bulk_solvent_and_scales(
-            fmodel_kbu = fmodel.fmodel_kbu(), nproc = nproc)
+            fmodel_kbu = fmodel.fmodel_kbu(), params = params)
           if(not fast):
-            assert approx_equal(fmodel.r_work(), result.fmodels.r_factor())
+            assert approx_equal(fmodel.r_work(), result.fmodel_kbu.r_factor())
           else:
-            assert fmodel.r_work() < 0.005
-          assert approx_equal(result.fmodels.r_factor(), 0.0, eps = 1.e-6)
-          assert approx_equal(result.k_sols()[0], kb[0],  eps = 1.e-6)
-          assert approx_equal(result.b_sols()[0], kb[1],  eps = 1.e-6)
-          assert approx_equal(result.b_cart(), b_cart, eps = 1.e-6)
+            assert fmodel.r_work() < 0.02, fmodel.r_work()
+          assert approx_equal(result.fmodel_kbu.r_factor(), 0.0, eps = 1.e-6)
+          assert approx_equal(result.k_sols()[0],      kb[0],    eps = 1.e-6)
+          assert approx_equal(result.b_sols()[0],      kb[1],    eps = 1.e-6)
+          assert approx_equal(result.b_cart(),        b_cart,    eps = 1.e-6)
 
 def exercise_02_b_cart_sym_constr(d_min = 2.0, tolerance = 1.e-6):
   for symbol in sgtbx.bravais_types.acentric + sgtbx.bravais_types.centric:
@@ -121,27 +189,24 @@ def exercise_02_b_cart_sym_constr(d_min = 2.0, tolerance = 1.e-6):
         r_free_flags   = r_free_flags,
         f_obs          = f_obs,
         xray_structure = xray_structure)
-      for flag in (True, False):
-        params = bss.master_params.extract()
-        params.bulk_solvent = False
-        params.anisotropic_scaling = True
-        params.k_sol_b_sol_grid_search = False
-        params.minimization_k_sol_b_sol = False
-        params.minimization_b_cart = True
-        params.symmetry_constraints_on_b_cart = flag
-        params.max_iterations = 50
-        params.min_iterations = 50
-        result = bss.bulk_solvent_and_scales(
-          fmodel_kbu = fmodel.fmodel_kbu(), params = params)
-        if(flag == False and approx_equal(b_cart, b_cart_1, out=None)):
-          assert approx_equal(result.b_cart(), b_cart, tolerance)
-        if(flag == True and approx_equal(b_cart, b_cart_2, out=None)):
-          assert approx_equal(result.b_cart(), b_cart, tolerance)
-        if(flag == False and approx_equal(b_cart, b_cart_2, out=None)):
-          assert approx_equal(result.b_cart(), b_cart, tolerance)
-        if(flag == True and approx_equal(b_cart, b_cart_1, out=None)):
-          for u2, ufm in zip(b_cart_2, result.b_cart()):
-            if(abs(u2) < 1.e-6): assert approx_equal(ufm, 0.0, tolerance)
+      flag=True
+      params = bss.master_params.extract()
+      params.number_of_macro_cycles=3
+      params.bulk_solvent = False
+      params.anisotropic_scaling = True
+      params.k_sol_b_sol_grid_search = False
+      params.minimization_k_sol_b_sol = False
+      params.minimization_b_cart = True
+      params.symmetry_constraints_on_b_cart = flag
+      params.max_iterations = 50
+      params.min_iterations = 50
+      result = bss.bulk_solvent_and_scales(
+        fmodel_kbu = fmodel.fmodel_kbu(), params = params)
+      if(flag == True and approx_equal(b_cart, b_cart_2, out=None)):
+        assert approx_equal(result.b_cart(), b_cart, tolerance)
+      if(flag == True and approx_equal(b_cart, b_cart_1, out=None)):
+        for u2, ufm in zip(b_cart_2, result.b_cart()):
+          if(abs(u2) < 1.e-6): assert approx_equal(ufm, 0.0, tolerance)
 
 def exercise_03_do_nothing(d_min = 2.0):
   xray_structure = get_xray_structure_from_file()
@@ -162,15 +227,12 @@ def exercise_03_do_nothing(d_min = 2.0):
   params = bss.master_params.extract()
   params.bulk_solvent = False
   params.anisotropic_scaling = False
-  fmodel.update_solvent_and_scale(params = params, fast=False)
+  fmodel.update_all_scales(params = params, fast=False)
   result = bss.bulk_solvent_and_scales(
     fmodel_kbu = fmodel.fmodel_kbu(), params  = params)
   r_work1 = fmodel.r_work()*100.
-  r_work2 = result.fmodels.select(
-    selection=~fmodel.r_free_flags().data()).r_factor()*100.
   assert r_work_start > 0.0
   assert approx_equal(r_work1, r_work_start, eps = 1.e-6)
-  assert approx_equal(r_work2, r_work_start, eps = 1.e-6)
   assert approx_equal(result.k_sols()[0], 0, eps = 1.e-6)
   assert approx_equal(result.b_sols()[0], 0, eps = 1.e-6)
   assert approx_equal(result.b_cart(), [0,0,0,0,0,0], eps = 1.e-6)
@@ -203,14 +265,13 @@ def exercise_04_fix_k_sol_b_sol_b_cart(d_min = 2.0):
   params.fix_b_cart.b12 = b_cart[3]
   params.fix_b_cart.b13 = b_cart[4]
   params.fix_b_cart.b23 = b_cart[5]
-  result = fmodel.update_solvent_and_scale(params = params, fast = False)
+  result = fmodel.update_all_scales(params = params, fast = False)
   r_work = fmodel.r_work()*100.
   assert r_work_start > 0.0
   assert approx_equal(r_work,          0.0, eps = 1.e-6)
-  assert approx_equal(fmodel.r_work(), result.fmodels.r_factor())
-  assert approx_equal(result.k_sols()[0], k_sol, eps = 1.e-6)
-  assert approx_equal(result.b_sols()[0], b_sol, eps = 1.e-6)
-  assert approx_equal(result.b_cart(), b_cart, eps = 1.e-6)
+  assert approx_equal(result.k_sol[0], k_sol, eps = 1.e-6)
+  assert approx_equal(result.b_sol[0], b_sol, eps = 1.e-6)
+  assert approx_equal(result.b_cart, b_cart, eps = 1.e-6)
 
 def exercise_05_k_sol_b_sol_only(d_min = 2.0):
   xray_structure = get_xray_structure_from_file()
@@ -229,6 +290,7 @@ def exercise_05_k_sol_b_sol_only(d_min = 2.0):
     xray_structure = xray_structure)
   params = bss.master_params.extract()
   params.anisotropic_scaling = False
+  params.number_of_macro_cycles=5
   u_star = adptbx.u_cart_as_u_star(
     fmodel.f_obs().unit_cell(),adptbx.b_as_u(b_cart))
   fmodel_kbu = mmtbx.f_model.manager_kbu(
@@ -242,12 +304,13 @@ def exercise_05_k_sol_b_sol_only(d_min = 2.0):
   r_work_start = fmodel_kbu.r_factor()
   result = bss.bulk_solvent_and_scales(
     fmodel_kbu = fmodel_kbu, params = params)
-  r_work = result.fmodels.r_factor()*100.
+  r_work = result.fmodel_kbu.r_factor()*100.
   assert r_work_start > 0.05
-  assert approx_equal(r_work,              0.0,   eps = 1.e-6)
-  assert approx_equal(result.k_sols()[0], k_sol,  eps = 1.e-6)
-  assert approx_equal(result.b_sols()[0], b_sol,  eps = 1.e-6)
-  assert approx_equal(result.b_cart(),    b_cart, eps = 1.e-6)
+  #
+  assert approx_equal(r_work,              0.0,   eps = 1.e-4)
+  assert approx_equal(result.k_sols()[0], k_sol,  eps = 1.e-4)
+  assert approx_equal(result.b_sols()[0], b_sol,  eps = 1.e-4)
+  assert approx_equal(result.b_cart(),    b_cart, eps = 1.e-4)
 
 def exercise_06_b_cart_only(d_min = 2.0):
   xray_structure = get_xray_structure_from_file()
@@ -278,14 +341,14 @@ def exercise_06_b_cart_only(d_min = 2.0):
   params.bulk_solvent = False
   result = bss.bulk_solvent_and_scales(
     fmodel_kbu = fmodel_kbu, params  = params)
-  r_work = result.fmodels.r_factor()*100.
+  r_work = result.fmodel_kbu.r_factor()*100.
   assert r_work_start > 0.0
   assert approx_equal(r_work,               0.0,  eps = 1.e-6)
   assert approx_equal(result.k_sols()[0], k_sol,  eps = 1.e-6)
   assert approx_equal(result.b_sols()[0], b_sol,  eps = 1.e-6)
   assert approx_equal(result.b_cart(),    b_cart, eps = 1.e-6)
 
-def exercise_radial_shells(k_sol=0.33,d_min=2.,grid_search=False,shell_width=0.6):
+def exercise_radial_shells(k_sol=0.33,d_min=1.5,grid_search=False,shell_width=0.6):
   xray_structure = get_xray_structure_from_file()
   b_sol = 34.0
   if( type(k_sol) is list ):
@@ -324,18 +387,17 @@ def exercise_radial_shells(k_sol=0.33,d_min=2.,grid_search=False,shell_width=0.6
   params = bss.master_params.extract()
   params.anisotropic_scaling = False
   params.k_sol_b_sol_grid_search = grid_search
-  if( not params.k_sol_b_sol_grid_search ):
-    params.number_of_macro_cycles = 3
+  params.number_of_macro_cycles = 10
   params.k_sol_max = 1.2
   result = bss.bulk_solvent_and_scales(
     fmodel_kbu = fmodel_kbu, params = params)
-  r_work = result.fmodels.r_factor()
+  r_work = result.fmodel_kbu.r_factor()
   print 'R-work: ', r_work
   print 'Solvent radius: ', fmodel.mask_params.solvent_radius
   assert r_work_start > 0.0
   assert approx_equal(r_work, 0.0, eps = 1.e-3)
   if( type(k_sol) is list ):
-    ksols = list(result.fmodels.fmodel.k_sols())
+    ksols = list(result.fmodel_kbu.k_sols())
     # XXX if layer_volume_fractions=0, then ksol is more or less undefined ?
     # XXX should it be done in bulk_solvent_and_scaling.py ?
     for i in range(len(ksols)):
@@ -345,14 +407,15 @@ def exercise_radial_shells(k_sol=0.33,d_min=2.,grid_search=False,shell_width=0.6
     for ik in range(len(k_sol)):
       assert approx_equal(ksols[ik], k_sol[ik], eps=0.005),[ksols[ik],k_sol[ik]]
   else:
-    for ksol in result.fmodels.fmodel.k_sols():
-      assert approx_equal(ksol,   k_sol, eps = 1.e-6)
+    for ksol in result.fmodel_kbu.k_sols():
+      assert approx_equal(ksol,   k_sol, eps = 1.e-3)
   n=len(result.b_sols())
   if(n>1 and type(b_sol) is float): b_sol = [b_sol,]*n
   assert approx_equal(result.b_sols(), b_sol,  eps = 1.)
   assert approx_equal(result.b_cart(), b_cart, eps = 1.e-6)
 
 def run():
+  exercise_00()
   exercise_01_general()
   exercise_02_b_cart_sym_constr()
   exercise_03_do_nothing()
