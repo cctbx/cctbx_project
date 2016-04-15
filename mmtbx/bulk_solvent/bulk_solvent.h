@@ -119,6 +119,70 @@ public:
 
 };
 
+template <typename FloatType=double,
+          typename ComplexType=std::complex<double> >
+class one_h_ls
+{
+
+FloatType fo;
+f_model::core<FloatType,ComplexType> fm;
+std::size_t i;
+FloatType scale;
+FloatType scale_all;
+FloatType mtsd;
+bool compute_kb_grad;
+bool compute_kb_curv;
+
+public:
+  one_h_ls(FloatType const& fo_,
+           f_model::core<FloatType,ComplexType> const& fm_,
+           std::size_t const& i_,
+           FloatType const& scale_,
+           bool const& compute_kb_grad_,
+           bool const& compute_kb_curv_)
+  :
+  fo(fo_), fm(fm_), i(i_), scale(scale_), compute_kb_grad(compute_kb_grad_),
+  compute_kb_curv(compute_kb_curv_)
+  {
+    FloatType f_model_abs = std::abs(fm.f_model_no_aniso_scale[i]);
+    scale_all = scale * fm.k_anisotropic[i];
+    diff = fo - scale_all * f_model_abs;
+    mtsd = -2. * scale_all * diff;
+  }
+
+  void compute_kb_grad_curv()
+  {
+    grad_k_sols.resize(fm.n_shells(), 0.);
+    grad_b_sols.resize(fm.n_shells(), 0.);
+    curv_k_sols.resize(fm.n_shells(), 0.);
+    curv_b_sols.resize(fm.n_shells(), 0.);
+    FloatType tss = 2*scale_all*scale_all;
+    if(compute_kb_grad || compute_kb_curv) {
+      d_f_model_d_k_sol_and_d_b_sol_one_h<FloatType,ComplexType> r =
+        d_f_model_d_k_sol_and_d_b_sol_one_h<FloatType,ComplexType> (fm,i);
+      for(std::size_t j=0; j<grad_k_sols.size(); ++j) {
+        FloatType gk = r.grad_k_sols[j];
+        FloatType gb = r.grad_b_sols[j];
+        if(compute_kb_grad) {
+          grad_k_sols[j] = mtsd*gk;
+          grad_b_sols[j] = mtsd*gb;
+        }
+        if(compute_kb_curv) {
+          curv_k_sols[j] = tss*gk*gk + mtsd*r.curv_k_sols[j];
+          curv_b_sols[j] = tss*gb*gb + mtsd*r.curv_b_sols[j];
+        }
+      }
+    }
+  }
+
+  void compute_u_star_grad()
+  {
+    FloatType f_model_abs = std::abs(fm.f_model_no_aniso_scale[i]);
+    cctbx::miller::index<> mi = fm.hkl[i];
+    scitbx::af::tiny<FloatType, 6> usg = d_f_model_d_u_star_one_h(f_model_abs, mi);
+    for(std::size_t j=0; j<6; j++) grad_u_star[j] = mtsd * usg[j];
+  }
+
   FloatType diff;
   scitbx::af::tiny<FloatType, 6> grad_u_star;
   scitbx::af::shared<FloatType> grad_k_sols;
@@ -384,7 +448,6 @@ r_factor(
 using scitbx::vec3;
 using scitbx::mat3;
 using scitbx::sym_mat3;
-
 
 template <typename FloatType=double,
           typename OneHLsType=detail::one_h_ls_u_star<FloatType> >
