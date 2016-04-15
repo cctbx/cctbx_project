@@ -37,13 +37,10 @@ import mmtbx.scaling.ta_alpha_beta_calc
 import mmtbx.refinement.targets
 from libtbx import Auto
 import mmtbx.arrays
-import mmtbx.bulk_solvent.scaler
 import scitbx.math
 from cctbx import maptbx
 from libtbx.test_utils import approx_equal
 import libtbx
-
-import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -241,12 +238,12 @@ class manager_kbu(object):
       f_part2       = self.f_part2.data(),
       u_star        = u_star,
       hkl           = self.f_calc.indices(),
-      uc            = self.f_calc.unit_cell(),
       ss            = self.ss)
     self.f_model = miller.array(miller_set=self.f_calc, data=self.data.f_model)
     self.uc = self.data.uc
 
-  def update(self, k_sols=None, b_sols=None, b_cart=None, u_star=None):
+  def update(self, k_sols=None, b_sols=None, b_cart=None, u_star=None,
+                   f_calc=None):
     if(k_sols is None): k_sols = self.data.k_sols()
     if(b_sols is None): b_sols = self.data.b_sols()
     if(u_star is None): u_star = self.data.u_star
@@ -256,7 +253,8 @@ class manager_kbu(object):
     if(type(k_sols) is int or type(k_sols) is float): k_sols=[k_sols]
     if(type(b_sols) is int or type(b_sols) is float): b_sols=[b_sols]
     assert len(k_sols)==len(b_sols), [k_sols, b_sols]
-    self = self.__init__(
+    if(f_calc is not None): self.f_calc = f_calc
+    self.__init__(
       f_obs   = self.f_obs,
       f_calc  = self.f_calc,
       f_masks = self.f_masks,
@@ -266,6 +264,7 @@ class manager_kbu(object):
       k_sols  = list(k_sols),
       b_sols  = list(b_sols),
       u_star  = u_star)
+    return self
 
   def select(self, selection):
     return manager_kbu(
@@ -350,7 +349,6 @@ class manager(manager_mixin):
          k_mask=None,
          k_isotropic=None,
          k_anisotropic=None,
-         k_anisotropic_twin=None,
          k_sol = None,
          b_sol = None,
          b_cart =None,
@@ -375,8 +373,6 @@ class manager(manager_mixin):
     if(b_cart is not None):
       u_star = adptbx.u_cart_as_u_star(f_obs.unit_cell(), adptbx.b_as_u(b_cart))
       k_anisotropic = ext.k_anisotropic(f_obs.indices(), u_star)
-      if(self.twin_set is not None):
-        k_anisotropic_twin = ext.k_anisotropic(self.twin_set.indices(), u_star)
     if(f_part1 is None): # XXX ???
       f_part1 = f_obs.array(
         data = flex.complex_double(f_obs.data().size(),0+0j))
@@ -459,7 +455,6 @@ class manager(manager_mixin):
       k_mask        = k_mask,
       k_isotropic   = k_isotropic,
       k_anisotropic = k_anisotropic,
-      k_anisotropic_twin = k_anisotropic_twin,
       f_part1       = f_part1.common_set(f_calc),  # XXX WHY COMMON_SET ?
       f_part2       = f_part2.common_set(f_calc))  # XXX WHY COMMON_SET ?
     self.set_target_name(target_name=target_name)
@@ -512,7 +507,7 @@ class manager(manager_mixin):
         crystal_symmetry = miller_array.crystal_symmetry())
     return result
 
-  def compute_f_calc(self, miller_array = None, twin=False, xray_structure=None):
+  def compute_f_calc(self, miller_array = None, xray_structure=None):
     xrs = xray_structure
     if(xrs is None): xrs = self.xray_structure
     if(miller_array is None): miller_array = self.f_obs()
@@ -555,8 +550,7 @@ class manager(manager_mixin):
   def core_data_work(self): # XXX WHICH one : twin? non-twin?
     return core(fmodel = self.select(self.arrays.work_sel))
 
-  def outlier_selection(self, show = False, log = None, use_model=True):
-    if(log is None): log = sys.stdout
+  def outlier_selection(self, log = None, use_model=True):
     n_free = self.r_free_flags().data().count(True)
     fo = self.f_obs()
     fo.set_observation_type_xray_amplitude() # XXX WHY ?
@@ -572,7 +566,7 @@ class manager(manager_mixin):
       s4 = result.model_based_outliers(f_model = self.f_model()).data()
       result = s1 & s2 & s3 & s4
     else: result = s1 & s2 & s3
-    if(show):
+    if(log is not None):
       print >> log
       print >> log, "basic_wilson_outliers    =", s1.count(False)
       print >> log, "extreme_wilson_outliers  =", s2.count(False)
@@ -582,12 +576,11 @@ class manager(manager_mixin):
       print >> log, "total                    =", result.count(False)
     return result
 
-  def remove_outliers(self, show = False, log = None, use_model=True):
-    if(log is None): log = sys.stdout
-    if(show):
+  def remove_outliers(self, log = None, use_model=True):
+    if(log is not None):
       print >> log, "Distribution of F-obs values:"
       show_histogram(data = self.f_obs().data(), n_slots = 10, log = log)
-    o_sel = self.outlier_selection(show = show, log = log, use_model=use_model)
+    o_sel = self.outlier_selection(log = log, use_model=use_model)
     if(o_sel.count(False) > 0):
       #
       indices = self.f_obs().indices()
@@ -595,7 +588,7 @@ class manager(manager_mixin):
       sigmas = self.f_obs().sigmas()
       o_sel_neg = (~o_sel).iselection()
       d_spacings = self.f_obs().d_spacings().data()
-      if(show):
+      if(log is not None):
         print >> log, "Discarded reflections:"
         if(sigmas is not None):
           print >> log, \
@@ -616,7 +609,7 @@ class manager(manager_mixin):
       #
       new = self.select(selection = o_sel, in_place=True,
         deep_copy_xray_structure=False)
-      if(show):
+      if(log is not None):
         print >> log, "\nDistribution of active F-obs values after outliers rejection:"
         show_histogram(data=new.arrays.f_obs.data(),n_slots=10,log=log)
 
@@ -687,12 +680,6 @@ class manager(manager_mixin):
       k_anisotropic = None
     else:
       k_anisotropic = self.arrays.core.k_anisotropic.select(selection)
-    k_anisotropic_twin = None
-    if(self.twin_set):
-      if(self.arrays.core_twin.k_anisotropic is None):
-        k_anisotropic_twin = None
-      else:
-        k_anisotropic_twin = self.arrays.core_twin.k_anisotropic.select(selection)
     result = manager(
       f_obs                        = self.f_obs().select(selection=selection),
       r_free_flags                 = self._r_free_flags.select(selection=selection),
@@ -714,7 +701,6 @@ class manager(manager_mixin):
       k_mask                       = new_k_masks,
       k_isotropic                  = k_isotropic,
       k_anisotropic                = k_anisotropic,
-      k_anisotropic_twin           = k_anisotropic_twin,
       _target_memory               = self._target_memory,
       n_resolution_bins_output     = self.n_resolution_bins_output,
       k_sol                        = self.k_sol,
@@ -726,7 +712,9 @@ class manager(manager_mixin):
     result.b_h = self.b_h
     if(in_place): # XXX USE THIS INSTEAD OF ABOVE
       for k, v in zip(self.__dict__.keys(), self.__dict__.values()):
-        self.__dict__[k] = result.__dict__[k]
+        try: self.__dict__[k] = result.__dict__[k]
+        except KeyError:
+          raise RuntimeError("Corrupt refinement: ad hoc key", k)
     return result
 
   def resolution_filter(self,
@@ -813,27 +801,26 @@ class manager(manager_mixin):
                   f_part1_twin  = None,
                   f_part2_twin  = None,
                   k_anisotropic = None,
-                  k_anisotropic_twin = None,
                   k_isotropic   = None,
                   k_mask        = None):
     core_ = None
     core_twin_ = None
     if(self.arrays is None):
       core_ = mmtbx.arrays.init(
-        f_calc         = f_calc,
-        f_masks        = f_mask,
-        f_part1        = f_part1,
-        f_part2        = f_part2,
-        k_masks        = k_mask,
-        k_isotropic    = k_isotropic,
-        k_anisotropic  = k_anisotropic)
+        f_calc        = f_calc,
+        f_masks       = f_mask,
+        f_part1       = f_part1,
+        f_part2       = f_part2,
+        k_masks       = k_mask,
+        k_isotropic   = k_isotropic,
+        k_anisotropic = k_anisotropic)
       if(self.twin_set is not None):
         core_twin_ = mmtbx.arrays.init(
           f_calc        = self.compute_f_calc(miller_array = self.twin_set),
           f_masks       = self.mask_manager.shell_f_masks_twin(),
           k_masks       = k_mask,
           k_isotropic   = k_isotropic,
-          k_anisotropic = k_anisotropic_twin,
+          k_anisotropic = k_anisotropic,
           f_part1       = f_part1_twin,
           f_part2       = f_part2_twin)
       f_obs = self.f_obs()
@@ -866,7 +853,7 @@ class manager(manager_mixin):
           f_masks       = f_mask_twin,
           k_masks       = k_mask,
           k_isotropic   = k_isotropic,
-          k_anisotropic = k_anisotropic_twin,
+          k_anisotropic = k_anisotropic,
           f_part1       = f_part1_twin,
           f_part2       = f_part2_twin)
       self.arrays.update_core(core = core_, core_twin = core_twin_,
@@ -1047,137 +1034,6 @@ class manager(manager_mixin):
     return miller.array(
       miller_set = full_set,
       data       = fmodel_data_full_set)
-
-  def compute_f_part1(self, params, log = None):
-    phenix_masks = None
-    if(not libtbx.env.has_module(name="solve_resolve")):
-      raise Sorry("solve_resolve not installed or not configured.")
-    else:
-      import solve_resolve.masks as phenix_masks
-    if(log is None): log = sys.stdout
-    return phenix_masks.nu(fmodel = self, params = params)
-
-  def update_f_hydrogens_grid_search(self, log=None):
-    if(self.xray_structure is None): return None
-    def f_k_exp_scaled(k,b,ss,f):
-      return f.customized_copy(data = k*flex.exp(-b*ss)*f.data())
-    hds = self.xray_structure.hd_selection()
-    if(hds.count(True)==0): return None
-    xrsh = self.xray_structure.select(selection = hds)
-    occ = xrsh.scatterers().extract_occupancies()
-    xrsh.set_occupancies(value=1)
-    fh = self.f_obs().structure_factors_from_scatterers(
-      xray_structure = xrsh,
-      algorithm      = self.sfg_params.algorithm).f_calc()
-    fh_twin = None
-    if(self.arrays.core_twin is not None):
-      fh_twin = self.f_calc_twin().structure_factors_from_scatterers(
-        xray_structure = xrsh,
-        algorithm      = self.sfg_params.algorithm).f_calc()
-    b_min = int(flex.min(xrsh.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1)))
-    ss = self.ss
-    kbest = 0
-    bbest = 0
-    f_part2_twin = None
-    zero = flex.complex_double(self.f_calc().data().size(),0)
-    if(fh_twin is not None):
-      f_part2_twin = fh_twin.customized_copy(data=zero)
-    self.update_core(
-      f_part2      = fh.customized_copy(data=zero),
-      f_part2_twin = f_part2_twin)
-    rws = self.r_work()
-    b_range = [0]+range(-b_min,b_min+50,1)
-    k_range = [i/10. for i in range(-11,11)]
-    for b in b_range:
-      for k in k_range:
-        fh_kb = f_k_exp_scaled(k = k, b = b, ss = ss, f = fh)
-        fh_kb_twin = None
-        if(fh_twin is not None):
-          fh_kb_twin = f_k_exp_scaled(k = k, b = b, ss = ss, f = fh_twin)
-        self.update_core(f_part2 = fh_kb, f_part2_twin = fh_kb_twin)
-        rw = self.r_work()
-        if(rw < rws):
-          rws = rw
-          kbest=k
-          bbest=b
-    fh_kb = f_k_exp_scaled(k = kbest, b = bbest, ss = ss, f = fh)
-    fh_kb_twin = None
-    if(fh_twin is not None):
-      fh_kb_twin = f_k_exp_scaled(k = kbest, b = bbest, ss = ss, f = fh_twin)
-    self.update_core(f_part2 = fh_kb, f_part2_twin = fh_kb_twin)
-    self.k_h, self.b_h = kbest, bbest
-
-  def update_f_hydrogens(self, log=None):
-    """
-    Include scattering contribution from H atoms.
-    Fmodel = scale_1 * (F_atoms + scale_2 * F_mask + scale_3 * F_H)
-    """
-    if(self.twin_law is not None):
-      self.update_f_hydrogens_grid_search()
-      return
-    zero = flex.complex_double(self.f_calc().data().size(),0)
-    f_model = self.f_model().deep_copy()
-    #f_model = self.f_model_no_scales().deep_copy()
-    if(self.xray_structure is None): return None
-    # check for early termination conditions
-    hds = self.xray_structure.hd_selection()
-    if(hds.count(True)==0): return None
-    # compute unscaled F_H
-    xrsh = self.xray_structure.select(selection = hds)
-    occ = xrsh.scatterers().extract_occupancies()
-    if(occ.all_eq(0)): xrsh.set_occupancies(value=1)
-    fh = self.f_obs().structure_factors_from_scatterers(
-      xray_structure = xrsh,
-      algorithm      = self.sfg_params.algorithm).f_calc()
-    # find F_H scale using minimization
-    fmodel_core_data = manager_kbu(
-      f_obs   = self.f_obs(),
-      f_calc  = f_model,
-      f_masks = [fh],
-      ss      = self.ss)
-    minimized = bss.kbu_minimizer(
-      fmodel_core_data      = fmodel_core_data,
-      f_obs                 = self.f_obs(),
-      k_initial             = [0],
-      b_initial             = [0],
-      u_initial             = [0,0,0,0,0,0],
-      refine_k              = True,
-      refine_b              = True,
-      refine_u              = False,
-      min_iterations        = 50,
-      max_iterations        = 50,
-      fmodel_core_data_twin = None,
-      twin_fraction         = None,
-      symmetry_constraints_on_b_cart = False,
-      k_sol_max = 200.,
-      k_sol_min =-200.,
-      b_sol_max = 150.,
-      b_sol_min =-150.)
-    # find approximate scale using very coarse grid search
-    def f_k_exp_scaled(k,b,ss,f):
-      return f.customized_copy(data = k*flex.exp(-b*ss)*f.data())
-    ss = self.ss
-    kbest, bbest = minimized.k_min[0], minimized.b_min[0]
-    fh_kb = f_k_exp_scaled(k = kbest, b = bbest, ss = ss, f = fh)
-    fh = fh_kb
-    # scale again using finer scaler and filtered F_H, then update fmodel
-    fm = manager(
-      f_obs          = self.f_obs(),
-      r_free_flags   = self.r_free_flags(),
-      f_calc         = f_model, # important: not f_model_scaled_with_k1()
-      f_mask         = fh,
-      scale_method   = "combo")
-    fm.update_all_scales(remove_outliers=False, update_f_part1=False)
-    kt  = self.k_isotropic()*self.k_anisotropic()
-    ktp = fm.k_isotropic()*fm.k_anisotropic()
-    assert kt.all_ne(0)
-    self.update_core(
-      k_isotropic   = flex.double(kt.size(),1),
-      k_anisotropic = kt*ktp,
-      f_part2       = fh.customized_copy(
-        data = fh.data()*(1/kt)*fm.k_masks()[0]))
-    # thise are values from coarse grid search and are not accurate
-    self.k_h, self.b_h = kbest, bbest
 
   def update_f_part1_all(self, purpose,
                      refinement_neg_cutoff=-2.5):
@@ -1473,7 +1329,6 @@ class manager(manager_mixin):
         y=map_data2.select(selection)).coefficient()
       if(cc<min_cc): sel_exclude[i_seq] = False
     #
-    print sel_exclude.count(True)*100./sel_exclude.size()
     xray_structure_truncated = self.xray_structure.select(sel_exclude)
     fmodel_result = self.deep_copy()
     fmodel_result.update_xray_structure(
@@ -1564,6 +1419,18 @@ class manager(manager_mixin):
           k_best, b_best = k_sol, b_sol
     return k_best, b_best
 
+  def need_to_refine_hd_scattering_contribution(self):
+    refine_hd_scattering = True
+    hd_selection = self.xray_structure.hd_selection()
+    occ_h_all_zero = self.xray_structure.select(
+      hd_selection).scatterers().extract_occupancies().all_eq(0.0) # riding H
+    if(self.xray_structure is None or
+       self.xray_structure.guess_scattering_type_neutron() or
+       hd_selection.count(True)==0 or
+       not occ_h_all_zero):
+      refine_hd_scattering = False
+    return refine_hd_scattering
+
   def update_all_scales(
         self,
         update_f_part1 = True,
@@ -1580,72 +1447,13 @@ class manager(manager_mixin):
         show = False,
         verbose=None,
         log = None):
-    if(log is None): log = sys.stdout
-    assert refine_hd_scattering_method in ["fast", "slow"]
-    def get_r(self):
-      return "r_work=%6.4f r_free=%6.4f"%(self.r_work(), self.r_free())
-    if(show): print >> log, "start: %s"%get_r(self), \
-      "n_reflections:", self.f_obs().data().size()
-    # Always start from scratch to avoide irreproducible results or instability
-    # due to correlation of parameters
-    zero = flex.complex_double(self.f_calc().data().size(),0)
-    zero_d = flex.double(self.f_calc().data().size(),0)
-    one_d = flex.double(self.f_calc().data().size(),1)
-    zero_a = self.f_calc().customized_copy(data = zero)
-    self.update_core(
-      f_part1       = zero_a,
-      f_part2       = zero_a,
-      k_isotropic   = one_d,
-      k_anisotropic = one_d,
-      k_mask        = [zero_d]*len(self.k_masks()))#, f_part2_twin = zero) # Does it need to be set too?
-    #
-    if(show): print >> log, "start: %s (reset all scales to undefined)"%get_r(self)
-    if(remove_outliers): self.remove_outliers(use_model=False)
-    if(self.xray_structure is None or
-       self.xray_structure.guess_scattering_type_neutron() or
-       self.xray_structure.hd_selection().count(True)==0):
-      refine_hd_scattering = False
-    assert [self.arrays.core_twin, self.twin_law].count(None) in [0,2]
-    twinned = self.arrays.core_twin is not None
-    mask_defined = (not self.check_f_mask_all_zero()) or bulk_solvent_and_scaling
-    if(cycles is None):
-      flags = [twinned, mask_defined]
-      if(  flags.count(True)> 1): cycles = 2
-      elif(flags.count(True)==1): cycles = 1
-      elif(flags.count(True)==0): cycles = 0
-    russ = None
-    for cycle in xrange(cycles):
-      if(show and cycles>1): print >> log, "  cycle %d:"%cycle
-      if(twinned): self.update_twin_fraction()
-      if(twinned and show):
-        print >> log, "    twin fraction refinement: %s twin_fraction=%4.2f"%(
-          get_r(self), self.twin_fraction)
-      if(not mask_defined): params.bulk_solvent=False
-      if(bulk_solvent_and_scaling):
-        russ = self.update_solvent_and_scale(fast=fast, params=params,
-          optimize_mask=optimize_mask, apply_back_trace=apply_back_trace,
-          verbose=verbose)
-        if(show):
-          print >> log, "    bulk-solvent and scaling: %s"%get_r(self)
-      if(refine_hd_scattering):
-        if(refine_hd_scattering_method=="fast"): self.update_f_hydrogens()
-        else: self.update_f_hydrogens_grid_search()
-      if(refine_hd_scattering and show):
-        print >> log, "    HD scattering refinement: %s"%(get_r(self))
-    if(remove_outliers):
-      self.remove_outliers(use_model=True)
-      if(show): print >> log, "    remove outliers:          %s"%get_r(self)
-    if(update_f_part1):
-      self.update_f_part1()
-      if(show): print >> log, "    correct solvent mask:     %s"%get_r(self)
-    if(show):
-      print >> log, "final: %s"%get_r(self), "n_reflections:", \
-        self.f_obs().data().size()
-      print >> log
-      print >> log, "overall anisotropic scale matrix:"
-      russ.format_scale_matrix(log=log)
-    self.apply_scale_k1_to_f_obs()
-    return russ
+    from mmtbx.bulk_solvent import f_model_all_scales
+    o = f_model_all_scales.run(
+      fmodel=self, apply_back_trace = apply_back_trace,
+      remove_outliers = remove_outliers, fast = fast,
+      params = params, log = log)
+    if(optimize_mask): self.optimize_mask()
+    return o.russ
 
   def apply_scale_k1_to_f_obs(self, threshold=10):
     assert threshold > 0
@@ -1667,191 +1475,6 @@ class manager(manager_mixin):
       k_anisotropic = self.k_anisotropic()/sc)
     r_final = self.r_work()
     assert approx_equal(r_start, r_final), [r_start, r_final]
-
-  def update_solvent_and_scale(self, params = None, out = None, verbose=None,
-        optimize_mask = False, nproc=1, fast=True, apply_back_trace=False):
-    #
-    global time_bulk_solvent_and_scale
-    timer = user_plus_sys_time()
-    if(params is None): params = bss.master_params.extract()
-    save_params_bulk_solvent = params.bulk_solvent
-    from libtbx.test_utils import approx_equal
-    #if(self.twin_set is not None): self.update_twin_fraction()
-    #
-    # XXX make it a call
-    f_calc_data=self.f_calc().data()+self.f_part1().data()+self.f_part2().data()
-    f_calc = self.f_calc().customized_copy(data = f_calc_data)
-    if(self.f_calc_twin() is not None):
-      f_calc_data=self.f_calc_twin().data()+self.f_part1_twin().data()+self.f_part2_twin().data()
-      f_calc_twin = self.f_calc_twin().customized_copy(data = f_calc_data)
-    if(fast):
-      f_masks = self.f_masks()
-      assert len(f_masks) == 1
-      if(verbose < 0): verbose=False
-      # XXX TWINNING
-      bulk_solvent = True
-      if(params is not None): bulk_solvent = params.bulk_solvent
-      result = mmtbx.bulk_solvent.scaler.run(
-        f_obs            = self.f_obs(),
-        f_calc           = f_calc,
-        f_mask           = f_masks,
-        r_free_flags     = self.r_free_flags(),
-        bulk_solvent     = bulk_solvent,
-        ss               = self.ss,
-        number_of_cycles = 100,
-        scale_method     = self.scale_method,
-        bin_selections   = self.bin_selections,
-        verbose          = verbose)
-      k_anisotropic_twin = None
-      if(result.scale_matrices is not None):
-        if(flex.double(result.scale_matrices).size()==6):
-          k_anisotropic = mmtbx.f_model.ext.k_anisotropic(self.f_obs().indices(),
-            result.scale_matrices)
-          if(self.twin_set is not None):
-            k_anisotropic_twin = mmtbx.f_model.ext.k_anisotropic(self.twin_set.indices(),
-              result.scale_matrices)
-        else:
-          k_anisotropic = mmtbx.f_model.ext.k_anisotropic(self.f_obs().indices(),
-            result.scale_matrices, self.f_obs().unit_cell())
-          if(self.twin_set is not None):
-            k_anisotropic_twin = mmtbx.f_model.ext.k_anisotropic(self.twin_set.indices(),
-              result.scale_matrices, self.f_obs().unit_cell())
-      if(apply_back_trace):
-        r = result.apply_back_trace_of_overall_exp_scale_matrix(
-          xray_structure = self.xray_structure)
-        if(r is not None):
-          self.update_xray_structure(
-            xray_structure = r.xray_structure,
-            update_f_calc  = True)
-          self.update_core(
-            k_isotropic        = r.k_isotropic,
-            k_mask             = r.k_mask,
-            k_anisotropic      = r.k_anisotropic,
-            k_anisotropic_twin = k_anisotropic_twin)
-        else:
-          self.update_core(
-            k_mask        = result.core.k_mask(),
-            k_isotropic   = result.core.k_isotropic*result.core.k_isotropic_exp,
-            k_anisotropic = result.core.k_anisotropic,
-            k_anisotropic_twin = k_anisotropic_twin)
-      else:
-        self.update_core(
-          k_mask        = result.core.k_mask(),
-          k_isotropic   = result.core.k_isotropic*result.core.k_isotropic_exp,
-          k_anisotropic = result.core.k_anisotropic,
-          k_anisotropic_twin = k_anisotropic_twin)
-    else:
-      #self.update_core()
-      #if(self.twin_set is not None): self.update_twin_fraction()
-      if(self.check_f_mask_all_zero()): params.bulk_solvent = False
-      #is_mask_optimized = False
-      #self.update_core()
-      # ENABLE BACK if(self.check_f_mask_all_zero()): params.bulk_solvent = False
-      #if(optimize_mask):
-      #  is_mask_optimized = self.optimize_mask(params = params, out = out,
-      #    thorough = optimize_mask_thorough, nproc=nproc)
-      #if(self.check_f_mask_all_zero()): params.bulk_solvent = False
-      zero = f_calc.customized_copy(
-        data = flex.complex_double(f_calc.data().size(), 0))
-      fmodel_kbu = mmtbx.f_model.manager_kbu(
-        f_obs   = self.f_obs(),
-        f_calc  = f_calc,
-        f_masks = self.arrays.core.f_masks,
-        f_part1 = zero,
-        f_part2 = zero,
-        #u_star  = [0,0,0,0,0,0],
-        #k_sols  = [0.35,],
-        #b_sol   = 50.,
-        ss      = self.ss)
-      fmodel_kbu_twin=None
-      if(self.f_calc_twin() is not None):
-        zero = f_calc_twin.customized_copy(
-          data = flex.complex_double(f_calc_twin.data().size(), 0))
-        fmodel_kbu_twin = mmtbx.f_model.manager_kbu(
-          f_obs   = self.f_obs(),
-          f_calc  = f_calc_twin,
-          f_masks = self.arrays.core_twin.f_masks,
-          f_part1 = zero,
-          f_part2 = zero,
-          #u_star  = [0,0,0,0,0,0],
-          #k_sols  = [0.35,],
-          #b_sol   = 50.,
-          ss      = self.ss)
-      #fmodel_kbu      = self.fmodel_kbu()
-      #fmodel_kbu_twin = self.fmodel_kbu_twin()
-      #
-      #fmodel_kbu.update(f_calc=f_calc, f_part1=z, f_part2=z)
-      #fmodel_kbu_twin.update(f_calc=f_calc_twin, f_part1=zt, f_part2=zt)
-      result = bss.bulk_solvent_and_scales(
-        #fmodel_kbu      = self.fmodel_kbu(),
-        #fmodel_kbu_twin = self.fmodel_kbu_twin(),
-        fmodel_kbu      = fmodel_kbu,
-        fmodel_kbu_twin = fmodel_kbu_twin,
-        twin_fraction   = self.twin_fraction,
-        params          = params,
-        log             = out,
-        nproc           = nproc)
-      if(len(result.k_sols())==1):
-        self.k_sol  = result.k_sols()[0]
-        self.b_sol  = result.b_sols()[0]
-        self.b_cart = result.b_cart()
-      u_star = adptbx.u_cart_as_u_star(self.f_obs().unit_cell(), adptbx.b_as_u(result.b_cart()))
-      k_anisotropic = mmtbx.f_model.ext.k_anisotropic(self.f_obs().indices(),u_star)
-      k_anisotropic_twin = None
-      if(self.twin_set is not None):
-        k_anisotropic_twin = mmtbx.f_model.ext.k_anisotropic(self.twin_set.indices(),u_star)
-      assert approx_equal(k_anisotropic, result.fmodels.fmodel.k_anisotropic())
-      ### XXX apply back overall b to b_atoms.
-      def apply_back_b_iso(xrs, k_sol, b_sol, b_cart, ss, f_obs, f_model):
-        if(xrs is None): return
-        b_min = min(b_sol, xrs.min_u_cart_eigenvalue()*adptbx.u_as_b(1.))
-        if(b_min < 0): xrs.tidy_us()
-        b_iso = (b_cart[0]+b_cart[1]+b_cart[2])/3.0
-        b_test = b_min+b_iso
-        if(b_test < 0.0): b_adj = b_iso + abs(b_test) + 0.001
-        else: b_adj = b_iso
-        b_cart_new = [b_cart[0]-b_adj,b_cart[1]-b_adj,b_cart[2]-b_adj,
-                      b_cart[3],      b_cart[4],      b_cart[5]]
-        b_sol_new = b_sol + b_adj
-        xrs.shift_us(b_shift = b_adj)
-        b_min = min(b_sol_new, xrs.min_u_cart_eigenvalue()*adptbx.u_as_b(1.))
-        assert b_min >= 0.0
-        xrs.tidy_us()
-        #
-        k_masks = [ext.k_mask(ss, k_sol, b_sol_new)]
-        u_star = adptbx.u_cart_as_u_star(f_obs.unit_cell(), adptbx.b_as_u(b_cart_new))
-        k_anisotropic = ext.k_anisotropic(f_obs.indices(), u_star)
-        from mmtbx import bulk_solvent as bss
-        x = f_obs.data()
-        y = f_model.data()
-        return k_masks, k_anisotropic, xrs
-      if(apply_back_trace and len(result.k_sols())==1):
-        k_masks, k_anisotropic, xrs = apply_back_b_iso(
-          xrs=self.xray_structure, k_sol=result.k_sols()[0],
-          b_sol=result.b_sols()[0], b_cart=result.b_cart(), ss=self.ss,
-          f_obs=self.f_obs(), f_model=self.f_model())
-        k_isotropic = flex.double(self.f_obs().data().size(), self.scale_k1())
-        self.update_core(
-          k_mask             = k_masks,
-          k_anisotropic      = k_anisotropic,
-          k_isotropic        = k_isotropic,
-          k_anisotropic_twin = k_anisotropic)
-        self.update_xray_structure(xray_structure=xrs, update_f_calc=True)
-      else:
-      ###
-        self.update_core(
-          k_mask             = result.fmodels.fmodel.k_masks(),
-          k_anisotropic      = result.fmodels.fmodel.k_anisotropic(),
-          k_isotropic        = result.fmodels.fmodel.k_isotropic(),
-          k_anisotropic_twin = k_anisotropic_twin)
-    if(params.bulk_solvent and optimize_mask):
-      self.optimize_mask(params = params, out = out, nproc=nproc)
-    self.update_core()
-    if(self.check_f_mask_all_zero()):
-      params.bulk_solvent = save_params_bulk_solvent
-    #
-    time_bulk_solvent_and_scale += timer.elapsed()
-    return result
 
   def _get_target_name(self): return self._target_name
   target_name = property(_get_target_name)
@@ -1904,7 +1527,6 @@ class manager(manager_mixin):
                    f_part1                      = None,
                    k_mask                       = None,
                    k_anisotropic                = None,
-                   k_anisotropic_twin           = None,
                    sf_and_grads_accuracy_params = None,
                    target_name                  = None,
                    abcd                         = None,
@@ -1917,10 +1539,9 @@ class manager(manager_mixin):
       f_mask = f_mask,
       f_part1 = f_part1,
       k_mask = k_mask,
-      k_anisotropic=k_anisotropic,
-      k_anisotropic_twin=k_anisotropic_twin)
+      k_anisotropic=k_anisotropic)
     if(mask_params is not None):
-       self.mask_params = mask_params
+      self.mask_params = mask_params
     if(f_obs is not None):
       self.arrays.f_obs = f_obs
       self.update_core()
@@ -1992,6 +1613,9 @@ class manager(manager_mixin):
 
   def k_masks(self):
     return self.arrays.core.k_masks
+
+  def k_masks_twin(self):
+    return self.arrays.core_twin.k_masks
 
   def k_isotropic(self):
     return self.arrays.core.k_isotropic
@@ -2540,6 +2164,9 @@ class manager(manager_mixin):
     self = self.select(sel)
     return self
 
+  def twinned(self):
+    return self.arrays.core_twin is not None
+
   def map_calculation_helper(self,
                              free_reflections_per_bin = 100,
                              interpolation = True):
@@ -2824,21 +2451,6 @@ class manager(manager_mixin):
       mtz_object.add_history(lines=mtz_history_buffer)
       out.close()
       mtz_object.write(file_name=file_name)
-
-def kb_range(x_max, x_min, step):
-  x_range = []
-  x = x_min
-  while x <= x_max + 0.0001:
-    x_range.append(x)
-    x += step
-  return x_range
-
-def n_as_s(format, value):
-  if (value is None):
-    return format_value(format=format, value=value)
-  if (isinstance(value, (int, float))):
-    return (format % value).strip()
-  return [(format % v).strip() for v in value]
 
 def show_histogram(data, n_slots, log):
   hm = flex.histogram(data = data, n_slots = n_slots)
