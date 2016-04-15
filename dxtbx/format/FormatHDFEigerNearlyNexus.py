@@ -68,7 +68,7 @@ class EigerNXmxFixer(object):
 
     # Copy the master file to the in memory handle
     handle_orig = h5py.File(input_filename, 'r')
-    handle = h5py.File(name=memory_mapped_name, driver='core', backing_store=False)
+    handle = h5py.File(name=memory_mapped_name, driver='core', backing_store=False, mode='w')
     handle_orig.copy('entry', handle)
 
     # Add some simple datasets
@@ -134,14 +134,17 @@ class EigerNXmxFixer(object):
     dataset[0] = handle_orig['/entry/data/data_000001'].shape[2]
     dataset[1] = handle_orig['/entry/data/data_000001'].shape[1]
 
-    # cope with badly structured chunk information i.e. many more data entries than there]
-    # are in real life...
+    # cope with badly structured chunk information i.e. many more data
+    # entries than there are in real life...
+    delete = []
     for k in sorted(handle_orig['/entry/data'].iterkeys()):
       try:
         shape = handle_orig[join('/entry/data', k)].shape
       except KeyError, e:
-        del(handle_orig[join('/entry/data', k)])
-        del(handle[join('/entry/data', k)])
+        delete.append(join('/entry/data', k))
+
+    for d in delete:
+      del(handle[d])
 
     # Add fast_pixel_size dataset
     # print "Using /entry/instrument/detector/geometry/orientation/value as fast/slow pixel directions"
@@ -244,7 +247,7 @@ class EigerNXmxFixer(object):
       str(dataset.name))
 
     # Change relative paths to absolute paths
-    for name in handle_orig['/entry/data'].iterkeys():
+    for name in handle['/entry/data'].iterkeys():
       del handle['entry/data'][name]
       filename = handle_orig['entry/data'][name].file.filename
       handle['entry/data'][name] = h5py.ExternalLink(filename, 'entry/data/data')
