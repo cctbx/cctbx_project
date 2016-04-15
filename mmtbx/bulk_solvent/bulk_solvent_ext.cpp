@@ -19,40 +19,114 @@ namespace {
     using boost::python::arg;
     typedef return_value_policy<return_by_value> rbv;
 
-    class_<bulk_solvent_and_aniso_scale_target_and_grads_ls<> >(
-      "bulk_solvent_and_aniso_scale_target_and_grads_ls")
+    class_<ls_kb_sol_u_star<> >(
+      "ls_kb_sol_u_star")
       .def(init<
            f_model::core<double, std::complex<double> > const&,
-           f_model::core<double, std::complex<double> > const&,
+           af::const_ref<double> const&,
+           double,
+           bool const&,
+           bool const&,
+           bool const& >(
+             (arg("f_model"),
+              arg("f_obs"),
+              arg("scale"),
+              arg("kb_sol_grad"),
+              arg("u_star_grad"),
+              arg("kb_sol_curv"))))
+      .def("target",      &ls_kb_sol_u_star<>::target)
+      .def("grad_u_star", &ls_kb_sol_u_star<>::grad_u_star)
+      .def("grad_k_sols", &ls_kb_sol_u_star<>::grad_k_sols)
+      .def("grad_b_sols", &ls_kb_sol_u_star<>::grad_b_sols)
+      .def("curv_k_sols", &ls_kb_sol_u_star<>::curv_k_sols)
+      .def("curv_b_sols", &ls_kb_sol_u_star<>::curv_b_sols)
+   ;
+
+   class_<ls_u_star<> >(
+      "ls_u_star")
+      .def(init<
+           af::const_ref<double> const&,
+           af::const_ref<double> const&,
+           af::const_ref<cctbx::miller::index<> > const&,
+           af::const_ref<double> const& >(
+             (arg("f_model_abs_no_k_total"),
+              arg("f_obs"),
+              arg("miller_indices"),
+              arg("k_anisotropic"))))
+      .def("target",      &ls_u_star<>::target)
+      .def("grad_u_star", &ls_u_star<>::grad_u_star)
+   ;
+
+   class_<k_sol_b_sol_k_anisotropic_scaler_twin<> >(
+      "k_sol_b_sol_k_anisotropic_scaler_twin")
+      .def(init<
+           af::const_ref<double> const&,
+           af::const_ref<std::complex<double> > const&,
+           af::const_ref<std::complex<double> > const&,
+           af::const_ref<std::complex<double> > const&,
+           af::const_ref<std::complex<double> > const&,
+           af::const_ref<double> const&,
            double const&,
            af::const_ref<double> const&,
-           bool const&,
-           bool const&,
-           bool const& >(
-             (arg("fm1"),
-              arg("fm2"),
-              arg("twin_fraction"),
-              arg("fo"),
-              arg("compute_k_sol_grad"),
-              arg("compute_b_sol_grad"),
-              arg("compute_u_star_grad"))))
-      .def(init<
-           f_model::core<double, std::complex<double> > const&,
            af::const_ref<double> const&,
-           bool const&,
-           bool const&,
-           bool const& >(
-             (arg("fm"),
-              arg("fo"),
-              arg("compute_k_sol_grad"),
-              arg("compute_b_sol_grad"),
-              arg("compute_u_star_grad"))))
-      .def("target", &bulk_solvent_and_aniso_scale_target_and_grads_ls<>::target)
-      .def("grad_u_star", &bulk_solvent_and_aniso_scale_target_and_grads_ls<>::grad_u_star)
-      .def("grad_k_sols", &bulk_solvent_and_aniso_scale_target_and_grads_ls<>::grad_k_sols)
-      .def("grad_b_sols", &bulk_solvent_and_aniso_scale_target_and_grads_ls<>::grad_b_sols)
+           af::const_ref<cctbx::miller::index<> > const&,
+           cctbx::uctbx::unit_cell const&,
+           double const&>(
+             (arg("f_obs"),
+              arg("f_calc_1"),
+              arg("f_calc_2"),
+              arg("f_mask_1"),
+              arg("f_mask_2"),
+              arg("ss"),
+              arg("twin_fraction"),
+              arg("k_sol_range"),
+              arg("b_sol_range"),
+              arg("miller_indices"),
+              arg("unit_cell"),
+              arg("r_ref"))))
+      .def(init<
+           af::const_ref<double> const&,
+           af::const_ref<std::complex<double> > const&,
+           af::const_ref<std::complex<double> > const&,
+           af::const_ref<double> const&,
+           af::const_ref<double> const&,
+           af::const_ref<double> const&,
+           af::const_ref<double> const&,
+           double const&>(
+             (arg("f_obs"),
+              arg("f_calc"),
+              arg("f_mask"),
+              arg("k_total"),
+              arg("ss"),
+              arg("k_sol_range"),
+              arg("b_sol_range"),
+              arg("r_ref"))))
+      .def(init<
+           af::const_ref<double> const&,
+           af::const_ref<std::complex<double> > const&,
+           af::const_ref<std::complex<double> > const&,
+           af::const_ref<double> const&,
+           af::const_ref<double> const&,
+           af::const_ref<double> const&,
+           af::const_ref<cctbx::miller::index<> > const&,
+           double const&>(
+             (arg("f_obs"),
+              arg("f_calc"),
+              arg("f_mask"),
+              arg("ss"),
+              arg("k_sol_range"),
+              arg("b_sol_range"),
+              arg("miller_indices"),
+              arg("r_ref"))))
+      .def("r", &k_sol_b_sol_k_anisotropic_scaler_twin<>::r)
+      .def("k_sol", &k_sol_b_sol_k_anisotropic_scaler_twin<>::k_sol)
+      .def("b_sol", &k_sol_b_sol_k_anisotropic_scaler_twin<>::b_sol)
+      .def("k_mask", &k_sol_b_sol_k_anisotropic_scaler_twin<>::k_mask)
+      .def("k_anisotropic", &k_sol_b_sol_k_anisotropic_scaler_twin<>::k_anisotropic)
+      .def("updated", &k_sol_b_sol_k_anisotropic_scaler_twin<>::updated)
+      .def("u_star", &k_sol_b_sol_k_anisotropic_scaler_twin<>::u_star)
    ;
-   //
+
    class_<overall_and_bulk_solvent_scale_coefficients_analytical<> >(
       "overall_and_bulk_solvent_scale_coefficients_analytical")
       .def(init<
@@ -97,26 +171,34 @@ namespace {
 
    class_<aniso_u_scaler<> >("aniso_u_scaler")
       .def(init<
-           af::const_ref<std::complex<double> > const&,
+           af::const_ref<double> const&,
+           af::const_ref<double> const&,
+           af::const_ref<cctbx::miller::index<> > const& >(
+             (arg("f_model_abs"),
+              arg("f_obs"),
+              arg("miller_indices"))))
+      .def(init<
+           af::const_ref<double> const&,
            af::const_ref<double> const&,
            af::const_ref<cctbx::miller::index<> > const&,
            af::const_ref<double, af::mat_grid> const& >(
-             (arg("f_model"),
+             (arg("f_model_abs"),
               arg("f_obs"),
               arg("miller_indices"),
               arg("adp_constraint_matrix"))))
       .def(init<
-           af::const_ref<std::complex<double> > const&,
+           af::const_ref<double> const&,
            af::const_ref<double> const&,
            af::const_ref<cctbx::miller::index<> > const&,
            cctbx::uctbx::unit_cell const& >(
-             (arg("f_model"),
+             (arg("f_model_abs"),
               arg("f_obs"),
               arg("miller_indices"),
               arg("unit_cell"))))
       .add_property("u_star_independent",
         make_getter(&aniso_u_scaler<>::u_star_independent, rbv()))
       .add_property("a", make_getter(&aniso_u_scaler<>::a, rbv()))
+      .add_property("u_star", make_getter(&aniso_u_scaler<>::u_star, rbv()))
    ;
 
     def("k_mask_and_k_overall_grid_search",
