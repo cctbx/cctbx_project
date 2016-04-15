@@ -992,7 +992,7 @@ class DetectorFactory(object):
     # Set the parallax correction
     for panel in self.model:
       panel.set_px_mm_strategy(ParallaxCorrectedPxMmStrategy(mu, thickness_value))
-
+      panel.set_type('SENSOR_PAD')
 
 class GoniometerFactory(object):
   '''
