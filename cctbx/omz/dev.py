@@ -356,7 +356,8 @@ class refinement(object):
       f_obs=O.f_obs,
       r_free_flags=O.r_free_flags,
       xray_structure=O.xray_structure)
-    fmm.update_solvent_and_scale(verbose=False, optimize_mask=True)
+    fmm.update_all_scales()
+    fmm.optimize_mask()
     print "done."
     sys.stdout.flush()
     print "bulk-solvent correction:"
