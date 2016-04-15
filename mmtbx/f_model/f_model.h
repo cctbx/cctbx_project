@@ -135,6 +135,11 @@ class core
       return b_sols_;
     }
 
+    af::shared<FloatType> k_mask_one() const
+    {
+      return k_mask;
+    }
+
     af::shared<ComplexType> f_mask() const
     {
       MMTBX_ASSERT(shell_f_masks_.size()==1U);
@@ -154,23 +159,23 @@ class core
     core() {}
 
     core(af::shared<ComplexType>                const& f_calc_,
-         af::shared< af::shared<ComplexType> > const& f_masks,
-         af::shared<FloatType>     const& k_sols,
-         af::shared<FloatType>     const& b_sols,
+         af::shared< af::shared<ComplexType> >  const& f_masks,
+         af::shared<FloatType>                  const& k_sols,
+         af::shared<FloatType>                  const& b_sols,
          af::shared<ComplexType>                const& f_part1_,
          af::shared<ComplexType>                const& f_part2_,
          scitbx::sym_mat3<FloatType>            const& u_star_,
          af::shared<cctbx::miller::index<> >    const& hkl_,
-         cctbx::uctbx::unit_cell                const& uc_,
-         af::shared<FloatType>                  const& ss_)
+         af::shared<FloatType>                  const& ss_
+         )
     :
       f_calc(f_calc_),
-      u_star(u_star_), hkl(hkl_),uc(uc_), ss(ss_),
+      u_star(u_star_), hkl(hkl_), ss(ss_),
       k_anisotropic(hkl_.size(), af::init_functor_null<FloatType>()),
       f_bulk(hkl_.size(), af::init_functor_null<ComplexType>()),
       f_model(hkl_.size(), af::init_functor_null<ComplexType>()),
-      a(uc_.fractionalization_matrix()),
-      f_part1(f_part1_), f_part2(f_part2_)
+      f_part1(f_part1_), f_part2(f_part2_),
+      f_model_no_aniso_scale(f_calc_.size(),af::init_functor_null<ComplexType>())
     {
       MMTBX_ASSERT(f_calc.size() == hkl.size());
       for(short j=0; j<f_masks.size(); ++j)
@@ -192,6 +197,7 @@ class core
       ComplexType* f_calc__  = f_calc.begin();
       ComplexType* f_part1__ = f_part1.begin();
       ComplexType* f_part2__ = f_part2.begin();
+      ComplexType* f_model_no_aniso_scale_ = f_model_no_aniso_scale.begin();
       scitbx::af::shared<ComplexType*> f_masks__;
       for(short j=0; j<shell_f_masks_.size(); ++j)
         f_masks__.push_back(shell_f_masks_[j].begin());
@@ -204,8 +210,10 @@ class core
           FloatType fbs = f_b_exp_one_h(ss__[i], b_sols_[j]);
           f_bulk_[i] +=f_k_bexp_f_one_h(f_masks__[j][i],fbs,k_sols_[j]);
         }
-        f_model_[i] = f_model_one_h(
-          f_calc__[i], f_bulk_[i], f_part1_[i], f_part2__[i], k_anisotropic_[i]);
+        ComplexType tmp = f_model_one_h(
+          f_calc__[i], f_bulk_[i], f_part1_[i], f_part2__[i], 1.0);
+        f_model_[i] = tmp*k_anisotropic_[i];
+        f_model_no_aniso_scale_[i] = tmp;
       }
     }
 

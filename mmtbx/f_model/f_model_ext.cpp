@@ -22,7 +22,6 @@ namespace {
                                      self.f_part2,
                                      self.u_star,
                                      self.hkl,
-                                     self.uc,
                                      self.f_model,
                                      self.f_bulk,
                                      self.k_anisotropic,
@@ -56,7 +55,6 @@ namespace {
            af::shared<std::complex<double> >      const&,
            scitbx::sym_mat3<double>               const&,
            af::shared<cctbx::miller::index<> >    const&,
-           cctbx::uctbx::unit_cell                const&,
            af::shared<double>                     const& >(
                                                         (arg("f_calc"),
                                                          arg("shell_f_masks"),
@@ -66,7 +64,6 @@ namespace {
                                                          arg("f_part2"),
                                                          arg("u_star"),
                                                          arg("hkl"),
-                                                         arg("uc"),
                                                          arg("ss"))))
       .def(init<
            af::shared<std::complex<double> > const&,
@@ -100,6 +97,7 @@ namespace {
       .def("b_sols", &core<>::b_sols)
       .def("b_sols", &core<>::b_sols)
       .def("f_mask", &core<>::f_mask)
+      .def("k_mask", &core<>::k_mask_one)
       .def("shell_f_mask", &core<>::shell_f_mask)   // XXX re-name to f_mask
       .def("shell_f_masks", &core<>::shell_f_masks) // XXX re-name to f_masks
       .enable_pickling()
