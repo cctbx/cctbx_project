@@ -198,7 +198,7 @@ def exercise_00(prefix="tst_polder"):
   easy_run.call(cmd)
   #
   miller_arrays = reflection_file_reader.any_reflection_file(file_name =
-    "polder_map_coeffs.mtz").as_miller_arrays()
+    "tst_polder_polder_map_coeffs.mtz").as_miller_arrays()
   mc_polder, mc_bias_omit, mc_omit = [None,]*3
   for ma in miller_arrays:
     lbl = ma.info().label_string()

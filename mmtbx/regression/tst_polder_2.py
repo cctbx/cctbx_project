@@ -77,16 +77,20 @@ def exercise_01(fobs_1, flags_1, prefix):
   selection = "chain A"
   cmd = " ".join([
     "phenix.polder",
-    "tst_polder_02.pdb",
+    "tst_polder_2.pdb",
     "%s.mtz" % prefix,
     "sphere_radius=3",
+    "output_file_name_prefix=%s" % prefix,
     'solvent_exclusion_mask_selection="%s"' % selection,
     "> %s.log" % prefix
   ])
   print cmd
   easy_run.call(cmd)
   # exact values: 11.129  16.152  13.006
-  check(tuple_calc=[11.1, 16.2, 13.0], selection=selection)
+  check(
+    tuple_calc = [11.1, 16.2, 13.0],
+    selection  = selection,
+    prefix     = prefix+'_')
 
 # Test reading mtz with anomalous array for F (no Rfree present)
 def exercise_02(fobs_1, prefix):
@@ -96,15 +100,19 @@ def exercise_02(fobs_1, prefix):
   selection = "chain E and resseq 1"
   cmd = " ".join([
     "phenix.polder",
-    "tst_polder_02.pdb",
+    "tst_polder_2.pdb",
     "%s.mtz" % prefix,
     "sphere_radius=3",
+    "output_file_name_prefix=%s" % prefix,
     'solvent_exclusion_mask_selection="%s"' % selection,
     "> %s.log" % prefix
   ])
   print cmd
   easy_run.call(cmd)
-  check(tuple_calc=[12.7, 22.7, 17.7], selection=selection)
+  check(
+    tuple_calc = [12.7, 22.7, 17.7],
+    selection  = selection,
+    prefix     = prefix+'_')
 
 # Mixture: mtz with anomalous F and "normal" Rfree
 def exercise_03(fobs_1, flags_1, prefix):
@@ -115,23 +123,27 @@ def exercise_03(fobs_1, flags_1, prefix):
   selection = "chain A"
   cmd = " ".join([
     "phenix.polder",
-    "tst_polder_02.pdb",
+    "tst_polder_2.pdb",
     "%s.mtz" % prefix,
     "sphere_radius=3",
+    "output_file_name_prefix=%s" % prefix,
     'solvent_exclusion_mask_selection="%s"' % selection,
     "> %s.log" % prefix
   ])
   print cmd
   easy_run.call(cmd)
   # exact values: 11.129  16.152  13.006
-  check(tuple_calc=[11.1, 16.2, 13.0], selection=selection)
+  check(
+    tuple_calc = [11.1, 16.2, 13.0],
+    selection  = selection,
+    prefix     = prefix+'_')
 
 def exercise():
   """
   Test for phenix.polder: accepting anomalous data labels.
   """
   # write simple pdb file from pdb_str
-  f = open("tst_polder_02.pdb", "w")
+  f = open("tst_polder_2.pdb", "w")
   f.write(pdb_str)
   f.close()
   #
@@ -157,25 +169,25 @@ def exercise():
   exercise_01(
     fobs_1  = f_anom,
     flags_1 = flags_anom,
-    prefix  = "tst_polder_02_1")
+    prefix  = "tst_polder_2_1")
   print "command success"
   print '*'*79
   print 'Test reading one mtz with F as anomalous array (no Rfree present)'
   exercise_02(
     fobs_1 = f_anom,
-    prefix = "tst_polder_02_2")
+    prefix = "tst_polder_2_2")
   print "command success"
   print '*'*79
   print 'Test reading mtz with F as anomalous array and Rfree is usual array'
   exercise_03(
     fobs_1  = f_anom,
     flags_1 = flags_obs,
-    prefix  = "tst_polder_02_3")
+    prefix  = "tst_polder_2_3")
   print "command success"
 
-def check(tuple_calc, selection):
+def check(tuple_calc, selection, prefix):
   miller_arrays = reflection_file_reader.any_reflection_file(file_name =
-    "polder_map_coeffs.mtz").as_miller_arrays()
+    prefix+"polder_map_coeffs.mtz").as_miller_arrays()
   mc_polder = None
   for ma in miller_arrays:
     lbl = ma.info().label_string()

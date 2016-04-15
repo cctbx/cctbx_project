@@ -169,76 +169,88 @@ def exercise_01(fobs_1, fobs_2, flags_1, flags_2, prefix):
   mtz.add_miller_array(fobs_2, column_root_label="FP2")
   mtz.add_miller_array(flags_1, column_root_label="R-free-flags-1")
   mtz.add_miller_array(flags_2, column_root_label="R-free-flags-2")
-  mtz.mtz_object().write(prefix+".mtz")
+  mtz.mtz_object().write(prefix+"_1.mtz")
   #
   selection = "chain A"
   cmd = " ".join([
     "phenix.polder",
-    "tst_polder_01.pdb",
-    "%s.mtz" % prefix,
+    "tst_polder_1.pdb",
+    "%s_1.mtz" % prefix,
     "sphere_radius=3",
     'solvent_exclusion_mask_selection="%s"' % selection,
     "data_labels=FP1",
+    "output_file_name_prefix=tst_polder_1_1",
     "r_free_flags_labels=R-free-flags-1",
-    "> %s.log" % prefix
+    "> %s_1.log" % prefix
   ])
   print cmd
   easy_run.call(cmd)
   #
-  check(tuple_calc=[10.6, 16.0, 13.5], selection=selection)
+  check(
+    tuple_calc=[10.6, 16.0, 13.5],
+    selection=selection,
+    prefix = prefix + '_1_')
 
 def exercise_02(fobs_1, flags_1, prefix):
   fobs_1.export_as_cns_hkl(
-      file_object=open(prefix+".cns", "w"),
-      file_name=prefix+".cns",
+      file_object=open(prefix+"_2.cns", "w"),
+      file_name=prefix+"_2.cns",
       info=["calculated structure factors FP1"])
   #
   flags_1.export_as_cns_hkl(
-          file_object=open(prefix+"_free"+".cns", "w"),
-          file_name=prefix+"_free"+".cns",
+          file_object=open(prefix+"_2_free"+".cns", "w"),
+          file_name=prefix+"_2_free"+".cns",
           info=["R-free-flags for FP1"])
   #
   selection = "chain E and resseq 14"
   cmd = " ".join([
     "phenix.polder",
-    "tst_polder_01.pdb",
-    "%s.cns" % prefix,
-    "%s_free.cns" % prefix,
+    "tst_polder_1.pdb",
+    "%s_2.cns" % prefix,
+    "%s_2_free.cns" % prefix,
     "sphere_radius=5",
+    "output_file_name_prefix=tst_polder_1_2",
     'solvent_exclusion_mask_selection="%s"' % selection,
-    "> %s.log" % prefix
+    "> %s_2.log" % prefix
   ])
   print cmd
   easy_run.call(cmd)
-  check(tuple_calc=[10.7, 15.1, 13.4], selection=selection)
+  check(
+    tuple_calc=[10.7, 15.1, 13.4],
+    selection=selection,
+    prefix = prefix + '_2_')
 
 def exercise_03(fobs_2, flags_2, prefix):
   mtz = fobs_2.as_mtz_dataset(column_root_label="FP1")
-  mtz.mtz_object().write(prefix+".mtz")
+  mtz.mtz_object().write(prefix+"_3.mtz")
   flags_2.export_as_cns_hkl(
-          file_object=open(prefix+".cns", "w"),
-          file_name=prefix+".cns",
+          file_object=open(prefix+"_3.cns", "w"),
+          file_name=prefix+"_3.cns",
           info=["R-free-flags for FP1"])
   #
   selection = "chain E and resseq 7"
   cmd = " ".join([
     "phenix.polder",
-    "tst_polder_01.cif",
-    "%s.mtz" % prefix,
-    "%s.cns" % prefix,
+    "tst_polder_1.cif",
+    "%s_3.mtz" % prefix,
+    "%s_3.cns" % prefix,
     "sphere_radius=5",
+    "output_file_name_prefix=tst_polder_1_3",
     'solvent_exclusion_mask_selection="%s"' % selection,
-    "> %s.log" % prefix
+    "> %s_3.log" % prefix
   ])
   print cmd
   easy_run.call(cmd)
-  check(tuple_calc=[13.7, 20.3, 18.4], selection=selection)
+  check(
+    tuple_calc=[13.7, 20.3, 18.4],
+    selection=selection,
+    prefix = prefix + '_3_')
 
-def exercise(prefix="tst_polder_01"):
+def exercise(prefix="tst_polder_1"):
   """
   Test for phenix.polder: Reading files.
   """
-  f = open("tst_polder_01.pdb", "w")
+  f = open("tst_polder_1.pdb", "w")
   f.write(pdb_str)
   f.close()
   #
@@ -247,7 +259,7 @@ def exercise(prefix="tst_polder_01"):
   pdb_hierarchy = iotbx.pdb.input(
     source_info=None, lines=pdb_str).construct_hierarchy()
   pdb_hierarchy.write_mmcif_file(
-    file_name="tst_polder_01.cif", crystal_symmetry=xrs.crystal_symmetry())
+    file_name="tst_polder_1.cif", crystal_symmetry=xrs.crystal_symmetry())
   #
   def generate_r_free_flags_systematic(miller_array):
     result = flex.bool()
@@ -262,23 +274,23 @@ def exercise(prefix="tst_polder_01"):
   #
   print '*'*79
   print 'Test reading one mtz with different choices for F and Rfree'
-  exercise_01(fobs_1, fobs_2, flags_1, flags_2, prefix="tst_polder_01")
+  exercise_01(fobs_1, fobs_2, flags_1, flags_2, prefix="tst_polder_1")
   print "command success"
   print '*'*79
   print 'Test reading two cns files: one with Fobs, one with Rfree'
   print 'Without specifying labels --> test automatic machinery'
-  exercise_02(fobs_1, flags_1, prefix="tst_polder_02")
+  exercise_02(fobs_1, flags_1, prefix="tst_polder_1")
   print "command success"
   print '*'*79
   print 'Test reading model as cif, Fobs from mtz and Rfree from cns file'
-  exercise_03(fobs_2, flags_2, prefix="tst_polder_03")
+  exercise_03(fobs_2, flags_2, prefix="tst_polder_1")
   print "command success"
   print '*'*79
 
-def check(tuple_calc, selection):
+def check(tuple_calc, selection, prefix):
   #print tuple_calc
   miller_arrays = reflection_file_reader.any_reflection_file(file_name =
-    "polder_map_coeffs.mtz").as_miller_arrays()
+    prefix+"polder_map_coeffs.mtz").as_miller_arrays()
   mc_polder = None
   for ma in miller_arrays:
     lbl = ma.info().label_string()
