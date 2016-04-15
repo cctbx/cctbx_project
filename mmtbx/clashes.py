@@ -28,6 +28,7 @@ class from_pdb(object):
     params = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
     if remove_clash_guard:
       params.clash_guard.nonbonded_distance_threshold=None
+      params.proceed_with_excessive_length_bonds=True
     if remove_max_reasonable_bond_distance:
       params.max_reasonable_bond_distance=None
 
