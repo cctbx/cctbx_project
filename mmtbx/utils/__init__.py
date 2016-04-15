@@ -1902,8 +1902,7 @@ def extract_tls_and_u_total_from_pdb(
                                    f_obs          = f_obs,
                                    r_free_flags   = r_free_flags,
                                    target_name    = "ls_wunit_k1")
-    fmodel.update_solvent_and_scale(params = bss_params, verbose = -1,
-      optimize_mask = False)
+    fmodel.update_all_scales(params = bss_params)
     r_work_ = fmodel.r_work()
     if(r_work_ < r_work):
       r_work = r_work_
