@@ -72,8 +72,11 @@ def run_0(symbol = "C 2"):
     try_expanal    = True,
     try_expmin     = True,
     verbose        = False)
+  print aso.r_final
+  print aso.r_low
+  print aso.r_high
   assert approx_equal(aso.r_final, 0.00037, 0.00001)
-  assert approx_equal(aso.r_low,   0.00002, 0.00001)
+  assert approx_equal(aso.r_low,   0.00004, 0.00005)
   assert approx_equal(aso.r_high,  0.00006, 0.00001)
   assert approx_equal(
     bulk_solvent.r_factor(f_obs.data(), abs(aso.core.f_model).data(), 1),
