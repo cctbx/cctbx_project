@@ -12,8 +12,11 @@
 from __future__ import division
 
 # Pick up Dectris's LZ4 and bitshuffle compression plugins
-import os, libtbx.load_env
-os.environ['HDF5_PLUGIN_PATH']=os.path.abspath(abs(libtbx.env.python_exe) + "/../../lib")
+import os
+if not 'HDF5_PLUGIN_PATH' in os.environ:
+  # FIXME this does not work ok OS X (location of python exe != bin)
+  import libtbx.load_env
+  os.environ['HDF5_PLUGIN_PATH']=os.path.abspath(abs(libtbx.env.python_exe) + "/../../lib")
 
 from dxtbx.format.FormatHDF5 import FormatHDF5
 from dxtbx.model import Beam # import dependency
