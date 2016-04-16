@@ -428,7 +428,8 @@ class info_object:
       max_b=None,
       ncs_group_list=None,
       origin_shift=None,
-      crystal_symmetry=None,
+      crystal_symmetry=None, # after density_select
+      original_crystal_symmetry=None, # before density_select
       edited_volume_list=None,
       region_range_dict=None,
       selected_regions=None,
@@ -514,6 +515,9 @@ class info_object:
 
   def set_crystal_symmetry(self,crystal_symmetry):
     self.crystal_symmetry=deepcopy(crystal_symmetry)
+
+  def set_original_crystal_symmetry(self,crystal_symmetry):
+    self.original_crystal_symmetry=deepcopy(crystal_symmetry)
 
   def set_shifted_map_info(self,file_name=None,crystal_symmetry=None,
     origin=None,all=None):
@@ -852,6 +856,7 @@ def get_params(args,out=sys.stdout):
     origin=map_data.origin(),
     all=map_data.all())
   tracking_data.set_crystal_symmetry(crystal_symmetry=crystal_symmetry)
+  tracking_data.set_original_crystal_symmetry(crystal_symmetry=crystal_symmetry)
 
   # either use map_box with density_select=True or just shift the map
   if  params.segmentation.density_select:

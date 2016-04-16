@@ -1819,7 +1819,7 @@ def guess_chain_types_from_sequences(file_name=None,text=None):
   ( sequences, unknowns ) = parse_sequence( text )
   for sequence in sequences:
     chain_type,n_residues=chain_type_and_residues(text=sequence.sequence)
-    if not chain_type in chain_types:
+    if chain_type and not chain_type in chain_types:
       chain_types.append(chain_type)
   chain_types.sort()
   return chain_types

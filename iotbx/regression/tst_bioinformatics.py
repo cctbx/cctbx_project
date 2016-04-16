@@ -1804,6 +1804,20 @@ UGGAGAGUUUGAUCCU
 
 asdfaafasdfafsdea
 """
+  text_misc_2="""
+>> chain 1
+UGGAGAGUUUGAUCCU
+
+>> chain 2
+asdfaafasdfafsdea
+"""
+  text_misc_3="""
+>> chain 1
+UGGAGAGUUUGAUCCU
+
+>> chain 2
+
+"""
   assert guess_chain_types_from_sequences(text=text_protein)==["PROTEIN"]
   assert guess_chain_types_from_sequences(text=text_dna)==["DNA"]
   assert guess_chain_types_from_sequences(text=text_rna)==["RNA"]
@@ -1817,6 +1831,8 @@ asdfaafasdfafsdea
     text=text_rna+text_dna)==["DNA","RNA"]
   assert guess_chain_types_from_sequences(text="XX")==[]
   assert guess_chain_types_from_sequences(text=text_misc)==["PROTEIN","RNA"]
+  assert guess_chain_types_from_sequences(text=text_misc_2)==["PROTEIN","RNA"]
+  assert guess_chain_types_from_sequences(text=text_misc_3)==["RNA"]
 
   print "OK"
 
