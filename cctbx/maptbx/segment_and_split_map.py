@@ -977,7 +977,7 @@ def get_ncs(params,tracking_data=None,out=sys.stdout):
       ncs_object.extend_helix_operators(z_range=z_range)
       ncs_object.display_all()
       tracking_data.update_ncs_info(
-        number_of_operators=ncs_object.max_operators())
+        number_of_operators=ncs_object.max_operators(),is_helical_symmetry=True)
 
   return ncs_object,tracking_data
 
