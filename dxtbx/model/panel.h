@@ -168,10 +168,10 @@ namespace dxtbx { namespace model {
      * @returns The resolution at that point.
      */
     double get_resolution_at_pixel(vec3<double> s0, vec2<double> xy) const {
+      const double TINY_SINE_THETA = 1e-9;
       DXTBX_ASSERT(s0.length() > 0);
       vec3<double> xyz = get_pixel_lab_coord(xy);
-      double sintheta = sin(0.5 * angle_safe(s0, xyz));
-      DXTBX_ASSERT(sintheta != 0);
+      double sintheta = std::max(TINY_SINE_THETA, sin(0.5 * angle_safe(s0, xyz)));
       return 1.0 / (2.0 * s0.length() * sintheta);
     }
 
