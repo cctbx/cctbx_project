@@ -1015,10 +1015,12 @@ class ImageSweep(ImageSet):
   def get_template(self):
     ''' Get the template. '''
     from dxtbx.sweep_filenames import template_format_to_string
-    if isinstance(self.reader(), NullReader):
-      return template_format_to_string(self.reader()._filenames[0])
-    else:
-      return template_format_to_string(self.reader()._filenames.template())
+    filenames = self.reader()._filenames
+    try:
+      template = template_format_to_string(filenames.template())
+    except Exception:
+      template = template_format_to_string(filenames[0])
+    return template
 
   def get_array_range(self):
     ''' Get the array range. '''
