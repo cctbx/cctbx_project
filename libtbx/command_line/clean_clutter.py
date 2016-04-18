@@ -24,11 +24,14 @@ def clean_clutter_in(files, tabsize=8):
           n_empty = 0
           sys.stdout.write(clean_line)
           sys.stdout.write("\n")
+    # explicitly convert Windows linebreaks into Unix linebreaks
     wfile = open(fname,"r")
     wstr=wfile.read()
     wfile.close()
     ustr = wstr.replace("\r\n", "\n")
-    open(fname,'wb').write(ustr)
+    ufile=open(fname,'wb')
+    ufile.write(ustr)
+    ufile.close()
 
 def run():
   opt_parser = (option_parser(
