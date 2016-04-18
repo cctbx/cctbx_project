@@ -9,19 +9,26 @@ import libtbx.command_line.file_clutter
 def clean_clutter_in(files, tabsize=8):
   if not files: return
   n_empty = 0
-  for line in input([ f for f in files if not os.path.isdir(f) ], inplace=1):
-    if (isfirstline()):
-      if (not isstdin()):
-        print >> sys.__stdout__, filename() + ':'
-      n_empty = 0
-    clean_line = line.expandtabs(tabsize).rstrip()
-    if (len(clean_line) == 0):
-      n_empty += 1
-    else:
-      for i in xrange(n_empty): sys.stdout.write("\n")
-      n_empty = 0
-      sys.stdout.write(clean_line)
-      sys.stdout.write("\n")
+  for fname in files:
+    if not os.path.isdir(fname):
+      for line in input(fname, inplace=1):
+        if (isfirstline()):
+          if (not isstdin()):
+            print >> sys.__stdout__, filename() + ':'
+          n_empty = 0
+        clean_line = line.expandtabs(tabsize).rstrip()
+        if (len(clean_line) == 0):
+          n_empty += 1
+        else:
+          for i in xrange(n_empty): sys.stdout.write("\n")
+          n_empty = 0
+          sys.stdout.write(clean_line)
+          sys.stdout.write("\n")
+    wfile = open(fname,"r")
+    wstr=wfile.read()
+    wfile.close()
+    ustr = wstr.replace("\r\n", "\n")
+    open(fname,'wb').write(ustr)
 
 def run():
   opt_parser = (option_parser(
