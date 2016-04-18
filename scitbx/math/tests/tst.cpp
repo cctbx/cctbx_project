@@ -1,6 +1,7 @@
 #include <scitbx/math/copysign.h>
 #include <scitbx/math/imaginary.h>
 #include <scitbx/math/utils.h>
+#include <scitbx/math/linear_interpolation.h>
 #include <tbxx/pretty_type_name.hpp>
 #include <iostream>
 #include <iomanip>
@@ -103,11 +104,32 @@ void exercise_unsigned_product_leads_to_overflow() {
   unsigned_product_leads_to_overflow_test<unsigned long>::run();
 }
 
+void exercise_linear_interpolation() {
+  double r;
+  r = scitbx::math::linear_interpolation(
+      1.5, 1., 2., 1., 2.);
+  SCITBX_ASSERT(r == 1.5);
+  r = scitbx::math::linear_interpolation_2d(
+      1., 1.,
+      2., 2.,
+      0., 1., 0., 1.,
+      1.5, 1.5);
+  SCITBX_ASSERT(r == 0.5);
+  r = scitbx::math::linear_interpolation_2d(
+      1., 1.,
+      2., 2.,
+      0., 2., 0., 1.,
+      1.5, 1.5);
+  SCITBX_ASSERT(r == 0.75);
+  std::cout << "linear interpolation test OK" << std::endl;
+}
+
 int main() {
   try {
     exercise_copy_sign();
     exercise_imaginary();
     exercise_unsigned_product_leads_to_overflow();
+    exercise_linear_interpolation();
     std::cout << "OK\n";
     return 0;
   }
