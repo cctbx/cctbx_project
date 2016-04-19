@@ -84,7 +84,7 @@ class input(object):
           spec_ncs_groups=None,
           exclude_selection="not (protein or nucleotide) or element H or element D",
           chain_max_rmsd=2.0,
-          log=sys.stdout,
+          log=None,
           chain_similarity_threshold=0.85,
           residue_match_radius=4.0):
     """
@@ -180,7 +180,6 @@ class input(object):
     self.exclude_selection = None
     self.original_hierarchy = None
     self.truncated_hierarchy = None
-    self.log = sys.stdout
 
     extension = ''
     # set search parameters
@@ -189,8 +188,10 @@ class input(object):
     self.residue_match_radius = residue_match_radius
     self.chain_similarity_threshold = chain_similarity_threshold
     #
-    if not log: log = sys.stdout
-    self.log = log
+    if log is None:
+      self.log = sys.stdout
+    else:
+      self.log = log
 
     self.crystal_symmetry=crystal_symmetry
 
@@ -225,8 +226,6 @@ class input(object):
       pdb_h = self.truncated_hierarchy,
       ncs_phil_groups   = ncs_phil_groups)
     # print "ncs_phil_groups", ncs_phil_groups
-    # if ncs_phil_groups is not None:
-    #   print "Number of ncs groups after validation:", len(ncs_phil_groups)
     # print "validated_ncs_phil_groups", validated_ncs_phil_groups
     transform_info = insure_identity_is_in_transform_info(transform_info)
     if transform_info or rotations:
@@ -264,11 +263,11 @@ class input(object):
     # error handling
     self.found_ncs_transforms = (len(self.transform_to_be_used) > 0)
     if self.found_ncs_transforms == 0:
-      print >> log,'========== WARNING! ============\n'
-      print >> log,'  No NCS relation were found !!!\n'
-      print >> log,'================================\n'
+      print >> self.log,'========== WARNING! ============\n'
+      print >> self.log,'  No NCS relation were found !!!\n'
+      print >> self.log,'================================\n'
     if self.messages != '':
-      print >> log,self.messages
+      print >> self.log, self.messages
 
   def pdb_h_into_chain(self, pdb_h, ch_id="A"):
 
@@ -312,9 +311,22 @@ class input(object):
     everything is already processed here and ready to build proper
     NCS_restraint_group object.
     """
+    def show_particular_ncs_group(ncs_gr):
+      p_obj = ncs_group_master_phil.extract()
+      p_obj.ncs_group[0].reference = ncs_gr.reference
+      p_obj.ncs_group[0].selection = ncs_gr.selection
+      to_show = ncs_group_master_phil.format(python_object=p_obj)
+      to_show.show(out=self.log)
+
+    def show_empty_selection_error_message(ng, where="reference"):
+      print >> self.log, "  Missing or corrupted %s field:" % where
+      print >> self.log, "  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      print >> self.log, "      _ALL_ user-supplied groups will be ignored"
+      print >> self.log, "  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      show_particular_ncs_group(ng)
+
     # Massage NCS groups
     # return ncs_phil_groups
-    # print "ncs_phil_groups", ncs_phil_groups
     validated_ncs_groups = []
     if ncs_phil_groups is None:
       return None
@@ -323,15 +335,20 @@ class input(object):
       ncs_phil_groups=None
       return None
     if(ncs_phil_groups is not None):
+      print >> self.log, "Validating user-supplied NCS groups..."
       empty_cntr = 0
       for ng in ncs_phil_groups:
         if ng.reference is None or len(ng.reference.strip())==0:
+          show_empty_selection_error_message(ng, where="reference")
           empty_cntr += 1
         for s in ng.selection:
           if s is None or len(s.strip())==0:
+            show_empty_selection_error_message(ng, where="selection")
             empty_cntr += 1
       if(empty_cntr>0):
-        # print "empty found"
+        print >> self.log, "  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        print >> self.log, "      _ALL_ user-supplied groups are ignored."
+        print >> self.log, "  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
         ncs_phil_groups=None
         return None
     # Verify NCS selections
@@ -344,15 +361,22 @@ class input(object):
       msg="Empty selection in NCS group definition: %s"
       asc = pdb_h.atom_selection_cache()
       for ncs_group in ncs_phil_groups:
+        print >> self.log, "  Validating:"
+        show_particular_ncs_group(ncs_group)
         selection_list = []
         # first, check for selections producing 0 atoms
+        user_original_reference_iselection = None
+        user_original_copies_iselections = []
+        n_atoms_in_user_ncs = 0
         s_string = ncs_group.reference
         if(s_string is not None):
           sel = asc.iselection(s_string)
           selection_list.append(s_string)
           n_reference = sel.size()
+          n_atoms_in_user_ncs = n_reference
           if(n_reference==0):
             raise Sorry(msg%s_string)
+          user_original_reference_iselection = sel
         for s_string in ncs_group.selection:
           if(s_string is not None):
             sel = asc.iselection(s_string)
@@ -360,6 +384,7 @@ class input(object):
             n_copy = sel.size()
             if(n_copy==0):
               raise Sorry(msg%s_string)
+            user_original_copies_iselections.append(sel)
         #
         # The idea for user's groups is to pick them one by one,
         # select only reference and selections from the model,
@@ -379,17 +404,17 @@ class input(object):
         combined_h.append_model(iotbx.pdb.hierarchy.model())
         cur_ch_id = 'A'
         master_chain = self.pdb_h_into_chain(pdb_h.select(
-            asc.selection(ncs_group.reference)),ch_id=cur_ch_id)
+            user_original_reference_iselection),ch_id=cur_ch_id)
         # print "tmp in master chain:", list(master_chain.atoms().extract_tmp_as_size_t())
         cur_ch_id = self.get_next_ch_id(cur_ch_id)
         combined_h.only_model().append_chain(master_chain)
 
         # combined_h = iotbx.pdb.hierarchy.new_hierarchy_from_chain(master_chain)
         # print "tmp combined_h1:", list(combined_h.atoms().extract_tmp_as_size_t())
-        for s_string in ncs_group.selection:
+        for uocis in user_original_copies_iselections:
           # print "adding selection to combined:", s_string
           sel_chain = self.pdb_h_into_chain(pdb_h.select(
-            asc.selection(s_string)),ch_id=cur_ch_id)
+            uocis),ch_id=cur_ch_id)
           combined_h.only_model().append_chain(sel_chain)
           cur_ch_id = self.get_next_ch_id(cur_ch_id)
 
@@ -439,11 +464,15 @@ class input(object):
         if len(group_dict) == 0:
           # this means that user's selection doesn't match
           # print "ZERO NCS groups found"
+          rejected_msg = "  REJECTED because copies don't match good enough.\n" + \
+          "Try to revise selections or adjust chain_similarity_threshold or \n" + \
+          "chain_max_rmsd parameters."
+          print >> self.log, rejected_msg
           continue
         # User triggered the fail of this assert!
         # print "  N found ncs_groups:", len(group_dict)
         # assert len(group_dict) == 1, "Got %d" % len(group_dict)
-        asc = pdb_h.atom_selection_cache()
+        selections_were_modified = False
         for key, ncs_gr in group_dict.iteritems():
           # print "dir ncs_gr:", dir(ncs_gr)
           new_ncs_group = ncs_group_master_phil.extract().ncs_group[0]
@@ -457,6 +486,8 @@ class input(object):
             # print "tmp:", list(combined_h.atoms().extract_tmp_as_size_t())
             original_m_all_isel = combined_h.atoms().\
                 select(m_all_isel).extract_tmp_as_size_t()
+            if n_atoms_in_user_ncs > original_m_all_isel.size():
+              selections_were_modified = True
             # print "new isels", list(m_all_isel)
             # print "old isels", list(original_m_all_isel)
             all_m_select_str = selection_string_from_selection(
@@ -492,6 +523,18 @@ class input(object):
                 "Bad NCS group selections: Natoms(copy)!=Natoms(reference)")
             if(n_copy==0):
               raise Sorry(msg%s_string)
+        ok_msg = "  OK. All atoms were included in" +\
+        " validated selection.\n  Nothing to worry about.\n"
+        modified_msg = "  MODIFIED. Some of the atoms were excluded from" + \
+        " your selection.\n  The most common reasons are:\n" + \
+        "    1. Missing residues in one or several copies in NCS group.\n" + \
+        "    2. Presence of alternative conformations (they are excluded).\n" + \
+        "    3. Residue mismatch in requested copies.\n" + \
+        "  Please check the validated selection further down.\n"
+        if selections_were_modified:
+          print >> self.log, modified_msg
+        else:
+          print >> self.log, ok_msg
     # print "len(validated_ncs_groups)", len(validated_ncs_groups)
     # for ncs_gr in validated_ncs_groups:
     #   print "  reference:", ncs_gr.reference
