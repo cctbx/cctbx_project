@@ -407,26 +407,26 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     if self._chain_residue_id is not None:
       [group,residue_range_list] = self._chain_residue_id
     else:
-      group=self.n_ncs_oper*[None]
-      residue_range_list=self.n_ncs_oper*[None]
+      group=self.n_ncs_oper()*[None]
+      residue_range_list=self.n_ncs_oper()*[None]
 
     if self._centers is not None:
       [centers, translations_orth,rota_matrices]=\
          [self._centers, self._translations_orth,self._rota_matrices]
     else:
-      centers=self.n_ncs_oper*[None]
-      translations_orth=self.n_ncs_oper*[None]
-      rota_matrices=self.n_ncs_oper*[None]
+      centers=self.n_ncs_oper()*[None]
+      translations_orth=self.n_ncs_oper()*[None]
+      rota_matrices=self.n_ncs_oper()*[None]
 
     if self._rmsd_list is not None:
        rmsd_list=self._rmsd_list
     else:
-      rmsd_list=self.n_ncs_oper*[None]
+      rmsd_list=self.n_ncs_oper()*[None]
 
     if self._residues_in_common_list is not None:
        residues_in_common_list=self._residues_in_common_list
     else:
-      residues_in_common_list=self.n_ncs_oper*[None]
+      residues_in_common_list=self.n_ncs_oper()*[None]
 
     text="\nnew_ncs_group\n"
     if self._cc is not None: text+="NCS_CC "+str(self._cc)+"\n"
@@ -867,8 +867,18 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       else:
         self._centers.append(matrix.col((0,0,0)))
 
-    self.delete_inv()
+    if self._rmsd_list:
+      self._rmsd_list=len(rota_matrices_inv)*[None]
+    if self._residues_in_common_list:
+       self._residues_in_common_list=len(rota_matrices_inv)*[[]]
 
+    if self._chain_residue_id:
+       self._chain_residue_id= [
+        len(rota_matrices_inv)*[None],
+        len(rota_matrices_inv)*[[]]
+         ]
+
+    self.delete_inv()
 
   def get_helix_z_translation(self):
     assert self._have_helical_symmetry

@@ -3214,8 +3214,9 @@ def apply_origin_shift(origin_shift=None,
     if shifted_ncs_file:
       ncs_object.format_all_for_group_specification(
          file_name=shifted_ncs_file)
-      print >>out,"Wrote NCS operators for shifted map to %s" %(
-       shifted_ncs_file)
+      print >>out,"Wrote %s NCS operators for shifted map to %s" %(
+         ncs_object.max_operators(),
+         shifted_ncs_file)
       if tracking_data.input_ncs_info.has_updated_operators():
         print >>out,\
         "NOTE: these may include additional operators added to fill the cell"
