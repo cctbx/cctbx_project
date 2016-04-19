@@ -199,6 +199,11 @@ def exercise_symbols():
       assert s.universal_hermann_mauguin() == uhm
   check(["R3", "H3", " h 3 "], "R 3 :H")
   check(["R32", "H32", "_h_3_2_"], "R 3 2 :H")
+  check(["R3m", "H3m", " h 3 m "], "R 3 m :H")
+  check(["R3c", "H3c", "_h_3_c_"], "R 3 c :H")
+  check(["R-3", "H-3", " h -3 "], "R -3 :H")
+  check(["R-3m", "H-3m", " h -3 m "], "R -3 m :H")
+  check(["R-3c", "H-3c", " h -3 c "], "R -3 c :H")
 
 def exercise_tr_vec():
   tr_vec = sgtbx.tr_vec

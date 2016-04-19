@@ -1093,6 +1093,21 @@ namespace cctbx { namespace sgtbx {
       else if (work_symbol == "H32") {
         work_symbol = "R32";
       }
+      else if (work_symbol == "H3m") {
+        work_symbol = "R3m";
+      }
+      else if (work_symbol == "H3c") {
+        work_symbol = "R3c";
+      }
+      else if (work_symbol == "H-3") {
+        work_symbol = "R-3";
+      }
+      else if (work_symbol == "H-3m") {
+        work_symbol = "R-3m";
+      }
+      else if (work_symbol == "H-3c") {
+        work_symbol = "R-3c";
+      }
     }
     remove_screw_component_parentheses(work_symbol);
     change_of_basis_op cb_op(0, 0);
