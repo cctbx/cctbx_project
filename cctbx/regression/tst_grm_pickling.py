@@ -77,11 +77,9 @@ def exercise_all(args):
   try:
     mon_lib_srv = monomer_library.server.server()
     ener_lib = monomer_library.server.ener_lib()
+    test_simple_protein(mon_lib_srv, ener_lib)
   except Exception:
     print "Can not initialize monomer_library, skipping test."
-
-  test_simple_protein(mon_lib_srv, ener_lib)
-
 
 if (__name__ == "__main__"):
   exercise_all(sys.argv[1:])
