@@ -14,7 +14,6 @@ import mmtbx.monomer_library.server
 from mmtbx.tls import ladp
 import mmtbx.tls.tools
 import mmtbx.f_model
-from libtbx.test_utils import approx_equal
 import iotbx.phil
 import mmtbx.masks
 from libtbx.utils import Sorry
