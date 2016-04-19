@@ -489,14 +489,19 @@ class info_object:
     self.input_ncs_info=ncs_info_object(file_name=file_name,
       number_of_operators=number_of_operators)
 
-  def update_ncs_info(self,number_of_operators=None,is_helical_symmetry=None):
-    assert self.input_ncs_info
+  def update_ncs_info(self,number_of_operators=None,is_helical_symmetry=None,
+      shifted=False):
+    if shifted:
+      ncs_info=self.shifted_ncs_info
+    else:
+      ncs_info=self.input_ncs_info
+    assert ncs_info
     if number_of_operators is not None:
-      self.input_ncs_info.update_number_of_operators(
-      number_of_operators=number_of_operators)
+      ncs_info.update_number_of_operators(
+        number_of_operators=number_of_operators)
     if is_helical_symmetry is not None:
-      self.input_ncs_info.update_is_helical_symmetry(
-      is_helical_symmetry=is_helical_symmetry)
+      ncs_info.update_is_helical_symmetry(
+        is_helical_symmetry=is_helical_symmetry)
 
   def set_input_map_info(self,file_name=None,crystal_symmetry=None,
     origin=None,all=None):
@@ -966,8 +971,12 @@ def get_ncs(params,tracking_data=None,out=sys.stdout):
   tracking_data.set_input_ncs_info(file_name=file_name,
       number_of_operators=ncs_object.max_operators())
 
-  if is_helical_symmetry:
-    tracking_data.update_ncs_info(is_helical_symmetry=True)
+  if is_helical_symmetry: # update shifted_ncs_info
+    if tracking_data.shifted_ncs_info:
+       shifted=True
+    else:
+       shifted=False
+    tracking_data.update_ncs_info(is_helical_symmetry=True,shifted=shifted)
 
     if tracking_data.input_map_info and tracking_data.input_map_info.all:
       z_range=tracking_data.input_map_info.crystal_symmetry.unit_cell(). \
@@ -977,7 +986,8 @@ def get_ncs(params,tracking_data=None,out=sys.stdout):
       ncs_object.extend_helix_operators(z_range=z_range)
       ncs_object.display_all()
       tracking_data.update_ncs_info(
-        number_of_operators=ncs_object.max_operators(),is_helical_symmetry=True)
+        number_of_operators=ncs_object.max_operators(),is_helical_symmetry=True,
+        shifted=shifted)
 
   return ncs_object,tracking_data
 

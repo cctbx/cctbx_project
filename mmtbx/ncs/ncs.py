@@ -870,7 +870,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     if self._rmsd_list:
       self._rmsd_list=len(rota_matrices_inv)*[None]
     if self._residues_in_common_list:
-       self._residues_in_common_list=len(rota_matrices_inv)*[[]]
+       self._residues_in_common_list=len(rota_matrices_inv)*[None]
 
     if self._chain_residue_id:
        self._chain_residue_id= [
