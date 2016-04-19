@@ -260,14 +260,6 @@ def simulate_f_obs(root, crystal_symmetry, params):
     miller_array=r_free_flags, column_root_label="R-free-flags")
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name=params.f_obs.output_file_name)
-  # XXX consistency check
-  fmodel = mmtbx.f_model.manager(
-    f_obs  = f_obs,
-    f_calc = fcalc_average,
-    f_mask = f_masks_data_average)
-  fmodel.update_solvent_and_scale(verbose = -1)
-  #assert approx_equal(fmodel.r_work(),0)
-  #assert approx_equal(fmodel.r_free(),0)
 
 def regularize_geometry(xray_structure, restraints_manager, params):
   from mmtbx.refinement import geometry_minimization as gm

@@ -104,10 +104,14 @@ tst_list = (
   "$D/dynamics/tst_sa.py",
   #
   "$D/examples/f_model_manager.py",
+  # Bulk solvent
   "$D/bulk_solvent/tst_bulk_solvent_and_scaling.py",
   "$D/bulk_solvent/tst_fit_kexpb_to_ktotal.py",
   "$D/bulk_solvent/tst_scaler.py",
   "$D/bulk_solvent/tst_flat_nonuniform.py",
+  "$D/bulk_solvent/tst_aniso_scaler.py",
+  "$D/bulk_solvent/tst_kb_sol_u_star_fd.py",
+  #
   "$D/alignment.py",
   "$D/invariant_domain.py",
   # restraints

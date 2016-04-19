@@ -283,7 +283,8 @@ class tgc(object):
       start_r = self.kbu.r_factor()
       save_k_sols = self.kbu.k_sols()
       save_b_sols = self.kbu.b_sols()
-      self.set_use_scale(value = random.choice(set_use_scale_options))
+      #self.set_use_scale(value = random.choice(set_use_scale_options))
+      self.set_use_scale(value = True)
       m = self.minimize_kb_once(use_curvatures=use_curvatures)
       r = self.kbu.r_factor()
       if(r>start_r and r>1.e-2 and (flex.min(self.kbu.k_sols())<0 or
@@ -301,8 +302,8 @@ class tgc(object):
       save_k_sols = self.kbu.k_sols()
       save_b_sols = self.kbu.b_sols()
       save_b_cart = self.kbu.b_cart()
-      self.set_use_scale(value = random.choice([True, False]))
-      #self.set_use_scale(value = random.choice([True,]))
+      #self.set_use_scale(value = random.choice([True, False]))
+      self.set_use_scale(value = True)
       m = self.minimize_kb_once(use_curvatures=use_curvatures)
       r = self.kbu.r_factor()
       if(r>start_r and r>1.e-2 and (flex.min(self.kbu.k_sols())<0 or

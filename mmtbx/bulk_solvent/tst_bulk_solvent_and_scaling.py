@@ -121,10 +121,10 @@ def exercise_00(d_min = 3.0, k_sol = 0.35, b_sol = 50.0,
   params.number_of_macro_cycles=4
   r = fmodel.update_all_scales(params=params, fast=False)
   r_work_final = fmodel.r_work()
-  assert approx_equal(r_work_final, 0)
-  assert approx_equal(r.k_sol[0], k_sol)
-  assert approx_equal(r.b_sol[0], b_sol)
-  assert approx_equal(r.b_cart, b_cart)
+  assert approx_equal(r_work_final, 0,   1.e-5)
+  assert approx_equal(r.k_sol[0], k_sol, 1.e-5)
+  assert approx_equal(r.b_sol[0], b_sol, 1.e-1)
+  assert approx_equal(r.b_cart, b_cart,  1.e-1)
 
 def exercise_01_general(d_mins = [1.6,],
              solvkb = [(0,0), (0.39,58.0), (0.1,6.),(0.54,87.)],
@@ -163,10 +163,10 @@ def exercise_01_general(d_mins = [1.6,],
             assert approx_equal(fmodel.r_work(), result.fmodel_kbu.r_factor())
           else:
             assert fmodel.r_work() < 0.02, fmodel.r_work()
-          assert approx_equal(result.fmodel_kbu.r_factor(), 0.0, eps = 1.e-6)
-          assert approx_equal(result.k_sols()[0],      kb[0],    eps = 1.e-6)
-          assert approx_equal(result.b_sols()[0],      kb[1],    eps = 1.e-6)
-          assert approx_equal(result.b_cart(),        b_cart,    eps = 1.e-6)
+          assert approx_equal(result.fmodel_kbu.r_factor(), 0.0, eps = 1.e-4)
+          assert approx_equal(result.k_sols()[0],      kb[0],    eps = 1.e-4)
+          assert approx_equal(result.b_sols()[0],      kb[1],    eps = 1.e-4)
+          assert approx_equal(result.b_cart(),        b_cart,    eps = 1.e-2)
 
 def exercise_02_b_cart_sym_constr(d_min = 2.0, tolerance = 1.e-6):
   for symbol in sgtbx.bravais_types.acentric + sgtbx.bravais_types.centric:
