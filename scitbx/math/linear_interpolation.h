@@ -56,10 +56,10 @@ namespace scitbx { namespace math {
     //
     SCITBX_ASSERT(x1 < x2);
     SCITBX_ASSERT(y1 < y2);
-    SCITBX_ASSERT(x1 < xx);
-    SCITBX_ASSERT(xx < x2);
-    SCITBX_ASSERT(y1 < yy);
-    SCITBX_ASSERT(yy < y2);
+    SCITBX_ASSERT(x1 <= xx);
+    SCITBX_ASSERT(xx <= x2);
+    SCITBX_ASSERT(y1 <= yy);
+    SCITBX_ASSERT(yy <= y2);
     // first we do interpolation in X direction
     FloatType v14 = linear_interpolation(xx,x1,x2,v1,v4);
     FloatType v32 = linear_interpolation(xx,x1,x2,v3,v2);

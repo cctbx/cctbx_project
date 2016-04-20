@@ -121,6 +121,12 @@ void exercise_linear_interpolation() {
       0., 2., 0., 1.,
       1.5, 1.5);
   SCITBX_ASSERT(r == 0.75);
+  r = scitbx::math::linear_interpolation_2d(
+      1., 1.,
+      2., 2.,
+      0., 2., 0., 1.,
+      1., 1.);
+  SCITBX_ASSERT(r == 0);
   std::cout << "linear interpolation test OK" << std::endl;
 }
 
