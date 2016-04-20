@@ -691,6 +691,11 @@ class info_object:
 
     print >>out,"\n"+50*"="+"\n"
 
+class make_ccp4_map: # just a holder so map_to_structure_factors will run
+  def __init__(self,map=None,unit_cell=None):
+    self.data=map
+    self.unit_cell_parameters=unit_cell.parameters()
+    self.space_group_number=1
 
 class ncs_group_object:
   def __init__(self,
@@ -2490,8 +2495,11 @@ def select_regions_in_au(params,
 
   return ncs_group_obj,scattered_points
 
-def get_bool_mask_as_int(ncs_group_obj=None,mask_as_bool=None):
-  mask_as_int=ncs_group_obj.edited_mask.deep_copy()
+def get_bool_mask_as_int(ncs_group_obj=None,mask_as_int=None,mask_as_bool=None):
+  if mask_as_int:
+    mask_as_int=mask_as_int.deep_copy()
+  else:
+    mask_as_int=ncs_group_obj.edited_mask.deep_copy()
   s = (mask_as_bool==True)
   mask_as_int = mask_as_int.set_selected(s,1)
   mask_as_int = mask_as_int.set_selected(~s,0)
@@ -2609,7 +2617,7 @@ def adjust_bounds(params,
     lower_bounds[i]-=params.output_files.box_buffer
     lower_bounds[i]=max(0,lower_bounds[i])
     upper_bounds[i]+=params.output_files.box_buffer
-    upper_bounds[i]=min(map_data.all()[i],upper_bounds[i])
+    upper_bounds[i]=min(map_data.all()[i]-1,upper_bounds[i])
 
 
   """
@@ -3353,7 +3361,8 @@ def get_ncs_mask(map_data=None,unit_cell=None,ncs_object=None,
     # Find all points in au (sample every_nth_point in grid)
 
     au_sites_cart=get_marked_points_cart(mask_data=working_au_mask,
-     unit_cell=unit_cell,every_nth_point=every_nth_point)
+     unit_cell=unit_cell,every_nth_point=every_nth_point,
+     boundary_radius=radius)
 
     # Find all points ncs-related to marked point in mask
     ncs_sites_cart=get_ncs_sites_cart(sites_cart=au_sites_cart,
@@ -3424,20 +3433,47 @@ def set_radius(unit_cell=None,map_data=None,every_nth_point=None):
   return radius
 
 def get_marked_points_cart(mask_data=None,unit_cell=None,
-   every_nth_point=3):
+   every_nth_point=3,boundary_radius=None):
   # return list of cartesian coordinates of grid points that are marked
   # only sample every every_nth_point in each direction...
   assert mask_data.origin() == (0,0,0)
   nx,ny,nz=mask_data.all()
+  if boundary_radius:
+    # How far from edges shall we stay:
+    grid_frac=(1./nx,1./ny,1./nz)
+    grid_orth=unit_cell.orthogonalize(grid_frac)
+    boundary_grid_points=0
+    for go in grid_orth:
+      bgp=int(0.99+boundary_radius/go)
+      boundary_grid_points=max(boundary_grid_points,bgp)
+  else:
+    boundary_grid_points=0
+
+     
   marked_points=maptbx.marked_grid_points(
     map_data=mask_data,
     every_nth_point=every_nth_point).result()
   sites_frac=flex.vec3_double()
+  boundary_points_skipped=0
   for grid_point in marked_points:
+    if boundary_grid_points:
+      if \
+         grid_point[0]<boundary_grid_points or \
+         grid_point[0]>nx-boundary_grid_points or \
+         grid_point[1]<boundary_grid_points or \
+         grid_point[0]>ny-boundary_grid_points or \
+         grid_point[2]<boundary_grid_points or \
+         grid_point[0]>nz-boundary_grid_points:
+        boundary_points_skipped+=1
+        continue
     sites_frac.append(
         (grid_point[0]/nx,
          grid_point[1]/ny,
          grid_point[2]/nz))
+  if 0 and boundary_points_skipped:
+     print "Total of %s boundary points of %s skipped" %(
+       boundary_points_skipped,marked_points.size())
+
   sites_cart=unit_cell.orthogonalize(sites_frac)
   return sites_cart
 
@@ -3445,9 +3481,54 @@ def get_overall_mask(
     map_data=None,
     mask_threshold=None,
     solvent_fraction=None,
+    crystal_symmetry=None,
+    radius=None,
+    resolution=None,
     out=sys.stdout):
+
+  # Make a local SD map from our map-data
+  from cctbx.maptbx import crystal_gridding
+  cg=crystal_gridding(
+        unit_cell=crystal_symmetry.unit_cell(),
+        space_group_info=crystal_symmetry.space_group_info(),
+        pre_determined_n_real=map_data.focus())
+
+  if not resolution:
+    from cctbx.maptbx import d_min_from_map
+    resolution=d_min_from_map(
+      map_data,crystal_symmetry.unit_cell(), resolution_factor=1./4.)
+    print >>out,"\nEstimated resolution of map: %6.1f A\n" %(
+     resolution)
+
+  if radius:
+    smoothing_radius=2.*radius
+  else:
+    smoothing_radius=2.*resolution
+
+  from mmtbx.command_line.map_to_structure_factors import run as map_to_sf
+  args=['d_min=%s' %(resolution)]
+  map_coeffs=map_to_sf(args=args,
+         space_group_number=crystal_symmetry.space_group().type().number(),
+         ccp4_map=make_ccp4_map(map_data,crystal_symmetry.unit_cell()),
+         return_as_miller_arrays=True,nohl=True,out=out)
+
+  complete_set = map_coeffs.complete_set()
+  stol = flex.sqrt(complete_set.sin_theta_over_lambda_sq().data())
+  import math
+  w = 4 * stol * math.pi * smoothing_radius
+  sphere_reciprocal = 3 * (flex.sin(w) - w * flex.cos(w))/flex.pow(w, 3)
+
+  temp = complete_set.structure_factors_from_map(
+      flex.pow2(map_data-map_data.as_1d().min_max_mean().mean))
+  fourier_coeff=complete_set.array(data=temp.data()*sphere_reciprocal)
+  sd_map=fourier_coeff.fft_map(
+      crystal_gridding=cg,
+      ).apply_volume_scaling().real_map_unpadded()
+  assert sd_map.all()==map_data.all()
+  # now use sd_map
+
   # First mask out the map based on threshold
-  mm=map_data.as_1d().min_max_mean()
+  mm=sd_map.as_1d().min_max_mean()
   max_in_map=mm.max
   mean_in_map=mm.mean
   min_in_map=mm.min
@@ -3461,12 +3542,12 @@ def get_overall_mask(
     threshold=mask_threshold
   else:  # guess based on solvent_fraction
     threshold=find_threshold_in_map(target_points=int(
-      (1.-solvent_fraction)*map_data.size()),
-      map_data=map_data)
+      (1.-solvent_fraction)*sd_map.size()),
+      map_data=sd_map)
     print >>out,"Cutoff will be threshold marking about %7.1f%% of cell" %(
       100.*(1.-solvent_fraction))
 
-  overall_mask=(map_data >= threshold)
+  overall_mask=(sd_map>= threshold)
   print >>out,"Model region of map "+\
     "(density above %7.3f )" %( threshold) +" includes %7.1f%% of map" %(
       100.*overall_mask.count(True)/overall_mask.size())
@@ -3491,23 +3572,36 @@ def get_one_au(tracking_data=None,
   else:
     mask_threshold=tracking_data.params.segmentation.mask_threshold
 
-  overall_mask,max_in_map=get_overall_mask(map_data=map_data,
-    mask_threshold=mask_threshold,
-    solvent_fraction=tracking_data.solvent_fraction,
-    out=out)
-
   every_nth_point=tracking_data.params.segmentation.grid_spacing_for_au
   radius=tracking_data.params.segmentation.radius
   if not radius:
     radius=set_radius(unit_cell=unit_cell,map_data=map_data,
      every_nth_point=every_nth_point)
   print >>out,"\nRadius for AU identification: %7.2f A" %(radius)
+
+  overall_mask,max_in_map=get_overall_mask(map_data=map_data,
+    mask_threshold=mask_threshold,
+    crystal_symmetry=tracking_data.crystal_symmetry,
+    resolution=tracking_data.params.crystal_info.resolution,
+    solvent_fraction=tracking_data.solvent_fraction,
+    radius=radius,
+    out=out)
+
   if starting_mask:
     print "Points in starting mask:",starting_mask.count(True)
     print "Points in overall mask:",overall_mask.count(True)
     print "Points in both:",(starting_mask & overall_mask).count(True)
+    write_ccp4_map(tracking_data.crystal_symmetry,'starting_mask.ccp4', 
+      get_bool_mask_as_int(
+        mask_as_int=map_data,mask_as_bool=starting_mask) )
+    write_ccp4_map(tracking_data.crystal_symmetry,'overall_mask.ccp4', 
+      get_bool_mask_as_int(
+     mask_as_int=map_data,mask_as_bool=overall_mask) )
     # make sure overall mask is at least as big..
     overall_mask=(overall_mask | starting_mask)
+    write_ccp4_map(tracking_data.crystal_symmetry,'new_overall_mask.ccp4', 
+      get_bool_mask_as_int(
+     mask_as_int=map_data,mask_as_bool=overall_mask) )
     print >>out,"New size of overall mask: ",overall_mask.count(True)
   else:
     if not sites_cart: # pick top of map
