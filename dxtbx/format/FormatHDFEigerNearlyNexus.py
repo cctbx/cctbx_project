@@ -209,38 +209,44 @@ class EigerNXmxFixer(object):
     group['translation'].attrs['units'] = "m"
     group['translation'].attrs['depends_on'] = '.'
 
-    # Create goniometer transformations
-    # print "Creating group /entry/sample/transformation"
-    group = handle.create_group('/entry/sample/transformations')
-    group.attrs['NX_class'] = 'NXtransformations'
+    # Create goniometer transformations if not found
+    if '/entry/sample/transformations' not in handle:
+      # print "Creating group /entry/sample/transformation"
+      group = handle.create_group('/entry/sample/transformations')
+      group.attrs['NX_class'] = 'NXtransformations'
+    else:
+      group = handle['/entry/sample/transformations']
 
-#     print "Creating omega transformation:"
-#     print " - making up rotation axis to be (1, 0, 0)"
-#     print " - making up starting angle to be 0"
-#     print " - using /entry/sample/goniometer/omega_range_average as oscillation range"
+    if 'omega' not in group:
+      # print "Creating omega transformation:"
+      # print " - making up rotation axis to be (1, 0, 0)"
+      # print " - making up starting angle to be 0"
+      # print " - using /entry/sample/goniometer/omega_range_average as oscillation range"
+      # Get the number of images
+      num_images = 0
+      for name in sorted(handle['/entry/data'].iterkeys()):
+        num_images += len(handle_orig[join('/entry/data', name)])
+      dataset = group.create_dataset('omega', (num_images,), dtype="float32")
+      dataset.attrs['units'] = 'degree'
+      dataset.attrs['transformation_type'] = 'rotation'
+      dataset.attrs['vector'] = (1, 0, 0)
+      dataset.attrs['offset'] = 0
+      dataset.attrs['depends_on'] = '.'
+      omega_range_average = handle['/entry/sample/goniometer/omega_range_average'][()]
+      omega_range_average = int(omega_range_average * 100 + 0.5) / 100.0
+      for i in range(num_images):
+        angle = omega_range_average * i
+        dataset[i] = angle
+    else:
+      dataset = group['omega']
 
-    # Get the number of images
-    num_images = 0
-    for name in sorted(handle['/entry/data'].iterkeys()):
-      num_images += len(handle_orig[join('/entry/data', name)])
-    dataset = group.create_dataset('omega', (num_images,), dtype="float32")
-    dataset.attrs['units'] = 'degree'
-    dataset.attrs['transformation_type'] = 'rotation'
-    dataset.attrs['vector'] = (1, 0, 0)
-    dataset.attrs['offset'] = 0
-    dataset.attrs['depends_on'] = '.'
-    omega_range_average = handle['/entry/sample/goniometer/omega_range_average'][()]
-    omega_range_average = int(omega_range_average * 100 + 0.5) / 100.0
-    for i in range(num_images):
-      angle = omega_range_average * i
-      dataset[i] = angle
-
-    # Create sample depends_on
-    create_scalar(
-      handle['/entry/sample'],
-      'depends_on',
-      'S%d' % len(dataset.name),
-      str(dataset.name))
+    if 'depends_on' not in handle['/entry/sample']:
+      # Create sample depends_on
+      create_scalar(
+        handle['/entry/sample'],
+        'depends_on',
+        'S%d' % len(dataset.name),
+        str(dataset.name))
 
     # Change relative paths to absolute paths
     for name in handle['/entry/data'].iterkeys():
