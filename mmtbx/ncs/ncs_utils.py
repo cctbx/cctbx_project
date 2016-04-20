@@ -32,7 +32,7 @@ def flip_atoms_in_ncs_groups(hierarchy, ncs_restraints_group_list, mon_lib_srv=N
       chains_copy = hierarchy.select(copy_isel).only_model().chains()
       for ch_m, ch_c in zip(chains_master, chains_copy):
         for r_m, r_c in zip(ch_m.residues(), ch_c.residues()):
-          print "working on ", r_m.id_str(), r_c.id_str()
+          # print "working on ", r_m.id_str(), r_c.id_str()
           if should_be_flipped(r_m, r_c):
             flip_residue(r_c, mon_lib_srv)
 

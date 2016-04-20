@@ -674,7 +674,7 @@ def clean_chain_matching(chain_match_list,ph,
     # use B = r*A + t, r_2*A = B , r_2 = B*A.inverse()
     other_sites_best = lsq_fit_obj.other_sites_best_fit()
     rmsd = round(ref_sites.rms_difference(other_sites_best),4)
-    # print "chain rmsd:", rmsd
+    # print "chain rmsd after flip:", rmsd
     if rmsd <= chain_max_rmsd:
       # get the chains atoms and convert selection to flex bool
       sel_aa,sel_bb,res_list_a,res_list_b,ref_sites,other_sites_best = \
