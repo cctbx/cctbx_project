@@ -1475,7 +1475,6 @@ class input(object):
           chain_max_rmsd=chain_max_rmsd,
           log=self.log)
         if not nrgl_ok:
-          assert 0
           raise Sorry('NCS copies do not match well')
     return ncs_restraints_group_list
 
