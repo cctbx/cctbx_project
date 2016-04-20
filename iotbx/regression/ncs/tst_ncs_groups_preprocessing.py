@@ -118,7 +118,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertEqual(len(group_ids),6)
     self.assertEqual(set(group_ids),{1,2})
     self.assertEqual(tran_sn,{1,2,3,4,5,6})
-    self.assertEqual(group_keys,{'5','4','6','1','3','2'})
+    self.assertEqual(group_keys,{'0000000005','0000000004','0000000006','0000000001','0000000003','0000000002'})
     self.assertEqual(trans_obj.ncs_atom_selection.count(True),4)
 
   def test_superpos_pdb(self):
@@ -145,13 +145,13 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.itervalues()]
     tran_sn = {x.serial_num for x in trans_obj.ncs_transform.itervalues()}
     group_keys = {x for x in trans_obj.ncs_transform.iterkeys()}
-    r1 = trans_obj.ncs_transform['4'].r
-    r2 = trans_obj.ncs_transform['2'].r
+    r1 = trans_obj.ncs_transform['0000000004'].r
+    r2 = trans_obj.ncs_transform['0000000002'].r
     #
     self.assertEqual(len(group_ids),6)
     self.assertEqual(set(group_ids),{1,2})
     self.assertEqual(tran_sn,{1,2,3,4,5,6})
-    self.assertEqual(group_keys,{'5','4','6','1','3','2'})
+    self.assertEqual(group_keys,{'0000000005','0000000004','0000000006','0000000001','0000000003','0000000002'})
     #
     self.assertTrue(r1.is_r3_identity_matrix())
     expected_r = matrix.sqr(
@@ -161,7 +161,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertTrue(max(d)<0.01)
 
     # test that ncs_asu does not contain the identity transforms
-    expected = {"chain 'A'_2", "chain 'A'_3", "chain 'B'_5", "chain 'B'_6"}
+    expected = {"chain 'A'_0000000002", "chain 'A'_0000000003", "chain 'B'_0000000005", "chain 'B'_0000000006"}
     self.assertEqual(expected,set(trans_obj.ncs_to_asu_map.keys()))
 
     # test mapping of the different selection in the NCS
@@ -216,13 +216,13 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.itervalues()]
       tran_sn = {x.serial_num for x in trans_obj.ncs_transform.itervalues()}
       group_keys = {x for x in trans_obj.ncs_transform.iterkeys()}
-      r1 = trans_obj.ncs_transform['4'].r
-      r2 = trans_obj.ncs_transform['2'].r
+      r1 = trans_obj.ncs_transform['0000000004'].r
+      r2 = trans_obj.ncs_transform['0000000002'].r
       #
       self.assertEqual(len(group_ids),5)
       self.assertEqual(set(group_ids),{1,2})
       self.assertEqual(tran_sn,{1,2,3,4,5})
-      self.assertEqual(group_keys,{'1', '2', '3', '4', '5'})
+      self.assertEqual(group_keys,{'0000000001', '0000000002', '0000000003', '0000000004', '0000000005'})
       #
       self.assertTrue(r1.is_r3_identity_matrix())
       expected_r = matrix.sqr(
@@ -260,13 +260,13 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.itervalues()]
     tran_sn = {x.serial_num for x in trans_obj.ncs_transform.itervalues()}
     group_keys = {x for x in trans_obj.ncs_transform.iterkeys()}
-    r1 = trans_obj.ncs_transform['4'].r
-    r2 = trans_obj.ncs_transform['2'].r
+    r1 = trans_obj.ncs_transform['0000000004'].r
+    r2 = trans_obj.ncs_transform['0000000002'].r
     #
     self.assertEqual(len(group_ids),5)
     self.assertEqual(set(group_ids),{0,1})
     self.assertEqual(tran_sn,{1,2,3,4,5})
-    self.assertEqual(group_keys,{'1', '2', '3', '4', '5'})
+    self.assertEqual(group_keys,{'0000000001', '0000000002', '0000000003', '0000000004', '0000000005'})
     #
     self.assertTrue(r1.is_r3_identity_matrix())
     expected_r = matrix.sqr(
@@ -281,8 +281,8 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       pdb_hierarchy_asu=self.ph)
     trans_obj2 = ncs.input(spec_ncs_groups=spec_output)
 
-    t1 = trans_obj.ncs_transform['2'].r
-    t2 = trans_obj2.ncs_transform['2'].r
+    t1 = trans_obj.ncs_transform['0000000002'].r
+    t2 = trans_obj2.ncs_transform['0000000002'].r
     self.assertEqual(t1,t2)
 
     t1 = trans_obj.ncs_to_asu_selection
@@ -298,8 +298,8 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     # print "trans_obj.tr_id_to_selection", trans_obj.tr_id_to_selection
     # print "trans_obj2.tr_id_to_selection", trans_obj2.tr_id_to_selection
     # STOP()
-    t1 = trans_obj.tr_id_to_selection["chain 'A'_3"]
-    t2 = trans_obj2.tr_id_to_selection["chain A_3"]
+    t1 = trans_obj.tr_id_to_selection["chain 'A'_0000000003"]
+    t2 = trans_obj2.tr_id_to_selection["chain A_0000000003"]
     self.assertEqual(t1,("chain 'A'", "chain 'C'"))
     t2_exp = ("chain A and (resseq 151:159)", "chain C and (resseq 151:159)")
     self.assertEqual(t2,t2_exp)

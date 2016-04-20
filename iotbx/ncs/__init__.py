@@ -457,7 +457,7 @@ class input(object):
         # print "="*80
         # print "="*80
         group_dict = ncs_search.ncs_grouping_and_group_dict(
-            match_dict, pdb_h)
+            match_dict, combined_h)
         # print "group_dict", group_dict
         # hopefully, we will get only 1 ncs group
         # ncs_group.selection = []
@@ -661,7 +661,7 @@ class input(object):
         ncs_selection=gns,
         ncs_group_id=ncs_group_id,
         transform_sn=transform_sn)
-      key = str(int(transform_sn))
+      key = format_num_as_str(transform_sn)
       # update with identity transform
       self.update_ncs_copies_chains_names(
             masters = gns,copies = gns, tr_id = key)
@@ -674,13 +674,14 @@ class input(object):
           master_selection=gns,
           copy_selection=asu_select,
           chain_max_rmsd=100)
+        # print "rmsd in build_ncs_from_phil", rmsd
         self.messages += msg
         if r.is_zero():
           msg = 'Master NCS and Copy are very poorly related, check selection.'
           self.messages += msg + '\n'
         asu_locations.append(asu_select)
         transform_sn += 1
-        key = str(int(transform_sn))
+        key = format_num_as_str(transform_sn)
         self.update_tr_id_to_selection(gns,asu_select,key)
         tr = Transform(
           rotation = r,
@@ -804,7 +805,7 @@ class input(object):
       for i in xrange(len(ncs_gr.copies)):
         # iterate of ncs copies in group
         tr = ncs_gr.transforms[i]
-        tr_id = str(int(tr.serial_num))
+        tr_id = format_num_as_str(tr.serial_num)
         self.ncs_transform[tr_id] = tr
         for j in xrange(len(ncs_gr.copies[i])):
           # iterate over chains in ncs copy
@@ -913,7 +914,7 @@ class input(object):
           r,t = inverse_transform(r,t)
           rmsd = round(gr.rmsd_list()[i],4)
           transform_sn += 1
-          key = str(int(transform_sn))
+          key = format_num_as_str(transform_sn)
           self.update_tr_id_to_selection(gs,ncs_copy_select,key)
           if not is_identity(r,t):
             asu_locations.append(ncs_copy_select)
@@ -1046,7 +1047,7 @@ class input(object):
         tr_sn = n
       else:
         tr_sn = 1
-      key = str(int(tr_sn))
+      key = format_num_as_str(tr_sn)
       tr = Transform(
         rotation = r,
         translation = t,
@@ -1171,7 +1172,7 @@ class input(object):
       serial_num = transform_sn,
       coordinates_present = True,
       ncs_group_id = ncs_group_id)
-    id_str = str(int(transform_sn))
+    id_str = format_num_as_str(transform_sn)
     self.ncs_transform[id_str] = transform_obj
     self.build_transform_dict(
       transform_id = id_str,
@@ -1201,7 +1202,7 @@ class input(object):
       ti = transform_info
       for (r,t,n,cp) in zip(ti.r,ti.t,ti.serial_number,ti.coordinates_present):
         n = int(n)
-        key = str(n)
+        key = format_num_as_str(n)
         tr = Transform(
           rotation = r,
           translation = t,
@@ -1240,7 +1241,7 @@ class input(object):
     """
     if not is_identity(transform.r,transform.t):
       self.transform_to_be_used.add(transform.serial_num)
-      key = selection_id + '_' + str(int(transform.serial_num))
+      key = selection_id + '_' + format_num_as_str(transform.serial_num)
       # example key: "chain A_002"
       self.transform_to_ncs = add_to_dict(
         d=self.transform_to_ncs,k=transform_id,v=key)
@@ -1306,7 +1307,7 @@ class input(object):
     zippedlists = zip(transform_assignment,dictionary_values)
     new_names_dictionary = {x:y for (x,y) in zippedlists}
     # add the master NCS to dictionary
-    tr_set  = {str(int(x)) for x in self.transform_to_be_used}
+    tr_set  = {format_num_as_str(x) for x in self.transform_to_be_used}
     for k,v in self.ncs_group_map.iteritems():
       tr_str = (v[1] - tr_set)
       assert len(tr_str) == 1
@@ -1467,6 +1468,7 @@ class input(object):
       # check that hierarchy is for the complete ASU
       if self.original_hierarchy.atoms().size() == self.total_asu_length:
         import mmtbx.ncs.ncs_utils as nu
+        # print "number of atoms in original h", self.original_hierarchy.atoms().size()
         nrgl_ok = nu.check_ncs_group_list(
           ncs_restraints_group_list,
           self.original_hierarchy,
@@ -2225,6 +2227,18 @@ def get_center_orth(xyz,selection):
   except RuntimeError:
     mean = (-100,-100,-100)
   return mean
+
+def format_num_as_str(n):
+  """  return a 10 digit string of n
+  This is a cruicial function because all the NCS search code relies on
+  ability to use standard python sort() function to sort whatever is made
+  by this.
+  """
+  if n > 9999999999 or n < 0:
+    raise IOError('Input out of the range 0 - 999999999.')
+  else:
+    return "%010d" % int(n)
+
 
 def ncs_only(transform_info):
   """
