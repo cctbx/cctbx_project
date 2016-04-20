@@ -376,7 +376,7 @@ class ncs_info_object:
     print >>out,"NCS file:%s   Operators: %d" %(self.file_name,
       self.number_of_operators)
     if self.is_helical_symmetry:
-      print >>out,"Helical symmetry is present" 
+      print >>out,"Helical symmetry is present"
 
   def has_updated_operators(self):
     return self._has_updated_operators
@@ -973,7 +973,7 @@ def get_ncs(params,tracking_data=None,out=sys.stdout):
   tracking_data.set_input_ncs_info(file_name=file_name,
       number_of_operators=ncs_object.max_operators())
 
-  if is_helical_symmetry: # update shifted_ncs_info  
+  if is_helical_symmetry: # update shifted_ncs_info
     if tracking_data.shifted_ncs_info: # XXX may not be needed
        shifted=True
     else:
