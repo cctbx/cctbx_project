@@ -2492,8 +2492,12 @@ prime/ext.cpp -text
 prime/libtbx_config -text
 prime/postrefine/__init__.py -text
 prime/postrefine/mod_input.py -text
+prime/postrefine/mod_lbfgs.py -text
+prime/postrefine/mod_lbfgs_partiality.py -text
 prime/postrefine/mod_leastsqr.py -text
+prime/postrefine/mod_mx.py -text
 prime/postrefine/mod_outlier.py -text
+prime/postrefine/mod_partiality.py -text
 prime/postrefine/mod_pdb.py -text
 prime/postrefine/mod_results.py -text
 prime/postrefine/mod_util.py -text

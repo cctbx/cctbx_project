@@ -26,6 +26,126 @@ class intensities_scaler(object):
     self.CONST_SE_MIN_WEIGHT = 0.17
     self.CONST_SE_MAX_WEIGHT = 1.0
     self.CONST_SIG_I_FACTOR = 1.5
+
+  def calculate_SE(self, results, iparams):
+    """
+    Take all post-refinement results, calculate covariances and new SE
+    """
+    if results[0].grad_set is None:
+      return results
+    else:
+      #get miller array iso for comparison, if given
+      mxh = mx_handler()
+      flag_hklisoin_found, miller_array_iso = mxh.get_miller_array_from_reflection_file(iparams.hklisoin)
+      #get reference set
+      import os
+      fileseq_list = flex.int()
+      for file_in in os.listdir(iparams.run_no):
+        if file_in.endswith('.mtz'):
+          file_split = file_in.split('_')
+          if len(file_split) > 3:
+            fileseq_list.append(int(file_split[2]))
+      if len(fileseq_list) == 0:
+        hklref = 'mean_scaled_merge.mtz'
+      else:
+        hklref = 'postref_cycle_'+str(flex.max(fileseq_list))+'_merge.mtz'
+      flag_hklref_found, miller_array_ref = mxh.get_miller_array_from_reflection_file(iparams.run_no+'/'+hklref)
+      #calculate covariance
+      X = np.array([[pres.G, pres.B, pres.tau, pres.rotx, pres.roty, pres.ry, pres.rz, pres.r0, pres.re, \
+        pres.uc_params[0], pres.uc_params[1],pres.uc_params[2],pres.uc_params[3], \
+        pres.uc_params[4],pres.uc_params[5]] for pres in results]).T
+      COV = np.cov(X)
+      COV_diag = flex.double([i for i in COV.diagonal()])
+      #calculate standard errors
+      output_results = []
+      for pres in results:
+        sigI = pres.observations.sigmas()
+        observations_old = pres.observations.deep_copy()
+        var_set = (pres.grad_set**2) * COV_diag
+        sin_theta_over_lambda_sq = pres.observations.two_theta(wavelength=pres.wavelength).\
+          sin_theta_over_lambda_sq().data()
+        d_spacings = pres.observations.d_spacings().data()
+        scale_factors_by_indices = pres.G * flex.exp(-2*pres.B*sin_theta_over_lambda_sq)
+        var_scale_factors = var_set[0] + var_set[1]
+        var_partiality = flex.sum(var_set[3:])
+        err_scale_factors = var_scale_factors/(scale_factors_by_indices**2)
+        err_partiality = var_partiality/(pres.partiality**2)
+        err_tau = var_set[2]/((pres.tau**2)+1E-9)
+        #determine weight
+        I_o_full = ((4 * pres.rs_set * pres.observations.data())/(3 * pres.e_width_set * scale_factors_by_indices * pres.partiality)) + pres.tau
+        observations_full = pres.observations.customized_copy(data=I_o_full)
+        observations_err_scale = pres.observations.customized_copy(data=err_scale_factors)
+        observations_err_p = pres.observations.customized_copy(data=err_partiality)
+        observations_err_tau = pres.observations.customized_copy(data=flex.double([err_tau]*len(pres.observations.data())))
+        flag_reset_weight = False
+        if flag_hklref_found:
+          ma_ref, ma_obs_full = miller_array_ref.common_sets(observations_full, assert_is_similar_symmetry=False)
+          dummy, ma_err_scale = miller_array_ref.common_sets(observations_err_scale, assert_is_similar_symmetry=False)
+          dummy, ma_err_p = miller_array_ref.common_sets(observations_err_p, assert_is_similar_symmetry=False)
+          dummy, ma_err_tau = miller_array_ref.common_sets(observations_err_tau, assert_is_similar_symmetry=False)
+          r1_factor = ma_ref.data()-ma_obs_full.data()
+          SE_I_WEIGHT = max([flex.linear_correlation((ma_obs_full.sigmas()**2), flex.log(r1_factor**2)).coefficient(), 0])
+          SE_SCALE_WEIGHT = max([flex.linear_correlation(ma_err_scale.data(), flex.log(r1_factor**2)).coefficient(), 0])
+          SE_EOC_WEIGHT = max([flex.linear_correlation(ma_err_p.data(), flex.log(r1_factor**2)).coefficient(), 0])
+          SE_TAU_WEIGHT = max([flex.linear_correlation(ma_err_tau.data(), flex.log(r1_factor**2)).coefficient(), 0])
+        else:
+          flag_reset_weight = True
+        if True:
+          SE_I_WEIGHT = self.CONST_SE_I_WEIGHT
+          SE_SCALE_WEIGHT = self.CONST_SE_SCALE_WEIGHT
+          SE_EOC_WEIGHT = self.CONST_SE_EOC_WEIGHT
+          SE_TAU_WEIGHT = self.CONST_SE_TAU_WEIGHT
+        #calculate new sigma
+        new_sigI = flex.sqrt((SE_I_WEIGHT*(sigI**2)) + \
+          (SE_SCALE_WEIGHT*(err_scale_factors * (flex.sum(sigI**2)/(flex.sum(err_scale_factors)+1E-9)))) + \
+          (SE_TAU_WEIGHT*(err_tau * (flex.sum(sigI**2)/((err_tau*len(sigI))+1E-9)))) + \
+          (SE_EOC_WEIGHT*(err_partiality * (flex.sum(sigI**2)/(flex.sum(err_partiality)+1E-9)))))
+        #for i in new_sigI:
+        #  if math.isnan(i) or i == float('inf') or i<0.1:
+        #    print i, SE_I_WEIGHT, SE_SCALE_WEIGHT, SE_EOC_WEIGHT, SE_TAU_WEIGHT
+        pres.set_params(observations=pres.observations.customized_copy(sigmas=new_sigI),
+          observations_original=pres.observations_original.customized_copy(sigmas=new_sigI))
+        output_results.append(pres)
+        #for plotting
+        if iparams.flag_plot_expert:
+
+          plt.subplot(521)
+          plt.scatter(1/(d_spacings**2), scale_factors_by_indices, s=10, marker='x', c='r')
+          plt.title('Scale factors')
+          plt.subplot(522)
+          plt.scatter(1/(d_spacings**2), pres.partiality, s=10, marker='x', c='r')
+          plt.title('Partiality')
+          plt.subplot(523)
+          plt.scatter(1/(d_spacings**2), err_scale_factors, s=10, marker='x', c='r')
+          plt.title('Error in scale factors')
+          plt.subplot(524)
+          plt.scatter(1/(d_spacings**2), err_partiality, s=10, marker='x', c='r')
+          plt.title('Error in partiality')
+          plt.subplot(525)
+          plt.scatter(1/(d_spacings**2), sigI, s=10, marker='x', c='r')
+          plt.title('Original sigmas')
+          plt.subplot(526)
+          plt.scatter(1/(d_spacings**2), new_sigI, s=10, marker='x', c='r')
+          plt.title('New sigmas')
+          plt.subplot(527)
+          plt.scatter(1/(d_spacings**2), flex.log(pres.observations.data()), s=10, marker='x', c='r')
+          plt.title('Original I')
+          plt.subplot(528)
+          plt.scatter(1/(d_spacings**2), flex.log(observations_full.data()), s=10, marker='x', c='r')
+          plt.title('New I')
+          if miller_array_iso is not None:
+            ma_iso, ma_obs_old = miller_array_iso.common_sets(observations_old, assert_is_similar_symmetry=False)
+            ma_iso, ma_obs_full = miller_array_iso.common_sets(observations_full, assert_is_similar_symmetry=False)
+            plt.subplot(529)
+            plt.scatter(ma_obs_old.sigmas(), flex.log(flex.abs(ma_iso.data()-ma_obs_old.data())), s=10, marker='x', c='r')
+            plt.title('Original SE vs Log Residual (R=%6.1f CC=%6.2f)'%(flex.sum(flex.abs(ma_iso.data()-ma_obs_old.data()))/flex.sum(flex.abs(ma_obs_old.data())), \
+              flex.linear_correlation(ma_obs_old.sigmas(), flex.log(flex.abs(ma_iso.data()-ma_obs_old.data()))).coefficient()))
+            plt.subplot(5,2,10)
+            plt.scatter(ma_obs_full.sigmas(), flex.log(flex.abs(ma_iso.data()-ma_obs_full.data())), s=10, marker='x', c='r')
+            plt.title('New SE vs Log Residual (R=%6.1f CC=%6.2f)'%(flex.sum(flex.abs(ma_iso.data()-ma_obs_full.data()))/flex.sum(flex.abs(ma_obs_full.data())), \
+              flex.linear_correlation(ma_obs_full.sigmas(), flex.log(flex.abs(ma_iso.data()-ma_obs_full.data()))).coefficient()))
+          plt.show()
+      return output_results
   def calc_avg_I_cpp(self, group_no, group_id_list, miller_index, miller_indices_ori, I, sigI, G, B,
                      p_set, rs_set, wavelength_set, sin_theta_over_lambda_sq, SE, avg_mode,
                      iparams, pickle_filename_set):

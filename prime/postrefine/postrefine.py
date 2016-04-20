@@ -9,6 +9,8 @@ from cctbx.crystal import symmetry
 import math
 from scitbx.matrix import sqr
 from cctbx import statistics
+from mod_partiality import partiality_handler
+from mod_lbfgs_partiality import lbfgs_partiality_handler
 
 class postref_handler(object):
   """
@@ -76,12 +78,12 @@ class postref_handler(object):
       target_crystal_system = iparams.target_crystal_system
     else:
       target_crystal_system = observations.crystal_symmetry().space_group().crystal_system()
-    from mod_leastsqr import prep_input, prep_output
+    lph = lbfgs_partiality_handler()
     if iparams.flag_override_unit_cell:
-      uc_constrained_inp = prep_input(iparams.target_unit_cell.parameters(), target_crystal_system)
+      uc_constrained_inp = lph.prep_input(iparams.target_unit_cell.parameters(), target_crystal_system)
     else:
-      uc_constrained_inp = prep_input(observations.unit_cell().parameters(), target_crystal_system)
-    uc_constrained = list(prep_output(uc_constrained_inp, target_crystal_system))
+      uc_constrained_inp = lph.prep_input(observations.unit_cell().parameters(), target_crystal_system)
+    uc_constrained = list(lph.prep_output(uc_constrained_inp, target_crystal_system))
     try:
       #apply constrain using the crystal system
       miller_set = symmetry(
@@ -198,12 +200,12 @@ class postref_handler(object):
         if pres is not None:
           #observations_original = pres.observations_original.deep_copy()
           two_theta = observations_original.two_theta(wavelength=pres.wavelength).data()
-          from mod_leastsqr import calc_partiality_anisotropy_set
           alpha_angle = flex.double([0]*len(observations_original.indices()))
           spot_pred_x_mm = flex.double([0]*len(observations_original.indices()))
           spot_pred_y_mm = flex.double([0]*len(observations_original.indices()))
           detector_distance_mm = pres.detector_distance_mm
-          partiality, dummy, dummy, dummy = calc_partiality_anisotropy_set(pres.unit_cell, 0, 0,
+          ph = partiality_handler()
+          partiality, dummy, dummy, dummy = ph.calc_partiality_anisotropy_set(pres.unit_cell, 0, 0,
                                                                  observations_original.indices(),
                                                                  pres.ry, pres.rz, pres.r0, pres.re,
                                                                  two_theta, alpha_angle, pres.wavelength, pres.crystal_orientation,
@@ -301,7 +303,7 @@ class postref_handler(object):
                                                                        indices=miller_indices_non_polar_obs_match)
     #4. Do least-squares refinement
     lsqrh = leastsqr_handler()
-    try:
+    if True:
       refined_params, stats, n_refl_postrefined = lsqrh.optimize(I_ref_match,
                                                                    observations_original_sel, wavelength,
                                                                    crystal_init_orientation, alpha_angle_set,
@@ -310,9 +312,9 @@ class postref_handler(object):
                                                                    pres_in,
                                                                    observations_non_polar_sel,
                                                                    detector_distance_mm)
-    except Exception:
-      txt_exception += 'optimization failed.\n'
-      return None, txt_exception
+    #except Exception:
+    #  txt_exception += 'optimization failed.\n'
+    #  return None, txt_exception
     #caculate partiality for output (with target_anomalous check)
     G_fin, B_fin, rotx_fin, roty_fin, ry_fin, rz_fin, r0_fin, re_fin, \
         a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin = refined_params
@@ -324,8 +326,8 @@ class postref_handler(object):
     if pres_in is not None:
       crystal_init_orientation = pres_in.crystal_orientation
     two_theta = observations_original.two_theta(wavelength=wavelength).data()
-    from mod_leastsqr import calc_partiality_anisotropy_set
-    partiality_fin, dummy, rs_fin, rh_fin = calc_partiality_anisotropy_set(uc_fin, rotx_fin, roty_fin,
+    ph = partiality_handler()
+    partiality_fin, dummy, rs_fin, rh_fin = ph.calc_partiality_anisotropy_set(uc_fin, rotx_fin, roty_fin,
                                                            observations_original.indices(),
                                                            ry_fin, rz_fin, r0_fin, re_fin,
                                                            two_theta, alpha_angle, wavelength,
@@ -433,8 +435,8 @@ class postref_handler(object):
         polar_hkl)
     observations_non_polar = self.get_observations_non_polar(observations_original, polar_hkl)
     uc_params = observations_original.unit_cell().parameters()
-    from mod_leastsqr import calc_spot_radius
-    r0 = calc_spot_radius(sqr(crystal_init_orientation.reciprocal_matrix()),
+    ph = partiality_handler()
+    r0 = ph.calc_spot_radius(sqr(crystal_init_orientation.reciprocal_matrix()),
                                           observations_original_sel.indices(), wavelength)
     #calculate first G
     (G, B) = (1,0)
@@ -454,11 +456,10 @@ class postref_handler(object):
       except Exception:
         txt_exception += 'warning B-factor calculation failed.\n'
         return None, txt_exception
-    from mod_leastsqr import calc_partiality_anisotropy_set
     two_theta = observations_original.two_theta(wavelength=wavelength).data()
     sin_theta_over_lambda_sq = observations_original.two_theta(wavelength=wavelength).sin_theta_over_lambda_sq().data()
     ry, rz, re, rotx, roty = (0, 0, iparams.gamma_e, 0, 0)
-    partiality_init, delta_xy_init, rs_init, rh_init = calc_partiality_anisotropy_set(\
+    partiality_init, delta_xy_init, rs_init, rh_init = ph.calc_partiality_anisotropy_set(\
                                                           crystal_init_orientation.unit_cell(),
                                                           rotx, roty, observations_original.indices(),
                                                           ry, rz, r0, re, two_theta, alpha_angle, wavelength,
