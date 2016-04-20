@@ -56,6 +56,14 @@ class unlimited(object):
 
     return False
 
+class pickle_filter():
+  ''' Prevents an object to be pickled. '''
+  def __init__(self, payload):
+    self.payload = payload
+  def __call__(self):
+    return self.payload if hasattr(self, 'payload') else None
+  def __getstate__(self):
+    return {}
 
 def job_cycle(outqueue, jobid, target, args, kwargs):
 
@@ -63,6 +71,16 @@ def job_cycle(outqueue, jobid, target, args, kwargs):
     value = target( *args, **kwargs )
 
   except Exception, e:
+    # Add trace information to exception
+    import sys, traceback
+    # Try and keep full traceback, but do not allow traceback object
+    # to be pickled directly (this is impossible and will fail)
+    e.exc_trace = pickle_filter(sys.exc_info())
+
+    # Keep a formatted copy of the trace for passing in pickled form
+    trace = [ "  %s" % line for line in traceback.format_exception(*sys.exc_info()) ]
+    e.trace = "\n" + "\n".join(trace)
+
     res = result.error( exception = e )
 
   else:
