@@ -375,6 +375,8 @@ class ncs_info_object:
   def show_summary(self,out=sys.stdout):
     print >>out,"NCS file:%s   Operators: %d" %(self.file_name,
       self.number_of_operators)
+    if self.is_helical_symmetry:
+      print >>out,"Helical symmetry is present" 
 
   def has_updated_operators(self):
     return self._has_updated_operators
@@ -536,9 +538,9 @@ class info_object:
     self.shifted_pdb_info=pdb_info_object(file_name=file_name,
      n_residues=n_residues)
 
-  def set_shifted_ncs_info(self,file_name=None,number_of_operators=None):
+  def set_shifted_ncs_info(self,file_name=None,number_of_operators=None,is_helical_symmetry=None):
     self.shifted_ncs_info=ncs_info_object(file_name=file_name,
-      number_of_operators=number_of_operators)
+      number_of_operators=number_of_operators,is_helical_symmetry=is_helical_symmetry)
 
   def set_solvent_fraction(self,solvent_fraction):
     self.solvent_fraction=solvent_fraction
@@ -971,11 +973,12 @@ def get_ncs(params,tracking_data=None,out=sys.stdout):
   tracking_data.set_input_ncs_info(file_name=file_name,
       number_of_operators=ncs_object.max_operators())
 
-  if is_helical_symmetry: # update shifted_ncs_info
-    if tracking_data.shifted_ncs_info:
+  if is_helical_symmetry: # update shifted_ncs_info  
+    if tracking_data.shifted_ncs_info: # XXX may not be needed
        shifted=True
     else:
        shifted=False
+    print >>out,"Updating NCS info (shifted=%s)" %(shifted)
     tracking_data.update_ncs_info(is_helical_symmetry=True,shifted=shifted)
 
     if tracking_data.input_map_info and tracking_data.input_map_info.all:
@@ -3231,7 +3234,9 @@ def apply_origin_shift(origin_shift=None,
         print >>out,\
         "NOTE: these may include additional operators added to fill the cell"
       tracking_data.set_shifted_ncs_info(file_name=shifted_ncs_file,
-        number_of_operators=ncs_object.max_operators())
+        number_of_operators=ncs_object.max_operators(),
+        is_helical_symmetry=tracking_data.input_ncs_info.is_helical_symmetry)
+      tracking_data.shifted_ncs_info.show_summary(out=out)
 
   return ncs_object,pdb_hierarchy,target_hierarchy,tracking_data
 
