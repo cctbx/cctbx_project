@@ -59,7 +59,7 @@ END
 """
 
 def exercise_00(prefix="tst_molprobity_3_exercise_00"):
-  for pdb_str in [pdb_str_1, pdb_str_2]:
+  for i, pdb_str in enumerate([pdb_str_1, pdb_str_2]):
     of = open("%s.pdb"%prefix, "w")
     print >> of, pdb_str
     of.close()
@@ -68,10 +68,10 @@ def exercise_00(prefix="tst_molprobity_3_exercise_00"):
       "%s.pdb"%prefix,
       "high_res=10",
       "type=real r_free=0.1 label=F-obs",
-      "output.file_name=%s.mtz"%prefix,
+      "output.file_name=%s_%d.mtz" % (prefix, i),
       "> %s.zlog"%prefix])
     easy_run.call(cmd)
-    cmd = "phenix.molprobity %s.pdb %s.mtz > %s.zlog"%(prefix,prefix,prefix)
+    cmd = "phenix.molprobity %s.pdb %s_%d.mtz > %s.zlog"%(prefix,prefix,i,prefix)
     easy_run.call(cmd)
 
 def exercise_01(prefix="tst_molprobity_3_exercise_01"):
