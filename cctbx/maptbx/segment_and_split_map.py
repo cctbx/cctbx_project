@@ -3614,13 +3614,13 @@ def get_one_au(tracking_data=None,
       del high_points_mask
       sites_cart=sites_cart[:1]
       xyz_frac=unit_cell.fractionalize(sites_cart[0])
-      value=map_data.value_at_closest_grid_point(xyz_frac)
+      value=sd_map.value_at_closest_grid_point(xyz_frac)
       print >>out,"High point in map at (%7.2f %7.2f %7.2f) with value of %7.2f " %(
         sites_cart[0][0],sites_cart[0][1],sites_cart[0][1],value)
 
 
     starting_mask=mask_from_sites_and_map( # starting au mask
-      map_data=map_data,unit_cell=unit_cell,
+      map_data=sd_map,unit_cell=unit_cell,
       sites_cart=sites_cart,radius=radius,
       overall_mask=overall_mask)
 
