@@ -641,8 +641,12 @@ class ExperimentListDict(object):
       i0, i1 = scan.get_image_range()
 
     # Make a sweep from the input data
-    return ImageSetFactory.make_sweep(template,
-      list(range(i0, i1+1)), None, check_format=self._check_format)
+    return ImageSetFactory.make_sweep(
+      template,
+      list(range(i0, i1+1)),
+      None,
+      check_format=self._check_format,
+      scan=scan)
 
   @staticmethod
   def model_or_none(mlist, eobj, name):

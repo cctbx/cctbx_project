@@ -758,6 +758,8 @@ class DataBlockFactory(object):
                 compare_goniometer=None,
                 scan_tolerance=None):
     ''' Try to load datablocks from any recognized format. '''
+    import os.path
+    from libtbx.utils import Sorry
 
     if unhandled is None:
       unhandled = []
