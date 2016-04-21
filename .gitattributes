@@ -1659,6 +1659,7 @@ libtbx/subprocess_with_fixes.py svneol=native#text/x-python
 libtbx/subversion.py -text
 libtbx/test_utils/__init__.py -text
 libtbx/test_utils/parallel.py -text
+libtbx/test_utils/pytest.py -text
 libtbx/thread_utils.py -text
 libtbx/topological_sort.py svneol=native#text/x-python
 libtbx/try_hello_world_c.py svneol=native#text/x-python
