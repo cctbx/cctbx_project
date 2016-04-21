@@ -97,6 +97,10 @@ class Format(object):
 
     return False
 
+  @classmethod
+  def ignore(Class):
+    return False
+
   def __init__(self, image_file):
     '''Initialize a class instance from an image file.'''
 

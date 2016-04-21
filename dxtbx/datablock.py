@@ -434,7 +434,7 @@ class DataBlockFilenameImporter(object):
     # Iterate through groups of files by format class
     find_format = FormatChecker(verbose=verbose)
     for fmt, group in find_format.iter_groups(filenames):
-      if fmt is None:
+      if fmt is None or fmt.ignore():
         self.unhandled.extend(group)
       elif issubclass(fmt, FormatMultiImage):
         for filename in group:

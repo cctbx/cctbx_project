@@ -49,7 +49,10 @@ def is_eiger_nearly_nexus_file(filename):
 
   # Find the NXmx entries
   entry = find_entries(handle)
-  return entry is not None
+  if entry is not None:
+    if "instrument" in entry:
+      return True
+  return False
 
 
 class EigerNXmxFixer(object):
