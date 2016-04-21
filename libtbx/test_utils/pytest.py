@@ -25,7 +25,7 @@ def discover(module):
     return []
 
   try:
-    import pytestr
+    import pytest
     import mock
   except ImportError:
     def pytest_warning():
