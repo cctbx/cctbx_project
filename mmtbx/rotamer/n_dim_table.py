@@ -54,7 +54,6 @@ class NDimTable:
         #print valueFirst
         s = infile.readline()
         while s:
-            s = infile.readline()
             fields = s.split()
             if(len(fields) <= ndt.nDim): continue
             if valueFirst:
@@ -65,6 +64,7 @@ class NDimTable:
                 coords = [float(fld) for fld in fields[0:ndt.nDim]]
             #print val, coords
             ndt.setValueAt( ndt.whereIs(coords), val )
+            s = infile.readline()
         return ndt
     createFromText = staticmethod(createFromText)
 
