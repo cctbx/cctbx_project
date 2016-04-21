@@ -331,6 +331,7 @@ class DataBlockTemplateImporter(object):
   def __init__(self, templates, verbose=False):
     ''' Import the datablocks from the given templates. '''
     from dxtbx.sweep_filenames import locate_files_matching_template_string
+    from libtbx.utils import Sorry
     assert(len(templates) > 0)
 
     self.datablocks = []
@@ -355,11 +356,17 @@ class DataBlockTemplateImporter(object):
         else:
           print ' No files found'
 
+      # Check if we've matched any filenames
+      if len(paths) == 0:
+        raise Sorry('Template "%s" does not match any files' % template)
+
       # Get the format from the first image
       find_format = FormatChecker(verbose=verbose)
       fmt = find_format(paths[0])
       if fmt is None:
-        raise RuntimeError('Image file %s format is unknown' % paths[0])
+        raise Sorry('Image file %s format is unknown' % paths[0])
+      elif fmt.ignore():
+        raise Sorry('Image file %s format will be ignored' % paths[0])
       else:
         imageset = self._create_imageset(fmt, template, paths)
         append_to_datablocks(imageset)
