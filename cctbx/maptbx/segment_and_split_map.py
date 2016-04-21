@@ -3551,7 +3551,7 @@ def get_overall_mask(
   print >>out,"Model region of map "+\
     "(density above %7.3f )" %( threshold) +" includes %7.1f%% of map" %(
       100.*overall_mask.count(True)/overall_mask.size())
-  return overall_mask,max_in_map
+  return overall_mask,max_in_map,sd_map
 
 
 def get_one_au(tracking_data=None,
@@ -3579,7 +3579,7 @@ def get_one_au(tracking_data=None,
      every_nth_point=every_nth_point)
   print >>out,"\nRadius for AU identification: %7.2f A" %(radius)
 
-  overall_mask,max_in_map=get_overall_mask(map_data=map_data,
+  overall_mask,sd_map,max_in_map=get_overall_mask(map_data=map_data,
     mask_threshold=mask_threshold,
     crystal_symmetry=tracking_data.crystal_symmetry,
     resolution=tracking_data.params.crystal_info.resolution,
@@ -3605,7 +3605,7 @@ def get_one_au(tracking_data=None,
     print >>out,"New size of overall mask: ",overall_mask.count(True)
   else:
     if not sites_cart: # pick top of map
-      high_points_mask=(map_data >= 0.99*max_in_map)
+      high_points_mask=(sd_map>= 0.99*max_in_map)
       for nth_point in [4,2,1]:
         sites_cart=get_marked_points_cart(mask_data=high_points_mask,
           unit_cell=unit_cell,every_nth_point=nth_point)
@@ -3623,6 +3623,8 @@ def get_one_au(tracking_data=None,
       map_data=map_data,unit_cell=unit_cell,
       sites_cart=sites_cart,radius=radius,
       overall_mask=overall_mask)
+
+  del sd_map 
 
   au_mask,ncs_mask=get_ncs_mask(
     map_data=map_data,unit_cell=unit_cell,ncs_object=ncs_obj,
