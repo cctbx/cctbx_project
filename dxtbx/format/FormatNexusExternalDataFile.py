@@ -16,13 +16,6 @@ from dxtbx.model import Beam # import dependency
 from dxtbx.model import Detector # import dependency
 from dxtbx.model import Goniometer # import dependency
 from dxtbx.model import Scan # import dependency
-from dxtbx.format.nexus import NXmxReader
-from dxtbx.format.nexus import BeamFactory
-from dxtbx.format.nexus import DetectorFactory
-from dxtbx.format.nexus import GoniometerFactory
-from dxtbx.format.nexus import ScanFactory
-from dxtbx.format.nexus import DataFactory
-from dxtbx.format.nexus import MaskFactory
 
 def find_entries(nx_file):
   '''
