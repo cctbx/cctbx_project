@@ -396,7 +396,7 @@ def cmd_run(args, validated=False, out=sys.stdout):
   if (params.reflection_file_name is None):
     params.reflection_file_name = parameters.file_name
   r_free_flags = determined_data_and_flags.r_free_flags
-  assert f_obs != None
+  assert f_obs is not None
   print >> log,  "Input data:"
   print >> log, "  Iobs or Fobs:", f_obs.info().labels
   if (r_free_flags is not None):
