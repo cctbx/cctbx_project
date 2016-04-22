@@ -3,6 +3,7 @@
 
 #include <mmtbx/validation/ramachandran/rama8000_tables.h>
 #include <iostream>
+#include <algorithm>
 #include <scitbx/math/linear_interpolation.h>
 #include <math.h>
 
@@ -13,20 +14,21 @@ class rama_eval {
   public:
     rama_eval() {}
 
-    double
-    get_value(std::string const& rama_class, double phi, double psi) {
+    double get_value(int const& rama_class, double const& phi, double const& psi) {
       scitbx::af::const_ref<double, scitbx::af::c_grid<2> > table;
       table = get_rama_table(rama_class);
-      bring_angle_to_range(phi);
-      bring_angle_to_range(psi);
+      double ranged_phi = phi;
+      double ranged_psi = psi;
+      bring_angle_to_range(ranged_phi);
+      bring_angle_to_range(ranged_psi);
       // std::cout << "ranged phi/psi " << phi << "/" << psi << std::endl;
       int lower_bin_phi, higher_bin_phi, lower_bin_psi, higher_bin_psi;
       double lower_value_phi,higher_value_phi,lower_value_psi,higher_value_psi;
       get_bins_and_values(
-          phi, lower_bin_phi, higher_bin_phi,
+          ranged_phi, lower_bin_phi, higher_bin_phi,
           lower_value_phi, higher_value_phi);
       get_bins_and_values(
-          psi, lower_bin_psi, higher_bin_psi,
+          ranged_psi, lower_bin_psi, higher_bin_psi,
           lower_value_psi, higher_value_psi);
       double result;
       // std::cout << "arguments to interpolation_2d: \n" <<
@@ -46,8 +48,38 @@ class rama_eval {
           table(higher_bin_phi, higher_bin_psi),
           table(lower_bin_phi, higher_bin_psi),
           table(higher_bin_phi, lower_bin_psi),
-          phi, psi);
+          ranged_phi, ranged_psi);
       return result;
+    }
+
+    double
+    get_value(std::string const& rama_class, double const& phi, double const& psi) {
+      int int_res_type = convert_rama_class(rama_class);
+      return get_value(int_res_type, phi, psi);
+    }
+
+    int evaluate_score(std::string const& residue_type, double const& score) {
+      int int_res_type = convert_rama_class(residue_type);
+      return evaluate_score(int_res_type, score);
+    }
+
+    int evaluate_score(int const& residue_type, double const& score) {
+      if (score >= 0.02) return RAMALYZE_FAVORED;
+      if (residue_type == RAMA_GENERAL) {
+        if (score >=0.0005) return RAMALYZE_ALLOWED;
+        else return RAMALYZE_OUTLIER;
+      }
+      if (residue_type == RAMA_CISPRO) {
+        if (score >= 0.0020) return RAMALYZE_ALLOWED;
+        else return RAMALYZE_OUTLIER;
+      }
+      if (score >= 0.0010) return RAMALYZE_ALLOWED;
+        else return RAMALYZE_OUTLIER;
+    }
+
+    int convert_rama_class(std::string const& rama_class_str) {
+      return std::distance(
+          res_types, std::find(res_types, res_types + 5, rama_class_str));
     }
 
 
@@ -90,13 +122,13 @@ class rama_eval {
 
 
     scitbx::af::const_ref<double, scitbx::af::c_grid<2> >
-    get_rama_table(std::string const& rama_class) {
-      if (rama_class == "general") return table_general;
-      else if (rama_class == "glycine") return table_glycine;
-      else if (rama_class == "cis-proline") return table_cis_pro;
-      else if (rama_class == "trans-proline") return table_trans_pro;
-      else if (rama_class == "pre-proline") return table_pre_pro;
-      else if (rama_class == "isoleucine or valine") return table_ile_val;
+    get_rama_table(int const& rama_class) {
+      if (rama_class == RAMA_GENERAL) return table_general;
+      else if (rama_class == RAMA_GLYCINE) return table_glycine;
+      else if (rama_class == RAMA_CISPRO) return table_cis_pro;
+      else if (rama_class == RAMA_TRANSPRO) return table_trans_pro;
+      else if (rama_class == RAMA_PREPRO) return table_pre_pro;
+      else if (rama_class == RAMA_ILE_VAL) return table_ile_val;
       else {
         char buf[]= "Unknown Ramachandran type.";
         throw std::runtime_error(buf);

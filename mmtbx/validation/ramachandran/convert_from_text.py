@@ -30,14 +30,19 @@ mmtbx/validation/ramachandran/convert_from_test.py
 
 namespace mmtbx {{ namespace validation {{ namespace ramachandran {{
 
-// not used yet
-#define RAMA_GENERAL 0
-#define RAMA_GLYCINE 1
-#define RAMA_CISPRO 2
+#define RAMA_GENERAL  0
+#define RAMA_GLYCINE  1
+#define RAMA_CISPRO   2
 #define RAMA_TRANSPRO 3
-#define RAMA_PREPRO 4
-#define RAMA_ILE_VAL 5
-// not used yet
+#define RAMA_PREPRO   4
+#define RAMA_ILE_VAL  5
+
+#define RAMALYZE_OUTLIER  0
+#define RAMALYZE_ALLOWED  1
+#define RAMALYZE_FAVORED  2
+#define RAMALYZE_ANY      3
+#define RAMALYZE_NOT_FAVORED 4
+
   const std::string res_types[] = {{"general", "glycine", "cis-proline",
     "trans-proline", "pre-proline", "isoleucine or valine"}};
 
