@@ -28,8 +28,10 @@ class regular_exception(object):
       # If exception contains full trace information, re-use it:
       raise self.exception.exc_trace()[0], self.exception.exc_trace()[1], self.exception.exc_trace()[2]
     if hasattr(self.exception, 'trace'):
-      # If exception contains extended information, re-use it:
-      raise Exception("%s. Embedded exception follows:\n%s" % (str(self.exception), self.exception.trace))
+      # If exception contains extended information, encode this into the exception message,
+      # preserving the exception type:
+      self.exception.args = ("%s. Embedded exception follows:\n%s" % (str(self.exception), self.exception.trace),)
+      raise self.exception
     # Otherwise just re-raise
     raise self.exception
 
