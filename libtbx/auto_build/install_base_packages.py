@@ -634,7 +634,7 @@ Installation of Python packages may fail.
         'CPPFLAGS="-I%s/include"' %self.base_dir,
         'LDFLAGS="-L%s/lib"' %self.base_dir,
         "--enable-framework=\"%s\"" % self.base_dir,
-        "--enable-unicode=ucs4",
+        #"--enable-unicode=ucs4",
         ]
       self.call("./configure %s" % " ".join(configure_args), log=log)
       # Do not build Python 2.7 in parallel. Race conditions observed on Mac and Linux.
@@ -657,7 +657,7 @@ Installation of Python packages may fail.
       if (self.options.python_shared):
         configure_args.append("--enable-shared")
         configure_args.append("LDFLAGS=-Wl,-rpath=\$$ORIGIN/../lib")
-        configure_args.append("--enable-unicode=ucs4")
+        #configure_args.append("--enable-unicode=ucs4")
       self.call([os.path.join(python_dir, 'configure')] + configure_args,
         log=log,
         cwd=python_dir,
