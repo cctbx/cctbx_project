@@ -4,10 +4,7 @@
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
 #include <mmtbx/validation/ramachandran/rama_eval.h>
-#include <boost/python/return_value_policy.hpp>
-#include <boost/python/return_by_value.hpp>
 
-#include <boost/python/tuple.hpp>
 
 namespace mmtbx { namespace validation { namespace ramachandran {
 namespace {
