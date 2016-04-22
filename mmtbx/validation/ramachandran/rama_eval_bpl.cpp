@@ -12,8 +12,11 @@ namespace {
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(eval_score_int, rama_eval::evaluate_score, 2, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(eval_score_str, rama_eval::evaluate_score, 2, 2)
 
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(get_val_int, rama_eval::get_value, 3, 3)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(get_val_str, rama_eval::get_value, 3, 3)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(get_val_int, rama_eval::get_score, 3, 3)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(get_val_str, rama_eval::get_score, 3, 3)
+
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(eval_angl_int, rama_eval::evaluate_angles, 3, 3)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(eval_angl_str, rama_eval::evaluate_angles, 3, 3)
 
   void init_module()
   {
@@ -33,13 +36,21 @@ BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(get_val_str, rama_eval::get_value, 3, 3)
           (int const&, double const&)>
           (&rama_eval::evaluate_score), eval_score_str())
 
-      .def("get_value", static_cast< double(rama_eval::*)
+      .def("get_score", static_cast< double(rama_eval::*)
           (std::string const&, double const&, double const&)>
-          (&rama_eval::get_value), get_val_str())
+          (&rama_eval::get_score), get_val_str())
 
-      .def("get_value", static_cast< double(rama_eval::*)
+      .def("get_score", static_cast< double(rama_eval::*)
           (int const&, double const&, double const&)>
-          (&rama_eval::get_value), get_val_int())
+          (&rama_eval::get_score), get_val_int())
+
+      .def("evaluate_angles", static_cast< int(rama_eval::*)
+          (std::string const&, double const&, double const&)>
+          (&rama_eval::evaluate_angles), eval_angl_str())
+
+      .def("evaluate_angles", static_cast< int(rama_eval::*)
+          (int const&, double const&, double const&)>
+          (&rama_eval::evaluate_angles), eval_angl_int())
 
     ;
   }

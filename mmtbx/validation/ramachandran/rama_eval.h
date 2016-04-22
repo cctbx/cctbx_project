@@ -14,7 +14,7 @@ class rama_eval {
   public:
     rama_eval() {}
 
-    double get_value(int const& rama_class, double const& phi, double const& psi) {
+    double get_score(int const& rama_class, double const& phi, double const& psi) {
       scitbx::af::const_ref<double, scitbx::af::c_grid<2> > table;
       table = get_rama_table(rama_class);
       double ranged_phi = phi;
@@ -53,9 +53,19 @@ class rama_eval {
     }
 
     double
-    get_value(std::string const& rama_class, double const& phi, double const& psi) {
+    get_score(std::string const& rama_class, double const& phi, double const& psi) {
       int int_res_type = convert_rama_class(rama_class);
-      return get_value(int_res_type, phi, psi);
+      return get_score(int_res_type, phi, psi);
+    }
+
+    int evaluate_angles(std::string const& rama_class, double const& phi, double const& psi) {
+      int int_res_type = convert_rama_class(rama_class);
+      return evaluate_angles(int_res_type, phi, psi);
+    }
+
+    int evaluate_angles(int const& rama_class, double const& phi, double const& psi) {
+      double score = get_score(rama_class, phi, psi);
+      return evaluate_score(rama_class, score);
     }
 
     int evaluate_score(std::string const& residue_type, double const& score) {

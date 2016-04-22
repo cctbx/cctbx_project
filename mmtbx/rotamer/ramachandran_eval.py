@@ -36,7 +36,7 @@ class RamachandranEval:
 
   def evaluate(self, aaName, phiPsi):
     # assert self.check_table_name(aaName)
-    return self.rama_eval.get_value(aaName, phiPsi[0],phiPsi[1])
+    return self.rama_eval.get_score(aaName, phiPsi[0],phiPsi[1])
 
   def evaluate_sites (self, aaName, phi_psi_i_seqs, sites_cart) :
     # assert self.check_table_name(aaName)
