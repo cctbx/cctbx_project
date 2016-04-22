@@ -173,7 +173,7 @@ def _may_divide_by_zero(divideby):
   '''
   return 7 / divideby
 
-def check_if_stacktrace_is_propagated_properly(method):
+def check_if_stacktrace_is_propagated_properly(method, nproc):
   exception_seen = False
   from libtbx.easy_mp import parallel_map
   import exceptions, traceback
@@ -183,7 +183,7 @@ def check_if_stacktrace_is_propagated_properly(method):
       func=_may_divide_by_zero,
       iterable=[2,1,0],
       method=method,
-      processes=2,
+      processes=nproc,
       preserve_exception_message=True)
   except Exception, e:
     exception_seen = True
@@ -200,14 +200,20 @@ def check_if_stacktrace_is_propagated_properly(method):
     # or it should be preserved in the string representation of the exception
     if _may_divide_by_zero.func_name in str(e):
       stack_contains_fail_function = True
-    assert stack_contains_fail_function, "Stacktrace lost"
+    if not stack_contains_fail_function:
+      print "Thrown exception: %s:" % str(e)
+      traceback.print_tb(exc_traceback)
+      print ""
+      assert stack_contains_fail_function, "Stacktrace lost"
   assert exception_seen, "Expected exception not thrown"
 
 def run(args):
   assert args in [[], ["--fail"]]
   exercise_fail = (len(args) != 0)
-  check_if_stacktrace_is_propagated_properly(method='threading')
-  check_if_stacktrace_is_propagated_properly(method='multiprocessing')
+  check_if_stacktrace_is_propagated_properly(method='threading', nproc=2)
+  check_if_stacktrace_is_propagated_properly(method='multiprocessing', nproc=2)
+  check_if_stacktrace_is_propagated_properly(method='threading', nproc=1)
+  check_if_stacktrace_is_propagated_properly(method='multiprocessing', nproc=1)
   exercise(exercise_fail)
   print "OK"
 

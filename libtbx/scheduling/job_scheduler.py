@@ -24,23 +24,17 @@ import time
 from collections import deque
 from Queue import Empty
 
-from libtbx.scheduling import result
-from libtbx.scheduling import identifier
-
+from libtbx.scheduling import annotate_exception, identifier, result
 
 # Capacity modes
 class limited(object):
   """
   Limited number of jobs
   """
-
   def __init__(self, njobs):
-
     self.njobs = njobs
 
-
   def is_full(self, njobs):
-
     return self.njobs <= njobs
 
 
@@ -53,35 +47,14 @@ class unlimited(object):
 
   @staticmethod
   def is_full(njobs):
-
     return False
 
-class pickle_filter():
-  ''' Prevents an object to be pickled. '''
-  def __init__(self, payload):
-    self.payload = payload
-  def __call__(self):
-    return self.payload if hasattr(self, 'payload') else None
-  def __getstate__(self):
-    return {}
-
 def job_cycle(outqueue, jobid, target, args, kwargs):
-
   try:
     value = target( *args, **kwargs )
 
   except Exception, e:
-    # Add trace information to exception
-    import sys, traceback
-    # Try and keep full traceback, but do not allow traceback object
-    # to be pickled directly (this is impossible and will fail)
-    e.exc_trace = pickle_filter(sys.exc_info())
-
-    # Keep a formatted copy of the trace for passing in pickled form
-    trace = [ "  %s" % line for line in traceback.format_exception(*sys.exc_info()) ]
-    e.trace = "\n" + "\n".join(trace)
-
-    res = result.error( exception = e )
+    res = result.error( exception = annotate_exception(e) )
 
   else:
     res = result.success( value = value )
@@ -95,7 +68,6 @@ class manager(object):
   """
 
   def __init__(self, inqueue, job_factory, capacity, waittime = 0.01):
-
     self.inqueue = inqueue
     self.job_factory = job_factory
     self.capacity = capacity
@@ -109,32 +81,22 @@ class manager(object):
 
     self.resume()
 
-
   def job_count(self):
-
     return len( self.process_data_for ) + len( self.waiting_jobs )
 
-
   def process_count(self):
-
     return len( self.process_data_for )
 
-
   def is_empty(self):
-
     return not (
       self.waiting_jobs or self.process_data_for or self.waiting_results
       or self.completed_results
       )
 
-
   def is_full(self):
-
     return self.capacity.is_full( njobs = self.process_count() )
 
-
   def results(self):
-
     while not self.is_empty():
       while not self.completed_results:
         self.wait()
@@ -142,27 +104,19 @@ class manager(object):
 
       yield self.completed_results.popleft()
 
-
   def submit(self, target, args = (), kwargs = {}):
-
     jobid = identifier()
     self.waiting_jobs.append( ( jobid, target, args, kwargs ) )
     self.poll()
     return jobid
 
-
   def shutdown(self):
-
     self.active = False
 
-
   def resume(self):
-
     self.active = True
 
-
   def join(self):
-
     self.shutdown()
 
     while self.process_data_for:
@@ -171,9 +125,7 @@ class manager(object):
 
     self.poll()
 
-
   def terminate(self):
-
     self.shutdown()
 
     for process in self.process_data_for.values():
@@ -187,15 +139,11 @@ class manager(object):
 
     self.join()
 
-
   # Internal methods
   def wait(self):
-
     time.sleep( self.waittime )
 
-
   def poll(self):
-
     # Check existing jobs
     for jobid in self.process_data_for.keys():
       process = self.process_data_for[ jobid ]
@@ -230,9 +178,7 @@ class manager(object):
       process.start()
       self.process_data_for[ jobid ] = process
 
-
   def finish_job(self, jobid):
-
     process = self.process_data_for[ jobid ]
     process.join()
     exit_code = getattr( process, "exitcode", 0 ) # Thread has no "exitcode" attribute
@@ -257,15 +203,12 @@ class creator(object):
   """
 
   def __init__(self, job_factory, queue_factory, capacity, waittime = 0.01):
-
     self.job_factory = job_factory
     self.queue_factory = queue_factory
     self.capacity = capacity
     self.waittime = waittime
 
-
   def create(self):
-
     return manager(
       inqueue = self.queue_factory.create(),
       job_factory = self.job_factory,
@@ -273,9 +216,7 @@ class creator(object):
       waittime = self.waittime,
       )
 
-
   def destroy(self, manager):
-
     manager.terminate()
     manager.join()
     self.queue_factory.destroy( manager.inqueue )
