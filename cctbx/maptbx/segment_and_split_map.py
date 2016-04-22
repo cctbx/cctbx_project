@@ -3579,7 +3579,7 @@ def get_one_au(tracking_data=None,
   if not radius:
     radius=set_radius(unit_cell=unit_cell,map_data=map_data,
      every_nth_point=every_nth_point)
-    tracking_data.params.segmentation.radius=radius 
+    tracking_data.params.segmentation.radius=radius
   print >>out,"\nRadius for AU identification: %7.2f A" %(radius)
 
   overall_mask,max_in_map,sd_map=get_overall_mask(map_data=map_data,
