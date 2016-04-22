@@ -2829,7 +2829,8 @@ def write_output_files(params,
 
   sites_cart=get_marked_points_cart(mask_data=bool_selected_regions,
      unit_cell=ncs_group_obj.crystal_symmetry.unit_cell(),
-     every_nth_point=tracking_data.params.segmentation.grid_spacing_for_au)
+     every_nth_point=tracking_data.params.segmentation.grid_spacing_for_au,
+     boundary_radius=tracking_data.params.segmentation.radius)
   sites_lower_bounds,sites_upper_bounds=get_bounds_from_sites(
       unit_cell=ncs_group_obj.crystal_symmetry.unit_cell(),
       sites_cart=sites_cart,map_data=map_data)
@@ -3507,10 +3508,11 @@ def get_overall_mask(
 
   from mmtbx.command_line.map_to_structure_factors import run as map_to_sf
   args=['d_min=%s' %(resolution)]
+  from libtbx.utils import null_out
   map_coeffs=map_to_sf(args=args,
          space_group_number=crystal_symmetry.space_group().type().number(),
          ccp4_map=make_ccp4_map(map_data,crystal_symmetry.unit_cell()),
-         return_as_miller_arrays=True,nohl=True,out=out)
+         return_as_miller_arrays=True,nohl=True,out=null_out())
 
   complete_set = map_coeffs.complete_set()
   stol = flex.sqrt(complete_set.sin_theta_over_lambda_sq().data())
@@ -3577,9 +3579,10 @@ def get_one_au(tracking_data=None,
   if not radius:
     radius=set_radius(unit_cell=unit_cell,map_data=map_data,
      every_nth_point=every_nth_point)
+    tracking_data.params.segmentation.radius=radius 
   print >>out,"\nRadius for AU identification: %7.2f A" %(radius)
 
-  overall_mask,sd_map,max_in_map=get_overall_mask(map_data=map_data,
+  overall_mask,max_in_map,sd_map=get_overall_mask(map_data=map_data,
     mask_threshold=mask_threshold,
     crystal_symmetry=tracking_data.crystal_symmetry,
     resolution=tracking_data.params.crystal_info.resolution,
@@ -3608,7 +3611,8 @@ def get_one_au(tracking_data=None,
       high_points_mask=(sd_map>= 0.99*max_in_map)
       for nth_point in [4,2,1]:
         sites_cart=get_marked_points_cart(mask_data=high_points_mask,
-          unit_cell=unit_cell,every_nth_point=nth_point)
+          unit_cell=unit_cell,every_nth_point=nth_point,
+          boundary_radius=radius)
         if sites_cart.size()>0: break
       assert sites_cart.size()>0
       del high_points_mask
