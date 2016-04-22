@@ -176,7 +176,7 @@ def _may_divide_by_zero(divideby):
 def check_if_stacktrace_is_propagated_properly(method, nproc):
   exception_seen = False
   from libtbx.easy_mp import parallel_map
-  import exceptions, traceback
+  import traceback
 
   try:
     results = parallel_map(
