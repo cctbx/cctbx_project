@@ -211,11 +211,11 @@ def check_if_stacktrace_is_propagated_properly(method, nproc):
 def run(args):
   assert args in [[], ["--fail"]]
   exercise_fail = (len(args) != 0)
+  exercise(exercise_fail)
   check_if_stacktrace_is_propagated_properly(method='threading', nproc=2)
   check_if_stacktrace_is_propagated_properly(method='multiprocessing', nproc=2)
   check_if_stacktrace_is_propagated_properly(method='threading', nproc=1)
   check_if_stacktrace_is_propagated_properly(method='multiprocessing', nproc=1)
-  exercise(exercise_fail)
   print "OK"
 
 if (__name__ == "__main__"):
