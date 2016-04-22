@@ -166,16 +166,21 @@ def exercise(exercise_fail):
 368.673
 """)
 
+def _may_divide_by_zero(divideby):
+  '''
+  A helper function for the check_if_stacktrace_is_propagated_properly test.
+  Must be on module level for parallelization on Windows machines.
+  '''
+  return 7 / divideby
+
 def check_if_stacktrace_is_propagated_properly(method):
   exception_seen = False
   from libtbx.easy_mp import parallel_map
-  import exceptions, traceback, sys
+  import exceptions, traceback
 
-  def may_divide_by_zero(divideby):
-    return 7 / divideby
   try:
     results = parallel_map(
-      func=may_divide_by_zero,
+      func=_may_divide_by_zero,
       iterable=[2,1,0],
       method=method,
       processes=2,
@@ -190,10 +195,10 @@ def check_if_stacktrace_is_propagated_properly(method):
     stack_contains_fail_function = False
     # Two options: Either the original stack is available directly
     for (filename, line, function, text) in traceback.extract_tb(exc_traceback):
-      if function == 'may_divide_by_zero':
+      if function == _may_divide_by_zero.func_name:
         stack_contains_fail_function = True
     # or it should be preserved in the string representation of the exception
-    if 'may_divide_by_zero' in str(e):
+    if _may_divide_by_zero.func_name in str(e):
       stack_contains_fail_function = True
     assert stack_contains_fail_function, "Stacktrace lost"
   assert exception_seen, "Expected exception not thrown"
