@@ -68,6 +68,10 @@ def exercise(exercise_fail):
   if (mp_problem is not None):
     print "Skipping tst_easy_mp.py: %s" % mp_problem
     return
+  check_if_stacktrace_is_propagated_properly(method='threading', nproc=2)
+  check_if_stacktrace_is_propagated_properly(method='multiprocessing', nproc=2)
+  check_if_stacktrace_is_propagated_properly(method='threading', nproc=1)
+  check_if_stacktrace_is_propagated_properly(method='multiprocessing', nproc=1)
   data = potentially_large(size=1000)
   eval_parallel(data)
   assert len(easy_mp.fixed_func_registry) == 0
@@ -212,10 +216,6 @@ def run(args):
   assert args in [[], ["--fail"]]
   exercise_fail = (len(args) != 0)
   exercise(exercise_fail)
-  check_if_stacktrace_is_propagated_properly(method='threading', nproc=2)
-  check_if_stacktrace_is_propagated_properly(method='multiprocessing', nproc=2)
-  check_if_stacktrace_is_propagated_properly(method='threading', nproc=1)
-  check_if_stacktrace_is_propagated_properly(method='multiprocessing', nproc=1)
   print "OK"
 
 if (__name__ == "__main__"):
