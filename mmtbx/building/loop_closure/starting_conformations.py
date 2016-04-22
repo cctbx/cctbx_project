@@ -1,11 +1,13 @@
 from __future__ import division
 
-from mmtbx.rotamer import ramachandran_eval
 from mmtbx.building.loop_closure import utils
 from mmtbx.validation import ramalyze
 import itertools
 from libtbx.utils import null_out
 
+import boost.python
+ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
+from mmtbx_validation_ramachandran_ext import rama_eval
 
 def set_rama_angles(moving_h, angles):
   """
@@ -15,7 +17,6 @@ def set_rama_angles(moving_h, angles):
   last angle so starting point would be in the same place.
   This function should produce up to all possible favored conformations.
   This function doesn't change moving_h
-
   """
   # print "angles", angles
   # STOP()
@@ -50,11 +51,11 @@ def is_not_none_combination(comb):
 
 def get_sampled_rama_favored_angles(rama_key, r=None, step=20):
   if r is None:
-    r = ramachandran_eval.RamachandranEval()
+    r = rama_eval()
   result = []
   for i in range(-180, 180, step):
     for j in range(-180, 180, step):
-      score = r.evaluate(ramalyze.res_types[rama_key], (i,j))
+      score = r.evaluate_angles(ramalyze.res_types[rama_key], i,j)
       r_ev = ramalyze.ramalyze.evalScore(ramalyze.res_types[rama_key], score)
       if r_ev == ramalyze.RAMALYZE_FAVORED:
         result.append((i,j))
@@ -63,7 +64,7 @@ def get_sampled_rama_favored_angles(rama_key, r=None, step=20):
 # Refactoring idea: combine these two functions
 def get_all_starting_conformations(moving_h, change_radius, cutoff=50, log=null_out()):
   variants = []
-  r = ramachandran_eval.RamachandranEval()
+  r = rama_eval()
   phi_psi_atoms = utils.get_phi_psi_atoms(moving_h)
   n_rama = len(phi_psi_atoms)
   change_angles = range((n_rama)//2-change_radius, (n_rama)//2+change_radius+1)
@@ -100,7 +101,7 @@ def get_starting_conformations(moving_h, cutoff=50, log=null_out()):
   modify only ramachandran outliers.
   """
   variants = []
-  r = ramachandran_eval.RamachandranEval()
+  r = rama_eval()
   phi_psi_atoms = utils.get_phi_psi_atoms(moving_h)
   for phi_psi_pair, rama_key in phi_psi_atoms:
     if (utils.rama_evaluate(phi_psi_pair, r, rama_key) == ramalyze.RAMALYZE_OUTLIER):

@@ -1,6 +1,5 @@
 from __future__ import division
 import iotbx.pdb
-from mmtbx.rotamer import ramachandran_eval
 import mmtbx.utils
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx.monomer_library import idealized_aa
@@ -12,6 +11,10 @@ from mmtbx.pdbtools import truncate_to_poly_gly
 from mmtbx.secondary_structure.build import side_chain_placement, \
     set_xyz_smart
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
+
+import boost.python
+ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
+from mmtbx_validation_ramachandran_ext import rama_eval
 
 loop_idealization_master_phil_str = """
 loop_idealization
@@ -65,7 +68,7 @@ class loop_idealization():
     self.params = self.process_params(params)
     self.log = log
     self.verbose = verbose
-    self.r = ramachandran_eval.RamachandranEval()
+    self.r = rama_eval()
     self.rotamer_manager = RotamerEval()
     ram = ramalyze.ramalyze(pdb_hierarchy=pdb_hierarchy)
     self.p_initial_rama_outliers = ram.out_percent
@@ -103,7 +106,8 @@ class loop_idealization():
             print >> self.log, "  Removing chain %s with %d residues" % (c.id, len(c.residues()))
             m.remove_chain(c)
           i += 1
-        exclusions, ch_h = self.idealize_chain(hierarchy=(cutted_chain_h if cutted_chain_h else chain_h))
+        exclusions, ch_h = self.idealize_chain(
+            hierarchy=(cutted_chain_h if cutted_chain_h else chain_h))
         if ch_h is not None:
           print "Setting new coordinates"
           set_xyz_smart(self.resulting_pdb_h, ch_h)
@@ -131,6 +135,7 @@ class loop_idealization():
     if self.params.minimize_whole:
       print >> self.log, "minimizing whole thing..."
       print >> self.log, "self.ref_exclusion_selection", self.ref_exclusion_selection
+      print >> sel
       minimize_wrapper_for_ramachandran(
           hierarchy=self.resulting_pdb_h,
           xrs=xrs,
@@ -462,7 +467,7 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num, n_following, n_previous):
   truncate_to_poly_gly(pdb_hierarchy, start_res_num, end_res_num)
   cache = pdb_hierarchy.atom_selection_cache()
   # print "selectioin:", "resid %d through %d" % (start_res_num, end_res_num)
-  m_selection = cache.selection("resid %s through %s" % (start_res_num, end_res_num))
+  m_selection = cache.selection("(name N or name CA or name C or name O) and resid %s through %s" % (start_res_num, end_res_num))
   moving_h = pdb_hierarchy.select(m_selection)
   moving_h.reset_atom_i_seqs()
   # print dir(moving_h)

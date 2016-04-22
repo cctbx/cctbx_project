@@ -6,9 +6,12 @@ from mmtbx.validation import ramalyze
 import math
 from cStringIO import StringIO
 from mmtbx.validation.ramalyze import res_types
-from mmtbx.rotamer import ramachandran_eval
 from scitbx.math import dihedral_angle
 # from scitbx.matrix import _dihedral_angle # python implementation, but on flex arrays
+
+import boost.python
+ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
+from mmtbx_validation_ramachandran_ext import rama_eval
 
 def get_phi_psi_atoms(hierarchy):
   phi_psi_atoms = []
@@ -43,7 +46,7 @@ def pair_info(phi_psi_pair):
 
 def list_rama_outliers_h(hierarchy, r=None):
   if r is None:
-    r = ramachandran_eval.RamachandranEval()
+    r = rama_eval()
   phi_psi_atoms = get_phi_psi_atoms(hierarchy)
   outp = list_rama_outliers(phi_psi_atoms, r)
   return outp
@@ -55,7 +58,7 @@ def pair_selection(phi_psi_pair, margin=1):
 
 def rama_outliers_selection(hierarchy, r=None, margin=1):
   if r is None:
-    r = ramachandran_eval.RamachandranEval()
+    r = rama_eval()
 
   out_sel = []
   phi_psi_atoms = get_phi_psi_atoms(hierarchy)
@@ -85,7 +88,7 @@ def list_rama_outliers(phi_psi_atoms, r):
 def get_rama_score(phi_psi_pair, r, rama_key, round_coords=False):
   # phi_psi_angles = get_pair_angles(phi_psi_pair, round_coords=round_coords)
   phi_psi_angles = get_pair_angles(phi_psi_pair, round_coords=False)
-  rama_score = r.evaluate(ramalyze.res_types[rama_key], phi_psi_angles)
+  rama_score = r.get_score(rama_key, phi_psi_angles[0], phi_psi_angles[1])
   if round_coords:
     return rama_score*0.98
   return rama_score
@@ -93,7 +96,7 @@ def get_rama_score(phi_psi_pair, r, rama_key, round_coords=False):
 def rama_evaluate(phi_psi_pair, r, rama_key, round_coords=False):
   score = get_rama_score(phi_psi_pair, r, rama_key, round_coords=round_coords)
   # print "  score, rama_key", score, rama_key
-  return rama_score_evaluate(rama_key, score)
+  return r.evaluate_score(rama_key, score)
 
 def get_pair_angles(phi_psi_pair, round_coords=False):
   phi_psi_angles = [0,0]
@@ -165,6 +168,6 @@ def find_nearest_non_outlier_region(phi_psi_pair, r, rama_key):
   phi_psi_angles = get_pair_angles(phi_psi_pair)
   for dx,dy in spiral(360, 360):
     angles = [phi_psi_angles[0]+dx, phi_psi_angles[1]+dy]
-    rama_score = r.evaluate(res_types[rama_key], angles)
-    if rama_score_evaluate(rama_key, rama_score) == ramalyze.RAMALYZE_FAVORED:
+    if (r.evaluate_angles(res_types[rama_key], angles[0], angles[1]) == \
+        ramalyze.RAMALYZE_FAVORED):
       return angles

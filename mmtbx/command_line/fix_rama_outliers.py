@@ -20,6 +20,9 @@ def run(args, log=sys.stdout):
   if len(pdb_file_names) == 0:
     raise Sorry("No PDB file specified")
   work_params.loop_idealization.enabled=True
+  work_params.loop_idealization.number_of_ccd_trials=1
+  work_params.loop_idealization.minimize_whole=False
+  work_params.loop_idealization.variant_search_level=1
   # print work_params.loop_idealization.output_prefix
   # STOP()
   # work_params.model_idealization.file_name_before_regularization="before.pdb"
@@ -29,7 +32,10 @@ def run(args, log=sys.stdout):
   pdb_h = pdb_input.construct_hierarchy()
 
 
-  loop_ideal = loop_idealization(pdb_h, work_params.loop_idealization, log)
+  loop_ideal = loop_idealization(
+      pdb_hierarchy=pdb_h,
+      params=work_params.loop_idealization,
+      log=log)
   loop_ideal.resulting_pdb_h.write_pdb_file(
       file_name="%s_very_final.pdb" % work_params.loop_idealization.output_prefix)
   print >> log, "Outlier percentages: initial, after ccd, after minimization, berkeley after ccd, berkeley after minimization:"

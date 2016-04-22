@@ -2,7 +2,6 @@ from __future__ import division
 
 from libtbx import adopt_init_args
 import mmtbx.utils
-from mmtbx.rotamer import ramachandran_eval
 from mmtbx.building.loop_closure import utils
 from mmtbx.validation.ramalyze import ramalyze, RAMALYZE_OUTLIER, \
     RAMALYZE_ALLOWED, RAMALYZE_FAVORED
@@ -10,6 +9,10 @@ from scitbx.matrix import project_point_on_axis
 import math
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
+
+import boost.python
+ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
+from mmtbx_validation_ramachandran_ext import rama_eval
 
 class ccd_python():
   def __init__(self, fixed_ref_atoms, moving_h, moving_ref_atoms_iseqs,
@@ -32,7 +35,7 @@ class ccd_python():
     self.max_number_of_iterations = max_number_of_iterations
     self.needed_rmsd = needed_rmsd
     self.set_modify_angle_procedure(self._modify_angle)
-    self.r = ramachandran_eval.RamachandranEval()
+    self.r = rama_eval()
     self.states = mmtbx.utils.states(pdb_hierarchy=moving_h)
     self.convergence_diff = 1e-5
     # will be bool, True if converged before max_number_of_iterations reached
