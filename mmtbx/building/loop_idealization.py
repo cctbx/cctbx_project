@@ -110,7 +110,10 @@ class loop_idealization():
             hierarchy=(cutted_chain_h if cutted_chain_h else chain_h))
         if ch_h is not None:
           print "Setting new coordinates"
-          set_xyz_smart(self.resulting_pdb_h, ch_h)
+          set_xyz_smart(
+              # dest_h=self.resulting_pdb_h,
+              dest_h=chain,
+              source_h=ch_h)
           for resnum in exclusions:
             selection += " and not resseq %s" % resnum
         self.ref_exclusion_selection += "(%s) or " % selection
@@ -246,7 +249,7 @@ class loop_idealization():
     # while ccd_radius <= 3:
       print >> self.log, "  Starting optimization with radius, change_all, change_radius:", ccd_radius, change_all, change_radius
       self.log.flush()
-      moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms = get_fixed_moving_parts(
+      moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms, m_selection = get_fixed_moving_parts(
           pdb_hierarchy=pdb_hierarchy,
           out_res_num=out_res_num,
           n_following=ccd_radius,
@@ -291,7 +294,16 @@ class loop_idealization():
         # setting new coordinates
         #
         moved_with_side_chains_h = pdb_hierarchy.deep_copy()
-        set_xyz_smart(moved_with_side_chains_h, h)
+
+        # setting xyz
+        #
+        for i_source, i_dest in enumerate(m_selection):
+          moved_with_side_chains_h.atoms()[i_dest].set_xyz(h.atoms()[i_source].xyz)
+
+        # set_xyz_smart(
+        #     dest_h=moved_with_side_chains_h,
+        #     source_h=h)
+
         #
         # placing side-chains
         #
@@ -467,7 +479,7 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num, n_following, n_previous):
   truncate_to_poly_gly(pdb_hierarchy, start_res_num, end_res_num)
   cache = pdb_hierarchy.atom_selection_cache()
   # print "selectioin:", "resid %d through %d" % (start_res_num, end_res_num)
-  m_selection = cache.selection("(name N or name CA or name C or name O) and resid %s through %s" % (start_res_num, end_res_num))
+  m_selection = cache.iselection("(name N or name CA or name C or name O) and resid %s through %s" % (start_res_num, end_res_num))
   moving_h = pdb_hierarchy.select(m_selection)
   moving_h.reset_atom_i_seqs()
   # print dir(moving_h)
@@ -500,7 +512,7 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num, n_following, n_previous):
 
   fixed_ref_atoms = [fixed_N, fixed_CA, fixed_C]
 
-  return moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms
+  return moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms, m_selection
 
 def get_main_chain_rmsd_range(
     hierarchy, original_h, all_atoms=False, placing_range=None):

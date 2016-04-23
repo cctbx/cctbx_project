@@ -303,6 +303,20 @@ def set_xyz_smart(dest_h, source_h):
   """
   Even more careful setting of coordinates than set_xyz_carefully below
   """
+  # try shortcut
+  # print "SHORTCUT atoms:", dest_h.atoms().size(), source_h.atoms().size()
+  if dest_h.atoms().size() == source_h.atoms().size():
+    # print "TRYING SHORTCUT"
+    good = True
+    for a1, a2 in zip(dest_h.atoms(), source_h.atoms()):
+      if a1.id_str() != a2.id_str():
+        print a1.id_str(), a2.id_str()
+        good = False
+        break
+    if good:
+      dest_h.atoms().set_xyz(source_h.atoms().extract_xyz())
+      # print "SHORTCUT DONE"
+      return
   assert dest_h.atoms().size() >= source_h.atoms().size()
   for atom in source_h.atoms():
     for c in dest_h.chains():
