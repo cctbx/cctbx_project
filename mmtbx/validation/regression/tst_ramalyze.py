@@ -207,9 +207,30 @@ ATOM   1495  O   LYS A 222      -1.856  14.424  10.883  1.00 14.32           O
 def exercise_favored_regions():
   assert ramalyze.get_favored_regions(0) == [(-99, 119), (-63, -43), (53, 43)]
 
+def exercise_constants():
+  #
+  # if this test fails, somebody changed ramalyze constants. The same constants
+  # are declared also in mmtbx/validation/ramachandran/rama8000_tables.h
+  # It is essential to keep both places consistent.
+  #
+  assert ramalyze.res_types == ["general", "glycine", "cis-proline",
+      "trans-proline", "pre-proline", "isoleucine or valine"]
+  assert ramalyze.RAMA_GENERAL == 0
+  assert ramalyze.RAMA_GLYCINE == 1
+  assert ramalyze.RAMA_CISPRO == 2
+  assert ramalyze.RAMA_TRANSPRO == 3
+  assert ramalyze.RAMA_PREPRO == 4
+  assert ramalyze.RAMA_ILE_VAL == 5
+  assert ramalyze.RAMALYZE_OUTLIER == 0
+  assert ramalyze.RAMALYZE_ALLOWED == 1
+  assert ramalyze.RAMALYZE_FAVORED == 2
+  assert ramalyze.RAMALYZE_ANY == 3
+  assert ramalyze.RAMALYZE_NOT_FAVORED == 4
+
 if (__name__ == "__main__") :
   t0=time.time()
   exercise_ramalyze()
   exercise_favored_regions()
+  exercise_constants()
   print "Time: %6.4f"%(time.time()-t0)
   print "OK"
