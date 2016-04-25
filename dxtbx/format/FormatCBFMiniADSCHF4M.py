@@ -17,6 +17,10 @@ from dxtbx.model import ParallaxCorrectedPxMmStrategy
 def get_adsc_timestamp(timestamp):
   import calendar
   import time
+  import re
+
+  # reduce duplicate to single underscore
+  timestamp = re.sub('_+', '_', timestamp)
 
   for format in ['%a_%b_%d_%H:%M:%S_%Y']:
 
