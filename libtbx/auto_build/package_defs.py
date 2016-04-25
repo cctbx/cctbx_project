@@ -14,13 +14,18 @@ import sys
 
 BASE_CCI_PKG_URL = "http://cci.lbl.gov/cctbx_dependencies"
 BASE_XIA_PKG_URL = "http://www.ccp4.ac.uk/xia"
-BASE_H5PY_PKG_URL = "http://pypi.python.org/packages/source/h/h5py"
 BASE_HDF5_PKG_URL = "http://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.8.15-patch1/src"
-BASE_CYTHON_PKG_URL = "http://pypi.python.org/packages/source/C/Cython"
+BASE_PIPY_PKG_URL = "https://pypi.python.org/packages/source"
+
+def pypi_pkg_url(package):
+  '''Translate a package filename into a PyPi URL prefix'''
+  return "%s/%s/%s" % (BASE_PIPY_PKG_URL,
+         package[0],
+         package[:package.rindex('-')] if '-' in package else package)
 
 # OpenSSL - needed for Mac OS X 10.11
 BASE_OPENSSL_PKG_URL = "http://www.openssl.org/source/old/1.0.2"
-OPENSSL_PKG = "openssl-1.0.2d.tar.gz"
+OPENSSL_PKG = "openssl-1.0.2f.tar.gz"
 
 # from CCI
 PYTHON_PKG = "Python-2.7.8_cci.tar.gz"
@@ -39,6 +44,11 @@ SETUPTOOLS_PKG = "setuptools-12.0.5.tar.gz" # setuptools
 PIP_PKG = "pip-6.0.7.tar.gz"             # PIP
 VIRTUALENV_PKG = "virtualenv-12.0.6.tar.gz" # virtualenv
 LIBSVM_PKG = "libsvm-3.17_cci.tar.gz"
+
+# from PyPi
+JUNIT_XML_PKG = "junit-xml-1.6.tar.gz"
+MOCK_PKG = "mock-1.0.1.tar.gz"
+PYTEST_PKG = "pytest-2.9.1.tar.gz"
 
 ## from xia2 page
 #HDF5_PKG = "hdf5-1.8.8.tar.bz2"      # dxtbx

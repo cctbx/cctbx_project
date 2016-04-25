@@ -111,7 +111,7 @@ class installer (object) :
     self.pkg_dirs = options.pkg_dirs
     self.base_dir = op.join(self.build_dir, "base")
     self.prefix = "--prefix=\"%s\""%self.base_dir
-    if options.skip_if_exists and os.path.exists(self.base_dir):
+    if options.skip_if_exists and os.path.exists(self.base_dir) and os.listdir(self.base_dir):
       print >> log, "Base directory already exists and --skip-if-exists set; exiting."
       return
     print >> log, "Setting up directories..."
@@ -240,8 +240,9 @@ class installer (object) :
 
     # Always build hdf5 and numpy.
     packages += ['cython', 'hdf5', 'numpy', 'setuptools', 'pip', 'pythonextra', 'docutils']
-    packages += ["libsvm"]
-    packages += ['lz4_plugin']
+    packages += ['libsvm', 'lz4_plugin']
+    # Development and testing packages.
+    packages += ['pytest', 'junitxml']
     # GUI packages.
     if options.build_gui or options.build_all or options.download_only:
       packages += [
@@ -551,6 +552,8 @@ Installation of Python packages may fail.
       'libsvm',
       'pip',
       'pythonextra',
+      'pytest',
+      'junitxml',
       'biopython',
       'reportlab',
       'docutils',
@@ -772,6 +775,22 @@ _replace_sysconfig_paths(build_time_vars)
       pkg_name_label="docutils",
       confirm_import_module="docutils")
 
+  def build_junitxml(self):
+    self.build_python_module_simple(
+      pkg_url=pypi_pkg_url(JUNIT_XML_PKG),
+      pkg_name=JUNIT_XML_PKG,
+      pkg_name_label="junit_xml")
+
+  def build_pytest(self):
+    self.build_python_module_simple(
+      pkg_url=pypi_pkg_url(PYTEST_PKG),
+      pkg_name=PYTEST_PKG,
+      pkg_name_label="pytest")
+    self.build_python_module_simple(
+      pkg_url=pypi_pkg_url(MOCK_PKG),
+      pkg_name=MOCK_PKG,
+      pkg_name_label="mock")
+
   def build_biopython(self):
     self.build_python_module_simple(
       pkg_url=BASE_CCI_PKG_URL,
@@ -890,7 +909,7 @@ _replace_sysconfig_paths(build_time_vars)
 
   def build_cython(self):
     self.build_python_module_simple(
-      pkg_url=BASE_CYTHON_PKG_URL,
+      pkg_url=pypi_pkg_url('Cython'),
       pkg_name=CYTHON_PKG,
       pkg_name_label="cython",
       confirm_import_module="Cython")
@@ -903,7 +922,7 @@ _replace_sysconfig_paths(build_time_vars)
   def build_hdf5 (self):
     pkg_log = self.start_building_package("HDF5")
     hdf5pkg = self.fetch_package(pkg_name=HDF5_PKG, pkg_url=BASE_HDF5_PKG_URL)
-    h5pypkg = self.fetch_package(pkg_name=H5PY_PKG, pkg_url=BASE_H5PY_PKG_URL)
+    h5pypkg = self.fetch_package(pkg_name=H5PY_PKG, pkg_url=pypi_pkg_url('h5py'))
     if ( self.check_download_only(HDF5_PKG) and
          self.check_download_only(H5PY_PKG)
          ):
