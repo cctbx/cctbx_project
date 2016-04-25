@@ -137,7 +137,6 @@ class run_command_list (object) :
                 out=sys.stdout,
                 log=None,
                 verbosity=DEFAULT_VERBOSITY,
-                output_junit_xml=False,
                 max_time=180) :
     if (log is None) : log = null_out()
     self.out = multi_out()
@@ -206,8 +205,8 @@ class run_command_list (object) :
     self.failure = len(failures)
     self.warning = len(warnings)
 
-    # Output JUnit XML
-    if output_junit_xml:
+    # Output JUnit XML if possible
+    try:
       from junit_xml import TestSuite, TestCase
       import re
       for result in self.results:
@@ -237,6 +236,8 @@ class run_command_list (object) :
       ts = TestSuite("libtbx.run_tests_parallel", test_cases=test_cases)
       with open('output.xml', 'wb') as f:
         print >> f, TestSuite.to_xml_string([ts], prettyprint=True)
+    except ImportError, e:
+      pass
 
     # Run time distribution.
     if (libtbx.env.has_module("scitbx")) :

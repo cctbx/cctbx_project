@@ -29,11 +29,6 @@ stderr = False
   .type = bool
 run_in_tmp_dir = False
   .type = bool
-output_junit_xml = False
-  .type = bool
-  .help = "Create junit-style xml output"
-          "Requires junit_xml module:"
-          "  https://pypi.python.org/pypi/junit-xml"
 max_time = 180
   .type = float(value_min=0)
   .help = "Print warning and timing for all tests that take longer"
@@ -67,14 +62,6 @@ def run (args) :
     cwd_files = os.listdir(cwd)
     if (len(cwd_files) > 0) :
       raise Sorry("Please run this program in an empty directory.")
-
-  if params.output_junit_xml:
-    try:
-      import junit_xml
-    except ImportError, e:
-      raise Sorry(
-        "Cannot import junit_xml. Try running with output_junit_xml=False")
-
   if (len(params.directory) == 0) and (len(params.module) == 0) :
     raise Sorry("Please specify modules and/or directories to test.")
   all_tests = []
@@ -102,7 +89,6 @@ def run (args) :
     nprocs=params.nproc,
     log=log,
     verbosity=params.verbosity,
-    output_junit_xml=params.output_junit_xml,
     max_time=params.max_time)
   log.close()
   print """\nSee run_tests_parallel_zlog for full output.\n"""
