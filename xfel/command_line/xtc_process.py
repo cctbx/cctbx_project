@@ -559,7 +559,8 @@ class InMemScript(DialsProcessScript):
     from dials.util.masking import MaskGenerator
     generator = MaskGenerator(self.params.border_mask)
     mask = generator.generate(imgset)
-    mask = tuple([a&b for a, b in zip(mask,self.psana_mask)])
+    if self.params.format.file_format == "cbf":
+      mask = tuple([a&b for a, b in zip(mask,self.psana_mask)])
 
     self.params.spotfinder.lookup.mask = mask
     self.params.integration.lookup.mask = mask

@@ -55,7 +55,7 @@ class mod_image_dict(common_mode.common_mode_correction):
     if (evt.get("skip_event")):
       return
 
-    if self.cspad_image is None:
+    if self.cspad_img is None:
       return
 
     # This module only applies to detectors for which a distance is
