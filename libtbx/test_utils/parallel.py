@@ -209,14 +209,21 @@ class run_command_list (object) :
     try:
       from junit_xml import TestSuite, TestCase
       import re
+      def decode_string(string):
+        try:
+          return string.encode('ascii', 'xmlcharrefreplace')
+        except Exception: # intentional
+          return unicode(string, errors='ignore').encode('ascii', 'xmlcharrefreplace')
       for result in self.results:
         test_name = reconstruct_test_name(result.command)
-        output = '\n'.join(result.stdout_lines + result.stderr_lines)
+        plain_stdout = map(decode_string, result.stdout_lines)
+        plain_stderr = map(decode_string, result.stderr_lines)
+        output = '\n'.join(plain_stdout + plain_stderr)
         tc = TestCase(classname=test_name[0],
                       name=test_name[1],
                       elapsed_sec=result.wall_time,
-                      stdout='\n'.join(result.stdout_lines),
-                      stderr='\n'.join(result.stderr_lines))
+                      stdout='\n'.join(plain_stdout),
+                      stderr='\n'.join(plain_stderr))
         if result.return_code == 0:
           # Identify skipped tests
           if re.search('skip', output, re.IGNORECASE):
@@ -226,11 +233,11 @@ class run_command_list (object) :
         else:
           # Test failed. Extract error message and stack trace if possible
           error_message = 'exit code %d' % result.return_code
-          error_output = '\n'.join(result.stderr_lines)
-          if len(result.stderr_lines):
-            error_message = result.stderr_lines[-1]
-          if len(result.stderr_lines) > 20:
-            error_output = '\n'.join(result.stderr_lines[-20:])
+          error_output = '\n'.join(plain_stderr)
+          if plain_stderr:
+            error_message = plain_stderr[-1]
+            if len(plain_stderr) > 20:
+              error_output = '\n'.join(plain_stderr[-20:])
           tc.add_failure_info(message=error_message, output=error_output)
         test_cases.append(tc)
       ts = TestSuite("libtbx.run_tests_parallel", test_cases=test_cases)
