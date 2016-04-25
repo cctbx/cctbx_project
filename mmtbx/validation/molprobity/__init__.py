@@ -259,7 +259,7 @@ class molprobity (slots_getstate_setstate) :
     if (map_params is not None):
       use_maps = ( (map_params.input.maps.map_file_name) or
                    ( (map_params.input.maps.map_coefficients_file_name) and
-                     (map_params.input.maps.maps_coefficients_label) ) )
+                     (map_params.input.maps.map_coefficients_label) ) )
     if (use_maps):
       if (flags.real_space):
         self.real_space = experimental.real_space(
