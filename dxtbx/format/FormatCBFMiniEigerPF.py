@@ -175,9 +175,11 @@ class FormatCBFMiniEigerPF(FormatCBFMini):
     osc_range = float(
         self._cif_header_dictionary['Angle_increment'].split()[0])
 
-    timestamp = get_pilatus_timestamp(
-        self._cif_header_dictionary['timestamp'])
-
+    if "timestamp" in self._cif_header_dictionary:
+      timestamp = get_pilatus_timestamp(
+      self._cif_header_dictionary['timestamp'])
+    else:
+      timestamp = 0.0
     return self._scan_factory.single(
         self._image_file, format, exposure_time,
         osc_start, osc_range, timestamp)
