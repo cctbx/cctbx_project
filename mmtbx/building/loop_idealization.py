@@ -5,12 +5,13 @@ from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx.monomer_library import idealized_aa
 from libtbx.utils import Sorry, null_out
 from mmtbx.validation import ramalyze
-from mmtbx.building.loop_closure.ccd import ccd_python
+from mmtbx.building.loop_closure.ccd import ccd_python, ccd_cpp
 from mmtbx.building.loop_closure import utils, starting_conformations
 from mmtbx.pdbtools import truncate_to_poly_gly
 from mmtbx.secondary_structure.build import side_chain_placement, \
     set_xyz_smart
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
+from libtbx.test_utils import approx_equal
 
 import boost.python
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
@@ -275,13 +276,29 @@ class loop_idealization():
         return original_pdb_h
 
       for i, h in enumerate(moving_h_set):
-        ccd_obj = ccd_python(fixed_ref_atoms, h, moving_ref_atoms_iseqs)
+        fixed_ref_atoms_coors = [x.xyz for x in fixed_ref_atoms]
+        # print "params to constructor", fixed_ref_atoms, h, moving_ref_atoms_iseqs
+        ccd_obj = ccd_cpp(fixed_ref_atoms_coors, h, moving_ref_atoms_iseqs)
         ccd_obj.run()
         resulting_rmsd = ccd_obj.resulting_rmsd
-        states = ccd_obj.states
+
+        # Testing for the same results from different implementations
+        # h_temp = h.deep_copy()
+        # h_temp.reset_atom_i_seqs()
+        # ccd_obj_py = ccd_python(fixed_ref_atoms, h_temp, moving_ref_atoms_iseqs)
+        # ccd_obj_py.run()
+        # print " rmsd comparison:", ccd_obj.resulting_rmsd, ccd_obj_py.resulting_rmsd
+        # assert approx_equal(ccd_obj.n_iter, ccd_obj_py.n_iter)
+        # assert approx_equal(ccd_obj.resulting_rmsd, ccd_obj_py.resulting_rmsd)
+        # print "atom coors", list(h.atoms().extract_xyz() - h_temp.atoms().extract_xyz())
+        # assert approx_equal(h.atoms().extract_xyz(), h_temp.atoms().extract_xyz())
+        # End of testing for the same results ================================
+
+
+        # states = ccd_obj.states
         n_iter = ccd_obj.n_iter
-        if self.params.save_states:
-          states.write(file_name="%s%s_%d_%s_%d_%i_states.pdb" % (chain_id, out_res_num, ccd_radius, change_all, change_radius, i))
+        # if self.params.save_states:
+        #   states.write(file_name="%s%s_%d_%s_%d_%i_states.pdb" % (chain_id, out_res_num, ccd_radius, change_all, change_radius, i))
 
         # resulting_rmsd, states, n_iter = ccd(
         #     fixed_ref_atoms, h, moving_ref_atoms_iseqs, moving_h)

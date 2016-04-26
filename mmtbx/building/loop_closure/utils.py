@@ -124,6 +124,13 @@ def get_rmsd(fixed_points, moving_points):
     rmsd += fp.distance(mp)**2
   return math.sqrt(rmsd)
 
+def get_rmsd_xyz_fixed(fixed_points, moving_points):
+  rmsd = 0
+  for fp, mp in zip(fixed_points, moving_points):
+    rmsd += mp.distance(fp)**2
+  return math.sqrt(rmsd)
+
+
 def rotate_atoms_around_bond(
     moving_h, atom_axis_point_1, atom_axis_point_2, angle, degrees=True):
   # changes moving_h

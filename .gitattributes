@@ -1684,6 +1684,7 @@ libtbx/xmlrpc_utils.py -text
 mmtbx/alignment.h svneol=native#text/plain
 mmtbx/alignment_ext.cpp svneol=native#text/plain
 mmtbx/arrays.py -text
+mmtbx/building/SConscript -text
 mmtbx/building/__init__.py -text
 mmtbx/building/alternate_conformations/__init__.py -text
 mmtbx/building/alternate_conformations/altloc_labeling.py -text
@@ -1713,7 +1714,9 @@ mmtbx/building/alternate_conformations/tst_sliding_window.py svneol=native#text/
 mmtbx/building/extend_sidechains.py -text
 mmtbx/building/loop_closure/__init__.py -text
 mmtbx/building/loop_closure/berkeley_ramalyze.py -text
+mmtbx/building/loop_closure/ccd.h -text
 mmtbx/building/loop_closure/ccd.py -text
+mmtbx/building/loop_closure/ccd_bpl.cpp -text
 mmtbx/building/loop_closure/custom_gm.py -text
 mmtbx/building/loop_closure/starting_conformations.py -text
 mmtbx/building/loop_closure/utils.py -text
