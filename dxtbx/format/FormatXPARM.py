@@ -74,7 +74,7 @@ class FormatXPARM(Format):
     return self._detector_factory.complex(
         self._detector_factory.sensor('unknown'), self._detector_origin,
         self._fast_axis, self._slow_axis, self._pixel_size,
-        self._image_size, (0, 0))
+        self._image_size, (0, 1.e9))
 
   def _beam(self):
     '''Return a working beam instance.'''
