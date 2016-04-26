@@ -289,8 +289,16 @@ class run_command_list (object) :
   def check_alert(self, result):
     alert = 0
     if result.error_lines:
+      print >> self.out, "ERROR BEGIN "*10
+      print >> self.out, result.error_lines
+      print >> self.out, '-'*80
+      print >> self.out, result.stderr_lines
+      print >> self.out, "ERROR END   "*10
       alert = 1
     if result.return_code != 0:
+      print >> self.out, "RETURN CODE BEGIN "*10
+      print >> self.out, result.return_code
+      print >> self.out, "RETURN CODE END   "*10
       alert = 2
     return alert
 
