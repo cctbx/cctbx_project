@@ -170,6 +170,12 @@ master_phil = iotbx.phil.parse("""
               carried out.
       .short_caption = Trim map to density
 
+    density_select_threshold = 0.05
+      .type = float
+      .help = Choose region where density is this fraction of maximum or greater
+      .short_caption = threshold for density_select
+ 
+
     mask_threshold = None
       .type = float
       .help = threshold in identification of overall mask. If None, guess \
@@ -874,11 +880,11 @@ def get_params(args,out=sys.stdout):
   if  params.segmentation.density_select:
     print >>out,"\nTrimming map to density..."
     args=["density_select=True","output_format=ccp4"]
-    if params.segmentation.mask_threshold is not None:
+    if params.segmentation.density_select_threshold is not None:
       print >>out,"Threshold for density selection will be: %6.2f \n"%(
-       params.segmentation.mask_threshold)
-      args.append("mask_threshold=%s" %(
-         params.segmentation.mask_threshold))
+       params.segmentation.density_select_threshold)
+      args.append("density_select_threshold=%s" %(
+         params.segmentation.density_select_threshold))
     if params.input_files.ncs_file:
       args.append("ncs_file=%s" %(params.input_files.ncs_file))
     if params.input_files.pdb_in:
@@ -889,15 +895,18 @@ def get_params(args,out=sys.stdout):
     args.append("output_file_name_prefix=%s" %(file_name_prefix))
     from mmtbx.command_line.map_box import run as run_map_box
     box=run_map_box(args,crystal_symmetry=crystal_symmetry,log=out)
-    origin_shift=box.total_shift_cart
+    origin_shift=box.total_shift_cart  
+    # Note: moving cell with (0,0,0) in middle to (0,0,0) at corner means 
+    #   total_shift_cart and origin_shift both positive
     map_data=box.map_box.as_double()
     crystal_symmetry=box.box_crystal_symmetry
     print >>out,"New unit cell: %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f " %(
       crystal_symmetry.unit_cell().parameters())
     tracking_data.set_crystal_symmetry(crystal_symmetry=crystal_symmetry)
     print >>out, "Moving origin to (0,0,0)"
-    print >>out,"Adding (%8.2f,%8.2f,%8.2f) to all coordinates\n"%(-origin_shift[0],-origin_shift[1],-origin_shift[2])
-    # XXX NOTE: size and cell params are now different!
+    print >>out,"Adding (%8.2f,%8.2f,%8.2f) to all coordinates\n"%(
+        origin_shift)
+    # NOTE: size and cell params are now different!
 
   else:  # shift if necessary...
     shift_needed = not \
@@ -908,16 +917,19 @@ def get_params(args,out=sys.stdout):
     N_ = map_data.all()
     O_ =map_data.origin()
     sx,sy,sz= O_[0]/N_[0], O_[1]/N_[1], O_[2]/N_[2]
-    sx_cart,sy_cart,sz_cart=crystal_symmetry.unit_cell().orthogonalize([sx,sy,sz])
-
-    print >>out,"Origin for map is at (%8.2f,%8.2f,%8.2f)" % (-sx_cart,-sy_cart,-sz_cart)
+    # Note: If (0,0,0) is in the middle of the box, origin at sx,sy,sz 
+    #  is negative, shift of coordinates will be positive 
+    sx_cart,sy_cart,sz_cart=crystal_symmetry.unit_cell().orthogonalize(
+       [sx,sy,sz])
+    print >>out,"Origin for input map is at (%8.2f,%8.2f,%8.2f)" % (
+      sx_cart,sy_cart,sz_cart)
     print >>out,"Cell dimensions of this map are: (%8.2f,%8.2f,%8.2f)" % (a,b,c)
     if shift_needed:
       if(not crystal_symmetry.space_group().type().number() in [0,1]):
           raise RuntimeError("Not implemented")
-      origin_shift=[-sx_cart,-sy_cart,-sz_cart]
-      print >>out, "Moving origin to (0,0,0)"
-      print >>out,"Adding (%8.2f,%8.2f,%8.2f) to all coordinates\n"%(sx_cart,sy_cart,sz_cart)
+      origin_shift=[-sx_cart,-sy_cart,-sz_cart] # positive if (0,0,0) in middle
+      print >>out,"Adding (%8.2f,%8.2f,%8.2f) to all coordinates"%(
+        tuple(origin_shift))+" to put origin at (0,0,0)\n"
 
       map_data=map_data.shift_origin()
     else:
@@ -944,6 +956,7 @@ def get_params(args,out=sys.stdout):
 
 def get_ncs(params,tracking_data=None,out=sys.stdout):
   file_name=params.input_files.ncs_file
+  print >>out,"Reading ncs from %s" %(file_name)
   is_helical_symmetry=None
   if not file_name: # No ncs supplied...use just 1 ncs copy..
     from mmtbx.ncs.ncs import ncs
@@ -3679,6 +3692,8 @@ def run(args,
 
     if tracking_data.origin_shift:
       print >>out,"\nShifting map, model and NCS based on origin shift"
+      print >>out,"Coordinate shift is (%7.2f,%7.2f,%7.2f)" %(
+         tuple(tracking_data.origin_shift))
       ncs_obj,pdb_hierarchy,target_hierarchy,tracking_data=apply_origin_shift(
         shifted_map_file=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.shifted_map_file),
         shifted_ncs_file=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.shifted_ncs_file),
