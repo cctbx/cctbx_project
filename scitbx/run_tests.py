@@ -4,7 +4,7 @@ import libtbx.load_env
 
 tst_list = (
   "$D/tst_smoothing.py",
-  "$D/tst_basic.csh",
+  "$D/tst_basic.py",
   "$B/array_family/tst_af_1",
   "$B/array_family/tst_af_2",
   "$B/array_family/tst_af_3",

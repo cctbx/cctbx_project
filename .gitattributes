@@ -3042,6 +3042,7 @@ scitbx/suffixtree/tree.hxx -text
 scitbx/suffixtree/word.hpp -text
 scitbx/suffixtree/word.hxx -text
 scitbx/tst_basic.csh -text
+scitbx/tst_basic.py -text
 scitbx/tst_cubicle_neighbors.py svneol=native#text/x-python
 scitbx/tst_r3_utils.py svneol=native#text/x-python
 scitbx/tst_regular_grid_on_unit_sphere.py -text
