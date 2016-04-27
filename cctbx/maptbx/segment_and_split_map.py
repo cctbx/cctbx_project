@@ -174,7 +174,7 @@ master_phil = iotbx.phil.parse("""
       .type = float
       .help = Choose region where density is this fraction of maximum or greater
       .short_caption = threshold for density_select
- 
+
 
     mask_threshold = None
       .type = float
@@ -895,8 +895,8 @@ def get_params(args,out=sys.stdout):
     args.append("output_file_name_prefix=%s" %(file_name_prefix))
     from mmtbx.command_line.map_box import run as run_map_box
     box=run_map_box(args,crystal_symmetry=crystal_symmetry,log=out)
-    origin_shift=box.total_shift_cart  
-    # Note: moving cell with (0,0,0) in middle to (0,0,0) at corner means 
+    origin_shift=box.total_shift_cart
+    # Note: moving cell with (0,0,0) in middle to (0,0,0) at corner means
     #   total_shift_cart and origin_shift both positive
     map_data=box.map_box.as_double()
     crystal_symmetry=box.box_crystal_symmetry
@@ -917,8 +917,8 @@ def get_params(args,out=sys.stdout):
     N_ = map_data.all()
     O_ =map_data.origin()
     sx,sy,sz= O_[0]/N_[0], O_[1]/N_[1], O_[2]/N_[2]
-    # Note: If (0,0,0) is in the middle of the box, origin at sx,sy,sz 
-    #  is negative, shift of coordinates will be positive 
+    # Note: If (0,0,0) is in the middle of the box, origin at sx,sy,sz
+    #  is negative, shift of coordinates will be positive
     sx_cart,sy_cart,sz_cart=crystal_symmetry.unit_cell().orthogonalize(
        [sx,sy,sz])
     print >>out,"Origin for input map is at (%8.2f,%8.2f,%8.2f)" % (
