@@ -606,7 +606,7 @@ class _Tiles(object):
         else:
           panel = detector[0]
 
-        if panel.get_distance() > 0:
+        if abs(panel.get_distance()) > 0:
           return panel.get_resolution_at_pixel(beam, (x, y))
         else:
           return None
@@ -614,7 +614,7 @@ class _Tiles(object):
     def get_detector_distance (self) :
         detector = self.raw_image.get_detector()
         if len(detector) == 1:
-          dist = detector[0].get_distance()
+          dist = abs(detector[0].get_distance())
         else:
           # XXX Special-case until multitile detectors fully
           # supported.
