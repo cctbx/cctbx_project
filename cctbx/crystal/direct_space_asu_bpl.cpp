@@ -158,7 +158,7 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      class_<w_t>("direct_space_asu_asu_mapping_index_pair", no_init)
+      class_<w_t>("direct_space_asu_asu_mapping_index_pair")
         .def_readonly("i_seq", &w_t::i_seq)
         .def_readonly("j_seq", &w_t::j_seq)
         .def_readonly("j_sym", &w_t::j_sym)

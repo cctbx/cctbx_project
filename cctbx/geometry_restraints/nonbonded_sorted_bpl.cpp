@@ -15,9 +15,22 @@ namespace {
     typedef nonbonded_sorted_asu_proxies_base w_t;
 
     static boost::python::tuple
-      getinitargs(w_t const& self)
+      getstate(w_t const& self)
     {
-        return boost::python::make_tuple(self.asu_mappings());
+      return boost::python::make_tuple(
+        self.asu_mappings(),
+        self.simple,
+        self.asu
+        );
+    }
+
+    static void
+      setstate(w_t& self, boost::python::tuple state)
+    {
+      self.asu_mappings_owner_ = boost::python::extract< boost::shared_ptr<direct_space_asu::asu_mappings<> > >(state[0]);
+      self.simple = boost::python::extract< af::shared<nonbonded_simple_proxy> >(state[1]);
+      self.asu = boost::python::extract< af::shared<nonbonded_asu_proxy> >(state[2]);
+      self.asu_mappings_ = self.asu_mappings_owner_.get();
     }
 
     static void

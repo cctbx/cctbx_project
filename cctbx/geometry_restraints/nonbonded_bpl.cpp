@@ -1,4 +1,5 @@
 #include <cctbx/boost_python/flex_fwd.h>
+#include <cctbx/geometry_restraints/shared_wrapper_pickle.hpp>
 
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
@@ -8,6 +9,7 @@
 #include <boost/python/return_by_value.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <cctbx/geometry_restraints/nonbonded.h>
+
 
 namespace cctbx { namespace geometry_restraints {
 namespace {
@@ -86,9 +88,10 @@ namespace {
       ;
       {
         typedef return_internal_reference<> rir;
-        scitbx::af::boost_python::shared_wrapper<
-          nonbonded_simple_proxy, rir>::wrap(
-            "shared_nonbonded_simple_proxy");
+        typedef scitbx::af::boost_python::shared_wrapper<nonbonded_simple_proxy, rir> shared_w_t;
+        shared_w_t::wrap("shared_nonbonded_simple_proxy")
+        .def_pickle(shared_wrapper_pickle_suite< shared_w_t::w_t >())
+        ;
       }
     }
   };
@@ -118,8 +121,11 @@ namespace {
       ;
       {
         typedef return_internal_reference<> rir;
-        scitbx::af::boost_python::shared_wrapper<nonbonded_asu_proxy, rir>::wrap(
-          "shared_nonbonded_asu_proxy");
+        typedef scitbx::af::boost_python::shared_wrapper<nonbonded_asu_proxy, rir> shared_w_t;
+        shared_w_t::wrap(
+          "shared_nonbonded_asu_proxy")
+        .def_pickle(shared_wrapper_pickle_suite< shared_w_t::w_t >())
+        ;
       }
     }
   };

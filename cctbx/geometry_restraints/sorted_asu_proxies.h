@@ -118,7 +118,8 @@ namespace cctbx { namespace geometry_restraints {
       std::size_t
       n_total() const { return simple.size() + asu.size(); }
 
-    protected:
+//    protected:
+    public:
       boost::shared_ptr<direct_space_asu::asu_mappings<> > asu_mappings_owner_;
       const direct_space_asu::asu_mappings<>* asu_mappings_;
 

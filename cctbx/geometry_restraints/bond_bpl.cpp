@@ -228,7 +228,8 @@ namespace {
         ;
       {
         typedef return_internal_reference<> rir;
-        scitbx::af::boost_python::shared_wrapper<bond_simple_proxy, rir>::wrap(
+        typedef scitbx::af::boost_python::shared_wrapper<bond_simple_proxy, rir> shared_w_t;
+        shared_w_t::wrap(
           "shared_bond_simple_proxy")
           .def("proxy_select",
             (af::shared<w_t>(*)(
@@ -236,6 +237,7 @@ namespace {
               unsigned char))
                 shared_proxy_select_origin, (
             arg("origin_id")))
+          .def_pickle(shared_wrapper_pickle_suite< shared_w_t::w_t >())
         ;
       }
     }
@@ -334,7 +336,8 @@ namespace {
         ;
       {
         typedef return_internal_reference<> rir;
-        scitbx::af::boost_python::shared_wrapper<bond_asu_proxy, rir>::wrap(
+        typedef scitbx::af::boost_python::shared_wrapper<bond_asu_proxy, rir> shared_w_t;
+        shared_w_t::wrap(
           "shared_bond_asu_proxy")
           .def("proxy_select",
             (af::shared<w_t>(*)(
@@ -342,6 +345,7 @@ namespace {
               unsigned char))
                 shared_proxy_select_origin, (
             arg("origin_id")))
+          .def_pickle(shared_wrapper_pickle_suite< shared_w_t::w_t >())
         ;
       }
     }

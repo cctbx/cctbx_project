@@ -7,6 +7,7 @@
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <cctbx/geometry_restraints/bond_sorted.h>
+#include <cctbx/geometry_restraints/sorted_asu_proxies.h>
 
 namespace cctbx { namespace geometry_restraints {
 namespace {
@@ -16,9 +17,21 @@ namespace {
     typedef bond_sorted_asu_proxies_base w_t;
 
     static boost::python::tuple
-      getinitargs(w_t const& self)
+      getstate(w_t const& self)
     {
-        return boost::python::make_tuple(self.asu_mappings());
+      return boost::python::make_tuple(
+        self.asu_mappings(),
+        self.simple,
+        self.asu
+        );
+    }
+
+    static void
+      setstate(w_t& self, boost::python::tuple state)
+    {
+      self.asu_mappings_owner_ = boost::python::extract< boost::shared_ptr<direct_space_asu::asu_mappings<> > >(state[0]);
+      self.simple = boost::python::extract< af::shared<bond_simple_proxy> >(state[1]);
+      self.asu = boost::python::extract< af::shared<bond_asu_proxy> >(state[2]);
     }
 
     static void

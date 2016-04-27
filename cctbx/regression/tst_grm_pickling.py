@@ -68,7 +68,7 @@ def test_simple_protein(mon_lib_srv, ener_lib, prefix="simple_protein"):
   print "From disc"
   from_file_v = from_file_out.getvalue()
   print from_file_v
-  # assert not show_diff(init_v, from_file_v)
+  assert not show_diff(init_v, from_file_v)
 
 
 def exercise_all(args):
