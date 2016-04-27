@@ -30,7 +30,7 @@ class Script(object):
     detector = experiments[0].detector
 
     metro = map_detector_to_basis_dict(detector)
-    write_cspad_cbf(None, metro, 'cbf', None, params.output_def_file, None, abs(detector.hierarchy().get_distance()), header_only=True)
+    write_cspad_cbf(None, metro, 'cbf', None, params.output_def_file, None, detector.hierarchy().get_distance(), header_only=True)
 
     print "Done"
 

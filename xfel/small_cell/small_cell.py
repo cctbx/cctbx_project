@@ -598,7 +598,7 @@ def small_cell_index(path, horiz_phil):
                            beam_center_y=beam_x,
                            ccd_image_saturation=detector.get_trusted_range()[1],
                            data=img.get_raw_data(),
-                           distance=detector.get_distance(),
+                           distance=detector.get_directed_distance(),
                            pixel_size=detector.get_pixel_size()[0],
                            saturated_value=detector.get_trusted_range()[1],
                            timestamp=None,

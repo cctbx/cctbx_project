@@ -56,7 +56,7 @@ def run(argv=None):
     beam = img.get_beam()
 
     # write the result.  Have to call abs on the root distance because of a bug with the hierarchy matrix.
-    write_cspad_cbf(tiles, metro, 'cbf', None, destpath, beam.get_wavelength(), abs(hierarchy.get_distance()))
+    write_cspad_cbf(tiles, metro, 'cbf', None, destpath, beam.get_wavelength(), hierarchy.get_distance())
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])

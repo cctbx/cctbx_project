@@ -157,7 +157,7 @@ def run(argv=None):
     else:
       detector = detector[0]
       if command_line.options.distance is None:
-        distance   = detector.get_distance()
+        distance   = detector.get_directed_distance()
       else:
         distance = command_line.options.distance
 

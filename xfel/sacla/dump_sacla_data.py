@@ -14,7 +14,7 @@ dest_dir = sys.argv[2]
 
 data = dxtbx.load(data_path)
 detector = data.get_detector()
-distance = detector[0].get_distance()
+distance = detector[0].get_directed_distance()
 beam = data.get_beam()
 wavelength = beam.get_wavelength()
 pixel_size = detector[0].get_pixel_size()[0]
