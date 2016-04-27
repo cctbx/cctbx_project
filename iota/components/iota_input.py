@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 04/13/2016
+Last Changed: 04/14/2016
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -28,6 +28,11 @@ input = None
   .help = Path to folder with raw data in pickle format, list of files or single file
   .help = Can be a tree with folders
   .optional = False
+output = None
+  .type = path
+  .multiple = False
+  .help = Base output directory, current directory in command-line, can be set in GUI
+  .optional = True
 image_conversion
   .help = Parameters for raw image conversion to pickle format
 {
@@ -88,7 +93,7 @@ image_triage
 cctbx
   .help = Options for CCTBX-based image processing
 {
-  target = cctbx.phil
+  target = None
     .type = str
     .multiple = False
     .help = Target (.phil) file with integration parameters
@@ -146,10 +151,10 @@ cctbx
       target_unit_cell = None
         .type = unit_cell
         .help = In format of "a, b, c, alpha, beta, gamma", e.g. 79.4, 79.4, 38.1, 90.0, 90.0, 90.0
-      target_uc_tolerance = 0.05
+      target_uc_tolerance = None
         .type = float
         .help = Maximum allowed unit cell deviation from target
-      min_reflections = 0
+      min_reflections = None
         .type = int
         .help = Minimum integrated reflections per image
       min_resolution = None
@@ -162,7 +167,7 @@ dials
   .help = Options for DIALS-based image processing
   .help = This option is not yet ready for general use!
 {
-  target = dials.phil
+  target = None
     .type = str
     .multiple = False
     .help = Target (.phil) file with integration parameters for DIALS

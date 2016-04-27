@@ -6,10 +6,10 @@ Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
 Last Changed: 04/13/2016
 Description : IOTA command-line module for running modules in order.
-              Version 1.0.001P
+              Version 1.0.001G
 '''
 
-iota_version = '1.0.001P'
+iota_version = '1.0.001G'
 help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 

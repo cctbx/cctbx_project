@@ -4,11 +4,11 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 04/13/2016
-Description : IOTA command-line module. Version 1.0.001P
+Last Changed: 04/25/2016
+Description : IOTA command-line module. Version 1.0.001G
 '''
 
-iota_version = '1.0.001P'
+iota_version = '1.0.001G'
 help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 
@@ -48,41 +48,49 @@ def gs_importer_wrapper(input_entry):
   """ Multiprocessor wrapper for image conversion  """
   prog_count = input_entry[0]
   n_img = input_entry[1]
+  img_object = input_entry[2]
+  imp_image = img_object.import_int_file(init)
+
   gs_prog = cmd.ProgressBar(title='READING IMAGE OBJECTS')
   if prog_count < n_img:
     prog_step = 100 / n_img
     gs_prog.update(prog_count * prog_step, prog_count)
   else:
     gs_prog.finished()
-  img_object = input_entry[2]
-  return img_object.import_int_file(init)
+
+  return imp_image
 
 def img_importer_wrapper(input_entry):
   """ Multiprocessor wrapper for image conversion  """
   prog_count = input_entry[0]
   n_img = input_entry[1]
-  img_object = input_entry[2]
+  img_object = img.SingleImage(input_entry, init)
+  imp_image = img_object.import_image()
+
   gs_prog = cmd.ProgressBar(title='IMPORTING IMAGES')
   if prog_count < n_img:
     prog_step = 100 / n_img
     gs_prog.update(prog_count * prog_step, prog_count)
   else:
     gs_prog.finished()
-  img_object = img.SingleImage(input_entry, init)
-  return img_object.import_image()
+
+  return imp_image
 
 def processing_wrapper(input_entry):
   """ Multiprocessor wrapper for image conversion  """
   prog_count = input_entry[0]
   n_img = input_entry[1]
   img_object = input_entry[2]
+  proc_image = img_object.process()
+
   gs_prog = cmd.ProgressBar(title='PROCESSING')
   if prog_count < n_img:
     prog_step = 100 / n_img
     gs_prog.update(prog_count * prog_step, prog_count)
   else:
     gs_prog.finished()
-  return img_object.process()
+
+  return proc_image
 
 # ============================================================================ #
 if __name__ == "__main__":

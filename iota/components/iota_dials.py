@@ -129,6 +129,7 @@ class Integrator(object):
                final_folder,
                final_filename,
                final,
+               logfile,
                gain = 0.32,
                params=None):
     '''Initialise the script.'''
@@ -147,14 +148,7 @@ class Integrator(object):
     else:
       self.phil = phil_scope.extract()
 
-    # Create the parser - probably don't need!
-#     from dials.util.options import OptionParser
-#     self.parser = OptionParser(
-#       phil=current_phil,
-#       read_datablocks=True,
-#       read_datablocks_from_images=True)
-
-    # Set general file-handling settings
+   # Set general file-handling settings
     file_basename = os.path.basename(source_image).split('.')[0]
     self.phil.output.datablock_filename = "{}/{}.json".format(object_folder, file_basename)
     self.phil.output.indexed_filename = "{}/{}_indexed.pickle".format(object_folder, file_basename)
@@ -163,7 +157,7 @@ class Integrator(object):
     self.phil.output.integrated_filename = "{}/{}_integrated.pickle".format(object_folder, file_basename)
     self.phil.output.profile_filename = "{}/{}_profile.phil".format(object_folder, file_basename)
     self.phil.output.integration_pickle = final_filename
-    self.int_log = "{}/int_{}.log".format(final_folder, file_basename)
+    self.int_log = logfile #"{}/int_{}.log".format(final_folder, file_basename)
 
     self.img = [source_image]
     self.obj_base = object_folder

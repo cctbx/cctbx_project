@@ -19,7 +19,6 @@ import math
 from scitbx.array_family import flex
 
 import dxtbx
-from cPickle import load
 from libtbx import easy_pickle as ep
 from xfel.cxi.cspad_ana.cspad_tbx import dpack, evt_timestamp
 
@@ -55,6 +54,7 @@ class SingleImage(object):
     self.fin_base = init.fin_base
     self.viz_base = init.viz_base
     self.tmp_base = init.tmp_base
+    self.abort_file = os.path.join(self.int_base, '.abort.tmp')
 
     self.obj_path = None
     self.obj_file = None
@@ -68,6 +68,10 @@ class SingleImage(object):
   def import_int_file(self, init):
     """ Replaces path settings in imported image object with new settings
         NEED TO RE-DO LATER """
+
+    if os.path.isfile(self.abort_file):
+      self.fail = 'aborted'
+      return self
 
     # Generate paths to output files
     self.params = init.params
@@ -103,7 +107,7 @@ class SingleImage(object):
 
     # Grid search / integration log file
     self.int_log = os.path.join(self.fin_path,
-                          os.path.basename(self.conv_img).split('.')[0] + '.log')
+                          os.path.basename(self.conv_img).split('.')[0] + '.tmp')
 
     # Reset status to 'grid search' to pick up at selection (if no fail)
     if self.fail == None:
@@ -357,6 +361,10 @@ class SingleImage(object):
           - Thresholds and masks beamstop shadow (optional)
     """
 
+    if os.path.isfile(self.abort_file):
+      self.fail = 'aborted'
+      return self
+
     # Load image
     img_data, img_type = self.load_image()
     self.status = 'loaded'
@@ -499,7 +507,7 @@ class SingleImage(object):
       self.final['final'] = self.fin_file
       self.final['img'] = self.conv_img
       self.int_log = os.path.join(self.fin_path,
-                        os.path.basename(self.conv_img).split('.')[0] + '.log')
+                        os.path.basename(self.conv_img).split('.')[0] + '.tmp')
       self.viz_path = misc.make_image_path(self.conv_img, self.input_base, self.viz_base)
       self.viz_file = os.path.join(self.viz_path,
             "int_{}.png".format(os.path.basename(self.conv_img).split('.')[0]))
@@ -553,6 +561,12 @@ class SingleImage(object):
       if tag == 'grid search':
         self.log_info.append('\nCCTBX grid search:')
         for i in range(len(self.grid)):
+
+          # If aborted from GUI
+          if os.path.isfile(self.abort_file):
+            self.fail = 'aborted'
+            return self
+
           int_results = integrator.integrate(self.grid[i])
           self.grid[i].update(int_results)
           img_filename = os.path.basename(self.conv_img)
@@ -578,6 +592,11 @@ class SingleImage(object):
 
 
       elif tag == 'split grid':
+
+        if os.path.isfile(self.abort_file):
+          self.fail = 'aborted'
+          return self
+
         self.log_info.append('\nCCTBX INTEGRATION grid search:')
         int_results = integrator.integrate(self.grid[grid_point])
         self.grid[grid_point].update(int_results)
@@ -593,6 +612,11 @@ class SingleImage(object):
         self.gs_results.append(log_entry)
 
       elif tag == 'integrate':
+
+        if os.path.isfile(self.abort_file):
+          self.fail = 'aborted'
+          return self
+
         self.log_info.append('\nCCTBX final integration:')
         final_results = integrator.integrate(self.final)
         self.final.update(final_results)
@@ -620,6 +644,10 @@ class SingleImage(object):
 
   def select_cctbx(self):
     """ Selects best grid search result using the Selector class """
+
+    if os.path.isfile(self.abort_file):
+      self.fail = 'aborted'
+      return self
 
     if self.fail == None:
       from iota.components.iota_cctbx import Selector
@@ -654,6 +682,10 @@ class SingleImage(object):
       prev_epv = 9999
 
       while not terminate:
+
+        if os.path.isfile(self.abort_file):
+          self.fail = 'aborted'
+          return self
 
         # Run grid search if haven't already
         if self.fail == None and self.status != 'grid search':
@@ -703,14 +735,25 @@ class SingleImage(object):
       if self.fail == None and self.status != 'final':
         self.integrate_cctbx('integrate', single_image=single_image)
 
+      # If verbose output selected (default), write to main log
       if self.verbose:
          log_entry = "\n".join(self.log_info)
          misc.main_log(self.main_log, log_entry)
          misc.main_log(self.main_log, '\n\n')
-         #misc.main_log(self.main_log, '\n{:-^100}\n'.format(''))
+
+      # Make a temporary process log into a final process log
+      if os.path.isfile(self.int_log):
+        final_int_log = os.path.join(self.fin_path,
+                                    os.path.basename(self.int_log).split('.')[0] + '.log')
+        os.rename(self.int_log, final_int_log)
+
 
     # For DIALS integration (WORK IN PROGRESS)
     elif self.params.advanced.integrate_with == 'dials':
+
+      if os.path.isfile(self.abort_file):
+        self.fail = 'aborted'
+        return self
 
       # Create DIALS integrator object
       from iota.components.iota_dials import Integrator
@@ -719,15 +762,20 @@ class SingleImage(object):
                               self.fin_base,
                               self.fin_file,
                               self.final,
+                              self.int_log,
                               self.gain,
                               self.params)
 
-      # Run DIALS test
+      # Run DIALS
       self.fail, self.final, int_log = integrator.run()
       self.log_info.append(int_log)
       log_entry = "\n".join(self.log_info)
       misc.main_log(self.main_log, log_entry)
       misc.main_log(self.main_log, '\n{:-^100}\n'.format(''))
+
+      # Make a temporary process log into a final process log
+      final_int_log = self.int_log.split('.')[0] + ".log"
+      os.rename(self.int_log, final_int_log)
 
     return self
 

@@ -5,10 +5,10 @@ from __future__ import division
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
 Last Changed: 04/13/2016
-Description : Single-image IOTA module. Version 1.0.001P
+Description : Single-image IOTA module. Version 1.0.001G
 '''
 
-iota_version = '1.0.001P'
+iota_version = '1.0.001G'
 help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 

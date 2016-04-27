@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 04/13/2015
+Last Changed: 04/14/2015
 Description : Reads command line arguments. Initializes all IOTA starting
               parameters. Starts main log.
 '''
@@ -11,7 +11,6 @@ Description : Reads command line arguments. Initializes all IOTA starting
 import os
 import sys
 import argparse
-from datetime import datetime
 
 import iota.components.iota_input as inp
 import iota.components.iota_cmd as cmd
@@ -215,78 +214,97 @@ class InitAll(object):
 
 
   # Runs general initialization
-  def run(self):
+  def run(self,
+          gui = False,
+          gparams = None,
+          gtxt = None,
+          list_flag = False,
+          list_file = None):
 
-    self.args, self.phil_args = parse_command_args(self.iver,
+    if gui:
+
+      # Initalize for IOTA GUI
+      self.args, self.phil_args = parse_command_args(self.iver,
+                                                     self.help_message).parse_known_args()
+      self.args.list = list_flag
+      self.params = gparams
+      self.txt_out = gtxt
+
+    else:
+
+      # Initialize for command-line IOTA
+      self.args, self.phil_args = parse_command_args(self.iver,
                                 self.help_message).parse_known_args()
 
-    # Check for type of input
-    if self.args.path == None:                   # No input
-      parse_command_args(self.iver, self.help_message).print_help()
-      if self.args.default:                      # Write out default params and exit
-        help_out, txt_out = inp.print_params()
-        print '\n{:-^70}\n'.format('IOTA Parameters')
-        print help_out
-        inp.write_defaults(os.path.abspath(os.path.curdir), txt_out)
-      misc.iota_exit(self.iver)
-    else:                                   # If input exists, check type
-      carg = os.path.abspath(self.args.path)
-      if os.path.exists(carg):
+      # Check for type of input
+      if self.args.path == None:                   # No input
+        parse_command_args(self.iver, self.help_message).print_help()
+        if self.args.default:                      # Write out default params and exit
+          help_out, txt_out = inp.print_params()
+          print '\n{:-^70}\n'.format('IOTA Parameters')
+          print help_out
+          inp.write_defaults(os.path.abspath(os.path.curdir), txt_out)
+        misc.iota_exit(self.iver)
+      else:                                   # If input exists, check type
+        carg = os.path.abspath(self.args.path)
+        if os.path.exists(carg):
 
-        # If user provided a parameter file
-        if os.path.isfile(carg) and os.path.basename(carg).endswith('.param'):
-          msg = ''
-          self.params, self.txt_out = inp.process_input(self.args,
-                                                        self.phil_args,
-                                                        carg, 'file')
+          # If user provided a parameter file
+          if os.path.isfile(carg) and os.path.basename(carg).endswith('.param'):
+            msg = ''
+            self.params, self.txt_out = inp.process_input(self.args,
+                                                          self.phil_args,
+                                                          carg, 'file')
 
-        # If user provided a list of input files
-        elif os.path.isfile(carg) and os.path.basename(carg).endswith('.lst'):
-          msg = "\nIOTA will run in AUTO mode using {}:\n".format(carg)
-          self.params, self.txt_out = inp.process_input(self.args,
-                                                        self.phil_args,
-                                                        carg, 'auto', self.now)
+          # If user provided a list of input files
+          elif os.path.isfile(carg) and os.path.basename(carg).endswith('.lst'):
+            msg = "\nIOTA will run in AUTO mode using {}:\n".format(carg)
+            self.params, self.txt_out = inp.process_input(self.args,
+                                                          self.phil_args,
+                                                          carg, 'auto', self.now)
 
-        # If user provided a single filepath
-        elif os.path.isfile(carg) and not os.path.basename(carg).endswith('.lst'):
-          msg = "\nIOTA will run in SINGLE-FILE mode using {}:\n".format(carg)
-          self.params, self.txt_out = inp.process_input(self.args,
-                                                        self.phil_args,
-                                                        carg, 'auto', self.now)
+          # If user provided a single filepath
+          elif os.path.isfile(carg) and not os.path.basename(carg).endswith('.lst'):
+            msg = "\nIOTA will run in SINGLE-FILE mode using {}:\n".format(carg)
+            self.params, self.txt_out = inp.process_input(self.args,
+                                                          self.phil_args,
+                                                          carg, 'auto', self.now)
 
-        # If user provided a data folder
-        elif os.path.isdir(carg):
-          msg = "\nIOTA will run in AUTO mode using {}:\n".format(carg)
-          self.params, self.txt_out = inp.process_input(self.args,
-                                                        self.phil_args,
-                                                        carg, 'auto', self.now)
-      # If user provided gibberish
-      else:
-        print self.logo
-        print "ERROR: Invalid input! Need parameter filename or data folder."
+          # If user provided a data folder
+          elif os.path.isdir(carg):
+            msg = "\nIOTA will run in AUTO mode using {}:\n".format(carg)
+            self.params, self.txt_out = inp.process_input(self.args,
+                                                          self.phil_args,
+                                                          carg, 'auto', self.now)
+        # If user provided gibberish
+        else:
+          print self.logo
+          print "ERROR: Invalid input! Need parameter filename or data folder."
+          misc.iota_exit(self.iver)
+
+      # Identify indexing / integration program
+      if self.params.advanced.integrate_with == 'cctbx':
+        prg = "                                                             with CCTBX.XFEL\n"
+      elif self.params.advanced.integrate_with == 'dials':
+        prg = "                                                                  with DIALS\n"
+
+      self.logo += prg
+      print self.logo
+      print '\n{}\n'.format(self.now)
+      if msg != '':
+        print msg
+
+      if self.args.analyze != None:
+        self.analyze_prior_results('{:003d}'.format(int(self.args.analyze)))
         misc.iota_exit(self.iver)
 
-    # Identify indexing / integration program
-    if self.params.advanced.integrate_with == 'cctbx':
-      prg = "                                                             with CCTBX.XFEL\n"
-    elif self.params.advanced.integrate_with == 'dials':
-      prg = "                                                                  with DIALS\n"
+      if self.params.mp_method == 'mpi':
+        rank, size = misc.get_mpi_rank_and_size()
+        self.master_process = rank == 0
+      else:
+        self.master_process = True
 
-    self.logo += prg
-    print self.logo
-    print '\n{}\n'.format(self.now)
-    if msg != '':
-      print msg
-
-    if self.args.analyze != None:
-      self.analyze_prior_results('{:003d}'.format(int(self.args.analyze)))
-      misc.iota_exit(self.iver)
-
-    if self.params.mp_method == 'mpi':
-      rank, size = misc.get_mpi_rank_and_size()
-      self.master_process = rank == 0
-    else:
-      self.master_process = True
+    # *** The following is initialization common to GUI and command-line *** #
 
     # Call function to read input folder structure (or input file) and
     # generate list of image file paths
@@ -298,14 +316,18 @@ class InitAll(object):
 
     # Check for -l option, output list of input files and exit
     if self.args.list:
-      list_file = os.path.abspath("{}/input.lst".format(os.curdir))
+      if list_file == None:
+        list_file = os.path.abspath("{}/input.lst".format(os.curdir))
       print '\nINPUT LIST ONLY option selected'
       print 'Input list in {} \n\n'.format(list_file)
       with open(list_file, "w") as lf:
         for i, input_file in enumerate(self.input_list, 1):
-          print "{}: {}".format(i, input_file)
           lf.write('{}\n'.format(input_file))
-      print '\nExiting...\n\n'
+          if not gui:
+            print "{}: {}".format(i, input_file)
+          lf.write('{}\n'.format(input_file))
+      if not gui:
+        print '\nExiting...\n\n'
       misc.iota_exit(self.iver)
 
     # If fewer images than requested processors are supplied, set the number of
@@ -314,8 +336,8 @@ class InitAll(object):
       self.params.n_processors = len(self.input_list)
 
     # Generate base folder paths
-    self.conv_base = misc.set_base_dir('converted_pickles')
-    self.int_base = misc.set_base_dir('integration')
+    self.conv_base = misc.set_base_dir('converted_pickles', out_dir = self.params.output)
+    self.int_base = misc.set_base_dir('integration', out_dir = self.params.output)
     self.obj_base = os.path.join(self.int_base, 'image_objects')
     self.fin_base = os.path.join(self.int_base, 'final')
     self.tmp_base = os.path.join(self.int_base, 'tmp')
@@ -334,15 +356,15 @@ class InitAll(object):
     self.logfile = os.path.abspath(os.path.join(self.int_base, 'iota.log'))
 
     # Log starting info
-    misc.main_log(self.logfile, '{:=^100} \n'.format(' IOTA MAIN LOG '))
-    misc.main_log(self.logfile, '{:-^100} \n'.format(' SETTINGS FOR THIS RUN '))
+    misc.main_log(self.logfile, '{:=^80} \n'.format(' IOTA MAIN LOG '))
+    misc.main_log(self.logfile, '{:-^80} \n'.format(' SETTINGS FOR THIS RUN '))
     misc.main_log(self.logfile, self.txt_out)
 
     if self.params.advanced.integrate_with == 'cctbx':
       target_file = self.params.cctbx.target
     elif self.params.advanced.integrate_with == 'dials':
       target_file = self.params.dials.target
-    misc.main_log(self.logfile, '{:-^100} \n\n'
+    misc.main_log(self.logfile, '{:-^80} \n\n'
                                 ''.format(' TARGET FILE ({}) CONTENTS '
                                 ''.format(target_file)))
     with open(target_file, 'r') as phil_file:
@@ -353,7 +375,7 @@ class InitAll(object):
 # ============================================================================ #
 if __name__ == "__main__":
 
-  iota_version = '2.00'
+  iota_version = '1.0.001G'
   help_message = ""
 
   initialize = InitAll(iota_version, help_message)

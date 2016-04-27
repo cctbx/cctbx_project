@@ -1197,6 +1197,7 @@ gltbx/wx_viewers_images.py -text
 iota/__init__.py -text
 iota/command_line/__init__.py -text
 iota/command_line/iota_bulletproof.py -text
+iota/command_line/iota_main.py -text
 iota/command_line/iota_mpi.py -text
 iota/command_line/iota_mpi_submit.py -text
 iota/command_line/iota_run.py -text
@@ -1206,12 +1207,14 @@ iota/components/iota_analysis.py -text
 iota/components/iota_cctbx.py -text
 iota/components/iota_cmd.py -text
 iota/components/iota_dials.py -text
+iota/components/iota_gcomps.py -text
 iota/components/iota_image.py -text
 iota/components/iota_init.py -text
 iota/components/iota_input.py -text
 iota/components/iota_misc.py -text
 iota/components/iota_vis_integration.py -text
 iota/doc/NOTES.txt -text
+iota/libtbx_config -text
 iotbx/bioinformatics/__init__.py -text
 iotbx/bioinformatics/alignment_as_hsearch.py -text
 iotbx/bioinformatics/ebi_wu_blast_xml.py -text

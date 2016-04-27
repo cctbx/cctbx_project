@@ -14,10 +14,8 @@ import sys
 import uuid
 import numpy as np
 
-import spotfinder
 from spotfinder.array_family import flex
 
-import iota_vis_integration as viz
 import iota.components.iota_misc as misc
 from libtbx import easy_pickle, easy_run
 

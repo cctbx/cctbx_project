@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 04/13/2015
+Last Changed: 04/14/2015
 Description : Module with miscellaneous useful functions and classes
 '''
 
@@ -49,7 +49,7 @@ def main_log(logfile, entry, print_tag=False):
   if print_tag:
     print entry
 
-def set_base_dir(dirname, sel_flag=False):
+def set_base_dir(dirname, sel_flag=False, out_dir=None):
   """ Generates a base folder for converted pickles and/or grid search and/or
       integration results; creates subfolder numbered one more than existing
   """
@@ -63,7 +63,10 @@ def set_base_dir(dirname, sel_flag=False):
     else:
       return False
 
-  path = os.path.abspath(os.path.join(os.curdir, dirname))
+  if out_dir == None:
+    path = os.path.abspath(os.path.join(os.curdir, dirname))
+  else:
+    path = os.path.join(os.path.abspath(out_dir), dirname)
   if os.path.isdir(path):
     num_dirs = len([dir for dir in os.listdir(path) if check_dirname(path, dir)])
     if sel_flag:
