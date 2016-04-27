@@ -43,20 +43,14 @@ class stderr_capturing_process(multiprocessing.Process):
       return
 
     self.stderr.seek( 0 )
-    stderr = self.stderr.read()
+    self.stacktrace = self.stderr.read()
     self.stderr.close()
     self.stderr = None
 
     if self.propagate_error_message:
       import sys
-      sys.stderr.write( stderr )
+      sys.stderr.write( self.stacktrace )
       sys.stderr.write( "\n" )
-
-    if self.exitcode != 0:
-      self.err = RuntimeError( stderr )
-
-    else:
-      self.err = None
 
 
 class fifo_qfactory(object):

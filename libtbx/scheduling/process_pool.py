@@ -100,7 +100,7 @@ class process_register(object):
     del self.running_on[ pid ]
 
 
-  def record_process_crash(self, pid, exception):
+  def record_process_crash(self, pid, exception, traceback):
 
     if pid not in self.running_on:
       raise SchedulingError, "Unknown processID"
@@ -108,7 +108,9 @@ class process_register(object):
     jobid = self.running_on[ pid ]
 
     if jobid is not None:
-      self.results.append( ( jobid, result.error( exception = exception ) ) )
+      self.results.append(
+        ( jobid, result.error( exception = exception, traceback = traceback ) )
+        )
 
     del self.running_on[ pid ]
     self.terminateds.append( pid )
@@ -144,8 +146,8 @@ def worker_termination_event(register, data):
 
 def worker_crash_event(register, data):
 
-  ( pid, exception ) = data
-  register.record_process_crash( pid = pid, exception = exception )
+  ( pid, exception, traceback ) = data
+  register.record_process_crash( pid = pid, exception = exception, traceback = traceback )
 
 
 # Lifecycle controllers
@@ -282,7 +284,7 @@ def pool_process_cycle(
       value = target( *args, **kwargs )
 
     except Exception, e:
-      res = result.error( exception = e )
+      res = result.error( exception = e, traceback = result.get_traceback_info() )
 
     else:
       res = result.success( value = value )
@@ -567,12 +569,12 @@ class manager(object):
         exit_code = getattr( process, "exitcode", 0 ) # Thread has no "exitcode" attribute
 
         if exit_code != 0:
-          err = getattr(
-            process,
-            "err",
-            RuntimeError( "exit code = %s" % exit_code ),
+          data = (
+            pid,
+            result.get_exception( process = process, exit_code = exit_code ),
+            result.get_crash_info( process = process ),
             )
-          self.unreporteds.append( ( worker_crash_event, ( pid, err ) ) )
+          self.unreporteds.append( ( worker_crash_event, data ) )
 
         self.terminatings.add( pid )
         del self.process_numbered_as[ pid ]

@@ -24,17 +24,23 @@ import time
 from collections import deque
 from Queue import Empty
 
-from libtbx.scheduling import annotate_exception, identifier, result
+from libtbx.scheduling import result
+from libtbx.scheduling import identifier
+
 
 # Capacity modes
 class limited(object):
   """
   Limited number of jobs
   """
+
   def __init__(self, njobs):
+
     self.njobs = njobs
 
+
   def is_full(self, njobs):
+
     return self.njobs <= njobs
 
 
@@ -47,14 +53,17 @@ class unlimited(object):
 
   @staticmethod
   def is_full(njobs):
+
     return False
 
+
 def job_cycle(outqueue, jobid, target, args, kwargs):
+
   try:
     value = target( *args, **kwargs )
 
   except Exception, e:
-    res = result.error( exception = annotate_exception(e) )
+    res = result.error( exception = e, traceback = result.get_traceback_info() )
 
   else:
     res = result.success( value = value )
@@ -68,6 +77,7 @@ class manager(object):
   """
 
   def __init__(self, inqueue, job_factory, capacity, waittime = 0.01):
+
     self.inqueue = inqueue
     self.job_factory = job_factory
     self.capacity = capacity
@@ -81,22 +91,32 @@ class manager(object):
 
     self.resume()
 
+
   def job_count(self):
+
     return len( self.process_data_for ) + len( self.waiting_jobs )
 
+
   def process_count(self):
+
     return len( self.process_data_for )
 
+
   def is_empty(self):
+
     return not (
       self.waiting_jobs or self.process_data_for or self.waiting_results
       or self.completed_results
       )
 
+
   def is_full(self):
+
     return self.capacity.is_full( njobs = self.process_count() )
 
+
   def results(self):
+
     while not self.is_empty():
       while not self.completed_results:
         self.wait()
@@ -104,19 +124,27 @@ class manager(object):
 
       yield self.completed_results.popleft()
 
+
   def submit(self, target, args = (), kwargs = {}):
+
     jobid = identifier()
     self.waiting_jobs.append( ( jobid, target, args, kwargs ) )
     self.poll()
     return jobid
 
+
   def shutdown(self):
+
     self.active = False
 
+
   def resume(self):
+
     self.active = True
 
+
   def join(self):
+
     self.shutdown()
 
     while self.process_data_for:
@@ -125,7 +153,9 @@ class manager(object):
 
     self.poll()
 
+
   def terminate(self):
+
     self.shutdown()
 
     for process in self.process_data_for.values():
@@ -139,11 +169,15 @@ class manager(object):
 
     self.join()
 
+
   # Internal methods
   def wait(self):
+
     time.sleep( self.waittime )
 
+
   def poll(self):
+
     # Check existing jobs
     for jobid in self.process_data_for.keys():
       process = self.process_data_for[ jobid ]
@@ -178,18 +212,19 @@ class manager(object):
       process.start()
       self.process_data_for[ jobid ] = process
 
+
   def finish_job(self, jobid):
+
     process = self.process_data_for[ jobid ]
     process.join()
     exit_code = getattr( process, "exitcode", 0 ) # Thread has no "exitcode" attribute
 
     if exit_code != 0:
-      err = getattr(
-        process,
-        "err",
-        RuntimeError( "exit code = %s" % exit_code ),
+      res = result.error(
+        exception = result.get_exception( process = process, exit_code = exit_code ),
+        traceback = result.get_crash_info( process = process ),
         )
-      self.completed_results.append( ( jobid, result.error( exception = err ) ) )
+      self.completed_results.append( ( jobid, res ) )
 
     else:
       self.waiting_results.add( jobid )
@@ -203,12 +238,15 @@ class creator(object):
   """
 
   def __init__(self, job_factory, queue_factory, capacity, waittime = 0.01):
+
     self.job_factory = job_factory
     self.queue_factory = queue_factory
     self.capacity = capacity
     self.waittime = waittime
 
+
   def create(self):
+
     return manager(
       inqueue = self.queue_factory.create(),
       job_factory = self.job_factory,
@@ -216,7 +254,9 @@ class creator(object):
       waittime = self.waittime,
       )
 
+
   def destroy(self, manager):
+
     manager.terminate()
     manager.join()
     self.queue_factory.destroy( manager.inqueue )

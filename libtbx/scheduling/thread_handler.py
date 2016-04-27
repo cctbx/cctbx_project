@@ -34,14 +34,17 @@ class exception_capturing_thread(threading.Thread):
       self.exitcode = 1
       self.err = e
 
+      import traceback
+      import sys
+      self.stacktrace = "".join( traceback.format_tb( tb = sys.exc_info()[2] ) )
+
       if self.propagate_error_message:
-        import traceback
-        import sys
-        traceback.print_exc( file = sys.stderr )
+        traceback.print_exc()
 
     else:
       self.exitcode = 0
       self.err = None
+      self.stacktrace = None
 
 
 class qfactory(object):

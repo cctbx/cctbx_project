@@ -200,7 +200,9 @@ def check_if_stacktrace_is_propagated_properly(method, nproc):
       if function == _may_divide_by_zero.func_name:
         stack_contains_fail_function = True
     # or it should be preserved in the string representation of the exception
-    if _may_divide_by_zero.func_name in str(e):
+    from libtbx.scheduling import stacktrace
+    ex, st = stacktrace.exc_info()
+    if ex is not None and _may_divide_by_zero.func_name in "".join( st ):
       stack_contains_fail_function = True
     if not stack_contains_fail_function:
       print "Thrown exception: %s:" % str(e)

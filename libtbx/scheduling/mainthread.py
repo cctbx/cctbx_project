@@ -17,7 +17,9 @@ from __future__ import division
 
 from collections import deque
 
-from libtbx.scheduling import annotate_exception, identifier, result
+from libtbx.scheduling import identifier
+from libtbx.scheduling import result
+
 
 class manager(object):
   """
@@ -25,45 +27,66 @@ class manager(object):
   """
 
   def __init__(self):
+
     self.outqueue = deque()
     self.inqueue = deque()
 
+
   def job_count(self):
+
     return len( self.outqueue )
 
+
   def results(self):
+
     while not self.is_empty():
       while not self.inqueue:
         self.poll()
 
       yield self.inqueue.popleft()
 
+
   def submit(self, target, args = (), kwargs = {}):
+
     jobid = identifier()
     self.outqueue.append( ( jobid, target, args, kwargs ) )
     return jobid
 
+
   def is_empty(self):
+
     return not self.outqueue and not self.inqueue
 
+
   def is_full(self):
+
     return self.outqueue
 
+
   def join(self):
+
     while self.outqueue:
       self.poll()
 
+
   def shutdown(self):
+
     pass
+
 
   def resume(self):
+
     pass
 
+
   def terminate(self):
+
     pass
+
 
   # Internal methods
   def poll(self):
+
     if self.outqueue:
       ( jobid, target, args, kwargs ) = self.outqueue.popleft()
 
@@ -71,7 +94,7 @@ class manager(object):
         value = target( *args, **kwargs )
 
       except Exception, e:
-        res = result.error( exception = annotate_exception(e) )
+        res = result.error( exception = e, traceback = result.get_traceback_info() )
 
       else:
         res = result.success( value = value )
@@ -88,8 +111,11 @@ class creator(object):
 
   @staticmethod
   def create():
+
     return manager()
+
 
   @staticmethod
   def destroy(manager):
+
     pass
