@@ -372,6 +372,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         &VirtualPanelFrame::get_normal_origin)
       .def("get_distance",
         &VirtualPanelFrame::get_distance)
+      .def("get_directed_distance",
+        &VirtualPanelFrame::get_directed_distance)
       .def("get_beam_centre",
         &VirtualPanelFrame::get_beam_centre, (
           arg("s0")))

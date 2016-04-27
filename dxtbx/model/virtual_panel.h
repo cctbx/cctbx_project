@@ -205,6 +205,11 @@ namespace dxtbx { namespace model {
 
     /** @returns The distance from the lab origin to the plane. */
     double get_distance() const {
+      return std::abs(distance_);
+    }
+
+    /** @returns The distance from the lab origin to the plane. */
+    double get_directed_distance() const {
       return distance_;
     }
 
