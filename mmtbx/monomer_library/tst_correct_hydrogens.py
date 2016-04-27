@@ -53,7 +53,7 @@ def run():
       chiral_energy = line
   chiral_energy = chiral_energy.split()[-1]
   print 'chiral energy',chiral_energy
-  assert float(chiral_energy)<0.03
+  assert float(chiral_energy)<0.03, 'chiral energy %0.2f greater than 0.03' % float(chiral_energy)
   print "OK"
 
 if __name__=="__main__":
