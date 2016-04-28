@@ -243,7 +243,11 @@ class threading(object):
   Phil generator for threading option
   """
 
-  def __init__(self, capture_exception = True, pool_lifecycle = pool_unlimited_lifecycle):
+  def __init__(
+    self,
+    capture_exception = False,
+    pool_lifecycle = pool_unlimited_lifecycle,
+    ):
 
     self.capture_exception = capture_exception
     self.pool_lifecycle = pool_lifecycle

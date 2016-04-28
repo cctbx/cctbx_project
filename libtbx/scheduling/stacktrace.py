@@ -46,9 +46,11 @@ def stacktrace_excepthook(ex_cls, ex, tb):
 
   if ex is data[0]:
     import traceback
-    print "".join(
-      data[1] + traceback.format_exception_only( ex_cls, ex )
+    import sys
+    sys.stderr.write(
+      "".join( data[1] + traceback.format_exception_only( ex_cls, ex ) )
       )
+    sys.stderr.write( "\n" )
 
   else:
     __prev_excepthook( ex_cls, ex, tb )

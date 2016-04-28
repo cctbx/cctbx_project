@@ -21,16 +21,19 @@ class stderr_capturing_process(multiprocessing.Process):
     self.propagate_error_message = propagate_error_message
 
     import tempfile
-    self.stderr = tempfile.TemporaryFile()
+    import os
+    ( fd, self.errfile ) = tempfile.mkstemp()
+    os.close( fd )
 
 
   def run(self):
 
+    stderr = open( self.errfile, "w" )
     import sys
     stderr_fileno = sys.stderr.fileno()
-    sys.stderr = self.stderr # adjust Python level
+    sys.stderr = stderr # adjust Python level
     import os
-    os.dup2( self.stderr.fileno(), stderr_fileno )
+    os.dup2( stderr.fileno(), stderr_fileno ) # adjust OS level
 
     super( stderr_capturing_process, self ).run()
 
@@ -39,15 +42,26 @@ class stderr_capturing_process(multiprocessing.Process):
 
     super( stderr_capturing_process, self ).join( timeout )
 
-    if not self.stderr:
+    if not self.errfile:
       return
 
-    self.stderr.seek( 0 )
-    self.stacktrace = self.stderr.read()
-    self.stderr.close()
-    self.stderr = None
+    try:
+      stderr = open( self.errfile )
+      self.stacktrace = stderr.read()
 
-    if self.propagate_error_message:
+    except IOError:
+      self.stacktrace = ""
+
+    else:
+      stderr.close()
+
+      import os
+      os.remove( self.errfile )
+
+    finally:
+      self.errfile = None
+
+    if self.propagate_error_message and self.stacktrace:
       import sys
       sys.stderr.write( self.stacktrace )
       sys.stderr.write( "\n" )
