@@ -1,15 +1,15 @@
-IOTA v1.0.001G - GUI version
+IOTA v1.0.002 - GUI additions
 
 New Features
-1. Basic GUI - run by simply issuing "iota" in command line
-    a. Generated using wxPython package included with libtbx
-    b. Identical functionality to command-line IOTA
-    c. Can import / export scripts by and for command-line IOTA
-    d. Spiffy progress bar
+1. Resizable processing output window with tabs for Log and Charts
+2. Real-time charts of
+    a. Resolution per integrated image
+    b. Number of strong reflections per integrated image
+3. Internal passing of integration results (and info update) via parallel_map callback function
 
 Known Issues:
 1. Still a little dodgy when running IOTA with DIALS; will be improved in future
-2. A more informative output is in the works (now just log text)
-3. Still testing all possible usage, might have other bugs
+2. More visuals in the works.
+3. Error handling needs to improve (hardly any now)
 4. Unit cell clustering currently not active; removing scipy dependencies
 5. Because of this, median unit cell parameters returned; we are aware that this is woefully inadequate

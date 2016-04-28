@@ -111,7 +111,7 @@ class SingleImage(object):
 
     # Reset status to 'grid search' to pick up at selection (if no fail)
     if self.fail == None:
-      self.status = 'grid search'
+      self.status = 'bypass grid search'
 
     return self
 
