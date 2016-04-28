@@ -122,10 +122,9 @@ class TestManager(unittest.TestCase):
 
     from libtbx.scheduling import job_scheduler
     from libtbx.scheduling import mp_handler
-    import multiprocessing
 
     creator = job_scheduler.creator(
-      job_factory = multiprocessing.Process, #mp_handler.stderr_capturing_process,
+      job_factory = mp_handler.stderr_capturing_process,
       queue_factory = mp_handler.fifo_qfactory,
       capacity = job_scheduler.limited( njobs = 1 ),
       )
@@ -156,10 +155,9 @@ class TestManager(unittest.TestCase):
 
     from libtbx.scheduling import process_pool
     from libtbx.scheduling import mp_handler
-    import multiprocessing
 
     creator = process_pool.creator(
-      job_factory = multiprocessing.Process, #mp_handler.stderr_capturing_process,
+      job_factory = mp_handler.stderr_capturing_process,
       inq_factory = mp_handler.fifo_qfactory,
       outq_factory = mp_handler.fifo_qfactory,
       autoscaling = process_pool.constant_capacity( capacity = 1 ),
