@@ -219,12 +219,8 @@ class Job(object):
       sys.stderr.write( self.status.stderr )
       sys.stderr.write( "\n" )
 
-    if self.qinterface.save_error:
-      if self.exitcode != 0:
-        self.err = RuntimeError( self.status.stderr )
-
-      else:
-        self.err = None
+    if self.qinterface.save_error and self.exitcode != 0:
+      self.stacktrace = self.status.stderr
 
     self.status.strip()
 
