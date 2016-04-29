@@ -117,6 +117,18 @@ class Script(ParentScript):
       else:
         return pg.parent
 
+    from xfel.cftbx.detector.cspad_cbf_tbx import basis
+    def get_full_basis_shift(pg):
+      """Compute basis shift from pg to lab space"""
+      shift = basis(panelgroup=pg)
+      while True:
+        parent = get_parent(pg)
+        if parent is None:
+          break
+        shift = basis(panelgroup=parent) * shift
+        pg = parent
+      return shift
+
     # Iterate through the hierarchy levels
     for level in xrange(params.max_hierarchy_level+1):
       delta_xy = flex.double()
@@ -156,9 +168,8 @@ class Script(ParentScript):
         z_off = z_dists[1]-z_dists[0]
         z_offsets.append(z_off)
 
-        pgo1 = get_center(pg1)
-        pgo2 = get_center(pg2)
-        ro_pgo = pgo2 - rori # vector from the detector origin to the panel group origin
+        pgo1 = col(pg1.get_origin())
+        ro_pgo = pgo1 - rori # vector from the detector origin to the panel group origin
         if ro_pgo.length() == 0:
           radial = col((0,0,0))
           transverse = col((0,0,0))
@@ -168,15 +179,12 @@ class Script(ParentScript):
         # now radial and transverse are vectors othogonal to each other and the detector normal, such that
         # radial points at the panel group origin
 
-        # After the radial and transverse vectors are determined, adjust the origins to be relative to their parent objects' origins.
-        parent1 = get_parent(pg1)
-        if parent1 is not None:
-          parent2 = get_parent(pg2)
-          pgo1 = pgo1 - get_center(parent1)
-          pgo2 = pgo2 - get_center(parent2)
+        # compute shift in local frame, then convert that shift to lab space, then make it relative to the reference's origin, in lab space
+        lpgo1 = col(pg1.get_local_origin())
+        lpgo2 = col(pg2.get_local_origin())
+        delta_pgo = (get_full_basis_shift(pg1) * (lpgo2-lpgo1)) - pgo1
 
         # v is the component of delta_pgo along the radial vector
-        delta_pgo = pgo2-pgo1
         v = (radial.dot(delta_pgo) * radial)
         r_offset = v.length() * 1000
         angle = r_norm.angle(v, deg=True)
