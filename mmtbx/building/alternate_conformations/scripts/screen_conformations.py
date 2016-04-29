@@ -18,7 +18,7 @@ nproc = Auto
 include scope mmtbx.building.alternate_conformations.density_sampling.master_params
 """, process_includes=True)
 
-def run (args, out=None :
+def run (args, out=None ):
   if (out is None) : out = sys.stdout
   from mmtbx.building.alternate_conformations import density_sampling
   import mmtbx.maps.utils
