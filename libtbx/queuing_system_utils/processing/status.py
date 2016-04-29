@@ -189,7 +189,7 @@ class JobStatus(object):
       while True:
         try:
           with open( filename ) as infile:
-            return infile.read().strip()
+            return infile.read().lstrip()
 
         except IOError:
           pass
