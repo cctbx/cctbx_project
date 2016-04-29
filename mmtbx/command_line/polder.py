@@ -43,10 +43,13 @@ Usage examples:
   3. phenix.polder a.hkl b.hkl model.pdb selection="resseq 435"
 
 Output:
-  MTZ file with map coefficients:
-
+  MTZ file with map coefficients for:
+  Polder map:
   - mFo-DFc_polder    : polder difference map coefficients
   - PHImFo-DFc_polder : corresponding phases
+  Omit map:
+  For this map, the omit selection is deleted from the model and bulk solvent
+  enters the area
   - mFo-DFc_omit      : omit difference map coefficients
   - PHImFo-DFc_omit   : corresponding phases
 
