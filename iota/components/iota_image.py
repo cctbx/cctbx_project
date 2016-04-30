@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 04/13/2016
+Last Changed: 04/29/2016
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -39,7 +39,6 @@ class SingleImage(object):
     self.img_index = img[0]
     self.status = None
     self.fail = None
-    self.Bragg = 0
     self.log_info = []
     self.gs_results = []
     self.main_log = init.logfile
@@ -673,6 +672,8 @@ class SingleImage(object):
   def process(self, single_image=False):
     """ Image processing; selects method, runs requisite modules """
 
+    self.status = 'processing'
+
     #for CCTBX indexing / integration
     if self.params.advanced.integrate_with == 'cctbx':
       terminate = False
@@ -768,6 +769,7 @@ class SingleImage(object):
 
       # Run DIALS
       self.fail, self.final, int_log = integrator.run()
+      self.status = 'final'
       self.log_info.append(int_log)
       log_entry = "\n".join(self.log_info)
       misc.main_log(self.main_log, log_entry)

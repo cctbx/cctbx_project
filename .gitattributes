@@ -1232,7 +1232,7 @@ iota/components/iota_analysis.py -text
 iota/components/iota_cctbx.py -text
 iota/components/iota_cmd.py -text
 iota/components/iota_dials.py -text
-iota/components/iota_gcomps.py -text
+iota/components/iota_gui_init.py -text
 iota/components/iota_image.py -text
 iota/components/iota_init.py -text
 iota/components/iota_input.py -text

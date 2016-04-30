@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 04/14/2015
+Last Changed: 04/29/2015
 Description : Reads command line arguments. Initializes all IOTA starting
               parameters. Starts main log.
 '''
@@ -124,6 +124,7 @@ class InitAll(object):
 
     return inp_list
 
+
   def select_random_subset(self, input_list):
     """ Selects random subset of input entries """
     import random
@@ -212,99 +213,78 @@ class InitAll(object):
       print 'No results found in {}'.format(int_folder)
 
 
+  def run(self):
 
-  # Runs general initialization
-  def run(self,
-          gui = False,
-          gparams = None,
-          gtxt = None,
-          list_flag = False,
-          list_file = None):
+    self.args, self.phil_args = parse_command_args(self.iver,
+                              self.help_message).parse_known_args()
 
-    if gui:
+    # Check for type of input
+    if self.args.path == None:                   # No input
+      parse_command_args(self.iver, self.help_message).print_help()
+      if self.args.default:                      # Write out default params and exit
+        help_out, txt_out = inp.print_params()
+        print '\n{:-^70}\n'.format('IOTA Parameters')
+        print help_out
+        inp.write_defaults(os.path.abspath(os.path.curdir), txt_out)
+      misc.iota_exit(self.iver)
+    else:                                   # If input exists, check type
+      carg = os.path.abspath(self.args.path)
+      if os.path.exists(carg):
 
-      # Initalize for IOTA GUI
-      self.args, self.phil_args = parse_command_args(self.iver,
-                                                     self.help_message).parse_known_args()
-      self.args.list = list_flag
-      self.params = gparams
-      self.txt_out = gtxt
+        # If user provided a parameter file
+        if os.path.isfile(carg) and os.path.basename(carg).endswith('.param'):
+          msg = ''
+          self.params, self.txt_out = inp.process_input(self.args,
+                                                        self.phil_args,
+                                                        carg, 'file')
 
-    else:
+        # If user provided a list of input files
+        elif os.path.isfile(carg) and os.path.basename(carg).endswith('.lst'):
+          msg = "\nIOTA will run in AUTO mode using {}:\n".format(carg)
+          self.params, self.txt_out = inp.process_input(self.args,
+                                                        self.phil_args,
+                                                        carg, 'auto', self.now)
 
-      # Initialize for command-line IOTA
-      self.args, self.phil_args = parse_command_args(self.iver,
-                                self.help_message).parse_known_args()
+        # If user provided a single filepath
+        elif os.path.isfile(carg) and not os.path.basename(carg).endswith('.lst'):
+          msg = "\nIOTA will run in SINGLE-FILE mode using {}:\n".format(carg)
+          self.params, self.txt_out = inp.process_input(self.args,
+                                                        self.phil_args,
+                                                        carg, 'auto', self.now)
 
-      # Check for type of input
-      if self.args.path == None:                   # No input
-        parse_command_args(self.iver, self.help_message).print_help()
-        if self.args.default:                      # Write out default params and exit
-          help_out, txt_out = inp.print_params()
-          print '\n{:-^70}\n'.format('IOTA Parameters')
-          print help_out
-          inp.write_defaults(os.path.abspath(os.path.curdir), txt_out)
-        misc.iota_exit(self.iver)
-      else:                                   # If input exists, check type
-        carg = os.path.abspath(self.args.path)
-        if os.path.exists(carg):
-
-          # If user provided a parameter file
-          if os.path.isfile(carg) and os.path.basename(carg).endswith('.param'):
-            msg = ''
-            self.params, self.txt_out = inp.process_input(self.args,
-                                                          self.phil_args,
-                                                          carg, 'file')
-
-          # If user provided a list of input files
-          elif os.path.isfile(carg) and os.path.basename(carg).endswith('.lst'):
-            msg = "\nIOTA will run in AUTO mode using {}:\n".format(carg)
-            self.params, self.txt_out = inp.process_input(self.args,
-                                                          self.phil_args,
-                                                          carg, 'auto', self.now)
-
-          # If user provided a single filepath
-          elif os.path.isfile(carg) and not os.path.basename(carg).endswith('.lst'):
-            msg = "\nIOTA will run in SINGLE-FILE mode using {}:\n".format(carg)
-            self.params, self.txt_out = inp.process_input(self.args,
-                                                          self.phil_args,
-                                                          carg, 'auto', self.now)
-
-          # If user provided a data folder
-          elif os.path.isdir(carg):
-            msg = "\nIOTA will run in AUTO mode using {}:\n".format(carg)
-            self.params, self.txt_out = inp.process_input(self.args,
-                                                          self.phil_args,
-                                                          carg, 'auto', self.now)
-        # If user provided gibberish
-        else:
-          print self.logo
-          print "ERROR: Invalid input! Need parameter filename or data folder."
-          misc.iota_exit(self.iver)
-
-      # Identify indexing / integration program
-      if self.params.advanced.integrate_with == 'cctbx':
-        prg = "                                                             with CCTBX.XFEL\n"
-      elif self.params.advanced.integrate_with == 'dials':
-        prg = "                                                                  with DIALS\n"
-
-      self.logo += prg
-      print self.logo
-      print '\n{}\n'.format(self.now)
-      if msg != '':
-        print msg
-
-      if self.args.analyze != None:
-        self.analyze_prior_results('{:003d}'.format(int(self.args.analyze)))
-        misc.iota_exit(self.iver)
-
-      if self.params.mp_method == 'mpi':
-        rank, size = misc.get_mpi_rank_and_size()
-        self.master_process = rank == 0
+        # If user provided a data folder
+        elif os.path.isdir(carg):
+          msg = "\nIOTA will run in AUTO mode using {}:\n".format(carg)
+          self.params, self.txt_out = inp.process_input(self.args,
+                                                        self.phil_args,
+                                                        carg, 'auto', self.now)
+      # If user provided gibberish
       else:
-        self.master_process = True
+        print self.logo
+        print "ERROR: Invalid input! Need parameter filename or data folder."
+        misc.iota_exit(self.iver)
 
-    # *** The following is initialization common to GUI and command-line *** #
+    # Identify indexing / integration program
+    if self.params.advanced.integrate_with == 'cctbx':
+      prg = "                                                             with CCTBX.XFEL\n"
+    elif self.params.advanced.integrate_with == 'dials':
+      prg = "                                                                  with DIALS\n"
+
+    self.logo += prg
+    print self.logo
+    print '\n{}\n'.format(self.now)
+    if msg != '':
+      print msg
+
+    if self.args.analyze != None:
+      self.analyze_prior_results('{:003d}'.format(int(self.args.analyze)))
+      misc.iota_exit(self.iver)
+
+    if self.params.mp_method == 'mpi':
+      rank, size = misc.get_mpi_rank_and_size()
+      self.master_process = rank == 0
+    else:
+      self.master_process = True
 
     # Call function to read input folder structure (or input file) and
     # generate list of image file paths
@@ -323,11 +303,9 @@ class InitAll(object):
       with open(list_file, "w") as lf:
         for i, input_file in enumerate(self.input_list, 1):
           lf.write('{}\n'.format(input_file))
-          if not gui:
-            print "{}: {}".format(i, input_file)
+          print "{}: {}".format(i, input_file)
           lf.write('{}\n'.format(input_file))
-      if not gui:
-        print '\nExiting...\n\n'
+      print '\nExiting...\n\n'
       misc.iota_exit(self.iver)
 
     # If fewer images than requested processors are supplied, set the number of

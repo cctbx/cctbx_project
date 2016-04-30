@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 04/13/2015
+Last Changed: 04/29/2015
 Description : Runs cctbx.xfel integration module either in grid-search or final
               integration mode. Has options to output diagnostic visualizations.
               Includes selector class for best integration result selection
@@ -216,11 +216,13 @@ class Integrator(object):
       assert not os.path.exists(tmppath)
 
       # invoke the indexer in a way that will protect iota from any crashes
-      command = "iota.bulletproof %s %s %s"%(tmppath, self.target, " ".join(arguments))
+      command = "iota.bulletproof {} {} {}".format(tmppath, self.target, " ".join(arguments))
 
       try:
         easy_run.fully_buffered(command,join_stdout_stderr=True).show_stdout()
         if not os.path.exists(tmppath):
+          print tmppath
+          print command
           raise Exception("Indexing failed for an unknown reason")
 
         # iota.bulletproof saves the needed results from indexing in a tmp file

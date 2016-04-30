@@ -5,15 +5,18 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 04/14/2016
-Description : IOTA GComps
+Last Changed: 04/29/2016
+Description : IOTA GUI Initialization module
 '''
 
 import wx
 import os
 from cctbx.uctbx import unit_cell
 
-icons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ic/')
+import iota.components.iota_misc as misc
+import iota.components.iota_input as inp
+
+icons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/')
 
 # ----------------------------------- Window Panels ------------------------------------ #
 
@@ -66,18 +69,6 @@ class InputWindow(wx.Panel):
     output_box.Add(self.out_btn_mag, flag=wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER_HORIZONTAL, border=10)
     vbox.Add(output_box, flag=wx.LEFT | wx.TOP, border=10)
 
-    # Script input box and browse button
-    # script_box = wx.BoxSizer(wx.HORIZONTAL)
-    # self.script_txt = wx.StaticText(self, label='IOTA Script: ', size=(120, -1))
-    # self.script_btn_browse = wx.Button(self, label='Browse...')
-    # self.script_btn_mag = wx.BitmapButton(self, bitmap=wx.Bitmap('{}/16x16/viewmag.png'.format(icons)))
-    # self.script_ctr = wx.TextCtrl(self, size=(ctr_length, -1))
-    # script_box.Add(self.script_txt)
-    # script_box.Add(self.script_ctr, flag=wx.LEFT, border=5)
-    # script_box.Add(self.script_btn_browse, flag=wx.LEFT, border=10)
-    # script_box.Add(self.script_btn_mag, flag=wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER_HORIZONTAL, border=10)
-    # vbox.Add(script_box, flag=wx.LEFT | wx.TOP, border=10)
-
     # Title box
     title_box = wx.BoxSizer(wx.HORIZONTAL)
     self.inp_des_txt = wx.StaticText(self, label='Job title: ', size=(120, -1))
@@ -93,7 +84,7 @@ class InputWindow(wx.Panel):
     self.opt_chk_random.SetValue(False)
     self.opt_txt_random = wx.StaticText(self, label='Images in subset:')
     self.opt_txt_random.Disable()
-    self.opt_spc_random = wx.SpinCtrl(self, value='5', size=(80, -1))
+    self.opt_spc_random = wx.SpinCtrl(self, value='5', max=(1000), size=(80, -1))
     self.opt_spc_random.Disable()
     self.opt_txt_nprocs = wx.StaticText(self, label='Number of processors: ')
     self.opt_spc_nprocs = wx.SpinCtrl(self, value='8', size=(80, -1))
@@ -206,6 +197,7 @@ class InputWindow(wx.Panel):
       self.gparams.image_triage.grid_search.height_max = int(imp_dialog.trg_gs_hmax.GetValue())
 
     imp_dialog.Destroy()
+
 
   def onProcessOptions(self, e):
     # For cctbx.xfel options
@@ -370,6 +362,7 @@ class InputWindow(wx.Panel):
 
     int_dialog.Destroy()
 
+
   def onAnalysisOptions(self, e):
     an_dialog = AnalysisWindow(self, title='Dataset Analysis Options', style=wx.DEFAULT_DIALOG_STYLE | wx.STAY_ON_TOP)
     an_dialog.Fit()
@@ -402,6 +395,7 @@ class InputWindow(wx.Panel):
 
     an_dialog.Destroy()
 
+
   def onRandomCheck(self, e):
     ''' On random subset check, enable spin control to select size of subset (default = 5) '''
     ischecked = e.GetEventObject().GetValue()
@@ -412,11 +406,13 @@ class InputWindow(wx.Panel):
       self.opt_spc_random.Disable()
       self.opt_txt_random.Disable()
 
+
   def onInfo(self, e):
     ''' On clicking the info button '''
     info_txt = '''Input diffraction images here. IOTA accepts either raw images (mccd, cbf, img, etc.) or image pickles. Input can be either a folder with images, or a text file with a list of images.'''
     info = wx.MessageDialog(None, info_txt, 'Info', wx.OK)
     info.ShowModal()
+
 
   def onInputBrowse(self, e):
     """ On clincking the Browse button: show the DirDialog and populate 'Input' box w/ selection """
@@ -425,6 +421,7 @@ class InputWindow(wx.Panel):
       self.inp_ctr.SetValue(dlg.GetPath())
     dlg.Destroy()
     e.Skip()
+
 
   def onOutputBrowse(self, e):
     """ On clicking the Browse button: show the DirDialog and populate 'Output' box w/ selection """
@@ -649,6 +646,7 @@ class ImportWindow(wx.Dialog):
       self.trg_gs_amax.Enable()
       self.trg_txt_bragg.Enable()
       self.trg_ctr_bragg.Enable()
+
 
 class CCTBXOptions(wx.Dialog):
   # CCTBX.XFEL options
@@ -1124,148 +1122,246 @@ class AnalysisWindow(wx.Dialog):
       self.an_ctr_cluster.Disable()
       self.an_txt_cluster.Disable()
 
-class ProgressWindow(wx.Panel):
-  # Output window - will show gauges for every process
 
-  def __init__(self, parent):
-    super(ProgressWindow, self).__init__(parent)
-
-    progress_box = wx.StaticBox(self, label='Progress', pos=(5, 5), size=(600, 300))
-    vbox = wx.StaticBoxSizer(progress_box, wx.VERTICAL)
-
-    self.SetSizer(vbox)
+# ----------------------------------- Initialization  ----------------------------------- #
 
 
-class LogWindow(wx.Panel):
-  # Output text log - not yet sure if this is necessary
+class InitAll(object):
+  """ Class to initialize current IOTA run in GUI
 
-  def __init__(self, parent):
-    super(LogWindow, self).__init__(parent)
+      iver = IOTA version (hard-coded)
+      help_message = description (hard-coded)
 
-    log_box = wx.StaticBox(self, label='Log', pos=(5, 5), size=(600, 600))
-    vbox = wx.StaticBoxSizer(log_box, wx.VERTICAL)
+  """
 
-    self.SetSizer(vbox)
+  def __init__(self, iver):
+    from datetime import datetime
+    self.iver = iver
+    self.now = "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now())
+    self.input_base = None
+    self.conv_base = None
+    self.obj_base = None
+    self.int_base = None
 
 
-# ------------------------------------- Main Frame ------------------------------------- #
+  def make_input_list(self):
+    """ Reads input directory or directory tree and makes lists of input images
+        (in pickle format) using absolute path for each file. If a separate file
+        with list of images is provided, parses that file and uses that as the
+        input list. If random input option is selected, pulls a specified number
+        of random images from the list and outputs that subset as the input list.
+    """
+    input_entries = [i for i in self.params.input if i != None]
+    input_list = []
 
-class MainWindow(wx.Frame):
-  def __init__(self, parent, id, title):
-    wx.Frame.__init__(self, parent, id, title, pos=wx.DefaultPosition, size=(800, 500))
+    # run through the list of multiple input entries (or just the one) and
+    # concatenate the input list (right now GUI only supplies folder, but
+    # this will change in future)
+    for input_entry in input_entries:
+      if os.path.isfile(input_entry):
+        if input_entry.endswith('.lst'):  # read from file list
+          with open(input_entry, 'r') as listfile:
+            listfile_contents = listfile.read()
+          input_list.extend(listfile_contents.splitlines())
+        elif input_entry.endswith(('pickle', 'mccd', 'cbf', 'img')):
+          input_list.append(input_entry)  # read in image directly
 
-    # font = wx.Font(12, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, True)
-    # self.SetFont(font)
-    self.InitUI()
-    self.Show()
+      elif os.path.isdir(input_entry):
+        abs_inp_path = os.path.abspath(input_entry)
+        for root, dirs, files in os.walk(abs_inp_path):
+          for filename in files:
+            found_file = os.path.join(root, filename)
+            if found_file.endswith(('pickle', 'mccd', 'cbf', 'img')):
+              input_list.append(found_file)
 
-  def InitUI(self):
-    # Menu bar
-    menubar = wx.MenuBar()
-
-    # Status bar
-    self.sb = self.CreateStatusBar()
-
-    # Help menu item with the about dialog
-    help = wx.Menu()
-    help.Append(100, '&About')
-    self.Bind(wx.EVT_MENU, self.OnAboutBox, id=100)
-    menubar.Append(help, '&Help')
-    self.SetMenuBar(menubar)
-
-    # main_grid = wx.GridBagSizer(15, 15)
-    # spacer_left = wx.BoxSizer(wx.HORIZONTAL)
-    # spacer_left.Add((600, -1))
-    # spacer_right = wx.BoxSizer(wx.HORIZONTAL)
-    # spacer_right.Add((600, -1))
-
-    main_box = wx.BoxSizer(wx.VERTICAL)
-
-    # Toolbar
-    self.toolbar = self.CreateToolBar(wx.TB_TEXT)
-    self.texit = self.toolbar.AddLabelTool(wx.ID_EXIT, label='Quit',
-                                           bitmap=wx.Bitmap('{}/32x32/exit.png'.format(icons)),
-                                           shortHelp='Quit',
-                                           longHelp='Quit IOTA')
-
-    self.toolbar.AddSeparator()
-    self.tb_btn_run = self.toolbar.AddLabelTool(wx.ID_ANY, label='Run',
-                                                bitmap=wx.Bitmap('{}/32x32/run.png'.format(icons)),
-                                                shortHelp='Run', longHelp='Run all stages of refinement')
-    self.tb_btn_stop = self.toolbar.AddLabelTool(wx.ID_ANY, label='Abort',
-                                                 bitmap=wx.Bitmap('{}/32x32/stop.png'.format(icons)),
-                                                 shortHelp='Abort', longHelp='Abort all running processes')
-    self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
-    self.toolbar.EnableTool(self.tb_btn_stop.GetId(), False)
-    self.toolbar.AddSeparator()
-    self.tb_btn_script = self.toolbar.AddLabelTool(wx.ID_ANY, label='Output Script',
-                                                   bitmap=wx.Bitmap('{}/32x32/write.png'.format(icons)),
-                                                   shortHelp='Output Script',
-                                                   longHelp='Output current settings to script file')
-    self.tb_btn_imglist = self.toolbar.AddLabelTool(wx.ID_ANY,
-                                                    label='Write Image List',
-                                                    bitmap=wx.Bitmap('{}/32x32/list.png'.format(icons)),
-                                                    shortHelp='Write Image List',
-                                                    longHelp='Collect list of raw images and output to file')
-    self.tb_btn_convert = self.toolbar.AddLabelTool(wx.ID_ANY,
-                                                    label='Convert Images',
-                                                    bitmap=wx.Bitmap('{}/32x32/convert.png'.format(icons)),
-                                                    shortHelp='Convert Image Files',
-                                                    longHelp='Collect list of raw images and output to file')
-    self.toolbar.Realize()
-
-    # Instantiate windows
-    self.input_window = InputWindow(self)
-
-    # self.import_window = ImportWindow(self)
-    # self.process_window = ProcessWindow(self)
-    # self.analysis_window = AnalysisWindow(self)
-    # self.progress_window = ProgressWindow(self)
-    # self.log_window = LogWindow(self)
-
-    # Single input window
-    main_box.Add(self.input_window, flag=wx.LEFT | wx.RIGHT | wx.TOP | wx.BOTTOM, border=10)
-    main_box.Add((-1, 20))
-
-    # Input window - data input, description of project
-    # main_grid.Add(spacer_left, pos=(0, 0), flag=wx.EXPAND | wx.LEFT, border=15)
-    # main_grid.Add(self.input_window, pos=(1, 0), flag=wx.EXPAND | wx.LEFT, border=15)
-    # main_grid.Add(self.import_window, pos=(2, 0), flag=wx.EXPAND | wx.LEFT, border=15)
-    # main_grid.Add(self.process_window, pos=(3, 0), flag=wx.EXPAND | wx.LEFT, border=15)
-    # main_grid.Add(self.analysis_window, pos=(4, 0), flag=wx.EXPAND | wx.LEFT, border=15)
-    #
-    # main_grid.Add(spacer_right, pos=(0, 1), flag=wx.EXPAND | wx.LEFT, border=15)
-    # main_grid.Add(self.progress_window, pos=(1, 1), span=(2, 1), flag=wx.EXPAND | wx.LEFT, border=15)
-    # main_grid.Add(self.log_window, pos=(3, 1), span=(2, 1), flag=wx.EXPAND | wx.LEFT, border=15)
-    # self.SetSizer(main_grid)
-
-    self.SetSizer(main_box)
-
-    # Toolbar button bindings
-    self.Bind(wx.EVT_TOOL, self.onQuit, self.texit)
-    self.Bind(wx.EVT_BUTTON, self.onInput, self.input_window.inp_btn_browse)
-
-  def OnAboutBox(self, e):
-    ''' About dialog '''
-    info = wx.AboutDialogInfo()
-    # info.SetIcon(wx.Icon('icons/iota_100.png', wx.BITMAP_TYPE_PNG))
-    info.SetName('IOTA')
-    info.SetVersion(iota_version)
-    info.SetDescription(description)
-    info.SetCopyright('(C) 2015 - 2016 Art Lyubimov')
-    info.SetWebSite('http://cci.lbl.gov/xfel')
-    info.SetLicense(license)
-    info.AddDeveloper('Art Lyubimov')
-    info.AddDocWriter('Art Lyubimov')
-    info.AddArtist('The Internet')
-    info.AddTranslator('Art Lyubimov')
-    wx.AboutBox(info)
-
-  def onInput(self, e):
-    if self.input_window.inp_ctr.GetValue() != '':
-      self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
+    # Pick a randomized subset of images
+    if self.params.advanced.random_sample.flag_on and self.params.advanced.random_sample.number < len(input_list):
+      inp_list = self.select_random_subset(input_list)
     else:
-      self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
+      inp_list = input_list
 
-  def onQuit(self, e):
-    self.Close()
+    return inp_list
+
+
+  def select_random_subset(self, input_list):
+    """ Selects random subset of input entries """
+    import random
+
+    random_inp_list = []
+    if self.params.advanced.random_sample.number == 0:
+      if len(input_list) <= 5:
+        random_sample_number = len(input_list)
+      elif len(input_list) <= 50:
+        random_sample_number = 5
+      else:
+        random_sample_number = int(len(input_list) * 0.1)
+    else:
+      random_sample_number = self.params.advanced.random_sample.number
+
+    for i in range(random_sample_number):
+      random_number = random.randrange(0, len(input_list))
+      if input_list[random_number] in random_inp_list:
+        while input_list[random_number] in random_inp_list:
+          random_number = random.randrange(0, len(input_list))
+        random_inp_list.append(input_list[random_number])
+      else:
+        random_inp_list.append(input_list[random_number])
+
+    return random_inp_list
+
+
+  def make_int_object_list(self):
+    """ Generates list of image objects from previous grid search """
+    from libtbx import easy_pickle as ep
+
+    if self.params.cctbx.selection.select_only.grid_search_path == None:
+      int_dir = misc.set_base_dir('integration', True)
+    else:
+      int_dir = self.params.cctbx.selection.select_only.grid_search_path
+
+    img_objects = []
+
+    # Inspect integration folder for image objects
+    for root, dirs, files in os.walk(int_dir):
+      for filename in files:
+        found_file = os.path.join(root, filename)
+        if found_file.endswith(('int')):
+          obj = ep.load(found_file)
+          img_objects.append(obj)
+
+    # Pick a randomized subset of images
+    if self.params.advanced.random_sample.flag_on and \
+                    self.params.advanced.random_sample.number < len(img_objects):
+      gs_img_objects = self.select_random_subset(img_objects)
+    else:
+      gs_img_objects = img_objects
+
+    return gs_img_objects
+
+
+  def sanity_check(self):
+    ''' Check for conditions necessary to starting the run
+    @return: True if passed, False if failed
+    '''
+
+    # Check for existence of appropriate target files
+    # If none are specified, ask to generate defaults; if user says no, fail sanity check
+    # If file is specified but doesn't exist, show error message and fail sanity check
+    if not self.params.image_conversion.convert_only:
+      if self.params.advanced.integrate_with == 'cctbx':
+        if self.params.cctbx.target == None:
+          self.params.cctbx.target = 'cctbx.phil'
+          write_def = wx.MessageDialog(None, 'WARNING! No target file for CCTBX.XFEL. Generate defaults?',
+                                    'WARNING', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_EXCLAMATION)
+          if (write_def.ShowModal() == wx.ID_YES):
+            inp.write_defaults(self.params.output, self.txt_out, method='cctbx')
+            return True
+          else:
+            return False
+        elif not os.path.isfile(self.params.cctbx.target):
+          wx.MessageBox('ERROR: CCTBX.XFEL target file not found!', 'ERROR', wx.OK | wx.ICON_ERROR)
+          return False
+      elif self.params.advanced.integrate_with == 'dials':
+        if self.params.dials.target == None:
+          self.params.dials.target = 'dials.phil'
+          write_def = wx.MessageDialog(None, 'WARNING! No target file for DIALS. Generate defaults?',
+                                    'WARNING', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_EXCLAMATION)
+          if (write_def.ShowModal() == wx.ID_YES):
+            inp.write_defaults(self.params.output, self.txt_out, method='dials')
+            return True
+          else:
+            return False
+        elif not os.path.isfile(self.params.dials.target):
+          wx.MessageBox('ERROR: DIALS target file not found!', 'ERROR', wx.OK | wx.ICON_ERROR)
+          return False
+
+    return True
+
+  def run(self, gparams, list_file=None):
+    ''' Run initialization for IOTA GUI
+
+        gparams = IOTA parameters from the GUI elements in PHIL format
+        gtxt = text version of gparams
+        list_file = if "Write Input List" button pressed, specifies name of list file
+    '''
+
+    from iota.components.iota_init import parse_command_args
+    self.args, self.phil_args = parse_command_args(self.iver, '').parse_known_args()
+    self.params = gparams
+    final_phil = inp.master_phil.format(python_object=self.params)
+
+    # Generate text of params
+    with misc.Capturing() as txt_output:
+      final_phil.show()
+    self.txt_out = ''
+    for one_output in txt_output:
+      self.txt_out += one_output + '\n'
+
+    # Call function to read input folder structure (or input file) and
+    # generate list of image file paths
+    if self.params.cctbx.selection.select_only.flag_on:
+      self.gs_img_objects = self.make_int_object_list()
+      self.input_list = [i.conv_img for i in self.gs_img_objects]
+    else:
+      self.input_list = self.make_input_list()
+
+    # Check for data not found
+    if len(self.input_list) == 0:
+      wx.MessageBox('ERROR: Data Not Found!', 'ERROR', wx.OK | wx.ICON_ERROR)
+      return False
+
+    # If list-only option selected, output list only
+    if list_file != None:
+      with open(list_file, "w") as lf:
+        for i, input_file in enumerate(self.input_list, 1):
+          lf.write('{}\n'.format(input_file))
+      return True
+
+    # If fewer images than requested processors are supplied, set the number of
+    # processors to the number of images
+    if self.params.n_processors > len(self.input_list):
+      self.params.n_processors = len(self.input_list)
+
+    # Run the sanity check procedure
+    if not self.sanity_check():
+      return False
+
+    # Generate base folder paths
+    self.conv_base = misc.set_base_dir('converted_pickles', out_dir=self.params.output)
+    self.int_base = misc.set_base_dir('integration', out_dir=self.params.output)
+    self.obj_base = os.path.join(self.int_base, 'image_objects')
+    self.fin_base = os.path.join(self.int_base, 'final')
+    self.tmp_base = os.path.join(self.int_base, 'tmp')
+    self.viz_base = os.path.join(self.int_base, 'visualization')
+
+    # Generate base folders
+    os.makedirs(self.int_base)
+    os.makedirs(self.obj_base)
+    os.makedirs(self.fin_base)
+    os.makedirs(self.tmp_base)
+
+    # Determine input base
+    self.input_base = os.path.abspath(os.path.dirname(os.path.commonprefix(self.input_list)))
+
+    # Initialize main log
+    self.logfile = os.path.abspath(os.path.join(self.int_base, 'iota.log'))
+
+
+    # Log starting info
+    misc.main_log(self.logfile, '{:=^80} \n'.format(' IOTA MAIN LOG '))
+    misc.main_log(self.logfile, '{:-^80} \n'.format(' SETTINGS FOR THIS RUN '))
+    misc.main_log(self.logfile, self.txt_out)
+
+    # Log cctbx.xfel / DIALS settings
+    if self.params.advanced.integrate_with == 'cctbx':
+      target_file = self.params.cctbx.target
+    elif self.params.advanced.integrate_with == 'dials':
+      target_file = self.params.dials.target
+    misc.main_log(self.logfile, '{:-^80} \n\n'
+                                ''.format(' TARGET FILE ({}) CONTENTS '
+                                          ''.format(target_file)))
+    with open(target_file, 'r') as phil_file:
+      phil_file_contents = phil_file.read()
+    misc.main_log(self.logfile, phil_file_contents)
+
+    return True
