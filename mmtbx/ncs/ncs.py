@@ -109,6 +109,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
   def copy_rot_trans(self,list_of_matrices,list_of_translations,
       change_of_basis_operator=None,
       coordinate_offset=None,
+      scale_factor=None,
       unit_cell=None,new_unit_cell=None):
     # if change_of_basis_operator is None, then return copy of what we have
     from copy import deepcopy
@@ -123,7 +124,11 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     else:
       a=None
     for ncs_r,ncs_t in zip(list_of_matrices,list_of_translations):
-      if change_of_basis_operator is None and coordinate_offset is None:
+      if scale_factor is not None:
+        # expand by scale_factor about (0,0,0). Affects all translations
+        new_list_of_matrices.append(deepcopy(ncs_r))
+        new_list_of_translations.append(scale_factor*matrix.col(ncs_t))
+      elif change_of_basis_operator is None and coordinate_offset is None:
         new_list_of_matrices.append(deepcopy(ncs_r))
         new_list_of_translations.append(deepcopy(ncs_t))
       elif coordinate_offset is not None:
@@ -185,11 +190,15 @@ class ncs_group:  # one group of NCS operators and center and where it applies
   def copy_vector_list(self,list_of_vectors,
       change_of_basis_operator=None,
       coordinate_offset=None,
+      scale_factor=None,
          unit_cell=None,new_unit_cell=None):
     from copy import deepcopy
+    from scitbx.math import  matrix
     new_vector_list=[]
     for vector in list_of_vectors:
-      if change_of_basis_operator is None and coordinate_offset is None:
+      if scale_factor is not None:
+        new_vector=scale_factor*matrix.col(vector)
+      elif change_of_basis_operator is None and coordinate_offset is None:
         new_vector=deepcopy(vector)
       else:
         new_vector=self.apply_cob_to_vector(vector=vector,
@@ -202,14 +211,16 @@ class ncs_group:  # one group of NCS operators and center and where it applies
   def deep_copy(self,change_of_basis_operator=None,unit_cell=None,
       coordinate_offset=None,
       new_unit_cell=None,
+      scale_factor=None,
       hierarchy_to_match_order=None):  # make full copy;
     # optionally apply change-of-basis operator (requires old, new unit cells)
     # optionally apply coordinate_offset (adding coordinate_offset to coords)
     # optionally sort operators to match order in hierarchy
+    # optionally apply scale factor (magnification)
 
-    # Can do only one of the above three things
-    assert [change_of_basis_operator,
-      coordinate_offset,hierarchy_to_match_order].count(None)>=2
+    # Can do only one of the above four things
+    assert [change_of_basis_operator,scale_factor,
+      coordinate_offset,hierarchy_to_match_order].count(None)>=3
 
     if hierarchy_to_match_order and self._chain_residue_id is not None:
 
@@ -224,14 +235,18 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     new._residues_in_common_list=deepcopy(self._residues_in_common_list)
 
     # centers simply get affected by the change of basis operator if present
+    #   or scale_factor
     new._centers=self.copy_vector_list(self._centers,
       change_of_basis_operator=change_of_basis_operator,
       coordinate_offset=coordinate_offset,
+      scale_factor=scale_factor,
          unit_cell=unit_cell,new_unit_cell=new_unit_cell)
 
     # matrices and translations may need to be adjusted if change of basis set
+    #  Scale_factor applied to translations
     new._rota_matrices,new._translations_orth=self.copy_rot_trans(
        self._rota_matrices,self._translations_orth,
+         scale_factor=scale_factor,
          coordinate_offset=coordinate_offset,
          unit_cell=unit_cell,new_unit_cell=new_unit_cell)
 
@@ -1006,6 +1021,7 @@ class ncs:
 
   def deep_copy(self,change_of_basis_operator=None,unit_cell=None,
       coordinate_offset=None,
+      scale_factor=None,
       new_unit_cell=None,
       hierarchy_to_match_order=None):  # make a copy
     from mmtbx.ncs.ncs import ncs
@@ -1019,6 +1035,7 @@ class ncs:
       new._ncs_groups.append(ncs_group.deep_copy(
          change_of_basis_operator=change_of_basis_operator,
          coordinate_offset=coordinate_offset,
+         scale_factor=scale_factor,
          unit_cell=unit_cell,new_unit_cell=new_unit_cell,
          hierarchy_to_match_order=hierarchy_to_match_order))
     return new
@@ -1032,6 +1049,11 @@ class ncs:
     return self.deep_copy(change_of_basis_operator=change_of_basis_operator,
       unit_cell=unit_cell,new_unit_cell=new_unit_cell)
 
+  def magnification(self,scale_factor=None):
+    if scale_factor is None:
+       raise Sorry("For magnification a scale factor is required.")
+    return self.deep_copy(scale_factor=scale_factor)
+
   def coordinate_offset(self,coordinate_offset=None,unit_cell=None,
       new_unit_cell=None):
     if coordinate_offset is None:
@@ -1043,7 +1065,6 @@ class ncs:
     # centers for the operators must exist and not be zero
     for ncs_group in self._ncs_groups:
       ncs_group.map_inside_unit_cell(unit_cell=unit_cell)
-
 
   def ncs_read(self):
     return self._ncs_read
