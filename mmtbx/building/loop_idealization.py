@@ -86,7 +86,9 @@ class loop_idealization():
     number_of_ccd_trials = 0
     # print "logic expr outcome:", (number_of_ccd_trials < 10 and self.berkeley_p_before_minimization_rama_outliers > 0.001)
     # print number_of_ccd_trials < 10
-    # print self.berkeley_p_before_minimization_rama_outliers > 0.001
+    # print "berkeley before rama out:", self.berkeley_p_before_minimization_rama_outliers
+    if self.berkeley_p_before_minimization_rama_outliers <= 0.001:
+      print >> self.log, "No ramachandran outliers, skipping CCD step."
     while (number_of_ccd_trials < self.params.number_of_ccd_trials
         and self.berkeley_p_before_minimization_rama_outliers > 0.001):
       print "CCD try number, outliers:", number_of_ccd_trials, self.berkeley_p_before_minimization_rama_outliers
@@ -139,7 +141,7 @@ class loop_idealization():
     if self.params.minimize_whole:
       print >> self.log, "minimizing whole thing..."
       print >> self.log, "self.ref_exclusion_selection", self.ref_exclusion_selection
-      print >> sel
+      # print >> sel
       minimize_wrapper_for_ramachandran(
           hierarchy=self.resulting_pdb_h,
           xrs=xrs,
