@@ -1515,7 +1515,7 @@ class CCTBXBuilder(CCIBuilder):
 
 class DIALSBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['dials', 'xia2']
-  LIBTBX_EXTRA = ['dials', 'xia2', '--skip-phenix-dispatchers']
+  LIBTBX_EXTRA = ['dials', 'xia2', 'prime', 'iota', '--skip-phenix-dispatchers']
   def add_tests(self):
     self.add_test_command('cctbx_regression.test_nightly')
     self.add_test_parallel('dials', flunkOnFailure=False, warnOnFailure=True)
@@ -1560,7 +1560,8 @@ class XFELBuilder(CCIBuilder):
     'labelit',
     'xfel',
     'cxi_xdr_xes',
-    'prime'
+    'prime',
+    'iota'
   ]
 
   def add_base(self, extra_opts=[]):
@@ -1622,6 +1623,8 @@ class PhenixBuilder(CCIBuilder):
     'probe',
     'dials',
     'xia2',
+    'prime',
+    'iota',
   ]
 
   def add_base(self, extra_opts=[]):
