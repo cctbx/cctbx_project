@@ -24,8 +24,8 @@ def pypi_pkg_url(package):
          package[:package.rindex('-')] if '-' in package else package)
 
 # OpenSSL - needed for Mac OS X 10.11
-BASE_OPENSSL_PKG_URL = "http://www.openssl.org/source/old/1.0.2"
-OPENSSL_PKG = "openssl-1.0.2f.tar.gz"
+BASE_OPENSSL_PKG_URL = "http://www.openssl.org/source/"
+OPENSSL_PKG = "openssl-1.0.2g.tar.gz"
 
 # from CCI
 PYTHON_PKG = "Python-2.7.8_cci.tar.gz"
