@@ -341,7 +341,7 @@ namespace prime {
         double se_max = scitbx::af::max(SE_group.ref());
         double se_min = scitbx::af::min(SE_group.ref());
         double SE_norm_val;
-        if (SE_group.size() == 1 or ((se_max-se_min) < 0.1) or avg_mode_ == Average) {
+        if (SE_group.size() == 1 || ((se_max-se_min) < 0.1) || avg_mode_ == Average) {
           SE_norm_val = 1;
           for (int i = 0; i < SE_group.size(); i++) {
             SE_norm.push_back(SE_norm_val);
