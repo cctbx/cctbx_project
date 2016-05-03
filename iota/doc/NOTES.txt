@@ -1,14 +1,11 @@
-IOTA v1.0.004 - GUI additions & bug fixes
+IOTA v1.0.005 - Changes to command-line module
 
 Bug Fixes:
-1. Added dispatcher directives to prevent IOTA from crashing on Mac
-2. Abort no longer produces "no attribute named 'final'" error
-3. Beam XY chart redrawn properly & has equal aspect ratio
+1. No longer crashes in AUTO mode w/o target file supplied
 
 New Features
-1. Moved all GUI modules into iota_gui_init.py
-2. Status box in the output window
-
+1. Streamlined and cleaned upcommand-line module (iota_run.py)
+2. Improved progress bar more clearly indicates progress
 
 Known Issues:
 1. Still a little dodgy when running IOTA with DIALS; will be improved in future

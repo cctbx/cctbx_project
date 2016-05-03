@@ -6,13 +6,13 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 05/02/2016
-Description : IOTA GUI startup module. Version 1.0.004
+Last Changed: 05/03/2016
+Description : IOTA GUI startup module. Version 1.0.005
 '''
 
 import wx
 from iota.components.iota_gui_init import MainWindow
-iota_version = '1.0.004'
+iota_version = '1.0.005'
 
 class MainApp(wx.App):
   ''' App for the main GUI window  '''

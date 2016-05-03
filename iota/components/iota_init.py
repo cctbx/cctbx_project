@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 04/29/2015
+Last Changed: 05/03/2015
 Description : Reads command line arguments. Initializes all IOTA starting
               parameters. Starts main log.
 '''
@@ -69,7 +69,7 @@ class InitAll(object):
    ">------INTEGRATION----OPTIMIZATION--------TRIAGE-------ANALYSIS------------>\n"\
    "       II             O       O           TT          A       A             \n"\
    "       II             O       O           TT         A         A            \n"\
-   "     IIIIII            OOOOOOO            TT        A           A  v{}      \n"\
+   "     IIIIII            OOOOOOO            TT        A           A   v{}     \n"\
    "".format(iver)
     self.help_message = self.logo + help_message
     self.input_base = None

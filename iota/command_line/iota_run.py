@@ -4,11 +4,11 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 05/02/2016
-Description : IOTA command-line module. Version 1.0.004
+Last Changed: 05/03/2016
+Description : IOTA command-line module. Version 1.0.005
 '''
 
-iota_version = '1.0.004'
+iota_version = '1.0.005'
 help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 
@@ -44,118 +44,135 @@ import iota.components.iota_cmd as cmd
 import iota.components.iota_misc as misc
 from libtbx.easy_mp import parallel_map
 
-def gs_importer_wrapper(input_entry):
-  """ Multiprocessor wrapper for image conversion  """
-  prog_count = input_entry[0]
-  n_img = input_entry[1]
-  img_object = input_entry[2]
-  imp_image = img_object.import_int_file(init)
+class XTermIOTA():
+  ''' Main class that will initalize and run everything'''
 
-  gs_prog = cmd.ProgressBar(title='READING IMAGE OBJECTS')
-  if prog_count < n_img:
-    prog_step = 100 / n_img
-    gs_prog.update(prog_count * prog_step, prog_count)
-  else:
-    gs_prog.finished()
+  def __init__(self):
+    self.prog_count = 0
+    self.init = InitAll(iota_version, help_message)
+    self.init.run()
 
-  return imp_image
+  def proc_wrapper(self, input_entry):
+    ''' Wrapper for processing function using the image object
+    @param input_entry: [image_number, total_images, image_object]
+    @return: image object
+    '''
+    if self.stage == 'import':
+      if self.init.params.cctbx.selection.select_only.flag_on:
+        img_object = input_entry[2]
+        img_object.import_int_file(self.init)
+      else:
+        img_object = img.SingleImage(input_entry, self.init)
+        img_object.import_image()
+    elif self.stage == 'process':
+      img_object = input_entry[2]
+      img_object.process()
+    return img_object
 
-def img_importer_wrapper(input_entry):
-  """ Multiprocessor wrapper for image conversion  """
-  prog_count = input_entry[0]
-  n_img = input_entry[1]
-  img_object = img.SingleImage(input_entry, init)
-  imp_image = img_object.import_image()
+  def callback(self, result):
+    ''' To be run on completion of each step
+    @param result: image_object
+    @return:
+    '''
+    if self.prog_count < len(self.init.input_list):
+      prog_step = 100 / len(self.init.input_list)
+      self.gs_prog.update(self.prog_count * prog_step, self.prog_count)
+      self.prog_count += 1
+    else:
+      self.gs_prog.finished()
 
-  gs_prog = cmd.ProgressBar(title='IMPORTING IMAGES')
-  if prog_count < n_img:
-    prog_step = 100 / n_img
-    gs_prog.update(prog_count * prog_step, prog_count)
-  else:
-    gs_prog.finished()
+  def run_import(self):
+    ''' Import images or image objects '''
+    if self.init.params.cctbx.selection.select_only.flag_on:
+      msg = "Reading {} image objects".format(len(self.init.gs_img_objects))
+      title = 'READING IMAGE OBJECTS'
+      self.img_list = [[i, len(init.gs_img_objects) + 1, j] for i, j in
+                       enumerate(init.gs_img_objects, 1)]
+    else:
+      msg = "Importing {} images".format(len(self.init.input_list))
+      title = 'IMPORTING IMAGES'
+      self.img_list = [[i, len(self.init.input_list) + 1, j] for i, j in
+                       enumerate(self.init.input_list, 1)]
 
-  return imp_image
+    cmd.Command.start(msg)
+    self.prog_count = 0
+    self.gs_prog = cmd.ProgressBar(title=title)
+    self.img_objects = parallel_map(iterable=self.img_list,
+                                    func=self.proc_wrapper,
+                                    callback=self.callback,
+                                    processes=self.init.params.n_processors)
 
-def processing_wrapper(input_entry):
-  """ Multiprocessor wrapper for image conversion  """
-  prog_count = input_entry[0]
-  n_img = input_entry[1]
-  img_object = input_entry[2]
-  proc_image = img_object.process()
+  def run_process(self):
+    ''' Run indexing / integration of imported images '''
+    cmd.Command.start("Processing {} images".format(len(self.img_objects)))
+    self.img_list = [[i, len(self.img_objects) + 1, j] for i, j in
+                      enumerate(self.img_objects, 1)]
+    self.prog_count = 0
+    self.gs_prog = cmd.ProgressBar(title='PROCESSING')
+    self.img_objects = parallel_map(iterable=self.img_list,
+                               func=self.proc_wrapper,
+                               callback=self.callback,
+                               processes=self.init.params.n_processors)
+    cmd.Command.end("Processing {} images -- DONE "
+                    "".format(len(self.img_objects)))
 
-  gs_prog = cmd.ProgressBar(title='PROCESSING')
-  if prog_count < n_img:
-    prog_step = 100 / n_img
-    gs_prog.update(prog_count * prog_step, prog_count)
-  else:
-    gs_prog.finished()
 
-  return proc_image
+  def run_analysis(self):
+    ''' Run analysis of integrated images '''
+    cmd.Command.start("Analyzing results ")
+    analysis = Analyzer(self.init, self.img_objects, iota_version)
+    cmd.Command.end("Analyzing results -- DONE")
+    analysis.print_results()
+    analysis.unit_cell_analysis()
+    analysis.print_summary()
+    analysis.make_prime_input()
+
+  def run(self):
+    ''' Run IOTA '''
+
+    # Import Images
+    self.stage = 'import'
+    self.run_import()
+
+    # Remove rejected images from image object list
+    acc_img_objects = [i.fail for i in self.img_objects if i.fail == None]
+    cmd.Command.end("Accepted {} of {} images -- DONE " \
+                    "".format(len(acc_img_objects), len(self.img_objects)))
+
+    # Exit if none of the images have diffraction
+    if str(self.init.params.image_triage.type).lower() != 'none':
+      if len(acc_img_objects) == 0:
+        misc.main_log(self.init.logfile, 'No images have diffraction!', True)
+        misc.iota_exit(iota_version)
+      else:
+        misc.main_log(self.init.logfile,
+                      "{} out of {} images have diffraction "
+                      "(at least {} Bragg peaks)"
+                      "".format(len(acc_img_objects),
+                                len(self.img_objects),
+                                self.init.params.image_triage.min_Bragg_peaks))
+
+    # Check for -c option and exit if true
+    if self.init.params.image_conversion.convert_only:
+      misc.iota_exit(iota_version)
+
+    # Process Images
+    self.stage = 'process'
+    self.run_process()
+
+    # Analysis of integration results
+    final_objects = [i for i in self.img_objects if i.fail == None]
+    if len(final_objects) > 0:
+      self.run_analysis()
+    else:
+      print 'No images successfully integrated!'
+
+    # Exit IOTA
+    misc.iota_exit(iota_version)
+
 
 # ============================================================================ #
 if __name__ == "__main__":
 
-  # Initialize IOTA parameters and log
-  init = InitAll(iota_version, help_message)
-  init.run()
-
-  if init.params.cctbx.selection.select_only.flag_on:
-    # Generate image objects and modify with saved grid search results
-    cmd.Command.start("Generating {} image objects".format(len(init.gs_img_objects)))
-    img_list = [[i, len(init.gs_img_objects) + 1, j] for i, j in enumerate(init.gs_img_objects, 1)]
-    img_objects = parallel_map(iterable  = img_list,
-                               func      = gs_importer_wrapper,
-                               processes = init.params.n_processors)
-    cmd.Command.end("Generating {} image objects -- DONE ".format(len(init.gs_img_objects)))
-
-  else:
-    # Import ( and check / convert / triage) images
-    cmd.Command.start("Importing {} images".format(len(init.input_list)))
-    img_list = [[i, len(init.input_list) + 1, j] for i, j in enumerate(init.input_list, 1)]
-    img_objects = parallel_map(iterable  = img_list,
-                               func      = img_importer_wrapper,
-                               processes = init.params.n_processors)
-
-    # Remove rejected images from image object list
-    acc_img_objects = [i.fail for i in img_objects if i.fail == None]
-    cmd.Command.end("Accepted {} of {} images -- DONE "\
-                    "".format(len(acc_img_objects), len(img_objects)))
-
-    # Exit if none of the images have diffraction
-    if str(init.params.image_triage.type).lower() != 'none':
-      if len(acc_img_objects) == 0:
-        misc.main_log(init.logfile, 'No images have diffraction!', True)
-        misc.iota_exit(iota_version)
-      else:
-        misc.main_log(init.logfile, "{} out of {} images have diffraction (at "\
-                                    "least {} Bragg peaks)"\
-                                    "".format(len(acc_img_objects),
-                                       len(img_objects),
-                                       init.params.image_triage.min_Bragg_peaks))
-
-    # Check for -c option and exit if true
-    if init.params.image_conversion.convert_only:
-      misc.iota_exit(iota_version)
-
-  cmd.Command.start("Processing {} images".format(len(img_objects)))
-  img_list = [[i, len(img_objects) + 1, j] for i, j in enumerate(img_objects, 1)]
-  img_objects = parallel_map(iterable  = img_list,
-                             func      = processing_wrapper,
-                             processes = init.params.n_processors)
-  cmd.Command.end("Processing {} images -- DONE ".format(len(img_objects)))
-
-
-  # Analysis of integration results
-  final_objects = [i for i in img_objects if i.fail == None]
-
-  if len(final_objects) == 0:
-    print 'No images successfully integrated!'
-    misc.iota_exit(iota_version)
-
-  analysis = Analyzer(init, img_objects, iota_version)
-  analysis.print_results()
-  analysis.unit_cell_analysis()
-  analysis.print_summary()
-  analysis.make_prime_input()
-
-  misc.iota_exit(iota_version)
+  iota = XTermIOTA()
+  iota.run()
