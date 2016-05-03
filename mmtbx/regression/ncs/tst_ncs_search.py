@@ -5,6 +5,7 @@ from mmtbx.ncs import ncs_search
 import iotbx.ncs as ncs
 import iotbx.pdb
 import unittest
+from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter
 
 __author__ = 'Youval'
 
@@ -16,8 +17,8 @@ class TestSimpleAlignment(unittest.TestCase):
         "NGRNNCHKSSSTLRITDCRLKGSSKYPNCDYTTTDSQKHIIIACDGNPYVPVHFDASV"
     b = "AESSADKFKRQHMDTEGPSKSSPTYCNQMMKRQGMTKGSCKPVNTFVHEPLEDVQ" \
         "NGRNNCHKSSSTLRITDCRLKGSSKYPNCDYTTTDSQkhIIIACDGNPYVPVHFDASVtttt"
-    self.seq_a = list(a)
-    self.seq_b = list(b)
+    self.seq_a = [three_letter_given_one_letter.get(x, 'X') for x in a]
+    self.seq_b = [three_letter_given_one_letter.get(x, 'X') for x in b]
     self.length_diff = len(b)/len(a)
     # Gaps needed for the inserted, not aligned, letters
     self.gaps_needed = 4 + 3 + 4
@@ -32,17 +33,19 @@ class TestSimpleAlignment(unittest.TestCase):
 
   def test_1(self):
     # print sys._getframe().f_code.co_name
-    seq_a = "AAKDVKFGVNVLADAVKVTVASKANDAAGDGTTTATVLAQAI"
-    seq_b = "AAKDVKFGNDARVKMLRGVNVLADAVKVTVASTATVLAQAI"
+    seq_aa = "AAKDVKFGVNVLADAVKVTVASKANDAAGDGTTTATVLAQAI"
+    seq_bb = "AAKDVKFGNDARVKMLRGVNVLADAVKVTVASTATVLAQAI"
+    seq_a = [three_letter_given_one_letter.get(x, 'X') for x in seq_aa]
+    seq_b = [three_letter_given_one_letter.get(x, 'X') for x in seq_bb]
     # Test that aligned segments are at least min_contig_length long
     sel_a, sel_b, similarity = mmtbx_res_alignment(
       seq_a=seq_a, seq_b=seq_b,
       min_percent =0.1)
-    self.assertEqual([0,1,2,3,4,5,6,7,8,9,11,13,15,16,18,19,21,22,23,24,29,
-                      32,33,34,35,36,37,38,39,40,41],
+    self.assertEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+                16, 17, 18, 19, 20, 21, 33, 34, 35, 36, 37, 38, 39, 40, 41],
                     list(sel_a))
-    self.assertEqual([0,1,2,3,4,5,6,7,8,9,11,13,15,16,18,19,20,21,22,23,28,
-                      31,32,33,34,35,36,37,38,39,40,],
+    self.assertEqual([0, 1, 2, 3, 4, 5, 6, 7, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40],
                     list(sel_b))
     # Without length limitation
     sel_a, sel_b,similarity = mmtbx_res_alignment(
@@ -1381,7 +1384,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_2']
+  tests = ['test_1']
   suite = unittest.TestSuite(map(TestSimpleAlignment,tests))
   return suite
 

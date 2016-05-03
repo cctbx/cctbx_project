@@ -895,15 +895,14 @@ def mmtbx_res_alignment(seq_a, seq_b,
     merged_one_given_three = one_letter_given_three_letter.copy()
     merged_one_given_three.update(one_letter_given_three_letter_modified_aa)
     merged_one_given_three.update({
-        "A": "A",
-        "C": "C",
-        "G": "G",
-        "U": "U",
-        "DA": "A",
-        "DC": "C",
-        "DG": "G",
-        "DT": "T"}
-    )
+        "  A": "A",
+        "  C": "C",
+        "  G": "G",
+        "  U": "U",
+        " DA": "A",
+        " DC": "C",
+        " DG": "G",
+        " DT": "T"})
     for l in seq_a:
       one_letter = merged_one_given_three.get(l, 'X')
       norm_seq_a += one_letter
@@ -919,6 +918,8 @@ def mmtbx_res_alignment(seq_a, seq_b,
       similarity_function="identity")
   alignment = obj.extract_alignment()
   sim1 = alignment.calculate_sequence_identity()
+  # print "Sequence identity is", sim1
+  # alignment.pretty_print(block_size=60)
   al_a, al_b = alignment.exact_match_selections()
   # alignment.pretty_print()
 
