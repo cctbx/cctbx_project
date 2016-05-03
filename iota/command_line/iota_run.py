@@ -4,11 +4,11 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 04/29/2016
-Description : IOTA command-line module. Version 1.0.003
+Last Changed: 05/02/2016
+Description : IOTA command-line module. Version 1.0.004
 '''
 
-iota_version = '1.0.003'
+iota_version = '1.0.004'
 help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 

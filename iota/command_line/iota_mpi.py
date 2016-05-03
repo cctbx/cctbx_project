@@ -4,12 +4,12 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 04/13/2016
+Last Changed: 05/02/2016
 Description : IOTA command-line module for running modules in order.
-              Version 1.0.001G
+              Version 1.0.004
 '''
 
-iota_version = '1.0.001G'
+iota_version = '1.0.004'
 help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 

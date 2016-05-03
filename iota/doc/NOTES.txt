@@ -1,18 +1,19 @@
-IOTA v1.0.003 - GUI additions & bug fixes
+IOTA v1.0.004 - GUI additions & bug fixes
+
+Bug Fixes:
+1. Added dispatcher directives to prevent IOTA from crashing on Mac
+2. Abort no longer produces "no attribute named 'final'" error
+3. Beam XY chart redrawn properly & has equal aspect ratio
 
 New Features
-1. Better error handling (i.e. actual error handling in a few cases)
-2. GUI prompts for generating default cctbx / DIALS settings if none are given
-3. Image import, pre-processing and integration now happens in one step, per image (GUI only)
-4. Progress tracked / charts updated via timed polling rather than at process callback
-5. New charts updated in real-time:
-    a. beam center coordinate chart
-    b. summary pie chart (keeps track of images that failed triage, weren't integrated, etc.)
+1. Moved all GUI modules into iota_gui_init.py
+2. Status box in the output window
+
 
 Known Issues:
 1. Still a little dodgy when running IOTA with DIALS; will be improved in future
-2. More visuals in the works.
-3. Unit cell clustering currently not active; removing scipy dependencies
-4. Because of this, median unit cell parameters returned; we are aware that this is woefully inadequate
-5. Sometimes (rarely) hangs when importing a script and changing processing options - trying to reproduce
-6. Odd behavior of status bar when Abort button is pressed
+2. Unit cell clustering currently not active; removing scipy dependencies
+3. Because of this, median unit cell parameters returned; we are aware that
+this is woefully inadequate
+4. Sometimes (rarely) hangs when importing a script and changing processing
+options - trying to reproduce

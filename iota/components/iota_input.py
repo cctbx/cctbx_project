@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 04/14/2016
+Last Changed: 05/02/2016
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -11,7 +11,6 @@ Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
 
 import sys
 import os
-import random
 from cStringIO import StringIO
 
 import iotbx.phil as ip
