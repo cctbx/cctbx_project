@@ -230,9 +230,9 @@ class omegalyze(validation):
 
   def __init__(self,
       pdb_hierarchy,
-      nontrans_only,
-      out,
-      quiet):
+      nontrans_only=False,
+      out=sys.stdout,
+      quiet=True):
     validation.__init__(self)
     self.residue_count = [0, 0]
     #[OMEGA_GENERAL, OMEGA_PRO]
