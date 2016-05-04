@@ -431,49 +431,49 @@ class omegalyze(validation):
 
   def show_summary(self, out=sys.stdout, prefix=""):
     print >> out, prefix + 'SUMMARY: %i cis prolines out of %i PRO' % (
-      self.omega_count[OMEGA_PRO][OMEGALYZE_CIS],
-      self.residue_count[OMEGA_PRO])
+      self.n_cis_proline(),
+      self.n_proline())
     print >> out, prefix + 'SUMMARY: %i twisted prolines out of %i PRO' % (
-      self.omega_count[OMEGA_PRO][OMEGALYZE_TWISTED],
-      self.residue_count[OMEGA_PRO])
+      self.n_twisted_proline(),
+      self.n_proline())
     print >> out, prefix + 'SUMMARY: %i other cis residues out of %i nonPRO' % (
-      self.omega_count[OMEGA_GENERAL][OMEGALYZE_CIS],
-      self.residue_count[OMEGA_GENERAL])
+      self.n_cis_general(),
+      self.n_general())
     print >> out, prefix + 'SUMMARY: %i other twisted residues out of %i nonPRO' % (
-      self.omega_count[OMEGA_GENERAL][OMEGALYZE_TWISTED],
-      self.residue_count[OMEGA_GENERAL])
+      self.n_twisted_general(),
+      self.n_general())
 
   def summary_only(self, out=sys.stdout, pdbid="pdbid"):
     out.write(os.path.basename(pdbid) + ":")
-    if self.omega_count[OMEGA_PRO][OMEGALYZE_CIS] == 0:
+    if self.n_cis_proline() == 0:
       out.write("0:")
     else:
-      out.write('%.3f' % (self.omega_count[OMEGA_PRO][OMEGALYZE_CIS]/self.residue_count[OMEGA_PRO]*100)+":")
-    if self.omega_count[OMEGA_PRO][OMEGALYZE_TWISTED] == 0:
+      out.write('%.3f' % (self.n_cis_proline()/self.n_proline()*100)+":")
+    if self.n_twisted_proline() == 0:
       out.write("0:")
     else:
-      out.write('%.3f' % (self.omega_count[OMEGA_PRO][OMEGALYZE_TWISTED]/self.residue_count[OMEGA_PRO]*100)+":")
-    out.write("%i" % self.residue_count[OMEGA_PRO] + ":")
-    if self.omega_count[OMEGA_GENERAL][OMEGALYZE_CIS] == 0:
+      out.write('%.3f' % (self.n_twisted_proline()/self.n_proline()*100)+":")
+    out.write("%i" % self.n_proline() + ":")
+    if self.n_cis_general() == 0:
       out.write("0:")
     else:
-      out.write('%.3f' % (self.omega_count[OMEGA_GENERAL][OMEGALYZE_CIS]/self.residue_count[OMEGA_GENERAL]*100)+":")
-    if self.omega_count[OMEGA_GENERAL][OMEGALYZE_TWISTED] == 0:
+      out.write('%.3f' % (self.n_cis_general()/self.n_general()*100)+":")
+    if self.n_twisted_general() == 0:
       out.write("0:")
     else:
-      out.write('%.3f' % (self.omega_count[OMEGA_GENERAL][OMEGALYZE_TWISTED]/self.residue_count[OMEGA_GENERAL]*100)+":")
-    out.write("%i" % self.residue_count[OMEGA_GENERAL] + "\n")
+      out.write('%.3f' % (self.n_twisted_general()/self.n_general()*100)+":")
+    out.write("%i" % self.n_general() + "\n")
 
   def gui_summary(self):
     output = []
-    if self.omega_count[OMEGA_PRO][OMEGALYZE_CIS] or self.residue_count[OMEGA_PRO]:
-      output.append('%i cis prolines out of %i PRO' % (self.omega_count[OMEGA_PRO][OMEGALYZE_CIS],self.residue_count[OMEGA_PRO]))
-    if self.omega_count[OMEGA_PRO][OMEGALYZE_TWISTED]:
-      output.append('%i twisted prolines out of %i PRO' % (self.omega_count[OMEGA_PRO][OMEGALYZE_TWISTED],self.residue_count[OMEGA_PRO]))
-    if self.omega_count[OMEGA_GENERAL][OMEGALYZE_CIS]:
-      output.append('%i cis residues out of %i nonPRO' % (self.omega_count[OMEGA_GENERAL][OMEGALYZE_CIS],self.residue_count[OMEGA_GENERAL]))
-    if self.omega_count[OMEGA_GENERAL][OMEGALYZE_TWISTED]:
-      output.append('%i twisted residues out of %i nonPRO' % (self.omega_count[OMEGA_GENERAL][OMEGALYZE_TWISTED],self.residue_count[OMEGA_GENERAL]))
+    if self.n_cis_proline() or self.n_proline():
+      output.append('%i cis prolines out of %i PRO' % (self.n_cis_proline(),self.n_proline()))
+    if self.n_twisted_proline():
+      output.append('%i twisted prolines out of %i PRO' % (self.n_twisted_proline(),self.n_proline()))
+    if self.n_cis_general():
+      output.append('%i cis residues out of %i nonPRO' % (self.n_cis_general(),self.n_general()))
+    if self.n_twisted_general():
+      output.append('%i twisted residues out of %i nonPRO' % (self.n_twisted_general(),self.n_general()))
     return "\n".join(output)
 
   def n_proline(self):
