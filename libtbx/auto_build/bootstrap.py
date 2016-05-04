@@ -370,6 +370,13 @@ class Toolbox(object):
           shutil.copyfileobj(source, target)
           target.close()
           source.close()
+
+          # Preserve executable permission, if set
+          unix_executable = member.external_attr >> 16 & 0o111 # rwxrwxrwx => --x--x--x
+          if unix_executable:
+            mode = os.stat(filename).st_mode
+            mode |= (mode & 0o444) >> 2 # copy R bits to X
+            os.chmod(filename, mode)
     z.close()
 
   @staticmethod
