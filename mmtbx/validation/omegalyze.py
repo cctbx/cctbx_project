@@ -476,6 +476,24 @@ class omegalyze(validation):
       output.append('%i twisted residues out of %i nonPRO' % (self.omega_count[OMEGA_GENERAL][OMEGALYZE_TWISTED],self.residue_count[OMEGA_GENERAL]))
     return "\n".join(output)
 
+  def n_proline(self):
+    return self.residue_count[OMEGA_PRO]
+  def n_trans_proline(self):
+    return self.omega_count[OMEGA_PRO][OMEGALYZE_TRANS]
+  def n_cis_proline(self):
+    return self.omega_count[OMEGA_PRO][OMEGALYZE_CIS]
+  def n_twisted_proline(self):
+    return self.omega_count[OMEGA_PRO][OMEGALYZE_TWISTED]
+
+  def n_general(self):
+    return self.residue_count[OMEGA_GENERAL]
+  def n_trans_general(self):
+    return self.omega_count[OMEGA_GENERAL][OMEGALYZE_TRANS]
+  def n_cis_general(self):
+    return self.omega_count[OMEGA_GENERAL][OMEGALYZE_CIS]
+  def n_twisted_general(self):
+    return self.omega_count[OMEGA_GENERAL][OMEGALYZE_TWISTED]
+
 def write_header(writeto=sys.stdout):
   writeto.write("residue:omega:evaluation\n")
 
