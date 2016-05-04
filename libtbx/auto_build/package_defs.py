@@ -25,7 +25,7 @@ def pypi_pkg_url(package):
 
 # OpenSSL - needed for Mac OS X 10.11
 BASE_OPENSSL_PKG_URL = "http://www.openssl.org/source/"
-OPENSSL_PKG = "openssl-1.0.2g.tar.gz"
+OPENSSL_PKG = "openssl-1.0.2h.tar.gz"
 
 # from CCI
 PYTHON_PKG = "Python-2.7.8_cci.tar.gz"
@@ -49,6 +49,8 @@ LIBSVM_PKG = "libsvm-3.17_cci.tar.gz"
 JUNIT_XML_PKG = "junit-xml-1.6.tar.gz"
 MOCK_PKG = "mock-1.0.1.tar.gz"
 PYTEST_PKG = "pytest-2.9.1.tar.gz"
+PYTEST_DEP_PY = "py-1.4.31.tar.gz"
+PYTEST_DEP_COLORAMA = "colorama-0.3.7.tar.gz"
 
 ## from xia2 page
 #HDF5_PKG = "hdf5-1.8.8.tar.bz2"      # dxtbx
