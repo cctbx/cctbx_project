@@ -420,6 +420,8 @@ class Toolbox(object):
         if not git_available:
           continue
         cmd = [ 'git', 'clone' ] + git_parameters + [ source_candidate, destdir ]
+        if verbose:
+          cmd = cmd + [ '--progress', '--verbose' ]
         return ShellCommand(
           command=cmd, workdir=destpath, silent=False
         ).run()
