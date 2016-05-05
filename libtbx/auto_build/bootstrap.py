@@ -420,8 +420,6 @@ class Toolbox(object):
         if not git_available:
           continue
         cmd = [ 'git', 'clone' ] + git_parameters + [ source_candidate, destdir ]
-        if verbose:
-          cmd = cmd + [ '--progress', '--verbose' ]
         return ShellCommand(
           command=cmd, workdir=destpath, silent=False
         ).run()
@@ -835,6 +833,7 @@ class Builder(object):
   def __init__(
       self,
       category=None,
+      subcategory=None,
       platform=None,
       sep=None,
       python_base=None,
@@ -864,6 +863,8 @@ class Builder(object):
     self.set_auth(auth)
     self.steps = []
     self.category = category
+    self.subcategory = subcategory
+    if self.subcategory: self.EXTERNAL_CODEBASES = [self.subcategory]
     self.platform = platform
     if self.isPlatformWindows():
       self.op = ntpath
@@ -1705,7 +1706,7 @@ class PhenixExternalRegression(PhenixBuilder):
 
   def write_environment(self,
                         env,
-                        filename="phenix_externals",
+                        filename="setup_externals",
                        ):
     # called by add_make which is called in build
     outl = ""
@@ -1778,8 +1779,8 @@ class PhenixExternalRegression(PhenixBuilder):
          ],
          ["modules", 'rosetta', "main", "source"]],
         ]:
-      #if name.find("Amber")>=1: continue
-      #if name.find("Rosetta")>=1: continue
+      if self.subcategory:
+        if name.lower().find(self.subcategory)==-1: continue
       self.add_step(self.shell(
         name       = name,
         command    = command,
@@ -1793,44 +1794,51 @@ class PhenixExternalRegression(PhenixBuilder):
     PhenixBuilder.add_make(self)
     # post Phenix compile
     # Amber
-    self.add_command(
-      'phenix.build_amber_interface',
-      name='phenix.build_amber_interface',
-      workdir=['.'],
-      env=env,
-    )
+    if self.subcategory in [None, "amber"]:
+      self.add_command(
+        'phenix.build_amber_interface',
+        name='phenix.build_amber_interface',
+        workdir=['.'],
+        env=env,
+      )
     # Rosetta
-    self.add_command(
-      'rosetta.build_phenix_interface',
-      args = ["nproc=%s" % self.nproc],
-      name='rosetta.build_phenix_interface',
-      workdir=['.'],
-      env=env,
-    )
+    if self.subcategory in [None, "rosetta"]:
+      self.add_command(
+        'rosetta.build_phenix_interface',
+        args = ["nproc=%s" % self.nproc],
+        name='rosetta.build_phenix_interface',
+        workdir=['.'],
+        env=env,
+      )
 
   def add_tests(self):
     # amber
-    self.add_test_command('amber.run_tests',
-                          env = self.get_environment()
-                        )
+    if self.subcategory in [None, "amber"]:
+      self.add_test_command('amber.run_tests',
+                            env = self.get_environment()
+                           )
     # rosetta refine
-    self.add_test_command('rosetta.run_tests',
-                          env = self.get_environment()
-                        )
+    if self.subcategory in [None, "rosetta"]:
+      self.add_test_command('rosetta.run_tests',
+                            env = self.get_environment()
+                           )
     # MR rosetta
-    self.add_test_command(
-      'phenix_regression.wizards.test_command_line_rosetta_quick',
-      name="test rosetta quick all",
-      env = self.get_environment()
-    )
+    if self.subcategory in [None, "rosetta"]:
+      self.add_test_command(
+        'phenix_regression.wizards.test_command_line_rosetta_quick',
+        name="test rosetta quick all",
+        env = self.get_environment()
+      )
     # afitt
-    self.add_test_command('afitt.run_tests',
-                          env = self.get_environment()
-                        )
+    if self.subcategory in [None, "afitt"]:
+      self.add_test_command('afitt.run_tests',
+                            env = self.get_environment()
+                           )
     # erraser
-    self.add_test_command('erraser.run_tests',
-                          env = self.get_environment()
-                        )
+    if self.subcategory in [None, "rosetta"]:
+      self.add_test_command('erraser.run_tests',
+                            env = self.get_environment()
+                           )
 
 def run(root=None):
   usage = """Usage: %prog [options] [actions]
@@ -1910,6 +1918,14 @@ def run(root=None):
                     action="store_true",
                     default=False)
   options, args = parser.parse_args()
+  # process external
+  options.specific_external_builder=None
+  if options.builder.lower() in ["afitt",
+                                 "amber",
+                                 "rosetta",
+                                 ]:
+    options.specific_external_builder=options.builder.lower()
+    options.builder="external"
 
   # Root dir
   # options.root = options.root or root
@@ -1951,6 +1967,7 @@ def run(root=None):
   builder = builders[options.builder]
   builder(
     category=options.builder,
+    subcategory=options.specific_external_builder,
     platform='dev',
     with_python=options.with_python,
     auth=auth,
