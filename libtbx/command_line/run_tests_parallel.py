@@ -80,7 +80,7 @@ def run (args) :
   # postpone some tests
   #
   import time
-  ptime = 1462301849 #+(60*60*24*14)
+  ptime = 1462301849+(60*60*24*14)
   plist = [
     "phenix_regression/model_vs_data/tst_00.py",
     ]
