@@ -395,7 +395,7 @@ class Toolbox(object):
           source.close()
 
           # Preserve executable permission, if set
-          unix_executable = member.external_attr >> 16 & 73 
+          unix_executable = member.external_attr >> 16 & 73
             # Python 2.5 does not allow octal notation with 0o prefix
             # rwxrwxrwx => --x--x--x => 0o111 => 73
           if unix_executable:
@@ -446,6 +446,8 @@ class Toolbox(object):
         if not git_available:
           continue
         cmd = [ 'git', 'clone' ] + git_parameters + [ source_candidate, destdir ]
+        if verbose:
+          cmd = cmd + [ '--progress', '--verbose' ]
         return ShellCommand(
           command=cmd, workdir=destpath, silent=False
         ).run()
