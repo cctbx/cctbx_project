@@ -40,7 +40,7 @@ envs = {
 
 
 # Utililty function to be executed on slave machine or called directly by standalone bootstrap script
-def tar_extract(workdir, arx, modulename=None):
+def tar_extract(workdir, archive, modulename=None):
   try:
     # delete tar target folder if it exists
     if modulename and os.path.exists(modulename):
@@ -58,8 +58,30 @@ def tar_extract(workdir, arx, modulename=None):
         if cnt > 5:
           break
     # using tarfile module rather than unix tar command which is not platform independent
-    tar = tarfile.open(os.path.join(workdir, arx), errorlevel=2)
-    tar.extractall(path=workdir) # TODO: requires python 2.5!
+    if sys.hexversion >= 0x02060000:
+      tar = tarfile.open(os.path.join(workdir, archive), errorlevel=2)
+      tar.extractall(path=workdir)
+    else:
+      import copy
+      import operator
+      tar = tarfile.open(os.path.join(workdir, archive))
+      directories = []
+      for tarinfo in tar.getmembers():
+        if tarinfo.isdir():
+          # Extract directories with a safe mode.
+          directories.append(tarinfo)
+          tarinfo = copy.copy(tarinfo)
+          tarinfo.mode = 0700
+        tar.extract(tarinfo, workdir)
+        # Reverse sort directories.
+        directories.sort(key=operator.attrgetter('name'))
+        directories.reverse()
+        # Set correct owner, mtime and filemode on directories.
+        for tarinfo in directories:
+          dirpath = os.path.join(workdir, tarinfo.name)
+          tar.chown(tarinfo, dirpath)
+          tar.utime(tarinfo, dirpath)
+          tar.chmod(tarinfo, dirpath)
     tarfoldername = os.path.join(workdir, os.path.commonprefix(tar.getnames()).split('/')[0])
     tar.close()
     # take full permissions on all extracted files
@@ -237,8 +259,9 @@ class Toolbox(object):
       url_request = urllib2.Request(url)
       if etag:
         url_request.add_header("If-None-Match", etag)
-      if localcopy:
+      if localcopy and (sys.hexversion >= 0x02060000):
         # Shorten timeout to 7 seconds if a copy of the file is already present
+        # This is only supported in python >=2.6
         socket = urllib2.urlopen(url_request, None, 7)
       else:
         socket = urllib2.urlopen(url_request)
@@ -372,10 +395,13 @@ class Toolbox(object):
           source.close()
 
           # Preserve executable permission, if set
-          unix_executable = member.external_attr >> 16 & 0o111 # rwxrwxrwx => --x--x--x
+          unix_executable = member.external_attr >> 16 & 73 
+            # Python 2.5 does not allow octal notation with 0o prefix
+            # rwxrwxrwx => --x--x--x => 0o111 => 73
           if unix_executable:
             mode = os.stat(filename).st_mode
-            mode |= (mode & 0o444) >> 2 # copy R bits to X
+            mode |= (mode & 292) >> 2 # copy R bits to X
+             # r--r--r-- => 0o444 => 292
             os.chmod(filename, mode)
     z.close()
 

@@ -104,10 +104,19 @@ def untar (pkg_name, log=sys.stdout, verbose=False, change_ownership=False,
   elif (pkg_name.endswith("bz2")) :
     cmd = ["tar", "jx%s%sf" % (owner_flag, verbose_flag) ]
   args = cmd + [pkg_name]
-  #call(" ".join(args), log)
-  tar = tarfile.open(pkg_name)
-  tar.extractall()
-  tar.close()
+  if os.name != 'nt':
+    call(" ".join(args), log)
+  else:
+    # Note: This code breaks
+    #   - extracting compressed files
+    #   - python <2.5 compatibility
+    #   - logging
+    #   - function parameters verbose and change_ownership
+    #   - insufficient trapping of errors
+    # Should import tar_extract from  bootstrap.py to avoid code duplication
+    tar = tarfile.open(pkg_name)
+    tar.extractall()
+    tar.close()
 
   dir_name = re.sub(".tar", "",
                re.sub(".tgz", "",

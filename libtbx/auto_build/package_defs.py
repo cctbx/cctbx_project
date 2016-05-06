@@ -19,9 +19,11 @@ BASE_PIPY_PKG_URL = "https://pypi.python.org/packages/source"
 
 def pypi_pkg_url(package):
   '''Translate a package filename into a PyPi URL prefix'''
-  return "%s/%s/%s" % (BASE_PIPY_PKG_URL,
-         package[0],
-         package[:package.rindex('-')] if '-' in package else package)
+  if '-' in package:
+    pkgname = package[:package.rindex('-')]
+  else:
+    pkgname = package
+  return "%s/%s/%s" % (BASE_PIPY_PKG_URL, package[0], pkgname)
 
 # OpenSSL - needed for Mac OS X 10.11
 BASE_OPENSSL_PKG_URL = "https://cdn.rawgit.com/dials/dependencies/master/"
