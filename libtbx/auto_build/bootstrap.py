@@ -756,25 +756,15 @@ class buildbot_module(SourceModule):
 # Phaser repositories
 class phaser_module(SourceModule):
   module = 'phaser'
-  # Compared to rsync pscp is very slow when downloading multiple files
-  # Resort to downloading a compressed archive on Windows. Must create it first
-  authentarfile = ['%(cciuser)s@cci.lbl.gov',
-                   'phaser.tar.gz',
-                   '/net/cci/auto_build/repositories/phaser']
-  authenticated = [
-    'rsync',
-    '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/phaser/']
+  anonymous = ['git',
+               'git://git.csx.cam.ac.uk/cimr-phaser/phaser.git',
+               'https://git.csx.cam.ac.uk/cimr-phaser/phaser.git']
 
 class phaser_regression_module(SourceModule):
   module = 'phaser_regression'
-  # Compared to rsync pscp is very slow when downloading multiple files
-  # Resort to downloading a compressed archive on Windows. Must create it first
-  authentarfile = ['%(cciuser)s@cci.lbl.gov',
-                   'phaser_regression.tar.gz',
-                   '/net/cci/auto_build/repositories/phaser_regression']
-  authenticated = [
-    'rsync',
-    '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/phaser_regression/']
+  anonymous = ['git',
+               'git://git.csx.cam.ac.uk/cimr-phaser/phaser_regression.git',
+               'https://git.csx.cam.ac.uk/cimr-phaser/phaser_regression.git']
 
 # DIALS repositories
 class labelit_module(SourceModule):
@@ -1640,10 +1630,10 @@ class PhenixBuilder(CCIBuilder):
     'suitename',
     'dials',
     'xia2',
-  ]
-  HOT_EXTRA = [
     'phaser',
     'phaser_regression',
+  ]
+  HOT_EXTRA = [
   ]
   LIBTBX_EXTRA = [
     'chem_data',
