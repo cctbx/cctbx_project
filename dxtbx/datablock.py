@@ -1025,3 +1025,218 @@ class GoniometerComparison(object):
       rotation_axis_tolerance=self.rotation_axis_tolerance,
       fixed_rotation_tolerance=self.fixed_rotation_tolerance,
       setting_rotation_tolerance=self.setting_rotation_tolerance)
+
+
+def all_equal(a, b):
+  return all(map(lambda x: x[0] == x[1], zip(a, b)))
+
+def all_approx_equal(a, b, tol):
+  return all(map(lambda x: abs(x[0] - x[1]) < tol, zip(a, b)))
+
+class BeamDiff(object):
+  '''
+  A class to provide simple beam comparison
+
+  '''
+
+  def __init__(self,
+               wavelength_tolerance=1e-6,
+               direction_tolerance=1e-6,
+               polarization_normal_tolerance=1e-6,
+               polarization_fraction_tolerance=1e-6):
+    self.wavelength_tolerance = wavelength_tolerance
+    self.direction_tolerance = direction_tolerance
+    self.polarization_normal_tolerance = polarization_normal_tolerance
+    self.polarization_fraction_tolerance = polarization_fraction_tolerance
+
+  def __call__(self, a, b):
+    from logging import info
+    from scitbx import matrix
+    aw = a.get_wavelength()
+    bw = b.get_wavelength()
+    ad = matrix.col(a.get_direction())
+    bd = matrix.col(b.get_direction())
+    an = matrix.col(a.get_polarization_normal())
+    bn = matrix.col(b.get_polarization_normal())
+    af = a.get_polarization_fraction()
+    bf = b.get_polarization_fraction()
+    text = []
+    if abs(aw - bw) > self.wavelength_tolerance:
+      text.append(" Wavelength: %f, %f" % (aw, bw))
+    if abs(ad.angle(bd)) > self.direction_tolerance:
+      text.append(" Direction: %s, %s" % (tuple(ad), tuple(bd)))
+    if abs(an.angle(bn)) > self.polarization_normal_tolerance:
+      text.append(" Polarization Normal: %s, %s" % (tuple(an), tuple(bn)))
+    if abs(af - bf) > self.polarization_fraction_tolerance:
+      text.append(" Polarization Fraction: %s, %s" % (tuple(af, bf)))
+    if len(text) > 0:
+      info("Beam:")
+      for t in text:
+        info(t)
+      info("")
+
+
+class DetectorDiff(object):
+  '''
+  A class to provide simple detector comparison
+
+  '''
+
+  def __init__(self,
+               fast_axis_tolerance=1e-6,
+               slow_axis_tolerance=1e-6,
+               origin_tolerance=1e-6):
+
+    self.fast_axis_tolerance = fast_axis_tolerance
+    self.slow_axis_tolerance = slow_axis_tolerance
+    self.origin_tolerance = origin_tolerance
+
+  def __call__(self, a, b):
+    from logging import info
+    text = []
+    if len(a) != len(b):
+      text.append("Num Panels: %d, %d" % (len(a), len(b)))
+    for i, (aa, bb) in enumerate(zip(a,b)):
+      a_image_size = aa.get_image_size()
+      b_image_size = bb.get_image_size()
+      a_pixel_size = aa.get_pixel_size()
+      b_pixel_size = bb.get_pixel_size()
+      a_trusted_range = aa.get_trusted_range()
+      b_trusted_range = bb.get_trusted_range()
+      a_fast = aa.get_fast_axis()
+      b_fast = bb.get_fast_axis()
+      a_slow = aa.get_slow_axis()
+      b_slow = bb.get_slow_axis()
+      a_origin = aa.get_origin()
+      b_origin = bb.get_origin()
+      temp_text = []
+      if not all_equal(a_image_size, b_image_size):
+        temp_text.append("  Image size: %s, %s" % (a_image_size, b_image_size))
+      if not all_approx_equal(a_pixel_size, b_pixel_size, 1e-7):
+        temp_text.append("  Pixel size: %s, %s" % (a_pixel_size, b_pixel_size))
+      if not all_approx_equal(a_trusted_range, b_trusted_range, 1e-7):
+        temp_text.append("  Trusted Range: %s, %s" % (a_trusted_range, b_trusted_range))
+      if not all_approx_equal(a_fast, b_fast, self.fast_axis_tolerance):
+        temp_text.append("  Fast axis: %s, %s" % (a_fast, b_fast))
+      if not all_approx_equal(a_slow, b_slow, self.slow_axis_tolerance):
+        temp_text.append("  Slow axis: %s, %s" % (a_slow, b_slow))
+      if not all_approx_equal(a_origin, b_origin, self.origin_tolerance):
+        temp_text.append("  Origin: %s, %s" % (a_origin, b_origin))
+      if len(temp_text) > 0:
+        text.append(" panel %d:" % i)
+        text.extend(temp_text)
+    if len(text) > 0:
+      info("Detector:")
+      for t in text:
+        info(t)
+      info("")
+
+
+class GoniometerDiff(object):
+  '''
+  A class to provide simple goniometer comparison
+
+  '''
+
+  def __init__(self,
+               rotation_axis_tolerance=1e-6,
+               fixed_rotation_tolerance=1e-6,
+               setting_rotation_tolerance=1e-6):
+    self.rotation_axis_tolerance = rotation_axis_tolerance
+    self.fixed_rotation_tolerance = fixed_rotation_tolerance
+    self.setting_rotation_tolerance = setting_rotation_tolerance
+
+  def __call__(self, a, b):
+    from logging import info
+    from scitbx import matrix
+    a_axis = matrix.col(a.get_rotation_axis())
+    b_axis = matrix.col(b.get_rotation_axis())
+    a_fixed = a.get_fixed_rotation()
+    b_fixed = b.get_fixed_rotation()
+    a_setting = a.get_setting_rotation()
+    b_setting = b.get_setting_rotation()
+    text = []
+    if abs(a_axis.angle(b_axis)) > self.rotation_axis_tolerance:
+      text.append(" Rotation axis: %s, %s" % (tuple(a_axis), tuple(b_axis)))
+    if not all_approx_equal(a_fixed, b_fixed, self.fixed_rotation_tolerance):
+      text.append(" Fixed rotation: %s, %s" % (a_fixed, b_fixed))
+    if not all_approx_equal(a_setting, b_setting, self.setting_rotation_tolerance):
+      text.append(" Setting rotation: %s, %s" % (a_setting, b_setting))
+    if len(text) > 0:
+      info("Goniometer:")
+      for t in text:
+        info(t)
+      info("")
+
+
+class ScanDiff(object):
+  '''
+  A class to provide scan comparison
+
+  '''
+
+  def __init__(self,
+               scan_tolerance=1e-6):
+    self.scan_tolerance = scan_tolerance
+
+  def __call__(self, a, b):
+    from logging import info
+    eps = self.scan_tolerance * abs(a.get_oscillation()[1])
+    a_image_range = a.get_image_range()
+    b_image_range = b.get_image_range()
+    a_oscillation = a.get_oscillation()
+    b_oscillation = b.get_oscillation()
+    a_osc_range = a.get_oscillation_range()
+    b_osc_range = b.get_oscillation_range()
+    def mod_2pi(x):
+      from math import pi, floor
+      return x - 2*pi * floor(x / (2*pi));
+    diff_2pi = abs(mod_2pi(a_osc_range[1]) - mod_2pi(b_osc_range[0]))
+    diff_abs = abs(a_osc_range[1] - b_osc_range[0])
+    text = []
+    if not (a_image_range[1] + 1 == b_image_range[0]):
+      text.append(" Incompatible image range: %s, %s" % (a_image_range,b_image_range))
+    if abs(a_oscillation[1] - b_oscillation[1]) > eps:
+      text.append(" Oscillation: %s, %s" % (a_oscillation, b_oscillation))
+    if min(diff_2pi, diff_abs) > eps * a.get_num_images():
+      text.append(" Oscillation Range: %s, %s" % (a_osc_range, b_osc_range))
+    if len(text) > 0:
+      info("Scan:")
+      for t in text:
+        info(t)
+      info("")
+
+class SweepDiff(object):
+
+  def __init__(self, tolerance):
+
+    if tolerance is None:
+      self.b_diff = BeamDiff()
+      self.d_diff = DetectorDiff()
+      self.g_diff = GoniometerDiff()
+      self.s_diff = ScanDiff()
+    else:
+      self.b_diff = BeamDiff(
+        wavelength_tolerance            = tolerance.beam.wavelength,
+        direction_tolerance             = tolerance.beam.direction,
+        polarization_normal_tolerance   = tolerance.beam.polarization_normal,
+        polarization_fraction_tolerance = tolerance.beam.polarization_fraction)
+
+      self.d_diff = DetectorDiff(
+        fast_axis_tolerance = tolerance.detector.fast_axis,
+        slow_axis_tolerance = tolerance.detector.slow_axis,
+        origin_tolerance    = tolerance.detector.origin)
+
+      self.g_diff = GoniometerDiff(
+        rotation_axis_tolerance    = tolerance.goniometer.rotation_axis,
+        fixed_rotation_tolerance   = tolerance.goniometer.fixed_rotation,
+        setting_rotation_tolerance = tolerance.goniometer.setting_rotation)
+
+      self.s_diff = ScanDiff(
+        scan_tolerance = tolerance.scan.oscillation)
+
+  def __call__(self, sweep1, sweep2):
+    self.b_diff(sweep1.get_beam(), sweep2.get_beam())
+    self.d_diff(sweep1.get_detector(), sweep2.get_detector())
+    self.g_diff(sweep1.get_goniometer(), sweep2.get_goniometer())
+    self.s_diff(sweep1.get_scan(), sweep2.get_scan())

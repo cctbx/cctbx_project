@@ -220,8 +220,8 @@ namespace dxtbx { namespace model {
         double direction_tolerance,
         double polarization_normal_tolerance,
         double polarization_fraction_tolerance) const {
-      return std::abs(angle_safe(direction_, rhs.direction_)) <= wavelength_tolerance
-          && std::abs(wavelength_ - rhs.wavelength_) <= direction_tolerance
+      return std::abs(angle_safe(direction_, rhs.direction_)) <= direction_tolerance
+          && std::abs(wavelength_ - rhs.wavelength_) <= wavelength_tolerance
           && std::abs(angle_safe(polarization_normal_, rhs.polarization_normal_)) <= polarization_normal_tolerance
           && std::abs(polarization_fraction_ - rhs.polarization_fraction_) <= polarization_fraction_tolerance;
     }
