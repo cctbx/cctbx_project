@@ -207,10 +207,13 @@ class DataBlock(object):
             ('scan',       s.index(iset.get_scan()))
           ]))
       else:
+        imageset = OrderedDict()
         if isinstance(iset, ImageGrid):
           identifier = "ImageGrid"
+          imageset['__id__'] = "ImageGrid"
+          imageset['grid_size'] = iset.get_grid_size()
         else:
-          identifier = "ImageSet"
+          imageset['__id__'] = "ImageSet"
         image_list = []
         for i in range(len(iset)):
           image_dict = OrderedDict()
@@ -235,10 +238,8 @@ class DataBlock(object):
           except Exception:
             pass
           image_list.append(image_dict)
-        result['imageset'].append(
-          OrderedDict([
-            ('__id__', identifier),
-            ('images', image_list)]))
+        imageset['images'] = image_list
+        result['imageset'].append(imageset)
 
     # Add the models to the dictionary
     result['beam'] = [bb.to_dict() for bb in b]
@@ -702,7 +703,8 @@ class DataBlockDictImporter(object):
         iset = ImageSetFactory.make_imageset(
           filenames, None, check_format)
         if ident == "ImageGrid":
-          iset = ImageGrid.from_imageset(iset)
+          grid_size = imageset['grid_size']
+          iset = ImageGrid.from_imageset(iset, grid_size)
         for i, image in enumerate(imageset['images']):
           beam, detector, gonio, scan = load_models(image)
           iset.set_beam(beam, i)

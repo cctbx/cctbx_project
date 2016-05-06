@@ -719,35 +719,39 @@ class ImageGrid(ImageSet):
   A class implementing an interface useful for processing grid scans
 
   '''
-  def __getitem__(self, item):
-    ''' Get an item from the image set stream.
-
-    If the item is an index, read and return the image at the given index.
-    Otherwise, if the item is a slice, then create a new ImageSet object
-    with the given number of array indices from the slice.
+  def __init__(self, reader, indices=None, models=None, grid_size=None):
+    ''' Initialise the ImageSet object.
 
     Params:
-        item The index or slice
-
-    Returns:
-        An image or new ImageSet object
+        reader The reader object
+        array_range The image range (first, last)
 
     '''
-    if isinstance(item, slice):
-      indices = self._indices[item]
-      subset = ImageGrid(self.reader(), indices, self._models)
-      subset.external_lookup = self.external_lookup
-      return subset
-    else:
-      return self.get_corrected_data(item)
+    super(ImageGrid, self).__init__(reader, indices, models)
+
+    # Set the grid size
+    num = grid_size[0] * grid_size[1]
+    assert num == len(indices)
+    self._grid_size = grid_size
+
+  def get_grid_size(self):
+    '''
+    Return the grid size
+
+    '''
+    return self._grid_size
 
   @classmethod
-  def from_imageset(Class, imageset):
+  def from_imageset(Class, imageset, grid_size):
     '''
     Convert an imageset into an image grid
 
     '''
-    return Class(imageset.reader(), imageset._indices, imageset._models)
+    return Class(
+      imageset.reader(),
+      imageset._indices,
+      imageset._models,
+      grid_size)
 
 
 class MemImageSet(ImageSet):
