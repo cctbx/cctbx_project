@@ -274,7 +274,7 @@ class ExperimentList(object):
   def to_dict(self):
     ''' Serialize the experiment list to dictionary. '''
     from libtbx.containers import OrderedDict
-    from dxtbx.imageset import ImageSet, ImageSweep, MemImageSet
+    from dxtbx.imageset import ImageSet, ImageSweep, MemImageSet, ImageGrid
     from dxtbx.serialize.crystal import to_dict as crystal_to_dict
     from dxtbx.format.FormatMultiImage import FormatMultiImage
 
@@ -358,6 +358,10 @@ class ExperimentList(object):
       elif isinstance(imset, ImageSet):
         r = OrderedDict([
           ('__id__', 'ImageSet'),
+          ('images', imset.paths())])
+      elif isinstance(imset, ImageGrid):
+        r = OrderedDict([
+          ('__id__', 'ImageGrid'),
           ('images', imset.paths())])
       else:
         raise TypeError('expected ImageSet or ImageSweep, got %s' % type(imset))
@@ -501,7 +505,7 @@ class ExperimentListDict(object):
 
   def _extract_experiments(self):
     ''' Helper function. Extract the experiments. '''
-    from dxtbx.imageset import ImageSweep, ImageSet
+    from dxtbx.imageset import ImageSweep, ImageSet, ImageGrid
     from dxtbx.serialize.filename import load_path
     import cPickle as pickle
 
@@ -557,6 +561,8 @@ class ExperimentListDict(object):
             pedestal = None
           if imageset['__id__'] == 'ImageSet':
             imageset = self._make_stills(imageset)
+          elif imageset['__id__'] == 'ImageGrid':
+            imageset = self._make_grid(imageset)
           elif imageset['__id__'] == 'ImageSweep':
             imageset = self._make_sweep(imageset, scan)
           elif imageset['__id__'] == 'MemImageSet':
@@ -593,6 +599,12 @@ class ExperimentListDict(object):
               imageset.set_detector(detector, i)
               imageset.set_goniometer(goniometer, i)
               imageset.set_scan(scan, i)
+          elif isinstance(imageset, ImageGrid):
+            for i in range(len(imageset)):
+              imageset.set_beam(beam, i)
+              imageset.set_detector(detector, i)
+              imageset.set_goniometer(goniometer, i)
+              imageset.set_scan(scan, i)
           else:
             pass
 
@@ -623,6 +635,11 @@ class ExperimentListDict(object):
     filenames = [load_path(p) for p in imageset['images']]
     return ImageSetFactory.make_imageset(
       filenames, None, check_format=self._check_format)
+
+  def _make_stills(self, imageset):
+    ''' Make a still imageset. '''
+    from dxtbx.imageset import ImageGrid
+    return ImageGrid.from_imageset(self._make_stills(imageset))
 
   def _make_sweep(self, imageset, scan):
     ''' Make an image sweep. '''

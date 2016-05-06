@@ -714,6 +714,42 @@ class ImageSet(object):
     return ImageSet(self.reader(), models=self._models)
 
 
+class ImageGrid(ImageSet):
+  '''
+  A class implementing an interface useful for processing grid scans
+
+  '''
+  def __getitem__(self, item):
+    ''' Get an item from the image set stream.
+
+    If the item is an index, read and return the image at the given index.
+    Otherwise, if the item is a slice, then create a new ImageSet object
+    with the given number of array indices from the slice.
+
+    Params:
+        item The index or slice
+
+    Returns:
+        An image or new ImageSet object
+
+    '''
+    if isinstance(item, slice):
+      indices = self._indices[item]
+      subset = ImageGrid(self.reader(), indices, self._models)
+      subset.external_lookup = self.external_lookup
+      return subset
+    else:
+      return self.get_corrected_data(item)
+
+  @classmethod
+  def from_imageset(Class, imageset):
+    '''
+    Convert an imageset into an image grid
+
+    '''
+    return Class(imageset.reader(), imageset._indices, imageset._models)
+
+
 class MemImageSet(ImageSet):
   ''' A class exposing the external image set interface, but instead of a file list, uses
   an already instantiated list of Format objects. Derives from ImageSet for clarity and for
