@@ -189,7 +189,7 @@ class ShellCommand(object):
       #if not os.path.isabs(command[0]):
         # executable path isn't located relative to workdir
       #  command[0] = os.path.join(workdir, command[0])
-      stderr, stdout = sys.stderr, sys.stdout
+      stderr, stdout = None, None
       if self.kwargs.get("silent", False):
         stderr = stdout = open(os.devnull, 'wb')
       p = subprocess.Popen(
