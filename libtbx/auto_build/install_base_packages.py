@@ -846,16 +846,17 @@ _replace_sysconfig_paths(build_time_vars)
                              "'/opt/local/include'",
                              "'/opt/local/lib'",
                              "'/usr/local/include'",
-                             "'/usr/local/lib'",
-                             "['gomp']",", 'gomp'"],
+                             "'/usr/local/lib'"],
                      replace_with=["COMPILE_FLAGS = ['-std=c99']",
                              "INCLUDE_DIRS = ['%s/include']"%self.base_dir,
                              "LIBRARY_DIRS = ['%s/lib']"%self.base_dir,
-                             "","","","",
-                             "[]",""])
+                             "","","",""])
     self.chdir("hdf5_lz4",log=log)
     self.call("make", log=log)
     self.chdir("../bitshuffle",log=log)
+    site_file = open("setup.cfg", "w")
+    site_file.write("[build_ext]\nomp = 0\n")
+    site_file.close()
     self.call("%s setup.py build"%self.python_exe,log=log)
     self.call("%s setup.py install --h5plugin --h5plugin-dir=../hdf5_lz4"%(self.python_exe),log=log)
     self.chdir("../hdf5_lz4",log=log)
