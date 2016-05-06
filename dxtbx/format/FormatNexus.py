@@ -73,7 +73,7 @@ class FormatNexus(FormatHDF5):
     self._beam_model = BeamFactory(beam).model
     self._detector_model = DetectorFactory(detector, self._beam_model).model
     self._goniometer_model = GoniometerFactory(sample).model
-    self._scan_model = ScanFactory(sample).model
+    self._scan_model = ScanFactory(sample, detector).model
     self._raw_data = DataFactory(data).model
     self._mask = (MaskFactory(detector).mask,)
 

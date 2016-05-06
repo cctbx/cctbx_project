@@ -1017,8 +1017,9 @@ class ScanFactory(object):
   A class to create a scan model from NXmx stuff
 
   '''
-  def __init__(self, obj):
+  def __init__(self, obj, detector_obj):
     from dxtbx.model import Scan
+    from scitbx.array_family import flex
 
     # Get the image and oscillation range
     phi = obj.handle.file[obj.handle['depends_on'][()]]
@@ -1028,10 +1029,24 @@ class ScanFactory(object):
     else:
       oscillation = (float(phi[0]), 0.0)
 
+    # Get the exposure time
+    num_images = len(phi)
+    if "frame_time" in detector_obj.handle:
+      frame_time = float(detector_obj.handle['frame_time'][()])
+      exposure_time = flex.double(num_images, frame_time)
+      epochs = flex.double(num_images)
+      for i in range(1, len(epochs)):
+        epochs[i] = epochs[i-1] + exposure_time[i-1]
+    else:
+      exposure_time = flex.double(num_images, 0)
+      epochs = flex.double(num_images, 0)
+
     # Construct the model
     self.model = Scan(
       image_range,
-      oscillation)
+      oscillation,
+      exposure_time,
+      epochs)
 
 
 class CrystalFactory(object):
