@@ -107,8 +107,6 @@ def CheckWindowsPrerequisites():
   if not sys.platform=="win32":
     return
   xcptstr = ''
-  if not distutils.spawn.find_executable("makensis"):
-    xcptstr += '"makensis" from NSIS must be present in the executable path.\n'
   if not distutils.spawn.find_executable("svn"):
     xcptstr += '"Tortoisesvn" with command line tools must be present in the executable path.\n'
   if not distutils.spawn.find_executable("pscp.exe"):
@@ -119,7 +117,11 @@ def CheckWindowsPrerequisites():
   if not os.getenv("SVN_SSH") and p:
     q=p.split("\\")
     fwdp = "/".join(q) # svn client expects foward slashed path to plink
-    xcptstr += 'SVN_SSH environment variable should be set to "SVN_SSH=%s' %fwdp
+    xcptstr += 'SVN_SSH environment variable should be set to "SVN_SSH=%s"' %fwdp
+  if not os.getenv("GIT_SSH") and p:
+    q=p.split("\\")
+    fwdp = "/".join(q) # svn client expects foward slashed path to plink
+    xcptstr += 'GIT_SSH environment variable should be set to "GIT_SSH=%s"' %fwdp
   if xcptstr:
     raise Exception(xcptstr)
 
