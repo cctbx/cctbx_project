@@ -366,7 +366,7 @@ class Toolbox(object):
 
   @staticmethod
   def unzip(archive, directory, trim_directory=0, verbose=False):
-    '''unzip a file into a directory'''
+    '''unzip a file into a directory. Requires Python 2.6.'''
     if verbose:
       print "===== Installing %s into %s" % (archive, directory)
     if not zipfile.is_zipfile(archive):
@@ -452,12 +452,12 @@ class Toolbox(object):
           command=cmd, workdir=destpath, silent=False
         ).run()
       filename = "%s-%s" % (module,
-                            urlparse.urlparse(source_candidate).path.split('/')[-1])
+                            urlparse.urlparse(source_candidate)[2].split('/')[-1])
       filename = os.path.join(destpath, filename)
       if verbose:
         print "===== Downloading %s: " % source_candidate,
       Toolbox.download_to_file(source_candidate, filename)
-      Toolbox.unzip(filename, destination, trim_directory=1)
+      Toolbox.unzip(filename, destination, trim_directory=1, verbose=verbose)
       return
 
     error = "Cannot satisfy git dependency for module %s: None of the sources are available." % module
