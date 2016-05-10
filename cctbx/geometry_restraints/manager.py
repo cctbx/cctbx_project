@@ -88,7 +88,10 @@ class manager(object):
 # implement explicit pickling for the log object since StringIO doesn't support pickling
   def __getstate__(self):
     state = self.__dict__.copy()
-    state[ "log" ] = self.log.getvalue()
+    if hasattr(self.log, "getvalue"):
+      state[ "log" ] = self.log.getvalue()
+    else:
+      state[ "log" ] = ""
     return state
 
   def __setstate__(self, state):
