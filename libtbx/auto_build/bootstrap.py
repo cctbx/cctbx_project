@@ -226,7 +226,7 @@ class ShellCommand(object):
 
 class Toolbox(object):
   @staticmethod
-  def download_to_file(url, file, log=sys.stdout, status=True):
+  def download_to_file(url, file, log=sys.stdout, status=True, cache=True):
     """Downloads a URL to file. Returns the file size.
        Returns -1 if the downloaded file size does not match the expected file
        size
@@ -247,7 +247,7 @@ class Toolbox(object):
     # Get existing ETag, if present
     etag = None
     tagfile = '%s/.%s.etag' % os.path.split(os.path.abspath(file))
-    if os.path.isfile(tagfile):
+    if cache and os.path.isfile(tagfile):
       if not localcopy:
         # Having an ETag without a file is pointless
         os.remove(tagfile)
@@ -360,7 +360,7 @@ class Toolbox(object):
       atime = st[ST_ATIME] # current access time
       os.utime(file,(atime,remote_mtime))
 
-    if socket.info().getheader('ETag'):
+    if cache and socket.info().getheader('ETag'):
       # If the server sent an ETAG, then keep it alongside the file
       open(tagfile, 'w').write(socket.info().getheader('ETag'))
 
