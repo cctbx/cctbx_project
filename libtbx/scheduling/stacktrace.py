@@ -98,24 +98,25 @@ class traceback_info(object):
   def __init__(self, traceback):
 
     self.traceback = traceback
-    self.handler = self.raise_with_traceback
+    self.raise_handler = self.raise_with_traceback
+    self.getstate_handler = self.getstate_with_traceback
 
 
   def __call__(self, exception):
 
-    self.handler( exception = exception )
+    self.raise_handler( exception = exception )
 
 
   def __getstate__(self):
 
-    import traceback
-    return traceback.format_tb( self.traceback )
+    return self.getstate_handler()
 
 
   def __setstate__(self, state):
 
-    self.stacktrace = stacktrace_info.from_traceback( lines = state )
-    self.handler = self.raise_with_stacktrace
+    self.stacktrace = state
+    self.raise_handler = self.raise_with_stacktrace
+    self.getstate_handler = self.getstate_with_stacktrace
 
 
   def raise_with_traceback(self, exception):
@@ -123,6 +124,19 @@ class traceback_info(object):
     raise exception, None, self.traceback
 
 
+  def getstate_with_traceback(self):
+
+    import traceback
+    return stacktrace_info.from_traceback(
+      lines = traceback.format_tb( self.traceback )
+      )
+
+
   def raise_with_stacktrace(self, exception):
 
     self.stacktrace( exception = exception )
+
+
+  def getstate_with_stacktrace(self):
+
+    return self.stacktrace
