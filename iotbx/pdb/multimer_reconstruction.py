@@ -1,6 +1,6 @@
 from __future__ import division
 from iotbx.ncs import insure_identity_is_in_transform_info
-from  iotbx.ncs import input as ncs_group_object
+import iotbx.ncs
 from  iotbx.ncs import ncs_only
 from iotbx import crystal_symmetry_from_any
 from libtbx.utils import Sorry
@@ -96,9 +96,10 @@ class multimer(object):
                   'hierarchies')
 
     # Read the relevant transformation matrices
-    self.transforms_obj = ncs_group_object(
+    self.transforms_obj = iotbx.ncs.input(
       hierarchy=pdb_obj.hierarchy,
-      transform_info=transform_info)
+      transform_info=transform_info,
+      exclude_selection=None)
 
     # Calculate ASU (if there are any transforms to apply)
     self.number_of_transforms = len(self.transforms_obj.transform_to_be_used)
@@ -161,7 +162,8 @@ class multimer(object):
     pdb.write_whole_pdb_file(
         file_name=self.pdb_output_file_name,
         pdb_hierarchy=self.assembled_multimer,
-        crystal_symmetry=crystal_symmetry)
+        crystal_symmetry=crystal_symmetry,
+        ss_annotation=self.new_annotation)
 
   def get_ncs_restraints_group_list(self,raise_sorry=True):
     get_nrgl = self.transforms_obj.get_ncs_restraints_group_list

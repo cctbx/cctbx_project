@@ -114,7 +114,7 @@ class TestMultimerReconstruction(unittest.TestCase):
   # @unittest.SkipTest
   def test_ncs_copies_naming(self):
     # print sys._getframe().f_code.co_name
-    transforms_obj = iotbx.ncs_input()
+    transforms_obj = iotbx.ncs.input()
     result =  transforms_obj.make_chains_names(
       ['chain A_001','chain B_001','chain A_002','chain B_002'],('A','B'))
     expected = {'chain A_001': 'C', 'chain B_001': 'D', 'chain A_002': 'E',
@@ -130,7 +130,8 @@ class TestMultimerReconstruction(unittest.TestCase):
     """
     # print sys._getframe().f_code.co_name
     for pdb_str in [pdb_test_data5,pdb_test_data6]:
-      ncs_inp = ncs.input(pdb_string=pdb_str, exclude_selection=None)
+      pdb_h = pdb.input(source_info=None, lines=pdb_str).construct_hierarchy()
+      ncs_inp = ncs.input(hierarchy=pdb_h, exclude_selection=None)
       transform_info = ncs_inp.build_MTRIX_object()
       self.assertEqual(len(transform_info.r),3)
       self.assertEqual(len(transform_info.t),3)
@@ -151,37 +152,38 @@ class TestMultimerReconstruction(unittest.TestCase):
     t = [matrix.col([0,2,1])]
     t.append(matrix.col([-1,3,-2]))
     transforms_obj = ncs.input(
-      pdb_hierarchy_inp = pdb_obj,
+      hierarchy = pdb_obj.hierarchy,
       rotations=r,
       translations=t)
 
     result = transforms_obj.transform_to_ncs
-    expected = {'002': ['chain A_002', 'chain B_002'],
-                '003': ['chain A_003', 'chain B_003']}
+    expected = {'0000000002': ['chain A_0000000002', 'chain B_0000000002'],
+                '0000000003': ['chain A_0000000003', 'chain B_0000000003']}
     self.assertEqual(result,expected)
     result = transforms_obj.ncs_selection_str
     expected = 'chain A or chain B'
     self.assertEqual(result,expected)
     # check that if transforms are provided MTRIX record ignored
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
+    pdb_h = pdb.input(source_info=None, lines=pdb_test_data2).construct_hierarchy()
     transforms_obj = ncs.input(
-      pdb_hierarchy_inp = pdb_obj,
+      hierarchy = pdb_h,
       rotations=r,
       translations=t)
     result = transforms_obj.transform_to_ncs
-    expected = {'002': ['chain A_002', 'chain B_002'],
-                '003': ['chain A_003', 'chain B_003']}
+    expected = {'0000000002': ['chain A_0000000002', 'chain B_0000000002'],
+                '0000000003': ['chain A_0000000003', 'chain B_0000000003']}
     self.assertEqual(result,expected)
     result = transforms_obj.ncs_selection_str
     expected = 'chain A or chain B'
     self.assertEqual(result,expected)
     # transforms that are not present
     result = transforms_obj.transform_to_ncs.keys()
-    expected = ['003', '002']
+    expected = ['0000000002', '0000000003']
     self.assertEqual(result,expected)
     # all transforms
     result = transforms_obj.ncs_transform.keys()
-    expected = ['001', '002', '003']
+    expected = ['0000000001', '0000000002', '0000000003']
     result.sort()
     self.assertEqual(result,expected)
 
@@ -196,14 +198,14 @@ class TestMultimerReconstruction(unittest.TestCase):
     transform_info = pdb_inp.process_mtrix_records()
     transforms_obj = ncs.input(
       transform_info=transform_info,
-      pdb_hierarchy_inp=pdb_obj)
+      hierarchy=pdb_inp.construct_hierarchy())
 
-    expected = ['chain A_002', 'chain B_002', 'chain A_003', 'chain B_003']
+    expected = ['chain A_0000000002', 'chain B_0000000002', 'chain A_0000000003', 'chain B_0000000003']
     self.assertEqual(transforms_obj.transform_chain_assignment,expected)
 
     expected = {
-      'chain A_002': 'C','chain A_003': 'E','chain A_001': 'A',
-      'chain B_002': 'D','chain B_003': 'F','chain B_001': 'B'}
+      'chain A_0000000002': 'C','chain A_0000000003': 'E','chain A_0000000001': 'A',
+      'chain B_0000000002': 'D','chain B_0000000003': 'F','chain B_0000000001': 'B'}
     self.assertEqual(transforms_obj.ncs_copies_chains_names,expected)
 
     expected = [0, 1, 2, 5, 6]
@@ -215,11 +217,11 @@ class TestMultimerReconstruction(unittest.TestCase):
     self.assertEqual(results,expected)
 
     expected = [7, 8, 9, 12, 13]
-    results = list(transforms_obj.ncs_to_asu_map['chain A_002'])
+    results = list(transforms_obj.ncs_to_asu_map['chain A_0000000002'])
     self.assertEqual(results,expected)
 
     expected = [17, 18]
-    results = list(transforms_obj.ncs_to_asu_map['chain B_003'])
+    results = list(transforms_obj.ncs_to_asu_map['chain B_0000000003'])
     self.assertEqual(results,expected)
 
     self.assertEqual(len(transforms_obj.ncs_atom_selection),21)
@@ -240,13 +242,13 @@ class TestMultimerReconstruction(unittest.TestCase):
     No inception of the output is done.
     To view the output change the write=False to ,write=True
     """
-    transforms_obj = iotbx.ncs.input()
     pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
     transform_info = pdb_inp.process_mtrix_records()
-    transforms_obj.preprocess_ncs_obj(
+    transforms_obj = iotbx.ncs.input(
       transform_info=transform_info,
-      pdb_hierarchy_inp=pdb_obj)
+      hierarchy=pdb_inp.construct_hierarchy(),
+      exclude_selection=None)
 
     multimer_data = multimer(
       pdb_str=pdb_test_data2,
@@ -270,7 +272,8 @@ class TestMultimerReconstruction(unittest.TestCase):
 
     # print '--- using the hierarchy of only the master NCS ---'
     pdbstr = transforms_obj.get_transform_records(
-      pdb_hierarchy=pdb_obj.hierarchy,
+      # pdb_hierarchy=pdb_obj.hierarchy,
+      pdb_hierarchy=pdb_hierarchy_asu,
       biomt=True,
       write=False)
     # print pdbstr
@@ -285,6 +288,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     # print pdbstr
     # print '='*50
 
+  # @unittest.SkipTest
   def test_spec_file_format(self):
     """ Verify that spec object are produced properly """
     # print sys._getframe().f_code.co_name
@@ -292,17 +296,21 @@ class TestMultimerReconstruction(unittest.TestCase):
     multimer_data = multimer(
       pdb_str=pdb_test_data2,
       reconstruction_type='cau')
-
-    trans_obj = ncs.input(pdb_string=pdb_test_data2)
+    pdb_h = pdb.input(source_info=None, lines=pdb_test_data2).\
+        construct_hierarchy()
+    trans_obj = ncs.input(hierarchy=pdb_h)
 
     pdb_hierarchy_asu = multimer_data.assembled_multimer
+    print "pdb_hierarchy_asu", pdb_hierarchy_asu.as_pdb_string()
     spec_output = trans_obj.get_ncs_info_as_spec(
-      pdb_hierarchy_asu=pdb_hierarchy_asu,write=False)
+      pdb_hierarchy_asu=pdb_hierarchy_asu)
 
     trans_obj2 = ncs.input(spec_ncs_groups=spec_output)
 
-    t1 = trans_obj.ncs_transform['002'].r
-    t2 = trans_obj2.ncs_transform['002'].r
+    print "t1", trans_obj.ncs_transform
+    print "t2", trans_obj2.ncs_transform
+    t1 = trans_obj.ncs_transform['0000000002'].r
+    t2 = trans_obj2.ncs_transform['0000000002'].r
     self.assertEqual(t1,t2)
     self.assertEqual(len(trans_obj.ncs_transform),len(trans_obj2.ncs_transform))
 
@@ -337,20 +345,20 @@ class TestMultimerReconstruction(unittest.TestCase):
     No inception of the output is done. Just making sure it does not break
     To view the output change the write=False to ,write=True
     """
-    transforms_obj = iotbx.ncs.input()
+    # transforms_obj = iotbx.ncs.input()
     pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
     transform_info = pdb_inp.process_mtrix_records()
-    transforms_obj.preprocess_ncs_obj(
+    transforms_obj = iotbx.ncs.input(
       # transform_info=transform_info,
       # pdb_hierarchy_inp=pdb_obj,
-      pdb_inp=pdb_inp)
+      hierarchy=pdb_inp.construct_hierarchy())
 
     asu = multimer(
       pdb_str=pdb_test_data2,
       reconstruction_type='cau')
     transforms_obj.get_ncs_info_as_spec(
-      pdb_hierarchy_asu=asu.assembled_multimer,write=False)
+      pdb_hierarchy_asu=asu.assembled_multimer)
 
   # @unittest.SkipTest
   def test_proper_biomat_application(self):
