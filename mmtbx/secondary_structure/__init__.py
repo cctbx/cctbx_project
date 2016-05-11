@@ -22,7 +22,7 @@ import time
 
 sec_str_master_phil_str = """
 secondary_structure
-  .style = box auto_align hidden
+  .style = box auto_align noauto
 {
   enabled = False
     .short_caption = Use secondary structure restraints
@@ -30,10 +30,11 @@ secondary_structure
     .style = noauto bold
     .help = Turn on secondary structure restraints (main switch)
   protein
-    .style = box auto_align noauto
+    .style = box auto_align
   {
     enabled = True
       .type = bool
+      .style = noauto
       .help = Turn on secondary structure restraints for protein
     search_method = *ksdssp mmtbx_dssp from_ca cablam
       .type = choice
@@ -60,10 +61,11 @@ secondary_structure
     .caption = If sigma and slack are not defined for nucleic acids, the \
       overall default settings for protein hydrogen bonds will be used \
       instead.
-    .style = box auto_align noauto
+    .style = box auto_align
   {
     enabled = True
       .type = bool
+      .style = noauto
       .help = Turn on secondary structure restraints for nucleic acids
     %s
   }

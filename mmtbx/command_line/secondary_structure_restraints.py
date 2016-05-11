@@ -1,7 +1,8 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.secondary_structure_restraints
 
-from mmtbx.secondary_structure import sec_str_master_phil_str, manager
+from mmtbx.secondary_structure import sec_str_master_phil_str, \
+  sec_str_master_phil, manager
 import iotbx.pdb
 import iotbx.phil
 from scitbx.array_family import flex
@@ -12,14 +13,19 @@ import sys, os
 master_phil_str = """
 show_all_params = False
   .type = bool
+  .style = noauto
 filter_outliers = True
   .type = bool
+  .style = noauto
 format = *phenix phenix_refine phenix_bonds pymol pdb refmac kinemage
   .type = choice
+  .style = noauto
 quiet = False
   .type = bool
+  .style = noauto
 verbose = -1
   .type = int
+  .style = noauto
 file_name = None
   .type = path
   .multiple = True
@@ -27,6 +33,8 @@ file_name = None
   .style = hidden
   %s
 """ % sec_str_master_phil_str
+
+master_phil = iotbx.phil.parse(master_phil_str, process_includes=True)
 
 def show_usage():
   help_msg = """\
@@ -45,29 +53,33 @@ Usage examples:
 Full scope of parameters:
   """
   print help_msg
-  iotbx.phil.parse(master_phil_str).show()
+  master_phil.show()
 
-def run (args, out=sys.stdout, log=sys.stderr) :
-  if len(args) == 0 or args[0] == "-h" or args[0] == "--help":
+def run (args, params=None, out=sys.stdout, log=sys.stderr) :
+  # params keyword is for running program from GUI dialog
+  if ( ((len(args) == 0) and (params is None)) or
+       ((len(args) > 0) and ((args[0] == "-h") or (args[0] == "--help"))) ):
     show_usage()
     return
-  pdb_files = []
-  pcl = iotbx.phil.process_command_line_with_files(
-    args=args,
-    master_phil_string=master_phil_str,
-    pdb_file_def="file_name")
-  from mmtbx.secondary_structure import sec_str_master_phil
-  work_params = pcl.work.extract()
+
+  # parse command-line arguments
+  if (params is None):
+    pcl = iotbx.phil.process_command_line_with_files(
+      args=args,
+      master_phil_string=master_phil_str,
+      pdb_file_def="file_name")
+    work_params = pcl.work.extract()
+  # or use parameters defined by GUI
+  else:
+    work_params = params
+  pdb_files = work_params.file_name
+
   work_params.secondary_structure.enabled=True
   assert work_params.format in ["phenix", "phenix_refine", "phenix_bonds",
       "pymol", "refmac", "kinemage", "pdb"]
   if work_params.quiet :
     out = cStringIO.StringIO()
-  pdb_files = work_params.file_name
-  if len(pdb_files) > 0 :
-    work_params.file_name.extend(pdb_files)
-  if len(pdb_files) == 0 :
-    raise Sorry("No PDB files specified.")
+
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_files)
   pdb_structure = iotbx.pdb.input(source_info=None,
     lines=flex.std_string(pdb_combined.raw_records))
@@ -187,10 +199,18 @@ def run (args, out=sys.stdout, log=sys.stderr) :
             pdb_hierarchy=pdb_hierarchy)
       print >> result_out, bonds_in_format
   result = result_out.getvalue()
-  outf = open("%s_ss.eff" %os.path.basename(work_params.file_name[0]), "w")
+  filename = "%s_ss.eff" %os.path.basename(work_params.file_name[0])
+  outf = open(filename, "w")
   outf.write(result)
   outf.close()
   print >> out, result
+
+  return os.path.abspath(filename)
+
+# =============================================================================
+# GUI-specific functions
+def validate_params(params):
+  pass
 
 if __name__ == "__main__" :
   run(sys.argv[1:])
