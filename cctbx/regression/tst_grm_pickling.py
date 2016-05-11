@@ -192,7 +192,7 @@ def exercise_all(args):
     print "Can not initialize monomer_library, skipping test."
     return 0
   test_simple_protein(mon_lib_srv, ener_lib)
-  # test_nucleic_acid(mon_lib_srv, ener_lib)
+  test_nucleic_acid(mon_lib_srv, ener_lib)
 
 if (__name__ == "__main__"):
   exercise_all(sys.argv[1:])
