@@ -452,6 +452,20 @@ class TestAccessibleSurfaceArea(unittest.TestCase):
     self.asa_result_check( result = result )
 
 
+  def test_asa_calculator0(self):
+
+    myatoms = ATOMS[:2]
+    myradii = ( 2, -2 )
+
+    calc = asa.calculator(
+      coordinate_adaptor = asa.coordinate_adaptor( array = myatoms.extract_xyz() ),
+      radius_adaptor = asa.radius_adaptor( array = myradii ),
+      probe = PROBE,
+      )
+    self.assertEqual( calc.accessible_points( index = 0 ), 960 )
+    self.assertRaises( RuntimeError, calc.accessible_points, index = 1 )
+
+
   def test_asa_calculator1(self):
 
     myatoms = ATOMS[:12]

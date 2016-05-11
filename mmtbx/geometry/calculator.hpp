@@ -12,6 +12,8 @@
 #include <boost/type_traits/remove_reference.hpp>
 #include <boost/type_traits/remove_const.hpp>
 
+#include <stdexcept>
+
 namespace mmtbx
 {
 
@@ -137,7 +139,10 @@ public:
 
     for (size_type index = 0; index < size; ++index )
     {
-      indexer_.add( index, coordinate_accessor_[ index ] );
+      if ( 0 < radius_accessor_[ index ] )
+      {
+        indexer_.add( index, coordinate_accessor_[ index ] );
+      }
     }
   }
 
@@ -165,6 +170,11 @@ private:
     size_type const& index
     ) const
   {
+    if ( radius_accessor_[ index ] < 0 )
+    {
+      throw std::runtime_error( "Requested position set to IGNORE (negative radius)" );
+    }
+
     namespace mxg = mmtbx::geometry;
 
     typedef typename indexer_type::range_type close_objects_range_type;
@@ -185,14 +195,15 @@ private:
       )
     {
       size_type cid( *it );
+      radius_type o_radius_raw( radius_accessor_[ cid ] );
 
-      if ( cid == index )
+      if ( ( cid == index ) or o_radius_raw < 0 )
       {
         continue;
       }
 
       coordinate_type const& o_centre( coordinate_accessor_[ cid ] );
-      radius_type o_radius( radius_accessor_[ cid ] + probe_ );
+      radius_type o_radius( o_radius_raw + probe_ );
 
 
       if ( overlap_between_spheres( centre, radius, o_centre, o_radius ) )
