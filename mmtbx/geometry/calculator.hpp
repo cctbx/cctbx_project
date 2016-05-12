@@ -197,7 +197,7 @@ private:
       size_type cid( *it );
       radius_type o_radius_raw( radius_accessor_[ cid ] );
 
-      if ( ( cid == index ) or o_radius_raw < 0 )
+      if ( ( cid == index ) || o_radius_raw < 0 )
       {
         continue;
       }
