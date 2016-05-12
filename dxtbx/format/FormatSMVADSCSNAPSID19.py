@@ -53,9 +53,12 @@ class FormatSMVADSCSNAPSID19(FormatSMVADSCSN):
     overload = 65535
     underload = 1
 
+    key = [s for s in self._header_dictionary
+           if s.endswith('_SPATIAL_BEAM_POSITION')][0]
+
     beam_x, beam_y = [
       float(f)*pixel_size
-      for f in self._header_dictionary['ADSC914_SPATIAL_BEAM_POSITION'].split()]
+      for f in self._header_dictionary[key].split()]
 
     return self._detector_factory.simple(
         'CCD', distance,
