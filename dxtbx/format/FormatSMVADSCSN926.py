@@ -49,12 +49,19 @@ class FormatSMVADSCSN926(FormatSMVADSCSN):
     import math
 
     distance = float(self._header_dictionary['DISTANCE'])
-    beam_x = float(self._header_dictionary['DENZO_X_BEAM'])
-    beam_y = float(self._header_dictionary['DENZO_Y_BEAM'])
+    if 'DENZO_X_BEAM' in self._header_dictionary:
+      beam_x = float(self._header_dictionary['DENZO_X_BEAM'])
+      beam_y = float(self._header_dictionary['DENZO_Y_BEAM'])
+    else:
+      beam_x = float(self._header_dictionary['BEAM_CENTER_X'])
+      beam_y = float(self._header_dictionary['BEAM_CENTER_Y'])
     pixel_size = float(self._header_dictionary['PIXEL_SIZE'])
     image_size = (float(self._header_dictionary['SIZE1']),
                   float(self._header_dictionary['SIZE2']))
-    two_theta = float(self._header_dictionary['TWOTHETA'])
+    if 'TWOTHETA' in self._header_dictionary:
+      two_theta = float(self._header_dictionary['TWOTHETA'])
+    else:
+      two_theta = 0
     overload = 65535
     underload = 0
 
