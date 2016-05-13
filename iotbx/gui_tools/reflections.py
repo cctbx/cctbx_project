@@ -652,7 +652,7 @@ def get_map_coeff_labels (server,
     build_only=False,
     include_fom=True,
     exclude_anomalous=False,
-    exclude_fmodel=True,
+    exclude_fmodel=False,
     keep_array_labels=False) :
   all_labels = []
   phi_labels = []
