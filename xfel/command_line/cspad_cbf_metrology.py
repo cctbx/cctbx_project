@@ -188,9 +188,9 @@ def refine(params, merged_scope, combine_phil):
     refine_phil_file = "%s_refine_level%d.phil"%(params.tag, i)
     if i == 0:
       if params.refine_distance:
-	diff_phil = "refinement.parameterisation.detector.fix_list=None\n" # allow full freedom to refine
+        diff_phil = "refinement.parameterisation.detector.fix_list=None\n" # allow full freedom to refine
       else:
-	diff_phil = "refinement.parameterisation.detector.fix_list=Tau1\n" # fix detector rotz
+        diff_phil = "refinement.parameterisation.detector.fix_list=Tau1\n" # fix detector rotz
       command = "dials.refine %s %s_filtered_experiments.json %s_filtered_reflections.pickle"%(refine_phil_file, params.tag, params.tag)
     else:
       diff_phil = "refinement.parameterisation.detector.fix_list=None\n" # allow full freedom to refine
