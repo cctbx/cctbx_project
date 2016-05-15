@@ -1,6 +1,5 @@
 from __future__ import division
 from mmtbx.tls import tools
-import math
 import time
 
 pdb_str_1 = """
