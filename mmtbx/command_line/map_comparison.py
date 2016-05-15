@@ -234,14 +234,15 @@ def run(args, out=sys.stdout, validated=False):
     cc_quantile
   print >> out, "Peak correlation:"
   print >> out, "  cutoff  CCpeak"
-  for cutoff in [i/100. for i in range(0,100,5)]+[0.99, 1.0]:
+  cutoffs = [i/100.  for i in range(1,90)]+ [i/1000 for i in range(900,1000)]
+  for cutoff in cutoffs:
     cc_peak = maptbx.cc_peak(map_1=m1_he, map_2=m2_he, cutoff=cutoff)
     print >> out, "  %3.2f   %7.4f" % (cutoff, cc_peak)
     cc_peaks.append((cutoff, cc_peak))
 
   # compute discrepancy function (D-function)
   discrepancies = list()
-  cutoffs = flex.double([i/20. for i in range(1,20)])
+  cutoffs = flex.double(cutoffs)
   df = maptbx.discrepancy_function(map_1=m1_he, map_2=m2_he, cutoffs=cutoffs)
   print >> out, "Discrepancy function:"
   print >> out, "  cutoff  D"

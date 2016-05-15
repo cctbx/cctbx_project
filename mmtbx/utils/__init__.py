@@ -2635,8 +2635,7 @@ class extract_box_around_model_and_map(object):
                box_cushion,
                selection=None,
                density_select=None,
-               threshold=None,
-               crystal_symmetry=None):
+               threshold=None):
     adopt_init_args(self, locals())
     cs = xray_structure.crystal_symmetry()
     self.initial_shift = None
@@ -2663,6 +2662,8 @@ class extract_box_around_model_and_map(object):
       sites_cart_shifted = sites_cart+\
           flex.vec3_double(sites_cart.size(), self.initial_shift_cart)
       xray_structure.set_sites_cart(sites_cart = sites_cart_shifted)
+    if(selection is None):
+      selection = flex.bool(xray_structure.scatterers().size(), True)
     xray_structure_selected = xray_structure.select(selection=selection)
     cushion = flex.double(cs.unit_cell().fractionalize((box_cushion,)*3))
     if(density_select):

@@ -13,12 +13,12 @@ from iotbx import phil
 from iotbx import reflection_file_utils
 from iotbx import crystal_symmetry_from_any
 import iotbx.pdb
-#import iotbx.mtz
-#from cctbx import xray
 from cctbx import maptbx
 from cctbx.array_family import flex
 from libtbx.utils import Sorry
 from libtbx.utils import multi_out
+from libtbx import group_args
+from cctbx import miller
 
 legend = """\
 
@@ -138,8 +138,8 @@ gui
 
 master_params = phil.parse(master_params_str, process_includes=True)
 
-def output_map(
-  f_obs, r_free_flags, xray_structure, mask_data, filename, params, log):
+def output_map(f_obs, r_free_flags, xray_structure, mask_data, filename, params,
+               log):
   f_calc = f_obs.structure_factors_from_scatterers(
     xray_structure = xray_structure).f_calc()
   mask = f_obs.structure_factors_from_map(
@@ -161,7 +161,7 @@ def output_map(
       map_type         = "mFo-DFc",
       isotropize       = True,
       fill_missing     = False)
-  if (params.mask_output and filename != 'bias_omit' ):
+  if (params.mask_output and filename != 'bias_omit'):
     ccp4_map.write_ccp4_map(
     file_name   = "mask_"+filename+".ccp4",
     unit_cell   = f_obs.unit_cell(),
@@ -194,7 +194,6 @@ def mask_from_xrs_unpadded(xray_structure, n_real):
   maptbx.unpad_in_place(map = mask)
   return mask
 
-
 def compute_polder_map(
   f_obs, r_free_flags, xray_structure, pdb_hierarchy, params, log):
   # output and apply atom selection
@@ -206,7 +205,8 @@ def compute_polder_map(
   if(n_selected == 0):
     raise Sorry("No atoms where selected. Check selection syntax again.")
   print >> log, "Number of atoms selected:", n_selected
-  ligand_str = pdb_hierarchy.select(selection_bool).as_pdb_string()
+  pdb_hierarchy_selected = pdb_hierarchy.select(selection_bool)
+  ligand_str = pdb_hierarchy_selected.as_pdb_string()
   print >> log, "Atoms selected:\n", ligand_str
   # when extracting cartesian coordinates, xray_structure needs to be in P1!
   sites_cart_ligand = xray_structure.select(selection_bool).expand_to_p1(
@@ -288,7 +288,11 @@ def compute_polder_map(
   if (params.output_file_name_prefix is not None):
     polder_file_name = params.output_file_name_prefix + "_" + polder_file_name
   mtz_object.write(file_name = polder_file_name)
-  print >> log, "Finished."
+  return group_args(
+    xray_structure_noligand = xray_structure_noligand,
+    pdb_hierarchy_selected  = pdb_hierarchy_selected,
+    crystal_gridding        = crystal_gridding,
+    mask_polder             = mask_polder)
 
 # validation for GUI
 def validate_params(params):
@@ -419,7 +423,7 @@ def cmd_run(args, validated=False, out=sys.stdout):
   pdb_input = iotbx.pdb.input(file_name = params.model_file_name)
   pdb_hierarchy = pdb_input.construct_hierarchy()
   xray_structure = pdb_hierarchy.extract_xray_structure(
-        crystal_symmetry = crystal_symmetry)
+    crystal_symmetry = crystal_symmetry)
   # DON'T USE:
   # xray_structure = pdb_input.xray_structure_simple()
   # atom order might be wrong
@@ -440,13 +444,63 @@ def cmd_run(args, validated=False, out=sys.stdout):
     f_obs, r_free_flags = prepare_f_obs_and_flags(
       f_obs        = f_obs,
       r_free_flags = r_free_flags)
-  compute_polder_map(
+  cpm_obj = compute_polder_map(
     f_obs          = f_obs,
     r_free_flags   = r_free_flags,
     xray_structure = xray_structure,
     pdb_hierarchy  = pdb_hierarchy,
     params         = params,
     log            = log)
+# Significance check
+  fmodel = mmtbx.f_model.manager(
+    f_obs          = f_obs,
+    r_free_flags   = r_free_flags,
+    xray_structure = xray_structure)
+  fmodel.update_all_scales(remove_outliers=False)
+  f_obs_1 = abs(fmodel.f_model())
+  fmodel.update_xray_structure(xray_structure=cpm_obj.xray_structure_noligand,
+    update_f_calc=True, update_f_mask=True, force_update_f_mask=True)
+  f_obs_2 = abs(fmodel.f_model())
+  xrs_selected = cpm_obj.pdb_hierarchy_selected.extract_xray_structure(
+    crystal_symmetry = f_obs.crystal_symmetry())
+  f_calc = f_obs.structure_factors_from_scatterers(
+    xray_structure = cpm_obj.xray_structure_noligand).f_calc()
+  f_mask = f_obs.structure_factors_from_map(
+    map            = cpm_obj.mask_polder,
+    use_scale      = True,
+    anomalous_flag = False,
+    use_sg         = False)
+  def get_poler_diff_map(f_obs):
+    fmodel = mmtbx.f_model.manager(
+      f_obs        = f_obs,
+      r_free_flags = r_free_flags,
+      f_calc       = f_calc,
+      f_mask       = f_mask)
+    fmodel.update_all_scales(remove_outliers=False)
+    mc_diff = map_tools.electron_density_map(
+      fmodel = fmodel).map_coefficients(
+        map_type         = "mFo-DFc",
+        isotropize       = True,
+        fill_missing     = False)
+    fft_map = miller.fft_map(
+      crystal_gridding     = cpm_obj.crystal_gridding,
+      fourier_coefficients = mc_diff)
+    fft_map.apply_sigma_scaling()
+    return mmtbx.utils.extract_box_around_model_and_map(
+      xray_structure = xrs_selected,
+      map_data       = fft_map.real_map_unpadded(),
+      box_cushion    = max(f_obs.d_min(), 2.0))
+  box_1=get_poler_diff_map(f_obs = f_obs_1)
+  box_2=get_poler_diff_map(f_obs = f_obs_2)
+  if(params.debug):
+    box_1.write_ccp4_map(file_name="box_1_polder.ccp4")
+    box_2.write_ccp4_map(file_name="box_2_polder.ccp4")
+    cpm_obj.pdb_hierarchy_selected.adopt_xray_structure(
+      box_1.xray_structure_box)
+    cpm_obj.pdb_hierarchy_selected.write_pdb_file(file_name="box_polder.pdb",
+      crystal_symmetry=box_1.box_crystal_symmetry)
+  #
+  print >> log, "Finished."
   return True
 
 # =============================================================================
