@@ -211,7 +211,8 @@ def u_cart_from_tls(sites_cart, selections, tlsos):
   uanisos = flex.sym_mat3_double(sites_cart.size(), [0,0,0,0,0,0])
   for selection, tlso in zip(selections, tlsos):
     u = uaniso_from_tls_one_group(tlso       = tlso,
-                                  sites_cart = sites_cart.select(selection))
+                                  sites_cart = sites_cart.select(selection),
+                                  zeroize_trace=True)
     uanisos.set_selected(selection, u)
   t2 = time.time()
   time_u_cart_from_tls += (t2 - t1)
@@ -998,3 +999,121 @@ def check_tls_selections_for_waters (
   if ((tls_sel & water_sel).count(True) > 0) :
     raise Sorry("TLS groups contain waters, which will conflict with the "+
       "water picking procedure.")
+
+# TEST utils
+
+def u_cart_from_xyz(sites_cart):
+  cm = sites_cart.mean()
+  x = flex.double()
+  y = flex.double()
+  z = flex.double()
+  sites_cart_cm = sites_cart - cm
+  for site_cart in sites_cart_cm:
+    x.append(site_cart[0])
+    y.append(site_cart[1])
+    z.append(site_cart[2])
+  u11 = flex.sum(x*x)/x.size()
+  u22 = flex.sum(y*y)/y.size()
+  u33 = flex.sum(z*z)/z.size()
+  u12 = flex.sum(x*y)/x.size()
+  u13 = flex.sum(x*z)/x.size()
+  u23 = flex.sum(y*z)/x.size()
+  return u11, u22, u33, u12, u13, u23
+
+def get_u_cart(o_tfm, origin, sites_cart):
+  import math
+  scale = 180./math.pi # trick to work-around c++ implementation
+  L = [v*scale**2 for v in o_tfm.L_M.as_sym_mat3()]
+  S = [v*scale for v in o_tfm.S_M.as_mat3()]
+  tlso_ = tlso(
+    t      = o_tfm.T_M.as_sym_mat3(),
+    l      = L,
+    s      = S,
+    origin = origin)
+  return uaniso_from_tls_one_group(
+    tlso          = tlso_,
+    sites_cart    = sites_cart,
+    zeroize_trace = False)
+
+def u_tls_vs_u_ens(
+        pdb_str,
+        dx=0,dy=0,dz=0,
+        sx=0,sy=0,sz=0,
+        lx=[1,0,0],ly=[0,1,0],lz=[0,0,1],
+        tx=0,ty=0,tz=0,
+        vx=[1,0,0],vy=[0,1,0],vz=[0,0,1],
+        w_M_lx=[0,0,0], w_M_ly=[0,0,0], w_M_lz=[0,0,0],
+        n_models=10000):
+  from mmtbx.tls import analysis, tls_as_xyz
+  from scitbx import matrix
+  from libtbx.utils import null_out
+  p1 = "dx"+str(dx)+"_"+"dy"+str(dy)+"_"+"dz"+str(dz)
+  p2 = "sx"+str(sx)+"_"+"sy"+str(sy)+"_"+"sz"+str(sz)
+  p3 = "lx"+"".join([str(i) for i in lx])+"_"+\
+       "ly"+"".join([str(i) for i in ly])+"_"+\
+       "lz"+"".join([str(i) for i in lz])
+  prefix = "_".join([p1,p2,p3])
+  #
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+  xrs = pdb_inp.xray_structure_simple()
+  sites_cart = xrs.sites_cart()
+  xrs.set_sites_cart(sites_cart)
+  ph = pdb_inp.construct_hierarchy()
+  ph.atoms().set_xyz(sites_cart)
+  origin = sites_cart.mean()
+  #
+  o_tfm = analysis.tls_from_motions(
+    dx=dx,dy=dy,dz=dz,
+    l_x=matrix.col(lx),l_y=matrix.col(ly),l_z=matrix.col(lz),
+    sx=sx,sy=sy,sz=sz,
+    tx=tx,ty=ty,tz=tz,
+    v_x=matrix.col(vx),v_y=matrix.col(vy),v_z=matrix.col(vz),
+    w_M_lx=matrix.col(w_M_lx),
+    w_M_ly=matrix.col(w_M_ly),
+    w_M_lz=matrix.col(w_M_lz))
+  #print "INPUTS:", "*"*30
+  #o_tfm.show()
+  #
+  u_cart_from_tls = get_u_cart(o_tfm=o_tfm, origin=origin, sites_cart=sites_cart)
+  tlso_ = tlso(
+    t      = o_tfm.T_M.as_sym_mat3(),
+    l      = o_tfm.L_M.as_sym_mat3(),
+    s      = o_tfm.S_M.as_mat3(),
+    origin = origin)
+  if 1:
+    T = matrix.sym(sym_mat3=tlso_.t)
+    L = matrix.sym(sym_mat3=tlso_.l)
+    S = matrix.sqr(tlso_.s)
+    o_tfm = analysis.run(T=T, L=L, S=S, log=null_out()).self_check()
+  #
+  r = tls_as_xyz.ensemble_generator(
+    tls_from_motions_object = o_tfm,
+    pdb_hierarchy        = ph,
+    xray_structure       = xrs,
+    n_models             = n_models,
+    origin               = origin,
+    log                  = null_out())
+  #log.close()
+  r.write_pdb_file(file_name="%s.pdb"%prefix)
+  #
+  xyz_all = []
+  for m in r.states.root.models():
+    xyz_all.append(m.atoms().extract_xyz())
+    #
+  n_atoms = xyz_all[0].size()
+  xyz_atoms_all = []
+  for i in xrange(n_atoms):
+    xyz_atoms = flex.vec3_double()
+    for xyzs in xyz_all:
+      xyz_atoms.append(xyzs[i])
+    xyz_atoms_all.append(xyz_atoms)
+  #
+  print prefix,"COMPARE U:"
+  for i in xrange(n_atoms):
+    print "atom %d:"%i
+    ut=["%8.5f"%u for u in u_cart_from_tls[i]]
+    ue=["%8.5f"%u for u in u_cart_from_xyz(sites_cart=xyz_atoms_all[i])]
+    print "  Ucart(from TLS):", ut
+    print "  Ucart(from ens):", ue
+    for j in xrange(6):
+      assert approx_equal(abs(float(ut[j])), abs(float(ue[j])), 1.e-3)

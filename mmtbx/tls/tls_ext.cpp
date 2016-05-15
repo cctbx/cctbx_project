@@ -34,7 +34,8 @@ namespace {
                                   sym_mat3<double> const&,
                                   mat3<double> const&,
                                   vec3<double> const&,
-                                  vec3<double> const&>())
+                                  vec3<double> const&,
+                                  bool>())
       .def("u", &uaniso_from_tls::u)
     ;
 
@@ -107,9 +108,11 @@ namespace {
     def("uaniso_from_tls_one_group",
          (af::shared<sym_mat3<double> >(*)
                (tlso<double>,
-                af::shared<vec3<double> > const&)) uaniso_from_tls_one_group,
-                                                          (arg("tlso"),
-                                                           arg("sites_cart")))
+                af::shared<vec3<double> > const&,
+                bool)) uaniso_from_tls_one_group,
+                  (arg("tlso"),
+                   arg("sites_cart"),
+                   arg("zeroize_trace")))
    ;
 
    class_<tls_parts_one_group>("tls_parts_one_group",

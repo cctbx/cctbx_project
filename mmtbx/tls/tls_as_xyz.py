@@ -52,26 +52,26 @@ def run(pdb_file_name,
 
 class ensemble_generator(object):
   def __init__(self,
-               decompose_tls_object,
+               tls_from_motions_object,
                pdb_hierarchy,
                xray_structure,
                n_models,
+               origin,
                log=None):
     if(log is None): log = sys.stdout
     xray_structure.convert_to_isotropic()
     xray_structure = xray_structure.set_b_iso(value=0)
-    sites_cart = xray_structure.sites_cart()
+    sites_cart = xray_structure.sites_cart()-origin
     self.states = mmtbx.utils.states(
       xray_structure = xray_structure,
       pdb_hierarchy  = pdb_hierarchy)
-    r = decompose_tls_object
+    r = tls_from_motions_object
     print >> log
     print >> log, "Generating ensemble of %d models:"%n_models
     for trial in xrange(n_models):
       print >> log, "model #%d"%trial
-      dx0,dy0,dz0 = step_i__get_dxdydz(
-        L_L=r.L_L, R_PL=r.R_ML, log = log)
-      d_r_M_V  = step_j(r=r, log = log)
+      dx0,dy0,dz0 = step_i__get_dxdydz(r=r, log = log)
+      d_r_M_V  = formula_49(r=r, log = log)
       sites_cart_new = flex.vec3_double()
       for site_cart in sites_cart:
         r_L = r.R_ML.transpose() * site_cart
@@ -84,16 +84,14 @@ class ensemble_generator(object):
   def write_pdb_file(self, file_name):
     self.states.write(file_name = file_name)
 
-def step_i__get_dxdydz(L_L, R_PL, log, eps=1.e-7):
+def step_i__get_dxdydz(r, log, eps=1.e-7):
   """
   Generation of shifts from screw rotations.
   """
-  L_ = L_L.as_sym_mat3()
-  Lxx, Lyy, Lzz = L_[0], L_[1], L_[2]
   dx0, dy0, dz0 = 0, 0, 0
-  if(abs(Lxx)>eps): dx0 = random.normalvariate(0,Lxx**0.5)
-  if(abs(Lyy)>eps): dy0 = random.normalvariate(0,Lyy**0.5)
-  if(abs(Lzz)>eps): dz0 = random.normalvariate(0,Lzz**0.5)
+  if(abs(r.dx)>eps): dx0 = random.normalvariate(0,r.dx)
+  if(abs(r.dy)>eps): dy0 = random.normalvariate(0,r.dy)
+  if(abs(r.dz)>eps): dz0 = random.normalvariate(0,r.dz)
   return dx0, dy0, dz0
 
 def step_i__compute_delta_L_r_dp(r, r_L, dx0, dy0, dz0):
@@ -102,32 +100,31 @@ def step_i__compute_delta_L_r_dp(r, r_L, dx0, dy0, dz0):
   cos, sin = math.cos, math.sin
   d_lx_r_L = matrix.col((
     sxb*dx0,
-    (y-r.w.wy_lx)*(cos(dx0)-1) - (z-r.w.wz_lx)*sin(dx0),
-    (y-r.w.wy_lx)*sin(dx0)     + (z-r.w.wz_lx)*(cos(dx0)-1)
+    (y-r.wy_lx)*(cos(dx0)-1) - (z-r.wz_lx)*sin(dx0),
+    (y-r.wy_lx)*sin(dx0)     + (z-r.wz_lx)*(cos(dx0)-1)
     ))
   d_ly_r_L = matrix.col((
-    (z-r.w.wz_ly)*sin(dy0)     + (x-r.w.wx_ly)*(cos(dy0)-1),
+    (z-r.wz_ly)*sin(dy0)     + (x-r.wx_ly)*(cos(dy0)-1),
     syb*dy0,
-    (z-r.w.wz_ly)*(cos(dy0)-1) - (x-r.w.wx_ly)*sin(dy0)
+    (z-r.wz_ly)*(cos(dy0)-1) - (x-r.wx_ly)*sin(dy0)
     ))
   d_lz_r_L = matrix.col((
-    (x-r.w.wx_lz)*(cos(dz0)-1) - (y-r.w.wy_lz)*sin(dz0),
-    (x-r.w.wx_lz)*sin(dz0)     + (y-r.w.wy_lz)*(cos(dz0)-1),
+    (x-r.wx_lz)*(cos(dz0)-1) - (y-r.wy_lz)*sin(dz0),
+    (x-r.wx_lz)*sin(dz0)     + (y-r.wy_lz)*(cos(dz0)-1),
     szb*dz0
     ))
+
   d_r_L = d_lx_r_L + d_ly_r_L + d_lz_r_L
   d_r_M = r.R_ML * d_r_L
   return d_r_M
 
-def step_j(r, log):
+def formula_49(r, log, eps=1.e-7):
   """
   Generate shifts from group translation.
   """
-  V_V_ = r.V_V.as_sym_mat3()
   tx0, ty0, tz0 = 0, 0, 0
-  if(V_V_[0] != 0): tx0 = random.normalvariate(0,V_V_[0]**0.5)
-  if(V_V_[1] != 0): ty0 = random.normalvariate(0,V_V_[1]**0.5)
-  if(V_V_[2] != 0): tz0 = random.normalvariate(0,V_V_[2]**0.5)
-  d_r_V = tx0*r.v_x + ty0*r.v_y + tz0*r.v_z
-  d_r_M = r.R_MV * d_r_V
-  return d_r_V
+  if(r.tx>eps): tx0 = random.normalvariate(0,r.tx)
+  if(r.ty>eps): ty0 = random.normalvariate(0,r.ty)
+  if(r.tz>eps): tz0 = random.normalvariate(0,r.tz)
+  d_r_V = matrix.col((tx0,ty0,tz0))
+  return r.R_MV * d_r_V

@@ -11,6 +11,7 @@ import sys, os
 from copy import deepcopy
 import mmtbx.tls.tools
 from libtbx.utils import multi_out
+from libtbx import adopt_init_args
 
 def print_step(s, log):
   n = 79-len(s)
@@ -69,6 +70,35 @@ def truncate(m, eps=1.e-8):
        x[3], x[4], x[5],
        x[6], x[7], x[8]])
 
+def show_matrix(x, title, prefix="  ", log=None):
+  if(log is None): log = sys.stdout
+  print >> log, prefix, title
+  ff = "%12.9f"
+  f = "%s %s %s"%(ff,ff,ff)
+  print >> log, prefix, f%(x[0], x[1], x[2])
+  print >> log, prefix, f%(x[3], x[4], x[5])
+  print >> log, prefix, f%(x[6], x[7], x[8])
+  print >> log
+
+def show_vector(x, title, prefix="  ", log=None):
+  if(log is None): log = sys.stdout
+  ff = "%12.9f"
+  print >> log, prefix, title
+  print >> log, prefix, ff%x[0]
+  print >> log, prefix, ff%x[1]
+  print >> log, prefix, ff%x[2]
+  print >> log
+
+def show_number(x, title, prefix="  ", log=None):
+  if(log is None): log = sys.stdout
+  ff = "%12.9f"
+  print >> log, prefix, title
+  if(type(x) in [float, int]):
+    print >> log, "   ", ("%s"%ff)%x
+  else:
+    print >> log, "   ", " ".join([str(("%s"%ff)%i) for i in x])
+  print >> log
+
 class run(object):
   def __init__(self, T, L, S, log=sys.stdout, eps=1.e-6, self_check_eps=1.e-5,
                force_t_S=None):
@@ -83,9 +113,9 @@ class run(object):
     print >> self.log, "Small is defined as:", self.eps
     self.T_M, self.L_M, self.S_M = T, L, S
     print_step("Input TLS matrices:", self.log)
-    self.show_matrix(x=self.T_M, prefix="  ", title="T_M")
-    self.show_matrix(x=self.L_M, prefix="  ", title="L_M")
-    self.show_matrix(x=self.S_M, prefix="  ", title="S_M")
+    show_matrix(x=self.T_M, prefix="  ", title="T_M", log=self.log)
+    show_matrix(x=self.L_M, prefix="  ", title="L_M", log=self.log)
+    show_matrix(x=self.S_M, prefix="  ", title="S_M", log=self.log)
     # set at step A
     self.T_L, self.L_L, self.S_L = None, None, None
     self.l_x, self.l_y, self.l_z = None, None, None
@@ -134,22 +164,22 @@ class run(object):
     print_step("Step A:", self.log)
     es = self.eigen_system_default_handler(m=self.L_M, suffix="L_M")
     self.l_x, self.l_y, self.l_z = es.x, es.y, es.z
-    self.show_vector(x=self.l_x, title="l_x")
-    self.show_vector(x=self.l_y, title="l_y")
-    self.show_vector(x=self.l_z, title="l_z")
+    show_vector(x=self.l_x, title="l_x", log=self.log)
+    show_vector(x=self.l_y, title="l_y", log=self.log)
+    show_vector(x=self.l_z, title="l_z", log=self.log)
     self.R_ML = matrix.sqr(
       [self.l_x[0], self.l_y[0], self.l_z[0],
        self.l_x[1], self.l_y[1], self.l_z[1],
        self.l_x[2], self.l_y[2], self.l_z[2]])
-    self.show_matrix(x=self.R_ML, title="Matrix R_ML, eq.(14)")
+    show_matrix(x=self.R_ML, title="Matrix R_ML, eq.(14)", log=self.log)
     R_ML_transpose = self.R_ML.transpose()
     assert approx_equal(R_ML_transpose, self.R_ML.inverse(), 1.e-5)
     self.T_L = R_ML_transpose*self.T_M*self.R_ML
     self.L_L = R_ML_transpose*self.L_M*self.R_ML
     self.S_L = R_ML_transpose*self.S_M*self.R_ML
-    self.show_matrix(x=self.T_L, title="T_L, eq.(13)")
-    self.show_matrix(x=self.L_L, title="L_L, eq.(13)")
-    self.show_matrix(x=self.S_L, title="S_L, eq.(13)")
+    show_matrix(x=self.T_L, title="T_L, eq.(13)", log=self.log)
+    show_matrix(x=self.L_L, title="L_L, eq.(13)", log=self.log)
+    show_matrix(x=self.S_L, title="S_L, eq.(13)", log=self.log)
     L_ = self.L_L.as_sym_mat3()
     self.Lxx, self.Lyy, self.Lzz = L_[0], L_[1], L_[2]
     self.Sxx, self.Syy, self.Szz = self.S_L[0], self.S_L[4], self.S_L[8]
@@ -197,9 +227,9 @@ class run(object):
       w_lx = w_lx,
       w_ly = w_ly,
       w_lz = w_lz)
-    self.show_vector(x=w_lx, title="w_lx, eq.(15)")
-    self.show_vector(x=w_ly, title="w_ly, eq.(15)")
-    self.show_vector(x=w_lz, title="w_lz, eq.(15)")
+    show_vector(x=w_lx, title="w_lx, eq.(15)", log=self.log)
+    show_vector(x=w_ly, title="w_ly, eq.(15)", log=self.log)
+    show_vector(x=w_lz, title="w_lz, eq.(15)", log=self.log)
     # ... but really we want (16)
     w_lx = matrix.col(((wx_ly+wx_lz)/2.,            wy_lx,            wz_lx)) # overwrite inplace
     w_ly = matrix.col((           wx_ly, (wy_lx+wy_lz)/2.,            wz_ly)) # overwrite inplace
@@ -214,9 +244,9 @@ class run(object):
       w_lx = w_lx,
       w_ly = w_ly,
       w_lz = w_lz)
-    self.show_vector(x=w_lx, title="w_lx, eq.(16)")
-    self.show_vector(x=w_ly, title="w_ly, eq.(16)")
-    self.show_vector(x=w_lz, title="w_lz, eq.(16)")
+    show_vector(x=w_lx, title="w_lx, eq.(16)", log=self.log)
+    show_vector(x=w_ly, title="w_ly, eq.(16)", log=self.log)
+    show_vector(x=w_lz, title="w_lz, eq.(16)", log=self.log)
     #
     d11 = wz_ly**2*self.Lyy + wy_lz**2*self.Lzz
     d22 = wz_lx**2*self.Lxx + wx_lz**2*self.Lzz
@@ -228,10 +258,10 @@ class run(object):
       [d11, d12, d13,
        d12, d22, d23,
        d13, d23, d33])
-    self.show_matrix(x=self.D_WL, title="D_WL, eq.(10)")
+    show_matrix(x=self.D_WL, title="D_WL, eq.(10)", log=self.log)
     self.T_CL = self.T_L - self.D_WL
     self.T_CL = truncate(matrix.sqr(self.T_CL))
-    self.show_matrix(x=self.T_CL, title="T_CL")
+    show_matrix(x=self.T_CL, title="T_CL", log=self.log)
     if(not self.is_pd(self.T_CL.as_sym_mat3())):
       raise Sorry("Step B: Matrix T_C[L] is not positive semidefinite.")
 
@@ -258,17 +288,17 @@ class run(object):
       t23 = self.T_CL[5] * math.sqrt(self.Lyy*self.Lzz)
       t_min_C = max(self.Sxx-rx, self.Syy-ry, self.Szz-rz)
       t_max_C = min(self.Sxx+rx, self.Syy+ry, self.Szz+rz)
-      self.show_number(x=[t_min_C, t_max_C], title="t_min_C,t_max_C eq.(24):")
+      show_number(x=[t_min_C, t_max_C], title="t_min_C,t_max_C eq.(24):", log=self.log)
       if(t_min_C > t_max_C):
         raise Sorry("Step C (left branch): Empty (tmin_c,tmax_c) interval.")
       t_0 = self.S_L.trace()/3.
-      self.show_number(x=t_0, title="t_0 eq.(20):")
+      show_number(x=t_0, title="t_0 eq.(20):", log=self.log)
       # compose T_lambda and find tau_max (30)
       T_lambda = matrix.sqr(
         [t11, t12, t13,
          t12, t22, t23,
          t13, t23, t33])
-      self.show_matrix(x=T_lambda, title="T_lambda eq.(29)")
+      show_matrix(x=T_lambda, title="T_lambda eq.(29)", log=self.log)
       es = eigensystem.real_symmetric(T_lambda.as_sym_mat3())
       vals = es.values()
       assert vals[0]>=vals[1]>=vals[2]
@@ -278,8 +308,8 @@ class run(object):
         raise Sorry("Step C (left branch): Eq.(32): tau_max<0.")
       t_min_tau = max(self.Sxx,self.Syy,self.Szz)-math.sqrt(tau_max)
       t_max_tau = min(self.Sxx,self.Syy,self.Szz)+math.sqrt(tau_max)
-      self.show_number(x=[t_min_tau, t_max_tau],
-        title="t_min_tau, t_max_tau eq.(31):")
+      show_number(x=[t_min_tau, t_max_tau],
+        title="t_min_tau, t_max_tau eq.(31):", log=self.log)
       if(t_min_tau > t_max_tau):
         raise Sorry("Step C (left branch): Empty (tmin_t,tmax_t) interval.")
       # (38):
@@ -287,10 +317,10 @@ class run(object):
       if(arg < 0):
         raise Sorry("Step C (left branch): Negative argument when estimating tmin_a.")
       t_a = math.sqrt(arg)
-      self.show_number(x=t_a, title="t_a eq.(38):")
+      show_number(x=t_a, title="t_a eq.(38):", log=self.log)
       t_min_a = t_0-t_a
       t_max_a = t_0+t_a
-      self.show_number(x=[t_min_a, t_max_a], title="t_min_a, t_max_a eq.(37):")
+      show_number(x=[t_min_a, t_max_a], title="t_min_a, t_max_a eq.(37):", log=self.log)
       # compute t_min, t_max - this is step b)
       t_min = max(t_min_C, t_min_tau, t_min_a)
       t_max = min(t_max_C, t_max_tau, t_max_a)
@@ -370,14 +400,14 @@ class run(object):
     #
     # At this point t_S is found or procedure terminated earlier.
     #
-    self.show_number(x=self.t_S, title="t_S:")
+    show_number(x=self.t_S, title="t_S:", log=self.log)
     # compute S_C(t_S_), (19)
     self.S_C = self.S_L - matrix.sqr(
       [self.t_S,        0,        0,
               0, self.t_S,        0,
               0,        0, self.t_S])
     self.S_C = matrix.sqr(self.S_C)
-    self.show_matrix(x=self.S_C, title="S_C, (26)")
+    show_matrix(x=self.S_C, title="S_C, (26)", log=self.log)
     # find sx, sy, sz
     if(self.is_zero(self.Lxx)):
       if(not self.is_zero(self.S_C[0])):
@@ -394,17 +424,17 @@ class run(object):
         raise Sorry("Step C: incompatible L_L and S_C matrices.")
     else:
       self.sz = self.S_C[8]/self.Lzz
-    self.show_number(x=[self.sx,self.sy,self.sz],
-      title="Screw parameters (section 4.5): sx,sy,sz:")
+    show_number(x=[self.sx,self.sy,self.sz],
+      title="Screw parameters (section 4.5): sx,sy,sz:", log=self.log)
     # compose C_L_t_S (26), and V_L (27)
     self.C_L_t_S = matrix.sqr(
       [self.sx*self.S_C[0],                   0,                   0,
                          0, self.sy*self.S_C[4],                   0,
                          0,                   0, self.sz*self.S_C[8]])
     self.C_L_t_S = self.C_L_t_S
-    self.show_matrix(x=self.C_L_t_S, title="C_L(t_S) (26)")
+    show_matrix(x=self.C_L_t_S, title="C_L(t_S) (26)", log=self.log)
     self.V_L = matrix.sqr(self.T_CL - self.C_L_t_S)
-    self.show_matrix(x=self.V_L, title="V_L (26-27)")
+    show_matrix(x=self.V_L, title="V_L (26-27)", log=self.log)
     if(not self.is_pd(self.V_L.as_sym_mat3())):
       raise Sorry("Step C: Matrix V[L] is not positive semidefinite.")
 
@@ -416,16 +446,16 @@ class run(object):
     es = self.eigen_system_default_handler(m=self.V_L, suffix="V_L")
     self.v_x, self.v_y, self.v_z = es.x, es.y, es.z
     self.tx, self.ty, self.tz = es.vals[0]**0.5,es.vals[1]**0.5,es.vals[2]**0.5
-    self.show_vector(x=self.v_x, title="v_x")
-    self.show_vector(x=self.v_y, title="v_y")
-    self.show_vector(x=self.v_z, title="v_z")
+    show_vector(x=self.v_x, title="v_x", log=self.log)
+    show_vector(x=self.v_y, title="v_y", log=self.log)
+    show_vector(x=self.v_z, title="v_z", log=self.log)
     if(min(es.vals)<0): raise RuntimeError # checked with Sorry at Step C.
     R = matrix.sqr(
       [self.v_x[0], self.v_y[0], self.v_z[0],
        self.v_x[1], self.v_y[1], self.v_z[1],
        self.v_x[2], self.v_y[2], self.v_z[2]])
     self.V_V = m=R.transpose()*self.V_L*R
-    self.show_matrix(x=self.V_V, title="V_V")
+    show_matrix(x=self.V_V, title="V_V", log=self.log)
     self.v_x_M = self.R_ML*self.v_x
     self.v_y_M = self.R_ML*self.v_y
     self.v_z_M = self.R_ML*self.v_z
@@ -459,40 +489,29 @@ class run(object):
     if(abs(x)<self.eps): return True
     else: return False
 
-  def show_number(self, x, title, prefix="  "):
-    print >> self.log, prefix, title
-    if(type(x) in [float, int]):
-      print >> self.log, "   ", ("%s"%self.ff)%x
-    else:
-      print >> self.log, "   ", " ".join([str(("%s"%self.ff)%i) for i in x])
-    print >> self.log
-
-  def show_matrix(self, x, title, prefix="  "):
-    print >> self.log, prefix, title
-    f = "%s %s %s"%(self.ff,self.ff,self.ff)
-    print >> self.log, prefix, f%(x[0], x[1], x[2])
-    print >> self.log, prefix, f%(x[3], x[4], x[5])
-    print >> self.log, prefix, f%(x[6], x[7], x[8])
-    print >> self.log
-
-  def show_vector(self, x, title, prefix="  "):
-    print >> self.log, prefix, title
-    print >> self.log, prefix, self.ff%x[0]
-    print >> self.log, prefix, self.ff%x[1]
-    print >> self.log, prefix, self.ff%x[2]
-    print >> self.log
-
   def eigen_system_default_handler(self, m, suffix):
+    ###
+    def zero(x, e):
+      for i in xrange(len(x)):
+        if(abs(x[i])<e): x[i]=0
+      return x
+    ###
+    # special case
+    m11,m12,m13, m21,m22,m23, m31,m32,m33 = m.as_flex_double_matrix()
+    if(self.is_zero(m12) and self.is_zero(m13) and
+       self.is_zero(m21) and self.is_zero(m23) and
+       self.is_zero(m31) and self.is_zero(m32)):
+      l_x = matrix.col((1.0, 0.0, 0.0))
+      l_y = matrix.col((0.0, 1.0, 0.0))
+      l_z = matrix.col((0.0, 0.0, 1.0))
+      return group_args(x=l_x, y=l_y, z=l_z, vals=zero([m11,m22,m33], self.eps))
+    #
     es = eigensystem.real_symmetric(m.as_sym_mat3())
     vals, vecs = es.values(), es.vectors()
     print >> self.log, "  eigen values  (%s):"%suffix, " ".join([self.ff%i for i in vals])
     print >> self.log, "  eigen vectors (%s):"%suffix, " ".join([self.ff%i for i in vecs])
     assert vals[0]>=vals[1]>=vals[2]
     ###
-    def zero(x, e):
-      for i in xrange(len(x)):
-        if(abs(x[i])<e): x[i]=0
-      return x
     vals = zero(vals, self.eps)
     vecs = zero(vecs, self.eps)
     ###
@@ -560,99 +579,149 @@ class run(object):
   def show_summary(self):
     print_step("SUMMARY:", self.log)
     r = self.result
-    self.show_number(x=[r.dx, r.dy, r.dz], title="Libration rms around L-axes")
+    show_number(x=[r.dx, r.dy, r.dz], title="Libration rms around L-axes", log=self.log)
     #
-    self.show_vector(x=r.l_x, title="Unit vector defining libration axis Lx (13):")
-    self.show_vector(x=r.l_y, title="Unit vector defining libration axis Ly (13):")
-    self.show_vector(x=r.l_z, title="Unit vector defining libration axis Lz (13):")
+    show_vector(x=r.l_x, title="Unit vector defining libration axis Lx (13):", log=self.log)
+    show_vector(x=r.l_y, title="Unit vector defining libration axis Ly (13):", log=self.log)
+    show_vector(x=r.l_z, title="Unit vector defining libration axis Lz (13):", log=self.log)
     #
-    self.show_number(x=r.w_L_lx, title="Rotation axis passes through the point in the L basis (15-16):")
-    self.show_number(x=r.w_L_ly, title="Rotation axis passes through the point in the L basis (15-16):")
-    self.show_number(x=r.w_L_lz, title="Rotation axis passes through the point in the L basis (15-16):")
+    show_number(x=r.w_L_lx, title="Rotation axis passes through the point in the L basis (15-16):", log=self.log)
+    show_number(x=r.w_L_ly, title="Rotation axis passes through the point in the L basis (15-16):", log=self.log)
+    show_number(x=r.w_L_lz, title="Rotation axis passes through the point in the L basis (15-16):", log=self.log)
     #
-    self.show_number(x=r.w_M_lx, title="Rotation axis passes through the point in the M basis (40):")
-    self.show_number(x=r.w_M_ly, title="Rotation axis passes through the point in the M basis (40):")
-    self.show_number(x=r.w_M_lz, title="Rotation axis passes through the point in the M basis (40):")
+    show_number(x=r.w_M_lx, title="Rotation axis passes through the point in the M basis (40):", log=self.log)
+    show_number(x=r.w_M_ly, title="Rotation axis passes through the point in the M basis (40):", log=self.log)
+    show_number(x=r.w_M_lz, title="Rotation axis passes through the point in the M basis (40):", log=self.log)
     #
-    self.show_number(x=[r.sx, r.sy, r.sz], title="Correlation shifts sx,sy,sz for libration (4.5):")
+    show_number(x=[r.sx, r.sy, r.sz], title="Correlation shifts sx,sy,sz for libration (8):", log=self.log)
     #
-    self.show_vector(x=r.v_x, title="Vector defining vibration axis in M basis (41):")
-    self.show_vector(x=r.v_y, title="Vector defining vibration axis in M basis (41):")
-    self.show_vector(x=r.v_z, title="Vector defining vibration axis in M basis (41):")
+    show_vector(x=r.v_x, title="Vector defining vibration axis in M basis (41):", log=self.log)
+    show_vector(x=r.v_y, title="Vector defining vibration axis in M basis (41):", log=self.log)
+    show_vector(x=r.v_z, title="Vector defining vibration axis in M basis (41):", log=self.log)
     #
-    self.show_number(x=[r.tx, r.ty, r.tz], title="Vibration rms along V-axes")
+    show_number(x=[r.tx, r.ty, r.tz], title="Vibration rms along V-axes", log=self.log)
 
   def self_check(self):
     print_step("Recover T_M, L_M,S_M from base elements:", self.log)
     r = self.result
-    R_ML = matrix.sqr(
-      [r.l_x[0], r.l_y[0], r.l_z[0],
-       r.l_x[1], r.l_y[1], r.l_z[1],
-       r.l_x[2], r.l_y[2], r.l_z[2]])
-    # T_M
-    C_S = matrix.sqr(
-      [(r.sx*r.dx)**2,              0,              0,
-                    0, (r.sy*r.dy)**2,              0,
-                    0,              0, (r.sz*r.dz)**2])
-    v_x_M = R_ML*r.v_x
-    v_y_M = R_ML*r.v_y
-    v_z_M = R_ML*r.v_z
-    R_MV = matrix.sqr(
-      [v_x_M[0], v_y_M[0], v_z_M[0],
-       v_x_M[1], v_y_M[1], v_z_M[1],
-       v_x_M[2], v_y_M[2], v_z_M[2]])
-    V_V = matrix.sqr(
-      [r.tx**2,       0,       0,
-             0, r.ty**2,       0,
-             0,       0, r.tz**2])
-    # D_WL
-    wy_lx = r.w_L_lx[1]
-    wz_lx = r.w_L_lx[2]
-    wx_ly = r.w_L_ly[0]
-    wz_ly = r.w_L_ly[2]
-    wx_lz = r.w_L_lz[0]
-    wy_lz = r.w_L_lz[1]
-    d11 = wz_ly**2*r.dy**2 + wy_lz**2*r.dz**2
-    d22 = wz_lx**2*r.dx**2 + wx_lz**2*r.dz**2
-    d33 = wy_lx**2*r.dx**2 + wx_ly**2*r.dy**2
-    d12 = -wx_lz*wy_lz*r.dz**2
-    d13 = -wx_ly*wz_ly*r.dy**2
-    d23 = -wy_lx*wz_lx*r.dx**2
-    D_WL = matrix.sqr(
-      [d11, d12, d13,
-       d12, d22, d23,
-       d13, d23, d33])
+    r = tls_from_motions(
+      dx=r.dx, dy=r.dy, dz=r.dz,
+      l_x=r.l_x, l_y=r.l_y, l_z=r.l_z,
+      sx=r.sx, sy=r.sy, sz=r.sz,
+      tx=r.tx, ty=r.ty, tz=r.tz,
+      v_x=r.v_x, v_y=r.v_y, v_z=r.v_z,
+      w_M_lx=r.w_M_lx,
+      w_M_ly=r.w_M_ly,
+      w_M_lz=r.w_M_lz)
     #
-    T_M = R_ML * (C_S + D_WL) * R_ML.transpose() + R_MV * V_V * R_MV.transpose()
-    self.show_matrix(x=self.T_M, title="Input T_M:")
-    self.show_matrix(x=T_M, title="Recoverd T_M:")
+    T_M = r.T_M
+    show_matrix(x=self.T_M, title="Input T_M:", log=self.log)
+    show_matrix(x=T_M, title="Recoverd T_M:", log=self.log)
     if(flex.max(flex.abs(flex.double(T_M - self.T_M))) > self.self_check_eps):
       raise Sorry("Cannot reconstruct T_M")
     # L_M
-    L_L = matrix.sqr(
-      [r.dx**2,       0,       0,
-             0, r.dy**2,       0,
-             0,       0, r.dz**2])
-    L_M = R_ML * L_L * R_ML.transpose()
-    self.show_matrix(x=self.L_M, title="Input L_M:")
-    self.show_matrix(x=L_M, title="Recoverd L_M:")
+    L_M = r.L_M
+    show_matrix(x=self.L_M, title="Input L_M:", log=self.log)
+    show_matrix(x=L_M, title="Recoverd L_M:", log=self.log)
     if(flex.max(flex.abs(flex.double(L_M - self.L_M))) > self.self_check_eps):
       raise Sorry("Cannot reconstruct L_M")
     # S_M
-    S = matrix.sqr(
-      [r.sx*r.dx**2,            0,            0,
-                  0, r.sy*r.dy**2,            0,
-                  0,            0, r.sz*r.dz**2])
-    matrix_9 = matrix.sqr(
-      [             0,  wz_lx*r.dx**2, -wy_lx*r.dx**2,
-       -wz_ly*r.dy**2,              0,  wx_ly*r.dy**2,
-        wy_lz*r.dz**2, -wx_lz*r.dz**2,              0])
-    S_M = R_ML * (S + matrix_9) * R_ML.transpose()
-    self.show_matrix(x=self.S_M, title="Input S_M:")
-    self.show_matrix(x=S_M, title="Recoverd S_M:")
+    S_M = r.S_M
+    show_matrix(x=self.S_M, title="Input S_M:", log=self.log)
+    show_matrix(x=S_M, title="Recoverd S_M:", log=self.log)
     d = matrix.sqr(self.S_M-S_M)
     # remark: diagonal does not have to match, can be different by a constant
     max_diff = flex.max(flex.abs(
       flex.double([d[1],d[2],d[3],d[5],d[6],d[7],d[0]-d[4],d[0]-d[8]])))
     if(max_diff > self.self_check_eps):
       raise Sorry("Cannot reconstruct S_M")
+    return r
+
+class tls_from_motions(object):
+  def __init__(self,
+               dx,dy,dz,
+               l_x,l_y,l_z,
+               sx,sy,sz,
+               tx,ty,tz,
+               v_x,v_y,v_z,
+               w_M_lx,
+               w_M_ly,
+               w_M_lz):
+    adopt_init_args(self, locals())
+    self.R_ML = matrix.sqr(
+      [self.l_x[0], self.l_y[0], self.l_z[0],
+       self.l_x[1], self.l_y[1], self.l_z[1],
+       self.l_x[2], self.l_y[2], self.l_z[2]])
+    # T_M
+    C_S = matrix.sqr(
+      [(self.sx*self.dx)**2,                    0,                    0,
+                          0, (self.sy*self.dy)**2,                    0,
+                          0,                    0, (self.sz*self.dz)**2])
+    v_x_M = self.R_ML*self.v_x
+    v_y_M = self.R_ML*self.v_y
+    v_z_M = self.R_ML*self.v_z
+    self.R_MV = matrix.sqr(
+      [v_x_M[0], v_y_M[0], v_z_M[0],
+       v_x_M[1], v_y_M[1], v_z_M[1],
+       v_x_M[2], v_y_M[2], v_z_M[2]])
+    V_V = matrix.sqr(
+      [self.tx**2,       0,       0,
+             0, self.ty**2,       0,
+             0,       0, self.tz**2])
+    # D_WL
+    w_L_lx = self.R_ML.transpose()*w_M_lx
+    w_L_ly = self.R_ML.transpose()*w_M_ly
+    w_L_lz = self.R_ML.transpose()*w_M_lz
+    self.wy_lx = w_L_lx[1]
+    self.wz_lx = w_L_lx[2]
+    self.wx_ly = w_L_ly[0]
+    self.wz_ly = w_L_ly[2]
+    self.wx_lz = w_L_lz[0]
+    self.wy_lz = w_L_lz[1]
+    d11 =  self.wz_ly**2*self.dy**2 + self.wy_lz**2*self.dz**2
+    d22 =  self.wz_lx**2*self.dx**2 + self.wx_lz**2*self.dz**2
+    d33 =  self.wy_lx**2*self.dx**2 + self.wx_ly**2*self.dy**2
+    d12 = -self.wx_lz*self.wy_lz*self.dz**2
+    d13 = -self.wx_ly*self.wz_ly*self.dy**2
+    d23 = -self.wy_lx*self.wz_lx*self.dx**2
+    D_WL = matrix.sqr(
+      [d11, d12, d13,
+       d12, d22, d23,
+       d13, d23, d33])
+    # T_M
+    self.T_M = self.R_ML*(C_S+D_WL)*self.R_ML.transpose() + \
+      self.R_MV * V_V * self.R_MV.transpose()
+    # L_M
+    L_L = matrix.sqr(
+      [self.dx**2,       0,       0,
+             0, self.dy**2,       0,
+             0,       0, self.dz**2])
+    self.L_M = self.R_ML * L_L * self.R_ML.transpose()
+    # S_M
+    S = matrix.sqr(
+      [self.sx*self.dx**2,            0,            0,
+                  0, self.sy*self.dy**2,            0,
+                  0,            0, self.sz*self.dz**2])
+    matrix_9 = matrix.sqr(
+      [                     0,  self.wz_lx*self.dx**2, -self.wy_lx*self.dx**2,
+       -self.wz_ly*self.dy**2,                      0,  self.wx_ly*self.dy**2,
+        self.wy_lz*self.dz**2, -self.wx_lz*self.dz**2,                      0])
+    self.S_M = self.R_ML * (S + matrix_9) * self.R_ML.transpose()
+
+  def show(self, log=None):
+    if(log is None): log = sys.stdout
+    show_number(x=[self.tx, self.ty, self.tz], title="tx, ty, tz (4):", log=log)
+    show_number(x=[self.dx, self.dy, self.dz], title="dx, dy, dz (5):", log=log)
+    show_number(x=[self.sx, self.sy, self.sz], title="sx, sy, sz (8):", log=log)
+    show_vector(x=self.l_x, title="lx (13):", log=log)
+    show_vector(x=self.l_y, title="ly (13):", log=log)
+    show_vector(x=self.l_z, title="lz (13):", log=log)
+    show_vector(x=self.v_x, title="vx (41):", log=log)
+    show_vector(x=self.v_y, title="vy (41):", log=log)
+    show_vector(x=self.v_z, title="vz (41):", log=log)
+    show_number(x=self.w_M_lx, title="w_M_lx (40):", log=log)
+    show_number(x=self.w_M_ly, title="w_M_ly (40):", log=log)
+    show_number(x=self.w_M_lz, title="w_M_lz (40):", log=log)
+    show_matrix(x=self.T_M, title="T_M (computed from inputs):", log=log)
+    show_matrix(x=self.L_M, title="L_M (computed from inputs):", log=log)
+    show_matrix(x=self.S_M, title="S_M (computed from inputs):", log=log)

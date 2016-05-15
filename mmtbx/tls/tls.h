@@ -231,13 +231,14 @@ public:
                   sym_mat3<double> const& L_deg,
                   mat3<double> const& S_deg,
                   vec3<double> const& origin,
-                  vec3<double> const& site_cart)
+                  vec3<double> const& site_cart,
+                  bool zeroize_trace)
   {
-   double deg2rad = scitbx::deg_as_rad(1.0);
+   double deg2rad   = scitbx::deg_as_rad(1.0);
    double deg2radsq = deg2rad * deg2rad;
    L = L_deg * deg2radsq;
    S = S_deg * deg2rad;
-   S[8] = -(S[0]+S[4]); // condition on trace(S) = 0.0
+   if(zeroize_trace) S[8] = -(S[0]+S[4]); // condition on trace(S) = 0.0
    r_ = site_cart - origin;
    x = r_[0];
    y = r_[1];
@@ -328,7 +329,7 @@ public:
     tg = 0.0;
     for (std::size_t i=0; i < sites.size(); i++) {
          vec3<double> const& site = sites[i];
-         uaniso_from_tls manager(T,L_deg,S_deg,origin,site);
+         uaniso_from_tls manager(T,L_deg,S_deg,origin,site,true);
          sym_mat3<double> const& utls = manager.u();
          sym_mat3<double> diff = utls - uanisos[i];
          for (std::size_t k=0; k < diff.size(); k++) {
@@ -385,7 +386,8 @@ public:
                                 tls_params.l,
                                 tls_params.s,
                                 tls_params.origin,
-                                site);
+                                site,
+                                true);
         ala_.push_back(manager.ALA());
         assa_.push_back(manager.ASSA());
         u_cart_.push_back(manager.u());
@@ -418,7 +420,8 @@ public:
                                 tls_params.l,
                                 tls_params.s,
                                 tls_params.origin,
-                                site);
+                                site,
+                                true);
         ala_.push_back(   cctbx::adptbx::u_as_b(cctbx::adptbx::u_cart_as_u_iso(manager.ALA())));
         assa_.push_back(  cctbx::adptbx::u_as_b(cctbx::adptbx::u_cart_as_u_iso(manager.ASSA())));
         b_iso_.push_back(cctbx::adptbx::u_as_b(cctbx::adptbx::u_cart_as_u_iso(manager.u())));
@@ -935,7 +938,8 @@ class common {
 
 af::shared<sym_mat3<double> > uaniso_from_tls_one_group(
                                    tlso<double> tls_params,
-                                   af::shared<vec3<double> > const& sites_cart)
+                                   af::shared<vec3<double> > const& sites_cart,
+                                   bool zeroize_trace)
 {
     af::shared<sym_mat3<double> > uanisos(sites_cart.size());
     for (std::size_t i=0; i < sites_cart.size(); i++) {
@@ -944,7 +948,8 @@ af::shared<sym_mat3<double> > uaniso_from_tls_one_group(
                                  tls_params.l,
                                  tls_params.s,
                                  tls_params.origin,
-                                 site);
+                                 site,
+                                 zeroize_trace);
          uanisos[i] = manager.u();
     }
     return uanisos;

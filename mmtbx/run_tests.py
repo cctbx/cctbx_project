@@ -22,6 +22,11 @@ tst_list = (
   "$D/regression/tls/tst_tls_analysis.py",
   "$D/regression/tls/tst_get_t_scheme.py",
   "$D/regression/tls/tst_tls_refinement_fft.py",
+  "$D/regression/tls/tst_u_tls_vs_u_ens_00.py",
+  "$D/regression/tls/tst_u_tls_vs_u_ens_01.py",
+  "$D/regression/tls/tst_u_tls_vs_u_ens_02.py",
+  "$D/regression/tls/tst_u_tls_vs_u_ens_03.py",
+  "$D/regression/tls/tst_u_tls_vs_u_ens_04.py",
   #
   "$D/regression/tst_angle.py",
   "$D/rotamer/tst_rotamer_eval.py",
