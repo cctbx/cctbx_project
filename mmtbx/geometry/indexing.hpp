@@ -75,6 +75,7 @@ public:
   Discretizer(const continuous_type& base, const continuous_type& unit);
   ~Discretizer();
 
+  continuous_type const& base() const;
   discrete_type operator ()(const continuous_type& value) const;
 };
 
@@ -98,6 +99,7 @@ public:
   Voxelizer(const vector_type& base, const vector_type& step);
   ~Voxelizer();
 
+  vector_type base() const;
   voxel_type operator ()(const vector_type& vector) const;
 };
 
@@ -131,6 +133,7 @@ private:
     cartesian_type;
 
 public:
+  typedef typename vector_type::value_type distance_type;
   typedef typename cartesian_type::value_type voxel_type;
   typedef Voxelizer< vector_type, voxel_type, discrete_type > voxelizer_type;
   typedef std::vector< object_type > bucket_type;
@@ -151,11 +154,18 @@ public:
 
   inline void add(const object_type& object, const vector_type& position);
   inline range_type close_to(const vector_type& centre) const;
+  inline range_type approx_within_sphere(
+    const vector_type& centre,
+    const distance_type& radius
+    ) const;
   inline size_t size() const;
   inline size_t cubes() const;
 
 private:
-  cartesian_type make_cartesian_iterator_around(const voxel_type& voxel) const;
+  cartesian_type make_cartesian_iterator_around(
+    const voxel_type& voxel,
+    const voxel_type& margin
+    ) const;
 };
 
 #include "indexing.hxx"

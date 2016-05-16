@@ -148,45 +148,31 @@ public:
 
   std::ptrdiff_t accessible_points(size_type const& index) const
   {
-    coordinate_type const& centre( coordinate_accessor_[ index ] );
-    radius_type radius( radius_accessor_[ index ] + probe_ );
+    radius_type radius( radius_accessor_[ index ] );
 
-    return calculate_accessible_points( centre, radius, index );
-  }
-
-  radius_type accessible_surface_area(size_type const& index) const
-  {
-    coordinate_type const& centre( coordinate_accessor_[ index ] );
-    radius_type radius( radius_accessor_[ index ] + probe_ );
-    std::ptrdiff_t dist = calculate_accessible_points( centre, radius, index );
-    return sampling_.unit_area() * radius * radius * dist;
-  }
-
-
-private:
-  std::ptrdiff_t calculate_accessible_points(
-    coordinate_type const& centre,
-    radius_type const& radius,
-    size_type const& index
-    ) const
-  {
-    if ( radius_accessor_[ index ] < 0 )
+    if ( radius < 0 )
     {
       throw std::runtime_error( "Requested position set to IGNORE (negative radius)" );
     }
 
-    namespace mxg = mmtbx::geometry;
+    radius += probe_;
 
-    typedef typename indexer_type::range_type close_objects_range_type;
-    close_objects_range_type cor( indexer_.close_to( centre ) );
+    namespace mxg = mmtbx::geometry;
 
     typedef utility::Sphere< coordinate_type > sphere_type;
     typedef mxg::containment::Checker< sphere_type, mxg::containment::PurePythagorean< false > >
       checker_type;
+    checker_type checker;
+
+    typedef typename indexer_type::range_type close_objects_range_type;
     typedef typename boost::range_iterator< close_objects_range_type >::type
       close_objects_range_iterator;
+    coordinate_type centre( coordinate_accessor_[ index ] );
+    close_objects_range_type cor( indexer_.close_to( centre ) );
 
-    checker_type checker;
+    size_type o_index;
+    coordinate_type o_centre;
+    radius_type o_radius;
 
     for (
       close_objects_range_iterator it = boost::begin( cor );
@@ -194,17 +180,16 @@ private:
       ++it
       )
     {
-      size_type cid( *it );
-      radius_type o_radius_raw( radius_accessor_[ cid ] );
+      o_index = *it;
+      o_radius = radius_accessor_[ o_index ];
 
-      if ( ( cid == index ) || o_radius_raw < 0 )
+      if ( ( o_index == index ) || ( o_radius < 0 ) )
       {
         continue;
       }
 
-      coordinate_type const& o_centre( coordinate_accessor_[ cid ] );
-      radius_type o_radius( o_radius_raw + probe_ );
-
+      o_centre = coordinate_accessor_[ o_index ];
+      o_radius += probe_;
 
       if ( overlap_between_spheres( centre, radius, o_centre, o_radius ) )
       {
@@ -223,6 +208,52 @@ private:
       );
   }
 
+  radius_type accessible_surface_area(size_type const& index) const
+  {
+    std::ptrdiff_t dist = accessible_points( index );
+    radius_type radius( radius_accessor_[ index ] + probe_ );
+    return sampling_.unit_area() * radius * radius * dist;
+  }
+
+  bool is_overlapping_sphere(coordinate_type const& centre, radius_type const& radius) const
+  {
+    namespace mxg = mmtbx::geometry;
+
+    typedef typename indexer_type::range_type close_objects_range_type;
+    typedef typename boost::range_iterator< close_objects_range_type >::type
+      close_objects_range_iterator;
+    close_objects_range_type cor( indexer_.approx_within_sphere( centre, radius ) );
+
+    size_type o_index;
+    coordinate_type o_centre;
+    radius_type o_radius;
+
+    for (
+      close_objects_range_iterator it = boost::begin( cor );
+      it != boost::end( cor );
+      ++it
+      )
+    {
+      o_index = *it;
+      o_radius = radius_accessor_[ o_index ];
+
+      if ( o_radius < 0 )
+      {
+        continue;
+      }
+
+      o_centre = coordinate_accessor_[ o_index ];
+
+      if ( overlap_between_spheres( centre, radius, o_centre, o_radius ) )
+      {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+private:
   bool overlap_between_spheres(
     coordinate_type left_c,
     radius_type left_r,

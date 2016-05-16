@@ -42,6 +42,13 @@ Discretizer< Continuous, Discrete >::~Discretizer()
 {}
 
 template< typename Continuous, typename Discrete >
+typename Discretizer< Continuous, Discrete >::continuous_type const&
+Discretizer< Continuous, Discrete >::base() const
+{
+  return base_;
+}
+
+template< typename Continuous, typename Discrete >
 typename Discretizer< Continuous, Discrete >::discrete_type
 Discretizer< Continuous, Discrete >::operator ()(const continuous_type& value)
   const
@@ -73,6 +80,17 @@ Voxelizer< Vector, Voxel, Discrete >::operator ()(const vector_type& vector) con
     boost::fusion::at_c<0>( discretizers_ )( vector[0] ),
     boost::fusion::at_c<1>( discretizers_ )( vector[1] ),
     boost::fusion::at_c<2>( discretizers_ )( vector[2] )
+    );
+}
+
+template< typename Vector, typename Voxel, typename Discrete >
+typename Voxelizer< Vector, Voxel, Discrete >::vector_type
+Voxelizer< Vector, Voxel, Discrete >::base() const
+{
+  return vector_type(
+    boost::fusion::at_c<0>( discretizers_ ).base(),
+    boost::fusion::at_c<1>( discretizers_ ).base(),
+    boost::fusion::at_c<2>( discretizers_ ).base()
     );
 }
 
@@ -131,7 +149,39 @@ Hash< Object, Vector, Discrete >::close_to(const vector_type& centre) const
   range_type result;
 
   for(
-    cartesian_type cit = make_cartesian_iterator_around( voxelizer_( centre ) );
+    cartesian_type cit = make_cartesian_iterator_around(
+      voxelizer_( centre ),
+      voxel_type( 0, 0, 0 )
+      );
+    cit != cartesian_type::end();
+    ++cit
+    )
+  {
+    typename storage_type::const_iterator it = objects_.find( *cit );
+
+    if ( it != objects_.end() )
+    {
+      result.storage.push_back( bucket_range_type( it->second.begin(), it->second.end() ) );
+    }
+  }
+
+  return result;
+}
+
+template< typename Object, typename Vector, typename Discrete >
+typename Hash< Object, Vector, Discrete >::range_type
+Hash< Object, Vector, Discrete >::approx_within_sphere(
+  const vector_type& centre,
+  const distance_type& radius
+  ) const
+{
+  range_type result;
+
+  for(
+    cartesian_type cit = make_cartesian_iterator_around(
+      voxelizer_( centre ),
+      voxelizer_( voxelizer_.base() + vector_type( radius, radius, radius ) )
+      );
     cit != cartesian_type::end();
     ++cit
     )
@@ -175,7 +225,8 @@ Hash< Object, Vector, Discrete >::cubes() const
 template< typename Object, typename Vector, typename Discrete >
 typename Hash< Object, Vector, Discrete >::cartesian_type
 Hash< Object, Vector, Discrete >::make_cartesian_iterator_around(
-  const voxel_type& voxel
+  const voxel_type& voxel,
+  const voxel_type& margin
   ) const
 {
   typedef typename
@@ -184,12 +235,24 @@ Hash< Object, Vector, Discrete >::make_cartesian_iterator_around(
   const discrete_type& voxel_x = boost::fusion::at_c<0>( voxel );
   const discrete_type& voxel_y = boost::fusion::at_c<1>( voxel );
   const discrete_type& voxel_z = boost::fusion::at_c<2>( voxel );
+  const discrete_type& margin_x = boost::fusion::at_c<0>( margin );
+  const discrete_type& margin_y = boost::fusion::at_c<1>( margin );
+  const discrete_type& margin_z = boost::fusion::at_c<2>( margin );
   typedef typename cartesian_type::range_vector_type initializer_type;
   return cartesian_type(
     initializer_type(
-      cart_range_type( itercount( voxel_x - margin_ ), itercount( voxel_x + margin_ + 1 ) ),
-      cart_range_type( itercount( voxel_y - margin_ ), itercount( voxel_y + margin_ + 1 ) ),
-      cart_range_type( itercount( voxel_z - margin_ ), itercount( voxel_z + margin_ + 1 ) )
+      cart_range_type(
+        itercount( voxel_x - margin_x - margin_ ),
+        itercount( voxel_x + margin_x + margin_ + 1 )
+        ),
+      cart_range_type(
+        itercount( voxel_y - margin_y - margin_),
+        itercount( voxel_y + margin_y + margin_ + 1 )
+        ),
+      cart_range_type(
+        itercount( voxel_z - margin_z - margin_ ),
+        itercount( voxel_z + margin_z + margin_ + 1 )
+        )
       )
     );
 }

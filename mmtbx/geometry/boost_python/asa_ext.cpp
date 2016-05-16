@@ -257,10 +257,6 @@ struct python_calculator_export
     using namespace boost::python;
     typedef python::array_adaptor< scitbx::vec3< double > > coordinate_adaptor_type;
     typedef python::array_adaptor< double > radius_adaptor_type;
-    typedef calculator::SimpleCalculator<
-      coordinate_adaptor_type,
-      radius_adaptor_type
-      > calculator_type;
 
     class_< coordinate_adaptor_type >( "_coordinate_adaptor", no_init )
       .def( init< object, object >( ( arg( "array" ), arg( "transformation" ) ) ) )
@@ -272,6 +268,11 @@ struct python_calculator_export
       .def( "__getitem__", &radius_adaptor_type::operator [] )
       .def( "__len__", &radius_adaptor_type::size )
       ;
+
+    typedef calculator::SimpleCalculator<
+      coordinate_adaptor_type,
+      radius_adaptor_type
+      > calculator_type;
 
     class_< calculator_type >( "calculator", no_init )
       .def(
@@ -286,8 +287,13 @@ struct python_calculator_export
             )
           )
         )
-      .def( "accessible_points", &calculator_type::accessible_points, arg( "index" ) )
+      .def( "accessible_surface_points", &calculator_type::accessible_points, arg( "index" ) )
       .def( "accessible_surface_area", &calculator_type::accessible_surface_area, arg( "index" ) )
+      .def(
+        "is_overlapping_sphere",
+        &calculator_type::is_overlapping_sphere,
+        ( arg( "centre" ), arg( "radius" ) )
+        )
       ;
   }
 

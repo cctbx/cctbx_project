@@ -462,30 +462,41 @@ class TestAccessibleSurfaceArea(unittest.TestCase):
       radius_adaptor = asa.radius_adaptor( array = myradii ),
       probe = PROBE,
       )
-    self.assertEqual( calc.accessible_points( index = 0 ), 960 )
-    self.assertRaises( RuntimeError, calc.accessible_points, index = 1 )
+    self.assertEqual( calc.accessible_surface_points( index = 0 ), 960 )
+    self.assertRaises( RuntimeError, calc.accessible_surface_points, index = 1 )
 
 
   def test_asa_calculator1(self):
 
     myatoms = ATOMS[:12]
     myatoms.extend( ATOMS[13:] )
+    mycoords = myatoms.extract_xyz()
     myradii = RADII[:12] + RADII[13:]
 
     calc = asa.calculator(
-      coordinate_adaptor = asa.coordinate_adaptor( array = myatoms.extract_xyz() ),
+      coordinate_adaptor = asa.coordinate_adaptor( array = mycoords ),
       radius_adaptor = asa.radius_adaptor( array = myradii ),
       probe = PROBE,
       )
     myvalues = self.ACCESSIBLES[:12] + self.ACCESSIBLES[13:]
 
     for ( index, count, radius ) in zip( range( len( myatoms ) ), myvalues, myradii ):
-      self.assertEqual( calc.accessible_points( index = index ), count )
+      self.assertEqual( calc.accessible_surface_points( index = index ), count )
       self.assertAlmostEqual(
         calc.accessible_surface_area( index = index ),
         SAMPLING_POINTS.unit_area * count * ( radius + PROBE ) ** 2,
         7,
         )
+
+    self.assertTrue(
+      calc.is_overlapping_sphere( centre = mycoords[0], radius = myradii[0] )
+      )
+    self.assertFalse(
+      calc.is_overlapping_sphere( centre = ( 0, 0, 0 ), radius = 10 )
+      )
+    self.assertTrue(
+      calc.is_overlapping_sphere( centre = ( 0, 0, 0 ), radius = 15 )
+      )
 
 
   def test_asa_calculator2(self):
@@ -505,12 +516,61 @@ class TestAccessibleSurfaceArea(unittest.TestCase):
     myvalues = self.ACCESSIBLES[:12] + self.ACCESSIBLES[13:]
 
     for ( index, count, radius ) in zip( range( len( myatoms ) ), myvalues, myradii ):
-      self.assertEqual( calc.accessible_points( index = index ), count )
+      self.assertEqual( calc.accessible_surface_points( index = index ), count )
       self.assertAlmostEqual(
         calc.accessible_surface_area( index = index ),
         SAMPLING_POINTS.unit_area * count * ( radius + PROBE ) ** 2,
         7,
         )
+
+
+  def test_is_overlapping_sphere(self):
+
+    mycoord = ATOMS.extract_xyz()[0]
+    myradius = 2
+
+    calc = asa.calculator(
+      coordinate_adaptor = asa.coordinate_adaptor( array = [ mycoord ] ),
+      radius_adaptor = asa.radius_adaptor( array = [ myradius ] ),
+      probe = PROBE,
+      )
+    self.assertTrue(
+      calc.is_overlapping_sphere( centre = mycoord, radius = myradius )
+      )
+
+    (x, y, z ) = mycoord
+    diff = 1.9 * myradius
+    self.assertTrue(
+      calc.is_overlapping_sphere( centre = ( x + diff, y, z ), radius = myradius )
+      )
+    self.assertTrue(
+      calc.is_overlapping_sphere( centre = ( x, y + diff, z ), radius = myradius )
+      )
+    self.assertTrue(
+      calc.is_overlapping_sphere( centre = ( x, y, z + diff ), radius = myradius )
+      )
+
+    diff = 2.1 * myradius
+    self.assertFalse(
+      calc.is_overlapping_sphere( centre = ( x + diff, y, z ), radius = myradius )
+      )
+    self.assertFalse(
+      calc.is_overlapping_sphere( centre = ( x, y + diff, z ), radius = myradius )
+      )
+    self.assertFalse(
+      calc.is_overlapping_sphere( centre = ( x, y, z + diff ), radius = myradius )
+      )
+
+    import math
+    diff = 1.9 * myradius / math.sqrt( 3 )
+    self.assertTrue(
+      calc.is_overlapping_sphere( centre = ( x + diff, y + diff, z + diff ), radius = myradius )
+      )
+
+    diff = 2.1  * myradius / math.sqrt( 3 )
+    self.assertFalse(
+      calc.is_overlapping_sphere( centre = ( x + diff, y + diff, z + diff ), radius = myradius )
+      )
 
 
   def asa_result_check(self, result):
