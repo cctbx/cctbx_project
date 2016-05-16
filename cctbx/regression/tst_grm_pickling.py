@@ -192,6 +192,10 @@ def exercise_all(args):
     print "Can not initialize monomer_library, skipping test."
     return 0
   test_simple_protein(mon_lib_srv, ener_lib)
+  import libtbx.load_env
+  if libtbx.env.find_in_repositories(relative_path="chem_data") is None:
+    print "Skipping exercise(): chem_data directory not available"
+    return
   test_nucleic_acid(mon_lib_srv, ener_lib)
 
 if (__name__ == "__main__"):
