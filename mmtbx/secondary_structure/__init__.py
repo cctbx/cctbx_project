@@ -86,6 +86,7 @@ class manager (object) :
                 geometry_restraints_manager=None,
                 sec_str_from_pdb_file=None,
                 params=None,
+                was_initialized=False,
                 mon_lib_srv=None,
                 verbose=-1,
                 log=sys.stdout):
@@ -111,7 +112,7 @@ class manager (object) :
       atoms.reset_i_seq()
       i_seqs = atoms.extract_i_seq()
     self.n_atoms = atoms.size()
-    self._was_initialized = False
+    self._was_initialized = was_initialized
     self.selection_cache = pdb_hierarchy.atom_selection_cache()
     self.pdb_atoms = atoms
     self.initialize()
