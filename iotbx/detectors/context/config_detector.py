@@ -91,6 +91,7 @@ ADSC 270 447  Photon Factory KEK BL-5A, Yusuke Yamada
 ADSC 210 448  CHESS F2, Marian Szebenyi, reverse phi, Beam5
 ADSC 270 449  Photon Factory KEK AR-NW12A, Yusuke Yamada
 ADSC 210r 457 Australian Synchrotron Tom Caradoc-Davies, reverse phi, beam on center
+ASSC 210r 458 APS 19-BM, installed Jan 2009
 ADSC 270 471  CHESS F1, Marian Szebenyi, reverse phi, Beam5
 ADSC 270 472  Photon Factory KEK AR-NE3A, Yusuke Yamada
 ADSC 270 474  Photon Factory KEK BL-1A, Yusuke Yamada
@@ -151,7 +152,7 @@ def ADSC447_at_ALS(iobj):
 
 def other_beamlines(iobj,passthru_convention):
   beam5 = [402,403,406,409,410,411,414,418,441,446,448,471,901,902,903,908]
-  beam0 = [413,415,420,428,429,443,444,457,904,914,916,917,918,919,924,928]
+  beam0 = [413,415,420,428,429,443,444,457,458,904,914,916,917,918,919,924,928]
   KEK = [474,912,449,472]
 
   if iobj.serial_number == 447:
