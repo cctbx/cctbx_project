@@ -50,6 +50,7 @@ def get_restraint_values(threes, interpolate=False):
       restraint_values.append(r)
   else:
     key = threes.get_cdl_key()
+    if key is None: return None
     restraint_values = cdl_database[res_type_group][key]
   return restraint_values
 

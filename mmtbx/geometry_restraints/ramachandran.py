@@ -111,7 +111,9 @@ class ramachandran_manager(object):
     for three in generate_protein_threes(
         hierarchy=selected_h,
         geometry=None):
-      phi_atoms, psi_atoms = three.get_phi_psi_atoms()
+      rc = three.get_phi_psi_atoms()
+      if rc is None: continue
+      phi_atoms, psi_atoms = rc
       rama_key = three.get_ramalyze_key()
       i_seqs = [atom.i_seq for atom in phi_atoms] + [psi_atoms[-1].i_seq]
       resnames = three.get_resnames()

@@ -91,7 +91,7 @@ class ThreeProteinResidues(list):
       c = ccn2[0]
       ca2 = ccn2[1]
       omega_atoms = [ca1, n, c, ca2]
-      #if None in omega_atoms: return None
+      if None in omega_atoms: return None
       omega = dihedral_angle(sites=[atom.xyz for atom in omega_atoms], deg=True)
       return omega
 
@@ -101,6 +101,7 @@ class ThreeProteinResidues(list):
                 verbose=False):
     cis_peptide_bond = False
     omega = self.get_omega_value(omega_cdl=omega_cdl)
+    if omega is None: return None
     if (180.-abs(omega))>limit:
       cis_peptide_bond = True
     if verbose:
@@ -195,8 +196,10 @@ class ThreeProteinResidues(list):
     else:
       backbone_i_minus_1, junk = get_c_ca_n(self[0], return_subset=True)
       assert len(backbone_i_minus_1)==3
-    backbone_i, junk = get_c_ca_n(self[1])
+    backbone_i, junk = get_c_ca_n(self[1], return_subset=True)
+    if None in backbone_i: return None
     backbone_i_plus_1, junk = get_c_ca_n(self[2], return_subset=True)
+    if None in backbone_i_plus_1: return None
     assert len(backbone_i)==3
     assert len(backbone_i_plus_1)==3
     if omega_cdl: # phi(+1)
@@ -254,6 +257,7 @@ class ThreeProteinResidues(list):
                                    force_plus_one=force_plus_one,
                                    omega_cdl=omega_cdl,
                                   )
+    if atoms is None: return None
     dihedrals = []
     for dihedral in atoms:
       phi_or_psi=dihedral_angle(sites=[atom.xyz for atom in dihedral], deg=True)
@@ -273,6 +277,7 @@ class ThreeProteinResidues(list):
                                       omega_cdl=omega_cdl,
                                       verbose=verbose,
                                       )
+    if dihedrals is None: return None
     key = []
     for phi_or_psi in dihedrals:
       if exact:
