@@ -756,6 +756,7 @@ residue(s).  Holding down shift enables multiple selections."""
       pass
     elif (self._style & WXTBX_SEQ_ENABLE_SELECT_STRUCTURE) :
       if (self._style & WXTBX_SEQ_SELECT_RANGE) :
+        self.clear_structure_selections()
         self.clear_selection()
       if self.select_helix(x, y) :
         pass
@@ -766,8 +767,10 @@ residue(s).  Holding down shift enables multiple selections."""
       elif self.select_missing(x, y) :
         pass
       else :
+        self.clear_structure_selections()
         self.clear_selection()
     self.Refresh()
+    print self.get_selected_ranges()
 
   def OnDoubleClick (self, event) :
     (x, y) = (event.GetX(), event.GetY())
@@ -895,7 +898,7 @@ class sequence_window (object) :
       ignore_unk=ignore_unk)
 
   def set_data (self, pdb_hierarchy, sec_str, auto_select=True,
-      ignore_unk=False) :
+                ignore_unk=False, verbose=False) :
     self.pdb_hierarchy = pdb_hierarchy
     self.sec_str = sec_str
     self._chain_cache = {}
@@ -905,11 +908,13 @@ class sequence_window (object) :
       if (ignore_unk) :
         segids = chain.atoms().extract_segid()
         if (segids.all_eq('UNK ')) :
-          print "Skipping unknown residues in chain %s" % chain.id
+          if (verbose):
+            print "Skipping unknown residues in chain %s" % chain.id
           continue
       conf = chain.conformers()[0]
       if not conf.is_protein() :
-        print "Skipping non-protein chain %s" % chain.id
+        if (verbose):
+          print "Skipping non-protein chain %s" % chain.id
         continue
       if chain.id in self._chain_cache :
         n = 2
@@ -1053,6 +1058,9 @@ class msa_frame (sequence_frame_mixin, sequence_window) :
                     WXTBX_SEQ_ENABLE_SELECT_MISSING | \
                     WXTBX_SEQ_FANCY_HELICES | \
                     WXTBX_SEQ_SELECT_SINGLE
+
+class selection_editor_frame(sequence_frame_mixin, sequence_window):
+  seq_panel_style = WXTBX_SEQ_DEFAULT_STYLE | WXTBX_SEQ_SELECT_ANY
 
 #-----------------------------------------------------------------------
 def run (args) :
