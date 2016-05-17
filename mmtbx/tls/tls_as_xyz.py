@@ -9,6 +9,7 @@ from libtbx.utils import Sorry
 from cctbx import adptbx
 import sys
 from mmtbx.tls import analysis
+from mmtbx.tls import tools
 
 random.seed(2679941)
 
@@ -19,36 +20,68 @@ def print_step(s, log):
 def run(pdb_file_name,
         n_models,
         log,
-        eps=1.e-7,
-        output_file_name="ensemble.pdb"):
+        output_file_name_prefix,
+        eps=1.e-7):
   pdb_inp = iotbx.pdb.input(file_name = pdb_file_name)
   pdb_hierarchy = pdb_inp.construct_hierarchy()
-  xrs = pdb_hierarchy.extract_xray_structure(
-    crystal_symmetry=pdb_inp.crystal_symmetry_from_cryst1())
+  asc = pdb_hierarchy.atom_selection_cache()
+  cs = pdb_inp.crystal_symmetry_from_cryst1()
   tls_extract = mmtbx.tls.tools.tls_from_pdb_inp(
     remark_3_records = pdb_inp.extract_remark_iii_records(3),
     pdb_hierarchy    = pdb_hierarchy)
-  tlso = tls_extract.tls_params
-  if(len(tlso)!=1):
-    raise Sorry("Only one TLS group per PDB is currently supported.")
-  tlso = tlso[0] # XXX one group only
-  deg_to_rad_scale = math.pi/180
-  # Units: T[A], L[deg**2], S[A*deg]
-  T = matrix.sym(sym_mat3=tlso.t)
-  L = matrix.sym(sym_mat3=tlso.l)*(deg_to_rad_scale**2)
-  S = matrix.sqr(tlso.s)*deg_to_rad_scale
-  # sanity check
-  if(not adptbx.is_positive_definite(tlso.t, eps)):
-    raise Sorry("T matrix is not positive definite.")
-  if(not adptbx.is_positive_definite(tlso.l, eps)):
-    raise Sorry("L matrix is not positive definite.")
-  r = analysis.run(T=T, L=L, S=S, log=log)
-  ensemble_generator(
-    decompose_tls_object = r,
-    pdb_hierarchy        = pdb_hierarchy,
-    xray_structure       = xrs,
-    n_models             = n_models,
-    log                  = log).write_pdb_file(file_name=output_file_name)
+  for i_group, tls_params_one_group in enumerate(tls_extract.tls_params):
+    selection = asc.selection(tls_params_one_group.selection_string)
+    pdb_hierarchy_sel = pdb_hierarchy.select(selection)
+    xrs = pdb_hierarchy_sel.extract_xray_structure(crystal_symmetry=cs)
+    deg_to_rad_scale = math.pi/180
+    # Units: T[A], L[deg**2], S[A*deg]
+    T = matrix.sym(sym_mat3=tls_params_one_group.t)
+    L = matrix.sym(sym_mat3=tls_params_one_group.l)
+    S = matrix.sqr(tls_params_one_group.s)
+    tlso = tools.tlso(
+      t      = T.as_sym_mat3(),
+      l      = L.as_sym_mat3(),
+      s      = S,
+      origin = tls_params_one_group.origin)
+    # sanity check
+    if(not adptbx.is_positive_definite(tls_params_one_group.t, eps)):
+      raise Sorry("T matrix is not positive definite.")
+    if(not adptbx.is_positive_definite(tls_params_one_group.l, eps)):
+      raise Sorry("L matrix is not positive definite.")
+    r = analysis.run(T=T, L=L*(deg_to_rad_scale**2), S=S*deg_to_rad_scale,
+      log=log).self_check()
+    ensemble_generator_obj = ensemble_generator(
+      tls_from_motions_object = r,
+      pdb_hierarchy           = pdb_hierarchy_sel,
+      xray_structure          = xrs,
+      n_models                = n_models,
+      origin                  = tls_params_one_group.origin,
+      log                     = log)
+    ensemble_generator_obj.write_pdb_file(
+      file_name=output_file_name_prefix+"_ensemble_%s.pdb"%str(i_group))
+    # get U from TLS
+    u_from_tls = tools.uaniso_from_tls_one_group(
+      tlso          = tlso,
+      sites_cart    = xrs.sites_cart(),
+      zeroize_trace = False)
+    # get U from ensemble
+    pdb_hierarchy_from_tls = pdb_hierarchy_sel.deep_copy()
+    pdb_hierarchy_from_ens = pdb_hierarchy_sel.deep_copy()
+    u_from_ens = tools.u_cart_from_ensemble(
+      models = ensemble_generator_obj.states.root.models())
+    for i in xrange(xrs.sites_cart().size()):
+      print "atom %d:"%i
+      print "  Ucart(from TLS):", ["%8.5f"%u for u in u_from_tls[i]]
+      print "  Ucart(from ens):", ["%8.5f"%u for u in u_from_ens[i]]
+    pdb_hierarchy_from_tls.atoms().set_uij(u_from_tls)
+    pdb_hierarchy_from_ens.atoms().set_uij(u_from_ens)
+    pdb_hierarchy_from_tls.write_pdb_file(
+      file_name = output_file_name_prefix+"_u_from_tls_%s.pdb"%str(i_group),
+      crystal_symmetry = cs)
+    pdb_hierarchy_from_ens.write_pdb_file(
+      file_name = output_file_name_prefix+"_u_from_ensemble_%s.pdb"%str(i_group),
+      crystal_symmetry = cs)
+  return ensemble_generator_obj
 
 class ensemble_generator(object):
   def __init__(self,
@@ -79,7 +112,7 @@ class ensemble_generator(object):
           r_L=r_L, dx0=dx0,dy0=dy0,dz0=dz0)
         d_r_M = d_r_M_L + d_r_M_V # (42)
         sites_cart_new.append(matrix.col(site_cart) + d_r_M)
-      self.states.add(sites_cart = sites_cart_new)
+      self.states.add(sites_cart = sites_cart_new+origin)
 
   def write_pdb_file(self, file_name):
     self.states.write(file_name = file_name)

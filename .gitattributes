@@ -2281,6 +2281,7 @@ mmtbx/regression/tls/data_tls_analysis/dec04_test215.mes -text
 mmtbx/regression/tls/tst_get_t_scheme.py -text
 mmtbx/regression/tls/tst_tls.py -text
 mmtbx/regression/tls/tst_tls_analysis.py -text
+mmtbx/regression/tls/tst_tls_as_xyz.py -text
 mmtbx/regression/tls/tst_tls_refinement_fft.py -text
 mmtbx/regression/tls/tst_u_tls_vs_u_ens_00.py -text
 mmtbx/regression/tls/tst_u_tls_vs_u_ens_01.py -text

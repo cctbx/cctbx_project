@@ -1000,6 +1000,22 @@ def check_tls_selections_for_waters (
     raise Sorry("TLS groups contain waters, which will conflict with the "+
       "water picking procedure.")
 
+def u_cart_from_ensemble(models):
+  xyz_all = []
+  for m in models:
+    xyz_all.append(m.atoms().extract_xyz())
+  n_atoms = xyz_all[0].size()
+  xyz_atoms_all = []
+  for i in xrange(n_atoms):
+    xyz_atoms = flex.vec3_double()
+    for xyzs in xyz_all:
+      xyz_atoms.append(xyzs[i])
+    xyz_atoms_all.append(xyz_atoms)
+  result = flex.sym_mat3_double()
+  for i in xrange(n_atoms):
+    result.append(u_cart_from_xyz(sites_cart=xyz_atoms_all[i]))
+  return result
+
 # TEST utils
 
 def u_cart_from_xyz(sites_cart):
