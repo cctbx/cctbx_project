@@ -9,7 +9,7 @@ def distance2(a,b):
     d2 += (a.xyz[i]-b.xyz[i])**2
   return d2
 
-def get_c_ca_n(atom_group):
+def get_c_ca_n(atom_group, return_subset=False):
   assert atom_group
   tmp = []
   outl = []
@@ -24,8 +24,11 @@ def get_c_ca_n(atom_group):
         atom_group.parent().parent().id,
         atom_group.resseq,
       ))
-      tmp = None
-      break
+      if return_subset:
+        tmp.append(None)
+      else:
+        tmp = None
+        break
   return tmp, outl
 
 def round_to_ten(d):

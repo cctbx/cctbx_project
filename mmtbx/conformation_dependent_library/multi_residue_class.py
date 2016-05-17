@@ -71,11 +71,9 @@ class ThreeProteinResidues(list):
       for atom in residue.atoms():
         yield atom
 
-  def cis_group(self,
-                limit=45.,
-                omega_cdl=False, # need last not middle
-                verbose=False):
-    cis_peptide_bond = False
+  def get_omega_value(self,
+                      omega_cdl=False,
+                     ):
     #
     # this is very poor! there needs to be a better way to check for cis-
     #
@@ -86,31 +84,41 @@ class ThreeProteinResidues(list):
           if i==1: continue
       else:
         if i==2: continue
-      ccn1, outl1 = get_c_ca_n(residue)
-      ccn2, outl2 = get_c_ca_n(self[i-1])
+      ccn1, outl1 = get_c_ca_n(residue, return_subset=True)
+      ccn2, outl2 = get_c_ca_n(self[i-1], return_subset=True)
       ca1 = ccn1[1]
       n = ccn1[2]
       c = ccn2[0]
       ca2 = ccn2[1]
       omega_atoms = [ca1, n, c, ca2]
+      #if None in omega_atoms: return None
       omega = dihedral_angle(sites=[atom.xyz for atom in omega_atoms], deg=True)
-      if (180.-abs(omega))>limit:
-        cis_peptide_bond = True
-        break
+      return omega
+
+  def cis_group(self,
+                limit=45.,
+                omega_cdl=False, # need last not middle
+                verbose=False):
+    cis_peptide_bond = False
+    omega = self.get_omega_value(omega_cdl=omega_cdl)
+    if (180.-abs(omega))>limit:
+      cis_peptide_bond = True
     if verbose:
       if cis_peptide_bond:
         print 'cis peptide bond', cis_peptide_bond, omega
         print self
     return cis_peptide_bond
 
-  def are_linked(self, return_value=False, verbose=True):
+  def are_linked(self,
+                 return_value=False,
+                 verbose=True):
     d2 = None
     for i, residue in enumerate(self):
       if i==0: continue
-      ccn1, outl1 = get_c_ca_n(residue)
+      ccn1, outl1 = get_c_ca_n(residue, return_subset=True)
       if self[i-1] is None: # place holder for omega CDL
         return False
-      ccn2, outl2 = get_c_ca_n(self[i-1])
+      ccn2, outl2 = get_c_ca_n(self[i-1], return_subset=True)
       if ccn1 is None:
         for line in outl1:
           if line not in self.errors:
@@ -123,6 +131,7 @@ class ThreeProteinResidues(list):
         break
       n = ccn1[2]
       c = ccn2[0]
+      if n is None or c is None: return False
       if self.bond_params_table is None:
         d2 = distance2(n,c)
         if d2<4: bond=True
@@ -184,10 +193,10 @@ class ThreeProteinResidues(list):
     if self[0] is None:
       backbone_i_minus_1 = None
     else:
-      backbone_i_minus_1, junk = get_c_ca_n(self[0])
+      backbone_i_minus_1, junk = get_c_ca_n(self[0], return_subset=True)
       assert len(backbone_i_minus_1)==3
     backbone_i, junk = get_c_ca_n(self[1])
-    backbone_i_plus_1, junk = get_c_ca_n(self[2])
+    backbone_i_plus_1, junk = get_c_ca_n(self[2], return_subset=True)
     assert len(backbone_i)==3
     assert len(backbone_i_plus_1)==3
     if omega_cdl: # phi(+1)
