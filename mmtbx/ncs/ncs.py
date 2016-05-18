@@ -666,6 +666,50 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     self.rel_tol_t=rel_tol_t
     return True
 
+  def sort_by_z_translation(self,tol_z=0.01):
+    n=len(self.rota_matrices_inv())
+    z_translations=[]
+    sort_z_translations=[]
+    for i1 in xrange(n): # figure out if translation is along z
+      z_translations.append(self.translations_orth_inv()[i1][2])
+      sort_z_translations.append([self.translations_orth_inv()[i1][2],i1])
+    from copy import deepcopy
+    rota_matrices_sav=deepcopy(self._rota_matrices)
+    translations_orth_sav=deepcopy(self._translations_orth)
+
+    # sort the z-translations to reorder the matrices. Could be backwards
+    sort_z_translations.sort()
+    sorted_indices=[]
+    sorted_z=[]
+    n_plus_one=0
+    n_minus_one=0
+    delta=None
+    all_same_delta=True
+    for z,i1 in sort_z_translations:
+      if sorted_indices:
+        if i1==sorted_indices[-1]+1: n_plus_one+=1
+        if i1==sorted_indices[-1]-1: n_minus_one+=1
+        delta_z=z-sorted_z[-1]
+        if delta is None:
+          delta=delta_z
+        elif abs(delta-delta_z)>tol_z:
+          is_helical=False
+      sorted_indices.append(i1)
+      sorted_z.append(z)
+    if n_minus_one>n_plus_one:
+      sorted_indices.reverse()
+    self._helix_z_translation=delta
+
+    # Reorder the operators:
+    self._rota_matrices=len(rota_matrices_sav)*[None]
+    self._translations_orth=len(rota_matrices_sav)*[None]
+    for i1,i2 in zip(sorted_indices,xrange(n)):
+      self._rota_matrices[i2]=rota_matrices_sav[i1]
+      self._translations_orth[i2]=translations_orth_sav[i1]
+    self.delete_inv() # remove the inv matrices/rotations so they regenerate
+    self.get_inverses()
+    return sorted_indices
+
   def is_helical_along_z(self,tol_z=0.01,
      tol_r=.01,abs_tol_t=.10,rel_tol_t=0.001):
     # This assumes the operators are in order, but allow special case
@@ -686,63 +730,29 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       return False
 
     is_helical=True
-    z_translations=[]
-    sort_z_translations=[]
-    for i1 in xrange(n): # figure out if translation is along z
-      z_translations.append(self.translations_orth_inv()[i1][2])
-      sort_z_translations.append([self.translations_orth_inv()[i1][2],i1])
     from copy import deepcopy
     rota_matrices_sav=deepcopy(self._rota_matrices)
     translations_orth_sav=deepcopy(self._translations_orth)
-    if is_helical:
-      # sort the z-translations to reorder the matrices. Could be backwards
-      sort_z_translations.sort()
-      sorted_indices=[]
-      sorted_z=[]
-      n_plus_one=0
-      n_minus_one=0
-      delta=None
-      all_same_delta=True
-      for z,i1 in sort_z_translations:
-        if sorted_indices:
-          if i1==sorted_indices[-1]+1: n_plus_one+=1
-          if i1==sorted_indices[-1]-1: n_minus_one+=1
-          delta_z=z-sorted_z[-1]
-          if delta is None:
-            delta=delta_z
-          elif abs(delta-delta_z)>tol_z:
-            is_helical=False
-        sorted_indices.append(i1)
-        sorted_z.append(z)
-      if n_minus_one>n_plus_one:
-        sorted_indices.reverse()
-      self._helix_z_translation=delta
 
-      # Reorder the operators:
-      self._rota_matrices=len(rota_matrices_sav)*[None]
-      self._translations_orth=len(rota_matrices_sav)*[None]
-      for i1,i2 in zip(sorted_indices,xrange(n)):
-        self._rota_matrices[i2]=rota_matrices_sav[i1]
-        self._translations_orth[i2]=translations_orth_sav[i1]
-      self.delete_inv() # remove the inv matrices/rotations so they regenerate
+    sorted_indices=self.sort_by_z_translation(tol_z=tol_z)
 
-      offset_list=[]
-      n_missing_list=[]
-      self.helix_oper_forwards=None
-      self.helix_oper_reverse=None
-      self.helix_oper_identity=None
-      for i1 in xrange(n): # figure out offset made by this self.helix_operator
-        offset,n_missing=self.oper_adds_offset(i1,tol_r=tol_r,
-            abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t)
-        offset_list.append(offset)
-        n_missing_list.append(n_missing)
-        if offset==1:self.helix_oper_forwards=sorted_indices[i1]
-        if offset==-1:self.helix_oper_reverse=sorted_indices[i1]
-        if offset==0:self.helix_oper_identity=sorted_indices[i1]
-      # offset_list should be one instance of each value and will be 0 at the
-      #  operator that is unity
-      if None in offset_list:
-        is_helical=False
+    offset_list=[]
+    n_missing_list=[]
+    self.helix_oper_forwards=None
+    self.helix_oper_reverse=None
+    self.helix_oper_identity=None
+    for i1 in xrange(n): # figure out offset made by this self.helix_operator
+      offset,n_missing=self.oper_adds_offset(i1,tol_r=tol_r,
+          abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t)
+      offset_list.append(offset)
+      n_missing_list.append(n_missing)
+      if offset==1:self.helix_oper_forwards=sorted_indices[i1]
+      if offset==-1:self.helix_oper_reverse=sorted_indices[i1]
+      if offset==0:self.helix_oper_identity=sorted_indices[i1]
+    # offset_list should be one instance of each value and will be 0 at the
+    #  operator that is unity
+    if None in offset_list:
+      is_helical=False
 
     if is_helical:
       ii=offset_list.index(0)
@@ -800,7 +810,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     raise Sorry(
      "Unable to find forward and reverse operators for this helical symmetry")
 
-  def extend_helix_operators(self,z_range=None):
+  def extend_helix_operators(self,z_range=None,tol_z=0.01):
     assert self._have_helical_symmetry
     # extend the operators to go from -z_range to z_range
     from copy import deepcopy
@@ -894,6 +904,10 @@ class ncs_group:  # one group of NCS operators and center and where it applies
          ]
 
     self.delete_inv()
+    self.get_inverses()
+
+    # And reorder them now...
+    self.sort_by_z_translation(tol_z=tol_z)
 
   def get_helix_z_translation(self):
     assert self._have_helical_symmetry
@@ -1544,11 +1558,17 @@ class ncs:
     for ncs_group in self._ncs_groups:
       ncs_group.invert_matrices()
 
-  def extend_helix_operators(self,z_range=None):
+  def sort_by_z_translation(self,tol_z=0.01):
     if not self._ncs_groups:
       return
     for ncs_group in self._ncs_groups:
-      ncs_group.extend_helix_operators(z_range=z_range)
+      ncs_group.sort_by_z_translation(tol_z=tol_z)
+
+  def extend_helix_operators(self,z_range=None,tol_z=0.01):
+    if not self._ncs_groups:
+      return
+    for ncs_group in self._ncs_groups:
+      ncs_group.extend_helix_operators(z_range=z_range,tol_z=tol_z)
 
   def is_helical_along_z(self,tol_r=.01,abs_tol_t=.10,rel_tol_t=0.001):
     if not self._ncs_groups:
