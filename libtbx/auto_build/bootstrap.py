@@ -873,6 +873,7 @@ class Builder(object):
       download_only=False,
       skip_base="",
       force_base_build=False,
+      enable_shared=False,
     ):
     if nproc is None:
       self.nproc=1
@@ -934,7 +935,10 @@ class Builder(object):
 
     # Build base packages
     if base:
-      self.add_base(extra_opts=["--nproc=%s" % str(self.nproc)])
+      extra_opts = ["--nproc=%s" % str(self.nproc)]
+      if enable_shared:
+        extra_opts.append("--python-shared")
+      self.add_base(extra_opts=extra_opts)
 
     # Configure, make, get revision numbers
     if build and not self.download_only:
@@ -1937,6 +1941,10 @@ def run(root=None):
                     dest="force_base_build",
                     action="store_true",
                     default=False)
+  parser.add_option("--enable-shared",
+                    dest="enable_shared",
+                    action="store_true",
+                    default=False)
   options, args = parser.parse_args()
   # process external
   options.specific_external_builder=None
@@ -2004,6 +2012,7 @@ def run(root=None):
     download_only=options.download_only,
     skip_base=options.skip_base,
     force_base_build=options.force_base_build,
+    enable_shared=options.enable_shared,
   ).run()
   print "\nBootstrap success: %s" % ", ".join(actions)
 
