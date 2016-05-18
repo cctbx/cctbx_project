@@ -36,8 +36,19 @@ def run(args, log=sys.stdout):
     master_params = master_params())
   file_names = inputs.pdb_file_names
   if(len(file_names) != 1): raise Sorry("A PDB file is expected.")
-  xrs = iotbx.pdb.input(file_name =
-    file_names[0]).xray_structure_simple().expand_to_p1(sites_mod_positive=True)
+  pdb_inp = iotbx.pdb.input(file_name = file_names[0])
+  awl = list(pdb_inp.atoms_with_labels())
+  xrs = pdb_inp.xray_structure_simple().expand_to_p1(sites_mod_positive=True)
+  # Check for B=0
+  bs = xrs.extract_u_iso_or_u_equiv()
+  sel_zero = bs<1.e-3
+  n_zeros = sel_zero.count(True)
+  if(n_zeros>0):
+    print "Atoms with B=0:"
+    for i_seq in sel_zero.iselection():
+      print awl[i_seq].format_atom_record()
+    raise Sorry("Input model contains %d atoms with B=0"%n_zeros)
+  #
   params = inputs.params.extract()
   mmtbx.utils.setup_scattering_dictionaries(
     scattering_table = params.scattering_table,
