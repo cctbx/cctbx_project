@@ -1,7 +1,7 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.polder
 import time
-import sys
+import os, sys
 from cStringIO import StringIO
 import mmtbx.f_model
 import mmtbx.utils
@@ -411,7 +411,7 @@ def cmd_run(args, validated=False, out=sys.stdout):
     params.r_free_flags_labels = r_free_flags.info().label_string()
   else:
     print >> log, "  Free-R flags: Not present"
-  model_basename = params.model_file_name.split(".")[0]
+  model_basename = os.path.basename(params.model_file_name.split(".")[0])
   if (len(model_basename) > 0 and
     params.output_file_name_prefix is None):
     params.output_file_name_prefix = model_basename
