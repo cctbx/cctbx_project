@@ -34,6 +34,8 @@ def run(args, log=sys.stdout):
   print >> log, "-"*79
   inputs = mmtbx.utils.process_command_line_args(args = args,
     master_params = master_params())
+  inputs.params.show(prefix="  ", out=log)
+  print >> log
   file_names = inputs.pdb_file_names
   if(len(file_names) != 1): raise Sorry("A PDB file is expected.")
   pdb_inp = iotbx.pdb.input(file_name = file_names[0])
