@@ -167,7 +167,7 @@ class ShellCommand(object):
     if workdir:
       try:
         os.makedirs(workdir)
-      except Exception, e:
+      except OSError:
         pass
     if command[0] == 'tar':
       # don't think any builders explicitly calls tar but leave it here just in case
@@ -408,7 +408,7 @@ class Toolbox(object):
     z.close()
 
   @staticmethod
-  def git(module, parameters, destination=None, use_ssh=False, verbose=False):
+  def git(module, parameters, destination=None, use_ssh=False, verbose=False, reference=None):
     '''Retrieve a git repository, either by running git directly
        or by downloading and unpacking an archive.'''
     git_available = True
@@ -447,12 +447,29 @@ class Toolbox(object):
       if source_candidate.lower().endswith('.git'):
         if not git_available:
           continue
-        cmd = [ 'git', 'clone' ] + git_parameters + [ source_candidate, destdir ]
+        reference_parameters = []
+        if reference is not None:
+          if os.path.exists(reference) and os.path.exists(os.path.join(reference, '.git')):
+            reference_parameters = [ '--reference', reference ]
+        cmd = [ 'git', 'clone' ] + git_parameters + [ source_candidate, destdir ] + reference_parameters
         if verbose:
           cmd = cmd + [ '--progress', '--verbose' ]
-        return ShellCommand(
+        returncode = ShellCommand(
           command=cmd, workdir=destpath, silent=False
         ).run()
+        if returncode:
+          return returncode # no point trying to continue on error
+        if reference_parameters:
+          # Sever the link between checked out and reference repository
+          cmd = [ 'git', 'repack', '-a', '-d' ]
+          returncode = ShellCommand(
+            command=cmd, workdir=destination, silent=False
+          ).run()
+          try:
+            os.remove(os.path.join(destination, '.git', 'objects', 'info', 'alternates'))
+          except OSError:
+            returncode = 1
+        return returncode
       filename = "%s-%s" % (module,
                             urlparse.urlparse(source_candidate)[2].split('/')[-1])
       filename = os.path.join(destpath, filename)
