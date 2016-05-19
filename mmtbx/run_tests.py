@@ -203,6 +203,7 @@ tst_list = (
   "$D/validation/regression/tst_molprobity_2.py",
   "$D/validation/regression/tst_molprobity_3.py",
   "$D/validation/regression/tst_hydrogen_addition_clashscore.py",
+  "$D/validation/regression/tst_symmetry_SS.py",
   #
   "$D/refinement/tst_select_best_starting_model.py",
   "$D/regression/tst_refine_anomalous_substructure.py",

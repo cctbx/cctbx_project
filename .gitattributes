@@ -2487,6 +2487,7 @@ mmtbx/validation/regression/run_restraints.py svneol=native#text/x-python
 mmtbx/validation/regression/tst_cablam.py -text
 mmtbx/validation/regression/tst_cbetadev.py -text
 mmtbx/validation/regression/tst_clashscore.py svneol=native#text/x-python
+mmtbx/validation/regression/tst_do_flips_clashscore.py -text
 mmtbx/validation/regression/tst_experimental.py svneol=native#text/x-python
 mmtbx/validation/regression/tst_hydrogen_addition_clashscore.py -text
 mmtbx/validation/regression/tst_keep_hydrogens.py -text
@@ -2501,6 +2502,7 @@ mmtbx/validation/regression/tst_ramalyze.py svneol=native#text/x-python
 mmtbx/validation/regression/tst_restraints.py svneol=native#text/x-python
 mmtbx/validation/regression/tst_rna_validate.py svneol=native#text/x-python
 mmtbx/validation/regression/tst_rotalyze.py svneol=native#text/x-python
+mmtbx/validation/regression/tst_symmetry_SS.py -text
 mmtbx/validation/regression/tst_waters.py svneol=native#text/x-python
 mmtbx/validation/restraints.py svneol=native#text/x-python
 mmtbx/validation/rna_validate.py svneol=native#text/x-python

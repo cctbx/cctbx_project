@@ -19,6 +19,10 @@ master_phil_str = """
     .type = bool
     .help = '''Keep hydrogens in input file'''
 
+  do_flips = False
+    .type = bool
+    .help = '''Do flips when adding Hsi, overides keep_hydrogens=True'''
+
   nuclear = False
     .type = bool
     .help = '''Use nuclear hydrogen positions'''
@@ -42,6 +46,7 @@ Options:
   nuclear=False             use nuclear x-H distances and vdW radii
   verbose=True              verbose text output
   b_factor_cutoff=40        B factor cutoff for clash analysis
+  do_flips=False            Do flips when adding Hs, overides keep_hydrogens
 
 Example:
 
@@ -64,6 +69,8 @@ def run (args, out=sys.stdout, quiet=None) :
   params = cmdline.work.extract()
   if (params.model is None) :
     raise Usage(usage_string)
+  # if do_flips, make keep_hydrogens false
+  if params.do_flips : params.keep_hydrogens = False
 
   pdb_in = cmdline.get_file(params.model, force_type="pdb")
   hierarchy = pdb_in.file_object.hierarchy
@@ -73,7 +80,8 @@ def run (args, out=sys.stdout, quiet=None) :
     nuclear=params.nuclear,
     out=out,
     verbose=params.verbose and not quiet,
-    b_factor_cutoff=params.b_factor_cutoff)
+    b_factor_cutoff=params.b_factor_cutoff,
+    do_flips=params.do_flips)
   if params.verbose:
     result.show_old_output(out=out)
   else:

@@ -73,6 +73,7 @@ class clashscore(validation):
       save_probe_unformatted_file=None,
       save_modified_hierarchy=False,
       verbose=False,
+      do_flips=False,
       out=sys.stdout) :
     validation.__init__(self)
     self.b_factor_cutoff = b_factor_cutoff
@@ -106,6 +107,7 @@ class clashscore(validation):
         verbose=verbose,
         time_limit=time_limit,
         keep_hydrogens=keep_hydrogens,
+        do_flips = do_flips,
         log=out)
       r = iotbx.pdb.hierarchy.root()
       mdc = model.detached_copy()
@@ -378,6 +380,7 @@ def check_and_add_hydrogen(
         time_limit=120,
         allow_multiple_models=True,
         crystal_symmetry=None,
+        do_flips=False,
         log=None):
   """
   If no hydrogens present, force addition for clashscore calculation.
@@ -441,7 +444,8 @@ def check_and_add_hydrogen(
   # add hydrogen if needed
   if has_reduce and (not keep_hydrogens):
     # set reduce running parameters
-    build = "phenix.reduce -oh -his -flip -pen9999 -keep -allalt -limit{}"
+    build = "phenix.reduce -oh -his -flip -keep -allalt -limit{}"
+    if not do_flips : build += " -pen9999"
     if nuclear:
       build += " -nuc -"
     else:
