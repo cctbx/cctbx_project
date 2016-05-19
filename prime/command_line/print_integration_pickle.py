@@ -228,15 +228,15 @@ if (__name__ == "__main__"):
     alpha_angle = alpha_angle.select(perm)
     spot_pred_x_mm = spot_pred_x_mm.select(perm)
     spot_pred_y_mm = spot_pred_y_mm.select(perm)
-    from prime.postrefine.mod_leastsqr import calc_spot_radius
-    r0 = calc_spot_radius(sqr(crystal_init_orientation.reciprocal_matrix()),
+    from prime.postrefine.mod_partiality import partiality_handler
+    ph = partiality_handler()
+    r0 = ph.calc_spot_radius(sqr(crystal_init_orientation.reciprocal_matrix()),
                                           observations.indices(), wavelength)
-    from prime.postrefine.mod_leastsqr import calc_partiality_anisotropy_set
     two_theta = observations.two_theta(wavelength=wavelength).data()
     sin_theta_over_lambda_sq = observations.two_theta(wavelength=wavelength).sin_theta_over_lambda_sq().data()
     ry, rz, re, rotx, roty = (0, 0, 0.003, 0, 0)
     flag_beam_divergence = False
-    partiality_init, delta_xy_init, rs_init, rh_init = calc_partiality_anisotropy_set(crystal_init_orientation.unit_cell(),
+    partiality_init, delta_xy_init, rs_init, rh_init = ph.calc_partiality_anisotropy_set(crystal_init_orientation.unit_cell(),
                                                           rotx, roty, observations.indices(),
                                                           ry, rz, r0, re, two_theta, alpha_angle, wavelength,
                                                           crystal_init_orientation, spot_pred_x_mm, spot_pred_y_mm,

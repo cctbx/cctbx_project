@@ -113,7 +113,7 @@ for i in range(n_col-2):
       if data_title[i] in ('ry','rz','r0','re'):
         plt.ylim([0, 0.01])
       plt.grid(True)
-
+      """
       if data_title[i]=='Tpr':
         plt.ylim([0, 3000])
       elif data_title[i]=='Txy':
@@ -132,5 +132,6 @@ for i in range(n_col-2):
         plt.ylim([0, 80])
       elif data_title[i]=='c':
         plt.ylim([0, 80])
+      """
     cn_plot += 1
 plt.show()

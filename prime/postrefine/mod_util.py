@@ -108,7 +108,6 @@ class intensities_scaler(object):
         output_results.append(pres)
         #for plotting
         if iparams.flag_plot_expert:
-
           plt.subplot(521)
           plt.scatter(1/(d_spacings**2), scale_factors_by_indices, s=10, marker='x', c='r')
           plt.title('Scale factors')
@@ -146,6 +145,7 @@ class intensities_scaler(object):
               flex.linear_correlation(ma_obs_full.sigmas(), flex.log(flex.abs(ma_iso.data()-ma_obs_full.data()))).coefficient()))
           plt.show()
       return output_results
+
   def calc_avg_I_cpp(self, group_no, group_id_list, miller_index, miller_indices_ori, I, sigI, G, B,
                      p_set, rs_set, wavelength_set, sin_theta_over_lambda_sq, SE, avg_mode,
                      iparams, pickle_filename_set):
@@ -247,9 +247,7 @@ class intensities_scaler(object):
       cc_thres = 0
     else:
       cc_thres = iparams.frame_accept_min_cc
-
     std_filter = iparams.sigma_rejection
-
     if iparams.flag_weak_anomalous:
       if avg_mode == 'final':
         target_anomalous_flag = iparams.target_anomalous_flag
@@ -257,12 +255,10 @@ class intensities_scaler(object):
         target_anomalous_flag = False
     else:
       target_anomalous_flag = iparams.target_anomalous_flag
-
     pr_params_mean, pr_params_med, pr_params_std = self.calc_mean_postref_parameters(results)
     G_mean, B_mean, ry_mean, rz_mean, re_mean, r0_mean, rotx_mean, roty_mean, R_mean, R_xy_mean, SE_mean = pr_params_mean
     G_med, B_med, ry_med, rz_med, re_med, r0_med, rotx_med, roty_med, R_med, R_xy_med, SE_med = pr_params_med
     G_std, B_std, ry_std, rz_std, re_std, r0_std, rotx_std, roty_std, R_std, R_xy_std, SE_std = pr_params_std
-
     #prepare data for merging
     miller_indices_all = flex.miller_index()
     miller_indices_ori_all = flex.miller_index()
@@ -290,40 +286,32 @@ class intensities_scaler(object):
         pickle_filepath = pres.pickle_filename.split('/')
         img_filename = pickle_filepath[len(pickle_filepath)-1]
         flag_pres_ok = True
-
         #check SE, CC, UC, G, B, gamma_e
         if math.isnan(pres.G):
           flag_pres_ok = False
-
         if math.isnan(pres.SE) or np.isinf(pres.SE):
           flag_pres_ok = False
-
         if flag_pres_ok and SE_std > 0:
           if abs(pres.SE-SE_med)/SE_std > std_filter:
             flag_pres_ok = False
             cn_bad_frame_SE += 1
-
         if flag_pres_ok and pres.CC_final < cc_thres:
           flag_pres_ok = False
           cn_bad_frame_cc += 1
-
         if flag_pres_ok:
           if G_std > 0:
             if abs(pres.G-G_med)/G_std > std_filter:
               flag_pres_ok = False
               cn_bad_frame_G += 1
-
         if flag_pres_ok:
           if re_std > 0:
             if abs(pres.re-re_med)/(math.sqrt(re_med)) > std_filter:
               flag_pres_ok = False
               cn_bad_frame_re += 1
-
         from mod_leastsqr import good_unit_cell
         if flag_pres_ok and not good_unit_cell(pres.uc_params, iparams, iparams.merge.uc_tolerance):
           flag_pres_ok = False
           cn_bad_frame_uc += 1
-
         if flag_pres_ok:
           cn_good_frame += 1
           sin_theta_over_lambda_sq = pres.observations.two_theta(wavelength=pres.wavelength).sin_theta_over_lambda_sq().data()
@@ -332,7 +320,6 @@ class intensities_scaler(object):
           R_final_all.append(pres.R_final)
           R_xy_init_all.append(pres.R_xy_init)
           R_xy_final_all.append(pres.R_xy_final)
-
           miller_indices_all.extend(pres.observations.indices())
           miller_indices_ori_all.extend(pres.observations_original.indices())
           I_all.extend(pres.observations.data())
@@ -347,21 +334,16 @@ class intensities_scaler(object):
           wavelength_all.extend(flex.double([pres.wavelength]*len(pres.observations.data())))
           pickle_filename_all += [pres.pickle_filename for i in range(len(pres.observations.data()))]
           i_seq.extend(flex.int([i for i in range(len(i_seq), len(i_seq)+len(pres.observations.data()))]))
-
-
     #plot stats
     self.plot_stats(filtered_results, iparams)
-
     #calculate average unit cell
     uc_mean, uc_med, uc_std = self.calc_mean_unit_cell(filtered_results)
     unit_cell_mean = unit_cell((uc_mean[0], uc_mean[1], uc_mean[2], uc_mean[3], uc_mean[4], uc_mean[5]))
-
     #recalculate stats for pr parameters
     pr_params_mean, pr_params_med, pr_params_std = self.calc_mean_postref_parameters(filtered_results)
     G_mean, B_mean, ry_mean, rz_mean, re_mean, r0_mean, rotx_mean, roty_mean, R_mean, R_xy_mean, SE_mean = pr_params_mean
     G_med, B_med, ry_med, rz_med, re_med, r0_med, rotx_med, roty_med, R_med, R_xy_med, SE_med = pr_params_med
     G_std, B_std, ry_std, rz_std, re_std, r0_std, rotx_std, roty_std, R_std, R_xy_std, SE_std = pr_params_std
-
     #from all observations merge them
     crystal_symmetry = crystal.symmetry(
         unit_cell=(uc_mean[0], uc_mean[1], uc_mean[2], uc_mean[3], uc_mean[4], uc_mean[5]),
@@ -373,7 +355,6 @@ class intensities_scaler(object):
     miller_array_all = miller_set_all.array(
               data=I_all,
               sigmas=sigI_all).set_observation_type_xray_intensity()
-
     #sort reflections according to asymmetric-unit symmetry hkl
     perm = miller_array_all.sort_permutation(by_value="packed_indices")
     miller_indices_all_sort = miller_array_all.indices().select(perm)
@@ -389,22 +370,19 @@ class intensities_scaler(object):
     SE_all_sort = SE_all.select(perm)
     i_seq_sort = i_seq.select(perm)
     pickle_filename_all_sort = [pickle_filename_all[i] for i in i_seq_sort]
-
     miller_array_uniq = miller_array_all.merge_equivalents().array().complete_array(d_min=iparams.merge.d_min, d_max=iparams.merge.d_max)
     matches_uniq = miller.match_multi_indices(
                   miller_indices_unique=miller_array_uniq.indices(),
                   miller_indices=miller_indices_all_sort)
-
     pair_0 = flex.int([pair[0] for pair in matches_uniq.pairs()])
     pair_1 = flex.int([pair[1] for pair in matches_uniq.pairs()])
     group_id_list = flex.int([pair_0[pair_1[i]] for i in range(len(matches_uniq.pairs()))])
-
     from collections import Counter
     tally = Counter()
     for elem in group_id_list:
       tally[elem] += 1
     cn_group = len(tally)
-
+    #preparte txt out stat
     txt_out = 'Summary of refinement and merging\n'
     txt_out += ' No. good frames:          %12.0f\n'%(cn_good_frame)
     txt_out += ' No. bad cc frames:        %12.0f\n'%(cn_bad_frame_cc)
@@ -436,17 +414,48 @@ class intensities_scaler(object):
     txt_out += '   beta:                   %12.2f %12.2f (%9.2f)\n'%(uc_mean[4], uc_med[4], uc_std[4])
     txt_out += '   gamma:                  %12.2f %12.2f (%9.2f)\n'%(uc_mean[5], uc_med[5], uc_std[5])
     txt_out += '* (standard deviation)\n'
-
+    #write out stat. pickle
+    stat_dict = {"n_frames_good": [cn_good_frame], \
+                 "n_frames_bad_cc": [cn_bad_frame_cc], \
+                 "n_frames_bad_G": [cn_bad_frame_G], \
+                 "n_frames_bad_uc": [cn_bad_frame_uc], \
+                 "n_frames_bad_gamma_e": [cn_bad_frame_re], \
+                 "n_frames_bad_SE": [cn_bad_frame_SE], \
+                 "n_observations": [len(I_obs_all_sort)], \
+                 "R_start": [np.mean(R_init_all)], \
+                 "R_end": [np.mean(R_final_all)], \
+                 "R_xy_start": [np.mean(R_xy_init_all)], \
+                 "R_xy_end": [np.mean(R_xy_final_all)], \
+                 "mean_gamma_y": [ry_mean], \
+                 "std_gamma_y": [ry_std], \
+                 "mean_gamma_z": [rz_mean], \
+                 "std_gamma_z": [rz_std], \
+                 "mean_gamma_0": [r0_mean], \
+                 "std_gamma_0": [r0_std], \
+                 "mean_gamma_e": [re_mean], \
+                 "std_gamma_e": [re_std], \
+                 "mean_a": [uc_mean[0]], \
+                 "std_a": [uc_std[0]], \
+                 "mean_b": [uc_mean[1]], \
+                 "std_b": [uc_std[1]], \
+                 "mean_c": [uc_mean[2]], \
+                 "std_c": [uc_std[2]], \
+                 "mean_alpha": [uc_mean[3]], \
+                 "std_alpha": [uc_std[3]], \
+                 "mean_beta": [uc_mean[4]], \
+                 "std_beta": [uc_std[4]], \
+                 "mean_gamma": [uc_mean[5]], \
+                 "std_gamma": [uc_std[5]]}
+    psh = pickle_stat_handler()
+    psh.write_pickle(iparams, stat_dict)
     return cn_group, group_id_list, miller_indices_all_sort, miller_indices_ori_all_sort, \
            I_obs_all_sort, sigI_obs_all_sort,G_all_sort, B_all_sort, \
            p_all_sort, rs_all_sort, wavelength_all_sort, sin_sq_all_sort, SE_all_sort, uc_mean, \
            np.mean(wavelength_all), pickle_filename_all_sort, txt_out
 
-
   def write_output(self, miller_indices_merge, I_merge, sigI_merge, stat_all,
                    I_two_halves_tuple, iparams, uc_mean, wavelength_mean,
                    output_mtz_file_prefix, avg_mode):
-
     if iparams.flag_weak_anomalous:
       if avg_mode == 'final':
         target_anomalous_flag = iparams.target_anomalous_flag
@@ -454,10 +463,8 @@ class intensities_scaler(object):
         target_anomalous_flag = False
     else:
       target_anomalous_flag = iparams.target_anomalous_flag
-
     #extract I_even and I_odd pair
     I_even, I_odd, I_even_h, I_odd_h, I_even_k, I_odd_k, I_even_l, I_odd_l = I_two_halves_tuple
-
     #output mtz file and report binning stat
     miller_set_merge = crystal.symmetry(
           unit_cell=unit_cell((uc_mean[0],uc_mean[1],uc_mean[2],uc_mean[3],uc_mean[4],uc_mean[5])),
@@ -465,7 +472,6 @@ class intensities_scaler(object):
         ).build_miller_set(
           anomalous_flag=target_anomalous_flag,
           d_min=iparams.merge.d_min)
-
     miller_array_merge = miller_set_merge.array().customized_copy(indices=miller_indices_merge,
               data=I_merge, sigmas=sigI_merge, anomalous_flag=target_anomalous_flag).map_to_asu().set_observation_type_xray_intensity()
     miller_array_complete = miller_set_merge.array()
@@ -474,7 +480,6 @@ class intensities_scaler(object):
               sigmas=fake_data).resolution_filter(d_min=iparams.merge.d_min, \
               d_max=iparams.merge.d_max)
     n_refl_all = len(miller_array_merge.data())
-
     #do another resolution filter here
     i_sel_res = miller_array_merge.resolution_filter_selection(d_min=iparams.merge.d_min, d_max=iparams.merge.d_max)
     miller_indices_merge = miller_array_merge.indices().select(i_sel_res)
@@ -495,9 +500,7 @@ class intensities_scaler(object):
     I_odd_k = I_odd_k.select(i_sel_res)
     I_even_l = I_even_l.select(i_sel_res)
     I_odd_l = I_odd_l.select(i_sel_res)
-
     n_refl_out_resolutions = n_refl_all - len(miller_array_merge.data())
-
     #remove outliers
     I_bin_sigma_filter = 10
     n_bin_sigma_filter = 200
@@ -516,15 +519,12 @@ class intensities_scaler(object):
           i_filter = flex.abs((I_obs_bin - med_I_bin)/np.std(I_obs_bin)) > I_bin_sigma_filter
           i_seq_bin_filter = i_seq_bin.select(i_filter)
           i_seq_sel.extend(i_seq_bin_filter)
-
       flag_sel = flex.bool([True]*len(miller_array_merge.data()))
       for i_i_seq_sel in i_seq_sel:
         flag_sel[i_i_seq_sel] = False
-
       miller_array_merge = miller_array_merge.customized_copy(indices=miller_array_merge.indices().select(flag_sel),
                                                               data=miller_array_merge.data().select(flag_sel),
                                                               sigmas=miller_array_merge.sigmas().select(flag_sel))
-
       stat_all_tmp = [stat_all[j] for j in i_seq.select(flag_sel == True)]
       stat_all = stat_all_tmp
       I_even = I_even.select(flag_sel)
@@ -535,10 +535,7 @@ class intensities_scaler(object):
       I_odd_k = I_odd_k.select(flag_sel)
       I_even_l = I_even_l.select(flag_sel)
       I_odd_l = I_odd_l.select(flag_sel)
-
-
     n_refl_outliers = n_refl_all - n_refl_out_resolutions - len(miller_array_merge.data())
-
     #get iso if given
     flag_hklisoin_found = False
     if iparams.hklisoin is not None:
@@ -561,8 +558,6 @@ class intensities_scaler(object):
           miller_array_iso = miller_array_converted_to_intensity.deep_copy()
         else:
           flag_hklisoin_found = False
-
-
     #write output files
     if output_mtz_file_prefix != '':
       #write as mtz file
@@ -573,7 +568,6 @@ class intensities_scaler(object):
       f_cns = open(output_mtz_file_prefix+'_merge.hkl', 'w')
       miller_array_merge_unique.export_as_cns_hkl(file_object=f_cns)
       f_cns.close()
-
     #calculate isotropic B-factor
     try:
       from mod_util import mx_handler
@@ -586,7 +580,6 @@ class intensities_scaler(object):
       B_merged = wp.wilson_b
     except Exception:
       B_merged = 0
-
     #calculate total cc_anom for two halves
     cc_anom_acentric, cc_anom_centric, nrefl_anom_acentric, nrefl_anom_centric = (0,0,0,0)
     if miller_array_merge.anomalous_flag():
@@ -600,7 +593,6 @@ class intensities_scaler(object):
       anom_dif_centric_flags = ma_anom_centric_flags.data()
       i_acentric = (anom_dif_centric_flags == False)
       i_centric = (anom_dif_centric_flags == True)
-
       anom_dif_even_acentric = anom_dif_even.select(i_acentric)
       anom_dif_even_centric = anom_dif_even.select(i_centric)
       anom_dif_odd_acentric = anom_dif_odd.select(i_acentric)
@@ -613,7 +605,6 @@ class intensities_scaler(object):
         cc_anom_centric = mat_anom_centric[0,1]
       nrefl_anom_acentric = len(anom_dif_even_acentric)
       nrefl_anom_centric = len(anom_dif_even_centric)
-
       if iparams.flag_plot:
         plt.subplot(211)
         plt.scatter(anom_dif_even_acentric, anom_dif_odd_acentric,s=10, marker='x', c='r')
@@ -626,17 +617,14 @@ class intensities_scaler(object):
         plt.xlabel('delta_I_even')
         plt.ylabel('delta_I_odd')
         plt.show()
-
     #select single cone reflections on the three crystal axes
     fraction_percent = iparams.percent_cone_fraction
     miller_array_merge_astar = miller_array_merge.remove_cone(fraction_percent, axis_point_2=(1,0,0), negate=True)
     miller_array_merge_bstar = miller_array_merge.remove_cone(fraction_percent, axis_point_2=(0,1,0), negate=True)
     miller_array_merge_cstar = miller_array_merge.remove_cone(fraction_percent, axis_point_2=(0,0,1), negate=True)
-
     #report binning stats
     binner_template_asu = miller_array_template_asu.setup_binner(n_bins=iparams.n_bins)
     binner_template_asu_indices = binner_template_asu.bin_indices()
-
     txt_out = '\n'
     txt_out += 'Isotropic B-factor:  %7.2f\n'%(B_merged)
     txt_out += 'No. of reflections\n'
@@ -661,14 +649,19 @@ class intensities_scaler(object):
     I_odd_cstar = flex.double()
     secmom_I_acen_list = flex.double()
     centric_flags = miller_array_merge.centric_flags()
+    #collect data for stat. pickle
+    sp_res = []
+    sp_complete = []
+    sp_n_obs = []
+    sp_cc12 = []
+    sp_i_o_sigi = []
+    sp_isqr = []
     for i in range(1,iparams.n_bins+1):
       i_binner = (binner_template_asu_indices == i)
       miller_indices_bin = miller_array_template_asu.indices().select(i_binner)
-
       matches_template = miller.match_multi_indices(
                   miller_indices_unique=miller_indices_bin,
                   miller_indices=miller_array_merge.indices())
-
       I_bin = flex.double([miller_array_merge.data()[pair[1]] for pair in matches_template.pairs()])
       sigI_bin = flex.double([miller_array_merge.sigmas()[pair[1]] for pair in matches_template.pairs()])
       miller_indices_obs_bin = flex.miller_index([miller_array_merge.indices()[pair[1]] for pair in matches_template.pairs()])
@@ -676,7 +669,6 @@ class intensities_scaler(object):
       I_acentric_bin = I_bin.select(centric_flags_bin == False)
       secmom_I_acen_bin = np.mean(I_acentric_bin**2)/(np.mean(I_acentric_bin)**2)
       secmom_I_acen_list.append(secmom_I_acen_bin)
-
       #caculate CCanom for the two halves.
       cc_anom_bin_acentric, cc_anom_bin_centric, nrefl_anom_bin_acentric, nrefl_anom_bin_centric = (0,0,0,0)
       if miller_array_merge.anomalous_flag():
@@ -685,19 +677,16 @@ class intensities_scaler(object):
                     miller_indices=ma_anom_dif_even.indices())
         anom_dif_even = flex.double([ma_anom_dif_even.data()[pair[1]] for pair in matches_anom_dif_even.pairs()])
         anom_dif_centric_flags = flex.bool([ma_anom_centric_flags.data()[pair[1]] for pair in matches_anom_dif_even.pairs()])
-
         matches_anom_dif_odd = miller.match_multi_indices(
                     miller_indices_unique=miller_indices_bin,
                     miller_indices=ma_anom_dif_odd.indices())
         anom_dif_odd = flex.double([ma_anom_dif_odd.data()[pair[1]] for pair in matches_anom_dif_odd.pairs()])
         i_acentric = (anom_dif_centric_flags == False)
         i_centric = (anom_dif_centric_flags == True)
-
         anom_dif_even_acentric = anom_dif_even.select(i_acentric)
         anom_dif_even_centric = anom_dif_even.select(i_centric)
         anom_dif_odd_acentric = anom_dif_odd.select(i_acentric)
         anom_dif_odd_centric = anom_dif_odd.select(i_centric)
-
         mat_anom_acentric = np.corrcoef(anom_dif_even_acentric, anom_dif_odd_acentric)
         mat_anom_centric = np.corrcoef(anom_dif_even_centric, anom_dif_odd_centric)
         if len(mat_anom_acentric) > 0:
@@ -706,7 +695,6 @@ class intensities_scaler(object):
           cc_anom_bin_centric = mat_anom_centric[0,1]
         nrefl_anom_bin_acentric = len(anom_dif_even_acentric)
         nrefl_anom_bin_centric = len(anom_dif_even_centric)
-
       #prepare the calculation of these parameters
       mean_i_over_sigi_bin, multiplicity_bin, r_meas_w_bin, r_meas_bin, n_refl_cc12_bin, r_split_bin  = (0,0,0,0,0,0)
       cc12_bin, cc12_bin_astar, cc12_bin_bstar, cc12_bin_cstar = (0,0,0,0)
@@ -716,13 +704,11 @@ class intensities_scaler(object):
         #calculate <I>
         avgI_bin = flex.mean(I_bin)
         mean_i_over_sigi_bin = flex.mean(I_bin/sigI_bin)
-
         #calculation of Rmeas
         stat_bin = [stat_all[pair[1]] for pair in matches_template.pairs()]
         sum_r_meas_w_top_bin, sum_r_meas_w_btm_bin, sum_r_meas_top_bin, sum_r_meas_btm_bin, sum_mul_bin = (0,0,0,0,0)
         for stat in stat_bin:
           r_meas_w_top, r_meas_w_btm, r_meas_top, r_meas_btm, mul = stat
-
           sum_r_meas_w_top_bin += r_meas_w_top
           sum_r_meas_w_btm_bin += r_meas_w_btm
           sum_r_meas_top_bin += r_meas_top
@@ -733,28 +719,23 @@ class intensities_scaler(object):
           sum_r_meas_top += r_meas_top
           sum_r_meas_btm += r_meas_btm
           n_refl_obs_total += mul
-
         multiplicity_bin = sum_mul_bin/len(I_bin)
         if sum_r_meas_w_btm_bin > 0:
           r_meas_w_bin = sum_r_meas_w_top_bin/ sum_r_meas_w_btm_bin
         else:
           r_meas_w_bin = float('Inf')
-
         if sum_r_meas_btm_bin > 0:
           r_meas_bin = sum_r_meas_top_bin/ sum_r_meas_btm_bin
         else:
           r_meas_bin = float('Inf')
-
         #filter I_even and I_odd for this bin and select only >0 values
         I_even_bin = flex.double([I_even[pair[1]] for pair in matches_template.pairs()])
         I_odd_bin = flex.double([I_odd[pair[1]] for pair in matches_template.pairs()])
-
         i_even_filter_sel = (I_even_bin > 0)
         I_even_bin_sel = I_even_bin.select(i_even_filter_sel)
         I_odd_bin_sel = I_odd_bin.select(i_even_filter_sel)
         miller_indices_bin_sel = miller_indices_obs_bin.select(i_even_filter_sel)
         n_refl_halfset_bin = len(I_even_bin_sel)
-
         #calculation of CC1/2 and <I> on the three crystal axes (a*, b*, c*) ---------------
         if n_refl_halfset_bin > 0:
           cc12_bin = np.corrcoef(I_even_bin_sel, I_odd_bin_sel)[0,1]
@@ -780,7 +761,6 @@ class intensities_scaler(object):
           I_odd_astar.extend(I_odd_bin_astar)
         except Exception:
           dummy = 1
-
         try:
           matches_bstar = miller.match_multi_indices(
                       miller_indices_unique=miller_array_merge_bstar.indices(),
@@ -795,7 +775,6 @@ class intensities_scaler(object):
           I_odd_bstar.extend(I_odd_bin_bstar)
         except Exception:
           dummy = 1
-
         try:
           matches_cstar = miller.match_multi_indices(
                       miller_indices_unique=miller_array_merge_cstar.indices(),
@@ -810,7 +789,6 @@ class intensities_scaler(object):
           I_odd_cstar.extend(I_odd_bin_cstar)
         except Exception:
           dummy = 1
-
         #caculation of <I> on the three lab axes (h,k,l) ---------------------------------
         I_even_h_bin = flex.double([I_even_h[pair[1]] for pair in matches_template.pairs()])
         I_odd_h_bin = flex.double([I_odd_h[pair[1]] for pair in matches_template.pairs()])
@@ -818,61 +796,67 @@ class intensities_scaler(object):
         I_odd_k_bin = flex.double([I_odd_k[pair[1]] for pair in matches_template.pairs()])
         I_even_l_bin = flex.double([I_even_l[pair[1]] for pair in matches_template.pairs()])
         I_odd_l_bin = flex.double([I_odd_l[pair[1]] for pair in matches_template.pairs()])
-
         if len(I_even_h_bin.select(I_even_h_bin > 0)) > 0:
           avgI_bin_h = flex.mean(I_even_h_bin.select(I_even_h_bin > 0))
         if len(I_even_k_bin.select(I_even_k_bin > 0)) > 0:
           avgI_bin_k = flex.mean(I_even_k_bin.select(I_even_k_bin > 0))
         if len(I_even_l_bin.select(I_even_l_bin > 0)) > 0:
           avgI_bin_l = flex.mean(I_even_l_bin.select(I_even_l_bin > 0))
-
-
       #collect CC1/2 and <I> on the crystal axes
       cc12_list.append([cc12_bin, cc12_bin_astar, cc12_bin_bstar, cc12_bin_cstar])
       avgI_star_list.append([avgI_bin, avgI_bin_astar, avgI_bin_bstar, avgI_bin_cstar])
       cc12_n_refl_list.append([n_refl_halfset_bin, len(I_even_bin_astar), len(I_even_bin_bstar), len(I_even_bin_cstar)])
-
       #collect <I> on the lab axes
       avgI_list.append([avgI_bin, avgI_bin_h, avgI_bin_k, avgI_bin_l])
       avgI_n_refl_list.append([len(I_bin), len(I_even_h_bin.select(I_even_h_bin > 0)), len(I_even_k_bin.select(I_even_k_bin > 0)), len(I_even_l_bin.select(I_even_l_bin > 0))])
       completeness = len(miller_indices_obs_bin)/len(miller_indices_bin)
       sum_refl_obs += len(miller_indices_obs_bin)
       sum_refl_complete += len(miller_indices_bin)
-
       #calculate CCiso
       cc_iso_bin = 0
       r_iso_bin = 0
       n_refl_cciso_bin = 0
-
       if flag_hklisoin_found:
         matches_iso = miller.match_multi_indices(
                   miller_indices_unique=miller_array_iso.indices(),
                   miller_indices=miller_indices_obs_bin)
-
         I_iso = flex.double([miller_array_iso.data()[pair[0]] for pair in matches_iso.pairs()])
         I_merge_match_iso = flex.double([I_bin[pair[1]] for pair in matches_iso.pairs()])
         sigI_merge_match_iso = flex.double([sigI_bin[pair[1]] for pair in matches_iso.pairs()])
         n_refl_cciso_bin = len(matches_iso.pairs())
         if len(matches_iso.pairs()) > 0 :
           cc_iso_bin = np.corrcoef(I_merge_match_iso, I_iso)[0,1]
-
           #calculate r_iso (need to find slope and intercept)
           from scipy import stats
           slope, intercept, r_value, p_value, std_err = stats.linregress(I_iso, I_merge_match_iso)
           r_iso_bin = (np.sum(((I_merge_match_iso - ((slope*I_iso)+intercept))/sigI_merge_match_iso)**2) * \
             math.sqrt(n_refl_cciso_bin/(max(1, n_refl_cciso_bin-1))))/ \
             flex.sum((I_merge_match_iso/sigI_merge_match_iso)**2)
-
-
+      #collect txt out
       txt_out += '%02d %7.2f - %7.2f %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %8.2f %10.1f %8.1f %6.2f' \
           %(i, binner_template_asu.bin_d_range(i)[0], binner_template_asu.bin_d_range(i)[1], completeness*100, \
           len(miller_indices_obs_bin), len(miller_indices_bin),\
-          multiplicity_bin, r_meas_bin*100, r_split_bin*100, cc12_bin*100, n_refl_halfset_bin, cc_iso_bin*100, n_refl_cciso_bin, \
+          multiplicity_bin, r_meas_bin*100, r_split_bin*100, \
+          cc12_bin*100, n_refl_halfset_bin, cc_iso_bin*100, n_refl_cciso_bin, \
           cc_anom_bin_acentric, nrefl_anom_bin_acentric, \
           mean_i_over_sigi_bin, np.mean(I_bin), np.mean(sigI_bin), secmom_I_acen_bin)
       txt_out += '\n'
-
-
+      #collect data for stat.pickle
+      sp_res.append(binner_template_asu.bin_d_range(i)[1])
+      sp_complete.append(completeness*100)
+      sp_n_obs.append(multiplicity_bin)
+      sp_cc12.append(cc12_bin*100)
+      sp_i_o_sigi.append(mean_i_over_sigi_bin)
+      sp_isqr.append(secmom_I_acen_bin)
+    #save data for stat. pickle in stat_dict
+    stat_dict = {"binned_resolution": [sp_res], \
+                 "binned_completeness": [sp_complete], \
+                 "binned_n_obs": [sp_n_obs], \
+                 "binned_cc12": [sp_cc12], \
+                 "binned_i_o_sigi": [sp_i_o_sigi], \
+                 "binned_isqr": [sp_isqr]}
+    psh = pickle_stat_handler()
+    psh.write_pickle(iparams, stat_dict)
     #calculate CCiso
     cc_iso = 0
     n_refl_iso = 0
@@ -880,11 +864,9 @@ class intensities_scaler(object):
       matches_iso = miller.match_multi_indices(
                 miller_indices_unique=miller_array_iso.indices(),
                 miller_indices=miller_array_merge.indices())
-
       I_iso = flex.double([miller_array_iso.data()[pair[0]] for pair in matches_iso.pairs()])
       I_merge_match_iso = flex.double([miller_array_merge.data()[pair[1]] for pair in matches_iso.pairs()])
       sigI_merge_match_iso = flex.double([miller_array_merge.sigmas()[pair[1]] for pair in matches_iso.pairs()])
-
       if len(matches_iso.pairs()) > 0 :
         cc_iso = np.corrcoef(I_merge_match_iso, I_iso)[0,1]
         n_refl_iso = len(matches_iso.pairs())
@@ -899,7 +881,6 @@ class intensities_scaler(object):
         plt.xlabel('I_ref')
         plt.ylabel('I_obs')
         plt.show()
-
     #calculate cc12
     i_even_filter_sel = (I_even > 0)
     cc12, cc12_astar, cc12_bstar, cc12_cstar, r_split, n_refl_half_total  = (0,0,0,0,0,0)
@@ -914,18 +895,15 @@ class intensities_scaler(object):
       n_refl_half_total = len(I_even_filter)
     except Exception:
       dummy = 0
-
     #calculate Qmeas and Qw
     if sum_r_meas_w_btm > 0:
       r_meas_w = sum_r_meas_w_top/sum_r_meas_w_btm
     else:
       r_meas_w = float('Inf')
-
     if sum_r_meas_btm > 0:
       r_meas = sum_r_meas_top/sum_r_meas_btm
     else:
       r_meas = float('Inf')
-
     txt_out += '--------------------------------------------------------------------------------------------------------------------------------------------------\n'
     txt_out += '        TOTAL        %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %8.2f %10.1f %8.1f %6.2f\n' \
     %((sum_refl_obs/sum_refl_complete)*100, sum_refl_obs, \
@@ -938,7 +916,6 @@ class intensities_scaler(object):
      np.mean(secmom_I_acen_list))
     txt_out += '--------------------------------------------------------------------------------------------------------------------------------------------------\n'
     txt_out += '\n'
-
     #output CC1/2 on the three crystal axes
     txt_out += 'Summary of CC1/2 on three crystal axes\n'
     txt_out += 'Bin Resolution Range                CC1/2                                <I>                               N_refl           \n'
@@ -994,12 +971,26 @@ class intensities_scaler(object):
     txt_out += '------------------------------------------------------------------------------------\n'
     txt_out += '\n'
     """
-
     return miller_array_merge, txt_out
 
   def plot_stats(self, results, iparams):
     #retrieve stats from results and plot them
     if iparams.flag_plot or iparams.flag_output_verbose:
+      #get expected f^2
+      try:
+        from mod_util import mx_handler
+        mxh = mx_handler()
+        asu_contents = mxh.get_asu_contents(iparams.n_residues)
+        observations_as_f = results[0].observations.as_amplitude_array()
+        binner_template_asu = observations_as_f.setup_binner(n_bins=iparams.n_bins)
+        from cctbx import statistics
+        wp = statistics.wilson_plot(observations_as_f, asu_contents, e_statistics=True)
+        expected_f_sq = wp.expected_f_sq
+        mean_stol_sq = wp.mean_stol_sq
+      except Exception:
+        expected_f_sq = flex.double([0]*iparams.n_bins)
+        mean_stol_sq = flex.double(range(iparams.n_bins))
+      #setup list
       G_frame = flex.double()
       B_frame = flex.double()
       rotx_frame = flex.double()
@@ -1016,9 +1007,11 @@ class intensities_scaler(object):
       SE_all = flex.double()
       R_sq_all = flex.double()
       cc_all = flex.double()
+      mean_I_frame = []
+      mean_I_scaled_frame = []
       txt_out_verbose = ''
-
       for pres in results:
+        #collect parameters
         G_frame.append(pres.G)
         B_frame.append(pres.B)
         rotx_frame.append(pres.rotx*180/math.pi)
@@ -1035,11 +1028,24 @@ class intensities_scaler(object):
         SE_all.append(pres.SE)
         R_sq_all.append(pres.R_sq)
         cc_all.append(pres.CC_final)
+        try:
+          #collect <I>
+          pres.observations.setup_binner(n_bins=iparams.n_bins)
+          mean_I_frame.append(flex.double(pres.observations.mean(use_binning=True).data[1:-1]))
+          #collect <I> scaled
+          sin_theta_over_lambda_sq = pres.observations.two_theta(pres.wavelength).sin_theta_over_lambda_sq().data()
+          I_full = flex.double(pres.observations.data()/(pres.G * flex.exp(flex.double(-2*pres.B*sin_theta_over_lambda_sq))))
+          sigI_full = flex.double(pres.observations.sigmas()/(pres.G * flex.exp(flex.double(-2*pres.B*sin_theta_over_lambda_sq))))
+          obs_scaled = pres.observations.customized_copy(data=I_full, sigmas=sigI_full)
+          obs_scaled.setup_binner(n_bins=iparams.n_bins)
+          mean_I_scaled_frame.append(flex.double(obs_scaled.mean(use_binning=True).data[1:-1]))
+          #decorate text output
+        except Exception:
+          pass
         txt_out_verbose += '%8.1f %8.1f %8.1f %8.2f %6.2f %6.2f %6.2f %6.2f %8.5f %8.5f %8.5f %8.5f %8.2f %8.2f %8.2f %8.2f %8.2f %8.2f %6.2f ' \
         %(pres.R_init, pres.R_final, pres.R_xy_init, pres.R_xy_final, pres.G, pres.B, pres.rotx*180/math.pi, pres.roty*180/math.pi, \
         pres.ry, pres.rz, pres.r0, pres.re, pres.uc_params[0], pres.uc_params[1], pres.uc_params[2], pres.uc_params[3], \
         pres.uc_params[4], pres.uc_params[5], pres.CC_final)+pres.pickle_filename+'\n'
-
     if iparams.flag_output_verbose:
       import os
       fileseq_list = flex.int()
@@ -1055,8 +1061,22 @@ class intensities_scaler(object):
       f = open(iparams.run_no+'/'+newfile_name, 'w')
       f.write(txt_out_verbose)
       f.close()
-
     if iparams.flag_plot:
+      #plot <I> before and after applying scale factors
+      plt.subplot(121)
+      for y_data in mean_I_frame:
+        plt.plot(mean_stol_sq, flex.log(y_data), color='teal')
+      plt.grid(True)
+      plt.ylim([2,10])
+      plt.title('Mean intensity before scaling')
+      plt.subplot(122)
+      for y_data in mean_I_scaled_frame:
+        plt.plot(mean_stol_sq, flex.log(y_data), color='teal')
+      plt.plot(mean_stol_sq, flex.log(expected_f_sq)/1.75, color='maroon', linewidth=2.0)
+      plt.grid(True)
+      plt.ylim([2,10])
+      plt.title('Mean intensity after scaling')
+      plt.show()
       plt.subplot(121)
       x = SE_all.as_numpy_array()
       mu = np.mean(x)
@@ -1068,7 +1088,6 @@ class intensities_scaler(object):
       plt.plot(bins, y, 'r--')
       plt.ylabel('Frequencies')
       plt.title('SE distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
-
       plt.subplot(122)
       x = cc_all.as_numpy_array()
       mu = np.mean(x)
@@ -1081,8 +1100,6 @@ class intensities_scaler(object):
       plt.ylabel('Frequencies')
       plt.title('CC distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
       plt.show()
-
-
       plt.subplot(241)
       x = G_frame.as_numpy_array()
       mu = np.mean(x)
@@ -1094,7 +1111,6 @@ class intensities_scaler(object):
       plt.plot(bins, y, 'r--')
       plt.ylabel('Frequencies')
       plt.title('G distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
-
       plt.subplot(242)
       x = B_frame.as_numpy_array()
       mu = np.mean(x)
@@ -1106,7 +1122,6 @@ class intensities_scaler(object):
       plt.plot(bins, y, 'r--')
       plt.ylabel('Frequencies')
       plt.title('B distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
-
       plt.subplot(243)
       x = rotx_frame.as_numpy_array()
       mu = np.mean(x)
@@ -1118,7 +1133,6 @@ class intensities_scaler(object):
       plt.plot(bins, y, 'r--')
       plt.ylabel('Frequencies')
       plt.title('Delta rot_x distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
-
       plt.subplot(244)
       x = roty_frame.as_numpy_array()
       mu = np.mean(x)
@@ -1130,7 +1144,6 @@ class intensities_scaler(object):
       plt.plot(bins, y, 'r--')
       plt.ylabel('Frequencies')
       plt.title('Delta rot_y distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
-
       plt.subplot(245)
       x = ry_frame.as_numpy_array()
       mu = np.mean(x)
@@ -1142,7 +1155,6 @@ class intensities_scaler(object):
       plt.plot(bins, y, 'r--')
       plt.ylabel('Frequencies')
       plt.title('ry distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
-
       plt.subplot(246)
       x = rz_frame.as_numpy_array()
       mu = np.mean(x)
@@ -1154,7 +1166,6 @@ class intensities_scaler(object):
       plt.plot(bins, y, 'r--')
       plt.ylabel('Frequencies')
       plt.title('rz distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
-
       plt.subplot(247)
       x = re_frame.as_numpy_array()
       mu = np.mean(x)
@@ -1166,9 +1177,7 @@ class intensities_scaler(object):
       plt.plot(bins, y, 'r--')
       plt.ylabel('Frequencies')
       plt.title('re distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
-
       plt.show()
-
       plt.subplot(231)
       x = uc_a_frame.as_numpy_array()
       mu = np.mean(x)
@@ -1180,7 +1189,6 @@ class intensities_scaler(object):
       plt.plot(bins, y, 'r--')
       plt.ylabel('Frequencies')
       plt.title('a distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
-
       plt.subplot(232)
       x = uc_b_frame.as_numpy_array()
       mu = np.mean(x)
@@ -1192,7 +1200,6 @@ class intensities_scaler(object):
       plt.plot(bins, y, 'r--')
       plt.ylabel('Frequencies')
       plt.title('b distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
-
       plt.subplot(233)
       x = uc_c_frame.as_numpy_array()
       mu = np.mean(x)
@@ -1204,7 +1211,6 @@ class intensities_scaler(object):
       plt.plot(bins, y, 'r--')
       plt.ylabel('Frequencies')
       plt.title('c distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
-
       plt.subplot(234)
       x = uc_alpha_frame.as_numpy_array()
       mu = np.mean(x)
@@ -1216,7 +1222,6 @@ class intensities_scaler(object):
       plt.plot(bins, y, 'r--')
       plt.ylabel('Frequencies')
       plt.title('alpha distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
-
       plt.subplot(235)
       x = uc_beta_frame.as_numpy_array()
       mu = np.mean(x)
@@ -1228,7 +1233,6 @@ class intensities_scaler(object):
       plt.plot(bins, y, 'r--')
       plt.ylabel('Frequencies')
       plt.title('beta distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
-
       plt.subplot(236)
       x = uc_gamma_frame.as_numpy_array()
       mu = np.mean(x)
@@ -1241,7 +1245,6 @@ class intensities_scaler(object):
       plt.ylabel('Frequencies')
       plt.title('gamma distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
       plt.show()
-
 
 class basis_handler(object):
   '''
@@ -1270,48 +1273,34 @@ class svd_handler(object):
   Singular value decomposion
   Solve linear equations with best fit basis
   '''
-
-
   # Input: expects Nx3 matrix of points
   # Returns R,t
   # R = 3x3 rotation matrix
   # t = 3x1 column vector
-
   def __init__(self):
-    '''
+    """
     Constructor
-    '''
+    """
 
   def rigid_transform_3D(self, A, B):
-
-      assert len(A) == len(B)
-
-      N = A.shape[0]; # total points
-
-      centroid_A = np.mean(A, axis=0)
-      centroid_B = np.mean(B, axis=0)
-
-      # centre the points
-      AA = A - np.tile(centroid_A, (N, 1))
-      BB = B - np.tile(centroid_B, (N, 1))
-
-      # dot is matrix multiplication for array
-      H = np.transpose(AA) * BB
-
-      U, S, Vt = np.linalg.svd(H)
-
-      R = Vt.T * U.T
-
-      # special reflection case
-      if np.linalg.det(R) < 0:
-         #print "Reflection detected"
-         Vt[2,:] *= -1
-         R = Vt.T * U.T
-
-      t = -R*centroid_A.T + centroid_B.T
-
-
-      return R, t
+    assert len(A) == len(B)
+    N = A.shape[0]; # total points
+    centroid_A = np.mean(A, axis=0)
+    centroid_B = np.mean(B, axis=0)
+    # centre the points
+    AA = A - np.tile(centroid_A, (N, 1))
+    BB = B - np.tile(centroid_B, (N, 1))
+    # dot is matrix multiplication for array
+    H = np.transpose(AA) * BB
+    U, S, Vt = np.linalg.svd(H)
+    R = Vt.T * U.T
+    # special reflection case
+    if np.linalg.det(R) < 0:
+       #print "Reflection detected"
+       Vt[2,:] *= -1
+       R = Vt.T * U.T
+    t = -R*centroid_A.T + centroid_B.T
+    return R, t
 
 class wilson_plot_handler(object):
   """
@@ -1335,7 +1324,6 @@ class wilson_plot_handler(object):
       I_sel = observations_original.data().select(i_binner)
       avg_I_bin.append(np.mean(I_sel))
       one_dsqr_bin.append(1/binner.bin_d_range(i)[1]**2)
-
     x_axis = one_dsqr_bin
     import matplotlib.pyplot as plt
     fig, ax1 = plt.subplots()
@@ -1351,7 +1339,6 @@ class mx_handler(object):
   Created     : 8/15/2015
   A collection of macromolecular-crystallagphic wrapper functions
   """
-
   def __init__(self):
     """
     Constructor
@@ -1365,7 +1352,6 @@ class mx_handler(object):
                       "N":1.5*float(n_residues),
                       "O":1.2*float(n_residues)
                      }
-
     return asu_contents
 
 class misc_handler(object):
@@ -1374,7 +1360,6 @@ class misc_handler(object):
   Created     : 1/6/2016
   A collection of misc. functions
   """
-
   def __init__(self):
     """
     Constructor
@@ -1384,3 +1369,41 @@ class misc_handler(object):
     resolution_gap = 7 - iparams.scale.d_min
     resolution_step = resolution_gap/ iparams.n_bins
     return resolution_step
+
+class pickle_stat_handler(object):
+  """
+  Author      : Uervirojnangkoorn, M.
+  Created     : 5/19/2016
+  A class to handle writing out statistic info. pickle.
+  """
+  def __init__(self):
+    """
+    Constructor
+    """
+
+  def write_pickle(self, iparams, stat_dict):
+    import os
+    import cPickle as pickle
+    fname = iparams.run_no+'/pickle.stat'
+    if os.path.isfile(fname):
+      pickle_stat = pickle.load(open(fname,"rb"))
+      for key in stat_dict.keys():
+        if key in pickle_stat.keys():
+          pickle_stat[key].append(stat_dict[key][0])
+        else:
+          pickle_stat[key] = stat_dict[key]
+      pickle.dump(pickle_stat, open(fname,"wb"))
+    else:
+      pickle.dump(stat_dict, open(fname,"wb"))
+
+  def read_pickle(self, iparams):
+    import os
+    import cPickle as pickle
+    fname = iparams.run_no+'/pickle.stat'
+    if os.path.isfile(fname):
+      pickle_stat = pickle.load(open(fname,"rb"))
+      for key in pickle_stat.keys():
+        data = pickle_stat[key]
+        print "key:", key, " size:", len(data)
+        for d in data:
+          print d

@@ -469,7 +469,7 @@ class leastsqr_handler(object):
     R_final = math.sqrt(flex.sum(err_final**2))
     R_xy_init = math.sqrt(flex.sum(delta_xy_init**2))
     R_xy_final = math.sqrt(flex.sum(delta_xy_fin**2))
-    if R_init < R_final:
+    if R_init < R_final or re > (iparams.gamma_e * 3):
       CC_final = CC_init
       R_final = R_init
       R_xy_final = R_xy_init
