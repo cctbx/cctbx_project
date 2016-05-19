@@ -271,6 +271,15 @@ class bonds (restraint_validation) :
        rt_mx) = restraint_info
       bond_atoms = get_atoms_info(pdb_atoms, iselection=i_seqs,
         use_segids_in_place_of_chainids=use_segids_in_place_of_chainids)
+      if sym_op_j:
+        import scitbx
+        m3 = rt_mx.r().as_double()
+        m3 = scitbx.matrix.sqr(m3)
+        t = rt_mx.t().as_double()
+        t = scitbx.matrix.col((t[0],t[1],t[2]))
+        xyz = unit_cell.fractionalize(flex.vec3_double([bond_atoms[1].xyz]))
+        new_xyz = unit_cell.orthogonalize(m3.elems*xyz+t)
+        bond_atoms[1].xyz = new_xyz[0]
       outlier = bond(
         atoms_info=bond_atoms,
         target=ideal,
