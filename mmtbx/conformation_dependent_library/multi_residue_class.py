@@ -110,6 +110,10 @@ class ThreeProteinResidues(list):
         print self
     return cis_peptide_bond
 
+  def is_pure_main_conf(self):
+    tmp = [rg.is_pure_main_conf for rg in self]
+    return len(filter(None, tmp))==self.length
+
   def are_linked(self,
                  return_value=False,
                  verbose=True):
@@ -439,4 +443,5 @@ if __name__=="__main__":
     print threes
     print "  cis? %s" % threes.cis_group()
     print "  rama %s" % threes.get_ramalyze_key()
+    print '  conf %s' % threes.is_pure_main_conf()
   print "OK"
