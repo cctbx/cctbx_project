@@ -11,22 +11,32 @@ import mmtbx.idealized_aa_residues.rotamer_manager
 pdb_answer = """\
 CRYST1   14.074   16.834   17.360  90.00  90.00  90.00 P 1
 ATOM      1  N   ARG A  21       8.318  11.834   9.960  1.00 10.00           N
-ATOM      2  CA  ARG A  21       7.146  11.154   9.422  1.00 10.00           C
+ATOM      2  CA  ARG A  21       7.171  11.092   9.451  1.00 10.00           C
 ATOM      3  C   ARG A  21       6.012  11.120  10.440  1.00 10.00           C
-ATOM      4  O   ARG A  21       5.000  10.449  10.235  1.00 10.00           O
-ATOM      5  CB  ARG A  21       7.505   9.732   8.987  1.00 10.00           C
-ATOM      6  CG  ARG A  21       7.923   8.820  10.129  0.30 20.00           C
-ATOM      7  CD  ARG A  21       8.312   7.441   9.621  0.30 20.00           C
-ATOM      8  NE  ARG A  21       8.694   6.545  10.708  0.30 20.00           N
-ATOM      9  CZ  ARG A  21       7.839   5.785  11.385  0.30 20.00           C
-ATOM     10  NH1 ARG A  21       6.546   5.811  11.088  0.30 20.00           N
-ATOM     11  NH2 ARG A  21       8.275   5.000  12.360  0.30 20.00           N
-TER
-ATOM      9  O   HOH B  21       8.776  10.791   4.311  1.00  5.00           O
-ATOM     10  O   HOH B  22       7.708  11.548   4.090  1.00  5.00           O
-ATOM     11  O   HOH B  23       9.698  10.663   3.367  1.00  5.00           O
-TER
+ATOM      4  O   ARG A  21       5.017  10.416  10.266  1.00 10.00           O
+ATOM      5  CB  ARG A  21       7.564   9.645   9.143  1.00 10.00           C
+ATOM      6  CG  ARG A  21       8.560   9.501   8.003  1.00 10.00           C
+ATOM      7  CD  ARG A  21       8.125  10.300   6.785  1.00 10.00           C
+ATOM      8  NE  ARG A  21       8.926   9.982   5.607  1.00 10.00           N
+ATOM      9  CZ  ARG A  21       8.893  10.674   4.473  1.00 10.00           C
+ATOM     10  NH1 ARG A  21       8.093  11.727   4.359  1.00 10.00           N
+ATOM     11  NH2 ARG A  21       9.655  10.313   3.451  1.00 10.00           N
 END
+"""
+
+pdb_for_map = """
+ATOM      1  O   HOH S   0       8.318  11.834   9.960  1.00 10.00           O
+ATOM      2  O   HOH S   1       7.171  11.092   9.451  1.00 10.00           O
+ATOM      3  O   HOH S   2       6.012  11.120  10.440  1.00 10.00           O
+ATOM      4  O   HOH S   3       5.017  10.416  10.266  1.00 10.00           O
+ATOM      5  O   HOH S   4       7.564   9.645   9.143  1.00 10.00           O
+ATOM      6  O   HOH S   5       8.560   9.501   8.003  1.00 10.00           O
+ATOM      7  O   HOH S   6       8.125  10.300   6.785  1.00 10.00           O
+ATOM      8  O   HOH S   7       8.926   9.982   5.607  1.00 10.00           O
+ATOM      9  O   HOH S   8       8.893  10.674   4.473  1.00 10.00           O
+ATOM     10  O   HOH S   9       8.093  11.727   4.359  1.00 10.00           O
+ATOM     11  O   HOH S  10       9.655  10.313   3.451  1.00 10.00           O
+TER
 """
 
 pdb_poor = """\
@@ -43,21 +53,28 @@ ATOM      9  CZ  ARG A  21      10.871   6.118   7.790  1.00 10.00           C
 ATOM     10  NH1 ARG A  21      10.505   5.162   8.634  1.00 10.00           N
 ATOM     11  NH2 ARG A  21      11.844   5.891   6.920  1.00 10.00           N
 TER
-ATOM      9  O   HOH B  21       8.776  10.791   4.311  1.00  5.00           O
-ATOM     10  O   HOH B  22       7.708  11.548   4.090  1.00  5.00           O
-ATOM     11  O   HOH B  23       9.698  10.663   3.367  1.00  5.00           O
+ATOM      1  O   HOH S   0       8.318  11.834   9.960  1.00 10.00           O
+ATOM      2  O   HOH S   1       7.171  11.092   9.451  1.00 10.00           O
+ATOM      3  O   HOH S   2       6.012  11.120  10.440  1.00 10.00           O
+ATOM      4  O   HOH S   3       5.017  10.416  10.266  1.00 10.00           O
+ATOM      5  O   HOH S   4       7.564   9.645   9.143  1.00 10.00           O
+ATOM      6  O   HOH S   5       8.560   9.501   8.003  1.00 10.00           O
+ATOM      7  O   HOH S   6       8.125  10.300   6.785  1.00 10.00           O
+ATOM      8  O   HOH S   7       8.926   9.982   5.607  1.00 10.00           O
+ATOM      9  O   HOH S   8       8.893  10.674   4.473  1.00 10.00           O
+ATOM     10  O   HOH S   9       8.093  11.727   4.359  1.00 10.00           O
+ATOM     11  O   HOH S  10       9.655  10.313   3.451  1.00 10.00           O
 TER
 END
 """
 
 def exercise(rotamer_manager, sin_cos_table, d_min = 1.0,
              resolution_factor = 0.1):
-  # Fit one residue having weak side chain density. There is a blob nearby that
-  # overlaps with a plausible rotamer.
+  # Make sure it kicks off existing water. Simple case: no alternatives.
   #
   # answer PDB
-  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_answer)
-  pdb_inp.write_pdb_file(file_name = "answer.pdb")
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_for_map)
+  pdb_inp.write_pdb_file(file_name = "for_map.pdb")
   xrs_answer = pdb_inp.xray_structure_simple()
   # answer map
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_answer)
@@ -92,10 +109,17 @@ def exercise(rotamer_manager, sin_cos_table, d_min = 1.0,
     sin_cos_table     = sin_cos_table,
     mon_lib_srv       = mon_lib_srv)
   result.pdb_hierarchy.write_pdb_file(file_name = "refined.pdb")
+  ###
+  sel = result.pdb_hierarchy.atom_selection_cache().selection("not water")
+  result_hierarchy = result.pdb_hierarchy.select(sel)
+
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_answer)
+  pdb_inp.write_pdb_file(file_name = "answer.pdb")
+  xrs_answer = pdb_inp.xray_structure_simple()
   dist = flex.max(flex.sqrt((xrs_answer.sites_cart() -
-    result.pdb_hierarchy.atoms().extract_xyz()).dot()))
-  #assert dist < 0.47, dist
-  print "Test disabled since current protocol cannot do what test asks for."
+    result_hierarchy.atoms().extract_xyz()).dot()))
+  print dist
+  assert dist < 0.4, dist
 
 if(__name__ == "__main__"):
   t0 = time.time()

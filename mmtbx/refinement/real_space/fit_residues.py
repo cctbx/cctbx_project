@@ -57,7 +57,7 @@ class run(object):
       crystal_symmetry = self.crystal_symmetry)
     self.special_position_indices = self.get_special_position_indices()
     self.selection_water_as_set = set(self.pdb_hierarchy.\
-      atom_selection_cache().selection(string = "water"))
+      atom_selection_cache().selection(string = "water").iselection())
     if(self.massage_map):
       self.target_map = self.prepare_target_map()
     else:
@@ -103,7 +103,7 @@ class run(object):
       n_real     = self.target_map.all(),
       mask_value_inside_molecule = -10,
       mask_value_outside_molecule = 0,
-      radii = flex.double(sites_frac_p1.size(), 2.5))
+      radii = flex.double(sites_frac_p1.size(), 2.))
 
   def on_special_position(self, residue):
     if(self.special_position_indices.size()==0): return False

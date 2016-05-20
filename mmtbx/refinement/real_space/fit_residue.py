@@ -311,8 +311,6 @@ class tune_up(object):
                torsion_search_stop  = 20,
                torsion_search_step  = 2):
     adopt_init_args(self, locals())
-    self.clusters = None
-    self.axes_and_atoms_aa_specific = None
     self.clusters = mmtbx.refinement.real_space.aa_residue_axes_and_clusters(
       residue         = self.residue,
       mon_lib_srv     = self.mon_lib_srv,

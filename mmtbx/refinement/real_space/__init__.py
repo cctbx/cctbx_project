@@ -691,10 +691,7 @@ class score3(object):
     adopt_init_args(self, locals())
     self.target = None
     self.sites_cart = self.residue.atoms().extract_xyz()
-    self.target_start = maptbx.real_space_target_simple(
-        unit_cell   = self.unit_cell,
-        density_map = self.target_map,
-        sites_cart  = self.sites_cart)
+    self.status = self.rotamer_eval.evaluate_residue(residue = self.residue)
 
   def compute_target(self, sites_cart, selection=None):
     if(selection is not None):
@@ -719,6 +716,16 @@ class score3(object):
       if(fl):
         self.target = target
         self.sites_cart = sites_cart
+    elif(abs(abs(self.target)-abs(target))*2/(abs(self.target)+abs(target))*100<5.):
+      fl = self.rotamer_eval is None or \
+        self.rotamer_eval.evaluate_residue(residue = self.residue) == "OUTLIER"
+      if(fl):
+        self.residue.atoms().set_xyz(sites_cart)
+        fl = self.rotamer_eval is None or \
+          self.rotamer_eval.evaluate_residue(residue = self.residue) != "OUTLIER"
+        if(fl):
+          self.target = target
+          self.sites_cart = sites_cart
 
   def reset(self, sites_cart, selection=None):
     self.target = self.compute_target(sites_cart = sites_cart,
