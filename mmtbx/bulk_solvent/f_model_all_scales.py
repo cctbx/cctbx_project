@@ -27,20 +27,22 @@ class run(mmtbx.f_model.manager):
                remove_outliers,
                fast,
                params,
+               refine_hd_scattering,
                log):
     ### Must be first thing here
     self.__dict__.update(fmodel.__dict__)
     # From this point on: self = fmodel
     ###
     russ = self.compute(apply_back_trace = apply_back_trace, remove_outliers =
-      remove_outliers, fast = fast, params = params, log = log)
+      remove_outliers, fast = fast, params = params,
+      refine_hd_scattering = refine_hd_scattering, log = log)
     ### Must be next to last...
     fmodel.__dict__.update(self.__dict__)
     ### ...and this one is last
     self.russ = russ
 
   def compute(self, apply_back_trace, remove_outliers, fast,
-              params, log):
+              params, refine_hd_scattering, log):
     assert [self.arrays.core_twin, self.twin_law].count(None) in [0,2]
     self.show(prefix = "start", log = log)
     self.reset_all_scales()
@@ -53,13 +55,15 @@ class run(mmtbx.f_model.manager):
         if(log is not None): print >> log, "cycle %d:"%cycle
         self.update_twin_fraction()
         self.show(prefix = "update twin fraction", log = log)
-        result = self.update_solvent_and_scale_twin(log = log)
+        result = self.update_solvent_and_scale_twin(log = log,
+          refine_hd_scattering = refine_hd_scattering)
     else:
       result = self.update_solvent_and_scale_2(
-        fast             = fast,
-        params           = params,
-        apply_back_trace = apply_back_trace,
-        log              = log)
+        fast                 = fast,
+        params               = params,
+        apply_back_trace     = apply_back_trace,
+        refine_hd_scattering = refine_hd_scattering,
+        log                  = log)
       self.apply_scale_k1_to_f_obs()
     #XXX if(remove_outliers and not self.twinned()):
     #XXX   self.remove_outliers(use_model = True, log = None) # XXX
@@ -105,7 +109,8 @@ class run(mmtbx.f_model.manager):
       refine_hd_scattering = False
     return refine_hd_scattering
 
-  def update_solvent_and_scale_2(self, fast, params, apply_back_trace, log):
+  def update_solvent_and_scale_2(self, fast, params, apply_back_trace,
+                                 refine_hd_scattering, log):
     if(params is None): params = bss.master_params.extract()
     if(self.xray_structure is not None):
       # Figure out Fcalc and Fmask based on presence of H
@@ -163,7 +168,8 @@ class run(mmtbx.f_model.manager):
     assert approx_equal(self.r_all(), r_all_from_scaler)
     # Add contribution from H (if present and riding). This goes to f_part2.
     kh, bh = 0, 0
-    if(self.need_to_refine_hd_scattering_contribution()):
+    if(refine_hd_scattering and
+       self.need_to_refine_hd_scattering_contribution()):
       # Obsolete previous contribution f_part2
       f_part2 = fmodel_kbu.f_calc.array(data=fmodel_kbu.f_calc.data()*0)
       self.update_core(f_part2 = f_part2)
@@ -259,7 +265,7 @@ class run(mmtbx.f_model.manager):
       b_h    = bh,
       b_adj  = b_adj)
 
-  def update_solvent_and_scale_twin(self, log):
+  def update_solvent_and_scale_twin(self, refine_hd_scattering, log):
     if(not self.twinned()): return
     assert len(self.f_masks()) == 1
     # Re-set all scales to unit or zero
@@ -319,7 +325,8 @@ class run(mmtbx.f_model.manager):
     # Add contribution from H (if present and riding). This goes to f_part2.
     #
     kh, bh = 0, 0
-    if(self.need_to_refine_hd_scattering_contribution()):
+    if(refine_hd_scattering and
+       self.need_to_refine_hd_scattering_contribution()):
       hd_selection = self.xray_structure.hd_selection()
       xrs_no_h = self.xray_structure.select(~hd_selection)
       xrs_h    = self.xray_structure.select(hd_selection)

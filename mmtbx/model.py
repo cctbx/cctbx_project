@@ -959,8 +959,11 @@ class manager(object):
     scatterers = self.xray_structure.scatterers()
     unit_cell = self.xray_structure.unit_cell()
     rbt_array = flex.double()
-    for proxy in self.restraints_manager.geometry.pair_proxies() \
-                   .bond_proxies.simple:
+    sites_cart = self.xray_structure.sites_cart()
+    if(self.ias_selection is not None):#
+      sites_cart = sites_cart.select(~self.ias_selection)
+    for proxy in self.restraints_manager.geometry.pair_proxies(
+                   sites_cart = sites_cart).bond_proxies.simple:
       i_seqs = proxy.i_seqs
       i,j = proxy.i_seqs
       atom_i = self.pdb_atoms[i]

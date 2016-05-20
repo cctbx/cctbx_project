@@ -457,7 +457,7 @@ class model_missing_reflections(object):
       # This is slower but better
       # Never change this unless checked with CK case
       fm = self.fmodel.deep_copy()
-      r = fm.update_all_scales(fast=False)
+      r = fm.update_all_scales(fast=False, refine_hd_scattering=False)
       fm = mmtbx.f_model.manager(
         f_obs          = self.complete_set,
         xray_structure = xrs,

@@ -1451,7 +1451,7 @@ class manager(manager_mixin):
     o = f_model_all_scales.run(
       fmodel=self, apply_back_trace = apply_back_trace,
       remove_outliers = remove_outliers, fast = fast,
-      params = params, log = log)
+      params = params, log = log, refine_hd_scattering=refine_hd_scattering)
     if(optimize_mask): self.optimize_mask()
     return o.russ
 
