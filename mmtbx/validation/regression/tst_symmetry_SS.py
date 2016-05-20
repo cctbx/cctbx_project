@@ -53,12 +53,12 @@ class TestMPGeo(unittest.TestCase) :
   def setUp(self):
     self.file_to_delete = ['try.geo']
     # import files used in tests
-    self.file_name = 'test_pdb_file.pdb'
+    self.file_name = 'symmetry_SS.pdb'
     open(self.file_name,'w').write(test_pdb_str)
     self.file_to_delete.append(self.file_name)
 
   def test_mpgeo(self) :
-    cmd = "mmtbx.mp_geo pdb=test_pdb_file.pdb "
+    cmd = "mmtbx.mp_geo pdb=symmetry_SS.pdb "
     cmd+= "out_file=try.geo kinemage=True"
     er = easy_run.call(command=cmd)
     #er.show_stderr()
