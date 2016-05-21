@@ -606,6 +606,12 @@ class manager(object):
       return self.dihedral_proxies.proxy_select(origin_id=1)
     return None
 
+  def get_n_c_beta_torsion_proxies(self):
+    tp = self.get_c_beta_torsion_proxies()
+    if tp is not None:
+      return tp.size()
+    return 0
+
   def remove_c_beta_torsion_restraints_in_place(self, selection=None):
     if selection is None:
       self.dihedral_proxies = self.dihedral_proxies.proxy_remove(origin_id=1)
