@@ -33,28 +33,13 @@ def spotfinder_factory(absrundir,frames,phil_params):
   from spotfinder.applications.practical_heuristics import heuristics_base
   Spotfinder = heuristics_base(pd,phil_params)
 
-  from libtbx import easy_mp
-
-  def run_spotfinder(args):
-    assert len(args) == 2
-    framenumber, frames = args
+  for framenumber in local_frames:
     try:
       assert Spotfinder.images.has_key(framenumber)
     except Exception:
       Spotfinder.register_frames(framenumber,frames)
       if phil_params.spotfinder_verbose: Spotfinder.show()
-    return Spotfinder
 
-  iterable = [(framenumber, frames) for framenumber in local_frames]
-  results = easy_mp.parallel_map(
-    func=run_spotfinder,
-    iterable=iterable,
-    processes=phil_params.distl.nproc,
-    method="multiprocessing",
-    preserve_order=True
-  )
-  for result in results:
-    Spotfinder.images.update(result.images)
   return Spotfinder
 
 def dxtbx_spotfinder_factory(phil_params):
