@@ -678,7 +678,7 @@ class manager(object):
 
   def get_n_ramachandran_proxies(self):
     if self.ramachandran_manager is not None:
-      return self.ramachandran_manager.get_n_proixes()
+      return self.ramachandran_manager.get_n_proxies()
     return 0
 
   #=================================================================
