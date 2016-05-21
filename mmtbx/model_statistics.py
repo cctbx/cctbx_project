@@ -13,6 +13,7 @@ from mmtbx.validation.rotalyze import rotalyze
 from mmtbx.validation.cbetadev import cbetadev
 from mmtbx.validation.clashscore import clashscore
 from mmtbx.validation.utils import molprobity_score
+from mmtbx.validation import omegalyze
 
 class geometry(object):
   def __init__(
@@ -24,6 +25,7 @@ class geometry(object):
         cdl_restraints=False,
         ignore_hydrogens=False,  #only used by amber
         ):
+    self.pdb_hierarchy = pdb_hierarchy
     self.cdl_restraints=cdl_restraints
     sites_cart = pdb_hierarchy.atoms().extract_xyz()
     energies_sites = \
@@ -38,6 +40,7 @@ class geometry(object):
     self.rotamer_outliers      = None
     self.c_beta_dev            = None
     self.mpscore               = None
+    self.omglz = None
     if(molprobity_scores):
       self.ramalyze_obj = ramalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
       self.ramachandran_outliers = self.ramalyze_obj.percent_outliers
@@ -55,6 +58,8 @@ class geometry(object):
         clashscore = self.clashscore,
         rota_out   = self.rotamer_outliers,
         rama_fav   = self.ramachandran_favored)
+      self.omglz = omegalyze.omegalyze(
+        pdb_hierarchy=self.pdb_hierarchy, quiet=True)
     #
     if(hasattr(energies_sites, "geometry")):
       esg = energies_sites.geometry
@@ -209,7 +214,12 @@ class geometry(object):
 %s   ALLOWED  : %-5.2f %s
 %s   FAVORED  : %-5.2f %s
 %s ROTAMER OUTLIERS : %s %s
-%s CBETA DEVIATIONS : %-d"""%(
+%s CBETA DEVIATIONS : %-d
+%s PEPTIDE PLANE:
+%s   CIS-PROLINE     : %s
+%s   CIS-GENERAL     : %s
+%s   TWISTED PROLINE : %s
+%s   TWISTED GENERAL : %s"""%(
         prefix,
         prefix, format_value("%-6.2f", self.clashscore, replace_none_with="NONE").strip(),
         prefix,
@@ -218,7 +228,11 @@ class geometry(object):
         prefix, self.ramachandran_favored, "%",
         prefix, str("%6.2f"%(self.rotamer_outliers)).strip(),"%",
         prefix, self.c_beta_dev,
-        )
+        prefix,
+        prefix, str(self.omglz.n_cis_proline()),
+        prefix, str(self.omglz.n_cis_general()),
+        prefix, str(self.omglz.n_twisted_proline()),
+        prefix, str(self.omglz.n_twisted_general()))
     if not prefix:
       result = self._capitalize(result)
     return result
