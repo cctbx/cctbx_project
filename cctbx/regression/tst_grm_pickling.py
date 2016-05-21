@@ -217,6 +217,44 @@ def test_ramachandran(mon_lib_srv, ener_lib, prefix="tst_grm_pickling_rama"):
   assert geo.get_n_ramachandran_proxies() == 1
   make_geo_pickle_unpickle(geo, processed_pdb_file.xray_structure(), prefix)
 
+def test_cbeta(mon_lib_srv, ener_lib, prefix="tst_grm_pickling_cbeta"):
+  open("%s.pdb" % prefix, "w").\
+    write(raw_records3)
+  from mmtbx import monomer_library
+  params = monomer_library.pdb_interpretation.master_params.extract()
+  params.c_beta_restraints=True
+  processed_pdb_file = pdb_interpretation.run(
+    args=["%s.pdb" % prefix],
+    params=params,
+    strict_conflict_handling=False,
+    log=null_out())
+  geo = processed_pdb_file.geometry_restraints_manager()
+  assert geo.get_n_c_beta_torsion_proxies() == 6
+  make_geo_pickle_unpickle(geo, processed_pdb_file.xray_structure(), prefix)
+
+def test_reference_coordinate(mon_lib_srv, ener_lib, prefix="tst_grm_pickling_ref_coor"):
+  """ Rob, don't look in this yet..."""
+  open("%s.pdb" % prefix, "w").\
+    write(raw_records3)
+  from mmtbx import monomer_library
+  params = monomer_library.pdb_interpretation.master_params.extract()
+  params.reference_coordinate_restraints.enabled=False
+  processed_pdb_file = pdb_interpretation.run(
+    args=["%s.pdb" % prefix],
+    params=params,
+    strict_conflict_handling=False,
+    log=null_out())
+  geo = processed_pdb_file.geometry_restraints_manager()
+  from mmtbx.geometry_restraints import reference
+  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  sites_cart = pdb_hierarchy.atoms().extract_xyz()
+  rcp = reference.add_coordinate_restraints(
+      sites_cart=sites_cart)
+  geo.adopt_reference_coordinate_restraints_in_place(rcp)
+  print geo.get_n_reference_coordinate_proxies()
+  make_geo_pickle_unpickle(geo, processed_pdb_file.xray_structure(), prefix)
+
+
 def exercise_all(args):
   mon_lib_srv = None
   ener_lib = None
@@ -232,7 +270,11 @@ def exercise_all(args):
     print "Skipping exercise(): chem_data directory not available"
     return
   test_nucleic_acid(mon_lib_srv, ener_lib)
+  # Failing
   # test_ramachandran(mon_lib_srv, ener_lib)
+  # test_cbeta(mon_lib_srv, ener_lib)
+  # In development
+  # test_reference_coordinate(mon_lib_srv, ener_lib)
 
 if (__name__ == "__main__"):
   exercise_all(sys.argv[1:])
