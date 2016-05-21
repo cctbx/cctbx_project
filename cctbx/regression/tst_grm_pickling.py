@@ -115,6 +115,26 @@ ATOM    262  C5   DC B  12       9.012  -0.198  20.248  1.00  6.83           C
 ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
 """
 
+raw_records3 = """\
+CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P 1           1
+ATOM      1  N   ALA A   2      -7.656   2.923   3.155  1.00 15.02           N
+ATOM      2  CA  ALA A   2      -6.522   2.038   2.831  1.00 14.10           C
+ATOM      3  C   ALA A   2      -5.241   2.537   3.427  1.00 13.13           C
+ATOM      4  O   ALA A   2      -4.978   3.742   3.426  1.00 11.91           O
+ATOM      5  CB  ALA A   2      -6.346   1.881   1.341  1.00 15.38           C
+ATOM      7  N   ALA A   3      -4.438   1.590   3.905  1.00 12.26           N
+ATOM      8  CA  ALA A   3      -3.193   1.904   4.589  1.00 11.74           C
+ATOM      9  C   ALA A   3      -1.955   1.332   3.895  1.00 11.10           C
+ATOM     10  O   ALA A   3      -1.872   0.119   3.648  1.00 10.42           O
+ATOM     11  CB  ALA A   3      -3.259   1.378   6.042  1.00 12.15           C
+ATOM     13  N   ALA A   4      -1.005   2.228   3.598  1.00 10.29           N
+ATOM     14  CA  ALA A   4       0.384   1.888   3.199  1.00 10.53           C
+ATOM     15  C   ALA A   4       1.435   2.606   4.088  1.00 10.24           C
+ATOM     16  O   ALA A   4       1.547   3.843   4.115  1.00  8.86           O
+ATOM     17  CB  ALA A   4       0.656   2.148   1.711  1.00  9.80           C
+END
+"""
+
 def make_initial_grm(mon_lib_srv, ener_lib, records):
   processed_pdb_file = monomer_library.pdb_interpretation.process(
     mon_lib_srv    = mon_lib_srv,
@@ -182,6 +202,21 @@ def test_nucleic_acid(mon_lib_srv, ener_lib, prefix="tst_grm_pickling_na"):
   assert geo.get_n_parallelity_bp_proxies() == 2
   make_geo_pickle_unpickle(geo, processed_pdb_file.xray_structure(), prefix)
 
+def test_ramachandran(mon_lib_srv, ener_lib, prefix="tst_grm_pickling_rama"):
+  open("%s.pdb" % prefix, "w").\
+    write(raw_records3)
+  from mmtbx import monomer_library
+  params = monomer_library.pdb_interpretation.master_params.extract()
+  params.peptide_link.ramachandran_restraints=True
+  processed_pdb_file = pdb_interpretation.run(
+    args=["%s.pdb" % prefix],
+    params=params,
+    strict_conflict_handling=False,
+    log=null_out())
+  geo = processed_pdb_file.geometry_restraints_manager()
+  assert geo.get_n_ramachandran_proxies() == 1
+  make_geo_pickle_unpickle(geo, processed_pdb_file.xray_structure(), prefix)
+
 def exercise_all(args):
   mon_lib_srv = None
   ener_lib = None
@@ -197,6 +232,7 @@ def exercise_all(args):
     print "Skipping exercise(): chem_data directory not available"
     return
   test_nucleic_acid(mon_lib_srv, ener_lib)
+  # test_ramachandran(mon_lib_srv, ener_lib)
 
 if (__name__ == "__main__"):
   exercise_all(sys.argv[1:])
