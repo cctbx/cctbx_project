@@ -2,7 +2,7 @@ from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.development.model_map_statistics
 
 from scitbx.array_family import flex
-import sys, math
+import sys, math, time
 import iotbx.pdb
 from libtbx.utils import Sorry
 import mmtbx.utils
@@ -20,7 +20,9 @@ from libtbx.str_utils import format_value
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.validation.cbetadev import cbetadev
 from libtbx.utils import null_out
-
+from mmtbx import model_statistics
+from libtbx.str_utils import make_sub_header
+from cctbx import adptbx
 
 legend = """phenix.development.model_map_statistics:
   Given PDB file and a map compute various statistics.
@@ -50,6 +52,19 @@ def broadcast(m, log):
   print >> log, m
   print >> log, "*"*len(m)
 
+def show_histogram(data=None, n_slots=None, histogram=None, log=None):
+  from cctbx.array_family import flex
+  if(histogram is None):
+    hm = flex.histogram(data = data, n_slots = n_slots)
+  else:
+    hm = histogram
+  lc_1 = hm.data_min()
+  s_1 = enumerate(hm.slots())
+  for (i_1,n_1) in s_1:
+    hc_1 = hm.data_min() + hm.slot_width() * (i_1+1)
+    print >> log, "%10.4f - %-10.4f : %d" % (lc_1, hc_1, n_1)
+    lc_1 = hc_1
+
 def run(args, log=sys.stdout):
   print >> log, "-"*79
   print >> log, legend
@@ -57,6 +72,12 @@ def run(args, log=sys.stdout):
   inputs = mmtbx.utils.process_command_line_args(args = args,
     master_params = master_params())
   params = inputs.params.extract()
+  # estimate resolution
+  d_min = params.resolution
+  broadcast(m="Map resolution:", log=log)
+  if(d_min is None):
+    raise Sorry("Resolution is required.")
+  print >> log, "  d_min: %6.4f"%d_min
   # model
   broadcast(m="Input PDB:", log=log)
   file_names = inputs.pdb_file_names
@@ -64,12 +85,15 @@ def run(args, log=sys.stdout):
   if(inputs.crystal_symmetry is None):
     raise Sorry("No crystal symmetry defined.")
   processed_pdb_file = monomer_library.pdb_interpretation.process(
-    mon_lib_srv    = monomer_library.server.server(),
-    ener_lib       = monomer_library.server.ener_lib(),
-    file_name      = file_names[0],
+    mon_lib_srv      = monomer_library.server.server(),
+    ener_lib         = monomer_library.server.ener_lib(),
+    file_name        = file_names[0],
     crystal_symmetry = inputs.crystal_symmetry,
-    force_symmetry = True)
+    force_symmetry   = True,
+    log              = None)
   ph = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  if(len(ph.models())>1):
+    raise Sorry("Only one model allowed.")
   xrs = processed_pdb_file.xray_structure()
   xrs.scattering_type_registry(table = params.scattering_table)
   xrs.show_summary(f=log, prefix="  ")
@@ -85,6 +109,10 @@ def run(args, log=sys.stdout):
   if(inputs.ccp4_map is None): raise Sorry("Map file has to given.")
   inputs.ccp4_map.show_summary(prefix="  ")
   map_data = inputs.ccp4_map.map_data()
+  print >> log, "  Actual map (min,max,mean):", \
+    map_data.as_1d().min_max_mean().as_tuple()
+  make_sub_header("Histogram of map values", out=log)
+  show_histogram(data=map_data.as_1d(), n_slots=10, log=log)
   # shift origin if needed
   shift_needed = not \
     (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
@@ -100,13 +128,29 @@ def run(args, log=sys.stdout):
     sites_cart_shifted = sites_cart-\
       flex.vec3_double(sites_cart.size(), [sx,sy,sz])
     xrs.set_sites_cart(sites_cart_shifted)
-  # estimate resolution
-  d_min = params.resolution
-  broadcast(m="Map resolution:", log=log)
-  if(d_min is None):
-    d_min = maptbx.resolution_from_map_and_model(
-      map_data=map_data, xray_structure=xrs)
-  print >> log, "  d_min: %6.4f"%d_min
+  ####
+  # Compute and show all stats
+  ####
+  broadcast(m="Model statistics:", log=log)
+  make_sub_header("Overall", out=log)
+  ms = model_statistics.geometry(
+    pdb_hierarchy      = ph,
+    restraints_manager = geometry,
+    molprobity_scores  = True)
+  ms.show()
+  make_sub_header("Histogram of devations from ideal bonds", out=log)
+  show_histogram(histogram=ms.bond_deltas_histogram, log=log)
+  #
+  make_sub_header("Histogram of devations from ideal angles", out=log)
+  show_histogram(histogram=ms.angle_deltas_histogram, log=log)
+  #
+  make_sub_header("Histogram of non-bonded distances", out=log)
+  show_histogram(histogram=ms.nonbonded_distances_histogram, log=log)
+  #
+  make_sub_header("Histogram of ADPs", out=log)
+  show_histogram(data=xrs.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.),
+    n_slots=10, log=log)
+  #
   # Compute FSC(map, model)
   broadcast(m="Model-map FSC:", log=log)
   mmtbx.maps.correlation.fsc_model_map(
@@ -130,8 +174,7 @@ def run(args, log=sys.stdout):
     print >> log, "  chain %s: %6.4f"%(chain.id, cc_calculator.cc(
       selection=chain.atoms().extract_i_seq()))
   # per residue detailed counts
-  #
-  print >> log, "Per residue:"
+  print >> log, "Per residue (histogram):"
   crystal_gridding = maptbx.crystal_gridding(
     unit_cell             = xrs.unit_cell(),
     space_group_info      = xrs.space_group_info(),
@@ -142,32 +185,49 @@ def run(args, log=sys.stdout):
     fourier_coefficients = f_calc)
   fft_map.apply_sigma_scaling()
   map_model = fft_map.real_map_unpadded()
+  sites_cart = xrs.sites_cart()
+  cc_per_residue = flex.double()
+  for rg in ph.residue_groups():
+    cc = mmtbx.maps.correlation.from_map_map_atoms(
+      map_1      = map_data,
+      map_2      = map_model,
+      sites_cart = sites_cart.select(rg.atoms().extract_i_seq()),
+      unit_cell  = xrs.unit_cell(),
+      radius     = 2.5)
+    cc_per_residue.append(cc)
+  show_histogram(data=cc_per_residue, n_slots=10, log=log)
   #
-  sm = structure_monitor(
-    pdb_hierarchy  = ph,
-    xray_structure = xrs,
-    map_1          = map_data,
-    map_2          = map_model,
-    geometry       = geometry,
-    atom_radius    = 2.0)
-#  sm.show()
 
-def min_nonbonded_distance(pair_proxy_list_sorted, xray_structure, selection):
-  selw = xray_structure.selection_within(radius = 5.0, selection =
+"""
+THIS IS NOT USED ANYWHERE BUT MIGHT BE USEFUL IN FUTURE, REMOVE LATER
+
+def min_nonbonded_distance(sites_cart, geometry, xray_structure, selection):
+  selw = xray_structure.selection_within(radius = 3.0, selection =
     flex.bool(xray_structure.scatterers().size(), selection)).iselection()
-  sites_cart = xray_structure.sites_cart()
-  dist_min=1.9+9
+  sites_cart_w = sites_cart.select(selw)
+  #
+  g = geometry.select(iselection=selw)
+  pair_proxy_list_sorted=[]
+  bond_proxies_simple = g.pair_proxies(
+    sites_cart = sites_cart_w).bond_proxies.simple
+  for proxy in bond_proxies_simple:
+    tmp = list(proxy.i_seqs)
+    tmp.sort()
+    pair_proxy_list_sorted.append(tmp)
+  pair_proxy_list_sorted.sort()
+  #
+  dist_min=999
   i_min,j_min = None,None
-  for i in selw:
-    for j in selw:
+  for i, si in enumerate(sites_cart_w):
+    for j, sj in enumerate(sites_cart_w):
       if(i<j):
         p = [i,j]
         p.sort()
         if(not p in pair_proxy_list_sorted):
           dist_ij = math.sqrt(
-            (sites_cart[i][0]-sites_cart[j][0])**2+
-            (sites_cart[i][1]-sites_cart[j][1])**2+
-            (sites_cart[i][2]-sites_cart[j][2])**2)
+            (si[0]-sj[0])**2+
+            (si[1]-sj[1])**2+
+            (si[2]-sj[2])**2)
           if(dist_ij<dist_min):
             dist_min = dist_ij
             i_min,j_min = i, j
@@ -189,14 +249,14 @@ class residue_monitor(object):
     adopt_init_args(self, locals())
 
   def show(self):
-    print "%12s %6s %6s %6s %6s %6s %6s %7s %7s %7s"%(
+    print "%12s %6s %6s %6s %6s %6s %7s %9s %7s %7s"%(
       self.id_str,
       format_value("%6.3f",self.map_cc),
       format_value("%5.2f",self.map_min),
       format_value("%5.2f",self.map_mean),
       format_value("%6.3f",self.bond_rmsd),
       format_value("%6.2f",self.angle_rmsd),
-      format_value("%5.2f",self.min_nonbonded),
+      format_value("%6.3f",self.min_nonbonded),
       self.rotamer_status,
       self.ramachandran_status,
       self.cbeta_status)
@@ -214,15 +274,6 @@ class structure_monitor(object):
     self.xray_structure = xray_structure.deep_copy_scatterers()
     self.unit_cell = self.xray_structure.unit_cell()
     self.rotamer_manager = RotamerEval()
-    #
-    self.pair_proxy_list_sorted=[]
-    bond_proxies_simple = geometry.pair_proxies(
-      sites_cart = self.xray_structure.sites_cart()).bond_proxies.simple
-    for proxy in bond_proxies_simple:
-      tmp = list(proxy.i_seqs)
-      tmp.sort()
-      self.pair_proxy_list_sorted.append(tmp)
-    self.pair_proxy_list_sorted.sort()
     #
     sc1 = self.xray_structure.sites_cart()
     sc2 = self.pdb_hierarchy.atoms().extract_xyz()
@@ -254,8 +305,8 @@ class structure_monitor(object):
 
   def initialize(self):
     # residue monitors
-    print "    ID-------|MAP-----------------|RMSD----------|NONB-|ROTAMER|RAMA---|CBETA--|"
-    print "             |CC     MIN    MEAN  |BOND    ANGLE |     |       |       |        "
+    print "    ID-------|MAP-----------------|RMSD----------|NONB-|ROTAMER--|RAMA---|CBETA--|"
+    print "             |CC     MIN    MEAN  |BOND    ANGLE |     |         |       |        "
     self.residue_monitors = []
     sites_cart = self.xray_structure.sites_cart()
     for model in self.pdb_hierarchy.models():
@@ -281,15 +332,16 @@ class structure_monitor(object):
               if(selection[0] in self.cbeta_outlier_selection):
                 cbeta_status="OUTLIER"
               mnd = min_nonbonded_distance(
-                pair_proxy_list_sorted = self.pair_proxy_list_sorted,
-                xray_structure         = self.xray_structure,
-                selection              = selection)
+                sites_cart     = sites_cart,
+                geometry       = self.geometry,
+                xray_structure = self.xray_structure,
+                selection      = selection)
               mi,me = self.map_values_min_mean(selection = selection)
               rm = residue_monitor(
                 residue             = residue,
                 id_str              = id_str,
-                bond_rmsd           = es.angle_deviations()[2],
-                angle_rmsd          = es.bond_deviations()[2],
+                bond_rmsd           = es.bond_deviations()[2],
+                angle_rmsd          = es.angle_deviations()[2],
                 map_cc              = cc,
                 map_min             = mi,
                 map_mean            = me,
@@ -320,7 +372,10 @@ class structure_monitor(object):
       sites_cart = self.sites_cart.select(selection),
       unit_cell  = self.unit_cell,
       radius     = self.atom_radius)
-
+"""
 
 if (__name__ == "__main__"):
+  t0 = time.time()
   run(args=sys.argv[1:])
+  print
+  print "Time:", round(time.time()-t0, 3)
