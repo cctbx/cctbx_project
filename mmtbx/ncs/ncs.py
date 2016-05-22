@@ -582,6 +582,17 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     if hasattr(self,"_translations_orth_inv"):
       del self._translations_orth_inv
 
+  def adjust_magnification(self,magnification=None):
+    if not magnification or magnification==1:
+      return # nothing to do
+
+    self._translations_orth=self.copy_vector_list(self._translations_orth,
+      scale_factor=magnification)
+    self._centers=self.copy_vector_list(self._centers,
+      scale_factor=magnification)
+
+    self.get_inverses()
+    
   def invert_matrices(self):
     self.get_inverses()
     from copy import deepcopy
@@ -1551,6 +1562,12 @@ class ncs:
             abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t):
         return False
     return True
+
+  def adjust_magnification(self,magnification=None):
+    if not self._ncs_groups:
+      return
+    for ncs_group in self._ncs_groups:
+      ncs_group.adjust_magnification(magnification=magnification)
 
   def invert_matrices(self):
     if not self._ncs_groups:

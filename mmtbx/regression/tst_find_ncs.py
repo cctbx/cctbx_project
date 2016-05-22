@@ -1096,6 +1096,52 @@ tran_orth     1.6940  194.9657    3.4146
 
 center_orth  129.4566   27.2758  -183.0880
 """
+
+expected_text2c="""
+Summary of NCS information
+Fri May 20 15:01:59 2016
+/Users/terwill/Desktop/working/Jan_2015/phenix/cryo-pdb/3j9c/build
+
+source_info temp_dir/pseudo_ha.pdb
+
+
+
+
+new_ncs_group
+NCS_CC 0.99
+new_operator
+
+rota_matrix    1.0000    0.0000    0.0000
+rota_matrix    0.0000    1.0000    0.0000
+rota_matrix    0.0000    0.0000    1.0000
+tran_orth    -0.0000   -0.0000   -0.0000
+
+center_orth  -36.3842  -15.1661  -41.3978
+new_operator
+
+rota_matrix   -1.0000   -0.0023   -0.0059
+rota_matrix    0.0024   -0.9998   -0.0209
+rota_matrix   -0.0059   -0.0209    0.9998
+tran_orth    -0.9943   -1.3083    0.6702
+
+center_orth   35.6037   14.8135  -41.5588
+new_operator
+
+rota_matrix    0.0108   -0.9999    0.0007
+rota_matrix    0.9997    0.0108   -0.0241
+rota_matrix    0.0241    0.0009    0.9997
+tran_orth    -0.3589   -1.4287    0.4601
+
+center_orth  -15.1306   35.8364  -41.5384
+new_operator
+
+rota_matrix   -0.0108    0.9999    0.0018
+rota_matrix   -0.9997   -0.0108   -0.0241
+rota_matrix   -0.0241   -0.0021    0.9997
+tran_orth     0.2120   -1.8372    0.4123
+
+center_orth   14.7283  -36.3621  -41.5440
+"""
 def tst_03():
   print "Map NCS operators to place them in (0,1)"
 
@@ -1154,8 +1200,38 @@ def tst_04():
 
   print "OK"
 
+def tst_05():
+  print "Magnify NCS operators"
+
+  f=open('ncs.ncs_spec','w')
+  print >>f,text2
+  f.close()
+
+
+  from mmtbx.ncs.ncs import ncs
+  ncs_object=ncs()
+  ncs_object.read_ncs('ncs.ncs_spec',quiet=True)
+
+  f=StringIO()
+  ncs_object.format_all_for_group_specification(out=f)
+  start_text=f.getvalue()
+  ncs_object.adjust_magnification(magnification=0.5)
+  f=StringIO()
+  ncs_object.format_all_for_group_specification(out=f)
+  found_text=f.getvalue()
+
+  if remove_blank(" ".join(found_text.split("source_info")[1:]) ) != \
+     remove_blank(" ".join(expected_text2c.split("source_info")[1:])):
+    print "Expected: \n%s \nFound: \n%s" %(expected_text_group_specification,found_text)
+    raise AssertionError, "FAILED"
+
+
+  print "OK"
+
 if __name__=="__main__":
   tst_01()
   tst_02()
   tst_03()
   tst_04()
+  tst_05()
+

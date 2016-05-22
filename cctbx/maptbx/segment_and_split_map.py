@@ -64,6 +64,18 @@ master_phil = iotbx.phil.parse("""
 
   output_files {
 
+    magnification_map_file = magnification_map.ccp4
+      .type = path
+      .help = Input map file with magnification applied.  Only written if\
+                magnification is applied.
+      .short_caption = Magnification map file
+
+    magnification_ncs_file = magnification_ncs.ncs_spec
+      .type = path
+      .help = Input NCS with magnification applied.  Only written if\
+                magnification is applied.
+      .short_caption = Magnification NCS file
+
     shifted_map_file = shifted_map.ccp4
       .type = path
       .help = Input map file shifted to new origin. Only written if a shift is\
@@ -158,6 +170,11 @@ master_phil = iotbx.phil.parse("""
        .help = Nominal resolution of the map. This is used later to decide on\
                resolution cutoffs for Fourier inversion of the map
 
+     magnification = None
+       .type = float
+       .short_caption = Magnification
+       .help = Magnification to apply to input map.  Input map grid will be \
+                scaled by magnification factor before anything else is done.
   }
 
   segmentation {
@@ -278,6 +295,11 @@ master_phil = iotbx.phil.parse("""
       .type = int
       .help = Minimum region size to consider (in grid points)
       .short_caption = Minimum region size
+
+    residues_per_region = 50
+      .type = float
+      .help = Target number of residues per region
+      .short_caption = Residues per region
 
     seeds_to_try = 10
       .type = int
@@ -869,6 +891,59 @@ def get_params(args,out=sys.stdout):
   map_data=ccp4_map.map_data()
   crystal_symmetry=crystal.symmetry(ccp4_map.unit_cell().parameters(),
     ccp4_map.space_group_number)
+
+  if params.crystal_info.magnification and \
+       params.crystal_info.magnification!=1.0: 
+    print >>out,"\nAdjusting magnification by %7.3f\n" %(
+       params.crystal_info.magnification)
+
+    if params.input_files.ncs_file:
+      print >>out,"NCS before applying magnification..."
+      ncs_obj,dummy_tracking_data=get_ncs(params,None,out=out)
+      if params.output_files.magnification_ncs_file:
+        file_name=os.path.join(params.output_files.output_directory,
+          params.output_files.magnification_ncs_file)
+        print >>out,"Writing NCS after magnification of %7.3f to %s" %(
+          params.crystal_info.magnification,file_name)
+        ncs_obj.format_all_for_group_specification(
+         file_name=file_name)
+      else:
+        raise Sorry("Need magnification_ncs_file defined if magnification is"+
+          " applied \nto input NCS file")
+
+    # magnify ncs 
+    shrunk_uc = []
+    for i in range(3):
+      shrunk_uc.append(
+       crystal_symmetry.unit_cell().parameters()[i] * 
+          params.crystal_info.magnification )
+    uc_params=crystal_symmetry.unit_cell().parameters()
+    from cctbx import uctbx
+    new_unit_cell=uctbx.unit_cell(
+      parameters=(shrunk_uc[0],shrunk_uc[1],shrunk_uc[2],
+          uc_params[3],uc_params[4],uc_params[5]))
+    print >>out,\
+      "Original unit cell: (%7.4f, %7.4f, %7.4f, %7.4f, %7.4f, %7.4f)" %(
+      crystal_symmetry.unit_cell().parameters())
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=new_unit_cell,
+      space_group=crystal_symmetry.space_group())
+    print >>out,\
+      "New unit cell:      (%7.4f, %7.4f, %7.4f, %7.4f, %7.4f, %7.4f)" %(
+      crystal_symmetry.unit_cell().parameters())
+
+    if params.output_files.magnification_map_file:
+      file_name=os.path.join(params.output_files.output_directory,
+        params.output_files.magnification_map_file)
+      # write out magnified map (our working map) (before shifting it)
+      print >>out,"\nWriting magnification map (input map with "+\
+        "magnification of %7.3f \n" %(params.crystal_info.magnification) +\
+        "applied) to %s \n" %(file_name)
+      write_ccp4_map(crystal_symmetry,file_name,map_data)
+      params.input_files.map_file=params.output_files.magnification_map_file
+    else:
+      raise Sorry("Need a file name to write out magnification_map_file")
+
   tracking_data.set_input_map_info(file_name=params.input_files.map_file,
     crystal_symmetry=crystal_symmetry,
     origin=map_data.origin(),
@@ -988,10 +1063,11 @@ def get_ncs(params,tracking_data=None,out=sys.stdout):
       raise Sorry("Need point-group or helical symmetry.")
   if not ncs_object or ncs_object.max_operators()<1:
     raise Sorry("Need ncs information from an ncs_info file")
-  tracking_data.set_input_ncs_info(file_name=file_name,
+  if tracking_data:
+    tracking_data.set_input_ncs_info(file_name=file_name,
       number_of_operators=ncs_object.max_operators())
 
-  if is_helical_symmetry: # update shifted_ncs_info
+  if tracking_data and is_helical_symmetry: # update shifted_ncs_info
     if tracking_data.shifted_ncs_info: # XXX may not be needed
        shifted=True
     else:
@@ -1018,7 +1094,7 @@ def score_threshold(threshold=None,
      fraction_occupied=None,
      solvent_fraction=None,
      map_data=None,
-     residues_per_region=50.,
+     residues_per_region=50,
      min_volume=None,
      min_ratio=None,
      max_ratio_to_target=None,
@@ -1204,6 +1280,7 @@ def choose_threshold(params,map_data=None,
          sorted_by_volume=sorted_by_volume,
          fraction_occupied=fraction_occupied,
          solvent_fraction=solvent_fraction,
+         residues_per_region=params.segmentation.residues_per_region,
          min_volume=params.segmentation.min_volume,
          min_ratio=params.segmentation.min_ratio,
          max_ratio_to_target=params.segmentation.max_ratio_to_target,
