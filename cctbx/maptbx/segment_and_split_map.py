@@ -893,7 +893,7 @@ def get_params(args,out=sys.stdout):
     ccp4_map.space_group_number)
 
   if params.crystal_info.magnification and \
-       params.crystal_info.magnification!=1.0: 
+       params.crystal_info.magnification!=1.0:
     print >>out,"\nAdjusting magnification by %7.3f\n" %(
        params.crystal_info.magnification)
 
@@ -911,11 +911,11 @@ def get_params(args,out=sys.stdout):
         raise Sorry("Need magnification_ncs_file defined if magnification is"+
           " applied \nto input NCS file")
 
-    # magnify ncs 
+    # magnify ncs
     shrunk_uc = []
     for i in range(3):
       shrunk_uc.append(
-       crystal_symmetry.unit_cell().parameters()[i] * 
+       crystal_symmetry.unit_cell().parameters()[i] *
           params.crystal_info.magnification )
     uc_params=crystal_symmetry.unit_cell().parameters()
     from cctbx import uctbx
