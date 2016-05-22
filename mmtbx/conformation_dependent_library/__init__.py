@@ -58,6 +58,7 @@ def generate_protein_threes(hierarchy,
                             geometry,
                             include_non_linked=False,
                             omega_cdl=False,
+                            backbone_only=True,
                             verbose=False,
                             ):
   backbone_asc = hierarchy.atom_selection_cache()
@@ -66,7 +67,7 @@ def generate_protein_threes(hierarchy,
   get_class = iotbx.pdb.common_residue_names_get_class
   threes = ThreeProteinResidues(geometry, registry=registry)
   loop_hierarchy=hierarchy
-  if 1: loop_hierarchy=backbone_hierarchy
+  if backbone_only: loop_hierarchy=backbone_hierarchy
   for model in loop_hierarchy.models():
     if verbose: print 'model: "%s"' % model.id
     for chain in model.chains():
