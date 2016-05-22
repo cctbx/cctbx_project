@@ -592,7 +592,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       scale_factor=magnification)
 
     self.get_inverses()
-    
+
   def invert_matrices(self):
     self.get_inverses()
     from copy import deepcopy
