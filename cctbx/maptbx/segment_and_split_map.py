@@ -907,6 +907,7 @@ def get_params(args,out=sys.stdout):
           params.crystal_info.magnification,file_name)
         ncs_obj.format_all_for_group_specification(
          file_name=file_name)
+        params.input_files.ncs_file=file_name
       else:
         raise Sorry("Need magnification_ncs_file defined if magnification is"+
           " applied \nto input NCS file")
@@ -940,7 +941,7 @@ def get_params(args,out=sys.stdout):
         "magnification of %7.3f \n" %(params.crystal_info.magnification) +\
         "applied) to %s \n" %(file_name)
       write_ccp4_map(crystal_symmetry,file_name,map_data)
-      params.input_files.map_file=params.output_files.magnification_map_file
+      params.input_files.map_file=file_name
     else:
       raise Sorry("Need a file name to write out magnification_map_file")
 
