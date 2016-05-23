@@ -7,6 +7,9 @@ from libtbx.str_utils import format_value
 from libtbx.utils import Sorry
 import sys
 
+OUTLIER_THRESHOLD = 0.003
+ALLOWED_THRESHOLD = 0.02
+
 class rotamer (residue) :
   """
   Result class for protein sidechain rotamer analysis (phenix.rotalyze).
@@ -191,7 +194,7 @@ class rotalyze (validation) :
     self.out_percent = out_percent * 100.0
 
   def evaluateScore(self, value) :
-    if value >= 0.02:
+    if value >= ALLOWED_THRESHOLD :
       self.n_favored += 1
       return "Favored"
     elif value >= self.outlier_threshold:
@@ -316,7 +319,7 @@ def evaluate_residue(
       sites_cart=None):
   is_outlier = False
   data_version = "8000"
-  outlier_threshold = 0.003
+  outlier_threshold = OUTLIER_THRESHOLD
   for ag in residue_group.atom_groups():
     atom_dict = all_dict.get(ag.altloc)
     try:

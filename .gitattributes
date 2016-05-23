@@ -2467,6 +2467,7 @@ mmtbx/validation/cablam.py -text
 mmtbx/validation/cbetadev.py svneol=native#text/x-python
 mmtbx/validation/chain_comparison.py -text
 mmtbx/validation/clashscore.py svneol=native#text/x-python
+mmtbx/validation/comprehensive_residue.py -text
 mmtbx/validation/convert_lists.py -text
 mmtbx/validation/datasets.py -text
 mmtbx/validation/ensembles.py -text
