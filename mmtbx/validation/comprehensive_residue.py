@@ -1,6 +1,5 @@
 from __future__ import division
 import iotbx.phil
-from scitbx.array_family import flex
 from mmtbx.validation import ramalyze
 from mmtbx.validation import rotalyze
 import boost.python
@@ -154,7 +153,7 @@ class ValidationResidue(object) :
       chis = sidechain_angles.measureChiAngles(
                          self.three[self.index],
                          all_dict.get(self.altloc))
-    except :
+    except AttributeError :
       kwargs['incomplete'] = True
       result = rotamer(**kwargs)
       print >> sys.stderr, '%s is missing some sidechain atoms'%result.id_str()
