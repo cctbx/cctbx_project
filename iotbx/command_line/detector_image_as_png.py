@@ -58,9 +58,13 @@ class convert_image:
   flex_img.adjust(color_scheme=0)
   flex_img.prep_string()
   data_string = flex_img.export_string
-  self.imageout = Image.fromstring("RGB",
-                     (flex_img.ex_size2(), flex_img.ex_size1()),
-                     data_string)
+  try:
+    get_im = Image.fromstring # removed in Pillow 3.0.0
+  except AttributeError:
+    get_im = Image.frombytes
+  self.imageout = get_im("RGB",
+                         (flex_img.ex_size2(), flex_img.ex_size1()),
+                         data_string)
 
  def output(self):
   out = StringIO()
