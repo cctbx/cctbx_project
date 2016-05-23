@@ -161,7 +161,7 @@ class ValidationResidue(object) :
       self.rota_result = rotalyze.rotamer(**kwargs)
       return
     #print all_dict.get(self.altloc).keys()
-    if None in chis : 
+    if None in chis :
       result = rotamer(**kwargs)
       print >> sys.stderr, '%s may be missing some sidechain atoms' %\
                                result.id_str()
