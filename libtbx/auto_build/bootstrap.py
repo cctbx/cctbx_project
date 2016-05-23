@@ -6,16 +6,16 @@ import sys
 import stat
 import subprocess
 import optparse
-#import getpass
+import platform
 import shutil
 import socket as pysocket
 import tarfile
 import tempfile
 import time
+import traceback
 import urllib2
 import urlparse
 import zipfile
-import traceback
 
 windows_remove_list = []
 
@@ -1258,10 +1258,17 @@ class Builder(object):
       ))
 
   def _add_git(self, module, parameters, destination=None):
-    use_git_ssh = self.auth.get('git_ssh',False)
+    use_git_ssh = self.auth.get('git_ssh', False)
+    reference_repository_path = self.auth.get('git_reference', None)
+    if reference_repository_path is None:
+      if platform.system() == 'Linux':
+        reference_repository_path = '/dls/science/groups/scisoft/DIALS/repositories/git-reference'
+    if reference_repository_path is not None:
+      reference_repository_path = os.path.join(reference_repository_path, module)
     class _indirection(object):
       def run(self):
-        Toolbox().git(module, parameters, destination=destination, use_ssh=use_git_ssh, verbose=True)
+        Toolbox().git(module, parameters, destination=destination,
+            use_ssh=use_git_ssh, verbose=True, reference=reference_repository_path)
     self.add_step(_indirection())
 
   def _check_for_Windows_prerequisites(self):
@@ -1932,8 +1939,12 @@ def run(root=None):
     "--git-ssh",
     dest="git_ssh",
     action="store_true",
-    help="Use ssh connections for git. This allows you to commit changes without changing remotes.",
+    help="Use ssh connections for git. This allows you to commit changes without changing remotes and use reference repositories.",
     default=False)
+  parser.add_option(
+    "--git-reference",
+    dest="git_reference",
+    help="Path to a directory containing reference copies of repositories for faster checkouts.")
   parser.add_option("--with-python",
                     dest="with_python",
                     help="Use specified Python interpreter")
