@@ -67,7 +67,7 @@ def get_rotarama_data (residue_type=None, pos_type=None, db="rama",
   if (db == "rama") :
     pkl_file = "%s8000-%s.pickle" % (db, residue_type)
   else :
-    pkl_file = "%s500-%s.pickle" % (db, residue_type.lower())
+    pkl_file = "%s8000-%s.pickle" % (db, residue_type.lower())
   ndt = easy_pickle.load(os.path.join(rama_data_dir, pkl_file))
   if convert_to_numpy_array :
     if (db == "rama") :
