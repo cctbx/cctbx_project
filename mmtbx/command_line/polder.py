@@ -460,6 +460,7 @@ def cmd_run(args, validated=False, out=sys.stdout):
   f_obs_1 = abs(fmodel.f_model())
   fmodel.update_xray_structure(xray_structure=cpm_obj.xray_structure_noligand,
     update_f_calc=True, update_f_mask=True, force_update_f_mask=True)
+  # PVA: do we need it? fmodel.update_all_scales(remove_outliers=False)
   f_obs_2 = abs(fmodel.f_model())
   xrs_selected = cpm_obj.pdb_hierarchy_selected.extract_xray_structure(
     crystal_symmetry = f_obs.crystal_symmetry())
@@ -486,15 +487,34 @@ def cmd_run(args, validated=False, out=sys.stdout):
       crystal_gridding     = cpm_obj.crystal_gridding,
       fourier_coefficients = mc_diff)
     fft_map.apply_sigma_scaling()
+    map_data = fft_map.real_map_unpadded()
     return mmtbx.utils.extract_box_around_model_and_map(
       xray_structure = xrs_selected,
-      map_data       = fft_map.real_map_unpadded(),
-      box_cushion    = max(f_obs.d_min(), 2.0))
+      map_data       = map_data,
+      box_cushion    = 2.1)
   box_1=get_poler_diff_map(f_obs = f_obs_1)
   box_2=get_poler_diff_map(f_obs = f_obs_2)
+  box_3=get_poler_diff_map(f_obs = f_obs)
+  sites_cart_box = box_1.xray_structure_box.sites_cart()
+  sel = maptbx.grid_indices_around_sites(
+    unit_cell  = box_1.xray_structure_box.unit_cell(),
+    fft_n_real = box_1.map_box.focus(),
+    fft_m_real = box_1.map_box.all(),
+    sites_cart = sites_cart_box,
+    site_radii = flex.double(sites_cart_box.size(), 2.))
+  b1 = box_1.map_box.select(sel).as_1d()
+  b2 = box_2.map_box.select(sel).as_1d()
+  b3 = box_3.map_box.select(sel).as_1d()
+  print >> log, "Map 1: calculated Fobs with ligand"
+  print >> log, "Map 2: calculated Fobs without ligand"
+  print >> log, "Map 3: real data"
+  print >>log, "CC(1,2): %6.4f"%flex.linear_correlation(x=b1,y=b2).coefficient()
+  print >>log, "CC(1,3): %6.4f"%flex.linear_correlation(x=b1,y=b3).coefficient()
+  print >>log, "CC(2,3): %6.4f"%flex.linear_correlation(x=b2,y=b3).coefficient()
   if(params.debug):
     box_1.write_ccp4_map(file_name="box_1_polder.ccp4")
     box_2.write_ccp4_map(file_name="box_2_polder.ccp4")
+    box_3.write_ccp4_map(file_name="box_3_polder.ccp4")
     cpm_obj.pdb_hierarchy_selected.adopt_xray_structure(
       box_1.xray_structure_box)
     cpm_obj.pdb_hierarchy_selected.write_pdb_file(file_name="box_polder.pdb",
