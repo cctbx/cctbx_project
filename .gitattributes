@@ -564,6 +564,7 @@ dxtbx/format/FormatSMVADSCmlfsom.py -text
 dxtbx/format/FormatSMVCMOS1.py -text
 dxtbx/format/FormatSMVHamamatsu.py -text
 dxtbx/format/FormatSMVHamamatsuSPring8BL32XU.py -text
+dxtbx/format/FormatSMVJHSim.py -text
 dxtbx/format/FormatSMVNOIR.py -text
 dxtbx/format/FormatSMVRigaku.py -text
 dxtbx/format/FormatSMVRigakuA200.py -text

@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-# FormatSMVADSC.py
+# FormatSMVJHSim.py
 #   Copyright (C) 2011 Diamond Light Source, Graeme Winter
 #
 #   This code is distributed under the BSD license, a copy of which is
 #   included in the root directory of this package.
 #
-# An implementation of the SMV image reader for ADSC images. Inherits from
+# An implementation of the SMV image reader for JHSim images. Inherits from
 # FormatSMV.
 
 from __future__ import division
@@ -14,13 +14,13 @@ import time
 
 from dxtbx.format.FormatSMV import FormatSMV
 
-class FormatSMVADSC(FormatSMV):
-  '''A class for reading SMV format ADSC images, and correctly constructing
+class FormatSMVJHSim(FormatSMV):
+  '''A class for reading SMV format JHSim images, and correctly constructing
   a model for the experiment from this.'''
 
   @staticmethod
   def understand(image_file):
-    '''Check to see if this looks like an ADSC SMV format image, i.e. we
+    '''Check to see if this looks like an JHSim SMV format image, i.e. we
     can make sense of it. Essentially that will be if it contains all of
     the keys we are looking for and not some we are not (i.e. that belong
     to a Rigaku Saturn.)'''
@@ -30,7 +30,7 @@ class FormatSMVADSC(FormatSMV):
     wanted_header_items = ['BEAM_CENTER_X', 'BEAM_CENTER_Y',
                            'DISTANCE', 'WAVELENGTH', 'PIXEL_SIZE',
                            'OSC_START', 'OSC_RANGE', 'SIZE1', 'SIZE2',
-                           'BYTE_ORDER', 'TIME']
+                           'BYTE_ORDER']
 
     for header_item in wanted_header_items:
       if not header_item in header:
@@ -100,7 +100,7 @@ class FormatSMVADSC(FormatSMV):
     import calendar
 
     format = self._scan_factory.format('SMV')
-    exposure_time = float(self._header_dictionary['TIME'])
+    exposure_time = 1
     epoch = None
 
     # PST, PDT timezones not recognised by default...
@@ -136,7 +136,7 @@ class FormatSMVADSC(FormatSMV):
     assert(len(self.get_detector()) == 1)
     panel = self.get_detector()[0]
     size = panel.get_image_size()
-    f = FormatSMVADSC.open_file(self._image_file, 'rb')
+    f = FormatSMVJHSim.open_file(self._image_file, 'rb')
     f.read(self._header_size)
 
     if self._header_dictionary['BYTE_ORDER'] == 'big_endian':
@@ -154,43 +154,9 @@ class FormatSMVADSC(FormatSMV):
 
     return raw_data
 
-  #def get_mask(self):
-    #from scitbx.array_family import flex
-    #from iotbx.detectors import image_divider
-
-    #data = self.get_raw_data()
-    #nullvalue = self.detectorbase.vendor_specific_null_value
-
-    ## get effective active area coordinates
-    #ID = image_divider(data=data, nullvalue=nullvalue)
-    #n_modules = ID.module_count()
-
-    ## set the mask to the same dimensions as the data
-    #mask = flex.bool(flex.grid(data.focus()), False)
-
-    ## set active areas to True so they are not masked
-    #for i in range(n_modules):
-      #interval_fast = ID.tile_fast_interval(i)
-      #interval_slow = ID.tile_slow_interval(i)
-      ##print interval_slow.first, interval_slow.last
-      ##print interval_fast.first, interval_fast.last
-      #mask_tile = flex.bool(
-        #flex.grid(interval_slow.last-interval_slow.first,
-                  #interval_fast.last-interval_fast.first), True)
-      #mask.matrix_paste_block_in_place(
-        #mask_tile, interval_slow.first, interval_fast.first)
-
-    ## create untrusted pixel mask
-    #detector = self.get_detector()
-    #assert len(detector) == 1
-    #trusted_mask = detector[0].get_trusted_range_mask(data)
-
-    ## returns merged untrusted pixels and active areas
-    #return (mask & trusted_mask,)
-
 if __name__ == '__main__':
 
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatSMVADSC.understand(arg)
+    print FormatSMVJHSim.understand(arg)
