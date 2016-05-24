@@ -1565,9 +1565,10 @@ class ncs:
 
   def adjust_magnification(self,magnification=None):
     if not self._ncs_groups:
-      return
+      return self
     for ncs_group in self._ncs_groups:
       ncs_group.adjust_magnification(magnification=magnification)
+    return self
 
   def invert_matrices(self):
     if not self._ncs_groups:
