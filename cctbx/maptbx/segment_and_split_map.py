@@ -893,30 +893,34 @@ def get_params(args,out=sys.stdout):
     ccp4_map.space_group_number)
 
   if params.crystal_info.magnification and \
-       params.crystal_info.magnification!=1.0:
+       params.crystal_info.magnification!=1.0: 
     print >>out,"\nAdjusting magnification by %7.3f\n" %(
        params.crystal_info.magnification)
 
     if params.input_files.ncs_file:
+      # Magnify ncs 
       print >>out,"NCS before applying magnification..."
       ncs_obj,dummy_tracking_data=get_ncs(params,None,out=out)
+      ncs_obj.format_all_for_group_specification(out=out)
+      ncs_obj=ncs_obj.adjust_magnification(
+        magnification=params.crystal_info.magnification)
       if params.output_files.magnification_ncs_file:
         file_name=os.path.join(params.output_files.output_directory,
           params.output_files.magnification_ncs_file)
         print >>out,"Writing NCS after magnification of %7.3f to %s" %(
           params.crystal_info.magnification,file_name)
-        ncs_obj.format_all_for_group_specification(
-         file_name=file_name)
+        ncs_obj.format_all_for_group_specification(out=out)
+        ncs_obj.format_all_for_group_specification(file_name=file_name)
         params.input_files.ncs_file=file_name
       else:
         raise Sorry("Need magnification_ncs_file defined if magnification is"+
           " applied \nto input NCS file")
 
-    # magnify ncs
+    # Magnify map
     shrunk_uc = []
     for i in range(3):
       shrunk_uc.append(
-       crystal_symmetry.unit_cell().parameters()[i] *
+       crystal_symmetry.unit_cell().parameters()[i] * 
           params.crystal_info.magnification )
     uc_params=crystal_symmetry.unit_cell().parameters()
     from cctbx import uctbx
@@ -944,6 +948,7 @@ def get_params(args,out=sys.stdout):
       params.input_files.map_file=file_name
     else:
       raise Sorry("Need a file name to write out magnification_map_file")
+    params.crystal_info.magnification=None  # no longer need it.
 
   tracking_data.set_input_map_info(file_name=params.input_files.map_file,
     crystal_symmetry=crystal_symmetry,
