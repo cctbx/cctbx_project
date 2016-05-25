@@ -75,6 +75,7 @@ def run(args):
   if ann is None or ann.get_n_helices() + ann.get_n_sheets() == 0:
     print >> log, "No secondary structure annotations found."
     print >> log, "Secondary structure substitution step will be skipped"
+    # here we want to do geometry minimization anyway!
   else:
     ssb.substitute_ss(
         real_h=pdb_h,
