@@ -9,6 +9,7 @@ from scitbx.matrix import project_point_on_axis
 import math
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
+from libtbx.utils import null_out
 
 import boost.python
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
@@ -76,9 +77,9 @@ class _(boost.python.injector, ccd_cpp):
             now_psi_angle = utils.get_dihedral_angle(phi_psi_pair[1])
 
             # print "psi angles:", now_psi_angle0, now_psi_angle
-            angles_ok = (approx_equal(now_psi_angle0-now_psi_angle, 0) or
-                approx_equal(now_psi_angle0-now_psi_angle, 360) or
-                approx_equal(now_psi_angle0-now_psi_angle, -360))
+            angles_ok = (approx_equal(now_psi_angle0-now_psi_angle, 0, out=null_out) or
+                approx_equal(now_psi_angle0-now_psi_angle, 360, out=null_out) or
+                approx_equal(now_psi_angle0-now_psi_angle, -360, out=null_out))
 
             assert angles_ok
             # approx_equal(now_psi_angle0, now_psi_angle)
@@ -86,8 +87,8 @@ class _(boost.python.injector, ccd_cpp):
             utils.rotate_atoms_around_bond(self.moving_h, atoms[2], atoms[3],
                 angle=-now_psi_angle+target_phi_psi[1])
 
-            approx_equal(utils.get_dihedral_angle(phi_psi_pair[0]), target_phi_psi[0])
-            approx_equal(utils.get_dihedral_angle(phi_psi_pair[1]), target_phi_psi[1])
+            # approx_equal(utils.get_dihedral_angle(phi_psi_pair[0]), target_phi_psi[0])
+            # approx_equal(utils.get_dihedral_angle(phi_psi_pair[1]), target_phi_psi[1])
             resulting_rama_ev = utils.rama_evaluate(phi_psi_pair, self.r, rama_key)
             assert resulting_rama_ev == RAMALYZE_FAVORED, resulting_rama_ev
             break # we are done with this phi_psi_pair

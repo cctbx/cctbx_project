@@ -93,8 +93,13 @@ class loop_idealization():
         and self.berkeley_p_before_minimization_rama_outliers > 0.001):
       print "CCD try number, outliers:", number_of_ccd_trials, self.berkeley_p_before_minimization_rama_outliers
       number_of_ccd_trials += 1
+      processed_chain_ids = []
       for chain in self.resulting_pdb_h.only_model().chains():
         print >> self.log, "Idealizing chain %s" % chain.id
+        if chain.id not in processed_chain_ids:
+          processed_chain_ids.append(chain.id)
+        else:
+          continue
         selection = "protein and chain %s and (name N or name CA or name C or name O)" % chain.id
         sel = asc.selection("chain %s" % chain.id)
         chain_h = self.resulting_pdb_h.select(sel)
@@ -112,9 +117,7 @@ class loop_idealization():
         exclusions, ch_h = self.idealize_chain(
             hierarchy=(cutted_chain_h if cutted_chain_h else chain_h))
         if ch_h is not None:
-          print "Setting new coordinates"
           set_xyz_smart(
-              # dest_h=self.resulting_pdb_h,
               dest_h=chain,
               source_h=ch_h)
           for resnum in exclusions:
