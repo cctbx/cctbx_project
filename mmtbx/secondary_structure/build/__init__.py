@@ -184,6 +184,12 @@ def side_chain_placement(ag_to_place, current_reference_ag, rotamer_manager):
     for a in ag.atoms():
       if a.name.strip() in reper_atoms:
         arr.append(a.xyz)
+  assert len(fixed_sites) == 3
+  if len(moving_sites) < 3:
+    error_msg = "C, CA or N atoms are absent in secondary structure element." +\
+        "\nPlease add them to the model and try again."
+    raise Sorry(error_msg)
+  assert len(moving_sites) == 3
   lsq_fit_obj = superpose.least_squares_fit(reference_sites = fixed_sites,
                                             other_sites = moving_sites)
   ideal_correct_ag = current_reference_ag.detached_copy()
@@ -263,8 +269,7 @@ def secondary_structure_from_sequence(pdb_str,
   new_pdb_h = iotbx.pdb.hierarchy.new_hierarchy_from_chain(new_chain)
   # align to real
   if pht != None:
-    fixed_sites = pht.atoms().extract_xyz()
-    moving_sites = new_pdb_h.atoms().extract_xyz()
+    fixed_sites, moving_sites = get_matching_sites_cart_in_both_h(pht, new_pdb_h)
     assert len(fixed_sites) == len(moving_sites)
     lsq_fit_obj = superpose.least_squares_fit(reference_sites = fixed_sites,
                                               other_sites = moving_sites)
@@ -341,6 +346,39 @@ def set_xyz_carefully(dest_h, source_h):
       d_atom = d_ag.get_atom(s_atom.name.strip())
       if d_atom is not None:
         d_atom.set_xyz(s_atom.xyz)
+
+def get_matching_sites_cart_in_both_h(old_h, new_h):
+  old_h.reset_atom_i_seqs()
+  new_h.reset_atom_i_seqs()
+  fixed_sites = flex.vec3_double()
+  moving_sites = flex.vec3_double()
+  isel_for_old = flex.size_t()
+  isel_for_new = flex.size_t()
+  if old_h.atoms().size() == new_h.atoms().size():
+    good = True
+    for a1, a2 in zip(old_h.atoms(), new_h.atoms()):
+      if a1.id_str()[:-6] != a2.id_str()[:-6]:
+        # print "No match: '%s', '%s'" % (a1.id_str()[:-6], a2.id_str()[:-6])
+        good = False
+        break
+      else:
+        fixed_sites.append(a1.xyz)
+        moving_sites.append(a2.xyz)
+    if good:
+      # print "SHORTCUT DONE"
+      assert fixed_sites.size() == moving_sites.size()
+      return fixed_sites, moving_sites
+  fixed_sites = flex.vec3_double()
+  moving_sites = flex.vec3_double()
+  for old_rg, new_rg in zip(old_h.only_chain().residue_groups(), new_h.only_chain().residue_groups()):
+    for old_ag, new_ag in zip(old_rg.atom_groups(), new_rg.atom_groups()):
+      for atom in old_ag.atoms():
+        a = new_ag.get_atom(atom.name.strip())
+        if a is not None:
+          fixed_sites.append(atom.xyz)
+          moving_sites.append(a.xyz)
+  assert fixed_sites.size() == moving_sites.size()
+  return fixed_sites, moving_sites
 
 def get_empty_ramachandran_proxies():
   import boost.python

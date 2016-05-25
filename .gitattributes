@@ -2330,6 +2330,7 @@ mmtbx/regression/tst_helix_sheet_recs_as_pdb_files.py -text
 mmtbx/regression/tst_interpolation.py -text
 mmtbx/regression/tst_isomorphous_difference_misc.py -text
 mmtbx/regression/tst_ligand_ncs.py -text
+mmtbx/regression/tst_loop_closure.py -text
 mmtbx/regression/tst_map_coeffs_simple.py -text
 mmtbx/regression/tst_map_model_cc.py -text
 mmtbx/regression/tst_map_type_parser.py -text
@@ -2413,6 +2414,7 @@ mmtbx/secondary_structure/base_pairing.data -text
 mmtbx/secondary_structure/build/__init__.py -text
 mmtbx/secondary_structure/build/tst_1.py -text
 mmtbx/secondary_structure/build/tst_2.py -text
+mmtbx/secondary_structure/build/tst_3.py -text
 mmtbx/secondary_structure/build/tst_io.py -text
 mmtbx/secondary_structure/dssp.hpp -text
 mmtbx/secondary_structure/dssp.py -text
