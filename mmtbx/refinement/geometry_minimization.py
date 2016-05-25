@@ -323,6 +323,8 @@ def minimize_wrapper_for_ramachandran(
   """ Wrapper around geometry minimization specifically tuned for eliminating
   Ramachandran outliers.
   """
+  import pickle
+  from time import time
   from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
   from mmtbx.geometry_restraints import reference
   from mmtbx.command_line.geometry_minimization import \
@@ -368,6 +370,21 @@ def minimize_wrapper_for_ramachandran(
         ss_manager=ss_manager,
         hierarchy=hierarchy,
         log=log)
+
+  # grm pickle-unpickle
+  # t0 = time()
+  # prefix="grm"
+  # pklfile = open("%s.pkl" % prefix, 'wb')
+  # pickle.dump(grm.geometry, pklfile)
+  # pklfile.close()
+  # t1 = time()
+  # pklfile = open("%s.pkl" % prefix, 'rb')
+  # grm_from_file = pickle.load(pklfile)
+  # pklfile.close()
+  # t2 = time()
+  # print "Time pickling/unpickling: %.4f, %.4f" % (t1-t0, t2-t1)
+  # grm.geometry=grm_from_file
+
 
   if run_first_minimization_without_reference:
     obj = run2(
