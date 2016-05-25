@@ -6,7 +6,6 @@ import sys
 import stat
 import subprocess
 import optparse
-import platform
 import shutil
 import socket as pysocket
 import tarfile
@@ -1261,7 +1260,7 @@ class Builder(object):
     use_git_ssh = self.auth.get('git_ssh', False)
     reference_repository_path = self.auth.get('git_reference', None)
     if reference_repository_path is None:
-      if platform.system() == 'Linux':
+      if os.name == 'posix' and 'diamond.ac.uk' in pysocket.gethostname():
         reference_repository_path = '/dls/science/groups/scisoft/DIALS/repositories/git-reference'
     if reference_repository_path is not None:
       reference_repository_path = os.path.join(reference_repository_path, module)
