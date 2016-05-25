@@ -10,6 +10,9 @@ from iotbx.pdb import write_whole_pdb_file
 import iotbx.phil
 from libtbx.utils import Sorry
 from mmtbx.building.loop_idealization import loop_idealization
+import mmtbx.building.loop_closure.utils
+from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
+
 
 master_params_str = """
 file_name = None
@@ -76,6 +79,20 @@ def run(args):
     print >> log, "No secondary structure annotations found."
     print >> log, "Secondary structure substitution step will be skipped"
     # here we want to do geometry minimization anyway!
+    xrs = pdb_h.extract_xray_structure()
+    outlier_selection_txt = mmtbx.building.loop_closure.utils. \
+      rama_outliers_selection(pdb_h, None, 1)
+    print "outlier_selection_txt", outlier_selection_txt
+    negate_selection = "all"
+    if outlier_selection_txt != "" and outlier_selection_txt is not None:
+      negate_selection = "not (%s)" % outlier_selection_txt
+    minimize_wrapper_for_ramachandran(
+        hierarchy=pdb_h,
+        xrs=xrs,
+        original_pdb_h=pdb_h,
+        excl_string_selection=negate_selection,
+        log=None,
+        ss_annotation=None)
   else:
     ssb.substitute_ss(
         real_h=pdb_h,

@@ -15,10 +15,10 @@ def run(args):
   pdb_h = pdb_inp.construct_hierarchy()
   ref_h = iotbx.pdb.input(source_info=None, file_name=args[1]).construct_hierarchy()
   # print dir(pdb_inp)
-  xrs = pdb_inp.xray_structure_simple()
+  xrs = pdb_h.extract_xray_structure()
   outlier_selection_txt = mmtbx.building.loop_closure.utils. \
     rama_outliers_selection(ref_h, None, 1)
-  negate_selection = None
+  negate_selection = "all"
   # asc = ref_h.atom_selection_cache()
   if outlier_selection_txt != "" and outlier_selection_txt is not None:
     negate_selection = "not (%s)" % outlier_selection_txt
