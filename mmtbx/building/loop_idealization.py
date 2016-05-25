@@ -118,6 +118,7 @@ class loop_idealization():
             hierarchy=(cutted_chain_h if cutted_chain_h else chain_h))
         if ch_h is not None:
           set_xyz_smart(
+              # dest_h=self.resulting_pdb_h,
               dest_h=chain,
               source_h=ch_h)
           for resnum in exclusions:

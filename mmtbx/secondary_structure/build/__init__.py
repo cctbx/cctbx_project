@@ -324,7 +324,12 @@ def set_xyz_smart(dest_h, source_h):
       return
   assert dest_h.atoms().size() >= source_h.atoms().size()
   for atom in source_h.atoms():
-    for c in dest_h.chains():
+    chains = []
+    if hasattr(dest_h, 'chains'):
+      chains = dest_h.chains()
+    else:
+      chains = [dest_h]
+    for c in chains:
       if c.id != atom.parent().parent().parent().id:
         continue
       for rg in c.residue_groups():
