@@ -164,8 +164,8 @@ class loop_idealization():
     if params is None:
       params = master_phil.fetch().extract()
       params.loop_idealization.enabled = True
-    if hasattr(params, "model_idealization"):
-      p_pars = params.model_idealization
+    if hasattr(params, "loop_idealization"):
+      p_pars = params.loop_idealization
     else:
       assert hasattr(params, "enabled") and hasattr(params, "change_non_rama_outliers"), \
           "Something wrong with parameters passed to model_idealization"
