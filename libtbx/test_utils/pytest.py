@@ -3,7 +3,7 @@ import atexit
 import libtbx.load_env
 import os
 
-def discover(module):
+def discover(module, pytestargs=None):
   '''
   pytest compatibility layer
 
@@ -16,13 +16,19 @@ def discover(module):
     tst_list = tst_list + discover( $module )
   to your run_tests.py, substituting '$module' with the name of your module
   directory.
+  You can pass further arguments to the pytest discovery process as a list in
+  the pytestargs parameter.
 
   The function tests for the presence of pytest and mock, and generates a
-  helpful warning if either is missing.
+  helpful warning if either is missing. You can skip the discovery of tests
+  by setting the environment variable LIBTBX_SKIP_PYTEST.
   '''
 
   if 'LIBTBX_SKIP_PYTEST' in os.environ:
     return []
+
+  if pytestargs is None:
+    pytestargs = []
 
   try:
     import pytest
@@ -46,6 +52,6 @@ def discover(module):
     def pytest_itemcollected(self, item):
       test_list.append([ "libtbx.python", "-m", "pytest", '--noconftest',
         os.path.join(dist_dir, item.nodeid) ])
-  pytest.main(['-qq', '--collect-only', '--noconftest', dist_dir], plugins=[TestDiscoveryPlugin()])
+  pytest.main(['-qq', '--collect-only', '--noconftest', dist_dir] + pytestargs, plugins=[TestDiscoveryPlugin()])
   return test_list
 
