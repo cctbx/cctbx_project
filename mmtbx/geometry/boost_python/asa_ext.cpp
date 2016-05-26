@@ -295,6 +295,39 @@ struct python_calculator_export
         ( arg( "centre" ), arg( "radius" ) )
         )
       ;
+
+    typedef calculator::ConstRadiusCalculator< coordinate_adaptor_type >
+      const_radius_calculator_type;
+
+    class_< const_radius_calculator_type >( "const_radius_calculator", no_init )
+      .def(
+        init< coordinate_adaptor_type, double, double, std::size_t, double, int >(
+          (
+            arg( "coordinate_adaptor" ),
+            arg( "radius" ),
+            arg( "probe" ) = 1.4,
+            arg( "sampling_point_count" ) = 960,
+            arg( "cubesize" ) = 7.0,
+            arg( "margin" ) = 1
+            )
+          )
+        )
+      .def(
+        "accessible_surface_points",
+        &const_radius_calculator_type::accessible_points,
+        arg( "index" )
+        )
+      .def(
+        "accessible_surface_area",
+        &const_radius_calculator_type::accessible_surface_area,
+        arg( "index" )
+        )
+      .def(
+        "is_overlapping_sphere",
+        &const_radius_calculator_type::is_overlapping_sphere,
+        ( arg( "centre" ), arg( "radius" ) )
+        )
+      ;
   }
 
 };

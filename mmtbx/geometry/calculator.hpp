@@ -61,6 +61,34 @@ public:
   }
 };
 
+template< typename Value, typename Size = std::size_t >
+class SingleValueArray
+{
+public:
+  typedef Value value_type;
+  typedef Size size_type;
+  typedef value_type const& return_value_type;
+
+private:
+  value_type value_;
+  size_type size_;
+
+public:
+  SingleValueArray(value_type const& value, size_type const& size)
+  : value_( value ), size_( size )
+  {};
+
+  return_value_type operator [](size_type const& index) const
+  {
+    return value_;
+  }
+
+  size_type size() const
+  {
+    return size_;
+  }
+};
+
 template< typename Vector >
 class Sphere
 {
@@ -263,6 +291,61 @@ private:
   {
     radius_type sum_radii = left_r + right_r;
     return ( left_c - right_c ).length_sq() < sum_radii * sum_radii;
+  }
+};
+
+template< typename XyzAccess, typename RadiusType = double, typename Discrete = int >
+class ConstRadiusCalculator
+{
+public:
+  typedef XyzAccess coordinate_access_type;
+  typedef RadiusType radius_type;
+  typedef Discrete discrete_type;
+
+  typedef typename boost::remove_reference< coordinate_access_type >::type::value_type coordinate_type;
+  typedef typename boost::remove_reference< coordinate_access_type >::type::size_type size_type;
+  typedef utility::SingleValueArray< radius_type, size_type > radius_access_type;
+  typedef SimpleCalculator<
+    coordinate_access_type,
+    radius_access_type,
+    discrete_type
+    > calculator_type;
+
+private:
+  calculator_type calculator_;
+
+public:
+  ConstRadiusCalculator(
+    const coordinate_access_type& coords,
+    radius_type const& radius,
+    radius_type probe = 1.4,
+    std::size_t sampling_point_count = 960,
+    radius_type cubesize = 7.0,
+    int margin = 1
+    )
+    : calculator_(
+        coords,
+        radius_access_type( radius, coords.size() ),
+        probe,
+        sampling_point_count,
+        cubesize,
+        margin
+        )
+  {}
+
+  std::ptrdiff_t accessible_points(size_type const& index) const
+  {
+    return calculator_.accessible_points( index );
+  }
+
+  radius_type accessible_surface_area(size_type const& index) const
+  {
+    return calculator_.accessible_surface_area( index );
+  }
+
+  bool is_overlapping_sphere(coordinate_type const& centre, radius_type const& radius) const
+  {
+    return calculator_.is_overlapping_sphere( centre, radius );
   }
 };
 
