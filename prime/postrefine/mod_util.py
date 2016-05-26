@@ -413,6 +413,7 @@ class intensities_scaler(object):
     txt_out += '   alpha:                  %12.2f %12.2f (%9.2f)\n'%(uc_mean[3], uc_med[3], uc_std[3])
     txt_out += '   beta:                   %12.2f %12.2f (%9.2f)\n'%(uc_mean[4], uc_med[4], uc_std[4])
     txt_out += '   gamma:                  %12.2f %12.2f (%9.2f)\n'%(uc_mean[5], uc_med[5], uc_std[5])
+    txt_out += 'Wavelength (not-refined):  %12.4f %12.4f (%9.4f)\n'%(np.mean(wavelength_all), np.median(wavelength_all), np.std(wavelength_all))
     txt_out += '* (standard deviation)\n'
     #write out stat. pickle
     stat_dict = {"n_frames_good": [cn_good_frame], \
@@ -558,6 +559,32 @@ class intensities_scaler(object):
           miller_array_iso = miller_array_converted_to_intensity.deep_copy()
         else:
           flag_hklisoin_found = False
+    #deflating sigI
+    #new_sigmas = miller_array_merge.sigmas()/3.0
+    #miller_array_merge = miller_array_merge.customized_copy(sigmas=new_sigmas)
+    """
+    miller_array_merge.show_summary()
+    x = miller_array_merge.sigmas().as_numpy_array()
+    mu = np.mean(x)
+    med = np.median(x)
+    sigma = np.std(x)
+    num_bins = 20
+    plt.subplot(211)
+    plt.hist(x, num_bins, normed=0, facecolor='green', alpha=0.5)
+    plt.ylabel('Frequencies')
+    plt.title('sigI distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+    x = miller_array_merge.as_amplitude_array().sigmas().as_numpy_array()
+    miller_array_merge.as_amplitude_array().show_summary()
+    mu = np.mean(x)
+    med = np.median(x)
+    sigma = np.std(x)
+    num_bins = 20
+    plt.subplot(212)
+    plt.hist(x, num_bins, normed=0, facecolor='green', alpha=0.5)
+    plt.ylabel('Frequencies')
+    plt.title('sigF distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+    plt.show()
+    """
     #write output files
     if output_mtz_file_prefix != '':
       #write as mtz file
@@ -654,6 +681,7 @@ class intensities_scaler(object):
     sp_complete = []
     sp_n_obs = []
     sp_cc12 = []
+    sp_rmerge = []
     sp_i_o_sigi = []
     sp_isqr = []
     for i in range(1,iparams.n_bins+1):
@@ -846,17 +874,9 @@ class intensities_scaler(object):
       sp_complete.append(completeness*100)
       sp_n_obs.append(multiplicity_bin)
       sp_cc12.append(cc12_bin*100)
+      sp_rmerge.append(r_meas_bin*100)
       sp_i_o_sigi.append(mean_i_over_sigi_bin)
       sp_isqr.append(secmom_I_acen_bin)
-    #save data for stat. pickle in stat_dict
-    stat_dict = {"binned_resolution": [sp_res], \
-                 "binned_completeness": [sp_complete], \
-                 "binned_n_obs": [sp_n_obs], \
-                 "binned_cc12": [sp_cc12], \
-                 "binned_i_o_sigi": [sp_i_o_sigi], \
-                 "binned_isqr": [sp_isqr]}
-    psh = pickle_stat_handler()
-    psh.write_pickle(iparams, stat_dict)
     #calculate CCiso
     cc_iso = 0
     n_refl_iso = 0
@@ -904,6 +924,25 @@ class intensities_scaler(object):
       r_meas = sum_r_meas_top/sum_r_meas_btm
     else:
       r_meas = float('Inf')
+    #save data for stat. pickle in stat_dict
+    stat_dict = {"binned_resolution": [sp_res], \
+                 "binned_completeness": [sp_complete], \
+                 "binned_n_obs": [sp_n_obs], \
+                 "binned_cc12": [sp_cc12], \
+                 "binned_rmerge": [sp_rmerge], \
+                 "binned_i_o_sigi": [sp_i_o_sigi], \
+                 "binned_isqr": [sp_isqr], \
+                 "total_res_max": [miller_array_merge.d_max_min()[0]], \
+                 "total_res_min": [miller_array_merge.d_max_min()[1]], \
+                 "total_completeness": [(sum_refl_obs/sum_refl_complete)*100], \
+                 "total_n_obs": [n_refl_obs_total/sum_refl_obs], \
+                 "total_cc12": [cc12*100], \
+                 "total_rmerge": [r_meas*100], \
+                 "total_i_o_sigi": [np.mean(miller_array_merge.data()/miller_array_merge.sigmas())], \
+                 "space_group_info": [miller_array_merge.space_group_info()], \
+                 }
+    psh = pickle_stat_handler()
+    psh.write_pickle(iparams, stat_dict)
     txt_out += '--------------------------------------------------------------------------------------------------------------------------------------------------\n'
     txt_out += '        TOTAL        %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %8.2f %10.1f %8.1f %6.2f\n' \
     %((sum_refl_obs/sum_refl_complete)*100, sum_refl_obs, \
