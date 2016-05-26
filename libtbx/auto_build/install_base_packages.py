@@ -745,7 +745,7 @@ _replace_sysconfig_paths(build_time_vars)
 
   def build_setuptools(self):
     self.build_python_module_simple(
-      pkg_url=BASE_CCI_PKG_URL,
+      pkg_url=pypi_pkg_url(SETUPTOOLS_PKG),
       pkg_name=SETUPTOOLS_PKG,
       pkg_name_label="setuptools")
 
@@ -782,22 +782,19 @@ _replace_sysconfig_paths(build_time_vars)
       pkg_name_label="junit_xml")
 
   def build_pytest(self):
-    self.build_python_module_simple(
-      pkg_url=pypi_pkg_url(PYTEST_DEP_PY),
-      pkg_name=PYTEST_DEP_PY,
-      pkg_name_label="py")
-    self.build_python_module_simple(
-      pkg_url=pypi_pkg_url(PYTEST_DEP_COLORAMA),
-      pkg_name=PYTEST_DEP_COLORAMA,
-      pkg_name_label="colorama")
-    self.build_python_module_simple(
-      pkg_url=pypi_pkg_url(PYTEST_PKG),
-      pkg_name=PYTEST_PKG,
-      pkg_name_label="pytest")
-    self.build_python_module_simple(
-      pkg_url=pypi_pkg_url(MOCK_PKG),
-      pkg_name=MOCK_PKG,
-      pkg_name_label="mock")
+    for package, name in [
+        (PYTEST_DEP_PY, 'py'),
+        (PYTEST_DEP_COLORAMA, 'colorama'),
+        (PYTEST_PKG, 'pytest'),
+        (MOCK_DEP_PBR, 'pbr'),
+        (MOCK_DEP_FUNC_DICT, 'ordereddict'),
+        (MOCK_DEP_FUNC, 'funcsigs'),
+        (MOCK_PKG, 'mock'),
+        ]:
+      self.build_python_module_simple(
+        pkg_url=pypi_pkg_url(package),
+        pkg_name=package,
+        pkg_name_label=name)
 
   def build_biopython(self):
     self.build_python_module_simple(

@@ -42,14 +42,17 @@ SPHINX_PKG = "Sphinx-1.2.2.tar.gz"       # for documentation
 NUMPYDOC_PKG = "numpydoc-0.5.tar.gz"     # for documentation
 IPYTHON_PKG = "ipython-2.1.0.tar.gz"     # IPython
 DOCUTILS_PKG = "docutils-0.12.tar.gz"    # docutils
-SETUPTOOLS_PKG = "setuptools-12.0.5.tar.gz" # setuptools
 PIP_PKG = "pip-6.0.7.tar.gz"             # PIP
 VIRTUALENV_PKG = "virtualenv-12.0.6.tar.gz" # virtualenv
 LIBSVM_PKG = "libsvm-3.17_cci.tar.gz"
 
 # from PyPi
+SETUPTOOLS_PKG = "setuptools-17.1.1.tar.gz"
 JUNIT_XML_PKG = "junit-xml-1.6.tar.gz"
-MOCK_PKG = "mock-1.0.1.tar.gz"
+MOCK_PKG = "mock-2.0.0.tar.gz"
+MOCK_DEP_FUNC_DICT = "ordereddict-1.1.tar.gz"
+MOCK_DEP_FUNC = "funcsigs-1.0.0.tar.gz"
+MOCK_DEP_PBR = "pbr-1.9.1.tar.gz"
 PYTEST_PKG = "pytest-2.9.1.tar.gz"
 PYTEST_DEP_PY = "py-1.4.31.tar.gz"
 PYTEST_DEP_COLORAMA = "colorama-0.3.7.tar.gz"
