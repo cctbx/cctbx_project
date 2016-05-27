@@ -337,6 +337,7 @@ class modify(object):
       self.remove_selection = flex.smart_selection(
         flags=~utils.get_atom_selections(
           iselection        = False,
+          allow_empty_selection = True,
           all_chain_proxies = all_chain_proxies,
           selection_strings = [params_remove_selection],
           xray_structure    = xray_structure)[0])
