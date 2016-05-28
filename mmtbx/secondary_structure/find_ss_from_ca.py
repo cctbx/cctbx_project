@@ -354,10 +354,10 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
             for atom_group in rr.atom_groups():
               atom_group.resname=resname
           cc.append_residue_group(rr)
-      if resid_offset and resid_offset>1:
-        nn=resid_offset*((resid+resid_offset-1)//resid_offset)
-        if nn-resid<2: nn+=resid_offset
-        resid=nn
+        if resid_offset and resid_offset>1:
+          nn=resid_offset*((resid+resid_offset-1)//resid_offset)
+          if nn-resid<2: nn+=resid_offset
+          resid=nn
   new_hierarchy.reset_atom_i_seqs()
   if trim_side_chains:
     atom_selection=\
