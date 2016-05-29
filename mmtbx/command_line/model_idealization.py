@@ -101,8 +101,8 @@ def run(args):
         params=work_params.model_idealization,
         cif_objects=inputs.cif_objects,
         verbose=True,
-        log=log,
-        )
+        log=log)
+
   # Write resulting pdb file.
   write_whole_pdb_file(
       file_name="%s_ss_substituted.pdb" % os.path.basename(pdb_file_names[0]),
