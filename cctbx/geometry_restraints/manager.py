@@ -627,7 +627,7 @@ class manager(object):
 
   def remove_reference_dihedrals_in_place(self, selection):
     if self.reference_dihedral_manager is not None:
-      reference_dihedral_manager.proxy_remove(selection=selection)
+      self.reference_dihedral_manager.proxy_remove(selection=selection)
 
   def remove_ncs_dihedrals_in_place(self):
     if self.ncs_dihedral_manager is not None:
@@ -639,6 +639,10 @@ class manager(object):
           sites_cart=sites_cart,
           pdb_hierarchy=pdb_hierarchy,
           log=log)
+
+  def get_n_reference_dihedral_proxies(self):
+    if self.reference_dihedral_manager is not None:
+      return self.reference_dihedral_manager.get_n_proxies()
 
   #=================================================================
   # DEN manager/proxies methods
