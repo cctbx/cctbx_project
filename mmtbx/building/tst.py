@@ -37,7 +37,7 @@ def exercise_model_utils () :
 
 def exercise_box_rebuild () :
   #
-  # UNSTABLE!
+  # UNSTABLE! 2x
   #
   pdb_in = get_1yjp_pdb()
   xrs = pdb_in.input.xray_structure_simple()
