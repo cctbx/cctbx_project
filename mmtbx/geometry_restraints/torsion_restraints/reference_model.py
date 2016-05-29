@@ -112,7 +112,8 @@ def add_reference_dihedral_restraints_if_requested(
     log=None):
   if not params.enabled:
     return 0
-  if params.use_starting_model_as_reference and len(params.file) > 0:
+  if (params.use_starting_model_as_reference and
+    (len(params.file) > 0) and params.file[0] is not None):
     raise Sorry("Cannot not restrain working model to self and a "+
                     "reference model simultaneously")
   reference_file_list = []
