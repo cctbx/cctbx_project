@@ -12,6 +12,8 @@ import os
 import sys
 from cStringIO import StringIO
 from mmtbx.monomer_library import pdb_interpretation
+from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
+    add_reference_dihedral_restraints_if_requested
 
 base_params_str = """\
 silent = False
@@ -49,6 +51,8 @@ stop_for_unknowns = True
   .short_caption = Stop for unknown residues
   .style = noauto
 include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
+include scope \
+    mmtbx.geometry_restraints.torsion_restraints.reference_model.reference_model_params
 """
 
 master_params_str = """
@@ -240,6 +244,20 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure,
   restraints_manager = mmtbx.restraints.manager(
     geometry      = geometry,
     normalization = True)
+  # Torsion restraints from reference model
+  # Speedup hint: use save processed_pdb_files_srv to extract
+  # mon_lib_srv and ener_lib
+  if hasattr(params, "reference_model") and restraints_manager is not None:
+    add_reference_dihedral_restraints_if_requested(
+        geometry=restraints_manager.geometry,
+        processed_pdb_file=processed_pdb_file,
+        mon_lib_srv=None,
+        ener_lib=None,
+        has_hd=has_hd,
+        params=params.reference_model,
+        selection=None,
+        log=log)
+  # These are from substitute SS
   if (reference_torsion_proxies is not None
       and id_params.restrain_torsion_angles):
     geometry.add_dihedrals_in_place(
