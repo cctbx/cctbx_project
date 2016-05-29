@@ -78,6 +78,7 @@ def run(args):
   if ann is None or ann.get_n_helices() + ann.get_n_sheets() == 0:
     print >> log, "No secondary structure annotations found."
     print >> log, "Secondary structure substitution step will be skipped"
+    log.flush()
     # here we want to do geometry minimization anyway!
     xrs = pdb_h.extract_xray_structure()
     outlier_selection_txt = mmtbx.building.loop_closure.utils. \
@@ -102,6 +103,7 @@ def run(args):
         cif_objects=inputs.cif_objects,
         verbose=True,
         log=log)
+    log.flush()
 
   # Write resulting pdb file.
   write_whole_pdb_file(
@@ -116,6 +118,7 @@ def run(args):
       secondary_structure_annotation=ann,
       log=log,
       verbose=True)
+  log.flush()
 
   write_whole_pdb_file(
     file_name="%s_ss_all_idealized.pdb" % os.path.basename(pdb_file_names[0]),
