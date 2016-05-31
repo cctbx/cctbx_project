@@ -1315,6 +1315,12 @@ def exercise_cc_peak():
     t=t/10.
     ccp=maptbx.cc_peak(map_coeffs_1=fc1, map_coeffs_2=fc2, cutoff=t)
     assert approx_equal(ccp, 1)
+  # 1D case
+  m1_he_1d = maptbx.volume_scale_1d(map = m1.as_1d(),  n_bins = 10000).map_data()
+  m2_he_1d = maptbx.volume_scale_1d(map = m2.as_1d(),  n_bins = 10000).map_data()
+  df_1d = maptbx.discrepancy_function(
+    map_1=m1_he_1d, map_2=m2_he_1d, cutoffs=cutoffs)
+  assert approx_equal(df, df_1d)
 
 def exercise_gamma_compression():
   def get_map():

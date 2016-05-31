@@ -162,6 +162,10 @@ namespace {
                   int const& >(
                     (arg("map"),
                      arg("n_bins"))))
+        .def(init<af::const_ref<double> const&,
+                  int const& >(
+                    (arg("map"),
+                     arg("n_bins"))))
         .def("values",    &w_t::values)
         .def("c_values",  &w_t::c_values)
         .def("v_values",  &w_t::v_values)
@@ -175,6 +179,19 @@ namespace {
 
       class_<w_t>("volume_scale", no_init)
         .def(init<af::const_ref<double, af::c_grid<3> > const&,
+                  int const& >(
+                    (arg("map"),
+                     arg("n_bins"))))
+        .def("map_data", &w_t::map_data)
+        .def("v_values", &w_t::v_values)
+      ;
+    }
+
+    {
+      typedef volume_scale_1d w_t;
+
+      class_<w_t>("volume_scale_1d", no_init)
+        .def(init<af::const_ref<double> const&,
                   int const& >(
                     (arg("map"),
                      arg("n_bins"))))
@@ -677,6 +694,15 @@ namespace {
          af::const_ref<scitbx::vec3<double> > const&)) map_sum_at_sites_frac, (
       arg("map_data"),
       arg("sites_frac")));
+
+    def("discrepancy_function",
+      (af::shared<double>(*)
+        (af::const_ref<double> const&,
+         af::const_ref<double> const&,
+         af::const_ref<double> const&)) discrepancy_function, (
+      arg("map_1"),
+      arg("map_2"),
+      arg("cutoffs")));
 
     def("discrepancy_function",
       (af::shared<double>(*)

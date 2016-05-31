@@ -247,6 +247,46 @@ public:
 
 };
 
+class volume_scale_1d {
+public:
+  af::shared<double> map_new;
+  af::shared<double> v_values_;
+
+  volume_scale_1d(
+    af::const_ref<double> const& map,
+    int const& n_bins)
+  {
+    map_new.resize(map.size());
+    map_new.fill(0);
+    double rho_min = af::min(map);
+    histogram hist = histogram(map, n_bins);
+    double bin_width = hist.bin_width();
+    v_values_ = hist.c_values();
+    for(int i = 0; i < map.size(); i++) {
+      double rho = map[i];
+      int index = scitbx::math::nearest_integer((rho-rho_min)/bin_width);
+      if(index<0) index=0;
+      if(index>=n_bins) index=n_bins-1;
+      double rho_new = 0;
+      if(index+1<n_bins) {
+        double rho_n = rho_min + index*bin_width;
+        rho_new = v_values_[index] +
+          (v_values_[index+1]-v_values_[index]) * (rho-rho_n)/bin_width;
+        if(rho_new<0) rho_new = v_values_[index];
+      }
+      else {
+        rho_new = v_values_[index];
+      }
+      CCTBX_ASSERT(rho_new>=0);
+      map_new[i] = rho_new;
+    }
+  }
+
+  af::shared<double> map_data() {return map_new;}
+  af::shared<double> v_values() {return v_values_;}
+
+};
+
 class non_linear_map_modification_to_match_average_cumulative_histogram {
 public:
   af::versa<double, af::c_grid<3> > map_1_new;
