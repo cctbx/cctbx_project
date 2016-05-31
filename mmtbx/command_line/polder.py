@@ -456,7 +456,7 @@ def cmd_run(args, validated=False, out=sys.stdout):
     f_obs          = f_obs,
     r_free_flags   = r_free_flags,
     xray_structure = xray_structure)
-  fmodel.update_all_scales(remove_outliers=False)
+  fmodel.update_all_scales(remove_outliers=False, fast=True)
   f_obs_1 = abs(fmodel.f_model())
   fmodel.update_xray_structure(xray_structure=cpm_obj.xray_structure_noligand,
     update_f_calc=True, update_f_mask=True, force_update_f_mask=True)
@@ -501,16 +501,33 @@ def cmd_run(args, validated=False, out=sys.stdout):
     fft_n_real = box_1.map_box.focus(),
     fft_m_real = box_1.map_box.all(),
     sites_cart = sites_cart_box,
-    site_radii = flex.double(sites_cart_box.size(), 2.))
+    site_radii = flex.double(sites_cart_box.size(), 2.0))
   b1 = box_1.map_box.select(sel).as_1d()
   b2 = box_2.map_box.select(sel).as_1d()
   b3 = box_3.map_box.select(sel).as_1d()
   print >> log, "Map 1: calculated Fobs with ligand"
   print >> log, "Map 2: calculated Fobs without ligand"
-  print >> log, "Map 3: real data"
+  print >> log, "Map 3: real Fobs data"
   print >>log, "CC(1,2): %6.4f"%flex.linear_correlation(x=b1,y=b2).coefficient()
   print >>log, "CC(1,3): %6.4f"%flex.linear_correlation(x=b1,y=b3).coefficient()
   print >>log, "CC(2,3): %6.4f"%flex.linear_correlation(x=b2,y=b3).coefficient()
+  ### D-function
+  b1 = maptbx.volume_scale_1d(map=b1, n_bins=10000).map_data()
+  b2 = maptbx.volume_scale_1d(map=b2, n_bins=10000).map_data()
+  b3 = maptbx.volume_scale_1d(map=b3, n_bins=10000).map_data()
+  print >> log, "Peak CC:"
+  print >>log, "CC(1,2): %6.4f"%flex.linear_correlation(x=b1,y=b2).coefficient()
+  print >>log, "CC(1,3): %6.4f"%flex.linear_correlation(x=b1,y=b3).coefficient()
+  print >>log, "CC(2,3): %6.4f"%flex.linear_correlation(x=b2,y=b3).coefficient()
+  cutoffs = flex.double(
+    [i/10. for i in range(1,10)]+[i/100 for i in range(91,100)])
+  d12 = maptbx.discrepancy_function(map_1=b1, map_2=b2, cutoffs=cutoffs)
+  d13 = maptbx.discrepancy_function(map_1=b1, map_2=b3, cutoffs=cutoffs)
+  d23 = maptbx.discrepancy_function(map_1=b2, map_2=b3, cutoffs=cutoffs)
+  print >> log, "q    D(1,2) D(1,3) D(2,3)"
+  for c,d12_,d13_,d23_ in zip(cutoffs,d12,d13,d23):
+    print >> log, "%4.2f %6.4f %6.4f %6.4f"%(c,d12_,d13_,d23_)
+  ###
   if(params.debug):
     box_1.write_ccp4_map(file_name="box_1_polder.ccp4")
     box_2.write_ccp4_map(file_name="box_2_polder.ccp4")
