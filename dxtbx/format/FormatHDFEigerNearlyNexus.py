@@ -62,7 +62,6 @@ class EigerNXmxFixer(object):
   '''
   def __init__(self, input_filename, memory_mapped_name):
     import h5py
-    from os.path import join
     from scitbx import matrix
 
     # Copy the master file to the in memory handle
@@ -72,8 +71,6 @@ class EigerNXmxFixer(object):
 
     # Add some simple datasets
     def create_scalar(handle, path, dtype, value):
-      # print "Adding dataset %s with value %s" % (
-      #   join(handle.name, path), str(value))
       dataset = handle.create_dataset(
         path, (), dtype=dtype)
       dataset[()] = value
@@ -122,13 +119,11 @@ class EigerNXmxFixer(object):
     create_scalar(group, "module_index", "int64", 0)
 
     # Create detector data origin
-    # print "Adding dataset %s with value %s" % (join(group.name, "data_origin"), str((0,0)))
     dataset = group.create_dataset("data_origin", (2,), dtype="int32")
     dataset[0] = 0
     dataset[1] = 0
 
     # Create detector data size
-    # print "Adding dataset %s with value %s" % (join(group.name, "data_size"), str((1030, 1065)))
     dataset = group.create_dataset("data_size", (2,), dtype="int32")
     dataset[0] = handle_orig['/entry/data/data_000001'].shape[2]
     dataset[1] = handle_orig['/entry/data/data_000001'].shape[1]
@@ -138,9 +133,9 @@ class EigerNXmxFixer(object):
     delete = []
     for k in sorted(handle_orig['/entry/data'].iterkeys()):
       try:
-        shape = handle_orig[join('/entry/data', k)].shape
+        shape = handle_orig['/entry/data/%s' % k].shape
       except KeyError, e:
-        delete.append(join('/entry/data', k))
+        delete.append('/entry/data/%s' % k)
 
     for d in delete:
       del(handle[d])
@@ -228,7 +223,7 @@ class EigerNXmxFixer(object):
       # Get the number of images
       num_images = 0
       for name in sorted(handle['/entry/data'].iterkeys()):
-        num_images += len(handle_orig[join('/entry/data', name)])
+        num_images += len(handle_orig['/entry/data/%s' % name])
       dataset = group.create_dataset('omega', (num_images,), dtype="float32")
       dataset.attrs['units'] = 'degree'
       dataset.attrs['transformation_type'] = 'rotation'
@@ -277,7 +272,6 @@ class FormatEigerNearlyNexus(FormatHDF5):
   def _start(self):
 
     # Read the file structure
-    from os.path import join
     import uuid
     temp_file = "tmp_master_%s.nxs" % uuid.uuid1().hex
     fixer = EigerNXmxFixer(self._image_file, temp_file)

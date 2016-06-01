@@ -302,7 +302,6 @@ def run_checks(handle, items):
   Run checks for datasets
 
   '''
-  from os.path import join
   for item, detail in items.iteritems():
     min_occurs = detail["minOccurs"]
     checks = detail['checks']
@@ -1009,7 +1008,7 @@ class GoniometerFactory(object):
 
     # Construct the model
     self.model = Goniometer(
-      rotation_axis)
+      tuple(rotation_axis))
 
 
 class ScanFactory(object):
