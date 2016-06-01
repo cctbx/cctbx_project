@@ -140,7 +140,11 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
     t0 = thickness
     px_mm = ParallaxCorrectedPxMmStrategy(mu, t0)
 
+    self.coords = {}
+
     for j in range(24):
+      shift_y = 195 + 17
+      ymin, ymax = j * shift_y, j * shift_y + 195
 
       angle = math.pi * (-12.2 + 0.5 * 7.903 + j * (7.903 + 0.441)) / 180.0
       fast = matrix.col((-1, 0, 0))
@@ -153,6 +157,8 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
         off_x = 184.9
 
       if group_rows:
+        xmin, xmax = 0, 2463
+
         origin = 250.0 * normal - off_x * fast - 16.8 * slow + 250 * z + \
             beam_shift_y * y
         p = detector.add_panel()
@@ -172,19 +178,23 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
         p.set_material('Si')
         p.set_mu(mu)
         p.set_px_mm_strategy(px_mm)
+        self.coords[p.get_name()] = (xmin,ymin,xmax,ymax)
 
       else:
+        shift_x = 487 + 7
+
         row_origin = 250.0 * normal - off_x * fast - 16.8 * slow + 250 * z + \
             beam_shift_y * y
 
         for i in range(5):
+          xmin, xmax = i * shift_x, i * shift_x + 487
           p = detector.add_panel()
           origin = row_origin + i * (487+7) * 0.172 * fast
 
           # OBS! you need to set the panel to a root before set local frame...
           root.add_panel(p)
           p.set_type('SENSOR_PAD')
-          p.set_name('row-%02d' % j)
+          p.set_name('row-%02d-col-%02d' % (j, i))
           p.set_image_size((487, 195))
           p.set_trusted_range((-1, 1000000))
           p.set_pixel_size((0.172, 0.172))
@@ -196,27 +206,18 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
           p.set_material('Si')
           p.set_mu(mu)
           p.set_px_mm_strategy(px_mm)
+          self.coords[p.get_name()] = (xmin,ymin,xmax,ymax)
 
     return detector
 
   def get_raw_data(self):
     if self._raw_data is None:
-      data = read_cbf_image(self._image_file)
+      raw_data = read_cbf_image(self._image_file)
       self._raw_data = []
 
-      if group_rows:
-        for j, panel in enumerate(self.get_detector()):
-          shift_y = 195 + 17
-          xmin, ymin, xmax, ymax = 0, j * shift_y, 2463, j * shift_y + 195
-          self._raw_data.append(data[ymin:ymax,xmin:xmax])
-      else:
-        for j in range(24):
-          for i in range(5):
-            shift_y = 195 + 17
-            shift_x = 487 + 7
-            xmin, ymin, xmax, ymax \
-              = i * shift_x, j * shift_y, i * shift_x + 487, j * shift_y + 195
-            self._raw_data.append(data[ymin:ymax,xmin:xmax])
+      for panel in self.get_detector():
+        xmin, ymin, xmax, ymax = self.coords[panel.get_name()]
+        self._raw_data.append(raw_data[ymin:ymax,xmin:xmax])
 
     return tuple(self._raw_data)
 
