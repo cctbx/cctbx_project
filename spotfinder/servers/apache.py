@@ -12,6 +12,8 @@ def handler(req):
     from spotfinder.servers.apache_bcsb import run as run_command
   elif req.filename.find("distl.signal_strength")>0:
     run_command = run
+  elif req.filename.find("dials.find_spots")>0:
+    from spotfinder.servers.apache_dials import run as run_command
 
   logfile.write(run_command(args=FS))
   log = logfile.getvalue()

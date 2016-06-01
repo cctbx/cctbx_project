@@ -3535,6 +3535,7 @@ spotfinder/servers/__init__.py -text
 spotfinder/servers/adsc_client.py -text
 spotfinder/servers/apache.py -text
 spotfinder/servers/apache_bcsb.py -text
+spotfinder/servers/apache_dials.py -text
 spotfinder/servers/apache_env_run_template -text
 spotfinder/servers/apache_favicon.ico -text
 spotfinder/servers/apache_install.csh -text
