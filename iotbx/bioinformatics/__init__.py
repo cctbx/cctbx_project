@@ -1811,18 +1811,45 @@ def composition_from_sequence (sequence) :
     n_residues += len(seq)
   return n_residues, n_bases
 
-def guess_chain_types_from_sequences(file_name=None,text=None):
+def guess_chain_types_from_sequences(file_name=None,text=None,
+    return_as_dict=False):
   # Guess what chain types are in this sequence file
   if not text:
+    if not file_name:
+      from libtbx.utils import Sorry
+      raise Sorry("Missing file for guess_chain_types_from_sequences: %s" %(
+        file_name))
     text=open(file_name).read()
   chain_types=[]
   ( sequences, unknowns ) = parse_sequence( text )
+  if return_as_dict: dd={}
   for sequence in sequences:
     chain_type,n_residues=chain_type_and_residues(text=sequence.sequence)
     if chain_type and not chain_type in chain_types:
       chain_types.append(chain_type)
-  chain_types.sort()
-  return chain_types
+      if return_as_dict: dd[chain_type]=[]
+    if return_as_dict and chain_type:
+      dd[chain_type].append(sequence)
+   
+  if return_as_dict:
+    return dd # dict of chain_types and sequences for each chain_type
+  else: 
+    chain_types.sort()
+    return chain_types
+
+def text_from_chains_matching_chain_type(file_name=None,text=None,
+    chain_type=None,width=80):
+  dd=guess_chain_types_from_sequences(file_name=file_name,
+    text=text,return_as_dict=True)
+  sequence_text=""
+  for ct in dd.keys():
+    if chain_type is None or ct==chain_type:
+      for seq in dd[ct]:
+        sequence_text+="""
+%s
+ """ %(seq.format(width=width))
+  print sequence_text
+  return sequence_text
 
 def count_letters(letters="",text="",only_count_non_allowed=None):
   n=0

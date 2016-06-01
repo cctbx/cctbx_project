@@ -1781,7 +1781,8 @@ class test_hhalign_parser(unittest.TestCase):
       self.assertAlmostEqual( o, e, digits )
 
 def exercise_guess_chain_types () :
-  from iotbx.bioinformatics import guess_chain_types_from_sequences
+  from iotbx.bioinformatics import \
+     guess_chain_types_from_sequences,text_from_chains_matching_chain_type
   print "Testing guess_chain_types ...",
   text_rna="""
 >4a17.pdb|Chain=2
@@ -1833,6 +1834,13 @@ UGGAGAGUUUGAUCCU
   assert guess_chain_types_from_sequences(text=text_misc)==["PROTEIN","RNA"]
   assert guess_chain_types_from_sequences(text=text_misc_2)==["PROTEIN","RNA"]
   assert guess_chain_types_from_sequences(text=text_misc_3)==["RNA"]
+
+  assert guess_chain_types_from_sequences(text=
+    text_from_chains_matching_chain_type(text=text_misc_2))==["PROTEIN","RNA"]
+  assert guess_chain_types_from_sequences(text=
+    text_from_chains_matching_chain_type(text=text_misc_3))==["RNA"]
+  assert guess_chain_types_from_sequences(text=
+    text_from_chains_matching_chain_type(text=text_protein))==["PROTEIN"]
 
   print "OK"
 
