@@ -1830,10 +1830,10 @@ def guess_chain_types_from_sequences(file_name=None,text=None,
       if return_as_dict: dd[chain_type]=[]
     if return_as_dict and chain_type:
       dd[chain_type].append(sequence)
-   
+
   if return_as_dict:
     return dd # dict of chain_types and sequences for each chain_type
-  else: 
+  else:
     chain_types.sort()
     return chain_types
 
