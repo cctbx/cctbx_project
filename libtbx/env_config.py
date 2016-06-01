@@ -1594,6 +1594,7 @@ class module:
     self.optional = []
     self.exclude_from_binary_bundle = []
     dist_paths = []
+    self.extra_command_line_locations = []
     for dist_path in self.dist_paths:
       if (dist_path is not None):
         while True:
@@ -1628,6 +1629,8 @@ class module:
               '  resulting target = "%s"' % (path, redirection, new_dist_path))
           dist_path = new_dist_path
         if (config is not None):
+          self.extra_command_line_locations.extend(config.get(
+            "extra_command_line_locations", []))
           self.required_for_build.extend(config.get(
             "modules_required_for_build", []))
           self.required_for_use.extend(config.get(
@@ -1758,7 +1761,8 @@ class module:
   def command_line_directory_paths(self):
     result = []
     for dist_path in self.dist_paths_active():
-      for sub_dir in ["command_line", self.name+"/command_line"]:
+      for sub_dir in ["command_line", self.name+"/command_line"]+ \
+        [os.path.join(a,"command_line") for a in self.extra_command_line_locations]:
         path = dist_path / sub_dir
         if path.isdir():
           result.append(path)
