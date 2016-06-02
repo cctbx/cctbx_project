@@ -477,6 +477,8 @@ Installation of Python packages may fail.
     nproc = self.nproc
     if limit_nproc is not None:
       nproc = min(nproc, limit_nproc)
+    #print os.getcwd()
+    #print "make -j %d %s" % (nproc, " ".join(list(make_args)))
     self.call("make -j %d %s" % (nproc, " ".join(list(make_args))), log=log)
     self.call("make install", log=log)
 
@@ -844,7 +846,7 @@ _replace_sysconfig_paths(build_time_vars)
                              "'/opt/local/lib'",
                              "'/usr/local/include'",
                              "'/usr/local/lib'"],
-                     replace_with=["COMPILE_FLAGS = ['-std=c99']",
+                     replace_with=["COMPILE_FLAGS = ['-O3', '-std=c99']",
                              "INCLUDE_DIRS = ['%s/include']"%self.base_dir,
                              "LIBRARY_DIRS = ['%s/lib']"%self.base_dir,
                              "","","",""])
@@ -940,9 +942,9 @@ _replace_sysconfig_paths(build_time_vars)
     # compiler doesn't support C99 by default.  for some bizarre reason this
     # includes certain (relatively new) versions of gcc...
     if self.flag_is_linux:
-      make_args.append("CFLAGS=\"--std=c99\"")
+      make_args.append("CFLAGS=\"-std=c99\"")
     self.configure_and_build(
-      config_args=[self.prefix],
+      config_args=[self.prefix, "--enable-production",],
       log=pkg_log,
       make_args=make_args)
 
