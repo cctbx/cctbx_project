@@ -2543,12 +2543,14 @@ prime/command_line/__init__.py -text
 prime/command_line/change_path_indexing_ambiguity.py -text
 prime/command_line/iotacc.py -text
 prime/command_line/postrefine.py -text
+prime/command_line/prime_gui.py -text
 prime/command_line/print_integration_pickle.py -text
 prime/command_line/spot_param_visualizer.py -text
 prime/command_line/viewstats.py -text
 prime/ext.cpp -text
 prime/libtbx_config -text
 prime/postrefine/__init__.py -text
+prime/postrefine/mod_gui_init.py -text
 prime/postrefine/mod_input.py -text
 prime/postrefine/mod_lbfgs.py -text
 prime/postrefine/mod_lbfgs_partiality.py -text
@@ -2557,6 +2559,7 @@ prime/postrefine/mod_mx.py -text
 prime/postrefine/mod_outlier.py -text
 prime/postrefine/mod_partiality.py -text
 prime/postrefine/mod_pdb.py -text
+prime/postrefine/mod_plotter.py -text
 prime/postrefine/mod_results.py -text
 prime/postrefine/mod_util.py -text
 prime/postrefine/postrefine.py -text
