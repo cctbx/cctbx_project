@@ -280,6 +280,7 @@ class FormatCBFMiniPilatusDLS6MSN126(FormatCBFMiniPilatus):
           fast.elems,
           slow.elems,
           origin_panel.elems)
+        p.set_raw_image_offset((xmin, ymin))
         self.coords[panel_name] = (xmin,ymin,xmax,ymax)
 
         root.add_panel(p)

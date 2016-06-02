@@ -239,6 +239,7 @@ namespace dxtbx { namespace model {
     friend std::ostream& operator<<(std::ostream &os, const Panel &p);
 
   protected:
+
     shared_ptr<PxMmStrategy> convert_coord_;
   };
 
@@ -257,6 +258,7 @@ namespace dxtbx { namespace model {
     os << "  origin: " << p.get_origin().const_ref() << std::endl;
     return os;
   }
+
 
 }} // namespace dxtbx::model
 

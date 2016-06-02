@@ -443,6 +443,8 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("set_material", &PanelData::set_material)
       .def("get_mu", &PanelData::get_mu)
       .def("set_mu", &PanelData::set_mu)
+      .def("get_raw_image_offset", &PanelData::get_raw_image_offset)
+      .def("set_raw_image_offset", &PanelData::set_raw_image_offset)
       .def("set_mask", &PanelData::set_mask)
       .def("get_mask", &PanelData::get_mask)
       .def("add_mask", &PanelData::add_mask)

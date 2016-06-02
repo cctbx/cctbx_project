@@ -117,6 +117,8 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
         fast.elems,
         slow.elems,
         origin.elems)
+      xmin, ymin = 0, i * 1024
+      p.set_raw_image_offset((xmin, ymin))
       # p.set_px_mm_strategy(px_mm)
 
     return detector

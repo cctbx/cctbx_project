@@ -19,6 +19,7 @@
 
 namespace dxtbx { namespace model {
 
+  using scitbx::af::int2;
   using scitbx::af::int4;
   using scitbx::af::tiny;
 
@@ -34,7 +35,8 @@ namespace dxtbx { namespace model {
         image_size_(0, 0),
         trusted_range_(0.0, 0.0),
         thickness_(0.0),
-        mu_(0.0) {}
+        mu_(0.0),
+        raw_image_offset_(0,0) {}
 
     /** Construct with data */
     PanelData(std::string type,
@@ -53,7 +55,8 @@ namespace dxtbx { namespace model {
         trusted_range_(trusted_range),
         thickness_(thickness),
         material_(material),
-        mu_(mu) {
+        mu_(mu),
+        raw_image_offset_(0,0) {
       set_type(type);
       set_name(name);
       set_local_frame(fast_axis, slow_axis, origin);
@@ -121,6 +124,20 @@ namespace dxtbx { namespace model {
       return mu_;
     }
 
+    /**
+     * Get the offset of the panel into the raw image array
+     */
+    int2 get_raw_image_offset() const {
+      return raw_image_offset_;
+    }
+
+    /**
+     * Set the offset of the panel into the raw image array
+     */
+    void set_raw_image_offset(int2 raw_image_offset) {
+      raw_image_offset_ = raw_image_offset;
+    }
+
     /** Get the mask array */
     scitbx::af::shared<int4> get_mask() const {
       scitbx::af::shared<int4> result((scitbx::af::reserve(mask_.size())));
@@ -180,6 +197,7 @@ namespace dxtbx { namespace model {
     double thickness_;
     std::string material_;
     double mu_;
+    int2 raw_image_offset_;
     scitbx::af::shared<int4> mask_;
   };
 
