@@ -6,13 +6,13 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 05/03/2016
-Description : IOTA GUI startup module. Version 1.0.005
+Last Changed: 06/01/2016
+Description : IOTA GUI startup module.
 '''
 
 import wx
 from iota.components.iota_gui_init import MainWindow
-iota_version = '1.0.005'
+from iota.components.iota_misc import iota_version
 
 class MainApp(wx.App):
   ''' App for the main GUI window  '''
@@ -20,6 +20,7 @@ class MainApp(wx.App):
     self.frame = MainWindow(None, -1, title='IOTA v.{}'.format(iota_version))
     self.frame.Fit()
     self.frame.SetPosition((150, 150))
+    self.frame.SetMinSize(self.frame.GetEffectiveMinSize())
     self.frame.Show(True)
     self.SetTopWindow(self.frame)
     return True

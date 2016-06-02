@@ -1,11 +1,9 @@
 from __future__ import division
 
-# LIBTBX_SET_DISPATCHER_NAME iota.test2
-
 '''
 Author      : Lyubimov, A.Y.
-Created     : 10/12/2014
-Last Changed: 05/02/2016
+Created     : 04/14/2014
+Last Changed: 06/01/2016
 Description : IOTA GUI Initialization module
 '''
 
@@ -13,29 +11,45 @@ import os
 import wx
 from threading import Thread
 
-import difflib
 import math
 import numpy as np
 
 import matplotlib.gridspec as gridspec
 from matplotlib import pyplot as plt
-from matplotlib.backends.backend_wx import FigureCanvasWx as FigureCanvas
+from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 from libtbx.easy_mp import parallel_map
 from libtbx import easy_pickle as ep
 
-from iota.components.iota_analysis import Analyzer
+from iota.components.iota_analysis import Analyzer, Plotter
 import iota.components.iota_input as inp
 import iota.components.iota_misc as misc
 import iota.components.iota_image as img
+import iota.components.iota_controls as ct
 
-iota_version = '1.0.004'
-description = '''The integration optimization, triage and analysis (IOTA) toolkit for the processing of serial diffraction data.
+iota_version = misc.iota_version
+description = misc.gui_description
+license = misc.gui_description
 
-Reference: Lyubimov, et al., J Appl Cryst, submitted
-'''
-license = ''' IOTA is distributed under open source license '''
+# Platform-specific stuff
+# TODO: Will need to test this on Windows at some point
+if wx.Platform == '__WXGTK__':
+  norm_font_size = 10
+  button_font_size = 12
+  LABEL_SIZE = 14
+  CAPTION_SIZE = 12
+elif wx.Platform == '__WXMAC__':
+  norm_font_size = 12
+  button_font_size = 14
+  LABEL_SIZE = 14
+  CAPTION_SIZE = 12
+elif (wx.Platform == '__WXMSW__'):
+  norm_font_size = 9
+  button_font_size = 11
+  LABEL_SIZE = 11
+  CAPTION_SIZE = 9
+
 icons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/')
 
 # -------------------------------- Threading --------------------------------- #
@@ -115,7 +129,6 @@ class ProcThread(Thread):
     proc_image = proc_image_instance.run()
     return proc_image
 
-
 # -------------------------------- Main Window ------------------------------- #
 
 class MainWindow(wx.Frame):
@@ -129,8 +142,6 @@ class MainWindow(wx.Frame):
 
     # Status bar
     self.sb = self.CreateStatusBar()
-    self.sb.SetFieldsCount(3)
-    self.sb.SetStatusWidths([320, 200, -2])
 
     # Help menu item with the about dialog
     m_help = wx.Menu()
@@ -167,6 +178,30 @@ class MainWindow(wx.Frame):
                                                     shortHelp='Convert Image Files',
                                                     longHelp='Convert raw images to image pickle format')
 
+    # Buttons for post-processing programs (separate windows)
+    self.toolbar.AddSeparator()
+    self.tb_btn_prime = self.toolbar.AddLabelTool(wx.ID_ANY,
+                                                  label='PRIME',
+                                                  bitmap=wx.Bitmap('{}/32x32/prime.png'.format( icons)),
+                                                  shortHelp='Run PRIME',
+                                                  longHelp='Data scaling, merging and post-refinement with PRIME')
+    self.tb_btn_merge = self.toolbar.AddLabelTool(wx.ID_ANY,
+                                                  label='cxi.merge',
+                                                  bitmap=wx.Bitmap('{}/32x32/merge.png'.format(icons)),
+                                                  shortHelp='Run cxi.merge',
+                                                  longHelp='Data scaling, merging and post-refinement with cxi.merge')
+    # Comment this out to activate the cxi.merge button
+    self.toolbar.RemoveTool(self.tb_btn_merge.GetId())
+
+    #Test buttons for test windows - comment out when not needed
+    #self.toolbar.AddSeparator()
+    self.tb_btn_test = self.toolbar.AddLabelTool(wx.ID_ANY,
+                                                 label='Test',
+                                                 bitmap=wx.Bitmap('{}/32x32/test.png'.format(icons)))
+    self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_test)
+    self.toolbar.RemoveTool(self.tb_btn_test.GetId())
+
+
     # These buttons will be disabled until input path is provided
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
     self.toolbar.EnableTool(self.tb_btn_imglist.GetId(), False)
@@ -178,7 +213,7 @@ class MainWindow(wx.Frame):
     self.gparams = self.input_window.gparams
 
     # Single input window
-    main_box.Add(self.input_window, flag=wx.LEFT | wx.RIGHT | wx.TOP | wx.BOTTOM, border=10)
+    main_box.Add(self.input_window, flag=wx.ALL | wx.EXPAND, border=10)
     main_box.Add((-1, 20))
 
     # Draw the main window sizer
@@ -186,11 +221,12 @@ class MainWindow(wx.Frame):
 
     # Toolbar button bindings
     self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
-    self.Bind(wx.EVT_BUTTON, self.onInput, self.input_window.inp_btn_browse)
-    self.Bind(wx.EVT_TEXT, self.onInput, self.input_window.inp_ctr)
+    self.Bind(wx.EVT_BUTTON, self.onInput, self.input_window.inp_box.btn_browse)
+    self.Bind(wx.EVT_TEXT, self.onInput, self.input_window.inp_box.ctr)
     self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_run)
     self.Bind(wx.EVT_TOOL, self.onWriteImageList, self.tb_btn_imglist)
     self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_convert)
+    self.Bind(wx.EVT_TOOL, self.onPRIME, self.tb_btn_prime)
 
     # Menubar button bindings
     self.Bind(wx.EVT_MENU, self.OnAboutBox, self.mb_about)
@@ -200,11 +236,12 @@ class MainWindow(wx.Frame):
   def init_settings(self):
     # Grab params from main window class
     self.gparams = self.input_window.gparams
-    int_index = self.input_window.int_cbx_choice.GetCurrentSelection()
-    self.gparams.advanced.integrate_with = str(self.input_window.int_cbx_choice.GetString(int_index)[:5]).lower()
-    self.gparams.description = self.input_window.inp_des_ctr.GetValue()
-    self.gparams.input = [self.input_window.inp_ctr.GetValue()]
-    self.gparams.output = self.input_window.out_ctr.GetValue()
+    int_index = self.input_window.int_box.ctr.GetCurrentSelection()
+    self.gparams.advanced.integrate_with = str(
+      self.input_window.int_box.ctr.GetString(int_index)[:5]).lower()
+    self.gparams.description = self.input_window.title_box.ctr.GetValue()
+    self.gparams.input = [self.input_window.inp_box.ctr.GetValue()]
+    self.gparams.output = self.input_window.out_box.ctr.GetValue()
     self.gparams.advanced.random_sample.flag_on = self.input_window.opt_chk_random.GetValue()
     self.gparams.advanced.random_sample.number = self.input_window.opt_spc_random.GetValue()
     self.gparams.n_processors = self.input_window.opt_spc_nprocs.GetValue()
@@ -227,7 +264,7 @@ class MainWindow(wx.Frame):
     wx.AboutBox(info)
 
   def onInput(self, e):
-    if self.input_window.inp_ctr.GetValue() != '':
+    if self.input_window.inp_box.ctr.GetValue() != '':
       self.toolbar.EnableTool(self.tb_btn_imglist.GetId(), True)
       self.toolbar.EnableTool(self.tb_btn_convert.GetId(), True)
       self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
@@ -241,6 +278,9 @@ class MainWindow(wx.Frame):
     if e.GetId() == self.tb_btn_convert.GetId():
       self.gparams.image_conversion.convert_only = True
       title = 'Image Conversion'
+    elif e.GetId() == self.tb_btn_test.GetId():
+      self.gparams.advanced.experimental = True
+      title = 'Test'
     else:
       title = 'Image Processing'
     self.init_settings()
@@ -276,7 +316,7 @@ class MainWindow(wx.Frame):
                              message="Load script file",
                              defaultDir=os.curdir,
                              defaultFile="*.param",
-                             wildcard="*",
+                             wildcard="*.param",
                              style=wx.OPEN | wx.FD_FILE_MUST_EXIST,
                              )
     if load_dlg.ShowModal() == wx.ID_OK:
@@ -292,9 +332,9 @@ class MainWindow(wx.Frame):
       self.input_window.gparams = self.gparams
 
       # Set input window params
-      self.input_window.inp_ctr.SetValue(str(self.gparams.input[1]))
-      self.input_window.out_ctr.SetValue(str(self.gparams.output))
-      self.input_window.inp_des_ctr.SetValue(str(self.gparams.description))
+      self.input_window.inp_box.ctr.SetValue(str(self.gparams.input[1]))
+      self.input_window.out_box.ctr.SetValue(str(self.gparams.output))
+      self.input_window.title_box.ctr.SetValue(str(self.gparams.description))
       self.input_window.opt_chk_random.SetValue(self.gparams.advanced.random_sample.flag_on)
       if self.gparams.advanced.random_sample.flag_on:
         self.input_window.opt_txt_random.Enable()
@@ -305,9 +345,9 @@ class MainWindow(wx.Frame):
       self.input_window.opt_spc_random.SetValue(int(self.gparams.advanced.random_sample.number))
       self.input_window.opt_spc_nprocs.SetValue(int(self.gparams.n_processors))
       if str(self.gparams.advanced.integrate_with).lower() == 'cctbx':
-        self.input_window.int_cbx_choice.SetSelection(0)
+        self.input_window.int_box.ctr.SetSelection(0)
       elif str(self.gparams.advanced.integrate_with).lower() == 'dials':
-        self.input_window.int_cbx_choice.SetSelection(1)
+        self.input_window.int_box.ctr.SetSelection(1)
 
   def onWriteImageList(self, e):
     img_list_dlg = wx.FileDialog(self,
@@ -327,12 +367,20 @@ class MainWindow(wx.Frame):
         wx.MessageBox('List of images saved in {}'.format(img_list_dlg.GetPath()),
                       'Info', wx.OK | wx.ICON_INFORMATION)
 
+  def onPRIME(self, e):
+    from prime.postrefine.mod_gui_init import PRIMEWindow
+    prefix = self.input_window.prime_ctr_prefix.GetValue()
+    self.prime_window = PRIMEWindow(self, -1, title='PRIME', prefix=prefix)
+    self.prime_window.SetMinSize(self.prime_window.GetEffectiveMinSize())
+    self.prime_window.Show(True)
+
   def onQuit(self, e):
+    # TODO: Need something that will identify and kill ALL child processes
     self.Close()
 
 # ----------------------------  Processing Window ---------------------------  #
 
-class LogPage(wx.Panel):
+class LogTab(wx.Panel):
   def __init__(self, parent):
     wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
 
@@ -343,43 +391,307 @@ class LogPage(wx.Panel):
     self.log_sizer.Add(self.log_window, proportion=1, flag= wx.EXPAND | wx.ALL, border=10)
     self.SetSizer(self.log_sizer)
 
-class ChartPage(wx.Panel):
+class ProcessingTab(wx.Panel):
   def __init__(self, parent):
     wx.Panel.__init__(self, parent)
     self.proc_sizer = wx.BoxSizer(wx.VERTICAL)
     self.proc_figure = Figure()
+
+    # Create transparent background
+    self.proc_figure.patch.set_alpha(0)
+
+    # Set regular font
+    plt.rc('font', family='sans-serif', size=10)
+    plt.rc('mathtext', default='regular')
+
     gsp = gridspec.GridSpec(4, 4)
     self.int_axes = self.proc_figure.add_subplot(gsp[2:, 2:])
+    self.int_axes.axis('off')
     self.bxy_axes = self.proc_figure.add_subplot(gsp[2:, :2])
-    self.nsref_axes = self.proc_figure.add_subplot(gsp[0, :])
+    self.nsref_axes = self.proc_figure.add_subplot(gsp[:2, :])
+    self.nsref_axes.set_xlabel('Frame')
     self.nsref_axes.set_ylabel('Strong Spots')
-    self.res_axes = self.proc_figure.add_subplot(gsp[1, :])
-    self.res_axes.set_xlabel('Frame')
+    self.res_axes = self.nsref_axes.twinx()
     self.res_axes.set_ylabel('Resolution')
     self.proc_figure.set_tight_layout(True)
     self.canvas = FigureCanvas(self, -1, self.proc_figure)
     self.proc_sizer.Add(self.canvas, proportion=1, flag =wx.EXPAND | wx.ALL, border=10)
     self.SetSizer(self.proc_sizer)
 
+class SummaryTab(wx.Panel):
+  def __init__(self,
+               parent,
+               gparams=None,
+               final_objects=None,
+               out_dir=None,
+               plot=None):
+    wx.Panel.__init__(self, parent)
+
+    self.final_objects = final_objects
+    self.gparams = gparams
+    self.out_dir = out_dir
+    self.plot = plot
+
+    summary_sizer = wx.BoxSizer(wx.VERTICAL)
+
+    sfont = wx.Font(norm_font_size, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
+    bfont = wx.Font(norm_font_size, wx.DEFAULT, wx.NORMAL, wx.BOLD)
+    self.SetFont(bfont)
+
+    # Run information
+    run_box = wx.StaticBox(self, label='Run Information')
+    run_box.SetFont(sfont)
+    run_box_sizer = wx.StaticBoxSizer(run_box, wx.VERTICAL)
+    run_box_grid = wx.FlexGridSizer(3, 2, 5, 20)
+    self.title_txt = wx.StaticText(self, label='')
+    self.title_txt.SetFont(sfont)
+    self.folder_txt = wx.StaticText(self, label='')
+    self.folder_txt.SetFont(sfont)
+
+    run_box_grid.AddMany([(wx.StaticText(self, label='Title')),
+                          (self.title_txt, 1, wx.EXPAND),
+                          (wx.StaticText(self, label='Directory')),
+                          (self.folder_txt, 1, wx.EXPAND)])
+
+    run_box_grid.AddGrowableCol(1, 1)
+    run_box_sizer.Add(run_box_grid, flag=wx.EXPAND | wx.ALL, border=10)
+
+    summary_sizer.Add(run_box_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Integration summary
+    if self.gparams.advanced.integrate_with == 'cctbx':
+      int_box = wx.StaticBox(self, label='Analysis of Integration')
+      int_box.SetFont(sfont)
+      int_box_sizer = wx.StaticBoxSizer(int_box, wx.HORIZONTAL)
+      int_box_grid = wx.FlexGridSizer(4, 5, 5, 20)
+      int_btn_sizer = wx.BoxSizer(wx.VERTICAL)
+
+      # Grid search summary
+      self.sih_min = wx.StaticText(self, label='4.0')
+      self.sih_min.SetFont(sfont)
+      self.sih_max = wx.StaticText(self, label='8.0')
+      self.sih_max.SetFont(sfont)
+      self.sih_avg = wx.StaticText(self, label='6.0')
+      self.sih_avg.SetFont(sfont)
+      self.sih_std = wx.StaticText(self, label='0.05')
+      self.sih_std.SetFont(sfont)
+      self.sph_min = wx.StaticText(self, label='5.0')
+      self.sph_min.SetFont(sfont)
+      self.sph_max = wx.StaticText(self, label='12.0')
+      self.sph_max.SetFont(sfont)
+      self.sph_avg = wx.StaticText(self, label='8.5')
+      self.sph_avg.SetFont(sfont)
+      self.sph_std = wx.StaticText(self, label='0.15')
+      self.sph_std.SetFont(sfont)
+      self.spa_min = wx.StaticText(self, label='10.0')
+      self.spa_min.SetFont(sfont)
+      self.spa_max = wx.StaticText(self, label='20.0')
+      self.spa_max.SetFont(sfont)
+      self.spa_avg = wx.StaticText(self, label='15.0')
+      self.spa_avg.SetFont(sfont)
+      self.spa_std = wx.StaticText(self, label='0.01')
+      self.spa_std.SetFont(sfont)
+
+      int_box_grid.AddMany([(wx.StaticText(self, label='')),
+                            (wx.StaticText(self, label='min')),
+                            (wx.StaticText(self, label='max')),
+                            (wx.StaticText(self, label='avg')),
+                            (wx.StaticText(self, label='std')),
+                            (
+                            wx.StaticText(self, label='minimum signal height')),
+                            (self.sih_min), (self.sih_max),
+                            (self.sih_avg), (self.sih_std),
+                            (wx.StaticText(self, label='minimum spot height')),
+                            (self.sph_min), (self.sph_max),
+                            (self.sph_avg), (self.sph_std),
+                            (wx.StaticText(self, label='minimum spot area')),
+                            (self.spa_min), (self.spa_max),
+                            (self.spa_avg), (self.spa_std)
+                            ])
+
+      # Button & binding for heatmap display
+      self.int_heatmap = ct.GradButton(self,
+                                       bmp = wx.Bitmap('{}/24x24/heatmap.png'
+                                                    ''.format(icons)),
+                                       label='  Spotfinding Heatmap',
+                                       size=(250, -1))
+      int_btn_sizer.Add(self.int_heatmap)
+      self.Bind(wx.EVT_BUTTON, self.onPlotHeatmap, self.int_heatmap)
+
+      # Insert into sizers
+      int_box_sizer.Add(int_box_grid, flag=wx.ALL, border=10)
+      int_box_sizer.AddStretchSpacer()
+      int_box_sizer.Add(int_btn_sizer, flag=wx.ALL, border=10)
+      summary_sizer.Add(int_box_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+
+
+    # Dataset Info
+    dat_box = wx.StaticBox(self, label='Dataset Information')
+    dat_box.SetFont(sfont)
+    dat_box_sizer = wx.StaticBoxSizer(dat_box, wx.HORIZONTAL)
+    dat_box_grid = wx.FlexGridSizer(4, 2, 5, 20)
+    dat_btn_sizer = wx.BoxSizer(wx.VERTICAL)
+
+    self.pg_txt = wx.StaticText(self, label='P4')
+    self.pg_txt.SetFont(sfont)
+    self.uc_txt = wx.StaticText(self, label='79 79 38 90 90 90')
+    self.uc_txt.SetFont(sfont)
+    res = '50.0 - 1.53 {}'.format(u'\u212B'.encode('utf-8'))
+    self.rs_txt = wx.StaticText(self, label=res.decode('utf-8'))
+    self.rs_txt.SetFont(sfont)
+    self.xy_txt = wx.StaticText(self, label='X = 224.90 mm, Y = 225.08 mm')
+    self.xy_txt.SetFont(sfont)
+
+    dat_box_grid.AddMany([(wx.StaticText(self, label='Bravais lattice: ')),
+                          (self.pg_txt),
+                          (wx.StaticText(self, label='Unit cell: ')),
+                          (self.uc_txt),
+                          (wx.StaticText(self, label='Resolution: ')),
+                          (self.rs_txt),
+                          (wx.StaticText(self, label='Beam XY: ')),
+                          (self.xy_txt)
+                          ])
+
+    # Buttons for res. histogram and beam xy plot
+    self.dat_reshist = ct.GradButton(self,
+                                     bmp=wx.Bitmap('{}/24x24/hist.png'.format(icons)),
+                                     label='  Resolution Histogram', size=(250, -1))
+    self.dat_beamxy = ct.GradButton(self,
+                                    bmp=wx.Bitmap('{}/24x24/scatter.png'.format(icons)),
+                                    label='  Beam XY Plot', size=(250, -1))
+    self.dat_beam3D = ct.GradButton(self,
+                                    bmp=wx.Bitmap('{}/24x24/3D_scatter.png'.format(icons)),
+                                    label='  Beam XYZ Plot', size=(250, -1))
+    dat_btn_sizer.Add(self.dat_reshist)
+    dat_btn_sizer.Add(self.dat_beamxy, flag=wx.TOP, border=5)
+    dat_btn_sizer.Add(self.dat_beam3D, flag=wx.TOP, border=5)
+    self.Bind(wx.EVT_BUTTON, self.onPlotBeamXY, self.dat_beamxy)
+    self.Bind(wx.EVT_BUTTON, self.onPlotBeam3D, self.dat_beam3D)
+    self.Bind(wx.EVT_BUTTON, self.onPlotResHist, self.dat_reshist)
+
+    # Insert into sizers
+    dat_box_sizer.Add(dat_box_grid, flag=wx.ALL, border=10)
+    dat_box_sizer.AddStretchSpacer()
+    dat_box_sizer.Add(dat_btn_sizer, flag=wx.ALL, border=10)
+    summary_sizer.Add(dat_box_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+
+
+    # # Summary
+    smr_box = wx.StaticBox(self, label='Run Summary')
+    smr_box.SetFont(sfont)
+    smr_box_sizer = wx.StaticBoxSizer(smr_box, wx.HORIZONTAL)
+    smr_box_grid = wx.FlexGridSizer(7, 2, 5, 20)
+    smr_btn_sizer = wx.BoxSizer(wx.VERTICAL)
+
+    self.readin_txt = wx.StaticText(self, label='250')
+    self.readin_txt.SetFont(sfont)
+    self.nodiff_txt = wx.StaticText(self, label='100')
+    self.nodiff_txt.SetFont(sfont)
+    self.w_diff_txt = wx.StaticText(self, label='150')
+    self.w_diff_txt.SetFont(sfont)
+    self.noint_txt = wx.StaticText(self, label='30')
+    self.noint_txt.SetFont(sfont)
+    self.final_txt = wx.StaticText(self, label='100')
+    self.final_txt.SetFont(sfont)
+
+    smr_box_grid.AddMany([(wx.StaticText(self, label='Read in: ')),
+                          (self.readin_txt),
+                          (wx.StaticText(self, label='No diffraction:')),
+                          (self.nodiff_txt),
+                          (wx.StaticText(self, label='Have diffraction: ')),
+                          (self.w_diff_txt)])
+
+    self.smr_runprime = ct.GradButton(self,
+                                      bmp=wx.Bitmap('{}/24x24/prime.png'.format(icons)),
+                                      label='  Run PRIME', size=(250, -1))
+    # self.smr_runmerge = wdg.GradButton(self,
+    #                     bmp=wx.Bitmap('{}/24x24/merge.png'.format(icons)),
+    #                     label='  Run cxi.merge', size=(250, -1))
+
+    smr_btn_sizer.Add(self.smr_runprime)
+    # smr_btn_sizer.Add(self.smr_runmerge, flag=wx.TOP, border=5)
+    self.Bind(wx.EVT_BUTTON, self.onPRIME, self.smr_runprime)
+
+    if self.gparams.advanced.integrate_with == 'cctbx':
+      self.noprf_txt = wx.StaticText(self, label='20')
+      self.noprf_txt.SetFont(sfont)
+      smr_box_grid.AddMany([(wx.StaticText(self,
+                                           label='Failed indexing / integration')),
+                              (self.noint_txt),
+                              (wx.StaticText(self, label='Failed filter')),
+                              (self.noprf_txt)])
+    elif self.gparams.advanced.integrate_with == 'dials':
+      self.nospf_txt = wx.StaticText(self, label='10')
+      self.nospf_txt.SetFont(sfont)
+      self.noidx_txt = wx.StaticText(self, label='20')
+      self.noidx_txt.SetFont(sfont)
+      smr_box_grid.AddMany([(wx.StaticText(self,
+                                           label='Failed spotfinding')),
+                            (self.nospf_txt),
+                            (wx.StaticText(self, label='Failed indexing')),
+                            (self.noidx_txt),
+                            (wx.StaticText(self, label='Failed integration')),
+                            (self.noint_txt)])
+    smr_box_grid.AddMany([(wx.StaticText(self,
+                                         label='Final integrated pickles')),
+                          (self.final_txt)])
+
+
+    smr_box_sizer.Add(smr_box_grid, flag=wx.ALL, border=10)
+    smr_box_sizer.AddStretchSpacer()
+    smr_box_sizer.Add(smr_btn_sizer, flag=wx.ALL,  border=10)
+    summary_sizer.Add(smr_box_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.SetFont(sfont)
+    self.SetSizer(summary_sizer)
+
+  def onPRIME(self, e):
+    from prime.postrefine.mod_gui_init import PRIMEWindow
+    self.prime_window = PRIMEWindow(self, -1, title='PRIME',
+                                    prefix=self.gparams.prime_prefix)
+    self.prime_window.load_script(out_dir=self.out_dir)
+    self.prime_window.SetMinSize(self.prime_window.GetEffectiveMinSize())
+    self.prime_window.Show(True)
+
+
+  def onPlotHeatmap(self, e):
+    if self.final_objects != None:
+      self.plot.plot_spotfinding_heatmap()
+
+  def onPlotBeamXY(self, e):
+    if self.final_objects != None:
+      self.plot.plot_beam_xy()
+
+  def onPlotBeam3D(self, e):
+    if self.final_objects != None:
+      self.plot.plot_beam_xy(threeD=True)
+
+  def onPlotResHist(self, e):
+    if self.final_objects != None:
+      self.plot.plot_res_histogram()
 
 class ProcWindow(wx.Frame):
+  ''' New frame that will show processing info '''
+
   def __init__(self, parent, id, title, params, test=False):
-    wx.Frame.__init__(self, parent, id, title, size=(800, 800),
+    wx.Frame.__init__(self, parent, id, title, size=(800, 900),
                       style= wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER)
 
     self.logtext = ''
     self.objects_in_progress = []
     self.obj_counter = 0
+    self.bookmark = 0
     self.gparams = params
+
+    self.main_panel = wx.Panel(self)
+    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
 
     # Toolbar
     self.proc_toolbar = self.CreateToolBar(wx.TB_TEXT)
     self.tb_btn_abort = self.proc_toolbar.AddLabelTool(wx.ID_ANY, label='Abort',
                                                 bitmap=wx.Bitmap('{}/32x32/stop.png'.format(icons)),
                                                 shortHelp='Abort')
-
-    self.main_panel = wx.Panel(self)
-    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.proc_toolbar.Realize()
 
     # Status box
     self.status_panel = wx.Panel(self.main_panel)
@@ -396,10 +708,11 @@ class ProcWindow(wx.Frame):
     # Tabbed output window(s)
     self.proc_panel = wx.Panel(self.main_panel)
     self.proc_nb = wx.Notebook(self.proc_panel, style=0)
-    self.chart_tab = ChartPage(self.proc_nb)
-    self.log_tab = LogPage(self.proc_nb)
+    self.chart_tab = ProcessingTab(self.proc_nb)
+    self.log_tab = LogTab(self.proc_nb)
     self.proc_nb.AddPage(self.log_tab, 'Log')
     self.proc_nb.AddPage(self.chart_tab, 'Charts')
+    self.proc_nb.SetSelection(1)
     self.proc_sizer = wx.BoxSizer(wx.VERTICAL)
     self.proc_sizer.Add(self.proc_nb, 1, flag=wx.EXPAND | wx.ALL, border=3)
     self.proc_panel.SetSizer(self.proc_sizer)
@@ -432,9 +745,12 @@ class ProcWindow(wx.Frame):
     # Button bindings
     self.Bind(wx.EVT_TOOL, self.onAbort, self.tb_btn_abort)
 
-
-    if not test:
+    if not self.gparams.advanced.experimental:
       self.run()
+    else:
+      self.summary_tab = SummaryTab(self.proc_nb)
+      self.proc_nb.AddPage(self.summary_tab, 'Summary')
+      self.good_to_go = True
 
 
   def onStatusBarResize(self, e):
@@ -493,37 +809,113 @@ class ProcWindow(wx.Frame):
 
   def analyze_results(self):
     if len(self.final_objects) == 0:
+      self.display_log()
+      self.plot_integration()
       self.status_txt.SetForegroundColor('red')
       self.status_txt.SetLabel('No images successfully integrated')
+
     elif not self.gparams.image_conversion.convert_only:
       self.status_txt.SetForegroundColour('black')
       self.status_txt.SetLabel('Analyzing results...')
-      analysis = Analyzer(self.init, self.img_objects, iota_version)
-      analysis.print_results()
-      analysis.unit_cell_analysis()
+
+      # Do analysis
+      analysis = Analyzer(self.init,
+                          self.img_objects,
+                          iota_version,
+                          gui_mode=True)
+      plot = Plotter(self.gparams,
+                     self.final_objects,
+                     self.init.viz_base)
+
+      # Initialize summary tab
+      prime_file = os.path.join(self.init.int_base,
+                                '{}.phil'.format(self.gparams.prime_prefix))
+      self.summary_tab = SummaryTab(self.proc_nb,
+                                    self.gparams,
+                                    self.final_objects,
+                                    os.path.dirname(prime_file),
+                                    plot)
+
+      # Run information
+      self.summary_tab.title_txt.SetLabel(self.gparams.description)
+      self.summary_tab.folder_txt.SetLabel(self.gparams.output)
+
+      # Analysis of integration
+      if self.gparams.advanced.integrate_with == 'cctbx':
+        self.summary_tab.sih_min.SetLabel("{:4.0f}".format(np.min(analysis.s)))
+        self.summary_tab.sih_max.SetLabel("{:4.0f}".format(np.max(analysis.s)))
+        self.summary_tab.sih_avg.SetLabel("{:4.2f}".format(np.mean(analysis.s)))
+        self.summary_tab.sih_std.SetLabel("{:4.2f}".format(np.std(analysis.s)))
+        self.summary_tab.sph_min.SetLabel("{:4.0f}".format(np.min(analysis.h)))
+        self.summary_tab.sph_max.SetLabel("{:4.0f}".format(np.max(analysis.h)))
+        self.summary_tab.sph_avg.SetLabel("{:4.2f}".format(np.mean(analysis.h)))
+        self.summary_tab.sph_std.SetLabel("{:4.2f}".format(np.std(analysis.h)))
+        self.summary_tab.spa_min.SetLabel("{:4.0f}".format(np.min(analysis.a)))
+        self.summary_tab.spa_max.SetLabel("{:4.0f}".format(np.max(analysis.a)))
+        self.summary_tab.spa_avg.SetLabel("{:4.2f}".format(np.mean(analysis.a)))
+        self.summary_tab.spa_std.SetLabel("{:4.2f}".format(np.std(analysis.a)))
+
+      # Dataset information
+      pg, uc = analysis.unit_cell_analysis()
+      self.summary_tab.pg_txt.SetLabel(str(pg))
+      unit_cell = " ".join(['{:4.1f}'.format(i) for i in uc])
+      self.summary_tab.uc_txt.SetLabel(unit_cell)
+      res = "{:4.2f} - {:4.2f} {}".format(np.mean(analysis.lres),
+                                np.mean(analysis.hres),
+                                u'\u212B'.encode('utf-8'))
+      self.summary_tab.rs_txt.SetLabel(res.decode('utf-8'))
+      beamX, beamY = plot.calculate_beam_xy()[:2]
+      beamXY = "X = {:4.1f} mm, Y = {:4.1f} mm" \
+               "".format(np.median(beamX), np.median(beamY))
+      self.summary_tab.xy_txt.SetLabel(beamXY)
+
+      # Summary
+      self.summary_tab.readin_txt.SetLabel(str(len(analysis.all_objects)))
+      self.summary_tab.nodiff_txt.SetLabel(str(len(analysis.no_diff_objects)))
+      self.summary_tab.w_diff_txt.SetLabel(str(len(analysis.diff_objects)))
+      if self.gparams.advanced.integrate_with == 'cctbx':
+        self.summary_tab.noint_txt.SetLabel(str(len(analysis.not_int_objects)))
+        self.summary_tab.noprf_txt.SetLabel(str(len(analysis.filter_fail_objects)))
+      elif self.gparams.advanced.integrate_with == 'dials':
+        self.summary_tab.nospf_txt.SetLabel(str(len(analysis.not_spf_objects)))
+        self.summary_tab.noidx_txt.SetLabel(str(len(analysis.not_idx_objects)))
+        self.summary_tab.noint_txt.SetLabel(str(len(analysis.not_int_objects)))
+      self.summary_tab.final_txt.SetLabel(str(len(analysis.final_objects)))
+
+      # Generate input file for PRIME
       analysis.print_summary()
-      analysis.make_prime_input()
+      analysis.make_prime_input(filename=prime_file)
+
+      # Display summary
+      self.proc_nb.AddPage(self.summary_tab, 'Analysis')
+      self.proc_nb.SetSelection(2)
+
+      # Signal end of run
+      font = self.sb.GetFont()
+      font.SetWeight(wx.BOLD)
+      self.status_txt.SetFont(font)
       self.status_txt.SetForegroundColour('blue')
       self.status_txt.SetLabel('DONE')
 
-    self.display_log()
-    self.plot_integration()
+      # Finish up
+      self.display_log()
+      self.plot_integration()
+
+    # Stop timer
     self.timer.Stop()
 
 
   def display_log(self):
-    ''' Display log output '''
-    with open(self.init.logfile, 'r') as logfile:
-      self.old_logtext = self.logtext
-      self.logtext = logfile.readlines()
+    ''' Display PRIME stdout '''
+    if os.path.isfile(self.init.logfile):
+      with open(self.init.logfile, 'r') as out:
+        out.seek(self.bookmark)
+        output = out.readlines()
+        self.bookmark = out.tell()
 
-    ins_pt = self.log_tab.log_window.GetInsertionPoint()
-    diff = difflib.Differ()
-    comps = [i for i in diff.compare(self.old_logtext, self.logtext) if
-             i.startswith('+ ')]
-    if len(comps) > 0:
-      for i in comps:
-        self.log_tab.log_window.AppendText(i.replace('+', '', 1))
+      ins_pt = self.log_tab.log_window.GetInsertionPoint()
+      for i in output:
+        self.log_tab.log_window.AppendText(i)
         self.log_tab.log_window.SetInsertionPoint(ins_pt)
 
 
@@ -531,7 +923,6 @@ class ProcWindow(wx.Frame):
     try:
       # Summary pie chart
       names_numbers = [
-        ['have diffraction', len([i for i in self.objects_in_progress if i.status == 'imported' and i.fail == None])],
         ['failed triage', len([i for i in self.objects_in_progress if i.fail == 'failed triage'])],
         ['failed indexing / integration', len([i for i in self.objects_in_progress if i.fail == 'failed grid search'])],
         ['failed prefilter', len([i for i in self.objects_in_progress if i.fail == 'failed prefilter'])],
@@ -551,21 +942,46 @@ class ProcWindow(wx.Frame):
 
       # Strong reflections per frame
       self.chart_tab.nsref_axes.clear()
-      self.chart_tab.nsref_axes.grid(True)
-      self.chart_tab.nsref_axes.scatter(self.nref_xaxis, self.nref_list, marker='o', color='red', picker=True)
-      self.chart_tab.nsref_axes.set_xlim(0, np.max(self.nref_xaxis) + 1)
-      self.chart_tab.nsref_axes.set_ylim(ymin=0)
-      self.chart_tab.nsref_axes.set_ylabel('Ref. (I / sigI > {})' \
-                                           ''.format(self.gparams.cctbx.selection.min_sigma))
+      nsref_x = [i + 1 for i in range(len(self.img_list))]
+      nsref_y = np.array([np.nan if i==0 else i for i in
+                          self.nref_list]).astype(np.double)
+      nsref_ylabel = 'Reflections (I / sigI > {})' \
+                     ''.format(self.gparams.cctbx.selection.min_sigma)
+      nsref = self.chart_tab.nsref_axes.bar(nsref_x, nsref_y, align='center',
+                                            linewidth=0, color='red',
+                                            label=nsref_ylabel)
+      self.chart_tab.nsref_axes.set_xlim(0, np.nanmax(nsref_x) + 2)
+      nsref_ymax = np.nanmax(nsref_y) * 1.25 + 10
+      self.chart_tab.nsref_axes.set_ylim(ymin=0, ymax=nsref_ymax)
+      self.chart_tab.nsref_axes.set_ylabel(nsref_ylabel)
+      self.chart_tab.nsref_axes.set_xlabel('Frame')
+      self.chart_tab.nsref_axes.set_xticks(np.arange(len(nsref_x)) + .5,
+                                           minor=False)
 
       # Resolution per frame
       self.chart_tab.res_axes.clear()
-      self.chart_tab.res_axes.grid(True)
-      self.chart_tab.res_axes.scatter(self.nref_xaxis, self.res_list, marker='d', color='green', picker=True)
-      self.chart_tab.res_axes.set_xlim(0, np.max(self.nref_xaxis) + 1)
-      self.chart_tab.res_axes.set_ylim(ymin=0)
-      self.chart_tab.res_axes.set_xlabel('Frame')
-      self.chart_tab.res_axes.set_ylabel('Resolution')
+      res_x = np.array([i + 1.5 for i in range(len(self.img_list))])\
+        .astype(np.double)
+      res_y = np.array([np.nan if i==0 else i for i in self.res_list])\
+        .astype(np.double)
+      res_m = np.isfinite(res_y)
+      self.chart_tab.res_axes.plot(res_x[res_m], res_y[res_m],
+                                   'deepskyblue', lw=3)
+
+      res = self.chart_tab.res_axes.scatter(res_x[res_m], res_y[res_m], s=45,
+                                            marker='o', edgecolors='black',
+                                            color='deepskyblue',
+                                            label="Resolution",
+                                            picker=True)
+      self.chart_tab.res_axes.set_xlim(0, np.nanmax(res_x) + 2)
+      res_ymax = np.nanmax(res_y) * 1.1
+      res_ymin = np.nanmin(res_y) * 0.9
+      self.chart_tab.res_axes.set_ylim(ymin=res_ymin, ymax=res_ymax)
+      res_ylabel = 'Resolution ({})'.format(r'$\AA$')
+      self.chart_tab.res_axes.set_ylabel(res_ylabel)
+      labels = [nsref.get_label(), res.get_label()]
+      self.chart_tab.res_axes.legend([nsref, res], labels, loc='upper right',
+                                     fontsize=9, fancybox=True)
 
       # Beam XY (cumulative)
       info = []
@@ -579,53 +995,56 @@ class ProcWindow(wx.Frame):
           found_file = os.path.join(root, filename)
           if found_file.endswith(('pickle')):
             beam = ep.load(found_file)
-            info.append([i, beam['xbeam'], beam['ybeam']])
+            info.append([found_file, beam['xbeam'], beam['ybeam']])
             wavelengths.append(beam['wavelength'])
             distances.append(beam['distance'])
             cells.append(beam['observations'][0].unit_cell().parameters())
 
       # Calculate beam center coordinates and distances
-      beamX = [i[1] for i in info]
-      beamY = [j[2] for j in info]
-      beam_dist = [math.hypot(i[1] - np.median(beamX), i[2] - np.median(beamY)) for i in info]
+      if len(info) > 0:
+        beamX = [i[1] for i in info]
+        beamY = [j[2] for j in info]
+        beam_dist = [math.hypot(i[1] - np.median(beamX), i[2] -
+                                np.median(beamY)) for i in info]
 
-      wavelength = np.median(wavelengths)
-      det_distance = np.median(distances)
-      a = np.median([i[0] for i in cells])
-      b = np.median([i[1] for i in cells])
-      c = np.median([i[2] for i in cells])
+        wavelength = np.median(wavelengths)
+        det_distance = np.median(distances)
+        a = np.median([i[0] for i in cells])
+        b = np.median([i[1] for i in cells])
+        c = np.median([i[2] for i in cells])
 
-      # Calculate predicted L +/- 1 misindexing distance for each cell edge
-      aD = det_distance * math.tan(2 * math.asin(wavelength / (2 * a)))
-      bD = det_distance * math.tan(2 * math.asin(wavelength / (2 * b)))
-      cD = det_distance * math.tan(2 * math.asin(wavelength / (2 * c)))
+        # Calculate predicted L +/- 1 misindexing distance for each cell edge
+        aD = det_distance * math.tan(2 * math.asin(wavelength / (2 * a)))
+        bD = det_distance * math.tan(2 * math.asin(wavelength / (2 * b)))
+        cD = det_distance * math.tan(2 * math.asin(wavelength / (2 * c)))
 
-      # Calculate axis limits of beam center scatter plot
-      beamxy_delta = np.ceil(np.max(beam_dist))
-      xmax = round(np.median(beamX) + beamxy_delta)
-      xmin = round(np.median(beamX) - beamxy_delta)
-      ymax = round(np.median(beamY) + beamxy_delta)
-      ymin = round(np.median(beamY) - beamxy_delta)
+        # Calculate axis limits of beam center scatter plot
+        beamxy_delta = np.ceil(np.max(beam_dist))
+        xmax = round(np.median(beamX) + beamxy_delta)
+        xmin = round(np.median(beamX) - beamxy_delta)
+        ymax = round(np.median(beamY) + beamxy_delta)
+        ymin = round(np.median(beamY) - beamxy_delta)
 
-      # Plot beam center scatter plot
-      self.chart_tab.bxy_axes.clear()
-      self.chart_tab.bxy_axes.axis('equal')
-      self.chart_tab.bxy_axes.axis([xmin, xmax, ymin, ymax])
-      self.chart_tab.bxy_axes.scatter(beamX, beamY, alpha=1, s=20, c='grey', lw=1)
-      self.chart_tab.bxy_axes.plot(np.median(beamX), np.median(beamY), markersize=8, marker='o', c='yellow', lw=2)
+        # Plot beam center scatter plot
+        self.chart_tab.bxy_axes.clear()
+        self.chart_tab.bxy_axes.axis('equal')
+        self.chart_tab.bxy_axes.axis([xmin, xmax, ymin, ymax])
+        self.chart_tab.bxy_axes.scatter(beamX, beamY, alpha=1, s=20, c='grey', lw=1)
+        self.chart_tab.bxy_axes.plot(np.median(beamX), np.median(beamY), markersize=8, marker='o', c='yellow', lw=2)
 
-      # Plot projected mis-indexing limits for all three axes
-      circle_a = plt.Circle((np.median(beamX), np.median(beamY)), radius=aD, color='r', fill=False, clip_on=True)
-      circle_b = plt.Circle((np.median(beamX), np.median(beamY)), radius=bD, color='g', fill=False, clip_on=True)
-      circle_c = plt.Circle((np.median(beamX), np.median(beamY)), radius=cD, color='b', fill=False, clip_on=True)
-      self.chart_tab.bxy_axes.add_patch(circle_a)
-      self.chart_tab.bxy_axes.add_patch(circle_b)
-      self.chart_tab.bxy_axes.add_patch(circle_c)
-      self.chart_tab.bxy_axes.set_xlabel('BeamX (mm)', fontsize=15)
-      self.chart_tab.bxy_axes.set_ylabel('BeamY (mm)', fontsize=15)
-      self.chart_tab.bxy_axes.set_title('Beam Center Coordinates')
+        # Plot projected mis-indexing limits for all three axes
+        circle_a = plt.Circle((np.median(beamX), np.median(beamY)), radius=aD, color='r', fill=False, clip_on=True)
+        circle_b = plt.Circle((np.median(beamX), np.median(beamY)), radius=bD, color='g', fill=False, clip_on=True)
+        circle_c = plt.Circle((np.median(beamX), np.median(beamY)), radius=cD, color='b', fill=False, clip_on=True)
+        self.chart_tab.bxy_axes.add_patch(circle_a)
+        self.chart_tab.bxy_axes.add_patch(circle_b)
+        self.chart_tab.bxy_axes.add_patch(circle_c)
+        self.chart_tab.bxy_axes.set_xlabel('BeamX (mm)', fontsize=15)
+        self.chart_tab.bxy_axes.set_ylabel('BeamY (mm)', fontsize=15)
+        self.chart_tab.bxy_axes.set_title('Beam Center Coordinates')
 
       self.chart_tab.canvas.draw()
+      self.chart_tab.Layout()
 
     except ValueError, e:
       pass
@@ -633,7 +1052,8 @@ class ProcWindow(wx.Frame):
 
   def onTimer(self, e):
     if len(self.objects_in_progress) > self.obj_counter:
-      self.plot_integration()
+      if sum(self.nref_list) > 0 and sum(self.res_list) > 0:
+        self.plot_integration()
       self.obj_counter = len(self.objects_in_progress)
 
     # Update gauge
@@ -662,6 +1082,8 @@ class ProcWindow(wx.Frame):
     if not os.path.isfile(self.tmp_abort_file):
       obj = e.GetValue()
       self.objects_in_progress.append(obj)
+      #self.nref_list = [i.final['strong'] for i in self.objects_in_progress]
+      #self.res_list = [i.final['res'] for i in self.objects_in_progress]
       self.nref_list[obj.img_index - 1] = obj.final['strong']
       self.res_list[obj.img_index - 1] = obj.final['res']
 
@@ -699,65 +1121,47 @@ class InputWindow(wx.Panel):
     from iota.components.iota_input import master_phil
     self.gparams = master_phil.extract()
 
-    main_box = wx.StaticBox(self, label='Input', size=(770, -1))
+    main_box = wx.StaticBox(self, label='Main Settings')
     vbox = wx.StaticBoxSizer(main_box, wx.VERTICAL)
 
     # Integration software choice
-    int_choice_box = wx.BoxSizer(wx.HORIZONTAL)
     progs = ['cctbx.xfel', 'DIALS']
-    self.int_txt_choice = wx.StaticText(self,
-                                        label='Integrate with: ',
-                                        size=(120, -1))
-    self.int_cbx_choice = wx.Choice(self, choices=progs)
-    int_choice_box.Add(self.int_txt_choice)
-    int_choice_box.Add(self.int_cbx_choice, flag=wx.LEFT, border=5)
-    vbox.Add(int_choice_box, flag=wx.LEFT | wx.TOP, border=10)
+    self.int_box = ct.ChoiceCtrl(self, label='Integrate with:',
+                                 label_size=(120, -1),
+                                 ctrl_size=(120, -1),
+                                 choices=progs)
+    vbox.Add(self.int_box,
+             flag=wx.LEFT | wx.TOP | wx.RIGHT| wx.EXPAND,
+             border=15)
 
     # Input box and Browse button
-    input_box = wx.BoxSizer(wx.HORIZONTAL)
-    self.inp_txt = wx.StaticText(self, label='Input path: ', size=(120, -1))
-    self.inp_btn_browse = wx.Button(self, label='Browse...')
-    self.inp_btn_mag = wx.BitmapButton(self,
-                                       bitmap=wx.Bitmap('{}/16x16/viewmag.png'
-                                                        ''.format(icons)))
-    ctr_length = main_box.GetSize()[0] - self.inp_txt.GetSize()[0] - \
-                 self.inp_btn_browse.GetSize()[0] - \
-                 self.inp_btn_mag.GetSize()[0] - 55
-    self.inp_ctr = wx.TextCtrl(self, size=(ctr_length, -1))
-    input_box.Add(self.inp_txt)
-    input_box.Add(self.inp_ctr, flag=wx.LEFT, border=5)
-    input_box.Add(self.inp_btn_browse, flag=wx.LEFT, border=10)
-    input_box.Add(self.inp_btn_mag, flag=wx.LEFT | wx.RIGHT, border=10)
-    vbox.Add(input_box, flag=wx.LEFT | wx.TOP, border=10)
+    self.inp_box = ct.InputCtrl(self, label='Input: ',
+                                label_size=(120, -1),
+                                label_style='bold',
+                                button=True)
+    vbox.Add(self.inp_box,
+             flag=wx.LEFT | wx.TOP | wx.RIGHT| wx.EXPAND,
+             border=15)
 
     # Output box and Browse button
-    output_box = wx.BoxSizer(wx.HORIZONTAL)
-    self.out_txt = wx.StaticText(self, label='Output path: ', size=(120, -1))
-    self.out_btn_browse = wx.Button(self, label='Browse...')
-    self.out_btn_mag = wx.BitmapButton(self,
-                                       bitmap=wx.Bitmap('{}/16x16/viewmag.png'
-                                                        ''.format(icons)))
-    self.out_ctr = wx.TextCtrl(self, size=(ctr_length, -1))
-    self.out_ctr.SetValue(os.path.abspath(os.curdir))
-    output_box.Add(self.out_txt)
-    output_box.Add(self.out_ctr, flag=wx.LEFT, border=5)
-    output_box.Add(self.out_btn_browse, flag=wx.LEFT, border=10)
-    output_box.Add(self.out_btn_mag,
-                   flag=wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER_HORIZONTAL,
-                   border=10)
-    vbox.Add(output_box, flag=wx.LEFT | wx.TOP, border=10)
+    self.out_box = ct.InputCtrl(self, label='Output: ',
+                                label_size=(120, -1),
+                                label_style='bold',
+                                button=True)
+    vbox.Add(self.out_box,
+             flag=wx.LEFT | wx.TOP | wx.RIGHT | wx.EXPAND,
+             border=15)
 
     # Title box
-    title_box = wx.BoxSizer(wx.HORIZONTAL)
-    self.inp_des_txt = wx.StaticText(self, label='Job title: ', size=(120, -1))
-    self.inp_des_ctr = wx.TextCtrl(self, size=(ctr_length, -1))
-    title_box.Add(self.inp_des_txt)
-    title_box.Add(self.inp_des_ctr, flag=wx.LEFT, border=5)
-    title_box.Add((10, -1))
-    vbox.Add(title_box, flag=wx.LEFT | wx.TOP, border=10)
+    self.title_box = ct.InputCtrl(self, label='Title: ',
+                                  label_size=(120, -1))
+    vbox.Add(self.title_box,
+             flag=wx.LEFT | wx.TOP | wx.RIGHT | wx.EXPAND,
+             border=15)
+
 
     # Input / Main Options
-    opt_box_1 = wx.BoxSizer(wx.HORIZONTAL)
+    opt_box = wx.FlexGridSizer(2, 5, 15, 10)
     self.opt_chk_random = wx.CheckBox(self, label='Random subset')
     self.opt_chk_random.SetValue(False)
     self.opt_txt_random = wx.StaticText(self, label='Images in subset:')
@@ -766,43 +1170,31 @@ class InputWindow(wx.Panel):
     self.opt_spc_random.Disable()
     self.opt_txt_nprocs = wx.StaticText(self, label='Number of processors: ')
     self.opt_spc_nprocs = wx.SpinCtrl(self, value='8', size=(80, -1))
-    nproc_spacer = main_box.GetSize()[0] - \
-                   self.opt_chk_random.GetSize()[0] -\
-                   self.opt_txt_random.GetSize()[0] - \
-                   self.opt_spc_random.GetSize()[0] - \
-                   self.opt_txt_nprocs.GetSize()[0] - \
-                   self.opt_spc_nprocs.GetSize()[0] - \
-                   self.inp_btn_browse.GetSize()[0] - 60
-    opt_box_1.Add(self.opt_chk_random)
-    opt_box_1.Add((10, -1))
-    opt_box_1.Add(self.opt_txt_random, flag=wx.LEFT, border=10)
-    opt_box_1.Add(self.opt_spc_random, flag=wx.LEFT, border=10)
-    opt_box_1.Add(self.opt_txt_nprocs, flag=wx.LEFT, border=nproc_spacer)
-    opt_box_1.Add(self.opt_spc_nprocs, flag=wx.LEFT, border=10)
-    vbox.Add(opt_box_1, flag=wx.LEFT | wx.TOP, border=10)
+    opt_box.AddMany([(self.opt_chk_random),
+                     (self.opt_txt_random),
+                     (self.opt_spc_random),
+                     (self.opt_txt_nprocs),
+                     (self.opt_spc_nprocs)])
 
     # Buttons for Other Options
-    opt_box_2 = wx.BoxSizer(wx.HORIZONTAL)
     self.prime_txt_prefix = wx.StaticText(self, label='PRIME input prefix:')
     self.prime_ctr_prefix = wx.TextCtrl(self, size=(150, -1))
     self.prime_ctr_prefix.SetValue('prime')
     self.opt_btn_import = wx.Button(self, label='Import options...')
     self.opt_btn_process = wx.Button(self, label='Processing options...')
     self.opt_btn_analysis = wx.Button(self, label='Analysis options...')
-    opt_box_2.Add(self.prime_txt_prefix)
-    opt_box_2.Add(self.prime_ctr_prefix, flag=wx.LEFT, border=5)
-    opt_box_2.Add(self.opt_btn_import, flag=wx.LEFT, border=10)
-    opt_box_2.Add(self.opt_btn_process, flag=wx.LEFT, border=10)
-    opt_box_2.Add(self.opt_btn_analysis, flag=wx.LEFT, border=10)
-    vbox.Add((-1, 20))
-    vbox.Add(opt_box_2, flag=wx.LEFT | wx.BOTTOM, border=10)
-    vbox.Add((-1, 10))
+    opt_box.AddMany([(self.prime_txt_prefix),
+                     (self.prime_ctr_prefix),
+                     (self.opt_btn_import),
+                     (self.opt_btn_process),
+                     (self.opt_btn_analysis)])
+    vbox.Add(opt_box, flag=wx.ALL, border=10)
 
     self.SetSizer(vbox)
 
     # Button bindings
-    self.inp_btn_browse.Bind(wx.EVT_BUTTON, self.onInputBrowse)
-    self.out_btn_browse.Bind(wx.EVT_BUTTON, self.onOutputBrowse)
+    self.inp_box.btn_browse.Bind(wx.EVT_BUTTON, self.onInputBrowse)
+    self.out_box.btn_browse.Bind(wx.EVT_BUTTON, self.onOutputBrowse)
     self.opt_chk_random.Bind(wx.EVT_CHECKBOX, self.onRandomCheck)
     self.opt_btn_import.Bind(wx.EVT_BUTTON, self.onImportOptions)
     self.opt_btn_process.Bind(wx.EVT_BUTTON, self.onProcessOptions)
@@ -884,7 +1276,7 @@ class InputWindow(wx.Panel):
 
   def onProcessOptions(self, e):
     # For cctbx.xfel options
-    if self.int_cbx_choice.GetCurrentSelection() == 0:
+    if self.int_box.ctr.GetCurrentSelection() == 0:
       int_dialog = CCTBXOptions(self, title='cctbx.xfel Options',
                                 style=wx.DEFAULT_DIALOG_STYLE | wx.STAY_ON_TOP)
       int_dialog.Fit()
@@ -1035,7 +1427,7 @@ class InputWindow(wx.Panel):
           self.gparams.cctbx.selection.prefilter.flag_on = False
 
     # For DIALS options
-    elif self.int_cbx_choice.GetCurrentSelection() == 1:
+    elif self.int_box.ctr.GetCurrentSelection() == 1:
       int_dialog = DIALSOptions(self, title='DIALS Options',
                                 style=wx.DEFAULT_DIALOG_STYLE | wx.STAY_ON_TOP)
       int_dialog.Fit()
@@ -1113,7 +1505,7 @@ class InputWindow(wx.Panel):
     dlg = wx.DirDialog(self, "Choose the input directory:",
                        style=wx.DD_DEFAULT_STYLE)
     if dlg.ShowModal() == wx.ID_OK:
-      self.inp_ctr.SetValue(dlg.GetPath())
+      self.inp_box.ctr.SetValue(dlg.GetPath())
     dlg.Destroy()
     e.Skip()
 
@@ -1124,7 +1516,7 @@ class InputWindow(wx.Panel):
     dlg = wx.DirDialog(self, "Choose the output directory:",
                        style=wx.DD_DEFAULT_STYLE)
     if dlg.ShowModal() == wx.ID_OK:
-      self.out_ctr.SetValue(dlg.GetPath())
+      self.out_box.ctr.SetValue(dlg.GetPath())
     dlg.Destroy()
     e.Skip()
 

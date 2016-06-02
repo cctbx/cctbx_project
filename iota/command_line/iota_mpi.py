@@ -6,10 +6,18 @@ Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
 Last Changed: 05/03/2016
 Description : IOTA command-line module for running modules in order.
-              Version 1.0.005
 '''
 
-iota_version = '1.0.005'
+
+from libtbx.easy_mp import parallel_map as easy_mp_parallel_map
+from iota.components.iota_init import InitAll
+from iota.components.iota_analysis import Analyzer
+import iota.components.iota_image as img
+import iota.components.iota_cmd as cmd
+import iota.components.iota_misc as misc
+
+
+iota_version = misc.iota_version
 help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 
@@ -29,14 +37,6 @@ submission script. Useful for huge datasets. (NOTE: make sure that,
 in iota.param, mp_method = mpi)
 
 """
-
-from libtbx.easy_mp import parallel_map as easy_mp_parallel_map
-from iota.components.iota_init import InitAll
-from iota.components.iota_analysis import Analyzer
-import iota.components.iota_image as img
-import iota.components.iota_cmd as cmd
-import iota.components.iota_misc as misc
-
 
 def parallel_map (
     func,

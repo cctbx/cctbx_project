@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 05/03/2015
+Last Changed: 06/01/2015
 Description : Reads command line arguments. Initializes all IOTA starting
               parameters. Starts main log.
 '''
@@ -53,15 +53,13 @@ def parse_command_args(iver, help_message):
 class InitAll(object):
   """ Class to initialize current IOTA run
 
-      iver = IOTA version (hard-coded)
       help_message = description (hard-coded)
 
   """
 
-  def __init__(self, iver, help_message):
-    from datetime import datetime
-    self.iver = iver
-    self.now = "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now())
+  def __init__(self, help_message):
+    self.iver = misc.iota_version
+    self.now = misc.now
     self.logo = "\n\n"\
    "     IIIIII            OOOOOOO        TTTTTTTTTT          A                 \n"\
    "       II             O       O           TT             A A                \n"\
@@ -70,7 +68,7 @@ class InitAll(object):
    "       II             O       O           TT          A       A             \n"\
    "       II             O       O           TT         A         A            \n"\
    "     IIIIII            OOOOOOO            TT        A           A   v{}     \n"\
-   "".format(iver)
+   "".format(self.iver)
     self.help_message = self.logo + help_message
     self.input_base = None
     self.conv_base = None
@@ -226,7 +224,7 @@ class InitAll(object):
         print '\n{:-^70}\n'.format('IOTA Parameters')
         print help_out
         inp.write_defaults(os.path.abspath(os.path.curdir), txt_out)
-      misc.iota_exit(self.iver)
+      misc.iota_exit()
     else:                                   # If input exists, check type
       carg = os.path.abspath(self.args.path)
       if os.path.exists(carg):
@@ -262,7 +260,7 @@ class InitAll(object):
       else:
         print self.logo
         print "ERROR: Invalid input! Need parameter filename or data folder."
-        misc.iota_exit(self.iver)
+        misc.iota_exit()
 
     # Identify indexing / integration program
     if self.params.advanced.integrate_with == 'cctbx':
@@ -278,7 +276,7 @@ class InitAll(object):
 
     if self.args.analyze != None:
       self.analyze_prior_results('{:003d}'.format(int(self.args.analyze)))
-      misc.iota_exit(self.iver)
+      misc.iota_exit()
 
     if self.params.mp_method == 'mpi':
       rank, size = misc.get_mpi_rank_and_size()
@@ -306,7 +304,7 @@ class InitAll(object):
           print "{}: {}".format(i, input_file)
           lf.write('{}\n'.format(input_file))
       print '\nExiting...\n\n'
-      misc.iota_exit(self.iver)
+      misc.iota_exit()
 
     # If fewer images than requested processors are supplied, set the number of
     # processors to the number of images

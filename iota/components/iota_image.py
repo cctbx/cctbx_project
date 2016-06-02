@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 05/02/2016
+Last Changed: 06/01/2016
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -262,12 +262,12 @@ class SingleImage(object):
             self.grid.append({'sih':sig_height, 'sph':spot_height,
                                   'spa':spot_area, 'a':0, 'b':0, 'c':0,
                                   'alpha':0, 'beta':0, 'gamma':0, 'sg':'',
-                                  'strong':0, 'res':0, 'mos':0,
+                                  'strong':0, 'res':0, 'lres':0, 'mos':0,
                                   'epv':0, 'info':'', 'ok':True})
 
     self.final = {'img':self.conv_img, 'sih':0, 'sph':0, 'spa':0, 'a':0, 'b':0,
                   'c':0, 'alpha':0, 'beta':0, 'gamma':0, 'sg':'', 'strong':0,
-                  'res':0, 'mos':0, 'epv':0, 'info':'', 'final':None,
+                  'res':0, 'lres':0, 'mos':0, 'epv':0, 'info':'', 'final':None,
                   'program':'cctbx'}
 
   def square_pickle(self, data):
@@ -492,9 +492,10 @@ class SingleImage(object):
       self.grid_points = []
       self.generate_grid()
     elif self.params.advanced.integrate_with == 'dials':
-      self.final = {'img':self.conv_img, 'a':0, 'b':0, 'c':0, 'alpha':0, 'beta':0,
-                    'gamma':0, 'sg':'','strong':0, 'res':0, 'mos':0, 'epv':0, 'info':'',
-                    'final':None, 'program':'dials'}
+      self.final = {'img':self.conv_img, 'a':0, 'b':0, 'c':0, 'alpha':0,
+                    'beta':0, 'gamma':0, 'sg':'','strong':0, 'res':0,
+                    'lres':0, 'mos':0, 'epv':0, 'info':'','final':None,
+                    'program':'dials'}
 
     # Generate names for output folders and files:
     if not self.params.image_conversion.convert_only:

@@ -3,13 +3,33 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 04/14/2015
+Last Changed: 06/01/2015
 Description : Module with miscellaneous useful functions and classes
 '''
 
 import os
 import sys
 from cStringIO import StringIO
+
+from datetime import datetime
+iota_version = '1.0.006'
+now = "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now())
+
+# For GUI
+gui_description = '''The integration optimization, triage and
+analysis (IOTA) toolkit for the processing of serial diffraction data.
+
+Reference: Lyubimov, et al., J Appl Cryst, 2016
+'''
+
+prime_description = ''' The Post-RefInement and MErging (PRIME) program for
+the scaling, merging and post-refinement of integrated diffraction images.
+
+Reference: Uervirojnangkoorn, et al., eLife, 2015'''
+
+gui_license = ''' IOTA is distributed under open source license '''
+prime_license = ''' PRIME is distributed under open source license'''
+cxi_merge_license = ''' cxi.merge is distributed under open source license '''
 
 
 class Capturing(list):
@@ -49,7 +69,7 @@ def main_log(logfile, entry, print_tag=False):
   if print_tag:
     print entry
 
-def set_base_dir(dirname, sel_flag=False, out_dir=None):
+def set_base_dir(dirname=None, sel_flag=False, out_dir=None):
   """ Generates a base folder for converted pickles and/or grid search and/or
       integration results; creates subfolder numbered one more than existing
   """
@@ -63,8 +83,12 @@ def set_base_dir(dirname, sel_flag=False, out_dir=None):
     else:
       return False
 
-  if out_dir == None:
+  if out_dir == None and dirname != None:
     path = os.path.abspath(os.path.join(os.curdir, dirname))
+  elif out_dir != None and dirname == None:
+    path = os.path.abspath(out_dir)
+  elif out_dir == None and dirname == None:
+    path = os.path.abspath(os.curdir)
   else:
     path = os.path.join(os.path.abspath(out_dir), dirname)
   if os.path.isdir(path):
@@ -112,10 +136,8 @@ def make_image_path(raw_img, input_base, base_path):
   return os.path.normpath(dest_folder)
 
 
-def iota_exit(iota_version, silent=False):
+def iota_exit(silent=False):
   if not silent:
-    from datetime import datetime
-    now = "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now())
     print '\n\nIOTA version {0}'.format(iota_version)
     print '{}\n'.format(now)
   sys.exit()

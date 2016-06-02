@@ -1,11 +1,16 @@
-IOTA v1.0.005 - Changes to command-line module
+IOTA v1.0.006 - New GUI features
 
 Bug Fixes:
-1. No longer crashes in AUTO mode w/o target file supplied
+1. Can now run in selection-only mode (cctbx.xfel only) w/o errors
 
 New Features
-1. Streamlined and cleaned upcommand-line module (iota_run.py)
-2. Improved progress bar more clearly indicates progress
+1. Rearranged iota_analysis.py module for use with GUI
+2. Added "Analysis" page in output window that pops up at end of run
+    a. Summary information
+    b. Displays relevant graphs
+    c. Button to run PRIME
+3. PRIME GUI now exists; can run either from IOTA front window, from IOTA
+analysis tab or by itself by calling "prime" in command line
 
 Known Issues:
 1. Still a little dodgy when running IOTA with DIALS; will be improved in future

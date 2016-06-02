@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 05/02/2016
+Last Changed: 06/01/2016
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -226,6 +226,10 @@ n_processors = 32
 mp_method = *multiprocessing mpi
   .type = choice
   .help = Multiprocessing method
+prime_prefix = prime
+  .type = str
+  .multiple = False
+  .help = Prefix for the PRIME input file
 """)
 
 class Capturing(list):

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 04/29/2015
+Last Changed: 06/01/2015
 Description : Runs cctbx.xfel integration module either in grid-search or final
               integration mode. Has options to output diagnostic visualizations.
               Includes selector class for best integration result selection
@@ -260,13 +260,13 @@ class Integrator(object):
         obs = int_final['observations'][0]
         cell = obs.unit_cell().parameters()
         sg = int_final['pointgroup']
-        res = obs.d_min()
+        lres, hres = obs.d_max_min()
 
         # Calculate number of spots w/ high I / sigmaI
         Is = obs.data()
         sigmas = obs.sigmas()
         I_over_sigI = Is / sigmas
-        spots = len(Is)
+        #spots = len(Is)
         strong_spots = len([i for i in I_over_sigI if i >= self.min_sigma])
 
         # Mosaicity parameters
@@ -279,13 +279,13 @@ class Integrator(object):
                "".format(cell[0], cell[1], cell[2], cell[3], cell[4], cell[5])
 
         int_status = 'RES: {:<4.2f}  NSREF: {:<4}  SG: {:<5}  CELL: {}'\
-                     ''.format(res, strong_spots, sg, p_cell)
+                     ''.format(hres, strong_spots, sg, p_cell)
 
         int_results = {'sg':sg, 'a':cell[0], 'b':cell[1], 'c':cell[2],
-                        'alpha':cell[3], 'beta':cell[4], 'gamma':cell[5],
-                        'strong':strong_spots, 'res':res, 'mos':mosaicity,
-                        'epv':ewald_proximal_volume, 'info':int_status,
-                        'ok':True}
+                       'alpha':cell[3], 'beta':cell[4], 'gamma':cell[5],
+                       'strong':strong_spots, 'res':hres, 'lres':lres,
+                       'mos':mosaicity, 'epv':ewald_proximal_volume,
+                       'info':int_status,'ok':True}
       except ValueError:
         import traceback
         print
