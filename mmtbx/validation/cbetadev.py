@@ -46,8 +46,9 @@ class cbeta (residue) :
     key = "cb %3s%2s%4s%1s  %.3f %.2f" % (self.resname.lower(),
       self.chain_id, self.resseq, self.icode, self.deviation,
       self.dihedral_NABB)
-    return "{%s} r=%.3f magenta  %.3f, %.3f, %.3f\n" % (key,
-      self.deviation, self.ideal_xyz[0], self.ideal_xyz[1], self.ideal_xyz[2])
+    return "{%s} r=%.3f %s %.3f, %.3f, %.3f" % (key,
+      self.deviation, '', #The blank char is a placeholder for optional color
+      self.ideal_xyz[0], self.ideal_xyz[1], self.ideal_xyz[2])
 
   def as_table_row_phenix (self) :
     return [ self.chain_id, "%s %s" % (self.resname, self.resid), self.altloc,
@@ -158,7 +159,7 @@ class cbetadev (validation) :
 
   def as_kinemage (self, chain_id=None) :
     cbeta_out = "@subgroup {CB dev} dominant\n"
-    cbeta_out += "@balllist {CB dev Ball} color= gold radius= 0.0020   master= {Cbeta dev}\n"
+    cbeta_out += "@balllist {CB dev Ball} color= magenta master= {Cbeta dev}\n"
     for result in self.results :
       if result.is_outlier() :
         if (chain_id is None) or (chain_id == result.chain_id) :

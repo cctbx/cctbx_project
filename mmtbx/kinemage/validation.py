@@ -323,7 +323,7 @@ def make_probe_dots(hierarchy, keep_hydrogens=False):
 
 def cbeta_dev (outliers, chain_id=None) :
   cbeta_out = "@subgroup {CB dev} dominant\n"
-  cbeta_out += "@balllist {CB dev Ball} color= gold radius= 0.0020   master= {Cbeta dev}\n"
+  cbeta_out += "@balllist {CB dev Ball} color= magenta master= {Cbeta dev}\n"
   for outlier in outliers :
     if (chain_id is None) or (chain_id == outlier.chain_id) :
       cbeta_out += outlier.as_kinemage() + "\n"
