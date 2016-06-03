@@ -10,6 +10,11 @@ import sys
 def get_master_phil():
   return iotbx.phil.parse(input_string="""
     include scope mmtbx.validation.molprobity_cmdline_phil_str
+    cbetadev {
+      output = *text kin
+      .type = choice
+      .help = '''choose output type'''
+    }
 """, process_includes=True)
 
 def run (args, out=sys.stdout, quiet=False) :
@@ -28,7 +33,9 @@ def run (args, out=sys.stdout, quiet=False) :
     outliers_only=params.outliers_only,
     out=out,
     quiet=quiet)
-  if params.verbose:
+  if params.cbetadev.output == "kin":
+    out.write(result.as_kinemage())
+  elif params.verbose:
     pdb_file_str = os.path.basename(params.model)[:-4]
     result.show_old_output(out=out, prefix=pdb_file_str, verbose=True)
 
