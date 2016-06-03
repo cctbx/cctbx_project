@@ -215,7 +215,7 @@ class _Tiles(object):
 
         self.show_untrusted = False
 
-    def set_image(self, file_name_or_data, metrology_matrices=None):
+    def set_image(self, file_name_or_data, metrology_matrices=None, get_raw_data=None):
 
         self.reset_the_cache()
         if file_name_or_data is None:
@@ -241,6 +241,8 @@ class _Tiles(object):
         if len(detector) > 1 and metrology_matrices is not None:
           self.raw_image.apply_metrology_from_matrices(metrology_matrices)
 
+        if get_raw_data is not None:
+          self.raw_image.set_raw_data(get_raw_data(self.raw_image))
         raw_data = self.raw_image.get_raw_data()
         if not isinstance(raw_data, tuple):
           raw_data = (raw_data,)
@@ -269,6 +271,7 @@ class _Tiles(object):
       # in frame.py.
 
       detector = self.raw_image.get_detector()
+      self.raw_image.set_raw_data(raw_image_data)
       if len(detector) == 1 and len(raw_image_data) == 1:
         raw_image_data = raw_image_data[0]
 

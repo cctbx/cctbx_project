@@ -15,12 +15,13 @@ from rstbx.viewer.frame import XrayFrame as XFBaseClass
 from rstbx.viewer import settings as rv_settings, image as rv_image
 from wxtbx import bitmaps
 
-class chooser_wrapper:
+class chooser_wrapper(object):
   def __init__(self, image_set, index):
     self.image_set = image_set
     self.path = os.path.basename(image_set.get_path(index))
     self.full_path = image_set.get_path(index)
     self.index = index
+    self._raw_data = None
 
   def __str__(self):
     return "%s [%d]"%(self.path,self.index+1)
@@ -31,7 +32,12 @@ class chooser_wrapper:
   def get_mask(self):  return self.image_set.get_mask(self.index)
 
   def get_raw_data(self):
-    return self.image_set[self.index]
+    if self._raw_data is None:
+      self._raw_data = self.image_set[self.index]
+    return self._raw_data
+
+  def set_raw_data(self, raw_data):
+    self._raw_data = raw_data
 
   def get_detectorbase(self):
     return self.image_set.get_detectorbase(self.index)
@@ -291,7 +297,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
 
     return panel_id, beam_pixel_fast, beam_pixel_slow
 
-  def load_image (self, file_name_or_data) :
+  def load_image (self, file_name_or_data, get_raw_data=None) :
     """The load_image() function displays the image from @p
     file_name_or_data.  The chooser is updated appropriately.
     """
@@ -327,7 +333,8 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self.image_chooser.SetSelection(i)
 
     self.pyslip.tiles.set_image(
-      file_name_or_data=img, metrology_matrices=self.metrology_matrices)
+      file_name_or_data=img, metrology_matrices=self.metrology_matrices,
+      get_raw_data=get_raw_data)
 
     # Initialise position zoom level for first image.  XXX Why do we
     # have to coll ZoomToLevel to refresh subsequent images?
