@@ -64,6 +64,7 @@ PYTEST_DEP_COLORAMA = "colorama-0.3.7.tar.gz"
 H5PY_PKG = "h5py-2.4.0.tar.gz" # dxtbx
 HDF5_PKG = "hdf5-1.8.15-patch1.tar.bz2"
 CYTHON_PKG = "cython-0.22.tar.gz"
+JINJA2_PKG = "Jinja2-2.8.tar.gz"
 
 # GUI dependencies
 LIBPNG_PKG = "libpng-1.2.52.tar.gz"

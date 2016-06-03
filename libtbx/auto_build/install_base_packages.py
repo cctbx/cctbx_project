@@ -240,7 +240,7 @@ class installer (object) :
 
     # Always build hdf5 and numpy.
     packages += ['cython', 'hdf5', 'numpy', 'setuptools', 'pip', 'pythonextra', 'docutils']
-    packages += ['libsvm', 'lz4_plugin']
+    packages += ['libsvm', 'lz4_plugin', 'jinja2']
     # Development and testing packages.
     packages += ['pytest', 'junitxml']
     # GUI packages.
@@ -555,6 +555,7 @@ Installation of Python packages may fail.
       'pip',
       'pytest',
       'pythonextra',
+      'jinja',
       'junitxml',
       'biopython',
       'reportlab',
@@ -921,6 +922,18 @@ _replace_sysconfig_paths(build_time_vars)
       pkg_name=CYTHON_PKG,
       pkg_name_label="cython",
       confirm_import_module="Cython")
+
+  def build_jinja2(self):
+    self.build_python_module_simple(
+      pkg_url=pypi_pkg_url('Jinja2'),
+      pkg_name=JINJA2_PKG,
+      pkg_name_label="cython",
+      confirm_import_module="jinja2")
+
+  def built_jinja2(self):
+    log_filename = "jinja2_install_log"
+    line = "Finished processing dependencies for Jinja2"
+    return self.simple_log_parse_test(log_filename, line)
 
   def built_hdf5(self):
     log_filename = "HDF5_install_log"
