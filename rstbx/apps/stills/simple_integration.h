@@ -187,6 +187,7 @@ namespace rstbx { namespace integration {
     scitbx::af::shared<std::string > rejected_reason;
     scitbx::af::shared<scitbx::vec2<double> > detector_xy;
     scitbx::af::shared<double> max_signal;
+    scitbx::af::shared<bool> integrated_flag;
 
     simple_integration(): BACKGROUND_FACTOR(1),MAXOVER(6),NEAR(10),
       detector_saturation(std::numeric_limits<double>::max()),
@@ -244,6 +245,7 @@ namespace rstbx { namespace integration {
       }
       return return_value;
     }
+    scitbx::af::shared<bool> get_integrated_flag(){return integrated_flag;}
     scitbx::af::shared<double> get_integrated_data(){return integrated_data;}
     scitbx::af::shared<double> get_integrated_sigma(){return integrated_sigma;}
     scitbx::af::shared<cctbx::miller::index<> > get_integrated_miller(){
@@ -568,6 +570,7 @@ namespace rstbx { namespace integration {
       rejected_miller.clear();
       rejected_reason.clear();
       detector_xy.clear();
+      integrated_flag = scitbx::af::shared<bool>(predicted.size());
 
       for (int i=0; i<predicted.size(); ++i){
         af::shared<double> signal;
@@ -647,6 +650,7 @@ namespace rstbx { namespace integration {
           continue;}
         double sigma = std::sqrt(variance);
 
+        integrated_flag[i]=true;
         integrated_data.push_back(summation_intensity);
         integrated_sigma.push_back(sigma);
         integrated_miller.push_back(hkllist[i]);

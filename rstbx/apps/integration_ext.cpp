@@ -84,6 +84,7 @@ namespace rstbx { namespace integration { namespace ext {
            arg_("hkllist"),
            arg_("detector_xy_draft")
             ))
+        .def("get_integrated_flag",&simple_integration::get_integrated_flag)
         .def("get_integrated_data",&simple_integration::get_integrated_data)
         .def("get_integrated_sigma",&simple_integration::get_integrated_sigma)
         .def("get_integrated_miller",&simple_integration::get_integrated_miller)
