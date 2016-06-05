@@ -87,7 +87,7 @@ for path in args:
       print key,"len=%d max=%f min=%f dimensions=%s"%(data[key].size(),flex.max(data[key]),flex.min(data[key]),str(data[key].focus()))
     elif key == "WAVELENGTH":
       print "WAVELENGTH", data[key], ", converted to eV:", 12398.4187/data[key]
-    elif key == "applied_absorption_correction":
+    elif key == "fuller_kapton_absorption_correction":
       print key, data[key]
       if doplots:
         c = data[key][0]

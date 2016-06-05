@@ -159,13 +159,26 @@ integration {
       .type = choice
       .help = either refine the distance or the wavelength for XFEL stills
   }
-  absorption_correction{
+  absorption_correction
+    .multiple = True {
     apply = False
       .type = bool
       .help = must be supplied as a user-defined function with a specific interface (not documented)
-    algorithm = None
-      .type = str
-      .help = a specific tag for user code to identify experiment number, parameter set, etc
+    algorithm = fuller_kapton other
+      .type = choice
+      .help = a specific absorption correction, or implementation thereof
+    fuller_kapton {
+      xtal_height_above_kapton_mm = 0.02
+        .type = float
+        .help = height of the beam (or the irradiated crystal) above the kapton tape
+      rotation_angle_deg = 1.15
+        .type = float
+        .help = angle of the tape from vertical
+      kapton_half_width_mm = 1.5875
+        .type = float
+      kapton_thickness_mm = 0.05
+        .type = float
+    }
   }
 }
 """

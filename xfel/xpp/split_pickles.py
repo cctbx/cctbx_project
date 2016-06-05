@@ -6,7 +6,7 @@ import os
 # jiffy script specifically for xppk4715, where some background effects require splitting integrated data into two halfs
 # Run this script in a cctbx.xfel 'results' directory.  The script will search the directory for trials and rungroups,
 # find integration pickles, and split them into left, right, middle and nomid (left + right, no middle), according to the
-# key applied_absorption_correction
+# key fuller_kapton_absorption_correction
 
 for runroot in os.listdir("."):
   if not os.path.isdir(runroot):
@@ -42,10 +42,10 @@ for runroot in os.listdir("."):
       except Exception, e:
         print "Pickle failed to load", picklepath
         continue
-      if not "applied_absorption_correction" in data:
+      if not "fuller_kapton_absorption_correction" in data:
         continue
 
-      corr = data["applied_absorption_correction"]
+      corr = data["fuller_kapton_absorption_correction"]
 
       from xfel.cxi.cspad_ana.rayonix_tbx import get_rayonix_pixel_size
       from scitbx.array_family import flex
