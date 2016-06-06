@@ -2327,6 +2327,9 @@ def unpickle():
   # XXX backward compatibility 2016-01-08
   if not hasattr(env, 'explicitly_requested_modules'):
     env.explicitly_requested_modules = set()
+  # XXX backward compatibility 2016-06-06
+  if not hasattr(env, 'extra_command_line_locations'):
+    env.extra_command_line_locations = []
   return env
 
 def warm_start(args):
