@@ -2046,6 +2046,7 @@ mmtbx/grow_density.py -text
 mmtbx/hydrogens/find.py -text
 mmtbx/hydrogens/hydrogen_connectivity.py -text
 mmtbx/hydrogens/tst.py -text
+mmtbx/hydrogens/tst_hydrogen_connectivity.py -text
 mmtbx/ias/__init__.py -text
 mmtbx/ias/tst_ias.py -text
 mmtbx/idealized_aa_residues/__init__.py -text
