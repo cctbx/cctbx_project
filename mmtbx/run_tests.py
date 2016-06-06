@@ -102,6 +102,7 @@ tst_list = (
   "$D/regression/tst_altloc_chain_break.py",
   "$D/hydrogens/build_hydrogens.py",
   "$D/hydrogens/tst.py",
+  "$D/hydrogens/tst_hydrogen_connectivity.py",
   "$D/max_lik/tst_maxlik.py",
   "$D/masks/tst_masks.py",
   "$D/masks/tst_asu_mask.py",
