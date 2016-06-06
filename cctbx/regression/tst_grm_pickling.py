@@ -158,6 +158,7 @@ def make_geo_pickle_unpickle(geometry, xrs, prefix):
 
   t0 = time()
   pklfile = open("%s.pkl" % prefix, 'wb')
+  #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
   pickle.dump(geometry, pklfile)
   pklfile.close()
   t1 = time()
@@ -270,9 +271,8 @@ def exercise_all(args):
     print "Skipping exercise(): chem_data directory not available"
     return
   test_nucleic_acid(mon_lib_srv, ener_lib)
-  # Failing
-  # test_ramachandran(mon_lib_srv, ener_lib)
-  # test_cbeta(mon_lib_srv, ener_lib)
+  test_ramachandran(mon_lib_srv, ener_lib)
+  test_cbeta(mon_lib_srv, ener_lib)
   # In development
   # test_reference_coordinate(mon_lib_srv, ener_lib)
 
