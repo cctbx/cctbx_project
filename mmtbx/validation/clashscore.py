@@ -291,6 +291,7 @@ class probe_clashscore_manager(object):
             else :
               clash_hash[key] = clash_obj
         elif (type == "hb"):
+          print key
           if (key in hbond_hash) :
             if (gap < hbond_hash[key].overlap):
               hbond_hash[key] = clash_obj
@@ -496,16 +497,17 @@ class nqh_flips (validation) :
     validation.__init__(self)
     reduce_out = easy_run.fully_buffered("phenix.reduce -BUILD -",
       stdin_lines=pdb_hierarchy.as_pdb_string())
-    for line in reduce_out.stderr_lines :
-    #orientation 4: A  68 HIS     :FLIP no HD1: bump=-0.607, HB=0.998, total=0.390
+    for line in reduce_out.stdout_lines:
+    #USER  MOD Set 1.1: B  49 GLN     :FLIP  amide:sc=    -2.7! C(o=-5.8!,f=-1.3!)
       if re_flip.search(line) :
-        resname = line[22:25]
+        resid = line.split(":")[1]
+        resname = resid[7:10]
         assert (resname in ["ASN", "GLN", "HIS"])
         flip = nqh_flip(
-          chain_id=line[15:17].strip(),
-          resseq=line[17:21].strip(),
-          icode=line[21],
-          altloc=line[29],
+          chain_id=resid[0:2].strip(),
+          resseq=resid[2:6].strip(),
+          icode=resid[6:7],
+          altloc=resid[14:15],
           resname=resname)
         flip.set_coordinates_from_hierarchy(pdb_hierarchy)
         self.results.append(flip)
