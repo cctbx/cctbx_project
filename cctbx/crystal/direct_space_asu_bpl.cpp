@@ -7,6 +7,8 @@
 #include <boost/python/return_internal_reference.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/return_arg.hpp>
+#include <boost/python/list.hpp>
+#include <boost/python/stl_iterator.hpp>
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <cctbx/crystal/direct_space_asu.h>
@@ -123,7 +125,7 @@ namespace {
     {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
-      class_<w_t>("direct_space_asu_asu_mapping", no_init)
+      class_<w_t>("direct_space_asu_asu_mapping")
         .def("i_sym_op", &w_t::i_sym_op)
         .def("unit_shifts", &w_t::unit_shifts, ccr())
         .def("mapped_site", &w_t::mapped_site, ccr())
@@ -214,6 +216,51 @@ namespace {
         self.buffer_thickness()
         );
     }
+
+    static boost::python::tuple
+      getstate(w_t const& self)
+    {
+      return boost::python::make_tuple(
+        boost::python::list( self.mappings() ),
+        self.site_symmetry_table(),
+        self.n_sites_in_asu_and_buffer(),
+        self.mapped_sites_min(),
+        self.mapped_sites_max()
+        );
+    }
+
+    static void
+      setstate(w_t& self, boost::python::tuple state)
+    {
+      using namespace boost::python;
+      w_t::array_of_array_of_mappings_for_one_site mappings;
+
+      typedef stl_input_iterator< tuple > outer_iterator_type;
+      typedef stl_input_iterator< w_t::asu_mapping_type > inner_iterator_type;
+
+      for(
+        outer_iterator_type it = outer_iterator_type( state[0] );
+        it != outer_iterator_type();
+        ++it
+        )
+      {
+        mappings.push_back(
+          w_t::array_of_mappings_for_one_site(
+            inner_iterator_type( *it ),
+            inner_iterator_type()
+            )
+          );
+      }
+
+      self.restore(
+        mappings,
+        extract< sgtbx::site_symmetry_table >( state[1] ),
+        extract< std::size_t >( state[2] ),
+        extract< cartesian< w_t::float_type > >( state[3] ),
+        extract< cartesian< w_t::float_type > >( state[4] )
+        );
+    }
+
 
     static void
     wrap()

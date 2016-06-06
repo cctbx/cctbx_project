@@ -387,6 +387,9 @@ namespace direct_space_asu {
   class asu_mappings
   {
     public:
+      typedef FloatType float_type;
+      typedef asu_mapping<FloatType, IntShiftType> asu_mapping_type;
+
       //! Type of array of mappings for one site.
       typedef std::vector<asu_mapping<FloatType, IntShiftType> >
         array_of_mappings_for_one_site;
@@ -951,6 +954,22 @@ namespace direct_space_asu {
         }
         CCTBX_ASSERT(have_site_in_asu);
       }
+
+    void restore(
+      array_of_array_of_mappings_for_one_site const& mappings,
+      sgtbx::site_symmetry_table const& site_symmetry_table,
+      std::size_t const& n_sites_in_asu_and_buffer,
+      cartesian< FloatType > const& mapped_sites_min,
+      cartesian< FloatType > const& mapped_sites_max
+      )
+    {
+      mappings_ = mappings;
+      mappings_const_ref_ = mappings_.const_ref();
+      site_symmetry_table_ = site_symmetry_table;
+      n_sites_in_asu_and_buffer_ = n_sites_in_asu_and_buffer;
+      mapped_sites_min_ = mapped_sites_min;
+      mapped_sites_max_ = mapped_sites_max;
+    }
 
     protected:
       sgtbx::space_group space_group_;
