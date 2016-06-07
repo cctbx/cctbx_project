@@ -381,7 +381,7 @@ def minimize_wrapper_for_ramachandran(
     from mmtbx.secondary_structure import manager
     ss_manager = manager(
         pdb_hierarchy=hierarchy,
-        geometry_restraints_manager=grm,
+        geometry_restraints_manager=grm.geometry,
         sec_str_from_pdb_file=ss_annotation,
         params=None,
         mon_lib_srv=None,
