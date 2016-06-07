@@ -59,12 +59,14 @@ class atom_info(object):
     angle_ideal = None):
     adopt_init_args(self, locals())
 
-def find_second_neighbor(i_test, ap_list, connectivity, scatterers, ap):
-    if(i_test in connectivity):
+def find_second_neighbor(ap, connectivity):
+  keys = connectivity.keys()
+  for i_test in ap.i_seqs:
+    if(i_test in keys):
       i_h = i_test
       i_x = ((connectivity[i_h])[0][0]).iseq
       bonded = [i_h, i_x]
-      i_y = [x for x in ap_list if x not in set(bonded)][0]
+      i_y = [x for x in ap.i_seqs if x not in bonded][0]
       neighbor = atom_info(
         iseq = i_y,
         angle_ideal = ap.angle_ideal)
@@ -80,46 +82,36 @@ def find_second_neighbor(i_test, ap_list, connectivity, scatterers, ap):
 # a0, a1 are objects "atom_info"
 # ------------------------------------------------------------------
 def determine_H_neighbors(bond_proxies, angle_proxies, xray_structure):
+  hd_selection = xray_structure.hd_selection()
   sites_cart = xray_structure.sites_cart()
   scatterers = xray_structure.scatterers()
   connectivity = {}
   # loop through bond proxies to find H atom and parent atom
   for bproxy in bond_proxies:
     i_seq, j_seq = bproxy.i_seqs
-    el_i = scatterers[i_seq].element_symbol()
-    el_j = scatterers[j_seq].element_symbol()
+    is_i_hd = hd_selection[i_seq]
+    is_j_hd = hd_selection[j_seq]
     #is there more elegant test for element?
-    if(el_i not in ["H", "D"] and el_j not in ["H", "D"]):
-      continue
-    elif(el_i in ["H", "D"] and el_j in ["H", "D"]):
-      continue    #This should not happen in a protein
+    if(not is_i_hd and not is_j_hd): continue
+    elif(is_i_hd and is_j_hd):       assert 0
     else:
-      if(el_i in ["H", "D"]):
-        i_h, i_x = i_seq, j_seq
-      elif(el_j in ["H", "D"]):
-        i_h, i_x = j_seq, i_seq
+      if  (is_i_hd): i_h, i_x = i_seq, j_seq
+      elif(is_j_hd): i_h, i_x = j_seq, i_seq
       else:
         raise Sorry("Something went wrong in bond proxies")
-    #rh = matrix.col(sites_cart[i_h])
-    #r0 = matrix.col(sites_cart[i_x])
     parent = atom_info(
       iseq = i_x,
-    #  dist = (rh-r0).length(),
       dist_ideal = bproxy.distance_ideal)
     connectivity[i_h]=[[parent]]
     connectivity[i_h].append([])
   # loop through angle proxies to find second neighbors
   for ap in angle_proxies:
-    ia, ib, ic = ap.i_seqs
-    ap_list = [ia,ib,ic]
-    find_second_neighbor(ia, ap_list, connectivity, scatterers, ap)
-    find_second_neighbor(ib, ap_list, connectivity, scatterers, ap)
-    find_second_neighbor(ic, ap_list, connectivity, scatterers, ap)
+    find_second_neighbor(ap, connectivity)
   # This step roughly doubles computation time
-  for ih in connectivity:
+  for ih in connectivity.keys():
     reduced_neighbs = []
     for atom in connectivity[ih][1]:
-      if (scatterers[atom.iseq].element_symbol() not in ["H", "D"]):
+      if (not hd_selection[atom.iseq]):
         reduced_neighbs.append(atom)
     if (len(reduced_neighbs) == 1):
       ix = (connectivity[ih][0][0]).iseq
@@ -129,15 +121,13 @@ def determine_H_neighbors(bond_proxies, angle_proxies, xray_structure):
       for ap in angle_proxies:
         if (ix in ap.i_seqs and iy in ap.i_seqs):
           for seq in ap.i_seqs:
-            el_seq = scatterers[seq].element_symbol()
-            if (seq not in neighbors and el_seq not in ["H", "D"]):
+            if (seq not in neighbors and not hd_selection[seq]):
               neighbor = atom_info(iseq = seq)
               connectivity[ih][2].append(neighbor)
   # TODO: eliminate double conformations in list. Might be only for HA atoms,
   # but user might come up with weird splits
   return connectivity
 
-#
 def run(args, out=sys.stdout):
   if (len(args) == 0):
     print legend
@@ -173,11 +163,6 @@ def run(args, out=sys.stdout):
     geometry      = geometry_restraints,
     normalization = False)
 
-  model = mmtbx.model.manager(
-    restraints_manager = restraints_manager,
-    xray_structure     = xray_structure,
-    pdb_hierarchy      = pdb_hierarchy)
-
   bond_proxies_simple = restraints_manager.geometry.pair_proxies(sites_cart =
     xray_structure.sites_cart()).bond_proxies.simple
   angle_proxies = restraints_manager.geometry.angle_proxies
@@ -186,23 +171,22 @@ def run(args, out=sys.stdout):
   sites_cart = xray_structure.sites_cart()
   scatterers = xray_structure.scatterers()
 
-  #atoms_list = list(pdb_hierarchy.atoms_with_labels())
-
   print >>log, '\nNow determining connectivity table for H atoms...'
   connectivity = determine_H_neighbors(
     bond_proxies   = bond_proxies_simple,
     angle_proxies  = angle_proxies,
     xray_structure = xray_structure)
 
-  print >>log, '\nHydrogen atom connectivity list'
-  for ih in connectivity:
-    if(len(connectivity[ih])==3):
-      string = (" ".join([names[p.iseq] for p in connectivity[ih][2]]))
-    else:
-      string = 'n/a'
-    print >>log, names[ih],': ', names[(connectivity[ih][0][0]).iseq], \
-      ',', (" ".join([names[p.iseq] for p in connectivity[ih][1]])), \
-      ',', string
+  if(0):
+    print >>log, '\nHydrogen atom connectivity list'
+    for ih in connectivity:
+      if(len(connectivity[ih])==3):
+        string = (" ".join([names[p.iseq] for p in connectivity[ih][2]]))
+      else:
+        string = 'n/a'
+      print >>log, names[ih],': ', names[(connectivity[ih][0][0]).iseq], \
+        ',', (" ".join([names[p.iseq] for p in connectivity[ih][1]])), \
+        ',', string
 
 if (__name__ == "__main__"):
   t0 = time.time()
