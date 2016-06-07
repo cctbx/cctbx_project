@@ -406,8 +406,12 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     """
     sort_atoms is not applicable here, introduced for call compatibility
     """
-    if (set_atom_i_seq) :
-      self.hierarchy.reset_atom_i_seqs()
+    if sort_atoms:
+      self.hierarchy.sort_atoms_in_place()
+      if (set_atom_i_seq) :
+        self.hierarchy.reset_atom_i_seqs()
+      self.hierarchy.atoms_reset_serial()
+
     return self.hierarchy
 
   def source_info(self):
