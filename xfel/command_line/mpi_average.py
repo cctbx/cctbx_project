@@ -50,7 +50,12 @@ the output images in the folder cxi49812.
                         default=False,
                         dest="as_pickle",
                         help="Write results as image pickle files instead of cbf files")
-                .option(None, "--config", "-c",
+                .option(None, "--raw_data", "-R",
+                        action="store_true",
+                        default=False,
+                        dest="raw_data",
+                        help="Disable psana corrections such as dark pedestal subtraction or common mode (cbf only)")
+                 .option(None, "--config", "-c",
                         type="string",
                         default=None,
                         dest="config",
@@ -241,8 +246,10 @@ the output images in the folder cxi49812.
         data = evt.get(psana.ndarray_float64_3, src, 'image0')
       else:
         # get numpy array, 32x185x388
-        data = psana_det.calib(evt) # applies psana's complex run-dependent calibrations
-        # data = psana_det.raw_data(evt) # uncorrected pixels XXX add flag to make uncorrected averages if desired
+        if command_line.options.raw_data:
+          data = psana_det.raw_data(evt) # uncorrected pixels
+        else:
+          data = psana_det.calib(evt) # applies psana's complex run-dependent calibrations
         if gain_mask is not None:
           data *= gain_mask
       if data is None:
