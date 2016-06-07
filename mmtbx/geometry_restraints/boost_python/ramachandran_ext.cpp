@@ -1,3 +1,5 @@
+#include <cctbx/geometry_restraints/shared_wrapper_pickle.hpp>
+
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
@@ -49,6 +51,7 @@ namespace boost_python {
         ;
       {
         typedef return_internal_reference<> rir;
+        typedef scitbx::af::boost_python::shared_wrapper<phi_psi_proxy, rir> shared_w_t;
         scitbx::af::boost_python::shared_wrapper<phi_psi_proxy, rir>::wrap(
           "shared_phi_psi_proxy")
           .def("proxy_select",
@@ -57,7 +60,9 @@ namespace boost_python {
               std::size_t,
               af::const_ref<std::size_t> const&))
             cctbx::geometry_restraints::shared_proxy_select, (
-              arg("n_seq"), arg("iselection")));
+              arg("n_seq"), arg("iselection")))
+          .def_pickle(shared_wrapper_pickle_suite< shared_w_t::w_t >())
+          ;
       }
     }
   };
