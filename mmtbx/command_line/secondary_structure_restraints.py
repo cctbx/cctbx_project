@@ -113,6 +113,7 @@ def run (args, params=None, out=sys.stdout, log=sys.stderr) :
   defpars = mmtbx.command_line.geometry_minimization.master_params().extract()
   defpars.pdb_interpretation.automatic_linking.link_carbohydrates=False
   defpars.pdb_interpretation.c_beta_restraints=False
+  defpars.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
   processed_pdb_file = pdb_interpretation.process(
     mon_lib_srv    = mon_lib_srv,
     ener_lib       = ener_lib,

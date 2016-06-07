@@ -584,7 +584,8 @@ def substitute_ss(real_h,
           % phil_str,
       "pdb_interpretation.peptide_link.ramachandran_restraints = True",
       "c_beta_restraints = True",
-      "pdb_interpretation.secondary_structure.enabled=True"]))).extract()
+      "pdb_interpretation.secondary_structure.enabled=True",
+      "pdb_interpretation.clash_guard.nonbonded_distance_threshold=None"]))).extract()
   # params.format(python_object=custom_pars)
   # params.show()
   # STOP()
