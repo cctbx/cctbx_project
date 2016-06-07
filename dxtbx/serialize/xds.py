@@ -139,43 +139,91 @@ class to_xds(object):
     self._sweep = sweep
 
     # detector dimensions in pixels
-    assert(len(self.get_detector()) == 1)
-    self.detector_size = map(int, self.get_detector()[0].get_image_size())
+    self.detector_size = map(
+      int,
+      (max(panel.get_raw_image_offset()[0]+panel.get_image_size()[0]
+           for panel in self.get_detector()),
+       max(panel.get_raw_image_offset()[1]+panel.get_image_size()[1]
+           for panel in self.get_detector())))
     self.fast, self.slow = self.detector_size
 
-    R = align_reference_frame(
-        self.get_detector()[0].get_fast_axis(), (1,0,0),
-        self.get_detector()[0].get_slow_axis(), (0,1,0))
+    if len(self.get_detector()) > 1:
+      fast = self.get_detector()[0].get_parent_fast_axis()
+      slow = self.get_detector()[0].get_parent_slow_axis()
+      Rd = align_reference_frame(fast, (1,0,0), slow, (0,1,0))
+      origin = Rd * matrix.col(self.get_detector()[0].get_parent_origin())
+    else:
+      fast = self.get_detector()[0].get_fast_axis()
+      slow = self.get_detector()[0].get_slow_axis()
+      Rd = align_reference_frame(fast, (1,0,0), slow, (0,1,0))
+      origin = Rd * matrix.col(self.get_detector()[0].get_origin())
 
-    self.imagecif_to_xds_transformation_matrix = R
+    self.detector_x_axis = (Rd * matrix.col(fast)).elems
+    self.detector_y_axis = (Rd * matrix.col(slow)).elems
 
-    self.detector_x_axis = (
-        R * matrix.col(self.get_detector()[0].get_fast_axis())).elems
-    self.detector_y_axis = (
-        R * matrix.col(self.get_detector()[0].get_slow_axis())).elems
-
-    F = R * matrix.col(self.get_detector()[0].get_fast_axis())
-    S = R * matrix.col(self.get_detector()[0].get_slow_axis())
+    F = Rd * matrix.col(fast)
+    S = Rd * matrix.col(slow)
     N = F.cross(S)
     self.detector_normal = N.elems
 
-    origin = R * matrix.col(self.get_detector()[0].get_origin())
+    self.pixel_size = self.get_detector()[0].get_pixel_size() # assume all panels same pixel size
+
+    o = origin
+    op = o.dot(N) * N
+    orgx = (op - o).dot(F) * self.pixel_size[0]
+    orgy = (op - o).dot(S) * self.pixel_size[1]
 
     centre = -(origin - origin.dot(N) * N)
     x = centre.dot(F)
     y = centre.dot(S)
 
-    self.pixel_size = self.get_detector()[0].get_pixel_size()
     f, s = self.pixel_size
     self.detector_distance = origin.dot(N)
     # Need to add 0.5 because XDS seems to do centroids in fortran coords
-    self.detector_origin = x/f + 0.5, y/f + 0.5
+    self.detector_origin = (x/f + 0.5, y/f + 0.5)
+
+    self.imagecif_to_xds_transformation_matrix = Rd
+
+    self.panel_limits = []
+    self.panel_x_axis = []
+    self.panel_y_axis = []
+    self.panel_origin = []
+    self.panel_distance = []
+    self.panel_normal = []
+
+    for panel_id, panel in enumerate(self.get_detector()):
+
+      f = Rd * matrix.col(panel.get_fast_axis())
+      s = Rd * matrix.col(panel.get_slow_axis())
+      n = f.cross(s)
+      N = matrix.col(self.detector_normal)
+
+      xmin, ymin = panel.get_raw_image_offset()
+      xmax = xmin + panel.get_image_size()[0]
+      ymax = ymin + panel.get_image_size()[1]
+      self.panel_limits.append((xmin+1, xmax, ymin+1, ymax))
+
+      o = Rd * matrix.col(panel.get_origin())
+      op = o.dot(n) * n
+      orgsx = (op - o).dot(f) / self.pixel_size[0] + xmin - self.detector_origin[0] + 0.5
+      orgsy = (op - o).dot(s) / self.pixel_size[1] + ymin - self.detector_origin[1] + 0.5
+
+      # axes in local (i.e. detector) frame
+      fl = matrix.col(panel.get_local_fast_axis())
+      sl = matrix.col(panel.get_local_slow_axis())
+      nl = fl.cross(sl)
+
+      self.panel_x_axis.append(fl.elems)
+      self.panel_y_axis.append(sl.elems)
+      self.panel_normal.append(nl.elems)
+      self.panel_origin.append((orgsx, orgsy))
+      self.panel_distance.append(o.dot(n))
 
     # Beam stuff
     self.wavelength = self.get_beam().get_wavelength()
-    self.beam_vector = R * matrix.col(self.get_beam().get_direction())
+    self.beam_vector = Rd * matrix.col(self.get_beam().get_direction())
     # just to make sure it is the correct length
-    self.beam_vector = self.beam_vector.normalize() / self.wavelength
+    self.beam_vector = self.beam_vector.normalize() #/ self.wavelength
     self.beam_vector = (- self.beam_vector).elems
 
     # Scan and goniometer stuff
@@ -183,7 +231,7 @@ class to_xds(object):
     self.starting_angle = self.get_scan().get_oscillation()[0]
     self.oscillation_range = self.get_scan().get_oscillation()[1]
     self.rotation_axis = (
-        R * matrix.col(self.get_goniometer().get_rotation_axis())).elems
+        Rd * matrix.col(self.get_goniometer().get_rotation_axis())).elems
     return
 
   def get_detector(self):
@@ -288,6 +336,26 @@ class to_xds(object):
       print >> out, "UNIT_CELL_A-AXIS= %.6f %.6f %.6f" %unit_cell_a_axis.elems
       print >> out, "UNIT_CELL_B-AXIS= %.6f %.6f %.6f" %unit_cell_b_axis.elems
       print >> out, "UNIT_CELL_C-AXIS= %.6f %.6f %.6f" %unit_cell_c_axis.elems
+
+    if len(self.panel_x_axis) > 1:
+      for panel_id in range(len(self.panel_x_axis)):
+
+        print >> out
+        print >> out, "!"
+        print >> out, "! SEGMENT %d" %(panel_id+1)
+        print >> out, "!"
+        print >> out, 'SEGMENT= %d %d %d %d' % self.panel_limits[panel_id]
+        print >> out, 'DIRECTION_OF_SEGMENT_X-AXIS= %.3f %.3f %.3f' % \
+              self.panel_x_axis[panel_id]
+
+        print >> out, 'DIRECTION_OF_SEGMENT_Y-AXIS= %.3f %.3f %.3f' % \
+              self.panel_y_axis[panel_id]
+
+        print >> out, 'SEGMENT_DISTANCE= %.3f' % self.panel_distance[panel_id]
+
+        print >> out, 'SEGMENT_ORGX= %.1f SEGMENT_ORGY= %.1f' % self.panel_origin[panel_id]
+        print >> out
+
 
   def xparm_xds(self, real_space_a, real_space_b, real_space_c,
                 space_group, out=None):
