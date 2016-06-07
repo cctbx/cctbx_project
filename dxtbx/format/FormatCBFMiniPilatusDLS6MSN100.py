@@ -269,6 +269,7 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
         p = d.add_panel()
         p.set_type('PAD')
         p.set_name(panel_name)
+        p.set_raw_image_offset((xmin, ymin))
         p.set_image_size((xmax-xmin, ymax-ymin))
         p.set_trusted_range((underload, overload))
         p.set_pixel_size((pixel_x,pixel_y))
@@ -296,7 +297,9 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
         d = self.get_detector()
 
         for panel in d:
-          xmin, ymin, xmax, ymax = self.coords[panel.get_name()]
+          xmin, ymin = panel.get_raw_image_offset()
+          xmax = xmin + panel.get_image_size()[0]
+          ymax = ymin + panel.get_image_size()[1]
           self._raw_data.append(raw_data[ymin:ymax,xmin:xmax])
 
       return tuple(self._raw_data)
