@@ -3781,6 +3781,7 @@ xfel/command_line/histogram_finalise.py -text
 xfel/command_line/jobs_sentinel.py -text
 xfel/command_line/launch_fxs.py -text
 xfel/command_line/list_db_metadata.py -text
+xfel/command_line/make_dials_mask.py -text
 xfel/command_line/make_mar_mask.py -text
 xfel/command_line/make_mask.py -text
 xfel/command_line/metrology.py -text
