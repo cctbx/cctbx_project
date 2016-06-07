@@ -3556,6 +3556,7 @@ spotfinder/math_support/__init__.py -text
 spotfinder/math_support/sphere_formulae.py -text
 spotfinder/run_tests.py -text
 spotfinder/servers/README -text
+spotfinder/servers/README_apache_dials -text
 spotfinder/servers/__init__.py -text
 spotfinder/servers/adsc_client.py -text
 spotfinder/servers/apache.py -text
@@ -3564,6 +3565,7 @@ spotfinder/servers/apache_dials.py -text
 spotfinder/servers/apache_env_run_template -text
 spotfinder/servers/apache_favicon.ico -text
 spotfinder/servers/apache_install.csh -text
+spotfinder/servers/apache_install_dials.csh -text
 spotfinder/servers/apache_utils.py -text
 spotfinder/servers/bcsb_client_example.py -text
 spotfinder/servers/general_client_example.py -text

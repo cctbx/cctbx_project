@@ -1,0 +1,31 @@
+Follow these instructions to install an apache webserver configured to run the distl and dials spotfinders.
+
+These instructions were valid on 06/07/16 using apache version 2.4.20, mod_python version 3.5.0 and the apache dependencies 'apr', version 1.5.2 and 'apr-util', version 1.5.4.
+
+The below instructions include downloading apache directly from their webpage.  They ask that users use a mirror.  Your closest mirror can be found by visiting this web page: http://www.apache.org/dyn/closer.cgi/httpd
+
+Detailed instructions:
+
+Create a new empty folder, call it $project_root
+cd $project_root
+mkdir -p apache/project_src
+cd $project_root/apache
+svn export http://svn.code.sf.net/p/cctbx/code/trunk/spotfinder/servers/apache_install_dials.csh
+cd $project_root/apache/project_src
+wget https://www.apache.org/dist/httpd/httpd-2.4.20.tar.gz
+wget http://dist.modpython.org/dist/mod_python-3.5.0.tgz
+wget http://www.motorlogy.com/apache//apr/apr-1.5.2.tar.gz
+wget http://www.motorlogy.com/apache//apr/apr-util-1.5.4.tar.gz
+cd $project_root
+
+The following command will download, configure and compile cctbx, then configure, build and install apache, its dependencies, and mod_python.  This takes about an hour.
+./apache/apache_install_dials.csh
+
+After the build is complete, instructions for starting the server and testing it will be displayed.  You may also want to modify the processor defaults stored in the mpm_prefork_module key in apache/httpd/conf/extra/httpd-mpm.conf to better suit your server capabilities.
+
+Test the distl server with a cbf image:
+curl "http://localhost:8125/spotfinder/distl.signal_strength?distl.image=/net/cci/dials/from_sunbird/sauter/rawdata/pilatus/ssrl_P6/all/I3_1_0001.cbf&distl.res.outer=3.3&distl.bins.verbose=True"
+Test the dials server with a cbf image:
+curl "http://localhost:8125/spotfinder/dials.find_spots?file_name=/net/cci/dials/from_sunbird/sauter/rawdata/pilatus/ssrl_P6/all/I3_1_0001.cbf&stats=True&spotfinder.filter.d_min=3.3"
+Test the dials server with an Eiger image:
+curl "http://localhost:8125/spotfinder/dials.find_spots?file_name=/net/cci/dials/dectris/eiger16MNov2015/2015_11_10/insu6_1_master.h5&frame_number=44&stats=True"
