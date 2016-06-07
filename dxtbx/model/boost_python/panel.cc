@@ -140,6 +140,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       data["parent_fast_axis"] = p.get_parent_fast_axis();
       data["parent_slow_axis"] = p.get_parent_slow_axis();
       data["parent_origin"] = p.get_parent_origin();
+      data["raw_image_offset"] = p.get_raw_image_offset();
       data["image_size"] = p.get_image_size();
       data["pixel_size"] = p.get_pixel_size();
       data["trusted_range"] = p.get_trusted_range();
@@ -175,6 +176,7 @@ namespace dxtbx { namespace model { namespace boost_python {
         extract< vec3<double> >(data["parent_slow_axis"]),
         extract< vec3<double> >(data["parent_origin"]));
       p.set_pixel_size(extract< tiny<double,2> >(data["pixel_size"]));
+      p.set_raw_image_offset(extract<int2>(data["raw_image_offset"]));
       p.set_image_size(extract< tiny<std::size_t,2> >(data["image_size"]));
       p.set_trusted_range(extract< tiny<double,2> >(data["trusted_range"]));
       p.set_thickness(extract<double>(data["thickness"]));
@@ -247,6 +249,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     result["fast_axis"] = obj.get_local_fast_axis();
     result["slow_axis"] = obj.get_local_slow_axis();
     result["origin"] = obj.get_local_origin();
+    result["raw_image_offset"] = obj.get_raw_image_offset();
     result["image_size"] = obj.get_image_size();
     result["pixel_size"] = obj.get_pixel_size();
     result["trusted_range"] = obj.get_trusted_range();
@@ -310,6 +313,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         DXTBX_ASSERT(false);
       }
     }
+    result->set_raw_image_offset(
+      boost::python::extract<int2>(obj["raw_image_offset"]));
     result->set_image_size(
       boost::python::extract< tiny<std::size_t,2> >(obj["image_size"]));
     result->set_pixel_size(
