@@ -110,7 +110,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
     from scitbx import matrix
     import math
 
-    x = matrix.col((1, 0, 0))
+    x = matrix.col((-1, 0, 0))
     y = matrix.col((0, 1, 0))
     z = matrix.col((0, 0, 1))
 
@@ -130,9 +130,9 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
     detector = HierarchicalDetector()
     root = detector.hierarchy()
     root.set_frame(
-      (1, 0, 0),
-      (0, 1, 0),
-      (0, 0, - (250 + distance)))
+      x.elems,
+      y.elems,
+      (-distance * z).elems)
 
     from cctbx.eltbx import attenuation_coefficient
     table = attenuation_coefficient.get_table("Si")
@@ -147,8 +147,8 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
       ymin, ymax = j * shift_y, j * shift_y + 195
 
       angle = math.pi * (-12.2 + 0.5 * 7.903 + j * (7.903 + 0.441)) / 180.0
-      fast = matrix.col((-1, 0, 0))
-      slow = matrix.col((0, math.sin(angle), - math.cos(angle)))
+      fast = matrix.col((1, 0, 0))
+      slow = matrix.col((0, math.sin(angle), math.cos(angle)))
       normal = fast.cross(slow)
       # for longer wavelength data sets move 192.3 below to 184.9
       if wavelength < 1.128:
@@ -167,6 +167,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
         root.add_panel(p)
         p.set_type('SENSOR_PAD')
         p.set_name('row-%02d' % j)
+        p.set_raw_image_offset((xmin, ymin))
         p.set_image_size((2463, 195))
         p.set_trusted_range((-1, 1000000))
         p.set_pixel_size((0.172, 0.172))
@@ -184,7 +185,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
       else:
         shift_x = 487 + 7
 
-        row_origin = 250.0 * normal - off_x * fast - 16.8 * slow + 250 * z + \
+        row_origin = 250.0 * normal - off_x * fast - 16.8 * slow + \
             beam_shift_y * y
 
         for i in range(5):
@@ -196,6 +197,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
           root.add_panel(p)
           p.set_type('SENSOR_PAD')
           p.set_name('row-%02d-col-%02d' % (j, i))
+          p.set_raw_image_offset((xmin, ymin))
           p.set_image_size((487, 195))
           p.set_trusted_range((-1, 1000000))
           p.set_pixel_size((0.172, 0.172))
@@ -218,7 +220,9 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
       self._raw_data = []
 
       for panel in self.get_detector():
-        xmin, ymin, xmax, ymax = self.coords[panel.get_name()]
+        xmin, ymin = panel.get_raw_image_offset()
+        xmax = xmin + panel.get_image_size()[0]
+        ymax = ymin + panel.get_image_size()[1]
         self._raw_data.append(raw_data[ymin:ymax,xmin:xmax])
 
     return tuple(self._raw_data)
