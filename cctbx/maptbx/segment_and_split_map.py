@@ -76,26 +76,22 @@ master_phil = iotbx.phil.parse("""
                 magnification is applied.
       .short_caption = Magnification NCS file
 
-    sharpening_map_file = sharpening_map.ccp4
-      .type = path
-      .help = Input map file with sharpening applied.  Only written if \
-                sharpening is applied.
-      .short_caption = Sharpened map file
-
-
     shifted_map_file = shifted_map.ccp4
       .type = path
-      .help = Input map file shifted to new origin. 
+      .help = Input map file shifted to new origin. Only written if a shift is\
+                applied.
       .short_caption = Shifted map file
 
     shifted_pdb_file = shifted_pdb.pdb
       .type = path
-      .help = Input pdb file shifted to new origin. 
+      .help = Input pdb file shifted to new origin. Only written if a shift is\
+                applied.
       .short_caption = Shifted pdb file
 
     shifted_ncs_file = shifted_ncs.ncs_spec
       .type = path
-      .help = NCS information shifted to new origin.  
+      .help = NCS information shifted to new origin.  Only written if a shift \
+         is applied.
       .short_caption = Output NCS info file
 
 
@@ -173,38 +169,6 @@ master_phil = iotbx.phil.parse("""
        .short_caption = resolution
        .help = Nominal resolution of the map. This is used later to decide on\
                resolution cutoffs for Fourier inversion of the map
-
-     b_iso = None
-       .type = float
-       .short_caption = Target b_iso
-       .help = Target B-value for map (sharpening will be applied to yield this \
-         value of b_iso)
-
-     auto_sharpen = True
-       .type = bool
-       .short_caption = Automatically determine sharpening using input \
-          resolution:\
-          b_iso = a2*d_min**2 - a1*d_min + a0 for d_min over 2 A \
-          Default is B=10*d_min
-        
-
-     auto_sharpen_0 = 0
-       .type = float
-       .help = Coefficient a0 for auto-sharpening
-
-     auto_sharpen_1 = 10
-       .type = float
-       .help = Coefficient a1 for auto-sharpening
-
-     auto_sharpen_2 = 0
-       .type = float
-       .help = Coefficient a2 for auto-sharpening
-
-     auto_sharpen_cutoff = 0
-       .type = float
-       .help = Cutoff in resolution for auto-sharpening. For d_min less \
-           than this \
-           use value for this resolution, scaled by resolution.
 
      magnification = None
        .type = float
@@ -870,94 +834,6 @@ def write_xrs(xrs=None,scatterers=None,file_name="atoms.pdb"):
   f.close()
   print "Atoms written to %s" %file_name
 
-def get_b_iso(miller_array):
-  from mmtbx.scaling import absolute_scaling
-  aniso_scale_and_b=absolute_scaling.ml_aniso_absolute_scaling(
-      miller_array=miller_array, n_residues=200, n_bases=0)
-  try: b_cart=aniso_scale_and_b.b_cart
-  except: b_cart=[0,0,0]
-  b_aniso_mean=0.
-  for k in [0,1,2]:
-    b_aniso_mean+=b_cart[k]
-  return b_aniso_mean/3.0
-
-def map_coeffs_as_fp_phi(map_coeffs):
-  amplitudes=map_coeffs.amplitudes()
-  amplitudes.set_observation_type_xray_amplitude()
-  assert amplitudes.is_real_array()
-  phases=map_coeffs.phases(deg=True)
-  return amplitudes,phases
-
-def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
-      sharpen_to_d_min=False,out=sys.stdout):
-    from mmtbx.command_line.map_to_structure_factors import run as map_to_sf
-    if sharpen_to_d_min:
-       args=['d_min=%s' %(d_min)]
-    else:
-       args=['d_min=None','box=True']
-       print >>out,"Using all grid points for inversion"
-    from libtbx.utils import null_out
-    map_coeffs=map_to_sf(args=args,
-         space_group_number=crystal_symmetry.space_group().type().number(),
-         ccp4_map=make_ccp4_map(map_data,crystal_symmetry.unit_cell()),
-         return_as_miller_arrays=True,nohl=True,out=null_out())
-
-    return map_coeffs_as_fp_phi(map_coeffs)
-
-
-def apply_sharpening(n_real=None,b_sharpen=None,crystal_symmetry=None,
-    f_array=None,phases=None,d_min=None,out=sys.stdout):
-    from cctbx import adptbx # next lines from xtriage (basic_analysis.py)
-    b_cart_aniso_removed=[ b_sharpen, b_sharpen, b_sharpen, 0, 0, 0]
-    from mmtbx.scaling import absolute_scaling
-    u_star_aniso_removed=adptbx.u_cart_as_u_star(
-      f_array.unit_cell(), adptbx.b_as_u( b_cart_aniso_removed  ) )
-    f_array_sharpened=absolute_scaling.anisotropic_correction(
-      f_array,0.0,u_star_aniso_removed,must_be_greater_than=-0.0001)
-    res_cut_array=f_array_sharpened.resolution_filter(d_max=None, d_min=d_min)
-    actual_b_iso=get_b_iso(res_cut_array)
-    print >>out, "B-iso after sharpening by b_sharpen=%5.1f is %7.2f\n" %(
-      b_sharpen,actual_b_iso)
-    sharpened_map_coeffs=f_array_sharpened.phase_transfer(phase_source=phases,deg=True)
-    # And get new map
-
-    from cctbx import maptbx
-    from cctbx.maptbx import crystal_gridding
-    cg=crystal_gridding(
-        unit_cell=crystal_symmetry.unit_cell(),
-        space_group_info=crystal_symmetry.space_group_info(),
-        pre_determined_n_real=n_real)
-    fft_map = sharpened_map_coeffs.fft_map( resolution_factor = 0.25,
-       crystal_gridding=cg,
-       symmetry_flags=maptbx.use_space_group_symmetry)
-    fft_map.apply_sigma_scaling()
-    map_data=fft_map.real_map_unpadded()
-    return map_data
-
-def sharpen_map(map_data=None,crystal_symmetry=None,
-       sharpen_to_d_min=False,d_min=None,b_iso=None,out=sys.stdout):
-
-    f_array,phases=get_f_phases_from_map(map_data=map_data,
-       crystal_symmetry=crystal_symmetry,d_min=d_min,
-       sharpen_to_d_min=sharpen_to_d_min,out=out)
-
-    # If we use very high-res data the b_iso will be way off, so use to d_min
-    res_cut_array=f_array.resolution_filter(d_max=None, d_min=d_min)
-    original_b_iso=get_b_iso(res_cut_array)
- 
-    print >>out,"\nB-iso before sharpening %7.2f" %(original_b_iso)
-
-    b_sharpen=original_b_iso-b_iso
-    print >>out,"Sharpening with b_sharpen=%7.2f (negative is blurring)" %(b_sharpen)
-
-    map_data=apply_sharpening(n_real=map_data.all(),b_sharpen=b_sharpen,
-      crystal_symmetry=crystal_symmetry,
-      f_array=f_array,phases=phases,
-      d_min=d_min,out=out)
-
-    return map_data
-
-
 def get_params(args,out=sys.stdout):
 
   command_line = iotbx.phil.process_command_line_with_files(
@@ -1140,43 +1016,8 @@ def get_params(args,out=sys.stdout):
     else:
       origin_shift=(0.,0.,0.)
 
-  # Set origin shift now
+
   tracking_data.set_origin_shift(origin_shift)
-
-  # Decide if we sharpen the map
-  if params.crystal_info.auto_sharpen and params.crystal_info.b_iso is None:
-    d_min=params.crystal_info.resolution
-    if d_min is None:
-      raise Sorry("Need to supply resolution for map for auto_sharpening")
-
-    dd=max(params.crystal_info.auto_sharpen_cutoff,d_min)
-
-    params.crystal_info.b_iso=params.crystal_info.auto_sharpen_2*dd**2 +\
-                              params.crystal_info.auto_sharpen_1*dd +\
-                              params.crystal_info.auto_sharpen_0
-    if d_min <  dd:
-      params.crystal_info.b_iso=params.crystal_info.b_iso*(d_min/dd)
-
-  if params.crystal_info.b_iso:
-    print >>out,"\nAdjusting sharpening to obtain overall b_iso of %7.2f\n" %(
-       params.crystal_info.b_iso)
-
-    map_data=sharpen_map(map_data=map_data,crystal_symmetry=crystal_symmetry,
-      d_min=params.crystal_info.resolution,b_iso=params.crystal_info.b_iso,out=out)
-
-    if params.output_files.sharpening_map_file:
-      file_name=os.path.join(params.output_files.output_directory,
-        params.output_files.sharpening_map_file)
-      # write out sharpened map (our working map) (before shifting it)
-      print >>out,"\nWriting b_iso map (input map with "+\
-        "b_iso of %7.3f \n" %(params.crystal_info.b_iso) +\
-        "applied) to %s \n" %(file_name)
-      write_ccp4_map(crystal_symmetry,file_name,map_data)
-      params.input_files.map_file=file_name
-    else:
-      raise Sorry("Need a file name to write out sharpening_map_file")
-    params.crystal_info.b_iso=None  # no longer need it.
-    params.crystal_info.auto_sharpen=None# no longer need it.
 
   if params.segmentation.expand_size is None:
 
@@ -1253,7 +1094,7 @@ def get_ncs(params,tracking_data=None,out=sys.stdout):
 
   return ncs_object,tracking_data
 
-def score_threshold(b_iso=None,threshold=None,
+def score_threshold(threshold=None,
      sorted_by_volume=None,n_residues=None,
      ncs_copies=None,
      fraction_occupied=None,
@@ -1353,10 +1194,9 @@ def score_threshold(b_iso=None,threshold=None,
      (weight_score_ratio+weight_score_grid_points+weight_near_one))
 
    half_expected_regions=max(1,(1+expected_regions)//2)
-   ratio=sorted_by_volume[min(len(sorted_by_volume)-1,half_expected_regions)][0]/v1
-
    if ok and v1 >= target_in_top_regions/2 and \
         len(sorted_by_volume)>half_expected_regions:
+     ratio=sorted_by_volume[half_expected_regions][0]/v1
      last_volume=sorted_by_volume[half_expected_regions][0]
      if ratio >=min_ratio and \
          last_volume>=min_volume:
@@ -1365,18 +1205,19 @@ def score_threshold(b_iso=None,threshold=None,
        has_sufficient_regions=False
    else:
        has_sufficient_regions=False
+       ratio=0.
 
 
    print >>out,\
-    "SCORE %s %5.2f   %5d     %4d    %5d     %5d     %6.3f   %5s    %5.3f  %s  %s" %(
-       b_iso,threshold,target_in_top_regions,expected_regions,
-       v1,median_number,ratio,has_sufficient_regions,overall_score,ok,nn)
+    " %5.2f   %5d     %4d    %5d     %5d     %6.3f   %5s    %5.3f  %s" %(
+       threshold,target_in_top_regions,expected_regions,
+       v1,median_number,ratio,has_sufficient_regions,overall_score,ok)
 
    return overall_score,has_sufficient_regions,\
       too_low,too_high,expected_regions,ok
 
 
-def choose_threshold(params,b_iso=None,map_data=None,
+def choose_threshold(params,map_data=None,
      fraction_occupied=None,
      solvent_fraction=None,
      n_residues=None,
@@ -1438,10 +1279,9 @@ def choose_threshold(params,b_iso=None,map_data=None,
       if len(sorted_by_volume)<2:
         score,has_sufficient_regions,too_low,too_high,expected_regions,ok=\
           None,None,None,None,None,None
-        continue # don't go on
       else:
         score,has_sufficient_regions,too_low,too_high,expected_regions,ok=\
-           score_threshold(b_iso=b_iso,
+           score_threshold(
          threshold=threshold,
          sorted_by_volume=sorted_by_volume,
          fraction_occupied=fraction_occupied,
@@ -1486,7 +1326,7 @@ def choose_threshold(params,b_iso=None,map_data=None,
   else:
     return None,unique_expected_regions,None,None
 
-def get_connectivity(params,b_iso=None,
+def get_connectivity(params,
      map_data=None,
      ncs_object=None,
      solvent_fraction=None,
@@ -1497,7 +1337,7 @@ def get_connectivity(params,b_iso=None,
 
   # Normalize map data now to SD of the part that is not solvent
   sd=max(0.0001,map_data.sample_standard_deviation())
-  assert solvent_fraction > 0 and solvent_fraction < 1
+  assert solvent_fraction > 0
   scaled_sd=sd/(1-solvent_fraction)**0.5
   map_data=(map_data-map_data.as_1d().min_max_mean().mean)/scaled_sd
 
@@ -1505,13 +1345,11 @@ def get_connectivity(params,b_iso=None,
   # Choose one that has about the right number of grid points in top regions
   scale=0.95
   best_threshold=None
-  best_scale=scale
   best_score=None
   best_ok=None
   best_unique_expected_regions=None
   for ii in xrange(3):
     threshold,unique_expected_regions,score,ok=choose_threshold(params,
-     b_iso=b_iso,
      map_data=map_data,
      n_residues=n_residues,
      ncs_copies=ncs_copies,
@@ -1520,43 +1358,26 @@ def get_connectivity(params,b_iso=None,
      scale=scale,
      out=out)
     # Take it if it improves (score, ok)
-    if threshold is not None:
-     if best_score is None or  \
+    if best_score is None or  \
       ((ok or not best_ok) and (score > best_score)):
       best_score=score
       best_unique_expected_regions=unique_expected_regions
       best_ok=ok
       best_threshold=threshold
-      best_scale=scale
     if best_ok or params.segmentation.density_threshold is not None:
       break
     else:
       scale=scale**0.333 # keep trying
 
-  if best_threshold is None or (
-      params.segmentation.density_threshold is not None and best_score is None):
+  if best_threshold is None:
     if params.segmentation.iterate_with_remainder: # on first try failed
       raise Sorry("No threshold found...try with density_threshold=xxx")
     else: # on iteration...ok
       print >>out,"Note: No threshold found"
-      return None,None,None,None,None,None
+      return None,None,None,None,None
   else:
     params.segmentation.starting_density_threshold=best_threshold
     # try it next time
-
-  # just to print out
-  local_params=deepcopy(params)
-  local_params.segmentation.density_threshold=best_threshold
-  local_params.control.verbose=True
-  threshold,unique_expected_regions,score,ok=choose_threshold(local_params,
-     b_iso=b_iso,
-     map_data=map_data,
-     n_residues=n_residues,
-     ncs_copies=ncs_copies,
-     fraction_occupied=params.segmentation.fraction_occupied,
-     solvent_fraction=solvent_fraction,
-     scale=best_scale,
-     out=sys.stdout ) # ZZZ
 
   co = maptbx.connectivity(map_data=map_data,threshold=best_threshold,
          wrapping=params.crystal_info.use_sg_symmetry)
@@ -1582,7 +1403,7 @@ def get_connectivity(params,b_iso=None,
      min_b[i][2],max_b[i][2])
     """
     n_use=cntr
-  return co,sorted_by_volume,min_b,max_b,best_unique_expected_regions,best_score
+  return co,sorted_by_volume,min_b,max_b,best_unique_expected_regions
 
 def get_volume_of_seq(text,vol=None,chain_type=None,out=sys.stdout):
   from iotbx.bioinformatics import chain_type_and_residues
@@ -2152,7 +1973,7 @@ def identify_ncs_regions(params,
     max_regions_to_consider)
   if max_regions_to_consider<1:
     print >>out,"\nUnable to identify any NCS regions"
-    return None,tracking_data
+    return None,None
 
   # Go through all grid points; discard if not in top regions
   #  Renumber regions in order of decreasing size
@@ -3466,7 +3287,8 @@ def apply_origin_shift(origin_shift=None,
     tracking_data=None,
     out=sys.stdout):
 
-  if shifted_map_file:
+  if origin_shift: # Note origin shift does not change crystal_symmetry
+    if shifted_map_file:
       write_ccp4_map(tracking_data.crystal_symmetry,
       shifted_map_file,
       map_data)
@@ -3477,7 +3299,6 @@ def apply_origin_shift(origin_shift=None,
         crystal_symmetry=tracking_data.crystal_symmetry,
         origin=map_data.origin(),
         all=map_data.all())
-  if origin_shift: # Note origin shift does not change crystal_symmetry
 
     if pdb_hierarchy:
       pdb_hierarchy=apply_shift_to_pdb_hierarchy(
@@ -3493,12 +3314,7 @@ def apply_origin_shift(origin_shift=None,
        pdb_hierarchy=target_hierarchy,
        out=out)
 
-    from scitbx.math import  matrix
-    ncs_object=ncs_object.coordinate_offset(
-       coordinate_offset=matrix.col(origin_shift))
-
-
-  if shifted_pdb_file and pdb_hierarchy:
+    if shifted_pdb_file and pdb_hierarchy:
       import iotbx.pdb
       f=open(shifted_pdb_file,'w')
       print >>f, iotbx.pdb.format_cryst1_record(
@@ -3510,8 +3326,10 @@ def apply_origin_shift(origin_shift=None,
       tracking_data.set_shifted_pdb_info(file_name=shifted_pdb_file,
       n_residues=pdb_hierarchy.overall_counts().n_residues)
 
-
-  if shifted_ncs_file:
+    from scitbx.math import  matrix
+    ncs_object=ncs_object.coordinate_offset(
+       coordinate_offset=matrix.col(origin_shift))
+    if shifted_ncs_file:
       ncs_object.format_all_for_group_specification(
          file_name=shifted_ncs_file)
       print >>out,"Wrote %s NCS operators for shifted map to %s" %(
@@ -3770,7 +3588,7 @@ def get_overall_mask(
   cg=crystal_gridding(
         unit_cell=crystal_symmetry.unit_cell(),
         space_group_info=crystal_symmetry.space_group_info(),
-        pre_determined_n_real=map_data.all())
+        pre_determined_n_real=map_data.focus())
 
   if not resolution:
     from cctbx.maptbx import d_min_from_map
@@ -3785,22 +3603,12 @@ def get_overall_mask(
     smoothing_radius=2.*resolution
 
   from mmtbx.command_line.map_to_structure_factors import run as map_to_sf
-  args=['d_min=None','box=True']
-  for d_min in [resolution,resolution+0.5,resolution+1.0,resolution+2.]:
-    args=['d_min=%s' %(d_min)]
-    from libtbx.utils import null_out
-    try:
-      map_coeffs=map_to_sf(args=args,
+  args=['d_min=%s' %(resolution)]
+  from libtbx.utils import null_out
+  map_coeffs=map_to_sf(args=args,
          space_group_number=crystal_symmetry.space_group().type().number(),
          ccp4_map=make_ccp4_map(map_data,crystal_symmetry.unit_cell()),
          return_as_miller_arrays=True,nohl=True,out=null_out())
-    except Exception,e:
-      map_coeffs=None
-      msg=str(e)
-      continue
-    break # was fine
-  if not map_coeffs:
-    raise Sorry(msg)
 
   complete_set = map_coeffs.complete_set()
   stol = flex.sqrt(complete_set.sin_theta_over_lambda_sq().data())
@@ -3853,6 +3661,7 @@ def get_one_au(tracking_data=None,
     every_nth_point=None,
     removed_ncs=None,
     out=sys.stdout):
+
   unit_cell=tracking_data.crystal_symmetry.unit_cell()
 
   if removed_ncs: # take everything left
@@ -3964,10 +3773,11 @@ def run(args,
     else:
       target_hierarchy=None
 
-    print >>out,"\nShifting map, model and NCS based on origin shift (if any)"
-    print >>out,"Coordinate shift is (%7.2f,%7.2f,%7.2f)" %(
-        tuple(tracking_data.origin_shift))
-    ncs_obj,pdb_hierarchy,target_hierarchy,tracking_data=apply_origin_shift(
+    if tracking_data.origin_shift:
+      print >>out,"\nShifting map, model and NCS based on origin shift"
+      print >>out,"Coordinate shift is (%7.2f,%7.2f,%7.2f)" %(
+         tuple(tracking_data.origin_shift))
+      ncs_obj,pdb_hierarchy,target_hierarchy,tracking_data=apply_origin_shift(
         shifted_map_file=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.shifted_map_file),
         shifted_ncs_file=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.shifted_ncs_file),
         shifted_pdb_file=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.shifted_pdb_file),
@@ -3978,7 +3788,8 @@ def run(args,
         map_data=map_data,
         tracking_data=tracking_data,
         out=out)
-
+    else:
+      shifted_map_file=params.input_files.map_file # but do not overwrite
     if target_hierarchy:
       target_xyz=target_hierarchy.atoms().extract_xyz()
       del target_hierarchy
@@ -3996,69 +3807,10 @@ def run(args,
   ncs_copies=tracking_data.input_ncs_info.number_of_operators
   solvent_fraction=tracking_data.solvent_fraction
 
-  print >>out,"\nTrying to get optimal sharpening"
-  # ZZ DUP
-  sd=max(0.0001,map_data.sample_standard_deviation())
-  assert solvent_fraction > 0 and solvent_fraction < 1
-  scaled_sd=sd/(1-solvent_fraction)**0.5
-  map_data=(map_data-map_data.as_1d().min_max_mean().mean)/scaled_sd
-
-  scale=0.95
-  threshold,unique_expected_regions,score,ok=choose_threshold(params,
-     b_iso=None,
-     map_data=map_data,
-     n_residues=n_residues,
-     ncs_copies=ncs_copies,
-     fraction_occupied=params.segmentation.fraction_occupied,
-     solvent_fraction=solvent_fraction,
-     scale=scale,
-     out=out)
-  fixed_threshold=threshold
-  print "ZZ threshold",threshold
-  # Now plot regions vs sharpening...
-
-  f_array,phases=get_f_phases_from_map(map_data=map_data.deep_copy(),
-       crystal_symmetry=tracking_data.crystal_symmetry, out=out)
-
-  # If we use very high-res data the b_iso will be way off, so use to d_min
-  res_cut_array=f_array.resolution_filter(d_max=None,
-    d_min=tracking_data.params.crystal_info.resolution)
-  original_b_iso=get_b_iso(res_cut_array)
-  print >>out,"Original b_iso again: ",original_b_iso
-
-  for delta_b_iso in [-80,-60,-40,-20,-20,0,20,40,60,80]:
-    b_iso=delta_b_iso+original_b_iso
-    print >>out,"ZZ B_iso:",b_iso
-
-    sharpened_map_data=apply_sharpening(n_real=map_data.all(),
-      b_sharpen=-delta_b_iso,
-      crystal_symmetry=tracking_data.crystal_symmetry,
-      f_array=f_array,phases=phases,
-      d_min=tracking_data.params.crystal_info.resolution,out=out)
-
-    local_params=deepcopy(params)
-    #local_params.segmentation.density_threshold=fixed_threshold
-    co,sorted_by_volume,min_b,max_b,unique_expected_regions,best_score=\
-     get_connectivity(local_params,
-       b_iso=b_iso,
-       map_data=sharpened_map_data,
-       ncs_object=ncs_obj,
-       n_residues=n_residues,
-       ncs_copies=ncs_copies,
-       solvent_fraction=solvent_fraction,
-       out=out)
-    if not sorted_by_volume or len(sorted_by_volume)<2: continue
-    nn=len(sorted_by_volume)-1
-    v1,i1=sorted_by_volume[1]
-    print >>out,"ZZ SCORE: ",b_iso,best_score
-  if 1: # ZZZ
-    sys.exit(0)
-
   for itry in xrange(2):
     # get connectivity  (conn=connectivity_object.result)
-    co,sorted_by_volume,min_b,max_b,unique_expected_regions,best_score=\
-    get_connectivity(params,
-      b_iso=b_iso,
+    co,sorted_by_volume,min_b,max_b,unique_expected_regions=get_connectivity(
+       params,
        map_data=map_data,
        ncs_object=ncs_obj,
        n_residues=n_residues,
@@ -4175,6 +3927,7 @@ def run(args,
       os.path.join(tracking_data.params.output_files.output_directory,params.output_files.output_info_file))+" pdb_to_restore=mypdb.pdb\n"
     easy_pickle.dump(os.path.join(tracking_data.params.output_files.output_directory,params.output_files.output_info_file),
        tracking_data)
+
   return ncs_group_obj,remainder_ncs_group_obj,tracking_data
 
 
