@@ -291,7 +291,7 @@ class probe_clashscore_manager(object):
             else :
               clash_hash[key] = clash_obj
         elif (type == "hb"):
-          print key
+          # print key
           if (key in hbond_hash) :
             if (gap < hbond_hash[key].overlap):
               hbond_hash[key] = clash_obj
