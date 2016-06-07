@@ -247,7 +247,7 @@ the output images in the folder cxi49812.
       else:
         # get numpy array, 32x185x388
         if command_line.options.raw_data:
-          data = psana_det.raw_data(evt) # uncorrected pixels
+          data = psana_det.raw_data(evt).astype(np.float64) # uncorrected pixels
         else:
           data = psana_det.calib(evt) # applies psana's complex run-dependent calibrations
         if gain_mask is not None:
