@@ -519,7 +519,7 @@ def import_xds_xparm(xparm_file):
     panel_fast_axes = None
     panel_slow_axes = None
 
-    if handle.num_segments:
+    if handle.num_segments > 1:
         # Now, for each detector segment the following two lines of information
         # are provided.
 
