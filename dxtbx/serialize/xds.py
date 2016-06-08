@@ -212,12 +212,13 @@ class to_xds(object):
       fl = matrix.col(panel.get_local_fast_axis())
       sl = matrix.col(panel.get_local_slow_axis())
       nl = fl.cross(sl)
+      panel_distance = matrix.col(panel.get_local_origin()).dot(nl)
 
       self.panel_x_axis.append(fl.elems)
       self.panel_y_axis.append(sl.elems)
       self.panel_normal.append(nl.elems)
       self.panel_origin.append((orgsx, orgsy))
-      self.panel_distance.append(o.dot(n))
+      self.panel_distance.append(panel_distance)
 
     # Beam stuff
     self.wavelength = self.get_beam().get_wavelength()
