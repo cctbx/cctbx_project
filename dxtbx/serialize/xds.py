@@ -304,7 +304,7 @@ class to_xds(object):
     print >> out, 'X-RAY_WAVELENGTH= %.5f' % \
           self.wavelength
     print >> out, 'INCIDENT_BEAM_DIRECTION= %.3f %.3f %.3f' % \
-          self.beam_vector
+          tuple([b / self.wavelength for b in self.beam_vector])
 
     # FIXME LATER
     if hasattr(self.get_beam(), "get_polarization_fraction"):
