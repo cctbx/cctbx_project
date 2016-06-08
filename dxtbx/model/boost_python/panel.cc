@@ -315,8 +315,10 @@ namespace dxtbx { namespace model { namespace boost_python {
         DXTBX_ASSERT(false);
       }
     }
-    result->set_raw_image_offset(
-      boost::python::extract<int2>(obj["raw_image_offset"]));
+    if (obj.has_key("raw_image_offset")) {
+      result->set_raw_image_offset(
+        boost::python::extract<int2>(obj["raw_image_offset"]));
+    }
     result->set_image_size(
       boost::python::extract< tiny<std::size_t,2> >(obj["image_size"]));
     result->set_pixel_size(
