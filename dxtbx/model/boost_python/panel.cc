@@ -176,7 +176,9 @@ namespace dxtbx { namespace model { namespace boost_python {
         extract< vec3<double> >(data["parent_slow_axis"]),
         extract< vec3<double> >(data["parent_origin"]));
       p.set_pixel_size(extract< tiny<double,2> >(data["pixel_size"]));
-      p.set_raw_image_offset(extract<int2>(data["raw_image_offset"]));
+      if (data.has_key("raw_image_offset")) {
+        p.set_raw_image_offset(extract<int2>(data["raw_image_offset"]));
+      }
       p.set_image_size(extract< tiny<std::size_t,2> >(data["image_size"]));
       p.set_trusted_range(extract< tiny<double,2> >(data["trusted_range"]));
       p.set_thickness(extract<double>(data["thickness"]));
