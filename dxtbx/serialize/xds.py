@@ -168,11 +168,6 @@ class to_xds(object):
 
     self.pixel_size = self.get_detector()[0].get_pixel_size() # assume all panels same pixel size
 
-    o = origin
-    op = o.dot(N) * N
-    orgx = (op - o).dot(F) * self.pixel_size[0]
-    orgy = (op - o).dot(S) * self.pixel_size[1]
-
     centre = -(origin - origin.dot(N) * N)
     x = centre.dot(F)
     y = centre.dot(S)
@@ -196,7 +191,6 @@ class to_xds(object):
       f = Rd * matrix.col(panel.get_fast_axis())
       s = Rd * matrix.col(panel.get_slow_axis())
       n = f.cross(s)
-      N = matrix.col(self.detector_normal)
 
       xmin, ymin = panel.get_raw_image_offset()
       xmax = xmin + panel.get_image_size()[0]
