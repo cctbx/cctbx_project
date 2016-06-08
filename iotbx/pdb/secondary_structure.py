@@ -101,6 +101,12 @@ def segments_are_similar(atom_selection_1=None,
 
     return True
 
+def choose_correct_cif_record(cif_dict, key1, key2):
+  if key1 in cif_dict:
+    val = cif_dict[key1]
+    if val != '?' and val != '.':
+      return val
+  return cif_dict[key2]
 
 class one_strand_pair_registration_atoms:
   def __init__(self,
@@ -345,6 +351,12 @@ class structure_base (object) :
       return chars.strip()
 
   @staticmethod
+  def parse_cif_insertion_code(chars):
+    if chars == '?' or chars == '.' or chars == '':
+      return ' '
+    return chars
+
+  @staticmethod
   def filter_helix_records(lines):
     result = []
     for line in lines:
@@ -509,6 +521,38 @@ class annotation(structure_base):
       else:
         sheets.append(sh)
 
+    return cls(helices=helices, sheets=sheets)
+
+  @classmethod
+  def from_cif_block(cls, cif_block, log=None):
+    "initialize annotation from cif HELIX/SHEET records"
+    helices = []
+    serial = 1
+    helix_loop = cif_block.get_loop("_struct_conf")
+    for helix_row in helix_loop.iterrows():
+      try:
+        h = pdb_helix.from_cif_row(helix_row, serial)
+        serial += 1
+      except ValueError:
+        print >> log, "Bad HELIX records!"
+      else:
+        helices.append(h)
+    sheets = []
+    struct_sheet_loop = cif_block.get_loop("_struct_sheet")
+    struct_sheet_order_loop = cif_block.get_loop("_struct_sheet_order")
+    struct_sheet_range_loop = cif_block.get_loop("_struct_sheet_range")
+    struct_sheet_hbond_loop = cif_block.get_loop("_pdbx_struct_sheet_hbond")
+    for sheet_row in struct_sheet_loop.iterrows():
+      sheet_id = sheet_row['_struct_sheet.id']
+      number_of_strands = int(sheet_row['_struct_sheet.number_strands'])
+      try:
+        sh = pdb_sheet.from_cif_rows(sheet_id, number_of_strands,
+            struct_sheet_order_loop, struct_sheet_range_loop,
+            struct_sheet_hbond_loop)
+      except ValueError:
+        print >> log, "Bad sheet records.\n"
+      else:
+        sheets.append(sh)
     return cls(helices=helices, sheets=sheets)
 
   @classmethod
@@ -1180,6 +1224,54 @@ class pdb_helix (structure_base) :
   def helix_class_to_str(cls, h_class):
     return cls._helix_class_array[h_class]
 
+
+  @classmethod
+  def from_cif_row(cls, cif_row, serial):
+    start_resname = choose_correct_cif_record(
+        cif_row,
+        '_struct_conf.beg_auth_comp_id',
+        '_struct_conf.beg_label_comp_id')
+    start_chain_id = cls.parse_chain_id(
+        choose_correct_cif_record(
+            cif_row,
+            '_struct_conf.beg_auth_asym_id',
+            '_struct_conf.beg_label_asym_id'))
+    start_resseq = choose_correct_cif_record(
+        cif_row,
+        '_struct_conf.beg_auth_seq_id',
+        '_struct_conf.beg_label_seq_id')
+    end_resname = choose_correct_cif_record(
+        cif_row,
+        '_struct_conf.end_auth_comp_id',
+        '_struct_conf.end_label_comp_id')
+    end_chain_id = cls.parse_chain_id(
+        choose_correct_cif_record(
+            cif_row,
+            '_struct_conf.end_auth_asym_id',
+            '_struct_conf.end_label_asym_id'))
+    end_resseq = choose_correct_cif_record(
+        cif_row,
+        '_struct_conf.end_auth_seq_id',
+        '_struct_conf.end_label_seq_id')
+
+    return cls(
+      serial=serial,
+      helix_id=cif_row['_struct_conf.pdbx_PDB_helix_id'],
+      start_resname=start_resname,
+      start_chain_id=start_chain_id,
+      start_resseq=start_resseq,
+      start_icode=cls.parse_cif_insertion_code(cif_row['_struct_conf.pdbx_beg_PDB_ins_code']),
+      end_resname=end_resname,
+      end_chain_id=end_chain_id,
+      end_resseq=end_resseq,
+      end_icode=cls.parse_cif_insertion_code(cif_row['_struct_conf.pdbx_end_PDB_ins_code']),
+      helix_class=cls.helix_class_to_str(int(cif_row['_struct_conf.pdbx_PDB_helix_class'])),
+      helix_selection=None,
+      comment=(cif_row['_struct_conf.details'] if \
+          cif_row['_struct_conf.details'] != '?' and cif_row['_struct_conf.details'] != '.' \
+          else ''),
+      length=int(cif_row['_struct_conf.pdbx_PDB_helix_length']))
+
   @classmethod
   def from_pdb_record(cls, line):
     "Raises ValueError in case of corrupted HELIX record!!!"
@@ -1429,6 +1521,49 @@ class pdb_strand(structure_base):
         end_icode=line[37],
         sense=int(line[38:40]))
 
+  @classmethod
+  def from_cif_dict(cls, cif_dict, sense):
+    start_resname = choose_correct_cif_record(
+        cif_dict,
+        '_struct_sheet_range.beg_auth_comp_id',
+        '_struct_sheet_range.beg_label_comp_id')
+    start_chain_id = choose_correct_cif_record(
+        cif_dict,
+        '_struct_sheet_range.beg_auth_asym_id',
+        '_struct_sheet_range.beg_label_asym_id')
+    start_resseq = choose_correct_cif_record(
+        cif_dict,
+        '_struct_sheet_range.beg_auth_seq_id',
+        '_struct_sheet_range.beg_label_seq_id')
+    end_resname = choose_correct_cif_record(
+        cif_dict,
+        '_struct_sheet_range.end_auth_comp_id',
+        '_struct_sheet_range.end_label_comp_id')
+    end_chain_id = choose_correct_cif_record(
+        cif_dict,
+        '_struct_sheet_range.end_auth_asym_id',
+        '_struct_sheet_range.end_label_asym_id')
+    end_resseq = choose_correct_cif_record(
+        cif_dict,
+        '_struct_sheet_range.end_auth_seq_id',
+        '_struct_sheet_range.end_label_seq_id')
+
+    return cls(
+        sheet_id=cif_dict['_struct_sheet_range.sheet_id'],
+        strand_id=int(cif_dict['_struct_sheet_range.id']),
+        start_resname=start_resname,
+        start_chain_id=cls.parse_chain_id(start_chain_id),
+        start_resseq=start_resseq,
+        start_icode=cls.parse_cif_insertion_code(
+            cif_dict['_struct_sheet_range.pdbx_beg_PDB_ins_code']),
+        end_resname=end_resname,
+        end_chain_id=cls.parse_chain_id(end_chain_id),
+        end_resseq=end_resseq,
+        end_icode=cls.parse_cif_insertion_code(
+            cif_dict['_struct_sheet_range.pdbx_end_PDB_ins_code']),
+        sense=sense,
+      )
+
   def set_new_chain_ids(self, new_chain_id):
     self.start_chain_id = new_chain_id
     self.end_chain_id = new_chain_id
@@ -1510,6 +1645,69 @@ class pdb_strand_register(structure_base):
         prev_chain_id=cls.parse_chain_id(line[63:65]),
         prev_resseq=line[65:69],
         prev_icode=line[69])
+
+  @staticmethod
+  def adjust_cif_atom_name(name):
+    if len(name) == 1:
+      return " %s  " % name
+    elif len(name) == 2:
+      return " %s " % name
+    elif len(name) == 3:
+      return "%s " % name
+    return name
+
+
+  @classmethod
+  def from_cif_dict(cls, cif_dict):
+    cur_atom = cls.adjust_cif_atom_name(
+        choose_correct_cif_record(
+            cif_dict,
+            '_pdbx_struct_sheet_hbond.range_2_auth_atom_id',
+            '_pdbx_struct_sheet_hbond.range_2_label_atom_id'))
+    cur_resname = choose_correct_cif_record(
+        cif_dict,
+        '_pdbx_struct_sheet_hbond.range_2_auth_comp_id',
+        '_pdbx_struct_sheet_hbond.range_2_label_comp_id')
+    cur_chain_id = choose_correct_cif_record(
+        cif_dict,
+        '_pdbx_struct_sheet_hbond.range_2_auth_asym_id',
+        '_pdbx_struct_sheet_hbond.range_2_label_asym_id')
+    cur_resseq = choose_correct_cif_record(
+        cif_dict,
+        '_pdbx_struct_sheet_hbond.range_2_auth_seq_id',
+        '_pdbx_struct_sheet_hbond.range_2_label_seq_id')
+    cur_icode = cls.parse_cif_insertion_code(
+        cif_dict['_pdbx_struct_sheet_hbond.range_2_PDB_ins_code'])
+    prev_atom = cls.adjust_cif_atom_name(
+        choose_correct_cif_record(
+          cif_dict,
+          '_pdbx_struct_sheet_hbond.range_1_auth_atom_id',
+          '_pdbx_struct_sheet_hbond.range_1_label_atom_id'))
+    prev_resname = choose_correct_cif_record(
+        cif_dict,
+        '_pdbx_struct_sheet_hbond.range_1_auth_comp_id',
+        '_pdbx_struct_sheet_hbond.range_1_label_comp_id')
+    prev_chain_id = choose_correct_cif_record(
+        cif_dict,
+        '_pdbx_struct_sheet_hbond.range_1_auth_asym_id',
+        '_pdbx_struct_sheet_hbond.range_1_label_asym_id')
+    prev_resseq = choose_correct_cif_record(
+        cif_dict,
+        '_pdbx_struct_sheet_hbond.range_1_auth_seq_id',
+        '_pdbx_struct_sheet_hbond.range_1_label_seq_id')
+    prev_icode = cls.parse_cif_insertion_code(
+        cif_dict['_pdbx_struct_sheet_hbond.range_1_PDB_ins_code'])
+    return cls(
+        cur_atom=cur_atom,
+        cur_resname=cur_resname,
+        cur_chain_id=cls.parse_chain_id(cur_chain_id),
+        cur_resseq=cur_resseq,
+        cur_icode=cur_icode,
+        prev_atom=prev_atom,
+        prev_resname=prev_resname,
+        prev_chain_id=cls.parse_chain_id(prev_chain_id),
+        prev_resseq=prev_resseq,
+        prev_icode=prev_icode)
 
   def get_cur_resseq_as_int(self):
     if self.cur_resseq is not None:
@@ -1625,6 +1823,57 @@ class pdb_sheet(structure_base):
                registrations=registrations)
 
   @classmethod
+  def from_cif_rows(cls, sheet_id, number_of_strands,
+            struct_sheet_order_loop, struct_sheet_range_loop,
+            struct_sheet_hbond_loop):
+    strands = []
+    registrations = []
+    for i in range(1, number_of_strands+1):
+      if i == 1:
+        # the first strand, no sense, no hbond
+        res_range = None
+        for row in struct_sheet_range_loop.iterrows():
+          if (row['_struct_sheet_range.sheet_id'] == sheet_id and
+              int(row['_struct_sheet_range.id']) == i):
+            res_range = row
+            break
+        if res_range is None:
+          raise Sorry("Error in sheet definitions")
+        strands.append(pdb_strand.from_cif_dict(res_range, 0))
+        registrations.append(None)
+      else:
+        # all the rest
+        res_range = None
+        registration = None
+        sense = None
+        for row in struct_sheet_range_loop.iterrows():
+          if (row['_struct_sheet_range.sheet_id'] == sheet_id and
+              int(row['_struct_sheet_range.id']) == i):
+            res_range = row
+            break
+        for row in struct_sheet_order_loop.iterrows():
+          if (row['_struct_sheet_order.sheet_id'] == sheet_id and
+              int(row['_struct_sheet_order.range_id_1']) == i-1 and
+              int(row['_struct_sheet_order.range_id_2']) == i):
+            str_sense = row['_struct_sheet_order.sense']
+            sense = 1 if str_sense=='parallel' else -1
+            break
+        for row in struct_sheet_hbond_loop.iterrows():
+          if (row['_pdbx_struct_sheet_hbond.sheet_id'] == sheet_id and
+              int(row['_pdbx_struct_sheet_hbond.range_id_1']) == i-1 and
+              int(row['_pdbx_struct_sheet_hbond.range_id_2']) == i):
+            registration = row
+            break
+        if (res_range is not None and
+            registration is not None and sense is not None):
+          strands.append(pdb_strand.from_cif_dict(res_range, sense))
+          registrations.append(pdb_strand_register.from_cif_dict(registration))
+    return cls(sheet_id=sheet_id,
+               n_strands=number_of_strands,
+               strands=strands,
+               registrations=registrations)
+
+  @classmethod
   def from_phil_params(cls, sheet_params, pdb_hierarchy, cache, log=None):
     if sheet_params.first_strand is None:
       raise Sorry("Empty first strand selection")
@@ -1730,7 +1979,6 @@ class pdb_sheet(structure_base):
         print >> log, "Acceptor selection in hbond cannot be None"
         continue
       hbonds.append((hb.donor, hb.acceptor))
-
     return cls(sheet_id=sheet_id,
                n_strands=n_strands,
                strands=strands,

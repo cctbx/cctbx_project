@@ -456,6 +456,10 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
   def connectivity_annotation_section(self):
     return ""
 
+  def extract_secondary_structure (self):
+    from iotbx.pdb import secondary_structure
+    return secondary_structure.annotation.from_cif_block(self.cif_block)
+
   def remark_section(self):
     return ""
 
