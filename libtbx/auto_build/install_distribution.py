@@ -718,6 +718,14 @@ class installer(object):
     """
     pass
 
+  def product_specific_prepackage_hook(self, directory):
+    """
+    Modify files, etc. before the installer package is created.
+
+    :param directory: base directory of the installer package
+    """
+    pass
+
   def product_specific_binary_install (self, log) :
     """
     Perform additional actions required for the binary installation of a

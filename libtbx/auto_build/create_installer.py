@@ -155,6 +155,7 @@ class SetupInstaller(object):
       self.copy_dependencies()
       self.copy_build()
     self.fix_permissions()
+    self.installer.product_specific_prepackage_hook(directory=self.dest_dir)
     self.make_dist()
     if self.binary and sys.platform == "darwin":
       self.make_dist_pkg()
