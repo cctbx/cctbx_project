@@ -10,13 +10,18 @@ class coordinate_frame_information:
     def __init__(self, detector_origin, detector_fast, detector_slow,
                  detector_size_fast_slow, detector_pixel_size_fast_slow,
                  rotation_axis, sample_to_source, wavelength,
-                 real_space_a = None, real_space_b = None,
-                 real_space_c = None, space_group_number = None,
-                 sigma_divergence = None,
-                 mosaicity = None,
-                 starting_angle = None, oscillation_range = None,
-                 starting_frame = None,
-                 original_rotation = None):
+                 real_space_a=None, real_space_b=None,
+                 real_space_c=None, space_group_number=None,
+                 sigma_divergence=None,
+                 mosaicity=None,
+                 starting_angle=None, oscillation_range=None,
+                 starting_frame=None,
+                 original_rotation=None,
+                 panel_offset=None,
+                 panel_size=None,
+                 panel_origin=None,
+                 panel_fast=None,
+                 panel_slow=None):
 
         self._detector_origin = detector_origin
         self._detector_fast = detector_fast
@@ -36,6 +41,11 @@ class coordinate_frame_information:
         self._oscillation_range = oscillation_range
         self._starting_frame = starting_frame
         self._original_rotation = original_rotation
+        self._panel_offset = panel_offset
+        self._panel_size = panel_size
+        self._panel_origin = panel_origin
+        self._panel_fast = panel_fast
+        self._panel_slow = panel_slow
 
         self._R_to_CBF = None
         self._R_to_Rossmann = None
@@ -503,12 +513,60 @@ def import_xds_xparm(xparm_file):
     oscillation_range = handle.oscillation_range
     starting_frame = handle.starting_frame
 
+    panel_offset = None
+    panel_size = None
+    panel_origins = None
+    panel_fast_axes = None
+    panel_slow_axes = None
+
+    if handle.num_segments:
+        # Now, for each detector segment the following two lines of information
+        # are provided.
+
+        # The 5 numbers of this line, iseg x1 x2 y1 y2, define the pixel numbers
+        # IX,IY belonging to segment #iseg as x1<=IX<=x2, y1<=IY<=y2.
+        # The 9 numbers of this line, ORGXS ORGYS FS EDS(:,1) EDS(:,2), describe
+        # origin and orientation of segment #iseg with respect to the detector
+        # coordinate system.
+
+        panel_offset = []
+        panel_size = []
+        panel_origins = []
+        panel_fast_axes = []
+        panel_slow_axes = []
+        for segment, orientation,  in zip(handle.segments, handle.orientation):
+            iseg, x1, x2, y1, y2 = segment
+            # XDS panel limits inclusive range
+            panel_offset.append((x1-1, y1-1))
+            panel_size.append((x2-x1+1, y2-y1+1))
+            panel_fast = matrix.col(orientation[3:6])
+            panel_slow = matrix.col(orientation[6:9])
+            # local basis vectors
+            fl = matrix.col(panel_fast)
+            sl = matrix.col(panel_slow)
+            nl = fl.cross(sl)
+
+            orgxs, orgys, fs = orientation[:3]
+            orgxs -= x1
+            orgys -= y1
+            panel_origin = fs * nl - orgxs * px * fl - orgys * py * sl
+
+            panel_normal = panel_fast.cross(panel_slow)
+            panel_origins.append(panel_origin)
+            panel_fast_axes.append(panel_fast)
+            panel_slow_axes.append(panel_slow)
+
     return coordinate_frame_information(
         detector_origin, detector_fast, detector_slow, (nx, ny), (px, py),
         rotation_axis, sample_to_source, wavelength,
         real_space_a, real_space_b, real_space_c, space_group_number,
         None, None, starting_angle, oscillation_range, starting_frame,
-        original_rotation = R)
+        original_rotation=R,
+        panel_offset=panel_offset,
+        panel_size=panel_size,
+        panel_origin=panel_origins,
+        panel_fast=panel_fast_axes,
+        panel_slow=panel_slow_axes)
 
 def test_align_reference_frame():
 

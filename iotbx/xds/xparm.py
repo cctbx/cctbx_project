@@ -22,7 +22,8 @@ class reader(object):
 
     If the file contains exactly 11 lines and 42 tokens, it is the old style
     version 1 file. If the file starts with XPARM.XDS it is the new style
-    version 2 file.
+    version 2 file. If the file contains segment definitions then it is a
+    version 3 file.
 
     Params:
       filename The (G)XPARM.XDS filename
@@ -48,6 +49,12 @@ class reader(object):
             return None
         elif version == 2:
           if count+1 > 14:
+            if len(line_tokens) == 5:
+              version = 3
+            else:
+              return None
+        elif version == 3:
+          if len(line_tokens) not in (5, 9):
             return None
         tokens.extend(line_tokens)
 
@@ -171,7 +178,7 @@ class reader(object):
     self.orientation = []
     for i in range(self.num_segments):
         self.segments.append(tuple(map(int, tokens[12+i*2])))
-        self.orientation.append(tuple(map(float, tokens[12+i*2+1])))
+        self.orientation.append(tuple(map(float, tokens[13+i*2])))
 
 
 class writer(object):

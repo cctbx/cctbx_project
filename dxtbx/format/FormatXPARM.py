@@ -64,6 +64,11 @@ class FormatXPARM(Format):
     self._sigma_divergence = cfc.get('sigma_divergence')
     sample_vector = cfc.get('sample_to_source')
     self._beam_vector = tuple(matrix.col(sample_vector))
+    self._panel_offset = cfc.get('panel_offset')
+    self._panel_size = cfc.get('panel_size')
+    self._panel_origin = cfc.get('panel_origin')
+    self._panel_fast = cfc.get('panel_fast')
+    self._panel_slow = cfc.get('panel_slow')
 
   def _goniometer(self):
     '''Return a working goniometer instance.'''
@@ -71,6 +76,27 @@ class FormatXPARM(Format):
 
   def _detector(self):
     '''Return a working detector instance.'''
+    if self._panel_origin is not None:
+      from dxtbx.model.detector import HierarchicalDetector
+      detector = HierarchicalDetector()
+      root = detector.hierarchy()
+      root.set_frame(self._fast_axis, self._slow_axis, self._detector_origin)
+
+      i_panel = 0
+      for p_offset, p_size, origin, fast, slow in zip(
+          self._panel_offset, self._panel_size, self._panel_origin,
+          self._panel_fast, self._panel_slow):
+        p = detector.add_panel()
+        root.add_panel(p)
+        p.set_type('unknown')
+        p.set_raw_image_offset(p_offset)
+        p.set_image_size(p_size)
+        p.set_name('Panel%d' %i_panel)
+        p.set_pixel_size(self._pixel_size)
+        p.set_local_frame(fast.elems, slow.elems, origin.elems)
+        i_panel += 1
+      return detector
+
     return self._detector_factory.complex(
         self._detector_factory.sensor('unknown'), self._detector_origin,
         self._fast_axis, self._slow_axis, self._pixel_size,
