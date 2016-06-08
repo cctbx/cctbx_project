@@ -547,8 +547,8 @@ def import_xds_xparm(xparm_file):
             nl = fl.cross(sl)
 
             orgxs, orgys, fs = orientation[:3]
-            orgxs -= x1
-            orgys -= y1
+            orgxs -= (x1-1)
+            orgys -= (y1-1)
             panel_origin = fs * nl - orgxs * px * fl - orgys * py * sl
 
             panel_normal = panel_fast.cross(panel_slow)
