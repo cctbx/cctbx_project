@@ -1,4 +1,5 @@
 from __future__ import division
+
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
@@ -6,8 +7,8 @@ import sys
 import pickle
 import StringIO
 from libtbx.test_utils import show_diff
+import iotbx.pdb
 from libtbx.utils import null_out
-from mmtbx.monomer_library import pdb_interpretation
 from time import time
 
 
@@ -191,7 +192,7 @@ def test_nucleic_acid(mon_lib_srv, ener_lib, prefix="tst_grm_pickling_na"):
   from mmtbx import monomer_library
   params = monomer_library.pdb_interpretation.master_params.extract()
   params.secondary_structure.enabled=True
-  processed_pdb_file = pdb_interpretation.run(
+  processed_pdb_file = monomer_library.pdb_interpretation.run(
     args=["%s.pdb" % prefix],
     params=params,
     strict_conflict_handling=False,
@@ -209,7 +210,7 @@ def test_ramachandran(mon_lib_srv, ener_lib, prefix="tst_grm_pickling_rama"):
   from mmtbx import monomer_library
   params = monomer_library.pdb_interpretation.master_params.extract()
   params.peptide_link.ramachandran_restraints=True
-  processed_pdb_file = pdb_interpretation.run(
+  processed_pdb_file = monomer_library.pdb_interpretation.run(
     args=["%s.pdb" % prefix],
     params=params,
     strict_conflict_handling=False,
@@ -224,7 +225,7 @@ def test_cbeta(mon_lib_srv, ener_lib, prefix="tst_grm_pickling_cbeta"):
   from mmtbx import monomer_library
   params = monomer_library.pdb_interpretation.master_params.extract()
   params.c_beta_restraints=True
-  processed_pdb_file = pdb_interpretation.run(
+  processed_pdb_file = monomer_library.pdb_interpretation.run(
     args=["%s.pdb" % prefix],
     params=params,
     strict_conflict_handling=False,
@@ -234,25 +235,26 @@ def test_cbeta(mon_lib_srv, ener_lib, prefix="tst_grm_pickling_cbeta"):
   make_geo_pickle_unpickle(geo, processed_pdb_file.xray_structure(), prefix)
 
 def test_reference_coordinate(mon_lib_srv, ener_lib, prefix="tst_grm_pickling_ref_coor"):
-  """ Rob, don't look in this yet..."""
-  open("%s.pdb" % prefix, "w").\
-    write(raw_records3)
-  from mmtbx import monomer_library
+  from mmtbx.geometry_restraints import reference
+  # for some strange reason without importing this the code doesn't work...
+  from cctbx import adp_restraints # import dependency
+
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=raw_records3)
   params = monomer_library.pdb_interpretation.master_params.extract()
   params.reference_coordinate_restraints.enabled=False
-  processed_pdb_file = pdb_interpretation.run(
-    args=["%s.pdb" % prefix],
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
     params=params,
     strict_conflict_handling=False,
+    pdb_inp=pdb_inp,
     log=null_out())
   geo = processed_pdb_file.geometry_restraints_manager()
-  from mmtbx.geometry_restraints import reference
   pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   sites_cart = pdb_hierarchy.atoms().extract_xyz()
-  rcp = reference.add_coordinate_restraints(
-      sites_cart=sites_cart)
+  rcp = reference.add_coordinate_restraints(sites_cart=sites_cart)
   geo.adopt_reference_coordinate_restraints_in_place(rcp)
-  print geo.get_n_reference_coordinate_proxies()
+  # print "number of rcr proxies:", geo.get_n_reference_coordinate_proxies()
   make_geo_pickle_unpickle(geo, processed_pdb_file.xray_structure(), prefix)
 
 
