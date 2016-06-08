@@ -135,6 +135,11 @@ xtc_phil_str = '''
         .type = float
         .help = If not None, use the input energy for every event instead of the energy \
                 from the XTC stream
+      invalid_pixel_mask = None
+        .type = str
+        .help = Path to invalid pixel mask, in the dials.generate_mask format. If not set, use the \
+                psana computed invalid pixel mask. Regardless, pixels outside of the trusted range \
+                for each image will also be masked out. See cxi.make_dials_mask.
       gain_mask_value = None
         .type = float
         .help = If not None, use the gain mask for the run to multiply the low-gain pixels by this number
@@ -383,15 +388,20 @@ class InMemScript(DialsProcessScript):
         if params.format.cbf.common_mode.algorithm is None or params.format.cbf.common_mode.algorithm == "custom":
           self.pedestal = self.psana_det.pedestals(run)
 
-        psana_mask = self.psana_det.mask(run,calib=True,status=True,edges=True,central=True,unbond=True,unbondnbrs=True)
-        psana_mask = flex.bool(psana_mask)
-        assert psana_mask.focus() == (32, 185, 388)
-        self.psana_mask = []
-        for i in xrange(32):
-          self.psana_mask.append(psana_mask[i:i+1,:,:194])
-          self.psana_mask[-1].reshape(flex.grid(185,194))
-          self.psana_mask.append(psana_mask[i:i+1,:,194:])
-          self.psana_mask[-1].reshape(flex.grid(185,194))
+        if params.format.cbf.invalid_pixel_mask is not None:
+          from libtbx import easy_pickle
+          self.psana_mask = easy_pickle.load(params.format.cbf.invalid_pixel_mask)
+          assert len(self.psana_mask) == 64
+        else:
+          psana_mask = self.psana_det.mask(run,calib=True,status=True,edges=True,central=True,unbond=True,unbondnbrs=True)
+          psana_mask = flex.bool(psana_mask)
+          assert psana_mask.focus() == (32, 185, 388)
+          self.psana_mask = []
+          for i in xrange(32):
+            self.psana_mask.append(psana_mask[i:i+1,:,:194])
+            self.psana_mask[-1].reshape(flex.grid(185,194))
+            self.psana_mask.append(psana_mask[i:i+1,:,194:])
+            self.psana_mask[-1].reshape(flex.grid(185,194))
 
       # list of all events
       times = run.times()
