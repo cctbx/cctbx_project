@@ -609,14 +609,14 @@ class installer(object):
     # run custom finalization
     self.product_specific_finalize_install(log)
 
-    if sys.platform == "win32":
-      return
-
     # remove source files if desired
     if (self.options.compact):
       self.reduce_installation_size()
 
     self.display_final_message()
+
+    if sys.platform == "win32":
+      return
 
     # Fix permissions
     call([
