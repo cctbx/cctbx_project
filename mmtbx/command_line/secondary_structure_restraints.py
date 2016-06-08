@@ -90,6 +90,9 @@ def run (args, params=None, out=sys.stdout, log=sys.stderr) :
     if [cs.unit_cell(), cs.space_group()].count(None) > 0:
       corrupted_cs = True
       cs = None
+    elif cs.unit_cell().volume() < 10:
+      corrupted_cs = True
+      cs = None
 
   if cs is None:
     if corrupted_cs:

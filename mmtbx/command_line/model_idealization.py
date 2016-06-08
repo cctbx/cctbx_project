@@ -61,6 +61,32 @@ def run(args):
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_file_names)
   pdb_input = iotbx.pdb.input(source_info=None,
     lines=flex.std_string(pdb_combined.raw_records))
+  cs = pdb_input.crystal_symmetry()
+  # check cs (copy-paste from secondary_sturcure_restraints)
+
+  corrupted_cs = False
+  if cs is not None:
+    if [cs.unit_cell(), cs.space_group()].count(None) > 0:
+      corrupted_cs = True
+      cs = None
+    elif cs.unit_cell().volume() < 10:
+      corrupted_cs = True
+      cs = None
+
+  if cs is None:
+    if corrupted_cs:
+      print >> log, "Symmetry information is corrupted, "
+    else:
+      print >> log, "Symmetry information was not found, "
+    print >> log, "putting molecule in P1 box."
+    log.flush()
+    from cctbx import uctbx
+    atoms = pdb_input.atoms()
+    box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
+      sites_cart=atoms.extract_xyz(),
+      buffer_layer=3)
+    atoms.set_xyz(new_xyz=box.sites_cart)
+    cs = box.crystal_symmetry()
   pdb_h = pdb_input.construct_hierarchy()
   # couple checks if combined pdb_h is ok
   o_c = pdb_h.overall_counts()
@@ -73,6 +99,7 @@ def run(args):
       phil_helices=work_params.secondary_structure.protein.helix,
       phil_sheets=work_params.secondary_structure.protein.sheet,
       pdb_hierarchy=pdb_h)
+  xrs = pdb_h.extract_xray_structure(crystal_symmetry=cs)
   if ann.get_n_helices() + ann.get_n_sheets() == 0:
     ann = pdb_input.extract_secondary_structure()
   if ann is None or ann.get_n_helices() + ann.get_n_sheets() == 0:
@@ -80,7 +107,6 @@ def run(args):
     print >> log, "Secondary structure substitution step will be skipped"
     log.flush()
     # here we want to do geometry minimization anyway!
-    xrs = pdb_h.extract_xray_structure()
     outlier_selection_txt = mmtbx.building.loop_closure.utils. \
       rama_outliers_selection(pdb_h, None, 1)
     print "outlier_selection_txt", outlier_selection_txt
@@ -97,7 +123,7 @@ def run(args):
   else:
     ssb.substitute_ss(
         real_h=pdb_h,
-        xray_structure=pdb_input.xray_structure_simple(),
+        xray_structure=xrs,
         ss_annotation=ann,
         params=work_params.model_idealization,
         cif_objects=inputs.cif_objects,
@@ -109,7 +135,7 @@ def run(args):
   write_whole_pdb_file(
       file_name="%s_ss_substituted.pdb" % os.path.basename(pdb_file_names[0]),
       pdb_hierarchy=pdb_h,
-      crystal_symmetry=pdb_input.crystal_symmetry(),
+      crystal_symmetry=cs,
       ss_annotation=ann)
 
   loop_ideal = loop_idealization(
@@ -123,7 +149,7 @@ def run(args):
   write_whole_pdb_file(
     file_name="%s_ss_all_idealized.pdb" % os.path.basename(pdb_file_names[0]),
     pdb_hierarchy=loop_ideal.resulting_pdb_h,
-    crystal_symmetry=pdb_input.crystal_symmetry(),
+    crystal_symmetry=cs,
     ss_annotation=ann)
 
   print >> log, "All done."
