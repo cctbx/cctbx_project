@@ -423,9 +423,9 @@ class ExternalLookupItem(object):
   Save an external lookup item.
 
   '''
-  def __init__(self):
-    self.data = None
-    self.filename = None
+  def __init__(self, data=None, filename=None):
+    self.data = data
+    self.filename = filename
 
 class ExternalLookup(object):
   '''
