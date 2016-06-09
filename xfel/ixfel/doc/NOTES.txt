@@ -1,0 +1,4 @@
+iXFEL version 0.0.000 - GUI elements only
+
+1. This version will not be hooked up to actual XFEL DB
+2. It exists to create and test iXFEL GUI elements only
