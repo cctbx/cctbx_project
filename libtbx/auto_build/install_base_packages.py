@@ -12,6 +12,7 @@ from installer_utils import *
 from package_defs import *
 from optparse import OptionParser
 import os.path as op
+import platform
 import sys
 import time
 import zipfile
@@ -88,8 +89,6 @@ class installer (object) :
       help="Build SciPy (requires Fortran compiler)", default=False)
     parser.add_option("--ipython", dest="build_ipython", action="store_true",
       help="Build IPython", default=False)
-    parser.add_option("--wxpython3", dest="use_wxpython3", action="store_true",
-      help="Use wxPython3", default=False)
     parser.add_option("--git-ssh", dest="git_ssh", action="store_true",
       help="Use ssh connections for git. This allows you to commit changes without changing remotes.", default=False)
 
@@ -104,6 +103,11 @@ class installer (object) :
     self.flag_is_mac = (sys.platform == "darwin")
     self.cppflags_start = os.environ.get("CPPFLAGS", "")
     self.ldflags_start = os.environ.get("LDFLAGS", "")
+
+    # Compilation flags for CentOS 5 (32-bit)
+    if ( (self.flag_is_linux) and (platform.architecture()[0] == '32bit') ):
+      old_cflags = os.environ.get('CFLAGS', '')
+      os.environ['CFLAGS'] = old_cflags + ' -march=i686'
 
     # Directory setup.
     self.tmp_dir = options.tmp_dir
@@ -129,7 +133,6 @@ class installer (object) :
       no_download=options.no_download)
     # Shortcut: Extract python for Windows bundled with all preinstalled modules
     if sys.platform == "win32":
-      import platform
       if platform.architecture()[0] == '64bit':
         winpythonpkg = WIN64PYTHON_PKG
         hdf5pkg = WIN64HDF5_PKG
@@ -165,8 +168,6 @@ class installer (object) :
 
     if self.python_exe:
       print >> log, "Using Python interpreter: %s" % self.python_exe
-
-    import platform
 
     if not self.python_exe and 'SuSE' in platform.platform():
       if 'CONFIG_SITE' in os.environ:
@@ -455,7 +456,6 @@ Installation of Python packages may fail.
     running on and (perhaps) mess with things to make the build work.'''
 
     import os
-    import platform
 
     # Ubuntu & Xrender - libtool is broken - replace with system one if
     # installed...
@@ -468,6 +468,26 @@ Installation of Python packages may fail.
         os.symlink(os.path.join('/', 'usr', 'bin', 'libtool'), 'libtool')
       else:
         self.log.write('Cannot removing xrender libtool; not installed\n')
+
+    # patch cairo for Ubuntu 12.04
+    # issue: configure step does not find these functions from Xrender
+    # https://lists.cairographics.org/archives/cairo/2014-September/025552.html
+    # fix: manually set these functions to be present in config.h
+    if ( ('cairo' in os.path.split(os.getcwd())[-1]) and
+         ('Ubuntu' in platform.platform()) and
+         ('precise' in platform.platform()) ):
+      self.patch_src(src_file='config.h',
+                     target="/* #undef HAVE_XRENDERCREATECONICALGRADIENT */",
+                     replace_with="#define HAVE_XRENDERCREATECONICALGRADIENT 1")
+      self.patch_src(src_file='config.h',
+                     target="/* #undef HAVE_XRENDERCREATELINEARGRADIENT */",
+                     replace_with="#define HAVE_XRENDERCREATELINEARGRADIENT 1")
+      self.patch_src(src_file='config.h',
+                     target="/* #undef HAVE_XRENDERCREATERADIALGRADIENT */",
+                     replace_with="#define HAVE_XRENDERCREATERADIALGRADIENT 1")
+      self.patch_src(src_file='config.h',
+                     target="/* #undef HAVE_XRENDERCREATESOLIDFILL */",
+                     replace_with="#define HAVE_XRENDERCREATESOLIDFILL 1")
 
     return
 
@@ -482,17 +502,16 @@ Installation of Python packages may fail.
     self.call("make -j %d %s" % (nproc, " ".join(list(make_args))), log=log)
     self.call("make install", log=log)
 
-  def build_compiled_package_simple (self,
-      pkg_name,
-      pkg_name_label,
-      pkg_url=None) :
+  def build_compiled_package_simple(self, pkg_name,pkg_name_label,
+                                    pkg_url=None, extra_config_args=None):
     pkg_log = self.start_building_package(pkg_name_label)
     pkg = self.fetch_package(pkg_name=pkg_name, pkg_url=pkg_url)
     if self.check_download_only(pkg_name): return
     self.untar_and_chdir(pkg=pkg, log=pkg_log)
-    self.configure_and_build(
-      config_args=[self.prefix],
-      log=pkg_log)
+    config_args = [self.prefix]
+    if (isinstance(extra_config_args,list)):
+      config_args += extra_config_args
+    self.configure_and_build(config_args=config_args, log=pkg_log)
 
   def build_python_module_simple (self,
       pkg_url,
@@ -550,6 +569,7 @@ Installation of Python packages may fail.
       'numpy',
       'cython',
       'hdf5',
+      'png',
       'setuptools',
       'libsvm',
       'pip',
@@ -558,7 +578,7 @@ Installation of Python packages may fail.
       'jinja',
       'junitxml',
       'biopython',
-      'reportlab',
+      'imaging',
       'docutils',
       'sphinx',
       'ipython',
@@ -568,10 +588,9 @@ Installation of Python packages may fail.
       'misc',
       'lz4_plugin',
       # ...
-      'png',
       'freetype',
       'matplotlib',
-      'imaging',
+      'reportlab',
       # START GUI PACKAGES
       'gettext',
       'glib',
@@ -603,8 +622,6 @@ Installation of Python packages may fail.
     for i in packages_order:
       self.set_cppflags_ldflags() # up-to-date LDFLAGS/CPPFLAGS
       self.print_sep()
-      if (i == 'wxpython' and self.options.use_wxpython3):
-        i = 'wxpython3'
       if ( hasattr(self, "built_%s" % i) and
            getattr(self, "built_%s" % i)()
          ):
@@ -806,6 +823,20 @@ _replace_sysconfig_paths(build_time_vars)
       pkg_name_label="biopython",
       confirm_import_module="Bio")
 
+  # def build_imaging (self): # for Pillow
+    # # turn off jpeg to avoid adding libjpeg dependency
+    # pkg_name = IMAGING_PKG
+    # pkg_name_label = 'imaging'
+    # pkg_log = self.start_building_package(pkg_name_label)
+    # pkg_local_file = self.fetch_package(pkg_name=pkg_name,
+    #                                     pkg_url=BASE_CCI_PKG_URL)
+    # if (self.check_download_only(pkg_name)):
+    #   return
+    # self.untar_and_chdir(pkg=pkg_local_file, log=pkg_log)
+    # self.call("%s setup.py build_ext --disable-jpeg install" % self.python_exe,
+    #           log=pkg_log)
+    # self.verify_python_module(pkg_name_label, 'PIL')
+
   def build_imaging (self, patch_src=True) :
     def patch_imaging_src (out) :
       print >> out, "  patching libImaging/ZipEncode.c"
@@ -998,6 +1029,10 @@ _replace_sysconfig_paths(build_time_vars)
       pkg_name=FREETYPE_PKG,
       pkg_name_label="Freetype")
     self.include_dirs.append(op.join(self.base_dir, "include", "freetype2"))
+    # copy ft2build.h from include/freetype2 to inculde/ (for matplotlib)
+    from shutil import copy
+    copy(op.join(self.base_dir, 'include', 'freetype2', 'ft2build.h'),
+         op.join(self.base_dir, 'include'))
 
   def build_png(self):
     self.build_compiled_package_simple(
@@ -1017,6 +1052,11 @@ _replace_sysconfig_paths(build_time_vars)
     self.configure_and_build(config_args=gettext_conf_args, log=pkg_log)
 
   def build_glib(self):
+    # libffi dependency (for CentOS 5, especially)
+    self.build_compiled_package_simple(pkg_url=BASE_CCI_PKG_URL,
+                                       pkg_name=LIBFFI_PKG,
+                                       pkg_name_label='libffi')
+
     # glib
     pkg_log = self.start_building_package("glib")
     pkg = self.fetch_package(pkg_name=GLIB_PKG)
@@ -1076,19 +1116,41 @@ _replace_sysconfig_paths(build_time_vars)
       self.build_compiled_package_simple(pkg_name=pkg, pkg_name_label=name)
 
   def build_pixman(self):
+
+    # set CFLAGS for CentOS 5 (32-bit)
+    if ( (self.flag_is_linux) and (platform.architecture()[0] == '32bit') ):
+      old_cflags = os.environ.get('CFLAGS', '')
+      os.environ['CFLAGS'] = old_cflags + ' -g -O2'
+
     # pixman
     pkg_log = self.start_building_package("pixman")
     pkg = self.fetch_package(pkg_name=PIXMAN_PKG)
     if self.check_download_only(PIXMAN_PKG): return
     self.untar_and_chdir(pkg=pkg, log=pkg_log)
     self.configure_and_build(
-      config_args=[self.prefix, "--disable-gtk" ],
+      config_args=[self.prefix, "--disable-gtk", "--disable-static" ],
       log=pkg_log)
 
+    # reset CFLAGS for CentOS 5 32-bit
+    if ( (self.flag_is_linux) and (platform.architecture()[0] == '32bit') ):
+      os.environ['CFLAGS'] = old_cflags
+
   def build_cairo(self):
-    # cairo, pango, atk
-    for pkg, name in zip([CAIRO_PKG, PANGO_PKG, ATK_PKG], ["cairo", "pango", "atk"]) :
+    #    self.include_dirs.append(op.join(self.base_dir, "include", "harfbuzz"))
+
+    # set CXXFLAGS for CentOS 5 (32-bit), needed for harfbuzz
+    if ( (self.flag_is_linux) and (platform.architecture()[0] == '32bit') ):
+      old_cflags = os.environ.get('CXXFLAGS', '')
+      os.environ['CXXFLAGS'] = old_cflags + ' -march=i686'
+
+    # cairo, harfbuzz, pango, atk
+    for pkg, name in zip([CAIRO_PKG, HARFBUZZ_PKG, PANGO_PKG, ATK_PKG],
+                         ["cairo", "harfbuzz", "pango", "atk"]) :
       self.build_compiled_package_simple(pkg_name=pkg, pkg_name_label=name)
+
+    # reset CXXFLAGS for CentOS 5 32-bit
+    if ( (self.flag_is_linux) and (platform.architecture()[0] == '32bit') ):
+      os.environ['CXXFLAGS'] = old_cflags
 
   def build_tiff(self):
     # tiff
@@ -1098,49 +1160,20 @@ _replace_sysconfig_paths(build_time_vars)
     self.untar_and_chdir(pkg=pkg, log=pkg_log)
     os.environ['MANSCHEME'] = "bsd-source-cat"
     os.environ['DIR_MAN'] = op.join(self.base_dir, "man")
-    config_args = [self.prefix, "--noninteractive", "--with-LIBGL=no", "--with-LIBIMAGE=no" ]
+    config_args = [self.prefix, "--with-LIBGL=no", "--with-LIBIMAGE=no" ]
     self.configure_and_build(
       config_args=config_args,
       log=pkg_log)
 
   def build_gtk(self):
-    # gtk+
-    pkg_log = self.start_building_package("gtk+")
-    pkg, size = self.fetch_package(pkg_name=GTK_PKG, return_file_and_status=True)
-    self.fetch_package(pkg_name=GTK_ENGINE_PKG)
-    if self.check_download_only(GTK_PKG) and self.check_download_only(GTK_ENGINE_PKG):
-      return
-    self.untar_and_chdir(pkg=pkg, log=pkg_log)
-    gtk_config_args = [
-      self.prefix,
-      "--disable-cups",
-      "--without-libjpeg",
-    ]
-
-    # cups breaks the install; --disable-cups not respected; kludge by renaming
-    # the cups thing (why are we including printer drivers here anyway?)
-
-    import shutil
-    shutil.copyfile('configure', 'configure.save')
-
-    configure = open('configure.save', 'r').read().replace(
-      'cups-config', 'junk-config')
-    open('configure', 'w').write(configure)
-    os.system('chmod +x ./configure')
-
-    # end kludge
-
-    self.call("./configure %s" % " ".join(gtk_config_args), log=pkg_log)
-    self.call("make -j %d SRC_SUBDIRS='gdk-pixbuf gdk gtk modules'" %
-      self.nproc, log=pkg_log)
-    self.call("make install SRC_SUBDIRS='gdk-pixbuf gdk gtk modules'",
-      log=pkg_log)
-
-    # not strictly necessary, but prints 'installing' message
-    if self.check_download_only(GTK_ENGINE_PKG): return
-    # gtk-engine
-    self.build_compiled_package_simple(pkg_name=GTK_ENGINE_PKG,
-      pkg_name_label="gtk-engine")
+    # gdk-pixbuf, gtk+, clearlooks
+    extra_config_args = ["--without-libjpeg"]
+    self.build_compiled_package_simple(pkg_name=GDK_PIXBUF_PKG,
+                                       pkg_name_label='gdk-pixbuf',
+                                       extra_config_args=extra_config_args)
+    for pkg, name in zip([GTK_PKG, GTK_ENGINE_PKG],
+                         ["gtk+", "gtk-engine"]):
+      self.build_compiled_package_simple(pkg_name=pkg, pkg_name_label=name)
 
   def build_fonts(self):
     # fonts
@@ -1157,14 +1190,9 @@ _replace_sysconfig_paths(build_time_vars)
 
   def build_wxpython(self):
     pkg_log = self.start_building_package("wxPython")
-    pkg_name = WXPYTHON_DEV_PKG
+    pkg_name = WXPYTHON_PKG
     if self.options.download_only: # download both versions if --download_only
       pkg = self.fetch_package(pkg_name)
-
-    # XXX we don't entirely trust wxPython-2.9, but it would be preferrable for
-    # the future to use a single version instead
-    if self.flag_is_mac or self.options.use_wxpython3 or self.options.download_only:
-      pkg_name = WXPYTHON_DEV_PKG
     pkg = self.fetch_package(pkg_name)
     if self.check_download_only(pkg_name): return
 
@@ -1234,15 +1262,7 @@ _replace_sysconfig_paths(build_time_vars)
       print >> self.log, "    %s" % opt
     self.call("./configure %s" % " ".join(config_opts), log=pkg_log)
     self.call("make -j %d" % self.nproc, log=pkg_log)
-    # if (not self.flag_is_mac) : # XXX ???
-    #   self.call("make -j %d -C contrib/src/stc" % self.nproc, log=pkg_log)
-    #   if install_gizmos:
-    #     self.call("make -j %d -C contrib/src/gizmos" % self.nproc, log=pkg_log)
     self.call("make install", log=pkg_log)
-    # if (not self.flag_is_mac) : # XXX ???
-    #   self.call("make -C contrib/src/stc install", log=pkg_log)
-    #   if install_gizmos:
-    #     self.call("make -C contrib/src/gizmos install", log=pkg_log)
 
     # Stage 2: build wxPython itself
     wxpy_build_opts = [
@@ -1273,64 +1293,6 @@ _replace_sysconfig_paths(build_time_vars)
       " ".join(wxpy_build_opts)), log=pkg_log)
     self.verify_python_module("wxPython", "wx")
 
-  #def build_wxpython3(self):
-    #assert 0
-    #pkg_log = self.start_building_package("wxPython")
-    #pkg_name = WXPYTHON_DEV_PKG
-    #pkg = self.fetch_package(pkg_name)
-    #if self.check_download_only(pkg_name):
-      #return
-
-    #pkg_dir = untar(pkg, log=pkg_log)
-    #os.chdir(pkg_dir)
-    #if (self.flag_is_mac and get_os_version() in ("10.10", "10.11")) :
-      ## Workaround wxwidgets 3.0.2 compilation error on Yosemite
-      #print >> self.log, "  patching src/osx/webview_webkit.mm"
-      #self.patch_src(src_file="src/osx/webview_webkit.mm",
-                     #target=("#include <WebKit/WebKit.h>",),
-                     #replace_with=("#include <WebKit/WebKitLegacy.h>",))
-
-    ## Stage 1: build wxWidgets libraries
-    #config_opts = [
-      #self.prefix,
-      #"--disable-mediactrl",
-      #"--with-opengl",
-    #]
-    #if (self.flag_is_mac) :
-      #config_opts.extend([
-        #"--with-mac",
-        #"--with-osx_cocoa",
-        #"--with-macosx-version-min=10.6",
-        #"--enable-monolithic",
-        #"--enable-unicode"
-      #])
-    #elif (self.flag_is_linux) :
-      #config_opts.extend([
-        #"--with-gtk",
-        #"--with-gtk-prefix=\"%s\"" % self.base_dir,
-        #"--with-gtk-exec-prefix=\"%s\"" % op.join(self.base_dir, "lib"),
-        #"--enable-graphics_ctx",
-      #])
-
-    #print >> self.log, "  configure wxWidgets with options:"
-    #for opt in config_opts :
-      #print >> self.log, "    %s" % opt
-    #self.call("./configure %s" % " ".join(config_opts), log=pkg_log)
-    #self.call("make -j %d" % self.nproc, log=pkg_log)
-    #self.call("make install", log=pkg_log)
-
-    #os.chdir(os.path.join(pkg_dir, 'wxPython'))
-    #self.call([
-      #self.python_exe,
-      #'build-wxpython.py',
-      #'--no_wxbuild',
-      #'--osx_cocoa',
-      #'--prefix', self.base_dir,
-      #'--install'
-      #], log=pkg_log)
-    #self.verify_python_module("wxPython", "wx")
-
-
   def build_matplotlib(self):
     def patch_matplotlib_src (out) :
       print >> out, "  patching setup.cfg"
@@ -1338,8 +1300,20 @@ _replace_sysconfig_paths(build_time_vars)
                      output_file="setup.cfg",
                      target=("#backend = Agg", "#basedirlist = /usr"),
                      replace_with=("backend = WXAgg",
-                      "basedirlist = /usr, %s" % self.base_dir))
+                                   "basedirlist = /usr, %s" % self.base_dir))
       return True
+
+    # delete old font cache
+    #if ( (self.flag_is_linux) or (self.flag_is_mac) ):
+    #  home = os.path.expanduser('~')
+    #  filename = 'fontList.cache'
+    #  directories = ['.matplotlib', '.cache/matplotlib']
+    #  for directory in directories:
+    #    font_cache = os.path.join(home, directory, filename)
+    #    print font_cache, os.path.exists(font_cache)
+    #    if (os.path.exists(font_cache)):
+    #      os.remove(font_cache)
+
     self.build_python_module_simple(
       pkg_url=BASE_CCI_PKG_URL,
       pkg_name=MATPLOTLIB_PKG,

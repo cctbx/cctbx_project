@@ -29,21 +29,23 @@ def pypi_pkg_url(package):
 BASE_OPENSSL_PKG_URL = "https://cdn.rawgit.com/dials/dependencies/master/"
 OPENSSL_PKG = "openssl-1.0.2h.tar.gz"
 
+# base packages updated on 2/15/2015 by bkpoon
+
 # from CCI
 PYTHON_PKG = "Python-2.7.8_cci.tar.gz"
 NUMPY_PKG = "numpy-1.8.1.tar.gz"         # used many places
 IMAGING_PKG = "Imaging-1.1.7.tar.gz"     # for labelit, gltbx
 REPORTLAB_PKG = "reportlab-2.6.tar.gz"   # for labelit
-ZLIB_PKG = "zlib-1.2.7.tar.gz"
+ZLIB_PKG = "zlib-1.2.8.tar.gz"
 SCIPY_PKG = "scipy-0.14.0.tar.gz"        # not used by default
 PYRTF_PKG = "PyRTF-0.45.tar.gz"          # for phenix.table_one, etc.
-BIOPYTHON_PKG = "biopython-1.64.tar.gz"  # used in iotbx
-SPHINX_PKG = "Sphinx-1.2.2.tar.gz"       # for documentation
+BIOPYTHON_PKG = "biopython-1.66.tar.gz"  # used in iotbx
+SPHINX_PKG = "Sphinx-1.3.5.tar.gz"       # for documentation ()
 NUMPYDOC_PKG = "numpydoc-0.5.tar.gz"     # for documentation
-IPYTHON_PKG = "ipython-2.1.0.tar.gz"     # IPython
+IPYTHON_PKG = "ipython-3.2.1.tar.gz"     # IPython
 DOCUTILS_PKG = "docutils-0.12.tar.gz"    # docutils
-PIP_PKG = "pip-6.0.7.tar.gz"             # PIP
-VIRTUALENV_PKG = "virtualenv-12.0.6.tar.gz" # virtualenv
+PIP_PKG = "pip-8.0.2.tar.gz"             # PIP
+VIRTUALENV_PKG = "virtualenv-14.0.6.tar.gz" # virtualenv
 LIBSVM_PKG = "libsvm-3.17_cci.tar.gz"
 
 # from PyPi
@@ -67,34 +69,37 @@ CYTHON_PKG = "cython-0.22.tar.gz"
 JINJA2_PKG = "Jinja2-2.8.tar.gz"
 
 # GUI dependencies
-LIBPNG_PKG = "libpng-1.2.52.tar.gz"
-FREETYPE_PKG = "freetype-2.4.2.tar.gz"
+LIBPNG_PKG = "libpng-1.5.26.tar.gz"
+FREETYPE_PKG = "freetype-2.6.3.tar.gz"
+
 # Linux-only
-# FIXME some of these are getting pretty ancient, time to update?
-GETTEXT_PKG = "gettext-0.18.2.tar.gz"
-GLIB_PKG = "glib-2.12.11.tar.gz"
-EXPAT_PKG = "expat-1.95.8.tar.gz"
-FONTCONFIG_PKG = "fontconfig-2.3.95.tar.gz"
-RENDER_PKG = "render-0.8.tar.gz"
-XRENDER_PKG = "xrender-0.8.3.tar.gz"
-XFT_PKG = "xft-2.1.2.tar.gz"
-PIXMAN_PKG = "pixman-0.19.2.tar.gz"
-CAIRO_PKG = "cairo-1.8.10.tar.gz"
-PANGO_PKG = "pango-1.16.1.tar.gz"
-ATK_PKG = "atk-1.9.1.tar.gz"
-TIFF_PKG = "tiff-v3.6.1.tar.gz"
-GTK_PKG = "gtk+-2.10.11.tar.gz"
-GTK_ENGINE_PKG = "clearlooks-0.5.tar.gz"
+# libraries based on X11R7.7 (http://www.x.org/releases/X11R7.7/src/everything/)
+WXPYTHON_PKG = "wxPython-src-3.0.2.0.tar.bz2"
+GETTEXT_PKG = "gettext-0.19.7.tar.gz"
+LIBFFI_PKG = "libffi-3.2.1.tar.gz"
+GLIB_PKG = "glib-2.46.2.tar.gz"
+EXPAT_PKG = "expat-2.1.0.tar.gz"
+FONTCONFIG_PKG = "fontconfig-2.11.1.tar.gz"
+RENDER_PKG = "renderproto-0.11.1.tar.gz"
+XRENDER_PKG = "libXrender-0.9.7.tar.gz"
+XFT_PKG = "libXft-2.3.2.tar.gz"
+
+CAIRO_PKG = "cairo-1.14.4.tar.gz"
+PIXMAN_PKG = "pixman-0.34.0.tar.gz"
+HARFBUZZ_PKG = "harfbuzz-1.1.3.tar.gz"
+GDK_PIXBUF_PKG = "gdk-pixbuf-2.32.3.tar.gz"
+PANGO_PKG = "pango-1.38.1.tar.gz"
+ATK_PKG = "atk-2.18.0.tar.gz"
+TIFF_PKG = "tiff-4.0.6.tar.gz"
+GTK_PKG = "gtk+-2.24.29.tar.gz"
+GTK_ENGINE_PKG = "clearlooks-0.6.2.tar.gz"
 GTK_THEME_PKG = "gtk_themes.tar.gz"
 # end Linux-only
 FONT_PKG = "fonts.tar.gz"
-# FIXME at some point we should switch to using 3.x for all platforms
-#WXPYTHON_DEV_PKG = "wxPython-src-3.0.1.0.tar.gz"  # Mac
-#WXPYTHON_PKG = "wxPython-src-2.8.12.1.tar.gz"      # Linux
-WXPYTHON_DEV_PKG = "wxPython-src-3.0.2.0.tar.bz2"  # all versions
-WXPYTHON_PKB = "wxPython-src-3.0.2.0.tar.bz2"
+
 MATPLOTLIB_PKG = "matplotlib-1.3.1.tar.gz"
-PY2APP_PKG = "py2app-0.7.3.tar.gz"                    # Mac only
+PY2APP_PKG = "py2app-0.9.tar.gz"                    # Mac only
+
 PYOPENGL_PKG = "PyOpenGL-3.1.0.tar.gz"
 # https://pypi.python.org/pypi/Send2Trash
 SEND2TRASH_PKG = "Send2Trash-1.3.0.tar.gz"
@@ -233,8 +238,8 @@ def fetch_all_dependencies (dest_dir,
     for pkg_name in [
         LIBPNG_PKG, FREETYPE_PKG, GETTEXT_PKG, GLIB_PKG, EXPAT_PKG,
         FONTCONFIG_PKG, RENDER_PKG, XRENDER_PKG, XFT_PKG, PIXMAN_PKG,
-        CAIRO_PKG, PANGO_PKG, ATK_PKG, TIFF_PKG, GTK_PKG,
-        GTK_ENGINE_PKG, GTK_THEME_PKG, FONT_PKG, WXPYTHON_DEV_PKG, WXPYTHON_PKG,
+        CAIRO_PKG, HARFBUZZ_PKG, PANGO_PKG, ATK_PKG, TIFF_PKG, GTK_PKG,
+        GTK_ENGINE_PKG, GTK_THEME_PKG, FONT_PKG, WXPYTHON_PKG,
         MATPLOTLIB_PKG, PY2APP_PKG, SEND2TRASH_PKG,
       ] :
       fetch_package(pkg_name)
