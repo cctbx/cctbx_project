@@ -276,7 +276,7 @@ def exercise_all(args):
   test_ramachandran(mon_lib_srv, ener_lib)
   test_cbeta(mon_lib_srv, ener_lib)
   # In development
-  # test_reference_coordinate(mon_lib_srv, ener_lib)
+  test_reference_coordinate(mon_lib_srv, ener_lib)
 
 if (__name__ == "__main__"):
   exercise_all(sys.argv[1:])
