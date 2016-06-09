@@ -1,6 +1,6 @@
 from __future__ import division
 
-class rungroup(object):
+class Rungroup(object):
   def __init__(self, rungroup_id = None, **kwargs):
     if rungroup_id is None:
       rungroup_id = 4 # create a new rungroup

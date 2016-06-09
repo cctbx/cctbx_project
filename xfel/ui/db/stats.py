@@ -1,6 +1,6 @@
 from __future__ import division
 
-class stats(object):
+class Stats(object):
   def __init__(self, tags = None,
                      trial = None,
                      d_min = None):

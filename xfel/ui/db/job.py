@@ -1,6 +1,6 @@
 from __future__ import division
 
-class job(object):
+class Job(object):
   def __init__(self, job_id = None, **kwargs):
     if job_id is None:
       job_id = 4 # create a new job

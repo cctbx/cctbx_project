@@ -1,6 +1,6 @@
 from __future__ import division
 
-class trial(object):
+class Trial(object):
   def __init__(self, trial_id = None, **kwargs):
     if trial_id is None:
       trial_id = 4 # create a new trial
