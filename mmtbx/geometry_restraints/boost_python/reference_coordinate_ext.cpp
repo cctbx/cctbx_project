@@ -1,5 +1,6 @@
 
 #include <cctbx/boost_python/flex_fwd.h>
+#include <cctbx/geometry_restraints/shared_wrapper_pickle.hpp>
 
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
@@ -56,7 +57,8 @@ namespace boost_python {
         ;
       {
         typedef return_internal_reference<> rir;
-        scitbx::af::boost_python::shared_wrapper<reference_coordinate_proxy, rir>::wrap(
+        typedef scitbx::af::boost_python::shared_wrapper<reference_coordinate_proxy, rir> shared_w_t;
+        shared_w_t::wrap(
           "shared_reference_coordinate_proxy")
           .def("proxy_select",
             (af::shared<w_t>(*)(
@@ -77,6 +79,7 @@ namespace boost_python {
               af::const_ref<size_t> const&))
             cctbx::geometry_restraints::shared_proxy_remove, (
               arg("selection")))
+          .def_pickle(shared_wrapper_pickle_suite< shared_w_t::w_t >())
           ;
       }
 
