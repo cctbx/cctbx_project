@@ -48,12 +48,6 @@ class xfel_db_application(object):
   def get_all_tags(self):
     return [Tag(i) for i in xrange(3)]
 
-  def get_run_tags(self, run = None, run_id = None):
-    if run_id is None:
-      run_id = run.run_id
-
-    return [Tag(i) for i in xrange(3)]
-
   def delete_tag(self, tag = None, tag_id = None):
     if tag_id is None:
       tag_id = tag.tag_id
