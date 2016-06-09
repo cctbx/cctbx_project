@@ -1110,7 +1110,8 @@ class DataList(object):
     data = self.datasets[d][i,:,:]
     if data.dtype == np.uint16:
       data = data.astype(np.uint32)
-    return flex.int(data)
+    data_as_flex = flex.int(data)
+    return data_as_flex
 
 
 class DataFactory(object):
