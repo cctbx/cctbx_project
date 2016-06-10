@@ -72,7 +72,10 @@ def fix_gtk(base_dir, out): #--- Gtk+
         log=out)
   # gdk-pixbuf.loaders
   print >> out, "generating gdk-pixbuf.loaders file"
-  call(("%s/bin/gdk-pixbuf-query-loaders %s/lib/gtk-2.0/2.10.0/loaders/*.so"+
+  call(("%s/bin/gdk-pixbuf-query-loaders %s/lib/gdk-pixbuf-2.0/2.10.0/loaders/*.so"+
+        " > %s/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache") % (base_dir, base_dir,
+          base_dir), log=out)
+  call(("%s/bin/gdk-pixbuf-query-loaders %s/lib/gdk-pixbuf-2.0/2.10.0/loaders/*.so"+
         " > %s/etc/gtk-2.0/gdk-pixbuf.loaders") % (base_dir, base_dir,
           base_dir), log=out)
 

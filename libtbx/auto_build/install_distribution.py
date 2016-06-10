@@ -310,7 +310,8 @@ class installer(object):
     if not os.path.exists(self.tmp_dir):
       os.makedirs(self.tmp_dir)
     if (sys.platform != "darwin") :
-      os.environ["LD_LIBRARY_PATH"] = "lib:%s" % op.join(self.base_dir, "lib")
+      os.environ["LD_LIBRARY_PATH"] = "lib:%s:%s" % \
+        (op.join(self.base_dir, "lib"), op.join(self.base_dir, "lib64"))
     self.product_specific_binary_install(log=log)
 
     os.chdir(self.build_dir)
@@ -499,7 +500,8 @@ class installer(object):
 
     # Regenerate module files.
     if (self.flag_build_gui) and (sys.platform != "darwin") :
-      os.environ["LD_LIBRARY_PATH"] = "lib:%s" % op.join(self.base_dir, "lib")
+      os.environ["LD_LIBRARY_PATH"] = "lib:%s:%s" % \
+        (op.join(self.base_dir, "lib"), op.join(self.base_dir, "lib64"))
       regenerate_module_files.run(
         os.path.join(self.dest_dir, 'base'),
         out=self.out)
