@@ -132,8 +132,8 @@ def exercise(file_name=None):
     print ' "%2d" "%2s" "%-2s" "%1s" %s' % (n, e, c, a, atoms[i].charge)
   print
 
-  bond_proxies_simple = geometry.pair_proxies(sites_cart =
-    xrs.sites_cart()).bond_proxies.simple
+  bond_proxies_simple, asu = geometry.get_covalent_bond_proxies(sites_cart =
+    xrs.sites_cart())
 
   sites_cart = xrs.sites_cart()
 

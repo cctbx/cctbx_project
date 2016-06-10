@@ -1846,7 +1846,8 @@ _chem_comp_chir.volume_sign
   rgs=list(processed_pdb_file.all_chain_proxies.pdb_hierarchy.residue_groups())
   rg1_i_seqs_1 = rgs[0].atoms().extract_i_seq()
   rg1_i_seqs_2 = rgs[1].atoms().extract_i_seq()
-  for bps in grm.pair_proxies(sites_cart = xrs.sites_cart()).bond_proxies.simple:
+  bps, asu = grm.get_covalent_bond_proxies(sites_cart = xrs.sites_cart())
+  for bps in bps:
     for i_seq in bps.i_seqs:
       r = []
       r.append(i_seq in rg1_i_seqs_1)

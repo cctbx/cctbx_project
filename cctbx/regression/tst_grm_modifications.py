@@ -95,6 +95,9 @@ def exercise_add_new_bond_restraint_in_place(mon_lib_srv, ener_lib):
   assert geometry.is_bonded_atoms(3,0)
   assert geometry.pair_proxies().bond_proxies.simple.size() == 8
   assert geometry.pair_proxies().bond_proxies.asu.size() == 0
+  # That's the way to get them:
+  simple, asu = geometry.get_covalent_bond_proxies()
+  assert simple.size() + asu.size() == 8
   assert geometry.pair_proxies().nonbonded_proxies.simple.size() == 8
   assert geometry.pair_proxies().nonbonded_proxies.asu.size() == 0
 
@@ -129,6 +132,11 @@ def exercise_single_atom(mon_lib_srv, ener_lib):
 
   assert new_geometry.pair_proxies().bond_proxies.simple.size() == 8
   assert new_geometry.pair_proxies().bond_proxies.asu.size() == 1
+  # That's the way to get them:
+  simple, asu = new_geometry.get_covalent_bond_proxies()
+  assert simple.size() + asu.size() == 8
+  simple, asu = new_geometry.get_all_bond_proxies()
+  assert simple.size() + asu.size() == 9, "%d, %d" % (simple.size(), asu.size())
   assert new_geometry.pair_proxies().nonbonded_proxies.simple.size() == 10
   assert new_geometry.pair_proxies().nonbonded_proxies.asu.size() ==2
   assert new_geometry.get_hbond_proxies_iseqs() == [(3, 9)]

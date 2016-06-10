@@ -660,7 +660,7 @@ class manager(object):
      adopt_init_args(self, locals())
      if(log is None): self.log = sys.stdout
      if(self.params is None): self.params = ias_master_params.extract()
-     bond_proxies_simple = self.geometry.pair_proxies().bond_proxies.simple
+     bond_proxies_simple, asu = self.geometry.get_covalent_bond_proxies()
      print >> self.log, \
                   "Total number of covalent bonds = ", len(bond_proxies_simple)
      iass = extract_ias(xray_structure       = self.xray_structure,

@@ -8,8 +8,8 @@ def from_xray_structure(
       xray_structure,
       geometry_restraints_manager):
   # Find covalently bonded atoms to exclude them from non-bonded clash list
-  bond_proxies_simple = geometry_restraints_manager.pair_proxies(
-    sites_cart = xray_structure.sites_cart()).bond_proxies.simple
+  bond_proxies_simple, asu = geometry_restraints_manager.get_all_bond_proxies(
+      sites_cart = xray_structure.sites_cart())
   bonded_i_seqs = []
   for bp in bond_proxies_simple:
     bonded_i_seqs.append(bp.i_seqs)

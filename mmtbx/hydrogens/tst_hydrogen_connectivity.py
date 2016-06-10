@@ -62,9 +62,9 @@ def exercise():
 
   sites_cart = xray_structure.sites_cart()
 
-  bond_proxies_simple = restraints_manager.geometry.pair_proxies(sites_cart =
-  sites_cart).bond_proxies.simple
-  angle_proxies = restraints_manager.geometry.angle_proxies
+  bond_proxies_simple, asu = restraints_manager.geometry.get_all_bond_proxies(
+      sites_cart = sites_cart)
+  angle_proxies = restraints_manager.geometry.get_all_angle_proxies()
 
   # determine values with code to be tested
   connectivity = hydrogen_connectivity.determine_H_neighbors(

@@ -195,12 +195,10 @@ class energies(scitbx.restraints.energies):
 
   # Not used anymore? -- used in model_statistics.py
   def get_filtered_n_bond_proxies(self):
-    correct_id_proxies = [i.origin_id for i in self.bond_proxies.simple].count(0)
-    return correct_id_proxies
+    return self.bond_proxies.simple.proxy_select(origin_id=0).size()
 
   def get_filtered_n_angle_proxies(self):
-    correct_id_proxies = [i.origin_id for i in self.angle_proxies].count(0)
-    return correct_id_proxies
+    return self.angle_proxies.proxy_select(origin_id=0).size()
 
   def bond_deviations_z(self):
     '''

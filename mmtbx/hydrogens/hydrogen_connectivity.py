@@ -163,9 +163,9 @@ def run(args, out=sys.stdout):
     geometry      = geometry_restraints,
     normalization = False)
 
-  bond_proxies_simple = restraints_manager.geometry.pair_proxies(sites_cart =
-    xray_structure.sites_cart()).bond_proxies.simple
-  angle_proxies = restraints_manager.geometry.angle_proxies
+  bond_proxies_simple, asu = restraints_manager.geometry.get_all_bond_proxies(
+      sites_cart = xray_structure.sites_cart())
+  angle_proxies = restraints_manager.geometry.get_all_angle_proxies()
 
   names = list(pdb_hierarchy.atoms().extract_name())
   sites_cart = xray_structure.sites_cart()

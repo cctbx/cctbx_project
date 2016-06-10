@@ -138,8 +138,8 @@ def find_common_water_resseq_max(pdb_hierarchy):
 class xh_connectivity_table(object):
   # XXX need angle information as well
   def __init__(self, geometry, xray_structure):
-    bond_proxies_simple = geometry.geometry.pair_proxies(sites_cart =
-      xray_structure.sites_cart()).bond_proxies.simple
+    bond_proxies_simple, asu = geometry.geometry.get_all_bond_proxies(
+        sites_cart=xray_structure.sites_cart())
     scatterers = xray_structure.scatterers()
     self.table = []
     for proxy in bond_proxies_simple:
@@ -166,8 +166,8 @@ class xh_connectivity_table(object):
 
 class xh_connectivity_table2(object):
   def __init__(self, geometry, xray_structure):
-    bond_proxies_simple = geometry.geometry.pair_proxies(sites_cart =
-      xray_structure.sites_cart()).bond_proxies.simple
+    bond_proxies_simple, asu = geometry.geometry.get_all_bond_proxies(
+        sites_cart=xray_structure.sites_cart())
     scatterers = xray_structure.scatterers()
     self.table = {}
     for proxy in bond_proxies_simple:
@@ -334,8 +334,8 @@ class manager(object):
     if(self.restraints_manager is None):
       raise Sorry("Geometry restraints manager must be defined.")
     selection = flex.bool(self.xray_structure.scatterers().size(), True)
-    bond_proxies_simple = self.restraints_manager.geometry.pair_proxies(
-      sites_cart = self.xray_structure.sites_cart()).bond_proxies.simple
+    bond_proxies_simple, asu = self.restraints_manager.geometry.\
+        get_all_bond_proxies(sites_cart=self.xray_structure.sites_cart())
     for proxy in bond_proxies_simple:
       i_seq, j_seq = proxy.i_seqs
       selection[i_seq] = False
@@ -962,8 +962,9 @@ class manager(object):
     sites_cart = self.xray_structure.sites_cart()
     if(self.ias_selection is not None):#
       sites_cart = sites_cart.select(~self.ias_selection)
-    for proxy in self.restraints_manager.geometry.pair_proxies(
-                   sites_cart = sites_cart).bond_proxies.simple:
+    bond_proxies_simple, asu = self.restraints_manager.geometry.\
+        get_all_bond_proxies(sites_cart=sites_cart)
+    for proxy in bond_proxies_simple:
       i_seqs = proxy.i_seqs
       i,j = proxy.i_seqs
       atom_i = self.pdb_atoms[i]

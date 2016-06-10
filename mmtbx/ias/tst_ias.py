@@ -30,8 +30,8 @@ def exercise():
                                                     plain_pairs_radius = 5.0)
   restraints_manager = mmtbx.restraints.manager(geometry      = geometry,
                                                 normalization = False)
-  bond_proxies_simple = geometry.pair_proxies(
-                  sites_cart = xray_structure.sites_cart()).bond_proxies.simple
+  bond_proxies_simple, asu = geometry.get_covalent_bond_proxies(
+                  sites_cart = xray_structure.sites_cart())
 
   # get ias manager
   params = ias.ias_master_params.extract()

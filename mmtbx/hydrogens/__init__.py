@@ -153,8 +153,8 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log):
               masses     = [1]*sites_cart.size()
               labels     = range(sites_cart.size())
               grm_i = restraints_manager.select(iselection)
-              bps = grm_i.geometry.pair_proxies(
-                sites_cart = sites_cart).bond_proxies.simple
+              bps, asu = grm_i.geometry.get_all_bond_proxies(
+                sites_cart = sites_cart)
               edge_list = []
               for bp in bps: edge_list.append(bp.i_seqs)
               fixed_vertex_lists = []

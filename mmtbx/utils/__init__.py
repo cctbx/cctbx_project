@@ -2263,8 +2263,8 @@ def rms_b_iso_or_b_equiv_bonded(restraints_manager, xray_structure,
     xrs_sel = xray_structure
     if(ias_selection is not None):
       xrs_sel = xray_structure.select(selection = ~ias_selection)
-    bond_proxies_simple = restraints_manager.geometry.pair_proxies(
-      sites_cart = xrs_sel.sites_cart()).bond_proxies.simple
+    bond_proxies_simple, asu = restraints_manager.geometry.\
+        get_covalent_bond_proxies(sites_cart=xrs_sel.sites_cart())
     u_isos = xrs_sel.extract_u_iso_or_u_equiv()
     scatterers = xrs_sel.scatterers()
     values = flex.double()

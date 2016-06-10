@@ -208,8 +208,8 @@ def min_nonbonded_distance(sites_cart, geometry, xray_structure, selection):
   #
   g = geometry.select(iselection=selw)
   pair_proxy_list_sorted=[]
-  bond_proxies_simple = g.pair_proxies(
-    sites_cart = sites_cart_w).bond_proxies.simple
+  bond_proxies_simple, asu = g.get_all_bond_proxies(
+    sites_cart = sites_cart_w)
   for proxy in bond_proxies_simple:
     tmp = list(proxy.i_seqs)
     tmp.sort()
