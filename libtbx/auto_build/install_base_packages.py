@@ -1028,6 +1028,7 @@ _replace_sysconfig_paths(build_time_vars)
       pkg_url=BASE_CCI_PKG_URL,
       pkg_name=FREETYPE_PKG,
       pkg_name_label="Freetype")
+    if self.check_download_only(pkg_name): return
     self.include_dirs.append(op.join(self.base_dir, "include", "freetype2"))
     # copy ft2build.h from include/freetype2 to inculde/ (for matplotlib)
     from shutil import copy
