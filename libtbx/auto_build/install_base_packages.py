@@ -316,13 +316,13 @@ class installer (object) :
     print >> self.log, "  log file is %s" % install_log
     return open(install_log, "w")
 
-  def check_download_only (self, pkg_name) :
-    if self.options.download_only:
-      print >> self.log, "  skipping installation of %s (--download-only)" % pkg_name
-      return True
-    else:
-      print >> self.log, "  installing %s..." % pkg_name
-      return False
+  def check_download_only(self, pkg_name=None):
+    if pkg_name is not None:
+      if self.options.download_only:
+        print >> self.log, "  skipping installation of %s (--download-only)" % pkg_name
+      else:
+        print >> self.log, "  installing %s..." % pkg_name
+    return self.options.download_only
 
   def patch_src (self, src_file, target, replace_with, output_file=None) :
     from shutil import copymode
@@ -1023,12 +1023,12 @@ _replace_sysconfig_paths(build_time_vars)
       log=pkg_log, limit_nproc=1) # openssl is not parallel buildable
     self.include_dirs.append(op.join(self.base_dir, "include", "openssl"))
 
-  def build_freetype (self) :
+  def build_freetype(self):
     self.build_compiled_package_simple(
       pkg_url=BASE_CCI_PKG_URL,
       pkg_name=FREETYPE_PKG,
       pkg_name_label="Freetype")
-    if self.check_download_only(pkg_name): return
+    if self.check_download_only(): return
     self.include_dirs.append(op.join(self.base_dir, "include", "freetype2"))
     # copy ft2build.h from include/freetype2 to inculde/ (for matplotlib)
     from shutil import copy
@@ -1192,8 +1192,6 @@ _replace_sysconfig_paths(build_time_vars)
   def build_wxpython(self):
     pkg_log = self.start_building_package("wxPython")
     pkg_name = WXPYTHON_PKG
-    if self.options.download_only: # download both versions if --download_only
-      pkg = self.fetch_package(pkg_name)
     pkg = self.fetch_package(pkg_name)
     if self.check_download_only(pkg_name): return
 
