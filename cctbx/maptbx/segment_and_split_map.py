@@ -893,7 +893,8 @@ def get_b_iso(miller_array):
   aniso_scale_and_b=absolute_scaling.ml_aniso_absolute_scaling(
       miller_array=miller_array, n_residues=200, n_bases=0)
   try: b_cart=aniso_scale_and_b.b_cart
-  except: b_cart=[0,0,0]
+  except Exception,e:
+    b_cart=[0,0,0]
   b_aniso_mean=0.
   for k in [0,1,2]:
     b_aniso_mean+=b_cart[k]
