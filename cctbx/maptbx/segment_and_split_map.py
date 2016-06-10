@@ -4122,7 +4122,7 @@ def run(args,
         tracking_data=tracking_data,
         out=out)
       params.crystal_info.auto_sharpen=None # so we don't do it again later
-     
+
     tracking_data.show_summary(out=out)
 
 
