@@ -9,7 +9,8 @@ Description : XFEL UI Initialization module
 
 import os
 import wx
-import random
+import time
+from threading import Thread
 from wx.lib.scrolledpanel import ScrolledPanel
 
 import xfel.ui.components.xfel_gui_controls as gctr
@@ -23,12 +24,48 @@ license = 'cctbx.xfel and cctbx.xfel UI are developed under the open source ' \
 description = 'The cctbx.xfel UI is developed for use during data collection ' \
               'and initial processing at LCSL XFEL beamlines.'
 
+# ------------------------------- Threading ---------------------------------- #
+
+# Set up events for and for finishing all cycles
+tp_EVT_REFRESH = wx.NewEventType()
+EVT_REFRESH = wx.PyEventBinder(tp_EVT_REFRESH, 1)
+
+class RefreshRuns(wx.PyCommandEvent):
+  ''' Send event when finished all cycles  '''
+  def __init__(self, etype, eid):
+    wx.PyCommandEvent.__init__(self, etype, eid)
+
+class RunSentinel(Thread):
+  ''' Worker thread; generated so that the GUI does not lock up when
+      processing is running '''
+
+  def __init__(self,
+               parent,
+               active=True):
+    Thread.__init__(self)
+    self.parent = parent
+    self.active = active
+
+  def run(self):
+    while self.active:
+      self.parent.run_window.runs_tab.runs = self.parent.db.get_all_runs()
+      self.parent.run_window.runs_tab.all_tags = self.parent.db.get_all_tags()
+      evt = RefreshRuns(tp_EVT_REFRESH, -1)
+      wx.PostEvent(self.parent.run_window.runs_tab, evt)
+      time.sleep(1)
+
+
 # ------------------------------- Main Window -------------------------------- #
 
 class MainWindow(wx.Frame):
 
   def __init__(self, parent, id, title):
     wx.Frame.__init__(self, parent, id, title, size=(800, 500))
+
+    from xfel.ui.db import get_db_connection
+    from xfel.ui.db.xfel_db import xfel_db_application
+
+    self.db = xfel_db_application(get_db_connection(None))
 
     # Toolbar
     self.toolbar = self.CreateToolBar(wx.TB_TEXT)
@@ -38,10 +75,21 @@ class MainWindow(wx.Frame):
                                                  longHelp='Exit iXFEL')
 
     self.toolbar.AddSeparator()
-    self.tb_btn_run = self.toolbar.AddLabelTool(wx.ID_ANY, label='Run',
-                                                bitmap=wx.Bitmap('{}/32x32/run.png'.format(icons)),
-                                                shortHelp='Run',
-                                                longHelp='Activate all sentinels')
+    self.tb_btn_run = self.toolbar.AddLabelTool(wx.ID_ANY, label='Run Jobs',
+                            bitmap=wx.Bitmap('{}/32x32/run.png'.format(icons)),
+                                                      shortHelp='Run All Jobs',
+                                          longHelp='Activate all pending jobs')
+    self.tb_btn_pause = self.toolbar.AddLabelTool(wx.ID_ANY, label='Pause Jobs',
+                             bitmap=wx.Bitmap('{}/32x32/run.png'.format(icons)),
+                                                     shortHelp='Pause All Jobs',
+                                              longHelp='Pause all pending jobs')
+    self.toolbar.AddSeparator()
+    self.tb_btn_options = self.toolbar.AddLabelTool(wx.ID_ANY,
+                                                    label='Settings',
+                          bitmap=wx.Bitmap('{}/32x32/config.png'.format(icons)),
+                                                           shortHelp='Settings',
+                              longHelp='Database, user and experiment settings')
+
     self.toolbar.Realize()
 
     # Status bar
@@ -69,12 +117,34 @@ class MainWindow(wx.Frame):
     # Menubar button bindings
     self.Bind(wx.EVT_MENU, self.OnAboutBox, self.mb_about)
 
-    # Toolbar button bindings
+    # Bindings
     self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
     self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_run)
 
     # Draw the main window sizer
     self.SetSizer(main_box)
+
+  def start_sentinels(self):
+    self.start_run_sentinel()
+    self.start_job_sentinel()
+
+  def stop_sentinels(self):
+    self.stop_run_sentinel()
+    self.stop_job_sentinel()
+
+  def start_run_sentinel(self):
+    self.run_sentinel = RunSentinel(self, active=True)
+    self.run_sentinel.start()
+
+  def stop_run_sentinel(self):
+    self.run_sentinel.active = False
+    self.run_sentinel.join()
+
+  def start_job_sentinel(self):
+    pass
+
+  def stop_job_sentinel(self):
+    pass
 
   def OnAboutBox(self, e):
     ''' About dialog '''
@@ -141,31 +211,22 @@ class RunTab(BaseTab):
   def __init__(self, parent):
     BaseTab.__init__(self, parent=parent)
     self.last_run = 0
+    self.runs = []
+    self.all_tags = []
     self.all_tag_buttons = []
-
-    # TODO: Need to figure out how to set up initial tags
-    self.all_tags = [gctr.Sample(os.getlogin(), 'Login name'),
-                     gctr.Sample('test', 'Tags for testing'),
-                     gctr.Sample('initial sample', 'WT luciferase'),
-                     gctr.Sample('first exposure', '40 ns at 400 nm')]
 
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
     self.run_panel = ScrolledPanel(self)
     self.run_sizer = wx.BoxSizer(wx.VERTICAL)
     self.run_panel.SetSizer(self.run_sizer)
 
-    self.colname_sizer = wx.FlexGridSizer(1, 4, 0, 10)
+    self.colname_sizer = wx.FlexGridSizer(1, 2, 0, 10)
     run_label = wx.StaticText(self, label='Run', size=(60, -1))
-    tag_label = wx.StaticText(self, label='Sample Tags', size=(300, -1))
-    img_label = wx.StaticText(self, label='# of Images', size=(160, -1))
-    dur_label = wx.StaticText(self, label='Duration', size=(160, -1))
+    tag_label = wx.StaticText(self, label='Sample Tags', size=(620, -1))
     self.colname_sizer.Add(run_label, flag=wx.ALIGN_RIGHT)
     self.colname_sizer.Add(tag_label, flag=wx.ALIGN_RIGHT | wx.EXPAND)
-    self.colname_sizer.Add(img_label, flag=wx.ALIGN_RIGHT)
-    self.colname_sizer.Add(dur_label, flag=wx.ALIGN_RIGHT)
     self.colname_sizer.AddGrowableCol(1, 1)
-    self.main_sizer.Add(self.colname_sizer,
-                        flag=wx.ALL | wx.EXPAND, border=10)
+    self.main_sizer.Add(self.colname_sizer, flag=wx.ALL | wx.EXPAND, border=10)
 
     self.btn_manage_tags = wx.Button(self, label='Manage Tags', size=(120, -1))
     self.main_sizer.Add(self.run_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
@@ -173,68 +234,50 @@ class RunTab(BaseTab):
     self.main_sizer.Add(self.btn_manage_tags,
                         flag=wx.RIGHT | wx.LEFT | wx.BOTTOM | wx.ALIGN_RIGHT,
                         border=10)
-
-    # Timer to simulate run acquisition
-    # TODO: replace timer with actual run updates
-    self.last_run += 1
-    self.add_row()
-    self.run_panel.SetupScrolling()
-    self.run_panel.Refresh()
-    self.timer = wx.Timer(self)
-    self.timer.Start(25000)
-
     self.SetSizer(self.main_sizer)
 
-    self.Bind(wx.EVT_TIMER, self.onTimer, id=self.timer.GetId())
+    # Bindings
+    self.Bind(EVT_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_BUTTON, self.onManageTags, self.btn_manage_tags)
 
-  def onTimer(self, e):
-    self.last_run += 1
-    self.add_row()
-    self.run_panel.SetupScrolling()
-    self.run_panel.Refresh()
+    self.refresh_rows()
+
+  def onRefresh(self, e):
+    self.refresh_rows()
 
   def onManageTags(self, e):
     ''' User can add / remove / edit sample tags '''
-    mtag_dlg = dlg.TagDialog(self,
-                             tags=self.all_tags)
+    mtag_dlg = dlg.TagDialog(self, tags=self.all_tags)
     mtag_dlg.Fit()
-
-    # Get new tag objects
-    if (mtag_dlg.ShowModal() == wx.ID_OK):
-      self.all_tags = mtag_dlg.tags
+    mtag_dlg.ShowModal()
     mtag_dlg.Destroy()
 
     # Update tags on all tag buttons
     for btn in self.all_tag_buttons:
-      tags_in_button = [i.tag for i in btn.tags]
-      btn.tags = [j for j in self.all_tags if j.tag in tags_in_button]
+      #tags_in_button = [i.name for i in btn.tags]
+      #btn.tags = [j for j in self.all_tags if j.tag in tags_in_button]
       btn.update_label()
 
-  def add_row(self):
+  # TODO: Somehow make sure that the whole thing isn't redrawn all the time
+  def refresh_rows(self):
+    self.run_sizer.DeleteWindows()
+    for run in self.runs:
+      self.add_row(run)
+    self.run_panel.SetupScrolling()
+    self.run_panel.Refresh()
+
+  def add_row(self, run):
     ''' Adds run row to table, matching colname_sizer '''
-    row_sizer = wx.FlexGridSizer(1, 4, 0, 10)
-    run_no = wx.StaticText(self.run_panel, label=str(self.last_run),
+    row_sizer = wx.FlexGridSizer(1, 2, 0, 10)
+    run_no = wx.StaticText(self.run_panel, label=str(run.run),
                            size=(60, -1))
-    btn_tags = gctr.TagButton(self.run_panel)
-    btn_tags.tags = [self.all_tags[0]]
-    btn_tags.update_label()
-    self.Bind(wx.EVT_BUTTON, self.onTrialButton, id=btn_tags.GetId())
-    self.all_tag_buttons.append(btn_tags)
-    images = wx.StaticText(self.run_panel,
-                           label=str(random.randrange(100, 20000)),
-                           size=(160, -1),
-                           style=wx.ALIGN_CENTER)
-    duration = wx.StaticText(self.run_panel,
-                             label='{:02d} min, {:02d} sec'
-                                   ''.format(random.randrange(0, 20),
-                                             random.randrange(0, 59)),
-                             size=(160, -1),
-                             style=wx.ALIGN_CENTER)
+    tag_button = gctr.TagButton(self.run_panel)
+    tag_button.tags = [t for t in run.tags]
+    tag_button.update_label()
+    self.Bind(wx.EVT_BUTTON, self.onTrialButton, id=tag_button.GetId())
+    self.all_tag_buttons.append(tag_button)
     row_sizer.Add(run_no, flag=wx.EXPAND | wx.ALIGN_CENTRE)
-    row_sizer.Add(btn_tags, flag=wx.EXPAND)
-    row_sizer.Add(images, flag=wx.EXPAND)
-    row_sizer.Add(duration, flag=wx.EXPAND)
+    row_sizer.Add(tag_button, flag=wx.EXPAND)
     row_sizer.AddGrowableCol(1)
     self.run_sizer.Add(row_sizer, flag=wx.ALL | wx.EXPAND, border=0)
 

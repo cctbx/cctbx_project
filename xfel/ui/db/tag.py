@@ -8,5 +8,5 @@ class Tag(object):
     self.tag_id = tag_id
 
     # dummy values:
-    self.name = ""
+    self.name = "default tag"
     self.comment = ""

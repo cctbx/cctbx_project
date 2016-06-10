@@ -12,21 +12,28 @@ Description : XFEL UI startup module.
 
 import wx
 from xfel.ui.components.xfel_gui_init import MainWindow
-
-# TODO: get actual values from initial settings window
-exp = 'cxid9114'
-exp_tag = 'aaron_debug'
+from xfel.ui.components.xfel_gui_dialogs import SettingsDialog
 
 class MainApp(wx.App):
   ''' App for the main GUI window  '''
   def OnInit(self):
-    self.frame = MainWindow(None, -1, title='CCTBX.XFEL : {} : {}'
-                                            ''.format(exp, exp_tag))
+    self.frame = MainWindow(None, -1, title='CCTBX.XFEL')
     self.frame.Center()
     self.frame.SetMinSize(self.frame.GetEffectiveMinSize())
-    self.frame.Show(True)
-    self.SetTopWindow(self.frame)
-    return True
+
+    # Start with login dialog before opening main window
+    self.login = SettingsDialog(self.frame)
+    self.login.Center()
+    if (self.login.ShowModal() == wx.ID_OK):
+      self.exp_tag = '| {}'.format(self.login.db_cred.ctr.GetValue())
+      self.exp = '| {}'.format(self.login.experiment.ctr.GetValue())
+      self.frame.SetTitle('CCTBX.XFEL {} {}'.format(self.exp, self.exp_tag))
+      self.frame.Show(True)
+      self.SetTopWindow(self.frame)
+      self.frame.start_sentinels()
+      return True
+    else:
+      return False
 
 if __name__ == '__main__':
   app = MainApp(0)

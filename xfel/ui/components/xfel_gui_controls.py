@@ -102,20 +102,21 @@ class TagButton(GradButton):
 
   def update_label(self):
     if len(self.tags) == 1:
-      label = self.tags[0].tag
+      label = self.tags[0].name
     elif len(self.tags) > 1:
-      label = ', '.join([i.tag for i in self.tags])
+      label = ', '.join([i.name for i in self.tags])
     else:
       label = ''
     self.SetLabel(label)
     self.SetFont(wx.Font(button_font_size, wx.DEFAULT, wx.NORMAL, wx.NORMAL))
     self.Refresh()
 
-  def change_tags(self, all_tags):
+  def change_tags(self):
     ''' Calls dialog with tag options for all runs; user will select tags
         for this specific run
     '''
-    choices = [i.tag for i in all_tags]
+    all_tags = self.parent.parent.parent.db.get_all_tags()
+    choices = [i for i in all_tags]
     tag_dlg = wx.MultiChoiceDialog(self,
                                    message='Available sample tags',
                                    caption='Sample Tags',
@@ -169,9 +170,6 @@ class TextButtonCtrl(CtrlBase):
                big_button=False,
                big_button_label='Browse...',
                big_button_size=wx.DefaultSize,
-               bmp_button=False,
-               bmp_button_bmp = None,
-               bmp_button_size=wx.DefaultSize,
                value=''):
 
     CtrlBase.__init__(self, parent=parent, label_style=label_style)
@@ -181,18 +179,13 @@ class TextButtonCtrl(CtrlBase):
     self.txt.SetFont(self.font)
     output_box.Add(self.txt)
 
-    self.ctr = wx.TextCtrl(self) #, size=ctr_size)
+    self.ctr = wx.TextCtrl(self)
     self.ctr.SetValue(value)
     output_box.Add(self.ctr, flag=wx.EXPAND)
 
     self.btn_big = wx.Button(self, label=big_button_label, size=big_button_size)
-    self.btn_bmp = wx.BitmapButton(self, bitmap=bmp_button_bmp,
-                                   size=bmp_button_size)
     output_box.Add(self.btn_big, flag=wx.RESERVE_SPACE_EVEN_IF_HIDDEN)
-    output_box.Add(self.btn_bmp, flag=wx.RESERVE_SPACE_EVEN_IF_HIDDEN)
 
-    if not bmp_button:
-      self.btn_bmp.Hide()
     if not big_button:
       self.btn_big.Hide()
 
@@ -309,12 +302,3 @@ class TableCtrl(CtrlBase):
         self.sizer.Add(cell)
 
     self.SetSizer(self.sizer)
-
-# --------------------------------- Objects ---------------------------------- #
-
-class Sample(object):
-  ''' Sample tag object '''
-  def __init__(self, tag, comments = ''):
-    ''' Tag Constructor '''
-    self.tag = tag
-    self.comments = comments

@@ -8,10 +8,13 @@ Description : XFEL UI Custom Dialogs
 '''
 
 import wx
+import os
 from wx.lib.mixins.listctrl import TextEditMixin, getListCtrlSelection
 from wx.lib.scrolledpanel import ScrolledPanel
 
 import xfel.ui.components.xfel_gui_controls as gctr
+
+icons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/')
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
@@ -84,22 +87,70 @@ class SettingsDialog(BaseDialog):
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
                         content_style=content_style,
+                        size=(600, 200),
+                        style=wx.NO_BORDER,
                         *args, **kwargs)
 
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
 
+    # Experiment tag and DB Credentials button
     self.db_cred = gctr.TextButtonCtrl(self,
                                        label='Experiment Tag',
                                        label_style='bold',
                                        label_size=(150, -1),
                                        big_button=True,
                                        big_button_label='DB Credentials...',
-                                       value='{}')
+                                       big_button_size=(130, -1),
+                                       value='')
+    self.main_sizer.Add(self.db_cred,
+                        flag=wx.EXPAND | wx.ALL,
+                        border=10)
+
+    # Experiment name control
+    self.experiment = gctr.TextButtonCtrl(self,
+                                          label='Experiment',
+                                          label_style='bold',
+                                          label_size=(150, -1),
+                                          big_button_size=(130, -1),
+                                          value='')
+    self.main_sizer.Add(self.experiment,
+                        flag=wx.EXPAND | wx.ALL,
+                        border=10)
+
+    # Output folder text control w/ Browse / magnifying glass button
+    current_folder = os.path.abspath(os.curdir)
+    self.output = gctr.TextButtonCtrl(self,
+                                      label='Output',
+                                      label_style='bold',
+                                      label_size=(150, -1),
+                                      big_button=True,
+                                      big_button_label='Browse...',
+                                      big_button_size=(120, -1),
+                                      value=current_folder)
+    self.main_sizer.Add(self.output,
+                        flag=wx.EXPAND | wx.ALL,
+                        border=10)
+
+    self.btn_mp = wx.Button(self, label='Multiprocessing...')
+    self.btn_op = wx.Button(self, label='Advanced Settings...')
+    self.btn_OK = wx.Button(self, label="OK", id=wx.ID_OK)
+    self.btn_cancel = wx.Button(self, label="Cancel", id=wx.ID_CANCEL)
+
+    button_sizer = wx.FlexGridSizer(1, 5, 0, 10)
+    button_sizer.AddMany([(self.btn_mp),
+                          (self.btn_op),
+                          (0,0),
+                          (self.btn_OK),
+                          (self.btn_cancel)])
+
+    button_sizer.AddGrowableCol(2)
+    self.main_sizer.Add(button_sizer,
+                        flag=wx.EXPAND | wx.ALL,
+                        border=10)
+    self.SetSizer(self.main_sizer)
 
 
 class TagDialog(BaseDialog):
-  # DIALS options
-
   def __init__(self, parent,
                label_style='bold',
                content_style='normal',
@@ -108,7 +159,11 @@ class TagDialog(BaseDialog):
     BaseDialog.__init__(self, parent, label_style=label_style,
                         content_style=content_style, *args, **kwargs)
 
-    self.tags = tags
+    self.db_tags = tags
+    self.deleted_tags = []
+    self.new_tags = []
+    self.edited_tags =[]
+
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
     self.top_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
@@ -134,11 +189,13 @@ class TagDialog(BaseDialog):
     self.tag_list.InsertColumn(0, 'Sample Tag', width=200)
     self.tag_list.InsertColumn(1, 'Comments', width=300)
 
-    if len(self.tags) > 0:
+    # Populate tags with current values from db
+    if len(self.db_tags) > 0:
       self.index = 0
-      for tag in self.tags:
-        self.tag_list.InsertStringItem(self.index, tag.tag)
-        self.tag_list.SetStringItem(self.index, 1, tag.comments)
+      for tag in self.db_tags:
+        self.tag_list.InsertStringItem(self.index, tag.name)
+        self.tag_list.SetStringItem(self.index, 1, tag.comment)
+        self.tag_list.SetItemData(self.index, tag.tag_id)
         self.index += 1
 
     self.tag_sizer.Add(self.tag_list, 1, flag=wx.EXPAND)
@@ -167,16 +224,21 @@ class TagDialog(BaseDialog):
 
   def onAdd(self, e):
     ''' Add a string item to list; focus on item & provide default tag name'''
-    new_tag = gctr.Sample('default tag {}'.format(self.index), '')
-    self.tags.append(new_tag)
-    self.tag_list.InsertStringItem(self.index, new_tag.tag)
-    self.tag_list.SetStringItem(self.index, 1, new_tag.comments)
+    new_tag = ('default tag {}'.format(self.index), '')
+    self.new_tags.append(new_tag)
+    self.tag_list.InsertStringItem(self.index, new_tag[0])
+    self.tag_list.SetStringItem(self.index, 1, new_tag[1])
+    self.tag_list.SetItemData(self.index, None)
     self.tag_list.Select(self.index)
     self.tag_list.Focus(self.index)
     self.index += 1
 
   def onRemove(self, e):
     selected_indices = getListCtrlSelection(self.tag_list)
+    tag_ids = [self.tag_list.GetItemData(i) for i in selected_indices]
+    print tag_ids
+    self.deleted_tags = [i for i in self.db_tags if i.tag_id in tag_ids]
+
     for i in range(len(selected_indices)):
       to_delete = getListCtrlSelection(self.tag_list)
       self.tag_list.DeleteItem(to_delete[0])
@@ -190,7 +252,7 @@ class TagDialog(BaseDialog):
     if (warning.ShowModal() == wx.ID_YES):
       self.tag_list.DeleteAllItems()
       self.index = 0
-      self.tags = []
+      self.db_tags = []
 
   def onOK(self, e):
     count = self.tag_list.GetItemCount()
@@ -201,9 +263,30 @@ class TagDialog(BaseDialog):
                                  style=wx.OK | wx.ICON_EXCLAMATION)
       warning.ShowModal()
     else:
-      for row in range(count):
-        tag = self.tag_list.GetItem(itemId=row, col=0)
-        com = self.tag_list.GetItem(itemId=row, col=1)
-        self.tags[row].tag = tag.GetText()
-        self.tags[row].comments = com.GetText()
+      try:
+        # Update names for edited tags
+        # TODO: Actually connect to actual tags in DB
+        all_items = [(self.tag_list.GetItemData(i),
+                    self.tag_list.GetItem(itemId=i, col=0),
+                    self.tag_list.GetItem(itemId=i, col=1))
+                   for i in range(count)]
+        edited_items = [i for i in all_items if i[0] is not None]
+        for tag in self.db_tags:
+          for item in edited_items:
+            if tag.tag_id == item[0]:
+              if tag.name != item[1]:
+                tag.name = item[1]
+              if tag.comment != item[2]:
+                tag.comment = item[2]
+
+        # Delete tags from DB
+        for tag in self.deleted_tags:
+          self.parent.parent.parent.db.delete_tag(tag)
+
+        # Add new tags to DB
+        for tag in self.new_tags:
+          self.parent.parent.parent.db.create_tags(name=tag[0], comment=tag[1])
+      except Exception:
+        pass
+
       e.Skip()

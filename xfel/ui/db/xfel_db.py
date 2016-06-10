@@ -61,7 +61,7 @@ class xfel_db_application(object):
   def get_all_jobs(self):
     return [Job(i) for i in xrange(3)]
 
-  def delete_tag(self, job = None, job_id = None):
+  def delete_job(self, job = None, job_id = None):
     if job_id is None:
       job_id = job.job_id
 

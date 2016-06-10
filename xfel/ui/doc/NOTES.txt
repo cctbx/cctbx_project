@@ -1,4 +1,11 @@
-iXFEL version 0.0.000 - GUI elements only
+XFEL UI version 0.0.001 - Initial connection to DB
 
-1. This version will not be hooked up to actual XFEL DB
-2. It exists to create and test iXFEL GUI elements only
+1. Run tab connected to DB
+    a. Thread starts run sentinel
+    b. Runs and tags from DB passed on to GUI elements in Run Tab
+
+Known issues:
+
+1. Most connection are so far dummy connections
+2. Errors returned by the Manage Tabs dialog; not sure it's working right
+just yet
