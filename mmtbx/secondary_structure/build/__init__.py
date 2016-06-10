@@ -453,7 +453,6 @@ def substitute_ss(real_h,
 
   expected_n_hbonds = 0
   ann = ss_annotation
-  phil_str = ann.as_restraint_groups()
   for h in ann.helices:
     expected_n_hbonds += h.get_n_maximum_hbonds()
   edited_h = real_h.deep_copy()
@@ -465,7 +464,7 @@ def substitute_ss(real_h,
   error_flg = False
 
   # Checking for SS selections
-  h_ideces_to_delete = []
+  h_indeces_to_delete = []
   sh_indeces_to_delete = []
   for i, h in enumerate(ann.helices):
     selstring = h.as_atom_selections()
@@ -473,7 +472,7 @@ def substitute_ss(real_h,
     if len(isel) == 0:
       error_flg = True
       error_msg += "  %s\n" % h
-      h_ideces_to_delete.append(i)
+      h_indeces_to_delete.append(i)
   for i, sh in enumerate(ann.sheets):
     for st in sh.strands:
       selstring = st.as_atom_selections()
@@ -481,15 +480,25 @@ def substitute_ss(real_h,
       if len(isel) == 0:
         error_flg = True
         error_msg += "  %s\n" % sh.as_pdb_str(strand_id=st.strand_id)
-        sh_indeces_to_delete.append(i)
+        if i not in sh_indeces_to_delete:
+          sh_indeces_to_delete.append(i)
   if processed_params.skip_empty_ss_elements and error_flg:
-    print error_msg
-    for i in reversed(h_ideces_to_delete):
-      del ann.helices[i]
-    for i in reversed(sh_indeces_to_delete):
-      del ann.sheets[i]
+    print >> log, error_msg
+    if len(h_indeces_to_delete) > 0:
+      print >> log, "Removing the following helices because there are"
+      print >> log, "no corresponding atoms in the model:"
+      for i in reversed(h_indeces_to_delete):
+        print >> log, ann.helices[i].as_pdb_str()
+        del ann.helices[i]
+    if len(sh_indeces_to_delete) > 0:
+      print >> log, "Removing the following sheets because there are"
+      print >> log, "no corresponding atoms in the model:"
+      for i in reversed(sh_indeces_to_delete):
+        print >> log, ann.sheets[i]
+        del ann.sheets[i]
   elif error_flg:
     raise Sorry(error_msg)
+  phil_str = ann.as_restraint_groups()
 
   # Actually idelizing SS elements
   log.write("Replacing ss-elements with ideal ones:\n")
