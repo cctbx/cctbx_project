@@ -1,22 +1,30 @@
 from __future__ import division
-import math
+import math,sys
 
 # breakpoint.py
 # tool to analyze a plot where Y decreases with X and is best fit by 2 lines.
-# Purpose of the tool is to identify the breakpoint in X where the slope changes.
+# Purpose of the tool is to identify the breakpoint in X where the slope changes
 # Optionally convert Y to log10(Y)
 # Optionally identify value of X where the first line has value lower than the second
 #   line by an amount given by offset (or log10(offset))
 
-input_value_dict={43.10284229:658643,
-63.10284229:219182,
-83.10284229:7551,
-103.1028423:1976,
-123.1028423:803,
-143.1028423:453,
-163.1028423:346,
-183.1028423:278,
-203.1028423:246,}
+input_target_offset=1
+input_min_ratio=2.
+input_use_log=True
+input_value_dict={
+0:6.49,
+16.79:6.11,
+33.57:5.92,
+50.36:5.71,
+67.15:5.15,
+83.93:3.87,
+100.72:3.35,
+117.51:3,
+134.29:2.78,
+151.08:2.64,
+167.87:2.52,
+184.65:2.43,
+}
 
 def get_low_high(value_dict=None):
   x_low=None
@@ -78,29 +86,57 @@ def score_breakpoint(value_dict=None,x_midway=None,y_midway=None,min_x=None,max_
     score=math.sqrt(score/score_n)
   return score
 
-def find_breakpoint(value_dict=None,decreasing=True,min_ratio=10,
-   use_log=True,target_offset=10.):
+def find_breakpoint(value_dict=None,decreasing=True,min_ratio=1,
+   use_log=True,target_offset=1.,sufficient_ratio=200,
+    min_value=1,out=sys.stdout):
   assert decreasing #  only set up for decreasing values
   x_low,x_high=get_low_high(value_dict=value_dict)
   if decreasing:
     min_x=x_high
     max_x=x_low
-  print "Low,high:",x_low,x_high,":",value_dict[x_low],value_dict[x_high]
+  print >>out,"Low,high:",x_low,x_high,":",value_dict[x_low],value_dict[x_high]
 
   if decreasing and x_low < x_high:
+    print >>out,"Not decreasing"
     return None # not decreasing
 
   ratio=value_dict[x_high]/max(1,value_dict[x_low])
-  if ratio <min_ratio:
+  if not use_log:
+    if ratio >-50 and ratio < 50:
+      ratio=10**ratio
+    else:
+      from libtbx.utils import Sorry
+      raise Sorry("Failed to use exponential (value too large): %s" %(ratio))
+
+  if min_ratio and ratio <min_ratio:
+    print >>out,"Ratio too low (min %7.2f  found %7.2f)" %(min_ratio,ratio)
     return None  # it is not enough to tell
 
   from copy import deepcopy
   value_dict=deepcopy(value_dict)
-  # remove all entries outside of x_high to x_low
-  if decreasing:
+
+  # remove all entries outside of x_high to x_low and make sure all >=1
+  for x in value_dict.keys():
+      if value_dict[x]<min_value: value_dict[x]=min_value
+      if x < min_x: del value_dict[x]
+      if x > max_x: del value_dict[x]
+
+  # find highest x with value > sufficient_ratio*value_dict[max_x]
+  lowest_x_keep=None
+  for x in value_dict.keys():
+    rr=value_dict[x]/value_dict[max_x]
+    if not use_log: rr=10**rr
+    if rr > sufficient_ratio and (
+       lowest_x_keep is None or x > lowest_x_keep):
+      lowest_x_keep=x
+  if lowest_x_keep is not None:
+    print >>out,"Removing all values of x < %7.2f" %(lowest_x_keep)
     for x in value_dict.keys():
-      if x < x_high: del value_dict[x]
-      if x > x_low: del value_dict[x]
+      if x < lowest_x_keep:
+        del value_dict[x]
+    min_x=lowest_x_keep
+    x_high=min_x
+
 
   if use_log:
     value_dict=get_log(value_dict=value_dict)
@@ -108,11 +144,11 @@ def find_breakpoint(value_dict=None,decreasing=True,min_ratio=10,
 
   ratio=value_dict[x_high]/max(1,value_dict[x_low])
   y_midway=value_dict[x_low]*ratio**0.5
-  print "Low,high:",x_low,x_high,":",value_dict[x_low],value_dict[x_high]
+  print >>out,"Low,high:",x_low,x_high,":",value_dict[x_low],value_dict[x_high]
   x_midway=get_closest_x(value=y_midway,value_dict=value_dict)
 
   y_midway=value_dict[x_midway]
-  print "Midway:",y_midway," x-midway:",x_midway,\
+  print >>out,"Midway:",y_midway," x-midway:",x_midway,\
     score_breakpoint(value_dict=value_dict,x_midway=x_midway,y_midway=y_midway,min_x=min_x,max_x=max_x)
 
   keys=value_dict.keys()
@@ -140,17 +176,18 @@ def find_breakpoint(value_dict=None,decreasing=True,min_ratio=10,
   if best_score is not None:
     x_midway=best_xm
     y_midway=best_ym
-    print "\n Best fit: x_midway: %7.2f  y_midway: %7.2f " %(x_midway,y_midway)
+    print >>out,"\n Best fit: x_midway: %7.2f  y_midway: %7.2f " %(
+        x_midway,y_midway)
 
   keys=value_dict.keys()
   keys.sort()
-  print "\n   X       Y-obs     Y-fit    Delta"
+  print >>out,"\n   X       Y-obs     Y-fit    Delta"
 
   for x in keys:
      delta=get_delta_from_multiple_lines(x=x,y=value_dict[x],
         value_dict=value_dict,x_midway=x_midway,y_midway=y_midway,min_x=min_x,max_x=max_x)
      pred_y=value_dict[x]-delta
-     print "%7.2f  %7.2f  %7.2f  %7.2f " %(x,value_dict[x],pred_y,delta)
+     print >>out,"%7.2f  %7.2f  %7.2f  %7.2f " %(x,value_dict[x],pred_y,delta)
 
   # And identify value of x where value extrapolated from x<x_midway becomes less than
   #   y_midway minus target_offset (typically 1=1 log unit)
@@ -160,11 +197,35 @@ def find_breakpoint(value_dict=None,decreasing=True,min_ratio=10,
     dxdy=(x_midway-min_x)/(y_midway-value_dict[min_x])
   delta_x=-1.*dxdy*target_offset
   target_x=x_midway+delta_x
-  print "Target X-value at breakpoint: %7.2f " %(target_x)
+  print >>out,"Target X-value at breakpoint: %7.2f " %(target_x)
   return target_x
 
-def run(value_dict=None):
-  return find_breakpoint(value_dict=value_dict)
+def get_value_dict(file_name=None):
+  dd={}
+  for line in open(file_name).readlines():
+    if line.strip().startswith("X"): continue
+    spl=line.split()
+    if len(spl)<2: continue
+    dd[float(spl[0])]=float(spl[1])
+  return dd
+
+def run(value_dict=None,use_log=None,target_offset=None,min_ratio=None):
+  return find_breakpoint(value_dict=value_dict,use_log=use_log,
+   target_offset=target_offset,
+      min_ratio=min_ratio,
+   )
 
 if __name__=="__main__":
-  bb=run(value_dict=input_value_dict)
+  import sys,os
+  args=sys.argv[1:]
+  if args and os.path.isfile(args[0]):
+    value_dict=get_value_dict(file_name=args[0])
+    bb=run(value_dict=value_dict,use_log=input_use_log,
+      target_offset=input_target_offset,
+      min_ratio=input_min_ratio,
+      )
+  else:
+    bb=run(value_dict=input_value_dict,use_log=input_use_log,
+      target_offset=input_target_offset,
+      min_ratio=input_min_ratio,
+       )
