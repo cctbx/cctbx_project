@@ -444,6 +444,15 @@ _pdbx_struct_sheet_hbond.range_2_auth_seq_id     25
   cif_model = iotbx.cif.reader(input_string=cif_str).model()
   cif_block = cif_model.values()[0]
   ann = annotation.from_cif_block(cif_block)
+  assert len(ann.helices) == 4
+  resnames = [x.start_resname for x in ann.helices]
+  assert resnames == ["THR","PRO","GLU","MET"]
+  resnames = [x.end_resname for x in ann.helices]
+  assert resnames == ["ILE","GLU","VAL","VAL"]
+  assert len(ann.sheets) == 1
+  assert [len(x.strands) for x in ann.sheets] == [2]
+  # print ann.as_pdb_str()
+
 
 if (__name__ == "__main__"):
   t0 = time.time()
