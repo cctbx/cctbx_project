@@ -62,11 +62,6 @@ class MainWindow(wx.Frame):
   def __init__(self, parent, id, title):
     wx.Frame.__init__(self, parent, id, title, size=(800, 500))
 
-    from xfel.ui.db import get_db_connection
-    from xfel.ui.db.xfel_db import xfel_db_application
-
-    self.db = xfel_db_application(get_db_connection(None))
-
     # Toolbar
     self.toolbar = self.CreateToolBar(wx.TB_TEXT)
     self.tb_btn_quit = self.toolbar.AddLabelTool(wx.ID_EXIT, label='Quit',
@@ -123,6 +118,21 @@ class MainWindow(wx.Frame):
 
     # Draw the main window sizer
     self.SetSizer(main_box)
+
+    self.credentials = None
+    self.db = None
+
+  def connect_to_db(self, credentials):
+    from xfel.ui.db import get_db_connection
+    from xfel.ui.db.xfel_db import xfel_db_application
+    self.credentials = credentials
+    try:
+      conn = get_db_connection(credentials)
+    except Exception, e:
+      print "Couldn't connect to database"
+      self.Close()
+      return
+    self.db = xfel_db_application(conn)
 
   def start_sentinels(self):
     self.start_run_sentinel()

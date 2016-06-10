@@ -25,6 +25,7 @@ class MainApp(wx.App):
     self.login = SettingsDialog(self.frame)
     self.login.Center()
     if (self.login.ShowModal() == wx.ID_OK):
+      self.frame.connect_to_db(self.login.credentials)
       self.exp_tag = '| {}'.format(self.login.db_cred.ctr.GetValue())
       self.exp = '| {}'.format(self.login.experiment.ctr.GetValue())
       self.frame.SetTitle('CCTBX.XFEL {} {}'.format(self.exp, self.exp_tag))

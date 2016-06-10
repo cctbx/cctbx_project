@@ -81,6 +81,7 @@ class SettingsDialog(BaseDialog):
   def __init__(self, parent,
                label_style='bold',
                content_style='normal',
+               credentials=None,
                *args, **kwargs):
 
 
@@ -149,6 +150,89 @@ class SettingsDialog(BaseDialog):
                         border=10)
     self.SetSizer(self.main_sizer)
 
+    self.Bind(wx.EVT_BUTTON, self.onDBCredentialsButton, id=self.db_cred.btn_big.GetId())
+    self.Bind(wx.EVT_CLOSE, self.onClose)
+
+    if credentials is None:
+      from xfel.ui.db import db_credentials
+      credentials = db_credentials()
+    self.credentials = credentials
+
+  def onDBCredentialsButton(self, e):
+    creds = DBCredentialsDialog(self)
+    creds.Center()
+    if (creds.ShowModal() == wx.ID_OK):
+      self.credentials.host     = creds.db_host.ctr.GetValue()
+      self.credentials.username = creds.db_user.ctr.GetValue()
+      self.credentials.password = creds.db_password.ctr.GetValue()
+
+  def onClose(self, e):
+    self.credentials.db = self.experiment.ctr.GetValue()
+
+class DBCredentialsDialog(BaseDialog):
+  ''' DB credentials entry '''
+
+  def __init__(self, parent,
+               label_style='bold',
+               content_style='normal',
+               *args, **kwargs):
+
+
+    BaseDialog.__init__(self, parent,
+                        label_style=label_style,
+                        content_style=content_style,
+                        size=(600, 200),
+                        style=wx.NO_BORDER,
+                        *args, **kwargs)
+
+    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
+
+    # Host name
+    self.db_host = gctr.TextButtonCtrl(self,
+                                       label='Host name',
+                                       label_style='bold',
+                                       label_size=(150, -1),
+                                       big_button_size=(130, -1),
+                                       value='psdb-user.slac.stanford.edu')
+    self.main_sizer.Add(self.db_host,
+                        flag=wx.EXPAND | wx.ALL,
+                        border=10)
+
+    # User name
+    self.db_user = gctr.TextButtonCtrl(self,
+                                       label='User name',
+                                       label_style='bold',
+                                       label_size=(150, -1),
+                                       big_button_size=(130, -1),
+                                       value='')
+    self.main_sizer.Add(self.db_user,
+                        flag=wx.EXPAND | wx.ALL,
+                        border=10)
+
+    # Password
+    self.db_password = gctr.TextButtonCtrl(self,
+                                           label='Password',
+                                           label_style='bold',
+                                           label_size=(150, -1),
+                                           text_style=wx.TE_PASSWORD,
+                                           big_button_size=(130, -1),
+                                           value='')
+    self.main_sizer.Add(self.db_password,
+                        flag=wx.EXPAND | wx.ALL,
+                        border=10)
+
+    self.btn_OK = wx.Button(self, label="OK", id=wx.ID_OK)
+    self.btn_cancel = wx.Button(self, label="Cancel", id=wx.ID_CANCEL)
+
+    button_sizer = wx.FlexGridSizer(1, 5, 0, 10)
+    button_sizer.AddMany([(self.btn_OK),
+                          (self.btn_cancel)])
+
+    button_sizer.AddGrowableCol(2)
+    self.main_sizer.Add(button_sizer,
+                        flag=wx.EXPAND | wx.ALL,
+                        border=10)
+    self.SetSizer(self.main_sizer)
 
 class TagDialog(BaseDialog):
   def __init__(self, parent,
