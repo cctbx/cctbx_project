@@ -39,8 +39,11 @@ def run (args, prologue=None, epilogue=None, out=sys.stdout) :
   if (not os.path.isdir(base_path)) :
     raise OSError("%s does not exist." % base_path)
   base_path = os.path.abspath(base_path)
-  ld_library_paths = [ os.path.join(base_path, "lib"),
-                       os.path.join(base_path, "lib64") ]
+  ld_library_paths = [ os.path.join(base_path, "lib"), ]
+  if (sys.platform.startswith('linux')):
+    lib64_path = os.path.join(base_path, "lib64")
+    if (os.path.isdir(lib64_path)):
+      ld_library_paths.append(lib64_path)
   dyld_library_paths = ld_library_paths + [
     os.path.join(base_path,"Python.framework","Versions","Current","lib"), ]
   check_libs = ld_library_paths
