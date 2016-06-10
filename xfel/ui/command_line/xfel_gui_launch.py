@@ -22,10 +22,10 @@ class MainApp(wx.App):
     self.frame.SetMinSize(self.frame.GetEffectiveMinSize())
 
     # Start with login dialog before opening main window
-    self.login = SettingsDialog(self.frame)
+    self.login = SettingsDialog(self.frame, self.frame.params)
     self.login.Center()
     if (self.login.ShowModal() == wx.ID_OK):
-      self.frame.connect_to_db(self.login.credentials)
+      self.frame.connect_to_db()
       self.exp_tag = '| {}'.format(self.login.db_cred.ctr.GetValue())
       self.exp = '| {}'.format(self.login.experiment.ctr.GetValue())
       self.frame.SetTitle('CCTBX.XFEL {} {}'.format(self.exp, self.exp_tag))

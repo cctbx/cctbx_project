@@ -78,10 +78,9 @@ class SettingsDialog(BaseDialog):
   separate dialog), populates experiment name / tag, separate dialog for
   multiprocessing and other settings; starts sentinels on OK '''
 
-  def __init__(self, parent,
+  def __init__(self, parent, params,
                label_style='bold',
                content_style='normal',
-               credentials=None,
                *args, **kwargs):
 
 
@@ -91,6 +90,8 @@ class SettingsDialog(BaseDialog):
                         size=(600, 200),
                         style=wx.NO_BORDER,
                         *args, **kwargs)
+
+    self.params = params
 
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -102,7 +103,7 @@ class SettingsDialog(BaseDialog):
                                        big_button=True,
                                        big_button_label='DB Credentials...',
                                        big_button_size=(130, -1),
-                                       value='')
+                                       value=self.params.experiment_tag)
     self.main_sizer.Add(self.db_cred,
                         flag=wx.EXPAND | wx.ALL,
                         border=10)
@@ -113,7 +114,7 @@ class SettingsDialog(BaseDialog):
                                           label_style='bold',
                                           label_size=(150, -1),
                                           big_button_size=(130, -1),
-                                          value='')
+                                          value=self.params.experiment)
     self.main_sizer.Add(self.experiment,
                         flag=wx.EXPAND | wx.ALL,
                         border=10)
@@ -151,28 +152,25 @@ class SettingsDialog(BaseDialog):
     self.SetSizer(self.main_sizer)
 
     self.Bind(wx.EVT_BUTTON, self.onDBCredentialsButton, id=self.db_cred.btn_big.GetId())
-    self.Bind(wx.EVT_CLOSE, self.onClose)
-
-    if credentials is None:
-      from xfel.ui.db import db_credentials
-      credentials = db_credentials()
-    self.credentials = credentials
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=self.btn_OK.GetId())
 
   def onDBCredentialsButton(self, e):
-    creds = DBCredentialsDialog(self)
+    creds = DBCredentialsDialog(self, self.params)
     creds.Center()
     if (creds.ShowModal() == wx.ID_OK):
-      self.credentials.host     = creds.db_host.ctr.GetValue()
-      self.credentials.username = creds.db_user.ctr.GetValue()
-      self.credentials.password = creds.db_password.ctr.GetValue()
+      self.params.db.host     = creds.db_host.ctr.GetValue()
+      self.params.db.user     = creds.db_user.ctr.GetValue()
+      self.params.db.password = creds.db_password.ctr.GetValue()
 
-  def onClose(self, e):
-    self.credentials.db = self.experiment.ctr.GetValue()
+  def onOK(self, e):
+    self.params.experiment_tag = self.db_cred.ctr.GetValue()
+    self.params.experiment = self.params.db.name = self.experiment.ctr.GetValue()
+    e.Skip()
 
 class DBCredentialsDialog(BaseDialog):
   ''' DB credentials entry '''
 
-  def __init__(self, parent,
+  def __init__(self, parent, params,
                label_style='bold',
                content_style='normal',
                *args, **kwargs):
@@ -185,6 +183,8 @@ class DBCredentialsDialog(BaseDialog):
                         style=wx.NO_BORDER,
                         *args, **kwargs)
 
+    self.params = params
+
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
 
     # Host name
@@ -193,7 +193,7 @@ class DBCredentialsDialog(BaseDialog):
                                        label_style='bold',
                                        label_size=(150, -1),
                                        big_button_size=(130, -1),
-                                       value='psdb-user.slac.stanford.edu')
+                                       value=params.db.host)
     self.main_sizer.Add(self.db_host,
                         flag=wx.EXPAND | wx.ALL,
                         border=10)
@@ -204,7 +204,7 @@ class DBCredentialsDialog(BaseDialog):
                                        label_style='bold',
                                        label_size=(150, -1),
                                        big_button_size=(130, -1),
-                                       value='')
+                                       value=params.db.user)
     self.main_sizer.Add(self.db_user,
                         flag=wx.EXPAND | wx.ALL,
                         border=10)
@@ -216,7 +216,7 @@ class DBCredentialsDialog(BaseDialog):
                                            label_size=(150, -1),
                                            text_style=wx.TE_PASSWORD,
                                            big_button_size=(130, -1),
-                                           value='')
+                                           value=params.db.password)
     self.main_sizer.Add(self.db_password,
                         flag=wx.EXPAND | wx.ALL,
                         border=10)

@@ -15,6 +15,7 @@ from wx.lib.scrolledpanel import ScrolledPanel
 
 import xfel.ui.components.xfel_gui_controls as gctr
 import xfel.ui.components.xfel_gui_dialogs as dlg
+from xfel.ui import load_cached_settings, save_cached_settings
 
 icons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/')
 
@@ -119,15 +120,14 @@ class MainWindow(wx.Frame):
     # Draw the main window sizer
     self.SetSizer(main_box)
 
-    self.credentials = None
+    self.params = load_cached_settings()
     self.db = None
 
-  def connect_to_db(self, credentials):
+  def connect_to_db(self):
     from xfel.ui.db import get_db_connection
     from xfel.ui.db.xfel_db import xfel_db_application
-    self.credentials = credentials
     try:
-      conn = get_db_connection(credentials)
+      conn = get_db_connection(self.params)
     except Exception, e:
       print "Couldn't connect to database"
       self.Close()
@@ -173,6 +173,8 @@ class MainWindow(wx.Frame):
     pass
 
   def onQuit(self, e):
+    self.stop_sentinels()
+    save_cached_settings(self.params)
     self.Destroy()
 
 
