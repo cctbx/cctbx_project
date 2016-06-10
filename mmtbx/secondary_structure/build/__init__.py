@@ -68,6 +68,9 @@ model_idealization
     .help = Enable secondary structure idealization
   file_name_before_regularization = None
     .type = path
+  skip_empty_ss_elements = True
+    .type = bool
+    .help = skip SS element if there is no atoms in the structure
   restrain_torsion_angles = False
     .type = bool
     .help = Restrain torsion angles
@@ -462,20 +465,30 @@ def substitute_ss(real_h,
   error_flg = False
 
   # Checking for SS selections
-  for h in ann.helices:
+  h_ideces_to_delete = []
+  sh_indeces_to_delete = []
+  for i, h in enumerate(ann.helices):
     selstring = h.as_atom_selections()
     isel = selection_cache.iselection(selstring[0])
     if len(isel) == 0:
       error_flg = True
       error_msg += "  %s\n" % h
-  for sh in ann.sheets:
+      h_ideces_to_delete.append(i)
+  for i, sh in enumerate(ann.sheets):
     for st in sh.strands:
       selstring = st.as_atom_selections()
       isel = selection_cache.iselection(selstring)
       if len(isel) == 0:
         error_flg = True
         error_msg += "  %s\n" % sh.as_pdb_str(strand_id=st.strand_id)
-  if error_flg:
+        sh_indeces_to_delete.append(i)
+  if processed_params.skip_empty_ss_elements and error_flg:
+    print error_msg
+    for i in reversed(h_ideces_to_delete):
+      del ann.helices[i]
+    for i in reversed(sh_indeces_to_delete):
+      del ann.sheets[i]
+  elif error_flg:
     raise Sorry(error_msg)
 
   # Actually idelizing SS elements

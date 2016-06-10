@@ -20,6 +20,9 @@ file_name = None
   .multiple = True
   .short_caption = Model file
   .style = file_type:pdb bold input_file
+trim_alternative_conformations = True
+  .type = bool
+  .help = Leave only atoms with empty altloc
 include scope mmtbx.secondary_structure.build.model_idealization_master_phil_str
 include scope mmtbx.secondary_structure.sec_str_master_phil_str
 include scope mmtbx.building.loop_idealization.loop_idealization_master_phil_str
@@ -87,7 +90,15 @@ def run(args):
       buffer_layer=3)
     atoms.set_xyz(new_xyz=box.sites_cart)
     cs = box.crystal_symmetry()
-  pdb_h = pdb_input.construct_hierarchy()
+  pdb_h_raw = pdb_input.construct_hierarchy()
+  if work_params.trim_alternative_conformations:
+    asc = pdb_h_raw.atom_selection_cache()
+    sel = asc.selection("altloc ' '")
+    pdb_h = pdb_h_raw.select(sel)
+    print >> log, "Atoms in original/working model: %d/%d" % (
+        pdb_h_raw.atoms().size(), pdb_h.atoms().size())
+  else:
+    pdb_h = pdb_h_raw
   # couple checks if combined pdb_h is ok
   o_c = pdb_h.overall_counts()
   o_c.raise_duplicate_atom_labels_if_necessary()
