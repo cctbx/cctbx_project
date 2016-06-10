@@ -263,9 +263,12 @@ class block_base(DictMixin):
   def get_loop_or_row(self, loop_name, default=None):
     loop_ = self.get_loop(loop_name, None)
     if loop_ is None:
-      found_keys = {}
+      ln = loop_name
+      if ln[-1] != '.':
+        ln += '.'
+        found_keys = {}
       for key, value in self.iteritems():
-        if key.startswith(loop_name):
+        if key.startswith(ln):
           found_keys[key] = flex.std_string([value])
       # constructing the loop
       if len(found_keys) > 0:

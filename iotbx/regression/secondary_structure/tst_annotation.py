@@ -357,9 +357,98 @@ SHEET    3 AB1 3 PHE B 163  ILE B 165 -1  N  THR B 164   O  SER B 173"""
   # print ann.as_pdb_str()
   assert not show_diff(pdb_str, ann.as_pdb_str())
 
+def tst_from_cif_block_2():
+  cif_str = """\
+data_1UCS
+#
+loop_
+_struct_conf.conf_type_id
+_struct_conf.id
+_struct_conf.pdbx_PDB_helix_id
+_struct_conf.beg_label_comp_id
+_struct_conf.beg_label_asym_id
+_struct_conf.beg_label_seq_id
+_struct_conf.pdbx_beg_PDB_ins_code
+_struct_conf.end_label_comp_id
+_struct_conf.end_label_asym_id
+_struct_conf.end_label_seq_id
+_struct_conf.pdbx_end_PDB_ins_code
+_struct_conf.beg_auth_comp_id
+_struct_conf.beg_auth_asym_id
+_struct_conf.beg_auth_seq_id
+_struct_conf.end_auth_comp_id
+_struct_conf.end_auth_asym_id
+_struct_conf.end_auth_seq_id
+_struct_conf.pdbx_PDB_helix_class
+_struct_conf.details
+_struct_conf.pdbx_PDB_helix_length
+HELX_P HELX_P1 1 THR A 18 ? ILE A 20 ? THR A 18 ILE A 20 5 ? 3
+HELX_P HELX_P2 2 PRO A 33 ? GLU A 35 ? PRO A 33 GLU A 35 5 ? 3
+HELX_P HELX_P3 3 GLU A 36 ? VAL A 41 ? GLU A 36 VAL A 41 1 ? 6
+HELX_P HELX_P4 4 MET A 56 ? VAL A 60 ? MET A 56 VAL A 60 5 ? 5
+#
+_struct_sheet.id               A
+_struct_sheet.type             ?
+_struct_sheet.number_strands   2
+_struct_sheet.details          ?
+#
+_struct_sheet_order.sheet_id     A
+_struct_sheet_order.range_id_1   1
+_struct_sheet_order.range_id_2   2
+_struct_sheet_order.offset       ?
+_struct_sheet_order.sense        anti-parallel
+#
+loop_
+_struct_sheet_range.sheet_id
+_struct_sheet_range.id
+_struct_sheet_range.beg_label_comp_id
+_struct_sheet_range.beg_label_asym_id
+_struct_sheet_range.beg_label_seq_id
+_struct_sheet_range.pdbx_beg_PDB_ins_code
+_struct_sheet_range.end_label_comp_id
+_struct_sheet_range.end_label_asym_id
+_struct_sheet_range.end_label_seq_id
+_struct_sheet_range.pdbx_end_PDB_ins_code
+_struct_sheet_range.symmetry
+_struct_sheet_range.beg_auth_comp_id
+_struct_sheet_range.beg_auth_asym_id
+_struct_sheet_range.beg_auth_seq_id
+_struct_sheet_range.end_auth_comp_id
+_struct_sheet_range.end_auth_asym_id
+_struct_sheet_range.end_auth_seq_id
+A 1 SER A 4  ? ALA A 7  ? ? SER A 4  ALA A 7
+A 2 MET A 22 ? GLU A 25 ? ? MET A 22 GLU A 25
+#
+_pdbx_struct_sheet_hbond.sheet_id                A
+_pdbx_struct_sheet_hbond.range_id_1              1
+_pdbx_struct_sheet_hbond.range_id_2              2
+_pdbx_struct_sheet_hbond.range_1_label_atom_id   N
+_pdbx_struct_sheet_hbond.range_1_label_comp_id   SER
+_pdbx_struct_sheet_hbond.range_1_label_asym_id   A
+_pdbx_struct_sheet_hbond.range_1_label_seq_id    4
+_pdbx_struct_sheet_hbond.range_1_PDB_ins_code    ?
+_pdbx_struct_sheet_hbond.range_1_auth_atom_id    N
+_pdbx_struct_sheet_hbond.range_1_auth_comp_id    SER
+_pdbx_struct_sheet_hbond.range_1_auth_asym_id    A
+_pdbx_struct_sheet_hbond.range_1_auth_seq_id     4
+_pdbx_struct_sheet_hbond.range_2_label_atom_id   O
+_pdbx_struct_sheet_hbond.range_2_label_comp_id   GLU
+_pdbx_struct_sheet_hbond.range_2_label_asym_id   A
+_pdbx_struct_sheet_hbond.range_2_label_seq_id    25
+_pdbx_struct_sheet_hbond.range_2_PDB_ins_code    ?
+_pdbx_struct_sheet_hbond.range_2_auth_atom_id    O
+_pdbx_struct_sheet_hbond.range_2_auth_comp_id    GLU
+_pdbx_struct_sheet_hbond.range_2_auth_asym_id    A
+_pdbx_struct_sheet_hbond.range_2_auth_seq_id     25
+#   """
+  cif_model = iotbx.cif.reader(input_string=cif_str).model()
+  cif_block = cif_model.values()[0]
+  ann = annotation.from_cif_block(cif_block)
+
 if (__name__ == "__main__"):
   t0 = time.time()
   test_helix_interface()
   test_sheet_interface()
   tst_from_cif_block()
+  tst_from_cif_block_2()
   print "OK time =%8.3f"%(time.time() - t0)

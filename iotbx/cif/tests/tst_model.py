@@ -523,7 +523,16 @@ data_a
   _test_row.id 1
   _test_row.data2 2
   _test_row.data3 3
-  _test_row.data4 4
+  _test_row.data4 44
+#
+loop_
+_test_row_range.sheet_id
+_test_row_range.id
+_test_row_range.beg_label_comp_id
+_test_row_range.beg_label_asym_id
+A 1 SER A
+A 2 MET A
+#
 """).model()
   #
   cif_block = cm.values()[0]
@@ -533,12 +542,12 @@ data_a
   assert list(loop_or_row['_test_row.id']) == ['1']
   assert list(loop_or_row['_test_row.data2']) == ['2']
   assert list(loop_or_row['_test_row.data3']) == ['3']
-  assert list(loop_or_row['_test_row.data4']) == ['4']
+  assert list(loop_or_row['_test_row.data4']) == ['44']
   for r in loop_or_row.iterrows():
     assert list(r['_test_row.id']) == ['1']
     assert list(r['_test_row.data2']) == ['2']
     assert list(r['_test_row.data3']) == ['3']
-    assert list(r['_test_row.data4']) == ['4']
+    assert list(r['_test_row.data4']) == ['4','4']
 
 if __name__ == '__main__':
   exercise_cif_model()

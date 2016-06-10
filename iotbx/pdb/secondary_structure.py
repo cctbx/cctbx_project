@@ -528,7 +528,7 @@ class annotation(structure_base):
     "initialize annotation from cif HELIX/SHEET records"
     helices = []
     serial = 1
-    helix_loop = cif_block.get_loop("_struct_conf")
+    helix_loop = cif_block.get_loop_or_row("_struct_conf")
     for helix_row in helix_loop.iterrows():
       try:
         h = pdb_helix.from_cif_row(helix_row, serial)
@@ -538,10 +538,10 @@ class annotation(structure_base):
       else:
         helices.append(h)
     sheets = []
-    struct_sheet_loop = cif_block.get_loop("_struct_sheet")
-    struct_sheet_order_loop = cif_block.get_loop("_struct_sheet_order")
-    struct_sheet_range_loop = cif_block.get_loop("_struct_sheet_range")
-    struct_sheet_hbond_loop = cif_block.get_loop("_pdbx_struct_sheet_hbond")
+    struct_sheet_loop = cif_block.get_loop_or_row("_struct_sheet")
+    struct_sheet_order_loop = cif_block.get_loop_or_row("_struct_sheet_order")
+    struct_sheet_range_loop = cif_block.get_loop_or_row("_struct_sheet_range")
+    struct_sheet_hbond_loop = cif_block.get_loop_or_row("_pdbx_struct_sheet_hbond")
     for sheet_row in struct_sheet_loop.iterrows():
       sheet_id = sheet_row['_struct_sheet.id']
       number_of_strands = int(sheet_row['_struct_sheet.number_strands'])
