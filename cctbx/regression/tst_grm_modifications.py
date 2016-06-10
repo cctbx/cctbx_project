@@ -132,6 +132,8 @@ def exercise_single_atom(mon_lib_srv, ener_lib):
   assert new_geometry.pair_proxies().nonbonded_proxies.simple.size() == 10
   assert new_geometry.pair_proxies().nonbonded_proxies.asu.size() ==2
   assert new_geometry.get_hbond_proxies_iseqs() == [(3, 9)]
+  simple, asu = new_geometry.get_covalent_bond_proxies()
+  assert simple.size() + asu.size() == 8, "%d" % (simple.size() + asu.size())
 
 def exercise_multiple_atoms(mon_lib_srv, ener_lib):
   geometry, xrs = make_initial_grm(mon_lib_srv, ener_lib, raw_records1)

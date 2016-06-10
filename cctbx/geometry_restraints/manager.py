@@ -727,6 +727,16 @@ class manager(object):
   def get_n_bond_proxies(self):
     return self._get_n_bond_proxies_origin(origin_id=0)
 
+  def get_covalent_bond_proxies(self):
+    pair_proxies = self.pair_proxies()
+    if pair_proxies is not None:
+      if pair_proxies.bond_proxies is not None:
+        return (pair_proxies.bond_proxies.simple.proxy_select(origin_id=0),
+        pair_proxies.bond_proxies.asu.proxy_select(origin_id=0))
+
+  def get_covalent_angle_proxies():
+    return self.angle_proxies.proxy_select(origin_id=0)
+
   def get_n_hbond_proxies(self):
     return self._get_n_bond_proxies_origin(origin_id=1)
 
