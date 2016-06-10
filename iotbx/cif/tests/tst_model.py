@@ -478,8 +478,11 @@ loop_
   loop_a = model.loop(header=("_a.1", "_a.2"), data=(1,2,3,4,5,6))
   cif_block.add_loop(loop_a)
   assert cif_block.get_loop("_a") is loop_a
+  assert cif_block.get_loop_or_row("_a") is loop_a
   assert cif_block.get_loop("_b") is None
+  assert cif_block.get_loop_or_row("_b") is None
   assert cif_block.get_loop("_b", default=loop_a) is loop_a
+  assert cif_block.get_loop_or_row("_b", default=loop_a) is loop_a
   loop_a = cif_block.get_loop_with_defaults(
     "_a", default_dict={"_a.2":".", "_a.3":"?", "_a.4":"."})
   assert list(cif_block["_a.1"]) == ['1', '3', '5']
@@ -495,7 +498,9 @@ loop_
   loop_B = model.loop(header=("_B.1", "_B.2", "_B.3"), data=(1,2,3,4,5,6))
   cif_block.add_loop(loop_B)
   assert cif_block.get_loop("_B") is loop_B
+  assert cif_block.get_loop_or_row("_B") is loop_B
   assert cif_block.get_loop("_b") is loop_B
+  assert cif_block.get_loop_or_row("_b") is loop_B
   #
   cif_block = model.block()
   cif_block['_a'] = """\
@@ -512,6 +517,28 @@ _a
 ;
 """)
 
+
+  cm = iotbx.cif.reader(input_string="""\
+data_a
+  _test_row.id 1
+  _test_row.data2 2
+  _test_row.data3 3
+  _test_row.data4 4
+""").model()
+  #
+  cif_block = cm.values()[0]
+  loop_or_row = cif_block.get_loop_or_row('_test_row')
+  assert loop_or_row.n_rows() == 1
+  assert loop_or_row.n_columns() == 4
+  assert list(loop_or_row['_test_row.id']) == ['1']
+  assert list(loop_or_row['_test_row.data2']) == ['2']
+  assert list(loop_or_row['_test_row.data3']) == ['3']
+  assert list(loop_or_row['_test_row.data4']) == ['4']
+  for r in loop_or_row.iterrows():
+    assert list(r['_test_row.id']) == ['1']
+    assert list(r['_test_row.data2']) == ['2']
+    assert list(r['_test_row.data3']) == ['3']
+    assert list(r['_test_row.data4']) == ['4']
 
 if __name__ == '__main__':
   exercise_cif_model()
