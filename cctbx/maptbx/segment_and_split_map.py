@@ -189,7 +189,8 @@ master_phil = iotbx.phil.parse("""
        .type = float
        .short_caption = Sharpen d_min ratio
        .help = Sharpening will be applied using d_min equal to \
-             d_min_ratio times resolution. If None, all used.
+             d_min_ratio times resolution. If None, box of reflections \
+             with the same grid as the map used.
 
      auto_sharpen = True
        .type = bool
@@ -908,7 +909,7 @@ def map_coeffs_as_fp_phi(map_coeffs):
   return amplitudes,phases
 
 def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
-      d_min_ratio=None,out=sys.stdout):
+      d_min_ratio=None,return_as_map_coeffs=False,out=sys.stdout):
     from mmtbx.command_line.map_to_structure_factors import run as map_to_sf
     if d_min and d_min_ratio is not None:
        args=['d_min=%s' %(d_min*d_min_ratio)]
@@ -923,7 +924,10 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
          ccp4_map=make_ccp4_map(map_data,crystal_symmetry.unit_cell()),
          return_as_miller_arrays=True,nohl=True,out=null_out())
 
-    return map_coeffs_as_fp_phi(map_coeffs)
+    if return_as_map_coeffs:
+      return map_coeffs
+    else:
+      return map_coeffs_as_fp_phi(map_coeffs)
 
 
 def apply_sharpening(n_real=None,b_sharpen=None,crystal_symmetry=None,
