@@ -210,7 +210,7 @@ master_phil = iotbx.phil.parse("""
        .help = High bound for b_iso search. Only applies if auto_sharpen is sed
 
      search_b_n = None
-       .type = float
+       .type = int
        .short_caption = Number of b_iso values to search
        .help = Number of b_iso values to search
 
@@ -936,7 +936,7 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
               "Msg: %s" %(str(e)))
         break  # it was ok
 
-      if not map_coeffs: 
+      if not map_coeffs:
             raise Sorry("Failed to run map_to_structures...")
 
 
