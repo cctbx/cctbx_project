@@ -234,6 +234,7 @@ class DBCredentialsDialog(BaseDialog):
                         border=10)
     self.SetSizer(self.main_sizer)
 
+
 class TagDialog(BaseDialog):
   def __init__(self, parent,
                label_style='bold',

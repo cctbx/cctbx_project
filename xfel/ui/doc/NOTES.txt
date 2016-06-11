@@ -1,11 +1,8 @@
-XFEL UI version 0.0.001 - Initial connection to DB
+XFEL UI version 0.0.002 - Initial connection to DB, cont'd
 
-1. Run tab connected to DB
-    a. Thread starts run sentinel
-    b. Runs and tags from DB passed on to GUI elements in Run Tab
+1. Window with tags opens; tags not updated properly
+2. All tags not managed properly
+3. The whole process is clunky at the moment
 
-Known issues:
-
-1. Most connection are so far dummy connections
-2. Errors returned by the Manage Tabs dialog; not sure it's working right
-just yet
+4. Database is connected!
+5. Need to find a good way to make the DB connection

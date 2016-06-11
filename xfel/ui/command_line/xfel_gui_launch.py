@@ -16,23 +16,35 @@ from xfel.ui.components.xfel_gui_dialogs import SettingsDialog
 
 class MainApp(wx.App):
   ''' App for the main GUI window  '''
+
   def OnInit(self):
+
     self.frame = MainWindow(None, -1, title='CCTBX.XFEL')
-    self.frame.Center()
+
+    # select primary display and center on that
+    display = wx.Display(0)
+    x, y, w, h = display.GetGeometry()
+    fw, fh = self.frame.GetSize()
+    frame_position = (x + w / 2 - fw / 2, y + h / 2 - fh / 2)
+    print frame_position
     self.frame.SetMinSize(self.frame.GetEffectiveMinSize())
+    #self.frame.SetPosition(frame_position)
+    self.frame.Center()
 
     # Start with login dialog before opening main window
     self.login = SettingsDialog(self.frame, self.frame.params)
     self.login.Center()
     if (self.login.ShowModal() == wx.ID_OK):
-      self.frame.connect_to_db()
-      self.exp_tag = '| {}'.format(self.login.db_cred.ctr.GetValue())
-      self.exp = '| {}'.format(self.login.experiment.ctr.GetValue())
-      self.frame.SetTitle('CCTBX.XFEL {} {}'.format(self.exp, self.exp_tag))
-      self.frame.Show(True)
-      self.SetTopWindow(self.frame)
-      self.frame.start_sentinels()
-      return True
+      if self.frame.connect_to_db():
+        self.exp_tag = '| {}'.format(self.login.db_cred.ctr.GetValue())
+        self.exp = '| {}'.format(self.login.experiment.ctr.GetValue())
+        self.frame.SetTitle('CCTBX.XFEL {} {}'.format(self.exp, self.exp_tag))
+        self.frame.Show(True)
+        self.SetTopWindow(self.frame)
+        self.frame.start_sentinels()
+        return True
+      else:
+        return False
     else:
       return False
 

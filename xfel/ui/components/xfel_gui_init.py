@@ -65,26 +65,28 @@ class MainWindow(wx.Frame):
 
     # Toolbar
     self.toolbar = self.CreateToolBar(wx.TB_TEXT)
-    self.tb_btn_quit = self.toolbar.AddLabelTool(wx.ID_EXIT, label='Quit',
-                                                 bitmap=wx.Bitmap('{}/32x32/exit.png'.format(icons)),
-                                                 shortHelp='Quit',
-                                                 longHelp='Exit iXFEL')
-
+    self.tb_btn_quit = self.toolbar.AddLabelTool(wx.ID_EXIT,
+                       label='Quit',
+                       bitmap=wx.Bitmap('{}/32x32/exit.png'.format(icons)),
+                       shortHelp='Quit',
+                       longHelp='Exit iXFEL')
     self.toolbar.AddSeparator()
-    self.tb_btn_run = self.toolbar.AddLabelTool(wx.ID_ANY, label='Run Jobs',
-                            bitmap=wx.Bitmap('{}/32x32/run.png'.format(icons)),
-                                                      shortHelp='Run All Jobs',
-                                          longHelp='Activate all pending jobs')
-    self.tb_btn_pause = self.toolbar.AddLabelTool(wx.ID_ANY, label='Pause Jobs',
-                             bitmap=wx.Bitmap('{}/32x32/run.png'.format(icons)),
-                                                     shortHelp='Pause All Jobs',
-                                              longHelp='Pause all pending jobs')
+    self.tb_btn_run = self.toolbar.AddLabelTool(wx.ID_ANY,
+                      label='Run Jobs',
+                      bitmap=wx.Bitmap('{}/32x32/play.png'.format(icons)),
+                      shortHelp='Run All Jobs',
+                      longHelp='Activate all pending jobs')
+    self.tb_btn_pause = self.toolbar.AddLabelTool(wx.ID_ANY,
+                        label='Pause Jobs',
+                        bitmap=wx.Bitmap('{}/32x32/pause.png'.format(icons)),
+                        shortHelp='Pause All Jobs',
+                        longHelp='Pause all pending jobs')
     self.toolbar.AddSeparator()
     self.tb_btn_options = self.toolbar.AddLabelTool(wx.ID_ANY,
-                                                    label='Settings',
-                          bitmap=wx.Bitmap('{}/32x32/config.png'.format(icons)),
-                                                           shortHelp='Settings',
-                              longHelp='Database, user and experiment settings')
+                        label='Settings',
+                        bitmap=wx.Bitmap('{}/32x32/settings.png'.format(icons)),
+                        shortHelp='Settings',
+                        longHelp='Database, user and experiment settings')
 
     self.toolbar.Realize()
 
@@ -128,17 +130,21 @@ class MainWindow(wx.Frame):
     from xfel.ui.db.xfel_db import xfel_db_application
     try:
       conn = get_db_connection(self.params)
+      print 'Connecting to database...'
     except Exception, e:
       print "Couldn't connect to database"
-      self.Close()
-      return
+      return False
     self.db = xfel_db_application(conn, self.params)
 
     if not self.db.verify_tables():
       self.db.create_tables()
+      print 'Creating experiment tables...'
       if not self.db.verify_tables():
         from libtbx.utils import Sorry
         raise Sorry("Couldn't create experiment tables")
+        return False
+
+    return True
 
   def start_sentinels(self):
     self.start_run_sentinel()
@@ -193,7 +199,7 @@ class RunWindow(wx.Panel):
 
     self.main_panel = wx.Panel(self)
     self.main_nbook = wx.Notebook(self.main_panel, style=0)
-    self.runs_tab = RunTab(self.main_nbook)
+    self.runs_tab = RunTab(self.main_nbook, main=self.parent)
     self.trials_tab = TrialsTab(self.main_nbook)
     self.jobs_tab = JobsTab(self.main_nbook)
     self.status_tab = StatusTab(self.main_nbook)
@@ -226,8 +232,9 @@ class BaseTab(wx.Panel):
 
 
 class RunTab(BaseTab):
-  def __init__(self, parent):
+  def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
+    self.main = main
     self.last_run = 0
     self.runs = []
     self.all_tags = []
@@ -276,11 +283,20 @@ class RunTab(BaseTab):
       #btn.tags = [j for j in self.all_tags if j.tag in tags_in_button]
       btn.update_label()
 
-  # TODO: Somehow make sure that the whole thing isn't redrawn all the time
   def refresh_rows(self):
-    self.run_sizer.DeleteWindows()
+
+    # Check for new runs and create if necessary
+    tag_buttons = [i.run.run_id for i in self.all_tag_buttons]
+    print tag_buttons
     for run in self.runs:
-      self.add_row(run)
+      if run.run_id not in tag_buttons:
+        self.add_row(run)
+
+    # Update labels on all new tag buttons
+    for button in self.all_tag_buttons:
+      button.all_tags = self.main.db.get_all_tags()
+      button.update_label()
+
     self.run_panel.SetupScrolling()
     self.run_panel.Refresh()
 
@@ -289,9 +305,8 @@ class RunTab(BaseTab):
     row_sizer = wx.FlexGridSizer(1, 2, 0, 10)
     run_no = wx.StaticText(self.run_panel, label=str(run.run),
                            size=(60, -1))
-    tag_button = gctr.TagButton(self.run_panel)
-    tag_button.tags = [t for t in run.tags]
-    tag_button.update_label()
+    tag_button = gctr.TagButton(self.run_panel, run=run,
+                                all_tags = self.main.db.get_all_tags())
     self.Bind(wx.EVT_BUTTON, self.onTrialButton, id=tag_button.GetId())
     self.all_tag_buttons.append(tag_button)
     row_sizer.Add(run_no, flag=wx.EXPAND | wx.ALIGN_CENTRE)
@@ -300,7 +315,7 @@ class RunTab(BaseTab):
     self.run_sizer.Add(row_sizer, flag=wx.ALL | wx.EXPAND, border=0)
 
   def onTrialButton(self, e):
-    e.GetEventObject().change_tags(self.all_tags)
+    e.GetEventObject().change_tags()
 
 
 class TrialsTab(BaseTab):

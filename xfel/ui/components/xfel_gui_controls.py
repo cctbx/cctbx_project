@@ -96,9 +96,15 @@ class RunBlockButton(GradButton):
     pass
 
 class TagButton(GradButton):
-  def __init__(self, parent, size=wx.DefaultSize):
-    self.tags = []
+  def __init__(self, parent, run, all_tags, size=wx.DefaultSize):
+    self.all_tags = all_tags
+    self.run = run
+    self.tags = [t for t in self.run.tags]
+    self.parent = parent
+
     GradButton.__init__(self, parent=parent, size=size)
+
+    self.update_label()
 
   def update_label(self):
     if len(self.tags) == 1:
@@ -115,20 +121,24 @@ class TagButton(GradButton):
     ''' Calls dialog with tag options for all runs; user will select tags
         for this specific run
     '''
-    all_tags = self.parent.parent.parent.db.get_all_tags()
-    choices = [i for i in all_tags]
+    choices = [i.name for i in self.all_tags]
     tag_dlg = wx.MultiChoiceDialog(self,
                                    message='Available sample tags',
                                    caption='Sample Tags',
                                    choices=choices)
     # Get indices of selected items (if any) and set them to checked
-    indices = [all_tags.index(i) for i in all_tags if i in self.tags]
+    all_tag_names = [i.name for i in self.all_tags]
+    local_tag_names = [i.name for i in self.tags]
+    indices = [all_tag_names.index(i) for i in all_tag_names if i in local_tag_names]
     tag_dlg.SetSelections(indices)
     tag_dlg.Fit()
 
     if (tag_dlg.ShowModal() == wx.ID_OK):
       tag_indices = tag_dlg.GetSelections()
-      self.tags = [i for i in all_tags if all_tags.index(i) in tag_indices]
+
+      # TODO: need to update actual run here, as well
+      self.tags = [i for i in self.all_tags if self.all_tags.index(i) in
+                   tag_indices]
       self.update_label()
 
 
@@ -167,7 +177,7 @@ class TextButtonCtrl(CtrlBase):
   def __init__(self, parent,
                label='', label_size=(100, -1),
                label_style='normal',
-               text_style = None,
+               text_style=wx.TE_LEFT,
                big_button=False,
                big_button_label='Browse...',
                big_button_size=wx.DefaultSize,
@@ -180,10 +190,7 @@ class TextButtonCtrl(CtrlBase):
     self.txt.SetFont(self.font)
     output_box.Add(self.txt)
 
-    if text_style is None:
-      self.ctr = wx.TextCtrl(self)
-    else:
-      self.ctr = wx.TextCtrl(self, style=text_style)
+    self.ctr = wx.TextCtrl(self, style=text_style)
     self.ctr.SetValue(value)
     output_box.Add(self.ctr, flag=wx.EXPAND)
 
