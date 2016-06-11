@@ -911,14 +911,38 @@ def map_coeffs_as_fp_phi(map_coeffs):
 def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
       d_min_ratio=None,return_as_map_coeffs=False,out=sys.stdout):
     from mmtbx.command_line.map_to_structure_factors import run as map_to_sf
+    from libtbx.utils import null_out
     if d_min and d_min_ratio is not None:
-       args=['d_min=%s' %(d_min*d_min_ratio)]
-       print >>out,"Using resolution of %7.2f for inversion" %(
-         d_min*d_min_ratio)
+      d_min_ratio_use=d_min_ratio
+      map_coeffs=None
+      n_try=0
+      max_try=5
+      while d_min_ratio_use <= 1 and n_try<=max_try:
+        n_try+=1
+        args=['d_min=%s' %(d_min*d_min_ratio_use)]
+        print >>out,"Trying resolution of %7.2f for inversion" %(
+         d_min*d_min_ratio_use)
+        try:
+          map_coeffs=map_to_sf(args=args,
+            space_group_number=crystal_symmetry.space_group().type().number(),
+            ccp4_map=make_ccp4_map(map_data,crystal_symmetry.unit_cell()),
+            return_as_miller_arrays=True,nohl=True,out=null_out())
+        except Exception, e:
+          if str(e).find("Too high resolution")> -1:
+            d_min_ratio_use=d_min_ratio_use**0.5 # move towards 1
+            continue
+          else:
+            raise Sorry("Failed to run map_to_structure_factors.\n "+
+              "Msg: %s" %(str(e)))
+        break  # it was ok
+
+      if not map_coeffs: 
+            raise Sorry("Failed to run map_to_structures...")
+
+
     else:
        args=['d_min=None','box=True']
        print >>out,"Using all grid points for inversion"
-    from libtbx.utils import null_out
     map_coeffs=map_to_sf(args=args,
          space_group_number=crystal_symmetry.space_group().type().number(),
          ccp4_map=make_ccp4_map(map_data,crystal_symmetry.unit_cell()),
