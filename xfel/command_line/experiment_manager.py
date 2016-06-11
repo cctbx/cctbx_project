@@ -101,7 +101,7 @@ class initialize(object):
       return False
 
   def drop_tables(self):
-    if raw_input("Are you sure? Type drop: ").lower() != "drop":
+    if self.interactive and raw_input("Are you sure? Type drop: ").lower() != "drop":
       return
 
     print "Dropping tables..."
@@ -116,9 +116,10 @@ class initialize(object):
         cursor = self.dbobj.cursor()
         cursor.execute(cmd);
 
-  def create_tables(self):
+  def create_tables(self, sql_path = None):
     print "Creating tables..."
-    sql_path = os.path.join(libtbx.env.find_in_repositories("xfel/xpp"), "experiment_schema.sql")
+    if sql_path is None:
+      sql_path = os.path.join(libtbx.env.find_in_repositories("xfel/xpp"), "experiment_schema.sql")
     assert os.path.exists(sql_path)
 
     reading_create = False

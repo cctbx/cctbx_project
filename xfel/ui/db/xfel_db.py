@@ -1,5 +1,8 @@
 from __future__ import division
 
+import os
+import libtbx.load_env
+
 from xfel.ui.db.trial import Trial
 from xfel.ui.db.run import Run
 from xfel.ui.db.rungroup import Rungroup
@@ -7,10 +10,31 @@ from xfel.ui.db.tag import Tag
 from xfel.ui.db.job import Job
 from xfel.ui.db.stats import Stats
 
+from xfel.command_line.experiment_manager import initialize as initialize_base
+class initialize(initialize_base):
+  expected_tables = ["run", "job", "rungroup", "trial", "run_tag", "event",
+                     "imageset", "imageset_frame", "beam", "detector", "experiment",
+                     "crystal", "cell", "cell_bin", "bin"]
+
+  def create_tables(self, sql_path = None):
+    if sql_path is None:
+      sql_path = os.path.join(libtbx.env.find_in_repositories("xfel/ui/db"), "schema.sql")
+
+    return initialize_base.create_tables(self, sql_path)
+
 class xfel_db_application(object):
-  def __init__(self, dbobj):
+  def __init__(self, dbobj, params):
+    self.params = params
     self.dbobj = dbobj
     self.cursor = dbobj.cursor()
+
+    self.init_tables = initialize(params, dbobj)
+
+  def verify_tables(self):
+    return self.init_tables.verify_tables()
+
+  def create_tables(self):
+    return self.init_tables.create_tables()
 
   def create_trial(self, **kwargs):
     return Trial(**kwargs)

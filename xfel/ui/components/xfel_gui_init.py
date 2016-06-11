@@ -132,7 +132,13 @@ class MainWindow(wx.Frame):
       print "Couldn't connect to database"
       self.Close()
       return
-    self.db = xfel_db_application(conn)
+    self.db = xfel_db_application(conn, self.params)
+
+    if not self.db.verify_tables():
+      self.db.create_tables()
+      if not self.db.verify_tables():
+        from libtbx.utils import Sorry
+        raise Sorry("Couldn't create experiment tables")
 
   def start_sentinels(self):
     self.start_run_sentinel()
