@@ -1002,6 +1002,10 @@ def get_params(args,out=sys.stdout):
    " ".join(['segment_and_split_map']+args))
   master_params.format(python_object=params).show(out=out)
 
+  if not params.crystal_info.resolution and (
+     params.crystal_info.b_iso is not None or params.crystal_info.auto_sharpen):
+    raise Sorry("Need resolution for segment_and_split_map with sharpening")
+
   if params.output_files.output_directory and  \
      not os.path.isdir(params.output_files.output_directory):
       os.mkdir(params.output_files.output_directory)
