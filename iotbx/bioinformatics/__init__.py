@@ -1948,6 +1948,7 @@ def chain_type_and_residues(text=None,chain_type=None):
   for score,chain_type in score_list:
     if score==best_score:
       ok_list.append(chain_type)
-  if len(ok_list)<1: return None,None
-  if len(ok_list)==1: return ok_list[0],residues
-  return None,None # no idea
+  if len(ok_list)<1: 
+    return None,None
+  else:
+    return ok_list[0],residues
