@@ -1734,11 +1734,11 @@ class find_helix(find_segment):
         helix_id=k,
         start_resname=start.resname,
         start_chain_id=chain_id,
-        start_resseq=start.resseq_as_int(),
+        start_resseq=start.resseq,
         start_icode=start.icode,
         end_resname=end.resname,
         end_chain_id=chain_id,
-        end_resseq=end.resseq_as_int(),
+        end_resseq=end.resseq,
         end_icode=end.icode,
         helix_class=secondary_structure.pdb_helix.helix_class_to_int(
            helix_type), # 1=alpha 3=pi  5=3_10
@@ -1796,12 +1796,12 @@ class find_helix(find_segment):
            prev_atom=cur_atom,
            prev_resname=cur_residue.resname,
            prev_chain_id=get_chain_id(segment.hierarchy),
-           prev_resseq=cur_residue.resseq_as_int(),
+           prev_resseq=cur_residue.resseq,
            prev_icode=cur_residue.icode,
            cur_atom=next_atom,
            cur_resname=next_residue.resname,
            cur_chain_id=get_chain_id(segment.hierarchy),
-           cur_resseq=next_residue.resseq_as_int(),
+           cur_resseq=next_residue.resseq,
            cur_icode=next_residue.icode,
            dist=dist,
            bad_one=bad_one,
@@ -1854,11 +1854,11 @@ class find_beta_strand(find_segment):
         strand_id=strand_id,
         start_resname=start.resname,
         start_chain_id=chain_id,
-        start_resseq=start.resseq_as_int(),
+        start_resseq=start.resseq,
         start_icode=start.icode,
         end_resname=end.resname,
         end_chain_id=chain_id,
-        end_resseq=end.resseq_as_int(),
+        end_resseq=end.resseq,
         end_icode=end.icode,
         sense=sense)
     return pdb_strand
@@ -2136,12 +2136,12 @@ class find_beta_strand(find_segment):
              prev_atom=local_prev_atom,
              prev_resname=local_prev_residue.resname,
              prev_chain_id=get_chain_id(previous_segment.hierarchy),
-             prev_resseq=local_prev_residue.resseq_as_int(),
+             prev_resseq=local_prev_residue.resseq,
              prev_icode=local_prev_residue.icode,
              cur_atom=local_cur_atom,
              cur_resname=local_cur_residue.resname,
              cur_chain_id=get_chain_id(segment.hierarchy),
-             cur_resseq=local_cur_residue.resseq_as_int(),
+             cur_resseq=local_cur_residue.resseq,
              cur_icode=local_cur_residue.icode,
              dist=dist,
              bad_one=bad_one,
@@ -2180,7 +2180,7 @@ class h_bond:  # holder for a pair of atoms
 
   def show_summary(self,show_non_existent=False,out=sys.stdout):
     if self.dist is not None:
-      print >>out," %4s%4s%4s%5d%s : %4s%4s%4s%5d%s :: %5.2f   %s" %(
+      print >>out," %4s%4s%4s%5s%s : %4s%4s%4s%5s%s :: %5.2f   %s" %(
              self.prev_atom,
              self.prev_resname,
              self.prev_chain_id,
@@ -2194,7 +2194,7 @@ class h_bond:  # holder for a pair of atoms
              self.dist,
              self.bad_one)
     elif self.bad_one is not None:
-      print >>out," %4s%4s%4s%5d%s : %4s%4s%4s%5d%s" %(
+      print >>out," %4s%4s%4s%5s%s : %4s%4s%4s%5s%s" %(
              self.prev_atom,
              self.prev_resname,
              self.prev_chain_id,

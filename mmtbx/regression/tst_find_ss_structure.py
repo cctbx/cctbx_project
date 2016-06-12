@@ -38,6 +38,19 @@ ATOM      9  CA BLEU A 140      33.072  14.565  23.972  0.50  5.41           C
 ATOM     10  CA  ASN A 141      30.271  17.061  23.474  1.00  5.65           C
 """
 
+hybrid_residues="""
+ATOM      1  CA  ASP AXYB2      34.633  18.762  20.254  1.00 22.59           C
+ATOM      2  CA  LYS AXYB3      36.047  17.704  23.610  1.00 19.79           C
+ATOM      3  CA  ILE AXYB4      35.551  19.482  26.886  1.00 19.33           C
+ATOM      4  CA AHIS AXYB5      38.649  21.223  28.218  0.50 19.79           C
+ATOM      5  CA BHIS AXYB6      38.583  21.270  28.209  0.50 20.43           C
+ATOM      6  CA  GLY A 138      38.261  15.285  27.690  1.00  6.80           C
+ATOM      7  CA  ALA A 139      34.607  14.241  27.428  1.00  4.76           C
+ATOM      8  CA ALEU A 140      33.091  14.490  23.937  0.50  5.08           C
+ATOM      9  CA BLEU A 140      33.072  14.565  23.972  0.50  5.41           C
+ATOM     10  CA  ASN A 141      30.271  17.061  23.474  1.00  5.65           C
+"""
+
 antiparallel_text="""
 ATOM      1  N   LEU A  95      19.823   2.447 -20.604  1.00  4.22           N
 ATOM      2  CA  LEU A  95      19.411   3.491 -19.655  1.00  4.09           C
@@ -1400,6 +1413,20 @@ def tst_11():
   expected=ioss.annotation.from_records(records=flex.split_lines("""
 SHEET    1   1 2 ASP A  -5  HIS A  -2  0
 SHEET    2   1 2 GLY A 138  ASN A 141 -1  N  ASN A 141   O  ASP A  -5
+"""))
+  print fss.get_annotation().as_pdb_str()
+  assert fss.get_annotation().is_same_as(expected)
+
+  print "\nHybrid-36 residue numbers..."
+  hierarchy=iotbx.pdb.input(source_info='text',
+       lines=flex.split_lines(hybrid_residues)
+         ).construct_hierarchy()
+  fss=find_secondary_structure(hierarchy=hierarchy,
+      combine_annotations=False,
+      out=null_out())
+  expected=ioss.annotation.from_records(records=flex.split_lines("""
+SHEET    1   1 2 ASP AXYB2  HIS AXYB5  0
+SHEET    2   1 2 GLY A 138  ASN A 141 -1  N  ASN A 141   O  ASP AXYB2
 """))
   print fss.get_annotation().as_pdb_str()
   assert fss.get_annotation().is_same_as(expected)
