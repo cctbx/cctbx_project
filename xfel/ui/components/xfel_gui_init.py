@@ -53,6 +53,7 @@ class RunSentinel(Thread):
       self.parent.run_window.runs_tab.all_tags = self.parent.db.get_all_tags()
       evt = RefreshRuns(tp_EVT_REFRESH, -1)
       wx.PostEvent(self.parent.run_window.runs_tab, evt)
+      wx.PostEvent(self.parent.run_window.trials_tab, evt)
       time.sleep(1)
 
 
@@ -62,6 +63,9 @@ class MainWindow(wx.Frame):
 
   def __init__(self, parent, id, title):
     wx.Frame.__init__(self, parent, id, title, size=(800, 500))
+
+    self.params = load_cached_settings()
+    self.db = None
 
     # Toolbar
     self.toolbar = self.CreateToolBar(wx.TB_TEXT)
@@ -121,9 +125,6 @@ class MainWindow(wx.Frame):
 
     # Draw the main window sizer
     self.SetSizer(main_box)
-
-    self.params = load_cached_settings()
-    self.db = None
 
   def connect_to_db(self):
     from xfel.ui.db import get_db_connection
@@ -200,7 +201,7 @@ class RunWindow(wx.Panel):
     self.main_panel = wx.Panel(self)
     self.main_nbook = wx.Notebook(self.main_panel, style=0)
     self.runs_tab = RunTab(self.main_nbook, main=self.parent)
-    self.trials_tab = TrialsTab(self.main_nbook)
+    self.trials_tab = TrialsTab(self.main_nbook, main=self.parent)
     self.jobs_tab = JobsTab(self.main_nbook)
     self.status_tab = StatusTab(self.main_nbook)
     self.merge_tab = MergeTab(self.main_nbook)
@@ -272,29 +273,26 @@ class RunTab(BaseTab):
 
   def onManageTags(self, e):
     ''' User can add / remove / edit sample tags '''
-    mtag_dlg = dlg.TagDialog(self, tags=self.all_tags)
+    mtag_dlg = dlg.TagDialog(self, tags=self.all_tags, db=self.main.db)
     mtag_dlg.Fit()
     mtag_dlg.ShowModal()
     mtag_dlg.Destroy()
 
     # Update tags on all tag buttons
     for btn in self.all_tag_buttons:
-      #tags_in_button = [i.name for i in btn.tags]
-      #btn.tags = [j for j in self.all_tags if j.tag in tags_in_button]
       btn.update_label()
 
   def refresh_rows(self):
 
     # Check for new runs and create if necessary
     tag_buttons = [i.run.run_id for i in self.all_tag_buttons]
-    print tag_buttons
     for run in self.runs:
       if run.run_id not in tag_buttons:
         self.add_row(run)
 
     # Update labels on all new tag buttons
     for button in self.all_tag_buttons:
-      button.all_tags = self.main.db.get_all_tags()
+      button.all_tags = self.all_tags
       button.update_label()
 
     self.run_panel.SetupScrolling()
@@ -306,7 +304,7 @@ class RunTab(BaseTab):
     run_no = wx.StaticText(self.run_panel, label=str(run.run),
                            size=(60, -1))
     tag_button = gctr.TagButton(self.run_panel, run=run,
-                                all_tags = self.main.db.get_all_tags())
+                                all_tags = self.all_tags)
     self.Bind(wx.EVT_BUTTON, self.onTrialButton, id=tag_button.GetId())
     self.all_tag_buttons.append(tag_button)
     row_sizer.Add(run_no, flag=wx.EXPAND | wx.ALIGN_CENTRE)
@@ -319,17 +317,16 @@ class RunTab(BaseTab):
 
 
 class TrialsTab(BaseTab):
-  def __init__(self, parent):
+  def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
 
     self.trial_number = 1
+    self.main = main
 
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
 
     self.trial_panel = ScrolledPanel(self, size=(300, 350))
     self.trial_sizer = wx.BoxSizer(wx.HORIZONTAL)
-
-    self.add_new_trial()
 
     self.btn_add_trial = wx.Button(self, label='New Trial',
                                    size=(120, -1))
@@ -341,23 +338,32 @@ class TrialsTab(BaseTab):
                         border=10)
 
     self.trial_panel.SetSizer(self.trial_sizer)
-    #self.new_trial_panel.SetSizer(self.new_trial_sizer)
     self.SetSizer(self.main_sizer)
 
+    # Bindings
     self.Bind(wx.EVT_BUTTON, self.onAddTrial, self.btn_add_trial)
+    self.Bind(EVT_REFRESH, self.onRefresh)
+
+  def onRefresh(self, e):
+    self.db = self.main.db
+    self.all_trials = self.db.get_all_trials()
+    self.all_runs = self.db.get_all_runs()
+    self.first_run = self.all_runs[0]
+    self.last_run = self.all_runs[-1]
 
   def onAddTrial(self, e):
-    all_children = self.trial_sizer.GetChildren()
-    trials = [i for i in all_children if isinstance(i.GetWindow(),
-                                                    TrialPanel)]
-    self.trial_number = len(trials) + 1
     self.add_new_trial()
     self.trial_panel.Layout()
     self.trial_panel.SetupScrolling()
 
   def add_new_trial(self):
+    self.trial_number = len(self.all_trials) + 1
+    self.db.create_trial(trial_id=self.trial_number)
     new_trial = TrialPanel(self.trial_panel,
+                           db = self.db,
+                           trial=self.db.get_trial(trial_id=self.trial_number),
                            box_label='Trial {}'.format(self.trial_number))
+    new_trial.tgl_active.SetValue(True)
     self.trial_sizer.Add(new_trial, flag=wx.EXPAND | wx.ALL, border=10)
 
 
@@ -378,12 +384,12 @@ class MergeTab(BaseTab):
 # ------------------------------- UI Elements -------------------------------- #
 
 class TrialPanel(wx.Panel):
-  def __init__(self, parent, box_label=None):
+  def __init__(self, parent, db, trial, box_label=None):
     wx.Panel.__init__(self, parent=parent, size=(200, 300))
 
-    # Run variables
-    self.first_run = 1
-    self.last_run = 0
+    self.db = db
+    self.trial = trial
+    self.first_run = self.db.get_all_runs()[0].run_id
 
     trial_box = wx.StaticBox(self, label=box_label)
     self.main_sizer = wx.StaticBoxSizer(trial_box, wx.VERTICAL)
@@ -395,31 +401,36 @@ class TrialPanel(wx.Panel):
     self.add_sizer = wx.BoxSizer(wx.VERTICAL)
     self.add_panel.SetSizer(self.add_sizer)
 
-    self.chk_active = wx.CheckBox(self, label='Active')
-    self.main_sizer.Add(self.chk_active, flag=wx.ALIGN_CENTER)
-
     self.add_new_block()
 
     # Add "New Block" button to a separate sizer (so it is always on bottom)
     self.btn_add_block = wx.Button(self.add_panel, label='New Block',
                                    size=(120, -1))
+    self.tgl_active = wx.ToggleButton(self.add_panel, label='De-Activate',
+                                      size=(120, -1))
+    self.add_sizer.Add(self.tgl_active,
+                       flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
+                       border=10)
     self.add_sizer.Add(self.btn_add_block,
                        flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
-                    border = 10)
+                       border = 10)
 
     self.main_sizer.Add(self.block_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.add_panel, flag=wx.ALL | wx.ALIGN_BOTTOM, border=5)
 
-    # Create and start timer
-    # TODO: Replace timer with actual run updates
-    self.timer = wx.Timer(self)
-    self.timer.Start(5000)
-
-    # Button bindings
+    # Bindings
     self.Bind(wx.EVT_BUTTON, self.onAddBlock, self.btn_add_block)
-    self.Bind(wx.EVT_TIMER, self.onTimer, id=self.timer.GetId())
+    self.tgl_active.Bind(wx.EVT_TOGGLEBUTTON, self.onToggleActivity)
 
     self.SetSizer(self.main_sizer)
+
+  def onToggleActivity(self, e):
+    if self.tgl_active.GetValue():
+      self.trial.active = True
+      self.tgl_active.SetLabel('De-Activate')
+    else:
+      self.trial.active = False
+      self.tgl_active.SetLabel('Activate')
 
   def onAddBlock(self, e):
     ''' Add new block button '''
@@ -430,10 +441,11 @@ class TrialPanel(wx.Panel):
                                                          gctr.RunBlockButton)]
 
     # Get last button in block sizer, update label with latest run
+    self.last_run = self.db.get_all_runs()[-1]
     last_block = run_buttons[-1].GetWindow()
-    last_block.last_run = self.last_run
+    last_block.last_run = self.last_run.run_id
     last_block.update_label()
-    self.first_run = self.last_run + 1
+    self.first_run = self.last_run.run_id + 1
 
     self.add_new_block()
     self.block_panel.Layout()
@@ -444,9 +456,21 @@ class TrialPanel(wx.Panel):
     new_block = gctr.RunBlockButton(self.block_panel, size=(120, -1))
     new_block.first_run = self.first_run
     new_block.update_label()
-    self.block_sizer.Add(new_block, flag=wx.TOP | wx.LEFT | wx.RIGHT |
-                                         wx.ALIGN_CENTER,
+    self.Bind(wx.EVT_BUTTON, self.onRunBlockOptions, id=new_block.GetId())
+    self.block_sizer.Add(new_block,
+                         flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
                          border=5)
 
-  def onTimer(self, e):
-    self.last_run += 1
+  def onRunBlockOptions(self, e):
+    ''' Open dialog and change run_block options '''
+    run_block = e.GetEventObject()
+    label = run_block.block_label
+    first_run = run_block.first_run
+    last_run = run_block.last_run
+
+    rblock_dlg = dlg.RunBlockDialog(self, self.db)
+    rblock_dlg.Fit()
+
+
+
+    rblock_dlg.ShowModal()
