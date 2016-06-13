@@ -874,7 +874,7 @@ int main() {
       opts = [
         "-DNDEBUG",
         "-O3",
-        "-ffast-math"
+        #"-ffast-math"
       ]
       if (cxx == "c++" and env_etc.gcc_version
             and env_etc.gcc_version == 40000):
