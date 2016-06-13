@@ -4,7 +4,7 @@ import sys
 import time
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
-import mmtbx.model
+#import mmtbx.model
 import mmtbx.utils
 from mmtbx import monomer_library
 from cctbx import geometry_restraints
@@ -52,11 +52,13 @@ Important:
 class atom_info(object):
   def __init__(
     self,
-    iseq        = None,
-    dist        = None,
-    dist_ideal  = None,
-    angle       = None,
-    angle_ideal = None):
+    iseq            = None,
+    dist            = None,
+    dist_ideal      = None,
+    angle           = None,
+    angle_ideal     = None,
+    reduced_neighbs = None,
+    count_H         = None):
     adopt_init_args(self, locals())
 
 def find_second_neighbor(ap, connectivity):
@@ -64,7 +66,7 @@ def find_second_neighbor(ap, connectivity):
   for i_test in ap.i_seqs:
     if(i_test in keys):
       i_h = i_test
-      i_x = ((connectivity[i_h])[0][0]).iseq
+      i_x = ((connectivity[i_h])[0]).iseq
       bonded = [i_h, i_x]
       i_y = [x for x in ap.i_seqs if x not in bonded][0]
       neighbor = atom_info(
@@ -102,19 +104,22 @@ def determine_H_neighbors(bond_proxies, angle_proxies, xray_structure):
     parent = atom_info(
       iseq = i_x,
       dist_ideal = bproxy.distance_ideal)
-    connectivity[i_h]=[[parent]]
+    connectivity[i_h]=[parent]
     connectivity[i_h].append([])
   # loop through angle proxies to find second neighbors
   for ap in angle_proxies:
     find_second_neighbor(ap, connectivity)
-  # This step roughly doubles computation time
+  # TO DO: This step roughly doubles computation time
   for ih in connectivity.keys():
     reduced_neighbs = []
     for atom in connectivity[ih][1]:
       if (not hd_selection[atom.iseq]):
         reduced_neighbs.append(atom)
+    (connectivity[ih][0]).reduced_neighbs = reduced_neighbs
+    (connectivity[ih][0]).count_H = \
+      len(connectivity[ih][1]) - len(reduced_neighbs)
     if (len(reduced_neighbs) == 1):
-      ix = (connectivity[ih][0][0]).iseq
+      ix = (connectivity[ih][0]).iseq
       iy = (reduced_neighbs[0]).iseq
       neighbors = [ix, iy]
       connectivity[ih].append([])
@@ -164,7 +169,7 @@ def run(args, out=sys.stdout):
     normalization = False)
 
   bond_proxies_simple, asu = restraints_manager.geometry.get_all_bond_proxies(
-      sites_cart = xray_structure.sites_cart())
+    sites_cart = xray_structure.sites_cart())
   angle_proxies = restraints_manager.geometry.get_all_angle_proxies()
 
   names = list(pdb_hierarchy.atoms().extract_name())
@@ -178,13 +183,14 @@ def run(args, out=sys.stdout):
     xray_structure = xray_structure)
 
   if(0):
+  #if (1):
     print >>log, '\nHydrogen atom connectivity list'
     for ih in connectivity:
       if(len(connectivity[ih])==3):
         string = (" ".join([names[p.iseq] for p in connectivity[ih][2]]))
       else:
         string = 'n/a'
-      print >>log, names[ih],': ', names[(connectivity[ih][0][0]).iseq], \
+      print >>log, names[ih],': ', names[(connectivity[ih][0]).iseq], \
         ',', (" ".join([names[p.iseq] for p in connectivity[ih][1]])), \
         ',', string
 
