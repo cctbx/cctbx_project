@@ -313,6 +313,7 @@ class ThreeProteinResidues(list):
     from cctbx.geometry_restraints import dihedral_proxy
     atoms = self.get_phi_psi_atoms(only_psi_phi_pairs=only_psi_phi_pairs)
     proxies = []
+    if atoms is None: return proxies
     for dihedral in atoms:
       proxy = dihedral_proxy(
           i_seqs=[atom.i_seq for atom in dihedral],

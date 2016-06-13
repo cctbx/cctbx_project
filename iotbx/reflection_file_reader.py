@@ -219,12 +219,14 @@ class any_reflection_file(object):
     return self._file_content
 
   def as_miller_arrays(self,
-        crystal_symmetry=None,
-        force_symmetry=False,
-        merge_equivalents=True,
-        base_array_info=None,
-        assume_shelx_observation_type_is=None,
-        enforce_positive_sigmas=False):
+                       crystal_symmetry=None,
+                       force_symmetry=False,
+                       merge_equivalents=True,
+                       base_array_info=None,
+                       assume_shelx_observation_type_is=None,
+                       enforce_positive_sigmas=False,
+                       include_unmerged_data=False,
+     ):
     """
     Convert the contents of the reflection file into a list of
     :py:class:`cctbx.miller.array` objects, each of which may contain multiple
@@ -307,7 +309,9 @@ class any_reflection_file(object):
       crystal_symmetry=crystal_symmetry,
       force_symmetry=force_symmetry,
       merge_equivalents=merge_equivalents,
-      base_array_info=base_array_info)
+      base_array_info=base_array_info,
+      include_unmerged_data=include_unmerged_data,
+      )
     if (self.file_type() == "shelx_hklf"):
       if ((self._observation_type == "intensities") or
           (assume_shelx_observation_type_is == "intensities")) :

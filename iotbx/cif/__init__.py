@@ -97,13 +97,16 @@ class reader(object):
 
   def build_miller_arrays(self,
                           data_block_name=None,
-                          base_array_info=None):
+                          base_array_info=None,
+                          include_unmerged_data=False,
+    ):
     arrays = cctbx_data_structures_from_cif(
       cif_model=self.model(),
       file_path=self.file_path,
       data_block_name=data_block_name,
       data_structure_builder=builders.miller_array_builder,
-      base_array_info=base_array_info).miller_arrays
+      base_array_info=base_array_info,
+      include_unmerged_data=include_unmerged_data).miller_arrays
     if data_block_name is not None:
       return arrays[data_block_name]
     else:
@@ -113,7 +116,9 @@ class reader(object):
                        crystal_symmetry=None,
                        force_symmetry=False,
                        merge_equivalents=True,
-                       base_array_info=None):
+                       base_array_info=None,
+                       include_unmerged_data=False,
+    ):
     if base_array_info is None:
       base_array_info = miller.array_info(
         source=self.file_path, source_type="cif")
@@ -124,7 +129,9 @@ class reader(object):
     else:
       arrays = flat_list([
         arrays.values() for arrays in
-        self.build_miller_arrays(base_array_info=base_array_info).values()])
+        self.build_miller_arrays(base_array_info=base_array_info,
+                                 include_unmerged_data=include_unmerged_data,
+                                ).values()])
     other_symmetry=crystal_symmetry
     for i, array in enumerate(arrays):
       if crystal_symmetry is not None:
@@ -503,7 +510,9 @@ class cctbx_data_structures_from_cif(object):
                data_structure_builder=None,
                data_block_name=None,
                base_array_info=None,
+               include_unmerged_data=False,
                **kwds):
+    assert include_unmerged_data
     assert file_object is None or cif_model is None
     if data_structure_builder is None:
       data_structure_builders = (
@@ -540,7 +549,16 @@ class cctbx_data_structures_from_cif(object):
             wavelengths = block_wavelengths
           if base_array_info is not None:
             base_array_info = base_array_info.customized_copy(labels=[key])
-          if '_refln_index_h' in block or '_refln.index_h' in block:
+          build_miller_array = False
+          if ('_refln_index_h' in block or
+              '_refln.index_h' in block
+             ):
+            build_miller_array = True
+          if (include_unmerged_data and
+              '_diffrn_refln.index_h' in block
+             ):
+            build_miller_array = True
+          if build_miller_array:
             self.miller_arrays.setdefault(
               key, builder(block, base_array_info=base_array_info,
                 wavelengths=wavelengths).arrays())
