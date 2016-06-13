@@ -578,7 +578,6 @@ Installation of Python packages may fail.
       'jinja',
       'junitxml',
       'biopython',
-      'imaging',
       'docutils',
       'sphinx',
       'ipython',
@@ -590,6 +589,7 @@ Installation of Python packages may fail.
       # ...
       'freetype',
       'matplotlib',
+      'imaging',
       'reportlab',
       # START GUI PACKAGES
       'gettext',
