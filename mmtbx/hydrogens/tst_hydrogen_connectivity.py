@@ -75,7 +75,7 @@ def exercise():
   angle_list = {}
   third_nb_list = {}
   for ih in connectivity:
-    a0 = (connectivity[ih][0][0])
+    a0 = (connectivity[ih][0])
     bond_list[ih]=[a0.iseq, a0.dist_ideal]
     for atom in connectivity[ih][1]:
       helper = tuple(sorted([ih, a0.iseq, atom.iseq]))
