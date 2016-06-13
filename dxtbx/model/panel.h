@@ -118,7 +118,7 @@ namespace dxtbx { namespace model {
       return get_bidirectional_ray_intersection_px(get_normal());
     }
 
-    /** Get the beam centre in mm in the detector basis */
+    /** Get the beam centre in pixels in the detector basis */
     vec2<double> get_beam_centre_px(vec3<double> s0) const {
       return get_ray_intersection_px(s0);
     }
@@ -159,6 +159,24 @@ namespace dxtbx { namespace model {
       DXTBX_ASSERT(s0.length() > 0);
       vec3<double> xyz = get_pixel_lab_coord(xy);
       return angle_safe(s0, xyz);
+    }
+
+    /**
+     * Get the 2theta angle at every pixel.
+     * @param s0 The incident beam vector
+     * @returns flex::double array containing 2theta at every pixel
+     */
+    scitbx::af::shared<double> get_two_theta_array(vec3<double> s0) const {
+      DXTBX_ASSERT(s0.length() > 0);
+      size_t fast = image_size_[0], slow = image_size_[1];
+
+      scitbx::af::shared<double> result(slow * fast);
+      for (size_t i = 0; i < slow; i++) {
+        for (size_t j = 0; j < fast; j++) {
+          result[i * fast + j] = angle_safe(s0, get_pixel_lab_coord(vec2<double>(i,j)));
+        }
+      }
+      return result;
     }
 
     /**

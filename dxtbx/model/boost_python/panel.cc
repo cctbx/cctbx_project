@@ -531,6 +531,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("pixel_to_millimeter", &Panel::pixel_to_millimeter)
       .def("pixel_to_millimeter", pixel_to_millimeter_multiple)
       .def("get_two_theta_at_pixel", &Panel::get_two_theta_at_pixel)
+      .def("get_two_theta_array", &Panel::get_two_theta_array)
       .def("get_resolution_at_pixel", &Panel::get_resolution_at_pixel)
       .def("get_max_resolution_at_corners",
         &Panel::get_max_resolution_at_corners)
