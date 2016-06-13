@@ -499,7 +499,10 @@ class _(boost.python.injector, ext.object):
         crystal_symmetry=None,
         force_symmetry=False,
         merge_equivalents=True,
-        base_array_info=None):
+        base_array_info=None,
+        include_unmerged_data=False,
+        ):
+    assert not include_unmerged_data, "Unmerged data not supported in MTZ"
     other_symmetry = crystal_symmetry
     if (base_array_info is None):
       base_array_info = miller.array_info(source_type="ccp4_mtz")
