@@ -362,7 +362,7 @@ def exercise_misc():
     site_cart=(5.,5.,5.),
     radius=1.)
   # XXX exact numbers are *not* consistent across platforms!
-  assert (approx_equal(stats.min, 8.3, eps=0.1))
+  assert (approx_equal(stats.min, 8.3, eps=0.2))
   assert (approx_equal(stats.mean, 8.5, eps=0.1))
   assert (stats.standard_deviation < 0.15)
   stats = maptbx.spherical_variance_around_point(
@@ -370,7 +370,7 @@ def exercise_misc():
     unit_cell=structure.unit_cell(),
     site_cart=(6.,6.,6.),
     radius=1.)
-  assert (approx_equal(stats.min, -0.75, eps=0.1))
+  assert (approx_equal(stats.min, -0.75, eps=0.15))
   assert (approx_equal(stats.mean, 1.35, eps=0.1))
   assert (approx_equal(stats.standard_deviation, 3.25, eps=0.1))
   # test principal_axes_of_inertia
