@@ -100,31 +100,6 @@ def tar_extract(workdir, archive, modulename=None):
     return 1
   return 0
 
-# Utililty function to be executed on slave machine or called directly by standalone bootstrap script
-def CheckWindowsPrerequisites():
-  import distutils.spawn
-  if not sys.platform=="win32":
-    return
-  xcptstr = ''
-  if not distutils.spawn.find_executable("svn"):
-    xcptstr += '"Tortoisesvn" with command line tools must be present in the executable path.\n'
-  if not distutils.spawn.find_executable("pscp.exe"):
-    xcptstr += '"pscp.exe" from the PuTTY program suite is not present in the executable path.\n'
-  p = distutils.spawn.find_executable("plink.exe")
-  if not p:
-    xcptstr += '"plink.exe" from the PuTTY program suite is not present in the executable path.\n'
-  if not os.getenv("SVN_SSH") and p:
-    q=p.split("\\")
-    fwdp = "/".join(q) # svn client expects foward slashed path to plink
-    xcptstr += 'SVN_SSH environment variable should be set to "SVN_SSH=%s"' %fwdp
-  if not os.getenv("GIT_SSH") and p:
-    q=p.split("\\")
-    fwdp = "/".join(q) # svn client expects foward slashed path to plink
-    xcptstr += 'GIT_SSH environment variable should be set to "GIT_SSH=%s"' %fwdp
-  if xcptstr:
-    raise Exception(xcptstr)
-
-
 # Mock commands to run standalone, without buildbot.
 class ShellCommand(object):
   def __init__(self, **kwargs):
@@ -934,9 +909,6 @@ class Builder(object):
       # download us to folder above modules on slave so we can run the utility functions defined above
       self.add_step(FileDownload(mastersrc="bootstrap.py", slavedest="../bootstrap.py"))
 
-    if self.isPlatformWindows():
-      self._check_for_Windows_prerequisites()
-
     # Add 'hot' sources
     if hot:
       map(self.add_module, self.get_hot())
@@ -1076,21 +1048,19 @@ class Builder(object):
     if self.isPlatformWindows():
       tarurl, arxname, dirpath = MODULES.get_module(module)().get_tarauthenticated(auth=self.get_auth())
     if self.isPlatformWindows():
-      if module in windows_remove_list: # can't currently compile cbflib for Windows due to lack of HDF5 component
+      if module in windows_remove_list:
         return
     if method == 'rsync' and not self.isPlatformWindows():
       self._add_rsync(module,
                       parameters, # really the url
                       workdir=workdir,
                       module_directory=module_directory)
-    elif self.isPlatformWindows() and method == 'pscp':
-      self._add_pscp(module, parameters)
     elif self.isPlatformWindows() and tarurl:
       # if more bootstraps are running avoid potential race condition on
       # remote server by using unique random filenames
       randarxname = next(tempfile._get_candidate_names()) + "_" + arxname
       self._add_remote_make_tar(module, tarurl, randarxname, dirpath)
-      self._add_pscp(module, tarurl + ':' + randarxname)
+      self._add_scp(module, tarurl + ':' + randarxname)
       self._add_remote_rm_tar(module, tarurl, randarxname)
     elif method == 'scp':
       self._add_scp(module, parameters)
@@ -1126,7 +1096,7 @@ class Builder(object):
       dirpath = dirpath[:-1]
     basename = posixpath.basename(dirpath)
     cmd=[
-        'plink',
+        'ssh',
         tarurl,
         '"' + 'cd',
         posixpath.split(dirpath)[0],
@@ -1149,7 +1119,7 @@ class Builder(object):
     self.add_step(self.shell( # delete the tarfile on remote system
       name='hot %s'%module,
       command=[
-        'plink',
+        'ssh',
         tarurl,
         'rm ',
         arxname
@@ -1168,23 +1138,6 @@ class Builder(object):
       command=['cmd', '/c', 'del', arxname],
       workdir=['modules'],
       description="delete local temporary archive of %s" %module,
-    ))
-
-  def _add_pscp(self, module, url):
-    """Windows: equivalent of scp"""
-    url1 = url
-    if url[-1] == '/':
-      url1 = url[:-1]
-    self.add_step(self.shell( # copy files/directory recursively from remote system
-      name='hot %s'%module,
-      command=[
-        'pscp',
-        '-r',
-        url1,
-        '.',
-      ],
-      workdir=['modules'],
-      description="getting remote file %s" %url1,
     ))
 
   def _add_scp(self, module, url):
