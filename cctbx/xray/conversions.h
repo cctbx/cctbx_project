@@ -46,7 +46,7 @@ namespace cctbx { namespace xray {
       // Note that the fix to libtbx/SConscript introduced in commit
       // "Break -ffast-math in finer flags on OS X" does not solve the
       // problem here.
-      FloatType f_sq_ = f_sq;
+      volatile FloatType f_sq_ = f_sq;
       if (f_sq_ > 0) f = std::sqrt(f_sq_);
       else f = 0;
     }
