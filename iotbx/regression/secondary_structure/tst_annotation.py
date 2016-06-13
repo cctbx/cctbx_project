@@ -3,6 +3,7 @@ import time
 from iotbx.pdb.secondary_structure import annotation, pdb_helix
 import iotbx.cif
 from libtbx.test_utils import show_diff
+from StringIO import StringIO
 
 def test_helix_interface():
   # helix_class_to_int.
@@ -135,9 +136,35 @@ SHEET    2   A 2 LEU A  27  SER A  30 -1  O  ARG A  29   N  ARG A  13
     assert st.end_resseq == 'AA15'
     assert st.get_end_resseq_as_int() == 23001
 
-def tst_from_cif_block():
-  test_str_1 = """\
-data_4ZTE
+cif_one_helix = """\
+#
+_struct_conf.conf_type_id            HELX_P
+_struct_conf.id                      HELX_P1
+_struct_conf.pdbx_PDB_helix_id       AA1
+_struct_conf.beg_label_comp_id       GLN
+_struct_conf.beg_label_asym_id       A
+_struct_conf.beg_label_seq_id        149
+_struct_conf.pdbx_beg_PDB_ins_code   ?
+_struct_conf.end_label_comp_id       GLY
+_struct_conf.end_label_asym_id       A
+_struct_conf.end_label_seq_id        160
+_struct_conf.pdbx_end_PDB_ins_code   ?
+_struct_conf.beg_auth_comp_id        GLN
+_struct_conf.beg_auth_asym_id        A
+_struct_conf.beg_auth_seq_id         212
+_struct_conf.end_auth_comp_id        GLY
+_struct_conf.end_auth_asym_id        A
+_struct_conf.end_auth_seq_id         223
+_struct_conf.pdbx_PDB_helix_class    1
+_struct_conf.details                 ?
+_struct_conf.pdbx_PDB_helix_length   12
+#
+_struct_conf_type.id          HELX_P
+_struct_conf_type.criteria    ?
+_struct_conf_type.reference   ?
+"""
+
+cif_4_helices = """\
 loop_
 _struct_conf.conf_type_id
 _struct_conf.id
@@ -164,6 +191,9 @@ HELX_P HELX_P2 AA2 LEU A 194 ? GLU A 197 ? LEU A 196 GLU A 199 5 ? 4
 HELX_P HELX_P3 AA3 SER B 24  ? LYS B 28  ? SER B 26  LYS B 30  5 ? 5
 HELX_P HELX_P4 AA4 LEU B 194 ? GLU B 197 ? LEU B 196 GLU B 199 5 ? 4
 #
+"""
+
+cif_many_sheets = """\
 #
 loop_
 _struct_sheet.id
@@ -306,86 +336,7 @@ AB1 1 2 N MET B 126 ? N MET B 128 O ILE B 170 ? O ILE B 172
 AB1 2 3 O SER B 171 ? O SER B 173 N THR B 162 ? N THR B 164
 # """
 
-  pdb_str = """\
-HELIX    1 AA1 SER A   26  LYS A   30  5                                   5
-HELIX    2 AA2 LEU A  196  GLU A  199  5                                   4
-HELIX    3 AA3 SER B   26  LYS B   30  5                                   5
-HELIX    4 AA4 LEU B  196  GLU B  199  5                                   4
-SHEET    1 AA1 4 ILE A   7  PRO A  10  0
-SHEET    2 AA1 4 MET A  92  THR A  99  1  O  LEU A  95   N  ILE A   7
-SHEET    3 AA1 4 THR A  73  SER A  82 -1  N  LEU A  76   O  ILE A  94
-SHEET    4 AA1 4 VAL A  34  THR A  39 -1  N  PHE A  35   O  VAL A  81
-SHEET    1 AA2 3 LYS A  19  GLN A  23  0
-SHEET    2 AA2 3 TRP A  59  VAL A  62 -1  O  LEU A  60   N  VAL A  22
-SHEET    3 AA2 3 PHE A  51  ILE A  53 -1  N  ILE A  52   O  LYS A  61
-SHEET    1 AA3 2 GLU A 107  PHE A 108  0
-SHEET    2 AA3 2 ALA A 132  THR A 133 -1  O  THR A 133   N  GLU A 107
-SHEET    1 AA4 4 VAL A 112  MET A 118  0
-SHEET    2 AA4 4 SER A 202  THR A 212  1  O  THR A 212   N  VAL A 117
-SHEET    3 AA4 4 THR A 186  ALA A 194 -1  N  LEU A 189   O  ALA A 207
-SHEET    4 AA4 4 ALA A 147  ASP A 154 -1  N  THR A 149   O  GLN A 192
-SHEET    1 AA5 3 THR A 125  GLU A 129  0
-SHEET    2 AA5 3 VAL A 171  VAL A 174 -1  O  ILE A 172   N  MET A 128
-SHEET    3 AA5 3 PHE A 163  ILE A 165 -1  N  THR A 164   O  SER A 173
-SHEET    1 AA6 4 ILE B   7  PRO B  10  0
-SHEET    2 AA6 4 MET B  92  THR B  99  1  O  THR B  97   N  ILE B   7
-SHEET    3 AA6 4 THR B  73  SER B  82 -1  N  LEU B  76   O  ILE B  94
-SHEET    4 AA6 4 VAL B  34  GLY B  40 -1  N  SER B  37   O  HIS B  79
-SHEET    1 AA7 3 LYS B  19  GLN B  23  0
-SHEET    2 AA7 3 TRP B  59  VAL B  62 -1  O  LEU B  60   N  VAL B  22
-SHEET    3 AA7 3 PHE B  51  ILE B  53 -1  N  ILE B  52   O  LYS B  61
-SHEET    1 AA8 2 GLU B 107  PHE B 108  0
-SHEET    2 AA8 2 ALA B 132  THR B 133 -1  O  THR B 133   N  GLU B 107
-SHEET    1 AA9 4 VAL B 112  MET B 118  0
-SHEET    2 AA9 4 SER B 202  THR B 212  1  O  THR B 206   N  PHE B 113
-SHEET    3 AA9 4 THR B 186  ALA B 194 -1  N  LEU B 189   O  ALA B 207
-SHEET    4 AA9 4 ALA B 147  ASP B 154 -1  N  ASP B 154   O  THR B 188
-SHEET    1 AB1 3 SER B 126  GLU B 129  0
-SHEET    2 AB1 3 VAL B 171  VAL B 174 -1  O  ILE B 172   N  MET B 128
-SHEET    3 AB1 3 PHE B 163  ILE B 165 -1  N  THR B 164   O  SER B 173"""
-
-  cif_model = iotbx.cif.reader(input_string=test_str_1).model()
-  cif_block = cif_model.values()[0]
-  ann = annotation.from_cif_block(cif_block)
-  assert len(ann.helices) == 4
-  resnames = [x.start_resname for x in ann.helices]
-  assert resnames == ["SER","LEU","SER","LEU"]
-  resnames = [x.end_resname for x in ann.helices]
-  assert resnames == ["LYS","GLU","LYS","GLU"]
-  assert len(ann.sheets) == 10
-  assert [len(x.strands) for x in ann.sheets] == [4, 3, 2, 4, 3, 4, 3, 2, 4, 3]
-  # print ann.as_pdb_str()
-  assert not show_diff(pdb_str, ann.as_pdb_str())
-
-def tst_from_cif_block_2():
-  cif_str = """\
-data_1UCS
-#
-loop_
-_struct_conf.conf_type_id
-_struct_conf.id
-_struct_conf.pdbx_PDB_helix_id
-_struct_conf.beg_label_comp_id
-_struct_conf.beg_label_asym_id
-_struct_conf.beg_label_seq_id
-_struct_conf.pdbx_beg_PDB_ins_code
-_struct_conf.end_label_comp_id
-_struct_conf.end_label_asym_id
-_struct_conf.end_label_seq_id
-_struct_conf.pdbx_end_PDB_ins_code
-_struct_conf.beg_auth_comp_id
-_struct_conf.beg_auth_asym_id
-_struct_conf.beg_auth_seq_id
-_struct_conf.end_auth_comp_id
-_struct_conf.end_auth_asym_id
-_struct_conf.end_auth_seq_id
-_struct_conf.pdbx_PDB_helix_class
-_struct_conf.details
-_struct_conf.pdbx_PDB_helix_length
-HELX_P HELX_P1 1 THR A 18 ? ILE A 20 ? THR A 18 ILE A 20 5 ? 3
-HELX_P HELX_P2 2 PRO A 33 ? GLU A 35 ? PRO A 33 GLU A 35 5 ? 3
-HELX_P HELX_P3 3 GLU A 36 ? VAL A 41 ? GLU A 36 VAL A 41 1 ? 6
-HELX_P HELX_P4 4 MET A 56 ? VAL A 60 ? MET A 56 VAL A 60 5 ? 5
+cif_one_sheet = """\
 #
 _struct_sheet.id               A
 _struct_sheet.type             ?
@@ -440,18 +391,180 @@ _pdbx_struct_sheet_hbond.range_2_auth_atom_id    O
 _pdbx_struct_sheet_hbond.range_2_auth_comp_id    GLU
 _pdbx_struct_sheet_hbond.range_2_auth_asym_id    A
 _pdbx_struct_sheet_hbond.range_2_auth_seq_id     25
-#   """
+#
+"""
+
+def tst_from_cif_block():
+  test_str_1 = "data_4ZTE\n" + cif_4_helices + cif_many_sheets
+  pdb_str = """\
+HELIX    1 AA1 SER A   26  LYS A   30  5                                   5
+HELIX    2 AA2 LEU A  196  GLU A  199  5                                   4
+HELIX    3 AA3 SER B   26  LYS B   30  5                                   5
+HELIX    4 AA4 LEU B  196  GLU B  199  5                                   4
+SHEET    1 AA1 4 ILE A   7  PRO A  10  0
+SHEET    2 AA1 4 MET A  92  THR A  99  1  O  LEU A  95   N  ILE A   7
+SHEET    3 AA1 4 THR A  73  SER A  82 -1  N  LEU A  76   O  ILE A  94
+SHEET    4 AA1 4 VAL A  34  THR A  39 -1  N  PHE A  35   O  VAL A  81
+SHEET    1 AA2 3 LYS A  19  GLN A  23  0
+SHEET    2 AA2 3 TRP A  59  VAL A  62 -1  O  LEU A  60   N  VAL A  22
+SHEET    3 AA2 3 PHE A  51  ILE A  53 -1  N  ILE A  52   O  LYS A  61
+SHEET    1 AA3 2 GLU A 107  PHE A 108  0
+SHEET    2 AA3 2 ALA A 132  THR A 133 -1  O  THR A 133   N  GLU A 107
+SHEET    1 AA4 4 VAL A 112  MET A 118  0
+SHEET    2 AA4 4 SER A 202  THR A 212  1  O  THR A 212   N  VAL A 117
+SHEET    3 AA4 4 THR A 186  ALA A 194 -1  N  LEU A 189   O  ALA A 207
+SHEET    4 AA4 4 ALA A 147  ASP A 154 -1  N  THR A 149   O  GLN A 192
+SHEET    1 AA5 3 THR A 125  GLU A 129  0
+SHEET    2 AA5 3 VAL A 171  VAL A 174 -1  O  ILE A 172   N  MET A 128
+SHEET    3 AA5 3 PHE A 163  ILE A 165 -1  N  THR A 164   O  SER A 173
+SHEET    1 AA6 4 ILE B   7  PRO B  10  0
+SHEET    2 AA6 4 MET B  92  THR B  99  1  O  THR B  97   N  ILE B   7
+SHEET    3 AA6 4 THR B  73  SER B  82 -1  N  LEU B  76   O  ILE B  94
+SHEET    4 AA6 4 VAL B  34  GLY B  40 -1  N  SER B  37   O  HIS B  79
+SHEET    1 AA7 3 LYS B  19  GLN B  23  0
+SHEET    2 AA7 3 TRP B  59  VAL B  62 -1  O  LEU B  60   N  VAL B  22
+SHEET    3 AA7 3 PHE B  51  ILE B  53 -1  N  ILE B  52   O  LYS B  61
+SHEET    1 AA8 2 GLU B 107  PHE B 108  0
+SHEET    2 AA8 2 ALA B 132  THR B 133 -1  O  THR B 133   N  GLU B 107
+SHEET    1 AA9 4 VAL B 112  MET B 118  0
+SHEET    2 AA9 4 SER B 202  THR B 212  1  O  THR B 206   N  PHE B 113
+SHEET    3 AA9 4 THR B 186  ALA B 194 -1  N  LEU B 189   O  ALA B 207
+SHEET    4 AA9 4 ALA B 147  ASP B 154 -1  N  ASP B 154   O  THR B 188
+SHEET    1 AB1 3 SER B 126  GLU B 129  0
+SHEET    2 AB1 3 VAL B 171  VAL B 174 -1  O  ILE B 172   N  MET B 128
+SHEET    3 AB1 3 PHE B 163  ILE B 165 -1  N  THR B 164   O  SER B 173"""
+
+  cif_model = iotbx.cif.reader(input_string=test_str_1).model()
+  cif_block = cif_model.values()[0]
+  ann = annotation.from_cif_block(cif_block)
+  assert ann.get_n_helices() == 4
+  resnames = [x.start_resname for x in ann.helices]
+  assert resnames == ["SER","LEU","SER","LEU"]
+  resnames = [x.end_resname for x in ann.helices]
+  assert resnames == ["LYS","GLU","LYS","GLU"]
+  assert ann.get_n_sheets() == 10
+  assert [len(x.strands) for x in ann.sheets] == [4, 3, 2, 4, 3, 4, 3, 2, 4, 3]
+  # print ann.as_pdb_str()
+  assert not show_diff(pdb_str, ann.as_pdb_str())
+
+def tst_from_cif_block_2():
+  cif_str = "data_1UCS\n" + cif_4_helices + cif_one_sheet
   cif_model = iotbx.cif.reader(input_string=cif_str).model()
   cif_block = cif_model.values()[0]
   ann = annotation.from_cif_block(cif_block)
-  assert len(ann.helices) == 4
+  assert ann.get_n_helices() == 4
   resnames = [x.start_resname for x in ann.helices]
-  assert resnames == ["THR","PRO","GLU","MET"]
+  assert resnames == ["SER","LEU","SER","LEU"]
   resnames = [x.end_resname for x in ann.helices]
-  assert resnames == ["ILE","GLU","VAL","VAL"]
-  assert len(ann.sheets) == 1
+  assert resnames == ["LYS","GLU","LYS","GLU"]
+  assert ann.get_n_sheets() == 1
   assert [len(x.strands) for x in ann.sheets] == [2]
   # print ann.as_pdb_str()
+
+def tst_from_cif_block_3():
+  "Only one helix"
+  cif_str = "data_1UCS" + cif_one_helix
+
+  cif_model = iotbx.cif.reader(input_string=cif_str).model()
+  cif_block = cif_model.values()[0]
+  ann = annotation.from_cif_block(cif_block)
+  assert ann.get_n_helices() == 1
+  resnames = [x.start_resname for x in ann.helices]
+  assert resnames == ["GLN"], resnames
+  resnames = [x.end_resname for x in ann.helices]
+  assert resnames == ["GLY"]
+  assert ann.get_n_sheets() == 0
+  # print ann.as_pdb_str()
+
+def tst_from_cif_block_4():
+  "Only one sheet"
+  cif_str = "data_1UCS" + cif_one_sheet
+  cif_model = iotbx.cif.reader(input_string=cif_str).model()
+  cif_block = cif_model.values()[0]
+  ann = annotation.from_cif_block(cif_block)
+  assert ann.get_n_helices() == 0, ann.get_n_helices()
+  assert ann.get_n_sheets() == 1
+  assert [len(x.strands) for x in ann.sheets] == [2]
+  # print ann.as_pdb_str()
+
+def tst_to_cif_helix():
+  pdb_str = """\
+HELIX    1 AA1 SER A   26  LYS A   30  5                                   5
+HELIX    2 AA2 LEU A  196  GLU A  199  5                                   4
+HELIX    3 AA3 SER B   26  LYS B   30  5                                   5
+HELIX    4 AA4 LEU B  196  GLU B  199  5                                   4
+"""
+  answer = """\
+loop_
+  _struct_conf.conf_type_id
+  _struct_conf.id
+  _struct_conf.pdbx_PDB_helix_id
+  _struct_conf.beg_label_comp_id
+  _struct_conf.beg_label_asym_id
+  _struct_conf.beg_label_seq_id
+  _struct_conf.pdbx_beg_PDB_ins_code
+  _struct_conf.end_label_comp_id
+  _struct_conf.end_label_asym_id
+  _struct_conf.end_label_seq_id
+  _struct_conf.pdbx_end_PDB_ins_code
+  _struct_conf.pdbx_PDB_helix_class
+  _struct_conf.details
+  _struct_conf.pdbx_PDB_helix_length
+  HELX_P  1  AA1  SER   26  A  ?  LYS   30  A  ?  5  ?  5
+  HELX_P  2  AA2  LEU  196  A  ?  GLU  199  A  ?  5  ?  4
+  HELX_P  3  AA3  SER   26  B  ?  LYS   30  B  ?  5  ?  5
+  HELX_P  4  AA4  LEU  196  B  ?  GLU  199  B  ?  5  ?  4\n"""
+
+  pdb_str2 = """\
+HELIX    1 AA1 SER A   26  LYS A   30  5                                   5
+"""
+  answer2 = """\
+loop_
+  _struct_conf.conf_type_id
+  _struct_conf.id
+  _struct_conf.pdbx_PDB_helix_id
+  _struct_conf.beg_label_comp_id
+  _struct_conf.beg_label_asym_id
+  _struct_conf.beg_label_seq_id
+  _struct_conf.pdbx_beg_PDB_ins_code
+  _struct_conf.end_label_comp_id
+  _struct_conf.end_label_asym_id
+  _struct_conf.end_label_seq_id
+  _struct_conf.pdbx_end_PDB_ins_code
+  _struct_conf.pdbx_PDB_helix_class
+  _struct_conf.details
+  _struct_conf.pdbx_PDB_helix_length
+  HELX_P  1  AA1  SER  26  A  ?  LYS  30  A  ?  5  ?  5\n"""
+
+  ann = annotation.from_records(pdb_str.split("\n"))
+  cif_loops = ann.as_cif_loops()
+  assert len(cif_loops) == 1
+  helix_loop = cif_loops[0]
+  out = StringIO()
+  helix_loop.show(out)
+  v = out.getvalue()
+  # print "\"%s\"" % v
+  assert not show_diff(out.getvalue(), answer)
+
+  # hmmm... when there's only one chain, there is one less 'space'
+  # between resname and resnum. Guess: in previous case extra space is
+  # needed to make nice columns.
+  ann = annotation.from_records(pdb_str2.split("\n"))
+  cif_loops = ann.as_cif_loops()
+  assert len(cif_loops) == 1
+  helix_loop = cif_loops[0]
+  out = StringIO()
+  helix_loop.show(out)
+  v = out.getvalue()
+  # print "\"%s\"" % v
+  assert not show_diff(out.getvalue(), answer2)
+
+
+def tst_to_cif_sheet():
+  pass
+
+def tst_to_cif_annotation():
+  pass
 
 
 if (__name__ == "__main__"):
@@ -460,4 +573,9 @@ if (__name__ == "__main__"):
   test_sheet_interface()
   tst_from_cif_block()
   tst_from_cif_block_2()
+  tst_from_cif_block_3()
+  tst_from_cif_block_4()
+  tst_to_cif_helix()
+  tst_to_cif_sheet()
+  tst_to_cif_annotation()
   print "OK time =%8.3f"%(time.time() - t0)

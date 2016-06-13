@@ -52,6 +52,7 @@ import libtbx.phil
 from libtbx import adopt_init_args
 import sys
 from iotbx.pdb.hybrid_36 import hy36encode, hy36decode
+import iotbx.cif.model
 
 
 def segments_are_similar(atom_selection_1=None,
@@ -529,30 +530,35 @@ class annotation(structure_base):
     helices = []
     serial = 1
     helix_loop = cif_block.get_loop_or_row("_struct_conf")
-    for helix_row in helix_loop.iterrows():
-      try:
-        h = pdb_helix.from_cif_row(helix_row, serial)
-        serial += 1
-      except ValueError:
-        print >> log, "Bad HELIX records!"
-      else:
-        helices.append(h)
+    if helix_loop is not None:
+      for helix_row in helix_loop.iterrows():
+        try:
+          h = pdb_helix.from_cif_row(helix_row, serial)
+          serial += 1
+        except ValueError:
+          print >> log, "Bad HELIX records!"
+        else:
+          helices.append(h)
     sheets = []
     struct_sheet_loop = cif_block.get_loop_or_row("_struct_sheet")
     struct_sheet_order_loop = cif_block.get_loop_or_row("_struct_sheet_order")
     struct_sheet_range_loop = cif_block.get_loop_or_row("_struct_sheet_range")
     struct_sheet_hbond_loop = cif_block.get_loop_or_row("_pdbx_struct_sheet_hbond")
-    for sheet_row in struct_sheet_loop.iterrows():
-      sheet_id = sheet_row['_struct_sheet.id']
-      number_of_strands = int(sheet_row['_struct_sheet.number_strands'])
-      try:
-        sh = pdb_sheet.from_cif_rows(sheet_id, number_of_strands,
-            struct_sheet_order_loop, struct_sheet_range_loop,
-            struct_sheet_hbond_loop)
-      except ValueError:
-        print >> log, "Bad sheet records.\n"
-      else:
-        sheets.append(sh)
+    if (struct_sheet_loop is not None
+        and struct_sheet_order_loop is not None
+        and struct_sheet_range_loop is not None
+        and struct_sheet_hbond_loop is not None):
+      for sheet_row in struct_sheet_loop.iterrows():
+        sheet_id = sheet_row['_struct_sheet.id']
+        number_of_strands = int(sheet_row['_struct_sheet.number_strands'])
+        try:
+          sh = pdb_sheet.from_cif_rows(sheet_id, number_of_strands,
+              struct_sheet_order_loop, struct_sheet_range_loop,
+              struct_sheet_hbond_loop)
+        except ValueError:
+          print >> log, "Bad sheet records.\n"
+        else:
+          sheets.append(sh)
     return cls(helices=helices, sheets=sheets)
 
   @classmethod
@@ -621,6 +627,46 @@ class annotation(structure_base):
       else:
         filtered_helices.append(h)
     self.helices = filtered_helices
+
+  def as_cif_loops(self):
+    """
+    Returns list of loops needed to represent SS annotation. The first for
+    helix, others for sheets. If there's no helix, there will be only sheet
+    loops. Or empty list if there's nothing to output."""
+    helix_info_prefix = '_struct_conf.'
+    helix_info_cif_names = (
+          'conf_type_id',
+          'id',
+          'pdbx_PDB_helix_id',
+          'beg_label_comp_id',
+          'beg_label_asym_id',
+          'beg_label_seq_id',
+          'pdbx_beg_PDB_ins_code',
+          'end_label_comp_id',
+          'end_label_asym_id',
+          'end_label_seq_id',
+          'pdbx_end_PDB_ins_code',
+          'pdbx_PDB_helix_class',
+          'details',
+          'pdbx_PDB_helix_length',
+      )
+    loops = []
+    if self.get_n_helices() > 0:
+      helix_loop = iotbx.cif.model.loop(header=(
+          ["%s%s" % (helix_info_prefix, x) for x in helix_info_cif_names]))
+      for h in self.helices:
+        h_dict = h.as_cif_dict()
+        row = []
+        for cif_name in helix_info_cif_names:
+          v = h_dict.get(cif_name, '?')
+          row.append(v)
+        helix_loop.add_row(row)
+      loops.append(helix_loop)
+    if self.get_n_sheets() > 0:
+      pass
+    return loops
+
+
 
   def as_pdb_str (self) :
     records = []
@@ -1401,6 +1447,41 @@ class pdb_helix (structure_base) :
 }""" % (prefix_scope, serial_and_id, sele,
         self.helix_class, hbond_restr)
     return rg
+
+  def comment_to_cif(self):
+    stripped = self.comment.strip()
+    if len(stripped) == 0:
+      return "?"
+    else:
+      return stripped
+
+  @staticmethod
+  def icode_to_cif(icode):
+    if icode == ' ':
+      return '?'
+    else:
+      return icode
+
+  def as_cif_dict(self):
+    """Returns dict. keys - cif field names, values - appropriate values.
+    Mind the order of fields in annotation.as_cif_loops()."""
+
+    result = {}
+    result['conf_type_id'] = "HELX_P"
+    result['id'] = "%s" % self.serial
+    result['pdbx_PDB_helix_id'] = self.helix_id
+    result['beg_label_comp_id'] = self.start_resname
+    result['beg_label_asym_id'] = "%d" % self.get_start_resseq_as_int()
+    result['beg_label_seq_id'] = self.start_chain_id
+    result['pdbx_beg_PDB_ins_code'] = self.icode_to_cif(self.start_icode)
+    result['end_label_comp_id'] = self.end_resname
+    result['end_label_asym_id'] = "%d" % self.get_end_resseq_as_int()
+    result['end_label_seq_id'] = self.end_chain_id
+    result['pdbx_end_PDB_ins_code'] = self.icode_to_cif(self.end_icode)
+    result['pdbx_PDB_helix_class'] = self.helix_class_to_int(self.helix_class)
+    result['details'] = self.comment_to_cif()
+    result['pdbx_PDB_helix_length'] = self.length
+    return result
 
   def as_pdb_str (self, set_id_zero=False):
     def h_class_to_pdb_int(h_class):
