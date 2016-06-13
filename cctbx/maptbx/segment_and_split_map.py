@@ -4146,7 +4146,7 @@ def run(args,
     tracking_data=get_solvent_fraction(params,
       ncs_object=ncs_obj,tracking_data=tracking_data,out=out)
 
-    if params.crystal_info.auto_sharpen and params.crystal_info is None:
+    if params.crystal_info.auto_sharpen and params.crystal_info.b_iso is None:
       print >>out,"\nCarrying out auto_sharpening"
       map_data,tracking_data=run_auto_sharpen(
         params=params,
