@@ -125,7 +125,7 @@ def floating_point_exceptions():
   else:
     flag = False
   return floating_point_exceptions_type(
-    division_by_zero=flag, invalid=flag, overflow=flag)
+    division_by_zero=flag, invalid=False, overflow=flag)
 floating_point_exceptions = floating_point_exceptions()
 
 
