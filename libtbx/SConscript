@@ -6,6 +6,7 @@ from libtbx.str_utils import show_string
 from libtbx.path import norm_join, full_command_path
 import sys, os
 import re
+import subprocess
 op = os.path
 
 if (hasattr(Environment, "Clone")):
@@ -803,6 +804,10 @@ int main() {
         print "which is llvm-gcc",
         if env_etc.apple_gcc_builds.llvm is not None:
           print ", LLVM build %i" % env_etc.apple_gcc_builds.llvm,
+    try:
+      subprocess.check_call(('xcodebuild', '-version'))
+    except OSError:
+      print "Not using Xcode"
     print
 
     env_etc.static_libraries = 1
