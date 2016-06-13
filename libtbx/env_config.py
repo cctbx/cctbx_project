@@ -1053,6 +1053,31 @@ Wait for the command to finish, then try again.""" % vars())
     print >> f, 'LIBTBX_PYEXE="%s"' % (
       self.python_exe.dirname() / "$LIBTBX_PYEXE_BASENAME").sh_value()
     print >> f, 'export LIBTBX_PYEXE'
+
+    # Since El Capitan, Apple Python does not allow relative rpath in shared
+    # libraries. Thus any cctbx-based script will fail with an import error
+    # because each and every .so references lib/libboost_python.dylib.
+    # There are two ways to fix this issue:
+    # - we could put the absolute path at compile-time
+    # - or we can fix it at runtime
+    # The former would make the cctbx build directory non-relocatable. Thus
+    # we prefer the latter.
+    if sys.platform == "darwin" and abs(self.python_exe).startswith("/usr/bin/"):
+      print >> f, """/usr/bin/perl <<'FIXRPATH'
+        for $lib(<$ENV{LIBTBX_BUILD}/lib/*.so>) {
+            open OTOOL, "-|", "otool", "-L", $lib;
+            while(<OTOOL>) {
+                m{^\s+(lib\S+)} and $libs{$lib}{$1}++;
+            }
+        }
+        while(($so, $relative_libs) = each %libs) {
+            for $lib(keys %$relative_libs) {
+                system "install_name_tool",
+                       "-change", $lib, "\@loader_path/../$lib", $so;
+            }
+        }
+      """
+      print >> f, "FIXRPATH"
     if (source_file is not None):
       def pre_cmd():
         return ['', '/usr/bin/arch -i386 '][self.build_options.force_32bit]
