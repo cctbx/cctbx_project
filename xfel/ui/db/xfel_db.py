@@ -25,10 +25,24 @@ class initialize(initialize_base):
 class xfel_db_application(object):
   def __init__(self, dbobj, params):
     self.params = params
-    self.dbobj = dbobj
+    self._dbobj = dbobj
     self.cursor = dbobj.cursor()
 
     self.init_tables = initialize(params, dbobj)
+
+  def __getattr__(self, name):
+    if name == "dbobj":
+      while True:
+        try:
+          self._dbobj.ping()
+        except Exception, e:
+          print "Lost connection to db, reconnecting..."
+          from xfel.ui.db import get_db_connection
+          self._dbobj = get_db_connection(self.params)
+          continue
+        return self._dbobj
+    else:
+      raise AttributeError()
 
   def verify_tables(self):
     return self.init_tables.verify_tables()
@@ -76,7 +90,12 @@ class xfel_db_application(object):
     return Tag(self, tag_id)
 
   def get_run_tags(self, run_id):
-    return []#Tag(self, i) for i in xrange(3)]
+    query = "SELECT tag_id from `%s_run_tag WHERE `%s_run_tag.run_id = %d" % \
+            (self.params.experiment_tag, self.params.experiment_tag, run_id)
+    cursor = self.dbobj.cursor()
+    print query
+    cursor.execute(query)
+    return [Tag(self, i[0]) for i in cursor.fetchall()]
 
   def get_all_tags(self):
     return self.get_all_x(Tag, "tag")
