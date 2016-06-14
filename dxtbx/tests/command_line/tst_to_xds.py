@@ -24,13 +24,13 @@ def exercise_to_xds():
 
   expected_output = """\
 DETECTOR=PILATUS MINIMUM_VALID_PIXEL_VALUE=0 OVERLOAD=495976
-SENSOR_THICKNESS= 0.32
-DIRECTION_OF_DETECTOR_X-AXIS= 1.000 0.000 0.000
-DIRECTION_OF_DETECTOR_Y-AXIS= 0.000 1.000 0.000
+SENSOR_THICKNESS= 0.320
+DIRECTION_OF_DETECTOR_X-AXIS= 1.00000 0.00000 0.00000
+DIRECTION_OF_DETECTOR_Y-AXIS= 0.00000 1.00000 0.00000
 NX=2463 NY=2527 QX=0.1720 QY=0.1720
 DETECTOR_DISTANCE= 190.180
 ORGX= 1235.8 ORGY= 1279.6
-ROTATION_AXIS= 1.000 0.000 0.000
+ROTATION_AXIS= 1.00000 0.00000 0.00000
 STARTING_ANGLE= 0.000
 OSCILLATION_RANGE= 0.200
 X-RAY_WAVELENGTH= 0.97950
@@ -62,7 +62,7 @@ JOB=XYCORR INIT COLSPOT IDXREF DEFPIX INTEGRATE CORRECT\
   result = easy_run.fully_buffered(cmd)
   # allow extra lines to have been added (these may be comments)
   for record in expected_output.split('\n'):
-    assert(record.strip() in "\n".join(result.stdout_lines))
+    assert record.strip() in "\n".join(result.stdout_lines), record
 
   # now test reading from a json file
   sweep = ImageSetFactory.new(file_names)[0]
@@ -74,7 +74,7 @@ JOB=XYCORR INIT COLSPOT IDXREF DEFPIX INTEGRATE CORRECT\
 
   # allow extra lines to have been added (these may be comments)
   for record in expected_output.split('\n'):
-    assert(record.strip() in "\n".join(result.stdout_lines))
+    assert record.strip() in "\n".join(result.stdout_lines), record
 
 
 def run():

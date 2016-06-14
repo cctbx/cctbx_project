@@ -63,6 +63,8 @@ def to_imageset(input_filename, extra_filename=None):
       t0 = handle.sensor_thickness
       for panel in detector:
         panel.set_px_mm_strategy(ParallaxCorrectedPxMmStrategy(mu, t0))
+        panel.set_trusted_range(
+          (handle.minimum_valid_pixel_value, handle.overload))
     imageset.set_beam(models.get_beam())
     imageset.set_detector(detector)
     imageset.set_goniometer(models.get_goniometer())
@@ -280,17 +282,17 @@ class to_xds(object):
           (material, self.get_detector()[0].get_thickness())
         print >> out, '!SILICON= %f' % mu
 
-    print >> out, 'DIRECTION_OF_DETECTOR_X-AXIS= %.3f %.3f %.3f' % \
+    print >> out, 'DIRECTION_OF_DETECTOR_X-AXIS= %.5f %.5f %.5f' % \
           self.detector_x_axis
 
-    print >> out, 'DIRECTION_OF_DETECTOR_Y-AXIS= %.3f %.3f %.3f' % \
+    print >> out, 'DIRECTION_OF_DETECTOR_Y-AXIS= %.5f %.5f %.5f' % \
           self.detector_y_axis
 
     print >> out, 'NX=%d NY=%d QX=%.4f QY=%.4f' % (fast, slow, f, s)
 
     print >> out, 'DETECTOR_DISTANCE= %.3f' % self.detector_distance
     print >> out, 'ORGX= %.1f ORGY= %.1f' % self.detector_origin
-    print >> out, 'ROTATION_AXIS= %.3f %.3f %.3f' % \
+    print >> out, 'ROTATION_AXIS= %.5f %.5f %.5f' % \
           self.rotation_axis
     print >> out, 'STARTING_ANGLE= %.3f' % \
           self.starting_angle
@@ -340,10 +342,10 @@ class to_xds(object):
         print >> out, "! SEGMENT %d" %(panel_id+1)
         print >> out, "!"
         print >> out, 'SEGMENT= %d %d %d %d' % self.panel_limits[panel_id]
-        print >> out, 'DIRECTION_OF_SEGMENT_X-AXIS= %.3f %.3f %.3f' % \
+        print >> out, 'DIRECTION_OF_SEGMENT_X-AXIS= %.5f %.5f %.5f' % \
               self.panel_x_axis[panel_id]
 
-        print >> out, 'DIRECTION_OF_SEGMENT_Y-AXIS= %.3f %.3f %.3f' % \
+        print >> out, 'DIRECTION_OF_SEGMENT_Y-AXIS= %.5f %.5f %.5f' % \
               self.panel_y_axis[panel_id]
 
         print >> out, 'SEGMENT_DISTANCE= %.3f' % self.panel_distance[panel_id]
