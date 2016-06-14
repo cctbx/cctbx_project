@@ -207,7 +207,7 @@ class RunWindow(wx.Panel):
     self.runs_tab = RunTab(self.main_nbook, main=self.parent)
     self.trials_tab = TrialsTab(self.main_nbook, main=self.parent)
     self.jobs_tab = JobsTab(self.main_nbook, main=self.parent)
-    self.status_tab = StatusTab(self.main_nbook)
+    self.status_tab = StatusTab(self.main_nbook, main=self.parent)
     self.merge_tab = MergeTab(self.main_nbook)
     self.main_nbook.AddPage(self.runs_tab, 'Runs')
     self.main_nbook.AddPage(self.trials_tab, 'Trials')
@@ -346,8 +346,13 @@ class TrialsTab(BaseTab):
     self.db = self.main.db
     self.all_trials = self.db.get_all_trials()
     self.all_runs = self.db.get_all_runs()
-    self.first_run = self.all_runs[0]
-    self.last_run = self.all_runs[-1]
+
+    if len(self.all_runs) > 0:
+      self.first_run = self.all_runs[0]
+      self.last_run = self.all_runs[-1]
+    else:
+      self.first_run = 0
+      self.last_run = None
 
   def onAddTrial(self, e):
     self.add_new_trial()
@@ -426,8 +431,10 @@ class JobsTab(BaseTab):
 
 
 class StatusTab(BaseTab):
-  def __init__(self, parent):
+  def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
+
+    self.db = main.db
 
     self.status_panel = ScrolledPanel(self, size=(300, 350))
     self.status_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -443,13 +450,21 @@ class StatusTab(BaseTab):
 
     self.bottom_sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.bottom_sizer.Add(self.btn_filter_tags)
-    self.bottom_sizer.Add(self.opt_multi, flag=wx.LEFT, border=10)
+    self.bottom_sizer.Add(self.opt_multi, flag=wx.LEFT, border=25)
 
     self.main_sizer.Add(self.status_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.bottom_sizer,
                         flag=wx.RIGHT | wx.LEFT | wx.BOTTOM,
                         border=10)
+
+    # Bindings
+    self.Bind(EVT_REFRESH, self.onPlotChart)
+
+  def onPlotChart(self, e):
+    pass
+
+
 
 class MergeTab(BaseTab):
   def __init__(self, parent, prefix='prime'):
