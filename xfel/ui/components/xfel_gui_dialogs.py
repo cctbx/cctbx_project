@@ -238,7 +238,6 @@ class TagDialog(BaseDialog):
   def __init__(self, parent,
                label_style='bold',
                content_style='normal',
-               tags=[],
                db=None,
                *args, **kwargs):
     BaseDialog.__init__(self, parent, label_style=label_style,
@@ -278,7 +277,6 @@ class TagDialog(BaseDialog):
 
     # Populate tags with current values from db
     if len(self.db_tags) > 0:
-      self.index = 0
       for tag in self.db_tags:
         self.tag_list.InsertStringItem(self.index, tag.name)
         self.tag_list.SetStringItem(self.index, 1, tag.comment)
@@ -371,8 +369,8 @@ class TagDialog(BaseDialog):
         # Add new tags to DB
         for tag in self.new_tags:
           self.db.create_tag(name=tag[0], comment=tag[1])
-      except Exception, ex:
-        print str(ex)
+      except Exception:
+        pass
 
       e.Skip()
 

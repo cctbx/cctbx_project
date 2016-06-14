@@ -26,7 +26,6 @@ class MainApp(wx.App):
     x, y, w, h = display.GetGeometry()
     fw, fh = self.frame.GetSize()
     frame_position = (x + w / 2 - fw / 2, y + h / 2 - fh / 2)
-    print frame_position
     self.frame.SetMinSize(self.frame.GetEffectiveMinSize())
     self.frame.SetPosition(frame_position)
     #self.frame.Center()

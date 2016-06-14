@@ -213,10 +213,13 @@ class OptionCtrl(CtrlBase):
 
     CtrlBase.__init__(self, parent=parent, label_style=label_style)
 
-    opt_box = wx.FlexGridSizer(1, len(items) * 2 + 1, 0, 10)
-    self.txt = wx.StaticText(self, label=label, size=label_size)
-    self.txt.SetFont(self.font)
-    opt_box.Add(self.txt)
+    if label != '':
+      opt_box = wx.FlexGridSizer(1, len(items) * 2 + 1, 0, 10)
+      self.txt = wx.StaticText(self, label=label, size=label_size)
+      self.txt.SetFont(self.font)
+      opt_box.Add(self.txt)
+    else:
+      opt_box = wx.FlexGridSizer(1, len(items) * 2, 0, 10)
 
     for key, value in items.iteritems():
       if len(items) > 1:

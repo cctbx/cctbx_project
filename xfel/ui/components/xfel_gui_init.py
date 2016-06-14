@@ -12,10 +12,14 @@ import wx
 import time
 from threading import Thread
 from wx.lib.scrolledpanel import ScrolledPanel
+from libtbx import easy_run
 
 import xfel.ui.components.xfel_gui_controls as gctr
 import xfel.ui.components.xfel_gui_dialogs as dlg
 from xfel.ui import load_cached_settings, save_cached_settings
+
+from prime.postrefine.mod_gui_init import PRIMEInputWindow, PRIMERunWindow
+from prime.postrefine.mod_input import master_phil
 
 icons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/')
 
@@ -241,7 +245,6 @@ class RunTab(BaseTab):
     self.all_tags = []
     self.all_tag_buttons = []
 
-    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
     self.run_panel = ScrolledPanel(self)
     self.run_sizer = wx.BoxSizer(wx.VERTICAL)
     self.run_panel.SetSizer(self.run_sizer)
@@ -260,7 +263,6 @@ class RunTab(BaseTab):
     self.main_sizer.Add(self.btn_manage_tags,
                         flag=wx.RIGHT | wx.LEFT | wx.BOTTOM | wx.ALIGN_RIGHT,
                         border=10)
-    self.SetSizer(self.main_sizer)
 
     # Bindings
     self.Bind(EVT_REFRESH, self.onRefresh)
@@ -273,7 +275,7 @@ class RunTab(BaseTab):
 
   def onManageTags(self, e):
     ''' User can add / remove / edit sample tags '''
-    mtag_dlg = dlg.TagDialog(self, tags=self.all_tags, db=self.main.db)
+    mtag_dlg = dlg.TagDialog(self, db=self.main.db)
     mtag_dlg.Fit()
     mtag_dlg.ShowModal()
     mtag_dlg.Destroy()
@@ -323,10 +325,9 @@ class TrialsTab(BaseTab):
     self.trial_number = 1
     self.main = main
 
-    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
-
     self.trial_panel = ScrolledPanel(self, size=(300, 350))
     self.trial_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.trial_panel.SetSizer(self.trial_sizer)
 
     self.btn_add_trial = wx.Button(self, label='New Trial',
                                    size=(120, -1))
@@ -336,9 +337,6 @@ class TrialsTab(BaseTab):
     self.main_sizer.Add(self.btn_add_trial,
                         flag=wx.RIGHT | wx.LEFT | wx.BOTTOM | wx.ALIGN_RIGHT,
                         border=10)
-
-    self.trial_panel.SetSizer(self.trial_sizer)
-    self.SetSizer(self.main_sizer)
 
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onAddTrial, self.btn_add_trial)
@@ -372,8 +370,6 @@ class JobsTab(BaseTab):
     BaseTab.__init__(self, parent=parent)
 
     self.main = main
-
-    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
     self.job_panel = ScrolledPanel(self)
     self.job_sizer = wx.BoxSizer(wx.VERTICAL)
     self.job_panel.SetSizer(self.job_sizer)
@@ -394,8 +390,6 @@ class JobsTab(BaseTab):
     self.main_sizer.Add(self.btn_kill_all,
                         flag=wx.RIGHT | wx.LEFT | wx.BOTTOM,
                         border=10)
-
-    self.SetSizer(self.main_sizer)
 
     # TODO: Need jobs sentinel for this!
     self.timer = wx.Timer(self)
@@ -435,10 +429,111 @@ class StatusTab(BaseTab):
   def __init__(self, parent):
     BaseTab.__init__(self, parent=parent)
 
+    self.status_panel = ScrolledPanel(self, size=(300, 350))
+    self.status_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.status_panel.SetSizer(self.status_sizer)
+
+    self.btn_filter_tags = wx.Button(self, label='Filter Tags...')
+    show_mult = 'Show multiplicity at (A):'
+    goal_mult = 'Goal (fold multiplicity):'
+    self.opt_multi = gctr.OptionCtrl(self,
+                                     ctrl_size=(100, -1),
+                                     items={'{}'.format(show_mult):2.0,
+                                            '{}'.format(goal_mult):10.0})
+
+    self.bottom_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.bottom_sizer.Add(self.btn_filter_tags)
+    self.bottom_sizer.Add(self.opt_multi, flag=wx.LEFT, border=10)
+
+    self.main_sizer.Add(self.status_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.bottom_sizer,
+                        flag=wx.RIGHT | wx.LEFT | wx.BOTTOM,
+                        border=10)
 
 class MergeTab(BaseTab):
-  def __init__(self, parent):
+  def __init__(self, parent, prefix='prime'):
     BaseTab.__init__(self, parent=parent)
+
+    #TODO: This seems like a placeholder. Need to have a proper window that
+    #TODO: accepts multiple input entries, whether they are files or folders
+
+    #TODO: alternatively, concatenate any combo of tags into an input file
+
+    self.prefix = prefix
+    self.prime_filename = '{}.phil'.format(self.prefix)
+
+    self.prime_panel = PRIMEInputWindow(self)
+    self.btn_get_tags = wx.Button(self, label='Select Tags...', size=(120, -1))
+    self.btn_run_prime = wx.Button(self, label='Run PRIME', size=(120, -1))
+    self.btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.btn_sizer.Add(self.btn_get_tags)
+    self.btn_sizer.Add(self.btn_run_prime, flag=wx.LEFT, border=5)
+
+    self.main_sizer.Add(self.prime_panel, flag=wx.ALL | wx.EXPAND, border=10)
+    self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.btn_sizer,
+                        flag=wx.RIGHT | wx.LEFT | wx.BOTTOM,
+                        border=10)
+
+    self.Bind(wx.EVT_BUTTON, self.onInput, self.prime_panel.inp_box.btn_browse)
+    self.Bind(wx.EVT_TEXT, self.onInput, self.prime_panel.inp_box.ctr)
+    self.Bind(wx.EVT_BUTTON, self.onIsoRef, self.prime_panel.ref_box.btn_browse)
+    self.Bind(wx.EVT_TEXT, self.onIsoRef, self.prime_panel.ref_box.ctr)
+    self.Bind(wx.EVT_TOOL, self.onRun, self.btn_run_prime)
+
+  def onInput(self, e):
+    if self.prime_panel.inp_box.ctr.GetValue() != '':
+      self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
+    else:
+      self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
+
+  def onIsoRef(self, e):
+    if self.prime_panel.ref_box.ctr.GetValue() != '':
+      self.prime_panel.opt_chk_useref.Enable()
+    else:
+      self.prime_panel.opt_chk_useref.Disable()
+
+  def init_settings(self):
+    self.pparams = self.prime_panel.pparams
+    self.pparams.data = [self.prime_panel.inp_box.ctr.GetValue()]
+    self.out_dir = self.prime_panel.out_box.ctr.GetValue()
+    self.pparams.run_no = misc.set_base_dir(out_dir=self.out_dir)
+    self.pparams.title = self.prime_panel.title_box.ctr.GetValue()
+    if str(self.prime_panel.ref_box.ctr.GetValue()).lower() != '':
+      self.pparams.hklisoin = self.prime_panel.ref_box.ctr.GetValue()
+      if self.prime_panel.opt_chk_useref.GetValue():
+        self.pparams.hklrefin = self.prime_panel.ref_box.ctr.GetValue()
+    self.pparams.n_residues = self.prime_panel.opt_spc_nres.GetValue()
+    self.pparams.n_processors = self.prime_panel.opt_spc_nproc.GetValue()
+
+  def onRun(self, e):
+    # Run full processing
+
+    self.init_settings()
+    prime_phil = master_phil.format(python_object=self.pparams)
+
+    with misc.Capturing() as output:
+      prime_phil.show()
+
+    txt_out = ''
+    for one_output in output:
+      txt_out += one_output + '\n'
+
+    prime_file = os.path.join(self.out_dir, self.prime_filename)
+    out_file = os.path.join(self.out_dir, 'stdout.log')
+    with open(prime_file, 'w') as pf:
+      pf.write(txt_out)
+
+    self.prime_run_window = PRIMERunWindow(self, -1,
+                                           title='PRIME Output',
+                                           params=self.pparams,
+                                           prime_file=prime_file,
+                                           out_file=out_file)
+    self.prime_run_window.prev_pids = easy_run.fully_buffered('pgrep -u {} {}'
+                                          ''.format(user, python)).stdout_lines
+    self.prime_run_window.Show(True)
+
 
 # ------------------------------- UI Elements -------------------------------- #
 
