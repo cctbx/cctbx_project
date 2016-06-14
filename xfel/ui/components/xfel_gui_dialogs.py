@@ -234,17 +234,18 @@ class DBCredentialsDialog(BaseDialog):
                         border=10)
     self.SetSizer(self.main_sizer)
 
-
 class TagDialog(BaseDialog):
   def __init__(self, parent,
                label_style='bold',
                content_style='normal',
                tags=[],
+               db=None,
                *args, **kwargs):
     BaseDialog.__init__(self, parent, label_style=label_style,
                         content_style=content_style, *args, **kwargs)
 
-    self.db_tags = tags
+    self.db = db
+    self.db_tags = self.db.get_all_tags()
     self.deleted_tags = []
     self.new_tags = []
     self.edited_tags =[]
@@ -313,7 +314,7 @@ class TagDialog(BaseDialog):
     self.new_tags.append(new_tag)
     self.tag_list.InsertStringItem(self.index, new_tag[0])
     self.tag_list.SetStringItem(self.index, 1, new_tag[1])
-    self.tag_list.SetItemData(self.index, None)
+    self.tag_list.SetItemData(self.index, -1)
     self.tag_list.Select(self.index)
     self.tag_list.Focus(self.index)
     self.index += 1
@@ -321,7 +322,6 @@ class TagDialog(BaseDialog):
   def onRemove(self, e):
     selected_indices = getListCtrlSelection(self.tag_list)
     tag_ids = [self.tag_list.GetItemData(i) for i in selected_indices]
-    print tag_ids
     self.deleted_tags = [i for i in self.db_tags if i.tag_id in tag_ids]
 
     for i in range(len(selected_indices)):
@@ -350,12 +350,11 @@ class TagDialog(BaseDialog):
     else:
       try:
         # Update names for edited tags
-        # TODO: Actually connect to actual tags in DB
         all_items = [(self.tag_list.GetItemData(i),
                     self.tag_list.GetItem(itemId=i, col=0),
                     self.tag_list.GetItem(itemId=i, col=1))
                    for i in range(count)]
-        edited_items = [i for i in all_items if i[0] is not None]
+        edited_items = [i for i in all_items if i[0] != -1]
         for tag in self.db_tags:
           for item in edited_items:
             if tag.tag_id == item[0]:
@@ -366,12 +365,89 @@ class TagDialog(BaseDialog):
 
         # Delete tags from DB
         for tag in self.deleted_tags:
-          self.parent.parent.parent.db.delete_tag(tag)
+          self.db.delete_tag(tag)
 
         # Add new tags to DB
         for tag in self.new_tags:
-          self.parent.parent.parent.db.create_tags(name=tag[0], comment=tag[1])
+          self.db.create_tag(name=tag[0], comment=tag[1])
       except Exception:
         pass
 
       e.Skip()
+
+class RunBlockDialog(BaseDialog):
+  ''' Comes up when individual run block button is clicked; allows for run
+  block settings to be manipulated by user '''
+
+  def __init__(self, parent, db,
+               label_style='bold',
+               content_style='normal',
+               *args, **kwargs):
+
+    self.db = db
+    self.first_run = 0
+    self.last_run = None
+
+    BaseDialog.__init__(self, parent,
+                        label_style=label_style,
+                        content_style=content_style,
+                        size=(600, 200),
+                        *args, **kwargs)
+
+    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
+
+    # Run block start / end points (choice widgets)
+    start = [str(i.run_id) for i in self.db.get_all_runs()]
+    stop = ['None'] + [str(i.run_id) for i in self.db.get_all_runs()[2:]]
+    self.runblocks = gctr.MultiChoiceCtrl(self,
+                                          label='Run block:',
+                                          label_style='bold',
+                                          label_size=(100, -1),
+                                          ctrl_size=(150, -1),
+                                          items={'start:':start, 'end:':stop})
+    self.main_sizer.Add(self.runblocks, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Beam XYZ
+    self.beam_xyz = gctr.OptionCtrl(self,
+                                    label='Beam:',
+                                    label_style='bold',
+                                    label_size=(100, -1),
+                                    ctrl_size=(100, -1),
+                                    items={'X:':'120.0',
+                                           'Y':'120.0',
+                                           'DetZ':'40.0'})
+    self.main_sizer.Add(self.beam_xyz, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Dark path
+    self.dark_path = gctr.TextButtonCtrl(self,
+                                         label='Dark CBF Path:',
+                                         label_style='bold',
+                                         label_size=(100, -1),
+                                         big_button=True)
+    self.main_sizer.Add(self.dark_path, flag=wx.EXPAND | wx.ALL, border=10)
+
+
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    self.main_sizer.Add(dialog_box,
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        border=10)
+
+    self.Bind(wx.EVT_BUTTON, self.onDarkBrowse,
+              id=self.dark_path.btn_big.GetId())
+
+    self.SetSizer(self.main_sizer)
+    self.Layout()
+
+  def onDarkBrowse(self, e):
+    dark_dlg = wx.FileDialog(self,
+                             message="Load dark file",
+                             defaultDir=os.curdir,
+                             defaultFile="*.cbf",
+                             wildcard="*.cbf",
+                             style=wx.OPEN | wx.FD_FILE_MUST_EXIST,
+                             )
+
+    if dark_dlg.ShowModal() == wx.ID_OK:
+      self.dark_file = dark_dlg.GetPaths()[0]
+    dark_dlg.Destroy()
