@@ -19,3 +19,8 @@ def get_db_connection(params, block=True):
         continue
       else:
         raise e
+
+class db_proxy(object):
+  def __init__(self, dbobj, id = None, **kwargs):
+    self.dbobj = dbobj
+    self.id = id

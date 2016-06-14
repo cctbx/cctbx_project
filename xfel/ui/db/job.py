@@ -1,7 +1,10 @@
 from __future__ import division
+from xfel.ui.db import db_proxy
 
-class Job(object):
-  def __init__(self, job_id = None, **kwargs):
+class Job(db_proxy):
+  def __init__(self, dbobj, job_id = None, **kwargs):
+    db_proxy.__init__(self, dbobj, id = job_id, **kwargs)
+
     if job_id is None:
       job_id = 4 # create a new job
 

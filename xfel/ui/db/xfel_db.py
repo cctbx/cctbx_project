@@ -37,53 +37,53 @@ class xfel_db_application(object):
     return self.init_tables.create_tables()
 
   def create_trial(self, **kwargs):
-    return Trial(**kwargs)
+    return Trial(self.dbobj, **kwargs)
 
   def get_trial(self, trial_id):
-    return Trial(trial_id)
+    return Trial(self.dbobj, trial_id)
 
   def get_all_trials(self):
-    return [Trial(i) for i in xrange(3)]
+    return [Trial(self.dbobj, i) for i in xrange(3)]
 
   def create_run(self, **kwargs):
-    return Run(**kwargs)
+    return Run(self.dbobj, **kwargs)
 
   def get_run(self, run_id):
-    return Run(run_id)
+    return Run(self.dbobj, run_id)
 
   def get_all_runs(self):
-    return [Run(i) for i in xrange(3)]
+    return [Run(self.dbobj, i) for i in xrange(3)]
 
   def create_rungroup(self, **kwargs):
-    return Rungroup(**kwargs)
+    return Rungroup(self.dbobj, **kwargs)
 
   def get_rungroup(self, rungroup_id):
-    return Rungroup(rungroup_id)
+    return Rungroup(self.dbobj, rungroup_id)
 
   def get_all_rungroups(self):
-    return [Rungroup(i) for i in xrange(3)]
+    return [Rungroup(self.dbobj, i) for i in xrange(3)]
 
   def create_tag(self, **kwargs):
-    return Tag(**kwargs)
+    return Tag(self.dbobj, **kwargs)
 
   def get_tag(self, tag_id):
-    return Tag(tag_id)
+    return Tag(self.dbobj, tag_id)
 
   def get_all_tags(self):
-    return [Tag(i) for i in xrange(3)]
+    return [Tag(self.dbobj, i) for i in xrange(3)]
 
   def delete_tag(self, tag = None, tag_id = None):
     if tag_id is None:
       tag_id = tag.tag_id
 
   def create_job(self, **kwargs):
-    return Job(**kwargs)
+    return Job(self.dbobj, **kwargs)
 
   def get_job(self, job_id):
-    return Job(job_id)
+    return Job(self.dbobj, job_id)
 
   def get_all_jobs(self):
-    return [Job(i) for i in xrange(3)]
+    return [Job(self.dbobj, i) for i in xrange(3)]
 
   def delete_job(self, job = None, job_id = None):
     if job_id is None:

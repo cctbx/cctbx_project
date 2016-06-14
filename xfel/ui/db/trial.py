@@ -1,7 +1,10 @@
 from __future__ import division
+from xfel.ui.db import db_proxy
 
-class Trial(object):
-  def __init__(self, trial_id = None, **kwargs):
+class Trial(db_proxy):
+  def __init__(self, dbobj, trial_id = None, **kwargs):
+    db_proxy.__init__(self, dbobj, id = trial_id, **kwargs)
+
     if trial_id is None:
       trial_id = 4 # create a new trial
 
