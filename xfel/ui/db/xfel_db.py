@@ -37,53 +37,62 @@ class xfel_db_application(object):
     return self.init_tables.create_tables()
 
   def create_trial(self, **kwargs):
-    return Trial(self.dbobj, **kwargs)
+    return Trial(self, **kwargs)
+
+  def get_all_x(self, cls, name):
+    query = "SELECT id from `%s_%s`" % (self.params.experiment_tag, name)
+    cursor = self.dbobj.cursor()
+    cursor.execute(query)
+    return [cls(self, i[0]) for i in cursor.fetchall()]
 
   def get_trial(self, trial_id):
-    return Trial(self.dbobj, trial_id)
+    return Trial(self, trial_id)
 
   def get_all_trials(self):
-    return [Trial(self.dbobj, i) for i in xrange(3)]
+    return self.get_all_x(Trial, "trial")
 
   def create_run(self, **kwargs):
-    return Run(self.dbobj, **kwargs)
+    return Run(self, **kwargs)
 
   def get_run(self, run_id):
-    return Run(self.dbobj, run_id)
+    return Run(self, run_id)
 
   def get_all_runs(self):
-    return [Run(self.dbobj, i) for i in xrange(3)]
+    return self.get_all_x(Run, "run")
 
   def create_rungroup(self, **kwargs):
-    return Rungroup(self.dbobj, **kwargs)
+    return Rungroup(self, **kwargs)
 
   def get_rungroup(self, rungroup_id):
-    return Rungroup(self.dbobj, rungroup_id)
+    return Rungroup(self, rungroup_id)
 
   def get_all_rungroups(self):
-    return [Rungroup(self.dbobj, i) for i in xrange(3)]
+    return self.get_all_x(Rungroup, "rungroup")
 
   def create_tag(self, **kwargs):
-    return Tag(self.dbobj, **kwargs)
+    return Tag(self, **kwargs)
 
   def get_tag(self, tag_id):
-    return Tag(self.dbobj, tag_id)
+    return Tag(self, tag_id)
+
+  def get_run_tags(self, run_id):
+    return []#Tag(self, i) for i in xrange(3)]
 
   def get_all_tags(self):
-    return [Tag(self.dbobj, i) for i in xrange(3)]
+    return self.get_all_x(Tag, "tag")
 
   def delete_tag(self, tag = None, tag_id = None):
     if tag_id is None:
       tag_id = tag.tag_id
 
   def create_job(self, **kwargs):
-    return Job(self.dbobj, **kwargs)
+    return Job(self, **kwargs)
 
   def get_job(self, job_id):
-    return Job(self.dbobj, job_id)
+    return Job(self, job_id)
 
   def get_all_jobs(self):
-    return [Job(self.dbobj, i) for i in xrange(3)]
+    return self.get_all_x(Job, "job")
 
   def delete_job(self, job = None, job_id = None):
     if job_id is None:

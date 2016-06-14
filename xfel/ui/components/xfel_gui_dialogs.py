@@ -249,6 +249,7 @@ class TagDialog(BaseDialog):
     self.deleted_tags = []
     self.new_tags = []
     self.edited_tags =[]
+    self.index = 0
 
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
     self.top_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -370,8 +371,8 @@ class TagDialog(BaseDialog):
         # Add new tags to DB
         for tag in self.new_tags:
           self.db.create_tag(name=tag[0], comment=tag[1])
-      except Exception:
-        pass
+      except Exception, ex:
+        print str(ex)
 
       e.Skip()
 

@@ -2,8 +2,8 @@ from __future__ import division
 from xfel.ui.db import db_proxy
 
 class Tag(db_proxy):
-  def __init__(self, dbobj, tag_id = None, **kwargs):
-    db_proxy.__init__(self, dbobj, id = tag_id, **kwargs)
+  def __init__(self, app, tag_id = None, **kwargs):
+    db_proxy.__init__(self, app, "%s_tag" % app.params.experiment_tag, id = tag_id, **kwargs)
 
     if tag_id is None:
       tag_id = 4 # create a new tag

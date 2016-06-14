@@ -2,8 +2,8 @@ from __future__ import division
 from xfel.ui.db import db_proxy
 
 class Job(db_proxy):
-  def __init__(self, dbobj, job_id = None, **kwargs):
-    db_proxy.__init__(self, dbobj, id = job_id, **kwargs)
+  def __init__(self, app, job_id = None, **kwargs):
+    db_proxy.__init__(self, app, "%s_job" % app.params.experiment_tag, id = job_id, **kwargs)
 
     if job_id is None:
       job_id = 4 # create a new job

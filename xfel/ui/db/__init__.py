@@ -21,6 +21,40 @@ def get_db_connection(params, block=True):
         raise e
 
 class db_proxy(object):
-  def __init__(self, dbobj, id = None, **kwargs):
-    self.dbobj = dbobj
+  def __init__(self, app, table_name, id = None, **kwargs):
+    self.app = app
+    self.dbobj = app.dbobj
     self.id = id
+    self.table_name = table_name
+
+    if id is None:
+      # add the new items to the db
+      query = "INSERT INTO `%s` " % self.table_name
+      keys = "("
+      vals = "VALUES ("
+      comma = ""
+      for key, item in kwargs.iteritems():
+        setattr(self, key, item)
+        keys += comma + key
+        vals += comma + "'%s'"%item
+        comma = ", "
+      keys += ")"
+      vals += ")"
+      query += keys + " " + vals
+      cursor = self.dbobj.cursor()
+      cursor.execute(query)
+      self.dbobj.commit()
+      self.id = cursor.lastrowid
+    else:
+      query = "SHOW COLUMNS FROM `%s`" % self.table_name
+      cursor = self.dbobj.cursor()
+      cursor.execute(query)
+      columns = [c[0] for c in cursor.fetchall()]
+
+      query = "SELECT * FROM `%s` WHERE id = %d" % (self.table_name, id)
+      cursor = self.dbobj.cursor()
+      cursor.execute(query)
+      data = cursor.fetchall()[0]
+
+      for key, value in zip(columns, data):
+        setattr(self, key, value)
