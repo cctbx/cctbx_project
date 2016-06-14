@@ -23,7 +23,6 @@ def get_db_connection(params, block=True):
 class db_proxy(object):
   def __init__(self, app, table_name, id = None, **kwargs):
     self.app = app
-    self.dbobj = app.dbobj
     self.id = id
     self.table_name = table_name
 
@@ -41,18 +40,18 @@ class db_proxy(object):
       keys += ")"
       vals += ")"
       query += keys + " " + vals
-      cursor = self.dbobj.cursor()
+      cursor = self.app.dbobj.cursor()
       cursor.execute(query)
-      self.dbobj.commit()
+      self.app.dbobj.commit()
       self.id = cursor.lastrowid
     else:
       query = "SHOW COLUMNS FROM `%s`" % self.table_name
-      cursor = self.dbobj.cursor()
+      cursor = self.app.dbobj.cursor()
       cursor.execute(query)
       columns = [c[0] for c in cursor.fetchall()]
 
       query = "SELECT * FROM `%s` WHERE id = %d" % (self.table_name, id)
-      cursor = self.dbobj.cursor()
+      cursor = self.app.dbobj.cursor()
       cursor.execute(query)
       data = cursor.fetchall()[0]
 

@@ -37,6 +37,7 @@ class xfel_db_application(object):
           self._dbobj.ping()
         except Exception, e:
           print "Lost connection to db, reconnecting..."
+          del self._dbobj
           from xfel.ui.db import get_db_connection
           self._dbobj = get_db_connection(self.params)
           continue
