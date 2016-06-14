@@ -17,9 +17,17 @@ from dxtbx.serialize import xds
 def run(file_names):
   if len(file_names) == 1 and file_names[0].endswith('json'):
     from dxtbx.serialize import load
-    datablock = load.datablock(file_names[0])
-    assert(len(datablock) == 1)
-    sweep = datablock[0].extract_sweeps()[0]
+    try:
+      datablock = load.datablock(file_names[0])
+      assert len(datablock) == 1
+      sweep = datablock[0].extract_sweeps()[0]
+    except ValueError, e:
+      if str(e) == '"__id__" does not equal "imageset"':
+        experiments = load.experiment_list(file_names[0])
+        assert len(experiments) == 1
+        sweep = experiments[0].imageset
+    else:
+      raise
   else:
     from dxtbx.imageset import ImageSetFactory
     sweep = ImageSetFactory.new(file_names)[0]
