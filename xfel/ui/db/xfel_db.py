@@ -45,6 +45,12 @@ class xfel_db_application(object):
     else:
       raise AttributeError()
 
+  def list_lcls_runs(self):
+    from xfel.xpp.simulate import file_table
+    query = "https://pswww.slac.stanford.edu/ws-auth/dataexport/placed?exp_name=%s" % "xppk4715"#(self.params.experiment)
+    FT = file_table(self.params, query)
+    return FT.get_runs()
+
   def verify_tables(self):
     return self.init_tables.verify_tables()
 

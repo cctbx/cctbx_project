@@ -20,6 +20,12 @@ db {
 }
 output_folder = ""
   .type = path
+web {
+  user = None
+    .type = str
+  password = None
+    .type = str
+}
 """
 master_phil_scope = parse(master_phil_str, process_includes=True)
 

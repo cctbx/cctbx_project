@@ -22,6 +22,7 @@ def get_db_connection(params, block=True):
 
 class db_proxy(object):
   def __init__(self, app, table_name, id = None, **kwargs):
+    self.db_dict = {}
     self.app = app
     self.id = id
     self.table_name = table_name
@@ -32,10 +33,10 @@ class db_proxy(object):
       keys = "("
       vals = "VALUES ("
       comma = ""
-      for key, item in kwargs.iteritems():
-        setattr(self, key, item)
+      for key, value in kwargs.iteritems():
+        self.db_dict[key] = value
         keys += comma + key
-        vals += comma + "'%s'"%item
+        vals += comma + "'%s'"%value
         comma = ", "
       keys += ")"
       vals += ")"
@@ -56,4 +57,31 @@ class db_proxy(object):
       data = cursor.fetchall()[0]
 
       for key, value in zip(columns, data):
-        setattr(self, key, value)
+        if key == 'id':
+          continue
+        self.db_dict[key] = value
+
+  def __getattr__(self, key):
+    # Called if the property is not found
+    if key in self.db_dict:
+      return self.db_dict[key]
+    else:
+      raise AttributeError()
+
+  def __setattr__(self, key, value):
+    # Need to test for db_dict to avoid infinite loop
+    if key == "db_dict" or key not in self.db_dict:
+      super(db_proxy, self).__setattr__(key, value)
+      return
+
+    self.db_dict[key] = value
+
+    query = "UPDATE `%s` SET %s = '%s' WHERE id = %d"% (
+      self.table_name, key, value, self.id)
+    print query
+    try:
+      cursor = self.app.dbobj.cursor()
+      cursor.execute(query)
+      self.app.dbobj.commit()
+    except Exception, e:
+      print str(e)

@@ -52,10 +52,21 @@ class RunSentinel(Thread):
     self.active = active
 
   def run(self):
+    from xfel.ui.db import get_db_connection
+    from xfel.ui.db.xfel_db import xfel_db_application
+    conn = get_db_connection(self.parent.params)
+    db = xfel_db_application(conn, self.parent.params)
+
     while self.active:
-      evt = RefreshRuns(tp_EVT_REFRESH, -1)
-      wx.PostEvent(self.parent.run_window.runs_tab, evt)
-      wx.PostEvent(self.parent.run_window.trials_tab, evt)
+      # Find the delta
+      known_runs = [r.run for r in db.get_all_runs()]
+      unknown_runs = [run['run'] for run in db.list_lcls_runs() if run['run'] not in known_runs]
+
+      if len(unknown_runs) > 0:
+        #print "%d new runs" % len(unknown_runs)
+        evt = RefreshRuns(tp_EVT_REFRESH, -1)
+        wx.PostEvent(self.parent.run_window.runs_tab, evt)
+        wx.PostEvent(self.parent.run_window.trials_tab, evt)
       time.sleep(1)
 
 # ------------------------------- Job Sentinel ------------------------------- #
