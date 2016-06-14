@@ -53,8 +53,6 @@ class RunSentinel(Thread):
 
   def run(self):
     while self.active:
-      self.parent.run_window.runs_tab.runs = self.parent.db.get_all_runs()
-      self.parent.run_window.runs_tab.all_tags = self.parent.db.get_all_tags()
       evt = RefreshRuns(tp_EVT_REFRESH, -1)
       wx.PostEvent(self.parent.run_window.runs_tab, evt)
       wx.PostEvent(self.parent.run_window.trials_tab, evt)
