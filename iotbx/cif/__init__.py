@@ -540,7 +540,9 @@ class cctbx_data_structures_from_cif(object):
             wavelengths = block_wavelengths
           if base_array_info is not None:
             base_array_info = base_array_info.customized_copy(labels=[key])
-          if '_refln_index_h' in block or '_refln.index_h' in block:
+          if ( '_refln_index_h' in block or '_refln.index_h' in block or
+               '_diffrn_refln' in block
+               ):
             self.miller_arrays.setdefault(
               key, builder(block, base_array_info=base_array_info,
                 wavelengths=wavelengths).arrays())
