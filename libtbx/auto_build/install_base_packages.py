@@ -847,6 +847,10 @@ _replace_sysconfig_paths(build_time_vars)
       site_file = open("setup_site.py", "w")
       site_file.write('FREETYPE_ROOT = "%s", "%s"\n' %
         (op.join(self.base_dir, "lib"), op.join(self.base_dir, "include")))
+
+      # point to zlib installation for Ubuntu (12.04, 14.04, 16.04)
+      if ('Ubuntu' in platform.platform()):
+        site_file.write('ZLIB_ROOT = "/usr/lib/x86_64-linux-gnu", "usr/include"\n')
       return True
     callback = None
     if (patch_src) :
