@@ -44,6 +44,7 @@ env.SharedLibrary(
   "flex_random.cpp",
   "flex_sort.cpp",
   "flex_histogram.cpp",
+  "flex_weighted_histogram.cpp",
   "flex_mean_and_variance.cpp",
   "flex_median.cpp",
   "flex_linear_interpolation.cpp",

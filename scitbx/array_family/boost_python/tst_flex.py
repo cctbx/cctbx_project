@@ -2043,6 +2043,88 @@ def exercise_histogram():
     assert not show_diff(t.getvalue(), s.getvalue())
     assert l.n_out_of_slot_range() == 17
 
+def exercise_weighted_histogram():
+  x = flex.double(xrange(20))
+  w = 0.5 * flex.double(xrange(20))
+  h = flex.weighted_histogram(data=x, weights=w)
+  assert h.slots().size() == 1000
+  h = flex.weighted_histogram(data=x)
+  assert h.slots().size() == 1000
+  h = flex.weighted_histogram(x, n_slots=5)
+  assert approx_equal(h.data_min(), 0)
+  assert approx_equal(h.data_max(), 19)
+  assert approx_equal(h.slot_width(), 19/5.)
+  assert tuple(h.slots()) == (4,4,4,4,4)
+  assert approx_equal(h.slot_centers(), (1.9, 5.7, 9.5, 13.3, 17.1))
+  assert h.get_i_slot(10) == 2
+  assert h.get_i_slot(16.2) == 4
+  assert h.n_out_of_slot_range() == 0
+  assert approx_equal(h.get_cutoff(max_points=15), 7.60038)
+  assert approx_equal(h.get_cutoff(15, relative_tolerance=0.1), 7.98)
+  h.update(2)
+  assert tuple(h.slots()) == (5,4,4,4,4)
+  h.update(-12) # out of range
+  h.update(21) # out of range
+  assert tuple(h.slots()) == (5,4,4,4,4)
+  h = flex.weighted_histogram(x, w, n_slots=5)
+  assert approx_equal(h.data_min(), 0)
+  assert approx_equal(h.data_max(), 19)
+  assert approx_equal(h.slot_width(), 19/5.)
+  assert approx_equal(tuple(h.slots()), (3, 11, 19, 27, 35))
+  # empty starting weighted_histogram
+  h2 = flex.weighted_histogram(flex.double(), -2, 4, 4)
+  h2.update(3)
+  h2.update(4.0000001)
+  h2.update(4.01)
+  assert tuple(h2.slots()) == (0, 0, 0, 2)
+  h2.update(4.01, relative_tolerance=1e-1)
+  assert tuple(h2.slots()) == (0, 0, 0, 3)
+  h3 = flex.weighted_histogram(flex.double((1,2,3,4,5)), -2, 4, 4)
+  h2.update(h3)
+  assert tuple(h2.slots()) == (0, 0, 2, 5)
+  y = flex.double(xrange(-3,23))
+  hy = flex.weighted_histogram(other=h, data=y)
+  assert approx_equal(hy.data_min(), 0)
+  assert approx_equal(hy.data_max(), 19)
+  assert approx_equal(hy.slot_width(), 19/5.)
+  assert tuple(hy.slots()) == (4,4,4,4,4)
+  assert hy.n_out_of_slot_range() == 6
+  hy = flex.weighted_histogram(other=h, data=y, relative_tolerance=0.5)
+  assert tuple(hy.slots()) == (5,4,4,4,5)
+  assert hy.n_out_of_slot_range() == 4
+  hy = flex.weighted_histogram(other=h, data=y, relative_tolerance=1)
+  assert tuple(hy.slots()) == (7,4,4,4,7)
+  assert hy.n_out_of_slot_range() == 0
+  s = StringIO()
+  hy.show(f=s, prefix="*")
+  assert s.getvalue() == """\
+*0 - 3.8: 7
+*3.8 - 7.6: 4
+*7.6 - 11.4: 4
+*11.4 - 15.2: 4
+*15.2 - 19: 7
+"""
+  hy = flex.weighted_histogram(
+    data=y, data_min=2, data_max=10, n_slots=4, relative_tolerance=1.e-4)
+  s = StringIO()
+  hy.show(f=s, prefix="&")
+  assert s.getvalue() == """\
+&2 - 4: 2
+&4 - 6: 2
+&6 - 8: 2
+&8 - 10: 3
+"""
+  assert hy.n_out_of_slot_range() == 17
+  centers = [info.center() for info in hy.slot_infos()]
+  assert approx_equal(centers, [3,5,7,9])
+  for pickler in [pickle, cPickle]:
+    p = pickler.dumps(hy)
+    l = pickler.loads(p)
+    t = StringIO()
+    l.show(f=t, prefix="&")
+    assert not show_diff(t.getvalue(), s.getvalue())
+    assert l.n_out_of_slot_range() == 17
+
 def exercise_show_count_stats():
   def check(counts, prefix="", group_size=10, expected=None):
     sio = StringIO()
@@ -3504,6 +3586,7 @@ def run(iterations):
     exercise_flex_mat3_double()
     exercise_flex_tiny_size_t_2()
     exercise_histogram()
+    exercise_weighted_histogram()
     exercise_show_count_stats()
     exercise_linear_regression()
     exercise_linear_correlation()

@@ -1,0 +1,117 @@
+#include <scitbx/array_family/boost_python/flex_fwd.h>
+
+#include <scitbx/weighted_histogram.h>
+#include <scitbx/boost_python/is_polymorphic_workaround.h>
+#include <boost/python/class.hpp>
+#include <boost/python/args.hpp>
+
+SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(
+  scitbx::weighted_histogram<>)
+
+namespace scitbx { namespace af { namespace boost_python { namespace {
+
+  struct weighted_histogram_wrappers
+  {
+    typedef weighted_histogram<> w_t;
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t>("weighted_histogram", no_init)
+        .def(init<
+          af::const_ref<double> const&,
+          std::size_t>((
+            arg("data"),
+            arg("n_slots")=1000)))
+        .def(init<
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          std::size_t>((
+            arg("data"),
+            arg("weights"),
+            arg("n_slots")=1000)))
+        .def(init<
+          af::const_ref<double> const&,
+          double const&,
+          double const&,
+          std::size_t,
+          double const&>((
+            arg("data"),
+            arg("data_min"),
+            arg("data_max"),
+            arg("n_slots")=1000,
+            arg("relative_tolerance")=1e-4)))
+        .def(init<
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          double const&,
+          double const&,
+          std::size_t,
+          double const&>((
+            arg("data"),
+            arg("weights"),
+            arg("data_min"),
+            arg("data_max"),
+            arg("n_slots")=1000,
+            arg("relative_tolerance")=1e-4)))
+        .def(init<
+          w_t const&,
+          af::const_ref<double> const&,
+          double const&>((
+            arg("other"),
+            arg("data"),
+            arg("relative_tolerance")=1e-4)))
+        .def(init<
+          w_t const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          double const&>((
+            arg("other"),
+            arg("data"),
+            arg("weights"),
+            arg("relative_tolerance")=1e-4)))
+        .enable_pickling()
+        .def(init<
+          double const&,
+          double const&,
+          double const&,
+          af::shared<double> const&,
+          std::size_t>()) // intentionally no arg
+        .def("update",
+          (void(w_t::*)(double const&, double const&)) &w_t::update, (
+          arg("data_value"),
+          arg("relative_tolerance")=1e-4))
+        .def("update",
+             (void(w_t::*)(double const&, double const&, double const&)) &w_t::update, (
+          arg("data_value"),
+          arg("weight"),
+          arg("relative_tolerance")=1e-4))
+        .def("update",
+          (void(w_t::*)(w_t const&)) &w_t::update, (
+          arg("other")))
+        .def("update",
+          (void(w_t::*)(af::shared<double> const&)) &w_t::update, (
+          arg("from_ar")))
+
+        .def("data_min", &w_t::data_min)
+        .def("data_max", &w_t::data_max)
+        .def("slot_width", &w_t::slot_width)
+        .def("slot_centers", &w_t::slot_centers)
+        .def("slots", &w_t::slots)
+        .def("get_i_slot", &w_t::get_i_slot)
+        .def("n_out_of_slot_range", &w_t::n_out_of_slot_range)
+        .def("get_cutoff", &w_t::get_cutoff, (
+          arg("max_points"),
+          arg("relative_tolerance")=1e-4))
+      ;
+    }
+  };
+
+} // namespace <anonymous>
+
+  void wrap_flex_weighted_histogram()
+  {
+    weighted_histogram_wrappers::wrap();
+  }
+
+}}} // namespace scitbx::af::boost_python

@@ -98,6 +98,7 @@ def export_to(target_module_name):
     "linear_regression",
     "linear_correlation",
     "histogram",
+    "weighted_histogram",
     "show_count_stats",
     "permutation_generator",
     "smart_selection",
@@ -351,6 +352,39 @@ def show_count_stats(
     threshold = max(1, threshold-group_size)
   else:
     print >> out, fmt_val % (threshold, n, 1)
+
+class weighted_histogram_slot_info(object):
+
+  def __init__(self, low_cutoff, high_cutoff, n):
+    self.low_cutoff = low_cutoff
+    self.high_cutoff = high_cutoff
+    self.n = n
+
+  def center(self):
+    return (self.high_cutoff + self.low_cutoff) / 2
+
+class _(boost.python.injector, ext.weighted_histogram):
+
+  def __getinitargs__(self):
+    return (
+      self.data_min(),
+      self.data_max(),
+      self.slot_width(),
+      self.slots(),
+      self.n_out_of_slot_range())
+
+  def slot_infos(self):
+    low_cutoff = self.data_min()
+    for i,n in enumerate(self.slots()):
+      high_cutoff = self.data_min() + self.slot_width() * (i+1)
+      yield weighted_histogram_slot_info(low_cutoff, high_cutoff, n)
+      low_cutoff = high_cutoff
+
+  def show(self, f=None, prefix="", format_cutoffs="%.8g"):
+    if (f is None): f = sys.stdout
+    fmt = "%s" + format_cutoffs + " - " + format_cutoffs + ": %d"
+    for info in self.slot_infos():
+      print >> f, fmt % (prefix, info.low_cutoff, info.high_cutoff, info.n)
 
 def permutation_generator(size):
   result = size_t(xrange(size))

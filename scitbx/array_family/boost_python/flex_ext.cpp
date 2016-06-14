@@ -51,6 +51,7 @@ namespace scitbx { namespace af { namespace boost_python {
   void wrap_flex_random();
   void wrap_flex_sort();
   void wrap_flex_histogram();
+  void wrap_flex_weighted_histogram();
   void wrap_flex_mean_and_variance();
   void wrap_flex_median_statistics();
   void wrap_flex_linear_interpolation();
@@ -493,6 +494,7 @@ namespace {
     wrap_flex_random();
     wrap_flex_sort();
     wrap_flex_histogram();
+    wrap_flex_weighted_histogram();
     wrap_flex_mean_and_variance();
     wrap_flex_median_statistics();
     wrap_flex_linear_interpolation();
