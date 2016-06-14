@@ -268,32 +268,6 @@ class ChoiceCtrl(CtrlBase):
 
     self.SetSizer(ctr_box)
 
-class MultiChoiceCtrl(CtrlBase):
-  ''' Generic panel with multiple choice controls / labels '''
-
-  def __init__(self, parent, items,
-               label='',
-               label_size=(200, -1),
-               label_style='normal',
-               ctrl_size=(100, -1)):
-    CtrlBase.__init__(self, parent=parent, label_style=label_style)
-
-
-    choice_box = wx.FlexGridSizer(1, len(items) * 2 + 1, 0, 10)
-    self.txt = wx.StaticText(self, label=label, size=label_size)
-    self.txt.SetFont(self.font)
-    choice_box.Add(self.txt)
-
-    for key, choices in items.iteritems():
-      if len(items) > 1:
-        choice_box.Add(wx.StaticText(self, id=wx.ID_ANY, label=key))
-
-      item = wx.Choice(self, id=wx.ID_ANY, size=ctrl_size, choices=choices)
-      choice_box.Add(item)
-      self.__setattr__(key, item)
-
-    self.SetSizer(choice_box)
-
 class TableCtrl(CtrlBase):
   ''' Generic panel will place a table w/ x and y labels
       Data must be a list of lists for multi-column tables '''

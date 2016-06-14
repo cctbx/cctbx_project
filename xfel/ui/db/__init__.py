@@ -1,9 +1,5 @@
 from __future__ import division
-try:
-  import MySQLdb
-except ImportError, e:
-  from libtbx.utils import Sorry
-  raise Sorry("Mysql is not installed")
+import MySQLdb
 
 def get_db_connection(params, block=True):
   while True:
