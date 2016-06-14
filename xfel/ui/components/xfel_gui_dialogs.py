@@ -88,7 +88,6 @@ class SettingsDialog(BaseDialog):
                         label_style=label_style,
                         content_style=content_style,
                         size=(600, 200),
-                        style=wx.NO_BORDER,
                         *args, **kwargs)
 
     self.params = params
@@ -120,7 +119,10 @@ class SettingsDialog(BaseDialog):
                         border=10)
 
     # Output folder text control w/ Browse / magnifying glass button
-    current_folder = os.path.abspath(os.curdir)
+    if self.params.output_folder == '':
+      current_folder = os.path.abspath(os.curdir)
+    else:
+      current_folder = self.params.output_folder
     self.output = gctr.TextButtonCtrl(self,
                                       label='Output',
                                       label_style='bold',
@@ -153,6 +155,15 @@ class SettingsDialog(BaseDialog):
 
     self.Bind(wx.EVT_BUTTON, self.onDBCredentialsButton, id=self.db_cred.btn_big.GetId())
     self.Bind(wx.EVT_BUTTON, self.onOK, id=self.btn_OK.GetId())
+    self.Bind(wx.EVT_BUTTON, self.onBrowse, id=self.output.btn_big.GetId())
+
+  def onBrowse(self, e):
+    dlg = wx.DirDialog(self, "Choose the input directory:",
+                       style=wx.DD_DEFAULT_STYLE)
+
+    if dlg.ShowModal() == wx.ID_OK:
+      self.output.ctr.SetValue(dlg.GetPath())
+    dlg.Destroy()
 
   def onDBCredentialsButton(self, e):
     creds = DBCredentialsDialog(self, self.params)
@@ -165,6 +176,7 @@ class SettingsDialog(BaseDialog):
   def onOK(self, e):
     self.params.experiment_tag = self.db_cred.ctr.GetValue()
     self.params.experiment = self.params.db.name = self.experiment.ctr.GetValue()
+    self.params.output_folder = self.output.ctr.GetValue()
     e.Skip()
 
 class DBCredentialsDialog(BaseDialog):

@@ -18,6 +18,8 @@ db {
   password = ""
     .type = str
 }
+output_folder = ""
+  .type = path
 """
 master_phil_scope = parse(master_phil_str, process_includes=True)
 

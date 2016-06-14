@@ -29,11 +29,11 @@ license = 'cctbx.xfel and cctbx.xfel UI are developed under the open source ' \
 description = 'The cctbx.xfel UI is developed for use during data collection ' \
               'and initial processing at LCSL XFEL beamlines.'
 
-# ------------------------------- Threading ---------------------------------- #
+# ------------------------------- Run Sentinel ------------------------------- #
 
 # Set up events for and for finishing all cycles
 tp_EVT_REFRESH = wx.NewEventType()
-EVT_REFRESH = wx.PyEventBinder(tp_EVT_REFRESH, 1)
+EVT_RUN_REFRESH = wx.PyEventBinder(tp_EVT_REFRESH, 1)
 
 class RefreshRuns(wx.PyCommandEvent):
   ''' Send event when finished all cycles  '''
@@ -41,7 +41,7 @@ class RefreshRuns(wx.PyCommandEvent):
     wx.PyCommandEvent.__init__(self, etype, eid)
 
 class RunSentinel(Thread):
-  ''' Worker thread; generated so that the GUI does not lock up when
+  ''' Worker thread for runs; generated so that the GUI does not lock up when
       processing is running '''
 
   def __init__(self,
@@ -58,6 +58,32 @@ class RunSentinel(Thread):
       wx.PostEvent(self.parent.run_window.trials_tab, evt)
       time.sleep(1)
 
+# ------------------------------- Job Sentinel ------------------------------- #
+
+# Set up events for and for finishing all cycles
+EVT_JOB_REFRESH = wx.PyEventBinder(tp_EVT_REFRESH, 1)
+
+class RefreshJobs(wx.PyCommandEvent):
+  ''' Send event when finished all cycles  '''
+  def __init__(self, etype, eid):
+    wx.PyCommandEvent.__init__(self, etype, eid)
+
+class JobSentinel(Thread):
+  ''' Worker thread for jobs; generated so that the GUI does not lock up when
+      processing is running '''
+
+  def __init__(self,
+               parent,
+               active=True):
+    Thread.__init__(self)
+    self.parent = parent
+    self.active = active
+
+  def run(self):
+    while self.active:
+      evt = RefreshJobs(tp_EVT_REFRESH, -1)
+      wx.PostEvent(self.parent.run_window.jobs, evt)
+      time.sleep(1)
 
 # ------------------------------- Main Window -------------------------------- #
 
@@ -88,7 +114,7 @@ class MainWindow(wx.Frame):
                         shortHelp='Pause All Jobs',
                         longHelp='Pause all pending jobs')
     self.toolbar.AddSeparator()
-    self.tb_btn_options = self.toolbar.AddLabelTool(wx.ID_ANY,
+    self.tb_btn_settings = self.toolbar.AddLabelTool(wx.ID_ANY,
                         label='Settings',
                         bitmap=wx.Bitmap('{}/32x32/settings.png'.format(icons)),
                         shortHelp='Settings',
@@ -124,6 +150,8 @@ class MainWindow(wx.Frame):
     # Bindings
     self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
     self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_run)
+    self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_run)
+    self.Bind(wx.EVT_TOOL, self.onSettings, self.tb_btn_settings)
 
     # Draw the main window sizer
     self.SetSizer(main_box)
@@ -183,9 +211,23 @@ class MainWindow(wx.Frame):
     info.AddDeveloper('Nicholas Sauter')
     wx.AboutBox(info)
 
+  def onSettings(self, e):
+    settings_dlg = dlg.SettingsDialog(self,
+                                      params=self.params)
+    settings_dlg.db_cred.btn_big.Disable()
+
+    if (settings_dlg.ShowModal() == wx.ID_OK):
+      self.params = settings_dlg.params
+      self.title = 'CCTBX.XFEL | {} | {}'.format(self.params.experiment_tag,
+                                                 self.params.experiment)
+
   def onRun(self, e):
-    ''' All the sentinels will be activated here '''
-    pass
+    ''' All the jobs will be activated here '''
+    self.start_job_sentinel()
+
+  def onPause(self, e):
+    ''' Pause all jobs '''
+    self.stop_job_sentinel()
 
   def onQuit(self, e):
     self.stop_sentinels()
@@ -263,7 +305,7 @@ class RunTab(BaseTab):
                         border=10)
 
     # Bindings
-    self.Bind(EVT_REFRESH, self.onRefresh)
+    self.Bind(EVT_RUN_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_BUTTON, self.onManageTags, self.btn_manage_tags)
 
     self.refresh_rows()
@@ -338,7 +380,7 @@ class TrialsTab(BaseTab):
 
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onAddTrial, self.btn_add_trial)
-    self.Bind(EVT_REFRESH, self.onRefresh)
+    self.Bind(EVT_RUN_REFRESH, self.onRefresh)
 
   def onRefresh(self, e):
     self.db = self.main.db
@@ -358,11 +400,11 @@ class TrialsTab(BaseTab):
     self.trial_panel.SetupScrolling()
 
   def add_new_trial(self):
-    trial = self.db.create_trial()
-    self.trial_number = trial.id
+    self.trial_number = len(self.all_trials) + 1
+    self.db.create_trial(trial_id=self.trial_number)
     new_trial = TrialPanel(self.trial_panel,
                            db = self.db,
-                           trial=trial,
+                           trial=self.db.get_trial(trial_id=self.trial_number),
                            box_label='Trial {}'.format(self.trial_number))
     new_trial.tgl_active.SetValue(True)
     self.trial_sizer.Add(new_trial, flag=wx.EXPAND | wx.ALL, border=10)
@@ -457,7 +499,7 @@ class StatusTab(BaseTab):
                         border=10)
 
     # Bindings
-    self.Bind(EVT_REFRESH, self.onPlotChart)
+    self.Bind(EVT_RUN_REFRESH, self.onPlotChart)
 
   def onPlotChart(self, e):
     pass
