@@ -26,8 +26,8 @@ def run(file_names):
         experiments = load.experiment_list(file_names[0])
         assert len(experiments) == 1
         sweep = experiments[0].imageset
-    else:
-      raise
+      else:
+        raise
   else:
     from dxtbx.imageset import ImageSetFactory
     sweep = ImageSetFactory.new(file_names)[0]
