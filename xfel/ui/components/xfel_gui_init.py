@@ -358,11 +358,11 @@ class TrialsTab(BaseTab):
     self.trial_panel.SetupScrolling()
 
   def add_new_trial(self):
-    self.trial_number = len(self.all_trials) + 1
-    self.db.create_trial(trial_id=self.trial_number)
+    trial = self.db.create_trial()
+    self.trial_number = trial.id
     new_trial = TrialPanel(self.trial_panel,
                            db = self.db,
-                           trial=self.db.get_trial(trial_id=self.trial_number),
+                           trial=trial,
                            box_label='Trial {}'.format(self.trial_number))
     new_trial.tgl_active.SetValue(True)
     self.trial_sizer.Add(new_trial, flag=wx.EXPAND | wx.ALL, border=10)
