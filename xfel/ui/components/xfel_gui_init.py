@@ -368,7 +368,6 @@ class RunTab(BaseTab):
     all_runs = self.main.db.get_all_runs()
     new_runs = [run for run in all_runs if run.run not in old_run_numbers]
 
-    print '***'
     # Update either all or only new runs
     if all:
       runs = self.all_runs
@@ -395,14 +394,14 @@ class RunTab(BaseTab):
                            size=(60, -1))
     tag_button = gctr.TagButton(self.run_panel, run=run,
                                 all_tags = self.all_tags)
-    self.Bind(wx.EVT_BUTTON, self.onTrialButton, id=tag_button.GetId())
+    self.Bind(wx.EVT_BUTTON, self.onTagButton, id=tag_button.GetId())
     self.all_tag_buttons.append(tag_button)
     row_sizer.Add(run_no, flag=wx.EXPAND | wx.ALIGN_CENTRE)
     row_sizer.Add(tag_button, flag=wx.EXPAND)
     row_sizer.AddGrowableCol(1)
     self.run_sizer.Add(row_sizer, flag=wx.ALL | wx.EXPAND, border=0)
 
-  def onTrialButton(self, e):
+  def onTagButton(self, e):
     e.GetEventObject().change_tags()
 
 
@@ -430,29 +429,27 @@ class TrialsTab(BaseTab):
     self.Bind(EVT_RUN_REFRESH, self.onRefresh)
 
   def refresh_trials(self):
-    evt = RefreshRuns(tp_EVT_RUN_REFRESH, -1)
-    wx.PostEvent(self, evt)
-
-  def onRefresh(self, e):
-    self.db = self.main.db
-    self.all_trials = self.db.get_all_trials()
-
     self.trial_sizer.Clear(deleteWindows=True)
     for trial in self.all_trials:
       new_trial = TrialPanel(self.trial_panel,
                              db=self.db,
                              trial=trial,
                              box_label='Trial {}'.format(trial.trial))
-      new_trial.tgl_active.SetValue(trial.active)
+      new_trial.chk_active.SetValue(trial.active)
       self.trial_sizer.Add(new_trial, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.trial_panel.Layout()
+    self.trial_panel.SetupScrolling()
+
+  def onRefresh(self, e):
+    self.db = self.main.db
+    self.all_trials = self.db.get_all_trials()
+    self.refresh_trials()
 
   def onAddTrial(self, e):
     new_trial_dlg = dlg.TrialDialog(self, db=self.main.db)
 
     if new_trial_dlg.ShowModal() == wx.ID_OK:
-      self.trial_panel.Layout()
-      self.trial_panel.SetupScrolling()
-
       self.db.create_trial(
         trial = int(new_trial_dlg.trial_number.ctr.GetValue()),
         active = True,
@@ -653,7 +650,7 @@ class TrialPanel(wx.Panel):
     trial_box = wx.StaticBox(self, label=box_label)
     self.main_sizer = wx.StaticBoxSizer(trial_box, wx.VERTICAL)
 
-    self.block_panel = ScrolledPanel(self, size=(150, 200))
+    self.block_panel = ScrolledPanel(self, size=(150, 180))
     self.block_sizer = wx.BoxSizer(wx.VERTICAL)
     self.block_panel.SetSizer(self.block_sizer)
     self.add_panel = wx.Panel(self)
@@ -665,9 +662,9 @@ class TrialPanel(wx.Panel):
     # Add "New Block" button to a separate sizer (so it is always on bottom)
     self.btn_add_block = wx.Button(self.add_panel, label='New Block',
                                    size=(120, -1))
-    self.tgl_active = wx.ToggleButton(self.add_panel, label='De-Activate',
-                                      size=(120, -1))
-    self.add_sizer.Add(self.tgl_active,
+    self.chk_active = wx.CheckBox(self.add_panel, label='Active',
+                                  size=(120, -1))
+    self.add_sizer.Add(self.chk_active,
                        flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
                        border=10)
     self.add_sizer.Add(self.btn_add_block,
@@ -679,17 +676,15 @@ class TrialPanel(wx.Panel):
 
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onAddBlock, self.btn_add_block)
-    self.tgl_active.Bind(wx.EVT_TOGGLEBUTTON, self.onToggleActivity)
+    self.chk_active.Bind(wx.EVT_TOGGLEBUTTON, self.onToggleActivity)
 
     self.SetSizer(self.main_sizer)
 
   def onToggleActivity(self, e):
-    if self.tgl_active.GetValue():
+    if self.chk_active.GetValue():
       self.trial.active = True
-      self.tgl_active.SetLabel('De-Activate')
     else:
       self.trial.active = False
-      self.tgl_active.SetLabel('Activate')
 
   def onAddBlock(self, e):
     ''' Add new block button '''
