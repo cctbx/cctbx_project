@@ -47,7 +47,7 @@ class xfel_db_application(object):
 
   def list_lcls_runs(self):
     from xfel.xpp.simulate import file_table
-    query = "https://pswww.slac.stanford.edu/ws-auth/dataexport/placed?exp_name=%s" % "xppk4715"#(self.params.experiment)
+    query = "https://pswww.slac.stanford.edu/ws-auth/dataexport/placed?exp_name=%s" % (self.params.experiment)
     FT = file_table(self.params, query)
     return FT.get_runs()
 
