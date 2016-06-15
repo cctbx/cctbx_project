@@ -74,28 +74,28 @@ class lbfgs_partiality_handler(object):
     cs = miller_array_o.crystal_symmetry().space_group().crystal_system()
     if refine_mode == 'scale_factor':
       G, B = params
-      rotx, roty, ry, rz, r0, re, a, b, c, alpha, beta, gamma = const_params
+      rotx, roty, ry, rz, r0, re, nu, a, b, c, alpha, beta, gamma = const_params
     elif refine_mode == 'crystal_orientation':
       rotx, roty = params
-      G, B, ry, rz, r0, re, a, b, c, alpha, beta, gamma = const_params
+      G, B, ry, rz, r0, re, nu, a, b, c, alpha, beta, gamma = const_params
     elif refine_mode == 'reflecting_range':
-      ry, rz, r0, re = params
+      ry, rz, r0, re, nu = params
       G, B, rotx, roty, a, b, c, alpha, beta, gamma = const_params
     elif refine_mode == 'unit_cell':
       a, b, c, alpha, beta, gamma = self.prep_output(params, cs)
-      G, B, rotx, roty, ry, rz, r0, re = const_params
+      G, B, rotx, roty, ry, rz, r0, re, nu = const_params
     elif refine_mode == 'allparams':
-      a, b, c, alpha, beta, gamma = self.prep_output(params[6:], cs)
-      rotx, roty, ry, rz, r0, re = params[0:6]
+      a, b, c, alpha, beta, gamma = self.prep_output(params[7:], cs)
+      rotx, roty, ry, rz, r0, re, nu = params[0:7]
       G,B = const_params
     try:
       uc = unit_cell((a,b,c,alpha,beta,gamma))
     except Exception:
       return None
-    G,B,rotx,roty,ry,rz,r0,re,a,b,c,alpha,beta,gamma = flex.double([G,B,rotx,roty,ry,rz,r0,re,a,b,c,alpha,beta,gamma])
+    G,B,rotx,roty,ry,rz,r0,re,nu,a,b,c,alpha,beta,gamma = flex.double([G,B,rotx,roty,ry,rz,r0,re,nu,a,b,c,alpha,beta,gamma])
     ph = partiality_handler()
     p_calc_flex, delta_xy_flex, rs_set, dummy = ph.calc_partiality_anisotropy_set(\
-      uc, rotx, roty, miller_indices_original, ry, rz, r0, re, two_theta_flex,
+      uc, rotx, roty, miller_indices_original, ry, rz, r0, re, nu, two_theta_flex,
       alpha_angle_set, wavelength, crystal_init_orientation, spot_pred_x_mm_set,
       spot_pred_y_mm_set, detector_distance_mm, partiality_model, flag_beam_divergence)
     if miller_array_o.d_min() < b_refine_d_min:
@@ -106,5 +106,8 @@ class lbfgs_partiality_handler(object):
       error = delta_xy_flex
     else:
       error = ((I_r - I_o_full)/sigI_o)
-    #print refine_mode, 'G=%.4g B=%.4g rotx=%.4g roty=%.4g ry=%.4g rz=%.4g r0=%.4g re=%.4g a=%.4g b=%.4g c=%.4g alp=%.4g beta=%.4g gam=%.4g fpr=%.4g fxy=%.4g dd_mm=%6.2f n_refl=%5.0f'%(G, B, rotx*180/math.pi, roty*180/math.pi, ry, rz, r0, re, a, b, c, alpha, beta, gamma, flex.sum(((I_r - I_o_full)/sigI_o)**2), flex.sum(delta_xy_flex**2), detector_distance_mm, len(I_o_full))
+    """
+    import math
+    print refine_mode, 'G:%.4g B:%.4g rotx:%.4g roty:%.4g r0:%.4g re:%.4g nu:%6.4f a:%.4g b:%.4g c:%.4g fpr:%.4g fxy:%.4g n_refl=%5.0f'%(G, B, rotx*180/math.pi, roty*180/math.pi, r0, re, nu, a, b, c, flex.sum(((I_r - I_o_full)/sigI_o)**2), flex.sum(delta_xy_flex**2), len(I_o_full))
+    """
     return error

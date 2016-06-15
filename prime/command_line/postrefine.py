@@ -70,6 +70,8 @@ if (__name__ == "__main__"):
   from prime.postrefine import read_input
   iparams, txt_out_input = read_input(sys.argv[:1])
   iparams.flag_volume_correction = False
+  if iparams.partiality_model == "Lognormal":
+    iparams.voigt_nu = 0.008 #use voigt_nu as lognpdf zero parameter
   print txt_out_input
   txt_out_verbose = 'Log verbose\n'+txt_out_input
   frame_files = read_pickles(iparams.data)

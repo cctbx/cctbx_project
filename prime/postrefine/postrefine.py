@@ -141,9 +141,6 @@ class postref_handler(object):
     spot_pred_x_mm = spot_pred_x_mm.select(i_sel_res)
     spot_pred_y_mm = spot_pred_y_mm.select(i_sel_res)
     #Filter weak
-    if iparams.flag_include_negatives:
-      if iparams.merge.sigma_min > 0:
-        iparams.merge.sigma_min = -99.0
     i_sel = (observations.data()/observations.sigmas()) > iparams.merge.sigma_min
     observations = observations.select(i_sel)
     alpha_angle_obs = alpha_angle_obs.select(i_sel)
@@ -316,7 +313,7 @@ class postref_handler(object):
       txt_exception += 'optimization failed.\n'
       return None, txt_exception
     #caculate partiality for output (with target_anomalous check)
-    G_fin, B_fin, rotx_fin, roty_fin, ry_fin, rz_fin, r0_fin, re_fin, \
+    G_fin, B_fin, rotx_fin, roty_fin, ry_fin, rz_fin, r0_fin, re_fin, voigt_nu_fin, \
         a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin = refined_params
     inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename)
     observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = inputs
@@ -329,7 +326,7 @@ class postref_handler(object):
     ph = partiality_handler()
     partiality_fin, dummy, rs_fin, rh_fin = ph.calc_partiality_anisotropy_set(uc_fin, rotx_fin, roty_fin,
                                                            observations_original.indices(),
-                                                           ry_fin, rz_fin, r0_fin, re_fin,
+                                                           ry_fin, rz_fin, r0_fin, re_fin, voigt_nu_fin,
                                                            two_theta, alpha_angle, wavelength,
                                                            crystal_init_orientation,
                                                            spot_pred_x_mm, spot_pred_y_mm,
@@ -458,11 +455,12 @@ class postref_handler(object):
         return None, txt_exception
     two_theta = observations_original.two_theta(wavelength=wavelength).data()
     sin_theta_over_lambda_sq = observations_original.two_theta(wavelength=wavelength).sin_theta_over_lambda_sq().data()
-    ry, rz, re, rotx, roty = (0, 0, iparams.gamma_e, 0, 0)
+    ry, rz, re, voigt_nu, rotx, roty = (0, 0, iparams.gamma_e, iparams.voigt_nu, 0, 0)
     partiality_init, delta_xy_init, rs_init, rh_init = ph.calc_partiality_anisotropy_set(\
                                                           crystal_init_orientation.unit_cell(),
                                                           rotx, roty, observations_original.indices(),
-                                                          ry, rz, r0, re, two_theta, alpha_angle, wavelength,
+                                                          ry, rz, r0, re, voigt_nu,
+                                                          two_theta, alpha_angle, wavelength,
                                                           crystal_init_orientation, spot_pred_x_mm, spot_pred_y_mm,
                                                           detector_distance_mm, iparams.partiality_model,
                                                           iparams.flag_beam_divergence)
@@ -479,7 +477,7 @@ class postref_handler(object):
         if len(observations_original.data().select(i_binner)) > 0:
           print binner.bin_d_range(i)[1], flex.mean(partiality_init.select(i_binner)), flex.mean(rs_init.select(i_binner)), flex.mean(rh_init.select(i_binner)), len(partiality_init.select(i_binner))
     #save results
-    refined_params = flex.double([G,B,rotx,roty,ry,rz,r0,re,uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5]])
+    refined_params = flex.double([G,B,rotx,roty,ry,rz,r0,re,voigt_nu,uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5]])
     pres = postref_results()
     pres.set_params(observations = observations_non_polar,
             observations_original = observations_original,

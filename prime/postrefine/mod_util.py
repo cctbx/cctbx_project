@@ -193,6 +193,7 @@ class intensities_scaler(object):
     rz_all = flex.double()
     re_all = flex.double()
     r0_all = flex.double()
+    voigt_nu_all = flex.double()
     R_final_all = flex.double()
     R_xy_final_all = flex.double()
     SE_all = flex.double()
@@ -214,6 +215,8 @@ class intensities_scaler(object):
           re_all.append(pres.re)
         if not math.isnan(pres.r0):
           r0_all.append(pres.r0)
+        if not math.isnan(pres.voigt_nu):
+          voigt_nu_all.append(pres.voigt_nu)
         if not math.isnan(pres.R_final):
           R_final_all.append(pres.R_final)
         if not math.isnan(pres.R_xy_final):
@@ -224,18 +227,21 @@ class intensities_scaler(object):
     pr_params_mean = flex.double([np.mean(G_all), np.mean(B_all),
                                   np.mean(flex.abs(ry_all)), np.mean(flex.abs(rz_all)),
                                   np.mean(flex.abs(re_all)), np.mean(flex.abs(r0_all)),
+                                  np.mean(flex.abs(voigt_nu_all)),
                                   np.mean(flex.abs(rotx_all)), np.mean(flex.abs(roty_all)),
                                   np.mean(R_final_all), np.mean(R_xy_final_all),
                                   np.mean(SE_all)])
     pr_params_med = flex.double([np.median(G_all), np.median(B_all),
                                   np.median(flex.abs(ry_all)), np.median(flex.abs(rz_all)),
                                   np.median(flex.abs(re_all)), np.median(flex.abs(r0_all)),
+                                  np.median(flex.abs(voigt_nu_all)),
                                   np.median(flex.abs(rotx_all)), np.median(flex.abs(roty_all)),
                                   np.median(R_final_all), np.median(R_xy_final_all),
                                   np.median(SE_all)])
     pr_params_std = flex.double([np.std(G_all), np.std(B_all),
                                   np.std(flex.abs(ry_all)), np.std(flex.abs(rz_all)),
                                   np.std(flex.abs(re_all)), np.std(flex.abs(r0_all)),
+                                  np.std(flex.abs(voigt_nu_all)),
                                   np.std(flex.abs(rotx_all)), np.std(flex.abs(roty_all)),
                                   np.std(R_final_all), np.std(R_xy_final_all),
                                   np.std(SE_all)])
@@ -256,9 +262,9 @@ class intensities_scaler(object):
     else:
       target_anomalous_flag = iparams.target_anomalous_flag
     pr_params_mean, pr_params_med, pr_params_std = self.calc_mean_postref_parameters(results)
-    G_mean, B_mean, ry_mean, rz_mean, re_mean, r0_mean, rotx_mean, roty_mean, R_mean, R_xy_mean, SE_mean = pr_params_mean
-    G_med, B_med, ry_med, rz_med, re_med, r0_med, rotx_med, roty_med, R_med, R_xy_med, SE_med = pr_params_med
-    G_std, B_std, ry_std, rz_std, re_std, r0_std, rotx_std, roty_std, R_std, R_xy_std, SE_std = pr_params_std
+    G_mean, B_mean, ry_mean, rz_mean, re_mean, r0_mean, voigt_nu_mean, rotx_mean, roty_mean, R_mean, R_xy_mean, SE_mean = pr_params_mean
+    G_med, B_med, ry_med, rz_med, re_med, r0_med, voigt_nu_med, rotx_med, roty_med, R_med, R_xy_med, SE_med = pr_params_med
+    G_std, B_std, ry_std, rz_std, re_std, r0_std, voigt_nu_std, rotx_std, roty_std, R_std, R_xy_std, SE_std = pr_params_std
     #prepare data for merging
     miller_indices_all = flex.miller_index()
     miller_indices_ori_all = flex.miller_index()
@@ -273,6 +279,7 @@ class intensities_scaler(object):
     SE_all = flex.double()
     sin_sq_all = flex.double()
     wavelength_all = flex.double()
+    detector_distance_set = flex.double()
     R_init_all = flex.double()
     R_final_all = flex.double()
     R_xy_init_all = flex.double()
@@ -281,6 +288,7 @@ class intensities_scaler(object):
     filtered_results = []
     cn_good_frame, cn_bad_frame_SE, cn_bad_frame_uc, cn_bad_frame_cc, cn_bad_frame_G, cn_bad_frame_re = (0,0,0,0,0,0)
     i_seq = flex.int()
+    crystal_orientation_dict = {}
     for pres in results:
       if pres is not None:
         pickle_filepath = pres.pickle_filename.split('/')
@@ -332,18 +340,23 @@ class intensities_scaler(object):
           sin_sq_all.extend(sin_theta_over_lambda_sq)
           SE_all.extend(flex.double([pres.SE]*len(pres.observations.data())))
           wavelength_all.extend(flex.double([pres.wavelength]*len(pres.observations.data())))
+          detector_distance_set.append(pres.detector_distance_mm)
           pickle_filename_all += [pres.pickle_filename for i in range(len(pres.observations.data()))]
           i_seq.extend(flex.int([i for i in range(len(i_seq), len(i_seq)+len(pres.observations.data()))]))
+          crystal_orientation_dict[pres.pickle_filename] = pres.crystal_orientation
     #plot stats
     self.plot_stats(filtered_results, iparams)
+    #write out updated crystal orientation as a pickle file
+    import cPickle as pickle
+    pickle.dump(crystal_orientation_dict, open(iparams.run_no+'/'+"crystal.o","wb"),pickle.HIGHEST_PROTOCOL)
     #calculate average unit cell
     uc_mean, uc_med, uc_std = self.calc_mean_unit_cell(filtered_results)
     unit_cell_mean = unit_cell((uc_mean[0], uc_mean[1], uc_mean[2], uc_mean[3], uc_mean[4], uc_mean[5]))
     #recalculate stats for pr parameters
     pr_params_mean, pr_params_med, pr_params_std = self.calc_mean_postref_parameters(filtered_results)
-    G_mean, B_mean, ry_mean, rz_mean, re_mean, r0_mean, rotx_mean, roty_mean, R_mean, R_xy_mean, SE_mean = pr_params_mean
-    G_med, B_med, ry_med, rz_med, re_med, r0_med, rotx_med, roty_med, R_med, R_xy_med, SE_med = pr_params_med
-    G_std, B_std, ry_std, rz_std, re_std, r0_std, rotx_std, roty_std, R_std, R_xy_std, SE_std = pr_params_std
+    G_mean, B_mean, ry_mean, rz_mean, re_mean, r0_mean, voigt_nu_mean, rotx_mean, roty_mean, R_mean, R_xy_mean, SE_mean = pr_params_mean
+    G_med, B_med, ry_med, rz_med, re_med, r0_med, voigt_nu_med, rotx_med, roty_med, R_med, R_xy_med, SE_med = pr_params_med
+    G_std, B_std, ry_std, rz_std, re_std, r0_std, voigt_nu_std, rotx_std, roty_std, R_std, R_xy_std, SE_std = pr_params_std
     #from all observations merge them
     crystal_symmetry = crystal.symmetry(
         unit_cell=(uc_mean[0], uc_mean[1], uc_mean[2], uc_mean[3], uc_mean[4], uc_mean[5]),
@@ -406,6 +419,7 @@ class intensities_scaler(object):
     txt_out += ' gamma_z:                  %12.5f %12.5f (%9.5f)\n'%(rz_mean, rz_med, rz_std)
     txt_out += ' gamma_0:                  %12.5f %12.5f (%9.5f)\n'%(r0_mean, r0_med, r0_std)
     txt_out += ' gamma_e:                  %12.5f %12.5f (%9.5f)\n'%(re_mean, re_med, re_std)
+    txt_out += ' voigt_nu:                 %12.5f %12.5f (%9.5f)\n'%(voigt_nu_mean, voigt_nu_med, voigt_nu_std)
     txt_out += ' unit cell\n'
     txt_out += '   a:                      %12.2f %12.2f (%9.2f)\n'%(uc_mean[0], uc_med[0], uc_std[0])
     txt_out += '   b:                      %12.2f %12.2f (%9.2f)\n'%(uc_mean[1], uc_med[1], uc_std[1])
@@ -413,7 +427,9 @@ class intensities_scaler(object):
     txt_out += '   alpha:                  %12.2f %12.2f (%9.2f)\n'%(uc_mean[3], uc_med[3], uc_std[3])
     txt_out += '   beta:                   %12.2f %12.2f (%9.2f)\n'%(uc_mean[4], uc_med[4], uc_std[4])
     txt_out += '   gamma:                  %12.2f %12.2f (%9.2f)\n'%(uc_mean[5], uc_med[5], uc_std[5])
-    txt_out += 'Wavelength (not-refined):  %12.4f %12.4f (%9.4f)\n'%(np.mean(wavelength_all), np.median(wavelength_all), np.std(wavelength_all))
+    txt_out += 'Parmeters from integration (not-refined)\n'
+    txt_out += '  Wavelength:              %12.5f %12.5f (%9.5f)\n'%(np.mean(wavelength_all), np.median(wavelength_all), np.std(wavelength_all))
+    txt_out += '  Detector distance:       %12.5f %12.5f (%9.5f)\n'%(np.mean(detector_distance_set), np.median(detector_distance_set), np.std(detector_distance_set))
     txt_out += '* (standard deviation)\n'
     #write out stat. pickle
     stat_dict = {"n_frames_good": [cn_good_frame], \
@@ -435,6 +451,8 @@ class intensities_scaler(object):
                  "std_gamma_0": [r0_std], \
                  "mean_gamma_e": [re_mean], \
                  "std_gamma_e": [re_std], \
+                 "mean_voigt_nu": [voigt_nu_mean], \
+                 "std_voigt_nu": [voigt_nu_std], \
                  "mean_a": [uc_mean[0]], \
                  "std_a": [uc_std[0]], \
                  "mean_b": [uc_mean[1]], \
@@ -1081,9 +1099,9 @@ class intensities_scaler(object):
           #decorate text output
         except Exception:
           pass
-        txt_out_verbose += '%8.1f %8.1f %8.1f %8.2f %6.2f %6.2f %6.2f %6.2f %8.5f %8.5f %8.5f %8.5f %8.2f %8.2f %8.2f %8.2f %8.2f %8.2f %6.2f ' \
+        txt_out_verbose += '%8.1f %8.1f %8.1f %8.2f %6.2f %6.2f %6.2f %6.2f %8.5f %8.5f %8.5f %8.5f %6.2f %8.2f %8.2f %8.2f %8.2f %8.2f %8.2f %6.2f ' \
         %(pres.R_init, pres.R_final, pres.R_xy_init, pres.R_xy_final, pres.G, pres.B, pres.rotx*180/math.pi, pres.roty*180/math.pi, \
-        pres.ry, pres.rz, pres.r0, pres.re, pres.uc_params[0], pres.uc_params[1], pres.uc_params[2], pres.uc_params[3], \
+        pres.ry, pres.rz, pres.r0, pres.re, pres.voigt_nu, pres.uc_params[0], pres.uc_params[1], pres.uc_params[2], pres.uc_params[3], \
         pres.uc_params[4], pres.uc_params[5], pres.CC_final)+pres.pickle_filename+'\n'
     if iparams.flag_output_verbose:
       import os

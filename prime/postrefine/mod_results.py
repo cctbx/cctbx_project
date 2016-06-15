@@ -48,10 +48,11 @@ class postref_results(object):
     self.rz = refined_params[5]
     self.r0 = refined_params[6]
     self.re = refined_params[7]
-    self.uc_params = flex.double([refined_params[8], refined_params[9], refined_params[10],
-          refined_params[11], refined_params[12], refined_params[13]])
-    self.unit_cell = unit_cell((refined_params[8], refined_params[9], refined_params[10],
-          refined_params[11], refined_params[12], refined_params[13]))
+    self.voigt_nu = refined_params[8]
+    self.uc_params = flex.double([refined_params[9], refined_params[10], refined_params[11],
+          refined_params[12], refined_params[13], refined_params[14]])
+    self.unit_cell = unit_cell((refined_params[9], refined_params[10], refined_params[11],
+          refined_params[12], refined_params[13], refined_params[14]))
     self.crystal_orientation = crystal_orientation
 
     #SE, R_sq, CC_init, CC_final, R_init, R_final, R_xy_init, R_xy_final

@@ -2,6 +2,8 @@ from __future__ import division
 from cctbx.array_family import flex
 from scitbx.matrix import sqr, col
 from cctbx.crystal_orientation import crystal_orientation, basis_type
+import math
+import numpy as np
 
 class partiality_handler(object):
   """
@@ -27,7 +29,38 @@ class partiality_handler(object):
     rh_set = sd_array.norms() - (1/wavelength)
     return rh_set.standard_deviation_of_the_sample()
 
-  def calc_partiality_anisotropy_set(self, my_uc, rotx, roty, miller_indices, ry, rz, r0, re,
+  def voigt(self, x, sig, nu):
+    if nu < 0:
+      nu = 0
+    elif nu > 1:
+      nu = 1
+    f1 = nu * math.sqrt(math.log(2)/math.pi) * flex.exp(-4*math.log(2)*((x/sig)**2)) * (1/abs(sig))
+    f2 = (1-nu)/(math.pi*abs(sig)*(1+(4*((x/sig)**2))))
+    f3 = ((nu * math.sqrt(math.log(2)/math.pi))/abs(sig)) + ((1-nu)/(math.pi*abs(sig)))
+    svx = (f1 + f2)/f3
+    return svx
+
+  def lognpdf(self, x, FWHM, zero):
+    #find sig from root of this function
+    zero = np.abs(zero)
+    sig_range = np.arange(50)/100
+    t = sig_range * math.sqrt(math.log(4))
+    sig_set = np.array([sig_range[np.argmin(np.abs(( fwhm - (zero * (np.exp(t) - np.exp(-1*t))) )))] for fwhm in FWHM])
+    #calc x0
+    x0 = math.log(zero) + sig_set**2
+    g = 1/( sig_set * math.sqrt(2*math.pi) * np.exp(x0-((sig_set**2)/2)) )
+    #calc lognpdf
+    X = zero - x
+    f1 = 1/( X * sig_set * math.sqrt(2*math.pi) )
+    f2 = np.exp( -1 * (np.log(X)-x0)**2 / (2*(sig_set**2)) )
+    svx = flex.double(f1 * f2 / g)
+    import matplotlib.pyplot as plt
+    plt.scatter(x, svx, s=20, color='r')
+    #plt.show()
+    return svx
+
+  def calc_partiality_anisotropy_set(self, my_uc, rotx, roty, miller_indices,
+      ry, rz, r0, re, nu,
       bragg_angle_set, alpha_angle_set, wavelength, crystal_init_orientation,
       spot_pred_x_mm_set, spot_pred_y_mm_set, detector_distance_mm,
       partiality_model, flag_beam_divergence):
@@ -41,6 +74,12 @@ class partiality_handler(object):
     S0 = -1*col((0,0,1./wavelength))
     #caculate rs
     rs_set = r0 + (re * flex.tan(bragg_angle_set))
+    """
+    CONST_CRITICAL_ANGLE = 3.1831 #(5 * 2)/math.pi
+    lambda_rate = 1.0
+    bragg_angle_transform = bragg_angle_set * CONST_CRITICAL_ANGLE
+    rs_set = r0 + (re * (1-flex.exp(-lambda_rate * bragg_angle_transform)))
+    """
     if flag_beam_divergence:
       rs_set += ((ry * flex.cos(alpha_angle_set))**2 + (rz * flex.sin(alpha_angle_set))**2)**(1/2)
     #calculate rh
@@ -48,8 +87,12 @@ class partiality_handler(object):
     sd_array = x + S0.elems
     rh_set = sd_array.norms() - (1/wavelength)
     #calculate partiality
-    partiality_set = ((rs_set**2)/((2*(rh_set**2))+(rs_set**2)))
-    #partiality_set = 1 - ((rh_set**2)/(rs_set**2))
+    if partiality_model == "Lorentzian":
+      partiality_set = ((rs_set**2)/((2*(rh_set**2))+(rs_set**2)))
+    elif partiality_model == "Voigt":
+      partiality_set = self.voigt(rh_set, rs_set, nu)
+    elif partiality_model == "Lognormal":
+      partiality_set = self.lognpdf(rh_set, rs_set, nu)
     #calculate delta_xy
     d_ratio = -detector_distance_mm/sd_array.parts()[2]
     calc_xy_array = flex.vec3_double(sd_array.parts()[0]*d_ratio, \
