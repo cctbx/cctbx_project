@@ -470,7 +470,7 @@ class RunBlockDialog(BaseDialog):
     dark_dlg.Destroy()
 
 class TrialDialog(BaseDialog):
-  def __init__(self, parent, db,
+  def __init__(self, parent, db, trial = None,
                label_style='bold',
                content_style='normal',
                *args, **kwargs):
@@ -485,6 +485,21 @@ class TrialDialog(BaseDialog):
                         style=wx.RESIZE_BORDER,
                         *args, **kwargs)
 
+    if trial is None:
+      trials = [t.trial for t in db.get_all_trials()]
+      if len(trials) == 0:
+        trial_number = 0
+      else:
+        trial_number = max(trials) + 1
+    else:
+      trial_number = trial.trial
+
+    self.trial_number = gctr.TextButtonCtrl(self,
+                                            label='Trial number:',
+                                            label_size=(150, -1),
+                                            label_style='bold',
+                                            value="%d"%trial_number)
+
     self.trial_comment = gctr.TextButtonCtrl(self,
                                              label='Comment:',
                                              label_size=(150, -1),
@@ -498,6 +513,9 @@ class TrialDialog(BaseDialog):
     if not self.new:
       self.phil_box.SetStyle(wx.TE_READONLY)
 
+    self.main_sizer.Add(self.trial_number,
+                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
+                        border=10)
     self.main_sizer.Add(self.phil_box, 1,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
                         border=10)

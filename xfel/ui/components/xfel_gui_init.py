@@ -445,19 +445,21 @@ class TrialsTab(BaseTab):
     new_trial_dlg = dlg.TrialDialog(self, db=self.main.db)
 
     if new_trial_dlg.ShowModal() == wx.ID_OK:
-      self.add_new_trial()
       self.trial_panel.Layout()
       self.trial_panel.SetupScrolling()
 
-  def add_new_trial(self):
-    trial = self.db.create_trial()
-    from IPython import embed; embed()
-    new_trial = TrialPanel(self.trial_panel,
-                           db = self.db,
-                           trial=trial,
-                           box_label='Trial {}'.format(trial.trial))
-    new_trial.tgl_active.SetValue(True)
-    self.trial_sizer.Add(new_trial, flag=wx.EXPAND | wx.ALL, border=10)
+      trial = self.db.create_trial(
+        trial = int(new_trial_dlg.trial_number.ctr.GetValue()),
+        active = True,
+        target_phil_str = new_trial_dlg.trial_phil.ctr.GetValue(),
+        comment = new_trial_dlg.trial_comment.ctr.GetValue())
+
+      new_trial = TrialPanel(self.trial_panel,
+                             db = self.db,
+                             trial=trial,
+                             box_label='Trial {}'.format(trial.trial))
+      new_trial.tgl_active.SetValue(True)
+      self.trial_sizer.Add(new_trial, flag=wx.EXPAND | wx.ALL, border=10)
 
 
 class JobsTab(BaseTab):

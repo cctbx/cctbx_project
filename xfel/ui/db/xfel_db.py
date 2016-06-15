@@ -72,8 +72,8 @@ class xfel_db_application(object):
   def get_trial(self, trial_id):
     return Trial(self, trial_id)
 
-  def get_all_trials(self, active = True):
-    if active:
+  def get_all_trials(self, only_active = False):
+    if only_active:
       return [t for t in self.get_all_x(Trial, "trial") if t.active]
     else:
       return self.get_all_x(Trial, "trial")
@@ -93,8 +93,8 @@ class xfel_db_application(object):
   def get_rungroup(self, rungroup_id):
     return Rungroup(self, rungroup_id)
 
-  def get_all_rungroups(self, active = True):
-    if active:
+  def get_all_rungroups(self, only_active = False):
+    if only_active:
       return [rg for rg in self.get_all_x(Rungroup, "rungroup") if rg.active]
     else:
       return self.get_all_x(Rungroup, "rungroup")

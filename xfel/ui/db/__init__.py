@@ -34,6 +34,8 @@ class db_proxy(object):
       vals = "VALUES ("
       comma = ""
       for key, value in kwargs.iteritems():
+        if isinstance(value, bool):
+          value = int(value)
         self.db_dict[key] = value
         keys += comma + key
         vals += comma + "'%s'"%value
@@ -75,6 +77,9 @@ class db_proxy(object):
       return
 
     self.db_dict[key] = value
+
+    if isinstance(value, bool):
+      value = int(value)
 
     query = "UPDATE `%s` SET %s = '%s' WHERE id = %d"% (
       self.table_name, key, value, self.id)

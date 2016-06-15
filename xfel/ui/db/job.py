@@ -3,8 +3,8 @@ from xfel.ui.db import db_proxy
 
 def submit_all_jobs(app):
   jobs = app.get_all_jobs()
-  trials = app.get_all_trials(active = True)
-  rungroups = app.get_all_rungroups(active = True)
+  trials = app.get_all_trials(only_active = True)
+  rungroups = app.get_all_rungroups(only_active = True)
 
   print "Jobs and trials", jobs, trials, rungroups
 
