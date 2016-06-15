@@ -410,7 +410,6 @@ class TrialsTab(BaseTab):
   def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
 
-    self.trial_number = 1
     self.main = main
 
     self.trial_panel = ScrolledPanel(self, size=(300, 350))
@@ -451,12 +450,12 @@ class TrialsTab(BaseTab):
       self.trial_panel.SetupScrolling()
 
   def add_new_trial(self):
-    self.trial_number = len(self.all_trials) + 1
-    self.db.create_trial(trial_id=self.trial_number)
+    trial = self.db.create_trial()
+    from IPython import embed; embed()
     new_trial = TrialPanel(self.trial_panel,
                            db = self.db,
-                           trial=self.db.get_trial(trial_id=self.trial_number),
-                           box_label='Trial {}'.format(self.trial_number))
+                           trial=trial,
+                           box_label='Trial {}'.format(trial.trial))
     new_trial.tgl_active.SetValue(True)
     self.trial_sizer.Add(new_trial, flag=wx.EXPAND | wx.ALL, border=10)
 
@@ -648,7 +647,7 @@ class TrialPanel(wx.Panel):
 
     self.db = db
     self.trial = trial
-    self.first_run = self.db.get_all_runs()[0].run_id
+    self.first_run = self.db.get_all_runs()[0].run
 
     trial_box = wx.StaticBox(self, label=box_label)
     self.main_sizer = wx.StaticBoxSizer(trial_box, wx.VERTICAL)
@@ -702,9 +701,9 @@ class TrialPanel(wx.Panel):
     # Get last button in block sizer, update label with latest run
     self.last_run = self.db.get_all_runs()[-1]
     last_block = run_buttons[-1].GetWindow()
-    last_block.last_run = self.last_run.run_id
+    last_block.last_run = self.last_run.run
     last_block.update_label()
-    self.first_run = self.last_run.run_id + 1
+    self.first_run = self.last_run.run + 1
 
     self.add_new_block()
     self.block_panel.Layout()

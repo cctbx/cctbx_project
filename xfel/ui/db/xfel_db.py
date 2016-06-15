@@ -12,7 +12,7 @@ from xfel.ui.db.stats import Stats
 
 from xfel.command_line.experiment_manager import initialize as initialize_base
 class initialize(initialize_base):
-  expected_tables = ["run", "job", "rungroup", "trial", "run_tag", "event",
+  expected_tables = ["run", "job", "rungroup", "trial", "tag", "run_tag", "event",
                      "imageset", "imageset_frame", "beam", "detector", "experiment",
                      "crystal", "cell", "cell_bin", "bin"]
 
@@ -93,8 +93,11 @@ class xfel_db_application(object):
   def get_rungroup(self, rungroup_id):
     return Rungroup(self, rungroup_id)
 
-  def get_all_rungroups(self):
-    return self.get_all_x(Rungroup, "rungroup")
+  def get_all_rungroups(self, active = True):
+    if active:
+      return [rg for rg in self.get_all_x(Rungroup, "rungroup") if rg.active]
+    else:
+      return self.get_all_x(Rungroup, "rungroup")
 
   def create_tag(self, **kwargs):
     return Tag(self, **kwargs)
