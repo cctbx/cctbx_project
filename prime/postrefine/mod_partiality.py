@@ -74,12 +74,6 @@ class partiality_handler(object):
     S0 = -1*col((0,0,1./wavelength))
     #caculate rs
     rs_set = r0 + (re * flex.tan(bragg_angle_set))
-    """
-    CONST_CRITICAL_ANGLE = 3.1831 #(5 * 2)/math.pi
-    lambda_rate = 1.0
-    bragg_angle_transform = bragg_angle_set * CONST_CRITICAL_ANGLE
-    rs_set = r0 + (re * (1-flex.exp(-lambda_rate * bragg_angle_transform)))
-    """
     if flag_beam_divergence:
       rs_set += ((ry * flex.cos(alpha_angle_set))**2 + (rz * flex.sin(alpha_angle_set))**2)**(1/2)
     #calculate rh
