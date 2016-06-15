@@ -149,6 +149,9 @@ class FormatSMVJHSim(FormatSMV):
     else:
       raw_data = read_uint16_bs(streambuf(f), int(size[0] * size[1]))
 
+    # ADC offset = 1 - this is not in the header...
+    raw_data -= 1
+
     image_size = panel.get_image_size()
     raw_data.reshape(flex.grid(image_size[1], image_size[0]))
 
