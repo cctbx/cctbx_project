@@ -78,7 +78,6 @@ class db_proxy(object):
 
     query = "UPDATE `%s` SET %s = '%s' WHERE id = %d"% (
       self.table_name, key, value, self.id)
-    print query
     try:
       cursor = self.app.dbobj.cursor()
       cursor.execute(query)

@@ -63,10 +63,15 @@ class RunSentinel(Thread):
       unknown_runs = [run['run'] for run in db.list_lcls_runs() if run['run'] not in known_runs]
 
       if len(unknown_runs) > 0:
-        #print "%d new runs" % len(unknown_runs)
+        for run_number in unknown_runs:
+          db.create_run(run = run_number)
+        print "%d new runs" % len(unknown_runs)
+
         evt = RefreshRuns(tp_EVT_REFRESH, -1)
         wx.PostEvent(self.parent.run_window.runs_tab, evt)
         wx.PostEvent(self.parent.run_window.trials_tab, evt)
+      else:
+        print "No new data..."
       time.sleep(1)
 
 # ------------------------------- Job Sentinel ------------------------------- #
