@@ -20,6 +20,7 @@ db {
 }
 output_folder = ""
   .type = path
+
 web {
   user = None
     .type = str

@@ -52,6 +52,9 @@ class BaseDialog(wx.Dialog):
                *args, **kwargs):
     wx.Dialog.__init__(self, parent, *args, **kwargs)
 
+    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.SetSizer(self.main_sizer)
+
     if label_style == 'normal':
       self.font = wx.Font(norm_font_size, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
     elif label_style == 'bold':
@@ -172,6 +175,8 @@ class SettingsDialog(BaseDialog):
       self.params.db.host     = creds.db_host.ctr.GetValue()
       self.params.db.user     = creds.db_user.ctr.GetValue()
       self.params.db.password = creds.db_password.ctr.GetValue()
+      self.params.web.user     = creds.web_user.ctr.GetValue()
+      self.params.web.password = creds.web_password.ctr.GetValue()
 
   def onOK(self, e):
     self.params.experiment_tag = self.db_cred.ctr.GetValue()
@@ -187,39 +192,31 @@ class DBCredentialsDialog(BaseDialog):
                content_style='normal',
                *args, **kwargs):
 
-
+    self.params = params
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
                         content_style=content_style,
-                        size=(600, 200),
+                        size=(600, 350),
                         style=wx.NO_BORDER,
                         *args, **kwargs)
 
-    self.params = params
-
-    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
-
     # Host name
     self.db_host = gctr.TextButtonCtrl(self,
-                                       label='Host name',
+                                       label='DB Host name',
                                        label_style='bold',
                                        label_size=(150, -1),
                                        big_button_size=(130, -1),
                                        value=params.db.host)
-    self.main_sizer.Add(self.db_host,
-                        flag=wx.EXPAND | wx.ALL,
-                        border=10)
+    self.main_sizer.Add(self.db_host, flag=wx.EXPAND | wx.ALL, border=10)
 
     # User name
     self.db_user = gctr.TextButtonCtrl(self,
-                                       label='User name',
+                                       label='DB user name',
                                        label_style='bold',
                                        label_size=(150, -1),
                                        big_button_size=(130, -1),
                                        value=params.db.user)
-    self.main_sizer.Add(self.db_user,
-                        flag=wx.EXPAND | wx.ALL,
-                        border=10)
+    self.main_sizer.Add(self.db_user, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Password
     self.db_password = gctr.TextButtonCtrl(self,
@@ -229,22 +226,34 @@ class DBCredentialsDialog(BaseDialog):
                                            text_style=wx.TE_PASSWORD,
                                            big_button_size=(130, -1),
                                            value=params.db.password)
-    self.main_sizer.Add(self.db_password,
-                        flag=wx.EXPAND | wx.ALL,
+    self.main_sizer.Add(self.db_password, flag=wx.EXPAND | wx.ALL,border=10)
+    self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
+
+    # LCLS user name
+    self.web_user = gctr.TextButtonCtrl(self,
+                                       label='LCLS user name',
+                                       label_style='bold',
+                                       label_size=(150, -1),
+                                       big_button_size=(130, -1),
+                                       value=params.web.user)
+    self.main_sizer.Add(self.web_user, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # LCLS password
+    self.web_password = gctr.TextButtonCtrl(self,
+                                           label='LCLS Password',
+                                           label_style='bold',
+                                           label_size=(150, -1),
+                                           text_style=wx.TE_PASSWORD,
+                                           big_button_size=(130, -1),
+                                           value=params.web.password)
+    self.main_sizer.Add(self.web_password, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    self.main_sizer.Add(dialog_box,
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                         border=10)
 
-    self.btn_OK = wx.Button(self, label="OK", id=wx.ID_OK)
-    self.btn_cancel = wx.Button(self, label="Cancel", id=wx.ID_CANCEL)
-
-    button_sizer = wx.FlexGridSizer(1, 5, 0, 10)
-    button_sizer.AddMany([(self.btn_OK),
-                          (self.btn_cancel)])
-
-    button_sizer.AddGrowableCol(2)
-    self.main_sizer.Add(button_sizer,
-                        flag=wx.EXPAND | wx.ALL,
-                        border=10)
-    self.SetSizer(self.main_sizer)
 
 class TagDialog(BaseDialog):
   def __init__(self, parent,
@@ -366,14 +375,13 @@ class TagDialog(BaseDialog):
                     self.tag_list.GetItem(itemId=i, col=1))
                    for i in range(count)]
         edited_items = [i for i in all_items if i[0] != -1]
-
         for tag in self.db_tags:
           for item in edited_items:
             if tag.tag_id == item[0]:
-              if tag.name != item[1].m_text:
-                tag.name = item[1].m_text
-              if tag.comment != item[2].m_text:
-                tag.comment = item[2].m_text
+              if tag.name != item[1]:
+                tag.name = item[1]
+              if tag.comment != item[2]:
+                tag.comment = item[2]
 
         # Delete tags from DB
         for tag in self.deleted_tags:
@@ -405,8 +413,6 @@ class RunBlockDialog(BaseDialog):
                         content_style=content_style,
                         size=(600, 200),
                         *args, **kwargs)
-
-    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
 
     # Run block start / end points (choice widgets)
     start = [str(i.run_id) for i in self.db.get_all_runs()]
@@ -448,7 +454,6 @@ class RunBlockDialog(BaseDialog):
     self.Bind(wx.EVT_BUTTON, self.onDarkBrowse,
               id=self.dark_path.btn_big.GetId())
 
-    self.SetSizer(self.main_sizer)
     self.Layout()
 
   def onDarkBrowse(self, e):
@@ -463,3 +468,81 @@ class RunBlockDialog(BaseDialog):
     if dark_dlg.ShowModal() == wx.ID_OK:
       self.dark_file = dark_dlg.GetPaths()[0]
     dark_dlg.Destroy()
+
+class TrialDialog(BaseDialog):
+  def __init__(self, parent, db,
+               label_style='bold',
+               content_style='normal',
+               *args, **kwargs):
+
+    self.db = db
+    self.new = True
+
+    BaseDialog.__init__(self, parent,
+                        label_style=label_style,
+                        content_style=content_style,
+                        size=(600, 600),
+                        style=wx.RESIZE_BORDER,
+                        *args, **kwargs)
+
+    self.trial_comment = gctr.TextButtonCtrl(self,
+                                             label='Comment:',
+                                             label_size=(150, -1),
+                                             label_style='bold')
+    self.trial_phil = gctr.TextButtonCtrl(self,
+                                          label='PHIL Path:',
+                                          label_size=(150, -1),
+                                          label_style='bold',
+                                          big_button=True)
+    self.phil_box = wx.TextCtrl(self, style=wx.TE_MULTILINE)
+    if not self.new:
+      self.phil_box.SetStyle(wx.TE_READONLY)
+
+    self.main_sizer.Add(self.phil_box, 1,
+                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
+                        border=10)
+    self.main_sizer.Add(self.trial_phil,
+                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
+                        border=10)
+    self.main_sizer.Add(self.trial_comment,
+                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
+                        border=10)
+
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    self.main_sizer.Add(dialog_box,
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        border=10)
+
+    self.Layout()
+
+    # Bindings
+    self.Bind(wx.EVT_BUTTON, self.onBrowse, self.trial_phil.btn_big)
+
+  def onBrowse(self, e):
+    ''' Open dialog for selecting PHIL file '''
+
+    load_dlg = wx.FileDialog(self,
+                             message="Load PHIL file",
+                             defaultDir=os.curdir,
+                             defaultFile="*.phil",
+                             wildcard="*.phil",
+                             style=wx.OPEN | wx.FD_FILE_MUST_EXIST,
+                             )
+    if load_dlg.ShowModal() == wx.ID_OK:
+      target_file = load_dlg.GetPaths()[0]
+      with open(target_file, 'r') as phil_file:
+        phil_file_contents = phil_file.read()
+      self.phil_box.SetValue(phil_file_contents)
+    load_dlg.Destroy()
+
+  def onReadIn(self, e):
+    ''' When PHIL file is selected, check for
+          a) existence,
+          b) readability,
+        and populate the text box with the PHIL parameters '''
+
+    pass
+
+  def onOK(self, e):
+    pass

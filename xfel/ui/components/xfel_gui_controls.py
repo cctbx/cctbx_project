@@ -170,6 +170,40 @@ class CtrlBase(wx.Panel):
     elif content_style == 'italic_bold':
       self.cfont = wx.Font(norm_font_size, wx.DEFAULT, wx.ITALIC, wx.BOLD)
 
+class InputCtrl(CtrlBase):
+  ''' Generic panel that will place a text control, with a label and an
+      optional Browse / magnifying-glass buttons into a window'''
+
+  def __init__(self, parent,
+               label='', label_size=(100, -1),
+               label_style='normal',
+               button=False, value=''):
+
+    CtrlBase.__init__(self, parent=parent, label_style=label_style)
+
+    output_box = wx.FlexGridSizer(1, 4, 0, 10)
+    self.txt = wx.StaticText(self, label=label, size=label_size)
+    self.txt.SetFont(self.font)
+    output_box.Add(self.txt)
+
+    self.ctr = wx.TextCtrl(self) #, size=ctr_size)
+    self.ctr.SetValue(value)
+    output_box.Add(self.ctr, flag=wx.EXPAND)
+
+    self.btn_browse = wx.Button(self, label='Browse...')
+    self.btn_mag = wx.BitmapButton(self,
+                                   bitmap=wx.Bitmap('{}/16x16/viewmag.png'
+                                                    ''.format(icons)))
+    output_box.Add(self.btn_browse, flag=wx.RESERVE_SPACE_EVEN_IF_HIDDEN)
+    output_box.Add(self.btn_mag, flag=wx.RESERVE_SPACE_EVEN_IF_HIDDEN)
+
+    if not button:
+      self.btn_browse.Hide()
+      self.btn_mag.Hide()
+
+    output_box.AddGrowableCol(1, 1)
+    self.SetSizer(output_box)
+
 class TextButtonCtrl(CtrlBase):
   ''' Generic panel that will place a text control, with a label and an
       optional large button, and an optional bitmap button'''

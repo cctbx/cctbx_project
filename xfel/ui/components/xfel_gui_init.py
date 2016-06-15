@@ -32,8 +32,8 @@ description = 'The cctbx.xfel UI is developed for use during data collection ' \
 # ------------------------------- Run Sentinel ------------------------------- #
 
 # Set up events for and for finishing all cycles
-tp_EVT_REFRESH = wx.NewEventType()
-EVT_RUN_REFRESH = wx.PyEventBinder(tp_EVT_REFRESH, 1)
+tp_EVT_RUN_REFRESH = wx.NewEventType()
+EVT_RUN_REFRESH = wx.PyEventBinder(tp_EVT_RUN_REFRESH, 1)
 
 class RefreshRuns(wx.PyCommandEvent):
   ''' Send event when finished all cycles  '''
@@ -52,22 +52,18 @@ class RunSentinel(Thread):
     self.active = active
 
   def run(self):
-    from xfel.ui.db import get_db_connection
-    from xfel.ui.db.xfel_db import xfel_db_application
-    conn = get_db_connection(self.parent.params)
-    db = xfel_db_application(conn, self.parent.params)
-
     while self.active:
       # Find the delta
-      known_runs = [r.run for r in db.get_all_runs()]
-      unknown_runs = [run['run'] for run in db.list_lcls_runs() if run['run'] not in known_runs]
+      known_runs = [r.run for r in self.parent.db.get_all_runs()]
+      unknown_runs = [run['run'] for run in self.parent.db.list_lcls_runs() if
+                      run['run'] not in known_runs]
 
       if len(unknown_runs) > 0:
         for run_number in unknown_runs:
-          db.create_run(run = run_number)
+          self.parent.db.create_run(run = run_number)
         print "%d new runs" % len(unknown_runs)
 
-        evt = RefreshRuns(tp_EVT_REFRESH, -1)
+        evt = RefreshRuns(tp_EVT_RUN_REFRESH, -1)
         wx.PostEvent(self.parent.run_window.runs_tab, evt)
         wx.PostEvent(self.parent.run_window.trials_tab, evt)
       else:
@@ -77,7 +73,8 @@ class RunSentinel(Thread):
 # ------------------------------- Job Sentinel ------------------------------- #
 
 # Set up events for and for finishing all cycles
-EVT_JOB_REFRESH = wx.PyEventBinder(tp_EVT_REFRESH, 1)
+tp_EVT_JOB_REFRESH = wx.NewEventType()
+EVT_JOB_REFRESH = wx.PyEventBinder(tp_EVT_RUN_REFRESH, 1)
 
 class RefreshJobs(wx.PyCommandEvent):
   ''' Send event when finished all cycles  '''
@@ -97,7 +94,7 @@ class JobSentinel(Thread):
 
   def run(self):
     while self.active:
-      evt = RefreshJobs(tp_EVT_REFRESH, -1)
+      evt = RefreshJobs(tp_EVT_JOB_REFRESH, -1)
       wx.PostEvent(self.parent.run_window.jobs, evt)
       time.sleep(1)
 
@@ -204,6 +201,7 @@ class MainWindow(wx.Frame):
   def start_run_sentinel(self):
     self.run_sentinel = RunSentinel(self, active=True)
     self.run_sentinel.start()
+    #self.run_window.runs_tab.refresh_rows(all=True)
 
   def stop_run_sentinel(self):
     self.run_sentinel.active = False
@@ -297,7 +295,7 @@ class RunTab(BaseTab):
     BaseTab.__init__(self, parent=parent)
     self.main = main
     self.last_run = 0
-    self.runs = []
+    self.all_runs = []
     self.all_tags = []
     self.all_tag_buttons = []
 
@@ -324,10 +322,8 @@ class RunTab(BaseTab):
     self.Bind(EVT_RUN_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_BUTTON, self.onManageTags, self.btn_manage_tags)
 
-    self.refresh_rows()
-
   def onRefresh(self, e):
-    self.refresh_rows()
+      self.refresh_rows()
 
   def onManageTags(self, e):
     ''' User can add / remove / edit sample tags '''
@@ -340,15 +336,24 @@ class RunTab(BaseTab):
     for btn in self.all_tag_buttons:
       btn.update_label()
 
-  def refresh_rows(self):
+  def refresh_rows(self, all=False):
 
-    # Check for new runs and create if necessary
-    tag_buttons = [i.run.run_id for i in self.all_tag_buttons]
-    for run in self.runs:
-      if run.run_id not in tag_buttons:
-        self.add_row(run)
+    # Get all runs
+    self.all_runs = self.main.db.get_all_runs()
+    self.new_runs = [run['run'] for run in self.main.db.list_lcls_runs() if
+                     run['run'] not in self.all_runs]
+
+    print '***'
+    # Update either all or only new runs
+    if all:
+      runs = self.all_runs
+    else:
+      runs = self.new_runs
+    for run in runs:
+      self.add_row(run)
 
     # Update labels on all new tag buttons
+    self.all_tags = self.main.db.get_all_tags()
     for button in self.all_tag_buttons:
       button.all_tags = self.all_tags
       button.update_label()
@@ -411,9 +416,12 @@ class TrialsTab(BaseTab):
       self.last_run = None
 
   def onAddTrial(self, e):
-    self.add_new_trial()
-    self.trial_panel.Layout()
-    self.trial_panel.SetupScrolling()
+    new_trial_dlg = dlg.TrialDialog(self, db=self.main.db)
+
+    if new_trial_dlg.ShowModal() == wx.ID_OK:
+      self.add_new_trial()
+      self.trial_panel.Layout()
+      self.trial_panel.SetupScrolling()
 
   def add_new_trial(self):
     self.trial_number = len(self.all_trials) + 1
@@ -519,7 +527,6 @@ class StatusTab(BaseTab):
 
   def onPlotChart(self, e):
     pass
-
 
 
 class MergeTab(BaseTab):
