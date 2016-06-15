@@ -429,17 +429,22 @@ class TrialsTab(BaseTab):
     self.Bind(wx.EVT_BUTTON, self.onAddTrial, self.btn_add_trial)
     self.Bind(EVT_RUN_REFRESH, self.onRefresh)
 
+  def refresh_trials(self):
+    evt = RefreshRuns(tp_EVT_RUN_REFRESH, -1)
+    wx.PostEvent(self, evt)
+
   def onRefresh(self, e):
     self.db = self.main.db
     self.all_trials = self.db.get_all_trials()
-    self.all_runs = self.db.get_all_runs()
 
-    if len(self.all_runs) > 0:
-      self.first_run = self.all_runs[0]
-      self.last_run = self.all_runs[-1]
-    else:
-      self.first_run = 0
-      self.last_run = None
+    self.trial_sizer.Clear(deleteWindows=True)
+    for trial in self.all_trials:
+      new_trial = TrialPanel(self.trial_panel,
+                             db=self.db,
+                             trial=trial,
+                             box_label='Trial {}'.format(trial.trial))
+      new_trial.tgl_active.SetValue(trial.active)
+      self.trial_sizer.Add(new_trial, flag=wx.EXPAND | wx.ALL, border=10)
 
   def onAddTrial(self, e):
     new_trial_dlg = dlg.TrialDialog(self, db=self.main.db)
@@ -448,18 +453,12 @@ class TrialsTab(BaseTab):
       self.trial_panel.Layout()
       self.trial_panel.SetupScrolling()
 
-      trial = self.db.create_trial(
+      self.db.create_trial(
         trial = int(new_trial_dlg.trial_number.ctr.GetValue()),
         active = True,
         target_phil_str = new_trial_dlg.trial_phil.ctr.GetValue(),
         comment = new_trial_dlg.trial_comment.ctr.GetValue())
-
-      new_trial = TrialPanel(self.trial_panel,
-                             db = self.db,
-                             trial=trial,
-                             box_label='Trial {}'.format(trial.trial))
-      new_trial.tgl_active.SetValue(True)
-      self.trial_sizer.Add(new_trial, flag=wx.EXPAND | wx.ALL, border=10)
+      self.refresh_trials()
 
 
 class JobsTab(BaseTab):
