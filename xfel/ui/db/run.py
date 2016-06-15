@@ -20,3 +20,18 @@ class Run(db_proxy):
     assert name != "tags"
     super(Run, self).__setattr__(name, value)
 
+  def add_tag(self, tag):
+    query = "INSERT INTO `%s_run_tag` (run_id, tag_id) VALUES (%d, %d)" % (
+      self.app.params.experiment_tag, self.id, tag.id)
+    cursor = self.app.dbobj.cursor()
+    cursor.execute(query)
+    self.app.dbobj.commit()
+    self._tags = self.app.get_run_tags(self.id)
+
+  def remove_tag(self, tag):
+    query = "DELETE FROM `%s_run_tag` WHERE run_id = %d AND tag_id = %s" % (
+      self.app.params.experiment_tag, self.id, tag.id)
+    cursor = self.app.dbobj.cursor()
+    cursor.execute(query)
+    self.app.dbobj.commit()
+    self._tags = self.app.get_run_tags(self.id)
