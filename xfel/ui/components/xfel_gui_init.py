@@ -660,21 +660,22 @@ class TrialPanel(wx.Panel):
     # Add "New Block" button to a separate sizer (so it is always on bottom)
     self.btn_add_block = wx.Button(self.add_panel, label='New Block',
                                    size=(120, -1))
-    self.btn_view_phil = wx.Button(self.add_panel, label='View PHIL',
-                                   size=(120, -1))
+    # self.btn_view_phil = wx.Button(self.add_panel, label='View PHIL',
+    #                                size=(120, -1))
+    self.btn_view_phil = wx.BitmapButton(self.add_panel,
+                        bitmap=wx.Bitmap('{}/16x16/viewmag.png'.format(icons)))
     self.chk_active = wx.CheckBox(self.add_panel, label='Active',
                                   size=(120, -1))
+    self.view_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.view_sizer.Add(self.btn_view_phil)
+    self.view_sizer.Add(self.chk_active, flag=wx.LEFT, border=5)
 
     self.add_sizer.Add(self.btn_add_block,
                        flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
                        border=10)
-    self.add_sizer.Add(self.btn_view_phil,
+    self.add_sizer.Add(self.view_sizer,
                        flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
                        border=10)
-    self.add_sizer.Add(self.chk_active,
-                       flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
-                       border=10)
-
 
     self.main_sizer.Add(self.block_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.add_panel, flag=wx.ALL | wx.ALIGN_BOTTOM, border=5)
@@ -717,7 +718,9 @@ class TrialPanel(wx.Panel):
 
   def draw_block_button(self, block):
     ''' Add new run block button '''
-    new_block = gctr.RunBlockButton(self.block_panel, size=(120, -1), block=block)
+    new_block = gctr.RunBlockButton(self.block_panel,
+                                    size=(120, -1),
+                                    block=block)
     new_block.block = block
     self.Bind(wx.EVT_BUTTON, self.onRunBlockOptions, id=new_block.GetId())
     self.block_sizer.Add(new_block,

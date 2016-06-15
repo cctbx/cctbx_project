@@ -77,10 +77,10 @@ class RunBlockButton(GradButton):
     self.block = block
     self.first_run = block.startrun
     self.last_run = block.endrun
-    self.update_label()
-
-    GradButton.__init__(self, parent=parent, label=self.block_label,
+    GradButton.__init__(self, parent=parent, label='',
                         size=size)
+
+    self.update_label()
 
   def update_label(self):
     first = self.first_run
@@ -90,6 +90,7 @@ class RunBlockButton(GradButton):
       last = ' - {}'.format(self.last_run)
 
     self.block_label = 'Runs {}{}'.format(first, last)
+    print "***** LABEL: {}  ****".format(self.block_label)
     self.SetLabel(self.block_label)
     self.Refresh()
 
