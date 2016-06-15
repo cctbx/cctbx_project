@@ -72,8 +72,11 @@ class xfel_db_application(object):
   def get_trial(self, trial_id):
     return Trial(self, trial_id)
 
-  def get_all_trials(self):
-    return self.get_all_x(Trial, "trial")
+  def get_all_trials(self, active = True):
+    if active:
+      return [t for t in self.get_all_x(Trial, "trial") if t.active]
+    else:
+      return self.get_all_x(Trial, "trial")
 
   def create_run(self, **kwargs):
     return Run(self, **kwargs)

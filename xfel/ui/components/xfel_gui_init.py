@@ -51,21 +51,31 @@ class RunSentinel(Thread):
     self.parent = parent
     self.active = active
 
+  def post_refresh(self):
+    evt = RefreshRuns(tp_EVT_RUN_REFRESH, -1)
+    wx.PostEvent(self.parent.run_window.runs_tab, evt)
+    wx.PostEvent(self.parent.run_window.trials_tab, evt)
+
   def run(self):
+    # one time post for an initial update
+    self.post_refresh()
+
+    from xfel.ui.db import get_db_connection
+    from xfel.ui.db.xfel_db import xfel_db_application
+    conn = get_db_connection(self.parent.params)
+    db = xfel_db_application(conn, self.parent.params)
+
     while self.active:
       # Find the delta
-      known_runs = [r.run for r in self.parent.db.get_all_runs()]
-      unknown_runs = [run['run'] for run in self.parent.db.list_lcls_runs() if
+      known_runs = [r.run for r in db.get_all_runs()]
+      unknown_runs = [run['run'] for run in db.list_lcls_runs() if
                       run['run'] not in known_runs]
 
       if len(unknown_runs) > 0:
         for run_number in unknown_runs:
-          self.parent.db.create_run(run = run_number)
+          db.create_run(run = run_number)
         print "%d new runs" % len(unknown_runs)
-
-        evt = RefreshRuns(tp_EVT_RUN_REFRESH, -1)
-        wx.PostEvent(self.parent.run_window.runs_tab, evt)
-        wx.PostEvent(self.parent.run_window.trials_tab, evt)
+        self.post_refresh()
       else:
         print "No new data..."
       time.sleep(1)
@@ -92,10 +102,23 @@ class JobSentinel(Thread):
     self.parent = parent
     self.active = active
 
+  def post_refresh(self):
+    evt = RefreshJobs(tp_EVT_JOB_REFRESH, -1)
+    wx.PostEvent(self.parent.run_window.jobs_tab, evt)
+
   def run(self):
+    # one time post for an initial update
+    self.post_refresh()
+
+    from xfel.ui.db import get_db_connection
+    from xfel.ui.db.xfel_db import xfel_db_application
+    from xfel.ui.db.job import submit_all_jobs
+    conn = get_db_connection(self.parent.params)
+    db = xfel_db_application(conn, self.parent.params)
+
     while self.active:
-      evt = RefreshJobs(tp_EVT_JOB_REFRESH, -1)
-      wx.PostEvent(self.parent.run_window.jobs, evt)
+      submit_all_jobs(db)
+      self.post_refresh()
       time.sleep(1)
 
 # ------------------------------- Main Window -------------------------------- #
@@ -208,10 +231,12 @@ class MainWindow(wx.Frame):
     self.run_sentinel.join()
 
   def start_job_sentinel(self):
-    pass
+    self.job_sentinel = JobSentinel(self, active=True)
+    self.job_sentinel.start()
 
   def stop_job_sentinel(self):
-    pass
+    self.job_sentinel.active = False
+    self.job_sentinel.join()
 
   def OnAboutBox(self, e):
     ''' About dialog '''
