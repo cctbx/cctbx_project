@@ -561,7 +561,56 @@ loop_
 
 
 def tst_to_cif_sheet():
-  pass
+  pdb_str1 = """\
+SHEET    1 AA1 4 ILE A   7  PRO A  10  0
+SHEET    2 AA1 4 MET A  92  THR A  99  1  O  LEU A  95   N  ILE A   7
+SHEET    3 AA1 4 THR A  73  SER A  82 -1  N  LEU A  76   O  ILE A  94
+SHEET    4 AA1 4 VAL A  34  THR A  39 -1  N  PHE A  35   O  VAL A  81
+SHEET    1 AA2 3 LYS A  19  GLN A  23  0
+SHEET    2 AA2 3 TRP A  59  VAL A  62 -1  O  LEU A  60   N  VAL A  22
+SHEET    3 AA2 3 PHE A  51  ILE A  53 -1  N  ILE A  52   O  LYS A  61"""
+
+  ann = annotation.from_records(pdb_str1.split("\n"))
+  cif_loops = ann.as_cif_loops()
+  assert len(cif_loops) == 4, len(cif_loops)
+
+  out = StringIO()
+  cif_block = iotbx.cif.model.block()
+  for loop in cif_loops:
+    loop.show(out)
+    cif_block.add_loop(loop)
+  v = out.getvalue()
+  # print "\"%s\"" % v
+  ann_back = annotation.from_cif_block(cif_block)
+  assert ann_back.get_n_helices() == 0
+  assert ann_back.get_n_sheets() == 2
+  assert [len(x.strands) for x in ann_back.sheets] == [4, 3]
+  # print ann_back.as_pdb_str()
+  assert not show_diff(ann_back.as_pdb_str(), pdb_str1)
+
+  pdb_str2 = """\
+SHEET    1 AA1 4 ILE A   7  PRO A  10  0
+SHEET    2 AA1 4 MET A  92  THR A  99  1  O  LEU A  95   N  ILE A   7
+SHEET    3 AA1 4 THR A  73  SER A  82 -1  N  LEU A  76   O  ILE A  94
+SHEET    4 AA1 4 VAL A  34  THR A  39 -1  N  PHE A  35   O  VAL A  81"""
+
+  ann = annotation.from_records(pdb_str2.split("\n"))
+  cif_loops = ann.as_cif_loops()
+  assert len(cif_loops) == 4, len(cif_loops)
+
+  out = StringIO()
+  cif_block = iotbx.cif.model.block()
+  for loop in cif_loops:
+    loop.show(out)
+    cif_block.add_loop(loop)
+  v = out.getvalue()
+  # print "\"%s\"" % v
+  ann_back = annotation.from_cif_block(cif_block)
+  assert ann_back.get_n_helices() == 0
+  assert ann_back.get_n_sheets() == 1
+  assert [len(x.strands) for x in ann_back.sheets] == [4]
+  # print ann_back.as_pdb_str()
+  assert not show_diff(ann_back.as_pdb_str(), pdb_str2)
 
 def tst_to_cif_annotation():
   pass
@@ -577,5 +626,5 @@ if (__name__ == "__main__"):
   tst_from_cif_block_4()
   tst_to_cif_helix()
   tst_to_cif_sheet()
-  tst_to_cif_annotation()
+  # tst_to_cif_annotation()
   print "OK time =%8.3f"%(time.time() - t0)

@@ -337,6 +337,12 @@ class structure_base (object) :
     elif isinstance(resseq, int):
       return hy36encode(4, resseq)
 
+  @staticmethod
+  def icode_to_cif(icode):
+    if icode == ' ':
+      return '?'
+    else:
+      return icode
 
   @staticmethod
   def parse_chain_id(chars):
@@ -499,6 +505,11 @@ class annotation(structure_base):
     self.helices = helices
     self.sheets = sheets
 
+  @classmethod
+  def resseq_as_int(cls, resseq):
+    if resseq is not None:
+      return hy36decode(4, resseq)
+    return None
 
   @classmethod
   def from_records(cls, records=None, log=None):
@@ -633,25 +644,25 @@ class annotation(structure_base):
     Returns list of loops needed to represent SS annotation. The first for
     helix, others for sheets. If there's no helix, there will be only sheet
     loops. Or empty list if there's nothing to output."""
-    helix_info_prefix = '_struct_conf.'
-    helix_info_cif_names = (
-          'conf_type_id',
-          'id',
-          'pdbx_PDB_helix_id',
-          'beg_label_comp_id',
-          'beg_label_asym_id',
-          'beg_label_seq_id',
-          'pdbx_beg_PDB_ins_code',
-          'end_label_comp_id',
-          'end_label_asym_id',
-          'end_label_seq_id',
-          'pdbx_end_PDB_ins_code',
-          'pdbx_PDB_helix_class',
-          'details',
-          'pdbx_PDB_helix_length',
-      )
+
     loops = []
     if self.get_n_helices() > 0:
+      helix_info_prefix = '_struct_conf.'
+      helix_info_cif_names = (
+            'conf_type_id',
+            'id',
+            'pdbx_PDB_helix_id',
+            'beg_label_comp_id',
+            'beg_label_asym_id',
+            'beg_label_seq_id',
+            'pdbx_beg_PDB_ins_code',
+            'end_label_comp_id',
+            'end_label_asym_id',
+            'end_label_seq_id',
+            'pdbx_end_PDB_ins_code',
+            'pdbx_PDB_helix_class',
+            'details',
+            'pdbx_PDB_helix_length')
       helix_loop = iotbx.cif.model.loop(header=(
           ["%s%s" % (helix_info_prefix, x) for x in helix_info_cif_names]))
       for h in self.helices:
@@ -663,10 +674,89 @@ class annotation(structure_base):
         helix_loop.add_row(row)
       loops.append(helix_loop)
     if self.get_n_sheets() > 0:
-      pass
+      struct_sheet_loop = iotbx.cif.model.loop(header=(
+          '_struct_sheet.id',
+          '_struct_sheet.type',
+          '_struct_sheet.number_strands',
+          '_struct_sheet.details'))
+      struct_sheet_order_loop = iotbx.cif.model.loop(header=(
+          '_struct_sheet_order.sheet_id',
+          '_struct_sheet_order.range_id_1',
+          '_struct_sheet_order.range_id_2',
+          '_struct_sheet_order.offset',
+          '_struct_sheet_order.sense'))
+      struct_sheet_range_loop = iotbx.cif.model.loop(header=(
+          '_struct_sheet_range.sheet_id',
+          '_struct_sheet_range.id',
+          '_struct_sheet_range.beg_label_comp_id',
+          '_struct_sheet_range.beg_label_asym_id',
+          '_struct_sheet_range.beg_label_seq_id',
+          '_struct_sheet_range.pdbx_beg_PDB_ins_code',
+          '_struct_sheet_range.end_label_comp_id',
+          '_struct_sheet_range.end_label_asym_id',
+          '_struct_sheet_range.end_label_seq_id',
+          '_struct_sheet_range.pdbx_end_PDB_ins_code'))
+      struct_sheet_hbond_loop = iotbx.cif.model.loop(header=(
+          '_pdbx_struct_sheet_hbond.sheet_id',
+          '_pdbx_struct_sheet_hbond.range_id_1',
+          '_pdbx_struct_sheet_hbond.range_id_2',
+          '_pdbx_struct_sheet_hbond.range_1_label_atom_id',
+          '_pdbx_struct_sheet_hbond.range_1_label_comp_id',
+          '_pdbx_struct_sheet_hbond.range_1_label_asym_id',
+          '_pdbx_struct_sheet_hbond.range_1_label_seq_id',
+          '_pdbx_struct_sheet_hbond.range_1_PDB_ins_code',
+          '_pdbx_struct_sheet_hbond.range_2_label_atom_id',
+          '_pdbx_struct_sheet_hbond.range_2_label_comp_id',
+          '_pdbx_struct_sheet_hbond.range_2_label_asym_id',
+          '_pdbx_struct_sheet_hbond.range_2_label_seq_id',
+          '_pdbx_struct_sheet_hbond.range_2_PDB_ins_code'))
+      for sh in self.sheets:
+        sh_dict = sh.as_cif_dict()
+        # parse it here and toss into loops
+        struct_sheet_loop.add_row((
+            sh_dict['_struct_sheet.id'],
+            sh_dict['_struct_sheet.type'],
+            sh_dict['_struct_sheet.number_strands'],
+            sh_dict['_struct_sheet.details']))
+        for struct_sheet_loop_row in zip(
+            sh_dict['_struct_sheet_order.sheet_id'],
+            sh_dict['_struct_sheet_order.range_id_1'],
+            sh_dict['_struct_sheet_order.range_id_2'],
+            sh_dict['_struct_sheet_order.offset'],
+            sh_dict['_struct_sheet_order.sense']):
+          struct_sheet_order_loop.add_row(struct_sheet_loop_row)
+        for struct_sheet_range_row in zip(
+            sh_dict['_struct_sheet_range.sheet_id'],
+            sh_dict['_struct_sheet_range.id'],
+            sh_dict['_struct_sheet_range.beg_label_comp_id'],
+            sh_dict['_struct_sheet_range.beg_label_asym_id'],
+            sh_dict['_struct_sheet_range.beg_label_seq_id'],
+            sh_dict['_struct_sheet_range.pdbx_beg_PDB_ins_code'],
+            sh_dict['_struct_sheet_range.end_label_comp_id'],
+            sh_dict['_struct_sheet_range.end_label_asym_id'],
+            sh_dict['_struct_sheet_range.end_label_seq_id'],
+            sh_dict['_struct_sheet_range.pdbx_end_PDB_ins_code']):
+          struct_sheet_range_loop.add_row(struct_sheet_range_row)
+        for struct_sheet_hbond_row in zip(
+            sh_dict['_pdbx_struct_sheet_hbond.sheet_id'],
+            sh_dict['_pdbx_struct_sheet_hbond.range_id_1'],
+            sh_dict['_pdbx_struct_sheet_hbond.range_id_2'],
+            sh_dict['_pdbx_struct_sheet_hbond.range_1_label_atom_id'],
+            sh_dict['_pdbx_struct_sheet_hbond.range_1_label_comp_id'],
+            sh_dict['_pdbx_struct_sheet_hbond.range_1_label_asym_id'],
+            sh_dict['_pdbx_struct_sheet_hbond.range_1_label_seq_id'],
+            sh_dict['_pdbx_struct_sheet_hbond.range_1_PDB_ins_code'],
+            sh_dict['_pdbx_struct_sheet_hbond.range_2_label_atom_id'],
+            sh_dict['_pdbx_struct_sheet_hbond.range_2_label_comp_id'],
+            sh_dict['_pdbx_struct_sheet_hbond.range_2_label_asym_id'],
+            sh_dict['_pdbx_struct_sheet_hbond.range_2_label_seq_id'],
+            sh_dict['_pdbx_struct_sheet_hbond.range_2_PDB_ins_code']):
+          struct_sheet_hbond_loop.add_row(struct_sheet_hbond_row)
+      loops.append(struct_sheet_loop)
+      loops.append(struct_sheet_order_loop)
+      loops.append(struct_sheet_range_loop)
+      loops.append(struct_sheet_hbond_loop)
     return loops
-
-
 
   def as_pdb_str (self) :
     records = []
@@ -1455,16 +1545,10 @@ class pdb_helix (structure_base) :
     else:
       return stripped
 
-  @staticmethod
-  def icode_to_cif(icode):
-    if icode == ' ':
-      return '?'
-    else:
-      return icode
+
 
   def as_cif_dict(self):
-    """Returns dict. keys - cif field names, values - appropriate values.
-    Mind the order of fields in annotation.as_cif_loops()."""
+    """Returns dict. keys - cif field names, values - appropriate values."""
 
     result = {}
     result['conf_type_id'] = "HELX_P"
@@ -1649,6 +1733,16 @@ class pdb_strand(structure_base):
     self.start_chain_id = new_chain_id
     self.end_chain_id = new_chain_id
 
+  def sense_as_cif(self):
+    if self.sense == 0:
+      return '?'
+    elif self.sense == 1:
+      return "parallel"
+    elif self.sense == -1:
+      return "anti-parallel"
+    else:
+      raise Sorry("Invalid sense creeped in object: %s", self.sense)
+
   def get_start_resseq_as_int(self):
     if self.start_resseq is not None:
       return hy36decode(4, self.start_resseq)
@@ -1736,7 +1830,6 @@ class pdb_strand_register(structure_base):
     elif len(name) == 3:
       return "%s " % name
     return name
-
 
   @classmethod
   def from_cif_dict(cls, cif_dict):
@@ -2124,6 +2217,84 @@ class pdb_sheet(structure_base):
         return line
       lines.append(line.strip())
     return "\n".join(lines)
+
+  def as_cif_dict(self):
+    """Returns dict. keys - cif field names, values - appropriate values,
+    lists where needed."""
+    result = {}
+    result['_struct_sheet.id'] = self.sheet_id
+    result['_struct_sheet.type'] = '?'
+    result['_struct_sheet.number_strands'] = self.n_strands
+    result['_struct_sheet.details'] = '?'
+
+    result['_struct_sheet_order.sheet_id'] = []
+    result['_struct_sheet_order.range_id_1'] = []
+    result['_struct_sheet_order.range_id_2'] = []
+    result['_struct_sheet_order.offset'] = []
+    result['_struct_sheet_order.sense'] = []
+
+    result['_struct_sheet_range.sheet_id'] = []
+    result['_struct_sheet_range.id'] = []
+    result['_struct_sheet_range.beg_label_comp_id'] = []
+    result['_struct_sheet_range.beg_label_asym_id'] = []
+    result['_struct_sheet_range.beg_label_seq_id'] = []
+    result['_struct_sheet_range.pdbx_beg_PDB_ins_code'] = []
+    result['_struct_sheet_range.end_label_comp_id'] = []
+    result['_struct_sheet_range.end_label_asym_id'] = []
+    result['_struct_sheet_range.end_label_seq_id'] = []
+    result['_struct_sheet_range.pdbx_end_PDB_ins_code'] = []
+
+    result['_pdbx_struct_sheet_hbond.sheet_id'] = []
+    result['_pdbx_struct_sheet_hbond.range_id_1'] = []
+    result['_pdbx_struct_sheet_hbond.range_id_2'] = []
+    result['_pdbx_struct_sheet_hbond.range_1_label_atom_id'] = []
+    result['_pdbx_struct_sheet_hbond.range_1_label_comp_id'] = []
+    result['_pdbx_struct_sheet_hbond.range_1_label_asym_id'] = []
+    result['_pdbx_struct_sheet_hbond.range_1_label_seq_id'] = []
+    result['_pdbx_struct_sheet_hbond.range_1_PDB_ins_code'] = []
+    result['_pdbx_struct_sheet_hbond.range_2_label_atom_id'] = []
+    result['_pdbx_struct_sheet_hbond.range_2_label_comp_id'] = []
+    result['_pdbx_struct_sheet_hbond.range_2_label_asym_id'] = []
+    result['_pdbx_struct_sheet_hbond.range_2_label_seq_id'] = []
+    result['_pdbx_struct_sheet_hbond.range_2_PDB_ins_code'] = []
+
+    for i, strand, registration in zip(range(self.n_strands), self.strands, self.registrations):
+      # _struct_sheet_order
+      if strand.sense != 0:
+        result['_struct_sheet_order.sheet_id'].append(self.sheet_id)
+        result['_struct_sheet_order.range_id_1'].append(i)
+        result['_struct_sheet_order.range_id_2'].append(i+1)
+        result['_struct_sheet_order.offset'].append('?')
+        result['_struct_sheet_order.sense'].append(strand.sense_as_cif())
+
+      if strand is not None: # should always be True
+        result['_struct_sheet_range.sheet_id'].append(self.sheet_id)
+        result['_struct_sheet_range.id'].append(i+1)
+        result['_struct_sheet_range.beg_label_comp_id'].append(strand.start_resname)
+        result['_struct_sheet_range.beg_label_asym_id'].append(strand.start_chain_id)
+        result['_struct_sheet_range.beg_label_seq_id'].append(annotation.resseq_as_int(strand.start_resseq))
+        result['_struct_sheet_range.pdbx_beg_PDB_ins_code'].append(self.icode_to_cif(strand.start_icode))
+        result['_struct_sheet_range.end_label_comp_id'].append(strand.end_resname)
+        result['_struct_sheet_range.end_label_asym_id'].append(strand.end_chain_id)
+        result['_struct_sheet_range.end_label_seq_id'].append(annotation.resseq_as_int(strand.end_resseq))
+        result['_struct_sheet_range.pdbx_end_PDB_ins_code'].append(self.icode_to_cif(strand.end_icode))
+
+      if registration is not None:
+        result['_pdbx_struct_sheet_hbond.sheet_id'].append(self.sheet_id)
+        result['_pdbx_struct_sheet_hbond.range_id_1'].append(i)
+        result['_pdbx_struct_sheet_hbond.range_id_2'].append(i+1)
+        result['_pdbx_struct_sheet_hbond.range_1_label_atom_id'].append(registration.prev_atom.strip())
+        result['_pdbx_struct_sheet_hbond.range_1_label_comp_id'].append(registration.prev_resname)
+        result['_pdbx_struct_sheet_hbond.range_1_label_asym_id'].append(registration.prev_chain_id)
+        result['_pdbx_struct_sheet_hbond.range_1_label_seq_id'].append(annotation.resseq_as_int(registration.prev_resseq))
+        result['_pdbx_struct_sheet_hbond.range_1_PDB_ins_code'].append(self.icode_to_cif(registration.prev_icode))
+        result['_pdbx_struct_sheet_hbond.range_2_label_atom_id'].append(registration.cur_atom.strip())
+        result['_pdbx_struct_sheet_hbond.range_2_label_comp_id'].append(registration.cur_resname)
+        result['_pdbx_struct_sheet_hbond.range_2_label_asym_id'].append(registration.cur_chain_id)
+        result['_pdbx_struct_sheet_hbond.range_2_label_seq_id'].append(annotation.resseq_as_int(registration.cur_resseq))
+        result['_pdbx_struct_sheet_hbond.range_2_PDB_ins_code'].append(self.icode_to_cif(registration.cur_icode))
+    return result
+
 
   def as_restraint_group(self, log=sys.stdout, prefix_scope="",
       add_segid=None, show_hbonds=False):
