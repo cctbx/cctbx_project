@@ -430,12 +430,14 @@ class TrialsTab(BaseTab):
 
   def refresh_trials(self):
     self.trial_sizer.Clear(deleteWindows=True)
+    self.all_trials = self.db.get_all_trials()
     for trial in self.all_trials:
       new_trial = TrialPanel(self.trial_panel,
                              db=self.db,
                              trial=trial,
                              box_label='Trial {}'.format(trial.trial))
       new_trial.chk_active.SetValue(trial.active)
+      new_trial.refresh_trial()
       self.trial_sizer.Add(new_trial, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.trial_panel.Layout()
@@ -443,7 +445,6 @@ class TrialsTab(BaseTab):
 
   def onRefresh(self, e):
     self.db = self.main.db
-    self.all_trials = self.db.get_all_trials()
     self.refresh_trials()
 
   def onAddTrial(self, e):
@@ -645,7 +646,6 @@ class TrialPanel(wx.Panel):
 
     self.db = db
     self.trial = trial
-    self.first_run = self.db.get_all_runs()[0].run
 
     trial_box = wx.StaticBox(self, label=box_label)
     self.main_sizer = wx.StaticBoxSizer(trial_box, wx.VERTICAL)
@@ -657,28 +657,40 @@ class TrialPanel(wx.Panel):
     self.add_sizer = wx.BoxSizer(wx.VERTICAL)
     self.add_panel.SetSizer(self.add_sizer)
 
-    self.add_new_block()
-
     # Add "New Block" button to a separate sizer (so it is always on bottom)
     self.btn_add_block = wx.Button(self.add_panel, label='New Block',
                                    size=(120, -1))
+    self.btn_view_phil = wx.Button(self.add_panel, label='View PHIL',
+                                   size=(120, -1))
     self.chk_active = wx.CheckBox(self.add_panel, label='Active',
                                   size=(120, -1))
+
+    self.add_sizer.Add(self.btn_add_block,
+                       flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
+                       border=10)
+    self.add_sizer.Add(self.btn_view_phil,
+                       flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
+                       border=10)
     self.add_sizer.Add(self.chk_active,
                        flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
                        border=10)
-    self.add_sizer.Add(self.btn_add_block,
-                       flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
-                       border = 10)
+
 
     self.main_sizer.Add(self.block_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.add_panel, flag=wx.ALL | wx.ALIGN_BOTTOM, border=5)
 
     # Bindings
+    self.Bind(EVT_RUN_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_BUTTON, self.onAddBlock, self.btn_add_block)
+    self.Bind(wx.EVT_BUTTON, self.onViewPHIL, self.btn_view_phil)
     self.chk_active.Bind(wx.EVT_TOGGLEBUTTON, self.onToggleActivity)
 
     self.SetSizer(self.main_sizer)
+
+  def onViewPHIL(self, e):
+    view_dlg = dlg.TrialDialog(self, db=self.db, new=False)
+    view_dlg.ShowModal()
+    view_dlg.Destroy()
 
   def onToggleActivity(self, e):
     if self.chk_active.GetValue():
@@ -686,30 +698,27 @@ class TrialPanel(wx.Panel):
     else:
       self.trial.active = False
 
+  def onRefresh(self, e):
+    self.refresh_trial()
+
   def onAddBlock(self, e):
-    ''' Add new block button '''
+    max_run = max([r.run for r in self.db.get_all_runs()])
+    self.active_blocks[-1].endrun = max_run - 1
+    self.db.create_rungroup(startrun=max_run, active=True, detz_parameter=580)
+    self.refresh_trial()
 
-    # Get list of all buttons in block sizer
-    all_children = self.block_sizer.GetChildren()
-    run_buttons = [i for i in all_children if isinstance(i.GetWindow(),
-                                                         gctr.RunBlockButton)]
-
-    # Get last button in block sizer, update label with latest run
-    self.last_run = self.db.get_all_runs()[-1]
-    last_block = run_buttons[-1].GetWindow()
-    last_block.last_run = self.last_run.run
-    last_block.update_label()
-    self.first_run = self.last_run.run + 1
-
-    self.add_new_block()
+  def refresh_trial(self):
+    self.block_sizer.DeleteWindows()
+    self.active_blocks = [b for b in self.trial.rungroups if b.active]
+    for block in self.active_blocks:
+      self.draw_block_button(block)
     self.block_panel.Layout()
     self.block_panel.SetupScrolling()
 
-  def add_new_block(self):
+  def draw_block_button(self, block):
     ''' Add new run block button '''
     new_block = gctr.RunBlockButton(self.block_panel, size=(120, -1))
-    new_block.first_run = self.first_run
-    new_block.update_label()
+    new_block.block = block
     self.Bind(wx.EVT_BUTTON, self.onRunBlockOptions, id=new_block.GetId())
     self.block_sizer.Add(new_block,
                          flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,

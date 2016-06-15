@@ -73,10 +73,12 @@ class GradButton(mb.MetallicButton):
     return bmp
 
 class RunBlockButton(GradButton):
-  def __init__(self, parent, size=wx.DefaultSize):
-    self.first_run = 1
-    self.last_run = None
-    self.block_label = ''
+  def __init__(self, parent, block, size=wx.DefaultSize):
+    self.block = block
+    self.first_run = block.startrun
+    self.last_run = block.endrun
+    self.update_label()
+
     GradButton.__init__(self, parent=parent, label=self.block_label,
                         size=size)
 
@@ -91,9 +93,6 @@ class RunBlockButton(GradButton):
     self.SetLabel(self.block_label)
     self.Refresh()
 
-  def change_settings(self):
-    ''' Function to open dialog to change run block settings '''
-    pass
 
 class TagButton(GradButton):
   def __init__(self, parent, run, all_tags, size=wx.DefaultSize):

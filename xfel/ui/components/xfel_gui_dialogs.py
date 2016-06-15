@@ -254,7 +254,6 @@ class DBCredentialsDialog(BaseDialog):
                         flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                         border=10)
 
-
 class TagDialog(BaseDialog):
   def __init__(self, parent,
                label_style='bold',
@@ -470,13 +469,15 @@ class RunBlockDialog(BaseDialog):
     dark_dlg.Destroy()
 
 class TrialDialog(BaseDialog):
-  def __init__(self, parent, db, trial = None,
+  def __init__(self, parent, db,
+               new=True,
+               trial=None,
                label_style='bold',
                content_style='normal',
                *args, **kwargs):
 
     self.db = db
-    self.new = True
+    self.new = new
 
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
@@ -498,8 +499,9 @@ class TrialDialog(BaseDialog):
                                             label='Trial number:',
                                             label_size=(150, -1),
                                             label_style='bold',
-                                            value="%d"%trial_number)
-
+                                            big_button=True,
+                                            big_button_label='Default PHIL',
+                                            value="{}".format(trial_number))
     self.trial_comment = gctr.TextButtonCtrl(self,
                                              label='Comment:',
                                              label_size=(150, -1),
@@ -510,8 +512,15 @@ class TrialDialog(BaseDialog):
                                           label_style='bold',
                                           big_button=True)
     self.phil_box = wx.TextCtrl(self, style=wx.TE_MULTILINE)
-    if not self.new:
-      self.phil_box.SetStyle(wx.TE_READONLY)
+
+
+    # TODO: show trial's PHIL blob & inactivate everything
+    # if not self.new:
+    #   self.trial_number.ctr.SetStyle(wx.TE_READONLY)
+    #   self.trial_number.ctr.Disable()
+    #   self.trial_comment.ctr.SetStyle(wx.TE_READONLY)
+    #   self.trial_phil.ctr.SetStyle(wx.TE_READONLY)
+    #   self.phil_box.SetStyle(wx.TE_READONLY)
 
     self.main_sizer.Add(self.trial_number,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
@@ -527,7 +536,10 @@ class TrialDialog(BaseDialog):
                         border=10)
 
     # Dialog control
-    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    if self.new:
+      dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    else:
+      dialog_box = self.CreateSeparatedButtonSizer(wx.OK)
     self.main_sizer.Add(dialog_box,
                         flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                         border=10)
@@ -536,6 +548,7 @@ class TrialDialog(BaseDialog):
 
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onBrowse, self.trial_phil.btn_big)
+    self.Bind(wx.EVT_BUTTON, self.onDefault, self.trial_number.btn_big)
 
   def onBrowse(self, e):
     ''' Open dialog for selecting PHIL file '''
@@ -560,6 +573,10 @@ class TrialDialog(BaseDialog):
           b) readability,
         and populate the text box with the PHIL parameters '''
 
+    pass
+
+  def onDefault(self, e):
+    # TODO: Generate default PHIL parameters
     pass
 
   def onOK(self, e):
