@@ -12,7 +12,7 @@ from xfel.ui.db.stats import Stats
 
 from xfel.command_line.experiment_manager import initialize as initialize_base
 class initialize(initialize_base):
-  expected_tables = ["run", "job", "rungroup", "trial", "tag", "run_tag", "event",
+  expected_tables = ["run", "job", "rungroup", "trial", "tag", "run_tag", "event", "trial_rungroup",
                      "imageset", "imageset_frame", "beam", "detector", "experiment",
                      "crystal", "cell", "cell_bin", "bin"]
 
@@ -71,6 +71,13 @@ class xfel_db_application(object):
 
   def get_trial(self, trial_id):
     return Trial(self, trial_id)
+
+  def get_trial_rungroups(self, rungroup_id):
+    query = "SELECT rungroup_id from `%s_trial_rungroup` WHERE `%s_trial_rungroup`.trial_id = %d" % \
+            (self.params.experiment_tag, self.params.experiment_tag, rungroup_id)
+    cursor = self.dbobj.cursor()
+    cursor.execute(query)
+    return [Rungroup(self, i[0]) for i in cursor.fetchall()]
 
   def get_all_trials(self, only_active = False):
     if only_active:

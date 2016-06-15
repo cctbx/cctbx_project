@@ -12,7 +12,7 @@ class Run(db_proxy):
     if name == "tags":
       if self._tags is None:
         self._tags = self.app.get_run_tags(self.id)
-        return self._tags
+      return self._tags
     else:
       return super(Run, self).__getattr__(name)
 
