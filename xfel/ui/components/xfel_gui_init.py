@@ -717,7 +717,7 @@ class TrialPanel(wx.Panel):
 
   def draw_block_button(self, block):
     ''' Add new run block button '''
-    new_block = gctr.RunBlockButton(self.block_panel, size=(120, -1))
+    new_block = gctr.RunBlockButton(self.block_panel, size=(120, -1), block=block)
     new_block.block = block
     self.Bind(wx.EVT_BUTTON, self.onRunBlockOptions, id=new_block.GetId())
     self.block_sizer.Add(new_block,

@@ -60,7 +60,7 @@ The final bsub command is saved in submit.sh for future use.
 """
 
 
-phil_scope = parse('''
+phil_str = '''
   dry_run = False
     .type = bool
     .help = If True, the program will create the trial directory but not submit the job, \
@@ -96,6 +96,9 @@ phil_scope = parse('''
       .type = bool
       .help = Option to split error and log files into separate per process
   }
+'''
+
+mp_phil_str = '''
   mp {
     method = *mpi sge pbs custom
       .type = choice
@@ -133,7 +136,10 @@ phil_scope = parse('''
                 will similarly be replaced.
     }
   }
-''', process_includes=True)
+'''
+
+phil_scope = parse(phil_str + mp_phil_str, process_includes=True)
+mp_phil_scope = parse(mp_phil_str, process_includes=True)
 
 def copy_config(config, dest_dir, root_name, params, target_num):
   """ Copy a config file to a directory, and all of its referenced phil files. Recurively

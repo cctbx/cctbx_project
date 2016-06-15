@@ -20,17 +20,18 @@ db {
 }
 output_folder = ""
   .type = path
-
 web {
   user = None
     .type = str
   password = None
     .type = str
 }
+include scope xfel.command_line.cxi_mpi_submit.mp_phil_scope
 """
 master_phil_scope = parse(master_phil_str, process_includes=True)
 
-settings_file = os.path.join(os.path.expanduser('~'), '.cctbx.xfel/settings.phil')
+settings_dir = os.path.join(os.path.expanduser('~'), '.cctbx.xfel')
+settings_file = os.path.join(settings_dir, 'settings.phil')
 
 def load_cached_settings():
   if os.path.exists(settings_file):
@@ -40,7 +41,6 @@ def load_cached_settings():
     return master_phil_scope.extract()
 
 def save_cached_settings(params):
-  settings_dir = os.path.dirname(settings_file)
   if not os.path.exists(settings_dir):
     os.makedirs(settings_dir)
 

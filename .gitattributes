@@ -3925,6 +3925,7 @@ xfel/ui/db/run.py -text
 xfel/ui/db/rungroup.py -text
 xfel/ui/db/schema.sql -text
 xfel/ui/db/stats.py -text
+xfel/ui/db/submit.phil -text
 xfel/ui/db/tag.py -text
 xfel/ui/db/trial.py -text
 xfel/ui/db/xfel_db.py -text
