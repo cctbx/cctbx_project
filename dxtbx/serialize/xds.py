@@ -122,6 +122,8 @@ def xds_detector_name(dxtbx_name):
     return 'CCDCHESS'
   if 'adsc' in dxtbx_name:
     return 'ADSC'
+  if 'holton' in dxtbx_name:
+    return 'ADSC'
   if 'saturn' in dxtbx_name:
     return 'SATURN'
   if 'raxis' in dxtbx_name:
