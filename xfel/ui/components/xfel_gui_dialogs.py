@@ -378,10 +378,10 @@ class TagDialog(BaseDialog):
         for tag in self.db_tags:
           for item in edited_items:
             if tag.tag_id == item[0]:
-              if tag.name != item[1]:
-                tag.name = item[1]
-              if tag.comment != item[2]:
-                tag.comment = item[2]
+              if tag.name != item[1].m_text:
+                tag.name = item[1].m_text
+              if tag.comment != item[2].m_text:
+                tag.comment = item[2].m_text
 
         # Delete tags from DB
         for tag in self.deleted_tags:
