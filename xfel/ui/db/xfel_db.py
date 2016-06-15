@@ -57,6 +57,9 @@ class xfel_db_application(object):
   def create_tables(self):
     return self.init_tables.create_tables()
 
+  def drop_tables(self):
+    return self.init_tables.drop_tables()
+
   def create_trial(self, **kwargs):
     return Trial(self, **kwargs)
 
