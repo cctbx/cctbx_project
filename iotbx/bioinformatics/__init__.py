@@ -1462,10 +1462,10 @@ class hhsearch_parser(hhpred_parser):
     Probab = ( [+-]? \d+ \. \d* ) \s+
     E-value = ( \d+ \.? \d* )( e[+-]? \d+ )? \s+
     Score = ( \d+\.\d+ ) \s+
-    Aligned_cols = ( \d+ ) \s+
-    Identities = ( \d+ ) % \s+
-    Similarity = ( -? \d+ \. \d+ ) \s+
-    Sum_probs = ( \d+ \. \d+ ) (?: \n | \r\n | \r )
+    (?: Aligned_cols | Aligned_columns ) = ( \d+ ) \s+
+    Identities = ( \d+ ) %
+    [^\n]*
+    (?: \n | \r\n | \r )
     (?P<blocks> .*? )(?= (?:^No) | (?:\Z) )
     """,
     re.VERBOSE | re.DOTALL | re.MULTILINE
@@ -1495,8 +1495,6 @@ class hhsearch_parser(hhpred_parser):
     self.scores = []
     self.aligned_cols = []
     self.identities = []
-    self.similarities = []
-    self.sum_probs = []
 
     self.query_starts = []
     self.query_ends = []
@@ -1547,8 +1545,6 @@ class hhsearch_parser(hhpred_parser):
     self.scores.append( float( match.group( 8 ) ) )
     self.aligned_cols.append( int( match.group( 9 ) ) )
     self.identities.append( float( match.group( 10 ) ) )
-    self.similarities.append( float( match.group( 11 ) ) )
-    self.sum_probs.append( float( match.group( 12 ) ) )
 
 
   def merge_and_process_block_hits(self, matches):

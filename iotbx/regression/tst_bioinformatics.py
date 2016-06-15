@@ -1623,8 +1623,6 @@ class test_hhsearch_parser(unittest.TestCase):
     self.assertIterablesAlmostEqual( self.hss.scores, [ 196.52, 182.17 ], 2 )
     self.assertEqual( self.hss.aligned_cols, [ 139, 127 ] )
     self.assertIterablesAlmostEqual( self.hss.identities, [ 21, 20 ], 1 )
-    self.assertIterablesAlmostEqual( self.hss.similarities, [ 0.317, 0.336 ], 3 )
-    self.assertIterablesAlmostEqual( self.hss.sum_probs, [ 0, 0 ], 1 )
     self.assertEqual( self.hss.query_starts, [ 59, 69 ] )
     self.assertEqual( self.hss.query_ends, [ 204, 196 ] )
     self.assertEqual( self.hss.query_others, [ 205, 205 ] )
