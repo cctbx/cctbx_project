@@ -334,7 +334,8 @@ class non_crystallographic_unit_cell_with_the_sites_in_its_center(object):
     unit_cell_center = matrix.col(self.unit_cell.orthogonalize([0.5]*3))
     model_center = (  matrix.col(sites_cart.max())
                     + matrix.col(sites_cart.min())) / 2
-    self.sites_cart = sites_cart + (unit_cell_center - model_center)
+    self.shift_vector = unit_cell_center - model_center
+    self.sites_cart = sites_cart + self.shift_vector
 
   def crystal_symmetry(self):
     from cctbx import crystal

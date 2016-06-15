@@ -76,6 +76,7 @@ def run(args):
       corrupted_cs = True
       cs = None
 
+  shift_vector = None
   if cs is None:
     if corrupted_cs:
       print >> log, "Symmetry information is corrupted, "
@@ -90,6 +91,7 @@ def run(args):
       buffer_layer=3)
     atoms.set_xyz(new_xyz=box.sites_cart)
     cs = box.crystal_symmetry()
+    shift_vector = box.shift_vector
   pdb_h_raw = pdb_input.construct_hierarchy()
   if work_params.trim_alternative_conformations:
     asc = pdb_h_raw.atom_selection_cache()
@@ -157,10 +159,18 @@ def run(args):
       verbose=True)
   log.flush()
 
+  # shifting back if needed
+  if shift_vector is not None:
+    print >> log, "Shifting molecule back"
+    atoms = loop_ideal.resulting_pdb_h.atoms()
+    sites_cart = atoms.extract_xyz()
+    atoms.set_xyz(new_xyz=sites_cart-shift_vector)
+
+  cs_to_write = cs if shift_vector is None else None
   write_whole_pdb_file(
     file_name="%s_ss_all_idealized.pdb" % os.path.basename(pdb_file_names[0]),
     pdb_hierarchy=loop_ideal.resulting_pdb_h,
-    crystal_symmetry=cs,
+    crystal_symmetry=cs_to_write,
     ss_annotation=ann)
 
   print >> log, "All done."
