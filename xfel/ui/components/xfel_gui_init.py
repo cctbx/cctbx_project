@@ -363,19 +363,21 @@ class RunTab(BaseTab):
 
   def refresh_rows(self, all=False):
 
-    # Get all runs
-    self.all_runs = self.main.db.get_all_runs()
-    self.new_runs = [run['run'] for run in self.main.db.list_lcls_runs() if
-                     run['run'] not in self.all_runs]
+    # Get new runs
+    old_run_numbers = [run.run for run in self.all_runs]
+    all_runs = self.main.db.get_all_runs()
+    new_runs = [run for run in all_runs if run.run not in old_run_numbers]
 
     print '***'
     # Update either all or only new runs
     if all:
       runs = self.all_runs
     else:
-      runs = self.new_runs
+      runs = new_runs
     for run in runs:
       self.add_row(run)
+
+    self.all_runs = all_runs
 
     # Update labels on all new tag buttons
     self.all_tags = self.main.db.get_all_tags()

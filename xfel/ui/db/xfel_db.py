@@ -103,10 +103,9 @@ class xfel_db_application(object):
     return Tag(self, tag_id)
 
   def get_run_tags(self, run_id):
-    query = "SELECT tag_id from `%s_run_tag WHERE `%s_run_tag.run_id = %d" % \
+    query = "SELECT tag_id from `%s_run_tag` WHERE `%s_run_tag`.run_id = %d" % \
             (self.params.experiment_tag, self.params.experiment_tag, run_id)
     cursor = self.dbobj.cursor()
-    print query
     cursor.execute(query)
     return [Tag(self, i[0]) for i in cursor.fetchall()]
 
