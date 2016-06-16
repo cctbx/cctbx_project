@@ -59,13 +59,13 @@ class RunSentinel(Thread):
   def run(self):
     # one time post for an initial update
     self.post_refresh()
-
     from xfel.ui.db import get_db_connection
     from xfel.ui.db.xfel_db import xfel_db_application
-    conn = get_db_connection(self.parent.params)
-    db = xfel_db_application(conn, self.parent.params)
 
     while self.active:
+      conn = get_db_connection(self.parent.params)
+      db = xfel_db_application(conn, self.parent.params)
+
       # Find the delta
       known_runs = [r.run for r in db.get_all_runs()]
       unknown_runs = [run['run'] for run in db.list_lcls_runs() if
@@ -276,6 +276,10 @@ class MainWindow(wx.Frame):
     self.stop_sentinels()
     save_cached_settings(self.params)
     self.Destroy()
+
+    # from xfel.ui import master_phil_scope
+    # phil = master_phil_scope.format(python_object=self.params)
+    # phil.show()
 
 
 class RunWindow(wx.Panel):
@@ -742,12 +746,10 @@ class TrialPanel(wx.Panel):
 
   def onRunBlockOptions(self, e):
     ''' Open dialog and change run_block options '''
-    run_block = e.GetEventObject()
-    label = run_block.block_label
-    first_run = run_block.first_run
-    last_run = run_block.last_run
-
-    rblock_dlg = dlg.RunBlockDialog(self, self.db)
+    run_block = e.GetEventObject().block
+    rblock_dlg = dlg.RunBlockDialog(self, run_block)
     rblock_dlg.Fit()
 
-    rblock_dlg.ShowModal()
+    if (rblock_dlg.ShowModal() == wx.ID_OK):
+      pass
+

@@ -398,14 +398,18 @@ class RunBlockDialog(BaseDialog):
   ''' Comes up when individual run block button is clicked; allows for run
   block settings to be manipulated by user '''
 
-  def __init__(self, parent, db,
+  def __init__(self, parent, block,
                label_style='bold',
                content_style='normal',
                *args, **kwargs):
 
-    self.db = db
-    self.first_run = 0
-    self.last_run = None
+    self.block = block
+    db = block.app
+    self.first_run = db.get_run(run_id=block.startrun).run
+    if block.endrun is None:
+      self.last_run = None
+    else:
+      self.last_run = db.get_run(run_id=block.endrun).run
 
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
@@ -414,14 +418,24 @@ class RunBlockDialog(BaseDialog):
                         *args, **kwargs)
 
     # Run block start / end points (choice widgets)
-    start = [str(i.run_id) for i in self.db.get_all_runs()]
-    stop = ['None'] + [str(i.run_id) for i in self.db.get_all_runs()[2:]]
+
+    if self.last_run != None:
+      start = [str(i.run) for i in db.get_all_runs() if
+              i.run <= self.last_run and i.run >= self.first_run]
+      stop = start
+    else:
+      start = [str(i.run) for i in db.get_all_runs() if
+              i.run >= self.first_run]
+      stop = start + ['None']
+
     self.runblocks = gctr.MultiChoiceCtrl(self,
                                           label='Run block:',
                                           label_style='bold',
                                           label_size=(100, -1),
                                           ctrl_size=(150, -1),
-                                          items={'start:':start, 'end:':stop})
+                                          items={'start':start, 'end':stop})
+    self.runblocks.start.SetSelection(0)
+    self.runblocks.end.SetSelection(self.runblocks.end.GetCount() - 1)
     self.main_sizer.Add(self.runblocks, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Beam XYZ
@@ -430,9 +444,9 @@ class RunBlockDialog(BaseDialog):
                                     label_style='bold',
                                     label_size=(100, -1),
                                     ctrl_size=(100, -1),
-                                    items={'X:':'120.0',
-                                           'Y':'120.0',
-                                           'DetZ':'40.0'})
+                                    items={'X':self.block.beamx,
+                                           'Y':self.block.beamy,
+                                           'DetZ':self.block.detz_parameter})
     self.main_sizer.Add(self.beam_xyz, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Dark path
@@ -440,9 +454,9 @@ class RunBlockDialog(BaseDialog):
                                          label='Dark CBF Path:',
                                          label_style='bold',
                                          label_size=(100, -1),
-                                         big_button=True)
+                                         big_button=True,
+                          value=str(self.block.dark_avg_path))
     self.main_sizer.Add(self.dark_path, flag=wx.EXPAND | wx.ALL, border=10)
-
 
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
@@ -452,8 +466,14 @@ class RunBlockDialog(BaseDialog):
 
     self.Bind(wx.EVT_BUTTON, self.onDarkBrowse,
               id=self.dark_path.btn_big.GetId())
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
     self.Layout()
+
+  # TODO: Block could be updated here...
+  def onOK(self, e):
+    print 'Block not updated!'
+    e.Skip()
 
   def onDarkBrowse(self, e):
     dark_dlg = wx.FileDialog(self,
