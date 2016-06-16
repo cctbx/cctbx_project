@@ -506,9 +506,9 @@ ATOM   2463 C CA  . LYS B 1 24  ? 22.588  1.723   -13.713 1.00 30.22  ? ? ? ? ? 
     lines=(pdb_atom_site_loop_header+input_4ehz).splitlines(),
     source_info=None)
   pdb_hierarchy = pdb_in.construct_hierarchy()
-  cif_block = iotbx.pdb.mmcif.pdb_hierarchy_as_cif_block_with_sequence(
-    pdb_hierarchy, sequences=[sequence_4ehz],
-    crystal_symmetry=pdb_in.crystal_symmetry()).cif_block
+  cif_block = pdb_hierarchy.as_cif_block_with_sequence(
+    sequences=[sequence_4ehz],
+    crystal_symmetry=pdb_in.crystal_symmetry())
   assert cif_block['_entity.id'][0] == '1'
   assert cif_block['_entity.type'][0] == 'polymer'
   assert cif_block['_entity.pdbx_number_of_molecules'][0] == '2'
@@ -535,9 +535,9 @@ ATOM   1473 C  CA  . SER A 1 185 ? -6.795  -21.356 10.148  1.00 91.03  ? ? ? ? ?
     lines=(pdb_atom_site_loop_header+input_3zdi).splitlines(),
     source_info=None)
   pdb_hierarchy = pdb_in.construct_hierarchy()
-  cif_block = iotbx.pdb.mmcif.pdb_hierarchy_as_cif_block_with_sequence(
-    pdb_hierarchy, sequences=[sequence_3zdi],
-    crystal_symmetry=pdb_in.crystal_symmetry()).cif_block
+  cif_block = pdb_hierarchy.as_cif_block_with_sequence(
+    sequences=[sequence_3zdi],
+    crystal_symmetry=pdb_in.crystal_symmetry())
   assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == 'NVS(PTR)ICSR'
   assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == sequence_3zdi.sequence
   assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']), range(1, 9))
@@ -575,9 +575,9 @@ HETATM 2796 O O   . HOH G 3 .   ? 11.197  11.667 36.108  1.00 17.00 ? ? ? ? ? ? 
     lines=(pdb_atom_site_loop_header+input_4gln).splitlines(),
     source_info=None)
   pdb_hierarchy = pdb_in.construct_hierarchy()
-  cif_block = iotbx.pdb.mmcif.pdb_hierarchy_as_cif_block_with_sequence(
-    pdb_hierarchy, sequences=sequence_4gln,
-    crystal_symmetry=pdb_in.crystal_symmetry()).cif_block
+  cif_block = pdb_hierarchy.as_cif_block_with_sequence(
+    sequences=sequence_4gln,
+    crystal_symmetry=pdb_in.crystal_symmetry())
   assert list(cif_block['_entity.id']) == ['1', '2', '3']
   assert list(cif_block['_entity.type']) == ['polymer', 'polymer', 'water']
   assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']),
@@ -609,8 +609,8 @@ ATOM   4010 C  CA  . TYR D 2 22  ? 33.903  0.885   4.483   1.00 54.81  ? ? ? ? ?
     lines=(pdb_atom_site_loop_header+input_1ezu).splitlines(),
     source_info=None)
   pdb_hierarchy = pdb_in.construct_hierarchy()
-  cif_block = iotbx.pdb.mmcif.pdb_hierarchy_as_cif_block_with_sequence(
-    pdb_hierarchy, sequences=[sequence_1ezu]).cif_block
+  cif_block = pdb_hierarchy.as_cif_block_with_sequence(
+    sequences=[sequence_1ezu])
   assert list(cif_block['_entity_poly_seq.mon_id']) == [
     'VAL', 'SER', 'LEU', 'ASN', 'SER', 'GLY', 'TYR']
   assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == sequence_1ezu.sequence
@@ -632,8 +632,8 @@ ATOM   404  P  P     . G   A 1 23 ? 7.477  40.933 88.377 1.00 81.65 ? ? ? ? ? ? 
     lines=(pdb_atom_site_loop_header+input_2hok).splitlines(),
     source_info=None)
   pdb_hierarchy = pdb_in.construct_hierarchy()
-  cif_block = iotbx.pdb.mmcif.pdb_hierarchy_as_cif_block_with_sequence(
-    pdb_hierarchy, sequences=[sequence_2hok]).cif_block
+  cif_block = pdb_hierarchy.as_cif_block_with_sequence(
+    sequences=[sequence_2hok])
   assert list(cif_block['_entity_poly_seq.mon_id']) == [
     'C', 'C', 'U', 'U', 'C', 'U', 'G', 'C', 'G']
   assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == sequence_2hok.sequence
@@ -663,8 +663,8 @@ HETATM  910  O   HOH A 156     -10.293  62.567  35.648  1.00 19.43           O
   sequence_3tpy = iotbx.bioinformatics.sequence("QKQPIS")
   pdb_in = iotbx.pdb.input(lines=(input_3tpy).splitlines(), source_info=None)
   pdb_hierarchy = pdb_in.construct_hierarchy()
-  cif_block = iotbx.pdb.mmcif.pdb_hierarchy_as_cif_block_with_sequence(
-    pdb_hierarchy, sequences=[sequence_3tpy]).cif_block
+  cif_block = pdb_hierarchy.as_cif_block_with_sequence(
+    sequences=[sequence_3tpy])
   assert list(cif_block["_entity.type"]) == [
     'polymer', 'non-polymer', 'non-polymer', 'non-polymer', 'non-polymer', 'water']
   assert list(cif_block["_atom_site.label_entity_id"]) == [
@@ -682,8 +682,8 @@ ATOM   2478  CA  THR A 465     -20.893   2.988  49.198  1.00 91.96           C
   sequence_3tgr = iotbx.bioinformatics.sequence("DGGQSNETNDTET")
   pdb_in = iotbx.pdb.input(lines=(input_3tgr).splitlines(), source_info=None)
   pdb_hierarchy = pdb_in.construct_hierarchy()
-  cif_block = iotbx.pdb.mmcif.pdb_hierarchy_as_cif_block_with_sequence(
-    pdb_hierarchy, sequences=[sequence_3tgr]).cif_block
+  cif_block = pdb_hierarchy.as_cif_block_with_sequence(
+    sequences=[sequence_3tgr])
   assert list(cif_block["_entity_poly_seq.mon_id"]) == [
     'ASP', 'GLY', 'GLY', 'GLN', 'SER', 'ASN', 'GLU', 'THR', 'ASN', 'ASP', 'THR',
     'GLU', 'THR']
@@ -702,8 +702,8 @@ ATOM   2460  CA  PHE A 352      -5.220   9.172   4.620  0.50 31.95           C
   sequence_2im9 = iotbx.bioinformatics.sequence("SSPTIKGINIQVVLPEKPVSNGCQLFDIR")
   pdb_in = iotbx.pdb.input(lines=(input_2im9).splitlines(), source_info=None)
   pdb_hierarchy = pdb_in.construct_hierarchy()
-  cif_block = iotbx.pdb.mmcif.pdb_hierarchy_as_cif_block_with_sequence(
-    pdb_hierarchy, sequences=[sequence_2im9]).cif_block
+  cif_block = pdb_hierarchy.as_cif_block_with_sequence(
+    sequences=[sequence_2im9])
   assert list(cif_block["_entity_poly_seq.mon_id"]) == [
     'SER', 'SER', 'PRO', 'THR', 'ILE', 'LYS', 'GLY', 'ILE', 'ASN', 'ILE', 'GLN',
     'VAL', 'VAL', 'LEU', 'PRO', 'GLU', 'LYS', 'PRO', 'VAL', 'SER', 'ASN', 'GLY',
@@ -751,8 +751,8 @@ loop_
   assert approx_equal(pdb_atoms.extract_fdp(), [0, 0, 0, 0, 2.6871, 0.3776])
   pdb_atoms[-1].fp = 0
   pdb_atoms[-1].fdp = 0
-  cif_block = iotbx.pdb.mmcif.pdb_hierarchy_as_cif_block(
-    pdb_hierarchy, crystal_symmetry=pdb_in.crystal_symmetry()).cif_block
+  cif_block = pdb_hierarchy.as_cif_block(
+    crystal_symmetry=pdb_in.crystal_symmetry())
   assert "_atom_site.phenix_scat_dispersion_real" in cif_block
   assert "_atom_site.phenix_scat_dispersion_imag" in cif_block
   assert list(cif_block["_atom_site.phenix_scat_dispersion_real"]) == \

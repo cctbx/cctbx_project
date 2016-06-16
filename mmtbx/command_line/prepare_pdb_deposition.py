@@ -63,9 +63,9 @@ def run(args, out=None):
   seq_in.check_file_type("seq")
   sequences = seq_in.file_object
 
-  cif_block = mmcif.pdb_hierarchy_as_cif_block_with_sequence(
-    pdb_hierarchy, sequences, crystal_symmetry=pdb_input.crystal_symmetry(),
-    alignment_params=params).cif_block
+  cif_block = pdb_hierarchy.as_cif_block_with_sequence(
+    sequences, crystal_symmetry=pdb_input.crystal_symmetry(),
+    alignment_params=params)
   block_name = cif_model.keys()[0]
 
   def float_or_none(string):
