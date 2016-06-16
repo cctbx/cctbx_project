@@ -11,6 +11,7 @@ from __future__ import division
 from installer_utils import *
 from package_defs import *
 from optparse import OptionParser
+import os
 import os.path as op
 import platform
 import sys
@@ -454,8 +455,6 @@ Installation of Python packages may fail.
   def workarounds(self):
     '''Look at the directory I am in at the moment and the platform I am
     running on and (perhaps) mess with things to make the build work.'''
-
-    import os
 
     # Ubuntu & Xrender - libtool is broken - replace with system one if
     # installed...
@@ -1115,6 +1114,38 @@ _replace_sysconfig_paths(build_time_vars)
       "--with-freetype-config=freetype-config", ]
     self.configure_and_build(config_args=fc_config_args, log=pkg_log)
 
+    # replace symbolic links (full paths) in base/etc/fonts/conf.d
+    # with actual files to make installation portable
+    link_directory = op.join(self.base_dir, 'etc', 'fonts', 'conf.d')
+    link_files = os.listdir(link_directory)
+    actual_directory = op.join(self.base_dir, 'share', 'fontconfig',
+                               'conf.avail')
+    actual_files = os.listdir(actual_directory)
+    print >> self.log, '\n  Fixing symbolic links in %s' % link_directory
+    for link in link_files:
+      if ('conf' in link):     # ignore README
+        link_file = op.join(link_directory, link)
+        actual_file = op.join(actual_directory, link)
+        print >> self.log, '    ', link
+        self.call('rm -f %s' % link_file)
+        if (op.isfile(actual_file)):
+          self.call('cp %s %s' % (actual_file, link_file))
+
+    # remove hard-coded cache directory from base/etc/fonts/fonts.conf
+    print >> self.log, '\n  Removing hard-coded cache directory from fonts.conf'
+    cache_directory = op.join(self.base_dir, 'var', 'cache', 'fontconfig')
+    fonts_directory = op.join(self.base_dir, 'etc', 'fonts')
+    old_conf = open(op.join(fonts_directory, 'fonts.conf'), 'r')
+    new_conf = open(op.join(fonts_directory, 'new.conf'), 'w')
+    for line in old_conf.readlines():
+      if (cache_directory not in line):
+        new_conf.write(line)
+    old_conf.close()
+    new_conf.close()
+    old_conf = op.join(fonts_directory, 'fonts.conf')
+    new_conf = op.join(fonts_directory, 'new.conf')
+    self.call('mv %s %s' % (new_conf, old_conf))
+
   def build_render(self):
     # render, xrender, xft
     for pkg, name in zip([RENDER_PKG,XRENDER_PKG,XFT_PKG], ["render","Xrender","Xft"]):
@@ -1165,7 +1196,9 @@ _replace_sysconfig_paths(build_time_vars)
     self.untar_and_chdir(pkg=pkg, log=pkg_log)
     os.environ['MANSCHEME'] = "bsd-source-cat"
     os.environ['DIR_MAN'] = op.join(self.base_dir, "man")
-    config_args = [self.prefix, "--with-LIBGL=no", "--with-LIBIMAGE=no" ]
+    # disable external codecs
+    config_args = [self.prefix, '--disable-pixarlog', '--disable-jpeg',
+                   '--disable-old-jpeg', '--disable-jbig', '--disable-lzma' ]
     self.configure_and_build(
       config_args=config_args,
       log=pkg_log)
@@ -1227,7 +1260,9 @@ _replace_sysconfig_paths(build_time_vars)
     config_opts = [
       self.prefix,
       "--with-opengl",
-      "--enable-unicode"
+      "--enable-unicode",
+      "--without-libjbig",
+      "--without-liblzma"
     ]
     if (self.options.debug) :
       config_opts.extend(["--disable-optimize",
@@ -1245,8 +1280,7 @@ _replace_sysconfig_paths(build_time_vars)
         #"--with-macosx-version-min=%s" % get_os_version(),
         "--with-mac",
         "--enable-monolithic",
-        "--disable-mediactrl",
-        "--without-liblzma"
+        "--disable-mediactrl"
       ])
     elif (self.flag_is_linux) :
       config_opts.extend([

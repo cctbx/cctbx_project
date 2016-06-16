@@ -83,6 +83,7 @@ def fix_gtk(base_dir, out): #--- Gtk+
 def fix_fonts(base_dir, out): #--- Fonts
   fonts_share_dir = os.path.join(base_dir, "share", "fonts")
   fonts_etc_dir = os.path.join(base_dir, "etc", "fonts")
+  fonts_cache_dir = os.path.join(base_dir, 'var', 'cache', 'fontconfig')
   if not os.path.isdir(fonts_etc_dir):
     print >> out, "%s not present, could not rebuild fonts" % fonts_etc_dir
     return
@@ -91,7 +92,11 @@ def fix_fonts(base_dir, out): #--- Fonts
   fonts_in = open(os.path.join(fonts_share_dir, "local.conf.in"))
   fonts_out = open(os.path.join(fonts_etc_dir, "local.conf"), "w")
   for line in fonts_in.readlines():
-    fonts_out.write(line.replace("FONTCONFIG_PATH", fonts_share_dir))
+    if ('FONTCONFIG_PATH' in line):
+      line = line.replace('FONTCONFIG_PATH', fonts_share_dir)
+    if ('FONTCACHE_PATH' in line):
+      line = line.replace('FONTCACHE_PATH', fonts_cache_dir)
+    fonts_out.write(line)
   fonts_in.close()
   fonts_out.close()
 
