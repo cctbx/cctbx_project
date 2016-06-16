@@ -1,5 +1,4 @@
 from __future__ import division
-import os
 import StringIO
 from libtbx import easy_run
 pdb = """
