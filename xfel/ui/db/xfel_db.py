@@ -10,6 +10,8 @@ from xfel.ui.db.tag import Tag
 from xfel.ui.db.job import Job
 from xfel.ui.db.stats import Stats
 
+from xfel.ui.db import get_db_connection
+
 from xfel.command_line.experiment_manager import initialize as initialize_base
 class initialize(initialize_base):
   expected_tables = ["run", "job", "rungroup", "trial", "tag", "run_tag", "event", "trial_rungroup",
@@ -23,27 +25,18 @@ class initialize(initialize_base):
     return initialize_base.create_tables(self, sql_path)
 
 class xfel_db_application(object):
-  def __init__(self, dbobj, params):
+  def __init__(self, params):
     self.params = params
-    self._dbobj = dbobj
-    self.cursor = dbobj.cursor()
+    dbobj = get_db_connection(params)
+    self.init_tables = initialize(params, dbobj) # only place where a connection is held
 
-    self.init_tables = initialize(params, dbobj)
-
-  def __getattr__(self, name):
-    if name == "dbobj":
-      while True:
-        try:
-          self._dbobj.ping()
-        except Exception, e:
-          print "Lost connection to db, reconnecting..."
-          del self._dbobj
-          from xfel.ui.db import get_db_connection
-          self._dbobj = get_db_connection(self.params)
-          continue
-        return self._dbobj
-    else:
-      raise AttributeError()
+  def execute_query(self, query, commit = False):
+    dbobj = get_db_connection(self.params)
+    cursor = dbobj.cursor()
+    cursor.execute(query)
+    if commit:
+      dbobj.commit()
+    return cursor
 
   def list_lcls_runs(self):
     from xfel.xpp.simulate import file_table
@@ -65,8 +58,7 @@ class xfel_db_application(object):
 
   def get_all_x(self, cls, name):
     query = "SELECT id from `%s_%s`" % (self.params.experiment_tag, name)
-    cursor = self.dbobj.cursor()
-    cursor.execute(query)
+    cursor = self.execute_query(query)
     return [cls(self, i[0]) for i in cursor.fetchall()]
 
   def get_trial(self, trial_id):
@@ -75,8 +67,7 @@ class xfel_db_application(object):
   def get_trial_rungroups(self, rungroup_id, only_active = False):
     query = "SELECT rungroup_id from `%s_trial_rungroup` WHERE `%s_trial_rungroup`.trial_id = %d" % \
             (self.params.experiment_tag, self.params.experiment_tag, rungroup_id)
-    cursor = self.dbobj.cursor()
-    cursor.execute(query)
+    cursor = self.execute_query(query)
     rungroups = [Rungroup(self, i[0]) for i in cursor.fetchall()]
     if only_active:
       return [rg for rg in rungroups if rg.active]
@@ -119,8 +110,7 @@ class xfel_db_application(object):
   def get_run_tags(self, run_id):
     query = "SELECT tag_id from `%s_run_tag` WHERE `%s_run_tag`.run_id = %d" % \
             (self.params.experiment_tag, self.params.experiment_tag, run_id)
-    cursor = self.dbobj.cursor()
-    cursor.execute(query)
+    cursor = self.execute_query(query)
     return [Tag(self, i[0]) for i in cursor.fetchall()]
 
   def get_all_tags(self):

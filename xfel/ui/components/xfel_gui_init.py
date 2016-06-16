@@ -59,12 +59,10 @@ class RunSentinel(Thread):
   def run(self):
     # one time post for an initial update
     self.post_refresh()
-    from xfel.ui.db import get_db_connection
     from xfel.ui.db.xfel_db import xfel_db_application
 
     while self.active:
-      conn = get_db_connection(self.parent.params)
-      db = xfel_db_application(conn, self.parent.params)
+      db = xfel_db_application(self.parent.params)
 
       # Find the delta
       known_runs = [r.run for r in db.get_all_runs()]
@@ -110,19 +108,13 @@ class JobSentinel(Thread):
     # one time post for an initial update
     self.post_refresh()
 
-    from xfel.ui.db import get_db_connection
     from xfel.ui.db.xfel_db import xfel_db_application
     from xfel.ui.db.job import submit_all_jobs
+    db = xfel_db_application(self.parent.params)
 
     while self.active:
-      conn = get_db_connection(self.parent.params)
-      db = xfel_db_application(conn, self.parent.params)
-
       submit_all_jobs(db)
       self.post_refresh()
-
-      del conn
-      del db
       time.sleep(1)
 
 # ------------------------------- Main Window -------------------------------- #
@@ -197,15 +189,8 @@ class MainWindow(wx.Frame):
     self.SetSizer(main_box)
 
   def connect_to_db(self):
-    from xfel.ui.db import get_db_connection
     from xfel.ui.db.xfel_db import xfel_db_application
-    try:
-      conn = get_db_connection(self.params)
-      print 'Connecting to database...'
-    except Exception, e:
-      print "Couldn't connect to database"
-      return False
-    self.db = xfel_db_application(conn, self.params)
+    self.db = xfel_db_application(self.params)
 
     if not self.db.verify_tables():
       self.db.create_tables()

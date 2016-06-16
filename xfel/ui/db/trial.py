@@ -23,15 +23,11 @@ class Trial(db_proxy):
   def add_rungroup(self, rungroup):
     query = "INSERT INTO `%s_trial_rungroup` (trial_id, rungroup_id) VALUES (%d, %d)" % (
       self.app.params.experiment_tag, self.id, rungroup.id)
-    cursor = self.app.dbobj.cursor()
-    cursor.execute(query)
-    self.app.dbobj.commit()
+    self.app.execute_query(query, commit=True)
     self._rungroups = self.app.get_trial_rungroups(self.id)
 
   def remove_tag(self, rungroup):
     query = "DELETE FROM `%s_trial_rungroup` WHERE trial_id = %d AND rungroup_id = %s" % (
       self.app.params.experiment_tag, self.id, rungroup.id)
-    cursor = self.app.dbobj.cursor()
-    cursor.execute(query)
-    self.app.dbobj.commit()
+    self.app.execute_query(query, commit=True)
     self._rungroups = self.app.get_trial_rungroups(self.id)

@@ -43,19 +43,15 @@ class db_proxy(object):
       keys += ")"
       vals += ")"
       query += keys + " " + vals
-      cursor = self.app.dbobj.cursor()
-      cursor.execute(query)
-      self.app.dbobj.commit()
+      cursor = self.app.execute_query(query, commit=True)
       self.id = cursor.lastrowid
     else:
       query = "SHOW COLUMNS FROM `%s`" % self.table_name
-      cursor = self.app.dbobj.cursor()
-      cursor.execute(query)
+      cursor = self.app.execute_query(query)
       columns = [c[0] for c in cursor.fetchall()]
 
       query = "SELECT * FROM `%s` WHERE id = %d" % (self.table_name, id)
-      cursor = self.app.dbobj.cursor()
-      cursor.execute(query)
+      cursor = self.app.execute_query(query)
       data = cursor.fetchall()[0]
 
       for key, value in zip(columns, data):
@@ -84,9 +80,4 @@ class db_proxy(object):
     query = "UPDATE `%s` SET %s = '%s' WHERE id = %d"% (
       self.table_name, key, value, self.id)
     print query
-    try:
-      cursor = self.app.dbobj.cursor()
-      cursor.execute(query)
-      self.app.dbobj.commit()
-    except Exception, e:
-      print str(e)
+    self.app.execute_query(query, commit=True)
