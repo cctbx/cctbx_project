@@ -66,7 +66,7 @@ class FormatBrukerFixedChi(FormatBruker):
     angles = map(float, self.header_dict['ANGLES'])
 
     beam = matrix.col((0, 0, 1))
-    phi = matrix.col((1, 0, 0)).rotate(beam, angles[3], deg=True)
+    phi = matrix.col((1, 0, 0)).rotate(-beam, angles[3], deg=True)
 
     if self.header_dict['AXIS'][0] == '2':
       # OMEGA scan
@@ -88,14 +88,12 @@ class FormatBrukerFixedChi(FormatBruker):
 
     fast = matrix.col((1, 0, 0))
     slow = matrix.col((0, 1, 0))
-    #fast = matrix.col((0, 1, 0))
-    #slow = matrix.col((-1, 0, 0))
     beam = matrix.col((0, 0, 1))
     pixel_mm = 5.0 / float(self.header_dict['DETTYPE'][1])
     beam_pixel = map(float, self.header_dict['CENTER'][:2])
     distance_mm = 10.0 * float(self.header_dict['DISTANC'][1])
-    origin = - distance_mm * beam - fast * pixel_mm * beam_pixel[0] - \
-      slow * pixel_mm * beam_pixel[1]
+    origin = - distance_mm * beam - fast * pixel_mm * beam_pixel[1] - \
+      slow * pixel_mm * beam_pixel[0]
     origin = origin.rotate(-fast, two_theta, deg = True)
     slow = slow.rotate(-fast, two_theta, deg = True)
     pixel_size = pixel_mm, pixel_mm
