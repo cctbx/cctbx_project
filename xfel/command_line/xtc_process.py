@@ -17,6 +17,7 @@ from libtbx.phil import parse
 from dxtbx.imageset import MemImageSet
 from dxtbx.datablock import DataBlockFactory
 from scitbx.array_family import flex
+import numpy as np
 
 xtc_phil_str = '''
   dispatch {
@@ -394,7 +395,10 @@ class InMemScript(DialsProcessScript):
           assert len(self.psana_mask) == 64
         else:
           psana_mask = self.psana_det.mask(run,calib=True,status=True,edges=True,central=True,unbond=True,unbondnbrs=True)
-          psana_mask = flex.bool(psana_mask)
+          if psana_mask.dtype == np.bool:
+            psana_mask = flex.bool(psana_mask)
+          else:
+            psana_mask = flex.bool(psana_mask == 1)
           assert psana_mask.focus() == (32, 185, 388)
           self.psana_mask = []
           for i in xrange(32):
