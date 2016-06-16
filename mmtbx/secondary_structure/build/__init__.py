@@ -11,6 +11,7 @@ from mmtbx import secondary_structure
 from mmtbx.pdbtools import truncate_to_poly_gly
 from mmtbx.command_line.geometry_minimization import \
   get_geometry_restraints_manager
+from time import time
 
 alpha_helix_str = """
 ATOM      1  N   GLY A   1      -5.606  -2.251 -12.878  1.00  0.00           N
@@ -440,6 +441,7 @@ def substitute_ss(real_h,
       get_geometry_restraints_manager for no obvious reason).
   ss_annotation - iotbx.pdb.annotation object.
   """
+  t0 = time()
   if rotamer_manager is None:
     rotamer_manager = RotamerEval()
   for model in real_h.models():
@@ -463,6 +465,7 @@ def substitute_ss(real_h,
   error_msg +="empty atom selections. They don't match the structre: \n"
   error_flg = False
 
+  t1 = time()
   # Checking for SS selections
   h_indeces_to_delete = []
   sh_indeces_to_delete = []
@@ -500,6 +503,7 @@ def substitute_ss(real_h,
     raise Sorry(error_msg)
   phil_str = ann.as_restraint_groups()
 
+  t2 = time()
   # Actually idelizing SS elements
   log.write("Replacing ss-elements with ideal ones:\n")
   log.flush()
@@ -536,6 +540,7 @@ def substitute_ss(real_h,
       set_xyz_carefully(edited_h.select(all_bsel), ideal_h)
       # edited_h.select(all_bsel).atoms().set_xyz(ideal_h.atoms().extract_xyz())
 
+  t3 = time()
   pre_result_h = edited_h
   pre_result_h.reset_i_seq_if_necessary()
   n_atoms = real_h.atoms().size()
@@ -555,6 +560,9 @@ def substitute_ss(real_h,
   nonss_for_tors_selection.set_selected(isel, True)
   main_chain_selection_prefix = "(name ca or name n or name o or name c) %s"
 
+  t4 = time()
+  print >> log, "Preparing selections..."
+  log.flush()
   # Here we are just preparing selections
   for h in ann.helices:
     ss_sels = h.as_atom_selections()[0]
@@ -575,6 +583,7 @@ def substitute_ss(real_h,
       isel = selection_cache.iselection(selstring)
       ss_for_tors_selection.set_selected(isel, True)
       nonss_for_tors_selection.set_selected(isel, False)
+  t5 = time()
   isel = selection_cache.iselection(
       "not name ca and not name n and not name o and not name c")
   other_selection.set_selected(isel, False)
@@ -616,6 +625,7 @@ def substitute_ss(real_h,
   # params = w_params
 
 
+  t6 = time()
   import mmtbx.utils
   processed_pdb_files_srv = mmtbx.utils.\
       process_pdb_file_srv(
@@ -625,11 +635,14 @@ def substitute_ss(real_h,
           cif_objects=cif_objects)
   if verbose:
     print >> log, "Processing file..."
+    log.flush()
   processed_pdb_file, junk = processed_pdb_files_srv.\
       process_pdb_files(raw_records=flex.split_lines(real_h.as_pdb_string()))
+  t7 = time()
 
   grm = get_geometry_restraints_manager(
     processed_pdb_file, xray_structure)
+  t8 = time()
 
   real_h.reset_i_seq_if_necessary()
   if verbose:
@@ -668,6 +681,7 @@ def substitute_ss(real_h,
           sigma           = processed_params.sigma_on_torsion_nonss)
 
   real_h.atoms().set_xyz(pre_result_h.atoms().extract_xyz())
+  t9 = time()
   if processed_params.file_name_before_regularization is not None:
     print >> log, "Outputting model before regularization %s" % processed_params.file_name_before_regularization
     real_h.write_pdb_file(
@@ -689,6 +703,7 @@ def substitute_ss(real_h,
   if verbose:
     refinement_log = log
   from mmtbx.refinement.geometry_minimization import run2
+  t10 = time()
   obj = run2(
       restraints_manager       = grm,
       pdb_hierarchy            = real_h,
@@ -705,7 +720,16 @@ def substitute_ss(real_h,
       log                      = refinement_log)
   log.write(" Done\n")
   log.flush()
-
+  t11 = time()
+  # print >> log, "Initial checking, init   : %.4f" % (t1-t0)
+  # print >> log, "Checking SS              : %.4f" % (t2-t1)
+  # print >> log, "Initializing selections  : %.4f" % (t4-t3)
+  # print >> log, "Looping for selections   : %.4f" % (t5-t4)
+  # print >> log, "Finalizing selections    : %.4f" % (t6-t5)
+  # print >> log, "PDB interpretation       : %.4f" % (t7-t6)
+  # print >> log, "Get GRM                  : %.4f" % (t8-t7)
+  # print >> log, "Adding restraints to GRM : %.4f" % (t9-t8)
+  # print >> log, "Running GM               : %.4f" % (t11-t10)
   # print_hbond_proxies(grm.geometry,real_h)
   return grm.geometry.get_chi_torsion_proxies()
 
