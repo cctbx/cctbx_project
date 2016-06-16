@@ -345,6 +345,7 @@ def minimize_wrapper_for_ramachandran(
   params.pdb_interpretation.peptide_link.oldfield.plot_cutoff=oldfield_plot_cutoff
   params.pdb_interpretation.nonbonded_weight = nonbonded_weight
   params.pdb_interpretation.c_beta_restraints=True
+  params.pdb_interpretation.max_reasonable_bond_distance = None
 
   processed_pdb_files_srv = mmtbx.utils.\
       process_pdb_file_srv(
