@@ -113,12 +113,16 @@ class JobSentinel(Thread):
     from xfel.ui.db import get_db_connection
     from xfel.ui.db.xfel_db import xfel_db_application
     from xfel.ui.db.job import submit_all_jobs
-    conn = get_db_connection(self.parent.params)
-    db = xfel_db_application(conn, self.parent.params)
 
     while self.active:
+      conn = get_db_connection(self.parent.params)
+      db = xfel_db_application(conn, self.parent.params)
+
       submit_all_jobs(db)
       self.post_refresh()
+
+      del conn
+      del db
       time.sleep(1)
 
 # ------------------------------- Main Window -------------------------------- #
@@ -485,13 +489,9 @@ class JobsTab(BaseTab):
                         flag=wx.RIGHT | wx.LEFT | wx.BOTTOM,
                         border=10)
 
-    # TODO: Need jobs sentinel for this!
-    self.timer = wx.Timer(self)
-    self.timer.Start(1000)
 
     self.Bind(wx.EVT_BUTTON, self.onKillAll, self.btn_kill_all)
-    self.Bind(wx.EVT_TIMER, self.onRefreshJobs)
-    #self.Bind(EVT_REFRESH, self.onRefreshJobs)
+    self.Bind(EVT_JOB_REFRESH, self.onRefreshJobs)
 
   def onKillAll(self, e):
     pass
@@ -701,9 +701,24 @@ class TrialPanel(wx.Panel):
     self.refresh_trial()
 
   def onAddBlock(self, e):
-    max_run = max([r.run for r in self.db.get_all_runs()])
-    self.active_blocks[-1].endrun = max_run - 1
-    self.db.create_rungroup(startrun=max_run, active=True, detz_parameter=580)
+    runs = self.db.get_all_runs()
+    run_numbers = [r.run for r in runs]
+    assert len(set(run_numbers)) == len(run_numbers)
+
+    if len(runs) == 0:
+      wx.MessageBox("Sorry, no runs found", "Error", wx.OK | wx.ICON_EXCLAMATION)
+      return
+
+    min_run = runs[run_numbers.index(min(run_numbers))]
+    max_run = runs[run_numbers.index(max(run_numbers))]
+    if len(self.active_blocks) == 0:
+      start_run = min_run
+    else:
+      self.active_blocks[-1].endrun = max_run.id - 1 # this is wrong!!!
+      start_run = max_run
+
+    block = self.db.create_rungroup(startrun=start_run.id, active=True, detz_parameter=580)
+    self.trial.add_rungroup(block)
     self.refresh_trial()
 
   def refresh_trial(self):
@@ -734,7 +749,5 @@ class TrialPanel(wx.Panel):
 
     rblock_dlg = dlg.RunBlockDialog(self, self.db)
     rblock_dlg.Fit()
-
-
 
     rblock_dlg.ShowModal()

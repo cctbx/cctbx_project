@@ -75,8 +75,12 @@ class GradButton(mb.MetallicButton):
 class RunBlockButton(GradButton):
   def __init__(self, parent, block, size=wx.DefaultSize):
     self.block = block
-    self.first_run = block.startrun
-    self.last_run = block.endrun
+    db = block.app
+    self.first_run = db.get_run(run_id=block.startrun).run
+    if block.endrun is None:
+      self.last_run = None
+    else:
+      self.last_run = db.get_run(run_id=block.endrun).run
 
     GradButton.__init__(self, parent=parent, label='',
                         size=size)
