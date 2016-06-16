@@ -19,6 +19,7 @@ columns = [
   ]
 
 def get_restraint_values(threes):
+
   res_type_group = get_res_type_group(
     threes[-2].resname,
     threes[-1].resname,
@@ -28,6 +29,7 @@ def get_restraint_values(threes):
   key = threes.get_cdl_key(force_plus_one=True,
                            omega_cdl=True,
                           )
+  if key is None: return None
   previous_key = None
   if len(key)==4:
     previous_key = key[:2]

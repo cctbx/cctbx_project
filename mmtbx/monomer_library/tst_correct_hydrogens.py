@@ -45,6 +45,9 @@ def run():
   cmd = "phenix.geometry_minimization tst_correct_hydrogens.pdb"
   print cmd
   ero = easy_run.fully_buffered(command=cmd)
+  cmd = "phenix.geometry_minimization tst_correct_hydrogens_minimized.pdb"
+  print cmd
+  ero = easy_run.fully_buffered(command=cmd)
   std = StringIO.StringIO()
   ero.show_stdout(out=std)
   chiral_energy = None

@@ -293,6 +293,8 @@ class linking_mixins(object):
                                   second_row_buffer           = 0.5,
                                   carbohydrate_bond_cutoff    = 2.,
                                   ligand_bond_cutoff          = 2.,
+                                  include_selections          = None,
+                                  exclude_selections          = None,
                                   log                         = None,
                                   verbose                     = False,
                                   ):
@@ -304,6 +306,11 @@ class linking_mixins(object):
                               ligand_bond_cutoff,
                               inter_residue_bond_cutoff+second_row_buffer,
                               )
+    max_bonded_cutoff_standard = max_bonded_cutoff
+    if include_selections:
+      for selection_1, selection_2, cutoff in include_selections:
+        max_bonded_cutoff = max(max_bonded_cutoff, cutoff)
+
     # check that linking required
     ## has_checks = []
     ## for i, link_boolean in enumerate([link_carbohydrates,
@@ -417,6 +424,7 @@ class linking_mixins(object):
     done = ResidueLinkClass()
     links = {}
     custom_links = {}
+    exclude_out_lines = {}
 
     # main loop
     nonbonded_proxies, sites_cart, pair_asu_table, asu_mappings, nonbonded_i_seqs = \
@@ -430,11 +438,54 @@ class linking_mixins(object):
           )
         ):
       labels, i_seq, j_seq, distance, vdw_distance, sym_op, rt_mx_ji, proxy = item
+      #
+      # include & exclude selection
+      #
+      if ( include_selections and
+           distance>=max_bonded_cutoff_standard
+           ):
+        for selection_1, selection_2, bond_cutoff in include_selections:
+          if (( i_seq in selection_1 and j_seq in selection_2 ) or
+              ( i_seq in selection_2 and j_seq in selection_1 )
+              ):
+            metal_coordination_cutoff=bond_cutoff
+            amino_acid_bond_cutoff=bond_cutoff
+            carbohydrate_bond_cutoff=bond_cutoff
+            ligand_bond_cutoff=bond_cutoff
+            inter_residue_bond_cutoff=bond_cutoff
+            saccharide_bond_cutoff=bond_cutoff
+            link_residues=True
+            break
+        else:
+          continue # exclude this nonbond from consideration
+      exclude_this_nonbonded = False
+      if exclude_selections:
+        for selection_1, selection_2 in exclude_selections:
+          if selection_2: # check both
+            if (( i_seq in selection_1 and j_seq in selection_2 ) or
+                ( i_seq in selection_2 and j_seq in selection_1 )
+                ):
+              exclude_this_nonbonded = True
+              break
+          else:
+            if i_seq in selection_1 or j_seq in selection_1:
+              exclude_this_nonbonded = True
       # XXX this is a poor job!!!
       if bond_asu_table.contains(i_seq, j_seq, 0): continue
       if bond_asu_table.contains(i_seq, j_seq, 1): continue
       atom1 = atoms[i_seq]
       atom2 = atoms[j_seq]
+      if exclude_this_nonbonded:
+        key = (selection_1,selection_2)
+        if key not in exclude_out_lines:
+          exclude_out_lines[key] = \
+              '    bond %s\n%s%s\n%smodel %.2f' % (
+                atom1.id_str(),
+                ' '*9,
+                atom2.id_str(),
+                ' '*6,
+                distance)
+        continue
       if verbose:
         print i_seq, j_seq, atom1.quote(),
         print atom2.quote(),
@@ -926,6 +977,10 @@ Residue classes
         return -1
       return 1
     #
+    if exclude_out_lines:
+      print >> log, "  Excluded links - shortest distance candidate listed for each exclusion"
+      for key, item in exclude_out_lines.items():
+        print >> log, item
     if links:
       explained = []
       print >> log,  "  Links applied"

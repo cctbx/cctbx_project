@@ -1948,6 +1948,7 @@ mmtbx/conformation_dependent_library/hydrogen_bonding.py -text
 mmtbx/conformation_dependent_library/multi_residue_class.py -text
 mmtbx/conformation_dependent_library/omega.py -text
 mmtbx/conformation_dependent_library/omega_database.py -text
+mmtbx/conformation_dependent_library/pH_dependent_restraints.py -text
 mmtbx/conformation_dependent_library/rdl_database.py -text
 mmtbx/conformation_dependent_library/rotamers.py -text
 mmtbx/conformation_dependent_library/test_cdl.py -text
@@ -2337,6 +2338,7 @@ mmtbx/regression/tst_cablam.py -text
 mmtbx/regression/tst_cc_star.py -text
 mmtbx/regression/tst_chain_comparison.py -text
 mmtbx/regression/tst_cif_as_mtz_wavelengths.py svneol=native#text/x-python
+mmtbx/regression/tst_cis_trans_peptide_link.py -text
 mmtbx/regression/tst_clashes.py -text
 mmtbx/regression/tst_command_line_input.py svneol=native#text/x-python
 mmtbx/regression/tst_compare_ligands.py -text

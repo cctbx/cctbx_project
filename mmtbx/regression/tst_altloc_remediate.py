@@ -1,5 +1,6 @@
 from __future__ import division
 import sys
+from StringIO import StringIO
 
 pdbs = [
   # 0
@@ -400,6 +401,97 @@ ATOM     53  CD  PRO A 108      21.676  18.668  -0.477  1.00  4.48           C
 """],
   ]
 
+ala_cif = """
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+_chem_comp.initial_date
+_chem_comp.modified_date
+_chem_comp.source
+ ALA ALA Alanine L-peptide 10 5 . 2009-08-12 2012-12-06
+;
+Copy of CCP4 Monomer Library entry.  eLBOW added bond orders.
+Added neutron distances
+;
+data_comp_ALA
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+ ALA           N      N    NH1      -0.204
+ ALA           H      H    HNH1      0.204
+ ALA           CA     C    CH1       0.058
+ ALA           HA     H    HCH1      0.046
+ ALA           CB     C    CH3      -0.120
+ ALA           HB1    H    HCH3      0.040
+ ALA           HB2    H    HCH3      0.040
+ ALA           HB3    H    HCH3      0.040
+ ALA           C      C    C         0.318
+ ALA           O      O    O        -0.422
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+_chem_comp_bond.value_dist_neutron
+ ALA      N      H         single      2.860    0.020    1.020
+ ALA      N      CA        single      2.458    0.019    1.458
+ ALA      CA     HA        single      2.970    0.020    1.090
+ ALA      CA     CB        single      2.521    0.033    1.521
+ ALA      CB     HB1       single      2.970    0.020    1.090
+ ALA      CB     HB2       single      2.970    0.020    1.090
+ ALA      CB     HB3       single      2.970    0.020    1.090
+ ALA      CA     C         single      2.525    0.021    1.525
+ ALA      C      O         double      2.231    0.020    1.231
+"""
+
+params_str = """pdb_interpretation {
+  apply_cif_restraints
+  {
+    restraints_file_name = "%s"
+    residue_selection = %s
+  }
+}
+  """
+params = [
+  [params_str % ("ALA_different.cif", "chain A and resseq 2"),
+   params_str % ("ALA_different.cif", 'chain A and resseq 2 and altloc "A"'),
+   ],
+  [params_str % ("ALA_different.cif", "chain A and resseq 2"),
+   params_str % ("ALA_different.cif", 'chain A and resseq 2 and altloc "A"'),
+   ],
+  [params_str % ("ALA_different.cif", "chain A and resseq 2"),
+   params_str % ("ALA_different.cif", 'chain A and resseq 2 and altloc "A"'),
+   ],
+  [params_str % ("ALA_different.cif", "chain A and resseq 2"),
+   params_str % ("ALA_different.cif", 'chain A and resseq 2 and altloc "A"'),
+   ],
+  [params_str % ("ALA_different.cif", "chain A and resseq 2"),
+   params_str % ("ALA_different.cif", 'chain A and resseq 2 and altloc "A"'),
+   ],
+  [params_str % ("ALA_different.cif", "chain A and resseq 2"),
+   params_str % ("ALA_different.cif", 'chain A and resseq 2 and altloc "A"'),
+   ],
+]
+success = [
+  [1,0],
+  [1,0],
+  [0,0],
+  [0,0],
+  [0,1],
+  [0,1],
+  ]
+
 from libtbx import easy_run
 
 def assert_lines(s1, s2):
@@ -418,6 +510,51 @@ def assert_lines(s1, s2):
       assert 0
 
 def run():
+  f=file("ALA_different.cif", "wb")
+  f.write(ala_cif)
+  f.close()
+  for i, (input_str, output_str) in enumerate(pdbs):
+    if i==6: break
+    preamble = "tst_altloc_specific_restraints_%02d" % i
+    print '-'*80
+    print input_str
+    print '-'*80
+    print output_str
+    print '-'*80
+    for j in range(2):
+      f=file("%s.pdb" % preamble, "wb")
+      f.write(input_str)
+      f.close()
+      f=file("%s_%02d.params" % (preamble, j), "wb")
+      f.write(params[i][j])
+      f.close()
+      cmd = "phenix.pdb_interpretation %s %s" % ("%s.pdb" % preamble,
+                                                 "%s_%02d.params" % (preamble,j),
+        )
+      cmd += " write_geo=1 cdl=0"
+      print "\n  ~> %s\n" % cmd
+      lines=StringIO()
+      rc = easy_run.fully_buffered(cmd)
+      rc.show_stdout(out=lines)
+      finding=None
+      not_finding=None
+      if success[i][j]==0:
+        finding = "were not modified by"
+      elif success[i][j]==1:
+        not_finding = "were not modified by"
+      for line in lines.getvalue().split("\n"):
+        if finding:
+          if line.find(finding)>-1:
+            finding = True
+            break
+        if not_finding:
+          if line.find(not_finding)>-1:
+            print line
+            assert 0
+      if finding is not None:
+        if finding==True: pass
+        else: assert 0
+
   for i, (input_str, output_str) in enumerate(pdbs):
     preamble = "tst_altloc_remediate_%02d" % i
     print '-'*80

@@ -354,12 +354,16 @@ def print_filtered_cif(cif):
 
 class process_cif_mixin(object):
 
-  def process_cif_object(self, cif_object, file_name=None):
+  def process_cif_object(self, cif_object, file_name=None, cache=True):
     if (file_name is None):
       source_info = None
     else:
       source_info = "file: "+file_name
-    try: self.convert_all(source_info=source_info, cif_object=cif_object)
+    try:
+      self.convert_all(source_info=source_info,
+                       cif_object=cif_object,
+                       cache=cache,
+        )
     except KeyboardInterrupt: raise
     except Exception:
       if (file_name is None): file_name = "(file name not available)"
@@ -368,7 +372,7 @@ class process_cif_mixin(object):
         "  %s\n"
         "  (%s)" % (show_string(file_name), format_exception()))
 
-  def process_cif(self, file_name):
+  def process_cif(self, file_name, cache=True):
     try: cif_object = read_cif(file_name=file_name)
     except KeyboardInterrupt: raise
     except Exception:
@@ -376,7 +380,18 @@ class process_cif_mixin(object):
         "Error reading CIF file:\n"
         "  %s\n"
         "  (%s)" % (show_string(file_name), format_exception()))
-    self.process_cif_object(cif_object=cif_object, file_name=file_name)
+    self.process_cif_object(cif_object=cif_object,
+                            file_name=file_name,
+                            cache=cache,
+      )
+
+class id_dict(dict):
+  def __setitem__(self, key, item):
+    print "DICT",key, item
+    if key in self:
+      print 'assert 0'
+      assert 0
+    dict.__setitem__(self, key, item)
 
 class server(process_cif_mixin):
 
@@ -405,13 +420,18 @@ class server(process_cif_mixin):
     self.comp_comp_id_mod_dict = {}
     self.process_geostd_rna_dna()
 
-  def convert_all(self, source_info, cif_object, skip_comp_list=False):
+  def convert_all(self,
+                  source_info,
+                  cif_object,
+                  skip_comp_list=False,
+                  cache=True,
+                  ):
     self.convert_deriv_list_dict(cif_object=cif_object)
     self.convert_comp_synonym_list(cif_object=cif_object)
     self.convert_comp_synonym_atom_list(cif_object=cif_object)
     if (not skip_comp_list):
       self.convert_comp_list(
-        source_info=source_info, cif_object=cif_object)
+        source_info=source_info, cif_object=cif_object, cache=cache)
     self.convert_link_list(
       source_info=source_info, cif_object=cif_object)
     self.convert_mod_list(
@@ -439,12 +459,13 @@ class server(process_cif_mixin):
         d = self.comp_synonym_atom_list_dict[synonym.comp_alternative_id]
         d[synonym.atom_alternative_id] = synonym.atom_id
 
-  def convert_comp_list(self, source_info, cif_object):
+  def convert_comp_list(self, source_info, cif_object, cache=True):
     for comp_comp_id in convert_comp_list(
                           source_info=source_info, cif_object=cif_object):
       comp_comp_id.normalize_atom_ids_in_place()
       chem_comp = comp_comp_id.chem_comp
-      self.comp_comp_id_dict[chem_comp.id.strip().upper()] = comp_comp_id
+      if cache:
+        self.comp_comp_id_dict[chem_comp.id.strip().upper()] = comp_comp_id
 
   def convert_link_list(self, source_info, cif_object):
     for link_link_id in convert_link_list(
@@ -476,10 +497,33 @@ class server(process_cif_mixin):
                               comp_id,
                               resolution_range=None, # "low *med high"
                               pH_range=None, # low *neutral high
+                              specific_residue_restraints=None,
                              ):
     comp_id = comp_id.strip().upper()
     if (len(comp_id) == 0): return None
-    result = self.comp_comp_id_dict.get(comp_id)
+    #
+    # user supplied file
+    #
+    result = None
+    file_name = None
+    if specific_residue_restraints:
+      file_name = specific_residue_restraints
+    elif pH_range is not None:
+      if pH_range in ["neutral"]: rr = ""
+      elif pH_range in ["low", "high"]:
+        rr = "_pH_%s" % pH_range
+      else:
+        assert 0, "unknown pH value : %s" % pH_range
+      rr_cif_name = "data_%s%s.cif" % (comp_id.upper(), rr)
+      rr_cif_name = os.path.join(self.geostd_path,
+                                 comp_id[0].lower(),
+                                 rr_cif_name)
+      if os.path.exists(rr_cif_name):
+        file_name = rr_cif_name
+      else:
+        return None
+    else:
+      result = self.comp_comp_id_dict.get(comp_id)
     if (result is not None):
       return result
     std_comp_id = self.comp_synonym_list_dict.get(comp_id, "").strip().upper()
@@ -510,6 +554,12 @@ class server(process_cif_mixin):
               cif_name = cif_name.lower()
               for node in os.listdir(dir_name):
                 if (node.lower() != cif_name): continue
+                print 'node',node
+                print 'i_pass'*10,i_pass
+                print dir_name
+                print os.listdir(dir_name)
+                print 'cif_name',cif_name
+                assert 0
                 return os.path.join(dir_name, node)
           # check PHENIX Mon Lib
           dir_name = os.path.join(self.root_path, trial_comp_id[0].lower())
@@ -528,9 +578,12 @@ class server(process_cif_mixin):
                 if (node.lower() != cif_name): continue
                 return os.path.join(dir_name, node)
       return None
-    file_name = find_file()
+    if (file_name is None): file_name = find_file()
     if (file_name is None): return None
-    self.process_cif(file_name=file_name)
+    cache=True
+    if specific_residue_restraints:
+      cache=False
+    self.process_cif(file_name=file_name, cache=cache)
     if (len(std_comp_id) > 0):
       result = self.comp_comp_id_dict.get(std_comp_id)
     else:
@@ -538,7 +591,18 @@ class server(process_cif_mixin):
     if (result is not None):
       self.comp_comp_id_dict[comp_id] = result
     else:
-      result = self.comp_comp_id_dict.get(comp_id)
+      if specific_residue_restraints:
+        cif_object = read_cif(file_name=specific_residue_restraints)
+        for i_comp_comp, comp_comp_id in enumerate(convert_comp_list(
+            source_info=specific_residue_restraints,
+            cif_object=cif_object,
+          )):
+          comp_comp_id.normalize_atom_ids_in_place()
+          result=comp_comp_id
+        assert i_comp_comp==0
+        return result
+      else:
+        result = self.comp_comp_id_dict.get(comp_id)
       if (result is not None):
         if (len(std_comp_id) != 0):
           self.comp_comp_id_dict[std_comp_id] = result
@@ -556,7 +620,9 @@ class server(process_cif_mixin):
         atom_names,
         translate_cns_dna_rna_residue_names=None,
         resolution_range=None,
+        specific_residue_restraints=None,
         ):
+    # not sure this works with specific_residue_restraints
     rnpani = residue_name_plus_atom_names_interpreter(
       residue_name=residue_name,
       atom_names=atom_names,
@@ -569,9 +635,11 @@ class server(process_cif_mixin):
         and self.comp_comp_id_dict.get(d_aa_rn) is not None):
       return (self.get_comp_comp_id_direct(comp_id=d_aa_rn), None)
     return (
-      self.get_comp_comp_id_direct(comp_id=rnpani.work_residue_name,
-                                   resolution_range=resolution_range,
-                                  ),
+      self.get_comp_comp_id_direct(
+        comp_id=rnpani.work_residue_name,
+        resolution_range=resolution_range,
+        specific_residue_restraints=specific_residue_restraints,
+        ),
       rnpani.atom_name_interpretation,
       )
 
@@ -620,7 +688,12 @@ class ener_lib(process_cif_mixin):
                      )
     self.source_infos = []
 
-  def convert_all(self, source_info, cif_object, use_neutron_distances=False):
+  def convert_all(self,
+                  source_info,
+                  cif_object,
+                  use_neutron_distances=False,
+                  cache=True, # not used
+                  ):
     if (source_info is not None):
       self.source_infos.append(source_info)
     self.convert_lib_synonym(cif_object=cif_object)

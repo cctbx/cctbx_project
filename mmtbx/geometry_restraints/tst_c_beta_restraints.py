@@ -67,6 +67,24 @@ ATOM    536  O   GLU B   3      10.197  10.267  22.867  1.00 20.00           O
 ATOM    537  CB  GLU B   3       7.115  11.041  22.731  1.00 20.00           C
 """
 
+pdb_str_5 = """\
+ATOM      1  N   DAL A   1      -1.425  -0.261  -0.246  1.00 20.00      A    N
+ATOM      2  CA  DAL A   1       0.026  -0.261  -0.246  1.00 20.00      A    C
+ATOM      3  CB  DAL A   1       0.535  -0.261   1.194  1.00 20.00      A    C
+ATOM      4  C   DAL A   1       0.535   0.986  -0.965  1.00 20.00      A    C
+ATOM      5  O   DAL A   1       1.425   0.883  -1.851  1.00 20.00      A    O
+ATOM      6  OXT DAL A   1       0.066   2.117  -0.674  1.00 20.00      A    O-1
+"""
+
+pdb_str_6 = """
+ATOM      1  N   ALA A   1      -1.425  -0.261  -0.246  1.00 20.00      A    N
+ATOM      2  CA  ALA A   1       0.026  -0.261  -0.246  1.00 20.00      A    C
+ATOM      3  CB  ALA A   1       0.535  -0.261   1.194  1.00 20.00      A    C
+ATOM      4  C   ALA A   1       0.535   0.986  -0.965  1.00 20.00      A    C
+ATOM      5  O   ALA A   1       1.425   0.883  -1.851  1.00 20.00      A    O
+ATOM      6  OXT ALA A   1       0.066   2.117  -0.674  1.00 20.00      A    O-1
+"""
+
 def exercise_1():
   processed_pdb_file = pdb_interpretation.process(
     mon_lib_srv              = server.server(),
@@ -108,22 +126,44 @@ def exercise_2():
   pdb_h = iotbx.pdb.input(
       source_info=None,
       lines=pdb_str_2).construct_hierarchy()
-  c_beta_restrs = c_beta.get_c_beta_torsion_proxies(pdb_h)
+  c_beta_restrs, c_beta_skip = c_beta.get_c_beta_torsion_proxies(pdb_h)
   assert len(c_beta_restrs) == 2
 
   pdb_h = iotbx.pdb.input(
       source_info=None,
       lines=pdb_str_3).construct_hierarchy()
-  c_beta_restrs = c_beta.get_c_beta_torsion_proxies(pdb_h)
+  c_beta_restrs, c_beta_skip = c_beta.get_c_beta_torsion_proxies(pdb_h)
   assert len(c_beta_restrs) == 4
 
   pdb_h = iotbx.pdb.input(
       source_info=None,
       lines=pdb_str_4).construct_hierarchy()
-  c_beta_restrs = c_beta.get_c_beta_torsion_proxies(pdb_h)
+  c_beta_restrs, c_beta_skip = c_beta.get_c_beta_torsion_proxies(pdb_h)
   assert len(c_beta_restrs) == 2
+
+def exercise_3():
+  """
+  Testing d-peptide
+  """
+  pdb_h = iotbx.pdb.input(
+      source_info=None,
+      lines=pdb_str_5).construct_hierarchy()
+  c_beta_restrs, c_beta_skip = c_beta.get_c_beta_torsion_proxies(pdb_h)
+  assert len(c_beta_restrs) == 0
+  assert len(c_beta_skip.get("d-peptide", []))==1
+  assert len(c_beta_skip.get("-ve", []))==0
+
+  pdb_h = iotbx.pdb.input(
+      source_info=None,
+      lines=pdb_str_6).construct_hierarchy()
+  c_beta_restrs, c_beta_skip = c_beta.get_c_beta_torsion_proxies(pdb_h)
+  assert len(c_beta_restrs) == 0
+  assert len(c_beta_skip.get("d-peptide", []))==0
+  assert len(c_beta_skip.get("-ve", []))==1
+
 
 if (__name__ == "__main__") :
   exercise_1()
   exercise_2()
+  exercise_3()
   print "OK"

@@ -163,6 +163,17 @@ filenames = {
       True,
       ],
     ],
+  "cdl_test_9.pdb" : [
+    [
+      'IleVal_nonxpro',
+      ],
+    [
+      None,
+      ],
+    [
+      None,
+      ],
+    ]
   }
 
 output_filenames = {
@@ -758,6 +769,51 @@ ATOM     47  CA  PRO A   6      -6.759  11.758   0.397  1.00  5.50           C
 ATOM     48  C   PRO A   6      -5.935  10.619   0.104  1.00  5.60           C
 ATOM     49  OXT PRO A   6      -5.268  10.568  -1.166  1.00  6.37           O
 """,
+  # added for test_omega,py
+  "cdl_test_9.pdb" : """CRYST1   74.560  104.040   69.150  90.00  90.00  90.00 C 2 2 21
+SCALE1      0.013412  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.009612  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.014461        0.00000
+ATOM   3586  N   LEU A 265      12.362  20.789  -0.224  1.00 39.28           N
+ATOM   3587  CA  LEU A 265      10.958  21.100  -0.450  1.00 25.81           C
+ATOM   3588  C   LEU A 265      10.613  21.342  -1.914  1.00 29.00           C
+ATOM   3589  O   LEU A 265       9.427  21.349  -2.256  1.00 24.23           O
+ATOM   3590  CB  LEU A 265      10.562  22.339   0.362  1.00 29.70           C
+ATOM   3591  CG  LEU A 265      10.712  22.246   1.881  1.00 42.25           C
+ATOM   3592  CD1 LEU A 265      10.529  23.620   2.508  0.84 29.47           C
+ATOM   3593  CD2 LEU A 265       9.719  21.250   2.465  0.86 30.85           C
+ATOM   3594  H   LEU A 265      12.873  21.481  -0.221  1.00 47.14           H
+ATOM   3595  HA  LEU A 265      10.420  20.356  -0.137  1.00 30.97           H
+ATOM   3596  HB2 LEU A 265      11.109  23.083   0.065  1.00 35.64           H
+ATOM   3597  HB3 LEU A 265       9.630  22.535   0.178  1.00 35.64           H
+ATOM   3598  HG  LEU A 265      11.607  21.937   2.092  1.00 50.69           H
+ATOM   3599 HD11 LEU A 265      10.627  23.544   3.470  0.46 35.36           H
+ATOM   3600 HD12 LEU A 265      11.202  24.222   2.153  0.63 35.36           H
+ATOM   3601 HD13 LEU A 265       9.643  23.950   2.291  0.53 35.36           H
+ATOM   3602 HD21 LEU A 265       9.838  21.213   3.427  0.54 37.02           H
+ATOM   3603 HD22 LEU A 265       8.818  21.543   2.254  0.45 37.02           H
+ATOM   3604 HD23 LEU A 265       9.883  20.377   2.077  0.60 37.02           H
+ATOM   3605  N   ILE A 266      11.598  21.541  -2.783  1.00 25.15           N
+ATOM   3606  CA  ILE A 266      11.300  21.894  -4.165  1.00 17.45           C
+ATOM   3607  C   ILE A 266      11.066  20.627  -4.979  1.00 26.65           C
+ATOM   3608  O   ILE A 266      10.493  20.675  -6.067  1.00 44.84           O
+ATOM   3609  CB  ILE A 266      12.416  22.771  -4.786  1.00 21.23           C
+ATOM   3610  CG1 ILE A 266      13.593  21.922  -5.287  1.00 25.40           C
+ATOM   3611  CG2 ILE A 266      12.898  23.814  -3.770  1.00 25.56           C
+ATOM   3612  CD1 ILE A 266      14.606  22.711  -6.073  1.00 38.72           C
+ATOM   3613  H   ILE A 266      12.437  21.479  -2.601  1.00 30.18           H
+ATOM   3614  HA  ILE A 266      10.478  22.410  -4.182  1.00 20.94           H
+ATOM   3615  HB  ILE A 266      12.041  23.242  -5.546  1.00 25.48           H
+ATOM   3616 HG12 ILE A 266      14.047  21.532  -4.524  1.00 30.47           H
+ATOM   3617 HG13 ILE A 266      13.251  21.220  -5.862  1.00 30.47           H
+ATOM   3618 HG21 ILE A 266      13.596  24.351  -4.177  1.00 30.67           H
+ATOM   3619 HG22 ILE A 266      12.150  24.377  -3.518  1.00 30.67           H
+ATOM   3620 HG23 ILE A 266      13.246  23.356  -2.989  1.00 30.67           H
+ATOM   3621 HD11 ILE A 266      15.318  22.117  -6.357  1.00 46.46           H
+ATOM   3622 HD12 ILE A 266      14.171  23.101  -6.847  1.00 46.46           H
+ATOM   3623 HD13 ILE A 266      14.967  23.413  -5.508  1.00 46.46           H
+ATOM   3624  N   SER A 267      11.505  19.495  -4.440  1.00 41.57           N
+""",
   }
 
 def test_res_type(hierarchy,
@@ -790,7 +846,7 @@ def test_phi_psi_key(hierarchy,
     )
                              ):
     key = threes.get_cdl_key()
-    print key
+    print i,key,filenames[filename][1]
     assert key == filenames[filename][1][i]
 
 def test_cdl_lookup(hierarchy,
@@ -808,6 +864,10 @@ def test_cdl_lookup(hierarchy,
       threes[2].resname,
       )
     key = threes.get_cdl_key()
+    print 'key',key
+    if key is None:
+      assert filenames[filename][2][i] is None
+      continue
     restraint_values = cdl_database[res_type_group][key]
     print restraint_values[:4]
     assert restraint_values[:3] == filenames[filename][2][i]

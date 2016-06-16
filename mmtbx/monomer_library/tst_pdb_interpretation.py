@@ -1139,6 +1139,25 @@ def exercise_d_aa_resnames():
   assert log.getvalue().find("'NH1NOTPRO': 1") >= 0
   assert processed_pdb_file.all_chain_proxies.fatal_problems_message() is None
 
+def exercise_d_amino_acid_chain_perfect_in_box_peptide_plane():
+  file_path = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/d_amino_acid_chain_perfect_in_box.pdb",
+    test=os.path.isfile)
+  if (file_path is None):
+    print "Skipping exercise_d_aa_resnames():", \
+      "input file not available: d_amino_acid_chain_perfect_in_box.pdb"
+    return
+  log = StringIO()
+  pdb_interpretation_params = monomer_library.pdb_interpretation.master_params.extract()
+  pdb_interpretation_params.sort_atoms=False
+  pdb_interpretation_params.peptide_link.apply_peptide_plane=True
+  processed_pdb_file = monomer_library.pdb_interpretation.run(
+    args=[file_path], params=pdb_interpretation_params, log=log)
+  grm = processed_pdb_file.geometry_restraints_manager()
+  lv = log.getvalue()
+  assert lv.find("Classifications: {'peptide': 16}") >= 0
+  assert lv.find("Link IDs: {'TRANS': 14, 'peptide plane': 15, 'PCIS': 1}")>=0
+
 def exercise_d_amino_acid_chain_perfect_in_box():
   file_path = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/d_amino_acid_chain_perfect_in_box.pdb",
@@ -1158,6 +1177,7 @@ def exercise_d_amino_acid_chain_perfect_in_box():
   assert lv.find("'PEPT-D': 1") >= 0
   assert lv.find("'TRANS': 14") >= 0
   assert lv.find("'PCIS': 1") >= 0
+  assert lv.find("Link IDs: {'TRANS': 14, 'PCIS': 1}")>=0
   assert lv.find("""\
 Simple disulfide: pdb=" SG  DCY A   4 " - pdb=" SG  DCY A  19 " distance=2.03
 """) >= 0
@@ -2095,6 +2115,7 @@ def run(args):
   exercise_auto_alias_h_h1()
   exercise_d_aa_resnames()
   exercise_d_amino_acid_chain_perfect_in_box()
+  exercise_d_amino_acid_chain_perfect_in_box_peptide_plane()
   exercise_rna_v3(mon_lib_srv, ener_lib)
   # exercise_scale_restraints() removed during CDL=True update
   exercise_asp_glu_acid()

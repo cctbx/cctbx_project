@@ -235,6 +235,30 @@ master_params_str = """\
     ligand_bond_cutoff = 1.99
       .type = float
   }
+  include_in_automatic_linking
+    .optional = True
+    .multiple = True
+    .short_caption = exclude
+    .style = noauto auto_align
+  {
+    selection_1 = None
+      .type = atom_selection
+    selection_2 = None
+      .type = atom_selection
+    bond_cutoff = 4.5
+      .type = float
+  }
+  exclude_from_automatic_linking
+    .optional = True
+    .multiple = True
+    .short_caption = exclude
+    .style = noauto auto_align
+  {
+    selection_1 = None
+      .type = atom_selection
+    selection_2 = None
+      .type = atom_selection
+  }
   use_neutron_distances = False
     .type = bool
     .short_caption = Use the nuclear distances for X-H/D
@@ -259,6 +283,29 @@ master_params_str = """\
       .type = float
       .short_caption = Resolutions worse than limit load "low" resolution \
                        restraints
+  }
+  apply_cis_trans_specification
+    .optional = True
+    .multiple = True
+    .short_caption = Modify default cis-trans specification
+    .style = noauto auto_align
+  {
+    cis_trans_mod = cis *trans
+      .type = choice
+    residue_selection = None
+      .type = atom_selection
+      .help = Residues containing C-alpha atom of omega dihedral
+  }
+  apply_cif_restraints
+    .optional = True
+    .multiple = True
+    .short_caption = Use CIF restraints
+    .style = noauto auto_align
+  {
+    restraints_file_name= None
+      .type = path
+    residue_selection = None
+      .type = atom_selection
   }
   apply_cif_modification
     .optional = True
@@ -321,12 +368,17 @@ master_params_str = """\
       .type = float
       .optional = False
       .short_caption = Threshold (degrees) for cis-peptides
+    apply_all_trans = False
+      .type = bool
+      .style = hidden
     discard_omega = False
       .type = bool
     discard_psi_phi = True
       .type = bool
       .optional = False
       .short_caption = Ignore monomer library Phi/Psi restraints
+    apply_peptide_plane = False
+      .type = bool
     omega_esd_override_value = None
       .type = float
       .short_caption = Omega-ESD override value
@@ -841,10 +893,11 @@ class type_symbol_registry_base(object):
       print >> log, "%sNumber of resolved %s type symbol conflicts: %d" % (
         prefix, self.type_label, self.n_resolved_conflicts)
 
-  def get_unknown_atoms (self, pdb_atoms) :
+  def get_unknown_atoms (self, pdb_atoms, return_iseqs=False) :
     n_unknown = self.n_unknown_type_symbols()
     if (n_unknown > 0):
       i_seqs = (self.symbols == "").iselection()
+      if return_iseqs: return i_seqs
       return pdb_atoms.select(i_seqs)
 
 class scattering_type_registry(type_symbol_registry_base):
@@ -946,6 +999,7 @@ class monomer_mapping(slots_getstate_setstate):
         next_pdb_residue,
         chainid,
         resolution_range=None,
+        specific_residue_restraints=None,
                ):
     self.chainid = chainid
     self.pdb_atoms = pdb_atoms
@@ -964,6 +1018,7 @@ class monomer_mapping(slots_getstate_setstate):
           translate_cns_dna_rna_residue_names
             =translate_cns_dna_rna_residue_names,
           resolution_range=resolution_range,
+          specific_residue_restraints=specific_residue_restraints,
       )
     if (self.atom_name_interpretation is None):
       self.mon_lib_names = None
@@ -1008,7 +1063,10 @@ class monomer_mapping(slots_getstate_setstate):
 
   def __setattr1__(self, attr, value):
     if attr == "lib_link":
-      if value: assert 0
+      if value:
+        for plane in value.plane_list:
+          print dir(plane)
+          plane.show()
     slots_getstate_setstate.__setattr__(self, attr, value)
 
   def _collect_atom_names(self):
@@ -1453,7 +1511,7 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
       special_position_indices=special_position_indices).counters
 
   def add_parallelity_proxies(self, special_position_indices,
-                                  parallelity_proxy_registry):
+                                    parallelity_proxy_registry):
     self.parallelity_counters = add_parallelity_proxies(
       counters=counters(label="parallelity"),
       m_i=self,
@@ -1546,19 +1604,28 @@ class link_match(object):
     if (self.len_group_match_2 < other.len_group_match_2): return  1
     return 0
 
-def get_lib_link_peptide(mon_lib_srv, m_i, m_j):
+def get_lib_link_peptide(mon_lib_srv, m_i, m_j, include_peptide_plane=False):
   link_id = "TRANS"
-  if (m_j.expected_atoms.get("CN", None) is not None):
+  if include_peptide_plane:
+    link_id = "PEPTIDE-PLANE"
+  elif (m_j.expected_atoms.get("CN", None) is not None):
     link_id = "NM" + link_id
   elif (m_j.monomer.chem_comp.id == "PRO"):
     link_id = "P" + link_id
   return mon_lib_srv.link_link_id_dict[link_id]
 
-def get_lib_link(mon_lib_srv, m_i, m_j, verbose=False):
+def get_lib_link(mon_lib_srv,
+                 m_i,
+                 m_j,
+                 include_peptide_plane=False,
+                 verbose=False):
   if (m_i.monomer.is_water() or m_j.monomer.is_water()): return None
   if (m_i.monomer.is_peptide() and m_j.monomer.is_peptide()):
     if verbose: print 'peptide-peptide'
-    return get_lib_link_peptide(mon_lib_srv, m_i, m_j)
+    return get_lib_link_peptide(mon_lib_srv,
+                                m_i,
+                                m_j,
+                                include_peptide_plane=include_peptide_plane)
   elif (    (m_i.is_rna_dna or m_i.monomer.is_rna_dna())
         and (m_j.is_rna_dna or m_j.monomer.is_rna_dna())):
     if (m_i.is_rna2p):
@@ -1831,7 +1898,9 @@ class add_dihedral_proxies(object):
         special_position_indices,
         sites_cart=None,
         chem_link_id=None,
-        broken_bond_i_seq_pairs=None):
+        broken_bond_i_seq_pairs=None,
+        cis_trans_specifications=None,
+        ):
     self.counters = counters
     self.chem_link_id = chem_link_id
     if (chem_link_id not in ["TRANS", "PTRANS", "NMTRANS"]):
@@ -1926,9 +1995,21 @@ class add_dihedral_proxies(object):
             r = geometry_restraints.dihedral(
               sites_cart=sites_cart,
               proxy=proxy)
-            if (abs(r.delta) > 180-peptide_link_params.cis_threshold):
+            if ( not peptide_link_params.apply_all_trans and
+                 abs(r.delta) > 180-peptide_link_params.cis_threshold):
               self.chem_link_id = self.chem_link_id.replace("TRANS", "CIS")
               proxy.angle_ideal = 0
+            if cis_trans_specifications:
+              for ca_i_seq in cis_trans_specifications:
+                if ca_i_seq[0] == i_seqs[3]: # specify the trailing CA
+                  if self.chem_link_id!=cis_trans_specifications[ca_i_seq].upper():
+                    if self.chem_link_id=="TRANS":
+                      self.chem_link_id="CIS"
+                      proxy.angle_ideal=0
+                    else:
+                      self.chem_link_id="TRANS"
+                      proxy.angle_ideal=180
+
           registry_process_result = dihedral_proxy_registry.process(
             source_info=source_info_server(m_i=m_i, m_j=m_j),
             proxy=proxy)
@@ -2034,6 +2115,7 @@ class add_planarity_proxies(object):
         plane_list,
         planarity_proxy_registry,
         special_position_indices,
+        peptide_link_params=None,
         broken_bond_i_seq_pairs=None):
     self.counters = counters
     self.counters.less_than_four_sites = dicts.with_default_value(0)
@@ -2235,8 +2317,9 @@ class build_chain_proxies(object):
         is_first_conformer_in_chain,
         conformer,
         conformation_dependent_restraints_list,
+        cis_trans_specifications,
+        apply_restraints_specifications,
         log,
-        #use_neutron_distances=False,
         restraints_loading_flags=None,
         fatal_problem_max_lines=10,
                ):
@@ -2283,12 +2366,37 @@ class build_chain_proxies(object):
     prev_mm = None
     prev_prev_mm = None
     pdb_residues = conformer.residues()
-
     for i_residue,residue in enumerate(pdb_residues):
       def _get_next_residue():
         j = i_residue + 1
         if (j == len(pdb_residues)): return None
         return pdb_residues[j]
+      # specific_residue_restraints
+      specific_residue_restraints = None
+      if apply_restraints_specifications:
+        atoms = residue.atoms()
+        alt_locs = {}
+        for atom in atoms: alt_locs.setdefault(atom.parent().altloc, 0)
+        residue_i_seqs=atoms.extract_i_seq()
+        min_i_seq, max_i_seq = min(residue_i_seqs), max(residue_i_seqs)
+        for selection, item in apply_restraints_specifications.items():
+          #print min_i_seq,max_i_seq,list(selection)
+          if min_i_seq in selection and max_i_seq in selection:
+            if selection.all_eq(residue_i_seqs):
+              print >> log, '%sResidue %s was targeted for' % (' '*8,
+                                                               residue.id_str(),
+                )
+              print >> log, '%srestraints from file: "%s"' % (' '*10,
+                                                              item[1],
+                )
+              if len(alt_locs)!=1:
+                print >> log, '%sbut ignored because residue has complex alt. loc.' % (
+                  ' '*10)
+                continue
+              specific_residue_restraints=item[1]
+              apply_restraints_specifications[selection]="OK"
+              break
+      #
       mm = monomer_mapping(
         pdb_atoms=pdb_atoms,
         mon_lib_srv=mon_lib_srv,
@@ -2306,10 +2414,14 @@ class build_chain_proxies(object):
         chainid=residue.parent().parent().id,
         resolution_range=restraints_loading_flags.get(
           "resolution_dependent_restraints", None),
+        specific_residue_restraints=specific_residue_restraints,
         )
 
       if mm.monomer and mm.monomer.cif_object:
-        self.cif["comp_%s" % residue.resname.strip()] = mm.monomer.cif_object
+        if specific_residue_restraints:
+          self.cif["comp_specific_%s" % residue.resname.strip()] = mm.monomer.cif_object
+        else:
+          self.cif["comp_%s" % residue.resname.strip()] = mm.monomer.cif_object
 
       if (mm.monomer is None):
         def use_scattering_type_if_available_to_define_nonbonded_type():
@@ -2340,7 +2452,8 @@ class build_chain_proxies(object):
           prev_mm.lib_link = get_lib_link(
             mon_lib_srv=mon_lib_srv,
             m_i=prev_mm,
-            m_j=mm)
+            m_j=mm,
+            )
           if (prev_mm.lib_link is None):
             link_ids[None] += 1
             mm_pairs_not_linked.append((prev_mm, mm))
@@ -2404,7 +2517,9 @@ class build_chain_proxies(object):
               special_position_indices=special_position_indices,
               sites_cart=sites_cart,
               chem_link_id=prev_mm.lib_link.chem_link.id,
-              broken_bond_i_seq_pairs=broken_bond_i_seq_pairs)
+              broken_bond_i_seq_pairs=broken_bond_i_seq_pairs,
+              cis_trans_specifications=cis_trans_specifications,
+              )
             n_unresolved_chain_link_dihedrals \
               += link_resolution.counters.unresolved_non_hydrogen
             link_ids[link_resolution.chem_link_id] += 1
@@ -2420,16 +2535,30 @@ class build_chain_proxies(object):
               broken_bond_i_seq_pairs=broken_bond_i_seq_pairs)
             n_unresolved_chain_link_chiralities \
               += link_resolution.counters.unresolved_non_hydrogen
-            link_resolution = add_planarity_proxies(
-              counters=counters(label="link_planarity"),
-              m_i=prev_mm,
-              m_j=mm,
-              plane_list=prev_mm.lib_link.get_planes(),
-              planarity_proxy_registry=geometry_proxy_registries.planarity,
-              special_position_indices=special_position_indices,
-              broken_bond_i_seq_pairs=broken_bond_i_seq_pairs)
+            def _add_planarity_proxies():
+              link_resolution = add_planarity_proxies(
+                counters=counters(label="link_planarity"),
+                m_i=prev_mm,
+                m_j=mm,
+                plane_list=prev_mm.lib_link.get_planes(),
+                planarity_proxy_registry=geometry_proxy_registries.planarity,
+                special_position_indices=special_position_indices,
+                broken_bond_i_seq_pairs=broken_bond_i_seq_pairs)
+            _add_planarity_proxies()
             n_unresolved_chain_link_planarities \
               += link_resolution.counters.unresolved_non_hydrogen
+            if peptide_link_params.apply_peptide_plane:
+              prev_mm.lib_link = get_lib_link(
+                mon_lib_srv=mon_lib_srv,
+                m_i=prev_mm,
+                m_j=mm,
+                include_peptide_plane=True,
+                )
+              _add_planarity_proxies()
+              link_ids["peptide plane"] += 1
+              n_unresolved_chain_link_planarities \
+                += link_resolution.counters.unresolved_non_hydrogen
+
       if (mm.monomer is not None):
         if (mm.is_unusual()):
           unusual_residues[mm.residue_name] += 1
@@ -2741,7 +2870,6 @@ class build_all_chain_proxies(linking_mixins):
         max_atoms=None,
         log=None,
         carbohydrate_callback=None,
-        #use_neutron_distances=False,
         restraints_loading_flags=None,
                ):
     import iotbx.cif.model
@@ -2787,6 +2915,45 @@ class build_all_chain_proxies(linking_mixins):
       print >> log, "  Monomer Library directory:"
       print >> log, "   ", show_string(mon_lib_srv.root_path)
       print >> log, "  Total number of atoms:", self.pdb_atoms.size()
+    selection_cache = self.pdb_hierarchy.atom_selection_cache()
+    # cis-trans specifications
+    cis_trans_specifications = {}
+    for cis_trans in self.params.apply_cis_trans_specification:
+      if cis_trans.residue_selection is None: continue
+      if cis_trans.residue_selection.lower().find("name ca")==-1:
+        cis_trans.residue_selection+=" and name CA"
+      t_selection = flex.size_t()
+      t_selection = self.pdb_hierarchy.atom_selection_cache().selection(cis_trans.residue_selection).iselection()
+      if len(t_selection)!=1:
+        msg = """
+    cis-trans specification selection "%s"
+    produced %d atoms. Need to select one C-alpha atom.
+    """ % (cis_trans.residue_selection, len(t_selection))
+        print >> log, msg
+        raise Sorry(msg)
+      cis_trans_specifications[t_selection]=cis_trans.cis_trans_mod
+    if cis_trans_specifications:
+      print >> log, "  cis-trans peptide specifications"
+      for cis_trans in self.params.apply_cis_trans_specification:
+        print >> log, '    "%s" - %s' % ( cis_trans.residue_selection,
+                                          cis_trans.cis_trans_mod.upper(),
+          )
+    # apply a specific restraints file to a specific monomer
+    apply_restraints_specifications = {}
+    for acf in self.params.apply_cif_restraints:
+      if acf.residue_selection is None: continue
+      t_selection = flex.size_t()
+      t_selection = self.pdb_hierarchy.atom_selection_cache().selection(acf.residue_selection).iselection()
+      apply_restraints_specifications[t_selection]=[
+        acf.residue_selection,
+        acf.restraints_file_name,
+        ]
+#    if apply_restraints_specifications:
+#      print >> log, "  apply specific restraints filenames to specific monomers"
+#      for acf in self.params.apply_cif_restraints:
+#        print >> log, '    "%s" - %s' % (acf.residue_selection,
+#                                         acf.restraints_file_name,
+#          )
     self.special_position_settings = None
     self._site_symmetry_table = None
     self.sites_cart = None
@@ -2889,7 +3056,6 @@ class build_all_chain_proxies(linking_mixins):
     self.cystein_sulphur_i_seqs = flex.size_t()
     self.cystein_monomer_mappings = []
     n_unique_models = 0
-    selection_cache = self.pdb_hierarchy.atom_selection_cache()
     for i_model,model in enumerate(models):
       if (log is not None):
         print >> log, '  Model: "%s"' % model.id
@@ -2949,10 +3115,11 @@ class build_all_chain_proxies(linking_mixins):
             conformer=conformer,
             conformation_dependent_restraints_list=
               self.conformation_dependent_restraints_list,
-            #use_neutron_distances=use_neutron_distances,
             restraints_loading_flags=restraints_loading_flags,
             fatal_problem_max_lines
               =self.params.show_max_items.fatal_problem_max_lines,
+            cis_trans_specifications=cis_trans_specifications,
+            apply_restraints_specifications=apply_restraints_specifications,
             log=log,
             )
           self.cif.update(chain_proxies.cif)
@@ -2961,6 +3128,15 @@ class build_all_chain_proxies(linking_mixins):
             chain_proxies.conformation_dependent_restraints_list
           del chain_proxies
           flush_log(log)
+      if apply_restraints_specifications:
+        for selection, item in apply_restraints_specifications.items():
+          if item=="OK": continue
+          print >> log, "%sRestraints for '%s'" % (' '*6,
+                                                   item[0],
+            )
+          print >> log, '%swere not modified by "%s"' % (' '*8,
+                                                         item[1],
+            )
       #
       # Identify disulfide bond exclusions BEGIN
       self.disulfide_bond_exclusions_selection = flex.size_t()
@@ -4702,6 +4878,34 @@ class build_all_chain_proxies(linking_mixins):
       if getattr(al_params, attr, False):
         any_links = True
         break
+    #
+    selection_cache = self.pdb_hierarchy.atom_selection_cache()
+    exclude_selections = []
+    for efal in self.params.exclude_from_automatic_linking:
+      if efal.selection_1 is None: continue
+      t_selection = flex.size_t()
+      t_selection = self.pdb_hierarchy.atom_selection_cache().selection(efal.selection_1).iselection()
+      exclude_selections.append([t_selection])
+      if efal.selection_2 is not None:
+        t_selection = flex.size_t()
+        t_selection = self.pdb_hierarchy.atom_selection_cache().selection(efal.selection_2).iselection()
+        exclude_selections[-1].append(t_selection)
+      else:
+        exclude_selections[-1].append(None)
+    include_selections = []
+    for iial in self.params.include_in_automatic_linking:
+      if iial.selection_1 is None: continue
+      t_selection = flex.size_t()
+      t_selection = self.pdb_hierarchy.atom_selection_cache().selection(iial.selection_1).iselection()
+      include_selections.append([t_selection])
+      if iial.selection_2 is not None:
+        t_selection = flex.size_t()
+        t_selection = self.pdb_hierarchy.atom_selection_cache().selection(iial.selection_2).iselection()
+        include_selections[-1].append(t_selection)
+      else:
+        include_selections[-1].append(None)
+      include_selections[-1].append(iial.bond_cutoff)
+    #
     if any_links:
       self.process_nonbonded_for_links(
         bond_params_table,
@@ -4718,9 +4922,10 @@ class build_all_chain_proxies(linking_mixins):
         inter_residue_bond_cutoff = al_params.inter_residue_bond_cutoff,
         ligand_bond_cutoff        = al_params.ligand_bond_cutoff,
         second_row_buffer         = al_params.buffer_for_second_row_elements,
+        exclude_selections        = exclude_selections,
+        include_selections        = include_selections,
         log=log,
         )
-
     self.geometry_proxy_registries.discard_tables()
     self.scattering_type_registry.discard_tables()
     self.nonbonded_energy_type_registry.discard_tables()
@@ -5020,6 +5225,25 @@ class process(object):
        self.all_chain_proxies.params.ncs_search.enabled):
       self.ncs_obj = self.search_for_ncs(
         hierarchy = self.all_chain_proxies.pdb_hierarchy)
+    # attempt to fix pH problems
+    if self.all_chain_proxies.nonbonded_energy_type_registry.n_unknown_type_symbols():
+      from mmtbx.conformation_dependent_library import pH_dependent_restraints
+      unknown_atoms = \
+        self.all_chain_proxies.nonbonded_energy_type_registry.get_unknown_atoms(
+          self.all_chain_proxies.pdb_hierarchy.atoms(),
+          return_iseqs=True,
+        )
+      rc = pH_dependent_restraints.adjust_geometry_proxies_registeries(
+        self.all_chain_proxies.pdb_hierarchy,
+        self.all_chain_proxies.geometry_proxy_registries,
+        unknown_atoms,
+        )
+      # update the nonbonded energy of "new" atoms - should do all
+      # needed for book keeping of successful restraints matching
+      for atom_i_seq, item in rc.items():
+        if atom_i_seq in unknown_atoms:
+          self.all_chain_proxies.nonbonded_energy_type_registry.symbols[atom_i_seq] = \
+              item.type_energy
     # model_idealization
     # if self.all_chain_proxies.params.model_idealization.enabled:
     #   from mmtbx.secondary_structure import build as ssb
@@ -5096,17 +5320,26 @@ class process(object):
         self._geometry_restraints_manager.set_ramachandran_restraints(
             ramachandran_manager)
 
-
       # C-beta restraints
       if self.all_chain_proxies.params.c_beta_restraints:
         print >> self.log, "  Adding C-beta torsion restraints..."
         from mmtbx.geometry_restraints import c_beta
-        c_beta_torsion_proxies = c_beta.get_c_beta_torsion_proxies(
-            self.all_chain_proxies.pdb_hierarchy)
+        c_beta_torsion_proxies, c_beta_skipped = \
+            c_beta.get_c_beta_torsion_proxies(self.all_chain_proxies.pdb_hierarchy)
         n_c_beta_restraints = len(c_beta_torsion_proxies)
         if n_c_beta_restraints > 0:
           self._geometry_restraints_manager.add_dihedrals_in_place(
               c_beta_torsion_proxies)
+        outl = ""
+        for key, item in c_beta_skipped.items():
+          if key=="-ve":
+            outl += "      Input volumes are d-peptide like\n"
+          elif key=="d-peptide":
+            outl += "      Input residue name is d-peptide\n"
+          for cb_atom in item:
+            outl += "        %s\n"% cb_atom.id_str()
+        if outl:
+          print >> self.log, "    Skipped\n%s" % outl[:-1]
         print >> self.log, "  Number of C-beta restraints generated: ",\
             n_c_beta_restraints
         print >> self.log
