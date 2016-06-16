@@ -2168,10 +2168,106 @@ class structure(crystal.special_position_settings):
     print >> out, cif
 
   def as_cif_block(self, covariance_matrix=None, cell_covariance_matrix=None):
-    import iotbx.cif
-    return iotbx.cif.xray_structure_as_cif_block(
-      self, covariance_matrix=covariance_matrix,
-      cell_covariance_matrix=cell_covariance_matrix).cif_block
+
+    from iotbx.cif import atom_type_cif_loop, model
+    cs_cif_block = self.crystal_symmetry().as_cif_block(
+        cell_covariance_matrix=cell_covariance_matrix)
+    # crystal_symmetry_as_cif_block.__init__(
+    #   self, xray_structure.crystal_symmetry(),
+    #   cell_covariance_matrix=cell_covariance_matrix)
+    scatterers = self.scatterers()
+    uc = self.unit_cell()
+    if covariance_matrix is not None:
+      param_map = self.parameter_map()
+      covariance_diagonal = covariance_matrix.matrix_packed_u_diagonal()
+      u_star_to_u_cif_linear_map_pow2 = flex.pow2(flex.double(
+        uc.u_star_to_u_cif_linear_map()))
+      u_star_to_u_iso_linear_form = matrix.row(
+        uc.u_star_to_u_iso_linear_form())
+    fmt = "%.6f"
+
+    # _atom_site_* loop
+    atom_site_loop = model.loop(header=(
+      '_atom_site_label', '_atom_site_type_symbol',
+      '_atom_site_fract_x', '_atom_site_fract_y', '_atom_site_fract_z',
+      '_atom_site_U_iso_or_equiv', '_atom_site_adp_type',
+      '_atom_site_occupancy'))
+    for i_seq, sc in enumerate(scatterers):
+      site = occu = u_iso_or_equiv = None
+      # site
+      if covariance_matrix is not None:
+        params = param_map[i_seq]
+        if sc.flags.grad_site() and params.site >= 0:
+          site = []
+          for i in range(3):
+            site.append(format_float_with_su(sc.site[i],
+              math.sqrt(covariance_diagonal[params.site+i])))
+        #occupancy
+        if sc.flags.grad_occupancy() and params.occupancy >= 0:
+          occu = format_float_with_su(sc.occupancy,
+            math.sqrt(covariance_diagonal[params.occupancy]))
+        #Uiso/eq
+        if sc.flags.grad_u_iso() or sc.flags.grad_u_aniso():
+          if sc.flags.grad_u_iso():
+            u_iso_or_equiv = format_float_with_su(
+              sc.u_iso, math.sqrt(covariance.variance_for_u_iso(
+                i_seq, covariance_matrix, param_map)))
+          else:
+            cov = covariance.extract_covariance_matrix_for_u_aniso(
+              i_seq, covariance_matrix, param_map).matrix_packed_u_as_symmetric()
+            var = (u_star_to_u_iso_linear_form * matrix.sqr(cov)
+                   ).dot(u_star_to_u_iso_linear_form)
+            u_iso_or_equiv = format_float_with_su(
+              sc.u_iso_or_equiv(uc), math.sqrt(var))
+
+      if site is None:
+        site = [fmt % sc.site[i] for i in range(3)]
+      if occu is None:
+        occu = fmt % sc.occupancy
+      if u_iso_or_equiv is None:
+        u_iso_or_equiv = fmt % sc.u_iso_or_equiv(uc)
+
+      if sc.flags.use_u_aniso():
+        adp_type = 'Uani'
+      else:
+        adp_type = 'Uiso'
+      atom_site_loop.add_row((
+        sc.label, sc.scattering_type, site[0], site[1], site[2], u_iso_or_equiv,
+        adp_type, occu))
+    cs_cif_block.add_loop(atom_site_loop)
+
+    # _atom_site_aniso_* loop
+    aniso_scatterers = scatterers.select(scatterers.extract_use_u_aniso())
+    if aniso_scatterers.size():
+      labels = list(scatterers.extract_labels())
+      aniso_loop = model.loop(header=('_atom_site_aniso_label',
+                                      '_atom_site_aniso_U_11',
+                                      '_atom_site_aniso_U_22',
+                                      '_atom_site_aniso_U_33',
+                                      '_atom_site_aniso_U_12',
+                                      '_atom_site_aniso_U_13',
+                                      '_atom_site_aniso_U_23'))
+      for sc in aniso_scatterers:
+        u_cif = adptbx.u_star_as_u_cif(uc, sc.u_star)
+        if covariance_matrix is not None:
+          row = [sc.label]
+          idx = param_map[labels.index(sc.label)].u_aniso
+          if idx > -1:
+            var = covariance_diagonal[idx:idx+6] * u_star_to_u_cif_linear_map_pow2
+            for i in range(6):
+              if var[i] > 0:
+                row.append(
+                  format_float_with_su(u_cif[i], math.sqrt(var[i])))
+              else:
+                row.append(fmt%u_cif[i])
+          else:
+            row = [sc.label] + [fmt%u_cif[i] for i in range(6)]
+        else:
+          row = [sc.label] + [fmt%u_cif[i] for i in range(6)]
+        aniso_loop.add_row(row)
+      cs_cif_block.add_loop(aniso_loop)
+      cs_cif_block.add_loop(atom_type_cif_loop(self))
+    return cs_cif_block
 
   def as_pdb_file(self,
         remark=None,

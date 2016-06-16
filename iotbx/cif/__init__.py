@@ -15,19 +15,15 @@ import boost.python
 ext = boost.python.import_ext("iotbx_cif_ext")
 
 from cctbx.array_family import flex
-from cctbx import adptbx, miller
-from cctbx import covariance
+from cctbx import miller
 from iotbx.cif import model, builders, geometry
 from libtbx.containers import OrderedDict
-from libtbx.utils import format_float_with_standard_uncertainty \
-     as format_float_with_su
 from libtbx.utils import Sorry
 from libtbx.utils import flat_list
 from libtbx.utils import detect_binary_file
 from libtbx import smart_open
-from scitbx import matrix
 
-import math, sys
+import sys
 
 distances_as_cif_loop = geometry.distances_as_cif_loop
 angles_as_cif_loop = geometry.angles_as_cif_loop
@@ -138,165 +134,6 @@ class reader(object):
 
 fast_reader = reader # XXX backward compatibility 2010-08-25
 
-class crystal_symmetry_as_cif_block(object):
-
-  def __init__(self, crystal_symmetry,
-               cell_covariance_matrix=None,
-               format="coreCIF",
-               numeric_format="%.3f") :
-    self.format = format.lower()
-    assert self.format in ("corecif", "mmcif")
-    if self.format == "mmcif": self.separator = '.'
-    else: self.separator = '_'
-    assert numeric_format.startswith("%")
-    self.cif_block = model.block()
-    cell_prefix = '_cell%s' %self.separator
-    if crystal_symmetry.space_group() is not None:
-      sym_loop = model.loop(data=OrderedDict((
-        ('_space_group_symop'+self.separator+'id',
-         range(1, len(crystal_symmetry.space_group())+1)),
-        ('_space_group_symop'+self.separator+'operation_xyz',
-         [s.as_xyz() for s in crystal_symmetry.space_group()]))))
-      self.cif_block.add_loop(sym_loop)
-      sg_prefix = '_space_group%s' %self.separator
-      sg_type = crystal_symmetry.space_group_info().type()
-      sg = sg_type.group()
-      self.cif_block[sg_prefix+'crystal_system'] = sg.crystal_system().lower()
-      self.cif_block[sg_prefix+'IT_number'] = sg_type.number()
-      self.cif_block[sg_prefix+'name_H-M_alt'] = sg_type.lookup_symbol()
-      self.cif_block[sg_prefix+'name_Hall'] = sg_type.hall_symbol()
-
-      sg_prefix = '_symmetry%s' %self.separator
-      self.cif_block[sg_prefix+'space_group_name_H-M'] = sg_type.lookup_symbol()
-      self.cif_block[sg_prefix+'space_group_name_Hall'] = sg_type.hall_symbol()
-      self.cif_block[sg_prefix+'Int_Tables_number'] = sg_type.number()
-
-    if crystal_symmetry.unit_cell() is not None:
-      uc = crystal_symmetry.unit_cell()
-      params = list(uc.parameters())
-      volume = uc.volume()
-      if cell_covariance_matrix is not None:
-        diag = cell_covariance_matrix.matrix_packed_u_diagonal()
-        for i in range(6):
-          if diag[i] > 0:
-            params[i] = format_float_with_su(params[i], math.sqrt(diag[i]))
-        d_v_d_params = matrix.row(uc.d_volume_d_params())
-        vcv = matrix.sqr(
-          cell_covariance_matrix.matrix_packed_u_as_symmetric())
-        var_v = (d_v_d_params * vcv).dot(d_v_d_params)
-        volume = format_float_with_su(volume, math.sqrt(var_v))
-        numeric_format = "%s"
-      a,b,c,alpha,beta,gamma = params
-      self.cif_block[cell_prefix+'length_a'] = numeric_format % a
-      self.cif_block[cell_prefix+'length_b'] = numeric_format % b
-      self.cif_block[cell_prefix+'length_c'] = numeric_format % c
-      self.cif_block[cell_prefix+'angle_alpha'] = numeric_format % alpha
-      self.cif_block[cell_prefix+'angle_beta'] = numeric_format % beta
-      self.cif_block[cell_prefix+'angle_gamma'] = numeric_format % gamma
-      self.cif_block[cell_prefix+'volume'] = numeric_format % volume
-
-
-class xray_structure_as_cif_block(crystal_symmetry_as_cif_block):
-
-  def __init__(self, xray_structure, covariance_matrix=None,
-               cell_covariance_matrix=None):
-    crystal_symmetry_as_cif_block.__init__(
-      self, xray_structure.crystal_symmetry(),
-      cell_covariance_matrix=cell_covariance_matrix)
-    scatterers = xray_structure.scatterers()
-    uc = xray_structure.unit_cell()
-    if covariance_matrix is not None:
-      param_map = xray_structure.parameter_map()
-      covariance_diagonal = covariance_matrix.matrix_packed_u_diagonal()
-      u_star_to_u_cif_linear_map_pow2 = flex.pow2(flex.double(
-        uc.u_star_to_u_cif_linear_map()))
-      u_star_to_u_iso_linear_form = matrix.row(
-        uc.u_star_to_u_iso_linear_form())
-    fmt = "%.6f"
-
-    # _atom_site_* loop
-    atom_site_loop = model.loop(header=(
-      '_atom_site_label', '_atom_site_type_symbol',
-      '_atom_site_fract_x', '_atom_site_fract_y', '_atom_site_fract_z',
-      '_atom_site_U_iso_or_equiv', '_atom_site_adp_type',
-      '_atom_site_occupancy'))
-    for i_seq, sc in enumerate(scatterers):
-      site = occu = u_iso_or_equiv = None
-      # site
-      if covariance_matrix is not None:
-        params = param_map[i_seq]
-        if sc.flags.grad_site() and params.site >= 0:
-          site = []
-          for i in range(3):
-            site.append(format_float_with_su(sc.site[i],
-              math.sqrt(covariance_diagonal[params.site+i])))
-        #occupancy
-        if sc.flags.grad_occupancy() and params.occupancy >= 0:
-          occu = format_float_with_su(sc.occupancy,
-            math.sqrt(covariance_diagonal[params.occupancy]))
-        #Uiso/eq
-        if sc.flags.grad_u_iso() or sc.flags.grad_u_aniso():
-          if sc.flags.grad_u_iso():
-            u_iso_or_equiv = format_float_with_su(
-              sc.u_iso, math.sqrt(covariance.variance_for_u_iso(
-                i_seq, covariance_matrix, param_map)))
-          else:
-            cov = covariance.extract_covariance_matrix_for_u_aniso(
-              i_seq, covariance_matrix, param_map).matrix_packed_u_as_symmetric()
-            var = (u_star_to_u_iso_linear_form * matrix.sqr(cov)
-                   ).dot(u_star_to_u_iso_linear_form)
-            u_iso_or_equiv = format_float_with_su(
-              sc.u_iso_or_equiv(uc), math.sqrt(var))
-
-      if site is None:
-        site = [fmt % sc.site[i] for i in range(3)]
-      if occu is None:
-        occu = fmt % sc.occupancy
-      if u_iso_or_equiv is None:
-        u_iso_or_equiv = fmt % sc.u_iso_or_equiv(uc)
-
-      if sc.flags.use_u_aniso():
-        adp_type = 'Uani'
-      else:
-        adp_type = 'Uiso'
-      atom_site_loop.add_row((
-        sc.label, sc.scattering_type, site[0], site[1], site[2], u_iso_or_equiv,
-        adp_type, occu))
-    self.cif_block.add_loop(atom_site_loop)
-
-    # _atom_site_aniso_* loop
-    aniso_scatterers = scatterers.select(scatterers.extract_use_u_aniso())
-    if aniso_scatterers.size():
-      labels = list(scatterers.extract_labels())
-      aniso_loop = model.loop(header=('_atom_site_aniso_label',
-                                      '_atom_site_aniso_U_11',
-                                      '_atom_site_aniso_U_22',
-                                      '_atom_site_aniso_U_33',
-                                      '_atom_site_aniso_U_12',
-                                      '_atom_site_aniso_U_13',
-                                      '_atom_site_aniso_U_23'))
-      for sc in aniso_scatterers:
-        u_cif = adptbx.u_star_as_u_cif(uc, sc.u_star)
-        if covariance_matrix is not None:
-          row = [sc.label]
-          idx = param_map[labels.index(sc.label)].u_aniso
-          if idx > -1:
-            var = covariance_diagonal[idx:idx+6] * u_star_to_u_cif_linear_map_pow2
-            for i in range(6):
-              if var[i] > 0:
-                row.append(
-                  format_float_with_su(u_cif[i], math.sqrt(var[i])))
-              else:
-                row.append(fmt%u_cif[i])
-          else:
-            row = [sc.label] + [fmt%u_cif[i] for i in range(6)]
-        else:
-          row = [sc.label] + [fmt%u_cif[i] for i in range(6)]
-        aniso_loop.add_row(row)
-      self.cif_block.add_loop(aniso_loop)
-      self.cif_block.add_loop(atom_type_cif_loop(xray_structure))
-
-
 def atom_type_cif_loop(xray_structure, format="coreCIF"):
   format = format.lower()
   assert format in ("corecif", "mmcif")
@@ -376,15 +213,20 @@ def miller_indices_as_cif_loop(indices, prefix='_refln_'):
     return refln_loop
 
 
-class miller_arrays_as_cif_block(crystal_symmetry_as_cif_block):
+class miller_arrays_as_cif_block():
 
   def __init__(self, array, array_type=None,
                column_name=None, column_names=None,
                miller_index_prefix='_refln',
                format="coreCIF"):
-    crystal_symmetry_as_cif_block.__init__(
-      self, array.crystal_symmetry(), format=format)
-    self.prefix = miller_index_prefix + self.separator
+    wformat = format.lower()
+    assert wformat in ("corecif", "mmcif")
+    if wformat == "mmcif":
+      separator = '.'
+    else:
+      separator = '_'
+    self.cif_block = array.crystal_symmetry().as_cif_block(format=format)
+    self.prefix = miller_index_prefix + separator
     self.indices = array.indices().deep_copy()
     self.refln_loop = None
     self.add_miller_array(array, array_type, column_name, column_names)

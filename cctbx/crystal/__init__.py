@@ -10,6 +10,8 @@ from cctbx.crystal.find_best_cell import find_best_cell
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx import covariance, geometry
+from libtbx.containers import OrderedDict
+
 
 from scitbx.array_family import shared
 from scitbx import stl
@@ -343,9 +345,64 @@ class symmetry(object):
       d_min=d_min,
       d_max=d_max)
 
-  def as_cif_block(self):
-    import iotbx.cif
-    return iotbx.cif.crystal_symmetry_as_cif_block(self).cif_block
+  def as_cif_block(self,
+      cell_covariance_matrix=None,
+      format="coreCIF",
+      numeric_format="%.3f"):
+    from iotbx.cif import model
+    wformat = format.lower()
+    assert wformat in ("corecif", "mmcif")
+    if wformat == "mmcif":
+      separator = '.'
+    else:
+      separator = '_'
+    assert numeric_format.startswith("%")
+    cif_block = model.block()
+    cell_prefix = '_cell%s' % separator
+    if self.space_group() is not None:
+      sym_loop = model.loop(data=OrderedDict((
+        ('_space_group_symop'+separator+'id',
+         range(1, len(self.space_group())+1)),
+        ('_space_group_symop'+separator+'operation_xyz',
+         [s.as_xyz() for s in self.space_group()]))))
+      cif_block.add_loop(sym_loop)
+      sg_prefix = '_space_group%s' % separator
+      sg_type = self.space_group_info().type()
+      sg = sg_type.group()
+      cif_block[sg_prefix+'crystal_system'] = sg.crystal_system().lower()
+      cif_block[sg_prefix+'IT_number'] = sg_type.number()
+      cif_block[sg_prefix+'name_H-M_alt'] = sg_type.lookup_symbol()
+      cif_block[sg_prefix+'name_Hall'] = sg_type.hall_symbol()
+
+      sg_prefix = '_symmetry%s' % separator
+      cif_block[sg_prefix+'space_group_name_H-M'] = sg_type.lookup_symbol()
+      cif_block[sg_prefix+'space_group_name_Hall'] = sg_type.hall_symbol()
+      cif_block[sg_prefix+'Int_Tables_number'] = sg_type.number()
+
+    if self.unit_cell() is not None:
+      uc = self.unit_cell()
+      params = list(uc.parameters())
+      volume = uc.volume()
+      if cell_covariance_matrix is not None:
+        diag = cell_covariance_matrix.matrix_packed_u_diagonal()
+        for i in range(6):
+          if diag[i] > 0:
+            params[i] = format_float_with_su(params[i], math.sqrt(diag[i]))
+        d_v_d_params = matrix.row(uc.d_volume_d_params())
+        vcv = matrix.sqr(
+          cell_covariance_matrix.matrix_packed_u_as_symmetric())
+        var_v = (d_v_d_params * vcv).dot(d_v_d_params)
+        volume = format_float_with_su(volume, math.sqrt(var_v))
+        numeric_format = "%s"
+      a,b,c,alpha,beta,gamma = params
+      cif_block[cell_prefix+'length_a'] = numeric_format % a
+      cif_block[cell_prefix+'length_b'] = numeric_format % b
+      cif_block[cell_prefix+'length_c'] = numeric_format % c
+      cif_block[cell_prefix+'angle_alpha'] = numeric_format % alpha
+      cif_block[cell_prefix+'angle_beta'] = numeric_format % beta
+      cif_block[cell_prefix+'angle_gamma'] = numeric_format % gamma
+      cif_block[cell_prefix+'volume'] = numeric_format % volume
+    return cif_block
 
   def expand_to_p1(self, sites_cart):
     from scitbx import matrix

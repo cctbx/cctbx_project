@@ -754,8 +754,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     if crystal_symmetry is None:
       crystal_symmetry = crystal.symmetry()
     import iotbx.cif
-    cs_cif_block = iotbx.cif.crystal_symmetry_as_cif_block(
-      crystal_symmetry, format="mmcif").cif_block
+    cs_cif_block = crystal_symmetry.as_cif_block(format="mmcif")
 
     from iotbx.cif import model
     h_cif_block = model.block()
