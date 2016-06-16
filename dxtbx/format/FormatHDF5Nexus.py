@@ -210,3 +210,8 @@ class FormatHDF5Nexus(FormatHDF5):
 
   def get_image_file(self, index=None):
     return Format.get_image_file(self)
+
+if __name__ == '__main__':
+  import sys
+  for arg in sys.argv[1:]:
+    print FormatHDF5Nexus.understand(arg)
