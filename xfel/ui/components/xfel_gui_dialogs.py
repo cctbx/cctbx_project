@@ -419,14 +419,10 @@ class RunBlockDialog(BaseDialog):
 
     # Run block start / end points (choice widgets)
 
-    if self.last_run != None:
-      start = [str(i.run) for i in db.get_all_runs() if
-              i.run <= self.last_run and i.run >= self.first_run]
-      stop = start
-    else:
-      start = [str(i.run) for i in db.get_all_runs() if
-              i.run >= self.first_run]
-      stop = start + ['None']
+    start = [str(i.run) for i in db.get_all_runs()]
+    stop = start + ['None']
+    firstidx = start.index(str(self.first_run))
+    lastidx = stop.index(str(self.last_run))
 
     self.runblocks = gctr.MultiChoiceCtrl(self,
                                           label='Run block:',
@@ -434,8 +430,8 @@ class RunBlockDialog(BaseDialog):
                                           label_size=(100, -1),
                                           ctrl_size=(150, -1),
                                           items={'start':start, 'end':stop})
-    self.runblocks.start.SetSelection(0)
-    self.runblocks.end.SetSelection(self.runblocks.end.GetCount() - 1)
+    self.runblocks.start.SetSelection(firstidx)
+    self.runblocks.end.SetSelection(lastidx)
     self.main_sizer.Add(self.runblocks, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Beam XYZ
@@ -470,9 +466,18 @@ class RunBlockDialog(BaseDialog):
 
     self.Layout()
 
-  # TODO: Block could be updated here...
   def onOK(self, e):
-    print 'Block not updated!'
+    startrun_number = int(self.runblocks.start.GetString(self.runblocks.start.GetSelection()))
+    startrun = self.block.app.get_run(run_number=startrun_number).id
+
+    endrun_number = self.runblocks.end.GetString(self.runblocks.end.GetSelection())
+    if endrun_number == "None":
+      endrun = None
+    else:
+      endrun = self.block.app.get_run(run_number=int(endrun_number)).id
+
+    self.block.startrun = startrun
+    self.block.endrun = endrun
     e.Skip()
 
   def onDarkBrowse(self, e):
@@ -498,6 +503,7 @@ class TrialDialog(BaseDialog):
 
     self.db = db
     self.new = new
+    self.trial = trial
 
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
@@ -569,6 +575,7 @@ class TrialDialog(BaseDialog):
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onBrowse, self.trial_phil.btn_big)
     self.Bind(wx.EVT_BUTTON, self.onDefault, self.trial_number.btn_big)
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
   def onBrowse(self, e):
     ''' Open dialog for selecting PHIL file '''
@@ -600,4 +607,16 @@ class TrialDialog(BaseDialog):
     pass
 
   def onOK(self, e):
-    pass
+    target_phil_str = self.phil_box.GetValue()
+    comment = self.trial_comment.ctr.GetValue()
+
+    if self.trial is None:
+      self.db.create_trial(
+        trial = int(self.trial_number.ctr.GetValue()),
+        active = True,
+        target_phil_str = target_phil_str,
+        comment = comment)
+    else:
+      self.trial.target_phil_str = target_phil_str
+      self.trial.comment = comment
+    e.Skip()

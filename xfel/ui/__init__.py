@@ -4,6 +4,10 @@ from iotbx.phil import parse
 from libtbx.utils import Sorry
 
 master_phil_str = """
+dry_run = False
+  .type = bool
+  .help = If True, the program will create the trial directory but not submit the job, \
+          and will show the command that would have been executed.
 experiment = ""
   .type = str
 experiment_tag = ""

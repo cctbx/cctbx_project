@@ -75,9 +75,13 @@ class db_proxy(object):
     self.db_dict[key] = value
 
     if isinstance(value, bool):
-      value = int(value)
+      value = "%s"%int(value)
+    elif value is None:
+      value = "NULL"
+    else:
+      value = "'%s'"%value
 
-    query = "UPDATE `%s` SET %s = '%s' WHERE id = %d"% (
+    query = "UPDATE `%s` SET %s = %s WHERE id = %d"% (
       self.table_name, key, value, self.id)
     print query
     self.app.execute_query(query, commit=True)

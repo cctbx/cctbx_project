@@ -7,7 +7,7 @@ input {{
   rungroup = {rungroup}
   xtc_dir = None
   dispatcher = cctbx.xfel.xtc_process
-  target = None
+  target = {target}
 }}
 output {{
   output_dir = {output_dir}

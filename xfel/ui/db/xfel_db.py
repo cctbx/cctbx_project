@@ -31,12 +31,19 @@ class xfel_db_application(object):
     self.init_tables = initialize(params, dbobj) # only place where a connection is held
 
   def execute_query(self, query, commit = False):
-    dbobj = get_db_connection(self.params)
-    cursor = dbobj.cursor()
-    cursor.execute(query)
-    if commit:
-      dbobj.commit()
-    return cursor
+    try:
+      dbobj = get_db_connection(self.params)
+      cursor = dbobj.cursor()
+      cursor.execute(query)
+      if commit:
+        dbobj.commit()
+      return cursor
+    except Exception, e:
+      print "Couldn't execute MYSQL query.  Query:"
+      print query
+      print "Exception:"
+      print str(e)
+      raise e
 
   def list_lcls_runs(self):
     from xfel.xpp.simulate import file_table
@@ -83,8 +90,13 @@ class xfel_db_application(object):
   def create_run(self, **kwargs):
     return Run(self, **kwargs)
 
-  def get_run(self, run_id):
-    return Run(self, run_id)
+  def get_run(self, run_id = None, run_number = None):
+    assert [run_id, run_number].count(None) == 1
+    if run_id is not None:
+      return Run(self, run_id)
+    runs = [r for r in self.get_all_runs() if r.run == run_number]
+    assert len(runs) == 1
+    return runs[0]
 
   def get_all_runs(self):
     return self.get_all_x(Run, "run")

@@ -37,7 +37,7 @@ def submit_all_jobs(app):
       else:
         # closed run group
         rg_end = app.get_run(run_id=rungroup.endrun)
-        rg_runs = [r for r in runs if r.run >= rungroup.startrun and r.run <= rg_end.run]
+        rg_runs = [r for r in runs if r.run >= rg_start.run and r.run <= rg_end.run]
       for run in rg_runs:
         needed_jobs.append(_job(trial, rungroup, run))
 
@@ -61,6 +61,12 @@ def submit_job(app, job):
   if not os.path.exists(configs_dir):
     os.makedirs(configs_dir)
 
+  target_phil_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d_params.phil"%
+    (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))
+  phil = open(target_phil_path, "w")
+  phil.write(job.trial.target_phil_str)
+  phil.close()
+
   submit_phil_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d_submit.phil"%
     (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))
 
@@ -70,14 +76,15 @@ def submit_job(app, job):
   app.params.mp.nproc = 12
   app.params.mp.queue = "psanaq"
 
-  d = dict(dry_run = True, #params.dry_run,
+  d = dict(dry_run = app.params.dry_run,
     experiment = app.params.experiment,
     run_num = job.run.run,
     trial = job.trial.trial,
     rungroup = job.rungroup.rungroup_id,
     output_dir = app.params.output_folder,
     nproc = app.params.mp.nproc,
-    queue = app.params.mp.queue
+    queue = app.params.mp.queue,
+    target = target_phil_path
   )
 
   for line in template.readlines():

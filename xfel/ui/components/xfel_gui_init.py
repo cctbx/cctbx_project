@@ -124,6 +124,9 @@ class MainWindow(wx.Frame):
   def __init__(self, parent, id, title):
     wx.Frame.__init__(self, parent, id, title, size=(800, 500))
 
+    self.run_sentinel = None
+    self.job_sentinel = None
+
     self.params = load_cached_settings()
     self.db = None
 
@@ -153,6 +156,7 @@ class MainWindow(wx.Frame):
                         longHelp='Database, user and experiment settings')
 
     self.toolbar.Realize()
+    self.toolbar.EnableTool(self.tb_btn_pause.GetId(), False)
 
     # Status bar
     self.sb = self.CreateStatusBar()
@@ -182,7 +186,7 @@ class MainWindow(wx.Frame):
     # Bindings
     self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
     self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_run)
-    self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_run)
+    self.Bind(wx.EVT_TOOL, self.onPause, self.tb_btn_pause)
     self.Bind(wx.EVT_TOOL, self.onSettings, self.tb_btn_settings)
 
     # Draw the main window sizer
@@ -223,9 +227,16 @@ class MainWindow(wx.Frame):
     self.job_sentinel = JobSentinel(self, active=True)
     self.job_sentinel.start()
 
+    self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
+    self.toolbar.EnableTool(self.tb_btn_pause.GetId(), True)
+
   def stop_job_sentinel(self):
-    self.job_sentinel.active = False
-    self.job_sentinel.join()
+    if self.job_sentinel is not None:
+      self.job_sentinel.active = False
+      self.job_sentinel.join()
+
+    self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
+    self.toolbar.EnableTool(self.tb_btn_pause.GetId(), False)
 
   def OnAboutBox(self, e):
     ''' About dialog '''
@@ -444,11 +455,6 @@ class TrialsTab(BaseTab):
     new_trial_dlg = dlg.TrialDialog(self, db=self.main.db)
 
     if new_trial_dlg.ShowModal() == wx.ID_OK:
-      self.db.create_trial(
-        trial = int(new_trial_dlg.trial_number.ctr.GetValue()),
-        active = True,
-        target_phil_str = new_trial_dlg.trial_phil.ctr.GetValue(),
-        comment = new_trial_dlg.trial_comment.ctr.GetValue())
       self.refresh_trials()
 
 
@@ -651,7 +657,7 @@ class TrialPanel(wx.Panel):
                                    size=(120, -1))
     self.btn_view_phil = wx.BitmapButton(self.add_panel,
                         bitmap=wx.Bitmap('{}/16x16/viewmag.png'.format(icons)))
-    chk_size = (120 - self.btn_view_phil.GetSize()[0], -1)
+    chk_size = (115 - self.btn_view_phil.GetSize()[0], -1)
     self.chk_active = wx.CheckBox(self.add_panel, label='Active', size=chk_size)
     self.view_sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.view_sizer.Add(self.btn_view_phil)
@@ -736,5 +742,5 @@ class TrialPanel(wx.Panel):
     rblock_dlg.Fit()
 
     if (rblock_dlg.ShowModal() == wx.ID_OK):
-      pass
+      self.refresh_trial()
 

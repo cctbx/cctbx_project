@@ -40,7 +40,7 @@ class MainApp(wx.App):
         self.frame.SetTitle('CCTBX.XFEL {} {}'.format(self.exp, self.exp_tag))
         self.frame.Show(True)
         self.SetTopWindow(self.frame)
-        self.frame.start_sentinels()
+        self.frame.start_run_sentinel()
         return True
       else:
         return False
