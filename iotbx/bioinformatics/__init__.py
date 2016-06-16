@@ -1461,7 +1461,7 @@ class hhsearch_parser(hhpred_parser):
     >( [\w]{4} ) _  ( [\w]? ) \s ( [^\n]* )(?: \n | \r\n | \r )
     Probab = ( [+-]? \d+ \. \d* ) \s+
     E-value = ( \d+ \.? \d* )( e[+-]? \d+ )? \s+
-    Score = ( \d+\.\d+ ) \s+
+    Score = ( [+-]? \d+\.\d+ ) \s+
     (?: Aligned_cols | Aligned_columns ) = ( \d+ ) \s+
     Identities = ( \d+ ) %
     [^\n]*
