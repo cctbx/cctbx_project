@@ -1,11 +1,9 @@
 from __future__ import division
 import sys
 from cctbx.array_family import flex
-from libtbx.containers import OrderedDict, OrderedSet
-from libtbx import dict_with_default_0
+from libtbx.containers import OrderedDict
 from libtbx import group_args
-from libtbx.table_utils import wrap_always
-from libtbx.utils import null_out, Sorry
+from libtbx.utils import Sorry
 from libtbx.str_utils import format_value
 import iotbx.pdb
 from iotbx.pdb import hierarchy
