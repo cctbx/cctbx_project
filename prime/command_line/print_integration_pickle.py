@@ -410,9 +410,9 @@ if (__name__ == "__main__"):
   print
   print 'Xbeam mean=%8.4f std=%6.4f'%(xbeam_mean, xbeam_std)
   print 'Ybeam mean=%8.4f std=%6.4f'%(ybeam_mean, ybeam_std)
-  print 'UC mean a=%8.4f b=%8.4f c=%9.4f'%(flex.mean(uc_a), flex.mean(uc_b), flex.mean(uc_c))
-  print 'Detector distance mean=%8.4f'%(flex.mean(dd_mm))
-  print 'Wavelength mean=%8.4f'%(flex.mean(wavelength_set))
+  print 'UC mean a=%8.4f (%8.4f) b=%8.4f (%8.4f) c=%9.4f (%8.4f)'%(flex.mean(uc_a), np.std(uc_a), flex.mean(uc_b), np.std(uc_b), flex.mean(uc_c), np.std(uc_c))
+  print 'Detector distance mean=%8.4f (%8.4f)'%(flex.mean(dd_mm), np.std(dd_mm))
+  print 'Wavelength mean=%8.4f (%8.4f)'%(flex.mean(wavelength_set), np.std(wavelength_set))
   print 'No. of frames: All = %6.0f Beam outliers = %6.0f CC filter=%6.0f'%(len(frame_files), len(frame_files) - (len(txt_out.split('\n'))-1), len(frame_files) - (len(txt_out_mix.split('\n'))-1))
   print
   print 'Reporting outliers (image name, xbeam, ybeam, cciso, delta_xy)'
