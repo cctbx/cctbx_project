@@ -109,25 +109,7 @@ class leastsqr_handler(object):
     if pres_in is not None:
       G, B, b0 = pres_in.G, pres_in.B, pres_in.B
     else:
-      if iparams.flag_apply_b_by_frame:
-        #initialize scale factors
-        try:
-          from mod_util import mx_handler
-          mxh = mx_handler()
-          asu_contents = mxh.get_asu_contents(iparams.n_residues)
-          observations_as_f = observations_original_sel.as_amplitude_array()
-          binner_template_asu = observations_as_f.setup_binner(auto_binning=True)
-          from cctbx import statistics
-          wp = statistics.wilson_plot(observations_as_f, asu_contents, e_statistics=True)
-          G = wp.wilson_intensity_scale_factor*1e3
-          B = wp.wilson_b
-        except Exception:
-          print 'Error calculation B-factor in mod_leastsqr'
-          G, B = (flex.sum(I_o_true)/flex.sum(I_r_true),0)
-      else:
-        G, B = (flex.sum(I_o_true)/flex.sum(I_r_true),0)
-      #reset b0
-      b0 = B
+      G,B,b0 = (1,0,0)
     refine_mode = 'scale_factor'
     xinp = flex.double([G,B])
     args = (I_r_true, observations_original_sel, wavelength, alpha_angle_sel,
