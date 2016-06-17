@@ -101,6 +101,7 @@ def run(args):
         pdb_h_raw.atoms().size(), pdb_h.atoms().size())
   else:
     pdb_h = pdb_h_raw
+  pdb_h.reset_atom_i_seqs()
   # couple checks if combined pdb_h is ok
   o_c = pdb_h.overall_counts()
   o_c.raise_duplicate_atom_labels_if_necessary()

@@ -426,6 +426,7 @@ def substitute_ss(real_h,
                     xray_structure,
                     ss_annotation,
                     params = None,
+                    use_plane_peptide_bond_restr=True,
                     cif_objects=None,
                     log=null_out(),
                     rotamer_manager=None,
@@ -610,14 +611,20 @@ def substitute_ss(real_h,
   # print "="*80
   # print "="*80
   # print "="*80
-  custom_pars = params.fetch(source = iotbx.phil.parse("\n".join([
+  custom_par_text = "\n".join([
       "pdb_interpretation.secondary_structure {protein.remove_outliers = False\n%s}" \
           % phil_str,
       "pdb_interpretation.peptide_link.ramachandran_restraints = True",
       "c_beta_restraints = True",
       "pdb_interpretation.secondary_structure.enabled=True",
       "pdb_interpretation.clash_guard.nonbonded_distance_threshold=None",
-      "pdb_interpretation.max_reasonable_bond_distance=None"]))).extract()
+      "pdb_interpretation.max_reasonable_bond_distance=None"])
+
+  if use_plane_peptide_bond_restr:
+    custom_par_text += "\npdb_interpretation.peptide_link.apply_peptide_plane=True"
+
+  custom_pars = params.fetch(
+      source=iotbx.phil.parse(custom_par_text)).extract()
   # params.format(python_object=custom_pars)
   # params.show()
   # STOP()

@@ -1067,6 +1067,7 @@ HELIX    1   1 ALA A    1  ALA A   20  1                                  20
       real_h=test_h,
       xray_structure=pdb_inp.xray_structure_simple(),
       ss_annotation=ann,
+      use_plane_peptide_bond_restr=False,
       # log=sys.stdout,
       # verbose=True
       )
@@ -1097,6 +1098,7 @@ HELIX    2   2 ARG A   23  GLN A   44  1                                  22
     rm = ssb.substitute_ss(
       real_h=h,
       xray_structure=pdb_inp.xray_structure_simple(),
+      use_plane_peptide_bond_restr=False,
       ss_annotation=ann)
   d2 = get_distances(h)
   # h.write_pdb_file(file_name=prefix+'_result.pdb')
