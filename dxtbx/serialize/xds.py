@@ -293,8 +293,8 @@ class to_xds(object):
 
     print >> out, 'NX=%d NY=%d QX=%.4f QY=%.4f' % (fast, slow, f, s)
 
-    print >> out, 'DETECTOR_DISTANCE= %.3f' % self.detector_distance
-    print >> out, 'ORGX= %.1f ORGY= %.1f' % self.detector_origin
+    print >> out, 'DETECTOR_DISTANCE= %.6f' % self.detector_distance
+    print >> out, 'ORGX= %.2f ORGY= %.2f' % self.detector_origin
     print >> out, 'ROTATION_AXIS= %.5f %.5f %.5f' % \
           self.rotation_axis
     print >> out, 'STARTING_ANGLE= %.3f' % \
@@ -353,7 +353,7 @@ class to_xds(object):
 
         print >> out, 'SEGMENT_DISTANCE= %.3f' % self.panel_distance[panel_id]
 
-        print >> out, 'SEGMENT_ORGX= %.1f SEGMENT_ORGY= %.1f' % self.panel_origin[panel_id]
+        print >> out, 'SEGMENT_ORGX= %.2f SEGMENT_ORGY= %.2f' % self.panel_origin[panel_id]
         print >> out
 
 
