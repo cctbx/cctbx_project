@@ -17,6 +17,7 @@ class coordinate_frame_information:
                  starting_angle=None, oscillation_range=None,
                  starting_frame=None,
                  original_rotation=None,
+                 data_range=None,
                  panel_offset=None,
                  panel_size=None,
                  panel_origin=None,
@@ -40,6 +41,7 @@ class coordinate_frame_information:
         self._starting_angle = starting_angle
         self._oscillation_range = oscillation_range
         self._starting_frame = starting_frame
+        self._data_range = data_range
         self._original_rotation = original_rotation
         self._panel_offset = panel_offset
         self._panel_size = panel_size
@@ -189,6 +191,11 @@ def align_reference_frame(primary_axis, primary_target,
 
     return Rsecondary * Rprimary
 
+def is_xds_inp(putative_xds_inp_file):
+    '''See if this file looks like an XDS.INP file.'''
+    from iotbx.xds import xds_inp
+    return xds_inp.reader.is_xds_inp_file(putative_xds_inp_file)
+
 def is_xds_xparm(putative_xds_xparm_file):
     '''See if this file looks like an XDS XPARM file i.e. it consists of 42
     floating point values and nothing else.'''
@@ -224,6 +231,8 @@ def is_recognized_file(filename):
     elif is_xds_integrate_hkl(filename):
         return True
     elif is_xds_ascii_hkl(filename):
+        return True
+    elif is_xds_inp(filename):
         return True
 
     # Not recognices
@@ -449,6 +458,141 @@ def import_xds_ascii_hkl(xds_ascii_hkl_file):
         real_space_a, real_space_b, real_space_c, space_group_number,
         sigma_divergence, mosaicity,
         starting_angle, oscillation_range, starting_frame, original_rotation = R)
+
+def import_xds_inp(xds_inp_file):
+    '''Read an XDS XPARM file, transform the parameters contained therein
+    into the standard coordinate frame, record this as a dictionary.'''
+    from iotbx.xds import xds_inp
+
+    handle = xds_inp.reader()
+    handle.read_file(xds_inp_file)
+
+    # first determine the rotation R from the XDS coordinate frame used in
+    # the processing to the central (i.e. imgCIF) coordinate frame. N.B.
+    # if the scan was e.g. a PHI scan the resulting frame could well come out
+    # a little odd...
+
+    axis = handle.rotation_axis
+    beam = handle.incident_beam_direction
+    x, y = handle.direction_of_detector_x_axis, handle.direction_of_detector_y_axis
+
+    # XDS defines the beam vector as s0 rather than from sample -> source.
+
+    B = - matrix.col(beam).normalize()
+    A = matrix.col(axis).normalize()
+
+    X = matrix.col(x).normalize()
+    Y = matrix.col(y).normalize()
+    N = X.cross(Y)
+
+    _X = matrix.col([1, 0, 0])
+    _Y = matrix.col([0, 1, 0])
+    _Z = matrix.col([0, 0, 1])
+
+    R = align_reference_frame(A, _X, B, _Z)
+    #R = align_reference_frame(X, _X, Y, _Y)
+
+    # now transform contents of the XPARM file to the form which we want to
+    # return...
+
+    nx, ny = handle.nx, handle.ny
+    px, py = handle.px, handle.py
+
+    distance = handle.detector_distance
+    ox, oy = handle.orgx, handle.orgy
+
+    # Need to subtract 0.5 because XDS seems to do centroids in fortran coords
+    ox = ox - 0.5
+    oy = oy - 0.5
+
+    detector_origin = R * (distance * N - ox * px * X - oy * py * Y)
+    detector_fast = R * X
+    detector_slow = R * Y
+    rotation_axis = R * A
+    sample_to_source = R * B
+    wavelength = handle.xray_wavelength
+    if handle.unit_cell_constants is not None:
+        a, b, c = handle.unit_cell_constants
+        real_space_a = R * matrix.col(a)
+        real_space_b = R * matrix.col(b)
+        real_space_c = R * matrix.col(c)
+    else:
+        real_space_a, real_space_b, real_space_c = None, None, None
+    space_group_number = handle.space_group_number
+    starting_angle = handle.starting_angle
+    oscillation_range = handle.oscillation_range
+    starting_frame = handle.starting_frame
+    data_range = handle.data_range
+
+    panel_offset = None
+    panel_size = None
+    panel_origins = None
+    panel_fast_axes = None
+    panel_slow_axes = None
+
+    template = handle.name_template_of_data_frames[0].replace('?', '#')
+    from dxtbx import datablock
+    importer = datablock.DataBlockTemplateImporter([template])
+    datablock = importer.datablocks[0]
+    imageset = datablock.extract_imagesets()[0]
+    detector = imageset.get_detector()
+
+    if handle.num_segments > 1:
+        # Now, for each detector segment the following two lines of information
+        # are provided.
+
+        # The 5 numbers of this line, iseg x1 x2 y1 y2, define the pixel numbers
+        # IX,IY belonging to segment #iseg as x1<=IX<=x2, y1<=IY<=y2.
+        # The 9 numbers of this line, ORGXS ORGYS FS EDS(:,1) EDS(:,2), describe
+        # origin and orientation of segment #iseg with respect to the detector
+        # coordinate system.
+
+        panel_offset = []
+        panel_size = []
+        panel_origins = []
+        panel_fast_axes = []
+        panel_slow_axes = []
+        for i in range(handle.num_segments):
+            x1, x2, y1, y2 = handle.segment[i]
+            # XDS panel limits inclusive range
+            panel_offset.append((x1-1, y1-1))
+            panel_size.append((x2-x1+1, y2-y1+1))
+            panel_fast = matrix.col(handle.direction_of_segment_x_axis[i])
+            panel_slow = matrix.col(handle.direction_of_segment_y_axis[i])
+            # local basis vectors
+            fl = matrix.col(panel_fast)
+            sl = matrix.col(panel_slow)
+            nl = fl.cross(sl)
+
+            orgxs = handle.segment_orgx[i]
+            orgys = handle.segment_orgy[i]
+            fs = handle.segment_distance[i]
+            panel_origin = - (orgxs - x1 + 1) * px * fl \
+                - (orgys - y1 + 1) * py * sl \
+                + fs * nl \
+                - detector_origin
+
+            # detector to laboratory transformation
+            ED = matrix.sqr(list(X) + list(Y) + list(N))
+
+            panel_normal = (R * panel_fast).cross(R * panel_slow)
+            panel_origins.append(R * panel_origin)
+            panel_fast_axes.append(R * ED * panel_fast)
+            panel_slow_axes.append(R * ED * panel_slow)
+
+    return coordinate_frame_information(
+        detector_origin, detector_fast, detector_slow, (nx, ny), (px, py),
+        rotation_axis, sample_to_source, wavelength,
+        real_space_a, real_space_b, real_space_c, space_group_number,
+        None, None, starting_angle, oscillation_range, starting_frame,
+        original_rotation=R,
+        data_range=data_range,
+        panel_offset=panel_offset,
+        panel_size=panel_size,
+        panel_origin=panel_origins,
+        panel_fast=panel_fast_axes,
+        panel_slow=panel_slow_axes)
+
 
 def import_xds_xparm(xparm_file):
     '''Read an XDS XPARM file, transform the parameters contained therein

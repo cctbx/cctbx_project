@@ -48,6 +48,7 @@ class reader:
     self.fraction_of_polarization = 0.5
     self.polarization_plane_normal = None
     self.starting_angle = 0.0
+    self.oscillation_range = None
     #STARTING_FRAME=first data image (as specified by DATA_RANGE=)
     self.starting_frame = None
     self.include_resolution_range = [20.0, 0.0]
@@ -55,6 +56,14 @@ class reader:
     self.space_group_number = 1
     self.max_fac_rmeas = 2.0
     self.data_range = None
+
+    self.num_segments = 0
+    self.segment_orgx = []
+    self.segment_orgy = []
+    self.direction_of_segment_x_axis = []
+    self.direction_of_segment_y_axis = []
+    self.segment_distance = []
+    self.segment = []
 
     # Check and read file
     if reader.is_xds_inp_file(filename):
@@ -164,6 +173,8 @@ class reader:
         self.starting_angle = float(parameter[1])
       elif name == 'STARTING_FRAME=':
         self.starting_frame = float(parameter[1])
+      elif name == 'OSCILLATION_RANGE=':
+        self.oscillation_range = float(parameter[1])
       elif name == 'INCLUDE_RESOLUTION_RANGE=':
         self.include_resolution_range = map(float, parameter[-2:])
       elif name == 'UNIT_CELL_CONSTANTS=':
@@ -174,3 +185,16 @@ class reader:
         self.max_fac_rmeas = float(parameter[-1])
       elif name == 'DATA_RANGE=':
         self.data_range = map(int, parameter[-2:])
+      elif name == 'SEGMENT=':
+        self.num_segments += 1
+        self.segment.append(map(int, parameter[-4:]))
+      elif name == 'DIRECTION_OF_SEGMENT_X-AXIS=':
+        self.direction_of_segment_x_axis.append(map(float, parameter[-3:]))
+      elif name == 'DIRECTION_OF_SEGMENT_Y-AXIS=':
+        self.direction_of_segment_y_axis.append(map(float, parameter[-3:]))
+      elif name == 'SEGMENT_DISTANCE=':
+        self.segment_distance.append(float(parameter[-1]))
+      elif name == 'SEGMENT_ORGX=':
+        self.segment_orgx.append(float(parameter[-1]))
+      elif name == 'SEGMENT_ORGY=':
+        self.segment_orgy.append(float(parameter[-1]))

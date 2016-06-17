@@ -6,6 +6,7 @@ from scitbx import matrix
 from cctbx import uctbx
 
 from coordinate_frame_helpers import is_xds_xparm, import_xds_xparm
+from coordinate_frame_helpers import is_xds_inp, import_xds_inp
 from coordinate_frame_helpers import is_xds_integrate_hkl, \
     import_xds_integrate_hkl
 from coordinate_frame_helpers import is_xds_ascii_hkl, \
@@ -35,6 +36,10 @@ class coordinate_frame_converter:
 
         elif is_xds_ascii_hkl(configuration_file):
             self._coordinate_frame_information = import_xds_ascii_hkl(
+                configuration_file)
+
+        elif is_xds_inp(configuration_file):
+            self._coordinate_frame_information = import_xds_inp(
                 configuration_file)
 
         else:
