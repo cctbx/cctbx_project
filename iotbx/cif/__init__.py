@@ -22,6 +22,7 @@ from libtbx.utils import Sorry
 from libtbx.utils import flat_list
 from libtbx.utils import detect_binary_file
 from libtbx import smart_open
+import iotbx
 
 import sys
 
@@ -388,3 +389,97 @@ class cctbx_data_structures_from_cif(object):
             self.miller_arrays.setdefault(
               key, builder(block, base_array_info=base_array_info,
                 wavelengths=wavelengths).arrays())
+
+
+# This defines the order that categories will appear in the CIF file
+category_order = [
+  '_cell',
+  '_space_group',
+  '_space_group_symop',
+  '_symmetry',
+  '_computing',
+  '_software',
+  '_citation',
+  '_reflns',
+  '_reflns_shell',
+  '_refine',
+  '_refine_ls_restr',
+  '_refine_ls_shell',
+  '_pdbx_refine_tls',
+  '_pdbx_refine_tls_group',
+  '_struct_conf',
+  '_struct_conf_type',
+  '_struct_conn',
+  '_struct_sheet',
+  '_struct_sheet_order',
+  '_struct_sheet_range',
+  '_pdbx_struct_sheet_hbond',
+  '_struct_ncs_oper',
+  '_struct_ncs_dom',
+  '_struct_ncs_dom_lim',
+  '_struct_ncs_ens',
+  '_struct_ncs_ens_gen',
+  '_entity',
+  '_entity_poly',
+  '_entity_poly_seq',
+  '_atom_type',
+  '_atom_site',
+]
+
+def category_sort_function(key):
+  key_category = key.split('.')[0]
+  try:
+    return category_order.index(key_category)
+  except ValueError, e:
+    # any categories we don't know about will end up at the end of the file
+    return key_category
+
+def write_whole_cif_file(
+    file_name=None,
+    output_file=None,
+    processed_pdb_file=None,
+    pdb_hierarchy=None,
+    crystal_symmetry=None,
+    ss_annotation=None,
+    append_end=True,
+    atoms_reset_serial_first_value=None,
+    cif_block_name='default'):
+  # massive copy-paste from iotbx/pdb/__init__.py: write_whole_pdb_file
+  assert [file_name, output_file].count(None) == 1
+  assert [processed_pdb_file, ss_annotation].count(None) >= 1
+  out = output_file
+  if file_name is not None:
+    out = open(file_name, "w")
+  cif = iotbx.cif.model.cif()
+  cif_block = None
+
+  if crystal_symmetry is not None:
+    cif_block = crystal_symmetry.as_cif_block()
+  if pdb_hierarchy is not None:
+    cif_block.update(pdb_hierarchy.as_cif_block())
+
+  # outputting HELIX/SHEET records
+  ss_cif_loops = []
+  if processed_pdb_file is not None:
+    if processed_pdb_file.ss_manager is not None:
+      ss_ann = processed_pdb_file.ss_manager.actual_sec_str
+      ss_cif_loops = ss_ann.as_cif_loops()
+    else:
+      if hasattr(processed_pdb_file.all_chain_proxies.pdb_inp,
+          'secondary_structure_section'):
+        ss_section = processed_pdb_file.all_chain_proxies.\
+            pdb_inp.secondary_structure_section()
+        ss_ann = annotation.from_pdb_records(ss_section)
+        ss_cif_loops = ss_ann.as_cif_loops()
+  if ss_annotation is not None:
+    ss_cif_loops = ss_annotation.as_cif_loops()
+
+  for loop in ss_cif_loops:
+    cif_block.add_loop(loop)
+
+  cif_block.sort(key=category_sort_function)
+  cif[cif_block_name] = cif_block
+  print >> out, cif
+
+  if file_name is not None:
+    out.close()
