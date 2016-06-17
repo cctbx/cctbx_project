@@ -126,8 +126,13 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       if (current_residue_id != last_residue_id or
           current_ins_code != last_ins_code or
           current_label_asym_id != last_label_asym_id):
+        try:
+          resseq = hy36encode(width=4, value=int(current_residue_id))
+        except ValueError, e:
+          resseq = current_residue_id
+          assert len(resseq)==4
         residue_group = hierarchy.residue_group(
-          resseq=hy36encode(width=4, value=int(current_residue_id)),
+          resseq=resseq,
           icode=current_ins_code)
         chain.append_residue_group(residue_group)
         atom_groups = OrderedDict() # reset atom_groups cache
