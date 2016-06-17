@@ -20,7 +20,7 @@ file_name = None
   .multiple = True
   .short_caption = Model file
   .style = file_type:pdb bold input_file
-trim_alternative_conformations = True
+trim_alternative_conformations = False
   .type = bool
   .help = Leave only atoms with empty altloc
 include scope mmtbx.secondary_structure.build.model_idealization_master_phil_str
