@@ -547,14 +547,18 @@ def import_xds_xparm(xparm_file):
             nl = fl.cross(sl)
 
             orgxs, orgys, fs = orientation[:3]
-            orgxs -= (x1-1)
-            orgys -= (y1-1)
-            panel_origin = fs * nl - orgxs * px * fl - orgys * py * sl
+            panel_origin = - (orgxs - x1 + 1) * px * fl \
+                - (orgys - y1 + 1) * py * sl \
+                + fs * nl \
+                - detector_origin
 
-            panel_normal = panel_fast.cross(panel_slow)
-            panel_origins.append(panel_origin)
-            panel_fast_axes.append(panel_fast)
-            panel_slow_axes.append(panel_slow)
+            # detector to laboratory transformation
+            ED = matrix.sqr(list(X) + list(Y) + list(N))
+
+            panel_normal = (R * panel_fast).cross(R * panel_slow)
+            panel_origins.append(R * panel_origin)
+            panel_fast_axes.append(R * ED * panel_fast)
+            panel_slow_axes.append(R * ED * panel_slow)
 
     return coordinate_frame_information(
         detector_origin, detector_fast, detector_slow, (nx, ny), (px, py),

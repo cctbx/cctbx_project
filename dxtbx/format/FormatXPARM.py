@@ -93,7 +93,7 @@ class FormatXPARM(Format):
         p.set_image_size(p_size)
         p.set_name('Panel%d' %i_panel)
         p.set_pixel_size(self._pixel_size)
-        p.set_local_frame(fast.elems, slow.elems, origin.elems)
+        p.set_frame(fast.elems, slow.elems, origin.elems)
         i_panel += 1
       return detector
 
