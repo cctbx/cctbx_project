@@ -3,6 +3,11 @@ from dxtbx.model import Panel, Detector
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
 
+def tst_get_gain(detector):
+  detector[0].set_gain(2.0)
+  assert abs(detector[0].get_gain() - 2.0) < 1e-7
+  print 'OK'
+
 def tst_get_pixel_lab_coord(detector):
   from scitbx import matrix
   eps = 1e-7
@@ -166,6 +171,7 @@ def tst_detector():
   detector = create_detector()
 
   # Perform some tests
+  tst_get_gain(detector)
   tst_set_mosflm_beam_centre(detector)
   tst_get_pixel_lab_coord(detector)
   tst_get_image_size_mm(detector)

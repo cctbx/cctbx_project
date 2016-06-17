@@ -514,6 +514,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         arg("material"),
         arg("px_mm"),
         arg("mu")=0.0)))
+      .def("get_gain", &Panel::get_gain)
+      .def("set_gain", &Panel::set_gain)
       .def("get_image_size_mm", &Panel::get_image_size_mm)
       .def("get_px_mm_strategy", &Panel::get_px_mm_strategy)
       .def("set_px_mm_strategy", &Panel::set_px_mm_strategy)

@@ -40,7 +40,8 @@ namespace dxtbx { namespace model {
 
     /** Construct the panel with the simple px->mm strategy */
     Panel()
-      : convert_coord_(new SimplePxMmStrategy()) {}
+      : gain_(1.0),
+        convert_coord_(new SimplePxMmStrategy()) {}
 
     /** Construct with data but no px/mm strategy */
     Panel(std::string type,
@@ -58,6 +59,7 @@ namespace dxtbx { namespace model {
           fast_axis, slow_axis, origin,
           pixel_size, image_size,
                   trusted_range, thickness, material, mu),
+        gain_(1.0),
         convert_coord_(new SimplePxMmStrategy()) {}
 
     /** Construct with data with px/mm strategy */
@@ -77,9 +79,21 @@ namespace dxtbx { namespace model {
           fast_axis, slow_axis, origin,
           pixel_size, image_size,
                   trusted_range, thickness, material, mu),
+        gain_(1.0),
         convert_coord_(convert_coord) {}
 
     virtual ~Panel() {}
+
+    /** Set the gain */
+    void set_gain(double gain) {
+      DXTBX_ASSERT(gain > 0);
+      gain_ = gain;
+    }
+
+    /** Get the gain */
+    double get_gain() const {
+      return gain_;
+    }
 
     /** Get the pixel to millimetre strategy */
     shared_ptr<PxMmStrategy> get_px_mm_strategy() const {
@@ -258,6 +272,7 @@ namespace dxtbx { namespace model {
 
   protected:
 
+    double gain_;
     shared_ptr<PxMmStrategy> convert_coord_;
   };
 
