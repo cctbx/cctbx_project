@@ -203,14 +203,15 @@ class to_xds(object):
 
       o = Rd * matrix.col(panel.get_origin())
       op = o.dot(n) * n
-      orgsx = (op - o).dot(f) / self.pixel_size[0] + xmin - self.detector_origin[0] + 0.5
-      orgsy = (op - o).dot(s) / self.pixel_size[1] + ymin - self.detector_origin[1] + 0.5
+      d0 = matrix.col((-x, -y, self.detector_distance))
+      orgsx = (op - o + d0).dot(f) / self.pixel_size[0] + xmin
+      orgsy = (op - o + d0).dot(s) / self.pixel_size[1] + ymin
+      panel_distance = op.dot(n) - d0.dot(n)
 
       # axes in local (i.e. detector) frame
       fl = matrix.col(panel.get_local_fast_axis())
       sl = matrix.col(panel.get_local_slow_axis())
       nl = fl.cross(sl)
-      panel_distance = matrix.col(panel.get_local_origin()).dot(nl)
 
       self.panel_x_axis.append(fl.elems)
       self.panel_y_axis.append(sl.elems)

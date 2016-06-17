@@ -488,6 +488,7 @@ dxtbx/boost_python/ext.cpp -text
 dxtbx/boost_python/to_ewald_sphere_helpers.cc -text
 dxtbx/command_line/display_parallax_correction.py -text
 dxtbx/command_line/export_bitmaps.py -text
+dxtbx/command_line/from_xds.py -text
 dxtbx/command_line/import_datablock.py -text
 dxtbx/command_line/install_format.py -text
 dxtbx/command_line/overload.py -text
@@ -587,6 +588,7 @@ dxtbx/format/FormatTIFFRayonix.py -text
 dxtbx/format/FormatTIFFRayonixESRF.py -text
 dxtbx/format/FormatTIFFRayonixSPring8.py -text
 dxtbx/format/FormatTIFFRayonixXPP.py -text
+dxtbx/format/FormatXDS.py -text
 dxtbx/format/FormatXPARM.py -text
 dxtbx/format/Registry.py -text
 dxtbx/format/RegistryHelpers.py -text
