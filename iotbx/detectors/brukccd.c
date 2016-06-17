@@ -108,7 +108,7 @@ if (debug) {
           if (verbo) printf(">>>>>beam center  %g %g \n",centerx,centery); }
  else if (strncmp(line,"AXIS   :",8)==0)
     { n = sscanf(line+8," %d",&ixis);
-    if (ixis != 2) printf(" ***** oscillation angle not omega\n");
+      //if (ixis != 2) printf(" ***** oscillation angle not omega\n");
           if (verbo) printf(">>>>>axis  %d angle %g\n",ixis,angles[ixis]); }
  else if (strncmp(line,"INCREME:",8)==0)
     { n = sscanf(line+8," %lg",&oscrange);
