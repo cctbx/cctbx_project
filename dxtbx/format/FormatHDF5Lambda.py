@@ -75,8 +75,8 @@ class FormatHDF5Lambda(FormatHDF5):
     orig = matrix.col((0.0, 0.0, 0.0))
 
     # Get the pixel and image size
-    pixel_size = 1000 * detector['x_pixel_size'].value, \
-                 1000 * detector['y_pixel_size'].value
+    pixel_size = 1.e-3 * detector['x_pixel_size'].value, \
+                 1.e-3 * detector['y_pixel_size'].value
     layout = detector['layout'].value[0].split('X')
     image_size = int(layout[0]), int(layout[1])
     trusted_range = (-1, detector['saturation_value'][0])
@@ -86,7 +86,7 @@ class FormatHDF5Lambda(FormatHDF5):
     return self._detector_factory.make_detector(
       "PAD", fast, slow, orig,
       pixel_size, image_size, trusted_range,
-      name="Panel", thickness=0.0, material='GaAs',)
+      name="Panel", thickness=thickness, material='GaAs',)
 
   def _beam(self):
     '''Dummy beam'''
