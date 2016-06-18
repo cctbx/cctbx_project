@@ -9,6 +9,7 @@ from xfel.ui.db.rungroup import Rungroup
 from xfel.ui.db.tag import Tag
 from xfel.ui.db.job import Job
 from xfel.ui.db.stats import Stats
+from xfel.ui.db.experiment import Cell #Cell_Bin
 
 from xfel.ui.db import get_db_connection
 
@@ -61,10 +62,46 @@ class xfel_db_application(object):
     return self.init_tables.drop_tables()
 
   def create_trial(self, **kwargs):
-    return Trial(self, **kwargs)
+    trial = Trial(self, **kwargs)
+
+    from xfel.command_line.xtc_process import phil_scope
+    from iotbx.phil import parse
+    trial_params = phil_scope.fetch(parse(trial.target_phil_str)).extract()
+    if len(trial_params.indexing.stills.isoforms) > 0:
+      for isoform in trial_params.indexing.stills.isoforms:
+        cell = self.get_cell(name = isoform.name)
+        if cell is None:
+          print "Creating isoform", isoform.name
+          a, b, c, alpha, beta, gamma = isoform.cell.parameters()
+          cell = self.create_cell(name = isoform.name,
+                                  cell_a = a,
+                                  cell_b = b,
+                                  cell_c = c,
+                                  cell_alpha = alpha,
+                                  cell_beta = beta,
+                                  cell_gamma = gamma,
+                                  lookup_symbol = isoform.lookup_symbol)
+          #TODO add isoform bins
+    return trial
+
+  def create_cell(self, **kwargs):
+    return Cell(self, **kwargs)
+
+  def get_cell(self, cell_id = None, name = None):
+    assert [cell_id, name].count(None) == 1
+    if name is not None:
+      query = "SELECT id FROM `%s_cell` WHERE name = '%s'"%(self.params.experiment_tag, name)
+      cursor = self.execute_query(query)
+      results = cursor.fetchall()
+      assert len(results) in [0,1]
+      if len(results) == 0:
+        return None
+      cell_id = int(results[0][0])
+
+    return Cell(self, cell_id=cell_id)
 
   def get_all_x(self, cls, name):
-    query = "SELECT id from `%s_%s`" % (self.params.experiment_tag, name)
+    query = "SELECT id FROM `%s_%s`" % (self.params.experiment_tag, name)
     cursor = self.execute_query(query)
     return [cls(self, i[0]) for i in cursor.fetchall()]
 
@@ -72,7 +109,7 @@ class xfel_db_application(object):
     return Trial(self, trial_id)
 
   def get_trial_rungroups(self, rungroup_id, only_active = False):
-    query = "SELECT rungroup_id from `%s_trial_rungroup` WHERE `%s_trial_rungroup`.trial_id = %d" % \
+    query = "SELECT rungroup_id FROM `%s_trial_rungroup` WHERE `%s_trial_rungroup`.trial_id = %d" % \
             (self.params.experiment_tag, self.params.experiment_tag, rungroup_id)
     cursor = self.execute_query(query)
     rungroups = [Rungroup(self, i[0]) for i in cursor.fetchall()]

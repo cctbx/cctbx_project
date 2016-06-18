@@ -79,7 +79,7 @@ class Crystal(db_proxy):
 
 class Cell(db_proxy):
   def __init__(self, app, cell_id = None, crystal = None, **kwargs):
-    assert [cell_id, crystal].count(None) == 1
+    assert [cell_id, crystal].count(None) in [1,2]
     if crystal is not None:
       for key, p in zip(['a', 'b', 'c', 'alpha', 'beta', 'gamma'], crystal.get_unit_cell().parameters()):
         kwargs['cell_%s'%key] = p
