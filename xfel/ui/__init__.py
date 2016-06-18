@@ -25,9 +25,9 @@ db {
 output_folder = ""
   .type = path
 web {
-  user = None
+  user = ""
     .type = str
-  password = None
+  password = ""
     .type = str
 }
 include scope xfel.command_line.cxi_mpi_submit.mp_phil_scope
