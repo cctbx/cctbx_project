@@ -6,9 +6,13 @@ except ImportError, e:
   raise Sorry("Mysql is not installed")
 
 def get_db_connection(params, block=True):
+  if params.db.password is None:
+    password = ""
+  else:
+    password = params.db.password
   while True:
     try:
-      dbobj=MySQLdb.connect(passwd=params.db.password,user=params.db.user,host=params.db.host,db=params.db.name)
+      dbobj=MySQLdb.connect(passwd=password,user=params.db.user,host=params.db.host,db=params.db.name)
       return dbobj
     except Exception,e:
       if "Too many connections" in e and block:
@@ -68,7 +72,10 @@ class db_proxy(object):
 
   def __setattr__(self, key, value):
     # Need to test for db_dict to avoid infinite loop
-    if key == "db_dict" or key not in self.db_dict:
+    #  Test key == "db_dict" to allow creating db_dict
+    #  Test hasattr(self, "db_dict") in case dbproxy.__init__ hasn't been called
+    #  Test key not in self.db_dict to allow setting member variables not in database dictionary
+    if key == "db_dict" or not hasattr(self, "db_dict") or key not in self.db_dict:
       super(db_proxy, self).__setattr__(key, value)
       return
 
