@@ -683,7 +683,7 @@ class input(object):
         transform_sn += 1
         key = format_num_as_str(transform_sn)
         self.update_tr_id_to_selection(gns,asu_select,key)
-        tr = Transform(
+        tr = ncs_search.Transform(
           rotation = r,
           translation = t,
           serial_num = transform_sn,
@@ -918,7 +918,7 @@ class input(object):
           self.update_tr_id_to_selection(gs,ncs_copy_select,key)
           if not is_identity(r,t):
             asu_locations.append(ncs_copy_select)
-          tr = Transform(
+          tr = ncs_search.Transform(
             rotation = r,
             translation = t,
             serial_num = transform_sn,
@@ -1048,7 +1048,7 @@ class input(object):
       else:
         tr_sn = 1
       key = format_num_as_str(tr_sn)
-      tr = Transform(
+      tr = ncs_search.Transform(
         rotation = r,
         translation = t,
         serial_num = tr_sn,
@@ -1166,7 +1166,7 @@ class input(object):
     ncs_group_id: (int) the NCS group ID
     transform_sn: (int) Over all transform serial number
     """
-    transform_obj = Transform(
+    transform_obj = ncs_search.Transform(
       rotation = matrix.sqr([1,0,0,0,1,0,0,0,1]),
       translation = matrix.col([0,0,0]),
       serial_num = transform_sn,
@@ -1203,7 +1203,7 @@ class input(object):
       for (r,t,n,cp) in zip(ti.r,ti.t,ti.serial_number,ti.coordinates_present):
         n = int(n)
         key = format_num_as_str(n)
-        tr = Transform(
+        tr = ncs_search.Transform(
           rotation = r,
           translation = t,
           serial_num = n,
@@ -2485,33 +2485,6 @@ class NCS_restraint_group(object):
     """
     self.master_iselection = master_iselection
     self.copies = []
-
-class Transform(object):
-  """ Transformation object """
-  def __init__(self,
-               rotation = None,
-               translation = None,
-               serial_num = None,
-               coordinates_present = None,
-               ncs_group_id = None,
-               rmsd = 0.0):
-    """
-    Basic transformation properties
-
-    Argument:
-    rotation : Rotation matrix object
-    translation: Translation matrix object
-    serial_num : (int) Transform serial number
-    coordinates_present: equals 1 when coordinates are presents in PDB file
-    ncs_group_id : (int) ncs groups in, all the selections that the same
-                   transforms are being applied to
-    """
-    self.r = rotation
-    self.t = translation
-    self.serial_num = serial_num
-    self.coordinates_present = bool(coordinates_present)
-    self.ncs_group_id = ncs_group_id
-    self.rmsd = rmsd
 
 class selections(object):
   """
