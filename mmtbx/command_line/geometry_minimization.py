@@ -275,10 +275,12 @@ def run_minimization(
       correct_hydrogens,
       states_collector,
       fix_rotamer_outliers,
-      log):
+      log,
+      ncs_restraints_group_list = []):
   o = mmtbx.refinement.geometry_minimization.run2(
     restraints_manager             = restraints_manager,
     pdb_hierarchy                  = pdb_hierarchy,
+    ncs_restraints_group_list      = ncs_restraints_group_list,
     max_number_of_iterations       = params.max_iterations,
     number_of_macro_cycles         = params.macro_cycles,
     selection                      = selection,
@@ -410,6 +412,7 @@ class run(object):
       self.pdb_file_names.append(self.params.file_name)
     self.processed_pdb_file = process_input_files(inputs=self.inputs,
       params=self.params, log=self.log)
+    self.ncs_obj = self.processed_pdb_file.ncs_obj
     self.output_crystal_symmetry = \
       not self.processed_pdb_file.is_non_crystallographic_unit_cell
     self.xray_structure = self.processed_pdb_file.xray_structure()
@@ -439,6 +442,9 @@ class run(object):
   def minimization(self, prefix): # XXX USE alternate_nonbonded_off_on etc
     broadcast(m=prefix, log = self.log)
     use_amber = False
+    if self.ncs_obj is not None:
+      print >> self.log, "Using NCS constraints:"
+      self.ncs_obj.show(format='phil', log=self.log)
     if hasattr(self.params, "amber"):
       use_amber = self.params.amber.use_amber
     if(use_amber):
@@ -456,6 +462,9 @@ class run(object):
         ambcrd = self.params.amber.coordinate_file_name,
         md_engine = self.params.amber.md_engine)
     else:
+      ncs_restraints_group_list = []
+      if self.ncs_obj is not None:
+        ncs_restraints_group_list = self.ncs_obj.get_ncs_restraints_group_list()
       run_minimization(
         selection            = self.selection,
         restraints_manager   = self.grm,
@@ -465,7 +474,8 @@ class run(object):
         correct_hydrogens    = self.params.pdb_interpretation.correct_hydrogens,
         fix_rotamer_outliers = self.params.fix_rotamer_outliers,
         states_collector= self.states_collector,
-        log                  = self.log)
+        log                  = self.log,
+        ncs_restraints_group_list = ncs_restraints_group_list)
     self.xray_structure.set_sites_cart(
       sites_cart = self.pdb_hierarchy.atoms().extract_xyz())
 

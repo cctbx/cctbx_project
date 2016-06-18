@@ -2,9 +2,11 @@ from __future__ import division
 import iotbx.phil
 from cctbx import geometry_restraints
 import cctbx.geometry_restraints.lbfgs
+import mmtbx.refinement.minimization_ncs_constraints
 import scitbx.lbfgs
 import sys
 import mmtbx.utils
+from scitbx.array_family import flex
 
 master_params_str = """\
   alternate_nonbonded_off_on=False
@@ -178,6 +180,7 @@ class run2(object):
                restraints_manager,
                pdb_hierarchy,
                correct_special_position_tolerance,
+               ncs_restraints_group_list      = [],
                max_number_of_iterations       = 500,
                number_of_macro_cycles         = 5,
                selection                      = None,
@@ -247,19 +250,44 @@ class run2(object):
           sigma              = 10,
           mode               = "fix_outliers")
       sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
-      self.minimized = lbfgs(
-        sites_cart                      = sites_cart,
-        correct_special_position_tolerance=correct_special_position_tolerance,
-        geometry_restraints_manager     = restraints_manager.geometry,
-        geometry_restraints_flags       = geometry_restraints_flags,
-        lbfgs_termination_params        = lbfgs_termination_params,
-        lbfgs_exception_handling_params = exception_handling_params,
-        sites_cart_selection            = selection,
-        rmsd_bonds_termination_cutoff   = rmsd_bonds_termination_cutoff,
-        rmsd_angles_termination_cutoff  = rmsd_angles_termination_cutoff,
-        states_collector                = states_collector,
-        site_labels                     = None)
-      self.pdb_hierarchy.atoms().set_xyz(sites_cart)
+      if (ncs_restraints_group_list is not None
+          and len(ncs_restraints_group_list)) > 0:
+        # do ncs minimization
+        xrs = self.pdb_hierarchy.extract_xray_structure().deep_copy_scatterers()
+        refine_selection = flex.size_t(xrange(xrs.scatterers().size()))
+        tfg_obj = mmtbx.refinement.minimization_ncs_constraints.\
+            target_function_and_grads_geometry_minimization(
+                xray_structure=xrs,
+                ncs_restraints_group_list=ncs_restraints_group_list,
+                refine_selection=refine_selection,
+                restraints_manager=self.restraints_manager.geometry,
+                refine_sites=True,
+                refine_transformations=False,
+                )
+        minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
+          target_and_grads_object      = tfg_obj,
+          xray_structure               = xrs,
+          ncs_restraints_group_list    = ncs_restraints_group_list,
+          refine_selection             = refine_selection,
+          finite_grad_differences_test = False,
+          max_iterations               = max_number_of_iterations,
+          refine_sites                 = True,
+          refine_transformations       = False)
+        self.pdb_hierarchy.adopt_xray_structure(xrs)
+      else:
+        self.minimized = lbfgs(
+          sites_cart                      = sites_cart,
+          correct_special_position_tolerance=correct_special_position_tolerance,
+          geometry_restraints_manager     = restraints_manager.geometry,
+          geometry_restraints_flags       = geometry_restraints_flags,
+          lbfgs_termination_params        = lbfgs_termination_params,
+          lbfgs_exception_handling_params = exception_handling_params,
+          sites_cart_selection            = selection,
+          rmsd_bonds_termination_cutoff   = rmsd_bonds_termination_cutoff,
+          rmsd_angles_termination_cutoff  = rmsd_angles_termination_cutoff,
+          states_collector                = states_collector,
+          site_labels                     = None)
+        self.pdb_hierarchy.atoms().set_xyz(sites_cart)
       self.show()
       geometry_restraints_flags.nonbonded = nonbonded
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(

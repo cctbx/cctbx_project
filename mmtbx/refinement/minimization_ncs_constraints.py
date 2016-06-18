@@ -135,6 +135,55 @@ def restraints_target_and_grads(
     return 0, flex.double((0,0,0)*(len(grad)//3))
   else: return None,None
 
+
+class target_function_and_grads_geometry_minimization(object):
+  """
+  Target and gradients evaluator for geometry minimization (no data)
+  """
+  def __init__(
+        self,
+        xray_structure,
+        ncs_restraints_group_list,
+        refine_selection=None,
+        use_ncs_constraints=True,
+        restraints_manager=None,
+        refine_sites=False,
+        refine_transformations=False):
+    adopt_init_args(self, locals())
+    self.refine_selection = nu.get_refine_selection(
+      refine_selection=self.refine_selection,
+      number_of_atoms=self.xray_structure.sites_cart().size())
+    self.extended_ncs_selection = nu.get_extended_ncs_selection(
+      ncs_restraints_group_list=ncs_restraints_group_list,
+      refine_selection=self.refine_selection)
+    self.unit_cell = self.xray_structure.unit_cell()
+
+  def target_and_gradients(self,compute_gradients,xray_structure,x):
+    self.xray_structure.set_sites_cart(sites_cart = xray_structure.sites_cart())
+    g = flex.vec3_double(xray_structure.scatterers().size(), [0,0,0])
+    t = [0]*xray_structure.scatterers().size()
+    t_restraints, g_restraints = restraints_target_and_grads(
+      restraints_manager     = self.restraints_manager,
+      xray_structure         = self.xray_structure,
+      ncs_restraints_group_list = self.ncs_restraints_group_list,
+      refine_sites           = self.refine_sites,
+      refine_transformations = self.refine_transformations,
+      x                      = x,
+      grad                   = g)
+    t = t_restraints
+    if(compute_gradients):
+      g = g_restraints
+      if not self.refine_transformations:
+        if self.use_ncs_constraints:
+          g = grads_asu_to_one_ncs(
+            ncs_restraints_group_list = self.ncs_restraints_group_list,
+            extended_ncs_selection    = self.extended_ncs_selection,
+            grad                      = g,
+            refine_sites              = self.refine_sites).as_double()
+        else:
+          g = g.as_double()
+    return t, g
+
 class target_function_and_grads_real_space(object):
   """
   Real-space target and gradients evaluator
@@ -157,7 +206,7 @@ class target_function_and_grads_real_space(object):
       number_of_atoms=self.xray_structure.sites_cart().size())
     self.extended_ncs_selection = nu.get_extended_ncs_selection(
       ncs_restraints_group_list=ncs_restraints_group_list,
-      refine_selection=refine_selection)
+      refine_selection=self.refine_selection)
     self.unit_cell = self.xray_structure.unit_cell()
     # get selection to refine
     asu_size = xray_structure.scatterers().size()

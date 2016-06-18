@@ -2266,6 +2266,7 @@ mmtbx/regression/__init__.py -text
 mmtbx/regression/make_fake_anomalous_data.py -text
 mmtbx/regression/ncs/__init__.py -text
 mmtbx/regression/ncs/tst_asu_as_one_ncs_copy.py -text
+mmtbx/regression/ncs/tst_geometry_minimization_ncs_constraints.py -text
 mmtbx/regression/ncs/tst_minimization_ncs_constraints.py -text
 mmtbx/regression/ncs/tst_minimization_ncs_constraints2.py -text
 mmtbx/regression/ncs/tst_minimization_ncs_constraints3.py -text
