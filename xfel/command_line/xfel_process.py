@@ -10,6 +10,22 @@ See dials.stills_process.
 
 '''
 
+db_logging_phil_str = '''
+  experiment_tag = ""
+    .type = str
+    .help = Used if using DB logging. This tag is prepended to each db table name.
+  db {
+    host = psdb-user.slac.stanford.edu
+      .type=str
+    name = ""
+      .type = str
+    user = ""
+      .type=str
+    password = ""
+      .type = str
+  }
+'''
+
 from libtbx.phil import parse
 phil_scope = parse('''
   verbosity = 1
@@ -60,7 +76,7 @@ phil_scope = parse('''
   include scope dials.algorithms.profile_model.factory.phil_scope
   include scope dials.algorithms.spot_prediction.reflection_predictor.phil_scope
 
-''', process_includes=True)
+''' + db_logging_phil_str, process_includes=True)
 
 from dials.command_line.stills_process import Processor
 class Script(Processor):
@@ -145,9 +161,16 @@ class Script(Processor):
     experiments = self.refine(experiments, indexed)
     integrated = self.integrate(experiments, indexed)
 
+    if self.params.experiment_tag is not None:
+      self.log_frame(experiments, integrated)
+
     # Total Time
     info("")
     info("Total Time Taken = %f seconds" % (time() - st))
+
+  def log_frame(self, experiment, reflections, timestamp = None):
+    from xfel.ui.db.dxtbx_db import log_frame
+    log_frame(experiment, reflections, self.params, timestamp)
 
 if __name__ == '__main__':
   from dials.util import halraiser

@@ -18,3 +18,10 @@ mp {{
   nproc = {nproc}
   queue = {queue}
 }}
+experiment_tag = {experiment_tag}
+db {{
+  host = {host}
+  name = {dbname}
+  user = {user}
+  password = {password}
+}}

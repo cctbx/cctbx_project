@@ -223,7 +223,9 @@ dials_phil_str = '''
   include scope dials.algorithms.spot_prediction.reflection_predictor.phil_scope
 '''
 
-phil_scope = parse(xtc_phil_str + dials_phil_str, process_includes=True)
+from xfel.command_line.xfel_process import db_logging_phil_str
+
+phil_scope = parse(xtc_phil_str + dials_phil_str + db_logging_phil_str, process_includes=True)
 
 # work around for copying dxtbx FormatCBFCspad objects
 from xfel.cftbx.detector.cspad_cbf_tbx import cbf_wrapper
@@ -661,6 +663,15 @@ class InMemScript(DialsProcessScript):
       print str(e), "event", timestamp
       self.debug_file_handle.write(",integrate_failed_%d\n"%len(indexed))
       return
+
+    if self.params.experiment_tag is not None:
+      try:
+        self.log_frame(experiments, integrated, timestamp)
+      except Exception, e:
+        import traceback; traceback.print_exc()
+        print str(e), "event", timestamp
+        self.debug_file_handle.write(",db_logging_failed_%d\n" % len(integrated))
+        return
 
     self.debug_file_handle.write(",integrate_ok_%d\n"%len(integrated))
 

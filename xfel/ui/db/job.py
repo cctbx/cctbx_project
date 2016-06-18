@@ -78,14 +78,22 @@ def submit_job(app, job):
 
   d = dict(dry_run = app.params.dry_run,
     experiment = app.params.experiment,
+    experiment_tag = app.params.experiment_tag,
     run_num = job.run.run,
     trial = job.trial.trial,
     rungroup = job.rungroup.rungroup_id,
     output_dir = app.params.output_folder,
     nproc = app.params.mp.nproc,
     queue = app.params.mp.queue,
-    target = target_phil_path
+    target = target_phil_path,
+    host = app.params.db.host,
+    dbname = app.params.db.name,
+    user = app.params.db.user,
   )
+  if app.params.db.password is not None and len(app.params.db.password) == 0:
+    d['password'] = None
+  else:
+    d['password'] = app.params.db.password
 
   for line in template.readlines():
     phil.write(line.format(**d))
