@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/01/2016
+Last Changed: 06/19/2016
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -193,6 +193,9 @@ analysis
   charts = False
     .type = bool
     .help = If True, outputs PDF files w/ charts of mosaicity, rmsd, etc.
+  summary_graphs = False
+    .type = bool
+    .help = If True: spot-finding heatmap, res. histogram and beamXY graph
 }
 advanced
   .help = "Advanced, debugging and experimental options."

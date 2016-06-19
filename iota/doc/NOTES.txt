@@ -1,21 +1,6 @@
-IOTA v1.0.006 - New GUI features
+IOTA v1.0.007 - XTerm IOTA updates
 
-Bug Fixes:
-1. Can now run in selection-only mode (cctbx.xfel only) w/o errors
-
-New Features
-1. Rearranged iota_analysis.py module for use with GUI
-2. Added "Analysis" page in output window that pops up at end of run
-    a. Summary information
-    b. Displays relevant graphs
-    c. Button to run PRIME
-3. PRIME GUI now exists; can run either from IOTA front window, from IOTA
-analysis tab or by itself by calling "prime" in command line
-
-Known Issues:
-1. Still a little dodgy when running IOTA with DIALS; will be improved in future
-2. Unit cell clustering currently not active; removing scipy dependencies
-3. Because of this, median unit cell parameters returned; we are aware that
-this is woefully inadequate
-4. Sometimes (rarely) hangs when importing a script and changing processing
-options - trying to reproduce
+1. Selection-only mode now works (previously ran full integration)
+2. Option to bypass summary graphs (spot-finding heatmap, resolution
+histogram and beam XY graph), so that IOTA can be run remotely w/o X11
+forwarding.

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 06/01/2016
+Last Changed: 06/19/2016
 Description : IOTA GUI Initialization module
 '''
 
@@ -21,6 +21,7 @@ from matplotlib.figure import Figure
 
 from libtbx.easy_mp import parallel_map
 from libtbx import easy_pickle as ep
+from cctbx.uctbx import unit_cell
 
 from iota.components.iota_analysis import Analyzer, Plotter
 import iota.components.iota_input as inp

@@ -4,7 +4,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 06/01/2016
+Last Changed: 06/19/2016
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes (optional) unit cell analysis by hierarchical
               clustering (Zeldin, et al., Acta Cryst D, 2013). In case of
@@ -15,6 +15,14 @@ Description : Analyzes integration results and outputs them in an accessible
               resolution, data path, etc.)
 '''
 
+import os
+import numpy as np
+from collections import Counter
+import math
+
+import cPickle as pickle
+from cctbx.uctbx import unit_cell
+
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib import cm, colors
@@ -24,14 +32,6 @@ from mpl_toolkits.mplot3d import Axes3D
 assert Axes3D
 assert cm
 assert colors
-
-import os
-import numpy as np
-from collections import Counter
-import math
-
-import cPickle as pickle
-from cctbx.uctbx import unit_cell
 
 import iota.components.iota_misc as misc
 from iota.components.iota_misc import Capturing
@@ -381,8 +381,7 @@ class Analyzer(object):
                       "".format(np.mean(self.mos), np.std(self.mos)))
 
     # If more than one integrated image, plot various summary graphs
-    # (will be output even if run in GUI)
-    if len(self.final_objects) > 1:
+    if len(self.final_objects) > 1 and self.params.analysis.summary_graphs:
       plot = Plotter(self.params, self.final_objects, self.viz_dir)
       if ( self.params.advanced.integrate_with == 'cctbx' and
              self.params.cctbx.grid_search.type != None

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/01/2016
+Last Changed: 06/19/2016
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -674,7 +674,8 @@ class SingleImage(object):
   def process(self, single_image=False):
     """ Image processing; selects method, runs requisite modules """
 
-    self.status = 'processing'
+    if self.status != 'bypass grid search':
+      self.status = 'processing'
 
     #for CCTBX indexing / integration
     if self.params.advanced.integrate_with == 'cctbx':
@@ -685,13 +686,12 @@ class SingleImage(object):
       prev_epv = 9999
 
       while not terminate:
-
         if os.path.isfile(self.abort_file):
           self.fail = 'aborted'
           return self
 
         # Run grid search if haven't already
-        if self.fail == None and self.status != 'grid search':
+        if self.fail == None and 'grid search' not in self.status:
           self.integrate_cctbx('grid search', single_image=single_image)
 
         # Run selection if haven't already
