@@ -149,6 +149,12 @@ class MainWindow(wx.Frame):
                         shortHelp='Pause All Jobs',
                         longHelp='Pause all pending jobs')
     self.toolbar.AddSeparator()
+    self.tb_btn_calibrate = self.toolbar.AddLabelTool(wx.ID_ANY,
+                        label='Calibration',
+                        bitmap=wx.Bitmap('{}/32x32/calib.png'.format(icons)),
+                        shortHelp='Calibration',
+                        longHelp='Detector geometry calibration')
+    self.toolbar.AddSeparator()
     self.tb_btn_settings = self.toolbar.AddLabelTool(wx.ID_ANY,
                         label='Settings',
                         bitmap=wx.Bitmap('{}/32x32/settings.png'.format(icons)),
@@ -187,6 +193,7 @@ class MainWindow(wx.Frame):
     self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
     self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_run)
     self.Bind(wx.EVT_TOOL, self.onPause, self.tb_btn_pause)
+    self.Bind(wx.EVT_TOOL, self.onCalibration, self.tb_btn_calibrate)
     self.Bind(wx.EVT_TOOL, self.onSettings, self.tb_btn_settings)
 
     # Draw the main window sizer
@@ -259,6 +266,10 @@ class MainWindow(wx.Frame):
       self.params = settings_dlg.params
       self.title = 'CCTBX.XFEL | {} | {}'.format(self.params.experiment_tag,
                                                  self.params.experiment)
+
+  def onCalibration(self, e):
+    # TODO: Opens dialog to run detector calibration here
+    pass
 
   def onRun(self, e):
     ''' All the jobs will be activated here '''

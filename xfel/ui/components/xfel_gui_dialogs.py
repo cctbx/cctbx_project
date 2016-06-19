@@ -414,7 +414,7 @@ class RunBlockDialog(BaseDialog):
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
                         content_style=content_style,
-                        size=(600, 200),
+                        size=(600, 600),
                         *args, **kwargs)
 
     # Run block start / end points (choice widgets)
@@ -424,7 +424,41 @@ class RunBlockDialog(BaseDialog):
     firstidx = start.index(str(self.first_run))
     lastidx = stop.index(str(self.last_run))
 
-    self.runblocks = gctr.MultiChoiceCtrl(self,
+    self.option_sizer = wx.FlexGridSizer(1, 2, 0, 10)
+    self.option_sizer.AddGrowableCol(1, 1)
+
+    self.config_panel = wx.Panel(self)
+    config_box = wx.StaticBox(self.config_panel, label='Configuration')
+    self.config_sizer = wx.StaticBoxSizer(config_box)
+    self.config_panel.SetSizer(self.config_sizer)
+
+    runblock_box = wx.StaticBox(self, label='Options')
+    self.runblock_box_sizer = wx.StaticBoxSizer(runblock_box, wx.VERTICAL)
+    self.runblock_panel = ScrolledPanel(self, size=(550, 350))
+    self.runlbock_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.runblock_panel.SetSizer(self.runlbock_sizer)
+
+    # Active / Inactive checkbox
+    self.active = wx.CheckBox(self, label='Run Block Active')
+    self.active.SetValue(True)
+    self.option_sizer.Add(self.active)
+
+    # Image format choice
+    self.img_format = gctr.ChoiceCtrl(self,
+                                      label='Image Format:',
+                                      label_size=(100, -1),
+                                      ctrl_size=(150, -1),
+                                      choices=['CBF', 'pickle'])
+    self.option_sizer.Add(self.img_format, flag=wx.ALIGN_RIGHT)
+
+    # Configuration text ctrl (user can put in anything they want)
+    self.config = wx.TextCtrl(self.config_panel,
+                              size=(-1, 250),
+                              style=wx.TE_MULTILINE)
+    self.config_sizer.Add(self.config, 1, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Runblock runs choice
+    self.runblocks = gctr.MultiChoiceCtrl(self.runblock_panel,
                                           label='Run block:',
                                           label_style='bold',
                                           label_size=(100, -1),
@@ -432,27 +466,98 @@ class RunBlockDialog(BaseDialog):
                                           items={'start':start, 'end':stop})
     self.runblocks.start.SetSelection(firstidx)
     self.runblocks.end.SetSelection(lastidx)
-    self.main_sizer.Add(self.runblocks, flag=wx.EXPAND | wx.ALL, border=10)
+    self.runlbock_sizer.Add(self.runblocks, flag=wx.EXPAND | wx.ALL, border=10)
 
-    # Beam XYZ
-    self.beam_xyz = gctr.OptionCtrl(self,
+    # Detector address
+    self.address = gctr.TextButtonCtrl(self.runblock_panel,
+                                       label='Detector Address:',
+                                       label_style='bold',
+                                       label_size=(100, -1),
+                                       value='CxiDs2.0:Cspad.0')
+    self.runlbock_sizer.Add(self.address, flag=wx.EXPAND | wx.ALL, border=10)
+
+
+    # Beam XYZ (X, Y - pickle only)
+    self.beam_xyz = gctr.OptionCtrl(self.runblock_panel,
                                     label='Beam:',
                                     label_style='bold',
                                     label_size=(100, -1),
-                                    ctrl_size=(100, -1),
+                                    ctrl_size=(60, -1),
                                     items={'X':self.block.beamx,
                                            'Y':self.block.beamy,
                                            'DetZ':self.block.detz_parameter})
-    self.main_sizer.Add(self.beam_xyz, flag=wx.EXPAND | wx.ALL, border=10)
+    self.runlbock_sizer.Add(self.beam_xyz, flag=wx.EXPAND | wx.ALL, border=10)
 
-    # Dark path
-    self.dark_path = gctr.TextButtonCtrl(self,
-                                         label='Dark CBF Path:',
-                                         label_style='bold',
+    # Binning, energy, gain mask level
+    self.bin_nrg_gain = gctr.OptionCtrl(self.runblock_panel,
+                                        ctrl_size=(80, -1),
+                                        items={'binning':0,
+                                               'energy':0.0,
+                                               'gain_mask_level':0.0})
+    self.runlbock_sizer.Add(self.bin_nrg_gain, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Untrusted pixel mask path
+    self.untrusted_path = gctr.TextButtonCtrl(self.runblock_panel,
+                                              label='Untrusted Pixel Mask:',
+                                              label_style='normal',
+                                              label_size=(100, -1),
+                                              big_button=True,
+                                              value=str(self.block.untrusted_pixel_mask_path))
+    self.runlbock_sizer.Add(self.untrusted_path, flag=wx.EXPAND | wx.ALL,
+                            border=10)
+
+    # Calibration folder
+    self.calib_dir = gctr.TextButtonCtrl(self.runblock_panel,
+                                         label='Calibration:',
+                                         label_style='normal',
                                          label_size=(100, -1),
-                                         big_button=True,
-                          value=str(self.block.dark_avg_path))
-    self.main_sizer.Add(self.dark_path, flag=wx.EXPAND | wx.ALL, border=10)
+                                         big_button=True)
+    self.runlbock_sizer.Add(self.calib_dir, flag=wx.EXPAND | wx.ALL,
+                            border=10)
+
+    # Dark average path (pickle only)
+    self.dark_avg_path = gctr.TextButtonCtrl(self.runblock_panel,
+                                             label='Dark Average:',
+                                             label_style='normal',
+                                             label_size=(100, -1),
+                                             big_button=True,
+                                             value=str(self.block.dark_avg_path))
+    self.runlbock_sizer.Add(self.dark_avg_path, flag=wx.EXPAND | wx.ALL,
+                            border=10)
+
+    # Dark stddev path (pickle only)
+    self.dark_stddev_path = gctr.TextButtonCtrl(self.runblock_panel,
+                                                label='Dark StdDev:',
+                                                label_style='normal',
+                                                label_size=(100, -1),
+                                                big_button=True,
+                                                value=str(self.block.dark_stddev_path))
+    self.runlbock_sizer.Add(self.dark_stddev_path, flag=wx.EXPAND | wx.ALL,
+                            border=10)
+
+    # Dark map path (pickle only)
+    self.dark_map_path = gctr.TextButtonCtrl(self.runblock_panel,
+                                             label='Dark Map:',
+                                             label_style='normal',
+                                             label_size=(100, -1),
+                                             big_button=True)
+    self.runlbock_sizer.Add(self.dark_map_path, flag=wx.EXPAND | wx.ALL,
+                            border=10)
+
+    # Comment
+    self.comment = gctr.TextButtonCtrl(self.runblock_panel,
+                                       label='Comment:',
+                                       label_style='normal',
+                                       label_size=(100, -1))
+    self.runlbock_sizer.Add(self.comment, flag=wx.EXPAND | wx.ALL,
+                            border=10)
+
+    self.main_sizer.Add(self.option_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.config_panel, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.runblock_box_sizer.Add(self.runblock_panel)
+    self.main_sizer.Add(self.runblock_box_sizer, flag=wx.EXPAND | wx.ALL,
+                        border=10)
 
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
@@ -460,13 +565,22 @@ class RunBlockDialog(BaseDialog):
                         flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                         border=10)
 
-    self.Bind(wx.EVT_BUTTON, self.onDarkBrowse,
-              id=self.dark_path.btn_big.GetId())
+    self.Bind(wx.EVT_BUTTON, self.onDarkAvgBrowse,
+              id=self.dark_avg_path.btn_big.GetId())
+    self.Bind(wx.EVT_BUTTON, self.onDarkMapBrowse,
+              id=self.dark_map_path.btn_big.GetId())
+    self.Bind(wx.EVT_BUTTON, self.onDarkStdBrowse,
+              id=self.dark_stddev_path.btn_big.GetId())
+    self.Bind(wx.EVT_BUTTON, self.onCalibDirBrowse,
+              id=self.calib_dir.btn_big.GetId())
+    self.Bind(wx.EVT_CHOICE, self.onImageFormat, id=self.img_format.ctr.GetId())
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
+    self.configure_controls()
     self.Layout()
 
   def onOK(self, e):
+    #TODO: set all runblock variables here
     startrun_number = int(self.runblocks.start.GetString(self.runblocks.start.GetSelection()))
     startrun = self.block.app.get_run(run_number=startrun_number).id
 
@@ -480,9 +594,32 @@ class RunBlockDialog(BaseDialog):
     self.block.endrun = endrun
     e.Skip()
 
-  def onDarkBrowse(self, e):
+  def onImageFormat(self, e):
+    self.configure_controls()
+
+  def configure_controls(self):
+    sel= self.img_format.ctr.GetString(self.img_format.ctr.GetSelection())
+    if 'CBF' in sel:
+      self.beam_xyz.X.Disable()
+      self.beam_xyz.Y.Disable()
+      self.bin_nrg_gain.Hide()
+      self.dark_avg_path.Hide()
+      self.dark_stddev_path.Hide()
+      self.dark_map_path.Hide()
+      self.runblock_panel.SetupScrolling()
+    elif 'pickle' in sel:
+      self.beam_xyz.X.Enable()
+      self.beam_xyz.Y.Enable()
+      self.bin_nrg_gain.Show()
+      self.dark_avg_path.Show()
+      self.dark_stddev_path.Show()
+      self.dark_map_path.Show()
+      self.runblock_panel.Layout()
+      self.runblock_panel.SetupScrolling()
+
+  def onDarkAvgBrowse(self, e):
     dark_dlg = wx.FileDialog(self,
-                             message="Load dark file",
+                             message="Load dark average file",
                              defaultDir=os.curdir,
                              defaultFile="*.cbf",
                              wildcard="*.cbf",
@@ -490,8 +627,43 @@ class RunBlockDialog(BaseDialog):
                              )
 
     if dark_dlg.ShowModal() == wx.ID_OK:
-      self.dark_file = dark_dlg.GetPaths()[0]
+      self.dark_avg_path.ctr.SetValue(dark_dlg.GetPaths()[0])
     dark_dlg.Destroy()
+
+  def onDarkMapBrowse(self, e):
+    dark_dlg = wx.FileDialog(self,
+                             message="Load dark map file",
+                             defaultDir=os.curdir,
+                             defaultFile="*.cbf",
+                             wildcard="*.cbf",
+                             style=wx.OPEN | wx.FD_FILE_MUST_EXIST,
+                             )
+
+    if dark_dlg.ShowModal() == wx.ID_OK:
+      self.dark_map_path.ctr.SetValue(dark_dlg.GetPaths()[0])
+    dark_dlg.Destroy()
+
+  def onDarkStdBrowse(self, e):
+    dark_dlg = wx.FileDialog(self,
+                             message="Load dark stddev file",
+                             defaultDir=os.curdir,
+                             defaultFile="*.cbf",
+                             wildcard="*.cbf",
+                             style=wx.OPEN | wx.FD_FILE_MUST_EXIST,
+                             )
+
+    if dark_dlg.ShowModal() == wx.ID_OK:
+      self.dark_stddev_path.ctr.SetValue(dark_dlg.GetPaths()[0])
+    dark_dlg.Destroy()
+
+  def onCalibDirBrowse(self, e):
+    dlg = wx.DirDialog(self, "Choose calibration directory:",
+                       style=wx.DD_DEFAULT_STYLE)
+
+    if dlg.ShowModal() == wx.ID_OK:
+      self.calib_dir.ctr.SetValue(dark_dlg.GetPaths()[0])
+    dlg.Destroy()
+    e.Skip()
 
 class TrialDialog(BaseDialog):
   def __init__(self, parent, db,

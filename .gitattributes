@@ -3907,6 +3907,7 @@ xfel/ui/components/icons/24x24/gold_star.png -text
 xfel/ui/components/icons/24x24/light_on.png -text
 xfel/ui/components/icons/24x24/silver_star.png -text
 xfel/ui/components/icons/24x24/txt.png -text
+xfel/ui/components/icons/32x32/calib.png -text
 xfel/ui/components/icons/32x32/check.png -text
 xfel/ui/components/icons/32x32/config.png -text
 xfel/ui/components/icons/32x32/convert.png -text
