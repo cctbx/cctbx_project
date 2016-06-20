@@ -764,31 +764,25 @@ class TrialDialog(BaseDialog):
       with open(target_file, 'r') as phil_file:
         phil_file_contents = phil_file.read()
       self.phil_box.SetValue(phil_file_contents)
+      self.trial_phil.ctr.SetValue(target_file)
     load_dlg.Destroy()
-
-  def onReadIn(self, e):
-    ''' When PHIL file is selected, check for
-          a) existence,
-          b) readability,
-        and populate the text box with the PHIL parameters '''
-
-    pass
 
   def onDefault(self, e):
     # TODO: Generate default PHIL parameters
     pass
 
   def onOK(self, e):
-    target_phil_str = self.phil_box.GetValue()
-    comment = self.trial_comment.ctr.GetValue()
+    if self.new:
+      target_phil_str = self.phil_box.GetValue()
+      comment = self.trial_comment.ctr.GetValue()
 
-    if self.trial is None:
-      self.db.create_trial(
-        trial = int(self.trial_number.ctr.GetValue()),
-        active = True,
-        target_phil_str = target_phil_str,
-        comment = comment)
-    else:
-      self.trial.target_phil_str = target_phil_str
-      self.trial.comment = comment
+      if self.trial is None:
+        self.db.create_trial(
+          trial = int(self.trial_number.ctr.GetValue()),
+          active = False,
+          target_phil_str = target_phil_str,
+          comment = comment)
+      else:
+        self.trial.target_phil_str = target_phil_str
+        self.trial.comment = comment
     e.Skip()

@@ -688,12 +688,12 @@ class TrialPanel(wx.Panel):
     self.Bind(EVT_RUN_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_BUTTON, self.onAddBlock, self.btn_add_block)
     self.Bind(wx.EVT_BUTTON, self.onViewPHIL, self.btn_view_phil)
-    self.chk_active.Bind(wx.EVT_TOGGLEBUTTON, self.onToggleActivity)
+    self.chk_active.Bind(wx.EVT_CHECKBOX, self.onToggleActivity)
 
     self.SetSizer(self.main_sizer)
 
   def onViewPHIL(self, e):
-    view_dlg = dlg.TrialDialog(self, db=self.db, new=False)
+    view_dlg = dlg.TrialDialog(self, db=self.db, trial=self.trial, new=False)
     view_dlg.ShowModal()
     view_dlg.Destroy()
 
@@ -712,7 +712,7 @@ class TrialPanel(wx.Panel):
     assert len(set(run_numbers)) == len(run_numbers)
 
     if len(runs) == 0:
-      wx.MessageBox("Sorry, no runs found", "Error", wx.OK | wx.ICON_EXCLAMATION)
+      wx.MessageBox("No runs found", "Error", wx.OK | wx.ICON_EXCLAMATION)
       return
 
     min_run = runs[run_numbers.index(min(run_numbers))]
