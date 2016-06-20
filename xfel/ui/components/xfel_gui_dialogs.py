@@ -254,6 +254,7 @@ class DBCredentialsDialog(BaseDialog):
                         flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                         border=10)
 
+
 class CalibrationDialog(BaseDialog):
   def __init__(self, parent,
                label_style='bold',
@@ -392,6 +393,7 @@ class TagDialog(BaseDialog):
     self.edited_tags =[]
     self.index = 0
 
+    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
     self.top_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
     self.button_panel = wx.Panel(self)
@@ -433,13 +435,13 @@ class TagDialog(BaseDialog):
                        flag=wx.EXPAND | wx.RIGHT | wx.LEFT, border=10)
     self.main_sizer.Add(self.top_sizer,
                         flag=wx.EXPAND| wx.TOP | wx.BOTTOM, border=10)
-
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box,
                    flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                    border=10)
 
+    self.SetSizer(self.main_sizer)
     self.Layout()
 
     # Button bindings
@@ -510,8 +512,8 @@ class TagDialog(BaseDialog):
         # Add new tags to DB
         for tag in self.new_tags:
           self.db.create_tag(name=tag[0], comment=tag[1])
-      except Exception:
-        pass
+      except Exception, e:
+        print str(e)
 
       e.Skip()
 
