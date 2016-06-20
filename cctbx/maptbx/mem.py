@@ -91,6 +91,10 @@ class run(object) :
     self.crystal_gridding        = crystal_gridding
     self.use_scale               = use_scale
     self.convergence_r_threshold = convergence_r_threshold
+    #
+    if(self.f.anomalous_flag()):
+       merged = self.f.as_non_anomalous_array().merge_equivalents()
+       self.f = merged.array().set_observation_type( self.f )
     # current monitor and optimized functional values
     self.cntr         = None
     self.r            = None

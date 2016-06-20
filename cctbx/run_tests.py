@@ -78,6 +78,7 @@ tst_list = (
   ["$D/regression/tst_fourier_transform_real_part_at_x.py", "P31"],
   ["$D/regression/tst_miller.py", "P31"],
   "$D/regression/tst_mem.py",
+  "$D/regression/tst_mem_2.py",
   ["$D/regression/tst_reciprocal_space_asu.py", "P312"],
   ["$D/regression/tst_triplet_generator.py", "P41"],
   ["$D/regression/tst_emma.py", "P31"],
