@@ -99,9 +99,10 @@ class RunBlockButton(GradButton):
 
 
 class TagButton(GradButton):
-  def __init__(self, parent, run, size=wx.DefaultSize):
+  def __init__(self, parent, run, all_tags, size=wx.DefaultSize):
+    self.all_tags = all_tags
     self.run = run
-    self.tags = self.run.tags
+    self.tags = [t for t in self.run.tags]
     self.parent = parent
 
     GradButton.__init__(self, parent=parent, size=size)
@@ -109,7 +110,12 @@ class TagButton(GradButton):
     self.update_label()
 
   def update_label(self):
-    label = ', '.join([i.name for i in self.tags])
+    if len(self.tags) == 1:
+      label = self.tags[0].name
+    elif len(self.tags) > 1:
+      label = ', '.join([i.name for i in self.tags])
+    else:
+      label = ''
     self.SetLabel(label)
     self.SetFont(wx.Font(button_font_size, wx.DEFAULT, wx.NORMAL, wx.NORMAL))
     self.Refresh()
@@ -118,13 +124,13 @@ class TagButton(GradButton):
     ''' Calls dialog with tag options for all runs; user will select tags
         for this specific run
     '''
-    all_tags = self.run.app.get_all_tags()
-    all_tag_names = [t.name for t in all_tags]
+    choices = [i.name for i in self.all_tags]
     tag_dlg = wx.MultiChoiceDialog(self,
                                    message='Available sample tags',
                                    caption='Sample Tags',
-                                   choices=all_tag_names)
+                                   choices=choices)
     # Get indices of selected items (if any) and set them to checked
+    all_tag_names = [i.name for i in self.all_tags]
     local_tag_names = [i.name for i in self.tags]
     indices = [all_tag_names.index(i) for i in all_tag_names if i in local_tag_names]
     tag_dlg.SetSelections(indices)
@@ -133,23 +139,9 @@ class TagButton(GradButton):
     if (tag_dlg.ShowModal() == wx.ID_OK):
       tag_indices = tag_dlg.GetSelections()
 
-      self.tags = [i for i in all_tags if all_tags.index(i) in
+      # TODO: need to update actual run here, as well
+      self.tags = [i for i in self.all_tags if self.all_tags.index(i) in
                    tag_indices]
-      old_tags = self.run.tags
-      old_tag_names = [t.name for t in old_tags]
-      new_tag_names = [t.name for t in self.tags]
-
-      for new_tag in self.tags:
-        if new_tag.name not in old_tag_names:
-          self.run.add_tag(new_tag)
-
-      for old_tag in old_tags:
-        if old_tag.name not in new_tag_names:
-          self.run.remove_tag(old_tag)
-
-      # re-synchronize, just in case
-      self.tags = self.run.tags
-
       self.update_label()
 
 
@@ -248,6 +240,44 @@ class TextButtonCtrl(CtrlBase):
     output_box.AddGrowableCol(1, 1)
     self.SetSizer(output_box)
 
+class TwoButtonCtrl(CtrlBase):
+  ''' Generic panel that will place a text control, with a label and an
+      optional large button, and an optional bitmap button'''
+
+  def __init__(self, parent,
+               label='', label_size=(100, -1),
+               label_style='normal',
+               text_style=wx.TE_LEFT,
+               button1=False,
+               button1_label='Browse...',
+               button1_size=wx.DefaultSize,
+               button2=False,
+               button2_label='Default',
+               button2_size=wx.DefaultSize,
+               value=''):
+
+    CtrlBase.__init__(self, parent=parent, label_style=label_style)
+
+    output_box = wx.FlexGridSizer(1, 5, 0, 10)
+    self.txt = wx.StaticText(self, label=label, size=label_size)
+    self.txt.SetFont(self.font)
+    output_box.Add(self.txt)
+
+    self.ctr = wx.TextCtrl(self, style=text_style)
+    self.ctr.SetValue(value)
+    output_box.Add(self.ctr, flag=wx.EXPAND)
+
+    if button1:
+      self.button1 = wx.Button(self, label=button1_label, size=button1_size)
+      output_box.Add(self.button1)
+
+    if button2:
+      self.button2 = wx.Button(self, label=button2_label, size=button2_size)
+      output_box.Add(self.button2)
+
+    output_box.AddGrowableCol(1, 1)
+    self.SetSizer(output_box)
+
 class OptionCtrl(CtrlBase):
   ''' Generic panel will place a text control w/ label '''
   def __init__(self, parent, items,
@@ -311,6 +341,24 @@ class ChoiceCtrl(CtrlBase):
     self.txt = wx.StaticText(self, label=label, size=label_size)
     self.txt.SetFont(self.font)
     self.ctr = wx.Choice(self, size=ctrl_size, choices=choices)
+    ctr_box.Add(self.txt)
+    ctr_box.Add(self.ctr)
+
+    self.SetSizer(ctr_box)
+
+class CheckListCtrl(CtrlBase):
+  def __init__(self, parent,
+               choices,
+               label='',
+               label_size=(200, -1),
+               label_style='normal',
+               ctrl_size=(150, -1)):
+
+    CtrlBase.__init__(self, parent=parent, label_style=label_style)
+    ctr_box = wx.FlexGridSizer(1, 3, 0, 10)
+    self.txt = wx.StaticText(self, label=label, size=label_size)
+    self.txt.SetFont(self.font)
+    self.ctr = wx.CheckListBox(self, size=ctrl_size, choices=choices)
     ctr_box.Add(self.txt)
     ctr_box.Add(self.ctr)
 

@@ -268,8 +268,12 @@ class MainWindow(wx.Frame):
                                                  self.params.experiment)
 
   def onCalibration(self, e):
-    # TODO: Opens dialog to run detector calibration here
-    pass
+    calib_dlg = dlg.CalibrationDialog(self, db=self.db)
+    calib_dlg.Fit()
+
+    if calib_dlg.ShowModal() == wx.ID_OK:
+      print 'OK!'
+
 
   def onRun(self, e):
     ''' All the jobs will be activated here '''
@@ -407,7 +411,8 @@ class RunTab(BaseTab):
     row_sizer = wx.FlexGridSizer(1, 2, 0, 10)
     run_no = wx.StaticText(self.run_panel, label=str(run.run),
                            size=(60, -1))
-    tag_button = gctr.TagButton(self.run_panel, run=run)
+    tag_button = gctr.TagButton(self.run_panel, run=run,
+                                all_tags = self.all_tags)
     self.Bind(wx.EVT_BUTTON, self.onTagButton, id=tag_button.GetId())
     self.all_tag_buttons.append(tag_button)
     row_sizer.Add(run_no, flag=wx.EXPAND | wx.ALIGN_CENTRE)
@@ -528,7 +533,8 @@ class StatusTab(BaseTab):
   def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
 
-    self.main = main
+    self.db = main.db
+
     self.status_panel = ScrolledPanel(self, size=(300, 350))
     self.status_sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.status_panel.SetSizer(self.status_sizer)
@@ -552,14 +558,11 @@ class StatusTab(BaseTab):
                         border=10)
 
     # Bindings
-    self.Bind(wx.EVT_BUTTON, self.onFilterTags, self.btn_filter_tags)
     self.Bind(EVT_RUN_REFRESH, self.onPlotChart)
 
   def onPlotChart(self, e):
     pass
 
-  def onFilterTags(self, e):
-    pass
 
 class MergeTab(BaseTab):
   def __init__(self, parent, prefix='prime'):

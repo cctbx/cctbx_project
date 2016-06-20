@@ -254,6 +254,128 @@ class DBCredentialsDialog(BaseDialog):
                         flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                         border=10)
 
+class CalibrationDialog(BaseDialog):
+  def __init__(self, parent,
+               label_style='bold',
+               content_style='normal',
+               db=None,
+               *args, **kwargs):
+
+
+    BaseDialog.__init__(self, parent, label_style=label_style,
+                        content_style=content_style, *args, **kwargs)
+
+    self.db = db
+
+    # Metrology version name
+    self.version_name = gctr.TextButtonCtrl(self,
+                                            label='Metrology Version Name:',
+                                            label_size=(180, -1),
+                                            label_style='bold',
+                                            value='cspad')
+    self.main_sizer.Add(self.version_name, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Reflection type and number of images in subset
+    self.top_sizer = wx.FlexGridSizer(1, 2, 0, 20)
+    self.top_sizer.AddGrowableCol(1, 1)
+    choices = ['indexed', 'reindexed strong', 'integrated']
+    self.reflections = gctr.ChoiceCtrl(self,
+                                       label='Reflections:',
+                                       label_size=(100, -1),
+                                       label_style='bold',
+                                       choices=choices)
+    self.n_subset = gctr.SpinCtrl(self,
+                                  label='Images in subset:',
+                                  label_size=(120, -1),
+                                  label_style='normal')
+    self.top_sizer.Add(self.reflections)
+    self.top_sizer.Add(self.n_subset, wx.ALIGN_RIGHT)
+
+    #Trial & runs
+    self.trial_sizer = wx.FlexGridSizer(1, 2, 0, 20)
+    self.trial_sizer.AddGrowableCol(1, 1)
+    trials = [str(i.trial) for i in self.db.get_all_trials()]
+    self.trial_number = gctr.ChoiceCtrl(self,
+                                        label='Trial:',
+                                        label_size=(40, -1),
+                                        label_style='normal',
+                                        ctrl_size=(200, -1),
+                                        choices=trials)
+    self.trial_runs = gctr.CheckListCtrl(self,
+                                         label='Runs:',
+                                         label_size=(40, -1),
+                                         label_style='normal',
+                                         ctrl_size=(200, -1),
+                                         choices=[])
+    self.trial_sizer.Add(self.trial_number)
+    self.trial_sizer.Add(self.trial_runs, wx.ALIGN_RIGHT)
+
+    #Phil blob
+    self.phil_text = wx.TextCtrl(self, size=(550, 300),
+                                 style=wx.TE_MULTILINE)
+    self.phil_path = gctr.TwoButtonCtrl(self,
+                                        label='PHIL path:',
+                                        label_size=(80, -1),
+                                        label_style='normal',
+                                        button1=True,
+                                        button1_label='Browse...',
+                                        button2=True,
+                                        button2_label='Default PHIL')
+
+    self.main_sizer.Add(self.top_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.trial_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.phil_text, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.phil_path, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    self.main_sizer.Add(dialog_box,
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        border=10)
+    # Bindings
+    self.Bind(wx.EVT_CHOICE, self.onTrialChoice,
+              id=self.trial_number.ctr.GetId())
+    self.Bind(wx.EVT_BUTTON, self.onBrowse, self.phil_path.button1)
+    self.Bind(wx.EVT_BUTTON, self.onDefault, self.phil_path.button2)
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
+    self.find_runs()
+
+  def onOK(self, e):
+    # TODO: connect to db actions
+    e.Skip()
+
+  def onTrialChoice(self, e):
+    self.find_runs()
+
+  def find_runs(self):
+    self.trial_runs.ctr.Clear()
+    trial = self.db.get_all_trials()[self.trial_number.ctr.GetSelection()]
+    runs = [str(i.run) for i in trial.runs]
+    self.trial_runs.ctr.InsertItems(items=runs, pos=0)
+
+  def onBrowse(self, e):
+    ''' Open dialog for selecting PHIL file '''
+    load_dlg = wx.FileDialog(self,
+                             message="Load PHIL file",
+                             defaultDir=os.curdir,
+                             defaultFile="*.phil",
+                             wildcard="*.phil",
+                             style=wx.OPEN | wx.FD_FILE_MUST_EXIST,
+                             )
+    if load_dlg.ShowModal() == wx.ID_OK:
+      target_file = load_dlg.GetPaths()[0]
+      with open(target_file, 'r') as phil_file:
+        phil_file_contents = phil_file.read()
+      self.phil_text.SetValue(phil_file_contents)
+      self.phil_path.ctr.SetValue(target_file)
+    load_dlg.Destroy()
+
+  def onDefault(self, e):
+    # TODO: Generate default PHIL parameters
+    pass
+
+
 class TagDialog(BaseDialog):
   def __init__(self, parent,
                label_style='bold',
@@ -270,7 +392,6 @@ class TagDialog(BaseDialog):
     self.edited_tags =[]
     self.index = 0
 
-    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
     self.top_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
     self.button_panel = wx.Panel(self)
@@ -312,13 +433,13 @@ class TagDialog(BaseDialog):
                        flag=wx.EXPAND | wx.RIGHT | wx.LEFT, border=10)
     self.main_sizer.Add(self.top_sizer,
                         flag=wx.EXPAND| wx.TOP | wx.BOTTOM, border=10)
+
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box,
                    flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                    border=10)
 
-    self.SetSizer(self.main_sizer)
     self.Layout()
 
     # Button bindings
@@ -389,8 +510,8 @@ class TagDialog(BaseDialog):
         # Add new tags to DB
         for tag in self.new_tags:
           self.db.create_tag(name=tag[0], comment=tag[1])
-      except Exception, e:
-        print str(e)
+      except Exception:
+        pass
 
       e.Skip()
 
