@@ -2,10 +2,10 @@ from __future__ import division
 from xfel.ui.db import db_proxy
 from scitbx.array_family import flex
 
-class Frame(db_proxy):
-  def __init__(self, app, frame_id = None, **kwargs):
-    db_proxy.__init__(self, app, "%s_frame" % app.params.experiment_tag, id = frame_id, **kwargs)
-    self.frame_id = self.id
+class Event(db_proxy):
+  def __init__(self, app, event_id = None, **kwargs):
+    db_proxy.__init__(self, app, "%s_event" % app.params.experiment_tag, id = event_id, **kwargs)
+    self.event_id = self.id
 
 class Experiment(db_proxy):
   def __init__(self, app, experiment_id = None, experiment = None, **kwargs):
@@ -62,13 +62,21 @@ class Crystal(db_proxy):
   def __init__(self, app, crystal_id = None, crystal = None, **kwargs):
     assert [crystal_id, crystal].count(None) == 1
     if crystal is not None:
-      u = crystal.get_U() # orientation matrix
+      u = crystal.get_U()  # orientation matrix
       for i in xrange(len(u)):
-        kwargs['ori_%d'%(i+1)] = u[i]
+        kwargs['ori_%d' % (i + 1)] = u[i]
       kwargs['mosaic_block_rotation'] = crystal._ML_half_mosaicity_deg
       kwargs['mosaic_block_size'] = crystal._ML_domain_size_ang
 
-      self.cell = Cell(app, crystal=crystal)
+      try:
+        isoform_name = crystal.identified_isoform
+      except AttributeError:
+        self.cell = Cell(app, crystal=crystal)
+      else:
+        query = "SELECT id from `%s_cell` WHERE name = '%s'" % (app.params.experiment_tag,
+                                                                isoform_name)
+        cursor = app.execute_query(query)
+        self.cell = Cell(app, cell_id = cursor.fetchall()[0][0])
       kwargs['cell_id'] = self.cell.id
 
     db_proxy.__init__(self, app, "%s_crystal" % app.params.experiment_tag, id=crystal_id, **kwargs)
@@ -86,6 +94,7 @@ class Cell(db_proxy):
       kwargs['lookup_symbol'] = crystal.get_space_group().type().lookup_symbol()
     db_proxy.__init__(self, app, "%s_cell" % app.params.experiment_tag, id=cell_id, **kwargs)
     self.cell_id = self.id
+    self.bins = app.get_cell_bins(self.id)
 
 class Bin(db_proxy):
   def __init__(self, app, bin_id = None, **kwargs):

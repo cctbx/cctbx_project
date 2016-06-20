@@ -223,8 +223,21 @@ dials_phil_str = '''
   include scope dials.algorithms.spot_prediction.reflection_predictor.phil_scope
 '''
 
-from xfel.command_line.xfel_process import db_logging_phil_str
-
+db_logging_phil_str = '''
+  experiment_tag = ""
+    .type = str
+    .help = Used if using DB logging. This tag is prepended to each db table name.
+  db {
+    host = psdb-user.slac.stanford.edu
+      .type=str
+    name = ""
+      .type = str
+    user = ""
+      .type=str
+    password = ""
+      .type = str
+  }
+'''
 phil_scope = parse(xtc_phil_str + dials_phil_str + db_logging_phil_str, process_includes=True)
 
 # work around for copying dxtbx FormatCBFCspad objects
@@ -666,7 +679,7 @@ class InMemScript(DialsProcessScript):
 
     if self.params.experiment_tag is not None:
       try:
-        self.log_frame(experiments, integrated, timestamp)
+        self.log_frame(experiments, integrated, run.run(), timestamp)
       except Exception, e:
         import traceback; traceback.print_exc()
         print str(e), "event", timestamp
@@ -674,6 +687,10 @@ class InMemScript(DialsProcessScript):
         return
 
     self.debug_file_handle.write(",integrate_ok_%d\n"%len(integrated))
+
+  def log_frame(self, experiment, reflections, run, timestamp = None):
+    from xfel.ui.db.dxtbx_db import log_frame
+    log_frame(experiment, reflections, self.params, run, timestamp)
 
   def save_image(self, image, params, root_path):
     """ Save an image, in either cbf or pickle format.

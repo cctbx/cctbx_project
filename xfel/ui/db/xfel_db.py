@@ -9,14 +9,14 @@ from xfel.ui.db.rungroup import Rungroup
 from xfel.ui.db.tag import Tag
 from xfel.ui.db.job import Job
 from xfel.ui.db.stats import Stats
-from xfel.ui.db.experiment import Cell #Cell_Bin
+from xfel.ui.db.experiment import Cell, Bin
 
 from xfel.ui.db import get_db_connection
 
 from xfel.command_line.experiment_manager import initialize as initialize_base
 class initialize(initialize_base):
   expected_tables = ["run", "job", "rungroup", "trial", "tag", "run_tag", "event", "trial_rungroup",
-                     "imageset", "imageset_frame", "beam", "detector", "experiment",
+                     "imageset", "imageset_event", "beam", "detector", "experiment",
                      "crystal", "cell", "cell_bin", "bin"]
 
   def create_tables(self, sql_path = None):
@@ -81,7 +81,19 @@ class xfel_db_application(object):
                                   cell_beta = beta,
                                   cell_gamma = gamma,
                                   lookup_symbol = isoform.lookup_symbol)
-          #TODO add isoform bins
+          from cctbx.crystal import symmetry
+
+          cs = symmetry(unit_cell = isoform.cell,space_group_symbol=str(isoform.lookup_symbol))
+          mset = cs.build_miller_set(anomalous_flag=False, d_min=1.5)
+          binner = mset.setup_binner(n_bins=10)
+          for i in binner.range_used():
+            d_max, d_min = binner.bin_d_range(i)
+            Bin(self,
+                number = i,
+                d_min = d_min,
+                d_max = d_max,
+                total_hkl = binner.counts_complete()[i],
+                cell_id = cell.id)
     return trial
 
   def create_cell(self, **kwargs):
@@ -99,6 +111,12 @@ class xfel_db_application(object):
       cell_id = int(results[0][0])
 
     return Cell(self, cell_id=cell_id)
+
+  def get_cell_bins(self, cell_id):
+    query = "SELECT id FROM `%s_bin` WHERE cell_id = %d" % \
+            (self.params.experiment_tag, cell_id)
+    cursor = self.execute_query(query)
+    return [Bin(self, bin_id = i[0]) for i in cursor.fetchall()]
 
   def get_all_x(self, cls, name):
     query = "SELECT id FROM `%s_%s`" % (self.params.experiment_tag, name)
