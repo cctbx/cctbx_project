@@ -201,4 +201,4 @@ class xfel_db_application(object):
       job_id = job.job_id
 
   def get_stats(self, **kwargs):
-    return Stats(**kwargs)
+    return Stats(self, **kwargs)
