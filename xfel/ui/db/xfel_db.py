@@ -126,15 +126,26 @@ class xfel_db_application(object):
   def get_trial(self, trial_id):
     return Trial(self, trial_id)
 
-  def get_trial_rungroups(self, rungroup_id, only_active = False):
+  def get_trial_rungroups(self, trial_id, only_active = False):
     query = "SELECT rungroup_id FROM `%s_trial_rungroup` WHERE `%s_trial_rungroup`.trial_id = %d" % \
-            (self.params.experiment_tag, self.params.experiment_tag, rungroup_id)
+            (self.params.experiment_tag, self.params.experiment_tag, trial_id)
     cursor = self.execute_query(query)
     rungroups = [Rungroup(self, i[0]) for i in cursor.fetchall()]
     if only_active:
       return [rg for rg in rungroups if rg.active]
     else:
       return rungroups
+
+  def get_trial_runs(self, trial_id):
+    rungroups = self.get_trial_rungroups(trial_id, only_active=True)
+    runs = []
+    run_ids = []
+    for rungroup in rungroups:
+      for run in rungroup.runs:
+        if run.id not in run_ids:
+          run_ids.append(run.id)
+          runs.append(run)
+    return runs
 
   def get_all_trials(self, only_active = False):
     if only_active:

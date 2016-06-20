@@ -10,11 +10,14 @@ class Trial(db_proxy):
     # Called only if the property cannot be found
     if name == "rungroups":
       return self.app.get_trial_rungroups(self.id)
+    elif name == "runs":
+      return self.app.get_trial_runs(self.id)
     else:
       return super(Trial, self).__getattr__(name)
 
   def __setattr__(self, name, value):
     assert name != "rungroups"
+    assert name != "runs"
     super(Trial, self).__setattr__(name, value)
 
   def add_rungroup(self, rungroup):
