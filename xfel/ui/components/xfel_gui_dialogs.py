@@ -389,8 +389,8 @@ class TagDialog(BaseDialog):
         # Add new tags to DB
         for tag in self.new_tags:
           self.db.create_tag(name=tag[0], comment=tag[1])
-      except Exception:
-        pass
+      except Exception, e:
+        print str(e)
 
       e.Skip()
 

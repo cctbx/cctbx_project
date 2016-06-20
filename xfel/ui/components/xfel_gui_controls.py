@@ -99,10 +99,9 @@ class RunBlockButton(GradButton):
 
 
 class TagButton(GradButton):
-  def __init__(self, parent, run, all_tags, size=wx.DefaultSize):
-    self.all_tags = all_tags
+  def __init__(self, parent, run, size=wx.DefaultSize):
     self.run = run
-    self.tags = [t for t in self.run.tags]
+    self.tags = self.run.tags
     self.parent = parent
 
     GradButton.__init__(self, parent=parent, size=size)
@@ -110,12 +109,7 @@ class TagButton(GradButton):
     self.update_label()
 
   def update_label(self):
-    if len(self.tags) == 1:
-      label = self.tags[0].name
-    elif len(self.tags) > 1:
-      label = ', '.join([i.name for i in self.tags])
-    else:
-      label = ''
+    label = ', '.join([i.name for i in self.tags])
     self.SetLabel(label)
     self.SetFont(wx.Font(button_font_size, wx.DEFAULT, wx.NORMAL, wx.NORMAL))
     self.Refresh()
@@ -124,13 +118,13 @@ class TagButton(GradButton):
     ''' Calls dialog with tag options for all runs; user will select tags
         for this specific run
     '''
-    choices = [i.name for i in self.all_tags]
+    all_tags = self.run.app.get_all_tags()
+    all_tag_names = [t.name for t in all_tags]
     tag_dlg = wx.MultiChoiceDialog(self,
                                    message='Available sample tags',
                                    caption='Sample Tags',
-                                   choices=choices)
+                                   choices=all_tag_names)
     # Get indices of selected items (if any) and set them to checked
-    all_tag_names = [i.name for i in self.all_tags]
     local_tag_names = [i.name for i in self.tags]
     indices = [all_tag_names.index(i) for i in all_tag_names if i in local_tag_names]
     tag_dlg.SetSelections(indices)
@@ -139,9 +133,23 @@ class TagButton(GradButton):
     if (tag_dlg.ShowModal() == wx.ID_OK):
       tag_indices = tag_dlg.GetSelections()
 
-      # TODO: need to update actual run here, as well
-      self.tags = [i for i in self.all_tags if self.all_tags.index(i) in
+      self.tags = [i for i in all_tags if all_tags.index(i) in
                    tag_indices]
+      old_tags = self.run.tags
+      old_tag_names = [t.name for t in old_tags]
+      new_tag_names = [t.name for t in self.tags]
+
+      for new_tag in self.tags:
+        if new_tag.name not in old_tag_names:
+          self.run.add_tag(new_tag)
+
+      for old_tag in old_tags:
+        if old_tag.name not in new_tag_names:
+          self.run.remove_tag(old_tag)
+
+      # re-synchronize, just in case
+      self.tags = self.run.tags
+
       self.update_label()
 
 
