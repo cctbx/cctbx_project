@@ -738,3 +738,38 @@ class run(object):
       k_anisotropic  = self.k_anisotropic(),
       k_mask         = self.k_masks(),
       b_adj          = b_adj)
+
+# XXX SEVERE DUPLICATION
+# XXX Consolidate with analogous function in bulk_solvnet_and_scaling.py :
+# XXX apply_back_trace_of_overall_exp_scale_matrix
+class tmp(object):
+  def __init__(self, xray_structure, k_anisotropic, k_masks, ss):
+    self.xray_structure = xray_structure
+    self.k_anisotropic  = k_anisotropic
+    self.k_masks        = k_masks
+    self.ss             = ss
+    #
+    k_total = self.k_anisotropic
+    r = scitbx.math.gaussian_fit_1d_analytical(x=flex.sqrt(self.ss), y=k_total)
+    k,b = r.a, r.b
+    #
+    k,b,r = mmtbx.bulk_solvent.fit_k_exp_b_to_k_total(k_total, self.ss, k, b)
+    if(r<0.7): k_exp_overall, b_exp_overall = k,b
+    if(self.xray_structure is None): return None
+    b_adj = 0
+    if([k_exp_overall, b_exp_overall].count(None)==0 and k != 0):
+      bs1 = self.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+      def split(b_trace, xray_structure):
+        b_min = xray_structure.min_u_cart_eigenvalue()*adptbx.u_as_b(1.)
+        b_res = min(0, b_min + b_trace+1.e-6)
+        b_adj = b_trace-b_res
+        xray_structure.shift_us(b_shift = b_adj)
+        return b_adj, b_res
+      b_adj,b_res=split(b_trace=b_exp_overall,xray_structure=self.xray_structure)
+      k_new = k_exp_overall*flex.exp(-self.ss*b_adj)
+      bs2 = self.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+      diff = bs2-bs1
+      assert approx_equal(flex.min(diff), flex.max(diff))
+      assert approx_equal(flex.max(diff), b_adj)
+      self.k_anisotropic = self.k_anisotropic/k_new
+      self.k_masks = [m*flex.exp(-self.ss*b_adj) for m in self.k_masks]

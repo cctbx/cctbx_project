@@ -1094,21 +1094,21 @@ public:
           f_model[k] = f_model_abs;
         }
         // Using polynomial scale
-        //af::shared<FloatType> a_scale = aniso_u_scaler<FloatType>(
-        //  f_model.ref(), f_obs, miller_indices, unit_cell).a;
-        //af::shared<FloatType> k_aniso =
-        //  mmtbx::f_model::k_anisotropic<FloatType>(miller_indices, a_scale,
-        //    unit_cell);
-        scitbx::sym_mat3<FloatType> u_star_ = aniso_u_scaler<FloatType>(
-          f_model.ref(), f_obs, miller_indices).u_star;
+        af::shared<FloatType> a_scale = aniso_u_scaler<FloatType>(
+          f_model.ref(), f_obs, miller_indices, unit_cell).a;
         af::shared<FloatType> k_aniso =
-          mmtbx::f_model::k_anisotropic<FloatType>(miller_indices, u_star_);
+          mmtbx::f_model::k_anisotropic<FloatType>(miller_indices, a_scale,
+            unit_cell);
+//        scitbx::sym_mat3<FloatType> u_star_ = aniso_u_scaler<FloatType>(
+//          f_model.ref(), f_obs, miller_indices).u_star;
+//        af::shared<FloatType> k_aniso =
+//          mmtbx::f_model::k_anisotropic<FloatType>(miller_indices, u_star_);
         FloatType r = r_factor(f_obs, (f_model*k_aniso).const_ref());
         if(r < r_best) {
           k_best = k_sol_range[i];
           b_best = b_sol_range[j];
           k_anisotropic_best = k_aniso;
-          u_star_best = u_star_;
+          //u_star_best = u_star_;
           r_best = r;
         }
       }

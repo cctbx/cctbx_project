@@ -319,8 +319,24 @@ class run(mmtbx.f_model.manager):
       self.update(
         k_mask        = o_kbu_sol.k_mask(),
         k_anisotropic = o_kbu_sol.k_anisotropic())
+      assert approx_equal(self.r_all(), o_kbu_sol.r())
+      ##############
+      # use apply_back_trace in if below
+      if(self.xray_structure is not None):
+        o = mmtbx.bulk_solvent.scaler.tmp(
+          xray_structure = self.xray_structure,
+          k_anisotropic  = o_kbu_sol.k_anisotropic(),
+          k_masks        = [o_kbu_sol.k_mask()],
+          ss             = self.ss)
+        self.update_xray_structure(
+          xray_structure = o.xray_structure,
+          update_f_calc  = True)
+      #############
+        self.update(
+          k_mask        = o.k_masks,
+          k_anisotropic = o.k_anisotropic)
+
     self.show(prefix = "bulk-solvent and scaling", log = log)
-    assert approx_equal(self.r_all(), o_kbu_sol.r())
     #
     # Add contribution from H (if present and riding). This goes to f_part2.
     #
@@ -394,10 +410,11 @@ class run(mmtbx.f_model.manager):
         f_part2_twin  = f_part2_twin,
         k_anisotropic = obj.k_anisotropic())
       self.show(prefix = "add H (%4.2f, %6.2f)"%(kh, bh), log = log)
+    b_cart = adptbx.u_as_b(adptbx.u_star_as_u_cart(
+                             self.f_obs().unit_cell(), o_kbu_sol.u_star()))
     return group_args(
       k_sol  = o_kbu_sol.k_sol(),
       b_sol  = o_kbu_sol.b_sol(),
-      b_cart = adptbx.u_as_b(adptbx.u_star_as_u_cart(
-                             self.f_obs().unit_cell(), o_kbu_sol.u_star())),
+      b_cart = b_cart,
       k_h    = kh,
       b_h    = bh)
