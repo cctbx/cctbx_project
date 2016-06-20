@@ -1518,8 +1518,6 @@ class hhsearch_parser(hhpred_parser):
     self.scores = self.scores[:max_count]
     self.aligned_cols = self.aligned_cols[:max_count]
     self.identities = self.identities[:max_count]
-    self.similarities = self.similarities[:max_count]
-    self.sum_probs = self.sum_probs[:max_count]
 
     self.query_starts = self.query_starts[:max_count]
     self.query_ends = self.query_ends[:max_count]
