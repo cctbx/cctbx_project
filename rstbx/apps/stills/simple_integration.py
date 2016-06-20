@@ -21,6 +21,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       focus = self.spotfinder.pd['masks'][frame][0:2]
       if len(self.spotfinder.pd['masks'][frame]) < 3 or self.spotfinder.pd['masks'][frame][2] is None:
         self.mask_focus.append( None )
+        raise Sorry("No average profile available to set up the integration mask")
         continue; #no average profile; no pred/obs agreement; nothing possible
       average_profile = self.inputpd['masks'][frame][2]
       if verbose:
@@ -509,7 +510,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
           self.fuller_kapton_absorption_correction = C(
             panel_size_px = (self.inputpd['size1'],self.inputpd['size2']),
             pixel_size_mm = self.pixel_size,
-            detector_distance_mm = self.inputai.distance(),
+            detector_dist_mm = self.inputai.distance(),
             wavelength_ang = self.inputai.wavelength,
             BSmasks = self.BSmasks,
             get_ISmask_function = self.get_ISmask,
