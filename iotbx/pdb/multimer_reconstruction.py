@@ -96,6 +96,8 @@ class multimer(object):
                   'hierarchies')
 
     # Read the relevant transformation matrices
+    if transform_info is None:
+      raise Sorry('Sorry, no transform info of appropriate type was found.')
     self.transforms_obj = iotbx.ncs.input(
       hierarchy=pdb_obj.hierarchy,
       transform_info=transform_info,
