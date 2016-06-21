@@ -753,25 +753,11 @@ class TrialPanel(wx.Panel):
     self.refresh_trial()
 
   def onAddBlock(self, e):
-    runs = self.db.get_all_runs()
-    run_numbers = [r.run for r in runs]
-    assert len(set(run_numbers)) == len(run_numbers)
+    rblock_dlg = dlg.RunBlockDialog(self, None)
+    rblock_dlg.Fit()
 
-    if len(runs) == 0:
-      wx.MessageBox("No runs found", "Error", wx.OK | wx.ICON_EXCLAMATION)
-      return
-
-    min_run = runs[run_numbers.index(min(run_numbers))]
-    max_run = runs[run_numbers.index(max(run_numbers))]
-    if len(self.active_blocks) == 0:
-      start_run = min_run
-    else:
-      self.active_blocks[-1].endrun = max_run.id - 1 # this is wrong!!!
-      start_run = max_run
-
-    block = self.db.create_rungroup(startrun=start_run.id, active=True, detz_parameter=580)
-    self.trial.add_rungroup(block)
-    self.refresh_trial()
+    if (rblock_dlg.ShowModal() == wx.ID_OK):
+      self.refresh_trial()
 
   def refresh_trial(self):
     self.block_sizer.DeleteWindows()

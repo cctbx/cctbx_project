@@ -524,13 +524,39 @@ class RunBlockDialog(BaseDialog):
                content_style='normal',
                *args, **kwargs):
 
+    self.parent = parent
     self.block = block
-    db = block.app
-    self.first_run = db.get_run(run_id=block.startrun).run
-    if block.endrun is None:
+    if block is None:
+      db = parent.db
+      runs = db.get_all_runs()
+      run_numbers = [r.run for r in runs]
+      assert len(set(run_numbers)) == len(run_numbers)
+
+      if len(runs) == 0:
+        wx.MessageBox("No runs found", "Error", wx.OK | wx.ICON_EXCLAMATION)
+        assert False # Close and destroy dialog properly here
+
+      min_run = runs[run_numbers.index(min(run_numbers))]
+      self.first_run = min_run.run
       self.last_run = None
+
+      class defaults(object):
+        def __getattr__(self, item):
+          if item == "detector_address":
+            return 'CxiDs2.0:Cspad.0'
+          elif item == "detz_parameter":
+            return 580
+          else:
+            return None
+      block = defaults()
+
     else:
-      self.last_run = db.get_run(run_id=block.endrun).run
+      db = block.app
+      self.first_run = db.get_run(run_id=block.startrun).run
+      if block.endrun is None:
+        self.last_run = None
+      else:
+        self.last_run = db.get_run(run_id=block.endrun).run
 
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
@@ -558,11 +584,6 @@ class RunBlockDialog(BaseDialog):
     self.runblock_panel = ScrolledPanel(self, size=(550, 350))
     self.runlbock_sizer = wx.BoxSizer(wx.VERTICAL)
     self.runblock_panel.SetSizer(self.runlbock_sizer)
-
-    # Active / Inactive checkbox
-    self.active = wx.CheckBox(self, label='Run Block Active')
-    self.active.SetValue(True)
-    self.option_sizer.Add(self.active)
 
     # Image format choice
     self.img_format = gctr.ChoiceCtrl(self,
@@ -594,7 +615,7 @@ class RunBlockDialog(BaseDialog):
                                        label='Detector Address:',
                                        label_style='bold',
                                        label_size=(100, -1),
-                                       value='CxiDs2.0:Cspad.0')
+                                       value=block.detector_address)
     self.runlbock_sizer.Add(self.address, flag=wx.EXPAND | wx.ALL, border=10)
 
 
@@ -604,9 +625,9 @@ class RunBlockDialog(BaseDialog):
                                     label_style='bold',
                                     label_size=(100, -1),
                                     ctrl_size=(60, -1),
-                                    items=[('X', self.block.beamx),
-                                           ('Y', self.block.beamy),
-                                           ('DetZ', self.block.detz_parameter)])
+                                    items=[('X', block.beamx),
+                                           ('Y', block.beamy),
+                                           ('DetZ', block.detz_parameter)])
     self.runlbock_sizer.Add(self.beam_xyz, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Binning, energy, gain mask level
@@ -623,7 +644,7 @@ class RunBlockDialog(BaseDialog):
                                               label_style='normal',
                                               label_size=(100, -1),
                                               big_button=True,
-                                              value=str(self.block.untrusted_pixel_mask_path))
+                                              value=str(block.untrusted_pixel_mask_path))
     self.runlbock_sizer.Add(self.untrusted_path, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
@@ -642,7 +663,7 @@ class RunBlockDialog(BaseDialog):
                                              label_style='normal',
                                              label_size=(100, -1),
                                              big_button=True,
-                                             value=str(self.block.dark_avg_path))
+                                             value=str(block.dark_avg_path))
     self.runlbock_sizer.Add(self.dark_avg_path, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
@@ -652,17 +673,18 @@ class RunBlockDialog(BaseDialog):
                                                 label_style='normal',
                                                 label_size=(100, -1),
                                                 big_button=True,
-                                                value=str(self.block.dark_stddev_path))
+                                                value=str(block.dark_stddev_path))
     self.runlbock_sizer.Add(self.dark_stddev_path, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
     # Dark map path (pickle only)
-    self.dark_map_path = gctr.TextButtonCtrl(self.runblock_panel,
-                                             label='Dark Map:',
+    self.gain_map_path = gctr.TextButtonCtrl(self.runblock_panel,
+                                             label='Gain Map:',
                                              label_style='normal',
                                              label_size=(100, -1),
-                                             big_button=True)
-    self.runlbock_sizer.Add(self.dark_map_path, flag=wx.EXPAND | wx.ALL,
+                                             big_button=True,
+                                             value=str(block.gain_map_path))
+    self.runlbock_sizer.Add(self.gain_map_path, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
     # Comment
@@ -689,7 +711,7 @@ class RunBlockDialog(BaseDialog):
     self.Bind(wx.EVT_BUTTON, self.onDarkAvgBrowse,
               id=self.dark_avg_path.btn_big.GetId())
     self.Bind(wx.EVT_BUTTON, self.onDarkMapBrowse,
-              id=self.dark_map_path.btn_big.GetId())
+              id=self.gain_map_path.btn_big.GetId())
     self.Bind(wx.EVT_BUTTON, self.onDarkStdBrowse,
               id=self.dark_stddev_path.btn_big.GetId())
     self.Bind(wx.EVT_BUTTON, self.onCalibDirBrowse,
@@ -701,18 +723,38 @@ class RunBlockDialog(BaseDialog):
     self.Layout()
 
   def onOK(self, e):
-    #TODO: set all runblock variables here
+    if self.block is not None:
+      self.block.active = False
+    db = self.parent.db
+
     startrun_number = int(self.runblocks.start.GetString(self.runblocks.start.GetSelection()))
-    startrun = self.block.app.get_run(run_number=startrun_number).id
+    startrun = db.get_run(run_number=startrun_number).id
 
     endrun_number = self.runblocks.end.GetString(self.runblocks.end.GetSelection())
     if endrun_number == "None":
       endrun = None
     else:
-      endrun = self.block.app.get_run(run_number=int(endrun_number)).id
+      endrun = db.get_run(run_number=int(endrun_number)).id
 
-    self.block.startrun = startrun
-    self.block.endrun = endrun
+    self.block = db.create_rungroup(startrun=startrun,
+                                    endrun = endrun,
+                                    active = True,
+                                    config = self.config.GetValue(),
+                                    detector_address = self.address.ctr.GetValue(),
+                                    detz_parameter = self.beam_xyz.DetZ.GetValue(),
+                                    beamx = self.beam_xyz.X.GetValue(),
+                                    beamy = self.beam_xyz.Y.GetValue(),
+                                    binning = self.bin_nrg_gain.binning.GetValue(),
+                                    energy = self.bin_nrg_gain.energy.GetValue(),
+                                    untrusted_pixel_mask_path = self.untrusted_path.ctr.GetValue(),
+                                    dark_avg_path = self.dark_avg_path.ctr.GetValue(),
+                                    dark_stddev_path = self.dark_stddev_path.ctr.GetValue(),
+                                    gain_map_path = self.gain_map_path.ctr.GetValue(),
+                                    gain_mask_level = self.bin_nrg_gain.gain_mask_level.GetValue(),
+                                    calib_dir = self.calib_dir.ctr.GetValue(),
+                                    comment = self.comment.ctr.GetValue())
+    self.parent.trial.add_rungroup(self.block)
+
     e.Skip()
 
   def onImageFormat(self, e):
@@ -726,7 +768,7 @@ class RunBlockDialog(BaseDialog):
       self.bin_nrg_gain.Hide()
       self.dark_avg_path.Hide()
       self.dark_stddev_path.Hide()
-      self.dark_map_path.Hide()
+      self.gain_map_path.Hide()
       self.runblock_panel.SetupScrolling()
     elif 'pickle' in sel:
       self.beam_xyz.X.Enable()
@@ -734,7 +776,7 @@ class RunBlockDialog(BaseDialog):
       self.bin_nrg_gain.Show()
       self.dark_avg_path.Show()
       self.dark_stddev_path.Show()
-      self.dark_map_path.Show()
+      self.gain_map_path.Show()
       self.runblock_panel.Layout()
       self.runblock_panel.SetupScrolling()
 
@@ -761,7 +803,7 @@ class RunBlockDialog(BaseDialog):
                              )
 
     if dark_dlg.ShowModal() == wx.ID_OK:
-      self.dark_map_path.ctr.SetValue(dark_dlg.GetPaths()[0])
+      self.gain_map_path.ctr.SetValue(dark_dlg.GetPaths()[0])
     dark_dlg.Destroy()
 
   def onDarkStdBrowse(self, e):

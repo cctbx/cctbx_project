@@ -34,19 +34,19 @@ class db_proxy(object):
     if id is None:
       # add the new items to the db
       query = "INSERT INTO `%s` " % self.table_name
-      keys = "("
-      vals = "VALUES ("
-      comma = ""
+      keys = []
+      vals = []
       for key, value in kwargs.iteritems():
-        if isinstance(value, bool):
-          value = int(value)
         self.db_dict[key] = value
-        keys += comma + key
-        vals += comma + "'%s'"%value
-        comma = ", "
-      keys += ")"
-      vals += ")"
-      query += keys + " " + vals
+        keys.append(key)
+        if isinstance(value, bool):
+          value = "'%s'"%int(value)
+        elif value is None or value == "None" or value == "":
+          value = "NULL"
+        else:
+          value = "'%s'"%str(value)
+        vals.append(value)
+      query += "(%s) VALUES (%s)"%(", ".join(keys), ", ".join(vals))
       cursor = self.app.execute_query(query, commit=True)
       self.id = cursor.lastrowid
     else:
@@ -83,7 +83,7 @@ class db_proxy(object):
 
     if isinstance(value, bool):
       value = "%s"%int(value)
-    elif value is None:
+    elif value is None or value == "None" or value == "":
       value = "NULL"
     else:
       value = "'%s'"%value
