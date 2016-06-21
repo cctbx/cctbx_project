@@ -492,6 +492,70 @@ class CalibrationDialog(BaseDialog):
     # TODO: Generate default PHIL parameters
     pass
 
+class AveragingDialog(BaseDialog):
+  def __init__(self, parent, run, params,
+               label_style='bold',
+               content_style='normal',
+               *args, **kwargs):
+
+    self.run = run
+    self.params = params
+
+    BaseDialog.__init__(self, parent, label_style=label_style,
+                        content_style=content_style, *args, **kwargs)
+
+    # Calib folder
+    self.calib_dir = gctr.TextButtonCtrl(self,
+                                         label='Calibration:',
+                                         label_style='normal',
+                                         label_size=(150, -1),
+                                         ctrl_size=(350, -1),
+                                         big_button=True)
+    self.main_sizer.Add(self.calib_dir, flag=wx.EXPAND | wx.ALL, border=10)
+    self.Bind(wx.EVT_BUTTON, self.onCalibDirBrowse, self.calib_dir.btn_big)
+
+    # Detector Address
+    self.address = gctr.TextButtonCtrl(self,
+                                       label='Detector Address:',
+                                       label_style='bold',
+                                       label_size=(150, -1),
+                                       value='')
+    self.main_sizer.Add(self.address, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Raw vs. corrected
+    img_types = ['raw', 'corrected']
+    self.avg_img_type = gctr.ChoiceCtrl(self,
+                                        label='Avg. Image Type:',
+                                        label_size=(150, -1),
+                                        label_style='bold',
+                                        choices=img_types)
+    self.main_sizer.Add(self.avg_img_type, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # DetZ
+    self.detz = gctr.OptionCtrl(self,
+                                label='DetZ:',
+                                label_style='bold',
+                                label_size=(150, -1),
+                                ctrl_size=(100, -1),
+                                items=[('DetZ', 580)])
+    self.main_sizer.Add(self.detz, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    self.main_sizer.Add(dialog_box,
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        border=10)
+
+  def onCalibDirBrowse(self, e):
+    dlg = wx.DirDialog(self, "Choose calibration directory:",
+                       style=wx.DD_DEFAULT_STYLE)
+
+    if dlg.ShowModal() == wx.ID_OK:
+      self.calib_dir.ctr.SetValue(dark_dlg.GetPaths()[0])
+    dlg.Destroy()
+    e.Skip()
+
+
 class TagDialog(BaseDialog):
   def __init__(self, parent,
                label_style='bold',

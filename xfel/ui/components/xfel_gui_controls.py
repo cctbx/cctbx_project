@@ -223,6 +223,7 @@ class TextButtonCtrl(CtrlBase):
                label='', label_size=(100, -1),
                label_style='normal',
                text_style=wx.TE_LEFT,
+               ctrl_size=(400, -1),
                big_button=False,
                big_button_label='Browse...',
                big_button_size=wx.DefaultSize,
@@ -235,7 +236,7 @@ class TextButtonCtrl(CtrlBase):
     self.txt.SetFont(self.font)
     output_box.Add(self.txt)
 
-    self.ctr = wx.TextCtrl(self, style=text_style)
+    self.ctr = wx.TextCtrl(self, style=text_style, size=ctrl_size)
     self.ctr.SetValue(value)
     output_box.Add(self.ctr, flag=wx.EXPAND)
 

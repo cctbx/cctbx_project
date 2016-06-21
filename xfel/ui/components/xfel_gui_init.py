@@ -410,7 +410,7 @@ class RunTab(BaseTab):
 
   def add_row(self, run):
     ''' Adds run row to table, matching colname_sizer '''
-    run_row = RunEntry(self.run_panel, run=run)
+    run_row = RunEntry(self.run_panel, run=run, params=self.main.params)
     self.all_tag_buttons.append(run_row.tag_button)
     self.run_sizer.Add(run_row, flag=wx.ALL | wx.EXPAND, border=0)
 
@@ -780,7 +780,10 @@ class TrialPanel(wx.Panel):
 
 class RunEntry(wx.Panel):
   ''' Adds run row to table, with average and view buttons'''
-  def __init__(self, parent, run):
+  def __init__(self, parent, run, params):
+    self.run = run
+    self.params = params
+
     wx.Panel.__init__(self, parent=parent)
 
     self.sizer = wx.FlexGridSizer(1, 4, 0, 10)
@@ -808,10 +811,15 @@ class RunEntry(wx.Panel):
     self.tag_button.change_tags()
 
   def onAvgButton(self, e):
-    # TODO: hook up to actual average function
-    e.GetEventObject().SetLabel('Running')
-    e.GetEventObject().Disable()
-    self.view_button.Show()
+    avg = dlg.AveragingDialog(self, self.run, self.params)
+    avg.Fit()
+    avg.Center()
+
+    if (avg.ShowModal() == wx.ID_OK):
+      e.GetEventObject().SetLabel('Running')
+      e.GetEventObject().Disable()
+      self.view_button.Show()
+      # TODO: hook up the calibration app
 
   def onViewButton(self, e):
     # TODO: hook up view function
