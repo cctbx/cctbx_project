@@ -24,7 +24,7 @@ file_name = None
 trim_alternative_conformations = False
   .type = bool
   .help = Leave only atoms with empty altloc
-include scope mmtbx.secondary_structure.build.model_idealization_master_phil_str
+include scope mmtbx.secondary_structure.build.ss_idealization_master_phil_str
 include scope mmtbx.secondary_structure.sec_str_master_phil_str
 include scope mmtbx.building.loop_idealization.loop_idealization_master_phil_str
 """
@@ -59,8 +59,8 @@ def run(args):
     pdb_file_names += work_params.file_name
   if len(pdb_file_names) == 0:
     raise Sorry("No PDB file specified")
-  work_params.model_idealization.enabled=True
-  # work_params.model_idealization.file_name_before_regularization="before.pdb"
+  work_params.ss_idealization.enabled=True
+  # work_params.ss_idealization.file_name_before_regularization="before.pdb"
 
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_file_names)
   pdb_input = iotbx.pdb.input(source_info=None,
@@ -138,9 +138,9 @@ def run(args):
     using_ncs = True
   # print "master_sel.size()", master_sel.size()
   # print "list(master_sel)", list(master_sel)
-  master_sel = flex.size_t(sorted(list(master_sel)))
-  master_pdb_h = pdb_h.select(master_sel)
-  master_pdb_h.write_pdb_file("master_h.pdb")
+  # master_sel = flex.size_t(sorted(list(master_sel)))
+  # master_pdb_h = pdb_h.select(master_sel)
+  # master_pdb_h.write_pdb_file("master_h.pdb")
 
   ann = ioss.annotation.from_phil(
       phil_helices=work_params.secondary_structure.protein.helix,
@@ -149,9 +149,11 @@ def run(args):
   xrs = pdb_h.extract_xray_structure(crystal_symmetry=cs)
   if ann.get_n_helices() + ann.get_n_sheets() == 0:
     ann = pdb_input.extract_secondary_structure()
-  print "Annotation in idealization"
-  print ann.as_pdb_str()
-  original_ann = ann.deep_copy()
+  original_ann = None
+  if ann is not None:
+    print "Annotation in idealization"
+    print ann.as_pdb_str()
+    original_ann = ann.deep_copy()
   # STOP()
   if ann is None or ann.get_n_helices() + ann.get_n_sheets() == 0:
     print >> log, "No secondary structure annotations found."
@@ -176,7 +178,7 @@ def run(args):
         real_h=master_pdb_h if master_pdb_h is not None else pdb_h,
         xray_structure=xrs,
         ss_annotation=ann,
-        params=work_params.model_idealization,
+        params=work_params.ss_idealization,
         cif_objects=inputs.cif_objects,
         verbose=True,
         log=log)

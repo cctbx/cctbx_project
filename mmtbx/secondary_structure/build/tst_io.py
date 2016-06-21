@@ -11,14 +11,14 @@ def exercise_process_params():
   ppars = ssb.process_params(params=params)
   assert not ppars.enabled
   assert not ppars.restrain_torsion_angles
-  params.model_idealization.enabled = True
+  params.ss_idealization.enabled = True
   ppars = ssb.process_params(params=params)
   assert ppars.enabled
-  ppars = ssb.process_params(params=params.model_idealization)
+  ppars = ssb.process_params(params=params.ss_idealization)
   assert ppars.enabled
-  params.model_idealization.sigma_on_reference_non_ss = -1
+  params.ss_idealization.sigma_on_reference_non_ss = -1
   try:
-    ppars = ssb.process_params(params=params.model_idealization)
+    ppars = ssb.process_params(params=params.ss_idealization)
   except AssertionError as e:
     assert e.args[0] == 'Bad sigma_on_reference_non_ss parameter'
 

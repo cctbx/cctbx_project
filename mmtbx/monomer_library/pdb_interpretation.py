@@ -5244,8 +5244,8 @@ class process(object):
         if atom_i_seq in unknown_atoms:
           self.all_chain_proxies.nonbonded_energy_type_registry.symbols[atom_i_seq] = \
               item.type_energy
-    # model_idealization
-    # if self.all_chain_proxies.params.model_idealization.enabled:
+    # ss_idealization
+    # if self.all_chain_proxies.params.ss_idealization.enabled:
     #   from mmtbx.secondary_structure import build as ssb
     #   from iotbx.pdb import secondary_structure as ioss
     #   ss_params = self.all_chain_proxies.params.secondary_structure
@@ -5260,7 +5260,7 @@ class process(object):
     #         real_h=self.all_chain_proxies.pdb_hierarchy,
     #         xray_structure=self.all_chain_proxies.extract_xray_structure(),
     #         ss_annotation=ann,
-    #         params=self.all_chain_proxies.params.model_idealization,
+    #         params=self.all_chain_proxies.params.ss_idealization,
     #         fname_before_regularization=None,
     #         log=self.log,
     #         rotamer_manager=None,

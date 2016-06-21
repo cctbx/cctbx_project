@@ -17,7 +17,7 @@ def exercise_01(prefix="tst_mi_test_01"):
   assert not easy_run.call(cmd)
   res_log = open("%s.log" % prefix, "r")
   log_lines = res_log.readlines()
-  for l in ["No secondary structure annotations found.\n"]:
+  for l in ["Secondary structure substitution step will be skipped\n"]:
     assert l in log_lines, "'%s' not in log file." % l
   res_log.close()
   # assert os.path.isfile("%s_start.pdb_idealized.pdb" % prefix)

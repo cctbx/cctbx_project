@@ -25,7 +25,7 @@ def run(args, log=sys.stdout):
   work_params.loop_idealization.variant_search_level=1
   # print work_params.loop_idealization.output_prefix
   # STOP()
-  # work_params.model_idealization.file_name_before_regularization="before.pdb"
+  # work_params.ss_idealization.file_name_before_regularization="before.pdb"
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_file_names)
   pdb_input = iotbx.pdb.input(source_info=None,
     lines=flex.std_string(pdb_combined.raw_records))

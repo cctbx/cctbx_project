@@ -61,8 +61,8 @@ helix_class_to_pdb_str = {'alpha':alpha_helix_str,
                           'pi':pi_helix_str,
                           '3_10': a310_helix_str}
 
-model_idealization_master_phil_str = """
-model_idealization
+ss_idealization_master_phil_str = """
+ss_idealization
 {
   enabled = False
     .type = bool
@@ -108,7 +108,7 @@ model_idealization
 }
 """
 
-master_phil = iotbx.phil.parse(model_idealization_master_phil_str)
+master_phil = iotbx.phil.parse(ss_idealization_master_phil_str)
 
 def print_hbond_proxies(geometry, hierarchy, pymol=False):
   """ Print hydrogen bonds in geometry restraints manager for debugging
@@ -399,12 +399,12 @@ def process_params(params):
   min_sigma = 1e-5
   if params is None:
     params = master_phil.fetch().extract()
-    params.model_idealization.enabled = True
-  if hasattr(params, "model_idealization"):
-    p_pars = params.model_idealization
+    params.ss_idealization.enabled = True
+  if hasattr(params, "ss_idealization"):
+    p_pars = params.ss_idealization
   else:
     assert hasattr(params, "enabled") and hasattr(params, "sigma_on_cbeta"), \
-        "Something wrong with parameters passed to model_idealization"
+        "Something wrong with parameters passed to ss_idealization"
     p_pars = params
   assert isinstance(p_pars.enabled, bool)
   assert isinstance(p_pars.restrain_torsion_angles, bool)
