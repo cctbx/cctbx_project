@@ -52,8 +52,10 @@ class BaseDialog(wx.Dialog):
                *args, **kwargs):
     wx.Dialog.__init__(self, parent, *args, **kwargs)
 
+    self.envelope = wx.BoxSizer(wx.VERTICAL)
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.SetSizer(self.main_sizer)
+    self.envelope.Add(self.main_sizer, flag=wx.EXPAND | wx.ALL, border=5)
+    self.SetSizer(self.envelope)
 
     if label_style == 'normal':
       self.font = wx.Font(norm_font_size, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
@@ -138,25 +140,26 @@ class SettingsDialog(BaseDialog):
                         flag=wx.EXPAND | wx.ALL,
                         border=10)
 
-    self.btn_mp = wx.Button(self, label='Multiprocessing...')
+    #self.btn_mp = wx.Button(self, label='Multiprocessing...')
     self.btn_op = wx.Button(self, label='Advanced Settings...')
     self.btn_OK = wx.Button(self, label="OK", id=wx.ID_OK)
     self.btn_cancel = wx.Button(self, label="Cancel", id=wx.ID_CANCEL)
 
-    button_sizer = wx.FlexGridSizer(1, 5, 0, 10)
-    button_sizer.AddMany([(self.btn_mp),
+    button_sizer = wx.FlexGridSizer(1, 4, 0, 10)
+    button_sizer.AddMany([#(self.btn_mp),
                           (self.btn_op),
                           (0,0),
                           (self.btn_OK),
                           (self.btn_cancel)])
 
-    button_sizer.AddGrowableCol(2)
+    button_sizer.AddGrowableCol(1)
     self.main_sizer.Add(button_sizer,
                         flag=wx.EXPAND | wx.ALL,
                         border=10)
     self.SetSizer(self.main_sizer)
 
     self.Bind(wx.EVT_BUTTON, self.onDBCredentialsButton, id=self.db_cred.btn_big.GetId())
+    self.Bind(wx.EVT_BUTTON, self.onAdvanced, id=self.btn_op.GetId())
     self.Bind(wx.EVT_BUTTON, self.onOK, id=self.btn_OK.GetId())
     self.Bind(wx.EVT_BUTTON, self.onBrowse, id=self.output.btn_big.GetId())
 
@@ -167,6 +170,15 @@ class SettingsDialog(BaseDialog):
     if dlg.ShowModal() == wx.ID_OK:
       self.output.ctr.SetValue(dlg.GetPath())
     dlg.Destroy()
+
+  def onAdvanced(self, e):
+    adv = AdvancedSettingsDialog(self, self.params)
+    adv.Fit()
+    adv.Center()
+
+    if (adv.ShowModal() == wx.ID_OK):
+      # TODO: Capture and set advanced settings
+      print 'DEBUT: Advanced settings not yet enabled'
 
   def onDBCredentialsButton(self, e):
     creds = DBCredentialsDialog(self, self.params)
@@ -254,6 +266,77 @@ class DBCredentialsDialog(BaseDialog):
                         flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                         border=10)
 
+class AdvancedSettingsDialog(BaseDialog):
+  ''' Advanced settings for the cctbx.xfel front end '''
+  def __init__(self, parent, params,
+               label_style='bold',
+               content_style='normal',
+               *args, **kwargs):
+
+    self.params = params
+    BaseDialog.__init__(self, parent, label_style=label_style,
+                        content_style=content_style, *args, **kwargs)
+
+    # Multiprocessing settings
+    mp_box = wx.StaticBox(self, label='Multiprocessing Options')
+    self.mp_sizer = wx.StaticBoxSizer(mp_box, wx.VERTICAL)
+
+    choices = ['python', 'mpi', 'sge', 'pbi', 'custom']
+    self.mp_option = gctr.ChoiceCtrl(self,
+                                     label='Multiprocessing:',
+                                     label_size=(120, -1),
+                                     label_style='bold',
+                                     choices=choices)
+    self.mp_sizer.Add(self.mp_option, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.queue = gctr.OptionCtrl(self,
+                                 label='Queue:',
+                                 label_size=(120, -1),
+                                 label_style='normal',
+                                 ctrl_size=(100, -1),
+                                 items=[('queue', '')])
+    self.mp_sizer.Add(self.queue, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.nproc = gctr.SpinCtrl(self,
+                               label='Number of processors:',
+                               label_size=(120, -1),
+                               label_style='normal',
+                               ctrl_size=(100, -1),
+                               ctrl_value='8',
+                               ctrl_min=1,
+                               ctrl_max=32)
+    self.mp_sizer.Add(self.nproc, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.mp_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Data analysis settings
+    analysis_box = wx.StaticBox(self, label='Data Analysis Options')
+    self.analysis_sizer = wx.StaticBoxSizer(analysis_box, wx.VERTICAL)
+
+    self.throttle = gctr.SpinCtrl(self,
+                                  label='Percent Analyzed:',
+                                  label_size=(120, -1),
+                                  label_style='bold',
+                                  ctrl_size=(100, -1),
+                                  ctrl_value='100',
+                                  ctrl_min=1,
+                                  ctrl_max=100)
+    self.analysis_sizer.Add(self.throttle, flag=wx.EXPAND | wx.ALL, border=10)
+    img_types = ['raw', 'corrected']
+    self.avg_img_type = gctr.ChoiceCtrl(self,
+                                        label='Avg. Image Type:',
+                                        label_size=(120, -1),
+                                        label_style='bold',
+                                        choices=img_types)
+    self.analysis_sizer.Add(self.avg_img_type, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.analysis_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    self.main_sizer.Add(dialog_box,
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        border=10)
+
+
 class CalibrationDialog(BaseDialog):
   def __init__(self, parent,
                label_style='bold',
@@ -288,7 +371,9 @@ class CalibrationDialog(BaseDialog):
                                   label='Images in subset:',
                                   label_size=(120, -1),
                                   label_style='normal',
-                                  value='1000', max=10000, min=10)
+                                  ctrl_value='1000',
+                                  ctrl_max=10000,
+                                  ctrl_min=10)
     self.top_sizer.Add(self.reflections)
     self.top_sizer.Add(self.n_subset, wx.ALIGN_RIGHT)
 
@@ -423,7 +508,6 @@ class TagDialog(BaseDialog):
     self.edited_tags =[]
     self.index = 0
 
-    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
     self.top_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
     self.button_panel = wx.Panel(self)
@@ -471,7 +555,6 @@ class TagDialog(BaseDialog):
                    flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                    border=10)
 
-    self.SetSizer(self.main_sizer)
     self.Layout()
 
     # Button bindings
