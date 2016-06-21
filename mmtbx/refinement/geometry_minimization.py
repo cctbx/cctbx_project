@@ -253,6 +253,7 @@ class run2(object):
       if (ncs_restraints_group_list is not None
           and len(ncs_restraints_group_list)) > 0:
         # do ncs minimization
+        print >> log, "Using NCS constraints."
         xrs = self.pdb_hierarchy.extract_xray_structure().deep_copy_scatterers()
         refine_selection = flex.size_t(xrange(xrs.scatterers().size()))
         tfg_obj = mmtbx.refinement.minimization_ncs_constraints.\
@@ -375,6 +376,7 @@ def minimize_wrapper_for_ramachandran(
   params.pdb_interpretation.c_beta_restraints=True
   params.pdb_interpretation.max_reasonable_bond_distance = None
   params.pdb_interpretation.peptide_link.apply_peptide_plane = True
+  params.pdb_interpretation.ncs_search.enabled = True
 
   processed_pdb_files_srv = mmtbx.utils.\
       process_pdb_file_srv(
@@ -385,6 +387,11 @@ def minimize_wrapper_for_ramachandran(
           cif_objects=None)
   processed_pdb_file, junk = processed_pdb_files_srv.\
       process_pdb_files(raw_records=flex.split_lines(hierarchy.as_pdb_string()))
+
+  ncs_restraints_group_list = []
+  if processed_pdb_file.ncs_obj is not None:
+    ncs_restraints_group_list = processed_pdb_file.ncs_obj.get_ncs_restraints_group_list()
+
   grm = get_geometry_restraints_manager(
       processed_pdb_file, xrs, params=params)
 
@@ -442,6 +449,7 @@ def minimize_wrapper_for_ramachandran(
       restraints_manager=grm,
       pdb_hierarchy=hierarchy,
       correct_special_position_tolerance=1.0,
+      ncs_restraints_group_list=ncs_restraints_group_list,
       max_number_of_iterations=300,
       number_of_macro_cycles=5,
       bond=True,
@@ -469,6 +477,7 @@ def minimize_wrapper_for_ramachandran(
       restraints_manager       = grm,
       pdb_hierarchy            = hierarchy,
       correct_special_position_tolerance = 1.0,
+      ncs_restraints_group_list=ncs_restraints_group_list,
       max_number_of_iterations = 300,
       number_of_macro_cycles   = 5,
       bond                     = True,

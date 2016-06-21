@@ -12,6 +12,7 @@ from libtbx.utils import Sorry
 from mmtbx.building.loop_idealization import loop_idealization
 import mmtbx.building.loop_closure.utils
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
+import iotbx.ncs
 
 
 master_params_str = """
@@ -101,13 +102,45 @@ def run(args):
         pdb_h_raw.atoms().size(), pdb_h.atoms().size())
   else:
     pdb_h = pdb_h_raw
+
   pdb_h.reset_atom_i_seqs()
+  original_hierarchy = pdb_h.deep_copy()
+  original_hierarchy.reset_atom_i_seqs()
   # couple checks if combined pdb_h is ok
   o_c = pdb_h.overall_counts()
   o_c.raise_duplicate_atom_labels_if_necessary()
   o_c.raise_residue_groups_with_multiple_resnames_using_same_altloc_if_necessary()
   o_c.raise_chains_with_mix_of_proper_and_improper_alt_conf_if_necessary()
   o_c.raise_improper_alt_conf_if_necessary()
+
+
+  master_pdb_h = None
+  ncs_obj = iotbx.ncs.input(
+      hierarchy=pdb_h,
+      chain_max_rmsd=2.0,
+      chain_similarity_threshold=0.99,
+      residue_match_radius=999.0)
+  print "Found NCS groups:"
+  ncs_obj.show(format='phil')
+  ncs_restr_group_list = ncs_obj.get_ncs_restraints_group_list(
+      raise_sorry=False)
+  using_ncs = False
+  total_ncs_selected_atoms = 0
+  master_sel = flex.size_t([])
+  for ncs_gr in ncs_restr_group_list:
+    total_ncs_selected_atoms += ncs_gr.master_iselection.size()
+    master_sel.extend(ncs_gr.master_iselection)
+    for c in ncs_gr.copies:
+      total_ncs_selected_atoms += c.iselection.size()
+  print "total_ncs_selected_atoms", total_ncs_selected_atoms
+  print "Total atoms in model", pdb_h.atoms().size()
+  if total_ncs_selected_atoms == pdb_h.atoms().size():
+    using_ncs = True
+  # print "master_sel.size()", master_sel.size()
+  # print "list(master_sel)", list(master_sel)
+  master_sel = flex.size_t(sorted(list(master_sel)))
+  master_pdb_h = pdb_h.select(master_sel)
+  master_pdb_h.write_pdb_file("master_h.pdb")
 
   ann = ioss.annotation.from_phil(
       phil_helices=work_params.secondary_structure.protein.helix,
@@ -116,6 +149,10 @@ def run(args):
   xrs = pdb_h.extract_xray_structure(crystal_symmetry=cs)
   if ann.get_n_helices() + ann.get_n_sheets() == 0:
     ann = pdb_input.extract_secondary_structure()
+  print "Annotation in idealization"
+  print ann.as_pdb_str()
+  original_ann = ann.deep_copy()
+  # STOP()
   if ann is None or ann.get_n_helices() + ann.get_n_sheets() == 0:
     print >> log, "No secondary structure annotations found."
     print >> log, "Secondary structure substitution step will be skipped"
@@ -128,15 +165,15 @@ def run(args):
     if outlier_selection_txt != "" and outlier_selection_txt is not None:
       negate_selection = "not (%s)" % outlier_selection_txt
     minimize_wrapper_for_ramachandran(
-        hierarchy=pdb_h,
+        hierarchy=master_pdb_h if master_pdb_h is not None else pdb_h,
         xrs=xrs,
-        original_pdb_h=pdb_h,
+        original_pdb_h=master_pdb_h if master_pdb_h is not None else pdb_h,
         excl_string_selection=negate_selection,
         log=None,
         ss_annotation=None)
   else:
     ssb.substitute_ss(
-        real_h=pdb_h,
+        real_h=master_pdb_h if master_pdb_h is not None else pdb_h,
         xray_structure=xrs,
         ss_annotation=ann,
         params=work_params.model_idealization,
@@ -146,26 +183,29 @@ def run(args):
     log.flush()
 
   # Write resulting pdb file.
+  pdb_h_shifted = (master_pdb_h if master_pdb_h is not None else pdb_h).deep_copy()
+  if shift_vector is not None:
+    # print >> log, "Shifting molecule back"
+    atoms = pdb_h_shifted.atoms()
+    sites_cart = atoms.extract_xyz()
+    atoms.set_xyz(new_xyz=sites_cart-shift_vector)
+
   write_whole_pdb_file(
       file_name="%s_ss_substituted.pdb" % os.path.basename(pdb_file_names[0]),
-      pdb_hierarchy=pdb_h,
+      pdb_hierarchy=pdb_h_shifted,
       crystal_symmetry=cs,
       ss_annotation=ann)
+  # STOP()
 
+  work_params.loop_idealization.minimize_whole = not using_ncs
+  work_params.loop_idealization.variant_search_level = 0
   loop_ideal = loop_idealization(
-      pdb_hierarchy=pdb_h,
+      pdb_hierarchy=master_pdb_h if master_pdb_h is not None else pdb_h,
       params=work_params.loop_idealization,
       secondary_structure_annotation=ann,
       log=log,
       verbose=True)
   log.flush()
-
-  # shifting back if needed
-  if shift_vector is not None:
-    print >> log, "Shifting molecule back"
-    atoms = loop_ideal.resulting_pdb_h.atoms()
-    sites_cart = atoms.extract_xyz()
-    atoms.set_xyz(new_xyz=sites_cart-shift_vector)
 
   cs_to_write = cs if shift_vector is None else None
   write_whole_pdb_file(
@@ -173,6 +213,42 @@ def run(args):
     pdb_hierarchy=loop_ideal.resulting_pdb_h,
     crystal_symmetry=cs_to_write,
     ss_annotation=ann)
+
+  if using_ncs:
+    ssb.set_xyz_smart(pdb_h, loop_ideal.resulting_pdb_h)
+    # multiply back and do geometry_minimization for the whole molecule
+    for ncs_gr in ncs_restr_group_list:
+      master_h = pdb_h.select(ncs_gr.master_iselection)
+      for c in ncs_gr.copies:
+        new_sites = master_h.atoms().extract_xyz()
+        new_c_sites = c.r.elems * new_sites + c.t
+        pdb_h.select(c.iselection).atoms().set_xyz(new_c_sites)
+    # and do geometry_minimization
+    print >> log, "Minimizing whole model"
+    log.flush()
+    minimize_wrapper_for_ramachandran(
+        hierarchy=pdb_h,
+        xrs=xrs,
+        original_pdb_h=original_hierarchy,
+        excl_string_selection=loop_ideal.ref_exclusion_selection,
+        log=log,
+        ss_annotation=original_ann)
+
+  # shifting back if needed
+  if shift_vector is not None:
+    print >> log, "Shifting molecule back"
+    log.flush()
+    atoms = pdb_h.atoms()
+    sites_cart = atoms.extract_xyz()
+    atoms.set_xyz(new_xyz=sites_cart-shift_vector)
+
+  write_whole_pdb_file(
+      file_name="%s_ss_all_idealized_multip.pdb" % os.path.basename(pdb_file_names[0]),
+      pdb_hierarchy=pdb_h,
+      crystal_symmetry=cs_to_write,
+      ss_annotation=original_ann)
+
+
 
   print >> log, "All done."
 if __name__ == "__main__":
