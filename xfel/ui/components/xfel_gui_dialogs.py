@@ -247,7 +247,7 @@ class DBCredentialsDialog(BaseDialog):
     # Drop tables button
     self.chk_drop_tables = wx.CheckBox(self,
                                        label='Delete and regenerate all tables')
-    self.main_sizer.Add(self.drop_tables, flag=wx.ALL, border=10)
+    self.main_sizer.Add(self.chk_drop_tables, flag=wx.ALL, border=10)
     self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
 
     # LCLS user name
