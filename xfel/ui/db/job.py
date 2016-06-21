@@ -94,7 +94,7 @@ def submit_job(app, job):
           modules.append(line.lstrip('[').rstrip(']'))
       assert len(modules) > 0
       config_str += "modules = %s\n"%(" ".join(modules))
-    config_str += job.rungroup.config_str
+      config_str += job.rungroup.config_str
 
     config_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d.cfg"%
       (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))

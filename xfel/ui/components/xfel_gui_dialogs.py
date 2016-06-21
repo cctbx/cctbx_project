@@ -97,6 +97,7 @@ class SettingsDialog(BaseDialog):
                         *args, **kwargs)
 
     self.params = params
+    self.drop_tables = False
 
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -191,7 +192,6 @@ class SettingsDialog(BaseDialog):
       self.params.web.user     = creds.web_user.ctr.GetValue()
       self.params.web.password = creds.web_password.ctr.GetValue()
 
-      # TODO: connect this variable to db
       self.drop_tables = creds.chk_drop_tables.GetValue()
 
 
@@ -280,16 +280,15 @@ class DBCredentialsDialog(BaseDialog):
     self.Fit()
 
   def onDropTables(self, e):
-    if e.GetValue():
+    if self.chk_drop_tables.GetValue():
       msg = wx.MessageDialog(self,
                              message='Are you sure?',
                              caption='Warning',
                              style=wx.YES_NO |  wx.ICON_EXCLAMATION)
 
-      if (msg.ShowModal() == wx.ID_YES):
-        self.chk_drop_tables.SetValue(True)
-      else:
+      if (msg.ShowModal() == wx.ID_NO):
         self.chk_drop_tables.SetValue(False)
+    e.Skip()
 
 
 class AdvancedSettingsDialog(BaseDialog):
@@ -851,9 +850,9 @@ class RunBlockDialog(BaseDialog):
     # Binning, energy, gain mask level
     self.bin_nrg_gain = gctr.OptionCtrl(self.runblock_panel,
                                         ctrl_size=(80, -1),
-                                        items=[('binning', 0),
-                                               ('energy', 0.0),
-                                               ('gain_mask_level', 0.0)])
+                                        items=[('binning', block.binning),
+                                               ('energy', block.energy),
+                                               ('gain_mask_level', block.gain_mask_level)])
     self.runlbock_sizer.Add(self.bin_nrg_gain, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Untrusted pixel mask path
@@ -871,7 +870,8 @@ class RunBlockDialog(BaseDialog):
                                          label='Calibration:',
                                          label_style='normal',
                                          label_size=(100, -1),
-                                         big_button=True)
+                                         big_button=True,
+                                         value=str(block.calib_dir))
     self.runlbock_sizer.Add(self.calib_dir, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
@@ -959,7 +959,7 @@ class RunBlockDialog(BaseDialog):
     self.block = db.create_rungroup(startrun=startrun,
                                     endrun = endrun,
                                     active = True,
-                                    config = self.config.GetValue(),
+                                    config_str = self.config.GetValue(),
                                     detector_address = self.address.ctr.GetValue(),
                                     detz_parameter = self.beam_xyz.DetZ.GetValue(),
                                     beamx = self.beam_xyz.X.GetValue(),

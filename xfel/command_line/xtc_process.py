@@ -224,7 +224,7 @@ dials_phil_str = '''
 '''
 
 db_logging_phil_str = '''
-  experiment_tag = ""
+  experiment_tag = None
     .type = str
     .help = Used if using DB logging. This tag is prepended to each db table name.
   db {

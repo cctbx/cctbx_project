@@ -78,7 +78,7 @@ class RunSentinel(Thread):
         print "%d new runs" % len(unknown_runs)
         self.post_refresh()
       else:
-        print "No new data..."
+        pass #print "No new data..."
       time.sleep(1)
 
 # ------------------------------- Job Sentinel ------------------------------- #
@@ -202,9 +202,12 @@ class MainWindow(wx.Frame):
     # Draw the main window sizer
     self.SetSizer(main_box)
 
-  def connect_to_db(self):
+  def connect_to_db(self, drop_tables = False):
     from xfel.ui.db.xfel_db import xfel_db_application
     self.db = xfel_db_application(self.params)
+
+    if drop_tables:
+      self.db.drop_tables()
 
     if not self.db.verify_tables():
       self.db.create_tables()
