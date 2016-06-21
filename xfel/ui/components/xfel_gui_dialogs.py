@@ -7,8 +7,9 @@ Last Changed: 06/04/2016
 Description : XFEL UI Custom Dialogs
 '''
 
-import wx
 import os
+import wx
+import wx.richtext as rt
 from wx.lib.mixins.listctrl import TextEditMixin, getListCtrlSelection
 from wx.lib.scrolledpanel import ScrolledPanel
 
@@ -208,7 +209,6 @@ class DBCredentialsDialog(BaseDialog):
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
                         content_style=content_style,
-                        size=(600, 350),
                         style=wx.NO_BORDER,
                         *args, **kwargs)
 
@@ -238,7 +238,11 @@ class DBCredentialsDialog(BaseDialog):
                                            text_style=wx.TE_PASSWORD,
                                            big_button_size=(130, -1),
                                            value=params.db.password)
-    self.main_sizer.Add(self.db_password, flag=wx.EXPAND | wx.ALL,border=10)
+    self.main_sizer.Add(self.db_password, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Drop tables button
+    self.drop_tables = wx.Button(self, label='Drop Tables')
+    self.main_sizer.Add(self.drop_tables, flag=wx.ALL, border=10)
     self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
 
     # LCLS user name
@@ -266,6 +270,21 @@ class DBCredentialsDialog(BaseDialog):
                         flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                         border=10)
 
+    self.Bind(wx.EVT_BUTTON, self.onDropTables, self.drop_tables)
+
+    self.Fit()
+
+  def onDropTables(self, e):
+    msg = wx.MessageDialog(self,
+                           message='Are you sure?',
+                           caption='Warning',
+                           style=wx.YES_NO |  wx.ICON_EXCLAMATION)
+
+    if (msg.ShowModal() == wx.ID_YES):
+      #TODO: ACTUALLY DROP TABLES
+      print 'TODO: Tables should be dropped here'
+
+
 class AdvancedSettingsDialog(BaseDialog):
   ''' Advanced settings for the cctbx.xfel front end '''
   def __init__(self, parent, params,
@@ -290,8 +309,8 @@ class AdvancedSettingsDialog(BaseDialog):
     self.mp_sizer.Add(self.mp_option, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Queue
-    queues = ['psanaq', 'psanaq', 'psanaidleq', 'psnehhiprioq', 'psnehprioq',
-              'psnehq', 'psfehhiprioq', 'psfehprioq', 'psfehq']
+    queues = ['psanaq', 'psanaq', 'psdebugq	','psanaidleq', 'psnehhiprioq',
+              'psnehprioq', 'psnehq', 'psfehhiprioq', 'psfehprioq', 'psfehq']
     self.queue = gctr.ChoiceCtrl(self,
                                  label='Queue:',
                                  label_size=(120, -1),
@@ -344,7 +363,7 @@ class AdvancedSettingsDialog(BaseDialog):
     if 'neh' in queue or 'feh' in queue:
       self.nproc.ctr.SetValue(12)
       self.nproc.ctr.SetIncrement(12)
-    elif 'psana' in queue:
+    elif 'psana' in queue or 'debug':
       self.nproc.ctr.SetValue(16)
       self.nproc.ctr.SetIncrement(16)
     else:
@@ -411,8 +430,7 @@ class CalibrationDialog(BaseDialog):
     self.trial_sizer.Add(self.trial_runs, wx.ALIGN_RIGHT)
 
     #Phil blob
-    self.phil_text = wx.TextCtrl(self, size=(550, 300),
-                                 style=wx.TE_MULTILINE)
+    self.phil_text = rt.RichTextCtrl(self, size=(550, 300), style=wx.VSCROLL)
     self.phil_path = gctr.TwoButtonCtrl(self,
                                         label='PHIL path:',
                                         label_size=(80, -1),
@@ -787,9 +805,9 @@ class RunBlockDialog(BaseDialog):
     self.option_sizer.Add(self.img_format, flag=wx.ALIGN_RIGHT)
 
     # Configuration text ctrl (user can put in anything they want)
-    self.config = wx.TextCtrl(self.config_panel,
-                              size=(-1, 250),
-                              style=wx.TE_MULTILINE)
+    self.config = rt.RichTextCtrl(self.config_panel,
+                                  size=(-1, 250),
+                                  style=wx.VSCROLL)
     self.config_sizer.Add(self.config, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Runblock runs choice
@@ -909,6 +927,8 @@ class RunBlockDialog(BaseDialog):
               id=self.dark_stddev_path.btn_big.GetId())
     self.Bind(wx.EVT_BUTTON, self.onCalibDirBrowse,
               id=self.calib_dir.btn_big.GetId())
+    self.Bind(wx.EVT_BUTTON, self.onUntrustedBrowse,
+              id=self.untrusted_path.btn_big.GetId())
     self.Bind(wx.EVT_CHOICE, self.onImageFormat, id=self.img_format.ctr.GetId())
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
@@ -1012,12 +1032,25 @@ class RunBlockDialog(BaseDialog):
       self.dark_stddev_path.ctr.SetValue(dark_dlg.GetPaths()[0])
     dark_dlg.Destroy()
 
+  def onUntrustedBrowse(self, e):
+    dlg = wx.FileDialog(self,
+                             message="Load untrusted pixel mask",
+                             defaultDir=os.curdir,
+                             defaultFile="*.pickle",
+                             wildcard="*.pickle",
+                             style=wx.OPEN | wx.FD_FILE_MUST_EXIST,
+                             )
+
+    if dlg.ShowModal() == wx.ID_OK:
+      self.untrusted_path.ctr.SetValue(dlg.GetPaths()[0])
+    dlg.Destroy()
+
   def onCalibDirBrowse(self, e):
     dlg = wx.DirDialog(self, "Choose calibration directory:",
                        style=wx.DD_DEFAULT_STYLE)
 
     if dlg.ShowModal() == wx.ID_OK:
-      self.calib_dir.ctr.SetValue(dark_dlg.GetPaths()[0])
+      self.calib_dir.ctr.SetValue(dlg.GetPath())
     dlg.Destroy()
     e.Skip()
 
@@ -1049,24 +1082,24 @@ class TrialDialog(BaseDialog):
     else:
       trial_number = trial.trial
 
-    self.trial_number = gctr.TextButtonCtrl(self,
-                                            label='Trial number:',
-                                            label_size=(150, -1),
-                                            label_style='bold',
-                                            big_button=True,
-                                            big_button_label='Default PHIL',
-                                            value="{}".format(trial_number))
+    self.trial_info = gctr.TwoButtonCtrl(self,
+                                         label='Trial number:',
+                                         label_size=(100, -1),
+                                         label_style='bold',
+                                         button1=True,
+                                         button1_label='Import PHIL',
+                                         button1_size=(120, -1),
+                                         button2=True,
+                                         button2_label='Default PHIL',
+                                         button2_size=(120, -1),
+                                         value="{}".format(trial_number))
     self.trial_comment = gctr.TextButtonCtrl(self,
                                              label='Comment:',
-                                             label_size=(150, -1),
-                                             label_style='bold')
-    self.trial_phil = gctr.TextButtonCtrl(self,
-                                          label='PHIL Path:',
-                                          label_size=(150, -1),
-                                          label_style='bold',
-                                          big_button=True)
-    self.phil_box = wx.TextCtrl(self, style=wx.TE_MULTILINE,
-                                size=(-1, 350))
+                                             label_size=(100, -1),
+                                             label_style='bold',
+                                             ghost_button=False)
+
+    self.phil_box = rt.RichTextCtrl(self, style=wx.VSCROLL, size=(-1, 450))
 
 
     # TODO: show trial's PHIL blob & inactivate everything
@@ -1077,16 +1110,13 @@ class TrialDialog(BaseDialog):
     #   self.trial_phil.ctr.SetStyle(wx.TE_READONLY)
     #   self.phil_box.SetStyle(wx.TE_READONLY)
 
-    self.main_sizer.Add(self.trial_number,
-                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                        border=10)
-    self.main_sizer.Add(self.phil_box, 1,
-                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                        border=10)
-    self.main_sizer.Add(self.trial_phil,
+    self.main_sizer.Add(self.trial_info,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
                         border=10)
     self.main_sizer.Add(self.trial_comment,
+                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
+                        border=10)
+    self.main_sizer.Add(self.phil_box, 1,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
                         border=10)
 
@@ -1094,7 +1124,7 @@ class TrialDialog(BaseDialog):
     if self.new:
       dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     else:
-      dialog_box = self.CreateSeparatedButtonSizer(wx.OK)
+      dialog_box = self.CreateSeparatedButtonSizer(wx.CANCEL)
     self.main_sizer.Add(dialog_box,
                         flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                         border=10)
@@ -1102,8 +1132,8 @@ class TrialDialog(BaseDialog):
     self.Layout()
 
     # Bindings
-    self.Bind(wx.EVT_BUTTON, self.onBrowse, self.trial_phil.btn_big)
-    self.Bind(wx.EVT_BUTTON, self.onDefault, self.trial_number.btn_big)
+    self.Bind(wx.EVT_BUTTON, self.onBrowse, self.trial_info.button1)
+    self.Bind(wx.EVT_BUTTON, self.onDefault, self.trial_info.button2)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
   def onBrowse(self, e):
@@ -1121,7 +1151,6 @@ class TrialDialog(BaseDialog):
       with open(target_file, 'r') as phil_file:
         phil_file_contents = phil_file.read()
       self.phil_box.SetValue(phil_file_contents)
-      self.trial_phil.ctr.SetValue(target_file)
     load_dlg.Destroy()
 
   def onDefault(self, e):
@@ -1135,7 +1164,7 @@ class TrialDialog(BaseDialog):
 
       if self.trial is None:
         self.db.create_trial(
-          trial = int(self.trial_number.ctr.GetValue()),
+          trial = int(self.trial_info.ctr.GetValue()),
           active = False,
           target_phil_str = target_phil_str,
           comment = comment)

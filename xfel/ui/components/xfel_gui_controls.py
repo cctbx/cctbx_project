@@ -230,6 +230,7 @@ class TextButtonCtrl(CtrlBase):
                big_button=False,
                big_button_label='Browse...',
                big_button_size=wx.DefaultSize,
+               ghost_button=True,
                value=''):
 
     CtrlBase.__init__(self, parent=parent, label_style=label_style)
@@ -244,7 +245,10 @@ class TextButtonCtrl(CtrlBase):
     output_box.Add(self.ctr, flag=wx.EXPAND)
 
     self.btn_big = wx.Button(self, label=big_button_label, size=big_button_size)
-    output_box.Add(self.btn_big, flag=wx.RESERVE_SPACE_EVEN_IF_HIDDEN)
+    if ghost_button:
+      output_box.Add(self.btn_big, flag=wx.RESERVE_SPACE_EVEN_IF_HIDDEN)
+    else:
+      output_box.Add(self.btn_big)
 
     if not big_button:
       self.btn_big.Hide()
