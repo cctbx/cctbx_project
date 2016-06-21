@@ -1,6 +1,7 @@
 # Phil template for experiment manager
 dry_run = {dry_run}
 input {{
+  cfg = {cfg}
   experiment = {experiment}
   run_num = {run_num}
   trial = {trial}

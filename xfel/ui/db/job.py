@@ -77,6 +77,7 @@ def submit_job(app, job):
   app.params.mp.queue = "psanaq"
 
   d = dict(dry_run = app.params.dry_run,
+    cfg = job.rungroup.config,
     experiment = app.params.experiment,
     experiment_tag = app.params.experiment_tag,
     run_num = job.run.run,
