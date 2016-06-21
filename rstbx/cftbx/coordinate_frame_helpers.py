@@ -510,13 +510,7 @@ def import_xds_inp(xds_inp_file):
     rotation_axis = R * A
     sample_to_source = R * B
     wavelength = handle.xray_wavelength
-    if handle.unit_cell_constants is not None:
-        a, b, c = handle.unit_cell_constants
-        real_space_a = R * matrix.col(a)
-        real_space_b = R * matrix.col(b)
-        real_space_c = R * matrix.col(c)
-    else:
-        real_space_a, real_space_b, real_space_c = None, None, None
+    real_space_a, real_space_b, real_space_c = None, None, None
     space_group_number = handle.space_group_number
     starting_angle = handle.starting_angle
     oscillation_range = handle.oscillation_range
