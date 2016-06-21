@@ -123,8 +123,14 @@ class xfel_db_application(object):
     cursor = self.execute_query(query)
     return [cls(self, i[0]) for i in cursor.fetchall()]
 
-  def get_trial(self, trial_id):
-    return Trial(self, trial_id)
+  def get_trial(self, trial_id = None, trial_number = None):
+    assert [trial_id, trial_number].count(None) == 1
+    if trial_id is None:
+      trials = [t for t in self.get_all_trials() if t.trial == trial_number]
+      assert len(trials) == 1
+      return trials[0]
+    else:
+      return Trial(self, trial_id)
 
   def get_trial_rungroups(self, trial_id, only_active = False):
     query = "SELECT rungroup_id FROM `%s_trial_rungroup` WHERE `%s_trial_rungroup`.trial_id = %d" % \

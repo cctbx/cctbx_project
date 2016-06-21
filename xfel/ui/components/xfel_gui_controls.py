@@ -328,14 +328,15 @@ class SpinCtrl(CtrlBase):
                label='',
                label_size=(200, -1),
                label_style='normal',
-               ctrl_size=(60, -1)):
+               ctrl_size=(60, -1),
+               value='3', max=20, min=3):
 
     CtrlBase.__init__(self, parent=parent, label_style=label_style)
 
     ctr_box = wx.FlexGridSizer(1, 3, 0, 10)
     self.txt = wx.StaticText(self, label=label, size=label_size)
     self.txt.SetFont(self.font)
-    self.ctr = wx.SpinCtrl(self, value='3', max=(20), min=(3), size=ctrl_size)
+    self.ctr = wx.SpinCtrl(self, value=value, max=(max), min=(min), size=ctrl_size)
     ctr_box.Add(self.txt)
     ctr_box.Add(self.ctr)
 

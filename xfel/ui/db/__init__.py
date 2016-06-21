@@ -5,6 +5,10 @@ except ImportError, e:
   from libtbx.utils import Sorry
   raise Sorry("Mysql is not installed")
 
+def get_run_path(rootpath, trial, rungroup, run):
+  import os
+  return os.path.join(rootpath, "r%04d"%run.run, "%03d_rg%03d"%(trial.trial, rungroup.id))
+
 def get_db_connection(params, block=True):
   if params.db.password is None:
     password = ""

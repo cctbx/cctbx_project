@@ -261,7 +261,7 @@ class CalibrationDialog(BaseDialog):
                db=None,
                *args, **kwargs):
 
-
+    self.parent = parent
     BaseDialog.__init__(self, parent, label_style=label_style,
                         content_style=content_style, *args, **kwargs)
 
@@ -287,7 +287,8 @@ class CalibrationDialog(BaseDialog):
     self.n_subset = gctr.SpinCtrl(self,
                                   label='Images in subset:',
                                   label_size=(120, -1),
-                                  label_style='normal')
+                                  label_style='normal',
+                                  value='1000', max=10000, min=10)
     self.top_sizer.Add(self.reflections)
     self.top_sizer.Add(self.n_subset, wx.ALIGN_RIGHT)
 
@@ -342,7 +343,38 @@ class CalibrationDialog(BaseDialog):
     self.find_runs()
 
   def onOK(self, e):
-    # TODO: connect to db actions
+    from xfel.ui.db import get_run_path
+    runs = [self.db.get_run(run_number=int(r)) for r in self.trial_runs.ctr.GetCheckedStrings()]
+    run_ids = [r.id for r in runs]
+    command = "cspad.cbf_metrology reflections=%s tag=%s split_dataset=True n_subset=%d "% (
+      self.reflections.ctr.GetStringSelection(), self.version_name.ctr.GetValue(),
+      self.n_subset.ctr.GetValue())
+
+    from xfel.ui import settings_dir
+    phil_file = os.path.join(settings_dir, "cfgs", "%s.phil"%self.version_name.ctr.GetValue())
+    f = open(phil_file, 'w')
+    f.write(self.phil_text.GetValue())
+    f.close()
+    command += phil_file + " "
+
+    trial = self.db.get_trial(trial_number=int(self.trial_number.ctr.GetStringSelection()))
+    runs_found = []
+    run_paths = []
+    for rungroup in trial.rungroups:
+      for run in rungroup.runs:
+        if run.id in runs_found:
+          continue
+        if run.id in run_ids:
+          run_ids.pop(run_ids.index(run.id))
+          runs_found.append(run.id)
+          run_paths.append(os.path.join(get_run_path(self.parent.params.output_folder, trial, rungroup, run), 'out'))
+    assert len(run_ids) == 0
+
+    command += " ".join(run_paths)
+    print command
+
+    # TODO: bsub
+
     e.Skip()
 
   def onTrialChoice(self, e):
