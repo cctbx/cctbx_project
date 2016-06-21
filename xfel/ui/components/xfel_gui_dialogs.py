@@ -191,6 +191,10 @@ class SettingsDialog(BaseDialog):
       self.params.web.user     = creds.web_user.ctr.GetValue()
       self.params.web.password = creds.web_password.ctr.GetValue()
 
+      # TODO: connect this variable to db
+      self.drop_tables = creds.chk_drop_tables.GetValue()
+
+
   def onOK(self, e):
     self.params.experiment_tag = self.db_cred.ctr.GetValue()
     self.params.experiment = self.params.db.name = self.experiment.ctr.GetValue()
@@ -241,7 +245,8 @@ class DBCredentialsDialog(BaseDialog):
     self.main_sizer.Add(self.db_password, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Drop tables button
-    self.drop_tables = wx.Button(self, label='Drop Tables')
+    self.chk_drop_tables = wx.CheckBox(self,
+                                       label='Delete and regenerate all tables')
     self.main_sizer.Add(self.drop_tables, flag=wx.ALL, border=10)
     self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
 
@@ -270,19 +275,21 @@ class DBCredentialsDialog(BaseDialog):
                         flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                         border=10)
 
-    self.Bind(wx.EVT_BUTTON, self.onDropTables, self.drop_tables)
+    self.Bind(wx.EVT_CHECKBOX, self.onDropTables, self.chk_drop_tables)
 
     self.Fit()
 
   def onDropTables(self, e):
-    msg = wx.MessageDialog(self,
-                           message='Are you sure?',
-                           caption='Warning',
-                           style=wx.YES_NO |  wx.ICON_EXCLAMATION)
+    if e.GetValue():
+      msg = wx.MessageDialog(self,
+                             message='Are you sure?',
+                             caption='Warning',
+                             style=wx.YES_NO |  wx.ICON_EXCLAMATION)
 
-    if (msg.ShowModal() == wx.ID_YES):
-      #TODO: ACTUALLY DROP TABLES
-      print 'TODO: Tables should be dropped here'
+      if (msg.ShowModal() == wx.ID_YES):
+        self.chk_drop_tables.SetValue(True)
+      else:
+        self.chk_drop_tables.SetValue(False)
 
 
 class AdvancedSettingsDialog(BaseDialog):
