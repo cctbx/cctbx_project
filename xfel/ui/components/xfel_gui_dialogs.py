@@ -1065,7 +1065,8 @@ class TrialDialog(BaseDialog):
                                           label_size=(150, -1),
                                           label_style='bold',
                                           big_button=True)
-    self.phil_box = wx.TextCtrl(self, style=wx.TE_MULTILINE)
+    self.phil_box = wx.TextCtrl(self, style=wx.TE_MULTILINE,
+                                size=(-1, 350))
 
 
     # TODO: show trial's PHIL blob & inactivate everything

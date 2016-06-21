@@ -226,7 +226,7 @@ class TextButtonCtrl(CtrlBase):
                label='', label_size=(100, -1),
                label_style='normal',
                text_style=wx.TE_LEFT,
-               ctrl_size=(400, -1),
+               ctrl_size=(200, -1),
                big_button=False,
                big_button_label='Browse...',
                big_button_size=wx.DefaultSize,
