@@ -410,19 +410,9 @@ class RunTab(BaseTab):
 
   def add_row(self, run):
     ''' Adds run row to table, matching colname_sizer '''
-    row_sizer = wx.FlexGridSizer(1, 2, 0, 10)
-    run_no = wx.StaticText(self.run_panel, label=str(run.run),
-                           size=(60, -1))
-    tag_button = gctr.TagButton(self.run_panel, run=run)
-    self.Bind(wx.EVT_BUTTON, self.onTagButton, id=tag_button.GetId())
-    self.all_tag_buttons.append(tag_button)
-    row_sizer.Add(run_no, flag=wx.EXPAND | wx.ALIGN_CENTRE)
-    row_sizer.Add(tag_button, flag=wx.EXPAND)
-    row_sizer.AddGrowableCol(1)
-    self.run_sizer.Add(row_sizer, flag=wx.ALL | wx.EXPAND, border=0)
-
-  def onTagButton(self, e):
-    e.GetEventObject().change_tags()
+    run_row = RunEntry(self.run_panel, run=run)
+    self.all_tag_buttons.append(run_row.tag_button)
+    self.run_sizer.Add(run_row, flag=wx.ALL | wx.EXPAND, border=0)
 
 
 class TrialsTab(BaseTab):
@@ -787,3 +777,42 @@ class TrialPanel(wx.Panel):
     if (rblock_dlg.ShowModal() == wx.ID_OK):
       self.refresh_trial()
 
+
+class RunEntry(wx.Panel):
+  ''' Adds run row to table, with average and view buttons'''
+  def __init__(self, parent, run):
+    wx.Panel.__init__(self, parent=parent)
+
+    self.sizer = wx.FlexGridSizer(1, 4, 0, 10)
+    run_no = wx.StaticText(self, label=str(run.run),
+                           size=(60, -1))
+    self.tag_button = gctr.TagButton(self, run=run)
+    self.avg_button = wx.Button(self, label='Average')
+    self.view_button = wx.Button(self, label='View')
+    self.view_button.Hide()
+
+    self.sizer.Add(run_no, flag=wx.EXPAND | wx.ALIGN_CENTRE)
+    self.sizer.Add(self.tag_button, flag=wx.EXPAND)
+    self.sizer.AddGrowableCol(1)
+    self.sizer.Add(self.avg_button)
+    self.sizer.Add(self.view_button, flag=wx.RESERVE_SPACE_EVEN_IF_HIDDEN)
+
+    # Button Bindings
+    self.Bind(wx.EVT_BUTTON, self.onTagButton, self.tag_button)
+    self.Bind(wx.EVT_BUTTON, self.onAvgButton, self.avg_button)
+    self.Bind(wx.EVT_BUTTON, self.onViewButton, self.view_button)
+
+    self.SetSizer(self.sizer)
+
+  def onTagButton(self, e):
+    self.tag_button.change_tags()
+
+  def onAvgButton(self, e):
+    # TODO: hook up to actual average function
+    e.GetEventObject().SetLabel('Running')
+    e.GetEventObject().Disable()
+    self.view_button.Show()
+
+  def onViewButton(self, e):
+    # TODO: hook up view function
+    pass
