@@ -618,7 +618,10 @@ def substitute_ss(real_h,
       "c_beta_restraints = True",
       "pdb_interpretation.secondary_structure.enabled=True",
       "pdb_interpretation.clash_guard.nonbonded_distance_threshold=None",
-      "pdb_interpretation.max_reasonable_bond_distance=None"])
+      "pdb_interpretation.max_reasonable_bond_distance=None",
+      "pdb_interpretation.nonbonded_weight=500",
+      "pdb_interpretation.peptide_link.oldfield.weight_scale=3",
+      "pdb_interpretation.peptide_link.oldfield.plot_cutoff=0.03"])
 
   if use_plane_peptide_bond_restr:
     custom_par_text += "\npdb_interpretation.peptide_link.apply_peptide_plane=True"
