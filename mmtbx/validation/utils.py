@@ -100,7 +100,7 @@ def find_sequence_mismatches (pdb_hierarchy,
   expected_seqs = []
   if (len(chains) != len(sequences)) or (not assume_same_order) :
     print >> log, "Can't determine sequence->chain mapping autoamtically"
-    print >> log, "Running sequence alignements. . ."
+    print >> log, "Running sequence alignments. . ."
     from mmtbx.alignment import pairwise_global_wrapper
     for chain in chains :
       chain_seq = chain.as_padded_sequence()
