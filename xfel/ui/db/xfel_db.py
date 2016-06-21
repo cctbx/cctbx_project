@@ -19,6 +19,9 @@ class initialize(initialize_base):
                      "imageset", "imageset_event", "beam", "detector", "experiment",
                      "crystal", "cell", "cell_bin", "bin"]
 
+  def __init__(self, params, dbobj):
+    initialize_base.__init__(self, params, dbobj, interactive = False, drop_tables = None)
+
   def create_tables(self, sql_path = None):
     if sql_path is None:
       sql_path = os.path.join(libtbx.env.find_in_repositories("xfel/ui/db"), "schema.sql")

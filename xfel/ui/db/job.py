@@ -61,11 +61,46 @@ def submit_job(app, job):
   if not os.path.exists(configs_dir):
     os.makedirs(configs_dir)
 
+  from xfel.command_line.xtc_process import phil_scope
+  from iotbx.phil import parse
+  trial_params = phil_scope.fetch(parse(job.trial.target_phil_str)).extract()
+  if trial_params.format.file_format == "cbf":
+    trial_params.format.cbf.detz_offset = job.rungroup.detz_parameter
+    trial_params.format.cbf.override_energy = job.rungroup.energy
+    trial_params.format.cbf.invalid_pixel_mask = job.rungroup.untrusted_pixel_mask_path
+    trial_params.format.cbf.gain_mask_value = job.rungroup.gain_mask_level
+  else:
+    assert False
+
+  working_phil = phil_scope.format(python_object=trial_params)
+  diff_phil = phil_scope.fetch_diff(source=working_phil)
+
   target_phil_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d_params.phil"%
     (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))
   phil = open(target_phil_path, "w")
-  phil.write(job.trial.target_phil_str)
+  phil.write(diff_phil.as_str())
   phil.close()
+
+  config_path = None
+  if job.rungroup.calib_dir is not None or job.rungroup.config_str is not None:
+    config_str = "[psana]\n"
+    if job.rungroup.calib_dir is not None:
+      config_str += "calib-dir=%s\n"%job.rungroup.calib_dir
+    if job.rungroup.config_str is not None:
+      modules = []
+      for line in job.rungroup.config_str.split("\n"):
+        assert isinstance(line, str)
+        if line.startswith('['):
+          modules.append(line.lstrip('[').rstrip(']'))
+      assert len(modules) > 0
+      config_str += "modules = %s\n"%(" ".join(modules))
+    config_str += job.rungroup.config_str
+
+    config_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d.cfg"%
+      (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))
+    cfg = open(config_path, 'w')
+    cfg.write(config_str)
+    cfg.close()
 
   submit_phil_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d_submit.phil"%
     (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))
@@ -77,7 +112,8 @@ def submit_job(app, job):
   app.params.mp.queue = "psanaq"
 
   d = dict(dry_run = app.params.dry_run,
-    cfg = job.rungroup.config,
+    cfg = config_path,
+    calib_dir = job.rungroup.calib_dir,
     experiment = app.params.experiment,
     experiment_tag = app.params.experiment_tag,
     run_num = job.run.run,

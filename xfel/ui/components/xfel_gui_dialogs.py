@@ -932,7 +932,7 @@ class RunBlockDialog(BaseDialog):
     self.block = db.create_rungroup(startrun=startrun,
                                     endrun = endrun,
                                     active = True,
-                                    config = self.config.GetValue(),
+                                    config_str = self.config.GetValue(),
                                     detector_address = self.address.ctr.GetValue(),
                                     detz_parameter = self.beam_xyz.DetZ.GetValue(),
                                     beamx = self.beam_xyz.X.GetValue(),
