@@ -490,7 +490,6 @@ def import_xds_inp(xds_inp_file):
     _Z = matrix.col([0, 0, 1])
 
     R = align_reference_frame(A, _X, B, _Z)
-    #R = align_reference_frame(X, _X, Y, _Y)
 
     # now transform contents of the XPARM file to the form which we want to
     # return...
@@ -567,16 +566,16 @@ def import_xds_inp(xds_inp_file):
             orgxs = handle.segment_orgx[i]
             orgys = handle.segment_orgy[i]
             fs = handle.segment_distance[i]
-            panel_origin = - (orgxs - x1 + 1) * px * fl \
-                - (orgys - y1 + 1) * py * sl \
-                + fs * nl \
-                - detector_origin
+            panel_origin = R * (- (orgxs - x1 + 1) * px * fl \
+                                - (orgys - y1 + 1) * py * sl \
+                                + fs * nl ) \
+                + detector_origin
 
             # detector to laboratory transformation
             ED = matrix.sqr(list(X) + list(Y) + list(N))
 
             panel_normal = (R * panel_fast).cross(R * panel_slow)
-            panel_origins.append(R * panel_origin)
+            panel_origins.append(panel_origin)
             panel_fast_axes.append(R * ED * panel_fast)
             panel_slow_axes.append(R * ED * panel_slow)
 
@@ -691,16 +690,16 @@ def import_xds_xparm(xparm_file):
             nl = fl.cross(sl)
 
             orgxs, orgys, fs = orientation[:3]
-            panel_origin = - (orgxs - x1 + 1) * px * fl \
-                - (orgys - y1 + 1) * py * sl \
-                + fs * nl \
-                - detector_origin
+            panel_origin = R * (- (orgxs - x1 + 1) * px * fl \
+                                - (orgys - y1 + 1) * py * sl \
+                                + fs * nl ) \
+                + detector_origin
 
             # detector to laboratory transformation
             ED = matrix.sqr(list(X) + list(Y) + list(N))
 
             panel_normal = (R * panel_fast).cross(R * panel_slow)
-            panel_origins.append(R * panel_origin)
+            panel_origins.append(panel_origin)
             panel_fast_axes.append(R * ED * panel_fast)
             panel_slow_axes.append(R * ED * panel_slow)
 
