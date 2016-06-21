@@ -1,8 +1,8 @@
 from __future__ import division
 import iotbx.pdb
+import libtbx.load_env
 from libtbx import easy_run
 from iotbx import mtz
-
 
 def run():
   pdb_str="""
@@ -26,5 +26,8 @@ END
     assert ma.anomalous_flag() is False
 
 if __name__ == "__main__" :
-  run()
-  print "OK"
+  if libtbx.env.has_module("phenix"):
+    run()
+    print "OK"
+  else:
+    print "Skipping test: phenix not available"
