@@ -363,7 +363,7 @@ class AdvancedSettingsDialog(BaseDialog):
     if 'neh' in queue or 'feh' in queue:
       self.nproc.ctr.SetValue(12)
       self.nproc.ctr.SetIncrement(12)
-    elif 'psana' in queue or 'debug':
+    elif 'psana' in queue or 'debug' in queue:
       self.nproc.ctr.SetValue(16)
       self.nproc.ctr.SetIncrement(16)
     else:
@@ -952,7 +952,7 @@ class RunBlockDialog(BaseDialog):
     self.block = db.create_rungroup(startrun=startrun,
                                     endrun = endrun,
                                     active = True,
-                                    config_str = self.config.GetValue(),
+                                    config = self.config.GetValue(),
                                     detector_address = self.address.ctr.GetValue(),
                                     detz_parameter = self.beam_xyz.DetZ.GetValue(),
                                     beamx = self.beam_xyz.X.GetValue(),
