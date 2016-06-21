@@ -315,7 +315,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.mp_sizer.Add(self.mp_option, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Queue
-    queues = ['psanaq', 'psanaq', 'psdebugq	','psanaidleq', 'psnehhiprioq',
+    queues = ['psanaq', 'psanaq', 'psdebugq     ','psanaidleq', 'psnehhiprioq',
               'psnehprioq', 'psnehq', 'psfehhiprioq', 'psfehprioq', 'psfehq']
     self.queue = gctr.ChoiceCtrl(self,
                                  label='Queue:',
@@ -985,7 +985,7 @@ class RunBlockDialog(BaseDialog):
     if 'CBF' in sel:
       self.beam_xyz.X.Disable()
       self.beam_xyz.Y.Disable()
-      self.bin_nrg_gain.Hide()
+      self.bin_nrg_gain.binning.Disable()
       self.dark_avg_path.Hide()
       self.dark_stddev_path.Hide()
       self.gain_map_path.Hide()
@@ -993,7 +993,7 @@ class RunBlockDialog(BaseDialog):
     elif 'pickle' in sel:
       self.beam_xyz.X.Enable()
       self.beam_xyz.Y.Enable()
-      self.bin_nrg_gain.Show()
+      self.bin_nrg_gain.binning.Enable()
       self.dark_avg_path.Show()
       self.dark_stddev_path.Show()
       self.gain_map_path.Show()
