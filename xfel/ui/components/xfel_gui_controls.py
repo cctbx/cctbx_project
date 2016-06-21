@@ -9,7 +9,10 @@ Description : XFEL UI Custom Widgets and Controls
 
 import os
 import wx
+import wx.lib.agw.floatspin as fs
 from wxtbx import metallicbutton as mb
+
+
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
@@ -332,15 +335,17 @@ class SpinCtrl(CtrlBase):
                ctrl_size=(60, -1),
                ctrl_value='3',
                ctrl_max=10,
-               ctrl_min=0):
+               ctrl_min=0,
+               ctrl_step=1):
 
     CtrlBase.__init__(self, parent=parent, label_style=label_style)
 
     ctr_box = wx.FlexGridSizer(1, 3, 0, 10)
     self.txt = wx.StaticText(self, label=label, size=label_size)
     self.txt.SetFont(self.font)
-    self.ctr = wx.SpinCtrl(self, value=ctrl_value, max=(ctrl_max),
-                           min=(ctrl_min), size=ctrl_size)
+    self.ctr = fs.FloatSpin(self, value=ctrl_value, max_val=(ctrl_max),
+                            min_val=(ctrl_min), increment=ctrl_step,
+                            digits=0, size=ctrl_size)
     ctr_box.Add(self.txt)
     ctr_box.Add(self.ctr)
 

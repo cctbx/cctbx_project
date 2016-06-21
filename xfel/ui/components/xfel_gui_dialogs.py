@@ -297,6 +297,7 @@ class AdvancedSettingsDialog(BaseDialog):
                                  label_size=(120, -1),
                                  label_style='bold',
                                  choices=queues)
+    self.Bind(wx.EVT_CHOICE, self.onQueueChoice, self.queue.ctr)
     self.mp_sizer.Add(self.queue, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.nproc = gctr.SpinCtrl(self,
@@ -338,6 +339,17 @@ class AdvancedSettingsDialog(BaseDialog):
                         flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                         border=10)
 
+  def onQueueChoice(self, e):
+    queue = self.queue.ctr.GetString(self.queue.ctr.GetSelection())
+    if 'neh' in queue or 'feh' in queue:
+      self.nproc.ctr.SetValue(12)
+      self.nproc.ctr.SetIncrement(12)
+    elif 'psana' in queue:
+      self.nproc.ctr.SetValue(16)
+      self.nproc.ctr.SetIncrement(16)
+    else:
+      self.nproc.ctr.SetValue(1)
+      self.nproc.ctr.SetIncrement(1)
 
 class CalibrationDialog(BaseDialog):
   def __init__(self, parent,
