@@ -292,6 +292,7 @@ class OptionCtrl(CtrlBase):
                label='',
                label_size=(100, -1),
                label_style='normal',
+               sub_labels=[],
                ctrl_size=(300, -1)):
 
     CtrlBase.__init__(self, parent=parent, label_style=label_style)
@@ -304,11 +305,17 @@ class OptionCtrl(CtrlBase):
     else:
       opt_box = wx.FlexGridSizer(1, len(items) * 2, 0, 10)
 
-    for key, value in items.iteritems():
-      if len(items) > 1:
-        opt_box.Add(wx.StaticText(self, id=wx.ID_ANY, label=key))
+    for key, value in items:
+      if sub_labels != []:
+        sub_label = sub_labels[items.index((key, value))]
+      else:
+        sub_label = key
 
-      item = wx.TextCtrl(self, id=wx.ID_ANY, size=ctrl_size)
+      if len(items) > 1:
+        opt_box.Add(wx.StaticText(self, id=wx.ID_ANY, label=sub_label))
+
+      item = wx.TextCtrl(self, id=wx.ID_ANY, size=ctrl_size,
+                         style=wx.TE_PROCESS_ENTER)
       item.SetValue(str(value))
       opt_box.Add(item)
       self.__setattr__(key, item)
@@ -444,3 +451,32 @@ class TableCtrl(CtrlBase):
 
     self.SetSizer(self.sizer)
 
+
+class GaugeBar(CtrlBase):
+  def __init__(self, parent,
+               label='',
+               label_size=(100, -1),
+               label_style='normal',
+               content_style='normal',
+               gauge_size=(250, 15),
+               button=False,
+               button_label='View Stats',
+               button_size=wx.DefaultSize,
+               gauge_max=100):
+    CtrlBase.__init__(self, parent=parent, label_style=label_style,
+                      content_style=content_style)
+
+    self.sizer = wx.FlexGridSizer(1, 5, 0, 10)
+    self.sizer.AddGrowableCol(5, 1)
+    self.bar = wx.Gauge(self, range=gauge_max, size=gauge_size)
+
+    self.sizer.Add(wx.StaticText(self, label=label, size=label_size))
+    self.sizer.Add(wx.StaticText(self, label='0'))
+    self.sizer.Add(self.bar, wx.ALIGN_CENTER)
+    self.sizer.Add(wx.StaticText(self, label=str(gauge_max)))
+
+    if button:
+      self.btn = wx.Button(self, label=button_label, size=button_size)
+      self.sizer.Add(self.btn, 1, wx.ALIGN_RIGHT | wx.ALIGN_CENTER)
+
+    self.SetSizer(self.sizer)

@@ -254,7 +254,6 @@ class DBCredentialsDialog(BaseDialog):
                         flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                         border=10)
 
-
 class CalibrationDialog(BaseDialog):
   def __init__(self, parent,
                label_style='bold',
@@ -375,7 +374,6 @@ class CalibrationDialog(BaseDialog):
   def onDefault(self, e):
     # TODO: Generate default PHIL parameters
     pass
-
 
 class TagDialog(BaseDialog):
   def __init__(self, parent,
@@ -606,17 +604,17 @@ class RunBlockDialog(BaseDialog):
                                     label_style='bold',
                                     label_size=(100, -1),
                                     ctrl_size=(60, -1),
-                                    items={'X':self.block.beamx,
-                                           'Y':self.block.beamy,
-                                           'DetZ':self.block.detz_parameter})
+                                    items=[('X', self.block.beamx),
+                                           ('Y', self.block.beamy),
+                                           ('DetZ', self.block.detz_parameter)])
     self.runlbock_sizer.Add(self.beam_xyz, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Binning, energy, gain mask level
     self.bin_nrg_gain = gctr.OptionCtrl(self.runblock_panel,
                                         ctrl_size=(80, -1),
-                                        items={'binning':0,
-                                               'energy':0.0,
-                                               'gain_mask_level':0.0})
+                                        items=[('binning', 0),
+                                               ('energy', 0.0),
+                                               ('gain_mask_level', 0.0)])
     self.runlbock_sizer.Add(self.bin_nrg_gain, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Untrusted pixel mask path

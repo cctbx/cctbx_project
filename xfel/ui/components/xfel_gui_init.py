@@ -14,6 +14,8 @@ from threading import Thread
 from wx.lib.scrolledpanel import ScrolledPanel
 from libtbx import easy_run
 
+import random
+
 import xfel.ui.components.xfel_gui_controls as gctr
 import xfel.ui.components.xfel_gui_dialogs as dlg
 from xfel.ui import load_cached_settings, save_cached_settings
@@ -55,6 +57,7 @@ class RunSentinel(Thread):
     evt = RefreshRuns(tp_EVT_RUN_REFRESH, -1)
     wx.PostEvent(self.parent.run_window.runs_tab, evt)
     wx.PostEvent(self.parent.run_window.trials_tab, evt)
+    wx.PostEvent(self.parent.run_window.status_tab, evt)
 
   def run(self):
     # one time post for an initial update
@@ -533,7 +536,7 @@ class StatusTab(BaseTab):
 
     self.main = main
     self.status_panel = ScrolledPanel(self, size=(300, 350))
-    self.status_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.status_sizer = wx.BoxSizer(wx.VERTICAL)
     self.status_panel.SetSizer(self.status_sizer)
 
     self.btn_filter_tags = wx.Button(self, label='Filter Tags...')
@@ -541,8 +544,9 @@ class StatusTab(BaseTab):
     goal_mult = 'Goal (fold multiplicity):'
     self.opt_multi = gctr.OptionCtrl(self,
                                      ctrl_size=(100, -1),
-                                     items={'{}'.format(show_mult):2.0,
-                                            '{}'.format(goal_mult):10.0})
+                                     sub_labels=[show_mult, goal_mult],
+                                     items=[('reslim', 2.0),
+                                            ('goal', 10)])
 
     self.bottom_sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.bottom_sizer.Add(self.btn_filter_tags)
@@ -556,10 +560,48 @@ class StatusTab(BaseTab):
 
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onFilterTags, self.btn_filter_tags)
+    self.Bind(wx.EVT_TEXT_ENTER, self.onMultiplicityGoal, self.opt_multi.goal)
     self.Bind(EVT_RUN_REFRESH, self.onPlotChart)
 
+    # TODO: calculate actual max from db
+    self.max_value = 150
+
+  def onMultiplicityGoal(self, e):
+    goal = self.opt_multi.goal.GetValue()
+    if goal.isdigit() and goal != '':
+      self.refresh_rows()
+
   def onPlotChart(self, e):
-    pass
+    self.refresh_rows()
+
+  def refresh_rows(self):
+    self.status_sizer.DeleteWindows()
+    self.tags = self.main.db.get_all_tags()
+    for tag in self.tags:
+      self.add_row(tag)
+
+    self.status_panel.Layout()
+    self.status_panel.SetupScrolling()
+
+  def add_row(self, tag=None):
+    # TODO: hook up actual db values
+    value = random.randrange(self.max_value)
+    goal = int(self.opt_multi.goal.GetValue())
+    if self.max_value >= goal:
+      gauge_max = self.max_value
+    else:
+      gauge_max = goal
+
+    row = gctr.GaugeBar(self.status_panel,
+                        label=tag.name,
+                        label_size=(150, -1),
+                        gauge_size=(350, 15),
+                        gauge_max=gauge_max,
+                        button=True)
+
+    row.bar.SetValue(value)
+    self.status_sizer.Add(row, flag=wx.EXPAND | wx.ALL, border=10)
+
 
   def onFilterTags(self, e):
     pass
