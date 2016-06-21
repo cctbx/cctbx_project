@@ -892,8 +892,8 @@ END
 """
   m = multimer(reconstruction_type = 'ba', pdb_str=pdb_str)
   assert m.new_annotation is not None
-  assert m.new_annotation.get_n_helices() == 24, \
-      "expecing 24 helices, got %d" % m.new_annotation.get_n_helices()
+  assert m.new_annotation.get_n_helices() == 27, \
+      "expecing 27 helices, got %d" % m.new_annotation.get_n_helices()
   assert m.new_annotation.get_n_sheets() == 0, \
       "expecing 0 sheets, got %d" % m.new_annotation.get_n_helices()
 

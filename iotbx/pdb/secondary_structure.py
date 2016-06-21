@@ -53,6 +53,7 @@ from libtbx import adopt_init_args
 import sys
 from iotbx.pdb.hybrid_36 import hy36encode, hy36decode
 import iotbx.cif.model
+import copy
 
 
 def segments_are_similar(atom_selection_1=None,
@@ -587,9 +588,11 @@ class annotation(structure_base):
         sheets.append(sh)
     return cls(helices=helices, sheets=sheets)
 
+  def deep_copy(self):
+    return copy.deepcopy(self)
+
   def multiply_to_asu(self, ncs_copies_chain_names, n_copies):
     from iotbx.ncs import format_num_as_str
-    import copy
     # ncs_copies_chain_names = {'chain B_022':'CD' ...}
     def make_key(chain_id, n):
       return "chain %s_%s" % (chain_id, format_num_as_str(n))
@@ -603,7 +606,7 @@ class annotation(structure_base):
     new_sheets = []
     new_h_serial = 1
     new_sheet_id = 1
-    for n_copy in xrange(1, n_copies+1):
+    for n_copy in xrange(1, n_copies+2):
       for helix in self.helices:
         new_helix = copy.deepcopy(helix)
         new_helix.erase_hbond_list()
@@ -620,6 +623,7 @@ class annotation(structure_base):
         for strand in new_sheet.strands:
           strand.set_new_chain_ids(
               get_new_chain_id(strand.start_chain_id, n_copy))
+          strand.sheet_id = "%s" % new_sheet_id
         for reg in new_sheet.registrations:
           if reg is not None:
             reg.set_new_cur_chain_id(
