@@ -289,12 +289,14 @@ class AdvancedSettingsDialog(BaseDialog):
                                      choices=choices)
     self.mp_sizer.Add(self.mp_option, flag=wx.EXPAND | wx.ALL, border=10)
 
-    self.queue = gctr.OptionCtrl(self,
+    # Queue
+    queues = ['psanaq', 'psanaq', 'psanaidleq', 'psnehhiprioq', 'psnehprioq',
+              'psnehq', 'psfehhiprioq', 'psfehprioq', 'psfehq']
+    self.queue = gctr.ChoiceCtrl(self,
                                  label='Queue:',
                                  label_size=(120, -1),
-                                 label_style='normal',
-                                 ctrl_size=(100, -1),
-                                 items=[('queue', '')])
+                                 label_style='bold',
+                                 choices=queues)
     self.mp_sizer.Add(self.queue, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.nproc = gctr.SpinCtrl(self,
