@@ -192,6 +192,10 @@ convert_semet_to_met = False
   .type = bool
   .short_caption = Convert SeMet residues to Met
   .style = noauto
+convert_met_to_semet = False
+  .type = bool
+  .short_caption = Convert Met residues to SeMet
+  .style = noauto
 rename_chain_id
   .help = Rename chains
   .short_caption = Rename chain ID
@@ -791,6 +795,28 @@ def normalize_occupancies (hierarchy, selection=None,
   if (xray_structure is not None) :
     xray_structure.scatterers().set_occupancies(occ)
 
+def convert_met_to_semet(pdb_hierarchy, xray_structure):
+  """
+  Change the chemical identity of MET residues to MSE, without changing
+  coordinates.
+  """
+  n_met = 0
+  scatterers = xray_structure.scatterers()
+  for i_seq, atom in enumerate(pdb_hierarchy.atoms()):
+    if(atom.name.strip() == "SD") and (atom.element.upper() == "S"):
+      scatterer = scatterers[i_seq]
+      assert scatterer.scattering_type.strip().upper()=="S"
+      atom_group = atom.parent()
+      if(atom_group.resname == "MET") :
+        n_met += 1
+        atom_group.resname = "MSE"
+        atom.name = " SE "
+        atom.element = "SE"
+        scatterer.scattering_type = 'SE'
+        for ag_atom in atom_group.atoms():
+          ag_atom.hetero = True
+  return n_met
+
 def convert_semet_to_met (pdb_hierarchy, xray_structure) :
   """
   Change the chemical identity of MSE residues to MET, without changing
@@ -1000,6 +1026,10 @@ def run(args, command_name="phenix.pdbtools", out=sys.stdout,
 ### convert MSE to MET
   if (params.modify.convert_semet_to_met) :
     convert_semet_to_met(pdb_hierarchy=pdb_hierarchy,
+      xray_structure=xray_structure)
+### convert MET to MSE
+  if(params.modify.convert_met_to_semet) :
+    convert_met_to_semet(pdb_hierarchy=pdb_hierarchy,
       xray_structure=xray_structure)
 ### set atomic charge
   if (params.modify.set_charge.charge_selection is not None) :

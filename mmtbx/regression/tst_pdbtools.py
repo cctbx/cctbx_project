@@ -872,6 +872,37 @@ TER
 END
 """)
 
+def exercise_convert_met_to_semet():
+  pdb_str_met = """
+ATOM      1  N   MET B  37       7.525   5.296   6.399  1.00 10.00           N
+ATOM      2  CA  MET B  37       6.533   6.338   6.634  1.00 10.00           C
+ATOM      3  C   MET B  37       6.175   7.044   5.330  1.00 10.00           C
+ATOM      4  O   MET B  37       5.000   7.200   5.000  1.00 10.00           O
+ATOM      5  CB  MET B  37       7.051   7.351   7.655  1.00 10.00           C
+ATOM      6  CG  MET B  37       7.377   6.750   9.013  1.00 10.00           C
+ATOM      7  SD  MET B  37       8.647   5.473   8.922  1.00 10.00           S
+ATOM      8  CE  MET B  37       8.775   5.000  10.645  1.00 10.00           C
+TER
+END
+  """
+  pi = iotbx.pdb.input(source_info=None, lines=pdb_str_met)
+  ph_met_in = pi.construct_hierarchy()
+  pi.write_pdb_file(file_name="exercise_convert_met_to_semet.pdb")
+  cmd = " ".join([
+    "phenix.pdbtools",
+    "exercise_convert_met_to_semet.pdb",
+    "convert_met_to_semet=true"])
+  run_command(command=cmd, verbose=False)
+  cmd = " ".join([
+    "phenix.pdbtools",
+    "exercise_convert_met_to_semet.pdb_modified.pdb",
+    "convert_semet_to_met=true"])
+  run_command(command=cmd, verbose=False)
+  pi_met_out = iotbx.pdb.input(
+    file_name="exercise_convert_met_to_semet.pdb_modified.pdb_modified.pdb"
+    ).construct_hierarchy()
+  assert pi_met_out.is_similar_hierarchy(ph_met_in)
+
 def exercise(args):
   if ("--show-everything" in args):
     verbose = 2
@@ -903,6 +934,7 @@ def exercise(args):
   exercise_move_waters()
   exercise_remove_alt_confs()
   exercise_normalize_occupancies()
+  exercise_convert_met_to_semet()
 
 if (__name__ == "__main__"):
   show_times_at_exit()
