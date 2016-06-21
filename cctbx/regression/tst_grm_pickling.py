@@ -179,6 +179,7 @@ def make_geo_pickle_unpickle(geometry, xrs, prefix):
   # print "From disc"
   from_file_v = from_file_out.getvalue()
   # print from_file_v
+  # STOP()
   assert not show_diff(init_v, from_file_v)
 
 def test_simple_protein(
@@ -257,6 +258,149 @@ def test_reference_coordinate(mon_lib_srv, ener_lib, prefix="tst_grm_pickling_re
   # print "number of rcr proxies:", geo.get_n_reference_coordinate_proxies()
   make_geo_pickle_unpickle(geo, processed_pdb_file.xray_structure(), prefix)
 
+def test_secondary_structure(mon_lib_srv, ener_lib, prefix="tst_grm_pickling_ss"):
+  pdb_str = """
+HELIX    2   2 ASP A   37  GLY A   48  1                                  12
+CRYST1  113.068  113.068   53.292  90.00  90.00  90.00 I 41          8
+ATOM    266  N   ASP A  37       6.265  61.752  14.145  1.00 35.17           N
+ATOM    267  CA  ASP A  37       5.251  62.335  15.056  1.00 37.08           C
+ATOM    268  C   ASP A  37       5.433  61.900  16.511  1.00 37.79           C
+ATOM    269  O   ASP A  37       6.443  61.316  16.858  1.00 37.54           O
+ATOM    270  CB  ASP A  37       3.827  62.120  14.521  1.00 37.53           C
+ATOM    271  CG  ASP A  37       3.427  60.683  14.400  1.00 38.76           C
+ATOM    272  OD1 ASP A  37       4.001  59.819  15.070  1.00 38.84           O
+ATOM    273  OD2 ASP A  37       2.506  60.327  13.624  1.00 41.78           O
+ATOM    274  N   ASP A  38       4.467  62.205  17.382  1.00 38.31           N
+ATOM    275  CA  ASP A  38       4.609  61.829  18.786  1.00 38.69           C
+ATOM    276  C   ASP A  38       4.781  60.335  18.955  1.00 37.78           C
+ATOM    277  O   ASP A  38       5.598  59.886  19.760  1.00 38.31           O
+ATOM    278  CB  ASP A  38       3.376  62.258  19.608  1.00 39.51           C
+ATOM    279  CG  ASP A  38       3.378  63.724  19.972  1.00 42.76           C
+ATOM    280  OD1 ASP A  38       4.462  64.343  20.161  1.00 48.07           O
+ATOM    281  OD2 ASP A  38       2.295  64.337  20.144  1.00 47.65           O
+ATOM    282  N   ALA A  39       4.003  59.561  18.209  1.00 36.68           N
+ATOM    283  CA  ALA A  39       4.065  58.107  18.287  1.00 36.58           C
+ATOM    284  C   ALA A  39       5.433  57.607  17.773  1.00 35.91           C
+ATOM    285  O   ALA A  39       6.014  56.661  18.319  1.00 35.28           O
+ATOM    286  CB  ALA A  39       2.947  57.491  17.483  1.00 36.33           C
+ATOM    287  N   GLY A  40       5.948  58.257  16.745  1.00 35.33           N
+ATOM    288  CA  GLY A  40       7.296  57.938  16.267  1.00 35.20           C
+ATOM    289  C   GLY A  40       8.386  58.218  17.295  1.00 34.81           C
+ATOM    290  O   GLY A  40       9.320  57.432  17.456  1.00 34.92           O
+ATOM    291  N   ARG A  41       8.297  59.351  17.981  1.00 35.65           N
+ATOM    292  CA  ARG A  41       9.300  59.698  18.970  1.00 35.75           C
+ATOM    293  C   ARG A  41       9.257  58.681  20.093  1.00 37.10           C
+ATOM    294  O   ARG A  41      10.295  58.291  20.642  1.00 37.65           O
+ATOM    295  CB  ARG A  41       9.090  61.118  19.494  1.00 36.15           C
+ATOM    296  CG  ARG A  41       9.575  62.196  18.563  1.00 35.51           C
+ATOM    297  CD  ARG A  41       9.383  63.592  19.134  1.00 38.98           C
+ATOM    298  NE  ARG A  41       7.999  64.012  18.913  1.00 40.46           N
+ATOM    299  CZ  ARG A  41       7.537  64.446  17.753  1.00 41.44           C
+ATOM    300  NH1 ARG A  41       8.326  64.534  16.682  1.00 42.62           N
+ATOM    301  NH2 ARG A  41       6.261  64.776  17.649  1.00 43.05           N
+ATOM    302  N   ALA A  42       8.053  58.238  20.441  1.00 38.18           N
+ATOM    303  CA  ALA A  42       7.878  57.270  21.524  1.00 38.42           C
+ATOM    304  C   ALA A  42       8.398  55.909  21.116  1.00 38.32           C
+ATOM    305  O   ALA A  42       8.952  55.181  21.927  1.00 37.15           O
+ATOM    306  CB  ALA A  42       6.387  57.158  21.948  1.00 38.91           C
+ATOM    307  N   THR A  43       8.209  55.567  19.842  1.00 37.57           N
+ATOM    308  CA  THR A  43       8.756  54.324  19.328  1.00 37.21           C
+ATOM    309  C   THR A  43      10.284  54.321  19.472  1.00 36.33           C
+ATOM    310  O   THR A  43      10.842  53.315  19.824  1.00 36.44           O
+ATOM    311  CB  THR A  43       8.316  54.130  17.873  1.00 37.54           C
+ATOM    312  OG1 THR A  43       6.890  53.948  17.829  1.00 38.41           O
+ATOM    313  CG2 THR A  43       8.897  52.837  17.280  1.00 36.05           C
+ATOM    314  N   LEU A  44      10.948  55.436  19.192  1.00 36.74           N
+ATOM    315  CA  LEU A  44      12.410  55.504  19.283  1.00 36.66           C
+ATOM    316  C   LEU A  44      12.877  55.316  20.729  1.00 37.24           C
+ATOM    317  O   LEU A  44      13.840  54.613  20.978  1.00 36.26           O
+ATOM    318  CB  LEU A  44      12.957  56.819  18.725  1.00 36.22           C
+ATOM    319  CG  LEU A  44      12.786  57.061  17.209  1.00 34.97           C
+ATOM    320  CD1 LEU A  44      13.386  58.400  16.795  1.00 33.89           C
+ATOM    321  CD2 LEU A  44      13.399  55.928  16.404  1.00 33.15           C
+ATOM    322  N   ARG A  45      12.147  55.914  21.675  1.00 38.31           N
+ATOM    323  CA  ARG A  45      12.485  55.801  23.095  1.00 39.49           C
+ATOM    324  C   ARG A  45      12.296  54.381  23.589  1.00 39.97           C
+ATOM    325  O   ARG A  45      13.113  53.864  24.338  1.00 40.63           O
+ATOM    326  CB  ARG A  45      11.614  56.757  23.935  1.00 39.94           C
+ATOM    327  N   ARG A  46      11.186  53.775  23.179  1.00 41.00           N
+ATOM    328  CA  ARG A  46      10.849  52.397  23.503  1.00 41.33           C
+ATOM    329  C   ARG A  46      11.912  51.412  23.025  1.00 40.34           C
+ATOM    330  O   ARG A  46      12.278  50.485  23.731  1.00 39.81           O
+ATOM    331  CB  ARG A  46       9.524  52.063  22.835  1.00 41.72           C
+ATOM    332  CG  ARG A  46       8.773  50.911  23.395  1.00 46.36           C
+ATOM    333  CD  ARG A  46       7.352  50.836  22.851  1.00 51.59           C
+ATOM    334  NE  ARG A  46       7.345  50.162  21.548  1.00 57.79           N
+ATOM    335  CZ  ARG A  46       6.851  50.659  20.399  1.00 61.01           C
+ATOM    336  NH1 ARG A  46       6.282  51.872  20.344  1.00 62.67           N
+ATOM    337  NH2 ARG A  46       6.918  49.916  19.290  1.00 61.73           N
+ATOM    338  N   LEU A  47      12.402  51.620  21.809  1.00 39.47           N
+ATOM    339  CA  LEU A  47      13.439  50.765  21.223  1.00 38.25           C
+ATOM    340  C   LEU A  47      14.826  51.006  21.800  1.00 37.39           C
+ATOM    341  O   LEU A  47      15.742  50.247  21.530  1.00 38.19           O
+ATOM    342  CB  LEU A  47      13.502  51.010  19.712  1.00 38.57           C
+ATOM    343  CG  LEU A  47      12.264  50.556  18.951  1.00 38.58           C
+ATOM    344  CD1 LEU A  47      12.346  51.046  17.517  1.00 38.92           C
+ATOM    345  CD2 LEU A  47      12.101  49.038  19.050  1.00 38.51           C
+ATOM    346  N   GLY A  48      14.997  52.083  22.557  1.00 36.96           N
+ATOM    347  CA  GLY A  48      16.262  52.383  23.191  1.00 35.72           C
+ATOM    348  C   GLY A  48      17.323  52.969  22.286  1.00 34.43           C
+ATOM    349  O   GLY A  48      18.512  52.912  22.607  1.00 34.93           O
+  """
+
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+  params = monomer_library.pdb_interpretation.master_params.extract()
+  params.secondary_structure.enabled=True
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    params=params,
+    strict_conflict_handling=False,
+    pdb_inp=pdb_inp,
+    log=null_out())
+  geo = processed_pdb_file.geometry_restraints_manager()
+  assert geo.get_n_hbond_proxies() == 8
+  make_geo_pickle_unpickle(geo, processed_pdb_file.xray_structure(), prefix)
+
+def test_secondary_structure_2(mon_lib_srv, ener_lib, prefix="tst_grm_pickling_ss2"):
+  from iotbx.pdb.tst_secondary_structure import pdb_1ywf_sample_strings
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_1ywf_sample_strings)
+  params = monomer_library.pdb_interpretation.master_params.extract()
+  params.secondary_structure.enabled=True
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    params=params,
+    strict_conflict_handling=False,
+    pdb_inp=pdb_inp,
+    log=null_out())
+  geo = processed_pdb_file.geometry_restraints_manager()
+  assert geo.get_n_hbond_proxies() == 103, geo.get_n_hbond_proxies()
+  make_geo_pickle_unpickle(geo, processed_pdb_file.xray_structure(), prefix)
+
+def test_across_symmetry(mon_lib_srv, ener_lib, prefix="tst_across_symmetry"):
+  raw_records1 = """\
+CRYST1   60.800   60.800   97.000  90.00  90.00 120.00 P 32 2 1      6
+ORIGX1      1.000000  0.000000  0.000000        0.00000
+ORIGX2      0.000000  1.000000  0.000000        0.00000
+ORIGX3      0.000000  0.000000  1.000000        0.00000
+SCALE1      0.016447  0.009496  0.000000        0.00000
+SCALE2      0.000000  0.018992  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.010309        0.00000
+ATOM   1050  N   LYS A 135      31.992  14.930  -7.233  1.00  9.47           N
+ATOM   1051  CA  LYS A 135      31.388  16.216  -7.637  1.00 12.89           C
+ATOM   1052  C   LYS A 135      30.807  16.840  -6.406  1.00  6.47           C
+ATOM   1053  O   LYS A 135      29.583  16.869  -6.191  1.00 15.74           O
+ATOM   1054  CB  LYS A 135      30.263  16.059  -8.655  1.00 13.51           C
+ATOM   1055  CG  LYS A 135      30.742  15.277  -9.843  1.00 16.23           C
+ATOM   1056  CD  LYS A 135      29.612  15.131 -10.835  1.00 28.55           C
+ATOM   1057  CE  LYS A 135      30.173  14.812 -12.216  1.00 34.52           C
+ATOM   1058  NZ  LYS A 135      29.396  13.756 -12.899  1.00 46.18           N
+HETATM 1406  O   HOH A 282      32.366  19.942  24.727  1.00 38.09           O
+END
+"""
+  geometry, xrs = make_initial_grm(mon_lib_srv, ener_lib, raw_records1)
+  make_geo_pickle_unpickle(geometry, xrs, prefix)
 
 def exercise_all(args):
   mon_lib_srv = None
@@ -275,8 +419,11 @@ def exercise_all(args):
   test_nucleic_acid(mon_lib_srv, ener_lib)
   test_ramachandran(mon_lib_srv, ener_lib)
   test_cbeta(mon_lib_srv, ener_lib)
-  # In development
   test_reference_coordinate(mon_lib_srv, ener_lib)
+  test_secondary_structure(mon_lib_srv, ener_lib)
+  # Failing:
+  # test_secondary_structure_2(mon_lib_srv, ener_lib)
+  # test_across_symmetry(mon_lib_srv, ener_lib)
 
 if (__name__ == "__main__"):
   exercise_all(sys.argv[1:])
