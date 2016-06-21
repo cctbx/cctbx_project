@@ -402,6 +402,34 @@ END
   geometry, xrs = make_initial_grm(mon_lib_srv, ener_lib, raw_records1)
   make_geo_pickle_unpickle(geometry, xrs, prefix)
 
+def test_reference_model(mon_lib_srv, ener_lib, prefix="tst_reference_model"):
+  from mmtbx.geometry_restraints.torsion_restraints.tst_reference_model import \
+      model_raw_records, reference_raw_records
+  from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
+    reference_model, reference_model_params
+  work_params = reference_model_params.extract()
+  work_params.reference_model.enabled = True
+  work_params.reference_model.fix_outliers = False
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
+      raw_records=model_raw_records.split('\n'))
+  pdb_h = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  reference_hierarchy_list = []
+  tmp_hierarchy = iotbx.pdb.input(
+    source_info=None,
+    lines=reference_raw_records.split('\n')).construct_hierarchy()
+  reference_hierarchy_list.append(tmp_hierarchy)
+  rm = reference_model(
+         processed_pdb_file=processed_pdb_file,
+         reference_hierarchy_list=reference_hierarchy_list,
+         params=work_params.reference_model,
+         log=None)
+  assert rm.get_n_proxies() == 5, "Got %d, expected 5" % rm.get_n_proxies()
+  geometry, xrs = make_initial_grm(mon_lib_srv, ener_lib, model_raw_records)
+  geometry.adopt_reference_dihedral_manager(rm)
+  make_geo_pickle_unpickle(geometry, xrs, prefix)
+
 def exercise_all(args):
   mon_lib_srv = None
   ener_lib = None
@@ -411,19 +439,22 @@ def exercise_all(args):
   except Exception:
     print "Can not initialize monomer_library, skipping test."
     return 0
-  test_simple_protein(mon_lib_srv, ener_lib)
   import libtbx.load_env
   if libtbx.env.find_in_repositories(relative_path="chem_data") is None:
     print "Skipping exercise(): chem_data directory not available"
     return
+  test_simple_protein(mon_lib_srv, ener_lib)
   test_nucleic_acid(mon_lib_srv, ener_lib)
   test_ramachandran(mon_lib_srv, ener_lib)
   test_cbeta(mon_lib_srv, ener_lib)
   test_reference_coordinate(mon_lib_srv, ener_lib)
   test_secondary_structure(mon_lib_srv, ener_lib)
+  # Development
+
   # Failing:
   # test_secondary_structure_2(mon_lib_srv, ener_lib)
   # test_across_symmetry(mon_lib_srv, ener_lib)
+  # test_reference_model(mon_lib_srv, ener_lib)
 
 if (__name__ == "__main__"):
   exercise_all(sys.argv[1:])
