@@ -523,13 +523,6 @@ def import_xds_inp(xds_inp_file):
     panel_fast_axes = None
     panel_slow_axes = None
 
-    template = handle.name_template_of_data_frames[0].replace('?', '#')
-    from dxtbx import datablock
-    importer = datablock.DataBlockTemplateImporter([template])
-    datablock = importer.datablocks[0]
-    imageset = datablock.extract_imagesets()[0]
-    detector = imageset.get_detector()
-
     if handle.num_segments > 1:
         # Now, for each detector segment the following two lines of information
         # are provided.
