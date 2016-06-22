@@ -22,8 +22,10 @@ from xfel.ui import load_cached_settings, save_cached_settings
 
 from prime.postrefine.mod_gui_init import PRIMEInputWindow, PRIMERunWindow
 from prime.postrefine.mod_input import master_phil
+from iota.components import iota_misc as misc
 
 icons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/')
+user = os.getlogin()
 
 license = 'cctbx.xfel and cctbx.xfel UI are developed under the open source ' \
           'license'
@@ -614,9 +616,14 @@ class MergeTab(BaseTab):
 
     self.prime_panel = PRIMEInputWindow(self)
     self.btn_get_tags = wx.Button(self, label='Select Tags...', size=(120, -1))
+    self.btn_load_phil = wx.Button(self, label='Load PHIL', size=(120, -1))
+    self.btn_save_phil = wx.Button(self, label='Save PHIL', size=(120, -1))
     self.btn_run_prime = wx.Button(self, label='Run PRIME', size=(120, -1))
+    self.btn_run_prime.Disable()
     self.btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.btn_sizer.Add(self.btn_get_tags)
+    self.btn_sizer.Add(self.btn_load_phil, flag=wx.LEFT, border=5)
+    self.btn_sizer.Add(self.btn_save_phil, flag=wx.LEFT, border=5)
     self.btn_sizer.Add(self.btn_run_prime, flag=wx.LEFT, border=5)
 
     self.main_sizer.Add(self.prime_panel, flag=wx.ALL | wx.EXPAND, border=10)
@@ -629,13 +636,81 @@ class MergeTab(BaseTab):
     self.Bind(wx.EVT_TEXT, self.onInput, self.prime_panel.inp_box.ctr)
     self.Bind(wx.EVT_BUTTON, self.onIsoRef, self.prime_panel.ref_box.btn_browse)
     self.Bind(wx.EVT_TEXT, self.onIsoRef, self.prime_panel.ref_box.ctr)
-    self.Bind(wx.EVT_TOOL, self.onRun, self.btn_run_prime)
+    self.Bind(wx.EVT_BUTTON, self.onRun, self.btn_run_prime)
+    self.Bind(wx.EVT_BUTTON, self.onLoad, self.btn_load_phil)
+    self.Bind(wx.EVT_BUTTON, self.onSave, self.btn_save_phil)
 
   def onInput(self, e):
     if self.prime_panel.inp_box.ctr.GetValue() != '':
-      self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
+      self.btn_run_prime.Enable()
     else:
-      self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
+      self.btn_run_prime.Disable()
+
+  def onLoad(self, e):
+    # Extract params from file
+    load_dlg = wx.FileDialog(self,
+                             message="Load script file",
+                             defaultDir=os.curdir,
+                             defaultFile="*.phil",
+                             wildcard="*.phil",
+                             style=wx.OPEN | wx.FD_FILE_MUST_EXIST,
+                             )
+    if load_dlg.ShowModal() == wx.ID_OK:
+      script = load_dlg.GetPaths()[0]
+      out_dir = os.path.dirname(script)
+      self.prime_filename = os.path.basename(script)
+      self.load_script(out_dir=out_dir)
+    load_dlg.Destroy()
+
+  def load_script(self, out_dir):
+    ''' Loads PRIME script '''
+    import iotbx.phil as ip
+
+    script = os.path.join(out_dir, self.prime_filename)
+    user_phil = ip.parse(open(script).read())
+    self.pparams = master_phil.fetch(sources=[user_phil]).extract()
+    self.prime_panel.pparams = self.pparams
+
+    self.prime_panel.inp_box.ctr.SetValue(str(self.pparams.data[0]))
+    current_dir = os.path.dirname(self.pparams.run_no)
+    self.prime_panel.out_box.ctr.SetValue(str(current_dir))
+    if str(self.prime_panel.out_box.ctr.GetValue).lower() == '':
+      self.prime_panel.out_box.ctr.SetValue(self.out_dir)
+    if str(self.pparams.title).lower() != 'none':
+      self.prime_panel.title_box.ctr.SetValue(str(self.pparams.title))
+    if str(self.pparams.hklisoin).lower() != 'none':
+      self.prime_panel.ref_box.ctr.SetValue(str(self.pparams.hklisoin))
+    elif str(self.pparams.hklrefin).lower() != 'none':
+      self.prime_panel.ref_box.ctr.SetValue(str(self.pparams.hklrefin))
+      self.prime_panel.opt_chk_useref.SetValue(True)
+    if str(self.pparams.n_residues).lower() == 'none':
+      self.prime_panel.opt_spc_nres.SetValue(500)
+    else:
+      self.prime_panel.opt_spc_nres.SetValue(int(self.pparams.n_residues))
+    self.prime_panel.opt_spc_nproc.SetValue(int(self.pparams.n_processors))
+
+  def onSave(self, e):
+    self.init_settings()
+
+    # Generate text of params
+    final_phil = master_phil.format(python_object=self.pparams)
+    with misc.Capturing() as txt_output:
+      final_phil.show()
+    txt_out = ''
+    for one_output in txt_output:
+      txt_out += one_output + '\n'
+
+    # Save param file
+    save_dlg = wx.FileDialog(self,
+                             message="Save PRIME Script",
+                             defaultDir=os.curdir,
+                             defaultFile="*.phil",
+                             wildcard="*.phil",
+                             style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT
+                             )
+    if save_dlg.ShowModal() == wx.ID_OK:
+      with open(save_dlg.GetPath(), 'w') as savefile:
+        savefile.write(txt_out)
 
   def onIsoRef(self, e):
     if self.prime_panel.ref_box.ctr.GetValue() != '':
@@ -680,7 +755,7 @@ class MergeTab(BaseTab):
                                            prime_file=prime_file,
                                            out_file=out_file)
     self.prime_run_window.prev_pids = easy_run.fully_buffered('pgrep -u {} {}'
-                                          ''.format(user, python)).stdout_lines
+                                          ''.format(user, 'python')).stdout_lines
     self.prime_run_window.Show(True)
 
 
