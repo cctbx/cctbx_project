@@ -168,16 +168,37 @@ integration {
       .type = choice
       .help = a specific absorption correction, or implementation thereof
     fuller_kapton {
-      xtal_height_above_kapton_mm = 0.02
-        .type = float
-        .help = height of the beam (or the irradiated crystal) above the kapton tape
-      rotation_angle_deg = 1.15
-        .type = float
-        .help = angle of the tape from vertical
-      kapton_half_width_mm = 1.5875
-        .type = float
-      kapton_thickness_mm = 0.05
-        .type = float
+      xtal_height_above_kapton_mm {
+        value = 0.02
+          .type = float
+          .help = height of the beam (or the irradiated crystal) above the kapton tape
+        sigma = 0.01
+          .type = float
+        }
+      rotation_angle_deg {
+        value = 1.15
+          .type = float
+          .help = angle of the tape from vertical
+        sigma = 0.1
+          .type = float
+        }
+      kapton_half_width_mm {
+        value = 1.5875
+          .type = float
+          .help = forward distance from irradiated crystal to edge of tape nearest detector
+        sigma = 0.5
+          .type = float
+        }
+      kapton_thickness_mm {
+        value = 0.05
+          .type = float
+          .help = tape thickness
+        sigma = 0.005
+          .type = float
+        }
+      smart_sigmas = False
+        .type = bool
+        .help = apply spot-specific sigma corrections using kapton param sigmas
     }
   }
 }

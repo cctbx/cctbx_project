@@ -507,19 +507,42 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
           print "Absorption correction with %d reflections to correct"%(len(self.detector_xy))
           from cxi_xdr_xes import absorption
           C = absorption.correction()
-          self.fuller_kapton_absorption_correction = C(
-            panel_size_px = (self.inputpd['size1'],self.inputpd['size2']),
-            pixel_size_mm = self.pixel_size,
-            detector_dist_mm = self.inputai.distance(),
-            wavelength_ang = self.inputai.wavelength,
-            BSmasks = self.BSmasks,
-            get_ISmask_function = self.get_ISmask,
-            params = correction_type.fuller_kapton,
-            i_no_skip = self.get_integrated_flag()
-          )
-          # apply these corrections now
-          self.integrated_data *= self.fuller_kapton_absorption_correction
-          self.integrated_sigma *= self.fuller_kapton_absorption_correction
+          if correction_type.fuller_kapton.smart_sigmas:
+            self.fuller_kapton_absorption_correction, self.fuller_kapton_absorption_sigmas = C(
+              panel_size_px = (self.inputpd['size1'],self.inputpd['size2']),
+              pixel_size_mm = self.pixel_size,
+              detector_dist_mm = self.inputai.distance(),
+              wavelength_ang = self.inputai.wavelength,
+              BSmasks = self.BSmasks,
+              get_ISmask_function = self.get_ISmask,
+              params = correction_type.fuller_kapton,
+              i_no_skip = self.get_integrated_flag(),
+              calc_sigmas=True
+            )
+            # apply corrections and propagate error
+            # term1 = (sig(C)/C)^2
+            # term2 = (sig(Imeas)/Imeas)^2
+            # I' = C*I
+            # sig(I') = I'*sqrt(term1 + term2)
+            term1 = (self.fuller_kapton_absorption_sigmas/self.fuller_kapton_absorption_correction)**2
+            term2 = (self.integrated_sigma/self.integrated_data)**2
+            self.integrated_data *= self.fuller_kapton_absorption_correction
+            self.integrated_sigma = self.integrated_data * flex.sqrt(term1 + term2)
+            # order is purposeful: the line above requires that self.integrated_data has already been corrected!
+          else:
+            self.fuller_kapton_absorption_correction = C(
+              panel_size_px = (self.inputpd['size1'],self.inputpd['size2']),
+              pixel_size_mm = self.pixel_size,
+              detector_dist_mm = self.inputai.distance(),
+              wavelength_ang = self.inputai.wavelength,
+              BSmasks = self.BSmasks,
+              get_ISmask_function = self.get_ISmask,
+              params = correction_type.fuller_kapton,
+              i_no_skip = self.get_integrated_flag()
+            )
+            # apply these corrections now
+            self.integrated_data *= self.fuller_kapton_absorption_correction
+            self.integrated_sigma *= self.fuller_kapton_absorption_correction
 
     #self.show_rejected_spots()
     return # function has been recoded in C++
