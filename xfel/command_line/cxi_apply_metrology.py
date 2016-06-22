@@ -18,6 +18,9 @@ dest_cbf = None
   .help = cbf files on which to apply the metrology measurements from the source.
   .help = Can provide multiple files as once
   .multiple = True
+apply_detector_distance = False
+  .type = bool
+  .help = If True, copy detector distance
 """)
 
 if (__name__ == "__main__") :
@@ -137,7 +140,7 @@ if (__name__ == "__main__") :
         src_cbf.find_column(key)
 
         # don't overwrite detector distance
-        if category == "diffrn_scan_frame_axis" and src_cbf.get_value() == "AXIS_D0_Z":
+        if category == "diffrn_scan_frame_axis" and src_cbf.get_value() == "AXIS_D0_Z" and not params.apply_detector_distance:
           continue
 
         dst_cbf.find_column(key)
