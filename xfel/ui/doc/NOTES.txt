@@ -1,5 +1,5 @@
-XFEL UI version 0.0.004 - Initial connection to DB, cont'd
+XFEL UI version 0.0.016
 
-1. Need to hook up DB to test tags properly
-2. Job tab updated via timer, need job sentinel
+
+1. Delete runblock / trial buttons (not hooked up)
 

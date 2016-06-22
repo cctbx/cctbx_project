@@ -602,6 +602,7 @@ class StatusTab(BaseTab):
   def onFilterTags(self, e):
     pass
 
+
 class MergeTab(BaseTab):
   def __init__(self, parent, prefix='prime'):
     BaseTab.__init__(self, parent=parent)
@@ -762,6 +763,8 @@ class MergeTab(BaseTab):
 # ------------------------------- UI Elements -------------------------------- #
 
 class TrialPanel(wx.Panel):
+  ''' A scrolled panel that contains run blocks and trial controls '''
+
   def __init__(self, parent, db, trial, box_label=None):
     wx.Panel.__init__(self, parent=parent, size=(200, 300))
 
@@ -774,19 +777,24 @@ class TrialPanel(wx.Panel):
     self.block_panel = ScrolledPanel(self, size=(150, 180))
     self.block_sizer = wx.BoxSizer(wx.VERTICAL)
     self.block_panel.SetSizer(self.block_sizer)
+    self.one_block_sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.add_panel = wx.Panel(self)
     self.add_sizer = wx.BoxSizer(wx.VERTICAL)
     self.add_panel.SetSizer(self.add_sizer)
 
     # Add "New Block" button to a separate sizer (so it is always on bottom)
     self.btn_add_block = wx.Button(self.add_panel, label='New Block',
-                                   size=(120, -1))
+                                   size=(160, -1))
     self.btn_view_phil = wx.BitmapButton(self.add_panel,
                         bitmap=wx.Bitmap('{}/16x16/viewmag.png'.format(icons)))
-    chk_size = (115 - self.btn_view_phil.GetSize()[0], -1)
+    self.btn_del_trial = wx.BitmapButton(self.add_panel,
+                        bitmap=wx.Bitmap('{}/16x16/delete.png'.format(icons)))
+    chk_size = (150 - self.btn_view_phil.GetSize()[0] -
+                self.btn_del_trial.GetSize()[0], -1)
     self.chk_active = wx.CheckBox(self.add_panel, label='Active', size=chk_size)
     self.view_sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.view_sizer.Add(self.btn_view_phil)
+    self.view_sizer.Add(self.btn_del_trial, flag=wx.LEFT, border=5)
     self.view_sizer.Add(self.chk_active, flag=wx.LEFT, border=5)
 
     self.add_sizer.Add(self.btn_add_block,
@@ -803,6 +811,7 @@ class TrialPanel(wx.Panel):
     self.Bind(EVT_RUN_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_BUTTON, self.onAddBlock, self.btn_add_block)
     self.Bind(wx.EVT_BUTTON, self.onViewPHIL, self.btn_view_phil)
+    self.Bind(wx.EVT_BUTTON, self.onDeleteTrial, self.btn_del_trial)
     self.chk_active.Bind(wx.EVT_CHECKBOX, self.onToggleActivity)
 
     self.SetSizer(self.main_sizer)
@@ -811,6 +820,16 @@ class TrialPanel(wx.Panel):
     view_dlg = dlg.TrialDialog(self, db=self.db, trial=self.trial, new=False)
     view_dlg.ShowModal()
     view_dlg.Destroy()
+
+  def onDeleteTrial(self, e):
+    msg = wx.MessageDialog(self,
+                           message='Are you sure? This cannot be reversed!',
+                           caption='Warning',
+                           style=wx.YES_NO | wx.ICON_EXCLAMATION)
+
+    if (msg.ShowModal() == wx.ID_YES):
+      print 'TODO: Need an option to delete a trial from DB'
+      #TODO: insert trial-deleting code right here
 
   def onToggleActivity(self, e):
     if self.chk_active.GetValue():
@@ -838,14 +857,25 @@ class TrialPanel(wx.Panel):
 
   def draw_block_button(self, block):
     ''' Add new run block button '''
-    new_block = gctr.RunBlockButton(self.block_panel,
-                                    size=(120, -1),
-                                    block=block)
-    new_block.block = block
-    self.Bind(wx.EVT_BUTTON, self.onRunBlockOptions, id=new_block.GetId())
+    new_block = gctr.RunBlock(self.block_panel, block=block)
+
+    self.Bind(wx.EVT_BUTTON, self.onRunBlockOptions, new_block.new_runblock)
+    self.Bind(wx.EVT_BUTTON, self.onDeleteBlock, new_block.del_runblock)
     self.block_sizer.Add(new_block,
                          flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
                          border=5)
+
+  def onDeleteBlock(self, e):
+    ''' Delete Run block from DB '''
+    msg = wx.MessageDialog(self,
+                           message='Are you sure? This cannot be reversed!',
+                           caption='Warning',
+                           style=wx.YES_NO | wx.ICON_EXCLAMATION)
+
+
+    if (msg.ShowModal() == wx.ID_YES):
+      print 'TODO: Need an option to delete a runblock from DB'
+      # TODO: insert trial-deleting code right here
 
   def onRunBlockOptions(self, e):
     ''' Open dialog and change run_block options '''

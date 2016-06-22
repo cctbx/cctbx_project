@@ -100,7 +100,6 @@ class RunBlockButton(GradButton):
     self.SetLabel(self.block_label)
     self.Refresh()
 
-
 class TagButton(GradButton):
   def __init__(self, parent, run, size=wx.DefaultSize):
     self.run = run
@@ -462,6 +461,29 @@ class TableCtrl(CtrlBase):
         cell = wx.StaticText(self, label=item.decode('utf-8'))
         cell.SetFont(self.cfont)
         self.sizer.Add(cell)
+
+    self.SetSizer(self.sizer)
+
+
+# ------------------------------- UI Elements -------------------------------- #
+
+class RunBlock(CtrlBase):
+  def __init__(self, parent, block,
+               label_style='normal',
+               content_style='normal'):
+
+    self.block = block
+
+    CtrlBase.__init__(self, parent=parent, label_style=label_style,
+                      content_style=content_style)
+
+    self.sizer = wx.FlexGridSizer(1, 2, 0, 10)
+    self.new_runblock = RunBlockButton(self, size=(124, 26), block=block)
+    self.del_runblock = wx.BitmapButton(self,
+                        bitmap=wx.Bitmap('{}/16x16/delete.png'.format(icons)))
+
+    self.sizer.Add(self.new_runblock)
+    self.sizer.Add(self.del_runblock)
 
     self.SetSizer(self.sizer)
 
