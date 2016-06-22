@@ -104,6 +104,8 @@ tst_list = (
   "$D/hydrogens/build_hydrogens.py",
   "$D/hydrogens/tst.py",
   "$D/hydrogens/tst_hydrogen_connectivity.py",
+  "$D/hydrogens/tst_h_parametrization_1.py",
+  "$D/hydrogens/tst_h_parametrization_2.py",
   "$D/max_lik/tst_maxlik.py",
   "$D/masks/tst_masks.py",
   "$D/masks/tst_asu_mask.py",
