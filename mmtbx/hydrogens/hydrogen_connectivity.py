@@ -194,7 +194,7 @@ def run(args, out=sys.stdout):
   if(0):
   #if (1):
     print >>log, '\nHydrogen atom connectivity list'
-    for ih in connectivity:
+    for ih in connectivity.keys():
       if(len(connectivity[ih])==3):
         string = (" ".join([names[p.iseq] for p in connectivity[ih][2]]))
       else:

@@ -74,7 +74,7 @@ def exercise():
   bond_list = {}
   angle_list = {}
   third_nb_list = {}
-  for ih in connectivity:
+  for ih in connectivity.keys():
     a0 = (connectivity[ih][0])
     bond_list[ih]=[a0.iseq, a0.dist_ideal]
     for atom in connectivity[ih][1]:
@@ -88,7 +88,7 @@ def exercise():
 #--------------------------------------
 # This is useful to keep for debugging: human readable output of connectivity
 #--------------------------------------
-#  for ih in connectivity:
+#  for ih in connectivity.keys():
 #    if(len(connectivity[ih])==3):
 #      string = (" ".join([names[p.iseq] for p in connectivity[ih][2]]))
 #    else:
