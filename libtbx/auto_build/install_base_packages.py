@@ -1205,7 +1205,7 @@ _replace_sysconfig_paths(build_time_vars)
 
   def build_gtk(self):
     # gdk-pixbuf, gtk+, clearlooks
-    extra_config_args = ["--without-libjpeg"]
+    extra_config_args = ["--without-libjpeg", "--enable-relocations"]
     self.build_compiled_package_simple(pkg_name=GDK_PIXBUF_PKG,
                                        pkg_name_label='gdk-pixbuf',
                                        extra_config_args=extra_config_args)
