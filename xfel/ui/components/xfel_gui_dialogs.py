@@ -1140,20 +1140,31 @@ class TrialDialog(BaseDialog):
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
                         border=10)
 
+
     # Dialog control
     if self.new:
       dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     else:
-      dialog_box = self.CreateSeparatedButtonSizer(wx.CANCEL)
+      dialog_box = self.CreateSeparatedButtonSizer(wx.OK)
     self.main_sizer.Add(dialog_box,
                         flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                         border=10)
 
     self.Layout()
+
     if self.new:
       self.SetTitle('New Trial Settings')
     else:
       self.SetTitle('Trial {}'.format(self.trial.trial))
+      self.phil_box.SetValue(trial.target_phil_str)
+      self.trial_comment.ctr.SetValue(str(trial.comment))
+
+      # Disable controls for viewing
+      self.trial_info.button1.Disable()
+      self.trial_info.button2.Disable()
+      self.trial_info.ctr.SetEditable(False)
+      self.phil_box.SetEditable(False)
+      self.trial_comment.ctr.SetEditable(False)
 
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onBrowse, self.trial_info.button1)

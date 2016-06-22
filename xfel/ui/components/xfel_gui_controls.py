@@ -477,7 +477,7 @@ class RunBlock(CtrlBase):
     CtrlBase.__init__(self, parent=parent, label_style=label_style,
                       content_style=content_style)
 
-    self.sizer = wx.FlexGridSizer(1, 2, 0, 10)
+    self.sizer = wx.FlexGridSizer(1, 2, 0, 5)
     self.new_runblock = RunBlockButton(self, size=(124, 26), block=block)
     self.del_runblock = wx.BitmapButton(self,
                         bitmap=wx.Bitmap('{}/16x16/delete.png'.format(icons)))

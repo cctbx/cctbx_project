@@ -789,7 +789,7 @@ class TrialPanel(wx.Panel):
                         bitmap=wx.Bitmap('{}/16x16/viewmag.png'.format(icons)))
     self.btn_del_trial = wx.BitmapButton(self.add_panel,
                         bitmap=wx.Bitmap('{}/16x16/delete.png'.format(icons)))
-    chk_size = (150 - self.btn_view_phil.GetSize()[0] -
+    chk_size = (155 - self.btn_view_phil.GetSize()[0] -
                 self.btn_del_trial.GetSize()[0], -1)
     self.chk_active = wx.CheckBox(self.add_panel, label='Active', size=chk_size)
     self.view_sizer = wx.BoxSizer(wx.HORIZONTAL)
