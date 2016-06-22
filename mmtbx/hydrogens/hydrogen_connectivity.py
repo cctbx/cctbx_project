@@ -9,7 +9,7 @@ import mmtbx.utils
 from mmtbx import monomer_library
 from cctbx import geometry_restraints
 #import iotbx.pdb
-#from scitbx.array_family import flex
+from scitbx.array_family import flex
 #from scitbx import matrix
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
@@ -86,6 +86,7 @@ def find_second_neighbor(ap, connectivity):
 def determine_H_neighbors(bond_proxies, angle_proxies, xray_structure):
   hd_selection = xray_structure.hd_selection()
   sites_cart = xray_structure.sites_cart()
+  n_atoms = len(sites_cart)
   scatterers = xray_structure.scatterers()
   connectivity = {}
   # loop through bond proxies to find H atom and parent atom
@@ -129,6 +130,14 @@ def determine_H_neighbors(bond_proxies, angle_proxies, xray_structure):
             if (seq not in neighbors and not hd_selection[seq]):
               neighbor = atom_info(iseq = seq)
               connectivity[ih][2].append(neighbor)
+    if (len(reduced_neighbs) == 2 or len(reduced_neighbs) == 3):
+      ix = (connectivity[ih][0]).iseq
+      iy = (reduced_neighbs[0]).iseq
+      iz = (reduced_neighbs[1]).iseq
+      iselection = flex.size_t([ix,iy,iz])
+      (connectivity[ih][0]).angle_ideal =  angle_proxies.proxy_select(
+        n_seq      = n_atoms,
+        iselection = iselection)[0].angle_ideal
   # TODO: eliminate double conformations in list. Might be only for HA atoms,
   # but user might come up with weird splits
   return connectivity
