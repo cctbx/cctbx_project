@@ -267,6 +267,7 @@ class MainWindow(wx.Frame):
     settings_dlg = dlg.SettingsDialog(self,
                                       params=self.params)
     settings_dlg.db_cred.btn_big.Disable()
+    settings_dlg.SetTitle('Settings')
 
     if (settings_dlg.ShowModal() == wx.ID_OK):
       self.params = settings_dlg.params

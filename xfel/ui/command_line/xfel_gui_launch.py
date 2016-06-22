@@ -32,6 +32,7 @@ class MainApp(wx.App):
 
     # Start with login dialog before opening main window
     self.login = SettingsDialog(self.frame, self.frame.params)
+    self.login.SetTitle('CCTBX.XFEL Login')
     self.login.Center()
     if (self.login.ShowModal() == wx.ID_OK):
       if self.frame.connect_to_db(drop_tables=self.login.drop_tables):

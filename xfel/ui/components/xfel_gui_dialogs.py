@@ -89,7 +89,6 @@ class SettingsDialog(BaseDialog):
                content_style='normal',
                *args, **kwargs):
 
-
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
                         content_style=content_style,
@@ -201,6 +200,7 @@ class SettingsDialog(BaseDialog):
     self.params.output_folder = self.output.ctr.GetValue()
     e.Skip()
 
+
 class DBCredentialsDialog(BaseDialog):
   ''' DB credentials entry '''
 
@@ -278,6 +278,7 @@ class DBCredentialsDialog(BaseDialog):
     self.Bind(wx.EVT_CHECKBOX, self.onDropTables, self.chk_drop_tables)
 
     self.Fit()
+    self.SetTitle('Database Credentials')
 
   def onDropTables(self, e):
     if self.chk_drop_tables.GetValue():
@@ -364,6 +365,9 @@ class AdvancedSettingsDialog(BaseDialog):
                         flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                         border=10)
 
+    self.SetTitle('Advanced Settings')
+    self.Fit()
+
   def onQueueChoice(self, e):
     queue = self.queue.ctr.GetString(self.queue.ctr.GetSelection())
     if 'neh' in queue or 'feh' in queue:
@@ -375,6 +379,7 @@ class AdvancedSettingsDialog(BaseDialog):
     else:
       self.nproc.ctr.SetValue(1)
       self.nproc.ctr.SetIncrement(1)
+
 
 class CalibrationDialog(BaseDialog):
   def __init__(self, parent,
@@ -463,6 +468,7 @@ class CalibrationDialog(BaseDialog):
     self.Bind(wx.EVT_BUTTON, self.onDefault, self.phil_path.button2)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
+    self.SetTitle('Calibration Settings')
     self.find_runs()
 
   def onOK(self, e):
@@ -530,6 +536,7 @@ class CalibrationDialog(BaseDialog):
     # TODO: Generate default PHIL parameters
     pass
 
+
 class AveragingDialog(BaseDialog):
   def __init__(self, parent, run, params,
                label_style='bold',
@@ -592,6 +599,8 @@ class AveragingDialog(BaseDialog):
       self.calib_dir.ctr.SetValue(dark_dlg.GetPaths()[0])
     dlg.Destroy()
     e.Skip()
+
+    self.SetTitle('Averaging Settings')
 
 
 class TagDialog(BaseDialog):
@@ -658,6 +667,7 @@ class TagDialog(BaseDialog):
                    border=10)
 
     self.Layout()
+    self.SetTitle('Manage Tags')
 
     # Button bindings
     self.Bind(wx.EVT_BUTTON, self.onAdd, self.btn_add)
@@ -731,6 +741,7 @@ class TagDialog(BaseDialog):
         print str(e)
 
       e.Skip()
+
 
 class RunBlockDialog(BaseDialog):
   ''' Comes up when individual run block button is clicked; allows for run
@@ -941,6 +952,7 @@ class RunBlockDialog(BaseDialog):
 
     self.configure_controls()
     self.Layout()
+    self.SetTitle('Run Block Settings')
 
   def onOK(self, e):
     if self.block is not None:
@@ -1061,6 +1073,7 @@ class RunBlockDialog(BaseDialog):
     dlg.Destroy()
     e.Skip()
 
+
 class TrialDialog(BaseDialog):
   def __init__(self, parent, db,
                new=True,
@@ -1137,6 +1150,10 @@ class TrialDialog(BaseDialog):
                         border=10)
 
     self.Layout()
+    if self.new:
+      self.SetTitle('New Trial Settings')
+    else:
+      self.SetTitle('Trial {}'.format(self.trial.trial))
 
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onBrowse, self.trial_info.button1)
