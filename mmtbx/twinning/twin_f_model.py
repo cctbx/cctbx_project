@@ -30,7 +30,7 @@ from libtbx import Auto
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 import libtbx.path
 import mmtbx.refinement.targets
-import mmtbx.f_model_info
+import mmtbx.f_model.f_model_info
 
 master_params =  iotbx.phil.parse("""
   twin_law = None
@@ -557,7 +557,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
 
   def info(self, free_reflections_per_bin = 140, max_number_of_bins = 20,
       n_bins=None):
-    return mmtbx.f_model_info.info(
+    return mmtbx.f_model.f_model_info.info(
       fmodel                   = self,
       free_reflections_per_bin = free_reflections_per_bin,
       max_number_of_bins       = max_number_of_bins,

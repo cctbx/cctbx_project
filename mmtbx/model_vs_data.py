@@ -568,7 +568,7 @@ def run(args,
         return_fmodel_and_pdb    = False,
         out                      = None,
         log                      = sys.stdout):
-  import mmtbx.f_model_info
+  import mmtbx.f_model.f_model_info
   if(len(args)==0) or (args == ["--help"]) :
     print >> log, msg
     defaults(log=log, silent=False)
@@ -819,7 +819,7 @@ def run(args,
   # statistics in bins
   if(not fmodel.twin):
     print >> log, "Statistics in resolution bins:"
-    mmtbx.f_model_info.r_work_and_completeness_in_resolution_bins(
+    mmtbx.f_model.f_model_info.r_work_and_completeness_in_resolution_bins(
       fmodel = fmodel, out = log, prefix="  ")
   # report map cc
   if(params.comprehensive and not fmodel_cut.twin and

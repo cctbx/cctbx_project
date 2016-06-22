@@ -1,6 +1,6 @@
 from __future__ import division
 
-import mmtbx.f_model_info
+import mmtbx.f_model.f_model_info
 import libtbx.load_env
 from cctbx.array_family import flex
 import math, sys, os
@@ -2285,7 +2285,7 @@ class manager(manager_mixin):
       max_number_of_bins = self.max_number_of_bins
     if (n_bins is None) :
       n_bins = self.n_resolution_bins_output
-    return mmtbx.f_model_info.info(
+    return mmtbx.f_model.f_model_info.info(
       fmodel                   = self,
       free_reflections_per_bin = free_reflections_per_bin,
       max_number_of_bins       = max_number_of_bins,
@@ -2475,8 +2475,10 @@ class mask_result (object) :
           format_value("%6.4f", self.r_work_low))
 
 # XXX backwards compatibility 2011-02-08
-class info (mmtbx.f_model_info.info) :
+# bad hack... - relative import
+import f_model_info
+class info (f_model_info.info) :
   pass
 
-class resolution_bin (mmtbx.f_model_info.resolution_bin) :
+class resolution_bin (f_model_info.resolution_bin) :
   pass

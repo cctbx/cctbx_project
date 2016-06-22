@@ -1981,7 +1981,7 @@ mmtbx/dynamics/tst_sa.py -text
 mmtbx/email_ralf_042910.txt -text
 mmtbx/examples/simple_command_line_cc.py -text
 mmtbx/f_model/__init__.py -text
-mmtbx/f_model_info.py -text
+mmtbx/f_model/f_model_info.py -text
 mmtbx/find_peaks.py -text
 mmtbx/geometry/SConscript -text
 mmtbx/geometry/__init__.py -text

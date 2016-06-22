@@ -511,7 +511,7 @@ class molprobity (slots_getstate_setstate) :
   def fmodel_statistics_by_resolution (self) :
     """
     Returns the resolution bins containing F(model) statistics; see
-    mmtbx.f_model_info for details.
+    mmtbx.f_model.f_model_info for details.
     """
     fmodel_info = getattr(self.data_stats, "info", None)
     return getattr(fmodel_info, "bins", None)
@@ -523,7 +523,7 @@ class molprobity (slots_getstate_setstate) :
     """
     bins = self.fmodel_statistics_by_resolution()
     if (bins is not None) :
-      from mmtbx.f_model_info import export_bins_table_data
+      from mmtbx.f_model.f_model_info import export_bins_table_data
       return export_bins_table_data(bins)
     return None
 
