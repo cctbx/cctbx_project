@@ -4031,17 +4031,8 @@ def get_one_au(tracking_data=None,
     print "Points in starting mask:",starting_mask.count(True)
     print "Points in overall mask:",overall_mask.count(True)
     print "Points in both:",(starting_mask & overall_mask).count(True)
-    write_ccp4_map(tracking_data.crystal_symmetry,'starting_mask.ccp4',
-      get_bool_mask_as_int(
-        mask_as_int=map_data,mask_as_bool=starting_mask) )
-    write_ccp4_map(tracking_data.crystal_symmetry,'overall_mask.ccp4',
-      get_bool_mask_as_int(
-     mask_as_int=map_data,mask_as_bool=overall_mask) )
     # make sure overall mask is at least as big..
     overall_mask=(overall_mask | starting_mask)
-    write_ccp4_map(tracking_data.crystal_symmetry,'new_overall_mask.ccp4',
-      get_bool_mask_as_int(
-     mask_as_int=map_data,mask_as_bool=overall_mask) )
     print >>out,"New size of overall mask: ",overall_mask.count(True)
   else:
     if not sites_cart: # pick top of map
