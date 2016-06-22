@@ -108,9 +108,6 @@ def submit_job(app, job):
   template = open(os.path.join(libtbx.env.find_in_repositories("xfel/ui/db"), "submit.phil"))
   phil = open(submit_phil_path, "w")
 
-  app.params.mp.nproc = 12
-  app.params.mp.queue = "psanaq"
-
   d = dict(dry_run = app.params.dry_run,
     cfg = config_path,
     calib_dir = job.rungroup.calib_dir,
