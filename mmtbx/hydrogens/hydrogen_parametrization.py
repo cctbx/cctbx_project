@@ -20,7 +20,7 @@ from stdlib import math
 import hydrogen_connectivity
 
 legend = """\
-phenix.hydrogen_parametrization:
+phenix.hydrogen_parameterization:
 Computes the parameters for the compuationf of H atom positions
 based on their parent atoms
 
@@ -28,21 +28,21 @@ Inputs:
   - Model file in PDB format (other files are not supported)
 
 Usage examples:
-   phenix.hydrogen_parametrization model.pdb
+   phenix.hydrogen_parameterization model.pdb
 
 Output:
    This code produces a dictionary
    H atom index is the key, pointing to an object which contains necessary
    parameters to build the H atom again (knowing the coordinates of
    the parent atoms)
-   H (iseq) --> parametrization_info
+   H (iseq) --> parameterization_info
 
 Important:
   Hydrogen atoms need to be present in the file.
   H atoms can be generated with phenix.reduce
 """
 
-class parametrization_info(object):
+class parameterization_info(object):
   def __init__(
     self,
     htype      = None,  # type of bond
@@ -59,11 +59,11 @@ class parametrization_info(object):
 
 
 # for every H atom, determine type of bond
-def get_h_parametrization(
-  connectivity, xray_structure, names, atoms_list):
-  sites_cart = xray_structure.sites_cart()
-  h_parametrization = {}
-  for ih in connectivity:
+def get_h_parameterization(
+  connectivity, sites_cart, names, atoms_list):
+  #sites_cart = xray_structure.sites_cart()
+  h_parameterization = {}
+  for ih in connectivity.keys():
     a0 = connectivity[ih][0]
     dist_h = a0.dist_ideal
     count_H, reduced_neighbs = a0.count_H, a0.reduced_neighbs
@@ -84,8 +84,12 @@ def get_h_parametrization(
       alpha2 = (uh0).angle(u20)
       sumang = math.degrees(alpha0) + math.degrees(alpha1) + math.degrees(alpha2)
       c0, c1, c2 = math.cos(alpha0), math.cos(alpha1), math.cos(alpha2)
+      denom = (1-c0*c0)
+      if(denom==0):
+        raise RuntimeError(
+          "Denominator zero: (1-c0*c0) in get_h_parameterization.")
       a, b = (c1-c0*c2)/(1-c0*c0), (c2-c0*c1)/(1-c0*c0)
-      h_parametrization[ih] = parametrization_info(
+      h_parameterization[ih] = parameterization_info(
         a0     = a0.iseq,
         a1     = a1.iseq,
         a2     = a2.iseq,
@@ -93,18 +97,26 @@ def get_h_parametrization(
         b      = b,
         dist_h = dist_h)
       if (sumang < 361 and sumang > 359):
-        h_parametrization[ih].htype = 'flat_2neigbs'
+        h_parameterization[ih].htype = 'flat_2neigbs'
       else:
+        root = 1-c1*c1-c2*c2-c0*c0+2*c0*c1*c2
+        if(root < 0):
+          raise RuntimeError(
+            "Expression in square root < 0 in get_h_parameterization.")
+        denom = math.sin(alpha0)
+        if(denom==0):
+          raise RuntimeError(
+            "Denominator zero: sin(alpha0)in get_h_parameterization.")
         cz = (math.sqrt(1-c1*c1-c2*c2-c0*c0+2*c0*c1*c2))/math.sin(alpha0)
         h = cz/math.sin(alpha0)
         #test if vector v points to same 'side' as uh0
         if((u10.cross(u20)).dot(uh0) < 0):
           h = -h
-        h_parametrization[ih].h = h
+        h_parameterization[ih].h = h
         if (n_red_neigbs == 2): # case 2b
-          h_parametrization[ih].htype = '2neigbs'
+          h_parameterization[ih].htype = '2neigbs'
         elif (n_red_neigbs == 3): # case 3
-          h_parametrization[ih].htype = '3neigbs'
+          h_parameterization[ih].htype = '3neigbs'
     # case 1a
     elif(n_red_neigbs == 1 and count_H == 1):
       neigbs_14 = connectivity[ih][2]
@@ -126,13 +138,25 @@ def get_h_parametrization(
       alpha2 = (uh0).angle(u20)
       # TODO add singularity test - division by zero
       c0, c1, c2 = math.cos(alpha0), math.cos(alpha1), math.cos(alpha2)
+      denom = (1-c0*c0)
+      if(denom==0):
+        raise RuntimeError(
+          "Denominator zero: (1-c0*c0) in get_h_parameterization.")
       a, b = (c1-c0*c2)/(1-c0*c0), (c2-c0*c1)/(1-c0*c0)
+      root = 1-c1*c1-c2*c2-c0*c0+2*c0*c1*c2
+      if(root < 0):
+        raise RuntimeError(
+          "Expression in square root < 0 in get_h_parameterization.")
+      denom = math.sin(alpha0)
+      if(denom==0):
+        raise RuntimeError(
+          "Denominator zero: sin(alpha0)in get_h_parameterization.")
       cz = (math.sqrt(1-c1*c1-c2*c2-c0*c0+2*c0*c1*c2))/math.sin(alpha0)
       h = cz/math.sin(alpha0)
       # test if vector v points to same 'side' as uh0
       if((u10.cross(u20)).dot(uh0) < 0):
         h = -h
-      h_parametrization[ih] = parametrization_info(
+      h_parameterization[ih] = parameterization_info(
         htype  = 'alg1a',
         a0     = a0.iseq,
         a1     = a1.iseq,
@@ -167,7 +191,7 @@ def get_h_parametrization(
       rp = rh - dh * s_chi * w10
       rp0 = rp - r0
       eps = (rp0).angle(u10)
-      h_parametrization[ih] = parametrization_info(
+      h_parameterization[ih] = parameterization_info(
         htype  = 'alg1b',
         a0     = a0.iseq,
         a1     = a1.iseq,
@@ -178,15 +202,15 @@ def get_h_parametrization(
         eps    = eps,
         dist_h = a0.dist_ideal)
     else:
-      h_parametrization[ih] = parametrization_info(
+      h_parameterization[ih] = parameterization_info(
         htype  = 'unk',
         a0     = a0.iseq,
         a1     = a1.iseq)
-  return h_parametrization
+  return h_parameterization
 
 
-def generate_H_positions(xray_structure, ih, para_info):
-  sites_cart = xray_structure.sites_cart()
+def generate_H_positions(sites_cart, ih, para_info):
+  #sites_cart = xray_structure.sites_cart()
   r0 = matrix.col(sites_cart[para_info.a0])
   r1 = matrix.col(sites_cart[para_info.a1])
   dh = para_info.dist_h
@@ -240,14 +264,14 @@ def generate_H_positions(xray_structure, ih, para_info):
 def run(args, out=sys.stdout):
   log = multi_out()
   log.register("stdout", out)
-  log_file_name = "hydrogen_parametrization.log"
+  log_file_name = "hydrogen_parameterization.log"
   logfile = open(log_file_name, "w")
   log.register("logfile", logfile)
   if (len(args) == 0):
     print >>log, legend
     return
 
-  print >> log, "phenix.hydrogen_parametrization is running..."
+  print >> log, "phenix.hydrogen_parameterization is running..."
   print >> log, "input parameters:\n", args
 
 # parse through params --> switch off CDL or not
@@ -296,19 +320,19 @@ def run(args, out=sys.stdout):
     angle_proxies  = angle_proxies,
     xray_structure = xray_structure)
 
-  print >>log, '\nNow determining the parametrization for H atoms...'
-  h_parametrization = get_h_parametrization(
+  print >>log, '\nNow determining the parameterization for H atoms...'
+  h_parameterization = get_h_parameterization(
     connectivity   = connectivity,
-    xray_structure = xray_structure,
+    sites_cart     = sites_cart,
     names          = names,
     atoms_list     = atoms_list)
 
   print >>log, '\nNow reconstructing H atoms...'
-  for ih in h_parametrization.keys():
+  for ih in h_parameterization.keys():
     residue = atoms_list[ih].resseq
-    hp = h_parametrization[ih]
+    hp = h_parameterization[ih]
     h_obj = generate_H_positions(
-      xray_structure    = xray_structure,
+      sites_cart        = sites_cart,
       ih                = ih,
       para_info         = hp)
     if(h_obj.distance is not None):

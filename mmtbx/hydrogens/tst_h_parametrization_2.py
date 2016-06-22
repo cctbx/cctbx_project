@@ -9,11 +9,11 @@ import hydrogen_connectivity
 import hydrogen_parametrization
 
 #----------------------------------------------------
-# This test checks the parametrization of hydrogen atoms
+# This test checks the parameterization of hydrogen atoms
 # for nucleic acids
 # Steps:
-# 1) determine parametrization
-# 2) Compare calculated position of H from parametrization
+# 1) determine parameterization
+# 2) Compare calculated position of H from parameterization
 # to input position
 # test fails if distance is > 0.001 A (=precision of coordinates)
 #----------------------------------------------------
@@ -52,7 +52,7 @@ def exercise():
 #-------------------------------------------------------------
 # This is useful to keep for debugging: human readable output of connectivity
 #-------------------------------------------------------------
-#  for ih in connectivity:
+#  for ih in connectivity.keys():
 #    if(len(connectivity[ih])==3):
 #      string = (" ".join([names[p.iseq] for p in connectivity[ih][2]]))
 #    else:
@@ -61,22 +61,22 @@ def exercise():
 #      ',', (" ".join([names[p.iseq] for p in connectivity[ih][1]])), ',', string
 #-------------------------------------------------------------
 
-  h_parametrization = hydrogen_parametrization.get_h_parametrization(
+  h_parameterization = hydrogen_parametrization.get_h_parameterization(
     connectivity   = connectivity,
-    xray_structure = xray_structure,
+    sites_cart     = sites_cart,
     names          = names,
     atoms_list     = atoms_list)
 
 # There are 90 H atoms in the pdb_string, check if all of them are recognized
-  assert (len(h_parametrization.keys()) == 90), 'Not all H atoms are parameterized'
+  assert (len(h_parameterization.keys()) == 90), 'Not all H atoms are parameterized'
 
 # For each H atom, check if distance compared to input model is not changed
   n_unk = 0
-  for ih in h_parametrization.keys():
+  for ih in h_parameterization.keys():
     residue = atoms_list[ih].resseq
-    hp = h_parametrization[ih]
+    hp = h_parameterization[ih]
     h_obj = hydrogen_parametrization.generate_H_positions(
-      xray_structure    = xray_structure,
+      sites_cart        = sites_cart,
       ih                = ih,
       para_info         = hp)
     assert (h_obj.distance < 0.001), 'distance too large: %s  atom: %s (%s) residue: %s ' \
