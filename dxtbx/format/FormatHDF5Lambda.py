@@ -81,12 +81,34 @@ class FormatHDF5Lambda(FormatHDF5):
     image_size = int(layout[0]), int(layout[1])
     trusted_range = (-1, detector['saturation_value'][0])
     thickness = float(detector['sensor_thickness'].value) / 1000.
+    material = str(detector['sensor_material'].value[0])
 
     # Make the detector
-    return self._detector_factory.make_detector(
+    detector = self._detector_factory.make_detector(
       "PAD", fast, slow, orig,
       pixel_size, image_size, trusted_range,
-      name="Panel", thickness=thickness, material='GaAs',)
+      name="Panel", thickness=thickness, material=material,)
+
+    # At the moment, beam is a dummy object because wavelength is not set in
+    # the header. Therefore, the px<-->mm strategy will generally be
+    # incorrect. Set it anyway, to override later.
+    beam = self._beam()
+    wavelength = beam.get_wavelength()
+
+    from cctbx.eltbx import attenuation_coefficient
+    from dxtbx.model import ParallaxCorrectedPxMmStrategy
+
+    # this will fail for undefined composite materials
+    table = attenuation_coefficient.get_table(material)
+
+    # mu_at_angstrom returns cm^-1, but need mu in mm^-1
+    mu = table.mu_at_angstrom(wavelength) / 10.0
+
+    for panel in detector:
+      panel.set_mu(mu)
+      panel.set_px_mm_strategy(ParallaxCorrectedPxMmStrategy(mu, thickness))
+
+    return detector
 
   def _beam(self):
     '''Dummy beam'''
