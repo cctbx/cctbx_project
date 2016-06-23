@@ -677,7 +677,7 @@ class TagDialog(BaseDialog):
 
   def onAdd(self, e):
     ''' Add a string item to list; focus on item & provide default tag name'''
-    new_tag = ('default tag {}'.format(self.index), '')
+    new_tag = ('default tag {}'.format(self.index), '', self.index)
     self.new_tags.append(new_tag)
     self.tag_list.InsertStringItem(self.index, new_tag[0])
     self.tag_list.SetStringItem(self.index, 1, new_tag[1])
@@ -707,8 +707,7 @@ class TagDialog(BaseDialog):
       self.db_tags = []
 
   def onOK(self, e):
-    count = self.tag_list.GetItemCount()
-    if count == 0:
+    if self.tag_list.GetItemCount() == 0:
       warning = wx.MessageDialog(self,
                                  message='Must have at least one tag!',
                                  caption='Warning',
@@ -720,27 +719,31 @@ class TagDialog(BaseDialog):
         for tag in self.deleted_tags:
           self.db.delete_tag(tag=tag)
 
-        # Add new tags to DB
-        for tag in self.new_tags:
-          self.db.create_tag(name=tag[0], comment=tag[1])
-
         # Update names for edited tags
         all_items = [(self.tag_list.GetItemData(i),
                       self.tag_list.GetItem(itemId=i, col=0),
                       self.tag_list.GetItem(itemId=i, col=1))
-                     for i in range(count)]
+                     for i in range(self.tag_list.GetItemCount())]
 
         self.db_tags = self.db.get_all_tags()
-        for tag in self.db_tags:
-          for item in all_items:
-            if tag.tag_id == item[0]:
-              if tag.name != item[1].m_text:
-                tag.name = item[1].m_text
-              if tag.comment != item[2].m_text:
-                tag.comment = item[2].m_text
+        tag_ids = [i.tag_id for i in self.db_tags]
+        tag_names = [i.name for i in self.db_tags]
+        item_names = [i[1].m_text for i in all_items]
 
-      except Exception, e:
-        print str(e)
+        if set(item_names).intersection(tag_names) != []:
+          wx.MessageBox('Need a unique tag name!', 'Warning',
+                        wx.ICON_EXCLAMATION)
+        else:
+          for item in all_items:
+            if item[0] in tag_ids:
+              tag = self.db.get_tag(tag_id=item[0])
+              tag.name = item[1].m_text
+              tag.comment = item[2].m_text
+            elif item[0] == -1:
+              self.db.create_tag(name=item[1].m_text, comment=item[2].m_text)
+
+      except Exception, exception:
+        print str(exception)
 
       e.Skip()
 
