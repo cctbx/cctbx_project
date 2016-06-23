@@ -59,7 +59,6 @@ class RunSentinel(Thread):
     evt = RefreshRuns(tp_EVT_RUN_REFRESH, -1)
     wx.PostEvent(self.parent.run_window.runs_tab, evt)
     wx.PostEvent(self.parent.run_window.trials_tab, evt)
-    wx.PostEvent(self.parent.run_window.status_tab, evt)
 
   def run(self):
     # one time post for an initial update
@@ -87,7 +86,7 @@ class RunSentinel(Thread):
 
 # Set up events for and for finishing all cycles
 tp_EVT_JOB_REFRESH = wx.NewEventType()
-EVT_JOB_REFRESH = wx.PyEventBinder(tp_EVT_RUN_REFRESH, 1)
+EVT_JOB_REFRESH = wx.PyEventBinder(tp_EVT_JOB_REFRESH, 1)
 
 class RefreshJobs(wx.PyCommandEvent):
   ''' Send event when finished all cycles  '''
@@ -122,6 +121,44 @@ class JobSentinel(Thread):
       self.post_refresh()
       time.sleep(1)
 
+# ----------------------------- Progress Sentinel ---------------------------- #
+
+# Set up events for and for finishing all cycles
+tp_EVT_PRG_REFRESH = wx.NewEventType()
+EVT_PRG_REFRESH = wx.PyEventBinder(tp_EVT_PRG_REFRESH, 1)
+
+class RefreshStats(wx.PyCommandEvent):
+  ''' Send event when finished all cycles  '''
+  def __init__(self, etype, eid):
+    wx.PyCommandEvent.__init__(self, etype, eid)
+
+class ProgressSentinel(Thread):
+  ''' Worker thread for jobs; generated so that the GUI does not lock up when
+      processing is running '''
+
+  def __init__(self,
+               parent,
+               active=True):
+    Thread.__init__(self)
+    self.parent = parent
+    self.active = active
+
+  def post_refresh(self):
+    evt = RefreshStats(tp_EVT_PRG_REFRESH, -1)
+    wx.PostEvent(self.parent.run_window.status_tab, evt)
+
+  def run(self):
+    # one time post for an initial update
+    self.post_refresh()
+
+    from xfel.ui.db.xfel_db import xfel_db_application
+
+    while self.active:
+      db = xfel_db_application(self.parent.params)
+      if len(db.get_all_trials()) > 0 and len(db.get_all_tags()) > 0:
+        self.post_refresh()
+      time.sleep(1)
+
 # ------------------------------- Main Window -------------------------------- #
 
 class MainWindow(wx.Frame):
@@ -131,6 +168,7 @@ class MainWindow(wx.Frame):
 
     self.run_sentinel = None
     self.job_sentinel = None
+    self.prg_sentinel = None
 
     self.params = load_cached_settings()
     self.db = None
@@ -224,15 +262,16 @@ class MainWindow(wx.Frame):
   def start_sentinels(self):
     self.start_run_sentinel()
     self.start_job_sentinel()
+    self.start_prg_sentinel()
 
   def stop_sentinels(self):
     self.stop_run_sentinel()
     self.stop_job_sentinel()
+    self.stop_prg_sentinel()
 
   def start_run_sentinel(self):
     self.run_sentinel = RunSentinel(self, active=True)
     self.run_sentinel.start()
-    #self.run_window.runs_tab.refresh_rows(all=True)
 
   def stop_run_sentinel(self):
     self.run_sentinel.active = False
@@ -252,6 +291,14 @@ class MainWindow(wx.Frame):
 
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
     self.toolbar.EnableTool(self.tb_btn_pause.GetId(), False)
+
+  def start_prg_sentinel(self):
+    self.prg_sentinel = ProgressSentinel(self, active=True)
+    self.prg_sentinel.start()
+
+  def stop_prg_sentinel(self):
+    self.prg_sentinel.active = False
+    self.prg_sentinel.join()
 
   def OnAboutBox(self, e):
     ''' About dialog '''
@@ -534,9 +581,26 @@ class StatusTab(BaseTab):
     self.status_panel = ScrolledPanel(self, size=(300, 350))
     self.status_sizer = wx.BoxSizer(wx.VERTICAL)
     self.status_panel.SetSizer(self.status_sizer)
+    self.trial_no = 0
+    self.all_trials = []
+    self.all_tags = []
+    self.selected_tags = []
 
-    self.btn_filter_tags = wx.Button(self, label='Filter Tags...')
-    show_mult = 'Show multiplicity at (A):'
+    self.trial_number = gctr.ChoiceCtrl(self,
+                                        label='Trial:',
+                                        label_size=(40, -1),
+                                        label_style='normal',
+                                        ctrl_size=(200, -1),
+                                        choices=[])
+    self.tag_list = gctr.CheckListCtrl(self,
+                                       label='Tags:',
+                                       label_size=(40, -1),
+                                       label_style='normal',
+                                       ctrl_size=(200, 100),
+                                       choices=[])
+
+    show_mult = 'Show multiplicity at ({}):' \
+                ''.format(u'\N{ANGSTROM SIGN}'.encode('utf-8'))
     goal_mult = 'Goal (fold multiplicity):'
     self.opt_multi = gctr.OptionCtrl(self,
                                      ctrl_size=(100, -1),
@@ -545,7 +609,8 @@ class StatusTab(BaseTab):
                                             ('goal', 10)])
 
     self.bottom_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    self.bottom_sizer.Add(self.btn_filter_tags)
+    self.bottom_sizer.Add(self.trial_number)
+    self.bottom_sizer.Add(self.tag_list, flag=wx.LEFT, border=10)
     self.bottom_sizer.Add(self.opt_multi, flag=wx.LEFT, border=25)
 
     self.main_sizer.Add(self.status_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
@@ -555,31 +620,74 @@ class StatusTab(BaseTab):
                         border=10)
 
     # Bindings
-    self.Bind(wx.EVT_BUTTON, self.onFilterTags, self.btn_filter_tags)
+    self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
+    self.Bind(wx.EVT_CHECKLISTBOX, self.onTagCheck, self.tag_list.ctr)
     self.Bind(wx.EVT_TEXT_ENTER, self.onMultiplicityGoal, self.opt_multi.goal)
-    self.Bind(EVT_RUN_REFRESH, self.onPlotChart)
+    self.Bind(EVT_PRG_REFRESH, self.onRefresh)
 
     # TODO: calculate actual max from db
     self.max_value = 150
+
+  def onTagCheck(self, e):
+    checked_items = self.tag_list.ctr.GetCheckedStrings()
+    self.selected_tags = [i for i in self.main.db.get_all_tags() if i.name
+                          in checked_items]
+
+  def onTrialChoice(self, e):
+    # TODO: redo calculation for this trial
+    self.trial_no = self.trial_number.ctr.GetSelection()
+    pass
+
+  def find_tags(self):
+    self.tag_list.ctr.Clear()
+    self.all_tags = [str(i.name) for i in self.main.db.get_all_tags()]
+    self.tag_list.ctr.InsertItems(items=self.all_tags, pos=0)
+
+  def find_trials(self):
+    self.all_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
+    self.trial_number.ctr.Clear()
+    for trial in self.all_trials:
+      self.trial_number.ctr.Append(trial)
+    self.trial_number.ctr.SetSelection(self.trial_no)
 
   def onMultiplicityGoal(self, e):
     goal = self.opt_multi.goal.GetValue()
     if goal.isdigit() and goal != '':
       self.refresh_rows()
 
-  def onPlotChart(self, e):
+  def onRefresh(self, e):
+
+    # Find new tags
+    all_db_tags = [str(i.name) for i in self.main.db.get_all_tags()]
+    new_tags = [i for i in all_db_tags if i not in self.all_tags]
+    if len(new_tags) > 0:
+      self.find_tags()
+
+    # Find new trials
+    all_db_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
+    new_trials = [i for i in all_db_trials if i not in self.all_trials]
+    if len(new_trials) > 0:
+      self.find_trials()
+
+    # Show info
     self.refresh_rows()
 
   def refresh_rows(self):
     self.status_sizer.DeleteWindows()
-    self.tags = self.main.db.get_all_tags()
-    for tag in self.tags:
-      self.add_row(tag)
+    # cells = self.main.db.get_stats(trial=self.main.db.get_trial(
+    # trial_number=0), tags=self.tags)()
+    #print cells
+
+    if self.selected_tags != []:
+      for tag in self.selected_tags:
+        self.add_row(tag)
 
     self.status_panel.Layout()
     self.status_panel.SetupScrolling()
 
   def add_row(self, tag=None):
+
+
     # TODO: hook up actual db values
     value = random.randrange(self.max_value)
     goal = int(self.opt_multi.goal.GetValue())
@@ -598,9 +706,6 @@ class StatusTab(BaseTab):
     row.bar.SetValue(value)
     self.status_sizer.Add(row, flag=wx.EXPAND | wx.ALL, border=10)
 
-
-  def onFilterTags(self, e):
-    pass
 
 
 class MergeTab(BaseTab):

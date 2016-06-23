@@ -646,8 +646,8 @@ class TagDialog(BaseDialog):
     # Populate tags with current values from db
     if len(self.db_tags) > 0:
       for tag in self.db_tags:
-        self.tag_list.InsertStringItem(self.index, tag.name)
-        self.tag_list.SetStringItem(self.index, 1, tag.comment)
+        self.tag_list.InsertStringItem(self.index, str(tag.name))
+        self.tag_list.SetStringItem(self.index, 1, str(tag.comment))
         self.tag_list.SetItemData(self.index, tag.tag_id)
         self.index += 1
 
@@ -1090,7 +1090,6 @@ class TrialDialog(BaseDialog):
                         label_style=label_style,
                         content_style=content_style,
                         size=(600, 600),
-                        style=wx.RESIZE_BORDER,
                         *args, **kwargs)
 
     if trial is None:
