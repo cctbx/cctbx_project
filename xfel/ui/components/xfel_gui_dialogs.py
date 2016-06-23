@@ -727,10 +727,9 @@ class TagDialog(BaseDialog):
 
         self.db_tags = self.db.get_all_tags()
         tag_ids = [i.tag_id for i in self.db_tags]
-        tag_names = [i.name for i in self.db_tags]
-        item_names = [i[1].m_text for i in all_items]
+        new_tag_names = [i[1].m_text for i in all_items]
 
-        if set(item_names).intersection(tag_names) != []:
+        if len([i for i in new_tag_names if new_tag_names.count(i) > 1]) != 0:
           wx.MessageBox('Need a unique tag name!', 'Warning',
                         wx.ICON_EXCLAMATION)
         else:
