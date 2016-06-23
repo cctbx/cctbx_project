@@ -21,7 +21,7 @@ class nist_elements(object):
       'Dy', 'Ho', 'Er', 'Tm', 'Yb', 'Lu', 'Hf', 'Ta',  'W', 'Re', 'Os',
       'Ir', 'Pt', 'Au', 'Hg', 'Tl', 'Pb', 'Bi', 'Po', 'At', 'Rn', 'Fr',
       'Ra', 'Ac', 'Th', 'Pa', 'U',
-      'CdTe']
+      'CdTe', 'GaAs']
 
   def __len__(self):
     ''' Return the number of elemets '''
