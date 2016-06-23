@@ -3957,7 +3957,7 @@ def run_auto_sharpen(
         print >>out,"\nNew threshold is %7.2f" %(new_threshold)
         if 0 and fixed_threshold is None: fixed_threshold=new_threshold # XXX
 
-    from cctbx.maptbx.breakpoint import find_breakpoint
+    from scitbx.math.breakpoint import find_breakpoint
     target_b_iso=find_breakpoint(value_dict=b_vs_region.b_vs_region_dict,
        out=out)
 
