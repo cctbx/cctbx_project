@@ -3905,6 +3905,10 @@ xfel/ui/components/__init__.py -text
 xfel/ui/components/icons/16x16/cancel.png -text
 xfel/ui/components/icons/16x16/delete.png -text
 xfel/ui/components/icons/16x16/info.png -text
+xfel/ui/components/icons/16x16/led_alert.png -text
+xfel/ui/components/icons/16x16/led_idle.png -text
+xfel/ui/components/icons/16x16/led_off.png -text
+xfel/ui/components/icons/16x16/led_on.png -text
 xfel/ui/components/icons/16x16/open.png -text
 xfel/ui/components/icons/16x16/run.png -text
 xfel/ui/components/icons/16x16/stop.png -text

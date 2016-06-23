@@ -162,9 +162,10 @@ class CtrlBase(wx.Panel):
   def __init__(self,
                parent,
                label_style='normal',
-               content_style='normal'):
+               content_style='normal',
+               size=wx.DefaultSize):
 
-    wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
+    wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY, size=size)
     if label_style == 'normal':
       self.font = wx.Font(norm_font_size, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
     elif label_style == 'bold':
@@ -516,3 +517,38 @@ class GaugeBar(CtrlBase):
       self.sizer.Add(self.btn, 1, wx.ALIGN_RIGHT | wx.ALIGN_CENTER)
 
     self.SetSizer(self.sizer)
+
+class SentinelStatus(CtrlBase):
+  def __init__(self, parent,
+               label='',
+               label_size=(200, -1),
+               label_style='normal',
+               content_style='normal'):
+
+    self.label = label
+    self.label_size = label_size
+
+    CtrlBase.__init__(self, parent=parent, label_style=label_style,
+                      content_style=content_style, size=(-1, 24))
+
+    bmp = wx.Bitmap('{}/16x16/led_off.png'.format(icons))
+    self.light = wx.StaticBitmap(self, -1, bmp)
+
+    self.sizer = wx.FlexGridSizer(1, 2, 0, 10)
+    self.sizer.Add(self.light)
+    self.sizer.Add(wx.StaticText(self, label=self.label, size=self.label_size))
+
+    self.SetSizer(self.sizer)
+
+  def change_status(self, status):
+
+    if status == 'on':
+      bmp = wx.Bitmap('{}/16x16/led_on.png'.format(icons))
+    elif status == 'off':
+      bmp = wx.Bitmap('{}/16x16/led_off.png'.format(icons))
+    elif status == 'idle':
+      bmp = wx.Bitmap('{}/16x16/led_idle.png'.format(icons))
+    elif status == 'alert':
+      bmp == wx.Bitmap('{}/16x16/led_alert.png'.format(icons))
+
+    self.light.SetBitmap(bmp)

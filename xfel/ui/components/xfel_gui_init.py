@@ -179,7 +179,7 @@ class MainWindow(wx.Frame):
                        label='Quit',
                        bitmap=wx.Bitmap('{}/32x32/exit.png'.format(icons)),
                        shortHelp='Quit',
-                       longHelp='Exit iXFEL')
+                       longHelp='Exit CCTBX.XFEL')
     self.toolbar.AddSeparator()
     self.tb_btn_run = self.toolbar.AddLabelTool(wx.ID_ANY,
                       label='Run Jobs',
@@ -209,8 +209,6 @@ class MainWindow(wx.Frame):
 
     # Status bar
     self.sb = self.CreateStatusBar()
-    self.sb.SetFieldsCount(3)
-    self.sb.SetStatusWidths([320, 200, -2])
 
     # Menu bar
     menubar = wx.MenuBar()
@@ -228,6 +226,7 @@ class MainWindow(wx.Frame):
     # Single input window
     main_box.Add(self.run_window, 1, flag=wx.ALL | wx.EXPAND, border=10)
     main_box.Add((-1, 20))
+
 
     # Menubar button bindings
     self.Bind(wx.EVT_MENU, self.OnAboutBox, self.mb_about)
@@ -272,14 +271,17 @@ class MainWindow(wx.Frame):
   def start_run_sentinel(self):
     self.run_sentinel = RunSentinel(self, active=True)
     self.run_sentinel.start()
+    self.run_window.run_light.change_status('on')
 
   def stop_run_sentinel(self):
     self.run_sentinel.active = False
+    self.run_window.run_light.change_status('off')
     self.run_sentinel.join()
 
   def start_job_sentinel(self):
     self.job_sentinel = JobSentinel(self, active=True)
     self.job_sentinel.start()
+    self.run_window.job_light.change_status('on')
 
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
     self.toolbar.EnableTool(self.tb_btn_pause.GetId(), True)
@@ -287,6 +289,7 @@ class MainWindow(wx.Frame):
   def stop_job_sentinel(self):
     if self.job_sentinel is not None:
       self.job_sentinel.active = False
+      self.run_window.job_light.change_status('off')
       self.job_sentinel.join()
 
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
@@ -295,9 +298,11 @@ class MainWindow(wx.Frame):
   def start_prg_sentinel(self):
     self.prg_sentinel = ProgressSentinel(self, active=True)
     self.prg_sentinel.start()
+    self.run_window.prg_light.change_status('on')
 
   def stop_prg_sentinel(self):
     self.prg_sentinel.active = False
+    self.run_window.prg_light.change_status('off')
     self.prg_sentinel.join()
 
   def OnAboutBox(self, e):
@@ -368,8 +373,17 @@ class RunWindow(wx.Panel):
     self.main_nbook.AddPage(self.status_tab, 'Status')
     self.main_nbook.AddPage(self.merge_tab, 'Merge')
 
+    self.sentinel_box = wx.BoxSizer(wx.HORIZONTAL)
+    self.run_light = gctr.SentinelStatus(self.main_panel, label='Run Sentinel')
+    self.job_light = gctr.SentinelStatus(self.main_panel, label='Job Sentinel')
+    self.prg_light = gctr.SentinelStatus(self.main_panel, label='Progress Sentinel')
+    self.sentinel_box.Add(self.run_light, flag=wx.LEFT, border=10)
+    self.sentinel_box.Add(self.job_light, flag=wx.LEFT, border=20)
+    self.sentinel_box.Add(self.prg_light, flag=wx.LEFT, border=20)
+
     nb_sizer = wx.BoxSizer(wx.VERTICAL)
     nb_sizer.Add(self.main_nbook, 1, flag=wx.EXPAND | wx.ALL, border=3)
+    nb_sizer.Add(self.sentinel_box, flag=wx.EXPAND | wx.ALL, border=3)
     self.main_panel.SetSizer(nb_sizer)
 
     main_sizer = wx.BoxSizer(wx.VERTICAL)
