@@ -98,7 +98,7 @@ GTK_THEME_PKG = "gtk_themes.tar.gz"
 FONT_PKG = "fonts.tar.gz"
 
 MATPLOTLIB_PKG = "matplotlib-1.3.1.tar.gz"
-PY2APP_PKG = "py2app-0.8.1.tar.gz"                    # Mac only
+PY2APP_PKG = "py2app-0.7.3.tar.gz"                    # Mac only
 
 PYOPENGL_PKG = "PyOpenGL-3.1.0.tar.gz"
 # https://pypi.python.org/pypi/Send2Trash
