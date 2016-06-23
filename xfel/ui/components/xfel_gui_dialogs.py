@@ -716,27 +716,29 @@ class TagDialog(BaseDialog):
       warning.ShowModal()
     else:
       try:
+        # Delete tags from DB
+        for tag in self.deleted_tags:
+          self.db.delete_tag(tag=tag)
+
+        # Add new tags to DB
+        for tag in self.new_tags:
+          self.db.create_tag(name=tag[0], comment=tag[1])
+
         # Update names for edited tags
         all_items = [(self.tag_list.GetItemData(i),
-                    self.tag_list.GetItem(itemId=i, col=0),
-                    self.tag_list.GetItem(itemId=i, col=1))
-                   for i in range(count)]
-        edited_items = [i for i in all_items if i[0] != -1]
+                      self.tag_list.GetItem(itemId=i, col=0),
+                      self.tag_list.GetItem(itemId=i, col=1))
+                     for i in range(count)]
+
+        self.db_tags = self.db.get_all_tags()
         for tag in self.db_tags:
-          for item in edited_items:
+          for item in all_items:
             if tag.tag_id == item[0]:
               if tag.name != item[1].m_text:
                 tag.name = item[1].m_text
               if tag.comment != item[2].m_text:
                 tag.comment = item[2].m_text
 
-        # Delete tags from DB
-        for tag in self.deleted_tags:
-          self.db.delete_tag(tag)
-
-        # Add new tags to DB
-        for tag in self.new_tags:
-          self.db.create_tag(name=tag[0], comment=tag[1])
       except Exception, e:
         print str(e)
 

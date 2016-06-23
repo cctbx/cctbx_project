@@ -636,7 +636,6 @@ class StatusTab(BaseTab):
   def onTrialChoice(self, e):
     # TODO: redo calculation for this trial
     self.trial_no = self.trial_number.ctr.GetSelection()
-    pass
 
   def find_tags(self):
     self.tag_list.ctr.Clear()
@@ -686,7 +685,6 @@ class StatusTab(BaseTab):
     self.status_panel.SetupScrolling()
 
   def add_row(self, tag=None):
-
 
     # TODO: hook up actual db values
     value = random.randrange(self.max_value)
