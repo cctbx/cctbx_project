@@ -1059,16 +1059,42 @@ def u_tls_vs_u_ens(
         tx=0,ty=0,tz=0,
         vx=[1,0,0],vy=[0,1,0],vz=[0,0,1],
         w_M_lx=[0,0,0], w_M_ly=[0,0,0], w_M_lz=[0,0,0],
-        n_models=10000):
+        origin=None,
+        n_models=10000,
+        assert_similarity=True):
   from mmtbx.tls import analysis, tls_as_xyz
   from scitbx import matrix
   from libtbx.utils import null_out
-  p1 = "dx"+str(dx)+"_"+"dy"+str(dy)+"_"+"dz"+str(dz)
-  p2 = "sx"+str(sx)+"_"+"sy"+str(sy)+"_"+"sz"+str(sz)
-  p3 = "lx"+"".join([str(i) for i in lx])+"_"+\
-       "ly"+"".join([str(i) for i in ly])+"_"+\
-       "lz"+"".join([str(i) for i in lz])
-  prefix = "_".join([p1,p2,p3])
+  #
+  print "INPUTS:","-"*73
+  print "dx    :", dx
+  print "dy    :", dy
+  print "dz    :", dz
+  print "sx    :", sx
+  print "sy    :", sy
+  print "sz    :", sz
+  print "lx    :", [i for i in lx]
+  print "ly    :", [i for i in ly]
+  print "lz    :", [i for i in lz]
+  print "tx    :", tx
+  print "ty    :", ty
+  print "tz    :", tz
+  print "vx    :", [i for i in vx]
+  print "vy    :", [i for i in vy]
+  print "vz    :", [i for i in vz]
+  print "w_M_lx:", [i for i in w_M_lx]
+  print "w_M_ly:", [i for i in w_M_ly]
+  print "w_M_lz:", [i for i in w_M_lz]
+  print "origin:", origin
+  print "-"*79
+  #
+  #p1 = "dx"+str(dx)+"_"+"dy"+str(dy)+"_"+"dz"+str(dz)
+  #p2 = "sx"+str(sx)+"_"+"sy"+str(sy)+"_"+"sz"+str(sz)
+  #p3 = "lx"+"".join([str(i) for i in lx])+"_"+\
+  #     "ly"+"".join([str(i) for i in ly])+"_"+\
+  #     "lz"+"".join([str(i) for i in lz])
+  #prefix = "_".join([p1,p2,p3])
+  prefix="u_tls_vs_u_ens"
   #
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
   xrs = pdb_inp.xray_structure_simple()
@@ -1076,7 +1102,8 @@ def u_tls_vs_u_ens(
   xrs.set_sites_cart(sites_cart)
   ph = pdb_inp.construct_hierarchy()
   ph.atoms().set_xyz(sites_cart)
-  origin = sites_cart.mean()
+  if(origin is None):
+    origin = sites_cart.mean()
   #
   o_tfm = analysis.tls_from_motions(
     dx=dx,dy=dy,dz=dz,
@@ -1087,8 +1114,6 @@ def u_tls_vs_u_ens(
     w_M_lx=matrix.col(w_M_lx),
     w_M_ly=matrix.col(w_M_ly),
     w_M_lz=matrix.col(w_M_lz))
-  #print "INPUTS:", "*"*30
-  #o_tfm.show()
   #
   u_cart_from_tls = get_u_cart(o_tfm=o_tfm, origin=origin, sites_cart=sites_cart)
   tlso_ = tlso(
@@ -1096,7 +1121,7 @@ def u_tls_vs_u_ens(
     l      = o_tfm.L_M.as_sym_mat3(),
     s      = o_tfm.S_M.as_mat3(),
     origin = origin)
-  if 1:
+  if(assert_similarity):
     T = matrix.sym(sym_mat3=tlso_.t)
     L = matrix.sym(sym_mat3=tlso_.l)
     S = matrix.sqr(tlso_.s)
@@ -1109,8 +1134,7 @@ def u_tls_vs_u_ens(
     n_models             = n_models,
     origin               = origin,
     log                  = null_out())
-  #log.close()
-  r.write_pdb_file(file_name="%s.pdb"%prefix)
+  r.write_pdb_file(file_name="%s_ensemble.pdb"%prefix)
   #
   xyz_all = []
   for m in r.states.root.models():
@@ -1123,13 +1147,23 @@ def u_tls_vs_u_ens(
     for xyzs in xyz_all:
       xyz_atoms.append(xyzs[i])
     xyz_atoms_all.append(xyz_atoms)
-  #
-  print prefix,"COMPARE U:"
+  ###
+  u1 = u_cart_from_tls.as_double()
+  u2 = flex.double()
+  for i in xrange(n_atoms):
+    ui=flex.double(u_cart_from_xyz(sites_cart=xyz_atoms_all[i]))
+    u2.extend(ui)
+  r = flex.sum(flex.abs(u1-u2))/\
+        flex.sum(flex.abs(flex.abs(u1)+flex.abs(u2)))*2
+  print "R(U_tls,U_ens)=%6.4f"%(r)
+  print "-"*79
+  ###
   for i in xrange(n_atoms):
     print "atom %d:"%i
     ut=["%8.5f"%u for u in u_cart_from_tls[i]]
     ue=["%8.5f"%u for u in u_cart_from_xyz(sites_cart=xyz_atoms_all[i])]
     print "  Ucart(from TLS):", ut
     print "  Ucart(from ens):", ue
-    for j in xrange(6):
-      assert approx_equal(abs(float(ut[j])), abs(float(ue[j])), 1.e-3)
+    if(assert_similarity):
+      for j in xrange(6):
+        assert approx_equal(abs(float(ut[j])), abs(float(ue[j])), 1.e-3)

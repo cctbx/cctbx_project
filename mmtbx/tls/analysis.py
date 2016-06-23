@@ -595,14 +595,15 @@ class run(object):
     #
     show_number(x=[r.sx, r.sy, r.sz], title="Correlation shifts sx,sy,sz for libration (8):", log=self.log)
     #
-    show_vector(x=r.v_x, title="Vector defining vibration axis in M basis (41):", log=self.log)
-    show_vector(x=r.v_y, title="Vector defining vibration axis in M basis (41):", log=self.log)
-    show_vector(x=r.v_z, title="Vector defining vibration axis in M basis (41):", log=self.log)
+    show_vector(x=r.v_x_M, title="Vector defining vibration axis in M basis (41):", log=self.log)
+    show_vector(x=r.v_y_M, title="Vector defining vibration axis in M basis (41):", log=self.log)
+    show_vector(x=r.v_z_M, title="Vector defining vibration axis in M basis (41):", log=self.log)
     #
     show_number(x=[r.tx, r.ty, r.tz], title="Vibration rms along V-axes", log=self.log)
 
-  def self_check(self):
-    print_step("Recover T_M, L_M,S_M from base elements:", self.log)
+  def self_check(self, show=True):
+    if(show):
+      print_step("Recover T_M, L_M,S_M from base elements:", self.log)
     r = self.result
     r = tls_from_motions(
       dx=r.dx, dy=r.dy, dz=r.dz,
@@ -615,20 +616,23 @@ class run(object):
       w_M_lz=r.w_M_lz)
     #
     T_M = r.T_M
-    show_matrix(x=self.T_M, title="Input T_M:", log=self.log)
-    show_matrix(x=T_M, title="Recoverd T_M:", log=self.log)
+    if(show):
+      show_matrix(x=self.T_M, title="Input T_M:", log=self.log)
+      show_matrix(x=T_M, title="Recovered T_M:", log=self.log)
     if(flex.max(flex.abs(flex.double(T_M - self.T_M))) > self.self_check_eps):
       raise Sorry("Cannot reconstruct T_M")
     # L_M
     L_M = r.L_M
-    show_matrix(x=self.L_M, title="Input L_M:", log=self.log)
-    show_matrix(x=L_M, title="Recoverd L_M:", log=self.log)
+    if(show):
+      show_matrix(x=self.L_M, title="Input L_M:", log=self.log)
+      show_matrix(x=L_M, title="Recovered L_M:", log=self.log)
     if(flex.max(flex.abs(flex.double(L_M - self.L_M))) > self.self_check_eps):
       raise Sorry("Cannot reconstruct L_M")
     # S_M
     S_M = r.S_M
-    show_matrix(x=self.S_M, title="Input S_M:", log=self.log)
-    show_matrix(x=S_M, title="Recoverd S_M:", log=self.log)
+    if(show):
+      show_matrix(x=self.S_M, title="Input S_M:", log=self.log)
+      show_matrix(x=S_M, title="Recovered S_M:", log=self.log)
     d = matrix.sqr(self.S_M-S_M)
     # remark: diagonal does not have to match, can be different by a constant
     max_diff = flex.max(flex.abs(
@@ -657,13 +661,13 @@ class tls_from_motions(object):
       [(self.sx*self.dx)**2,                    0,                    0,
                           0, (self.sy*self.dy)**2,                    0,
                           0,                    0, (self.sz*self.dz)**2])
-    v_x_M = self.R_ML*self.v_x
-    v_y_M = self.R_ML*self.v_y
-    v_z_M = self.R_ML*self.v_z
+    self.v_x_M = self.R_ML*self.v_x
+    self.v_y_M = self.R_ML*self.v_y
+    self.v_z_M = self.R_ML*self.v_z
     self.R_MV = matrix.sqr(
-      [v_x_M[0], v_y_M[0], v_z_M[0],
-       v_x_M[1], v_y_M[1], v_z_M[1],
-       v_x_M[2], v_y_M[2], v_z_M[2]])
+      [self.v_x_M[0], self.v_y_M[0], self.v_z_M[0],
+       self.v_x_M[1], self.v_y_M[1], self.v_z_M[1],
+       self.v_x_M[2], self.v_y_M[2], self.v_z_M[2]])
     V_V = matrix.sqr(
       [self.tx**2,       0,       0,
              0, self.ty**2,       0,

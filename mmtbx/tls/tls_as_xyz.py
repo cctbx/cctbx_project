@@ -38,11 +38,12 @@ def run(pdb_file_name,
     T = matrix.sym(sym_mat3=tls_params_one_group.t)
     L = matrix.sym(sym_mat3=tls_params_one_group.l)
     S = matrix.sqr(tls_params_one_group.s)
+    origin = tls_params_one_group.origin
     tlso = tools.tlso(
       t      = T.as_sym_mat3(),
       l      = L.as_sym_mat3(),
       s      = S,
-      origin = tls_params_one_group.origin)
+      origin = origin)
     # sanity check
     if(not adptbx.is_positive_definite(tls_params_one_group.t, eps)):
       raise Sorry("T matrix is not positive definite.")
@@ -55,7 +56,7 @@ def run(pdb_file_name,
       pdb_hierarchy           = pdb_hierarchy_sel,
       xray_structure          = xrs,
       n_models                = n_models,
-      origin                  = tls_params_one_group.origin,
+      origin                  = origin,
       log                     = log)
     ensemble_generator_obj.write_pdb_file(
       file_name=output_file_name_prefix+"_ensemble_%s.pdb"%str(i_group))
@@ -73,6 +74,13 @@ def run(pdb_file_name,
       print "atom %d:"%i
       print "  Ucart(from TLS):", ["%8.5f"%u for u in u_from_tls[i]]
       print "  Ucart(from ens):", ["%8.5f"%u for u in u_from_ens[i]]
+    #
+    u1, u2 = u_from_tls.as_double(), u_from_ens.as_double()
+    cc = flex.linear_correlation(x=u1, y=u2).coefficient()
+    r = flex.sum(flex.abs(u1-u2))/\
+        flex.sum(flex.abs(flex.abs(u1)+flex.abs(u2)))*2
+    print "%6.4f %6.4f"%(cc, r)
+    #
     pdb_hierarchy_from_tls.atoms().set_uij(u_from_tls)
     pdb_hierarchy_from_ens.atoms().set_uij(u_from_ens)
     pdb_hierarchy_from_tls.write_pdb_file(
