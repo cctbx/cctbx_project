@@ -129,8 +129,11 @@ EVT_PRG_REFRESH = wx.PyEventBinder(tp_EVT_PRG_REFRESH, 1)
 
 class RefreshStats(wx.PyCommandEvent):
   ''' Send event when finished all cycles  '''
-  def __init__(self, etype, eid):
+  def __init__(self, etype, eid, result=None):
     wx.PyCommandEvent.__init__(self, etype, eid)
+    self.result = result
+  def GetValue(self):
+    return self.result
 
 class ProgressSentinel(Thread):
   ''' Worker thread for jobs; generated so that the GUI does not lock up when
@@ -142,9 +145,10 @@ class ProgressSentinel(Thread):
     Thread.__init__(self)
     self.parent = parent
     self.active = active
+    self.info = []
 
   def post_refresh(self):
-    evt = RefreshStats(tp_EVT_PRG_REFRESH, -1)
+    evt = RefreshStats(tp_EVT_PRG_REFRESH, -1, self.info)
     wx.PostEvent(self.parent.run_window.status_tab, evt)
 
   def run(self):
@@ -155,9 +159,29 @@ class ProgressSentinel(Thread):
 
     while self.active:
       db = xfel_db_application(self.parent.params)
+
       if len(db.get_all_trials()) > 0 and len(db.get_all_tags()) > 0:
-        self.post_refresh()
-      time.sleep(1)
+        trial = db.get_trial(
+          trial_number=self.parent.run_window.status_tab.trial_no)
+        tags = self.parent.run_window.status_tab.selected_tags
+        if tags != []:
+          cells = db.get_stats(trial=trial, tags=tags)()
+        else:
+          cells = db.get_stats(trial=trial)()
+
+        for cell in cells:
+          counts = [int(i.count) for i in cell.bins]
+          totals = [int(i.total_hkl) for i in cell.bins]
+          mult = sum(counts) / sum(totals)
+          self.info.append({'multiplicity':mult, 'bins':cell.bins,
+                            'isoform':cell.name, 'a':cell.cell_a,
+                            'b':cell.cell_b, 'c':cell.cell_c,
+                            'alpha':cell.cell_alpha, 'beta':cell.cell_beta,
+                            'gamma':cell.cell_gamma})
+      self.post_refresh()
+      self.info = []
+
+      time.sleep(5)
 
 # ------------------------------- Main Window -------------------------------- #
 
@@ -596,6 +620,7 @@ class StatusTab(BaseTab):
     self.status_sizer = wx.BoxSizer(wx.VERTICAL)
     self.status_panel.SetSizer(self.status_sizer)
     self.trial_no = 0
+    self.tags = None
     self.all_trials = []
     self.all_tags = []
     self.selected_tags = []
@@ -639,9 +664,6 @@ class StatusTab(BaseTab):
     self.Bind(wx.EVT_TEXT_ENTER, self.onMultiplicityGoal, self.opt_multi.goal)
     self.Bind(EVT_PRG_REFRESH, self.onRefresh)
 
-    # TODO: calculate actual max from db
-    self.max_value = 150
-
   def onTagCheck(self, e):
     checked_items = self.tag_list.ctr.GetCheckedStrings()
     self.selected_tags = [i for i in self.main.db.get_all_tags() if i.name
@@ -669,7 +691,6 @@ class StatusTab(BaseTab):
       self.refresh_rows()
 
   def onRefresh(self, e):
-
     # Find new tags
     all_db_tags = [str(i.name) for i in self.main.db.get_all_tags()]
     new_tags = [i for i in all_db_tags if i not in self.all_tags]
@@ -683,42 +704,27 @@ class StatusTab(BaseTab):
       self.find_trials()
 
     # Show info
-    self.refresh_rows()
+    self.refresh_rows(info=e.GetValue())
 
-  def refresh_rows(self):
+  def refresh_rows(self, info=[]):
     self.status_sizer.DeleteWindows()
-    # cells = self.main.db.get_stats(trial=self.main.db.get_trial(
-    # trial_number=0), tags=self.tags)()
-    #print cells
+    if info != []:
+      for isoform in info:
+        self.add_row(name=isoform['isoform'], value=isoform['multiplicity'])
 
-    if self.selected_tags != []:
-      for tag in self.selected_tags:
-        self.add_row(tag)
+      self.status_panel.Layout()
+      self.status_panel.SetupScrolling()
 
-    self.status_panel.Layout()
-    self.status_panel.SetupScrolling()
-
-  def add_row(self, tag=None):
-
-    # TODO: hook up actual db values
-    value = random.randrange(self.max_value)
-    goal = int(self.opt_multi.goal.GetValue())
-    if self.max_value >= goal:
-      gauge_max = self.max_value
-    else:
-      gauge_max = goal
-
+  def add_row(self, name, value):
+    goal = self.opt_multi.goal.GetValue()
     row = gctr.GaugeBar(self.status_panel,
-                        label=tag.name,
+                        label='Isoform {}'.format(name),
                         label_size=(150, -1),
                         gauge_size=(350, 15),
-                        gauge_max=gauge_max,
-                        button=True)
-
+                        button=True,
+                        gauge_max=int(goal))
     row.bar.SetValue(value)
     self.status_sizer.Add(row, flag=wx.EXPAND | wx.ALL, border=10)
-
-
 
 class MergeTab(BaseTab):
   def __init__(self, parent, prefix='prime'):
@@ -883,7 +889,7 @@ class TrialPanel(wx.Panel):
   ''' A scrolled panel that contains run blocks and trial controls '''
 
   def __init__(self, parent, db, trial, box_label=None):
-    wx.Panel.__init__(self, parent=parent, size=(200, 300))
+    wx.Panel.__init__(self, parent=parent, size=(250, 300))
 
     self.db = db
     self.trial = trial
@@ -901,18 +907,13 @@ class TrialPanel(wx.Panel):
 
     # Add "New Block" button to a separate sizer (so it is always on bottom)
     self.btn_add_block = wx.Button(self.add_panel, label='New Block',
-                                   size=(160, -1))
+                                   size=(200, -1))
     self.btn_view_phil = wx.BitmapButton(self.add_panel,
                         bitmap=wx.Bitmap('{}/16x16/viewmag.png'.format(icons)))
-    self.btn_del_trial = wx.BitmapButton(self.add_panel,
-                        bitmap=wx.Bitmap('{}/16x16/delete.png'.format(icons)))
-    chk_size = (155 - self.btn_view_phil.GetSize()[0] -
-                self.btn_del_trial.GetSize()[0], -1)
-    self.chk_active = wx.CheckBox(self.add_panel, label='Active', size=chk_size)
-    self.view_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.chk_active = wx.CheckBox(self.add_panel, label='Active Trial')
+    self.view_sizer = wx.FlexGridSizer(1, 2, 0, 10)
     self.view_sizer.Add(self.btn_view_phil)
-    self.view_sizer.Add(self.btn_del_trial, flag=wx.LEFT, border=5)
-    self.view_sizer.Add(self.chk_active, flag=wx.LEFT, border=5)
+    self.view_sizer.Add(self.chk_active, flag=wx.EXPAND)
 
     self.add_sizer.Add(self.btn_add_block,
                        flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
@@ -928,7 +929,6 @@ class TrialPanel(wx.Panel):
     self.Bind(EVT_RUN_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_BUTTON, self.onAddBlock, self.btn_add_block)
     self.Bind(wx.EVT_BUTTON, self.onViewPHIL, self.btn_view_phil)
-    self.Bind(wx.EVT_BUTTON, self.onDeleteTrial, self.btn_del_trial)
     self.chk_active.Bind(wx.EVT_CHECKBOX, self.onToggleActivity)
 
     self.SetSizer(self.main_sizer)
@@ -937,16 +937,6 @@ class TrialPanel(wx.Panel):
     view_dlg = dlg.TrialDialog(self, db=self.db, trial=self.trial, new=False)
     view_dlg.ShowModal()
     view_dlg.Destroy()
-
-  def onDeleteTrial(self, e):
-    msg = wx.MessageDialog(self,
-                           message='Are you sure? This cannot be reversed!',
-                           caption='Warning',
-                           style=wx.YES_NO | wx.ICON_EXCLAMATION)
-
-    if (msg.ShowModal() == wx.ID_YES):
-      print 'TODO: Need an option to delete a trial from DB'
-      #TODO: insert trial-deleting code right here
 
   def onToggleActivity(self, e):
     if self.chk_active.GetValue():
@@ -958,7 +948,7 @@ class TrialPanel(wx.Panel):
     self.refresh_trial()
 
   def onAddBlock(self, e):
-    rblock_dlg = dlg.RunBlockDialog(self, None)
+    rblock_dlg = dlg.RunBlockDialog(self, trial=self.trial)
     rblock_dlg.Fit()
 
     if (rblock_dlg.ShowModal() == wx.ID_OK):
@@ -977,27 +967,14 @@ class TrialPanel(wx.Panel):
     new_block = gctr.RunBlock(self.block_panel, block=block)
 
     self.Bind(wx.EVT_BUTTON, self.onRunBlockOptions, new_block.new_runblock)
-    self.Bind(wx.EVT_BUTTON, self.onDeleteBlock, new_block.del_runblock)
     self.block_sizer.Add(new_block,
                          flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
                          border=5)
 
-  def onDeleteBlock(self, e):
-    ''' Delete Run block from DB '''
-    msg = wx.MessageDialog(self,
-                           message='Are you sure? This cannot be reversed!',
-                           caption='Warning',
-                           style=wx.YES_NO | wx.ICON_EXCLAMATION)
-
-
-    if (msg.ShowModal() == wx.ID_YES):
-      print 'TODO: Need an option to delete a runblock from DB'
-      # TODO: insert trial-deleting code right here
-
   def onRunBlockOptions(self, e):
     ''' Open dialog and change run_block options '''
     run_block = e.GetEventObject().block
-    rblock_dlg = dlg.RunBlockDialog(self, run_block)
+    rblock_dlg = dlg.RunBlockDialog(self, block=run_block)
     rblock_dlg.Fit()
 
     if (rblock_dlg.ShowModal() == wx.ID_OK):

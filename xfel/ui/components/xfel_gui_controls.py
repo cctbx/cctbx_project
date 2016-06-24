@@ -80,6 +80,7 @@ class RunBlockButton(GradButton):
     self.block = block
     db = block.app
     self.first_run = db.get_run(run_id=block.startrun).run
+    self.rnum = block.rungroup_id
     if block.endrun is None:
       self.last_run = None
     else:
@@ -96,7 +97,7 @@ class RunBlockButton(GradButton):
     else:
       last = ' - {}'.format(self.last_run)
 
-    self.block_label = 'Runs {}{}'.format(first, last)
+    self.block_label = 'Block {}, runs {}{}'.format(self.rnum, first, last)
     self.SetLabel(self.block_label)
     self.Refresh()
 
@@ -479,12 +480,12 @@ class RunBlock(CtrlBase):
                       content_style=content_style)
 
     self.sizer = wx.FlexGridSizer(1, 2, 0, 5)
-    self.new_runblock = RunBlockButton(self, size=(124, 26), block=block)
-    self.del_runblock = wx.BitmapButton(self,
-                        bitmap=wx.Bitmap('{}/16x16/delete.png'.format(icons)))
+    self.new_runblock = RunBlockButton(self, size=(200, -1), block=block)
+    # self.del_runblock = wx.BitmapButton(self,
+    #                     bitmap=wx.Bitmap('{}/16x16/delete.png'.format(icons)))
 
     self.sizer.Add(self.new_runblock)
-    self.sizer.Add(self.del_runblock)
+    # self.sizer.Add(self.del_runblock)
 
     self.SetSizer(self.sizer)
 
@@ -521,7 +522,7 @@ class GaugeBar(CtrlBase):
 class SentinelStatus(CtrlBase):
   def __init__(self, parent,
                label='',
-               label_size=(200, -1),
+               label_size=(150, -1),
                label_style='normal',
                content_style='normal'):
 

@@ -27,6 +27,9 @@ class Stats(object):
           runs.append(run)
           run_numbers.append(run.run)
 
+    if len(runs) == 0:
+      return []
+
     runs_str = "(%s)"%(", ".join([str(r.id) for r in runs]))
     exp_tag = self.app.params.experiment_tag
     query = """SELECT DISTINCT(crystal.cell_id) FROM `%s_crystal` crystal

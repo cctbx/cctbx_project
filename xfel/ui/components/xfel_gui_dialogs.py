@@ -751,18 +751,24 @@ class RunBlockDialog(BaseDialog):
   ''' Comes up when individual run block button is clicked; allows for run
   block settings to be manipulated by user '''
 
-  def __init__(self, parent, block,
+  def __init__(self, parent,
+               block=None, trial=None,
                label_style='bold',
                content_style='normal',
                *args, **kwargs):
 
     self.parent = parent
     self.block = block
+    self.all_blocks = []
+
     if block is None:
       db = parent.db
       runs = db.get_all_runs()
       run_numbers = [r.run for r in runs]
       assert len(set(run_numbers)) == len(run_numbers)
+
+      if trial is not None:
+        self.all_blocks = db.get_trial_rungroups(trial_id=trial.trial_id)
 
       if len(runs) == 0:
         wx.MessageBox("No runs found", "Error", wx.OK | wx.ICON_EXCLAMATION)
@@ -935,6 +941,8 @@ class RunBlockDialog(BaseDialog):
     self.main_sizer.Add(self.runblock_box_sizer, flag=wx.EXPAND | wx.ALL,
                         border=10)
 
+
+
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box,
@@ -954,6 +962,7 @@ class RunBlockDialog(BaseDialog):
     self.Bind(wx.EVT_CHOICE, self.onImageFormat, id=self.img_format.ctr.GetId())
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
+    self.fill_in_fields()
     self.configure_controls()
     self.Layout()
     self.SetTitle('Run Block Settings')
@@ -992,6 +1001,25 @@ class RunBlockDialog(BaseDialog):
     self.parent.trial.add_rungroup(self.block)
 
     e.Skip()
+
+  def fill_in_fields(self):
+    ''' If previous rungroups exist in trial, fill in fields in nascent block '''
+    if len(self.all_blocks) > 0:
+      last = self.all_blocks[-1]
+      self.config.SetValue(str(last.config_str))
+      self.address.ctr.SetValue(str(last.detector_address))
+      self.beam_xyz.DetZ.SetValue(str(last.detz_parameter))
+      self.beam_xyz.X.SetValue(str(last.beamx))
+      self.beam_xyz.Y.SetValue(str(last.beamy))
+      self.bin_nrg_gain.binning.SetValue(str(last.binning))
+      self.bin_nrg_gain.energy.SetValue(str(last.energy))
+      self.bin_nrg_gain.gain_mask_level.SetValue(str(last.gain_mask_level))
+      self.untrusted_path.ctr.SetValue(str(last.untrusted_pixel_mask_path))
+      self.dark_avg_path.ctr.SetValue(str(last.dark_avg_path))
+      self.dark_stddev_path.ctr.SetValue(str(last.dark_stddev_path))
+      self.gain_map_path.ctr.SetValue(str(last.gain_map_path))
+      self.calib_dir.ctr.SetValue(str(last.calib_dir))
+      self.comment.ctr.SetValue(str(last.comment))
 
   def onImageFormat(self, e):
     self.configure_controls()
@@ -1089,6 +1117,7 @@ class TrialDialog(BaseDialog):
     self.db = db
     self.new = new
     self.trial = trial
+    self.all_trials = db.get_all_trials()
 
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
@@ -1097,7 +1126,7 @@ class TrialDialog(BaseDialog):
                         *args, **kwargs)
 
     if trial is None:
-      trials = [t.trial for t in db.get_all_trials()]
+      trials = [t.trial for t in self.all_trials]
       if len(trials) == 0:
         trial_number = 0
       else:
@@ -1124,15 +1153,6 @@ class TrialDialog(BaseDialog):
 
     self.phil_box = rt.RichTextCtrl(self, style=wx.VSCROLL, size=(-1, 450))
 
-
-    # TODO: show trial's PHIL blob & inactivate everything
-    # if not self.new:
-    #   self.trial_number.ctr.SetStyle(wx.TE_READONLY)
-    #   self.trial_number.ctr.Disable()
-    #   self.trial_comment.ctr.SetStyle(wx.TE_READONLY)
-    #   self.trial_phil.ctr.SetStyle(wx.TE_READONLY)
-    #   self.phil_box.SetStyle(wx.TE_READONLY)
-
     self.main_sizer.Add(self.trial_info,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
                         border=10)
@@ -1157,10 +1177,17 @@ class TrialDialog(BaseDialog):
 
     if self.new:
       self.SetTitle('New Trial Settings')
+
+      # If previous trials exist, propagate previous settings from them
+      if len(self.all_trials) > 0:
+        self.last_trial = self.all_trials[-1]
+        self.phil_box.SetValue(self.last_trial.target_phil_str)
+        self.trial_comment.ctr.SetValue(str(self.last_trial.comment))
+
     else:
       self.SetTitle('Trial {}'.format(self.trial.trial))
-      self.phil_box.SetValue(trial.target_phil_str)
-      self.trial_comment.ctr.SetValue(str(trial.comment))
+      self.phil_box.SetValue(self.trial.target_phil_str)
+      self.trial_comment.ctr.SetValue(str(self.trial.comment))
 
       # Disable controls for viewing
       self.trial_info.button1.Disable()
