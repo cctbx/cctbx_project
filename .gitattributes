@@ -3841,6 +3841,7 @@ xfel/cxi/cspad_ana/histogram_finalise.py -text
 xfel/cxi/cspad_ana/hitfinder_tbx.py -text
 xfel/cxi/cspad_ana/mod_dump_bitmap.py -text
 xfel/cxi/cspad_ana/mod_image_dict.py -text
+xfel/cxi/cspad_ana/mod_onecolor_spectrum_filter.py -text
 xfel/cxi/cspad_ana/mod_radial_average.py -text
 xfel/cxi/cspad_ana/mod_spectrum_filter.py -text
 xfel/cxi/cspad_ana/mod_spectrum_filter_remote_only.py -text
