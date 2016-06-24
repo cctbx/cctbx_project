@@ -196,7 +196,7 @@ xtc_phil_str = '''
       .type = choice
       .help = Muliprocessing method
     mpi {
-      method = *client_server striping
+      method = client_server *striping
         .type = choice
         .help = Method of serving data to child processes in MPI. client_server:    \
                 use one process as a server that sends timestamps to each process.  \
@@ -260,6 +260,19 @@ class InMemScript(DialsProcessScript):
     self.parser = OptionParser(
       usage = self.usage,
       phil = phil_scope)
+
+    self.debug_file_path = None
+    self.mpi_log_file_path = None
+
+  def debug_write(self, string):
+    debug_file_handle = open(self.debug_file_path, 'a')#, 0)  # 0 for unbuffered
+    debug_file_handle.write(string)
+    debug_file_handle.close()
+
+  def mpi_log_write(self, string):
+    mpi_log_file_handle = open(self.mpi_log_file_path, 'a')#, 0)  # 0 for unbuffered
+    mpi_log_file_handle.write(string)
+    mpi_log_file_handle.close()
 
   def run(self):
     """ Process all images assigned to this thread """
@@ -355,19 +368,17 @@ class InMemScript(DialsProcessScript):
           elif len(vals) == 3:
             self.known_events[vals[1]] = vals[2]
 
-    debug_file_path = os.path.join(debug_dir, "debug_%d.txt"%rank)
-    write_newline = os.path.exists(debug_file_path)
-    self.debug_file_handle = open(debug_file_path, 'a', 0) # 0 for unbuffered
+    self.debug_file_path = os.path.join(debug_dir, "debug_%d.txt"%rank)
+    write_newline = os.path.exists(self.debug_file_path)
     if write_newline: # needed if the there was a crash
-      self.debug_file_handle.write("\n")
+      self.debug_write("\n")
 
     if params.mp.method != 'mpi' or params.mp.mpi.method == 'client_server':
       if rank == 0:
-        mpi_log_file_path = os.path.join(debug_dir, "mpilog.out")
-        write_newline = os.path.exists(mpi_log_file_path)
-        self.mpi_log_file_handle = open(mpi_log_file_path, 'a', 0) # 0 for unbuffered
+        self.mpi_log_file_path = os.path.join(debug_dir, "mpilog.out")
+        write_newline = os.path.exists(self.mpi_log_file_path)
         if write_newline: # needed if the there was a crash
-          self.mpi_log_file_handle.write("\n")
+          self.mpi_log_write("\n")
 
     # set up psana
     if params.input.cfg is not None:
@@ -429,31 +440,35 @@ class InMemScript(DialsProcessScript):
         print "Using MPI client server"
         # use a client/server approach to be sure every process is busy as much as possible
         # only do this if there are more than 2 processes, as one process will be a server
-        if rank == 0:
-          # server process
-          self.mpi_log_file_handle.write("MPI START\n")
-          for t in times[:nevents]:
-            # a client process will indicate it's ready by sending its rank
-            self.mpi_log_file_handle.write("Getting next available process\n")
-            rankreq = comm.recv(source=MPI.ANY_SOURCE)
-            ts = cspad_tbx.evt_timestamp((t.seconds(),t.nanoseconds()/1e6))
-            self.mpi_log_file_handle.write("Process %s is ready, sending ts %s\n"%(rankreq, ts))
-            comm.send(t,dest=rankreq)
-          # send a stop command to each process
-          self.mpi_log_file_handle.write("MPI DONE, sending stops\n")
-          for rankreq in range(size-1):
-            self.mpi_log_file_handle.write("Getting next available process\n")
-            rankreq = comm.recv(source=MPI.ANY_SOURCE)
-            self.mpi_log_file_handle.write("Sending stop to %d\n"%rankreq)
-            comm.send('endrun',dest=rankreq)
-        else:
-          # client process
-          while True:
-            # inform the server this process is ready for an event
-            comm.send(rank,dest=0)
-            evttime = comm.recv(source=0)
-            if evttime == 'endrun': break
-            self.process_event(run, evttime)
+        try:
+          if rank == 0:
+            # server process
+            self.mpi_log_write("MPI START\n")
+            for t in times[:nevents]:
+              # a client process will indicate it's ready by sending its rank
+              self.mpi_log_write("Getting next available process\n")
+              rankreq = comm.recv(source=MPI.ANY_SOURCE)
+              ts = cspad_tbx.evt_timestamp((t.seconds(),t.nanoseconds()/1e6))
+              self.mpi_log_write("Process %s is ready, sending ts %s\n"%(rankreq, ts))
+              comm.send(t,dest=rankreq)
+            # send a stop command to each process
+            self.mpi_log_write("MPI DONE, sending stops\n")
+            for rankreq in range(size-1):
+              self.mpi_log_write("Getting next available process\n")
+              rankreq = comm.recv(source=MPI.ANY_SOURCE)
+              self.mpi_log_write("Sending stop to %d\n"%rankreq)
+              comm.send('endrun',dest=rankreq)
+          else:
+            # client process
+            while True:
+              # inform the server this process is ready for an event
+              comm.send(rank,dest=0)
+              evttime = comm.recv(source=0)
+              if evttime == 'endrun': break
+              self.process_event(run, evttime)
+        except Exception, e:
+          print "Error caught in main loop"
+          print str(e)
       else:
         # chop the list into pieces, depending on rank.  This assigns each process
         # events such that the get every Nth event where N is the number of processes
@@ -494,12 +509,12 @@ class InMemScript(DialsProcessScript):
           print "Skipping event %s: not processed previously"%ts
           return
 
-    self.debug_file_handle.write("%s,%s"%(socket.gethostname(), ts))
+    self.debug_write("%s,%s"%(socket.gethostname(), ts))
 
     evt = run.event(timestamp)
     if evt.get("skip_event") or "skip_event" in [key.key() for key in evt.keys()]:
       print "Skipping event",ts
-      self.debug_file_handle.write(",psana_skip\n")
+      self.debug_write(",psana_skip\n")
       return
 
     print "Accepted", ts
@@ -522,7 +537,7 @@ class InMemScript(DialsProcessScript):
           self.psana_det.common_mode_apply(evt.run(), data, self.params.format.cbf.common_mode.custom_parameterization)
       if data is None:
         print "No data"
-        self.debug_file_handle.write(",no_data\n")
+        self.debug_write(",no_data\n")
         return
 
       if self.params.format.cbf.gain_mask_value is not None:
@@ -532,14 +547,14 @@ class InMemScript(DialsProcessScript):
       distance = cspad_tbx.env_distance(self.params.input.address, run.env(), self.params.format.cbf.detz_offset)
       if distance is None:
         print "No distance, skipping shot"
-        self.debug_file_handle.write(",no_distance\n")
+        self.debug_write(",no_distance\n")
         return
 
       if self.params.format.cbf.override_energy is None:
         wavelength = cspad_tbx.evt_wavelength(evt)
         if wavelength is None:
           print "No wavelength, skipping shot"
-          self.debug_file_handle.write(",no_wavelength\n")
+          self.debug_write(",no_wavelength\n")
           return
       else:
         wavelength = 12398.4187/self.params.format.cbf.override_energy
@@ -599,14 +614,14 @@ class InMemScript(DialsProcessScript):
     except Exception, e:
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
-      self.debug_file_handle.write(",spotfinding_exception\n")
+      self.debug_write(",spotfinding_exception\n")
       return
 
     print "Found %d bright spots"%len(observed)
 
     if self.params.dispatch.hit_finder.enable and len(observed) < self.params.dispatch.hit_finder.minimum_number_of_reflections:
       print "Not enough spots to index"
-      self.debug_file_handle.write(",not_enough_spots_%d\n"%len(observed))
+      self.debug_write(",not_enough_spots_%d\n"%len(observed))
       return
 
     self.restore_ranges(cspad_img, self.params)
@@ -632,7 +647,7 @@ class InMemScript(DialsProcessScript):
             len(observed), os.path.basename(strong_filename)))
 
     if not self.params.dispatch.index:
-      self.debug_file_handle.write(",strong_shot_%d\n"%len(observed))
+      self.debug_write(",strong_shot_%d\n"%len(observed))
       return
 
     # index and refine
@@ -641,7 +656,7 @@ class InMemScript(DialsProcessScript):
     except Exception, e:
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
-      self.debug_file_handle.write(",indexing_failed_%d\n"%len(observed))
+      self.debug_write(",indexing_failed_%d\n"%len(observed))
       return
 
     if self.params.dispatch.dump_indexed:
@@ -652,7 +667,7 @@ class InMemScript(DialsProcessScript):
     except Exception, e:
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
-      self.debug_file_handle.write(",refine_failed_%d\n"%len(indexed))
+      self.debug_write(",refine_failed_%d\n"%len(indexed))
       return
 
     if self.params.dispatch.reindex_strong:
@@ -661,11 +676,11 @@ class InMemScript(DialsProcessScript):
       except Exception, e:
         import traceback; traceback.print_exc()
         print str(e), "event", timestamp
-        self.debug_file_handle.write(",reindexstrong_failed_%d\n"%len(indexed))
+        self.debug_write(",reindexstrong_failed_%d\n"%len(indexed))
         return
 
     if not self.params.dispatch.integrate:
-      self.debug_file_handle.write(",index_ok_%d\n"%len(indexed))
+      self.debug_write(",index_ok_%d\n"%len(indexed))
       return
 
     # integrate
@@ -674,7 +689,7 @@ class InMemScript(DialsProcessScript):
     except Exception, e:
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
-      self.debug_file_handle.write(",integrate_failed_%d\n"%len(indexed))
+      self.debug_write(",integrate_failed_%d\n"%len(indexed))
       return
 
     if self.params.experiment_tag is not None:
@@ -683,10 +698,10 @@ class InMemScript(DialsProcessScript):
       except Exception, e:
         import traceback; traceback.print_exc()
         print str(e), "event", timestamp
-        self.debug_file_handle.write(",db_logging_failed_%d\n" % len(integrated))
+        self.debug_write(",db_logging_failed_%d\n" % len(integrated))
         return
 
-    self.debug_file_handle.write(",integrate_ok_%d\n"%len(integrated))
+    self.debug_write(",integrate_ok_%d\n"%len(integrated))
 
   def log_frame(self, experiment, reflections, run, timestamp = None):
     from xfel.ui.db.dxtbx_db import log_frame
