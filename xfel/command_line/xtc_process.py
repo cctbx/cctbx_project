@@ -449,7 +449,6 @@ class InMemScript(DialsProcessScript):
         nevents = len(times)
       else:
         print "Dividing %d events between all processes" % nevents
-      return
       if params.mp.method == "mpi" and params.mp.mpi.method == 'client_server' and size > 2:
         print "Using MPI client server"
         # use a client/server approach to be sure every process is busy as much as possible
