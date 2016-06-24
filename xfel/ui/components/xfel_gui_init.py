@@ -14,8 +14,6 @@ from threading import Thread
 from wx.lib.scrolledpanel import ScrolledPanel
 from libtbx import easy_run
 
-import random
-
 import xfel.ui.components.xfel_gui_controls as gctr
 import xfel.ui.components.xfel_gui_dialogs as dlg
 from xfel.ui import load_cached_settings, save_cached_settings
