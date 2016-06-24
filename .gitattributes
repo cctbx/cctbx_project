@@ -3789,6 +3789,7 @@ xfel/command_line/cxi_view.py -text
 xfel/command_line/cxi_xtc_process.py -text
 xfel/command_line/experiment_json_to_cbf_def.py -text
 xfel/command_line/experiment_manager.py -text
+xfel/command_line/fee_view.py -text
 xfel/command_line/filter_experiments_by_rmsd.py -text
 xfel/command_line/find_highres_shots.py -text
 xfel/command_line/frame_extractor.py -text
@@ -3855,6 +3856,7 @@ xfel/cxi/gfx/trials_plot.py -text
 xfel/cxi/gfx/wx_detectors.py -text
 xfel/cxi/integrate_image_api.py -text
 xfel/cxi/merging_database_flex.py -text
+xfel/cxi/spectra_filter.py -text
 xfel/cxi/strong_zulu.py -text
 xfel/cxi/util.py -text
 xfel/graph_proc/__init__.py -text
