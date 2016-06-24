@@ -24,6 +24,9 @@ xtc_phil_str = '''
     max_events = None
       .type = int
       .help = If not specified, process all events. Otherwise, only process this many
+    process_percent = None
+      .type = int(value_min=1, value_max=100)
+      .help = Percent of events to process
     estimate_gain_only = False
       .type = bool
       .help = Use to print estimated gain parameters for each event, then exit without attempting \
@@ -436,6 +439,17 @@ class InMemScript(DialsProcessScript):
       # list of all events
       times = run.times()
       nevents = min(len(times),max_events)
+      times = times[:nevents]
+      if params.dispatch.process_percent is not None:
+        import fractions
+        percent = params.dispatch.process_percent / 100
+        f = fractions.Fraction(percent).limit_denominator(100)
+        times = [times[i] for i in xrange(len(times)) if i % f.denominator < f.numerator]
+        print "Dividing %d of %d events (%4.1f%%) between all processes"%(len(times), nevents, 100*len(times)/nevents)
+        nevents = len(times)
+      else:
+        print "Dividing %d events between all processes" % nevents
+      return
       if params.mp.method == "mpi" and params.mp.mpi.method == 'client_server' and size > 2:
         print "Using MPI client server"
         # use a client/server approach to be sure every process is busy as much as possible
@@ -444,7 +458,7 @@ class InMemScript(DialsProcessScript):
           if rank == 0:
             # server process
             self.mpi_log_write("MPI START\n")
-            for t in times[:nevents]:
+            for t in times:
               # a client process will indicate it's ready by sending its rank
               self.mpi_log_write("Getting next available process\n")
               rankreq = comm.recv(source=MPI.ANY_SOURCE)
@@ -473,7 +487,7 @@ class InMemScript(DialsProcessScript):
         # chop the list into pieces, depending on rank.  This assigns each process
         # events such that the get every Nth event where N is the number of processes
         print "Striping events"
-        mytimes = [times[i] for i in xrange(nevents) if (i+rank)%size == 0]
+        mytimes = [times[i] for i in xrange(len(times)) if (i+rank)%size == 0]
 
         for i in xrange(len(mytimes)):
           self.process_event(run, mytimes[i])
