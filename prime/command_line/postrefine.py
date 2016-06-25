@@ -38,9 +38,14 @@ def read_pickles(data):
   frame_files = []
   for p in data:
     if os.path.isdir(p) == False:
-      #check if list-of-pickle text file is given
-      pickle_list_file = open(p,'r')
-      pickle_list = pickle_list_file.read().split("\n")
+      if os.path.isfile(p):
+        #check if list-of-pickle text file is given
+        pickle_list_file = open(p,'r')
+        pickle_list = pickle_list_file.read().split("\n")
+      else:
+        # p is a glob
+        import glob
+        pickle_list = glob.glob(p)
       for pickle_filename in pickle_list:
         if os.path.isfile(pickle_filename):
           frame_files.append(pickle_filename)
