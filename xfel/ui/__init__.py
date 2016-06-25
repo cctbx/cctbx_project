@@ -33,9 +33,6 @@ web {
 average_raw_data = False
   .type = bool
   .help = If True, don't use any psana corrections (dark, common mode, etc.)
-process_percent = None
-  .type = int(value_min=1, value_max=100)
-  .help = Percent of events to process
 include scope xfel.command_line.cxi_mpi_submit.mp_phil_scope
 """
 master_phil_scope = parse(master_phil_str, process_includes=True)

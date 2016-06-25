@@ -347,20 +347,6 @@ class AdvancedSettingsDialog(BaseDialog):
     analysis_box = wx.StaticBox(self, label='Data Analysis Options')
     self.analysis_sizer = wx.StaticBoxSizer(analysis_box, wx.VERTICAL)
 
-    if params.process_percent is None:
-      pp = '100'
-    else:
-      pp = "%d"%params.process_percent
-
-    self.throttle = gctr.SpinCtrl(self,
-                                  label='Percent events processed:',
-                                  label_size=(120, -1),
-                                  label_style='bold',
-                                  ctrl_size=(100, -1),
-                                  ctrl_value=pp,
-                                  ctrl_min=1,
-                                  ctrl_max=100)
-    self.analysis_sizer.Add(self.throttle, flag=wx.EXPAND | wx.ALL, border=10)
     img_types = ['corrected', 'raw']
     self.avg_img_type = gctr.ChoiceCtrl(self,
                                         label='Avg. Image Type:',
@@ -402,10 +388,6 @@ class AdvancedSettingsDialog(BaseDialog):
     self.params.mp.method = self.mp_option.ctr.GetStringSelection()
     self.params.mp.queue = self.queue.ctr.GetStringSelection()
     self.params.mp.nproc = int(self.nproc.ctr.GetValue())
-    if self.throttle.ctr.GetValue() == '100':
-      self.params.process_percent = None
-    else:
-      self.params.process_percent = int(self.throttle.ctr.GetValue())
     self.params.average_raw_data = self.avg_img_type.ctr.GetStringSelection() == 'raw'
     e.Skip()
 
@@ -624,7 +606,7 @@ class AveragingDialog(BaseDialog):
                        style=wx.DD_DEFAULT_STYLE)
 
     if dlg.ShowModal() == wx.ID_OK:
-      self.calib_dir.ctr.SetValue(dark_dlg.GetPaths()[0])
+      self.calib_dir.ctr.SetValue(dlg.GetPath())
     dlg.Destroy()
     e.Skip()
 
@@ -1179,7 +1161,16 @@ class TrialDialog(BaseDialog):
                                              label_style='bold',
                                              ghost_button=False)
 
-    self.phil_box = rt.RichTextCtrl(self, style=wx.VSCROLL, size=(-1, 450))
+    self.phil_box = rt.RichTextCtrl(self, style=wx.VSCROLL, size=(-1, 400))
+
+    self.throttle = gctr.SpinCtrl(self,
+                                  label='Percent events processed:',
+                                  label_size=(120, -1),
+                                  label_style='bold',
+                                  ctrl_size=(100, -1),
+                                  ctrl_value='100',
+                                  ctrl_min=1,
+                                  ctrl_max=100)
 
     self.main_sizer.Add(self.trial_info,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
@@ -1188,6 +1179,9 @@ class TrialDialog(BaseDialog):
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
                         border=10)
     self.main_sizer.Add(self.phil_box, 1,
+                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
+                        border=10)
+    self.main_sizer.Add(self.throttle,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
                         border=10)
 
@@ -1209,13 +1203,18 @@ class TrialDialog(BaseDialog):
       # If previous trials exist, propagate previous settings from them
       if len(self.all_trials) > 0:
         self.last_trial = self.all_trials[-1]
-        self.phil_box.SetValue(self.last_trial.target_phil_str)
+        target_phil_str = self.last_trial.target_phil_str
         self.trial_comment.ctr.SetValue(str(self.last_trial.comment))
+        process_percent = self.last_trial.process_percent
+      else:
+        target_phil_str = ''
+        process_percent = 100
 
     else:
       self.SetTitle('Trial {}'.format(self.trial.trial))
-      self.phil_box.SetValue(self.trial.target_phil_str)
+      target_phil_str = self.trial.target_phil_str
       self.trial_comment.ctr.SetValue(str(self.trial.comment))
+      process_percent = self.trial.process_percent
 
       # Disable controls for viewing
       self.trial_info.button1.Disable()
@@ -1223,6 +1222,13 @@ class TrialDialog(BaseDialog):
       self.trial_info.ctr.SetEditable(False)
       self.phil_box.SetEditable(False)
       #self.trial_comment.ctr.SetEditable(False)
+
+    if target_phil_str is None:
+      target_phil_str = ""
+    if process_percent is None:
+      process_percent = 100
+    self.phil_box.SetValue(target_phil_str)
+    self.throttle.ctr.SetValue(process_percent)
 
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onBrowse, self.trial_info.button1)
@@ -1254,13 +1260,17 @@ class TrialDialog(BaseDialog):
     if self.new:
       target_phil_str = self.phil_box.GetValue()
       comment = self.trial_comment.ctr.GetValue()
+      process_percent = int(self.throttle.ctr.GetValue())
+      if process_percent == 100:
+        process_percent = None
 
       if self.trial is None:
         self.db.create_trial(
           trial = int(self.trial_info.ctr.GetValue()),
           active = False,
           target_phil_str = target_phil_str,
-          comment = comment)
+          comment = comment,
+          process_percent = process_percent)
       else:
         self.trial.target_phil_str = target_phil_str
         self.trial.comment = comment

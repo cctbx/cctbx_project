@@ -71,6 +71,7 @@ def submit_job(app, job):
     trial_params.format.cbf.gain_mask_value = job.rungroup.gain_mask_level
   else:
     assert False
+  trial_params.dispatch.process_percent = job.trial.process_percent
 
   working_phil = phil_scope.format(python_object=trial_params)
   diff_phil = phil_scope.fetch_diff(source=working_phil)
