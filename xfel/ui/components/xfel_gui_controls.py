@@ -12,8 +12,6 @@ import wx
 import wx.lib.agw.floatspin as fs
 from wxtbx import metallicbutton as mb
 
-
-
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
 if wx.Platform == '__WXGTK__':
@@ -553,3 +551,30 @@ class SentinelStatus(CtrlBase):
       bmp == wx.Bitmap('{}/16x16/led_alert.png'.format(icons))
 
     self.light.SetBitmap(bmp)
+
+
+class IsoformInfoCtrl(CtrlBase):
+  def __init__(self, parent,
+               label_style='normal',
+               content_style='normal'):
+    CtrlBase.__init__(self, parent=parent, label_style=label_style,
+                      content_style=content_style)
+
+    self.sizer = wx.FlexGridSizer(1, 6, 0, 10)
+    self.sizer.AddGrowableCol(5)
+    self.txt_iso = wx.StaticText(self, label='Isoform')
+    self.txt_pg = wx.StaticText(self, label='Point Group')
+    self.txt_uc = wx.StaticText(self, label='Unit Cell')
+
+    self.ctr_iso = wx.TextCtrl(self, size=(30, -1), style=wx.TE_READONLY)
+    self.ctr_pg = wx.TextCtrl(self, size=(50, -1), style=wx.TE_READONLY)
+    self.ctr_uc = wx.TextCtrl(self, size=(200, -1), style=wx.TE_READONLY)
+
+    self.sizer.AddMany([(self.txt_iso),
+                        (self.ctr_iso),
+                        (self.txt_pg),
+                        (self.ctr_pg),
+                        (self.txt_uc)])
+    self.sizer.Add(self.ctr_uc, flag=wx.EXPAND)
+
+    self.SetSizer(self.sizer)

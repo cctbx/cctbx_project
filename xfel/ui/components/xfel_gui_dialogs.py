@@ -366,7 +366,6 @@ class AdvancedSettingsDialog(BaseDialog):
                         border=10)
 
     self.SetTitle('Advanced Settings')
-    self.Fit()
 
   def onQueueChoice(self, e):
     queue = self.queue.ctr.GetString(self.queue.ctr.GetSelection())
@@ -1194,7 +1193,7 @@ class TrialDialog(BaseDialog):
       self.trial_info.button2.Disable()
       self.trial_info.ctr.SetEditable(False)
       self.phil_box.SetEditable(False)
-      self.trial_comment.ctr.SetEditable(False)
+      #self.trial_comment.ctr.SetEditable(False)
 
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onBrowse, self.trial_info.button1)

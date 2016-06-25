@@ -10,13 +10,22 @@ Description : XFEL UI Initialization module
 import os
 import wx
 import time
+import numpy as np
 from threading import Thread
 from wx.lib.scrolledpanel import ScrolledPanel
 from libtbx import easy_run
 
+try:
+  from MySQLdb import OperationalError
+except ImportError:
+  from libtbx.utils import Sorry
+  raise Sorry('Mysql not available')
+
+from xfel.clustering.cluster import Cluster
 import xfel.ui.components.xfel_gui_controls as gctr
 import xfel.ui.components.xfel_gui_dialogs as dlg
 from xfel.ui import load_cached_settings, save_cached_settings
+from xfel.ui.db import get_run_path
 
 from prime.postrefine.mod_gui_init import PRIMEInputWindow, PRIMERunWindow
 from prime.postrefine.mod_input import master_phil
@@ -64,7 +73,11 @@ class RunSentinel(Thread):
     from xfel.ui.db.xfel_db import xfel_db_application
 
     while self.active:
-      db = xfel_db_application(self.parent.params)
+      try:
+        db = xfel_db_application(self.parent.params)
+        self.parent.run_window.run_light.change_status('on')
+      except OperationalError:
+        self.parent.run_window.run_light.change_status('alert')
 
       # Find the delta
       known_runs = [r.run for r in db.get_all_runs()]
@@ -112,7 +125,11 @@ class JobSentinel(Thread):
 
     from xfel.ui.db.xfel_db import xfel_db_application
     from xfel.ui.db.job import submit_all_jobs
-    db = xfel_db_application(self.parent.params)
+    try:
+      db = xfel_db_application(self.parent.params)
+      self.parent.run_window.job_light.change_status('on')
+    except OperationalErorr:
+      self.parent.run_window.job_light.change_status('alert')
 
     while self.active:
       submit_all_jobs(db)
@@ -143,6 +160,8 @@ class ProgressSentinel(Thread):
     Thread.__init__(self)
     self.parent = parent
     self.active = active
+    self.output = self.parent.params.output_folder
+    self.number_of_pickles = 0
     self.info = []
 
   def post_refresh(self):
@@ -156,11 +175,16 @@ class ProgressSentinel(Thread):
     from xfel.ui.db.xfel_db import xfel_db_application
 
     while self.active:
-      db = xfel_db_application(self.parent.params)
+      try:
+        db = xfel_db_application(self.parent.params)
+        self.parent.run_window.prg_light.change_status('idle')
+      except OperationalError:
+        self.parent.run_window.prg_light.change_status('alert')
 
       if len(db.get_all_trials()) > 0 and len(db.get_all_tags()) > 0:
         trial = db.get_trial(
           trial_number=self.parent.run_window.status_tab.trial_no)
+
         tags = self.parent.run_window.status_tab.selected_tags
         if tags != []:
           cells = db.get_stats(trial=trial, tags=tags)()
@@ -170,7 +194,7 @@ class ProgressSentinel(Thread):
         for cell in cells:
           counts = [int(i.count) for i in cell.bins]
           totals = [int(i.total_hkl) for i in cell.bins]
-          mult = sum(counts) / sum(totals)
+          mult = int(sum(counts) / sum(totals))
           self.info.append({'multiplicity':mult, 'bins':cell.bins,
                             'isoform':cell.name, 'a':cell.cell_a,
                             'b':cell.cell_b, 'c':cell.cell_c,
@@ -178,8 +202,88 @@ class ProgressSentinel(Thread):
                             'gamma':cell.cell_gamma})
       self.post_refresh()
       self.info = []
-
+      self.parent.run_window.prg_light.change_status('on')
       time.sleep(5)
+
+# ------------------------------- Clustering --------------------------------- #
+
+# Set up events for and for finishing all cycles
+tp_EVT_CLUSTERING = wx.NewEventType()
+EVT_CLUSTERING = wx.PyEventBinder(tp_EVT_CLUSTERING, 1)
+
+class ClusteringResult(wx.PyCommandEvent):
+  ''' Send event when finished all cycles  '''
+
+  def __init__(self, etype, eid, result=None):
+    wx.PyCommandEvent.__init__(self, etype, eid)
+    self.result = result
+  def GetValue(self):
+    return self.result
+
+class Clusterer():
+  def __init__(self, trial, runblocks, output, sample_size, threshold):
+    self.trial = trial
+    self.runblocks = runblocks
+    self.output = output
+    self.sample_size = sample_size
+    self.threshold = threshold
+
+  def unit_cell_clustering(self):
+
+    # 1. Get all pickle files, check if new ones arrived
+    run_numbers = []
+    rb_paths = []
+    for rb in self.runblocks:
+      for run in rb.runs:
+        if run.run not in run_numbers:
+          run_numbers.append(run.run)
+          rb_paths.append(os.path.join(get_run_path(self.output, self.trial,
+                                                    rb, run), "out"))
+    all_pickles = []
+    for path in rb_paths:
+      pickles = [os.path.join(path, i) for i in os.listdir(path) if
+                 i.endswith('pickle') and 'int-' in i]
+      all_pickles = all_pickles + pickles
+
+    # 2. Pick subset
+    print len(all_pickles), self.sample_size
+    subset = list(np.random.choice(all_pickles, size=int(self.sample_size)))
+
+    # 3. Do clustering
+    ucs = Cluster.from_files(subset, use_b=True)
+    clusters, _ = ucs.ab_cluster(self.threshold,
+                                 log=False, write_file_lists=False,
+                                 schnell=False, doplot=False)
+
+    return clusters
+
+class ClusteringWorker(Thread):
+  ''' Worker thread for jobs; generated so that the GUI does not lock up when
+      processing is running '''
+
+  def __init__(self,
+               parent,
+               trial,
+               runblocks,
+               output,
+               sample_size=1000,
+               threshold=250,):
+    Thread.__init__(self)
+    self.parent = parent
+    self.trial = trial
+    self.runblocks = runblocks
+    self.output = output
+    self.sample_size = sample_size
+    self.threshold = threshold
+
+  def run(self):
+    clusterer = Clusterer(self.trial, self.runblocks, self.output,
+                          self.sample_size, self.threshold)
+    self.clusters = clusterer.unit_cell_clustering()
+
+    evt = ClusteringResult(tp_EVT_CLUSTERING, -1, self.clusters)
+    wx.PostEvent(self.parent, evt)
+
 
 # ------------------------------- Main Window -------------------------------- #
 
@@ -614,14 +718,38 @@ class StatusTab(BaseTab):
     BaseTab.__init__(self, parent=parent)
 
     self.main = main
-    self.status_panel = ScrolledPanel(self, size=(300, 350))
-    self.status_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.status_panel.SetSizer(self.status_sizer)
     self.trial_no = 0
     self.tags = None
     self.all_trials = []
     self.all_tags = []
     self.selected_tags = []
+
+    self.status_panel = ScrolledPanel(self, size=(-1, 120))
+    status_box = wx.StaticBox(self.status_panel, label='Data Statistics')
+    self.status_sizer = wx.StaticBoxSizer(status_box, wx.VERTICAL)
+    self.status_panel.SetSizer(self.status_sizer)
+
+    self.opt_panel = wx.Panel(self)
+    opt_box = wx.StaticBox(self.opt_panel, label='Unit Cell Clustering')
+    self.opt_box_sizer = wx.StaticBoxSizer(opt_box, wx.HORIZONTAL)
+    self.opt_panel.SetSizer(self.opt_box_sizer)
+
+    self.opt_cluster = gctr.OptionCtrl(self.opt_panel,
+                                       label='Clustering:',
+                                       label_size=(60, -1),
+                                       label_style='normal',
+                                       sub_labels=['No. of images',
+                                                   'Threshold'],
+                                       items=[('num_images', 1000),
+                                              ('threshold', 250)])
+    self.btn_cluster = wx.Button(self.opt_panel, label='Calculate')
+    self.opt_box_sizer.Add(self.opt_cluster, flag=wx.ALL, border=10)
+    self.opt_box_sizer.Add(self.btn_cluster, flag=wx.ALL, border=10)
+
+    self.iso_panel = ScrolledPanel(self, size=(-1, 100))
+    iso_box = wx.StaticBox(self.iso_panel, label='Isoforms')
+    self.iso_box_sizer = wx.StaticBoxSizer(iso_box, wx.VERTICAL)
+    self.iso_panel.SetSizer(self.iso_box_sizer)
 
     self.trial_number = gctr.ChoiceCtrl(self,
                                         label='Trial:',
@@ -650,26 +778,87 @@ class StatusTab(BaseTab):
     self.bottom_sizer.Add(self.tag_list, flag=wx.LEFT, border=10)
     self.bottom_sizer.Add(self.opt_multi, flag=wx.LEFT, border=25)
 
-    self.main_sizer.Add(self.status_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.status_panel, 1,
+                        flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.iso_panel,
+                        flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.opt_panel,
+                        flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.bottom_sizer,
-                        flag=wx.RIGHT | wx.LEFT | wx.BOTTOM,
-                        border=10)
+                        flag=wx.RIGHT | wx.LEFT | wx.BOTTOM, border=10)
+
 
     # Bindings
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
     self.Bind(wx.EVT_CHECKLISTBOX, self.onTagCheck, self.tag_list.ctr)
     self.Bind(wx.EVT_TEXT_ENTER, self.onMultiplicityGoal, self.opt_multi.goal)
+    self.Bind(wx.EVT_BUTTON, self.onClustering, self.btn_cluster)
     self.Bind(EVT_PRG_REFRESH, self.onRefresh)
+    self.Bind(EVT_CLUSTERING, self.onClusteringResult)
+
+  def onClustering(self, e):
+    trial = self.main.db.get_trial(trial_number=self.trial_no)
+    runblocks = self.main.db.get_trial_rungroups(trial_id=trial.trial_id,
+                                            only_active=True)
+
+    clustering = ClusteringWorker(self, trial=trial, runblocks=runblocks,
+                                  output=self.main.params.output_folder,
+                                  threshold=self.opt_cluster.threshold.GetValue(),
+                                  sample_size=self.opt_cluster.num_images.GetValue())
+    clustering.run()
+
+  def onClusteringResult(self, e):
+    from string import ascii_uppercase
+    self.iso_box_sizer.DeleteWindows()
+
+    counter = 0
+    for cluster in e.GetValue():
+      sorted_pg_comp = sorted(cluster.pg_composition.items(),
+                              key=lambda x: -1 * x[1])
+      pg_nums = [pg[1] for pg in sorted_pg_comp]
+      cons_pg = sorted_pg_comp[np.argmax(pg_nums)]
+
+      # write out lists of output pickles that comprise clusters with > 1 members
+      if len(cluster.members) > 5:  # 0.01 * len(subset):
+
+        # format and record output
+        uc_line = "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
+                  "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
+                  "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f})   " \
+                  "".format(
+                            cluster.medians[0], cluster.stdevs[0],
+                            cluster.medians[1], cluster.stdevs[1],
+                            cluster.medians[2], cluster.stdevs[2],
+                            cluster.medians[3], cluster.stdevs[3],
+                            cluster.medians[4], cluster.stdevs[4],
+                            cluster.medians[5], cluster.stdevs[5]
+                            )
+
+        iso = gctr.IsoformInfoCtrl(self.iso_panel)
+        iso.ctr_iso.SetValue(ascii_uppercase[counter])
+        iso.ctr_pg.SetValue(cons_pg[0])
+        iso.ctr_uc.SetValue(uc_line)
+        self.iso_box_sizer.Add(iso,
+                               flag=wx.EXPAND| wx.TOP | wx.LEFT | wx.RIGHT,
+                               border=10)
+
+        counter += 1
+
+    self.iso_panel.SetSizer(self.iso_box_sizer)
+    self.iso_panel.Layout()
+    self.iso_panel.SetupScrolling()
+
 
   def onTagCheck(self, e):
     checked_items = self.tag_list.ctr.GetCheckedStrings()
     self.selected_tags = [i for i in self.main.db.get_all_tags() if i.name
                           in checked_items]
+    self.main.run_window.prg_light.change_status('idle')
 
   def onTrialChoice(self, e):
-    # TODO: redo calculation for this trial
     self.trial_no = self.trial_number.ctr.GetSelection()
+    self.main.run_window.prg_light.change_status('idle')
 
   def find_tags(self):
     self.tag_list.ctr.Clear()
@@ -687,6 +876,7 @@ class StatusTab(BaseTab):
     goal = self.opt_multi.goal.GetValue()
     if goal.isdigit() and goal != '':
       self.refresh_rows()
+    self.main.run_window.prg_light.change_status('idle')
 
   def onRefresh(self, e):
     # Find new tags
@@ -709,18 +899,23 @@ class StatusTab(BaseTab):
     if info != []:
       for isoform in info:
         self.add_row(name=isoform['isoform'], value=isoform['multiplicity'])
-
-      self.status_panel.Layout()
       self.status_panel.SetupScrolling()
 
+
   def add_row(self, name, value):
-    goal = self.opt_multi.goal.GetValue()
+    goal = int(self.opt_multi.goal.GetValue())
+
+    if goal > value:
+      gauge_max = goal
+    else:
+      gauge_max = value
+
     row = gctr.GaugeBar(self.status_panel,
                         label='Isoform {}'.format(name),
                         label_size=(150, -1),
                         gauge_size=(350, 15),
                         button=True,
-                        gauge_max=int(goal))
+                        gauge_max=gauge_max)
     row.bar.SetValue(value)
     self.status_sizer.Add(row, flag=wx.EXPAND | wx.ALL, border=10)
 

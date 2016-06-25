@@ -2,4 +2,5 @@ XFEL UI version 0.0.016
 
 
 1. Delete runblock / trial buttons (not hooked up)
+2. Fixed trial view window (shows actual trial PHIL blob, etc., but inactive)
 
