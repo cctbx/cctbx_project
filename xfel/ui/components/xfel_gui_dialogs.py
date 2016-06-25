@@ -177,9 +177,7 @@ class SettingsDialog(BaseDialog):
     adv.Fit()
     adv.Center()
 
-    if (adv.ShowModal() == wx.ID_OK):
-      # TODO: Capture and set advanced settings
-      print 'DEBUT: Advanced settings not yet enabled'
+    adv.ShowModal()
 
   def onDBCredentialsButton(self, e):
     creds = DBCredentialsDialog(self, self.params)
@@ -314,9 +312,13 @@ class AdvancedSettingsDialog(BaseDialog):
                                      label_style='bold',
                                      choices=choices)
     self.mp_sizer.Add(self.mp_option, flag=wx.EXPAND | wx.ALL, border=10)
+    try:
+      self.mp_option.ctr.SetSelection(choices.index(params.mp.method))
+    except ValueError:
+      pass
 
     # Queue
-    queues = ['psanaq', 'psanaq', 'psdebugq     ','psanaidleq', 'psnehhiprioq',
+    queues = ['psanaq', 'psanaq', 'psdebugq','psanaidleq', 'psnehhiprioq',
               'psnehprioq', 'psnehq', 'psfehhiprioq', 'psfehprioq', 'psfehq']
     self.queue = gctr.ChoiceCtrl(self,
                                  label='Queue:',
@@ -325,15 +327,19 @@ class AdvancedSettingsDialog(BaseDialog):
                                  choices=queues)
     self.Bind(wx.EVT_CHOICE, self.onQueueChoice, self.queue.ctr)
     self.mp_sizer.Add(self.queue, flag=wx.EXPAND | wx.ALL, border=10)
+    try:
+      self.queue.ctr.SetSelection(queues.index(params.mp.queue))
+    except ValueError:
+      pass
 
     self.nproc = gctr.SpinCtrl(self,
                                label='Number of processors:',
                                label_size=(120, -1),
                                label_style='normal',
                                ctrl_size=(100, -1),
-                               ctrl_value='8',
+                               ctrl_value='%d'%params.mp.nproc,
                                ctrl_min=1,
-                               ctrl_max=32)
+                               ctrl_max=1000)
     self.mp_sizer.Add(self.nproc, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.mp_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
@@ -341,21 +347,32 @@ class AdvancedSettingsDialog(BaseDialog):
     analysis_box = wx.StaticBox(self, label='Data Analysis Options')
     self.analysis_sizer = wx.StaticBoxSizer(analysis_box, wx.VERTICAL)
 
+    if params.process_percent is None:
+      pp = '100'
+    else:
+      pp = "%d"%params.process_percent
+
     self.throttle = gctr.SpinCtrl(self,
-                                  label='Percent Analyzed:',
+                                  label='Percent events processed:',
                                   label_size=(120, -1),
                                   label_style='bold',
                                   ctrl_size=(100, -1),
-                                  ctrl_value='100',
+                                  ctrl_value=pp,
                                   ctrl_min=1,
                                   ctrl_max=100)
     self.analysis_sizer.Add(self.throttle, flag=wx.EXPAND | wx.ALL, border=10)
-    img_types = ['raw', 'corrected']
+    img_types = ['corrected', 'raw']
     self.avg_img_type = gctr.ChoiceCtrl(self,
                                         label='Avg. Image Type:',
                                         label_size=(120, -1),
                                         label_style='bold',
                                         choices=img_types)
+    if params.average_raw_data:
+      i = img_types.index('raw')
+    else:
+      i = img_types.index('corrected')
+    self.avg_img_type.ctr.SetSelection(i)
+
     self.analysis_sizer.Add(self.avg_img_type, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.analysis_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
@@ -367,18 +384,30 @@ class AdvancedSettingsDialog(BaseDialog):
 
     self.SetTitle('Advanced Settings')
 
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
   def onQueueChoice(self, e):
     queue = self.queue.ctr.GetString(self.queue.ctr.GetSelection())
     if 'neh' in queue or 'feh' in queue:
-      self.nproc.ctr.SetValue(12)
-      self.nproc.ctr.SetIncrement(12)
-    elif 'psana' in queue or 'debug' in queue:
       self.nproc.ctr.SetValue(16)
       self.nproc.ctr.SetIncrement(16)
+    elif 'psana' in queue or 'debug' in queue:
+      self.nproc.ctr.SetValue(12)
+      self.nproc.ctr.SetIncrement(12)
     else:
       self.nproc.ctr.SetValue(1)
       self.nproc.ctr.SetIncrement(1)
 
+  def onOK(self, e):
+    self.params.mp.method = self.mp_option.ctr.GetStringSelection()
+    self.params.mp.queue = self.queue.ctr.GetStringSelection()
+    self.params.mp.nproc = int(self.nproc.ctr.GetValue())
+    if self.throttle.ctr.GetValue() == '100':
+      self.params.process_percent = None
+    else:
+      self.params.process_percent = int(self.throttle.ctr.GetValue())
+    self.params.average_raw_data = self.avg_img_type.ctr.GetStringSelection() == 'raw'
+    e.Skip()
 
 class CalibrationDialog(BaseDialog):
   def __init__(self, parent,

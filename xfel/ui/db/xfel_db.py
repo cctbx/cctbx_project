@@ -203,9 +203,18 @@ class xfel_db_application(object):
   def get_all_tags(self):
     return self.get_all_x(Tag, "tag")
 
+  def delete_x(self, item, item_id):
+    query = "DELETE FROM %s WHERE id = %d"%(item.table_name, item_id)
+    self.execute_query(query, commit = True)
+
   def delete_tag(self, tag = None, tag_id = None):
+    assert [tag, tag_id].count(None) == 1
     if tag_id is None:
       tag_id = tag.tag_id
+    else:
+      tag = self.get_tag(tag_id)
+
+    self.delete_x(tag, tag_id)
 
   def create_job(self, **kwargs):
     return Job(self, **kwargs)
@@ -217,8 +226,13 @@ class xfel_db_application(object):
     return self.get_all_x(Job, "job")
 
   def delete_job(self, job = None, job_id = None):
+    assert [job, job_id].count(None) == 1
     if job_id is None:
       job_id = job.job_id
+    else:
+      job = self.get_job(job_id)
+
+    self.delete_x(job, job_id)
 
   def get_stats(self, **kwargs):
     return Stats(self, **kwargs)
