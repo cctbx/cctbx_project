@@ -761,7 +761,7 @@ class RunBlockDialog(BaseDialog):
   ''' Comes up when individual run block button is clicked; allows for run
   block settings to be manipulated by user '''
 
-  def __init__(self, parent,
+  def __init__(self, parent, db,
                block=None, trial=None,
                label_style='bold',
                content_style='normal',
@@ -770,10 +770,10 @@ class RunBlockDialog(BaseDialog):
     self.parent = parent
     self.block = block
     self.all_blocks = []
+    self.db = db
 
     if block is None:
-      db = parent.db
-      runs = db.get_all_runs()
+      runs = self.db.get_all_runs()
       run_numbers = [r.run for r in runs]
       assert len(set(run_numbers)) == len(run_numbers)
 
@@ -1007,35 +1007,33 @@ class RunBlockDialog(BaseDialog):
   def onOK(self, e):
     if self.block is not None:
       self.block.active = False
-    db = self.parent.db
 
     startrun_number = int(self.runblocks.start.GetString(self.runblocks.start.GetSelection()))
-    startrun = db.get_run(run_number=startrun_number).id
+    startrun = self.db.get_run(run_number=startrun_number).id
 
     endrun_number = self.runblocks.end.GetString(self.runblocks.end.GetSelection())
     if endrun_number == "None":
       endrun = None
     else:
-      endrun = db.get_run(run_number=int(endrun_number)).id
+      endrun = self.db.get_run(run_number=int(endrun_number)).id
 
-    self.block = db.create_rungroup(startrun=startrun,
-                                    endrun = endrun,
-                                    active = True,
-                                    config_str = self.config.GetValue(),
-                                    detector_address = self.address.ctr.GetValue(),
-                                    detz_parameter = self.beam_xyz.DetZ.GetValue(),
-                                    beamx = self.beam_xyz.X.GetValue(),
-                                    beamy = self.beam_xyz.Y.GetValue(),
-                                    binning = self.bin_nrg_gain.binning.GetValue(),
-                                    energy = self.bin_nrg_gain.energy.GetValue(),
-                                    untrusted_pixel_mask_path = self.untrusted_path.ctr.GetValue(),
-                                    dark_avg_path = self.dark_avg_path.ctr.GetValue(),
-                                    dark_stddev_path = self.dark_stddev_path.ctr.GetValue(),
-                                    gain_map_path = self.gain_map_path.ctr.GetValue(),
-                                    gain_mask_level = self.bin_nrg_gain.gain_mask_level.GetValue(),
-                                    calib_dir = self.calib_dir.ctr.GetValue(),
-                                    comment = self.comment.ctr.GetValue())
-    self.parent.trial.add_rungroup(self.block)
+    self.block = self.db.create_rungroup(startrun=startrun,
+                                         endrun = endrun,
+                                         active = True,
+                                         config_str = self.config.GetValue(),
+                                         detector_address = self.address.ctr.GetValue(),
+                                         detz_parameter = self.beam_xyz.DetZ.GetValue(),
+                                         beamx = self.beam_xyz.X.GetValue(),
+                                         beamy = self.beam_xyz.Y.GetValue(),
+                                         binning = self.bin_nrg_gain.binning.GetValue(),
+                                         energy = self.bin_nrg_gain.energy.GetValue(),
+                                         untrusted_pixel_mask_path = self.untrusted_path.ctr.GetValue(),
+                                         dark_avg_path = self.dark_avg_path.ctr.GetValue(),
+                                         dark_stddev_path = self.dark_stddev_path.ctr.GetValue(),
+                                         gain_map_path = self.gain_map_path.ctr.GetValue(),
+                                         gain_mask_level = self.bin_nrg_gain.gain_mask_level.GetValue(),
+                                         calib_dir = self.calib_dir.ctr.GetValue(),
+                                         comment = self.comment.ctr.GetValue())
     e.Skip()
 
   def fill_in_fields(self):

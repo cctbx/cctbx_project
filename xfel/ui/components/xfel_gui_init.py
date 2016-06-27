@@ -26,6 +26,7 @@ import xfel.ui.components.xfel_gui_controls as gctr
 import xfel.ui.components.xfel_gui_dialogs as dlg
 from xfel.ui import load_cached_settings, save_cached_settings
 from xfel.ui.db import get_run_path
+from xfel.ui.db.xfel_db import xfel_db_application
 
 from prime.postrefine.mod_gui_init import PRIMEInputWindow, PRIMERunWindow
 from prime.postrefine.mod_input import master_phil
@@ -39,6 +40,7 @@ license = 'cctbx.xfel and cctbx.xfel UI are developed under the open source ' \
 
 description = 'The cctbx.xfel UI is developed for use during data collection ' \
               'and initial processing at LCSL XFEL beamlines.'
+
 
 # ------------------------------- Run Sentinel ------------------------------- #
 
@@ -70,7 +72,6 @@ class RunSentinel(Thread):
   def run(self):
     # one time post for an initial update
     self.post_refresh()
-    from xfel.ui.db.xfel_db import xfel_db_application
 
     while self.active:
       try:
@@ -123,7 +124,6 @@ class JobSentinel(Thread):
     # one time post for an initial update
     self.post_refresh()
 
-    from xfel.ui.db.xfel_db import xfel_db_application
     from xfel.ui.db.job import submit_all_jobs
     try:
       db = xfel_db_application(self.parent.params)
@@ -171,8 +171,6 @@ class ProgressSentinel(Thread):
   def run(self):
     # one time post for an initial update
     self.post_refresh()
-
-    from xfel.ui.db.xfel_db import xfel_db_application
 
     while self.active:
       try:
@@ -284,6 +282,17 @@ class ClusteringWorker(Thread):
     evt = ClusteringResult(tp_EVT_CLUSTERING, -1, self.clusters)
     wx.PostEvent(self.parent, evt)
 
+# ------------------------------- Trial Refresh ------------------------------ #
+
+  tp_EVT_TRIAL_REFRESH = wx.NewEventType()
+  EVT_TRIAL_REFRESH = wx.PyEventBinder(tp_EVT_TRIAL_REFRESH, 1)
+
+  class RefreshTrial(wx.PyCommandEvent):
+    ''' Send event when finished all cycles  '''
+
+    def __init__(self, etype, eid):
+      wx.PyCommandEvent.__init__(self, etype, eid)
+
 
 # ------------------------------- Main Window -------------------------------- #
 
@@ -368,7 +377,6 @@ class MainWindow(wx.Frame):
     self.SetSizer(main_box)
 
   def connect_to_db(self, drop_tables = False):
-    from xfel.ui.db.xfel_db import xfel_db_application
     self.db = xfel_db_application(self.params)
 
     if drop_tables:
@@ -659,8 +667,9 @@ class TrialsTab(BaseTab):
     self.trial_sizer.Add(new_trial, flag=wx.EXPAND | wx.ALL, border=10)
 
   def onRefresh(self, e):
-    self.db = self.main.db
+    self.db = xfel_db_application(self.main.params)
     self.refresh_trials()
+
 
   def onAddTrial(self, e):
     new_trial_dlg = dlg.TrialDialog(self, db=self.main.db)
@@ -940,6 +949,7 @@ class StatusTab(BaseTab):
     row.bar.SetValue(value)
     self.status_sizer.Add(row, flag=wx.EXPAND | wx.ALL, border=10)
 
+
 class MergeTab(BaseTab):
   def __init__(self, parent, prefix='prime'):
     BaseTab.__init__(self, parent=parent)
@@ -1140,7 +1150,7 @@ class TrialPanel(wx.Panel):
     self.main_sizer.Add(self.add_panel, flag=wx.ALL | wx.ALIGN_BOTTOM, border=5)
 
     # Bindings
-    self.Bind(EVT_RUN_REFRESH, self.onRefresh)
+    self.Bind(EVT_TRIAL_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_BUTTON, self.onAddBlock, self.btn_add_block)
     self.Bind(wx.EVT_BUTTON, self.onViewPHIL, self.btn_view_phil)
     self.chk_active.Bind(wx.EVT_CHECKBOX, self.onToggleActivity)
@@ -1162,11 +1172,14 @@ class TrialPanel(wx.Panel):
     self.refresh_trial()
 
   def onAddBlock(self, e):
-    rblock_dlg = dlg.RunBlockDialog(self, trial=self.trial)
+    rblock_dlg = dlg.RunBlockDialog(self.block_panel, trial=self.trial,
+                                    db=self.db)
     rblock_dlg.Fit()
 
     if (rblock_dlg.ShowModal() == wx.ID_OK):
+      self.trial.add_rungroup(rblock_dlg.block)
       self.refresh_trial()
+    rblock_dlg.Destroy()
 
   def refresh_trial(self):
     self.block_sizer.DeleteWindows()
@@ -1179,7 +1192,6 @@ class TrialPanel(wx.Panel):
   def draw_block_button(self, block):
     ''' Add new run block button '''
     new_block = gctr.RunBlock(self.block_panel, block=block)
-
     self.Bind(wx.EVT_BUTTON, self.onRunBlockOptions, new_block.new_runblock)
     self.block_sizer.Add(new_block,
                          flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
@@ -1188,11 +1200,18 @@ class TrialPanel(wx.Panel):
   def onRunBlockOptions(self, e):
     ''' Open dialog and change run_block options '''
     run_block = e.GetEventObject().block
-    rblock_dlg = dlg.RunBlockDialog(self, block=run_block)
+    rblock_dlg = dlg.RunBlockDialog(self.block_panel, block=run_block,
+                                    db=self.db)
     rblock_dlg.Fit()
 
     if (rblock_dlg.ShowModal() == wx.ID_OK):
-      self.refresh_trial()
+      self.trial.add_rungroup(rblock_dlg.block)
+    rblock_dlg.Destroy()
+
+    evt = RefreshRuns(tp_EVT_TRIAL_REFRESH, -1)
+    wx.PostEvent(self, evt)
+
+
 
 
 class RunEntry(wx.Panel):
