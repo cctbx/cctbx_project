@@ -1113,6 +1113,9 @@ class DataList(object):
       self.num_images += dataset.shape[0]
       self.lookup.extend([i] * dataset.shape[0])
       self.offset.append(self.num_images)
+    shape = self.datasets[0].shape
+    self.height = shape[1]
+    self.width = shape[2]
 
   def __len__(self):
     return self.num_images
@@ -1122,9 +1125,19 @@ class DataList(object):
     import numpy as np
     d = self.lookup[index]
     i = index - self.offset[d]
-    data = self.datasets[d][i,:,:]
-    if data.dtype == np.uint16:
-      data = data.astype(np.uint32)
+
+    # aiming to resolve dials#148
+    mode_148 = True
+
+    if mode_148:
+      # allocate empty array, copy data in
+      data = np.empty((self.height, self.width), dtype='uint32')
+      self.datasets[d].read_direct(data, np.s_[i,:,:], np.s_[:,:])
+    else:
+      data = self.datasets[d][i,:,:]
+      if data.dtype == np.uint16:
+        data = data.astype(np.uint32)
+
     data_as_flex = flex.int(data)
     return data_as_flex
 
