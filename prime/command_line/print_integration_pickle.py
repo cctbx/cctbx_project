@@ -408,6 +408,7 @@ if (__name__ == "__main__"):
     else:
       txt_out_report_beam_filter += txt_out_report_tmp
   print
+  print 'CC mean=%6.2f median=%6.2f std=%6.2f'%(flex.mean(cc_bin_low_set), np.median(cc_bin_low_set), np.std(cc_bin_low_set))
   print 'Xbeam mean=%8.4f std=%6.4f'%(xbeam_mean, xbeam_std)
   print 'Ybeam mean=%8.4f std=%6.4f'%(ybeam_mean, ybeam_std)
   print 'UC mean a=%8.4f (%8.4f) b=%8.4f (%8.4f) c=%9.4f (%8.4f)'%(flex.mean(uc_a), np.std(uc_a), flex.mean(uc_b), np.std(uc_b), flex.mean(uc_c), np.std(uc_c))

@@ -607,6 +607,8 @@ class intensities_scaler(object):
     if output_mtz_file_prefix != '':
       #write as mtz file
       miller_array_merge_unique = miller_array_merge.merge_equivalents().array()
+      info = miller.array_info(wavelength=wavelength_mean)
+      miller_array_merge_unique.set_info(info)
       mtz_dataset_merge = miller_array_merge_unique.as_mtz_dataset(column_root_label="IOBS")
       mtz_dataset_merge.mtz_object().write(file_name=output_mtz_file_prefix+'_merge.mtz')
       #write as cns file
