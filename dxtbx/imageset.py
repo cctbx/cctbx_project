@@ -624,7 +624,7 @@ class ImageSet(object):
 
   def get_image_models(self, index=None, no_read=False):
     ''' Get the models for the image.'''
-    path = self.get_path(index)
+    path = self.get_image_identifier(index)
     if path not in self._models:
       models = {}
       if not no_read:
@@ -700,6 +700,15 @@ class ImageSet(object):
   def get_path(self, index):
     ''' Get the path for the index '''
     return self.reader().get_path(self._image_index(index))
+
+  def get_image_identifier(self, index):
+    ''' Get the path for the index '''
+    if isinstance(self.reader(), SingleFileReader):
+      if index is None:
+        index = 0
+      path = self.get_path(index)
+      return "%s-%d" % (path, index)
+    return self.get_path(index)
 
   def _image_index(self, index=None):
     ''' Convert image set index to image index.'''
@@ -1538,7 +1547,7 @@ class ImageSetFactory(object):
       reader = NullReader(filenames)
     else:
       if issubclass(format_class, FormatMultiImage):
-        assert len(filenames) == 1
+        assert len(set(filenames)) == 1
         format_instance = format_class(filenames[0])
         reader = SingleFileReader(format_instance)
       else:

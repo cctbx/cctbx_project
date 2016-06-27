@@ -1027,8 +1027,10 @@ class ScanFactory(object):
     image_range = (1, len(phi))
     if len(phi) > 1:
       oscillation = (float(phi[0]), float(phi[1]-phi[0]))
+      is_sweep = True
     else:
       oscillation = (float(phi[0]), 0.0)
+      is_sweep = False
 
     # Get the exposure time
     num_images = len(phi)
@@ -1042,13 +1044,24 @@ class ScanFactory(object):
       exposure_time = flex.double(num_images, 0)
       epochs = flex.double(num_images, 0)
 
-    # Construct the model
-    self.model = Scan(
-      image_range,
-      oscillation,
-      exposure_time,
-      epochs)
+    if is_sweep is True:
 
+      # Construct the model
+      self.model = Scan(
+        image_range,
+        oscillation,
+        exposure_time,
+        epochs)
+
+    else:
+
+      self.model = []
+      for i, image in range(image_range[0], image_range[1]+1):
+        self.model.append(Scan(
+          (image, image+1),
+          oscillation,
+          exposure_time[i],
+          epochs[i]))
 
 class CrystalFactory(object):
   '''

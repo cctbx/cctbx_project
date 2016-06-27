@@ -234,7 +234,7 @@ class DataBlock(object):
           except Exception:
             pass
           try:
-            image_dict['scan'] = s.index(iset.get_scan())
+            image_dict['scan'] = s.index(iset.get_scan(i))
           except Exception:
             pass
           image_list.append(image_dict)
