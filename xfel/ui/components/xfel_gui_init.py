@@ -67,7 +67,6 @@ class RunSentinel(Thread):
   def post_refresh(self):
     evt = RefreshRuns(tp_EVT_RUN_REFRESH, -1)
     wx.PostEvent(self.parent.run_window.runs_tab, evt)
-    wx.PostEvent(self.parent.run_window.trials_tab, evt)
 
   def run(self):
     # one time post for an initial update
@@ -282,18 +281,6 @@ class ClusteringWorker(Thread):
     evt = ClusteringResult(tp_EVT_CLUSTERING, -1, self.clusters)
     wx.PostEvent(self.parent, evt)
 
-# ------------------------------- Trial Refresh ------------------------------ #
-
-  tp_EVT_TRIAL_REFRESH = wx.NewEventType()
-  EVT_TRIAL_REFRESH = wx.PyEventBinder(tp_EVT_TRIAL_REFRESH, 1)
-
-  class RefreshTrial(wx.PyCommandEvent):
-    ''' Send event when finished all cycles  '''
-
-    def __init__(self, etype, eid):
-      wx.PyCommandEvent.__init__(self, etype, eid)
-
-
 # ------------------------------- Main Window -------------------------------- #
 
 class MainWindow(wx.Frame):
@@ -507,6 +494,8 @@ class RunWindow(wx.Panel):
     self.main_nbook.AddPage(self.status_tab, 'Status')
     self.main_nbook.AddPage(self.merge_tab, 'Merge')
 
+    self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.onPageChange, self.main_nbook)
+
     self.sentinel_box = wx.BoxSizer(wx.HORIZONTAL)
     self.run_light = gctr.SentinelStatus(self.main_panel, label='Run Sentinel')
     self.job_light = gctr.SentinelStatus(self.main_panel, label='Job Sentinel')
@@ -523,6 +512,17 @@ class RunWindow(wx.Panel):
     main_sizer = wx.BoxSizer(wx.VERTICAL)
     main_sizer.Add(self.main_panel, 1, flag=wx.EXPAND | wx.ALL, border=3)
     self.SetSizer(main_sizer)
+
+  def onPageChange(self, e):
+    if self.main_nbook.GetSelection() == 0:
+      self.runs_tab.refresh_rows()
+    elif self.main_nbook.GetSelection() == 1:
+      self.trials_tab.refresh_trials()
+    elif self.main_nbook.GetSelection() == 2:
+      self.jobs_tab.refresh_jobs()
+    elif self.main_nbook.GetSelection() == 3:
+      self.status_tab.refresh_rows()
+
 
 
 # --------------------------------- UI Tabs ---------------------------------- #
@@ -642,11 +642,10 @@ class TrialsTab(BaseTab):
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onAddTrial, self.btn_add_trial)
     self.Bind(wx.EVT_TOGGLEBUTTON, self.onActiveOnly, self.btn_active_only)
-    self.Bind(EVT_RUN_REFRESH, self.onRefresh)
 
   def refresh_trials(self):
     self.trial_sizer.Clear(deleteWindows=True)
-    self.all_trials = self.db.get_all_trials()
+    self.all_trials = self.main.db.get_all_trials()
     for trial in self.all_trials:
       if self.show_active_only:
         if trial.active:
@@ -659,17 +658,12 @@ class TrialsTab(BaseTab):
 
   def add_trial(self, trial):
     new_trial = TrialPanel(self.trial_panel,
-                           db=self.db,
+                           db=self.main.db,
                            trial=trial,
                            box_label='Trial {}'.format(trial.trial))
     new_trial.chk_active.SetValue(trial.active)
     new_trial.refresh_trial()
     self.trial_sizer.Add(new_trial, flag=wx.EXPAND | wx.ALL, border=10)
-
-  def onRefresh(self, e):
-    self.db = xfel_db_application(self.main.params)
-    self.refresh_trials()
-
 
   def onAddTrial(self, e):
     new_trial_dlg = dlg.TrialDialog(self, db=self.main.db)
@@ -721,6 +715,9 @@ class JobsTab(BaseTab):
     pass
 
   def onRefreshJobs(self, e):
+    self.refresh_jobs()
+
+  def refresh_jobs(self):
     if self.main.db is not None:
       jobs = self.main.db.get_all_jobs()
       self.job_sizer.DeleteWindows()
@@ -729,7 +726,6 @@ class JobsTab(BaseTab):
 
     self.job_panel.SetupScrolling()
     self.job_panel.Refresh()
-
 
   def add_job_row(self, job):
     job_row_sizer = wx.FlexGridSizer(1, 3, 0, 10)
@@ -1150,7 +1146,6 @@ class TrialPanel(wx.Panel):
     self.main_sizer.Add(self.add_panel, flag=wx.ALL | wx.ALIGN_BOTTOM, border=5)
 
     # Bindings
-    self.Bind(EVT_TRIAL_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_BUTTON, self.onAddBlock, self.btn_add_block)
     self.Bind(wx.EVT_BUTTON, self.onViewPHIL, self.btn_view_phil)
     self.chk_active.Bind(wx.EVT_CHECKBOX, self.onToggleActivity)
@@ -1167,9 +1162,6 @@ class TrialPanel(wx.Panel):
       self.trial.active = True
     else:
       self.trial.active = False
-
-  def onRefresh(self, e):
-    self.refresh_trial()
 
   def onAddBlock(self, e):
     rblock_dlg = dlg.RunBlockDialog(self.block_panel, trial=self.trial,
@@ -1207,11 +1199,7 @@ class TrialPanel(wx.Panel):
     if (rblock_dlg.ShowModal() == wx.ID_OK):
       self.trial.add_rungroup(rblock_dlg.block)
     rblock_dlg.Destroy()
-
-    evt = RefreshRuns(tp_EVT_TRIAL_REFRESH, -1)
-    wx.PostEvent(self, evt)
-
-
+    wx.CallAfter(self.refresh_trial)
 
 
 class RunEntry(wx.Panel):
