@@ -4,11 +4,11 @@ def print_sweep(list_of_images):
   from dxtbx.imageset import ImageSetFactory
   sweeps = ImageSetFactory.new(list_of_images)
 
-  for s in sweeps:
-    print s.get_detector()
-    print s.get_beam()
-    print s.get_goniometer()
-    print s.get_scan()
+  for sweep in sweeps:
+    print sweep.get_detector()
+    print sweep.get_beam()
+    print sweep.get_goniometer()
+    print sweep.get_scan()
 
     # compute the beam centre... in mm... w.r.t. fast, slow axis
 
@@ -16,8 +16,8 @@ def print_sweep(list_of_images):
 
     from scitbx import matrix
 
-    d = s.get_detector()[0]
-    b = s.get_beam()
+    d = sweep.get_detector()[0]
+    b = sweep.get_beam()
 
     o = matrix.col(d.get_origin())
     f = matrix.col(d.get_fast_axis())
