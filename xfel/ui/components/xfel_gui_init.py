@@ -613,38 +613,50 @@ class TrialsTab(BaseTab):
     BaseTab.__init__(self, parent=parent)
 
     self.main = main
+    self.show_active_only = False
 
     self.trial_panel = ScrolledPanel(self, size=(300, 350))
     self.trial_sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.trial_panel.SetSizer(self.trial_sizer)
 
-    self.btn_add_trial = wx.Button(self, label='New Trial',
-                                   size=(120, -1))
+    self.btn_sizer = wx.FlexGridSizer(1, 2, 0, 10)
+    self.btn_sizer.AddGrowableCol(0)
+    self.btn_add_trial = wx.Button(self, label='New Trial', size=(120, -1))
+    self.btn_active_only = wx.ToggleButton(self, label='Show Active Trials',
+                                           size=self.btn_add_trial.GetSize())
+    self.btn_sizer.Add(self.btn_active_only, flag=wx.ALIGN_RIGHT)
+    self.btn_sizer.Add(self.btn_add_trial)
 
     self.main_sizer.Add(self.trial_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.btn_add_trial,
-                        flag=wx.RIGHT | wx.LEFT | wx.BOTTOM | wx.ALIGN_RIGHT,
-                        border=10)
+    self.main_sizer.Add(self.btn_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onAddTrial, self.btn_add_trial)
+    self.Bind(wx.EVT_TOGGLEBUTTON, self.onActiveOnly, self.btn_active_only)
     self.Bind(EVT_RUN_REFRESH, self.onRefresh)
 
   def refresh_trials(self):
     self.trial_sizer.Clear(deleteWindows=True)
     self.all_trials = self.db.get_all_trials()
     for trial in self.all_trials:
-      new_trial = TrialPanel(self.trial_panel,
-                             db=self.db,
-                             trial=trial,
-                             box_label='Trial {}'.format(trial.trial))
-      new_trial.chk_active.SetValue(trial.active)
-      new_trial.refresh_trial()
-      self.trial_sizer.Add(new_trial, flag=wx.EXPAND | wx.ALL, border=10)
+      if self.show_active_only:
+        if trial.active:
+          self.add_trial(trial=trial)
+      else:
+        self.add_trial(trial=trial)
 
     self.trial_panel.Layout()
     self.trial_panel.SetupScrolling()
+
+  def add_trial(self, trial):
+    new_trial = TrialPanel(self.trial_panel,
+                           db=self.db,
+                           trial=trial,
+                           box_label='Trial {}'.format(trial.trial))
+    new_trial.chk_active.SetValue(trial.active)
+    new_trial.refresh_trial()
+    self.trial_sizer.Add(new_trial, flag=wx.EXPAND | wx.ALL, border=10)
 
   def onRefresh(self, e):
     self.db = self.main.db
@@ -655,6 +667,15 @@ class TrialsTab(BaseTab):
 
     if new_trial_dlg.ShowModal() == wx.ID_OK:
       self.refresh_trials()
+
+  def onActiveOnly(self, e):
+    if self.btn_active_only.GetValue():
+      self.btn_active_only.SetLabel('Show All Trials')
+    else:
+      self.btn_active_only.SetLabel('Show Active Trials')
+
+    self.show_active_only = self.btn_active_only.GetValue()
+    self.refresh_trials()
 
 
 class JobsTab(BaseTab):

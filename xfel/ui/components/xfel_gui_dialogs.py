@@ -819,8 +819,8 @@ class RunBlockDialog(BaseDialog):
     firstidx = start.index(str(self.first_run))
     lastidx = stop.index(str(self.last_run))
 
-    self.option_sizer = wx.FlexGridSizer(1, 2, 0, 10)
-    self.option_sizer.AddGrowableCol(1, 1)
+    self.option_sizer = wx.FlexGridSizer(1, 3, 0, 10)
+    self.option_sizer.AddGrowableCol(2)
 
     self.config_panel = wx.Panel(self)
     config_box = wx.StaticBox(self.config_panel, label='Configuration')
@@ -839,12 +839,17 @@ class RunBlockDialog(BaseDialog):
                                       label_size=(100, -1),
                                       ctrl_size=(150, -1),
                                       choices=['CBF', 'pickle'])
+    self.btn_import_cfg = wx.Button(self, label='Import Config', size=(120, -1))
+    self.btn_default_cfg = wx.Button(self, label='Default Config', size=(120, -1))
+    self.option_sizer.Add(self.btn_import_cfg, flag=wx.ALIGN_RIGHT)
+    self.option_sizer.Add(self.btn_default_cfg, flag=wx.ALIGN_RIGHT)
     self.option_sizer.Add(self.img_format, flag=wx.ALIGN_RIGHT)
 
     # Configuration text ctrl (user can put in anything they want)
     self.config = rt.RichTextCtrl(self.config_panel,
                                   size=(-1, 250),
-                                  style=wx.VSCROLL)
+                                  style=wx.VSCROLL,
+                                  value=str(block.config_str))
     self.config_sizer.Add(self.config, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Runblock runs choice
@@ -961,6 +966,8 @@ class RunBlockDialog(BaseDialog):
 
     self.Bind(wx.EVT_BUTTON, self.onDarkAvgBrowse,
               id=self.dark_avg_path.btn_big.GetId())
+    self.Bind(wx.EVT_BUTTON, self.onImportConfig, self.btn_import_cfg)
+    self.Bind(wx.EVT_BUTTON, self.onDefaultConfig, self.btn_default_cfg)
     self.Bind(wx.EVT_BUTTON, self.onDarkMapBrowse,
               id=self.gain_map_path.btn_big.GetId())
     self.Bind(wx.EVT_BUTTON, self.onDarkStdBrowse,
@@ -972,10 +979,30 @@ class RunBlockDialog(BaseDialog):
     self.Bind(wx.EVT_CHOICE, self.onImageFormat, id=self.img_format.ctr.GetId())
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
+
     self.fill_in_fields()
     self.configure_controls()
     self.Layout()
     self.SetTitle('Run Block Settings')
+
+  def onImportConfig(self, e):
+    cfg_dlg = wx.FileDialog(self,
+                            message="Load configuration file",
+                            defaultDir=os.curdir,
+                            defaultFile="*",
+                            wildcard="*",
+                            style=wx.OPEN | wx.FD_FILE_MUST_EXIST,
+                            )
+    if cfg_dlg.ShowModal() == wx.ID_OK:
+      config_file = cfg_dlg.GetPaths()[0]
+      with open(config_file, 'r') as cfg:
+        cfg_contents = cfg.read()
+      self.config.SetValue(cfg_contents)
+    cfg_dlg.Destroy()
+
+  def onDefaultConfig(self, e):
+    # TODO: Generate default config parameters (re-do based on pickle / CBF)
+    pass
 
   def onOK(self, e):
     if self.block is not None:
@@ -1009,7 +1036,6 @@ class RunBlockDialog(BaseDialog):
                                     calib_dir = self.calib_dir.ctr.GetValue(),
                                     comment = self.comment.ctr.GetValue())
     self.parent.trial.add_rungroup(self.block)
-
     e.Skip()
 
   def fill_in_fields(self):
@@ -1165,7 +1191,7 @@ class TrialDialog(BaseDialog):
 
     self.throttle = gctr.SpinCtrl(self,
                                   label='Percent events processed:',
-                                  label_size=(120, -1),
+                                  label_size=(180, -1),
                                   label_style='bold',
                                   ctrl_size=(100, -1),
                                   ctrl_value='100',
@@ -1274,4 +1300,7 @@ class TrialDialog(BaseDialog):
       else:
         self.trial.target_phil_str = target_phil_str
         self.trial.comment = comment
+    else:
+      if self.trial.comment != self.trial_comment.ctr.GetValue():
+        self.trial.comment = self.trial_comment.ctr.GetValue()
     e.Skip()
