@@ -681,6 +681,10 @@ class JobsTab(BaseTab):
     BaseTab.__init__(self, parent=parent)
 
     self.main = main
+    self.db = None
+    self.all_trials = []
+    self.filter = 'All jobs'
+
     self.job_panel = ScrolledPanel(self)
     self.job_sizer = wx.BoxSizer(wx.VERTICAL)
     self.job_panel.SetSizer(self.job_sizer)
@@ -695,32 +699,71 @@ class JobsTab(BaseTab):
     self.colname_sizer.AddGrowableCol(2, 1)
     self.main_sizer.Add(self.colname_sizer, flag=wx.ALL | wx.EXPAND, border=10)
 
+    self.trial_choice = gctr.ChoiceCtrl(self,
+                                        label='Filter by:',
+                                        label_size=(80, -1),
+                                        label_style='normal',
+                                        ctrl_size=(100, -1),
+                                        choices=[])
     self.btn_kill_all = wx.Button(self, label='Kill All', size=(120, -1))
+    self.option_sizer = wx.FlexGridSizer(1, 2, 0, 20)
+    self.option_sizer.AddMany([(self.trial_choice), (self.btn_kill_all)])
+
     self.main_sizer.Add(self.job_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.btn_kill_all,
-                        flag=wx.RIGHT | wx.LEFT | wx.BOTTOM,
-                        border=10)
+    self.main_sizer.Add(self.option_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
 
     self.Bind(wx.EVT_BUTTON, self.onKillAll, self.btn_kill_all)
+    self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_choice.ctr)
     self.Bind(EVT_JOB_REFRESH, self.onRefreshJobs)
 
+  def onTrialChoice(self, e):
+    self.filter = self.trial_choice.ctr.GetString(
+                  self.trial_choice.ctr.GetSelection())
+
   def onKillAll(self, e):
+    # TODO: make method to kill a job, apply to all jobs here
     pass
 
   def onRefreshJobs(self, e):
+    self.db = xfel_db_application(self.main.params)
+
+    # Find new trials
+    if self.db is not None:
+      all_db_trials = [str(i.trial) for i in self.db.get_all_trials()]
+      new_trials = [i for i in all_db_trials if i not in self.all_trials]
+      if len(new_trials) > 0:
+        self.find_trials()
+        self.all_trials = all_db_trials
+
     self.refresh_jobs()
+    self.job_panel.SetupScrolling()
+    self.job_panel.Refresh()
+
+  def find_trials(self):
+    if self.db is not None:
+      choices = ['All jobs'] + \
+                ['trial {}'.format(i.trial_id) for i in self.db.get_all_trials()]
+      self.trial_choice.ctr.Clear()
+      for choice in choices:
+        self.trial_choice.ctr.Append(choice)
+
+      if self.filter == 'All jobs':
+        self.trial_choice.ctr.SetSelection(0)
+      else:
+        self.trial_choice.ctr.SetSelection(int(self.filter[-1]))
 
   def refresh_jobs(self):
-    if self.main.db is not None:
-      jobs = self.main.db.get_all_jobs()
+    if self.db is not None:
+      jobs = self.db.get_all_jobs()
+      if str(self.filter).lower() != 'all jobs':
+        jobs = [i for i in jobs if i.trial_id == int(self.filter[-1])]
+        print 'Selecting by trial {}'.format(self.filter[-1])
+
       self.job_sizer.DeleteWindows()
       for job in jobs:
         self.add_job_row(job)
-
-    self.job_panel.SetupScrolling()
-    self.job_panel.Refresh()
 
   def add_job_row(self, job):
     job_row_sizer = wx.FlexGridSizer(1, 3, 0, 10)
@@ -732,6 +775,7 @@ class JobsTab(BaseTab):
                                     size=(560, -1)))
     job_row_sizer.AddGrowableCol(2, 1)
     self.job_sizer.Add(job_row_sizer, flag=wx.EXPAND)
+
 
 
 class StatusTab(BaseTab):
@@ -757,8 +801,8 @@ class StatusTab(BaseTab):
 
     self.opt_cluster = gctr.OptionCtrl(self.opt_panel,
                                        label='Clustering:',
-                                       label_size=(60, -1),
-                                       label_style='normal',
+                                       label_size=(100, -1),
+                                       label_style='bold',
                                        sub_labels=['No. of images',
                                                    'Threshold'],
                                        items=[('num_images', 1000),
@@ -801,7 +845,7 @@ class StatusTab(BaseTab):
 
     self.main_sizer.Add(self.status_panel, 1,
                         flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.iso_panel,
+    self.main_sizer.Add(self.iso_panel, 1,
                         flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.opt_panel,
                         flag=wx.EXPAND | wx.ALL, border=10)
@@ -837,31 +881,30 @@ class StatusTab(BaseTab):
       print 'Nothing to cluster!'
     else:
       counter = 0
-      for cluster in e.GetValue():
+      clusters = sorted(e.GetValue(), key=lambda x: x.members, reverse=True)
+      for cluster in clusters:
         sorted_pg_comp = sorted(cluster.pg_composition.items(),
                                 key=lambda x: -1 * x[1])
         pg_nums = [pg[1] for pg in sorted_pg_comp]
         cons_pg = sorted_pg_comp[np.argmax(pg_nums)]
 
-        # write out lists of output pickles that comprise clusters with > 1 members
-        if len(cluster.members) > 5:  # 0.01 * len(subset):
+        if len(cluster.members) > 1:
 
           # format and record output
           uc_line = "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
                     "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
                     "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f})   " \
-                    "".format(
-                              cluster.medians[0], cluster.stdevs[0],
+                    "".format(cluster.medians[0], cluster.stdevs[0],
                               cluster.medians[1], cluster.stdevs[1],
                               cluster.medians[2], cluster.stdevs[2],
                               cluster.medians[3], cluster.stdevs[3],
                               cluster.medians[4], cluster.stdevs[4],
-                              cluster.medians[5], cluster.stdevs[5]
-                              )
+                              cluster.medians[5], cluster.stdevs[5])
 
           iso = gctr.IsoformInfoCtrl(self.iso_panel)
           iso.ctr_iso.SetValue(ascii_uppercase[counter])
           iso.ctr_pg.SetValue(cons_pg[0])
+          iso.ctr_num.SetValue(str(len(cluster.members)))
           iso.ctr_uc.SetValue(uc_line)
           self.iso_box_sizer.Add(iso,
                                  flag=wx.EXPAND| wx.TOP | wx.LEFT | wx.RIGHT,
@@ -872,7 +915,6 @@ class StatusTab(BaseTab):
     self.iso_panel.SetSizer(self.iso_box_sizer)
     self.iso_panel.Layout()
     self.iso_panel.SetupScrolling()
-
 
   def onTagCheck(self, e):
     checked_items = self.tag_list.ctr.GetCheckedStrings()

@@ -562,20 +562,24 @@ class IsoformInfoCtrl(CtrlBase):
     CtrlBase.__init__(self, parent=parent, label_style=label_style,
                       content_style=content_style)
 
-    self.sizer = wx.FlexGridSizer(1, 6, 0, 10)
-    self.sizer.AddGrowableCol(5)
+    self.sizer = wx.FlexGridSizer(1, 8, 0, 10)
+    self.sizer.AddGrowableCol(7)
     self.txt_iso = wx.StaticText(self, label='Isoform')
     self.txt_pg = wx.StaticText(self, label='Point Group')
+    self.txt_num = wx.StaticText(self, label='No. Images')
     self.txt_uc = wx.StaticText(self, label='Unit Cell')
 
     self.ctr_iso = wx.TextCtrl(self, size=(30, -1), style=wx.TE_READONLY)
     self.ctr_pg = wx.TextCtrl(self, size=(50, -1), style=wx.TE_READONLY)
+    self.ctr_num = wx.TextCtrl(self, size=(50, -1), style=wx.TE_READONLY)
     self.ctr_uc = wx.TextCtrl(self, size=(200, -1), style=wx.TE_READONLY)
 
     self.sizer.AddMany([(self.txt_iso),
                         (self.ctr_iso),
                         (self.txt_pg),
                         (self.ctr_pg),
+                        (self.txt_num),
+                        (self.ctr_num),
                         (self.txt_uc)])
     self.sizer.Add(self.ctr_uc, flag=wx.EXPAND)
 
