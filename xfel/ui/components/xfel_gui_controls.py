@@ -550,7 +550,7 @@ class SentinelStatus(CtrlBase):
     elif status == 'idle':
       bmp = wx.Bitmap('{}/16x16/led_idle.png'.format(icons))
     elif status == 'alert':
-      bmp == wx.Bitmap('{}/16x16/led_alert.png'.format(icons))
+      bmp = wx.Bitmap('{}/16x16/led_alert.png'.format(icons))
 
     self.light.SetBitmap(bmp)
 
