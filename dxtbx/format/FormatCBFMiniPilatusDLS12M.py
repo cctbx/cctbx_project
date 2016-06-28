@@ -228,7 +228,15 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
     '''Return a model for a simple single-axis goniometer. This should
     probably be checked against the image header.'''
 
-    return self._goniometer_factory.single_axis_reverse()
+    from dxtbx.format.FormatCBFMiniPilatusHelpers import get_pilatus_timestamp
+    timestamp = get_pilatus_timestamp(
+        self._cif_header_dictionary['timestamp'])
+    # Goniometer changed from reverse phi to conventional rotation direction
+    # on this date:
+    # calendar.timegm(time.strptime('2016-04-01T00:00:00', '%Y-%m-%dT%H:%M:%S'))
+    if timestamp < 1459468800:
+      return self._goniometer_factory.single_axis_reverse()
+    return self._goniometer_factory.single_axis()
 
 if __name__ == '__main__':
 
