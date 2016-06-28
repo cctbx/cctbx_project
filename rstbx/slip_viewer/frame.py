@@ -646,7 +646,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
           from tile_generation import _get_flex_image
           flex_img = _get_flex_image(
             brightness=self.settings.brightness / 100,
-            data=raw_img.get_raw_data(),
+            data=raw_img.get_raw_data()[0],
             saturation=detector[0].get_trusted_range()[1],
             vendortype=raw_img.__class__.__name__)
 
