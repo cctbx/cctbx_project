@@ -8,7 +8,8 @@ def log_frame(experiments, reflections, params, run, timestamp = None):
   app = dxtbx_xfel_db_application(params)
   db_experiment = app.create_experiment(experiments[0])
   db_run = app.get_run(run_number=run)
-  db_event = app.create_event(timestamp = timestamp, run_id = db_run.id)
+  db_trial = app.get_trial(trial_number=params.input.trial)
+  db_event = app.create_event(timestamp = timestamp, run_id = db_run.id, trial_id = db_trial.id)
   app.link_imageset_frame(db_experiment.imageset, db_event)
 
   d = experiments[0].crystal.get_unit_cell().d(reflections['miller_index'])

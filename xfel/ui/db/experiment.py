@@ -73,10 +73,16 @@ class Crystal(db_proxy):
       except AttributeError:
         self.cell = Cell(app, crystal=crystal)
       else:
-        query = "SELECT id from `%s_cell` WHERE name = '%s'" % (app.params.experiment_tag,
-                                                                isoform_name)
+        tag = app.params.experiment_tag
+        query = """SELECT cell.id from `%s_cell` cell
+                   JOIN `%s_isoform` isoform ON cell.isoform_id = isoform.id
+                   JOIN `%s_trial` trial ON isoform.trial_id = trial.id
+                   WHERE isoform.name = '%s' AND trial.trial = %d""" % (
+          tag, tag, tag, isoform_name, app.params.input.trial)
         cursor = app.execute_query(query)
-        self.cell = Cell(app, cell_id = cursor.fetchall()[0][0])
+        results = cursor.fetchall()
+        assert len(results) == 1
+        self.cell = Cell(app, cell_id = results[0][0])
       kwargs['cell_id'] = self.cell.id
 
     db_proxy.__init__(self, app, "%s_crystal" % app.params.experiment_tag, id=crystal_id, **kwargs)
@@ -84,6 +90,11 @@ class Crystal(db_proxy):
 
     if crystal is None:
       self.cell = Cell(app, cell_id = self.cell_id)
+
+class Isoform(db_proxy):
+  def __init__(self, app, isoform_id=None, **kwargs):
+    db_proxy.__init__(self, app, "%s_isoform" % app.params.experiment_tag, id=isoform_id, **kwargs)
+    self.isoform_id = self.id
 
 class Cell(db_proxy):
   def __init__(self, app, cell_id = None, crystal = None, **kwargs):
@@ -95,6 +106,11 @@ class Cell(db_proxy):
     db_proxy.__init__(self, app, "%s_cell" % app.params.experiment_tag, id=cell_id, **kwargs)
     self.cell_id = self.id
     self.bins = app.get_cell_bins(self.id)
+
+    if self.isoform_id is not None:
+      self.isoform = Isoform(app, isoform_id = self.isoform_id)
+    else:
+      self.isoform = None
 
 class Bin(db_proxy):
   def __init__(self, app, bin_id = None, **kwargs):

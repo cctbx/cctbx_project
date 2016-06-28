@@ -1315,6 +1315,8 @@ class TrialDialog(BaseDialog):
       target_phil_str = self.phil_box.GetValue()
       comment = self.trial_comment.ctr.GetValue()
       process_percent = int(self.throttle.ctr.GetValue())
+      d_min = float(self.d_min.ctr.GetValue())
+      n_bins = int(self.num_bins.ctr.GetValue())
       if process_percent == 100:
         process_percent = None
 
@@ -1324,7 +1326,9 @@ class TrialDialog(BaseDialog):
           active = False,
           target_phil_str = target_phil_str,
           comment = comment,
-          process_percent = process_percent)
+          process_percent = process_percent,
+          d_min = d_min,
+          n_bins = n_bins)
       else:
         self.trial.target_phil_str = target_phil_str
         self.trial.comment = comment

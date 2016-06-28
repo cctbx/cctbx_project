@@ -128,7 +128,7 @@ class JobSentinel(Thread):
     try:
       db = xfel_db_application(self.parent.params)
       self.parent.run_window.job_light.change_status('on')
-    except OperationalErorr:
+    except OperationalError:
       self.parent.run_window.job_light.change_status('alert')
 
     while self.active:
@@ -178,23 +178,24 @@ class ProgressSentinel(Thread):
         self.parent.run_window.prg_light.change_status('idle')
       except OperationalError:
         self.parent.run_window.prg_light.change_status('alert')
+        time.sleep(5)
+        continue
 
-      if len(db.get_all_trials()) > 0 and len(db.get_all_tags()) > 0:
+      if len(db.get_all_trials()) > 0:
         trial = db.get_trial(
           trial_number=self.parent.run_window.status_tab.trial_no)
 
         tags = self.parent.run_window.status_tab.selected_tags
-        if tags != []:
-          cells = db.get_stats(trial=trial, tags=tags)()
-        else:
-          cells = db.get_stats(trial=trial)()
+        cells = db.get_stats(trial=trial, tags=tags)()
 
         for cell in cells:
+          if cell.isoform is None:
+            continue
           counts = [int(i.count) for i in cell.bins]
           totals = [int(i.total_hkl) for i in cell.bins]
           mult = int(sum(counts) / sum(totals))
           self.info.append({'multiplicity':mult, 'bins':cell.bins,
-                            'isoform':cell.name, 'a':cell.cell_a,
+                            'isoform':cell.isoform.name, 'a':cell.cell_a,
                             'b':cell.cell_b, 'c':cell.cell_c,
                             'alpha':cell.cell_alpha, 'beta':cell.cell_beta,
                             'gamma':cell.cell_gamma})

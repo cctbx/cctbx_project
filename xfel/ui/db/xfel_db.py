@@ -9,7 +9,7 @@ from xfel.ui.db.rungroup import Rungroup
 from xfel.ui.db.tag import Tag
 from xfel.ui.db.job import Job
 from xfel.ui.db.stats import Stats
-from xfel.ui.db.experiment import Cell, Bin
+from xfel.ui.db.experiment import Cell, Bin, Isoform
 
 from xfel.ui.db import get_db_connection
 
@@ -17,7 +17,7 @@ from xfel.command_line.experiment_manager import initialize as initialize_base
 class initialize(initialize_base):
   expected_tables = ["run", "job", "rungroup", "trial", "tag", "run_tag", "event", "trial_rungroup",
                      "imageset", "imageset_event", "beam", "detector", "experiment",
-                     "crystal", "cell", "cell_bin", "bin"]
+                     "crystal", "cell", "cell_bin", "bin", "isoform"]
 
   def __init__(self, params, dbobj):
     initialize_base.__init__(self, params, dbobj, interactive = False, drop_tables = None)
@@ -64,7 +64,9 @@ class xfel_db_application(object):
   def drop_tables(self):
     return self.init_tables.drop_tables()
 
-  def create_trial(self, **kwargs):
+  def create_trial(self, d_min = 1.5, n_bins = 10, **kwargs):
+    # d_min and n_bins only used if isoforms are in this trial
+
     trial = Trial(self, **kwargs)
     if trial.target_phil_str is not None:
       from xfel.command_line.xtc_process import phil_scope
@@ -72,31 +74,32 @@ class xfel_db_application(object):
       trial_params = phil_scope.fetch(parse(trial.target_phil_str)).extract()
       if len(trial_params.indexing.stills.isoforms) > 0:
         for isoform in trial_params.indexing.stills.isoforms:
-          cell = self.get_cell(name = isoform.name)
-          if cell is None:
-            print "Creating isoform", isoform.name
-            a, b, c, alpha, beta, gamma = isoform.cell.parameters()
-            cell = self.create_cell(name = isoform.name,
-                                    cell_a = a,
-                                    cell_b = b,
-                                    cell_c = c,
-                                    cell_alpha = alpha,
-                                    cell_beta = beta,
-                                    cell_gamma = gamma,
-                                    lookup_symbol = isoform.lookup_symbol)
-            from cctbx.crystal import symmetry
+          print "Creating isoform", isoform.name
+          db_isoform = Isoform(self,
+                               name = isoform.name,
+                               trial_id = trial.id)
+          a, b, c, alpha, beta, gamma = isoform.cell.parameters()
+          cell = self.create_cell(cell_a = a,
+                                  cell_b = b,
+                                  cell_c = c,
+                                  cell_alpha = alpha,
+                                  cell_beta = beta,
+                                  cell_gamma = gamma,
+                                  lookup_symbol = isoform.lookup_symbol,
+                                  isoform_id = db_isoform.id)
+          from cctbx.crystal import symmetry
 
-            cs = symmetry(unit_cell = isoform.cell,space_group_symbol=str(isoform.lookup_symbol))
-            mset = cs.build_miller_set(anomalous_flag=False, d_min=1.5)
-            binner = mset.setup_binner(n_bins=10)
-            for i in binner.range_used():
-              d_max, d_min = binner.bin_d_range(i)
-              Bin(self,
-                  number = i,
-                  d_min = d_min,
-                  d_max = d_max,
-                  total_hkl = binner.counts_complete()[i],
-                  cell_id = cell.id)
+          cs = symmetry(unit_cell = isoform.cell,space_group_symbol=str(isoform.lookup_symbol))
+          mset = cs.build_miller_set(anomalous_flag=False, d_min=d_min)
+          binner = mset.setup_binner(n_bins=n_bins)
+          for i in binner.range_used():
+            d_max, d_min = binner.bin_d_range(i)
+            Bin(self,
+                number = i,
+                d_min = d_min,
+                d_max = d_max,
+                total_hkl = binner.counts_complete()[i],
+                cell_id = cell.id)
     return trial
 
   def create_cell(self, **kwargs):

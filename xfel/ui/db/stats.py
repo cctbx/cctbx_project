@@ -37,9 +37,10 @@ class Stats(object):
                JOIN `%s_imageset` imgset ON imgset.id = exp.imageset_id
                JOIN `%s_imageset_event` ie ON ie.imageset_id = imgset.id
                JOIN `%s_event` evt ON evt.id = ie.event_id
+               JOIN `%s_trial` trial ON trial.id = evt.trial_id
                JOIN `%s_run` run ON run.id = evt.run_id
-               WHERE run.id in %s""" % (
-      exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, runs_str)
+               WHERE run.id in %s AND trial.trial = %d""" % (
+      exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, runs_str, self.trial.id)
     cell_ids = self.app.execute_query(query).fetchall()
     cells = [self.app.get_cell(cell_id=i[0]) for i in cell_ids]
 
