@@ -66,37 +66,37 @@ class xfel_db_application(object):
 
   def create_trial(self, **kwargs):
     trial = Trial(self, **kwargs)
+    if trial.target_phil_str is not None:
+      from xfel.command_line.xtc_process import phil_scope
+      from iotbx.phil import parse
+      trial_params = phil_scope.fetch(parse(trial.target_phil_str)).extract()
+      if len(trial_params.indexing.stills.isoforms) > 0:
+        for isoform in trial_params.indexing.stills.isoforms:
+          cell = self.get_cell(name = isoform.name)
+          if cell is None:
+            print "Creating isoform", isoform.name
+            a, b, c, alpha, beta, gamma = isoform.cell.parameters()
+            cell = self.create_cell(name = isoform.name,
+                                    cell_a = a,
+                                    cell_b = b,
+                                    cell_c = c,
+                                    cell_alpha = alpha,
+                                    cell_beta = beta,
+                                    cell_gamma = gamma,
+                                    lookup_symbol = isoform.lookup_symbol)
+            from cctbx.crystal import symmetry
 
-    from xfel.command_line.xtc_process import phil_scope
-    from iotbx.phil import parse
-    trial_params = phil_scope.fetch(parse(trial.target_phil_str)).extract()
-    if len(trial_params.indexing.stills.isoforms) > 0:
-      for isoform in trial_params.indexing.stills.isoforms:
-        cell = self.get_cell(name = isoform.name)
-        if cell is None:
-          print "Creating isoform", isoform.name
-          a, b, c, alpha, beta, gamma = isoform.cell.parameters()
-          cell = self.create_cell(name = isoform.name,
-                                  cell_a = a,
-                                  cell_b = b,
-                                  cell_c = c,
-                                  cell_alpha = alpha,
-                                  cell_beta = beta,
-                                  cell_gamma = gamma,
-                                  lookup_symbol = isoform.lookup_symbol)
-          from cctbx.crystal import symmetry
-
-          cs = symmetry(unit_cell = isoform.cell,space_group_symbol=str(isoform.lookup_symbol))
-          mset = cs.build_miller_set(anomalous_flag=False, d_min=1.5)
-          binner = mset.setup_binner(n_bins=10)
-          for i in binner.range_used():
-            d_max, d_min = binner.bin_d_range(i)
-            Bin(self,
-                number = i,
-                d_min = d_min,
-                d_max = d_max,
-                total_hkl = binner.counts_complete()[i],
-                cell_id = cell.id)
+            cs = symmetry(unit_cell = isoform.cell,space_group_symbol=str(isoform.lookup_symbol))
+            mset = cs.build_miller_set(anomalous_flag=False, d_min=1.5)
+            binner = mset.setup_binner(n_bins=10)
+            for i in binner.range_used():
+              d_max, d_min = binner.bin_d_range(i)
+              Bin(self,
+                  number = i,
+                  d_min = d_min,
+                  d_max = d_max,
+                  total_hkl = binner.counts_complete()[i],
+                  cell_id = cell.id)
     return trial
 
   def create_cell(self, **kwargs):
