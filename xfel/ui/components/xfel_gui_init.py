@@ -239,9 +239,19 @@ class Clusterer():
                                                     rb, run), "out"))
     all_pickles = []
     for path in rb_paths:
-      pickles = [os.path.join(path, i) for i in os.listdir(path) if
-                 i.endswith('pickle') and 'int-' in i]
-      all_pickles = all_pickles + pickles
+      try:
+        pickles = [os.path.join(path, i) for i in os.listdir(path) if
+                   i.endswith('pickle') and 'int-' in i]
+        all_pickles = all_pickles + pickles
+      except OSError, error:
+        print 'Folder not found!'
+        print error
+
+    print 'Clustering results in {}'.format(rb_paths)
+
+    if len(all_pickles) == 0:
+      print 'No images integrated (yet)'
+      return
 
     # 2. Pick subset
     print len(all_pickles), self.sample_size
@@ -396,8 +406,8 @@ class MainWindow(wx.Frame):
     self.run_window.run_light.change_status('on')
 
   def stop_run_sentinel(self):
-    self.run_sentinel.active = False
     self.run_window.run_light.change_status('off')
+    self.run_sentinel.active = False
     self.run_sentinel.join()
 
   def start_job_sentinel(self):
@@ -410,8 +420,8 @@ class MainWindow(wx.Frame):
 
   def stop_job_sentinel(self):
     if self.job_sentinel is not None:
-      self.job_sentinel.active = False
       self.run_window.job_light.change_status('off')
+      self.job_sentinel.active = False
       self.job_sentinel.join()
 
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
@@ -423,8 +433,8 @@ class MainWindow(wx.Frame):
     self.run_window.prg_light.change_status('on')
 
   def stop_prg_sentinel(self):
-    self.prg_sentinel.active = False
     self.run_window.prg_light.change_status('off')
+    self.prg_sentinel.active = False
     self.prg_sentinel.join()
 
   def OnAboutBox(self, e):
@@ -655,6 +665,7 @@ class TrialsTab(BaseTab):
 
   def onAddTrial(self, e):
     new_trial_dlg = dlg.TrialDialog(self, db=self.main.db)
+    new_trial_dlg.Fit()
 
     if new_trial_dlg.ShowModal() == wx.ID_OK:
       self.refresh_trials()
@@ -821,38 +832,41 @@ class StatusTab(BaseTab):
     from string import ascii_uppercase
     self.iso_box_sizer.DeleteWindows()
 
-    counter = 0
-    for cluster in e.GetValue():
-      sorted_pg_comp = sorted(cluster.pg_composition.items(),
-                              key=lambda x: -1 * x[1])
-      pg_nums = [pg[1] for pg in sorted_pg_comp]
-      cons_pg = sorted_pg_comp[np.argmax(pg_nums)]
+    if e.GetValue() is None:
+      print 'Nothing to cluster!'
+    else:
+      counter = 0
+      for cluster in e.GetValue():
+        sorted_pg_comp = sorted(cluster.pg_composition.items(),
+                                key=lambda x: -1 * x[1])
+        pg_nums = [pg[1] for pg in sorted_pg_comp]
+        cons_pg = sorted_pg_comp[np.argmax(pg_nums)]
 
-      # write out lists of output pickles that comprise clusters with > 1 members
-      if len(cluster.members) > 5:  # 0.01 * len(subset):
+        # write out lists of output pickles that comprise clusters with > 1 members
+        if len(cluster.members) > 5:  # 0.01 * len(subset):
 
-        # format and record output
-        uc_line = "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
-                  "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
-                  "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f})   " \
-                  "".format(
-                            cluster.medians[0], cluster.stdevs[0],
-                            cluster.medians[1], cluster.stdevs[1],
-                            cluster.medians[2], cluster.stdevs[2],
-                            cluster.medians[3], cluster.stdevs[3],
-                            cluster.medians[4], cluster.stdevs[4],
-                            cluster.medians[5], cluster.stdevs[5]
-                            )
+          # format and record output
+          uc_line = "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
+                    "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
+                    "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f})   " \
+                    "".format(
+                              cluster.medians[0], cluster.stdevs[0],
+                              cluster.medians[1], cluster.stdevs[1],
+                              cluster.medians[2], cluster.stdevs[2],
+                              cluster.medians[3], cluster.stdevs[3],
+                              cluster.medians[4], cluster.stdevs[4],
+                              cluster.medians[5], cluster.stdevs[5]
+                              )
 
-        iso = gctr.IsoformInfoCtrl(self.iso_panel)
-        iso.ctr_iso.SetValue(ascii_uppercase[counter])
-        iso.ctr_pg.SetValue(cons_pg[0])
-        iso.ctr_uc.SetValue(uc_line)
-        self.iso_box_sizer.Add(iso,
-                               flag=wx.EXPAND| wx.TOP | wx.LEFT | wx.RIGHT,
-                               border=10)
+          iso = gctr.IsoformInfoCtrl(self.iso_panel)
+          iso.ctr_iso.SetValue(ascii_uppercase[counter])
+          iso.ctr_pg.SetValue(cons_pg[0])
+          iso.ctr_uc.SetValue(uc_line)
+          self.iso_box_sizer.Add(iso,
+                                 flag=wx.EXPAND| wx.TOP | wx.LEFT | wx.RIGHT,
+                                 border=10)
 
-        counter += 1
+          counter += 1
 
     self.iso_panel.SetSizer(self.iso_box_sizer)
     self.iso_panel.Layout()
@@ -902,13 +916,14 @@ class StatusTab(BaseTab):
 
     # Show info
     self.refresh_rows(info=e.GetValue())
+    self.status_panel.Layout()
+    self.status_panel.SetupScrolling()
 
   def refresh_rows(self, info=[]):
     self.status_sizer.DeleteWindows()
     if info != []:
       for isoform in info:
         self.add_row(name=isoform['isoform'], value=isoform['multiplicity'])
-      self.status_panel.SetupScrolling()
 
 
   def add_row(self, name, value):

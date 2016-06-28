@@ -1191,10 +1191,38 @@ class TrialDialog(BaseDialog):
                                   label='Percent events processed:',
                                   label_size=(180, -1),
                                   label_style='bold',
-                                  ctrl_size=(100, -1),
+                                  ctrl_size=(80, -1),
                                   ctrl_value='100',
                                   ctrl_min=1,
                                   ctrl_max=100)
+
+    self.num_bins = gctr.SpinCtrl(self,
+                                  label='Number of bins:',
+                                  label_size=(180, -1),
+                                  label_style='bold',
+                                  ctrl_size=(80, -1),
+                                  ctrl_value='20',
+                                  ctrl_min=1,
+                                  ctrl_max=100,
+                                  ctrl_step=1)
+
+    self.d_min = gctr.SpinCtrl(self,
+                               label='High res. limit ({}):'
+                               ''.format(u'\N{ANGSTROM SIGN}'.encode('utf-8')),
+                               label_size=(120, -1),
+                               label_style='bold',
+                               ctrl_size=(80, -1),
+                               ctrl_value='1.5',
+                               ctrl_min=0.1,
+                               ctrl_max=100,
+                               ctrl_step=0.1,
+                               ctrl_digits=1)
+
+    self.option_sizer = wx.FlexGridSizer(2, 2, 10, 20)
+    self.option_sizer.AddMany([(self.throttle),
+                               (0, 0),
+                               (self.num_bins),
+                               (self.d_min)])
 
     self.main_sizer.Add(self.trial_info,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
@@ -1205,7 +1233,7 @@ class TrialDialog(BaseDialog):
     self.main_sizer.Add(self.phil_box, 1,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
                         border=10)
-    self.main_sizer.Add(self.throttle,
+    self.main_sizer.Add(self.option_sizer,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
                         border=10)
 
@@ -1245,7 +1273,9 @@ class TrialDialog(BaseDialog):
       self.trial_info.button2.Disable()
       self.trial_info.ctr.SetEditable(False)
       self.phil_box.SetEditable(False)
-      #self.trial_comment.ctr.SetEditable(False)
+      self.throttle.ctr.Disable()
+      self.num_bins.ctr.Disable()
+      self.d_min.ctr.Disable()
 
     if target_phil_str is None:
       target_phil_str = ""
