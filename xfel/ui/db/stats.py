@@ -39,7 +39,7 @@ class Stats(object):
                JOIN `%s_event` evt ON evt.id = ie.event_id
                JOIN `%s_trial` trial ON trial.id = evt.trial_id
                JOIN `%s_run` run ON run.id = evt.run_id
-               WHERE run.id in %s AND trial.trial = %d""" % (
+               WHERE run.id in %s AND trial.id = %d""" % (
       exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, runs_str, self.trial.id)
     cell_ids = self.app.execute_query(query).fetchall()
     cells = [self.app.get_cell(cell_id=i[0]) for i in cell_ids]
