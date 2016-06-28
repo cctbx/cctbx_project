@@ -1005,8 +1005,6 @@ class RunBlockDialog(BaseDialog):
     pass
 
   def onOK(self, e):
-    if self.block is not None:
-      self.block.active = False
 
     startrun_number = int(self.runblocks.start.GetString(self.runblocks.start.GetSelection()))
     startrun = self.db.get_run(run_number=startrun_number).id
@@ -1017,23 +1015,59 @@ class RunBlockDialog(BaseDialog):
     else:
       endrun = self.db.get_run(run_number=int(endrun_number)).id
 
-    self.block = self.db.create_rungroup(startrun=startrun,
-                                         endrun = endrun,
-                                         active = True,
-                                         config_str = self.config.GetValue(),
-                                         detector_address = self.address.ctr.GetValue(),
-                                         detz_parameter = self.beam_xyz.DetZ.GetValue(),
-                                         beamx = self.beam_xyz.X.GetValue(),
-                                         beamy = self.beam_xyz.Y.GetValue(),
-                                         binning = self.bin_nrg_gain.binning.GetValue(),
-                                         energy = self.bin_nrg_gain.energy.GetValue(),
-                                         untrusted_pixel_mask_path = self.untrusted_path.ctr.GetValue(),
-                                         dark_avg_path = self.dark_avg_path.ctr.GetValue(),
-                                         dark_stddev_path = self.dark_stddev_path.ctr.GetValue(),
-                                         gain_map_path = self.gain_map_path.ctr.GetValue(),
-                                         gain_mask_level = self.bin_nrg_gain.gain_mask_level.GetValue(),
-                                         calib_dir = self.calib_dir.ctr.GetValue(),
-                                         comment = self.comment.ctr.GetValue())
+    rg_dict = dict(startrun=startrun,
+                   endrun=endrun,
+                   active=True,
+                   config_str=self.config.GetValue(),
+                   detector_address=self.address.ctr.GetValue(),
+                   detz_parameter=self.beam_xyz.DetZ.GetValue(),
+                   beamx=self.beam_xyz.X.GetValue(),
+                   beamy=self.beam_xyz.Y.GetValue(),
+                   binning=self.bin_nrg_gain.binning.GetValue(),
+                   energy=self.bin_nrg_gain.energy.GetValue(),
+                   untrusted_pixel_mask_path=self.untrusted_path.ctr.GetValue(),
+                   dark_avg_path=self.dark_avg_path.ctr.GetValue(),
+                   dark_stddev_path=self.dark_stddev_path.ctr.GetValue(),
+                   gain_map_path=self.gain_map_path.ctr.GetValue(),
+                   gain_mask_level=self.bin_nrg_gain.gain_mask_level.GetValue(),
+                   calib_dir=self.calib_dir.ctr.GetValue(),
+                   comment=self.comment.ctr.GetValue())
+    for key, value in rg_dict.iteritems():
+      if str(value) == 'None' or str(value) == '':
+        rg_dict[key] = None
+      elif type(value) == bool:
+        rg_dict[key] = int(value)
+
+    if self.block is None:
+      self.block = self.db.create_rungroup(**rg_dict)
+      self.parent.trial.add_rungroup(self.block)
+    else:
+      # if all the parameters are unchanged, do nothing
+      all_the_same = [str(rg_dict[key]) == str(getattr(self.block, key)) for key in rg_dict].count(False) == 0
+      if not all_the_same:
+        # if all the parameters except startrun, endrun and comment are the same,
+        # only update those fields
+        keep_old_run_group = [str(rg_dict[key]) == str(getattr(self.block, key)) for key in rg_dict \
+                              if key not in ['startrun', 'endrun', 'comment']].count(False) == 0
+        if keep_old_run_group:
+          main = self.parent.parent.GetParent().main
+          running = main.job_sentinel is not None and main.job_sentinel.active
+          if running:
+            main.stop_job_sentinel()
+
+          self.block.startrun = startrun
+          self.block.endrun = endrun
+          self.block.comment = rg_dict['comment']
+
+          if running:
+            main.start_job_sentinel()
+
+        else:
+          # enough parameters have changed to warrant creating a new run group
+          self.block.active = False
+          self.block = self.db.create_rungroup(**rg_dict)
+          self.parent.trial.add_rungroup(self.block)
+
     e.Skip()
 
   def fill_in_fields(self):

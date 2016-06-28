@@ -1112,6 +1112,7 @@ class TrialPanel(wx.Panel):
 
     self.db = db
     self.trial = trial
+    self.parent = parent
 
     trial_box = wx.StaticBox(self, label=box_label)
     self.main_sizer = wx.StaticBoxSizer(trial_box, wx.VERTICAL)
@@ -1168,7 +1169,6 @@ class TrialPanel(wx.Panel):
     rblock_dlg.Fit()
 
     if (rblock_dlg.ShowModal() == wx.ID_OK):
-      self.trial.add_rungroup(rblock_dlg.block)
       self.refresh_trial()
     rblock_dlg.Destroy()
 
@@ -1196,10 +1196,8 @@ class TrialPanel(wx.Panel):
     rblock_dlg.Fit()
 
     if (rblock_dlg.ShowModal() == wx.ID_OK):
-      self.trial.add_rungroup(rblock_dlg.block)
+      wx.CallAfter(self.refresh_trial)
     rblock_dlg.Destroy()
-    wx.CallAfter(self.refresh_trial)
-
 
 class RunEntry(wx.Panel):
   ''' Adds run row to table, with average and view buttons'''
