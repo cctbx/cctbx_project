@@ -67,6 +67,7 @@ class RunSentinel(Thread):
   def post_refresh(self):
     evt = RefreshRuns(tp_EVT_RUN_REFRESH, -1)
     wx.PostEvent(self.parent.run_window.runs_tab, evt)
+    wx.PostEvent(self.parent.run_window.trials_tab, evt)
 
   def run(self):
     # one time post for an initial update
@@ -469,11 +470,6 @@ class MainWindow(wx.Frame):
     save_cached_settings(self.params)
     self.Destroy()
 
-    # from xfel.ui import master_phil_scope
-    # phil = master_phil_scope.format(python_object=self.params)
-    # phil.show()
-
-
 class RunWindow(wx.Panel):
   ''' Window panel that will house all the run tabs '''
 
@@ -494,8 +490,6 @@ class RunWindow(wx.Panel):
     self.main_nbook.AddPage(self.status_tab, 'Status')
     self.main_nbook.AddPage(self.merge_tab, 'Merge')
 
-    self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.onPageChange, self.main_nbook)
-
     self.sentinel_box = wx.BoxSizer(wx.HORIZONTAL)
     self.run_light = gctr.SentinelStatus(self.main_panel, label='Run Sentinel')
     self.job_light = gctr.SentinelStatus(self.main_panel, label='Job Sentinel')
@@ -512,17 +506,6 @@ class RunWindow(wx.Panel):
     main_sizer = wx.BoxSizer(wx.VERTICAL)
     main_sizer.Add(self.main_panel, 1, flag=wx.EXPAND | wx.ALL, border=3)
     self.SetSizer(main_sizer)
-
-  def onPageChange(self, e):
-    if self.main_nbook.GetSelection() == 0:
-      self.runs_tab.refresh_rows()
-    elif self.main_nbook.GetSelection() == 1:
-      self.trials_tab.refresh_trials()
-    elif self.main_nbook.GetSelection() == 2:
-      self.jobs_tab.refresh_jobs()
-    elif self.main_nbook.GetSelection() == 3:
-      self.status_tab.refresh_rows()
-
 
 
 # --------------------------------- UI Tabs ---------------------------------- #
@@ -630,8 +613,9 @@ class TrialsTab(BaseTab):
     self.btn_sizer = wx.FlexGridSizer(1, 2, 0, 10)
     self.btn_sizer.AddGrowableCol(0)
     self.btn_add_trial = wx.Button(self, label='New Trial', size=(120, -1))
-    self.btn_active_only = wx.ToggleButton(self, label='Show Active Trials',
-                                           size=self.btn_add_trial.GetSize())
+    self.btn_active_only = wx.ToggleButton(self,
+                                           label='Show Only Active Trials',
+                                    size=(180, self.btn_add_trial.GetSize()[1]))
     self.btn_sizer.Add(self.btn_active_only, flag=wx.ALIGN_RIGHT)
     self.btn_sizer.Add(self.btn_add_trial)
 
@@ -640,8 +624,12 @@ class TrialsTab(BaseTab):
     self.main_sizer.Add(self.btn_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Bindings
+    self.Bind(EVT_RUN_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_BUTTON, self.onAddTrial, self.btn_add_trial)
     self.Bind(wx.EVT_TOGGLEBUTTON, self.onActiveOnly, self.btn_active_only)
+
+  def onRefresh(self, e):
+    self.refresh_trials()
 
   def refresh_trials(self):
     self.trial_sizer.Clear(deleteWindows=True)
@@ -672,11 +660,6 @@ class TrialsTab(BaseTab):
       self.refresh_trials()
 
   def onActiveOnly(self, e):
-    if self.btn_active_only.GetValue():
-      self.btn_active_only.SetLabel('Show All Trials')
-    else:
-      self.btn_active_only.SetLabel('Show Active Trials')
-
     self.show_active_only = self.btn_active_only.GetValue()
     self.refresh_trials()
 
@@ -1164,7 +1147,7 @@ class TrialPanel(wx.Panel):
       self.trial.active = False
 
   def onAddBlock(self, e):
-    rblock_dlg = dlg.RunBlockDialog(self.block_panel, trial=self.trial,
+    rblock_dlg = dlg.RunBlockDialog(self, trial=self.trial,
                                     db=self.db)
     rblock_dlg.Fit()
 
@@ -1192,7 +1175,7 @@ class TrialPanel(wx.Panel):
   def onRunBlockOptions(self, e):
     ''' Open dialog and change run_block options '''
     run_block = e.GetEventObject().block
-    rblock_dlg = dlg.RunBlockDialog(self.block_panel, block=run_block,
+    rblock_dlg = dlg.RunBlockDialog(self, block=run_block,
                                     db=self.db)
     rblock_dlg.Fit()
 
