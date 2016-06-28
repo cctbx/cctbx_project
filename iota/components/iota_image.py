@@ -181,6 +181,7 @@ class SingleImage(object):
           data['TIME'] = scan.get_exposure_times()[0]
     else:
       data = None
+      img_type = 'not imported'
 
     # Estimate gain (or set gain to 1.00 if cannot calculate)
     # Cribbed from estimate_gain.py by Richard Gildea
@@ -368,7 +369,13 @@ class SingleImage(object):
     # Load image
     img_data, img_type = self.load_image()
     self.status = 'loaded'
-    info = []
+
+    if img_data is None:
+      self.log_info.append('\n{:-^100}\n'.format(self.raw_img))
+      self.log_info.append('FAILED TO IMPORT')
+      self.status = 'failed import'
+      self.fail = 'failed import'
+      return self
 
     # if DIALS is selected, change image type to skip conversion step
     if self.params.advanced.integrate_with == 'dials':
