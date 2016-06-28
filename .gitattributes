@@ -498,6 +498,7 @@ dxtbx/command_line/print_matching_images.py -text
 dxtbx/command_line/print_sweep.py -text
 dxtbx/command_line/print_sweep_check.py -text
 dxtbx/command_line/print_total.py -text
+dxtbx/command_line/read_sweep.py -text
 dxtbx/command_line/saturation.py -text
 dxtbx/command_line/serialize.py -text
 dxtbx/command_line/to_ewald_sphere.py -text
