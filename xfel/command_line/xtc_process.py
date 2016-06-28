@@ -120,7 +120,10 @@ xtc_phil_str = '''
       .type = str
       .help = Optional path to data directory if it's non-standard. Only needed if xtc \
               streams are not in the standard location for your PSDM installation.
-  }
+    trial = None
+      .type = int
+      .help = Trial number for this job.
+ }
   format {
     file_format = *cbf pickle
       .type = choice

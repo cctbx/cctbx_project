@@ -341,9 +341,9 @@ class Script(object):
     submit_path = os.path.join(trialdir, "submit.sh")
 
     if params.mp.method == "mpi":
-      command = "bsub -a mympi -n %d -o %s -q %s %s input.experiment=%s input.run_num=%d %s"%( \
+      command = "bsub -a mympi -n %d -o %s -q %s %s input.experiment=%s input.run_num=%d input.trial=%d %s"%( \
         params.mp.nproc, os.path.join(stdoutdir, "log.out"), params.mp.queue, params.input.dispatcher,
-        params.input.experiment, params.input.run_num, logging_str)
+        params.input.experiment, params.input.run_num, params.input.trial, logging_str)
 
       for arg in dispatcher_args:
         command += " %s"%arg
@@ -389,8 +389,8 @@ class Script(object):
       if params.input.target is not None:
         extra_str += " %s"%params.input.target
 
-      f.write("%s input.experiment=%s input.run_num=%d output.output_dir=%s mp.method=sge %s 1> %s 2> %s %s\n"%( \
-        params.input.dispatcher, params.input.experiment, params.input.run_num, output_dir, extra_str, logging_str,
+      f.write("%s input.experiment=%s input.run_num=%d output.output_dir=%s mp.method=sge input.trial=%d %s %s 1> %s 2> %s\n"%( \
+        params.input.dispatcher, params.input.experiment, params.input.run_num, output_dir, params.input.trial, extra_str, logging_str,
         os.path.join(stdoutdir, "log_$SGE_TASK_ID.out"), os.path.join(stdoutdir, "log_$SGE_TASK_ID.err")))
       f.close()
     elif params.mp.method == "pbs":
@@ -429,8 +429,9 @@ class Script(object):
       if params.input.target is not None:
         extra_str += " %s"%params.input.target
 
-      f.write("aprun -n %d %s input.experiment=%s input.run_num=%d output.output_dir=%s mp.method=mpi %s %s\n"%( \
-        params.mp.nproc, params.input.dispatcher, params.input.experiment, params.input.run_num, output_dir, extra_str, logging_str))
+      f.write("aprun -n %d %s input.experiment=%s input.run_num=%d output.output_dir=%s mp.method=mpi input.trial=%d %s %s\n"%( \
+        params.mp.nproc, params.input.dispatcher, params.input.experiment, params.input.run_num, output_dir, params.input.trial, \
+        extra_str, logging_str))
       f.close()
     elif params.mp.method == "custom":
       if not os.path.exists(params.mp.custom.submit_template):
@@ -448,8 +449,9 @@ class Script(object):
 
       command = "qsub -o %s %s %s"%(os.path.join(stdoutdir, "log.out"), params.mp.custom.extra_args, submit_path)
 
-      processing_command = "%s input.experiment=%s input.run_num=%d output.output_dir=%s mp.method=mpi %s %s\n"%( \
-         params.input.dispatcher, config_path, params.input.experiment, params.input.run_num, output_dir, extra_str, logging_str)
+      processing_command = "%s input.experiment=%s input.run_num=%d output.output_dir=%s mp.method=mpi input.trial=%d %s %s\n"%( \
+         params.input.dispatcher, config_path, params.input.experiment, params.input.run_num, output_dir, params.input.trial, \
+         extra_str, logging_str)
 
       f = open(submit_path, 'w')
       for line in open(params.mp.custom.submit_template).readlines():
