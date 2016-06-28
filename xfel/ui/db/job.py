@@ -5,7 +5,9 @@ class Job(db_proxy):
   def __init__(self, app, job_id = None, **kwargs):
     db_proxy.__init__(self, app, "%s_job" % app.params.experiment_tag, id = job_id, **kwargs)
     self.job_id = self.id
-
+    self.trial = app.get_trial(trial_id=self.trial_id)
+    self.run = app.get_run(run_id=self.run_id)
+    self.rungroup = app.get_rungroup(self.rungroup_id)
 
 # Support classes and functions for job submission
 
@@ -45,7 +47,7 @@ def submit_all_jobs(app):
     if job in submitted_jobs:
       continue
 
-    print "Submitting job: trial %d, rungroup %d, run %d"%(job.trial.id, job.rungroup.id, job.run.id)
+    print "Submitting job: trial %d, rungroup %d, run %d"%(job.trial.trial, job.rungroup.id, job.run.run)
     app.create_job(
       trial_id = job.trial.id,
       rungroup_id = job.rungroup.id,

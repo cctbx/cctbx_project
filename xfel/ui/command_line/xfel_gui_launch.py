@@ -42,6 +42,7 @@ class MainApp(wx.App):
         self.frame.Show(True)
         self.SetTopWindow(self.frame)
         self.frame.start_run_sentinel()
+        self.frame.start_job_monitor()
         self.frame.start_prg_sentinel()
         return True
       else:

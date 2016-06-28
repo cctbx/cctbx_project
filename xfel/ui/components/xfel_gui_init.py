@@ -94,6 +94,49 @@ class RunSentinel(Thread):
         pass #print "No new data..."
       time.sleep(1)
 
+# ------------------------------- Job Monitor ------------------------------- #
+
+# Set up events for and for finishing all cycles
+tp_EVT_JOB_MONITOR = wx.NewEventType()
+EVT_JOB_MONITOR = wx.PyEventBinder(tp_EVT_JOB_MONITOR, 1)
+
+class MonitorJobs(wx.PyCommandEvent):
+  ''' Send event when finished all cycles  '''
+
+  def __init__(self, etype, eid):
+    wx.PyCommandEvent.__init__(self, etype, eid)
+
+class JobMonitor(Thread):
+  ''' Monitor thread for jobs; generated so that the GUI does not lock up when
+      monitoring is running '''
+
+  def __init__(self,
+               parent,
+               active=True):
+    Thread.__init__(self)
+    self.parent = parent
+    self.active = active
+
+  def post_refresh(self):
+    evt = MonitorJobs(tp_EVT_JOB_MONITOR, -1)
+    wx.PostEvent(self.parent.run_window.jobs_tab, evt)
+
+  def run(self):
+    # one time post for an initial update
+    self.post_refresh()
+
+    #from xfel.ui.db.job import submit_all_jobs
+    #try:
+    #  db = xfel_db_application(self.parent.params)
+    #  self.parent.run_window.job_light.change_status('on')
+    #except OperationalError:
+    #  self.parent.run_window.job_light.change_status('alert')
+
+    while self.active:
+      self.post_refresh()
+      time.sleep(1)
+
+
 # ------------------------------- Job Sentinel ------------------------------- #
 
 # Set up events for and for finishing all cycles
@@ -117,8 +160,7 @@ class JobSentinel(Thread):
     self.active = active
 
   def post_refresh(self):
-    evt = RefreshJobs(tp_EVT_JOB_REFRESH, -1)
-    wx.PostEvent(self.parent.run_window.jobs_tab, evt)
+    pass
 
   def run(self):
     # one time post for an initial update
@@ -394,11 +436,13 @@ class MainWindow(wx.Frame):
   def start_sentinels(self):
     self.start_run_sentinel()
     self.start_job_sentinel()
+    self.start_job_monitor()
     self.start_prg_sentinel()
 
   def stop_sentinels(self):
     self.stop_run_sentinel()
     self.stop_job_sentinel()
+    self.stop_job_monitor()
     self.stop_prg_sentinel()
 
   def start_run_sentinel(self):
@@ -410,6 +454,14 @@ class MainWindow(wx.Frame):
     self.run_window.run_light.change_status('off')
     self.run_sentinel.active = False
     self.run_sentinel.join()
+
+  def start_job_monitor(self):
+    self.job_monitor = JobMonitor(self, active=True)
+    self.job_monitor.start()
+
+  def stop_job_monitor(self):
+    self.job_monitor.active = False
+    self.job_monitor.join()
 
   def start_job_sentinel(self):
     self.job_sentinel = JobSentinel(self, active=True)
@@ -652,6 +704,7 @@ class TrialsTab(BaseTab):
       else:
         self.add_trial(trial=trial)
 
+    self.trial_panel.SetSizer(self.trial_sizer)
     self.trial_panel.Layout()
     self.trial_panel.SetupScrolling()
 
@@ -716,7 +769,7 @@ class JobsTab(BaseTab):
 
     self.Bind(wx.EVT_BUTTON, self.onKillAll, self.btn_kill_all)
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_choice.ctr)
-    self.Bind(EVT_JOB_REFRESH, self.onRefreshJobs)
+    self.Bind(EVT_JOB_MONITOR, self.onMonitorJobs)
 
   def onTrialChoice(self, e):
     self.filter = self.trial_choice.ctr.GetString(
@@ -726,7 +779,7 @@ class JobsTab(BaseTab):
     # TODO: make method to kill a job, apply to all jobs here
     pass
 
-  def onRefreshJobs(self, e):
+  def onMonitorJobs(self, e):
     self.db = xfel_db_application(self.main.params)
 
     # Find new trials
@@ -737,7 +790,7 @@ class JobsTab(BaseTab):
         self.find_trials()
         self.all_trials = all_db_trials
 
-    self.refresh_jobs()
+    self.monitor_jobs()
     self.job_panel.SetupScrolling()
     self.job_panel.Refresh()
 
@@ -754,12 +807,11 @@ class JobsTab(BaseTab):
       else:
         self.trial_choice.ctr.SetSelection(int(self.filter[-1]))
 
-  def refresh_jobs(self):
+  def monitor_jobs(self):
     if self.db is not None:
       jobs = self.db.get_all_jobs()
       if str(self.filter).lower() != 'all jobs':
         jobs = [i for i in jobs if i.trial_id == int(self.filter[-1])]
-        print 'Selecting by trial {}'.format(self.filter[-1])
 
       self.job_sizer.DeleteWindows()
       for job in jobs:
@@ -767,9 +819,9 @@ class JobsTab(BaseTab):
 
   def add_job_row(self, job):
     job_row_sizer = wx.FlexGridSizer(1, 3, 0, 10)
-    job_row_sizer.Add(wx.StaticText(self.job_panel, label=str(job.trial_id),
+    job_row_sizer.Add(wx.StaticText(self.job_panel, label=str(job.trial.trial),
                                     size=(60, -1)))
-    job_row_sizer.Add(wx.StaticText(self.job_panel, label=str(job.run_id),
+    job_row_sizer.Add(wx.StaticText(self.job_panel, label=str(job.run.run),
                                     size=(60, -1)))
     job_row_sizer.Add(wx.StaticText(self.job_panel, label=str(job.status),
                                     size=(560, -1)))
@@ -959,8 +1011,6 @@ class StatusTab(BaseTab):
 
     # Show info
     self.refresh_rows(info=e.GetValue())
-    self.status_panel.Layout()
-    self.status_panel.SetupScrolling()
 
   def refresh_rows(self, info=[]):
     self.status_sizer.DeleteWindows()
@@ -968,6 +1018,9 @@ class StatusTab(BaseTab):
       for isoform in info:
         self.add_row(name=isoform['isoform'], value=isoform['multiplicity'])
 
+    self.status_panel.SetSizer(self.status_sizer)
+    self.status_panel.Layout()
+    self.status_panel.SetupScrolling()
 
   def add_row(self, name, value):
     goal = int(self.opt_multi.goal.GetValue())
