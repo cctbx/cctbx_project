@@ -25,6 +25,9 @@ speedup {
 }
 runlimits = None
   .type = ints(2)
+enforce81 = False
+  .type = bool
+  .help = report only on stream 81, FEE spectrometer
 """
 
 #-----------------------------------------------------------------------
