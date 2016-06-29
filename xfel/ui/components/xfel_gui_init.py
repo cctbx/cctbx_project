@@ -239,7 +239,13 @@ class ProgressSentinel(Thread):
             continue
           counts = [int(i.count) for i in cell.bins]
           totals = [int(i.total_hkl) for i in cell.bins]
-          mult = int(sum(counts) / sum(totals))
+          
+          if trial.process_percent is None:
+            process_percent = 100
+          else:
+            process_percent = trial.process_percent
+
+          mult = sum(counts) / sum(totals) * (process_percent / 100)
           self.info[cell.isoform.name] = {'multiplicity':mult,
                                           'bins':cell.bins,
                                           'isoform':cell.isoform.name,
@@ -297,8 +303,6 @@ class Clusterer():
       except OSError, error:
         print 'Folder not found!'
         print error
-
-    print 'Clustering results in {}'.format(rb_paths)
 
     if len(all_pickles) == 0:
       print 'No images integrated (yet)'
@@ -634,6 +638,7 @@ class RunTab(BaseTab):
 
     # Update tags on all tag buttons
     for btn in self.all_tag_buttons:
+      btn.tags = btn.run.tags
       btn.update_label()
 
   def refresh_rows(self, all=False):
@@ -850,6 +855,7 @@ class StatusTab(BaseTab):
     self.rows = {}
     self.tag_trial_changed = False
     self.redraw_windows = True
+    self.multiplicity_goal = 10
 
     self.status_panel = ScrolledPanel(self, size=(-1, 120))
     status_box = wx.StaticBox(self.status_panel, label='Data Statistics')
@@ -1005,8 +1011,7 @@ class StatusTab(BaseTab):
   def onMultiplicityGoal(self, e):
     goal = self.opt_multi.goal.GetValue()
     if goal.isdigit() and goal != '':
-      self.refresh_rows()
-    self.main.run_window.prg_light.change_status('idle')
+      self.multiplicity_goal = int(goal)
 
   def onRefresh(self, e):
     # Find new tags
@@ -1023,6 +1028,10 @@ class StatusTab(BaseTab):
 
     # Show info
     self.refresh_rows(info=e.GetValue())
+    self.status_panel.SetSizer(self.status_sizer)
+    #self.status_panel.Layout()
+    self.status_sizer.Layout()
+    self.status_panel.SetupScrolling()
 
   def refresh_rows(self, info={}):
 
@@ -1040,26 +1049,20 @@ class StatusTab(BaseTab):
     else:
       self.status_sizer.Clear(deleteWindows=True)
 
-    self.status_panel.SetSizer(self.status_sizer)
-    self.status_panel.Layout()
-    self.status_panel.SetupScrolling()
-
   def update_row(self, row, value):
-    goal = int(self.opt_multi.goal.GetValue())
-    if goal > value:
-      gauge_max = goal
+    if self.multiplicity_goal > value:
+      gauge_max = self.multiplicity_goal
     else:
       gauge_max = value
 
-    row.bar.SetValue(value)
-    row.bar.SetRange(gauge_max)
     row.txt_max.SetLabel(str(gauge_max))
+    row.bar.SetRange(gauge_max)
+    row.bar.SetValue(value)
 
   def add_row(self, name, value, bins):
-    goal = int(self.opt_multi.goal.GetValue())
 
-    if goal > value:
-      gauge_max = goal
+    if self.multiplicity_goal > value:
+      gauge_max = self.multiplicity_goal
     else:
       gauge_max = value
 

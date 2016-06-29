@@ -110,6 +110,7 @@ class TagButton(GradButton):
     self.update_label()
 
   def update_label(self):
+
     label = ', '.join([i.name for i in self.tags])
     self.SetLabel(label)
     self.SetFont(wx.Font(button_font_size, wx.DEFAULT, wx.NORMAL, wx.NORMAL))
@@ -522,9 +523,10 @@ class GaugeBar(CtrlBase):
                              ctrl_size=choice_size,
                              choices=choices)
 
+    self.txt_iso = wx.StaticText(self, label=label, size=label_size)
     self.txt_max = wx.StaticText(self, label=str(gauge_max))
     self.txt_min = wx.StaticText(self, label='0')
-    self.sizer.Add(wx.StaticText(self, label=label, size=label_size))
+    self.sizer.Add(self.txt_iso)
     self.sizer.Add(self.txt_min)
     self.sizer.Add(self.bar)
     self.sizer.Add(self.txt_max)

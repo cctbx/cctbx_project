@@ -742,49 +742,43 @@ class TagDialog(BaseDialog):
                                caption='Warning',
                                style=wx.YES_NO | wx.ICON_EXCLAMATION)
     if (warning.ShowModal() == wx.ID_YES):
+      self.deleted_tags = self.db_tags
       self.tag_list.DeleteAllItems()
       self.index = 0
       self.db_tags = []
 
   def onOK(self, e):
-    if self.tag_list.GetItemCount() == 0:
-      warning = wx.MessageDialog(self,
-                                 message='Must have at least one tag!',
-                                 caption='Warning',
-                                 style=wx.OK | wx.ICON_EXCLAMATION)
-      warning.ShowModal()
-    else:
-      try:
-        # Delete tags from DB
-        for tag in self.deleted_tags:
-          self.db.delete_tag(tag=tag)
+    try:
+      # Delete tags from DB
+      for tag in self.deleted_tags:
+        self.db.delete_tag(tag=tag)
 
-        # Update names for edited tags
-        all_items = [(self.tag_list.GetItemData(i),
-                      self.tag_list.GetItem(itemId=i, col=0),
-                      self.tag_list.GetItem(itemId=i, col=1))
-                     for i in range(self.tag_list.GetItemCount())]
+      # Update names for edited tags
+      all_items = [(self.tag_list.GetItemData(i),
+                    self.tag_list.GetItem(itemId=i, col=0),
+                    self.tag_list.GetItem(itemId=i, col=1))
+                    for i in range(self.tag_list.GetItemCount())]
 
-        self.db_tags = self.db.get_all_tags()
-        tag_ids = [i.tag_id for i in self.db_tags]
-        new_tag_names = [i[1].m_text for i in all_items]
+      self.db_tags = self.db.get_all_tags()
+      tag_ids = [i.tag_id for i in self.db_tags]
+      new_tag_names = [i[1].m_text for i in all_items]
 
-        if len([i for i in new_tag_names if new_tag_names.count(i) > 1]) != 0:
-          wx.MessageBox('Need a unique tag name!', 'Warning',
-                        wx.ICON_EXCLAMATION)
-        else:
-          for item in all_items:
-            if item[0] in tag_ids:
-              tag = self.db.get_tag(tag_id=item[0])
-              tag.name = item[1].m_text
-              tag.comment = item[2].m_text
-            elif item[0] == -1:
-              self.db.create_tag(name=item[1].m_text, comment=item[2].m_text)
+      if len([i for i in new_tag_names if new_tag_names.count(i) > 1]) != 0:
+        wx.MessageBox('Need a unique tag name!', 'Warning',
+                       wx.ICON_EXCLAMATION)
+      else:
+        for item in all_items:
+          if item[0] in tag_ids:
+            tag = self.db.get_tag(tag_id=item[0])
+            tag.name = item[1].m_text
+            tag.comment = item[2].m_text
+          elif item[0] == -1:
+            self.db.create_tag(name=item[1].m_text, comment=item[2].m_text)
 
-      except Exception, exception:
-        print str(exception)
+    except Exception, exception:
+      print str(exception)
 
-      e.Skip()
+    e.Skip()
 
 
 class RunBlockDialog(BaseDialog):
