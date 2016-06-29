@@ -23,7 +23,7 @@ ATOM   3256  O   ALA A 413      14.595  32.411 105.098  1.00 20.46           O
 ATOM   3257  CB  ALA A 413      13.795  32.257 108.046  1.00 19.57           C
 """
 
-params = {"" : [3,2.8],
+params = {"" : [-180],
           """
 pdb_interpretation {
  apply_cis_trans_specification {
@@ -31,7 +31,7 @@ pdb_interpretation {
    residue_selection = chain a and resseq 412
   }
 }
-""" : [1.3,1.1],
+""" : [0],
           """
 pdb_interpretation {
  apply_cis_trans_specification {
@@ -39,14 +39,21 @@ pdb_interpretation {
    residue_selection = chain a and resseq 412 and name CA
   }
 }
-""" : [1.3,1.1],
+""" : [0],
   }
 
 cmd_args = {
-  "" : [0.1, 0.0],
-  "peptide_link.apply_all_trans=False" : [0.1, 0.0],
-  "peptide_link.apply_all_trans=True" : [2.0, 1.9],
+  "" : [0],
+  "peptide_link.apply_all_trans=False" : [0],
+  "peptide_link.apply_all_trans=True" : [-180],
   }
+
+geo_spec = """dihedral pdb=" CA  ASN A 411 "
+         pdb=" C   ASN A 411 "
+         pdb=" N   SER A 412 "
+         pdb=" CA  SER A 412 "
+    ideal   model   delta  harmonic     sigma   weight residual
+  %4s.00"""
 
 def cis_trans_specification():
   preamble = "bad_cis_peptide"
@@ -62,14 +69,10 @@ def cis_trans_specification():
     ero = easy_run.fully_buffered(command=cmd)
     out = StringIO.StringIO()
     ero.show_stdout(out=out)
-    outl = ""
-    for line in out.getvalue().split("\n"):
-      if line.find("min,max,mean")>-1:
-        print line
-        assert results[0]>float(line.split()[-2]), "max shift not greater than %s" % (
-          results[0])
-        assert results[1]<float(line.split()[-2]), "max shift not lesser than %s" % (
-          results[1])
+
+    lines = file("%(preamble)s_minimized.geo" % locals(), "rb").read()
+    print geo_spec % results[0]
+    assert lines.find(geo_spec % results[0])>-1
 
 def trans_only_specification():
   # must be run after cis_trans_specification
@@ -80,15 +83,11 @@ def trans_only_specification():
     ero = easy_run.fully_buffered(command=cmd)
     out = StringIO.StringIO()
     ero.show_stdout(out=out)
-    outl = ""
-    for line in out.getvalue().split("\n"):
-      if line.find("min,max,mean")>-1:
-        print line
-        assert results[0]>float(line.split()[-2]), "max shift not greater than %s" % (
-          results[0])
-        assert results[1]<float(line.split()[-2]), "max shift not lesser than %s" % (
-          results[1])
 
+    lines = file("%(preamble)s_minimized_minimized.geo" % locals(), "rb").read()
+    print geo_spec % results[0]
+    assert lines.find(geo_spec % results[0])>-1
+    
 def run():
   cis_trans_specification()
   trans_only_specification()
