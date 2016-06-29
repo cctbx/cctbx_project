@@ -87,7 +87,7 @@ def trans_only_specification():
     lines = file("%(preamble)s_minimized_minimized.geo" % locals(), "rb").read()
     print geo_spec % results[0]
     assert lines.find(geo_spec % results[0])>-1
-    
+
 def run():
   cis_trans_specification()
   trans_only_specification()
