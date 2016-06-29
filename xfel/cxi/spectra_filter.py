@@ -59,7 +59,7 @@ class spectra_filter(object):
     self.src = psana.Source(params.spectra_filter.detector_address)
     self.roi = params.spectra_filter.roi
     self.bg_roi = params.spectra_filter.background_roi
-    self.dark_pickle = easy_pickle.load(params.spectra_filter.background_path)
+    self.dark_pickle = easy_pickle.load(params.spectra_filter.background_path)['DATA'].as_numpy_array()
     self.peak_range = params.spectra_filter.peak_range
     self.params = params
 
@@ -79,22 +79,36 @@ class spectra_filter(object):
       print "No data"
       return False, None, None, None, None, None
     print cspad_tbx.evt_timestamp(cspad_tbx.evt_time(evt)),
-    xmin, xmax, ymin, ymax = self.bg_roi
-    dc_offset = np.array(all_data.data16().astype(np.int32))[ymin:ymax,xmin:xmax] - self.dark_pickle[ymin:ymax,xmin:xmax] #dc: direct current
-    xmin, xmax, ymin, ymax = self.roi
-    data_signal = np.array(all_data.data16().astype(np.int32))[ymin:ymax,xmin:xmax] - self.dark_pickle[ymin:ymax,xmin:xmax]
-    data = data_signal - np.mean(dc_offset)
+    if self.bg_roi is None:
+      dc_offset = None
+      dc_offset_mean = 0.0
+    else:
+      xmin, xmax, ymin, ymax = self.bg_roi
+      dc_offset = np.array(all_data.data16().astype(np.int32))[ymin:ymax,xmin:xmax] - self.dark_pickle[ymin:ymax,xmin:xmax] #dc: direct current
+      dc_offset_mean = np.mean(dc_offset)
+    data = np.array(all_data.data16().astype(np.int32))
+    if self.roi is None:
+      xmin = 0; ymin = 0
+      ymax, xmax = data.shape
+    else:
+      xmin, xmax, ymin, ymax = self.roi
+    data_signal = data[ymin:ymax,xmin:xmax] - self.dark_pickle[ymin:ymax,xmin:xmax]
+    data = data_signal - dc_offset_mean
 
     # make a 1D trace
     spectrum = np.sum(data, 0)
-    peak = spectrum[self.peak_range[0]-xmin:self.peak_range[1]-xmin]
-    peak_max = np.sum(peak)
     flux = np.sum(spectrum)
-    print "Run", evt.run(), "peak max:", peak_max, "at", np.argmax(peak)+xmin, "px", "flux:", flux, "m/f:", peak_max/flux
+    if self.peak_range is None:
+      print "Run", evt.run(), "flux:", flux
+    else:
+      peak = spectrum[self.peak_range[0]-xmin:self.peak_range[1]-xmin]
+      peak_max = np.sum(peak)
+      print "Run", evt.run(), "peak max:", peak_max, "at", np.argmax(peak)+xmin, "px", "flux:", flux, "m/f:", peak_max/flux
 
-    if flux_min is not None and flux < flux_min: return False, None, None, None, None, None
-    if flux_max is not None and flux >= flux_max: return False, None, None, None, None, None
-    if peak_ratio_min is not None and peak_max/flux < peak_ratio_min: return False, None, None, None, None, None
-    if peak_ratio_max is not None and peak_max/flux >= peak_ratio_max: return False, None, None, None, None, None
+      if flux_min is not None and flux < flux_min: return False, None, None, None, None, None
+      if flux_max is not None and flux >= flux_max: return False, None, None, None, None, None
+      if peak_ratio_min is not None and peak_max/flux < peak_ratio_min: return False, None, None, None, None, None
+      if peak_ratio_max is not None and peak_max/flux >= peak_ratio_max: return False, None, None, None, None, None
+
     all_data = all_data.data16().astype(np.int32)
     return True, data, spectrum, dc_offset, all_data - self.dark_pickle, all_data

@@ -79,7 +79,6 @@ def run(args):
     mytimes = [times[i] for i in xrange(nevents) if (i+rank)%size == 0]
 
     for i, t in enumerate(mytimes):
-      if i < 200: continue
       evt = run.event(t)
       accepted, data, spectrum, dc_offset, all_data, all_data_raw = spf.filter_event(evt, filter_name)
 
