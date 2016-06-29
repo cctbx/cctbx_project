@@ -808,7 +808,7 @@ class RunBlockDialog(BaseDialog):
       assert len(set(run_numbers)) == len(run_numbers)
 
       if trial is not None:
-        self.all_blocks = db.get_trial_rungroups(trial_id=trial.trial_id)
+        self.all_blocks = trial.rungroups
 
       if len(runs) == 0:
         wx.MessageBox("No runs found", "Error", wx.OK | wx.ICON_EXCLAMATION)

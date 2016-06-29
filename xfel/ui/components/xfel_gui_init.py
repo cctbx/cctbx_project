@@ -927,8 +927,7 @@ class StatusTab(BaseTab):
 
   def onClustering(self, e):
     trial = self.main.db.get_trial(trial_number=self.trial_no)
-    runblocks = self.main.db.get_trial_rungroups(trial_id=trial.trial_id,
-                                            only_active=True)
+    runblocks = trial.rungroups
 
     clustering = ClusteringWorker(self, trial=trial, runblocks=runblocks,
                                   output=self.main.params.output_folder,
@@ -1314,7 +1313,7 @@ class TrialPanel(wx.Panel):
 
   def refresh_trial(self):
     self.block_sizer.DeleteWindows()
-    self.active_blocks = [b for b in self.trial.rungroups if b.active]
+    self.active_blocks = self.trial.rungroups
     for block in self.active_blocks:
       self.draw_block_button(block)
     self.block_panel.Layout()

@@ -9,7 +9,7 @@ class Trial(db_proxy):
   def __getattr__(self, name):
     # Called only if the property cannot be found
     if name == "rungroups":
-      return self.app.get_trial_rungroups(self.id)
+      return self.app.get_trial_rungroups(self.id, only_active=True)
     elif name == "runs":
       return self.app.get_trial_runs(self.id)
     else:
@@ -25,7 +25,7 @@ class Trial(db_proxy):
       self.app.params.experiment_tag, self.id, rungroup.id)
     self.app.execute_query(query, commit=True)
 
-  def remove_tag(self, rungroup):
+  def remove_rungroup(self, rungroup):
     query = "DELETE FROM `%s_trial_rungroup` WHERE trial_id = %d AND rungroup_id = %s" % (
       self.app.params.experiment_tag, self.id, rungroup.id)
     self.app.execute_query(query, commit=True)

@@ -31,7 +31,7 @@ def submit_all_jobs(app):
   needed_jobs = []
   for trial in trials:
     for rungroup in trial.rungroups:
-      if not rungroup.active: continue
+      assert rungroup.active
       rg_start = app.get_run(run_id=rungroup.startrun)
       if rungroup.endrun is None:
         # open ended run group
