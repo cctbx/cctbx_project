@@ -8,9 +8,8 @@ import wx
 
 class ValidatedTextCtrl (wx.TextCtrl, phil_controls.PhilCtrl) :
   def __init__ (self, *args, **kwds) :
-    kwds = dict(kwds)
     saved_value = None
-    if (kwds.get('value', "") != "") :
+    if 'value' in kwds:
       saved_value = kwds['value']
       kwds['value'] = ""
     super(ValidatedTextCtrl, self).__init__(*args, **kwds)
@@ -22,7 +21,8 @@ class ValidatedTextCtrl (wx.TextCtrl, phil_controls.PhilCtrl) :
       self.SetWindowStyle(style)
     self.SetValidator(self.CreateValidator())
     self.Bind(wx.EVT_TEXT_ENTER, self.OnEnter, self)
-    if (saved_value is not None) :
+    self.Bind(wx.EVT_KILL_FOCUS, self.OnFocusLost, self)
+    if saved_value is not None:
       self.SetValue(saved_value)
 
   def GetValue (self) :
@@ -36,6 +36,10 @@ class ValidatedTextCtrl (wx.TextCtrl, phil_controls.PhilCtrl) :
   def OnEnter (self, evt=None) :
     #self.Validate()
     self.DoSendEvent()
+
+  def OnFocusLost(self, event):
+    self.DoSendEvent()
+    event.Skip()
 
   def CreateValidator (self) :
     raise NotImplementedError()
