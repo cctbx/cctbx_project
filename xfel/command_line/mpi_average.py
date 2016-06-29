@@ -237,7 +237,7 @@ the output images in the folder cxi49812.
       if i%10==0: print 'Rank',rank,'processing event',rank*len(mytimes)+i,', ',i,'of',len(mytimes)
       evt = run.event(mytimes[i])
       #print "Event #",rank*mylength+i," has id:",evt.get(EventId)
-      if 'Rayonix' in command_line.options.address:
+      if 'Rayonix' in command_line.options.address or 'FeeHxSpectrometer' in command_line.options.address:
         data = evt.get(psana.Camera.FrameV1,src)
         if data is None:
           print "No data"
@@ -257,23 +257,27 @@ the output images in the folder cxi49812.
         print "No data"
         continue
 
-      d = cspad_tbx.env_distance(address, run.env(), command_line.options.detz_offset)
-      if d is None:
-        print "No distance, skipping shot"
-        continue
-      if 'distance' in locals():
-        distance += d
+      if 'FeeHxSpectrometer' in command_line.options.address:
+        distance = np.array([0.0])
+        wavelength = np.array([1.0])
       else:
-        distance = np.array([float(d)])
+        d = cspad_tbx.env_distance(address, run.env(), command_line.options.detz_offset)
+        if d is None:
+          print "No distance, skipping shot"
+          continue
+        if 'distance' in locals():
+          distance += d
+        else:
+          distance = np.array([float(d)])
 
-      w = cspad_tbx.evt_wavelength(evt)
-      if w is None:
-        print "No wavelength, skipping shot"
-        continue
-      if 'wavelength' in locals():
-        wavelength += w
-      else:
-        wavelength = np.array([w])
+        w = cspad_tbx.evt_wavelength(evt)
+        if w is None:
+          print "No wavelength, skipping shot"
+          continue
+        if 'wavelength' in locals():
+          wavelength += w
+        else:
+          wavelength = np.array([w])
 
       t = cspad_tbx.evt_time(evt)
       if t is None:
@@ -394,6 +398,23 @@ the output images in the folder cxi49812.
             saturated_value=rayonix_tbx.rayonix_saturated_value,
             timestamp=timestamp,
             wavelength=wavelength)
+        easy_pickle.dump(path, d)
+    elif 'FeeHxSpectrometer' in command_line.options.address:
+      all_data = [mean, stddev, maxall]
+      split_address = cspad_tbx.address_split(address)
+      old_style_address = split_address[0] + "-" + split_address[1] + "|" + split_address[2] + "-" + split_address[3]
+      if command_line.options.do_minimum_projection:
+        all_data.append(minall)
+      for data, path in zip(all_data, dest_paths):
+        d = cspad_tbx.dpack(
+          address = old_style_address,
+          data = flex.double(data),
+          distance = distance,
+          pixel_size = 0.1,
+          timestamp=timestamp,
+          wavelength=wavelength
+        )
+        print "Saving", path
         easy_pickle.dump(path, d)
     elif command_line.options.as_pickle:
       split_address = cspad_tbx.address_split(address)

@@ -16,6 +16,9 @@ cd ~/myrelease
 sit_setup
 psplot SPECTRUM FEE &
 cxi.fee_view params.phil selected_filter=best
+
+For full output, use:
+psplot SPECTRUM FEE DC_OFFSET ALL_FEE ALL_FEE_RAW &
 """
 phil_scope = parse("""
   selected_filter = None
