@@ -215,7 +215,8 @@ class RotamerEval:
   def evaluate_residue(
                        self,
                        residue=None,
-                       residue_group=None): # FIXME does not work!
+                       residue_group=None): # FIXME does not work! Start using this parameter in function?
+    # Warning!!! Returns "OUTLIER", "UNCLASSIFIED", rotamer name or None.
     assert [residue, residue_group].count(None) == 1
     if residue is not None:
       atoms = residue.atoms()
@@ -248,6 +249,39 @@ class RotamerEval:
       return "OUTLIER"
     else:
       return rotamer_name
+
+  def evaluate_residue_2(self, residue=None):
+    # copy-paste from evaluate_residue, returns
+    # "OUTLIER", "Allowed", "Favored" or None if something is really wrong.
+    from mmtbx.validation.rotalyze import OUTLIER_THRESHOLD, ALLOWED_THRESHOLD
+    assert [residue, residue_group].count(None) == 1
+    if residue is not None:
+      atoms = residue.atoms()
+      resname = residue.resname.lower().strip()
+    if resname == 'gly':
+      return None
+    elif resname == 'mse':
+      resname = 'met'
+    atom_dict = self.get_atom_dict(residue)
+    try:
+      chis = self.sidechain_angles.measureChiAngles(
+               res=residue,
+               atom_dict=atom_dict)
+      value = self.evaluate(
+                resname,
+                chis)
+    except Exception:
+      return None
+    if chis is None:
+      return "OUTLIER"
+
+    if value >= ALLOWED_THRESHOLD :
+      return "Favored"
+    elif value >= OUTLIER_THRESHOLD:
+      return "Allowed"
+    else:
+      return "OUTLIER"
+
 
   def nearest_rotamer_sites_cart(self, residue):
     sites_cart_result = residue.atoms().extract_xyz()
