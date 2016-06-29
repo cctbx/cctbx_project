@@ -11,7 +11,7 @@ from libtbx import runtime_utils
 import os
 import sys
 from cStringIO import StringIO
-from mmtbx.monomer_library import pdb_interpretation
+from mmtbx.monomer_library import pdb_interpretation, server
 from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
     add_reference_dihedral_restraints_if_requested
 
@@ -141,7 +141,7 @@ Usage examples:
   print >> log, msg
   print >> log, "-"*79
 
-def process_input_files(inputs, params, log):
+def process_input_files(inputs, params, log, mon_lib_srv=None):
   pdb_file_names = []
   pdb_file_names = list(inputs.pdb_file_names)
   if (params.file_name is not None) :
@@ -176,7 +176,8 @@ def process_input_files(inputs, params, log):
     stop_for_unknowns         = params.stop_for_unknowns,
     log                       = log,
     cif_objects               = cif_objects,
-    use_neutron_distances     = params.pdb_interpretation.use_neutron_distances)
+    use_neutron_distances     = params.pdb_interpretation.use_neutron_distances,
+    mon_lib_srv               = mon_lib_srv)
   processed_pdb_file, junk = processed_pdb_files_srv.\
     process_pdb_files(pdb_file_names = pdb_file_names) # XXX remove junk
   processed_pdb_file.is_non_crystallographic_unit_cell = \
@@ -276,7 +277,8 @@ def run_minimization(
       states_collector,
       fix_rotamer_outliers,
       log,
-      ncs_restraints_group_list = []):
+      ncs_restraints_group_list = [],
+      mon_lib_srv = None):
   o = mmtbx.refinement.geometry_minimization.run2(
     restraints_manager             = restraints_manager,
     pdb_hierarchy                  = pdb_hierarchy,
@@ -299,7 +301,8 @@ def run_minimization(
     states_collector               = states_collector,
     correct_hydrogens              = correct_hydrogens,
     fix_rotamer_outliers           = fix_rotamer_outliers,
-    log                            = log)
+    log                            = log,
+    mon_lib_srv                    = mon_lib_srv)
 
 def run_minimization_amber (
       selection,
@@ -334,6 +337,9 @@ def run_minimization_amber (
 class run(object):
   _pdb_suffix = "minimized"
   def __init__(self, args, log, use_directory_prefix=True):
+    # You are not supposed to put here (in __init__) any time-consuming stuff,
+    # otherwise self.total_time would be unaccurate. It's not clear
+    # why it is important.
     self.log                  = log
     self.params               = None
     self.inputs               = None
@@ -351,6 +357,7 @@ class run(object):
     self.use_directory_prefix = use_directory_prefix
     self.sites_cart_start     = None
     self.states_collector     = None
+    self.mon_lib_srv          = None
     self.__execute()
 
   def __execute(self):
@@ -404,6 +411,8 @@ class run(object):
     broadcast(m=prefix, log = self.log)
     self.inputs.params.show(prefix="  ", out=self.log)
     if(len(self.args)==0): sys.exit(0)
+    self.mon_lib_srv = server.server()
+
 
   def process_inputs(self, prefix):
     broadcast(m=prefix, log = self.log)
@@ -411,7 +420,8 @@ class run(object):
     if(self.params.file_name is not None):
       self.pdb_file_names.append(self.params.file_name)
     self.processed_pdb_file = process_input_files(inputs=self.inputs,
-      params=self.params, log=self.log)
+      params=self.params, log=self.log,
+      mon_lib_srv=self.mon_lib_srv)
     self.ncs_obj = self.processed_pdb_file.ncs_obj
     self.output_crystal_symmetry = \
       not self.processed_pdb_file.is_non_crystallographic_unit_cell
@@ -475,7 +485,8 @@ class run(object):
         fix_rotamer_outliers = self.params.fix_rotamer_outliers,
         states_collector= self.states_collector,
         log                  = self.log,
-        ncs_restraints_group_list = ncs_restraints_group_list)
+        ncs_restraints_group_list = ncs_restraints_group_list,
+        mon_lib_srv          = self.mon_lib_srv)
     self.xray_structure.set_sites_cart(
       sites_cart = self.pdb_hierarchy.atoms().extract_xyz())
 

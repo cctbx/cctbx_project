@@ -358,7 +358,11 @@ def exercise_3(mon_lib_srv, ener_lib):
       sites_cart      = sites_cart,
       selection       = None,
       chi_angles_only = False)
-  assert grm.get_n_chi_torsion_proixes() == 18
+  # grm.get_chi_torsion_proxies().show_sorted(
+  #     by_value='residual',
+  #     sites_cart=sites_cart,
+  #     site_labels=[atom.id_str() for atom in pdb2.atoms()])
+  assert grm.get_n_chi_torsion_proixes() == 12, grm.get_n_chi_torsion_proixes()
 
 if (__name__ == "__main__") :
   mon_lib_srv = server.server()

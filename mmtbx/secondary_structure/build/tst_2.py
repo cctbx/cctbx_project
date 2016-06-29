@@ -1068,6 +1068,7 @@ HELIX    1   1 ALA A    1  ALA A   20  1                                  20
       xray_structure=pdb_inp.xray_structure_simple(),
       ss_annotation=ann,
       use_plane_peptide_bond_restr=False,
+      fix_rama_outliers=False,
       # log=sys.stdout,
       # verbose=True
       )
@@ -1207,7 +1208,8 @@ HELIX    1  21 ALA A   21  ALA A   24  1                                  5
   rm = ssb.substitute_ss(
       real_h=h,
       xray_structure=pdb_inp.xray_structure_simple(),
-      ss_annotation=ann)
+      ss_annotation=ann,
+      fix_rama_outliers=False)
   # h.write_pdb_file(file_name="%s_result.pdb" % prefix)
   d1 = get_distances(h, 5)
   answer_h = iotbx.pdb.input(

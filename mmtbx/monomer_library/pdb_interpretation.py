@@ -5329,7 +5329,8 @@ class process(object):
         n_c_beta_restraints = len(c_beta_torsion_proxies)
         if n_c_beta_restraints > 0:
           self._geometry_restraints_manager.add_dihedrals_in_place(
-              c_beta_torsion_proxies)
+              c_beta_torsion_proxies,
+              check_for_duplicates=False)
         outl = ""
         for key, item in c_beta_skipped.items():
           if key=="-ve":

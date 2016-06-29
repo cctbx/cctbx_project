@@ -13,6 +13,7 @@ from mmtbx.building.loop_idealization import loop_idealization
 import mmtbx.building.loop_closure.utils
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
 import iotbx.ncs
+from copy import deepcopy
 
 
 master_params_str = """
@@ -44,6 +45,29 @@ Usage examples:
   print >> log, msg
   print >> log, "-"*79
   print >> log, master_params().show()
+
+
+def whole_chain_in_ncs(whole_h, master_iselection):
+  m_c = whole_h.select(master_iselection)
+  m_c_id = m_c.only_model().chains()[0].id
+  print "m_c_id", m_c_id
+  for chain in whole_h.only_model().chains():
+    if chain.id == m_c_id:
+      print "sizes:", chain.atoms_size(), master_iselection.size()
+      if chain.atoms_size() == master_iselection.size():
+        return True
+      else:
+        return False
+
+def filter_ncs_restraints_group_list(whole_h, ncs_restr_group_list):
+  n_gr_to_remove = []
+  for i, ncs_gr in enumerate(ncs_restr_group_list):
+    if not whole_chain_in_ncs(whole_h, ncs_gr.master_iselection):
+      n_gr_to_remove.append(i)
+  result = deepcopy(ncs_restr_group_list)
+  for i in reversed(n_gr_to_remove):
+    del result[i]
+  return result
 
 def run(args):
   log = sys.stdout
@@ -127,20 +151,31 @@ def run(args):
   using_ncs = False
   total_ncs_selected_atoms = 0
   master_sel = flex.size_t([])
-  for ncs_gr in ncs_restr_group_list:
-    total_ncs_selected_atoms += ncs_gr.master_iselection.size()
-    master_sel.extend(ncs_gr.master_iselection)
-    for c in ncs_gr.copies:
-      total_ncs_selected_atoms += c.iselection.size()
-  print "total_ncs_selected_atoms", total_ncs_selected_atoms
-  print "Total atoms in model", pdb_h.atoms().size()
-  if total_ncs_selected_atoms == pdb_h.atoms().size():
+  filtered_ncs_restr_group_list = filter_ncs_restraints_group_list(
+      pdb_h, ncs_restr_group_list)
+  if len(filtered_ncs_restr_group_list) > 0:
     using_ncs = True
+    master_sel = flex.bool([True]*pdb_h.atoms().size())
+    for ncs_gr in filtered_ncs_restr_group_list:
+      for copy in ncs_gr.copies:
+        master_sel.set_selected(copy.iselection, False)
+    master_pdb_h = pdb_h.select(master_sel)
+  # for ncs_gr in ncs_restr_group_list:
+  #   total_ncs_selected_atoms += ncs_gr.master_iselection.size()
+  #   master_sel.extend(ncs_gr.master_iselection)
+  #   for c in ncs_gr.copies:
+  #     total_ncs_selected_atoms += c.iselection.size()
+  # print "total_ncs_selected_atoms", total_ncs_selected_atoms
+  # print "Total atoms in model", pdb_h.atoms().size()
+  # if total_ncs_selected_atoms == pdb_h.atoms().size():
+  #   using_ncs = True
+
   # print "master_sel.size()", master_sel.size()
   # print "list(master_sel)", list(master_sel)
   # master_sel = flex.size_t(sorted(list(master_sel)))
   # master_pdb_h = pdb_h.select(master_sel)
-  # master_pdb_h.write_pdb_file("master_h.pdb")
+  if using_ncs:
+    master_pdb_h.write_pdb_file("master_h.pdb")
 
   ann = ioss.annotation.from_phil(
       phil_helices=work_params.secondary_structure.protein.helix,
@@ -174,6 +209,7 @@ def run(args):
         log=None,
         ss_annotation=None)
   else:
+    work_params.ss_idealization.file_name_before_regularization="ss_before_reg.pdb"
     ssb.substitute_ss(
         real_h=master_pdb_h if master_pdb_h is not None else pdb_h,
         xray_structure=xrs,
@@ -186,6 +222,11 @@ def run(args):
 
   # Write resulting pdb file.
   pdb_h_shifted = (master_pdb_h if master_pdb_h is not None else pdb_h).deep_copy()
+  write_whole_pdb_file(
+      file_name="%s_ss_substituted_nosh.pdb" % os.path.basename(pdb_file_names[0]),
+      pdb_hierarchy=pdb_h_shifted,
+      crystal_symmetry=cs,
+      ss_annotation=ann)
   if shift_vector is not None:
     # print >> log, "Shifting molecule back"
     atoms = pdb_h_shifted.atoms()

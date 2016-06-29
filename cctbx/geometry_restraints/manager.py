@@ -582,8 +582,20 @@ class manager(object):
   #=================================================================
   # Dihedral proxies methods
   #=================================================================
-  def add_dihedrals_in_place(self, additional_dihedral_proxies):
+  def add_dihedrals_in_place(self,
+      additional_dihedral_proxies,
+      check_for_duplicates=True):
     if self.dihedral_proxies is not None:
+      if check_for_duplicates:
+        # first remove duplicates
+        n_atoms = 0
+        selection = None
+        sel = []
+        for p in additional_dihedral_proxies:
+          for i_seq in p.i_seqs:
+            sel.append(i_seq)
+        selection = flex.size_t(sorted(list(set(sel))))
+        self.remove_dihedrals_in_place(selection)
       self.dihedral_proxies.extend(additional_dihedral_proxies)
     else:
       self.dihedral_proxies = additional_dihedral_proxies
@@ -1455,6 +1467,7 @@ class manager(object):
     for p_label, proxies in [
         ("Dihedral angle", self.get_dihedral_proxies()),
         ("C-Beta improper torsion angle", self.get_c_beta_torsion_proxies()),
+        ("Side chain torsion angle", self.get_chi_torsion_proxies()),
         ("Reference torsion angle", self.reference_dihedral_manager),
         ("NCS torsion angle", self.ncs_dihedral_manager),
         ("", self.ramachandran_manager),

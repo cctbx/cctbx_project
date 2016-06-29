@@ -427,6 +427,7 @@ def substitute_ss(real_h,
                     ss_annotation,
                     params = None,
                     use_plane_peptide_bond_restr=True,
+                    fix_rama_outliers=True,
                     cif_objects=None,
                     log=null_out(),
                     rotamer_manager=None,
@@ -619,7 +620,7 @@ def substitute_ss(real_h,
       "pdb_interpretation.secondary_structure.enabled=True",
       "pdb_interpretation.clash_guard.nonbonded_distance_threshold=None",
       "pdb_interpretation.max_reasonable_bond_distance=None",
-      "pdb_interpretation.nonbonded_weight=500",
+      # "pdb_interpretation.nonbonded_weight=500",
       "pdb_interpretation.peptide_link.oldfield.weight_scale=3",
       "pdb_interpretation.peptide_link.oldfield.plot_cutoff=0.03"])
 
@@ -696,15 +697,15 @@ def substitute_ss(real_h,
     print >> log, "Outputting model before regularization %s" % processed_params.file_name_before_regularization
     real_h.write_pdb_file(
         file_name=processed_params.file_name_before_regularization)
+    # geo_fname = processed_params.file_name_before_regularization[:-4]+'.geo'
+    # print >> log, "Outputting geo file for regularization %s" % geo_fname
+    # grm.write_geo_file(
+    #     site_labels=[atom.id_str() for atom in real_h.atoms()],
+    #     file_name=geo_fname)
 
   #testing number of restraints
   assert grm.geometry.get_n_den_proxies() == 0
   assert grm.geometry.get_n_reference_coordinate_proxies() == n_main_chain_atoms
-  # f = open("before.geo", "w")
-  # grm.geometry.show_sorted(
-  #     site_labels=[atom.id_str() for atom in real_h.atoms()],
-  #     f=f)
-  # f.close()
   # STOP()
   refinement_log = null_out()
   log.write(
@@ -726,7 +727,7 @@ def substitute_ss(real_h,
       dihedral                 = True,
       chirality                = True,
       planarity                = True,
-      fix_rotamer_outliers     = False,
+      fix_rotamer_outliers     = fix_rama_outliers,
       log                      = refinement_log)
   log.write(" Done\n")
   log.flush()

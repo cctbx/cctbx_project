@@ -7,6 +7,7 @@ import scitbx.lbfgs
 import sys
 import mmtbx.utils
 from scitbx.array_family import flex
+from mmtbx import monomer_library
 
 master_params_str = """\
   alternate_nonbonded_off_on=False
@@ -161,19 +162,30 @@ def add_rotamer_restraints(
       selection,
       sigma,
       mode,
-      mon_lib_srv=None):
-  pdb_hierarchy = mmtbx.utils.switch_rotamers(
-    pdb_hierarchy = pdb_hierarchy,
-    mode          = mode,
-    selection     = selection,
-    mon_lib_srv   = mon_lib_srv)
+      accept_allowed=True,
+      mon_lib_srv=None,
+      rotamer_manager=None):
+  pdb_hierarchy_for_return = mmtbx.utils.switch_rotamers(
+    pdb_hierarchy  = pdb_hierarchy,
+    mode           = mode,
+    accept_allowed = accept_allowed,
+    selection      = selection,
+    mon_lib_srv    = mon_lib_srv,
+    rotamer_manager= rotamer_manager)
+  pdb_hierarchy_for_proxies = mmtbx.utils.switch_rotamers(
+    pdb_hierarchy  = pdb_hierarchy,
+    mode           = "exact_match",
+    accept_allowed = accept_allowed,
+    selection      = selection,
+    mon_lib_srv    = mon_lib_srv,
+    rotamer_manager= rotamer_manager)
   restraints_manager.geometry.remove_chi_torsion_restraints_in_place()
   restraints_manager.geometry.add_chi_torsion_restraints_in_place(
-      pdb_hierarchy   = pdb_hierarchy,
-      sites_cart      = pdb_hierarchy.atoms().extract_xyz(),
+      pdb_hierarchy   = pdb_hierarchy_for_proxies,
+      sites_cart      = pdb_hierarchy_for_proxies.atoms().extract_xyz(),
       chi_angles_only = True,
       sigma           = sigma)
-  return pdb_hierarchy, restraints_manager
+  return pdb_hierarchy_for_return, restraints_manager
 
 class run2(object):
   def __init__(self,
@@ -198,17 +210,25 @@ class run2(object):
                correct_hydrogens              = False,
                fix_rotamer_outliers           = True,
                states_collector               = None,
-               log                            = None):
+               log                            = None,
+               mon_lib_srv                    = None):
     self.log = log
     if self.log is None:
       self.log = sys.stdout
     self.pdb_hierarchy = pdb_hierarchy
     self.minimized = None
+    self.mon_lib_srv = mon_lib_srv
+    if self.mon_lib_srv is None:
+      self.mon_lib_srv = monomer_library.server.server()
     self.restraints_manager = restraints_manager
     assert max_number_of_iterations+number_of_macro_cycles > 0
     assert [bond,nonbonded,angle,dihedral,chirality,planarity,
             parallelity].count(False) < 7
     self.cdl_proxies = None
+    self.rotamer_manager = None
+    if fix_rotamer_outliers:
+      from mmtbx.rotamer.rotamer_eval import RotamerEval
+      self.rotamer_manager = RotamerEval(mon_lib_srv=self.mon_lib_srv)
     if(cdl):
       from mmtbx.conformation_dependent_library.cdl_setup import setup_restraints
       self.cdl_proxies = setup_restraints(restraints_manager.geometry)
@@ -248,8 +268,18 @@ class run2(object):
           restraints_manager = self.restraints_manager,
           selection          = selection,
           sigma              = 10,
-          mode               = "fix_outliers")
+          # accept_allowed     = False,
+          # mode               = "fix_outs_and_allowed")
+          accept_allowed     = True,
+          mode               = "fix_outliers",
+          mon_lib_srv        = self.mon_lib_srv,
+          rotamer_manager    = self.rotamer_manager)
       sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
+      # self.pdb_hierarchy.write_pdb_file("after_fix_%d.pdb" % i_macro_cycle)
+      # self.restraints_manager.write_geo_file(
+      #     sites_cart=self.pdb_hierarchy.atoms().extract_xyz(),
+      #     site_labels= [atom.id_str() for atom in self.pdb_hierarchy.atoms()],
+      #     file_name="after_fix_%d.geo" % i_macro_cycle)
       if (ncs_restraints_group_list is not None
           and len(ncs_restraints_group_list)) > 0:
         # do ncs minimization
@@ -290,6 +320,7 @@ class run2(object):
           site_labels                     = None)
         self.pdb_hierarchy.atoms().set_xyz(sites_cart)
       self.show()
+      self.log.flush()
       geometry_restraints_flags.nonbonded = nonbonded
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
           max_iterations = max_number_of_iterations)

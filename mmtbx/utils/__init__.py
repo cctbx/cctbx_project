@@ -2280,16 +2280,23 @@ def rms_b_iso_or_b_equiv_bonded(restraints_manager, xray_structure,
     result = math.sqrt(flex.sum(values) / values.size())
   return result
 
-def switch_rotamers(pdb_hierarchy, mode, selection=None, mon_lib_srv=None):
+def switch_rotamers(
+      pdb_hierarchy,
+      mode,
+      accept_allowed=True,
+      selection=None,
+      mon_lib_srv=None,
+      rotamer_manager=None):
   if(mode is None): return pdb_hierarchy
   pdb_hierarchy.reset_i_seq_if_necessary()
-  assert mode in ["max_distant","min_distant","exact_match","fix_outliers"],mode
+  assert mode in ["max_distant","min_distant","exact_match","fix_outliers", "fix_outs_and_allowed"],mode
   from mmtbx.command_line import lockit
   if mon_lib_srv is None:
     mon_lib_srv = mmtbx.monomer_library.server.server()
   sites_cart_start = pdb_hierarchy.atoms().extract_xyz()
   sites_cart_result = sites_cart_start.deep_copy()
-  if(mode == "fix_outliers"):
+  if ((mode == "fix_outliers" or mode == "fix_outs_and_allowed")
+      and rotamer_manager is None):
     from mmtbx.rotamer.rotamer_eval import RotamerEval
     rotamer_manager = RotamerEval()
   for model in pdb_hierarchy.models():
@@ -2309,7 +2316,10 @@ def switch_rotamers(pdb_hierarchy, mode, selection=None, mon_lib_srv=None):
                 exclude = True
                 break
           if(mode == "fix_outliers" and
-             rotamer_manager.evaluate_residue(residue) != "OUTLIER"):
+              rotamer_manager.evaluate_residue(residue) != "OUTLIER"):
+            exclude = True
+          if(mode == "fix_outs_and_allowed" and
+              rotamer_manager.evaluate_residue_2(residue) == "Favored"):
             exclude = True
           if(not exclude):
             rotamer_iterator = lockit.get_rotamer_iterator(
@@ -2321,6 +2331,13 @@ def switch_rotamers(pdb_hierarchy, mode, selection=None, mon_lib_srv=None):
               distances = flex.double()
               sites = []
               for rotamer, rotamer_sites_cart in rotamer_iterator:
+                if not accept_allowed:
+                  t_residue = residue.standalone_copy()
+                  t_residue.atoms().set_xyz(rotamer_sites_cart)
+                  ev = rotamer_manager.evaluate_residue_2(t_residue)
+                  if ev == "Allowed":
+                    # print "  Skipping allowed for", residue.id_str()
+                    continue
                 dist = flex.max(flex.sqrt((
                   sites_cart_start_ - rotamer_sites_cart).dot()))
                 distances.append(dist)

@@ -53,7 +53,7 @@ def generate_torsion_restraints(
         weight=weight,
         limit=limit,
         top_out=top_out_potential,
-        origin_id=2)
+        origin_id=origin_id)
       torsion_proxies.append(dp)
   return torsion_proxies
 
