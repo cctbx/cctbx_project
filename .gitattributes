@@ -2583,6 +2583,7 @@ prime/command_line/plot_energy_spectrum.py -text
 prime/command_line/postrefine.py -text
 prime/command_line/prime_gui.py -text
 prime/command_line/print_integration_pickle.py -text
+prime/command_line/r_mtz_mtz.py -text
 prime/command_line/ray_trace.py -text
 prime/command_line/spot_param_visualizer.py -text
 prime/command_line/view_fineslices.py -text
