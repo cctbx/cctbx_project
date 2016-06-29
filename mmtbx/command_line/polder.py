@@ -22,7 +22,6 @@ from cctbx import miller
 
 legend = """\
 
-phenix.polder:
 Computes omit maps by excluding the bulk solvent in the area around a
 selection. One example of application are ligand omit maps. Polder omit maps
 can be helpful if the ligand density is weak and obscured by bulk solvent
@@ -55,7 +54,6 @@ Output:
 
 Optional output:
   CCP4 files with mask data:
-
   - mask_all.ccp4    : mask of original model
   - mask_omit.ccp4   : mask when ligand is omitted
   - mask_polder.ccp4 : mask obtained by polder procedure
@@ -334,7 +332,12 @@ def prepare_f_obs_and_flags(f_obs, r_free_flags):
 # parse through command line arguments
 def cmd_run(args, validated=False, out=sys.stdout):
   if (len(args) == 0):
-    print legend
+    print >> out, "-"*79
+    print >> out, "                               phenix.polder"
+    print >> out, "-"*79
+    print >> out, legend
+    print >> out, "-"*79
+    master_params.show(out=out)
     return
   log = multi_out()
   log.register("stdout", out)
