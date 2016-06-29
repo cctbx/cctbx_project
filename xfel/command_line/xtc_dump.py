@@ -134,7 +134,7 @@ class Script(object):
           raise Sorry("Couldn't load calibration file for run %d"%run.run())
 
         if params.format.cbf.gain_mask_value is not None:
-          gain_mask = psana_det.gain_mask(gain=params.format.cbf.gain_mask_value)
+          gain_mask = psana_det.gain_mask(run.run(), gain=params.format.cbf.gain_mask_value)
 
       # list of all events
       times = run.times()

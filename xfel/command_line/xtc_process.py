@@ -416,7 +416,7 @@ class InMemScript(DialsProcessScript):
           raise Sorry("Couldn't load calibration file for run %d"%run.run())
 
         if params.format.cbf.gain_mask_value is not None:
-          self.gain_mask = self.psana_det.gain_mask(gain=params.format.cbf.gain_mask_value)
+          self.gain_mask = self.psana_det.gain_mask(run.run(), gain=params.format.cbf.gain_mask_value)
 
         if params.format.cbf.common_mode.algorithm is None or params.format.cbf.common_mode.algorithm == "custom":
           self.pedestal = self.psana_det.pedestals(run)

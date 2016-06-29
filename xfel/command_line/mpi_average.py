@@ -212,17 +212,18 @@ the output images in the folder cxi49812.
   ds = psana.DataSource(dataset_name)
   address = command_line.options.address
   src = psana.Source('DetInfo(%s)'%address)
-  if not command_line.options.as_pickle:
-    psana_det = psana.Detector(address, ds.env())
-    if command_line.options.gain_mask_value is not None:
-      gain_mask = psana_det.gain_mask(gain=command_line.options.gain_mask_value)
-    else:
-      gain_mask = None
-
   nevent = np.array([0.])
 
   for run in ds.runs():
     runnumber = run.run()
+
+    if not command_line.options.as_pickle:
+      psana_det = psana.Detector(address, ds.env())
+      if command_line.options.gain_mask_value is not None:
+        gain_mask = psana_det.gain_mask(runnumber, gain=command_line.options.gain_mask_value)
+      else:
+        gain_mask = None
+
     # list of all events
     if command_line.options.skipevents > 0:
       print "Skipping first %d events"%command_line.options.skipevents
