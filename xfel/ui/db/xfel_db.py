@@ -1,6 +1,6 @@
 from __future__ import division
 
-import os
+import os, time
 import libtbx.load_env
 
 from xfel.ui.db.trial import Trial
@@ -12,6 +12,12 @@ from xfel.ui.db.stats import Stats
 from xfel.ui.db.experiment import Cell, Bin, Isoform
 
 from xfel.ui.db import get_db_connection
+
+try:
+  from MySQLdb import OperationalError
+except ImportError:
+  from libtbx.utils import Sorry
+  raise Sorry('Mysql not available')
 
 from xfel.command_line.experiment_manager import initialize as initialize_base
 class initialize(initialize_base):
@@ -35,19 +41,31 @@ class xfel_db_application(object):
     self.init_tables = initialize(params, dbobj) # only place where a connection is held
 
   def execute_query(self, query, commit = False):
-    try:
-      dbobj = get_db_connection(self.params)
-      cursor = dbobj.cursor()
-      cursor.execute(query)
-      if commit:
-        dbobj.commit()
-      return cursor
-    except Exception, e:
-      print "Couldn't execute MYSQL query.  Query:"
-      print query
-      print "Exception:"
-      print str(e)
-      raise e
+    retry_count = 0
+    retry_max = 10
+    sleep_time = 0.1
+    while retry_count < retry_max:
+      try:
+        dbobj = get_db_connection(self.params)
+        cursor = dbobj.cursor()
+        cursor.execute(query)
+        if commit:
+          dbobj.commit()
+        return cursor
+      except OperationalError, e:
+        if "Can't connect to MySQL server" not in str(e):
+          raise e
+        retry_count += 1
+        print "Couldn't connect to MYSQL, retry", retry_count
+        time.sleep(sleep_time)
+        sleep_time *= 2
+      except Exception, e:
+        print "Couldn't execute MYSQL query.  Query:"
+        print query
+        print "Exception:"
+        print str(e)
+        raise e
+    raise Sorry("Couldn't execute MYSQL query. Too many reconnects. Query: %s"%query)
 
   def list_lcls_runs(self):
     from xfel.xpp.simulate import file_table
@@ -207,15 +225,19 @@ class xfel_db_application(object):
     return self.get_all_x(Tag, "tag")
 
   def delete_x(self, item, item_id):
-    query = "DELETE FROM %s WHERE id = %d"%(item.table_name, item_id)
+    query = "DELETE FROM `%s` WHERE id = %d"%(item.table_name, item_id)
     self.execute_query(query, commit = True)
 
   def delete_tag(self, tag = None, tag_id = None):
     assert [tag, tag_id].count(None) == 1
+
     if tag_id is None:
       tag_id = tag.tag_id
     else:
       tag = self.get_tag(tag_id)
+
+    query = "DELETE FROM `%s_run_tag` WHERE tag_id = %d" % (self.params.experiment_tag, tag_id)
+    self.execute_query(query, commit=True)
 
     self.delete_x(tag, tag_id)
 

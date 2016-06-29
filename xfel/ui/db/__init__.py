@@ -14,19 +14,27 @@ def get_db_connection(params, block=True):
     password = ""
   else:
     password = params.db.password
-  while True:
+
+  retry_count = 0
+  retry_max = 10
+  sleep_time = 0.1
+  while retry_count < retry_max:
     try:
       dbobj=MySQLdb.connect(passwd=password,user=params.db.user,host=params.db.host,db=params.db.name)
       return dbobj
     except Exception,e:
-      if "Too many connections" in e and block:
-        print "Too many connections.  Blocking..."
-        dbobj = None
-        import time
-        time.sleep(1)
-        continue
+      retry_count += 1
+      if not block: raise e
+      if "Too many connections" in str(e):
+        print "Too many connections, retry", retry_count
+      elif  "Can't connect to MySQL server" in str(e):
+        print "Couldn't connect to MYSQL, retry", retry_count
       else:
         raise e
+      import time
+      time.sleep(sleep_time)
+      sleep_time *= 2
+  raise Sorry("Couldn't execute connect to MySQL. Too many reconnects.")
 
 class db_proxy(object):
   def __init__(self, app, table_name, id = None, **kwargs):
