@@ -493,31 +493,49 @@ class RunBlock(CtrlBase):
 class GaugeBar(CtrlBase):
   def __init__(self, parent,
                label='',
-               label_size=(100, -1),
+               label_size=(80, -1),
                label_style='normal',
                content_style='normal',
                gauge_size=(250, 15),
                button=False,
                button_label='View Stats',
                button_size=wx.DefaultSize,
+               choice_box=True,
+               choice_label='',
+               choice_label_size=(120, -1),
+               choice_size=(100, -1),
+               choice_style='normal',
+               choices=[],
                gauge_max=100):
     CtrlBase.__init__(self, parent=parent, label_style=label_style,
                       content_style=content_style)
 
-    self.sizer = wx.FlexGridSizer(1, 5, 0, 10)
-    self.sizer.AddGrowableCol(5, 1)
+    self.sizer = wx.FlexGridSizer(1, 6, 0, 10)
+    self.sizer.AddGrowableCol(3)
     self.bar = wx.Gauge(self, range=gauge_max, size=gauge_size)
 
+    if choice_box:
+      self.bins = ChoiceCtrl(self,
+                             label=choice_label,
+                             label_size=choice_label_size,
+                             label_style=choice_style,
+                             ctrl_size=choice_size,
+                             choices=choices)
+
+    self.txt_max = wx.StaticText(self, label=str(gauge_max))
+    self.txt_min = wx.StaticText(self, label='0')
     self.sizer.Add(wx.StaticText(self, label=label, size=label_size))
-    self.sizer.Add(wx.StaticText(self, label='0'))
-    self.sizer.Add(self.bar, wx.ALIGN_CENTER)
-    self.sizer.Add(wx.StaticText(self, label=str(gauge_max)))
+    self.sizer.Add(self.txt_min)
+    self.sizer.Add(self.bar)
+    self.sizer.Add(self.txt_max)
+    self.sizer.Add(self.bins)
 
     if button:
       self.btn = wx.Button(self, label=button_label, size=button_size)
       self.sizer.Add(self.btn, 1, wx.ALIGN_RIGHT | wx.ALIGN_CENTER)
 
     self.SetSizer(self.sizer)
+
 
 class SentinelStatus(CtrlBase):
   def __init__(self, parent,

@@ -204,7 +204,7 @@ class ProgressSentinel(Thread):
     self.active = active
     self.output = self.parent.params.output_folder
     self.number_of_pickles = 0
-    self.info = []
+    self.info = {}
 
   def post_refresh(self):
     evt = RefreshStats(tp_EVT_PRG_REFRESH, -1, self.info)
@@ -226,9 +226,14 @@ class ProgressSentinel(Thread):
       if len(db.get_all_trials()) > 0:
         trial = db.get_trial(
           trial_number=self.parent.run_window.status_tab.trial_no)
+        print 'DEBUG: trial ID is ', trial.trial_id
 
         tags = self.parent.run_window.status_tab.selected_tags
         cells = db.get_stats(trial=trial, tags=tags)()
+
+        if self.parent.run_window.status_tab.tag_trial_changed:
+          self.parent.run_window.status_tab.redraw_windows = True
+          self.parent.run_window.status_tab.tag_trial_changed = False
 
         for cell in cells:
           if cell.isoform is None:
@@ -236,13 +241,17 @@ class ProgressSentinel(Thread):
           counts = [int(i.count) for i in cell.bins]
           totals = [int(i.total_hkl) for i in cell.bins]
           mult = int(sum(counts) / sum(totals))
-          self.info.append({'multiplicity':mult, 'bins':cell.bins,
-                            'isoform':cell.isoform.name, 'a':cell.cell_a,
-                            'b':cell.cell_b, 'c':cell.cell_c,
-                            'alpha':cell.cell_alpha, 'beta':cell.cell_beta,
-                            'gamma':cell.cell_gamma})
+          self.info[cell.isoform.name] = {'multiplicity':mult,
+                                          'bins':cell.bins,
+                                          'isoform':cell.isoform.name,
+                                          'a':cell.cell_a,
+                                          'b':cell.cell_b,
+                                          'c':cell.cell_c,
+                                          'alpha':cell.cell_alpha,
+                                          'beta':cell.cell_beta,
+                                          'gamma':cell.cell_gamma}
       self.post_refresh()
-      self.info = []
+      self.info = {}
       self.parent.run_window.prg_light.change_status('on')
       time.sleep(5)
 
@@ -840,6 +849,9 @@ class StatusTab(BaseTab):
     self.all_trials = []
     self.all_tags = []
     self.selected_tags = []
+    self.rows = {}
+    self.tag_trial_changed = False
+    self.redraw_windows = True
 
     self.status_panel = ScrolledPanel(self, size=(-1, 120))
     status_box = wx.StaticBox(self.status_panel, label='Data Statistics')
@@ -855,6 +867,7 @@ class StatusTab(BaseTab):
                                        label='Clustering:',
                                        label_size=(100, -1),
                                        label_style='bold',
+                                       ctrl_size=(100, -1),
                                        sub_labels=['No. of images',
                                                    'Threshold'],
                                        items=[('num_images', 1000),
@@ -973,10 +986,12 @@ class StatusTab(BaseTab):
     self.selected_tags = [i for i in self.main.db.get_all_tags() if i.name
                           in checked_items]
     self.main.run_window.prg_light.change_status('idle')
+    self.tag_trial_changed = True
 
   def onTrialChoice(self, e):
     self.trial_no = self.trial_number.ctr.GetSelection()
     self.main.run_window.prg_light.change_status('idle')
+    self.tag_trial_changed = True
 
   def find_tags(self):
     self.tag_list.ctr.Clear()
@@ -1012,17 +1027,38 @@ class StatusTab(BaseTab):
     # Show info
     self.refresh_rows(info=e.GetValue())
 
-  def refresh_rows(self, info=[]):
-    self.status_sizer.DeleteWindows()
-    if info != []:
-      for isoform in info:
-        self.add_row(name=isoform['isoform'], value=isoform['multiplicity'])
+  def refresh_rows(self, info={}):
+
+    if info != {}:
+      if self.redraw_windows:
+        self.status_sizer.Clear(deleteWindows=True)
+        for iso, values in info.iteritems():
+          self.add_row(name=values['isoform'], value=values['multiplicity'],
+                       bins=values['bins'])
+        self.redraw_windows = False
+      else:
+        for iso, values in info.iteritems():
+          self.update_row(row=self.rows[values['isoform']],
+                          value=values['multiplicity'])
+    else:
+      self.status_sizer.Clear(deleteWindows=True)
 
     self.status_panel.SetSizer(self.status_sizer)
     self.status_panel.Layout()
     self.status_panel.SetupScrolling()
 
-  def add_row(self, name, value):
+  def update_row(self, row, value):
+    goal = int(self.opt_multi.goal.GetValue())
+    if goal > value:
+      gauge_max = goal
+    else:
+      gauge_max = value
+
+    row.bar.SetValue(value)
+    row.bar.SetRange(gauge_max)
+    row.txt_max.SetLabel(str(gauge_max))
+
+  def add_row(self, name, value, bins):
     goal = int(self.opt_multi.goal.GetValue())
 
     if goal > value:
@@ -1030,13 +1066,24 @@ class StatusTab(BaseTab):
     else:
       gauge_max = value
 
+    bin_choices = ["Bin {}:  {:3.2f} - {:3.2f}" \
+                   "".format(b.number, float(b.d_max),
+                             float(b.d_min)) for b in bins]
+
     row = gctr.GaugeBar(self.status_panel,
                         label='Isoform {}'.format(name),
                         label_size=(150, -1),
                         gauge_size=(350, 15),
                         button=True,
+                        choice_label_size=(100, -1),
+                        choice_label='High res. limit:',
+                        choice_size=(160, -1),
+                        choices = bin_choices,
                         gauge_max=gauge_max)
     row.bar.SetValue(value)
+    row.bins.ctr.SetSelection(row.bins.ctr.GetCount() - 1)
+    self.rows[name] = row
+
     self.status_sizer.Add(row, flag=wx.EXPAND | wx.ALL, border=10)
 
 
