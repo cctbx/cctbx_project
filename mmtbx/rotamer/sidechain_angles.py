@@ -247,6 +247,9 @@ def collect_residue_torsion_angles (pdb_hierarchy,
                    pdb_hierarchy=pdb_hierarchy,
                    atom_selection=atom_selection)
   residue_torsions = residue_chis
+  if chi_angles_only:
+    return residue_torsions
+
   ##################
 
   if atom_selection is not None:
@@ -269,46 +272,45 @@ def collect_residue_torsion_angles (pdb_hierarchy,
             next_residue = conformer.residues()[i_res+1]
           else:
             next_residue = None
-          if not chi_angles_only:
-            torsions = []
-            # atoms_to_work = [prevCA, prevC, curN, curCA, curC, nextN]
-            atoms_to_work = [None]*6
-            atoms_to_work[2] = residue.find_atom_by(name=" N  ")
-            atoms_to_work[3] = residue.find_atom_by(name=" CA ")
-            atoms_to_work[4] = residue.find_atom_by(name=" C  ")
-            if previous_residue is not None:
-              atoms_to_work[0] = previous_residue.find_atom_by(name=" CA ")
-              atoms_to_work[1] = previous_residue.find_atom_by(name=" C  ")
-            if next_residue is not None:
-              atoms_to_work[5] = next_residue.find_atom_by(name=" N  ")
+          torsions = []
+          # atoms_to_work = [prevCA, prevC, curN, curCA, curC, nextN]
+          atoms_to_work = [None]*6
+          atoms_to_work[2] = residue.find_atom_by(name=" N  ")
+          atoms_to_work[3] = residue.find_atom_by(name=" CA ")
+          atoms_to_work[4] = residue.find_atom_by(name=" C  ")
+          if previous_residue is not None:
+            atoms_to_work[0] = previous_residue.find_atom_by(name=" CA ")
+            atoms_to_work[1] = previous_residue.find_atom_by(name=" C  ")
+          if next_residue is not None:
+            atoms_to_work[5] = next_residue.find_atom_by(name=" N  ")
 
-            # atoms_to_work = [prevCA, prevC, curN, curCA, curC, nextN]
-            for i in range(len(atoms_to_work)):
-              if (atoms_to_work[i] is not None and
-                  not actual_selection[atoms_to_work[i].i_seq]):
-                atoms_to_work[i] = None
-            for i, name in enumerate(["omega", "phi", "psi"]):
-              if atoms_to_work[i:i+4].count(None) == 0:
-                angle = mmtbx.rotamer.omega_from_atoms(
-                    atoms_to_work[i],
-                    atoms_to_work[i+1],
-                    atoms_to_work[i+2],
-                    atoms_to_work[i+3])
-                if angle is not None:
-                  i_seqs = [
-                      atoms_to_work[i].i_seq,
-                      atoms_to_work[i+1].i_seq,
-                      atoms_to_work[i+2].i_seq,
-                      atoms_to_work[i+3].i_seq]
-                  torsions.append(group_args(chi_id=name, i_seqs=i_seqs))
-            altloc = residue.atoms()[0].fetch_labels().altloc
-            if len(torsions) > 0:
-              residue_info = group_args(
-                residue_name=residue.resname,
-                chain_id=chain.id,
-                altloc=altloc,
-                resid=residue.resid(),
-                chis=torsions)
-              residue_torsions.append(residue_info)
+          # atoms_to_work = [prevCA, prevC, curN, curCA, curC, nextN]
+          for i in range(len(atoms_to_work)):
+            if (atoms_to_work[i] is not None and
+                not actual_selection[atoms_to_work[i].i_seq]):
+              atoms_to_work[i] = None
+          for i, name in enumerate(["omega", "phi", "psi"]):
+            if atoms_to_work[i:i+4].count(None) == 0:
+              angle = mmtbx.rotamer.omega_from_atoms(
+                  atoms_to_work[i],
+                  atoms_to_work[i+1],
+                  atoms_to_work[i+2],
+                  atoms_to_work[i+3])
+              if angle is not None:
+                i_seqs = [
+                    atoms_to_work[i].i_seq,
+                    atoms_to_work[i+1].i_seq,
+                    atoms_to_work[i+2].i_seq,
+                    atoms_to_work[i+3].i_seq]
+                torsions.append(group_args(chi_id=name, i_seqs=i_seqs))
+          altloc = residue.atoms()[0].fetch_labels().altloc
+          if len(torsions) > 0:
+            residue_info = group_args(
+              residue_name=residue.resname,
+              chain_id=chain.id,
+              altloc=altloc,
+              resid=residue.resid(),
+              chis=torsions)
+            residue_torsions.append(residue_info)
           previous_residue = residue
   return residue_torsions
