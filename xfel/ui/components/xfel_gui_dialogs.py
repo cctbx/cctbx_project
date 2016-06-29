@@ -483,14 +483,27 @@ class CalibrationDialog(BaseDialog):
 
   def onOK(self, e):
     from xfel.ui.db import get_run_path
+    from xfel.command_line.cxi_mpi_submit import get_submit_command
+    from xfel.ui import settings_dir
+    from libtbx import easy_run
+    import copy
+    params = copy.deepcopy(self.parent.params)
+    params.mp.nproc = 1
+
+    version_str = self.version_name.ctr.GetValue()
+    working_dir = os.path.join(params.output_folder, "metrology", version_str)
+    if os.path.exists(working_dir):
+      wx.MessageBox('Version name %s already used'%version_str, 'Warning!',
+                    wx.ICON_EXCLAMATION)
+      return
+
     runs = [self.db.get_run(run_number=int(r)) for r in self.trial_runs.ctr.GetCheckedStrings()]
     run_ids = [r.id for r in runs]
     command = "cspad.cbf_metrology reflections=%s tag=%s split_dataset=True n_subset=%d "% (
       self.reflections.ctr.GetStringSelection(), self.version_name.ctr.GetValue(),
       self.n_subset.ctr.GetValue())
 
-    from xfel.ui import settings_dir
-    phil_file = os.path.join(settings_dir, "cfgs", "%s.phil"%self.version_name.ctr.GetValue())
+    phil_file = os.path.join(settings_dir, "cfgs", "%s.phil"%version_str)
     f = open(phil_file, 'w')
     f.write(self.phil_text.GetValue())
     f.close()
@@ -506,13 +519,30 @@ class CalibrationDialog(BaseDialog):
         if run.id in run_ids:
           run_ids.pop(run_ids.index(run.id))
           runs_found.append(run.id)
-          run_paths.append(os.path.join(get_run_path(self.parent.params.output_folder, trial, rungroup, run), 'out'))
+          run_paths.append(os.path.join(get_run_path(params.output_folder, trial, rungroup, run), 'out'))
     assert len(run_ids) == 0
 
     command += " ".join(run_paths)
-    print command
 
-    # TODO: bsub
+    submit_path = os.path.join(settings_dir, "%s.sh"%version_str)
+    command = str(get_submit_command(command, submit_path, working_dir, params.mp)) # comes back as unicode which throws off easy_run
+
+    cwd = os.getcwd()
+    os.makedirs(working_dir)
+    os.chdir(working_dir)
+
+    print "Submitting metrology refinement. Command:"
+    print command
+    try:
+      results = easy_run.fully_buffered(command=command)
+      results.show_stdout()
+      results.show_stderr()
+      results.raise_if_errors()
+    except Exception, exc:
+      if not "Warning: job being submitted without an AFS token." in str(exc):
+        raise exc
+    os.chdir(cwd)
+    print "Output will be in", working_dir
 
     e.Skip()
 

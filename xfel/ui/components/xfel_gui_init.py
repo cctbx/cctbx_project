@@ -226,7 +226,6 @@ class ProgressSentinel(Thread):
       if len(db.get_all_trials()) > 0:
         trial = db.get_trial(
           trial_number=self.parent.run_window.status_tab.trial_no)
-        print 'DEBUG: trial ID is ', trial.trial_id
 
         tags = self.parent.run_window.status_tab.selected_tags
         cells = db.get_stats(trial=trial, tags=tags)()
@@ -526,8 +525,7 @@ class MainWindow(wx.Frame):
     calib_dlg = dlg.CalibrationDialog(self, db=self.db)
     calib_dlg.Fit()
 
-    if calib_dlg.ShowModal() == wx.ID_OK:
-      print 'OK!'
+    calib_dlg.ShowModal()
 
   def onRun(self, e):
     ''' All the jobs will be activated here '''
