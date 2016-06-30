@@ -2135,7 +2135,25 @@ geometry_restraints.edits {
     sigma = 0.02
   }
 }
-"""
+""",
+  "linking_test_MAN-before-ASN.pdb" : """
+HETATM   32  C1  MAN A  13     -23.598  63.781-180.576  1.00 20.00           C
+HETATM   33  O5  MAN A  13     -24.198  64.994-181.028  1.00 20.00           O
+HETATM   34  C5  MAN A  13     -25.269  65.301-180.140  1.00 20.00           C
+HETATM   35  C6  MAN A  13     -26.064  66.487-180.693  1.00 20.00           C
+HETATM   36  O6  MAN A  13     -26.588  66.150-181.978  1.00 20.00           O
+HETATM   37  C4  MAN A  13     -24.712  65.661-178.762  1.00 20.00           C
+HETATM   38  O4  MAN A  13     -25.786  65.996-177.882  1.00 20.00           O
+HETATM   39  C3  MAN A  13     -23.949  64.456-178.202  1.00 20.00           C
+HETATM   40  O3  MAN A  13     -23.296  64.820-176.985  1.00 20.00           O
+HETATM   41  C2  MAN A  13     -22.904  64.015-179.233  1.00 20.00           C
+HETATM   42  O2  MAN A  13     -21.915  65.035-179.378  1.00 20.00           O
+ATOM     43  O   ASN A 210     -64.131  35.488 -16.482  1.00 77.95           O
+ATOM     44  N   ASN A 210     -63.707  32.434 -14.675  1.00 35.76           N
+ATOM     45  CA  ASN A 210     -64.179  33.784 -14.816  1.00 64.69           C
+ATOM     46  C   ASN A 210     -63.605  34.499 -16.022  1.00 72.64           C
+ATOM     47  CB  ASN A 210     -63.830  34.555 -13.567  1.00 77.34           C
+""",
         }
 
 links = {
@@ -2177,6 +2195,8 @@ links = {
   "linking_test_HEM_TYR.pdb" : [63,63],
   #
   "linking_test_CYS_CYS_alt_loc.pdb" : [17,17],
+  #
+  "linking_test_MAN-before-ASN.pdb" : [15,15],
   }
 
 def run_and_test(cmd, pdb, i):
@@ -2262,7 +2282,8 @@ def run(only_i=None):
         "linking_test_CD_GHE_A_B.pdb",
         "linking_test_NAG-FU4.pdb", # get_alpha_beta seems to be broken
         ] and 0: continue
-    if pdb.find("CD_GHE")>=-1: continue
+    if pdb.find("CD_GHE")>-1: continue
+    print 'pdb',pdb
     j+=1
     if only_i is not None and only_i!=j: continue
     for i in range(2):

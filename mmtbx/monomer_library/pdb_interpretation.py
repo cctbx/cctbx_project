@@ -2464,6 +2464,7 @@ class build_chain_proxies(object):
               for bond in prev_mm.lib_link.bond_list:
                 atoms = (prev_mm.expected_atoms.get(bond.atom_id_1, None),
                          mm     .expected_atoms.get(bond.atom_id_2, None))
+                if None in atoms: return 999.
                 i_seqs = [atom.i_seq for atom in atoms]
                 s1 = sites_cart[i_seqs[0]]
                 s2 = sites_cart[i_seqs[1]]
