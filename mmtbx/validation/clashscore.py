@@ -508,7 +508,8 @@ class nqh_flips (validation) :
           resseq=resid[2:6].strip(),
           icode=resid[6:7],
           altloc=resid[14:15],
-          resname=resname)
+          resname=resname,
+          outlier=True)
         flip.set_coordinates_from_hierarchy(pdb_hierarchy)
         self.results.append(flip)
         self.n_outliers += 1
