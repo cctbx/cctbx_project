@@ -7,10 +7,10 @@ Last Changed: 06/30/2016
 Description : XFEL UI Plots and Charts
 '''
 
-import os
 import wx
 
 from matplotlib import pyplot as plt
+from matplotlib.gridspec import GridSpec
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 
@@ -80,15 +80,11 @@ class PopUpCharts(object):
 
   def plot_uc_histogram(self, isoform, info):
 
-    bins = info[isoform]['bins']
-
-    # fig = plt.figure(figsize=(12, 9))
-    # gsp = gridspec.GridSpec(2, 3)
-    # sub_a = fig.add_subplot(gsp[0])
-    # sub_b = fig.add_subplot(gsp[1])
-    # sub_c = fig.add_subplot(gsp[2])
-    # sub_alpha = fig.add_subplot(gsp[3])
-    # sub_beta = fig.add_subplot(gsp[4])
-    # sub_gamma = fig.add_subplot(gsp[5])
-
-
+    fig = plt.figure(figsize=(12, 9))
+    gsp = GridSpec(2, 3)
+    sub_a = fig.add_subplot(gsp[0])
+    sub_b = fig.add_subplot(gsp[1])
+    sub_c = fig.add_subplot(gsp[2])
+    sub_alpha = fig.add_subplot(gsp[3])
+    sub_beta = fig.add_subplot(gsp[4])
+    sub_gamma = fig.add_subplot(gsp[5])
