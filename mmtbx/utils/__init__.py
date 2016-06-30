@@ -2336,7 +2336,7 @@ def switch_rotamers(
                   t_residue.atoms().set_xyz(rotamer_sites_cart)
                   ev = rotamer_manager.evaluate_residue_2(t_residue)
                   if ev == "Allowed":
-                    # print "  Skipping allowed for", residue.id_str()
+                    # print "  Skipping allowed for ", residue.id_str()
                     continue
                 dist = flex.max(flex.sqrt((
                   sites_cart_start_ - rotamer_sites_cart).dot()))
