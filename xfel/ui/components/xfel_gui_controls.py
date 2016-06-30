@@ -12,9 +12,6 @@ import wx
 import wx.lib.agw.floatspin as fs
 from wxtbx import metallicbutton as mb
 
-from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
-from matplotlib.figure import Figure
-
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
 if wx.Platform == '__WXGTK__':
@@ -375,7 +372,17 @@ class ChoiceCtrl(CtrlBase):
     ctr_box = wx.FlexGridSizer(1, 3, 0, 10)
     self.txt = wx.StaticText(self, label=label, size=label_size)
     self.txt.SetFont(self.font)
-    self.ctr = wx.Choice(self, size=ctrl_size, choices=choices)
+
+    # Check if choices are tuples, extract data and assign to items if so
+    if all(isinstance(i, tuple) for i in choices):
+      items = [i[0] for i in choices]
+      self.ctr = wx.Choice(self, size=ctrl_size, choices=items)
+      for choice in choices:
+        item_idx = self.ctr.FindString(choice[0])
+        self.ctr.SetClientData(item_idx, choice[1])
+    else:
+      self.ctr = wx.Choice(self, size=ctrl_size, choices=choices)
+
     ctr_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
     ctr_box.Add(self.ctr, flag=wx.ALIGN_CENTER_VERTICAL)
 
@@ -542,61 +549,6 @@ class GaugeBar(CtrlBase):
       self.sizer.Add(self.btn, 1, wx.ALIGN_RIGHT | wx.ALIGN_CENTER)
 
     self.SetSizer(self.sizer)
-
-
-class SingleBarPlot(CtrlBase):
-  def __init__(self, parent,
-               label='',
-               label_size=(80, -1),
-               label_style='normal',
-               content_style='normal',
-               gauge_size=(250, 15),
-               button=False,
-               button_label='View Stats',
-               button_size=wx.DefaultSize,
-               choice_box=True,
-               choice_label='',
-               choice_label_size=(120, -1),
-               choice_size=(100, -1),
-               choice_style='normal',
-               choices=[],
-               gauge_max=100):
-    CtrlBase.__init__(self, parent=parent, label_style=label_style,
-                      content_style=content_style)
-
-    self.sizer = wx.FlexGridSizer(1, 6, 0, 5)
-    self.sizer.AddGrowableCol(3)
-
-    dpi = wx.ScreenDC().GetPPI()[0]
-    figsize = (gauge_size[0] / dpi, gauge_size[1] / dpi)
-    self.status_figure = Figure(figsize=figsize)
-    self.status_figure.patch.set_alpha(0)
-    self.ax = self.status_figure.add_subplot(111)
-    self.canvas = FigureCanvas(self, -1, self.status_figure)
-
-    if choice_box:
-      self.bins = ChoiceCtrl(self,
-                             label=choice_label,
-                             label_size=choice_label_size,
-                             label_style=choice_style,
-                             ctrl_size=choice_size,
-                             choices=choices)
-
-    self.txt_iso = wx.StaticText(self, label=label, size=label_size)
-    self.txt_max = wx.StaticText(self, label='{:.2f}'.format(gauge_max))
-    self.txt_min = wx.StaticText(self, label='0')
-    self.sizer.Add(self.txt_iso, flag=wx.ALIGN_CENTER_VERTICAL)
-    self.sizer.Add(self.txt_min, flag=wx.ALIGN_CENTER_VERTICAL)
-    self.sizer.Add(self.canvas, 1, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
-    self.sizer.Add(self.txt_max, flag=wx.ALIGN_CENTER_VERTICAL)
-    self.sizer.Add(self.bins, flag=wx.ALIGN_CENTER_VERTICAL)
-
-    if button:
-      self.btn = wx.Button(self, label=button_label, size=button_size)
-      self.sizer.Add(self.btn, 1, wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL)
-
-    self.SetSizer(self.sizer)
-
 
 
 class SentinelStatus(CtrlBase):

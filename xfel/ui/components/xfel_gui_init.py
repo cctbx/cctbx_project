@@ -24,6 +24,8 @@ except ImportError:
 from xfel.clustering.cluster import Cluster
 import xfel.ui.components.xfel_gui_controls as gctr
 import xfel.ui.components.xfel_gui_dialogs as dlg
+import xfel.ui.components.xfel_gui_plotter as pltr
+
 from xfel.ui import load_cached_settings, save_cached_settings
 from xfel.ui.db import get_run_path
 from xfel.ui.db.xfel_db import xfel_db_application
@@ -235,19 +237,31 @@ class ProgressSentinel(Thread):
           self.parent.run_window.status_tab.tag_trial_changed = False
 
         for cell in cells:
+
+          # Check to see if different high-res bin has been selected
+          current_rows = self.parent.run_window.status_tab.rows
+          if current_rows != {}:
+            bins = cell.bins[:int(current_rows[cell.isoform.name]['high_bin'])]
+          else:
+            bins = cell.bins
+
+          # Check for cell isoform
+          # TODO: if not present, calculate stats for all images
           if cell.isoform is None:
             continue
-          counts = [int(i.count) for i in cell.bins]
-          totals = [int(i.total_hkl) for i in cell.bins]
+          counts = [int(i.count) for i in bins]
+          totals = [int(i.total_hkl) for i in bins]
 
+          # Apply throttle to multiplicity calculation
           if trial.process_percent is None:
             process_percent = 100
           else:
             process_percent = trial.process_percent
 
+          # Generate multiplicity graph for isoforms
           mult = sum(counts) / sum(totals) * (process_percent / 100)
           self.info[cell.isoform.name] = {'multiplicity':mult,
-                                          'bins':cell.bins,
+                                          'bins':bins,
                                           'isoform':cell.isoform.name,
                                           'a':cell.cell_a,
                                           'b':cell.cell_b,
@@ -841,7 +855,6 @@ class JobsTab(BaseTab):
     self.job_sizer.Add(job_row_sizer, flag=wx.EXPAND)
 
 
-
 class StatusTab(BaseTab):
   def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
@@ -1046,43 +1059,43 @@ class StatusTab(BaseTab):
 
       if self.redraw_windows:
         self.status_sizer.Clear(deleteWindows=True)
-        for iso, values in info.iteritems():
-          self.add_row(name=values['isoform'], value=values['multiplicity'],
-                       bins=values['bins'], xmax=xmax)
-        self.redraw_windows = False
-      else:
-        for iso, values in info.iteritems():
-          self.update_row(row=self.rows[values['isoform']],
-                          value=values['multiplicity'], xmax=xmax)
+        self.rows = {}
+        row = None
+
+      for iso, values in info.iteritems():
+        if not self.redraw_windows:
+          row = self.rows[values['isoform']]['row']
+
+        self.update_row(row=row,
+                        name=values['isoform'],
+                        value=values['multiplicity'],
+                        bins=values['bins'],
+                        xmax=xmax)
+      self.redraw_windows = False
+
     else:
       self.status_sizer.Clear(deleteWindows=True)
 
-  def update_row(self, row, value, xmax):
-    ''' Update bar graph in existing status row '''
-    row.ax.clear()
-    row.ax.barh(0, value, height=1, align='center', color='#7570b3')
-    row.ax.axvline(x=self.multiplicity_goal, lw=4, c='#d95f02')
-    row.ax.set_xlim(xmax=xmax)
-    row.ax.set_axis_off()
-    row.txt_max.SetLabel('{:.2f}'.format(value))
-    row.canvas.draw()
+  def update_row(self, row, name, value, bins, xmax):
+    ''' Add new row, or update existing '''
 
-  def add_row(self, name, value, bins, xmax):
-    ''' Add new status row (rebuild from scratch) '''
-    bin_choices = ["Bin {}:  {:3.2f} - {:3.2f}" \
-                   "".format(b.number, float(b.d_max),
-                             float(b.d_min)) for b in bins]
-
-    row = gctr.SingleBarPlot(self.status_panel,
-                             label='Isoform {}'.format(name),
-                             label_size=(150, -1),
-                             gauge_size=(350, 15),
-                             button=True,
-                             choice_label_size=(100, -1),
-                             choice_label='High res. limit:',
-                             choice_size=(160, -1),
-                             choices = bin_choices,
-                             gauge_max=value)
+    bin_choices = [("Bin {}:  {:3.2f} - {:3.2f}" \
+                    "".format(b.number, float(b.d_max), float(b.d_min)),
+                    bins.index(b)) for b in bins]
+    if row is None:
+      self.rows[name] = {}
+      row = pltr.SingleBarPlot(self.status_panel,
+                               label='Isoform {}'.format(name),
+                               label_size=(150, -1),
+                               gauge_size=(350, 15),
+                               button=True,
+                               choice_label_size=(100, -1),
+                               choice_label='High res. limit:',
+                               choice_size=(160, -1),
+                               choices = bin_choices,
+                               gauge_max=value)
+      self.status_sizer.Add(row, flag=wx.EXPAND | wx.ALL, border=10)
+      row.bins.ctr.SetSelection(row.bins.ctr.GetCount() - 1)
 
     row.ax.clear()
     row.ax.barh(0, value, height=1, align='center', color='#7570b3')
@@ -1091,10 +1104,9 @@ class StatusTab(BaseTab):
     row.ax.set_axis_off()
     row.canvas.draw()
     row.txt_max.SetLabel('{:.2f}'.format(value))
-    self.rows[name] = row
-
-    self.status_sizer.Add(row, flag=wx.EXPAND | wx.ALL, border=10)
-
+    self.rows[name]['row'] = row
+    self.rows[name]['high_bin'] = row.bins.ctr.GetClientData(
+      row.bins.ctr.GetSelection())
 
 class MergeTab(BaseTab):
   def __init__(self, parent, prefix='prime'):
