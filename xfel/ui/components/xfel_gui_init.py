@@ -1003,11 +1003,13 @@ class StatusTab(BaseTab):
                           in checked_items]
     self.main.run_window.prg_light.change_status('idle')
     self.tag_trial_changed = True
+    self.rows = {}
 
   def onTrialChoice(self, e):
     self.trial_no = self.trial_number.ctr.GetSelection()
     self.main.run_window.prg_light.change_status('idle')
     self.tag_trial_changed = True
+    self.rows = {}
 
   def find_tags(self):
     self.tag_list.ctr.Clear()
