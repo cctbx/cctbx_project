@@ -239,7 +239,7 @@ class ProgressSentinel(Thread):
             continue
           counts = [int(i.count) for i in cell.bins]
           totals = [int(i.total_hkl) for i in cell.bins]
-          
+
           if trial.process_percent is None:
             process_percent = 100
           else:
@@ -809,7 +809,7 @@ class JobsTab(BaseTab):
   def find_trials(self):
     if self.db is not None:
       choices = ['All jobs'] + \
-                ['trial {}'.format(i.trial_id) for i in self.db.get_all_trials()]
+                ['trial {}'.format(i.trial) for i in self.db.get_all_trials()]
       self.trial_choice.ctr.Clear()
       for choice in choices:
         self.trial_choice.ctr.Append(choice)
@@ -858,13 +858,13 @@ class StatusTab(BaseTab):
     self.multiplicity_goal = 10
 
     self.status_panel = ScrolledPanel(self, size=(-1, 120))
-    status_box = wx.StaticBox(self.status_panel, label='Data Statistics')
-    self.status_sizer = wx.StaticBoxSizer(status_box, wx.VERTICAL)
+    self.status_box = wx.StaticBox(self.status_panel, label='Data Statistics')
+    self.status_sizer = wx.StaticBoxSizer(self.status_box, wx.VERTICAL)
     self.status_panel.SetSizer(self.status_sizer)
 
     self.opt_panel = wx.Panel(self)
-    opt_box = wx.StaticBox(self.opt_panel, label='Unit Cell Clustering')
-    self.opt_box_sizer = wx.StaticBoxSizer(opt_box, wx.HORIZONTAL)
+    self.opt_box = wx.StaticBox(self.opt_panel, label='Unit Cell Clustering')
+    self.opt_box_sizer = wx.StaticBoxSizer(self.opt_box, wx.HORIZONTAL)
     self.opt_panel.SetSizer(self.opt_box_sizer)
 
     self.opt_cluster = gctr.OptionCtrl(self.opt_panel,
@@ -881,8 +881,8 @@ class StatusTab(BaseTab):
     self.opt_box_sizer.Add(self.btn_cluster, flag=wx.ALL, border=10)
 
     self.iso_panel = ScrolledPanel(self, size=(-1, 100))
-    iso_box = wx.StaticBox(self.iso_panel, label='Isoforms')
-    self.iso_box_sizer = wx.StaticBoxSizer(iso_box, wx.VERTICAL)
+    self.iso_box = wx.StaticBox(self.iso_panel, label='Isoforms')
+    self.iso_box_sizer = wx.StaticBoxSizer(self.iso_box, wx.VERTICAL)
     self.iso_panel.SetSizer(self.iso_box_sizer)
 
     self.trial_number = gctr.ChoiceCtrl(self,
@@ -1032,56 +1032,65 @@ class StatusTab(BaseTab):
     #self.status_panel.Layout()
     self.status_sizer.Layout()
     self.status_panel.SetupScrolling()
+    self.status_box.SetLabel('Data Statistics - Trial {}'.format(self.trial_no))
 
   def refresh_rows(self, info={}):
+    ''' Refresh status data '''
 
     if info != {}:
+      max_multiplicity = max([info[i]['multiplicity'] for i in info])
+      if max_multiplicity > self.multiplicity_goal:
+        xmax = max_multiplicity
+      else:
+        xmax = self.multiplicity_goal
+
       if self.redraw_windows:
         self.status_sizer.Clear(deleteWindows=True)
         for iso, values in info.iteritems():
           self.add_row(name=values['isoform'], value=values['multiplicity'],
-                       bins=values['bins'])
+                       bins=values['bins'], xmax=xmax)
         self.redraw_windows = False
       else:
         for iso, values in info.iteritems():
           self.update_row(row=self.rows[values['isoform']],
-                          value=values['multiplicity'])
+                          value=values['multiplicity'], xmax=xmax)
     else:
       self.status_sizer.Clear(deleteWindows=True)
 
-  def update_row(self, row, value):
-    if self.multiplicity_goal > value:
-      gauge_max = self.multiplicity_goal
-    else:
-      gauge_max = value
+  def update_row(self, row, value, xmax):
+    ''' Update bar graph in existing status row '''
+    row.ax.clear()
+    row.ax.barh(0, value, height=1, align='center', color='#7570b3')
+    row.ax.axvline(x=self.multiplicity_goal, lw=4, c='#d95f02')
+    row.ax.set_xlim(xmax=xmax)
+    row.ax.set_axis_off()
+    row.txt_max.SetLabel('{:.2f}'.format(value))
+    row.canvas.draw()
 
-    row.txt_max.SetLabel(str(gauge_max))
-    row.bar.SetRange(gauge_max)
-    row.bar.SetValue(value)
-
-  def add_row(self, name, value, bins):
-
-    if self.multiplicity_goal > value:
-      gauge_max = self.multiplicity_goal
-    else:
-      gauge_max = value
-
+  def add_row(self, name, value, bins, xmax):
+    ''' Add new status row (rebuild from scratch) '''
     bin_choices = ["Bin {}:  {:3.2f} - {:3.2f}" \
                    "".format(b.number, float(b.d_max),
                              float(b.d_min)) for b in bins]
 
-    row = gctr.GaugeBar(self.status_panel,
-                        label='Isoform {}'.format(name),
-                        label_size=(150, -1),
-                        gauge_size=(350, 15),
-                        button=True,
-                        choice_label_size=(100, -1),
-                        choice_label='High res. limit:',
-                        choice_size=(160, -1),
-                        choices = bin_choices,
-                        gauge_max=gauge_max)
-    row.bar.SetValue(value)
-    row.bins.ctr.SetSelection(row.bins.ctr.GetCount() - 1)
+    row = gctr.SingleBarPlot(self.status_panel,
+                             label='Isoform {}'.format(name),
+                             label_size=(150, -1),
+                             gauge_size=(350, 15),
+                             button=True,
+                             choice_label_size=(100, -1),
+                             choice_label='High res. limit:',
+                             choice_size=(160, -1),
+                             choices = bin_choices,
+                             gauge_max=value)
+
+    row.ax.clear()
+    row.ax.barh(0, value, height=1, align='center', color='#7570b3')
+    row.ax.axvline(x=self.multiplicity_goal, lw=4, c='#d95f02')
+    row.ax.set_xlim(xmax=xmax)
+    row.ax.set_axis_off()
+    row.canvas.draw()
+    row.txt_max.SetLabel('{:.2f}'.format(value))
     self.rows[name] = row
 
     self.status_sizer.Add(row, flag=wx.EXPAND | wx.ALL, border=10)

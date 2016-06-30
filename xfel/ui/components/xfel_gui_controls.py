@@ -12,6 +12,9 @@ import wx
 import wx.lib.agw.floatspin as fs
 from wxtbx import metallicbutton as mb
 
+from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
+from matplotlib.figure import Figure
+
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
 if wx.Platform == '__WXGTK__':
@@ -309,7 +312,7 @@ class OptionCtrl(CtrlBase):
       opt_box = wx.FlexGridSizer(1, len(items) * 2 + 1, 0, 10)
       self.txt = wx.StaticText(self, label=label, size=label_size)
       self.txt.SetFont(self.font)
-      opt_box.Add(self.txt)
+      opt_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
     else:
       opt_box = wx.FlexGridSizer(1, len(items) * 2, 0, 10)
 
@@ -320,12 +323,13 @@ class OptionCtrl(CtrlBase):
         sub_label = key
 
       if len(items) > 1:
-        opt_box.Add(wx.StaticText(self, id=wx.ID_ANY, label=sub_label))
+        opt_label = wx.StaticText(self, id=wx.ID_ANY, label=sub_label)
+        opt_box.Add(opt_label, flag=wx.ALIGN_CENTER_VERTICAL)
 
       item = wx.TextCtrl(self, id=wx.ID_ANY, size=ctrl_size,
                          style=wx.TE_PROCESS_ENTER)
       item.SetValue(str(value))
-      opt_box.Add(item)
+      opt_box.Add(item, flag=wx.ALIGN_CENTER_VERTICAL)
       self.__setattr__(key, item)
 
     self.SetSizer(opt_box)
@@ -352,8 +356,8 @@ class SpinCtrl(CtrlBase):
     self.ctr = fs.FloatSpin(self, value=ctrl_value, max_val=(ctrl_max),
                             min_val=(ctrl_min), increment=ctrl_step,
                             digits=ctrl_digits, size=ctrl_size)
-    ctr_box.Add(self.txt)
-    ctr_box.Add(self.ctr)
+    ctr_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
+    ctr_box.Add(self.ctr, flag=wx.ALIGN_CENTER_VERTICAL)
 
     self.SetSizer(ctr_box)
 
@@ -372,8 +376,8 @@ class ChoiceCtrl(CtrlBase):
     self.txt = wx.StaticText(self, label=label, size=label_size)
     self.txt.SetFont(self.font)
     self.ctr = wx.Choice(self, size=ctrl_size, choices=choices)
-    ctr_box.Add(self.txt)
-    ctr_box.Add(self.ctr)
+    ctr_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
+    ctr_box.Add(self.ctr, flag=wx.ALIGN_CENTER_VERTICAL)
 
     self.SetSizer(ctr_box)
 
@@ -390,8 +394,8 @@ class CheckListCtrl(CtrlBase):
     self.txt = wx.StaticText(self, label=label, size=label_size)
     self.txt.SetFont(self.font)
     self.ctr = wx.CheckListBox(self, size=ctrl_size, choices=choices)
-    ctr_box.Add(self.txt)
-    ctr_box.Add(self.ctr)
+    ctr_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
+    ctr_box.Add(self.ctr, flag=wx.ALIGN_CENTER_VERTICAL)
 
     self.SetSizer(ctr_box)
 
@@ -409,14 +413,15 @@ class MultiChoiceCtrl(CtrlBase):
     choice_box = wx.FlexGridSizer(1, len(items) * 2 + 1, 0, 10)
     self.txt = wx.StaticText(self, label=label, size=label_size)
     self.txt.SetFont(self.font)
-    choice_box.Add(self.txt)
+    choice_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
 
     for key, choices in items.iteritems():
       if len(items) > 1:
-        choice_box.Add(wx.StaticText(self, id=wx.ID_ANY, label=key))
+        ch_label =wx.StaticText(self, id=wx.ID_ANY, label=key)
+        choice_box.Add(ch_label, flag=wx.ALIGN_CENTER_VERTICAL)
 
       item = wx.Choice(self, id=wx.ID_ANY, size=ctrl_size, choices=choices)
-      choice_box.Add(item)
+      choice_box.Add(item, flag=wx.ALIGN_CENTER_VERTICAL)
       self.__setattr__(key, item)
 
     self.SetSizer(choice_box)
@@ -537,6 +542,61 @@ class GaugeBar(CtrlBase):
       self.sizer.Add(self.btn, 1, wx.ALIGN_RIGHT | wx.ALIGN_CENTER)
 
     self.SetSizer(self.sizer)
+
+
+class SingleBarPlot(CtrlBase):
+  def __init__(self, parent,
+               label='',
+               label_size=(80, -1),
+               label_style='normal',
+               content_style='normal',
+               gauge_size=(250, 15),
+               button=False,
+               button_label='View Stats',
+               button_size=wx.DefaultSize,
+               choice_box=True,
+               choice_label='',
+               choice_label_size=(120, -1),
+               choice_size=(100, -1),
+               choice_style='normal',
+               choices=[],
+               gauge_max=100):
+    CtrlBase.__init__(self, parent=parent, label_style=label_style,
+                      content_style=content_style)
+
+    self.sizer = wx.FlexGridSizer(1, 6, 0, 5)
+    self.sizer.AddGrowableCol(3)
+
+    dpi = wx.ScreenDC().GetPPI()[0]
+    figsize = (gauge_size[0] / dpi, gauge_size[1] / dpi)
+    self.status_figure = Figure(figsize=figsize)
+    self.status_figure.patch.set_alpha(0)
+    self.ax = self.status_figure.add_subplot(111)
+    self.canvas = FigureCanvas(self, -1, self.status_figure)
+
+    if choice_box:
+      self.bins = ChoiceCtrl(self,
+                             label=choice_label,
+                             label_size=choice_label_size,
+                             label_style=choice_style,
+                             ctrl_size=choice_size,
+                             choices=choices)
+
+    self.txt_iso = wx.StaticText(self, label=label, size=label_size)
+    self.txt_max = wx.StaticText(self, label='{:.2f}'.format(gauge_max))
+    self.txt_min = wx.StaticText(self, label='0')
+    self.sizer.Add(self.txt_iso, flag=wx.ALIGN_CENTER_VERTICAL)
+    self.sizer.Add(self.txt_min, flag=wx.ALIGN_CENTER_VERTICAL)
+    self.sizer.Add(self.canvas, 1, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
+    self.sizer.Add(self.txt_max, flag=wx.ALIGN_CENTER_VERTICAL)
+    self.sizer.Add(self.bins, flag=wx.ALIGN_CENTER_VERTICAL)
+
+    if button:
+      self.btn = wx.Button(self, label=button_label, size=button_size)
+      self.sizer.Add(self.btn, 1, wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL)
+
+    self.SetSizer(self.sizer)
+
 
 
 class SentinelStatus(CtrlBase):
