@@ -244,6 +244,13 @@ class rotalyze_frame (rotarama_frame) :
       (points, coords) = self._validation.get_plot_data(
         residue_name=res_type.upper(),
         point_type=pt_type)
+      # shift chi2 values by 180 to fit in contours
+      if (res_type.lower() in ["asp", "phe", "tyr"]) :
+        for i in xrange(len(points)):
+          if (points[i][1] > 180.0):
+            point = list(points[i])
+            point[1] -= 180.0
+            points[i] = tuple(point)
       self._point_cache[(res_type, pt_type)] = points
       self._xyz_cache[(res_type, pt_type)] = coords
     else :
