@@ -415,11 +415,12 @@ class InMemScript(DialsProcessScript):
         if self.base_dxtbx is None:
           raise Sorry("Couldn't load calibration file for run %d"%run.run())
 
-        if params.format.cbf.gain_mask_value is not None:
-          self.gain_mask = self.psana_det.gain_mask(run.run(), gain=params.format.cbf.gain_mask_value)
-
-        if params.format.cbf.common_mode.algorithm is None or params.format.cbf.common_mode.algorithm == "custom":
-          self.pedestal = self.psana_det.pedestals(run)
+        if params.format.file_format == 'cbf':
+          if params.format.cbf.common_mode.algorithm == "custom":
+            self.common_mode = params.format.cbf.common_mode.custom_parameterization
+            assert self.common_mode is not None
+          else:
+            self.common_mode = params.format.cbf.common_mode.algorithm # could be None or default
 
         if params.format.cbf.invalid_pixel_mask is not None:
           from libtbx import easy_pickle
@@ -539,26 +540,15 @@ class InMemScript(DialsProcessScript):
     # the data needs to have already been processed and put into the event by psana
     if self.params.format.file_format == 'cbf':
       # get numpy array, 32x185x388
-      if self.params.format.cbf.common_mode.algorithm == "default":
-        data = self.psana_det.calib(evt) # applies psana's complex run-dependent calibrations
-      elif self.params.format.cbf.common_mode.algorithm is None:
-        data = self.psana_det.raw_data(evt)
-        if data is not None:
-          data -= self.pedestal
-      else:
-        assert self.params.format.cbf.common_mode.algorithm == "custom" and self.params.format.cbf.common_mode.custom_parameterization is not None
-        data = self.psana_det.raw_data(evt)
-        if data is not None:
-          data -= self.pedestal
-          self.psana_det.common_mode_apply(evt.run(), data, self.params.format.cbf.common_mode.custom_parameterization)
+      data = cspad_cbf_tbx.get_psana_corrected_data(self.psana_det, evt, use_default=False, dark=True,
+                                                    common_mode=self.common_mode,
+                                                    apply_gain_mask=self.params.format.cbf.gain_mask_value is not None,
+                                                    gain_mask_value=self.params.format.cbf.gain_mask_value,
+                                                    per_pixel_gain=False)
       if data is None:
         print "No data"
         self.debug_write(",no_data\n")
         return
-
-      if self.params.format.cbf.gain_mask_value is not None:
-        # apply gain mask
-        data *= self.gain_mask
 
       distance = cspad_tbx.env_distance(self.params.input.address, run.env(), self.params.format.cbf.detz_offset)
       if distance is None:

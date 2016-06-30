@@ -133,9 +133,6 @@ class Script(object):
         if base_dxtbx is None:
           raise Sorry("Couldn't load calibration file for run %d"%run.run())
 
-        if params.format.cbf.gain_mask_value is not None:
-          gain_mask = psana_det.gain_mask(run.run(), gain=params.format.cbf.gain_mask_value)
-
       # list of all events
       times = run.times()
       nevents = min(len(times),max_events)
@@ -174,11 +171,11 @@ class Script(object):
 
         elif params.format.file_format == "cbf":
           # get numpy array, 32x185x388
-          data = psana_det.calib(evt) # applies psana's complex run-dependent calibrations
-
-          if params.format.cbf.gain_mask_value is not None:
-            # apply gain mask
-            data *= gain_mask
+          data = cspad_cbf_tbx.get_psana_corrected_data(psana_det, evt, use_default=False, dark=True,
+                                                        common_mode=None,
+                                                        apply_gain_mask=params.format.cbf.gain_mask_value is not None,
+                                                        gain_mask_value=params.format.cbf.gain_mask_value,
+                                                        per_pixel_gain=False)
 
           distance = cspad_tbx.env_distance(params.input.address, run.env(), params.format.cbf.detz_offset)
           if distance is None:

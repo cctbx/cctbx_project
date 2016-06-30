@@ -219,10 +219,6 @@ the output images in the folder cxi49812.
 
     if not command_line.options.as_pickle:
       psana_det = psana.Detector(address, ds.env())
-      if command_line.options.gain_mask_value is not None:
-        gain_mask = psana_det.gain_mask(runnumber, gain=command_line.options.gain_mask_value)
-      else:
-        gain_mask = None
 
     # list of all events
     if command_line.options.skipevents > 0:
@@ -247,12 +243,18 @@ the output images in the folder cxi49812.
         data = evt.get(psana.ndarray_float64_3, src, 'image0')
       else:
         # get numpy array, 32x185x388
+        from xfel.cftbx.detector.cspad_cbf_tbx import get_psana_corrected_data
         if command_line.options.raw_data:
-          data = psana_det.raw_data(evt).astype(np.float64) # uncorrected pixels
+          data = get_psana_corrected_data(psana_det, evt, use_default=False, dark=False, common_mode=None,
+                                          apply_gain_mask=False, per_pixel_gain=False)
         else:
-          data = psana_det.calib(evt) # applies psana's complex run-dependent calibrations
-        if gain_mask is not None:
-          data *= gain_mask
+          if command_line.options.gain_mask_value is None:
+            data = get_psana_corrected_data(psana_det, evt, use_default=True)
+          else:
+            data = get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, common_mode=None,
+                                            apply_gain_mask=True, gain_mask_value=command_line.options.gain_mask_value,
+                                            per_pixel_gain=False)
+
       if data is None:
         print "No data"
         continue
@@ -526,7 +528,6 @@ the output images in the folder cxi49812.
 
       for data, path in zip(all_data, dest_paths):
         print "Saving", path
-
         cspad_img = cspad_cbf_tbx.format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, address, round_to_int=False)
         cspad_img._cbf_handle.write_widefile(path, pycbf.CBF,\
           pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)

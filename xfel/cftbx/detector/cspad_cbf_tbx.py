@@ -14,9 +14,46 @@ asic_gap = 3
 pixel_size = 0.10992
 from xfel.cxi.cspad_ana.cspad_tbx import cspad_saturated_value, cspad_min_trusted_value
 
+def get_psana_corrected_data(psana_det, evt, use_default = False, dark = True, common_mode = None, apply_gain_mask = True, gain_mask_value = None, per_pixel_gain = False):
+  """
+  Given a psana Detector object, apply corrections as appropriate and return the data from the event
+  @param psana_det psana Detector object
+  @param evt psana event
+  @param use_default If true, apply the default calibration only, using the psana algorithms. Otherise, use the corrections
+  specified by the rest of the flags and values passed in.
+  @param dark Whether to apply the detector dark
+  @param common_mode Which common mode algorithm to apply. None: apply no algorithm. Default: use the algorithm specified
+  in the calib folder. Otherwise should be a list as specified by the psana documentation for common mode customization
+  @param apply_gain_mask Whether to apply the common mode gain mask correction
+  @param gain_mask_value Multiplier to apply to the pixels, according to the gain mask
+  @param per_pixel_gain If available, use the per pixel gain deployed to the calibration folder
+  @return Numpy array corrected as specified.
+  """
+  # order is pedestals, then common mode, then gain mask, then per pixel gain
+  run = evt.run()
+  if use_default:
+    return psana_det.calib(evt) # applies psana's complex run-dependent calibrations
+  data = psana_det.raw_data(evt)
+  if data is None:
+    return
+
+  if dark:
+    data -= psana_det.pedestals(run)
+  if common_mode:
+    if common_mode == 'default':
+      common_mode = None
+    psana_det.common_mode_apply(run, data, common_mode)
+  if apply_gain_mask:
+    if gain_mask_value is None:
+      gain_mask_value = 6.85
+    data *= psana_det.gain_mask(run, gain=gain_mask_value)
+  if per_pixel_gain:
+    data *= psana_det.gain(run)
+  return data
+
 from dxtbx.format.FormatCBFMultiTile import cbf_wrapper as dxtbx_cbf_wrapper
 class cbf_wrapper(dxtbx_cbf_wrapper):
-  """ Wrapper class that provids convience functions for working with cbflib"""
+  """ Wrapper class that provides convenience functions for working with cbflib"""
 
   def add_frame_shift(self, basis, axis_settings):
     """Add an axis representing a frame shift (a rotation axis with an offset)"""
@@ -40,7 +77,7 @@ class cbf_wrapper(dxtbx_cbf_wrapper):
     axis_settings.append([basis.axis_name, "FRAME1", str(angle), "0"])
 
 def angle_and_axis(basis):
-  """Normalize a quarternion and return the angle and axis
+  """Normalize a quaternion and return the angle and axis
   @param params metrology object"""
   q = matrix.col(basis.orientation).normalize()
   return q.unit_quaternion_as_axis_and_angle(deg=True)
