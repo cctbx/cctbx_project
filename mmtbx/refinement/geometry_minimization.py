@@ -207,6 +207,7 @@ class run2(object):
                rmsd_angles_termination_cutoff = 0,
                alternate_nonbonded_off_on     = False,
                cdl                            = False,
+               rdl                            = False,
                correct_hydrogens              = False,
                fix_rotamer_outliers           = True,
                allow_allowed_rotamers         = True,
@@ -226,13 +227,14 @@ class run2(object):
     assert [bond,nonbonded,angle,dihedral,chirality,planarity,
             parallelity].count(False) < 7
     self.cdl_proxies = None
+    self.rdl_proxies = None
     self.rotamer_manager = None
     if fix_rotamer_outliers:
       from mmtbx.rotamer.rotamer_eval import RotamerEval
       self.rotamer_manager = RotamerEval(mon_lib_srv=self.mon_lib_srv)
     if(cdl):
       from mmtbx.conformation_dependent_library.cdl_setup import setup_restraints
-      self.cdl_proxies = setup_restraints(restraints_manager.geometry)
+      self.cdl_proxies = setup_restraints(self.restraints_manager.geometry)
     self.correct_hydrogens = correct_hydrogens
     if(alternate_nonbonded_off_on and number_of_macro_cycles % 2 != 0):
       number_of_macro_cycles += 1
@@ -257,11 +259,11 @@ class run2(object):
     self.show()
     for i_macro_cycle in xrange(number_of_macro_cycles):
       print >> self.log, "  macro-cycle:", i_macro_cycle
-      restraints_manager.geometry.update_ramachandran_restraints_phi_psi_targets(
+      self.restraints_manager.geometry.update_ramachandran_restraints_phi_psi_targets(
         sites_cart=self.pdb_hierarchy.atoms().extract_xyz())
       if(alternate_nonbonded_off_on and i_macro_cycle<=number_of_macro_cycles/2):
         geometry_restraints_flags.nonbonded = bool(i_macro_cycle % 2)
-      self.correct_hydrogen_geometries(log)
+      self.correct_hydrogen_geometries(self.log)
       self.update_cdl_restraints(macro_cycle=i_macro_cycle)
       if(fix_rotamer_outliers):
         self.pdb_hierarchy, self.restraints_manager = add_rotamer_restraints(
@@ -274,6 +276,8 @@ class run2(object):
           mon_lib_srv        = self.mon_lib_srv,
           rotamer_manager    = self.rotamer_manager)
       sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
+      if rdl:
+        self.updaterdl(prefix="Update RDL restraints")
       # self.pdb_hierarchy.write_pdb_file("after_fix_%d.pdb" % i_macro_cycle)
       # self.restraints_manager.write_geo_file(
       #     sites_cart=self.pdb_hierarchy.atoms().extract_xyz(),
@@ -282,7 +286,7 @@ class run2(object):
       if (ncs_restraints_group_list is not None
           and len(ncs_restraints_group_list)) > 0:
         # do ncs minimization
-        print >> log, "Using NCS constraints."
+        print >> self.log, "Using NCS constraints."
         xrs = self.pdb_hierarchy.extract_xray_structure().deep_copy_scatterers()
         refine_selection = flex.size_t(xrange(xrs.scatterers().size()))
         tfg_obj = mmtbx.refinement.minimization_ncs_constraints.\
@@ -342,6 +346,23 @@ class run2(object):
           cdl_proxies=self.cdl_proxies,
           log=self.log,
           verbose=False)
+
+  def updaterdl(self, prefix):
+    if self.restraints_manager is None: return
+    from mmtbx.conformation_dependent_library import rotamers
+    from mmtbx.refinement import print_statistics
+    print_statistics.make_header(prefix, out=self.log)
+    self.rdl_proxies = None #rotamers.setup_restraints(result)
+    rc = rotamers.update_restraints(
+      self.pdb_hierarchy,
+      self.restraints_manager.geometry,
+      current_geometry=self.pdb_hierarchy.extract_xray_structure(),
+      rdl_proxies=self.rdl_proxies,
+      log=self.log,
+      verbose=False,
+      )
+    print >> self.log, "="*79
+    return rc
 
   def correct_hydrogen_geometries(self, log):
     if self.correct_hydrogens:
