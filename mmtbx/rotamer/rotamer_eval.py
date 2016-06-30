@@ -254,7 +254,6 @@ class RotamerEval:
     # copy-paste from evaluate_residue, returns
     # "OUTLIER", "Allowed", "Favored" or None if something is really wrong.
     from mmtbx.validation.rotalyze import OUTLIER_THRESHOLD, ALLOWED_THRESHOLD
-    assert [residue, residue_group].count(None) == 1
     if residue is not None:
       atoms = residue.atoms()
       resname = residue.resname.lower().strip()
