@@ -209,6 +209,7 @@ class run2(object):
                cdl                            = False,
                correct_hydrogens              = False,
                fix_rotamer_outliers           = True,
+               allow_allowed_rotamers         = True,
                states_collector               = None,
                log                            = None,
                mon_lib_srv                    = None):
@@ -268,10 +269,8 @@ class run2(object):
           restraints_manager = self.restraints_manager,
           selection          = selection,
           sigma              = 10,
-          # accept_allowed     = False,
-          # mode               = "fix_outs_and_allowed")
-          accept_allowed     = True,
           mode               = "fix_outliers",
+          accept_allowed     = allow_allowed_rotamers,
           mon_lib_srv        = self.mon_lib_srv,
           rotamer_manager    = self.rotamer_manager)
       sites_cart = self.pdb_hierarchy.atoms().extract_xyz()

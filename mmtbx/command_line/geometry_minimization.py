@@ -46,6 +46,9 @@ include scope libtbx.phil.interface.tracking_params
 fix_rotamer_outliers = True
   .type = bool
   .help = Remove outliers
+allow_allowed_rotamers = True
+  .type = bool
+  .help = More strict fixing outliers
 stop_for_unknowns = True
   .type = bool
   .short_caption = Stop for unknown residues
@@ -276,6 +279,7 @@ def run_minimization(
       correct_hydrogens,
       states_collector,
       fix_rotamer_outliers,
+      allow_allowed_rotamers,
       log,
       ncs_restraints_group_list = [],
       mon_lib_srv = None):
@@ -301,6 +305,7 @@ def run_minimization(
     states_collector               = states_collector,
     correct_hydrogens              = correct_hydrogens,
     fix_rotamer_outliers           = fix_rotamer_outliers,
+    allow_allowed_rotamers         = allow_allowed_rotamers,
     log                            = log,
     mon_lib_srv                    = mon_lib_srv)
 
@@ -483,6 +488,7 @@ class run(object):
         cdl                  = self.params.pdb_interpretation.restraints_library.cdl,
         correct_hydrogens    = self.params.pdb_interpretation.correct_hydrogens,
         fix_rotamer_outliers = self.params.fix_rotamer_outliers,
+        allow_allowed_rotamers = self.params.allow_allowed_rotamers,
         states_collector= self.states_collector,
         log                  = self.log,
         ncs_restraints_group_list = ncs_restraints_group_list,

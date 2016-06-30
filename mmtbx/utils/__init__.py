@@ -2289,13 +2289,13 @@ def switch_rotamers(
       rotamer_manager=None):
   if(mode is None): return pdb_hierarchy
   pdb_hierarchy.reset_i_seq_if_necessary()
-  assert mode in ["max_distant","min_distant","exact_match","fix_outliers", "fix_outs_and_allowed"],mode
+  assert mode in ["max_distant","min_distant","exact_match","fix_outliers"],mode
   from mmtbx.command_line import lockit
   if mon_lib_srv is None:
     mon_lib_srv = mmtbx.monomer_library.server.server()
   sites_cart_start = pdb_hierarchy.atoms().extract_xyz()
   sites_cart_result = sites_cart_start.deep_copy()
-  if ((mode == "fix_outliers" or mode == "fix_outs_and_allowed")
+  if ((mode == "fix_outliers")
       and rotamer_manager is None):
     from mmtbx.rotamer.rotamer_eval import RotamerEval
     rotamer_manager = RotamerEval()
@@ -2315,13 +2315,13 @@ def switch_rotamers(
               if(not selection[r_i_seq]):
                 exclude = True
                 break
-          if(mode == "fix_outliers" and
-              rotamer_manager.evaluate_residue(residue) != "OUTLIER"):
-            exclude = True
-          if(mode == "fix_outs_and_allowed" and
-              rotamer_manager.evaluate_residue_2(residue) == "Favored"):
-            exclude = True
-          if(not exclude):
+          if mode == "fix_outliers":
+            evaluation = rotamer_manager.evaluate_residue_2(residue)
+            if evaluation == "Favored":
+              exclude = True
+            if evaluation == "Allowed" and accept_allowed:
+              exclude = True
+          if not exclude:
             rotamer_iterator = lockit.get_rotamer_iterator(
               mon_lib_srv         = mon_lib_srv,
               residue             = residue,

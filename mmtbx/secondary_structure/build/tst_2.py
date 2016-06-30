@@ -1158,7 +1158,8 @@ SHEET    2  AA 2 CYS A  52  GLY A  57 -1  O  LYS A  53   N  TYR A  46
     rm = ssb.substitute_ss(
       real_h=h,
       xray_structure=pdb_inp.xray_structure_simple(),
-      ss_annotation=ann)
+      ss_annotation=ann,
+      fix_rama_outliers=False)
   d2 = get_distances(h, n_neighbours=20)
   h.write_pdb_file(file_name=prefix+'_result.pdb')
   dist = abs(d2-d1)
@@ -1166,7 +1167,7 @@ SHEET    2  AA 2 CYS A  52  GLY A  57 -1  O  LYS A  53   N  TYR A  46
   # print "minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample()
   #assert dmmm[1] < 0.8
   assert dmmm[2] < 0.1
-  assert dist.standard_deviation_of_the_sample() < 0.1
+  assert dist.standard_deviation_of_the_sample() < 0.1, dist.standard_deviation_of_the_sample()
 
 def exercise_03(prefix="tst_2_exercise_03"):
   """
