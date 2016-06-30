@@ -34,7 +34,6 @@ class rotarama_plot_mixin (object) :
       extent = self.extent
     else :
       assert (len(extent) == 4)
-    print extent
     self.plot.imshow(stats, origin="lower", cmap=cm, extent=extent)
     if (contours is not None) :
       self.plot.contour(stats, contours,
