@@ -22,13 +22,9 @@ class MainApp(wx.App):
     self.frame = MainWindow(None, -1, title='CCTBX.XFEL')
 
     # select primary display and center on that
-    display = wx.Display(0)
-    x, y, w, h = display.GetGeometry()
-    fw, fh = self.frame.GetSize()
-    frame_position = (x + w / 2 - fw / 2, y + h / 2 - fh / 2)
+    self.frame.SetSize((800, -1))
     self.frame.SetMinSize(self.frame.GetEffectiveMinSize())
-    self.frame.SetPosition(frame_position)
-    #self.frame.Center()
+    self.frame.Center()
 
     # Start with login dialog before opening main window
     self.login = SettingsDialog(self.frame, self.frame.params)

@@ -331,6 +331,44 @@ class OptionCtrl(CtrlBase):
 
     self.SetSizer(opt_box)
 
+class VerticalOptionCtrl(CtrlBase):
+  ''' Generic panel will place a text control w/ label in column'''
+  def __init__(self, parent, items,
+               label='',
+               label_size=(100, -1),
+               label_style='normal',
+               sub_labels=[],
+               ctrl_size=(300, -1)):
+
+    CtrlBase.__init__(self, parent=parent, label_style=label_style)
+
+    if label != '':
+      opt_box = wx.FlexGridSizer(len(items) * 2 + 1, 2, 10, 10)
+      self.txt = wx.StaticText(self, label=label, size=label_size)
+      self.txt.SetFont(self.font)
+      opt_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
+      opt_box.Add((0, 0))
+    else:
+      opt_box = wx.FlexGridSizer(len(items) * 2, 2, 10, 10)
+
+    for key, value in items:
+      if sub_labels != []:
+        sub_label = sub_labels[items.index((key, value))].decode('utf-8')
+      else:
+        sub_label = key
+
+      if len(items) > 1:
+        opt_label = wx.StaticText(self, id=wx.ID_ANY, label=sub_label)
+        opt_box.Add(opt_label, flag=wx.ALIGN_CENTER_VERTICAL)
+
+      item = wx.TextCtrl(self, id=wx.ID_ANY, size=ctrl_size,
+                         style=wx.TE_PROCESS_ENTER)
+      item.SetValue(str(value))
+      opt_box.Add(item, flag=wx.ALIGN_CENTER_VERTICAL)
+      self.__setattr__(key, item)
+
+    self.SetSizer(opt_box)
+
 class SpinCtrl(CtrlBase):
   ''' Generic panel will place a spin control w/ label '''
   def __init__(self, parent,
@@ -394,14 +432,24 @@ class CheckListCtrl(CtrlBase):
                label='',
                label_size=(200, -1),
                label_style='normal',
-               ctrl_size=(150, -1)):
+               ctrl_size=(150, -1),
+               direction='horizontal'):
 
     CtrlBase.__init__(self, parent=parent, label_style=label_style)
-    ctr_box = wx.FlexGridSizer(1, 3, 0, 10)
+
     self.txt = wx.StaticText(self, label=label, size=label_size)
     self.txt.SetFont(self.font)
     self.ctr = wx.CheckListBox(self, size=ctrl_size, choices=choices)
-    ctr_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
+
+    if label == '':
+      ctr_box = wx.BoxSizer(wx.VERTICAL)
+    else:
+      if direction == 'horizontal':
+        ctr_box = wx.FlexGridSizer(1, 2, 0, 10)
+      elif direction == 'vertical':
+        ctr_box = wx.FlexGridSizer(2, 1, 10, 0)
+      ctr_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
+
     ctr_box.Add(self.ctr, flag=wx.ALIGN_CENTER_VERTICAL)
 
     self.SetSizer(ctr_box)
@@ -594,7 +642,9 @@ class IsoformInfoCtrl(CtrlBase):
     CtrlBase.__init__(self, parent=parent, label_style=label_style,
                       content_style=content_style)
 
-    self.sizer = wx.FlexGridSizer(1, 8, 0, 10)
+    self.uc_values = None
+
+    self.sizer = wx.FlexGridSizer(1, 9, 0, 10)
     self.sizer.AddGrowableCol(7)
     self.txt_iso = wx.StaticText(self, label='Isoform')
     self.txt_pg = wx.StaticText(self, label='Point Group')
@@ -606,13 +656,25 @@ class IsoformInfoCtrl(CtrlBase):
     self.ctr_num = wx.TextCtrl(self, size=(50, -1), style=wx.TE_READONLY)
     self.ctr_uc = wx.TextCtrl(self, size=(200, -1), style=wx.TE_READONLY)
 
-    self.sizer.AddMany([(self.txt_iso),
-                        (self.ctr_iso),
-                        (self.txt_pg),
-                        (self.ctr_pg),
-                        (self.txt_num),
-                        (self.ctr_num),
-                        (self.txt_uc)])
-    self.sizer.Add(self.ctr_uc, flag=wx.EXPAND)
+    self.btn_hist = wx.Button(self, label='Histogram')
+
+    self.sizer.Add(self.txt_iso, flag=wx.ALIGN_CENTER_VERTICAL)
+    self.sizer.Add(self.ctr_iso, flag=wx.ALIGN_CENTER_VERTICAL)
+    self.sizer.Add(self.txt_pg, flag=wx.ALIGN_CENTER_VERTICAL)
+    self.sizer.Add(self.ctr_pg, flag=wx.ALIGN_CENTER_VERTICAL)
+    self.sizer.Add(self.txt_num, flag=wx.ALIGN_CENTER_VERTICAL)
+    self.sizer.Add(self.ctr_num, flag=wx.ALIGN_CENTER_VERTICAL)
+    self.sizer.Add(self.txt_uc, flag=wx.ALIGN_CENTER_VERTICAL)
+    self.sizer.Add(self.ctr_uc, flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
+    self.sizer.Add(self.btn_hist, flag=wx.ALIGN_CENTER_VERTICAL)
+
+    self.Bind(wx.EVT_BUTTON, self.onClusterHistogram, self.btn_hist)
 
     self.SetSizer(self.sizer)
+
+  def onClusterHistogram(self, e):
+
+    if self.uc_values is not None:
+      import xfel.ui.components.xfel_gui_plotter as pltr
+      plotter = pltr.PopUpCharts()
+      plotter.plot_uc_histogram(info=self.uc_values)

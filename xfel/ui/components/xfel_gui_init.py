@@ -246,29 +246,34 @@ class ProgressSentinel(Thread):
             bins = cell.bins
 
           # Check for cell isoform
-          # TODO: if not present, calculate stats for all images
           if cell.isoform is None:
-            continue
-          counts = [int(i.count) for i in bins]
-          totals = [int(i.total_hkl) for i in bins]
-
-          # Apply throttle to multiplicity calculation
-          if trial.process_percent is None:
-            process_percent = 100
+            self.info[cells.index(cell)] = {'a':cell.cell_a,
+                                            'b':cell.cell_b,
+                                            'c':cell.cell_c,
+                                            'alpha':cell.cell_alpha,
+                                            'beta':cell.cell_beta,
+                                            'gamma':cell.cell_gamma}
           else:
-            process_percent = trial.process_percent
+            counts = [int(i.count) for i in bins]
+            totals = [int(i.total_hkl) for i in bins]
 
-          # Generate multiplicity graph for isoforms
-          mult = sum(counts) / sum(totals) * (process_percent / 100)
-          self.info[cell.isoform.name] = {'multiplicity':mult,
-                                          'bins':bins,
-                                          'isoform':cell.isoform.name,
-                                          'a':cell.cell_a,
-                                          'b':cell.cell_b,
-                                          'c':cell.cell_c,
-                                          'alpha':cell.cell_alpha,
-                                          'beta':cell.cell_beta,
-                                          'gamma':cell.cell_gamma}
+            # Apply throttle to multiplicity calculation
+            if trial.process_percent is None:
+              process_percent = 100
+            else:
+              process_percent = trial.process_percent
+
+            # Generate multiplicity graph for isoforms
+            mult = sum(counts) / sum(totals) * (process_percent / 100)
+            self.info[cell.isoform.name] = {'multiplicity':mult,
+                                            'bins':bins,
+                                            'isoform':cell.isoform.name,
+                                            'a':cell.cell_a,
+                                            'b':cell.cell_b,
+                                            'c':cell.cell_c,
+                                            'alpha':cell.cell_alpha,
+                                            'beta':cell.cell_beta,
+                                            'gamma':cell.cell_gamma}
       self.post_refresh()
       self.info = {}
       self.parent.run_window.prg_light.change_status('on')
@@ -290,12 +295,14 @@ class ClusteringResult(wx.PyCommandEvent):
     return self.result
 
 class Clusterer():
-  def __init__(self, trial, runblocks, output, sample_size, threshold):
+  def __init__(self, trial, runblocks, output, sample_size, threshold,
+               histogram=False):
     self.trial = trial
     self.runblocks = runblocks
     self.output = output
     self.sample_size = sample_size
     self.threshold = threshold
+    self.histogram = histogram
 
   def unit_cell_clustering(self):
 
@@ -322,17 +329,31 @@ class Clusterer():
       print 'No images integrated (yet)'
       return
 
-    # 2. Pick subset
-    print len(all_pickles), self.sample_size
-    subset = list(np.random.choice(all_pickles, size=int(self.sample_size)))
+    if self.histogram:
+      # If histogram button was pressed, return set of unit cells
+      # 2. Load pickle files, extract and return unit cell tuples
+      from libtbx import easy_pickle as ep
+      all_cells = []
+      for pickle in all_pickles:
+        info = ep.load(pickle)
+        cell = info['observations'][0].unit_cell().parameters()
+        all_cells.append(cell)
 
-    # 3. Do clustering
-    ucs = Cluster.from_files(subset, use_b=True)
-    clusters, _ = ucs.ab_cluster(self.threshold,
-                                 log=False, write_file_lists=False,
-                                 schnell=False, doplot=False)
+      return all_cells
 
-    return clusters
+    else:
+      # If clustering button was pressed, do clustering
+      # 2. Pick subset
+      print len(all_pickles), self.sample_size
+      subset = list(np.random.choice(all_pickles, size=int(self.sample_size)))
+
+      # 3. Do clustering
+      ucs = Cluster.from_files(subset, use_b=True)
+      clusters, _ = ucs.ab_cluster(self.threshold,
+                                   log=False, write_file_lists=False,
+                                   schnell=False, doplot=False)
+
+      return clusters
 
 class ClusteringWorker(Thread):
   ''' Worker thread for jobs; generated so that the GUI does not lock up when
@@ -359,6 +380,15 @@ class ClusteringWorker(Thread):
     self.clusters = clusterer.unit_cell_clustering()
 
     evt = ClusteringResult(tp_EVT_CLUSTERING, -1, self.clusters)
+    wx.PostEvent(self.parent, evt)
+
+  def histogram(self):
+    clusterer = Clusterer(self.trial, self.runblocks, self.output,
+                          self.sample_size, self.threshold, histogram=True)
+
+    self.all_cells = clusterer.unit_cell_clustering()
+
+    evt = ClusteringResult(tp_EVT_CLUSTERING, -1, self.all_cells)
     wx.PostEvent(self.parent, evt)
 
 # ------------------------------- Main Window -------------------------------- #
@@ -870,28 +900,10 @@ class StatusTab(BaseTab):
     self.redraw_windows = True
     self.multiplicity_goal = 10
 
-    self.status_panel = ScrolledPanel(self, size=(-1, 120))
+    self.status_panel = ScrolledPanel(self, size=(900, 120))
     self.status_box = wx.StaticBox(self.status_panel, label='Data Statistics')
     self.status_sizer = wx.StaticBoxSizer(self.status_box, wx.VERTICAL)
     self.status_panel.SetSizer(self.status_sizer)
-
-    self.opt_panel = wx.Panel(self)
-    self.opt_box = wx.StaticBox(self.opt_panel, label='Unit Cell Clustering')
-    self.opt_box_sizer = wx.StaticBoxSizer(self.opt_box, wx.HORIZONTAL)
-    self.opt_panel.SetSizer(self.opt_box_sizer)
-
-    self.opt_cluster = gctr.OptionCtrl(self.opt_panel,
-                                       label='Clustering:',
-                                       label_size=(100, -1),
-                                       label_style='bold',
-                                       ctrl_size=(100, -1),
-                                       sub_labels=['No. of images',
-                                                   'Threshold'],
-                                       items=[('num_images', 1000),
-                                              ('threshold', 250)])
-    self.btn_cluster = wx.Button(self.opt_panel, label='Calculate')
-    self.opt_box_sizer.Add(self.opt_cluster, flag=wx.ALL, border=10)
-    self.opt_box_sizer.Add(self.btn_cluster, flag=wx.ALL, border=10)
 
     self.iso_panel = ScrolledPanel(self, size=(-1, 100))
     self.iso_box = wx.StaticBox(self.iso_panel, label='Isoforms')
@@ -900,40 +912,64 @@ class StatusTab(BaseTab):
 
     self.trial_number = gctr.ChoiceCtrl(self,
                                         label='Trial:',
-                                        label_size=(40, -1),
+                                        label_size=(120, -1),
                                         label_style='normal',
-                                        ctrl_size=(200, -1),
+                                        ctrl_size=(100, -1),
                                         choices=[])
     self.tag_list = gctr.CheckListCtrl(self,
-                                       label='Tags:',
-                                       label_size=(40, -1),
-                                       label_style='normal',
                                        ctrl_size=(200, 100),
-                                       choices=[])
+                                       choices=[],
+                                       direction='vertical')
 
-    show_mult = 'Show multiplicity at ({}):' \
-                ''.format(u'\N{ANGSTROM SIGN}'.encode('utf-8'))
-    goal_mult = 'Goal (fold multiplicity):'
     self.opt_multi = gctr.OptionCtrl(self,
+                                     label='Goal multiplicity:',
+                                     label_size=(120, -1),
                                      ctrl_size=(100, -1),
-                                     sub_labels=[show_mult, goal_mult],
-                                     items=[('reslim', 2.0),
-                                            ('goal', 10)])
+                                     items=[('goal', 10)])
 
-    self.bottom_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    self.bottom_sizer.Add(self.trial_number)
-    self.bottom_sizer.Add(self.tag_list, flag=wx.LEFT, border=10)
-    self.bottom_sizer.Add(self.opt_multi, flag=wx.LEFT, border=25)
+    self.bottom_sizer = wx.FlexGridSizer(1, 2, 0, 10)
+
+    multi_box = wx.StaticBox(self, label='Statistics Options')
+    self.multi_box_sizer = wx.StaticBoxSizer(multi_box, wx.VERTICAL)
+    self.multi_opt_sizer = wx.GridBagSizer(2, 2)
+
+    self.multi_opt_sizer.Add(self.opt_multi, pos=(0, 0),
+                             flag=wx.LEFT | wx.TOP | wx.RIGHT, border=10)
+    self.multi_opt_sizer.Add(self.trial_number, pos=(1, 0),
+                             flag=wx.ALL, border=10)
+    self.multi_opt_sizer.Add(self.tag_list, pos=(0, 1), span=(2, 1),
+                             flag=wx.BOTTOM | wx.TOP | wx.RIGHT, border=10)
+    self.multi_box_sizer.Add(self.multi_opt_sizer, flag=wx.EXPAND)
+    self.bottom_sizer.Add(self.multi_box_sizer)
+
+    self.opt_cluster = gctr.VerticalOptionCtrl(self,
+                                               ctrl_size=(100, -1),
+                                               sub_labels=['No. of images',
+                                                           'Threshold'],
+                                               items=[('num_images', 1000),
+                                                      ('threshold', 250)])
+
+    self.cluster_btn_sizer = wx.FlexGridSizer(1, 2, 0, 10)
+    self.cluster_btn_sizer.AddGrowableCol(0)
+    self.cluster_btn_sizer.AddGrowableCol(1)
+    self.btn_cluster = wx.Button(self, label='Clustering')
+    self.btn_histogram = wx.Button(self, label='Histogram')
+    self.cluster_btn_sizer.Add(self.btn_cluster, flag=wx.EXPAND)
+    self.cluster_btn_sizer.Add(self.btn_histogram, flag=wx.EXPAND)
+
+    cluster_box = wx.StaticBox(self, label='Unit Cell Clustering')
+    self.cluster_box_sizer = wx.StaticBoxSizer(cluster_box, wx.VERTICAL)
+    self.cluster_box_sizer.Add(self.opt_cluster, flag=wx.ALL, border=10)
+    self.cluster_box_sizer.Add(self.cluster_btn_sizer,
+                               flag=wx.ALL | wx.EXPAND, border=10)
+    self.bottom_sizer.Add(self.cluster_box_sizer)
 
     self.main_sizer.Add(self.status_panel, 1,
                         flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.iso_panel, 1,
                         flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.opt_panel,
-                        flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.bottom_sizer,
-                        flag=wx.RIGHT | wx.LEFT | wx.BOTTOM, border=10)
+                        flag=wx.EXPAND | wx.ALL, border=10)
 
 
     # Bindings
@@ -941,8 +977,20 @@ class StatusTab(BaseTab):
     self.Bind(wx.EVT_CHECKLISTBOX, self.onTagCheck, self.tag_list.ctr)
     self.Bind(wx.EVT_TEXT_ENTER, self.onMultiplicityGoal, self.opt_multi.goal)
     self.Bind(wx.EVT_BUTTON, self.onClustering, self.btn_cluster)
+    self.Bind(wx.EVT_BUTTON, self.onHistogram, self.btn_histogram)
     self.Bind(EVT_PRG_REFRESH, self.onRefresh)
     self.Bind(EVT_CLUSTERING, self.onClusteringResult)
+
+
+  def onHistogram(self, e):
+    trial = self.main.db.get_trial(trial_number=self.trial_no)
+    runblocks = trial.rungroups
+
+    clustering = ClusteringWorker(self, trial=trial, runblocks=runblocks,
+                                  output=self.main.params.output_folder,
+                                  threshold=self.opt_cluster.threshold.GetValue(),
+                                  sample_size=self.opt_cluster.num_images.GetValue())
+    clustering.histogram()
 
   def onClustering(self, e):
     trial = self.main.db.get_trial(trial_number=self.trial_no)
@@ -958,9 +1006,12 @@ class StatusTab(BaseTab):
     from string import ascii_uppercase
     self.iso_box_sizer.DeleteWindows()
 
-    if e.GetValue() is None:
+    if e.GetValue() is None:                       # nothing returned
       print 'Nothing to cluster!'
-    else:
+    elif type(e.GetValue()) in (list, tuple):      # uc param list returned
+      plotter = pltr.PopUpCharts()
+      plotter.plot_uc_histogram(info=e.GetValue())
+    else:                                          # uc clusters returned
       counter = 0
       clusters = sorted(e.GetValue(), key=lambda x: x.members, reverse=True)
       for cluster in clusters:
@@ -972,21 +1023,17 @@ class StatusTab(BaseTab):
         if len(cluster.members) > 1:
 
           # format and record output
-          uc_line = "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
-                    "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
-                    "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f})   " \
-                    "".format(cluster.medians[0], cluster.stdevs[0],
-                              cluster.medians[1], cluster.stdevs[1],
-                              cluster.medians[2], cluster.stdevs[2],
-                              cluster.medians[3], cluster.stdevs[3],
-                              cluster.medians[4], cluster.stdevs[4],
-                              cluster.medians[5], cluster.stdevs[5])
+          uc_line = "{:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}" \
+                    "".format(cluster.medians[0], cluster.medians[1],
+                              cluster.medians[2], cluster.medians[3],
+                              cluster.medians[4], cluster.medians[5])
 
           iso = gctr.IsoformInfoCtrl(self.iso_panel)
           iso.ctr_iso.SetValue(ascii_uppercase[counter])
           iso.ctr_pg.SetValue(cons_pg[0])
           iso.ctr_num.SetValue(str(len(cluster.members)))
           iso.ctr_uc.SetValue(uc_line)
+          iso.uc_values = [i.uc for i in cluster.members]
           self.iso_box_sizer.Add(iso,
                                  flag=wx.EXPAND| wx.TOP | wx.LEFT | wx.RIGHT,
                                  border=10)
@@ -1088,24 +1135,14 @@ class StatusTab(BaseTab):
       self.rows[name] = {}
       row = pltr.SingleBarPlot(self.status_panel,
                                label='Isoform {}'.format(name),
-                               label_size=(150, -1),
-                               gauge_size=(350, 15),
-                               button=True,
-                               choice_label_size=(100, -1),
+                               gauge_size=(250, 15),
                                choice_label='High res. limit:',
                                choice_size=(160, -1),
-                               choices = bin_choices,
-                               gauge_max=value)
+                               choices = bin_choices)
       self.status_sizer.Add(row, flag=wx.EXPAND | wx.ALL, border=10)
       row.bins.ctr.SetSelection(row.bins.ctr.GetCount() - 1)
 
-    row.ax.clear()
-    row.ax.barh(0, value, height=1, align='center', color='#7570b3')
-    row.ax.axvline(x=self.multiplicity_goal, lw=4, c='#d95f02')
-    row.ax.set_xlim(xmax=xmax)
-    row.ax.set_axis_off()
-    row.canvas.draw()
-    row.txt_max.SetLabel('{:.2f}'.format(value))
+    row.redraw_axes(value=value, goal=self.multiplicity_goal, xmax=xmax)
     self.rows[name]['row'] = row
     self.rows[name]['high_bin'] = row.bins.ctr.GetClientData(
       row.bins.ctr.GetSelection())
