@@ -1027,12 +1027,12 @@ class StatusTab(BaseTab):
     from string import ascii_uppercase
     self.iso_box_sizer.DeleteWindows()
 
-    if e.GetValue() is None:                       # nothing returned
+    if e.GetValue() is None:
       print 'Nothing to cluster!'
-    elif type(e.GetValue()) in (list, tuple):      # uc param list returned
+    elif all(isinstance(i, tuple) for i in e.GetValue()):
       plotter = pltr.PopUpCharts()
       plotter.plot_uc_histogram(info=e.GetValue())
-    else:                                          # uc clusters returned
+    else:
       counter = 0
       clusters = sorted(e.GetValue(), key=lambda x: x.members, reverse=True)
       for cluster in clusters:
@@ -1167,6 +1167,7 @@ class StatusTab(BaseTab):
     self.rows[name]['row'] = row
     self.rows[name]['high_bin'] = row.bins.ctr.GetClientData(
       row.bins.ctr.GetSelection())
+
 
 class MergeTab(BaseTab):
   def __init__(self, parent, prefix='prime'):
