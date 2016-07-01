@@ -362,6 +362,12 @@ class AdvancedSettingsDialog(BaseDialog):
     self.analysis_sizer.Add(self.avg_img_type, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.analysis_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
+    self.chk_enforce81 = wx.CheckBox(self,
+                                     label='Require stream 81 (FEE spectrometer) before processing')
+    self.chk_enforce81.SetValue(params.web.enforce81)
+
+    self.main_sizer.Add(self.chk_enforce81, flag=wx.ALL, border=10)
+
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box,
@@ -389,6 +395,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.params.mp.queue = self.queue.ctr.GetStringSelection()
     self.params.mp.nproc = int(self.nproc.ctr.GetValue())
     self.params.average_raw_data = self.avg_img_type.ctr.GetStringSelection() == 'raw'
+    self.params.web.enforce81 = bool(self.chk_enforce81.GetValue())
     e.Skip()
 
 class CalibrationDialog(BaseDialog):

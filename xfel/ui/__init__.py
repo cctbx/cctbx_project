@@ -10,29 +10,43 @@ dry_run = False
           and will show the command that would have been executed.
 experiment = ""
   .type = str
+  .help = Experiment name, eg cxid9114
 experiment_tag = ""
   .type = str
+  .help = User defined tag to describe the set of trials being performed. All database tables will \
+          be pre-pended with this string
 db {
   host = psdb-user.slac.stanford.edu
-    .type=str
+    .type = str
+    .help = Host name for mysql databse server
   name = ""
     .type = str
+    .help = Database name
   user = ""
     .type=str
+    .help = Database user name
   password = ""
     .type = str
+    .help = Database password. Will be cached as plain text!
 }
 output_folder = ""
   .type = path
+  .help = Processing results will go in this folder
 web {
   user = ""
     .type = str
+    .help = Username for LCLS run database web service
   password = ""
     .type = str
+    .help = Web password. Will be cached in plain text!
+  enforce81 = False
+    .type = bool
+    .help = report only on stream 81, FEE spectrometer
 }
 average_raw_data = False
   .type = bool
   .help = If True, don't use any psana corrections (dark, common mode, etc.)
+
 include scope xfel.command_line.cxi_mpi_submit.mp_phil_scope
 """
 master_phil_scope = parse(master_phil_str, process_includes=True)

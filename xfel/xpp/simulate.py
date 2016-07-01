@@ -22,7 +22,8 @@ class file_table:
     # ...and install it globally so it can be used with urlopen.
     urllib2.install_opener(opener)
     R = urllib2.urlopen(query)
-    print "Status",R.getcode()
+    if R.getcode() != 200:
+      print "Status",R.getcode()
     import xml.etree.ElementTree
     X = xml.etree.ElementTree.XML(R.read())
     #from IPython import embed; embed()#help(X)
