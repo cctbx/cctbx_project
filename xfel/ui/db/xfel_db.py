@@ -162,9 +162,15 @@ class xfel_db_application(object):
     return [Bin(self, bin_id = i[0]) for i in cursor.fetchall()]
 
   def get_all_x(self, cls, name):
-    query = "SELECT id FROM `%s_%s`" % (self.params.experiment_tag, name)
+    table_name = "%s_%s" % (self.params.experiment_tag, name)
+    query = "SELECT id, %s FROM `%s`" % (", ".join(self.columns_dict[table_name]), table_name)
     cursor = self.execute_query(query)
-    return [cls(self, i[0]) for i in cursor.fetchall()]
+    results = []
+    for row in cursor.fetchall():
+      d = {key:value for key, value in zip(self.columns_dict[table_name], row[1:])}
+      d["%s_id"%name] = row[0]
+      results.append(cls(self, **d))
+    return results
 
   def get_trial(self, trial_id = None, trial_number = None):
     assert [trial_id, trial_number].count(None) == 1
