@@ -38,7 +38,7 @@ def get_db_connection(params, block=True):
 
 class db_proxy(object):
   def __init__(self, app, table_name, id = None, **kwargs):
-    self._db_columns = []
+    self._db_dict = {}
     self.app = app
     self.id = id
     self.table_name = table_name
@@ -49,7 +49,9 @@ class db_proxy(object):
       keys = []
       vals = []
       for key, value in kwargs.iteritems():
+        assert key in self.app.columns_dict[table_name]
         keys.append(key)
+        self._db_dict[key] = value
         if isinstance(value, bool):
           value = "'%s'"%int(value)
         elif value is None or value == "None" or value == "":
@@ -60,25 +62,34 @@ class db_proxy(object):
       query += "(%s) VALUES (%s)"%(", ".join(keys), ", ".join(vals))
       cursor = self.app.execute_query(query, commit=True)
       self.id = cursor.lastrowid
-
-    self._db_columns = app.columns_dict[table_name]
+    else:
+      keys = []
+      for key in app.columns_dict[table_name]:
+        if key in kwargs:
+          self._db_dict[key] = kwargs.pop(key)
+        else:
+          keys.append(key)
+      assert len(kwargs) == 0
+      if len(keys) > 0:
+        query = "SELECT %s FROM %s WHERE id = %d" % (", ".join(keys), table_name, id)
+        results = app.execute_query(query).fetchall()[0]
+        for key, value in zip(keys, results):
+          self._db_dict[key] = value
 
   def __getattr__(self, key):
     # Called if the property is not found
-    if key not in self._db_columns:
-      print self.table_name, key, 'error!', self._db_columns
+    if key not in self._db_dict:
+      print self.table_name, key, 'error!', self._db_dict
       raise AttributeError()
 
-    query = "SELECT %s FROM `%s` WHERE id = %d" % (key, self.table_name, self.id)
-    cursor = self.app.execute_query(query)
-    return cursor.fetchall()[0][0]
+    return self._db_dict[key]
 
   def __setattr__(self, key, value):
-    # Need to test for _db_columns to avoid infinite loop
-    #  Test key == "_db_columns" to allow creating _db_columns
-    #  Test hasattr(self, "_db_columns") in case dbproxy.__init__ hasn't been called
-    #  Test key not in self._db_columns to allow setting member variables not in database dictionary
-    if key == "_db_columns" or not hasattr(self, "_db_columns") or key not in self._db_columns:
+    # Need to test for _db_dict to avoid infinite loop
+    #  Test key == "_db_dict" to allow creating _db_dict
+    #  Test hasattr(self, "_db_dict") in case dbproxy.__init__ hasn't been called
+    #  Test key not in self._db_dict to allow setting member variables not in database dictionary
+    if key == "_db_dict" or not hasattr(self, "_db_dict") or key not in self._db_dict:
       super(db_proxy, self).__setattr__(key, value)
       return
 
@@ -93,3 +104,4 @@ class db_proxy(object):
       self.table_name, key, value, self.id)
     print query
     self.app.execute_query(query, commit=True)
+    self._db_dict[key] = value
