@@ -74,14 +74,9 @@ class RunSentinel(Thread):
   def run(self):
     # one time post for an initial update
     self.post_refresh()
+    db = xfel_db_application(self.parent.params)
 
     while self.active:
-      try:
-        db = xfel_db_application(self.parent.params)
-        self.parent.run_window.run_light.change_status('on')
-      except OperationalError:
-        self.parent.run_window.run_light.change_status('alert')
-
       # Find the delta
       known_runs = [r.run for r in db.get_all_runs()]
       unknown_runs = [run['run'] for run in db.list_lcls_runs() if
@@ -167,13 +162,9 @@ class JobSentinel(Thread):
   def run(self):
     # one time post for an initial update
     self.post_refresh()
+    db = xfel_db_application(self.parent.params)
 
     from xfel.ui.db.job import submit_all_jobs
-    try:
-      db = xfel_db_application(self.parent.params)
-      self.parent.run_window.job_light.change_status('on')
-    except OperationalError:
-      self.parent.run_window.job_light.change_status('alert')
 
     while self.active:
       submit_all_jobs(db)
@@ -215,15 +206,10 @@ class ProgressSentinel(Thread):
   def run(self):
     # one time post for an initial update
     self.post_refresh()
+    db = xfel_db_application(self.parent.params)
 
     while self.active:
-      try:
-        db = xfel_db_application(self.parent.params)
-        self.parent.run_window.prg_light.change_status('idle')
-      except OperationalError:
-        self.parent.run_window.prg_light.change_status('alert')
-        time.sleep(5)
-        continue
+      self.parent.run_window.prg_light.change_status('idle')
 
       if len(db.get_all_trials()) > 0:
         trial = db.get_trial(
@@ -790,7 +776,6 @@ class JobsTab(BaseTab):
     BaseTab.__init__(self, parent=parent)
 
     self.main = main
-    self.db = None
     self.all_trials = []
     self.filter = 'All jobs'
 
@@ -836,11 +821,9 @@ class JobsTab(BaseTab):
     pass
 
   def onMonitorJobs(self, e):
-    self.db = xfel_db_application(self.main.params)
-
     # Find new trials
-    if self.db is not None:
-      all_db_trials = [str(i.trial) for i in self.db.get_all_trials()]
+    if self.main.db is not None:
+      all_db_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
       new_trials = [i for i in all_db_trials if i not in self.all_trials]
       if len(new_trials) > 0:
         self.find_trials()
@@ -851,9 +834,9 @@ class JobsTab(BaseTab):
     self.job_panel.Refresh()
 
   def find_trials(self):
-    if self.db is not None:
+    if self.main.db is not None:
       choices = ['All jobs'] + \
-                ['trial {}'.format(i.trial) for i in self.db.get_all_trials()]
+                ['trial {}'.format(i.trial) for i in self.main.db.get_all_trials()]
       self.trial_choice.ctr.Clear()
       for choice in choices:
         self.trial_choice.ctr.Append(choice)
@@ -864,8 +847,8 @@ class JobsTab(BaseTab):
         self.trial_choice.ctr.SetSelection(int(self.filter[-1]))
 
   def monitor_jobs(self):
-    if self.db is not None:
-      jobs = self.db.get_all_jobs()
+    if self.main.db is not None:
+      jobs = self.main.db.get_all_jobs()
       if str(self.filter).lower() != 'all jobs':
         jobs = [i for i in jobs if i.trial_id == int(self.filter[-1])]
 

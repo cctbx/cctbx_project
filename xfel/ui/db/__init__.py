@@ -61,9 +61,7 @@ class db_proxy(object):
       cursor = self.app.execute_query(query, commit=True)
       self.id = cursor.lastrowid
 
-    query = "SHOW COLUMNS FROM `%s`" % self.table_name
-    cursor = self.app.execute_query(query)
-    self._db_columns = [c[0] for c in cursor.fetchall() if c[0] != 'id']
+    self._db_columns = app.columns_dict[table_name]
 
   def __getattr__(self, key):
     # Called if the property is not found

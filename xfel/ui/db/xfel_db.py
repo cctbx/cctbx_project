@@ -20,6 +20,7 @@ except ImportError:
   raise Sorry('Mysql not available')
 
 from xfel.command_line.experiment_manager import initialize as initialize_base
+
 class initialize(initialize_base):
   expected_tables = ["run", "job", "rungroup", "trial", "tag", "run_tag", "event", "trial_rungroup",
                      "imageset", "imageset_event", "beam", "detector", "experiment",
@@ -34,13 +35,28 @@ class initialize(initialize_base):
 
     return initialize_base.create_tables(self, sql_path)
 
+  def set_up_columns_dict(self, app):
+    columns_dict = {}
+    for table in self.expected_tables:
+      table_name = "%s_%s" % (self.params.experiment_tag, table)
+      query = "SHOW COLUMNS FROM `%s`" % (table_name)
+      cursor = app.execute_query(query)
+      columns_dict[table_name] = [c[0] for c in cursor.fetchall() if c[0] != 'id']
+    return columns_dict
+
 class xfel_db_application(object):
   def __init__(self, params):
     self.params = params
     dbobj = get_db_connection(params)
     self.init_tables = initialize(params, dbobj) # only place where a connection is held
 
-  def execute_query(self, query, commit = False):
+    self.columns_dict = self.init_tables.set_up_columns_dict(self)
+
+  def execute_query(self, query, commit = False, verbose = False):
+    if verbose:
+      from time import time
+      st = time()
+
     retry_count = 0
     retry_max = 10
     sleep_time = 0.1
@@ -51,6 +67,9 @@ class xfel_db_application(object):
         cursor.execute(query)
         if commit:
           dbobj.commit()
+
+        if verbose:
+          print 'SQLTime Taken = % 10.6f seconds' % (time() - st), query[:min(len(query),160)]
         return cursor
       except OperationalError, e:
         if "Can't connect to MySQL server" not in str(e):
