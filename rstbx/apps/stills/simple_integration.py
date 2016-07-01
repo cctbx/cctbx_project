@@ -523,12 +523,14 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
             # term1 = (sig(C)/C)^2
             # term2 = (sig(Imeas)/Imeas)^2
             # I' = C*I
-            # sig(I') = I'*sqrt(term1 + term2)
-            term1 = (self.fuller_kapton_absorption_sigmas/self.fuller_kapton_absorption_correction)**2
-            term2 = (self.integrated_sigma/self.integrated_data)**2
+            # sig^2(I') = (I')^2*(term1 + term2)
+            # sig(I') = sqrt(sig^2(I'))
+            term1 = flex.pow(self.fuller_kapton_absorption_sigmas/self.fuller_kapton_absorption_correction, 2)
+            term2 = flex.pow(self.integrated_sigma/self.integrated_data, 2)
             self.integrated_data *= self.fuller_kapton_absorption_correction
-            self.integrated_sigma = abs(self.integrated_data * flex.sqrt(term1 + term2))
-            # order is purposeful: the line above requires that self.integrated_data has already been corrected!
+            integrated_sigma_squared = flex.pow(self.integrated_data, 2) * (term1 + term2)
+            self.integrated_sigma = flex.sqrt(integrated_sigma_squared)
+            # order is purposeful: the two lines above require that self.integrated_data has already been corrected!
           else:
             self.fuller_kapton_absorption_correction = C(
               panel_size_px = (self.inputpd['size1'],self.inputpd['size2']),
