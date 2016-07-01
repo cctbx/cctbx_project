@@ -11,7 +11,7 @@ See dials.stills_process.
 '''
 
 from libtbx.phil import parse
-phil_scope = parse('''
+control_phil_str = '''
   verbosity = 1
     .type = int(value_min=0)
     .help = "The verbosity level"
@@ -52,17 +52,12 @@ phil_scope = parse('''
       .type = str
       .help = Filename for cctbx.xfel-style integration pickle files
   }
+'''
 
-  include scope dials.algorithms.spot_finding.factory.phil_scope
-  include scope dials.algorithms.indexing.indexer.index_only_phil_scope
-  include scope dials.algorithms.refinement.refiner.phil_scope
-  include scope dials.algorithms.integration.integrator.phil_scope
-  include scope dials.algorithms.profile_model.factory.phil_scope
-  include scope dials.algorithms.spot_prediction.reflection_predictor.phil_scope
+from dials.command_line.stills_process import Processor, dials_phil_str
 
-''', process_includes=True)
+phil_scope = parse(control_phil_str + dials_phil_str, process_includes=True)
 
-from dials.command_line.stills_process import Processor
 class Script(Processor):
   '''A class for running the script.'''
 

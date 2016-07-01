@@ -214,19 +214,15 @@ xtc_phil_str = '''
   }
 '''
 
-dials_phil_str = '''
+from dials.command_line.stills_process import dials_phil_str
+
+extra_dials_phil_str = '''
   verbosity = 1
    .type = int(value_min=0)
    .help = The verbosity level
   border_mask {
     include scope dials.util.masking.phil_scope
   }
-  include scope dials.algorithms.spot_finding.factory.phil_scope
-  include scope dials.algorithms.indexing.indexer.index_only_phil_scope
-  include scope dials.algorithms.refinement.refiner.phil_scope
-  include scope dials.algorithms.profile_model.factory.phil_scope
-  include scope dials.algorithms.integration.integrator.phil_scope
-  include scope dials.algorithms.spot_prediction.reflection_predictor.phil_scope
 '''
 
 db_logging_phil_str = '''
@@ -244,7 +240,7 @@ db_logging_phil_str = '''
       .type = str
   }
 '''
-phil_scope = parse(xtc_phil_str + dials_phil_str + db_logging_phil_str, process_includes=True)
+phil_scope = parse(xtc_phil_str + dials_phil_str + extra_dials_phil_str + db_logging_phil_str, process_includes=True)
 
 # work around for copying dxtbx FormatCBFCspad objects
 from xfel.cftbx.detector.cspad_cbf_tbx import cbf_wrapper
