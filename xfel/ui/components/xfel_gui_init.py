@@ -199,6 +199,9 @@ class ProgressSentinel(Thread):
     self.number_of_pickles = 0
     self.info = {}
 
+    # on initialization (and restart), make sure stats drawn from scratch
+    self.parent.run_window.status_tab.redraw_windows = True
+
   def post_refresh(self):
     evt = RefreshStats(tp_EVT_PRG_REFRESH, -1, self.info)
     wx.PostEvent(self.parent.run_window.status_tab, evt)
@@ -386,6 +389,7 @@ class MainWindow(wx.Frame):
 
     self.run_sentinel = None
     self.job_sentinel = None
+    self.job_monitor = None
     self.prg_sentinel = None
 
     self.params = load_cached_settings()
@@ -455,6 +459,10 @@ class MainWindow(wx.Frame):
     self.Bind(wx.EVT_TOOL, self.onPause, self.tb_btn_pause)
     self.Bind(wx.EVT_TOOL, self.onCalibration, self.tb_btn_calibrate)
     self.Bind(wx.EVT_TOOL, self.onSettings, self.tb_btn_settings)
+    self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.onTabChange,
+              self.run_window.main_nbook)
+    self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.onLeavingTab,
+              self.run_window.main_nbook)
 
     # Draw the main window sizer
     self.SetSizer(main_box)
@@ -475,17 +483,21 @@ class MainWindow(wx.Frame):
 
     return True
 
-  def start_sentinels(self):
-    self.start_run_sentinel()
-    self.start_job_sentinel()
-    self.start_job_monitor()
-    self.start_prg_sentinel()
+  # def start_sentinels(self):
+  #   self.start_run_sentinel()
+  #   self.start_job_sentinel()
+  #   self.start_job_monitor()
+  #   self.start_prg_sentinel()
 
   def stop_sentinels(self):
     self.stop_run_sentinel()
     self.stop_job_sentinel()
-    self.stop_job_monitor()
-    self.stop_prg_sentinel()
+
+    if self.job_monitor is not None and self.job_monitor.active:
+      self.stop_job_monitor()
+
+    if self.prg_sentinel is not None and self.prg_sentinel.active:
+      self.stop_prg_sentinel()
 
   def start_run_sentinel(self):
     self.run_sentinel = RunSentinel(self, active=True)
@@ -569,10 +581,34 @@ class MainWindow(wx.Frame):
     ''' Pause all jobs '''
     self.stop_job_sentinel()
 
+  def onTabChange(self, e):
+    tab = self.run_window.main_nbook.GetSelection()
+    if tab == 2:
+      if self.job_monitor is None or not self.job_monitor.active:
+        self.start_job_monitor()
+        self.run_window.jmn_light.change_status('on')
+    elif tab == 3:
+      if self.prg_sentinel is None or not self.prg_sentinel.active:
+        self.start_prg_sentinel()
+        self.run_window.prg_light.change_status('on')
+
+  def onLeavingTab(self, e):
+    tab = self.run_window.main_nbook.GetSelection()
+    if tab == 2:
+      if self.job_monitor.active:
+        self.stop_job_monitor()
+        self.run_window.jmn_light.change_status('off')
+    elif tab == 3:
+      if self.prg_sentinel.active:
+        self.stop_prg_sentinel()
+        self.run_window.prg_light.change_status('off')
+
+
   def onQuit(self, e):
     self.stop_sentinels()
     save_cached_settings(self.params)
     self.Destroy()
+
 
 class RunWindow(wx.Panel):
   ''' Window panel that will house all the run tabs '''
@@ -597,9 +633,11 @@ class RunWindow(wx.Panel):
     self.sentinel_box = wx.BoxSizer(wx.HORIZONTAL)
     self.run_light = gctr.SentinelStatus(self.main_panel, label='Run Sentinel')
     self.job_light = gctr.SentinelStatus(self.main_panel, label='Job Sentinel')
+    self.jmn_light = gctr.SentinelStatus(self.main_panel, label='Job Monitor')
     self.prg_light = gctr.SentinelStatus(self.main_panel, label='Progress Sentinel')
     self.sentinel_box.Add(self.run_light, flag=wx.LEFT, border=10)
     self.sentinel_box.Add(self.job_light, flag=wx.LEFT, border=20)
+    self.sentinel_box.Add(self.jmn_light, flag=wx.LEFT, border=20)
     self.sentinel_box.Add(self.prg_light, flag=wx.LEFT, border=20)
 
     nb_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -1339,6 +1377,7 @@ class TrialPanel(wx.Panel):
 
   def onViewPHIL(self, e):
     view_dlg = dlg.TrialDialog(self, db=self.db, trial=self.trial, new=False)
+    view_dlg.Fit()
     view_dlg.ShowModal()
     view_dlg.Destroy()
 
